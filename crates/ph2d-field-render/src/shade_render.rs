@@ -20,7 +20,6 @@ use crate::ground_shade::{
     edge_ground_bounce, edge_ground_factor, ground_factors, mais_luz, shadowed_background,
 };
 use ph2d_material::{Environment, Surface};
-use ph2d_view_transform::Look;
 
 /// Uma luz direcional, em espaço de VISTA.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -104,74 +103,6 @@ pub struct Lighting<'a> {
     /// ([`Lighting::lamps`]) NÃO têm sombra e não é omissão: elas estão ancoradas no ecrã, logo
     /// giram com a câmera — uma sombra que gira com o olhar não pousa nada, ensina o contrário.
     pub shadows: Option<&'a crate::Shadows>,
-}
-
-/// ⭐⭐⭐ **A APRESENTAÇÃO DA CENA** — o OLHAR e o ESTILO, juntos porque viajam juntos
-/// (`docs/Render3d/03`, a `W8`).
-///
-/// ```text
-/// material + luz  →  [ESTILO]  →  olhar (exposição + vista)  →  sRGB
-///  (a física)        (a mentira)   (a ph2d-view-transform)
-/// ```
-///
-/// # ⛔⛔ Porque ela entra na ASSINATURA em vez de haver um `shade_render_com_estilo`
-///
-/// Uma função-irmã seria a segunda porta pela qual o defeito volta — e este módulo acabou de pagar
-/// exactamente isso (`docs/Render3d/10` §24: *uma cura gateada ao bit, num ramo que o produto não
-/// corre*). Com ela na assinatura, **esquecer o estilo é erro de compilação** em todo chamador, que
-/// é a mesma lei que o ledger do `ProjectState::capture` já aplica um nível acima.
-///
-/// ⚠️ E a [`Presentation::of`] existe para quem não tem estilo nenhum a dizer — ela é a **identidade
-/// exacta** (ver o [`ph2d_style`]), e é isso que deixa os gates de material e de luz medirem a
-/// física sem uma mentira por cima.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Presentation {
-    /// A exposição e a vista — ver [`ph2d_view_transform::Look`].
-    pub look: Look,
-    /// Os botões da direcção de arte — ver [`ph2d_style::Style`].
-    ///
-    /// ⚠️ **Ele chega SANEADO** ([`ph2d_style::Style::sanitized`]), e quem o saneia é quem o monta:
-    /// a cerca é de QUADRO e correria por pixel se vivesse aqui.
-    pub style: ph2d_style::Style,
-    /// ⭐⭐ **O raio da bola que envolve a PEÇA**, em unidades de mundo — o que torna a curvatura
-    /// adimensional antes de ela chegar ao estilo.
-    ///
-    /// # ⚠️ Porque ele é presentação e não geometria
-    ///
-    /// O G-buffer guarda `H` em `1/comprimento` (é o que a subsuperfície pede). Um botão de estilo
-    /// calibrado nisso mudaria de sentido ao **escalar a peça** — a mesma quina daria outra tinta
-    /// numa peça de `0,3` e numa de `3`. Multiplicado por este raio, o que o estilo lê é *«quantas
-    /// vezes esta zona é mais curva do que a peça inteira»*, que é o que um artista quer dizer.
-    ///
-    /// ⚠️ **`1,0` é o valor de quem não tem peça** (uma fixtura, um gate de material) e é inofensivo:
-    /// com as tintas de fábrica ninguém lê a curvatura.
-    pub piece_radius: f32,
-}
-
-impl Presentation {
-    /// **Só o olhar** — estilo de fábrica, que é a identidade exacta.
-    #[must_use]
-    pub fn of(look: Look) -> Self {
-        Self {
-            look,
-            style: ph2d_style::Style::default(),
-            piece_radius: 1.0,
-        }
-    }
-
-    /// A curvatura deste pixel **em unidades da peça**, que é o que o estilo lê.
-    ///
-    /// ⚠️ **O sinal ATRAVESSA** — é ele que separa uma aresta de uma cova, e é a razão de a
-    /// [`crate::curvatura`] ter deixado de o deitar fora.
-    fn styled_curvature(&self, k: f32) -> f32 {
-        k * self.piece_radius
-    }
-}
-
-impl From<Look> for Presentation {
-    fn from(look: Look) -> Self {
-        Self::of(look)
-    }
 }
 
 /// ⭐ **Um ambiente que só tem a parcela DIFUSA** — a irradiância que a cena devolve a este pixel.
@@ -353,6 +284,7 @@ fn radiance(
         n,
         v,
         k,
+        k_estilo,
         basis,
     } = geom;
     // ⭐⭐⭐ **O MATERIAL NESTE PONTO** — a curvatura é a única entrada geométrica que a lei do
@@ -457,7 +389,7 @@ fn radiance(
             // ⚠️ **`|N·V|`**, e o valor absoluto não é defensivo: numa silhueta o produto passa por
             // zero e muda de sinal com o ruído da normal, e um contorno que pisca não é um contorno.
             facing: (n[0] * v[0] + n[1] * v[1] + n[2] * v[2]).abs(),
-            curvature: pres.styled_curvature(k),
+            curvature: pres.styled_curvature(k_estilo),
         },
     );
     pres.look.apply(cena)
@@ -524,6 +456,8 @@ pub fn shade_render(
                         v,
                         // ⚠️ Vazio ⇒ `0` ⇒ o piso do GLSL dá o raio de `100`, que é «plano».
                         k: g.curvature.get(i).copied().unwrap_or(0.0),
+                        // ⚠️ Vazio ⇒ `0` ⇒ tinta nenhuma, que é o que o estilo de fábrica quer.
+                        k_estilo: g.curvature_style.get(i).copied().unwrap_or(0.0),
                         basis,
                     },
                     pixel_world,
@@ -579,6 +513,8 @@ pub fn shade_render(
                         v,
                         // ⚠️ Vazio ⇒ `0` ⇒ o piso do GLSL dá o raio de `100`, que é «plano».
                         k: g.curvature.get(i).copied().unwrap_or(0.0),
+                        // ⚠️ Vazio ⇒ `0` ⇒ tinta nenhuma, que é o que o estilo de fábrica quer.
+                        k_estilo: g.curvature_style.get(i).copied().unwrap_or(0.0),
                         basis,
                     },
                     pixel_world,
@@ -675,6 +611,13 @@ struct PixelGeom {
     /// ⭐⭐⭐ **A CURVATURA deste ponto** (`|H|`) — `0` quando ninguém a pediu, e `0` é a leitura
     /// certa de *«não sei»* (ver [`crate::Gbuffer::curvature`]).
     k: f32,
+    /// ⭐⭐⭐ **A CURVATURA À ESCALA DO ARTISTA** — com SINAL, e é esta que o estilo lê.
+    ///
+    /// ⚠️ **Campo NOMEADO e não derivado do `k`**, de propósito: as duas são medidas a distâncias
+    /// diferentes (ver [`crate::Gbuffer::curvature_style`]), e um `k_estilo: k` escrito num
+    /// chamador por conveniência seria a borda dura de volta, sem uma linha de lei ter mudado.
+    /// *Esquecê-lo é erro de compilação nos dois sítios que constroem esta struct.*
+    k_estilo: f32,
     basis: ViewBasis,
 }
 

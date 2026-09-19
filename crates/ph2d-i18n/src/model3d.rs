@@ -20,7 +20,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // as palavras vinham da tabela e a SINTAXE não, e há línguas em que a contagem vem à
         // frente do nome. ⚠️ Os dois rótulos continuam a ser chaves próprias e entram aqui como
         // ARGUMENTOS: a frase não os duplica.
-        "panel.model3d.footer" => "{nodes}: {count} \u{b7} {cost} {ms} ms",
+        "panel.model3d.footer" => "{nodes}: {count} \u{b7} {cost} {ms} {unit}",
         // ⚠️ O rótulo diz **Radius**, e é um compromisso que o documento honra: quem escolher a
         // mistura orgânica vê um número que entrega 3/4 do que promete (ver `Blend::Organic`), e
         // isso é uma decisão de produto por tomar — não uma etiqueta a corrigir aqui.

@@ -177,18 +177,129 @@ impl Default for Rim {
 ///
 /// ⇒ *o sinal estava calculado e era descartado uma linha antes de alguém o poder ler.* Aqui ele é a
 /// diferença entre uma aresta e um vinco, que é a diferença entre um contorno e uma sujidade.
+/// # ⛔⛔⛔ A auditoria de 2026-09-19, e as DUAS coisas que faltavam
+///
+/// Report do dono, com foto: *«Edge tint e Cavity tint com bordas muito duras sem ajustes finos, não
+/// me parece certo.»* Quatro frentes mediram-no (`docs/Render3d/11` §10), e o mecanismo é
+/// geométrico:
+///
+/// ⭐⭐⭐ **O campo de curvatura NÃO é contínuo — é um punhado de PLATÔS, um por feição** (`0` na
+/// face plana, `1/(2r)` ao longo de todo o filete). A prova é a resolução: o salto entre píxeis
+/// vizinhos tem o `p99` a **encolher** ao dobrar os píxeis e o **max NÃO** (`19,3 → 17,1` sobre `4×`)
+/// — *um campo suave amostrado com metade do pixel tem metade do salto; um degrau tem o mesmo.*
+///
+/// ⇒ **uma função POR PONTO de um campo constante por troço é constante por troço**: nenhum
+/// multiplicador aplicado a `H` pode produzir um gradiente. Só um operador de **VIZINHANÇA** pode, e
+/// o único do caminho é a **ESCALA a que a curvatura é medida** — que até aqui era escolhida por
+/// PRECISÃO NUMÉRICA e não por gosto. ⇒ [`Curvature::softness`].
+///
+/// ⛔ **TRÊS explicações plausíveis foram construídas e REFUTADAS** (tabela no `11` §10.3): o corte
+/// a saturar (`4,19×` o controlo já com `1,9 %` de saturação) · o anti-serrilhado (`169 → 161` sem
+/// os píxeis de borda) · e um **joelho suave** (`smoothstep`) no lugar do corte, que **PIORA**
+/// (`168` contra `162`). *Um joelho actua no domínio do VALOR e a dureza vive no do ESPAÇO* — é por
+/// isso que o corte duro FICA.
+///
+/// # ⭐⭐⭐ E porque a nitidez teve de se PARTIR EM DUAS
+///
+/// Numa peça real as duas famílias vivem a uma ordem de grandeza uma da outra. Medido na cena `=35`
+/// (`H · raio_da_peça`):
+///
+/// | feição | `H·R` |
+/// |---|---:|
+/// | face plana | `0` |
+/// | o corpo (bola `0,45`) | `1,50` |
+/// | as covas (`0,20` · `0,16` · `0,13`) | `−3,38` · `−4,22` · `−5,20` |
+/// | os filetes (`0,06` · `0,02`) | `11,3` · `33,8` |
+///
+/// Com **um** limiar partilhado não existe posição que sirva os dois: pô-lo onde o filete ainda tem
+/// gradiente (`1/33,8 = 0,03`) deixa as covas a `0,10`–`0,15` de tinta — invisíveis; pô-lo onde as
+/// covas respondem satura o filete `3×`–`9×`. ⇒ **um limiar por lado**, que é também o que o alvo
+/// de referência ship (ele tem *quatro* factores: aresta e cova, em duas escalas).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Curvature {
     /// A tinta de uma **ARESTA** (curvatura positiva). **Fábrica: branco.**
     pub convex: [f32; 3],
     /// A tinta de uma **COVA** (curvatura negativa). **Fábrica: branco.**
     pub concave: [f32; 3],
-    /// ⭐ **Quanta curvatura já conta como tinta cheia** — o multiplicador antes do corte em `±1`.
+    /// ⭐ **Quanta curvatura de ARESTA já conta como tinta cheia** — o multiplicador antes do corte.
     ///
-    /// Com `1`, uma zona tão curva quanto a peça inteira (uma esfera) recebe a tinta toda. Com `4`,
-    /// basta ser `4×` mais curva que a peça — o que faz a tinta ir para os filetes e deixar o corpo
-    /// em paz. **Fábrica: `1`**, que é a leitura sem opinião nenhuma.
-    pub sharpness: f32,
+    /// ⚠️ **Ele lê-se como um TAMANHO, e é essa a unidade honesta:** a tinta satura em
+    /// `|H·R| ≥ 1/g`, e uma feição de raio `r` tem `H·R = R/r` ⇒ **saturam as feições de raio
+    /// `r ≤ g · R`**, isto é *«tudo o que é mais apertado que esta fracção da peça leva a tinta
+    /// cheia»*. Maior ⇒ mais peça tingida, que é a direcção que o dedo espera.
+    ///
+    /// **Fábrica: [`Curvature::EDGE_SHARPNESS`].**
+    pub edge_sharpness: f32,
+    /// ⭐ **O mesmo, para a COVA** — e ele é um botão à parte porque as duas famílias vivem a uma
+    /// ordem de grandeza uma da outra (ver o cabeçalho). **Fábrica:
+    /// [`Curvature::CAVITY_SHARPNESS`].**
+    pub cavity_sharpness: f32,
+    /// ⭐⭐⭐ **A ESCALA A QUE A CURVATURA É MEDIDA** — a distância, em fracções do raio da peça, a
+    /// que o estêncil vai buscar as amostras. **É a alavanca da queixa do dono, e a única que existe.**
+    ///
+    /// # ⚠️ Ela é da MEDIDA e não do CAMPO, e há número
+    ///
+    /// Há duas maneiras de dar um raio a isto, e só uma é honesta: filtrar o **campo** (suavizar o
+    /// SDF) **move a superfície** — medido contra o oráculo, `dshift` até `0,84` de um voxel — e dá
+    /// **exactamente as mesmas** larguras de rampa que filtrar a **medida**. ⇒ *não há razão de
+    /// precisão para pagar o deslocamento*, e o que se move é o `ε` do estêncil.
+    ///
+    /// ⛔ **E um borrão em espaço de ECRÃ está recusado pelo mecanismo que esta crate já escreve:**
+    /// ele lê os VIZINHOS, logo é um **passe** e não uma lei por ponto — a crate deixaria de ser a
+    /// lei que os dois motores partilham, e a referência pintaria o que o dispositivo não sabe
+    /// reproduzir.
+    ///
+    /// # ⭐ A autoridade, medida
+    ///
+    /// | `softness` | degrau de byte entre píxeis vizinhos | vs a imagem sem estilo |
+    /// |---:|---:|---:|
+    /// | `0,0064` (o óptimo de PRECISÃO) | `169` | `10,56×` |
+    /// | `0,0512` | `103` | `6,44×` |
+    /// | `0,1024` | `66` | `4,12×` |
+    ///
+    /// ⇒ **`6,5×` de autoridade sobre a dureza**, contra `1,5×` de qualquer nitidez. *O botão que
+    /// existia não era o botão da grandeza de que o dono se queixava.*
+    ///
+    /// **Fábrica: [`Curvature::SOFTNESS`].** Piso: [`Curvature::MIN_SOFTNESS`]. Tecto:
+    /// [`Curvature::MAX_SOFTNESS`].
+    pub softness: f32,
+}
+
+impl Curvature {
+    /// ⭐ **O piso da [`Curvature::softness`], e ele é o ÓPTIMO DE PRECISÃO da segunda diferença.**
+    ///
+    /// ⚠️ **Não é um número escolhido:** é a fracção que a `ph2d_field_render::curvatura::eps_para`
+    /// mede como o vale do erro — abaixo dela manda o cancelamento (`1/ε²`) e acima manda a
+    /// truncagem (`O(ε²)`), e o vale está no **mesmo sítio** em três raios (`0,4` · `1,0` · `2,5`).
+    /// ⇒ *descer abaixo disto não compra borda mais dura: compra ruído.*
+    pub const MIN_SOFTNESS: f32 = 0.0064;
+
+    /// ⛔⛔ **O tecto, e ele nomeia o recurso: a FEIÇÃO MAIS PEQUENA que ainda se quer ver.**
+    ///
+    /// Medir a curvatura a uma distância maior que o raio de uma feição **apaga essa feição**.
+    /// Medido na `=35`: a `ε/raio = 0,2048` o `p05` de `H·R` fica **positivo** — as covas deixam de
+    /// ser côncavas e a [`Curvature::concave`] **morre**. ⇒ o tecto fica **abaixo** desse ponto, e
+    /// quem o quiser passar está a pedir que uma tinta desapareça.
+    pub const MAX_SOFTNESS: f32 = 0.1536;
+
+    /// **A suavidade de fábrica.**
+    ///
+    /// ⭐ Ela é o **meio da janela medida** (`[0,03 ; 0,10]`), e não o valor de ontem: o `0,0064` de
+    /// antes é o óptimo de PRECISÃO, e usá-lo como omissão era o caminho lento a escolher o produto
+    /// — o degrau de `169` bytes que o dono fotografou.
+    ///
+    /// ⚠️ **Mudar esta omissão NÃO parte a identidade de fábrica**: com as duas tintas brancas
+    /// ([`Style::reads_curvature`] responde `false`) a curvatura **nem chega a ser medida**, logo o
+    /// quadro de omissão continua byte-idêntico ao de antes desta wave.
+    pub const SOFTNESS: f32 = 0.064;
+
+    /// A nitidez de ARESTA de fábrica — feições mais apertadas que `1/16` da peça levam tinta cheia.
+    /// Medido: é onde um filete típico (`r/R ≈ 0,03`–`0,09`) ainda tem gradiente.
+    pub const EDGE_SHARPNESS: f32 = 0.0625;
+
+    /// A nitidez de COVA de fábrica — as covas são feições GRANDES (`r/R ≈ 0,2`–`0,45` na `=35`),
+    /// logo o limiar delas vive uma ordem de grandeza acima do da aresta.
+    pub const CAVITY_SHARPNESS: f32 = 0.5;
 }
 
 impl Default for Curvature {
@@ -196,7 +307,9 @@ impl Default for Curvature {
         Self {
             convex: [1.0; 3],
             concave: [1.0; 3],
-            sharpness: 1.0,
+            edge_sharpness: Self::EDGE_SHARPNESS,
+            cavity_sharpness: Self::CAVITY_SHARPNESS,
+            softness: Self::SOFTNESS,
         }
     }
 }
@@ -325,8 +438,18 @@ impl Style {
     pub fn curvature_tinted(&self, rgb: [f32; 3], curvature: f32) -> [f32; 3] {
         // ⚠️ **A curvatura é GEOMETRIA por pixel** — ver o cabeçalho: os botões já vêm saneados, e
         // esta não vem de botão nenhum.
-        let c = (finito(curvature, 0.0) * self.curvature.sharpness).clamp(-1.0, 1.0);
-        let (wc, wv) = (c.max(0.0), (-c).max(0.0));
+        //
+        // ⭐⭐⭐ **UM LIMIAR POR LADO** (auditoria de 2026-09-19, ver [`Curvature`]): numa peça real
+        // os filetes leem `H·R ≈ 11`–`34` e as covas `≈ −3`–`−5`, e **não existe um limiar
+        // partilhado que sirva os dois** — o que acende as covas satura o filete `3×`–`9×`.
+        //
+        // ⚠️ **O corte fica DURO de propósito:** um joelho (`smoothstep`) foi construído, medido e
+        // **refutado** — ele piora (`168` contra `162`), porque *actua no domínio do VALOR e a
+        // dureza vive no do ESPAÇO*. Quem suaviza é a [`Curvature::softness`], a montante desta
+        // linha, na escala a que `curvature` foi medida.
+        let k = finito(curvature, 0.0);
+        let wc = (k * self.curvature.edge_sharpness).clamp(0.0, 1.0);
+        let wv = (-k * self.curvature.cavity_sharpness).clamp(0.0, 1.0);
         [0, 1, 2].map(|k| {
             // ⚠️ **`1 + (t − 1)·w`**, e nunca `mix` — ver o cabeçalho: com a tinta em `1` o
             // parêntesis é exactamente `0` e o resultado é exactamente `1`.
@@ -432,7 +555,18 @@ impl Style {
             curvature: Curvature {
                 convex: cor(self.curvature.convex, d.curvature.convex),
                 concave: cor(self.curvature.concave, d.curvature.concave),
-                sharpness: finito(self.curvature.sharpness, d.curvature.sharpness),
+                edge_sharpness: finito(self.curvature.edge_sharpness, d.curvature.edge_sharpness),
+                cavity_sharpness: finito(
+                    self.curvature.cavity_sharpness,
+                    d.curvature.cavity_sharpness,
+                ),
+                // ⚠️ **As DUAS pontas são cercas de RECURSO, não de gosto** — ver
+                // [`Curvature::MIN_SOFTNESS`] (abaixo dela a segunda diferença cancela e a
+                // curvatura vira ruído) e [`Curvature::MAX_SOFTNESS`] (acima dela as covas deixam
+                // de ser côncavas e a tinta delas desaparece). *Uma delas protege a aritmética e a
+                // outra protege um controlo de morrer em silêncio.*
+                softness: finito(self.curvature.softness, d.curvature.softness)
+                    .clamp(Curvature::MIN_SOFTNESS, Curvature::MAX_SOFTNESS),
             },
             zones: Zones {
                 shadow: cor(self.zones.shadow, d.zones.shadow),

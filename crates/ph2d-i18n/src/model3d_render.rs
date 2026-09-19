@@ -25,14 +25,36 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // vezes.*
         "panel.model3d.style.rim_color" => "Rim Color",
         "panel.model3d.style.rim_strength" => "Rim Strength",
-        // ⚠️ "Width" e não "Power"/"Exponent": o artista lê a LARGURA da banda, e o expoente é como
-        // a lei a produz.
-        "panel.model3d.style.rim_width" => "Rim Width",
+        // ⛔⛔ **ERA "Rim Width", e o rótulo prometia o CONTRÁRIO do que o número faz** (auditoria
+        // de 2026-09-19, §10.10): a lei é `(1 − |N·V|)^w`, logo **subir «Width» ESTREITA** o contorno
+        // — `w = 1` acende `50 %` da silhueta, `w = 3` acende `79 %`, `w = 64` acende `99 %`.
+        //
+        // ⚠️ A nota que o justificava dizia *«o artista lê a LARGURA da banda, e o expoente é como a
+        // lei a produz»* — o que seria verdade se o valor fosse **remapeado**, e ele não é: o número
+        // da fileira **é** o expoente. ⇒ *ou o valor se inverte, ou o rótulo diz o que ele é.*
+        //
+        // ⭐ **Fica o rótulo**, e a razão é o preço: remapear cria duas representações do mesmo
+        // valor (o que a fileira mostra e o que a lei corre), que é a forma de defeito que esta casa
+        // já paga noutros sítios. *Falloff* é o vocabulário da indústria para um expoente de Fresnel,
+        // e a dica ao lado diz a direcção por extenso.
+        "panel.model3d.style.rim_width" => "Rim Falloff",
         // ⚠️ **"Edge"/"Cavity" e não "Convex"/"Concave"** — os dois primeiros são o que um artista
         // de texturas diz (*edge wear*, *cavity map*); os segundos são a geometria por baixo.
         "panel.model3d.style.convex" => "Edge Tint",
         "panel.model3d.style.concave" => "Cavity Tint",
-        "panel.model3d.style.sharpness" => "Curvature Sharpness",
+        // ⭐⭐⭐ **DUAS nitidezes e não uma** (auditoria de 2026-09-19): numa peça real os filetes
+        // leem `H·R ≈ 11`–`34` e as covas `≈ −3`–`−5`, e **nenhum limiar partilhado serve os dois**.
+        // ⚠️ Os nomes seguem os das TINTAS que cada um governa (*Edge* · *Cavity*), e não a palavra
+        // «curvatura» — o artista já escolheu a cor numa fileira chamada `Edge Tint`.
+        "panel.model3d.style.edge_sharpness" => "Edge Sharpness",
+        "panel.model3d.style.cavity_sharpness" => "Cavity Sharpness",
+        // ⭐⭐⭐ **A alavanca do report *«bordas muito duras sem ajustes finos»*** — a distância a
+        // que a curvatura é lida.
+        //
+        // ⚠️ **O nome é «Softness» e não «Radius», e a direcção é load-bearing:** subir suaviza. É a
+        // lição do `Rim Width`, que tem o nome ao contrário do que o número faz — *um rótulo que
+        // promete o oposto do knob é um defeito que nenhum gate de fiação apanha.*
+        "panel.model3d.style.softness" => "Curvature Softness",
         // ⚠️ **"Shadows"/"Highlights" é o vocabulário da GRADE DE COR**, o mesmo das rodas de um
         // colorista.
         "panel.model3d.style.shadow_tint" => "Shadow Tint",
@@ -41,6 +63,58 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // e este número é onde ela vale meio a meio.
         "panel.model3d.style.pivot" => "Zone Pivot",
         "panel.model3d.style.saturation" => "Indirect Saturation",
+        // ⭐⭐⭐ **AS FRASES DOS BALÕES** (`<chave>.tip`) — report do dono, 2026-09-19: *«Zone pivot
+        // não sei para que serve»*.
+        //
+        // ⚠️ **Um rótulo nomeia; uma frase EXPLICA**, e nenhuma superfície deste painel a tinha. Cada
+        // uma diz **o que o botão faz** e, onde há direcção, **para que lado** — que é exactamente o
+        // que o `Rim Falloff` acima custou a esta secção.
+        "panel.model3d.style.rim_color.tip" => {
+            "The colour of the light that grazes the silhouette. Needs Rim Strength above zero."
+        }
+        "panel.model3d.style.rim_strength.tip" => {
+            "How much light is added along the silhouette. It lifts the piece off the background."
+        }
+        "panel.model3d.style.rim_width.tip" => {
+            "How fast the rim fades inwards. Higher values TIGHTEN it to a thinner line."
+        }
+        "panel.model3d.style.convex.tip" => {
+            "The colour that edges and fillets take — the piece tints itself by its own shape, with \
+             no painted map."
+        }
+        "panel.model3d.style.concave.tip" => {
+            "The colour that hollows and creases take. It is the other half of Edge Tint."
+        }
+        "panel.model3d.style.edge_sharpness.tip" => {
+            "Which edges count as edges: features tighter than this fraction of the piece take the \
+             full tint. Higher tints more of the piece."
+        }
+        "panel.model3d.style.cavity_sharpness.tip" => {
+            "The same, for hollows — a separate knob because hollows are usually far larger than \
+             fillets, and one threshold cannot serve both."
+        }
+        // ⭐ A frase da queixa nº 1, e ela nomeia a alavanca em vez do mecanismo.
+        "panel.model3d.style.softness.tip" => {
+            "How far away the shape is read to decide what is an edge and what is a hollow. Raise \
+             it to soften hard-edged tint bands; too far and small hollows stop being read."
+        }
+        "panel.model3d.style.shadow_tint.tip" => {
+            "The colour the dark parts of the image are pulled towards — the shadow half of a film \
+             colour grade."
+        }
+        "panel.model3d.style.highlight_tint.tip" => {
+            "The colour the bright parts are pulled towards. Cool shadows with warm highlights is \
+             half of a stylised look."
+        }
+        // ⭐⭐⭐ A frase da queixa nº 2, à letra.
+        "panel.model3d.style.pivot.tip" => {
+            "Where the boundary between shadow and highlight sits. It does nothing until Shadow \
+             Tint and Highlight Tint are different colours."
+        }
+        "panel.model3d.style.saturation.tip" => {
+            "How much colour the light bounced between parts of the piece carries. One is the \
+             honest amount; above that the bounce is exaggerated on purpose."
+        }
         "panel.model3d.add.light" => "Light",
         // ⚠️ "From"/"To" e não "Lower"/"Upper": a banda é uma FAIXA ao longo do eixo, e o artista
         // lê-a como um intervalo. (O Blender diz "Limits", o 3ds Max "Upper/Lower Limit" — os dois

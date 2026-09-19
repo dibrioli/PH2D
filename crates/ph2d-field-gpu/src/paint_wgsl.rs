@@ -25,16 +25,22 @@
 /// teste seria medir uma cópia da lei e chamar-lhe paridade* — é a mesma razão que faz `{BLUR_COS}`
 /// e `{PISO_LUZ}` serem lidos do ficheiro que os declara.
 ///
-/// ⚠️ **Ela lê `pintor.knobs.z`**, que é o passo `ε`, e isso é deliberado: quem a usa fora do pintor
-/// declara um `Pintor` com um `knobs: vec4<f32>` e põe o `ε` no `z`. *Passar o `ε` por argumento
-/// mudaria o texto do produto para servir o instrumento, e a lei deixaria de ser a mesma.*
+/// ⛔⛔ **O `ε` ERA lido de `pintor.knobs.z` e HOJE é ARGUMENTO — a premissa daquela recusa morreu
+/// em 2026-09-19.** Ela dizia: *«passar o `ε` por argumento mudaria o texto do produto para servir o
+/// instrumento»*, e era verdade enquanto o **produto** tivesse um `ε` só. A auditoria da camada de
+/// estilo (`docs/Render3d/11` §10) trouxe o segundo: o material pede o **óptimo de PRECISÃO** e o
+/// estilo pede uma **ESCALA ARTÍSTICA**, e elas não podem ser o mesmo número.
+///
+/// ⇒ *quem move o número que tornava algo inalcançável tem de reconferir a nota* (`CLAUDE.md` §0.0).
+/// Hoje o argumento serve o PRODUTO, e o instrumento passa a ser o segundo beneficiário em vez do
+/// único — que é a ordem certa.
 ///
 /// ⚠️ **Ela deixou de viver dentro do `com_a_curvatura`**, e isso compra duas coisas: o SINAL passa
 /// a ser legível por quem o queira (a `W8`), e numa fronteira entre dois materiais que a leem as
 /// cinco amostras passam a ser pagas **uma vez** em vez de duas. *O valor é o mesmo `f32`.*
 pub const CURVATURA: &str = r"
-fn curvatura_em(p: vec3<f32>) -> f32 {
-    let e = pintor.knobs.z;
+fn {NOME}(p: vec3<f32>) -> f32 {
+    let e = {EPS};
     if (e <= 0.0) { return 0.0; }
     let o0 = vec3<f32>( 1.0, -1.0, -1.0);
     let o1 = vec3<f32>(-1.0, -1.0,  1.0);
@@ -54,7 +60,7 @@ fn curvatura_em(p: vec3<f32>) -> f32 {
 pub(crate) const PINTOR: &str = r"
 // ── o grupo 1: o que só o pintor lê ───────────────────────────────────────────────────────────
 struct Pintor {
-    knobs: vec4<f32>,  // stops, pixel_world, curv_eps, _
+    knobs: vec4<f32>,  // stops, pixel_world, curv_eps (o do MATERIAL), raio da peça
     fundo: vec4<f32>,  // o fundo em LINEAR pré-multiplicado, para a média da borda
     modo: vec4<u32>,   // view, bordas, fundo empacotado, materiais
     // ⭐ `x` = há gémeas foscas empacotadas (ver `ler_mat_fosca`). `0` é o caminho anterior ao
@@ -264,24 +270,46 @@ mod extraccao_tests {
         // gate verde e o shader com um `{CURVATURA}` literal lá dentro.
         let montagem = include_str!("paint.rs");
         assert!(
-            montagem.contains(r#".replace("{CURVATURA}", crate::paint_wgsl::CURVATURA)"#),
+            montagem.contains(r#".replace("{CURVATURA}", &{"#),
             "ninguém substitui a marca `{{CURVATURA}}` na montagem do shader"
         );
+        // ⭐⭐⭐ **E a montagem gera as DUAS funções do molde** — a do MATERIAL com o `ε` de sempre e
+        // a do ESTILO com o dele. ⛔ Sem esta metade, uma montagem que preenchesse o molde uma vez
+        // só deixava o shader sem `curvatura_do_estilo_em` e o gate acima verde.
+        // ⚠️ **Procura o LITERAL do nome e não a chamada colada a ele:** o `cargo fmt` parte uma
+        // chamada longa em várias linhas, e um censo que exija `molde("…"` casa zero sobre produto
+        // certo — a mesma armadilha que um filtro de teste reformatado já custou a esta linha hoje.
+        for nome in ["\"curvatura_em\"", "\"curvatura_do_estilo_em\""] {
+            assert!(
+                montagem.contains(nome),
+                "a montagem não gera a função {nome} do molde"
+            );
+        }
         // E a const declara exactamente a função que o corpo chama.
         assert_eq!(
             super::CURVATURA
-                .matches("fn curvatura_em(p: vec3<f32>) -> f32")
+                .matches("fn {NOME}(p: vec3<f32>) -> f32")
                 .count(),
             1,
-            "a const não declara `curvatura_em` exactamente uma vez"
+            "o MOLDE não declara a função exactamente uma vez"
         );
+        // ⭐⭐⭐ **E o molde tem de ter as DUAS marcas** — o nome E o passo. Sem a do passo ele
+        // geraria duas funções idênticas, e a do estilo mediria a curvatura do MATERIAL: a borda
+        // dura voltava sem uma linha de lei ter mudado.
+        for marca in ["{NOME}", "{EPS}"] {
+            assert!(
+                super::CURVATURA.contains(marca),
+                "o molde da curvatura perdeu a marca {marca}"
+            );
+        }
         // ⚠️⚠️ **Quem CHAMA está na outra metade** (`PINTOR_SONDAS`), e a 1.ª redacção deste gate
         // procurou-a aqui e reprovou — *as duas metades são UM shader*, como o cabeçalho deste
         // ficheiro diz, e o corte entre elas foi um tecto de LOC e não um assunto. A declaração
         // entra por esta marca, a chamada mora no irmão, e o gate tem de olhar para os dois.
         assert!(
-            crate::paint_wgsl_sondas::PINTOR_SONDAS.contains("curvatura_em(p)"),
-            "o shader deixou de CHAMAR a função — a extracção ficou órfã"
+            crate::paint_wgsl_sondas::PINTOR_SONDAS.contains("curvatura_em(p)")
+                && crate::paint_wgsl_sondas::PINTOR_SONDAS.contains("curvatura_do_estilo_em(p)"),
+            "o shader deixou de CHAMAR uma das duas medições — a extracção ficou órfã"
         );
     }
 }

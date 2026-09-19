@@ -152,28 +152,25 @@ pub(crate) fn dois_caminhos_vestidos(
     // ⚠️⚠️ **O ESTILO é o SEGUNDO leitor da curvatura**, e a referência tem de a assar quando ele a
     // lê — senão a CPU compara uma peça sem tinta de aresta contra um dispositivo que a tem, e a
     // paridade acusaria a LEI onde o defeito era do arnês.
-    let estilo_le_a_curvatura = apresentacao.style.reads_curvature();
-    // ⭐⭐⭐ **A CURVATURA entra na referência pela MESMA porta e com o MESMO passo** que o
-    // dispositivo usa (`docs/Render3d/10`) — o `com_a_curvatura` do WGSL faz a mesma soma de cinco
-    // amostras sobre o mesmo tetraedro.
+    // ⭐⭐⭐ **A CURVATURA entra na referência pela MESMA PORTA que o quadro do produto usa** —
+    // [`ph2d_field_render::curvatura::assar_canais`].
     //
-    // ⚠️⚠️ **Sem esta linha o gate compararia dois PROGRAMAS**: a placa calcularia a curvatura e a
-    // CPU sombrearia com `0`, que o piso transforma no raio de `100`. *É o mesmo defeito que o
-    // campo do chão pagou em 17/09, e naquele dia a edição que o curava foi um `str.replace` que
-    // não casou — silencioso.*
-    if (surfaces
+    // ⛔⛔ **Este arnês montava o estado à MÃO, e em 2026-09-19 foi o TERCEIRO a divergir por isso.**
+    // O comentário que aqui estava já avisava — *«sem esta linha o gate compararia dois PROGRAMAS»* —
+    // e foi exactamente o que aconteceu no dia em que a camada de estilo passou a ler um canal
+    // PRÓPRIO: ele continuou a assar só o do material, a CPU sombreou o estilo com curvatura `0`, a
+    // placa calculou-a a sério, e a divergência saltou de `86` para `4 677` píxeis (`4 519` no
+    // MIOLO). ⚠️ **As três bissecções — a lei, o ganho, o `ε` — deram todas o mesmo número**, que é
+    // a assinatura de a causa não ser nenhuma delas.
+    //
+    // ⇒ *um arnês que monta o estado à mão mede outro programa*, e a cura é ele entrar pela porta.
+    let material_le = surfaces
         .all
         .iter()
-        .any(ph2d_material::Surface::reads_curvature)
-        || estilo_le_a_curvatura)
-        && let Some(bola) = ph2d_field_eval::bounds::bounding_ball(doc, &reg)
-    {
+        .any(ph2d_material::Surface::reads_curvature);
+    if material_le || apresentacao.reads_curvature() {
         let mut eval = ph2d_field_eval::hybrid::Hybrid::new(doc, &reg);
-        g.curvature = ph2d_field_render::curvatura::do_gbuffer(
-            &mut eval,
-            &g,
-            ph2d_field_render::curvatura::eps_para(bola.radius),
-        );
+        ph2d_field_render::curvatura::assar_canais(&mut eval, &mut g, material_le, &apresentacao);
     }
     // ⭐⭐⭐ **O RICOCHETE entra na REFERÊNCIA de CPU** (`docs/Render3d/08` §12), porque o pintor do
     // dispositivo o calcula.

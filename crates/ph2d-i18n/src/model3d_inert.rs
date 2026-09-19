@@ -63,6 +63,32 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Inactive: gimbal lock — this axis and the first one became the same turn. Move the \
              middle angle away from \u{b1}90\u{b0} to split them."
         }
+        // ⭐⭐⭐ **AS QUATRO DA CAMADA DE ESTILO** (report do dono, 2026-09-19: *«Zone pivot não sei
+        // para que serve mas parece morto»*). Medido: na configuração em que o painel ABRE, quatro
+        // das fileiras dela são **inertes por construção** — e o cabeçalho do ficheiro que as
+        // publica já citava esta lei sem a cumprir.
+        //
+        // ⚠️ Cada uma nomeia **o gesto que a destranca**, e o gesto é sempre *outra fileira desta
+        // mesma secção* — que é precisamente o que o artista não consegue adivinhar sozinho.
+        "field.inert.rim_is_off" => {
+            "Inactive: the rim light is off. Raise Rim Strength above zero to use it."
+        }
+        "field.inert.no_edge_tint" => {
+            "Inactive: edges are not tinted. Give Edge Tint a colour to use it."
+        }
+        "field.inert.no_cavity_tint" => {
+            "Inactive: cavities are not tinted. Give Cavity Tint a colour to use it."
+        }
+        "field.inert.no_curvature_tint" => {
+            "Inactive: nothing reads curvature yet. Give Edge Tint or Cavity Tint a colour to use it."
+        }
+        // ⚠️ **Esta é a resposta LITERAL ao report**: o pivô reparte entre DUAS tintas, e com as duas
+        // brancas o parêntesis da lei é exactamente zero — *a mesma lei que faz a omissão ser a
+        // identidade ao bit*. Armado, ele é o botão mais forte da camada.
+        "field.inert.zones_are_the_same" => {
+            "Inactive: both zone tints are the same colour, so there is nothing to split. Give \
+             Shadow Tint or Highlight Tint a colour to use it."
+        }
         _ => return None,
     })
 }

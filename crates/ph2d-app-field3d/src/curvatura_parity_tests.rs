@@ -157,7 +157,7 @@ fn os_offsets_do_arnes_sao_os_do_produto() {
     }
     // ⚠️ E a lei do arnês é a do produto: o WGSL que ele corre é a const do pintor, não uma cópia.
     assert!(
-        ph2d_field_gpu::paint_wgsl::CURVATURA.contains("fn curvatura_em(p: vec3<f32>) -> f32"),
+        ph2d_field_gpu::paint_wgsl::CURVATURA.contains("fn {NOME}(p: vec3<f32>) -> f32"),
         "a const do pintor deixou de declarar a função que este arnês chama"
     );
 }
@@ -202,7 +202,27 @@ fn mede() -> Option<(Vec<Leitura>, f32, f32)> {
 
     let bola = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)?;
     // ⭐ **O MESMO `ε` dos dois lados, pela mesma porta** — ver o cabeçalho.
-    let eps = curvatura::eps_para(bola.radius);
+    //
+    // ⭐⭐⭐ **E a ESCALA é uma env porque foi ela que mediu a afirmação publicada** (2026-09-19): a
+    // camada de estilo passou a palpar a curvatura a `0,064 × raio` em vez do óptimo de PRECISÃO
+    // (`0,0064 ×`), e a nota dizia que *«um `ε` `10×` maior divide a divergência por `100`»*.
+    // Medido aqui, nos dois pontos, com o `ε` a viajar para os DOIS motores:
+    //
+    // | `ε/raio` | `\|ΔH\|` p50 | max | previsto `δf/ε²` |
+    // |---|---:|---:|---:|
+    // | `0,0064` (precisão) | `9,778e-4` | `6,844e-3` | `2,025e-3` |
+    // | `0,064` (o estilo)  | `9,775e-6` | `7,772e-5` | `2,000e-5` |
+    //
+    // ⇒ **exactamente `100×`**, e a previsão `δf/ε²` fecha dos dois lados ⇒ *a dívida é `1` ULP
+    // amplificado, e a alavanca que suaviza a borda paga-a de graça*. ⛔⛔ **E a contagem de
+    // PÍXEIS NÃO segue** (`86 → 85` divergentes): ela não é feita de `H` — `84` dos `86` são de
+    // **cobertura parcial**, onde o que diverge é a mistura com o fundo. *Duas grandezas com o
+    // mesmo nome, e só uma delas obedece ao `ε`.*
+    let eps = curvatura::eps_para(bola.radius)
+        * std::env::var("PH2D_CURV_EPS_ESCALA")
+            .ok()
+            .and_then(|v| v.parse::<f32>().ok())
+            .unwrap_or(1.0);
 
     // (1) a referência de CPU, pela porta do produto.
     let mut hybrid = ph2d_field_eval::hybrid::Hybrid::new(&doc, &reg);
@@ -221,7 +241,12 @@ fn mede() -> Option<(Vec<Leitura>, f32, f32)> {
     let fonte = format!(
         "{}\n{}\n{ARNES}",
         fita.source,
+        // ⚠️ **O arnês preenche o MOLDE com o nome e o `ε` do MATERIAL** — ver
+        // `ph2d_field_gpu::paint::assemble`, que faz o mesmo para as duas funções do produto.
+        // ⛔ Transcrever o corpo aqui seria medir uma cópia da lei e chamar-lhe paridade.
         ph2d_field_gpu::paint_wgsl::CURVATURA
+            .replace("{NOME}", "curvatura_em")
+            .replace("{EPS}", "pintor.knobs.z")
     );
     let entradas: Vec<[f32; 4]> = pontos.iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
     let guarda = t.lock().expect("o traçador");

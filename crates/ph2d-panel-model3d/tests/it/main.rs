@@ -9,4 +9,5 @@
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod registry;
 mod seam;
+mod seam_style;
 mod the_panel_has_a_slot_for_every_modifier;

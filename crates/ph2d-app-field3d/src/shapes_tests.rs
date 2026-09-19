@@ -79,7 +79,13 @@ fn only_the_formula_shapes_build_from_a_radius() {
 #[test]
 fn a_slot_past_the_catalogue_builds_nothing() {
     assert!(shape_at(SHAPES.len(), 0.5).is_none());
-    assert!(slot_of("panel.model3d.add.nao_existe").is_none());
+    // ⚠️⚠️ **A chave forjada vive FORA do espaço de nomes do painel, e isso é uma lei** (2026-09-19):
+    // o censo `every_key_of_this_panel_exists_on_both_sides` varre o repo INTEIRO — testes
+    // incluídos — à procura de `panel.model3d.*` **usadas e não declaradas**, porque uma dessas
+    // pinta o identificador cru na tela (e vaza uma `String`, pelo `leak_key`). *Uma chave de
+    // mentira escrita naquele prefixo é indistinguível de uma gralha de produção*, e esta linha
+    // fazia o gate daquela crate nascer vermelho.
+    assert!(slot_of("gate.shapes.chave.que.nao.existe").is_none());
 }
 
 /// ⭐⭐ **A DISPONIBILIDADE é a lei da W34**, e cada `Make` responde por si.

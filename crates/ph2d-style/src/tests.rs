@@ -112,7 +112,9 @@ fn a_porta_e_idempotente() {
         curvature: Curvature {
             convex: [0.2, f32::NEG_INFINITY, 3.0],
             concave: [1.0, 1.0, f32::NAN],
-            sharpness: f32::NAN,
+            edge_sharpness: f32::NAN,
+            cavity_sharpness: f32::NAN,
+            softness: f32::NAN,
         },
         zones: Zones {
             shadow: [0.4, 0.5, 0.6],
@@ -134,8 +136,9 @@ fn a_porta_e_idempotente() {
         "força ilegível → fábrica"
     );
     assert!(
-        (uma.curvature.sharpness - d.curvature.sharpness).abs() < f32::EPSILON,
-        "nitidez ilegível → fábrica"
+        (uma.curvature.edge_sharpness - d.curvature.edge_sharpness).abs() < f32::EPSILON
+            && (uma.curvature.cavity_sharpness - d.curvature.cavity_sharpness).abs() < f32::EPSILON,
+        "nitidez ilegível → fábrica, nos DOIS lados"
     );
     assert!(
         (uma.indirect_saturation - d.indirect_saturation).abs() < f32::EPSILON,
@@ -176,7 +179,9 @@ fn com_os_botoes_ilegiveis_a_saida_continua_finita() {
         curvature: Curvature {
             convex: [f32::INFINITY; 3],
             concave: [f32::NAN; 3],
-            sharpness: f32::INFINITY,
+            edge_sharpness: f32::INFINITY,
+            cavity_sharpness: f32::NEG_INFINITY,
+            softness: f32::INFINITY,
         },
         zones: Zones {
             shadow: [f32::NAN; 3],
@@ -244,7 +249,9 @@ fn a_arrumacao_fecha_nos_dois_sentidos() {
         curvature: Curvature {
             convex: [0.6, 0.7, 0.8],
             concave: [0.9, 1.1, 1.2],
-            sharpness: 1.3,
+            edge_sharpness: 1.3,
+            cavity_sharpness: 0.37,
+            softness: 0.08,
         },
         zones: Zones {
             shadow: [1.4, 1.5, 1.6],
@@ -272,11 +279,25 @@ fn a_arrumacao_fecha_nos_dois_sentidos() {
         sujo.sanitized(),
         "o pack é a porta do dispositivo"
     );
-    // ⚠️ **Os vinte números são DISTINTOS de propósito** — com dois iguais, uma troca de campos
-    // ficaria invisível.
+    // ⚠️ **Os números da fixtura são DISTINTOS de propósito** — com dois iguais, uma troca de
+    // campos ficaria invisível.
+    //
+    // ⚠️⚠️ **A RESERVA sai da varredura, e a exclusão é DERIVADA de [`wgsl::RESERVADAS`]** — uma
+    // lista escrita aqui à mão seria a segunda resposta à pergunta *«que posições não têm dono?»*,
+    // e ela envelhece no dia em que a arrumação crescer. ⛔ **E ela vem com a metade que a impede
+    // de ser uma licença:** as posições reservadas têm de valer exactamente [`wgsl::RESERVA`] — sem
+    // isso, «excluir da varredura» passaria a esconder um campo que aterrou ali por engano.
     let v = wgsl::pack(&s);
-    for i in 0..v.len() {
-        for j in (i + 1)..v.len() {
+    for r in wgsl::RESERVADAS {
+        assert!(
+            (v[r] - wgsl::RESERVA).abs() < f32::EPSILON,
+            "a posição {r} é RESERVA e não vale {}: alguém aterrou um campo ali",
+            wgsl::RESERVA
+        );
+    }
+    let com_dono = |i: usize| !wgsl::RESERVADAS.contains(&i);
+    for i in (0..v.len()).filter(|&i| com_dono(i)) {
+        for j in ((i + 1)..v.len()).filter(|&j| com_dono(j)) {
             assert!(
                 (v[i] - v[j]).abs() > 1e-6,
                 "a fixtura tem dois números iguais ({i}, {j}): ela não discrimina uma troca"
@@ -407,3 +428,8 @@ fn a_forma_que_reconstroi_por_diferenca_e_a_que_perde_bits() {
         "reconstruir por diferença tem de perder bits nalgum sítio — senão a lei não tem sujeito"
     );
 }
+
+/// ⚠️ **Piso de população da arrumação, como ERRO DE COMPILAÇÃO** — uma [`wgsl::RESERVADAS`] que
+/// crescesse até engolir o bloco deixaria a varredura de números distintos trivialmente verde.
+/// Ver o irmão em `tests_botoes.rs` para porque isto não é um `assert!` de teste.
+const _: () = assert!(wgsl::RESERVADAS.len() * 4 < wgsl::PACKED);

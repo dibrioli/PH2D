@@ -112,8 +112,8 @@ pub use list_item::{ListItem, ListItemState, paint_list_item};
 pub use list_rows::{RowHighlight, paint_row_highlight, paint_row_stripe};
 pub use modal::{Modal, paint_modal, pop_modal_body_clip, push_modal_body_clip};
 pub use number_input::{
-    MIN_W_PX as NUMBER_INPUT_MIN_W_PX, NumberInput, format_number, paint_number_input,
-    paint_number_input_with_buffer,
+    MIN_W_PX as NUMBER_INPUT_MIN_W_PX, NumberInput, format_number, number_text_origin,
+    paint_number_input, paint_number_input_with_buffer, stepper_width,
 };
 pub use numeric_input_with_unit::{
     NumericInputWithUnit, Unit, paint_numeric_input_with_unit, parse as parse_numeric_with_unit,
@@ -132,9 +132,9 @@ pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
 // bancada): sem ela, cada sítio re-deriva «onde é que o preenchimento acaba» e a deriva volta.
 pub use property_box::{
     DECORATOR_W, FORM_ROWS_SHOW_DECORATOR, PropertyBox, PropertyBoxState, PropertyRow,
-    form_row_columns, paint_decorator_dot, paint_property_box, paint_property_label,
+    form_row_columns, label_column, paint_decorator_dot, paint_property_box, paint_property_label,
     property_fields_layout, property_label_col_w, property_label_col_w_for, property_label_origin,
-    property_row_columns, property_row_columns_for, surface_rect,
+    property_row_columns, property_row_columns_for, surface_rect, value_column,
 };
 // ⭐⭐ **A DECLARAÇÃO de uma secção** — ver `property_box::seccao`. Ela vive do lado do `widget`
 //    porque é a ENTRADA da repartição de uma linha, e pô-la no `property_row` faria o `widget`
@@ -179,7 +179,7 @@ pub use slider_with_chip::{
     DEFAULT_CHIP_W, DEFAULT_LABEL_W, paint_number_chip, paint_slider_with_chip,
     paint_slider_with_chip_layout, paint_slider_with_chip_layout_adaptive,
     slider_with_chip_chip_rect, slider_with_chip_height, slider_with_chip_is_stacked,
-    slider_with_chip_min_w,
+    slider_with_chip_label_rect, slider_with_chip_min_w,
 };
 pub use spinner::{Spinner, paint_spinner};
 pub use status_bar::{SegmentTone, StatusBar, StatusSegment, paint_status_bar};

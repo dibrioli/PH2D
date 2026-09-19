@@ -116,7 +116,8 @@ fn a_imagem_lado_a_lado() {
             "curvatura8",
             Style {
                 curvature: Curvature {
-                    sharpness: 8.0,
+                    edge_sharpness: 8.0,
+                    cavity_sharpness: 8.0,
                     ..crate::gpu_frame::estilo_tests::vestido().curvature
                 },
                 ..Style::default()
@@ -181,6 +182,31 @@ fn a_imagem_lado_a_lado() {
 ///
 /// ⭐ **A classificação é o ALFA**, que é a cobertura: `255` é miolo, `0` é fundo, e o que está no
 /// meio é a borda — *a régua não precisa do G-buffer, ela está na imagem*.
+///
+/// # ⛔⛔⛔ Este gate AFIRMA desde 2026-09-19, e antes disso só IMPRIMIA
+///
+/// O corpo dizia por escrito *«sem asserção de veredito sobre o miolo … a afirmação fica no gate
+/// irmão, que é quem tem a barra»* — e **o irmão também não tinha barra nenhuma**: os três testes
+/// deste módulo eram instrumentos, os três com o veredito escrito no NOME. ⚠️ Medido por mutação:
+/// devolver o arnês da paridade ao estado montado à mão (o defeito real de 19/09) põe **`4 677`
+/// píxeis a divergir, `4 519` no MIOLO**, e os três fechavam **VERDES**.
+///
+/// ⇒ *o que apanhou aquela regressão foi eu ler uma tabela impressa, e ninguém lê uma tabela que
+/// passa.* A barra vive aqui porque é aqui que a população está classificada.
+///
+/// | estado | divergentes | borda | **miolo** |
+/// |---|---:|---:|---:|
+/// | o produto de hoje (12 baterias somadas) | — | — | **`15`** |
+/// | pior bateria sozinha (`só a tinta por curvatura`) | `85` | `84` | `1` |
+/// | o arnês montado à mão (a mutação) | `4 677` | `158` | **`4 519`** |
+///
+/// ⚠️ **A barra é `4×` a medição e não um número redondo escolhido:** o mecanismo diz que o miolo
+/// tende a zero (o clamp absorve `ΔH ≈ 9,8e-4` em toda cobertura cheia) e o que fica são os píxeis
+/// exactamente na banda — uma população que muda com a peça e com a câmera, nunca com a LEI. Entre
+/// `60` e os `4 519` da mutação há `75×`, logo a folga não compra silêncio nenhum.
+const MIOLO_MAX: usize = 60;
+
+/// Ver [`MIOLO_MAX`] — a tabela e o porquê da folga vivem lá.
 #[test]
 #[ignore = "precisa de adaptador de GPU"]
 fn os_pixeis_que_divergem_sao_os_da_borda_e_nao_os_do_miolo() {
@@ -197,6 +223,13 @@ fn os_pixeis_que_divergem_sao_os_da_borda_e_nao_os_do_miolo() {
         "\n  BATERIA                              divergentes   na BORDA   no MIOLO   no FUNDO"
     );
     let mut miolo_total = 0usize;
+    let mut movidos_total = 0usize;
+    let Some((cru, _, _)) =
+        crate::gpu_frame::paint_parity_tests::dois_caminhos(&surfaces, &doc, &luz)
+    else {
+        println!("sem adaptador — saltado");
+        return;
+    };
     for (rot, style) in baterias() {
         let Some((cpu, gpu, _)) = crate::gpu_frame::paint_parity_tests::dois_caminhos_vestidos(
             &surfaces, &doc, &luz, None, style,
@@ -222,9 +255,23 @@ fn os_pixeis_que_divergem_sao_os_da_borda_e_nao_os_do_miolo() {
             borda + miolo + fundo
         );
         miolo_total += miolo;
+        movidos_total += cpu.iter().zip(&cru).filter(|(a, b)| a != b).count();
     }
     println!();
-    // ⚠️ **Sem asserção de veredito sobre o miolo**: este é o instrumento que ATRIBUI. A afirmação
-    // fica no gate irmão, que é quem tem a barra.
     println!("  míolo divergente somado em todas as baterias: {miolo_total}");
+
+    // ⚠️⚠️ **O CONTROLO vem PRIMEIRO, e não é decoração:** se nenhuma bateria mexesse um pixel
+    // contra a peça CRUA, todas as linhas liriam `0` divergentes e a barra abaixo passaria sobre
+    // uma camada de estilo INERTE. *Uma régua que não vê o fenómeno acontecer não prova que ele
+    // não aconteceu.*
+    assert!(
+        movidos_total > 0,
+        "nenhuma das {} baterias moveu um pixel contra a peça crua — o gate mediria o nada",
+        baterias().len()
+    );
+    assert!(
+        miolo_total <= MIOLO_MAX,
+        "o miolo divergente subiu para {miolo_total} (barra {MIOLO_MAX}): a divergência deixou de \
+         viver na BORDA anti-serrilhada, que é o que o nome deste gate afirma"
+    );
 }

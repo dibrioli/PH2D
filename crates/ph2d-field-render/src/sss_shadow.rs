@@ -268,6 +268,7 @@ mod tests {
                 .collect(),
             point: vec![[0.0; 3]; n],
             curvature: Vec::new(),
+            curvature_style: Vec::new(),
             edges: Vec::new(),
         }
     }

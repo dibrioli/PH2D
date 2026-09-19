@@ -680,6 +680,7 @@ fn a_oclusao_de_um_ponto_nao_depende_do_pixel_em_que_ele_cai() {
         normal: vec![g.normal[fonte]; N],
         point: vec![g.point[fonte]; N],
         curvature: Vec::new(),
+        curvature_style: Vec::new(),
         edges: Vec::new(),
     };
     let oc = crate::occlusion(&doc, &reg, &cam, &repetido, crate::OCCLUSION_PASSES);
@@ -733,6 +734,7 @@ fn a_oclusao_de_um_ponto_nao_depende_da_camera() {
             normal: vec![em_vista],
             point: vec![ponto],
             curvature: Vec::new(),
+            curvature_style: Vec::new(),
             edges: Vec::new(),
         };
         crate::occlusion(&doc, &reg, cam, &um, crate::OCCLUSION_PASSES)[0]
@@ -775,6 +777,7 @@ fn a_suavizacao_nao_atravessa_uma_quina() {
         normal: vec![[0.0, 0.0, 1.0]; n],
         point: vec![[0.0; 3]; n],
         curvature: Vec::new(),
+        curvature_style: Vec::new(),
         edges: Vec::new(),
     };
     let mut oc = vec![0.0f32; n];
@@ -818,6 +821,7 @@ fn a_suavizacao_apaga_o_ruido_dentro_de_uma_superficie() {
         normal: vec![[0.0, 0.0, 1.0]; n],
         point: vec![[0.0; 3]; n],
         curvature: Vec::new(),
+        curvature_style: Vec::new(),
         edges: Vec::new(),
     };
     // Um tabuleiro de xadrez: a média verdadeira é `0,5` em todo o lado.

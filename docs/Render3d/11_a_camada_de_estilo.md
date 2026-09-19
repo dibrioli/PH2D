@@ -499,6 +499,100 @@ resolução do dedo está toda no primeiro oitavo: metade do efeito do `sharpnes
   `every_word_this_panel_shows_comes_from_the_string_table` (o censo de literais lê `0`, mas não está
   gateado), e `tests/it/seam.rs` tem **zero** ocorrências de `Param::Style`.
 
+## §11 — ⭐⭐⭐ A CURA: a curvatura ganha uma ESCALA, e a nitidez parte-se em duas
+
+Ordem do dono a seguir à auditoria: *«siga como achar melhor mas coloque no estado da arte»*.
+
+### §11.1 — O que mudou na LEI
+
+| antes | depois |
+|---|---|
+| `sharpness` — **um** limiar partilhado | **`edge_sharpness`** e **`cavity_sharpness`** — um por lado |
+| o `ε` da curvatura era o **óptimo de precisão**, para todos | **`softness`** — a escala ARTÍSTICA, só para o estilo |
+| `clamp(k·s, ±1)` com `wc = max(c,0)`, `wv = max(−c,0)` | `wc = clamp(+k·gᵃ, 0, 1)`, `wv = clamp(−k·gᶜ, 0, 1)` |
+
+⭐ **A justificação dos dois limiares é NOSSA e medida**, não uma cópia do alvo: numa peça real os
+filetes leem `H·R ≈ 11`–`34` e as covas `≈ −3`–`−5` ⇒ *não existe um limiar partilhado que sirva os
+dois* — o que acende as covas satura o filete `3×`–`9×`.
+
+⛔ **O corte DURO fica**, e a recusa está medida (§10.3): um joelho (`smoothstep`) **piora**.
+
+### §11.2 — ⭐⭐ A escala é da MEDIDA, e são DUAS assaduras porque são DUAS perguntas
+
+| consumidor | `ε` | porquê |
+|---|---|---|
+| a subsuperfície MACIÇA | `eps_para(raio)` = `0,0064 · raio` | o **vale do erro** da segunda diferença, medido no mesmo sítio em três raios |
+| a tinta por curvatura | `softness · raio` (fábrica `0,064`) | a **escolha do artista**: a que distância a peça é palpada |
+
+⭐⭐⭐ **E a decisão inteira vive numa PORTA** ([`ph2d_field_render::curvatura::assar_canais`]) com
+**dois consumidores** — o quadro do produto e o arnês dos gates. ⛔ *Escrita em linha em cada
+chamador, ela divergiu no dia em que nasceu*: o produto assava dois canais, o arnês assava **um**, e
+o gate da tinta de aresta acusou um botão VIVO de não chegar ao pixel. *Um arnês que monta o estado
+à mão mede outro programa* — e foi o gate a apanhá-lo, que é o modo de falha bom.
+
+⚠️ **O preço é zero no caminho de omissão:** cada canal só é assado se o consumidor **dele** estiver
+vivo. Com um só — a omissão, e a cena do artista — não há segunda assadura nenhuma.
+
+⭐⭐ **E a escala maior cura a DÍVIDA da §5-bis de graça:** a divergência CPU↔GPU é um ULP amplificado
+por `1/(4ε²)` ⇒ **um `ε` `10×` maior divide a divergência por `100`**.
+
+### §11.3 — A cura, MEDIDA no caminho do produto
+
+`cena =35`, `320×240`, pelo `shade_render`, com o **CONTROLO** ao lado (a mesma imagem sem estilo):
+
+| | degrau de byte p99 entre píxeis vizinhos | vs o controlo |
+|---|---:|---:|
+| **controlo** (sem estilo) | `30` | — |
+| suavidade no **piso** (`0,0064`, a lei de ontem) | `107` | **`3,57×`** |
+| suavidade de **fábrica** (`0,064`) | **`42`** | **`1,40×`** |
+
+⇒ o penhasco cai **`2,5×`**, e as covas continuam côncavas (`p05` de `H·R`: `−3,358 → −2,256`).
+
+⛔ **A cerca que impede o botão de matar a tinta** está no gate: acima de
+[`ph2d_style::Curvature::MAX_SOFTNESS`] as covas deixam de ser côncavas e a `Cavity Tint` morre.
+
+### §11.4 — ⭐⭐⭐ E o painel DIZ porque uma fileira está apagada
+
+A resposta ao *«Zone pivot não sei para que serve mas parece morto»*: ele **é** um no-op no estado em
+que o painel abre, e **não está sozinho**. A `Linha::apagada` declara a condição e a frase, e o
+`ParamRow::inert` leva-as à tela — o mecanismo que existia desde 2026-09-18 e que esta secção citava
+no cabeçalho sem cumprir.
+
+| fileira | apagada quando | o gesto que a destranca |
+|---|---|---|
+| `Rim Color` · `Rim Width` | `rim.strength == 0` | subir a força do contorno |
+| `Edge Sharpness` | a tinta de aresta é branca | dar cor à `Edge Tint` |
+| `Cavity Sharpness` | a tinta de cova é branca | dar cor à `Cavity Tint` |
+| `Curvature Softness` | `!reads_curvature()` | dar cor a uma das duas |
+| **`Zone Pivot`** | `shadow == highlight` | dar cor a uma das tintas de zona |
+
+⚠️ **O gate tem as DUAS metades**: de fábrica há pelo menos quatro apagadas **e** com os gestos
+feitos não sobra nenhuma — senão «apagar» viraria licença para apagar tudo.
+
+### §11.5 — Os tectos que a auditoria mediu, aplicados
+
+`Edge`/`Cavity Sharpness` descem de **`8` para `2`** (`s = 1` entrega `99,0 %` do que `s = 8`
+entrega ⇒ `87,5 %` do curso comprava `1 %` do efeito). Os outros três ficam **com a tabela ao lado**,
+declarados como tectos de PRODUTO e já não como dívida por medir.
+
+### §11.6 — A arrumação cresceu, e a RESERVA é declarada
+
+`PACKED` vai de `20` para `24`: cinco cores e **sete** escalares são `22` floats, que o alinhamento
+de `vec4` arredonda a `24`. As duas posições que sobram são [`ph2d_style::wgsl::RESERVADAS`],
+**gateadas a zero e proibidas de serem reclamadas por uma fileira** — ⛔ *uma posição sem dono e sem
+régua é onde o campo seguinte aterra por engano*.
+
+### §11.7 — ⛔ A premissa de uma recusa MORREU, e a nota é reescrita com a morte à vista
+
+O doc da [`ph2d_field_gpu::paint_wgsl::CURVATURA`] recusava por escrito passar o `ε` por argumento:
+*«mudaria o texto do produto para servir o instrumento»*. **Era verdade enquanto o PRODUTO tivesse um
+`ε` só.** Hoje ele tem dois, e o argumento serve o produto — o instrumento passa a ser o segundo
+beneficiário em vez do único. *Quem move o número que tornava algo inalcançável tem de reconferir a
+nota* (`CLAUDE.md` §0.0).
+
+**Prova de mutação: 5 de 5 sangram**, com o controlo (reordenar duas fileiras equivalentes) a **não**
+sangrar.
+
 ## ⛔ Recusas MEDIDAS
 
 | o que foi recusado | porquê, com o número |

@@ -50,7 +50,11 @@ const NORMAL_EPS: f32 = 1.0e-4;
 /// O campo é avaliado em `f32`. À escala de uma peça de tamanho unitário isso dá ~10⁻⁷ de erro
 /// absoluto, então uma diferença central com passo abaixo de ~10⁻⁶ mede ruído de cancelamento, não
 /// gradiente. Abaixo daqui, refinar **piora**.
-const PRECISION_FLOOR: f32 = 1.0e-6;
+///
+/// ⚠️ **PÚBLICO desde 2026-09-19**: o dispositivo passou a derivar o `ε` do ESTILO dentro do shader
+/// (a suavidade é uma FRACÇÃO e o raio da peça já lá viaja), logo ele precisa deste piso — e
+/// transcrevê-lo no WGSL seria a divergência à espera do dia em que alguém mexa neste número.
+pub const PRECISION_FLOOR: f32 = 1.0e-6;
 
 /// ⭐⭐⭐ **O estêncil com que o produto lê a normal** — ver [`Stencil`], e **um** endereço.
 ///
@@ -104,6 +108,8 @@ impl Sharpness {
     }
 }
 
+/// A apresentação da cena — o irmão do [`shade_render`] por tecto de LOC.
+mod apresentacao;
 /// ⭐⭐⭐ **O RICOCHETE** — a luz que a cena devolve (a `W5`). Irmão da [`occlusion`]: elas são as
 /// duas metades do mesmo integral do hemisfério.
 pub mod banda;
@@ -136,6 +142,10 @@ use edges::resample_edges;
 use march::{Scene, march};
 use tiles::{SLABS, TILE, tiled_trace};
 
+/// ⚠️ **A [`Presentation`] mudou de FICHEIRO e não de endereço** (corte por tecto de LOC): quem a
+/// nomeia continua a escrever `ph2d_field_render::Presentation`. *Um corte que obrigasse 30 sítios a
+/// mudar de import seria o tecto a mandar na API.*
+pub use apresentacao::Presentation;
 pub use bounce::{BOUNCE_BLUR_PASSES, BounceSlice, blur_bounce, bounce_pass, bounce_slice};
 pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Rays, Screen};
 pub use ground::{
@@ -156,8 +166,7 @@ pub use refine::refine_hemisphere;
 pub use shade::Matcap;
 pub use shade::{shade, shade_with};
 pub use shade_render::{
-    Lamp, Lighting, POINT_LAMP_MIN_DISTANCE, PointLamp, Presentation, Surfaces, boundary_world,
-    shade_render,
+    Lamp, Lighting, POINT_LAMP_MIN_DISTANCE, PointLamp, Surfaces, boundary_world, shade_render,
 };
 pub use shadow::{HARDNESS, Shadows, shadow_pass, shadow_pass_on};
 pub use tape_cache::{
@@ -235,6 +244,24 @@ pub struct Gbuffer {
     /// exactamente o que o piso do GLSL (`max(κ, 0,01)`) transforma num raio de `100` — a leitura
     /// certa para *«ninguém perguntou»*. ⇒ o quadro de omissão não paga uma amostra de campo.
     pub curvature: Vec<f32>,
+    /// ⭐⭐⭐ **A CURVATURA À ESCALA DO ARTISTA** — a mesma grandeza, medida a OUTRA distância, e é
+    /// ela que a camada de estilo lê. **Vazio** quando o estilo não a lê, que é a omissão.
+    ///
+    /// # ⛔⛔ Porque são DUAS e não uma
+    ///
+    /// Auditoria de 2026-09-19 (`docs/Render3d/11` §10): o campo de curvatura é **constante por
+    /// troço**, logo a única maneira de a tinta ter um gradiente é **medi-la a uma distância maior**
+    /// — e essa distância é uma escolha ARTÍSTICA ([`ph2d_style::Curvature::softness`]).
+    ///
+    /// ⚠️ **O [`Gbuffer::curvature`] ao lado NÃO pode segui-la:** ele serve a subsuperfície maciça,
+    /// cujo `ε` é o **óptimo de PRECISÃO** medido pela [`crate::curvatura::eps_para`] (o vale do
+    /// erro, no mesmo sítio em três raios). *Um número a servir duas perguntas é a forma de defeito
+    /// que esta casa já nomeou como «dois sliders, uma régua».*
+    ///
+    /// ⇒ **o preço é a segunda assadura, e ela só se paga quando os DOIS consumidores estão vivos**
+    /// (`5` avaliações de campo por pixel acertado). Com um só — a omissão, e a cena do artista —
+    /// este vector fica vazio ou é o único, e não custa nada.
+    pub curvature_style: Vec<f32>,
     /// Os pixels onde a imagem tem **aresta** — de silhueta ou de quina —, com quatro amostras cada.
     ///
     /// Vazio quando o traçado corre sem anti-serrilhado. Ordenado por `pixel`, sempre: é o que faz
@@ -511,6 +538,8 @@ fn trace_inner_tiles(
         point,
         // ⚠️ Vazio: quem a quiser assa-a com a `curvatura::do_gbuffer` — ver o campo.
         curvature: Vec::new(),
+        // ⚠️ E a do ESTILO é a MESMA lei a outra distância — vazia pela mesma razão.
+        curvature_style: Vec::new(),
         edges,
     }
 }

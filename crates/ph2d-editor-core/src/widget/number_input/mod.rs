@@ -172,6 +172,27 @@ pub fn stepper_width(host: Rect) -> f32 {
     (host.h * 0.6).clamp(16.0, 22.0) // LITERAL-PX-OK: stepper column sized 60% of input height with min/max
 }
 
+/// ⭐⭐⭐ **ONDE O NÚMERO É POUSADO dentro da caixa** — centrado no que sobra depois do stepper.
+///
+/// ⛔⛔ **Ela existe pela mesma razão da [`stepper_width`] logo acima, um passo à frente:** a conta
+/// vivia dentro do pintor do chip, logo só existia para quem pinta um chip INTERACTIVO. Um painel
+/// que desenha o MESMO número como FACTO (uma fileira travada, que não regista nada no índice de
+/// acerto) tinha de escolher outra posição — e escolhia: medido no painel de modelagem 3D em
+/// 2026-09-19, atravessar a trava mexia o número de sítio **e** de precisão.
+///
+/// ⚠️ **O `measured_w` é a largura JÁ MEDIDA do texto**, e não o texto: quem pinta mede uma vez e
+/// entrega — re-medir aqui seria a segunda conta que discorda da primeira, que é a lei que a
+/// [`super::property_box::property_label_origin`] paga por escrito.
+///
+/// ⚠️ **Devolve o `x` CRU, sem `max(host.x)`**: um número mais largo que a área de texto é centrado
+/// e recortado pelo pintor do chip (a lei dele, post-2026-05-24: *o número fica SEMPRE dentro da
+/// caixa*), e quem não recorta decide o que fazer com o excesso.
+#[must_use]
+pub fn number_text_origin(host: Rect, measured_w: f32) -> f32 {
+    let text_area_w = (host.w - stepper_width(host)).max(0.0);
+    host.x + (text_area_w - measured_w) * 0.5
+}
+
 /// Rect of the `up` arrow (top half of the stepper column). Standalone
 /// fn so `paint_number_chip` can paint identical arrows without a
 /// `NumberInput` instance.

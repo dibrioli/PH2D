@@ -32,6 +32,7 @@ fn strip(normals: [[f32; 3]; 3]) -> Gbuffer {
         // em conta nenhuma destes gates. Ver [`ph2d_field_render::Gbuffer::point`].
         point: vec![[0.0; 3]; 3],
         curvature: Vec::new(),
+        curvature_style: Vec::new(),
         edges: Vec::new(),
     }
 }

@@ -99,7 +99,8 @@ pub(crate) fn baterias() -> Vec<(&'static str, Style)> {
             "só a tinta por curvatura, nitidez 8",
             Style {
                 curvature: Curvature {
-                    sharpness: 8.0,
+                    edge_sharpness: 8.0,
+                    cavity_sharpness: 8.0,
                     ..v.curvature
                 },
                 ..Style::default()
@@ -504,7 +505,9 @@ fn as_duas_portas_saneiam_o_mesmo_conjunto() {
             curvature: Curvature {
                 convex: [m; 3],
                 concave: [m; 3],
-                sharpness: m,
+                edge_sharpness: m,
+                cavity_sharpness: m,
+                ..Curvature::default()
             },
             zones: Zones {
                 shadow: [m; 3],

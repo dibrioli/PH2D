@@ -6,8 +6,8 @@
 //! e outros painéis** consultam. Aqui mora só a tinta.
 
 use super::{
-    PAD_UNITS_BETWEEN_LABEL_AND_VALUE, PropertyBox, PropertyBoxState, decorator_rect, fit_label,
-    paint_decorator, surface_rect, value_column,
+    PropertyBox, PropertyBoxState, decorator_rect, fit_label, label_column, paint_decorator,
+    surface_rect, value_column,
 };
 use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::zones::Rect;
@@ -30,7 +30,9 @@ pub fn paint_property_box(
 ) -> Rect {
     let t = b.t.clamp(0.0, 1.0);
     let disabled = b.state == PropertyBoxState::Disabled;
-    let pad = Spacing::Md.px();
+    // ⭐ **Nenhuma conta de `pad` vive aqui desde 2026-09-19:** as duas colunas desta caixa saem das
+    // portas ([`value_column`] e [`label_column`]), que é o que deixa um painel pintar uma linha
+    // *que não é uma caixa* exactamente no mesmo sítio.
 
     // A coluna de animação sai da direita ANTES de tudo — ela é do FORMULÁRIO, não da caixa.
     // ⚠️ **Pela [`surface_rect`], não por uma conta local:** este rect é o que o preenchimento
@@ -84,14 +86,19 @@ pub fn paint_property_box(
     }
 
     // O rótulo, dentro à esquerda, com o que sobra depois do valor.
-    let budget = (box_rect.w - pad * PAD_UNITS_BETWEEN_LABEL_AND_VALUE - value_w).max(0.0);
-    let cut = fit_label(text_system, b.label, size, budget);
+    //
+    // ⚠️ **Pela [`label_column`], não por uma conta local** — a mesma lei, e pela mesma razão, que
+    // a linha do valor oito linhas acima já segue. Enquanto o `x` e o orçamento viviam aqui dentro,
+    // eles só existiam para quem pinta uma CAIXA: um painel que desenha um facto travado ou uma
+    // amostra de cor não tinha por onde pedir a mesma repartição, e escolhia outra.
+    let nome = label_column(rect, value_w, decorator);
+    let cut = fit_label(text_system, b.label, size, nome.w);
     if !cut.is_empty() {
         paint_text(
             text_system,
             scene,
             &cut,
-            box_rect.x + pad,
+            nome.x,
             ty,
             size,
             f32::INFINITY,

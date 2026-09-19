@@ -31,7 +31,7 @@ fn cada_botao_move_a_saida() {
     };
     let referencia = base.apply(luz, p);
 
-    let casos: [(&str, Style); 8] = [
+    let casos: [(&str, Style); 9] = [
         (
             "rim.strength",
             Style {
@@ -75,11 +75,22 @@ fn cada_botao_move_a_saida() {
             },
         ),
         (
-            "curvature.sharpness",
+            "curvature.edge_sharpness",
             Style {
                 curvature: Curvature {
                     convex: [1.0, 0.4, 0.4],
-                    sharpness: 0.2,
+                    edge_sharpness: 0.2,
+                    ..base.curvature
+                },
+                ..base
+            },
+        ),
+        (
+            "curvature.cavity_sharpness",
+            Style {
+                curvature: Curvature {
+                    concave: [0.4, 0.4, 1.0],
+                    cavity_sharpness: 0.2,
                     ..base.curvature
                 },
                 ..base
@@ -118,12 +129,44 @@ fn cada_botao_move_a_saida() {
         ),
     ];
     for (nome, s) in casos {
+        // ⚠️ **A cova precisa de um ponto CÔNCAVO** — o `p` acima é convexo, e um censo que medisse
+        // a tinta da cova num ponto de aresta leria `0` e acusaria um botão VIVO de morto.
+        let ponto = if nome.contains("cavity") {
+            Point {
+                curvature: -p.curvature,
+                ..p
+            }
+        } else {
+            p
+        };
         assert_ne!(
-            bits(s.apply(luz, p)),
-            bits(referencia),
+            bits(s.apply(luz, ponto)),
+            bits(base.apply(luz, ponto)),
             "o botão {nome} não move a saída"
         );
     }
+    // ⛔⛔ **O DÉCIMO BOTÃO NÃO PODE ESTAR NESTA LISTA, e dizê-lo é metade do censo.**
+    //
+    // A [`Curvature::softness`] é consumida **A MONTANTE desta crate**: ela decide a DISTÂNCIA a
+    // que o chamador mede a curvatura (`ph2d_field_render::Presentation::curvature_eps`), e o que
+    // chega aqui é já o resultado dessa medição. ⇒ *ela não pode mover a saída de `apply`, e um
+    // censo que a incluísse estaria a exigir o impossível.*
+    //
+    // ⚠️ **A ausência fica AFIRMADA, e não subentendida:** sem esta metade, o dia em que alguém a
+    // ligue por engano a esta lei passa despercebido, e o dia em que ela deixe de ser lida lá em
+    // cima também. Quem a mede é o gate da BORDA, no caminho do produto.
+    let so_a_suavidade = Style {
+        curvature: Curvature {
+            softness: Curvature::MAX_SOFTNESS,
+            ..base.curvature
+        },
+        ..base
+    };
+    assert_eq!(
+        bits(so_a_suavidade.apply(luz, p)),
+        bits(referencia),
+        "a suavidade mexeu na lei POR PONTO: ela é da MEDIÇÃO, a montante"
+    );
     // ⚠️ **O nono vive noutra porta** — ver [`Style::indirect_saturation`].
     let s = Style {
         indirect_saturation: 0.0,
@@ -145,7 +188,9 @@ fn a_aresta_e_a_cova_recebem_tintas_diferentes() {
         curvature: Curvature {
             convex: [1.0, 0.5, 0.5],
             concave: [0.5, 0.5, 1.0],
-            sharpness: 1.0,
+            edge_sharpness: 1.0,
+            cavity_sharpness: 1.0,
+            ..Curvature::default()
         },
         ..Style::default()
     };
@@ -277,7 +322,8 @@ fn a_curvatura_so_se_le_quando_alguem_a_tinge() {
     assert!(
         !Style {
             curvature: Curvature {
-                sharpness: 9.0,
+                edge_sharpness: 9.0,
+                cavity_sharpness: 9.0,
                 ..d.curvature
             },
             ..d
@@ -308,3 +354,123 @@ fn a_curvatura_so_se_le_quando_alguem_a_tinge() {
         "uma tinta de cova paga"
     );
 }
+
+/// ⭐⭐⭐ **OS DOIS LIMIARES SÃO INDEPENDENTES** — a wave da auditoria de 2026-09-19, num gate.
+///
+/// # ⛔ Porque ele existe
+///
+/// Numa peça real as duas famílias vivem a uma ordem de grandeza uma da outra (filetes `H·R ≈ 11`–
+/// `34`, covas `≈ −3`–`−5`), e enquanto o limiar era **um só** não existia posição que servisse os
+/// dois: a que acende as covas satura o filete `3×`–`9×`.
+///
+/// **Mutação que deve sangrar:** o braço da cova voltar a ler `e.convexo.w` / `edge_sharpness`.
+#[test]
+fn os_dois_limiares_sao_independentes() {
+    let s = |e: f32, c: f32| Style {
+        curvature: Curvature {
+            convex: [1.0, 0.0, 0.0],
+            concave: [0.0, 0.0, 1.0],
+            edge_sharpness: e,
+            cavity_sharpness: c,
+            ..Curvature::default()
+        },
+        ..Style::default()
+    };
+    let luz = [0.5; 3];
+    // ⚠️ A curvatura da ARESTA é `10×` a da COVA — é essa desproporção que o gate existe para
+    // exprimir, e é a que a cena real tem.
+    let (aresta, cova) = (10.0, -1.0);
+
+    // (1) Mexer no limiar da ARESTA não toca na cova, e vice-versa.
+    let base = s(0.05, 0.5);
+    let so_aresta = s(0.10, 0.5);
+    let so_cova = s(0.05, 1.0);
+    assert_eq!(
+        bits(so_aresta.curvature_tinted(luz, cova)),
+        bits(base.curvature_tinted(luz, cova)),
+        "subir a nitidez da ARESTA mexeu na tinta da COVA"
+    );
+    assert_eq!(
+        bits(so_cova.curvature_tinted(luz, aresta)),
+        bits(base.curvature_tinted(luz, aresta)),
+        "subir a nitidez da COVA mexeu na tinta da ARESTA"
+    );
+
+    // (2) ⭐ E o que o limiar partilhado NÃO conseguia: os dois lados a meia tinta AO MESMO TEMPO.
+    //     Com um só, `1/g` serve uma família e satura ou apaga a outra.
+    let meio = s(0.05, 0.5);
+    let ta = meio.curvature_tinted(luz, aresta);
+    let tc = meio.curvature_tinted(luz, cova);
+    assert!(
+        (ta[1] - luz[1]).abs() > 1e-4 && ta[1] < luz[1],
+        "a aresta não está a meia tinta: {ta:?}"
+    );
+    assert!(
+        (tc[1] - luz[1]).abs() > 1e-4 && tc[1] < luz[1],
+        "a cova não está a meia tinta: {tc:?}"
+    );
+    // ⚠️ **O CONTROLO da própria régua:** com um limiar PARTILHADO no valor da aresta, a cova
+    // recebe `10×` menos tinta — é a desproporção que a wave existe para curar, e sem esta metade
+    // o gate acima ficaria verde sobre a lei antiga.
+    let partilhado = s(0.05, 0.05);
+    let tc_antigo = partilhado.curvature_tinted(luz, cova);
+    assert!(
+        (luz[1] - tc_antigo[1]) < (luz[1] - tc[1]) * 0.25,
+        "o controlo não reproduz a lei antiga: {tc_antigo:?} contra {tc:?}"
+    );
+}
+
+/// ⭐⭐⭐ **A ESCALA DA MEDIÇÃO tem CERCAS de RECURSO nas duas pontas, e elas não são gosto.**
+///
+/// ⚠️ **As duas pontas protegem coisas DIFERENTES**, e é por isso que estão as duas na porta:
+/// - o **piso** protege a aritmética (abaixo do óptimo a segunda diferença cancela e devolve ruído);
+/// - o **tecto** protege um CONTROLO de morrer em silêncio (acima dele as covas deixam de ser
+///   côncavas e a [`Curvature::concave`] deixa de ter sujeito).
+///
+/// **Mutação que deve sangrar:** tirar o `clamp` do `softness` no [`Style::sanitized`].
+#[test]
+fn a_escala_da_medicao_e_apertada_nas_duas_pontas() {
+    let com = |v: f32| {
+        Style {
+            curvature: Curvature {
+                softness: v,
+                ..Curvature::default()
+            },
+            ..Style::default()
+        }
+        .sanitized()
+        .curvature
+        .softness
+    };
+    assert!(
+        (com(0.0) - Curvature::MIN_SOFTNESS).abs() < f32::EPSILON,
+        "o piso não apertou: {}",
+        com(0.0)
+    );
+    assert!(
+        (com(1e9) - Curvature::MAX_SOFTNESS).abs() < f32::EPSILON,
+        "o tecto não apertou: {}",
+        com(1e9)
+    );
+    assert!(
+        (com(f32::NAN) - Curvature::SOFTNESS).abs() < f32::EPSILON,
+        "ilegível não voltou à fábrica"
+    );
+}
+
+/// ⭐⭐⭐ **AS DUAS LEIS DA JANELA DA SUAVIDADE SÃO ERRO DE COMPILAÇÃO, e não um teste.**
+///
+/// ⚠️ **Um `assert!` sobre duas CONSTANTES é dobrado pelo compilador antes de correr** — o clippy
+/// di-lo em voz alta (`this assertion has a constant value`), e esta casa já pagou a lição na linha
+/// da escultura. ⇒ o sítio certo é um `const _`, onde a violação **não compila** em vez de reprovar
+/// um teste que alguém pode filtrar.
+///
+/// - **o piso de população**: com as duas pontas coladas o botão não teria curso nenhum, e o gate
+///   das cercas ficaria trivialmente verde;
+/// - **a fábrica vive DENTRO delas**: uma omissão fora seria apertada na porta, e o número que o
+///   artista vê no painel deixaria de ser o que a lei corre.
+const _: () = assert!(Curvature::MAX_SOFTNESS > Curvature::MIN_SOFTNESS * 4.0);
+const _: () = assert!(
+    Curvature::SOFTNESS >= Curvature::MIN_SOFTNESS
+        && Curvature::SOFTNESS <= Curvature::MAX_SOFTNESS
+);

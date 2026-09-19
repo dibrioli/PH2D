@@ -20,12 +20,14 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 /// e ninguém saberia porquê; por isso o `paint` **conta** e o rodapé diz quantos não coube. O gate
 /// `rows_beyond_the_family_are_reported_not_dropped` prende isso.
 ///
-/// ⭐⭐⭐ **E ELE É DERIVADO DA MAIOR FORMA, desde 2026-09-13** — hoje `2 × 27 + 25`:
+/// ⭐⭐⭐ **E ELE É DERIVADO DA MAIOR FORMA, desde 2026-09-13** — hoje `2 × 27 + 31`, mais a folga da
+/// CENA:
 ///
 /// | parcela | de onde vem |
 /// |---|---|
 /// | `2 × MAX_POLYGON_VERTICES` | um polígono tem **duas** linhas por vértice, e `27` é o teto dele |
-/// | `+ 25` | o que **todo** nó tem além dos vértices, no PIOR estado: `3` de posição, `3` de rotação, o filete, o raio de junção, a resolução do contorno… e as **15** do material com o brilho e o verniz acesos e o metal abaixo de `1` |
+/// | `+ EXTRAS_DE_UM_NO` | o que **todo** nó tem além dos vértices, no PIOR estado: `3` de posição, `3` de rotação, o filete, o raio de junção, a resolução do contorno… e as do material com o brilho, o verniz e a subsuperfície acesos |
+/// | `+ MAX_SCENE_ROWS` | ⭐ o que a CENA apende **depois** das do nó — e era este que faltava |
 ///
 /// ⚠️ **Ele era `64`, escrito «na primeira vez» e sem medição** — e a nota dele dizia, por escrito,
 /// *«quando um documento real passar disto, o número muda com uma medição atrás»*. O material por
@@ -73,7 +75,68 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 /// ⛔⛔ **A alternativa era baixar o `MAX_POLYGON_VERTICES` de `27` para `24`**: tirar três vértices
 /// ao artista porque uma peça passou a poder ser envernizada. *Um teto de registo cujo recurso é
 /// memória a mandar num teto de FORMA é o caminho lento a definir o rápido* (`CLAUDE.md` §0.0).
-pub const MAX_ROWS: usize = 85;
+///
+/// ⭐⭐⭐ **E DESDE 2026-09-19 ELE É DERIVADO, e conta a CENA** — ver [`MAX_ROWS_DE_UM_NO`] e
+/// [`MAX_SCENE_ROWS`].
+pub const MAX_ROWS: usize = MAX_ROWS_DE_UM_NO + MAX_SCENE_ROWS;
+
+/// ⭐⭐⭐ **Quantas linhas o NÓ ESCOLHIDO pode pedir, no pior estado.**
+///
+/// ⚠️ **Era isto que o `MAX_ROWS` media, e por isso ele estava errado desde a camada de estilo:** o
+/// retrato que o painel recebe **não** é só do nó — quem o publica apende, no fim, as fileiras da
+/// CENA. Ver [`MAX_SCENE_ROWS`].
+pub const MAX_ROWS_DE_UM_NO: usize =
+    2 * ph2d_field::MAX_POLYGON_VERTICES as usize + EXTRAS_DE_UM_NO;
+
+/// ⭐ **O que TODO nó tem além das linhas dos vértices** — `3` de posição, `3` de rotação, o filete,
+/// o raio de junção, a resolução do contorno… e as do material no pior estado (brilho e verniz
+/// acesos, metal abaixo de `1`, subsuperfície acesa).
+///
+/// ⚠️ **Ele é AFIRMADO pelo gate `one_more_vertex_would_not_fit`** (`ph2d-app-field3d`), que o mede
+/// no produtor das linhas: *um número que não se mexe enquanto a grandeza muda é a forma mais
+/// silenciosa de um teto deixar de descrever o que mede.*
+pub const EXTRAS_DE_UM_NO: usize = 31;
+
+/// ⭐⭐⭐ **A FOLGA DA CENA — quantas fileiras o retrato pode ganhar DEPOIS das do nó.**
+///
+/// # ⛔⛔⛔ O painel podia ENGOLIR uma secção inteira, em silêncio
+///
+/// Auditoria de 2026-09-19 (`docs/Render3d/11` §10.9). O `publish_snapshot` apende as fileiras da
+/// camada de ESTILO **no fim** da lista, e o [`crate::paint`] corta em `MAX_ROWS`. Medido, com o
+/// teto a valer exactamente o pior nó (`85`):
+///
+/// | vértices do polígono | linhas do nó | + estilo | fileiras de ESTILO visíveis |
+/// |---:|---:|---:|---|
+/// | `22` | `75` | `85` | 10 de 10 |
+/// | `23` | `77` | `87` | **8 de 10** |
+/// | **`27`** | `85` | `95` | **0 de 10 — a secção INTEIRA desaparece** |
+///
+/// ⚠️ O rodapé dizia `(+10)`, que é honesto e **inútil**: o artista não sabe que existe uma secção
+/// chamada *Style*, logo `+10` lê-se como *«dez números do meu nó ficaram de fora»*.
+///
+/// # ⚠️ De que recurso ele é, MEDIDO
+///
+/// Do **registo de widgets**, e de mais nada: cada linha custa `2 + MAX_CHOICES` = **6** entradas no
+/// store, cunhadas uma vez no arranque. Medido em 2026-09-19 pelo gate
+/// `o_preco_do_teto_de_linhas_e_o_registo` (`populate_preco_tests.rs`), que re-mede a tabela:
+/// o `populate` inteiro cunha **912** entradas, das quais **192** são esta folga, e corre em
+/// **`172,9 µs` em `--release`** (`650,0 µs` em debug) — **uma vez, no arranque**. ⛔ E **nada por
+/// quadro**: o `paint` percorre `snapshot.rows`, que tem o tamanho do RETRATO e não o do registo.
+///
+/// ⛔ **E ele NÃO é `10`.** A camada de estilo cresce dentro da mesma jornada em que este número foi
+/// escrito (a suavidade da curvatura e a nitidez separada de aresta e de cova), e *um teto que
+/// descreve a população de hoje é um teto que reprova amanhã sobre produto correcto*. O que o prende
+/// é o gate `as_fileiras_da_cena_cabem_na_folga_delas`, que conta as fileiras **no produtor**.
+pub const MAX_SCENE_ROWS: usize = 32;
+
+/// ⛔ **O piso da folga é ERRO DE COMPILAÇÃO.** Com `0` o teto volta a ser o de 2026-09-19 —
+/// exactamente o estado em que a secção de estilo desaparecia inteira —, e a camada dela já pede
+/// **12** fileiras (`10` na manhã do mesmo dia: *ela cresce dentro da própria jornada*).
+///
+/// ⚠️ **Um `assert!` num teste sobre duas constantes é DOBRADO pelo compilador antes de correr**, e
+/// o clippy recusa-o em voz alta (`this assertion has a constant value`). *A lei mora ao lado do
+/// número, e quem a viola não chega a compilar.*
+const _: () = assert!(MAX_SCENE_ROWS >= 16);
 
 /// Quantos botões uma linha de **escolha** pode oferecer.
 ///
@@ -206,3 +269,8 @@ pub fn populate(store: &mut WidgetStore) {
         },
     );
 }
+
+/// ⚠️ **O preço do teto, medido** — ver [`MAX_SCENE_ROWS`].
+#[cfg(test)]
+#[path = "populate_preco_tests.rs"]
+mod preco_tests;

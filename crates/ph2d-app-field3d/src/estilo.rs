@@ -28,73 +28,128 @@ struct Linha {
     key: &'static str,
     /// `None` ⇒ é uma cor (três canais consecutivos, amostra). `Some(teto)` ⇒ é um número.
     teto: Option<f32>,
+    /// ⭐⭐⭐ **QUANDO É QUE ESTA FILEIRA NÃO FAZ NADA** — e a razão que o artista lê.
+    ///
+    /// `None` ⇒ ela está sempre viva. `Some((condição, chave))` ⇒ com a condição verdadeira ela
+    /// fica **à vista, apagada, com a frase ao lado** — a decisão do dono de 2026-09-18, que esta
+    /// secção citava no cabeçalho e não cumpria.
+    ///
+    /// ⛔⛔ **Medido em 2026-09-19 e é a resposta ao report *«Zone pivot parece morto»*:** na
+    /// configuração em que o painel ABRE, quatro fileiras desta secção são inertes **por
+    /// construção** — e as dez shipavam `inert: None`. *Um controlo travado e sem razão à vista
+    /// lê-se exactamente como um controlo morto.*
+    apagada: Option<Apagada>,
 }
 
-/// ⭐⭐⭐ **AS DEZ LINHAS** — cinco cores e cinco números, na ordem em que o artista as lê.
+/// ⭐ **A razão por que uma fileira está apagada** — a condição, e a chave da frase que o artista lê.
 ///
-/// ⚠️ **Os tectos NÃO são escolhidos por conforto** (`CLAUDE.md` §0.0), e cada um diz de que é:
+/// ⚠️ Um tipo com nome e não a tupla crua: o clippy pede-o, e ele é melhor — *a condição e a frase
+/// são UMA coisa* (nunca faz sentido ter uma sem a outra), e nomeá-la é o que impede alguém de
+/// acrescentar uma terceira posição sem pensar no que ela significa.
+type Apagada = (fn(&Style) -> bool, &'static str);
+
+/// **Uma tinta que ninguém mexeu** — o branco de fábrica, que na lei multiplica por `1`.
+fn branca(c: [f32; 3]) -> bool {
+    c == [1.0; 3]
+}
+
+/// ⭐⭐⭐ **AS DOZE LINHAS** — cinco cores e sete números, na ordem em que o artista as lê.
 ///
-/// | linha | tecto | de que recurso ele é |
+/// # ⛔⛔⛔ Os tectos, MEDIDOS na auditoria de 2026-09-19 (`docs/Render3d/11` §10.8)
+///
+/// Esta tabela dizia **«três `4` por medir»** e a `W9` havia de os medir. A auditoria mediu-os antes
+/// dela, e **três dos cinco eram palpites** — um deles com o número errado por `4×`:
+///
+/// | linha | tecto | de que recurso, e o número |
 /// |---|---|---|
-/// | a força do contorno | `4` | é uma RADIÂNCIA acrescentada, e acima de `4` ela satura a vista antes de o expoente ter forma |
-/// | a largura do contorno | [`ph2d_style::Rim::MAX_WIDTH`] | **a lei declara-o**, e a razão está lá: acima dele a banda é mais fina que um pixel a `1080p` |
-/// | a nitidez da curvatura | `8` | é um GANHO sobre `H·raio`; a `8` uma zona `8×` mais curva que a peça já satura o corte em `±1`, e acima disso o botão deixa de mover a imagem |
-/// | o pivô das zonas | `4` | é uma LUMINÂNCIA de cena, e `4` é `~4,5` paragens acima do cinzento médio — o topo do que uma cena exposta a `0` entrega |
-/// | a saturação da indirecta | `4` | é um multiplicador de crominância; acima de `4` a parcela indirecta satura o gamut em toda cena medida |
+/// | força do contorno | `4` | ⚠️ tecto de **PRODUTO, com tabela**: o pico satura por volta de `1,5`–`2`, mas a ÁREA não satura (`18 270 → 47 626` px de `1` a `64`) — acima de `~2` deixa de ser um fio e vira lavagem |
+/// | largura do contorno | [`ph2d_style::Rim::MAX_WIDTH`] | ✅ **MEDIDO e correcto**: o fio mede `0,535 px` a `1080p` no tecto, e o cruzamento de 1 px fica em `w ≈ 45–48` |
+/// | **nitidez de aresta / de cova** | **`2`** | ⛔ **era `8` e a medição diz `2`**: `s = 1` entrega `99,0 %` do que `s = 8` entrega ⇒ **`87,5 %` do curso comprava `1 %` do efeito**. *É isto o «sem ajustes finos» do report* |
+/// | **suavidade da curvatura** | [`ph2d_style::Curvature::MAX_SOFTNESS`] | ✅ **a lei declara-o e nomeia o recurso**: a FEIÇÃO MAIS PEQUENA que ainda se quer ver — acima dele as covas deixam de ser côncavas e a tinta delas morre |
+/// | pivô das zonas | `4` | ⚠️ o contraste da grade **pica em `0,5`** e já está a cair no tecto; a imagem ainda move `100 %` dos píxeis a `4` ⇒ tecto de gosto, com tabela |
+/// | saturação da indirecta | `4` | ⚠️ o efeito **cresce até `≥ 16`** (pior byte `13 · 36 · 66 · 110 · 119` a `2 · 4 · 8 · 16 · 32`) ⇒ tecto de gosto, com tabela |
 ///
-/// ⏳ **Os três `4` são tectos de PRODUTO por medir** — eles nomeiam o recurso e a wave que os mede
-/// é a `W9` (a avaliação, que o dono pôs ao fim da fila). *Um tecto que diz de que é e ainda não tem
-/// tabela é uma dívida nomeada; um que só diz «por segurança» é um palpite.*
-const LINHAS: [Linha; 10] = [
+/// ⚠️ **Três destes são multiplicativos numa pista LINEAR** e metade do efeito vive nos primeiros
+/// `3`–`7 %` do curso. A porta para o curar já existe
+/// (`ph2d_editor_core::…::link_slider_number_curved`) e é wave própria.
+const LINHAS: [Linha; 12] = [
     Linha {
         slot: 0,
         key: "panel.model3d.style.rim_color",
         teto: None,
+        apagada: Some((|s| s.rim.strength == 0.0, "field.inert.rim_is_off")),
     },
     Linha {
         slot: 3,
         key: "panel.model3d.style.rim_strength",
         teto: Some(4.0),
+        apagada: None,
     },
     Linha {
         slot: 15,
         key: "panel.model3d.style.rim_width",
         teto: Some(ph2d_style::Rim::MAX_WIDTH),
+        apagada: Some((|s| s.rim.strength == 0.0, "field.inert.rim_is_off")),
     },
     Linha {
         slot: 4,
         key: "panel.model3d.style.convex",
         teto: None,
+        apagada: None,
     },
     Linha {
         slot: 8,
         key: "panel.model3d.style.concave",
         teto: None,
+        apagada: None,
     },
     Linha {
         slot: 7,
-        key: "panel.model3d.style.sharpness",
-        teto: Some(8.0),
+        key: "panel.model3d.style.edge_sharpness",
+        teto: Some(2.0),
+        apagada: Some((|s| branca(s.curvature.convex), "field.inert.no_edge_tint")),
+    },
+    Linha {
+        slot: 20,
+        key: "panel.model3d.style.cavity_sharpness",
+        teto: Some(2.0),
+        apagada: Some((
+            |s| branca(s.curvature.concave),
+            "field.inert.no_cavity_tint",
+        )),
+    },
+    Linha {
+        slot: 21,
+        key: "panel.model3d.style.softness",
+        teto: Some(ph2d_style::Curvature::MAX_SOFTNESS),
+        apagada: Some((|s| !s.reads_curvature(), "field.inert.no_curvature_tint")),
     },
     Linha {
         slot: 12,
         key: "panel.model3d.style.shadow_tint",
         teto: None,
+        apagada: None,
     },
     Linha {
         slot: 16,
         key: "panel.model3d.style.highlight_tint",
         teto: None,
+        apagada: None,
     },
     Linha {
         slot: 11,
         key: "panel.model3d.style.pivot",
         teto: Some(4.0),
+        apagada: Some((
+            |s| s.zones.shadow == s.zones.highlight,
+            "field.inert.zones_are_the_same",
+        )),
     },
     Linha {
         slot: 19,
         key: "panel.model3d.style.saturation",
         teto: Some(4.0),
+        apagada: None,
     },
 ];
 
@@ -124,7 +179,12 @@ pub fn rows(style: Style, render: bool) -> Vec<ph2d_panel_model3d::ParamRow> {
             // aceita qualquer número finito, e o que eles limitam é o GESTO. Ver a tabela do
             // [`LINHAS`] para de que recurso é cada um.
             bound: Bound::Soft(l.teto.unwrap_or(1.0)),
-            inert: None,
+            // ⭐⭐⭐ **A RAZÃO, quando a fileira não faz nada** — ver [`Linha::apagada`]. É a cura do
+            // report *«Zone pivot não sei para que serve mas parece morto»*: ele é inerte **por
+            // construção** enquanto as duas tintas de zona forem a mesma cor, e nada o dizia.
+            inert: l
+                .apagada
+                .and_then(|(quando, porque)| quando(&style).then_some(porque)),
             integral: false,
             // ⛔ Nenhuma destas é uma ESCOLHA — são cinco cores e cinco números contínuos.
             choices: &[],

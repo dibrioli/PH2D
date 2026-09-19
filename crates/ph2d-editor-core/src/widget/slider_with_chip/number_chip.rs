@@ -164,7 +164,10 @@ fn paint_number_chip_inner(
             .layout(display, font_size, f32::INFINITY)
             .width()
     };
-    let text_start = rect.x + (text_area_w - total_w) * 0.5;
+    // ⚠️ **Pela porta [`crate::widget::number_input::number_text_origin`], não por uma conta local**
+    // — uma fileira TRAVADA do painel de modelagem 3D pinta o mesmo número sem chip nenhum, e
+    // enquanto esta expressão viveu aqui dentro ela escolhia outro sítio.
+    let text_start = crate::widget::number_input::number_text_origin(rect, total_w);
     // Clip the text-area rect so long values (e.g. "-141.881" at
     // narrow chip widths) crop at the chip border instead of bleeding
     // into the stepper column. UI canon post-2026-05-24: numbers

@@ -31,7 +31,10 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-field = { path = "../ph2d-field" }
 
 [dev-dependencies]
-# A régua do HR-15 — dev-dep só: o produto não conhece o censo dele.
+# A régua de LARGURA de texto: o gate que prova que as quatro formas de linha partilham a
+# repartição mede os rótulos no sistema de texto REAL (um número escrito à mão mediria outra fonte).
+ph2d-text = { path = "../ph2d-text" }
+# O corpo do gate HR-15 por crate (`every_word_this_panel_shows_comes_from_the_string_table`).
 ph2d-label-census = { path = "../ph2d-label-census" }
 # `architecture_interactive_crate_has_behavioral_test`: um painel com `event.rs`
 # tem de dirigir um `WidgetEvent` REAL e afirmar o efeito observável. Os testes

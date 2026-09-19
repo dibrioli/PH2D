@@ -9,8 +9,14 @@ use super::*;
 #[test]
 fn cada_linha_le_o_que_ela_propria_escreve() {
     for l in &LINHAS {
+        // ⚠️⚠️ **A sonda é DERIVADA do tecto da própria fileira, e não um `0,375` para todas.**
+        // Desde que a suavidade da curvatura ganhou cercas de RECURSO (`[MIN_SOFTNESS ..
+        // MAX_SOFTNESS]`, ver `ph2d_style::Curvature`), um valor fixo cai **fora** do domínio dela e
+        // a porta aperta-o — e a ida-e-volta lia isso como um defeito de arrumação.
+        // ⇒ *uma sonda partilhada por fileiras com domínios diferentes mede a cerca, não a tabela.*
+        let sonda = l.teto.map_or(0.375, |t| t * 0.375);
         let escrito = if l.teto.is_some() {
-            with_number(Style::default(), l.slot, 0.375)
+            with_number(Style::default(), l.slot, sonda)
         } else {
             with_colour(Style::default(), l.slot, [200, 40, 90])
         };
@@ -20,8 +26,8 @@ fn cada_linha_le_o_que_ela_propria_escreve() {
             .expect("a linha que acabou de ser escrita");
         if l.teto.is_some() {
             assert!(
-                (linha.value - 0.375).abs() < 1e-6,
-                "{}: escrevi 0,375 e a linha lê {}",
+                (linha.value - sonda).abs() < 1e-6,
+                "{}: escrevi {sonda} e a linha lê {}",
                 l.key,
                 linha.value
             );
@@ -43,8 +49,9 @@ fn cada_linha_le_o_que_ela_propria_escreve() {
 #[test]
 fn escrever_numa_linha_nao_toca_nas_outras() {
     for l in &LINHAS {
-        let escrito = if l.teto.is_some() {
-            with_number(Style::default(), l.slot, 0.375)
+        // ⚠️ A mesma sonda derivada do irmão acima — ver lá porquê.
+        let escrito = if let Some(t) = l.teto {
+            with_number(Style::default(), l.slot, t * 0.375)
         } else {
             with_colour(Style::default(), l.slot, [200, 40, 90])
         };
@@ -76,7 +83,37 @@ fn as_linhas_cobrem_a_arrumacao_inteira_e_sem_repetir() {
             *v += 1;
         }
     }
-    let orfas: Vec<usize> = (0..wgsl::PACKED).filter(|&i| visto[i] == 0).collect();
+    // ⚠️⚠️ **A RESERVA sai da varredura, e a exclusão é DERIVADA de [`wgsl::RESERVADAS`]** — a
+    // arrumação tem `5` cores e `7` escalares (`22` floats) e o alinhamento de `vec4` pede `24`.
+    // ⛔ **E ela vem com a metade que a impede de ser uma licença:** uma posição reservada não pode
+    // ser reclamada por fileira nenhuma. *Sem isso, «excluir da varredura» passaria a esconder um
+    // botão que aterrou na reserva e é inalcançável.*
+    for r in wgsl::RESERVADAS {
+        assert_eq!(
+            visto[r], 0,
+            "a posição {r} é RESERVA e uma fileira reclamou-a"
+        );
+    }
+    // ⭐⭐⭐ **E há uma TERCEIRA categoria, que não é fileira nem reserva:** a posição do PASSO da
+    // curvatura do estilo ([`wgsl::EPS_DO_ESTILO`]), cujo dono é a **montagem do dispositivo** e não
+    // o `Style` — ela precisa do raio da PEÇA, que o estilo não tem.
+    //
+    // ⛔ **E a excepção vem com a metade que a impede de ser uma licença:** o [`wgsl::pack`] tem de
+    // a deixar a ZERO. *Se ele a preenchesse, haveria dois escritores para a mesma posição, e o
+    // último a correr ganharia sem ninguém saber qual é.*
+    assert_eq!(
+        visto[wgsl::EPS_DO_ESTILO],
+        0,
+        "o passo do estilo é da MONTAGEM e uma fileira reclamou-o"
+    );
+    assert!(
+        (wgsl::pack(&Style::default())[wgsl::EPS_DO_ESTILO] - wgsl::RESERVA).abs() < f32::EPSILON,
+        "o `pack` preencheu a posição que a montagem escreve: dois escritores, um valor"
+    );
+    let orfas: Vec<usize> = (0..wgsl::PACKED)
+        .filter(|&i| visto[i] == 0)
+        .filter(|i| !wgsl::RESERVADAS.contains(i) && *i != wgsl::EPS_DO_ESTILO)
+        .collect();
     assert!(orfas.is_empty(), "posições sem linha nenhuma: {orfas:?}");
     let repetidas: Vec<usize> = (0..wgsl::PACKED).filter(|&i| visto[i] > 1).collect();
     assert!(
@@ -225,7 +262,7 @@ fn o_dreno_do_produto_escreve_no_estilo_da_cena() {
     crate::smoke::with_smoke(|s| s.set_style(Style::default()));
     let mut world = bevy_ecs::world::World::new();
 
-    // (1) um NÚMERO — a nitidez da curvatura.
+    // (1) um NÚMERO — a nitidez da ARESTA (a `slot 7`; a da cova é a `20`).
     ph2d_panel_model3d::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetParam {
         entity: 0,
         param: Param::Style(7),
@@ -234,9 +271,9 @@ fn o_dreno_do_produto_escreve_no_estilo_da_cena() {
     crate::scene::apply_intents_for_test(&mut world, &[]);
     let lido = crate::smoke::with_smoke(|s| s.style).expect("a cena");
     assert!(
-        (lido.curvature.sharpness - 3.5).abs() < 1e-6,
+        (lido.curvature.edge_sharpness - 3.5).abs() < 1e-6,
         "o clique num número não chegou ao estilo: {}",
-        lido.curvature.sharpness
+        lido.curvature.edge_sharpness
     );
 
     // (2) e uma COR — a tinta da aresta, pela âncora.
@@ -255,7 +292,7 @@ fn o_dreno_do_produto_escreve_no_estilo_da_cena() {
     // ⚠️ **E o número escrito antes SOBREVIVEU** — sem esta metade, um dreno que reescrevesse o
     // estilo inteiro a cada intent passaria.
     assert!(
-        (lido.curvature.sharpness - 3.5).abs() < 1e-6,
+        (lido.curvature.edge_sharpness - 3.5).abs() < 1e-6,
         "a escrita da cor apagou o número que estava lá"
     );
 
@@ -276,4 +313,85 @@ fn o_dreno_do_produto_escreve_no_estilo_da_cena() {
     let depois = crate::smoke::with_smoke(|s| s.style).expect("a cena");
     assert_eq!(depois, lido, "um param de outra família mexeu no estilo");
     crate::smoke::with_smoke(|s| s.set_style(Style::default()));
+}
+
+/// ⭐⭐⭐ **UMA FILEIRA QUE NÃO PODE FAZER NADA DIZ PORQUÊ** (report do dono, 2026-09-19: *«Zone
+/// pivot não sei para que serve mas parece morto»*).
+///
+/// # ⛔⛔ Ele estava certo, e a lista era maior do que ele viu
+///
+/// Na configuração em que o painel ABRE, quatro fileiras desta secção são inertes **por
+/// construção** — e as dez shipavam `inert: None`. O `Zone Pivot` é o caso literal: a lei é
+/// `sombra + (luz − sombra)·h`, e com as duas tintas brancas o parêntesis é **exactamente zero**,
+/// *a mesma lei que faz a omissão ser a identidade ao bit*.
+///
+/// ⚠️ **É a decisão do dono de 2026-09-18**, que o cabeçalho deste ficheiro citava e não cumpria.
+///
+/// **Mutação que deve sangrar:** `inert: None` de volta no construtor da `ParamRow`.
+#[test]
+fn uma_fileira_inerte_diz_porque_esta_apagada() {
+    // (1) ⭐ O ESTADO EM QUE O PAINEL ABRE — e a lista é **derivada**, nunca escrita à mão.
+    let fabrica = rows(Style::default(), true);
+    let apagadas: Vec<&str> = fabrica
+        .iter()
+        .filter(|r| r.inert.is_some())
+        .map(|r| r.key)
+        .collect();
+    assert!(
+        apagadas.len() >= 4,
+        "de fábrica esperava pelo menos quatro fileiras apagadas, achei {apagadas:?}"
+    );
+    // ⚠️ **Piso de população do outro lado**: se TODAS estivessem apagadas a secção não teria por
+    // onde se começar a usar, e a asserção acima ficaria trivialmente verdadeira.
+    assert!(
+        apagadas.len() < fabrica.len(),
+        "de fábrica a secção inteira está apagada: não há por onde começar"
+    );
+    // ⭐ E o pivô é uma delas — é o report, à letra.
+    assert!(
+        apagadas.contains(&"panel.model3d.style.pivot"),
+        "o Zone Pivot abre vivo e ele é inerte de fábrica: {apagadas:?}"
+    );
+
+    // (2) ⭐⭐ E CADA UMA ACORDA COM O GESTO QUE A RAZÃO NOMEIA — a metade que impede a primeira de
+    //     ser uma licença para apagar tudo.
+    let acordado = Style {
+        rim: ph2d_style::Rim {
+            strength: 1.0,
+            ..ph2d_style::Rim::default()
+        },
+        curvature: ph2d_style::Curvature {
+            convex: [1.0, 0.5, 0.5],
+            concave: [0.5, 0.5, 1.0],
+            ..ph2d_style::Curvature::default()
+        },
+        zones: ph2d_style::Zones {
+            highlight: [1.0, 0.9, 0.7],
+            ..ph2d_style::Zones::default()
+        },
+        ..Style::default()
+    };
+    let vivas = rows(acordado, true);
+    let ainda: Vec<&str> = vivas
+        .iter()
+        .filter(|r| r.inert.is_some())
+        .map(|r| r.key)
+        .collect();
+    assert!(
+        ainda.is_empty(),
+        "com os quatro gestos feitos ainda há fileiras apagadas: {ainda:?}"
+    );
+
+    // (3) ⭐ A RAZÃO é uma CHAVE que a tabela de textos conhece — uma chave órfã pinta o nome dela.
+    for r in &fabrica {
+        if let Some(k) = r.inert {
+            let frase = ph2d_i18n::tr(k);
+            assert_ne!(frase, k, "a razão «{k}» não está na tabela de textos");
+            assert!(
+                frase.starts_with("Inactive:"),
+                "a razão de «{}» não começa por «Inactive:»: {frase}",
+                r.key
+            );
+        }
+    }
 }

@@ -13,13 +13,74 @@
 use ph2d_editor_core::paint::{paint_text_elided, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
-use ph2d_editor_core::widget::{NUMBER_INPUT_MIN_W_PX, paint_slider_with_chip_layout_adaptive};
+use ph2d_editor_core::widget::{
+    NUMBER_INPUT_MIN_W_PX, number_text_origin, paint_slider_with_chip_layout_adaptive,
+    property_label_col_w, slider_with_chip_chip_rect, slider_with_chip_label_rect, stepper_width,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
 
 use crate::paint::{STEPS_ACROSS_THE_RANGE, TETO_DIGITAVEL, bound_is_wall, decimals_for_step};
 use crate::state::ParamRow;
+
+/// ⭐⭐⭐ **A REPARTIÇÃO DE UMA LINHA DESTE PAINEL — a MESMA nas TRÊS formas, e a da fileira VIVA.**
+///
+/// ⛔⛔⛔ **Auditoria de 2026-09-19, sobre o report *«widgets embolados»*: o painel tinha TRÊS
+/// alinhamentos de rótulo ao mesmo tempo.** A fileira viva é a **caixa única**
+/// (`paint_slider_with_chip_layout_adaptive`), que põe o nome dentro à esquerda e reserva a coluna
+/// do valor pela direita; a travada e a amostra escolhiam a coluna do **formulário**
+/// (`property_label_col_w`, metade da linha), que é outra grandeza — e uma que **cresce com a
+/// largura**:
+///
+/// | painel | valor da VIVA | valor da TRAVADA (antes) | desvio |
+/// |---:|---:|---:|---:|
+/// | `220` | `108,00` | `118,00` | `+10,00` |
+/// | `296,89` (o dono) | `184,89` | `156,45` | `−28,44` |
+/// | `720` | `608,00` | `368,00` | `−240,00` |
+///
+/// ⚠️ **E o `16 px` que a auditoria publicou descreve o ecrã CLÁSSICO**, não o de omissão: ali a
+/// caixa única não corre, o pintor lê o `label_w` que lhe passam, e a diferença entre `Lc` e
+/// `w − Lc` é de facto `2 × Spacing::Md`. *Uma medição feita sobre a fórmula e não sobre o pintor
+/// mede a aparência que o artista não tem.*
+///
+/// ⭐ **Os dois números que esta porta passa são os MESMOS que o [`paint_row`] passa ao pintor
+/// vivo** — é isso, e não uma constante partilhada, que faz as três formas aterrarem no mesmo
+/// sítio nas **duas** aparências.
+pub(crate) fn colunas_da_fileira(x: f32, w: f32, y: f32) -> (Rect, Rect) {
+    let linha = Rect::new(x, y, w, ROW_H_PX);
+    let label_w = property_label_col_w(x, w);
+    (
+        slider_with_chip_label_rect(linha, label_w, NUMBER_INPUT_MIN_W_PX),
+        slider_with_chip_chip_rect(linha, label_w, NUMBER_INPUT_MIN_W_PX),
+    )
+}
+
+/// ⭐⭐⭐ **O PASSO DO ARRASTO DE UMA LINHA** — a porta, com dois leitores.
+///
+/// ⛔⛔ **Ela existe porque a [`paint_fact`] formatava com `decimals_for_step(1.0)`** — uma casa
+/// decimal, fosse qual fosse a faixa. Medido: `0,375` vivo lia-se **`0.4`** travado, e o `Coat IOR`
+/// de `1,6` da foto do dono é a prova. *Atravessar a trava mudava a PRECISÃO do número*, que é a
+/// mesma família do salto de espécie que a linha-amostra já pagou.
+///
+/// ⚠️ **Uma linha inteira tem passo `1`**, e não um centésimo do curso: meia cópia não existe.
+pub(crate) fn passo_da_linha(row: &ParamRow) -> f32 {
+    if row.integral {
+        1.0
+    } else {
+        let scale = (row.bound.value() - row.lo).max(f32::MIN_POSITIVE);
+        scale / STEPS_ACROSS_THE_RANGE
+    }
+}
+
+/// ⭐ **Quantas casas decimais uma linha mostra** — DERIVADO do passo dela. Ver [`passo_da_linha`].
+pub(crate) fn casas_da_linha(row: &ParamRow) -> usize {
+    if row.integral {
+        0
+    } else {
+        decimals_for_step(passo_da_linha(row))
+    }
+}
 
 /// Uma linha: rótulo do tipo do nó + slider + campo numérico. Devolve o **y seguinte**.
 ///
@@ -70,9 +131,9 @@ pub(crate) fn paint_row(
     // o que o parágrafo acima já prometia** e o código não fazia: ele mandava-a para a amostra com
     // um id partilhado, e cinco cores passaram a mudar juntas.
     if let Some(rgb) = row.swatch
-        && let Some(id) = swatch_id(row)
+        && let Some(id) = crate::paint_rows_swatch::swatch_id(row)
     {
-        return paint_swatch(ctx, row, id, rgb, x, w, y);
+        return crate::paint_rows_swatch::paint_swatch(ctx, row, id, rgb, x, w, y);
     }
     // ⭐ **Uma linha que não pode agir não é pintada como se pudesse** — ver [`ParamRow::inert`].
     // Ela sai daqui como facto e **não regista nada** no índice de acerto, então não há slider a
@@ -117,11 +178,10 @@ pub(crate) fn paint_row(
     // ⚠️ **Numa linha inteira o passo é 1**, e não um centésimo do curso: meia cópia não existe, e um
     // passo fracionário faria o arrasto percorrer valores que a escrita depois arredonda — o número
     // a saltar debaixo do dedo sem que nada esteja errado.
-    let step = if row.integral {
-        1.0
-    } else {
-        scale / STEPS_ACROSS_THE_RANGE
-    };
+    //
+    // ⚠️ **Pela porta [`passo_da_linha`]** — a fileira TRAVADA formata o mesmo número e tem de ler o
+    // mesmo passo; enquanto a conta viveu aqui dentro, ela lia `1.0` e mostrava uma casa só.
+    let step = passo_da_linha(row);
     {
         let store = ctx.host.store_mut();
         store.link_slider_number_mapped(slider, chip, scale, lo);
@@ -167,6 +227,9 @@ pub(crate) fn paint_row(
         // é o que mantém o controlo honesto quando o valor muda de outro lado* — um desfazer, um
         // ficheiro aberto, o gizmo.
         store.set_number_value(chip, f64::from(row.value));
+        // ⭐⭐⭐ **O BALÃO** — ver [`crate::dica`]. Nos DOIS ids, porque o rato pode estar quente
+        // sobre o trilho ou sobre o campo.
+        crate::dica::pendura(store, row, &[slider, chip]);
     }
 
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -175,11 +238,7 @@ pub(crate) fn paint_row(
     // outro lado — um desfazer, um arquivo aberto, uma segunda linha.
     let track = ((row.value - lo) / scale).clamp(0.0, 1.0);
     let display = f64::from(row.value);
-    let decimals = if row.integral {
-        0
-    } else {
-        decimals_for_step(step)
-    };
+    let decimals = casas_da_linha(row);
     let text = format!("{display:.decimals$}");
 
     let used = paint_slider_with_chip_layout_adaptive(
@@ -201,20 +260,22 @@ pub(crate) fn paint_row(
     y + used + ph2d_tokens::control_gap_px()
 }
 
-/// ⭐ **Uma linha como FACTO**: o rótulo e o número, em texto apagado, sem controle nenhum.
-///
-/// ⚠️ **Nada é registado no índice de acerto**, e é essa a metade que importa: um slider desenhado
-/// «desligado» mas ainda agarrável despacharia uma edição que a escrita depois recusa — e o artista
-/// veria o número saltar e voltar. Aqui não há o que agarrar, e o gate
-/// `an_inert_row_registers_nothing_to_click` mede exatamente isso.
-///
-/// ⚠️ Ela ocupa **a mesma altura** de uma linha viva: atravessar a trava não pode fazer o painel
-/// saltar de tamanho debaixo do cursor.
 /// ⭐⭐⭐ **A FILEIRA DE ESCOLHA de uma linha** — o rótulo à esquerda, os botões na goteira do valor.
 ///
-/// ⚠️ **A goteira é a MESMA do slider** (a porta `property_label_col_w`), e isso não é estética: o olho percorre
-/// a coluna dos valores de cima a baixo, e uma fileira que começasse noutro sítio faria o painel
-/// parecer duas listas.
+/// ⛔⛔ **O doc desta função dizia *«a goteira é a MESMA do slider (a porta `property_label_col_w`)»*
+/// e isso era FALSO no ecrã de omissão**: desde a caixa única (2026-09-02) o pintor da fileira viva
+/// **ignora** o `label_w` que lhe passam e reserva a coluna do valor pela direita. *Uma afirmação
+/// sobre um argumento que o consumidor deita fora é um palpite com cara de medição.*
+///
+/// ⭐ **O que fica igual é o RÓTULO**, que é a queixa do report (*«widgets embolados»*): ele nasce
+/// no mesmo `x` das outras três formas, pela porta [`colunas_da_fileira`].
+///
+/// ⛔ **A GOTEIRA fica DECLARADAMENTE mais larga, e o recurso está medido:** o valor de uma linha
+/// viva é um campo numérico com piso de `NUMBER_INPUT_MIN_W_PX`; aqui são `n` botões que têm de
+/// caber lado a lado. Medido a `296,89` (a largura do dono): a coluna do valor mede `80 px` e os
+/// três chips do `Axis` pediriam `26` cada — o `paint_segmented_group_adaptive` **quebra a fileira
+/// em duas linhas**, e a linha passa a ter o dobro da altura das vizinhas. *Trocar um rótulo
+/// alinhado por um painel que salta de altura é a troca errada.*
 ///
 /// ⭐ Ela reusa o `paint_segmented_group_adaptive` — o **mesmo** widget das fileiras de chips do topo
 /// do painel. *Um sexto caminho de pintura neste arquivo seria um sexto sítio onde o hit-index
@@ -224,16 +285,18 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
     let font = TypeToken::Sm.px();
     let dim = resolve(ColorToken::Text2, theme);
     let baseline = y + (ROW_H_PX - font) * 0.5;
+    let (nome, _) = colunas_da_fileira(x, w, y);
+    let goteira_x = x + property_label_col_w(x, w);
     // ⛔ **Corta, nunca quebra** — ver a nota do [`paint_fact`]. Os rótulos de escolha deste painel
     // são curtos (`Axis`), mas o defeito não é do comprimento de hoje: é do pintor.
-    ph2d_editor_core::widget::paint_property_label(
+    paint_text_elided(
         ctx.text_system,
         ctx.scene,
         tr(row.key),
-        x,
+        nome.x,
         baseline,
         font,
-        ph2d_editor_core::widget::property_label_col_w(x, w),
+        (goteira_x - nome.x - ph2d_tokens::Spacing::Md.px()).max(0.0),
         dim,
     );
     // ⚠️ **O activo lê-se do VALOR, todo quadro** — nunca de um estado guardado no painel. É a mesma
@@ -254,14 +317,15 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
             )
         })
         .collect();
+    // ⭐ **O BALÃO, em cada botão da fileira** — ver [`crate::dica`]: o `hot_id` é o do botão sob o
+    // rato, e uma dica pendurada num só apareceria em parte da fileira.
+    //
+    // ⚠️ **Antes do empréstimo do par `store`+`hit_index`**, que é partilhado e imutável no `store`.
+    let botoes: Vec<ph2d_a11y::NodeId> = labels.iter().map(|(_, _, id)| *id).collect();
+    crate::dica::pendura(ctx.host.store_mut(), row, &botoes);
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     let used = paint_segmented_group_adaptive(
-        Rect::new(
-            x + ph2d_editor_core::widget::property_label_col_w(x, w),
-            y,
-            (w - ph2d_editor_core::widget::property_label_col_w(x, w)).max(0.0),
-            ROW_H_PX,
-        ),
+        Rect::new(goteira_x, y, (x + w - goteira_x).max(0.0), ROW_H_PX),
         &labels,
         ctx.scene,
         ctx.text_system,
@@ -270,179 +334,6 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
         hit_index,
     );
     y + used.max(ROW_H_PX) + ph2d_tokens::control_gap_px()
-}
-
-/// ⭐⭐⭐ **O ID DE UMA LINHA-AMOSTRA — a PORTA, com dois leitores** (report do Enio, 2026-09-19:
-/// *«se modifico qualquer cor em style, todas mudam ao mesmo tempo»*).
-///
-/// # ⛔⛔ O defeito que ela cura, e porque nenhum gate o via
-///
-/// O id era derivado **dentro** do [`paint_swatch`] por um `match` cujo braço final dizia, por
-/// escrito, *«uma amostra sobre um param sem índice não existe hoje; `0` é a resposta estável»*.
-/// Era **verdade no dia em que foi escrita** e ficou **falsa** quando a camada de estilo
-/// (`docs/Render3d/11`) trouxe cinco linhas de cor cujo `entity` é `0` por desenho — *o estilo não
-/// é de entidade nenhuma*. As cinco caíam no braço final e recebiam o **mesmo** id:
-///
-/// ```text
-/// hash("model3d.color.swatch.0.0")   ← as CINCO cores do estilo
-/// ```
-///
-/// ⇒ com o selector aberto numa delas, **as cinco** liam `picker_target() == Some(id)`, **as cinco**
-/// comparavam a cor escolhida com a sua, e **as cinco** pediam a edição. Uma roda, cinco escritas.
-///
-/// ⚠️⚠️ **E a segunda metade estava na outra ponta:** a lista que fecha um selector órfão
-/// (`crate::paint::close_a_stranded_picker`) derivava o id por um **segundo `match`**, que só
-/// conhecia `Param::Material`. *Duas respostas à mesma pergunta — «qual é o id desta amostra?» —
-/// divergem no dia em que uma família nova entra*, e aqui já divergiam para a **luz**, desde a wave
-/// dela. ⇒ uma porta, e os dois leitores passam por ela.
-///
-/// # ⚠️ Porque o estilo tem espaço de nomes PRÓPRIO
-///
-/// [`crate::ids::model3d_color_swatch`] cunha o par `(entidade, campo)`, e o sujeito do estilo **não
-/// é uma entidade** — o `0` que a fileira carrega é um sentinela que o dreno nem lê. Pendurar o
-/// estilo naquele nome faria a não-colisão depender do acidente de `Entity::to_bits()` nunca valer
-/// `0`; com [`crate::ids::model3d_style_swatch`] ela é **inexprimível por construção**.
-///
-/// # ⛔ `None` é uma família NOVA, e ela cai para o controlo normal
-///
-/// Uma amostra sem id não é pintada como amostra — ela cai no slider, que é o que o doc do
-/// [`paint_row`] já prometia e o código não fazia. *Visível e diferente é um defeito que se lê; um
-/// id partilhado em silêncio é o que este report custou.*
-#[must_use]
-pub fn swatch_id(row: &ParamRow) -> Option<ph2d_a11y::NodeId> {
-    match row.param {
-        // ⚠️ As duas famílias de ENTIDADE nunca coexistem no mesmo nó (o `params_of` responde uma
-        // OU a outra), logo o par `(entidade, índice)` continua único entre elas.
-        ph2d_field::Param::Material(k) | ph2d_field::Param::Light(k) => {
-            Some(crate::ids::model3d_color_swatch(row.entity, k))
-        }
-        // ⭐ **O estilo é da CENA** — espaço de nomes próprio, e o `slot` é a posição na arrumação,
-        // que é o que torna as cinco cores cinco controlos.
-        ph2d_field::Param::Style(slot) => Some(crate::ids::model3d_style_swatch(slot)),
-        // ⛔ **`None` e nunca um id inventado.** Era aqui que estava o defeito: um `0` «estável»
-        // dava a TODAS as famílias novas o mesmo controlo. Uma família sem id cai para o slider —
-        // visível, diferente, e legível como uma falta.
-        _ => None,
-    }
-}
-
-/// ⭐⭐⭐ **A LINHA-AMOSTRA** — o rótulo à esquerda, e na goteira do valor a cor que a peça tem
-/// (Enio, 2026-09-14: *«em vez de 3 sliders de RGB, deveríamos ter uma caixa seletora de cor»*).
-///
-/// # ⭐ O selector não se constrói aqui: ele já existe, e é UM
-///
-/// A casa tem **um** selector de cor (o OKLCH com roda, canais RGB/HSV/OKLCH, hexadecimal, paletas
-/// e conta-gotas), e um painel entra nele por **duas** linhas: registar o id como amostra
-/// ([`WidgetStore::register_picker_swatch`]) e manter a cor dela em dia. O `Down` genérico do
-/// `pointer_down` faz o resto — é o mesmo caminho do traço do Flip, do preenchimento do vetor e da
-/// tinta do Painter. *Um segundo selector neste painel seria uma segunda resposta à mesma pergunta,
-/// e a que envelhece.*
-///
-/// # ⚠️⚠️ QUEM MANDA NA COR MUDA CONFORME O SELECTOR ESTÁ ABERTO — e é aí que mora o defeito
-///
-/// | o selector está… | quem é a verdade | o que esta função faz |
-/// |---|---|---|
-/// | **fechado** | o **documento** | semeia a amostra com a cor do nó, todo quadro |
-/// | **aberto nesta amostra** | o **selector** | lê o que ele escreveu e pede a edição |
-///
-/// ⛔ **Semear nos dois casos apagaria a escolha debaixo do dedo:** o `hero` espelha o valor vivo do
-/// selector para `widget_color(id)` **antes** de os painéis pintarem, e um `set_widget_color` aqui
-/// por cima devolveria a cor velha a cada quadro — a roda mover-se-ia e a cor não. *O mesmo par de
-/// metades que o `brush_color_readback` do Painter já tem escrito.*
-///
-/// ⚠️ **E o «mudou?» pergunta-se em sRGB8** — ver [`ParamRow::swatch`]. Sem essa comparação a
-/// função pediria uma edição **por quadro** enquanto o selector estivesse aberto: um passo de undo
-/// por quadro, sobre uma cor que ninguém mexeu.
-fn paint_swatch(
-    ctx: &mut PaintCtx,
-    row: &ParamRow,
-    id: ph2d_a11y::NodeId,
-    rgb: [u8; 3],
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
-    use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
-
-    let theme = ctx.host.theme();
-    let font = TypeToken::Sm.px();
-    let dim = resolve(ColorToken::Text2, theme);
-    let baseline = y + (ROW_H_PX - font) * 0.5;
-    // ⭐⭐ **A MESMA CAIXA ÚNICA das outras linhas** (report do Enio com foto, 14/09): rótulo à
-    // esquerda, **amostra na coluna da direita** — e o rótulo CORTA em vez de quebrar.
-    //
-    // ⛔ A amostra ocupava a goteira inteira (`w − 72 ≈ 230 px`) e o rótulo vivia nos `72` da
-    // esquerda: `Emission Color` não cabia lá e virava **duas linhas**, por cima da linha seguinte.
-    // *Uma amostra tão larga lê-se como um campo de texto, e a coluna dos valores deixava de estar
-    // alinhada com a dos números.*
-    let coluna = ph2d_editor_core::widget::property_label_col_w(x, w).min(w);
-    let rotulo_w = (w - coluna).max(0.0);
-    paint_text_elided(
-        ctx.text_system,
-        ctx.scene,
-        tr(row.key),
-        x,
-        baseline,
-        font,
-        rotulo_w,
-        dim,
-    );
-
-    // ⛔⛔ **O id chega de FORA, pela porta [`swatch_id`]** — ele era derivado aqui dentro, e a
-    // outra ponta (a lista que fecha um selector órfão) derivava-o outra vez. *Duas respostas à
-    // mesma pergunta, e este report foi o dia em que elas divergiram.*
-    //
-    // ⭐⭐⭐ **UMA AMOSTRA TRAVADA NÃO ABRE O SELECTOR, e nem sequer se REGISTA** — ordem do Enio
-    // (14/09): ela fica **visível e inactiva**.
-    //
-    // ⛔⛔ **As três metades têm de sair juntas, e cada uma sozinha é um defeito diferente:** sem o
-    // `register_picker_swatch` o selector não a reconhece; sem o `hit_index` ela não é clicável;
-    // sem o `SwatchState::Disabled` ela **parece** clicável. *Uma amostra que parece viva e não
-    // responde é o controlo morto na forma que o artista mais rapidamente lê como avaria.*
-    if row.inert.is_some() {
-        return paint_dead_swatch(ctx, row, id, rgb, x, w, y);
-    }
-    let aberto = {
-        let store = ctx.host.store_mut();
-        store.register_picker_swatch(id);
-        let aberto = store.picker_target() == Some(id);
-        if aberto {
-            // O selector é o dono: lê-se dele, e pede-se a edição só quando a cor de facto mudou.
-            if let Some(escolhida) = store.widget_color(id) {
-                let nova = [escolhida[0], escolhida[1], escolhida[2]];
-                if nova != rgb {
-                    crate::state::push_intent(crate::state::ModelIntent::SetColor {
-                        entity: row.entity,
-                        anchor: row.param,
-                        srgb: nova,
-                    });
-                }
-            }
-        } else {
-            // ⚠️ **Opaca**: o material não tem alfa, e um `255` inventado aqui é o único honesto —
-            // ver [`ParamRow::swatch`]. Com outro valor a amostra pintaria o xadrez da
-            // transparência sobre uma peça que é sólida.
-            store.set_widget_color(id, [rgb[0], rgb[1], rgb[2], 255]);
-        }
-        aberto
-    };
-
-    // ⚠️ A altura é a da linha, para o painel não saltar de tamanho entre uma linha e a vizinha.
-    let gutter = Rect::new(x + rotulo_w, y, coluna, ROW_H_PX);
-    let swatch = ColorSwatch::new(id, tr(row.key), [rgb[0], rgb[1], rgb[2], 255])
-        .size(SwatchSize::Md)
-        // ⭐ **Aberto ⇒ focado**, que é o anel que a família moderna traça: com o selector a flutuar
-        // sobre o canvas, é este anel que diz **qual** amostra ele está a editar.
-        .state(if aberto {
-            ph2d_editor_core::widget::SwatchState::Focused
-        } else {
-            ph2d_editor_core::widget::SwatchState::Normal
-        });
-    paint_color_swatch(&swatch, gutter, ctx.scene, theme);
-    // ⚠️ **Sem isto a amostra é decoração**: quem decide que o `Down` abre o selector é o
-    // `pointer_down`, e ele só vê o que o índice de acerto reclamou.
-    ctx.host.hit_index_mut().register(id, gutter);
-    y + ROW_H_PX + ph2d_tokens::control_gap_px()
 }
 
 /// ⭐⭐⭐ **A RAZÃO DE UMA LINHA APAGADA PINTA-SE UMA VEZ POR CORRIDA** — `Some` ⇒ pinta-a agora.
@@ -471,97 +362,80 @@ pub(crate) fn razao_a_pintar(
     }
 }
 
+/// ⭐ **Uma linha como FACTO**: o rótulo e o número, em texto apagado, sem controle nenhum.
+///
+/// ⚠️ **Nada é registado no índice de acerto**, e é essa a metade que importa: um slider desenhado
+/// «desligado» mas ainda agarrável despacharia uma edição que a escrita depois recusa — e o artista
+/// veria o número saltar e voltar. Aqui não há o que agarrar, e o gate
+/// `an_inert_row_registers_nothing_to_click` mede exatamente isso.
+///
+/// ⚠️ Ela ocupa **a mesma altura** de uma linha viva: atravessar a trava não pode fazer o painel
+/// saltar de tamanho debaixo do cursor.
+///
+/// # ⛔⛔⛔ Atravessar a trava mexia o número de SÍTIO e de PRECISÃO
+///
+/// Auditoria de 2026-09-19. Ela pintava o rótulo encostado à **direita** de uma coluna de
+/// `w − property_label_col_w(x, w)` e o valor a seguir — três consequências, todas medidas:
+///
+/// 1. **vão `0,00 px` por construção**, em toda a largura do dock: o `paint_property_label` encosta
+///    o nome à direita da coluna dele, e o valor começava exactamente onde ela acaba — *o nome e o
+///    número tocavam-se*, que é o «embolado» da foto;
+/// 2. **a coluna não era a da fileira viva** (ver [`colunas_da_fileira`] para a escada);
+/// 3. **`decimals_for_step(1.0)`** ⇒ uma casa decimal fosse qual fosse a faixa: `0,375` vivo lia-se
+///    `0.4` travado (ver [`passo_da_linha`]).
+///
+/// ⭐ Hoje as três formas leem a **mesma** repartição, e o número é pousado pela **mesma porta** que
+/// o campo numérico usa ([`number_text_origin`]) — *um número travado aterra no pixel em que o
+/// número vivo estava*.
 fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32 {
     let font = TypeToken::Sm.px();
     let theme = ctx.host.theme();
     let dim = resolve(ColorToken::Text2, theme);
-    let baseline = y + (ROW_H_PX - font) * 0.5;
-    // ⭐⭐⭐ **A CAIXA ÚNICA, também aqui** (report do Enio com foto, 2026-09-14: *«widgets sobrepostos
-    // embolados, mas espaçados»*) — rótulo à ESQUERDA, valor à DIREITA, como na linha viva.
-    //
-    // ⛔⛔ **Ela punha o rótulo numa coluna de largura FIXA e o valor a seguir, e isso são DOIS
-    // defeitos.** O primeiro é geométrico: a linha viva deixou de ter coluna externa de rótulo em
-    // 2026-09-02 (*«a caixa única: rótulo à esquerda DENTRO, valor à direita DENTRO»*), e o
-    // `label_w` daquele pintor é **ignorado de propósito** desde então — logo a linha travada era a
-    // única do painel ainda desenhada com o modelo de três colunas. O segundo é o que a foto mostra.
-    let valor = format!("{:.d$}", f64::from(row.value), d = decimals_for_step(1.0));
-    let valor_w = ph2d_editor_core::widget::property_label_col_w(x, w).min(w);
+    let (nome, coluna) = colunas_da_fileira(x, w, y);
     // ⛔⛔ **`paint_text_elided` e NUNCA `paint_text_block`** — o doc do primeiro nomeia este defeito
     // à letra: *«`paint_text` trata `max_width` como orçamento de QUEBRA, então um rótulo um pixel
-    // largo demais vira duas linhas em silêncio e transborda para a linha de baixo»*. Com `Coat
-    // Roughness` e `Emission Color` a não caberem em `72 px`, a segunda linha caía **por cima** da
-    // linha seguinte, que é exactamente o que a foto do dono mostra.
-    ph2d_editor_core::widget::paint_property_label(
-        ctx.text_system,
-        ctx.scene,
-        tr(row.key),
-        x,
-        baseline,
-        font,
-        (w - valor_w).max(0.0),
-        dim,
-    );
-    paint_text_elided(
-        ctx.text_system,
-        ctx.scene,
-        &valor,
-        x + (w - valor_w).max(0.0),
-        baseline,
-        font,
-        valor_w,
-        dim,
-    );
-    y + ph2d_tokens::row_pitch_px()
-}
-
-/// ⭐⭐⭐ **UMA AMOSTRA TRAVADA** — a cor continua à vista, e o gesto não existe.
-///
-/// Ordem do Enio (2026-09-14): *«os slideres que só aparecem sob uma condição específica não devem
-/// desaparecer, mas apenas serem inativados, mas sempre visíveis»*. Numa linha de cor isso quer dizer
-/// **a amostra apagada**, e não o número que ela dobra — ver o doc do [`paint_row`].
-///
-/// ⛔ **Ela não regista NADA** (nem o `register_picker_swatch`, nem o `hit_index`): é a mesma lei do
-/// [`paint_fact`], que é o irmão desta função para as linhas que são um número.
-fn paint_dead_swatch(
-    ctx: &mut PaintCtx,
-    row: &ParamRow,
-    id: ph2d_a11y::NodeId,
-    rgb: [u8; 3],
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
-    use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, SwatchState, paint_color_swatch};
-
-    let theme = ctx.host.theme();
-    let font = TypeToken::Sm.px();
-    let dim = resolve(ColorToken::Text2, theme);
-    let baseline = y + (ROW_H_PX - font) * 0.5;
-    // ⭐⭐ **A MESMA CAIXA ÚNICA das outras linhas** (report do Enio com foto, 14/09): rótulo à
-    // esquerda, **amostra na coluna da direita** — e o rótulo CORTA em vez de quebrar.
+    // largo demais vira duas linhas em silêncio e transborda para a linha de baixo»*.
     //
-    // ⛔ A amostra ocupava a goteira inteira (`w − 72 ≈ 230 px`) e o rótulo vivia nos `72` da
-    // esquerda: `Emission Color` não cabia lá e virava **duas linhas**, por cima da linha seguinte.
-    // *Uma amostra tão larga lê-se como um campo de texto, e a coluna dos valores deixava de estar
-    // alinhada com a dos números.*
-    let coluna = ph2d_editor_core::widget::property_label_col_w(x, w).min(w);
-    let rotulo_w = (w - coluna).max(0.0);
+    // ⚠️ **À ESQUERDA, e não mais encostado à direita:** a fileira viva põe o nome dentro à esquerda
+    // da caixa, e era o `paint_property_label` que fazia desta a única linha do painel com o nome
+    // do outro lado.
     paint_text_elided(
         ctx.text_system,
         ctx.scene,
         tr(row.key),
-        x,
-        baseline,
+        nome.x,
+        y + (ROW_H_PX - font) * 0.5,
         font,
-        rotulo_w,
+        nome.w,
         dim,
     );
-    let gutter = Rect::new(x + rotulo_w, y, coluna, ROW_H_PX);
-    // ⚠️ **O id é o VERDADEIRO, e ele não é registado em lado nenhum** — o widget precisa de um, e
-    // inventar outro faria duas identidades para a mesma amostra no dia em que ela acordasse.
-    let swatch = ColorSwatch::new(id, tr(row.key), [rgb[0], rgb[1], rgb[2], 255])
-        .size(SwatchSize::Md)
-        .state(SwatchState::Disabled);
-    paint_color_swatch(&swatch, gutter, ctx.scene, theme);
+    // ⚠️ **A fonte é a do CAMPO (`Xs`) e não a do rótulo (`Sm`)** — é o número vivo que esta linha
+    // dobra, e medir num corpo e pintar noutro punha-o a saltar de tamanho ao travar.
+    let fonte_n = TypeToken::Xs.px();
+    let texto = format!("{:.d$}", f64::from(row.value), d = casas_da_linha(row));
+    let medido = ctx
+        .text_system
+        .layout(&texto, fonte_n, f32::INFINITY)
+        .width();
+    let area = (coluna.w - stepper_width(coluna)).max(0.0);
+    // ⚠️ **O `max` é a cerca do caso degenerado**: um número mais largo que a área é centrado pela
+    // porta e começaria à ESQUERDA da coluna, por cima do nome. Aqui ele encosta e elide.
+    let tx = number_text_origin(coluna, medido).max(coluna.x);
+    paint_text_elided(
+        ctx.text_system,
+        ctx.scene,
+        &texto,
+        tx,
+        y + (ROW_H_PX - fonte_n) * 0.5,
+        fonte_n,
+        area,
+        dim,
+    );
     y + ph2d_tokens::row_pitch_px()
 }
+
+/// ⚠️ **Irmão de arquivo do `paint_tests`:** aqueles medem o que se LÊ numa linha (a formatação);
+/// este mede a REPARTIÇÃO — onde o nome e o valor de cada uma das quatro formas aterram.
+#[cfg(test)]
+#[path = "paint_rows_colunas_tests.rs"]
+mod colunas_tests;

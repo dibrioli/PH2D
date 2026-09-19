@@ -197,3 +197,28 @@ pub fn value_column(rect: Rect, value_w: f32, decorator: bool) -> Rect {
     let vx = (right - pad - value_w).max(rect.x);
     Rect::new(vx, rect.y, (right - vx).max(1.0), rect.h)
 }
+
+/// ⭐⭐⭐ **A OUTRA METADE da mesma repartição: onde o NOME da caixa única é pintado.**
+///
+/// ⛔⛔ **Ela existe porque a lei tinha UM leitor e a pergunta tem DOIS** — exactamente o mecanismo
+/// que a [`surface_rect`] paga um bloco acima, um nível abaixo. O `x` do rótulo (`box.x + pad`) e o
+/// orçamento dele (`box.w − 3·pad − value_w`) viviam **dentro** do [`super::paint::paint_property_box`],
+/// logo só existiam para quem PINTA uma caixa. Todo painel que desenha uma linha **que não é uma
+/// caixa** — um facto travado, uma amostra de cor — tinha de escolher outra coluna, e escolhia
+/// outra: medido no painel de modelagem 3D em 2026-09-19, ele tinha **três** alinhamentos de rótulo
+/// ao mesmo tempo (a linha viva, a amostra e a travada).
+///
+/// ⚠️ **É o espelho exacto da [`value_column`]** — mesmos argumentos, mesma pureza, mesmo `pad`. Ela
+/// devolve o rect em que o rótulo **cabe**; quem pinta continua a elidir dentro dele.
+///
+/// ⚠️ **O `value_w` é o da caixa, não o do rótulo.** As duas portas leem o MESMO número, e é isso
+/// que faz o vão entre elas ser sempre um `pad`: sem esse argumento aqui, o orçamento do nome seria
+/// uma segunda conta sobre a largura do valor, e as duas divergiriam no dia em que a coluna do valor
+/// deixasse de ser o piso do campo.
+#[must_use]
+pub fn label_column(rect: Rect, value_w: f32, decorator: bool) -> Rect {
+    let pad = Spacing::Md.px();
+    let box_rect = surface_rect(rect, decorator);
+    let budget = (box_rect.w - pad * PAD_UNITS_BETWEEN_LABEL_AND_VALUE - value_w).max(0.0);
+    Rect::new(box_rect.x + pad, rect.y, budget, rect.h)
+}

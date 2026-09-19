@@ -227,8 +227,8 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
         // `Param::Material`** — a luz e o estilo nunca entravam nesta lista, logo um selector aberto
         // sobre uma delas **nunca era fechado** e ficava a flutuar sobre uma amostra que já ninguém
         // pinta: exactamente o controlo morto que esta função existe para impedir, e ela era cega a
-        // duas das três famílias que o painel oferece. Ver [`crate::paint_rows::swatch_id`].
-        .filter_map(crate::paint_rows::swatch_id)
+        // duas das três famílias que o painel oferece. Ver [`crate::paint_rows_swatch::swatch_id`].
+        .filter_map(crate::paint_rows_swatch::swatch_id)
         .collect();
     close_a_stranded_picker(ctx, &amostras);
     y = paint_footer(ctx, &snapshot, x, w, y);
@@ -486,6 +486,15 @@ pub(crate) fn paint_note(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32)
 /// seguinte — e um painel que esconde isso deixa a lentidão parecer um defeito em vez de uma conta.
 fn paint_footer(ctx: &mut PaintCtx, snap: &state::ModelSnapshot, x: f32, w: f32, y: f32) -> f32 {
     let hidden = snap.rows.len().saturating_sub(MAX_ROWS);
+    // ⭐⭐ **A FRASE inteira vem da tabela** (`main`, 2026-09-17): o pintor montava
+    // `"{}: {} · {} {:.1} ms"` à mão, e as palavras vinham da tabela enquanto a SINTAXE não — há
+    // línguas em que a contagem vem à frente do nome.
+    //
+    // ⭐⭐ **E a UNIDADE vem do DONO dela** (`line/3DModeling`, 2026-09-19): as duas linhas curaram
+    // este mesmo rodapé e cada uma viu metade. O `ms` não é uma palavra deste painel — é a unidade,
+    // e o vocabulário dela já existe com dono ([`Unit::Milliseconds`]). *Quando o recurso já tem
+    // dono, o texto é o dele* — escrito na frase da tabela, ele seria a SEGUNDA fonte do mesmo
+    // símbolo. ⚠️ E ele é um símbolo SI: não se traduz, logo o sítio dele é o código e não a tabela.
     let mut line = ph2d_i18n::tr_with(
         "panel.model3d.footer",
         &[
@@ -493,6 +502,10 @@ fn paint_footer(ctx: &mut PaintCtx, snap: &state::ModelSnapshot, x: f32, w: f32,
             ("count", &snap.node_count),
             ("cost", &tr("panel.model3d.trace_cost")),
             ("ms", &format!("{:.1}", snap.last_trace_ms)),
+            (
+                "unit",
+                &ph2d_editor_core::widget::Unit::Milliseconds.suffix(),
+            ),
         ],
     );
     if hidden > 0 {

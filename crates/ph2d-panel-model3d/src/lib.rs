@@ -27,20 +27,27 @@ pub mod ids;
 pub mod state;
 
 mod area_bar;
+/// ⭐⭐⭐ **O balão de uma fileira** — o que o nome dela não chega para dizer. Ver [`dica`].
+mod dica;
 mod event;
 mod paint;
 /// As três formas de uma linha do painel — ver [`paint_rows`].
 mod paint_rows;
+/// A quarta forma, irmã por tecto de LOC: uma linha que é uma COR — ver [`paint_rows_swatch`].
+mod paint_rows_swatch;
 mod populate;
 
 pub use area_bar::publish as publish_area_bar;
-/// ⭐⭐⭐ **A porta que diz o id da amostra de cor de uma fileira** — ver [`paint_rows::swatch_id`].
+/// ⭐⭐⭐ **A porta que diz o id da amostra de cor de uma fileira** — ver
+/// [`paint_rows_swatch::swatch_id`].
 ///
 /// ⚠️ **Exposta de propósito**: quem PUBLICA fileiras de cor (a camada de estilo vive noutra crate)
 /// tem de poder provar que as suas não partilham um id, e essa prova é o que faltava quando cinco
 /// cores do estilo passaram a mudar todas ao mesmo tempo.
-pub use paint_rows::swatch_id;
-pub use populate::{CHIP_FAMILY_COUNT, MAX_MODES, MAX_ROWS};
+pub use paint_rows_swatch::swatch_id;
+pub use populate::{
+    CHIP_FAMILY_COUNT, EXTRAS_DE_UM_NO, MAX_MODES, MAX_ROWS, MAX_ROWS_DE_UM_NO, MAX_SCENE_ROWS,
+};
 
 /// O identificador do painel — a **chave de visibilidade** que o shell usa para o abrir.
 ///
@@ -98,3 +105,11 @@ impl Panel for Model3dPanel {
         populate::populate(store);
     }
 }
+
+/// ⭐ **O sufixo que transforma a chave de uma fileira na chave do BALÃO dela** — ver o módulo
+/// `dica`.
+///
+/// ⚠️ **Exposto de propósito**: o gate do HR-15 desta crate precisa dele para tolerar uma dica
+/// DECLARADA e ainda sem fileira. Uma chave composta em runtime é invisível ao extractor de «chaves
+/// usadas», e sem esta porta ela seria acusada de órfã — e apagada.
+pub const DICA_SUFIXO: &str = dica::SUFIXO;

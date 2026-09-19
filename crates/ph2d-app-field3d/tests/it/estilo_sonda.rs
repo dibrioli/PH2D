@@ -391,7 +391,9 @@ fn sonda_a5_a_cura_medida_no_pixel() {
         curvature: Curvature {
             convex: ph2d_app_field3d::materials::colour_from_srgb8([255, 150, 40]),
             concave: ph2d_app_field3d::materials::colour_from_srgb8([30, 60, 200]),
-            sharpness: sharp,
+            edge_sharpness: sharp,
+            cavity_sharpness: sharp,
+            ..Curvature::default()
         },
         ..Style::default()
     };
@@ -511,7 +513,9 @@ fn sonda_a4_o_censo_dos_dez_botoes() {
         curvature: Curvature {
             convex: ph2d_app_field3d::materials::colour_from_srgb8([255, 150, 40]),
             concave: ph2d_app_field3d::materials::colour_from_srgb8([30, 60, 200]),
-            sharpness: 1.0,
+            edge_sharpness: 1.0,
+            cavity_sharpness: 1.0,
+            ..Curvature::default()
         },
         zones: Zones {
             shadow: ph2d_app_field3d::materials::colour_from_srgb8([40, 70, 180]),
@@ -867,7 +871,9 @@ fn sonda_a3_os_cinco_tectos() {
         curvature: Curvature {
             convex: ph2d_app_field3d::materials::colour_from_srgb8([255, 150, 40]),
             concave: ph2d_app_field3d::materials::colour_from_srgb8([30, 60, 200]),
-            sharpness: sharp,
+            edge_sharpness: sharp,
+            cavity_sharpness: sharp,
+            ..Curvature::default()
         },
         ..Style::default()
     };
@@ -951,3 +957,114 @@ fn sonda_a3_os_cinco_tectos() {
         println!("{s:>6.2} | {n1:>6} / {n8:>6} · {pior}");
     }
 }
+
+/// ⭐⭐⭐ **A CURA: a suavidade AMACIA a borda da tinta por curvatura, e não mata a tinta.**
+///
+/// Report do dono (2026-09-19, com foto): *«Edge tint e Cavity tint com bordas muito duras sem
+/// ajustes finos, não me parece certo.»*
+///
+/// # ⛔ Porque este gate mede o PIXEL e não a lei
+///
+/// A lei ([`ph2d_style::Style::curvature_tinted`]) está **ilibada**: ela é uma função por ponto de
+/// uma grandeza constante por troço, e *uma função por ponto de um campo constante por troço é
+/// constante por troço*. ⇒ nenhum gate na `ph2d-style` pode ver esta cura — ela vive na DISTÂNCIA a
+/// que a curvatura é medida, a montante, e só o pixel a mostra.
+///
+/// # As três metades, e cada uma fecha um buraco diferente
+///
+/// 1. **A borda AMACIA** — o degrau de byte entre píxeis vizinhos cai, e a régua tem o CONTROLO ao
+///    lado (a mesma imagem sem estilo nenhum). Sem o controlo, «169 bytes» não quer dizer nada.
+/// 2. **A tinta SOBREVIVE** — as covas continuam côncavas. É a cerca que o
+///    [`Curvature::MAX_SOFTNESS`] existe para pôr: medir de longe demais apaga a feição, e um botão
+///    que amacia até a tinta desaparecer não é um ajuste fino, é um interruptor.
+/// 3. **A omissão do PRODUTO está do lado macio** — senão a cura existiria e o artista não a
+///    receberia, que é o defeito que o `CLAUDE.md` §0.0 chama de *o caminho lento a definir o produto*.
+#[test]
+fn a_suavidade_amacia_a_borda_e_nao_mata_a_tinta() {
+    let (doc, reg, cam, raio) = cena();
+    let g = trace(&doc, &reg, &cam, 320, 240);
+    let points = luz(&cam);
+    // Um estilo que ACENDE as duas tintas — sem elas a curvatura nem é lida.
+    let tinta = |softness: f32| Style {
+        curvature: Curvature {
+            convex: [1.0, 0.35, 0.2],
+            concave: [0.2, 0.4, 1.0],
+            softness,
+            ..Curvature::default()
+        },
+        ..Style::default()
+    };
+    // ⚠️ **O `eps` sai da MESMA porta que o produto usa** — ver
+    // [`ph2d_field_render::Presentation::curvature_eps`]. ⛔ Uma fracção multiplicada à mão aqui
+    // seria a segunda resposta, e ela divergiria no dia em que o piso mudasse.
+    //
+    // ⚠️ **O canal é trocado NO SÍTIO** e não por uma cópia do G-buffer: o [`Gbuffer`] não é `Clone`
+    // de propósito (ele é o quadro, não um valor), e torná-lo clonável para servir um teste seria
+    // mudar o produto para caber no arnês.
+    let mut g = g;
+    let pinta_com = |g: &mut Gbuffer, softness: f32| {
+        let pres = Presentation {
+            look: Look::default(),
+            style: tinta(softness).sanitized(),
+            piece_radius: raio,
+        };
+        g.curvature_style = curvatura_da_cena(&doc, &reg, g, pres.curvature_eps());
+        let img = pinta(g, &cam, &points, pres.style, raio, Look::default());
+        let kr: Vec<f32> = g.curvature_style.iter().map(|v| v * raio).collect();
+        (degrau_de_byte(g, &img).1, kr)
+    };
+
+    // O CONTROLO: a mesma cena sem estilo nenhum. É ele que dá escala ao número.
+    let sem_estilo = degrau_de_byte(
+        &g,
+        &pinta(&g, &cam, &points, Style::default(), raio, Look::default()),
+    )
+    .1;
+
+    let (duro, kr_duro) = pinta_com(&mut g, Curvature::MIN_SOFTNESS);
+    let (macio, kr_macio) = pinta_com(&mut g, Curvature::SOFTNESS);
+    println!(
+        "\n== a cura ==\ncontrolo (sem estilo) p99 = {sem_estilo:.0}\n\
+         piso   ({:.4}) p99 = {duro:.0}  ⇒ {:.2}× o controlo\n\
+         fábrica({:.4}) p99 = {macio:.0}  ⇒ {:.2}× o controlo",
+        Curvature::MIN_SOFTNESS,
+        duro / sem_estilo,
+        Curvature::SOFTNESS,
+        macio / sem_estilo,
+    );
+
+    // (1) ⭐ A borda AMACIA, e a barra é uma FRACÇÃO do que o piso entrega — não um número escolhido.
+    assert!(
+        macio < duro * 0.75,
+        "a suavidade de fábrica não amacia a borda: {macio:.0} contra {duro:.0}"
+    );
+    // ⚠️ **Piso de população da régua**: com a tinta apagada os dois lados leriam o controlo e a
+    // desigualdade acima seria trivialmente falsa OU trivialmente verdadeira por ruído.
+    assert!(
+        duro > sem_estilo * 2.0,
+        "a régua não vê o fenómeno: o piso lê {duro:.0} contra um controlo de {sem_estilo:.0}"
+    );
+
+    // (2) ⛔ A tinta SOBREVIVE — as covas continuam côncavas nas duas pontas do botão.
+    for (nome, kr) in [("piso", &kr_duro), ("fábrica", &kr_macio)] {
+        let mut v: Vec<f64> = (0..kr.len())
+            .filter(|&i| g.hit[i])
+            .map(|i| f64::from(kr[i]))
+            .collect();
+        ordena(&mut v);
+        let p05 = perc(&v, 0.05);
+        println!("{nome}: p05 de H·R = {p05:.3}");
+        assert!(
+            p05 < -0.5,
+            "com a suavidade em «{nome}» as covas deixaram de ser côncavas (p05 = {p05:.3}): a \
+             Cavity Tint morreu"
+        );
+    }
+}
+
+/// ⭐⭐ **A OMISSÃO DO PRODUTO ESTÁ DO LADO MACIO — e é erro de COMPILAÇÃO, não um teste.**
+///
+/// Sem isto a cura existiria e o artista não a receberia, que é o defeito que o `CLAUDE.md` §0.0
+/// chama de *o caminho lento a definir o produto*. ⚠️ Um `assert!` sobre constantes é dobrado pelo
+/// compilador — ver o irmão em `ph2d-style/src/tests_botoes.rs`.
+const _: () = assert!(Curvature::SOFTNESS >= Curvature::MIN_SOFTNESS * 4.0);

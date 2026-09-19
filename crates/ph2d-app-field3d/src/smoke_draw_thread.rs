@@ -285,20 +285,34 @@ pub(crate) fn traca(p: &Pedido) {
             //
             // ⚠️ **O passo é o da SEGUNDA diferença e sai da PEÇA**, nunca da vista: ver
             // [`ph2d_field_render::curvatura::eps_para`], onde a medição está.
-            let alguem_le_a_curvatura = surfaces
+            //
+            // ⭐⭐⭐ **E SÃO DUAS ASSADURAS, porque são DUAS PERGUNTAS** (auditoria de 2026-09-19,
+            // `docs/Render3d/11` §10). O material pede o **óptimo de PRECISÃO** (o vale do erro da
+            // segunda diferença); o estilo pede uma **ESCALA ARTÍSTICA**, que é a única alavanca que
+            // existe sobre a dureza da borda — o campo de curvatura é constante por troço, logo
+            // nenhum multiplicador aplicado a ele pode produzir um gradiente.
+            //
+            // ⚠️ **Cada uma só corre se o consumidor DELA estiver vivo**, e é isso que faz o preço
+            // ser zero no caminho de omissão e na cena de quem tinge sem jade: a segunda assadura
+            // custa `5` avaliações de campo por pixel acertado, e só quando os dois lêem.
+            let material_le = surfaces
                 .all
                 .iter()
-                .any(ph2d_material::Surface::reads_curvature)
-                || p.style.reads_curvature();
+                .any(ph2d_material::Surface::reads_curvature);
             // ⚠️ **A bola é a MESMA que a apresentação já derivou** — ver o `piece_radius` lá em
-            // cima. ⛔ Derivá-la outra vez aqui seria a segunda resposta à mesma pergunta, e a que
-            // passa a discordar no dia em que alguém mexa numa delas.
-            if alguem_le_a_curvatura && apresentacao.piece_radius > 0.0 {
+            // cima. ⛔ Derivá-la outra vez aqui seria a segunda resposta à mesma pergunta.
+            //
+            // ⭐⭐⭐ **E a decisão inteira vive na PORTA** ([`ph2d_field_render::curvatura::assar_canais`]):
+            // quem lê o quê, com que passo, e se vale a pena pagar. Escrita em linha aqui, ela
+            // divergiu do arnês dos gates no dia em que nasceu — e um arnês que monta o estado à mão
+            // mede outro programa.
+            if material_le || apresentacao.reads_curvature() {
                 let mut eval = ph2d_field_eval::hybrid::Hybrid::new(&p.doc, &p.reg);
-                g.curvature = ph2d_field_render::curvatura::do_gbuffer(
+                ph2d_field_render::curvatura::assar_canais(
                     &mut eval,
-                    &g,
-                    ph2d_field_render::curvatura::eps_para(apresentacao.piece_radius),
+                    &mut g,
+                    material_le,
+                    &apresentacao,
                 );
             }
             // ⭐⭐⭐ **A SOMBRA COM A BORDA MOLE, que só um material TRANSLÚCIDO lê**

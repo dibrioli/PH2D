@@ -99,7 +99,14 @@ fn o_id_de_uma_amostra_e_derivado_num_sitio_so() {
     // ⚠️ **Os ficheiros de PRODUÇÃO deste assunto.** Os `tests/it/` e os `_tests.rs` ficam de fora
     // de propósito: um gate que constrói o id esperado para o comparar é um leitor legítimo — ele
     // afirma a porta em vez de a contornar.
-    const FONTES: [(&str, &str); 3] = [
+    // ⛔⛔ **A porta MUDOU DE FICHEIRO em 2026-09-19 e este censo reprovou em voz alta** — o
+    // `paint_rows.rs` passou o tecto de LOC e a linha-COR saiu para um irmão por assunto. *Uma
+    // isenção de censo é propriedade do CÓDIGO e não do sítio onde ele está: ela viaja com ele*
+    // (`CLAUDE.md` §5.0), e a cura foi mudar o endereço — nunca alargar o censo a «qualquer
+    // ficheiro».
+    const DONO: &str = "paint_rows_swatch.rs";
+    const FONTES: [(&str, &str); 4] = [
+        (DONO, include_str!("paint_rows_swatch.rs")),
         ("paint_rows.rs", include_str!("paint_rows.rs")),
         ("paint.rs", include_str!("paint.rs")),
         ("populate.rs", include_str!("populate.rs")),
@@ -124,10 +131,7 @@ fn o_id_de_uma_amostra_e_derivado_num_sitio_so() {
         !chamadas.is_empty(),
         "o censo não achou chamada nenhuma — ele deixou de medir o que diz medir"
     );
-    let fora: Vec<_> = chamadas
-        .iter()
-        .filter(|(f, _)| *f != "paint_rows.rs")
-        .collect();
+    let fora: Vec<_> = chamadas.iter().filter(|(f, _)| *f != DONO).collect();
     assert!(
         fora.is_empty(),
         "o id de uma amostra é cunhado fora da porta `swatch_id`: {fora:?}"
@@ -143,7 +147,7 @@ fn o_id_de_uma_amostra_e_derivado_num_sitio_so() {
 
 /// ⭐⭐ **UMA FAMÍLIA SEM ID NÃO RECEBE UM ID INVENTADO** — a outra metade da porta.
 ///
-/// ⛔ O braço final do [`crate::paint_rows::swatch_id`] responde `None`, e **era ele o defeito**:
+/// ⛔ O braço final do [`crate::paint_rows_swatch::swatch_id`] responde `None`, e **era ele o defeito**:
 /// escrito como `Some(…, 0)` ele dava a toda família nova o mesmo controlo, em silêncio. Sem este
 /// gate ele é uma linha que a mutação não consegue matar — *um comentário com sintaxe de código*.
 ///
@@ -172,7 +176,7 @@ fn uma_familia_sem_id_devolve_none() {
         ph2d_field::Param::Style(0),
     ] {
         assert!(
-            crate::paint_rows::swatch_id(&linha(vivo)).is_some(),
+            crate::paint_rows_swatch::swatch_id(&linha(vivo)).is_some(),
             "{vivo:?}: uma família que TEM amostra ficou sem id"
         );
     }
@@ -184,7 +188,7 @@ fn uma_familia_sem_id_devolve_none() {
         ph2d_field::Param::Pos(0),
     ] {
         assert_eq!(
-            crate::paint_rows::swatch_id(&linha(alheio)),
+            crate::paint_rows_swatch::swatch_id(&linha(alheio)),
             None,
             "{alheio:?}: recebeu um id de amostra inventado"
         );

@@ -29,7 +29,9 @@ pub(crate) fn vestido() -> Style {
         curvature: Curvature {
             convex: [1.0, 0.55, 0.35],
             concave: [0.30, 0.45, 1.0],
-            sharpness: 2.0,
+            edge_sharpness: 2.0,
+            cavity_sharpness: 2.0,
+            ..Curvature::default()
         },
         zones: Zones {
             shadow: [0.55, 0.70, 1.0],
@@ -117,10 +119,23 @@ fn os_dois_motores_recebem_a_mesma_apresentacao() {
     );
 
     // (3) e os DOIS braços passam essa mesma variável.
+    // ⚠️⚠️ **São TRÊS desde 2026-09-19, e a terceira é NOMEADA e verificada por POSIÇÃO.**
+    //
+    // As duas de sempre são os dois motores. A terceira é a porta que assa os canais de curvatura
+    // ([`ph2d_field_render::curvatura::assar_canais`]), que precisa da apresentação para saber **a
+    // que distância** medir a curvatura do estilo. ⛔ *Um censo que aceitasse «três ou mais» deixaria
+    // de ver o dia em que um quarto braço montasse a sua própria apresentação* — por isso a
+    // contagem continua EXACTA e a excepção é identificada pelo chamador, não pelo número.
     let passagens = fonte.matches("&apresentacao,").count();
     assert_eq!(
-        passagens, 2,
-        "esperava a apresentação passada aos DOIS motores e encontrei {passagens} passagem(ns)"
+        passagens, 3,
+        "esperava a apresentação passada aos DOIS motores e à porta da curvatura, e encontrei \
+         {passagens} passagem(ns)"
+    );
+    assert!(
+        fonte.contains("ph2d_field_render::curvatura::assar_canais(")
+            && fonte.contains("&apresentacao,\n                );"),
+        "a terceira passagem não é a porta que assa a curvatura"
     );
 
     // (4) ⚠️⚠️ **O CENSO, com a excepção NOMEADA — e ela apareceu porque o gate a acusou.**
@@ -160,15 +175,36 @@ fn os_dois_motores_recebem_a_mesma_apresentacao() {
 /// report do dono.
 #[test]
 fn a_curvatura_e_medida_quando_o_estilo_a_le() {
+    // ⭐⭐⭐ **A PREMISSA DESTE GATE MUDOU em 2026-09-19, e ele é reescrito com a morte à vista.**
+    //
+    // Ele censava o TEXTO `|| p.style.reads_curvature()` no quadro — e essa linha desapareceu quando
+    // a decisão inteira (quem lê o quê, com que passo) passou a viver numa PORTA. Censar o texto
+    // antigo passaria a reprovar sobre produto CERTO; censar o novo é medir a porta, que é mais
+    // forte: ela tem dois consumidores e o arnês dos gates é um deles.
     let cpu = include_str!("smoke_draw_thread.rs");
     assert!(
-        cpu.contains("|| p.style.reads_curvature()"),
-        "o caminho de REFERÊNCIA não pergunta ao estilo se ele lê a curvatura"
+        cpu.contains("ph2d_field_render::curvatura::assar_canais("),
+        "o caminho de REFERÊNCIA não passa pela porta que assa os canais de curvatura"
+    );
+    // ⚠️ **E a porta pergunta ao estilo** — sem esta metade, um `assar_canais` que só olhasse ao
+    // material deixaria o artista a mexer na tinta de aresta sem um pixel se mover.
+    let porta = include_str!("../../ph2d-field-render/src/curvatura.rs");
+    assert!(
+        porta.contains("if pres.reads_curvature() {"),
+        "a porta não pergunta ao estilo se ele lê a curvatura"
     );
     let wgsl = include_str!("../../ph2d-field-gpu/src/paint_wgsl_sondas.rs");
+    // ⚠️ **A premissa mudou em 2026-09-19:** o dispositivo lia a bandeira do estilo DENTRO de uma
+    // soma de três (`|| pintor.modo2.z != 0u`), porque havia uma curvatura só. Com as duas medições
+    // separadas ela passou a ser a condição de um `if` PRÓPRIO — que é mais forte, não menos: o
+    // estilo passou a poder ser medido **sem** o material o ser.
     assert!(
-        wgsl.contains("|| pintor.modo2.z != 0u"),
-        "o caminho do DISPOSITIVO não lê a bandeira do estilo"
+        wgsl.contains("if (pintor.modo2.z != 0u) {"),
+        "o caminho do DISPOSITIVO não mede a curvatura DO ESTILO por si"
+    );
+    assert!(
+        wgsl.contains("k_estilo * pintor.knobs.w"),
+        "o dispositivo passa ao estilo a curvatura do MATERIAL e não a dele"
     );
     let setup = include_str!("../../ph2d-field-gpu/src/paint.rs");
     assert!(
@@ -373,7 +409,8 @@ fn o_dispositivo_e_a_referencia_pintam_o_mesmo_estilo() {
     // tabela no cabeçalho. Tudo o resto é o estilo vestido a sério.
     let style = Style {
         curvature: Curvature {
-            sharpness: 0.2,
+            edge_sharpness: 0.2,
+            cavity_sharpness: 0.2,
             ..vestido().curvature
         },
         ..vestido()
@@ -487,20 +524,17 @@ fn sombreia(
     let mut g = ph2d_field_render::trace(doc, reg, cam, W, H);
     // ⚠️ **A curvatura é assada quando ALGUÉM a lê** — a mesma soma de duas portas que o produto
     // faz. Sem isto o gate da tinta de aresta mediria uma peça com curvatura `0` em todo lado.
-    if (surfaces
+    // ⭐⭐⭐ **PELA PORTA DO PRODUTO**, e não por uma cópia da decisão.
+    //
+    // ⛔ A 1.ª redacção deste arnês assava **um** canal enquanto o produto assava **dois**, e o gate
+    // da tinta de aresta acusou um botão VIVO de não chegar ao pixel. *Um arnês que monta o estado à
+    // mão mede outro programa* — e foi o gate a apanhá-lo, que é o modo de falha bom.
+    let material_le = surfaces
         .all
         .iter()
-        .any(ph2d_material::Surface::reads_curvature)
-        || pres.style.reads_curvature())
-        && let Some(bola) = ph2d_field_eval::bounds::bounding_ball(doc, reg)
-    {
-        let mut eval = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
-        g.curvature = ph2d_field_render::curvatura::do_gbuffer(
-            &mut eval,
-            &g,
-            ph2d_field_render::curvatura::eps_para(bola.radius),
-        );
-    }
+        .any(ph2d_material::Surface::reads_curvature);
+    let mut eval = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
+    ph2d_field_render::curvatura::assar_canais(&mut eval, &mut g, material_le, pres);
     let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
     ph2d_field_render::shade_render(
         &g,

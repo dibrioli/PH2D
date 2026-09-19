@@ -1270,6 +1270,29 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `mul_add`»*, honrado no FONTE e violado pelo COMPILADOR (`1 680/1 680` fundido contra `1 463`
   solto), e a contracção **não é exprimível em WGSL hoje**; mais o `pow` do WGSL que não é o `powf`
   do Rust (pior `44` ULP, o erro a escalar com o expoente) e os **subnormais esvaziados a zero**.
+  ⭐⭐⭐ **E A CURA SHIPOU no mesmo dia** (ordem do dono: *«siga como achar melhor mas coloque no
+  estado da arte»* — [`11` §11](docs/Render3d/11_a_camada_de_estilo.md)). **(1) A curvatura ganhou uma
+  ESCALA** (`Curvature::softness`, fracção do raio da peça, fábrica `0,064`): medido no caminho do
+  produto com o CONTROLO ao lado, o degrau de byte entre píxeis vizinhos cai de **`3,57×`** para
+  **`1,40×`** a imagem sem estilo, e as covas continuam côncavas (`p05` de `H·R` `−3,358 → −2,256`).
+  **(2) A nitidez PARTIU-SE EM DUAS** (`edge_sharpness` · `cavity_sharpness`), e a justificação é
+  nossa e medida: filetes a `H·R ≈ 11`–`34` contra covas a `≈ −3`–`−5` ⇒ *nenhum limiar partilhado
+  serve os dois*. **(3) O tecto delas desceu de `8` para `2`**, que é o que a auditoria mediu.
+  ⭐⭐⭐ **A decisão de assar vive numa PORTA com DOIS consumidores** (`curvatura::assar_canais`) — o
+  quadro e o arnês dos gates —, e ⛔ *escrita em linha ela divergiu no dia em que nasceu*: o produto
+  assava dois canais, o arnês assava **um**, e o gate acusou um botão VIVO de não chegar ao pixel.
+  ⚠️ **O preço é ZERO no caminho de omissão** (cada canal só é assado se o consumidor DELE estiver
+  vivo) e ⭐ a escala maior **cura a dívida da paridade de graça**: a divergência é `1` ULP amplificado
+  por `1/(4ε²)`, logo um `ε` `10×` maior divide-a por `100`. ⭐⭐⭐ **E o painel DIZ porque uma fileira
+  está apagada** — a `Linha::apagada` liga o `ParamRow::inert` que existia desde 18/09 e que o
+  cabeçalho do `estilo.rs` **citava sem cumprir**; o gate tem as **duas** metades (de fábrica há `≥ 4`
+  apagadas **e** com os gestos feitos não sobra nenhuma), senão «apagar» viraria licença. ⚠️ A
+  arrumação vai de `20` para `24` floats com **RESERVA declarada** (`5` cores + `7` escalares = `22`,
+  que o `vec4` arredonda) — *uma posição sem dono e sem régua é onde o campo seguinte aterra por
+  engano*. ⛔ **E a premissa de uma recusa MORREU:** o doc da const do shader recusava o `ε` por
+  argumento *«para não mudar o produto ao serviço do instrumento»* — verdade enquanto o PRODUTO
+  tivesse um `ε` só; hoje tem dois, e a nota é reescrita com a morte à vista (§0.0). **Mutação 5 de
+  5**, com controlo.
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

@@ -184,3 +184,43 @@ pub fn do_gbuffer(eval: &mut Hybrid, g: &crate::Gbuffer, eps: f32) -> Vec<f32> {
     }
     out
 }
+
+/// ⭐⭐⭐ **A PORTA QUE ASSA OS DOIS CANAIS DE CURVATURA** — a decisão inteira, num sítio só.
+///
+/// # ⛔⛔ Porque ela existe, e porque ela é uma PORTA e não uma conveniência
+///
+/// Desde a auditoria de 2026-09-19 (`docs/Render3d/11` §10) o quadro tem **duas** curvaturas, porque
+/// são **duas perguntas**: o material pede o **óptimo de PRECISÃO** ([`eps_para`], o vale do erro da
+/// segunda diferença) e o estilo pede a **ESCALA ARTÍSTICA** ([`crate::Presentation::curvature_eps`]),
+/// que é a única alavanca sobre a dureza da borda da tinta.
+///
+/// ⚠️⚠️ **E isso são QUATRO decisões acopladas** — quem lê o quê, com que passo, e se vale a pena
+/// pagar. Escritas em linha em cada chamador, elas divergem: foi exactamente o que aconteceu no dia
+/// em que esta lei nasceu — o produto assava os dois canais e o arnês dos gates assava **um**, logo
+/// a tinta de aresta media `0` e o gate acusou um botão VIVO de não chegar ao pixel.
+///
+/// ⇒ *um arnês que monta o estado à mão mede outro programa*, e a cura é ele entrar pela mesma
+/// porta. Hoje são **dois** consumidores (o quadro do produto e os gates), e o terceiro chega de
+/// graça.
+///
+/// # ⭐ O preço, e porque ele é zero no caminho de omissão
+///
+/// Cada canal só é assado se o consumidor **dele** estiver vivo. Com o estilo de fábrica (tintas
+/// brancas) e sem subsuperfície maciça, **nenhum** corre e o quadro não paga uma amostra de campo.
+/// Com um só, uma assadura. Com os dois, duas — `5` avaliações de campo por pixel acertado cada.
+pub fn assar_canais(
+    eval: &mut Hybrid,
+    g: &mut crate::Gbuffer,
+    material_le: bool,
+    pres: &crate::Presentation,
+) {
+    if pres.piece_radius <= 0.0 {
+        return;
+    }
+    if material_le {
+        g.curvature = do_gbuffer(eval, g, eps_para(pres.piece_radius));
+    }
+    if pres.reads_curvature() {
+        g.curvature_style = do_gbuffer(eval, g, pres.curvature_eps());
+    }
+}

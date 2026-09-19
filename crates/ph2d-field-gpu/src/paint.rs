@@ -81,6 +81,14 @@ pub struct PaintSetup<'a> {
     /// ⚠️ Ele **vem da CPU** e não se deriva aqui pela razão de sempre: duas respostas à mesma
     /// pergunta divergem, e a paridade desta linha é `100,000 %`.
     pub curv_eps: f32,
+    /// ⭐⭐⭐ **O PASSO da curvatura que o ESTILO lê** — `softness × raio_da_peça`, calculado pela
+    /// [`ph2d_field_render::Presentation::curvature_eps`].
+    ///
+    /// ⛔⛔ **Ele é CALCULADO na CPU e LIDO aqui, e não derivado no shader** — ver
+    /// [`ph2d_style::wgsl::EPS_DO_ESTILO`], onde a bissecção está: derivá-lo lá dentro custava `2`
+    /// bytes em `4 519` píxeis do miolo, **não** por a aritmética ser diferente, mas por o TEXTO da
+    /// função mudar e a placa contrair `a*b + c` de outra maneira.
+    pub curv_eps_estilo: f32,
     /// ⭐⭐⭐ **A CAMADA DE ESTILO da cena** (`docs/Render3d/03`, a `W8`) — os botões da direcção de
     /// arte, que entram entre a física e o olhar.
     ///
@@ -201,7 +209,31 @@ pub(crate) fn fonte(
         // ⚠️ **Lida do sítio que a declara** ([`crate::paint_wgsl::CURVATURA`]), porque ela tem um
         // SEGUNDO leitor: o instrumento que mede a curvatura nos dois motores. *Uma lei com dois
         // leitores não se escreve duas vezes.*
-        .replace("{CURVATURA}", crate::paint_wgsl::CURVATURA)
+        // ⛔⛔⛔ **DUAS funções do MESMO molde, e a razão é MEDIDA** (2026-09-19): quando o `ε`
+        // passou a ser ARGUMENTO, a imagem do dispositivo divergiu da referência em **2–3 bytes
+        // sobre `4 519` píxeis do MIOLO**. ⚠️ **Não era a lei nem o `ε`** — bissectado: a divergência
+        // é **idêntica** com o ganho antigo e com a suavidade no piso. O que muda é o TEXTO da
+        // função: a placa **contrai `a*b + c` num `fma`** de outra maneira, e a segunda diferença
+        // amplifica essa última casa por `1/(4ε²)`.
+        //
+        // ⚠️⚠️ **A recusa que o doc daquela const escrevia tinha uma razão REAL e enunciava OUTRA:**
+        // ela dizia *«mudaria o texto do produto para servir o instrumento»*, e o perigo não era o
+        // instrumento — era **a aritmética da placa mudar com o texto**. ⇒ o molde dá à medição do
+        // MATERIAL um corpo byte-idêntico ao de ontem (`let e = pintor.knobs.z;`) e ao ESTILO o
+        // mesmo corpo com outra primeira linha. *Uma lei, dois leitores, e nenhum texto novo no
+        // caminho que já shipava.*
+        .replace("{CURVATURA}", &{
+            let molde = |nome: &str, eps: &str| {
+                crate::paint_wgsl::CURVATURA
+                    .replace("{NOME}", nome)
+                    .replace("{EPS}", eps)
+            };
+            format!(
+                "{}{}",
+                molde("curvatura_em", "pintor.knobs.z"),
+                molde("curvatura_do_estilo_em", "pintor.estilo.extra.z"),
+            )
+        })
         // ⚠️ **Lido do ficheiro que o declara**, nunca transcrito — a mesma lei do `{BLUR_COS}`.
         .replace(
             "{FADE}",
@@ -471,7 +503,12 @@ pub(crate) fn pinta(
     //
     // ⚠️ **O [`ph2d_style::wgsl::pack`] é a porta**: ele arruma E saneia, logo nenhum `NaN` de
     // painel chega ao dispositivo por alguém se ter esquecido de uma chamada.
-    for f in ph2d_style::wgsl::pack(&pintor.style) {
+    let mut bloco = ph2d_style::wgsl::pack(&pintor.style);
+    // ⭐⭐⭐ **A posição que o `pack` deixa a zero de propósito** — ver
+    // [`ph2d_style::wgsl::EPS_DO_ESTILO`]: o passo não é do `Style` (ele precisa do raio da PEÇA),
+    // e é a montagem que o escreve.
+    bloco[ph2d_style::wgsl::EPS_DO_ESTILO] = pintor.curv_eps_estilo;
+    for f in bloco {
         u.extend_from_slice(&f.to_le_bytes());
     }
     let ub_pintor = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {

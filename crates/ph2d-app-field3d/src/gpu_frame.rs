@@ -297,6 +297,11 @@ pub fn paint_com(
         // shader sai antes de tocar no campo.
         curv_eps: ph2d_field_eval::bounds::bounding_ball(doc, reg)
             .map_or(0.0, |b| ph2d_field_render::curvatura::eps_para(b.radius)),
+        // ⭐⭐⭐ **O passo do ESTILO, da MESMA porta que a referência usa** — ver
+        // [`ph2d_field_render::Presentation::curvature_eps`]. ⛔ Derivá-lo aqui à mão seria a segunda
+        // resposta à pergunta *«a que distância a curvatura do estilo é medida?»*, e a que passa a
+        // discordar da CPU no dia em que uma das duas mude.
+        curv_eps_estilo: pres.curvature_eps(),
         // ⭐ **A difusa branca do chão** — a régua da escurecida, empacotada como os outros.
         catcher: &chao_packed,
         ground_bounce: &campo_do_chao,

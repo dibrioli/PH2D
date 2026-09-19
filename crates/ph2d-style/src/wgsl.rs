@@ -28,7 +28,38 @@
 /// ⚠️ O consumidor declara o campo como `array<vec4<f32>, 5>` ou como cinco campos nomeados; o que
 /// não pode é contar este número de cabeça. *Uma contagem escrita de memória é como a arrumação
 /// deixa de bater sem ninguém notar.*
-pub const PACKED: usize = 20;
+pub const PACKED: usize = 24;
+
+/// ⭐ **O valor das posições de RESERVA da arrumação** — as que não têm dono.
+///
+/// ⚠️ **Ele é `0` e há gate**: a arrumação tem `5` cores e `7` escalares (`22` floats) e o
+/// alinhamento de `vec4` pede `24`. As duas que sobram são declaradas aqui em vez de ficarem
+/// simplesmente a zero por acidente — *uma posição sem dono e sem régua é onde o campo seguinte
+/// aterra por engano*, e o censo das fileiras do painel lê esta lista para saber o que **não** tem
+/// de ser alcançável.
+pub const RESERVA: f32 = 0.0;
+
+/// As posições de [`RESERVA`] na arrumação — **derivadas daqui**, nunca escritas noutro sítio.
+pub const RESERVADAS: [usize; 1] = [23];
+
+/// ⭐⭐⭐ **A posição do PASSO da curvatura do estilo — e ela NÃO é preenchida pelo [`pack`].**
+///
+/// # ⛔⛔ Porque um número que não é do [`crate::Style`] viaja no bloco dele
+///
+/// O passo é `softness × raio_da_peça`, e o raio **não é do estilo** — ele é da cena. Ele podia ser
+/// derivado dentro do shader (a suavidade e o raio já lá viajam), e **foi**, durante uma hora: a
+/// imagem do dispositivo divergiu da referência em `2` bytes sobre `4 519` píxeis do MIOLO.
+///
+/// ⭐⭐⭐ **Bissectado, não era a lei, nem o ganho, nem o `ε`** — as três trocas dão a MESMA
+/// divergência. Era o **TEXTO**: a função do estilo abria com uma *expressão* (`let e = max(a*b,
+/// piso);`) e a do material com uma *leitura de uniforme* (`let e = pintor.knobs.z;`), e a placa
+/// **contrai `a*b + c` num `fma`** conforme o texto — diferença que a segunda diferença amplifica
+/// por `1/(4ε²)`.
+///
+/// ⇒ *o passo é CALCULADO uma vez na CPU e LIDO no dispositivo*, e as duas funções passam a ter a
+/// mesma forma. ⚠️ Quem o escreve é a montagem do pintor (`ph2d_field_gpu::paint`), e é por isso
+/// que o [`pack`] deixa aqui um zero: **ele arruma o `Style`, e este número não é do `Style`.**
+pub const EPS_DO_ESTILO: usize = 22;
 
 /// ⭐⭐⭐ **A ARRUMAÇÃO** — de [`crate::Style`] para os `f32` que o uniforme leva.
 ///
@@ -39,6 +70,13 @@ pub const PACKED: usize = 20;
 /// | `2` | [`crate::Curvature::concave`] | [`crate::Zones::pivot`] |
 /// | `3` | [`crate::Zones::shadow`] | [`crate::Rim::width`] |
 /// | `4` | [`crate::Zones::highlight`] | [`crate::Style::indirect_saturation`] |
+/// | `5` | [`crate::Curvature::cavity_sharpness`] · [`crate::Curvature::softness`] · [`RESERVA`] | [`RESERVA`] |
+///
+/// ⚠️ **O sexto `vec4` é o único sem uma cor**, e isso é aritmética e não desleixo: são **cinco**
+/// cores e **sete** escalares, logo `5×3 + 7 = 22` floats, que arredondam a `24` por alinhamento de
+/// `vec4`. As duas posições que sobram são [`RESERVA`] **declarada e gateada a zero** — ⛔ *uma
+/// posição sem dono e sem gate é onde o próximo campo aterra por engano, e a arrumação deixa de bater
+/// sem ninguém notar.*
 ///
 /// ⚠️ **Os `w` não pertencem à cor ao lado deles** (a largura do contorno viaja com a tinta das
 /// sombras), e isso é deliberado: são cinco cores e cinco escalares, e emparelhá-los *por assunto*
@@ -60,7 +98,7 @@ pub fn pack(s: &crate::Style) -> [f32; PACKED] {
         s.curvature.convex[0],
         s.curvature.convex[1],
         s.curvature.convex[2],
-        s.curvature.sharpness,
+        s.curvature.edge_sharpness,
         s.curvature.concave[0],
         s.curvature.concave[1],
         s.curvature.concave[2],
@@ -73,6 +111,10 @@ pub fn pack(s: &crate::Style) -> [f32; PACKED] {
         s.zones.highlight[1],
         s.zones.highlight[2],
         s.indirect_saturation,
+        s.curvature.cavity_sharpness,
+        s.curvature.softness,
+        RESERVA,
+        RESERVA,
     ]
 }
 
@@ -93,7 +135,9 @@ pub fn unpack(v: &[f32; PACKED]) -> crate::Style {
         curvature: crate::Curvature {
             convex: [v[4], v[5], v[6]],
             concave: [v[8], v[9], v[10]],
-            sharpness: v[7],
+            edge_sharpness: v[7],
+            cavity_sharpness: v[20],
+            softness: v[21],
         },
         zones: crate::Zones {
             shadow: [v[12], v[13], v[14]],
@@ -149,6 +193,11 @@ struct Estilo {
     sombra: vec4<f32>,
     // xyz = a tinta das LUZES · w = a saturação da indirecta
     luz: vec4<f32>,
+    // ⭐ O SEXTO, e ele é o único sem cor: x = a nitidez da COVA · y = a suavidade da curvatura ·
+    // zw = RESERVA (ver `ph2d_style::wgsl::RESERVA` — o gate exige que sejam zero).
+    // ⚠️ A suavidade NÃO é lida por esta crate: ela decide o `eps` com que o CHAMADOR mede a
+    // curvatura, a montante, e viaja aqui só para o dispositivo a poder ler da MESMA arrumação.
+    extra: vec4<f32>,
 };
 
 const ST_LUMA: vec3<f32> = vec3<f32>({LUMA_R}, {LUMA_G}, {LUMA_B});
@@ -174,9 +223,11 @@ fn st_luma(rgb: vec3<f32>) -> f32 {
 
 // (1) A tinta da curvatura. ⚠️ Sem ramo: só um dos dois pesos pode ser diferente de zero.
 fn st_curvature_tinted(e: Estilo, rgb: vec3<f32>, curvature: f32) -> vec3<f32> {
-    let c = clamp(st_sane(curvature) * e.convexo.w, -1.0, 1.0);
-    let wc = max(c, 0.0);
-    let wv = max(-c, 0.0);
+    // ⭐⭐⭐ UM LIMIAR POR LADO — ver `ph2d_style::Curvature`: os filetes leem `H·R ≈ 11`–`34` e
+    // as covas `≈ −3`–`−5`, e nenhum limiar partilhado serve os dois.
+    let k = st_sane(curvature);
+    let wc = clamp(k * e.convexo.w, 0.0, 1.0);
+    let wv = clamp(-k * e.extra.x, 0.0, 1.0);
     // `1 + (t − 1)·w`, e nunca `mix`: com a tinta em `1` o parêntesis é exactamente `0`.
     let tint = vec3<f32>(1.0)
         + (e.convexo.xyz - vec3<f32>(1.0)) * wc

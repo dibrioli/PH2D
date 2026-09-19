@@ -200,7 +200,7 @@ fn ricochete_no_pixel(x: u32, y: u32, i: u32, n0: vec3<f32>) -> vec3<f32> {
 }
 
 // A luz que UM material devolve ao olho, já com o olhar — o `shade_render::radiance` da CPU.
-fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu_vis: f32, ric: vec3<f32>, k: f32) -> vec3<f32> {
+fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu_vis: f32, ric: vec3<f32>, k: f32, k_estilo: f32) -> vec3<f32> {
     // ⭐⭐⭐ **A OCLUSÃO É A SOMBRA DO CÉU** — ela multiplica o que o AMBIENTE entrega, e mais nada.
     // Não toca nas lâmpadas (que têm sombra a sério) nem na emissão.
     var rgb = mx_indirect(m, n, v) * ceu_vis;
@@ -248,11 +248,16 @@ fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu
     // sinal com o ruído da normal, e um contorno que pisca não é um contorno.
     // ⚠️ **A curvatura viaja em unidades da PEÇA** (`knobs.w` é o raio), senão o mesmo botão daria
     // outra tinta numa peça grande e numa pequena.
+    //
+    // ⛔⛔ **E ela é a `k_estilo`, NUNCA a `k` do material** (auditoria de 2026-09-19): as duas são
+    // a mesma grandeza medida a distâncias DIFERENTES — o material pede o óptimo de precisão, o
+    // estilo pede a escala que o artista escolheu, e é essa a única alavanca sobre a dureza da
+    // borda. *Escrever `k` aqui traria o degrau de volta sem uma linha de lei ter mudado.*
     let cena = st_apply(
         pintor.estilo,
         rgb + mx_emission(m, n, v),
         abs(dot(n, v)),
-        k * pintor.knobs.w,
+        k_estilo * pintor.knobs.w,
     );
     return vt_to_display(cena, pintor.knobs.x, pintor.modo.x);
 }
@@ -273,17 +278,25 @@ fn radiancia(p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, i: u32, ceu_vis: f32, ric
     //
     // ⛔ **Sem leitor, ZERO amostras de campo** — o `curv_eps` nem chega a ser lido, e o quadro é o
     // de sempre ao bit.
+    //
+    // ⭐⭐⭐ **E SÃO DUAS MEDIÇÕES, porque são DUAS PERGUNTAS** — o gémeo exacto do que o
+    // `smoke_draw_thread` faz na CPU. Cada uma só corre se o consumidor DELA estiver vivo, logo o
+    // caminho de omissão continua a não pagar amostra nenhuma.
     var k = 0.0;
-    let alguem_le = mat_le_curvatura(ma)
-        || (d.t > 0.0 && mat_le_curvatura(mb))
-        || pintor.modo2.z != 0u;
-    if (alguem_le) { k = curvatura_em(p); }
+    var k_estilo = 0.0;
+    let mat_le = mat_le_curvatura(ma) || (d.t > 0.0 && mat_le_curvatura(mb));
+    if (mat_le) { k = curvatura_em(p); }
+    // ⚠️ **O `ε` do estilo DERIVA-SE aqui do que já viaja** — a suavidade (fracção, `estilo.extra.y`)
+    // vezes o raio da peça (`knobs.w`) —, e é a MESMA aritmética que a
+    // `Presentation::curvature_eps` faz na CPU. ⛔ Enviá-lo já multiplicado seria a segunda resposta
+    // à mesma pergunta, e a que passa a discordar no dia em que uma das duas mude.
+    if (pintor.modo2.z != 0u) { k_estilo = curvatura_do_estilo_em(p); }
     // ⚠️ O gatherer do ricochete (`ler_mat_fosca`) NÃO recebe curvatura, e a CPU também não: ali a
     // subsuperfície maciça lê curvatura `0`, que o piso transforma no raio de `100`. *A paridade
     // daquele caminho é por construção, e não por um número.*
-    let ca = luz_do_material(com_a_curvatura(ma, k), n, v, p, i, ceu_vis, ric, k);
+    let ca = luz_do_material(com_a_curvatura(ma, k), n, v, p, i, ceu_vis, ric, k, k_estilo);
     if (d.t <= 0.0) { return ca; }
-    let cb = luz_do_material(com_a_curvatura(mb, k), n, v, p, i, ceu_vis, ric, k);
+    let cb = luz_do_material(com_a_curvatura(mb, k), n, v, p, i, ceu_vis, ric, k, k_estilo);
     return ca + (cb - ca) * d.t;
 }
 

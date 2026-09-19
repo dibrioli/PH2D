@@ -275,6 +275,39 @@ pub fn slider_with_chip_chip_rect(rect: Rect, label_w: f32, chip_w: f32) -> Rect
     )
 }
 
+/// ⭐⭐⭐ **ONDE O NOME desta row cai** — o espelho exacto do [`slider_with_chip_chip_rect`].
+///
+/// ⛔⛔ **Ele existe porque um painel tem linhas que NÃO são esta row e têm de se alinhar com ela.**
+/// Um facto travado (`ParamRow::inert`) e uma amostra de cor (`ParamRow::swatch`) substituem o
+/// controlo e continuam a ter um nome à esquerda e um valor à direita — e enquanto a repartição
+/// desta row só existia dentro do pintor dela, cada um escolhia a sua. Medido no painel de
+/// modelagem 3D (2026-09-19, auditoria da camada de estilo): **três** alinhamentos de rótulo no
+/// mesmo painel, com o desalinhamento a **crescer com a largura** no redesenho (`10 px` a `220`,
+/// `240 px` a `720`) e a ser `2 × Spacing::Md` no clássico.
+///
+/// ⚠️⚠️ **A APARÊNCIA escolhe, como no gémeo** — e é essa a metade que uma conta local nunca teria:
+/// no clássico o nome é a coluna EXTERNA de `label_w`, no redesenho é o que sobra **dentro** da
+/// caixa depois da coluna do valor. *Uma linha alinhada só num dos dois ecrãs alinha-se por
+/// acidente.*
+///
+/// ⚠️ **No clássico EMPILHADO o nome tem a linha inteira** — a mesma cerca que o gémeo aplica ao
+/// chip, e pela mesma razão: quando a row empilha, quem manda é a linha de cima.
+#[must_use]
+pub fn slider_with_chip_label_rect(rect: Rect, label_w: f32, chip_w: f32) -> Rect {
+    if !crate::paint::ui_is_redesign() {
+        if slider_with_chip_is_stacked(rect.w, label_w, chip_w) {
+            return Rect::new(rect.x, rect.y, rect.w, rect.h);
+        }
+        return Rect::new(rect.x, rect.y, label_w.max(0.0), rect.h);
+    }
+    let _ = label_w;
+    crate::widget::property_box::label_column(
+        rect,
+        chip_w,
+        crate::widget::property_box::FORM_ROWS_SHOW_DECORATOR,
+    )
+}
+
 /// Whether [`paint_slider_with_chip_layout_adaptive`] will STACK (demote the label to its own row) at
 /// `content_w` for the given `label_w` / `chip_w` — the same threshold the painter uses. Lets a container
 /// that must size a background BEFORE painting the adaptive rows (e.g. the Jitter card) agree exactly.

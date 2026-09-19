@@ -707,6 +707,7 @@ fn a_borda_recebe_a_media_dos_vizinhos_de_fundo() {
         normal: vec![[0.0, 0.0, 1.0]; w * h],
         point: vec![[0.0; 3]; w * h],
         curvature: Vec::new(),
+        curvature_style: Vec::new(),
         edges: Vec::new(),
     };
     g.hit[4] = true;

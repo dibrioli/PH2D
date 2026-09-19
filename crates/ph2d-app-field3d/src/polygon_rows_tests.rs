@@ -81,13 +81,88 @@ fn linhas_do_painel(p: Primitive, tudo_aceso: bool) -> usize {
     crate::scene::panel::param_rows(sim.world(), &[root], 1.0).len()
 }
 
+/// ⭐⭐⭐ **QUANTAS FILEIRAS A CENA APENDE AO RETRATO** — contadas no PRODUTOR delas.
+///
+/// ⛔⛔⛔ **Era esta a metade que faltava, e ela custava a secção inteira** (auditoria de 2026-09-19,
+/// `docs/Render3d/11` §10.9): o `publish_snapshot` apende as fileiras do ESTILO **no fim** da lista
+/// que o [`param_rows`] devolve, e os gates deste ficheiro chamavam o `param_rows` **directamente**.
+/// *Um gate que mede o produtor de metade da lista é cego à outra metade* — e a outra metade era a
+/// que caía fora do teto.
+///
+/// ⚠️ **Derivada, NUNCA um `10` escrito aqui:** a camada de estilo cresce dentro da própria jornada
+/// em que este gate nasceu (a suavidade da curvatura, a nitidez separada de aresta e de cova). Um
+/// literal reprovaria sobre produto correcto na hora seguinte.
+///
+/// ⚠️ **No modo Render, que é o pior caso**: fora dele a `rows` devolve vazio por lei (*uma
+/// affordance que não pode ser honrada é pior do que nenhuma*), e um teto medido no caso vazio não
+/// mede nada.
+fn fileiras_da_cena() -> usize {
+    crate::estilo::rows(ph2d_style::Style::default(), true).len()
+}
+
+/// ⭐⭐⭐ **AS FILEIRAS DA CENA CABEM NA FOLGA QUE O PAINEL LHES GUARDA.**
+///
+/// ⚠️ **O piso de população é metade da lei:** se a `rows` passar a devolver zero (um `render` mal
+/// lido, um corte), este gate ficaria verde a medir o nada — e o painel voltaria a ter uma secção
+/// invisível sem ninguém saber.
+#[test]
+fn as_fileiras_da_cena_cabem_na_folga_delas() {
+    let cena = fileiras_da_cena();
+    let folga = ph2d_panel_model3d::MAX_SCENE_ROWS;
+    println!("  fileiras da cena: {cena} · folga do painel: {folga}");
+    assert!(
+        cena >= 8,
+        "a camada de estilo publica {cena} fileiras — o censo deixou de achar o que mede, e um zero \
+         aqui lê-se exactamente como «cabe»"
+    );
+    assert!(
+        cena <= folga,
+        "a cena apende {cena} fileiras e o painel guarda folga para {folga} — as últimas ficam sem \
+         controlo, e com o polígono no teto a secção INTEIRA desaparece (o rodapé diz `(+N)`, que o \
+         artista lê como «faltam números do meu nó»). A cura é subir o `MAX_SCENE_ROWS`, com o \
+         preço medido ao lado."
+    );
+    // ⛔ **E fora do Render ela é VAZIA, por lei** — sem este controlo o gate acima passaria com uma
+    // `rows` que devolvesse sempre vazio.
+    assert_eq!(
+        crate::estilo::rows(ph2d_style::Style::default(), false).len(),
+        0,
+        "a camada de estilo passou a publicar fileiras fora do modo Render"
+    );
+}
+
+/// ⭐⭐⭐ **O RETRATO INTEIRO — nó NO TETO **mais** a cena — CABE NO PAINEL.**
+///
+/// ⚠️ **É a soma que importa, e era ela que ninguém media.** Medido em 2026-09-19 com o teto a valer
+/// exactamente o pior nó: `85 + 10 = 95` de `85` ⇒ **`0` de `10`** fileiras de estilo visíveis.
+#[test]
+fn o_retrato_inteiro_cabe_na_familia_registada() {
+    let nó = linhas_do_painel(poligono(MAX_POLYGON_VERTICES), true);
+    let cena = fileiras_da_cena();
+    let teto = ph2d_panel_model3d::MAX_ROWS;
+    println!(
+        "  nó no teto: {nó} + cena: {cena} = {} de {teto}",
+        nó + cena
+    );
+    assert!(
+        nó + cena <= teto,
+        "o retrato pede {} fileiras ({nó} do nó + {cena} da cena) e a família tem {teto} — o \
+         `paint` corta em silêncio, e o que cai fora é a secção que vem POR ÚLTIMO",
+        nó + cena
+    );
+}
+
 /// ⭐⭐⭐ **O POLÍGONO NO TETO AINDA CABE NO PAINEL** — e a folga que sobra é impressa.
 ///
-/// ⚠️ **A barra é o `MAX_ROWS` da crate do painel, lido dela** — não um `64` escrito aqui. *Um teto
-/// copiado é um teto que envelhece na wave em que o outro mudar.*
+/// ⚠️ **A barra é o `MAX_ROWS_DE_UM_NO` da crate do painel, lido dela** — não um `64` escrito aqui.
+/// *Um teto copiado é um teto que envelhece na wave em que o outro mudar.*
+///
+/// ⛔ **E é o teto do NÓ e não o `MAX_ROWS`**: desde 2026-09-19 a família registada tem uma folga
+/// para as fileiras que a CENA apende (ver [`as_fileiras_da_cena_cabem_na_folga_delas`]), e medir o
+/// nó contra o teto inteiro deixaria essa folga ser gasta por um polígono.
 #[test]
 fn every_row_of_the_biggest_polygon_fits_the_registered_family() {
-    let teto = ph2d_panel_model3d::MAX_ROWS;
+    let teto = ph2d_panel_model3d::MAX_ROWS_DE_UM_NO;
     println!("  vértices | tudo apagado | tudo aceso | de {teto}");
     for n in [MIN_POLYGON_VERTICES, 8, 16, MAX_POLYGON_VERTICES] {
         println!(
@@ -135,7 +210,7 @@ fn every_row_of_the_biggest_polygon_fits_the_registered_family() {
 /// pode dizer que o limite está no sítio certo.*
 #[test]
 fn one_more_vertex_would_not_fit() {
-    let teto = ph2d_panel_model3d::MAX_ROWS;
+    let teto = ph2d_panel_model3d::MAX_ROWS_DE_UM_NO;
     let (a, b) = (MIN_POLYGON_VERTICES, MAX_POLYGON_VERTICES);
     let (la, lb) = (
         linhas_do_painel(poligono(a), true),
@@ -163,9 +238,13 @@ fn one_more_vertex_would_not_fit() {
     //
     // ⛔ *Um número que não se mexe enquanto a grandeza muda é a forma mais silenciosa de um gate
     // deixar de descrever o que mede* — o que o prende é esta tabela, não o literal.
+    // ⭐ **A barra é o `EXTRAS_DE_UM_NO` da crate do painel, lido dela** — desde 2026-09-19 o teto é
+    // DERIVADO desse número, e um literal aqui seria a segunda cópia que diverge.
     assert_eq!(
-        extras, 31,
-        "um nó deixou de ter 31 linhas além dos `2N` dos vértices — a conta do teto muda com isto"
+        extras,
+        ph2d_panel_model3d::EXTRAS_DE_UM_NO,
+        "um nó deixou de ter {} linhas além dos `2N` dos vértices — a conta do teto muda com isto",
+        ph2d_panel_model3d::EXTRAS_DE_UM_NO
     );
     let seguinte = 2 * (b as usize + 1) + extras;
     assert!(

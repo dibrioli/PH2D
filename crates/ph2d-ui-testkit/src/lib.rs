@@ -50,6 +50,8 @@ use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHost, PanelHos
 use ph2d_editor_core::project::ProjectSettings;
 use ph2d_editor_core::screens::slot::SlotSet;
 use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
+use ph2d_editor_core::text_elide::elisao;
+use ph2d_editor_core::text_elide::elisao::Medido;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -194,6 +196,65 @@ impl MockPanelHost {
     /// would otherwise return before drawing anything).
     pub fn paint<P: Panel>(&mut self, state: &mut P::State, viewport: Rect) -> Vec<(NodeId, Rect)> {
         self.paint_with_layout::<P>(state, HeroLayout::for_viewport(viewport), viewport)
+    }
+
+    /// ⭐⭐⭐ **PINTA E DIZ O QUE COUBE** — cada rótulo que passou pela lei da reticência, com o
+    /// orçamento que tinha, a fonte e o peso em que foi medido.
+    ///
+    /// ⛔⛔ **É a pergunta que nenhum gate deste repo fazia** (2026-09-18): os trinta censos do
+    /// HR-15 lêem o FONTE e respondem *«esta palavra vem da tabela?»*; nenhum lê o ecrã e responde
+    /// ***«ela coube?»***. A coluna dos nomes do Audio Mixer estava verde nos trinta e cortava
+    /// `Depth` e `Return` **na língua em que o app ship**.
+    ///
+    /// ⭐ **E com o registo do que COUBE, uma pintura em INGLÊS responde pelas duas línguas**: o
+    /// idioma de teste é uma função pura do inglês (`ph2d_i18n::pseudo::deforma`), logo o gate
+    /// re-mede a palavra deformada no mesmo orçamento, na mesma fonte e no mesmo peso — *sem
+    /// mexer no ambiente do processo*, que é o que tornaria a suíte uma flake de fan-out.
+    pub fn medindo_a_pintura<P: Panel>(
+        &mut self,
+        state: &mut P::State,
+        viewport: Rect,
+    ) -> Vec<Medido> {
+        elisao::medindo(|| {
+            self.paint_with_layout::<P>(state, HeroLayout::for_viewport(viewport), viewport);
+        })
+        .1
+    }
+
+    /// ⭐⭐⭐ **O MESMO, PARA UM PAINEL DO REGISTO** — sem nomear o tipo dele.
+    ///
+    /// ⚠️ **É a diferença entre um gate por painel e UMA varredura**: o [`Self::medindo_a_pintura`]
+    /// é genérico em `P`, logo um censo de todos os painéis teria de escrever os 28 nomes à mão —
+    /// *uma lista escrita à mão é uma lista que alguém esquece*, e o painel esquecido é exactamente
+    /// aquele que ninguém olha. O registo já carrega cada painel com o estado dele
+    /// ([`ph2d_editor_core::panel::ErasedPanel`]), e é ele a população.
+    ///
+    /// ⛔ O painel é forçado a VISÍVEL (um `paint` gateado no `panel_visible` devolveria antes de
+    /// desenhar) e o encaixe é o que ele **declara**, como no irmão tipado.
+    pub fn medindo_a_pintura_do_registo(
+        &mut self,
+        painel: &mut ph2d_editor_core::panel::ErasedPanel,
+        viewport: Rect,
+    ) -> Vec<Medido> {
+        let id = painel.manifest.id;
+        let slot = painel.manifest.default_slot;
+        self.set_panel_visible(id, true);
+        self.hit_index.clear_for_frame();
+        let layout = HeroLayout::for_viewport(viewport);
+        let mut scene = VectorScene::new();
+        let mut text_system = TextSystem::without_system_fonts();
+        elisao::medindo(|| {
+            let mut ctx = PaintCtx {
+                host: self,
+                layout: &layout,
+                slot: layout.slot_rects(SlotSet::of(slot)).get(slot),
+                viewport,
+                scene: &mut scene,
+                text_system: &mut text_system,
+            };
+            painel.paint(&mut ctx);
+        })
+        .1
     }
 
     /// [`Self::paint`], but with the layout given explicitly.

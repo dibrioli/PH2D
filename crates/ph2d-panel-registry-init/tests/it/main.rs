@@ -12,6 +12,7 @@ mod a_panel_paints_where_its_tab_says;
 mod a_slot_with_two_panels_shows_tabs;
 mod a_tab_dragged_to_another_dock_moves_the_panel;
 mod global_palette_catalog;
+mod nenhum_rotulo_do_app_pinta_nada;
 mod resetting_the_layout_puts_all_three_things_back;
 mod scrub_range_census;
 mod staleness;

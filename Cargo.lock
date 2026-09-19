@@ -8064,6 +8064,7 @@ dependencies = [
  "bumpalo",
  "ph2d-editor-core",
  "ph2d-host",
+ "ph2d-i18n",
  "ph2d-panel-asset-browser",
  "ph2d-panel-audio-editor",
  "ph2d-panel-audio-mixer",
@@ -8094,6 +8095,7 @@ dependencies = [
  "ph2d-panel-widget-gallery",
  "ph2d-panel-widget-lab",
  "ph2d-text",
+ "ph2d-ui-testkit",
  "ph2d-vector",
 ]
 

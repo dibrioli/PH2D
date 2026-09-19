@@ -32,21 +32,147 @@ fn o_censo_ve_o_corte_quando_armado_e_e_mudo_quando_nao() {
     );
 
     // ARMADO: vê o corte, com o que se queria e o que saiu.
-    let (_, cortados) = elisao::medindo(|| fit(&mut ts, texto, 12.0, inteiro * 0.5));
-    assert_eq!(cortados.len(), 1, "um corte, um registo: {cortados:?}");
-    assert_eq!(cortados[0].texto, texto);
+    let (_, medidos) = elisao::medindo(|| fit(&mut ts, texto, 12.0, inteiro * 0.5));
+    assert_eq!(medidos.len(), 1, "uma medição, um registo: {medidos:?}");
+    assert_eq!(medidos[0].texto, texto);
+    assert!(!medidos[0].coube(), "ele foi cortado: {medidos:?}");
     assert!(
-        cortados[0].pintado.len() < texto.len() && cortados[0].pintado.ends_with('…'),
+        medidos[0].pintado.len() < texto.len() && medidos[0].pintado.ends_with('…'),
         "o registo tem de trazer o que foi PINTADO: {:?}",
-        cortados[0].pintado
+        medidos[0].pintado
     );
 
-    // ⛔ CONTROLO NEGATIVO: o que CABE não é um corte. Sem esta metade, um censo que registasse
-    //    tudo devolveria a lista cheia e ninguém a leria.
-    let (_, nenhum) = elisao::medindo(|| fit(&mut ts, texto, 12.0, inteiro + 1.0));
+    // ⭐⭐⭐ E O QUE COUBE TAMBÉM É VISTO — a metade que nasceu no mesmo dia, e sem a qual a
+    //    pergunta *«e quando alguém traduzir?»* não tem sujeito: o rótulo que cabe hoje nunca
+    //    passa pela lei do corte, logo não deixava rasto nenhum.
+    let (_, coube) = elisao::medindo(|| fit(&mut ts, texto, 12.0, inteiro + 1.0));
+    assert_eq!(
+        coube.len(),
+        1,
+        "a pergunta «cabe?» é uma medição: {coube:?}"
+    );
+    assert!(coube[0].coube() && !coube[0].nada(), "{coube:?}");
+    assert_eq!(coube[0].pintado, texto, "o que coube sai VERBATIM");
+    // ⛔ CONTROLO: e ele NÃO é um corte — a vista estreita continua a separar os dois, que é o
+    //    que impede esta wave de transformar o censo numa lista onde tudo se lê igual.
+    let cortes: Vec<_> = coube.iter().filter(|m| !m.coube()).collect();
     assert!(
-        nenhum.is_empty(),
-        "o texto coube e o censo registou-o na mesma: {nenhum:?}"
+        cortes.is_empty(),
+        "o texto coube e apareceu na lista de CORTADOS: {cortes:?}"
+    );
+}
+
+/// ⭐⭐⭐ **OS DOIS PINTORES PERGUNTAM PELA MESMA PORTA — e este gate nasceu de uma mutação que
+/// SOBREVIVEU.**
+///
+/// ⛔⛔ A lei do corte mora num sítio só (`elide`) e a lei do «cabe?» noutro ([`coube`]), e há
+/// **dois** pintores que a fazem: o [`fit_weighted`] e o `paint_text_elided`. Pôr o segundo a
+/// comparar à mão — que é como ele estava até 2026-09-18 — deixa a varredura do app **VERDE**: o
+/// piso de população dela é GLOBAL, logo perder os registos de **uma** porta não o move.
+///
+/// ⚠️ *Um piso global mede a soma e é cego a uma parcela.* ⇒ a pergunta tem de ser feita à porta,
+/// e é isso que este gate faz: cada pintor, um rótulo que CABE, um registo.
+#[test]
+fn os_dois_pintores_perguntam_pela_mesma_porta() {
+    use ph2d_editor_core::paint::paint_text_elided;
+    let mut ts = TextSystem::without_system_fonts();
+    let texto = "Depth";
+    let largo = ts.prefix_width(texto, 12.0) + 10.0;
+
+    let (_, pelo_fit) = elisao::medindo(|| fit(&mut ts, texto, 12.0, largo));
+    assert_eq!(pelo_fit.len(), 1, "o `fit` não perguntou pela porta");
+    assert!(pelo_fit[0].coube());
+
+    let (_, pelo_pintor) = elisao::medindo(|| {
+        let mut cena = ph2d_vector::VectorScene::new();
+        paint_text_elided(
+            &mut ts,
+            &mut cena,
+            texto,
+            0.0,
+            0.0,
+            12.0,
+            largo,
+            ph2d_editor_core::paint::resolve(
+                ph2d_tokens::ColorToken::Text1,
+                ph2d_tokens::Theme::default(),
+            ),
+        );
+    });
+    assert_eq!(
+        pelo_pintor.len(),
+        1,
+        "o pintor cortado comparou à mão e o censo não ouviu — a varredura do app fica VERDE \
+         sobre metade dos rótulos: {pelo_pintor:?}"
+    );
+    assert!(pelo_pintor[0].coube() && pelo_pintor[0].texto == texto);
+}
+
+/// ⭐⭐⭐ **A FONTE E O PESO VIAJAM NO REGISTO — sem eles, a pergunta da próxima língua é um
+/// palpite.**
+///
+/// ⚠️ *Medir numa espessura e pintar noutra* é o defeito que o [`ph2d_editor_core::text_elide`] já
+/// pagou duas vezes (os números dos cartões do Motion a saírem `0....`). Um gate que re-meça a
+/// palavra deformada tem de a medir **na fonte e no peso em que a pergunta original foi feita**,
+/// senão ele afirma sobre um rótulo que ninguém pinta.
+#[test]
+fn o_registo_diz_em_que_fonte_e_peso_a_pergunta_foi_feita() {
+    use ph2d_editor_core::text_elide::fit_weighted;
+    use ph2d_text::FontWeight;
+    let mut ts = TextSystem::without_system_fonts();
+    let (_, medidos) =
+        elisao::medindo(|| fit_weighted(&mut ts, "Depth", 11.0, 1000.0, FontWeight::SEMI_BOLD));
+    assert_eq!(medidos.len(), 1);
+    assert!((medidos[0].fonte - 11.0).abs() < 1e-6, "{medidos:?}");
+    assert_eq!(medidos[0].peso, FontWeight::SEMI_BOLD, "{medidos:?}");
+    assert!((medidos[0].largura - 1000.0).abs() < 1e-6, "{medidos:?}");
+}
+
+/// ⭐⭐⭐ **O CENSO É DA THREAD QUE O ARMOU — e a 1.ª redacção tinha a bandeira GLOBAL.**
+///
+/// ⛔⛔ **Medido em 2026-09-18, um dia depois de o censo nascer:** a bandeira era um `AtomicBool`
+/// estático e o armazém um `thread_local`. Sob `cargo test` — que corre os testes em **threads do
+/// mesmo processo** — o `desarma` de um gate apanhava o vizinho entre o `arma` dele e a pintura, e
+/// o vizinho lia **zero cortes** sobre um corte que aconteceu. *Zero é a cara da aprovação.*
+///
+/// ⚠️⚠️ **O `nextest` não a podia mostrar**, porque ele dá um PROCESSO a cada teste e ali não há
+/// vizinho nenhum — e é com ele que os portões deste repo correm. ⇒ *um instrumento mede-se na
+/// ferramenta mais fraca que o corre*, senão ele é correcto só no sítio onde ninguém olha.
+///
+/// A régua é a única que exprime o defeito: **duas threads**, uma a medir e a outra a armar e
+/// desarmar em ciclo. Com a bandeira global, a primeira perde registos.
+#[test]
+fn o_censo_de_uma_thread_nao_e_desarmado_pela_vizinha() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    let pare = Arc::new(AtomicBool::new(false));
+    let vizinha = {
+        let pare = Arc::clone(&pare);
+        std::thread::spawn(move || {
+            // A vizinha faz exactamente o que outro gate faz: arma, mede e desarma, em ciclo.
+            let mut ts = TextSystem::without_system_fonts();
+            while !pare.load(Ordering::Relaxed) {
+                let _ = elisao::medindo(|| fit(&mut ts, "Return", 12.0, 4.0));
+            }
+        })
+    };
+
+    let mut ts = TextSystem::without_system_fonts();
+    let mut perdidos = 0;
+    for _ in 0..2_000 {
+        let (_, medidos) = elisao::medindo(|| fit(&mut ts, "Translate Y  #4591", 12.0, 30.0));
+        if medidos.len() != 1 {
+            perdidos += 1;
+        }
+    }
+    pare.store(true, Ordering::Relaxed);
+    vizinha.join().expect("a vizinha morreu");
+
+    assert_eq!(
+        perdidos, 0,
+        "{perdidos} de 2000 medições desapareceram porque a thread vizinha desarmou o censo — a \
+         bandeira voltou a ser global"
     );
 }
 

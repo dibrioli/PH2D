@@ -438,7 +438,10 @@ fn paint_elided_weighted(
     if max_width <= 0.0 {
         return;
     }
-    if text_system.prefix_width_weighted(text, font_size, weight) <= max_width {
+    // ⚠️ **A pergunta vai pela porta** ([`crate::text_elide::coube`]) e não por uma comparação
+    // escrita aqui: é ela que o censo das elisões ouve, e um pintor que a repita à mão fica
+    // invisível ao gate que pergunta *«e quando alguém traduzir?»*.
+    if crate::text_elide::coube(text_system, text, font_size, max_width, weight) {
         // `INFINITY`, not `max_width`: it fits, and passing the budget back would
         // let a sub-pixel measurement disagreement re-introduce the wrap.
         paint(text_system, scene, text);

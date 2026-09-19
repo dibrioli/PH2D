@@ -12,7 +12,14 @@
 
 use ph2d_text::{FontWeight, TextSystem};
 
-/// ⭐⭐⭐ **O CENSO DAS ELISÕES — quem foi CORTADO ao pintar, e por quanto.**
+/// ⭐⭐⭐ **O CENSO DAS ELISÕES — que rótulo foi MEDIDO contra que orçamento, e o que saiu.**
+///
+/// ⭐⭐ **Ele começou a ouvir só o CORTE e isso era metade da pergunta** (2026-09-18, no mesmo
+/// dia): um rótulo que **cabe** hoje em inglês não passa pela lei do corte, logo não deixava
+/// rasto — e é exactamente sobre ele que se faz a pergunta que interessa a seguir, *«e quando
+/// alguém traduzir?»*. ⇒ o censo regista também **a pergunta que teve resposta SIM**
+/// ([`super::coube`]), e com a fonte e o peso ao lado um gate re-mede a palavra deformada **sem
+/// pintar segunda vez**.
 ///
 /// ⛔⛔ **Ele nasce de um defeito que a foto do dono mostrava e ninguém tinha medido** (2026-09-18):
 /// a coluna dos nomes do Audio Mixer era o literal `32,0 px` e o `Depth` (`32,3`) e o `Return`
@@ -28,68 +35,120 @@ use ph2d_text::{FontWeight, TextSystem};
 ///
 /// Um corte é normal no produto (o nome de uma faixa da timeline, o caminho de um ficheiro), logo
 /// registá-lo sempre seria uma `String` por corte **por quadro** — a forma exacta do vazamento que
-/// o `leak_key` do `ph2d-i18n` já custou a esta casa. ⇒ o caminho do produto paga **uma leitura
-/// atómica** no ramo que já cortava, e mais nada.
+/// o `leak_key` do `ph2d-i18n` já custou a esta casa. ⇒ o caminho do produto paga **a leitura de
+/// uma bandeira da própria thread**, e mais nada.
 pub mod elisao {
-    use std::cell::RefCell;
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::cell::{Cell, RefCell};
 
-    /// ⭐ **Um texto que não coube** — o que se queria, o que saiu, e a largura que havia.
+    /// ⭐ **Um texto que foi MEDIDO contra um orçamento** — o que se queria, o que saiu, quanto
+    /// havia, e em que fonte e espessura a pergunta foi feita.
+    ///
+    /// ⭐⭐⭐ **Os dois últimos campos são a razão de este censo responder à pergunta da PRÓXIMA
+    /// LÍNGUA** (2026-09-18). O idioma de teste é uma função pura do inglês
+    /// ([`ph2d_i18n::pseudo::deforma`]), logo **uma pintura em inglês basta**: com o texto, o
+    /// orçamento, a fonte e o peso, um gate re-mede a palavra deformada no mesmo sítio e sabe se
+    /// ela caberia. ⚠️ Sem a fonte e o peso a resposta seria um palpite — *medir numa espessura e
+    /// pintar noutra é o defeito que este ficheiro já pagou duas vezes*.
     #[derive(Clone, Debug, PartialEq)]
-    pub struct Cortado {
+    pub struct Medido {
         /// O texto inteiro, tal como o pintor o recebeu.
         pub texto: String,
-        /// O que de facto foi desenhado (com as reticências).
+        /// O que de facto foi desenhado — o próprio texto quando coube, `<prefixo>…` quando não,
+        /// **vazio** quando nem a reticência coube.
         pub pintado: String,
         /// A largura disponível, em px.
         pub largura: f32,
+        /// O tamanho da fonte em que a pergunta foi feita, em px.
+        pub fonte: f32,
+        /// A espessura em que a pergunta foi feita — ⚠️ a mesma em que o pintor vai pintar.
+        pub peso: super::FontWeight,
     }
 
-    static ARMADO: AtomicBool = AtomicBool::new(false);
+    impl Medido {
+        /// O texto saiu inteiro.
+        #[must_use]
+        pub fn coube(&self) -> bool {
+            self.pintado == self.texto
+        }
+
+        /// ⛔ **O pior dos dois: não saiu NADA.** Um controlo sem legenda e um controlo morto dão
+        /// o mesmo report.
+        #[must_use]
+        pub fn nada(&self) -> bool {
+            self.pintado.is_empty()
+        }
+    }
 
     thread_local! {
-        static CORTADOS: RefCell<Vec<Cortado>> = const { RefCell::new(Vec::new()) };
+        /// ⛔⛔⛔ **A bandeira é da THREAD, e a 1.ª redacção tinha-a GLOBAL** (um `AtomicBool`) com
+        /// o armazém por thread — *uma corrida escrita à mão*, e ela mordeu no dia seguinte: sob
+        /// `cargo test`, que corre os testes em THREADS do mesmo processo, o `desarma` de um gate
+        /// apanhava o vizinho entre o `arma` e a pintura dele, e o censo do vizinho lia **zero**.
+        ///
+        /// ⚠️ **Lia zero, que é a cara da aprovação** — a mesma forma que este censo já custou
+        /// quando estava ligado a uma das quatro entradas do corte. ⭐ E o `nextest` **não a
+        /// podia mostrar**: ele dá um processo a cada teste, logo ali não há vizinho nenhum.
+        /// *Um instrumento tem de ser medido na ferramenta MAIS FRACA que o corre.*
+        static ARMADO: Cell<bool> = const { Cell::new(false) };
+        static MEDIDOS: RefCell<Vec<Medido>> = const { RefCell::new(Vec::new()) };
     }
 
     /// Arma o censo e ESVAZIA o que houvesse — um gate que não esvaziasse mediria o vizinho.
     pub fn arma() {
-        ARMADO.store(true, Ordering::Relaxed);
-        CORTADOS.with_borrow_mut(Vec::clear);
+        ARMADO.set(true);
+        MEDIDOS.with_borrow_mut(Vec::clear);
     }
 
     /// Desarma. ⚠️ Um gate que se esqueça disto deixa o custo ligado para os que vêm a seguir no
     /// mesmo binário — por isso o par mora numa função só, a [`medindo`].
     pub fn desarma() {
-        ARMADO.store(false, Ordering::Relaxed);
+        ARMADO.set(false);
     }
 
-    /// O que foi cortado desde o [`arma`].
+    /// ⭐ **Tudo o que foi medido desde o [`arma`]** — o que coube e o que não.
     #[must_use]
-    pub fn cortados() -> Vec<Cortado> {
-        CORTADOS.with_borrow(Clone::clone)
+    pub fn medidos() -> Vec<Medido> {
+        MEDIDOS.with_borrow(Clone::clone)
+    }
+
+    /// O que foi CORTADO desde o [`arma`] — a vista estreita, que é a que já tinha leitores.
+    #[must_use]
+    pub fn cortados() -> Vec<Medido> {
+        MEDIDOS.with_borrow(|v| v.iter().filter(|m| !m.coube()).cloned().collect())
     }
 
     /// ⭐⭐ **A PORTA de um gate: arma, corre, desarma, devolve** — e o desarmar acontece mesmo
     /// que o corpo entre em pânico não é verdade aqui, de propósito: um `panic` num gate aborta o
     /// teste, e um censo ligado num binário que já morreu não custa nada. *O que ela compra é que
     /// ninguém escreva `arma` sem o `desarma`.*
-    pub fn medindo<R>(f: impl FnOnce() -> R) -> (R, Vec<Cortado>) {
+    pub fn medindo<R>(f: impl FnOnce() -> R) -> (R, Vec<Medido>) {
         arma();
         let r = f();
-        let out = cortados();
+        let out = medidos();
         desarma();
         (r, out)
     }
 
-    pub(super) fn regista(texto: &str, pintado: &str, largura: f32) {
-        if !ARMADO.load(Ordering::Relaxed) {
+    /// ⚠️ **Um texto VAZIO não é um rótulo** e fica de fora: registá-lo poria um `nada()` no censo
+    /// para cada espaçador que passe por um pintor de texto, e o gate que procura controlos mudos
+    /// afogava-se neles.
+    pub(super) fn regista(
+        texto: &str,
+        pintado: &str,
+        largura: f32,
+        fonte: f32,
+        peso: super::FontWeight,
+    ) {
+        if !ARMADO.get() || texto.is_empty() {
             return;
         }
-        CORTADOS.with_borrow_mut(|v| {
-            v.push(Cortado {
+        MEDIDOS.with_borrow_mut(|v| {
+            v.push(Medido {
                 texto: texto.to_string(),
                 pintado: pintado.to_string(),
                 largura,
+                fonte,
+                peso,
             });
         });
     }
@@ -98,6 +157,45 @@ pub mod elisao {
 /// The ellipsis appended to text that does not fit. Inside Inter's coverage
 /// (U+2026 is not one of the arrow / technical blocks the tofu gate rejects).
 const ELLIPSIS: &str = "\u{2026}";
+
+/// ⭐⭐⭐ **A PERGUNTA «cabe?» — e o único sítio onde o censo a ouve.**
+///
+/// ⛔⛔ **Ela existe por uma cegueira medida**, e a mesma que este módulo já pagou uma vez: o censo
+/// morava na lei do CORTE, logo via os rótulos que não couberam e **nenhum** dos que couberam. Um
+/// gate que pergunte *«e na próxima língua?»* precisa dos segundos — é neles que o defeito ainda
+/// não aconteceu. ⇒ os dois pintores que faziam a comparação à mão passam a fazê-la aqui, e um
+/// terceiro que apareça herda o censo por usar a porta em vez de repetir a conta.
+///
+/// ⚠️ **Só o SIM é registado aqui**: o NÃO volta pelo [`elide`], que é quem sabe o que saiu.
+/// *Duas leis, dois registos, cada um num sítio só.*
+#[must_use]
+pub(crate) fn coube(
+    text_system: &mut TextSystem,
+    text: &str,
+    font_size: f32,
+    max_width: f32,
+    weight: FontWeight,
+) -> bool {
+    let cabe = text_system.prefix_width_weighted(text, font_size, weight) <= max_width;
+    if cabe {
+        elisao::regista(text, text, max_width, font_size, weight);
+    }
+    cabe
+}
+
+/// ⭐⭐ **O que a reticência sozinha custa** — abaixo disto um rótulo pinta **NADA**.
+///
+/// ⚠️ **Ela não depende da língua**, e é isso que a torna a régua do defeito duro: uma caixa
+/// pequena que hoje mostra `M` mostra-o porque a palavra é curta, não porque a caixa chegue — e no
+/// dia em que a palavra crescer ela cai directamente no vazio, sem passar pelo `prefixo…`.
+#[must_use]
+pub fn largura_da_reticencia(
+    text_system: &mut TextSystem,
+    font_size: f32,
+    weight: FontWeight,
+) -> f32 {
+    text_system.prefix_width_weighted(ELLIPSIS, font_size, weight)
+}
 
 /// ⛔⛔ **A LARGURA QUE [`crate::paint::paint_text_title_elided`] DE FACTO OCUPA** — medida no MESMO peso em
 /// que ela pinta.
@@ -148,10 +246,10 @@ pub(crate) fn elide(
     max_width: f32,
     weight: FontWeight,
 ) -> Option<String> {
-    if text_system.prefix_width_weighted(ELLIPSIS, font_size, weight) > max_width {
+    if largura_da_reticencia(text_system, font_size, weight) > max_width {
         // ⛔ O corte para NADA — nem a reticência cabe. É o pior dos dois, e entra no censo pela
         //    mesma porta: quem o leu na foto do dono leu uma fileira de `[…]`.
-        elisao::regista(text, "", max_width);
+        elisao::regista(text, "", max_width, font_size, weight);
         return None;
     }
     let bounds: Vec<usize> = text.char_indices().map(|(i, _)| i).collect();
@@ -167,7 +265,7 @@ pub(crate) fn elide(
         }
     }
     let saida = corte(text, bounds[lo]);
-    elisao::regista(text, &saida, max_width);
+    elisao::regista(text, &saida, max_width, font_size, weight);
     Some(saida)
 }
 
@@ -215,7 +313,7 @@ pub fn fit_weighted(
     max_width: f32,
     weight: FontWeight,
 ) -> String {
-    if text_system.prefix_width_weighted(text, font_size, weight) <= max_width {
+    if coube(text_system, text, font_size, max_width, weight) {
         return text.to_string();
     }
     elide(text_system, text, font_size, max_width, weight).unwrap_or_else(|| text.to_string())

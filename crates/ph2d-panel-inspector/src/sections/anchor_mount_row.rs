@@ -217,9 +217,16 @@ pub(crate) fn paint_mount_row(
 /// **não existe modo de jogo** (`shells/game` / Runtime R1, adiado por decisão do dono do
 /// produto), e sem ele não há «runtime» onde uma âncora se possa mostrar.
 ///
-/// ⚠️ **A razão vai no RÓTULO e não só na dica de hover**: uma dica só aparece a quem já pousou o
-/// rato, e quem lê «Show anchors at runtime» a cinzento sem explicação conclui que o app está
-/// avariado. *Um controlo parado sem a razão à vista é a mesma promessa por outras palavras.*
+/// ⛔⛔⛔ **ESTA LINHA DIZIA O CONTRÁRIO ATÉ 2026-09-19, e foi o DONO que a virou.** Ela
+/// argumentava que *«a razão vai no RÓTULO e não só na dica de hover»* — porque uma dica só aparece
+/// a quem já pousou o rato. O argumento continua de pé; o que mudou foi o **preço**, medido pela
+/// varredura de elisões com o Inspector armado: com o parêntesis, o rótulo pede `~190 px` numa
+/// coluna de `174` e sai `Show anchors at runtime (n…` — *uma razão cortada a meio da palavra não
+/// é uma razão à vista*. Postas as três saídas à frente dele, ele escolheu **encurtar o nome**.
+///
+/// ⚠️ A razão inteira vive no balão (`parked_this_app_has_no`, registado no `populate_anchor`), e
+/// há gate a exigir que ela lá esteja: *cumprir só a metade que REMOVE apaga a explicação em
+/// silêncio* (`as_caixas_que_encurtaram_guardam_a_explicacao`).
 ///
 /// ⛔ **O campo FICA no modelo** (`ph2d_ecs::AnchorVisibility::at_runtime`): apagá-lo partiria
 /// todo ficheiro já gravado. O que sai é a **promessa**, não o dado.

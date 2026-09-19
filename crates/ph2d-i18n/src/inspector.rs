@@ -127,6 +127,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.region.y" => "Y",
         "panel.inspector.region.w" => "W",
         "panel.inspector.region.h" => "H",
+        // ⭐⭐ **As duas EXPLICAÇÕES que saíram dos rótulos das caixas de âncora** (ordem do dono,
+        //    2026-09-19). Elas ficam FORA dos marcadores porque **nunca foram literais pintados**:
+        //    nasceram de um rótulo migrado que o dono mandou encurtar, e o
+        //    `migrar-texto-pintado.py` só escreve o que encontrou no código.
+        //
+        // ⛔ Quem as regista é o `populate_anchor`, e há gate a exigir que as duas caixas tenham
+        //    balão: *cumprir só a metade que REMOVE apaga a explicação em silêncio.*
+        "panel.inspector.anchors.bounds_explica" => "Makes this anchor a Slice.",
+        "panel.inspector.anchors.center_explica" => "Makes this anchor a 9-slice Region.",
         // ph2d-migrar-texto:begin
         "panel.inspector.panel.no_properties_yet_for_the" => {
             "No properties yet for the selected entity."
@@ -164,14 +173,26 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The parent has no anchor with that name."
         }
         "panel.inspector.anchors.reset_to_anchor" => "Reset to Anchor",
-        "panel.inspector.anchors.show_anchors_at_runtime_no" => {
-            "Show anchors at runtime (no game runtime yet)"
-        }
+        // ⛔⛔ **ENCURTADO por ordem do dono (2026-09-19)**, com a medição à frente dele: o
+        //    parêntesis punha o rótulo em `~190 px` numa coluna de `174`, e ele saía
+        //    `Show anchors at runtime (n…`. A razão de a caixa estar PARADA **não se perdeu** —
+        //    ela já vivia no balão (`parked_this_app_has_no`, registado no `populate_anchor`).
+        //    ⚠️ Isto INVERTE o que o doc do `RUNTIME_BOX_LABEL` argumentava (*«a razão vai no
+        //    RÓTULO e não só na dica»*); aquele doc diz agora que a decisão foi revista.
+        "panel.inspector.anchors.show_anchors_at_runtime_no" => "Show anchors at runtime",
         "panel.inspector.anchors.always_show_anchors" => "Always show anchors",
         "panel.inspector.anchors.anchor_name" => "anchor_name\u{2026}",
         "panel.inspector.anchors.rotation_deg" => "Rotation",
-        "panel.inspector.anchors.bounds_makes_it_a_slice" => "Bounds (makes it a Slice)",
-        "panel.inspector.anchors.center_makes_it_a_9" => "Center (makes it a 9-slice Region)",
+        // ⛔⛔ **As duas ENCURTARAM por ordem do dono (2026-09-19)** — o `Center` media `~190 px`
+        //    numa coluna de `174` e saía `Center (makes it a 9-slice R…`. ⭐ A consequência de
+        //    cada uma mudou-se para o BALÃO (`..._explica`, registados no `populate_anchor`), e o
+        //    `Bounds` acompanha o irmão mesmo sem estar a cortar: *duas caixas irmãs com feitios
+        //    diferentes leem-se como duas coisas diferentes.*
+        //    ⚠️ A CHAVE guarda a redacção antiga (`..._makes_it_a_9`) de propósito: ela é escrita
+        //    pelo `migrar-texto-pintado.py` a partir do literal original, e renomeá-la à mão
+        //    descolaria a tabela do plano que a gerou.
+        "panel.inspector.anchors.bounds_makes_it_a_slice" => "Bounds",
+        "panel.inspector.anchors.center_makes_it_a_9" => "Center",
         "panel.inspector.anchors.x_remove_anchor" => "x Remove Anchor",
         "panel.inspector.anchors.this_object_s_anchors" => "This object's anchors",
         "panel.inspector.anchors.no_anchors_on_this_sprite" => "No anchors on this sprite.",

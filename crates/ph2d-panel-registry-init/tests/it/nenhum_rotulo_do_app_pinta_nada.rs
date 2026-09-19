@@ -50,8 +50,8 @@
 //! |---|---:|
 //! | rótulos que pintavam **NADA** | **8** (as unidades `px` e `1/s`) |
 //! | cortados (`prefixo…`) | **24** |
-//! | curados no mesmo dia | **16** |
-//! | por curar, nomeados | **8** — `A_PASSAGEM_ARMADA_AINDA_CORTA` |
+//! | curados no mesmo dia | **18** (16 por três portas + 2 por ordem do dono) |
+//! | por curar, nomeados | **6** — `A_PASSAGEM_ARMADA_AINDA_CORTA` |
 //!
 //! ⚠️ **A passagem armada NÃO alimenta o censo da tabela de strings** — ela põe no painel texto do
 //! DOCUMENTO (`Hero`, `Enemy`, `Closed`), que a tabela não sabe produzir e nem devia. A razão está
@@ -171,18 +171,14 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
 /// ⚠️ **Cada linha diz o NÚMERO e o MECANISMO**, e a lista **só encolhe** — o censo de
 /// obsolescência abaixo reprova quem deixar de descrever um corte.
 const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
-    // Fileira de MARCAR: o controlo precisa de `18 px` e a coluna do nome fica com `174`, porque
-    // ela é medida para as fileiras de CAMPOS da mesma secção. O nome pede `~190`.
-    (
-        "inspector",
-        "Center (makes it a 9-slice Region)",
-        "marcar · 174 px",
-    ),
-    (
-        "inspector",
-        "Show anchors at runtime (no game runtime yet)",
-        "marcar · 174 px",
-    ),
+    // ✅ **As DUAS fileiras de MARCAR saíram em 2026-09-19, por ordem do dono.** O controlo de uma
+    //    caixa precisa de `18 px` e a coluna do nome fica com `174`, porque ela é medida para as
+    //    fileiras de CAMPOS da mesma secção — e `Center (makes it a 9-slice Region)` pedia `~190`.
+    //    Postas as três saídas à frente dele (deixar cortar · encurtar · a caixa deixa de seguir o
+    //    alinhamento do meio), ele escolheu **encurtar**: hoje são `Center` e
+    //    `Show anchors at runtime`, com a consequência de cada uma no BALÃO. ⚠️ Quem as apagou
+    //    daqui foi o censo de obsolescência deste ficheiro. Metade que PÕE:
+    //    `ph2d-panel-inspector/tests/it/as_caixas_que_encurtaram_guardam_a_explicacao.rs`.
     // Fileira de LISTA: o texto é do DOCUMENTO (o nome que o artista deu à âncora / ao sinal / à
     // propriedade do script / à peça). ⚠️ Um corte aqui **não é sempre defeito** — o que é defeito
     // é a caixa: `26 px` para um nome não é uma caixa, é um resto.

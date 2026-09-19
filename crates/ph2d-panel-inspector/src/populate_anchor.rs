@@ -69,6 +69,25 @@ pub(crate) fn populate_anchors(store: &mut WidgetStore) {
             },
         );
     }
+    // ⭐⭐⭐ **A CONSEQUÊNCIA de cada caixa, no balão** (ordem do dono, 2026-09-19).
+    //
+    // ⛔⛔ Os dois rótulos diziam `Bounds (makes it a Slice)` e `Center (makes it a 9-slice
+    //    Region)`, e o segundo media `~190 px` numa coluna de `174`: saía `…9-slice R…`. O dono
+    //    escolheu **encurtar o nome e pôr a explicação num balão**, das três saídas que lhe
+    //    devolvi com os números.
+    //
+    // ⚠️⚠️ **Uma ordem que MOVE tem duas metades**, e cumprir só a que REMOVE apaga a explicação
+    //    em silêncio — é a lei que este repo pagou com o gesto de colapsar coluna. ⇒ há gate a
+    //    exigir que estas duas caixas tenham balão
+    //    (`as_caixas_que_encurtaram_guardam_a_explicacao_no_balao`).
+    store.set_tooltip(
+        crate::ids::INSP_ANCHOR_BOUNDS_ON,
+        tr("panel.inspector.anchors.bounds_explica"),
+    );
+    store.set_tooltip(
+        crate::ids::INSP_ANCHOR_CENTER_ON,
+        tr("panel.inspector.anchors.center_explica"),
+    );
     // ⛔⛔ **A caixa «Show anchors at runtime» nasce PARADA, e o bloqueador tem nome:** não existe
     // modo de jogo (`shells/game` / Runtime R1, adiado por decisão do dono do produto). Ela
     // gravava no `.ph2dproj` e não tinha um único leitor — ver

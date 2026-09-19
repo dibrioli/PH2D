@@ -13,6 +13,7 @@ mod a_seccao_particles_esta_viva;
 mod a_seccao_script_esta_viva;
 mod a_seccao_tags_esta_viva;
 mod action_verb_is_a_dropdown;
+mod as_caixas_que_encurtaram_guardam_a_explicacao;
 mod every_form_row_reserves_the_animation_column;
 mod every_label_this_panel_paints_fits_its_column;
 mod every_painted_id_is_reachable;

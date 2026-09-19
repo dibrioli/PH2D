@@ -210,6 +210,21 @@ fn publica_a_ancora(sim: &ph2d_ecs::SimWorld, osso_em_foco: Option<u64>) {
             .get::<ph2d_skeleton_ecs::IkGoal>(ph2d_ecs::Entity::from_bits(b))
             .map(|g| (g.mix, g.softness, f64::from(g.chain), g.bend))
     }));
+    // ⭐⭐⭐ **ESTA ÂNCORA APONTA, E COM QUE DESVIO** — a wave do *Look At* (2026-09-19).
+    //
+    // ⚠️ **A porta é a MESMA que o solver lê** (`goal::aponta`): o painel esconde a *Softness* e o
+    // *Bend* exactamente onde o solver os ignora, e pinta o desvio exactamente onde ele o lê. ⛔ Com
+    // duas respostas, o painel prometeria um controlo inerte no primeiro ajuste.
+    //
+    // ⚠️ **GRAUS**, porque é o que o campo mostra — a conversão vive aqui e no dreno, e em mais
+    // lado nenhum.
+    ph2d_panel_skeleton::set_current_bone_aim(osso_em_foco.and_then(|b| {
+        let e = ph2d_ecs::Entity::from_bits(b);
+        ph2d_skeleton_live::goal::aponta(sim, e)
+            .then(|| sim.world().get::<ph2d_skeleton_ecs::IkGoal>(e))
+            .flatten()
+            .map(|g| g.offset.to_degrees())
+    }));
     // ⭐⭐⭐ **E QUE LADO O `Auto` ESTÁ A DERIVAR** (report do dono, 2026-09-18). A porta é a
     // MESMA que o solver usa (`goal::side_for_chain`) — uma segunda resposta a *«de que lado a
     // pose está?»* divergiria da que de facto governa a corrente, e o chip mentiria.

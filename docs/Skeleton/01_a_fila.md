@@ -229,6 +229,106 @@ Cena **`PH2D_VEC_BONE_SMOKE=2`**, passos (3) a (5). Mutação **8 de 8** a sangr
 diferentes o chip acende por `any` — a escolha está **declarada** no doc da porta, e mostrar a
 divergência é mais honesto do que mostrar a maioria, mas ela é decisão de produto.
 
+### F23 — ⭐⭐⭐ **A POSE DE REPOUSO, e a cura do *Reset Transform*** (auditoria contra o oráculo, 2026-09-19)
+
+O dono mandou auditar o sistema de ossos contra o Godot 4.7.2 (MIT, corrido sem interface) e fazer o
+que faltasse, menos o movimento secundário. A auditoria devolveu **um defeito vivo** antes das
+ausências, e este é ele.
+
+⛔⛔⛔ **MEDIDO no caminho do produto** (`ph2d_skeleton_live::sonda_do_reset_na_hierarquia_tests`): a
+tabela do menu de contexto da Hierarquia é **PLANA** — ela não sabe o que a linha é —, e sobre um
+osso `*t = Transform::IDENTITY` movia a arte presa **26,484841 unidades num desenho de 60 (44 %)**,
+com uma mensagem **VERDE** a dizer que correra bem. *Num osso a direcção mora na `rotation` e a
+posição na `translation`: «repor a transformação» de um osso não é a identidade, é o REPOUSO dele* —
+que não existia.
+
+| lei | quanto a arte salta | fracção da forma |
+|---|---|---|
+| a identidade (o que o app tinha) | **26,484841** | **44 %** |
+| o repouso (esta wave) | **0,000000** | nada |
+
+⭐⭐ **`BoneRest` é um COMPONENTE e não um campo do `Bone`**, a forma do `BoneLimit`/`IkGoal` — e a
+razão é que **a ausência é uma resposta**: um `Option` dentro do osso obrigaria todo `Bone::default()`
+a escolher um valor, e o valor neutro de uma pose é exactamente a **identidade**, *o mesmo byte que é
+o defeito*. Com um componente, um osso sem repouso **não o tem**, e o verbo recusa em voz alta.
+⭐ De graça: blob-key própria ⇒ o `PROJECT_SCHEMA` **não se mexe** (precedente da `PhysicsJoint`/W3);
+registo do esqueleto **6 → 7** e catálogo **6 → 7**.
+
+⚠️ **Ele guarda os SEIS números em `f32` e não um `Transform`:** aquele viaja num invólucro
+**versionado** (`TransformVersioned`), e aninhá-lo aqui poria os bytes **fora** dele — um campo novo
+lá leria todo repouso gravado errado, em silêncio.
+
+⇒ uma porta (`pose_de_repouso`) com `guardar` · `repor` · e o veredito
+`repor_transformacao -> Reposicao { NaoEOsso | SemRepouso | Reposta { ossos } }`. **Três** respostas
+e não duas: um osso **sem** repouso guardado não cai de volta na identidade — era por aí que o
+defeito voltaria para todo rig anterior a esta wave.
+
+⚠️ **O sujeito é o osso ESCOLHIDO e a descendência dele**, e é estritamente mais expressivo: escolher
+a raiz repõe o boneco todo, escolher o antebraço repõe o antebraço e a mão. ⛔ Uma lei que subisse à
+raiz sozinha tornaria *«repor só este braço»* inexprimível.
+
+**Na tela:** *Rest Pose* e *Set Rest Pose*, **antes** dos números do osso (o gesto mais frequente do
+rig não fica no fim de uma lista que rola), e o *Reset Transform* da Hierarquia passa a perguntar à
+mesma porta.
+
+⚠️ **O que a construção refutou:** a `esqueletos::ossos_desde` devolve um **conjunto** determinístico
+e **não** uma ordem hierárquica (ela ordena por `to_bits`, que aqui sai ao contrário da criação) — a
+1.ª redacção dos gates presumiu-a e o gate da sub-árvore reprovou a acusar a LEI de mexer no pai
+quando quem estava trocado era a fixtura. E a régua textual do gate da shell leu o **doc-comment que
+EXPLICA a cura** (a armadilha que a Fase B da física já pagou por escrito) ⇒ ela passa a deitar fora
+a prosa antes de medir.
+
+Mutação **9 de 9** a sangrar. Tecto de função curado por **CORTE** (`hierarchy_reset`, irmão do
+`hierarchy_delete`), nunca por uma entrada nova no `FN_OVERAGE_OK`.
+
+### F24 — ⭐⭐⭐ **UM OSSO QUE APONTA PARA UM ALVO (*Look At*) — e o motor já existia** (2026-09-19)
+
+A mesma auditoria nomeou o `SkeletonModification2DLookAt` como ausência nossa. ⭐⭐⭐ **A §5.0 correu
+antes da primeira linha e disse NÃO:** a lei do alcance tem, escrito no corpo dela, um braço para uma
+corrente de **um** osso (*«um osso só: aponta, e o comprimento manda»*), e medido pelo caminho do
+produto (`goal::add` + `solve`) ele aponta com erro **`0,000000°`** em cinco direcções. *O que
+faltava era o NOME, o desvio, e esconder o que ali não faz nada.*
+
+⚠️ **O controlo que impede a conclusão de ser fabricada:** num esqueleto de um osso só a corrente
+resolvida é sempre `1`, logo tudo aponta — a metade negativa corre num **braço**, onde a corrente de
+`2` resolve o par pela lei dos cossenos e o ombro vai parar a outro sítio.
+
+⭐⭐ **E a lente é MEDIDA, não escolhida.** Com a corrente resolvida em UM:
+
+| knob | move o osso |
+|---|---|
+| *IK Mix* | **sim** (é o único que continua a mandar) |
+| *IK Softness* | **zero** — a lei de um osso põe a ponta a `comprimento` na direcção |
+| *IK Bend* | **zero** — não há cotovelo, logo não há lado |
+
+⇒ o painel **esconde** os dois inertes e **pinta** o desvio. ⛔ Pintá-los ali seria a classe de
+controlo morto que o `CLAUDE.md` §5.0 nomeia.
+
+⇒ `IkGoal::offset` (o `additional_rotation` da referência) + o verbo **`Look At`**, que é o `add` com
+a corrente em `1` — ⛔ ele **delega** no irmão e não repete o nascimento (o alvo, a marca `IkTarget`,
+a semente do `StableId` e a captura do lado vivem lá).
+
+⛔⛔ **O desvio só é LIDO quando a âncora APONTA**, e a cerca é a wave inteira: somá-lo a uma corrente
+que **alcança** quebraria o alcance que ela acabou de resolver — a mão deixaria de tocar aquilo que a
+restrição existe para tocar. A porta é `goal::aponta` (a corrente **resolvida**, nunca o número
+escrito no campo), com **três** leitores: o solver, o espelho do painel e o verbo.
+
+⚠️ **E ele entra ANTES da mistura e do limite**, a ordem que os dois já declaram: somá-lo depois faria
+o `Mix = 0` deixar de devolver a pose autorada — o artista desligaria a restrição e o osso ficaria
+rodado, sem nada que o explicasse.
+
+⚠️ **`PROJECT_SCHEMA` +1 — conte o DELTA** (`145 → 146`). Campo novo numa struct já gravada ⇒ regra
+dos degraus 109/110; ⚠️ **a tripla NÃO vê este degrau** (a OITAVA vez). ⛔ Os três registos de
+componente **não se mexem**: não há tipo novo.
+
+**Na tela:** o botão **`Look At`** ao lado do *Add IK* (as duas portas de entrada, e a diferença é o
+que a restrição FAZ), e o campo **`Aim Offset`** em graus, depois do `IK Chain`.
+
+Mutação **13 de 13** a sangrar.
+
+⏳ **ABERTO:** o apontar não tem gesto de canvas (só o painel) · e o desvio é um número, não uma alça
+— arrastar o olhar no canvas seria outro gesto, e é decisão de produto.
+
 ### F19 — ✅ **O CHIP `Auto` DIZ QUE LADO DERIVA** (report do dono, 2026-09-18)
 
 *«IK Bend não funcionou com Auto IK e trocando CCw por CW no painel lateral»* — ⭐ **reproduzido, e

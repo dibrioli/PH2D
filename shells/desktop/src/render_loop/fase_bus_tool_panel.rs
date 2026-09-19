@@ -215,6 +215,10 @@ impl crate::App {
             pd.pending_ik_knob = Some((IkKnob::Softness, *v));
         } else if *id == ph2d_editor_core::ids::VECTOR_BONE_IK_CHAIN {
             pd.pending_ik_knob = Some((IkKnob::Chain, *v));
+        } else if *id == ph2d_editor_core::ids::VECTOR_BONE_IK_OFFSET {
+            // ⭐ O desvio do apontar. ⚠️ O valor chega em GRAUS (é o que o campo mostra) e o dreno
+            // converte — a mesma lei do limite da junta, duas linhas abaixo.
+            pd.pending_ik_knob = Some((IkKnob::Offset, *v));
         } else if *id == ph2d_editor_core::ids::VECTOR_BONE_LIMIT_MIN
             || *id == ph2d_editor_core::ids::VECTOR_BONE_LIMIT_MAX
         {

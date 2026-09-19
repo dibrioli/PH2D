@@ -214,6 +214,8 @@ pub(in crate::render_loop) struct DrainOut {
     pub(in crate::render_loop) pending_bone_release: Option<crate::skeleton_live::Keep>,
     pub(in crate::render_loop) pending_bone_knob: Option<(ph2d_app_skeleton::knobs::BoneKnob, f64)>,
     pub(in crate::render_loop) pending_ik_add: bool,
+    /// ⭐ *Look At* — a âncora que APONTA (a corrente em UM). Ver `goal::add_look_at`.
+    pub(in crate::render_loop) pending_look_at: bool,
     pub(in crate::render_loop) pending_ik_remove: bool,
     // ⭐ O lado da dobra que o artista escolheu neste quadro, se escolheu.
     pub(in crate::render_loop) pending_ik_bend: Option<ph2d_skeleton::BendSide>,

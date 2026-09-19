@@ -45,6 +45,20 @@ pub const VECTOR_BONE_EXPAND: NodeId = hash_node_id("vector.bone.expand");
 /// **Release** — solta as formas e devolve o que o artista DESENHOU.
 pub const VECTOR_BONE_RELEASE: NodeId = hash_node_id("vector.bone.release");
 
+/// ⭐⭐⭐ **Look At** — dá ao osso em foco um alvo para onde ele **APONTA** (o olhar, a cabeça, o
+/// canhão de uma torre), em vez de uma corrente que ALCANÇA.
+///
+/// ⚠️ **Não é um motor novo:** medido, a lei do alcance com a corrente resolvida em UM já apontava
+/// com erro `0,000000°` (`ph2d_app_skeleton::goal::sonda_do_apontar_tests`) — *o que faltava era o
+/// nome*. O verbo é o `Add IK` com a corrente em `1`.
+pub const VECTOR_BONE_LOOK_AT: NodeId = hash_node_id("vector.bone.look_at");
+
+/// ⭐⭐ **Aim Offset** — de quanto o olhar está rodado em relação ao eixo do osso, em graus.
+///
+/// ⚠️ **Só é pintado quando a âncora APONTA** (ver [`VECTOR_BONE_LOOK_AT`]): somá-lo a uma corrente
+/// que alcança quebraria o alcance que ela acabou de resolver.
+pub const VECTOR_BONE_IK_OFFSET: NodeId = hash_node_id("vector.bone.ik.offset");
+
 /// ⭐⭐⭐ **Rest Pose** — devolve este osso e a descendência dele à pose de repouso.
 ///
 /// É o `apply_rest()` do `Bone2D` do Godot e o *Rest Position* do Blender. ⚠️ Sem ele, a única
@@ -300,7 +314,8 @@ pub const VECTOR_BONE_SMART_CLIP_IDS: [NodeId; MAX_SMART_CLIPS] = [
 ///
 /// ⇒ *Uma lista escrita à mão ao lado de outra é duas respostas à mesma pergunta, e a que o artista
 /// vê é a que envelhece.* Com uma tabela só, acrescentar um verbo liga-o nos dois sítios.
-pub const VECTOR_BONE_VERBS: [NodeId; 12] = [
+pub const VECTOR_BONE_VERBS: [NodeId; 13] = [
+    VECTOR_BONE_LOOK_AT,
     VECTOR_BONE_BIND,
     VECTOR_BONE_EXPAND,
     VECTOR_BONE_RELEASE,
@@ -324,7 +339,8 @@ pub const VECTOR_BONE_VERBS: [NodeId; 12] = [
 ///
 /// ⚠️ Ela existe pela mesma razão da [`VECTOR_BONE_VERBS`], e o custo já foi pago: o Z-index
 /// pagou-o uma vez, e o *Add IK* pagou-o outra na família ao lado.
-pub const VECTOR_BONE_FIELDS: [NodeId; 14] = [
+pub const VECTOR_BONE_FIELDS: [NodeId; 15] = [
+    VECTOR_BONE_IK_OFFSET,
     VECTOR_BONE_LENGTH,
     VECTOR_BONE_STRENGTH,
     VECTOR_BONE_SEGMENTS,

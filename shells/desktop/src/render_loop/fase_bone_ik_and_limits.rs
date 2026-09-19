@@ -5,6 +5,8 @@ use super::*;
 /// Os pedidos que o dreno do barramento recolheu neste quadro para esta fase.
 pub(super) struct BoneIkAndLimitsIntents {
     pub(super) pending_ik_add: bool,
+    /// ⭐ *Look At* — a mesma âncora com a corrente em UM (ver `goal::add_look_at`).
+    pub(super) pending_look_at: bool,
     pub(super) pending_ik_remove: bool,
     pub(super) pending_ik_bend: Option<ph2d_skeleton::BendSide>,
     pub(super) pending_bone_handles: Option<ph2d_skeleton::bend::Handles>,
@@ -25,6 +27,7 @@ impl crate::App {
         let FrameGfx { sim, .. } = FrameGfx::of(gfx);
         let BoneIkAndLimitsIntents {
             pending_ik_add,
+            pending_look_at,
             pending_ik_remove,
             pending_ik_bend,
             pending_bone_handles,
@@ -36,6 +39,23 @@ impl crate::App {
             match crate::skeleton_goal::add(sim, osso) {
                 Some(_) => eprintln!(
                     "[ph2d-vec] osso: ancora de IK criada na ponta -- arraste o LOSANGO e a                              corrente segue-o, para sempre (a timeline anima-o como qualquer objecto)"
+                ),
+                None => eprintln!(
+                    "[ph2d-vec] osso: este osso ja' tem ancora -- so' pode haver uma por corrente"
+                ),
+            }
+        }
+        // ⭐⭐⭐ **APONTAR** — a mesma âncora do irmão acima, com a corrente em UM.
+        //
+        // ⚠️ **Dois verbos e um motor, e isso está MEDIDO**
+        // (`ph2d_app_skeleton::goal::sonda_do_apontar_tests`): a lei do alcance com a corrente
+        // resolvida em UM já apontava com erro `0,000000°`. *O que faltava era o nome* — e a lente
+        // do painel, que ali esconde os dois knobs que a medição diz serem inertes.
+        if pending_look_at {
+            match ph2d_skeleton_live::goal::add_look_at(sim, osso) {
+                Some(_) => eprintln!(
+                    "[ph2d-vec] osso: este osso passa a APONTAR para o losango -- arraste-o e o \
+                     osso vira-se para ele; o campo `Aim Offset` roda o olhar em relacao ao eixo"
                 ),
                 None => eprintln!(
                     "[ph2d-vec] osso: este osso ja' tem ancora -- so' pode haver uma por corrente"

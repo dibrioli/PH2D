@@ -14,6 +14,13 @@ thread_local! {
     /// A seleção contém pelo menos uma forma PRESA a um esqueleto? Decide se as duas saídas
     /// (Keep Pose / Release) são oferecidas — *um botão que só sabe recusar é pior que um ausente*.
     static CURRENT_IK_AUTO_SIDE: Cell<Option<usize>> = const { Cell::new(None) };
+    /// ⭐⭐⭐ **Esta âncora APONTA, e com que desvio** — `Some(graus)` ⇒ ela aponta; `None` ⇒ ela
+    /// alcança (ou não há âncora nenhuma).
+    ///
+    /// ⚠️ **UM valor para os DOIS factos, de propósito:** *«aponta»* e *«o desvio dela»* viajam
+    /// juntos e não podem discordar. Com duas células, um quadro podia publicar *«aponta»* com o
+    /// desvio do osso anterior — e o campo mostraria um número que não é de ninguém.
+    static CURRENT_IK_AIM: Cell<Option<f64>> = const { Cell::new(None) };
     static CURRENT_ENVELOPE_MANDA: Cell<bool> = const { Cell::new(true) };
     /// ⭐ **A selecção deforma-se POR ALCANCE?** — a escolha que a fileira `Deform By` mostra.
     ///
@@ -283,6 +290,20 @@ pub fn set_current_bone_ik_auto_side(v: Option<usize>) {
 
 pub(crate) fn current_bone_ik_auto_side() -> Option<usize> {
     CURRENT_IK_AUTO_SIDE.with(Cell::get)
+}
+
+/// ⭐⭐⭐ **A âncora em foco APONTA?** — `Some(desvio em GRAUS)` ou `None` (ela alcança, ou não
+/// existe). Publicado pela shell a partir da porta [`ph2d_skeleton_live::goal::aponta`].
+///
+/// ⚠️ **GRAUS aqui e radianos no documento**, a mesma lei do limite da junta duas fileiras abaixo:
+/// o documento guarda o arco no espaço do `Transform::rotation` e o artista pensa em graus. A
+/// conversão vive na SHELL, num sítio só.
+pub fn set_current_bone_aim(v: Option<f64>) {
+    CURRENT_IK_AIM.with(|c| c.set(v));
+}
+
+pub(crate) fn current_bone_aim() -> Option<f64> {
+    CURRENT_IK_AIM.with(Cell::get)
 }
 
 pub fn set_current_bone_ik(v: Option<(f64, f64, f64, ph2d_skeleton::BendSide)>) {

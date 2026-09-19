@@ -30,6 +30,46 @@ pub fn governed(sim: &SimWorld, tip: Entity, chain: u32) -> Vec<Entity> {
     toda[toda.len() - n..].to_vec()
 }
 
+/// ⭐⭐⭐ **ESTA ÂNCORA APONTA, OU ALCANÇA?** — a porta da wave do *Look At* (2026-09-19).
+///
+/// `true` quando a corrente **RESOLVIDA** é de UM osso: ali a lei do alcance põe a ponta a
+/// `comprimento` na direcção do alvo, que é exactamente *apontar*. `false` de dois para cima: ali
+/// ela resolve as juntas para a ponta **TOCAR** o alvo.
+///
+/// # ⚠️ Ela pergunta pela corrente RESOLVIDA e nunca pelo campo `chain`
+///
+/// Num esqueleto de **um osso só**, um `chain = 2` resolve a `1` e a âncora aponta — ler o número
+/// escrito no componente responderia *«alcança»* sobre uma cena em que nada pode alcançar. É a
+/// mesma lei que o doc do [`ph2d_skeleton_ecs::IkGoal::chain`] já escreve: *quem o limita é a
+/// corrente REAL*.
+///
+/// # ⭐ TRÊS leitores, uma porta
+///
+/// O solver (que só então lê o desvio), o espelho do painel (que só então pinta a fileira do
+/// desvio e esconde os dois knobs que a medição diz serem inertes) e o verbo *Look At*. ⛔ Escrita
+/// três vezes, o painel prometeria um controlo que o solver não lê no primeiro ajuste.
+///
+/// ⚠️ **A medição que a justifica** está na `sonda_do_apontar_tests` da `ph2d-app-skeleton`: com a
+/// corrente em UM, a *Softness* e o *Bend* movem o osso **zero**, e a *Mix* continua a mandar.
+#[must_use]
+pub fn aponta(sim: &SimWorld, osso: Entity) -> bool {
+    let Some(g) = sim.world().get::<IkGoal>(osso) else {
+        return false;
+    };
+    aponta_com(governed(sim, osso, g.chain).len())
+}
+
+/// ⭐ **O que *apontar* QUER DIZER, num sítio só** — a metade pura da porta acima.
+///
+/// ⚠️ **Ela existe porque o solver já TEM a corrente resolvida** e re-derivá-la seria trabalho a
+/// dobrar; escrever `== 1` lá seria a mesma lei num segundo sítio, que é como ela diverge no dia
+/// em que alguém decidir que uma corrente de dois ossos rígidos também aponta. ⇒ os dois chamam
+/// **isto**.
+#[must_use]
+pub const fn aponta_com(corrente_resolvida: usize) -> bool {
+    corrente_resolvida == 1
+}
+
 /// **AS JUNTAS DE UMA CORRENTE, em MUNDO** — `corrente.len() + 1` posições e os comprimentos entre
 /// elas. `None` quando um osso da corrente não tem segmento (a forma nasceu neste quadro).
 ///
@@ -139,5 +179,30 @@ pub fn add(sim: &mut SimWorld, bone: Entity) -> Option<Entity> {
         bend,
         ..IkGoal::default()
     });
+    Some(alvo)
+}
+
+/// ⭐⭐⭐ **O VERBO *LOOK AT*** — dá ao osso em foco um alvo para onde ele **aponta** (2026-09-19).
+///
+/// # ⚠️ Ele NÃO traz lei nova, e isso está MEDIDO
+///
+/// A §5.0 do `CLAUDE.md` manda perguntar se a composição já exprime o item antes de o construir, e
+/// a resposta foi **sim**: com a corrente resolvida em UM osso, o caminho do produto (`add` +
+/// `solve`) já põe o osso a apontar ao alvo com erro `0,000000°` em cinco direcções
+/// (`ph2d_app_skeleton::goal::sonda_do_apontar_tests`). *O motor existia e o artista não lhe
+/// chegava* — o que faltava era o NOME, o desvio, e esconder os dois knobs que ali não fazem nada.
+///
+/// ⛔ **Por isso ele DELEGA no [`add`] e não repete o nascimento:** o alvo, a marca [`IkTarget`], a
+/// semente do `StableId` e a captura do lado vivem lá, e um segundo sítio a criá-los divergiria no
+/// primeiro ajuste — que é o defeito que este módulo já pagou com o `joints_of`.
+///
+/// Devolve a entidade do alvo criado, como o irmão.
+pub fn add_look_at(sim: &mut SimWorld, bone: Entity) -> Option<Entity> {
+    let alvo = add(sim, bone)?;
+    // ⚠️ **UM**, e é o que separa este verbo do irmão: é a corrente que faz a lei do alcance cair
+    // no braço de *apontar*. ⛔ Escrever `DEFAULT_CHAIN` aqui daria um *Add IK* com outro rótulo.
+    if let Some(mut g) = sim.world_mut().get_mut::<IkGoal>(bone) {
+        g.chain = 1;
+    }
     Some(alvo)
 }

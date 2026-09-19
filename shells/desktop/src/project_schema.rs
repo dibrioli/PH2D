@@ -315,4 +315,24 @@
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — a SÉTIMA vez (99, 100, 114, 119, 129, 144 e este): o
 /// `SkinBind` viaja no `WorldSnapshot` e não no `FlipDoc` nem na `VecScene`.
-pub(crate) const PROJECT_SCHEMA: u32 = 156;
+/// # `156 → 157` — a ÂNCORA ganha o DESVIO DO APONTAR (wave do *Look At*, 2026-09-19)
+///
+/// O `ph2d_skeleton_ecs::IkGoal` ganhou um campo `offset: f64` — de quanto o olhar está rodado em
+/// relação ao eixo do osso. É o `additional_rotation` do `SkeletonModification2DLookAt` do Godot
+/// (MIT), e sem ele *«a cabeça olha para a bola»* só funciona se o osso da cabeça tiver sido
+/// desenhado exactamente sobre o eixo em que ele deve olhar — *uma condição de DESENHO a fingir de
+/// lei*.
+///
+/// ⚠️ **Campo novo numa struct que já se grava** ⇒ é a regra dos degraus 109/110: os bytes de toda
+/// `IkGoal` gravada mudam, e o postcard é posicional. Um ficheiro anterior é **recusado em voz
+/// alta**, que é o que este degrau compra.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08.
+///
+/// ⭐ **A aparência de um rig já autorado não muda:** o nascimento é `0` (o no-op exacto) e o
+/// campo só é LIDO quando a âncora **aponta** — a corrente resolvida em UM osso. Somá-lo a uma
+/// corrente que ALCANÇA quebraria o alcance que ela acabou de resolver, e a porta que decide é a
+/// `ph2d_skeleton_live::goal::aponta`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — a OITAVA vez (99, 100, 114, 119, 129, 144, 145 e este).
+pub(crate) const PROJECT_SCHEMA: u32 = 157;

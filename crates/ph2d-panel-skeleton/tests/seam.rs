@@ -64,6 +64,10 @@ fn limpa() {
     state::set_current_bone_handles(None);
     state::set_current_bone_tip(None);
     state::set_current_bone_ik(None);
+    // ⚠️ **A lente do APONTAR também se limpa**: com ela por repor, o teste seguinte pintaria o
+    // desvio e esconderia a *Softness* sobre uma âncora que ALCANÇA — e ficaria verde a medir
+    // outro painel.
+    state::set_current_bone_aim(None);
     state::set_current_bone_smart(None);
     state::set_current_bone_actions(Vec::new());
 }
@@ -197,7 +201,14 @@ fn estado_de(id: ph2d_a11y::NodeId) {
     // ⚠️ Os três segmentos do LADO vivem com os números da âncora — eles só têm sujeito quando ela
     // existe. A lista é derivada da tabela dos segmentos, não escrita à mão: é a mesma lição que
     // pôs a população deste ficheiro em `VECTOR_BONE_VERBS`.
-    let precisa_de_ancora = id == ids::VECTOR_BONE_IK_REMOVE
+    // ⭐⭐⭐ **E o DESVIO tem uma exclusão a MAIS: ele só existe numa âncora que APONTA.**
+    //
+    // ⚠️ A *Softness* e o *Bend* têm a exclusão **oposta** (medidos inertes com a corrente em UM),
+    // logo os dois estados não podem ser o mesmo — e é por isso que a lente é um segundo eixo aqui
+    // e não mais um nome na lista de cima.
+    let precisa_de_apontar = id == ids::VECTOR_BONE_IK_OFFSET;
+    let precisa_de_ancora = precisa_de_apontar
+        || id == ids::VECTOR_BONE_IK_REMOVE
         || id == ids::VECTOR_BONE_IK_MIX
         || id == ids::VECTOR_BONE_IK_SOFTNESS
         || id == ids::VECTOR_BONE_IK_CHAIN
@@ -208,6 +219,7 @@ fn estado_de(id: ph2d_a11y::NodeId) {
         2.0,
         ph2d_skeleton::BendSide::Keep,
     )));
+    state::set_current_bone_aim(precisa_de_apontar.then_some(0.0));
     // ⚠️ O limite tem a MESMA forma de exclusão que a âncora: *Add* só existe sem ele, *Remove* e
     // os dois extremos só com ele. Um controlo fora deste `if` reprova a dizer «não foi PINTADO»,
     // que é a pergunta certa a fazer a quem o acrescentou.
@@ -893,6 +905,79 @@ fn a_fileira_da_lei_de_pele_existe_segue_a_seleccao_e_o_clique_chega() {
             !acoes.is_empty(),
             "o chip da lei de pele esta' MORTO sob o dedo: ele acende e o desenho nao muda, que e' \
              o defeito que esta familia ja' pagou sete vezes"
+        );
+    }
+    limpa();
+}
+
+/// ⭐⭐⭐ **A ÂNCORA QUE APONTA MOSTRA OUTRA COISA — e a lista é MEDIDA, não escolhida.**
+///
+/// A `sonda_do_apontar_tests` da `ph2d-app-skeleton` mediu que, com a corrente resolvida em UM, a
+/// *Softness* e o *Bend* movem o osso **zero** e a *Mix* continua a mandar. ⛔ Pintá-los ali seria
+/// a classe de controlo morto que o `CLAUDE.md` §5.0 nomeia — o artista mexe e nada acontece.
+///
+/// ⚠️ **As DUAS metades são dois defeitos diferentes:** esconder o que é vivo apaga um controlo, e
+/// pintar o que é morto promete um efeito que não existe. Um gate com uma metade só fica verde
+/// sobre a outra.
+#[test]
+fn a_ancora_que_aponta_esconde_o_que_a_medicao_diz_ser_inerte() {
+    let pintado = |id: ph2d_a11y::NodeId| {
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+            .is_some()
+    };
+    publica_tudo();
+    state::set_current_bone_ik(Some((1.0, 0.0, 2.0, ph2d_skeleton::BendSide::Keep)));
+
+    // (a) Ela ALCANÇA: a suavidade e o lado existem, o desvio não.
+    state::set_current_bone_aim(None);
+    assert!(
+        pintado(ids::VECTOR_BONE_IK_SOFTNESS) && pintado(ids::VECTOR_BONE_IK_BEND_AUTO),
+        "a suavidade ou o lado sumiram de uma ancora que ALCANCA: ali os dois mandam, e escondê-los \
+         apaga dois controlos vivos"
+    );
+    assert!(
+        !pintado(ids::VECTOR_BONE_IK_OFFSET),
+        "o desvio apareceu numa ancora que ALCANCA: somá-lo ali quebraria o alcance que ela acabou \
+         de resolver, e o painel estaria a prometê-lo"
+    );
+
+    // (b) Ela APONTA: o desvio existe, os dois inertes somem — e a mistura FICA.
+    state::set_current_bone_aim(Some(0.0));
+    assert!(
+        pintado(ids::VECTOR_BONE_IK_OFFSET),
+        "o desvio nao e' pintado numa ancora que APONTA: e' o unico numero novo que ela le'"
+    );
+    assert!(
+        !pintado(ids::VECTOR_BONE_IK_SOFTNESS) && !pintado(ids::VECTOR_BONE_IK_BEND_AUTO),
+        "a suavidade ou o lado ficaram numa ancora que APONTA: medido, os dois movem o osso ZERO ali"
+    );
+    assert!(
+        pintado(ids::VECTOR_BONE_IK_MIX),
+        "a MISTURA sumiu: ela e' o unico dos tres que continua a mandar, e sem ela o apontar nao se \
+         desliga"
+    );
+    limpa();
+}
+
+/// ⭐⭐ **E as DUAS portas de entrada existem sem âncora** — *Add IK* (alcançar) e *Look At*
+/// (apontar).
+///
+/// ⚠️ Sem a segunda, o apontar continua a ser alcançável **só** por quem souber pôr o `IK Chain` em
+/// `1` à mão — que é a definição de um motor que o artista não tem.
+#[test]
+fn as_duas_portas_da_ancora_sao_oferecidas() {
+    publica_tudo();
+    state::set_current_bone_ik(None);
+    state::set_current_bone_aim(None);
+    for id in [ids::VECTOR_BONE_IK_ADD, ids::VECTOR_BONE_LOOK_AT] {
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        assert!(
+            host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+                .is_some(),
+            "{id:?} nao e' pintado sem ancora: uma das duas portas de entrada nao existe"
         );
     }
     limpa();

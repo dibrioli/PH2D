@@ -169,6 +169,11 @@ impl crate::App {
                     reason = "o campo é f64 e a contagem de ossos é u32; o piso em 0 já corre acima"
                 )]
                 IkKnob::Chain => g.chain = v.max(0.0) as u32,
+                // ⭐⭐ **GRAUS na tela, RADIANOS no documento** — a mesma lei do limite da junta, e
+                // a conversão vive aqui, num sítio só. ⛔ **Sem piso nem tecto:** um desvio é um
+                // arco e dar a volta inteira é legítimo (apontar «para trás» é `180`), e a lei do
+                // `wrap_pi` a jusante já o normaliza — §0.0, um limite tem de nomear um recurso.
+                IkKnob::Offset => g.offset = v.to_radians(),
             }
             if let Some(lado) = lado_novo {
                 g.bend = lado;

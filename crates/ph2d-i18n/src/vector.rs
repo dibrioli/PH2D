@@ -339,6 +339,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bone.tip" => "Curve Tip",
         "panel.vector.bone.tip.chain" => "From Chain",
         "panel.vector.bone.tip.straight" => "Nobody",
+        "panel.vector.bone.look_at" => "Look At",
+        "panel.vector.bone.ik.offset" => "Aim Offset",
         "panel.vector.bone.ik.add" => "Add IK",
         "panel.vector.bone.ik.remove" => "Remove IK",
         "panel.vector.bone.ik.mix" => "IK Mix",

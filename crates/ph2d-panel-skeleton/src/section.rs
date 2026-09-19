@@ -243,17 +243,34 @@ fn rotulo_do_auto(derivado: Option<usize>) -> String {
 
 fn ik_rows(r: &mut RowCtx, y: f32) -> f32 {
     let Some((_, _, _, lado)) = state::current_bone_ik() else {
-        return r.action_button(ids::VECTOR_BONE_IK_ADD, tr("panel.vector.bone.ik.add"), y);
+        // ⭐⭐⭐ **DUAS portas de entrada, e a diferença é o que a restrição FAZ:** *Add IK* dá uma
+        // corrente que **ALCANÇA** o alvo (o membro, dois ossos), *Look At* dá um osso que
+        // **APONTA** para ele (o olhar, a cabeça, o canhão de uma torre).
+        //
+        // ⚠️ **Não são dois motores** — a medição está na `sonda_do_apontar_tests`: a mesma lei do
+        // alcance, com a corrente resolvida em UM, já apontava com erro `0,000000°`. *O que faltava
+        // era o nome.*
+        let y = r.action_button(ids::VECTOR_BONE_IK_ADD, tr("panel.vector.bone.ik.add"), y);
+        return r.action_button(ids::VECTOR_BONE_LOOK_AT, tr("panel.vector.bone.look_at"), y);
     };
     let mut y = r.action_button(
         ids::VECTOR_BONE_IK_REMOVE,
         tr("panel.vector.bone.ik.remove"),
         y,
     );
+    // ⚠️ **A lista já vem filtrada pela lente** — ver [`campos_da_ancora`]. ⛔ Filtrar aqui faria a
+    // SEMEADURA dos valores (que percorre a mesma porta, no `paint`) e a PINTURA discordarem: um
+    // campo semeado e não pintado é inofensivo, um pintado e não semeado mostra o `0` com que
+    // nasceu — que é o report do dono de 2026-09-14, à letra.
     for (id, label, step, _valor) in campos_da_ancora().unwrap_or_else(|| {
         unreachable!("a âncora existe: o `let Some(..) = current_bone_ik()` acima devolveu cedo")
     }) {
         y = r.labeled_number_field(label, id, step, y);
+    }
+    // ⛔ **E o lado da dobra sai com o resto no apontar:** não há cotovelo num osso só, logo não há
+    // lado para dobrar — medido inerte na `sonda_do_apontar_tests`.
+    if state::current_bone_aim().is_some() {
+        return y;
     }
     // ⭐⭐⭐ **PARA QUE LADO O JOELHO DOBRA** — e ele vem DEPOIS de `Chain` porque é o `Chain`
     // que decide quantos ossos têm lado: ler *«de que lado»* antes de saber *«de que corrente»*
@@ -460,28 +477,45 @@ pub(crate) fn campos_do_osso() -> Option<Vec<(ph2d_a11y::NodeId, &'static str, f
 }
 
 /// Os três números da ÂNCORA — ver [`campos_do_osso`]. `None` = o osso não tem restrição.
-pub(crate) fn campos_da_ancora() -> Option<[(ph2d_a11y::NodeId, &'static str, f64, f64); 3]> {
+pub(crate) fn campos_da_ancora() -> Option<Vec<(ph2d_a11y::NodeId, &'static str, f64, f64)>> {
     let (mix, softness, chain, _) = state::current_bone_ik()?;
-    Some([
-        (
-            ids::VECTOR_BONE_IK_MIX,
-            tr("panel.vector.bone.ik.mix"),
-            MIX_STEP,
-            mix,
-        ),
-        (
+    // ⭐⭐⭐ **A LENTE DO APONTAR, e ela é MEDIDA e não escolhida**
+    // (`ph2d_app_skeleton::goal::sonda_do_apontar_tests`): com a corrente resolvida em UM, a
+    // *Softness* move o osso **zero** e o desvio é o único número novo que ele lê. ⛔ Pintar a
+    // *Softness* ali seria a classe de controlo morto que o `CLAUDE.md` §5.0 nomeia.
+    let aponta = state::current_bone_aim();
+    let mut campos = vec![(
+        ids::VECTOR_BONE_IK_MIX,
+        tr("panel.vector.bone.ik.mix"),
+        MIX_STEP,
+        mix,
+    )];
+    if aponta.is_none() {
+        campos.push((
             ids::VECTOR_BONE_IK_SOFTNESS,
             tr("panel.vector.bone.ik.softness"),
             MIX_STEP,
             softness,
-        ),
-        (
-            ids::VECTOR_BONE_IK_CHAIN,
-            tr("panel.vector.bone.ik.chain"),
-            CHAIN_STEP,
-            chain,
-        ),
-    ])
+        ));
+    }
+    campos.push((
+        ids::VECTOR_BONE_IK_CHAIN,
+        tr("panel.vector.bone.ik.chain"),
+        CHAIN_STEP,
+        chain,
+    ));
+    // ⚠️ **Depois da corrente**, e a ordem diz o que ele é: o desvio só existe porque a corrente
+    // resolve a UM — ler *«de quanto está rodado»* antes de saber *«de que corrente»* é ler a
+    // resposta antes da pergunta (a mesma lei que já põe o lado da dobra depois do `Chain`).
+    if let Some(graus) = aponta {
+        campos.push((
+            ids::VECTOR_BONE_IK_OFFSET,
+            tr("panel.vector.bone.ik.offset"),
+            OFFSET_STEP,
+            graus,
+        ));
+    }
+    Some(campos)
 }
 
 /// Passo do campo de comprimento, no domínio do DOCUMENTO (unidades de mundo).
@@ -510,6 +544,10 @@ pub(crate) const ANGLE_STEP: f64 = 5.0; // LITERAL-PX-OK: passo no domínio do d
 
 /// Passo da CORRENTE — ela conta ossos, então o passo é **um osso**.
 const CHAIN_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento, não medida de design
+
+/// Passo do DESVIO do apontar, em **graus** — o mesmo do limite da junta, pela mesma razão: os dois
+/// são arcos que o artista lê em graus, e o documento guarda-os em radianos.
+const OFFSET_STEP: f64 = ANGLE_STEP;
 
 #[cfg(test)]
 mod tests {

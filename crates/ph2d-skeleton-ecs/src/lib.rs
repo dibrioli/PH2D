@@ -436,6 +436,28 @@ pub struct IkGoal {
     /// gravado antes desta wave recebe, e é o comportamento que ele tinha): ali o lado sai da pose,
     /// e a corrente **inverte** ao passar pela recta.
     pub bend: ph2d_skeleton::BendSide,
+    /// ⭐⭐⭐ **O DESVIO DO APONTAR**, em radianos — o `additional_rotation` do
+    /// `SkeletonModification2DLookAt` do Godot (MIT).
+    ///
+    /// # ⚠️ Ele só é lido quando a âncora APONTA, e isso é uma lei
+    ///
+    /// Uma corrente cuja resolução dá **um** osso *aponta* (a lei põe a ponta a `length` na
+    /// direcção do alvo); uma de dois ou mais *alcança* (ela resolve as juntas para a ponta TOCAR o
+    /// alvo). ⛔ Somar um desvio à segunda **quebraria o alcance que ela acabou de resolver** — a
+    /// mão deixaria de tocar aquilo que a restrição existe para tocar. ⇒ o desvio é do APONTAR, e a
+    /// porta que decide é a [`ph2d_skeleton_live::goal::aponta`] (a corrente **resolvida**, não o
+    /// número escrito neste campo: num esqueleto de um osso só, `chain = 2` resolve a `1`).
+    ///
+    /// # ⭐ Porque ele existe
+    ///
+    /// Sem desvio, *«a cabeça olha para a bola»* só funciona se o osso da cabeça tiver sido
+    /// desenhado exactamente sobre o eixo em que ele deve olhar — *uma condição de DESENHO a fingir
+    /// de lei*. Com ele, o artista desenha o osso onde a anatomia manda e diz de quanto o olhar
+    /// está rodado em relação a ele.
+    ///
+    /// ⚠️ **O nascimento é `0`** ⇒ toda âncora já autorada atravessa esta linha **ao bit**.
+    #[serde(default)]
+    pub offset: f64,
 }
 
 impl Default for IkGoal {
@@ -448,6 +470,8 @@ impl Default for IkGoal {
             // ⚠️ `Keep` aqui e **capturado** no `add`: o default de um componente é o que um
             // ficheiro sem o campo recebe, e para esse a resposta honesta é *«o que ele fazia»*.
             bend: ph2d_skeleton::BendSide::Keep,
+            // ⭐ Sem desvio — o no-op exacto, e o que toda âncora já autorada tinha.
+            offset: 0.0,
         }
     }
 }

@@ -515,6 +515,17 @@ fn solve_one(
         },
     );
     let mix = g.mix.clamp(0.0, 1.0);
+    // ⭐⭐⭐ **O DESVIO DO APONTAR** (o `additional_rotation` da referência), e ele só existe quando
+    // a âncora APONTA — ver [`ph2d_skeleton_live::goal::aponta`].
+    //
+    // ⛔ **Somá-lo a uma corrente que ALCANÇA quebraria o alcance que ela acabou de resolver**: a
+    // ponta deixaria de tocar o alvo, que é a única coisa que aquela restrição existe para fazer.
+    // ⚠️ A porta é a do painel e a do verbo — *três leitores, uma pergunta*.
+    let desvio = if ph2d_skeleton_live::goal::aponta_com(corrente.len()) {
+        g.offset
+    } else {
+        0.0
+    };
     let mut mexeu = false;
     for (i, &e) in corrente.iter().enumerate() {
         // ⭐⭐ A MIRA é a mesma porta do gesto, e a MISTURA é sobre o ÂNGULO: interpolar as posições
@@ -522,6 +533,11 @@ fn solve_one(
         let Some(alvo_rot) = crate::bone_gesture::aim_rotation(sim, e, juntas[i + 1]) else {
             continue;
         };
+        // ⚠️ **O desvio entra ANTES da mistura e do limite**, e a ordem é a que os dois já
+        // declaram: a mistura interpola entre a pose autorada e *o que a restrição quer*, e o
+        // limite apara *o que a restrição pediu*. Somá-lo depois faria o `Mix = 0` deixar de
+        // devolver a pose autorada, e o limite deixaria de ser o último a falar.
+        let alvo_rot = alvo_rot + desvio;
         let Some(antes) = sim.world().get::<Transform>(e).copied() else {
             continue;
         };
@@ -648,3 +664,9 @@ pub fn osso(
 #[cfg(test)]
 #[path = "sonda_do_lado_do_joelho_tests.rs"]
 mod sonda_do_lado_do_joelho_tests;
+
+// ⏱️ **A sonda do APONTAR** — a §5.0 corrida antes da 1.ª linha da wave do LookAt: ela mede se a
+// composição que já existe (uma âncora com a corrente em UM) entrega o apontar, e com que erro.
+#[cfg(test)]
+#[path = "sonda_do_apontar_tests.rs"]
+mod sonda_do_apontar_tests;

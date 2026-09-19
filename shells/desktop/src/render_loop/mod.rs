@@ -527,6 +527,9 @@ enum IkKnob {
     Mix,
     Softness,
     Chain,
+    /// ⭐⭐⭐ **O DESVIO DO APONTAR**, em GRAUS na tela e radianos no documento — a conversão vive
+    /// no dreno, como a do limite da junta. Ver [`ph2d_skeleton_ecs::IkGoal::offset`].
+    Offset,
 }
 impl crate::App {
     pub(super) fn run_render_frame(&mut self) {

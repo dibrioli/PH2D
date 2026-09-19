@@ -39,6 +39,9 @@ impl crate::App {
         } else if *id == ph2d_editor_core::ids::VECTOR_BONE_REST_SET {
             // ⭐⭐ E o par dele: a pose de AGORA passa a ser o repouso.
             pd.pending_bone_rest = Some(ph2d_skeleton_live::pose_de_repouso::Verbo::Guardar);
+        } else if *id == ph2d_editor_core::ids::VECTOR_BONE_LOOK_AT {
+            // ⭐⭐⭐ APONTAR: a mesma âncora, com a corrente em UM — ver `goal::add_look_at`.
+            pd.pending_look_at = true;
         } else if *id == ph2d_editor_core::ids::VECTOR_BONE_IK_ADD {
             // ⭐⭐⭐ A ÂNCORA: dá ao osso em foco um alvo que a corrente persegue.
             pd.pending_ik_add = true;

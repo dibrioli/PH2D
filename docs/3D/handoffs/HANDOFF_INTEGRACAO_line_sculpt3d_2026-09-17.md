@@ -4069,3 +4069,117 @@ relógio*; zero linhas do diff naquele caminho.
 assinatura que o §5.0 pede (*o conjunto de reprovadas muda entre corridas do
 mesmo binário*) está completa: ela reprovou numa e não na seguinte, sem uma linha
 de código no meio.
+
+---
+
+## §93 — ⛔⛔⛔⛔ A RAZÃO ERA A GRANDEZA ERRADA NO PINCEL GRANDE: a folha que o olho VÊ
+
+> **Report do dono, no mesmo dia:** *«ainda não ficou bom»* (duas fotos — a frente
+> limpa, as costas rasgadas) e, a seguir, **«funciona para tamanho menor do
+> pincel»**. Commit `33909fef4`.
+>
+> ⭐ **Ele achou a fronteira sem ver tabela nenhuma**, e é exactamente a que a
+> reprodução deu.
+
+### §93.1 — A reprodução, na peça e no gesto da cena
+
+Barbatana da `=50`, traço de 6 dabs, força `1,00`. As costas movem-se, em fracção
+do que a frente moveu:
+
+| `R` | `d = 0,10` | `d = 0,25` | `d = 0,50` |
+|---|---|---|---|
+| `0,20` | `79,4 %` | `1,3 %` | `0,0 %` |
+| `0,40` | `106,1 %` | `113,1 %` | `145,1 %` |
+| **`0,65`** (o da 2.ª foto) | `104,6 %` | `103,2 %` | `104,3 %` |
+| `0,90` | `103,6 %` | `103,8 %` | `104,2 %` |
+
+⚠️ **E o rasgo das fotos NÃO é geometria virada:** `0` faces invertidas em todas as
+células. Com a frente a subir `0,33` e as costas `0,34` numa chapa de `0,06`, **as
+duas folhas atravessam-se** — é isso que a foto mostra.
+
+### §93.2 — ⭐⭐⭐⭐ O mecanismo é aritmético, e fecha a porta a toda afinação
+
+Para um ponto de trás a `L` de lado do cursor, com o cursor a `d` da beira de uma
+chapa de espessura `t`: **ar** `= √(L² + t²)`, **superfície** `= 2d + t + L` ⇒
+
+> com `L ≫ t` a razão tende para **`1`** — o mesmo valor que um ponto da FRENTE a
+> `L` de lado também tem.
+
+Medido (`R = 0,65`, `d = 0,25`): os vértices de trás que passam leem razão de
+`2,83` a `1,82`, **toda ela abaixo de `3,5`** e legitimamente. ⛔ **Nenhum valor de
+`RAZAO_MAXIMA` os separa**, e apertá-la comeria a frente.
+
+### §93.3 — A lei que fica, e de onde sai a barra
+
+`NORMAL_LIMIAR = 0,30`: `n · olho` acima disso sai da pegada. **Imune ao tamanho
+do pincel por construção.** Vale medido, `%` do que a lei mantinha que a condição
+corta, `R = 0,65`:
+
+| peça | `0,00` | `0,20` | **`0,30`** | `0,45` | `0,60` |
+|---|---|---|---|---|---|
+| ⛔ barbatana | `42,3` | `42,3` | **`42,3`** | `42,3` | `42,3` |
+| ⛔ casca fina, dab na beira | `49,0` | `49,0` | **`49,0`** | `43,4` | `32,1` |
+| ✅ esfera · `sculpt_sphere` · cratera `0,50` · rugosa `0,16` · cilindro | `0,0` | `0,0` | **`0,0`** | `0,0` | `0,0` |
+| ✅ rugosa `0,24` | `1,5` | `0,0` | **`0,0`** | `0,0` | `0,0` |
+
+⇒ **as costas movem `0,0000` nas doze células**, até `R = 0,90` e até *passada* a
+beira.
+
+### §93.4 — ⛔⛔ A composição NÃO exprimia isto (medido antes da 1.ª linha)
+
+A caixa **`Front Faces Only`** já existe, é rótulo público da referência e a lei
+dela é contínua (`max(n·olho, 0)`). ⭐ **E é INERTE no modo de omissão** —
+`FrontFace::Ignored` no modo `S`, com o doc a dizer por escrito que ligá-la seria
+divergir da ferramenta em silêncio. As colunas `ff=OFF` e `ff=ON` na barbatana
+saem **idênticas ao último dígito**.
+
+### §93.5 — ⚠️⚠️ As TRÊS cercas, escritas por gates VERMELHOS
+
+1. **Se o corte esvazia a pegada, ele não corre** — seis gates, todos com a mesma
+   mensagem (*«o dab não moveu nada»*), entre eles o
+   `a_footprint_entirely_facing_away_still_fits_a_sane_plane`, que é este caso com
+   o nome dele.
+2. **Quem RELAXA não lê o olho** ([`Verb::a_folha_do_olho_decide`]) — uma região
+   relaxada de um lado só fica torta (o `smoothing_the_lip_of_an_open_mesh`
+   reprova), e **os mesmos verbos são os do FILTRO**, que corre a peça inteira sem
+   cursor nenhum.
+3. **O olho degenerado desliga a lei** (valor conservador).
+
+### §93.6 — ⛔⛔⛔ Para quem funde: DUAS bancadas armavam uma feature NOSSA
+
+O `oraculo_dos_gestos_tangenciais` e o `filter_brush` corriam com `Connected Only`
+ligado pelo `Brush::default()` (o dono pediu-a como omissão em 10/09). Era
+inofensivo enquanto a máscara só cortava o que a superfície não liga — numa esfera
+isso é zero. Com a terceira condição o `polegar_esfera_topo` foi de `≤ 5e-4` para
+`2,038e-3`. ⇒ as duas declaram `surface_only: false`, com o precedente da
+`eared_sphere` e do `front_faces_only: false` do próprio `filter_brush` ao lado.
+*Uma bancada de paridade que arma o que o alvo não tem mede outro programa.*
+
+⚠️ Mais duas fixturas isoladas pela mesma razão (o sujeito delas não é a máscara):
+`a_stroke_survives_a_collapse_and_keeps_the_pre_of_each_vertex` (quer a pegada a
+ser a malha INTEIRA) e o `filter_brush`.
+
+### §93.7 — ⚠️ NOMEADA: a `RAZAO_MAXIMA` ficou sem trabalho
+
+Com ela inerte (`1e9`), das **`697`** corridas de `ph2d-sculpt3d` +
+`ph2d-app-sculpt3d` cai **UMA** — e era um gate que media a própria razão. E no
+regime construído de propósito para ela decidir (verbo que relaxa ⇒ sem olho;
+chapa de duas folhas; `R = 0,20`, `d = 0,12`, dentro da banda `3,5·t < 2R`
+calculada à mão) ela lê **`7` de `64` a escapar — com ela e SEM ela**: ali quem
+corta é o `ALCANCE_TECTO`, e os `7` são os **laterais**, que ela nunca apanhou.
+
+⇒ *nenhuma fixtura deste repo a distingue.* Um gate escrito para a justificar
+seria vácuo, e **um gate vácuo é pior que nenhum** — por isso a mutação dela fica
+**NOMEADA com a medição** e a remoção é wave própria (ela toca os gates da manhã,
+a 4.ª metade do gate da cena e o `README` da pasta).
+
+### §93.8 — A prova
+
+`nextest-impacted` **16 476 / 16 476** · censos da árvore COMBINADA **90 / 90** ·
+clippy `-D warnings` zero · mutação **19 a sangrar + 1 NOMEADA** · as 10 vassouras
+com os **mesmos 11 ficheiros pré-existentes**, nenhum desta wave.
+
+⚠️ Uma reprovada na 1.ª corrida do portão foi o
+`the_cost_of_a_player_is_linear_in_their_number`, **membro já nomeado** da família
+de flakes de fan-out do §5.0: **3 de 3 verde sozinho** a `load 34,5` · `33,3` ·
+`33,3`.

@@ -281,3 +281,31 @@ TRÊS portões (a mira 1,51× · a colocação 3,39 cm · o calcanhar 3,49 cm) e
 de que a mutação tinha morrido: na sobrevivência ele imprime só os portões ESPERADOS que ficaram
 verdes, e um vermelho que ninguém nomeou só aparece **quando ela morre**. Curado nas duas leituras.
 Detalhe: `ACHADOS` B34.
+
+
+## 19/09 (4.ª) — as DUAS opções: deslocar o peso · a força do impacto
+
+Ordem do dono: *«como opções e não substituir o que temos»*. Desligadas, os 17 exemplos saem **byte
+a byte** iguais, com portão.
+
+**(a) O peso** são **DUAS leis num selector**, e a partição foi decidida pela FOTO: *o que a física
+deixa* (o corpo anda **0,2 cm**, o desequilíbrio 135,3 → 135,0 — o boneco fica em cima do laranja) ×
+*o quanto for preciso* (desequilíbrio 135,3 → **0,6** em seis exemplos, e o corpo anda **54,5 cm num
+quadro**, ficando 55 cm atrás do laranja, sentado atrás dos pés). ⛔ Nenhuma é shipável sozinha —
+uma é uma caixa que não faz nada, a outra é pior do que não existir — e nenhum NÚMERO o dizia.
+Nas duas, o corpo mexe-se **e mais nada** (chave 0,0000 cm · ponta 0,0000 · nada no chão escorrega).
+⚠️⚠️ A cerca é o PÊNDULO INVERTIDO (`ẍ = g·d/h`): na chave da aterrissagem o peso já está **em cima
+da borda da frente do apoio** (`d ≈ 2 cm`) ⇒ o pé não tem de onde empurrar. Ela deixa **7,4 cm** em
+dez quadros, `7,4×` menos do que equilibrar pede, e dar 5× mais tempo move 1,7 cm ⇒ *falta ALAVANCA,
+não tempo*. ⭐ E o número nomeia o defeito verdadeiro: o motor levanta **o pé em que o peso está**
+para o mover 5 cm — a cerca do passo (B33), decisão do dono.
+
+**(b) O impacto** cai de **6,62 para 4,70 g** (o oráculo: 4,6), afundando 8,1 → 12,6 cm (ele 8,7), e
+**só amacia**: o `pulo` (3,29 g) e o `mortal` (3,62) saem byte a byte iguais. ⭐⭐⭐ A lei é *o corpo
+volta à pose o mais depressa que consegue sem nunca passar do pico* — controlo de tempo mínimo de um
+duplo integrador; o afundamento é a SAÍDA, não uma entrada.
+
+⛔ **Quatro redacções derrubadas por medição** (uma janela por trecho em vez de por pé · o perfil
+aplicado à RAIZ e não ao PESO · a travagem medida da POSE que já desce · a altura lida do quadro que
+a lei acabara de baixar) e **três linhas que nenhuma mutação matava**, duas delas apagadas com a
+medição escrita. Detalhe: `ACHADOS` B35.

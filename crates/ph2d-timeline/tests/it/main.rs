@@ -40,6 +40,7 @@ mod loop_wrap;
 mod loop_wrap_both_ends;
 mod loop_wrap_out;
 mod measure_motion_path;
+mod mede_o_que_a_composicao_ja_da_ao_tween;
 mod morph_is_authorable;
 mod motion_path;
 mod motion_path_perf;

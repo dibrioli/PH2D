@@ -275,7 +275,16 @@ pub fn por_distancia(viz: &Vizinhanca, posicoes: &[V3], pesos: &mut [f32], banda
 /// ⚠️ **As duas cercas escrevem-se MULTIPLICADAS e nunca divididas** pelo
 /// cosseno: a forma clássica `a·cosθ < h < a/cosθ` inverte de sentido com um
 /// ângulo obtuso em `c`, e `h·cosθ < a` é a mesma condição sem esse ramo.
-pub(crate) fn atravessa(c: V3, p: V3, q: V3, tp: f32, tq: f32) -> Option<f32> {
+///
+/// ⚠️⚠️ **Ela é `pub` só para o GATE DE CONCORDÂNCIA, e isso é a decisão.** A
+/// `ph2d-mesh` tem a mesma marcha (o pincel precisa dela e esta crate **não pode
+/// depender de uma `Mesh`** — é o que a mantém do lado de lá da parede
+/// clean-room, o mesmo precedente que a `ph2d-boundary` escreveu para o
+/// `vetor.rs`). ⇒ há duas cópias, **de propósito**, e o que torna a duplicação
+/// honesta é o gate `as_duas_marchas_concordam` da `ph2d-sculpt3d`: as duas são
+/// chamadas sobre o mesmo corpus de triângulos e têm de devolver o mesmo `f32`.
+/// *Uma divergência passa a ser um portão vermelho em vez de uma deriva muda.*
+pub fn atravessa(c: V3, p: V3, q: V3, tp: f32, tq: f32) -> Option<f32> {
     // `a` é o canto de tempo MENOR — a quadrática é escrita a partir dele.
     let (pa, pb, ta, tb) = if tp <= tq {
         (p, q, tp, tq)

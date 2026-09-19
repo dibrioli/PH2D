@@ -8,6 +8,10 @@
 
 mod a_resposta_do_filtro_ao_arrasto;
 mod cada_rotulo_deste_motor_vem_da_tabela;
+/// ⭐⭐⭐⭐ **As duas marchas de Kimmel–Sethian deste repo concordam AO BIT** — o
+/// gate que torna honesta uma duplicação deliberada. Ver
+/// [`as_duas_marchas_concordam`].
+mod as_duas_marchas_concordam;
 mod cotangent_operator;
 mod measure_alpha;
 mod measure_alpha_over_a_whole_mesh;

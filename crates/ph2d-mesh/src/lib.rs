@@ -52,6 +52,24 @@ mod extract;
 mod face;
 mod feature_dirs;
 mod feature_edges;
+/// ⛔⛔ **A marcha de Kimmel–Sethian — CONSTRUÍDA, MEDIDA e não adoptada pelo
+/// produto, e por isso fechada atrás da `test-support`.**
+///
+/// Ela foi escrita para a máscara de alcance do carimbo (a parede fina), e a
+/// medição mandou-a embora: na lei que ficou — a RAZÃO `superfície/ar` — ela dá
+/// **exactamente a mesma tabela** que o passeio por arestas em todas as peças
+/// aprovadas (`0,00 pp` de diferença), corta **MENOS** o defeito (`31,9 %`
+/// contra `38,9 %` na barbatana) e custa **`4,3 ×`** — a `523 k` vértices com
+/// `R = 0,40` ela põe um dab em `7,49 ms` de um tecto de `8`.
+///
+/// ⭐ **Ela fica porque é o INSTRUMENTO da recusa**, não por promessa de uso: a
+/// sonda `a_razao_precisa_da_marcha_ou_o_passeio_chega` da `ph2d-sculpt3d` é
+/// quem a corre, e apagá-la levaria a medição junto. É o mesmo que esta linha
+/// fez com o `Gap Law` do projectar. ⛔ **E o `cfg` é o que impede um consumidor
+/// de produto de aparecer por distracção** — a lei deste repo sobre uma porta
+/// viva e órfã.
+#[cfg(any(test, feature = "test-support"))]
+mod geodesica;
 mod holes;
 /// **Onde um vértice pousa no limite da subdivisão** — ver [`limit_point`].
 mod limit_point;
@@ -104,6 +122,8 @@ pub use feature_dirs::{FeatureDir, FeatureOptions, FeatureReport, feature_dirs};
 pub use feature_edges::{
     FEATURE_EDGE_MIN_COS, FeatureEdge, FeatureEdgeReport, boundary_feature_edges, feature_edges,
 };
+#[cfg(any(test, feature = "test-support"))]
+pub use geodesica::{Geodesica, atravessa};
 pub use holes::{HoleFill, fill_holes};
 pub use limit_point::{LimitPoint, limit_point};
 pub use manifold::{

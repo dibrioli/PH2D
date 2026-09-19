@@ -1,108 +1,162 @@
-# A geodésica — a prova VISUAL antes do código
+# A geodésica — o carimbo deixa de atravessar uma parede fina
 
-> **Estado:** a medição e as figuras existem; **nenhuma linha de produto mudou**.
-> A wave só abre por ordem do dono, e a ordem depende do que estas figuras
-> mostram (a promessa foi *«o primeiro que lhe mando é a foto, não código»*).
+> **Estado: SHIPADO** (2026-09-19). A máscara de alcance do carimbo ganhou a lei
+> da **RAZÃO** — `superfície / ar > 3,5` —, e com ela o pincel deixa de
+> atravessar uma parede fina. **Zero regressão de oráculo e custo zero.**
+>
+> ⛔⛔ **O título desta pasta é um ARTEFACTO da wave e fica à vista de propósito:**
+> ela abriu para construir uma geodésica a sério, construiu-a, e a medição disse
+> que ela **não é precisa para esta lei**. O que shipa é o passeio por arestas de
+> sempre com uma PERGUNTA nova. *O que faltava não era precisão — era a pergunta.*
 
-O instrumento é [`sonda_da_parede_fina.rs`](../../../crates/ph2d-sculpt3d/tests/it/sonda_da_parede_fina.rs),
-`#[ignore]`, e corre-se assim:
+## As figuras
+
+| ficheiro | o que é |
+|---|---|
+| [`parede_fina_costas.png`](parede_fina_costas.png) | **a foto.** A barbatana vista POR TRÁS — o lado em que o artista não tocou. ANTES: uma mancha. AGORA: só a orla junto à beira. |
+| [`parede_fina_corte.png`](parede_fina_corte.png) | o **mecanismo**: o corte de lado, com a face de baixo a acompanhar a de cima. |
+
+⚠️ **Os dois painéis são PRODUTO contra PRODUTO** — o ANTES é a lei que shipava
+(tecto `2,00 × R` sobre a distância), não um ideal desenhado à mão. *Uma figura
+que mostra um ideal que o código não implementa é uma promessa, não uma medição.*
+
+## O que mudou, em números
+
+Barbatana `2,0 × 2,0` com `0,06` de espessura, pincel `R = 0,40` a força `1,00`,
+carimbo a `0,30` da beira — *o gesto de quem esculpe uma orelha*.
+
+| | antes | agora |
+|---|---|---|
+| **em frente do pincel**, onde a peça deslizava | `99 %` do que a frente andou | **`0 %`** |
+| do carimbo inteiro, o que cai nas costas | `42,6 %` | **`16,7 %`** |
+| o total que as costas andaram | `9,477` | **`2,561`** (`27 %` do que era) |
+| peso do carimbo que a máscara corta | `9,86 %` | **`34,82 %`** |
+| ⭐ CONTROLO — vértices da FRENTE que a cura tira | — | **`0`** |
+| ⭐ **preço** | — | **zero** (é o mesmo passeio de sempre) |
+
+E a **fronteira**: a cura alcança **todas** as distâncias da beira medidas
+(`0,10` a `0,70`). Numa chapa a lei escreve-se `(2d + t)/t > 3,5` ⇒ `d > 1,25 t`
+— ⭐ **ela não depende do raio do pincel; só a ESPESSURA da peça decide.**
+
+## ⛔⛔⛔ O tecto ABSOLUTO foi construído, medido e RECUSADO
+
+A cura óbvia era baixar o `ALCANCE_TECTO` de `2,00` para `1,50 × R`, e a
+varredura até dava um planalto limpo. Ela **rebentou a paridade do `Scene
+Project`**: placar de oráculo `13 → 5` fixturas dentro da barra.
+
+⭐ **O diagnóstico é a medição, e ela aponta o dedo:** instrumentado, o corte a
+`1,50` leva **só vértices da ORLA da pegada** (`ar/R` entre `0,80` e `1,00`),
+onde a queda já é ~zero. Eles não movem barro nenhum — **mas alimentam o ajuste
+do plano** daquele verbo, logo a saída inteira desloca-se.
+
+⇒ *um tecto absoluto mede a mesma grandeza que o raio do pincel, logo apertá-lo
+come sempre a ORLA antes de chegar ao defeito.*
+
+## ⛔⛔⛔⛔ E a MARCHA GEODÉSICA também foi construída, medida e RECUSADA
+
+A wave começou por portar a marcha de Kimmel–Sethian para a `ph2d-mesh`
+(`Geodesica`, `atravessa`), com gates próprios contra um oráculo **exacto** (numa
+chapa a geodésica **é** a distância euclidiana) e um gate de concordância ao bit
+contra a cópia que a `ph2d-pose` já tinha. Ela funciona: razão `medido/exacto` de
+`1,05`–`1,09` na faixa da decisão, contra `1,41` do passeio por arestas.
+
+**E não se paga.** Medido na lei que ficou:
+
+| | marcha | passeio por arestas |
+|---|---|---|
+| todas as peças APROVADAS | `0,00 %` cortado | `0,00 %` — **`0,00 pp` de diferença** |
+| a BARBATANA (o defeito) | `31,9 %` | **`38,9 %`** — o passeio corta MAIS |
+| custo, `523 k` vértices, `R = 0,40` | `8,04 ms` | **`1,71 ms`** |
+| um dab inteiro, ali | `7,49 ms` de um tecto de `8` (**`94 %`**) | `~2,6 ms` |
+
+⚠️ **O mecanismo é que a régua da lei é GROSSEIRA ao lado do erro do
+instrumento:** `3,5` contra um viés de `1,41`. E o viés empurra para o lado
+CERTO — ele infla `sup`, logo infla `sup/ar`, logo corta mais do defeito.
+
+⭐ *O que faltava não era precisão. Era a PERGUNTA.* Eu construí a máquina antes
+de medir se ela era precisa, que é exactamente o que o `CLAUDE.md` §5.0 manda
+fazer ao contrário.
+
+⚠️ **A marcha FICA, atrás da `test-support`**, porque ela é o **instrumento** da
+recusa: a sonda `a_razao_precisa_da_marcha_ou_o_passeio_chega` é quem a corre, e
+apagá-la levaria a medição junto. O `cfg` é o que impede um consumidor de produto
+de aparecer por distracção.
+
+## De onde sai o `RAZAO_MAXIMA = 3,5`
+
+Do planalto medido, **com a rugosidade da peça varrida até deixar de importar** —
+a borda move-se com ela, e uma constante posta na borda de UMA rugosidade mede
+essa rugosidade:
+
+| peça aprovada | factor em que lê `0,00 %` |
+|---|---|
+| esfera lisa · tubo · `sculpt_sphere` · cratera `0,25` e `0,50` | `≤ 2,00` |
+| esfera rugosa `amp 0,08` | `2,00` |
+| esfera rugosa `amp 0,12` | `2,50` |
+| esfera rugosa `amp 0,16` | `3,00` |
+| esfera rugosa `amp 0,20` | **`3,50`** |
+| esfera rugosa `amp 0,24` | **`3,50`** ← pára de se mexer |
+
+⛔ **E o PISO que não existe:** a 1.ª redacção trazia um piso (*«só perguntar a
+razão a quem está a mais de `0,15 × R` do cursor»*). Varrida com piso `0,15` e
+com piso `0`, a tabela sai **idêntica célula a célula** ⇒ ele é inerte por
+geometria. *Um knob que nenhuma fixtura pode acordar é peso morto.*
+
+## ⛔ A duplicação com a `ph2d-pose` é deliberada
+
+A marcha existia desde 2026-09-17 na [`ph2d_pose::pesos`], para a transição do
+pincel de pose. A [`ph2d_mesh::Geodesica`] **não a chama**: aquela crate declara
+zero dependências porque *não sabe o que é uma `Mesh`*, e é isso que a mantém do
+lado de lá da parede clean-room (o mesmo precedente da `ph2d-boundary`).
+
+⚠️ O que torna a duplicação honesta é o **gate de concordância**
+(`as_duas_marchas_concordam`): as duas `atravessa` sobre o mesmo corpus de
+`20 000` triângulos mais `7` degenerados, **igualdade AO BIT**.
+
+## ⛔ Duas outras coisas construídas, medidas e recusadas
+
+* **Semear no PONTO** em vez do vértice mais próximo (tira um erro de meia
+  aresta): não move o planalto **e** custa paridade (`13 → 12`).
+* **Baixar o tecto absoluto** — acima.
+
+## As armadilhas que esta wave pagou
+
+1. ⛔⛔ **O tecto cortava só na SAÍDA da fila, não na ENTRADA** — quem já fora
+   relaxado ficava marcado, e a marca é o que a máscara lê ⇒ **um anel inteiro
+   além do tecto contava como alcançado**. Quatro gates de oráculo reprovaram.
+   *A cerca de uma marcha mora onde ela ESCREVE, não onde ela pára.*
+2. ⛔ **A primeira cratera era 14× rasa demais** (`0,035` contra os `0,5` do
+   corpus) e lia `0,00 %`, dizendo que a cratera não era o problema enquanto o
+   gate reprovava. *Uma fixtura que não contém o fenómeno responde que ele não
+   existe.*
+3. ⛔ **O arnês da mutação somava com `bc`**, que esta máquina não tem, e o
+   `|| echo 0` fazia-o reportar «zero testes» em TODOS os casos.
+4. ⛔ **O gate do tecto tinha uma banda cega** (`1,3 × tecto`) e uma mutação
+   sobrevivente mostrou-o — a implicação certa é exacta: *alcançado ⇒ exacto ≤
+   tecto*.
+5. ⛔⛔⛔ **Eu construí a marcha ANTES de medir se ela era precisa para esta
+   lei** — §5.0 manda o contrário, e a medição custou a wave inteira em tempo.
+6. ⛔ **O leque da semente não tinha régua** — os gates mediam a *faixa da
+   decisão*, e o leque age na primeira coroa.
+
+## ⏳ O que fica ABERTO, com o mecanismo
+
+**`17 %` do carimbo ainda cai nas costas**, na orla junto à beira. Aqueles pontos
+estão a `1,1`–`2,0 × R` **pela superfície** — um pincel honesto de alcance `R`
+cortá-los-ia — e a razão deles é baixa (`~1,4`) porque estão deslocados DE LADO,
+logo o ar também é grande.
+
+⭐ **A causa de não se poder apertar já está diagnosticada**, e é a de cima: a
+máscara trima a **pegada**, e a pegada alimenta o **ajuste de plano** de
+verbos como o `Scene Project`. ⇒ a cura é separar as duas perguntas — *quem se
+MOVE* (a máscara) de *qual é a superfície local* (o ajuste) —, que é wave própria
+e toca em como a pegada flui para a normal de área.
+
+## Como correr
 
 ```text
 bash scripts/ph2d-run.sh cargo test -p ph2d-sculpt3d --test it \
   sonda_da_parede_fina -- --ignored --nocapture --test-threads=1
+
+bash docs/3D/geodesica/mutacao_2026-09-19.sh     # 11 de 11 sangram
 ```
-
-## O que se vê
-
-| ficheiro | o que é |
-|---|---|
-| [`parede_fina_costas.png`](parede_fina_costas.png) | **a foto.** A barbatana vista POR TRÁS — o lado em que o artista não tocou —, com a cor a dizer quanto cada ponto andou. Hoje: uma mancha. Com a cura: nada. |
-| [`parede_fina_corte.png`](parede_fina_corte.png) | o **mecanismo**: o corte de lado, com a face de baixo a acompanhar a de cima. |
-
-Os `.svg` ao lado são a fonte (texto, diffável); os `.png` são só para abrir
-depressa.
-
-## Os números, pelo caminho do PRODUTO
-
-Barbatana `2,0 × 2,0` com **`0,06` de espessura**, pincel `R = 0,40` a força
-`1,00`, carimbo a `0,30` da beira — *o gesto normal de quem esculpe uma orelha*.
-
-| | |
-|---|---|
-| frente → costas **pelo ar** | `0,060` — `0,15 ×` o raio |
-| frente → costas **pela superfície** | `0,660` — **`1,65 ×` o raio** |
-| a máscara que shipa (`ALCANCE_TECTO = 2,0`) só corta acima de | `0,800` |
-| a **frente** andou | `0,0400` |
-| as **costas** andaram | `0,0395` — **`98,8 %`** do que a frente andou |
-| do movimento TOTAL do carimbo, o que cai onde a superfície não alcança | **`31,9 %`** |
-| ⭐ **CONTROLO** — vértices da FRENTE que a cura tiraria | **`0`** |
-
-## ⛔⛔ A PRIMEIRA medição corrigiu a pergunta, e a correcção é a sonda toda
-
-A 1.ª redacção usou o **tubo** da
-[`sonda_do_falloff_pela_superficie`](../../../crates/ph2d-sculpt3d/tests/it/sonda_do_falloff_pela_superficie.rs)
-(menor `0,10`, pincel `0,40`) e leu as costas a andar **`68,8 %`** do que a
-frente andou. Parecia o achado — e **não é um defeito**: ali a distância *pela
-superfície* entre as duas paredes é `π × 0,10 = 0,314`, que é **`0,78 ×` o raio
-do pincel** ⇒ *um pincel geodésico honesto TAMBÉM lhes tocaria*, só que com menos
-peso. Eu tinha escrito ao lado do número, sem o medir, que «um carimbo honesto
-não lhes tocaria».
-
-⇒ **o defeito vive numa BANDA:**
-
-```text
-    ar(frente→costas)  <  R          o carimbo de hoje alcança
-    superficie         >  R          um pincel honesto NÃO alcançaria
-    superficie         <= 2 x R      a máscara que shipa TAMBÉM não corta
-```
-
-*Uma régua que mede fora da banda mede um produto que já está certo.*
-
-### ⭐ E a peça que a habita é uma CHAPA, não um tubo
-
-Num tubo de raio `m` a superfície mede `π m` e o ar `2 m` ⇒ a razão é
-**`π/2 = 1,571` FIXA**, logo a banda é um intervalo apertado de espessura e o que
-escapa é modesto. A varredura mostra-o:
-
-| menor | parede | superfície | sup/R | costas % | veredito |
-|---|---|---|---|---|---|
-| `0,10` | `0,20` | `0,314` | `0,78` | `68,8 %` | a superfície alcança |
-| `0,13` | `0,26` | `0,408` | `1,02` | `43,7 %` | **defeito** |
-| `0,15` | `0,30` | `0,471` | `1,18` | `26,2 %` | **defeito** |
-| `0,19` | `0,38` | `0,596` | `1,49` | `1,4 %` | **defeito** |
-| `0,25` | `0,50` | `0,785` | `1,96` | `0,0 %` | o ar não alcança |
-
-Numa **chapa** a razão é **livre**: o ar é a espessura e a superfície é *ir até à
-beira e voltar* (`2d + t`) ⇒ perto da beira ela cresce sem limite à medida que a
-peça afina. É por isso que a foto usa uma barbatana e não o tubo.
-
-## ⛔⛔ E porque a geodésica desta fixtura NÃO é o passeio por arestas
-
-O passeio por arestas sobrestima até **`√2`** (numa grelha quadrada, ir a `45°`
-custa `2n` arestas onde a superfície mede `n√2`). Usá-lo como régua da **cura**
-cortaria vértices da **FRENTE** que estão dentro do raio, só por estarem na
-diagonal — o painel verde mostraria a cura a comer o relevo do artista, e isso
-seria artefacto do instrumento, não do desenho.
-
-⚠️ *É exactamente o mesmo viés que obriga o tecto da máscara que shipa a ser
-`2,00 × R`* — e é **por isso** que ela não apanha este caso.
-
-Numa chapa a geodésica escreve-se à mão (`geodesica_da_barbatana`): recta no
-plano para a frente, e **desdobramento** por cima de cada uma das quatro beiras
-para as costas (a de `x = +M` manda `x ↦ 2M + t − x`). O mínimo das quatro é um
-**limite inferior** — um caminho que contornasse um CANTO seria mais longo —, e a
-direcção do erro é a que interessa: ele só pode fazer a cura cortar **menos**.
-
-Com a troca, o que a régua classificava como inalcançável desceu de `532` para
-**`270`** vértices: *o passeio por arestas estava a inflar o próprio achado.*
-
-## ⚠️ O que estas figuras NÃO afirmam
-
-* **Não** medem o preço da cura. O método do calor (Crane/Weischedel/Wardetzky
-  2013) é a wave, e o substrato dela já existe no repo (Laplaciano cotangente e
-  áreas duais em `ph2d-quadflow`, solver linear em `ph2d-gridmap`).
-* **Não** afirmam que o tecto novo é `1,0 × R`. O painel da cura usa `1,0` porque
-  é a definição de *«o pincel alcança»*; o número que shipa sai de um vale
-  medido com o lado aprovado dentro, como o `2,00` de hoje saiu.
-* **Não** dizem quantas peças reais caem na banda. A barbatana é construída para
-  a habitar; a frequência no trabalho do dono é pergunta dele.

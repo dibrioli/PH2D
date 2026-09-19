@@ -197,3 +197,88 @@ fn a_volta_da_epoca_nao_apaga_a_mascara() {
          dabs e impossivel de reproduzir sem esta porta"
     );
 }
+
+/// Sonda: o que a máscara corta na GRELHA PLANA do corpus do projectar — onde a
+/// resposta certa é «nada», porque uma chapa é convexa por dentro.
+#[test]
+#[ignore = "sonda: imprime, nao afirma nada"]
+fn diag_o_que_a_mascara_corta_numa_grelha_plana() {
+    const LADO: usize = 41;
+    let passo = 2.0 / (LADO - 1) as f32;
+    let mut pos = Vec::new();
+    for i in 0..LADO {
+        for j in 0..LADO {
+            pos.push([-1.0 + passo * i as f32, -1.0 + passo * j as f32, 0.0]);
+        }
+    }
+    let at = |i: usize, j: usize| (i * LADO + j) as u32;
+    let mut faces = Vec::new();
+    for i in 0..LADO - 1 {
+        for j in 0..LADO - 1 {
+            faces.push(ph2d_mesh::Face::tri(
+                at(i, j),
+                at(i + 1, j),
+                at(i + 1, j + 1),
+            ));
+            faces.push(ph2d_mesh::Face::tri(
+                at(i, j),
+                at(i + 1, j + 1),
+                at(i, j + 1),
+            ));
+        }
+    }
+    let mesh = Mesh::from_parts(pos, faces).expect("a grelha");
+    let centro = [0.0, 0.0, 0.0];
+    for raio in [0.35f32, 0.40] {
+        let p = pegada(&mesh, centro, raio);
+        let mut q = p.clone();
+        let mut a = Alcance::default();
+        let cortou = a.corta(&mesh, centro, raio, &mut q);
+        println!("raio {raio:.2}: pegada {} · cortou {cortou}", p.len());
+        if cortou > 0 {
+            let ficou: std::collections::BTreeSet<u32> = q.iter().copied().collect();
+            for &v in p.iter().filter(|v| !ficou.contains(v)).take(6) {
+                let d = mesh.positions()[v as usize];
+                let ar = ((d[0] - centro[0]).powi(2) + (d[1] - centro[1]).powi(2)).sqrt();
+                println!("   cortado v={v} ar={ar:.4} ({:.2}x o raio)", ar / raio);
+            }
+        }
+    }
+}
+
+/// ⭐⭐⭐ **O TECTO ABSOLUTO governa o TRABALHO, e é aí que ele tem de ser
+/// medido.**
+///
+/// ⚠️⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE.** Desde que a lei do
+/// corte é a [`super::RAZAO_MAXIMA`], apagar o [`super::ALCANCE_TECTO`] **não
+/// muda um único vértice da saída** — os quatro gates deste módulo ficam verdes
+/// — e passa a varrer a malha INTEIRA a cada dab. *Um tecto que deixou de
+/// governar a resposta e passou a governar só o custo precisa de mudar de
+/// régua junto.*
+///
+/// ⭐ **A régua é uma CONTAGEM e não um relógio**, de propósito: uma contagem é
+/// determinista, e um gate de razão entre dois tempos é candidato à família de
+/// flakes de fan-out que o `CLAUDE.md` §5.0 mantém.
+#[test]
+fn a_varredura_e_limitada_pela_pegada_e_nao_pela_malha() {
+    let mesh = shapes::uv_sphere(128, 256, 1.0);
+    let n = mesh.vert_count();
+    let centro = [0.0, 0.0, 1.0];
+    let raio = 0.10;
+    let mut p = pegada(&mesh, centro, raio);
+    let mut a = Alcance::default();
+    a.corta(&mesh, centro, raio, &mut p);
+    let vistos = a.visitados_no_teste();
+    assert!(
+        vistos > 20,
+        "a varredura mal correu ({vistos} de {n}) — o gate esta' a medir um no-op"
+    );
+    // ⚠️ O tecto é `2 × 0,10 = 0,20` numa esfera de raio `1`, ou seja uma calota
+    // de `~1 %` da area. Sem o tecto isto lê `n`.
+    assert!(
+        vistos * 20 < n,
+        "a varredura fixou {vistos} de {n} vertices com um pincel de raio {raio} — \
+         o tecto absoluto deixou de limitar o trabalho, e o custo passou a ser \
+         O(malha) por dab"
+    );
+}

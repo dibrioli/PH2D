@@ -72,6 +72,10 @@ mod coat;
 mod curva_inerte;
 #[path = "dab_alcance.rs"]
 mod dab_alcance;
+/// **Quantos raios de pincel a superfície anda antes de se chamar «não
+/// alcança»** — o número é DERIVADO de um planalto medido; ver
+/// [`dab_alcance::ALCANCE_TECTO`].
+pub use dab_alcance::{ALCANCE_TECTO, RAZAO_MAXIMA};
 /// **A CURVA DO PINCEL** — o falloff, irmão do [`brush`]. Ver [`falloff`].
 mod falloff;
 /// **A LEI QUE UM ARRASTO DE FILTRO APLICA** — a uniao das duas familias.

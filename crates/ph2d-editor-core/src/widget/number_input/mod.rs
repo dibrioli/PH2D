@@ -318,7 +318,20 @@ pub fn paint_number_input_with_buffer(
         let num_w = text_system.prefix_width(value_text, font_size);
         let suffix_x = inner_x + num_w + gap;
         let suffix_w = (inner_x + inner_w - suffix_x).max(0.0);
-        if suffix_w > 0.0 {
+        // ⭐⭐⭐ **A UNIDADE É TUDO-OU-NADA** (medido 2026-09-19 pela varredura de elisões com o
+        //    Inspector ARMADO, que é o ponto cego que ela declarava): com `6,1`–`9,5 px` de sobra
+        //    a palavra `px` — que pede `10,1` — era **elidida até ao vazio**, e `1/s` com ela.
+        //
+        // ⚠️ **São DOIS defeitos e este guarda fecha os dois.** Abaixo da reticência o campo
+        //    pintava NADA (a lei dura desta casa desde o botão mudo do mixer, 18/09); e na faixa
+        //    logo acima ele pintava **um `…` sozinho no lugar de uma unidade** — que a régua conta
+        //    como *«coube»* e o artista lê como um defeito de desenho.
+        //
+        // ⛔ Reservar a largura dela seria desobedecer à ordem do dono que a pôs aqui (*o VALOR é
+        //    o que não pode desaparecer*): ela continua a ser empurrada para fora por um número
+        //    comprido — só que agora **sai inteira**, em vez de deixar um coto.
+        let suffix_cabe = text_system.prefix_width(suffix, font_size) <= suffix_w;
+        if suffix_w > 0.0 && suffix_cabe {
             paint_text(
                 text_system,
                 scene,

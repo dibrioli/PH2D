@@ -186,3 +186,65 @@ fn while_typing_the_field_shows_only_what_was_typed() {
         "o campo focado pintou a unidade por cima do que o artista escreve"
     );
 }
+
+/// ⭐⭐⭐ **A UNIDADE NUNCA APARECE PELA METADE — ou sai inteira, ou não sai.**
+///
+/// ⛔⛔ **Nasceu de um vermelho medido em 2026-09-19**, quando a varredura de elisões passou a
+/// pintar o Inspector **com um documento na mão** (o ponto cego que ela própria declarava): `px`
+/// pedia `10,1 px` e recebia `6,1`–`9,5` ⇒ o campo pintava **NADA**, que é a lei dura desta casa
+/// desde o botão mudo do mixer.
+///
+/// ⚠️ **São DOIS defeitos numa banda só, e por isso a régua não é «coube ou não»:** abaixo da
+/// reticência o campo fica mudo, e na faixa logo acima ele pinta **um `…` sozinho no lugar de uma
+/// unidade** — que toda régua de elisão conta como *«coube»*. ⇒ a lei é sobre **toda largura**:
+/// varrida a caixa de `40` a `200 px`, a unidade ou não é medida de todo, ou é medida inteira.
+///
+/// ⛔ A metade POSITIVA é obrigatória: sem ela, um widget que deixasse de pintar a unidade para
+/// sempre passaria — *uma lei que só proíbe é satisfeita pelo vazio*.
+///
+/// (Mutação: apagar o `suffix_cabe` ⇒ reaparecem as larguras com `"p…"` e com `""`, RED.)
+#[test]
+fn a_unidade_sai_inteira_ou_nao_sai() {
+    let medir = |w: f32| {
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        crate::text_elide::elisao::medindo(|| {
+            paint_number_input_with_buffer(
+                &NumberInput::new(NodeId(1), "", 1234.5).suffix(Some("px")),
+                None,
+                0,
+                None,
+                Rect::new(0.0, 0.0, w, 22.0),
+                &mut scene,
+                &mut text,
+                Theme::Dark,
+            );
+        })
+        .1
+        .into_iter()
+        .find(|m| m.texto == "px")
+    };
+    let mut inteiras = 0usize;
+    let mut larguras = Vec::new();
+    let mut w = 40.0_f32;
+    while w <= 200.0 {
+        if let Some(m) = medir(w) {
+            if m.coube() {
+                inteiras += 1;
+            } else {
+                larguras.push(format!("caixa {w:.1} px pintou {:?}", m.pintado));
+            }
+        }
+        w += 0.5;
+    }
+    assert!(
+        larguras.is_empty(),
+        "a unidade saiu PELA METADE nestas caixas:\n  {}",
+        larguras.join("\n  ")
+    );
+    assert!(
+        inteiras > 0,
+        "nenhuma das 321 larguras pintou a unidade — a lei passou a ser satisfeita pelo VAZIO, \
+         que é o mutante que este controlo positivo existe para apanhar"
+    );
+}

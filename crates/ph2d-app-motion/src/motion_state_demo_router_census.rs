@@ -486,3 +486,167 @@ fn what_feeds_every_duplicators_shape_port() {
     }
     eprintln!();
 }
+
+/// ⭐⭐⭐ **QUEM DESENHA PIXELS SEM NUNCA TER RECEBIDO UMA FORMA** — a sonda que a ordem do dono
+/// de 2026-09-19 obriga a correr ANTES de qualquer cura (§5.0, e o [doc 115] §14.2 por escrito).
+///
+/// > *«Não deveriam renderizar nada na tela, mas deveriam apenas disponibilizarem a posição e
+/// > direção […] e deveriam ser dependentes de Duplicator e Shape (e demais objetos) para
+/// > aparecer na tela.»*
+///
+/// ⚠️ **A pergunta é por SINK e não por nó**, porque quem gera pixels é o lowering: um
+/// `rig.skeleton` ligado direito ao `motion.output` desenha um quadrado por junta, com o
+/// `default_uv_rect` da shell — e o cabeçalho do próprio nó diz que isso é o desenho
+/// (*«a bare skeleton already renders: its joints are elements like any other»*).
+///
+/// ⚠️ **Os produtores de aparência são DOIS e o censo deriva-os**, nunca os escreve à mão: são
+/// as únicas crates de nó que escrevem `uv_rect`/`texture_id`/`geometry_id` como fonte
+/// (`source.object` e `source.shape` — ⚠️ a crate chama-se `ph2d-node-motion-shape` e o NÓ
+/// chama-se `source.shape`, e a 1.ª redacção desta sonda leu `0 de 123` por causa disso);
+/// `duplicator`/`mixer`/`morph`/`trail` **propagam** o que
+/// receberam, logo não contam como origem.
+///
+/// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture quem_desenha_sem_forma`
+#[test]
+#[ignore = "sonda, nao um gate"]
+fn quem_desenha_sem_forma() {
+    /// As origens de aparência. ⚠️ Derivadas da varredura das crates de nó (as únicas que
+    /// escrevem uma coluna de aparência sem a receber de uma entrada).
+    const ORIGENS: [&str; 2] = ["source.object", "source.shape"];
+
+    let (mut com, mut sem) = (Vec::new(), Vec::new());
+    let mut sem_por_fonte: std::collections::BTreeMap<String, Vec<u32>> =
+        std::collections::BTreeMap::new();
+    for level in 1..=MAX_DEMO_LEVEL {
+        let mut state = MotionState::new();
+        let sinks =
+            crate::motion_demo_legend::monta(&level.to_string(), &mut state.doc, &state.registry).0;
+        if sinks.is_empty() {
+            continue;
+        }
+        let g = &state.doc.graph;
+        let nome = |id: ph2d_nodegraph::graph::NodeId| {
+            g.nodes()
+                .iter()
+                .find(|n| n.id == id)
+                .map(|n| n.type_name.clone())
+                .unwrap_or_default()
+        };
+        // Sobe a montante de cada sink. Uma aresta `delayed` também carrega dados (é o tique
+        // anterior), logo entra: um laço de simulação não deixa de receber a forma por isso.
+        let mut vistos: std::collections::BTreeSet<u32> = std::collections::BTreeSet::new();
+        let mut pilha: Vec<_> = sinks.clone();
+        let mut origens_achadas: std::collections::BTreeSet<String> =
+            std::collections::BTreeSet::new();
+        let mut folhas: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+        while let Some(id) = pilha.pop() {
+            if !vistos.insert(id.0) {
+                continue;
+            }
+            let t = nome(id);
+            if ORIGENS.contains(&t.as_str()) {
+                origens_achadas.insert(t.clone());
+            }
+            let mut tem_entrada = false;
+            for e in g.edges().iter().filter(|e| e.to.0 == id) {
+                tem_entrada = true;
+                pilha.push(e.from.0);
+            }
+            if !tem_entrada && !t.is_empty() {
+                folhas.insert(t);
+            }
+        }
+        if origens_achadas.is_empty() {
+            sem.push(level);
+            for f in &folhas {
+                let e = sem_por_fonte.entry(f.clone()).or_default();
+                if !e.contains(&level) {
+                    e.push(level);
+                }
+            }
+        } else {
+            com.push(level);
+        }
+    }
+    let total = com.len() + sem.len();
+    eprintln!("\n=== QUEM DESENHA SEM FORMA · {total} cenas com sink, de 1..={MAX_DEMO_LEVEL} ===");
+    eprintln!(
+        "  recebem aparencia de `source.object`/`motion.shape` │ {:>3} ({:>4.1}%)",
+        com.len(),
+        com.len() as f64 * 100.0 / total as f64
+    );
+    eprintln!(
+        "  desenham SO' POSICOES (ficariam em branco)          │ {:>3} ({:>4.1}%)",
+        sem.len(),
+        sem.len() as f64 * 100.0 / total as f64
+    );
+    eprintln!("\n  as cenas so'-posicoes: {sem:?}\n");
+    eprintln!("  quem as ALIMENTA (no' de raiz -> cenas):\n");
+    for (fonte, cenas) in &sem_por_fonte {
+        eprintln!("  {fonte:<26} em {:>3} cena(s): {cenas:?}", cenas.len());
+    }
+    eprintln!();
+}
+
+/// ⭐⭐ **AS COLUNAS QUE CHEGAM AO SINK** — o CONTROLO da [`quem_desenha_sem_forma`], que responde
+/// pelo grafo. Esta coze e pergunta ao stream, que é o que o lowering de facto lê.
+///
+/// ⚠️ **Ela existe porque as duas perguntas podem discordar**: um grafo pode atravessar um
+/// `source.shape` e a coluna não chegar ao sink (um nó a jusante que a deixe cair), e um grafo sem
+/// origem nenhuma pode ter `uv_rect` por outra via. *O discriminador da cura tem de ser o que o
+/// lowering vê, não o que o grafo promete.*
+///
+/// ⛔⛔ **ARMADILHA MEDIDA: as cenas de `source.shape` cozem a ZERO neste arnês.** A geometria
+/// delas é publicada pelo `motion_shape_gen`, que corre no QUADRO (precisa do `shape_store`), e um
+/// arnês sem shell não o corre ⇒ a `=110`, a `=114`, a `=115` e a `=119` leem `0 linhas` aqui e
+/// desenham dezenas de peças no app. *Esta sonda é o controlo do que APARECE nas colunas, nunca um
+/// censo de população* — para «quem tem origem de aparência» a resposta é a [`quem_desenha_sem_forma`],
+/// que pergunta ao GRAFO e não precisa de shell.
+///
+/// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture colunas_que_chegam_ao_sink`
+#[test]
+#[ignore = "sonda, nao um gate"]
+fn colunas_que_chegam_ao_sink() {
+    // As cenas de CICLO (as que o dono segue) mais a `=110`, que é a do carimbo.
+    let alvo: [u32; 12] = [110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121];
+    eprintln!("\n=== COLUNAS NO SINK · as cenas que o dono segue ===\n");
+    for level in alvo {
+        let mut state = MotionState::new();
+        let sinks =
+            crate::motion_demo_legend::monta(&level.to_string(), &mut state.doc, &state.registry).0;
+        if sinks.is_empty() {
+            eprintln!("  =[{level}] (sem sink)");
+            continue;
+        }
+        for (k, &sink) in sinks.iter().enumerate() {
+            let Ok(out) = state
+                .pump
+                .cook
+                .cook(&state.doc.graph, &state.registry, sink, 0.0)
+            else {
+                eprintln!("  =[{level}] sink {k}: (nao coze)");
+                continue;
+            };
+            let s = out[0].as_stream();
+            let tem = |n: &str| if s.get(n).is_some() { "sim" } else { " - " };
+            let geo_vivo = match s.get("geometry_id") {
+                Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.iter().any(|&x| x > 0.5),
+                _ => false,
+            };
+            eprintln!(
+                "  =[{level}] sink {k}: {:>7} linhas │ uv_rect {} │ texture_id {} │ geometry_id {} (vivo: {}) │ APARENCIA: {}",
+                s.count(),
+                tem("uv_rect"),
+                tem("texture_id"),
+                tem("geometry_id"),
+                if geo_vivo { "sim" } else { "nao" },
+                if s.get("uv_rect").is_some() || geo_vivo {
+                    "SIM"
+                } else {
+                    "NAO — hoje isto desenha quadrados pelo default do shell"
+                }
+            );
+        }
+    }
+    eprintln!();
+}

@@ -517,3 +517,29 @@ cena dele, os outros `4,2` são a projeção).
 ⭐⭐ **O controlo que torna o resultado uma afirmação:** importada `−0,0 / 31,3` · com a nossa física
 `−0,0 / 31,3` · **e na cena DELE o mesmo osso salta `31,8`**. O que sobra é a passada dele, e estamos
 `0,5 cm` abaixo — sem esse número, «31 cm entre dois quadros» não diria de quem é a falta de fluidez.
+
+### 2026-09-19 (6.ª volta) — «ultrapassando o chão», e o que o modelo DELES tem
+
+⭐⭐⭐ **Não faltava lei: faltava POPULAÇÃO.** A cerca do chão já existia no solver (`PESO_CHAO`) e
+era dada **só aos pontos de pé e de mão**. Num humano isso nunca se nota — nada dele alcança o chão
+a não ser o que já lá está —, e num bicho com 2,8 m de cauda nota-se ao primeiro arrasto: `49` de
+`864` arrastos punham uma articulação debaixo do soalho, a pior a **−2,27 m**. Estendida ao corpo
+inteiro: pessoa `−0,004 mm` com a cerca antiga **e** com a larga (o mesmo número ⇒ nunca dispara
+lá), dinossauro `−0,7 mm` contra `−2 267`. Inerte ao **bit** (sha256 sobre 1 496 arrastos), `+4 %`
+de relógio.
+
+⭐⭐ **O ESTUDO DO ORIGINAL deu três coisas que não se deduzem do nosso lado:**
+- a **cauda dele é uma `Spline IK`** (1 spline + 14 *spline position helpers*, `Tail1..Tail13`); o
+  Sabertooth tem **duas**. *Num bicho com cauda eles não usam ossos livres: usam uma curva* — e uma
+  curva não desaba, uma cadeia de quatro ossos desaba;
+- na caminhada que **eles** fizeram a ponta da cauda **nunca desce abaixo de 44 cm do chão** e a
+  cauda fica sempre a menos de **18°** da horizontal; o **tronco** varia `8,0°` contra `47°` nos
+  nossos arrastos (medido e não curado — e **não é a cauda**: varrida a rigidez dela de `0,05` a
+  `2,0`, o tronco lê `41,2°` em todos);
+- ⛔⛔ **a pose adaptativa NÃO está armada no dinossauro que ele entrega**: a cena da Cascy traz o
+  objecto `auto_posing (0)` do tipo `Tool` e a do Dracorex não. É ela que pinta os discos VERDES, e
+  por isso o arrasto simulado achou **2** discos onde precisa de 6. ⚠️ As duas cenas declaram
+  exactamente os mesmos campos nos pontos (`Visibility`, `Selectable`, `Point Color` e mais quatro):
+  *a diferença não é dado, é ferramenta.* A porta existe (`get_tools_manager()` → 38 ferramentas,
+  uma é `AutoPosingTool`) e falta-lhe um manípulo de `csc.view.Scene` que a corrida sem janela não
+  deu. **Nomeado, não fechado.**

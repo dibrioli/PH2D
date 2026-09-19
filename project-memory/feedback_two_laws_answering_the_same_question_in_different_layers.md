@@ -37,3 +37,25 @@ de mutação inteira**, nunca só a do pedaço novo.
 Irmãs: [[feedback_a_mutation_proof_needs_a_control_on_its_own_filter]] e
 [[feedback_a_gate_can_record_a_loading_defect_as_a_law]] — as três são a mesma família: *um portão
 pode deixar de afirmar sem nunca ficar vermelho*.
+
+---
+
+### ⭐⭐ A SEGUNDA FORMA, no mesmo dia: a lei que se ALARGA apaga a prova da lei que ela SUBSOME
+
+A primeira metade desta memória é sobre ENDEREÇO (uma cerca escrita dentro de uma função passa por
+cima de quem a chama). A segunda é sobre ALCANCE, e o sinal é o mesmo.
+
+**Medido (Teste Cascadeur, 2026-09-19).** A cerca do chão do solver valia para os pontos de
+CONTACTO, e a mão estava lá com a espessura dela como altura. Ela passou a valer para o **corpo
+inteiro**. A mão continua a parar no chão — agora por outra via —, logo a mutação que a defendia (a
+que a tirava da lista de contactos) **deixou de sangrar**, e o portão dela ficou verde sem afirmar
+nada.
+
+⇒ **quando uma lei passa a cobrir o que outra cobria, a mutação da antiga tem de ser RE-APONTADA à
+linha nova.** Aqui ficaram duas mutações na MESMA linha, cada uma a tirar uma coisa diferente da
+população (uma tira a mão, a outra tira a cauda) e cada uma a matar o seu portão.
+
+⚠️ E há um resíduo que se lê como limpeza: a lista antiga fica **MORTA** — continua a ser escrita,
+ninguém a lê, e nenhuma sonda de «quem lê isto?» a acusa. Apagá-la parte quem a lia **nos TESTES**,
+e aí a pergunta certa não é «como reponho o campo» mas *«o que é que aquele portão devia estar a
+medir agora?»* — no caso, o corpo inteiro, que é mais forte do que o que ele media.

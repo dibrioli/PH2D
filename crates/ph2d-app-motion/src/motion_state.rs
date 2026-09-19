@@ -99,6 +99,8 @@ mod material_demo;
 #[path = "motion_state_passe_demo.rs"]
 mod passe_demo;
 
+#[path = "motion_state_osso_demo.rs"]
+mod osso_demo;
 /// ⭐⭐⭐ **AS POSIÇÕES E A MARCA** (cena `=124`) — o mesmo grid de `20 × 20` duas vezes: em cima
 /// só posições (cruzes do editor), em baixo vestido por um duplicador. Ver o cabeçalho dela, que
 /// diz porque a `=2` não servia.

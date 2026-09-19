@@ -26,19 +26,22 @@ fn o_osso_e_afilado_e_nao_um_losango() {
     assert_eq!(p.verts.len(), 4, "junta · ombro · ponta · ombro");
 
     let u = us(&p);
-    // A junta e a ponta ocupam as duas extremidades.
-    assert!((u[0] - 0.0).abs() < 1e-9, "a junta esta' em u = 0: {u:?}");
-    assert!((u[2] - 1.0).abs() < 1e-9, "a ponta esta' em u = 1: {u:?}");
+    // ⚠️ **A JUNTA está em `u = 1` (`+X`), por ordem do dono** (2026-09-19: *«ficou 180 graus
+    // rodado»*): o `rot` de um rig é a direcção em que a cadeia CRESCE, logo a cabeça do osso
+    // tem de ficar do lado para onde ela vai. *Isto é o inverso das setas do catálogo, e é o
+    // que separa uma forma que aponta com a PONTA de uma que aponta com a BASE.*
+    assert!((u[0] - 1.0).abs() < 1e-9, "a junta esta' em u = 1: {u:?}");
+    assert!((u[2] - 0.0).abs() < 1e-9, "a ponta esta' em u = 0: {u:?}");
     // E os DOIS ombros estão no mesmo `u`, encostados à junta.
     assert!((u[1] - u[3]).abs() < 1e-9, "os dois ombros partilham o u");
     assert!(
-        (u[1] - super::OMBRO).abs() < 1e-9,
-        "o ombro fica a {} do caminho (o numero do gizmo): {u:?}",
+        (u[1] - (1.0 - super::OMBRO)).abs() < 1e-9,
+        "o ombro fica a {} da junta (o numero do gizmo): {u:?}",
         super::OMBRO
     );
     // ⛔ O CONTROLO: bem longe do meio, senão isto é um losango com outro nome.
     assert!(
-        u[1] < 0.35,
+        u[1] > 0.65,
         "um ombro a meio faz um LOSANGO, nao um osso: u = {}",
         u[1]
     );
@@ -69,9 +72,9 @@ fn o_olho_cabe_dentro_da_silhueta() {
     let p = super::bone(A, B, 1.0);
     let olho = p.subpaths.first().expect("com eye = 1 o olho existe");
 
-    // As duas arestas que saem da junta, em coordenadas de MUNDO.
-    let (x0, y0) = (A[0], 0.5 * (A[1] + B[1]));
-    let ombro_x = A[0] + super::OMBRO * (B[0] - A[0]);
+    // As duas arestas que saem da junta (em `+X`), em coordenadas de MUNDO.
+    let (x0, y0) = (B[0], 0.5 * (A[1] + B[1]));
+    let ombro_x = B[0] - super::OMBRO * (B[0] - A[0]);
     for (ax, ay) in [(ombro_x, A[1]), (ombro_x, B[1])] {
         let (dx, dy) = (ax - x0, ay - y0);
         let n = dx.hypot(dy);

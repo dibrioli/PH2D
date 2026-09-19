@@ -464,3 +464,31 @@ fn the_pivot_rides_before_the_basis_on_the_vector_route() {
         "um deslocamento somado DEPOIS do basis daria o mesmo nos dois angulos"
     );
 }
+
+/// SONDA: para onde a PONTA local `(+1, 0)` de uma forma aterra com `rot = 90°`.
+#[test]
+#[ignore = "sonda"]
+fn sonda_para_onde_a_ponta_vai() {
+    let r = 90.0_f32.to_radians();
+    let (sin_r, cos_r) = r.sin_cos();
+    let inst = ph2d_eval_motion::VectorInstance {
+        geometry_id: 1,
+        texture_id: 0,
+        atlas_uv: [0.0, 0.0, 1.0, 1.0],
+        premultiplied: 0.0,
+        world_pos: [0.0, 0.0],
+        size: [1.0, 1.0],
+        basis: [cos_r, sin_r, -sin_r, cos_r],
+        tint: [1.0; 4],
+        anchor: [0.0, 0.0],
+    };
+    let a = super::instance_pose(&inst, ph2d_vector::Affine::IDENTITY);
+    for (nome, q) in [("ponta (+X)", (1.0, 0.0)), ("junta (-X)", (-1.0, 0.0))] {
+        let p = a * ph2d_vector::Point::new(q.0, q.1);
+        eprintln!("  {nome} -> ({:+.3}, {:+.3})", p.x, p.y);
+    }
+    eprintln!(
+        "  (basis = [{cos_r:+.2}, {sin_r:+.2}, {:+.2}, {cos_r:+.2}])",
+        -sin_r
+    );
+}

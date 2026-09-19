@@ -29,6 +29,9 @@ default = []
 gpu = ["dep:ph2d-gpu", "dep:wgpu", "dep:half", "dep:pollster", "bytemuck/derive"]
 
 [dependencies]
+# ⭐ A tabela de strings (folha, ZERO dependências): o vocabulário que esta crate PUBLICA
+# é pintado pelo painel irmão, e a fronteira entre os dois é cega às réguas do HR-15.
+ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # Tool trait + FloatingPanel + widgets for the panel scaffolding (the
 # satellite direction — never the reverse).

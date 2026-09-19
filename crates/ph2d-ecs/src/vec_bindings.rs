@@ -126,17 +126,9 @@ impl BoundProp {
         Self::LayoutGapCross,
     ];
 
-    /// Rótulo curto, para a UI dizer QUAL propriedade está presa.
-    #[must_use]
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::Fill => "Fill",
-            Self::StrokeColor => "Stroke",
-            Self::StrokeWidth => "Width",
-            Self::LayoutGapMain => "Gap",
-            Self::LayoutGapCross => "Gap (cross)",
-        }
-    }
+    // ⛔ **A `label()` FOI APAGADA (2026-09-19)** — órfã provada. O `ph2d-panel-vector` diz qual
+    // propriedade está presa a partir do DISCRIMINANTE (`vector_tokens.rs`: *«o painel não depende
+    // do ECS, e a shell depende dos dois»*), com as palavras na tabela de strings dele.
 }
 
 /// A chave kebab-case de um token (`"accent"`, `"bg-2"`, `"text-1"`).

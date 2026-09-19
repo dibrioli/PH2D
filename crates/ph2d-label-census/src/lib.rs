@@ -43,6 +43,9 @@
 //! sem palavra (`format!("{a}{b}")` com `a` e `b` vindos de outro sítio).
 
 pub mod cfg_test;
+/// ⭐⭐⭐ A régua que atravessa a fronteira de crate — o rótulo que um MOTOR publica e um painel
+/// pinta, que nem a régua lexical nem a de porta conseguem ver.
+pub mod fronteira;
 /// O corpo do gate por crate (os painéis migrados a partir de 2026-09-16 chamam-no).
 pub mod gate;
 pub mod keys;
@@ -50,6 +53,7 @@ mod lexical;
 pub mod portugues;
 mod source;
 
+pub use fronteira::{Publicacao, Publicado, published_names, sem_comentarios};
 pub use lexical::{
     Cegueira, Literal, blind_literals_in, cegueira, is_language, language_literals,
     language_literals_in,

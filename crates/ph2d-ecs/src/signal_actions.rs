@@ -113,17 +113,26 @@ impl SignalVerb {
         SignalVerb::StopSound,
     ];
 
-    /// O rótulo que o artista lê. Inglês (HR-15).
+    /// O rótulo que o artista lê, em INGLÊS — um ACESSÓRIO derivado da tabela desde 2026-09-19
+    /// (ver [`Self::label_key`]).
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `ecs.signal_verb.<variante>`. A shell resolve-a ao montar o
+    /// `verb_labels` do snapshot (`render_loop/inspector_action.rs`), que é o único sítio onde
+    /// estas sete palavras chegam a um pixel.
+    #[must_use]
+    pub const fn label_key(self) -> &'static str {
         match self {
-            SignalVerb::StartTimer => "Start Timer",
-            SignalVerb::StopTimer => "Stop Timer",
-            SignalVerb::Show => "Show",
-            SignalVerb::Hide => "Hide",
-            SignalVerb::ToggleVisibility => "Toggle Visibility",
-            SignalVerb::PlaySound => "Play Sound",
-            SignalVerb::StopSound => "Stop Sound",
+            SignalVerb::StartTimer => "ecs.signal_verb.start_timer",
+            SignalVerb::StopTimer => "ecs.signal_verb.stop_timer",
+            SignalVerb::Show => "ecs.signal_verb.show",
+            SignalVerb::Hide => "ecs.signal_verb.hide",
+            SignalVerb::ToggleVisibility => "ecs.signal_verb.toggle_visibility",
+            SignalVerb::PlaySound => "ecs.signal_verb.play_sound",
+            SignalVerb::StopSound => "ecs.signal_verb.stop_sound",
         }
     }
 

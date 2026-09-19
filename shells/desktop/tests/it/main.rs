@@ -30,6 +30,7 @@ mod architecture_no_downcast_to_concrete_tool_in_shell;
 mod architecture_no_per_tool_branch_in_render_loop;
 mod audio_ml_is_off_by_default;
 mod audio_pricing_is_export_work_not_edit_work;
+mod cada_motor_da_fronteira_resolve_as_chaves_dele;
 mod convert_to_curves_asks_one_question;
 mod delete_drops_the_shape_in_hand;
 mod deleting_a_piece_of_a_copy_goes_through_the_recipe_door;

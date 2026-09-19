@@ -60,25 +60,37 @@ impl LutPreset {
         Self::CrossProcess,
     ];
 
-    /// Human-readable label for the panel chip.
+    /// O rótulo do chip em INGLÊS — um acessório derivado da tabela (ver [`Self::label_key`]).
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `tool.color_equalization.preset.<variante>`, resolvida pelo
+    /// painel ao montar as opções do selector de *look*.
+    ///
+    /// ⚠️ **O sufixo é o [`Self::slug`] com `_` no lugar do `-`, e isso é uma escolha:** o slug já é
+    /// o identificador PERSISTIDO deste preset, logo a chave deriva do id — que é a lei desta
+    /// fronteira. ⛔ Escrevê-lo em vez de o calcular é de propósito: as duas listas ficam lado a
+    /// lado e um desencontro lê-se à vista, em vez de virar uma chave inexistente em silêncio.
+    #[must_use]
+    pub const fn label_key(self) -> &'static str {
         match self {
-            Self::None => "None",
-            Self::Cinematic => "Cinematic",
-            Self::Blockbuster => "Blockbuster",
-            Self::FilmNoir => "Film Noir",
-            Self::Warm => "Warm",
-            Self::Cool => "Cool",
-            Self::GoldenHour => "Golden Hour",
-            Self::Moonlight => "Moonlight",
-            Self::Vintage => "Vintage",
-            Self::Sepia => "Sepia",
-            Self::FadedFilm => "Faded Film",
-            Self::Polaroid => "Polaroid",
-            Self::Vibrant => "Vibrant",
-            Self::Matte => "Matte",
-            Self::BleachBypass => "Bleach Bypass",
-            Self::CrossProcess => "Cross Process",
+            Self::None => "tool.color_equalization.preset.none",
+            Self::Cinematic => "tool.color_equalization.preset.cinematic",
+            Self::Blockbuster => "tool.color_equalization.preset.blockbuster",
+            Self::FilmNoir => "tool.color_equalization.preset.film_noir",
+            Self::Warm => "tool.color_equalization.preset.warm",
+            Self::Cool => "tool.color_equalization.preset.cool",
+            Self::GoldenHour => "tool.color_equalization.preset.golden_hour",
+            Self::Moonlight => "tool.color_equalization.preset.moonlight",
+            Self::Vintage => "tool.color_equalization.preset.vintage",
+            Self::Sepia => "tool.color_equalization.preset.sepia",
+            Self::FadedFilm => "tool.color_equalization.preset.faded_film",
+            Self::Polaroid => "tool.color_equalization.preset.polaroid",
+            Self::Vibrant => "tool.color_equalization.preset.vibrant",
+            Self::Matte => "tool.color_equalization.preset.matte",
+            Self::BleachBypass => "tool.color_equalization.preset.bleach_bypass",
+            Self::CrossProcess => "tool.color_equalization.preset.cross_process",
         }
     }
 
@@ -104,16 +116,13 @@ impl LutPreset {
         }
     }
 
-    /// Group header for the panel dropdown grouping.
-    pub fn group(self) -> &'static str {
-        match self {
-            Self::None => "None",
-            Self::Cinematic | Self::Blockbuster | Self::FilmNoir => "Cinematic",
-            Self::Warm | Self::Cool | Self::GoldenHour | Self::Moonlight => "Atmosphere",
-            Self::Vintage | Self::Sepia | Self::FadedFilm | Self::Polaroid => "Vintage",
-            Self::Vibrant | Self::Matte | Self::BleachBypass | Self::CrossProcess => "Stylized",
-        }
-    }
+    // ⛔⛔ **A `group()` FOI APAGADA (2026-09-19), e não traduzida** — órfã provada: o único leitor
+    // dela era um `assert!(!p.group().is_empty())` do próprio ficheiro. Ela prometia um
+    // *«Group header for the panel dropdown grouping»* e **o selector do painel nunca agrupou nada**.
+    //
+    // ⚠️ *Um acessório cujo único leitor é a asserção que o mede é a régua a medir-se a si própria.*
+    // Se o agrupamento voltar, ele nasce com chaves (`tool.color_equalization.group.*`) e com um
+    // consumidor — nunca com as duas coisas separadas por meses.
 
     /// Index in [`Self::ALL`].
     fn index(self) -> usize {
@@ -388,12 +397,21 @@ mod tests {
         assert_eq!(LutPreset::Blockbuster.prev(), LutPreset::Cinematic);
     }
 
+    /// ⚠️ **A terceira asserção MORREU com a `group()`** (2026-09-19, órfã provada), e a morte fica
+    /// visível no diff. As duas que ficam ganharam a metade que faltava: um `label()` que devolve
+    /// vazio é o sintoma de uma chave AUSENTE da tabela, e `!is_empty()` não o via — o
+    /// [`ph2d_i18n::tr`] devolve a própria chave quando não a conhece.
     #[test]
     fn all_variants_have_labels_and_slugs() {
         for p in LutPreset::ALL {
             assert!(!p.label().is_empty());
+            assert!(
+                !p.label().starts_with("tool."),
+                "{:?}: a chave {:?} não está na tabela de strings — o `tr` devolveu-a crua",
+                p,
+                p.label_key()
+            );
             assert!(!p.slug().is_empty());
-            assert!(!p.group().is_empty());
         }
     }
 

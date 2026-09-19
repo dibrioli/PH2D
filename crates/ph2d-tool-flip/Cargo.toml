@@ -16,6 +16,9 @@ publish.workspace = true
 [lib]
 
 [dependencies]
+# ⭐ A tabela de strings (folha, ZERO dependências): o vocabulário que esta crate PUBLICA
+# é pintado pelo painel irmão, e a fronteira entre os dois é cega às réguas do HR-15.
+ph2d-i18n = { path = "../ph2d-i18n" }
 # Tool contract + ToolManifest + chrome Registry.
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }

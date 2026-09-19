@@ -211,7 +211,7 @@ impl BodyCtx<'_> {
                 let kind = ReshapeKind::ALL[off + i];
                 *slot = (
                     ph2d_tool_flip::ids::FLIP_RESHAPE_KIND_IDS[off + i],
-                    kind.label(),
+                    tr(kind.label_key()),
                     snap.reshape == kind,
                 );
             }

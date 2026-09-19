@@ -542,6 +542,8 @@ pub(crate) fn lut_options_for_slot(slot: u8) -> Vec<DropdownOption<LutPreset>> {
     LutPreset::ALL
         .iter()
         .enumerate()
-        .map(|(i, preset)| DropdownOption::new(opt_ids[i], *preset, preset.label().to_string()))
+        .map(|(i, preset)| {
+            DropdownOption::new(opt_ids[i], *preset, tr(preset.label_key()).to_string())
+        })
         .collect()
 }

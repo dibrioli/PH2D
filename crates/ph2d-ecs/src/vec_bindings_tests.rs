@@ -75,9 +75,10 @@ fn every_bindable_property_is_offered() {
             BoundProp::LayoutGapCross,
         ]
     );
-    for p in BoundProp::ALL {
-        assert!(!p.label().is_empty(), "toda propriedade tem rotulo");
-    }
+    // ⚠️ **A meia-asserção «toda propriedade tem rotulo» MORREU com a `label()`** (2026-09-19), e
+    // a morte fica visivel no diff: ela media uma copia ORFA do vocabulario, provada sem um unico
+    // consumidor de produto. Quem diz qual propriedade esta presa e' o `ph2d-panel-vector`, pelo
+    // DISCRIMINANTE, com as palavras na tabela de strings dele.
 }
 
 /// **O código volta ao alvo**, e todo alvo tem código — é o par que liga o clique do picker ao

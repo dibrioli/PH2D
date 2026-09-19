@@ -27,6 +27,9 @@ default = []
 gpu = ["dep:ph2d-gpu", "ph2d-inpaint/gpu"]
 
 [dependencies]
+# ⭐ A tabela de strings (folha, ZERO dependências): os quatro MEIOS que esta crate publica são
+# pintados pelo `ph2d-panel-painter-layers`, e a fronteira entre os dois é cega ao HR-15.
+ph2d-i18n = { path = "../ph2d-i18n" }
 # Tool trait + FloatingPanel + widgets the PainterTool builds on.
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # ToolManifest + ToolHandler + Registry + Zone + McpExposure.

@@ -126,18 +126,29 @@ impl ReshapeKind {
         ReshapeKind::Randomize,
     ];
 
-    /// O rótulo do botão (inglês — a UI do app é inglês, sempre).
+    /// O rótulo do botão em INGLÊS — um acessório derivado da tabela (ver [`Self::label_key`]).
     #[must_use]
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `tool.flip.reshape.<variante>`, resolvida pelo
+    /// `ph2d-panel-flip`, que pinta os oito botões.
+    ///
+    /// ⚠️ **Duas variantes não se chamam na tela o que se chamam no código** (`Thickness` →
+    /// *Thicken*, `Randomize` → *Jitter*): os oito são VERBOS na fileira, e o rótulo diz o que o
+    /// traço faz. *A chave deriva da variante; o texto não é derivável dela.*
+    #[must_use]
+    pub const fn label_key(self) -> &'static str {
         match self {
-            ReshapeKind::Smooth => "Smooth",
-            ReshapeKind::Push => "Push",
-            ReshapeKind::Grab => "Grab",
-            ReshapeKind::Pinch => "Pinch",
-            ReshapeKind::Twist => "Twist",
-            ReshapeKind::Thickness => "Thicken",
-            ReshapeKind::Strength => "Strength",
-            ReshapeKind::Randomize => "Jitter",
+            ReshapeKind::Smooth => "tool.flip.reshape.smooth",
+            ReshapeKind::Push => "tool.flip.reshape.push",
+            ReshapeKind::Grab => "tool.flip.reshape.grab",
+            ReshapeKind::Pinch => "tool.flip.reshape.pinch",
+            ReshapeKind::Twist => "tool.flip.reshape.twist",
+            ReshapeKind::Thickness => "tool.flip.reshape.thickness",
+            ReshapeKind::Strength => "tool.flip.reshape.strength",
+            ReshapeKind::Randomize => "tool.flip.reshape.randomize",
         }
     }
 }

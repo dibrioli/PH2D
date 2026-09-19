@@ -191,8 +191,17 @@ pub(crate) fn paint_library(
     cur_y + ph2d_tokens::control_gap_px()
 }
 
-/// O rótulo de uma direção, pelo tag. ⚠️ **Espelha `ph2d_ecs::AnimDirection::label`** porque este
-/// painel não vê o motor; o gate da shell prende os dois, como no `kind_label` da §12.
+/// O rótulo de uma direção, pelo tag.
+///
+/// ⚠️⚠️ **A redacção anterior dizia que isto ESPELHA a `ph2d_ecs::AnimDirection::label` e que «o
+/// gate da shell prende os dois» — e esse gate NUNCA EXISTIU** (medido 2026-09-19: o
+/// `ph2d_ecs_dir_label` é citado por este ficheiro e por uma linha de prosa, e por mais nada). É a
+/// família que o `named_gates_census` da escultura curou em 13/09: *um gate citado em comentário
+/// lê-se como um gate.*
+///
+/// ⭐ Hoje não há o que prender: a `AnimDirection::label` foi **apagada** como órfã na mesma
+/// medição — ela não tinha um único consumidor de produto —, e esta é a ÚNICA cópia do
+/// vocabulário. *Apagar a segunda resposta é mais forte do que gatear as duas.*
 fn ph2d_ecs_dir_label(tag: u8) -> &'static str {
     match tag {
         1 => tr("panel.inspector.animation.reverse"),

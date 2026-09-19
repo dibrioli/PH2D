@@ -438,9 +438,13 @@ mod transport;
 ///
 /// ⚠️ A lei existe **duas vezes**, e de propósito: o painel é chrome e não vê o motor
 /// ([`ph2d_ecs::animator_state`] vive no `ph2d-ecs`; [`InspectorAnimInfo::current_dangling`] no
-/// modelo do editor). É o mesmo padrão do `ph2d_ecs_dir_label` a espelhar
-/// `AnimDirection::label` — e, como ali, quem impede as duas de divergirem é um gate da SHELL, o
-/// único sítio que vê os dois lados.
+/// modelo do editor).
+///
+/// ⚠️ **A frase que estava aqui apontava para o `ph2d_ecs_dir_label` «a espelhar a
+/// `AnimDirection::label`, com um gate da shell a prender os dois» — e esse gate nunca existiu**
+/// (medido 2026-09-19). A `AnimDirection::label` foi apagada como órfã, e aquele par deixou de ter
+/// duas respostas. ⇒ o paralelo já não se aplica; o que segue vale para ESTA lei, que continua a
+/// existir duas vezes de propósito.
 ///
 /// ⚠️ **E foi a auditoria que o encontrou** (2026-08-23): a `animator_state` estava exportada,
 /// tinha gate próprio no `ph2d-ecs` e **nenhum consumidor** — enquanto o painel reimplementava a

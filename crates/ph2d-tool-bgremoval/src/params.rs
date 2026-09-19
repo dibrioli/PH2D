@@ -22,12 +22,23 @@ pub enum BrushFalloff {
 }
 
 impl BrushFalloff {
+    /// O rótulo em INGLÊS — um acessório derivado da tabela (ver [`Self::label_key`]).
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `tool.bgremoval.falloff.<variante>`. Quem a resolve é o
+    /// `ph2d-panel-bgremoval`, que pinta os quatro chips da queda.
+    ///
+    /// ⚠️ **`Constant` chama-se *Hard* na tela**: a variante diz a matemática (`s = 1`) e o rótulo
+    /// diz o que a mão sente. *A chave deriva da variante; o texto vive na tabela.*
+    #[must_use]
+    pub const fn label_key(self) -> &'static str {
         match self {
-            BrushFalloff::Smooth => "Smooth",
-            BrushFalloff::Sphere => "Sphere",
-            BrushFalloff::Sharp => "Sharp",
-            BrushFalloff::Constant => "Hard",
+            BrushFalloff::Smooth => "tool.bgremoval.falloff.smooth",
+            BrushFalloff::Sphere => "tool.bgremoval.falloff.sphere",
+            BrushFalloff::Sharp => "tool.bgremoval.falloff.sharp",
+            BrushFalloff::Constant => "tool.bgremoval.falloff.constant",
         }
     }
 

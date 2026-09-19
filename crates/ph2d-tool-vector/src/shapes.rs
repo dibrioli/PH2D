@@ -71,21 +71,15 @@ pub enum ShapeGroup {
     Iso,
 }
 
-impl ShapeGroup {
-    /// Rótulo da família no seletor.
-    #[must_use]
-    pub fn label(self) -> &'static str {
-        match self {
-            ShapeGroup::Basic => "Basic",
-            ShapeGroup::Round => "Round",
-            ShapeGroup::Arrows => "Arrows",
-            ShapeGroup::Flow => "Flow",
-            ShapeGroup::Bubbles => "Bubbles",
-            ShapeGroup::Symbols => "Symbols",
-            ShapeGroup::Iso => "3D",
-        }
-    }
-}
+// ⛔⛔ **A `ShapeGroup::label()` FOI APAGADA (2026-09-19), e não traduzida** — órfã provada (a
+// sonda renomeou-a e a workspace INTEIRA compilou). Quem pinta o nome de uma família no selector é
+// o `ph2d_panel_vector::state::group_i18n_key`, chaveado pela **VARIANTE** do enum, que é a forma
+// MAIS forte — e é a razão escrita no cabeçalho do `nomes_do_motor.rs` daquele painel para as
+// famílias NÃO entrarem na ponte por palavra: *`Corner` e `Curve` são um campo de FORMA e um campo
+// de CONECTOR, e uma ponte que casa por palavra dá a uma delas a palavra da outra.*
+//
+// ⚠️ Note a divergência que ela escondia: esta cópia dizia `Iso => "3D"` e a do painel diz o mesmo
+// hoje — *duas respostas à mesma pergunta concordam até ao dia em que uma muda.*
 
 /// Todas as famílias, na ordem do seletor.
 pub const ALL_GROUPS: &[ShapeGroup] = &[

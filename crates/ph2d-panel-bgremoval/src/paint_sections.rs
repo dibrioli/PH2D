@@ -430,22 +430,22 @@ pub(crate) fn paint_protect_brush(
             Rect::new(inner_x, y, inner_w, row_h),
             &[
                 (
-                    BrushFalloff::Smooth.label(),
+                    tr(BrushFalloff::Smooth.label_key()),
                     snapshot.falloff == BrushFalloff::Smooth,
                     ph2d_tool_bgremoval::ids::BGR_FALLOFF_SMOOTH,
                 ),
                 (
-                    BrushFalloff::Sphere.label(),
+                    tr(BrushFalloff::Sphere.label_key()),
                     snapshot.falloff == BrushFalloff::Sphere,
                     ph2d_tool_bgremoval::ids::BGR_FALLOFF_SPHERE,
                 ),
                 (
-                    BrushFalloff::Sharp.label(),
+                    tr(BrushFalloff::Sharp.label_key()),
                     snapshot.falloff == BrushFalloff::Sharp,
                     ph2d_tool_bgremoval::ids::BGR_FALLOFF_SHARP,
                 ),
                 (
-                    BrushFalloff::Constant.label(),
+                    tr(BrushFalloff::Constant.label_key()),
                     snapshot.falloff == BrushFalloff::Constant,
                     ph2d_tool_bgremoval::ids::BGR_FALLOFF_CONSTANT,
                 ),

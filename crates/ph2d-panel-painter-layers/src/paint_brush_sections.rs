@@ -7,6 +7,7 @@
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::widget::section_cards::close_section;
+use ph2d_i18n::tr;
 use ph2d_tool_painter::{BrushSettings, PaintMedia};
 
 /// Paint the **Paint Mode** chip, stashing the open popover for the deferred pass. Returns the next `y`.
@@ -31,7 +32,7 @@ fn paint_media_row(
         "panel.painter_layers.brush.paint_mode",
         ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA,
         cur,
-        PaintMedia::from_u8(cur).name(),
+        tr(PaintMedia::from_u8(cur).name_key()),
     );
     if let Some(r) = open {
         crate::state::set_pending_brush_media_dd(Some((r, cur)));
@@ -47,7 +48,7 @@ pub(crate) fn media_options() -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 ph2d_tool_painter::ids::painter_brush_media_option_id(i),
                 i,
-                PaintMedia::from_u8(i).name(),
+                tr(PaintMedia::from_u8(i).name_key()),
             )
         })
         .collect()

@@ -22,7 +22,7 @@ use ph2d_ecs::{
     World,
 };
 use ph2d_editor_core::{ActionFieldEdit, InspectorActionInfo, InspectorActionRow, Toast};
-use ph2d_i18n::tr_with;
+use ph2d_i18n::{tr, tr_with};
 use ph2d_tags::TagTree;
 
 use ph2d_inspector_ordering::queue_set;
@@ -65,9 +65,11 @@ pub(super) fn build_action_info(
         rows,
         // ⚠️ **Os rótulos saem de `SignalVerb::ALL`, que é a FONTE** — nunca de uma lista escrita
         // à mão neste ficheiro.
+        // ⭐ E a palavra vem da TABELA (2026-09-19): o motor publica a chave, e este é o único
+        // sítio onde os sete verbos chegam a um pixel.
         verb_labels: SignalVerb::ALL
             .iter()
-            .map(|v| v.label().to_string())
+            .map(|v| tr(v.label_key()).to_string())
             .collect(),
         selected_count,
     })

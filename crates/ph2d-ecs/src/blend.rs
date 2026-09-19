@@ -80,17 +80,16 @@ impl BlendMode {
         }
     }
 
-    /// Short UI label (English; see HR-15 — i18n migrates in W7).
-    pub const fn label(self) -> &'static str {
-        match self {
-            BlendMode::Mix => "Mix",
-            BlendMode::Add => "Add",
-            BlendMode::Subtract => "Subtract",
-            BlendMode::Multiply => "Multiply",
-            BlendMode::Screen => "Screen",
-            BlendMode::PremultAlpha => "Premult",
-        }
-    }
+    // ⛔⛔ **A `label()` FOI APAGADA (2026-09-19), e não traduzida.** Ela prometia por escrito
+    // *«i18n migrates in W7»*, a W7 nunca chegou, e a medição mostrou que ela **não tinha um
+    // único consumidor de produto**: a sonda renomeou-a e a workspace INTEIRA compilou.
+    //
+    // ⚠️ Quem pinta estas seis palavras é o `ph2d-panel-inspector`, que carrega a própria tabela
+    // de CHAVES (`BLEND_LABELS`, `panel.inspector.material.*`) **porque não depende desta crate** —
+    // o snapshot leva só o `tag()`. ⇒ traduzir esta cópia criaria uma SEGUNDA chave para a mesma
+    // palavra, e duas respostas à mesma pergunta divergem no dia em que uma mudar.
+    //
+    // *A terceira espécie do `CLAUDE.md` §5.0: um órfão lê-se igual a um morto, e a cura é oposta.*
 }
 
 #[cfg(test)]

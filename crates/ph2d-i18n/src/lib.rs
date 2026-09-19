@@ -55,6 +55,9 @@ mod chrome_menus;
 mod chrome_panes;
 /// As strings da BARRA DE FERRAMENTAS (o rail esquerdo e a fila horizontal).
 mod chrome_rail;
+/// ⭐⭐ **As palavras do MOTOR DA CENA** (`ph2d-ecs`) — a 7.ª fatia da fronteira dos motores, e a
+/// primeira achada por um instrumento.
+mod ecs_scene;
 /// As strings dos dois painéis do Flip (o painel e a tira de quadros).
 mod flip;
 /// As strings do painel Grid Settings.
@@ -105,6 +108,8 @@ mod sculpt_engine;
 mod tags;
 /// ⭐⭐ **As palavras do DESIGN SYSTEM** — temas, desenhos de slider, recusas de fórmula.
 mod tokens;
+/// ⭐⭐ **As palavras dos MOTORES DAS FERRAMENTAS** — a 8.ª fatia da fronteira dos motores.
+mod tool_engines;
 /// ⭐ **O vocabulário do mover de VISTA DE CIMA** (TOP-20 #13) — os três selectores que o
 /// `topdown_edits` declara e o Inspector pinta. Tabela irmã pela lei do assunto (ver [`tags`]).
 mod topdown;
@@ -539,6 +544,8 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| component_catalog::tr(k))
             .or_else(|| paint_engines::tr(k))
             .or_else(|| sculpt_engine::tr(k))
+            .or_else(|| ecs_scene::tr(k))
+            .or_else(|| tool_engines::tr(k))
             .or_else(|| tokens::tr(k))
             .or_else(|| node_catalog::tr(k))
             .or_else(|| node_groups::tr(k))

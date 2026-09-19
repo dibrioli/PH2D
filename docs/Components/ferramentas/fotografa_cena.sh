@@ -16,7 +16,7 @@
 #   2. O app corre em **X11** na Xwayland DESSA sessão (`WAYLAND_DISPLAY` removido) e a foto é o
 #      `import -window <id>` dessa janela (o id vem do `_NET_CLIENT_LIST`).
 #
-# ⛔⛔ AS DUAS ARMADILHAS MEDIDAS
+# ⛔⛔ AS TRES ARMADILHAS MEDIDAS
 #   - O `spectacle` fala com o KWin pelo D-Bus da sessão — e a sessão é a do DONO: a 1.ª tentativa
 #     fotografou o ecrã REAL dele. ⇒ nunca o `spectacle`; e este roteiro RECUSA correr se o
 #     `DISPLAY` de dentro for `:0` ou o `WAYLAND_DISPLAY` for `wayland-0`.
@@ -25,6 +25,8 @@
 #   ⚠️ E os eventos SINTÉTICOS não chegam: o XTest na Xwayland desta sessão é ignorado (medido com
 #   `XTestFakeButtonEvent` — a roda não rolou). ⛔ E o `ydotool` move o rato REAL do dono: proibido.
 #   ⇒ um clique prova-se num gate de costura (`MockPanelHost`), não aqui.
+#   - O `$HOME` do app e' o do DONO, e o app RE-ESCREVE `~/.ph2d/layout.txt` (a arrumacao dos
+#     paineis, que vive fora do repo). ⇒ o roteiro corre com **HOME isolado** desde 19/09.
 set -euo pipefail
 
 ENV_KV="${1:?VAR=valor}"
@@ -61,7 +63,15 @@ if [ -z "\$DISPLAY" ] || [ "\$DISPLAY" = ":0" ] || [ "\$WAYLAND_DISPLAY" = "wayl
   exit 3
 fi
 cd "$RAIZ"
-env -u WAYLAND_DISPLAY $ENV_KV PH2D_EXIT_AFTER_FRAMES=100000 "$BIN" > "$TMP/app.log" 2>&1 &
+# ⛔⛔ **HOME ISOLADO, e isto e' uma cerca e nao um detalhe.** A arrumacao dos paineis vive em
+# `~/.ph2d/layout.txt`, FORA do repo: e' um ficheiro DO DONO, e o app RE-ESCREVE-O. Sem esta
+# linha, cada fotografia mexia na arrumacao dele — a mesma familia do `spectacle` a fotografar
+# o ecra real, e o mesmo defeito que ja' apanhou uma fotografia a abrir com o painel errado
+# porque OUTRA arvore a correr em paralelo tinha reescrito o ficheiro.
+# ⭐ E de graca ela torna a foto REPRODUTIVEL: a arrumacao passa a ser a de fabrica.
+#    Quem quiser a do dono passa `HOME=$REAL_HOME` no primeiro argumento.
+mkdir -p "$TMP/home"
+env -u WAYLAND_DISPLAY HOME="$TMP/home" $ENV_KV PH2D_EXIT_AFTER_FRAMES=100000 "$BIN" > "$TMP/app.log" 2>&1 &
 APP=\$!
 sleep $ESPERA
 WIN=\$(xprop -display "\$DISPLAY" -root _NET_CLIENT_LIST | grep -o '0x[0-9a-f]*' | tail -1)

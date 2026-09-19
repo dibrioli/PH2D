@@ -65,15 +65,29 @@ impl PaintMedia {
         }
     }
 
-    /// The dropdown's display name. English UI (HR-15), and these are the words the artist already
-    /// reads on the section headers below the chip.
+    /// The dropdown's display name, in ENGLISH — an accessory derived from the string table since
+    /// 2026-09-19 (see [`Self::name_key`]). These are the words the artist already reads on the
+    /// section headers below the chip.
+    ///
+    /// ⚠️ **The doc-comment that lived here claimed `English UI (HR-15)` over a hardcoded string.**
+    /// It was true about the LANGUAGE and false about the LAW: the four words never reached the
+    /// table, and no ruler in the repo could see it — the literal lives in this crate and the
+    /// painter lives in `ph2d-panel-painter-layers`.
     #[must_use]
     pub fn name(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.name_key())
+    }
+
+    /// ⭐⭐ **The label KEY** — `tool.painter.media.<variant>`, resolved by the brush dropdown
+    /// (`paint_brush_sections.rs`), which paints it both as the closed chip and as the four
+    /// options.
+    #[must_use]
+    pub const fn name_key(self) -> &'static str {
         match self {
-            PaintMedia::Digital => "Digital",
-            PaintMedia::Watercolor => "Watercolor",
-            PaintMedia::Impasto => "Impasto",
-            PaintMedia::WetPaint => "Wet Paint",
+            PaintMedia::Digital => "tool.painter.media.digital",
+            PaintMedia::Watercolor => "tool.painter.media.watercolor",
+            PaintMedia::Impasto => "tool.painter.media.impasto",
+            PaintMedia::WetPaint => "tool.painter.media.wet_paint",
         }
     }
 

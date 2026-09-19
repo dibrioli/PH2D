@@ -10,6 +10,10 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# ⭐ A TABELA DE STRINGS — folha de ZERO dependências. Ela entra aqui porque o vocabulário
+# que esta crate PUBLICA (os barramentos de áudio, os verbos de sinal) é pintado por outra,
+# e a fronteira entre as duas é cega por construção às 30 réguas lexicais do HR-15.
+ph2d-i18n = { path = "../ph2d-i18n" }
 # ⭐ **O grafo autorado da maquina de estados do Morph** (plano 32). O componente
 # `VecMorphMachine` guarda-o, e o tipo tem de estar aqui porque o registo de componentes vive
 # nesta crate, ao lado do `VecMorph` que ele conduz.

@@ -133,14 +133,10 @@ impl AnimDirection {
         Self::ALL.iter().position(|d| *d == self).unwrap_or(0) as u8
     }
 
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Forward => "Forward",
-            Self::Reverse => "Reverse",
-            Self::PingPong => "Ping-Pong",
-            Self::PingPongReverse => "Ping-Pong Rev",
-        }
-    }
+    // ⛔ **A `label()` FOI APAGADA (2026-09-19)** — órfã provada, como a irmã do
+    // [`crate::BlendMode`]. O `ph2d-panel-inspector` pinta estas quatro palavras da tabela dele
+    // (`anim_rows.rs`, cujo doc já dizia *«espelha `ph2d_ecs::AnimDirection::label`»*), chaveadas
+    // pelo `tag()` que o snapshot leva. *Um espelho declarado é uma cópia com um nome bonito.*
 
     /// Começa a andar para trás? (`Reverse` e `PingPongReverse`.)
     fn starts_reversed(self) -> bool {

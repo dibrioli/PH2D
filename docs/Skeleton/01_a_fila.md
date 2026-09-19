@@ -329,6 +329,66 @@ Mutação **13 de 13** a sangrar.
 ⏳ **ABERTO:** o apontar não tem gesto de canvas (só o painel) · e o desvio é um número, não uma alça
 — arrastar o olhar no canvas seria outro gesto, e é decisão de produto.
 
+### F25 — ⭐⭐⭐ **ESPELHAR UM RAMO — o lado esquerdo construído a partir do direito** (2026-09-19)
+
+O terceiro item da auditoria. ⭐⭐ **A lei é uma CONJUGAÇÃO e calcula-se à mão, sem uma única
+constante escolhida.** Seja `M` a reflexão do mundo na vertical `x = c` e `G` a que troca o sinal do
+`y` **dentro do referencial de um osso**. O referencial que leva a cabeça a `M(cabeça)`, a ponta a
+`M(ponta)` **e** repõe o sinal do determinante é `W' = M ∘ W ∘ G` — e daí sai tudo:
+
+| o que | como espelha | porquê |
+|---|---|---|
+| filho (pose local) | `translação.y := −y` · `rotação := −r` · skews `:= −` | `T' = G ∘ T ∘ G` |
+| raiz do ramo | derivada da cabeça e da ponta **reflectidas**, no referencial do pai | `T' = P⁻¹MP ∘ T ∘ G` |
+| `length` | **igual** | o `G` fixa o eixo `+X`, e o comprimento vive nele |
+| `curve` `y` | **negado** | o arco é um desvio em `y` |
+| `curve` `x` | **igual** | ele mede-se **ao longo** do eixo |
+| `BoneLimit` | **`{ −max, −min }`** | sob `r ↦ −r` a faixa inverte **e troca de ponta** |
+
+⛔ **Só negar o limite deixaria `min > max`, e a lei trava a junta no CENTRO do que estiver escrito**
+— o cotovelo espelhado ficaria preso a meio caminho, sem nada na tela que o explicasse.
+
+⚠️ **O EIXO é DERIVADO** (§0.0): a vertical que passa pela origem do osso **RAIZ** do esqueleto —
+num personagem, o quadril; é o mesmo `X = 0` da armadura que o Blender espelha. ⛔ Um campo com um
+número seria uma terceira coisa a manter coerente com a pose.
+
+⭐⭐ **A cópia passa pela CÓPIA PROFUNDA da casa**, e é isso que faz o ramo novo carregar o que esta
+shell não conhece (o limite, a curvatura, o repouso, e o que vier): ela copia o que o **registo**
+descreve. ⛔ Uma cópia campo a campo esqueceria o primeiro componente novo, em silêncio.
+
+⛔⛔⛔ **E a cópia profunda NÃO REMAPEIA REFERÊNCIA NENHUMA — o doc dela di-lo por escrito.** O
+`Bone::curve_tip` nomeia um **filho por identidade**, logo a cópia ficaria a apontar para o filho do
+**ORIGINAL**: o ramo espelhado arquearia a seguir a um osso do outro lado do corpo, e a referência
+**resolve**, logo nada acusaria. ⇒ ele é remapeado pelo mapa `StableId → StableId` que a cópia
+devolve. ⚠️ **Um id de FORA do ramo fica intocado** — ali a referência do original continua a ser a
+resposta certa.
+
+⛔ **O que NÃO viaja, e é decisão declarada:** a **âncora de IK** e o **osso inteligente**. Os dois
+nomeiam OUTROS objectos da cena por identidade, e copiá-los daria duas correntes a puxar o **mesmo
+losango** — o braço espelhado seguiria a mão do original. *Mirrorar uma referência a um objecto é
+uma segunda decisão que este verbo não pode tomar sozinho.* O artista carrega em *Add IK* / *Look At*
+no ramo novo.
+
+⚠️ **O NOME troca de lado por uma TABELA e não por um `replace` cego** — trocar todo `L` por `R`
+renomearia `"Leg"` para `"Reg"`. O que se troca é um **marcador**: um sufixo (`.L`, `_Right`) ou uma
+**palavra inteira** (`Left Arm`). ⚠️ E o resultado passa **sempre** pela porta da unicidade: a
+referência durável entre objectos nesta casa é o NOME, e dois ossos com o mesmo seriam o mesmo
+sujeito para a timeline. ⭐ Um nome sem lado (`"Bone 7"`) devolve `None` — *inventar-lhe um lado seria
+escrever uma decisão do artista*.
+
+⭐⭐⭐ **A prova mais dura é a INVOLUÇÃO:** espelhar duas vezes devolve a geometria original (barra
+`1e-4`, derivada do `f32` da pose). Mais: cada osso da cópia vai de `M(cabeça)` a `M(ponta)` — medido
+em **MUNDO** e não nos campos locais, *senão a régua mediria a implementação e ficaria verde sobre
+uma cópia que aponta ao contrário* — e o **original não se mexe**.
+
+**Na tela:** o botão **`Mirror Branch`**, terceiro do trio que age sobre *este osso e a descendência
+dele* (os outros dois são o par do repouso). Zero schema, zero registo novo.
+
+Mutação **12 de 12** a sangrar.
+
+⏳ **ABERTO:** o espelho não tem gesto de canvas (só o painel) · e a arte presa não é espelhada com
+os ossos — o ramo novo nasce sem pele, e prendê-la é o gesto que já existe (*Bind*).
+
 ### F19 — ✅ **O CHIP `Auto` DIZ QUE LADO DERIVA** (report do dono, 2026-09-18)
 
 *«IK Bend não funcionou com Auto IK e trocando CCw por CW no painel lateral»* — ⭐ **reproduzido, e

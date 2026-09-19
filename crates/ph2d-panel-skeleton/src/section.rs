@@ -149,12 +149,15 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
         //
         // ⚠️ **Só com osso em foco**, como todo o resto deste bloco: um *Rest Pose* sem sujeito
         // seria a classe de controlo morto que o `CLAUDE.md` §5.0 nomeia.
-        let repouso: [(ph2d_a11y::NodeId, &str); 2] = [
+        // ⚠️ **Os TRÊS agem sobre este osso E a descendência dele**, e é o que os junta numa
+        // tabela: os dois primeiros sobre a POSE do ramo, o terceiro constrói o ramo do outro lado.
+        let repouso: [(ph2d_a11y::NodeId, &str); 3] = [
             (
                 ids::VECTOR_BONE_REST_APPLY,
                 tr("panel.vector.bone.rest.apply"),
             ),
             (ids::VECTOR_BONE_REST_SET, tr("panel.vector.bone.rest.set")),
+            (ids::VECTOR_BONE_MIRROR, tr("panel.vector.bone.mirror")),
         ];
         for (id, label) in repouso {
             y = r.action_button(id, label, y);

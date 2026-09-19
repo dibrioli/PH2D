@@ -19,6 +19,10 @@ ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 # `ph2d-skeleton-ecs`:** aquela crate é dependência da `ph2d-vec-entities`, então pôr o `bind` lá
 # fecharia o ciclo `skeleton-ecs → vec-entities → skeleton-ecs`. *Uma folha nova não é escolha de
 # gosto quando a alternativa é um ciclo.*
+# ⚠️ **A porta da unicidade de NOMES** — o espelho renomeia a cópia (`Arm.L` → `Arm.R`) e a
+# referência durável entre objectos nesta casa é o NOME: dois ossos com o mesmo nome seriam o mesmo
+# sujeito para a timeline.
+ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # A malha da tinta e a `Sprite` de onde ela sai — a 2.ª mídia do esqueleto.

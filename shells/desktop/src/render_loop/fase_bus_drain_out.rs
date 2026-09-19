@@ -216,6 +216,9 @@ pub(in crate::render_loop) struct DrainOut {
     pub(in crate::render_loop) pending_ik_add: bool,
     /// ⭐ *Look At* — a âncora que APONTA (a corrente em UM). Ver `goal::add_look_at`.
     pub(in crate::render_loop) pending_look_at: bool,
+    /// ⭐ *Mirror Branch* — o lado oposto, construído a partir do ramo em foco. Ver
+    /// `ph2d_skeleton_live::espelho`.
+    pub(in crate::render_loop) pending_bone_mirror: bool,
     pub(in crate::render_loop) pending_ik_remove: bool,
     // ⭐ O lado da dobra que o artista escolheu neste quadro, se escolheu.
     pub(in crate::render_loop) pending_ik_bend: Option<ph2d_skeleton::BendSide>,

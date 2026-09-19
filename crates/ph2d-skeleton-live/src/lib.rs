@@ -31,6 +31,8 @@
 /// ⭐ A CURVATURA de um osso, viva — irmão do `skin_live` pelo tecto de LOC, cortado por assunto.
 pub mod bend_live;
 pub mod bone;
+/// ⭐⭐⭐ **ESPELHAR um ramo** — construir o lado esquerdo a partir do direito.
+pub mod espelho;
 pub mod esqueletos;
 #[cfg(test)]
 #[path = "esqueletos_tests_support.rs"]

@@ -151,6 +151,7 @@ impl crate::App {
                 fase_bone_ik_and_limits::BoneIkAndLimitsIntents {
                     pending_ik_add: take(&mut pd.pending_ik_add),
                     pending_look_at: take(&mut pd.pending_look_at),
+                    pending_bone_mirror: take(&mut pd.pending_bone_mirror),
                     pending_ik_remove: take(&mut pd.pending_ik_remove),
                     pending_ik_bend: take(&mut pd.pending_ik_bend),
                     pending_bone_handles: take(&mut pd.pending_bone_handles),

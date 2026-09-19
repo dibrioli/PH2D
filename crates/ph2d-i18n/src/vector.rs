@@ -317,6 +317,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bone.release" => "Release",
         "panel.vector.bone.rest.apply" => "Rest Pose",
         "panel.vector.bone.rest.set" => "Set Rest Pose",
+        "panel.vector.bone.mirror" => "Mirror Branch",
         "panel.vector.bone.length" => "Length",
         "panel.vector.bone.strength" => "Strength",
         "panel.vector.bone.segments" => "Segments",

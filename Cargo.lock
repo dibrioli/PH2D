@@ -8593,6 +8593,7 @@ dependencies = [
  "ph2d-skeleton",
  "ph2d-skeleton-ecs",
  "ph2d-skin-weights",
+ "ph2d-unique-name",
  "ph2d-vec-entities",
  "ph2d-vec-scene",
  "ph2d-vec-skin",

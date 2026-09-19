@@ -67,6 +67,14 @@ pub const VECTOR_BONE_IK_OFFSET: NodeId = hash_node_id("vector.bone.ik.offset");
 /// com uma mensagem verde (`ph2d_skeleton_live::sonda_do_reset_na_hierarquia_tests`).
 pub const VECTOR_BONE_REST_APPLY: NodeId = hash_node_id("vector.bone.rest.apply");
 
+/// ⭐⭐⭐ **Mirror Branch** — constrói o lado oposto a partir deste ramo: uma cópia reflectida na
+/// vertical que passa pela raiz do esqueleto, com os nomes trocados de lado (`Arm.L` → `Arm.R`).
+///
+/// ⛔ A âncora de IK e o osso inteligente **não viajam** com a cópia — os dois nomeiam outros
+/// objectos da cena, e duas correntes a puxar o mesmo losango é o defeito que isso evita. Ver
+/// [`ph2d_skeleton_live::espelho`].
+pub const VECTOR_BONE_MIRROR: NodeId = hash_node_id("vector.bone.mirror");
+
 /// ⭐⭐ **Set Rest Pose** — faz da pose de AGORA o repouso deste osso e da descendência dele.
 ///
 /// ⚠️ Par do de cima, e a razão de serem **dois** botões: um osso nasce com o repouso em que
@@ -314,7 +322,8 @@ pub const VECTOR_BONE_SMART_CLIP_IDS: [NodeId; MAX_SMART_CLIPS] = [
 ///
 /// ⇒ *Uma lista escrita à mão ao lado de outra é duas respostas à mesma pergunta, e a que o artista
 /// vê é a que envelhece.* Com uma tabela só, acrescentar um verbo liga-o nos dois sítios.
-pub const VECTOR_BONE_VERBS: [NodeId; 13] = [
+pub const VECTOR_BONE_VERBS: [NodeId; 14] = [
+    VECTOR_BONE_MIRROR,
     VECTOR_BONE_LOOK_AT,
     VECTOR_BONE_BIND,
     VECTOR_BONE_EXPAND,

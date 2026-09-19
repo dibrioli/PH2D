@@ -167,9 +167,9 @@ mod the_highlight_has_one_source;
 mod the_hovered_area_owns_the_clipboard_chord;
 // ⛔ `the_index_asks_the_texture_door` mudou-se para `ph2d-app-components` (2026-09-13) com os três
 // ficheiros que ele vigia — `asset_texture_door_census_tests.rs`.
-mod o_apontar_chega_do_botao_ate_a_lei;
 mod o_bind_pergunta_antes_de_prender;
 mod o_reset_de_um_osso_vai_ao_repouso;
+mod os_verbos_do_osso_chegam_do_botao_ate_a_lei;
 mod the_input_map_window_can_be_moved;
 mod the_joint_edit_loop_flushes_the_command_queue;
 mod the_key_blocks_ask_whether_the_keys_are_live;

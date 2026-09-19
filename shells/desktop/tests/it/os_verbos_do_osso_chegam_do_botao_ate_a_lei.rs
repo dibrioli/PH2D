@@ -1,5 +1,5 @@
-//! ⭐⭐⭐ **O *LOOK AT* E O DESVIO CHEGAM DO BOTÃO ATÉ À LEI** — os três passos que esta casa já viu
-//! morrer, cada um com a própria cara.
+//! ⭐⭐⭐ **OS VERBOS DO OSSO CHEGAM DO BOTÃO ATÉ À LEI** — o *Look At*, o desvio e o *Mirror Branch*,
+//! cada um com o passo que esta casa já viu morrer.
 //!
 //! ⚠️ **A lei já tem os gates dela** (sete, em `ph2d_app_skeleton::goal::sonda_do_apontar_tests`, e
 //! dois na costura do painel). O que só aqui se pode afirmar é o FIO: um id que o `fase_bus_clicks`
@@ -71,5 +71,24 @@ fn o_espelho_pergunta_a_porta_e_nao_reconstroi_a_conta() {
     assert!(
         ESPELHO.contains("g.offset.to_degrees()"),
         "o desvio e' publicado em radianos: o campo mostraria 0,52 onde o artista escreveu 30"
+    );
+}
+
+/// ⭐⭐⭐ **E O ESPELHO CHEGA DO BOTÃO ATÉ À LEI** — o mesmo fio, com o terceiro passo a ser o
+/// REGISTO.
+///
+/// ⚠️ **A cópia profunda só sabe copiar o que o registo descreve**, logo passar-lhe outra coisa (ou
+/// não lhe passar nada) faria o ramo espelhado perder o limite de ângulo, a curvatura e o repouso —
+/// e o artista veria uma cópia *quase* igual, que é pior que uma que falha.
+#[test]
+fn o_espelho_chega_do_botao_ate_a_lei_com_o_registo() {
+    assert!(
+        CLICKS.contains("VECTOR_BONE_MIRROR"),
+        "o botao Mirror Branch nao e' encaminhado: ele pinta, acende e o clique morre no painel"
+    );
+    assert!(
+        FASE.contains("espelho::espelha(sim, component_registry, osso)"),
+        "a fase deixou de chamar a lei do espelho com o REGISTO: a copia perde os componentes que \
+         esta shell nao conhece, em silencio"
     );
 }

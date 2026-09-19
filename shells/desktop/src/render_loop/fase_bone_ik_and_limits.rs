@@ -7,6 +7,8 @@ pub(super) struct BoneIkAndLimitsIntents {
     pub(super) pending_ik_add: bool,
     /// ⭐ *Look At* — a mesma âncora com a corrente em UM (ver `goal::add_look_at`).
     pub(super) pending_look_at: bool,
+    /// ⭐ *Mirror Branch* — o lado oposto (ver `ph2d_skeleton_live::espelho`).
+    pub(super) pending_bone_mirror: bool,
     pub(super) pending_ik_remove: bool,
     pub(super) pending_ik_bend: Option<ph2d_skeleton::BendSide>,
     pub(super) pending_bone_handles: Option<ph2d_skeleton::bend::Handles>,
@@ -24,10 +26,15 @@ impl crate::App {
     ) -> Option<ph2d_ecs::Entity> {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
-        let FrameGfx { sim, .. } = FrameGfx::of(gfx);
+        let FrameGfx {
+            sim,
+            component_registry,
+            ..
+        } = FrameGfx::of(gfx);
         let BoneIkAndLimitsIntents {
             pending_ik_add,
             pending_look_at,
+            pending_bone_mirror,
             pending_ik_remove,
             pending_ik_bend,
             pending_bone_handles,
@@ -60,6 +67,24 @@ impl crate::App {
                 None => eprintln!(
                     "[ph2d-vec] osso: este osso ja' tem ancora -- so' pode haver uma por corrente"
                 ),
+            }
+        }
+        // ⭐⭐⭐ **ESPELHAR o ramo** — o lado esquerdo construído a partir do direito.
+        //
+        // ⚠️ **O registo de componentes é o que faz a cópia carregar o que ESTA shell não conhece**
+        // (o limite de ângulo, a curvatura, o repouso, e o que vier): a lei chama a cópia profunda,
+        // que só sabe copiar o que o registo descreve. ⛔ Uma cópia campo a campo aqui esqueceria o
+        // primeiro componente novo, em silêncio.
+        if pending_bone_mirror {
+            match ph2d_skeleton_live::espelho::espelha(sim, component_registry, osso) {
+                Some(_) => eprintln!(
+                    "[ph2d-vec] osso: ramo espelhado -- a copia e' irma do original e os nomes \
+                     trocaram de lado; a ancora de IK e o osso inteligente NAO viajam (eles nomeiam \
+                     outros objectos da cena)"
+                ),
+                None => {
+                    eprintln!("[ph2d-vec] osso: nao deu para espelhar -- a pose do pai e' singular")
+                }
             }
         }
         if pending_ik_remove {

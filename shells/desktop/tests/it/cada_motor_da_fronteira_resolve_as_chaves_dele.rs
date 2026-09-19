@@ -136,6 +136,19 @@ fn nenhuma_variante_partilha_a_chave_de_outra_nem_troca_de_familia() {
 /// ⚠️ *Um acessório de conveniência que devolve a língua de omissão é indistinguível, no ecrã de
 /// hoje, da porta certa — e só deixa de o ser no dia em que existir uma segunda língua.*
 ///
+/// # ⛔⛔⛔ E é por isso que o instrumento tem de ser TEXTUAL — nenhum teste de IGUALDADE os separa
+///
+/// Em 2026-09-19 eu escrevi um gate de costura no painel: *«o rótulo do chip é igual ao que o `tr`
+/// devolve para a chave»*. Ele **passou com o defeito vivo**, e a mutação que devolvia o pintor ao
+/// acessório inglês **SOBREVIVEU** — porque `label()` **é** `tr_em(Ingles, chave)` e o processo de
+/// teste corre em inglês: os dois lados dão a MESMA string.
+///
+/// ⛔ E não há saída por `tr_em(Teste, …)`: quem escolhe a língua do `tr` é um `OnceLock` do
+/// PROCESSO, e escrever-lhe tornaria a suíte mais um membro da família de flakes de fan-out.
+///
+/// ⇒ *um teste vácuo é pior do que nenhum: ele lê-se como cobertura.* Ele foi apagado, e o que
+/// afirma esta lei é o censo textual abaixo — que sangra sobre exactamente aquela mutação.
+///
 /// # Por que esta régua é SÓLIDA e não um censo textual optimista
 ///
 /// Um receptor pode ser anónimo (`kind.label()` — foi assim que o painel do Flip me escapou), mas

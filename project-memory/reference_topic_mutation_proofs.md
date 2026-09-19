@@ -55,3 +55,16 @@ que abre é um `[`. Com a fixtura certa, sangra.
 **How to apply:** antes de escrever a mutação, pergunte **por que caminho** o corpus faz a lei
 correr. Se a fixtura não contém o fenómeno, a sobrevivência não diz nada sobre a lei — diz sobre a
 fixtura. Irmã de [[feedback_a_corpus_at_full_strength_cannot_test_the_strength_curve]].
+
+## ⛔⛔⛔ UM ACESSÓRIO DERIVADO DA TABELA É INDISTINGUÍVEL DA PORTA CERTA (2026-09-19)
+
+Escrevi um gate de costura: *«o rótulo do chip é igual ao que o `tr` devolve para a chave»*. Ele
+**passou com o defeito vivo**, e a mutação que devolvia o pintor ao acessório inglês **sobreviveu** —
+porque `label()` **é** `tr_em(Ingles, chave)` e o processo de teste corre em inglês: os dois lados
+dão a MESMA string. *Nenhum teste de IGUALDADE separa os dois; eles só divergem numa segunda língua.*
+
+⛔ E não há saída por `tr_em(Teste, …)`: quem escolhe a língua do `tr` é um `OnceLock` do PROCESSO,
+e escrever-lhe torna a suíte mais um membro da família de flakes de fan-out.
+
+⇒ **o instrumento tem de ser TEXTUAL** (quem CHAMA o acessório), e o teste vácuo foi **apagado**:
+*um teste vácuo é pior do que nenhum — ele lê-se como cobertura.*

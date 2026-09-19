@@ -1,7 +1,13 @@
-//! ⭐⭐⭐ **AS DUAS COLUNAS DO PENTE** — a régua do alinhamento e a do pior
-//! triângulo, numa porta só.
+//! ⭐⭐⭐ **AS TRÊS COLUNAS DO PENTE** — a régua do alinhamento, a do pior
+//! triângulo e a que o OLHO lê, numa porta só.
 //!
-//! # ⛔⛔ Porque são DUAS, e porque a segunda apanhou um defeito que a primeira aprovava
+//! ⛔⛔⛔ **A terceira chegou em 2026-09-18, e custou um report com FOTO**
+//! (*«pouca ou nenhuma diferença»*): as duas primeiras são uma **média** e uma
+//! **cerca**, e nenhuma responde *«que fracção das arestas mudou de rumo»* —
+//! que é o que o olho faz. O `Q` subia `+0,09` e as duas imagens do arame eram
+//! indistinguíveis. Ver [`grade_da_faixa`].
+//!
+//! # ⛔⛔ Porque a SEGUNDA existe: ela apanhou um defeito que a primeira aprovava
 //!
 //! Medido nesta linha: a 1.ª redacção da lei rodava cada aresta guardando o
 //! comprimento **dela**, e isso alinha sem guardar o espaçamento — duas vizinhas
@@ -170,6 +176,69 @@ pub fn q_da_faixa(malha: &Mesh, percurso: &[[f32; 3]], raio: f32) -> (f64, usize
         }
     }
     (soma / n.max(1) as f64, n)
+}
+
+/// ⭐⭐⭐ **A TERCEIRA COLUNA — a que o OLHO lê: que FRACÇÃO das arestas da faixa
+/// corre com a grade do traço.**
+///
+/// Devolve as contagens em três faixas de `15°` do desvio à grade mais próxima
+/// (`0°` = ao longo do traço **ou** exactamente atravessada) e o total.
+///
+/// # ⛔⛔⛔ Ela existe porque o `Q` é uma MÉDIA e o dono reprovou uma média
+///
+/// Report de 2026-09-18 (*«pouca ou nenhuma diferença»*, com foto do arame): o
+/// [`q_da_faixa`] subia `+0,09` e as duas imagens eram **indistinguíveis**. A
+/// razão é estrutural — *um `Q` de `+0,09` pode ser meia dúzia de arestas
+/// perfeitamente alinhadas no meio de milhares que não mudaram*, e o olho conta
+/// arestas em vez de as integrar.
+///
+/// ⭐ **O ZERO desta régua não é `0 %`, é `33 %`:** o desvio à grade de uma
+/// direcção qualquer é uniforme em `[0°, 45°]`, logo uma malha **sem direcção
+/// nenhuma** enche as três faixas por igual. Medido na bola da cena `=49` com o
+/// pente desligado: `32,2 %`–`34,6 %` nos quatro rumos.
+///
+/// ⚠️ **A barra de quem a usa sai daí e nunca de `0`** — e o lado APROVADO
+/// existe: a saída do próprio alvo sobre as fixturas de `rotacao/` lê `34,1 %`
+/// desligado e **`43,6 %`** no tecto.
+#[must_use]
+pub fn grade_da_faixa(malha: &Mesh, percurso: &[[f32; 3]], raio: f32) -> ([usize; 3], usize) {
+    let pos = malha.positions();
+    let mut vistas = std::collections::BTreeSet::new();
+    let (mut bins, mut n) = ([0usize; 3], 0usize);
+    for f in malha.faces() {
+        let vs = f.verts();
+        for k in 0..vs.len() {
+            let (a, b) = (vs[k], vs[(k + 1) % vs.len()]);
+            if !vistas.insert((a.min(b), a.max(b))) {
+                continue;
+            }
+            let (pa, pb) = (pos[a as usize], pos[b as usize]);
+            let meio = [
+                (pa[0] + pb[0]) * 0.5,
+                (pa[1] + pb[1]) * 0.5,
+                (pa[2] + pb[2]) * 0.5,
+            ];
+            let Some(direccao) = troco(percurso, meio, raio) else {
+                continue;
+            };
+            let aresta = sub(pb, pa);
+            let (la, ld) = (comprimento(aresta), comprimento(direccao));
+            if la <= 0.0 || ld <= 0.0 {
+                continue;
+            }
+            let c = (f64::from(aresta[0]) * f64::from(direccao[0])
+                + f64::from(aresta[1]) * f64::from(direccao[1])
+                + f64::from(aresta[2]) * f64::from(direccao[2]))
+                / (la * ld);
+            let angulo = c.clamp(-1.0, 1.0).acos().to_degrees() % 90.0;
+            // A DOBRA para `[0, 45]`: uma aresta não tem sentido e as duas
+            // famílias da grade (ao longo e atravessada) são a mesma coisa.
+            let desvio = angulo.min(90.0 - angulo);
+            n += 1;
+            bins[((desvio / 15.0) as usize).min(2)] += 1;
+        }
+    }
+    (bins, n)
 }
 
 /// **A SEGUNDA COLUNA — o pior canto de triângulo da faixa, em graus.**

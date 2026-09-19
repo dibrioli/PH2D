@@ -418,3 +418,71 @@ mod repouso;
 /// custa, ali mora ONDE dentro de uma varredura o tempo mora e quanto o paralelo de facto rende.
 #[path = "custo_probe_atribuicao.rs"]
 mod atribuicao;
+
+/// ⭐⭐⭐ **O CUSTO CONTRA A DENSIDADE, a 1000 discos e 64 varreduras** — a variável que faltava.
+///
+/// O dono mede `49 ms` na fase do Motion com `1000` objectos e **`64` varreduras confirmadas pelo
+/// readout**; a minha fixtura (uma grelha regular mal encostada) custa `6,8`. ⚠️ **A diferença não
+/// pode ser o número nem as varreduras — só sobra a DENSIDADE**, e ela entra no custo pelo número
+/// de vizinhos que cada peça vê.
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn o_custo_contra_a_densidade() {
+    const N: usize = 1000;
+    const RAIO: f32 = 100.0;
+    eprintln!("\n  ═══ O CUSTO CONTRA A DENSIDADE (1000 discos, 64 varreduras) ═══\n");
+    eprintln!(
+        "  {:<8} │ {:>10} │ {:>12} │ {:>11} │ {:>11} │ {:>7}",
+        "passo", "vizinhos", "varreduras", "série", "paralelo", "FPS"
+    );
+    eprintln!("  ---------|------------|--------------|-------------|-------------|--------");
+    for passo_r in [2.0f32, 1.8, 1.5, 1.2, 1.0, 0.7, 0.5] {
+        let (p0, c, w) = atribuicao::campo_de_discos(N, RAIO, passo_r);
+        let inv: Vec<f32> = (0..N)
+            .map(|i| c[i].map_or(0.0, |x| x.inv_inercia(w[i])))
+            .collect();
+        let pecas = Pecas::novas(&c, &w, &inv);
+        let ativo: Vec<bool> = (0..N).map(|i| ativo(p0[i], c[i].as_ref())).collect();
+        let mut grade = crate::grelha::Grelha::default();
+        grade.constroi(&p0, &ativo, 2.0 * RAIO);
+        let mut viz: Vec<u32> = Vec::new();
+        let mut soma = 0usize;
+        for k in 0..N {
+            grade.vizinhos_de(k, &mut viz);
+            soma += viz.len();
+        }
+        let mut col = [0.0f64; 2];
+        let mut usadas = 0usize;
+        for (i, paralelo) in [false, true].into_iter().enumerate() {
+            let mut melhor = f64::INFINITY;
+            for _ in 0..5 {
+                let mut p = p0.clone();
+                let mut g = vec![0.0; N];
+                let agora = Instant::now();
+                usadas = separate_com(
+                    &mut p,
+                    &mut Saida { giro: &mut g },
+                    &pecas,
+                    64,
+                    paralelo,
+                    REPOUSO_VISIVEL,
+                );
+                melhor = melhor.min(agora.elapsed().as_secs_f64() * 1e3);
+            }
+            col[i] = melhor;
+        }
+        #[expect(clippy::cast_precision_loss, reason = "uma contagem de cena")]
+        let vizinhos = soma as f64 / N as f64;
+        eprintln!(
+            "  {passo_r:<8.1} │ {vizinhos:>10.1} │ {usadas:>12} │ {:>8.1} ms │ {:>8.1} ms │ {:>7.1}",
+            col[0],
+            col[1],
+            1000.0 / col[1].max(1e-9)
+        );
+    }
+    eprintln!(
+        "\n  ⚠️ `passo` é o espaçamento entre centros em múltiplos do RAIO: `2,0` = a tocar,"
+    );
+    eprintln!("  `1,0` = cada disco com o centro na borda do vizinho.");
+    eprintln!("  load: {}\n", carga());
+}

@@ -152,8 +152,8 @@ pub struct MotionCookPump {
     /// ⚠️ **Sem ele a economia é invisível:** as duas rotas entregam o mesmo desenho (o tique
     /// intermédio ia ser sobrescrito), logo nenhum gate de valor, de bits ou de pixel a vê.
     separacoes: u64,
-    /// Ver [`MotionCookPump::ultimas_varreduras`].
-    ultimas_varreduras: usize,
+    /// Ver [`MotionCookPump::ultimo_relatorio`].
+    ultimo_relatorio: ph2d_contact::passe::Relatorio,
 }
 
 mod cook_target;
@@ -186,7 +186,7 @@ impl MotionCookPump {
             tap_fires: Vec::new(),
             separa_o_desenho: true,
             separacoes: 0,
-            ultimas_varreduras: 0,
+            ultimo_relatorio: ph2d_contact::passe::Relatorio::default(),
         }
     }
 
@@ -377,8 +377,8 @@ impl MotionCookPump {
                                 // [`Self::separa_o_desenho`].
                                 let separado = if self.separa_o_desenho {
                                     self.separacoes += 1;
-                                    let (s, varreduras) = o_que_o_sink_desenha(graph, sink, cozido);
-                                    self.ultimas_varreduras = varreduras;
+                                    let (s, r) = o_que_o_sink_desenha(graph, sink, cozido);
+                                    self.ultimo_relatorio = r;
                                     s
                                 } else {
                                     None

@@ -60,6 +60,18 @@ thread_local! {
     /// **Quantas varreduras a separação de facto correu no último quadro** — o PREÇO do knob, em
     /// número, ao lado do relógio que ele custa.
     pub(super) static FRAME_PROF_VARREDURAS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    /// As PEÇAS e os CANDIDATOS da última separação — o par que distingue *«muitas peças»* de
+    /// *«uma pilha apertada»*, que o relógio sozinho não separa.
+    pub(super) static FRAME_PROF_PECAS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    pub(super) static FRAME_PROF_VIZINHOS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    /// Quantas SEPARAÇÕES correram neste quadro — um quadro atrasado recupera vários tiques e só o
+    /// último é desenhado, logo isto tem de ler `1`.
+    pub(super) static FRAME_PROF_SEPARACOES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    /// O valor do contador CUMULATIVO no quadro anterior — o divisor da diferença acima.
+    ///
+    /// ⚠️ Ele mora aqui e **não num campo da `App`**: a catraca de campos daquela struct só desce, e
+    /// um número que é do PERFILADOR não é estado do editor.
+    pub(super) static FRAME_PROF_SEPARACOES_ANTES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     pub(super) static FRAME_PROF_SIM_SUM_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     pub(super) static FRAME_PROF_SIM_MAX_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     pub(super) static FRAME_PROF_SIM_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };

@@ -1809,3 +1809,61 @@ objectos — se o FPS salta, é preenchimento; se não salta, é outra coisa e e
 ⚠️ O instrumento que o confirma do lado do app já existe: **`PH2D_FLUID_PROFILE=1`** imprime, a cada
 120 quadros, `total` · `cpu-encode` · `acquire(medido)` · `hero-paint`. Se o `acquire` dominar, a
 placa é o tecto.
+
+---
+
+## §24 — O perfilador nomeia a fase, e a DENSIDADE é a variável que faltava
+
+Report do dono, 2026-09-18, com a linha do perfilador nova:
+
+```
+MOTION (cozer + separar): media 49.24ms pico 79.93ms em 120/120 · 64 varreduras correram
+SIMULACAO (os tiques): media 0.15ms pico 0.23ms
+```
+
+⇒ **é o passe**, e com as varreduras **confirmadas em `64`** — o número que eu media em `6,8 ms` a
+1000 objectos. ⚠️ **Sete vezes de diferença, com o mesmo `n` e as mesmas varreduras: só sobra a
+DENSIDADE.**
+
+### §24.1 — A tabela que dá o número dele
+
+[`custo_probe::o_custo_contra_a_densidade`], `1000` discos, `64` varreduras:
+
+| passo (× raio) | vizinhos por peça | série | paralelo |
+|---|---|---|---|
+| `2,0` (a tocar) | 10,0 | 8,7 ms | 5,0 ms |
+| `1,8` | 12,1 | 11,7 | 5,6 |
+| `1,2` | 26,3 | 18,9 | 5,5 |
+| `1,0` | 36,9 | 27,0 | 10,4 |
+| **`0,7`** | **72,7** | **47,5 ms** | **10,5 ms** |
+| `0,5` | 132,2 | 78,4 | 10,5 |
+
+⇒ **`47,5 ms` em SÉRIE a `72` vizinhos por peça** é o número dele à letra (`49,24`). ⭐⭐ E a mesma
+célula **em paralelo custa `10,5`**.
+
+### §24.2 — ⭐⭐⭐ O readout passa a dizer as TRÊS coisas, porque o relógio não as separa
+
+`49 ms` é compatível com *muitas peças*, com *muitas varreduras* e com *uma pilha apertada* — **três
+cenas diferentes, com três curas diferentes**, e o app não sabia dizer qual. Foram precisas **quatro
+rondas de smoke** para chegar aqui.
+
+⇒ [`ph2d_contact::passe::Relatorio`] (varreduras · peças · candidatos), publicado pela bomba em
+[`MotionCookPump::ultimo_relatorio`] e impresso pelo perfilador:
+
+```
+MOTION (cozer + separar): media X pico Y em N/120 · P pecas x V varreduras x Z vizinhos, S separacao(oes)/quadro
+```
+
+⭐ **E nenhum dos quatro números é novo:** o `separate` já devolvia as varreduras, a grelha já sabia
+os candidatos, e o contador de separações nasceu na §21. *O que faltava era a porta não os deitar
+fora.*
+
+⚠️ **O `S separacao(oes)/quadro` é o que torna a §21 observável do lado do artista** — se ele ler
+mais do que `1`, o acabamento voltou a ser pago para o lixo.
+
+⛔⛔ **E TRÊS tectos de LOC caíram nesta wave, os três curados por CORTE:** o `candidatos` foi para o
+[`grelha.rs`](../../crates/ph2d-contact/src/grelha.rs) (ele é sobre a grelha), as **duas cercas
+medidas** do laço saíram para o [`cercas.rs`](../../crates/ph2d-contact/src/cercas.rs) com as
+tabelas delas, e os quatro `let` do relatório viraram uma porta (`numeros_da_separacao`). ⚠️ E um
+`assert!` de duas CONSTANTES que eu escrevera na §18 era **dobrado pelo compilador e nunca corria** —
+hoje é `const _: () = assert!(…)`, que é erro de compilação.

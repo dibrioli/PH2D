@@ -374,10 +374,16 @@ impl crate::App {
             FRAME_PROF_MOTION_SUM_US.with(|c| c.set(c.get() + us));
             FRAME_PROF_MOTION_MAX_US.with(|c| c.set(c.get().max(us)));
             FRAME_PROF_MOTION_N.with(|c| c.set(c.get() + 1));
-            // ⭐ E o PREÇO em número: quantas varreduras a separação de facto correu.
+            // ⭐ E o PREÇO em número: o que a separação de facto fez neste quadro.
             if let Some(g) = self.gfx.as_ref() {
-                let v = g.motion.pump.ultimas_varreduras() as u64;
-                FRAME_PROF_VARREDURAS.with(|c| c.set(v));
+                let r = g.motion.pump.ultimo_relatorio();
+                FRAME_PROF_VARREDURAS.with(|c| c.set(r.varreduras as u64));
+                FRAME_PROF_PECAS.with(|c| c.set(r.pecas as u64));
+                FRAME_PROF_VIZINHOS.with(|c| c.set(r.vizinhos_por_peca() as u64));
+                // Quantas separações ESTE quadro pagou — a diferença do contador cumulativo.
+                let total = g.motion.pump.separacoes();
+                let antes = FRAME_PROF_SEPARACOES_ANTES.with(|c| c.replace(total));
+                FRAME_PROF_SEPARACOES.with(|c| c.set(total.saturating_sub(antes)));
             }
         }
         // ⚠️ **LOGO A SEGUIR AO COOK, e isso e' a lei** — os retratos do colisor e do warp

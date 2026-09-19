@@ -163,3 +163,32 @@ impl Grelha {
         out.sort_unstable();
     }
 }
+
+/// **Quantos CANDIDATOS a grelha entrega, somados sobre as peças** — o multiplicador do custo de
+/// uma varredura, e o número que separa *«muitas peças»* de *«uma pilha apertada»*.
+///
+/// ⚠️ Ele corre a MESMA grelha do produto, uma vez, sobre a configuração de entrada — não é uma
+/// segunda resposta à pergunta *«quem está perto de quem?»*.
+#[must_use]
+pub fn candidatos(colisores: &[Option<super::Colisor>], p: &[[f32; 2]], _pesos: &[f32]) -> usize {
+    let n = p.len();
+    let ativo: Vec<bool> = (0..n)
+        .map(|i| super::ativo(p[i], colisores[i].as_ref()))
+        .collect();
+    let alcance_max = (0..n)
+        .filter(|&i| ativo[i])
+        .filter_map(|i| colisores[i].map(|c| c.alcance()))
+        .fold(0.0_f32, f32::max);
+    if alcance_max <= 0.0 {
+        return 0;
+    }
+    let mut grade = Grelha::default();
+    grade.constroi(p, &ativo, 2.0 * alcance_max);
+    let mut viz: Vec<u32> = Vec::new();
+    let mut soma = 0usize;
+    for k in 0..n {
+        grade.vizinhos_de(k, &mut viz);
+        soma += viz.len();
+    }
+    soma
+}

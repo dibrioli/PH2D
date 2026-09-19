@@ -208,7 +208,7 @@ impl MotionCookPump {
     /// em que ponto o cursor do dono estava, porque o preço de um knob só aparecia no RELÓGIO DE
     /// PAREDE.
     #[must_use]
-    pub fn ultimas_varreduras(&self) -> usize {
-        self.ultimas_varreduras
+    pub fn ultimo_relatorio(&self) -> ph2d_contact::passe::Relatorio {
+        self.ultimo_relatorio
     }
 }

@@ -418,7 +418,7 @@ fn a_bomba_publica_quantas_varreduras_correram() {
     let mut pump = MotionCookPump::new();
     let (uv, tam) = ([0.0, 0.0, 1.0, 1.0], [1.0, 1.0]);
     assert!(pump.pump(&g, &Ops, &[sink], 0, 0.0, uv, tam));
-    let correram = pump.ultimas_varreduras();
+    let correram = pump.ultimo_relatorio().varreduras;
     assert!(
         correram > 0,
         "o readout leu ZERO num quadro que SEPAROU: ele mede outra coisa"
@@ -436,8 +436,17 @@ fn a_bomba_publica_quantas_varreduras_correram() {
     let mut p1 = MotionCookPump::new();
     assert!(p1.pump(&g1, &Ops, &[s1], 0, 0.0, uv, tam));
     assert_eq!(
-        p1.ultimas_varreduras(),
+        p1.ultimo_relatorio().varreduras,
         1,
         "com o tecto em 1 o readout tem de ler 1"
+    );
+    // ⭐ E os outros dois números do relatório: as PEÇAS e os CANDIDATOS que a grelha entregou —
+    // é o par que distingue «muitas peças» de «uma pilha apertada», e sem ele o relógio sozinho
+    // não diz qual das duas.
+    let r = p1.ultimo_relatorio();
+    assert_eq!(r.pecas, 2, "a cena tem duas pecas: {r:?}");
+    assert!(
+        r.vizinhos_por_peca() > 0.0,
+        "a grelha tem de ter entregado candidatos: {r:?}"
     );
 }

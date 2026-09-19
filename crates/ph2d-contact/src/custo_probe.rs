@@ -379,7 +379,8 @@ fn a_cena_da_foto_do_dono() {
         // Quantos vizinhos cada disco vê — o multiplicador do custo de uma varredura.
         let ativo: Vec<bool> = (0..n).map(|i| ativo(p[i], c[i].as_ref())).collect();
         let mut grade = crate::grelha::Grelha::default();
-        grade.constroi(&p, &ativo, 2.0 * RAIO);
+        grade.planeia_numa_camada(&ativo, 2.0 * RAIO);
+        grade.constroi(&p, &ativo);
         let mut viz: Vec<u32> = Vec::new();
         let mut soma = 0usize;
         for k in 0..n {
@@ -419,6 +420,10 @@ mod repouso;
 #[path = "custo_probe_atribuicao.rs"]
 mod atribuicao;
 
+/// ⭐ As CONTAGENS — a atribuição que a CARGA não estraga. Ver o cabeçalho dela.
+#[path = "custo_probe_contagens.rs"]
+mod contagens;
+
 /// ⭐⭐⭐ **O CUSTO CONTRA A DENSIDADE, a 1000 discos e 64 varreduras** — a variável que faltava.
 ///
 /// O dono mede `49 ms` na fase do Motion com `1000` objectos e **`64` varreduras confirmadas pelo
@@ -444,7 +449,8 @@ fn o_custo_contra_a_densidade() {
         let pecas = Pecas::novas(&c, &w, &inv);
         let ativo: Vec<bool> = (0..N).map(|i| ativo(p0[i], c[i].as_ref())).collect();
         let mut grade = crate::grelha::Grelha::default();
-        grade.constroi(&p0, &ativo, 2.0 * RAIO);
+        grade.planeia_numa_camada(&ativo, 2.0 * RAIO);
+        grade.constroi(&p0, &ativo);
         let mut viz: Vec<u32> = Vec::new();
         let mut soma = 0usize;
         for k in 0..N {

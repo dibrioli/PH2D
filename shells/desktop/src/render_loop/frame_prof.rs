@@ -64,6 +64,8 @@ thread_local! {
     /// *«uma pilha apertada»*, que o relógio sozinho não separa.
     pub(super) static FRAME_PROF_PECAS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     pub(super) static FRAME_PROF_VIZINHOS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    /// Quantas peças a grelha pôs na camada dos GRANDES — a causa, e não só o sintoma.
+    pub(super) static FRAME_PROF_GRANDES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     /// Quantas SEPARAÇÕES correram neste quadro — um quadro atrasado recupera vários tiques e só o
     /// último é desenhado, logo isto tem de ler `1`.
     pub(super) static FRAME_PROF_SEPARACOES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };

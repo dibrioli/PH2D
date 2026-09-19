@@ -2030,3 +2030,160 @@ está a ser testado. *Uma guarda escrita em função da grandeza sob teste desli
 quando ela é violada.*
 
 **Mutação: 4 de 4 sangram.**
+
+---
+
+## §28 — ⭐⭐⭐ UMA PEÇA GRANDE INFLAVA A GRELHA DE TODAS, e eu tinha INFERIDO a causa errada
+
+Ordem do dono, 2026-09-18, depois do smoke aprovado a `40`–`50` FPS: *«então siga implementando»*.
+
+O item que eu tinha nomeado como o meu no fecho era *«a geometria do par é calculada duas vezes,
+`~21 %`»*. Ele **não era o alvo**, e quem o disse foi a primeira medição desta janela.
+
+### §28.1 — A máquina estava a `load 15`, e a decisão não podia esperar: CONTAGENS
+
+⚠️ Nenhuma leitura de relógio desta workstation vale nada acima de `load ~5`, e outra linha estava a
+correr a suíte. ⇒ a primeira sonda desta wave não tem relógio nenhum
+([`custo_probe_contagens`](../../crates/ph2d-contact/src/custo_probe_contagens.rs)): *quantos
+candidatos a grelha entrega*, *quantos deles se tocam* e *quantas peças ainda se mexem na varredura
+`n`* são **determinísticos** — a mesma corrida dá o mesmo número a `load 0` e a `load 90`.
+
+⭐ **E ela respondeu três perguntas de uma vez, duas delas a REFUTAR hipóteses minhas.**
+
+### §28.2 — ⛔⛔ A minha fixtura não continha o fenómeno, e a diferença era de `13×`
+
+O perfilador do dono imprimiu **`132`–`156` vizinhos por peça** numa nuvem de `1000` objectos. A
+fixtura desta crate, com a mesma contagem e a mesma densidade, lê **`12,1`**. *Onze vezes menos —
+e eu tinha estado a optimizar contra a fixtura.*
+
+A causa está numa linha que não menciona tamanho nenhum: o lado da célula é `2 · alcance_max`, e o
+`alcance_max` é o **MÁXIMO GLOBAL**.
+
+| raio da peça `0` | alcance max/mediana | candidatos/peça | **tocam/peça** |
+|---|---|---|---|
+| `1 × R` | `1,0 ×` | `12,1` | `5,74` |
+| `2 × R` | `2,0 ×` | `44,6` | `5,74` |
+| **`4 × R`** | `4,0 ×` | **`159,4`** ⇠ *o número dele* | `5,76` |
+| `8 × R` | `8,0 ×` | `483,6` | `5,79` |
+| `16 × R` | `16,0 ×` | `958,9` | `5,91` |
+
+⭐⭐⭐ **A coluna que decide é a última: os TOQUES não mudam.** A nuvem é a mesma, a resposta é a
+mesma ao bit, e o que cresce `~k²` é só o que se **REJEITA**. ⇒ *uma única peça grande fazia toda
+peça da cena pagar uma grelha `13×` mais larga do que a que ela precisa.*
+
+⚠️ E a rejeição é quase tudo: na cena dele `5,76` de `159,4` candidatos tocam — **`96,4 %` do
+trabalho de uma varredura é dizer «não».**
+
+### §28.3 — ⛔ E a segunda hipótese caiu na mesma sonda: um CONJUNTO ACTIVO não vale nada aqui
+
+A ideia era: *se na varredura `32` só `3 %` das peças ainda se mexem, as outras `97 %` estão a ser
+recalculadas para nada*, e saltá-las seria bit-idêntico **por indução** — exactamente como a saída
+antecipada global que o `separate` já tem.
+
+Medido (1000 discos, passo `1,8 · R`): **`1000` de `1000` peças mexem-se em TODAS as 64
+varreduras**, e `997` ainda se mexem *acima do repouso visível* na 64.ª.
+
+⇒ a §21 já o tinha escrito e eu não o tinha ligado a esta ideia: **uma pilha sob compressão
+permanente nunca assenta.** *A cura não foi construída porque a medição a matou antes.*
+
+### §28.4 — A cura: a grelha passa a ter DUAS CAMADAS
+
+As peças PEQUENAS numa grelha fina de lado `2 · corte`; as GRANDES numa lista à parte. Uma pequena
+vê as `3 × 3` da malha fina **mais todas as grandes**; uma grande vê a nuvem activa inteira.
+
+⭐ **A promessa do SUPERCONJUNTO fica intacta, caso a caso** — pequena × pequena cabe na malha fina
+(`d ≤ alc_i + alc_j ≤ 2 · corte`), pequena × grande está na lista, grande × qualquer está na nuvem
+inteira. ⇒ a saída continua **bit-idêntica** a todos-os-pares, e é o mesmo gate que o prova.
+
+⚠️ **Sem duplicados por construção:** a partição é exclusiva, logo uma grande não aparece duas vezes
+na lista de ninguém — e a soma de Jacobi conta cada parceiro uma vez.
+
+⚠️ **E a lista de uma GRANDE não se ordena:** ela é a lista das activas, que já nasce crescente. A
+ordem CRESCENTE é a promessa de que a grelha dá os mesmos bits que todos-os-pares.
+
+### §28.5 — ⭐⭐ O corte não é um número escolhido: é uma MINIMIZAÇÃO, e a cerca é do MODELO
+
+Promover uma peça **não é de graça** — ela passa a ver a nuvem inteira. É esse termo (`g · m`) que
+faz a conta virar, e é por isso que não existe um «número de grandes» a escrever:
+
+| grandes (a `4 × R`) | uma camada | duas camadas | ganho |
+|---|---|---|---|
+| `1` | `159 396` | `14 122` | **`11,29 ×`** |
+| `8` | `159 396` | `27 974` | `5,70 ×` |
+| `64` | `159 396` | `135 298` | `1,18 ×` |
+| `128` | `159 396` | `250 266` | **`0,64 ×`** ⇠ *já piora* |
+
+⇒ o plano ordena os alcances e escolhe o `g` que **minimiza** os candidatos previstos
+(`9 · ρ · lado²` por peça pequena, mais `g` por pequena, mais `m` por grande). O joelho das `~75`
+peças aparece sozinho.
+
+⛔⛔ **E a [`MARGEM_DO_CORTE`] existe porque o modelo ERRA, e o erro está medido:** ele conta o bloco
+`3 × 3` inteiro, que nas bordas da nuvem está cortado, logo **sobrestima a coluna de uma camada em
+`24 %`**. Sem margem, uma dispersão de `1,25 ×` seria promovida e pagaria **`0,91 ×`** — uma piora de
+`9 %` escondida dentro de um modelo.
+
+⭐ **E o modo de falha do modelo é o bom:** um plano mau dá uma grelha **pior**, nunca uma grelha
+**errada** — *o que se perde é relógio e nunca resposta*, que é a mesma propriedade que o cabeçalho
+da grelha já declarava para o lado que dobra.
+
+### §28.6 — O que isso vale
+
+Medido na cena do dono (1000 discos, passo `1,8 · R`, **uma** peça a `4 × R`, 64 varreduras;
+mínimo de 15 corridas, `load 7,4`–`8,2` — *limite superior do melhor caso*):
+
+| | uma camada | duas camadas | |
+|---|---|---|---|
+| candidatos por varredura | `159 396` | **`14 122`** | `11,3 ×` |
+| uma varredura, em série | `1 183,9 µs` | **`180,7 µs`** | `6,5 ×` |
+| **`separate` de ponta a ponta, paralelo** | **`15,99 ms`** | **`4,50 ms`** | **`3,55 ×`** |
+
+⚠️ **O A/B é entre dois PLANOS da mesma grelha**, nunca entre duas versões do ficheiro — a
+[`Grelha::planeia_numa_camada`] é o plano de antes desta wave, alcançável por uma porta própria, e
+existe **só sob `cfg(test)`**: *um controlo que ficasse no binário do produto seria uma segunda
+porta para planear a grelha.*
+
+### §28.7 — ⛔ Uma MUTAÇÃO SOBREVIVENTE expôs um gate meu a prometer mais do que media
+
+O `sem_dispersao_o_plano_nao_parte` ficava **VERDE com a margem a `0`**. A razão é real e vale a
+pena: numa nuvem UNIFORME o minimizador acha o mínimo em `g = 0`, logo **a margem nunca é
+consultada** — o gate estava a medir o minimizador e a chamar-lhe margem.
+
+⇒ o gate da margem passou a ter a fixtura do regime dela (quatro peças `1,25 ×` maiores) e **o
+controlo DENTRO de si mesmo**: a margem é agora **parâmetro** do plano, e o gate corre o mesmo plano
+com ela desarmada para provar que existe um corte a recusar. *Um gate cuja não-vacuidade vive fora
+dele mede o nada no dia em que a fixtura mudar.*
+
+⭐ E a terceira asserção é a RAZÃO da recusa, em candidatos medidos: o corte que o modelo acharia
+custaria `8 780` contra os `8 608` de uma camada — **uma piora**, que é exactamente o que a margem
+existe para não adoptar.
+
+### §28.8 — E o readout passa a dizer a CAUSA, não só o sintoma
+
+⚠️⚠️ **Eu tive de INFERIR a causa** da cena dele comparando dois números que nunca estiveram lado a
+lado: os `132`–`156` vizinhos do perfilador e os `12` da fixtura. *Um report de vizinhos altos é
+compatível com uma pilha densa **e** com uma peça grande a inflar a célula de todas, e só a segunda
+explicava o número.*
+
+⇒ a [`Relatorio`] ganha `grandes`, e a linha do perfilador passa a dizer:
+
+```text
+1000 pecas x 68 varreduras x 13 vizinhos, 1 separacao(oes)/quadro, 1 grande(s)
+```
+
+*Uma contagem de vizinhos diz que a grelha está cara; só esta diz PORQUÊ.*
+
+**Mutação: 6 de 6 sangram** (`R1` o plano nunca parte · `R2` parte sempre · `R3` a pequena não vê a
+grande · `R4` a grande duplicada · `R5` a grande sem parceiros · `R6` o modelo cego ao lado).
+
+### §28.9 — ⏳ O que isto NÃO fecha
+
+- ⛔ **A geometria do par continua a ser calculada duas vezes** — e a medição desta janela diz que o
+  alvo mudou de sítio: com `96 %` dos candidatos a serem rejeitados, o que se repete é sobretudo a
+  **rejeição**, não a lei. Um cache por par precisaria de uma busca binária na lista do vizinho para
+  a segunda leitura, e num par disco-disco **a busca custa mais que a rejeição**. ⇒ a nota de `21 %`
+  fica registada como **medida noutro regime**, e quem lhe pegar mede primeiro a partição
+  rejeição/lei na cena que quer curar.
+- ⏳ **Uma nuvem com MUITOS tamanhos** (uma escada contínua, não um outlier) só parte em duas
+  camadas, e o ganho é o que a escada der. A generalização é uma hierarquia de níveis por potência
+  de dois, e ela é wave própria — o modelo do plano já está escrito de forma a aceitá-la.
+- ⛔ **A rota da PLACA continua sem o passe** (§20), e continua a ser o tecto real dos *milhares*.

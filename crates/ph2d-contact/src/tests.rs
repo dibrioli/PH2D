@@ -1484,3 +1484,173 @@ fn o_piso_da_tarefa_deixa_trabalho_para_todos_os_nucleos() {
         );
     }
 }
+
+/// Os candidatos de **UMA camada** — o CONTROLO de todo gate do corte. Ele não é uma segunda
+/// resposta: é o plano de antes desta wave, alcançável por uma porta própria
+/// ([`crate::grelha::Grelha::planeia_numa_camada`]).
+fn candidatos_numa_camada(c: &[Option<Colisor>], p: &[[f32; 2]]) -> usize {
+    let vivo: Vec<bool> = (0..p.len()).map(|i| ativo(p[i], c[i].as_ref())).collect();
+    let alcance_max = crate::grelha::alcances_de(c, &vivo)
+        .iter()
+        .fold(0.0_f32, |a, b| a.max(*b));
+    let mut g = crate::grelha::Grelha::default();
+    g.planeia_numa_camada(&vivo, 2.0 * alcance_max);
+    g.constroi(p, &vivo);
+    let (mut viz, mut soma) = (Vec::new(), 0usize);
+    for k in 0..p.len() {
+        g.vizinhos_de(k, &mut viz);
+        soma += viz.len();
+    }
+    soma
+}
+
+/// A [`nuvem`] com UMA peça `8 ×` maior que a maior das outras — a forma da cena do dono, onde o
+/// perfilador dele leu `132`–`156` vizinhos por peça contra os `12` da fixtura uniforme.
+fn nuvem_com_uma_grande(n: u32) -> (Vec<[f32; 2]>, Vec<Option<Colisor>>, Vec<f32>) {
+    let (p, mut c, w) = nuvem(n);
+    let maior = c
+        .iter()
+        .flatten()
+        .map(Colisor::alcance)
+        .fold(0.0_f32, f32::max);
+    c[1] = Some(Colisor::disco(8.0 * maior));
+    (p, c, w)
+}
+
+/// ⭐⭐⭐ **AS DUAS CAMADAS DÃO OS MESMOS BITS QUE TODOS-OS-PARES.**
+///
+/// ⚠️⚠️ **O CONTROLO POSITIVO é metade do gate:** sem ele, uma fixtura sem dispersão de tamanhos
+/// nunca arma o corte e este teste ficaria verde a medir o caminho de UMA camada — que é
+/// exactamente o que a [`nuvem`] uniforme do gate irmão faz. *Um gate cuja fixtura não contém o
+/// fenómeno não afirma nada sobre ele.*
+#[test]
+fn a_grelha_em_duas_camadas_da_os_mesmos_bits() {
+    let (p0, c, w) = nuvem_com_uma_grande(400);
+    let (_, grandes) = candidatos_e_grandes(&c, &p0, &w);
+    assert!(
+        grandes > 0,
+        "o plano NAO partiu em duas camadas: este gate nao esta' a medir o caminho novo"
+    );
+    let inv = inercias(&c, &w);
+    let pecas = Pecas::novas(&c, &w, &inv);
+    let (mut grelha, mut todos) = (p0.clone(), p0.clone());
+    let (mut g_grelha, mut g_todos) = (vec![0.0; p0.len()], vec![0.0; p0.len()]);
+    separate(
+        &mut grelha,
+        &mut Saida {
+            giro: &mut g_grelha,
+        },
+        &pecas,
+        8,
+    );
+    separate_all_pairs(&mut todos, &mut Saida { giro: &mut g_todos }, &pecas, 8);
+    let mexeu = (0..p0.len()).filter(|&i| p0[i] != todos[i]).count();
+    assert!(mexeu > 200, "a nuvem tinha de mexer-se: so' {mexeu} pecas");
+    for i in 0..p0.len() {
+        assert_eq!(
+            (
+                grelha[i][0].to_bits(),
+                grelha[i][1].to_bits(),
+                g_grelha[i].to_bits()
+            ),
+            (
+                todos[i][0].to_bits(),
+                todos[i][1].to_bits(),
+                g_todos[i].to_bits()
+            ),
+            "peca {i}: duas camadas {:?}/{} contra todos-os-pares {:?}/{}",
+            grelha[i],
+            g_grelha[i],
+            todos[i],
+            g_todos[i]
+        );
+    }
+}
+
+/// ⭐⭐⭐ **UMA PEÇA GRANDE DEIXOU DE INFLAR A GRELHA DE TODAS** — e a régua é a CONTAGEM, que a
+/// carga da máquina não estraga.
+///
+/// ⚠️ A grandeza é o CANDIDATO, que é o multiplicador do custo de uma varredura e o número que a
+/// [`crate::Relatorio`] publica. A barra sai da medição
+/// ([`crate::custo_probe::contagens::onde_o_corte_dos_grandes_paga`]: `11,3 ×` a `1000` discos com
+/// dispersão `4 ×`) e é deliberadamente **metade** dela — o que se afirma é a CLASSE, não o número.
+#[test]
+fn uma_peca_grande_deixou_de_inflar_a_grelha_de_todas() {
+    let (p, c, w) = nuvem_com_uma_grande(400);
+    let uma = candidatos_numa_camada(&c, &p);
+    let (duas, grandes) = candidatos_e_grandes(&c, &p, &w);
+    assert_eq!(grandes, 1, "só a peça 1 é grande");
+    assert!(
+        uma >= 4 * duas,
+        "o corte comprou pouco: uma camada {uma}, duas camadas {duas}"
+    );
+}
+
+/// ⭐⭐⭐ **SEM DISPERSÃO O PLANO NÃO PARTE, E O CAMINHO É O DE SEMPRE — ao candidato.**
+///
+/// ⚠️⚠️ **Esta é a metade NEGATIVA, e ela vale tanto como a positiva:** promover uma peça não é de
+/// graça (ela passa a ver a nuvem inteira), logo um plano que partisse sempre PIORARIA toda cena de
+/// tamanho uniforme. A tabela da [`crate::MARGEM_DO_CORTE`] mede a piora: `0,91 ×` a uma dispersão
+/// de `1,25 ×`.
+#[test]
+fn sem_dispersao_o_plano_nao_parte() {
+    // Discos todos iguais: não há nada a promover.
+    let (p, _, w) = nuvem(400);
+    let c: Vec<Option<Colisor>> = (0..p.len()).map(|_| Some(Colisor::disco(0.2))).collect();
+    let (duas, grandes) = candidatos_e_grandes(&c, &p, &w);
+    assert_eq!(grandes, 0, "uma nuvem uniforme nao tem peca grande");
+    assert_eq!(
+        duas,
+        candidatos_numa_camada(&c, &p),
+        "sem corte o plano tem de dar a grelha de sempre, candidato a candidato"
+    );
+    // E a nuvem MISTA de sempre (dispersão ~3 ×, mas espalhada) também não parte: o termo `g · m`
+    // come o ganho muito antes de a escada descer o suficiente.
+    let (p2, c2, w2) = nuvem(400);
+    let (_, g2) = candidatos_e_grandes(&c2, &p2, &w2);
+    assert_eq!(g2, 0, "a nuvem mista nao devia partir");
+}
+
+/// ⭐⭐⭐ **UMA DISPERSÃO PEQUENA NÃO PAGA O CORTE** — o gate da [`crate::MARGEM_DO_CORTE`].
+///
+/// ⚠️⚠️ **Ele nasceu de uma MUTAÇÃO SOBREVIVENTE, e o que ela expôs foi um gate meu a prometer
+/// mais do que media:** o `sem_dispersao_o_plano_nao_parte` fica verde com a margem a `0`, porque
+/// numa nuvem UNIFORME o minimizador acha o mínimo em `g = 0` e **a margem nunca é consultada**.
+/// *A margem só decide onde o modelo vê um ganho pequeno — e é ali que ela tem de ser medida.*
+///
+/// A fixtura é esse regime: quatro peças `1,25 ×` maiores que as outras, onde a tabela medida lê
+/// **`0,91 ×`** — uma PIORA de `9 %` que o modelo, sozinho, adoptaria.
+#[test]
+fn uma_dispersao_pequena_nao_paga_o_corte() {
+    let (p, _, w) = nuvem(400);
+    let c: Vec<Option<Colisor>> = (0..p.len())
+        .map(|i| Some(Colisor::disco(if i < 4 { 0.25 } else { 0.20 })))
+        .collect();
+    // (a) O produto RECUSA o corte.
+    let (_, grandes) = candidatos_e_grandes(&c, &p, &w);
+    assert_eq!(grandes, 0, "uma dispersao de 1,25x nao paga o corte");
+    // (b) O CONTROLO, dentro do gate: com a margem desarmada o modelo PARTIRIA — logo existe um
+    //     corte a recusar, e esta fixtura está no regime que a margem existe para julgar.
+    let vivo: Vec<bool> = (0..p.len()).map(|i| ativo(p[i], c[i].as_ref())).collect();
+    let alcances = crate::grelha::alcances_de(&c, &vivo);
+    let mut g = crate::grelha::Grelha::default();
+    g.planeia_com_margem(&p, &vivo, &alcances, 1.0);
+    g.constroi(&p, &vivo);
+    assert!(
+        g.grandes() > 0,
+        "sem margem o modelo tinha de partir: esta fixtura ja' nao mede a margem"
+    );
+    // (c) E a RAZÃO da recusa, em CANDIDATOS medidos: esse corte é uma PIORA. ⭐ O modelo sobrestima
+    //     a coluna de uma camada (o bloco 3x3 está cortado nas bordas da nuvem), e é exactamente
+    //     essa diferença que a margem cobre.
+    let (mut viz, mut duas) = (Vec::new(), 0usize);
+    for k in 0..p.len() {
+        g.vizinhos_de(k, &mut viz);
+        duas += viz.len();
+    }
+    let uma = candidatos_numa_camada(&c, &p);
+    assert!(
+        duas >= uma,
+        "o corte teria comprado alguma coisa ({uma} contra {duas}) — a recusa seria errada"
+    );
+}

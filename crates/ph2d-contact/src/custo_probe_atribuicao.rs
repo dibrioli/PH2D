@@ -47,13 +47,15 @@ fn onde_o_tempo_mora_dentro_de_uma_varredura() {
     // (a) só construir a grelha
     let t_grelha = cron(&mut || {
         let mut g = crate::grelha::Grelha::default();
-        g.constroi(&p0, &ativo, lado);
+        g.planeia_numa_camada(&ativo, lado);
+        g.constroi(&p0, &ativo);
         std::hint::black_box(&g);
     });
     // (b) construir + colher os vizinhos das 9 células, sem tocar na lei
     let t_colher = cron(&mut || {
         let mut g = crate::grelha::Grelha::default();
-        g.constroi(&p0, &ativo, lado);
+        g.planeia_numa_camada(&ativo, lado);
+        g.constroi(&p0, &ativo);
         let mut viz: Vec<u32> = Vec::new();
         let mut total = 0usize;
         for k in 0..N {
@@ -72,7 +74,8 @@ fn onde_o_tempo_mora_dentro_de_uma_varredura() {
 
     // Quantos parceiros cada peça de facto vê — o que a LEI custa é proporcional a isto.
     let mut g = crate::grelha::Grelha::default();
-    g.constroi(&p0, &ativo, lado);
+    g.planeia_numa_camada(&ativo, lado);
+    g.constroi(&p0, &ativo);
     let mut viz: Vec<u32> = Vec::new();
     let mut soma = 0usize;
     for k in 0..N {
@@ -176,12 +179,14 @@ fn onde_o_tempo_mora_com_discos() {
     };
     let t_grelha = cron(&mut || {
         let mut g = crate::grelha::Grelha::default();
-        g.constroi(&p0, &ativo, 2.0 * RAIO);
+        g.planeia_numa_camada(&ativo, 2.0 * RAIO);
+        g.constroi(&p0, &ativo);
         std::hint::black_box(&g);
     });
     let t_colher = cron(&mut || {
         let mut g = crate::grelha::Grelha::default();
-        g.constroi(&p0, &ativo, 2.0 * RAIO);
+        g.planeia_numa_camada(&ativo, 2.0 * RAIO);
+        g.constroi(&p0, &ativo);
         let mut viz: Vec<u32> = Vec::new();
         let mut total = 0usize;
         for k in 0..N {
@@ -357,7 +362,8 @@ fn quanto_da_lei_e_a_geometria_do_par() {
     let pecas = Pecas::novas(&c, &w, &inv);
     let ativo: Vec<bool> = (0..N).map(|i| ativo(p0[i], c[i].as_ref())).collect();
     let mut grade = crate::grelha::Grelha::default();
-    grade.constroi(&p0, &ativo, 2.0 * RAIO);
+    grade.planeia_numa_camada(&ativo, 2.0 * RAIO);
+    grade.constroi(&p0, &ativo);
     // A lista de candidatos, colhida uma vez — ela é comum às duas colunas.
     let mut candidatos: Vec<(usize, usize)> = Vec::new();
     let mut viz: Vec<u32> = Vec::new();
@@ -532,5 +538,101 @@ fn o_grao_da_tarefa() {
             );
         }
     }
+    eprintln!("\n  load: {}\n", carga());
+}
+
+/// ⭐⭐⭐ **QUANTO AS DUAS CAMADAS COMPRAM NO RELÓGIO** — a contagem já disse `11,3 ×` em
+/// candidatos; isto diz o que isso vale em microssegundos.
+///
+/// ⚠️ **O A/B é entre dois PLANOS da MESMA grelha** ([`Grelha::planeia`] contra
+/// [`Grelha::planeia_numa_camada`]), e não entre duas versões do ficheiro — *uma medição contra um
+/// binário antigo não é reproduzível por quem vier a seguir*. Tudo o resto — a construção, a colheita
+/// e a [`crate::varredura::corrigida`] — é literalmente o mesmo código.
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn quanto_as_duas_camadas_compram_no_relogio() {
+    const N: usize = 1000;
+    const RAIO: f32 = 100.0;
+    const REPS: usize = 20;
+    const VARR: f64 = 64.0;
+    let (p0, mut c, w) = campo_de_discos(N, RAIO, 1.8);
+    c[0] = Some(Colisor::disco(4.0 * RAIO)); // a dispersão que a cena do dono tem
+    let inv: Vec<f32> = (0..N)
+        .map(|i| c[i].map_or(0.0, |x| x.inv_inercia(w[i])))
+        .collect();
+    let pecas = Pecas::novas(&c, &w, &inv);
+    let ativo: Vec<bool> = (0..N).map(|i| ativo(p0[i], c[i].as_ref())).collect();
+    let alcances = crate::grelha::alcances_de(&c, &ativo);
+    let alcance_max = alcances.iter().fold(0.0_f32, |a, b| a.max(*b));
+    let uma_vez = |duas: bool| {
+        let mut g = crate::grelha::Grelha::default();
+        if duas {
+            g.planeia(&p0, &ativo, &alcances);
+        } else {
+            g.planeia_numa_camada(&ativo, 2.0 * alcance_max);
+        }
+        g.constroi(&p0, &ativo);
+        let (mut viz, mut total, mut cand) = (Vec::<u32>::new(), 0usize, 0usize);
+        for k in 0..N {
+            g.vizinhos_de(k, &mut viz);
+            cand += viz.len();
+            if crate::varredura::corrigida(
+                k,
+                viz.iter().map(|&j| j as usize),
+                &p0,
+                &c,
+                &pecas,
+                &ativo,
+            )
+            .is_some()
+            {
+                total += 1;
+            }
+        }
+        std::hint::black_box(total);
+        cand
+    };
+    let cron = |f: &mut dyn FnMut() -> usize| {
+        let mut melhor = f64::INFINITY;
+        let mut cand = 0usize;
+        for _ in 0..CORRIDAS {
+            let agora = Instant::now();
+            for _ in 0..REPS {
+                cand = f();
+            }
+            #[expect(clippy::cast_precision_loss, reason = "uma contagem de repeticoes")]
+            let reps = REPS as f64;
+            melhor = melhor.min(agora.elapsed().as_secs_f64() * 1e6 / reps);
+        }
+        (melhor, cand)
+    };
+    let (t_uma, c_uma) = cron(&mut || uma_vez(false));
+    let (t_duas, c_duas) = cron(&mut || uma_vez(true));
+    eprintln!("\n  ═══ O QUE AS DUAS CAMADAS COMPRAM ({N} discos, UMA peça a 4 × R) ═══\n");
+    eprintln!("   plano        │ candidatos │ uma varredura │ 64 varreduras");
+    eprintln!("  ──────────────┼────────────┼───────────────┼──────────────");
+    eprintln!(
+        "   uma camada   │ {c_uma:>10} │ {t_uma:>10.1} µs │ {:>9.2} ms",
+        t_uma * VARR / 1000.0
+    );
+    eprintln!(
+        "   duas camadas │ {c_duas:>10} │ {t_duas:>10.1} µs │ {:>9.2} ms",
+        t_duas * VARR / 1000.0
+    );
+    eprintln!("\n  ⇒ {:.2} × no relógio de uma varredura.", t_uma / t_duas);
+    // ⭐ E o mesmo pela PORTA DO PRODUTO, com o paralelo — o número que o quadro do dono sente.
+    // ⚠️ O A/B desta linha faz-se correndo a sonda DUAS vezes, com a [`crate::MARGEM_DO_CORTE`]
+    // mutada para `1e9` na segunda (é a mutação `R1` do arnês): por-passe o plano não é parâmetro,
+    // e uma 8.ª entrada no `separate_grao` acordava o `too_many_arguments`.
+    let mut melhor = f64::INFINITY;
+    for _ in 0..CORRIDAS {
+        let mut p = p0.clone();
+        let mut g = vec![0.0_f32; N];
+        let agora = Instant::now();
+        let v = separate(&mut p, &mut Saida { giro: &mut g }, &pecas, 64);
+        melhor = melhor.min(agora.elapsed().as_secs_f64() * 1e3);
+        std::hint::black_box((v, &p));
+    }
+    eprintln!("\n  de ponta a ponta (separate, 64 varreduras, paralelo): {melhor:>7.2} ms");
     eprintln!("\n  load: {}\n", carga());
 }

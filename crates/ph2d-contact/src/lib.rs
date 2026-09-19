@@ -68,10 +68,10 @@
 //!
 //! ## A grelha dá os MESMOS BITS que todos-os-pares, e isso é uma escolha
 //!
-//! O `motion.collide` de CPU é `O(n² · varreduras)`. Aqui cada peça procura parceiros só nas 9
-//! células vizinhas de uma grelha de lado `2 · alcance_max`, onde o ALCANCE é o raio, a partir de
-//! `P`, do círculo que contém o colisor — duas peças cujos colisores se tocam estão a
-//! `alcance_i + alcance_j ≤ 2 · alcance_max`, nunca a mais de uma célula.
+//! O `motion.collide` de CPU é `O(n² · varreduras)`. Aqui cada peça procura parceiros numa GRELHA
+//! ESPACIAL, cujo ALCANCE é o raio — a partir de `P` — do círculo que contém o colisor, e que desde
+//! 2026-09-18 tem **DUAS CAMADAS**, para que uma peça grande deixe de inflar a célula de todas. A
+//! promessa do SUPERCONJUNTO, caso a caso, está no cabeçalho da [`grelha`].
 //!
 //! ⚠️ **E os parceiros são somados em ordem CRESCENTE de índice**, porque é essa a ordem em que o
 //! laço de todos-os-pares (`i < j`, `i` por fora) entrega as contribuições a uma peça. ⇒ o gate
@@ -97,8 +97,8 @@ mod cercas;
 mod grelha;
 /// A REFERÊNCIA — a mesma lei por todos-os-pares, que nenhum caminho de produto chama.
 mod referencia;
-pub use cercas::{PECAS_PARA_PARALELIZAR, PISO_DA_TAREFA, REPOUSO_VISIVEL};
-pub use grelha::candidatos;
+pub use cercas::{MARGEM_DO_CORTE, PECAS_PARA_PARALELIZAR, PISO_DA_TAREFA, REPOUSO_VISIVEL};
+pub use grelha::{candidatos, candidatos_e_grandes};
 pub use referencia::separate_all_pairs;
 /// O impulso do par — a velocidade que responde ao contacto. Ver o cabeçalho dele.
 mod impulso;
@@ -532,14 +532,15 @@ fn separate_grao(
     let ativo: Vec<bool> = (0..n)
         .map(|i| ativo(p[i], pecas.colisores[i].as_ref()))
         .collect();
-    let alcance_max = (0..n)
-        .filter(|&i| ativo[i])
-        .filter_map(|i| pecas.colisores[i].map(|c| c.alcance()))
-        .fold(0.0_f32, f32::max);
+    // ⭐ Os alcances saem de UMA porta, lida pelo plano da grelha e pela cerca do repouso — e eles
+    // são dos COLISORES DECLARADOS, não dos girados: `alcance()` é feito das meias extensões e do
+    // comprimento do desvio, e rodar preserva os dois (a menos de ULPs, como já era antes desta
+    // wave).
+    let alcances = grelha::alcances_de(pecas.colisores, &ativo);
+    let alcance_max = alcances.iter().fold(0.0_f32, |a, b| a.max(*b));
     if alcance_max <= 0.0 {
         return 0;
     }
-    let lado = 2.0 * alcance_max;
     // O repouso, na escala da PEÇA — ver [`REPOUSO_VISIVEL`]. ⭐ **É ARGUMENTO e não const lida
     // aqui** para que um gate possa pedir `0.0` e medir a lei do ponto fixo ao bit **sozinha**:
     // são duas paragens com naturezas diferentes, e uma régua que só visse a soma delas não podia
@@ -554,6 +555,10 @@ fn separate_grao(
         .map(|i| pecas.colisores[i].map(|c| c.girado(girado[i])))
         .collect();
     let mut grade = grelha::Grelha::default();
+    // ⭐⭐⭐ **O PLANO da grelha corre UMA VEZ, não por varredura** — ele lê os ALCANCES, que não
+    // mudam enquanto o laço corre. É ele que decide se a nuvem parte em duas camadas, e é por isso
+    // que uma peça grande deixou de inflar a grelha de todas (ver o cabeçalho da [`grelha`]).
+    grade.planeia(p, &ativo, &alcances);
     // O destino de uma varredura, **fora do laço** — ver o comentário na chamada.
     let mut novas: Vec<Nova> = vec![None; n];
     for v in 0..varreduras {
@@ -568,7 +573,7 @@ fn separate_grao(
                 agora[i] = pecas.colisores[i].map(|c| c.girado(girado[i]));
             }
         }
-        grade.constroi(&foto, &ativo, lado);
+        grade.constroi(&foto, &ativo);
         // ⭐⭐⭐ **O BUFFER É REAPROVEITADO E A PARTIÇÃO É EXPLÍCITA** (report do dono, 2026-09-18:
         // `1000 pecas x 68 varreduras x 156 vizinhos`, com o mesmo trabalho a correr em `4`–`5`
         // núcleos de 32). A rota anterior fazia `collect()` por varredura: um `Vec` novo de cada

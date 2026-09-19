@@ -63,3 +63,30 @@ pub const REPOUSO_VISIVEL: f32 = 1e-5;
 /// grande tira ao rayon a liberdade de que ele precisa quando o trabalho por peça varia* — numa
 /// pilha o número de vizinhos varia muito de peça para peça.
 pub const PISO_DA_TAREFA: usize = 8;
+
+/// ⭐⭐⭐ **QUÃO GRANDE TEM DE SER O GANHO PREVISTO para a grelha partir em DUAS CAMADAS.**
+///
+/// ⚠️⚠️ **Ela não é a cerca de um recurso — é a cerca de um MODELO**, e é por isso que existe. O
+/// plano da [`crate::grelha::Grelha::planeia`] escolhe o corte minimizando os candidatos
+/// *previstos* por `9 · ρ · lado²`; esse modelo acerta o ponto de viragem quase à unidade, e
+/// **sobrestima a coluna de UMA camada em `24 %`** (ele conta o bloco `3 × 3` inteiro, e nas bordas
+/// da nuvem ele está cortado). ⇒ sem margem, uma cena a `1,25 ×` de dispersão seria promovida e
+/// pagaria `0,91 ×` — *uma piora de `9 %` escondida num modelo*.
+///
+/// Medido em [`crate::custo_probe::contagens::onde_o_corte_dos_grandes_paga`] (`1000` discos, passo
+/// `1,8 · R`, candidatos totais de uma varredura):
+///
+/// | dispersão | uma camada | duas camadas | ganho | com `MARGEM = 2` |
+/// |---|---|---|---|---|
+/// | `1,00 ×` | `12 132` | `12 132` | `1,00 ×` | não parte |
+/// | `1,25 ×` | `18 212` | `20 076` | **`0,91 ×`** ⇠ piora | não parte |
+/// | `1,50 ×` | `26 338` | `20 076` | `1,31 ×` | não parte (deixa `1,31 ×` na mesa) |
+/// | `2,00 ×` | `44 590` | `20 076` | `2,22 ×` | **parte** |
+/// | `4,00 ×` | `159 396` | `20 076` | **`7,94 ×`** | **parte** ⇠ *a cena do dono* |
+/// | `8,00 ×` | `483 584` | `20 076` | `24,09 ×` | **parte** |
+///
+/// ⛔ **E a segunda metade da cerca não é uma constante, é o termo `g · m` do modelo:** promover uma
+/// peça não é de graça — ela passa a ver a nuvem inteira. A coluna vira sozinha, e a tabela mostra
+/// onde (`1000` discos, dispersão `4 ×`): `1` grande dá `11,3 ×`, `64` dão `1,18 ×`, **`128` dão
+/// `0,64 ×`**. *O minimizador encontra esse joelho sem que ninguém escreva o número.*
+pub const MARGEM_DO_CORTE: f32 = 2.0;

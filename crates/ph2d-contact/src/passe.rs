@@ -153,6 +153,11 @@ pub struct Relatorio {
     pub pecas: usize,
     /// Quantos CANDIDATOS a grelha entregou, somados sobre as peças — o multiplicador do custo.
     pub candidatos: usize,
+    /// ⭐⭐ **Quantas peças a grelha teve de pôr numa camada à parte** por serem grandes de mais
+    /// para a malha das outras — o número que separa *«uma pilha apertada»* de *«uma peça grande a
+    /// inflar a grelha de todas»*, e sem o qual eu tive de INFERIR a causa da cena do dono a partir
+    /// de uma contagem de vizinhos (ver o cabeçalho da [`crate::grelha`]).
+    pub grandes: usize,
 }
 
 impl Relatorio {
@@ -191,7 +196,7 @@ fn separa_contando(entrada: &Stream, varreduras: usize, r: &mut Relatorio) -> Op
     let mut pos = p.clone();
     let mut giro = vec![0.0f32; n];
     r.pecas = n;
-    r.candidatos = crate::candidatos(&colisores, &pos, &w);
+    (r.candidatos, r.grandes) = crate::candidatos_e_grandes(&colisores, &pos, &w);
     r.varreduras = crate::separate(
         &mut pos,
         &mut Saida { giro: &mut giro },

@@ -120,3 +120,25 @@ pub const MARGEM_DO_CORTE: f32 = 2.0;
 /// par `1,00 → 0,25` isola o candidato (**`9,16 ns`**, já descontada a célula). A razão dá **`10,0`**,
 /// e é esse o número — ⛔ não um peso escolhido.
 pub const CELULAS_POR_CANDIDATO: usize = 10;
+
+/// ⭐⭐⭐ **AS CERCAS DE UMA CORRIDA DO LAÇO, JUNTAS** — e a razão de existirem como struct é um
+/// gate, não arrumação.
+///
+/// ⚠️⚠️ **Duas mutações SOBREVIVERAM no dia em que o corte da grelha passou a shipar desligado**
+/// (doc 115 §31): o gate da igualdade ao bit entrava pela porta do PRODUTO, que lê o ambiente, e
+/// passou a medir o caminho de UMA camada — *verde a afirmar nada sobre a lei que ele nomeia*.
+///
+/// ⇒ o que faz o laço mudar de comportamento entra por AQUI, e um gate pede a configuração exacta
+/// sem tocar numa variável de ambiente. ⛔ *Uma lei que só é alcançável pelo ambiente não é
+/// gateável, e um gate que lê o ambiente mede a máquina.*
+#[derive(Clone, Copy, Debug)]
+pub struct Cercas {
+    /// Espalhar as peças pelos núcleos — ver [`PECAS_PARA_PARALELIZAR`].
+    pub paralelo: bool,
+    /// A fracção do alcance abaixo da qual o laço pára — ver [`REPOUSO_VISIVEL`].
+    pub repouso: f32,
+    /// O piso de uma tarefa do caminho paralelo — ver [`PISO_DA_TAREFA`].
+    pub grao: usize,
+    /// Cortar a grelha em DUAS CAMADAS. ⛔ `false` é o caminho de omissão do produto.
+    pub duas_camadas: bool,
+}

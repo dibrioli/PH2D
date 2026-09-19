@@ -1526,7 +1526,8 @@ fn nuvem_com_uma_grande(n: u32) -> (Vec<[f32; 2]>, Vec<Option<Colisor>>, Vec<f32
 #[test]
 fn a_grelha_em_duas_camadas_da_os_mesmos_bits() {
     let (p0, c, w) = nuvem_com_uma_grande(400);
-    let (_, grandes) = candidatos_e_grandes(&c, &p0, &w);
+    let grandes = grandes_do_plano_medido(&c, &p0);
+    let _ = &w;
     assert!(
         grandes > 0,
         "o plano NAO partiu em duas camadas: este gate nao esta' a medir o caminho novo"
@@ -1535,13 +1536,22 @@ fn a_grelha_em_duas_camadas_da_os_mesmos_bits() {
     let pecas = Pecas::novas(&c, &w, &inv);
     let (mut grelha, mut todos) = (p0.clone(), p0.clone());
     let (mut g_grelha, mut g_todos) = (vec![0.0; p0.len()], vec![0.0; p0.len()]);
-    separate(
+    // ⚠️⚠️ **Pela porta das CERCAS e não pela do produto:** o corte shipa DESLIGADO (doc 115 §31),
+    // e um `separate` aqui mediria o caminho de UMA camada — *verde a afirmar nada sobre a lei que
+    // este gate nomeia*. Duas mutações sobreviveram exactamente assim no dia da inversão.
+    crate::separate_com_cercas(
         &mut grelha,
         &mut Saida {
             giro: &mut g_grelha,
         },
         &pecas,
         8,
+        &crate::Cercas {
+            paralelo: p0.len() >= PECAS_PARA_PARALELIZAR,
+            repouso: REPOUSO_VISIVEL,
+            grao: PISO_DA_TAREFA,
+            duas_camadas: true,
+        },
     );
     separate_all_pairs(&mut todos, &mut Saida { giro: &mut g_todos }, &pecas, 8);
     let mexeu = (0..p0.len()).filter(|&i| p0[i] != todos[i]).count();
@@ -1576,9 +1586,9 @@ fn a_grelha_em_duas_camadas_da_os_mesmos_bits() {
 /// dispersão `4 ×`) e é deliberadamente **metade** dela — o que se afirma é a CLASSE, não o número.
 #[test]
 fn uma_peca_grande_deixou_de_inflar_a_grelha_de_todas() {
-    let (p, c, w) = nuvem_com_uma_grande(400);
+    let (p, c, _w) = nuvem_com_uma_grande(400);
     let uma = candidatos_numa_camada(&c, &p);
-    let (duas, grandes) = candidatos_e_grandes(&c, &p, &w);
+    let (duas, grandes) = candidatos_do_plano_medido(&c, &p);
     assert_eq!(grandes, 1, "só a peça 1 é grande");
     assert!(
         uma >= 4 * duas,
@@ -1597,7 +1607,8 @@ fn sem_dispersao_o_plano_nao_parte() {
     // Discos todos iguais: não há nada a promover.
     let (p, _, w) = nuvem(400);
     let c: Vec<Option<Colisor>> = (0..p.len()).map(|_| Some(Colisor::disco(0.2))).collect();
-    let (duas, grandes) = candidatos_e_grandes(&c, &p, &w);
+    let _ = &w;
+    let (duas, grandes) = candidatos_do_plano_medido(&c, &p);
     assert_eq!(grandes, 0, "uma nuvem uniforme nao tem peca grande");
     assert_eq!(
         duas,
@@ -1606,8 +1617,8 @@ fn sem_dispersao_o_plano_nao_parte() {
     );
     // E a nuvem MISTA de sempre (dispersão ~3 ×, mas espalhada) também não parte: o termo `g · m`
     // come o ganho muito antes de a escada descer o suficiente.
-    let (p2, c2, w2) = nuvem(400);
-    let (_, g2) = candidatos_e_grandes(&c2, &p2, &w2);
+    let (p2, c2, _w2) = nuvem(400);
+    let g2 = grandes_do_plano_medido(&c2, &p2);
     assert_eq!(g2, 0, "a nuvem mista nao devia partir");
 }
 
@@ -1622,12 +1633,12 @@ fn sem_dispersao_o_plano_nao_parte() {
 /// **`0,91 ×`** — uma PIORA de `9 %` que o modelo, sozinho, adoptaria.
 #[test]
 fn uma_dispersao_pequena_nao_paga_o_corte() {
-    let (p, _, w) = nuvem(400);
+    let (p, _, _w) = nuvem(400);
     let c: Vec<Option<Colisor>> = (0..p.len())
         .map(|i| Some(Colisor::disco(if i < 4 { 0.25 } else { 0.20 })))
         .collect();
-    // (a) O produto RECUSA o corte.
-    let (_, grandes) = candidatos_e_grandes(&c, &p, &w);
+    // (a) O plano MEDIDO recusa o corte.
+    let grandes = grandes_do_plano_medido(&c, &p);
     assert_eq!(grandes, 0, "uma dispersao de 1,25x nao paga o corte");
     // (b) O CONTROLO, dentro do gate: com a margem desarmada o modelo PARTIRIA — logo existe um
     //     corte a recusar, e esta fixtura está no regime que a margem existe para julgar.
@@ -1679,7 +1690,7 @@ fn a_regua_do_plano_conta_o_que_a_grelha_entrega() {
                 g.planeia_numa_camada(&vivo, 2.0 * alcance_max);
                 g.constroi(&p, &vivo);
             } else {
-                g.planeia(&p, &vivo, &alcances);
+                g.planeia_medindo(&p, &vivo, &alcances);
             }
             let (mut viz, mut mao) = (Vec::new(), 0usize);
             for k in 0..p.len() {
@@ -1696,7 +1707,7 @@ fn a_regua_do_plano_conta_o_que_a_grelha_entrega() {
 }
 
 /// ⭐ **A PORTA DE BISSECÇÃO lê-se como o dono a escreve** — e a armadilha que esta casa já pagou é
-/// a do meio: `env PH2D_CONTACT_UMA_CAMADA=` **define** a variável, vazia.
+/// a do meio: `env PH2D_CONTACT_DUAS_CAMADAS=` **define** a variável, vazia.
 #[test]
 fn a_porta_de_bisseccao_le_o_que_o_dono_escreve() {
     use crate::grelha::ordem_de;
@@ -1744,4 +1755,45 @@ fn a_decisao_do_plano_ve_as_celulas() {
     );
     // E a composição é a que a cerca declara — nem mais um termo, nem menos.
     assert_eq!(custo_a, cand_a + cel_a / crate::CELULAS_POR_CANDIDATO);
+}
+
+/// Os candidatos e as GRANDES do plano de duas camadas **medido**, pela porta que não lê o ambiente.
+///
+/// ⚠️⚠️ **Ela existe porque o corte shipa DESLIGADO** (doc 115 §31): um gate que entrasse pela porta
+/// do produto mediria o caminho de uma camada e ficaria **verde a afirmar nada**.
+fn candidatos_do_plano_medido(c: &[Option<Colisor>], p: &[[f32; 2]]) -> (usize, usize) {
+    let vivo: Vec<bool> = (0..p.len()).map(|i| ativo(p[i], c[i].as_ref())).collect();
+    let alcances = crate::grelha::alcances_de(c, &vivo);
+    let mut g = crate::grelha::Grelha::default();
+    g.planeia_medindo(p, &vivo, &alcances);
+    g.constroi(p, &vivo);
+    let (mut viz, mut soma) = (Vec::new(), 0usize);
+    for k in 0..p.len() {
+        g.vizinhos_de(k, &mut viz);
+        soma += viz.len();
+    }
+    (soma, g.grandes())
+}
+
+/// Quantas peças o plano medido promoveria — a metade da porta acima que os gates da recusa usam.
+fn grandes_do_plano_medido(c: &[Option<Colisor>], p: &[[f32; 2]]) -> usize {
+    candidatos_do_plano_medido(c, p).1
+}
+
+/// ⛔⛔⛔ **O CORTE EM DUAS CAMADAS SHIPA DESLIGADO** — e isto é um gate, não um comentário.
+///
+/// ⚠️⚠️ **Ele nasceu de uma AUDITORIA pedida pelo dono** (doc 115 §31), depois de três reports
+/// seguidos de quadros perdidos. Eu liguei o corte por omissão com **todas** as medições tiradas
+/// numa forma de cena que a dele não tem (`12` vizinhos por peça contra `124`), e nunca consegui
+/// reproduzir o que ele mediu.
+///
+/// ⛔ *Quando a minha medição e o report do dono discordam e eu não fecho a distância, o caminho de
+/// omissão é o que ele APROVOU.* O ónus da prova é de quem mudou, e o default é onde isso se
+/// escreve.
+#[test]
+fn o_corte_em_duas_camadas_shipa_desligado() {
+    assert!(
+        !crate::grelha::duas_camadas_activas(),
+        "o corte voltou a ligar-se por omissão sem o dono o ter aprovado"
+    );
 }

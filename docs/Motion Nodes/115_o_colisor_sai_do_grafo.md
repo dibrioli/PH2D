@@ -2237,7 +2237,9 @@ um argumento.
 
 ### §29.3 — ⭐⭐ A PORTA DE BISSECÇÃO, e porque ela não é lida no fundo da pilha
 
-`PH2D_CONTACT_UMA_CAMADA=1` devolve o plano de ANTES desta wave, sem recompilar. Uma corrida com e
+`PH2D_CONTACT_UMA_CAMADA=1` devolve o plano de ANTES desta wave, sem recompilar (⚠️ **a porta foi
+INVERTIDA na §31**: hoje é `PH2D_CONTACT_DUAS_CAMADAS=1` que LIGA o corte, e o de antes é o caminho
+de omissão). Uma corrida com e
 uma sem respondem a pergunta em dois minutos.
 
 ⚠️ Ela é lida **uma vez** e **só no [`Grelha::planeia`]**, que é a porta do PRODUTO — o
@@ -2339,3 +2341,85 @@ produziu.
 
 **Mutação: 12 de 12 sangram** (as nove da §28-29 mais `R10` a célula sem peso · `R11` o termo das
 células fora da conta · `R12` a corrente não enche o marcador).
+
+---
+
+## §31 — ⛔⛔⛔ AUDITORIA (ordem do dono, 2026-09-19) — o que eu fiz mal, em cinco lentes
+
+Três reports seguidos de quadros perdidos (`24 FPS` · *«motor anterior mais rápido»* · `7 FPS`, com
+`MOTION` a passar de `18,62` para `104,50 ms` às **mesmas `68` varreduras** e com vizinhos
+parecidos). Cinco tentativas minhas de reproduzir, zero reproduções. O dono pediu **auditoria**.
+
+### §31.1 — ⛔ Lente 1, e é a que explica as outras: EU LIGUEI POR OMISSÃO
+
+A lei desta casa está escrita e eu passei por cima dela: *tudo o que é novo shipa desligado até o
+dono o aprovar.* Eu shipei o corte da grelha **ligado**, e pus o motor que ele **tinha aprovado a
+`40`–`50` FPS** atrás de uma bandeira.
+
+⇒ a porta foi **INVERTIDA**: `PH2D_CONTACT_DUAS_CAMADAS=1` LIGA o corte, e o caminho de omissão é o
+de antes. Com um gate a dizê-lo (`o_corte_em_duas_camadas_shipa_desligado`), porque *o default é
+onde o ónus da prova se escreve*.
+
+### §31.2 — ⛔⛔ Lente 2: TODAS as minhas medições correram numa cena que a dele não é
+
+| | a minha fixtura | a cena do dono |
+|---|---|---|
+| vizinhos por peça | `12,1` | **`104`–`124`** |
+
+**Dez vezes mais trabalho por varredura**, e nenhuma medição minha o continha. A §28 mediu a
+**dispersão de TAMANHOS** (um outlier a `4 ×`) e nunca a **densidade da pilha** — e foi a densidade
+que ele tinha o tempo todo. ⇒ a sonda [`a_auditoria_na_densidade_do_dono`] varre o passo até bater
+nos `124` e mede `separate` pela porta do produto; a `110,9` vizinhos ela lê `51 ms` contra `16` a
+`12,1`. *A minha bancada era três vezes mais leve que o pior caso dele.*
+
+### §31.3 — ⛔⛔ Lente 3: o INSTRUMENTO não sabia dizer qual motor tinha corrido
+
+Curado na §30 — e a auditoria mudou-lhe o nome: a linha diz agora **`duas-camadas=0|1`**, e `0` é o
+caminho de omissão. *Um instrumento de bissecção que não se identifica não bissecta nada.*
+
+### §31.4 — ⛔⛔⛔ Lente 4: ao inverter o default, DUAS mutações passaram a SOBREVIVER
+
+E elas apanharam a coisa certa: o gate da igualdade ao bit entrava pela **porta do PRODUTO**
+(`separate`), que lê o ambiente — logo, com o corte desligado, ele passou a medir o caminho de UMA
+camada e ficou **verde a afirmar nada sobre a lei que nomeia**.
+
+⚠️⚠️ *Eu tinha escrito exactamente esse risco no doc-comment da porta nova, e mesmo assim deixei o
+gate a entrar pela outra.* ⇒ [`Cercas`] — o que faz o laço mudar de comportamento (paralelo ·
+repouso · grão · **duas camadas**) entra por uma struct, e um gate pede a configuração EXACTA sem
+tocar numa variável de ambiente. *Uma lei que só é alcançável pelo ambiente não é gateável, e um
+gate que lê o ambiente mede a máquina.*
+
+### §31.5 — ⛔ Lente 5: a decisão contava metade do custo
+
+Curado na §30 (as CÉLULAS entram na conta, com o peso medido). Fica registado aqui porque o
+mecanismo é o mesmo das outras quatro: **eu escrevi a razão na cerca e não a pus no código.**
+
+### §31.6 — O que a auditoria NÃO conseguiu: reproduzir
+
+Cinco tentativas, todas com contagens (que a carga não estraga) ou no perfil dele (`smoke`) com a
+máquina calma:
+
+| tentativa | resultado |
+|---|---|
+| as CÉLULAS da malha fina | não reproduz (`70 → 782` onde o corte arma) |
+| a ESCADA contínua de tamanhos | não reproduz — o plano promove **ZERO** peças |
+| o plano custar algo sem armar | não reproduz (`4,06` contra `4,32 ms`) |
+| o perfil de build (`smoke`, o dele) | não reproduz (`4,89` contra `5,23 ms`) |
+| **a densidade dele** (`110,9` vizinhos) | não reproduz (`51,32` com o corte contra `59,69` sem) |
+
+⇒ **o corte fica na árvore, desligado e gateado, até alguém o provar na cena DELE.** Não é uma
+recusa medida: é uma cura sem prova no sítio que interessa, e o sítio que interessa é o dono.
+
+### §31.7 — ⏳ E a pista que a auditoria deixa NOMEADA, com aritmética
+
+`MOTION` é **cozer + separar**, e o readout diz `1 separacao(oes)/quadro` — logo a separação corre
+**uma vez**. Mas a shell cozinha **um quadro por tique em dívida** (§21), e o log dele traz
+`warn: dropped … of sim time` e um **pico de `535,99 ms` sobre uma média de `104,50`**.
+
+⇒ `MOTION = N × cozer + 1 × separar`, e `N` é a dívida de tiques. *Um quadro lento recupera mais
+tiques, que o tornam mais lento ainda* — a §21 partiu esse ciclo do lado da SEPARAÇÃO e **não do
+lado do COZIMENTO**. Com `N = 8` e um cozimento de `12 ms`, os `104,50` fecham quase à unidade.
+
+⛔ **O readout não separa as duas metades nem diz quantos tiques cozeu** — e é por isso que três
+rondas de report não chegaram a uma conclusão. *A próxima wave é esse instrumento, e ele vem antes
+de qualquer cura.*

@@ -412,7 +412,8 @@ fn a_caca_a_regressao_da_escada() {
 /// plano continua a correr: ele ordena os alcances, constrói a grelha das duas maneiras e conta as
 /// duas. *Se isso custasse alguma coisa, toda cena sem dispersão pagava por uma cura que não usa.*
 ///
-/// O A/B é a porta de bissecção (`PH2D_CONTACT_UMA_CAMADA`), que salta o plano inteiro.
+/// O A/B é a porta do corte (`PH2D_CONTACT_DUAS_CAMADAS`) — ⛔ **ele shipa DESLIGADO** desde a
+/// auditoria da §31, logo esta sonda mede, por omissão, o caminho que o dono corre.
 #[test]
 #[ignore = "sonda de medição, não gate"]
 fn o_que_o_plano_custa_quando_nao_arma() {
@@ -438,7 +439,7 @@ fn o_que_o_plano_custa_quando_nao_arma() {
     eprintln!("  peças promovidas a GRANDE ..... {grandes}");
     eprintln!("  separate, {VARR} varreduras ......... {melhor:>7.2} ms");
     eprintln!(
-        "\n  ⇒ corra de novo com PH2D_CONTACT_UMA_CAMADA=1: a diferença é o que o plano custa.\n"
+        "\n  ⇒ corra de novo com PH2D_CONTACT_DUAS_CAMADAS=1: a diferença é o que o plano custa.\n"
     );
     eprintln!("  load: {}\n", carga());
 }
@@ -502,5 +503,45 @@ fn quanto_custa_uma_celula_contra_um_candidato() {
         eprintln!("   {lado:>4.2} │ {celulas:>7} │ {cand:>10} │ {melhor:>10.1} µs");
     }
     eprintln!("\n  ⇒ onde o relógio vira enquanto os candidatos ainda caem, a célula manda.");
+    eprintln!("\n  load: {}\n", carga());
+}
+
+/// ⛔⛔⛔ **A AUDITORIA: reproduzir NA DENSIDADE DO DONO** (report de 19/09, `124 vizinhos`).
+///
+/// ⚠️⚠️ **Todas as fixturas desta crate correm a `~12` vizinhos por peça, e a dele tem `124`.**
+/// *Dez vezes mais trabalho por varredura, e nenhuma medição minha o continha* — a §28 mediu a
+/// dispersão de TAMANHOS e nunca a densidade da pilha.
+///
+/// A sonda varre o passo até bater nos `124`, e mede `separate` pela porta do PRODUTO com e sem a
+/// porta de bissecção.
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn a_auditoria_na_densidade_do_dono() {
+    const N: usize = 1000;
+    const RAIO: f32 = 100.0;
+    const VARR: usize = 68;
+    eprintln!("\n  ═══ A AUDITORIA: a densidade do dono ({N} peças, {VARR} varreduras) ═══\n");
+    eprintln!("   passo │ vizinhos/peça │ tocam/peça │ separate");
+    eprintln!("  ───────┼───────────────┼────────────┼─────────");
+    for passo in [1.8_f32, 1.2, 0.9, 0.7, 0.55] {
+        let (p0, c, w) = super::atribuicao::campo_de_discos(N, RAIO, passo);
+        let inv: Vec<f32> = (0..N)
+            .map(|i| c[i].map_or(0.0, |x| x.inv_inercia(w[i])))
+            .collect();
+        let pecas = Pecas::novas(&c, &w, &inv);
+        let (cand, toca) = candidatos_e_toques(&c, &p0);
+        let mut melhor = f64::INFINITY;
+        for _ in 0..5 {
+            let mut p = p0.clone();
+            let mut g = vec![0.0_f32; N];
+            let agora = std::time::Instant::now();
+            let v = separate(&mut p, &mut Saida { giro: &mut g }, &pecas, VARR);
+            melhor = melhor.min(agora.elapsed().as_secs_f64() * 1e3);
+            std::hint::black_box((v, &p));
+        }
+        #[expect(clippy::cast_precision_loss, reason = "contagens de fixtura")]
+        let (cpp, tpp) = (cand as f32 / N as f32, toca as f32 / N as f32);
+        eprintln!("   {passo:>5.2} │     {cpp:>9.1} │  {tpp:>9.1} │ {melhor:>6.2} ms");
+    }
     eprintln!("\n  load: {}\n", carga());
 }

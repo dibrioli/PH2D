@@ -520,9 +520,12 @@ fn o_grao_da_tarefa() {
                     &mut Saida { giro: &mut g },
                     &pecas,
                     V,
-                    true,
-                    REPOUSO_VISIVEL,
-                    grao,
+                    &Cercas {
+                        paralelo: true,
+                        repouso: REPOUSO_VISIVEL,
+                        grao,
+                        duas_camadas: false,
+                    },
                 );
                 let parede = t0.elapsed().as_secs_f64();
                 if parede < melhor.0 {

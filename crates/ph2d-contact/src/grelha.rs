@@ -60,16 +60,30 @@
 
 use super::{CELULAS_POR_CANDIDATO, MARGEM_DO_CORTE, celula};
 
-/// ⛔ **A PORTA DE BISSECÇÃO** (`PH2D_CONTACT_UMA_CAMADA=1`) — devolve o plano de UMA camada, que é
-/// o de antes de 2026-09-18, sem recompilar nada.
+/// ⛔⛔⛔ **O CORTE EM DUAS CAMADAS SHIPA DESLIGADO** (`PH2D_CONTACT_DUAS_CAMADAS=1` liga-o).
+///
+/// ⚠️⚠️ **A porta nasceu ao contrário e foi INVERTIDA por auditoria** (doc 115 §31). Ela era
+/// `PH2D_CONTACT_UMA_CAMADA` — o corte LIGADO por omissão e o motor de antes atrás de uma bandeira
+/// —, e isso violava a lei desta casa: *tudo o que é novo shipa desligado até o dono o aprovar.*
+/// Eu liguei-o por omissão com **todas** as medições tiradas numa forma de cena que a dele não tem
+/// (`12` vizinhos por peça contra `124`), e o dono perdeu quadros **três vezes seguidas**.
+///
+/// ⛔ *Quando a minha medição e o report do dono discordam e eu não consigo fechar a distância, o
+/// caminho de omissão é o que ele APROVOU* — o ónus da prova é de quem mudou.
 ///
 /// ⚠️ Ela é lida **uma vez** e **só no [`Grelha::planeia`]**, que é a porta do PRODUTO: o
 /// [`Grelha::planeia_com_margem`] e o [`Grelha::planeia_numa_camada`] ficam de fora de propósito,
 /// para que um gate continue a medir a lei e não o ambiente. *Uma bandeira global lida no fundo da
 /// pilha é uma corrida escrita à mão, e esta casa já a pagou.*
-pub(super) fn uma_camada_por_ordem() -> bool {
+fn duas_camadas_por_ordem() -> bool {
     static ORDEM: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ORDEM.get_or_init(|| ordem_de(std::env::var("PH2D_CONTACT_UMA_CAMADA").ok().as_deref()))
+    *ORDEM.get_or_init(|| ordem_de(std::env::var("PH2D_CONTACT_DUAS_CAMADAS").ok().as_deref()))
+}
+
+/// `true` quando o caminho do produto está a CORTAR a grelha em duas camadas. ⛔ `false` é o
+/// caminho de omissão — ver a porta acima.
+pub(super) fn duas_camadas_activas() -> bool {
+    duas_camadas_por_ordem()
 }
 
 /// A leitura da porta acima, **separada do ambiente para poder ser gateada**.
@@ -134,15 +148,40 @@ impl Grelha {
     /// ⛔ **`g = 0` é o caminho de sempre, ao bit**: sem dispersão de tamanhos nada é promovido, e
     /// a grelha é exactamente a de antes desta wave.
     pub(super) fn planeia(&mut self, foto: &[[f32; 2]], ativo: &[bool], alcances: &[f32]) {
+        // ⭐⭐ **O caminho de OMISSÃO sai daqui sem construir NADA** — nem uma grelha a mais, nem uma
+        // contagem, nem uma ordenação. É o plano de antes desta wave, e o laço da separação
+        // constrói-o uma vez por varredura como sempre fez.
+        self.planeia_com(foto, ativo, alcances, duas_camadas_por_ordem());
+    }
+
+    /// O [`Grelha::planeia`] com o interruptor das duas camadas **por argumento** — ver
+    /// [`crate::Cercas`].
+    pub(super) fn planeia_com(
+        &mut self,
+        foto: &[[f32; 2]],
+        ativo: &[bool],
+        alcances: &[f32],
+        duas: bool,
+    ) {
+        let alcance_max = alcances.iter().fold(0.0_f32, |a, b| a.max(*b));
+        self.planeia_numa_camada(ativo, 2.0 * alcance_max);
+        if duas {
+            self.planeia_medindo(foto, ativo, alcances);
+        }
+    }
+
+    /// **O plano de DUAS CAMADAS, decidido pela CONTAGEM REAL** — e **sem ler o ambiente**.
+    ///
+    /// ⚠️⚠️ **A separação entre esta porta e o [`Grelha::planeia`] é o que mantém os gates a medir a
+    /// LEI e não a bandeira:** com o corte a shipar desligado, um gate que entrasse pela porta do
+    /// produto passaria a medir o caminho de UMA camada e ficaria **verde a afirmar nada**.
+    pub(super) fn planeia_medindo(&mut self, foto: &[[f32; 2]], ativo: &[bool], alcances: &[f32]) {
         let alcance_max = alcances.iter().fold(0.0_f32, |a, b| a.max(*b));
         let uma_camada = |g: &mut Self| {
             g.planeia_numa_camada(ativo, 2.0 * alcance_max);
             g.constroi(foto, ativo);
         };
         uma_camada(self);
-        if uma_camada_por_ordem() {
-            return;
-        }
         let uma = self.custo_medido();
         // O modelo PROPÕE (a margem é `1`: aqui ele só escolhe QUAL corte vale a pena tentar).
         self.planeia_com_margem(foto, ativo, alcances, 1.0);

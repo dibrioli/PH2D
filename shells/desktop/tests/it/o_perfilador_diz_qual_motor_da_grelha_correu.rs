@@ -17,22 +17,22 @@ const CONTADORES: &str = include_str!("../../src/render_loop/frame_prof.rs");
 #[test]
 fn o_perfilador_diz_qual_motor_da_grelha_correu() {
     assert!(
-        CONTADORES.contains("FRAME_PROF_BISSECCAO"),
-        "o contador da bissecção desapareceu"
+        CONTADORES.contains("FRAME_PROF_DUAS_CAMADAS"),
+        "o contador do motor da grelha desapareceu"
     );
     assert!(
-        QUADRO.contains("FRAME_PROF_BISSECCAO.with(|c| c.set(u64::from(r.bisseccao)))"),
-        "a corrente deixou de encher o contador da bissecção"
+        QUADRO.contains("FRAME_PROF_DUAS_CAMADAS.with(|c| c.set(u64::from(r.duas_camadas)))"),
+        "a corrente deixou de encher o contador do motor"
     );
     assert!(
-        RELATORIO.contains("FRAME_PROF_BISSECCAO.with(std::cell::Cell::get)"),
-        "o relatório deixou de LER o contador da bissecção"
+        RELATORIO.contains("FRAME_PROF_DUAS_CAMADAS.with(std::cell::Cell::get)"),
+        "o relatório deixou de LER o contador do motor"
     );
     // ⚠️ O marcador vive DENTRO da linha de formato, e não num `&str` à parte: ali ele seria texto
     // com cara de língua no fonte da shell, e o censo do HR-15 manda-o para uma isenção nomeada.
     // *Um número dentro do formato não precisa de isenção nenhuma.*
     assert!(
-        RELATORIO.contains("uma-camada-por-ordem={bisseccao}"),
+        RELATORIO.contains("duas-camadas={duas_camadas}"),
         "a linha do perfilador deixou de NOMEAR o motor da grelha"
     );
 }

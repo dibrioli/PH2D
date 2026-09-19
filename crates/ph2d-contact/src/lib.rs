@@ -98,7 +98,8 @@ mod grelha;
 /// A REFERÊNCIA — a mesma lei por todos-os-pares, que nenhum caminho de produto chama.
 mod referencia;
 pub use cercas::{
-    CELULAS_POR_CANDIDATO, MARGEM_DO_CORTE, PECAS_PARA_PARALELIZAR, PISO_DA_TAREFA, REPOUSO_VISIVEL,
+    CELULAS_POR_CANDIDATO, Cercas, MARGEM_DO_CORTE, PECAS_PARA_PARALELIZAR, PISO_DA_TAREFA,
+    REPOUSO_VISIVEL,
 };
 pub use grelha::{candidatos, candidatos_e_grandes};
 pub use referencia::separate_all_pairs;
@@ -514,10 +515,29 @@ fn separate_com(
         saida,
         pecas,
         varreduras,
-        paralelo,
-        repouso,
-        PISO_DA_TAREFA,
+        &Cercas {
+            paralelo,
+            repouso,
+            grao: PISO_DA_TAREFA,
+            duas_camadas: grelha::duas_camadas_activas(),
+        },
     )
+}
+
+/// Como o [`separate`], com as CERCAS por argumento — a porta pela qual um gate pede a lei sem
+/// passar pelo ambiente. Ver [`Cercas`].
+///
+/// ⛔ **`#[cfg(test)]` porque o único consumidor dela é um gate:** o produto entra pelo
+/// [`separate`], e uma segunda porta viva para a mesma lei seria a segunda maneira de a chamar.
+#[cfg(test)]
+pub(crate) fn separate_com_cercas(
+    p: &mut [[f32; 2]],
+    saida: &mut Saida<'_>,
+    pecas: &Pecas<'_>,
+    varreduras: usize,
+    cercas: &Cercas,
+) -> usize {
+    separate_grao(p, saida, pecas, varreduras, cercas)
 }
 
 fn separate_grao(
@@ -525,10 +545,9 @@ fn separate_grao(
     saida: &mut Saida<'_>,
     pecas: &Pecas<'_>,
     varreduras: usize,
-    paralelo: bool,
-    repouso: f32,
-    grao: usize,
+    cercas: &Cercas,
 ) -> usize {
+    let (paralelo, repouso, grao) = (cercas.paralelo, cercas.repouso, cercas.grao);
     let n = p.len();
     confere(n, saida, pecas);
     let ativo: Vec<bool> = (0..n)
@@ -560,7 +579,7 @@ fn separate_grao(
     // ⭐⭐⭐ **O PLANO da grelha corre UMA VEZ, não por varredura** — ele lê os ALCANCES, que não
     // mudam enquanto o laço corre. É ele que decide se a nuvem parte em duas camadas, e é por isso
     // que uma peça grande deixou de inflar a grelha de todas (ver o cabeçalho da [`grelha`]).
-    grade.planeia(p, &ativo, &alcances);
+    grade.planeia_com(p, &ativo, &alcances, cercas.duas_camadas);
     // O destino de uma varredura, **fora do laço** — ver o comentário na chamada.
     let mut novas: Vec<Nova> = vec![None; n];
     for v in 0..varreduras {

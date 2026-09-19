@@ -381,7 +381,7 @@ impl crate::App {
                 FRAME_PROF_PECAS.with(|c| c.set(r.pecas as u64));
                 FRAME_PROF_VIZINHOS.with(|c| c.set(r.vizinhos_por_peca() as u64));
                 FRAME_PROF_GRANDES.with(|c| c.set(r.grandes as u64));
-                FRAME_PROF_BISSECCAO.with(|c| c.set(u64::from(r.bisseccao)));
+                FRAME_PROF_DUAS_CAMADAS.with(|c| c.set(u64::from(r.duas_camadas)));
                 // Quantas separações ESTE quadro pagou — a diferença do contador cumulativo.
                 let total = g.motion.pump.separacoes();
                 let antes = FRAME_PROF_SEPARACOES_ANTES.with(|c| c.replace(total));

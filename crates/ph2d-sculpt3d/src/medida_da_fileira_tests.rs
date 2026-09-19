@@ -61,9 +61,7 @@ fn sacudida(n: usize) -> Mesh {
 
 /// O percurso que a régua mede: uma linha ao longo de `+x`, no meio da chapa.
 fn percurso() -> Vec<[f32; 3]> {
-    (0..9)
-        .map(|k| [-0.4 + 0.1 * k as f32, 0.0, 0.0])
-        .collect()
+    (0..9).map(|k| [-0.4 + 0.1 * k as f32, 0.0, 0.0]).collect()
 }
 
 /// ⭐⭐⭐ **GATE — NUMA GRADE A RÉGUA LÊ A GRADE INTEIRA.**
@@ -165,7 +163,10 @@ fn uma_fileira_em_ziguezague_nao_e_uma_linha() {
     // ⭐ **O CONTROLO vem primeiro:** a mesma malha SEM o zigue-zague lê a grade
     // inteira, logo o que se mede aqui é o zigue-zague e não a fixtura.
     let (g50, _, gmax, _) = fileira_da_faixa(&grade(25), &percurso(), 0.3);
-    assert!(g50 >= 20.0 && gmax >= 23, "o controlo mudou: {g50} / {gmax}");
+    assert!(
+        g50 >= 20.0 && gmax >= 23,
+        "o controlo mudou: {g50} / {gmax}"
+    );
     assert!(
         p50 <= 2.0,
         "um zigue-zague de ±14° leu fileiras de {p50} arestas — a régua encadeia \

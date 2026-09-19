@@ -503,12 +503,7 @@ fn o_carimbo_nao_penteia_e_o_passe_penteia() {
 /// a mesma corrida sem pente: o colapso e o refino também mexem em posições, e
 /// uma medição contra a malha de entrada leria o trabalho deles como sendo da
 /// retícula.
-fn passe_com_pente(
-    alvo: f32,
-    centro: [f32; 3],
-    raio: f32,
-    pente: Option<([f32; 3], f32)>,
-) -> f32 {
+fn passe_com_pente(alvo: f32, centro: [f32; 3], raio: f32, pente: Option<([f32; 3], f32)>) -> f32 {
     let mut malha = uv_sphere(32, 48, 1.0);
     malha.triangulate();
     let referencia = {

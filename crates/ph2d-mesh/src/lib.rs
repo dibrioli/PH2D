@@ -79,8 +79,8 @@ mod volume;
 pub use aabb::Aabb;
 pub use adjacency::{Adjacency, Csr};
 pub use collapse::{
-    Collapse, Guarda, Sizing, collapse_in_sphere, collapse_in_sphere_com,
-    collapse_in_sphere_sized, collapse_target,
+    Collapse, Guarda, Sizing, collapse_in_sphere, collapse_in_sphere_com, collapse_in_sphere_sized,
+    collapse_target,
 };
 pub use compact::compact_for_faces;
 pub use cotangent::{

@@ -109,13 +109,7 @@ enum Tinta {
     SoAGrade,
 }
 
-fn desenha_com(
-    m: &ph2d_mesh::Mesh,
-    percurso: &[[f32; 3]],
-    raio: f32,
-    caminho: &str,
-    tinta: Tinta,
-) {
+fn desenha_com(m: &ph2d_mesh::Mesh, percurso: &[[f32; 3]], raio: f32, caminho: &str, tinta: Tinta) {
     let realca = tinta == Tinta::Fileiras;
     const N: usize = 900;
     // A janela é o percurso mais dois raios de cada lado — o enquadramento que

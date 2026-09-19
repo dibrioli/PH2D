@@ -592,14 +592,20 @@ fn o_roteiro_da_cena_nomeia_a_caixa_da_grade() {
         ..Default::default()
     };
     assert!(
-        ph2d_panel_sculpt3d::interruptor_oferecido(&ui, ph2d_panel_sculpt3d::ids::SCULPT3D_WIRE_GRADE),
+        ph2d_panel_sculpt3d::interruptor_oferecido(
+            &ui,
+            ph2d_panel_sculpt3d::ids::SCULPT3D_WIRE_GRADE
+        ),
         "a caixa da grade não é oferecida com o arame ligado — o roteiro manda \
          clicar numa linha que o painel não desenha"
     );
     // ⛔ E a metade NEGATIVA: sem arame desenhado não há vista para escolher.
     ui.wireframe = false;
     assert!(
-        !ph2d_panel_sculpt3d::interruptor_oferecido(&ui, ph2d_panel_sculpt3d::ids::SCULPT3D_WIRE_GRADE),
+        !ph2d_panel_sculpt3d::interruptor_oferecido(
+            &ui,
+            ph2d_panel_sculpt3d::ids::SCULPT3D_WIRE_GRADE
+        ),
         "a caixa da grade é oferecida SEM arame — um controlo de uma vista que \
          não está desenhada é um controlo morto"
     );

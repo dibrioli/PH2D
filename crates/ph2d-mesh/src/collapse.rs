@@ -557,7 +557,13 @@ fn vira_alguma_face(mesh: &Mesh, keep: u32, gone: u32, pair: [u32; 2], at: [f32;
     let adj = mesh.adjacency();
     let pos = mesh.positions();
     let faces = mesh.faces();
-    let depois = |v: u32| if v == keep || v == gone { at } else { pos[v as usize] };
+    let depois = |v: u32| {
+        if v == keep || v == gone {
+            at
+        } else {
+            pos[v as usize]
+        }
+    };
     for extremo in [keep, gone] {
         for &fi in adj.vert_faces.neighbours(extremo as usize) {
             if fi == pair[0] || fi == pair[1] {
@@ -568,7 +574,11 @@ fn vira_alguma_face(mesh: &Mesh, keep: u32, gone: u32, pair: [u32; 2], at: [f32;
             if vs.len() != 3 {
                 continue;
             }
-            let (a0, a1, a2) = (pos[vs[0] as usize], pos[vs[1] as usize], pos[vs[2] as usize]);
+            let (a0, a1, a2) = (
+                pos[vs[0] as usize],
+                pos[vs[1] as usize],
+                pos[vs[2] as usize],
+            );
             let (b0, b1, b2) = (depois(vs[0]), depois(vs[1]), depois(vs[2]));
             let antes = normal_de(a0, a1, a2);
             let agora = normal_de(b0, b1, b2);

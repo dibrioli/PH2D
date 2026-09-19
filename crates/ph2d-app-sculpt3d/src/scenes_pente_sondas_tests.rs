@@ -307,8 +307,13 @@ fn traco_contado(
         cortes += malha.positions().len().saturating_sub(antes);
         if pente > 0.0 {
             let preferencia = ph2d_sculpt3d::preferencia_do_pente(direccao, pente);
-            trocas +=
-                ph2d_mesh::alinha_arestas(&mut malha, centro, brush.radius, &preferencia, &mut region);
+            trocas += ph2d_mesh::alinha_arestas(
+                &mut malha,
+                centro,
+                brush.radius,
+                &preferencia,
+                &mut region,
+            );
         }
         stroke.dab(
             &mut malha,

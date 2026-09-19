@@ -103,11 +103,7 @@ pub const FAIXA: f32 = 0.5;
 /// ⚠️ **`pub(crate)` porque a régua da FILEIRA a lê** ([`crate::medida_da_fileira`]):
 /// *«que troço do traço é este ponto, e que faixa conta»* é uma pergunta só, e
 /// duas respostas divergiriam no dia em que a [`FAIXA`] mudasse.
-pub(crate) fn direccao_do_troco(
-    percurso: &[[f32; 3]],
-    p: [f32; 3],
-    raio: f32,
-) -> Option<[f32; 3]> {
+pub(crate) fn direccao_do_troco(percurso: &[[f32; 3]], p: [f32; 3], raio: f32) -> Option<[f32; 3]> {
     let mut melhor = f32::INFINITY;
     let mut direccao = None;
     for par in percurso.windows(2) {

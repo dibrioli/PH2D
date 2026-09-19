@@ -55,7 +55,11 @@ fn diag_quem_enruga() {
     // ⭐ O CONTROLO da curvatura: tudo ligado e o carimbo a ZERO — a esfera
     // continua curva, e o traço não levanta relevo nenhum.
     let (m, c, _) = traco_por_metades_com(e, raio, alvo, true, true, true, 0.0, false);
-    eprintln!("{:<24}{}", "TUDO, carimbo a ZERO", colunas_da_superficie(&m, &c, raio));
+    eprintln!(
+        "{:<24}{}",
+        "TUDO, carimbo a ZERO",
+        colunas_da_superficie(&m, &c, raio)
+    );
 }
 
 /// ⭐⭐⭐ **SONDA — A ESCADA DO BOTÃO contra a ondulação.**
@@ -78,7 +82,10 @@ fn diag_a_escada_do_botao() {
     for (nome, e) in RUMOS {
         for pente in [0.0f32, 0.25, 0.5, 0.75, 1.0] {
             let (m, c, _) = traco_contado(pente, e, raio, alvo);
-            eprintln!("{pente:<8.2} {nome:<16}{}", colunas_da_superficie(&m, &c, raio));
+            eprintln!(
+                "{pente:<8.2} {nome:<16}{}",
+                colunas_da_superficie(&m, &c, raio)
+            );
         }
     }
 }
@@ -155,12 +162,8 @@ fn diag_em_que_passo() {
         centros.push(centro);
         let direccao = stroke.direccao_do_traco(centro);
         let alvo_col = ph2d_mesh::collapse_target(alvo);
-        let cc = ph2d_sculpt3d::campo_do_pente(
-            alvo_col,
-            direccao,
-            0.0,
-            ph2d_sculpt3d::Porta::Colapso,
-        );
+        let cc =
+            ph2d_sculpt3d::campo_do_pente(alvo_col, direccao, 0.0, ph2d_sculpt3d::Porta::Colapso);
         if matches!(
             ph2d_mesh::collapse_in_sphere_com(
                 &mut malha,
@@ -177,8 +180,7 @@ fn diag_em_que_passo() {
             stroke.shrink_with(&remap);
         }
         let apos_colapso = vinco_da_faixa(&malha, &centros, raio).2;
-        let cr =
-            ph2d_sculpt3d::campo_do_pente(alvo, direccao, 0.0, ph2d_sculpt3d::Porta::Refino);
+        let cr = ph2d_sculpt3d::campo_do_pente(alvo, direccao, 0.0, ph2d_sculpt3d::Porta::Refino);
         let _ = ph2d_mesh::refine_in_sphere_sized(
             &mut malha,
             centro,
@@ -450,12 +452,8 @@ fn traco_na_chapa_com(
         let direccao = stroke.direccao_do_traco(centro);
         let forca = if campo { 1.0 } else { 0.0 };
         let alvo_col = ph2d_mesh::collapse_target(alvo);
-        let cc = ph2d_sculpt3d::campo_do_pente(
-            alvo_col,
-            direccao,
-            forca,
-            ph2d_sculpt3d::Porta::Colapso,
-        );
+        let cc =
+            ph2d_sculpt3d::campo_do_pente(alvo_col, direccao, forca, ph2d_sculpt3d::Porta::Colapso);
         if matches!(
             ph2d_mesh::collapse_in_sphere_com(
                 &mut malha,
@@ -471,8 +469,7 @@ fn traco_na_chapa_com(
         ) {
             stroke.shrink_with(&remap);
         }
-        let cr =
-            ph2d_sculpt3d::campo_do_pente(alvo, direccao, forca, ph2d_sculpt3d::Porta::Refino);
+        let cr = ph2d_sculpt3d::campo_do_pente(alvo, direccao, forca, ph2d_sculpt3d::Porta::Refino);
         let _ = ph2d_mesh::refine_in_sphere_sized(
             &mut malha,
             centro,
@@ -618,7 +615,9 @@ fn traco_por_metades_com(
             let queda = |p: [f32; 3]| {
                 let d = [p[0] - centro[0], p[1] - centro[1], p[2] - centro[2]];
                 let r = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
-                brush.falloff.weight(r / brush.radius.max(f32::MIN_POSITIVE))
+                brush
+                    .falloff
+                    .weight(r / brush.radius.max(f32::MIN_POSITIVE))
             };
             if ph2d_quadflow::regiao::arruma_na_grelha(
                 &mut malha,

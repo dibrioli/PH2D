@@ -219,13 +219,12 @@ impl Sculpt3dScene {
             // depois de um remesh, porque o `upload_at` acima derruba a lista
             // exatamente quando a topologia pode ter mudado.
             if self.wireframe {
-                self.renderer
-                    .upload_wire_at(
-                        device,
-                        k,
-                        self.objects[i].stack.mesh(),
-                        self.wire_grade,
-                    );
+                self.renderer.upload_wire_at(
+                    device,
+                    k,
+                    self.objects[i].stack.mesh(),
+                    self.wire_grade,
+                );
             }
             // A testemunha é escrita ao lado da escrita que ela testemunha: uma
             // linha adiante, na mesma função. Duas funções para as duas metades

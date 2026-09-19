@@ -49,6 +49,8 @@ pub const INSP_LIVE_TRIGGER_SECTION: NodeId = hash_node_id("insp_live_trigger_se
 pub const INSP_LIVE_RAY_SECTION: NodeId = hash_node_id("insp_live_ray_section");
 /// O cabeçalho dobrável da secção TWEEN — «esta propriedade vai de A a B» (suplente #22).
 pub const INSP_LIVE_TWEEN_SECTION: NodeId = hash_node_id("insp_live_tween_section");
+/// O cabeçalho dobrável da secção PATH FOLLOW — «anda sobre a curva desenhada» (suplente #23).
+pub const INSP_LIVE_PATHFOLLOW_SECTION: NodeId = hash_node_id("insp_live_pathfollow_section");
 /// A secção LIFECYCLE — o cabeçalho colapsável (TOP-20 #12, W3).
 pub const INSP_LIVE_LIFECYCLE_SECTION: NodeId = hash_node_id("insp_live_lifecycle_section");
 /// ⛔⛔ **Os PONTOS DE COR das três secções novas, e eles nasceram de um DEFEITO MEDIDO.**
@@ -86,6 +88,8 @@ pub const INSP_LIVE_WATCH_COLOR: NodeId = hash_node_id("insp_live_watch_color");
 pub const INSP_LIVE_TRIGGER_COLOR: NodeId = hash_node_id("insp_live_trigger_color");
 /// O ponto de cor da secção TWEEN (suplente #22).
 pub const INSP_LIVE_TWEEN_COLOR: NodeId = hash_node_id("insp_live_tween_color");
+/// O ponto de cor da secção PATH FOLLOW (suplente #23).
+pub const INSP_LIVE_PATHFOLLOW_COLOR: NodeId = hash_node_id("insp_live_pathfollow_color");
 /// O ponto de cor da secção RAY SENSOR.
 pub const INSP_LIVE_RAY_COLOR: NodeId = hash_node_id("insp_live_ray_color");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.

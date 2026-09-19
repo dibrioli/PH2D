@@ -446,6 +446,11 @@ pub(in crate::render_loop) struct DrainOut {
     /// ⭐⭐⭐ As edições da secção TWEEN (suplente #22).
     pub(in crate::render_loop) tween_edits:
         Vec<(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)>,
+    /// ⭐⭐⭐ O SEGUIDOR DE CAMINHO (suplente #23).
+    pub(in crate::render_loop) path_follow_edits: Vec<(
+        u64,
+        ph2d_editor_core::path_follow_edits::PathFollowFieldEdit,
+    )>,
     /// ⭐ As edições do CÉREBRO (TOP-20 #15).
     pub(in crate::render_loop) statemachine_edits: Vec<(
         u64,

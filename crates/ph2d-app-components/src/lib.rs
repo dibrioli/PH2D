@@ -126,6 +126,12 @@ pub mod particles_bridge;
 pub mod particles_inspector;
 /// ⭐⭐⭐ O smoke do EMISSOR DE PARTÍCULAS (TOP-20 #18) — ver o cabeçalho.
 pub mod particles_smoke;
+/// ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — onde o nome vira curva; ver o cabeçalho.
+pub mod path_follow_bridge;
+/// ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — o instantâneo e o dreno da secção.
+pub mod path_follow_inspector;
+/// ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — a pista desenhada e quem a percorre.
+pub mod path_follow_smoke;
 pub mod prefab_stage;
 /// ⭐⭐⭐ **O PROJÉCTIL** (TOP-20 #14) — as duas cenas do dono.
 /// ⭐ O instantâneo e o dreno da secção PROJECTILE MOTION (TOP-20 #14).
@@ -254,6 +260,9 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         // ⭐⭐⭐ O TWEEN (suplente #22): `=1` a galeria dos canais · `=2` a cópia que nasce a
         // meio da corrida. ⚠️ O `max_level` é **contado** no `match` do `montar`.
         r("PH2D_TWEEN_SMOKE", tween_smoke::CENAS),
+        // ⭐⭐⭐ O SEGUIDOR DE CAMINHO (suplente #23): `=1` a pista desenhada, os três que a percorrem
+        // e o CONTROLO que corta pelo meio.
+        r("PH2D_PATHFOLLOW_SMOKE", path_follow_smoke::CENAS),
     ],
 };
 

@@ -116,6 +116,8 @@ pub struct InspectorState {
     pub last_ray_sig: Option<u64>,
     /// A assinatura do último instantâneo do TWEEN semeado (suplente #22).
     pub last_tween_sig: Option<u64>,
+    /// A assinatura do último instantâneo do SEGUIDOR DE CAMINHO semeado (suplente #23).
+    pub last_path_follow_sig: Option<u64>,
 }
 
 thread_local! {

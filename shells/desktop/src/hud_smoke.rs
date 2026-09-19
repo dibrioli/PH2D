@@ -115,15 +115,11 @@ impl crate::App {
         }
     }
 
-    /// Traz o Inspector à frente no encaixe dele, por alguns quadros.
+    /// Traz o Inspector à frente, e no último quadro **confere o dedo** — a cauda que só esta cena
+    /// tem, e que é a razão de ela não ser só a chamada da porta.
     fn hud_smoke_traz_o_inspector(&mut self) {
-        if self.components.smokes.hud_raise == 0 {
-            return;
-        }
-        self.components.smokes.hud_raise -= 1;
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
-        }
+        self.components.smokes.hud_raise =
+            self.levanta_o_inspector(self.components.smokes.hud_raise);
         if self.components.smokes.hud_raise == 0 {
             self.hud_smoke_confere_o_dedo();
         }

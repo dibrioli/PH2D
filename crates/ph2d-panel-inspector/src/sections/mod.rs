@@ -70,6 +70,8 @@ pub(crate) mod lifecycle;
 mod material_blend;
 pub(crate) mod ordering;
 pub(crate) mod particles;
+/// ⭐⭐⭐ **A secção do SEGUIDOR DE CAMINHO** (suplente #23) — ver o cabeçalho.
+pub(crate) mod path_follow;
 mod physics;
 mod physics_area_rows;
 /// A face de CORPO do §11 — as rows de quem tem `RigidBody` + `Collider`.

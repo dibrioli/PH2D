@@ -460,6 +460,51 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.tween.multiple_selected_tween_edits_apply" => {
             "Editing the primary selection only."
         }
+        // ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — o objecto que anda sobre a curva que o
+        // artista desenhou.
+        "panel.inspector.path_follow.path_follow" => "Path Follow",
+        "panel.inspector.path_follow.drawn_shape_name_u" => "Drawn shape name…",
+        "panel.inspector.path_follow.timer_slot" => "Timer Slot",
+        "panel.inspector.path_follow.start_at" => "Start At",
+        // ⚠️ **A unidade NÃO vai no texto** — ela é o chip do campo (`Unit::Degrees`), e há gate
+        // (`no_row_label_carries_its_own_unit`) a prová-lo: dois sítios a dizer a mesma unidade
+        // divergem no dia em que um deles mudar.
+        "panel.inspector.path_follow.angle" => "Angle",
+        "panel.inspector.path_follow.side_offset" => "Side Offset",
+        "panel.inspector.path_follow.face_path" => "Face Path",
+        "panel.inspector.path_follow.cycle" => "Cycle",
+        "panel.inspector.path_follow.curve" => "Curve",
+        "panel.inspector.path_follow.ease" => "Ease",
+        "panel.inspector.path_follow.when_done" => "When Done",
+        // ⭐ O RELÓGIO, dentro da secção — a legenda NOMEIA o timer, porque ele não é privado
+        // deste seguidor.
+        "panel.inspector.path_follow.clock_is_timer" => "Clock — Timer {n}, same as in Timers.",
+        "panel.inspector.path_follow.duration_seconds" => "Duration",
+        "panel.inspector.path_follow.repeat" => "Repeat",
+        "panel.inspector.path_follow.autostart" => "Autostart",
+        // ⚠️ **As CINCO QUEIXAS, e as três primeiras mandam a sítios DIFERENTES** — escrever um
+        // nome, corrigir um nome e apontar a uma forma são três curas.
+        "panel.inspector.path_follow.type_the_name_of_a_drawn_shape" => {
+            "Type the name of a drawn shape for it to walk."
+        }
+        "panel.inspector.path_follow.no_object_in_the_scene_has_that_name" => {
+            "No object in the scene has that name."
+        }
+        "panel.inspector.path_follow.that_object_has_no_drawn_shape" => {
+            "That object has no drawn shape — point it at a curve."
+        }
+        "panel.inspector.path_follow.there_is_no_timer_at_slot_n" => {
+            "There is no Timer at slot {n} — this follower has no clock, so it never moves."
+        }
+        "panel.inspector.path_follow.timer_n_has_no_duration" => {
+            "Timer {n} has no duration — it never fires."
+        }
+        "panel.inspector.path_follow.it_moves_while_the_clock_plays" => {
+            "It moves while the clock plays."
+        }
+        "panel.inspector.path_follow.editing_the_primary_selection_only" => {
+            "Editing the primary selection only."
+        }
         // ph2d-migrar-texto:end
         _ => return None,
     })

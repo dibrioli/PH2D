@@ -132,6 +132,7 @@ pub(super) fn publish(
         inspector_projectile,
         inspector_ray,
         inspector_tween,
+        inspector_path_follow,
         inspector_statemachine,
         inspector_visibility_section,
     } = late(
@@ -183,6 +184,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_projectile(inspector_projectile);
         ph2d_panel_inspector::set_current_inspector_ray(inspector_ray);
         ph2d_panel_inspector::set_current_inspector_tween(inspector_tween);
+        ph2d_panel_inspector::set_current_inspector_path_follow(inspector_path_follow);
         ph2d_panel_inspector::set_current_inspector_statemachine(inspector_statemachine);
         ph2d_panel_inspector::set_current_inspector_tags(inspector_tags);
         // ⭐ **A ÁRVORE DO PROJECTO** — publicada em TODO quadro, com ou sem selecção: ela não é
@@ -235,6 +237,8 @@ struct LateSections {
     /// ⭐⭐⭐ A secção RAY SENSOR (suplente #21).
     inspector_ray: Option<ph2d_editor_core::ray_edits::InspectorRayInfo>,
     inspector_tween: Option<ph2d_editor_core::tween_edits::InspectorTweenInfo>,
+    /// ⭐⭐⭐ A secção PATH FOLLOW (suplente #23).
+    inspector_path_follow: Option<ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo>,
     inspector_statemachine: Option<ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
     inspector_visibility_section: Option<ph2d_editor_core::InspectorVisibilitySectionInfo>,
 }
@@ -370,6 +374,20 @@ fn late(
     let inspector_tween = hero.gizmo.selection.and_then(|b| {
         ph2d_app_components::tween_inspector::build_tween_info(sim.world(), b, selected_count)
     });
+    // ⭐⭐⭐ A secção PATH FOLLOW (suplente #23) — `None` para quem não tem o componente (ADR-0166).
+    //
+    // ⚠️ **Ela pede `world_mut`, e não é distracção:** a queixa precisa de saber se existe um objecto
+    // com aquele nome, e a busca por nome REGISTA o componente de identidade quando o mundo ainda
+    // não o viu — a armadilha que a `tagged` pagou (*«um `try_query` num mundo que nunca viu o
+    // componente responde NINGUÉM à consulta inteira»*).
+    let inspector_path_follow = hero.gizmo.selection.and_then(|b| {
+        ph2d_app_components::path_follow_inspector::build_path_follow_info(
+            sim.world_mut(),
+            b,
+            selected_count,
+            clock_playing,
+        )
+    });
     // ⭐⭐⭐ A secção STATE MACHINE (TOP-20 #15) — `None` para quem não tem o componente (ADR-0166).
     //
     // ⚠️ Ela lê o VIVO (`StateMachineRuntime`) para dizer *«Now: …»*, e é isso que a torna útil com
@@ -401,6 +419,7 @@ fn late(
         inspector_projectile,
         inspector_ray,
         inspector_tween,
+        inspector_path_follow,
         inspector_statemachine,
         inspector_visibility_section,
     }

@@ -535,4 +535,28 @@
 /// ⚠️ **A tripla NÃO vê este degrau** — é a **décima terceira** vez, e por outra razão que as doze
 /// anteriores: ali os tipos eram novos e viajavam em `ComponentBlob`s opacos; aqui o tipo já
 /// viajava e o que mudou foi o **conteúdo** de um blob, que para ela é igualmente opaco.
-pub(crate) const PROJECT_SCHEMA: u32 = 152;
+/// # 152 -> 153 — o SEGUIDOR DE CAMINHO (suplente #23, `line/components`)
+///
+/// **UM** componente registado novo: `ph2d::ecs::PathFollow`. Mesmo mecanismo dos degraus `123`,
+/// `128` e `152` — um tipo registado a mais muda o conjunto que a captura escreve, e o postcard é
+/// posicional.
+///
+/// ⭐⭐⭐ **A razão de ele existir está MEDIDA** (a sonda `mede_o_que_a_composicao_ja_da_ao_caminho`,
+/// e ela mora na crate de FAMÍLIA porque é a única que vê os dois lados): o concorrente — **dois
+/// tweens de pose**, que esta mesma linha acabou de shipar — sai da pista em **`2,000000`** numa
+/// meia circunferência de raio `2` e anda `4,000` dos `6,284` que o artista desenhou. *Um tween é
+/// uma RECTA entre dois valores: ele não sabe que há curva.*
+///
+/// ⛔⛔ **Não há um segundo componente para o estado vivo, e a ausência é a decisão:** tal como o
+/// tween, o seguidor é uma **função pura** do relógio do `Timers` ⇒ **rebobinar já funciona** sem
+/// uma linha nova no `rewind_runtime` e sem uma entrada nova no censo dele.
+///
+/// ⛔ **E a GEOMETRIA não viaja aqui:** o componente guarda o **NOME** da forma (a lei do
+/// `stable_name_id`), porque o `ph2d-ecs` não vê o `ph2d-vec-scene` — medido no bloco (B) da mesma
+/// sonda, e é a doutrina do `VecPathRef` (*«não põe geometria no ECS»*).
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v152 não
+/// tem o componente, logo lê-se inteiro por este binário.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima quarta** vez.
+pub(crate) const PROJECT_SCHEMA: u32 = 153;

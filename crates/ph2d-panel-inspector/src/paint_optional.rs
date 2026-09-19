@@ -372,9 +372,10 @@ pub(crate) fn paint_optional_sections(
         header_h,
         snaps.factory_info.as_ref(),
     );
-    // ⚠️ **`y = `, e a razão é o gate `two_sections_never_stack`**: uma chamada cujo `y` se deita
-    // fora empilha a secção seguinte por cima dela.
-    y = crate::paint_optional_factory::paint_topdown_section(
+    // ⭐⭐⭐ **AS TRÊS DA FAMÍLIA MOVIMENTO, numa porta só** — o mover de vista de cima, o
+    // projéctil e o seguidor de caminho. ⚠️ **`y = `**: uma chamada cujo `y` se deita fora empilha
+    // a secção seguinte por cima dela.
+    y = crate::paint_optional_movers::paint_movers(
         scene,
         text_system,
         theme,
@@ -386,23 +387,7 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        snaps.topdown_info.as_ref(),
-    );
-    // ⚠️ **`y = ` outra vez** — ver a nota acima: uma chamada cujo `y` se deita fora empilha a
-    // secção seguinte por cima dela.
-    y = crate::paint_optional_factory::paint_projectile_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        header_h,
-        snaps.projectile_info.as_ref(),
+        snaps,
     );
     // ⭐⭐⭐ E o RAIO (suplente #21) — `y = ` outra vez, pela nota acima.
     y = crate::paint_optional_top20::paint_ray_section(

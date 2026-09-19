@@ -193,7 +193,11 @@ fn register_ecs_components_populates_registry() {
     // ⚠️ **2026-09-18: `97` -> `98`, delta +1** -- o `SignalOnAction` (suplente #24): a mao de
     //   quem joga passou a ser o 14.o produtor de sinal. Quem integrar conta o DELTA, nunca o
     //   literal.
-    assert_eq!(reg.len(), 99);
+    // ⚠️ **2026-09-19: `99` -> `100`, delta +1** -- o `PathFollow` (suplente #23): o objecto que
+    //   anda sobre a curva desenhada. ⛔ **UM só**, e a ausência de um runtime ao lado dele é a
+    //   lei da wave (ele é função pura do relógio do `Timers`). Quem integrar conta o DELTA.
+    assert_eq!(reg.len(), 100);
+    assert!(reg.get_by_name("ph2d::ecs::PathFollow").is_some());
     assert!(reg.get_by_name("ph2d::ecs::Tags").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SignalOnAction").is_some());
     assert!(reg.get_by_name("ph2d::ecs::Sculpt3dPieceRef").is_some());

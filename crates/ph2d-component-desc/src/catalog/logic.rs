@@ -132,6 +132,27 @@ const FACTORY_FIELDS: &[FieldDesc] = &[
     f(12, "component.field.factory_fields.12", K::Seed),
 ];
 
+/// ⭐⭐⭐ **O que o SEGUIDOR DE CAMINHO guarda** (suplente #23) — e o primeiro campo decide tudo.
+///
+/// ⚠️ **`Path` é o NOME da forma desenhada**, não um id nem um caminho de ficheiro: é a lei do
+/// `stable_name_id` desta casa, e é o que faz renomear a curva na Hierarquia levar o seguidor com
+/// ela. ⛔ A GEOMETRIA não é campo nenhum — ela vive no documento vectorial, e o `ph2d-ecs` nem o
+/// vê (medido).
+///
+/// ⛔ **Não há campo de DURAÇÃO**, pela mesma razão do tween e da fábrica: o tempo vem do `Timers`.
+const PATH_FOLLOW_FIELDS: &[FieldDesc] = &[
+    f(1, "Path", K::Text),
+    f(2, "Timer", K::Scalar),
+    f(3, "Cycle", K::Enum),
+    f(4, "Curve", K::Enum),
+    f(5, "Ease", K::Enum),
+    f(6, "When Done", K::Enum),
+    f(7, "Start At", K::Scalar),
+    f(8, "Face Path", K::Toggle),
+    f(9, "Angle", K::Angle),
+    f(10, "Side", K::Scalar),
+];
+
 /// **Os campos de UM tween** (suplente #22) — como o `Timers`, o componente é uma LISTA e isto
 /// descreve UM elemento dela.
 ///
@@ -227,6 +248,23 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         LIFETIME_FIELDS,
+    ),
+    // ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — este objecto anda sobre a curva desenhada.
+    //
+    // ⚠️ **DEPOIS do `Lifetime` e ANTES do `SequencePlayer`:** a lista é procurada por busca
+    // binária, e fora de ordem o descritor devolve `None` para um tipo que existe.
+    //
+    // ⭐ **`requires` os `Timers`**, como o tween e a cutscene: sem relógio ele não é meia feature,
+    // é uma feature **INERTE**, e a paleta sabe dizê-lo antes de o artista descobrir.
+    //
+    // ⚠️ `O::ANY` pela razão do tween: um objecto vazio que seja o pai de um grupo também patrulha.
+    D::authored_requiring(
+        "ph2d::ecs::PathFollow",
+        "Path Follow",
+        C::Logic,
+        O::ANY,
+        PATH_FOLLOW_FIELDS,
+        &["ph2d::ecs::Timers"],
     ),
     // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — este objecto toca um container da timeline.
     //

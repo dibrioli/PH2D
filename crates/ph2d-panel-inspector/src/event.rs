@@ -75,6 +75,11 @@ pub(crate) fn apply_event(
     if crate::event_tween::apply_tween_event(host, ev, &mut state.tween_selected) {
         return EventOutcome::Consumed;
     }
+    // ⭐⭐⭐ O SEGUIDOR DE CAMINHO (suplente #23) — sem estado de painel: o componente é ÚNICO por
+    // entidade, logo não há linha aberta a lembrar.
+    if crate::event_path_follow::apply_path_follow_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     // ⭐⭐⭐ O HUD (TOP-20 #20) — sem estado de painel: um objecto tem UM de cada.
     if crate::event_hud::apply_hud_event(host, ev) {
         return EventOutcome::Consumed;

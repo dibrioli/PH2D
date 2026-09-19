@@ -592,6 +592,11 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // funciona sem uma linha nova no `rewind_runtime`. *O precedente é o emissor de partículas
     // (#18), que mediu o mesmo para si próprio.*
     reg.register_default::<crate::Tweens>("ph2d::ecs::Tweens");
+    // ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — irmão do `Tweens` e pela mesma lei: ele é
+    // uma FUNÇÃO PURA do relógio do `Timers`, logo **não há runtime para registar** e rebobinar já
+    // funciona. ⚠️ Ele é ÚNICO por entidade (um objecto tem uma posição), e a geometria que ele
+    // percorre **não** viaja aqui: o que viaja é o NOME da forma.
+    reg.register_default::<crate::PathFollow>("ph2d::ecs::PathFollow");
     // ⭐⭐⭐ **A tabela nome → acção** (TOP-20 #5) — irmã do `Timers` na família LÓGICA, e o
     // consumidor que faltava aos sinais. ⚠️ Ela é CONFIG inteira: o que ela guarda é o que o
     // artista escreveu, e o efeito de uma acção vive no componente que ela toca.

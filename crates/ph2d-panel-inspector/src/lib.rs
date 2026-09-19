@@ -35,6 +35,7 @@ mod event_joint;
 mod event_ordering;
 /// ⭐ O despacho da secção PARTICLES — irmão do `event` por CAP de função.
 mod event_particles;
+mod event_path_follow;
 mod event_physics;
 mod event_player;
 mod event_precision;
@@ -69,6 +70,7 @@ mod paint_head;
 /// ⭐ **As TRÊS seções com ESTADO DE PAINEL** — irmã do `paint_frame_shared` pelo teto de 600.
 mod paint_optional;
 mod paint_optional_factory;
+mod paint_optional_movers;
 /// ⭐⭐ A CAUDA da cadeia de secções — as quatro da fila do TOP-20; irmã pelo tecto de FUNÇÃO.
 mod paint_optional_top20;
 mod paint_optional_top20_tail;
@@ -88,6 +90,7 @@ mod populate_hud;
 /// ⭐⭐ O registo do CARTÃO de instância — irmão por assunto, ver o cabeçalho de lá.
 mod populate_instance;
 mod populate_particles;
+mod populate_path_follow;
 mod populate_physics;
 mod populate_player;
 mod populate_projectile;
@@ -122,6 +125,7 @@ mod sync_counter_watch;
 mod sync_hud;
 /// ⭐ A semente da secção PARTICLES — irmã do `sync_sections` por CAP de ficheiro.
 mod sync_particles;
+mod sync_path_follow;
 mod sync_physics;
 /// ⭐⭐⭐ A semente da secção RAY SENSOR (suplente #21) — ver o cabeçalho dela.
 mod sync_ray;
@@ -227,9 +231,10 @@ pub use state_components::{
     set_current_inspector_action, set_current_inspector_action_trigger,
     set_current_inspector_audio, set_current_inspector_camera, set_current_inspector_counter_watch,
     set_current_inspector_factory, set_current_inspector_hud, set_current_inspector_particles,
-    set_current_inspector_projectile, set_current_inspector_ray, set_current_inspector_script,
-    set_current_inspector_sequence, set_current_inspector_statemachine,
-    set_current_inspector_timer, set_current_inspector_topdown, set_current_inspector_tween,
+    set_current_inspector_path_follow, set_current_inspector_projectile, set_current_inspector_ray,
+    set_current_inspector_script, set_current_inspector_sequence,
+    set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
+    set_current_inspector_tween,
 };
 
 /// ⭐ **As opções que a caixa de escolha da secção TAGS oferece**, para o gate as poder LER.

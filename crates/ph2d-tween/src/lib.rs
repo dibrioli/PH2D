@@ -52,13 +52,21 @@
 //! assert_eq!(valor(&r, Relogio::ACABOU), None);
 //! ```
 
-use ph2d_anim::{Easing, EasingFamily, EasingMode};
+use ph2d_anim::{EasingFamily, EasingMode};
 use serde::{Deserialize, Serialize};
 
 mod canal;
 pub use canal::Canal;
 mod preset;
 pub use preset::Preset;
+
+/// **As curvas, re-exportadas** — a mesma razão que o [`Canal`] tem de viver aqui.
+///
+/// ⚠️ Ela existe porque o `ph2d-ecs` declara componentes que **nomeiam** uma curva (os
+/// [`Tween`] viajam dentro de um, e desde o suplente #23 o `PathFollow` tem um campo próprio), e a
+/// `ph2d-anim` é **dev-dependency** dele: sem esta linha o único caminho seria acrescentá-la ao
+/// produto da fundação, que é uma aresta nova na árvore por causa de um NOME.
+pub use ph2d_anim::Easing;
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]
@@ -327,10 +335,38 @@ impl Relogio {
 /// que não fecha.
 #[must_use]
 pub fn valor(t: &Tween, relogio: Relogio) -> Option<[f32; 4]> {
+    Some(mistura(
+        t,
+        andamento(relogio, t.ciclo, t.easing, t.ao_acabar)?,
+    ))
+}
+
+/// ⭐⭐⭐ **O ANDAMENTO — quanto do percurso já passou, `0..=1`.** `None` = o motor não escreve.
+///
+/// # Por que ela é uma porta, e não o miolo do [`valor`]
+///
+/// Ela **era** o miolo dele. O suplente #23 (`PathFollow`) faz a MESMA pergunta ao mesmo relógio —
+/// *«onde é que este tique cai no percurso?»* — e a resposta dele não é um valor entre dois: é uma
+/// posição de arco sobre uma curva desenhada. Escrita duas vezes, a lei divergiria no dia em que
+/// uma das duas ganhasse um cuidado (o `acabou`, a dobra, a ordem entre a dobra e a curva) e a
+/// outra não — a forma que este repositório já pagou uma dúzia de vezes.
+///
+/// ⭐ **A extracção é byte-idêntica por construção:** o [`valor`] passa a ser esta função mais a
+/// [`mistura`], e nem uma operação mudou de ordem.
+///
+/// ⚠️ **A DOBRA vem ANTES da curva** — ver [`Ciclo`]. Com [`Ciclo::Reinicia`] ela devolve `u` ao
+/// bit, logo esse caminho é indistinguível do que shipava antes de o campo existir.
+#[must_use]
+pub fn andamento(
+    relogio: Relogio,
+    ciclo: Ciclo,
+    easing: Easing,
+    ao_acabar: AoAcabar,
+) -> Option<f64> {
     let u = if relogio.a_correr {
         f64::from(relogio.progresso.clamp(0.0, 1.0))
     } else if relogio.acabou {
-        match t.ao_acabar {
+        match ao_acabar {
             AoAcabar::Hold => 1.0,
             AoAcabar::Rewind => return None,
         }
@@ -339,9 +375,7 @@ pub fn valor(t: &Tween, relogio: Relogio) -> Option<[f32; 4]> {
     } else {
         return None;
     };
-    // ⭐⭐⭐ **A DOBRA vem ANTES da curva** — ver [`Ciclo`]. Com `Ciclo::Reinicia` ela devolve `u` ao
-    // bit, logo este caminho é indistinguível do que shipava antes de o campo existir.
-    Some(mistura(t, t.easing.eval(t.ciclo.dobra(u))))
+    Some(easing.eval(ciclo.dobra(u)))
 }
 
 /// A mistura crua, dado o `k` que a curva devolveu.

@@ -155,7 +155,8 @@ impl crate::App {
             return;
         }
         if self.components.smokes.sequence {
-            self.sequence_smoke_traz_o_inspector();
+            self.components.smokes.sequence_raise =
+                self.levanta_o_inspector(self.components.smokes.sequence_raise);
             self.sequence_smoke_confere();
             return;
         }
@@ -257,21 +258,6 @@ impl crate::App {
         self.playhead.rewind();
         self.playhead.play();
         self.sequence_smoke_anuncia();
-    }
-
-    /// Traz o Inspector à frente no encaixe dele, por alguns quadros.
-    ///
-    /// ⚠️ **Não basta uma vez:** o `reconcile_z` acrescenta os painéis em falta no início de cada
-    /// quadro, logo um `bump` feito no quadro da montagem fica **por baixo** deles (medido na foto
-    /// do emissor).
-    fn sequence_smoke_traz_o_inspector(&mut self) {
-        if self.components.smokes.sequence_raise == 0 {
-            return;
-        }
-        self.components.smokes.sequence_raise -= 1;
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
-        }
     }
 
     /// A linha que o doc manda procurar — uma cena que monta em silêncio é uma cena que o smoke

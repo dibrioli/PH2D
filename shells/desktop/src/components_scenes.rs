@@ -32,6 +32,29 @@ use ph2d_app_components::scene_ctx::SceneCtx;
 pub(crate) const LEVANTA_O_INSPECTOR: u8 = 3;
 
 impl crate::App {
+    /// ⭐⭐⭐ **Traz o Inspector à FRENTE no encaixe, e conta o quadro** — devolve quantos faltam.
+    ///
+    /// ⚠️⚠️ **Ela existe porque a MESMA função estava escrita NOVE vezes**, em cinco ficheiros da
+    /// shell (o raio · o tween · o gatilho · o golpe · o seguidor · as partículas · a cutscene · a
+    /// vigia · o HUD) — nove cópias de nove linhas, cada uma a ler o contador dela. *Uma lei escrita
+    /// em dois sítios ainda não é uma lei; só uma PORTA é.*
+    ///
+    /// ⛔ **O corte foi imposto pela catraca `the_shell_only_shrinks`** e é o certo por
+    /// responsabilidade: *«a cura é MOVER ou CORTAR, nunca subir o número»*.
+    ///
+    /// ⚠️ **`visível` e `à frente` são DUAS perguntas**, e o `panel_visibility` só responde à
+    /// primeira — é por isso que isto existe e insiste por [`LEVANTA_O_INSPECTOR`] quadros: o
+    /// `reconcile_z` acrescenta os painéis em falta no início de cada quadro, logo um `bump` feito
+    /// no quadro do arranque fica **por baixo** do que ele acrescenta a seguir.
+    pub(crate) fn levanta_o_inspector(&mut self, quadros: u8) -> u8 {
+        if quadros == 0 {
+            return 0;
+        }
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
+        }
+        quadros - 1
+    }
     /// Empresta à família o que uma cena dela toca.
     ///
     /// ⚠️ **Os quatro primeiros campos são do `AppGfx` e os outros da `App`** — campos disjuntos,
@@ -393,7 +416,8 @@ impl crate::App {
     /// para explicar. ⚠️ A `=2` precisa TAMBÉM da física (os dois voos são projécteis).
     pub(crate) fn particles_smoke(&mut self) {
         if self.components.smokes.particles {
-            self.particles_smoke_traz_o_inspector();
+            self.components.smokes.particles_raise =
+                self.levanta_o_inspector(self.components.smokes.particles_raise);
             return;
         }
         let Some(v) = std::env::var_os("PH2D_PARTICLES_SMOKE") else {
@@ -424,17 +448,6 @@ impl crate::App {
         self.components.smokes.particles_raise = 3;
         self.playhead.rewind();
         self.playhead.play();
-    }
-
-    /// Traz o Inspector à frente no encaixe dele, por alguns quadros. Ver `particles_raise`.
-    fn particles_smoke_traz_o_inspector(&mut self) {
-        if self.components.smokes.particles_raise == 0 {
-            return;
-        }
-        self.components.smokes.particles_raise -= 1;
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
-        }
     }
 
     /// Prólogo do quadro, uma vez. No-op sem a env.

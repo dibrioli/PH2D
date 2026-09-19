@@ -115,12 +115,13 @@ pub use state_machine::{
 pub mod counter;
 pub mod counter_watch;
 pub mod hud;
+/// ⭐ **O TWEEN** (suplente #22) — «esta propriedade vai de A a B», no relógio do `Timer`.
+pub mod path_follow;
 pub mod tags;
 pub mod timer;
 pub mod transform;
 pub mod transform_inverse;
 pub mod transform_versioned;
-/// ⭐ **O TWEEN** (suplente #22) — «esta propriedade vai de A a B», no relógio do `Timer`.
 pub mod tween;
 
 pub use crate::transform_inverse::{
@@ -175,6 +176,7 @@ pub use named_anchor::{
     DICT_MAX_KEYS, NamedAnchor, NamedAnchorList, SortedSmallVec, validate_anchor_name,
 };
 pub use painted_doc::PaintedDoc;
+pub use path_follow::{PathFollow, Percurso};
 pub use present::{PresentComponent, PresentWorld};
 pub use root_order::{RootOrder, assign_missing_root_order};
 pub use sampling::{

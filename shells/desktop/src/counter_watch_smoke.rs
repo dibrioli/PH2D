@@ -20,7 +20,8 @@ impl crate::App {
             return;
         }
         if self.components.smokes.counter_watch {
-            self.counter_watch_smoke_traz_o_inspector();
+            self.components.smokes.counter_watch_raise =
+                self.levanta_o_inspector(self.components.smokes.counter_watch_raise);
             self.counter_watch_smoke_confere();
             return;
         }
@@ -76,17 +77,6 @@ impl crate::App {
             "[counterwatch-smoke] heroi={heroi:?} controlo={controlo:?} — a conferir durante \
              {AMOSTRAS} quadros…"
         );
-    }
-
-    /// Traz o Inspector à frente por alguns quadros — ver o irmão da cutscene.
-    fn counter_watch_smoke_traz_o_inspector(&mut self) {
-        if self.components.smokes.counter_watch_raise == 0 {
-            return;
-        }
-        self.components.smokes.counter_watch_raise -= 1;
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
-        }
     }
 
     /// ⭐⭐⭐ **A cena confere-se a si mesma: o herói SUMIU e o controlo NÃO** — e os dois chegaram

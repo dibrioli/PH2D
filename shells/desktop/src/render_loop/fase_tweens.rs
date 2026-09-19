@@ -24,10 +24,23 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let n =
-            ph2d_app_components::tween_bridge::drive_tweens(&mut gfx.sim, &mut self.preview_drive);
+        // ⭐⭐⭐ **LER a curva primeiro, ESCREVER depois — e num passe só** (suplente #23). A ponte do
+        // caminho não toca no mundo: ela devolve o que os seguidores pedem, já em MUNDO, e quem
+        // escreve é o passe do tween, que **já fotografa a pose uma vez por entidade**. ⛔ Um
+        // segundo passe leria a pré-visualização do tween como se fosse o documento — a chave do
+        // ledger é `(entidade, driver)`, e o cabeçalho do `tween_bridge` descreve o defeito.
+        let caminhos =
+            ph2d_app_components::path_follow_bridge::a_escrever(&mut gfx.sim, &gfx.vec_scene);
+        let n = ph2d_app_components::tween_bridge::drive_tweens(
+            &mut gfx.sim,
+            &mut self.preview_drive,
+            &caminhos,
+        );
         if n > 0 && std::env::var_os("PH2D_TWEEN_LOG").is_some() {
-            eprintln!("[tween] {n} escrita(s) neste quadro");
+            eprintln!(
+                "[tween] {n} escrita(s) neste quadro ({} de caminho)",
+                caminhos.len()
+            );
         }
     }
 }

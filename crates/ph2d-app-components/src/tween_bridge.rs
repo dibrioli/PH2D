@@ -38,13 +38,21 @@ struct Antes {
 ///
 /// ⚠️ **Zero custo quando não há nenhum:** a lista vem vazia e a função devolve `0` antes de tirar
 /// censo nenhum, que é o caso de toda cena que já existe.
-pub fn drive_tweens(sim: &mut SimWorld, drive: &mut PreviewDrive) -> usize {
+pub fn drive_tweens(
+    sim: &mut SimWorld,
+    drive: &mut PreviewDrive,
+    caminhos: &[crate::path_follow_bridge::PoseDeCaminho],
+) -> usize {
     let pedidos = ph2d_ecs::tween::a_escrever(sim.world_mut());
 
     // ⚠️ **As entidades ainda conduzidas entram no censo mesmo sem pedido neste quadro** — é a
     // linha do meio da tabela do ledger: um motor que continua a conduzir e cujo valor não mudou
     // não pode deixar a pré-visualização voltar a ser documento.
-    let mut alvos: Vec<Entity> = pedidos.iter().map(|p| p.entity).collect();
+    let mut alvos: Vec<Entity> = pedidos
+        .iter()
+        .map(|p| p.entity)
+        .chain(caminhos.iter().map(|c| c.entity))
+        .collect();
     alvos.sort_unstable();
     alvos.dedup();
     if alvos.is_empty() {
@@ -73,11 +81,50 @@ pub fn drive_tweens(sim: &mut SimWorld, drive: &mut PreviewDrive) -> usize {
             n += 1;
         }
     }
+    // ⭐⭐⭐ **O SEGUIDOR DE CAMINHO escreve AQUI, e não num passe próprio** (suplente #23): a
+    // fotografia do ANTES já foi tirada acima, e a declaração ao ledger vem abaixo — *uma pose,
+    // um censo*. Um segundo passe leria a saída do tween como se fosse o documento.
+    for c in caminhos {
+        if pousa_no_caminho(sim, c) {
+            n += 1;
+        }
+    }
 
     for (e, era) in antes {
         declara(sim, drive, e, era);
     }
     n
+}
+
+/// Põe uma entidade **onde a curva manda**, convertendo o mundo para o referencial do pai dela.
+///
+/// ⚠️⚠️ **A conversão é obrigatória e não é cosmética:** a curva vive em MUNDO (a ponte já compôs
+/// a cadeia de pais da forma) e o `Transform` de uma entidade é **LOCAL**. Escrever mundo num local
+/// põe um seguidor com pai ao lado da pista, deslocado exactamente pela pose do pai.
+///
+/// ⚠️ **A ESCALA não se toca** — ela é do artista; o que este motor conduz é *onde* e *para onde*.
+fn pousa_no_caminho(sim: &mut SimWorld, c: &crate::path_follow_bridge::PoseDeCaminho) -> bool {
+    let pai = ph2d_ecs::parent_world_transform(sim.world(), c.entity);
+    let Some(local) = sim.world().get::<Transform>(c.entity).copied() else {
+        return false;
+    };
+    let mut alvo = Transform::compose(pai, local);
+    alvo.translation.x = c.mundo[0];
+    alvo.translation.y = c.mundo[1];
+    if let Some(a) = c.angulo {
+        alvo.rotation = a;
+    }
+    let Some(novo) = Transform::inverse_compose(pai, alvo) else {
+        return false;
+    };
+    let Some(mut t) = sim.world_mut().get_mut::<Transform>(c.entity) else {
+        return false;
+    };
+    t.translation = novo.translation;
+    if c.angulo.is_some() {
+        t.rotation = novo.rotation;
+    }
+    true
 }
 
 /// Escreve UMA pedida. `false` = a entidade não tem o componente que o canal endereça — e isso é um

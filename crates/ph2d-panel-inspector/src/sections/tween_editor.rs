@@ -103,7 +103,7 @@ const fn chave_da_queixa(q: TweenQueixa) -> &'static str {
 
 /// **Uma fileira de chips**, de `ids[de..ate]`. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
-fn fileira(
+pub(super) fn fileira(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -147,8 +147,13 @@ fn fileira(
 }
 
 /// **Um grupo de chips com rótulo**, partido em fileiras de [`CHIPS_POR_FILEIRA`].
+///
+/// ⭐⭐ **`pub(super)` desde o suplente #23**: a secção PATH FOLLOW faz a MESMA pergunta (quatro
+/// grupos de chips, com a selecção vinda do snapshot) e uma segunda cópia divergiria no dia em que
+/// uma das duas ganhasse um cuidado — a medida da largura, a saturação, o realce. *Uma lei escrita
+/// em dois sítios ainda não é uma lei.*
 #[allow(clippy::too_many_arguments)]
-fn grupo(
+pub(super) fn grupo(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,

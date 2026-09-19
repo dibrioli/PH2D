@@ -95,7 +95,9 @@ mod tests {
         //   foi CONTADO -- o gate imprimiu `left: 86`.
         // ⚠️ **2026-09-13: `86` -> `87`, delta +1** -- o `Tags` que a `line/components` registou no
         //   ECS (TOP-20 #9). Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 100);
+        // ⚠️ **2026-09-19: `100` -> `101`, delta +1** -- o `PathFollow` (suplente #23), registado no
+        //   ECS. Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 101);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

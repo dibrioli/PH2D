@@ -40,6 +40,10 @@ pub(super) fn aplicar(
     projectile: &[(u64, ph2d_editor_core::projectile_edits::ProjectileFieldEdit)],
     ray: &[(u64, ph2d_editor_core::ray_edits::RayFieldEdit)],
     tween: &[(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)],
+    path_follow: &[(
+        u64,
+        ph2d_editor_core::path_follow_edits::PathFollowFieldEdit,
+    )],
     statemachine: &[(
         u64,
         ph2d_editor_core::statemachine_edits::StateMachineFieldEdit,
@@ -50,6 +54,7 @@ pub(super) fn aplicar(
         | super::projectile_commits::aplicar(sim, projectile)
         | ph2d_app_components::ray_inspector::apply_all(sim, ray)
         | ph2d_app_components::tween_inspector::apply_all(sim, tween)
+        | ph2d_app_components::path_follow_inspector::apply_all(sim, path_follow)
         | super::statemachine_commits::aplicar(sim, statemachine)
         | super::script_commits::aplicar(sim, script)
         | ph2d_app_components::particles_inspector::apply_all(sim, particles)

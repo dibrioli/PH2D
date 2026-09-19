@@ -81,6 +81,7 @@ pub(crate) fn sync_new_sections(
     // `Reach 1 m` sobre um olho autorado a `(1, 0)` com alcance `6`, e quem a apanhou foi uma FOTO.
     crate::sync_ray::sync(host, inspector_state, entity_changed);
     crate::sync_tween::sync(host, inspector_state, entity_changed);
+    crate::sync_path_follow::sync(host, inspector_state, entity_changed);
     // ⭐⭐⭐ **A VIGIA DO CONTADOR** — no irmão, pelo mesmo tecto. ⛔ Esta linha FALTAVA: a secção
     // shipou com o editor a mostrar os valores de fábrica do `populate` sobre uma regra escolhida,
     // e quem a apanhou foi uma FOTO (o cabeçalho do irmão tem o mecanismo).

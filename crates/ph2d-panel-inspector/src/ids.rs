@@ -64,6 +64,9 @@ mod inspector_timer;
 pub use inspector_timer::*;
 mod inspector_tween;
 pub use inspector_tween::*;
+/// ⭐⭐⭐ **Os ids do SEGUIDOR DE CAMINHO** (suplente #23) — ver o cabeçalho.
+mod inspector_path_follow;
+pub use inspector_path_follow::*;
 mod menus;
 pub use menus::*;
 mod inspector_physics_body;

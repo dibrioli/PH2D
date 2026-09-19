@@ -141,6 +141,8 @@ pub mod factory_edits;
 /// ⭐⭐⭐ **O vocabulário da secção HUD** (TOP-20 #20).
 pub mod hud_edits;
 pub mod particles_edits;
+/// ⭐⭐⭐ **O vocabulário do SEGUIDOR DE CAMINHO** (suplente #23) — ver o cabeçalho dele.
+pub mod path_follow_edits;
 /// ⭐⭐⭐ **O vocabulário do MOVER DE VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
 pub mod projectile_edits;
 /// ⭐⭐⭐ **O vocabulário do RAIO** (suplente #21) — ver o cabeçalho dele.

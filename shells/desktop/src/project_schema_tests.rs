@@ -188,7 +188,11 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⛔ **ZERO componentes novos**: é um CAMPO novo no `ph2d_tween::Tween`, que já viajava.
         // ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA TERCEIRA vez, e por OUTRA razão que as
         // doze anteriores: ali o tipo era novo, aqui o que mudou foi o CONTEÚDO de um blob.
-        (152, 13, 22),
+        // ⭐ **PROJECT 152→153** (2026-09-19): O SEGUIDOR DE CAMINHO (suplente #23) — **UM**
+        // componente novo no registo (`PathFollow`), e ⛔ **nenhum runtime ao lado dele** nem
+        // geometria dentro dele: o que viaja é o NOME da forma desenhada.
+        // ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA QUARTA vez, e pela razão de sempre.
+        (153, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

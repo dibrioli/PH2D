@@ -695,6 +695,15 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
     // `600`) — a SEXTA vez que este ficheiro regista a mesma forma, e a primeira em que a cauda
     // ganhou uma cauda. ⚠️ **A isenção é MEDIDA**: zero ocorrências de `NodeId`, `hit_index.` ou
     // `register(`.
+    // ⭐ **Nasceu em 2026-09-19 do corte que a secção PATH FOLLOW impôs ao `paint_optional_factory`**
+    // (`611` de `600`) — a SÉTIMA vez que este ficheiro regista a mesma forma. ⭐⭐ E o corte foi por
+    // RESPONSABILIDADE e não por tamanho: a família MOVIMENTO já estava **declarada por escrito** na
+    // tabela `LIVE_SECTIONS` (*«a 24.ª — TOP-DOWN PLAYER, a primeira da família MOVIMENTO»*).
+    // ⚠️ **A isenção é MEDIDA**: zero ocorrências de `NodeId`, `hit_index.` ou `register(`.
+    (
+        "ph2d-panel-inspector/src/paint_optional_movers.rs",
+        "as TRES MOLDURAS da familia MOVIMENTO (mover de vista de cima, projectil, seguidor de caminho); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
+    ),
     (
         "ph2d-panel-inspector/src/paint_optional_top20_tail.rs",
         "a cauda da CAUDA — a moldura da seccao TWEEN, cortada do irmao pelo teto de ficheiro de painel; nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",

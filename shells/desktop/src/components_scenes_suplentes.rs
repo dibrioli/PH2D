@@ -40,7 +40,8 @@ impl crate::App {
     /// (`CLAUDE.md` §5.0).
     pub(crate) fn trigger_smoke(&mut self) {
         if self.components.smokes.trigger {
-            self.trigger_smoke_traz_o_inspector();
+            self.components.smokes.trigger_raise =
+                self.levanta_o_inspector(self.components.smokes.trigger_raise);
             return;
         }
         if std::env::var_os("PH2D_TRIGGER_SMOKE").is_none() {
@@ -102,7 +103,8 @@ impl crate::App {
     /// corrida nem os alvos nascem nem o `Q` dispara.
     pub(crate) fn dano_smoke(&mut self) {
         if self.components.smokes.dano {
-            self.dano_smoke_traz_o_inspector();
+            self.components.smokes.dano_raise =
+                self.levanta_o_inspector(self.components.smokes.dano_raise);
             return;
         }
         if std::env::var_os("PH2D_DANO_SMOKE").is_none() {
@@ -162,7 +164,8 @@ impl crate::App {
         if self.components.smokes.ray {
             // ⚠️ **A ordem dos dois guardas é a lei**: a cena monta-se uma vez e o Inspector tem de
             // subir em VÁRIOS quadros, logo a saída antecipada não pode ser a primeira.
-            self.ray_smoke_traz_o_inspector();
+            self.components.smokes.ray_raise =
+                self.levanta_o_inspector(self.components.smokes.ray_raise);
             return;
         }
         let Some(cx) = self.components_ctx() else {
@@ -196,17 +199,6 @@ impl crate::App {
         self.playhead.play();
     }
 
-    /// Traz o Inspector à frente por alguns quadros — ver o irmão da vigia do contador.
-    pub(crate) fn ray_smoke_traz_o_inspector(&mut self) {
-        if self.components.smokes.ray_raise == 0 {
-            return;
-        }
-        self.components.smokes.ray_raise -= 1;
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
-        }
-    }
-
     /// ⭐⭐⭐ **O TWEEN** (suplente #22) — `PH2D_TWEEN_SMOKE=1|2`. Prólogo do quadro, uma vez.
     ///
     /// ⚠️⚠️ **As duas metades do prólogo são obrigatórias, e cada uma por uma razão medida:**
@@ -223,7 +215,8 @@ impl crate::App {
     /// repositório** (`~/.ph2d/layout.txt`) — sem isto a cena depende do que ficou aberto ontem.
     pub(crate) fn tween_smoke(&mut self) {
         if self.components.smokes.tween {
-            self.tween_smoke_traz_o_inspector();
+            self.components.smokes.tween_raise =
+                self.levanta_o_inspector(self.components.smokes.tween_raise);
             return;
         }
         let Some(v) = std::env::var_os("PH2D_TWEEN_SMOKE") else {
@@ -252,40 +245,50 @@ impl crate::App {
         self.playhead.play();
     }
 
-    /// Traz o Inspector à frente no encaixe dele, por alguns quadros. Ver `tween_raise`.
-    fn tween_smoke_traz_o_inspector(&mut self) {
-        if self.components.smokes.tween_raise == 0 {
+    /// ⭐⭐⭐ **A cena do SEGUIDOR DE CAMINHO** (suplente #23) — `PH2D_PATHFOLLOW_SMOKE=1`.
+    ///
+    /// ⚠️ **Ela precisa de mais do que o mundo**, ao contrário da irmã do tween: a pista é uma
+    /// FORMA DESENHADA, logo a cena escreve na `VecScene` e adopta a entidade dela pelo mesmo passe
+    /// que o editor vectorial corre. É por isso que ela recebe o `SceneCtx` inteiro.
+    ///
+    /// ⛔ **E o relógio TEM de andar** (`simulate_physics` + `play`): o seguidor é uma função pura
+    /// do `Timer`, que avança no passo fixo — com o transporte parado a cena abre com quatro
+    /// quadrados imóveis, e o dono lê *«o seguidor não funciona»* sobre um componente que está
+    /// certo. *A espécie que o §5.0 chama de pior que uma cena ausente.*
+    pub(crate) fn path_follow_smoke(&mut self) {
+        if self.components.smokes.path_follow {
+            self.components.smokes.path_follow_raise =
+                self.levanta_o_inspector(self.components.smokes.path_follow_raise);
             return;
         }
-        self.components.smokes.tween_raise -= 1;
+        let Some(v) = std::env::var_os("PH2D_PATHFOLLOW_SMOKE") else {
+            return;
+        };
+        let nivel = v.to_str().and_then(|s| s.parse().ok()).unwrap_or(1);
+        let Some(mut cx) = self.components_ctx() else {
+            return;
+        };
+        let montada = ph2d_app_components::path_follow_smoke::montar(&mut cx, nivel);
+        self.components.smokes.path_follow = true;
+        let Some(montada) = montada else {
+            return;
+        };
+        ph2d_app_components::path_follow_smoke::anuncia();
+        self.timeline.flags.simulate_physics = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
+            hero.panel_visibility.insert("timeline", true);
+            hero.panel_visibility.insert("inspector", true);
+            // ⛔ **Alguém nasce ESCOLHIDO** — com ninguém escolhido o Inspector diz *«Select an
+            // entity in the Hierarchy»* e o passo (2) nomeia uma secção que não está na tela.
+            hero.gizmo.selection = Some(montada.escolhido);
+            hero.gizmo.extra_selection.clear();
         }
+        self.components.smokes.path_follow_raise = crate::components_scenes::LEVANTA_O_INSPECTOR;
+        self.playhead.rewind();
+        self.playhead.play();
     }
 }
 
-impl crate::App {
-    /// Traz o Inspector à frente no encaixe dele, por alguns quadros. Ver `trigger_raise`.
-    fn trigger_smoke_traz_o_inspector(&mut self) {
-        if self.components.smokes.trigger_raise == 0 {
-            return;
-        }
-        self.components.smokes.trigger_raise -= 1;
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
-        }
-    }
-}
+impl crate::App {}
 
-impl crate::App {
-    /// Traz o Inspector à frente no encaixe dele, por alguns quadros. Ver `dano_raise`.
-    fn dano_smoke_traz_o_inspector(&mut self) {
-        if self.components.smokes.dano_raise == 0 {
-            return;
-        }
-        self.components.smokes.dano_raise -= 1;
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
-        }
-    }
-}
+impl crate::App {}

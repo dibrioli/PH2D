@@ -80,6 +80,8 @@ pub(crate) struct LiveSnapshots {
     pub trigger_info: Option<ph2d_editor_core::action_trigger_edits::InspectorActionTriggerInfo>,
     /// O TWEEN (suplente #22).
     pub tween_info: Option<ph2d_editor_core::tween_edits::InspectorTweenInfo>,
+    /// ⭐⭐⭐ O SEGUIDOR DE CAMINHO (suplente #23) — o objecto que anda sobre a curva desenhada.
+    pub path_follow_info: Option<ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo>,
     pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
     pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -130,6 +132,7 @@ impl LiveSnapshots {
         let watch_info = crate::state_components::current_inspector_counter_watch();
         let trigger_info = crate::state_components::current_inspector_action_trigger();
         let tween_info = crate::state_components::current_inspector_tween();
+        let path_follow_info = crate::state_components::current_inspector_path_follow();
         let tags_info = crate::state::current_inspector_tags();
         let any_section = any_live_section([
             transform_info.is_some(),
@@ -159,6 +162,7 @@ impl LiveSnapshots {
             watch_info.is_some(),
             trigger_info.is_some(),
             tween_info.is_some(),
+            path_follow_info.is_some(),
             tags_info.is_some(),
         ]);
         Self {
@@ -186,6 +190,7 @@ impl LiveSnapshots {
             watch_info,
             trigger_info,
             tween_info,
+            path_follow_info,
             tags_info,
             blend_info,
             physics_info,

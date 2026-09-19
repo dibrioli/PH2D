@@ -38,6 +38,7 @@ mod seam_apply_ladder;
 mod seam_joint;
 mod seam_open_prefab;
 mod seam_orphan_list;
+mod seam_path_follow;
 mod seam_physics;
 mod seam_player;
 mod seam_precision;

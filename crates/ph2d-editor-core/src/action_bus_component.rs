@@ -53,4 +53,6 @@ pub enum ComponentEdit {
     ActionTrigger(crate::action_trigger_edits::ActionTriggerFieldEdit),
     /// **TWEEN** (o suplente #22) — «esta propriedade vai de A a B».
     Tween(crate::tween_edits::TweenFieldEdit),
+    /// **PATH FOLLOW** (o suplente #23) — «anda sobre a curva que eu desenhei».
+    PathFollow(crate::path_follow_edits::PathFollowFieldEdit),
 }

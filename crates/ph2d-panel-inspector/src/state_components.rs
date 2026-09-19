@@ -16,6 +16,7 @@
 //! ⛔ **Nunca subir o número do cap: ele só desce.**
 
 use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
+use ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo;
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
 use ph2d_editor_core::ray_edits::InspectorRayInfo;
 use ph2d_editor_core::screens::hero::{
@@ -42,6 +43,15 @@ pub fn set_current_inspector_tween(info: Option<InspectorTweenInfo>) {
 
 pub(crate) fn current_inspector_tween() -> Option<InspectorTweenInfo> {
     CURRENT_INSPECTOR_TWEEN.with(|c| c.borrow().clone())
+}
+
+/// ⭐ **O instantâneo do SEGUIDOR DE CAMINHO** (suplente #23) — irmão do do tween.
+pub fn set_current_inspector_path_follow(info: Option<InspectorPathFollowInfo>) {
+    CURRENT_INSPECTOR_PATH_FOLLOW.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_path_follow() -> Option<InspectorPathFollowInfo> {
+    CURRENT_INSPECTOR_PATH_FOLLOW.with(|c| c.borrow().clone())
 }
 
 pub fn set_current_inspector_action(info: Option<InspectorActionInfo>) {
@@ -158,6 +168,11 @@ thread_local! {
     /// TWEEN — o snapshot da entidade selecionada (suplente #22).
     static CURRENT_INSPECTOR_TWEEN:
         std::cell::RefCell<Option<InspectorTweenInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// PATH FOLLOW — o snapshot da entidade selecionada (suplente #23).
+    static CURRENT_INSPECTOR_PATH_FOLLOW:
+        std::cell::RefCell<Option<InspectorPathFollowInfo>> =
+        const { std::cell::RefCell::new(None) };
 
     /// SIGNAL ACTIONS — o snapshot da entidade selecionada.
     static CURRENT_INSPECTOR_ACTION:

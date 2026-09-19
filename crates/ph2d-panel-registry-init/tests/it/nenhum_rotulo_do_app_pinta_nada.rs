@@ -31,7 +31,7 @@
 //! | a pintar **NADA** em inglês | **0** | **0** |
 //! | a pintar **NADA** no idioma de teste | **0** | **0** |
 //! | cortados (`prefixo…`) em inglês, ANTES da cura | 15 | 17 |
-//! | cortados depois da cura da caixa de número | **12** | **14** — `CORTADOS_HOJE` |
+//! | cortados hoje (caixa de número + as duas frases) | **10** | **12** — `CORTADOS_HOJE` |
 //! | cortados no idioma de teste | ~130, em 16 painéis | — |
 //!
 //! ⚠️ **Um painel pintado com o estado de FÁBRICA mostra o estado VAZIO dele** (o Inspector sem
@@ -75,7 +75,7 @@ const PISO_DE_PAINEIS: usize = 24;
 /// descrever um corte que já não acontece.
 ///
 /// ⚠️ **Um corte não é sempre um defeito** (o nome de um ficheiro, o nome que o artista escreveu),
-/// mas **estes catorze são todos texto de INTERFACE** — rótulos, valores e frases de estado vazio,
+/// mas **estes doze são todos texto de INTERFACE** — rótulos, valores e frases de estado vazio,
 /// que a casa escreve e a casa dimensiona. ⇒ a lista é dívida, nunca licença.
 const CORTADOS_HOJE: &[(&str, &str)] = &[
     // ⛔ O nome da faixa mestra no Audio Mixer com o dock estreito — **declarado** em 18/09: a
@@ -98,13 +98,11 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
     ("widget_gallery", "Color"),
     ("widget_gallery", "filter"),
     ("widget_lab", "Geometry Offset"),
-    // ⚠️ FRASES de estado vazio elididas a UMA linha. A cura provável não é largura: é elas
-    //    QUEBRAREM (o `Lines::Wrap` já existe), que é decisão de desenho.
-    (
-        "inspector",
-        "Select an entity in the Hierarchy to inspect its properties.",
-    ),
-    ("tags", "No tags yet. Press + New to make the first one."),
+    // ✅ **As duas frases de estado vazio do PRODUTO saíram em 18/09** — a do Inspector (*«Select
+    //    an entity…»*, a primeira coisa que se lê ao abrir o app) e a do painel de Tags. Elas eram
+    //    elididas a UMA linha pelo `paint_text`; hoje QUEBRAM (`paint_text_block`), e a linha do
+    //    Tags cresce com a frase. ⚠️ As duas de baixo ficam: são legendas de painéis de
+    //    LABORATÓRIO, cujo texto é prosa de referência para quem constrói widgets.
     (
         "widget_gallery",
         "Canonical widget showcase \u{b7} reference for peripheral agents",
@@ -119,6 +117,14 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
         "268 = today's Inspector \u{b7} 184 = the app's MINIMUM column \u{b7} 140 and 110 = tablet",
     ),
 ];
+
+/// ⭐ **Os painéis que ESTA build liga** — lidos do registo, e não do que a pintura produziu.
+fn paineis_do_registo() -> std::collections::BTreeSet<&'static str> {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry_ref(|reg| {
+        reg.panels().iter().map(|p| p.manifest.id).collect()
+    })
+}
 
 /// Uma medição, com o painel que a fez e o viewport em que ela aconteceu.
 struct Achado {
@@ -268,7 +274,14 @@ fn nenhuma_linha_da_divida_ficou_obsoleta() {
     // ⚠️ **Uma linha cujo painel esta build não liga não é obsoleta — é INVISÍVEL.** Sem esta
     //    cerca, a corrida com as features pobres (`-p` sozinho, 24 painéis) acusaria as duas
     //    linhas do `flip_frames` de já não descreverem nada, e a cura seria apagá-las.
-    let presentes: std::collections::BTreeSet<&str> = tudo.iter().map(|a| a.painel).collect();
+    //
+    // ⛔⛔ **E os presentes são os do REGISTO, nunca os que PINTARAM alguma coisa** — a 1.ª
+    //    redacção fazia o segundo, e o furo apareceu na primeira cura: o Inspector mede **um**
+    //    rótulo (o painel vazio), e ao fazê-lo QUEBRAR ele deixou de registar seja o que for ⇒
+    //    saiu da população e a linha de dívida dele passou a ser saltada **para sempre**, em
+    //    silêncio. *Uma catraca cuja população encolhe com a cura vira licença* — a mesma forma
+    //    que o piso do `every_host_that_rewrites_verts` já pagou.
+    let presentes = paineis_do_registo();
     let obsoletas: Vec<String> = CORTADOS_HOJE
         .iter()
         .filter(|(painel, _)| presentes.contains(painel))

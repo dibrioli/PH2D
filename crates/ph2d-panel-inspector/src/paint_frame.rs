@@ -23,7 +23,7 @@ use ph2d_tokens::{Radius, Spacing, StrokeToken};
 use ph2d_vector::VectorScene;
 
 use ph2d_editor_core::interaction::NoteData;
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::{paint_text_block, resolve};
 use ph2d_editor_core::widget::INSPECTOR_SCROLLBAR_ID;
 use ph2d_editor_core::widget::showcase::LAST_SECTION_TOPS_Y;
 use ph2d_editor_core::widget::{self};
@@ -444,16 +444,38 @@ pub(crate) fn publish_and_finish(
         } else {
             tr("panel.inspector.panel.select_an_entity_in_the")
         };
-        let line_h = TypeToken::Sm.px() + Spacing::Xs.px();
-        let center_y = f.content_top + (f.content_bottom - f.content_top) * 0.5 - line_h * 0.5;
-        paint_text(
+        // ⛔⛔ **A FRASE QUEBRA, não é CORTADA** (2026-09-18, achado pela varredura das elisões):
+        //    ela é a primeira coisa que o artista lê ao abrir o app, e com o `paint_text` — que
+        //    elide para UMA linha desde 06/09 — ela saía **`…to inspec…`** numa coluna de `252 px`.
+        //    *Uma dica cortada a meio da palavra é pior que nenhuma dica: ela ensina que o app
+        //    está partido.* ⇒ `paint_text_block`, que é o pintor que existe PARA quebrar.
+        let x = f.inner_x + Spacing::Md.px();
+        let largura = (f.inner_w - Spacing::Xl.px()).max(80.0); // LITERAL-PX-OK: minimum placeholder text width
+        let fonte = TypeToken::Sm.px();
+        // ⭐⭐ **A régua da altura é o PRÓPRIO PINTOR, numa cena que se deita fora.** O doc do
+        //    `paint_text_block` proíbe por escrito uma função de medição à parte (*«parley duas
+        //    vezes e as duas respostas podem divergir»* — o defeito da dica de duas linhas do
+        //    painel de física), e é por isso que aqui se pergunta a ELE. A cena descartada custa
+        //    uma passada de layout de uma frase, no único quadro em que o painel está vazio.
+        let alta = paint_text_block(
+            text_system,
+            &mut VectorScene::new(),
+            placeholder,
+            x,
+            0.0,
+            fonte,
+            largura,
+            resolve(ColorToken::Text3, theme),
+        );
+        let center_y = f.content_top + (f.content_bottom - f.content_top - alta) * 0.5;
+        paint_text_block(
             text_system,
             scene,
             placeholder,
-            f.inner_x + Spacing::Md.px(),
+            x,
             center_y,
-            TypeToken::Sm.px(),
-            (f.inner_w - Spacing::Xl.px()).max(80.0), // LITERAL-PX-OK: minimum placeholder text width
+            fonte,
+            largura,
             resolve(ColorToken::Text3, theme),
         );
     }

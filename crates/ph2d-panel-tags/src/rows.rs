@@ -14,7 +14,7 @@
 
 use ph2d_editor_core::TagsPanelRow;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve};
 use ph2d_editor_core::widget::{
     Button, ButtonKind, RowHighlight, TextInput, TextInputState, paint_button, paint_row_highlight,
     paint_text_input_with_buffer,
@@ -268,22 +268,62 @@ pub(crate) fn empty_line(
     w: f32,
     y: f32,
 ) -> f32 {
-    paint_text(
+    // ⛔⛔ **Ela QUEBRA, não é cortada** (2026-09-18, achado pela varredura das elisões): numa
+    //    coluna de `240 px` o `paint_text` — que elide para UMA linha desde 06/09 — deixava
+    //    **`…make the fi…`**, e a frase existe justamente para dizer o GESTO que enche o painel.
+    // ⚠️ **E a linha cresce com ela:** esta função devolve o avanço, logo quem empilha por baixo
+    //    já lê a altura do pintor em vez de a estimar — que é a lei escrita no
+    //    `paint_text_block`. Com uma linha só o avanço é o `ROW_H_PX` de sempre.
+    let topo = y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5;
+    let alta = paint_text_block(
         text_system,
         scene,
         ph2d_i18n::tr("panel.tags.empty"),
         x + Spacing::Sm.px(),
-        y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
+        topo,
         TypeToken::Sm.px(),
         (w - Spacing::Sm.px() * 2.0).max(1.0),
         resolve(ColorToken::Text3, theme),
     );
-    y + ROW_H_PX
+    // ⚠️ **A linha cresce pelo que o texto TRANSBORDA dela, e não por uma soma de respiros.** A 1.ª
+    //    redacção somava o recuo de cima outra vez em baixo e devolvia `24,5` para UMA linha (o
+    //    `alta` de uma linha é a ALTURA DE LINHA do parley, maior que o corpo da fonte) — um buraco
+    //    no painel vazio, apanhado pelo gate desta função.
+    let transborda = (topo + alta - (y + ROW_H_PX)).max(0.0);
+    y + ROW_H_PX + transborda
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐⭐⭐ **A LINHA DO VAZIO CRESCE COM A FRASE — e sem isto ela escreve por cima do que vem
+    /// abaixo.**
+    ///
+    /// ⛔⛔ **Este gate nasceu de uma mutação que SOBREVIVEU:** com a frase a quebrar e o avanço
+    /// preso no `ROW_H_PX`, nada na árvore acusa — *o censo de elisões vê CORTES, e um texto que
+    /// quebra não é um corte*. A régua é o AVANÇO, que é o que a função promete a quem empilha.
+    ///
+    /// ⚠️ E a metade de baixo é a que impede a cura barata: numa coluna LARGA a frase cabe numa
+    /// linha, e ali o avanço tem de continuar a ser exactamente o de uma linha da árvore — senão
+    /// o painel vazio abre com um buraco.
+    #[test]
+    fn a_linha_do_vazio_cresce_com_a_frase_e_so_quando_ela_quebra() {
+        let mut ts = TextSystem::without_system_fonts();
+        let mut cena = VectorScene::new();
+        let estreita = empty_line(&mut cena, &mut ts, Theme::default(), 0.0, 240.0, 0.0);
+        assert!(
+            estreita > ROW_H_PX,
+            "numa coluna de 240 px a frase quebra e a linha tem de crescer — ela avançou \
+             {estreita}"
+        );
+        let larga = empty_line(&mut cena, &mut ts, Theme::default(), 0.0, 2000.0, 0.0);
+        assert!(
+            (larga - ROW_H_PX).abs() < 0.5,
+            "numa coluna larga ela cabe numa linha e o avanço tem de ser o de sempre ({ROW_H_PX}) \
+             — ele deu {larga}"
+        );
+    }
 
     fn linha(members: usize, subtree: usize, depth: usize) -> TagsPanelRow {
         TagsPanelRow {

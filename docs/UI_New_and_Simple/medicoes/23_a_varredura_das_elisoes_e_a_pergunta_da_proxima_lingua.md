@@ -195,3 +195,59 @@ saíram para `paint_label_box.rs` (`610` + `119`) — as quatro funções são u
 nova no `FILE_OVERAGE_OK`.
 
 **Portão final: `19 710` impactados, `19 710` verdes.**
+
+---
+
+## 8. A segunda cura: as duas frases de estado vazio QUEBRAM
+
+Das 14 que sobravam, duas são **frases do produto** — e a primeira delas é literalmente a primeira
+coisa que se lê ao abrir o app:
+
+| painel | o que saía | coluna |
+|---|---|---:|
+| Inspector (nada escolhido) | `Select an entity in the Hierarchy to inspec…` | `252 px` |
+| Tags (sem tags) | `No tags yet. Press + New to make the fi…` | `240 px` |
+
+⚠️ **A causa nasceu de uma CURA:** o `paint_text` elide para uma linha desde 2026-09-06 (report do
+dono: *«a palavra que não cabe passa para baixo e some»*). Aquilo estava certo para um **rótulo de
+linha** — e estas duas não são rótulos, são **frases**. ⇒ hoje passam pelo `paint_text_block`, que é
+o pintor que existe PARA quebrar e que **devolve a altura**.
+
+⭐ **A linha do painel de Tags cresce com a frase**, porque a função devolve o avanço a quem empilha
+por baixo — a lei que o `paint_text_block` escreve no doc dele.
+
+⛔⛔ **E a régua NÃO pode ser o censo de elisões:** um texto que quebra não passa pela lei da
+reticência, logo **não deixa registo** — e um painel que deixasse de pintar a frase ficaria
+igualmente mudo. *Zero lê-se como aprovação.* ⇒ a régua é a **TINTA** (os glifos que a cena
+recebeu), com o controlo do lado oposto: o pintor de rótulo **continua** a elidir a mesma frase.
+
+### 8.1 — ⛔⛔⛔ O furo que a primeira cura abriu no meu próprio gate
+
+O censo de obsolescência saltava as linhas cujo painel *«esta build não liga»*, e eu derivei essa
+população **do que a pintura produziu**. O Inspector mede **UM** rótulo — a frase. Ao fazê-la
+quebrar, ele deixou de registar seja o que for ⇒ **saiu da população**, e a linha de dívida dele
+passou a ser saltada para sempre, **em silêncio**.
+
+> *Uma catraca cuja população encolhe com a própria cura vira licença.*
+
+⇒ os presentes lêem-se do **REGISTO**. É a mesma forma que o piso do `every_host_that_rewrites_verts`
+já tinha pago (*o piso segurou o número enquanto a população trocava por baixo dele*).
+
+### 8.2 — Duas mutações minhas testavam a coisa errada
+
+| # | mutação | resultado |
+|---|---|---|
+| M9 | anular a altura medida no Inspector | ✗ **sobreviveu** — isso quebra a CENTRAGEM, não a quebra de linha |
+| M10 | o avanço do Tags volta a `ROW_H_PX` | ✗ **sobreviveu** — isso é SOBREPOSIÇÃO, e o censo vê cortes |
+| M9-bis / M10-bis | trocar o pintor de volta (`paint_text`) | ✓ as duas sangram |
+| M11 | o avanço do Tags volta a `ROW_H_PX` | ✓ sangra **no gate novo** que as duas anteriores obrigaram a escrever |
+
+⭐ O que as duas primeiras produziram foi o gate que faltava: **a linha do vazio cresce com a frase,
+e só quando ela quebra** — com a metade de baixo (numa coluna larga o avanço é o de sempre) a
+impedir a cura barata de abrir um buraco no painel.
+
+⚠️ E a 1.ª redacção do avanço somava o recuo de cima **outra vez em baixo** e devolvia `24,5` para
+UMA linha (o `alta` de uma linha é a **altura de linha** do parley, maior que o corpo da fonte). Quem
+o apanhou foi esse gate, na primeira corrida.
+
+**Dívida: 17 → 14 → 12. Portão: `19 713` impactados, `19 713` verdes.**

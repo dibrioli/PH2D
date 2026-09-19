@@ -56,6 +56,16 @@ maximizevert=true
 maximizevertrule=3
 EOF
 
+# ⛔⛔ HOME ISOLADO, e isto e' uma cerca e nao um detalhe. A arrumacao dos paineis vive em
+# ~/.ph2d/layout.txt, FORA do repo: e' um ficheiro DO DONO, e o app RE-ESCREVE-O. Sem o HOME
+# isolado, cada fotografia mexia na arrumacao dele. E de graca ela torna a foto REPRODUTIVEL:
+# a arrumacao passa a ser a de fabrica. Quem quiser a do dono passa HOME=... no 1.o argumento.
+#
+# ⛔⛔⛔ E ATENCAO AO QUE SE ESCREVE DENTRO DESTE HEREDOC: ele e' <<EOF SEM ASPAS, logo toda CRASE
+# ali dentro e' SUBSTITUICAO DE COMANDO. Em 2026-09-19 um comentario meu com a palavra spectacle
+# entre crases EXECUTOU o spectacle — o unico programa que este roteiro proibe, porque ele
+# fotografa o ecra REAL do dono — e o roteiro ficou pendurado 449 s a' espera dele.
+# ⇒ prosa fica FORA do heredoc; dentro dele so' codigo, e o guarda abaixo recusa o resto.
 cat > "$TMP/sessao.sh" <<EOF
 #!/bin/bash
 if [ -z "\$DISPLAY" ] || [ "\$DISPLAY" = ":0" ] || [ "\$WAYLAND_DISPLAY" = "wayland-0" ]; then
@@ -63,13 +73,6 @@ if [ -z "\$DISPLAY" ] || [ "\$DISPLAY" = ":0" ] || [ "\$WAYLAND_DISPLAY" = "wayl
   exit 3
 fi
 cd "$RAIZ"
-# ⛔⛔ **HOME ISOLADO, e isto e' uma cerca e nao um detalhe.** A arrumacao dos paineis vive em
-# `~/.ph2d/layout.txt`, FORA do repo: e' um ficheiro DO DONO, e o app RE-ESCREVE-O. Sem esta
-# linha, cada fotografia mexia na arrumacao dele — a mesma familia do `spectacle` a fotografar
-# o ecra real, e o mesmo defeito que ja' apanhou uma fotografia a abrir com o painel errado
-# porque OUTRA arvore a correr em paralelo tinha reescrito o ficheiro.
-# ⭐ E de graca ela torna a foto REPRODUTIVEL: a arrumacao passa a ser a de fabrica.
-#    Quem quiser a do dono passa `HOME=$REAL_HOME` no primeiro argumento.
 mkdir -p "$TMP/home"
 env -u WAYLAND_DISPLAY HOME="$TMP/home" $ENV_KV PH2D_EXIT_AFTER_FRAMES=100000 "$BIN" > "$TMP/app.log" 2>&1 &
 APP=\$!
@@ -79,6 +82,14 @@ import -display "\$DISPLAY" -window "\$WIN" "$SAIDA" >> "$TMP/log" 2>&1
 kill -9 \$APP 2>/dev/null
 EOF
 chmod +x "$TMP/sessao.sh"
+
+# ⭐⭐ O GUARDA da armadilha acima: o roteiro gerado nao pode conter uma crase nem um $(, porque o
+# heredoc que o escreve e' sem aspas e os dois JA' correram na geracao. Se algum sobreviveu ate' o
+# ficheiro, e' porque escapou — e o que vem a seguir corre-o outra vez.
+if grep -q '`' "$TMP/sessao.sh"; then
+  echo "RECUSA: o roteiro gerado tem uma CRASE — ela e' substituicao de comando no heredoc <<EOF" >&2
+  exit 4
+fi
 
 XDG_CONFIG_HOME="$TMP/cfg" timeout 120 kwin_wayland --virtual --width "$LARG" --height "$ALT" \
   --xwayland --exit-with-session "$TMP/sessao.sh" > "$TMP/kwin.log" 2>&1 || true

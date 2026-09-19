@@ -32,6 +32,33 @@ use ph2d_ecs::{SignalEffect, SignalVerb, SimWorld, TimerRuntime, Timers, Visibil
 
 use ph2d_preview_drive::{Driven, PreviewDrive};
 
+/// ⭐⭐⭐ **UM SINAL LIDO, com quem o disse** — `(nome, quem falou, o outro lado)`.
+///
+/// # ⛔⛔ Ela tem NOME porque era aqui que a origem morria
+///
+/// Até 2026-09-19 a fase fazia `.map(|s| s.name.to_string())`, e o `SignalOrigin` — que tem catorze
+/// variantes, **onze** delas com `source`, e um `Contact` com `source` **e** `other` — era
+/// descartado nessa linha. *O dado era construído, publicado, lido e deitado fora uma linha antes de
+/// ser preciso.* Com um nome, um gate consegue apanhá-la; dentro do `map` da fase, não.
+///
+/// ⚠️ **Quem responde «quem falou?» é a porta do barramento** ([`ph2d_runtime::SignalOrigin::quem`]),
+/// cujo `match` é EXAUSTIVO: um `match` escrito aqui esqueceria a décima quinta origem em silêncio.
+///
+/// ⚠️ **`try_from_bits` e não `from_bits`:** os bits vêm de um sinal publicado num quadro anterior.
+/// Esta metade confere a CODIFICAÇÃO; a **liveness** é conferida do outro lado, no `targets_of`,
+/// porque o bevy recicla bits de entidades despawnadas.
+pub(crate) fn lido(
+    s: &ph2d_runtime::Signal,
+) -> (String, Option<ph2d_ecs::Entity>, Option<ph2d_ecs::Entity>) {
+    let de =
+        |b: Option<ph2d_runtime::EntityBits>| b.and_then(|b| ph2d_ecs::Entity::try_from_bits(b.0));
+    (
+        s.name.to_string(),
+        de(s.origin.quem()),
+        de(s.origin.outro()),
+    )
+}
+
 /// O que uma aplicação fez — para o log de diagnóstico, e para os gates.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct ActionReport {
@@ -43,6 +70,12 @@ pub(crate) struct ActionReport {
     /// objecto sem relógio é uma configuração a meio, não uma avaria — e o painel é quem tem de o
     /// dizer, não um toast por quadro.
     pub(crate) inert: usize,
+    /// ⭐⭐⭐ **Quem o [`SignalVerb::Destroy`] mandou sair** (suplente #24).
+    ///
+    /// ⚠️ **Ela sai daqui em vez de a ponte apagar**, e é a lei do despachante único: *«quando é
+    /// que isto sai da cena?»* é uma pergunta só, e quem responde é o dreno da
+    /// [`super::fase_fabrica_e_morte`], uma vez por quadro, depois de todos os produtores.
+    pub(crate) mortes: Vec<ph2d_ecs::Death>,
 }
 
 /// ⭐⭐ **Aplica os efeitos deste quadro.**
@@ -83,6 +116,14 @@ pub(crate) fn apply(
             // ⭐⭐⭐ **O PLACAR** (TOP-20 #20) — é este verbo que faz «bateu na moeda → +1 ponto»
             // fechar com o `SignalOnHit` que a física já publica, sem uma linha do artista.
             SignalVerb::AddToCounter => add_to_counter(sim, fx),
+            // ⭐⭐⭐ **O VERBO QUE TIRA DA CENA** (suplente #24) — e ele **anuncia**, nunca apaga.
+            SignalVerb::Destroy => match morte(sim, fx) {
+                Some(d) => {
+                    report.mortes.push(d);
+                    true
+                }
+                None => false,
+            },
         };
         if ok {
             report.applied += 1;
@@ -91,6 +132,43 @@ pub(crate) fn apply(
         }
     }
     report
+}
+
+/// ⭐⭐⭐ **O facto de morte que o [`SignalVerb::Destroy`] produz** — ou `None`, e aí é inerte.
+///
+/// # ⚠️⚠️ A fronteira é FORÇADA, não escolhida
+///
+/// Ele só tira quem [`ph2d_ecs::is_transient`] — quem **nasceu numa corrida**. A razão não é
+/// preferência: apagar um objecto do DOCUMENTO durante a corrida **tira-o do documento** (a captura
+/// vê-o sumido e o `Ctrl+Z` herda a remoção), que é a lei *«o que acontece numa corrida não é
+/// documento»* invertida. O precedente é do TOP-20 #14, com a frase inteira escrita na
+/// [`super::fase_fabrica_e_morte`]: *«um projéctil que ele pôs na cena à mão é documento, e apagá-lo
+/// destruiria autoria»*. Este é o **quarto** leitor daquela porta.
+///
+/// # ⭐⭐ E a recusa NÃO vira aviso de linha no painel, com mecanismo
+///
+/// A linha `Destroy` de um objecto de documento **está certa**: ela é a receita, e as CÓPIAS que a
+/// fábrica dela põe na cena são transientes. *O mesmo alvo muda de resposta entre o original e a
+/// cópia* ⇒ um aviso na linha diria que está partido exactamente o que está a funcionar. O que
+/// sobra é o [`ActionReport::inert`] e o diagnóstico, que é onde ele pertence.
+fn morte(sim: &SimWorld, fx: &SignalEffect) -> Option<ph2d_ecs::Death> {
+    if !ph2d_ecs::is_transient(sim.world(), fx.target) {
+        if std::env::var_os("PH2D_SIGNAL_LOG").is_some() {
+            let nome = ph2d_ecs::signal_actions::name_of(sim.world(), fx.target)
+                .unwrap_or_else(|| "?".to_string());
+            eprintln!(
+                "[signal] Destroy recusado em «{nome}»: e' do DOCUMENTO (so' sai quem nasceu numa corrida)"
+            );
+        }
+        return None;
+    }
+    Some(ph2d_ecs::Death {
+        entity: fx.target,
+        // ⚠️ **Calada**: o sinal de morte é assunto do `Lifetime`, que já o autora. Inventar um
+        // aqui seria um segundo campo para a mesma coisa — a frase que a ponte do projéctil já tem.
+        signal: String::new(),
+        why: ph2d_ecs::DeathCause::Killed,
+    })
 }
 
 /// **Soma ao contador do alvo.** `arg` vazio ou ilegível = `1`.

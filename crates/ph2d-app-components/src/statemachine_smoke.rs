@@ -135,6 +135,7 @@ fn acende(alvo: &str, sinal: &str, apaga: [&str; 2]) -> Vec<SignalAction> {
         verb: SignalVerb::Show,
         arg: String::new(),
         target_by: ph2d_ecs::SignalTarget::default(),
+        from: ph2d_ecs::SignalFrom::default(),
     }];
     for outro in apaga {
         v.push(SignalAction {
@@ -143,6 +144,7 @@ fn acende(alvo: &str, sinal: &str, apaga: [&str; 2]) -> Vec<SignalAction> {
             verb: SignalVerb::Hide,
             arg: String::new(),
             target_by: ph2d_ecs::SignalTarget::default(),
+            from: ph2d_ecs::SignalFrom::default(),
         });
     }
     v

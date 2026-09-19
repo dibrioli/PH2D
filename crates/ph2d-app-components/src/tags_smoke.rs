@@ -159,6 +159,7 @@ fn cena_um(world: &mut World, a: &Arvore) -> Option<u64> {
             verb: SignalVerb::Hide,
             arg: String::new(),
             target_by: SignalTarget::Tagged(a.enemy.0),
+            from: ph2d_ecs::SignalFrom::Anyone,
         }]),
     ));
     heroi
@@ -210,6 +211,7 @@ fn cena_dois(world: &mut World, a: &Arvore) {
             verb: SignalVerb::Hide,
             arg: String::new(),
             target_by: SignalTarget::Named,
+            from: ph2d_ecs::SignalFrom::Anyone,
         }]),
     ));
     // ⚠️ **Os dois caem de alturas DIFERENTES**, para atravessarem um de cada vez: o Goblin

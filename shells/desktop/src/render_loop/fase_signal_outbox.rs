@@ -51,7 +51,9 @@ impl crate::App {
         &mut self,
         anim_signals: Vec<sprite_anim_tick::AnimSignal>,
         timer_signals: Vec<timer_tick::TimerSignal>,
-        deaths: Vec<ph2d_ecs::Death>,
+        // ⚠️ `mut` desde o suplente #24: a tabela de acções passa a produzir mortes (o `Destroy`),
+        // e elas juntam-se às dos relógios ANTES de o dreno correr.
+        mut deaths: Vec<ph2d_ecs::Death>,
         camera_rect: Option<([f32; 2], [f32; 2])>,
         ticks: u32,
     ) {
@@ -207,16 +209,39 @@ impl crate::App {
         // [`signal_actions`]: escrever uma `Visibility` é escrever um componente REGISTADO, e sem
         // o `preview_drive` cada porta que abre viraria um passo de `Ctrl+Z`.
         {
-            let disparados: Vec<String> = self
+            // ⭐⭐⭐ **E A ORIGEM VIAJA COM O NOME** (suplente #24, 2026-09-19) — até aqui esta linha
+            // era `.map(|s| s.name)`, e a origem MORRIA no `.map`.
+            //
+            // ⚠️⚠️ **O dado já estava construído, publicado e lido:** o `SignalOrigin` tem catorze
+            // variantes e **onze** carregam `source`; o `Contact` carrega `source` **e** `other`,
+            // com o doc a chamar-lhes *«quem GRITOU»* e *«quem chegou, ou quem saiu»*. Deitá-lo
+            // fora aqui é o que fazia um tiro num inimigo tirar vida aos dez (medido).
+            //
+            // ⛔ **Quem responde «quem falou?» é UMA porta** (`SignalOrigin::quem`/`::outro`) e
+            // nunca um `match` escrito aqui: com catorze variantes, um braço `_` esqueceria a
+            // décima quinta **em silêncio** — e um sinal sem sujeito lê-se exactamente como uma
+            // origem que não tem sujeito.
+            //
+            // ⚠️ **A conversão tem NOME** (`signal_actions::lido`) e não vive neste `map`: era
+            // exactamente aqui que a origem morria, e um gate não apanha o que não tem nome.
+            let lidos: Vec<(String, Option<ph2d_ecs::Entity>, Option<ph2d_ecs::Entity>)> = self
                 .signals
                 .read(&mut self.signal_readers.action)
-                .map(|s| s.name.to_string())
+                .map(signal_actions::lido)
                 .collect();
-            if !disparados.is_empty() {
-                let nomes: Vec<&str> = disparados.iter().map(String::as_str).collect();
+            if !lidos.is_empty() {
+                let nomes: Vec<&str> = lidos.iter().map(|(n, _, _)| n.as_str()).collect();
+                let disparos: Vec<ph2d_ecs::Disparo<'_>> = lidos
+                    .iter()
+                    .map(|(nome, quem, outro)| ph2d_ecs::Disparo {
+                        nome,
+                        quem: *quem,
+                        outro: *outro,
+                    })
+                    .collect();
                 // ⚠️ **A ÁRVORE DE TAGS entra aqui** (TOP-20 #9): uma linha com alvo por TAG pergunta
                 // quem pertence à subárvore dela; uma por nome nunca a lê.
-                let efeitos = ph2d_ecs::resolve_signal_actions(sim.world_mut(), tags, &nomes);
+                let efeitos = ph2d_ecs::resolve_signal_actions(sim.world_mut(), tags, &disparos);
                 diga_o_que_resolveu(self.signal_readers.logging(), &nomes, efeitos.len());
                 if !efeitos.is_empty() {
                     let r = signal_actions::apply(
@@ -231,6 +256,11 @@ impl crate::App {
                             r.applied, r.inert
                         );
                     }
+                    // ⭐⭐⭐ **E quem o `Destroy` mandou sair vai ao DESPACHANTE** (suplente #24), e
+                    // não a um `despawn` aqui: *«quando é que isto sai da cena?»* é uma pergunta só,
+                    // e a resposta dela é o dreno da `fase_fabrica_e_morte`, que corre por último —
+                    // *um moribundo continua visível a toda consulta até ao fim do quadro*.
+                    deaths.extend(r.mortes);
                 }
             }
         }

@@ -141,6 +141,7 @@ fn editing_one_field_leaves_the_others_alone() {
             verb: SignalVerb::Hide,
             arg: "x".into(),
             target_by: ph2d_ecs::SignalTarget::Named,
+            from: ph2d_ecs::SignalFrom::Anyone,
         }],
     );
     edit(

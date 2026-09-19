@@ -60,6 +60,7 @@ fn linha(on: &str, target: &str, verb: SignalVerb, arg: &str) -> SignalAction {
         verb,
         arg: arg.into(),
         target_by: ph2d_ecs::SignalTarget::Named,
+        from: ph2d_ecs::SignalFrom::Anyone,
     }
 }
 

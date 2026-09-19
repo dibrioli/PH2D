@@ -136,6 +136,7 @@ fn porta(
                 verb: SignalVerb::StartTimer,
                 arg: String::new(),
                 target_by: SignalTarget::Named,
+                from: ph2d_ecs::SignalFrom::Anyone,
             }]),
         ))
         .id();

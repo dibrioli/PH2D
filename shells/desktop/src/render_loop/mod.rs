@@ -187,6 +187,11 @@ mod timer_tick;
 #[cfg(test)]
 #[path = "counter_watch_chain_tests.rs"]
 mod counter_watch_chain_tests;
+/// ⭐⭐⭐ **O verbo que tira da cena e a origem que atravessa a fase** (suplente #24) — ver o
+/// cabeçalho do irmão. ⚠️ Ele mora aqui pela MESMA razão: o `signal_actions` é privado a este módulo.
+#[cfg(test)]
+#[path = "signal_actions_destroy_tests.rs"]
+mod signal_actions_destroy_tests;
 pub(crate) use sprite_anim_tick::start_autoplay_animations;
 pub(crate) use timer_tick::start_autostart_timers;
 /// Fase do quadro: as cenas de smoke que pedem a `App` inteira (1.ª metade).

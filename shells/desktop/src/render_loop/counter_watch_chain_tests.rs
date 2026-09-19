@@ -61,7 +61,12 @@ fn corre(sim: &mut SimWorld, quadros: u32) {
         if nomes.is_empty() {
             continue;
         }
-        let refs: Vec<&str> = nomes.iter().map(String::as_str).collect();
+        // ⚠️ **Sem sujeito**, que é o que esta cadeia sempre significou: a vigia publica COM
+        // `source`, e o que este gate mede é a CADEIA (contador → vigia → tabela), não a cerca.
+        let refs: Vec<ph2d_ecs::Disparo<'_>> = nomes
+            .iter()
+            .map(|n| ph2d_ecs::Disparo::anonimo(n))
+            .collect();
         let efeitos = ph2d_ecs::resolve_signal_actions(sim.world_mut(), &tags, &refs);
         if !efeitos.is_empty() {
             signal_actions::apply(sim, &efeitos, &mut drive, None);

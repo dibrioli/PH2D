@@ -424,4 +424,28 @@
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um ficheiro anterior é recusado
 /// em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 148;
+///
+/// # `148 → 149` — O SINAL SABE QUEM (`docs/Components/19_plano_o_sinal_sabe_quem.md`)
+///
+/// ⚠️⚠️ **ZERO componentes novos, e é o primeiro degrau desta linha em onze waves que não é uma
+/// população de registo** — os três contadores ficam onde estavam. O que muda é a **FORMA de um
+/// blob já gravado**: o `SignalAction` ganha o campo `from` (a CERCA), e o postcard é POSICIONAL —
+/// um v148 lido com o tipo vivo pede a tag da cerca onde já não há bytes e **falha longe da
+/// causa**, ou, com várias linhas, lê o comprimento do nome da linha seguinte como a cerca desta.
+///
+/// ⭐⭐⭐ **O buraco era a TERCEIRA pergunta de uma linha.** Ela respondia a *quando* (`on`) e a *a
+/// quem* (`target`/`target_by`), e não a **de quem** — logo um tiro num inimigo tirava vida aos dez
+/// (MEDIDO: `10` efeitos para um sinal, sonda `mede_o_que_a_composicao_ja_da_ao_golpe`). O dado já
+/// existia: o `SignalOrigin::Contact` carrega `source` e `other`, e a shell fazia `.map(|s| s.name)`
+/// uma linha antes de a tabela precisar deles.
+///
+/// ⚠️ **As variantes novas NÃO custariam degrau nenhum** (`SignalTarget::{Speaker, Other}` e
+/// `SignalVerb::Destroy` são APENDADAS, e a posição é a tag) — quem o custa é o campo.
+///
+/// ⚠️ **E o degrau do v128 cresceu com ele:** a escada do load tem TRÊS degraus vivos (`95`, `128`,
+/// o corrente) e recusa tudo o que está no meio, logo o `migrate_v1_blob` escreve o formato VIVO e
+/// tem de aprender cada campo apendado. A lei está escrita no ficheiro congelado.
+///
+/// ⛔ **Sem degrau de migração para o v148**, pela mesma decisão de 26/08 — um ficheiro daquele
+/// número já era recusado antes desta wave, como todos os do meio.
+pub(crate) const PROJECT_SCHEMA: u32 = 149;

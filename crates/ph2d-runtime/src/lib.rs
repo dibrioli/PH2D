@@ -241,6 +241,63 @@ pub enum SignalOrigin {
     },
 }
 
+impl SignalOrigin {
+    /// ⭐⭐⭐ **QUEM GRITOU** — `None` nas origens que não têm sujeito (suplente #24, 2026-09-19).
+    ///
+    /// # ⛔⛔ Porque ela é UMA porta e não um `match` na shell
+    ///
+    /// São **catorze** origens e **onze** carregam `source`. Um `match` escrito no consumidor
+    /// esquece a décima quinta **em silêncio** — ela cai no braço `_` e o sinal dela passa a
+    /// nascer sem sujeito, o que se lê exactamente como *«esta origem não tem sujeito»*. Aqui o
+    /// `match` é EXAUSTIVO, e uma variante nova **não compila** até alguém responder.
+    ///
+    /// ⚠️ **`EntityBits` e não `Entity`:** esta crate é uma FOLHA e não vê o `bevy_ecs` (é a razão
+    /// de ela existir). Quem converte é a shell, que é dona dos dois lados.
+    #[must_use]
+    pub const fn quem(&self) -> Option<EntityBits> {
+        match self {
+            // ⛔ As três SEM sujeito, nomeadas uma a uma: a régua da timeline é um instante, um
+            // aperto de botão do painel não tem detalhe nenhum, e o Motion fala por TIQUE do cook.
+            Self::Timeline { .. } | Self::Control | Self::Motion { .. } => None,
+            Self::Contact { source, .. }
+            | Self::Animation { source, .. }
+            | Self::Timer { source, .. }
+            | Self::Spawned { source, .. }
+            | Self::Death { source, .. }
+            | Self::StateMachine { source, .. }
+            | Self::Script { source, .. }
+            | Self::Particles { source, .. }
+            | Self::UiButton { source, .. }
+            | Self::CounterWatch { source, .. }
+            | Self::Action { source, .. } => Some(*source),
+        }
+    }
+
+    /// ⭐⭐ **O OUTRO LADO** — hoje só o contacto o tem (*«quem chegou, ou quem saiu»*).
+    ///
+    /// ⚠️ **Exaustivo pela mesma razão da irmã**, e a resposta honesta para as outras treze é
+    /// `None`: um segundo lado que não existe **não é** quem gritou.
+    #[must_use]
+    pub const fn outro(&self) -> Option<EntityBits> {
+        match self {
+            Self::Contact { other, .. } => Some(*other),
+            Self::Timeline { .. }
+            | Self::Control
+            | Self::Motion { .. }
+            | Self::Animation { .. }
+            | Self::Timer { .. }
+            | Self::Spawned { .. }
+            | Self::Death { .. }
+            | Self::StateMachine { .. }
+            | Self::Script { .. }
+            | Self::Particles { .. }
+            | Self::UiButton { .. }
+            | Self::CounterWatch { .. }
+            | Self::Action { .. } => None,
+        }
+    }
+}
+
 /// Um sinal publicado neste quadro.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Signal {

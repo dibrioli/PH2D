@@ -170,6 +170,7 @@ fn cena_um(world: &mut World, path: &str) -> u64 {
         verb: SignalVerb::ToggleVisibility,
         arg: String::new(),
         target_by: ph2d_ecs::SignalTarget::default(),
+        from: ph2d_ecs::SignalFrom::default(),
     }]));
     escolhido
 }

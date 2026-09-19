@@ -8,4 +8,5 @@
 
 mod measure_the_channel;
 mod one_outbox_many_readers;
+mod quem_falou;
 mod the_event_core_is_a_leaf;

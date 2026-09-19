@@ -580,7 +580,14 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // registo (`SignalOnAction`). ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA vez, e pela
         // mesma razão: nem o `FlipDoc` nem a `VecScene` mudam de forma, e quem muda é a POPULAÇÃO
         // do registo (`registry_tests`, 97 → 98, e os dois espelhos 98 → 99).
-        (148, 13, 22),
+        // ⭐ **PROJECT 148→149** (2026-09-19): O SINAL SABE QUEM (suplente #24) — e este degrau é
+        // de OUTRA espécie: **zero** componentes novos, logo os três contadores do registo NÃO se
+        // mexem. O que muda é a FORMA de um blob já gravado — o `SignalAction` ganha o campo
+        // `from`, e o postcard é posicional. ⚠️ **A tripla também NÃO vê este degrau**, mas por uma
+        // razão nova: ela mede o `FlipDoc` e a `VecScene`, e quem mudou foi um blob de COMPONENTE.
+        // *É a primeira vez em onze waves desta linha que nem a tripla nem o registo o veem* — quem
+        // o vê é o `signal_actions_tests`, que fixa os bytes do v128 reescrito.
+        (149, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

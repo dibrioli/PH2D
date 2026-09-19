@@ -552,6 +552,7 @@ fn accao(sinal: &str, quanto: &str) -> SignalAction {
         verb: SignalVerb::AddToCounter,
         arg: quanto.to_owned(),
         target_by: SignalTarget::Named,
+        from: ph2d_ecs::SignalFrom::Anyone,
     }
 }
 

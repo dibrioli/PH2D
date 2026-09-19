@@ -91,8 +91,43 @@ pub struct Grupo {
     pub pontos: Vec<[f32; 2]>,
     /// Os pares `(de, para)` como índices em [`Self::pontos`]. Vazio numa nuvem.
     pub segmentos: Vec<[usize; 2]>,
+    /// ⭐⭐⭐ **A ROTAÇÃO de cada elemento, em graus** — `None` quando a corrente **não traz** a
+    /// coluna (ordem do dono, 2026-09-19: *«no canvas simulam qualquer grafo normalmente»*).
+    ///
+    /// ⚠️ **`None` e `Some(vec![0; n])` NÃO são a mesma coisa, e a diferença é visível:** sem a
+    /// coluna o gizmo não desenha a agulha da direcção — *uma agulha a apontar para a direita em
+    /// toda a nuvem seria ruído sobre um grafo que nunca falou de direcção*. Com a coluna toda a
+    /// zero, ela aponta para a direita **porque o grafo o disse**.
+    pub rot: Option<Vec<f32>>,
+    /// ⭐⭐⭐ **A ESCALA de cada elemento** — o MULTIPLICADOR do glifo, nunca uma medida de mundo.
+    ///
+    /// É isto que faz o `scale` de um `motion.oscillator` PULSAR no canvas sem uma forma ligada.
+    /// `None` ⇒ [`ph2d_nodegraph::attr::SIZE_IDENTITY`], que é o glifo nu.
+    ///
+    /// ⚠️ **Um escalar e não um `[f32; 2]`:** o glifo é chrome e tem de continuar a ler-se como o
+    /// mesmo símbolo — uma cruz esmagada num eixo lê-se como uma barra, e o artista deixaria de
+    /// saber que aquilo é um ponto. A média dos dois eixos é o que a `SIZE_IDENTITY` torna `1`.
+    pub escala: Option<Vec<f32>>,
     /// Quantas posições a corrente tinha ANTES do tecto — o que a legenda diria.
     pub total: usize,
+}
+
+impl Grupo {
+    /// O multiplicador do glifo no elemento `i` — `1` quando a corrente não autorou escala.
+    #[must_use]
+    pub fn escala_em(&self, i: usize) -> f32 {
+        self.escala
+            .as_ref()
+            .and_then(|v| v.get(i))
+            .copied()
+            .unwrap_or(1.0)
+    }
+
+    /// A rotação do elemento `i`, em **graus**, ou `None` se a corrente não traz direcção.
+    #[must_use]
+    pub fn rot_em(&self, i: usize) -> Option<f32> {
+        self.rot.as_ref().and_then(|v| v.get(i)).copied()
+    }
 }
 
 /// O retrato deste quadro.
@@ -106,6 +141,30 @@ fn posicoes(s: &Stream) -> Vec<[f32; 2]> {
     match s.get("P") {
         Some(Column::Vec2(v)) => v.iter().take(MAX_PONTOS).copied().collect(),
         _ => Vec::new(),
+    }
+}
+
+/// **A ESCALA de cada elemento, como MULTIPLICADOR do glifo** — `None` quando a corrente não a
+/// autorou (ordem do dono, 2026-09-19).
+///
+/// ⚠️ **A identidade é [`SIZE_IDENTITY`], que é `1`**, e é por isso que a coluna se lê como um
+/// multiplicador directo: um `motion.scale(amount = 0,4)` entrega `0,4`, e o glifo fica a 40 % —
+/// *o gizmo mostra o que o grafo fez, e não o que o desenhador dele achou bonito*.
+///
+/// ⚠️ **Uma coluna `Vec2` colapsa na MÉDIA dos eixos** — ver [`Grupo::escala`] para a razão.
+fn escalas(s: &Stream, n: usize) -> Option<Vec<f32>> {
+    match s.get("size") {
+        Some(Column::Scalar(v)) => Some(v.iter().take(n).copied().collect()),
+        Some(Column::Vec2(v)) => Some(v.iter().take(n).map(|e| (e[0] + e[1]) * 0.5).collect()),
+        _ => None,
+    }
+}
+
+/// **A ROTAÇÃO de cada elemento, em graus** — `None` quando a corrente não a traz.
+fn rotacoes(s: &Stream, n: usize) -> Option<Vec<f32>> {
+    match s.get("rot") {
+        Some(Column::Scalar(v)) => Some(v.iter().take(n).copied().collect()),
+        _ => None,
     }
 }
 
@@ -202,6 +261,8 @@ pub fn resolve(motion: &MotionState, tool_is_motion: bool) -> Option<PontoGizmoV
         grupos.push(Grupo {
             node,
             feicao,
+            rot: rotacoes(s, n),
+            escala: escalas(s, n),
             pontos,
             segmentos,
             total,

@@ -222,6 +222,8 @@ fn mede_o_custo_do_gizmo_de_pontos() {
                     feicao,
                     pontos,
                     segmentos,
+                    rot: None,
+                    escala: None,
                     total: n,
                 }],
             };
@@ -252,4 +254,152 @@ fn mede_o_custo_do_gizmo_de_pontos() {
         }
         eprintln!();
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ AS DUAS LEIS DA ORDEM DO DONO DE 2026-09-19 — *«tamanho absoluto […] e precisam responder
+// aos grafos (como o scale do oscilador)»*.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+use ph2d_vector::{Point, Shape};
+
+/// Um `to_screen` de brincar com um zoom `z`: o MUNDO escala, a tela é a mesma.
+fn olho(z: f64) -> impl Fn([f32; 2]) -> Point {
+    move |w| Point::new(f64::from(w[0]) * z + 600.0, f64::from(w[1]) * z + 400.0)
+}
+
+/// Um grupo de UM ponto na origem, com as colunas que o teste quiser.
+fn um_ponto(rot: Option<f32>, escala: Option<f32>) -> PontoGizmoView {
+    PontoGizmoView {
+        grupos: vec![Grupo {
+            node: ph2d_nodegraph::graph::NodeId(0),
+            feicao: Feicao::Ponto,
+            pontos: vec![[0.0, 0.0]],
+            segmentos: Vec::new(),
+            rot: rot.map(|r| vec![r]),
+            escala: escala.map(|e| vec![e]),
+            total: 1,
+        }],
+    }
+}
+
+/// A caixa do que foi traçado — a régua das duas leis.
+fn caixa(v: &PontoGizmoView, z: f64) -> ph2d_vector::Rect {
+    let (_, tracos) = crate::ponto_gizmo_overlay::caminhos(v, &olho(z));
+    tracos.bounding_box()
+}
+
+/// ⭐⭐⭐ **LEI 1: O GLIFO NÃO MUDA COM O ZOOM.**
+///
+/// ⚠️ **A metade que prova que a régua VÊ o zoom é obrigatória** — com dois pontos, a DISTÂNCIA
+/// entre eles tem de dobrar quando o zoom dobra. Sem ela, um `caminhos` que ignorasse o
+/// `to_screen` por inteiro passaria: *uma régua que não vê o fenómeno acontecer não prova que ele
+/// não aconteceu*.
+#[test]
+fn o_glifo_tem_tamanho_absoluto_e_a_geometria_segue_o_zoom() {
+    // (a) UM ponto: a caixa é o glifo, e ela não pode mudar.
+    let v = um_ponto(None, None);
+    let (a, b) = (caixa(&v, 1.0), caixa(&v, 8.0));
+    assert!(
+        (a.width() - b.width()).abs() < 1e-9 && (a.height() - b.height()).abs() < 1e-9,
+        "o glifo mudou com o zoom: {a:?} contra {b:?}"
+    );
+
+    // (b) O CONTROLO: dois pontos, e a geometria TEM de seguir o zoom.
+    let mut dois = um_ponto(None, None);
+    dois.grupos[0].pontos.push([10.0, 0.0]);
+    dois.grupos[0].total = 2;
+    let (l1, l8) = (caixa(&dois, 1.0).width(), caixa(&dois, 8.0).width());
+    // As larguras são `10·z + glifo`; a diferença das duas mede o mundo, sem o glifo.
+    let mundo1 = l1 - a.width();
+    let mundo8 = l8 - a.width();
+    assert!(
+        (mundo8 / mundo1 - 8.0).abs() < 1e-6,
+        "a GEOMETRIA tem de seguir o zoom: {mundo1} → {mundo8}"
+    );
+}
+
+/// ⭐⭐⭐ **LEI 2: O GLIFO RESPONDE AO GRAFO** — o `scale` do oscilador, à letra.
+#[test]
+fn a_coluna_de_escala_engorda_o_glifo() {
+    let nu = caixa(&um_ponto(None, None), 1.0).width();
+    let gordo = caixa(&um_ponto(None, Some(3.0)), 1.0).width();
+    let magro = caixa(&um_ponto(None, Some(0.5)), 1.0).width();
+    assert!(
+        (gordo / nu - 3.0).abs() < 1e-6,
+        "escala 3 tem de dar 3x: {nu} → {gordo}"
+    );
+    assert!(
+        (magro / nu - 0.5).abs() < 1e-6,
+        "escala 0,5 tem de dar metade: {nu} → {magro}"
+    );
+    // ⚠️ E é INDEPENDENTE do zoom: a mesma razão a 8x.
+    let gordo8 = caixa(&um_ponto(None, Some(3.0)), 8.0).width();
+    assert!(
+        (gordo8 - gordo).abs() < 1e-9,
+        "a escala do grafo nao e' do zoom"
+    );
+}
+
+/// ⛔ **O PISO existe e nomeia o recurso** — abaixo da espessura do traço um símbolo não tem
+/// interior. Sem ele, um `size = 0` apagaria o gizmo e o artista leria *«o nó parou»*.
+#[test]
+fn uma_escala_minuscula_nao_apaga_o_gizmo() {
+    let quase_zero = caixa(&um_ponto(None, Some(0.001)), 1.0).width();
+    assert!(
+        quase_zero > 0.0,
+        "um glifo de largura zero e' um gizmo que desapareceu"
+    );
+    // ⚠️ E uma coluna ENVENENADA também não o apaga.
+    let nan = caixa(&um_ponto(None, Some(f32::NAN)), 1.0).width();
+    let nu = caixa(&um_ponto(None, None), 1.0).width();
+    assert!((nan - nu).abs() < 1e-9, "NaN cai no glifo nu");
+}
+
+/// ⭐⭐ **A AGULHA SÓ EXISTE SE O GRAFO DER DIRECÇÃO, e ela GIRA.**
+///
+/// ⚠️ **As duas metades:** sem a coluna, a caixa é o anel (simétrica); com ela, a caixa cresce
+/// para o lado para onde o ângulo aponta. *Uma agulha em toda nuvem seria ruído sobre um grafo que
+/// nunca falou de direcção.*
+#[test]
+fn a_agulha_da_direccao_so_existe_quando_o_grafo_a_da() {
+    let sem = caixa(&um_ponto(None, None), 1.0);
+    let com = caixa(&um_ponto(Some(0.0), None), 1.0);
+    assert!(
+        com.width() > sem.width() + 1.0,
+        "com `rot` tem de aparecer a agulha: {sem:?} → {com:?}"
+    );
+    // A `0°` ela aponta para a DIREITA (`x` cresce), a `180°` para a esquerda.
+    let direita = caixa(&um_ponto(Some(0.0), None), 1.0);
+    let esquerda = caixa(&um_ponto(Some(180.0), None), 1.0);
+    assert!(
+        direita.x1 > esquerda.x1 && esquerda.x0 < direita.x0,
+        "a agulha tem de GIRAR: {direita:?} contra {esquerda:?}"
+    );
+    // ⚠️ E `90°` nao e' a mesma imagem que `0°` — a armadilha da CRUZ, que roda em si mesma.
+    let noventa = caixa(&um_ponto(Some(90.0), None), 1.0);
+    assert!(
+        (noventa.width() - direita.width()).abs() > 1.0,
+        "um glifo que roda em si mesmo nao mostra rotacao nenhuma"
+    );
+}
+
+/// **E a corrente que traz as colunas de facto as ENTREGA ao retrato** — a rota, não a porta.
+#[test]
+fn o_retrato_carrega_as_colunas_do_grafo() {
+    let s = nuvem(3)
+        .with("size", Column::Vec2(vec![[2.0, 4.0]; 3]))
+        .with("rot", Column::Scalar(vec![10.0, 20.0, 30.0]));
+    assert_eq!(
+        super::escalas(&s, 3),
+        Some(vec![3.0, 3.0, 3.0]),
+        "a media dos eixos"
+    );
+    assert_eq!(super::rotacoes(&s, 3), Some(vec![10.0, 20.0, 30.0]));
+    assert_eq!(super::escalas(&nuvem(3), 3), None, "sem coluna, sem escala");
+    assert_eq!(
+        super::rotacoes(&nuvem(3), 3),
+        None,
+        "sem coluna, sem agulha"
+    );
 }

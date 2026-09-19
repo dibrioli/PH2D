@@ -56,6 +56,8 @@ diz onde ler o mecanismo:
 | **F11** | ✅ **Imagens em 9 fatias e folhas de quadros DEFORMAM com os ossos** (ordem do dono, 2026-09-17) | ✅ **FECHADO** — ver F11 abaixo |
 | **F21** | ✅ **A cena dedicada do ENVELOPE** (*«melhor montar uma cena específica para me mostrar isso»*, 2026-09-18) | ✅ **FECHADA em 2026-09-19 — e ela REFUTOU a lei da F20**: o envelope é inerte em toda forma FECHADA (amplitude `0,000000` numa faixa de `80 ×`), porque uma forma fechada também usa o padrão-ouro desde 15/09. A lei passou a perguntar ao **BIND** e não à mídia. Cena **`PH2D_VEC_BONE_SMOKE=2`** — ver F21 abaixo |
 | **F22** | ⭐⭐⭐ **A ESCOLHA da lei de pele, POR DESENHO** (ordem do dono, 2026-09-19: *«construa. por desenho»*) | ✅ **FECHADA no mesmo dia** — fileira **`Deform By`** (`Artwork` \| `Bone Reach`) no painel Bones, por DESENHO e para as duas mídias. ⭐ A escolha diz se o quadro **LÊ** a tabela do padrão-ouro, nunca se a calcula ⇒ a volta é **exacta ao bit** e não re-resolve nada. `PROJECT_SCHEMA` **+1** — ver F22 abaixo |
+| **F30** | ⏳ **A arte segue o peso ENTRE os nós** (a 2.ª saída da F26) | ⏳ **MEDIDA, e a medição mudou o desenho: a MALHA não é precisa para a geometria.** A `ph2d-vec-envelope` já deforma Bézier por um mapa não-afim, e o cabeçalho dela descreve o defeito que a pele tem hoje. Sonda: peso entre dois nós move a arte `0,000000 → 0,242375`, o fit converge, `0,163 ms` em release — ver F30 abaixo |
+| **F29** | ⏳ **Os DOIS modos de atribuir peso** (ordem do dono, 2026-09-19) | ⏳ **ABERTO, na fila.** *Absoluto* (o valor entra e o resto reparte-se pelos outros ossos na proporção deles; Add/Subtract inactivos) e *Cumulativo* (o de hoje). ⚠️ **Não é UI: a correcção é uma mancha que SOMA**, e uma absoluta não é um campo somável — ver F29 abaixo |
 | **F28** | ⭐⭐⭐ **UM PONTO NOVO NUMA FORMA PRESA** (a 1.ª das duas saídas da F26, escolhida pelo dono: *«primeiro 1 e depois o 2»*) | ✅ **FECHADA**, e o smoke dela REPROVOU a 1.ª versão. O ponto sobrevive ao quadro, já nasce com peso, **o desenho não salta** (`18,89 % → 0,000000 %`) e a caneta MOSTRA onde o clique poria o nó. ⛔⛔ Duas conclusões minhas caíram: *«custo zero de arquitectura»* (medido: o ponto evaporava-se) e *«o salto é refinamento»* (o dono recusou — ver F28-b) |
 | **F27** | ⭐⭐⭐ **O CENSO DOS VERBOS DO OSSO** (o aberto que a F16 deixou por escrito) | ✅ **FECHADO no mesmo dia — ZERO verbos mortos.** Os catorze botões chegam a um efeito, medidos pela captura que o undo tira. ⛔⛔ E uma **mutação sobreviveu**: apagado o corpo do braço do *Add Smart Bone* na fase do quadro, **23 testes da shell ficaram verdes** — o terceiro elo do §5.0 não tinha instrumento nenhum. Zero schema, zero registo — ver F27 abaixo |
 | **F26** | ⭐⭐⭐ **CORRIGIR UM PESO À MÃO** (auditoria, 2026-09-19) | ✅ **FECHADA no mesmo dia** — o 3.º verbo do osso (**`Weight`**) pinta a influência sobre a arte presa, com os pesos **à vista** por baixo do pincel. A correcção é uma **MANCHA no espaço** (nunca uma tabela por vértice) e é ancorada no **REPOUSO** do ponto que o dedo aponta. `PROJECT_SCHEMA` **+1** — ver F26 abaixo |
@@ -391,6 +393,89 @@ Mutação **12 de 12** a sangrar.
 
 ⏳ **ABERTO:** o espelho não tem gesto de canvas (só o painel) · e a arte presa não é espelhada com
 os ossos — o ramo novo nasce sem pele, e prendê-la é o gesto que já existe (*Bind*).
+
+### F30 — ⏳ **A 2.ª SAÍDA: a arte segue o peso ENTRE os nós** (ordem do dono, 2026-09-19, *«siga para o (2)»*)
+
+**MEDIDA antes de escrita uma linha de produto**
+([`sonda_da_pele_como_warp`](../../crates/ph2d-vec-skin/src/sonda_da_pele_como_warp_tests.rs)), e a
+medição **mudou o desenho**.
+
+⛔⛔⛔ **A nota que descrevia esta saída estava errada em DUAS coisas.** Ela dizia *«deformar a forma
+por uma MALHA … o preço NÃO é “a `ph2d-poly2d` já existe”: ela parte de uma **grelha de ALFA**, logo
+a forma teria de ser RASTERIZADA»*.
+
+1. **A rasterização não é precisa:** a [`ph2d_poly2d::triangulate`] recebe um **anel de pontos** e a
+   [`ph2d_poly2d::grid_mesh_of`] também — a grelha de alfa é **uma** das entradas
+   ([`ph2d_poly2d::mesh_of`]), não a única. *É a terceira nota minha que a medição derruba nesta
+   jornada.*
+2. ⭐⭐⭐ **E a MALHA não é precisa para a GEOMETRIA.** A [`ph2d_vec_envelope`] já deforma geometria
+   **Bézier** por um mapa **não-afim**, e o cabeçalho dela descreve, por escrito, o defeito que a
+   pele tem hoje: *«só transformações afins comutam com a avaliação de Bézier … a curva resultante
+   não é a imagem da curva original … ela acerta em `t=0` e `t=1` exactamente, e no interior
+   nunca»*. ⇒ **é a razão de a arte não responder a peso pintado entre os nós**, e é a mesma raiz do
+   salto que o dono recusou na F28.
+
+**O que a sonda mediu** (dois ossos, rectângulo de `40 × 10`, uma mancha no meio da aresta de baixo —
+o sítio exacto da pergunta do dono):
+
+| pergunta | resposta |
+|---|---|
+| peso pintado ENTRE dois nós move a arte? | **hoje `0,000000`** · pela rota do warp **`0,242375`** |
+| o `fit_to_bezpath` converge? | **sim**, mesmo com jacobiana por diferença finita (⇒ não morre aqui) |
+| custo | **`0,163 ms`** em `--release` (`0,881` em debug), `accuracy 0,05` |
+| nós da saída | `4` na fonte ⇒ **`16`** no desenho |
+
+⛔⛔ **O QUE FALTA, e é o que torna este item pegável:**
+
+1. ⚠️⚠️ **A sonda usou a lei DERIVADA (`weights_corrected(p, None, …)`), e o produto usa a do
+   PADRÃO-OURO** — uma linha guardada **por ponto de controlo**, que **não tem forma contínua**. ⇒ a
+   malha volta, mas **só como portadora do campo de pesos**, nunca da geometria: guardar a malha do
+   domínio do bind e amostrá-la, ou interpolar as linhas dos dois nós ao longo do `t` (a lei que a
+   F28 já escreve para o ponto novo). *É esta a decisão que abre a wave.*
+2. **A jacobiana tem de ser FECHADA.** O contrato do [`ph2d_vec_envelope::Warp`] exige a derivada
+   real, e o doc dele mede que uma inconsistente faz o fit **não convergir** — ela falha **alto**.
+   `∂W/∂p = Σ_j [ A_j(p) ⊗ ∇w_j(p) + w_j(p) · L_j ]` ⇒ é preciso `∇w_j`, que um campo baricêntrico
+   dá **descontínuo** e o campo de Hermite da [`ph2d_poly2d::hermite_attrs`] dá **suave**.
+3. **O `recook` corre por quadro.** `0,163 ms` por forma é `~1 %` de um quadro; dez formas presas são
+   `10 %`. ⇒ ou memo por pose, ou a `accuracy` deixa de ser `0,05` — e **nenhum dos dois números foi
+   escolhido por ninguém**.
+4. ⏳ **Decisão de PRODUTO, e é do dono:** o desenho cozido passa a ter **mais nós** que a fonte
+   (`4 → 16`). Ninguém os edita (a fonte é que se edita), mas o ***Expand*** assa a geometria de agora
+   no desenho — ali o artista fica com a forma refitada. *É o único sítio onde o número sai do
+   quadro e entra no documento.*
+
+### F29 — ⏳ **ABERTO: os DOIS modos de atribuir peso** (ordem do dono, 2026-09-19, *«coloque na fila»*)
+
+*«Precisamos de 2 modos de atribuir peso aos pontos.»*
+
+1. **Valor ABSOLUTO** — o valor de *Brush Strength* é posto **imediatamente** no osso em mãos, e o
+   que sobra (`1 − v`) reparte-se pelos **outros** ossos que já têm peso naquele ponto, **mantendo a
+   proporção entre eles**. ⇒ neste modo os botões *Add* e *Subtract* ficam **inactivos**.
+2. **Valor CUMULATIVO** — a cada pincelada o nó ganha ou perde o valor de *Brush Strength*, conforme
+   o botão marcado. **É o que existe hoje.**
+
+⚠️⚠️ **A DIFERENÇA NÃO É DE UI — É DO MODELO DE DADOS, e é por aí que se começa a medir.** A
+correcção é hoje uma [`ph2d_skeleton::Correccao`] — uma **MANCHA no espaço** que **SOMA**
+(`w += delta · bump · quota`, e a normalização vem depois). Duas manchas sobrepostas **acumulam-se
+por construção**, que é exactamente o modo 2.
+
+⛔ **O modo 1 não é exprimível como uma mancha de soma**, e a pergunta que o decide é uma medição:
+*duas manchas ABSOLUTAS sobrepostas — o que recebe um ponto que está debaixo das duas?* Se a resposta
+é *«a última que o artista pintou»*, então uma correcção absoluta **não é um campo somável** e o
+`Correccao` precisa de espécie (`Soma` / `Alvo`), com a ordem da lista a passar a ter significado —
+⚠️ e ela **viaja em bytes opacos dentro do `SkinBind`**, logo é degrau de `PROJECT_SCHEMA`.
+
+⚠️ **E a repartição do modo 1 não é a normalização que já existe.** Hoje o `corrige` soma e depois
+divide pela soma — o que *diminui* proporcionalmente **todos**, incluindo o osso em mãos. O modo 1
+pede outra coisa: **prender** `w[alvo] = v` e escalar **só os outros** por `(1 − v) / Σoutros`.
+⛔ E ele tem um caso degenerado nomeado: *e quando os outros somam ZERO?* (um ponto que só o osso em
+mãos governa). Ali não há por onde repartir, e a resposta tem de ser escrita antes de o código a
+escolher sozinho.
+
+⭐ **O que já está pronto:** o `WeightDirection` (os botões *Add*/*Subtract*) tem porta própria e
+**três** consumidores — esconder/inactivar os dois no modo absoluto é a lente do painel, que já
+existe para o `Pose` e o `Density`. E o censo dos knobs mede se um controlo chega ao barro, logo um
+botão inactivo que continue a escrever seria apanhado.
 
 ### F28 — ⭐⭐⭐ **UM PONTO NOVO NUMA FORMA PRESA SOBREVIVE, E JÁ NASCE COM PESO** (ordem do dono, 2026-09-19)
 

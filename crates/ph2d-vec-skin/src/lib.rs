@@ -135,3 +135,7 @@ pub const fn e_no(k: usize) -> bool {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "sonda_da_pele_como_warp_tests.rs"]
+mod sonda_da_pele_como_warp_tests;

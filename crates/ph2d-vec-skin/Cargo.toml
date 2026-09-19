@@ -24,3 +24,11 @@ ph2d-skin-weights = { path = "../ph2d-skin-weights" }
 
 [lints]
 workspace = true
+
+# ⚠️ **DEV-dependency, e é uma SONDA que a pede** (2026-09-19): a `ph2d-vec-envelope` sabe deformar
+# geometria Bézier por um mapa **não-afim** — que é exactamente o que a pele é —, e a sonda
+# `sonda_da_pele_como_warp` mede se essa rota resolve *«pintar peso ENTRE os nós»* e quanto custa.
+# ⛔ Enquanto for dev, o produto não muda: *uma dependência de produto escreve-se quando a decisão
+# está tomada, não enquanto ela está a ser medida.*
+[dev-dependencies]
+ph2d-vec-envelope = { path = "../ph2d-vec-envelope" }

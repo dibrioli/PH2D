@@ -1342,3 +1342,101 @@ reescrito do lado da cura: hoje afirma o **preço** (uma passagem por valor dist
 3. **O gate da saída é cego ao preço** — e o do preço é cego à saída. *Duas grandezas, dois gates.*
 
 **5 mutações, 5 sangram.** Portão: `2 221` testes verdes, clippy `-D warnings` a zero.
+
+---
+
+## §24 — ⛔⛔⛔ A AUDITORIA (ordem do dono, 2026-09-19: *«já disse que a presença da placa MUDA o SSS da esfera. Isso não faz sentido! Auditoria ou outro agente!»*)
+
+Ele cobrou, e tinha razão: eu declarei a cura da §23 e o sintoma continuou. **Duas auditorias
+independentes** (censo de caminhos · caminho do dispositivo) mais a medição na placa convergem num
+achado que nenhuma das secções anteriores tinha.
+
+### ⛔⛔⛔ §24.1 — A §12 e a §23 estão FORA do caminho que o artista corre
+
+O caminho de omissão do produto não é *«o dispositivo marcha e a CPU sombreia»*. É este, no
+[`smoke_draw_thread::traca`](../../crates/ph2d-app-field3d/src/smoke_draw_thread.rs):
+
+```text
+let pintado = if pelo_dispositivo && !p.refinar { gpu_frame::paint(…) } else { None };
+if let Some(pintura) = pintado { …manda a imagem…; return; }   ⇐ DEVOLVE AQUI
+…
+g.curvature  = curvatura::do_gbuffer(…)          ⇐ nunca alcançado
+sh.set_soft(… sss_shadow::blur_por_material …)   ⇐ nunca alcançado
+```
+
+| condição | valor de fábrica |
+|---|---|
+| `pelo_dispositivo` | `Shading::Render` + lâmpadas + a peça ser suportada |
+| `!p.refinar` | ⭐ **verdadeiro** — o `preview::refines_occlusion` exige o `PH2D_FIELD_AO`, que nasce DESLIGADO |
+
+⇒ **a sombra de borda mole da §12 e o raio por material da §23 existem, estão gateados ao bit, e o
+produto não os executa.** É por isso que a cura que eu entreguei não mudou nada para ele.
+
+### ⛔⛔⛔ §24.2 — E TODA coluna deste documento rotulada «DISPOSITIVO» era a CPU
+
+O [`Quadro::mole`] declara-se por escrito como *«`false` desenha o quadro como o DISPOSITIVO o
+desenha»* — e pinta na **CPU**. A placa **nunca foi corrida** por gate nenhum desta família.
+*Uma sonda que mede um sucedâneo mede outro programa*, e esta casa já tinha a lei escrita.
+
+⭐ **Corrido na placa a sério** (RTX 5060 Ti, `320×240`, a `=33` com o jade do report —
+[`subsuperficie_dispositivo_tests.rs`](../../crates/ph2d-app-field3d/src/subsuperficie_dispositivo_tests.rs)):
+
+| cena | caminho | quebra na banda | contraste |
+|---|---|---:|---:|
+| com a chapa | **DISPOSITIVO (real)** | **`9,20`** | `61,4` |
+| com a chapa | REFERÊNCIA | `1,00` | `61,1` |
+| só a bola | **DISPOSITIVO (real)** | `1,00` | `60,9` |
+| só a bola | REFERÊNCIA | `1,00` | `60,9` |
+
+⇒ **a linha dura é a borda da sombra que a chapa lança, entregue DURA porque o amaciamento não
+corre neste caminho.** Tirada a chapa, a placa lê `1,00` — a mesma da referência. O contraste não se
+mexe em coluna nenhuma: *a luz é a mesma; o que muda é só a borda*.
+
+⭐ O sucedâneo **acerta nesta cena** (`9,21` contra `9,20`) — o que não autoriza a próxima afirmação
+sobre a placa a ser feita sem a correr.
+
+### ⛔⛔ §24.3 — O censo dos caminhos: eram TRÊS e são NOVE
+
+A lista da §22 (*«(A) a sombra · (B) o passo da curvatura · (C) o raio do borrão»*) está
+**incompleta por seis**. Os que faltavam, todos derivados do DOCUMENTO INTEIRO e consumidos por
+pixel:
+
+| caminho | grandeza | arma na `=33`? |
+|---|---|---|
+| `safe_march_step(doc)` | o passo de cada raio (CPU **e** dispositivo) | ⭐ não — a chapa é `Box` sem chanfro e a junção é `Sharp` |
+| `field_shrink(doc, reg)` | o orçamento de passos (CPU **e** dispositivo) | ⭐ não — pela mesma razão |
+| `Scene::clip` ← `bounding_ball` | onde cada raio COMEÇA | ⚠️ **sim** — a bola cresce sempre |
+| `lowest_point(doc)` | a altura do chão | ⚠️ meio-legítimo (lido uma vez, ao ligar o Render) |
+| a grelha do `ground_bounce` | o **passo** da grelha (`n` fixo, meia-largura ∝ raio da bola) | ⚠️ **sim** — vazamento de RESOLUÇÃO puro |
+| `owners: None → Some` | o mecanismo de escolha de material de TODO pixel | ⚠️ **sim** |
+
+⚠️ **Nenhum destes seis tem gate.** E o tecto que existe — o `1` byte de (B) — foi medido **com a
+sombra desligada**, logo ele limita a **soma** dos caminhos não-sombra na cena do dono, o que é mais
+do que a nota dizia e continua a ser **invisível**.
+
+### ⛔⛔⛔ §24.4 — E a paridade de materiais NUNCA testou subsuperfície
+
+Os seis materiais de `material_parity_tests.rs` partem todos de `OpenPbr::default()`, que tem
+`subsurface_weight: 0.0` ⇒ **`mx_subsurface_thick`, `mx_integrate_burley` e o canal da curvatura
+nunca foram comparados contra a CPU**. É a lei que aquele mesmo ficheiro escreve sobre outro knob —
+*um corpus no ponto neutro de um knob não testa esse knob* — aplicada ao subsurface inteiro.
+
+⚠️ E a única paridade com subsuperfície (`paint_parity_luz_tests.rs`) usa **uma esfera sozinha**
+(sem sombra a cortar) e o lado de CPU dela **não chama `set_soft`** ⇒ ela compara duas metades que
+concordam, e a metade em que discordam não entra.
+
+### ⭐ §24.5 — O que esta jornada deixa
+
+- [`a_borda_mole_e_inalcancavel_quando_o_dispositivo_pinta`] — gate **estrutural**, corre sempre
+  (sem placa), e afirma a §24.1 nas três metades: a chamada do borrão é única · o ramo pintado
+  devolve **dentro do próprio corpo** · essa é a configuração de fábrica. **4 de 4 mutações sangram.**
+  ⚠️ A 1.ª redacção procurava o `return` em todo o resto do ficheiro e uma mutação **SOBREVIVEU**:
+  apagado o `return` daquele ramo, ela achava o do traçado de CPU, que também vem antes do borrão —
+  *o gate afirmava «há ALGUM return pelo caminho» e o nome dele promete «ESTE ramo devolve»*.
+- [`sonda_o_dispositivo_a_correr_contra_a_referencia`] — a medição na placa, com a **mesma régua**
+  das outras colunas (`regua_da_banda`, extraída como porta única).
+- ⏳ **ABERTO, e é decisão do dono:** o gémeo do amaciamento no dispositivo. O bloqueador tem
+  endereço — o buffer de luz do traçador tem passo `1 + n_lâmpadas + 6` e **não tem slot RGB por
+  lâmpada**, e o `mx_direct` do WGSL recebe **uma** radiância onde o `Surface::direct_sss` da CPU
+  recebe duas. A alternativa (voltar pelo `march` e sombrear na CPU) traz o G-buffer pelo barramento,
+  que é o que a `traca` evita de propósito.

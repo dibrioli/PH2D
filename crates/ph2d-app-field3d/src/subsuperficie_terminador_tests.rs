@@ -76,6 +76,26 @@ struct Quadro<'a> {
     ///
     /// ⚠️ **`false` NÃO é «sem sombra»** — é a sombra com a borda DURA, que é o que o dispositivo
     /// entrega hoje e o que o dono fotografou em 18/09.
+    ///
+    /// # ⛔⛔⛔ Ele é um SUCEDÂNEO, e até 2026-09-19 nada o tinha conferido
+    ///
+    /// Esta linha dizia *«desenha o quadro como o DISPOSITIVO o desenha»* e **pinta na CPU**: toda
+    /// coluna deste módulo rotulada «dispositivo» era esta, e a placa **nunca foi corrida**.
+    /// *Uma sonda que mede um sucedâneo mede outro programa* — e um sucedâneo por conferir é uma
+    /// afirmação sobre um programa que ninguém observou.
+    ///
+    /// ⭐ **Conferido em 19/09 contra a placa a sério** ([`dispositivo`], RTX 5060 Ti), na
+    /// cena `=33` com o jade do report:
+    ///
+    /// | | dispositivo REAL | este sucedâneo |
+    /// |---|---:|---:|
+    /// | quebra na banda | **`9,20`** | `9,21` |
+    /// | contraste | `61,4` | `61,1` |
+    ///
+    /// ⇒ ele descreve bem o que a placa desenha **nesta cena**. ⚠️ O que ele **não** descreve é a
+    /// razão: o caminho do dono nem chega ao borrão (ver o cabeçalho de [`dispositivo`]),
+    /// e é por isso que a concordância deste número não autoriza a próxima afirmação sobre a placa
+    /// a ser feita sem a correr.
     mole: bool,
 }
 
@@ -260,6 +280,27 @@ fn quebra_na_banda(
         sem_ceu: false,
         mole,
     });
+    regua_da_banda(&g, &px, onde, cam)
+}
+
+/// ⭐⭐⭐ **A RÉGUA, sobre um quadro JÁ PINTADO** — devolve `(p99 da segunda diferença da luminância
+/// na banda do terminador, claro − escuro)`.
+///
+/// # ⛔⛔ Ela é uma PORTA desde 2026-09-19, e a razão é um defeito MEDIDO
+///
+/// Até aqui a régua vivia dentro da [`quebra_na_banda`], que pinta **na CPU** — logo toda coluna
+/// deste módulo rotulada *«DISPOSITIVO»* era a CPU com o canal mole desligado, um **SUCEDÂNEO**, e
+/// o dispositivo nunca foi corrido. *Uma sonda que mede um sucedâneo mede outro programa.*
+///
+/// ⭐ Com a régua aqui, o leitor do dispositivo ([`dispositivo`]) mede a imagem que o
+/// produto de facto entrega **com a mesma régua** — e duas colunas medidas por duas funções
+/// diferentes não são uma comparação.
+fn regua_da_banda(
+    g: &ph2d_field_render::Gbuffer,
+    px: &[u8],
+    onde: [f32; 3],
+    cam: &Orbit,
+) -> (f32, f32) {
     let (wu, hu) = (W as usize, H as usize);
     let (right, up, fwd) = cam.basis();
     let da_bola = |i: usize| g.hit[i] && g.point[i][0] > 0.1;
@@ -507,64 +548,6 @@ fn a_borda_da_sombra_num_jade_e_mole_e_a_do_opaco_continua_dura() {
     );
 }
 
-/// ⭐⭐⭐ **OS DOIS CAMINHOS DESENHAM COISAS DIFERENTES, E A DIFERENÇA É SÓ A BORDA DA SOMBRA.**
-///
-/// # ⛔⛔ O report do dono (18/09), e porque nenhum gate o via
-///
-/// *«Por que a linha dura voltou em Solid? A luz está diferente?»* — com a foto do ecrã dele, onde
-/// a cura da §12 **não aparece**. E, a seguir, o achado dele: ***«a presença da placa faz a linha
-/// dura aparecer»***, que confirma a §11 (sem a placa, a bola sai lisa).
-///
-/// ⭐ **A luz NÃO está diferente**, e este gate é quem o prova: o **contraste** através da banda é o
-/// mesmo nos dois caminhos (`61,2` contra `61,1`) — *a sombra está lá, com a mesma força, nos dois*.
-/// O que muda é a **quebra**: `9,21` no dispositivo contra `1,00` na referência, `9,2×`.
-///
-/// A causa é que a §12 assou a borda mole no traçado de **CPU** e o **dispositivo ainda não tem o
-/// gémeo** — ele calcula a visibilidade dentro da pintura. ⛔ Aquela secção declarou-o por escrito, e
-/// **nada media a diferença**: as paridades CPU↔dispositivo ficam verdes porque *nenhuma delas assa
-/// este canal* — elas comparam duas metades que concordam, e a metade em que discordam não entra.
-///
-/// # ⭐ Este gate reprova no dia em que o gémeo chegar, e isso é o desenho
-///
-/// Ele exige que a diferença **EXISTA**. Quando alguém escrever a passagem no dispositivo, ele cai —
-/// e quem o curar tem de apagar a dívida declarada na §12 no mesmo gesto. *Uma diferença declarada e
-/// não medida é uma nota que envelhece; uma com gate é uma propriedade com data de fim.*
-///
-/// ⚠️ **As três metades, e nenhuma chega sozinha:** sem (2) uma cura que apagasse a sombra dos dois
-/// lados passaria em (1); sem (3) uma que a apagasse só de um lado também.
-#[test]
-fn o_dispositivo_ainda_desenha_a_borda_dura_e_a_referencia_nao() {
-    let (doc, cam, onde, luz, chao) = arranjo_do_dono();
-    let jade = ph2d_material::OpenPbr {
-        subsurface_weight: 1.0,
-        geometry_thin_walled: false,
-        subsurface_color: [0.75, 0.35, 0.35],
-        base_color: [0.75, 0.35, 0.35],
-        ..ph2d_material::OpenPbr::default()
-    };
-    let (dura, contraste_duro) = quebra_na_banda(&doc, jade, &cam, onde, luz, chao, false);
-    let (mole, contraste_mole) = quebra_na_banda(&doc, jade, &cam, onde, luz, chao, true);
-
-    // (1) ⛔ A DÍVIDA AINDA EXISTE — medido `9,21` contra `1,00`, e a barra é `3×` para não medir
-    // ruído. *Se isto reprovar, o gémeo chegou: apague a dívida da §12 e este gate com ela.*
-    assert!(
-        dura >= mole * 3.0,
-        "os dois caminhos passaram a desenhar a mesma borda (dispositivo {dura:.2} contra          referência {mole:.2}) — se o gémeo do dispositivo foi escrito, esta é a linha que sai, e          com ela a dívida declarada em `docs/Render3d/10` §12"
-    );
-    // (2) ⭐⭐⭐ A METADE QUE RESPONDE AO DONO: a LUZ é a mesma. O contraste através da banda mede a
-    // FORÇA da sombra, e ele não se mexe — o que muda é só a borda dela.
-    assert!(
-        (contraste_duro - contraste_mole).abs() <= contraste_duro * 0.05,
-        "o contraste da banda mudou entre os caminhos ({contraste_duro:.1} contra          {contraste_mole:.1}) — então não é só a BORDA que difere, e a resposta «a luz é a mesma»          deixou de ser verdade"
-    );
-    // (3) ⚠️ E os DOIS continuam a ter sombra: sem isto, um caminho que a apagasse leria a banda
-    // lisíssima e passaria em (1) pelo motivo errado.
-    assert!(
-        contraste_duro >= 8.0 && contraste_mole >= 8.0,
-        "a sombra desapareceu num dos caminhos ({contraste_duro:.1} · {contraste_mole:.1})"
-    );
-}
-
 /// ⭐⭐⭐ **A RÉGUA LÊ ~ZERO NUM GRADIENTE LISO — e é isso que a prende à SEGUNDA diferença.**
 ///
 /// # ⛔⛔ Ela nasceu de uma mutação que SOBREVIVEU a DOIS gates
@@ -623,6 +606,10 @@ fn a_regua_da_banda_le_quase_zero_num_gradiente_sem_degrau() {
 /// esfera, dois deles vazamentos medidos e não curados (report do dono, 18/09).
 #[path = "subsuperficie_alcance_tests.rs"]
 mod alcance;
+
+/// ⭐⭐⭐ **O DISPOSITIVO, CORRIDO** — a metade que faltava a este módulo inteiro.
+#[path = "subsuperficie_dispositivo_tests.rs"]
+mod dispositivo;
 
 #[path = "subsuperficie_sondas_tests.rs"]
 mod sondas;

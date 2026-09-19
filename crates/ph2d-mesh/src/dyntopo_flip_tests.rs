@@ -377,3 +377,66 @@ fn o_alinhamento_para_na_borda_da_esfera() {
 /// `1,7254` (ver o corpo do gate) e a peça é uma esfera de raio `1`, logo o
 /// antípoda está a `2` — a cerca fica no meio do que sobra.
 const LONGE: f32 = 1.85;
+
+/// ⭐⭐⭐ **A TROCA POR DIRECÇÃO NÃO COMPRA ALINHAMENTO COM VINCO.**
+///
+/// ⛔⛔⛔ **Ela nasceu de um report com FOTO** (2026-09-19: *«o resultado fica
+/// pior que o original, com irregularidade a 90 graus da direcção do
+/// movimento»*). A fixtura é um quad **NÃO PLANO** montado para o caso: a
+/// diagonal antiga está a `45°` do traço — a direcção que a lei menos quer — e a
+/// nova está **ao longo** dele, a que ela mais quer. O ganho de alinhamento é
+/// `1,5` contra um limiar de `0,20`: *a troca é desejadíssima, e abriria o par*.
+///
+/// ⚠️ **As duas metades são obrigatórias:** sem o CONTROLO plano, um passe que
+/// recusasse tudo ficava verde. Com ele, o gate afirma a lei inteira — *recusa o
+/// que vinca, aceita o que não vinca*, com o alinhamento comprado a ser
+/// EXACTAMENTE o mesmo nos dois.
+///
+/// ⚠️ **A fixtura é sintética porque o produto não a discrimina:** medida na
+/// bola da `=49`, esta cerca move o vinco `p90` de `4,493` para `4,391` — `2 %`.
+/// *Uma cerca de zero disparos mensuráveis ou ganha fixtura própria ou sai.*
+#[test]
+fn a_troca_por_direccao_nao_compra_alinhamento_com_vinco() {
+    // `c—d` ao longo de `x` (o que a lei quer); `a—b` a `45°` (o que ela evita).
+    // Com `h > 0` o par NOVO abre-se num telhado.
+    let quad = |h: f32| {
+        let pos = vec![
+            [-0.7, -0.7, h],  // a = 0
+            [0.7, 0.7, h],    // b = 1
+            [-1.0, 0.0, 0.0], // c = 2
+            [1.0, 0.0, 0.0],  // d = 3
+        ];
+        let faces = vec![Face::tri(0, 1, 2), Face::tri(1, 0, 3)];
+        Mesh::from_parts(pos, faces).expect("o quad e' uma malha valida")
+    };
+    // A MESMA forma que o pente usa (`cos 4α` com o traço ao longo de `x`), e a
+    // mesma que os gates vizinhos deste ficheiro escrevem.
+    let pref = |u: [f32; 3]| {
+        let c2 = u[0] * u[0];
+        8.0 * c2 * c2 - 8.0 * c2 + 1.0
+    };
+
+    // (1) O CONTROLO: plano, a troca ACONTECE.
+    let mut plano = quad(0.0);
+    let n = crate::alinha_arestas(&mut plano, [0.0; 3], 4.0, &pref, &mut scratch());
+    assert_eq!(
+        n, 1,
+        "o quad PLANO nao trocou: a fixtura nao contem o fenomeno, e a metade \
+         de baixo passaria por vacuo"
+    );
+
+    // (2) E com o par que ela ABRIRIA, recusa.
+    let mut dobrado = quad(0.45);
+    let antes = dobrado.faces().to_vec();
+    let n = crate::alinha_arestas(&mut dobrado, [0.0; 3], 4.0, &pref, &mut scratch());
+    assert_eq!(
+        n, 0,
+        "a troca aceitou um par que ela ABRE — e' a ondulacao que o dono \
+         fotografou em 19/09: o alinhamento sobe e a luz piora"
+    );
+    assert_eq!(
+        dobrado.faces(),
+        &antes[..],
+        "a malha mudou com zero trocas declaradas"
+    );
+}

@@ -402,6 +402,11 @@ fn one_round(
                         {
                             continue;
                         }
+                        // ⭐⭐⭐ **E a terceira cerca: o pente não compra
+                        // alinhamento com VINCOS.** Ver [`TECTO_DO_VINCO`].
+                        if vinca(p(a), p(b), p(c), p(d)) {
+                            continue;
+                        }
                     }
                 }
                 if folds(p(a), p(b), p(c), p(d)) {
@@ -501,6 +506,70 @@ fn worst_angle(p0: [f32; 3], p1: [f32; 3], p2: [f32; 3]) -> f32 {
 }
 
 /// A troca dobraria a superfície? Ver a recusa 3.
+/// ⭐⭐⭐ **O TECTO DO VINCO — o ângulo, em cosseno, que duas faces vizinhas
+/// podem abrir DEPOIS de uma troca por direcção.**
+///
+/// ⛔⛔⛔ **Ele nasceu de um report com FOTO** (2026-09-19: *«o resultado fica
+/// pior que o original, com irregularidade a 90 graus da direcção do
+/// movimento»*) — e o mecanismo é que **um flip não muda a FORMA, muda o que a
+/// LUZ vê**: ele não move um vértice, mas troca as duas faces cuja normal a
+/// sombra lê. As duas cercas que este passe já tinha protegem a **forma do
+/// triângulo** ([`CHAO_DO_ALINHAMENTO`]) e a **orientação** ([`folds`]), e
+/// nenhuma delas olha para o ângulo entre as duas normais.
+///
+/// ⭐⭐ **A ATRIBUIÇÃO foi medida antes de esta cerca existir**, metade a metade,
+/// na faixa do traço (ângulo entre normais vizinhas, em graus):
+///
+/// | metades do pente | `p50` | `p90` | **max** |
+/// |---|---|---|---|
+/// | nenhuma (o controlo) | `1,360` | `2,566` | `4,202` |
+/// | só o campo de tamanho | `1,336` | `2,627` | `5,291` |
+/// | **só a TROCA DE DIAGONAL** | `1,513` | `3,551` | **`179,98`** ⛔ |
+/// | só o deslocamento | `1,419` | `2,507` | `4,345` |
+/// | tudo (o que shipava) | `1,838` | `4,411` | `14,03` |
+///
+/// ⇒ **a troca é quem vinca** — e o `179,98` é um par **dobrado sobre si
+/// mesmo** que a guarda de orientação deixou passar (ela compara cada face nova
+/// com a SOMA das normais antigas, e essa soma é quase nula num par já quase
+/// plano-dobrado). *Uma cerca que pergunta pelo SENTIDO não responde pelo
+/// ÂNGULO.*
+///
+/// ⭐ **E o deslocamento ALISA** (`0,0536 → 0,0199` na régua de rugosidade, e
+/// `p90` de `2,566` para `2,507` nesta): a relaxação isotrópica que a H1 trouxe
+/// é o que segura a superfície enquanto a troca a puxa. É por isso que o produto
+/// inteiro lia `14,03` e a troca sozinha `179,98`.
+///
+/// ⚠️ **A cerca é MONÓTONA COM TECTO**, a mesma forma da do ângulo: a troca pode
+/// deixar o par mais vincado do que estava **desde que fique abaixo deste
+/// tecto** — senão uma peça que já tem um vinco de verdade (uma quina
+/// esculpida) ficaria congelada, e o pente deixaria de trabalhar exactamente
+/// onde há forma.
+///
+/// ⛔ **Ela vale SÓ para a troca por direcção.** O passe isotrópico entra por
+/// `None` e é conduzido pela qualidade do triângulo — pô-la lá mudaria o
+/// remalhador e a cadeia de retopologia, que esta wave não toca.
+const TECTO_DO_VINCO: f32 = 0.984_807_8; // cos(10°)
+
+/// A troca `a—b → c—d` deixa o par mais vincado do que ele estava **e** acima do
+/// [`TECTO_DO_VINCO`]?
+fn vinca(a: [f32; 3], b: [f32; 3], c: [f32; 3], d: [f32; 3]) -> bool {
+    let cos_entre = |u: [f32; 3], w: [f32; 3]| {
+        let (lu, lw) = (norm(u), norm(w));
+        (lu > 0.0 && lw > 0.0).then(|| dot(u, w) / (lu * lw))
+    };
+    // ⚠️ O par ANTIGO partilha `a—b`; o NOVO partilha `c—d`. As normais têm de
+    // ser lidas com o percurso que cada face de facto terá, senão o sinal muda e
+    // a cerca compara um par consigo mesmo do avesso.
+    let Some(antes) = cos_entre(tri_normal(a, b, c), tri_normal(b, a, d)) else {
+        return false;
+    };
+    let Some(depois) = cos_entre(tri_normal(a, d, c), tri_normal(d, b, c)) else {
+        return false;
+    };
+    // Maior cosseno é MAIS PLANO. Recusa quem piora **e** passa o tecto.
+    depois < antes && depois < TECTO_DO_VINCO
+}
+
 fn folds(a: [f32; 3], b: [f32; 3], c: [f32; 3], d: [f32; 3]) -> bool {
     let before = add(tri_normal(a, b, c), tri_normal(b, a, d));
     let (n0, n1) = (tri_normal(a, d, c), tri_normal(d, b, c));

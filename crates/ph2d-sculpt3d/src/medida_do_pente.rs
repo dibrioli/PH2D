@@ -241,6 +241,88 @@ pub fn grade_da_faixa(malha: &Mesh, percurso: &[[f32; 3]], raio: f32) -> ([usize
     (bins, n)
 }
 
+/// ⭐⭐⭐ **A QUARTA COLUNA — o VINCO: o ângulo entre as normais de duas faces
+/// vizinhas, em graus.** Devolve `(p50, p90, max, quantas arestas entraram)`.
+///
+/// ⛔⛔⛔ **Ela nasceu do report de 2026-09-19** (*«o resultado fica pior que o
+/// original, com irregularidade a 90 graus da direcção do movimento»*, com foto
+/// do RELEVO — não do arame). As três colunas anteriores medem a **ligação**
+/// (que direcção as arestas tomam, que forma os triângulos têm) e **nenhuma**
+/// mede o que a luz lê. *Uma malha pode ficar mais alinhada e mais feia ao mesmo
+/// tempo, e até aqui esta linha não tinha como o dizer.*
+///
+/// ⚠️⚠️ **Ela é a régua certa e a [`rugosidade`] não era:** `|p − centroide do
+/// anel|` muda quando a LIGAÇÃO muda, e uma troca de diagonal muda o anel **sem
+/// mover um vértice** — o número sobe sem a superfície se mexer. O ângulo entre
+/// normais também muda com a ligação, mas é **exactamente isso que o
+/// sombreamento faz**: a face é o que a luz vê.
+///
+/// ⚠️ **O CONTROLO é obrigatório:** numa esfera lisa esta régua lê o facetado da
+/// própria malha (`p50 ≈ 1,4°` na peça da `=49`), logo o que se julga é a
+/// distância ao valor por pentear, nunca o valor.
+#[must_use]
+pub fn vinco_da_faixa(malha: &Mesh, percurso: &[[f32; 3]], raio: f32) -> (f64, f64, f64, usize) {
+    let pos = malha.positions();
+    let normal = |f: &ph2d_mesh::Face| {
+        let v = f.verts();
+        let (a, b, c) = (pos[v[0] as usize], pos[v[1] as usize], pos[v[2] as usize]);
+        let n = cruz(sub(b, a), sub(c, a));
+        let l = comprimento(n);
+        (l > 0.0).then(|| [n[0] / l as f32, n[1] / l as f32, n[2] / l as f32])
+    };
+    let mut por_aresta: std::collections::BTreeMap<(u32, u32), Vec<usize>> =
+        std::collections::BTreeMap::new();
+    for (i, f) in malha.faces().iter().enumerate() {
+        let vs = f.verts();
+        if vs.len() != 3 {
+            continue;
+        }
+        for k in 0..3 {
+            let (a, b) = (vs[k], vs[(k + 1) % 3]);
+            por_aresta.entry((a.min(b), a.max(b))).or_default().push(i);
+        }
+    }
+    let mut vals: Vec<f64> = Vec::new();
+    for ((a, b), faces) in &por_aresta {
+        // ⛔ Uma aresta com uma face é BEIRA e com três é não-variedade: nem uma
+        // nem outra tem um ângulo entre DUAS normais.
+        if faces.len() != 2 {
+            continue;
+        }
+        let (pa, pb) = (pos[*a as usize], pos[*b as usize]);
+        let meio = [
+            (pa[0] + pb[0]) * 0.5,
+            (pa[1] + pb[1]) * 0.5,
+            (pa[2] + pb[2]) * 0.5,
+        ];
+        if troco(percurso, meio, raio).is_none() {
+            continue;
+        }
+        let (Some(n0), Some(n1)) = (
+            normal(&malha.faces()[faces[0]]),
+            normal(&malha.faces()[faces[1]]),
+        ) else {
+            continue;
+        };
+        let c = f64::from(n0[0] * n1[0] + n0[1] * n1[1] + n0[2] * n1[2]).clamp(-1.0, 1.0);
+        vals.push(c.acos().to_degrees());
+    }
+    vals.sort_by(|x, y| x.partial_cmp(y).expect("sem NaN"));
+    let n = vals.len();
+    if n == 0 {
+        return (0.0, 0.0, 0.0, 0);
+    }
+    (vals[n / 2], vals[(n * 9 / 10).min(n - 1)], vals[n - 1], n)
+}
+
+fn cruz(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
+}
+
 /// **A SEGUNDA COLUNA — o pior canto de triângulo da faixa, em graus.**
 ///
 /// Devolve `(pior, quantos triângulos entraram)`. ⚠️ O par existe pela mesma

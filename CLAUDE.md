@@ -1282,17 +1282,34 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   quadro e o arnês dos gates —, e ⛔ *escrita em linha ela divergiu no dia em que nasceu*: o produto
   assava dois canais, o arnês assava **um**, e o gate acusou um botão VIVO de não chegar ao pixel.
   ⚠️ **O preço é ZERO no caminho de omissão** (cada canal só é assado se o consumidor DELE estiver
-  vivo) e ⭐ a escala maior **cura a dívida da paridade de graça**: a divergência é `1` ULP amplificado
-  por `1/(4ε²)`, logo um `ε` `10×` maior divide-a por `100`. ⭐⭐⭐ **E o painel DIZ porque uma fileira
+  vivo) e ⭐⭐ a escala maior **cura a dívida da paridade de graça, MEDIDA nos dois pontos**
+  (`PH2D_CURV_EPS_ESCALA`, instrumento versionado com a tabela): `|ΔH|` p50 `9,778e-4 → 9,775e-6`,
+  **exactamente `100×`**, com `δf/ε²` a prever os dois lados. ⛔⛔ **E a metade que NÃO segue:** a
+  contagem de PÍXEIS mal se move (`86 → 85`), porque ela não é feita de `H` — `84` dos `86` são de
+  **cobertura parcial**. *Duas grandezas com o mesmo nome, e só uma obedece ao `ε`* (esta linha
+  dizia só a primeira metade). ⭐⭐⭐ **E o painel DIZ porque uma fileira
   está apagada** — a `Linha::apagada` liga o `ParamRow::inert` que existia desde 18/09 e que o
   cabeçalho do `estilo.rs` **citava sem cumprir**; o gate tem as **duas** metades (de fábrica há `≥ 4`
   apagadas **e** com os gestos feitos não sobra nenhuma), senão «apagar» viraria licença. ⚠️ A
   arrumação vai de `20` para `24` floats com **RESERVA declarada** (`5` cores + `7` escalares = `22`,
   que o `vec4` arredonda) — *uma posição sem dono e sem régua é onde o campo seguinte aterra por
-  engano*. ⛔ **E a premissa de uma recusa MORREU:** o doc da const do shader recusava o `ε` por
-  argumento *«para não mudar o produto ao serviço do instrumento»* — verdade enquanto o PRODUTO
-  tivesse um `ε` só; hoje tem dois, e a nota é reescrita com a morte à vista (§0.0). **Mutação 5 de
-  5**, com controlo.
+  engano*, e ⚠️ a do **passo do estilo** não é fileira nem reserva: o dono dela é a MONTAGEM do
+  dispositivo (ela precisa do raio da PEÇA), e a **terceira categoria do censo vem com a metade que a
+  impede de ser licença** — o `pack` tem de a deixar a ZERO, senão há dois escritores e ganha o
+  último a correr. ⛔ **E a premissa de uma recusa MORREU:** o doc da const do shader recusava o `ε`
+  por argumento *«para não mudar o produto ao serviço do instrumento»* — verdade enquanto o PRODUTO
+  tivesse um `ε` só; hoje tem dois, e a nota é reescrita com a morte à vista (§0.0).
+  ⛔⛔⛔ **E a PROVA DE MUTAÇÃO achou que os TRÊS testes de paridade no pixel eram IMPRESSORAS com o
+  veredito escrito no NOME** — o corpo de um deles dizia-o por escrito e mandava para *«o gate irmão,
+  que é quem tem a barra»*, e o irmão **também não tinha nenhuma**. Medido: devolver o arnês da
+  paridade ao estado montado à mão (o defeito real deste dia) põe **`4 677` píxeis a divergir, `4 519`
+  no MIOLO**, e os três fechavam **VERDES** ⇒ *o que apanhou aquela regressão foi eu ler uma tabela
+  impressa, e ninguém lê uma tabela que passa*. Hoje o `os_pixeis_…_e_nao_os_do_miolo` **afirma**
+  (`MIOLO_MAX = 60`, `4×` a medição contra `4 519` da mutação) e leva o CONTROLO de que alguma bateria
+  mexeu um pixel contra a peça crua. ⚠️⚠️ **E o arnês mentiu uma QUARTA vez: `running N tests` CONTA
+  OS IGNORADOS** — um filtro que casa três `#[ignore]` sem `--ignored` imprime `running 3 tests`,
+  corre **ZERO** e lê-se exactamente como *«a mutação sobreviveu»*; a população honesta é
+  `passed + failed` do `test result:`. **Mutação 7 de 7**, com controlo; portão `15 067` verdes.
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

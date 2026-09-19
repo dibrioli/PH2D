@@ -590,8 +590,71 @@ O doc da [`ph2d_field_gpu::paint_wgsl::CURVATURA`] recusava por escrito passar o
 beneficiário em vez do único. *Quem move o número que tornava algo inalcançável tem de reconferir a
 nota* (`CLAUDE.md` §0.0).
 
-**Prova de mutação: 5 de 5 sangram**, com o controlo (reordenar duas fileiras equivalentes) a **não**
-sangrar.
+### §11.8 — ⛔⛔⛔ E a prova de mutação achou que os TRÊS gates de paridade no pixel eram IMPRESSORAS
+
+A mutação que devolve o arnês da paridade ao estado montado à mão — **o defeito real de 19/09**, o que
+pôs `4 677` píxeis a divergir com `4 519` no MIOLO — **sobreviveu**.
+
+Fui ler os três testes de `estilo_pixel_parity_tests`. Nenhum deles tem uma asserção. O corpo de um
+diz por escrito:
+
+> ⚠️ **Sem asserção de veredito sobre o miolo**: este é o instrumento que ATRIBUI. A afirmação fica no
+> gate irmão, que é quem tem a barra.
+
+**E o irmão também não tinha barra nenhuma.** Os três — a tabela knob a knob, a imagem lado a lado e o
+censo por cobertura — são instrumentos, e os três têm o **veredito escrito no NOME**
+(`os_pixeis_que_divergem_sao_os_da_borda_e_nao_os_do_miolo` afirma uma conclusão inteira no nome e não
+a verifica).
+
+⇒ *o que apanhou aquela regressão foi eu ler uma tabela impressa, e **ninguém lê uma tabela que
+passa**.* A cura é o gate cujo nome é o veredito passar a afirmá-lo:
+
+| estado | divergentes | borda | **miolo** |
+|---|---:|---:|---:|
+| o produto de hoje (12 baterias somadas) | — | — | **`15`** |
+| pior bateria sozinha (`só a tinta por curvatura`) | `85` | `84` | `1` |
+| o arnês montado à mão (a mutação) | `4 677` | `158` | **`4 519`** |
+
+`MIOLO_MAX = 60` é **`4×` a medição** e não um número redondo: o mecanismo diz que o miolo tende a
+zero (o `clamp` absorve `ΔH ≈ 9,8e-4` em toda cobertura cheia) e o que fica são os píxeis exactamente
+na banda — uma população que muda com a peça e com a câmera, **nunca com a LEI**. Entre `60` e `4 519`
+há `75×`, logo a folga não compra silêncio nenhum.
+
+⚠️ **E o gate leva o CONTROLO**, que é metade do valor: se nenhuma bateria movesse um pixel contra a
+peça CRUA, todas as linhas liriam `0` divergentes e a barra passaria sobre uma camada de estilo
+**inerte**.
+
+### §11.9 — ⚠️⚠️ O arnês mentiu uma QUARTA vez: `running N tests` conta os IGNORADOS
+
+Os três são `#[ignore] = "precisa de adaptador de GPU"`. O contador do arnês da mutação — escrito
+nesta mesma jornada, precisamente para apanhar *«o filtro casou ZERO testes»* — lia a linha
+`running N tests` do libtest, e **ela conta os ignorados**: o filtro casava três, corria **zero**, e
+imprimia `running 3 tests`.
+
+*Um filtro que casa três testes ignorados e um que casa três testes a passar imprimem a mesma linha* —
+e a leitura de um relatório de mutação sobre a primeira é, à letra, *«a mutação sobreviveu»*.
+
+⇒ a população honesta é `passed + failed` do `test result:`, e a entrada de GPU do arnês passa a
+carregar `-- --ignored` com a placa numa fatia exclusiva.
+
+⚠️ E o **sumário** do arnês mentia uma quinta vez, em silêncio: ele indexava o campo do FILTRO (sempre
+verdadeiro) em vez do veredito esperado, logo contava o **controlo** como mutação e imprimia *«8 de
+8 mutações sangram»* sobre `7`.
+
+### §11.10 — A terceira categoria da arrumação: uma posição cujo dono é a MONTAGEM
+
+O censo `as_linhas_cobrem_a_arrumacao_inteira_e_sem_repetir` conhecia duas categorias — *fileira* e
+*reserva* — e o passo da curvatura do estilo ([`wgsl::EPS_DO_ESTILO`]) não é nenhuma: ele precisa do
+**raio da PEÇA**, que o `Style` não tem, logo quem o escreve é a montagem do dispositivo.
+
+⛔ **A excepção vem com a metade que a impede de ser licença:** o [`wgsl::pack`] tem de a deixar a
+**ZERO**. Sem essa metade haveria dois escritores para a mesma posição e ganharia o último a correr,
+sem ninguém saber qual é.
+
+**Prova de mutação: 7 de 7 sangram** — uma delas por **não compilar**, que é o `const _: () =
+assert!(…)` a funcionar (ali a lei é erro de compilação e não teste; o arnês exige o `E0080` **e** o
+nome da constante, senão uma gralha minha passaria por uma lei a morder). O controlo (reordenar duas
+fileiras equivalentes) **não** sangra. Portão de fecho: **`15 067` testes verdes**.
 
 ## ⛔ Recusas MEDIDAS
 
@@ -612,3 +675,5 @@ sangrar.
 | filtrar o **SDF** (em vez da curvatura medida) para ganhar o raio | **move a superfície** (`dshift` até `0,84` voxel) e dá **as mesmas** larguras de rampa (§10.6) |
 | ler a curvatura **de longe demais** (`ε/raio ≥ 0,2`) | o `p05` fica positivo: as crateras deixam de ser côncavas e a **`Cavity Tint` morre** (§10.4) |
 | afinar a **lei** do estilo para curar a divergência CPU↔GPU | a tinta por curvatura mede **`0` ULP na lei**: `100 %` do que ela move é a GRANDEZA (§5-bis) |
+| ler a contagem de PÍXEIS como régua do `ε` | ela mal se move (`86 → 85`) enquanto `|ΔH|` divide por `100`: `84` dos `86` são de **cobertura parcial** (§11.2) |
+| deixar o veredito de um gate no NOME dele | **três** testes de paridade no pixel eram impressoras, e a regressão de `4 519` píxeis de miolo fechava VERDE (§11.8) |

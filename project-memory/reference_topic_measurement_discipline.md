@@ -785,3 +785,35 @@ a outra linha escreveu estas memórias, e a compactação deixou-as **órfãs** 
 - ⛔ [Cache que faz o trabalho `O(V)` da chave ANTES de a comparar: 456 µs/quadro para não fazer nada, com o gate de «não reconstrói» VERDE](feedback_a_cache_that_does_the_expensive_work_before_checking_is_not_a_cache.md)
 - ⛔⛔ [Corpus todo na força MÁXIMA não testa a curva da força (`s = s² = s⁴` em 1) — a lei do modo B estava errada e a suíte ficou verde com a troca](feedback_a_corpus_at_full_strength_cannot_test_the_strength_curve.md)
 - ⛔ [Régua que pergunta pelo NOME quebra na 1.ª família nova — «11× de divergência» era a bancada a dar o incremento a um gesto que quer o total](feedback_a_ruler_that_asks_for_the_name_breaks_on_the_first_new_family.md)
+
+## ⛔⛔⛔ Uma explicação dada ao dono é uma AFIRMAÇÃO — e esta nunca fora medida do lado que ele olhou (2026-09-19)
+
+Ele reportou *«não vi em nenhum dos casos o envelope fazer diferença na deformação»*. Eu respondi
+*«nas formas vectoriais ele manda como sempre»*, e shipei uma lei (esconder o gizmo) construída sobre
+essa frase. **As duas estavam erradas.**
+
+A frase vinha de um doc que dizia *«o padrão-ouro precisa de uma malha do domínio, e uma Bézier não
+tem uma»* — verdade até **2026-09-15**, quando uma wave passou a construir a malha do INTERIOR de um
+contorno fechado. *Quem move o número que tornava algo inalcançável tem de reconferir a nota*, e
+ninguém reconferiu. Medido depois, pela porta do produto, sobre uma faixa de **80×** no alcance:
+
+| forma | amplitude da deformação |
+|---|---:|
+| toda forma FECHADA (`Rectangle`, `Ellipse`, `Star`, `Polygon`, `Segment`, `Pie`) | **`0,000000`** |
+| toda forma ABERTA (`Line`, `Arc`, `Spiral`) | `2,03` – `4,25` |
+
+**Três leis, e nenhuma é sobre envelopes:**
+
+1. ⛔ **A sonda media PESOS; o report era sobre GEOMETRIA.** *Uma régua a montante da conversão não
+   afirma nada sobre o que o dono vê* — a mesma forma que a ponte da curva do pincel de pose pagou.
+2. ⛔ **A pergunta era sobre a MÍDIA e a lei é sobre o BIND.** *«É uma imagem ou uma forma?»* é
+   derivável e errada; *«este bind guarda a tabela do padrão-ouro?»* é a condição real, e responde
+   pelas duas mídias com uma porta só.
+3. ⭐ **A CENA que o dono pediu foi o instrumento** — construí-la obrigou a medir o regime em que o
+   controlo está vivo, e foi ali que a premissa caiu. *Um smoke que não se consegue montar sem medir
+   é mais forte que um gate.*
+
+⚠️ E a fixtura de um gate de OUTRO assunto (`when_two_handles_overlap_the_nearer_one_wins`) perdeu o
+fenómeno **duas vezes seguidas**, uma por cada mudança desta lei — porque montava o estado à mão.
+A cura é uma PORTA que nomeia a condição (`pele_na_lei_derivada`), nunca uma `SkinBind` escrita no
+gate: *uma fixtura montada à mão fica abaixo da lei que se está a medir.*

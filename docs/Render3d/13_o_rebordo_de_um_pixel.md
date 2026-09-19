@@ -231,12 +231,29 @@ contra a barra de `60`.
 ⇒ *uma cura maior do que a medição pede é uma regressão com um bom argumento ao lado.* O que fica é
 o **ponto** (e a curvatura, que é dele); o índice continua a ser o do pixel que se pinta.
 
-### §8.4 — ⏳ O que FICA, medido e nomeado
+### §8.4 — ⏳ O que FICA: a BANDA, e ela tem endereço (3.º report)
 
 Com o chão ligado sobra um pico de **`+33` bytes** na silhueta contra a sombra de contacto — **igual
-nos dois motores** (`dispositivo +32,9` · `CPU +35,9`), logo é outro defeito e não este. ⛔ E não é a
-luz devolvida: zerá-la não move o número (`+35,9` com e sem). A prova visual composta mostra a barra
-**sem o fio branco**, com um traço claro ténue na aresta de baixo.
+nos dois motores** (`dispositivo +32,9` · `CPU +35,9`), logo é outro defeito e não este. O dono
+fotografou-o e perguntou: *«temos um tipo de rim sem que o rim esteja ligado; no Blender não há
+isso»*.
+
+⭐⭐⭐ **Ele está DIAGNOSTICADO e a sonda vive em [`banda_sondas`](../../crates/ph2d-app-field3d/src/banda_sondas.rs)**, cujo cabeçalho tem a
+tabela. Em duas linhas: o pixel tem **`α = 255`** (não é cobertura parcial), uma verdade de terreno a
+`4×` reproduz a banda (`57,1` contra `59,4`, logo **não é amostragem**), o dono do ponto é a própria
+barra (rival a peso `0,000`, logo **não é material alheio**) e a normal vira suave e unitária (logo
+**não é o estimador de gradiente**).
+
+⇒ **é a VISIBILIDADE da lâmpada**, e ela salta: `0,899 → 0,881 → 0,857` ao longo da peça e
+**`1,000` exactamente** na última fileira. O passe da sombra **não traça** um pixel cuja normal do
+CENTRO está de costas para a luz e deixa o canal em `1,0`, com a razão escrita ao lado — *«o `N·L ≤ 0`
+já anula a contribuição»* — e com a ressalva que previu o dia: *«até ao dia em que alguém ler este
+canal para outra coisa»*. **Esse dia é a passagem da BORDA**, que sombreia com as normais das
+SUB-AMOSTRAS: uma que esteja de frente para a luz recebe `1,0` de um canal que nunca foi traçado.
+
+⏳ A cura tem forma (*o passe da sombra traça também os pixels de borda, mesmo com o centro de
+costas*) e tem preço (mais raios de sombra) **nos dois motores** — é wave própria, e o gate da
+esfera que defende o filtro de hoje diz porque ele não se apaga em geral.
 
 ## ⛔ Recusas MEDIDAS
 

@@ -166,7 +166,7 @@ fn o_perfil_atraves_da_silhueta_da_peca_escura() {
 }
 
 /// A cena do report com os materiais que ela pede — a barra escura só é escura por causa deles.
-fn cena_com_materiais() -> (
+pub(super) fn cena_com_materiais() -> (
     ph2d_field::FieldDoc,
     bevy_ecs::world::World,
     bevy_ecs::entity::Entity,
@@ -209,9 +209,14 @@ fn cena_com_materiais() -> (
 /// ⇒ a régua que fica é livre de limiar: a fronteira acha-se pelo **ALFA** (a cobertura muda) e o
 /// pico mede-se contra os dois vizinhos, que é a forma exacta da frase *«um pixel mais claro que os
 /// dois lados»*.
-fn pico_e_onde(rgba: &[u8]) -> (f32, Option<usize>) {
+fn pico_e_onde(rgba: &[u8], w: usize, h: usize) -> (f32, Option<usize>) {
     const FUNDO: f32 = 110.0;
-    let (w, h) = (LW as usize, LH as usize);
+    assert_eq!(
+        rgba.len(),
+        w * h * 4,
+        "a régua recebeu um tamanho que não é o do buffer — ela tinha o `1920×1080` CRAVADO e \
+         estourou na 1.ª sonda que lhe deu outro"
+    );
     let composto = |i: usize| -> f32 {
         let a = f32::from(rgba[i * 4 + 3]) / 255.0;
         let c = [0, 1, 2].map(|k| f32::from(rgba[i * 4 + k]) + FUNDO * (1.0 - a));
@@ -238,8 +243,8 @@ fn pico_e_onde(rgba: &[u8]) -> (f32, Option<usize>) {
 }
 
 /// O pico sozinho — a régua, sem o endereço.
-fn pico_da_silhueta(rgba: &[u8]) -> f32 {
-    pico_e_onde(rgba).0
+pub(super) fn pico_da_silhueta(rgba: &[u8], w: usize, h: usize) -> f32 {
+    pico_e_onde(rgba, w, h).0
 }
 
 /// ⭐⭐⭐ **QUAL DAS DUAS METADES DO CHÃO ACENDE A SILHUETA** — a sombra que TAPA, ou a luz que a
@@ -272,13 +277,21 @@ fn o_que_do_chao_acende_a_silhueta() {
     let chao = crate::floor::anchored(&mut ancora, crate::shading::Shading::Render, &doc, &reg);
     let g = ph2d_field_render::trace(&doc, &reg, &cam, LW, LH);
     println!("\n  {}", contexto());
-    for (nome, com_chao, com_devolvida) in [
-        ("chão + luz devolvida", true, true),
-        ("chão, luz devolvida a ZERO", true, false),
-        ("SEM chão", false, false),
+    // ⭐⭐⭐ **A 4.ª célula isola a OCLUSÃO DO CÉU**, que é a suspeita nº 1 do traço que sobra: com o
+    // chão ligado ele TAPA o céu da parte de baixo da peça, e um pixel de silhueta lê a oclusão do
+    // índice que o traçador classificou como FUNDO — onde nada tapa. *Se o traço vier daí, pô-la a
+    // `1` apaga-o.*
+    for (nome, com_chao, com_devolvida, sem_oclusao) in [
+        ("chão + luz devolvida", true, true, false),
+        ("chão, luz devolvida a ZERO", true, false, false),
+        ("chão, OCLUSÃO DO CÉU a 1", true, true, true),
+        ("SEM chão", false, false, false),
     ] {
         let alvo = if com_chao { chao } else { None };
         let mut sh = ph2d_field_render::shadow_pass_on(&doc, &reg, &cam, &g, &[onde], alvo);
+        if sem_oclusao {
+            sh.set_ambient(vec![1.0; g.hit.len()]);
+        }
         if let (true, Some(c)) = (com_devolvida, alvo) {
             sh.set_ground_bounce(ph2d_field_render::ground_bounce::bake_ground_bounce(
                 &doc,
@@ -306,7 +319,57 @@ fn o_que_do_chao_acende_a_silhueta() {
             &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
             [0, 0, 0, 0],
         );
-        println!("  {nome:<28} · pico {:+.1} bytes", pico_da_silhueta(&rgba));
+        let (pico, onde) = pico_e_onde(&rgba, LW as usize, LH as usize);
+        println!("  {nome:<28} · pico {pico:+.1} bytes");
+        // ⭐⭐⭐ **OS INGREDIENTES DO PIXEL EXACTO** — sem eles a tabela diz ONDE procurar e não O QUÊ.
+        if let Some(i) = onde {
+            let w = LW as usize;
+            let (x, y) = (i % w, i / w);
+            let viz = |j: usize| format!("{}/{:.2}", u8::from(g.hit[j]), sh.ambient_at(j));
+            // ⭐⭐⭐ **ESTE PIXEL É DE BORDA?** Com `α = 255` ele pode na mesma estar na lista: o
+            // laço da borda escreve-o com as QUATRO sub-amostras a acertar, e aí a cor sai da média
+            // de quatro normais de sub-amostra em vez da normal do centro. *A resposta muda a
+            // camada em que a causa vive.*
+            let borda = g
+                .edges
+                .iter()
+                .find(|e| e.pixel as usize == i)
+                .map(|e| format!("{:?}", e.hit));
+            println!(
+                "      borda? {}",
+                borda.unwrap_or_else(|| "NÃO — é um pixel de interior".to_string())
+            );
+            println!(
+                "      ({x}, {y}) · acerta {} · céu visto {:.2} · vizinhos E/D/C/B {} {} {} {}",
+                u8::from(g.hit[i]),
+                sh.ambient_at(i),
+                viz(i - 1),
+                viz(i + 1),
+                viz(i - w),
+                viz(i + w),
+            );
+            for dy in -2i32..=2 {
+                #[allow(clippy::cast_sign_loss, clippy::cast_possible_wrap)]
+                let jj = (y as i32 + dy) as usize * w + x;
+                let a = f32::from(rgba[jj * 4 + 3]) / 255.0;
+                let comp = 0.2126f32.mul_add(
+                    f32::from(rgba[jj * 4]) + 110.0 * (1.0 - a),
+                    0.7152f32.mul_add(
+                        f32::from(rgba[jj * 4 + 1]) + 110.0 * (1.0 - a),
+                        0.0722 * (f32::from(rgba[jj * 4 + 2]) + 110.0 * (1.0 - a)),
+                    ),
+                );
+                println!(
+                    "        y{dy:+} · [{:>3} {:>3} {:>3} α{:>3}] · composto {comp:6.1} · acerta {} · céu {:.2}",
+                    rgba[jj * 4],
+                    rgba[jj * 4 + 1],
+                    rgba[jj * 4 + 2],
+                    rgba[jj * 4 + 3],
+                    u8::from(g.hit[jj]),
+                    sh.ambient_at(jj)
+                );
+            }
+        }
     }
 }
 
@@ -395,10 +458,10 @@ fn os_dois_motores_e_o_rebordo() {
         );
         println!(
             "  {nome:<10} · dispositivo {:+.1} · CPU {:+.1} bytes",
-            pico_da_silhueta(&p.rgba),
-            pico_da_silhueta(&cpu)
+            pico_da_silhueta(&p.rgba, LW as usize, LH as usize),
+            pico_da_silhueta(&cpu, LW as usize, LH as usize)
         );
-        if let Some(centro) = onde_esta_o_pico(&p.rgba) {
+        if let Some(centro) = onde_esta_o_pico(&p.rgba, LW as usize, LH as usize) {
             vizinhanca(nome, &p.rgba, &cpu, centro);
         }
         // ⭐⭐⭐ **A PARTIÇÃO QUE NOMEIA A CAUSA: o centro do pixel acertou, ou não?**
@@ -437,8 +500,8 @@ fn os_dois_motores_e_o_rebordo() {
 }
 
 /// Onde o pico está — o endereço, sem a régua.
-fn onde_esta_o_pico(rgba: &[u8]) -> Option<usize> {
-    pico_e_onde(rgba).1
+fn onde_esta_o_pico(rgba: &[u8], w: usize, h: usize) -> Option<usize> {
+    pico_e_onde(rgba, w, h).1
 }
 
 /// ⭐⭐⭐ **A VIZINHANÇA DO PICO NOS DOIS MOTORES** — a coluna que diz QUAL ingrediente diverge.
@@ -464,69 +527,6 @@ fn vizinhanca(nome: &str, disp: &[u8], cpu: &[u8], centro: usize) {
             i32::from(d[1]) - i32::from(c[1])
         );
     }
-}
-
-/// ⭐⭐⭐ **A CENA DO REPORT, COMPOSTA SOBRE O CINZENTO DO CANVAS** — a prova que se OLHA.
-///
-/// ⚠️ O roteiro da `=36` corre em modo **Render**, e a fotografia da sessão virtual não sabe clicar
-/// ([`docs/Components/ferramentas/fotografa_cena.sh`]): ela abre no modo que a arrumação do dono
-/// deixou gravada. ⇒ a prova visual do Render monta-se aqui, pelo caminho do produto, e compõe-se
-/// pela lei que o `VelloPass` foi MEDIDO a fazer.
-#[test]
-#[ignore = "medição — precisa de GPU"]
-fn desenha_a_cena_composta() {
-    let Some(t) = crate::gpu_frame::shared() else {
-        println!("sem adaptador — saltado");
-        return;
-    };
-    let (doc, world, raiz) = cena_com_materiais();
-    let reg = crate::smoke::sampled_registry();
-    let cam = ph2d_field_render::Orbit::default();
-    let tabela =
-        crate::materials::Table::build(&world, raiz, cam.half_extent, f32::from(LH as u16));
-    let (onde, luz) = crate::lights::opening_light(&cam);
-    let lampada = ph2d_field_render::PointLamp {
-        world: onde,
-        radiance_at_one: [luz.intensity; 3],
-    };
-    let mut ancora = None;
-    let chao = crate::floor::anchored(&mut ancora, crate::shading::Shading::Render, &doc, &reg);
-    let Some(p) = crate::gpu_frame::paint_com(
-        t,
-        &doc,
-        &reg,
-        &cam,
-        &[lampada],
-        &tabela.surfaces_for(),
-        &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
-        [0, 0, 0, 0],
-        chao,
-        LW,
-        LH,
-        true,
-        crate::gpu_frame::Sonda::default(),
-    ) else {
-        println!("a placa recusa esta peça — saltado");
-        return;
-    };
-    const FUNDO: f32 = 110.0;
-    let (w, h) = (LW as usize, LH as usize);
-    let mut ppm = format!("P3\n{w} {h}\n255\n");
-    for i in 0..w * h {
-        let a = f32::from(p.rgba[i * 4 + 3]) / 255.0;
-        for k in 0..3 {
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            let saida = (f32::from(p.rgba[i * 4 + k]) + FUNDO * (1.0 - a)).clamp(0.0, 255.0) as u8;
-            ppm.push_str(&format!("{saida} "));
-        }
-        if i % w == w - 1 {
-            ppm.push('\n');
-        }
-    }
-    let dir = std::env::var("PH2D_PREMUL_DUMP").unwrap_or_else(|_| "/tmp".to_string());
-    let caminho = format!("{dir}/cena36_render.ppm");
-    std::fs::write(&caminho, ppm).expect("escreve a cena");
-    println!("  {caminho} · {}", contexto());
 }
 
 /// ⭐⭐⭐ **OS DOIS MOTORES CONCORDAM NA SILHUETA CUJO CENTRO FALHA A PEÇA** — o portão do rebordo

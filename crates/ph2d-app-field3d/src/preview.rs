@@ -55,6 +55,10 @@
 //!
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
+/// ⭐⭐⭐ A banda clara na silhueta, o 3.º report — ver [`banda_sondas`].
+#[cfg(test)]
+#[path = "banda_sondas.rs"]
+mod banda_sondas;
 /// ⭐⭐⭐ A borda que ferve, medida — ver [`borda_sondas`].
 #[cfg(test)]
 #[path = "borda_sondas.rs"]

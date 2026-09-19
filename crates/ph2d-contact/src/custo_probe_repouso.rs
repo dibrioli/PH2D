@@ -184,7 +184,9 @@ fn numa_pilha_comprimida_as_varreduras_compram_alguma_coisa() {
         "  {:<8} │ {:>9} │ {:>8} │ {:>8} │ {:>8} │ {:>8} │ {:>8} │ {:>9}",
         "passo", "vizinhos", "antes", "v=8", "v=32", "v=64", "v=256", "relógio v=64"
     );
-    eprintln!("  ---------|-----------|----------|----------|----------|----------|----------|-----------");
+    eprintln!(
+        "  ---------|-----------|----------|----------|----------|----------|----------|-----------"
+    );
     for passo_r in [1.8f32, 1.2, 0.7, 0.5] {
         let (p0, c, w) = super::atribuicao::campo_de_discos(N, RAIO, passo_r);
         let inv: Vec<f32> = (0..N)
@@ -229,6 +231,8 @@ fn numa_pilha_comprimida_as_varreduras_compram_alguma_coisa() {
             col[3]
         );
     }
-    eprintln!("\n  ⚠️ A coluna é PARES com penetração visível (> 2% do raio) — o que o artista vê.");
+    eprintln!(
+        "\n  ⚠️ A coluna é PARES com penetração visível (> 2% do raio) — o que o artista vê."
+    );
     eprintln!("  load: {}\n", carga());
 }

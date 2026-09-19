@@ -98,8 +98,10 @@ mod tests {
         for codec in ph2d_audio_encode::Codec::ALL {
             assert!(
                 super::AUDIO_IMPORT_EXTS.contains(&codec.extension()),
-                "the app exports {} as .{}, but no import picker lists that extension",
-                codec.name(),
+                // ⚠️ `{codec:?}` e não um nome de apresentação: esta é uma mensagem de DIAGNÓSTICO,
+                //    e o `Codec::name()` que aqui esteve foi apagado em 2026-09-19 — a palavra que o
+                //    artista lê vive na tabela de strings, por `Codec::label_key()`.
+                "the app exports {codec:?} as .{}, but no import picker lists that extension",
                 codec.extension()
             );
         }

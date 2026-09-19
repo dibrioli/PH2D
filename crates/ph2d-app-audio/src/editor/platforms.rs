@@ -38,7 +38,9 @@ fn price(data: &SampleData, p: &Platform) -> Option<Row> {
         format!("~{}", format_bytes(cost.disk_bytes))
     };
     Some((
-        p.name.to_string(),
+        // ⚠️ `tr(p.label_key)` e **nunca** `p.id`: o id é o infixo do ficheiro exportado
+        //    (`{stem}.mobile.ogg`) e traduzi-lo mudaria o nome dos ficheiros com a língua.
+        ph2d_i18n::tr(p.label_key).to_string(),
         ph2d_i18n::tr_with(
             "audio.editor.platforms.cost",
             &[
@@ -67,7 +69,13 @@ pub fn price_all(data: &SampleData) -> Vec<Row> {
 fn pending_rows() -> Vec<Row> {
     PLATFORMS
         .iter()
-        .map(|p| (p.name.to_string(), "\u{2026}".to_string(), 0.0))
+        .map(|p| {
+            (
+                ph2d_i18n::tr(p.label_key).to_string(),
+                "\u{2026}".to_string(),
+                0.0,
+            )
+        })
         .collect()
 }
 
@@ -165,7 +173,7 @@ impl super::super::AudioSystem {
             let conformed = ph2d_audio_edit::conform(&data, p.format());
             let path = dir.join(format!(
                 "{stem}.{}.{}",
-                p.name.to_lowercase(),
+                p.id.to_lowercase(),
                 p.codec.extension()
             ));
             let res = match p.codec {
@@ -189,7 +197,7 @@ impl super::super::AudioSystem {
                     written += 1;
                     println!("audio: wrote {}", path.display());
                 }
-                Err(e) => eprintln!("audio: {} failed for {}: {e}", p.name, path.display()),
+                Err(e) => eprintln!("audio: {} failed for {}: {e}", p.id, path.display()),
             }
         }
         println!(
@@ -364,16 +372,12 @@ mod tests {
     fn every_target_prices_and_names_itself() {
         let d = clip(2);
         for p in PLATFORMS {
-            let row = price(&d, &p).unwrap_or_else(|| panic!("{} did not price", p.name));
-            assert!(row.1.contains("RAM"), "{}: {}", p.name, row.1);
-            assert!(
-                !p.codec.extension().is_empty(),
-                "{} has no extension",
-                p.name
-            );
+            let row = price(&d, &p).unwrap_or_else(|| panic!("{} did not price", p.id));
+            assert!(row.1.contains("RAM"), "{}: {}", p.id, row.1);
+            assert!(!p.codec.extension().is_empty(), "{} has no extension", p.id);
         }
         // The lossless target keeps what the lossy ones drop -- that is why it is on the list.
-        let console = PLATFORMS.iter().find(|p| p.name == "Console").unwrap();
+        let console = PLATFORMS.iter().find(|p| p.id == "Console").unwrap();
         assert_eq!(console.codec, Codec::Wav16);
         assert!(
             console.codec.carries_metadata(),

@@ -75,25 +75,6 @@ const POR_PAGAR: &[(&str, usize, &str)] = &[
 selector do editor de curvas da timeline. Sao a familia mais barata de migrar e a mais visivel.",
     ),
     (
-        "ph2d-audio",
-        4,
-        "os quatro barramentos (`Master`/`Music`/`SFX`/`Voice`), pintados pelo mixer. ⚠️ As MESMAS \
-quatro palavras ja' vivem na tabela como `ecs.audio_bus.*` (o `ph2d-ecs` migrou-as em 19/09) — \
-esta crate tem de passar a apontar para elas, nunca a declarar um segundo par.",
-    ),
-    (
-        "ph2d-audio-edit",
-        3,
-        "as tres leis de variacao (`Random`/`Sequence`/`Shuffle`), pintadas pela rack do editor.",
-    ),
-    (
-        "ph2d-audio-encode",
-        6,
-        "os quatro formatos de entrega e as duas plataformas do catalogo. ⚠️ `WAV 16-bit` e \
-`Ogg Vorbis` sao nomes de FORMATO e a chave deles nao os traduz — ela existe para o dia em que a \
-palavra que os rodeia mudar de lingua.",
-    ),
-    (
         "ph2d-blend-mode",
         2,
         "`Behind` e `Clear`, pintados pelo selector de mistura. ⚠️ Sao DOIS de dezoito: os outros \
@@ -365,6 +346,17 @@ dono. ⏳ Mesma cerca: se chegarem a um pixel, viram divida.",
         "e' o `TierIndex::name()`, cujo unico consumidor de produto e' o `impl Display` dele — o \
 proprio doc-comment diz *«util em logs / debug overlays»*, e uma varredura pelas crates de painel \
 e pela shell nao acha um chamador. Nome de DIAGNOSTICO, nao rotulo.",
+    ),
+    (
+        "ph2d-audio-edit",
+        "variation.rs",
+        "⭐ e' o NOME DE SERIALIZACAO: o `PickStrategy::from_name` le'-o de volta a partir de um \
+MANIFESTO gravado, logo traduzi-lo partiria todo ficheiro que ja' existe — e em SILENCIO, porque o \
+`from_name` devolve `None` e o chamador cai no valor de omissao. A palavra que o artista le' no \
+selector `◀ nome ▶` passou a ser a chave `audio.pick.*` (2026-09-19). ⚠️ Esta e' a familia que a \
+regua NAO consegue separar sozinha: um `Platform::id` escapa-lhe por o campo se chamar `id` e nao \
+`name`, e uma `fn … -> &str` e' sempre acusada — *e' por isso que a isencao tem de dizer QUEM le' a \
+string de volta*.",
     ),
     (
         "ph2d-aseprite",

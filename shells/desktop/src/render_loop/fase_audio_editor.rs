@@ -24,7 +24,9 @@ impl crate::App {
         if ed::take_export() && audio.editor_loaded() {
             let codec = audio.editor_codec();
             if let Some(path) = rfd::FileDialog::new()
-                .add_filter(codec.name(), &[codec.extension()])
+                // ⚠️ O rótulo do filtro é o que o artista lê no diálogo NATIVO do sistema, logo ele
+                //    vem da tabela; a EXTENSÃO ao lado nunca se traduz.
+                .add_filter(ph2d_i18n::tr(codec.label_key()), &[codec.extension()])
                 .set_file_name(format!("export.{}", codec.extension()))
                 .save_file()
             {

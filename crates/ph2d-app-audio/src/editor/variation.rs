@@ -227,8 +227,12 @@ impl AudioSystem {
     }
 
     /// The current strategy's display name (panel selector readout).
+    ///
+    /// ⚠️ `tr(label_key())` e **nunca** `name()`: aquele é o nome do MANIFESTO, que o
+    /// `PickStrategy::from_name` lê de volta de um ficheiro gravado — traduzi-lo partiria a leitura
+    /// de todo ficheiro que já existe, e em silêncio.
     pub fn editor_variation_strategy(&self) -> &'static str {
-        self.editor.variation_set.strategy.name()
+        ph2d_i18n::tr(self.editor.variation_set.strategy.label_key())
     }
 
     /// Dev smoke (`PH2D_AUDIO_LOOP_SMOKE=1`, called from `editor_loop_smoke`): write a

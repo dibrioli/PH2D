@@ -47,13 +47,24 @@ impl Codec {
     /// The order the panel's selector cycles.
     pub const ALL: [Codec; 4] = [Codec::Wav16, Codec::Wav24, Codec::OggVorbis, Codec::Opus];
 
-    /// Display name.
-    pub fn name(self) -> &'static str {
+    /// ⭐ **A chave do nome que o artista lê**, resolvida por quem pinta (`ph2d_i18n::tr`).
+    ///
+    /// ⚠️ Os quatro são nomes de FORMATO e ficam iguais em toda língua — a chave não existe para os
+    /// traduzir, existe para que a única lista de palavras da interface seja a tabela de strings.
+    ///
+    /// ⛔ Aqui viveu um `name()` que devolvia a palavra crua; ele era pintado pelo readout de
+    /// entrega (`ph2d-app-audio::editor::delivery`) e nenhuma régua deste repo o via. ⛔ Este motor
+    /// **não** depende da `ph2d-i18n`: publicar o inglês por `tr_em(Ingles, …)` seria o acessório
+    /// que um pintor chama por engano sem que teste de igualdade nenhum o separe do certo.
+    ///
+    /// ⚠️ **Não confundir com [`Codec::extension`]**, que é o sufixo do ficheiro e nunca se traduz.
+    #[must_use]
+    pub fn label_key(self) -> &'static str {
         match self {
-            Codec::Wav16 => "WAV 16-bit",
-            Codec::Wav24 => "WAV 24-bit",
-            Codec::OggVorbis => "Ogg Vorbis",
-            Codec::Opus => "Opus",
+            Codec::Wav16 => "audio.codec.wav16",
+            Codec::Wav24 => "audio.codec.wav24",
+            Codec::OggVorbis => "audio.codec.ogg_vorbis",
+            Codec::Opus => "audio.codec.opus",
         }
     }
 

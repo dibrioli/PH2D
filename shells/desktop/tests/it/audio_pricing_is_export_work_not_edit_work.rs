@@ -156,7 +156,7 @@ fn measure_what_a_gain_click_used_to_cost() {
         let cost_ms = t.elapsed().as_secs_f64() * 1e3;
         println!(
             "  {:8} conform {conform_ms:7.1} ms  cost({:?}) {cost_ms:7.1} ms  -> {} B (exact: {})",
-            p.name, p.codec, c.disk_bytes, c.disk_exact
+            p.id, p.codec, c.disk_bytes, c.disk_exact
         );
     }
 
@@ -208,7 +208,7 @@ fn the_priced_rows_still_say_something_true_about_each_target() {
         .map(|p| {
             let conformed = ph2d_audio_edit::conform(&data, p.format());
             (
-                p.name,
+                p.id,
                 cost(&conformed, p.codec, p.quality).expect("priced"),
             )
         })
@@ -228,7 +228,7 @@ fn the_priced_rows_still_say_something_true_about_each_target() {
     // ...and a long clip's lossy figure is an estimate that says so, on the platform whose codec
     // was the one running uncapped.
     let long = noisy_clip(30.0);
-    let desktop_p = PLATFORMS.iter().find(|p| p.name == "Desktop").unwrap();
+    let desktop_p = PLATFORMS.iter().find(|p| p.id == "Desktop").unwrap();
     assert_eq!(
         desktop_p.codec,
         Codec::Opus,

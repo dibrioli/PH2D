@@ -35,12 +35,37 @@ impl PickStrategy {
         PickStrategy::Shuffle,
     ];
 
-    /// Display / manifest name.
+    /// ⛔⛔ **O nome do MANIFESTO — não é o rótulo, e a diferença já esteve num `&str` só.**
+    ///
+    /// Ele é o que o [`PickStrategy::from_name`] lê de volta a partir de um ficheiro gravado, logo
+    /// **traduzi-lo partiria todo manifesto que já existe** — e em silêncio, porque o `from_name`
+    /// devolve `None` e o chamador cai no valor de omissão.
+    ///
+    /// ⚠️ Quem o pintava era o selector `◀ nome ▶` do painel de áudio; hoje quem o pinta é o
+    /// [`PickStrategy::label_key`]. *Quando um `&str` tem dois papéis, a cura é PARTI-LO.*
     pub fn name(self) -> &'static str {
         match self {
             PickStrategy::Random => "Random",
             PickStrategy::Sequence => "Sequence",
             PickStrategy::Shuffle => "Shuffle",
+        }
+    }
+
+    /// ⭐ **A chave da palavra que o artista lê**, resolvida por quem pinta (`ph2d_i18n::tr`).
+    ///
+    /// ⚠️ **Ela deriva da VARIANTE, nunca do [`PickStrategy::name`]** — derivá-la do nome do
+    /// manifesto ataria a tabela de strings ao formato do ficheiro, e a próxima renomeação de um
+    /// deles partiria o outro.
+    ///
+    /// ⛔ E este motor **não** publica a palavra inglesa: ele não depende da `ph2d-i18n`, de
+    /// propósito. Um `label()` que fosse `tr_em(Ingles, …)` é indistinguível do caminho certo num
+    /// processo em inglês, e foi essa a forma que custou o report *«prefab e Image ainda errados»*.
+    #[must_use]
+    pub fn label_key(self) -> &'static str {
+        match self {
+            PickStrategy::Random => "audio.pick.random",
+            PickStrategy::Sequence => "audio.pick.sequence",
+            PickStrategy::Shuffle => "audio.pick.shuffle",
         }
     }
 

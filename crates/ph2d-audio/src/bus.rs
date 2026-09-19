@@ -51,17 +51,21 @@ impl BusId {
         }
     }
 
-    /// Human-readable label, so the UI names strips from the same source of
-    /// truth as the routing (no drift between the enum and the panel text).
-    pub fn label(self) -> &'static str {
-        match self {
-            BusId::Master => "Master",
-            BusId::Music => "Music",
-            BusId::Sfx => "SFX",
-            BusId::Ui => "UI",
-            BusId::Voice => "Voice",
-        }
-    }
+    // ⛔⛔ **Aqui viveu um `label()` que prometia por escrito uma amarra INEXISTENTE** (apagado em
+    //    2026-09-19). Ele dizia-se *«human-readable label, so the UI names strips from the same
+    //    source of truth as the routing (no drift between the enum and the panel text)»* — e a
+    //    varredura da workspace inteira não achou **um único chamador**. Quem nomeia as strips é o
+    //    `SUB_BUS_LABELS` da `ph2d-panel-audio-mixer`, um array de CHAVES escrito à mão, e o painel
+    //    declara no doc dele que **não depende desta crate** de propósito.
+    //
+    //    ⚠️ *A deriva que o doc dizia impedir era exactamente a que existia:* as duas listas nunca
+    //    se tocaram. ⇒ a cura é apagar o órfão (a terceira espécie do `CLAUDE.md` §5.0: um órfão
+    //    lê-se igual a um morto, e tratá-lo como morto levaria alguém a ligar o painel a esta
+    //    crate para curar um defeito que não existe).
+    //
+    //    ⛔ E o que **NÃO** se faz aqui é traduzi-lo: publicar um rótulo que ninguém pinta poria uma
+    //    segunda palavra por barramento na tabela, ao lado das `panel.audio_mixer.bus.*` que já lá
+    //    estão. A ordem e a contagem das duas listas continuam atadas pelo `SUB_BUS_COUNT`.
 }
 
 #[cfg(test)]

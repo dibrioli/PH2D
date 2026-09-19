@@ -55,7 +55,8 @@ impl super::super::AudioSystem {
         let codec = Codec::ALL[codec_idx];
         ds::set_codec_info(
             Codec::ALL.len(),
-            codec.name(),
+            // ⚠️ `tr(label_key())` — o motor não publica a palavra inglesa de propósito.
+            ph2d_i18n::tr(codec.label_key()),
             codec.is_lossy(),
             ph2d_i18n::tr(if codec.is_lossy() && !codec.uses_quality_scalar() {
                 "audio.editor.delivery.bitrate"

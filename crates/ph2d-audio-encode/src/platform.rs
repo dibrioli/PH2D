@@ -32,8 +32,22 @@ use crate::Codec;
 /// One shipping target: what the asset **becomes**, and what carries it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Platform {
-    /// What the tab says.
-    pub name: &'static str,
+    /// ⛔⛔ **O IDENTIFICADOR do alvo — não é o que a aba diz, e já foi as duas coisas.**
+    ///
+    /// Ele é o infixo do ficheiro exportado (`{stem}.mobile.ogg`, por `id.to_lowercase()`), logo
+    /// **traduzi-lo mudaria o nome dos ficheiros que o artista exporta conforme a língua da
+    /// interface** — e uma pipeline de build que os procura pelo nome deixaria de os achar.
+    ///
+    /// ⚠️ A palavra que a aba diz é a chave [`Platform::label_key`]. *Quando um `&str` tem dois
+    /// papéis, a cura é PARTI-LO* — e enquanto ele se chamou `name` a régua da fronteira
+    /// acusava-o com razão, porque um campo `name` com cara de língua é indistinguível de um
+    /// rótulo de catálogo.
+    pub id: &'static str,
+    /// ⭐ **A chave da palavra que a aba diz**, resolvida por quem pinta (`ph2d_i18n::tr`).
+    ///
+    /// ⚠️ Ela deriva do ALVO e não do [`Platform::id`]: atá-la ao id ligaria a tabela de strings ao
+    /// nome dos ficheiros exportados, e a próxima renomeação de um deles partiria o outro.
+    pub label_key: &'static str,
     /// The rate the asset is conformed to. This, and the layout, are what move RAM.
     pub sample_rate: u32,
     /// Mono halves the memory a stereo asset holds — the cheapest real saving there is.
@@ -66,21 +80,24 @@ impl Platform {
 ///   loop points and the cue markers, which neither lossy codec carries.
 pub const PLATFORMS: [Platform; 3] = [
     Platform {
-        name: "Mobile",
+        id: "Mobile",
+        label_key: "audio.platform.mobile",
         sample_rate: 24_000,
         layout: ChannelLayout::Mono,
         codec: Codec::OggVorbis,
         quality: 0.3,
     },
     Platform {
-        name: "Desktop",
+        id: "Desktop",
+        label_key: "audio.platform.desktop",
         sample_rate: 48_000,
         layout: ChannelLayout::Stereo,
         codec: Codec::Opus,
         quality: 0.5,
     },
     Platform {
-        name: "Console",
+        id: "Console",
+        label_key: "audio.platform.console",
         sample_rate: 48_000,
         layout: ChannelLayout::Stereo,
         codec: Codec::Wav16,
@@ -108,7 +125,7 @@ mod tests {
                     ph2d_audio_opus::OPUS_RATE,
                     "{}: Opus stores only {} Hz, so a {} Hz profile would price its RAM at the \
                      wrong rate -- the asset lands in the game at 48 kHz whatever this says",
-                    p.name,
+                    p.id,
                     ph2d_audio_opus::OPUS_RATE,
                     p.sample_rate
                 );
@@ -124,8 +141,8 @@ mod tests {
                 assert!(
                     a.format() != b.format() || a.codec != b.codec,
                     "{} and {} are the same target",
-                    a.name,
-                    b.name
+                    a.id,
+                    b.id
                 );
             }
         }
@@ -139,8 +156,8 @@ mod tests {
     /// times -- which is the exact lie this table exists to stop.
     #[test]
     fn only_mobile_actually_buys_memory_back() {
-        let desktop = PLATFORMS.iter().find(|p| p.name == "Desktop").unwrap();
-        let mobile = PLATFORMS.iter().find(|p| p.name == "Mobile").unwrap();
+        let desktop = PLATFORMS.iter().find(|p| p.id == "Desktop").unwrap();
+        let mobile = PLATFORMS.iter().find(|p| p.id == "Mobile").unwrap();
         let ram_per_sec = |p: &Platform| p.sample_rate as usize * p.layout.count() * 4;
         assert!(
             ram_per_sec(mobile) * 4 <= ram_per_sec(desktop),

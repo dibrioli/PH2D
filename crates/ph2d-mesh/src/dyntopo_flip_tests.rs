@@ -199,3 +199,137 @@ fn face_of(m: &Mesh, key: [u32; 3]) -> Option<u32> {
 fn has_pair(m: &Mesh, pair: [[u32; 3]; 2]) -> bool {
     pair.iter().all(|k| face_of(m, *k).is_some())
 }
+
+/// ⭐⭐⭐ **SEM PREFERÊNCIA, A PORTA NOVA NÃO EXISTE — o controlo do
+/// [`crate::alinha_arestas`].**
+///
+/// Uma preferência CONSTANTE nunca satisfaz `nova > antiga + ganho`, logo o passe
+/// é inerte **ao bit**. ⛔ Sem esta metade, tudo o que os gates abaixo afirmam
+/// poderia ser obra de um passe que troca diagonais por conta própria.
+#[test]
+fn uma_preferencia_constante_deixa_a_malha_ao_bit() {
+    let base = tri_sphere(16, 24);
+    let mut m = base.clone();
+    let plana = |_: [f32; 3]| 1.0f32;
+    let trocas = crate::alinha_arestas(&mut m, [0.0, 0.0, 0.0], 10.0, &plana, &mut scratch());
+    assert_eq!(
+        trocas, 0,
+        "uma preferencia constante trocou {trocas} arestas"
+    );
+    assert_eq!(
+        m.faces(),
+        base.faces(),
+        "a ligacao mudou com uma preferencia que nao prefere nada"
+    );
+    assert_eq!(m.positions(), base.positions());
+}
+
+/// ⭐⭐⭐ **ELE NÃO CRIA NEM APAGA VÉRTICE, e é isso que o torna grátis.**
+///
+/// As outras duas metades do pente alinham **criando** arestas — e medido, isso
+/// adensa a malha ou afina o triângulo. ⚠️ *Esta é a propriedade inteira desta
+/// porta*, e sem gate ela é uma frase num cabeçalho.
+#[test]
+fn alinhar_por_troca_nao_muda_a_contagem() {
+    let base = tri_sphere(16, 24);
+    let mut m = base.clone();
+    // Uma preferência de quatro dobras à volta de `+x`, que é a forma que o
+    // pente usa — ver `ph2d_rake::preferencia_do_pente`.
+    let pref = |u: [f32; 3]| {
+        let c2 = u[0] * u[0];
+        8.0 * c2 * c2 - 8.0 * c2 + 1.0
+    };
+    let trocas = crate::alinha_arestas(&mut m, [0.0, 0.0, 0.0], 10.0, &pref, &mut scratch());
+    // O controlo POSITIVO: sem trocas as igualdades abaixo são triviais.
+    assert!(trocas > 0, "a fixtura nao contem o fenomeno: zero trocas");
+    assert_eq!(
+        m.vert_count(),
+        base.vert_count(),
+        "a contagem de vertices mudou"
+    );
+    assert_eq!(
+        m.face_count(),
+        base.face_count(),
+        "a contagem de faces mudou"
+    );
+    assert_eq!(
+        m.positions(),
+        base.positions(),
+        "um vertice moveu-se — esta porta so' muda a LIGACAO"
+    );
+}
+
+/// ⭐⭐⭐ **A REGIÃO É UMA CERCA: fora da esfera nem uma ligação muda.**
+///
+/// ⚠️ É a mesma promessa do [`relax`] e do corte, e ela é o que faz a topologia
+/// dinâmica ser *local* — *um passe que alinha o modelo inteiro a cada dab é o
+/// oposto exacto da promessa deste modo*.
+#[test]
+fn o_alinhamento_para_na_borda_da_esfera() {
+    let base = tri_sphere(16, 24);
+    let mut m = base.clone();
+    let pref = |u: [f32; 3]| {
+        let c2 = u[0] * u[0];
+        8.0 * c2 * c2 - 8.0 * c2 + 1.0
+    };
+    // ⚠️⚠️ **O CENTRO É ACHADO, nunca escolhido.** O ganho exigido é `0,20` em
+    // `cos 4α`, logo há calotas inteiras desta esfera onde não existe uma única
+    // troca que o atinja — e um `trocas > 0` sobre uma região dessas acusaria a
+    // PORTA em vez da fixtura. ⇒ corre-se o passe GLOBAL numa cópia, pega-se
+    // numa face que ele mudou, e a calota nasce em cima dela. *Uma fixtura que
+    // se localiza sozinha não envelhece com a malha.*
+    let onde = {
+        let mut sonda = base.clone();
+        crate::alinha_arestas(&mut sonda, [0.0; 3], 10.0, &pref, &mut scratch());
+        let i = base
+            .faces()
+            .iter()
+            .zip(sonda.faces())
+            .position(|(a, b)| a != b)
+            .expect("o passe global nao mudou nada — a fixtura nao contem o fenomeno");
+        let v = sonda.faces()[i].verts();
+        let p = |k: usize| sonda.positions()[v[k] as usize];
+        [
+            (p(0)[0] + p(1)[0] + p(2)[0]) / 3.0,
+            (p(0)[1] + p(1)[1] + p(2)[1]) / 3.0,
+            (p(0)[2] + p(1)[2] + p(2)[2]) / 3.0,
+        ]
+    };
+    let centro = onde;
+    let raio = 0.35f32;
+    let trocas = crate::alinha_arestas(&mut m, centro, raio, &pref, &mut scratch());
+    assert!(trocas > 0, "a fixtura nao contem o fenomeno: zero trocas");
+    // ⚠️⚠️ **A cerca NÃO é a esfera do dab, e escrever que era seria uma
+    // promessa que o motor nunca fez:** cada rodada semeia a seguinte com as
+    // faces que acabou de mudar (é assim que o [`relax`] repara o corte), logo a
+    // região CRESCE alguns anéis. ⇒ o que este gate afirma é a propriedade que
+    // importa — **o passe é LOCAL**: o lado oposto da peça fica intacto, e um
+    // passe que alinhasse o modelo inteiro a cada dab seria o oposto exacto da
+    // promessa deste modo.
+    let longe: Vec<usize> = base
+        .faces()
+        .iter()
+        .enumerate()
+        .filter(|(_, f)| {
+            f.verts().iter().all(|v| {
+                let p = base.positions()[*v as usize];
+                let d = [p[0] - centro[0], p[1] - centro[1], p[2] - centro[2]];
+                (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() > 1.4
+            })
+        })
+        .map(|(i, _)| i)
+        .collect();
+    // O controlo: se não houver faces longe, a asserção abaixo é vácuo.
+    assert!(
+        longe.len() > 100,
+        "so' {} faces estao longe do dab — a fixtura nao separa local de global",
+        longe.len()
+    );
+    for i in longe {
+        assert_eq!(
+            base.faces()[i],
+            m.faces()[i],
+            "a face {i} mudou no lado OPOSTO da peca — o passe deixou de ser local"
+        );
+    }
+}

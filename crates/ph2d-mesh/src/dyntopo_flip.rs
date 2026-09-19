@@ -105,7 +105,7 @@ use crate::mesh::{Mesh, RegionScratch};
 /// `MAX_PASSES` do corte. Medido, a segunda rodada já quase não acha o que
 /// trocar (o critério é estritamente melhorar, então o processo drena); três é
 /// folga para o caso em que um dab inteiro nasce de uma vez.
-const MAX_ROUNDS: usize = 3;
+pub(crate) const MAX_ROUNDS: usize = 3;
 
 /// O ganho mínimo, em cosseno do ângulo, para uma troca valer a pena.
 ///
@@ -113,6 +113,52 @@ const MAX_ROUNDS: usize = 3;
 /// troca aceita aumenta o pior ângulo do par, e um empate não é aceito — então
 /// não há ciclo de duas arestas trocando uma para a outra para sempre.
 const MIN_GAIN: f32 = 1e-4;
+
+/// ⭐⭐⭐ **O GANHO MÍNIMO DE ALINHAMENTO — e é ele que faz o BOTÃO ser um botão.**
+///
+/// ⛔⛔⛔ **Com o [`MIN_GAIN`] (de `1e-4`) este passe era QUASE BINÁRIO no
+/// knob**, e a razão é estrutural: o critério é uma COMPARAÇÃO entre duas
+/// preferências, e a preferência do pente é `k · cos 4α` — o `k` escala os dois
+/// lados e **cancela-se**. ⇒ a `6 %` do curso o flip trocava quase tanto como no
+/// tecto, e medido na chapa isso deixava o pior triângulo da faixa em
+/// **`0,24°`** (contra `11,57°` por pentear), *com o `Q` alto*.
+///
+/// ⭐ A cura não é uma cerca nova: é o limiar ser comparado contra a preferência
+/// **já escalada**, o que faz o ganho exigido em `cos 4α` valer
+/// `GANHO / k` — ele **cresce** quando o botão desce, e abaixo de um certo ponto
+/// passa de `2`, que é o alcance inteiro da função. *O passe desliga-se sozinho
+/// no curso baixo, sem um segundo número a dizer onde.*
+const GANHO_DO_ALINHAMENTO: f32 = 0.20;
+
+/// ⭐⭐⭐ **O CHÃO DE QUALIDADE do passe por DIRECÇÃO** — em `−cos(ângulo)`, que
+/// é o que a [`worst_angle`] guarda (maior é MELHOR).
+///
+/// ⛔⛔⛔ **A cerca MONÓTONA (`novo >= velho`) foi construída e medida QUASE
+/// INERTE:** na bola da cena de smoke ela move o `Q` de `+0,0179` para `+0,0208`
+/// num rumo e **piora** noutro (`+0,0175 → +0,0149`) — *uma troca que só aceita
+/// melhorar a forma quase nunca acontece, porque o critério de forma já drenou o
+/// que havia*. ⇒ a cerca que fica é **ABSOLUTA**: a troca pode piorar a forma
+/// desde que o par continue acima deste ângulo.
+///
+/// ⭐⭐ **E o número é o meio de uma janela MEDIDA em TRÊS colunas** — duas na
+/// chapa da bancada (`diag_a_escada_do_pente`) e uma na BOLA da cena `=49`, que
+/// é a peça que o artista vê:
+///
+/// | chão | chapa: `Q` no tecto | chapa: pior ângulo MÍNIMO do curso | bola: `ΔQ` do pior rumo |
+/// |---|---|---|---|
+/// | `12°` | `4,08×` | **`0,17×`** ⛔ | — |
+/// | `20°` | `2,10×` | `1,86×` ⚠️ | `2,17×` |
+/// | **`24°`** | **`1,92×`** | **`4,53×`** | **`1,24×`** |
+/// | `28°` | `1,13×` ⚠️ | `6,03×` | — |
+///
+/// ⇒ a janela é `[20°, 28°]` e `24°` é o meio dela. ⚠️ **A coluna do meio pesa
+/// mais que as outras duas de propósito:** uma lasca é um defeito que o artista
+/// VÊ, e uma grade um pouco mais fraca não é. Abaixo de `20°` há um **PENHASCO**
+/// — e ele não é do flip sozinho: o par sai daqui exactamente no chão e o
+/// **colapso do dab seguinte** transforma-o numa lasca. *Este chão tem de deixar
+/// folga para quem vem depois*, e é por isso que ele é muito maior que o `2°` que
+/// a régua exige.
+const CHAO_DO_ALINHAMENTO: f32 = -0.913545; // -cos(24°)
 
 /// **Relaxa a REGIÃO por troca de diagonal.** Devolve quantas arestas trocaram.
 ///
@@ -136,19 +182,75 @@ const MIN_GAIN: f32 = 1e-4;
 /// [`relax`] nem o que o traço vê; ela só nomeia o caso "todas as faces".
 ///
 /// Devolve quantas trocas aconteceram.
+/// ⭐⭐⭐ **A MESMA TROCA, mas escolhida por DIRECÇÃO** — a terceira metade do
+/// pente de topologia.
+///
+/// `preferencia` recebe a **direcção unitária** de uma diagonal e devolve quanto
+/// ela é desejada (maior é melhor). A troca acontece quando a diagonal NOVA é
+/// mais desejada que a ANTIGA **e** o pior ângulo do par não piora.
+///
+/// # ⛔⛔⛔ Porque ela existe, e porque as outras duas metades não bastavam
+///
+/// Partir uma aresta para alinhar CRIA arestas — e medido, toda configuração que
+/// compra `Q` suficiente por corte entrega triângulos de `0,2°`–`2,1°` (sem
+/// normal utilizável) ou adensa a malha até `5,5×`. **Uma troca de diagonal não
+/// cria nada:** ela muda a direcção de uma aresta a contagem constante, logo não
+/// paga densidade *nem* forma.
+///
+/// ⚠️ **A cerca da FORMA é o que a separa de uma destruidora:** `novo >= velho`
+/// sobre o pior ângulo do par, sem folga. ⇒ *este passe não pode piorar um
+/// triângulo*, e a segunda coluna da régua do pente é satisfeita **por
+/// construção** em vez de por calibração.
+///
+/// ⚠️ **DIVERGÊNCIA DECLARADA:** a espec §3.1 mede que o alvo **não troca uma
+/// única diagonal** — mas isso é com o operador de topologia PARADO, que é
+/// exactamente o regime em que não há passe nenhum a correr. *Esta lei é NOSSA e
+/// está declarada como tal*, como a isometria do controlador de topo.
+///
+/// ⚠️ **Ponto de extensão APPEND-ONLY:** ela não muda o [`relax`] nem o
+/// [`relax_valence`], e com `preferencia = None` o caminho é o de sempre **ao
+/// bit**.
+pub fn alinha_arestas(
+    mesh: &mut Mesh,
+    center: [f32; 3],
+    radius: f32,
+    preferencia: &(dyn Fn([f32; 3]) -> f32 + Sync),
+    scratch: &mut RegionScratch,
+) -> usize {
+    if radius <= 0.0 {
+        return 0;
+    }
+    let mut faces = Vec::new();
+    mesh.octree().faces_in_sphere(center, radius, &mut faces);
+    if faces.is_empty() {
+        return 0;
+    }
+    relax_com(mesh, &faces, scratch, Some(preferencia))
+}
+
 pub fn relax_valence(mesh: &mut Mesh, scratch: &mut RegionScratch) -> usize {
     let all: Vec<u32> = (0..mesh.face_count() as u32).collect();
     relax(mesh, &all, scratch)
 }
 
 pub(crate) fn relax(mesh: &mut Mesh, seeds: &[u32], scratch: &mut RegionScratch) -> usize {
+    relax_com(mesh, seeds, scratch, None)
+}
+
+/// O miolo dos dois: `preferencia = None` é o critério de sempre, **ao bit**.
+fn relax_com(
+    mesh: &mut Mesh,
+    seeds: &[u32],
+    scratch: &mut RegionScratch,
+    preferencia: Option<&(dyn Fn([f32; 3]) -> f32 + Sync)>,
+) -> usize {
     let mut total = 0;
     let mut work: Vec<u32> = seeds.to_vec();
     for _ in 0..MAX_ROUNDS {
         if work.is_empty() {
             break;
         }
-        let (n, next) = one_round(mesh, &work, scratch);
+        let (n, next) = one_round(mesh, &work, scratch, preferencia);
         total += n;
         if n == 0 {
             break;
@@ -159,7 +261,12 @@ pub(crate) fn relax(mesh: &mut Mesh, seeds: &[u32], scratch: &mut RegionScratch)
 }
 
 /// Uma rodada. Devolve quantas trocas aconteceram e as faces que mudaram.
-fn one_round(mesh: &mut Mesh, seeds: &[u32], scratch: &mut RegionScratch) -> (usize, Vec<u32>) {
+fn one_round(
+    mesh: &mut Mesh,
+    seeds: &[u32],
+    scratch: &mut RegionScratch,
+    preferencia: Option<&(dyn Fn([f32; 3]) -> f32 + Sync)>,
+) -> (usize, Vec<u32>) {
     let mut changes: Vec<(usize, Face)> = Vec::new();
     let mut next: Vec<u32> = Vec::new();
     {
@@ -210,8 +317,31 @@ fn one_round(mesh: &mut Mesh, seeds: &[u32], scratch: &mut RegionScratch) -> (us
                 let p = |v: u32| pos[v as usize];
                 let old = worst_angle(p(a), p(b), p(c)).min(worst_angle(p(b), p(a), p(d)));
                 let new = worst_angle(p(a), p(d), p(c)).min(worst_angle(p(d), p(b), p(c)));
-                if new <= old + MIN_GAIN {
-                    continue;
+                match preferencia {
+                    // O critério de sempre: só troca quem melhora a FORMA.
+                    None => {
+                        if new <= old + MIN_GAIN {
+                            continue;
+                        }
+                    }
+                    // ⭐⭐⭐ **Por DIRECÇÃO, com a forma como CERCA.** A diagonal
+                    // antiga é `a—b` (a aresta partilhada) e a nova é `c—d`.
+                    // ⛔ A cerca `new >= old` é sem folga de propósito: *este
+                    // passe não pode piorar um triângulo*, e é isso que o torna
+                    // grátis nas duas colunas da régua do pente.
+                    Some(pref) => {
+                        let Some(antiga) = unitaria(p(a), p(b)) else {
+                            continue;
+                        };
+                        let Some(nova) = unitaria(p(c), p(d)) else {
+                            continue;
+                        };
+                        if pref(nova) <= pref(antiga) + GANHO_DO_ALINHAMENTO
+                            || new < old.min(CHAO_DO_ALINHAMENTO)
+                        {
+                            continue;
+                        }
+                    }
                 }
                 if folds(p(a), p(b), p(c), p(d)) {
                     continue;
@@ -342,4 +472,15 @@ fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
 
 fn norm(a: [f32; 3]) -> f32 {
     dot(a, a).sqrt()
+}
+
+/// A direcção unitária de `a` para `b`, ou `None` se a aresta é degenerada.
+///
+/// ⚠️ **O sentido sai do par como ele vem**, e isso é seguro porque a lei que o
+/// lê é PAR (ver [`crate::Sizing`]): uma preferência ímpar faria a troca depender
+/// de qual face propôs o quad primeiro.
+fn unitaria(a: [f32; 3], b: [f32; 3]) -> Option<[f32; 3]> {
+    let d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    let l = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+    (l > 0.0).then(|| [d[0] / l, d[1] / l, d[2] / l])
 }

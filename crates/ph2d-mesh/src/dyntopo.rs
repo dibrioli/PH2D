@@ -425,16 +425,14 @@ fn one_pass(
                 positions[v[(k + 1) % v.len()] as usize],
             );
             let d = [pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]];
-            // ⚠️ **O limiar é o do MEIO da aresta** — a mesma lei da irmã do colapso: os dois
-            // extremos podem cair em bandas diferentes, e escolher um deles faria a decisão
-            // depender de qual canto a face propôs primeiro.
+            // ⚠️ **O meio da aresta e o sentido dela saem da MESMA porta que o colapso usa**
+            // ([`crate::collapse::pergunta_da_aresta`]): o MEIO, porque os dois extremos
+            // podem cair em bandas diferentes; e o sentido pelo ÍNDICE, porque a aresta é
+            // proposta pelas DUAS faces que a dividem, cada uma no sentido oposto.
             let limit2 = sizing.map_or(emax2, |g| {
-                let mid = [
-                    0.5 * (pa[0] + pb[0]),
-                    0.5 * (pa[1] + pb[1]),
-                    0.5 * (pa[2] + pb[2]),
-                ];
-                let h = g(mid);
+                let (mid, dir) =
+                    crate::collapse::pergunta_da_aresta(pa, pb, v[k], v[(k + 1) % v.len()]);
+                let h = g(mid, dir);
                 h * h
             });
             if d[0] * d[0] + d[1] * d[1] + d[2] * d[2] <= limit2 {

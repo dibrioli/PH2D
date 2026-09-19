@@ -311,12 +311,15 @@ fn remesh_with(mesh: &mut Mesh, alpha: f32, rim_law: bool, graded: bool, caps: &
         let grid = graded
             .then(|| SizingGrid::build(mesh, target, caps))
             .flatten();
+        // ⚠️ **O `_` é a DIRECÇÃO, e ignorá-la é a lei deste remalhador:** ele é ISOTRÓPICO
+        // por definição, e a saída dele é byte-idêntica à de antes de o [`ph2d_mesh::Sizing`]
+        // passar a carregar o segundo argumento (gate na crate da malha).
         let split = grid
             .as_ref()
-            .map(|g| move |p: [f32; 3]| g.at(p) * SPLIT_FACTOR);
+            .map(|g| move |p: [f32; 3], _: [f32; 3]| g.at(p) * SPLIT_FACTOR);
         let split_ref: ph2d_mesh::Sizing<'_> = split
             .as_ref()
-            .map(|f| f as &(dyn Fn([f32; 3]) -> f32 + Sync));
+            .map(|f| f as &(dyn Fn([f32; 3], [f32; 3]) -> f32 + Sync));
         ph2d_mesh::refine_in_sphere_sized(
             mesh,
             centre,
@@ -329,10 +332,10 @@ fn remesh_with(mesh: &mut Mesh, alpha: f32, rim_law: bool, graded: bool, caps: &
         let (centre, radius) = whole(mesh);
         let shrink = grid
             .as_ref()
-            .map(|g| move |p: [f32; 3]| g.at(p) * COLLAPSE_FACTOR);
+            .map(|g| move |p: [f32; 3], _: [f32; 3]| g.at(p) * COLLAPSE_FACTOR);
         let shrink_ref: ph2d_mesh::Sizing<'_> = shrink
             .as_ref()
-            .map(|f| f as &(dyn Fn([f32; 3]) -> f32 + Sync));
+            .map(|f| f as &(dyn Fn([f32; 3], [f32; 3]) -> f32 + Sync));
         ph2d_mesh::collapse_in_sphere_sized(
             mesh,
             centre,

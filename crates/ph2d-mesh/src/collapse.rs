@@ -196,11 +196,69 @@ pub fn collapse_in_sphere_sized(
     }
 }
 
-/// ⭐⭐⭐ **UM LIMIAR QUE VARIA COM O SÍTIO** — `None` é o limiar único de sempre.
+/// ⭐⭐⭐ **UM LIMIAR QUE VARIA COM O SÍTIO E COM A DIRECÇÃO** — `None` é o limiar único de
+/// sempre.
 ///
-/// A função recebe uma **posição de mundo** e devolve o comprimento de aresta abaixo do qual
-/// se colapsa ali. ⚠️ *Por posição e não por índice*: estas portas renumeram.
-pub type Sizing<'a> = Option<&'a (dyn Fn([f32; 3]) -> f32 + Sync)>;
+/// A função recebe uma **posição de mundo** e uma **direcção unitária** e devolve o
+/// comprimento de aresta abaixo do qual se colapsa ali, *nessa direcção*.
+/// ⚠️ *Por posição e não por índice*: estas portas renumeram.
+///
+/// # ⭐⭐ Porque a direcção entra AQUI e não numa porta irmã
+///
+/// As duas responderiam à MESMA pergunta — *que comprimento se quer nesta aresta?* — e
+/// divergiriam no dia em que uma ganhasse uma cerca que a outra não tem. *Uma lei escrita
+/// em dois sítios ainda não é uma lei.* Quem não quer direcção **ignora** o segundo
+/// argumento, e a saída é byte-idêntica à de antes (gate
+/// `uma_lei_isotropica_nao_ve_a_direccao_e_a_saida_e_a_de_sempre`).
+///
+/// # ⛔⛔ A direcção é uma RECTA, nunca um raio — e a porta impõe-no
+///
+/// A mesma aresta é proposta pelas DUAS faces que a dividem, e cada uma a percorre no
+/// sentido oposto. Uma lei ÍMPAR (`h(u) ≠ h(−u)`) faria a decisão depender de qual face
+/// chegou primeiro — a mesma armadilha de determinismo que o «limiar do MEIO da aresta»
+/// já resolve para a posição.
+///
+/// ⛔ **Canonicalizar por GEOMETRIA não serve:** toda secção contínua da recta para o raio
+/// tem uma costura (é topologicamente forçado — não há campo de vectores unitários
+/// contínuo sobre `RP²`), e junto dela um `ε` de ruído inverteria a direcção inteira.
+/// ⇒ a porta orienta a aresta pelo **ÍNDICE** (do menor para o maior): determinístico, sem
+/// costura geométrica, e **de graça** para uma lei par — que é a família inteira das
+/// formas quadráticas, a única que alguém escreve aqui.
+///
+/// # ⚠️ Uma aresta degenerada não tem direcção
+///
+/// Com comprimento zero a porta entrega `[0, 0, 0]`. *Uma lei quadrática lê zero na
+/// componente direccional e devolve o valor isotrópico dela*, que é a resposta certa — mas
+/// quem escrever outra família tem de tratar o vector nulo.
+pub type Sizing<'a> = Option<&'a (dyn Fn([f32; 3], [f32; 3]) -> f32 + Sync)>;
+
+/// A pergunta que uma aresta faz ao [`Sizing`]: o **meio** dela e a **direcção** dela.
+///
+/// ⚠️ **Os dois argumentos saem de UMA porta**, e é ela que garante as duas leis do tipo —
+/// o meio (e não um dos extremos, que podem cair em bandas diferentes) e o sentido pelo
+/// ÍNDICE (e não pela ordem em que a face propôs a aresta). Escritas nos dois sítios de
+/// avaliação, elas divergiam no dia em que um deles ganhasse uma cerca.
+pub(crate) fn pergunta_da_aresta(
+    pa: [f32; 3],
+    pb: [f32; 3],
+    a: u32,
+    b: u32,
+) -> ([f32; 3], [f32; 3]) {
+    let mid = [
+        0.5 * (pa[0] + pb[0]),
+        0.5 * (pa[1] + pb[1]),
+        0.5 * (pa[2] + pb[2]),
+    ];
+    let (de, para) = if a <= b { (pa, pb) } else { (pb, pa) };
+    let d = [para[0] - de[0], para[1] - de[1], para[2] - de[2]];
+    let l = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+    let dir = if l > 0.0 {
+        [d[0] / l, d[1] / l, d[2] / l]
+    } else {
+        [0.0; 3]
+    };
+    (mid, dir)
+}
 
 /// Um colapso decidido, ainda não aplicado.
 struct Planned {
@@ -342,18 +400,14 @@ fn shortest_edge_under(
         }
     }
     let (l2, a, b) = best?;
-    // ⚠️ **O limiar é o do MEIO da aresta**, e não o do vértice `a`: os dois extremos podem
-    // cair em bandas diferentes, e escolher um deles faria o colapso depender de qual canto a
-    // face propôs primeiro — que é a mesma armadilha de determinismo que o `keep`/`gone`
-    // desta função já resolve pelo índice.
+    // ⚠️ **O meio da aresta e o sentido dela saem de [`pergunta_da_aresta`]**, que é onde as
+    // duas leis vivem: o MEIO (e não o vértice `a` — os dois extremos podem cair em bandas
+    // diferentes) e o sentido pelo ÍNDICE (e não pela ordem em que a face propôs a aresta).
+    // As duas são a mesma armadilha de determinismo que o `keep`/`gone` desta função já
+    // resolve, e é por isso que elas não são reescritas aqui.
     let limit2 = sizing.map_or(emin2, |f| {
-        let (pa, pb) = (pos[a as usize], pos[b as usize]);
-        let mid = [
-            0.5 * (pa[0] + pb[0]),
-            0.5 * (pa[1] + pb[1]),
-            0.5 * (pa[2] + pb[2]),
-        ];
-        let h = f(mid);
+        let (mid, dir) = pergunta_da_aresta(pos[a as usize], pos[b as usize], a, b);
+        let h = f(mid, dir);
         h * h
     });
     if l2 < limit2 { Some((a, b)) } else { None }

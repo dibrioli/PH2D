@@ -26,3 +26,29 @@ se sobrepõem, o tipo é a régua que não tem ponto cego.
 chave, nunca `&str`. Vale para todo par «identificador × valor» que viaje junto (chave/texto,
 id/rótulo, caminho/conteúdo). Ligado: [[reference_topic_measurement_discipline]],
 [[feedback_a_declared_blind_spot_can_be_the_majority]], [[reference_topic_gate_discipline]].
+
+---
+
+## ⛔⛔ Quando um `&str` tem DOIS PAPÉIS, a cura não é traduzi-lo: é PARTI-LO (2026-09-19)
+
+Ao pagar a dívida da fronteira dos motores, **duas de três** acusações não eram um rótulo cru — eram
+um **IDENTIFICADOR a fazer de rótulo**, e traduzi-lo teria partido coisas em silêncio:
+
+- **`PickStrategy::name()`** era o texto do selector `◀ nome ▶` **e** o que o `from_name()` lê de
+  volta de um **MANIFESTO gravado**. Traduzido, todo ficheiro que já existe deixava de ser lido — e
+  em silêncio, porque o `from_name` devolve `None` e o chamador cai no valor de omissão.
+- **`Platform.name`** era o que a aba diz **e** o infixo do ficheiro exportado
+  (`{stem}.mobile.ogg`, por `name.to_lowercase()`). Traduzido, o nome dos ficheiros que o artista
+  exporta mudava com a **língua da interface**, e uma pipeline que os procura pelo nome deixava de
+  os achar.
+
+⇒ o identificador fica onde estava (com a razão escrita), e a palavra que o artista lê passa a ser
+uma chave: `Platform::id` + `Platform::label_key`, `PickStrategy::name()` + `label_key()`.
+
+⚠️⚠️ **E a régua NÃO separa esta família sozinha, o que tem de ir escrito na isenção:** um campo que
+se chame `id` escapa-lhe (ela colhe `label`/`name`/`title`/`text`) e **uma `fn … -> &str` é SEMPRE
+acusada**. A isenção legítima é a que diz **QUEM LÊ A STRING DE VOLTA** — um formato de ficheiro, um
+manifesto, um nome de ficheiro exportado. Sem essa frase, a próxima fatia traduz e parte.
+
+⭐ **A pergunta que separa em dois segundos:** *alguém faz o caminho INVERSO a partir desta string?*
+Se sim, ela é dado; a palavra é outra coisa.

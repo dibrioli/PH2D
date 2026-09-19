@@ -475,3 +475,43 @@ na árvore**. Apanhada por uma conferência explícita (`grep` pelo texto mutado
 
 **How to apply:** uma corrida de mutação é **exclusiva da árvore** — confirme que a anterior morreu
 antes de lançar a seguinte, e **sempre** varra por `*.bak-mut` e pelo texto mutado no fim.
+
+---
+
+## ⛔⛔ O CUSTO que justifica uma cegueira pode ser um DEFEITO da régua (2026-09-19)
+
+O gate `a_fronteira_dos_motores` tinha a população filtrada a **44 de 325** crates, com a cegueira
+**declarada por escrito** e a relação verdadeira (*«algum painel depende desta crate»*) dada como
+**cara demais**. Alargada, a varredura custava `58,8 s` — encostada ao tecto de aviso de `60 s` do
+executor — e acusava **189 rótulos crus em 27 crates** que régua nenhuma do repo via.
+
+⭐ **O custo era um QUADRÁTICO, não uma lei da população.** O `is_declared_under_cfg_test` relia
+**todos os irmãos a cada ficheiro**, e a régua lexical chama-o uma vez por ficheiro ⇒ `O(irmãos²)`
+em `read_to_string`. A assinatura que o separa de I/O lento é que **a vazão CAI COM O TAMANHO**:
+
+    ph2d-input         13 ficheiros  0,07 MB  →  16,05 MB/s
+    ph2d-editor-core  459 ficheiros  4,42 MB  →   1,18 MB/s      (13,6× mais devagar por ser maior)
+
+Curado com duas memórias por processo (`BTreeMap`, não lista — uma procura linear daria o CUBO): a
+mesma saída **byte-idêntica** em 6 crates / 1 425 ficheiros, **38×** mais rápida, e o gate de
+`92 s` para `8 s`. A cegueira caiu com o custo que a justificava.
+
+⇒ *antes de declarar uma cegueira por preço, MEÇA se o preço é do problema ou da régua* — e o sinal
+de que é da régua é a vazão piorar com o tamanho.
+
+⚠️ **E o instrumento da cura NÃO é um relógio:** `leituras_do_disco()` conta ficheiros lidos (`n+1`
+com memória, `~n²` sem ela). Um gate de tempo ali seria mais um membro da família de flakes de
+fan-out; uma contagem não depende de carga, e por isso a barra pode ser apertada.
+
+## ⛔⛔ O VOCABULÁRIO do veredito: `grep -E 'FAIL'` não conhece todas as formas (2026-09-19)
+
+Uma varredura de `24 530` testes imprimiu **«1 failed»** e o meu `grep -E 'FAIL|Summary'` devolveu
+**só a linha do sumário**. O nextest escreve também **`SIGABRT`**, `SIGSEGV`, `TIMEOUT` e `LEAK` — e
+uma janela que não conhece todas as formas do que lê imprime o número sem uma linha de diagnóstico,
+o que custou duas corridas de sete minutos.
+
+⇒ `grep -E 'FAIL|SIG|TIMEOUT|LEAK|Summary'`. *É a mesma lei que o cabeçalho do censo textual já
+carrega: um leitor tem de saber TODAS as formas do que lê, e «todas» inclui as do próprio leitor.*
+
+⚠️ **E `… | tail -30 && echo ok` lê o estado do `tail`**: ele imprimiu «check ok» sobre **quatro
+`E0609`**. Quem os apanhou foi o clippy, três comandos depois.

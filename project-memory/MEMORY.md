@@ -30,6 +30,7 @@
 - ⛔⛔ [NUNCA `spectacle` em `kwin --virtual` (fotografa o ecrã REAL); `import -window`](feedback_spectacle_in_a_virtual_kwin_photographs_the_owners_real_screen.md)
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo** ([§SUPRESSÃO](feedback_perfection_no_deferrals.md)) — meio-feito é pior que não começar
 - ⛔ [Restaurar mutação com `mv` deixa o build DA MUTAÇÃO — `touch` no fim](feedback_a_mutation_restore_by_mv_leaves_cargo_with_the_mutated_build.md)
+- ⛔⛔⛔ [Sonda de ÓRFÃO por renomeação é INVÁLIDA se o `check` parar no 1.º erro — as crates a jusante ficam por verificar e lê-se «sem chamadores»](feedback_a_rename_probe_is_void_if_the_check_stops_at_the_first_error.md)
 - ⛔⛔ [Trinta censos do FONTE não provam que a palavra do ecrã veio da tabela — a prova é um IDIOMA DE TESTE, e a 1.ª foto achou o que a régua lexical não pode ver](feedback_a_source_census_cannot_answer_whether_the_screen_reads_the_table.md)
 - ⛔⛔ [O idioma de teste NÃO distingue uma FUGA de uma DECISÃO declarada — 7 bolsos na foto do dono, 3 fugas e 4 isenções com mecanismo](feedback_the_test_language_cannot_tell_a_leak_from_a_declared_decision.md)
 - ⭐⭐ [Constante cara dentro do construtor de uma árvore corre onde a árvore é construída](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)

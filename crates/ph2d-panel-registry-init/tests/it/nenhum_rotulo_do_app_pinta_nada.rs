@@ -51,7 +51,7 @@
 //! | rótulos que pintavam **NADA** | **8** (as unidades `px` e `1/s`) |
 //! | cortados (`prefixo…`) | **24** |
 //! | curados no mesmo dia | **16** |
-//! | por curar, nomeados | **8** — `O_INSPECTOR_ARMADO_AINDA_CORTA` |
+//! | por curar, nomeados | **8** — `A_PASSAGEM_ARMADA_AINDA_CORTA` |
 //!
 //! ⚠️ **A passagem armada NÃO alimenta o censo da tabela de strings** — ela põe no painel texto do
 //! DOCUMENTO (`Hero`, `Enemy`, `Closed`), que a tabela não sabe produzir e nem devia. A razão está
@@ -170,34 +170,57 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
 ///
 /// ⚠️ **Cada linha diz o NÚMERO e o MECANISMO**, e a lista **só encolhe** — o censo de
 /// obsolescência abaixo reprova quem deixar de descrever um corte.
-const O_INSPECTOR_ARMADO_AINDA_CORTA: &[(&str, &str)] = &[
+const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
     // Fileira de MARCAR: o controlo precisa de `18 px` e a coluna do nome fica com `174`, porque
     // ela é medida para as fileiras de CAMPOS da mesma secção. O nome pede `~190`.
-    ("Center (makes it a 9-slice Region)", "marcar · 174 px"),
     (
+        "inspector",
+        "Center (makes it a 9-slice Region)",
+        "marcar · 174 px",
+    ),
+    (
+        "inspector",
         "Show anchors at runtime (no game runtime yet)",
         "marcar · 174 px",
     ),
     // Fileira de LISTA: o texto é do DOCUMENTO (o nome que o artista deu à âncora / ao sinal / à
     // propriedade do script / à peça). ⚠️ Um corte aqui **não é sempre defeito** — o que é defeito
     // é a caixa: `26 px` para um nome não é uma caixa, é um resto.
-    ("hand_right", "lista · 26 px · nome do artista"),
+    ("inspector", "hand_right", "lista · 26 px · nome do artista"),
     (
+        "inspector",
         "2.50s · repeats · → respawn_done",
         "lista · 128 px · resumo com sinal do artista",
     ),
     (
+        "inspector",
         "legacy_speed = 1 — not in the script",
         "lista · 189 px · nome do artista",
     ),
     (
+        "inspector",
         "• AudioSource2D — was on \u{201c}footsteps\u{201d}",
         "lista · 229 px · nome da peça",
     ),
     // Rótulo de fileira numa secção cuja coluna é estreita por ter muitos campos.
-    ("Mounted On", "campos · 60 px"),
+    ("inspector", "Mounted On", "campos · 60 px"),
     // Botão dentro de uma fileira de lista: a legenda cresceu com o verbo e a caixa não.
-    ("x Remove Transition", "botão · 118 px"),
+    ("inspector", "x Remove Transition", "botão · 118 px"),
+    // ⭐ A HIERARQUIA, armada em 2026-09-19: **zero** rótulos do programa cortados. Os dois que
+    //    saem são NOMES QUE O ARTISTA DEU, numa linha de árvore que ja' desconta o recuo e os
+    //    selos — a caixa e' honesta (`110`–`133 px`) e elidir um nome comprido e' o que toda
+    //    arvore deste feitio faz. ⚠️ *Um corte nao e' sempre um defeito*, e esta e' a especie que
+    //    a lista declara desde 18/09.
+    (
+        "hierarchy",
+        "Enemy Spawner \u{b7} left wing",
+        "nome do artista · 132,8 px",
+    ),
+    (
+        "hierarchy",
+        "Background Parallax Layer",
+        "nome do artista · 110,8 px",
+    ),
 ];
 
 /// ⭐ **Os painéis que ESTA build liga** — lidos do registo, e não do que a pintura produziu.
@@ -268,11 +291,15 @@ fn varre() -> Vec<Achado> {
                 // `populate_*` das secções condicionais semeiam os widgets a partir da informação
                 // publicada, logo um `populate` corrido antes veria o painel vazio e a passagem
                 // mediria as mesmas fileiras da primeira.
-                if id
-                    == <ph2d_panel_inspector::InspectorPanel as ph2d_editor_core::panel::Panel>::ID
+                //
+                // ⭐ A população sai da [`super::paineis_armados::TABELA`], nunca de um `if` por
+                //    nome de painel: um painel novo armado entra num sítio só.
+                if let Some(arm) = super::paineis_armados::TABELA
+                    .iter()
+                    .find(|a| a.painel == id)
                 {
-                    super::o_inspector_armado::arma_tudo();
                     let mut host = MockPanelHost::new();
+                    (arm.arma)(host.store_mut());
                     painel.populate(host.store_mut());
                     for m in host.medindo_a_pintura_do_registo(painel, viewport) {
                         tudo.push(Achado {
@@ -283,8 +310,8 @@ fn varre() -> Vec<Achado> {
                         });
                     }
                     // ⛔ O estado que uma fixtura deixa para trás é o estado que a régua seguinte
-                    //    mede — e estas portas são `thread_local`, partilhadas por todo o binário.
-                    super::o_inspector_armado::desarma_tudo();
+                    //    mede — e estas portas são `thread_local`, partilhadas pelo binário todo.
+                    (arm.desarma)();
                 }
             }
         });
@@ -374,13 +401,13 @@ fn nenhum_corte_novo_entra_sem_ser_nomeado() {
         .iter()
         .filter(|a| !a.m.coube() && !a.m.nada())
         .filter(|a| !CORTADOS_HOJE.contains(&(a.painel, a.m.texto.as_str())))
-        // ⭐ E a dívida que o PONTO CEGO escondia — ela é por TEXTO e não por painel: a passagem
-        //    armada é do Inspector por construção, e o que a lista descreve é o RÓTULO.
+        // ⭐ E a dívida que o PONTO CEGO escondia — por PAINEL e por TEXTO, como a irmã de cima:
+        //    o mesmo rótulo pode caber num painel e não caber noutro.
         .filter(|a| {
             !a.armado
-                || !O_INSPECTOR_ARMADO_AINDA_CORTA
+                || !A_PASSAGEM_ARMADA_AINDA_CORTA
                     .iter()
-                    .any(|(t, _)| *t == a.m.texto)
+                    .any(|(p, t, _)| *p == a.painel && *t == a.m.texto)
         })
         .map(|a| {
             format!(
@@ -397,6 +424,183 @@ fn nenhum_corte_novo_entra_sem_ser_nomeado() {
         "cortes NOVOS — ou a caixa passa a descrever o que pinta, ou a linha entra na dívida com \
          o mecanismo escrito ao lado:\n  {}",
         novos.join("\n  ")
+    );
+}
+
+/// ⛔⛔⛔ **OS PAINÉIS QUE ESTA VARREDURA NÃO CONSEGUE PINTAR CHEIOS.**
+///
+/// Medido 2026-09-19, contando os rótulos que cada painel do registo mede de fábrica: **cinco**
+/// mediam `0` e três mediam menos de `8`. O piso desta varredura é GLOBAL (`2 800` rótulos), logo
+/// ela ficava **verde com oito painéis invisíveis** — *um piso sobre a soma não pergunta por
+/// ninguém*.
+///
+/// ⚠️ Três deles foram ARMADOS ([`super::paineis_armados::TABELA`]). Os que ficam aqui pedem um
+/// mundo que o arnês não constrói, e cada linha diz **qual**.
+const PAINEIS_MEDIDOS_VAZIOS: &[(&str, &str)] = &[
+    (
+        "model3d",
+        "pinta a arvore de um documento de campo implicito (`FieldDoc`), que e' COZIDO da \
+         hierarquia da cena a cada quadro; sem mundo ECS ele nao tem uma peca para listar.",
+    ),
+    (
+        "motion_graph",
+        "pinta um GRAFO de nos vivo (`ph2d-nodegraph`), com o cartao e os pinos derivados do \
+         manifesto de cada no; o arnes nao monta um grafo.",
+    ),
+    (
+        "motion_params",
+        "irmao do de cima: as fileiras dele sao os params do no ESCOLHIDO no grafo, logo ele e' \
+         vazio enquanto nao houver grafo nem escolha.",
+    ),
+    (
+        "sculpt3d",
+        "o painel da escultura pinta o que a `AppGfx.sculpt3d` publica, e essa cena segura uma \
+         surface de wgpu — o arnes corre sem dispositivo, logo sem peca.",
+    ),
+];
+
+/// ⛔ O piso POR PAINEL. ⚠️ **Ele sai da medição, não do gosto:** o painel mais magro que a
+/// varredura de facto enche é o do esqueleto, com `7` rótulos; os que ela não enche medem `0`,
+/// `2` ou `3`. *O `5` é o vale entre as duas populações* — e um número acima de `7` acusaria um
+/// painel honesto no dia em que ele perdesse uma linha.
+const PISO_POR_PAINEL: usize = 5;
+
+/// ⭐⭐⭐ **NENHUM PAINEL DO REGISTO É MEDIDO VAZIO SEM O DECLARAR.**
+///
+/// ⛔⛔ Esta é a régua da própria régua. A varredura afirma coisas fortes — *«nenhum rótulo deste
+/// app pinta nada»* — e elas só valem sobre o que ela pintou. Um painel que ela pinta vazio não é
+/// aprovado: é **não medido**, e as duas coisas leem-se igual num relatório verde.
+///
+/// ⚠️ A conta é sobre o MÁXIMO entre as passagens: um painel armado enche na segunda, e é isso que
+/// o tira desta lista.
+#[test]
+fn nenhum_painel_e_medido_vazio_sem_o_declarar() {
+    let tudo = varre();
+    // ⚠️⚠️ **A conta é POR VIEWPORT, e a 1.ª redacção somava os três.** Uma mutação sobrevivente
+    //    disse-o: com a soma, um painel que mede `3` rótulos passa a ler `9` e salta um piso de
+    //    `5` sem ter enchido nada. *Um piso aplicado a uma soma de corridas é um piso dividido
+    //    pelo número de corridas.* ⇒ contamos `(painel, viewport, armado)` e ficamos com o MELHOR
+    //    quadro que aquele painel consegue mostrar.
+    let mut por_quadro: std::collections::BTreeMap<(&str, i32, bool), usize> =
+        std::collections::BTreeMap::new();
+    for a in &tudo {
+        *por_quadro
+            .entry((a.painel, a.viewport_w as i32, a.armado))
+            .or_insert(0) += 1;
+    }
+    let mut por_painel: std::collections::BTreeMap<&str, usize> = paineis_do_registo()
+        .into_iter()
+        .map(|id| (id, 0usize))
+        .collect();
+    for ((id, _, _), n) in por_quadro {
+        let e = por_painel.entry(id).or_insert(0);
+        *e = (*e).max(n);
+    }
+    let declarados: std::collections::BTreeSet<&str> =
+        PAINEIS_MEDIDOS_VAZIOS.iter().map(|(id, _)| *id).collect();
+    for (id, porque) in PAINEIS_MEDIDOS_VAZIOS {
+        assert!(
+            porque.len() > 60,
+            "a declaração de `{id}` não diz que MUNDO falta ao arnês"
+        );
+    }
+    let mudos: Vec<String> = por_painel
+        .iter()
+        .filter(|(id, n)| **n < PISO_POR_PAINEL && !declarados.contains(*id))
+        .map(|(id, n)| format!("{id}: {n} rótulo(s) medidos (piso {PISO_POR_PAINEL})"))
+        .collect();
+    assert!(
+        mudos.is_empty(),
+        "estes painéis são pintados VAZIOS e ninguém o declarou — ou eles ganham uma armação em \
+         `paineis_armados::TABELA`, ou entram em `PAINEIS_MEDIDOS_VAZIOS` com o mundo que lhes \
+         falta:\n  {}",
+        mudos.join("\n  ")
+    );
+    // ⭐ **A metade justa:** um painel que passou a encher-se sai da lista, senão a declaração
+    //    cobre o dia em que ele voltar a esvaziar-se.
+    let ressuscitados: Vec<String> = PAINEIS_MEDIDOS_VAZIOS
+        .iter()
+        .filter(|(id, _)| por_painel.get(id).is_some_and(|n| *n >= PISO_POR_PAINEL))
+        .map(|(id, _)| (*id).to_string())
+        .collect();
+    assert!(
+        ressuscitados.is_empty(),
+        "estes painéis já são medidos cheios — APAGUE a declaração: {}",
+        ressuscitados.join(", ")
+    );
+}
+
+/// ⭐⭐⭐ **UMA FIXTURA NÃO DEIXA NADA PARA TRÁS.**
+///
+/// ⛔⛔ **Nasceu de uma mutação SOBREVIVENTE (2026-09-19):** apagar o `desarma` de uma armação não
+/// acordava gate nenhum — *o `desarma` era uma promessa escrita num doc-comment*. E o custo dela
+/// é da suíte inteira: estas portas são `thread_local` e o binário de teste corre todos os módulos
+/// na mesma thread, logo o que uma fixtura deixa é o documento que o gate seguinte mede.
+///
+/// A régua é a única honesta: pinta VAZIO, arma, desarma, pinta VAZIO outra vez — e as duas leituras
+/// do vazio têm de ser **a mesma**.
+///
+/// ⭐ E ela apanhou logo uma fuga real: desarmar a Hierarquia devolvia a árvore à fixtura
+/// (`clear_live_hierarchy`) e **deixava o contador de componentes em `42`** — ele é outra porta, e
+/// *uma porta que o `arma` usa e o `desarma` esquece é exactamente o que este gate existe para ver*.
+#[test]
+fn uma_fixtura_nao_deixa_nada_para_tras() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let viewport = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1366.0,
+        h: 1024.0,
+    };
+    let mut sujos = Vec::new();
+    let mut visitadas = 0usize;
+    ph2d_editor_core::panel::with_registry(|reg| {
+        for painel in reg.panels_mut() {
+            let id = painel.manifest.id;
+            let Some(arm) = super::paineis_armados::TABELA
+                .iter()
+                .find(|a| a.painel == id)
+            else {
+                continue;
+            };
+            visitadas += 1;
+            let vazio = |painel: &mut ph2d_editor_core::panel::ErasedPanel| {
+                let mut host = MockPanelHost::new();
+                painel.populate(host.store_mut());
+                host.medindo_a_pintura_do_registo(painel, viewport)
+                    .into_iter()
+                    .map(|m| (m.texto, m.pintado, m.largura.to_bits()))
+                    .collect::<Vec<_>>()
+            };
+            let antes = vazio(painel);
+            {
+                let mut host = MockPanelHost::new();
+                (arm.arma)(host.store_mut());
+                painel.populate(host.store_mut());
+                let _ = host.medindo_a_pintura_do_registo(painel, viewport);
+            }
+            (arm.desarma)();
+            let depois = vazio(painel);
+            if antes != depois {
+                sujos.push(format!(
+                    "{id}: o vazio mede {} rótulos antes de armar e {} depois de desarmar",
+                    antes.len(),
+                    depois.len()
+                ));
+            }
+        }
+    });
+    assert!(
+        visitadas == super::paineis_armados::TABELA.len(),
+        "o gate visitou {visitadas} das {} armações — uma delas nomeia um painel que o registo \
+         não tem, e uma armação sobre um painel ausente nunca corre",
+        super::paineis_armados::TABELA.len()
+    );
+    assert!(
+        sujos.is_empty(),
+        "estas fixturas deixaram estado para trás — o `desarma` não desfaz tudo o que o `arma` \
+         fez:\n  {}",
+        sujos.join("\n  ")
     );
 }
 
@@ -419,18 +623,20 @@ fn nenhuma_linha_da_divida_ficou_obsoleta() {
     //    que o piso do `every_host_that_rewrites_verts` já pagou.
     let presentes = paineis_do_registo();
     // ⭐ A metade justa da lista NOVA: uma linha que já não descreve corte nenhum sai.
-    let armadas_mortas: Vec<String> = O_INSPECTOR_ARMADO_AINDA_CORTA
+    let armadas_mortas: Vec<String> = A_PASSAGEM_ARMADA_AINDA_CORTA
         .iter()
-        .filter(|(texto, _)| {
+        .filter(|(painel, _, _)| presentes.contains(painel))
+        .filter(|(painel, texto, _)| {
             !tudo
                 .iter()
-                .any(|a| a.armado && a.m.texto == *texto && !a.m.coube())
+                .any(|a| a.armado && a.painel == *painel && a.m.texto == *texto && !a.m.coube())
         })
-        .map(|(texto, porque)| format!("inspector (armado): {texto:?} ({porque})"))
+        .map(|(painel, texto, porque)| format!("{painel} (armado): {texto:?} ({porque})"))
         .collect();
     assert!(
         armadas_mortas.is_empty(),
-        "estas linhas da dívida do Inspector armado já não descrevem corte nenhum — APAGUE-AS:\n  {}",
+        "estas linhas da dívida das passagens ARMADAS já não descrevem corte nenhum — \
+         APAGUE-AS:\n  {}",
         armadas_mortas.join("\n  ")
     );
     let obsoletas: Vec<String> = CORTADOS_HOJE

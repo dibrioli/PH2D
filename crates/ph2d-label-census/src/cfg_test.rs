@@ -10,8 +10,25 @@
 //! `*_tests.rs`, …) é a enumeração que apodrece no dia em que alguém chamar o irmão de outra
 //! coisa — e, pior, isentaria um ficheiro de PRODUÇÃO com nome parecido.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
+
+/// Quantos ficheiros esta régua leu do disco desde que o processo começou.
+static LEITURAS: AtomicUsize = AtomicUsize::new(0);
+
+/// ⭐⭐⭐ **O instrumento da memória, e ele NÃO é um relógio.**
+///
+/// ⛔ Um gate de tempo sobre isto seria mais um membro da família de flakes de fan-out do
+/// `CLAUDE.md` §5.0 — *«todo gate que compara duas medianas de um RECURSO é candidato»*. Uma
+/// CONTAGEM de leituras é determinística: com a memória ela é `O(ficheiros)` e sem ela
+/// `O(ficheiros²)`, e a diferença entre as duas não depende de carga nenhuma.
+#[must_use]
+pub fn leituras_do_disco() -> usize {
+    LEITURAS.load(Ordering::Relaxed)
+}
 
 /// **Este ficheiro é um módulo de TESTE inteiro?** — perguntado ao PAI, que é quem o gateia.
 ///
@@ -76,42 +93,107 @@ fn declared_under_cfg_test(path: &Path, depth: u8) -> bool {
     // escrita à mão por ficheiro (`paint_wire_tests.rs`), e ele é o padrão mais comum nos painéis:
     // um `_tests.rs` cortado do pai pelo tecto de LOC.
     //
-    // A varredura do directório é `O(irmãos)` por ficheiro e isto é um gate — o custo medido da
-    // suíte inteira ficou abaixo de um segundo.
+    // A varredura do directório é `O(irmãos)` por ficheiro — e é por isso que as DUAS memórias
+    // abaixo existem: sem elas ela é `O(irmãos²)` em LEITURAS de ficheiro, e a régua lexical que
+    // chama isto uma vez por ficheiro paga o quadrado da crate inteira.
     let mut parents = vec![dir.join("mod.rs")];
     if let (Some(gp), Some(dir_name)) = (dir.parent(), dir.file_name().and_then(|s| s.to_str())) {
         parents.push(gp.join(format!("{dir_name}.rs")));
     }
-    if let Ok(entries) = fs::read_dir(dir) {
-        for e in entries.flatten() {
-            let sib = e.path();
-            if sib != path && sib.extension().and_then(|s| s.to_str()) == Some("rs") {
-                parents.push(sib);
-            }
+    for sib in irmaos(dir).iter() {
+        if sib != path {
+            parents.push(sib.clone());
         }
     }
     parents.iter().any(|p| {
-        fs::read_to_string(p).is_ok_and(|src| {
-            // O pai gateia-me com um `#[cfg(test)]` próprio…
-            declares_cfg_test_mod(&src, stem, path, p)
-                // …ou ele PRÓPRIO é um módulo de teste, e então declarar-me basta.
-                || (declares_mod(&src, stem, path, p) && declared_under_cfg_test(p, depth - 1))
-        })
+        let decls = declaracoes(p);
+        // O pai gateia-me com um `#[cfg(test)]` próprio…
+        decls.iter().any(|d| d.cfg_test && d.casa(stem, path))
+            // …ou ele PRÓPRIO é um módulo de teste, e então declarar-me basta.
+            || (decls.iter().any(|d| d.casa(stem, path))
+                && declared_under_cfg_test(p, depth - 1))
     })
 }
 
-/// O pai declara este ficheiro, **sem exigir o `#[cfg(test)]`** — a metade que a recursão usa.
-fn declares_mod(src: &str, stem: &str, path: &Path, parent: &Path) -> bool {
-    decl_matches(src, stem, path, parent, false)
+/// Uma declaração de módulo lida de um ficheiro-pai — a forma memoizada do que o `decl_matches`
+/// re-parsava a cada pergunta.
+struct Decl {
+    /// O nome que o `mod …;` declara (o último token antes do `;`).
+    nome: String,
+    /// O ficheiro para onde um `#[path = "…"]` imediatamente acima aponta, já resolvido contra o
+    /// directório do AVÔ (que é como o `rustc` o lê a partir de um `<dir>/mod.rs`).
+    caminho: Option<PathBuf>,
+    /// Ela vem debaixo de um `#[cfg(test)]` (ou de um `cfg(all(test, …))`)?
+    cfg_test: bool,
 }
 
-/// O pai declara `mod <stem>;` (ou um `#[path = "…"] mod …;` que resolve para `path`) sob um
-/// `#[cfg(test)]`?
-fn declares_cfg_test_mod(src: &str, stem: &str, path: &Path, parent: &Path) -> bool {
-    decl_matches(src, stem, path, parent, true)
+impl Decl {
+    /// Esta declaração é a DESTE ficheiro — por nome, ou pelo `#[path]` que resolve para ele?
+    fn casa(&self, stem: &str, path: &Path) -> bool {
+        self.nome == stem || self.caminho.as_deref() == Some(path)
+    }
 }
 
-fn decl_matches(src: &str, stem: &str, path: &Path, parent: &Path, need_cfg: bool) -> bool {
+/// ⭐⭐⭐ **As declarações de um ficheiro, lidas UMA vez por processo.**
+///
+/// ⛔⛔ **Sem esta memória a pergunta é `O(irmãos²)` em leituras de disco, e isso estava MEDIDO
+/// ao contrário no comentário acima** (*«o custo da suíte inteira ficou abaixo de um segundo»* —
+/// verdade quando a população eram dois painéis). A régua lexical pergunta isto **uma vez por
+/// ficheiro** e cada pergunta relia TODOS os irmãos: a `ph2d-editor-core` (459 ficheiros, 4,42 MB)
+/// lia-se a **1,18 MB/s** contra os **16,05 MB/s** de uma crate de 13 ficheiros — `13,6×` mais
+/// devagar por ser maior, que é a assinatura de um quadrático e não de I/O.
+///
+/// ⚠️ **A memória é correcta pela mesma razão que a da [`crate::language_literals`]:** o fonte não
+/// muda enquanto um binário de teste corre. Ela vive no processo e morre com ele.
+///
+/// ⚠️ **`BTreeMap` e não uma lista** — uma procura linear numa memória que cresce com os ficheiros
+/// devolveria o cubo no lugar do quadrado (`CLAUDE.md` §5: `BTreeMap`, nunca `HashMap`).
+fn declaracoes(parent: &Path) -> Arc<Vec<Decl>> {
+    static MEMO: OnceLock<Mutex<BTreeMap<PathBuf, Arc<Vec<Decl>>>>> = OnceLock::new();
+    let memo = MEMO.get_or_init(|| Mutex::new(BTreeMap::new()));
+    if let Ok(m) = memo.lock()
+        && let Some(v) = m.get(parent)
+    {
+        return Arc::clone(v);
+    }
+    LEITURAS.fetch_add(1, Ordering::Relaxed);
+    let out = Arc::new(
+        fs::read_to_string(parent).map_or_else(|_| Vec::new(), |src| parse_decls(&src, parent)),
+    );
+    if let Ok(mut m) = memo.lock() {
+        m.insert(parent.to_path_buf(), Arc::clone(&out));
+    }
+    out
+}
+
+/// Os `.rs` de um directório, lidos uma vez — o `read_dir` era `O(irmãos)` por ficheiro.
+fn irmaos(dir: &Path) -> Arc<Vec<PathBuf>> {
+    static MEMO: OnceLock<Mutex<BTreeMap<PathBuf, Arc<Vec<PathBuf>>>>> = OnceLock::new();
+    let memo = MEMO.get_or_init(|| Mutex::new(BTreeMap::new()));
+    if let Ok(m) = memo.lock()
+        && let Some(v) = m.get(dir)
+    {
+        return Arc::clone(v);
+    }
+    let mut out = Vec::new();
+    if let Ok(entries) = fs::read_dir(dir) {
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.extension().and_then(|s| s.to_str()) == Some("rs") {
+                out.push(p);
+            }
+        }
+    }
+    out.sort();
+    let out = Arc::new(out);
+    if let Ok(mut m) = memo.lock() {
+        m.insert(dir.to_path_buf(), Arc::clone(&out));
+    }
+    out
+}
+
+fn parse_decls(src: &str, parent: &Path) -> Vec<Decl> {
+    let mut out = Vec::new();
     let lines: Vec<&str> = src.lines().collect();
     for (i, line) in lines.iter().enumerate() {
         // ⛔ **Um comentário no fim da linha do `mod` escondia o nome** (2026-09-13): `mod
@@ -155,18 +237,17 @@ fn decl_matches(src: &str, stem: &str, path: &Path, parent: &Path, need_cfg: boo
             }
             j -= 1;
         }
-        if need_cfg && !cfg_test {
-            continue;
-        }
-        let matches_by_name = t
+        let nome = t
             .trim_end_matches(';')
             .rsplit(' ')
             .next()
-            .is_some_and(|name| name == stem);
-        let matches_by_path = declared.as_deref() == Some(path);
-        if matches_by_name || matches_by_path {
-            return true;
-        }
+            .unwrap_or_default()
+            .to_string();
+        out.push(Decl {
+            nome,
+            caminho: declared,
+            cfg_test,
+        });
     }
-    false
+    out
 }

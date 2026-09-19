@@ -99,3 +99,56 @@ fn a_comment_between_the_attributes_does_not_hide_the_cfg_test() {
     assert!(is_test(&t, "src/lib_gradient_tests.rs"));
     assert!(!is_test(&t, "src/rows.rs"));
 }
+
+/// ⭐⭐⭐ **A régua lê cada ficheiro UMA vez — e o instrumento é uma CONTAGEM, nunca um relógio.**
+///
+/// ⛔⛔ Até 2026-09-19 a pergunta *«o meu pai gateia-me?»* relia **todos os irmãos a cada
+/// ficheiro**, o que é `O(irmãos²)` em leituras de disco. Medido pela régua lexical, que chama isto
+/// uma vez por ficheiro: a `ph2d-app-motion` (492 ficheiros, 5,25 MB) levava `13,61 s` e passou a
+/// `0,36 s` — **38×** — com a saída **byte-idêntica** em seis crates e 1 425 ficheiros.
+///
+/// ⚠️ **Um gate de TEMPO aqui seria um membro da família de flakes de fan-out** (`CLAUDE.md` §5.0).
+/// Esta contagem não depende de carga: `n + 1` leituras com a memória, `~n²` sem ela — e é por isso
+/// que a barra pode ser apertada em vez de folgada.
+#[test]
+fn a_regua_le_cada_ficheiro_uma_vez_e_nao_uma_vez_por_irmao() {
+    const IRMAOS: usize = 12;
+    let mut files: Vec<(String, String)> = vec![(
+        "src/lib.rs".into(),
+        "#[cfg(test)]\nmod f0;\nmod f1;\nmod f2;\nmod f3;\nmod f4;\nmod f5;\nmod f6;\nmod f7;\nmod f8;\nmod f9;\nmod f10;\nmod f11;\n".into(),
+    )];
+    for i in 0..IRMAOS {
+        files.push((format!("src/f{i}.rs"), format!("fn f{i}() {{}}\n")));
+    }
+    let borrowed: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(a, b)| (a.as_str(), b.as_str()))
+        .collect();
+    let t = tree(&borrowed);
+
+    let antes = ph2d_label_census::cfg_test::leituras_do_disco();
+    // ⚠️ O controlo POSITIVO vem primeiro: se a régua deixasse de responder, a contagem baixa
+    //    seria trivialmente verdadeira sobre uma régua partida.
+    assert!(
+        is_test(&t, "src/f0.rs"),
+        "o `#[cfg(test)] mod f0;` gateia-o"
+    );
+    for i in 1..IRMAOS {
+        assert!(
+            !is_test(&t, &format!("src/f{i}.rs")),
+            "os outros onze são produto"
+        );
+    }
+    let lidos = ph2d_label_census::cfg_test::leituras_do_disco() - antes;
+
+    // ⭐ `IRMAOS + 1` ficheiros no disco, mais os dois pais que não existem (`src/mod.rs` e
+    //   `<dir>.rs`) — a memória guarda também a ausência, logo o tecto é `IRMAOS + 3`.
+    let tecto = IRMAOS + 3;
+    assert!(
+        lidos <= tecto,
+        "a régua leu {lidos} ficheiros para responder sobre {IRMAOS} irmãos (tecto {tecto}). \
+         Sem a memória de `declaracoes` isto é ~{}, que é o quadrático que a cura de 2026-09-19 \
+         apagou.",
+        IRMAOS * IRMAOS
+    );
+}

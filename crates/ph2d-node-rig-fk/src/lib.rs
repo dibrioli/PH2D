@@ -110,7 +110,7 @@ mod tests {
                 fk::LEN,
                 Column::Scalar((0..n).map(|i| if i == 0 { 0.0 } else { 1.0 }).collect()),
             )
-            .with(fk::ROT, Column::Scalar(vec![0.0; n]))
+            .with(fk::LROT, Column::Scalar(vec![0.0; n]))
             .with("P", Column::Vec2(vec![[0.0, 0.0]; n]))
     }
 
@@ -127,7 +127,7 @@ mod tests {
         // Somebody (an oscillator on the Rotation channel) bent joint 3 by 90°.
         let mut rot = fk::scalars(&straight, fk::ROT, 0.0, n);
         rot[3] = 90.0;
-        let posed = straight.clone().with(fk::ROT, Column::Scalar(rot));
+        let posed = straight.clone().with(fk::LROT, Column::Scalar(rot));
         let after = ps(&fk::resolve(&posed));
 
         for i in 0..3 {

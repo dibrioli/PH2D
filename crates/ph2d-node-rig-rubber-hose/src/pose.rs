@@ -85,7 +85,7 @@ pub(crate) fn unit(v: [f32; 2], fallback: [f32; 2]) -> [f32; 2] {
 pub(crate) fn relocal(input: &Stream, solved: &[[f32; 2]], joints: &[usize]) -> Vec<f32> {
     let n = input.count();
     let parent = fk::scalars(input, fk::PARENT, -1.0, n);
-    let mut rot = fk::scalars(input, fk::ROT, 0.0, n);
+    let mut rot = fk::local(input, n);
     let mut world = fk::scalars(input, fk::WROT, 0.0, n);
 
     for &i in joints {
@@ -143,7 +143,7 @@ pub(crate) fn mix_by_falloff(input: &Stream, solved: Vec<f32>) -> Vec<f32> {
     if t.iter().all(|&w| w >= 1.0) {
         return solved;
     }
-    let was = fk::scalars(input, fk::ROT, 0.0, n);
+    let was = fk::local(input, n);
     solved
         .iter()
         .zip(&was)
@@ -200,5 +200,48 @@ mod tests {
     fn unit_falls_back_instead_of_dividing_by_zero() {
         assert_eq!(unit([2.0, 0.0], [0.0, 1.0]), [1.0, 0.0]);
         assert_eq!(unit([0.0, 0.0], [0.0, 1.0]), [0.0, 1.0]);
+    }
+}
+
+#[cfg(test)]
+mod tests_local {
+    use super::*;
+    use ph2d_nodegraph::attr::Column;
+
+    /// ⛔⛔ **O `relocal` lê o LOCAL, e ler o `rot` devolveria o MUNDO.**
+    ///
+    /// ⚠️ **Este gate nasceu de uma mutação que SOBREVIVEU:** trocar a porta [`fk::local`] por
+    /// uma leitura crua do `fk::ROT` passava os vinte testes desta crate. O `relocal` devolve a
+    /// pose local **com as juntas não solvidas intactas** — e é justamente essas que a troca
+    /// corrompe, porque a jusante elas seriam re-acumuladas a partir de um ângulo que já é de
+    /// mundo. *Com a lista de solvidos VAZIA a função é a identidade sobre o local, e é isso que
+    /// torna o defeito visível num assert de uma linha.*
+    #[test]
+    fn o_relocal_devolve_o_local_e_nao_o_mundo() {
+        let n = 4;
+        let base = fk::resolve(
+            &ph2d_nodegraph::attr::Stream::new(n)
+                .with(
+                    fk::PARENT,
+                    Column::Scalar((0..n).map(|i| i as f32 - 1.0).collect()),
+                )
+                .with(fk::LEN, Column::Scalar(vec![0.0, 1.0, 1.0, 1.0]))
+                .with(fk::LROT, Column::Scalar(vec![0.0, 30.0, 30.0, 30.0]))
+                .with("P", Column::Vec2(vec![[0.0, 0.0]; n])),
+        );
+        let solved = fk::positions(&base);
+
+        assert_eq!(
+            relocal(&base, &solved, &[]),
+            vec![0.0, 30.0, 30.0, 30.0],
+            "sem juntas solvidas o `relocal` e' a identidade sobre o LOCAL"
+        );
+        // ⛔ O CONTROLO: o mundo é OUTRO vector — sem isto o gate passaria numa cadeia recta,
+        //    onde as duas leituras coincidem.
+        assert_eq!(
+            fk::scalars(&base, fk::WROT, 0.0, n),
+            vec![0.0, 30.0, 60.0, 90.0],
+            "o mundo ACUMULA, e e' por isso que trocar as colunas e' observavel"
+        );
     }
 }

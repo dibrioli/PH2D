@@ -90,8 +90,13 @@ fn build(joints: f32, length: f32, angle: f32, root_angle: f32, branches: &str) 
             fk::LEN,
             Column::Scalar((0..n).map(|i| if i == 0 { 0.0 } else { length }).collect()),
         )
+        // ⚠️ **A coluna do LOCAL, e não a do mundo** — `angle` é *«quantos graus esta junta vira
+        // em relação à ANTERIOR»* (é o que o doc do param diz), e o `rot` que sai do
+        // [`fk::resolve`] é o ângulo de MUNDO que o desenho lê. Escrever aqui a coluna de saída
+        // entregava ao renderer `[root_angle, angle, angle, …]` — uma fila de setas em que só a
+        // raiz apontava para onde a cadeia de facto vai (o report do dono, 2026-09-19).
         .with(
-            fk::ROT,
+            fk::LROT,
             Column::Scalar(
                 (0..n)
                     .map(|i| if i == 0 { root_angle } else { angle })
@@ -211,6 +216,36 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
 
 #[cfg(test)]
 mod tests {
+
+    /// ⭐⭐⭐ **O NÓ COZINHADO ENTREGA O ÂNGULO DE MUNDO** — a foto do dono, 2026-09-19.
+    ///
+    /// ⚠️⚠️ **O gate irmão no `fk.rs` NÃO cobre isto, e a prova é uma mutação que SOBREVIVEU:**
+    /// ele chama o `resolve` directamente sobre o `chain()` dele, que fica **abaixo** do
+    /// [`build`] — trocar aqui a coluna do local pela de saída deixava-o verde. *Um gate que
+    /// entra pelo canal interno não afirma nada sobre a porta por onde o artista entra.*
+    ///
+    /// As duas metades: numa cadeia recta de fábrica as oito juntas apontam para o MESMO lado
+    /// (era `[90, 0, 0, …]` — a fila de setas da foto), e com `angle` a virar cada junta o
+    /// ângulo ACUMULA, senão «constante» seria satisfeito por um zero cravado.
+    #[test]
+    fn o_esqueleto_entrega_o_angulo_de_mundo() {
+        let rot = |s: &Stream| match s.get(fk::ROT) {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => panic!("o `rot` tem de existir: e' a coluna que o desenho le'"),
+        };
+
+        // Recta, como o nó nasce: `root_angle = 90` e `angle = 0`.
+        let recta = build(8.0, 0.7, 0.0, 90.0, "");
+        assert_eq!(
+            rot(&recta),
+            vec![90.0; 8],
+            "uma cadeia recta aponta toda para onde ela cresce"
+        );
+
+        // E com cada junta a virar 10°, o ângulo soma ao longo da cadeia.
+        let curva = build(4.0, 0.7, 10.0, 90.0, "");
+        assert_eq!(rot(&curva), vec![90.0, 100.0, 110.0, 120.0]);
+    }
     use super::*;
 
     fn ps(s: &Stream) -> Vec<[f32; 2]> {

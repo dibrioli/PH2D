@@ -150,7 +150,10 @@ fn reach(input: &Stream, target: &Stream, root_ix: f32, flip: bool) -> Stream {
     // ⭐ O `Strength` da restrição: a pose resolvida mistura-se com a que entrou, pela coluna
     // `falloff` — ver [`pose::mix_by_falloff`]. Ausente ⇒ força cheia ⇒ o solve de sempre, ao bit.
     let rot = pose::mix_by_falloff(input, pose::relocal(input, &p, &[root + 1, root + 2]));
-    fk::resolve(&input.clone().with(fk::ROT, Column::Scalar(rot)))
+    // ⚠️ **O solve é uma pose LOCAL** (ângulos relativos ao pai), logo entra pela coluna do
+    // LOCAL — escrevê-lo em `fk::ROT` fazia o `resolve` deitá-lo fora e devolver a pose da
+    // resolução anterior. *A coluna `rot` que sai daqui é o MUNDO, e é o que o desenho lê.*
+    fk::resolve(&input.clone().with(fk::LROT, Column::Scalar(rot)))
 }
 
 struct RigIk2Bone;
@@ -217,7 +220,7 @@ mod tests {
             &Stream::new(3)
                 .with(fk::PARENT, Column::Scalar(vec![-1.0, 0.0, 1.0]))
                 .with(fk::LEN, Column::Scalar(vec![0.0, L1, L2]))
-                .with(fk::ROT, Column::Scalar(vec![0.0, 0.0, 0.0]))
+                .with(fk::LROT, Column::Scalar(vec![0.0, 0.0, 0.0]))
                 .with("P", Column::Vec2(vec![[0.0, 0.0]; 3])),
         )
     }

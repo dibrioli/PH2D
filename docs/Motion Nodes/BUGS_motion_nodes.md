@@ -16,7 +16,7 @@
 | [3](#bug-3--o-diagnoser-sabia-e-ninguem-perguntava) | **"Todas as peças paradas"** (cena `=71`, banda 6) | uma cena com um fio a menos — e o INSTRUMENTO que ninguém invocava | ✅ **CURADO** (aguarda smoke) — mais um falso positivo pré-existente do diagnoser | 2026-08-20 |
 | [4](#bug-4--o-multiply-não-desobedecia-à-alfa-ele-a-invertia-e-o-gate-media-o-único-ponto-em-que-os-modos-concordam) | **"Shadow multiply não obedece o alpha"** (cena `=84`) | `fx.drop_shadow` (acusado, **inocente**) + o par de fatores do `Multiply` em `ph2d-render` | ✅ **FECHADO — smoke aprovado** (cena `=84`, linha ALFA) — resposta invertida, num gate verde há anos | 2026-08-23 |
 | [5](#bug-5--o-editor-de-curva-era-oferecido-numa-onda-que-não-o-lê--e-o-censo-que-o-teria-apanhado-não-podia-vê-lo) | **"Wave curve dos osciladores não está funcionando"** (com foto) | `motion.oscillator` (o MOTOR, **inocente**) + a tabela de gates dele — e mais DOIS nós pelo mesmo mecanismo | ✅ **CURADO** (aguarda smoke, cena `=94`) — o editor aparecia em toda onda e só era lido na `Custom` | 2026-08-24 |
-| [11](#bug-11--a-seta-diferente-era-a-única-certa-a-família-do-rig-escreve-o-ângulo-local-na-coluna-que-o-desenho-lê-como-mundo) | **"Em skeleton o último objeto tem direção diferente"** (com foto) | a família do **RIG** (7 nós, 6 cópias do `fk.rs`) — e a seta acusada é a ÚNICA certa | ⏳ **ABERTO** — causa medida, cura desenhada e revertida com o preço | 2026-09-19 |
+| [11](#bug-11--a-seta-diferente-era-a-única-certa-a-família-do-rig-escreve-o-ângulo-local-na-coluna-que-o-desenho-lê-como-mundo) | **"Em skeleton o último objeto tem direção diferente"** (com foto) | a família do **RIG** (7 nós, 6 cópias do `fk.rs`) — e a seta acusada é a ÚNICA certa | ✅ **CURADO** (aguarda smoke) — `rot` passa a levar o MUNDO, `lrot` o local; 6 provas de mutação | 2026-09-19 |
 
 ---
 
@@ -1074,7 +1074,9 @@ amostra de cada rota.
 
 ## Bug #11 — a seta diferente era a ÚNICA CERTA: a família do RIG escreve o ângulo LOCAL na coluna que o desenho lê como MUNDO
 
-**Estado:** ⏳ **ABERTO — causa MEDIDA, cura desenhada e NÃO aplicada** (o preço atravessa a
+**Estado:** ✅ **CURADO em 2026-09-19** (aguarda smoke do dono) — ver *A cura, aplicada*, no fim.
+
+**Estado original (o diagnóstico, mantido verbatim):** ⏳ **ABERTO — causa MEDIDA, cura desenhada e NÃO aplicada** (o preço atravessa a
 família inteira; ver *O preço*, abaixo). Report do dono, 2026-09-19, com foto: *«por que em
 skeleton o último objeto tem direção diferente?»* — uma fila vertical de setas em que sete
 apontam para a direita e a de baixo aponta para cima.
@@ -1156,3 +1158,63 @@ numa assinatura de pipeline, e uma nona muda essa assinatura.
   certa desde que existe, e o único leitor dela fora do rig era um teste.
 - ⚠️ **«O último objecto» de um report é o último da FILA VISUAL**, e a ordem do documento pode
   ser a oposta — a raiz de uma cadeia que cresce para cima desenha-se em baixo.
+
+---
+
+### ✅ A cura, APLICADA (2026-09-19)
+
+**Uma coluna, um significado.** O `rot` que sai do [`fk::resolve`] passa a ser o ângulo de
+**MUNDO** — a coluna que o desenho lê — e o ângulo relativo ao pai muda-se para `lrot`, por onde
+a re-resolução entra. O `wrot` fica, porque tem leitores de produto (o `rig.skin_deformer` e os
+três `pose.rs`).
+
+Medido no `rig.skeleton` de fábrica, com a mesma sonda do diagnóstico:
+
+```
+antes:  rot = [90,  0,  0,  0,  0,  0,  0,  0]
+depois: rot = [90, 90, 90, 90, 90, 90, 90, 90]      ← as posições não mudaram
+```
+
+#### ⛔⛔ O que a primeira tentativa provou, e que a cura teve de cobrir
+
+A tentativa revertida ensinou **só o resolvedor**. A cura completa tem **três** consumidores:
+
+1. **a PORTA de leitura** [`fk::local`] — `lrot`, senão `rot` (o segundo degrau é o que mantém
+   uma corrente autorada à mão, ou por MCP, a posar);
+2. **quem POSA** (`rig.ik_2bone`, `rig.fabrik`, `rig.rubber_hose`) escreve o solve no `lrot` —
+   sem isto o `resolve` deitava-o fora e devolvia a pose anterior;
+3. **quem LÊ uma pose** (os três `pose.rs`, cópias idênticas) lê pela mesma porta.
+
+⚠️⚠️ **E uma quarta classe apareceu na segunda corrida, também muda:** as FIXTURAS do
+`rig.skin_deformer`, cujo `chain()` devolve uma corrente **já resolvida** — elas rodavam a cadeia
+escrevendo num campo que ninguém voltava a ler.
+
+#### ⛔ O L-System NÃO tinha o defeito, e a premissa que o dizia era minha
+
+O `source.lsystem` escreve `rot` **e** `wrot`, o que se lê igual ao rig — e ele tem um
+interruptor, `orient_world`, com o MUNDO por omissão. *Uma coluna escrita em dois nomes não prova
+um defeito; prova-se correndo o produto.* A mudança foi construída e **revertida** quando o gate
+de controlo dele (`in_growth_mode_the_shape_faces_along_its_branch`) reprovou.
+
+#### Os gates, e o que cada um nasceu a matar
+
+- `o_esqueleto_entrega_o_angulo_de_mundo` (**produto**, no `rig.skeleton`) — ⚠️ ele existe porque
+  o gate irmão no `fk.rs` **entra pelo `resolve` directo e fica ABAIXO do `build()`**: uma
+  mutação no `build` sobrevivia-lhe.
+- `o_rot_que_sai_e_o_angulo_de_mundo` (nas 6 cópias) — recta · curva · e concorda com o `wrot`.
+- `escrever_no_rot_nao_posa_e_o_lrot_posa` — de **comportamento e não de texto**: *um `grep` por
+  `with(ROT` fica verde no dia em que alguém escrever a coluna por uma variável*.
+- `o_relocal_devolve_o_local_e_nao_o_mundo` (nos 3 `pose.rs`) — nasceu de uma mutação que
+  sobreviveu aos vinte testes da crate.
+
+**6 provas de mutação, todas a sangrar** — mais **uma NO-OP registada com a medição**: trocar
+`LROT` por `ROT` no `build` não é observável, porque numa corrente acabada de construir não
+existe `lrot` e os dois nomes levam ao mesmo sítio. *É a escada tolerante a funcionar, e está
+escrita no script para ninguém a ler como buraco.*
+
+#### ⏳ O que fica aberto
+
+- O `fk.rs` continua **duplicado byte-a-byte em seis crates** (`sha256` igual), e os `pose.rs` em
+  três. A cura tocou nas seis cópias à mão; uma folha partilhada é wave própria.
+- O `rig.skeleton` **não** ganhou o interruptor que o L-System tem (`orient_world`). Ninguém o
+  pediu, e o dono viu o mundo como a resposta certa — *fica nomeado, não construído*.

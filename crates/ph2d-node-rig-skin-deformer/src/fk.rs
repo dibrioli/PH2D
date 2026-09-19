@@ -41,6 +41,57 @@ pub(crate) const PARENT: &str = "parent";
 pub(crate) const LEN: &str = "len";
 pub(crate) const ROT: &str = "rot";
 pub(crate) const WROT: &str = "wrot";
+/// **O ângulo LOCAL** — o que o autor escreve, relativo ao pai.
+///
+/// ⛔⛔⛔ **Ele existe porque a coluna `rot` mudou de significado em 2026-09-19, por um report do
+/// dono** (uma fila de setas em que *«o último objeto tem direção diferente»*). O `rot` que este
+/// resolvedor deixava para trás era o ângulo **relativo ao pai**, e `rot` é a coluna que TODO o
+/// desenho desta casa lê como *«a rotação deste elemento»*: o lowering faz `stream.get("rot")` nas
+/// duas rotas e o dispositivo assa `"rot"` na posição `2` das suas oito colunas.
+///
+/// Medido num `rig.skeleton` de fábrica: `rot = [90, 0, 0, 0, 0, 0, 0, 0]` contra
+/// `wrot = [90, 90, …]` — *a raiz era a única seta certa da imagem, e as outras sete apontavam
+/// para onde ninguém tinha pedido.* Censo a decidir de quem é o nome: **72 sítios de produto**
+/// escrevem `rot`, e os de fora do rig (`motion.clone`, `motion.look_at`, `motion.orbit`,
+/// `motion.distribute_*`, `motion.noise`, `motion.drive`) escrevem todos o MUNDO.
+///
+/// ⚠️ **A idempotência é a razão de ele ser uma coluna e não um esquecimento:** com o `rot` a
+/// carregar o MUNDO, uma segunda resolução somaria o mundo ao mundo e a pose andava.
+pub(crate) const LROT: &str = "lrot";
+
+/// **A pose LOCAL de uma corrente** — a porta ÚNICA da escada, e ela tem TRÊS degraus.
+///
+/// ⛔⛔ **A primeira tentativa de cura FALHOU por não ter esta porta** (2026-09-19): ela ensinou
+/// só o `resolve` a preferir o [`LROT`], e os nós que POSAM — a IK de dois ossos, o FABRIK, a
+/// mangueira — continuavam a escrever o solve em [`ROT`]. Resultado: o `resolve` lia o local da
+/// resolução ANTERIOR e **deitava fora o solve que acabara de ser calculado**, com a mão a
+/// aterrar em `[3.0, 0.0]` em vez de `[1.5, 1.5]`. *Quem lê uma escada e quem escreve nela têm de
+/// concordar sobre o degrau, e um `const` partilhado não chega: é preciso uma porta.*
+///
+/// Os degraus, e cada um foi comprado por um defeito MEDIDO:
+///
+/// 1. **sem [`LROT`]** ⇒ o [`ROT`] é o local. Mantém a corrente **autorada à mão** — um
+///    documento, um MCP, uma fixtura — a posar como sempre posou.
+/// 2. ⛔⛔⛔ **com [`LROT`] mas o [`ROT`] REESCRITO** ⇒ ganha o `ROT`. *É assim que o artista
+///    dobra um esqueleto no grafo*: uma caneta (`motion.drive` em `Custom…`) ligada ao canal
+///    `rot`, que é o nome que ele vê. A primeira redacção desta porta não tinha este degrau e
+///    **tornou esse gesto MUDO** — o `motion_rig_probe` apanhou-o, e era a rota do produto.
+/// 3. **senão** ⇒ o [`LROT`], que é por onde os nós que POSAM entregam o solve.
+pub(crate) fn local(input: &Stream, n: usize) -> Vec<f32> {
+    let rot = scalars(input, ROT, 0.0, n);
+    if input.get(LROT).is_none() {
+        return rot; // autorada à mão: o `rot` é o local, como sempre foi
+    }
+    // ⭐⭐⭐ **O DISCRIMINADOR É EXACTO E NÃO UM EPSILON:** o [`resolve`] publica o MESMO vector
+    // em [`ROT`] e em [`WROT`] (um `w.clone()` e o `w`), logo numa corrente que ele devolveu eles
+    // são iguais **ao bit**. Divergirem quer dizer que alguém reescreveu o `rot` DEPOIS — e essa
+    // é a pose mais recente.
+    let w = scalars(input, WROT, 0.0, n);
+    if rot != w {
+        return rot;
+    }
+    scalars(input, LROT, 0.0, n)
+}
 
 /// Degrees per turn — the `trig` leaf speaks cycles, the columns speak degrees
 /// (the app's one authored-angle unit).
@@ -86,7 +137,7 @@ pub(crate) fn resolve(input: &Stream) -> Stream {
     let n = input.count();
     let parent = scalars(input, PARENT, -1.0, n);
     let len = scalars(input, LEN, 0.0, n);
-    let rot = scalars(input, ROT, 0.0, n);
+    let rot = local(input, n);
     let base = positions(input);
 
     let mut p = vec![[0.0f32; 2]; n];
@@ -123,6 +174,13 @@ pub(crate) fn resolve(input: &Stream) -> Stream {
         }
     }
     out.set("P", Column::Vec2(p));
+    // ⚠️ **As TRÊS colunas, e nenhuma é redundante:** o [`LROT`] guarda o que o autor escreveu (a
+    // porta por onde a re-resolução entra), o [`ROT`] leva o MUNDO porque é o que o desenho lê, e
+    // o [`WROT`] fica porque tem um leitor de PRODUTO — o `rig.skin_deformer` compara a pose de
+    // repouso com a posada por ele, e os três `pose.rs` lêem-no para saber onde a ponta aponta.
+    // *Apagá-lo por parecer um alias do `ROT` partia esses quatro nós em silêncio.*
+    out.set(LROT, Column::Scalar(rot));
+    out.set(ROT, Column::Scalar(w.clone()));
     out.set(WROT, Column::Scalar(w));
     out
 }
@@ -204,6 +262,114 @@ mod tests {
         }
     }
 
+    /// ⭐⭐⭐ **O `rot` QUE SAI É O ÂNGULO DE MUNDO — e é essa a coluna que o desenho lê.**
+    ///
+    /// Report do dono, 2026-09-19 (com foto): *«por que em skeleton o último objeto tem direção
+    /// diferente?»* — uma fila vertical de setas em que sete apontavam para a direita e a de
+    /// baixo para cima. ⛔ **A diferente era a RAIZ, e era a única certa:** o `rot` que este
+    /// resolvedor deixava para trás era o ângulo relativo ao PAI (`[90, 0, 0, …]` numa cadeia
+    /// recta), e `rot` é a coluna que o `lower` lê nas duas rotas e que o dispositivo assa na
+    /// posição `2` das suas oito. Só a raiz coincidia, porque uma raiz não tem pai.
+    ///
+    /// ⚠️ **As três metades, e cada uma mata uma cura barata:**
+    /// 1. numa cadeia RECTA o `rot` é constante — é a imagem do report, invertida;
+    /// 2. numa cadeia CURVA ele ACUMULA (`30 · 60 · 90`), senão «constante» seria satisfeito por
+    ///    um `rot` cravado a zero;
+    /// 3. e ele concorda com o [`WROT`] **em todas**, que é o que prova ser o mesmo ângulo e não
+    ///    um terceiro número parecido.
+    #[test]
+    fn o_rot_que_sai_e_o_angulo_de_mundo() {
+        let w = |s: &Stream| scalars(s, WROT, 0.0, s.count());
+        let r = |s: &Stream| scalars(s, ROT, 0.0, s.count());
+
+        // (1) Recta: a raiz aponta a 90° e todos os ossos vão atrás dela.
+        let recta = resolve(&chain(4, 1.0, 0.0, [0.0, 0.0]));
+        assert_eq!(
+            r(&recta),
+            vec![0.0; 4],
+            "uma cadeia recta aponta toda para o mesmo lado"
+        );
+
+        // (2) Curva: o ângulo ACUMULA — sem isto, um `rot` cravado a zero passava em (1).
+        let curva = resolve(&chain(4, 1.0, 30.0, [0.0, 0.0]));
+        assert_eq!(
+            r(&curva),
+            vec![0.0, 30.0, 60.0, 90.0],
+            "cada junta soma o seu angulo ao do pai"
+        );
+
+        // (3) E é o MESMO ângulo que o `wrot` carrega, nas duas.
+        for s in [&recta, &curva] {
+            assert_eq!(r(s), w(s), "o `rot` e o `wrot` sao o mesmo angulo de mundo");
+        }
+    }
+
+    /// ⭐⭐⭐ **OS TRÊS DEGRAUS DA ESCADA, cada um medido — e o do meio matou a premissa deste
+    /// gate no dia em que ele nasceu.**
+    ///
+    /// ⚠️⚠️ **A primeira redacção afirmava *«escrever no `rot` não posa nada»*, e estava ERRADA.**
+    /// Ela reprovou horas depois, contra o `motion_rig_probe`: *é ligando uma caneta ao canal
+    /// `rot` que o artista dobra um esqueleto no grafo* — o nome que ele vê na UI —, e a lei que
+    /// eu tinha escrito tornava esse gesto **MUDO**. A premissa morreu, e ela está aqui com a
+    /// morte à vista em vez de o gate ter sido apagado.
+    ///
+    /// ⛔⛔ **As duas falhas anteriores desta mesma porta foram silenciosas**, e é por isso que os
+    /// três degraus existem: os nós que POSAM escreviam o solve em [`ROT`] e ele era deitado fora
+    /// (a mão da IK aterrava em `[3.0, 0.0]`); e as fixturas do `rig.skin_deformer` rodavam uma
+    /// corrente **já resolvida** escrevendo num campo que ninguém voltava a ler.
+    ///
+    /// ⭐ **O discriminador do degrau 2 é EXACTO:** o `resolve` publica o mesmo vector em [`ROT`]
+    /// e em [`WROT`], logo eles são iguais ao bit até alguém reescrever um deles.
+    ///
+    /// ⚠️⚠️ **Este gate nasceu de DUAS falhas medidas no mesmo dia**, e as duas foram silenciosas:
+    /// a primeira tentativa de cura ensinou só o `resolve` a preferir o [`LROT`] e deixou os três
+    /// nós que POSAM a escrever o solve em [`ROT`] — a mão da IK aterrava em `[3.0, 0.0]` em vez
+    /// de `[1.5, 1.5]`; e a segunda apanhou as FIXTURAS do `rig.skin_deformer`, cujo `chain()`
+    /// devolve uma corrente **já resolvida** e que rodava a cadeia escrevendo num campo que
+    /// ninguém voltava a ler.
+    ///
+    /// ⭐ **O gate é de COMPORTAMENTO e não um censo de texto:** um `grep` por `with(ROT` passa a
+    /// ficar verde no dia em que alguém escrever a coluna por uma variável — *aqui mede-se o
+    /// barro*.
+    #[test]
+    fn as_duas_portas_posam_e_a_intocada_fica() {
+        // ⚠️⚠️ **A cadeia é CURVA de propósito, e a recta tornava o controlo VÁCUO** — foi uma
+        // mutação sobrevivente que o mostrou: com `angle = 0` o local e o mundo são ambos
+        // `[0,0,0,0]`, logo apagar a preservação do [`LROT`] fazia a segunda resolução acumular
+        // ZEROS e a pose não se mexia. *Uma fixtura onde as duas leituras coincidem não pode
+        // distinguir qual delas o código usou.*
+        let base = resolve(&chain(4, 1.0, 30.0, [0.0, 0.0]));
+        let dobra = vec![0.0, 90.0, 0.0, 0.0];
+
+        // (2) O `rot` REESCRITO ganha — é o gesto do artista (uma caneta no canal `rot`).
+        let pelo_rot = resolve(&base.clone().with(ROT, Column::Scalar(dobra.clone())));
+        assert_ne!(
+            ps(&pelo_rot),
+            ps(&base),
+            "reescrever o `rot` e' como o artista dobra um esqueleto: TEM de posar"
+        );
+
+        // (3) E o `lrot` também — é por onde os nós que posam entregam o solve.
+        let pelo_lrot = resolve(&base.clone().with(LROT, Column::Scalar(dobra.clone())));
+        assert_ne!(
+            ps(&pelo_lrot),
+            ps(&base),
+            "o `lrot` e' a porta da pose: ela TEM de mover a cadeia"
+        );
+
+        // ⛔ O CONTROLO, e é ele que impede a cura barata «ler sempre o `rot`»: uma corrente
+        //    resolvida e NÃO tocada tem de resolver-se no mesmo sítio. Sem isto, a escada
+        //    perderia a idempotência — o `rot` que sai é o MUNDO, e relê-lo como local
+        //    acumularia o mundo sobre o mundo.
+        assert_eq!(
+            ps(&resolve(&base)),
+            ps(&base),
+            "uma corrente intocada resolve-se no mesmo sitio"
+        );
+        // E as duas portas dão a MESMA pose, porque são a mesma dobra por caminhos diferentes.
+        assert_eq!(ps(&pelo_rot), ps(&pelo_lrot));
+    }
+
     /// Resolving twice changes nothing (the pose is a pure function of the columns),
     /// and a stream with NO `parent` column is all roots → every position survives.
     /// The second half is the identity rule: `rig.fk` on a point cloud is a no-op.
@@ -228,7 +394,7 @@ mod tests {
         let s = Stream::new(2)
             .with(PARENT, Column::Scalar(vec![1.0, -1.0])) // joint 0 points AHEAD
             .with(LEN, Column::Scalar(vec![9.0, 0.0]))
-            .with(ROT, Column::Scalar(vec![0.0, 0.0]))
+            .with(LROT, Column::Scalar(vec![0.0, 0.0]))
             .with("P", Column::Vec2(vec![[4.0, 4.0], [0.0, 0.0]]));
         assert_eq!(
             ps(&resolve(&s))[0],

@@ -326,7 +326,7 @@ mod tests {
                     fk::LEN,
                     Column::Scalar((0..n).map(|i| if i == 0 { 0.0 } else { 1.0 }).collect()),
                 )
-                .with(fk::ROT, Column::Scalar(vec![0.0; n]))
+                .with(fk::LROT, Column::Scalar(vec![0.0; n]))
                 .with("P", Column::Vec2(vec![[0.0, 0.0]; n])),
         )
     }
@@ -336,7 +336,7 @@ mod tests {
     fn turned(n: usize, deg: f32) -> Stream {
         let mut rot = vec![0.0; n];
         rot[0] = deg;
-        fk::resolve(&chain(n).with(fk::ROT, Column::Scalar(rot)))
+        fk::resolve(&chain(n).with(fk::LROT, Column::Scalar(rot)))
     }
 
     fn cloud(pts: Vec<[f32; 2]>) -> Stream {
@@ -372,7 +372,7 @@ mod tests {
     fn bent(n: usize, joint: usize, deg: f32) -> Stream {
         let mut rot = vec![0.0; n];
         rot[joint] = deg;
-        fk::resolve(&chain(n).with(fk::ROT, Column::Scalar(rot)))
+        fk::resolve(&chain(n).with(fk::LROT, Column::Scalar(rot)))
     }
 
     /// ⭐⭐⭐ **A COLUNA AUSENTE É A LEI DE ONTEM, AO BIT** — a prova de que esta wave é ADITIVA.
@@ -492,7 +492,7 @@ mod tests {
         // Bend joint 3 by 90°: bones 1-2 are untouched, bones 3-4 swing up.
         let mut rot = vec![0.0; 5];
         rot[3] = 90.0;
-        let posed = fk::resolve(&chain(5).with(fk::ROT, Column::Scalar(rot)));
+        let posed = fk::resolve(&chain(5).with(fk::LROT, Column::Scalar(rot)));
 
         let near_root = [0.5, 0.1];
         let far_out = [3.8, 0.1];

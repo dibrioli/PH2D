@@ -202,7 +202,10 @@ fn reach(input: &Stream, target: &Stream, iterations: f32) -> Stream {
     // ⭐ O `Strength` da restrição — ver [`pose::mix_by_falloff`]. Ele corre DEPOIS do solver
     // inteiro (e portanto depois do `break_collinearity`), que é a cerca 7 da folha 16.
     let rot = pose::mix_by_falloff(input, pose::relocal(input, &p, &joints));
-    fk::resolve(&input.clone().with(fk::ROT, Column::Scalar(rot)))
+    // ⚠️ **O solve é uma pose LOCAL** (ângulos relativos ao pai), logo entra pela coluna do
+    // LOCAL — escrevê-lo em `fk::ROT` fazia o `resolve` deitá-lo fora e devolver a pose da
+    // resolução anterior. *A coluna `rot` que sai daqui é o MUNDO, e é o que o desenho lê.*
+    fk::resolve(&input.clone().with(fk::LROT, Column::Scalar(rot)))
 }
 
 struct RigFabrik;
@@ -264,7 +267,7 @@ mod tests {
                     fk::LEN,
                     Column::Scalar((0..n).map(|i| if i == 0 { 0.0 } else { BONE }).collect()),
                 )
-                .with(fk::ROT, Column::Scalar(vec![0.0; n]))
+                .with(fk::LROT, Column::Scalar(vec![0.0; n]))
                 .with("P", Column::Vec2(vec![[0.0, 0.0]; n])),
         )
     }

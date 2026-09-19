@@ -63,7 +63,19 @@ const PREFIXOS: [&str; 21] = [
 ];
 
 /// `(nome, onde a memória vive, porque é prosa e não endereço)`.
-const MEMORIAS: [(&str, &str, &str); 9] = [
+const MEMORIAS: [(&str, &str, &str); 10] = [
+    (
+        "a_folha_escolhe_se_uma_vez_e_nao_a_meio_do_traco",
+        "crates/ph2d-sculpt3d/src/dab_alcance_olho_tests.rs",
+        "o gate SUBSTITUÍDO em 2026-09-19, HORAS depois de nascer, pelo \
+         `a_mascara_filtra_quem_entra_e_nunca_tira_quem_ja_anda`. Ele dava \
+         memória só à condição da NORMAL, e o report seguinte do dono \
+         («algumas vezes correto, algumas vezes bugado») foi medido e era o \
+         TECTO DO PASSEIO a fazer exactamente o mesmo — ele mede na superfície \
+         que o próprio gancho estica, e retirava 9/47/24 vértices que já \
+         andavam. A prosa fica porque ela é a prova de que CURAR UMA CONDIÇÃO \
+         DE CADA VEZ deixa o report vivo com outra cara",
+    ),
     (
         "o_tecto_das_suavizacoes_e_onde_a_dobra_morre",
         "crates/ph2d-sculpt3d/src/pose_fronteira_tests.rs",

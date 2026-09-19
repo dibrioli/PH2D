@@ -665,6 +665,14 @@ mod cloth_artefatos_tests;
 #[path = "stroke_growth_tests.rs"]
 mod growth_tests;
 
+/// ⛔⛔⛔ **A sonda do report de 19/09** (*«algumas vezes correto, algumas vezes
+/// bugado»*) — ela lê o contador que a máscara mantém sob `cfg(test)`, e por
+/// isso vive aqui: o `alcance` é campo privado desta struct. Ver
+/// [`gancho_sonda`].
+#[cfg(test)]
+#[path = "stroke_gancho_sonda_tests.rs"]
+mod gancho_sonda;
+
 #[cfg(test)]
 #[path = "stroke_pegada_tests.rs"]
 mod pegada_tests;

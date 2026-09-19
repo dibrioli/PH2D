@@ -16,7 +16,7 @@ use ph2d_mesh::{Face, Mesh, QueryScratch, shapes};
 /// distância pela superfície é `∞` e nenhum epsilon a explica. ⛔ O
 /// `shapes::cylinder` da casa não serve — ele tem dois anéis e não há vértice
 /// nenhum a meia altura (a sonda pagou isso com oito células a `NaN`).
-fn dois_dedos(folga: f32) -> Mesh {
+pub(super) fn dois_dedos(folga: f32) -> Mesh {
     let uma = shapes::uv_sphere(48, 96, 1.0);
     let n = uma.vert_count() as u32;
     let dx = 2.0 + folga;

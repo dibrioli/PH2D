@@ -68,12 +68,52 @@ pub(crate) fn gancho_com(
     alvo: f32,
     com_rasgo: bool,
 ) -> Leitura {
+    traco_com(Gesto {
+        verbo: Verb::SnakeHook,
+        raio,
+        len,
+        dabs,
+        rumo: [1.0, 0.0, 0.0],
+        mascara,
+        alvo,
+        com_rasgo,
+    })
+}
+
+/// ⚠️ **O gesto é PARAMETRIZADO porque o report seguinte foi *«algumas vezes
+/// correto, algumas vezes bugado»***: um defeito intermitente é um defeito cujo
+/// regime ninguém varreu, e o que muda entre duas pinceladas do dono é o VERBO,
+/// o RUMO e a TAXA de eventos.
+pub(crate) struct Gesto {
+    pub verbo: Verb,
+    pub raio: f32,
+    pub len: f32,
+    pub dabs: usize,
+    /// A direcção do arrasto, em MUNDO. `+x` é tangencial à peça no polo; uma
+    /// componente em `+z` puxa na direcção do artista.
+    pub rumo: [f32; 3],
+    pub mascara: bool,
+    pub alvo: f32,
+    pub com_rasgo: bool,
+}
+
+pub(crate) fn traco_com(g: Gesto) -> Leitura {
+    let Gesto {
+        verbo,
+        raio,
+        len,
+        dabs,
+        rumo,
+        mascara,
+        alvo,
+        com_rasgo,
+    } = g;
     let mut malha = ph2d_mesh::shapes::sculpt_sphere(1.0);
     malha.triangulate();
     let repouso: Vec<[f32; 3]> = malha.positions().to_vec();
     let unidade = aresta_media(&malha);
     let brush = Brush {
-        verb: Verb::SnakeHook,
+        verb: verbo,
         radius: raio,
         strength: 1.0,
         surface_only: mascara,
@@ -88,10 +128,16 @@ pub(crate) fn gancho_com(
     // ⚠️ **O caminho é o da foto:** o cursor arranca do ponto virado ao artista
     // e arrasta de lado, e o CENTRO segue o cursor (o gancho puxa o barro atrás
     // dele).
+    let n_rumo = norma(rumo).max(1e-9);
+    let u = [rumo[0] / n_rumo, rumo[1] / n_rumo, rumo[2] / n_rumo];
     let passo = len / dabs as f32;
     let mut centro = [0.0f32, 0.0, 1.0];
     for _ in 0..dabs {
-        centro[0] += passo;
+        centro = [
+            centro[0] + u[0] * passo,
+            centro[1] + u[1] * passo,
+            centro[2] + u[2] * passo,
+        ];
         let (cut, done, _) = crate::dyntopo::passe_nos_motores(
             &mut malha,
             brush.verb,
@@ -114,7 +160,12 @@ pub(crate) fn gancho_com(
         stroke.dab(
             &mut malha,
             &brush,
-            &Dab::hooking(centro, raio, OLHO, [passo, 0.0, 0.0]),
+            &Dab::hooking(
+                centro,
+                raio,
+                OLHO,
+                [u[0] * passo, u[1] * passo, u[2] * passo],
+            ),
             Symmetry::default(),
         );
     }
@@ -324,8 +375,8 @@ fn diag_de_quem_e_o_corte() {
 /// ⭐⭐⭐⭐ **O GATE DO REPORT: com `Connected Only` ligado, o gancho deixa a peça
 /// como a deixa sem ele.**
 ///
-/// A cura vive na [`ph2d_sculpt3d::dab_alcance::OlhoDoTraco`] — *a folha
-/// escolhe-se uma vez, quando o traço chega ao vértice* —, e este gate é a
+/// A cura vive na [`ph2d_sculpt3d::dab_alcance::MemoriaDoTraco`] — *a máscara
+/// decide quem ENTRA no traço; ela nunca decide quem SAI* —, e este gate é a
 /// reprodução da foto pelo caminho do produto.
 ///
 /// ⛔⛔ **As três metades de vacuidade, e cada uma já foi um defeito nesta casa:**
@@ -408,4 +459,112 @@ fn o_gancho_com_a_mascara_nao_rasga_as_costas() {
         off.lasca,
         on.lasca
     );
+}
+
+/// ⛔⛔⛔⛔ **QUANDO É QUE AINDA RASGA** — a varredura que o report *«algumas
+/// vezes correto, algumas vezes bugado»* (2026-09-19, 2.ª foto: uma fita escura
+/// e esfarelada ao longo da ARESTA DE CIMA do chifre) obriga a fazer.
+///
+/// ⚠️ *Um defeito intermitente é um defeito cujo regime ninguém varreu.* O que
+/// muda entre duas pinceladas do dono é o **VERBO**, o **RUMO** do arrasto e a
+/// **TAXA** de eventos — e nenhuma das três estava na tabela.
+///
+/// ```text
+/// bash scripts/ph2d-run.sh cargo test -p ph2d-app-sculpt3d --lib \
+///   diag_quando_o_gancho_ainda_rasga -- --ignored --nocapture --test-threads=1
+/// ```
+#[test]
+#[ignore = "sonda: varre o regime, nao afirma nada"]
+fn diag_quando_o_gancho_ainda_rasga() {
+    println!("\n== QUANDO E' QUE AINDA RASGA (avesso: off -> ON) ==");
+    println!("   esfera de escultura · olho em -z · len 0,90 · raio 0,25\n");
+    println!(
+        "{:>12} {:>14} {:>6} | {:>9} {:>9} | {:>9} {:>9}",
+        "verbo", "rumo", "dabs", "avesso", "avesso", "estica", "estica"
+    );
+    println!(
+        "{:>12} {:>14} {:>6} | {:>9} {:>9} | {:>9} {:>9}",
+        "", "", "", "off", "ON", "off", "ON"
+    );
+    println!("{}", "-".repeat(80));
+    let rumos: [(&str, [f32; 3]); 4] = [
+        ("tangencial", [1.0, 0.0, 0.0]),
+        ("45° p/ olho", [1.0, 0.0, 1.0]),
+        ("p/ o olho", [0.0, 0.0, 1.0]),
+        ("obliquo", [1.0, 0.6, 0.35]),
+    ];
+    for verbo in [Verb::SnakeHook, Verb::Move, Verb::Thumb, Verb::Nudge] {
+        for (nome, rumo) in rumos {
+            for dabs in [6usize, 12, 24] {
+                let f = |mascara| {
+                    traco_com(Gesto {
+                        verbo,
+                        raio: 0.25,
+                        len: 0.9,
+                        dabs,
+                        rumo,
+                        mascara,
+                        alvo: 0.03,
+                        com_rasgo: false,
+                    })
+                };
+                let (off, on) = (f(false), f(true));
+                let marca = if on.avesso > off.avesso { " ⛔" } else { "" };
+                println!(
+                    "{:>12} {nome:>14} {dabs:>6} | {:>9} {:>9} | {:>9.2} {:>9.2}{marca}",
+                    format!("{verbo:?}"),
+                    off.avesso,
+                    on.avesso,
+                    off.estica,
+                    on.estica
+                );
+            }
+        }
+    }
+    println!("\n   ⛔ marca as celulas em que LIGAR a mascara piora.");
+}
+
+/// ⛔⛔⛔ **O PUXÃO LONGO** — a 2.ª foto do dono mostra um chifre **muito mais
+/// comprido** que a bossa da 1.ª, com uma fita escura ao longo da aresta de
+/// cima. Esta varredura mantém o PASSO constante (que é o que o `walk` do
+/// produto garante) e alonga o gesto.
+#[test]
+#[ignore = "sonda: varre o comprimento, nao afirma nada"]
+fn diag_o_puxao_longo() {
+    println!("\n== O PUXAO LONGO (passo constante, como o walk do produto) ==");
+    println!(
+        "{:>7} {:>7} {:>6} | {:>9} {:>9} | {:>8} {:>8} | {:>8} {:>8}",
+        "len",
+        "passo",
+        "dabs",
+        "avesso off",
+        "avesso ON",
+        "lasca of",
+        "lasca ON",
+        "est off",
+        "est ON"
+    );
+    println!("{}", "-".repeat(92));
+    for passo in [0.075f32, 0.0375] {
+        for len in [0.9f32, 1.8, 2.7] {
+            let dabs = (len / passo).round() as usize;
+            let f = |mascara| {
+                traco_com(Gesto {
+                    verbo: Verb::SnakeHook,
+                    raio: 0.25,
+                    len,
+                    dabs,
+                    rumo: [1.0, 0.0, 0.0],
+                    mascara,
+                    alvo: 0.03,
+                    com_rasgo: false,
+                })
+            };
+            let (off, on) = (f(false), f(true));
+            println!(
+                "{len:>7.2} {passo:>7.4} {dabs:>6} | {:>9} {:>9} | {:>8.2} {:>8.2} | {:>8.2} {:>8.2}",
+                off.avesso, on.avesso, off.lasca, on.lasca, off.estica, on.estica
+            );
+        }
+    }
 }

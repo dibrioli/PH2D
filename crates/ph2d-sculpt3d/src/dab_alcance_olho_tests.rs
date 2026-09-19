@@ -8,8 +8,8 @@
 //! `700` linhas ao ganhar a memória do traço — ⛔ **curado por corte, nunca por
 //! uma entrada nova no `FILE_OVERAGE_OK`**.
 
-use super::{Alcance, OlhoDoTraco};
-use ph2d_mesh::{QueryScratch, shapes};
+use super::{Alcance, MemoriaDoTraco};
+use ph2d_mesh::{Mesh, QueryScratch, shapes};
 
 /// ⭐⭐⭐ **A terceira condição NÃO COME as peças aprovadas** — o outro lado da
 /// medição, e o que impede que apertá-la vire licença.
@@ -369,201 +369,204 @@ fn onde_o_olho_nao_decide_a_razao_ainda_separa_as_folhas() {
     );
 }
 
-/// ⭐⭐⭐⭐ **A FOLHA ESCOLHE-SE UMA VEZ, E O VEREDITO NÃO MUDA A MEIO DO TRAÇO.**
+/// ⭐⭐⭐⭐ **A MÁSCARA DECIDE QUEM ENTRA NO TRAÇO; ELA NUNCA DECIDE QUEM SAI.**
 ///
-/// O report de 19/09 (*«Snake Hook … má topologia a face POSTERIOR do traço»*)
-/// é esta lei lida na malha VIVA: um gancho puxa um tubo, a face de trás dele
-/// vira-se para longe do olho **por construção**, e o vértice que andava sai da
-/// pegada a meio do gesto. *Quem já andava pára enquanto o vizinho continua* —
-/// e isso é um rasgo, que o passe de topologia depois refina.
+/// ⚠️⚠️ **Este gate SUBSTITUI o `a_folha_escolhe_se_uma_vez_e_nao_a_meio_do_traco`,
+/// e a premissa dele morreu por MEDIÇÃO no mesmo dia:** aquele dava memória só à
+/// condição da NORMAL, e o report seguinte do dono (*«algumas vezes correto,
+/// algumas vezes bugado»*) era o **TECTO DO PASSEIO** a fazer o mesmo — ele mede
+/// na superfície que o próprio gancho ESTICA, e retirava `9`, `47` e `24`
+/// vértices que já andavam (`raio 0,12`/`0,25`/`0,45`, arrasto oblíquo).
+/// *Curar uma condição de cada vez deixa o report vivo com outra cara.*
 ///
-/// ⛔⛔ **As DUAS metades, e cada uma sozinha mente:**
-///
-/// * sem o **controlo**, um `assert` de sobrevivência ficaria verde num arranjo
-///   onde a condição nem chega a armar;
-/// * sem a **memória**, ele ficaria verde sobre a lei que o dono reprovou.
+/// ⛔⛔ **As TRÊS condições têm de honrar a memória**, e cada metade abaixo
+/// traz o seu CONTROLO — sem ele, um `assert` de sobrevivência ficaria verde num
+/// arranjo em que a condição nem chega a cortar.
 #[test]
-fn a_folha_escolhe_se_uma_vez_e_nao_a_meio_do_traco() {
-    // ⚠️⚠️ **A FIXTURA TEM DE SER UMA PEÇA ONDE SÓ A NORMAL CORTA — e a 1.ª
-    // redacção deste gate usava a CHAPA FINA, onde ela não é.** Ali as costas
-    // são cortadas **também** pela [`RAZAO_MAXIMA`] (`11,0`), logo devolver-lhes
-    // a memória do olho salvava `38` de `166` e o gate reprovava sobre uma lei
-    // correcta. Numa ESFERA a superfície liga tudo (razão `~1,1`) e o único que
-    // corta é o olho, que é o sujeito.
-    let m = shapes::uv_sphere(48, 96, 1.0);
+fn a_mascara_filtra_quem_entra_e_nunca_tira_quem_ja_anda() {
     let olho = [0.0, 0.0, -1.0];
-    let alvo = [0.0, 0.0, 1.0];
-    // ⚠️ **O raio é `1,8` e o número é CONTADO, não escolhido:** a consulta é
-    // pela CORDA, logo um raio `r` alcança até `θ = 2·asin(r/2)` do polo — e a
-    // condição só morde acima de `θ = 107°` (`−cos θ > 0,30`). A `1,3` a pegada
-    // pára aos `79°` e o gate lia *«0 cortados de 1689»* sobre a lei certa: *uma
-    // fixtura que não alcança o regime mede o nada*.
-    let raio = 1.8;
 
-    let pegada_crua = || {
-        let mut p = Vec::new();
-        let mut q = QueryScratch::default();
-        m.verts_in_sphere(alvo, raio, &mut q, &mut p);
-        p
-    };
+    // Cada célula: (nome, malha, alvo do dab, raio, olho) — uma por CONDIÇÃO,
+    // na peça onde essa condição é a que corta.
+    let esfera = shapes::uv_sphere(48, 96, 1.0);
+    let chapa = chapa_fina();
+    // ⚠️ A fixtura dos dois dedos é a do irmão: *uma fixtura, dois
+    // consumidores* — montar aqui uma segunda divergiria no dia em que uma
+    // delas ganhasse uma folga diferente.
+    let dedos = super::tests::dois_dedos(0.05);
+    let (s, c) = 20.0f32.to_radians().sin_cos();
+    let celulas: [(&str, &Mesh, [f32; 3], f32); 3] = [
+        // A NORMAL: raio grande numa esfera, que passa dos 107° do polo.
+        ("normal", &esfera, [0.0, 0.0, 1.0], 1.8),
+        // A RAZÃO: a chapa fina, onde as costas estão a `11,0` de razão.
+        ("razao", &chapa, [0.35, 0.0, 0.03], 0.30),
+        // O TECTO: dois dedos que a superfície não liga de forma alguma.
+        ("tecto", &dedos, [-(2.0 + 0.05) * 0.5 + c, 0.0, s], 0.35),
+    ];
 
-    // ── O CONTROLO: sem memória, a lei corta quem se virou ──
-    let mut sem = pegada_crua();
-    let n0 = sem.len();
-    let cortados = Alcance::default().corta(&m, alvo, olho, raio, &mut sem, None);
-    assert!(
-        cortados > 50 && n0 > 400,
-        "a fixtura nao contem o fenomeno: {cortados} cortados de {n0}"
-    );
-    let virados: Vec<u32> = pegada_crua()
-        .into_iter()
-        .filter(|v| !sem.contains(v))
+    for (nome, m, alvo, raio) in celulas {
+        let crua = || {
+            let mut p = Vec::new();
+            let mut q = QueryScratch::default();
+            m.verts_in_sphere(alvo, raio, &mut q, &mut p);
+            p
+        };
+
+        // ── O CONTROLO: sem memória, esta condição corta ──
+        let mut sem = crua();
+        let n0 = sem.len();
+        let cortados = Alcance::default().corta(m, alvo, olho, raio, &mut sem, None);
+        assert!(
+            cortados > 0 && n0 > 40,
+            "{nome}: a fixtura nao contem o fenomeno ({cortados} cortados de {n0})"
+        );
+        let fora: Vec<u32> = crua().into_iter().filter(|v| !sem.contains(v)).collect();
+
+        // ── A LEI: os MESMOS vértices, declarados como barro que já anda ──
+        let mut stamp = vec![0u32; m.positions().len()];
+        for &v in &fora {
+            stamp[v as usize] = 7;
+        }
+        let mut com = crua();
+        let mut a = Alcance::default();
+        a.corta(
+            m,
+            alvo,
+            olho,
+            raio,
+            &mut com,
+            Some(&MemoriaDoTraco {
+                stamp: &stamp,
+                epoca: 7,
+            }),
+        );
+        let ficaram = fora.iter().filter(|v| com.contains(v)).count();
+        assert_eq!(
+            ficaram,
+            fora.len(),
+            "{nome}: {} dos {} vertices que o traco JA' movia sairam da pegada a \
+             meio do gesto — e' o rasgo dos dois reports do gancho",
+            fora.len() - ficaram,
+            fora.len()
+        );
+        assert_eq!(
+            a.tirou_do_traco_no_teste(),
+            [0, 0, 0],
+            "{nome}: alguma condicao contou ter tirado barro que ja' anda"
+        );
+
+        // ── E ela é POR VÉRTICE: com METADE declarada, a outra metade sai ──
+        let metade = fora.len() / 2;
+        assert!(metade > 5, "{nome}: a metade tem so' {metade} vertices");
+        let mut stamp2 = vec![0u32; m.positions().len()];
+        for &v in fora.iter().take(metade) {
+            stamp2[v as usize] = 7;
+        }
+        let mut meia = crua();
+        Alcance::default().corta(
+            m,
+            alvo,
+            olho,
+            raio,
+            &mut meia,
+            Some(&MemoriaDoTraco {
+                stamp: &stamp2,
+                epoca: 7,
+            }),
+        );
+        let lembrados = fora
+            .iter()
+            .take(metade)
+            .filter(|v| meia.contains(v))
+            .count();
+        let esquecidos = fora
+            .iter()
+            .skip(metade)
+            .filter(|v| meia.contains(v))
+            .count();
+        assert_eq!(
+            (lembrados, esquecidos),
+            (metade, 0),
+            "{nome}: a memoria tem de valer VERTICE A VERTICE ({lembrados} de \
+             {metade} lembrados ficaram, {esquecidos} esquecidos ficaram com eles)"
+        );
+    }
+}
+
+/// ⛔⛔⛔⛔ **UM TRAÇO QUE PÁRA NÃO PODE DEIXAR A PAREDE FINA ENTRAR — e este
+/// gate nasceu de uma MUTAÇÃO SOBREVIVENTE que provou que EU tinha escrito o
+/// defeito.**
+///
+/// A cerca do [`super`] (*«se toda a pegada aponta para longe, há uma folha só e
+/// o corte não corre»*) chegou a ser escrita a julgar **só os candidatos** —
+/// quem ainda pode ser cortado. Parece a leitura conservadora e **não é**: num
+/// traço parado sobre uma parede fina, ao 2.º dab todos os candidatos são as
+/// COSTAS (a frente já está toda capturada) ⇒ a cerca não arma, e a parede
+/// passa a ser atravessada a partir do segundo dab.
+///
+/// ⇒ a cerca julga a **pegada inteira**: o barro que já anda é a prova de que
+/// existe uma folha virada ao artista. *A memória diz quem não pode ser
+/// CORTADO; ela não apaga o que a pegada SABE.*
+#[test]
+fn um_traco_que_para_nao_deixa_a_parede_fina_entrar() {
+    let m0 = chapa_fina();
+    let meia = 0.06 * 0.5;
+    let costas: Vec<usize> = m0
+        .positions()
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| (p[2] + meia).abs() < 1e-5)
+        .map(|(i, _)| i)
         .collect();
+    assert!(costas.len() > 100, "a fixtura nao tem costas");
 
-    // ── A LEI: os MESMOS vértices, declarados como já capturados com a normal
-    //    virada ao artista, FICAM ──
-    let n = m.positions().len();
-    let mut stamp = vec![0u32; n];
-    let mut slot = vec![u32::MAX; n];
-    let mut base_nrm = Vec::new();
-    for (k, &v) in virados.iter().enumerate() {
-        stamp[v as usize] = 7;
-        slot[v as usize] = k as u32;
-        base_nrm.push([0.0, 0.0, 1.0]);
-    }
-    let mut com = pegada_crua();
-    Alcance::default().corta(
-        &m,
-        alvo,
-        olho,
-        raio,
-        &mut com,
-        Some(&OlhoDoTraco {
-            stamp: &stamp,
-            slot: &slot,
-            base_nrm: &base_nrm,
-            epoca: 7,
-        }),
-    );
-    let sobreviveram = virados.iter().filter(|v| com.contains(v)).count();
-    assert_eq!(
-        sobreviveram,
-        virados.len(),
-        "{} dos {} vertices que o traco JA' capturava sairam da pegada a meio do \
-         gesto — e' o rasgo do report do gancho",
-        virados.len() - sobreviveram,
-        virados.len()
-    );
-
-    // ⚠️⚠️ **E ela é POR VÉRTICE, não um interruptor:** com METADE declarada, só
-    // essa metade fica. Sem esta terceira parte, uma implementação que desligasse
-    // a condição inteira assim que a memória existisse ficaria verde — e ela
-    // apagaria a cura da parede fina, onde as costas NUNCA são capturadas.
-    let metade = virados.len() / 2;
-    let mut stamp2 = vec![0u32; n];
-    let mut slot2 = vec![u32::MAX; n];
-    let mut nrm2 = Vec::new();
-    for (k, &v) in virados.iter().take(metade).enumerate() {
-        stamp2[v as usize] = 7;
-        slot2[v as usize] = k as u32;
-        nrm2.push([0.0, 0.0, 1.0]);
-    }
-    let mut meia = pegada_crua();
-    Alcance::default().corta(
-        &m,
-        alvo,
-        olho,
-        raio,
-        &mut meia,
-        Some(&OlhoDoTraco {
-            stamp: &stamp2,
-            slot: &slot2,
-            base_nrm: &nrm2,
-            epoca: 7,
-        }),
-    );
-    let lembrados = virados
-        .iter()
-        .take(metade)
-        .filter(|v| meia.contains(v))
-        .count();
-    let esquecidos = virados
-        .iter()
-        .skip(metade)
-        .filter(|v| meia.contains(v))
-        .count();
-    assert!(metade > 20, "a metade tem so' {metade} vertices");
-    assert_eq!(
-        (lembrados, esquecidos),
-        (metade, 0),
-        "a memoria tem de valer VERTICE A VERTICE: {lembrados} de {metade} \
-         lembrados ficaram e {esquecidos} esquecidos ficaram com eles"
-    );
-
-    // ⛔⛔⛔ **E A CERCA JULGA PELA MESMA GRANDEZA QUE O CORTE — esta parte
-    // nasceu de uma MUTAÇÃO SOBREVIVENTE.**
-    //
-    // A cerca do [`super`] (*«se toda a pegada aponta para longe, há uma folha
-    // só e o corte não corre»*) lia a normal VIVA enquanto o corte já lia a
-    // congelada. Nenhuma fixtura do corpus separava as duas — nelas a cerca arma
-    // dos dois modos —, e o regime que separa é este: **uma pegada inteiramente
-    // virada ao contrário, de que o traço já capturou metade pela frente**.
-    //
-    // ⚠️ Ali as duas leituras dão produtos OPOSTOS: pela viva a cerca não arma e
-    // não se corta nada; pela congelada ela arma, e o que sai é exactamente o que
-    // o traço nunca apanhou. *A segunda é a certa — quem decide o que é «a folha
-    // do artista» é a memória do traço, e uma cerca que pergunte a outra coisa
-    // desarma o corte no dia em que o barro dá a volta.*
-    let atras = [0.0, 0.0, -1.0];
-    let crua_atras = || {
-        let mut p = Vec::new();
-        let mut q = QueryScratch::default();
-        m.verts_in_sphere(atras, 1.0, &mut q, &mut p);
-        p
+    let mut m = m0.clone();
+    let b = crate::Brush {
+        verb: crate::Verb::Draw,
+        radius: 0.30,
+        strength: 1.0,
+        surface_only: true,
+        ..crate::Brush::default()
     };
-    let toda_virada = crua_atras();
-    assert!(toda_virada.len() > 100, "a calota de tras esta' vazia");
-    let mut stamp3 = vec![0u32; n];
-    let mut slot3 = vec![u32::MAX; n];
-    let mut nrm3 = Vec::new();
-    for (k, &v) in toda_virada.iter().enumerate() {
-        if k % 2 == 0 {
-            stamp3[v as usize] = 7;
-            slot3[v as usize] = nrm3.len() as u32;
-            nrm3.push([0.0, 0.0, 1.0]);
-        }
+    let mut st = crate::SculptStroke::default();
+    st.begin(&m);
+    // ⚠️ **O cursor NÃO se mexe** — é esse o regime: ao 2.º dab não há vértice
+    // novo da frente a entrar, logo os únicos candidatos são as costas.
+    let centro = [0.35, 0.0, meia];
+    for _ in 0..3 {
+        st.dab(
+            &mut m,
+            &b,
+            &crate::Dab::at(centro, b.radius, [0.0, 0.0, -1.0]),
+            crate::Symmetry::default(),
+        );
     }
-    let mut p4 = crua_atras();
-    Alcance::default().corta(
-        &m,
-        atras,
-        atras,
-        1.0,
-        &mut p4,
-        Some(&OlhoDoTraco {
-            stamp: &stamp3,
-            slot: &slot3,
-            base_nrm: &nrm3,
-            epoca: 7,
-        }),
-    );
-    let (mut lembrados4, mut esquecidos4) = (0usize, 0usize);
-    for (k, &v) in toda_virada.iter().enumerate() {
-        if !p4.contains(&v) {
-            continue;
-        }
-        if k % 2 == 0 {
-            lembrados4 += 1;
-        } else {
-            esquecidos4 += 1;
-        }
-    }
-    assert_eq!(
-        (lembrados4, esquecidos4),
-        (nrm3.len(), 0),
-        "numa pegada toda virada ao contrario de que o traco ja' capturava \
-         metade, ficaram {lembrados4} lembrados (de {}) e {esquecidos4} \
-         esquecidos: a cerca e o corte deixaram de julgar pela mesma grandeza",
-        nrm3.len()
+    let pior = costas
+        .iter()
+        .map(|&i| {
+            let (a, c) = (m0.positions()[i], m.positions()[i]);
+            ((a[0] - c[0]).powi(2) + (a[1] - c[1]).powi(2) + (a[2] - c[2]).powi(2)).sqrt()
+        })
+        .fold(0.0f32, f32::max);
+    // O CONTROLO: a frente TEM de se mexer, senão o traço nao contem o fenomeno.
+    let frente: Vec<usize> = m0
+        .positions()
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| (p[2] - meia).abs() < 1e-5)
+        .map(|(i, _)| i)
+        .collect();
+    let andou = frente
+        .iter()
+        .map(|&i| {
+            let (a, c) = (m0.positions()[i], m.positions()[i]);
+            ((a[0] - c[0]).powi(2) + (a[1] - c[1]).powi(2) + (a[2] - c[2]).powi(2)).sqrt()
+        })
+        .fold(0.0f32, f32::max);
+    assert!(andou > 0.05, "a frente nao se mexeu ({andou:.4})");
+    assert!(
+        pior < 1e-6,
+        "as costas andaram {pior:.6} num traco PARADO: a cerca deixou de ver a \
+         folha da frente quando ela ficou toda capturada"
     );
 }

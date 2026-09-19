@@ -4395,3 +4395,101 @@ número prova que o **corte** do ficheiro de gates não evaporou nenhum).
 com a fronteira na PERGUNTA — *«a superfície liga isto?»* de um lado, *«é a folha
 que o olho vê, e QUANDO isso se decide?»* do outro. ⛔ Nenhuma entrada nova no
 `FILE_OVERAGE_OK`.
+
+---
+
+## §96 — ⛔⛔⛔⛔ «ALGUMAS VEZES CORRETO, ALGUMAS VEZES BUGADO»: a cura do §95 era METADE da lei
+
+**Report do dono (2026-09-19, 2.ª foto):** depois da cura do §95, uma fita
+escura e esfarelada ao longo da **aresta de cima** de um chifre puxado — *«algumas
+vezes correto, algumas vezes bugado»*.
+
+⚠️ **Um defeito intermitente é um defeito cujo REGIME ninguém varreu.** O que
+muda entre duas pinceladas do dono é o **verbo**, o **rumo** do arrasto e a
+**taxa** de eventos — e nenhuma das três estava na tabela do §95.
+
+### §96.1 — A varredura, e o que ela ILIBOU
+
+`diag_quando_o_gancho_ainda_rasga` (48 células: `SnakeHook`·`Move`·`Thumb`·`Nudge`
+× 4 rumos × 3 taxas) e `diag_o_puxao_longo` (6 células, passo constante como o
+`walk` do produto, até `2,7` de arrasto):
+
+⇒ **em TODAS, ligar a máscara deixou de mudar o que quer que seja** — `avesso`,
+`estica` e `lasca` iguais ao controlo. ⚠️ As células de `Move`/`Thumb` com
+`avesso > 0` têm-no nos **dois** lados e são artefacto do ARNÊS (ele entrega a
+esses verbos um delta incremental de gancho, e no produto o `Grip::Hold` não
+percorre caminho nenhum — o alvo é função do `pre` congelado e do puxão TOTAL).
+
+### §96.2 — ⭐⭐⭐⭐ A pergunta que a instrumentação passou a responder
+
+*«Alguma condição ainda tira barro que JÁ ESTÁ A ANDAR?»* — porque é isso, e só
+isso, que rasga. A [`Alcance`] passou a contar, sob `cfg(test)`, quantos vértices
+**capturados** cada condição retirou, e a sonda vive como filha do traço
+(`crate::stroke::gancho_sonda`) porque o `alcance` é campo privado dele.
+
+| regime (esfera de escultura, máscara ligada) | tecto | razão | normal |
+|---|---|---|---|
+| gancho tangencial ou a 45°, qualquer raio | `0` | `0` | `0` |
+| ⛔ gancho **oblíquo**, `raio 0,12` | **`9`** | `0` | `0` |
+| ⛔ gancho **oblíquo**, `raio 0,25` | **`47`** | `0` | `0` |
+| ⛔ gancho **oblíquo**, `raio 0,45` | **`24`** | `0` | `0` |
+
+⇒ **o que sobrava era o TECTO DO PASSEIO** (`ALCANCE_TECTO`), que mede na
+superfície que o próprio gancho **estica**. A normal já estava curada; a razão
+nunca participou. *Curar uma condição de cada vez deixa o report vivo com outra
+cara* — e o «às vezes» era o rumo oblíquo, que é o que uma mão livre faz.
+
+### §96.3 — ⭐⭐⭐⭐ A lei, e ela é UMA
+
+> **A máscara decide quem ENTRA no traço; ela nunca decide quem SAI.**
+
+Um vértice que o traço já capturou não volta a ser julgado por condição nenhuma.
+⭐ A pergunta *«este barro já anda?»* já tem resposta `O(1)` — é o carimbo de
+época do congelamento do UNDO (`stamp`/`epoch`) —, e um vértice **nascido** no
+refino herda-a dos pais pelo canal `grow_with` ⇒ *atravessa a topologia dinâmica
+sem uma linha nova*.
+
+⚠️ **A cura do §95 (a normal congelada) fica SUBSUMIDA e o gate dela foi
+substituído** (`a_folha_escolhe_se_uma_vez_e_nao_a_meio_do_traco` → `MEMORIAS`
+do censo de gates nomeados, com o motivo). *Um vértice só chega a ser capturado
+depois de PASSAR pela máscara*, logo as duas formulações coincidem na condição da
+normal — e só a nova cobre as outras duas.
+
+### §96.4 — ⛔⛔ E a mutação SOBREVIVENTE apanhou um defeito que EU tinha escrito
+
+A cerca do §93 (*«se toda a pegada aponta para longe, há uma folha só e o corte
+não corre»*) chegou a ser escrita a julgar **só os candidatos**. Parece a leitura
+conservadora e abre um buraco: **num traço PARADO** sobre uma parede fina, ao 2.º
+dab a frente já está toda capturada ⇒ os únicos candidatos são as costas, todas
+viradas ao contrário, a cerca não arma e a parede passa a ser atravessada.
+Medido: **as costas andavam `0,0442`** a partir do segundo dab.
+
+⇒ gate `um_traco_que_para_nao_deixa_a_parede_fina_entrar`, escrito **red-first**,
+e a cerca voltou a julgar a pegada inteira. *A memória diz quem não pode ser
+CORTADO; ela não apaga o que a pegada SABE.*
+
+### §96.5 — ⭐⭐ De graça: o `Scene Project` fechou o corpus
+
+A catraca do oráculo disparou na metade **«o placar SUBIU»**: a `…_dureza05` — a
+única fixtura fora da barra desde que aquela bancada existe — passou de
+**`2,367e-2` para `4,619e-7`**, sem uma linha daquele verbo se mexer. `VERDE_N`
+`13 → 14`, e **não há nenhuma aberta**.
+
+⚠️⚠️ **E o diagnóstico que lá estava escrito era o sítio certo pelo mecanismo
+errado:** ele dizia *«3 vértices na BORDA da pegada, que com o `from_live` se
+move»*. A borda que se movia **não era a da esfera de consulta — era a da
+MÁSCARA**, que re-julgava a cada dab o barro que já andava.
+
+### §96.6 — A prova
+
+`nextest-impacted` **16 480 / 16 480** · `cargo fmt --all --check` limpo ·
+clippy `-D warnings` zero · mutação **4 de 4** onde tem de sangrar (a memória
+ignorada · o fio que não a passa · a memória ao contrário · a cerca só sobre
+candidatos, que sangra no gate da parede).
+
+⚠️ **E um `#[cfg(test)]` foi ROUBADO por uma inserção de módulo:** ao declarar a
+sonda antes do vizinho, o atributo dele passou a cobrir o meu bloco e o
+`stroke_pegada_tests.rs` ficou **compilado em RELEASE** — apanhado pelo clippy
+`-D warnings` (dois erros de item não usado), não por um teste. *Inserir uma
+declaração entre um atributo e o item dele é mudo no `cargo check` e barulhento
+no `--all-targets`.*

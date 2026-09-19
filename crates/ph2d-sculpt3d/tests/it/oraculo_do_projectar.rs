@@ -640,11 +640,20 @@ const BARRA: f32 = 2e-6;
 /// vértice que entra na pegada ao 3.º dab é fotografado já inclinado. Com a
 /// fotografia das normais no primeiro dab: **`1,639e-7`**, o número da `…_base`.
 ///
-/// **A `1` que fica:**
+/// ⭐⭐⭐⭐ **E A ÚLTIMA QUE FALTAVA FECHOU EM 2026-09-19, sem uma linha deste
+/// verbo se mexer** — a `…_dureza05` passou de **`2,367e-2` para `4,619e-7`**
+/// quando a máscara de alcance ganhou a lei *«a máscara decide quem ENTRA no
+/// traço; ela nunca decide quem SAI»*
+/// ([`ph2d_sculpt3d::dab_alcance::MemoriaDoTraco`], escrita por dois reports do
+/// dono sobre o GANCHO).
 ///
-/// | fixtura | desvio | o que ela isola |
-/// |---|---|---|
-/// | `…_dureza05` | `2,367e-2` | ⚠️ **`3` vértices de `301`** (`2,4e-2`, `1,2e-2`, `1,6e-3`); os outros `298` batem a `≤ 5,0e-5`. Os três estão na BORDA da pegada, que com o `from_live` se **move** enquanto o barro afunda — o dab em que um vértice sai da esfera é decidido ao último bit, e a dureza `0,5` desloca o ponto onde isso acontece. *É a mesma família da banda de empate do raio, um dab mais tarde* |
+/// ⚠️⚠️ **E o diagnóstico que estava escrito aqui era o certo pela razão
+/// errada.** Ele dizia: *«`3` vértices de `301` na BORDA da pegada, que com o
+/// `from_live` se move enquanto o barro afunda — o dab em que um vértice sai da
+/// esfera é decidido ao último bit»*. A borda que se movia **não era a da
+/// esfera de consulta: era a da MÁSCARA**, que re-julgava a cada dab o barro que
+/// já estava a andar. *Uma partição pode nomear o sítio certo e o mecanismo
+/// errado, e só a cura do mecanismo o separa.*
 /// ⛔⛔⛔ **E DEPOIS `15 → 13`, e ISTO NÃO É UMA DESCIDA DA CATRACA: é a
 /// POPULAÇÃO a encolher por ordem do dono.** Ele smokou a `=45` e decidiu:
 /// *«não vi utilidade na feature Scene Project + CTRL. Melhor retirá-la e
@@ -661,7 +670,7 @@ const BARRA: f32 = 2e-6;
 /// `13` sem escrever porquê seria a catraca a virar LICENÇA no sentido
 /// contrário: a próxima pessoa afrouxaria o número outra vez e chamaria-lhe
 /// história.*
-const VERDE_N: usize = 13;
+const VERDE_N: usize = 14;
 
 /// ⭐⭐⭐ **O CORPUS INTEIRO DO QUE É RECONSTRUTÍVEL** — `14` das `24`, cada uma
 /// com a cena medida da própria saída.
@@ -678,7 +687,11 @@ const VERDE_N: usize = 13;
 /// ⚠️ **E a `inversão` saiu desta frase em 15/09** — ela continua estruturalmente
 /// certa e **deixou de ser NOSSA**: ver [`FORA_POR_DECISAO_DO_DONO`].
 ///
-/// # ⏳ O que está ABERTO: UMA, e ela traz o próprio diagnóstico
+/// # ✅ O que está ABERTO: **NADA** — as `14` batem a barra desde 19/09
+///
+/// ⚠️ **A tabela abaixo fica com a `…_dureza05` NA LINHA DELA**, hoje a
+/// `4,619e-7`: *o número que ela media enquanto estava aberta é o que torna
+/// legível o que a cura comprou.*
 ///
 /// | fixtura | dabs | curva | desvio |
 /// |---|---|---|---|
@@ -689,7 +702,7 @@ const VERDE_N: usize = 13;
 /// | `…_mindist01` | 6 | *Smooth* | `1,341e-7` |
 /// | `…_base` · `…_base_repete` · `…_acima_bidir` · `…_normal_plano_area` | 6 | *Smooth* | `1,639e-7` |
 /// | `…_mindist01_acima_bidir` | 6 | *Smooth* | `2,012e-7` |
-/// | **`…_dureza05`** | 6 | *Smooth* | **`2,367e-2`** — a única fora da barra |
+/// | **`…_dureza05`** | 6 | *Smooth* | **`4,619e-7`** — era `2,367e-2`, a única fora da barra, até a lei da memória do traço |
 ///
 /// ⛔⛔ **ESTA TABELA ESTEVE ERRADA E A PROSA DEBAIXO DELA TAMBÉM, até 15/09.**
 /// Ela listava `…_base` a `1,902e-1` e conclía que *«tudo o que corre em UM dab

@@ -216,76 +216,66 @@ pub const RAZAO_MAXIMA: f32 = 3.5;
 /// o nada* — a terceira vez que esta wave paga a mesma armadilha.
 pub const NORMAL_LIMIAR: f32 = 0.30;
 
-/// ⭐⭐⭐⭐ **A FOLHA ESCOLHE-SE UMA VEZ, QUANDO O TRAÇO CHEGA AO VÉRTICE — e a
-/// lei acima lida VIVA rasgava o barro.**
+/// ⭐⭐⭐⭐ **A MÁSCARA DECIDE QUEM ENTRA NO TRAÇO; ELA NUNCA DECIDE QUEM SAI.**
 ///
-/// # O report que a escreveu (2026-09-19, foto)
+/// # Os dois reports que a escreveram (2026-09-19)
 ///
-/// *«Snake Hook se dá muito mal com `Connected Only`, deformando com má remesh
-/// ou má topologia a face POSTERIOR do traço»*: a bossa puxada saía com as
-/// costas **pretas** e um refino explodido à volta delas.
+/// 1. *«Snake Hook se dá muito mal com `Connected Only`, deformando com má
+///    remesh ou má topologia a face POSTERIOR do traço»* — a bossa puxada saía
+///    com as costas pretas e um refino explodido.
+/// 2. *«algumas vezes correto, algumas vezes bugado»* — depois da 1.ª cura.
 ///
-/// **Atribuição MEDIDA** (`diag_de_quem_e_o_corte`, arrasto de `0,90` com raio
-/// `0,25`, o passe de topologia a correr como no produto) — neutralizando **uma
-/// condição de cada vez**:
+/// # ⭐⭐⭐ O mecanismo, que é UM e não três
 ///
-/// | corrida | `verts` | `estica` | `avesso` | `lasca` |
-/// |---|---|---|---|---|
-/// | máscara **desligada** (o controlo) | `97 636` | `3,44` | `0` | `1,88°` |
-/// | como shipava | `99 699` | `8,10` | **`296`** | `0,33°` |
-/// | sem a [`RAZAO_MAXIMA`] | `99 702` | `8,10` | `292` | `0,33°` |
-/// | sem o [`ALCANCE_TECTO`] | `99 699` | `8,10` | `296` | `0,33°` |
-/// | ⭐ **sem a [`NORMAL_LIMIAR`]** | `97 636` | `3,44` | **`0`** | `1,88°` |
+/// As três condições da máscara medem a malha **VIVA**, e um gancho **muda a
+/// peça debaixo delas**: puxa um tubo (cuja face de trás se vira para longe do
+/// olho **por construção**) e ESTICA a superfície (o que afasta o barro da
+/// semente ao longo dela). ⇒ o veredito muda a meio do gesto, e *quem já andava
+/// pára enquanto o vizinho continua* — que é um rasgo. O passe de topologia
+/// depois parte a aresta longa que o rasgo abriu: o refino da foto.
 ///
-/// ⇒ *a condição da normal é a causa ÚNICA, e as outras duas estão ilibadas.*
+/// # A atribuição, condição a condição
 ///
-/// # ⭐⭐⭐ O mecanismo, e porque ele não é uma afinação
+/// Contando quantos vértices **que o traço já capturava** cada condição retirou
+/// ([`crate::stroke::gancho_sonda`], esfera de escultura, máscara ligada):
 ///
-/// Um gancho **puxa um tubo para fora da superfície**. A face de trás desse tubo
-/// vira-se para longe do olho **por construção** — é o que um tubo é —, e a lei
-/// lida na malha VIVA muda de veredito a meio do traço: o vértice que no primeiro
-/// dab estava virado ao artista sai da pegada no quinto. *Quem já estava a andar
-/// pára enquanto o vizinho continua*, e isso é um rasgo; o passe de topologia
-/// então parte a aresta longa que o rasgo abriu, que é o refino explodido da foto.
+/// | regime | tecto | razão | normal |
+/// |---|---|---|---|
+/// | gancho tangencial ou a 45°, qualquer raio | `0` | `0` | `0` |
+/// | ⛔ gancho **oblíquo**, `raio 0,12` | **`9`** | `0` | `0` |
+/// | ⛔ gancho **oblíquo**, `raio 0,25` | **`47`** | `0` | `0` |
+/// | ⛔ gancho **oblíquo**, `raio 0,45` | **`24`** | `0` | `0` |
 ///
-/// ⛔ **Nenhum valor de [`NORMAL_LIMIAR`] separa os dois casos**, porque não há
-/// dois casos: é a MESMA folha, medida em dois instantes diferentes.
+/// ⚠️ **A 1.ª cura tratou só a NORMAL** (dava-lhe a normal congelada do
+/// `capture`) e por isso o defeito ficou *«algumas vezes»*: o que sobrava era o
+/// **TECTO DO PASSEIO**, que mede na superfície que o próprio gancho estica.
+/// *Curar uma condição de cada vez deixa o report vivo com outra cara.*
 ///
 /// # A lei
 ///
-/// A pergunta *«que folha o artista vê?»* responde-se **uma vez por vértice**,
-/// com a normal que ele tinha quando o traço lhe chegou — e essa normal já existe:
-/// é o [`SculptStroke::base_normals`](crate::SculptStroke::base_normals), que o
-/// congelamento do undo grava no `capture`. ⭐ Um vértice **nascido** no refino
-/// herda-a dos dois pais pelo canal que já existe, logo a lei atravessa a
-/// topologia dinâmica sem uma linha nova.
+/// Um vértice que o traço **já capturou** não volta a ser julgado: a máscara
+/// filtra **quem entra**. ⭐ A pergunta *«este barro já anda?»* já tem resposta
+/// `O(1)` — é o carimbo de época do congelamento do UNDO (`stamp`/`epoch`) —, e
+/// um vértice **nascido** no refino herda-a dos pais pelo canal `grow_with` que
+/// já existe ⇒ *a lei atravessa a topologia dinâmica sem uma linha nova*.
 ///
-/// ⚠️ **O lado do defeito fica intacto:** numa parede fina as costas **nunca são
-/// capturadas** (o primeiro dab já as corta), logo continuam a ser julgadas pela
-/// normal viva, dab após dab. *A cura muda quem já estava dentro, nunca quem
-/// nunca entrou.*
-pub(crate) struct OlhoDoTraco<'a> {
-    /// `stamp[v] == epoca` ⇔ o traço já capturou `v`.
+/// ⚠️ **O lado do defeito de ontem fica intacto, e é estrutural:** numa parede
+/// fina as costas **nunca são capturadas** (o 1.º dab já as corta), logo
+/// continuam a ser julgadas dab após dab. *A cura muda quem já estava dentro,
+/// nunca quem nunca entrou* — e um vértice só chega a ser capturado depois de
+/// PASSAR pela máscara.
+pub(crate) struct MemoriaDoTraco<'a> {
+    /// `stamp[v] == epoca` ⇔ o traço já capturou `v` — ou seja, *este barro já
+    /// anda*.
     pub stamp: &'a [u32],
-    /// O índice de `v` na janela do traço.
-    pub slot: &'a [u32],
-    /// As normais congeladas, na ordem da janela.
-    pub base_nrm: &'a [[f32; 3]],
     pub epoca: u32,
 }
 
-impl OlhoDoTraco<'_> {
-    /// A normal que decide: a **congelada** se o traço já cá passou, a viva se
-    /// esta é a primeira vez.
-    fn normal(&self, v: u32, viva: [f32; 3]) -> [f32; 3] {
+impl MemoriaDoTraco<'_> {
+    /// **Este barro já anda?**
+    fn anda(&self, v: u32) -> bool {
         let vi = v as usize;
-        if vi < self.stamp.len() && self.stamp[vi] == self.epoca {
-            let s = self.slot[vi] as usize;
-            if s < self.base_nrm.len() {
-                return self.base_nrm[s];
-            }
-        }
-        viva
+        vi < self.stamp.len() && self.stamp[vi] == self.epoca
     }
 }
 
@@ -333,6 +323,13 @@ pub(crate) struct Alcance {
     /// CONTAGEM é determinista onde um relógio é uma flake de carga.*
     #[cfg(test)]
     visitados: usize,
+    /// ⚠️ **Quantos vértices que o traço JÁ CAPTURAVA cada condição retirou na
+    /// última varredura** — `[tecto, razão, normal]`. Ela existe para responder
+    /// à pergunta do report *«algumas vezes correto, algumas vezes bugado»*:
+    /// *alguma condição ainda tira barro que já está a andar?* — porque **é
+    /// isso, e só isso, que rasga**.
+    #[cfg(test)]
+    tirou_do_traco: [usize; 3],
 }
 
 /// Uma entrada da fila — `f32` não é `Ord`, e o `BinaryHeap` é max-heap.
@@ -371,6 +368,13 @@ impl Alcance {
         self.visitados
     }
 
+    /// O que a última varredura tirou a quem já andava — ver
+    /// [`Self::tirou_do_traco`].
+    #[cfg(test)]
+    pub(crate) fn tirou_do_traco_no_teste(&self) -> [usize; 3] {
+        self.tirou_do_traco
+    }
+
     /// **CORTA da `pegada` quem a superfície não alcança** dentro de
     /// `tecto = ALCANCE_TECTO × raio`, e devolve quantos saíram.
     ///
@@ -384,7 +388,7 @@ impl Alcance {
         olho: [f32; 3],
         raio: f32,
         pegada: &mut Vec<u32>,
-        memoria: Option<&OlhoDoTraco<'_>>,
+        memoria: Option<&MemoriaDoTraco<'_>>,
     ) -> usize {
         if pegada.len() < 2 || raio <= 0.0 {
             return 0;
@@ -474,34 +478,69 @@ impl Alcance {
         // mesma mensagem (*«o dab não moveu nada»*) — entre eles o
         // `a_footprint_entirely_facing_away_still_fits_a_sane_plane`, que é
         // exactamente este caso com o nome dele.
-        // ⭐ **A normal que decide é a do [`OlhoDoTraco`]**, e a mesma porta serve
-        // a cerca acima e o `retain` abaixo: escrita duas vezes, a cerca poderia
-        // armar sobre um veredito e o corte correr sobre outro.
+        // ⛔⛔⛔ **A CERCA JULGA A PEGADA INTEIRA — e a versão que julgava só os
+        // CANDIDATOS foi escrita, MEDIDA e revertida no mesmo dia.**
+        //
+        // Ela parecia a leitura conservadora (*«quem já anda está fora do
+        // alcance do corte, logo não devia votar»*) e abria um buraco: num traço
+        // **PARADO** sobre uma parede fina, ao 2.º dab a frente já está toda
+        // capturada, logo os únicos candidatos são as COSTAS — todas viradas ao
+        // contrário — e a cerca deixava de armar. Medido: as costas andavam
+        // `0,0442` a partir do segundo dab. ⇒ gate
+        // `um_traco_que_para_nao_deixa_a_parede_fina_entrar`, e a mutação que a
+        // reverte sangra nele.
+        //
+        // *A memória diz quem não pode ser CORTADO; ela não apaga o que a pegada
+        // SABE* — e o barro que já anda é a prova de que existe uma folha
+        // virada ao artista.
         let dot = |v: u32| -> f32 {
-            let viva = nrm[v as usize];
-            let n = memoria.map_or(viva, |m| m.normal(v, viva));
+            let n = nrm[v as usize];
             n[0] * olho_u[0] + n[1] * olho_u[1] + n[2] * olho_u[2]
         };
         let corta_normal =
             olho_bom && tem_normais && pegada.iter().any(|&v| dot(v) <= NORMAL_LIMIAR);
 
         let antes = pegada.len();
+        #[cfg(test)]
+        let mut tirou = [0usize; 3];
         let (marca, dd, epoca) = (&self.marca, &self.dist, self.epoca);
         pegada.retain(|&v| {
             let vi = v as usize;
+            let anda = memoria.is_some_and(|m| m.anda(v));
+            // ⭐⭐⭐⭐ **A MÁSCARA DECIDE QUEM ENTRA NO TRAÇO; ELA NUNCA DECIDE
+            // QUEM SAI** — ver [`MemoriaDoTraco`].
+            if anda {
+                return true;
+            }
             if marca[vi] != epoca {
+                #[cfg(test)]
+                if anda {
+                    tirou[0] += 1;
+                }
                 return false;
             }
             if dd[vi] > RAZAO_MAXIMA * dist2(pos[vi], centro).sqrt() {
+                #[cfg(test)]
+                if anda {
+                    tirou[1] += 1;
+                }
                 return false;
             }
             // ⭐⭐⭐ **E a folha que o artista vê** — ver [`NORMAL_LIMIAR`] e,
-            // para o instante em que ela se decide, [`OlhoDoTraco`].
+            // para quem ela pode julgar, [`MemoriaDoTraco`].
             if corta_normal && dot(v) > NORMAL_LIMIAR {
+                #[cfg(test)]
+                if anda {
+                    tirou[2] += 1;
+                }
                 return false;
             }
             true
         });
+        #[cfg(test)]
+        {
+            self.tirou_do_traco = tirou;
+        }
         antes - pegada.len()
     }
 }

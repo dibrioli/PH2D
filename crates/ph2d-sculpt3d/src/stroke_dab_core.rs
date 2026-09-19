@@ -87,18 +87,16 @@ impl SculptStroke {
         // podia dar: o artista escolhe, e uma **fixtura pode pregá-lo** para
         // continuar a reproduzir a geometria em que foi calibrada.
         if brush.surface_only && brush.offers_surface_only() {
-            // ⭐⭐⭐⭐ **A MEMÓRIA DO TRAÇO decide a folha, e não a malha viva** —
-            // ver [`crate::dab_alcance::OlhoDoTraco`], que traz a atribuição do
-            // report do gancho (a lei lida VIVA mudava de veredito a meio do
-            // traço e rasgava as costas da bossa).
+            // ⭐⭐⭐⭐ **A máscara filtra QUEM ENTRA no traço** — ver
+            // [`crate::dab_alcance::MemoriaDoTraco`], que traz a atribuição dos
+            // dois reports do gancho (as três condições medem a malha VIVA, e o
+            // gesto muda a peça debaixo delas).
             //
             // ⚠️ **Os campos são lidos em SEPARADO de propósito:** um método
             // `&self` aqui emprestaria a struct inteira, e o `alcance` que corre
             // a seguir é `&mut` dela.
-            let memoria = crate::dab_alcance::OlhoDoTraco {
+            let memoria = crate::dab_alcance::MemoriaDoTraco {
                 stamp: &self.stamp,
-                slot: &self.slot,
-                base_nrm: &self.base_nrm,
                 epoca: self.epoch,
             };
             self.alcance.corta(

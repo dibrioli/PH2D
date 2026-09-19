@@ -105,23 +105,11 @@ pub(crate) fn tick_timers(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) -> Vec<
 /// projecto acabado de abrir tenha os relógios armados **antes** do primeiro quadro, e não a meio
 /// dele.
 pub(crate) fn start_autostart_timers(sim: &mut SimWorld) {
-    let world = sim.world_mut();
-    let alvos: Vec<Entity> = {
-        let mut q = world.query::<(Entity, &Timers)>();
-        q.iter(world).map(|(e, _)| e).collect()
-    };
-    for e in alvos {
-        let Some(timers) = world.get::<Timers>(e).cloned() else {
-            continue;
-        };
-        let mut rt = world
-            .get::<ph2d_ecs::TimerRuntime>(e)
-            .cloned()
-            .unwrap_or_default();
-        if ph2d_ecs::timer_reconcile(&timers, &mut rt) {
-            world.entity_mut(e).insert(rt);
-        }
-    }
+    // ⭐ **A TRAVESSIA desceu para o `ph2d-ecs` em 2026-09-19** (`reconcile_timers`), onde já moram
+    // as irmãs dela (`reconcile_factories`, `reconcile_lifetimes`): ela é uma varredura sobre as
+    // portas daquele módulo e não tinha uma linha de composição. O que fica aqui é o NOME que os
+    // dois chamadores da shell usam — o tique e o load.
+    ph2d_ecs::reconcile_timers(sim.world_mut());
 }
 
 /// Os gates desta ponte — módulo irmão, pelo teto de 600 LOC da shell.

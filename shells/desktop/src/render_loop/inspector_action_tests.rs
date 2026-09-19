@@ -210,7 +210,12 @@ fn switching_the_target_to_tag_picks_no_tag_at_all() {
     let reg = registry();
     let mut sim = SimWorld::default();
     let e = objecto(&mut sim, vec![linha_de_accao()]);
-    edit(&mut sim, e, &reg, ActionFieldEdit::TargetMode(0, true));
+    edit(
+        &mut sim,
+        e,
+        &reg,
+        ActionFieldEdit::TargetMode(0, ActionTargetMode::Tag.tag()),
+    );
     let i = build_action_info(sim.world(), &tree, e.to_bits(), 1).expect("tem a tabela");
     let r = &i.rows[0];
     assert!(r.target_is_tag(), "a linha nao ficou no modo TAG");
@@ -290,11 +295,105 @@ fn going_back_to_name_drops_the_tag_by_construction() {
     let mut sim = SimWorld::default();
     let e = objecto(&mut sim, vec![linha_de_accao()]);
     edit(&mut sim, e, &reg, ActionFieldEdit::TargetTag(0, voador));
-    edit(&mut sim, e, &reg, ActionFieldEdit::TargetMode(0, false));
+    edit(
+        &mut sim,
+        e,
+        &reg,
+        ActionFieldEdit::TargetMode(0, ActionTargetMode::Name.tag()),
+    );
     let i = build_action_info(sim.world(), &tree, e.to_bits(), 1).expect("tem a tabela");
     assert!(
         !i.rows[0].target_is_tag(),
         "a linha continua no modo TAG depois de voltar ao NOME"
     );
     assert_eq!(i.rows[0].target_tag, None);
+}
+
+/// ⭐⭐⭐ **A CERCA vai ao documento e VOLTA ao painel** (suplente #24) — a pergunta que o
+/// `CLAUDE.md` §5.0 diz que nenhum instrumento deste repo faz: *o valor CHEGA a um consumidor?*
+///
+/// ⚠️ **As três metades:** a ida (o clique escreve o motor) · a volta (o snapshot lê o que foi
+/// escrito) · e o **CONTROLO** (voltar a `Anyone` desfaz). Sem a terceira, um dreno que escrevesse
+/// `Myself` sempre ficaria verde nas duas primeiras.
+///
+/// **Mutação que deve sangrar:** o braço `From` do dreno a cravar `SignalFrom::Anyone`.
+#[test]
+fn a_cerca_vai_ao_documento_e_volta_ao_painel() {
+    let mut sim = SimWorld::default();
+    let reg = registry();
+    let e = objecto(&mut sim, vec![linha_de_accao()]);
+    assert!(
+        !info(&sim, e).rows[0].from_is_myself(),
+        "a linha nao nasceu em `Anyone` — o default do modelo mudou"
+    );
+
+    edit(&mut sim, e, &reg, ActionFieldEdit::From(0, 1));
+    assert!(
+        info(&sim, e).rows[0].from_is_myself(),
+        "a cerca nao chegou ao documento, ou nao voltou ao painel"
+    );
+    // ⛔ O CONTROLO: e ela volta atrás.
+    edit(&mut sim, e, &reg, ActionFieldEdit::From(0, 0));
+    assert!(
+        !info(&sim, e).rows[0].from_is_myself(),
+        "a cerca ficou presa em `Myself` — o dreno crava o valor"
+    );
+}
+
+/// ⭐⭐ **Virar o alvo para QUEM BATEU LARGA a tag**, e o painel di-lo.
+///
+/// ⚠️ **É a lei do enum vista na fronteira:** o `SignalTarget` guarda a carga de UM modo, logo
+/// mudar de modo deita a anterior fora. *Guardar as duas ao mesmo tempo é o que o doc dele recusa.*
+///
+/// **Mutação que deve sangrar:** o braço `Other` do dreno a escrever `Tagged(0)`.
+#[test]
+fn virar_o_alvo_para_quem_bateu_larga_a_tag() {
+    let (tree, _i, voador) = arvore_com_tags();
+    let reg = registry();
+    let mut sim = SimWorld::default();
+    let e = objecto(&mut sim, vec![linha_de_accao()]);
+    edit(&mut sim, e, &reg, ActionFieldEdit::TargetTag(0, voador));
+    assert!(
+        build_action_info(sim.world(), &tree, e.to_bits(), 1)
+            .expect("tem a tabela")
+            .rows[0]
+            .target_is_tag(),
+        "o controlo falhou: a linha nao ficou no modo TAG"
+    );
+
+    edit(
+        &mut sim,
+        e,
+        &reg,
+        ActionFieldEdit::TargetMode(0, ActionTargetMode::Other.tag()),
+    );
+    let i = build_action_info(sim.world(), &tree, e.to_bits(), 1).expect("tem a tabela");
+    let r = &i.rows[0];
+    assert!(r.target_is_other(), "a linha nao ficou no modo QUEM BATEU");
+    assert!(
+        !r.target_is_tag(),
+        "ela ficou nos DOIS modos ao mesmo tempo"
+    );
+    assert_eq!(r.target_tag, None, "a tag anterior sobreviveu ao modo novo");
+}
+
+/// ⭐⭐ **Os ids dos segmentos do alvo cobrem os modos do vocabulário.**
+///
+/// ⚠️ **Um modo sem segmento é inalcançável e um segmento a mais é mudo** — as duas metades da
+/// mesma cerca, e é a forma exacta do defeito que o `Density` pagou (*«o verbo existe, tem lei, tem
+/// gates, e o artista nao lhe chega»*).
+#[test]
+fn cada_modo_do_alvo_tem_um_segmento_no_painel() {
+    assert_eq!(
+        ActionTargetMode::ALL.len(),
+        3,
+        "o vocabulario do alvo mudou de tamanho — reveja os segmentos do painel"
+    );
+    for m in ActionTargetMode::ALL {
+        assert_eq!(
+            ActionTargetMode::from_tag(m.tag()),
+            m,
+            "{m:?} nao volta da tag — a POSICAO no array e' o que atravessa a fronteira"
+        );
+    }
 }

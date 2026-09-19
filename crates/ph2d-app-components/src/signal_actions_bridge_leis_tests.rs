@@ -1,10 +1,21 @@
-//! **Os gates da ponte do `SignalActions`** — irmão de [`crate::render_loop::signal_actions`] por CAP de LOC.
+//! **Os gates da ponte do `SignalActions`** — irmão de [`super`] por CAP de LOC.
+//!
+//! ⚠️ **Vieram da shell com a ponte em 2026-09-19** (a catraca `the_shell_only_shrinks`).
 //!
 //! ⚠️ **A RESOLUÇÃO tem os gates dela no `ph2d-ecs`** (casar nomes, achar o alvo, a ordem). Aqui
 //! prova-se o que só existe com o mundo E o ledger: que a escrita chega, e que ela **não** chega
 //! ao undo.
 
 use super::*;
+
+/// **O som INJECTADO destes gates: um fecho que nunca toca nada.**
+///
+/// ⚠️ **Ele devolve `false`**, que é a leitura honesta de um editor sem dispositivo — e é o que faz
+/// o `PlaySound` contar como INERTE aqui, exactamente como contava com um `AudioSystem` ausente.
+/// ⛔ Devolver `true` faria estes gates aprovar um verbo que não fez nada.
+fn mudo() -> impl FnMut(&mut SimWorld, Som, ph2d_ecs::Entity) -> bool {
+    |_, _, _| false
+}
 use ph2d_ecs::{Timer, TimerState, Transform};
 
 fn um(name: &str, autostart: bool) -> Timer {
@@ -33,7 +44,7 @@ fn com_timers(timers: Vec<Timer>) -> (SimWorld, ph2d_ecs::Entity) {
         .world_mut()
         .spawn((Transform::default(), Timers(timers)))
         .id();
-    super::super::start_autostart_timers(&mut sim);
+    ph2d_ecs::reconcile_timers(sim.world_mut());
     (sim, e)
 }
 
@@ -60,7 +71,7 @@ fn a_signal_starts_a_timer_that_autostart_never_would() {
         &mut sim,
         &[efeito(e, SignalVerb::StartTimer, "")],
         &mut drive,
-        None,
+        &mut mudo(),
     );
     assert_eq!(r.applied, 1);
     assert!(
@@ -81,7 +92,7 @@ fn stopping_by_signal_keeps_the_progress_and_starting_rewinds() {
         &mut sim,
         &[efeito(e, SignalVerb::StopTimer, "")],
         &mut drive,
-        None,
+        &mut mudo(),
     );
     let s = rodando(&sim, e)[0];
     assert!(!s.running, "parar nao parou");
@@ -91,7 +102,7 @@ fn stopping_by_signal_keeps_the_progress_and_starting_rewinds() {
         &mut sim,
         &[efeito(e, SignalVerb::StartTimer, "")],
         &mut drive,
-        None,
+        &mut mudo(),
     );
     let s = rodando(&sim, e)[0];
     assert!(s.running);
@@ -111,7 +122,7 @@ fn the_argument_picks_one_timer_and_empty_picks_them_all() {
         &mut sim,
         &[efeito(e, SignalVerb::StartTimer, "b")],
         &mut drive,
-        None,
+        &mut mudo(),
     );
     let r = rodando(&sim, e);
     assert!(!r[0].running, "o nome escolheu o timer errado");
@@ -121,7 +132,7 @@ fn the_argument_picks_one_timer_and_empty_picks_them_all() {
         &mut sim,
         &[efeito(e, SignalVerb::StartTimer, "")],
         &mut drive,
-        None,
+        &mut mudo(),
     );
     assert!(
         rodando(&sim, e).iter().all(|s| s.running),
@@ -150,7 +161,7 @@ fn hiding_by_signal_is_preview_and_the_capture_sees_the_authored_value() {
         &mut sim,
         &[efeito(e, SignalVerb::Hide, "")],
         &mut drive,
-        None,
+        &mut mudo(),
     );
     assert!(
         sim.world().get::<Visibility>(e).expect("vis").hidden,
@@ -185,7 +196,7 @@ fn toggling_inverts_what_the_scene_shows() {
             &mut sim,
             &[efeito(e, SignalVerb::ToggleVisibility, "")],
             &mut drive,
-            None,
+            &mut mudo(),
         );
         assert_eq!(
             sim.world().get::<Visibility>(e).expect("vis").hidden,
@@ -212,7 +223,7 @@ fn an_effect_on_an_object_without_the_component_is_inert_and_counted() {
             efeito(vazio, SignalVerb::Hide, ""),
         ],
         &mut drive,
-        None,
+        &mut mudo(),
     );
     assert_eq!(r.applied, 0);
     assert_eq!(r.inert, 2, "os inertes nao foram contados");
@@ -227,7 +238,7 @@ fn a_timer_name_that_matches_nothing_starts_nobody() {
         &mut sim,
         &[efeito(e, SignalVerb::StartTimer, "nao_existe")],
         &mut drive,
-        None,
+        &mut mudo(),
     );
     assert_eq!(r.inert, 1);
     assert!(

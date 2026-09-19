@@ -39,6 +39,10 @@ ph2d-input = { path = "../ph2d-input" }
 # tirou 2 irmãs que nenhum ficheiro usava (`ph2d-asset`, `ph2d-editor-core`).
 ph2d-audio = { path = "../ph2d-audio" }
 ph2d-audio-encode = { path = "../ph2d-audio-encode" }
+# ⭐ **O barramento de sinais** — a `signal_actions_bridge::lido` converte um `Signal` publicado no
+# outbox no `Disparo` que a lei consome. ⛔ O `ph2d-ecs` **não** o pode ver (ADR-0075: a fundação não
+# conhece o barramento); uma crate de FAMÍLIA pode, e é isso que faz a conversão ter dono.
+ph2d-runtime = { path = "../ph2d-runtime" }
 ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-inspector-ordering = { path = "../ph2d-inspector-ordering" }

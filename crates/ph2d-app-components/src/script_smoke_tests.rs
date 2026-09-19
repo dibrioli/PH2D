@@ -102,12 +102,18 @@ fn tres_bonecos_tres_amplitudes_e_o_rapido_acende_a_lampada() {
         let f =
             crate::script_bridge::frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[]);
         assert!(f.failed.is_empty(), "{:?}", f.failed);
-        let nomes: Vec<&str> = f.emitted.iter().map(|(_, n)| n.as_str()).collect();
-        gritos += nomes.len();
+        // ⚠️ **Sem sujeito**, que é o que este gate sempre significou: o que ele mede é o script a
+        // gritar e a tabela a ouvir, não a CERCA do suplente #24.
+        let disparos: Vec<ph2d_ecs::Disparo<'_>> = f
+            .emitted
+            .iter()
+            .map(|(_, n)| ph2d_ecs::Disparo::anonimo(n))
+            .collect();
+        gritos += disparos.len();
         let efeitos = ph2d_ecs::resolve_signal_actions(
             sim.world_mut(),
             &ph2d_tags::TagTree::default(),
-            &nomes,
+            &disparos,
         );
         for fx in &efeitos {
             if let Some(mut v) = sim.world_mut().get_mut::<Visibility>(fx.target) {

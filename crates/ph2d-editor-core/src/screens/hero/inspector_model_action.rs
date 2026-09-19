@@ -12,6 +12,43 @@
 //! uma segunda vez: cinco rótulos copiados aqui envelheciam no primeiro verbo novo, e o artista
 //! leria o nome errado sobre o botão certo.
 
+/// ⭐⭐⭐ **A QUEM esta linha acerta** — o vocabulário do PAINEL (suplente #24, 2026-09-19).
+///
+/// ⚠️ **Ele existe porque o alvo deixou de ser uma pergunta de SIM/NÃO.** Até 2026-09-19 eram dois
+/// modos e a shell mandava um `bool`; com o outro lado do disparo são três, e um segundo `bool` ao
+/// lado do primeiro daria quatro estados para três respostas — um deles impossível.
+///
+/// ⚠️ **A POSIÇÃO em [`Self::ALL`] é o que atravessa a fronteira**, como a do verbo: o
+/// `ph2d-editor-core` é chrome e não vê o `ph2d-ecs` (ADR-0029), logo quem volta a fazer disto um
+/// `SignalTarget` é a shell.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ActionTargetMode {
+    /// O objecto com aquele NOME — vazio = *este objecto*. O de sempre, e o default.
+    #[default]
+    Name,
+    /// Todos os que pertencem a uma TAG.
+    Tag,
+    /// ⭐ **Quem bateu** — o outro lado do contacto que publicou o sinal.
+    Other,
+}
+
+impl ActionTargetMode {
+    /// Todos, em ordem — **a fonte da iteração** do segmentado. ⚠️ A posição é a tag.
+    pub const ALL: [ActionTargetMode; 3] = [Self::Name, Self::Tag, Self::Other];
+
+    /// A posição em [`Self::ALL`].
+    #[must_use]
+    pub const fn tag(self) -> u8 {
+        self as u8
+    }
+
+    /// O modo desta posição, ou o primeiro. ⚠️ **A POSIÇÃO NO ARRAY É A TAG.**
+    #[must_use]
+    pub fn from_tag(tag: u8) -> Self {
+        Self::ALL.get(tag as usize).copied().unwrap_or_default()
+    }
+}
+
 /// Uma linha da tabela, como o Inspector a lê.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InspectorActionRow {
@@ -29,8 +66,18 @@ pub struct InspectorActionRow {
     /// não conhece o enum, e re-derivá-lo seria uma segunda resposta a *«este campo serve para
     /// alguma coisa?»* — a que o artista vê seria a que envelhece.
     pub uses_arg: bool,
-    /// ⭐⭐⭐ **A tag escolhida como alvo** (TOP-20 #9, W3b). `None` = o alvo é por NOME, e o
-    /// [`Self::target`] é que manda.
+    /// ⭐⭐⭐ **A QUEM ela acerta** — a posição em [`ActionTargetMode::ALL`] (suplente #24).
+    ///
+    /// ⚠️ **É ELE que manda**, e os campos abaixo são a carga de um dos modos: o [`Self::target`]
+    /// só é lido em `Name`, e o [`Self::target_tag`] só em `Tag`. *Duas respostas escritas ao mesmo
+    /// tempo é o que o doc do `SignalTarget` recusa no modelo.*
+    pub target_mode: u8,
+    /// ⭐⭐⭐ **A cerca: DE QUEM o sinal tem de vir** — a posição em `SignalFrom::ALL` (suplente #24).
+    ///
+    /// ⚠️ **Tag e não booleano**, como o verbo e pela mesma razão: o painel não conhece o enum, e a
+    /// terceira cerca (*«de quem pertence à tag X»*) não obrigaria a mudar esta fronteira.
+    pub from_tag: u8,
+    /// ⭐⭐⭐ **A tag escolhida como alvo** (TOP-20 #9, W3b). `None` = a linha não está no modo `Tag`.
     ///
     /// ⚠️ **`Some(0)` é «por tag, e ainda não escolheu qual»** — o `TagId(0)` nunca é dado pela
     /// árvore. Ele alcança ninguém, tal como uma tag apagada, mas **são duas histórias diferentes**
@@ -60,13 +107,35 @@ impl InspectorActionRow {
     /// *este objecto*; quer dizer que o campo do nome não está a ser lido por ninguém.
     #[must_use]
     pub fn target_is_self(&self) -> bool {
-        self.target_tag.is_none() && self.target.trim().is_empty()
+        self.modo() == ActionTargetMode::Name && self.target.trim().is_empty()
+    }
+
+    /// ⭐⭐ **O modo do alvo** — a PORTA da pergunta *«a quem?»*, e os três predicados abaixo saem
+    /// dela. ⛔ Ler o `target_tag` para responder seria a segunda resposta.
+    #[must_use]
+    pub fn modo(&self) -> ActionTargetMode {
+        ActionTargetMode::from_tag(self.target_mode)
     }
 
     /// ⭐ **O alvo é por TAG?**
     #[must_use]
     pub fn target_is_tag(&self) -> bool {
-        self.target_tag.is_some()
+        self.modo() == ActionTargetMode::Tag
+    }
+
+    /// ⭐ **O alvo é QUEM BATEU?** (suplente #24)
+    #[must_use]
+    pub fn target_is_other(&self) -> bool {
+        self.modo() == ActionTargetMode::Other
+    }
+
+    /// ⭐⭐ **Esta linha só reage ao PRÓPRIO golpe** — a cerca `Myself`.
+    ///
+    /// ⚠️ **`1` e não um nome:** a posição em `SignalFrom::ALL`, que é o que atravessa a fronteira.
+    /// O painel não conhece o enum, e há gate na lei a prender a ordem daquele array.
+    #[must_use]
+    pub fn from_is_myself(&self) -> bool {
+        self.from_tag == 1
     }
 
     /// ⛔ **A tag alvo foi APAGADA da árvore** — a linha continua a existir e já não alcança
@@ -74,13 +143,15 @@ impl InspectorActionRow {
     /// silenciosa de «não acontece nada».*
     #[must_use]
     pub fn target_tag_missing(&self) -> bool {
-        self.target_tag.is_some_and(|t| t != 0) && self.target_tag_path.is_empty()
+        self.target_is_tag()
+            && self.target_tag.is_some_and(|t| t != 0)
+            && self.target_tag_path.is_empty()
     }
 
     /// ⚠️ **Por tag, e ainda SEM tag escolhida** — uma linha por acabar, não uma linha partida.
     #[must_use]
     pub fn target_tag_unset(&self) -> bool {
-        self.target_tag == Some(0)
+        self.target_is_tag() && self.target_tag == Some(0)
     }
 }
 
@@ -117,13 +188,20 @@ pub enum ActionFieldEdit {
     Verb(u8, u8),
     /// `(linha, parâmetro)`.
     Arg(u8, String),
-    /// ⭐⭐⭐ **`(linha, por TAG?)`** — vira o alvo entre NOME e TAG (TOP-20 #9, W3b).
+    /// ⭐⭐⭐ **`(linha, posição em [`ActionTargetMode::ALL`])`** — vira o alvo entre NOME, TAG e
+    /// QUEM BATEU (TOP-20 #9 W3b · suplente #24).
     ///
-    /// ⚠️ **Virar para TAG perde a tag anterior, por construção**: o `SignalTarget` é um enum, e o
-    /// ramo `Named` não guarda tag nenhuma. ⛔ Guardar as duas respostas ao mesmo tempo é
+    /// ⚠️ **Virar de modo perde a carga do anterior, por construção**: o `SignalTarget` é um enum, e
+    /// o ramo `Named` não guarda tag nenhuma. ⛔ Guardar as duas respostas ao mesmo tempo é
     /// exactamente o que o doc do `SignalTarget` recusa — *«com os dois, «a quem?» teria duas
     /// respostas escritas ao mesmo tempo e o painel teria de escolher uma»*.
-    TargetMode(u8, bool),
+    ///
+    /// ⚠️ **Era um `bool` até 2026-09-19**, e passou a tag quando o terceiro modo chegou: dois
+    /// booleanos dariam quatro estados para três respostas, um deles impossível.
+    TargetMode(u8, u8),
     /// **`(linha, id da tag alvo)`** — só faz sentido com a linha já no modo TAG.
     TargetTag(u8, u64),
+    /// ⭐⭐⭐ **`(linha, posição em `SignalFrom::ALL`)`** — a CERCA, *de quem o sinal tem de vir*
+    /// (suplente #24).
+    From(u8, u8),
 }

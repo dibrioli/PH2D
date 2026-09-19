@@ -107,8 +107,9 @@ mod wet_grid_look_probe;
 /// formulário que não mexe em nada na tela.
 pub(crate) mod anchor_gizmo;
 mod anchor_overlay;
-/// ⭐⭐⭐ A ponte do `SignalActions` (TOP-20 #5) — onde um sinal vira jogo.
-/// ⭐⭐⭐ A ponte do SOM DE CENA (TOP-20 #4) — onde um objecto deixa de ser mudo.
+/// ⭐⭐⭐ A ponte do `SignalActions` (#5) — DESCEU para a família em 19/09; o porquê está no
+/// cabeçalho dela. ⛔ A do SOM tentou descer junto e o gate das camadas apanhou-a, e por isso FICA.
+use ph2d_app_components::signal_actions_bridge as signal_actions;
 mod audio_2d;
 /// ⭐⭐⭐ **A CÂMERA DE JOGO** (TOP-20 #7) — a costura entre a lei pura e a vista da shell.
 mod camera_2d;
@@ -147,7 +148,6 @@ mod tags_panel;
 // VERDADE, hoje escrita `ph2d_app_components::master_editing::mark`.
 pub(crate) use audio_2d::AudioSceneReport;
 pub(crate) use camera_2d::CameraSceneReport;
-mod signal_actions;
 /// ⭐⭐⭐ **A ponte do cérebro autorável** (TOP-20 #15) — ver o cabeçalho dela.
 mod state_machine_tick;
 /// ⚠️ A MESMA porta do passe, alcançável dos gates de outro módulo (a cadeia de visibilidade do
@@ -187,11 +187,10 @@ mod timer_tick;
 #[cfg(test)]
 #[path = "counter_watch_chain_tests.rs"]
 mod counter_watch_chain_tests;
-/// ⭐⭐⭐ **O verbo que tira da cena e a origem que atravessa a fase** (suplente #24) — ver o
-/// cabeçalho do irmão. ⚠️ Ele mora aqui pela MESMA razão: o `signal_actions` é privado a este módulo.
+/// ⭐⭐⭐ **A ORDEM DO QUADRO do suplente #24** — a metade que FICOU quando a ponte desceu.
 #[cfg(test)]
-#[path = "signal_actions_destroy_tests.rs"]
-mod signal_actions_destroy_tests;
+#[path = "fase_signal_outbox_tests.rs"]
+mod fase_signal_outbox_tests;
 pub(crate) use sprite_anim_tick::start_autoplay_animations;
 pub(crate) use timer_tick::start_autostart_timers;
 /// Fase do quadro: as cenas de smoke que pedem a `App` inteira (1.ª metade).
@@ -387,6 +386,8 @@ mod fase_sprite_pixel_smokes;
 mod fase_sprite_precision_emissive;
 /// Fase do quadro: o resize coalescido e o modo de apresentação do arrasto.
 mod fase_surface_resize;
+/// ⭐⭐⭐ **A TABELA nome → acção** (#5) — fase-filha da `fase_signal_outbox`, por tecto de FUNÇÃO.
+mod fase_tabela_de_accoes;
 /// Fase do quadro: o padrao de textura, os gradientes, o alinhamento e o pivo.
 mod fase_texpat_gradient_align;
 /// Fase do quadro: os campos de texto.

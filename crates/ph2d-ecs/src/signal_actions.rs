@@ -214,18 +214,18 @@ pub enum SignalTarget {
     ///
     /// ⚠️ `u64` e não [`TagId`] porque a folha das tags não fala `serde` (de propósito).
     Tagged(u64),
-    /// ⭐⭐ **QUEM FALOU** — a entidade que publicou o sinal deste quadro (suplente #24).
+    /// ⭐⭐ **O OUTRO LADO do disparo** — hoje, quem tocou em quem gritou (o `other` de um contacto).
     ///
     /// ⚠️ **APENDADO**, como o verbo e pela mesma razão: a posição é a tag e ela viaja no ficheiro.
     ///
-    /// ⚠️ **Um sinal sem sujeito dá NINGUÉM** — a timeline, um botão do painel e o Motion não têm
-    /// `source`, e `None` **não** é *«qualquer um»*. É a lei do alvo que não existe, que este enum
-    /// já escreve para uma tag apagada.
-    Speaker,
-    /// ⭐⭐ **O OUTRO LADO** — hoje, quem tocou em quem gritou (o `other` de um contacto).
+    /// ⚠️ **Só o contacto o tem.** Para toda outra origem isto dá **ninguém** — `None` **não** é
+    /// *«qualquer um»*, e é a lei do alvo que não existe, que este enum já escreve para uma tag
+    /// apagada.
     ///
-    /// ⚠️ **Só o contacto o tem.** Para toda outra origem isto dá **ninguém**, pela mesma lei do
-    /// [`Self::Speaker`].
+    /// ⛔ **E NÃO há um `Speaker` ao lado dele, com medição:** com a cerca [`SignalFrom::Myself`]
+    /// quem reage **é** quem falou, logo o alvo vazio (*este objecto*) já o exprime. Um `Speaker`
+    /// só serviria a um reactor que não é o sujeito — e nenhuma cena o pede hoje. *Um alvo sem
+    /// consumidor é um controlo morto com cara de feature.*
     Other,
 }
 
@@ -235,7 +235,7 @@ impl SignalTarget {
     pub const fn tag(self) -> Option<TagId> {
         match self {
             Self::Tagged(id) => Some(TagId(id)),
-            Self::Named | Self::Speaker | Self::Other => None,
+            Self::Named | Self::Other => None,
         }
     }
 }
@@ -251,9 +251,8 @@ impl SignalTarget {
 /// *«ao ouvir `golpe`, perco uma vida»* resolvem **dez** efeitos com **um** tiro — o sinal é um nome
 /// global e a tabela não sabia quem levou o golpe.
 ///
-/// ⚠️ **E [`SignalTarget::Speaker`] NÃO a substitui:** com ele os dez reactores aplicariam o verbo
-/// ao mesmo sujeito (`-10` numa vida). *Quem reage* e *a quem* são duas perguntas, e esta é a
-/// primeira.
+/// ⚠️ **E um alvo «quem falou» NÃO a substituiria:** com ele os dez reactores aplicariam o verbo ao
+/// mesmo sujeito (`-10` numa vida). *Quem reage* e *a quem* são duas perguntas, e esta é a primeira.
 ///
 /// ⚠️ **É o ÚLTIMO campo do [`SignalAction`]**, pela mesma razão do `target_by`: é o que torna a
 /// migração de um v148 uma leitura com um tipo congelado e um re-encode.
@@ -483,12 +482,11 @@ pub fn resolve(world: &mut World, tree: &TagTree, fired: &[Disparo<'_>]) -> Vec<
 /// - [`SignalTarget::Named`]: o objecto com aquele nome, ou `source` com o nome vazio — zero ou um.
 /// - [`SignalTarget::Tagged`]: todos os que pertencem à subárvore da tag, pela ordem do
 ///   [`crate::StableId`]; uma tag que já não existe dá **ninguém**.
-/// - [`SignalTarget::Speaker`] / [`SignalTarget::Other`]: os dois lados do disparo — **ninguém**
-///   quando a origem não os tem.
+/// - [`SignalTarget::Other`]: o outro lado do disparo — **ninguém** quando a origem não o tem.
 ///
 /// ⛔ Resolver o alvo na shell seria a segunda resposta, e é a que envelhece.
 ///
-/// ⚠️ **Os dois lados do disparo são CONFERIDOS contra o mundo** (`get_entity`) pela mesma razão que
+/// ⚠️ **O outro lado é CONFERIDO contra o mundo** (`get_entity`) pela mesma razão que
 /// o [`target_of`] o faz: entre o quadro em que o sinal foi publicado e este, um dreno de morte pode
 /// ter levado a entidade — e um efeito sobre bits reciclados escreveria no objecto errado.
 #[must_use]
@@ -504,7 +502,6 @@ pub fn targets_of(
             .into_iter()
             .collect(),
         SignalTarget::Tagged(id) => crate::tags::tagged(world, tree, TagId(id)),
-        SignalTarget::Speaker => vivo(world, disparo.quem).into_iter().collect(),
         SignalTarget::Other => vivo(world, disparo.outro).into_iter().collect(),
     }
 }

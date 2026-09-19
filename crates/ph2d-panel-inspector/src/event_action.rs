@@ -52,16 +52,39 @@ pub(crate) fn apply_action_event(
         // aceso é um no-op no documento (a shell escreve o mesmo valor), e recusá-lo aqui seria um
         // clique que não faz nada por uma razão que o artista não vê. *O silêncio é do modelo, não
         // do despacho.*
-        for (segmento, por_tag) in [
-            (crate::ids::INSP_ACTION_BY_NAME, false),
-            (crate::ids::INSP_ACTION_BY_TAG, true),
+        for (segmento, modo) in [
+            (
+                crate::ids::INSP_ACTION_BY_NAME,
+                ph2d_editor_core::screens::hero::ActionTargetMode::Name,
+            ),
+            (
+                crate::ids::INSP_ACTION_BY_TAG,
+                ph2d_editor_core::screens::hero::ActionTargetMode::Tag,
+            ),
+            // ⭐⭐⭐ **Quem BATEU** (suplente #24) — o terceiro modo.
+            (
+                crate::ids::INSP_ACTION_BY_OTHER,
+                ph2d_editor_core::screens::hero::ActionTargetMode::Other,
+            ),
         ] {
             if id == segmento {
                 push(
                     host,
                     info.entity_bits,
-                    ActionFieldEdit::TargetMode(sel_u8, por_tag),
+                    ActionFieldEdit::TargetMode(sel_u8, modo.tag()),
                 );
+                demote(host, id);
+                return true;
+            }
+        }
+        // ⭐⭐⭐ **A CERCA: de quem o sinal tem de vir** (suplente #24). ⚠️ A posição é a tag de
+        // `SignalFrom::ALL`, e há gate na lei pura a prender a ordem daquele array.
+        for (segmento, tag) in [
+            (crate::ids::INSP_ACTION_FROM_ANYONE, 0_u8),
+            (crate::ids::INSP_ACTION_FROM_MYSELF, 1_u8),
+        ] {
+            if id == segmento {
+                push(host, info.entity_bits, ActionFieldEdit::From(sel_u8, tag));
                 demote(host, id);
                 return true;
             }

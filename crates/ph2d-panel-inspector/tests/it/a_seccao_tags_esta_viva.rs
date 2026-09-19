@@ -341,6 +341,10 @@ fn accao(target_tag: Option<u64>, path: &str) -> InspectorActionInfo {
             verb_tag: 0,
             arg: String::new(),
             uses_arg: false,
+            // ⚠️ O modo sai do PAYLOAD nesta fixtura — ela é sobre a tag, e um modo escrito à mão
+            // ao lado de uma tag presente daria dois estados para a mesma linha.
+            target_mode: if target_tag.is_some() { 1 } else { 0 },
+            from_tag: 0,
             target_tag,
             target_tag_path: path.into(),
         }],
@@ -375,11 +379,11 @@ fn o_segmentado_vira_o_alvo_da_accao_para_tag() {
         acoes.iter().any(|a| matches!(
             a,
             EditorAction::InspectorActionEdit {
-                edit: ActionFieldEdit::TargetMode(0, true),
+                edit: ActionFieldEdit::TargetMode(0, 1),
                 ..
             }
         )),
-        "o segmento `Tag` tinha de mandar `TargetMode(0, true)`; o que chegou foi {acoes:?}"
+        "o segmento `Tag` tinha de mandar `TargetMode(0, 1)`; o que chegou foi {acoes:?}"
     );
     set_current_inspector_action(None);
     ph2d_panel_inspector::set_current_tag_tree(Vec::new());
@@ -469,4 +473,84 @@ fn escolher_a_tag_alvo_aponta_a_accao_e_nao_marca_o_objecto() {
     );
     set_current_inspector_action(None);
     ph2d_panel_inspector::set_current_tag_tree(Vec::new());
+}
+
+// ─── A CERCA e O OUTRO LADO da mesma secção (suplente #24, 2026-09-19) ────────────────────────
+//
+// ⚠️ **Vivem NESTE ficheiro e não num irmão novo**, e a razão é o ARNÊS: o `host_accao`, o
+// `carrega` e o `rect_de` acima são exactamente o que estes gates precisam, e uma segunda cópia
+// deles divergiria em silêncio — a lei que esta casa escreve sobre funções com dois chamadores.
+// O assunto vizinho paga a companhia: os três segmentos do *a quem?* e os dois do *de quem?* são o
+// MESMO widget, na MESMA linha da secção.
+
+/// ⭐⭐⭐ **O segmento «Who Hit» vira o alvo para QUEM BATEU** — com o gesto REAL.
+///
+/// ⚠️ **É o 3.º modo, e a posição É a tag**: um `TargetMode(0, 1)` aqui apontaria a acção a uma TAG
+/// em vez de ao outro lado do contacto, e compila.
+///
+/// **Mutações que devem sangrar:** tirar o `INSP_ACTION_BY_OTHER` do `populate_action` · apagar o
+/// braço dele no `event_action` · trocar a ordem do `ActionTargetMode::ALL`.
+#[test]
+fn o_segmentado_vira_o_alvo_da_accao_para_quem_bateu() {
+    let (mut h, mut st) = host_accao(accao(None, ""));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let r = rect_de(
+        &rects,
+        ph2d_panel_inspector::ids::INSP_ACTION_BY_OTHER,
+        "o segmento Who Hit",
+    );
+    let acoes = carrega(&mut h, &mut st, r, "o segmento Who Hit");
+    assert!(
+        acoes.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorActionEdit {
+                edit: ActionFieldEdit::TargetMode(0, 2),
+                ..
+            }
+        )),
+        "o segmento `Who Hit` tinha de mandar `TargetMode(0, 2)`; o que chegou foi {acoes:?}"
+    );
+    set_current_inspector_action(None);
+    ph2d_panel_inspector::set_current_tag_tree(Vec::new());
+}
+
+/// ⭐⭐⭐ **A CERCA chega ao barramento pelos DOIS segmentos** — e é ela que faz um tiro atingir um
+/// inimigo e não os dez (medido: `10` efeitos para um sinal, antes desta wave).
+///
+/// ⚠️ **Os dois no mesmo gate**, porque o defeito de um lado é invisível do outro: um `From Anyone`
+/// que mandasse a tag errada devolveria a cerca ao default e lia-se como *«o clique não fez nada»*.
+///
+/// **Mutações que devem sangrar:** tirar qualquer um dos dois do `populate_action` · trocar as
+/// tags no braço do `event_action`.
+#[test]
+fn a_cerca_chega_ao_barramento_pelos_dois_segmentos() {
+    for (id, tag, quem) in [
+        (
+            ph2d_panel_inspector::ids::INSP_ACTION_FROM_MYSELF,
+            1_u8,
+            "o segmento From Myself",
+        ),
+        (
+            ph2d_panel_inspector::ids::INSP_ACTION_FROM_ANYONE,
+            0_u8,
+            "o segmento From Anyone",
+        ),
+    ] {
+        let (mut h, mut st) = host_accao(accao(None, ""));
+        let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+        let r = rect_de(&rects, id, quem);
+        let acoes = carrega(&mut h, &mut st, r, quem);
+        assert!(
+            acoes.iter().any(|a| matches!(
+                a,
+                EditorAction::InspectorActionEdit {
+                    edit: ActionFieldEdit::From(0, t),
+                    ..
+                } if *t == tag
+            )),
+            "{quem} tinha de mandar `From(0, {tag})`; o que chegou foi {acoes:?}"
+        );
+        set_current_inspector_action(None);
+        ph2d_panel_inspector::set_current_tag_tree(Vec::new());
+    }
 }

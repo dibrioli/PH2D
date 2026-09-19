@@ -73,6 +73,11 @@ pub mod asset_card_verbs;
 pub mod asset_catalog_verbs;
 pub mod asset_drop;
 pub mod asset_index_build;
+// ⛔⛔ **A ponte do SOM DE CENA FICOU na shell, e a razão é um GATE:** ela precisa do
+// `ph2d-app-audio`, que é uma FAMÍLIA — e o `architecture_no_dependency_climbs_a_layer` recusa
+// família → família (ADR-0075). A cura que ele prescreve é *«uma tabela injectada pela
+// composição»*, e é o que o [`signal_actions_bridge::apply`] faz: ele pede `Som::Toca` a um fecho,
+// e quem responde é a shell, dona dos dois lados. *A aresta foi tentada e o portão apanhou-a.*
 pub mod audio_2d_smoke;
 pub mod camera_2d_smoke;
 pub mod component_attach;
@@ -131,6 +136,10 @@ pub mod script_smoke;
 /// ⭐⭐⭐ **O instantâneo da CUTSCENE** (TOP-20 #19) — ver o cabeçalho.
 pub mod sequence_inspector;
 pub mod signal_action_smoke;
+/// ⭐⭐⭐ **A PONTE da tabela nome→acção** (TOP-20 #5) — onde um sinal deixa de ser um toast e vira
+/// jogo. ⚠️ Desceu da shell em 2026-09-19: ela era a **única** das oito pontes desta família que
+/// ainda lá vivia, e a catraca `the_shell_only_shrinks` foi quem o disse.
+pub mod signal_actions_bridge;
 /// ⭐⭐⭐ O smoke do CÉREBRO AUTORÁVEL (TOP-20 #15) — ver o cabeçalho.
 pub mod statemachine_smoke;
 pub mod tags_doc;

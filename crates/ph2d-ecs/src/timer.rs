@@ -39,6 +39,8 @@
 //!   lei dos toques da física e das tags de animação. ⛔ Não há campo de «fase».
 
 use bevy_ecs::component::Component;
+
+use crate::{Entity, World};
 use serde::{Deserialize, Serialize};
 
 /// Quantos timers uma entidade pode ter.
@@ -292,6 +294,38 @@ pub fn start(state: &mut TimerState) {
 /// *parar*.
 pub fn stop(state: &mut TimerState) {
     state.running = false;
+}
+
+/// ⭐⭐⭐ **ARMA os relógios de toda a cena** — a travessia do mundo que faltava a este módulo.
+///
+/// # ⚠️ Ela DESCEU da shell em 2026-09-19, e o sítio certo é aqui
+///
+/// Ela vivia no `render_loop::timer_tick` e é a **irmã exacta** da [`crate::reconcile_factories`] e
+/// da [`crate::reconcile_lifetimes`], que já moram nesta crate: uma varredura sobre as portas deste
+/// módulo, sem uma linha de composição. *Enquanto ela esteve na shell, um gate que precisasse de
+/// armar relógios tinha de morar lá também* — e foi isso que a catraca `the_shell_only_shrinks`
+/// acabou por cobrar.
+///
+/// ⚠️ **Só escreve quem tem trabalho** — o [`reconcile`] devolve `false` sem nada por nascer, e o
+/// `insert` fica de fora. Um `insert` incondicional marcaria o componente como alterado a cada
+/// quadro, que é o ruído que o `SpriteGrid` já teve de corrigir.
+///
+/// ⚠️ **A aresta é o NASCIMENTO do slot, nunca «não está a correr»** — que um *one-shot* terminado
+/// satisfaz, e que o faria disparar para sempre. A lei vive no [`reconcile`]; aqui fica a travessia.
+pub fn reconcile_timers(world: &mut World) {
+    let alvos: Vec<Entity> = {
+        let mut q = world.query::<(Entity, &Timers)>();
+        q.iter(world).map(|(e, _)| e).collect()
+    };
+    for e in alvos {
+        let Some(timers) = world.get::<Timers>(e).cloned() else {
+            continue;
+        };
+        let mut rt = world.get::<TimerRuntime>(e).cloned().unwrap_or_default();
+        if reconcile(&timers, &mut rt) {
+            world.entity_mut(e).insert(rt);
+        }
+    }
 }
 
 #[cfg(test)]

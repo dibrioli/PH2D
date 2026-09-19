@@ -47,7 +47,7 @@ use ph2d_preview_drive::{Driven, PreviewDrive};
 /// ⚠️ **`try_from_bits` e não `from_bits`:** os bits vêm de um sinal publicado num quadro anterior.
 /// Esta metade confere a CODIFICAÇÃO; a **liveness** é conferida do outro lado, no `targets_of`,
 /// porque o bevy recicla bits de entidades despawnadas.
-pub(crate) fn lido(
+pub fn lido(
     s: &ph2d_runtime::Signal,
 ) -> (String, Option<ph2d_ecs::Entity>, Option<ph2d_ecs::Entity>) {
     let de =
@@ -59,23 +59,35 @@ pub(crate) fn lido(
     )
 }
 
+/// ⭐⭐ **O que a tabela pede ao SOM** — o vocabulário da injecção (ver [`apply`]).
+///
+/// ⛔ **Um enum e não um `bool`:** *«toca»* e *«cala»* são dois verbos autorados, e um booleano
+/// chamado `play` no sítio da chamada lê-se ao contrário com a mesma facilidade.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Som {
+    /// Toca o som do alvo.
+    Toca,
+    /// Cala o que o alvo tem a soar.
+    Cala,
+}
+
 /// O que uma aplicação fez — para o log de diagnóstico, e para os gates.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct ActionReport {
+pub struct ActionReport {
     /// Quantos efeitos chegaram a mexer em alguma coisa.
-    pub(crate) applied: usize,
+    pub applied: usize,
     /// Quantos não tinham onde pegar (o alvo não tem o componente que o verbo escreve).
     ///
     /// ⚠️ **Não é um erro, e é por isso que ele é CONTADO e não gritado:** ligar um sinal a um
     /// objecto sem relógio é uma configuração a meio, não uma avaria — e o painel é quem tem de o
     /// dizer, não um toast por quadro.
-    pub(crate) inert: usize,
+    pub inert: usize,
     /// ⭐⭐⭐ **Quem o [`SignalVerb::Destroy`] mandou sair** (suplente #24).
     ///
     /// ⚠️ **Ela sai daqui em vez de a ponte apagar**, e é a lei do despachante único: *«quando é
     /// que isto sai da cena?»* é uma pergunta só, e quem responde é o dreno da
-    /// [`super::fase_fabrica_e_morte`], uma vez por quadro, depois de todos os produtores.
-    pub(crate) mortes: Vec<ph2d_ecs::Death>,
+    /// `fase_fabrica_e_morte` da shell, uma vez por quadro, depois de todos os produtores.
+    pub mortes: Vec<ph2d_ecs::Death>,
 }
 
 /// ⭐⭐ **Aplica os efeitos deste quadro.**
@@ -84,17 +96,22 @@ pub(crate) struct ActionReport {
 /// seria a segunda porta pela qual o defeito volta — exactamente a lei que a `ProjectState::capture`
 /// já escreve para si mesma.
 ///
-/// ⚠️ **O `audio` é um `Option` e o `drive` não**, e a assimetria é honesta: um editor sem
-/// dispositivo de som corre em silêncio de propósito (o `AudioSystem::new` devolve `None` e a casa
-/// degrada como faz com o `gilrs`), enquanto uma escrita no documento sem ledger é sempre um
-/// defeito. *Um `Option` que nomeia uma ausência real não é o mesmo que um que nomeia uma
-/// conveniência.*
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn apply(
+/// # ⛔⛔ E o SOM entra por INJECÇÃO, e não por um `&mut AudioSystem`
+///
+/// Esta crate é uma **FAMÍLIA** e o `ph2d-app-audio` também: o gate
+/// `architecture_no_dependency_climbs_a_layer` recusa a aresta, e a cura que ele PRESCREVE é
+/// *«uma tabela para ser injectada pela composição»*. ⇒ a tabela de acções não sabe o que é um
+/// mixer; ela sabe pedir *«toca o som deste objecto»*, e quem responde é a shell, que é dona dos
+/// dois lados.
+///
+/// ⚠️ **O fecho devolve `false` quando não havia o que tocar** — a mesma leitura de sempre: um
+/// editor sem dispositivo de som corre em silêncio de propósito (o `AudioSystem::new` devolve
+/// `None` e a casa degrada como faz com o `gilrs`), e isso conta como **inerte**, nunca como erro.
+pub fn apply(
     sim: &mut SimWorld,
     effects: &[SignalEffect],
     drive: &mut PreviewDrive,
-    mut audio: Option<&mut ph2d_app_audio::AudioSystem>,
+    som: &mut dyn FnMut(&mut SimWorld, Som, ph2d_ecs::Entity) -> bool,
 ) -> ActionReport {
     let mut report = ActionReport::default();
     for fx in effects {
@@ -107,12 +124,8 @@ pub(crate) fn apply(
             // ⭐⭐⭐ **O SOM** (TOP-20 #4) — o verbo que a recusa deste enum nomeava como
             // inalcançável até 2026-09-09. ⚠️ `as_deref_mut` porque o laço passa por aqui N vezes
             // e um `Option<&mut _>` não é `Copy`.
-            SignalVerb::PlaySound => {
-                super::audio_2d::play_target(sim, audio.as_deref_mut(), fx.target)
-            }
-            SignalVerb::StopSound => {
-                super::audio_2d::stop_target(sim, audio.as_deref_mut(), fx.target)
-            }
+            SignalVerb::PlaySound => som(sim, Som::Toca, fx.target),
+            SignalVerb::StopSound => som(sim, Som::Cala, fx.target),
             // ⭐⭐⭐ **O PLACAR** (TOP-20 #20) — é este verbo que faz «bateu na moeda → +1 ponto»
             // fechar com o `SignalOnHit` que a física já publica, sem uma linha do artista.
             SignalVerb::AddToCounter => add_to_counter(sim, fx),
@@ -142,7 +155,7 @@ pub(crate) fn apply(
 /// preferência: apagar um objecto do DOCUMENTO durante a corrida **tira-o do documento** (a captura
 /// vê-o sumido e o `Ctrl+Z` herda a remoção), que é a lei *«o que acontece numa corrida não é
 /// documento»* invertida. O precedente é do TOP-20 #14, com a frase inteira escrita na
-/// [`super::fase_fabrica_e_morte`]: *«um projéctil que ele pôs na cena à mão é documento, e apagá-lo
+/// `fase_fabrica_e_morte` da shell: *«um projéctil que ele pôs na cena à mão é documento, e apagá-lo
 /// destruiria autoria»*. Este é o **quarto** leitor daquela porta.
 ///
 /// # ⭐⭐ E a recusa NÃO vira aviso de linha no painel, com mecanismo
@@ -281,7 +294,12 @@ fn set_visible(
     true
 }
 
-/// Os gates desta ponte — módulo irmão, pelo teto de 600 LOC da shell.
+/// Os gates das LEIS desta ponte — módulo irmão, por tecto de LOC.
 #[cfg(test)]
-#[path = "signal_actions_tests.rs"]
+#[path = "signal_actions_bridge_leis_tests.rs"]
 mod tests;
+
+/// ⭐ Os gates do VERBO QUE TIRA DA CENA e da ORIGEM que atravessa a leitura (suplente #24).
+#[cfg(test)]
+#[path = "signal_actions_bridge_tests.rs"]
+mod destroy_tests;

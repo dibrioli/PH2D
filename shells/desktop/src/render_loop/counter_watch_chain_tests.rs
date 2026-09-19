@@ -69,7 +69,9 @@ fn corre(sim: &mut SimWorld, quadros: u32) {
             .collect();
         let efeitos = ph2d_ecs::resolve_signal_actions(sim.world_mut(), &tags, &refs);
         if !efeitos.is_empty() {
-            signal_actions::apply(sim, &efeitos, &mut drive, None);
+            // ⚠️ **O som INJECTADO**, desde que a ponte desceu para a família: este gate mede a
+            // CADEIA do contador, e um fecho mudo é o que ela sempre significou.
+            signal_actions::apply(sim, &efeitos, &mut drive, &mut |_, _, _| false);
         }
     }
 }

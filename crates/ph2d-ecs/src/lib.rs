@@ -218,8 +218,8 @@ pub use stable_id::{
 pub use tags::Tags;
 pub use timer::{
     TIMER_MAX_US, TIMER_NAME_MAX_BYTES, TIMERS_MAX, Timer, TimerOutcome, TimerRuntime, TimerState,
-    Timers, advance as timer_advance, reconcile as timer_reconcile, start as timer_start,
-    stop as timer_stop,
+    Timers, advance as timer_advance, reconcile as timer_reconcile, reconcile_timers,
+    start as timer_start, stop as timer_stop,
 };
 pub use transform::{
     GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,

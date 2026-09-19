@@ -142,22 +142,23 @@ fn um_sinal_sem_sujeito_nao_passa_a_cerca_e_o_anyone_deixa_passar() {
 // G2 — OS DOIS LADOS
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// ⭐⭐⭐ **`Speaker` é quem falou e `Other` é quem bateu** — e não se trocam.
+/// ⭐⭐⭐ **`Other` é quem BATEU, e não quem falou.**
 ///
-/// ⚠️ **Os dois no mesmo gate com sujeitos DIFERENTES**: com `quem == outro` as duas variantes
-/// dariam a mesma resposta e a troca seria invisível.
+/// ⚠️ **A fixtura tem os dois sujeitos DIFERENTES de propósito**: com `quem == outro` a troca seria
+/// invisível. É a mesma cerca que o gate da porta do barramento põe do outro lado da fronteira.
 ///
 /// **Mutação que deve sangrar:** o braço `Other` a ler `disparo.quem`.
 #[test]
-fn os_dois_lados_do_disparo_resolvem_e_nao_se_trocam() {
+fn o_outro_lado_e_quem_bateu_e_nao_quem_falou() {
     let (mut w, es) = arena(
         1,
         vec![
+            // ⛔ O CONTROLO: a MESMA linha com o alvo vazio cai em QUEM REAGE.
             linha(
                 "toque",
                 SignalVerb::Show,
                 SignalFrom::Anyone,
-                SignalTarget::Speaker,
+                SignalTarget::Named,
             ),
             linha(
                 "toque",
@@ -182,39 +183,54 @@ fn os_dois_lados_do_disparo_resolvem_e_nao_se_trocam() {
     );
     assert_eq!(out.len(), 2, "as duas linhas tinham de resolver");
     assert_eq!(out[0].verb, SignalVerb::Show);
-    assert_eq!(out[0].target, heroi, "`Speaker` nao caiu em quem falou");
+    assert_eq!(out[0].target, es[0], "o alvo vazio nao caiu em quem reagiu");
     assert_eq!(out[1].verb, SignalVerb::Hide);
-    assert_eq!(out[1].target, bala, "`Other` nao caiu no outro lado");
-    // ⚠️ E quem reagiu continua a ser o dono da tabela — nem um nem outro.
+    assert_eq!(
+        out[1].target, bala,
+        "`Other` nao caiu no outro lado — leu `quem` em vez de `outro`?"
+    );
+    assert_ne!(out[1].target, heroi, "`Other` caiu em QUEM FALOU");
+    // ⚠️ E quem reagiu continua a ser o dono da tabela, nos dois efeitos.
     assert_eq!(out[0].source, es[0]);
+    assert_eq!(out[1].source, es[0]);
 }
 
-/// ⛔ **Sem sujeito, os dois lados dão NINGUÉM** — `None` não é um curinga, é a lei do alvo que não
+/// ⛔ **Sem o outro lado, o alvo é NINGUÉM** — `None` não é um curinga, é a lei do alvo que não
 /// existe (a mesma que este enum já escreve para uma tag apagada).
 ///
-/// **Mutação que deve sangrar:** o braço `Speaker` a cair em quem reagiu quando não há sujeito.
+/// ⚠️ **E o CONTROLO é metade do gate:** sem a linha vazia a disparar no mesmo mundo, um `resolve`
+/// que devolvesse zero por qualquer outra razão leria como aprovação.
+///
+/// **Mutação que deve sangrar:** o braço `Other` a cair em quem reagiu quando não há outro lado.
 #[test]
-fn sem_sujeito_os_dois_lados_dao_ninguem() {
+fn sem_o_outro_lado_o_alvo_e_ninguem() {
     let (mut w, _) = arena(
         2,
         vec![
-            linha(
-                "sino",
-                SignalVerb::Show,
-                SignalFrom::Anyone,
-                SignalTarget::Speaker,
-            ),
             linha(
                 "sino",
                 SignalVerb::Hide,
                 SignalFrom::Anyone,
                 SignalTarget::Other,
             ),
+            // ⛔ O CONTROLO: a linha vizinha, com alvo vazio, DISPARA no mesmo mundo.
+            linha(
+                "sino",
+                SignalVerb::Show,
+                SignalFrom::Anyone,
+                SignalTarget::Named,
+            ),
         ],
     );
+    let out = resolve(&mut w, &TagTree::new(), &[Disparo::anonimo("sino")]);
+    assert_eq!(
+        out.len(),
+        2,
+        "o CONTROLO tinha de disparar nos dois reactores — sem ele este gate mede o nada"
+    );
     assert!(
-        resolve(&mut w, &TagTree::new(), &[Disparo::anonimo("sino")]).is_empty(),
-        "um lado ausente produziu efeito — provavelmente caiu em quem reagiu"
+        out.iter().all(|e| e.verb == SignalVerb::Show),
+        "a linha com alvo `Other` produziu efeito sem haver outro lado"
     );
 }
 

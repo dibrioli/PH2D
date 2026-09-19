@@ -38,13 +38,13 @@ use ph2d_app_audio::scene::SceneAudio;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct AudioSceneReport {
     /// Quantas fontes nasceram com `autoplay` e arrancaram neste quadro.
-    pub(crate) started: usize,
+    pub started: usize,
     /// Quantas vozes de cena estão vivas depois deste quadro.
-    pub(crate) live: usize,
+    pub live: usize,
     /// Quantas fontes a cena tem.
-    pub(crate) sources: usize,
+    pub sources: usize,
     /// Quantos ouvintes a cena tem. ⚠️ **`0` é informação, não erro** — o som toca sem posição.
-    pub(crate) listeners: usize,
+    pub listeners: usize,
 }
 
 /// **Onde estão as orelhas**, em coordenadas de mundo — ou `None` se a cena não tiver ouvinte.

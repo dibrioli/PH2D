@@ -21,6 +21,7 @@ use ph2d_ecs::{
     Entity, SIGNAL_ACTIONS_MAX, SignalAction, SignalActions, SignalTarget, SignalVerb, SimWorld,
     World,
 };
+use ph2d_editor_core::screens::hero::ActionTargetMode;
 use ph2d_editor_core::{ActionFieldEdit, InspectorActionInfo, InspectorActionRow, Toast};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tags::TagTree;
@@ -49,6 +50,16 @@ pub(super) fn build_action_info(
             verb_tag: a.verb.tag(),
             arg: a.arg.clone(),
             uses_arg: a.verb.uses_arg(),
+            // ⭐⭐⭐ **Os dois campos do suplente #24** — o modo do alvo e a cerca. ⚠️ **A tradução
+            // mora AQUI e nos dois sentidos** (ver o dreno abaixo): o painel é chrome e não vê o
+            // `ph2d-ecs` (ADR-0029), logo o que atravessa é a POSIÇÃO.
+            target_mode: match a.target_by {
+                ph2d_ecs::SignalTarget::Named => ActionTargetMode::Name,
+                ph2d_ecs::SignalTarget::Tagged(_) => ActionTargetMode::Tag,
+                ph2d_ecs::SignalTarget::Other => ActionTargetMode::Other,
+            }
+            .tag(),
+            from_tag: a.from.tag(),
             target_tag: a.target_by.tag().map(|t| t.0),
             // ⚠️ **Vazio quando a tag já não existe**, e é isso que faz a secção poder dizer que a
             // linha partiu — ver `InspectorActionRow::target_tag_missing`.
@@ -128,16 +139,19 @@ pub(super) fn apply_action_edit(
             a.arg = arg.trim().to_string();
         }
         // ⭐⭐⭐ **O alvo por TAG** (TOP-20 #9, W3b).
-        ActionFieldEdit::TargetMode(i, por_tag) => {
+        ActionFieldEdit::TargetMode(i, modo) => {
             let a = table.0.get_mut(usize::from(*i))?;
             // ⚠️ **`Tagged(0)` é «por tag, e ainda não escolheu qual»** — o `TagId(0)` nunca é dado
             // pela árvore, logo a linha alcança ninguém até o artista escolher, e a secção di-lo.
             // ⛔ Escolher uma tag por ele (a primeira da árvore, digamos) faria um clique num
             // segmentado mudar a quem a acção acerta.
-            a.target_by = if *por_tag {
-                SignalTarget::Tagged(0)
-            } else {
-                SignalTarget::Named
+            //
+            // ⚠️ **A posição volta a ser modo pela porta do vocabulário** (`from_tag`), que satura
+            // num valor fora da faixa — a mesma lei do verbo, um campo ao lado.
+            a.target_by = match ActionTargetMode::from_tag(*modo) {
+                ActionTargetMode::Name => SignalTarget::Named,
+                ActionTargetMode::Tag => SignalTarget::Tagged(0),
+                ActionTargetMode::Other => SignalTarget::Other,
             };
         }
         ActionFieldEdit::TargetTag(i, id) => {
@@ -146,6 +160,13 @@ pub(super) fn apply_action_edit(
             // gesto que chega aqui é o de uma caixa que só existe no modo tag, e recusá-lo por a
             // linha estar noutro modo seria um clique que não faz nada.
             a.target_by = SignalTarget::Tagged(*id);
+        }
+        // ⭐⭐⭐ **A CERCA** (suplente #24) — *de quem o sinal tem de vir*.
+        ActionFieldEdit::From(i, tag) => {
+            let a = table.0.get_mut(usize::from(*i))?;
+            // ⚠️ **Pela porta do motor** (`SignalFrom::from_tag`), que satura numa tag fora da
+            // faixa: ela pode vir de um ficheiro gravado por uma versão com mais cercas.
+            a.from = ph2d_ecs::SignalFrom::from_tag(*tag);
         }
     }
     queue_set(queue, registry, entity_bits, ACTIONS, &table);

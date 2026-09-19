@@ -22,11 +22,17 @@ pub(crate) fn populate_action(store: &mut WidgetStore) {
     // silêncio. Só o CHIP é um `Dropdown`, e o que ele guarda é o `open`, nunca a escolha.
     // ⭐⭐⭐ **O alvo por TAG** (TOP-20 #9, W3b): os dois segmentos, as opções da caixa (botões, como
     // as do verbo) e o CHIP dela, que é o único `Dropdown` — o que ele guarda é o `open`.
+    // ⭐⭐⭐ **E a CERCA** (suplente #24): os dois segmentos do *de quem?*, ao lado dos três do
+    // *a quem?*. ⚠️ Sem o registo, o clique num segmento é engolido pelo `is_focusable` — a
+    // sétima ocorrência daquela família nesta casa, e a razão de eles entrarem na MESMA lista.
     register_button_ids(
         store,
         &[
             crate::ids::INSP_ACTION_BY_NAME,
             crate::ids::INSP_ACTION_BY_TAG,
+            crate::ids::INSP_ACTION_BY_OTHER,
+            crate::ids::INSP_ACTION_FROM_ANYONE,
+            crate::ids::INSP_ACTION_FROM_MYSELF,
         ],
     );
     register_button_ids(store, &crate::ids::INSP_ACTION_TAG_OPT);

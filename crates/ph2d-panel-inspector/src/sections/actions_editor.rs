@@ -44,6 +44,17 @@ pub(super) fn editor(
         cur_y,
         row,
     );
+    cur_y = from_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        row,
+    );
     cur_y = verb_row(
         scene,
         text_system,
@@ -89,6 +100,59 @@ pub(super) fn editor(
         cur_y += font + ph2d_tokens::control_gap_px();
     }
     cur_y
+}
+
+/// ⭐⭐⭐ **DE QUEM o sinal tem de vir** — a TERCEIRA pergunta de uma linha (suplente #24).
+///
+/// # ⚠️ Porque ela existe, com o número
+///
+/// Sem ela, dez inimigos com a MESMA tabela reagem todos a um golpe que acertou em **um** — medido:
+/// `10` efeitos para um sinal (`mede_o_que_a_composicao_ja_da_ao_golpe`). *O sinal é um nome global,
+/// e a tabela não sabia quem levou o tiro.*
+///
+/// ⚠️ **Ela é uma cerca de QUEM REAGE, e o segmentado do alvo é de A QUEM** — as duas ficam uma por
+/// cima da outra de propósito, na ordem em que a linha se lê: *quando · de quem · a quem · o quê*.
+#[allow(clippy::too_many_arguments)]
+fn from_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    row: &InspectorActionRow,
+) -> f32 {
+    let so_meu = row.from_is_myself();
+    let (seg_w, seg_dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
+    let seg_h = paint_segmented_group_adaptive(
+        Rect::new(x, y, seg_w, ROW_H_PX),
+        &[
+            (
+                tr("panel.inspector.actions.from_anyone"),
+                !so_meu,
+                crate::ids::INSP_ACTION_FROM_ANYONE,
+            ),
+            (
+                tr("panel.inspector.actions.from_myself"),
+                so_meu,
+                crate::ids::INSP_ACTION_FROM_MYSELF,
+            ),
+        ],
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, seg_dot);
+    // ⚠️ **A cauda sai da PORTA** (`control_gap_px`), e não de um degrau escrito aqui: *o que fica
+    // depois de um bloco é UMA resposta*, e o gate `the_tail_of_a_block_is_one_answer` apanhou esta
+    // linha na primeira corrida. ⭐ O irmão `target_rows` escrevia `Spacing::Xs` a meio de uma
+    // instrução — invisível àquele censo — e passou a ler a mesma porta: os dois segmentados vivem
+    // na MESMA coluna, a vinte pixels um do outro, e dois vãos diferentes ali leem-se como defeito.
+    y + seg_h + ph2d_tokens::control_gap_px()
 }
 
 /// A secção inteira — cabeçalho, dobra e corpo. Devolve o `y` seguinte.

@@ -36,6 +36,16 @@ pub const INSP_ACTION_BY_NAME: NodeId = hash_node_id("insp_action_by_name");
 /// ⚠️ **Dois ids e não um toggle**, porque é um `paint_segmented_group_adaptive`: ele pinta N
 /// opções com uma marcada, e cada uma precisa do id dela para o clique saber qual foi.
 pub const INSP_ACTION_BY_TAG: NodeId = hash_node_id("insp_action_by_tag");
+/// ⭐⭐⭐ **O alvo é QUEM BATEU** — o terceiro segmento (suplente #24, 2026-09-19).
+pub const INSP_ACTION_BY_OTHER: NodeId = hash_node_id("insp_action_by_other");
+
+/// ⭐⭐⭐ **A CERCA: esta linha reage a QUALQUER UM** — o segmento da esquerda (suplente #24).
+pub const INSP_ACTION_FROM_ANYONE: NodeId = hash_node_id("insp_action_from_anyone");
+/// ⭐⭐⭐ **A CERCA: esta linha só reage ao PRÓPRIO golpe** — o segmento da direita.
+///
+/// ⚠️ **Dois ids e não um toggle**, pela mesma razão dos do alvo: é um segmentado, e cada opção
+/// precisa do id dela para o clique saber qual foi.
+pub const INSP_ACTION_FROM_MYSELF: NodeId = hash_node_id("insp_action_from_myself");
 
 /// **A tag alvo — o CHIP do seletor.** As entradas dele são [`INSP_ACTION_TAG_OPT`].
 ///
@@ -156,7 +166,7 @@ pub const INSP_ACTION_ROW: [NodeId; 16] = [
 /// até 2026-09-09 (*«as actions deveriam ficar num dropdown e não em muitos botões»*, report do
 /// dono): passaram a ser as linhas do popover **sem mudar de significado**, que é o que manteve o
 /// despacho — `position(|&o| o == id)` — intacto.
-pub const INSP_ACTION_VERB: [NodeId; 8] = [
+pub const INSP_ACTION_VERB: [NodeId; 9] = [
     hash_node_id("insp_action_verb_start"),
     hash_node_id("insp_action_verb_stop"),
     hash_node_id("insp_action_verb_show"),
@@ -167,6 +177,11 @@ pub const INSP_ACTION_VERB: [NodeId; 8] = [
     // ⚠️ **APENDADO, e nunca no meio** — a posição é a tag, logo inserir um id acima faria todo
     // `SignalAction` já gravado mudar de verbo, em silêncio. (TOP-20 #20: o `Add to counter`.)
     hash_node_id("insp_action_verb_add_to_counter"),
+    // ⭐⭐⭐ **O `Destroy`** (suplente #24), APENDADO pela mesma lei. ⚠️ **Ele nasceu em falta e foi
+    // o gate `the_verb_labels_come_from_the_engines_own_list` que o apanhou** (`left: 9, right: 8`):
+    // sem este id o verbo existe, tem lei, tem gates — e o artista **não lhe chega**. *É a forma
+    // exacta do defeito que o `Density` da escultura pagou.*
+    hash_node_id("insp_action_verb_destroy"),
 ];
 
 /// **As opções do filtro por tag da §11 Physics** (TOP-20 #9, W3c).

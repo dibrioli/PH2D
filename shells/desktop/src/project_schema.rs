@@ -439,7 +439,7 @@
 /// existia: o `SignalOrigin::Contact` carrega `source` e `other`, e a shell fazia `.map(|s| s.name)`
 /// uma linha antes de a tabela precisar deles.
 ///
-/// ⚠️ **As variantes novas NÃO custariam degrau nenhum** (`SignalTarget::{Speaker, Other}` e
+/// ⚠️ **As variantes novas NÃO custariam degrau nenhum** (`SignalTarget::Other` e
 /// `SignalVerb::Destroy` são APENDADAS, e a posição é a tag) — quem o custa é o campo.
 ///
 /// ⚠️ **E o degrau do v128 cresceu com ele:** a escada do load tem TRÊS degraus vivos (`95`, `128`,

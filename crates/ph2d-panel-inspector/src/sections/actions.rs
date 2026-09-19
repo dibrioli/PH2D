@@ -289,13 +289,19 @@ fn target_rows(
         &[
             (
                 tr("panel.inspector.actions.name"),
-                !por_tag,
+                !por_tag && !row.target_is_other(),
                 ids::INSP_ACTION_BY_NAME,
             ),
             (
                 tr("panel.inspector.actions.tag"),
                 por_tag,
                 ids::INSP_ACTION_BY_TAG,
+            ),
+            // ⭐⭐⭐ **Quem BATEU** (suplente #24) — o outro lado do contacto que publicou o sinal.
+            (
+                tr("panel.inspector.actions.who_hit"),
+                row.target_is_other(),
+                ids::INSP_ACTION_BY_OTHER,
             ),
         ],
         scene,
@@ -305,7 +311,27 @@ fn target_rows(
         hit_index,
     );
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, seg_dot);
-    let mut cur_y = y + seg_h + Spacing::Xs.px();
+    // ⚠️ **Pela PORTA, como a cauda do irmão `from_row`** — ver o comentário de lá. Este sítio era
+    // invisível ao censo por ser uma INSTRUÇÃO e não uma cauda (*um censo que conhece uma forma da
+    // mesma pergunta é cego às outras*, que é o que aquele ficheiro narra sobre si mesmo).
+    let mut cur_y = y + seg_h + ph2d_tokens::control_gap_px();
+
+    // ⭐⭐ **O modo «quem bateu» NÃO tem controlo por baixo, e isso é a lei do modo**: o alvo sai do
+    // sinal e não de nada que o artista escreva. *Um campo aqui seria um controlo morto.*
+    if row.target_is_other() {
+        let font = TypeToken::Sm.px();
+        paint_text(
+            text_system,
+            scene,
+            tr("panel.inspector.actions.who_hit_hint"),
+            x,
+            cur_y,
+            font,
+            w,
+            resolve(ColorToken::Text3, theme),
+        );
+        return cur_y + font + ph2d_tokens::control_gap_px();
+    }
 
     if !por_tag {
         return super::anim_rows::text_row(

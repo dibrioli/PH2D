@@ -3,6 +3,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ph2d-migrar-texto:begin
         "panel.inspector.actions.name" => "Name",
         "panel.inspector.actions.tag" => "Tag",
+        "panel.inspector.actions.who_hit" => "Who Hit",
+        "panel.inspector.actions.who_hit_hint" => {
+            "The other side of the contact that raised the signal."
+        }
+        "panel.inspector.actions.from_anyone" => "From Anyone",
+        "panel.inspector.actions.from_myself" => "From Myself",
         "panel.inspector.actions.no_tag_chosen_u_this_action_reaches_nobody" => {
             "No tag chosen \u{b7} this action reaches nobody."
         }

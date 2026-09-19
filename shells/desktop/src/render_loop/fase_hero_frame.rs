@@ -366,7 +366,7 @@ impl crate::App {
         let vec_cfg = self.fase_tool_mirrors(vec_cfg)?;
         self.fase_world_panel_bridges();
         let (flip_active, flip_style) = self.fase_flip_strip_and_cursor(window_size)?;
-        self.fase_physics_overlay(window_size, viewport);
+        self.fase_physics_overlay(viewport);
         self.fase_canvas_overlays(window_size);
         self.fase_selection_highlight(flip_active, flip_style, viewport);
 

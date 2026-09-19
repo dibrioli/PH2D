@@ -133,6 +133,8 @@ pub mod projectile_inspector;
 pub mod projectile_smoke;
 /// ⭐⭐⭐ O instantâneo e o dreno da secção RAY SENSOR (suplente #21).
 pub mod ray_inspector;
+/// ⭐⭐⭐ **O smoke do OLHO** (suplente #21, W6) — um poste com dois olhos e uma caixa que chega.
+pub mod ray_smoke;
 pub mod scene_ctx;
 pub mod script_bridge;
 /// ⭐ TOP-20 #16 — a secção SCRIPT do Inspector: o instantâneo e o dreno.
@@ -242,6 +244,8 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         // não está aqui é uma cena que a família não declara possuir.
         r("PH2D_TRIGGER_SMOKE", trigger_smoke::CENAS),
         r("PH2D_DANO_SMOKE", dano_smoke::CENAS),
+        // ⭐⭐⭐ O OLHO (suplente #21, W6): `=1` o poste com dois olhos e a caixa que chega.
+        r("PH2D_RAY_SMOKE", ray_smoke::CENAS),
     ],
 };
 

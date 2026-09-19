@@ -77,6 +77,53 @@ fn the_marks_are_handed_to_the_draw() {
     );
 }
 
+/// ⭐⭐⭐ **E ELE DESENHA NA BANDA DA CENA, nunca na JANELA — a QUINTA vez que esta lei é paga.**
+///
+/// ⚠️ **MEDIDO pela foto da cena `PH2D_RAY_SMOKE=1` (19/09):** com a ferramenta MOTION activa — que
+/// o `~/.ph2d/layout.txt` do dono reactiva no quadro 1 — a cena desenha num sub-rectângulo
+/// `[0, 0, w, h·t]` e **a projecção muda** (o `world_to_screen` deriva os DOIS eixos de `h`). Na
+/// foto, janela `1930×1012` e banda `≈557`: o raio de um olho que nasce em `y = +0,35` tinha de ser
+/// desenhado a `≈261 px` e apareceu a **`≈474`** — `~210 px` abaixo e `1,8×` mais comprido. *Os
+/// corpos estavam no sítio certo e a física que se desenha por cima deles não.*
+///
+/// ⛔⛔ **O censo `todo_aponte_passa_pela_janela_da_cena` NÃO podia apanhar isto, e a razão é a
+/// forma:** ele resolve o último argumento de `screen_to_world` — a metade **cursor → mundo** da
+/// lei. Esta é a metade **mundo → ecrã**, e ela entra por um PINTOR que recebe a janela.
+/// ⚠️ **Medido: a shell tem `11` chamadas de `world_to_screen`/`_affine`, e `4` delas vivem em
+/// pintores de chrome da cena que a recebem por PARÂMETRO** (`anchor_overlay` ·
+/// `empty_object_overlay` · `padding_bridge` · `upscale_bridge`) ⇒ a prova delas está nos
+/// chamadores, e elas ficam **NOMEADAS e por auditar** — esta wave cura e gateia a sua.
+///
+/// ⭐ **Fora do split é BYTE-IDÊNTICO** (`CenterSplit::None` devolve a janela inteira), logo a cura
+/// não muda um pixel de nenhuma cena que já shipava — e é isso que a torna segura.
+#[test]
+fn the_overlay_draws_in_the_scene_band() {
+    let call = at("ph2d_app_physics::overlay::outline::draw(");
+    let end = crate::frame_text::call_end(&SRC, call).unwrap_or_else(|| {
+        panic!("nao achei o fim da chamada de `physics_overlay::draw` — atualize este gate")
+    });
+    let args = &SRC[call..end];
+    assert!(
+        args.contains("janela_da_cena"),
+        "o `draw` tem de receber a BANDA da cena (`gfx.scene_window()`), nunca a janela: com a \
+         ferramenta Motion activa a projeccao MUDA, e o overlay inteiro — contornos, juntas, \
+         contactos, raios — sai deslocado e esticado por cima de corpos que estao no sitio certo"
+    );
+    // ⛔ E a metade que impede a recaída silenciosa: passar a janela **também** compila.
+    assert!(
+        !args.contains("\n            window_size,"),
+        "o `draw` continua a receber `window_size` — se ele passou a receber as DUAS, uma delas \
+         esta' a projectar o lado errado"
+    );
+    // ⭐ CONTROLO da extracção: sem ele, um `call_end` que devolvesse uma fatia vazia deixaria as
+    // duas asserções acima verdes por vácuo.
+    assert!(
+        args.len() > 400 && args.contains("&probes"),
+        "a regua leu {} bytes da chamada — ela deixou de medir a lista de argumentos",
+        args.len()
+    );
+}
+
 /// **CONTROLE POSITIVO:** o texto lido é o do produto e contém a chamada que
 /// os dois gates acima inspecionam.
 ///

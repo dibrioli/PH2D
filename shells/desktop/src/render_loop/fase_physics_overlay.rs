@@ -5,11 +5,11 @@ use super::*;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
-    pub(super) fn fase_physics_overlay(
-        &mut self,
-        window_size: ph2d_host::WindowSize,
-        viewport: EditorRect,
-    ) {
+    /// ⛔ **Ela já não recebe a janela, e a ausência é a lei:** desde 19/09 todo mapeamento
+    /// mundo↔tela desta fase passa pela BANDA da cena ([`crate::scene_mapping`]), logo um segundo
+    /// tamanho em alcance seria a porta por onde o defeito voltava — *a régua que compila é a que
+    /// está à mão*.
+    pub(super) fn fase_physics_overlay(&mut self, viewport: EditorRect) {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -150,7 +150,28 @@ impl crate::App {
                         .is_some()
                 }),
             camera,
-            window_size,
+            // ⛔⛔⛔ **A JANELA DA CENA, e nunca a da janela — a QUINTA vez que esta lei é paga**
+            // ([`crate::scene_mapping`], que lista as outras quatro).
+            //
+            // ⚠️ **MEDIDO pela foto da cena `PH2D_RAY_SMOKE=1` (19/09), e a aritmética fecha antes
+            // do código:** com a ferramenta MOTION activa — que o `~/.ph2d/layout.txt` do dono
+            // **reactiva no quadro 1** — a cena desenha num sub-rectângulo `[0, 0, w, h·t]` e a
+            // projecção MUDA (não é um recorte). O [`ph2d_render::Camera2d::world_to_screen`]
+            // deriva os **dois** eixos de `h`, logo com a janela inteira tudo sai `h/(h·t)` vezes
+            // maior e o zero vertical fica em `h/2` em vez de `h·t/2`.
+            //
+            // A conta da foto: janela `1930×1012`, banda `≈557`, `height_world ≈ 11,14 m` ⇒ o raio
+            // do olho, que nasce em `y = +0,35`, tinha de ser desenhado a `≈261 px` e apareceu a
+            // **`≈474`** — `~210 px` abaixo e `1,8×` mais comprido. *Os corpos estavam no sítio
+            // certo e a física que se desenha por cima deles não.*
+            //
+            // ⛔ **E isto NÃO é da timeline estar aberta:** o único escritor de um `CenterSplit` é
+            // o ramo da ferramenta Motion — a correcção que a wave do HUD pagou um dia antes, por
+            // ler *onde o defeito aterrava* como *o que o causava*.
+            //
+            // ⭐ **Fora do split é BYTE-IDÊNTICO** (`CenterSplit::None` devolve a janela inteira),
+            // logo esta linha não muda um pixel de nenhuma das cenas que já shipavam.
+            janela_da_cena,
             vector_scene,
             // ⚠️ Reborrow por `paint_ctx`, não o binding cru: o `text_system`
             // já está emprestado por ele desde o começo do frame, e um

@@ -76,6 +76,10 @@ pub(crate) fn sync_new_sections(
     // ⭐ O EMISSOR DE PARTÍCULAS (TOP-20 #18) — no irmão, pelo mesmo tecto.
     crate::sync_particles::sync(host, inspector_state, entity_changed);
     crate::sync_hud::sync(host, inspector_state, entity_changed);
+    // ⭐⭐⭐ **O RAIO** (suplente #21) — no irmão, pelo mesmo tecto. ⛔ Esta linha FALTAVA, como a da
+    // vigia do contador e a das duas de 10/09: a secção shipou a mostrar `Direction 0 / −1` e
+    // `Reach 1 m` sobre um olho autorado a `(1, 0)` com alcance `6`, e quem a apanhou foi uma FOTO.
+    crate::sync_ray::sync(host, inspector_state, entity_changed);
     // ⭐⭐⭐ **A VIGIA DO CONTADOR** — no irmão, pelo mesmo tecto. ⛔ Esta linha FALTAVA: a secção
     // shipou com o editor a mostrar os valores de fábrica do `populate` sobre uma regra escolhida,
     // e quem a apanhou foi uma FOTO (o cabeçalho do irmão tem o mecanismo).

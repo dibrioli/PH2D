@@ -106,6 +106,9 @@ pub struct InspectorState {
     /// A assinatura do último instantâneo do HUD — a aresta que semeia a secção.
     pub last_hud_sig: Option<u64>,
     pub last_particles_sig: Option<u64>,
+    /// RAY SENSOR — idem. ⛔ Esta linha FALTAVA e a secção shipou a mostrar os valores de FÁBRICA
+    /// do `populate_ray`; quem a apanhou foi uma foto (ver o cabeçalho do `sync_ray`).
+    pub last_ray_sig: Option<u64>,
 }
 
 thread_local! {

@@ -20,6 +20,13 @@
 
 use ph2d_app_components::scene_ctx::SceneCtx;
 
+/// Quantos quadros uma cena de smoke insiste em ter o Inspector à FRENTE.
+///
+/// ⚠️ **Três e não um**, e o número é o da vigia do contador: o `reconcile_z` acrescenta os painéis
+/// em falta no início de cada quadro, logo um `bump` feito no quadro do arranque fica **por baixo**
+/// do que ele acrescenta a seguir.
+const LEVANTA_O_INSPECTOR: u8 = 3;
+
 impl crate::App {
     /// Empresta à família o que uma cena dela toca.
     ///
@@ -437,6 +444,66 @@ impl crate::App {
         }
         self.playhead.rewind();
         self.playhead.play();
+    }
+
+    /// ⭐⭐⭐ **O OLHO** (suplente #21, W6) — `PH2D_RAY_SMOKE=1`. Prólogo do quadro, uma vez.
+    ///
+    /// ⚠️ **As três metades do prólogo são obrigatórias**, e cada uma por uma razão medida: sem a
+    /// física ARMADA o raio nunca casta (o toggle nasce desmarcado); sem o relógio a ANDAR a caixa
+    /// não chega; e ⭐⭐ **sem o `show_colliders` a cena inteira é invisível** — o desenho do raio
+    /// acompanha o MESMO interruptor do contorno, porque é a mesma pergunta (*mostre-me a física
+    /// que não se vê*), e uma cena cuja lição é uma LINHA que o artista tem de saber ligar é uma
+    /// cena que ensina o contrário do que promete.
+    pub(crate) fn ray_smoke(&mut self) {
+        if std::env::var_os("PH2D_RAY_SMOKE").is_none() {
+            return;
+        }
+        if self.components.smokes.ray {
+            // ⚠️ **A ordem dos dois guardas é a lei**: a cena monta-se uma vez e o Inspector tem de
+            // subir em VÁRIOS quadros, logo a saída antecipada não pode ser a primeira.
+            self.ray_smoke_traz_o_inspector();
+            return;
+        }
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        let montada = ph2d_app_components::ray_smoke::montar(cx.sim.world_mut(), 1);
+        self.components.smokes.ray = true;
+        self.timeline.flags.simulate_physics = true;
+        // ⭐⭐ **O overlay da física LIGADO** — ver o doc acima. É ele que desenha a linha do raio.
+        self.show_colliders = true;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.panel_visibility.insert("inspector", true);
+            // ⚠️ A régua abre junto — os passos (2) e (3) falam do relógio a andar, e *uma
+            // instrução que fala do transporte sobre um ecrã sem ele devolve «que régua?»* (a
+            // lição da cena 67 da física).
+            hero.panel_visibility.insert("timeline", true);
+            // ⛔ **O OLHO DA FRENTE nasce ESCOLHIDO** — o roteiro manda ler a secção `Ray Sensor`
+            // no painel da direita, e com ninguém escolhido o Inspector diz *«Select an entity in
+            // the Hierarchy»*.
+            hero.gizmo.selection = Some(montada.escolhido);
+            hero.gizmo.extra_selection.clear();
+        }
+        // ⛔⛔ **E o Inspector tem de SUBIR durante alguns quadros, não só ficar visível** — a
+        // `panel_visibility` diz *«existe»* e não *«está à frente»*. O `reconcile_z` acrescenta os
+        // painéis em falta no **início de cada quadro**, logo um `bump` feito no quadro do arranque
+        // fica **por baixo** do que ele acrescenta a seguir. ⚠️ A FOTO desta cena abriu com o painel
+        // do **Sculpt 3D** à frente, sobre um roteiro que manda ler a secção `Ray Sensor` — a lição
+        // que a wave das PARTÍCULAS pagou, e a primeira cura dela também não chegou.
+        self.components.smokes.ray_raise = LEVANTA_O_INSPECTOR;
+        self.playhead.rewind();
+        self.playhead.play();
+    }
+
+    /// Traz o Inspector à frente por alguns quadros — ver o irmão da vigia do contador.
+    pub(crate) fn ray_smoke_traz_o_inspector(&mut self) {
+        if self.components.smokes.ray_raise == 0 {
+            return;
+        }
+        self.components.smokes.ray_raise -= 1;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
+        }
     }
 
     pub(crate) fn topdown_smoke(&mut self) {

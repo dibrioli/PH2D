@@ -120,6 +120,8 @@ mod sync_hud;
 /// ⭐ A semente da secção PARTICLES — irmã do `sync_sections` por CAP de ficheiro.
 mod sync_particles;
 mod sync_physics;
+/// ⭐⭐⭐ A semente da secção RAY SENSOR (suplente #21) — ver o cabeçalho dela.
+mod sync_ray;
 /// ⭐ A semente da secção SCRIPT — irmã do `sync_sections` por CAP de ficheiro.
 mod sync_script;
 mod sync_sections;

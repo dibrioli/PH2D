@@ -148,6 +148,10 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) trigger: bool,
     /// ⭐ O GOLPE (suplente #24) — `PH2D_DANO_SMOKE=1`.
     pub(crate) dano: bool,
+    /// ⭐ O OLHO (suplente #21, W6) — `PH2D_RAY_SMOKE=1`.
+    pub(crate) ray: bool,
+    /// Quantos quadros ainda trazem o Inspector à frente na cena do olho — ver `ray_raise`.
+    pub(crate) ray_raise: u8,
     /// Quantos quadros ainda trazem o Inspector à frente na cena da vigia — ver `sequence_raise`.
     pub(crate) counter_watch_raise: u8,
     /// Quantos quadros ainda trazem o Inspector à frente na cena da cutscene — ver o irmão

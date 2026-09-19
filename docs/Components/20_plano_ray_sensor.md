@@ -107,7 +107,32 @@ fazer o que o artista espera, *da mais específica para a mais geral*, com dois 
 | ✅ **W3** | rebobinar RENASCE — o mapa do bridge entra no `rebuild_from_rest` | ⚠️ a família que o smoke do #14 expôs por report |
 | ✅ **W4** | a secção do Inspector **+ o registo + o degrau de schema + o catálogo** (§3.1) | gate de costura (clique REAL) |
 | ✅ **W5** | o desenho no canvas | o gate que mede a LINHA, não a contagem |
-| ⏳ **W6** | a cena `PH2D_RAY_SMOKE=1` + o roteiro | ⚠️ e o censo de teclas de 19/09 já o vigia |
+| ✅ **W6** | a cena `PH2D_RAY_SMOKE=1` + o roteiro | ⚠️ e o censo de teclas de 19/09 já o vigia |
+
+### §4.2 — ⛔⛔⛔ O que a FOTO da W6 apanhou, com a suíte inteira VERDE
+
+A cena foi conduzida e fotografada ([`fotografa_cena.sh`](../../docs/Components/ferramentas/fotografa_cena.sh))
+antes de ir ao dono, e as **quatro** coisas que ela achou eram invisíveis a todo gate desta linha:
+
+| o que a foto mostrou | a causa | de quem era |
+|---|---|---|
+| o raio desenhado `~210 px` abaixo do olho e `1,8×` mais comprido | o overlay da física era projectado contra a **janela** enquanto a cena desenha numa **banda** (ferramenta Motion activa, que o `layout.txt` do dono reactiva no quadro 1) | da SHELL — a **quinta** vez que a lei do `scene_mapping` é paga |
+| o painel da direita era o do **Sculpt 3D** | `panel_visibility` diz *«existe»* e não *«está à frente»*; o `reconcile_z` acrescenta os painéis no início do quadro | da cena (a cura das PARTÍCULAS, `raise` em 3 quadros) |
+| `Direction 0 / −1` e `Reach 1 m` sobre um olho a `(1, 0)` com alcance `6` | **faltava a SEMENTE** do painel (`sync_ray`) — a secção mostrava os valores de fábrica do `populate_ray` | da **W4**, e nenhum gate dela podia vê-la |
+| a luz do CONTROLO fora do ecrã, e depois invisível por estar apagada | o enquadramento, e `Show`/`Hide` a tornar *«não acendeu»* igual a *«não existe»* | da cena — ⇒ a [`JANELA_UTIL`] medida, e um **SUPORTE** escuro por baixo de cada luz |
+
+⚠️⚠️ **Os três primeiros tinham a suíte inteira verde por cima**, e o terceiro é a mesma família que
+a secção do ÁUDIO e a da CÂMERA pagaram em 10/09 e a da VIGIA DO CONTADOR em 16/09 — *quatro números
+plausíveis são a pior forma deste defeito: eles não parecem partidos, e quem escreva por cima de um
+grava o default nos outros cinco.*
+
+⛔ **E o censo que devia ter apanhado o primeiro mede só METADE da lei:** o
+`todo_aponte_passa_pela_janela_da_cena` resolve o último argumento de `screen_to_world` — a metade
+**cursor → mundo**. A metade **mundo → ecrã** entra por PINTORES que recebem a janela, e a shell tem
+**`11`** chamadas de `world_to_screen`/`_affine`, **`4`** delas em pintores de chrome da cena que a
+recebem por parâmetro (`anchor_overlay` · `empty_object_overlay` · `padding_bridge` ·
+`upscale_bridge`). Esta wave **cura e gateia a sua** e deixa as outras quatro **NOMEADAS e por
+auditar** — a prova delas está nos chamadores, e cada uma pede a foto da cena que a exercita.
 
 ### §4.1 — ⭐⭐⭐ O que a W5 MEDIU antes de escrever um pintor (§5.0)
 

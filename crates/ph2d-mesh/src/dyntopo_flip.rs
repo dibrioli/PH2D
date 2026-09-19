@@ -140,25 +140,86 @@ const GANHO_DO_ALINHAMENTO: f32 = 0.20;
 /// que havia*. ⇒ a cerca que fica é **ABSOLUTA**: a troca pode piorar a forma
 /// desde que o par continue acima deste ângulo.
 ///
-/// ⭐⭐ **E o número é o meio de uma janela MEDIDA em TRÊS colunas** — duas na
-/// chapa da bancada (`diag_a_escada_do_pente`) e uma na BOLA da cena `=49`, que
-/// é a peça que o artista vê:
+/// ⛔⛔⛔ **ELE ESTAVA EM `24°` E O DONO REPROVOU-O COM FOTO** (*«pouca ou
+/// nenhuma diferença»*, 18/09) — e a medição deu-lhe razão: desenhado o arame
+/// dos dois lados do controlo, no regime da cena `=49`, as duas imagens são
+/// **indistinguíveis**. ⭐⭐⭐ **Este chão é a alavanca, e ele era a única das
+/// três constantes do passe que o era** (`docs/3D/ferramentas/varre_as_constantes_do_flip.py`): as rondas
+/// **convergem** (`8` e `20` dão a MESMA malha) e o ganho vale `+1` ponto de
+/// grade, enquanto o chão vale `+6`.
 ///
-/// | chão | chapa: `Q` no tecto | chapa: pior ângulo MÍNIMO do curso | bola: `ΔQ` do pior rumo |
-/// |---|---|---|---|
-/// | `12°` | `4,08×` | **`0,17×`** ⛔ | — |
-/// | `20°` | `2,10×` | `1,86×` ⚠️ | `2,17×` |
-/// | **`24°`** | **`1,92×`** | **`4,53×`** | **`1,24×`** |
-/// | `28°` | `1,13×` ⚠️ | `6,03×` | — |
+/// # A régua que faltava, e é ela que decide
 ///
-/// ⇒ a janela é `[20°, 28°]` e `24°` é o meio dela. ⚠️ **A coluna do meio pesa
-/// mais que as outras duas de propósito:** uma lasca é um defeito que o artista
-/// VÊ, e uma grade um pouco mais fraca não é. Abaixo de `20°` há um **PENHASCO**
-/// — e ele não é do flip sozinho: o par sai daqui exactamente no chão e o
-/// **colapso do dab seguinte** transforma-o numa lasca. *Este chão tem de deixar
-/// folga para quem vem depois*, e é por isso que ele é muito maior que o `2°` que
-/// a régua exige.
-const CHAO_DO_ALINHAMENTO: f32 = -0.913545; // -cos(24°)
+/// ⚠️⚠️ **O `Q` é uma MÉDIA e o olho lê uma CONTAGEM.** A régua que escolhe este
+/// número é a `grade_da_faixa` da `ph2d-sculpt3d` — *que fracção das arestas corre
+/// a menos de `15°` da grade do traço* —, e uma malha sem direcção nenhuma lê
+/// `33 %` nela, porque o desvio à grade é uniforme em `[0°, 45°]`.
+///
+/// # A janela, MEDIDA em graus e nas DUAS peças
+///
+/// Bola da cena `=49`, pior dos quatro rumos, com o pente no tecto (a coluna
+/// `lascas` conta triângulos abaixo de `5°` em ~2 000 da faixa):
+///
+/// | chão | grade | `Q` | pior ângulo | lascas |
+/// |---|---|---|---|---|
+/// | desligado | `32,2 %` | `−0,046` | `22,8°` | `0` |
+/// | `24°` (o de ontem) | `37,6 %` | `+0,066` | `22,5°` | `0` |
+/// | `20°` | `38,8 %` | `+0,109` | `17,3°` | `0` |
+/// | `18°` | `40,1 %` | `+0,168` | `5,5°` | `0` |
+/// | **`16°`** | **`41,4 %`** | **`+0,214`** | **`8,0°`** | **`0`** |
+/// | `14°` | `43,4 %` | `+0,245` | `5,1°` | `0` |
+/// | `12°` | `45,1 %` | `+0,266` | `3,2°` | **`1`** ⛔ |
+/// | `8°` | `49,1 %` | `+0,297` | `1,0°` | `7` ⛔ |
+///
+/// ⇒ **o fundo da janela é `14°`**: no degrau seguinte nasce a primeira lasca.
+/// **O topo é `18°`**: acima dele o desenho volta a ser indistinguível do lado
+/// desligado, que é o report. O meio é **`16°`**.
+///
+/// ⭐⭐ **E a chapa da bancada escolhe o MESMO número, por outro caminho**
+/// (`diag_a_escada_do_pente`, pior ângulo MÍNIMO do curso alcançável do botão,
+/// contra a barra de `2°` do `o_pente_nao_compra_alinhamento_com_lascas`):
+///
+/// | chão | `Q` no tecto | pior ângulo mínimo do curso |
+/// |---|---|---|
+/// | `24°` | `+0,089` | `11,57°` |
+/// | `18°` | `+0,128` | `7,27°` |
+/// | **`16°`** | **`+0,153`** | **`11,57°`** |
+/// | `14°` | `+0,165` | `7,33°` |
+/// | `12°` | `+0,190` | `5,33°` |
+///
+/// ⭐ A `16°` o mínimo do curso é **exactamente o da malha por pentear** — ali o
+/// passe nunca deixa a chapa pior do que ela já estava sem pente nenhum, e é o
+/// único degrau da janela de que isso se pode dizer.
+///
+/// # ⛔⛔ E a janela de ontem foi medida FORA do alcance do botão
+///
+/// A tabela anterior dizia `12° → 0,17×` e fechava a janela em `[20°, 28°]`.
+/// Re-medida hoje em graus absolutos, essa queda **não existe dentro do curso**:
+/// a `12°` a chapa lê `5,33°` contra uma barra de `2°`, e só desce abaixo de
+/// `3°` em `pente ≥ 1,25` — que o slider **não produz** (a faixa é `0..1` e o
+/// [`k`](ph2d_rake::k_do_pente) satura). *Um limite escolhido num regime que o
+/// produto não alcança é um limite sobre outro programa.*
+///
+/// # ⛔ O que ficou REFUTADO ao mesmo tempo
+///
+/// A hipótese natural era a outra metade — **pregar a NORMALIZAÇÃO do campo de
+/// tamanho pela média em vez de por um extremo**, para o viés poder fazer o
+/// passe trabalhar MAIS. Medida (`diag_a_normalizacao_contra_a_grade`), ela
+/// multiplica os cortes por **`23×`** (`2 100 → 47 624`), leva o pior triângulo
+/// a `0,64°` com `18` lascas — e a grade fica em `40,7 %` contra `39,5 %`.
+/// ⇒ *o tecto do campo de tamanho é `~41 %`, e ele não é a alavanca.*
+///
+/// ⚠️ **A cerca MONÓTONA (`novo >= velho`) foi construída e medida QUASE
+/// INERTE:** na bola da cena de smoke ela move o `Q` de `+0,0179` para `+0,0208`
+/// num rumo e **piora** noutro (`+0,0175 → +0,0149`) — *uma troca que só aceita
+/// melhorar a forma quase nunca acontece, porque o critério de forma já drenou o
+/// que havia*. ⇒ a cerca que fica é **ABSOLUTA**: a troca pode piorar a forma
+/// desde que o par continue acima deste ângulo.
+///
+/// ⚠️ **O preço está medido e cabe:** as trocas por traço passam de `1 221` para
+/// `2 760` e o dab de `1,11` para `1,37 ms` em `--release`, contra o orçamento
+/// de `8 ms` do passe.
+const CHAO_DO_ALINHAMENTO: f32 = -0.961262; // -cos(16°)
 
 /// **Relaxa a REGIÃO por troca de diagonal.** Devolve quantas arestas trocaram.
 ///

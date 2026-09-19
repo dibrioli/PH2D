@@ -306,6 +306,21 @@ fn o_alinhamento_para_na_borda_da_esfera() {
     // importa — **o passe é LOCAL**: o lado oposto da peça fica intacto, e um
     // passe que alinhasse o modelo inteiro a cada dab seria o oposto exacto da
     // promessa deste modo.
+    //
+    // ⛔⛔ **A CERCA ERA `1,4` E ESTAVA NO FIO DA NAVALHA.** Medido o alcance
+    // real nesta fixtura (o vértice mais distante de uma face que mudou), por
+    // chão do alinhamento: `24° → 1,5371` · `20° → 1,5371` · `18° → 1,7254` ·
+    // **`16° → 1,7254`** · `14° → 1,7144`. A `1,4` o gate passava por **não
+    // existir face com TODOS os vértices lá fora**, e o degrau seguinte de chão
+    // criava uma — *uma cerca que depende de nenhuma face cair inteira num anel
+    // é uma cerca que a próxima constante move*.
+    //
+    // ⭐⭐ **E a fixtura é GROSSEIRA, o que não é o regime do artista:** medido
+    // no regime que a `=49` dá (`diag_o_alcance_do_flip`), o alcance é o **MESMO
+    // nos dois chãos** — `0,3896` de mundo, `2,38` raios de pincel, `8,1`
+    // arestas — e o que muda é só quantas trocas acontecem lá dentro (`98` a
+    // `24°` contra `167` a `16°`). *O que cresce com o chão é a densidade do
+    // trabalho, não a pegada.*
     let longe: Vec<usize> = base
         .faces()
         .iter()
@@ -314,7 +329,7 @@ fn o_alinhamento_para_na_borda_da_esfera() {
             f.verts().iter().all(|v| {
                 let p = base.positions()[*v as usize];
                 let d = [p[0] - centro[0], p[1] - centro[1], p[2] - centro[2]];
-                (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() > 1.4
+                (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() > LONGE
             })
         })
         .map(|(i, _)| i)
@@ -322,7 +337,8 @@ fn o_alinhamento_para_na_borda_da_esfera() {
     // O controlo: se não houver faces longe, a asserção abaixo é vácuo.
     assert!(
         longe.len() > 100,
-        "so' {} faces estao longe do dab — a fixtura nao separa local de global",
+        "so' {} faces estao longe do dab (cerca {LONGE}) — a fixtura nao separa \
+         local de global",
         longe.len()
     );
     for i in longe {
@@ -332,4 +348,32 @@ fn o_alinhamento_para_na_borda_da_esfera() {
             "a face {i} mudou no lado OPOSTO da peca — o passe deixou de ser local"
         );
     }
+    // ⭐⭐ **E a METADE que a cerca sozinha não afirma: QUANTO a região cresce.**
+    // Sem ela, alguém sobe o `LONGE` no dia em que um chão novo o encostar e o
+    // gate continua verde a medir cada vez menos. *O alcance é um NÚMERO e tem
+    // de ser afirmado como número.*
+    let mut alcance = 0.0f32;
+    for (i, f) in base.faces().iter().enumerate() {
+        if *f == m.faces()[i] {
+            continue;
+        }
+        for v in f.verts() {
+            let p = base.positions()[*v as usize];
+            let d = [p[0] - centro[0], p[1] - centro[1], p[2] - centro[2]];
+            alcance = alcance.max((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt());
+        }
+    }
+    assert!(
+        alcance < LONGE,
+        "o flip chegou a {alcance:.4} do centro do dab (raio {raio}, cerca \
+         {LONGE}; medido 1,7254 nesta fixtura) — a regiao cresceu, e a cerca \
+         acima passou a medir o vazio"
+    );
 }
+
+/// A que distância do dab uma face deixa de poder ser tocada, nesta fixtura.
+///
+/// ⛔ **Ele não é escolhido: é o alcance MEDIDO com folga.** O passe chega a
+/// `1,7254` (ver o corpo do gate) e a peça é uma esfera de raio `1`, logo o
+/// antípoda está a `2` — a cerca fica no meio do que sobra.
+const LONGE: f32 = 1.85;

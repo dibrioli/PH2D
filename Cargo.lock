@@ -9044,6 +9044,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-tween"
+version = "0.0.0"
+dependencies = [
+ "ph2d-anim",
+ "ph2d-color",
+ "serde",
+]
+
+[[package]]
 name = "ph2d-ui-codegen"
 version = "0.0.0"
 

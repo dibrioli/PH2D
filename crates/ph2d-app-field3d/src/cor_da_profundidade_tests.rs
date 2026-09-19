@@ -207,8 +207,22 @@ fn sonda_a_lei_da_cor_da_profundidade() {
     // linear, e com luz branca o quociente é a matiz da lei. *A surdez deixa de ser um argumento e
     // passa a ser uma corrida.*
     println!("\n  ── A NOSSA LEI, pela porta do material (luz branca, radiância linear) ──");
-    println!("    mfp   · N·L=0,9 · N·L=0,4 · N·L=0,0 · N·L=−0,3");
+    println!("    mfp   · N·L=0,9 · N·L=0,4 · N·L=0,0 · N·L=−0,3   ‖ MAGNITUDE (canal R)");
     let mut todos: Vec<f32> = Vec::new();
+    // ⚠️⚠️ **A MAGNITUDE ao lado da matiz, e ela responde a OUTRA pergunta.** A matiz é constante
+    // por álgebra; a magnitude é o que o `integrate_burley` de facto devolve. ⛔ E há uma cerca a
+    // testar: aquele integral faz `max(mfp, 0.1)` — um piso em unidades **absolutas de mundo** —, e
+    // a peça desta cena tem raio `0,42`. *Se duas profundidades diferentes derem a MESMA magnitude,
+    // o botão do artista está inerte naquela faixa*, e isso decide o domínio da lei nova.
+    //
+    // ⛔⛔⛔ **E há uma armadilha de RÉGUA aqui, paga em 18/09:** a 1.ª redacção imprimia a
+    // magnitude **só em `N·L = 0,4`** e leu `1,03×` sobre `33×` de profundidade — eu quase publiquei
+    // *«o botão está quase morto»*. Medidos os QUATRO ângulos, ela lê `1,76×` no terminador e
+    // **`3,50×`** do lado escuro. ⇒ *o `0,4` é o PIVÔ da redistribuição, o único sítio onde esta lei
+    // por construção quase não se mexe* — e a razão de ela existir é o terminador, que é onde eu
+    // não estava a olhar. **Uma régua que amostra um ângulo só mede o sítio onde o fenómeno não
+    // está**, e é por isso que os quatro ficam impressos.
+    let mut magnitudes: Vec<[f32; 4]> = Vec::new();
     for (_, mfp) in PROFUNDIDADES {
         let s = ph2d_material::OpenPbr {
             subsurface_weight: 1.0,
@@ -225,14 +239,40 @@ fn sonda_a_lei_da_cor_da_profundidade() {
         let n = [0.0, 0.0, 1.0];
         let v = [0.0, 0.0, 1.0];
         let mut linha = format!("    {mfp:>5.2} ·");
-        for ndl in [0.9f32, 0.4, 0.0, -0.3] {
+        let mut mags = [0.0f32; 4];
+        for (j, ndl) in [0.9f32, 0.4, 0.0, -0.3].into_iter().enumerate() {
             let l = [(1.0 - ndl * ndl).max(0.0).sqrt(), 0.0, ndl];
             let c = s.direct(n, v, l, [1.0, 1.0, 1.0]);
             let rb = c[0] / c[2].max(1e-12);
             todos.push(rb);
             linha += &format!(" {rb:>8.5} ·");
+            mags[j] = c[0];
         }
-        println!("{linha}");
+        magnitudes.push(mags);
+        println!(
+            "{linha}  ‖ {:>9.6} {:>9.6} {:>9.6} {:>9.6}",
+            mags[0], mags[1], mags[2], mags[3]
+        );
+    }
+    // ⭐⭐⭐ **A razão de existir desta lei é AMACIAR O TERMINADOR**, logo a resposta tem de aparecer
+    // em `N·L ≈ 0` e do lado de lá — medir só de frente mede o sítio onde ela não tem trabalho.
+    println!("\n    ⇒ quanto a MAGNITUDE se mexe sobre as quatro profundidades, por ângulo:");
+    for (j, ndl) in ["N·L=0,9", "N·L=0,4", "N·L=0,0", "N·L=−0,3"].into_iter().enumerate() {
+        let v: Vec<f32> = magnitudes.iter().map(|m| m[j]).collect();
+        let (lo, hi) = v
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
+        println!("       {ndl:<9} · {lo:.6} .. {hi:.6} · balanço {:.3}×", hi / lo.max(1e-12));
+    }
+    for (i, (tag, mfp)) in PROFUNDIDADES.iter().enumerate().skip(1) {
+        let (a, b) = (magnitudes[i - 1], magnitudes[i]);
+        if (0..4).all(|j| (a[j] - b[j]).abs() <= 1e-7 * a[j].abs().max(1e-9)) {
+            println!(
+                "    ⛔⛔ {tag} (mfp {mfp}) é IDÊNTICO ao anterior nos QUATRO ângulos — o botão está \
+                 INERTE nesta faixa (o `max(mfp, 0.1)` do integral é um piso em unidades ABSOLUTAS \
+                 de mundo, e a peça desta cena tem raio 0,42)"
+            );
+        }
     }
     let (lo, hi) = todos
         .iter()

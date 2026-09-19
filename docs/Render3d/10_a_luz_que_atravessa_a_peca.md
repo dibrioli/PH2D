@@ -900,3 +900,33 @@ superar. ⛔ Nenhuma das duas referências de tempo real a lê.
 2. ⏳ **Derivar a forma fechada** do limite fino ao espesso — ⚠️ **derivar, não ajustar**: um ajuste
    de duas constantes a três pontos passa por mecanismo e não é.
 3. ⏳ **Só então** o produto, atrás de porta, com estas oito células como corpus de gates.
+
+### §17.6 — ⭐⭐⭐ O alvo APERTOU: a MAGNITUDE funciona, e só a MATIZ é surda
+
+| ângulo | a magnitude sobre `33×` de profundidade |
+|---|---:|
+| `N·L = 0,9` (a pino) | `1,209×` |
+| `N·L = 0,4` | **`1,031×`** |
+| `N·L = 0,0` (o terminador) | **`1,757×`** |
+| `N·L = −0,3` (o lado escuro) | **`3,503×`** |
+
+⭐ **A lei responde com força exactamente onde tem trabalho.** ⇒ *não há nada a mudar na forma dela —
+só na COR que a multiplica*, que é a cirurgia mais pequena possível para o defeito medido.
+
+⛔⛔⛔ **E uma armadilha de RÉGUA paga neste mesmo passo:** a 1.ª redacção desta sonda imprimia a
+magnitude **só em `N·L = 0,4`**, leu `1,03×` e eu quase publiquei *«o botão está quase morto»*. O
+`0,4` é o **PIVÔ** da redistribuição — o único ângulo onde esta lei, por construção, quase não se
+mexe —, e a razão de ela existir é o terminador, que era onde eu não estava a olhar.
+*Uma régua que amostra um ângulo só mede o sítio onde o fenómeno não está.*
+
+### §17.7 — ⛔⛔ E um SEGUNDO defeito, medido de caminho: `Subsurface Radius < 0,1` é INERTE
+
+`mfp = 0,03` e `mfp = 0,10` devolvem valores **idênticos nos quatro ângulos**. A causa é o
+`max(mfp, 0.1)` do `mx_integrate_burley_diffusion`, que é um piso em **unidades ABSOLUTAS de mundo**
+— e a peça desta cena tem raio `0,42`. ⇒ *um quarto do raio da peça é o chão do botão do artista, e
+abaixo dele o botão não faz nada.*
+
+⚠️ **O recurso que aquele piso guarda é NUMÉRICO** (o perfil diverge em `mfp → 0`), não físico — e
+§0.0: *um limite legítimo diz de que recurso ele é*. Um guarda numérico deveria ser **relativo à
+peça**, não absoluto. ⛔ Mudá-lo é **divergência declarada** da referência e move os gates da §4.1:
+fica **nomeado e não curado** nesta wave.

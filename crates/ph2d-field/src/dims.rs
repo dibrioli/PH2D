@@ -166,6 +166,21 @@ pub enum Param {
     /// ⭐ **O índice ser o da ARRUMAÇÃO é o que faz a escrita ser uma linha:** desempacota, escreve
     /// a posição, empacota. Uma numeração própria seria a segunda resposta à tabela do `pack`.
     Style(u8),
+    /// ⭐⭐⭐ **UM NÚMERO DO BRILHO DA CENA** (`docs/Render3d/12`, a `W7`) — e o índice é a posição na
+    /// arrumação do [`ph2d_bloom::Bloom::pack`], pela mesma razão do [`Param::Style`].
+    ///
+    /// # ⚠️ Porque ele NÃO é um `Style`, apesar de os dois serem direcção de arte da cena
+    ///
+    /// **O consumidor é outro, e é ele que decide a família.** O estilo é uma lei **por pixel** que
+    /// os dois motores partilham e que viaja no uniforme do sombreador; o brilho é um **passe sobre
+    /// o quadro inteiro**, que lê a vizinhança. Enfiá-lo na arrumação do
+    /// [`ph2d_style::wgsl::pack`] poria um pós-processamento dentro do uniforme por-pixel — *e o
+    /// cabeçalho daquela crate declara, por escrito, que ela é a lei que os dois motores correm em
+    /// cada pixel*.
+    ///
+    /// ⚠️⚠️ **O `entity` de uma linha destas também NÃO É LIDO** — a herança é a do `Style`, e a
+    /// razão é a mesma: o sujeito é a cena, e quem o decide é o dreno, pela FAMÍLIA.
+    Bloom(u8),
 }
 
 /// Quantos números um material tem — ver [`Param::Material`].

@@ -512,6 +512,20 @@ impl Smoke {
         self.forget_requests();
     }
 
+    /// ⭐⭐⭐ **Troca o BRILHO da cena** — a irmã do [`Smoke::set_style`], e pela mesma razão ela
+    /// larga o pedido guardado de **todos** os viewports.
+    ///
+    /// ⚠️ **O saneamento é AQUI, na porta** ([`ph2d_bloom::Bloom::sanitized`]) — a partir daqui o
+    /// número viaja para a thread que desenha, e ela não tem cerca.
+    pub fn set_bloom(&mut self, bloom: ph2d_field_render::Bloom) {
+        let bloom = bloom.sanitized();
+        if self.bloom == bloom {
+            return;
+        }
+        self.bloom = bloom;
+        self.forget_requests();
+    }
+
     /// ⭐⭐ **Larga o pedido guardado de TODOS os viewports** — a porta que diz *«o que está na tela
     /// deixou de descrever a cena»*.
     ///

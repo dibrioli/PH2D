@@ -77,6 +77,66 @@ impl Bloom {
     pub fn contributes(&self) -> bool {
         self.enabled && self.intensity > 0.0 && self.levels.iter().any(|w| *w > 0.0)
     }
+
+    /// ⭐⭐⭐ **QUANTOS NÚMEROS ESTE BRILHO TEM** — e o painel, a arrumação e o gémeo do dispositivo
+    /// contam-nos **daqui**, nunca à mão.
+    pub const SLOTS: usize = 4 + Self::LEVELS;
+
+    /// ⭐⭐⭐ **A ARRUMAÇÃO, e há UMA** — `[ligado, limiar, joelho, intensidade, nível 0..6]`.
+    ///
+    /// ⚠️ **Ela nasce antes do gémeo em WGSL de propósito.** O `Param::Bloom(n)` do painel carrega
+    /// esta posição, e o dia em que o dispositivo ganhar o passe ele lê o mesmo `n` — *uma segunda
+    /// numeração seria a resposta que envelhece no dia em que nascer um botão*, que é a lei que o
+    /// [`ph2d_style::wgsl::pack`] já escreve um módulo ao lado.
+    ///
+    /// ⚠️ **O interruptor viaja como número** (`0`/`1`): a arrumação de um uniforme não tem
+    /// booleanos, e ter DUAS travessias — uma para o `bool` e outra para os `f32` — seria a segunda
+    /// máquina ao lado de uma que funciona.
+    #[must_use]
+    pub fn pack(&self) -> [f32; Self::SLOTS] {
+        let mut v = [0.0; Self::SLOTS];
+        v[0] = f32::from(u8::from(self.enabled));
+        v[1] = self.threshold;
+        v[2] = self.knee;
+        v[3] = self.intensity;
+        v[4..].copy_from_slice(&self.levels);
+        v
+    }
+
+    /// A volta do [`Bloom::pack`]. ⚠️ **Ida-e-volta com gate**, porque uma arrumação com um só
+    /// sentido é meia arrumação.
+    #[must_use]
+    pub fn unpack(v: &[f32; Self::SLOTS]) -> Self {
+        let mut levels = [0.0; Self::LEVELS];
+        levels.copy_from_slice(&v[4..]);
+        Self {
+            // ⚠️ `> 0,5` e não `!= 0`: um arrasto entrega o meio do curso, e um `0,49` tem de
+            // decidir para um lado. *Um interruptor sem ponto de viragem declarado é um que muda de
+            // ideias no último bit.*
+            enabled: v[0] > 0.5,
+            threshold: v[1],
+            knee: v[2],
+            intensity: v[3],
+            levels,
+        }
+    }
+
+    /// ⭐⭐ **O SANEAMENTO é na PORTA**, como o do estilo — a partir daqui o número viaja para a
+    /// thread que desenha, e ela não tem cerca.
+    ///
+    /// ⚠️ **O que não é número vira o valor de fábrica e não zero:** um `NaN` no limiar com `0` faria
+    /// a cena inteira brilhar, e *uma recusa não pode ser mais destrutiva do que o pedido*.
+    #[must_use]
+    pub fn sanitized(mut self) -> Self {
+        let so_finito = |v: f32, fabrica: f32| if v.is_finite() { v.max(0.0) } else { fabrica };
+        self.threshold = so_finito(self.threshold, Self::THRESHOLD);
+        self.knee = so_finito(self.knee, Self::KNEE);
+        self.intensity = so_finito(self.intensity, Self::INTENSITY);
+        for (k, w) in self.levels.iter_mut().enumerate() {
+            *w = so_finito(*w, Self::NIVEIS[k]);
+        }
+        self
+    }
 }
 
 impl Default for Bloom {

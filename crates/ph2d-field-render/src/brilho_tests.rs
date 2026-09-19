@@ -334,3 +334,151 @@ fn o_que_nao_passa_do_limiar_nao_brilha() {
          logo a metade de cima deste gate não estava a afirmar nada"
     );
 }
+
+/// ⭐⭐⭐ **A SONDA DOS TECTOS** — `#[ignore]`, e o que ela imprime é o que a tabela das fileiras cita.
+///
+/// ⚠️ **§0.0: antes de escrever um tecto, MEÇA** — e a auditoria da camada de estilo (`11` §10.8)
+/// apanhou **três de cinco** dos tectos dela como palpite, um com o número errado por `4×`.
+///
+/// # ⛔⛔ A 1.ª redacção desta sonda MEDIA EM BYTES e SATUROU — a lição que o `12` §3.3 já escrevia
+///
+/// Ela contava *quantos píxeis do fundo mudaram* e *o byte de pico*, e sobre a peça acesa as duas
+/// colunas leram **`8 419` e `255` em toda a varredura**: o fundo inteiro, e o topo da faixa. *Uma
+/// régua que mede a SAÍDA do produto herda o tecto da saída do produto* — e a §3.3 daquele plano diz
+/// exactamente isto sobre a varredura do oráculo, três semanas antes.
+///
+/// ⇒ a régua é o **HALO em linear**, onde ele nasce: a soma sobre o fundo, o pico, e o **RAIO** até
+/// `1/255` a partir da borda da peça — as três colunas com que o oráculo foi medido, logo as três em
+/// que os dois lados são comparáveis.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --lib os_tectos_do_brilho -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda: imprime a tabela dos tectos, não afirma"]
+fn os_tectos_do_brilho() {
+    let g = disco();
+    let (w, h) = (LADO as usize, LADO as usize);
+    let pres = com(ph2d_bloom::Bloom::default());
+    let cena = crate::brilho::campo_de_cena(
+        &g,
+        &Orbit::default(),
+        &Surfaces {
+            all: &[OpenPbr {
+                base_color: [0.0; 3],
+                emission_luminance: 40.0,
+                emission_color: [1.0, 0.9, 0.7],
+                ..OpenPbr::default()
+            }
+            .prepare()],
+            owners: None,
+        },
+        &Lighting {
+            lamps: &[],
+            points: &[],
+            sky: &Ceu([0.0; 3]),
+            shadows: None,
+        },
+        &pres,
+    );
+    let pico_da_cena = cena
+        .iter()
+        .map(|p| p[0].max(p[1]).max(p[2]))
+        .fold(0.0f32, f32::max);
+
+    // A régua: soma linear do halo FORA da peça, o pico dele, e até onde ele chega.
+    let mede = |b: ph2d_bloom::Bloom| {
+        let halo = ph2d_bloom::halo(&cena, w, h, &b);
+        if halo.is_empty() {
+            return (0.0, 0.0, 0usize);
+        }
+        let (mut soma, mut pico, mut raio) = (0.0f64, 0.0f32, 0usize);
+        let (cx, cy) = (w / 2, h / 2);
+        for y in 0..h {
+            for x in 0..w {
+                let i = y * w + x;
+                if g.hit[i] {
+                    continue;
+                }
+                let v = halo[i][0].max(halo[i][1]).max(halo[i][2]);
+                soma += f64::from(v);
+                pico = pico.max(v);
+                if v >= 1.0 / 255.0 {
+                    let (dx, dy) = ((x as f64 - cx as f64), (y as f64 - cy as f64));
+                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                    let d = dx.hypot(dy).round() as usize;
+                    raio = raio.max(d);
+                }
+            }
+        }
+        (soma, f64::from(pico), raio)
+    };
+    let ligado = ph2d_bloom::Bloom {
+        enabled: true,
+        ..ph2d_bloom::Bloom::default()
+    };
+    let linha = |rot: String, b: ph2d_bloom::Bloom| {
+        let (s, p, r) = mede(b);
+        println!("{rot:>10} {s:>12.2} {p:>10.4} {r:>8}");
+    };
+    let cab = |t: &str| {
+        println!("\n=== {t} ===");
+        println!(
+            "{:>10} {:>12} {:>10} {:>8}",
+            "valor", "soma", "pico", "raio"
+        );
+    };
+
+    println!(
+        "\npico da CENA = {pico_da_cena:.3} · níveis que cabem a {w}×{h}: {}",
+        ph2d_bloom::levels_that_fit(w, h)
+    );
+    cab("LIMIAR (os outros de fábrica)");
+    for t in [0.0, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0] {
+        linha(
+            format!("{t:.2}"),
+            ph2d_bloom::Bloom {
+                threshold: t,
+                ..ligado
+            },
+        );
+    }
+    cab("JOELHO (limiar de fábrica)");
+    for k in [0.0, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0] {
+        linha(format!("{k:.3}"), ph2d_bloom::Bloom { knee: k, ..ligado });
+    }
+    cab("INTENSIDADE");
+    for i in [0.0, 0.1, 0.3, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0] {
+        linha(
+            format!("{i:.2}"),
+            ph2d_bloom::Bloom {
+                intensity: i,
+                ..ligado
+            },
+        );
+    }
+    cab("UM NÍVEL DE CADA VEZ (peso 1)");
+    for k in 0..ph2d_bloom::Bloom::LEVELS {
+        let mut niveis = [0.0f32; ph2d_bloom::Bloom::LEVELS];
+        niveis[k] = 1.0;
+        linha(
+            format!("n{k}"),
+            ph2d_bloom::Bloom {
+                levels: niveis,
+                ..ligado
+            },
+        );
+    }
+    cab("O PESO DO NÍVEL 1 (o mais forte de fábrica)");
+    for w in [0.0, 0.25, 0.5, 0.8, 1.0, 2.0, 4.0, 8.0, 16.0] {
+        let mut niveis = [0.0f32; ph2d_bloom::Bloom::LEVELS];
+        niveis[1] = w;
+        linha(
+            format!("{w:.2}"),
+            ph2d_bloom::Bloom {
+                levels: niveis,
+                ..ligado
+            },
+        );
+    }
+}

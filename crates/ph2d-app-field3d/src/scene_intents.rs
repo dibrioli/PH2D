@@ -334,6 +334,19 @@ pub(super) fn apply(
                     s.set_style(crate::estilo::with_colour(s.style, slot, srgb));
                 });
             }
+            // ⭐⭐⭐ **O BRILHO** (`docs/Render3d/12`) — a mesma forma do estilo, e pelas mesmas duas
+            // razões: o `entity` não é lido (o sujeito é a cena) e o braço vem ANTES do genérico.
+            //
+            // ⛔ **Não há braço de COR**: nenhuma das onze fileiras do brilho é uma amostra.
+            ph2d_panel_model3d::ModelIntent::SetParam {
+                param: ph2d_field::Param::Bloom(slot),
+                value,
+                ..
+            } => {
+                crate::smoke::with_smoke(|s| {
+                    s.set_bloom(crate::brilho_painel::with_number(s.bloom, slot, value));
+                });
+            }
             // ⭐⭐⭐ **UMA COR** (Enio, 2026-09-14) — a travessia sRGB → linear, e três escritas.
             //
             // ⚠️ **As três correm no MESMO quadro, e é isso que as torna UM passo de undo**: o

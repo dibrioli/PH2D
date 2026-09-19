@@ -594,13 +594,34 @@ fn a_cena_da_cor_declara_o_material_da_medicao() {
             "sem realce a lavar o que se quer ver"
         );
     }
-    // ⚠️ E nenhuma OUTRA cena pede material — o mecanismo nasceu para esta e um segundo consumidor
-    // silencioso mudaria uma cena que alguém já aprovou.
+    // ⭐⭐⭐ **E O CENSO — a premissa dele MORREU em 2026-09-19, que é para o que ele existe.**
+    //
+    // ⛔ Ele dizia *«nenhuma OUTRA cena pede material — o mecanismo nasceu para esta, e um segundo
+    // consumidor silencioso mudaria uma cena que alguém já aprovou»*, e reprovou no dia em que o
+    // segundo chegou: a **`=36`** (o BRILHO, `docs/Render3d/12`) semeia três luzes de forças
+    // diferentes. *Ele não foi contornado — foi reescrito com a morte da premissa à vista no diff*,
+    // e a metade que continua a valer é a que importa: **quem pede material está nesta lista**.
+    //
+    // ⚠️ E a lista é de PARES, não um `!=`: um censo escrito como *«só a 34 e a 36»* aceitaria a
+    // 36 a semear o material da 34.
+    const QUEM_SEMEIA: [(u32, &str); 2] = [
+        (34, "a cor que a profundidade deixa"),
+        (36, "as três luzes do brilho"),
+    ];
     for n in 1..=crate::smoke::scenes::CENAS {
+        let esperado = QUEM_SEMEIA.iter().find(|(k, _)| *k == n);
         assert_eq!(
             crate::smoke::scenes::materiais_da_cena(n).is_some(),
-            n == 34,
+            esperado.is_some(),
             "a cena {n} mudou de material sem ninguém dizer"
+        );
+    }
+    // ⭐ E a metade NEGATIVA do censo: uma entrada que já não descreve nada tem de sair. *Uma lista
+    // de tolerância sem censo de obsolescência não desce — ela vira licença* (`CLAUDE.md` §5.0).
+    for (n, porque) in QUEM_SEMEIA {
+        assert!(
+            crate::smoke::scenes::materiais_da_cena(n).is_some(),
+            "a entrada «{n}: {porque}» já não descreve nada — apague-a"
         );
     }
 }

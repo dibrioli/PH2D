@@ -86,6 +86,11 @@ pub fn set_param(
         // ⚠️ E a recusa é **em voz alta**: sem este braço o `match` não compila no dia em que a
         // família nascer, que é exactamente como ele nasceu.
         Param::Style(_) => Err(FieldError::BadRoot),
+        // ⭐ **E o BRILHO pela MESMÍSSIMA razão** (`docs/Render3d/12`): ele é da cena, vive na vista
+        // (`Smoke::bloom`) e quem o escreve é o dreno do painel, pela família. ⚠️ *Este braço nasceu
+        // porque o `match` não compilou* — que é a metade do desenho que o `Param::Style` acima já
+        // declara por escrito, agora com um segundo caso a prová-la.
+        Param::Bloom(_) => Err(FieldError::BadRoot),
         Param::Material(k) => {
             let mut m = world
                 .get::<crate::FieldMaterial>(entity)

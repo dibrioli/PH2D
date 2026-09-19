@@ -381,3 +381,105 @@ pub fn cena_35() -> Result<FieldDoc, ph2d_field::FieldError> {
     ));
     FieldDoc::new(nodes, NodeId(6))
 }
+
+/// ⭐⭐⭐ **OS BRILHOS da cena `=36`** — três luzes, e o que as separa é UM número: quão fortes são.
+///
+/// ⚠️⚠️ **A escada é de `4×` e não de `2×`, e isso é MEDIDO:** o limiar de fábrica é `1` e a lei
+/// corta na luminância de **pico**, logo duas luzes a `2` e a `4` acendem-se as duas e o artista vê
+/// *«o limiar apagou tudo de uma vez»*. Com `2 · 8 · 32` cada volta do limiar apaga **uma**, e é
+/// isso que faz a cena ENSINAR o botão em vez de o demonstrar.
+///
+/// ⭐ **E o `32` é o número que a nota do [`ph2d_field_ecs::FieldMaterial::emission`] mede:** acima
+/// dele a peça sai **bit a bit a mesma** na tela. *Ele satura a IMAGEM e continua a alimentar o
+/// BRILHO* — que é a melhor demonstração de que este passe lê o quadro ANTES do olhar, e o roteiro
+/// di-lo por extenso.
+pub const BRILHOS_DA_CENA: [f32; 3] = [2.0, 8.0, 32.0];
+
+/// ⭐⭐⭐ **A cena `=36` — O BRILHO** (`docs/Render3d/12`, a `W7`).
+///
+/// # ⚠️ Porque três luzes numa fileira, e uma peça ESCURA por baixo
+///
+/// Um halo só se vê contra o que ele **não** é: uma cena toda acesa não tem onde o mostrar, e uma
+/// toda apagada não o produz. ⇒ três esferas acesas sobre uma **barra escura** que as atravessa —
+/// ela é o controlo, e é nela que se lê se o halo derramou para fora das luzes.
+///
+/// ⚠️ **As posições e a barra são as da [`cena_35`]**, e de propósito: aquela disposição foi
+/// corrigida por FOTO (as covas de lado, a barra cortada pela barra de estado), e *reescrever uma
+/// disposição já fotografada é pagar as mesmas três correcções outra vez*.
+pub fn cena_36() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!("[field-smoke] cena 36 — O BRILHO: a luz forte DERRAMA para fora da peca.");
+    println!(
+        "[field-smoke]            (0) ⚠️ ESTA CENA PRECISA DE UMA BANDEIRA. Feche o app e abra-o \
+         com PH2D_FIELD_GPU=0 (esta' no comando que lhe foi dado). Sem ela as fileiras do brilho \
+         aparecem APAGADAS e dizem porque'."
+    );
+    println!(
+        "[field-smoke]            (1) MODEL · separador Model, em cima · painel do topo, Shading · \
+         Render. A seccao BLOOM e' a ULTIMA do painel da direita, a seguir a STYLE."
+    );
+    println!(
+        "[field-smoke]            (2) ponha Bloom em ON. As tres bolas ganham um HALO que derrama \
+         para fora delas; a barra escura nao ganha nada."
+    );
+    println!(
+        "[field-smoke]            (3) suba Threshold devagar. As bolas apagam-se UMA DE CADA VEZ, \
+         da mais fraca para a mais forte — e' isso que o numero faz: escolhe quao forte uma luz \
+         tem de ser para brilhar."
+    );
+    println!(
+        "[field-smoke]            (4) Intensity muda a FORCA do halo; as fileiras Size 1..7 mudam o \
+         TAMANHO dele (cada uma e' o dobro da anterior). Suba Size 5 e o halo abre-se pelo ecra."
+    );
+    println!(
+        "[field-smoke]            (5) Knee arredonda a passagem: com ele a zero uma bola acende \
+         DE REPENTE ao cruzar o Threshold; com ele alto ela acende aos poucos."
+    );
+    println!(
+        "[field-smoke]            (6) uma fileira APAGADA nao e' um defeito: ela diz porque e' que \
+         nao faz nada agora. Faca o que a frase manda e ela acende."
+    );
+    println!(
+        "[field-smoke]            (7) como saber que falhou: se pos Bloom em ON e NENHUMA bola \
+         ganhou halo, PARE. Se o halo aparecer com Bloom em OFF, PARE. E se a BARRA escura ganhar \
+         halo proprio, PARE — ela nao emite luz."
+    );
+    println!(
+        "[field-smoke]            (⚠️) se uma janela flutuante estiver por cima da peca, feche-a no \
+         X dela: a arrumacao dos paineis fica gravada entre sessoes, fora do projecto."
+    );
+    // ⚠️ **A ORDEM é a da TRAVESSIA** — os filhos, depois o combine. A `cena_35` pagou esta.
+    let mut nodes: Vec<Node> = BRILHOS_DA_CENA
+        .iter()
+        .enumerate()
+        .map(|(i, _)| {
+            #[allow(clippy::cast_precision_loss)]
+            let x = -0.70 + 0.70 * i as f32;
+            leaf(
+                Primitive::Sphere { radius: 0.22 },
+                Xform {
+                    translation: [x, 0.12, 0.0],
+                    ..Xform::IDENTITY
+                },
+            )
+        })
+        .collect();
+    // ⭐ A BARRA escura, atravessada — o CONTROLO da cena: ela não emite, logo não pode brilhar.
+    nodes.push(leaf(
+        Primitive::Box {
+            half: [1.05, 0.06, 0.06],
+            round: 0.03,
+            chamfer: 0.0,
+        },
+        Xform {
+            translation: [0.0, -0.26, 0.0],
+            ..Xform::IDENTITY
+        },
+    ));
+    #[allow(clippy::cast_possible_truncation)]
+    let n = nodes.len() as u32;
+    nodes.push(combine(
+        Op::Union(ph2d_field::Blend::Sharp),
+        (0..n).map(NodeId).collect(),
+    ));
+    FieldDoc::new(nodes, NodeId(n))
+}

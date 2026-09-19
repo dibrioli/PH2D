@@ -179,3 +179,145 @@ fn um_nivel_mudo_continua_a_alimentar_o_seguinte() {
         "com só o 3.º nível aceso ainda tem de haver halo a 20 px — leu {fora}"
     );
 }
+
+/// ⭐⭐⭐ **A ARRUMAÇÃO VAI E VOLTA** — e com os DOIS lados, porque uma que só vai é meia arrumação.
+///
+/// ⚠️ O corpus tem o interruptor nas duas posições e números fora do comum de propósito: *uma
+/// ida-e-volta medida só no valor de fábrica afirma sobre uma célula e lê-se como afirmando sobre a
+/// tabela toda.*
+#[test]
+fn a_arrumacao_vai_e_volta() {
+    let corpus = [
+        ("fábrica", Bloom::default()),
+        (
+            "ligado e torto",
+            Bloom {
+                enabled: true,
+                threshold: 2.75,
+                knee: 0.125,
+                intensity: 1.5,
+                levels: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
+            },
+        ),
+        (
+            "tudo a zero",
+            Bloom {
+                enabled: false,
+                threshold: 0.0,
+                knee: 0.0,
+                intensity: 0.0,
+                levels: [0.0; Bloom::LEVELS],
+            },
+        ),
+    ];
+    for (rot, b) in corpus {
+        let volta = Bloom::unpack(&b.pack());
+        assert_eq!(volta.enabled, b.enabled, "{rot}: o interruptor perdeu-se");
+        assert_eq!(
+            volta.pack().map(f32::to_bits),
+            b.pack().map(f32::to_bits),
+            "{rot}: a volta não é a ida"
+        );
+    }
+    // ⚠️ E a CONTAGEM é derivada, nunca escrita: `4` números mais os níveis.
+    assert_eq!(Bloom::SLOTS, 4 + Bloom::LEVELS);
+    assert_eq!(Bloom::default().pack().len(), Bloom::SLOTS);
+}
+
+/// ⛔ **O SANEAMENTO acontece na PORTA, e o que não é número vira FÁBRICA e não zero.**
+///
+/// ⚠️ *Uma recusa não pode ser mais destrutiva do que o pedido:* um `NaN` no limiar saneado para `0`
+/// poria a cena inteira a brilhar — o oposto do que quem escreveu o `NaN` podia querer.
+#[test]
+fn o_saneamento_devolve_a_fabrica_e_nunca_o_zero() {
+    let doente = Bloom {
+        enabled: true,
+        threshold: f32::NAN,
+        knee: f32::INFINITY,
+        intensity: -3.0,
+        levels: [f32::NAN, -1.0, 0.4, 0.0, 0.0, 0.0, 0.0],
+    }
+    .sanitized();
+    assert_eq!(
+        doente.threshold,
+        Bloom::THRESHOLD,
+        "o NaN não virou fábrica"
+    );
+    assert_eq!(doente.knee, Bloom::KNEE, "o infinito não virou fábrica");
+    // ⭐ Um NEGATIVO é um número: ele tem cerca (`0`), não vale o valor de fábrica.
+    assert_eq!(
+        doente.intensity, 0.0,
+        "um negativo é um número e corta em zero"
+    );
+    assert_eq!(
+        doente.levels[0],
+        Bloom::NIVEIS[0],
+        "o nível NaN não virou fábrica"
+    );
+    assert_eq!(doente.levels[1], 0.0, "um nível negativo corta em zero");
+    assert_eq!(doente.levels[2], 0.4, "um nível são não pode ser tocado");
+    // ⭐ E o CONTROLO: um brilho já são sai AO BIT.
+    let sao = Bloom {
+        enabled: true,
+        ..Bloom::default()
+    };
+    assert_eq!(
+        sao.sanitized().pack().map(f32::to_bits),
+        sao.pack().map(f32::to_bits),
+        "o saneamento mexeu num brilho que já estava são"
+    );
+}
+
+/// ⭐⭐⭐ **A SONDA DO JOELHO** — `#[ignore]`, sobre uma RAMPA, que é a única fixtura onde ele existe.
+///
+/// ⛔⛔ **A sonda dos tectos do consumidor mediu o joelho e leu o MESMO número nas nove células**
+/// (`3 423,70` de `0` a `16`), e a leitura ingénua disso é *«o joelho está morto»*. Ele não está: a
+/// fixtura de lá é um disco de brilho **CHATO** a `40`, e com o limiar em `1` todo pixel dela tem
+/// `duro = 39` — muito acima de qualquer joelho. *O joelho molda a PASSAGEM entre «não brilha» e
+/// «brilha», logo uma fixtura sem píxeis na passagem não o contém.*
+///
+/// ⇒ a régua é uma **RAMPA** de luminância que atravessa o limiar, e o que se mede é a soma do
+/// corte ao longo dela.
+///
+/// ```text
+/// cargo test -p ph2d-bloom --lib a_sonda_do_joelho -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda: imprime a tabela do joelho, não afirma"]
+fn a_sonda_do_joelho() {
+    const N: usize = 2001;
+    // A rampa: luminância de `0` a `4`, com o limiar em `1`.
+    let rampa: Vec<f32> = (0..N)
+        .map(|i| {
+            #[allow(clippy::cast_precision_loss)]
+            let f = i as f32;
+            f * 4.0 / (N - 1) as f32
+        })
+        .collect();
+    println!(
+        "\n{:>8} {:>12} {:>14} {:>14} {:>12}",
+        "joelho", "soma", "1.ª luz em", "cheio em", "largura"
+    );
+    for k in [0.0, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0] {
+        let b = Bloom {
+            threshold: 1.0,
+            knee: k,
+            ..Bloom::default()
+        };
+        let mut soma = 0.0f64;
+        let (mut primeira, mut cheio) = (None, None);
+        for &l in &rampa {
+            let w = bright([l, l, l], &b)[0];
+            soma += f64::from(w);
+            if w > 0.0 && primeira.is_none() {
+                primeira = Some(l);
+            }
+            // «cheio» = o corte duro alcança o corte com joelho a menos de 1 %.
+            if w > 0.0 && (w - (l - 1.0).max(0.0)).abs() <= 0.01 * w && cheio.is_none() && l > 1.0 {
+                cheio = Some(l);
+            }
+        }
+        let (p, c) = (primeira.unwrap_or(f32::NAN), cheio.unwrap_or(f32::NAN));
+        println!("{k:>8.3} {soma:>12.3} {p:>14.4} {c:>14.4} {:>12.4}", c - p);
+    }
+}

@@ -420,29 +420,88 @@ fn uma_fileira_inerte_diz_porque_esta_apagada() {
 /// o gate fica verde a medir nada — a falha muda que o `CLAUDE.md` §5.0 nomeia.
 #[test]
 fn o_roteiro_da_cena_nomeia_controlos_que_existem() {
+    // ⛔⛔⛔ **A JANELA DA 1.ª REDACÇÃO ESCAPAVA PARA O FIM DO FICHEIRO, e isso passou despercebido
+    // por um dia inteiro.** Ela era `fonte[i..]` cortada no *primeiro* `pub fn cena_35` **a seguir**
+    // ao `println!` — e aquela assinatura vem ANTES dele, logo o `find` devolvia `None` e o
+    // `map_or(fonte.len(), …)` lia do roteiro **até ao fim do ficheiro**.
+    //
+    // ⚠️ *Enquanto a `=35` foi a última cena do ficheiro isso não se via*: a janela errada e a certa
+    // continham o mesmo texto. Quem o expôs foi a cena `=36`, cujos doc-comments a janela passou a
+    // engolir — e o gate acusou `Curvature Sharpness` (um nome ANTIGO que um comentário guarda de
+    // propósito) e `Com 2  8  32`. *Uma janela que se estende até ao fim do ficheiro e uma janela
+    // certa leem-se iguais enquanto o ficheiro acabar ali.*
+    //
+    // ⇒ a colheita passa a ser **derivada e de TODOS os roteiros deste ficheiro**: as linhas dentro
+    // de um `println!` que anuncia um passo, e nada mais. ⛔ Um doc-comment não entra — ele guarda a
+    // história, e citar um nome morto é o trabalho dele.
     let fonte = include_str!("smoke_scenes_edge.rs");
-    let i = fonte
-        .find("cena 35 — O ESTILO")
-        .expect("o roteiro da =35 mudou de sítio");
-    let j = fonte[i..]
-        .find("pub fn cena_35")
-        .map_or(fonte.len(), |k| i + k);
-    // ⚠️ A janela é do `println!` do roteiro até ao corpo da cena — o doc-comment acima dela fala
-    // do mecanismo e cita nomes antigos de propósito (a história é o que ele existe para guardar).
-    let roteiro = &fonte[i..j.max(i)];
-    let roteiro = if roteiro.len() < 200 {
-        &fonte[i..]
-    } else {
-        roteiro
-    };
+    let mut roteiro = String::new();
+    let mut dentro = false;
+    for linha in fonte.lines() {
+        let podada = linha.trim_start();
+        // ⛔ Um comentário nunca entra, nem quando repete a marca.
+        if podada.starts_with("//") {
+            continue;
+        }
+        if podada.contains("[field-smoke]") {
+            dentro = true;
+        }
+        if dentro {
+            roteiro.push_str(linha);
+            roteiro.push(' ');
+            if podada.contains(");") {
+                dentro = false;
+            }
+        }
+    }
+    // ⚠️ Piso de população: sem ele, uma marca renomeada faria a colheita devolver o vazio e o gate
+    // ficaria verde a medir nada.
+    assert!(
+        roteiro.len() > 2000,
+        "a colheita dos roteiros devolveu {} bytes — ela partiu-se",
+        roteiro.len()
+    );
+    let roteiro = roteiro.as_str();
 
-    let vivos: std::collections::BTreeSet<String> = LINHAS
+    // ⭐⭐⭐ **A POPULAÇÃO É TODA SECÇÃO DA CENA, e a premissa «só há o Style» MORREU em 2026-09-19.**
+    //
+    // ⛔ A 1.ª redacção lia só a tabela deste módulo, e reprovou no dia em que o roteiro da `=36`
+    // passou a nomear *Bloom*, *Threshold* e *Size 1*. ⚠️ **A cura barata era acrescentá-los ao
+    // `FORA`** — e isso é exactamente como uma lista de excepções cresce até não medir nada: ela
+    // passaria a aprovar um roteiro que nomeasse um controlo do brilho que NÃO existe.
+    //
+    // ⇒ os rótulos vivos são a UNIÃO das secções que o [`crate::scene_panel`] apende ao retrato, e
+    // cada uma entra pela **própria** tabela. *Uma terceira secção reprova este gate até alguém a
+    // juntar aqui, que é a diferença entre uma lista que alguém tem de se lembrar de estender e uma
+    // que não fica verde sem a extensão.*
+    let mut vivos: std::collections::BTreeSet<String> = LINHAS
         .iter()
         .map(|l| ph2d_i18n::tr(l.key).to_string())
         .collect();
+    vivos.extend(
+        crate::brilho_painel::rows(ph2d_field_render::Bloom::default(), true, false)
+            .iter()
+            .map(|r| ph2d_i18n::tr(r.key).to_string()),
+    );
+    // ⭐⭐⭐ **E OS DO MATERIAL**, que a janela corrigida passou a alcançar: com ela certa, este gate
+    // deixou de ler só o roteiro da `=35` e passou a ler os de TODAS as cenas deste ficheiro — e a
+    // `=33` manda carregar em *Thin Walled* e *Subsurface Radius*, que são fileiras do material.
+    //
+    // ⭐ **A porta já existia e o doc dela declara este uso por escrito**
+    // ([`ph2d_field_ecs::material_key`]: *«ela existe para um CENSO poder nomear o que mede sem
+    // escrever uma segunda lista»*). ⛔ Uma lista à mão aqui seria essa segunda lista.
+    for k in 0..ph2d_field::MATERIAL_FIELDS {
+        if let Some(chave) = ph2d_field_ecs::material_key(k) {
+            vivos.insert(ph2d_i18n::tr(chave).to_string());
+        }
+    }
+    // ⚠️ E as ESCOLHAS de uma fileira também são rótulos que um roteiro pode nomear.
+    for chave in ["field.dim.thin_walled_no", "field.dim.thin_walled_yes"] {
+        vivos.insert(ph2d_i18n::tr(chave).to_string());
+    }
     assert!(
-        vivos.len() >= 10,
-        "a tabela encolheu: {} rótulos",
+        vivos.len() >= 10 + 11 + 30,
+        "a população encolheu: {} rótulos entre as secções deste painel",
         vivos.len()
     );
 
@@ -454,36 +513,83 @@ fn o_roteiro_da_cena_nomeia_controlos_que_existem() {
         "Model",   // o separador do painel, no canto superior direito
     ];
 
-    // Candidatos: corridas de `Palavra Palavra` em **Maiúscula Inicial** — a forma com que TODO
-    // rótulo desta secção é escrito, e que a ênfase em CAIXA ALTA do roteiro não tem.
-    // ⚠️ Derivado do texto, nunca uma lista escrita à mão.
-    let mut candidatos: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
-    let palavras: Vec<&str> = roteiro.split_whitespace().collect();
-    let maiuscula = |w: &str| {
+    // ⭐⭐⭐ **A RÉGUA É A CORRIDA CONTER UM RÓTULO — e a 1.ª redacção comparava a corrida INTEIRA.**
+    //
+    // ⛔ Ela colhia pares de `Palavra Palavra` em Maiúscula Inicial e exigia que o PAR fosse um
+    // rótulo. Isso partiu-se em 2026-09-19 sobre um roteiro CERTO: a frase *«Suba Size 5 …»* forma
+    // o par `Suba Size`, porque o extractor recusa dígitos e o rótulo real é **`Size 5`**.
+    //
+    // ⚠️⚠️ **A cura barata era pôr `Suba` no [`FORA`]**, e é assim que uma lista de excepções cresce
+    // até não medir nada: com ela lá dentro, um roteiro que mandasse carregar num `Suba Tamanho`
+    // inexistente passaria. ⇒ a régua passa a ser *«esta corrida CONTÉM um rótulo vivo»*, que é
+    // estritamente mais forte — ela continua a apanhar o defeito de origem (um `Rim Width` cujo
+    // rótulo virou `Rim Falloff` não contém rótulo nenhum) e deixa de acusar o português à volta.
+    let e_rotulo_ish = |w: &str| {
+        // ⛔⛔ **O VAZIO tem de sair PRIMEIRO, e a 1.ª redacção não o tirava:** `"".chars().all(…)`
+        // é **vacuamente verdadeiro**, logo toda a pontuação — que o `trim_matches` abaixo reduz a
+        // uma string vazia — entrava nas corridas e colava-as umas às outras. *Um `all` sobre um
+        // conjunto vazio é a forma mais silenciosa de um predicado dizer que sim.*
+        if w.is_empty() {
+            return false;
+        }
         let mut c = w.chars();
-        c.next().is_some_and(char::is_uppercase)
-            && c.clone().all(char::is_lowercase)
-            && w.chars().all(char::is_alphabetic)
-            && w.len() > 2
+        let inicial = c.next().is_some_and(char::is_uppercase) && c.clone().all(char::is_lowercase);
+        (inicial && w.chars().all(char::is_alphabetic) && w.len() > 2)
+            // ⭐ Os DÍGITOS entram, porque um rótulo pode tê-los (`Size 5`) — e era exactamente
+            // recusá-los que fazia o extractor inventar um par que o texto não contém.
+            || w.chars().all(|c| c.is_ascii_digit())
     };
-    for par in palavras.windows(2) {
-        if maiuscula(par[0]) && maiuscula(par[1]) {
-            candidatos.insert(format!("{} {}", par[0], par[1]));
+    // As corridas MÁXIMAS de palavras assim.
+    let mut corridas: Vec<Vec<&str>> = Vec::new();
+    let mut corrente: Vec<&str> = Vec::new();
+    for w in roteiro.split_whitespace() {
+        // ⚠️ A pontuação encosta na palavra (`Render.`, `STYLE,`): tira-se para a decidir, e o que
+        // entra na corrida é a palavra limpa.
+        let limpa = w.trim_matches(|c: char| !c.is_alphanumeric());
+        if e_rotulo_ish(limpa) {
+            corrente.push(limpa);
+        } else {
+            if corrente.len() >= 2 {
+                corridas.push(std::mem::take(&mut corrente));
+            } else {
+                corrente.clear();
+            }
         }
     }
+    if corrente.len() >= 2 {
+        corridas.push(corrente);
+    }
     assert!(
-        candidatos.len() >= 6,
-        "o extractor colheu {} candidatos — ele partiu-se e o gate mediria o nada",
-        candidatos.len()
+        corridas.len() >= 6,
+        "o extractor colheu {} corridas — ele partiu-se e o gate mediria o nada",
+        corridas.len()
     );
 
-    let orfaos: Vec<&String> = candidatos
+    // ⚠️ Um rótulo pode ter parêntesis (`Size 1 (finest)`), e o roteiro nunca os escreve: a
+    // comparação é pelas PALAVRAS do rótulo até ao 1.º parêntesis.
+    let nucleo = |s: &str| -> Vec<String> {
+        s.split_whitespace()
+            .take_while(|w| !w.starts_with('('))
+            .map(str::to_string)
+            .collect()
+    };
+    let nucleos: Vec<Vec<String>> = vivos.iter().map(|v| nucleo(v)).collect();
+    let contem_rotulo = |c: &[&str]| {
+        nucleos.iter().any(|n| {
+            !n.is_empty()
+                && c.windows(n.len())
+                    .any(|j| j.iter().zip(n).all(|(a, b)| a == b))
+        })
+    };
+
+    let orfaos: Vec<String> = corridas
         .iter()
-        .filter(|c| !vivos.contains(*c))
-        .filter(|c| !c.split_whitespace().any(|w| FORA.contains(&w)))
+        .filter(|c| !contem_rotulo(c))
+        .filter(|c| !c.iter().any(|w| FORA.contains(w)))
+        .map(|c| c.join(" "))
         .collect();
     assert!(
         orfaos.is_empty(),
-        "o roteiro manda carregar em controlos que a secção não tem: {orfaos:?}\n  vivos: {vivos:?}"
+        "o roteiro manda carregar em controlos que a cena não tem: {orfaos:?}\n  vivos: {vivos:?}"
     );
 }

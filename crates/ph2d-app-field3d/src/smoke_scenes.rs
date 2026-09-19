@@ -132,7 +132,7 @@ pub fn leaf(p: Primitive, x: Xform) -> Node {
 /// ⚠️ Ele **conta-se lendo o `match` abaixo**, nunca de memória: o gate
 /// `the_router_answers_for_every_level_it_claims` mede-o pelas DUAS pontas — a cena `CENAS` tem de
 /// ser dela própria, e a `CENAS + 1` tem de cair no `_`.
-pub const CENAS: u32 = 35;
+pub const CENAS: u32 = 36;
 
 /// **As cenas PODADAS em 2026-09-11** — nenhum doc as citava pelo número e nenhum código as usava
 /// (ordem do Enio, briefing W2 §3.2). `952` linhas.
@@ -173,6 +173,26 @@ pub const PODADAS: &[u32] = &[8, 9, 10, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 
 /// `Vec` mais curto que as folhas deixa as que sobram no material de omissão, de propósito.
 #[must_use]
 pub fn materiais_da_cena(n: u32) -> Option<Vec<ph2d_field_ecs::FieldMaterial>> {
+    // ⭐⭐⭐ **A cena do BRILHO**: três luzes de forças diferentes mais a BARRA escura, que é o
+    // controlo — ela não emite, logo não pode brilhar. ⚠️ O `Vec` é mais curto do que as folhas
+    // **de propósito** (a barra fica no material de omissão), que é a lei escrita no doc acima.
+    if n == 36 {
+        return Some(
+            edge::BRILHOS_DA_CENA
+                .iter()
+                .map(|&forca| ph2d_field_ecs::FieldMaterial {
+                    emission: forca,
+                    // ⚠️ Um branco levemente QUENTE: um halo branco puro sobre fundo neutro lê-se
+                    // como um artefacto de exposição, e o que se quer mostrar é LUZ.
+                    emission_color: [1.0, 0.92, 0.80],
+                    // ⚠️ Realce a zero: um brilho especular por cima confunde o que é halo com o
+                    // que é reflexo, e a cena existe para separar as duas coisas.
+                    specular_weight: 0.0,
+                    ..ph2d_field_ecs::FieldMaterial::default()
+                })
+                .collect(),
+        );
+    }
     // ⭐ A cena da COR: quatro esferas, a MESMA tinta, as quatro profundidades do oráculo.
     if n != 34 {
         return None;
@@ -450,6 +470,8 @@ pub fn scene(n: u32) -> FieldDoc {
         // ⭐⭐⭐ A COR QUE A PROFUNDIDADE DEIXA — ver [`edge::cena_34`].
         34 => edge::cena_34(),
         35 => edge::cena_35(),
+        // ⭐⭐⭐ O BRILHO da W7 — ver [`edge::cena_36`].
+        36 => edge::cena_36(),
         _ => {
             // ⛔⛔ **O ROTEADOR DIZ QUANDO O NÚMERO NÃO EXISTE** (W2).
             //

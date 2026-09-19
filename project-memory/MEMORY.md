@@ -27,6 +27,7 @@
 - ⭐ [**Como um CONTROLO mente** — a família (10)](reference_topic_control_design_hazards.md)
 - ⛔ [Passo de smoke que clica numa LINHA de painel tem de provar que ela está na lista](feedback_a_smoke_step_that_names_a_panel_row_must_prove_the_row_is_in_the_list.md)
 - ⛔ [Smoke ao dono explica o que cada coisa na tela É; cada passo conduzido e fotografado](feedback_a_smoke_for_the_owner_explains_what_each_thing_on_screen_is.md)
+- ⛔⛔⛔ [Ordem que MOVE tem duas metades — cumprir só a que RETIRA apaga a capacidade em silêncio, e a lei órfã passa em todos os gates](feedback_an_order_with_two_halves_can_be_obeyed_only_in_the_half_that_removes.md)
 - ⛔⛔ [NUNCA `spectacle` em `kwin --virtual` (fotografa o ecrã REAL); `import -window`](feedback_spectacle_in_a_virtual_kwin_photographs_the_owners_real_screen.md)
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo** ([§SUPRESSÃO](feedback_perfection_no_deferrals.md)) — meio-feito é pior que não começar
 - ⛔ [Restaurar mutação com `mv` deixa o build DA MUTAÇÃO — `touch` no fim](feedback_a_mutation_restore_by_mv_leaves_cargo_with_the_mutated_build.md)

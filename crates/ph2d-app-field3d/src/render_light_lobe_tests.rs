@@ -321,7 +321,7 @@ fn measure_what_the_lobe_cure_changes_in_the_pixel() {
                     sky,
                     shadows: None,
                 },
-                olhar,
+                &ph2d_field_render::Presentation::of(olhar),
                 BG,
             )
         };

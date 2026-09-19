@@ -101,7 +101,7 @@ pub(super) fn quadro_na_cpu(
             sky: &crate::render_light::StudioSky,
             shadows: Some(&sh),
         },
-        olhar,
+        &ph2d_field_render::Presentation::of(olhar),
         FUNDO,
     )
     .len()
@@ -166,7 +166,18 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
         // em que o tecto desceu, e a linha *«13 de 17»* leu-se como se a peça tivesse melhorado.
         // *Uma população que muda por baixo de uma razão é a catraca que vira licença.*
         let Some(_) = crate::gpu_frame::paint(
-            t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, LW, LH, false,
+            t,
+            &doc,
+            &reg,
+            &cam,
+            &luz,
+            &surfaces,
+            &ph2d_field_render::Presentation::of(olhar),
+            BG,
+            None,
+            LW,
+            LH,
+            false,
         ) else {
             let guardados = ph2d_field_eval::device::DeviceField::new(&doc, &reg)
                 .and_then(|c| c.tape_shape())
@@ -178,7 +189,18 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
         // A segunda corrida é a que conta: a primeira compila o pipeline e sobe a grade.
         let t0 = std::time::Instant::now();
         let _ = crate::gpu_frame::paint(
-            t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, LW, LH, false,
+            t,
+            &doc,
+            &reg,
+            &cam,
+            &luz,
+            &surfaces,
+            &ph2d_field_render::Presentation::of(olhar),
+            BG,
+            None,
+            LW,
+            LH,
+            false,
         )
         .expect("o pintor");
         #[allow(clippy::cast_possible_truncation)]
@@ -374,13 +396,37 @@ fn na_faixa_do_produto_a_placa_ganha_com_margem() {
         let sonda = crate::gpu_frame::Sonda::default();
         // Aquecimento fora da conta: a primeira compila o pipeline.
         let _ = crate::gpu_frame::paint_com(
-            t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, None, LW, LH, false, sonda,
+            t,
+            &doc,
+            &reg,
+            &cam,
+            &luz,
+            &surfaces,
+            &ph2d_field_render::Presentation::of(olhar),
+            FUNDO,
+            None,
+            LW,
+            LH,
+            false,
+            sonda,
         );
         let mut v: Vec<f32> = Vec::new();
         for _ in 0..3 {
             let t0 = std::time::Instant::now();
             let p = crate::gpu_frame::paint_com(
-                t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, None, LW, LH, false, sonda,
+                t,
+                &doc,
+                &reg,
+                &cam,
+                &luz,
+                &surfaces,
+                &ph2d_field_render::Presentation::of(olhar),
+                FUNDO,
+                None,
+                LW,
+                LH,
+                false,
+                sonda,
             )
             .expect("o pintor");
             std::hint::black_box(p.rgba.len());

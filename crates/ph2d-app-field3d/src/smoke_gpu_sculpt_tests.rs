@@ -215,11 +215,22 @@ mod escultura_posta {
                 sky: &crate::render_light::StudioSky,
                 shadows: Some(&sh),
             },
-            olhar,
+            &ph2d_field_render::Presentation::of(olhar),
             BG,
         );
         let gpu = crate::gpu_frame::paint(
-            t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, W, H, true,
+            t,
+            &doc,
+            &reg,
+            &cam,
+            &luz,
+            &surfaces,
+            &ph2d_field_render::Presentation::of(olhar),
+            BG,
+            None,
+            W,
+            H,
+            true,
         )
         .expect("o pintor da escultura")
         .rgba;
@@ -360,7 +371,18 @@ mod relogio_da_escultura {
         };
         // ⚠️ Uma corrida de aquecimento fora da conta: a primeira compila o pipeline e sobe a grade.
         let _ = crate::gpu_frame::paint(
-            t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, LW, LH, true,
+            t,
+            &doc,
+            &reg,
+            &cam,
+            &luz,
+            &surfaces,
+            &ph2d_field_render::Presentation::of(olhar),
+            BG,
+            None,
+            LW,
+            LH,
+            true,
         );
 
         let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
@@ -377,14 +399,25 @@ mod relogio_da_escultura {
                     sky: &crate::render_light::StudioSky,
                     shadows: Some(&sh),
                 },
-                olhar,
+                &ph2d_field_render::Presentation::of(olhar),
                 BG,
             );
             std::hint::black_box(px.len());
         }));
         let (gpu_min, gpu_med) = mede(Box::new(|| {
             let p = crate::gpu_frame::paint(
-                t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, LW, LH, true,
+                t,
+                &doc,
+                &reg,
+                &cam,
+                &luz,
+                &surfaces,
+                &ph2d_field_render::Presentation::of(olhar),
+                BG,
+                None,
+                LW,
+                LH,
+                true,
             )
             .expect("o pintor da escultura");
             std::hint::black_box(p.rgba.len());

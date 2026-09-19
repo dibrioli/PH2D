@@ -24,6 +24,7 @@ ph2d-field-render = { path = "../ph2d-field-render" }
 ph2d-material = { path = "../ph2d-material" }
 # ⭐ O pintor aplica o OLHAR no dispositivo, e a lei dele vive aqui — ver `paint.rs`.
 ph2d-view-transform = { path = "../ph2d-view-transform" }
+ph2d-style = { path = "../ph2d-style" }
 # ⭐ A curva sRGB da descida a 8 bits: o fundo da borda entra na media em LINEAR.
 ph2d-color = { path = "../ph2d-color" }
 wgpu = { version = "29.0.4", features = ["wgsl"] }

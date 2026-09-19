@@ -236,7 +236,7 @@ fn pinta_com(g: &crate::Gbuffer, cam: &Orbit, lampadas: &[PointLamp], sh: &Shado
             sky: &CeuUniforme(0.3),
             shadows: Some(sh),
         },
-        Look::default(),
+        &crate::Presentation::of(Look::default()),
         FUNDO,
     )
 }

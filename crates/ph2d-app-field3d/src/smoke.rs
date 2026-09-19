@@ -167,6 +167,7 @@ fn boot() -> Option<Smoke> {
         floor: None,
         gizmo_frame: v.gizmo_frame,
         look: v.look,
+        style: v.style,
     };
     // ⭐ **A lista nasce já com a divisão lembrada** (W95). Ela seria reconciliada no primeiro
     // desenho de qualquer forma, mas então haveria um quadro em que o `split` diz «quatro» e a

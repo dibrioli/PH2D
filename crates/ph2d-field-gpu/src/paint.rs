@@ -81,6 +81,24 @@ pub struct PaintSetup<'a> {
     /// ⚠️ Ele **vem da CPU** e não se deriva aqui pela razão de sempre: duas respostas à mesma
     /// pergunta divergem, e a paridade desta linha é `100,000 %`.
     pub curv_eps: f32,
+    /// ⭐⭐⭐ **A CAMADA DE ESTILO da cena** (`docs/Render3d/03`, a `W8`) — os botões da direcção de
+    /// arte, que entram entre a física e o olhar.
+    ///
+    /// ⚠️ **Ela viaja como a STRUCT e não como floats**, porque quem a arruma é a porta do
+    /// dispositivo ([`ph2d_style::wgsl::pack`]), que também **saneia**. Um `[f32; 20]` aqui poria o
+    /// chamador a lembrar-se de duas coisas, e *o dispositivo não pode receber um bloco sujo por
+    /// alguém se ter esquecido de uma chamada.*
+    ///
+    /// Com o estilo de fábrica o quadro é o de antes, **ao bit** — por construção (ver
+    /// [`ph2d_style`]) e com gate de paridade contra a referência de CPU.
+    pub style: ph2d_style::Style,
+    /// ⭐⭐ **O raio da bola que envolve a PEÇA** — o que torna a curvatura adimensional antes de
+    /// chegar ao estilo. Ver [`ph2d_field_render::Presentation::piece_radius`].
+    ///
+    /// ⛔ **Ele NÃO se deriva do [`PaintSetup::curv_eps`]**, apesar de aquele sair deste: seria a
+    /// segunda resposta à mesma pergunta, e a que passa a mentir no dia em que a fracção do
+    /// `eps_para` mudar.
+    pub piece_radius: f32,
     /// ⭐⭐⭐ **A difusa BRANCA com que o CHÃO mede a luz** (`docs/Render3d/07`) — a
     /// [`ph2d_field_render::catcher_surface`], empacotada como as outras.
     ///
@@ -219,10 +237,16 @@ pub(crate) fn fonte(
     // a partir da superfície, logo o passe que PINTA precisa do campo, da marcha e da
     // visibilidade. ⛔ **E só as leis** — os dois kernels da marcha ficam de fora, senão este
     // módulo teria pontos de entrada que ninguém despacha.
+    // ⭐⭐⭐ **A camada de ESTILO entra ANTES do corpo, e a ordem é load-bearing:** com a
+    // `struct Estilo` já declarada, o `Pintor` pode tê-la como CAMPO — e a arrumação dos vinte
+    // números deixa de estar escrita uma segunda vez neste ficheiro. *Um adaptador que copiasse
+    // `array[0] → rim`, `array[1] → convexo` … seria a segunda resposta à tabela do
+    // `ph2d_style::wgsl::pack`, e a que envelhece.*
     format!(
-        "{}{leis}{material}\n{}\n{dono}\n{corpo}",
+        "{}{leis}{material}\n{}\n{}\n{dono}\n{corpo}",
         crate::trace_wgsl::comum(),
-        ph2d_view_transform::wgsl::SOURCE
+        ph2d_view_transform::wgsl::SOURCE,
+        ph2d_style::wgsl::source()
     )
 }
 
@@ -384,7 +408,9 @@ pub(crate) fn pinta(
         pintor.stops,
         pintor.pixel_world,
         pintor.curv_eps,
-        0.0,
+        // ⭐ O `w` do `knobs` era um slot morto e passa a ser o raio da PEÇA — ver
+        // [`PaintSetup::piece_radius`].
+        pintor.piece_radius,
         // ⚠️ **O fundo da BORDA é LINEAR e PRÉ-MULTIPLICADO** — a média das quatro amostras corre
         // em linear de ecrã, e o alfa entra nela como as outras três componentes.
         ph2d_color::srgb::srgb_to_linear_byte(bg[0]) * a,
@@ -411,7 +437,10 @@ pub(crate) fn pinta(
         n_mats,
         tem_foscas,
         n_chao,
-        0,
+        // ⭐⭐⭐ **O ESTILO LÊ A CURVATURA?** — `modo2.z`, e é ele que faz a tinta por aresta deixar
+        // de ser um knob morto: sem esta bandeira o shader só perguntaria ao MATERIAL, e a grandeza
+        // que o botão escolhe nunca seria medida (`ph2d_style::Style::reads_curvature`).
+        u32::from(pintor.style.reads_curvature()),
         0,
     ] {
         u.extend_from_slice(&v.to_le_bytes());
@@ -431,6 +460,15 @@ pub(crate) fn pinta(
             u.extend_from_slice(&f.to_le_bytes());
         }
         u.extend_from_slice(&0f32.to_le_bytes());
+    }
+    // ⭐⭐⭐ **A CAMADA DE ESTILO, no FIM do uniforme** — e a posição é deliberada: acrescentar um
+    // campo ao meio moveria a compensação de tudo o que vem depois, e um uniforme lido com a
+    // compensação errada não estoura, **pinta**.
+    //
+    // ⚠️ **O [`ph2d_style::wgsl::pack`] é a porta**: ele arruma E saneia, logo nenhum `NaN` de
+    // painel chega ao dispositivo por alguém se ter esquecido de uma chamada.
+    for f in ph2d_style::wgsl::pack(&pintor.style) {
+        u.extend_from_slice(&f.to_le_bytes());
     }
     let ub_pintor = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("pintor"),

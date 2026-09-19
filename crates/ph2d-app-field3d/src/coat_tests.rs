@@ -84,7 +84,14 @@ fn measure_which_of_the_coat_numbers_move_the_picture() {
             all: &so,
             owners: None,
         };
-        shade_render(&g, &cam, &surface, &light, olhar, BG)
+        shade_render(
+            &g,
+            &cam,
+            &surface,
+            &light,
+            &ph2d_field_render::Presentation::of(olhar),
+            BG,
+        )
     };
 
     println!(

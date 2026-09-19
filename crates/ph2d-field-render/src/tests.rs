@@ -6871,7 +6871,7 @@ fn measure_how_many_passes_the_occlusion_needs() {
                 sky: &CeuDaSonda(0.6),
                 shadows: Some(&sh),
             },
-            ph2d_view_transform::Look::default(),
+            &crate::Presentation::of(ph2d_view_transform::Look::default()),
             [0, 0, 0, 0],
         )
     };
@@ -7141,7 +7141,7 @@ fn measure_the_settle_clock() {
                     sky: &CeuDaSonda(0.6),
                     shadows: Some(sh),
                 },
-                ph2d_view_transform::Look::default(),
+                &crate::Presentation::of(ph2d_view_transform::Look::default()),
                 [0, 0, 0, 0],
             );
             std::hint::black_box(rgba.len());
@@ -7260,7 +7260,7 @@ fn measure_where_the_settled_frame_spends_its_time() {
                     sky: &CeuDaSonda(0.6),
                     shadows: Some(&sh),
                 },
-                ph2d_view_transform::Look::default(),
+                &crate::Presentation::of(ph2d_view_transform::Look::default()),
                 [0, 0, 0, 0],
             );
             std::hint::black_box(rgba.len());

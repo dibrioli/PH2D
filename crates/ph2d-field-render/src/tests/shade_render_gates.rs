@@ -85,7 +85,7 @@ fn every_part_pixel_is_the_material_law_under_the_look() {
                 owners: None,
             },
             &light,
-            look,
+            &crate::Presentation::of(look),
             BG,
         );
         assert_eq!(

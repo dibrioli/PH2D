@@ -179,7 +179,7 @@ fn quadro(
             sky: ceu,
             shadows: Some(&sh),
         },
-        ph2d_view_transform::Look::default(),
+        &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
         [0, 0, 0, 0],
     );
     (g, sh, px)

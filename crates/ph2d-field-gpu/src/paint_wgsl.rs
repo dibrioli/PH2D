@@ -32,6 +32,11 @@ struct Pintor {
     chao_campo: vec4<f32>,
     // ⭐ **Uma radiância por lâmpada**, na MESMA ordem das posições do `Setup`.
     lamp: array<vec4<f32>, {MAX_LAMPS}>,
+    // ⭐⭐⭐ **A CAMADA DE ESTILO** (`ph2d_style`, a `W8`) — e repare que ela é a PRÓPRIA struct do
+    // gémeo, e não cinco `vec4` soltos: a arrumação dos vinte números vive numa função só
+    // (`ph2d_style::wgsl::pack`) e este lado é o LEITOR dela. ⛔ Cinco campos nomeados aqui seriam a
+    // segunda resposta à mesma tabela.
+    estilo: Estilo,
 };
 @group(1) @binding(0) var<uniform> ceu: Ceu;
 @group(1) @binding(1) var<uniform> pintor: Pintor;
@@ -107,19 +112,37 @@ fn mat_em(o: u32) -> Mat {
 //
 // ⚠️ **Ela so' e' calculada quando alguem a le** — com a subsuperficie macica desligada (a
 // omissao) o `if` sai antes de tocar no campo, e o quadro e' o de sempre ao bit.
-fn com_a_curvatura(m_in: Mat, p: vec3<f32>) -> Mat {
+fn com_a_curvatura(m_in: Mat, k: f32) -> Mat {
     var m = m_in;
     if (m.ss_color_weight.a <= 0.0 || m.ss_brdf_thin.a > 0.5) { return m; }
+    // ⭐ **O MÓDULO é tomado aqui**, como na CPU: a lei do OpenPBR pede um comprimento e a tinta por
+    // curvatura da `W8` pede o SINAL. Tomar o módulo antes ou depois de guardar dá o mesmo `f32`.
+    m.ss_btdf_curv.a = abs(k);
+    return m;
+}
+
+// ⭐⭐⭐ **A CURVATURA MÉDIA COM SINAL deste ponto** — `H = ∇²f/2`, o gémeo exacto do
+// `ph2d_field_render::curvatura`. Ver lá porque ela NÃO pode vir de `fwidth` e porque o passo dela
+// não é o da normal.
+//
+// ⚠️ **Ela deixou de viver dentro do `com_a_curvatura`**, e isso compra duas coisas: o SINAL passa a
+// ser legível por quem o queira (a `W8`), e numa fronteira entre dois materiais que a leem as cinco
+// amostras passam a ser pagas **uma vez** em vez de duas. *O valor é o mesmo `f32`.*
+fn curvatura_em(p: vec3<f32>) -> f32 {
     let e = pintor.knobs.z;
-    if (e <= 0.0) { return m; }
+    if (e <= 0.0) { return 0.0; }
     let o0 = vec3<f32>( 1.0, -1.0, -1.0);
     let o1 = vec3<f32>(-1.0, -1.0,  1.0);
     let o2 = vec3<f32>(-1.0,  1.0, -1.0);
     let o3 = vec3<f32>( 1.0,  1.0,  1.0);
     let soma = field(p + o0 * e) + field(p + o1 * e) + field(p + o2 * e) + field(p + o3 * e);
     let laplaciano = (soma - 4.0 * field(p)) / (2.0 * e * e);
-    m.ss_btdf_curv.a = abs(laplaciano * 0.5);
-    return m;
+    return laplaciano * 0.5;
+}
+
+// **Este material lê a curvatura?** — a metade que o `com_a_curvatura` já perguntava, com nome.
+fn mat_le_curvatura(m: Mat) -> bool {
+    return m.ss_color_weight.a > 0.0 && m.ss_brdf_thin.a <= 0.5;
 }
 
 // A base é ortonormal, logo a transposta é a inversa — a mesma `ViewBasis::world_to_view` da CPU.

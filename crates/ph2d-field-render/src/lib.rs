@@ -156,7 +156,8 @@ pub use refine::refine_hemisphere;
 pub use shade::Matcap;
 pub use shade::{shade, shade_with};
 pub use shade_render::{
-    Lamp, Lighting, POINT_LAMP_MIN_DISTANCE, PointLamp, Surfaces, boundary_world, shade_render,
+    Lamp, Lighting, POINT_LAMP_MIN_DISTANCE, PointLamp, Presentation, Surfaces, boundary_world,
+    shade_render,
 };
 pub use shadow::{HARDNESS, Shadows, shadow_pass, shadow_pass_on};
 pub use tape_cache::{

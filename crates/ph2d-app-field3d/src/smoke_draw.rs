@@ -462,7 +462,8 @@ fn viewport_pass(
         // ⭐⭐⭐ **O modo e o olhar VIAJAM COM O PEDIDO** (`docs/Render3d/05`) — copiados aqui, e não
         // lidos na thread: o estado do módulo não atravessa a fronteira, e um olhar lido depois
         // podia já não ser o do pedido que este traçado responde.
-        let (shading, look) = (smoke.vps[i].shading, smoke.look);
+        // ⭐ O modo é do VIEWPORT; o olhar e o estilo são da CENA (`docs/Render3d/05`).
+        let (shading, look, style) = (smoke.vps[i].shading, smoke.look, smoke.style);
         // ⭐⭐⭐ **O refinamento da oclusão só corre com o prato PARADO** — ver
         // [`crate::preview::refines_occlusion`], que é onde a razão está escrita.
         let refinar = crate::preview::refines_occlusion(antialias, smoke.vps[i].manual);
@@ -500,6 +501,7 @@ fn viewport_pass(
             antialias,
             shading,
             look,
+            style,
             matcap,
             materials,
             lights,

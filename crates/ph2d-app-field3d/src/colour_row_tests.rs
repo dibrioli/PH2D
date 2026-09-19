@@ -601,7 +601,7 @@ fn colour_boundary_step(blend: ph2d_field::Blend, cores: [[f32; 3]; 2]) -> i32 {
             sky: &crate::render_light::StudioSky,
             shadows: None,
         },
-        crate::shading::OPENING_LOOK,
+        &ph2d_field_render::Presentation::of(crate::shading::OPENING_LOOK),
         [0, 0, 0, 0],
     );
     let c = px.as_chunks::<4>().0;

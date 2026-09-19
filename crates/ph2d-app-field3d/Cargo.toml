@@ -39,6 +39,7 @@ ph2d-color          = { path = "../ph2d-color" }
 ph2d-light          = { path = "../ph2d-light" }
 ph2d-material       = { path = "../ph2d-material" }
 ph2d-view-transform = { path = "../ph2d-view-transform" }
+ph2d-style          = { path = "../ph2d-style" }
 ph2d-i18n          = { path = "../ph2d-i18n" }
 ph2d-mesh          = { path = "../ph2d-mesh" }
 ph2d-panel-model3d = { path = "../ph2d-panel-model3d" }

@@ -187,7 +187,7 @@ fn sonda_o_dispositivo_a_correr_contra_a_referencia() {
             &cam,
             &pontos,
             &surfaces,
-            ph2d_view_transform::Look::default(),
+            &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
             [0, 0, 0, 0],
             chao,
             super::W,

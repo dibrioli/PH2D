@@ -181,7 +181,7 @@ fn um_pixel_tapado_continua_a_reflectir_o_ceu() {
                 sky: &CeuUniforme(0.35),
                 shadows: sh,
             },
-            ph2d_view_transform::Look::default(),
+            &crate::Presentation::of(ph2d_view_transform::Look::default()),
             [0, 0, 0, 0],
         );
         [rgba[tapado * 4], rgba[tapado * 4 + 1], rgba[tapado * 4 + 2]]
@@ -230,7 +230,7 @@ fn sem_o_passe_a_imagem_e_byte_identica() {
                 sky: &CeuUniforme(0.35),
                 shadows: sh,
             },
-            ph2d_view_transform::Look::default(),
+            &crate::Presentation::of(ph2d_view_transform::Look::default()),
             [0, 0, 0, 0],
         )
     };
@@ -433,7 +433,7 @@ fn a_oclusao_escurece_o_ceu_e_deixa_a_lampada() {
                 sky: &CeuUniforme(0.35),
                 shadows: sh,
             },
-            ph2d_view_transform::Look::default(),
+            &crate::Presentation::of(ph2d_view_transform::Look::default()),
             [0, 0, 0, 0],
         );
         u32::from(rgba[tapado * 4])
@@ -464,7 +464,7 @@ fn a_oclusao_escurece_o_ceu_e_deixa_a_lampada() {
                 sky: &CeuUniforme(0.0),
                 shadows: sh,
             },
-            ph2d_view_transform::Look::default(),
+            &crate::Presentation::of(ph2d_view_transform::Look::default()),
             [0, 0, 0, 0],
         )
     };

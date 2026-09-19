@@ -91,7 +91,14 @@ fn measure_what_a_glow_paints_and_what_the_call_costs() {
             all: &so,
             owners: None,
         };
-        let px = shade_render(&g, &cam, &surface, &light, olhar, BG);
+        let px = shade_render(
+            &g,
+            &cam,
+            &surface,
+            &light,
+            &ph2d_field_render::Presentation::of(olhar),
+            BG,
+        );
         let (media, branco, _) = stats(&px, &g.hit);
         let delta = anterior.map_or(0.0, |a| media - a);
         anterior = Some(media);
@@ -118,7 +125,14 @@ fn measure_what_a_glow_paints_and_what_the_call_costs() {
         let mut amostras: Vec<f64> = (0..7)
             .map(|_| {
                 let t = Instant::now();
-                let px = shade_render(&g, &cam, &surface, &light, olhar, BG);
+                let px = shade_render(
+                    &g,
+                    &cam,
+                    &surface,
+                    &light,
+                    &ph2d_field_render::Presentation::of(olhar),
+                    BG,
+                );
                 std::hint::black_box(&px);
                 t.elapsed().as_secs_f64() * 1e3
             })

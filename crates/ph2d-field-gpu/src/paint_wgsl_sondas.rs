@@ -200,7 +200,7 @@ fn ricochete_no_pixel(x: u32, y: u32, i: u32, n0: vec3<f32>) -> vec3<f32> {
 }
 
 // A luz que UM material devolve ao olho, já com o olhar — o `shade_render::radiance` da CPU.
-fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu_vis: f32, ric: vec3<f32>) -> vec3<f32> {
+fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu_vis: f32, ric: vec3<f32>, k: f32) -> vec3<f32> {
     // ⭐⭐⭐ **A OCLUSÃO É A SOMBRA DO CÉU** — ela multiplica o que o AMBIENTE entrega, e mais nada.
     // Não toca nas lâmpadas (que têm sombra a sério) nem na emissão.
     var rgb = mx_indirect(m, n, v) * ceu_vis;
@@ -218,6 +218,10 @@ fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu
         rgb = rgb + mx_indirect(m, n, v);
         ambiente_e_ricochete = false;
     }
+    // ⭐⭐⭐ **A SATURAÇÃO DA LUZ INDIRECTA** (`ph2d_style`, a `W8`) — aqui, sobre as DUAS parcelas
+    // de ambiente e **antes das lâmpadas**: saturar no fim saturaria também o realce do sol.
+    // ⚠️ Com o valor de fábrica (`1`) isto é a identidade AO BIT, por construção.
+    rgb = st_saturate_indirect(pintor.estilo, rgb);
     let piso = PISO_LUZ * PISO_LUZ;
     let base = i * passo_da_luz();
     // ⭐⭐⭐ **AS LUZES-OBJECTO, uma a uma** — a direcção e a distância de cada saem do PONTO deste
@@ -236,20 +240,50 @@ fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu
         let chega = pintor.lamp[l].rgb * luz[base + 1u + l] / max(cru, piso);
         rgb = rgb + mx_direct(m, n, v, to_light, chega);
     }
-    return vt_to_display(rgb + mx_emission(m, n, v), pintor.knobs.x, pintor.modo.x);
+    // ⭐⭐⭐ **O ESTILO ENTRA AQUI, entre a física e o olhar** — o gémeo exacto do
+    // `ph2d_field_render::shade_render`. ⛔ Depois do olhar seria tinta sobre um valor já cortado, e
+    // um contorno que não respira com a exposição separa-se da peça ao expor.
+    //
+    // ⚠️ **`|N·V|`**, e o módulo não é defensivo: numa silhueta o produto passa por zero e muda de
+    // sinal com o ruído da normal, e um contorno que pisca não é um contorno.
+    // ⚠️ **A curvatura viaja em unidades da PEÇA** (`knobs.w` é o raio), senão o mesmo botão daria
+    // outra tinta numa peça grande e numa pequena.
+    let cena = st_apply(
+        pintor.estilo,
+        rgb + mx_emission(m, n, v),
+        abs(dot(n, v)),
+        k * pintor.knobs.w,
+    );
+    return vt_to_display(cena, pintor.knobs.x, pintor.modo.x);
 }
 
 // ⭐⭐ **Sombreia DUAS vezes e mistura o RESULTADO**, nunca os materiais: um metal e um dieléctrico
 // a meio caminho não são um meio-metal. E só paga o dobro onde há fronteira.
 fn radiancia(p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, i: u32, ceu_vis: f32, ric: vec3<f32>) -> vec3<f32> {
     let d = dono_mix(p, pintor.knobs.y);
-    // ⭐⭐⭐ **A curvatura entra no MATERIAL**, e é o gémeo do `Surface::at_curvature` da CPU.
-    // ⚠️ O gatherer do ricochete (`ler_mat_fosca`) NÃO a recebe, e a CPU também não: ali a
+    let ma = ler_mat(d.a);
+    let mb = ler_mat(d.b);
+    // ⭐⭐⭐ **A CURVATURA mede-se quando ALGUÉM a lê, e UMA vez** — o material deste pixel (a
+    // subsuperfície maciça) ou o ESTILO da cena (`modo2.z`, a tinta por curvatura da `W8`).
+    //
+    // ⚠️⚠️ **São DUAS portas somadas e não uma:** perguntar só ao material faria o artista mexer na
+    // tinta de aresta e a peça não mudar um pixel — *a grandeza que o botão escolhe nunca teria sido
+    // medida*, que é a forma de knob morto que esta casa mede desde 30/08. O gémeo da CPU faz a
+    // mesma soma no `smoke_draw_thread`.
+    //
+    // ⛔ **Sem leitor, ZERO amostras de campo** — o `curv_eps` nem chega a ser lido, e o quadro é o
+    // de sempre ao bit.
+    var k = 0.0;
+    let alguem_le = mat_le_curvatura(ma)
+        || (d.t > 0.0 && mat_le_curvatura(mb))
+        || pintor.modo2.z != 0u;
+    if (alguem_le) { k = curvatura_em(p); }
+    // ⚠️ O gatherer do ricochete (`ler_mat_fosca`) NÃO recebe curvatura, e a CPU também não: ali a
     // subsuperfície maciça lê curvatura `0`, que o piso transforma no raio de `100`. *A paridade
     // daquele caminho é por construção, e não por um número.*
-    let ca = luz_do_material(com_a_curvatura(ler_mat(d.a), p), n, v, p, i, ceu_vis, ric);
+    let ca = luz_do_material(com_a_curvatura(ma, k), n, v, p, i, ceu_vis, ric, k);
     if (d.t <= 0.0) { return ca; }
-    let cb = luz_do_material(com_a_curvatura(ler_mat(d.b), p), n, v, p, i, ceu_vis, ric);
+    let cb = luz_do_material(com_a_curvatura(mb, k), n, v, p, i, ceu_vis, ric, k);
     return ca + (cb - ca) * d.t;
 }
 

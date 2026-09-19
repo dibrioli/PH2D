@@ -124,7 +124,11 @@ pub fn paint(
     cam: &ph2d_field_render::Orbit,
     points: &[ph2d_field_render::PointLamp],
     surfaces: &ph2d_field_render::Surfaces<'_>,
-    look: ph2d_view_transform::Look,
+    // ⭐⭐⭐ **A MESMA apresentação que a referência de CPU recebe** — o olhar, o estilo e a escala
+    // da peça, num tipo só. ⚠️ *É isto que faz a pergunta «os dois motores respondem o mesmo?» ser
+    // respondível:* com dois argumentos separados, um chamador podia dar o estilo a um e esquecê-lo
+    // no outro, e a paridade mediria dois programas diferentes sem o dizer.
+    pres: &ph2d_field_render::Presentation,
     background: [u8; 4],
     ground: Option<ph2d_field_render::Ground>,
     w: u32,
@@ -138,7 +142,7 @@ pub fn paint(
         cam,
         points,
         surfaces,
-        look,
+        pres,
         background,
         ground,
         w,
@@ -187,7 +191,11 @@ pub fn paint_com(
     cam: &ph2d_field_render::Orbit,
     points: &[ph2d_field_render::PointLamp],
     surfaces: &ph2d_field_render::Surfaces<'_>,
-    look: ph2d_view_transform::Look,
+    // ⭐⭐⭐ **A MESMA apresentação que a referência de CPU recebe** — o olhar, o estilo e a escala
+    // da peça, num tipo só. ⚠️ *É isto que faz a pergunta «os dois motores respondem o mesmo?» ser
+    // respondível:* com dois argumentos separados, um chamador podia dar o estilo a um e esquecê-lo
+    // no outro, e a paridade mediria dois programas diferentes sem o dizer.
+    pres: &ph2d_field_render::Presentation,
     background: [u8; 4],
     ground: Option<ph2d_field_render::Ground>,
     w: u32,
@@ -273,8 +281,12 @@ pub fn paint_com(
         } else {
             0
         },
-        stops: look.exposure_stops,
-        view: ph2d_view_transform::wgsl::view_code(look.view),
+        stops: pres.look.exposure_stops,
+        view: ph2d_view_transform::wgsl::view_code(pres.look.view),
+        // ⭐⭐⭐ **A camada de ESTILO, no MESMO tipo que a CPU recebeu** (`docs/Render3d/03`, a
+        // `W8`) — quem a arruma e a saneia é o `ph2d_style::wgsl::pack`, dentro do `PaintSetup`.
+        style: pres.style,
+        piece_radius: pres.piece_radius,
         background,
         // ⚠️ **A largura da fronteira de cor sai do [`ph2d_field_render::boundary_world`]**, que é
         // quem a deriva — o factor dela foi VARRIDO e mora lá, não aqui.
@@ -452,3 +464,9 @@ pub(crate) mod paint_parity_tests;
 #[cfg(test)]
 #[path = "paint_parity_luz_tests.rs"]
 pub(crate) mod paint_parity_luz_tests;
+
+/// ⭐⭐⭐ **A CAMADA DE ESTILO chega ao pixel nos DOIS motores** (`docs/Render3d/03`, a `W8`) — e o
+/// primeiro gate dali é **estrutural**, porque é a forma que o §24 do `docs/Render3d/10` cobra.
+#[cfg(test)]
+#[path = "estilo_tests.rs"]
+mod estilo_tests;

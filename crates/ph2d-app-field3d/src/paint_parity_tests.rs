@@ -120,13 +120,39 @@ pub(crate) fn dois_caminhos_com(
     luz: &[ph2d_field_render::PointLamp],
     chao: Option<ph2d_field_render::Ground>,
 ) -> Option<(Vec<u8>, Vec<u8>, usize)> {
+    dois_caminhos_vestidos(surfaces, doc, luz, chao, ph2d_style::Style::default())
+}
+
+/// ⭐⭐⭐ **O mesmo, com a camada de ESTILO vestida** (`docs/Render3d/03`, a `W8`).
+///
+/// ⚠️⚠️ **Ela é um PARÂMETRO e não uma segunda função de comparação**, e a razão é o §24 do
+/// `docs/Render3d/10`: o que aquele defeito mostrou foi uma lei medida num caminho que o produto não
+/// corre. Aqui as duas imagens saem das MESMAS portas com a MESMA apresentação — trocar o estilo
+/// troca-o dos dois lados, ou não troca de nenhum.
+pub(crate) fn dois_caminhos_vestidos(
+    surfaces: &ph2d_field_render::Surfaces<'_>,
+    doc: &FieldDoc,
+    luz: &[ph2d_field_render::PointLamp],
+    chao: Option<ph2d_field_render::Ground>,
+    style: ph2d_style::Style,
+) -> Option<(Vec<u8>, Vec<u8>, usize)> {
     let t = crate::gpu_frame::shared()?;
     let reg = ph2d_field_eval::hybrid::Registry::new();
     let cam = ph2d_field_render::Orbit::default();
-    let olhar = ph2d_view_transform::Look::default();
+    // ⭐ **UMA apresentação, os DOIS motores** — ver o `smoke_draw_thread`, onde o produto faz o
+    // mesmo. O raio da peça sai da MESMA bola que o passo da curvatura usa.
+    let apresentacao = ph2d_field_render::Presentation {
+        look: ph2d_view_transform::Look::default(),
+        style: style.sanitized(),
+        piece_radius: ph2d_field_eval::bounds::bounding_ball(doc, &reg).map_or(1.0, |b| b.radius),
+    };
     let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
 
     let (mut g, mut sh) = crate::gpu_frame::march(t, doc, &reg, &cam, &mundos, chao, W, H, true)?;
+    // ⚠️⚠️ **O ESTILO é o SEGUNDO leitor da curvatura**, e a referência tem de a assar quando ele a
+    // lê — senão a CPU compara uma peça sem tinta de aresta contra um dispositivo que a tem, e a
+    // paridade acusaria a LEI onde o defeito era do arnês.
+    let estilo_le_a_curvatura = apresentacao.style.reads_curvature();
     // ⭐⭐⭐ **A CURVATURA entra na referência pela MESMA porta e com o MESMO passo** que o
     // dispositivo usa (`docs/Render3d/10`) — o `com_a_curvatura` do WGSL faz a mesma soma de cinco
     // amostras sobre o mesmo tetraedro.
@@ -135,10 +161,11 @@ pub(crate) fn dois_caminhos_com(
     // CPU sombrearia com `0`, que o piso transforma no raio de `100`. *É o mesmo defeito que o
     // campo do chão pagou em 17/09, e naquele dia a edição que o curava foi um `str.replace` que
     // não casou — silencioso.*
-    if surfaces
+    if (surfaces
         .all
         .iter()
         .any(ph2d_material::Surface::reads_curvature)
+        || estilo_le_a_curvatura)
         && let Some(bola) = ph2d_field_eval::bounds::bounding_ball(doc, &reg)
     {
         let mut eval = ph2d_field_eval::hybrid::Hybrid::new(doc, &reg);
@@ -190,11 +217,22 @@ pub(crate) fn dois_caminhos_com(
             sky: &crate::render_light::StudioSky,
             shadows: Some(&sh),
         },
-        olhar,
+        &apresentacao,
         FUNDO,
     );
     let gpu = crate::gpu_frame::paint(
-        t, doc, &reg, &cam, luz, surfaces, olhar, FUNDO, chao, W, H, true,
+        t,
+        doc,
+        &reg,
+        &cam,
+        luz,
+        surfaces,
+        &apresentacao,
+        FUNDO,
+        chao,
+        W,
+        H,
+        true,
     )?;
     // ⚠️ **As duas contagens de borda têm de bater**, e são medidas por caminhos diferentes: a do
     // G-buffer vem da lista lida de volta, a do pintor vem do contador que decidiu o despacho.
@@ -336,7 +374,7 @@ fn a_regua_da_pintura_acusa_a_lei_do_dono_apagada() {
             all: &materiais,
             owners: Some(&owners),
         },
-        olhar,
+        &ph2d_field_render::Presentation::of(olhar),
         FUNDO,
         None,
         W,
@@ -355,7 +393,7 @@ fn a_regua_da_pintura_acusa_a_lei_do_dono_apagada() {
             all: &materiais,
             owners: None,
         },
-        olhar,
+        &ph2d_field_render::Presentation::of(olhar),
         FUNDO,
         None,
         W,
@@ -510,7 +548,18 @@ fn mede_o_que_o_pintor_do_dispositivo_compra() {
     // ⚠️ **Uma corrida de aquecimento fora da conta** — a primeira compila o pipeline (`6`–`49 ms`).
     let _ = crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, None, LW, LH, true);
     let _ = crate::gpu_frame::paint(
-        t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, None, LW, LH, true,
+        t,
+        &doc,
+        &reg,
+        &cam,
+        &luz,
+        &surfaces,
+        &ph2d_field_render::Presentation::of(olhar),
+        FUNDO,
+        None,
+        LW,
+        LH,
+        true,
     );
 
     // ⭐ **A fatia que é SÓ o dispositivo mais a leitura do G-buffer** — sem ela, a diferença entre
@@ -533,14 +582,25 @@ fn mede_o_que_o_pintor_do_dispositivo_compra() {
                 sky: &crate::render_light::StudioSky,
                 shadows: Some(&sh),
             },
-            olhar,
+            &ph2d_field_render::Presentation::of(olhar),
             FUNDO,
         );
         std::hint::black_box(px.len());
     }));
     let (b_min, b_med) = mede(Box::new(|| {
         let p = crate::gpu_frame::paint(
-            t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, None, LW, LH, true,
+            t,
+            &doc,
+            &reg,
+            &cam,
+            &luz,
+            &surfaces,
+            &ph2d_field_render::Presentation::of(olhar),
+            FUNDO,
+            None,
+            LW,
+            LH,
+            true,
         )
         .expect("o pintor");
         std::hint::black_box(p.rgba.len());

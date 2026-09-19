@@ -155,13 +155,24 @@ fn o_ricochete_chega_a_imagem_do_dispositivo() {
             sky: &crate::render_light::StudioSky,
             shadows: Some(&sh),
         },
-        olhar,
+        &ph2d_field_render::Presentation::of(olhar),
         FUNDO,
     );
 
     // ── o lado COM: o pintor do dispositivo ──────────────────────────────────────────────────
     let com = crate::gpu_frame::paint(
-        t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, None, W, H, true,
+        t,
+        &doc,
+        &reg,
+        &cam,
+        &luz,
+        &surfaces,
+        &ph2d_field_render::Presentation::of(olhar),
+        FUNDO,
+        None,
+        W,
+        H,
+        true,
     )
     .expect("o pintor do dispositivo");
 
@@ -240,7 +251,18 @@ fn mede_o_que_o_ricochete_custa_no_dispositivo() {
     for _ in 0..7 {
         let t0 = std::time::Instant::now();
         let p = crate::gpu_frame::paint(
-            t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, None, LW, LH, true,
+            t,
+            &doc,
+            &reg,
+            &cam,
+            &luz,
+            &surfaces,
+            &ph2d_field_render::Presentation::of(olhar),
+            FUNDO,
+            None,
+            LW,
+            LH,
+            true,
         )
         .expect("o pintor");
         std::hint::black_box(p.rgba.len());
@@ -308,11 +330,22 @@ fn o_quadro_de_movimento_nao_paga_o_ricochete() {
             sky: &crate::render_light::StudioSky,
             shadows: Some(&sh),
         },
-        olhar,
+        &ph2d_field_render::Presentation::of(olhar),
         FUNDO,
     );
     let gpu = crate::gpu_frame::paint(
-        t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, None, W, H, false,
+        t,
+        &doc,
+        &reg,
+        &cam,
+        &luz,
+        &surfaces,
+        &ph2d_field_render::Presentation::of(olhar),
+        FUNDO,
+        None,
+        W,
+        H,
+        false,
     )
     .expect("o pintor do dispositivo");
 

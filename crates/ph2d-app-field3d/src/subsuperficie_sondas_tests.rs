@@ -89,7 +89,7 @@ fn sonda_o_terminador_da_esfera() {
                 sky: &crate::render_light::StudioSky,
                 shadows: Some(&sh),
             },
-            ph2d_view_transform::Look::default(),
+            &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
             [0, 0, 0, 0],
         );
 
@@ -271,7 +271,7 @@ fn sonda_o_terminador_da_esfera() {
                 sky: &crate::render_light::StudioSky,
                 shadows: Some(&sh),
             },
-            ph2d_view_transform::Look::default(),
+            &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
             [0, 0, 0, 0],
         );
         let (mut soma, mut n, mut vmin) = (0.0f64, 0usize, 1.0f32);

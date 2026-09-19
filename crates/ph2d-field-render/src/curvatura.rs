@@ -43,9 +43,12 @@
 //! # ⚠️ O sinal, e a divergência que ele declara
 //!
 //! A referência devolve um **comprimento**, logo é sempre `≥ 0`: ela não distingue uma bossa de uma
-//! cova. Esta porta devolve `|H|` pela mesma razão, e o gate mede-o. ⛔ A diferença real fica noutro
-//! sítio e está **declarada**: a dela é a curvatura normal na direcção do ECRÃ (logo muda ao rodar
-//! a câmera) e a nossa é a **média** (logo não muda). *A nossa é a que um artista espera.*
+//! cova. ⭐⭐ **Nós distinguimos desde 2026-09-19** — o sinal de `∇²f` estava a ser deitado fora
+//! DENTRO desta porta, e a `W8` (`docs/Render3d/03`) trouxe o consumidor que o lê; quem quer o
+//! comprimento, como a subsuperfície, toma o módulo do seu lado e lê o mesmo `f32` de sempre.
+//! ⛔ A outra diferença fica **declarada**: a dela é a curvatura normal na direcção do ECRÃ (logo
+//! muda ao rodar a câmera) e a nossa é a **média** (logo não muda). *A nossa é a que um artista
+//! espera.*
 
 use ph2d_field_eval::hybrid::Hybrid;
 
@@ -103,8 +106,22 @@ pub fn eps_para(escala: f32) -> f32 {
     (escala.abs() * FRACCAO).max(crate::PRECISION_FLOOR)
 }
 
-/// ⭐ **A curvatura de cada ponto**, `|H|` em `1/unidade de mundo` — para uma esfera de raio `R`,
-/// `1/R`.
+/// ⭐ **A curvatura média de cada ponto**, `H` em `1/unidade de mundo` — para uma esfera de raio
+/// `R`, `1/R`.
+///
+/// # ⭐⭐⭐ O SINAL atravessa, e ele esteve a ser deitado fora uma linha antes de alguém o poder ler
+///
+/// `H = ∇²f / 2` é **positivo numa bossa e negativo numa cova**. Até 2026-09-19 esta porta devolvia
+/// `|H|`, porque o consumidor que a estreou — a subsuperfície MACIÇA — pede um **comprimento** (a
+/// referência do MaterialX devolve `length(fwidth(N))`, que é `≥ 0` por construção).
+///
+/// ⇒ *ali era a resposta certa, e a perda ficava dentro desta função em vez de no chamador.* A `W8`
+/// (`docs/Render3d/03`) trouxe o segundo consumidor — a tinta por curvatura —, e para ele o sinal é
+/// **a diferença entre uma aresta e um vinco**, que é a diferença entre um contorno e uma sujidade.
+///
+/// ⚠️ **A subsuperfície continua a ler `|H|`, e passa a tomar o valor absoluto ELA** — ver o
+/// `shade_render::radiance`. A imagem que ela pinta é **byte a byte** a mesma: tomar o módulo antes
+/// ou depois de guardar dá o mesmo `f32`.
 ///
 /// `eps` é o passo da diferença, e quem o deriva é a [`eps_para`] — leia lá porque ele **não** é o
 /// da normal.
@@ -143,7 +160,9 @@ pub fn curvaturas(eval: &mut Hybrid, pontos: &[[f32; 3]], eps: f32) -> Vec<f32> 
             let b = i * 5;
             let soma = v[b] + v[b + 1] + v[b + 2] + v[b + 3];
             let laplaciano = (soma - 4.0 * v[b + 4]) / denom;
-            (laplaciano * 0.5).abs()
+            // ⭐ **Com SINAL** — ver o cabeçalho desta função. Quem quiser o comprimento toma o
+            // módulo no seu lado, e é byte a byte o mesmo número.
+            laplaciano * 0.5
         })
         .collect()
 }

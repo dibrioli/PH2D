@@ -106,6 +106,74 @@ pub struct Lighting<'a> {
     pub shadows: Option<&'a crate::Shadows>,
 }
 
+/// ⭐⭐⭐ **A APRESENTAÇÃO DA CENA** — o OLHAR e o ESTILO, juntos porque viajam juntos
+/// (`docs/Render3d/03`, a `W8`).
+///
+/// ```text
+/// material + luz  →  [ESTILO]  →  olhar (exposição + vista)  →  sRGB
+///  (a física)        (a mentira)   (a ph2d-view-transform)
+/// ```
+///
+/// # ⛔⛔ Porque ela entra na ASSINATURA em vez de haver um `shade_render_com_estilo`
+///
+/// Uma função-irmã seria a segunda porta pela qual o defeito volta — e este módulo acabou de pagar
+/// exactamente isso (`docs/Render3d/10` §24: *uma cura gateada ao bit, num ramo que o produto não
+/// corre*). Com ela na assinatura, **esquecer o estilo é erro de compilação** em todo chamador, que
+/// é a mesma lei que o ledger do `ProjectState::capture` já aplica um nível acima.
+///
+/// ⚠️ E a [`Presentation::of`] existe para quem não tem estilo nenhum a dizer — ela é a **identidade
+/// exacta** (ver o [`ph2d_style`]), e é isso que deixa os gates de material e de luz medirem a
+/// física sem uma mentira por cima.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Presentation {
+    /// A exposição e a vista — ver [`ph2d_view_transform::Look`].
+    pub look: Look,
+    /// Os botões da direcção de arte — ver [`ph2d_style::Style`].
+    ///
+    /// ⚠️ **Ele chega SANEADO** ([`ph2d_style::Style::sanitized`]), e quem o saneia é quem o monta:
+    /// a cerca é de QUADRO e correria por pixel se vivesse aqui.
+    pub style: ph2d_style::Style,
+    /// ⭐⭐ **O raio da bola que envolve a PEÇA**, em unidades de mundo — o que torna a curvatura
+    /// adimensional antes de ela chegar ao estilo.
+    ///
+    /// # ⚠️ Porque ele é presentação e não geometria
+    ///
+    /// O G-buffer guarda `H` em `1/comprimento` (é o que a subsuperfície pede). Um botão de estilo
+    /// calibrado nisso mudaria de sentido ao **escalar a peça** — a mesma quina daria outra tinta
+    /// numa peça de `0,3` e numa de `3`. Multiplicado por este raio, o que o estilo lê é *«quantas
+    /// vezes esta zona é mais curva do que a peça inteira»*, que é o que um artista quer dizer.
+    ///
+    /// ⚠️ **`1,0` é o valor de quem não tem peça** (uma fixtura, um gate de material) e é inofensivo:
+    /// com as tintas de fábrica ninguém lê a curvatura.
+    pub piece_radius: f32,
+}
+
+impl Presentation {
+    /// **Só o olhar** — estilo de fábrica, que é a identidade exacta.
+    #[must_use]
+    pub fn of(look: Look) -> Self {
+        Self {
+            look,
+            style: ph2d_style::Style::default(),
+            piece_radius: 1.0,
+        }
+    }
+
+    /// A curvatura deste pixel **em unidades da peça**, que é o que o estilo lê.
+    ///
+    /// ⚠️ **O sinal ATRAVESSA** — é ele que separa uma aresta de uma cova, e é a razão de a
+    /// [`crate::curvatura`] ter deixado de o deitar fora.
+    fn styled_curvature(&self, k: f32) -> f32 {
+        k * self.piece_radius
+    }
+}
+
+impl From<Look> for Presentation {
+    fn from(look: Look) -> Self {
+        Self::of(look)
+    }
+}
+
 /// ⭐ **Um ambiente que só tem a parcela DIFUSA** — a irradiância que a cena devolve a este pixel.
 ///
 /// ⚠️ A [`Environment::radiance`] responde **zero** de propósito: ela é a pergunta do lóbulo
@@ -273,7 +341,12 @@ pub(crate) fn view_direction(cam: &Orbit, screen: &Screen, x: usize, y: usize) -
 }
 
 /// A luz que a superfície devolve pela direcção `v`, já com o olhar — em linear de ECRÃ.
-fn radiance(surface: &Surface, light: &Lighting<'_>, look: Look, geom: PixelGeom) -> [f32; 3] {
+fn radiance(
+    surface: &Surface,
+    light: &Lighting<'_>,
+    pres: &Presentation,
+    geom: PixelGeom,
+) -> [f32; 3] {
     let PixelGeom {
         i: _,
         p,
@@ -285,7 +358,12 @@ fn radiance(surface: &Surface, light: &Lighting<'_>, look: Look, geom: PixelGeom
     // ⭐⭐⭐ **O MATERIAL NESTE PONTO** — a curvatura é a única entrada geométrica que a lei do
     // OpenPBR pede, e ela chega do CAMPO (`crate::curvatura`). ⚠️ Com a subsuperfície maciça
     // desligada (a omissão) ninguém a lê, e esta linha é uma cópia de 15 floats que não muda um bit.
-    let surface = &surface.at_curvature(k);
+    // ⚠️ **O módulo é tomado AQUI**, e não dentro da [`crate::curvatura`]: a lei do OpenPBR pede um
+    // comprimento (a referência estima-o por `length(fwidth(N))`), e a tinta por curvatura da `W8`
+    // pede o SINAL. *Uma porta que deita fora o sinal serve o primeiro consumidor e apaga o
+    // segundo* — a imagem desta é byte a byte a mesma, porque tomar o módulo antes ou depois de
+    // guardar dá o mesmo `f32`.
+    let surface = &surface.at_curvature(k.abs());
     let add = |a: [f32; 3], b: [f32; 3]| [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
     // ⭐⭐⭐ **A OCLUSÃO É A SOMBRA DO CÉU** — ela multiplica o que o AMBIENTE entrega, e mais nada.
     //
@@ -314,6 +392,12 @@ fn radiance(surface: &Surface, light: &Lighting<'_>, look: Look, geom: PixelGeom
     if devolvida != [0.0; 3] {
         rgb = add(rgb, surface.indirect(n, v, &SoIrradiancia(devolvida)));
     }
+    // ⭐⭐⭐ **A SATURAÇÃO DA LUZ INDIRECTA** (`ph2d_style`, a `W8`) — aqui, sobre as DUAS parcelas
+    // de ambiente e **antes das lâmpadas**: saturar no fim saturaria também o realce do sol.
+    //
+    // ⚠️ Com o valor de fábrica (`1`) isto é a identidade **ao bit**, por construção — e o gémeo do
+    // dispositivo aplica-a exactamente no mesmo ponto da soma.
+    rgb = pres.style.saturate_indirect(rgb);
     for lamp in light.lamps {
         rgb = add(rgb, surface.direct(n, v, lamp.to_light, lamp.radiance));
     }
@@ -360,7 +444,23 @@ fn radiance(surface: &Surface, light: &Lighting<'_>, look: Look, geom: PixelGeom
         let chega_mole = [0, 1, 2].map(|k| chega_da_lampada(lamp, cru, mole[k])[k]);
         rgb = add(rgb, surface.direct_sss(n, v, to_light, chega, chega_mole));
     }
-    look.apply(add(rgb, surface.emission(n, v)))
+    // ⭐⭐⭐ **O ESTILO ENTRA AQUI, entre a física e o olhar** (`docs/Render3d/03`, a `W8`): a luz
+    // que a superfície devolve já está toda somada — céu, ricochete, lâmpadas e emissão —, e é sobre
+    // ela que a direcção de arte mente. ⛔ Depois do olhar seria tinta sobre um valor já cortado, e
+    // um contorno que não respira com a exposição separa-se da peça ao expor.
+    //
+    // ⚠️ **Com o estilo de fábrica isto é a identidade AO BIT** e a imagem é a de antes, byte a
+    // byte — por construção e com gate (ver o [`ph2d_style`]).
+    let cena = pres.style.apply(
+        add(rgb, surface.emission(n, v)),
+        ph2d_style::Point {
+            // ⚠️ **`|N·V|`**, e o valor absoluto não é defensivo: numa silhueta o produto passa por
+            // zero e muda de sinal com o ruído da normal, e um contorno que pisca não é um contorno.
+            facing: (n[0] * v[0] + n[1] * v[1] + n[2] * v[2]).abs(),
+            curvature: pres.styled_curvature(k),
+        },
+    );
+    pres.look.apply(cena)
 }
 
 /// Colore o G-buffer com um material sob uma luz e devolve RGBA8 **pré-multiplicado**.
@@ -377,7 +477,7 @@ pub fn shade_render(
     cam: &Orbit,
     surfaces: &Surfaces<'_>,
     light: &Lighting<'_>,
-    look: Look,
+    pres: &Presentation,
     background: [u8; 4],
 ) -> Vec<u8> {
     let (w, h) = (g.width as usize, g.height as usize);
@@ -428,7 +528,7 @@ pub fn shade_render(
                     },
                     pixel_world,
                     light,
-                    look,
+                    pres,
                 );
                 write(px, [c[0], c[1], c[2], 1.0]);
             } else {
@@ -483,7 +583,7 @@ pub fn shade_render(
                     },
                     pixel_world,
                     light,
-                    look,
+                    pres,
                 );
                 [rgb[0], rgb[1], rgb[2], 1.0]
             } else {
@@ -583,13 +683,13 @@ fn mixed_radiance(
     geom: PixelGeom,
     pixel_world: f32,
     light: &Lighting<'_>,
-    look: Look,
+    pres: &Presentation,
 ) -> [f32; 3] {
     let (a, b, t) = surfaces.mix_of(geom.p, pixel_world);
-    let ca = radiance(a, light, look, geom);
+    let ca = radiance(a, light, pres, geom);
     if t <= 0.0 {
         return ca;
     }
-    let cb = radiance(b, light, look, geom);
+    let cb = radiance(b, light, pres, geom);
     [0, 1, 2].map(|i| ca[i] + (cb[i] - ca[i]) * t)
 }

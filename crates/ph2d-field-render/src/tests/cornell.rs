@@ -771,7 +771,7 @@ fn o_ricochete_tinge_o_chao_da_imagem() {
                 sky: &Escuro,
                 shadows: Some(sh),
             },
-            ph2d_view_transform::Look::default(),
+            &crate::Presentation::of(ph2d_view_transform::Look::default()),
             FUNDO,
         )
     };
@@ -1388,7 +1388,7 @@ fn sonda_a_escada_das_direccoes() {
                 sky: &Escuro,
                 shadows: Some(&sh),
             },
-            ph2d_view_transform::Look::default(),
+            &crate::Presentation::of(ph2d_view_transform::Look::default()),
             FUNDO,
         )
     };

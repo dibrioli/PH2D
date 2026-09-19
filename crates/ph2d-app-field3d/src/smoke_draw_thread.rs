@@ -31,6 +31,12 @@ pub(crate) struct Pedido {
     pub antialias: bool,
     pub shading: crate::shading::Shading,
     pub look: ph2d_view_transform::Look,
+    /// ⭐⭐⭐ **A CAMADA DE ESTILO da cena** (`docs/Render3d/03`, a `W8`) — os botões da direcção de
+    /// arte, que entram entre a física e o olhar.
+    ///
+    /// ⚠️ **Copiado já SANEADO** ([`ph2d_style::Style::sanitized`]), como tudo o que atravessa esta
+    /// fronteira: a cerca é de QUADRO e correria por pixel se viajasse crua.
+    pub style: ph2d_style::Style,
     pub matcap: Arc<super::MatcapTexels>,
     pub materials: Option<Arc<crate::materials::Table>>,
     /// ⚠️ **As luzes ACESAS**, e não a lista do módulo: esta tem também as apagadas, porque o gizmo
@@ -55,6 +61,23 @@ pub(crate) fn traca(p: &Pedido) {
     // ([`crate::gpu_frame::takes_the_frame`]), e a que mais importa é a terceira: uma peça
     // com ESCULTURA fica na CPU, senão ela desapareceria em silêncio.
     let mundos: Vec<[f32; 3]> = p.lights.iter().map(|l| l.world).collect();
+    // ⭐⭐⭐ **A APRESENTAÇÃO DA CENA, montada UMA vez e entregue aos DOIS motores** — o olhar, o
+    // estilo e a escala da peça (`docs/Render3d/03`, a `W8`).
+    //
+    // ⚠️⚠️ **Ela nasce ANTES do ramo do dispositivo de propósito, e a razão é o §24 do
+    // `docs/Render3d/10`:** aquele defeito foi uma cura escrita no caminho de REFERÊNCIA enquanto o
+    // caminho de OMISSÃO — este, o pintado — devolvia antes de a alcançar. *Duas variáveis montadas
+    // em dois ramos são exactamente como isso volta a acontecer;* com uma só, o que o artista vê e o
+    // que a régua mede são a mesma apresentação por construção.
+    //
+    // ⚠️ **Sem peça (documento vazio) o raio é `1`** e é inofensivo: sem tinta de curvatura e sem
+    // subsuperfície ninguém o lê, porque a própria curvatura não chega a ser medida.
+    let apresentacao = ph2d_field_render::Presentation {
+        look: p.look,
+        style: p.style,
+        piece_radius: ph2d_field_eval::bounds::bounding_ball(&p.doc, &p.reg)
+            .map_or(1.0, |b| b.radius),
+    };
     let pelo_dispositivo = matches!(p.shading, crate::shading::Shading::Render)
         && !mundos.is_empty()
         && crate::gpu_frame::takes_the_frame(p.gpu, &p.doc, &p.reg);
@@ -85,7 +108,7 @@ pub(crate) fn traca(p: &Pedido) {
                 &p.cam,
                 &p.lights,
                 &surfaces,
-                p.look,
+                &apresentacao,
                 BACKGROUND,
                 p.ground,
                 p.tw,
@@ -250,24 +273,32 @@ pub(crate) fn traca(p: &Pedido) {
                     (p.tw.min(p.th)) as usize,
                 ));
             }
-            // ⭐⭐⭐ **A CURVATURA, quando alguém a lê** (`docs/Render3d/10`) — a grandeza que a
-            // subsuperfície MACIÇA pergunta. ⚠️ Com a omissão (`subsurface_weight = 0`) ou com a
-            // peça declarada parede fina, a [`Surface::reads_curvature`] responde `false` e o
-            // quadro **não paga uma amostra de campo** — o gémeo exacto do `if` que o WGSL faz.
+            // ⭐⭐⭐ **A CURVATURA, quando alguém a lê** (`docs/Render3d/10` e a `W8`) — a grandeza
+            // que a subsuperfície MACIÇA e a TINTA POR CURVATURA perguntam. ⚠️ Com a omissão
+            // (`subsurface_weight = 0`, tintas brancas) as duas portas respondem `false` e o quadro
+            // **não paga uma amostra de campo** — o gémeo exacto do `if` que o WGSL faz.
+            //
+            // ⚠️⚠️ **São DUAS portas somadas, e não uma**: se o censo perguntasse só ao material, o
+            // artista mexeria na tinta de aresta e a peça não mudava um pixel — *a grandeza que o
+            // botão escolhe nunca teria sido medida*, que é a forma de knob morto que esta casa mede
+            // desde 30/08.
             //
             // ⚠️ **O passo é o da SEGUNDA diferença e sai da PEÇA**, nunca da vista: ver
             // [`ph2d_field_render::curvatura::eps_para`], onde a medição está.
-            if surfaces
+            let alguem_le_a_curvatura = surfaces
                 .all
                 .iter()
                 .any(ph2d_material::Surface::reads_curvature)
-                && let Some(bola) = ph2d_field_eval::bounds::bounding_ball(&p.doc, &p.reg)
-            {
+                || p.style.reads_curvature();
+            // ⚠️ **A bola é a MESMA que a apresentação já derivou** — ver o `piece_radius` lá em
+            // cima. ⛔ Derivá-la outra vez aqui seria a segunda resposta à mesma pergunta, e a que
+            // passa a discordar no dia em que alguém mexa numa delas.
+            if alguem_le_a_curvatura && apresentacao.piece_radius > 0.0 {
                 let mut eval = ph2d_field_eval::hybrid::Hybrid::new(&p.doc, &p.reg);
                 g.curvature = ph2d_field_render::curvatura::do_gbuffer(
                     &mut eval,
                     &g,
-                    ph2d_field_render::curvatura::eps_para(bola.radius),
+                    ph2d_field_render::curvatura::eps_para(apresentacao.piece_radius),
                 );
             }
             // ⭐⭐⭐ **A SOMBRA COM A BORDA MOLE, que só um material TRANSLÚCIDO lê**
@@ -313,7 +344,7 @@ pub(crate) fn traca(p: &Pedido) {
                         sky: &crate::render_light::StudioSky,
                         shadows: sh,
                     },
-                    p.look,
+                    &apresentacao,
                     BACKGROUND,
                 )
             };

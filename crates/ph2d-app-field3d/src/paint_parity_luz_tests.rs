@@ -169,7 +169,7 @@ fn a_cor_que_a_peca_devolve_ao_chao_e_a_mesma_nos_dois_motores() {
                 sky: &crate::render_light::StudioSky,
                 shadows: Some(sh),
             },
-            ph2d_view_transform::Look::default(),
+            &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
             FUNDO,
         )
     };
@@ -276,7 +276,19 @@ fn mede_o_que_a_cor_no_chao_custa() {
         };
         let t0 = std::time::Instant::now();
         let saida = crate::gpu_frame::paint_com(
-            t, &doc, &reg, &cam, &luz, &surfaces, olhar, FUNDO, chao, LW, LH, true, sonda,
+            t,
+            &doc,
+            &reg,
+            &cam,
+            &luz,
+            &surfaces,
+            &ph2d_field_render::Presentation::of(olhar),
+            FUNDO,
+            chao,
+            LW,
+            LH,
+            true,
+            sonda,
         );
         assert!(saida.is_some(), "o dispositivo toma a peça");
         t0.elapsed().as_secs_f64() * 1000.0

@@ -358,6 +358,17 @@ pub struct Smoke {
     /// cenas. Estado de **vista** (não entra no undo nem no arquivo), e quem o muda é o
     /// [`Smoke::set_look`], que larga o pedido guardado de **todos** os viewports.
     pub look: ph2d_view_transform::Look,
+    /// ⭐⭐⭐ **A CAMADA DE ESTILO DA CENA** (`docs/Render3d/03`, a `W8`) — os botões para mentir de
+    /// propósito por cima de um pipeline honesto.
+    ///
+    /// ⚠️ **Da cena e pelas MESMAS duas razões do [`Smoke::look`]**: é direcção de arte, e duas
+    /// vistas da mesma peça com grades diferentes seriam dois filmes. Estado de **vista** (não entra
+    /// no undo nem no arquivo), e quem o muda é o [`Smoke::set_style`].
+    ///
+    /// ⏳ **Ele passa a DOCUMENTO no mesmo dia que o olhar** — quando houver uma saída de render que
+    /// os grave (`docs/Render3d/04` §4). *A dívida é uma e é partilhada; separá-las agora poria
+    /// metade da apresentação no ficheiro e metade fora.*
+    pub style: ph2d_style::Style,
     /// ⭐ **O nó ISOLADO** — mostrar só ele, ou `None` para a peça inteira (W38).
     ///
     /// ⚠️ **Estado de VISTA, e a lei é a do módulo irmão, lida e não re-decidida**
@@ -477,6 +488,21 @@ impl Smoke {
             return;
         }
         self.look = look;
+        self.forget_requests();
+    }
+
+    /// ⭐⭐⭐ **Troca a camada de ESTILO da cena** — a irmã do [`Smoke::set_look`], e pela mesma
+    /// razão ela larga o pedido guardado de **todos** os viewports.
+    ///
+    /// ⚠️ **O saneamento é AQUI, na porta** ([`ph2d_style::Style::sanitized`]): a partir daqui o
+    /// número viaja para a thread que desenha e para o uniforme do dispositivo, e nenhum dos dois
+    /// tem cerca — *ela é de quadro e correria por pixel em qualquer outro sítio*.
+    pub fn set_style(&mut self, style: ph2d_style::Style) {
+        let style = style.sanitized();
+        if self.style == style {
+            return;
+        }
+        self.style = style;
         self.forget_requests();
     }
 

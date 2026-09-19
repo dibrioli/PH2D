@@ -54,7 +54,14 @@ fn measure_which_softbox_the_rulers_choose() {
                 sky,
                 shadows: None,
             };
-            shade_render(&g, &cam, &surface, &light, look, BG)
+            shade_render(
+                &g,
+                &cam,
+                &surface,
+                &light,
+                &ph2d_field_render::Presentation::of(look),
+                BG,
+            )
         };
     // ⛔⛔ **O OLHAR DO PRODUTO É O `OPENING_LOOK`, NUNCA O `Look::default()`.** O segundo é a
     // omissão do TIPO (`Standard`, a identidade para luz em `0..=1`); o modelador abre em `Neutral`
@@ -126,7 +133,14 @@ fn measure_which_softbox_the_rulers_choose() {
             exposure_stops: stops,
             view,
         };
-        let px = shade_render(&g, &cam, &surface, &light, look, BG);
+        let px = shade_render(
+            &g,
+            &cam,
+            &surface,
+            &light,
+            &ph2d_field_render::Presentation::of(look),
+            BG,
+        );
         px.as_chunks::<4>()
             .0
             .iter()
@@ -342,11 +356,25 @@ fn measure_what_the_box_costs_per_frame() {
             sky,
             shadows: None,
         };
-        let _ = shade_render(&g, &cam, &surface, &light, Look::default(), BG);
+        let _ = shade_render(
+            &g,
+            &cam,
+            &surface,
+            &light,
+            &ph2d_field_render::Presentation::of(Look::default()),
+            BG,
+        );
         let mut v: Vec<f64> = (0..7)
             .map(|_| {
                 let t = Instant::now();
-                let px = shade_render(&g, &cam, &surface, &light, Look::default(), BG);
+                let px = shade_render(
+                    &g,
+                    &cam,
+                    &surface,
+                    &light,
+                    &ph2d_field_render::Presentation::of(Look::default()),
+                    BG,
+                );
                 std::hint::black_box(px[0]);
                 t.elapsed().as_secs_f64() * 1e3
             })

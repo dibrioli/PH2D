@@ -27,6 +27,7 @@ ph2d-color = { path = "../ph2d-color" }
 # dependências, e é por isso que um traçador de CPU as pode puxar sem arrastar o `wgpu`.
 ph2d-material = { path = "../ph2d-material" }
 ph2d-view-transform = { path = "../ph2d-view-transform" }
+ph2d-style = { path = "../ph2d-style" }
 
 # rayon: a EXCEÇÃO é autorizada pela forma exata do ADR-0109, e um traçador é o
 # caso canônico dela — cada pixel é um GATHER puro contra uma árvore IMUTÁVEL,

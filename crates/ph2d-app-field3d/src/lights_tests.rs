@@ -166,7 +166,7 @@ fn a_light_object_lights_the_side_it_is_on() {
                 sky: &crate::render_light::StudioSky,
                 shadows: None,
             },
-            crate::shading::OPENING_LOOK,
+            &ph2d_field_render::Presentation::of(crate::shading::OPENING_LOOK),
             [0, 0, 0, 0],
         )
     };
@@ -340,7 +340,7 @@ fn measure_what_the_swap_costs_the_picture() {
                 sky: &crate::render_light::StudioSky,
                 shadows: None,
             },
-            crate::shading::OPENING_LOOK,
+            &ph2d_field_render::Presentation::of(crate::shading::OPENING_LOOK),
             [0, 0, 0, 0],
         )
     };
@@ -489,7 +489,7 @@ fn a_light_falls_off_with_the_square_of_the_distance() {
                 sky: &Escuro,
                 shadows: None,
             },
-            ph2d_view_transform::Look::default(),
+            &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
             [0, 0, 0, 0],
         );
         let c = px.as_chunks::<4>().0;
@@ -576,7 +576,7 @@ fn a_light_falls_off_with_the_square_of_the_distance() {
             sky: &Escuro,
             shadows: None,
         },
-        ph2d_view_transform::Look::default(),
+        &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
         [0, 0, 0, 0],
     );
     let px = em_cima.as_chunks::<4>().0[alvo];

@@ -185,7 +185,14 @@ fn measure_what_the_render_mode_costs_and_paints() {
         shadows: None,
     };
     let t = Instant::now();
-    let render_px = shade_render(&g, &cam, &surface, &light, Look::default(), BG);
+    let render_px = shade_render(
+        &g,
+        &cam,
+        &surface,
+        &light,
+        &ph2d_field_render::Presentation::of(Look::default()),
+        BG,
+    );
     let render_ms = t.elapsed().as_secs_f64() * 1e3;
 
     let texels = vec![0.5_f32; 2 * 2 * 3];
@@ -224,7 +231,14 @@ fn measure_what_the_render_mode_costs_and_paints() {
                 exposure_stops: stops,
                 view,
             };
-            stats(&shade_render(&g, &cam, &surface, &light, look, BG))
+            stats(&shade_render(
+                &g,
+                &cam,
+                &surface,
+                &light,
+                &ph2d_field_render::Presentation::of(look),
+                BG,
+            ))
         };
         let (s_media, s_verde, s_branco, _) = de(ViewTransform::Standard);
         let (n_media, n_verde, n_branco, _) = de(ViewTransform::Neutral);
@@ -434,11 +448,25 @@ fn measure_what_material_per_object_costs_the_shading() {
         // desce de `load ~7` (a nota do `project-memory`).
         let med = |owners: Option<&ph2d_field_eval::owners::Owners>| -> (f64, f64) {
             let s = ph2d_field_render::Surfaces { all: &so, owners };
-            let _ = shade_render(&g, &cam, &s, &light, olhar, BG);
+            let _ = shade_render(
+                &g,
+                &cam,
+                &s,
+                &light,
+                &ph2d_field_render::Presentation::of(olhar),
+                BG,
+            );
             let mut v: Vec<f64> = (0..5)
                 .map(|_| {
                     let t = Instant::now();
-                    let _ = shade_render(&g, &cam, &s, &light, olhar, BG);
+                    let _ = shade_render(
+                        &g,
+                        &cam,
+                        &s,
+                        &light,
+                        &ph2d_field_render::Presentation::of(olhar),
+                        BG,
+                    );
                     t.elapsed().as_secs_f64() * 1e3
                 })
                 .collect();
@@ -526,7 +554,14 @@ fn measure_how_much_of_the_material_this_sky_lets_through() {
             sky,
             shadows: None,
         };
-        shade_render(&g, &cam, &surface, &light, crate::shading::OPENING_LOOK, BG)
+        shade_render(
+            &g,
+            &cam,
+            &surface,
+            &light,
+            &ph2d_field_render::Presentation::of(crate::shading::OPENING_LOOK),
+            BG,
+        )
     };
 
     // A média do verde sobre a peça.

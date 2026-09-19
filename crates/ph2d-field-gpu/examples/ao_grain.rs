@@ -225,7 +225,7 @@ fn main() {
                 sky: &ceu,
                 shadows: Some(sh),
             },
-            ph2d_view_transform::Look::default(),
+            &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
             [40, 40, 40, 255],
         )
     };

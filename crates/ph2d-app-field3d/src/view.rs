@@ -87,6 +87,14 @@ pub struct View {
     pub shading: crate::shading::Shading,
     /// ⭐⭐⭐ **O olhar da cena** — a exposição e a vista, que valem para todos os viewports.
     pub look: ph2d_view_transform::Look,
+    /// ⭐⭐⭐ **A camada de ESTILO da cena** (`docs/Render3d/03`, a `W8`) — os botões da direcção de
+    /// arte.
+    ///
+    /// ⚠️ **É VISTA e não cache, e a razão é a mesma do olhar:** ela é uma preferência de bancada
+    /// que o artista autorou, e um artista que pôs a cena numa grade fria e pegou no editor vectorial
+    /// quer voltar e encontrá-la. ⛔ Cache seria uma coisa DERIVADA do mundo, e esta não é derivada
+    /// de nada — ninguém a pode reconstruir.
+    pub style: ph2d_style::Style,
 }
 
 impl Default for View {
@@ -100,6 +108,10 @@ impl Default for View {
             // decisão de produto do dono (14/09) e traz a tabela do que ela custa. *A identidade do
             // TIPO e o olhar com que este módulo ABRE são duas perguntas.*
             look: crate::shading::OPENING_LOOK,
+            // ⭐ **A fábrica, que é a identidade exacta** — o modelador abre sem mentira nenhuma por
+            // cima da física, e é isso que faz o quadro de quem nunca tocou nos botões ser o de
+            // antes, byte a byte.
+            style: ph2d_style::Style::default(),
             split: crate::layout::Split::One,
             cam: Orbit::default(),
             manual: false,
@@ -128,6 +140,8 @@ impl View {
             // ⭐⭐⭐ **O olhar da cena é VISTA** (`docs/Render3d/05`) — e o modo de pintar, que é do
             // viewport, sai do activo como a câmera.
             look,
+            // ⭐⭐⭐ **O estilo é VISTA pela mesma lei do olhar** — ver o campo em [`View::style`].
+            style,
             // ⚠️ Daqui para baixo, **cache do quadro ou gesto em curso** — nada disto atravessa.
             doc: _,
             seed: _,
@@ -193,6 +207,7 @@ impl View {
             // ⭐ O modo é do viewport ACTIVO, como a câmera; o olhar é da cena.
             shading: s.vp().shading,
             look: *look,
+            style: *style,
             gizmo_mode: *gizmo_mode,
             gizmo_frame: *gizmo_frame,
             isolated: *isolated,

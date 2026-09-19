@@ -46,7 +46,14 @@ fn measure_what_the_last_five_openpbr_inputs_would_buy() {
             all: &so,
             owners: None,
         };
-        shade_render(&g, &cam, &surface, &light, olhar, BG)
+        shade_render(
+            &g,
+            &cam,
+            &surface,
+            &light,
+            &ph2d_field_render::Presentation::of(olhar),
+            BG,
+        )
     };
     let diferenca = |a: &[u8], b: &[u8]| -> (u8, usize) {
         let (mut pior, mut visiveis) = (0u8, 0usize);

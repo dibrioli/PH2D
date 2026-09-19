@@ -573,7 +573,7 @@ fn pinta(g: &crate::Gbuffer, cam: &Orbit, surfaces: &Surfaces<'_>, sh: &crate::S
             sky: &CeuUniforme(0.3),
             shadows: Some(sh),
         },
-        ph2d_view_transform::Look::default(),
+        &crate::Presentation::of(ph2d_view_transform::Look::default()),
         [0, 0, 0, 0],
     )
 }

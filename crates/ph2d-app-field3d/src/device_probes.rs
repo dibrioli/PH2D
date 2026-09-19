@@ -83,13 +83,37 @@ fn mede_o_preco_de_uma_aresta_de_perfil() {
             // Aquecimento fora da conta: a primeira compila o pipeline. ⚠️ **Sem o tecto** — esta
             // é a sonda que o calibra, e ela tem de atravessar o degrau para o poder ver.
             let _ = crate::gpu_frame::paint_com(
-                t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, LW, LH, false, sonda,
+                t,
+                &doc,
+                &reg,
+                &cam,
+                &luz,
+                &surfaces,
+                &ph2d_field_render::Presentation::of(olhar),
+                BG,
+                None,
+                LW,
+                LH,
+                false,
+                sonda,
             );
             let mut v: Vec<f32> = Vec::new();
             for _ in 0..5 {
                 let t0 = std::time::Instant::now();
                 let p = crate::gpu_frame::paint_com(
-                    t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, LW, LH, false, sonda,
+                    t,
+                    &doc,
+                    &reg,
+                    &cam,
+                    &luz,
+                    &surfaces,
+                    &ph2d_field_render::Presentation::of(olhar),
+                    BG,
+                    None,
+                    LW,
+                    LH,
+                    false,
+                    sonda,
                 )
                 .expect("o pintor");
                 std::hint::black_box(p.rgba.len());
@@ -216,13 +240,37 @@ fn mede_as_cenas_reais_nos_dois_motores() {
         };
         let na_placa = || {
             if let Some(p) = crate::gpu_frame::paint_com(
-                t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, LW, LH, false, sonda,
+                t,
+                &doc,
+                &reg,
+                &cam,
+                &luz,
+                &surfaces,
+                &ph2d_field_render::Presentation::of(olhar),
+                BG,
+                None,
+                LW,
+                LH,
+                false,
+                sonda,
             ) {
                 std::hint::black_box(p.rgba.len());
             }
         };
         if crate::gpu_frame::paint_com(
-            t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, LW, LH, false, sonda,
+            t,
+            &doc,
+            &reg,
+            &cam,
+            &luz,
+            &surfaces,
+            &ph2d_field_render::Presentation::of(olhar),
+            BG,
+            None,
+            LW,
+            LH,
+            false,
+            sonda,
         )
         .is_none()
         {
@@ -327,7 +375,19 @@ fn audita_o_vaso() {
         let mede = |w: u32, h: u32| -> f32 {
             let f = || {
                 if let Some(p) = crate::gpu_frame::paint_com(
-                    t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, w, h, false, sonda,
+                    t,
+                    &doc,
+                    &reg,
+                    &cam,
+                    &luz,
+                    &surfaces,
+                    &ph2d_field_render::Presentation::of(olhar),
+                    BG,
+                    None,
+                    w,
+                    h,
+                    false,
+                    sonda,
                 ) {
                     std::hint::black_box(p.rgba.len());
                 }
@@ -473,7 +533,19 @@ fn audita_o_arredondamento_do_vaso() {
             .map_or((0, 0), |s| (s.ops, s.guardados));
         let f = || {
             if let Some(p) = crate::gpu_frame::paint_com(
-                t, &doc, &reg, &cam, &luz, &surfaces, olhar, BG, None, LW, LH, false, sonda,
+                t,
+                &doc,
+                &reg,
+                &cam,
+                &luz,
+                &surfaces,
+                &ph2d_field_render::Presentation::of(olhar),
+                BG,
+                None,
+                LW,
+                LH,
+                false,
+                sonda,
             ) {
                 std::hint::black_box(p.rgba.len());
             }

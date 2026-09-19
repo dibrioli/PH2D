@@ -340,13 +340,20 @@ fn the_modeller_opens_in_a_view_the_softbox_does_not_blow_out() {
                 sky,
                 shadows: None,
             };
-            shade_render(&g, &cam, &surface, &light, look, BG)
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .enumerate()
-                .filter(|(i, p)| g.hit[*i] && p[0] == 255 && p[1] == 255 && p[2] == 255)
-                .count()
+            shade_render(
+                &g,
+                &cam,
+                &surface,
+                &light,
+                &ph2d_field_render::Presentation::of(look),
+                BG,
+            )
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .enumerate()
+            .filter(|(i, p)| g.hit[*i] && p[0] == 255 && p[1] == 255 && p[2] == 255)
+            .count()
         };
     let estudio = Studio::of_the_product();
     let rampa = Studio::bare_ramp();

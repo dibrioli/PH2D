@@ -34,6 +34,12 @@ mod paint_rows;
 mod populate;
 
 pub use area_bar::publish as publish_area_bar;
+/// ⭐⭐⭐ **A porta que diz o id da amostra de cor de uma fileira** — ver [`paint_rows::swatch_id`].
+///
+/// ⚠️ **Exposta de propósito**: quem PUBLICA fileiras de cor (a camada de estilo vive noutra crate)
+/// tem de poder provar que as suas não partilham um id, e essa prova é o que faltava quando cinco
+/// cores do estilo passaram a mudar todas ao mesmo tempo.
+pub use paint_rows::swatch_id;
 pub use populate::{CHIP_FAMILY_COUNT, MAX_MODES, MAX_ROWS};
 
 /// O identificador do painel — a **chave de visibilidade** que o shell usa para o abrir.

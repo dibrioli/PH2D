@@ -223,10 +223,12 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
         .iter()
         .take(MAX_ROWS)
         .filter(|r| r.swatch.is_some())
-        .filter_map(|r| match r.param {
-            ph2d_field::Param::Material(k) => Some(crate::ids::model3d_color_swatch(r.entity, k)),
-            _ => None,
-        })
+        // ⛔⛔ **O id sai da PORTA, e antes de 2026-09-19 saía de um `match` PRÓPRIO que só conhecia
+        // `Param::Material`** — a luz e o estilo nunca entravam nesta lista, logo um selector aberto
+        // sobre uma delas **nunca era fechado** e ficava a flutuar sobre uma amostra que já ninguém
+        // pinta: exactamente o controlo morto que esta função existe para impedir, e ela era cega a
+        // duas das três famílias que o painel oferece. Ver [`crate::paint_rows::swatch_id`].
+        .filter_map(crate::paint_rows::swatch_id)
         .collect();
     close_a_stranded_picker(ctx, &amostras);
     y = paint_footer(ctx, &snapshot, x, w, y);

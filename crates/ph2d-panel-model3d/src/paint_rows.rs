@@ -64,8 +64,15 @@ pub(crate) fn paint_row(
     // o filtro pela família, uma linha com amostra de qualquer outra — a cor de uma lâmpada — caía
     // no slider e pintava o canal **vermelho** como um número. *Quem decide que isto é uma cor é o
     // `swatch`, e perguntar duas vezes deixa as duas respostas divergirem.*
-    if let Some(rgb) = row.swatch {
-        return paint_swatch(ctx, row, rgb, x, w, y);
+    //
+    // ⚠️⚠️ **E o ID sai da PORTA** (report de 2026-09-19) — ver [`swatch_id`]. Uma família de cor
+    // que ela não conheça devolve `None` e a linha cai para o controlo normal, que é **exactamente
+    // o que o parágrafo acima já prometia** e o código não fazia: ele mandava-a para a amostra com
+    // um id partilhado, e cinco cores passaram a mudar juntas.
+    if let Some(rgb) = row.swatch
+        && let Some(id) = swatch_id(row)
+    {
+        return paint_swatch(ctx, row, id, rgb, x, w, y);
     }
     // ⭐ **Uma linha que não pode agir não é pintada como se pudesse** — ver [`ParamRow::inert`].
     // Ela sai daqui como facto e **não regista nada** no índice de acerto, então não há slider a
@@ -265,6 +272,60 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
     y + used.max(ROW_H_PX) + ph2d_tokens::control_gap_px()
 }
 
+/// ⭐⭐⭐ **O ID DE UMA LINHA-AMOSTRA — a PORTA, com dois leitores** (report do Enio, 2026-09-19:
+/// *«se modifico qualquer cor em style, todas mudam ao mesmo tempo»*).
+///
+/// # ⛔⛔ O defeito que ela cura, e porque nenhum gate o via
+///
+/// O id era derivado **dentro** do [`paint_swatch`] por um `match` cujo braço final dizia, por
+/// escrito, *«uma amostra sobre um param sem índice não existe hoje; `0` é a resposta estável»*.
+/// Era **verdade no dia em que foi escrita** e ficou **falsa** quando a camada de estilo
+/// (`docs/Render3d/11`) trouxe cinco linhas de cor cujo `entity` é `0` por desenho — *o estilo não
+/// é de entidade nenhuma*. As cinco caíam no braço final e recebiam o **mesmo** id:
+///
+/// ```text
+/// hash("model3d.color.swatch.0.0")   ← as CINCO cores do estilo
+/// ```
+///
+/// ⇒ com o selector aberto numa delas, **as cinco** liam `picker_target() == Some(id)`, **as cinco**
+/// comparavam a cor escolhida com a sua, e **as cinco** pediam a edição. Uma roda, cinco escritas.
+///
+/// ⚠️⚠️ **E a segunda metade estava na outra ponta:** a lista que fecha um selector órfão
+/// (`crate::paint::close_a_stranded_picker`) derivava o id por um **segundo `match`**, que só
+/// conhecia `Param::Material`. *Duas respostas à mesma pergunta — «qual é o id desta amostra?» —
+/// divergem no dia em que uma família nova entra*, e aqui já divergiam para a **luz**, desde a wave
+/// dela. ⇒ uma porta, e os dois leitores passam por ela.
+///
+/// # ⚠️ Porque o estilo tem espaço de nomes PRÓPRIO
+///
+/// [`crate::ids::model3d_color_swatch`] cunha o par `(entidade, campo)`, e o sujeito do estilo **não
+/// é uma entidade** — o `0` que a fileira carrega é um sentinela que o dreno nem lê. Pendurar o
+/// estilo naquele nome faria a não-colisão depender do acidente de `Entity::to_bits()` nunca valer
+/// `0`; com [`crate::ids::model3d_style_swatch`] ela é **inexprimível por construção**.
+///
+/// # ⛔ `None` é uma família NOVA, e ela cai para o controlo normal
+///
+/// Uma amostra sem id não é pintada como amostra — ela cai no slider, que é o que o doc do
+/// [`paint_row`] já prometia e o código não fazia. *Visível e diferente é um defeito que se lê; um
+/// id partilhado em silêncio é o que este report custou.*
+#[must_use]
+pub fn swatch_id(row: &ParamRow) -> Option<ph2d_a11y::NodeId> {
+    match row.param {
+        // ⚠️ As duas famílias de ENTIDADE nunca coexistem no mesmo nó (o `params_of` responde uma
+        // OU a outra), logo o par `(entidade, índice)` continua único entre elas.
+        ph2d_field::Param::Material(k) | ph2d_field::Param::Light(k) => {
+            Some(crate::ids::model3d_color_swatch(row.entity, k))
+        }
+        // ⭐ **O estilo é da CENA** — espaço de nomes próprio, e o `slot` é a posição na arrumação,
+        // que é o que torna as cinco cores cinco controlos.
+        ph2d_field::Param::Style(slot) => Some(crate::ids::model3d_style_swatch(slot)),
+        // ⛔ **`None` e nunca um id inventado.** Era aqui que estava o defeito: um `0` «estável»
+        // dava a TODAS as famílias novas o mesmo controlo. Uma família sem id cai para o slider —
+        // visível, diferente, e legível como uma falta.
+        _ => None,
+    }
+}
+
 /// ⭐⭐⭐ **A LINHA-AMOSTRA** — o rótulo à esquerda, e na goteira do valor a cor que a peça tem
 /// (Enio, 2026-09-14: *«em vez de 3 sliders de RGB, deveríamos ter uma caixa seletora de cor»*).
 ///
@@ -292,7 +353,15 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
 /// ⚠️ **E o «mudou?» pergunta-se em sRGB8** — ver [`ParamRow::swatch`]. Sem essa comparação a
 /// função pediria uma edição **por quadro** enquanto o selector estivesse aberto: um passo de undo
 /// por quadro, sobre uma cor que ninguém mexeu.
-fn paint_swatch(ctx: &mut PaintCtx, row: &ParamRow, rgb: [u8; 3], x: f32, w: f32, y: f32) -> f32 {
+fn paint_swatch(
+    ctx: &mut PaintCtx,
+    row: &ParamRow,
+    id: ph2d_a11y::NodeId,
+    rgb: [u8; 3],
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
     use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
 
     let theme = ctx.host.theme();
@@ -319,20 +388,10 @@ fn paint_swatch(ctx: &mut PaintCtx, row: &ParamRow, rgb: [u8; 3], x: f32, w: f32
         dim,
     );
 
-    // ⛔⛔ **O id vem da ENTIDADE, e é o único deste painel que vem** — ver
-    // [`crate::ids::model3d_color_swatch`]. Com o id da posição, escolher outra forma com o
-    // selector aberto escreveria a cor da anterior na nova, em silêncio.
+    // ⛔⛔ **O id chega de FORA, pela porta [`swatch_id`]** — ele era derivado aqui dentro, e a
+    // outra ponta (a lista que fecha um selector órfão) derivava-o outra vez. *Duas respostas à
+    // mesma pergunta, e este report foi o dia em que elas divergiram.*
     //
-    // ⚠️ **O `campo` é o índice DENTRO da família**, e as duas famílias que abrem cor — o material e
-    // a luz — nunca coexistem na mesma entidade (o `params_of` responde uma OU a outra), logo o par
-    // `(entidade, índice)` continua a ser único. *Se um dia uma entidade tiver as duas, este id tem
-    // de crescer — e o sintoma seria o selector aberto numa a responder pela outra.*
-    let campo = match row.param {
-        ph2d_field::Param::Material(k) | ph2d_field::Param::Light(k) => k,
-        // Uma amostra sobre um param sem índice não existe hoje; `0` é a resposta estável.
-        _ => 0,
-    };
-    let id = crate::ids::model3d_color_swatch(row.entity, campo);
     // ⭐⭐⭐ **UMA AMOSTRA TRAVADA NÃO ABRE O SELECTOR, e nem sequer se REGISTA** — ordem do Enio
     // (14/09): ela fica **visível e inactiva**.
     //

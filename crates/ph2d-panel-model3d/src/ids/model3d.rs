@@ -167,6 +167,29 @@ pub fn model3d_color_swatch(entity: u64, field: u8) -> NodeId {
     hash_node_id_runtime(&format!("model3d.color.swatch.{entity}.{field}"))
 }
 
+/// ⭐⭐⭐ **A AMOSTRA DE COR do ESTILO DA CENA** — e ela não tem entidade nenhuma
+/// (report do Enio, 2026-09-19: *«se modifico qualquer cor em style, todas mudam ao mesmo tempo»*).
+///
+/// # ⛔⛔ Porque ela não pode ser o [`model3d_color_swatch`]
+///
+/// Aquele cunha o par `(entidade, campo)`, e o sujeito desta é a **cena**: a fileira do estilo
+/// carrega `entity = 0` como sentinela, e o dreno nem sequer o lê — *o estilo não é de entidade
+/// nenhuma* (ver [`ph2d_field::Param::Style`]). Pendurá-la naquele nome faria a não-colisão com a
+/// cor de um objecto depender do acidente de `Entity::to_bits()` nunca valer `0`; com um nome
+/// próprio ela é **inexprimível por construção**, e há gate a afirmá-lo nos dois sentidos.
+///
+/// # ⚠️ O argumento é a POSIÇÃO NA ARRUMAÇÃO, e é ela que as separa
+///
+/// O `slot` é o índice do primeiro canal no [`ph2d_style::wgsl::pack`] — a mesma coisa que o
+/// [`ph2d_field::Param::Style`] carrega, e por isso as cinco cores dão cinco números distintos
+/// (`0`, `4`, `8`, `12`, `16`). ⛔ Era **exactamente** este número que se perdia quando o id caía no
+/// braço final de um `match` que respondia `0` a tudo o que não fosse material ou luz: as cinco
+/// viravam **um** controlo, e uma roda escrevia nas cinco.
+#[must_use]
+pub fn model3d_style_swatch(slot: u8) -> NodeId {
+    hash_node_id_runtime(&format!("model3d.style.swatch.{slot}"))
+}
+
 /// O **slider do raio** do nó `node` da arena.
 #[must_use]
 pub fn model3d_radius_slider(node: u32) -> NodeId {

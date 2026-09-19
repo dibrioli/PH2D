@@ -118,6 +118,93 @@ fn o_tecto_da_largura_sai_da_lei() {
     );
 }
 
+/// ⭐⭐⭐ **CADA COR DO ESTILO TEM UMA AMOSTRA SÓ SUA** (report do Enio, 2026-09-19: *«se modifico
+/// qualquer cor em style, todas mudam ao mesmo tempo»*).
+///
+/// # ⛔⛔ O defeito, e porque os cinco gates acima ficaram VERDES por cima dele
+///
+/// O selector de cor da casa é **um** e flutua; um painel entra nele registando o `NodeId` da
+/// amostra. O id era cunhado `(entidade, campo)`, e as cinco cores do estilo têm `entity = 0` (o
+/// estilo não é de entidade nenhuma) **e** caíam no braço final do `match`, que respondia `campo =
+/// 0` ⇒ as cinco partilhavam `hash("model3d.color.swatch.0.0")`. Com o selector aberto numa, as
+/// cinco liam *«aberto em mim»* e as cinco pediam a escrita.
+///
+/// ⚠️⚠️ **Os gates acima medem a LEI e o DRENO, e o defeito vive ENTRE os dois** — na identidade com
+/// que a fileira é pintada. O gate da costura alimenta o dreno com a âncora já certa, logo ele entra
+/// **abaixo** da rotura: é a lei que o `CLAUDE.md` §5.0 escreve como *«nenhum instrumento pergunta
+/// se o VALOR chega a um consumidor»*, aqui na forma *«nenhum perguntava se duas fileiras são o
+/// MESMO controlo»*.
+#[test]
+fn cada_cor_do_estilo_tem_uma_amostra_so_sua() {
+    let fileiras = rows(Style::default(), true);
+    let cores: Vec<_> = fileiras.iter().filter(|r| r.swatch.is_some()).collect();
+    // ⚠️ **Piso de população**: sem ele, uma varredura que deixasse de achar cor nenhuma ficaria
+    // trivialmente verde — e a secção tem cinco.
+    assert_eq!(
+        cores.len(),
+        LINHAS.iter().filter(|l| l.teto.is_none()).count(),
+        "a varredura não achou as cores do estilo"
+    );
+    let mut vistos: Vec<(u64, &'static str)> = Vec::new();
+    for c in &cores {
+        let id = ph2d_panel_model3d::swatch_id(c)
+            .unwrap_or_else(|| panic!("{}: uma cor sem amostra é uma cor inalcançável", c.key))
+            .0;
+        if let Some((_, quem)) = vistos.iter().find(|(v, _)| *v == id) {
+            panic!(
+                "{} e {} são o MESMO controlo (id {id}) — mexer numa mexe na outra",
+                quem, c.key
+            );
+        }
+        vistos.push((id, c.key));
+    }
+}
+
+/// ⭐⭐ **E a amostra do estilo NUNCA é a de um objecto** — a não-colisão entre as duas famílias.
+///
+/// ⛔ Sem este gate, a segurança do sentinela `entity = 0` dependeria do acidente de
+/// `Entity::to_bits()` nunca valer zero. *Uma propriedade que vale por acidente é a que cai no dia
+/// em que outra crate muda uma representação* — aqui ela é inexprimível: os dois nomes diferem.
+#[test]
+fn a_amostra_do_estilo_nao_colide_com_a_de_um_objecto() {
+    let alheias: Vec<ph2d_panel_model3d::ParamRow> = [0u8, 4, 8, 12, 16]
+        .into_iter()
+        .flat_map(|k| [Param::Material(k), Param::Light(k)])
+        .map(|param| ph2d_panel_model3d::ParamRow {
+            entity: 0,
+            param,
+            key: "x",
+            value: 0.0,
+            lo: 0.0,
+            bound: Bound::Soft(1.0),
+            inert: None,
+            integral: false,
+            choices: &[],
+            section: None,
+            swatch: Some([0, 0, 0]),
+            subject: None,
+        })
+        .collect();
+    let deles: Vec<u64> = alheias
+        .iter()
+        .filter_map(|r| ph2d_panel_model3d::swatch_id(r).map(|i| i.0))
+        .collect();
+    assert_eq!(deles.len(), alheias.len(), "uma fileira de objecto sem id");
+    for c in rows(Style::default(), true)
+        .iter()
+        .filter(|r| r.swatch.is_some())
+    {
+        let meu = ph2d_panel_model3d::swatch_id(c)
+            .expect("a amostra do estilo")
+            .0;
+        assert!(
+            !deles.contains(&meu),
+            "{}: a amostra do estilo tem o id de uma cor de objecto",
+            c.key
+        );
+    }
+}
+
 /// ⭐⭐⭐ **O CLIQUE CHEGA AO ESTILO DA CENA — a costura, pelo DRENO do produto.**
 ///
 /// # ⛔⛔ Porque este gate existe, e porque ele mede o dreno e não a função

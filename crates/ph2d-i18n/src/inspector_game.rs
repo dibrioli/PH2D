@@ -418,6 +418,35 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.trigger.multiple_selected_edits_apply" => {
             "Editing the primary selection only."
         }
+        // ⭐⭐⭐ O TWEEN (suplente #22) — «esta propriedade vai de A a B».
+        "panel.inspector.tween.tween" => "Tween",
+        "panel.inspector.tween.title_count" => "Tween ({n})",
+        "panel.inspector.tween.no_tweens_yet" => "No tweens yet.",
+        "panel.inspector.tween.plus_add_tween" => "+ Add Tween",
+        "panel.inspector.tween.x_remove_tween" => "x Remove Tween",
+        "panel.inspector.tween.channel" => "Channel",
+        "panel.inspector.tween.from" => "From",
+        "panel.inspector.tween.to" => "To",
+        "panel.inspector.tween.curve" => "Curve",
+        "panel.inspector.tween.ease" => "Ease",
+        "panel.inspector.tween.when_done" => "When Done",
+        // ⚠️ **As quatro QUEIXAS, e as duas primeiras dizem que ele nem CORRE** — dizer «ele não
+        // move nada» a quem não tem relógio é mandá-lo resolver a metade errada.
+        "panel.inspector.tween.no_timer_at_this_slot" => {
+            "No timer at this slot — this tween has no clock, so it never runs."
+        }
+        "panel.inspector.tween.this_object_has_no_sprite" => {
+            "This object has no sprite, so this channel writes nowhere."
+        }
+        "panel.inspector.tween.from_and_to_are_the_same" => {
+            "From and To are the same — it runs and moves nothing."
+        }
+        "panel.inspector.tween.a_silhouette_that_holds_stays_lit" => {
+            "A silhouette that holds stays lit forever. Set When Done to Rewind."
+        }
+        "panel.inspector.tween.multiple_selected_tween_edits_apply" => {
+            "Editing the primary selection only."
+        }
         // ph2d-migrar-texto:end
         _ => return None,
     })

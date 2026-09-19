@@ -24,10 +24,7 @@ const ORDER: &[(&str, &str)] = &[
         "ph2d_ecs::resolve_signal_actions(",
         "a tabela nome -> accao resolve (o `Start Timer` deste quadro)",
     ),
-    (
-        "tween_bridge::drive_tweens(",
-        "o TWEEN escreve, por ultimo",
-    ),
+    ("tween_bridge::drive_tweens(", "o TWEEN escreve, por ultimo"),
 ];
 
 #[test]

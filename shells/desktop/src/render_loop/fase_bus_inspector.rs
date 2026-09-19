@@ -218,6 +218,7 @@ impl crate::App {
                 ComponentEdit::TopDown(e) => pd.topdown_edits.push((entity_bits, e)),
                 ComponentEdit::Projectile(e) => pd.projectile_edits.push((entity_bits, e)),
                 ComponentEdit::Ray(e) => pd.ray_edits.push((entity_bits, e)),
+                ComponentEdit::Tween(e) => pd.tween_edits.push((entity_bits, e)),
                 ComponentEdit::StateMachine(e) => pd.statemachine_edits.push((entity_bits, e)),
                 ComponentEdit::Script(e) => pd.script_edits.push((entity_bits, e)),
                 ComponentEdit::Particles(e) => pd.particles_edits.push((entity_bits, e)),

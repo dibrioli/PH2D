@@ -4873,6 +4873,7 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "image",
+ "ph2d-anim",
  "ph2d-app-host",
  "ph2d-asset",
  "ph2d-asset-index",
@@ -5574,6 +5575,7 @@ dependencies = [
  "ph2d-tool-registry",
  "ph2d-tool-trim-transparency",
  "ph2d-tool-vector",
+ "ph2d-tween",
  "ph2d-vector",
  "ph2d-widget-sync",
  "smallvec 1.15.2",
@@ -7961,6 +7963,7 @@ name = "ph2d-panel-inspector"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
+ "ph2d-anim",
  "ph2d-component-desc",
  "ph2d-editor-core",
  "ph2d-host",
@@ -7970,6 +7973,7 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-registry",
+ "ph2d-tween",
  "ph2d-ui-testkit",
  "ph2d-vector",
 ]

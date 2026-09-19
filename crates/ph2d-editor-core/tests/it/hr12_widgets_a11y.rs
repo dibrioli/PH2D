@@ -691,6 +691,14 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-inspector/src/paint_optional_top20.rs",
         "a CAUDA da cadeia — as quatro seccoes da fila do TOP-20 (cerebro, script, emissor, tags); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
     ),
+    // ⭐ **Nasceu em 2026-09-19 do corte que a secção TWEEN impôs ao irmão logo acima** (`615` de
+    // `600`) — a SEXTA vez que este ficheiro regista a mesma forma, e a primeira em que a cauda
+    // ganhou uma cauda. ⚠️ **A isenção é MEDIDA**: zero ocorrências de `NodeId`, `hit_index.` ou
+    // `register(`.
+    (
+        "ph2d-panel-inspector/src/paint_optional_top20_tail.rs",
+        "a cauda da CAUDA — a moldura da seccao TWEEN, cortada do irmao pelo teto de ficheiro de painel; nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
+    ),
     (
         "ph2d-panel-inspector/src/paint_optional.rs",
         "orquestrador das CINCO seccoes OPCIONAIS (§11 Animation, §12 Sockets, TIMERS, SIGNAL ACTIONS, AUDIO); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame. ⚠️ Chamava-se `paint_stateful.rs` ate' 2026-09-09: a AUDIO nao tem lista e por isso nao tem linha aberta, e a propriedade que dava nome ao ficheiro deixou de o descrever",

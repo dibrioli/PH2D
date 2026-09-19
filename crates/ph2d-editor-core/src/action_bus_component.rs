@@ -51,4 +51,6 @@ pub enum ComponentEdit {
     CounterWatch(crate::counter_watch_edits::CounterWatchFieldEdit),
     /// **GATILHO** (o suplente #24) — a mão de quem joga.
     ActionTrigger(crate::action_trigger_edits::ActionTriggerFieldEdit),
+    /// **TWEEN** (o suplente #22) — «esta propriedade vai de A a B».
+    Tween(crate::tween_edits::TweenFieldEdit),
 }

@@ -1,17 +1,13 @@
-//! Per-frame render orchestration.
+//! **O ÍNDICE das fases do quadro.** O `run_render_frame` chama-as por ordem, os corpos moram
+//! nelas, e cada `mod` abaixo é uma linha porque ela existe — este ficheiro cresce uma por FASE e
+//! **nunca perde uma**, logo o tecto dele não mede autor nenhum: mede o NÚMERO DE FASES.
 //!
-//! Wave 3.1 stage C — `App::render_frame`'s body lifted verbatim from
-//! `main.rs` into this sibling. Wave 3.2 stage A splits the lifted
-//! body further into per-phase siblings, each implemented as an
-//! `impl crate::App` block on a sibling file (split-impl pattern,
-//! same as Wave 3.1 used for the initial lift).
+//! ⚠️ **A ORDEM é a lei, e o oráculo dela é o texto emendado** (`frame_text::render_frame`), que
+//! colhe só `fn fase_*` — uma fase com outro nome desaparece dali **em silêncio**.
 //!
-//! Phases (called by `run_render_frame` in order):
-//!  - `present.rs` — paint + 4 GPU passes + title refresh.
-//!  - (more phases land as Wave 3.2 progresses.)
-//!
-// ⭐ Sem entrada NUMERADA nos tectos de LOC desde a `line/render-bodies` (2026-09-13): o `run_render_frame` é o índice
-// das fases e os corpos moram nelas (o dreno do barramento incluído) — o FOLLOW-UP que esta nota pedia está pago.
+//! ⭐ Sem entrada NUMERADA nos tectos de LOC desde a `line/render-bodies` (2026-09-13). ⛔ Em
+//! 2026-09-19 ele bateu `602` ao ganhar a fase do tween, e o corte foi a narrativa da Wave 3.1/3.2
+//! — uma migração FECHADA, cuja história vive nos handoffs dela.
 
 #[cfg(feature = "panel-audio-editor")]
 mod audio_overlay;

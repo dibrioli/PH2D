@@ -25,6 +25,7 @@ use ph2d_editor_core::screens::hero::{
 use ph2d_editor_core::script_edits::InspectorScriptInfo;
 use ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo;
 use ph2d_editor_core::topdown_edits::InspectorTopDownInfo;
+use ph2d_editor_core::tween_edits::InspectorTweenInfo;
 
 pub fn set_current_inspector_timer(info: Option<InspectorTimerInfo>) {
     CURRENT_INSPECTOR_TIMER.with(|c| *c.borrow_mut() = info);
@@ -32,6 +33,15 @@ pub fn set_current_inspector_timer(info: Option<InspectorTimerInfo>) {
 
 pub(crate) fn current_inspector_timer() -> Option<InspectorTimerInfo> {
     CURRENT_INSPECTOR_TIMER.with(|c| c.borrow().clone())
+}
+
+/// ⭐ **O instantâneo do TWEEN** (suplente #22) — irmão do do timer, e pela mesma razão.
+pub fn set_current_inspector_tween(info: Option<InspectorTweenInfo>) {
+    CURRENT_INSPECTOR_TWEEN.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_tween() -> Option<InspectorTweenInfo> {
+    CURRENT_INSPECTOR_TWEEN.with(|c| c.borrow().clone())
 }
 
 pub fn set_current_inspector_action(info: Option<InspectorActionInfo>) {
@@ -144,6 +154,10 @@ thread_local! {
     /// TIMERS — o snapshot da entidade selecionada. `RefCell` pela mesma razão da §11.
     static CURRENT_INSPECTOR_TIMER:
         std::cell::RefCell<Option<InspectorTimerInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// TWEEN — o snapshot da entidade selecionada (suplente #22).
+    static CURRENT_INSPECTOR_TWEEN:
+        std::cell::RefCell<Option<InspectorTweenInfo>> = const { std::cell::RefCell::new(None) };
 
     /// SIGNAL ACTIONS — o snapshot da entidade selecionada.
     static CURRENT_INSPECTOR_ACTION:

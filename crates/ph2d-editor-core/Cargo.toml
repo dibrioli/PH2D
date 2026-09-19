@@ -19,6 +19,11 @@ build = "build.rs"
 [build-dependencies]
 
 [dependencies]
+# ⭐ **O vocabulário do TWEEN** (suplente #22) — o modelo da secção lê o `Canal` (para a aridade e
+# para saber se ele é de pose) e o `AoAcabar`. ⚠️ **Os TIPOS, nunca uma segunda cópia deles:** a
+# queixa do painel é derivada das MESMAS portas que a lei usa, e uma tabela paralela aqui
+# divergiria no dia do nono canal. Folha (`serde` + `ph2d-anim`).
+ph2d-tween = { path = "../ph2d-tween" }
 # **A MOLA do substrato de UI viva** (`motion.rs`). Folha pura (só serde), partilhada com a
 # `ph2d-ui-state` — copiá-la daria uma SEGUNDA resposta a "como uma mola integra", e depender da
 # `ph2d-ui-state` arrastaria `ph2d-vec-scene` + `ph2d-vec-blend` para dentro de todo painel.

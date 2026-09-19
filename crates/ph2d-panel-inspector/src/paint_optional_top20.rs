@@ -37,12 +37,54 @@ pub(crate) struct Top20<'a> {
     pub trigger: Option<&'a ph2d_editor_core::action_trigger_edits::InspectorActionTriggerInfo>,
     /// Qual linha do gatilho está aberta — estado do painel, como a da vigia.
     pub trigger_selected: usize,
+    /// O TWEEN (suplente #22).
+    pub tween: Option<&'a ph2d_editor_core::tween_edits::InspectorTweenInfo>,
+    /// Qual tween está aberto — estado do painel, como a do gatilho e a da vigia.
+    pub tween_selected: usize,
     /// As TAGS (TOP-20 #9).
     pub tags: Option<&'a ph2d_editor_core::screens::hero::InspectorTagsInfo>,
     /// ⚠️ **Duas selecções e não uma** — as listas de estados e de setas são independentes.
     pub sm_state_selected: usize,
     /// Idem, a das setas.
     pub sm_trans_selected: usize,
+}
+
+impl<'a> Top20<'a> {
+    /// ⭐⭐ **A struct constrói-se do INSTANTÂNEO do quadro**, e não campo a campo no chamador.
+    ///
+    /// ⚠️ **Ela mudou-se para cá por um TECTO DE FUNÇÃO** (2026-09-19): o `paint_optional_sections`
+    /// bateu `202` contra `200` ao ganhar o tween, e cada secção nova custava-lhe duas linhas. ⇒ a
+    /// construção é do dono da struct, o chamador passa o instantâneo e as selecções, e a próxima
+    /// secção custa **uma** linha, aqui. ⛔ Curado por CORTE, nunca por uma entrada no
+    /// `FN_OVERAGE_OK` — aquela lista está VAZIA.
+    pub(crate) fn de(snaps: &'a crate::paint_frame::LiveSnapshots, sel: Selecoes) -> Self {
+        Self {
+            statemachine: snaps.statemachine_info.as_ref(),
+            script: snaps.script_info.as_ref(),
+            particles: snaps.particles_info.as_ref(),
+            hud: snaps.hud_info.as_ref(),
+            sequence: snaps.sequence_info.as_ref(),
+            watch: snaps.watch_info.as_ref(),
+            watch_selected: sel.watch,
+            trigger: snaps.trigger_info.as_ref(),
+            trigger_selected: sel.trigger,
+            tween: snaps.tween_info.as_ref(),
+            tween_selected: sel.tween,
+            tags: snaps.tags_info.as_ref(),
+            sm_state_selected: sel.sm_state,
+            sm_trans_selected: sel.sm_trans,
+        }
+    }
+}
+
+/// **As linhas abertas das secções que são LISTAS** — estado do PAINEL, nunca da cena.
+#[derive(Clone, Copy)]
+pub(crate) struct Selecoes {
+    pub watch: usize,
+    pub trigger: usize,
+    pub tween: usize,
+    pub sm_state: usize,
+    pub sm_trans: usize,
 }
 
 /// Pinta as quatro, pela ordem. ⚠️ **Cada chamada leva o `y` da anterior**: uma cujo `y` se deita
@@ -163,6 +205,21 @@ pub(crate) fn paint_top20_sections(
         header_h,
         infos.trigger,
         infos.trigger_selected,
+    );
+    y = crate::paint_optional_top20_tail::paint_tween_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        infos.tween,
+        infos.tween_selected,
     );
     crate::paint_optional_factory::paint_tags_section(
         scene,

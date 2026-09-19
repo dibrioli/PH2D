@@ -83,6 +83,11 @@ pub struct InspectorState {
     pub last_watch_row: Option<usize>,
     /// GATILHO — qual linha da lista está aberta. **Estado do painel**, como as irmãs.
     pub trigger_selected: usize,
+    /// Qual tween está aberto — estado do PAINEL, como o do gatilho (suplente #22).
+    ///
+    /// ⚠️ **Não vai ao barramento**: um `Tweens` não tem «o tween actual» — os N correm todos ao
+    /// mesmo tempo, e qual se edita é um facto da UI.
+    pub tween_selected: usize,
     /// Irmão do [`Self::last_timer_row`], e pela MESMA razão medida.
     pub last_trigger_row: Option<usize>,
     /// Irmão do [`Self::last_timer_row`], e pela MESMA razão medida.
@@ -109,6 +114,8 @@ pub struct InspectorState {
     /// RAY SENSOR — idem. ⛔ Esta linha FALTAVA e a secção shipou a mostrar os valores de FÁBRICA
     /// do `populate_ray`; quem a apanhou foi uma foto (ver o cabeçalho do `sync_ray`).
     pub last_ray_sig: Option<u64>,
+    /// A assinatura do último instantâneo do TWEEN semeado (suplente #22).
+    pub last_tween_sig: Option<u64>,
 }
 
 thread_local! {

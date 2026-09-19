@@ -153,6 +153,15 @@ pub mod sequence_edits;
 pub mod statemachine_edits;
 pub mod tags_edits;
 pub mod topdown_edits;
+/// ⭐⭐⭐ **O vocabulário da secção TWEEN** (suplente #22).
+///
+/// ⚠️⚠️ **Ele nasceu em `screens/hero/` — o molde do irmão TIMER — e MUDOU-SE para aqui na mesma
+/// wave, porque a catraca do DAG o apanhou:** o `ComponentEdit::Tween` pôs a aresta
+/// `action_bus → screens` em `25` contra o tecto de `24`. ⭐ E a cura não é uma entrada nova na
+/// catraca: é o molde que as secções mais NOVAS já usam (`ray_edits`, `topdown_edits`,
+/// `projectile_edits`, …) — *o vocabulário de uma secção é um módulo de topo, e o `screens` é o
+/// ecrã que o pinta.*
+pub mod tween_edits;
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
 pub use gizmo::{
     GizmoCamera, GizmoDragKind, GizmoDragState, GizmoHit, GizmoModifiers, GizmoSnap, GizmoTarget,

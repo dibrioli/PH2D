@@ -55,6 +55,7 @@ mod event_tags;
 mod event_timer;
 mod event_topdown;
 mod event_transform;
+mod event_tween;
 mod event_value;
 mod event_wheel;
 pub mod ids;
@@ -70,6 +71,7 @@ mod paint_optional;
 mod paint_optional_factory;
 /// ⭐⭐ A CAUDA da cadeia de secções — as quatro da fila do TOP-20; irmã pelo tecto de FUNÇÃO.
 mod paint_optional_top20;
+mod paint_optional_top20_tail;
 mod popovers;
 mod populate;
 /// ⭐ O registo dos widgets da secção SIGNAL ACTIONS — irmão por CAP de ficheiro.
@@ -101,6 +103,7 @@ mod populate_tags;
 /// ⭐ O registo dos widgets da secção TIMERS — irmão por CAP de ficheiro.
 mod populate_timer;
 mod populate_topdown;
+mod populate_tween;
 /// ⭐⭐⭐ O registo dos widgets das secções que chegam por WAVE — ver o cabeçalho.
 mod populate_waves;
 mod sections;
@@ -131,6 +134,7 @@ mod sync_sprite_value;
 mod sync_statemachine;
 /// ⭐ A SEMENTE de um campo de texto — a porta única das três secções que os têm.
 mod sync_text_field;
+mod sync_tween;
 
 /// The §11 Bake button's label — exported so a gate can hold the claim that
 /// the button shows the range it would cover.
@@ -218,7 +222,7 @@ pub use state_components::{
     set_current_inspector_factory, set_current_inspector_hud, set_current_inspector_particles,
     set_current_inspector_projectile, set_current_inspector_ray, set_current_inspector_script,
     set_current_inspector_sequence, set_current_inspector_statemachine,
-    set_current_inspector_timer, set_current_inspector_topdown,
+    set_current_inspector_timer, set_current_inspector_topdown, set_current_inspector_tween,
 };
 
 /// ⭐ **As opções que a caixa de escolha da secção TAGS oferece**, para o gate as poder LER.

@@ -131,6 +131,7 @@ pub(super) fn publish(
         inspector_topdown,
         inspector_projectile,
         inspector_ray,
+        inspector_tween,
         inspector_statemachine,
         inspector_visibility_section,
     } = late(
@@ -181,6 +182,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_topdown(inspector_topdown);
         ph2d_panel_inspector::set_current_inspector_projectile(inspector_projectile);
         ph2d_panel_inspector::set_current_inspector_ray(inspector_ray);
+        ph2d_panel_inspector::set_current_inspector_tween(inspector_tween);
         ph2d_panel_inspector::set_current_inspector_statemachine(inspector_statemachine);
         ph2d_panel_inspector::set_current_inspector_tags(inspector_tags);
         // ⭐ **A ÁRVORE DO PROJECTO** — publicada em TODO quadro, com ou sem selecção: ela não é
@@ -232,6 +234,7 @@ struct LateSections {
     inspector_projectile: Option<ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
     /// ⭐⭐⭐ A secção RAY SENSOR (suplente #21).
     inspector_ray: Option<ph2d_editor_core::ray_edits::InspectorRayInfo>,
+    inspector_tween: Option<ph2d_editor_core::tween_edits::InspectorTweenInfo>,
     inspector_statemachine: Option<ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
     inspector_visibility_section: Option<ph2d_editor_core::InspectorVisibilitySectionInfo>,
 }
@@ -360,6 +363,13 @@ fn late(
             visto,
         )
     });
+    // ⭐⭐⭐ A secção TWEEN (suplente #22) — `None` para quem não tem o componente (ADR-0166).
+    //
+    // ⚠️ Ela pede DUAS colunas que não vêm do componente — *há timer neste índice?* e *há sprite?*
+    // —, e é delas que sai a queixa: sem isso, um tween sem relógio parece-se com um partido.
+    let inspector_tween = hero.gizmo.selection.and_then(|b| {
+        ph2d_app_components::tween_inspector::build_tween_info(sim.world(), b, selected_count)
+    });
     // ⭐⭐⭐ A secção STATE MACHINE (TOP-20 #15) — `None` para quem não tem o componente (ADR-0166).
     //
     // ⚠️ Ela lê o VIVO (`StateMachineRuntime`) para dizer *«Now: …»*, e é isso que a torna útil com
@@ -390,6 +400,7 @@ fn late(
         inspector_topdown,
         inspector_projectile,
         inspector_ray,
+        inspector_tween,
         inspector_statemachine,
         inspector_visibility_section,
     }

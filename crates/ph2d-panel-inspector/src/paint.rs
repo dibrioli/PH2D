@@ -79,6 +79,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             &mut inspector_state.action_selected,
             &mut inspector_state.watch_selected,
             &mut inspector_state.trigger_selected,
+            &mut inspector_state.tween_selected,
             &mut inspector_state.sm_state_selected,
             &mut inspector_state.sm_trans_selected,
         );
@@ -162,6 +163,7 @@ fn paint_inspector(
     action_selected: &mut usize,
     watch_selected: &mut usize,
     trigger_selected: &mut usize,
+    tween_selected: &mut usize,
     sm_state_selected: &mut usize,
     sm_trans_selected: &mut usize,
 ) {
@@ -309,6 +311,7 @@ fn paint_inspector(
         action_selected,
         watch_selected,
         trigger_selected,
+        tween_selected,
         sm_state_selected,
         sm_trans_selected,
         &snaps,

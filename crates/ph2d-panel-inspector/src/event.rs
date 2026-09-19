@@ -70,6 +70,11 @@ pub(crate) fn apply_event(
     if crate::event_ray::apply_ray_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    // ⭐⭐⭐ O TWEEN (suplente #22) — ele PRECISA do estado do painel (a lista tem uma linha
+    // aberta), como o gatilho, a vigia e os timers.
+    if crate::event_tween::apply_tween_event(host, ev, &mut state.tween_selected) {
+        return EventOutcome::Consumed;
+    }
     // ⭐⭐⭐ O HUD (TOP-20 #20) — sem estado de painel: um objecto tem UM de cada.
     if crate::event_hud::apply_hud_event(host, ev) {
         return EventOutcome::Consumed;

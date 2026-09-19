@@ -238,6 +238,7 @@ pub(crate) fn paint_optional_sections(
     action_selected: &mut usize,
     watch_selected: &mut usize,
     trigger_selected: &mut usize,
+    tween_selected: &mut usize,
     // ⚠️ **Duas selecções e não uma** — as listas de estados e de setas são independentes.
     sm_state_selected: &mut usize,
     sm_trans_selected: &mut usize,
@@ -434,19 +435,15 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        crate::paint_optional_top20::Top20 {
-            statemachine: snaps.statemachine_info.as_ref(),
-            script: snaps.script_info.as_ref(),
-            particles: snaps.particles_info.as_ref(),
-            hud: snaps.hud_info.as_ref(),
-            sequence: snaps.sequence_info.as_ref(),
-            watch: snaps.watch_info.as_ref(),
-            watch_selected: *watch_selected,
-            trigger: snaps.trigger_info.as_ref(),
-            trigger_selected: *trigger_selected,
-            tags: snaps.tags_info.as_ref(),
-            sm_state_selected: *sm_state_selected,
-            sm_trans_selected: *sm_trans_selected,
-        },
+        crate::paint_optional_top20::Top20::de(
+            snaps,
+            crate::paint_optional_top20::Selecoes {
+                watch: *watch_selected,
+                trigger: *trigger_selected,
+                tween: *tween_selected,
+                sm_state: *sm_state_selected,
+                sm_trans: *sm_trans_selected,
+            },
+        ),
     )
 }

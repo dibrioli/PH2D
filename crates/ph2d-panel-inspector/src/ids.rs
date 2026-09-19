@@ -62,6 +62,8 @@ mod inspector_tags;
 pub use inspector_tags::*;
 mod inspector_timer;
 pub use inspector_timer::*;
+mod inspector_tween;
+pub use inspector_tween::*;
 mod menus;
 pub use menus::*;
 mod inspector_physics_body;

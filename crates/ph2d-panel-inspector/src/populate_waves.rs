@@ -23,6 +23,7 @@ pub(crate) fn populate_das_waves(store: &mut WidgetStore) {
     super::populate_factory::populate_factory(store);
     super::populate_projectile::populate_projectile(store);
     super::populate_ray::populate_ray(store);
+    super::populate_tween::populate_tween(store);
     super::populate_statemachine::populate_statemachine(store);
     super::populate_particles::populate_particles(store);
     super::populate_hud::populate_hud(store);

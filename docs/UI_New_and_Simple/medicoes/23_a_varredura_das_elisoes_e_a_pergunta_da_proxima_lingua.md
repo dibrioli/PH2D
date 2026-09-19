@@ -632,3 +632,74 @@ número de hoje, é o de AMANHÃ* — e é isso que a M33′ mede, contando os v
 no dia em que o recuo da pílula mudasse.
 
 **11 de 11 sangram. Dívida: 8 → 2** (uma decisão de produto + uma demonstração).
+
+---
+
+## 13. A fronteira que o §5 chamava de dívida NÃO é dívida — e o censo mentia nos DOIS sentidos
+
+**2026-09-19**, depois de a caça às elisões fechar. O `CLAUDE.md` §5 nomeia a fronteira seguinte do
+HR-15 como *«os `62` literais que só o censo de PORTA vê»*. Fui medi-la. **Nenhum dos 62 é dívida**,
+e o caminho até essa resposta achou três defeitos no instrumento.
+
+### 13.1 — As três curas do `scripts/censo-texto-pintado.py`
+
+| # | o que ele fazia | o que isso valia |
+|---|---|---|
+| 1 | contava um `#[cfg(test)] mod` **em linha** como produto | `+5` falsos (uma delas `"Um nome absurdamente comprido para uma caixa"`, uma FIXTURA) |
+| 2 | **não seguia** uma tabela `const [&str; N]` até ao pintor | `−31` reais, e **nunca contados por ninguém** |
+| 3 | lia *«tem uma letra»* como *«é uma palavra»* | `+22` falsos (`R Y G C B M W N K`; e as setas, porque ele lia o **escape do fonte**, que tem um `u` e um `b`) |
+
+⚠️ **A nº 2 estava escrita no cabeçalho dele havia semanas** (*«literais que chegam por `const`, por
+tabela de `&str`… continuam a ser texto pintado»*). ⛔ *Uma cegueira declarada num doc-comment não é
+uma medição — é uma nota que envelhece*, e enquanto ela lá esteve ninguém soube que havia **31**
+palavras pintadas fora de toda contagem.
+
+⚠️ **E a nº 3 é a mesma grandeza medida por duas réguas que discordavam:** a régua REGISTADA
+(`ph2d_label_census::lexical::cegueira`) já pedia **duas letras ASCII seguidas**. *Duas réguas da
+mesma grandeza que discordam sobre o que é uma PALAVRA não são comparáveis* — e era esta que estava
+a mais.
+
+### 13.2 — ⭐ O controlo positivo, `--autoteste`
+
+*Uma cura de instrumento sem controlo positivo é uma afirmação sobre o instrumento antigo.* As três
+leis são testáveis sem a árvore, e o modo novo planta um fonte sintético com as três formas e as
+suas negativas.
+
+⚠️⚠️ **E uma mutação SOBREVIVEU, e a lição é do controlo e não da lei:** o meu *«uma letra não é
+palavra»* usava `"R"`, e numa cadeia de **um** carácter a exigência da segunda letra é
+**inobservável** — não há par nenhum para testar. Apagar a adjacência passava. O controlo que
+discrimina é `"a b"`: duas letras SEPARADAS. *Um controlo tem de conter o fenómeno que ele afirma.*
+
+### 13.3 — ⛔⛔⛔ E a medição PAROU o trabalho que eu ia fazer
+
+Com o censo honesto, os `52` que restam são:
+
+| onde | quantos | o que são |
+|---|---:|---|
+| `ph2d-editor-core/src/widget/showcase/` | 28 | a **BANCADA** — isenta por **decisão do DONO** (2026-09-17, com a foto na mão: *«nenhum — deixe como está»*) |
+| `ph2d-panel-widget-lab` | 1 | a mesma bancada, o mesmo estatuto |
+| `ph2d-app-motion` demos da conferência | 23 | **as palavras do DONO**, em português, nas cenas dele |
+
+E as 23 eram exactamente o que eu ia curar — o app a pintar português, contra a lei de que *toda
+string que o artista lê é inglês*. ⛔ **Não são dívida, e há duas provas escritas:**
+
+1. o cabeçalho da tabela `app.motion` declara que **as CENAS ficam fora da i18n de propósito**, e o
+   gate da família isenta-as por marcador de nome de ficheiro, com piso de população;
+2. ⭐⭐⭐ uma delas foi **escolhida pelo próprio Enio num smoke**:
+
+   > *«`SOLTA`, e não «RASGA» — a palavra foi corrigida por um smoke (Enio, 2026-08-21: "funciona
+   > mas não rasga o pano")»*
+
+*Traduzir aquelas palavras era desfazer uma decisão do dono sobre texto que ele lê.* A medição
+custou uma hora e poupou uma fatia inteira de trabalho errado — que é exactamente o que o §5.0 pede
+quando manda MEDIR se a composição já exprime o item antes de o construir.
+
+### 13.4 — Provas de mutação
+
+| # | mutação | o que sangra |
+|---|---|---|
+| M44 | o `#[cfg(test)]` em linha deixa de ser apagado | o controlo do módulo interno |
+| M45 | a tabela de `&str` deixa de ser lida | o controlo da tabela |
+| M46′ | uma letra solta volta a ser palavra | o controlo `"a b"` |
+
+**3 de 3 sangram. Dívida do censo de porta: `62` → `0`** (tudo o que resta é isenção declarada).

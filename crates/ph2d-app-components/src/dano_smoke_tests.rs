@@ -212,13 +212,20 @@ fn o_roteiro_nomeia_rotulos_que_existem() {
         ph2d_i18n::tr("panel.inspector.actions.from_anyone"),
         ph2d_i18n::tr("panel.inspector.actions.who_hit"),
         SignalVerb::Destroy.label(),
-        // ⭐⭐ **Os dois chips do TRANSPORTE** — o passo (5) manda carregar neles, e eles são
-        // pintados com o rótulo por cima (`topbar/cluster_painter.rs`, `TopBarCluster::Play`).
+        // ⭐⭐ **Os dois chips do TRANSPORTE que o passo (5) nomeia** — `Reset` e `Play`, pintados
+        // com o rótulo por cima (`topbar/cluster_painter.rs`, `TopBarCluster::Play`).
+        //
         // ⛔ A 1.ª redacção deste roteiro mandava carregar em `STOP` (que **não é pintado em lado
         // nenhum**) e no `Home` (que é o *frame selection* do editor) — report do dono, 19/09.
         // *Dois passos impossíveis na mesma frase, e nenhuma régua desta cena os via.*
-        ph2d_i18n::tr("chrome.topbar.pause"),
+        //
+        // ⭐⭐⭐ **E a 2.ª redacção nomeava o `Pause`, que era redundante** — segundo report do dono
+        // no mesmo dia (*«por que pause? não deveria ser rewind?»*): o `Reset` **já** pára o
+        // relógio (`ph2d_transport::apply` faz `rewind()` **e** `pause()`), logo o passo a mais
+        // tornava falsa a frase seguinte — com o relógio parado os alvos **não** voltam. Quem os
+        // traz de volta é o `Play`, e é por isso que ele está aqui no lugar do `Pause`.
         ph2d_i18n::tr("chrome.topbar.reset"),
+        ph2d_i18n::tr("chrome.topbar.play"),
     ];
     for r in &rotulos {
         assert!(

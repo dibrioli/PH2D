@@ -218,6 +218,21 @@ fn cena_um(world: &mut World, tree: &mut TagTree) -> Entity {
 
     // ⭐ O RELÓGIO que arranca as duas fábricas — ⚠️ `autostart` e SEM repetição: os alvos nascem
     // uma vez, ao entrar a corrida, e o `Reset` da barra de cima devolve a cena ao princípio.
+    //
+    // ⭐⭐⭐ **E o `Reset` SOZINHO chega — a 1.ª redacção deste roteiro mandava carregar em `Pause`
+    // antes dele, e isso era redundante E fazia a frase seguinte MENTIR** (report do dono, 19/09:
+    // *«por que pause? não deveria ser rewind?»*). Medido em [`ph2d_transport::apply`]:
+    //
+    // ```text
+    // TransportCmd::Reset => { playhead.rewind(); playhead.pause(); }
+    // ```
+    //
+    // ⇒ o chip **já pára o relógio** (*«Reset means back to the start, stopped»*), logo o que o
+    // dono vê é a cena a esvaziar-se — e a promessa *«os alvos voltam»* era falsa, porque com o
+    // relógio parado este `Timer` não volta a disparar. ⭐ Quem os traz de volta é o **`Play`**: o
+    // [`ph2d_ecs::rewind_runtime`] faz um `autostart` **nascer a correr** e repõe o
+    // `FactoryRuntime`, logo a corrida repete-se. *Uma instrução que promete o oposto do que
+    // acontece é a espécie que o §5.0 chama de pior que uma cena ausente.*
     // ⛔ **Nunca o `Home`**: essa tecla é o *frame selection* do editor
     // ([`handlers_teclas_editor`]), e o roteiro que a mandava carregar movia a CÂMERA e não o
     // relógio — report do dono, 19/09. O censo `um_roteiro_nunca_rouba_uma_tecla_do_editor` recusa
@@ -366,8 +381,9 @@ pub fn montar(world: &mut World, tree: &mut TagTree, _nivel: u32) -> Montada {
          (4) agora segure a seta para BAIXO ate' o heroi ficar a' altura dos CINZENTOS, depois a \
          seta para a DIREITA (ele vira-se para onde anda) e carregue no {TECLA_NOME}: morrem OS \
          TRES. E' o CONTROLO — a mesma tabela sem a cerca\n\
-         (5) na barra de CIMA carregue em `Pause`: o {TECLA_NOME} deixa de disparar. `Reset`, ao \
-         lado, rebobina e os alvos voltam — eles nasceram na corrida, logo nao estao no ficheiro\n\
+         (5) na barra de CIMA carregue em `Reset`: a cena volta ao principio, o {TECLA_NOME} deixa \
+         de disparar e os alvos DESAPARECEM — eles nasceram na corrida, logo nao estao no \
+         ficheiro. `Play`, ao lado, traz-nos de volta\n\
          (6) deu errado se: os alvos nao nascem · o tiro de cima leva mais do que um · o de baixo \
          leva so' um · a bala atravessa o alvo e continua · ou carregar no {TECLA_NOME} nao faz nada"
     );

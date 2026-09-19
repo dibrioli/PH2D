@@ -71,8 +71,8 @@ echo "════ O DEFEITO DO REPORT volta ════"
 # (1) A frase exacta que o dono encontrou. Se o censo não a apanhar, ele não mede nada.
 bloco "roteiro do golpe: volta a mandar carregar no Home" ph2d-host-desktop um_roteiro_nunca_rouba \
   "$CENA" 1 \
-  'na barra de CIMA carregue em `Pause`: o {TECLA_NOME} deixa de disparar. `Reset`, ao' \
-  'carregue em STOP na regua de baixo: o {TECLA_NOME} deixa de disparar. `Home` rebobina, ao' \
+  'na barra de CIMA carregue em `Reset`: a cena volta ao principio, o {TECLA_NOME} deixa' \
+  'carregue em STOP na regua de baixo: o `Home` rebobina e a cena volta, o {TECLA_NOME} deixa' \
   "--test it"
 
 # (2) O irmão: a mesma frase na cena do GATILHO, que a shipou primeiro e ninguém viu.
@@ -125,15 +125,16 @@ echo "════ O ROTEIRO deixa de nomear o que EXISTE ════"
 # (7) O passo (5) deixa de nomear o chip do transporte: o gate irmão dos rótulos sangra.
 bloco "roteiro: perde o chip `Reset`" ph2d-app-components o_roteiro_nomeia_rotulos \
   "$CENA" 1 \
-  'disparar. `Reset`, ao' \
-  'disparar. `Rebobinar`, ao' \
+  'carregue em `Reset`: a cena' \
+  'carregue em `Rebobinar`: a cena' \
   "--lib"
 
-# (8) E o chip `Pause`, pela outra ponta da mesma frase.
-bloco "roteiro: perde o chip `Pause`" ph2d-app-components o_roteiro_nomeia_rotulos \
+# (8) E o chip `Play`, pela outra ponta da mesma frase — ele e' a VOLTA, e sem ele o passo
+#     promete que os alvos voltam sem dizer como.
+bloco "roteiro: perde o chip `Play`" ph2d-app-components o_roteiro_nomeia_rotulos \
   "$CENA" 1 \
-  'na barra de CIMA carregue em `Pause`' \
-  'na barra de CIMA carregue em `Parar`' \
+  '`Play`, ao lado, traz-nos de volta' \
+  '`Tocar`, ao lado, traz-nos de volta' \
   "--lib"
 
 echo

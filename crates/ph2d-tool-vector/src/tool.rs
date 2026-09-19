@@ -143,8 +143,10 @@ pub struct VectorTool {
     /// pincelada empurra (COM SINAL). Estado AUTORADO da ferramenta, como o estabilizador do
     /// lápis: o documento guarda a MANCHA que eles produziram, não os números.
     weight_radius: f64,
-    /// Ver [`Self::weight_radius`].
+    /// **A MAGNITUDE** de cada pincelada. Ver [`Self::weight_radius`].
     weight_amount: f64,
+    /// **Para que lado ela empurra** — ver [`crate::params::WeightDirection`].
+    weight_direction: crate::params::WeightDirection,
     /// **O estilo da SIMETRIA de desenho** (plano 25 W6.3) — que espelho, quantas cópias, funde
     /// ou não. O LUGAR da linha não está aqui: ele pertence ao desenho e viaja no componente dele
     /// (`ph2d_ecs::VecSymmetry`). Um centro guardado na ferramenta seria um campo que nunca se lê.
@@ -229,6 +231,7 @@ impl Default for VectorTool {
             bone_action: crate::params::BoneAction::default(),
             weight_radius: crate::params::WEIGHT_RADIUS_DEFAULT,
             weight_amount: crate::params::WEIGHT_AMOUNT_DEFAULT,
+            weight_direction: crate::params::WeightDirection::default(),
             symmetry: ph2d_symmetry::SymmetryStyle::default(),
             marquee: crate::params::MarqueeShape::default(),
             mode: DrawMode::Select,
@@ -505,6 +508,7 @@ impl VectorTool {
             bone_action: self.bone_action,
             weight_radius: self.weight_radius,
             weight_amount: self.weight_amount,
+            weight_direction: self.weight_direction,
             symmetry: self.symmetry,
             marquee: self.marquee,
         }
@@ -620,6 +624,10 @@ impl Tool for VectorTool {
         self
     }
 }
+
+#[cfg(test)]
+#[path = "tool_weight_tests.rs"]
+mod tool_weight_tests;
 
 #[cfg(test)]
 #[path = "tool_tests.rs"]

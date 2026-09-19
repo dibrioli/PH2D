@@ -315,10 +315,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⭐ O 3.º verbo do arrasto — pintar a influência do osso aceso sobre a arte presa.
         "panel.vector.bone.weight" => "Weight",
         "panel.vector.bone.weight.radius" => "Brush Radius",
-        // ⚠️ *Strength* e não *Amount*: o número é COM SINAL e o rótulo tem de o deixar ler-se
-        // nos dois sentidos. Um *Amount* negativo lê-se como um erro; uma *Strength* negativa
-        // lê-se como o que é — a mesma força, do outro lado.
+        // ⚠️ *Strength* e não *Amount*, e o motivo MUDOU em 2026-09-19: a razão escrita aqui era
+        // *«o número é COM SINAL e o rótulo tem de o deixar ler-se nos dois sentidos»*, e o sinal
+        // saiu dele (ordem do dono — ver `panel.vector.bone.weight.direction`). O rótulo fica,
+        // agora por uma razão mais simples: *Strength* é a palavra que todo pincel deste app usa
+        // para «quanto», e trocá-la faria este ser o único a chamar-lhe outra coisa.
         "panel.vector.bone.weight.amount" => "Brush Strength",
+        // ⭐⭐⭐ **PARA QUE LADO a pincelada empurra** (ordem do dono, 2026-09-19: *«no lugar de
+        // valores negativos em Brush Strength prefiro botões Add e Subtract»*).
+        "panel.vector.bone.weight.direction" => "Direction",
+        "panel.vector.bone.weight.add" => "Add",
+        "panel.vector.bone.weight.subtract" => "Subtract",
         "panel.vector.bone.bind" => "Bind to Skeleton",
         "panel.vector.bone.expand" => "Keep Pose",
         "panel.vector.bone.release" => "Release",

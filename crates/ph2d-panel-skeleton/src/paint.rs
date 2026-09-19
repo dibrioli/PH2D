@@ -77,7 +77,7 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
         }
         // ⭐ E os dois do PINCEL de peso, pela mesma porta — ⚠️ o sujeito deles é a ferramenta e
         // não o osso, logo eles são semeados **sempre** (a secção é que decide se os pinta).
-        let (raio, quanto) = state::bone_weight();
+        let (raio, quanto, _) = state::bone_weight();
         store.set_number_value(ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS, raio);
         store.set_number_value(ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT, quanto);
     }

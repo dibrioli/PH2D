@@ -266,21 +266,30 @@ pub fn set_current_bone_tool(v: Option<usize>) {
 }
 
 thread_local! {
-    /// ⭐⭐⭐ **OS DOIS NÚMEROS DO PINCEL DE PESO** (raio · quanto), publicados pela shell a partir
-    /// do `VectorDrawConfig`.
+    /// ⭐⭐⭐ **O PINCEL DE PESO** — raio · magnitude · **índice da direcção**, publicados pela shell
+    /// a partir do `VectorDrawConfig`.
     ///
     /// ⚠️ **O sujeito deles é o PINCEL e não o osso**, e é por isso que não viajam no `BoneSpec`:
     /// eles valem antes de haver osso nenhum em foco, e um campo sem sujeito é a classe de
     /// controlo morto que o `CLAUDE.md` §5.0 nomeia — *ao contrário*.
-    static BONE_WEIGHT: Cell<(f64, f64)> = const { Cell::new((0.0, 0.0)) };
+    ///
+    /// ⭐ **A direcção é um ÍNDICE e não o enum**, pelo mesmo motivo do [`BONE_TOOL`]: é o que
+    /// mantém este painel sem depender da crate da ferramenta para o VALOR, e quem alinha as duas
+    /// listas é a POSIÇÃO (há gate a compará-las).
+    static BONE_WEIGHT: Cell<(f64, f64, usize)> = const { Cell::new((0.0, 0.0, 0)) };
 }
 
-/// **Os dois números do pincel de peso** (shell → painel, todo quadro).
-pub fn set_current_bone_weight(raio: f64, quanto: f64) {
-    BONE_WEIGHT.with(|c| c.set((raio, quanto)));
+/// **O pincel de peso** (shell → painel, todo quadro): raio, magnitude e o índice da direcção em
+/// `ph2d_tool_vector::WeightDirection::ALL`.
+///
+/// ⚠️ **Uma porta e não duas**, com a direcção a entrar na assinatura: uma função-irmã
+/// *«…_direction»* ao lado seria o segundo sítio por onde um quadro publica meio pincel, e o
+/// sintoma seria a direcção da tela a ficar um quadro atrás da que a lei usa.
+pub fn set_current_bone_weight(raio: f64, quanto: f64, direccao: usize) {
+    BONE_WEIGHT.with(|c| c.set((raio, quanto, direccao)));
 }
 
-pub(crate) fn bone_weight() -> (f64, f64) {
+pub(crate) fn bone_weight() -> (f64, f64, usize) {
     BONE_WEIGHT.with(Cell::get)
 }
 

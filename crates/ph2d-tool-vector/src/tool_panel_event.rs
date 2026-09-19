@@ -44,14 +44,19 @@ impl VectorTool {
             // pincel, e o que eles produzem é uma MANCHA no documento — não uma propriedade da
             // forma escolhida.
             //
-            // ⚠️ **O raio tem PISO e o valor tem SINAL**, e a assimetria é a lei: um raio nulo faria
-            // o pen-down nunca achar arte (`ForaDaArte` calado, que se lê como pincel partido),
-            // enquanto um valor negativo é **metade do gesto** — é assim que se TIRA peso.
+            // ⚠️ **O raio tem PISO e o valor é uma MAGNITUDE**, e a assimetria é a lei: um raio
+            // nulo faria o pen-down nunca achar arte (`ForaDaArte` calado, que se lê como pincel
+            // partido), enquanto uma magnitude é *quanto* e não tem lado nenhum dentro.
+            //
+            // ⛔⛔ **Até 2026-09-19 o valor ia a `clamp(-1.0, 1.0)` e o SINAL era a direcção** — a
+            // premissa morreu por ordem do dono (*«no lugar de valores negativos em Brush Strength
+            // prefiro botões Add e Subtract»*). ⚠️ **E um negativo escrito à mão entra em ABSOLUTO,
+            // nunca cortado a zero:** cortá-lo deixaria o pincel inerte e calado.
             PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_BONE_WEIGHT_RADIUS => {
                 self.weight_radius = v.max(crate::params::WEIGHT_RADIUS_MIN);
             }
             PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_BONE_WEIGHT_AMOUNT => {
-                self.weight_amount = v.clamp(-1.0, 1.0);
+                self.weight_amount = v.abs().clamp(0.0, 1.0);
             }
             // **Campo de forma** — um braço só para TODAS as formas: o id carrega o
             // ÍNDICE do parâmetro no catálogo, e a forma ativa diz o que ele significa.
@@ -118,6 +123,18 @@ impl VectorTool {
             PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_ACT_WEIGHT => {
                 self.mode = DrawMode::Bone;
                 self.bone_action = crate::params::BoneAction::Weight;
+            }
+            // ⭐⭐⭐ **PARA QUE LADO A PINCELADA EMPURRA** (ordem do dono, 2026-09-19).
+            //
+            // ⛔ **Escolher um lado NÃO arma o verbo `Weight`**, ao contrário dos três chips acima:
+            // a secção destes dois só é pintada com ele já na mão, logo já se está lá — e armá-lo
+            // aqui seria arrancar o artista do que ele estava a fazer, a mesma regra que os chips
+            // da largura do lápis já escrevem.
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_WEIGHT_ADD => {
+                self.weight_direction = crate::params::WeightDirection::Add;
+            }
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_WEIGHT_SUB => {
+                self.weight_direction = crate::params::WeightDirection::Subtract;
             }
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_PENCIL => {
                 self.mode = DrawMode::Pencil;

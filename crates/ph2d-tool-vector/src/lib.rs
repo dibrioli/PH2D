@@ -48,7 +48,7 @@ pub mod tool;
 
 pub use params::{
     BoneAction, DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, VertexSel,
-    VertexType, px_to_slider, slider_to_px,
+    VertexType, WeightDirection, px_to_slider, slider_to_px,
 };
 pub use tool::{
     DEFAULT_ARC_DEGREES, DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_RADIUS_PX,

@@ -40,7 +40,10 @@ pub enum BoneAction {
     /// criar. ⛔ Escondê-lo atrás de um modificador de teclado seria a meia-porta que o §5.0 nomeia
     /// (*«um gesto que só existe se o artista adivinhar o modificador é meio gesto»*).
     ///
-    /// ⚠️ **O SINAL do valor é a direcção** — não há um segundo verbo «apagar peso» a lembrar.
+    /// ⚠️ **PARA QUE LADO ele empurra é uma [`WeightDirection`]**, dois botões na secção dele.
+    /// ⛔⛔ Até 2026-09-19 esta linha dizia *«o SINAL do valor é a direcção — não há um segundo
+    /// verbo a lembrar»*, e a premissa morreu por **ordem do dono** (*«no lugar de valores
+    /// negativos em Brush Strength prefiro botões Add e Subtract»*). Ver [`WeightDirection`].
     Weight,
 }
 
@@ -61,6 +64,65 @@ impl BoneAction {
     #[must_use]
     pub fn indice(self) -> usize {
         Self::ALL.iter().position(|a| *a == self).unwrap_or(0)
+    }
+}
+
+/// ⭐⭐⭐ **PARA QUE LADO A PINCELADA DE PESO EMPURRA** — dois botões, e não o sinal de um número.
+///
+/// ⛔⛔⛔ **Ordem do dono (2026-09-19): *«no lugar de valores negativos em Brush Strength prefiro
+/// botões Add e Subtract»*.** A objecção que estava escrita no painel — *«o `Amount` é COM SINAL, e
+/// é isso que faz o gesto ser um só; um segundo chip seria a segunda maneira de dizer a mesma
+/// coisa»* — fica **registada e não vencida**.
+///
+/// ⭐ **E a arrumação que ela traz é uma pergunta por controlo:** o número passa a responder
+/// *QUANTO* (uma magnitude, que não tem sinal que faça sentido) e os dois botões respondem *PARA QUE
+/// LADO*. Enquanto o sinal vivia no número, *«tirar peso»* era um estado invisível — o artista tinha
+/// de **ler um menos** para saber o que o próximo arrasto ia fazer.
+///
+/// ⚠️ **Elas são um SEGMENTO exclusivo e não duas caixas**: as duas ligadas ao mesmo tempo não
+/// significam nada, e duas caixas independentes exprimem esse estado.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum WeightDirection {
+    /// A pincelada **SOMA** peso ao osso em foco. O valor de fábrica: é o que o artista faz
+    /// primeiro, e o que ele espera sem ter escolhido nada.
+    #[default]
+    Add,
+    /// A pincelada **TIRA** peso ao osso em foco.
+    Subtract,
+}
+
+impl WeightDirection {
+    /// As duas, na ordem em que o segmento as mostra. ⛔ Fonte única da iteração.
+    pub const ALL: [WeightDirection; 2] = [WeightDirection::Add, WeightDirection::Subtract];
+
+    /// ⭐⭐ **O ÍNDICE desta direcção em [`Self::ALL`]** — a porta que o segmento do painel acende.
+    ///
+    /// ⚠️ **Derivado da lista e não escrito à mão**, pela mesma razão que o
+    /// [`BoneAction::indice`] existe: *um índice derivado de uma comparação é uma tabela escrita à
+    /// mão com outra sintaxe*, e ela mente em silêncio no dia em que a lista crescer.
+    #[must_use]
+    pub fn indice(self) -> usize {
+        Self::ALL.iter().position(|d| *d == self).unwrap_or(0)
+    }
+
+    /// ⭐⭐⭐ **O `delta` QUE A LEI RECEBE** — a magnitude com o sinal desta direcção.
+    ///
+    /// ⚠️⚠️ **Ela é uma PORTA com um chamador só, e isso é de propósito.** A composição
+    /// *«magnitude × direcção»* é a lei que a ordem do dono criou; escrita como um `if` dentro do
+    /// despacho da shell, ela ficaria num sítio onde nenhum teste lhe chega — que é exactamente
+    /// como a escolha do alvo do pincel viveu até 19/09. *Uma lei que só existe num laço de input
+    /// é uma lei que ninguém pode contradizer.*
+    ///
+    /// ⚠️ **A magnitude entra em valor ABSOLUTO** — ela é *quanto*, e um *quanto* negativo não quer
+    /// dizer nada. Ver [`WEIGHT_AMOUNT_DEFAULT`] para o que a porta do painel faz com um número
+    /// negativo escrito à mão.
+    #[must_use]
+    pub fn delta(self, magnitude: f64) -> f64 {
+        let m = magnitude.abs();
+        match self {
+            Self::Add => m,
+            Self::Subtract => -m,
+        }
     }
 }
 
@@ -91,11 +153,18 @@ impl BoneAction {
 /// pincelada apanha uma VIZINHANÇA e não um ponto só) e `5,7 %` da peça (logo ela aponta).
 pub const WEIGHT_RADIUS_DEFAULT: f64 = 40.0; // LITERAL-PX-OK: raio de ecrã, tabela medida acima
 
-/// ⭐ **QUANTO cada pincelada empurra o peso, de fábrica.**
+/// ⭐ **QUANTO cada pincelada empurra o peso, de fábrica** — uma MAGNITUDE, em `0..1`.
 ///
-/// ⚠️ **Pequeno de propósito:** o peso vive em `0..1` e a pincelada SOMA, logo o artista chega ao
-/// extremo insistindo — e o caminho de volta é o mesmo número com sinal trocado. *Um valor de
-/// fábrica que salta para o extremo numa pincelada faz o gesto ser um interruptor.*
+/// ⚠️ **Pequeno de propósito:** o peso vive em `0..1` e a pincelada acumula, logo o artista chega ao
+/// extremo insistindo. *Um valor de fábrica que salta para o extremo numa pincelada faz o gesto ser
+/// um interruptor.*
+///
+/// ⛔⛔ **Ele deixou de ter SINAL em 2026-09-19** (ordem do dono — ver [`WeightDirection`]): para
+/// que lado a pincelada empurra é agora dois botões. ⚠️ **E um número negativo escrito à mão entra
+/// em valor ABSOLUTO, nunca cortado a zero:** cortá-lo deixaria o pincel **inerte e calado**, que é
+/// a espécie de defeito que esta casa lê como *«a ferramenta não funciona»*. O campo é re-semeado
+/// do estado da ferramenta a cada quadro, logo a tela mostra de volta a magnitude que ela usa — *o
+/// ecrã corrige-se à vista em vez de guardar um número que ninguém honra*.
 pub const WEIGHT_AMOUNT_DEFAULT: f64 = 0.15;
 
 /// ⭐ **O PISO do raio do pincel de peso, em PÍXEIS DE ECRÃ** — ver [`WEIGHT_RADIUS_DEFAULT`].
@@ -350,6 +419,73 @@ impl MarqueeShape {
     #[must_use]
     pub fn for_gesture(sticky: Self, ctrl: bool) -> Self {
         if ctrl { sticky.other() } else { sticky }
+    }
+}
+
+#[cfg(test)]
+mod direccao_do_peso_tests {
+    use super::WeightDirection;
+
+    /// ⭐⭐⭐ **A DIRECÇÃO COMPÕE A MAGNITUDE COM O SINAL DELA** — a lei que a ordem do dono criou
+    /// (2026-09-19), medida na porta e não num `if` de um laço de input.
+    ///
+    /// ⚠️ **A 3.ª metade é a que impede o pincel de ficar INERTE:** uma magnitude negativa escrita
+    /// à mão entra em valor absoluto, logo ela empurra com a mesma força **para o lado que os
+    /// botões dizem** — nunca `0`. *Cortar a zero devolveria um pincel que não faz nada e não diz
+    /// porquê, que é a família de reports que esta casa já pagou três vezes.*
+    #[test]
+    fn a_direccao_compoe_a_magnitude_com_o_sinal_dela() {
+        assert!(
+            (WeightDirection::Add.delta(0.15) - 0.15).abs() < 1e-12,
+            "Add deixou de SOMAR"
+        );
+        assert!(
+            (WeightDirection::Subtract.delta(0.15) + 0.15).abs() < 1e-12,
+            "Subtract deixou de TIRAR"
+        );
+        for lado in WeightDirection::ALL {
+            let d = lado.delta(-0.4);
+            assert!(
+                (d.abs() - 0.4).abs() < 1e-12,
+                "{lado:?}: uma magnitude negativa deixou de entrar em ABSOLUTO ({d}) — o pincel \
+                 fica inerte e calado"
+            );
+            assert_eq!(
+                d.is_sign_negative(),
+                lado == WeightDirection::Subtract,
+                "{lado:?}: quem manda no sinal deixou de ser o BOTAO"
+            );
+        }
+    }
+
+    /// ⭐⭐ **O ÍNDICE SAI DA LISTA** — a porta que o segmento do painel acende.
+    ///
+    /// ⚠️ **As duas metades:** cada lado acende o seu, e a lista tem exactamente a população do
+    /// enum. *Sem a segunda, uma variante nova fora do `ALL` leria `0` e acenderia o primeiro
+    /// segmento — é o defeito que o [`super::BoneAction::indice`] já pagou com três verbos.*
+    #[test]
+    fn o_indice_da_direccao_sai_da_lista() {
+        for (i, lado) in WeightDirection::ALL.iter().enumerate() {
+            assert_eq!(lado.indice(), i, "{lado:?} acende o segmento errado");
+        }
+        let mut vistos = 0usize;
+        for lado in WeightDirection::ALL {
+            vistos += match lado {
+                WeightDirection::Add | WeightDirection::Subtract => 1,
+            };
+        }
+        assert_eq!(
+            vistos,
+            WeightDirection::ALL.len(),
+            "a lista e o enum deixaram de contar a mesma populacao"
+        );
+    }
+
+    /// ⭐ **DE FÁBRICA ELA SOMA** — é o que o artista faz primeiro, e o que ele espera sem ter
+    /// escolhido nada.
+    #[test]
+    fn de_fabrica_a_pincelada_soma() {
+        assert_eq!(WeightDirection::default(), WeightDirection::Add);
     }
 }
 

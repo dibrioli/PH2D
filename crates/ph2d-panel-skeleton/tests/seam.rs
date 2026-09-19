@@ -651,6 +651,108 @@ fn o_verbo_do_peso_e_os_dois_numeros_dele_chegam_a_ferramenta() {
     state::set_current_bone_tool(None);
 }
 
+/// ⭐⭐⭐ **A FILEIRA DA DIRECÇÃO TEM UM SEGMENTO POR LADO** — ordem do dono, 2026-09-19.
+///
+/// ⚠️ **A mesma lei da fileira dos verbos, e pelo mesmo motivo:** o painel acende por ÍNDICE, e uma
+/// lista com outro tamanho (ou noutra ordem) acende o segmento errado **em silêncio**.
+#[test]
+fn a_fileira_da_direccao_do_peso_tem_um_segmento_por_lado() {
+    use ph2d_tool_vector::WeightDirection;
+    assert_eq!(
+        ph2d_panel_skeleton::ids::VECTOR_BONE_WEIGHT_DIR_IDS.len(),
+        WeightDirection::ALL.len(),
+        "a fileira do painel e a tabela do vocabulario tem tamanhos diferentes"
+    );
+    for (i, lado) in WeightDirection::ALL.iter().enumerate() {
+        assert_eq!(lado.indice(), i, "o lado {lado:?} acende o segmento errado");
+    }
+    // ⭐⭐⭐ **E o id na posição de um lado É o id DAQUELE lado** — a metade que nasceu de uma
+    // mutação SOBREVIVENTE: sem ela, trocar a ordem da lista passava, e o segmento rotulado *Add*
+    // ficava a mandar `Subtract`. *«Índice-alinhadas» era uma afirmação que nada verificava.*
+    assert_eq!(
+        ph2d_panel_skeleton::ids::VECTOR_BONE_WEIGHT_DIR_IDS[WeightDirection::Add.indice()],
+        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ADD,
+        "a posicao do Add na fileira carrega outro id"
+    );
+    assert_eq!(
+        ph2d_panel_skeleton::ids::VECTOR_BONE_WEIGHT_DIR_IDS[WeightDirection::Subtract.indice()],
+        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_SUB,
+        "a posicao do Subtract na fileira carrega outro id"
+    );
+}
+
+/// ⭐⭐⭐ **OS DOIS BOTÕES DA DIRECÇÃO RESPONDEM AO DEDO** (ordem do dono, 2026-09-19).
+///
+/// ⛔⛔ **É a SÉTIMA vez que esta casa paga a lição, e é por isso que o gate usa o ponteiro REAL:**
+/// um chip pintado, hit-indexado e **ausente do `populate`** fica morto sob o dedo — o clique morre
+/// no `is_focusable`, e *um controlo nunca pintado e um morto sob o dedo dão o MESMO report*. Um
+/// `WidgetEvent::Click` sintético passa com o chip morto; o `clica` aqui faz *down* + *up* sobre o
+/// rectângulo que o painel de facto pintou.
+///
+/// ⚠️ **E o oráculo é o `EditorAction`, nunca o `WidgetEvent`** (a lição do bug #29): um controlo
+/// que acende e não fala com a ferramenta consome o gesto e não faz nada.
+#[test]
+fn os_dois_botoes_da_direccao_do_peso_respondem_ao_dedo() {
+    publica_tudo();
+    modo_osso(2);
+    for (id, nome) in [
+        (ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ADD, "Add"),
+        (ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_SUB, "Subtract"),
+    ] {
+        let acoes = clica(id, nome);
+        assert!(
+            acoes.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if *c == id
+            )),
+            "o botao {nome} nao chegou a' ferramenta"
+        );
+    }
+    limpa();
+    state::set_current_bone_tool(None);
+}
+
+/// ⭐⭐ **O SEGMENTO ACESO SEGUE O QUE A SHELL PUBLICA** — e os dois botões seguem o VERBO.
+///
+/// ⚠️ **As duas metades, porque as curas são opostas:** pintados nos outros verbos eles seriam
+/// controlos que não fazem nada; ausentes no verbo deles, a direcção é inalcançável e o artista
+/// volta a não ter como tirar peso.
+#[test]
+fn os_botoes_da_direccao_seguem_o_verbo_e_o_que_a_shell_publica() {
+    let pintado = |verbo: Option<usize>, id| {
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        publica_tudo();
+        state::set_current_bone_tool(verbo);
+        let v = host
+            .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+            .is_some();
+        limpa();
+        state::set_current_bone_tool(None);
+        v
+    };
+    for id in ph2d_panel_skeleton::ids::VECTOR_BONE_WEIGHT_DIR_IDS {
+        assert!(
+            pintado(Some(2), id),
+            "o lado do pincel nao e' pintado com o verbo Weight armado"
+        );
+        assert!(
+            !pintado(Some(1), id),
+            "o lado do pincel e' pintado em Transformar"
+        );
+        assert!(
+            !pintado(None, id),
+            "o lado do pincel e' pintado fora da ferramenta Osso"
+        );
+    }
+    // ⚠️ **Qual dos dois está ACESO não é observável daqui, e dizê-lo é o que torna este gate
+    // honesto:** a `segmented` recebe o booleano e pinta-o — ela não o guarda no `WidgetStore`,
+    // logo de fora só se vê *«foi pintado»*. A metade que falta é uma conta, e ela é julgada onde
+    // pode ser CHAMADA: `section::tests::o_indice_publicado_acende_o_lado_do_pincel`.
+    limpa();
+    state::set_current_bone_tool(None);
+}
+
 /// ⭐⭐ **OS DOIS NÚMEROS DO PINCEL SÓ EXISTEM COM O PINCEL NA MÃO.**
 ///
 /// ⚠️ **As DUAS metades:** pintados nos outros dois verbos, eles seriam controlos que não fazem

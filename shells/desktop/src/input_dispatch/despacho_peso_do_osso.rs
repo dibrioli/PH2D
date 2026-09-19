@@ -47,7 +47,18 @@ impl crate::App {
         };
         // ⚠️ Ver o pen-down: o raio do painel e' de ECRA, a lei fala MUNDO.
         let raio = self.vec.draw_config.weight_radius * self.vec_px_to_world();
-        let quanto = self.vec.draw_config.weight_amount;
+        // ⭐⭐⭐ **A MAGNITUDE compoe-se com a DIRECCAO numa PORTA, nunca num `if` aqui**
+        // ([`ph2d_tool_vector::WeightDirection::delta`], ordem do dono de 2026-09-19).
+        //
+        // ⛔⛔ Ate' esse dia o sinal vivia dentro do numero e esta linha lia-o cru. Escrever a
+        // composicao aqui — `if soma { q } else { -q }` — poria a lei num laco de input, onde
+        // teste nenhum lhe chega: *e' exactamente assim que a escolha do alvo do pincel viveu ate'
+        // 19/09*, e foi preciso um report do dono para a descobrir.
+        let quanto = self
+            .vec
+            .draw_config
+            .weight_direction
+            .delta(self.vec.draw_config.weight_amount);
         let ppm = self
             .gfx
             .as_ref()

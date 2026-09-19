@@ -124,7 +124,7 @@ pub use pencil::*;
 mod mode;
 pub use mode::{
     BoneAction, DrawMode, MarqueeShape, WEIGHT_AMOUNT_DEFAULT, WEIGHT_RADIUS_DEFAULT,
-    WEIGHT_RADIUS_MIN,
+    WEIGHT_RADIUS_MIN, WeightDirection,
 };
 
 /// UI-facing vertex type for the docked panel's Vertex section (mirror of
@@ -401,8 +401,14 @@ pub struct VectorDrawConfig {
     /// ⛔ **Não são estado do documento** — são o pincel, como o raio do pincel da escultura. Um
     /// `.ph2dproj` não os guarda, e o `PROJECT_SCHEMA` não se mexe por eles.
     pub weight_radius: f64,
-    /// Ver [`Self::weight_radius`].
+    /// **QUANTO** cada pincelada empurra — uma MAGNITUDE. Ver [`Self::weight_radius`].
     pub weight_amount: f64,
+    /// ⭐⭐⭐ **PARA QUE LADO ela empurra** ([`WeightDirection`], ordem do dono de 2026-09-19).
+    ///
+    /// ⚠️ **Viaja aqui e não é derivada do sinal do [`Self::weight_amount`]**, porque o sinal saiu
+    /// dele: *uma pergunta, um controlo*. Quem a compõe com a magnitude é a porta
+    /// [`WeightDirection::delta`], e não o laço de input.
+    pub weight_direction: WeightDirection,
     /// **A estabilização autorada do lápis** (0 = ponteiro cru). Viaja no config porque quem a
     /// aplica é o `input_dispatch` da shell, por movimento de ponteiro — e ali a única alça para o
     /// tool é este espelho publicado a cada frame; alcançar o tool por downcast num handler de move
@@ -437,6 +443,7 @@ impl Default for VectorDrawConfig {
             bone_action: BoneAction::default(),
             weight_radius: WEIGHT_RADIUS_DEFAULT,
             weight_amount: WEIGHT_AMOUNT_DEFAULT,
+            weight_direction: WeightDirection::default(),
             shape: ShapeKind::Rectangle,
             values: ShapeKind::Rectangle.defaults(),
             pencil_stabilizer: PENCIL_STABILIZER_DEFAULT,

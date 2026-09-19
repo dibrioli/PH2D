@@ -311,7 +311,8 @@ pub fn bind(
                  pintado), carregue «Weight» no painel Bones e olhe para o braco PINTADO — cada \
                  ponto da malha dele fica colorido pela influencia desse osso, do AZUL (nao manda \
                  nada) ao VERMELHO (manda sozinho), passando por ciano, verde e amarelo. Arraste \
-                 por cima para empurrar o peso para cima; «Brush Strength» negativo tira."
+                 por cima para empurrar o peso para cima; para TIRAR, carregue «Subtract» na \
+                 fileira «Direction» e arraste outra vez."
             );
             eprintln!(
                 "[vec-bone-smoke] ⚠️ na BARRA laranja o mesmo pincel mostra 8 pontos e mais nada — \

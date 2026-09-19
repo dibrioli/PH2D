@@ -111,6 +111,16 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     ] {
         world_number_field(store, id);
     }
+    // ⭐⭐⭐ **E os DOIS segmentos da DIRECÇÃO** (ordem do dono, 2026-09-19).
+    //
+    // ⛔⛔ **Eles entram aqui e não só no `paint`, e é a SÉTIMA vez que esta casa paga a lição:**
+    // um chip pintado, hit-indexado e ausente do `populate` fica **morto sob o dedo** — o clique
+    // morre no `is_focusable` e o artista vê um botão que não faz nada. *Um controlo nunca pintado
+    // e um morto sob o dedo dão o MESMO report*, e só o gesto REAL os separa (o gate de costura
+    // `os_dois_botoes_da_direccao_do_peso_respondem_ao_dedo`).
+    for id in crate::ids::VECTOR_BONE_WEIGHT_DIR_IDS {
+        button(store, id);
+    }
 }
 
 /// **Este id é deste painel?** — a mesma lista que o `populate` regista e que o `paint` pinta.
@@ -127,6 +137,7 @@ fn meu(id: ph2d_a11y::NodeId) -> bool {
         || id == crate::ids::VECTOR_BONE_TIP
         || id == ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS
         || id == ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT
+        || crate::ids::VECTOR_BONE_WEIGHT_DIR_IDS.contains(&id)
 }
 
 pub(crate) fn apply_event(

@@ -51,6 +51,33 @@ pub(crate) fn aceso(armado: Option<usize>, segmento: usize) -> bool {
     armado == Some(segmento)
 }
 
+/// ⭐⭐ **OS DOIS SEGMENTOS DA DIRECÇÃO DO PINCEL DE PESO** — `(id, chave do rótulo, aceso)`.
+///
+/// ⚠️ **Ela existe para a escolha ser CHAMÁVEL de um teste.** Escrita no sítio onde é pintada, a
+/// única forma de a julgar seria ler o ficheiro como texto ou olhar para pixels — e o que se quer
+/// afirmar é *«o índice que a shell publica acende o segmento certo»*, que é uma pergunta sobre uma
+/// conta. ⛔ E a conta é a [`aceso`], a mesma da fileira dos verbos: *duas respostas a «qual
+/// segmento acende» divergem no dia do primeiro ajuste.*
+///
+/// ⛔⛔ **O ID e o RÓTULO viajam EMPARELHADOS, e isso nasceu de uma mutação SOBREVIVENTE:** com a
+/// lista de ids de um lado e a de rótulos do outro, trocar a ordem de UMA delas não reprovava nada
+/// — e o resultado é o botão que diz *Add* a mandar `Subtract`. *Um controlo que faz o contrário do
+/// que o rótulo dele diz é pior do que um controlo morto: o morto não engana.*
+pub(crate) fn segmentos_da_direccao(lado: usize) -> [(NodeId, &'static str, bool); 2] {
+    [
+        (
+            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ADD,
+            "panel.vector.bone.weight.add",
+            aceso(Some(lado), 0),
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_SUB,
+            "panel.vector.bone.weight.subtract",
+            aceso(Some(lado), 1),
+        ),
+    ]
+}
+
 pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
     // ⭐⭐⭐ **REVELAR-AO-FOCAR** (report do dono, 2026-09-08: *«selecionar o bone nem sempre
     // abre a secção de skeleton»*). ⚠️ **O pedido consome-se AQUI, antes da porta**: se o corpo
@@ -109,15 +136,34 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
         ];
         y = r.segmented(tr("panel.vector.bone.action"), &acoes, y);
     }
-    // ⭐⭐⭐ **OS DOIS NÚMEROS DO PINCEL DE PESO, e SÓ com ele na mão.**
+    // ⭐⭐⭐ **O PINCEL DE PESO — a DIRECÇÃO e os dois números, e SÓ com ele na mão.**
     //
     // ⚠️ **Escondidos fora do verbo, e é a lei da casa** (*«o painel mostra o que serve à
-    // FERRAMENTA na mão»*, `section_scope`): pintados sempre, eles seriam dois controlos que não
-    // fazem nada em dois dos três verbos — que é a espécie de morto que o §5.0 nomeia.
+    // FERRAMENTA na mão»*, `section_scope`): pintados sempre, eles seriam controlos que não fazem
+    // nada em dois dos três verbos — que é a espécie de morto que o §5.0 nomeia.
     //
-    // ⚠️ **O `Amount` é COM SINAL**, e é isso que faz o gesto ser um só: negativo TIRA peso. ⛔ Um
-    // segundo chip «apagar» seria a segunda maneira de dizer a mesma coisa.
+    // ⛔⛔⛔ **Até 2026-09-19 esta linha dizia *«o `Amount` é COM SINAL, e é isso que faz o gesto
+    // ser um só: negativo TIRA peso. ⛔ Um segundo chip apagar seria a segunda maneira de dizer a
+    // mesma coisa»*.** A premissa morreu por **ordem do dono**: *«no lugar de valores negativos em
+    // Brush Strength prefiro botões Add e Subtract»*. A objecção fica **registada e não vencida**,
+    // e o que ela não via está escrito na [`ph2d_tool_vector::WeightDirection`]: enquanto o sinal
+    // vivia no número, *«tirar peso»* era um **estado invisível** — o artista tinha de ler um menos
+    // para saber o que o próximo arrasto ia fazer.
+    //
+    // ⚠️ **A direcção vem ANTES dos números, e é a mesma razão da fileira dos verbos acima:** ela
+    // decide o que o `Strength` significa, e ler isso depois de já ter arrastado é tarde. ⭐ E os
+    // dois números ficam JUNTOS, que é o que eles são.
     if armado == Some(2) {
+        let (_, _, lado) = state::bone_weight();
+        // ⚠️ **A fileira é DERIVADA** ([`segmentos_da_direccao`]) — um `lado == 0` escrito aqui
+        // seria a terceira resposta a *«qual segmento acende»*, ao lado da [`aceso`] que a fileira
+        // dos verbos já usa. ⛔ E o RÓTULO vem de lá emparelhado com o id, nunca de uma segunda
+        // lista ao lado: *duas listas na mesma ordem trocam-se uma sem a outra, e o sintoma é um
+        // botão que faz o contrário do que diz.*
+        let acesos = segmentos_da_direccao(lado);
+        let direccoes: [(NodeId, &str, bool); 2] =
+            std::array::from_fn(|i| (acesos[i].0, tr(acesos[i].1), acesos[i].2));
+        y = r.segmented(tr("panel.vector.bone.weight.direction"), &direccoes, y);
         y = r.labeled_number_field(
             tr("panel.vector.bone.weight.radius"),
             ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS,
@@ -438,6 +484,43 @@ mod tests {
             !aceso(Some(1), 0) && aceso(Some(1), 1),
             "*Transform* armado"
         );
+    }
+
+    /// ⭐⭐⭐ **O ÍNDICE QUE A SHELL PUBLICA ACENDE O SEGMENTO CERTO** — a direcção do pincel de
+    /// peso (ordem do dono, 2026-09-19).
+    ///
+    /// ⚠️ **As três metades:** o segmento publicado acende, o outro **não** (senão os dois acesos
+    /// leem-se como «nenhum escolhido»), e a fileira sai da lista de ids na ordem dela — *um par
+    /// trocado acenderia o `Add` quando a ferramenta está a tirar peso, e o artista veria o
+    /// contrário do que o próximo arrasto faz.*
+    #[test]
+    fn o_indice_publicado_acende_o_lado_do_pincel() {
+        for publicado in 0..2 {
+            let fileira = super::segmentos_da_direccao(publicado);
+            for (i, (id, chave, on)) in fileira.iter().enumerate() {
+                assert_eq!(
+                    *id,
+                    crate::ids::VECTOR_BONE_WEIGHT_DIR_IDS[i],
+                    "a fileira e a lista que o `populate` regista deixaram de concordar na ORDEM — \
+                     um segmento passa a carregar o id do outro"
+                );
+                // ⭐ E o RÓTULO segue o id: sem isto, o botao que diz «Add» pode mandar «Subtract».
+                assert_eq!(
+                    *chave,
+                    [
+                        "panel.vector.bone.weight.add",
+                        "panel.vector.bone.weight.subtract"
+                    ][i],
+                    "o rotulo do segmento {i} deixou de emparelhar com o id dele"
+                );
+                assert_eq!(
+                    *on,
+                    i == publicado,
+                    "publicado {publicado}: o segmento {i} devia estar {}",
+                    if i == publicado { "ACESO" } else { "apagado" }
+                );
+            }
+        }
     }
 }
 

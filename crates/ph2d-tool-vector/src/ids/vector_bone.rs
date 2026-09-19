@@ -27,5 +27,12 @@ pub const VECTOR_BONE_ACT_WEIGHT: NodeId = hash_node_id("vector.bone.action.weig
 /// ⭐ **O RAIO do pincel de peso**, nas unidades do desenho.
 pub const VECTOR_BONE_WEIGHT_RADIUS: NodeId = hash_node_id("vector.bone.weight.radius");
 
-/// ⭐ **QUANTO cada pincelada empurra** — e o **SINAL é a direcção**: negativo TIRA.
+/// ⭐ **QUANTO cada pincelada empurra** — uma MAGNITUDE. ⛔ O sinal saiu daqui em 2026-09-19
+/// (ordem do dono): para que lado é o [`VECTOR_BONE_WEIGHT_ADD`] / [`VECTOR_BONE_WEIGHT_SUB`].
 pub const VECTOR_BONE_WEIGHT_AMOUNT: NodeId = hash_node_id("vector.bone.weight.amount");
+
+/// ⭐⭐⭐ **Add** — a pincelada SOMA peso. Ver [`crate::params::WeightDirection`].
+pub const VECTOR_BONE_WEIGHT_ADD: NodeId = hash_node_id("vector.bone.weight.add");
+
+/// ⭐⭐⭐ **Subtract** — a pincelada TIRA peso. Ver [`crate::params::WeightDirection`].
+pub const VECTOR_BONE_WEIGHT_SUB: NodeId = hash_node_id("vector.bone.weight.subtract");

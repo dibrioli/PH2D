@@ -698,6 +698,41 @@ fácil de alcançar no código não era o nome certo para o gesto.* ⭐ A deriva
 (`osso_do_meio`) por causa de mais uma mutação sobrevivente: com ela inline, o gate tinha de
 **copiar** a conta — e uma cópia julga a cópia.
 
+#### ⭐⭐⭐ F26-c — *«no lugar de valores negativos em Brush Strength prefiro botões Add e Subtract»* (smoke APROVADO + ordem, 2026-09-19)
+
+⛔⛔⛔ **A objecção estava escrita no painel e fica REGISTADA E NÃO VENCIDA:** *«o `Amount` é COM
+SINAL, e é isso que faz o gesto ser um só: negativo TIRA peso. ⛔ Um segundo chip «apagar» seria a
+segunda maneira de dizer a mesma coisa.»* ⭐ **O que ela não via** está agora escrito na
+[`ph2d_tool_vector::WeightDirection`]: enquanto o sinal vivia dentro do número, *«tirar peso»* era um
+**estado invisível** — o artista tinha de **ler um menos** para saber o que o próximo arrasto ia
+fazer. ⇒ *uma pergunta, um controlo*: o número responde **QUANTO** (uma magnitude, que não tem sinal
+que faça sentido) e os dois botões respondem **PARA QUE LADO**.
+
+⭐⭐ **A composição é uma PORTA** ([`WeightDirection::delta`]) e não um `if` no despacho da shell:
+*uma lei que só existe num laço de input é uma lei que ninguém pode contradizer* — foi exactamente
+assim que a escolha do alvo do pincel viveu até esta manhã, e foi preciso um report do dono para a
+descobrir. Gate na shell a exigir a porta **e** a proibir o sinal escrito ao lado dela.
+
+⚠️ **Um negativo escrito à mão entra em valor ABSOLUTO, nunca cortado a zero:** cortá-lo deixaria o
+pincel **inerte e calado**, que é a família de reports que esta casa já pagou três vezes. O campo é
+re-semeado do estado da ferramenta a cada quadro ⇒ *o ecrã corrige-se à vista*.
+
+⛔ **E escolher um lado NÃO arma o verbo `Weight`**, ao contrário dos três chips acima: a secção
+destes dois só é pintada com ele já na mão, logo já se está lá — a mesma regra que os chips da
+largura do lápis já escrevem, com gate nas duas metades.
+
+⭐⭐⭐ **DUAS mutações sobreviveram e as duas eram achados de DESENHO:**
+- **a lista de ids podia trocar de ordem sem nada acusar** — e com `[Sub, Add]` o segmento rotulado
+  *Add* passava a mandar `Subtract`. ⚠️ *«Índice-alinhadas» era uma afirmação que nada verificava.*
+  ⇒ o gate ata a posição ao SIGNIFICADO (`IDS[Add.indice()] == …_ADD`);
+- **o id e o RÓTULO viviam em duas listas paralelas** ⇒ passam a viajar **emparelhados** numa porta
+  só. *Um controlo que faz o contrário do que o rótulo dele diz é pior do que um controlo morto: o
+  morto não engana.*
+
+⚠️ **E o `populate` — a SÉTIMA vez que esta casa paga a lição:** os dois chips entram nele, com o
+gate de costura a carregar-lhes com o **ponteiro REAL** (um `Click` sintético passa com o chip
+morto). Mutação **10 de 10** a sangrar.
+
 **Mutação `11 + 2` a sangrar, TRÊS sobreviveram à primeira e as três eram achados** (a barra da
 rampa cega ao espaçamento uniforme em OKLab · o filtro por tendão que era a segunda resposta à
 mesma pergunta · o instantâneo posado que podia divergir do desenho sem nada acusar). Portão:

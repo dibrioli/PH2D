@@ -7,7 +7,8 @@
 //! 1. o verbo armado chega ao painel pelo **ÍNDICE derivado** e não por uma comparação,
 //! 2. o **arrasto** pinta (e não só o press),
 //! 3. o traço **acaba** no soltar,
-//! 4. o **raio** chega à lei CONVERTIDO a mundo (2026-09-19, report do dono).
+//! 4. o **raio** chega à lei CONVERTIDO a mundo (2026-09-19, report do dono),
+//! 5. o **sinal** do `delta` sai da PORTA da direcção e não de um `if` escrito aqui.
 //!
 //! ⚠️ **Um censo textual, e assumidamente a régua mais fraca da família** — mas as três coisas que
 //! ele mede vivem num caminho que pede um `wgpu::Device` (o `on_mouse_input` da shell), e um gate
@@ -132,5 +133,30 @@ fn o_raio_do_pincel_chega_a_lei_convertido_a_mundo() {
     assert!(
         !src.contains("raio: self.vec.draw_config.weight_radius,"),
         "o pen-down voltou a passar o raio CRU a` lei"
+    );
+}
+
+/// ⭐⭐⭐ **O SINAL DA PINCELADA SAI DA PORTA DA DIRECÇÃO** (ordem do dono, 2026-09-19: *«no lugar
+/// de valores negativos em Brush Strength prefiro botões Add e Subtract»*).
+///
+/// ⛔⛔ **A composição *«magnitude × direcção»* é a LEI que aquela ordem criou**, e escrita como um
+/// `if` dentro deste despacho ela ficaria num sítio onde teste nenhum lhe chega — que é exactamente
+/// como a escolha do alvo do pincel viveu até 19/09, e foi preciso um report do dono para a
+/// descobrir. ⇒ ela vive na [`ph2d_tool_vector::WeightDirection::delta`], com gate próprio.
+///
+/// ⚠️ **As duas metades:** a porta é chamada **e** o sinal não voltou a ser escrito aqui. Sem a
+/// segunda, alguém que ponha um `if soma { q } else { -q }` ao lado da chamada deixa o gate verde.
+#[test]
+fn o_sinal_da_pincelada_sai_da_porta_da_direccao() {
+    let src = code_only(&DISPATCH);
+    let n = src.matches("weight_direction").count();
+    assert!(
+        n >= 1 && src.contains(".delta("),
+        "o despacho deixou de compor a magnitude com a DIRECCAO pela porta ({n} mencao(oes) de \
+         `weight_direction`) — o sinal voltou a viver num laco de input"
+    );
+    assert!(
+        !src.contains("-quanto") && !src.contains("- quanto"),
+        "o sinal voltou a ser escrito NO DESPACHO, ao lado da porta que existe para o guardar"
     );
 }

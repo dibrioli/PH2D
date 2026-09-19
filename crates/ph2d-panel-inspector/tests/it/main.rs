@@ -43,6 +43,7 @@ mod seam_precision;
 mod seam_properties;
 mod seam_render_source;
 mod seam_texture_slot;
+mod seam_tween;
 mod seam_wheel;
 mod the_add_component_button_follows_the_selection;
 mod the_audio_section_is_alive;

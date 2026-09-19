@@ -126,6 +126,11 @@ dhat = "0.3"
 # cooker — those layer up, not the other way around.
 ph2d-render = { path = "../ph2d-render" }
 ph2d-asset-cooker = { path = "../../tools/asset-cooker" }
+# ⭐ **As 33 curvas, para a SONDA do §5.0 do ping-pong** (`mede_o_que_a_composicao_ja_da_ao_pingpong`):
+# ela pergunta se ALGUMA delas reflecte, e a resposta e' o que decide se a wave existe. ⚠️ A crate
+# ja' entra aqui pela `ph2d-tween` e pela `ph2d-morph-machine` — isto so' lhe da' NOME nos testes,
+# e nao acrescenta dependencia nenhuma ao produto.
+ph2d-anim = { path = "../ph2d-anim" }
 
 [lints]
 workspace = true

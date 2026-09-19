@@ -319,7 +319,7 @@ pub(super) fn editor(
         row.modo as usize,
     );
     let fins: Vec<&str> = AoAcabar::ALL.iter().map(|a| a.label()).collect();
-    grupo(
+    cur_y = grupo(
         scene,
         text_system,
         theme,
@@ -332,5 +332,25 @@ pub(super) fn editor(
         &crate::ids::INSP_TWEEN_AO_ACABAR,
         &fins,
         row.ao_acabar as usize,
+    );
+    // ⭐⭐⭐ **O CICLO — o *ping-pong* que o dono pediu em 2026-09-19.**
+    //
+    // ⚠️ **Ele vem DEPOIS do `When Done` de propósito:** os dois falam do tempo, e a ordem é a da
+    // pergunta que o artista faz — *o que acontece DENTRO de uma volta* lê-se depois de *o que
+    // acontece no FIM*, porque é o fim que ele já conhece do resto do painel.
+    let ciclos: Vec<&str> = ph2d_tween::Ciclo::ALL.iter().map(|c| c.label()).collect();
+    grupo(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.tween.cycle"),
+        &crate::ids::INSP_TWEEN_CICLO,
+        &ciclos,
+        row.ciclo as usize,
     )
 }

@@ -184,7 +184,11 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // registo (`Tweens`), e ⛔ **nenhum runtime ao lado dele**: o tween é função pura do
         // relógio do `Timers`, logo não há estado vivo para excluir do ficheiro.
         // ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA SEGUNDA vez, e pela razão de sempre.
-        (151, 13, 22),
+        // ⭐ **PROJECT 151→152** (2026-09-19): o CICLO do tween (o *ping-pong* que o dono pediu) —
+        // ⛔ **ZERO componentes novos**: é um CAMPO novo no `ph2d_tween::Tween`, que já viajava.
+        // ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA TERCEIRA vez, e por OUTRA razão que as
+        // doze anteriores: ali o tipo era novo, aqui o que mudou foi o CONTEÚDO de um blob.
+        (152, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

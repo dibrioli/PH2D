@@ -38,6 +38,7 @@ pub(crate) fn populate_tween(store: &mut WidgetStore) {
         .chain(ids::INSP_TWEEN_FAMILIA.iter())
         .chain(ids::INSP_TWEEN_MODO.iter())
         .chain(ids::INSP_TWEEN_AO_ACABAR.iter())
+        .chain(ids::INSP_TWEEN_CICLO.iter())
         .chain(ids::INSP_TWEEN_ROW.iter())
         .chain(ids::INSP_TWEEN_PRESET.iter())
         .copied()

@@ -101,6 +101,37 @@ fn a_coluna_do_crescer_tem_dois_ritmos() {
     assert_eq!(canais, vec![Canal::ScaleX, Canal::ScaleY]);
 }
 
+/// ⭐⭐⭐ **UMA coluna demonstra o PING-PONG, e é a única** — o pedido do dono de 2026-09-19.
+///
+/// ⚠️ **A comparação da cena é um CLIQUE e não uma quinta coluna** (a meia-largura visível são
+/// `5,2 m`, medidos pelo #18, e cinco passos de `2,6` põem as pontas fora do ecrã) ⇒ o roteiro manda
+/// carregar em `Restart`. *Sem esta coluna o chip existe, tem lei, tem gates — e a cena não o
+/// mostra, que é o estado em que o dono perguntou por ele.*
+///
+/// ⛔ E **só uma**: se todas corressem em ping-pong, o `Restart` deixaria de ter contraste na cena.
+#[test]
+fn uma_coluna_demonstra_o_pingpong() {
+    let mut w = mundo_um();
+    let mut q = w.query::<(&Name, &Tweens)>();
+    let pingpong: Vec<String> = q
+        .iter(&w)
+        .filter(|(_, t)| t.0.iter().any(|x| x.ciclo == ph2d_tween::Ciclo::PingPong))
+        .map(|(n, _)| n.0.clone())
+        .collect();
+    assert_eq!(
+        pingpong.len(),
+        1,
+        "a galeria tem de ter EXACTAMENTE uma coluna em ping-pong: {pingpong:?}"
+    );
+    // ⚠️ **Ela é a do canal de POSE**, e a razão é o que o olho lê: um ir-e-voltar de POSIÇÃO vê-se
+    // a metros de distância, e o mesmo numa opacidade lê-se como um piscar mais lento.
+    let e = por_nome(&mut w, &pingpong[0]);
+    assert_eq!(
+        w.get::<Tweens>(e).expect("tem tween").0[0].canal,
+        Canal::PositionX
+    );
+}
+
 /// ⭐⭐ **As duas colunas que o passo (4) compara têm `On finish` DIFERENTES.**
 ///
 /// ⚠️ **O roteiro manda desligar o `Repeat` e ver a diferença** — se as duas tiverem o mesmo fim, o

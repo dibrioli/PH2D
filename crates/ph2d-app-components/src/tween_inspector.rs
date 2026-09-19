@@ -46,6 +46,7 @@ pub fn build_tween_info(
                 familia: familia_tag(t.easing.family),
                 modo: modo_tag(t.easing.mode),
                 ao_acabar: t.ao_acabar.tag(),
+                ciclo: t.ciclo.tag(),
                 duracao_us: relogios
                     .as_ref()
                     .and_then(|ts| ts.0.get(i))
@@ -174,6 +175,14 @@ pub fn apply_tween_edit(world: &mut World, entity_bits: u64, edit: &TweenFieldEd
                 return false;
             }
             t.ao_acabar = novo;
+            true
+        }),
+        TweenFieldEdit::Ciclo(i, tag) => campo(&mut tweens, *i, |t| {
+            let novo = ph2d_tween::Ciclo::from_tag(*tag);
+            if t.ciclo == novo {
+                return false;
+            }
+            t.ciclo = novo;
             true
         }),
     }

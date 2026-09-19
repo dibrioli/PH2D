@@ -5527,6 +5527,7 @@ dependencies = [
  "blake3",
  "dhat",
  "libm",
+ "ph2d-anim",
  "ph2d-asset",
  "ph2d-asset-cooker",
  "ph2d-component-desc",

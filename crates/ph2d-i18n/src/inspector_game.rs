@@ -430,6 +430,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.tween.curve" => "Curve",
         "panel.inspector.tween.ease" => "Ease",
         "panel.inspector.tween.when_done" => "When Done",
+        // ⭐ O CICLO — o que ele faz DENTRO de uma volta (`Restart` · `Ping-Pong`).
+        "panel.inspector.tween.cycle" => "Cycle",
         "panel.inspector.tween.preset" => "Preset",
         // ⭐⭐⭐ **A DURAÇÃO — a linha que responde «onde selecciono o tempo?»** (report do dono,
         // 19/09). Ela NOMEIA o relógio pelo número do slot, porque com dois tweens o artista tem de

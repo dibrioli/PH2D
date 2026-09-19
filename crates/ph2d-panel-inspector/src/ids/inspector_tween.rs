@@ -103,6 +103,13 @@ pub const INSP_TWEEN_AO_ACABAR: [NodeId; 2] = [
     hash_node_id("insp_tween_ao_acabar_1"),
 ];
 
+/// ⭐⭐⭐ **O que ele faz DENTRO de um período** (`Restart` · `Ping-Pong`) — o pedido do dono de
+/// 2026-09-19, e a sonda do §5.0 mediu que a composição não o dava.
+pub const INSP_TWEEN_CICLO: [NodeId; 2] = [
+    hash_node_id("insp_tween_ciclo_0"),
+    hash_node_id("insp_tween_ciclo_1"),
+];
+
 /// ⭐⭐⭐ **Os TRÊS presets de um clique** — *Fade In* · *Fade Out* · *Flash*.
 ///
 /// ⚠️ O comprimento é o do `ph2d_tween::Preset::ALL`, com gate: *um preset sem chip existe, tem lei,

@@ -76,6 +76,9 @@ pub(crate) fn apply_tween_event(
             (&crate::ids::INSP_TWEEN_AO_ACABAR[..], &|i, n| {
                 TweenFieldEdit::AoAcabar(i, n)
             }),
+            (&crate::ids::INSP_TWEEN_CICLO[..], &|i, n| {
+                TweenFieldEdit::Ciclo(i, n)
+            }),
         ] {
             if let Some(n) = ids_.iter().position(|&c| c == id)
                 && let Ok(n) = u8::try_from(n)

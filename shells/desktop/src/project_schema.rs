@@ -510,4 +510,29 @@
 /// tem o componente, logo lê-se inteiro por este binário.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — é a **décima segunda** vez.
-pub(crate) const PROJECT_SCHEMA: u32 = 151;
+/// # 151 -> 152 — o CICLO do tween, o *ping-pong* (suplente #22, W8, `line/components`)
+///
+/// ⛔⛔ **Este degrau NÃO é um tipo novo — é um CAMPO novo num tipo que já viaja**, e é a primeira
+/// vez que esta linha o paga. O `ph2d_tween::Tween` ganha `ciclo: Ciclo`, e o postcard é
+/// **posicional**: um `Tweens` gravado em v151 tem menos bytes por tween, logo seria lido a menos
+/// — **em silêncio** — por este binário.
+///
+/// ⚠️ **O campo é o ÚLTIMO da struct**, que é a única forma aditiva que o postcard aceita; mesmo
+/// assim o degrau existe, porque a leitura de um ficheiro antigo tem de **recusar em voz alta** em
+/// vez de devolver um tween com um campo a menos. *É o mesmo argumento do degrau `112` da
+/// `line/Vector` (o bump sem migração de dados), e não o dos degraus `123`..`151`, que eram tipos
+/// novos e por isso aditivos de verdade.*
+///
+/// ⭐⭐⭐ **E a razão de o campo existir está MEDIDA**, não argumentada: a sonda
+/// `mede_o_que_a_composicao_ja_da_ao_pingpong` correu as três saídas que a casa já tinha e as três
+/// dizem NÃO — o `repeat` do relógio dá uma **serra** (salto de `0,900` contra um passo suave de
+/// `0,100`), **`0` de `33`** curvas reflectem, e dois tweens em contrafase no mesmo canal não se
+/// compõem (o segundo escreve por cima, e não há desfasamento a autorar).
+///
+/// ⚠️ **O caminho de omissão é byte-idêntico:** `Ciclo::Reinicia` devolve o progresso **ao bit**, e
+/// há gate sobre `1001` amostras a afirmá-lo.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima terceira** vez, e por outra razão que as doze
+/// anteriores: ali os tipos eram novos e viajavam em `ComponentBlob`s opacos; aqui o tipo já
+/// viajava e o que mudou foi o **conteúdo** de um blob, que para ela é igualmente opaco.
+pub(crate) const PROJECT_SCHEMA: u32 = 152;

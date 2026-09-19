@@ -156,18 +156,27 @@ fn cena_um(world: &mut World) -> Entity {
         vec![laco("piscar", PERIODO_US)],
     );
 
-    // ⭐ **DESLIZA** — o canal de POSE, e é ele que prova que a pose é CONDUZIDA e não autorada: o
-    // objecto anda o tempo todo e **não enche a fila do desfazer**.
+    // ⭐ **VAI-E-VOLTA** — o canal de POSE, e é ele que prova que a pose é CONDUZIDA e não autorada:
+    // o objecto anda o tempo todo e **não enche a fila do desfazer**.
+    //
+    // ⭐⭐⭐ **E é a coluna do PING-PONG** (pedido do dono, 19/09): ela corre com
+    // [`Ciclo::PingPong`], logo vai e volta **suavemente** dentro do mesmo período. ⚠️ **A
+    // comparação é um CLIQUE e não uma quinta coluna**, de propósito: com `Restart` na fileira
+    // *Cycle* ela passa a SALTAR de volta, e é o artista a carregar no chip que vê a diferença —
+    // o que prova, de graça, que o chip está vivo sob o dedo. *Uma quinta coluna também não caberia:
+    // a meia-largura visível é `5,2 m` (medida pelo #18) e cinco passos de `2,6` põem as pontas
+    // fora do ecrã.*
     let x_desliza = x0 + 2.0 * PASSO_X;
     coluna(
         world,
-        "Desliza (Position X)",
+        "Vai-e-volta (Position X)",
         x_desliza,
         vec![Tween {
             easing: ph2d_anim::Easing::new(
                 ph2d_anim::EasingFamily::Quad,
                 ph2d_anim::EasingMode::InOut,
             ),
+            ciclo: ph2d_tween::Ciclo::PingPong,
             ..Tween::linear(Canal::PositionX, x_desliza - CURSO, x_desliza + CURSO)
         }],
         vec![laco("deslizar", PERIODO_US)],
@@ -371,9 +380,12 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
                  diferenca entre `Hold` e `Rewind`, e ela nao se ve^ num laco\n\
                  (5) na seccao TWEEN carregue em `Flash`: um clique escreve os cinco campos E a \
                  duracao do relogio\n\
+                 (5-bis) escolha o «Vai-e-volta» e na fileira `Cycle` carregue em `Restart`: ele \
+                 passa a SALTAR de volta ao principio. `Ping-Pong` devolve o ir-e-voltar suave\n\
                  (6) carregue em `Pause` na barra de CIMA: tudo congela onde esta'. `Play` devolve\n\
                  (7) deu errado se: algum quadrado nao se mexe · o quarto cresce por igual nos dois \
-                 eixos · ou desligar o `Repeat` nao separa o «Aparece» do «Pisca»",
+                 eixos · desligar o `Repeat` nao separa o «Aparece» do «Pisca» · ou o `Restart` nao \
+                 faz o «Vai-e-volta» saltar",
                 PERIODO_US as f64 / 1e6,
             );
             Montada {

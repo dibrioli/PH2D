@@ -191,8 +191,59 @@ fn toda_edicao_chega_ao_componente() {
         AoAcabar::Rewind
     );
 
+    assert!(apply_tween_edit(
+        &mut w,
+        e,
+        &TweenFieldEdit::Ciclo(0, ph2d_tween::Ciclo::PingPong.tag())
+    ));
+    assert_eq!(
+        w.get::<Tweens>(ent).unwrap().0[0].ciclo,
+        ph2d_tween::Ciclo::PingPong
+    );
+
     assert!(apply_tween_edit(&mut w, e, &TweenFieldEdit::Remove(0)));
     assert!(w.get::<Tweens>(ent).unwrap().0.is_empty());
+}
+
+/// ⭐⭐⭐ **O CICLO fecha nos dois sentidos, e o BARRO muda com ele** — o pedido do dono de
+/// 2026-09-19 (*«onde estão as opções úteis como ping-pong?»*).
+///
+/// ⚠️ **A régua é o VALOR que o tween pede ao meio e no fim**, e não a tag: *uma tag lida de uma
+/// posição e escrita noutra faria o chip aceso e a lei aplicada serem coisas diferentes, e as duas
+/// leituras compilam.*
+///
+/// **Mutações que devem sangrar:** o dreno do `Ciclo` apagado · o instantâneo a ler sempre
+/// `Reinicia`.
+#[test]
+fn o_ciclo_chega_ao_componente_e_ao_barro() {
+    let (mut w, e) = mundo(1, 1, true);
+    let ent = Entity::from_bits(e);
+    // Um tween de subida, para a diferença ser legível.
+    apply_tween_edit(&mut w, e, &TweenFieldEdit::De(0, 0, 0.0));
+    apply_tween_edit(&mut w, e, &TweenFieldEdit::Para(0, 0, 1.0));
+
+    let no_fim = |w: &World| {
+        let t = w.get::<Tweens>(ent).expect("tem tweens").0[0];
+        ph2d_tween::valor(&t, ph2d_tween::Relogio::a_correr(1.0)).expect("escreve")[0]
+    };
+    // ⛔ O CONTROLO primeiro: de fábrica ele acaba em `para`.
+    assert!(
+        (no_fim(&w) - 1.0).abs() < 1e-6,
+        "controlo: a serra acaba em 1"
+    );
+
+    assert!(apply_tween_edit(
+        &mut w,
+        e,
+        &TweenFieldEdit::Ciclo(0, ph2d_tween::Ciclo::PingPong.tag())
+    ));
+    assert!(
+        (no_fim(&w) - 0.0).abs() < 1e-6,
+        "com ping-pong ele tem de VOLTAR a `de` no fim do periodo"
+    );
+    // …e a volta: o instantâneo mostra o chip certo.
+    let i = build_tween_info(&w, e, 1).unwrap();
+    assert_eq!(i.rows[0].ciclo, ph2d_tween::Ciclo::PingPong.tag());
 }
 
 /// ⭐ **A ida-e-volta das TAGS das curvas** — a tradução vive numa porta só, e o gate fecha-a nos

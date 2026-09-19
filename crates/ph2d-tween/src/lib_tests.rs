@@ -326,3 +326,143 @@ fn a_cor_em_dois_espacos() {
         "controlo: a rampa OKLab TEM de sair do gamute nesta fixtura"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// O CICLO (W8) — o *ping-pong* que o dono pediu em 2026-09-19.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **A DOBRA é um triângulo, e o `Reinicia` é a IDENTIDADE AO BIT.**
+///
+/// ⚠️ **A segunda metade é a que protege tudo o que já shipava:** se o caminho de omissão não for
+/// byte-idêntico, este campo muda toda cena gravada — e mudaria em silêncio, porque um tween
+/// *quase* igual continua a parecer um tween.
+///
+/// **Mutações que devem sangrar:** `1 - |2u - 1|` virar `|2u - 1|` (o triângulo ao contrário) ·
+/// `Reinicia` devolver `u.clamp(0,1)` em vez de `u`.
+#[test]
+fn a_dobra_do_pingpong_e_um_triangulo_e_o_reinicia_e_identidade() {
+    for (u, esperado) in [(0.0, 0.0), (0.25, 0.5), (0.5, 1.0), (0.75, 0.5), (1.0, 0.0)] {
+        let lido = Ciclo::PingPong.dobra(u);
+        assert!(
+            (lido - esperado).abs() < 1e-12,
+            "dobra({u}) = {lido}, esperado {esperado}"
+        );
+    }
+    // ⛔ **AO BIT**, e não «perto»: é a promessa de que ligar este campo não mexeu no produto.
+    for i in 0..=1000 {
+        let u = f64::from(i) / 1000.0;
+        assert_eq!(
+            Ciclo::Reinicia.dobra(u),
+            u,
+            "o `Reinicia` mexeu no progresso"
+        );
+    }
+}
+
+/// ⭐⭐ **Um ping-pong VAI E VOLTA dentro do mesmo período** — o que a sonda do §5.0 mediu que a
+/// composição não dá (`0` de `33` curvas reflectem; o `repeat` do relógio salta).
+///
+/// ⚠️ **A régua é a SIMETRIA sobre o meio**, e é ela que separa isto de uma serra: `valor(u)` tem
+/// de ser igual a `valor(1 − u)`, e o meio tem de ser o extremo.
+#[test]
+fn um_pingpong_vai_e_volta_no_mesmo_periodo() {
+    let t = Tween {
+        ciclo: Ciclo::PingPong,
+        ..Tween::linear(Canal::Opacity, 0.0, 1.0)
+    };
+    let v = |u: f32| valor(&t, Relogio::a_correr(u)).expect("a correr, ele escreve")[0];
+    assert!((v(0.0) - 0.0).abs() < 1e-6, "comeca em `de`");
+    assert!((v(0.5) - 1.0).abs() < 1e-6, "a MEIO ele esta' em `para`");
+    assert!((v(1.0) - 0.0).abs() < 1e-6, "no fim voltou a `de`");
+    for i in 0_u8..=10 {
+        let u = f32::from(i) / 10.0;
+        assert!(
+            (v(u) - v(1.0 - u)).abs() < 1e-6,
+            "a ida e a volta discordam em u = {u}"
+        );
+    }
+    // ⛔ O CONTROLO: o mesmo tween com `Reinicia` NÃO volta — ele acaba em `para`.
+    let serra = Tween {
+        ciclo: Ciclo::Reinicia,
+        ..t
+    };
+    let fim = valor(&serra, Relogio::a_correr(1.0)).expect("escreve")[0];
+    assert!(
+        (fim - 1.0).abs() < 1e-6,
+        "controlo: a serra acaba em `para`"
+    );
+}
+
+/// ⭐⭐⭐ **A DOBRA VEM ANTES DA CURVA** — e a régua separa as duas ordens.
+///
+/// ⚠️ Dobrar **antes** faz a ida e a volta percorrerem a MESMA forma (o progresso dobrado é
+/// simétrico sobre o meio, logo o valor também é). Dobrar **depois** aplicaria a curva ao tempo
+/// cru, e `curva(u)` e `curva(1 − u)` são coisas diferentes em toda curva que não seja simétrica
+/// ⇒ a volta teria outro aspecto que a ida.
+///
+/// **Mutação que deve sangrar:** `eval(dobra(u))` virar `dobra(eval(u))`.
+#[test]
+fn a_dobra_vem_antes_da_curva() {
+    let t = Tween {
+        ciclo: Ciclo::PingPong,
+        easing: Easing::new(EasingFamily::Quad, EasingMode::In),
+        ..Tween::linear(Canal::Opacity, 0.0, 1.0)
+    };
+    let v = |u: f32| valor(&t, Relogio::a_correr(u)).expect("escreve")[0];
+    for i in 0_u8..=10 {
+        let u = f32::from(i) / 10.0;
+        assert!(
+            (v(u) - v(1.0 - u)).abs() < 1e-6,
+            "com a dobra DEPOIS da curva, a volta teria outra forma (u = {u})"
+        );
+    }
+    // ⛔ O CONTROLO da própria régua: a curva escolhida TEM de ser assimétrica, senão as duas
+    //    ordens dariam o mesmo e este gate não afirmava nada.
+    let c = Easing::new(EasingFamily::Quad, EasingMode::In);
+    assert!(
+        (c.eval(0.25) - c.eval(0.75)).abs() > 0.1,
+        "controlo: a curva do gate e' simetrica, e entao ele nao discrimina"
+    );
+}
+
+/// ⚠️ **No FIM, um ping-pong com `Hold` fica em `de`** — ele foi e voltou, e é ali que ficou.
+///
+/// ⛔ *Não* é o mesmo que `Rewind`: ali o motor **deixa de escrever** e o ledger repõe o valor
+/// autorado, que pode não ser o `de`.
+#[test]
+fn um_pingpong_que_fica_acaba_onde_comecou() {
+    let t = Tween {
+        ciclo: Ciclo::PingPong,
+        ao_acabar: AoAcabar::Hold,
+        ..Tween::linear(Canal::Opacity, 0.0, 1.0)
+    };
+    assert_eq!(valor(&t, Relogio::ACABOU), Some([0.0, 0.0, 0.0, 0.0]));
+    // O CONTROLO: com `Reinicia`, o mesmo `Hold` fica em `para`.
+    let r = Tween {
+        ciclo: Ciclo::Reinicia,
+        ..t
+    };
+    assert_eq!(valor(&r, Relogio::ACABOU), Some([1.0, 0.0, 0.0, 0.0]));
+}
+
+/// ⚠️ **A tag de um ciclo fecha nos dois sentidos**, e a POSIÇÃO no `ALL` é a tag — reordenar o
+/// array faria um clique escrever outro valor, e compila.
+#[test]
+fn a_tag_de_um_ciclo_fecha_nos_dois_sentidos() {
+    for (i, c) in Ciclo::ALL.iter().enumerate() {
+        #[allow(clippy::cast_possible_truncation)]
+        let tag = i as u8;
+        assert_eq!(c.tag(), tag);
+        assert_eq!(Ciclo::from_tag(tag), *c);
+    }
+    assert_eq!(
+        Ciclo::from_tag(200),
+        Ciclo::default(),
+        "uma tag fora cai no primeiro"
+    );
+    assert_eq!(
+        Ciclo::default(),
+        Ciclo::Reinicia,
+        "o default e' o que ja' shipava"
+    );
+}

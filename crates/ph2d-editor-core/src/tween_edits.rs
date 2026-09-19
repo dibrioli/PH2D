@@ -22,6 +22,8 @@ pub struct InspectorTweenRow {
     pub modo: u8,
     /// A tag do [`ph2d_tween::AoAcabar`].
     pub ao_acabar: u8,
+    /// A tag do [`ph2d_tween::Ciclo`] — o *ping-pong*, o pedido do dono de 2026-09-19.
+    pub ciclo: u8,
     /// ⭐⭐⭐ **A DURAÇÃO do relógio deste índice, em µs** — `None` quando não há relógio nenhum.
     ///
     /// ⚠️ **Vem da CENA e não do componente**, e é a coluna que responde à pergunta que o dono fez
@@ -125,6 +127,8 @@ pub enum TweenFieldEdit {
     Modo(u8, u8),
     /// A tag do `AoAcabar`.
     AoAcabar(u8, u8),
+    /// A tag do `Ciclo` — *do princípio* ou *vai-e-volta*.
+    Ciclo(u8, u8),
     /// ⭐⭐⭐ **Um PRESET de um clique** — `(índice, tag do `ph2d_tween::Preset`)`.
     ///
     /// ⚠️ **Ele escreve os CAMPOS e nada mais fica dele** (a lei do módulo de presets: *açúcar
@@ -146,6 +150,7 @@ mod tests {
             familia: 0,
             modo: 0,
             ao_acabar: ph2d_tween::AoAcabar::Hold.tag(),
+            ciclo: ph2d_tween::Ciclo::Reinicia.tag(),
             duracao_us: Some(400_000),
         }
     }
@@ -248,12 +253,13 @@ mod tests {
             TweenFieldEdit::Familia(0, 0),
             TweenFieldEdit::Modo(0, 0),
             TweenFieldEdit::AoAcabar(0, 0),
+            TweenFieldEdit::Ciclo(0, 0),
         ];
         assert_eq!(
             variantes.len(),
-            8,
-            "o `Tween` tem CINCO campos (canal, de, para, easing, ao_acabar) — o `easing` conta \
-             DOIS porque a familia e o modo escolhem-se a` parte — mais o `Add` e o `Remove`"
+            9,
+            "o `Tween` tem SEIS campos (canal, de, para, easing, ao_acabar, ciclo) — o `easing` \
+             conta DOIS porque a familia e o modo escolhem-se a` parte — mais o `Add` e o `Remove`"
         );
     }
 }

@@ -113,6 +113,79 @@ impl AoAcabar {
     }
 }
 
+/// **O que o tween faz DENTRO de um período** — e é aqui que mora o *ping-pong*.
+///
+/// ⛔⛔ **Report do dono, 2026-09-19:** *«onde estão as opções úteis como ping-pong?»*. A sonda do
+/// §5.0 ([`mede_o_que_a_composicao_ja_da_ao_pingpong`](../ph2d_ecs)) mediu as três saídas que a
+/// casa já tinha, e as três dizem NÃO:
+///
+/// | o que se tentou | o que dá |
+/// |---|---|
+/// | o `repeat` do relógio | uma **SERRA** — salto de `0,900` no fim do período contra um passo suave de `0,100` |
+/// | escolher outra curva | **`0` de `33`** reflectem: todas vão de `0` a `1` e ficam lá |
+/// | dois tweens em contrafase no mesmo canal | não se compõem — o segundo escreve por cima, e não há desfasamento a autorar |
+///
+/// ⭐⭐⭐ **E ele NÃO é um segundo relógio** — é uma **dobra do progresso**, calculada antes da
+/// curva: `u → 1 − |2u − 1|`. O relógio continua monótono e continua a publicar o sinal dele uma
+/// vez por volta; o que muda é só o que o tween LÊ. *É a mesma propriedade que faz esta crate não
+/// ter estado vivo: uma função pura do relógio rebobina de graça.*
+///
+/// ⚠️ **A dobra vem ANTES da curva**, e é o que faz um *ease* ir e voltar pelo mesmo caminho (o
+/// *Yoyo* do idioma corrente). Depois da curva, a ida e a volta teriam formas diferentes.
+///
+/// ⭐ **Ele também vale sem `repeat`:** um período com [`Ciclo::PingPong`] vai a `para` e volta a
+/// `de` — que é uma pulsação, e é útil.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum Ciclo {
+    /// **Do princípio.** O default — e o que o produto fazia antes de este campo existir, logo o
+    /// caminho de omissão é **byte-idêntico**.
+    #[default]
+    Reinicia,
+    /// **Vai e volta.** O progresso é dobrado: `0 → 1 → 0` dentro do mesmo período.
+    PingPong,
+}
+
+impl Ciclo {
+    /// Os dois, em ordem — **a fonte da iteração**. ⚠️ **APPEND-ONLY**: a posição é a tag e ela
+    /// viaja no ficheiro (o postcard é posicional).
+    pub const ALL: [Ciclo; 2] = [Ciclo::Reinicia, Ciclo::PingPong];
+
+    /// O rótulo que o artista lê. Inglês, como as irmãs deste catálogo de motores.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Ciclo::Reinicia => "Restart",
+            Ciclo::PingPong => "Ping-Pong",
+        }
+    }
+
+    /// A posição em [`Self::ALL`] — a tag que o segmentado do painel usa.
+    #[must_use]
+    pub const fn tag(self) -> u8 {
+        self as u8
+    }
+
+    /// O valor desta posição, ou o primeiro.
+    #[must_use]
+    pub fn from_tag(tag: u8) -> Self {
+        Self::ALL.get(tag as usize).copied().unwrap_or_default()
+    }
+
+    /// ⭐⭐⭐ **A DOBRA** — o progresso que o tween de facto lê.
+    ///
+    /// ⚠️ **`Reinicia` devolve `u` AO BIT** (e não `u * 1.0`, nem um `clamp` a mais): é isso que
+    /// torna o caminho de omissão indistinguível do produto que já shipava.
+    #[must_use]
+    pub fn dobra(self, u: f64) -> f64 {
+        match self {
+            Ciclo::Reinicia => u,
+            // `u = 0 → 0` · `u = ½ → 1` · `u = 1 → 0`, e sem uma transcendental à vista (HR-5).
+            Ciclo::PingPong => 1.0 - (2.0 * u - 1.0).abs(),
+        }
+    }
+}
+
 /// **A configuração de um tween** — CONFIG, nunca estado vivo. Ela viaja no ficheiro.
 ///
 /// ⚠️ **`de` e `para` são sempre `[f32; 4]`, e o canal diz quantas componentes contam**
@@ -131,6 +204,12 @@ pub struct Tween {
     pub easing: Easing,
     /// O que fazer quando o relógio acaba.
     pub ao_acabar: AoAcabar,
+    /// O que ele faz DENTRO de um período — ver [`Ciclo`].
+    ///
+    /// ⚠️ **O campo é o ÚLTIMO da struct de propósito:** o postcard é posicional, logo acrescentar
+    /// no fim é a única forma aditiva — e mesmo assim o `PROJECT_SCHEMA` sobe, porque um ficheiro
+    /// sem estes bytes tem de ser **recusado em voz alta** em vez de lido a menos.
+    pub ciclo: Ciclo,
 }
 
 impl Default for Tween {
@@ -152,6 +231,7 @@ impl Tween {
             para: [para, 0.0, 0.0, 0.0],
             easing: Easing::LINEAR,
             ao_acabar: AoAcabar::Hold,
+            ciclo: Ciclo::Reinicia,
         }
     }
 
@@ -164,6 +244,7 @@ impl Tween {
             para,
             easing: Easing::new(EasingFamily::Quad, EasingMode::Out),
             ao_acabar: AoAcabar::Rewind,
+            ciclo: Ciclo::Reinicia,
         }
     }
 }
@@ -258,7 +339,9 @@ pub fn valor(t: &Tween, relogio: Relogio) -> Option<[f32; 4]> {
     } else {
         return None;
     };
-    Some(mistura(t, t.easing.eval(u)))
+    // ⭐⭐⭐ **A DOBRA vem ANTES da curva** — ver [`Ciclo`]. Com `Ciclo::Reinicia` ela devolve `u` ao
+    // bit, logo este caminho é indistinguível do que shipava antes de o campo existir.
+    Some(mistura(t, t.easing.eval(t.ciclo.dobra(u))))
 }
 
 /// A mistura crua, dado o `k` que a curva devolveu.

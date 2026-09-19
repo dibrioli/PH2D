@@ -27,6 +27,7 @@ fn cena(nome: &str, us: u64, a_correr: bool) -> (World, TimelineDoc, Entity) {
             TimerRuntime(vec![TimerState {
                 elapsed_us: us,
                 running: a_correr,
+                finished: false,
             }]),
         ))
         .id();

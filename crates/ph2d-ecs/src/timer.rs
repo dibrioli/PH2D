@@ -113,6 +113,30 @@ pub struct TimerState {
     pub elapsed_us: u64,
     /// Está a correr agora? ⚠️ **Vivo**: o [`advance`] escreve-o (um *one-shot* que acaba pára).
     pub running: bool,
+    /// ⭐⭐⭐ **Este *one-shot* chegou ao FIM** — o facto que `running == false` não sabia dizer.
+    ///
+    /// # ⛔⛔ Porque ele tem de existir, medido
+    ///
+    /// O [`advance`] declara por escrito que *«um one-shot que chega ao fim pára e ZERA»*
+    /// (`running = false`, `elapsed_us = 0`) ⇒ um timer **terminado** e um que **nunca começou**
+    /// eram o mesmo estado, **bit a bit**, e o `progress()` dos dois lê `0,0`.
+    ///
+    /// É exactamente a ambiguidade que a auditoria da §11 Animation nomeou em 2026-08-23 —
+    /// *«pausado» e «terminado» leem-se igual no `playing == false`, e não são a mesma coisa* — e
+    /// que o `#14` desta linha pagou outra vez, quando o Inspector lia um EVENTO para pintar um
+    /// ESTADO (⇒ `projectiles_finished()` ao lado de `projectile_done()`).
+    ///
+    /// ⚠️ **O `TimerOutcome::finished` é o ACONTECIMENTO e este é o FACTO.** O primeiro vive um
+    /// tique — quem não o apanhar nunca mais o vê —, e este fica até alguém arrancar o relógio.
+    ///
+    /// ⭐ **Quem o pediu foi o suplente #22** ([`docs/Components/21_plano_tween.md`] §1.2): sem ele
+    /// um *fade-out* que acaba faz o objecto **REAPARECER** no quadro seguinte, porque o motor não
+    /// tem como distinguir *«ainda não comecei, não escrevas nada»* de *«acabei, fica onde está»*.
+    ///
+    /// ⚠️ **Uma PAUSA não o levanta** (o [`stop`] não lhe toca): parar a meio é o *Pause* do Godot,
+    /// e ler isso como um fim faria um objecto pausado saltar para o valor final.
+    /// ⚠️ **Um timer que REPETE nunca o levanta** — ele não acaba, por definição.
+    pub finished: bool,
 }
 
 /// **O relógio dos timers de uma entidade** — ⛔ **NÃO registado, de propósito**.
@@ -204,7 +228,10 @@ pub fn advance(timer: &Timer, state: &mut TimerState, dt_us: u64) -> TimerOutcom
         if !timer.repeat {
             state.running = false;
             state.elapsed_us = 0;
+            // ⭐ O ACONTECIMENTO (vive um tique) e o FACTO (fica) — ver [`TimerState::finished`].
+            // Sem o segundo, este estado é indistinguível de um timer que nunca arrancou.
             out.finished = true;
+            state.finished = true;
             break;
         }
         guard += 1;
@@ -268,6 +295,9 @@ pub fn born(timer: &Timer) -> TimerState {
     TimerState {
         elapsed_us: 0,
         running: timer.autostart,
+        // ⚠️ **Nascer é nunca ter acabado** — e é isso que faz o rebobinar devolver um objecto com
+        // o *fade* por correr, em vez de um preso no valor final da corrida anterior.
+        finished: false,
     }
 }
 
@@ -284,6 +314,10 @@ pub fn born(timer: &Timer) -> TimerState {
 pub fn start(state: &mut TimerState) {
     state.running = true;
     state.elapsed_us = 0;
+    // ⚠️ **Arrancar apaga o fim anterior** — senão um *one-shot* re-arrancado carregaria para
+    // sempre a marca de que já tinha acabado, e quem lesse o facto ([`TimerState::finished`])
+    // veria as duas coisas verdadeiras ao mesmo tempo.
+    state.finished = false;
 }
 
 /// **PARAR um timer, guardando o progresso** — o *Pause* do Godot, não o *Stop*.
@@ -292,6 +326,10 @@ pub fn start(state: &mut TimerState) {
 /// é diferente de acumular sem disparar»*), e escrevê-la aqui é o que impede que um verbo de painel
 /// zere o relógio por engano — o que tornaria *parar e voltar a arrancar* indistinguível de
 /// *parar*.
+///
+/// ⚠️ **Ele NÃO toca no [`TimerState::finished`], e a ausência é a lei:** pausar não é acabar, e
+/// quem lê o facto tem de poder responder *«parado a meio»* e *«chegou ao fim»* com bytes
+/// diferentes — que é a razão inteira de aquele campo existir.
 pub fn stop(state: &mut TimerState) {
     state.running = false;
 }

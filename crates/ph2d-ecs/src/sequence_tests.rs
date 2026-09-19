@@ -67,6 +67,7 @@ fn correndo(us: u64) -> TimerState {
     TimerState {
         elapsed_us: us,
         running: true,
+        finished: false,
     }
 }
 
@@ -74,6 +75,7 @@ fn parado(us: u64) -> TimerState {
     TimerState {
         elapsed_us: us,
         running: false,
+        finished: false,
     }
 }
 

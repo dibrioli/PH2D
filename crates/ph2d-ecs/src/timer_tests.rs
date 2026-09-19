@@ -17,6 +17,7 @@ fn one_shot() -> (Timer, TimerState) {
         TimerState {
             elapsed_us: 0,
             running: true,
+            finished: false,
         },
     )
 }
@@ -326,4 +327,101 @@ fn a_timer_with_no_signal_name_is_mute_by_construction() {
         ..base
     };
     assert!(t.signal.is_empty());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// W0 do suplente #22 — «parado porque nunca comecei» ≠ «parado porque ACABEI»
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **O FACTO que o `running == false` não sabia dizer.**
+///
+/// ⛔ **Sem o [`TimerState::finished`] os dois estados são o mesmo bit a bit** — o [`advance`]
+/// declara por escrito que um *one-shot* que acaba **pára e ZERA**, logo `running` e `elapsed_us`
+/// são iguais nos dois. É a ambiguidade que a auditoria da §11 nomeou em 23/08 e que o `#14` desta
+/// linha pagou outra vez.
+///
+/// ⚠️ **O controlo NEGATIVO é metade do gate:** sem ele, um campo que nascesse `true` passaria.
+#[test]
+fn um_one_shot_que_acabou_nao_se_le_como_um_que_nunca_comecou() {
+    // O que NUNCA começou.
+    let (t, _) = one_shot();
+    let nunca = born(&Timer {
+        autostart: false,
+        ..t.clone()
+    });
+    assert!(!nunca.running, "controlo: ele nao esta a correr");
+    assert!(!nunca.finished, "quem nunca comecou nao acabou");
+
+    // O que ACABOU.
+    let (t, mut acabou) = one_shot();
+    let out = advance(&t, &mut acabou, 1_000_000);
+    assert!(out.finished, "controlo: o acontecimento saiu deste tique");
+    assert!(!acabou.running, "um one-shot que acaba para");
+
+    // ⭐ A prova de que o campo é PRECISO: sem ele, os dois seriam indistinguíveis.
+    assert_eq!(
+        (nunca.running, nunca.elapsed_us),
+        (acabou.running, acabou.elapsed_us),
+        "o par (running, elapsed) TEM de ser igual nos dois — e' por isso que o campo existe"
+    );
+    assert!(acabou.finished, "quem acabou tem de o dizer");
+    assert_ne!(nunca, acabou, "com o facto, os dois estados separam-se");
+}
+
+/// **PAUSAR não é ACABAR** — o [`stop`] é o *Pause* do Godot, e ler uma pausa como um fim faria um
+/// objecto a meio de um *fade* saltar para o valor final.
+#[test]
+fn uma_pausa_a_meio_nao_e_um_fim() {
+    let (t, mut s) = one_shot();
+    advance(&t, &mut s, 400_000);
+    stop(&mut s);
+    assert!(!s.running, "controlo: a pausa parou o relogio");
+    assert!(
+        (t.progress(&s) - 0.4).abs() < 1e-6,
+        "controlo: a pausa guarda o progresso"
+    );
+    assert!(!s.finished, "uma pausa a meio nao e' um fim");
+}
+
+/// **ARRANCAR apaga o fim anterior** — senão um *one-shot* re-arrancado carregaria a marca para
+/// sempre, e quem lesse o facto veria *«a correr»* e *«acabou»* ao mesmo tempo.
+#[test]
+fn arrancar_apaga_o_fim_anterior() {
+    let (t, mut s) = one_shot();
+    advance(&t, &mut s, 1_000_000);
+    assert!(s.finished, "controlo: ele acabou");
+    start(&mut s);
+    assert!(s.running, "arrancar poe a correr");
+    assert!(!s.finished, "arrancar tem de apagar o fim anterior");
+}
+
+/// **Um timer que REPETE nunca acaba** — por definição. ⚠️ Sem este gate, escrever o facto no braço
+/// errado do laço marcaria todo ciclo como um fim, e um *fade* em loop ficaria preso no fim ao
+/// primeiro período.
+#[test]
+fn um_timer_que_repete_nunca_acaba() {
+    let t = Timer {
+        repeat: true,
+        ..one_shot().0
+    };
+    let mut s = born(&t);
+    let out = advance(&t, &mut s, 3_500_000);
+    assert_eq!(out.fires, 3, "controlo: ele fechou tres periodos");
+    assert!(!out.finished, "controlo: um repetidor nao anuncia fim");
+    assert!(s.running, "um repetidor continua a correr");
+    assert!(!s.finished, "um timer que repete nunca acaba");
+}
+
+/// ⭐ **NASCER é nunca ter acabado** — a metade que faz o rebobinar devolver um objecto com o
+/// gesto por correr, em vez de um preso no valor final da corrida anterior.
+#[test]
+fn nascer_e_nunca_ter_acabado() {
+    let (t, _) = one_shot();
+    let mut s = born(&t);
+    advance(&t, &mut s, 1_000_000);
+    assert!(s.finished, "controlo: ele acabou");
+    // `born` e' a porta que o `rewind_runtime` usa.
+    let renascido = born(&t);
+    assert!(!renascido.finished, "renascer tem de apagar o fim");
+    assert_eq!(renascido, born(&t), "nascer e' deterministico");
 }

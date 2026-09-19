@@ -297,6 +297,7 @@ fn starting_rewinds_and_stopping_keeps_the_progress() {
     let mut s = crate::TimerState {
         elapsed_us: 700_000,
         running: true,
+        finished: false,
     };
     crate::timer::stop(&mut s);
     assert!(!s.running, "parar nao parou");

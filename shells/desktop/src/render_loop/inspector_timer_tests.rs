@@ -245,6 +245,7 @@ fn the_panel_never_touches_the_live_clock() {
         .insert(TimerRuntime(vec![ph2d_ecs::TimerState {
             elapsed_us: 700_000,
             running: true,
+            finished: false,
         }]));
     let antes = sim
         .world()

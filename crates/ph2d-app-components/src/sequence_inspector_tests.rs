@@ -54,6 +54,7 @@ fn cena(nome: &str, dur_s: f64, t_s: f64, a_correr: bool) -> (SimWorld, u64) {
             TimerRuntime(vec![TimerState {
                 elapsed_us: (t_s * 1_000_000.0) as u64,
                 running: a_correr,
+                finished: false,
             }]),
         ))
         .id();

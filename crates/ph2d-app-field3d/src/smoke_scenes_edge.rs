@@ -270,6 +270,19 @@ pub const PROFUNDIDADES_DA_COR: [f32; 4] = [0.03, 0.10, 0.30, 1.00];
 ///
 /// ⛔ E ela abre em **Matcap**, como todo o módulo: o passo `(1)` é ligar o *Render*, que é onde o
 /// artista aprende que a camada de estilo **é do Render** — no matcap ela nem sequer aparece.
+///
+/// # ⭐⭐⭐ O ENQUADRAMENTO foi FOTOGRAFADO, e a foto apanhou três coisas que a suíte não vê
+///
+/// (`docs/Components/ferramentas/fotografa_cena.sh`, a lei que o TOP-20 #16 pagou.)
+///
+/// 1. **As covas ficavam de lado.** A 1.ª redacção cavava-as em `+z`, e a câmera de omissão é uma
+///    três-quartos (`Orbit::default`: guinada `0,72`, arfagem `0,52` ⇒ o olho em
+///    `(0,572, 0,497, 0,652)`). ⇒ as posições são **derivadas desse olho**, não escolhidas.
+/// 2. **A barra saía do ecrã.** Pendurada por baixo da bola ela era cortada pela barra de estado;
+///    atravessada e mais curta, cabe inteira — e o encontro com a bola dá mais uma banda côncava.
+/// 3. **E o que se fotografa com o `$HOME` do dono é a BANCADA dele, não a cena:** a arrumação vive
+///    em `~/.ph2d/layout.txt`, e uma janela flutuante deixada aberta noutra sessão tapava a peça nas
+///    duas primeiras fotos. ⇒ *a foto corre com um `HOME` limpo*, e o roteiro avisa o dono.
 pub fn cena_35() -> Result<FieldDoc, ph2d_field::FieldError> {
     println!(
         "[field-smoke] cena 35 — O ESTILO: os botoes para MENTIR DE PROPOSITO por cima da fisica."
@@ -295,18 +308,30 @@ pub fn cena_35() -> Result<FieldDoc, ph2d_field::FieldError> {
         "[field-smoke]            (5) como saber que falhou: se mexer num destes e a peca NAO mudar \
          nada, o botao nao chegou. E se a seccao STYLE nao aparecer no Render, PARE."
     );
+    // ⚠️ **A arrumação dos painéis vive FORA do repositório** (`~/.ph2d/layout.txt`) — uma janela
+    // flutuante deixada aberta noutra sessão aparece por cima da peça, e o dono leria isso como
+    // defeito desta cena. *Dizê-lo é mais barato do que ele descobrir.*
+    println!(
+        "[field-smoke]            (⚠️) se uma janela flutuante estiver por cima da peca, feche-a no \
+         X dela: a arrumacao dos paineis fica gravada entre sessoes, fora do projecto."
+    );
     // ⚠️⚠️ **A ORDEM dos nós é a da TRAVESSIA, e o gate cobra-a:** um combine vem logo a seguir aos
     // filhos dele, senão a peça muda de forma ao virar objectos — e *o que se vê na tela é o
     // DEPOIS*. (A 1.ª redacção desta cena declarava a caixa antes do corte e reprovou.)
     //
     // A bola grande — a superfície de fundo, toda ela ARESTA suave.
-    let mut nodes = vec![leaf(Primitive::Sphere { radius: 0.62 }, Xform::IDENTITY)];
+    let mut nodes = vec![leaf(Primitive::Sphere { radius: 0.45 }, Xform::IDENTITY)];
     // ⭐ **Três crateras**, de raios diferentes: elas dão as COVAS, e raios diferentes dão
     // curvaturas diferentes — é isso que faz o `Curvature Sharpness` ter o que separar.
+    //
+    // ⚠️⚠️ **As posições são DERIVADAS do olho da câmera de omissão** (`Orbit::default`: guinada
+    // `0,72`, arfagem `0,52` ⇒ o olho em `(0,572, 0,497, 0,652)`), e não escolhidas: a 1.ª redacção
+    // cavava-as em `+z` e a **FOTO** mostrou-as de lado, quase na silhueta. *Uma cova que o artista
+    // não vê de frente é um botão que parece morto.*
     for (raio, pos) in [
-        (0.30_f32, [0.00_f32, 0.10, 0.52]),
-        (0.20, [-0.38, -0.28, 0.40]),
-        (0.13, [0.40, -0.30, 0.42]),
+        (0.20_f32, [0.065_f32, 0.452, 0.348]),
+        (0.13, [0.343, 0.372, 0.158]),
+        (0.16, [0.364, -0.056, 0.407]),
     ] {
         nodes.push(leaf(
             Primitive::Sphere { radius: raio },
@@ -326,12 +351,15 @@ pub fn cena_35() -> Result<FieldDoc, ph2d_field::FieldError> {
     // tem aresta nenhuma para o `Edge Tint` morder.
     nodes.push(leaf(
         Primitive::Box {
-            half: [0.78, 0.13, 0.13],
-            round: 0.03,
+            half: [0.60, 0.085, 0.085],
+            round: 0.02,
             chamfer: 0.0,
         },
+        // ⚠️ **ATRAVESSADA e não pendurada:** a 1.ª redacção punha-a por BAIXO da bola e a FOTO
+        // mostrou-a cortada pela barra de estado. Atravessada, ela mostra as quinas nos dois lados e
+        // o encontro com a bola dá mais uma banda CÔNCAVA de graça.
         Xform {
-            translation: [0.0, -0.46, 0.0],
+            translation: [0.0, 0.02, 0.0],
             ..Xform::IDENTITY
         },
     ));

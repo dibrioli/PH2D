@@ -254,3 +254,85 @@ fn diag_onde_a_razao_e_a_unica_que_cura() {
         );
     }
 }
+
+/// ⭐⭐⭐⭐ **O GESTO DO DONO — pincel GRANDE, que é onde a lei da razão era
+/// inerte.**
+///
+/// Report de 2026-09-19: *«ainda não ficou bom»* (foto das costas rasgadas) e,
+/// a seguir, *«funciona para tamanho menor do pincel»*. Reproduzido, as costas
+/// moviam-se **`104 %`** do que a frente movia a `R = 0,65`.
+///
+/// ⚠️ **A barra é ZERO e não uma fracção**, e isso é o que a lei nova compra: a
+/// terceira condição da máscara ([`ph2d_sculpt3d::NORMAL_LIMIAR`]) é imune ao
+/// tamanho do pincel **por construção**, porque as costas de uma chapa apontam
+/// ao contrário da frente esteja o cursor onde estiver.
+#[test]
+fn as_costas_ficam_quietas_com_o_pincel_grande_do_dono() {
+    use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
+    let repouso = barbatana();
+    let meia = ESPESSURA * 0.5;
+    let olho = [0.0f32, 0.0, -1.0];
+
+    // ⚠️ **`0,65` é o pincel da 2.ª foto** (o anel cobre ~⅓ do lado de `2,0`) e
+    // `0,20` é aquele em que ele disse que já funcionava — os DOIS no gate,
+    // senão ele mede só o regime que já estava curado.
+    for raio in [0.20f32, 0.65] {
+        for dist in [0.10f32, 0.25, 0.50] {
+            let centro = [MEIO - dist, 0.0, meia];
+            let bate = |mascara: bool| -> (f32, f32) {
+                let mut m = repouso.clone();
+                let b = Brush {
+                    verb: Verb::Draw,
+                    radius: raio,
+                    strength: 1.0,
+                    surface_only: mascara,
+                    ..Brush::default()
+                };
+                let mut st = SculptStroke::default();
+                st.begin(&m);
+                st.dab(
+                    &mut m,
+                    &b,
+                    &Dab::at(centro, raio, olho),
+                    Symmetry::default(),
+                );
+                let (mut f, mut c) = (0.0f32, 0.0f32);
+                for i in 0..repouso.positions().len() {
+                    let dd = {
+                        let (a, b) = (repouso.positions()[i], m.positions()[i]);
+                        let v = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+                        (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
+                    };
+                    if (repouso.positions()[i][2] + meia).abs() < 1e-5 {
+                        c = c.max(dd);
+                    } else {
+                        f = f.max(dd);
+                    }
+                }
+                (f, c)
+            };
+            let (f_com, c_com) = bate(true);
+            let (_, c_sem) = bate(false);
+            // ⚠️ **A barra do controlo positivo é MEDIDA e não escolhida:** um
+            // `Draw` a força `1,00` move exactamente `0,10 × R` (medido:
+            // `0,0200` · `0,0400` · `0,0650` · `0,0900` para `R` de `0,20` a
+            // `0,90`). A 1.ª redacção pedia `0,3 × R` e reprovou sobre produto
+            // CORRECTO — *uma barra escrita de memória mede a memória*.
+            assert!(
+                f_com > 0.05 * raio,
+                "R={raio} d={dist}: a FRENTE mal se move ({f_com:.4}) — o gate mede um no-op"
+            );
+            assert!(
+                c_com <= 1e-6,
+                "R={raio} d={dist}: as costas moveram {c_com:.4} (a frente moveu {f_com:.4})"
+            );
+            // ⭐ **O CONTROLO**: sem a máscara elas movem-se, senão este gate
+            // ficaria verde sobre uma fixtura que não contém o fenómeno — a
+            // armadilha que esta cena já pagou uma vez.
+            assert!(
+                c_sem > 0.3 * f_com,
+                "R={raio} d={dist}: o CONTROLO nao reproduz o defeito ({c_sem:.4} contra {f_com:.4})"
+            );
+        }
+    }
+}

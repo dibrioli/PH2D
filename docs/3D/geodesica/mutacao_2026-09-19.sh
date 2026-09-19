@@ -117,19 +117,27 @@ echo
 echo "== A MÁSCARA DE ALCANCE (ph2d-sculpt3d) =="
 
 # (6) A RAZÃO — a lei desta wave.
-muta "a razão máxima" \
-  crates/ph2d-sculpt3d/src/dab_alcance.rs \
-  'pub const RAZAO_MAXIMA: f32 = 3.5;' \
-  'pub const RAZAO_MAXIMA: f32 = 1000.0;' \
-  sonda_da_parede_fina ph2d-sculpt3d
+# ⛔⛔⛔ **A RAZÃO PERDEU O TRABALHO PARA A LEI DA NORMAL, e a mutação disse-o:**
+# com a `RAZAO_MAXIMA` inerte (`1e9`) das `697` corridas das duas crates caía UMA,
+# e era um gate que media a própria razão. ⇒ ela ficou com UM sítio onde ainda é
+# a única coisa que separa as folhas — os verbos que RELAXAM, que não lêem o olho
+# —, e é esse o gate que a mata agora.
+echo "  ⚠️ NOMEADA  a razão máxima — subsumida pela lei da NORMAL na mesma tarde."
+echo "     Medido: inerte (1e9), das 697 corridas das duas crates cai UMA (um gate"
+echo "     que media a propria razao); e no regime construido para ela decidir"
+echo "     (verbo que RELAXA, chapa de duas folhas, R=0,20, d=0,12, dentro da banda"
+echo "     3,5t < 2R) ela le 7 de 64 a escapar COM ela e SEM ela — quem corta e' o"
+echo "     ALCANCE_TECTO, e os 7 sao os LATERAIS, que ela nunca apanhou."
+echo "     ⇒ nenhuma fixtura deste repo a distingue. A remocao e' wave propria."
+
 
 # (7) O corte de quem a superfície não alcança de todo (a classe INALCANÇÁVEL).
 muta "o inalcançável" \
   crates/ph2d-sculpt3d/src/dab_alcance.rs \
-  '            if marca[v as usize] != epoca {
+  '            if marca[vi] != epoca {
                 return false;
             }' \
-  '            if marca[v as usize] != epoca {
+  '            if marca[vi] != epoca {
                 return true;
             }' \
   dab_alcance ph2d-sculpt3d
@@ -229,6 +237,55 @@ muta "a razão, medida na cena do dono" \
   'pub const RAZAO_MAXIMA: f32 = 3.5;' \
   'pub const RAZAO_MAXIMA: f32 = 1000.0;' \
   a_cena_contem_o_defeito_e_a_cura ph2d-app-sculpt3d
+
+echo
+echo "== A FOLHA QUE O OLHO ESCOLHE (report de 19/09) =="
+
+# (14) A lei nova. Inerte (`dot <= 1` sempre), as costas voltam a mover-se.
+muta "a folha do olho" \
+  crates/ph2d-sculpt3d/src/dab_alcance.rs \
+  'pub const NORMAL_LIMIAR: f32 = 0.30;' \
+  'pub const NORMAL_LIMIAR: f32 = 9.0;' \
+  as_costas_ficam_quietas ph2d-app-sculpt3d
+
+# (15) A barra apertada: a `0,0` ela come o labio de uma ruga funda.
+muta "a folga da barra" \
+  crates/ph2d-sculpt3d/src/dab_alcance.rs \
+  'pub const NORMAL_LIMIAR: f32 = 0.30;' \
+  'pub const NORMAL_LIMIAR: f32 = -0.90;' \
+  a_folha_do_olho_nao_corta ph2d-sculpt3d
+
+# (16) A cerca da pegada vazia — sem ela um pincel fica INERTE e mudo.
+muta "a cerca da pegada vazia" \
+  crates/ph2d-sculpt3d/src/dab_alcance.rs \
+  '        let corta_normal = olho_bom
+            && tem_normais
+            && pegada.iter().any(|&v| {' \
+  '        let corta_normal = olho_bom
+            && tem_normais
+            && !pegada.iter().any(|&v| {' \
+  uma_pegada_toda_virada ph2d-sculpt3d
+
+# (17) A cerca por VERBO — quem relaxa nao le o olho.
+muta "a cerca por verbo" \
+  crates/ph2d-sculpt3d/src/brush_verb_predicados.rs \
+  '        !matches!(
+            self,
+            Self::Smooth | Self::SurfaceSmooth | Self::SlideRelax | Self::Sharpen
+        )' \
+  '        true' \
+  quem_relaxa_nao_le_o_olho ph2d-sculpt3d
+
+# (18) E o OLHO tem de chegar ao produto: o chamador que o zera para todos.
+muta "o olho no chamador" \
+  crates/ph2d-sculpt3d/src/stroke_dab_core.rs \
+  '                if brush.verb.a_folha_do_olho_decide() {
+                    dab.eye
+                } else {
+                    [0.0, 0.0, 0.0]
+                },' \
+  '                [0.0, 0.0, 0.0],' \
+  as_costas_ficam_quietas ph2d-app-sculpt3d
 
 echo
 echo "-----------------------------------------"

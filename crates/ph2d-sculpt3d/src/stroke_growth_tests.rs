@@ -340,7 +340,16 @@ fn a_stroke_survives_a_collapse_and_keeps_the_pre_of_each_vertex() {
     // Um dab de verdade, para haver captura: sem ele o traço não guarda `pre`
     // nenhum e o gate ficaria verde sobre uma compactação de lista vazia.
     let emin = 1.2 * mean_edge(&m);
-    let brush = Brush::default();
+    // ⚠️ **A máscara sai, e o sujeito deste gate é o porquê:** ele quer a pegada
+    // a ser a malha INTEIRA (o comentário abaixo diz porquê), e desde 2026-09-19
+    // o `Connected Only` tira da pegada a folha que aponta para longe do olho
+    // ([`crate::NORMAL_LIMIAR`]) — num dab de raio `3,0` sobre uma esfera isso é
+    // o hemisfério de trás, e é a lei nova a funcionar. *O que este gate mede é o
+    // `pre` a sobreviver a uma compactação, não quem entra na pegada.*
+    let brush = Brush {
+        surface_only: false,
+        ..Brush::default()
+    };
     // ⚠️ **O dab cobre a esfera INTEIRA, e sem isso o gate não continha o
     // fenômeno.** Os vértices que a compactação MOVE são os do FIM do vetor, e
     // numa esfera UV eles ficam no polo oposto ao dab — com uma pegada pequena

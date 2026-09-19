@@ -87,6 +87,11 @@ mod sonda_da_onda_da_prega;
 /// ⭐⭐⭐⭐ **O que um carimbo na FRENTE de uma parede fina faz nas COSTAS dela**
 /// — a régua na grandeza do artista, e a foto. Ver [`sonda_da_parede_fina`].
 mod sonda_da_parede_fina;
+
+/// ⛔⛔⛔⛔ A reprodução do report de 19/09 (*«ainda não ficou bom»* + *«funciona
+/// para tamanho menor do pincel»*) e a medição da lei candidata — a NORMAL.
+/// Ver [`sonda_da_normal`].
+mod sonda_da_normal;
 mod sonda_do_expand_que_nao_para;
 mod sonda_do_falloff_pela_superficie;
 mod taubin_pair;

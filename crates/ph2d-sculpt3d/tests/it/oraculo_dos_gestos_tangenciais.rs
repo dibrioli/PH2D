@@ -231,6 +231,17 @@ fn pincel(t: &Traco) -> Brush {
         grab_active_vertex: t.f("vertice_activo") != 0.0,
         // Todas as fixtures desta bancada correm sem acumulação (cabeçalho).
         accumulate: false,
+        // ⛔⛔⛔ **E SEM O `Connected Only`, que é UMA FEATURE NOSSA — o alvo não
+        // a tem.** Ela vinha ligada pelo `Brush::default()` (o dono pediu-a como
+        // omissão em 2026-09-10) e era **inofensiva enquanto só cortava o que a
+        // superfície não liga**: numa esfera isso é zero. Desde 19/09 ela tem a
+        // terceira condição — a folha que o olho vê ([`crate::NORMAL_LIMIAR`]) —,
+        // que corta para lá da silhueta, e o `polegar_esfera_topo` passou de
+        // `≤ 5e-4` para `2,038e-3`. *Uma bancada de paridade que arma uma feature
+        // que o alvo não tem mede outro programa* — o mesmo precedente do
+        // `filter_brush` (que já declarava `front_faces_only: false`) e da
+        // `eared_sphere`.
+        surface_only: false,
         ..Brush::default()
     }
 }

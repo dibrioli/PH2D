@@ -13,6 +13,42 @@ use super::verb::Verb;
 use crate::grip::Grip;
 
 impl Verb {
+    /// ⭐⭐⭐⭐ **A FOLHA QUE O OLHO ESCOLHE decide este verbo?**
+    ///
+    /// A terceira condição da máscara ([`crate::NORMAL_LIMIAR`]) tira da pegada
+    /// o que aponta para longe do olho — *a folha de trás de uma parede fina*.
+    /// Ela responde à pergunta **«qual das duas folhas o artista está a ver?»**,
+    /// e essa pergunta só tem sentido para um verbo que **DEPOSITA sob o
+    /// cursor**.
+    ///
+    /// ⛔⛔ **Os que respondem `false` responderam-no com um gate VERMELHO na
+    /// mão**, e cada um por uma razão própria:
+    ///
+    /// * [`Self::Smooth`], [`Self::SurfaceSmooth`], [`Self::SlideRelax`] e
+    ///   [`Self::Sharpen`] — eles **relaxam uma região**,
+    ///   e uma região relaxada só de um lado fica torta. Medido: o
+    ///   `smoothing_the_lip_of_an_open_mesh_does_not_suck_it_inward` reprova,
+    ///   porque o lábio de uma malha aberta tem a outra face virada ao contrário
+    ///   e deixa de acompanhar (a progressão do laplaciano pára de valer `½` por
+    ///   passe).
+    /// * ⚠️ **E eles são também os do FILTRO**, que corre sobre a peça INTEIRA e
+    ///   **não tem cursor nenhum** — logo não tem olho para consultar. O
+    ///   `the_filter_runs_the_same_law_as_the_brush` exige que as duas rotas
+    ///   sejam o mesmo cálculo a menos de um escalar; com a máscara a ler o olho
+    ///   num lado e não no outro, elas divergem **por construção**.
+    ///
+    /// ⇒ *a cerca é do VERBO e não do caminho*, que é a mesma lição que o
+    /// `refine_for_dab` desta crate pagou em 14/09: o produto respondia *«este
+    /// gesto passou pelo caminho do carimbo?»* quando a pergunta era sobre o
+    /// verbo.
+    #[must_use]
+    pub const fn a_folha_do_olho_decide(self) -> bool {
+        !matches!(
+            self,
+            Self::Smooth | Self::SurfaceSmooth | Self::SlideRelax | Self::Sharpen
+        )
+    }
+
     /// **Este verbo pode ACUMULAR?** — a porta única do `accumulate`.
     ///
     /// Só a família do CARIMBO. Os outros três grips carregam o gesto TOTAL

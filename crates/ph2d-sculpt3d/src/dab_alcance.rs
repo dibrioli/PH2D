@@ -159,6 +159,63 @@ pub const ALCANCE_TECTO: f32 = 2.0;
 /// própria.
 pub const RAZAO_MAXIMA: f32 = 3.5;
 
+/// ⭐⭐⭐⭐ **A TERCEIRA condição: a folha que o artista ESTÁ A VER.**
+///
+/// Um vértice cuja normal aponta para **longe do olho** por mais do que isto não
+/// é da folha que o cursor tocou, e sai da pegada. `n · olho > LIMIAR` corta
+/// (o `olho` vai do olho PARA a superfície, logo a folha da frente lê `≈ −1`).
+///
+/// # ⛔⛔⛔ Porque a [`RAZAO_MAXIMA`] não bastava — e nenhum valor dela bastaria
+///
+/// Report do dono (2026-09-19): *«ainda não ficou bom»* e, a seguir, *«funciona
+/// para tamanho menor do pincel»*. Reproduzido na barbatana da cena `=50`, as
+/// costas movem-se **isto**, em fracção do que a frente moveu:
+///
+/// | `R` | `d = 0,10` | `d = 0,25` | `d = 0,50` |
+/// |---|---|---|---|
+/// | `0,20` | `79,4 %` | `1,3 %` | `0,0 %` |
+/// | `0,40` | `106,1 %` | `113,1 %` | `145,1 %` |
+/// | `0,65` (o da foto) | `104,6 %` | `103,2 %` | `104,3 %` |
+/// | `0,90` | `103,6 %` | `103,8 %` | `104,2 %` |
+///
+/// ⭐ **O mecanismo é aritmético e não uma afinação.** Para um ponto de trás a
+/// `L` de lado do cursor, com o cursor a `d` da beira de uma chapa de espessura
+/// `t`: o **ar** mede `√(L² + t²)` e a **superfície** mede `2d + t + L` ⇒
+///
+/// > com `L ≫ t` a razão tende para **`1`** — que é exactamente o valor que um
+/// > ponto da FRENTE a `L` de lado também tem.
+///
+/// Medido (`R = 0,65`, `d = 0,25`, um dab), a razão dos vértices de trás que
+/// passam cai de `2,83` a `1,82` conforme o lateral cresce, **toda ela abaixo de
+/// `3,5`** — e legitimamente: a superfície de facto os alcança. ⇒ *a razão
+/// responde «a superfície alcança?» e a pergunta do artista é «é a folha que eu
+/// estou a ver?»*. **Um pincel grande derrota a razão por construção.**
+///
+/// # De onde sai o `0,30`
+///
+/// Do vale MEDIDO, com o lado do DEFEITO e o lado APROVADO na mesma tabela —
+/// `%` do que a lei de hoje mantém que esta condição cortaria, `R = 0,65`:
+///
+/// | peça | `0,00` | `0,20` | **`0,30`** | `0,45` | `0,60` |
+/// |---|---|---|---|---|---|
+/// | ⛔ barbatana (a cena `=50`) | `42,3` | `42,3` | **`42,3`** | `42,3` | `42,3` |
+/// | ⛔ casca fina, dab na beira | `49,0` | `49,0` | **`49,0`** | `43,4` | `32,1` |
+/// | ✅ esfera lisa · `sculpt_sphere` · cratera `0,50` · rugosa `0,16` · cilindro | `0,0` | `0,0` | **`0,0`** | `0,0` | `0,0` |
+/// | ✅ rugosa `0,24` | `1,5` | `0,0` | **`0,0`** | `0,0` | `0,0` |
+///
+/// ⚠️ **O `1,5 %` da rugosa `0,24` é o que a barra existe para poupar:** são `3`
+/// vértices de `197`, com `dot` máximo de `0,117` — o lábio de uma ruga funda,
+/// um fio para lá do horizonte. Abaixo de `0,20` eles são comidos; a partir de
+/// `0,60` o lado do defeito começa a perder. **O `0,30` é o meio do planalto.**
+///
+/// ⚠️⚠️ **E a fixtura que decide a barra tem de ser CURVA:** numa chapa a normal
+/// das costas é `+1` EXACTO, logo toda barra abaixo de `1` a apanha e a coluna
+/// não diz nada. Quem mede a folga é a casca. ⛔ *E a 1.ª redacção desta tabela
+/// pôs o dab no POLO da casca, onde a beira fica a `~2,4` de superfície e o
+/// [`ALCANCE_TECTO`] já corta tudo: as duas cascas liam `0,0 %` e a tabela media
+/// o nada* — a terceira vez que esta wave paga a mesma armadilha.
+pub const NORMAL_LIMIAR: f32 = 0.30;
+
 // ⛔⛔ **UMA CONSTANTE QUE FOI CONSTRUÍDA, MEDIDA E REMOVIDA — e o registo fica.**
 //
 // Havia aqui um `SEMENTE_RECUO = 0,25`: o ponto de semeadura era deslocado na
@@ -251,6 +308,7 @@ impl Alcance {
         &mut self,
         mesh: &Mesh,
         centro: [f32; 3],
+        olho: [f32; 3],
         raio: f32,
         pegada: &mut Vec<u32>,
     ) -> usize {
@@ -315,13 +373,59 @@ impl Alcance {
             }
         }
 
+        // ⚠️ **O olho pode chegar degenerado** (um `Dab` construído por uma
+        // fixtura antiga, um raio sem direcção) — ali a terceira condição
+        // **desliga-se** em vez de cortar ao acaso, que é o valor conservador.
+        let le = (olho[0] * olho[0] + olho[1] * olho[1] + olho[2] * olho[2]).sqrt();
+        let olho_bom = le.is_finite() && le > 1e-6;
+        let olho_u = if olho_bom {
+            [olho[0] / le, olho[1] / le, olho[2] / le]
+        } else {
+            [0.0, 0.0, 0.0]
+        };
+        let nrm = mesh.normals();
+        let tem_normais = nrm.len() == pos.len();
+
+        // ⛔⛔⛔ **SE O CORTE ESVAZIA A PEGADA, ELE NÃO CORRE — e isto não é um
+        // remendo, é a lei a dizer o que ela é.**
+        //
+        // A terceira condição escolhe entre DUAS folhas. Quando *toda* a pegada
+        // aponta para longe do olho não há duas — há uma, e o olho discorda dela
+        // (uma fixtura que carimba o polo de baixo com o olho de cima, o passe do
+        // filtro, um verbo que pega a peça pelas costas de propósito). Cortar ali
+        // entrega um pincel que **não faz nada**, que é o defeito que esta linha
+        // curou três vezes noutros sítios.
+        //
+        // ⚠️ **Quem escreveu esta cerca foram SEIS gates vermelhos**, todos com a
+        // mesma mensagem (*«o dab não moveu nada»*) — entre eles o
+        // `a_footprint_entirely_facing_away_still_fits_a_sane_plane`, que é
+        // exactamente este caso com o nome dele.
+        let corta_normal = olho_bom
+            && tem_normais
+            && pegada.iter().any(|&v| {
+                let n = nrm[v as usize];
+                n[0] * olho_u[0] + n[1] * olho_u[1] + n[2] * olho_u[2] <= NORMAL_LIMIAR
+            });
+
         let antes = pegada.len();
         let (marca, dd, epoca) = (&self.marca, &self.dist, self.epoca);
         pegada.retain(|&v| {
-            if marca[v as usize] != epoca {
+            let vi = v as usize;
+            if marca[vi] != epoca {
                 return false;
             }
-            dd[v as usize] <= RAZAO_MAXIMA * dist2(pos[v as usize], centro).sqrt()
+            if dd[vi] > RAZAO_MAXIMA * dist2(pos[vi], centro).sqrt() {
+                return false;
+            }
+            // ⭐⭐⭐ **E a folha que o artista vê** — ver [`NORMAL_LIMIAR`].
+            if corta_normal {
+                let n = nrm[vi];
+                let dot = n[0] * olho_u[0] + n[1] * olho_u[1] + n[2] * olho_u[2];
+                if dot > NORMAL_LIMIAR {
+                    return false;
+                }
+            }
+            true
         });
         antes - pegada.len()
     }

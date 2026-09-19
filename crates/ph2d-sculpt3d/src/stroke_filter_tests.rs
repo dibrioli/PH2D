@@ -29,6 +29,13 @@ pub(super) fn filter_brush(verb: Verb) -> Brush {
         strength: 1.0,
         falloff: Falloff::Constant,
         front_faces_only: false,
+        // ⚠️ **E a MÁSCARA também não**, pela mesma razão que a linha acima: o
+        // sujeito destes gates é a LEI DO VERBO, e o `Connected Only` é outra
+        // feature — desde 2026-09-19 ela tira da pegada a folha que aponta para
+        // longe do olho ([`crate::NORMAL_LIMIAR`]), e com `radius: 10,0` sobre
+        // uma esfera isso é o hemisfério de trás. *Um gate que compara o pincel
+        // com o filtro tem de correr o pincel sem o que o filtro não tem.*
+        surface_only: false,
         auto_smooth: 0.0,
         ..Brush::default()
     }

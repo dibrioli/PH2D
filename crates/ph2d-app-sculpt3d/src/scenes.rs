@@ -504,6 +504,11 @@ pub(crate) mod erase;
 /// existe** e a cena mostraria a cura a não fazer nada.
 #[path = "scenes_parede_fina.rs"]
 pub(crate) mod parede_fina;
+/// ⛔ A REPRODUÇÃO do report de 19/09 sobre a `=50` — sondas `#[ignore]`, nenhuma
+/// linha de produto. Ver [`parede_fina_report`].
+#[cfg(test)]
+#[path = "scenes_parede_fina_report.rs"]
+mod parede_fina_report;
 /// **O PINCEL DE PLANO** (`=47`) — ver [`plano`]. ⚠️ Ela abre num campo de
 /// BOSSAS: numa esfera lisa este pincel pára sozinho, e o dono veria uma
 /// ferramenta que «não faz nada».

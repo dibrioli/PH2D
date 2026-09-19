@@ -87,8 +87,19 @@ impl SculptStroke {
         // podia dar: o artista escolhe, e uma **fixtura pode pregá-lo** para
         // continuar a reproduzir a geometria em que foi calibrada.
         if brush.surface_only && brush.offers_surface_only() {
-            self.alcance
-                .corta(mesh, dab.center, query_r, &mut self.footprint);
+            self.alcance.corta(
+                mesh,
+                dab.center,
+                // ⭐ A folha que o olho escolhe é do VERBO — ver
+                // [`Verb::a_folha_do_olho_decide`].
+                if brush.verb.a_folha_do_olho_decide() {
+                    dab.eye
+                } else {
+                    [0.0, 0.0, 0.0]
+                },
+                query_r,
+                &mut self.footprint,
+            );
             if self.footprint.is_empty() {
                 return 0;
             }

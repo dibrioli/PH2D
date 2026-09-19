@@ -23,9 +23,9 @@
 use ph2d_mesh::{Face, Mesh};
 
 /// Meio lado da chapa.
-const MEIO: f32 = 1.0;
+pub(crate) const MEIO: f32 = 1.0;
 /// A espessura — `3 %` do lado, que é o regime em que o defeito vive.
-const ESPESSURA: f32 = 0.06;
+pub(crate) const ESPESSURA: f32 = 0.06;
 /// Vértices por lado, em cada face.
 const N: usize = 81;
 
@@ -113,11 +113,9 @@ pub(crate) fn announce() {
          [sculpt3d]    (2) ANTES DE TOCAR: rode a peca (arrastar com o botao do meio) e\n\
          [sculpt3d]        olhe as COSTAS dela. Decore como ela esta' -- lisa.\n\
          [sculpt3d]        -> Sem este passo nao ha' com que comparar.\n\
-         [sculpt3d]    (3) Volte a' frente e faca DUAS OU TRES BOSSAS fortes PERTO DA BEIRA:\n\
-         [sculpt3d]        ponha o cursor de modo que o circulo do pincel ENCOSTE na borda\n\
-         [sculpt3d]        da peca, mas com o centro dele ainda bem para dentro.\n\
-         [sculpt3d]        -> E' ai' que o pincel atravessava. Longe da beira ele ja' se\n\
-         [sculpt3d]           comportava bem antes desta correcao.\n\
+         [sculpt3d]    (3) Volte a' frente e faca DUAS OU TRES BOSSAS fortes ONDE QUISER --\n\
+         [sculpt3d]        no meio, perto da borda, ou mesmo EM CIMA dela.\n\
+         [sculpt3d]        -> Antes de 19/09 o pincel grande atravessava em TODA a peca.\n\
          [sculpt3d]    (4) Rode outra vez e olhe as COSTAS.\n\
          [sculpt3d]        -> Elas tem de estar LISAS onde voce carimbou. Antes desta wave\n\
          [sculpt3d]           aparecia ali a mesma bossa, com 99% da forca -- a peca\n\
@@ -128,16 +126,14 @@ pub(crate) fn announce() {
          [sculpt3d]        noutro sitio e olhe as costas.\n\
          [sculpt3d]        -> AGORA a bossa aparece dos dois lados. Volte a marcar a caixa.\n\
          [sculpt3d]\n\
-         [sculpt3d]    (6) O QUE AINDA PASSA, e e' honesto: carimbe MESMO EM CIMA da beira,\n\
-         [sculpt3d]        com o centro do pincel colado a' borda.\n\
-         [sculpt3d]        -> Ali o outro lado mexe-se quase tanto quanto a frente, e esta'\n\
-         [sculpt3d]           CERTO: dando a volta pela borda o outro lado e' logo ali, e o\n\
-         [sculpt3d]           pincel esta' a arredondar o canto. A conta e' a espessura: so'\n\
-         [sculpt3d]           a menos de ~1,25 espessuras da borda o carimbo atravessa.\n\
+         [sculpt3d]    (6) E AGORA O TAMANHO: aperte `]` mais umas vezes ate' o circulo do\n\
+         [sculpt3d]        pincel ficar do tamanho de meia peca, e repita (3) e (4).\n\
+         [sculpt3d]        -> As costas continuam LISAS. E' este o passo que mudou em 19/09:\n\
+         [sculpt3d]           ate' entao a correcao so' valia com o pincel pequeno.\n\
          [sculpt3d]\n\
-         [sculpt3d]    COMO SABER QUE DEU ERRADO: se no passo (4) as costas tiverem a mesma\n\
-         [sculpt3d]    bossa que a frente, longe da beira, a mascara nao esta' a correr --\n\
-         [sculpt3d]    confirme que `Connected Only` esta' MARCADO."
+         [sculpt3d]    COMO SABER QUE DEU ERRADO: se no passo (4) ou no (6) as costas\n\
+         [sculpt3d]    tiverem bossa, a mascara nao esta' a correr -- confirme que\n\
+         [sculpt3d]    `Connected Only` esta' MARCADO no painel."
     );
 }
 

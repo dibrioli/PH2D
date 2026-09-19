@@ -258,9 +258,14 @@ impl AssetBrowserState {
     }
 
     /// O rótulo do chip `i`.
+    ///
+    /// ⚠️ **`tr(k.label_key())`, nunca `AssetKind::label`** — o segundo devolve o INGLÊS (ele é
+    /// `tr_em(Ingles, …)`), e um pintor que o chame deixa a palavra presa à língua de omissão.
+    /// *Report do dono, 2026-09-19: `Prefab` e `Image` ficavam em inglês normal ao lado de
+    /// `[Ŧýþé··]` e `[Ŕéçéñt···]` deformados.*
     #[must_use]
     pub fn kind_chip_label(i: usize) -> &'static str {
-        Self::kind_for_chip(i).map_or(tr("panel.asset_browser.catalog.all"), AssetKind::label)
+        Self::kind_for_chip(i).map_or(tr("panel.asset_browser.catalog.all"), |k| tr(k.label_key()))
     }
 }
 

@@ -283,3 +283,49 @@ largura.
    do dono (449 s vivo, zero ficheiros gravados; verificado). ⚠️ E eu **repeti-a na mesma hora**, num
    `<<PY` de Python, onde as crases tentaram correr `wet_tuning`, `nextest` e `-p`. *A cura é
    estrutural — prosa fora do heredoc, e um guarda sobre o ficheiro gerado —, nunca «ter cuidado».*
+
+---
+
+## 10. O report do dono — *«prefab e Image ainda errados»* — e as TRÊS cegueiras que ele destapou
+
+A foto dele mostra, na mesma fileira: `[Ŧýþé··]` e `[Ŕéçéñt···]` deformados (vieram da tabela) e
+**`Prefab` · `Image` em inglês normal** (presos no código). O pintor era o `kind_chip_label`.
+
+### ⛔ 1. A lista do gate era escrita à MÃO e eu não a fiz crescer
+
+O `nenhum_pintor_chama_o_acessorio_ingles` tinha os **seis** tipos da fatia da manhã. À tarde migrei
+o `AssetKind` e o `SortBy` **e não acrescentei a lista** ⇒ o gate que existe exactamente para isto
+fechou verde sobre isto.
+
+> ⇒ a lista passa a ser **DERIVADA** da árvore: todo par `(tipo, acessório)` cujo corpo é um
+> `tr_em(…Ingles…)`. *Uma lista que decide o que um gate VÊ tem de crescer com a migração — e a
+> única que cresce sozinha é a que se deriva.* (24 pares hoje, com piso de população.)
+>
+> ⚠️ A 1.ª redacção da derivação leu `impl crate::Verb` como o tipo **`crate`** — uma palavra que
+> aparece em todo ficheiro Rust — e acusou meia shell. O tipo é o **último** segmento do caminho.
+
+### ⛔⛔ 2. O gate de RUNTIME não o podia apanhar, e isso estava declarado
+
+O acessório inglês é `tr_em(Ingles, chave)`: a palavra que chega ao pintor **veio da tabela**, logo
+a pergunta *«a tabela sabe produzir isto?»* responde **SIM**. Era a limitação que aquele gate já
+escrevia de si mesmo, e este é o caso dela. *Duas réguas com cegueiras complementares — e é preciso
+que esteja escrito qual cobre o quê.*
+
+### ⛔⛔⛔ 3. A minha isenção cegou o pintor, e a mutação SOBREVIVEU
+
+A sonda `probe_index_summary` e o pintor `kind_chip_label` vivem **no mesmo ficheiro**, sobre o
+**mesmo tipo**. Isentar o par `(ficheiro, tipo)` cegou os dois: a mutação que devolvia o
+`AssetKind::label` ao pintor passou. ⇒ a granularidade é a **LINHA** — o ficheiro só é isento se
+**toda** linha com o acessório casar com um trecho declarado.
+
+### ⛔⛔⛔ E mesmo assim ela sobreviveu OUTRA vez: o acessório como VALOR
+
+A mutação escreve `map_or(…, AssetKind::label)` — o acessório passado como **valor de função**, sem
+parênteses. A régua procurava `.label()`, a forma de **chamada**.
+
+> ⭐ *Um acessório passado como valor de função não tem a forma de uma chamada.* A régua passou a ver
+> as **duas** (`.metodo()` e `Tipo::metodo`), e só então a mutação sangrou.
+
+⚠️ E a mutação que estreita a régua de volta **não sangra**, por uma razão declarada: hoje não há um
+único `Tipo::metodo` na árvore, logo o corpus não a discrimina. *A prova do alargamento é o
+antes/depois da MESMA mutação* — ela sobreviveu duas vezes e sangra agora.

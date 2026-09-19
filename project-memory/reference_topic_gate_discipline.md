@@ -393,3 +393,26 @@ se acreditar nele; e a prova de mutação dele também (com `-p` a mutação nã
 com `paint_text_block` quebra-a, e o censo mede **cada linha** ⇒ a régua aceita SUBSTRING contígua,
 com o afrouxamento declarado. *A alternativa seria uma lista de isenções sobre pedaços de frase, e
 esses mudam sempre que uma coluna muda de largura.*
+
+## ⛔⛔⛔ UM ACESSÓRIO PASSADO COMO VALOR DE FUNÇÃO NÃO TEM A FORMA DE UMA CHAMADA (2026-09-19)
+
+Report do dono: *«prefab e Image ainda errados»* — dois chips em inglês normal ao lado de dois
+deformados. O pintor era `map_or(…, AssetKind::label)`: o acessório inglês passado como **valor**,
+sem parênteses. A régua do gate procurava `.label()`, a forma de **chamada**, e a mutação que
+devolvia o pintor ao inglês **sobreviveu duas vezes** antes de eu ver isso.
+
+**How to apply:** uma régua sobre «quem chama este método» tem de conhecer as DUAS formas —
+`x.metodo()` e `Tipo::metodo`. ⚠️ E a mutação que a estreita de volta **não sangra** quando a árvore
+não tem nenhum uso da 2.ª forma: *a prova do alargamento é o antes/depois da mesma mutação*, não uma
+mutação nova.
+
+⚠️ Da mesma corrida, mais duas:
+
+- **A lista do gate era escrita à mão e eu não a fiz crescer com a migração** — ele tinha os seis
+  tipos da manhã e eu migrei mais dois à tarde. ⇒ a lista passa a ser **DERIVADA** da árvore (todo
+  par `(tipo, acessório)` cujo corpo é `tr_em(…Ingles…)`), com piso de população. *Uma lista que
+  decide o que um gate VÊ só cresce sozinha se for derivada.* E a 1.ª derivação leu `impl
+  crate::Verb` como o tipo **`crate`**: o tipo é o ÚLTIMO segmento do caminho.
+- **Isentar o par `(ficheiro, tipo)` cegou o pintor**, porque a SONDA e o PINTOR vivem no mesmo
+  ficheiro sobre o mesmo tipo. ⇒ a granularidade é a **LINHA**: o ficheiro só é isento se TODA linha
+  com o acessório casar com um trecho declarado.

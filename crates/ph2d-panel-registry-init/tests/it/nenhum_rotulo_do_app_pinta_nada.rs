@@ -382,7 +382,12 @@ impl Tabela {
         // à mão que por acaso caia dentro de uma frase longa da tabela passa. Ele fica do lado
         // BARATO (um falso negativo raro) contra a alternativa, que seria uma lista de isenções
         // sobre pedaços de frase — e esses mudam sempre que uma coluna muda de largura.
-        if t.len() >= 8 && self.exactos.iter().any(|x| x.len() > t.len() && x.contains(t)) {
+        if t.len() >= 8
+            && self
+                .exactos
+                .iter()
+                .any(|x| x.len() > t.len() && x.contains(t))
+        {
             return true;
         }
         self.modelos.iter().any(|pedacos| {

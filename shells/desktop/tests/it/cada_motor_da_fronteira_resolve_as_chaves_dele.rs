@@ -33,7 +33,7 @@ use ph2d_tool_painter::PaintMedia;
 
 /// ⚠️ **Piso de população.** Uma varredura que passasse a colher zero variantes ficaria
 /// trivialmente verde, e um `ALL` já encolheu neste repo sem ninguém ver.
-const PISO: usize = 39;
+const PISO: usize = 44;
 
 /// `(quem publica, a chave, o prefixo que a família tem de ter)`.
 fn chaves() -> Vec<(&'static str, &'static str, &'static str)> {
@@ -63,6 +63,16 @@ fn chaves() -> Vec<(&'static str, &'static str, &'static str)> {
             PaintMedia::from_u8(i).name_key(),
             "tool.painter.media.",
         ));
+    }
+    // ⚠️ **Esta lista também é escrita à mão, e foi por uma lista assim que o report do dono de
+    // 2026-09-19 nasceu** (*«prefab e Image ainda errados»*). Ela não se deriva como a do pintor —
+    // aqui é preciso CHAMAR os métodos, o que exige os tipos —, então o que a guarda é o PISO
+    // abaixo: ele conta as variantes, e um `ALL` novo que não apareça aqui deixa-o para trás.
+    for k in ph2d_asset_index::AssetKind::ALL {
+        v.push(("AssetKind", k.label_key(), "asset.kind."));
+    }
+    for k in ph2d_asset_index::SortBy::ALL {
+        v.push(("SortBy", k.label_key(), "asset.sort."));
     }
     v
 }
@@ -135,23 +145,163 @@ fn nenhuma_variante_partilha_a_chave_de_outra_nem_troca_de_familia() {
 /// o mecanismo, que é o preço barato.
 #[test]
 fn nenhum_pintor_chama_o_acessorio_ingles_de_um_motor_da_fronteira() {
-    /// `(tipo, método inglês)` — os seis que esta fatia migrou.
-    const INGLES: &[(&str, &str)] = &[
-        ("AudioBus", ".label()"),
-        ("SignalVerb", ".label()"),
-        ("BrushFalloff", ".label()"),
-        ("ReshapeKind", ".label()"),
-        ("LutPreset", ".label()"),
-        ("PaintMedia", ".name()"),
-    ];
-    /// As isenções, `(ficheiro relativo à raiz, porquê)`.
-    const ISENTOS: &[(&str, &str)] = &[];
-
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(std::path::Path::parent)
         .expect("shells/desktop tem dois pais")
         .to_path_buf();
+    // ⛔⛔⛔ **A LISTA ERA ESCRITA À MÃO, E FOI ISSO QUE A CEGOU** (report do dono, 2026-09-19:
+    //    *«prefab e Image ainda errados»*). Ela tinha os SEIS que a fatia da manhã migrou; à tarde
+    //    eu migrei o `AssetKind` e o `SortBy` do `ph2d-asset-index` **e não a fiz crescer** ⇒ o
+    //    `kind_chip_label` continuou a chamar `AssetKind::label` e o painel pintava `Prefab` e
+    //    `Image` em inglês normal, ao lado de `[Ŧýþé··]` e `[Ŕéçéñt···]` deformados.
+    //
+    // ⚠️⚠️ **E o gate de RUNTIME não o podia apanhar:** o acessório inglês é `tr_em(Ingles, chave)`,
+    //    logo a palavra que chega ao pintor **veio da tabela** — a pergunta *«a tabela sabe produzir
+    //    isto?»* responde SIM. Era a limitação que aquele gate já declarava, e este é o caso dela.
+    //
+    // ⇒ a lista passa a ser **DERIVADA** da árvore: todo par `(tipo, acessório)` em que o corpo do
+    //    acessório é um `tr_em(…Ingles…)`. *Uma lista que decide o que um gate VÊ tem de crescer com
+    //    a migração — e a única que cresce sozinha é a que se deriva.*
+    let ingles = acessorios_ingleses(&repo);
+    // ⛔ Piso de população: em 2026-09-19 a árvore tem 24 pares (2 na `ph2d-ecs`, 16 no motor da
+    //    escultura, 4 nas ferramentas, 2 no `ph2d-asset-index`).
+    assert!(
+        ingles.len() >= 20,
+        "a varredura achou {} acessórios ingleses — a régua partiu-se, e um gate com a lista vazia \
+         aprova todo pintor",
+        ingles.len()
+    );
+    /// As isenções, `(ficheiro, TIPO, os TRECHOS das linhas isentas, porquê)`.
+    ///
+    /// ⛔⛔⛔ **A granularidade é a LINHA, e não o par `(ficheiro, tipo)`.** A 1.ª redacção isentava
+    /// o par — e o `state.rs` do Asset Browser tem a SONDA e o PINTOR no mesmo ficheiro, sobre o
+    /// mesmo tipo: a isenção da sonda cegou o pintor, e a mutação que devolvia o `AssetKind::label`
+    /// ao `kind_chip_label` **SOBREVIVEU**. Era a armadilha que este mesmo cabeçalho nomeava, e eu
+    /// andei para dentro dela.
+    ///
+    /// ⇒ o ficheiro só é isento para um tipo se **TODA** linha dele com o acessório casar com um
+    /// destes trechos. Uma linha nova — a do pintor — não casa, e o gate acusa.
+    const ISENTOS: &[(&str, &str, &[&str], &str)] = &[
+        (
+            "crates/ph2d-panel-asset-browser/src/state.rs",
+            "AssetKind",
+            &["format!(\"{} x{n}\", k.label())"],
+            "e' a `probe_index_summary`, uma SONDA: ela devolve o resumo do indice para o terminal e para os gates, nunca para um pixel.",
+        ),
+        (
+            "crates/ph2d-panel-asset-browser/src/state.rs",
+            "SortBy",
+            &["format!(\"{} x{n}\", k.label())"],
+            "e' a `probe_index_summary`, uma SONDA: ela devolve o resumo do indice para o terminal e para os gates, nunca para um pixel.",
+        ),
+        (
+            "crates/ph2d-panel-sculpt3d/src/paint/brush.rs",
+            "Alpha",
+            &["UiLevel::ALL.iter().map(|l| l.label())"],
+            "o `.label()` desta linha e' de OUTRO tipo com o mesmo nome; o ficheiro so' NOMEIA o tipo listado noutro sitio.",
+        ),
+        (
+            "crates/ph2d-panel-sculpt3d/src/paint/brush.rs",
+            "Falloff",
+            &["UiLevel::ALL.iter().map(|l| l.label())"],
+            "o `.label()` desta linha e' de OUTRO tipo com o mesmo nome; o ficheiro so' NOMEIA o tipo listado noutro sitio.",
+        ),
+        (
+            "crates/ph2d-panel-sculpt3d/src/paint/brush.rs",
+            "Verb",
+            &["UiLevel::ALL.iter().map(|l| l.label())"],
+            "o `.label()` desta linha e' de OUTRO tipo com o mesmo nome; o ficheiro so' NOMEIA o tipo listado noutro sitio.",
+        ),
+        (
+            "crates/ph2d-app-components/src/asset_catalog_verbs.rs",
+            "Verb",
+            &[
+                "map_or(path.clone(), |c| c.label()",
+                ".map(|c| c.label().to_string())",
+            ],
+            "o `.label()` desta linha e' de OUTRO tipo com o mesmo nome; o ficheiro so' NOMEIA o tipo listado noutro sitio.",
+        ),
+        (
+            "crates/ph2d-app-vec/src/fx_bridge.rs",
+            "Falloff",
+            &["label: e.effect.label(),"],
+            "o `.label()` desta linha e' de OUTRO tipo com o mesmo nome; o ficheiro so' NOMEIA o tipo listado noutro sitio.",
+        ),
+        (
+            "crates/ph2d-app-sculpt3d/src/scenes_cloth_filter.rs",
+            "ClothFilterKind",
+            &[".map(|k| k.label())", ".map(|o| o.label())"],
+            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
+        ),
+        (
+            "crates/ph2d-app-sculpt3d/src/scenes_cloth_filter.rs",
+            "ClothFilterOrientation",
+            &[".map(|k| k.label())", ".map(|o| o.label())"],
+            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
+        ),
+        (
+            "crates/ph2d-app-sculpt3d/src/scenes_cloth_filter.rs",
+            "FilterKind",
+            &[".map(|k| k.label())", ".map(|o| o.label())"],
+            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
+        ),
+        (
+            "crates/ph2d-app-sculpt3d/src/scenes_viewports.rs",
+            "TransformKind",
+            &[".map(|k| k.label())"],
+            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
+        ),
+        (
+            "crates/ph2d-app-sculpt3d/src/dyntopo.rs",
+            "Verb",
+            &["nao mudou a malha"],
+            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
+        ),
+        (
+            "crates/ph2d-app-sculpt3d/src/keys.rs",
+            "TrimForma",
+            &[
+                "eprintln!(\"[sculpt3d] mascara:",
+                "Verb::BoxTrim.label(),",
+                "scene.brush.trim_forma.label()",
+                "scene.brush.verb.label()",
+                // `eprintln!("[sculpt3d] verbo: {} (forca {:.2})", v.label(), …)`
+                "v.label(),",
+            ],
+            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
+        ),
+        (
+            "crates/ph2d-app-sculpt3d/src/keys.rs",
+            "Verb",
+            &[
+                "eprintln!(\"[sculpt3d] mascara:",
+                "Verb::BoxTrim.label(),",
+                "scene.brush.trim_forma.label()",
+                "scene.brush.verb.label()",
+                // `eprintln!("[sculpt3d] verbo: {} (forca {:.2})", v.label(), …)`
+                "v.label(),",
+            ],
+            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
+        ),
+        (
+            "crates/ph2d-app-sculpt3d/src/panel.rs",
+            "Alpha",
+            &[
+                "kind.label(),",
+                "self.brush.verb.label(),",
+                "eprintln!(\"[sculpt3d] mascara:",
+            ],
+            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
+        ),
+        (
+            "crates/ph2d-app-sculpt3d/src/sonda_undo.rs",
+            "Verb",
+            &["s.brush.verb.label()"],
+            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
+        ),
+    ];
+
     let mut raizes: Vec<std::path::PathBuf> = Vec::new();
     if let Ok(rd) = std::fs::read_dir(repo.join("crates")) {
         for e in rd.flatten() {
@@ -182,9 +332,7 @@ fn nenhum_pintor_chama_o_acessorio_ingles_de_um_motor_da_fronteira() {
         if rel.contains("_tests.rs") || rel.contains("/tests/") || rel.contains("measure_") {
             continue;
         }
-        if ISENTOS.iter().any(|(p, _)| *p == rel) {
-            continue;
-        }
+
         let Ok(raw) = std::fs::read_to_string(f) else {
             continue;
         };
@@ -193,19 +341,79 @@ fn nenhum_pintor_chama_o_acessorio_ingles_de_um_motor_da_fronteira() {
         // erra para o lado alto de uma maneira que só uma lista de isenções tapava — e uma isenção
         // por ficheiro esconderia a chamada REAL que aparecesse ali amanhã.*
         let raw = ph2d_label_census::sem_comentarios(&raw);
-        for (tipo, metodo) in INGLES {
-            if raw.contains(tipo) && raw.contains(metodo) {
+        for (tipo, metodo) in &ingles {
+            // ⛔⛔⛔ **DUAS formas, e a 1.ª redacção via UMA.** O acessório pode ser CHAMADO
+            // (`k.label()`) ou passado como **VALOR DE FUNÇÃO** (`map_or(…, AssetKind::label)`) — e
+            // foi na segunda que o report do dono nasceu. *Uma régua que procura `.metodo()` não vê
+            // um `Tipo::metodo`, e a mutação que devolvia o pintor ao inglês SOBREVIVEU duas vezes
+            // por causa disso.*
+            let chamada = metodo.as_str();
+            let valor = format!(
+                "{tipo}::{}",
+                chamada.trim_start_matches('.').trim_end_matches("()")
+            );
+            let usa = |l: &str| l.contains(chamada) || l.contains(valor.as_str());
+            if !raw.contains(tipo.as_str()) || !raw.lines().any(usa) {
+                continue;
+            }
+            // ⭐ A isenção vale LINHA A LINHA: se alguma linha com o acessório não casar com um
+            //    trecho isento, o ficheiro é acusado — é assim que a chamada NOVA aparece.
+            let trechos: Vec<&str> = ISENTOS
+                .iter()
+                .filter(|(f, t, ..)| *f == rel && t == tipo)
+                .flat_map(|(_, _, ts, _)| ts.iter().copied())
+                .collect();
+            let todas_isentas = !trechos.is_empty()
+                && raw
+                    .lines()
+                    .filter(|l| usa(l))
+                    .all(|l| trechos.iter().any(|t| l.contains(t)));
+            if !todas_isentas {
                 queixas.push(format!("{rel} · nomeia `{tipo}` e chama `{metodo}`"));
             }
         }
     }
-    for (p, porque) in ISENTOS {
-        assert!(porque.len() > 40, "a isenção `{p}` não diz o mecanismo");
+    // ⭐⭐ **A METADE JUSTA das isenções** — uma que já não abrigue acusação nenhuma passa a cobrir
+    // o que aparecer ali amanhã. *Toda lista deste repo se declara «só encolhe», e nenhuma encolhe
+    // sozinha.*
+    let mut isencoes_mortas = Vec::new();
+    for (f, t, trechos, porque) in ISENTOS {
+        assert!(
+            porque.len() > 40,
+            "a isenção `{f}` · `{t}` não diz o mecanismo"
+        );
+        assert!(
+            !trechos.is_empty(),
+            "a isenção `{f}` · `{t}` não nomeia uma linha"
+        );
+        let Ok(raw) = std::fs::read_to_string(repo.join(f)) else {
+            isencoes_mortas.push(format!(
+                "`{f}` · `{t}`: o ficheiro já não existe — apague a linha"
+            ));
+            continue;
+        };
+        let raw = ph2d_label_census::sem_comentarios(&raw);
+        let metodo = ingles
+            .iter()
+            .find(|(tipo, _)| tipo == t)
+            .map(|(_, m)| m.clone());
+        let abriga = metodo.as_ref().is_some_and(|m| {
+            raw.contains(*t)
+                && trechos.iter().all(|tr| raw.contains(tr))
+                && raw.contains(m.as_str())
+        });
+        if !abriga {
+            isencoes_mortas.push(format!(
+                "`{f}` · `{t}`: já não nomeia o tipo nem chama o acessório (ou o tipo saiu da \
+                 varredura) — apague a linha, e o ficheiro volta a ser guardado"
+            ));
+        }
     }
+    assert!(isencoes_mortas.is_empty(), "{}", isencoes_mortas.join("\n"));
     // ⭐⭐ **A METADE JUSTA da lista `INGLES`** — sem ela, renomear um tipo faz a entrada passar a
     // medir NADA, em silêncio: a régua continua verde e o acessório volta a estar desprotegido.
     // *Toda lista deste repo se declara «só encolhe», e nenhuma encolhe sozinha.*
-    for (tipo, metodo) in INGLES {
+    for (tipo, metodo) in &ingles {
         let vivo = ficheiros.iter().any(|f| {
             std::fs::read_to_string(f)
                 .is_ok_and(|r| ph2d_label_census::sem_comentarios(&r).contains(tipo))
@@ -250,4 +458,79 @@ fn colhe(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
             out.push(p);
         }
     }
+}
+
+/// ⭐⭐⭐ **OS ACESSÓRIOS INGLESES DESTA ÁRVORE, DERIVADOS** — `(tipo, ".metodo()")`.
+///
+/// A forma é a do molde: um método cujo corpo é `tr_em(…Ingles…, self.<chave>())`. Ele existe para
+/// os testes e para a proveniência, e é exactamente o que um PINTOR nunca deve chamar.
+///
+/// ⚠️ **A população são as crates que não são painel nem `ph2d-app-*`** — o acessório vive no MOTOR.
+/// ⛔ E ela salta ficheiros de teste: lá o inglês é a régua.
+fn acessorios_ingleses(repo: &std::path::Path) -> Vec<(String, String)> {
+    let mut out: std::collections::BTreeSet<(String, String)> = std::collections::BTreeSet::new();
+    let Ok(rd) = std::fs::read_dir(repo.join("crates")) else {
+        return Vec::new();
+    };
+    for e in rd.flatten() {
+        let nome = e.file_name().to_string_lossy().to_string();
+        if nome.starts_with("ph2d-panel-") || nome.starts_with("ph2d-app-") || nome == "ph2d-i18n" {
+            continue;
+        }
+        let mut ficheiros = Vec::new();
+        colhe(&e.path().join("src"), &mut ficheiros);
+        for f in ficheiros {
+            let rel = f.to_string_lossy().to_string();
+            if rel.contains("_tests.rs") || rel.contains("/tests/") {
+                continue;
+            }
+            let Ok(raw) = std::fs::read_to_string(&f) else {
+                continue;
+            };
+            if !raw.contains("tr_em(") {
+                continue;
+            }
+            let linhas: Vec<&str> = raw.lines().collect();
+            for (i, l) in linhas.iter().enumerate() {
+                // O corpo é uma linha só: `tr_em(…Ingles…, self.x())`.
+                if !(l.contains("tr_em(") && l.contains("Ingles")) {
+                    continue;
+                }
+                // A assinatura é a linha ACIMA (ou a anterior a ela).
+                let Some(assinatura) = linhas[..i]
+                    .iter()
+                    .rev()
+                    .take(3)
+                    .find(|a| a.contains(" fn ") && a.contains("-> &"))
+                else {
+                    continue;
+                };
+                let Some(metodo) = assinatura
+                    .split(" fn ")
+                    .nth(1)
+                    .and_then(|r| r.split(['(', '<']).next())
+                else {
+                    continue;
+                };
+                // E o `impl` é o mais recente acima.
+                let Some(tipo) = linhas[..i]
+                    .iter()
+                    .rev()
+                    .find(|a| a.starts_with("impl "))
+                    .and_then(|a| a.split_whitespace().nth(1))
+                    // ⚠️ **O ÚLTIMO segmento do caminho, nunca o primeiro:** o motor da escultura
+                    // escreve `impl crate::Verb {`, e a 1.ª redacção leu o tipo como `crate` — uma
+                    // palavra que aparece em TODO ficheiro Rust, o que acusou meia shell.
+                    .map(|t| {
+                        let t = t.split('<').next().unwrap_or(t);
+                        t.rsplit("::").next().unwrap_or(t).to_string()
+                    })
+                else {
+                    continue;
+                };
+                out.insert((tipo, format!(".{}()", metodo.trim())));
+            }
+        }
+    }
+    out.into_iter().collect()
 }

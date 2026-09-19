@@ -70,7 +70,15 @@
 //! | rótulos que pintam **NADA** | **0** |
 //! | cortados (`prefixo…`) | **16** |
 //! | curados no mesmo dia | **4** (a grelha de opções mede as palavras nas DUAS dimensões) |
-//! | por curar, nomeados | **12** — a coluna do NOME · três chips · uma FRASE · dois do artista |
+//! | os `12` que ficam | **NÃO são dívida** — `FORA_POR_DECISAO_DO_DONO` |
+//!
+//! ⛔⛔⛔ **E a decisão chegou com o smoke desta mesma passagem** (Enio, 2026-09-19): *«as
+//! propriedades dos nós não existirão no painel lateral em versões futuras. Apenas nos próprios
+//! nós dos grafos.»* ⇒ os doze cortes são reais e medidos, e curá-los seria trabalho sobre uma
+//! superfície que vai sair. ⚠️ *Uma linha que ninguém deve pegar tem de o dizer no NOME da lista
+//! onde mora* — a armação fica, o censo de obsolescência continua a exigir que cada linha
+//! descreva um corte real, e no dia em que o painel sair as doze ficam obsoletas e o gate manda
+//! apagá-las.
 //!
 //! ⛔⛔ **E a terceira família achou uma LEI que a cura óbvia violava:** trocar o pintor da queixa
 //! por um que QUEBRA fez reprovar o `the_motion_chrome_never_gives_a_row_label_a_wrap_budget`, cuja
@@ -256,8 +264,49 @@ const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
         "legacy_speed = 1 \u{2014} not in the script",
         "lista · 189,0 px · frase composta com o nome do artista a' cabeca",
     ),
-    // ── O PAINEL DE PARAMS DO MOTION, armado em 2026-09-19 ───────────────────────────────────
-    //
+    // ⭐ A HIERARQUIA, armada em 2026-09-19: **zero** rótulos do programa cortados. Os dois que
+    //    saem são NOMES QUE O ARTISTA DEU, numa linha de árvore que ja' desconta o recuo e os
+    //    selos — a caixa e' honesta (`110`–`133 px`) e elidir um nome comprido e' o que toda
+    //    arvore deste feitio faz. ⚠️ *Um corte nao e' sempre um defeito*, e esta e' a especie que
+    //    a lista declara desde 18/09.
+    (
+        "hierarchy",
+        "Enemy Spawner \u{b7} left wing",
+        "nome do artista · 132,8 px",
+    ),
+    (
+        "hierarchy",
+        "Background Parallax Layer",
+        "nome do artista · 110,8 px",
+    ),
+];
+
+/// ⛔⛔⛔ **O QUE FICA CORTADO NUMA SUPERFÍCIE QUE O DONO JÁ MANDOU SAIR — e por isso NÃO é
+/// dívida.**
+///
+/// **Enio, 2026-09-19**, depois do smoke desta varredura: *«as propriedades dos nós não existirão
+/// no painel lateral em versões futuras. Apenas nos próprios nós dos grafos. Então não vale a pena
+/// investir no painel lateral dos motion nodes. Temos outra linha trabalhando nele.»*
+///
+/// ⚠️ **A diferença entre esta lista e a de cima é o VEREDITO, não o defeito.** Os cortes são
+/// reais e os números estão medidos; o que mudou é que curá-los seria trabalho sobre uma
+/// superfície que vai deixar de existir — e a `A_PASSAGEM_ARMADA_AINDA_CORTA` lê-se como *«isto
+/// está por fazer»*. *Uma linha de dívida que ninguém deve pegar tem de dizer isso no NOME da
+/// lista onde mora, senão a próxima janela gasta uma fatia nela.*
+///
+/// ⭐ **O painel já nasce DESLIGADO desde 2026-09-07** (`PH2D_MOTION_PANEL=1` traz-no de volta) —
+/// o que o dono decidiu foi o passo seguinte, e a autoria mudou-se para o CARTÃO do nó.
+///
+/// ⛔ **A armação FICA, e não é contradição:** enquanto o painel estiver no registo, esta
+/// varredura mede-o — e o censo de obsolescência abaixo continua a exigir que cada linha daqui
+/// descreva um corte REAL. *No dia em que o painel sair, as doze ficam obsoletas e o gate manda
+/// apagá-las*, que é exactamente como esta lista deve morrer.
+///
+/// ⚠️ **E o que esta passagem já curou NÃO se desfaz:** a grelha de opções de um selector passou a
+/// medir as palavras nas duas dimensões, e a porta que o faz
+/// ([`ph2d_editor_core::widget::wrapped_cells_for`]) é da CASA — ela serve toda fileira segmentada
+/// que quebre, e o cartão do nó é uma delas.
+const FORA_POR_DECISAO_DO_DONO: &[(&str, &str, &str)] = &[
     // ⭐⭐⭐ **`16` cortes na primeira corrida, num painel que nenhuma régua de largura tinha
     //    medido** — a declaração que o deixava de fora (*«precisa de um grafo»*) era uma ausência
     //    afirmada sem olhar a API: ele lê um SNAPSHOT, que são dados. Ver
@@ -344,21 +393,6 @@ const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
         "motion_params",
         "Background Parallax Layer",
         "chip de fonte · 106,0 px · nome do artista",
-    ),
-    // ⭐ A HIERARQUIA, armada em 2026-09-19: **zero** rótulos do programa cortados. Os dois que
-    //    saem são NOMES QUE O ARTISTA DEU, numa linha de árvore que ja' desconta o recuo e os
-    //    selos — a caixa e' honesta (`110`–`133 px`) e elidir um nome comprido e' o que toda
-    //    arvore deste feitio faz. ⚠️ *Um corte nao e' sempre um defeito*, e esta e' a especie que
-    //    a lista declara desde 18/09.
-    (
-        "hierarchy",
-        "Enemy Spawner \u{b7} left wing",
-        "nome do artista · 132,8 px",
-    ),
-    (
-        "hierarchy",
-        "Background Parallax Layer",
-        "nome do artista · 110,8 px",
     ),
 ];
 
@@ -546,6 +580,7 @@ fn nenhum_corte_novo_entra_sem_ser_nomeado() {
             !a.armado
                 || !A_PASSAGEM_ARMADA_AINDA_CORTA
                     .iter()
+                    .chain(FORA_POR_DECISAO_DO_DONO)
                     .any(|(p, t, _)| *p == a.painel && *t == a.m.texto)
         })
         .map(|a| {
@@ -757,8 +792,13 @@ fn nenhuma_linha_da_divida_ficou_obsoleta() {
     //    que o piso do `every_host_that_rewrites_verts` já pagou.
     let presentes = paineis_do_registo();
     // ⭐ A metade justa da lista NOVA: uma linha que já não descreve corte nenhum sai.
+    // ⚠️ **As DUAS listas, de propósito:** a que espera cura e a que o dono dispensou. Um corte
+    //    que deixa de acontecer torna a linha obsoleta em qualquer uma delas — *uma lista isenta
+    //    de censo é a catraca a virar licença*, e a de baixo existe precisamente para morrer no
+    //    dia em que o painel sair.
     let armadas_mortas: Vec<String> = A_PASSAGEM_ARMADA_AINDA_CORTA
         .iter()
+        .chain(FORA_POR_DECISAO_DO_DONO)
         .filter(|(painel, _, _)| presentes.contains(painel))
         .filter(|(painel, texto, _)| {
             !tudo

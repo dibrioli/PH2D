@@ -42,6 +42,7 @@
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
 - 📚 [Comunicação & decisão: mais 50 lições](reference_topic_communication_and_decision_lessons.md)
 - ⛔ [Tilemap (TOP-20 #17) é do projeto `docs/Tilling`, não da line/components — o dono mandou pular (16/09)](project_tilemap_belongs_to_the_tiling_project.md)
+- ⛔ [Painel lateral de params do Motion VAI SAIR (params só no cartão) — não invista nele; é de outra linha (19/09)](project_o_painel_lateral_dos_params_do_motion_vai_sair.md)
 - ⛔⛔ [Recusa que só o TERMINAL vê é um botão mudo — o doc dizia «a frase que o artista lê» e eram três `eprintln!`](feedback_a_refusal_only_the_terminal_sees.md)
 - ⛔⛔ [Um SELO é pintado E é a chave da própria COR (`badge_tone` casa contra o texto) — traduzi-lo apaga o tom em silêncio](feedback_a_badge_is_painted_text_and_the_key_of_its_own_colour.md)
 - ⭐ [**Como um CONTROLO mente** — a família inteira (10 entradas): morto vs ausente · faixa · rótulo · enum serializado](reference_topic_control_design_hazards.md)

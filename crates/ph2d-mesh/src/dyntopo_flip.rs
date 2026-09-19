@@ -301,6 +301,39 @@ pub fn alinha_arestas(
     relax_com(mesh, &faces, scratch, Some(preferencia))
 }
 
+/// ⭐⭐⭐ **O critério de VALÊNCIA, restrito a uma PEGADA.**
+///
+/// A [`relax_valence`] varre a peça inteira e a [`alinha_arestas`] exige uma
+/// preferência de direcção; esta é o meio que faltava — **o critério de sempre
+/// (`preferencia = None`, ao bit), na bola de um dab**.
+///
+/// ⚠️ **Ela existe porque a retícula NÃO TOCA NA LIGAÇÃO.** A retícula move
+/// vértices e nunca muda quem se liga a quem, logo um cruzamento da grade com
+/// cinco braços em vez de quatro é um defeito que ela **não pode** curar — e é
+/// esse o que sobra à vista depois de ela correr.
+///
+/// ⛔ **Não confundir com a [`alinha_arestas`]:** aquela troca a diagonal para
+/// seguir o TRAÇO e foi medida a estragar o relevo; esta troca-a para o vértice
+/// ter seis vizinhos, que é o operador clássico de remalhagem isotrópica e não
+/// tem direcção preferida nenhuma.
+#[must_use]
+pub fn relaxa_valencia_em(
+    mesh: &mut Mesh,
+    center: [f32; 3],
+    radius: f32,
+    scratch: &mut RegionScratch,
+) -> usize {
+    if radius <= 0.0 {
+        return 0;
+    }
+    let mut faces = Vec::new();
+    mesh.octree().faces_in_sphere(center, radius, &mut faces);
+    if faces.is_empty() {
+        return 0;
+    }
+    relax(mesh, &faces, scratch)
+}
+
 pub fn relax_valence(mesh: &mut Mesh, scratch: &mut RegionScratch) -> usize {
     let all: Vec<u32> = (0..mesh.face_count() as u32).collect();
     relax(mesh, &all, scratch)

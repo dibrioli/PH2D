@@ -101,6 +101,36 @@ pub fn wire_indices_com(mesh: &Mesh, so_a_grade: bool, out: &mut Vec<u32>) {
 }
 
 /// As arestas que são a **mais longa** de TODOS os triângulos que as contêm, e
+/// ⭐⭐⭐⭐ **QUANTOS BRAÇOS TEM CADA VÉRTICE NA VISTA DA GRADE** — a régua que o
+/// olho do artista usa naquela vista.
+///
+/// Depois de [`wire_indices_com`] esconder as diagonais, um cruzamento de grade
+/// tem **quatro** braços. Os que não têm são as células irregulares, e são elas
+/// que o dono chama de *«áreas ainda não muito boas»*.
+///
+/// ⚠️⚠️ **Ela existe porque a régua vizinha está SATURADA:** a fracção de
+/// arestas alinhadas tem tecto `2/3` numa grade perfeita (um terço são
+/// diagonais, a `45°`), o produto lê `65,4 %` — `98,1 %` do tecto — e *ler uma
+/// fracção sem saber de que* quase gastou uma wave a perseguir dois pontos
+/// numa coluna que já não tinha por onde subir.
+///
+/// ⭐ **Ela deriva da MESMA lista que a vista desenha**, nunca de uma segunda
+/// cópia da regra de esconder: se a lei da vista mudar, esta régua muda com ela.
+///
+/// ⚠️ Quem lê tem de filtrar o que interessa — um vértice na **beira** da
+/// pegada tem menos braços por estar na beira, não por ser irregular.
+#[must_use]
+pub fn bracos_na_vista_da_grade(mesh: &Mesh) -> Vec<u32> {
+    let mut arestas = Vec::new();
+    wire_indices_com(mesh, true, &mut arestas);
+    let mut grau = vec![0u32; mesh.vert_count()];
+    for par in arestas.as_chunks::<2>().0 {
+        grau[par[0] as usize] += 1;
+        grau[par[1] as usize] += 1;
+    }
+    grau
+}
+
 /// que têm mais do que um.
 fn diagonais(mesh: &Mesh) -> std::collections::BTreeSet<(u32, u32)> {
     let p = mesh.positions();

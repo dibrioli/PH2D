@@ -180,6 +180,180 @@ fn diag_a_escada_do_knob() {
     }
 }
 
+/// ⭐⭐⭐⭐ **SONDA — ONDE a grade é má, em bandas de distância ao percurso.**
+///
+/// A régua é a [`ph2d_sculpt3d::medida_do_pente::grade_por_banda`], e a
+/// hipótese que ela testa é a queda do pincel: o miolo do traço recebe peso
+/// cheio e a **orla** quase nada, logo a grade seria boa ao centro e má nas
+/// beiras. ⛔ Ela **imprime**; quem decide é quem lê.
+#[test]
+#[ignore = "sonda: imprime onde a grade e' ma', nao afirma nada"]
+fn diag_onde_a_grade_e_ma() {
+    let (raio, alvo) = (raio_do_app(), alvo_do_refino());
+    const B: usize = 5;
+    for (nome, knob) in [("por pentear", 0.0f32), ("pente no topo", 1.0)] {
+        let mut soma = [(0usize, 0usize); B];
+        for (_, e) in RUMOS.iter() {
+            let (m, c) = super::super::traco_com(knob, *e, raio, alvo);
+            for (i, (bons, n)) in ph2d_sculpt3d::medida_do_pente::grade_por_banda(&m, &c, raio, B)
+                .into_iter()
+                .enumerate()
+            {
+                soma[i].0 += bons;
+                soma[i].1 += n;
+            }
+        }
+        println!("\n{nome}:  banda (raios)   alinhadas%   arestas");
+        for (i, (bons, n)) in soma.iter().enumerate() {
+            let lo = i as f64 / B as f64;
+            println!(
+                "               {lo:4.2}..{:4.2}      {:7.2}   {n:7}",
+                lo + 1.0 / B as f64,
+                100.0 * *bons as f64 / (*n).max(1) as f64
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐⭐ **SONDA — a REGULARIDADE da vista da grade: quantos cruzamentos têm
+/// os QUATRO braços.**
+///
+/// ⛔⛔ **A régua da `grade` está SATURADA e eu não sabia**: medido numa grade
+/// PERFEITA triangulada, o tecto dela é **`66,7 %`** (a diagonal é um terço das
+/// arestas e mora a `45°`, no balde mais afastado), e o produto lê `64,3 %` —
+/// **`96,4 %` do tecto**. *Ler `64 %` como «dois terços, há muito por ganhar»
+/// era ler uma fracção sem saber de que.*
+///
+/// ⇒ o que sobra é a grandeza que o olho usa **naquela vista**: depois de
+/// esconder as diagonais, um cruzamento de grade tem **quatro** braços. Os que
+/// não têm são as células irregulares que o dono chama de *«áreas não muito
+/// boas»* — e uma grade sobre superfície curva **tem** de ter algumas.
+///
+/// ⚠️ A lei de esconder é a do produto ([`ph2d_mesh_render::wire_indices_com`]),
+/// nunca uma segunda cópia dela aqui.
+#[test]
+#[ignore = "sonda: imprime a regularidade, nao afirma nada"]
+fn diag_a_regularidade_da_grade() {
+    let (raio, alvo) = (raio_do_app(), alvo_do_refino());
+    println!("lei              val3    val4    val5   val6+   4-braços%");
+    for (nome, knob) in [("por pentear    ", 0.0f32), ("pente no topo  ", 1.0)] {
+        let mut hist = [0usize; 8];
+        for (_, e) in RUMOS.iter() {
+            let (m, c) = super::super::traco_com(knob, *e, raio, alvo);
+            let grau = ph2d_mesh_render::bracos_na_vista_da_grade(&m);
+            // ⚠️ Só os do MIOLO da faixa: um vértice na beira do traço tem
+            // menos braços por estar na beira, não por ser irregular.
+            let pos = m.positions();
+            for v in 0..m.vert_count() {
+                let q = pos[v];
+                let mut d2 = f32::INFINITY;
+                for t in &c {
+                    let w = [q[0] - t[0], q[1] - t[1], q[2] - t[2]];
+                    d2 = d2.min(w[0].mul_add(w[0], w[1].mul_add(w[1], w[2] * w[2])));
+                }
+                if d2.sqrt() > raio * 0.5 {
+                    continue;
+                }
+                hist[(grau[v] as usize).min(7)] += 1;
+            }
+        }
+        let n: usize = hist.iter().sum();
+        println!(
+            "{nome} {:6} {:7} {:7} {:7}   {:7.2}",
+            hist[3],
+            hist[4],
+            hist[5],
+            hist[6] + hist[7],
+            100.0 * hist[4] as f64 / n.max(1) as f64
+        );
+    }
+}
+
+/// ⭐⭐⭐⭐ **A GRADE TEM DE TER OS QUATRO BRAÇOS — a régua que o olho do dono
+/// usa na vista que ele liga, e a única das quatro que NÃO está saturada.**
+///
+/// ⛔⛔ **A fracção de arestas alinhadas tem tecto `2/3`** numa grade perfeita
+/// triangulada (um terço são diagonais, a `45°` — gateado em
+/// `o_tecto_da_regua_da_grade_e_dois_tercos`), e o produto lê `65,4 %`, que é
+/// **`98,1 %` do tecto**. ⇒ ela não distingue mais nada, e o que o dono chama
+/// de *«áreas ainda não muito boas»* é **outra grandeza**: depois de esconder as
+/// diagonais, quantos cruzamentos têm os **quatro** braços.
+///
+/// ⚠️ **As duas metades são obrigatórias, e o CONTROLO é a metade que prova que
+/// a régua vê o fenómeno:** por pentear a malha lê `48 %` — *uma régua que
+/// lesse alto nos dois lados não estaria a medir o pente*.
+///
+/// ⚠️ Só o **miolo** da faixa entra: um vértice na beira tem menos braços por
+/// estar na beira, não por ser irregular.
+#[test]
+fn a_grade_tem_os_quatro_bracos() {
+    let (raio, alvo) = (raio_do_app(), alvo_do_refino());
+    let medir = |knob: f32| -> (f64, f64) {
+        let (mut quatro, mut n, mut fil) = (0usize, 0usize, 0.0f64);
+        for (_, e) in RUMOS.iter() {
+            let (m, c) = super::super::traco_com(knob, *e, raio, alvo);
+            fil += ph2d_sculpt3d::medida_da_fileira::fileira_da_faixa(&m, &c, raio).0;
+            let grau = ph2d_mesh_render::bracos_na_vista_da_grade(&m);
+            let pos = m.positions();
+            for v in 0..m.vert_count() {
+                let q = pos[v];
+                let mut d2 = f32::INFINITY;
+                for t in &c {
+                    let w = [q[0] - t[0], q[1] - t[1], q[2] - t[2]];
+                    d2 = d2.min(w[0].mul_add(w[0], w[1].mul_add(w[1], w[2] * w[2])));
+                }
+                if d2.sqrt() > raio * 0.5 {
+                    continue;
+                }
+                n += 1;
+                if grau[v] == 4 {
+                    quatro += 1;
+                }
+            }
+        }
+        assert!(n > 2_000, "a faixa mal tem miolo: {n}");
+        (100.0 * quatro as f64 / n as f64, fil / RUMOS.len() as f64)
+    };
+
+    let (sem, fil_sem) = medir(0.0);
+    let (com, fil_com) = medir(1.0);
+    assert!(
+        sem < 60.0,
+        "o CONTROLO devia ser uma sopa e le {sem:.2} % de cruzamentos regulares"
+    );
+    // ⭐⭐⭐⭐ **A FILEIRA — a coluna que o dono julga, e que até aqui não tinha
+    // gate NENHUM.** Ela é o comprimento mediano das linhas contínuas, em
+    // arestas, e é a única das quatro grandezas desta cena que distingue as
+    // duas COMPOSIÇÕES das mesmas duas leis: com a troca de ligação dentro da
+    // alternância lê **`38,8`**, com ela no FIM do passe lê `27,5` — e a
+    // regularidade mal se move (`93,0` contra `92,4`). *Uma medida que não
+    // separa as duas composições não pode defender a que foi escolhida.*
+    assert!(
+        fil_sem < 8.0,
+        "o CONTROLO devia ter fileiras curtas e le {fil_sem:.1} arestas"
+    );
+    assert!(
+        fil_com > 33.0,
+        "a fileira devia correr e le {fil_com:.1} arestas (medido: 38,8 alternado, 27,5 com a troca no fim)"
+    );
+    // ⚠️⚠️ **A barra saiu de um VALE MEDIDO entre os dois lados**, e a primeira
+    // redacção pô-la em `88` — onde uma MUTAÇÃO SOBREVIVEU, porque **sem** a
+    // troca de ligação a malha lê `89,4 %` e **com** ela `93,0 %`: as duas
+    // passavam. *Uma barra larga não é só uma afirmação fraca — é o sítio onde
+    // a peça que a wave acrescentou deixa de ser load-bearing.*
+    //
+    // ⛔ E a alternativa — *«correr a troca outra vez sobre a saída não muda
+    // nada»* (um PONTO FIXO, sem barra nenhuma) — foi construída e **é
+    // arquitecturalmente impossível**: cada dab deixa a PEGADA dele no ponto
+    // fixo, e o dab seguinte, que se sobrepõe, volta a mexer nela. Medido: `21`
+    // trocas pendentes contra `19` numa malha por pentear ⇒ *a grandeza nem
+    // sequer discrimina*.
+    assert!(
+        com > 91.0,
+        "a grade devia ter os quatro braços e le {com:.2} % (medido: 93,0 com a troca, 89,4 sem)"
+    );
+}
+
 fn linha_da_grelha(
     m: &ph2d_mesh::Mesh,
     c: &[[f32; 3]],
@@ -358,6 +532,9 @@ fn diag_o_relogio_da_reticula() {
         for _ in 0..5 {
             let mut m = malha.clone();
             let t = std::time::Instant::now();
+            // ⚠️⚠️ **As DUAS peças, porque o orçamento paga as duas.** A 1.ª
+            // redacção media só a retícula e ficou a medir um SUCEDÂNEO no dia
+            // em que a ligação passou a ser relaxada ao lado dela.
             let n = ph2d_quadflow::regiao::arruma_na_grelha_com(
                 &mut m,
                 centro,
@@ -368,6 +545,8 @@ fn diag_o_relogio_da_reticula() {
                 LADO_DA_CELULA,
                 &mut andaram,
             );
+            let mut region = ph2d_mesh::RegionScratch::default();
+            let _ = ph2d_mesh::relaxa_valencia_em(&mut m, centro, raio, &mut region);
             melhor = melhor.min(t.elapsed().as_secs_f64() * 1000.0);
             pegada = n;
         }

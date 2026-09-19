@@ -674,3 +674,12 @@ mod tests {
         }
     }
 }
+
+#[path = "medida_do_pente_banda.rs"]
+mod banda;
+
+pub use banda::grade_por_banda;
+
+#[cfg(test)]
+#[path = "medida_do_pente_tecto_tests.rs"]
+mod tecto_da_grade;

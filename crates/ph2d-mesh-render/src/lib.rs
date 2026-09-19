@@ -154,7 +154,7 @@ impl ScreenRect {
 pub use sss::{
     LUT_SIZE as SSS_LUT_SIZE, SCATTER_FRACTION as SSS_SCATTER_FRACTION, SssParams, SssRaw,
 };
-pub use wire::{wire_indices, wire_indices_com};
+pub use wire::{bracos_na_vista_da_grade, wire_indices, wire_indices_com};
 
 /// **O material do barro** — o realce e a largura dele.
 ///

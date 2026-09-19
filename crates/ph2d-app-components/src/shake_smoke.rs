@@ -29,6 +29,7 @@ use ph2d_ecs::{
     ActionEdge, ActionTriggerRow, CameraFollow, CameraShake, Entity, GameCamera, Name,
     ShakeEmitter, ShakeSource, SignalFrom, SignalOnAction, Transform, World,
 };
+use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_topdown::{TopDownLaw, direction::DirectionMode};
 
@@ -117,9 +118,33 @@ fn cena_um(world: &mut World) -> Entity {
     patio(world);
 
     // ⭐ O HERÓI: anda com as setas, e a câmera segue-o ⇒ **andar é afastar a VISTA da bomba**.
+    //
+    // ⛔⛔⛔ **O CORPO CINEMÁTICO NÃO É DECORAÇÃO — sem ele o passo (2) é IMPOSSÍVEL** (report do
+    // dono, 19/09: *«vc esqueceu de colocar física no jogador»*). A ponte do mover varre
+    // `self.bodies`, logo **quem não tem corpo nunca entra no laço**: a 1.ª redacção desta cena
+    // dava-lhe o componente e mais nada, e a seta segurada movia `0,0000 m`. As três cenas irmãs
+    // que carregam este componente (`topdown_smoke` · `trigger_smoke` · `dano_smoke`) dão-lhe as
+    // três peças; esta dava uma.
+    //
+    // ⚠️⚠️ **E `Kinematic` é LEI e não gosto:** um corpo `Dynamic` é do SOLVER
+    // (`bridge::pose_owner`), logo o mover fica inerte **e** a gravidade leva-o — medido nesta
+    // cena, `y = −492 m` ao fim de dez segundos, com a câmera a segui-lo. *Foi isso que o dono viu
+    // como «travou»: em ~2 s não há um poste no ecrã, e nada do que ele carregue traz o pátio de
+    // volta.* O Inspector diz-no em vermelho na secção *Top-Down Player* — mas o roteiro manda
+    // escolher a BOMBA, logo ele nunca olha para lá.
+    //
+    // ⚠️ O raio é o do sprite (`0,9` de lado ⇒ `0,45`), como nas irmãs: nada nesta cena tem
+    // collider, logo ele não bate em nada — ele existe para o corpo ENTRAR no mundo.
     let heroi = world
         .spawn((
             Name::new("Heroi"),
+            RigidBody {
+                kind: BodyKind::Kinematic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.45 },
+                ..Collider::default()
+            },
             Sprite::atlas(WHITE_TILE_KEY, [0.9, 0.9], HEROI_RGBA),
             Transform::from_translation(Vec2::new(0.0, HEROI_Y)),
             ph2d_physics_ecs::TopDownPlayer::from_law(TopDownLaw {

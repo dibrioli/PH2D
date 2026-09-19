@@ -267,3 +267,70 @@ fn a_bomba_cabe_na_vista_quando_a_cena_abre() {
         "a bomba tem de estar VISÍVEL ao lado do herói, não debaixo dele: {dy:.2} m"
     );
 }
+
+/// ⭐⭐⭐ **O HERÓI ANDA — o gate que os DOZE acima não tinham, e que o dono apanhou**
+/// (*«vc esqueceu de colocar física no jogador»*, 19/09).
+///
+/// ⛔⛔ **A cena montava as peças certas e o passo (2) do roteiro era IMPOSSÍVEL:** o herói tinha
+/// `TopDownPlayer` e **nenhum corpo**, e o [`ph2d_physics_ecs::PhysicsBridge::drive_topdown`] varre
+/// `self.bodies` — quem não tem corpo **nunca entra no laço**. Medido na cena de então: com a seta
+/// segurada durante `60` tiques o herói andou `dx = 0` e `dy = 0`.
+///
+/// ⚠️⚠️ **Nenhum dos doze gates o via, e a cegueira tem forma:** eles perguntam *«a entidade tem o
+/// COMPONENTE?»* (o `a_camera_segue_o_heroi_que_o_dono_conduz` pergunta exactamente isso) e o
+/// consumidor pergunta *«a entidade tem um CORPO?»* — **a lente do gate é mais larga que a do
+/// consumidor**, que é a família que o `CLAUDE.md` §5.0 nomeia. A cura é medir o BARRO: conduzir a
+/// cena montada pela ponte REAL e olhar o `Transform`.
+///
+/// **Mutações que devem sangrar:** tirar o `RigidBody` do herói · pô-lo `Dynamic` ou `Static` ·
+/// tirar o `Collider` · apagar o `TopDownPlayer`.
+#[test]
+fn o_heroi_anda_quando_o_dono_carrega_na_seta() {
+    use ph2d_physics_ecs::{PhysicsBridge, PlayerInput};
+    const TIQUES: u64 = 60;
+
+    let mut sim = SimWorld::new();
+    montar(sim.world_mut(), 1);
+    let (heroi, lei) = {
+        let m = sim.world_mut();
+        m.query::<(Entity, &Name, &ph2d_physics_ecs::TopDownPlayer)>()
+            .iter(m)
+            .find(|(_, n, _)| n.0 == "Heroi")
+            .map(|(e, _, c)| (e, c.law()))
+            .expect("a cena tem de ter o herói que o roteiro manda conduzir")
+    };
+    let antes = sim.world().get::<Transform>(heroi).unwrap().translation;
+    let mut bridge = PhysicsBridge::new();
+    for t in 1..=TIQUES {
+        // ⚠️ **A entrada é escrita a CADA tique**, como o quadro faz: a ponte lê-a e não a guarda.
+        bridge.set_player_input(
+            heroi,
+            PlayerInput {
+                drive: 1.0,
+                ..PlayerInput::default()
+            },
+        );
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let depois = sim.world().get::<Transform>(heroi).unwrap().translation;
+    let andou = (depois.x - antes.x).hypot(depois.y - antes.y);
+
+    // O orçamento de um segundo de seta, à velocidade que a cena autora.
+    #[allow(clippy::cast_precision_loss)]
+    let orcamento = lei.speed * (TIQUES as f32) / 60.0;
+    assert!(
+        andou > orcamento * 0.5,
+        "com a seta segurada {TIQUES} tiques o herói andou {andou:.4} m de um orçamento de \
+         {orcamento:.4}.\n⚠️ `0` quer dizer que ele não tem CORPO (a ponte varre corpos, não \
+         componentes) ou que o corpo não é cinemático — e o passo (2) do roteiro fica impossível."
+    );
+    // ⛔ **E ele não pode CAIR:** um corpo dinâmico numa cena de vista de cima é levado pela
+    // gravidade, a câmera segue-o, e em ~2 s não há pátio nenhum no ecrã. Medido no defeito:
+    // `y = −492 m` ao fim de dez segundos.
+    assert!(
+        (depois.y - antes.y).abs() < 0.05,
+        "o herói desceu {:.3} m sem ninguém lhe pedir — o corpo é DINÂMICO e a gravidade manda \
+         nele; a vista segue-o e o pátio sai do ecrã",
+        antes.y - depois.y
+    );
+}

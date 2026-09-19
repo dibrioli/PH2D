@@ -19,21 +19,37 @@
 //! ALTO de propósito: um nome publicado que ninguém pinta aparece na lista e sai dela por uma linha
 //! de isenção COM O MECANISMO, que é mais barato do que um rótulo cru no ecrã.
 //!
-//! ⚠️ **A população são as crates que NÃO são painel, `ph2d-app-*` nem a shell** — essas têm as 30
+//! ⚠️ **A população são TODAS as crates que não são painel nem `ph2d-app-*`** — essas têm as 30
 //! réguas lexicais, e a fronteira é exactamente o que fica de fora delas.
 //!
-//! # ⛔⛔ E o FILTRO desta população tem uma cegueira MEDIDA, com o cúmplice nomeado
+//! # ⭐⭐⭐ O FILTRO desta população era ESTREITO, e a cegueira dele está MEDIDA
 //!
-//! Ele exige que a crate dependa da `ph2d-editor-core` ou da `ph2d-i18n` — *«se ela pinta ou fala a
-//! tabela»*. Em 2026-09-19 o `ph2d-asset-index` publicava `SortBy::label()` (*Name · Type ·
-//! Recent*, pintados pela fileira de ordenação do Asset Browser) e **não dependia de nenhuma das
-//! duas**: ele ficava fora da varredura, e este gate fechava VERDE sobre ele.
+//! Até 2026-09-19 ele exigia que a crate dependesse da `ph2d-editor-core` ou da `ph2d-i18n` —
+//! *«se ela pinta ou fala a tabela»* —, o que dava **44 de 325** crates. Nesse dia o
+//! `ph2d-asset-index` publicava `SortBy::label()` (*Name · Type · Recent*, pintados pela fileira de
+//! ordenação do Asset Browser) e **não dependia de nenhuma das duas**: ele ficava fora da varredura,
+//! e este gate fechava VERDE sobre ele. A cura foi **entrar na crate pela dependência** — que a faz
+//! entrar na varredura — e a cegueira ficou declarada por escrito, com a relação verdadeira
+//! (*«algum painel depende desta crate»*) dada como cara demais.
 //!
-//! ⚠️ A relação verdadeira é *«algum painel depende desta crate»*, que é o grafo inteiro — varrê-lo
-//! custaria a árvore toda por corrida. ⇒ **a cegueira fica DECLARADA, e o cúmplice é o gate de
-//! RUNTIME** `toda_palavra_que_um_painel_pinta_a_tabela_sabe_produzir` (na
-//! `ph2d-panel-registry-init`), que **não tem filtro de população nenhum**: ele pinta todo painel
-//! do registo e lê o que saiu. Foi ele que achou o `Recent`.
+//! ⛔⛔ **Ela era cara por causa de um DEFEITO, não de uma lei.** Alargada, a varredura acusou
+//! **`189` rótulos crus em 27 crates** que nenhuma régua deste repo via — e custava `58,8 s`,
+//! encostada ao tecto de aviso de `60 s` do executor. A causa era um **quadrático** dentro da
+//! `ph2d_label_census::cfg_test` (cada ficheiro relia todos os irmãos); curado, a mesma varredura
+//! larga custa uma fracção disso. *Um custo que parece uma lei da população pode ser um defeito da
+//! régua — e enquanto ele não for medido, a cegueira que ele justifica fica de pé.*
+//!
+//! ⚠️ **A população não é «tudo o que um painel alcança» e a diferença está contada:** `318` das
+//! `325` são alcançáveis de um painel pelo grafo, logo varrer as `325` é **mais largo** do que a
+//! relação verdadeira e erra para o lado ALTO, que é o desenho desta régua.
+//!
+//! # O cúmplice continua nomeado
+//!
+//! O gate de RUNTIME `toda_palavra_que_um_painel_pinta_a_tabela_sabe_produzir` (na
+//! `ph2d-panel-registry-init`) **não tem filtro de população nenhum**: ele pinta todo painel do
+//! registo e lê o que saiu. ⚠️ E ele tem a cegueira COMPLEMENTAR desta: só vê o que é pintado no
+//! estado de OMISSÃO de cada painel, logo uma secção do Inspector que só aparece com um componente
+//! escolhido é invisível para ele — que é exactamente onde vivem `ph2d-topdown` e `ph2d-tags`.
 //!
 //! *Duas réguas com cegueiras COMPLEMENTARES valem mais que uma régua com a população certa — e é
 //! preciso escrever qual delas cobre o quê, senão a próxima fatia acredita na que estiver à mão.*
@@ -47,7 +63,104 @@ use ph2d_label_census::{Publicacao, published_names};
 ///
 /// ⛔ Ela **só encolhe**, e o número é exacto nos dois sentidos: quem paga uma parte escreve o
 /// número novo, e quem paga tudo **apaga a linha**. Um tecto folgado seria uma licença.
-const POR_PAGAR: &[(&str, usize, &str)] = &[];
+///
+/// ⚠️ **Ela estava VAZIA e voltou a encher-se em 2026-09-19 — e isso não é uma regressão:** é a
+/// POPULAÇÃO que passou de `44` para `325` crates quando o filtro estreito caiu. Cada linha aqui é
+/// um rótulo que já chegava ao ecrã e que régua nenhuma deste repo via.
+const POR_PAGAR: &[(&str, usize, &str)] = &[
+    (
+        "ph2d-anim",
+        12,
+        "as doze curvas de interpolacao (`Quad`..`Elastic`, `In`/`Out`/`In-Out`), pintadas pelo \
+selector do editor de curvas da timeline. Sao a familia mais barata de migrar e a mais visivel.",
+    ),
+    (
+        "ph2d-audio",
+        4,
+        "os quatro barramentos (`Master`/`Music`/`SFX`/`Voice`), pintados pelo mixer. ⚠️ As MESMAS \
+quatro palavras ja' vivem na tabela como `ecs.audio_bus.*` (o `ph2d-ecs` migrou-as em 19/09) — \
+esta crate tem de passar a apontar para elas, nunca a declarar um segundo par.",
+    ),
+    (
+        "ph2d-audio-edit",
+        3,
+        "as tres leis de variacao (`Random`/`Sequence`/`Shuffle`), pintadas pela rack do editor.",
+    ),
+    (
+        "ph2d-audio-encode",
+        6,
+        "os quatro formatos de entrega e as duas plataformas do catalogo. ⚠️ `WAV 16-bit` e \
+`Ogg Vorbis` sao nomes de FORMATO e a chave deles nao os traduz — ela existe para o dia em que a \
+palavra que os rodeia mudar de lingua.",
+    ),
+    (
+        "ph2d-blend-mode",
+        2,
+        "`Behind` e `Clear`, pintados pelo selector de mistura. ⚠️ Sao DOIS de dezoito: os outros \
+dezasseis ja' sao texto de chegada de uma chave da tabela, logo a ponte do gate os reconhece — \
+*uma familia migrada pela metade le'-se como uma familia limpa com dois literais soltos*.",
+    ),
+    (
+        "ph2d-color",
+        17,
+        "os espacos da rampa (`RGB`/`HSV`/`HSL`), as interpolacoes, os sentidos do matiz, os quatro \
+gradientes de fabrica e os quatro formatos de paleta — todos pintados pelo editor de rampa e pelo \
+dialogo de paleta.",
+    ),
+    (
+        "ph2d-flip-reshape",
+        5,
+        "os dois verbos de remodelar e os tres knobs deles, pintados pela seccao do painel do Flip.",
+    ),
+    (
+        "ph2d-grid",
+        4,
+        "as quatro leis de encaixe (`Center`..`Center + Intersection + Corners`), pintadas pelo \
+painel de grelha.",
+    ),
+    (
+        "ph2d-host",
+        1,
+        "`Pixel Art`, o nome do filtro de amostragem, pintado pelo Inspector da sprite.",
+    ),
+    (
+        "ph2d-input",
+        22,
+        "os nomes dos botoes e eixos de comando, pintados pela janela do Input Map. ⚠️ `A / Cross` \
+e `L1 / LB` nomeiam o BOTAO FISICO de duas familias de comando — a chave existe para a ordem e a \
+barra, nao para traduzir a letra.",
+    ),
+    (
+        "ph2d-symmetry",
+        3,
+        "`Mirror X`/`Mirror Y`/`Custom`, pintados pela fileira de simetria do painel de vector.",
+    ),
+    (
+        "ph2d-tags",
+        5,
+        "as cinco recusas da arvore de tags, pintadas NO PAINEL (⛔ nao sao diagnostico de \
+terminal). ⚠️ Elas sao invisiveis ao gate de runtime porque a seccao delas so' e' pintada com uma \
+tag escolhida.",
+    ),
+    (
+        "ph2d-timeline",
+        8,
+        "as oito recusas de aninhar e de pousar uma chave, pintadas como aviso na timeline.",
+    ),
+    (
+        "ph2d-topdown",
+        13,
+        "os modos de direccao, de rotacao e de ponto de vista, pintados pela seccao \
+`TopDownPlayer` do Inspector. ⚠️ Invisiveis ao gate de runtime pela mesma razao das tags: a \
+seccao so' existe com o componente no objecto escolhido.",
+    ),
+    (
+        "ph2d-vec-scene",
+        2,
+        "`Fill` e `Stroke`, os dois papeis de uma camada de aparencia, pintados pela pilha do \
+painel de vector.",
+    ),
+];
 
 /// ⭐ **As isenções, por crate — `(crate, ficheiro ou "*", porquê)`.**
 ///
@@ -146,6 +259,120 @@ e' ingles; o que o DONO le' no terminal e' a lingua dele).",
         "ph2d-tool-move",
         "lib.rs",
         "o NOME de uma ferramenta. O que o artista le' ao ESCOLHER uma vive no rail, com chave propria (`chrome.rail.*`) e uma segunda palavra abreviada para o chip; esta `Tool::label()` chega a pixel em dois sitios e nenhum e' chrome do artista — a barra de TITULO (uma linha de diagnostico: `sprites=… | atlas=… | theme=… | tool=…`) e a paleta do caminho LEGADO sem-heroi. Traduzi-la poria uma SEGUNDA palavra por ferramenta na tabela. E mais o rotulo de um `FloatingPanel`/`PanelTab`: a PINTURA do painel flutuante legado foi retirada em 2026-05-17 e o `build_panel()` sobrevive so' como fonte de RECTANGULOS para o hit-test (`input_handlers.rs`). Nenhuma destas palavras chega a um pixel. ⏳ Que um painel sem pintura continue a ser testado ao toque e' um achado desta medicao e fica NOMEADO — curar isso mexe no contrato `Tool` (§6) e e' outra decisao.",
+    ),
+    // ─────────── as QUATRO familias que a populacao larga de 2026-09-19 trouxe ───────────
+    //
+    // ⚠️ Cada uma tem o mecanismo escrito, e as quatro sao respostas DIFERENTES a' mesma acusacao:
+    // a regua ve' um literal com cara de lingua a sair por uma `fn … -> &str` e nao sabe para onde
+    // ele vai. Quem julga e' quem le' a lista.
+    (
+        "ph2d-expr",
+        "wgsl.rs",
+        "e' FONTE DE SHADER (`fn ph2d_noise1(x: f32) -> f32 { … }`), que a regua lexical le' como \
+lingua por ter palavras inglesas dentro. Ele nao chega a um ecra: ele chega a um compilador de \
+WGSL. Traduzi-lo partiria o shader.",
+    ),
+    (
+        "ph2d-gpu-cook",
+        "codegen.rs",
+        "sao os NOMES DE TIPO do WGSL (`vec2<f32>`, `mat4x4<f32>`) emitidos no codigo gerado. Sao \
+sintaxe de outra linguagem, nao palavras de interface — e um deles traduzido e' um shader que nao \
+compila.",
+    ),
+    (
+        "ph2d-gpu-cook",
+        "grid.rs",
+        "e' o corpo de um kernel de WGSL escrito num literal com marcadores (`{WG}`, \
+`{UNIFORM_STRUCT}`). Mesma familia do `codegen.rs`: chega a um compilador, nunca a um pixel.",
+    ),
+    (
+        "ph2d-gpu-cook",
+        "reduce.rs",
+        "e' o corpo de um kernel de WGSL escrito num literal com marcadores. Mesma familia do \
+`codegen.rs`: chega a um compilador, nunca a um pixel.",
+    ),
+    (
+        "ph2d-gpu-cook",
+        "scan.rs",
+        "e' o corpo de um kernel de WGSL escrito num literal com marcadores. Mesma familia do \
+`codegen.rs`: chega a um compilador, nunca a um pixel.",
+    ),
+    (
+        "ph2d-node-motion-twist",
+        "lib.rs",
+        "e' a EXPRESSAO WGSL `f32(params.count)`, concatenada para o kernel do no'. ⚠️ O ficheiro \
+tambem declara o manifesto, e os rotulos DELE ja' sao chaves (`node.motion.twist.param.*`) — logo \
+esta isencao nao abriga rotulo nenhum, so' a expressao.",
+    ),
+    (
+        "ph2d-nodegraph",
+        "reduce_meta.rs",
+        "sao as expressoes WGSL `max(a, b)` e `min(a, b)`, assadas no corpo do kernel de reducao. \
+Sintaxe de outra linguagem.",
+    ),
+    (
+        "ph2d-mesh-render",
+        "pipeline_build.rs",
+        "sao os rotulos de DEPURACAO do `wgpu` (`label: Some(\"ph2d-mesh pipeline\")`), que \
+aparecem num capturador de frames e nunca num ecra do artista — a mesma familia ja' isenta no \
+`ph2d-render/pipeline.rs`.",
+    ),
+    (
+        "ph2d-field-ecs",
+        "spawn.rs",
+        "⭐ e' o NOME DA ENTIDADE que uma forma nova recebe ao nascer (`shape_name` alimenta o \
+`unique_sibling_name`, que escreve o componente `Name`). Um nome de objecto e' DOCUMENTO: o \
+artista renomeia-o e ele viaja no `.ph2dproj`. Traduzi-lo poria a lingua da INTERFACE dentro do \
+ficheiro gravado, e a mesma peca abriria com outro nome noutra maquina.",
+    ),
+    (
+        "ph2d-timeline",
+        "doc.rs",
+        "⭐ e' `\"Main\"`, o nome do clipe que um documento novo traz. Mesma familia do \
+`shape_name`: e' DOCUMENTO, nao rotulo — ele e' gravado e o artista renomeia-o.",
+    ),
+    (
+        "ph2d-imageio-ora",
+        "export.rs",
+        "⭐ e' `\"Layer 1\"`, o nome que uma camada leva DENTRO do ficheiro `.ora` exportado. Ele \
+atravessa a fronteira do app: quem o le' e' outro programa, e o formato nao tem lingua.",
+    ),
+    (
+        "ph2d-imageio-psd",
+        "lib.rs",
+        "⭐ e' `\"Background\"`, o nome canonico da camada de fundo no formato PSD. Ele e' lido e \
+escrito por outros programas — traduzi-lo deixaria de ser um PSD valido para eles.",
+    ),
+    (
+        "ph2d-mesh-bool",
+        "lib.rs",
+        "sao as tres recusas do corte booleano, e elas sao lidas por um \
+`eprintln!(\"[sculpt3d] o corte nao aconteceu: {}\", r.porque())`: diagnostico de TERMINAL, e o \
+terminal e' do dono (`CLAUDE.md` §0.8 — o que o ARTISTA le' no ecra e' ingles; o que o DONO le' no \
+terminal e' a lingua dele; e por isso elas estao em portugues). ⏳ No dia em que uma delas chegar a \
+um PIXEL, ela deixa de ser isenta e passa a divida.",
+    ),
+    (
+        "ph2d-trim",
+        "lib.rs",
+        "sao as tres recusas do gesto de aparar, lidas pelo mesmo `eprintln!` do `ph2d-mesh-bool` \
+(`trim_aplica.rs` junta as duas familias num `porque()` so'). Diagnostico de TERMINAL, na lingua do \
+dono. ⏳ Mesma cerca: se chegarem a um pixel, viram divida.",
+    ),
+    (
+        "ph2d-asset",
+        "tier.rs",
+        "e' o `TierIndex::name()`, cujo unico consumidor de produto e' o `impl Display` dele — o \
+proprio doc-comment diz *«util em logs / debug overlays»*, e uma varredura pelas crates de painel \
+e pela shell nao acha um chamador. Nome de DIAGNOSTICO, nao rotulo.",
+    ),
+    (
+        "ph2d-aseprite",
+        "blend.rs",
+        "e' a PROVENIENCIA: o doc-comment declara *«o nome que aparece na UI do Aseprite»*, e ele \
+serve a nota que o importador escreve sobre o que o ficheiro traz e nos nao honramos. Mesma familia \
+do `Preset.label` do L-System. ⚠️ Apenas TRES dos dezoito sao acusados — os outros quinze ja' sao \
+texto de chegada de uma chave desta tabela, logo a ponte reconhece-os.",
     ),
 ];
 
@@ -258,12 +485,6 @@ fn motores(repo: &Path) -> Vec<(String, PathBuf)> {
         if !src.is_dir() {
             continue;
         }
-        let Ok(tom) = std::fs::read_to_string(dir.join("Cargo.toml")) else {
-            continue;
-        };
-        if !tom.contains("ph2d-editor-core") && !tom.contains("ph2d-i18n") {
-            continue;
-        }
         out.push((n, src));
     }
     out
@@ -305,10 +526,15 @@ fn nenhum_motor_publica_um_rotulo_cru_fora_da_divida_declarada() {
          motores JÁ PAGOS",
         pontes.len()
     );
-    // ⛔ Controlo de vacuidade: uma régua partida devolve zero crates e o gate fica verde sobre tudo.
+    // ⛔⛔ **Controlo de vacuidade, e o PISO tem de andar com a POPULAÇÃO.** Ele esteve em `20`
+    //    enquanto o filtro estreito devolvia `44` crates; com o filtro largo são `325`, e um piso
+    //    de `20` deixaria uma régua partida — ou o filtro estreito de volta — passar VERDE a medir
+    //    um sétimo da árvore. *É assim que um piso segura o número enquanto a população troca por
+    //    baixo dele* (`CLAUDE.md` §5.0, o `every_host_that_rewrites_verts`).
     assert!(
-        motores.len() >= 20,
-        "a varredura achou {} motores — está a ler o sítio errado",
+        motores.len() >= 250,
+        "a varredura achou {} motores — está a ler o sítio errado, ou o filtro da população \
+         voltou a estreitar-se (eram 325 em 2026-09-19)",
         motores.len()
     );
     let mut queixas = Vec::new();

@@ -571,6 +571,13 @@ dono fez.
 
 ### §14.4 — ⛔⛔ A VARREDURA CORRIGE A §14.3: não são «sentidos opostos» — é uma lei SURDA
 
+> ⚠️⚠️ **NOTA de 2026-09-18 (§16.3): os números desta secção são de ESPAÇO DE ECRÃ, e não se
+> comparam com os da §16.3, que são LINEARES.** A §16 mediu que `R/B` em bytes **não é invariante à
+> exposição** — e que a régua de bytes chega a **inverter a ordem** de duas colunas que a linear põe
+> ao contrário. ⭐ **O veredito desta secção sobrevive inteiro**, porque ele está ancorado na ÁLGEBRA
+> da lei (com o `mfp` partilhado, o `integrate_burley` devolve o mesmo nos três canais) e não na
+> régua; o que não sobrevive é comparar as MAGNITUDES daqui com as de lá.
+
 ⚠️ **A §14.3 leu UM ponto com máscaras diferentes dos dois lados e escreveu *«a cor move-se no
 sentido oposto»*. Com três profundidades e a MESMA máscara, esse veredito está CORRIGIDO** — e o que
 o substitui é pior para nós, não melhor.
@@ -715,3 +722,98 @@ Etapa 0 (reconhecimento) + etapa **1: o CONTROLO OPACO nos dois motores**, e ela
 barra é a da §14.2 — `43 px` de transição e `R/B 1,33` — e *sem ela nenhum número do jade vale*,
 porque a conversão de mão (a Unreal é levógira, X-para-a-frente, em centímetros) produz uma imagem
 espelhada que passa despercebida a olho. A etapa 2 são as seis células de jade × dois motores.
+
+---
+
+## §16 — ⭐⭐⭐ O VEREDITO A QUATRO COLUNAS: nós somos os ÚNICOS completamente surdos
+
+### §16.1 — O portão, e a barra que reprovava o lado APROVADO
+
+⛔⛔ **A 1.ª redacção do portão punha a barra em `0,05`, tirada do `1,32` que a §14.2 publica — e
+reprovou o Cycles**, que é o lado aprovado. A causa é de método e vale para toda comparação futura:
+aquele `1,32` foi medido por **outra régua** (a §14.2 casa a exposição pelo **perfil de bytes de uma
+coluna**; a §14.4 e esta secção casam-na pela **população iluminada**), e ⚠️ **`R/B` em bytes NÃO é
+invariante à exposição**. *Dois critérios de casamento produzem dois números que nunca mediram a
+mesma coisa.*
+
+⇒ a barra passa a ser **derivada na própria corrida**: o desvio que o lado aprovado produz, mais
+meia folga. Sem o aprovado presente o portão **não arma** e sela o jade.
+
+| controlo opaco, a MESMA régua nos quatro | `R/B` | Δ contra nós |
+|---|---:|---:|
+| **NÓS** | `1,332` | — |
+| **VERDADE (Cycles)** — o aprovado | `1,165` | **`0,167`** ⇐ é esta a barra |
+| UNREAL tempo real | `1,190` | `0,143` ✓ |
+| UNREAL traçado | `1,190` | `0,142` ✓ |
+
+⭐ **A montagem da Unreal está mais perto da nossa do que a do Cycles está** — e ela foi construída
+por uma janela E que nunca viu a nossa, a partir dos números que as portas do produto imprimem.
+
+### §16.2 — ⛔⛔ O TECTO do alvo, e porque a varredura publicada não servia
+
+A janela mediu que o parâmetro de espalhamento da Unreal **satura**: acima do campo `≈ 60`–`80` a
+imagem congela **ao bit** e os canais G e B **colapsam um sobre o outro**. A célula de `1,00 m` cai
+lá dentro **nas duas escalas de unidade** ⇒ *um balanço que a inclua apoia-se num ponto que não é
+uma medição.*
+
+⇒ a varredura desce uma casa, para **`0,03 · 0,10 · 0,30`**, e ⚠️ **as QUATRO colunas descem juntas**
+— descer só a do alvo seria comparar profundidades diferentes em colunas diferentes.
+
+⭐ **E o mapeamento ficou ancorado, não escolhido:** com a escala de unidade de FÁBRICA, o ponto
+raso do traçado lê `3,0963` contra `3,19` do Cycles **na mesma célula** (`3 %`). A previsão que o
+fixou era falsificável e está registada: *«a curva desloca-se uma década»* — bateu em `0,1 %`,
+`6,7 %` e `5,7 %` em três pontos, e falhou no quarto **porque o tecto não se desloca com a escala**,
+que foi o que revelou o tecto.
+
+### §16.3 — ⭐⭐⭐ O veredito, em LINEAR — e porque é ali que ele se lê
+
+⛔⛔ **As duas réguas DISCORDAM sobre qual das duas verdades balança mais**, e isso é um defeito de
+método que a §14.4 tem sem o saber: em bytes o traçado lê `1,27×` contra `1,92×` do Cycles, e em
+linear lê `1,86×` contra `1,58×` — **a ordem inverte-se**.
+
+⭐ **A causa é estrutural e a cura é escolher o espaço certo:** `R/B` em **linear é invariante à
+exposição** (os dois canais escalam juntos), logo ali a pergunta da exposição **desaparece** — e é
+só por medirmos em bytes que a maquinaria de casar exposição existe. Em bytes, a exposição é
+ajustada **célula a célula**, e a curva de exibição entra na resposta junto com a distribuição de
+brilho. ⇒ *para a pergunta «a matiz responde à profundidade?», o espaço é o LINEAR.*
+
+⭐⭐ **E a nossa coluna em linear não se mede — ela sai da ÁLGEBRA:** o `thick` faz
+`sss = subsurface_color × integrate_burley(…)`, e com o `mfp` partilhado pelos três canais o
+`integrate_burley` devolve **o mesmo escalar nos três**. Com `subsurface_weight = 1` e o especular a
+zero, todo pixel iluminado tem radiância `∝ (0,75 · 0,35 · 0,35)`:
+
+> ⭐⭐⭐ **`R/B = 2,143` a QUALQUER profundidade — que é, ao bit, o `R/B` da bola OPACA.**
+> *Com as três cores a viajar por igual, o nosso jade tem exactamente a cor de uma pedra opaca.*
+
+| raios IGUAIS · linear · `0,03 · 0,10 · 0,30` | os três valores | **balanço** |
+|---|---|---:|
+| **NÓS** | `2,143 · 2,143 · 2,143` | **`1,00×`** (exacto) |
+| UNREAL **tempo real** | `2,2687 · 2,1311 · 1,9351` | **`1,17×`** |
+| UNREAL **traçado** | `2,5617 · 1,5865 · 1,3765` | **`1,86×`** |
+| **VERDADE (Cycles)** | `2,2564 · 1,9130 · 1,4249` | **`1,58×`** |
+
+⭐⭐⭐ **A leitura, e ela responde à pergunta do dono:**
+
+1. **As duas VERDADES concordam** (`1,86×` e `1,58×`, a mesma classe) — e são motores independentes,
+   de projectos independentes. ⇒ *o oráculo Cycles da §14 fica CONFIRMADO por um segundo traçado.*
+2. **O tempo real da Unreal é quase surdo** (`1,17×`), que era a previsão do dono.
+3. ⛔ **E nós somos os ÚNICOS completamente surdos** (`1,00×`, exacto e estrutural). A Unreal, no
+   modo de jogo, ainda faz **parte** do caminho; nós não fazemos nenhum.
+
+⚠️ ⇒ *«superar a Unreal»* deixa de ser ambição e passa a ter definição medível: **ser o motor de
+tempo real cuja matiz segue a profundidade.** Ninguém lá está — e há duas verdades concordantes a
+dizer para onde é.
+
+### §16.4 — ⛔ O que fica ABERTO, nomeado
+
+- **A nossa coluna em linear, na família POR CANAL**, não foi medida: o `quadro` desta sonda devolve
+  **bytes** e a família de raios iguais dispensou-a por álgebra. ⇒ a sonda precisa de um quadro
+  linear nosso para fechar a outra metade da tabela no espaço certo.
+- ⚠️ **A §14.4 fica com os números em espaço de ECRÃ, e isso passa a estar escrito ali.** O veredito
+  dela (*«a nossa cor não responde à profundidade»*) **sobrevive** — ele está ancorado na álgebra, não
+  na régua —, mas as magnitudes das outras colunas são de bytes e não se comparam com as desta secção.
+- **As duas famílias «por canal» têm o pico em profundidades diferentes** (a verdade em `0,10`, o
+  traçado do alvo em `0,03`) — as curvas têm a mesma forma, deslocadas ~meia década. Resíduo do
+  mapeamento ou lei: **não medido**.
+- **O tecto do alvo** está cercado entre o campo `60` e `80`, com assinatura dupla (congela ao bit ·
+  G e B colapsam). É informação sobre a ferramenta, e não bloqueia nada.

@@ -16,6 +16,7 @@
 | [3](#bug-3--o-diagnoser-sabia-e-ninguem-perguntava) | **"Todas as peças paradas"** (cena `=71`, banda 6) | uma cena com um fio a menos — e o INSTRUMENTO que ninguém invocava | ✅ **CURADO** (aguarda smoke) — mais um falso positivo pré-existente do diagnoser | 2026-08-20 |
 | [4](#bug-4--o-multiply-não-desobedecia-à-alfa-ele-a-invertia-e-o-gate-media-o-único-ponto-em-que-os-modos-concordam) | **"Shadow multiply não obedece o alpha"** (cena `=84`) | `fx.drop_shadow` (acusado, **inocente**) + o par de fatores do `Multiply` em `ph2d-render` | ✅ **FECHADO — smoke aprovado** (cena `=84`, linha ALFA) — resposta invertida, num gate verde há anos | 2026-08-23 |
 | [5](#bug-5--o-editor-de-curva-era-oferecido-numa-onda-que-não-o-lê--e-o-censo-que-o-teria-apanhado-não-podia-vê-lo) | **"Wave curve dos osciladores não está funcionando"** (com foto) | `motion.oscillator` (o MOTOR, **inocente**) + a tabela de gates dele — e mais DOIS nós pelo mesmo mecanismo | ✅ **CURADO** (aguarda smoke, cena `=94`) — o editor aparecia em toda onda e só era lido na `Custom` | 2026-08-24 |
+| [11](#bug-11--a-seta-diferente-era-a-única-certa-a-família-do-rig-escreve-o-ângulo-local-na-coluna-que-o-desenho-lê-como-mundo) | **"Em skeleton o último objeto tem direção diferente"** (com foto) | a família do **RIG** (7 nós, 6 cópias do `fk.rs`) — e a seta acusada é a ÚNICA certa | ⏳ **ABERTO** — causa medida, cura desenhada e revertida com o preço | 2026-09-19 |
 
 ---
 
@@ -1068,3 +1069,90 @@ amostra de cada rota.
   limpo na aresta da ferramenta), não por construção.
 - **A4** — o passe 3D (`sculpt3d`) escreve no mesmo `game_rt` com a janela cheia. Inerte sem
   cena armada.
+
+---
+
+## Bug #11 — a seta diferente era a ÚNICA CERTA: a família do RIG escreve o ângulo LOCAL na coluna que o desenho lê como MUNDO
+
+**Estado:** ⏳ **ABERTO — causa MEDIDA, cura desenhada e NÃO aplicada** (o preço atravessa a
+família inteira; ver *O preço*, abaixo). Report do dono, 2026-09-19, com foto: *«por que em
+skeleton o último objeto tem direção diferente?»* — uma fila vertical de setas em que sete
+apontam para a direita e a de baixo aponta para cima.
+
+### O que a foto mostra, e o que ela NÃO é
+
+⛔ **A seta diferente é a raiz da cadeia, e é a única que está certa.** O dono chamou-lhe *«o
+último»* porque é a última da fila **visual** (a cadeia cresce para cima, logo o joint `0` fica em
+baixo) — e a leitura natural, *«sete certas e uma errada»*, está invertida.
+
+### A medição (sonda pelo caminho do produto, `rig.skeleton` de FÁBRICA)
+
+```
+n = 8
+rot  (o que o DESENHO lê) = [90, 0, 0, 0, 0, 0, 0, 0]
+wrot (o ângulo de MUNDO)  = [90, 90, 90, 90, 90, 90, 90, 90]
+P                         = [[0,0], [0,0.7], [0,1.4], [0,2.1], …]   ← a coluna vertical da foto
+```
+
+O `P` sobe (a pose está certa) e o `rot` entrega `90°` na raiz e `0°` nas outras sete — que é a
+imagem, seta a seta.
+
+### A causa
+
+O [`fk::resolve`] produz **duas** colunas de ângulo: `rot`, que fica sendo o ângulo **relativo ao
+pai** (o que o autor escreveu), e `wrot`, o ângulo de **MUNDO** acumulado pela cinemática directa.
+**O desenho lê `rot`** — [`ph2d_eval_motion::lower`] faz `stream.get("rot")` nas duas rotas, e o
+dispositivo assa `"rot"` na posição `2` do [`LOWER_COLUMNS`].
+
+⇒ *o ângulo de mundo é calculado, guardado, e nenhum consumidor de desenho o lê.* Só a raiz
+coincide, porque uma raiz não tem pai.
+
+### ⭐ Porque é que `rot` = MUNDO é o significado certo, e não uma opinião
+
+Medido por censo: **72 sítios de produto** escrevem `rot`, e os de fora do rig — `motion.clone`,
+`motion.collide`, `motion.look_at`, `motion.orbit`, `motion.distribute_*`, `motion.noise`,
+`motion.drive` — escrevem todos a rotação do elemento **no mundo**. *A família do rig é a
+excepção, e é ela que tem de se alinhar.*
+
+### ⛔ A cura óbvia foi CONSTRUÍDA, MEDIDA e REVERTIDA — e o que ela partiu é o achado
+
+Tentado: o `resolve` preserva o local numa coluna nova (`lrot`), publica o mundo em `rot`, e
+prefere o `lrot` à entrada (para a idempotência que o
+`resolve_is_idempotent_and_a_point_cloud_is_untouched` afirma).
+
+Resultado: **quatro crates vermelhas** (`ik-2bone`, `fabrik`, `rubber-hose`, `skin-deformer`),
+com a mão da IK a aterrar em `[3.0, 0.0]` em vez de chegar a `[1.5, 1.5]`.
+
+⚠️⚠️ **O mecanismo:** um nó que **POSA** escreve ângulos locais em `rot` e volta a chamar o
+`resolve`. Com a leitura a preferir o `lrot`, o solve que a IK acabou de escrever era **ignorado**
+em favor do local da resolução anterior. ⇒ *a cura não é só do resolvedor: quem produz uma pose
+tem de passar a escrever na coluna do LOCAL, e cada nó de pose tem a sua lei.*
+
+### O preço, medido
+
+- **SEIS cópias byte-a-byte** do `fk.rs` (`sha256 c9447f9c928f`): `rig-skeleton`, `rig-fk`,
+  `rig-fabrik`, `rig-ik-2bone`, `rig-rubber-hose`, `rig-skin-deformer`. *A lei está duplicada, e
+  é isso que faz a cura ser seis edições em vez de uma.*
+- **TRÊS leis de pose** a migrar (a IK de dois ossos, o FABRIK, a mangueira).
+- O `source.lsystem` tem o **mesmo defeito** por outro caminho (`turtle.rs` escreve `rot` local e
+  `wrot` mundo, sem passar pelo `resolve`) ⇒ uma planta desenhada com formas aponta tudo para a
+  direita.
+- ⚠️ **O `wrot` NÃO pode ser apagado** por parecer um alias: o `rig.skin_deformer` LÊ-o em dois
+  sítios (compara a pose de repouso com a posada).
+
+### A cura que fica desenhada
+
+Uma coluna, um significado: `rot` = **mundo** (o que a casa desenha), `lrot` = **local** (o que o
+autor escreve e por onde a re-resolução entra), `wrot` mantido para o `skin_deformer`. Quem posa
+escreve `lrot`. ⛔ Ensinar o LOWERING a ler o `wrot` **não** serve: o device assa oito colunas
+numa assinatura de pipeline, e uma nona muda essa assinatura.
+
+### Lições
+
+- ⚠️ **Uma coluna partilhada com dois significados não dá erro — dá uma imagem errada.** O `rot`
+  do rig e o `rot` do resto do módulo têm o mesmo nome e leis diferentes, e as suítes das duas
+  famílias passam, cada uma a afirmar a sua.
+- ⚠️ **Um valor CALCULADO que ninguém lê é um defeito à espera:** o `wrot` carrega a resposta
+  certa desde que existe, e o único leitor dela fora do rig era um teste.
+- ⚠️ **«O último objecto» de um report é o último da FILA VISUAL**, e a ordem do documento pode
+  ser a oposta — a raiz de uma cadeia que cresce para cima desenha-se em baixo.

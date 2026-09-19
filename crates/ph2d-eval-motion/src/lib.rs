@@ -518,18 +518,12 @@ impl MotionCookPump {
         self.cozinha_as_tomadas(graph, ops, target, playhead, scopes);
     }
 
-    /// Scrub to `target_tick`: render the exact simulation state of that frame
-    /// even when it is BEHIND the current playhead (plan §1.4, M2.N2). A plain
-    /// forward cook would read the marching-future `pre` state; this restores the
-    /// newest checkpoint ≤ target from the ring (or the tick-0 seed) and re-cooks
-    /// forward to the target — bit-exact, because the re-sim walks the identical
-    /// cook path as playback (GGPO save/load/advance). `playhead_of(tick)` maps a
-    /// tick to its seconds (the transport's `tick × fixed_dt`).
-    ///
-    /// Recent scrubs are an `O(1)` restore with zero re-sim (the dense window);
-    /// a target older than the window re-sims from the seed. Returns `true` once
-    /// it has rendered `target_tick` into `instances`.
-    #[allow(clippy::too_many_arguments)]
+    /// The output streams of the last [`Self::advance_or_scrub_to_nodes_scoped`]
+    /// cook, labelled by node — the boundary hand-off the GPU sequencer uploads.
+    /// Empty before the first boundary cook; **shorter than the set asked for**
+    /// when a boundary failed to cook, which the caller must treat as a fallback
+    /// rather than upload a partial set.
+    #[must_use]
     pub fn boundary_streams(&self) -> &[(NodeId, Stream)] {
         &self.boundary_streams
     }

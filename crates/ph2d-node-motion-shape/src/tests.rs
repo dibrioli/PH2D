@@ -15,7 +15,7 @@ use super::*;
 /// crate's 47 (measured — `which_shapes_close` — the other five need a stroke).
 #[test]
 fn kind_index_round_trips_and_labels_align() {
-    assert_eq!(KIND_LABELS.len(), 43, "the fillable catalogue");
+    assert_eq!(KIND_LABELS.len(), 45, "the fillable catalogue");
     assert_eq!(ALL_KINDS.len(), KIND_LABELS.len(), "a label per kind");
     let mut seen = std::collections::BTreeSet::new();
     for i in 0..KIND_LABELS.len() {
@@ -49,7 +49,7 @@ fn kind_index_round_trips_and_labels_align() {
     // saturates to the last kind rather than panicking.
     assert_eq!(ShapeKind::from_index(4.4), ShapeKind::Polygon);
     assert_eq!(ShapeKind::from_index(-3.0), ShapeKind::Circle);
-    assert_eq!(ShapeKind::from_index(999.0), ShapeKind::IsoPyramid);
+    assert_eq!(ShapeKind::from_index(999.0), ShapeKind::RopeSegment);
 }
 
 /// The content key is a pure function of the params: identical params give

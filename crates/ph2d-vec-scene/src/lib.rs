@@ -258,7 +258,9 @@ pub use flow::{
 /// Os SÍMBOLOS (coração, lua, gota, escudo, engrenagem, tag, raio, cruz, check, banner).
 /// Módulo irmão de `shapes`.
 mod symbols;
+mod symbols_rig;
 pub use symbols::{banner, bolt, check, cross, drop, gear, heart, moon, shield, tag};
+pub use symbols_rig::{bone, rope_segment};
 
 /// Os BALÕES (fala · pensamento · nuvem · explosão · chave). Família própria: o que os
 /// define é o RABO (a ponta que aponta para quem fala) e a costura de arcos tangentes da

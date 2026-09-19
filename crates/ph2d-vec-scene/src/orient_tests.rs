@@ -105,6 +105,14 @@ fn declared(k: ShapeKind) -> YOrient {
         // de dentes a tornaria assimétrica, mas aí o "cima" seria decorativo: engrenagem
         // não tem cima. Declarar `Symmetric` aqui é a verdade, não uma dispensa.
         ShapeKind::Gear => Symmetric,
+        // O OSSO: a junta fica à esquerda e a ponta à direita, e os DOIS ombros são
+        // espelhos um do outro na meia-altura — o olho da junta também lá está. A
+        // assimetria é em **X**, como a da etiqueta e a da lua. *Um osso de cabeça para
+        // baixo é o mesmo osso; o que ele não pode é apontar para trás.*
+        ShapeKind::Bone => Symmetric,
+        // O SEGMENTO DE CORDA: o cordão é centrado (`0,5 ∓ c/2`) e os dois nós são iguais
+        // — simétrico nos DOIS eixos, como a cruz.
+        ShapeKind::RopeSegment => Symmetric,
 
         // ── Tem cima, e o predicado prova para que lado ─────────────────────
         // Lado ÍMPAR: uma ponta no topo, duas âncoras na base (a estrela idem).

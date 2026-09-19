@@ -17,7 +17,7 @@
 //! | fileira | o que tem | o que se vê |
 //! |---|---|---|
 //! | de cima | `motion.grid` → `motion.output` | **marcas** — cruzes, uma por posição, e mais nada |
-//! | de baixo | o MESMO grid → `motion.duplicator` ← `source.shape` | as **peças** |
+//! | de baixo | o MESMO grid → `motion.duplicator` ← `source.shape` (**Bone**) | as **peças** |
 //!
 //! ⚠️⚠️ **A metade de baixo é o CONTROLO, e sem ela a de cima não ensina nada:** *«não desenha»* e
 //! *«está partido»* têm exactamente o mesmo aspecto no ecrã, e o que os separa é ver a mesma nuvem
@@ -49,7 +49,12 @@ const DESCIDA: f32 = -(LADO * VAO + 4.0 * VAO);
 
 /// Constrói o documento. `None` se algum tipo de nó não estiver registado.
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
-    let circulo = super::sim_demo::indice_de(reg, "source.shape", "kind", "Circle")?;
+    // ⭐ **O OSSO e não um círculo** — ordem do dono (2026-09-19): *«no caso dos ossos e
+    // segmentos de corda, criaremos no nó shape formas similares para isso»*. A fileira de baixo
+    // é a mesma nuvem da de cima, vestida com a forma que substituiu o gizmo retirado ⇒ *a cena
+    // mostra as duas metades da ordem dele de uma vez*: em cima as posições nuas, em baixo o que
+    // um `Duplicator` faz com elas quando há uma forma.
+    let osso = super::sim_demo::indice_de(reg, "source.shape", "kind", "Bone")?;
     let g = &mut doc.graph;
     let no = |g: &mut ph2d_nodegraph::graph::Graph, tipo: &str, x: f32, y: f32| {
         let n = g.add_node(tipo.to_string());
@@ -91,7 +96,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     let com_forma = no(g, "motion.grid", 0.0, 260.0);
     let corpo = grade(g, com_forma, DESCIDA);
     let forma = no(g, "source.shape", 0.0, 380.0);
-    g.set_param(forma, ph2d_node_motion_shape::param::KIND, circulo);
+    g.set_param(forma, ph2d_node_motion_shape::param::KIND, osso);
     g.set_param(forma, ph2d_node_motion_shape::param::SIZE, TAMANHO);
     let dup = no(g, "motion.duplicator", 220.0, 320.0);
     let saida_b = no(g, "motion.output", 420.0, 320.0);
@@ -124,7 +129,7 @@ pub(super) fn announce() {
          \n\
          (1) Olhe a fileira DE CIMA: sao CRUZINHAS, uma por posicao — nao ha' quadrado nenhum.\n    \
          Elas sao do EDITOR: nao entram no que o app entrega.\n\
-         (2) Olhe a de BAIXO: as mesmas posicoes, agora com circulos. E' o que um Duplicator faz.\n\
+         (2) Olhe a de BAIXO: as mesmas posicoes, agora com OSSOS. E' o que um Duplicator faz.\n\
          (3) Clique no cartao `Grid` de cima. Ele tem um (!) no canto — carregue nele e leia.\n\
          (4) No mesmo cartao, mexa em `Gap X` / `Gap Y`: as cruzes AFASTAM-SE, e o centro da\n    \
          nuvem fica parado. (Era isto que estava quebrado no report do `gap y`.)\n\

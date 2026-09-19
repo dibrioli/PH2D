@@ -60,6 +60,8 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
             ShapeKind::IsoCube as i32,
             ShapeKind::IsoCone as i32,
             ShapeKind::IsoPyramid as i32,
+            ShapeKind::Bone as i32,
+            ShapeKind::RopeSegment as i32,
         ],
     },
     ParamGate {
@@ -132,6 +134,11 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
             ShapeKind::IsoCube as i32,
             ShapeKind::IsoCone as i32,
             ShapeKind::IsoPyramid as i32,
+            // ⚠️ **O gate do PRODUTO é que as pôs aqui:** nenhuma das duas recebe um raio na
+            // receita, logo as duas caem no arredondamento GERAL e o `corner` MOVE a forma
+            // delas. *Escrever a lista de cabeça teria escondido um knob vivo.*
+            ShapeKind::Bone as i32,
+            ShapeKind::RopeSegment as i32,
         ],
     },
     ParamGate {
@@ -152,7 +159,10 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
     ParamGate {
         param: param::HOLE,
         when: param::KIND,
-        values: &[ShapeKind::Gear as i32],
+        // ⭐ O OLHO DA JUNTA do osso faz a MESMA pergunta que o miolo da engrenagem
+        // (*«que fracção do material é furo?»*) — e é ele que devolve o ANEL que o gizmo
+        // desenhava na junta, agora como furo de uma forma preenchida.
+        values: &[ShapeKind::Gear as i32, ShapeKind::Bone as i32],
     },
     // ⚠️ **A FAMÍLIA DO CÍRCULO é UMA forma na biblioteca**, e estas quatro espécies são
     // os atalhos dela: `ellipse_sweep` recebe `sweep`/`start`/`inner`, e a `Segment` é a
@@ -186,6 +196,9 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
             ShapeKind::Circle as i32,
             ShapeKind::Ellipse as i32,
             ShapeKind::Pie as i32,
+            // ⭐ No SEGMENTO DE CORDA o `inner` é a espessura do CORDÃO — *«o raio interno
+            // como fracção do externo»*, que é à letra o que separa o fio do nó.
+            ShapeKind::RopeSegment as i32,
         ],
     },
     // Os desvios por canto e a suavização são do ROUND-RECT, e as duas espécies que o

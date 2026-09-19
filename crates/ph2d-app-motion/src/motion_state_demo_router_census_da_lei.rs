@@ -9,34 +9,7 @@
 //! ⚠️ Um censo **não é um gate**: ele devolve o NÚMERO com que se escolhe a lei seguinte.
 //! Corra-os com `-- --ignored --nocapture`.
 
-use super::tests::shape_origin;
 use super::*;
-
-/// **A coluna `size` da corrente, como multiplicador por elemento** — `None` quando ela não a traz.
-///
-/// ⚠️ Estas leituras viviam no gizmo de posições, que a ordem do dono de 2026-09-19 RETIROU
-/// (*«retire tudo relacionado a gizmos desses nós»*). Elas ficam aqui porque o que as sondas abaixo
-/// medem é a **CORRENTE** — um facto sobre o que as cenas autoram —, e isso sobrevive ao desenho.
-///
-/// ⚠️ Uma coluna `Vec2` colapsa na MÉDIA dos eixos: as sondas perguntam *«que números o `size`
-/// tem»*, e um par não cabe num histograma de um eixo.
-fn escalas_da_corrente(s: &ph2d_nodegraph::attr::Stream) -> Option<Vec<f32>> {
-    use ph2d_nodegraph::attr::Column;
-    match s.get("size") {
-        Some(Column::Scalar(v)) => Some(v.to_vec()),
-        Some(Column::Vec2(v)) => Some(v.iter().map(|e| (e[0] + e[1]) * 0.5).collect()),
-        _ => None,
-    }
-}
-
-/// **A coluna `rot` da corrente, em graus** — `None` quando ela não a traz. Irmã da acima.
-fn rotacoes_da_corrente(s: &ph2d_nodegraph::attr::Stream) -> Option<Vec<f32>> {
-    use ph2d_nodegraph::attr::Column;
-    match s.get("rot") {
-        Some(Column::Scalar(v)) => Some(v.to_vec()),
-        _ => None,
-    }
-}
 
 /// ⭐⭐⭐ **QUEM DESENHA PIXELS SEM NUNCA TER RECEBIDO UMA FORMA** — a sonda que a ordem do dono
 /// de 2026-09-19 obriga a correr ANTES de qualquer cura (§5.0, e o [doc 115] §14.2 por escrito).

@@ -630,6 +630,25 @@ pub const SHAPES: &[ShapeDesc] = &[
         group: ShapeGroup::Iso,
         fields: &[frac("Rise", 0.1, 0.9), frac("Skew", 0.1, 0.9), VIEWED],
     },
+    // ── Rig — o que os gizmos dos nós de posição desenhavam até 2026-09-19 ────────────────
+    //
+    // ⚠️ **Eles entram AQUI porque o gate o exige**, e é o desenho certo: o
+    // `every_cookable_shape_has_a_ui_descriptor_and_fits_the_field_cap` recusa uma forma que o
+    // `cook` sabe fazer e que o editor vectorial não sabe oferecer. *Uma forma alcançável só por
+    // um nó do grafo seria metade de uma forma* — e o artista que a visse numa cena não teria
+    // como a desenhar à mão.
+    ShapeDesc {
+        kind: ShapeKind::Bone,
+        label: "Bone",
+        group: ShapeGroup::Symbols,
+        fields: &[frac("Eye", 0.0, 1.0)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::RopeSegment,
+        label: "Rope Segment",
+        group: ShapeGroup::Symbols,
+        fields: &[frac("Cord", 0.05, 0.95), frac("Node", 0.05, 0.45)],
+    },
 ];
 
 // A travessia (descritor · unidade · clamp · escolhas) mora no módulo irmão, mas a porta é

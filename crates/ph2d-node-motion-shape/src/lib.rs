@@ -111,6 +111,12 @@ pub enum ShapeKind {
     IsoCube,
     IsoCone,
     IsoPyramid,
+    /// **O OSSO** — a silhueta de armadura que o gizmo dos nós de posição desenhava até
+    /// 2026-09-19, agora como CONTEÚDO. Ordem do dono: *«no caso dos ossos e segmentos de corda,
+    /// criaremos no nó shape formas similares para isso»*.
+    Bone,
+    /// **O SEGMENTO DE CORDA** — o cordão com um nó em cada ponta, o par do [`Self::Bone`].
+    RopeSegment,
 }
 
 /// The dropdown labels — index-aligned to [`ShapeKind`] (the `Enum` widget stores
@@ -159,6 +165,8 @@ pub static KIND_LABELS: &[&str] = &[
     "node.opts.node_motion_shape.kind_labels.40",
     "node.opts.node_motion_shape.kind_labels.41",
     "node.opts.node_motion_shape.kind_labels.42",
+    "node.opts.node_motion_shape.kind_labels.43",
+    "node.opts.node_motion_shape.kind_labels.44",
 ];
 
 /// Every kind, in WIRE ORDER — the one list `from_index`, the labels and the
@@ -208,6 +216,8 @@ pub static ALL_KINDS: &[ShapeKind] = &[
     ShapeKind::IsoCube,
     ShapeKind::IsoCone,
     ShapeKind::IsoPyramid,
+    ShapeKind::Bone,
+    ShapeKind::RopeSegment,
 ];
 
 impl ShapeKind {

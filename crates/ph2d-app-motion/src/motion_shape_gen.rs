@@ -217,6 +217,8 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
                 ShapeKind::IsoCube => VecKind::IsoCube,
                 ShapeKind::IsoCone => VecKind::IsoCone,
                 ShapeKind::IsoPyramid => VecKind::IsoPyramid,
+                ShapeKind::Bone => VecKind::Bone,
+                ShapeKind::RopeSegment => VecKind::RopeSegment,
                 // The eight above are handled by name; this arm cannot be reached
                 // for them, and the compiler is what keeps that true when a kind is
                 // appended.
@@ -247,6 +249,26 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
                 // `0,12` da biblioteca é tomado sobre o semi-eixo unitário, então em `size = 1`
                 // isto é byte-idêntico ao que sempre saiu.
                 VecKind::SpeechRect => v[0] *= s,
+                // ⭐ **O OSSO e o SEGMENTO DE CORDA** (ordem do dono, 2026-09-19: *«no caso dos
+                // ossos e segmentos de corda, criaremos no nó shape formas similares»*), e os
+                // knobs que eles lêem são os que a semântica já tinha:
+                //
+                // - o `hole` é o OLHO da junta — a mesma pergunta que ele faz à engrenagem
+                //   (*«que fracção do miolo é furo?»*), e é ele que devolve o ANEL que o gizmo
+                //   desenhava na junta;
+                // - o `inner` é a espessura do CORDÃO — *«o raio interno como fracção do
+                //   externo»*, que é à letra o que separa o fio do nó.
+                //
+                // ⚠️ **O `head` do segmento fica no valor da biblioteca**: um segundo knob aqui
+                // seria um editor de corda, e o pedido era *«formas similares»* às que havia.
+                VecKind::Bone => v[0] = f64::from(p.hole.clamp(0.0, 1.0)),
+                // ⚠️⚠️ **A SENTINELA, e ela é obrigatória aqui:** o `inner` de fábrica é `0`, e
+                // um cordão de espessura zero é um segmento com dois nós e NENHUM fio entre
+                // eles — a forma de fábrica sairia degenerada. `0` quer dizer *«como a forma
+                // nasce»*, que é exactamente a lei que o `sweep` desta receita já carrega (ver
+                // o `swept`, e o gate `the_seven_new_knobs_are_neutral_at_their_defaults`, que
+                // é quem a cobra).
+                VecKind::RopeSegment if p.inner != 0.0 => v[0] = inner,
                 _ => {}
             }
             (k, box_.0, box_.1, v)

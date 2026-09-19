@@ -92,6 +92,9 @@ pub enum ShapeKind {
     IsoCube = 45,
     IsoCone = 46,
     IsoPyramid = 47,
+    // ── Rig (o que os gizmos de posição desenhavam até 2026-09-19) ────────────
+    Bone = 48,
+    RopeSegment = 49,
 }
 
 /// Todas as formas, na ordem do enum — a fonte de verdade que a UI itera.
@@ -143,6 +146,8 @@ pub const ALL_SHAPES: &[ShapeKind] = &[
     ShapeKind::IsoCube,
     ShapeKind::IsoCone,
     ShapeKind::IsoPyramid,
+    ShapeKind::Bone,
+    ShapeKind::RopeSegment,
 ];
 
 impl ShapeKind {
@@ -303,6 +308,22 @@ impl ShapeKind {
                 v[1] = 0.5;
             }
             ShapeKind::IsoCone => v[0] = 0.2,
+            // ⭐ **O osso nasce COM o olho da junta** — que é o anel que o gizmo substituído
+            // desenhava ali. ⚠️ **O número (`0,45`) não é escolhido: é o `hole` de fábrica do
+            // `source.shape`**, e alinhá-los é o que o gate `the_seven_new_knobs_are_neutral_at_
+            // _their_defaults` cobra — *um nó que entrega à biblioteca um valor diferente do que
+            // ela tem por omissão desenha, de fábrica, uma forma que ninguém autorou.*
+            // ⚠️⚠️ **E ele atravessa a MESMA conversão que o nó**: o `hole` do `source.shape` é
+            // `f32`, e `0.45_f32 as f64` é `0.44999998807907104` — um `0.45` escrito em `f64`
+            // aqui discorda no sétimo decimal e o gate reprova, **com razão**. *Um oráculo que
+            // não passa pela conversão do produto mede outro número.*
+            ShapeKind::Bone => v[0] = f64::from(0.45_f32),
+            // O cordão a `0,3` da altura e o nó a `0,2` do comprimento: as proporções do
+            // gizmo que esta forma substitui, onde o nó lia claramente mais gordo que o fio.
+            ShapeKind::RopeSegment => {
+                v[0] = 0.3;
+                v[1] = 0.2;
+            }
             ShapeKind::Rectangle
             | ShapeKind::Line
             | ShapeKind::Diamond
@@ -418,6 +439,8 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
         ShapeKind::IsoCube => crate::iso_cube(a, b, f(v, 0), f(v, 1), f(v, 2) >= 0.5),
         ShapeKind::IsoCone => crate::iso_cone(a, b, f(v, 0), f(v, 1) >= 0.5),
         ShapeKind::IsoPyramid => crate::iso_pyramid(a, b, f(v, 0), f(v, 1), f(v, 2) >= 0.5),
+        ShapeKind::Bone => crate::bone(a, b, f(v, 0)),
+        ShapeKind::RopeSegment => crate::rope_segment(a, b, f(v, 0), f(v, 1)),
     }
 }
 

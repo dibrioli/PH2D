@@ -125,6 +125,56 @@ impl PenTool {
         Some(PenClick::Inserted)
     }
 
+    /// ⭐⭐⭐ **ONDE UM CLIQUE PORIA UM PONTO** — o ponto de MUNDO, ou `None` se o cursor não está
+    /// sobre a linha da forma selecionada.
+    ///
+    /// ⛔⛔ **Report do dono, 2026-09-19: *«não tem indicação visual que você está em cima da linha
+    /// para criar um ponto»*.** O gesto existia e era **invisível**: o artista tinha de adivinhar a
+    /// que distância da curva o clique deixa de acrescentar um ponto e passa a começar uma forma
+    /// nova — *duas coisas muito diferentes, sem nada na tela a separá-las*.
+    ///
+    /// ⭐ **Ela é a MESMA porta que o clique usa** ([`Self::insert_hit`]), e é isso que faz o que se
+    /// vê ser exactamente o que vai acontecer. *Um realce calculado por uma segunda conta promete um
+    /// sítio e entrega outro — o defeito que o realce do Trim e o do Balde já nomeiam por escrito.*
+    #[must_use]
+    pub fn previa_de_insercao(
+        &self,
+        scene: &VecScene,
+        p: [f64; 2],
+        px_to_world: f64,
+    ) -> Option<[f64; 2]> {
+        // ⚠️ **O raio é decidido AQUI e não pelo chamador**, com a mesma linha do
+        // [`PenTool::on_press`]: é isso que faz o realce acender exactamente onde o clique
+        // acrescenta. *Um raio passado de fora seria a segunda resposta à mesma pergunta, e o
+        // artista veria a marca acender num sítio em que o clique já não insere.*
+        let (sel, seg, t) = self.insert_hit(scene, p, NODE_HIT_PX * px_to_world)?;
+        let path = scene.paths().iter().find(|pp| pp.id == sel)?;
+        let (c, local) = path.locate_segment(seg)?;
+        let (verts, _) = path.contour(c)?;
+        let n = verts.len();
+        let (a, b) = (&verts[local], &verts[(local + 1) % n]);
+        let t = t.clamp(0.0, 1.0);
+        let u = 1.0 - t;
+        let (w0, w1, w2, w3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+        let ponto = [
+            w3.mul_add(
+                b.anchor[0],
+                w2.mul_add(
+                    b.in_handle[0],
+                    w1.mul_add(a.out_handle[0], w0 * a.anchor[0]),
+                ),
+            ),
+            w3.mul_add(
+                b.anchor[1],
+                w2.mul_add(
+                    b.in_handle[1],
+                    w1.mul_add(a.out_handle[1], w0 * a.anchor[1]),
+                ),
+            ),
+        ];
+        Some(self.to_world(sel, ponto))
+    }
+
     /// ⭐⭐⭐ **ONDE a caneta acabou de inserir um vértice** — `(caminho, segmento, t)`, uma vez só.
     ///
     /// ⛔⛔ **Ela existe porque uma forma PRESA a um esqueleto não se edita no documento vivo.** O

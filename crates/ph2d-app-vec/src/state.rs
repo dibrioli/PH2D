@@ -190,6 +190,14 @@ pub struct VecState {
     /// A geometria do realce, em MUNDO — derivada do [`Self::trim_hit`] no mesmo quadro.
     pub trim_piece: Vec<ph2d_vec_scene::VecPath>,
 
+    /// ⭐⭐⭐ **ONDE UM CLIQUE DA CANETA PORIA UM PONTO**, em MUNDO — `None` fora do modo Pen ou com o
+    /// cursor longe da linha da forma selecionada.
+    ///
+    /// ⛔ Report do dono, 2026-09-19: *«não tem indicação visual que você está em cima da linha para
+    /// criar um ponto»*. ⚠️ Ele é **derivado por quadro** e vive ao lado do [`Self::trim_piece`] pela
+    /// mesma razão: os dois respondem a *«o que este clique faria?»* para gestos que apontam.
+    pub previa_insercao: Option<[f64; 2]>,
+
     /// A sessão de **Blend** aberta (as duas fontes + o escape + os passos produzidos).
     /// É ela que faz o *Rotate Match* re-rodar na hora, em vez de o artista ter de desfazer e
     /// adivinhar (`crate::blend`).

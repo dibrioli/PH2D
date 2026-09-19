@@ -56,7 +56,7 @@ diz onde ler o mecanismo:
 | **F11** | ✅ **Imagens em 9 fatias e folhas de quadros DEFORMAM com os ossos** (ordem do dono, 2026-09-17) | ✅ **FECHADO** — ver F11 abaixo |
 | **F21** | ✅ **A cena dedicada do ENVELOPE** (*«melhor montar uma cena específica para me mostrar isso»*, 2026-09-18) | ✅ **FECHADA em 2026-09-19 — e ela REFUTOU a lei da F20**: o envelope é inerte em toda forma FECHADA (amplitude `0,000000` numa faixa de `80 ×`), porque uma forma fechada também usa o padrão-ouro desde 15/09. A lei passou a perguntar ao **BIND** e não à mídia. Cena **`PH2D_VEC_BONE_SMOKE=2`** — ver F21 abaixo |
 | **F22** | ⭐⭐⭐ **A ESCOLHA da lei de pele, POR DESENHO** (ordem do dono, 2026-09-19: *«construa. por desenho»*) | ✅ **FECHADA no mesmo dia** — fileira **`Deform By`** (`Artwork` \| `Bone Reach`) no painel Bones, por DESENHO e para as duas mídias. ⭐ A escolha diz se o quadro **LÊ** a tabela do padrão-ouro, nunca se a calcula ⇒ a volta é **exacta ao bit** e não re-resolve nada. `PROJECT_SCHEMA` **+1** — ver F22 abaixo |
-| **F28** | ⭐⭐⭐ **UM PONTO NOVO NUMA FORMA PRESA** (a 1.ª das duas saídas da F26, escolhida pelo dono: *«primeiro 1 e depois o 2»*) | ✅ **FECHADA no mesmo dia.** A caneta acrescenta controlo onde o artista quer e ele **sobrevive ao quadro**, já com peso (a mistura dos dois vizinhos). ⛔⛔ A nota que dizia *«custo: zero de arquitectura»* estava **errada e foi medida**: o ponto evaporava-se, sem erro e sem aviso. Zero schema, zero registo — ver F28 abaixo |
+| **F28** | ⭐⭐⭐ **UM PONTO NOVO NUMA FORMA PRESA** (a 1.ª das duas saídas da F26, escolhida pelo dono: *«primeiro 1 e depois o 2»*) | ✅ **FECHADA**, e o smoke dela REPROVOU a 1.ª versão. O ponto sobrevive ao quadro, já nasce com peso, **o desenho não salta** (`18,89 % → 0,000000 %`) e a caneta MOSTRA onde o clique poria o nó. ⛔⛔ Duas conclusões minhas caíram: *«custo zero de arquitectura»* (medido: o ponto evaporava-se) e *«o salto é refinamento»* (o dono recusou — ver F28-b) |
 | **F27** | ⭐⭐⭐ **O CENSO DOS VERBOS DO OSSO** (o aberto que a F16 deixou por escrito) | ✅ **FECHADO no mesmo dia — ZERO verbos mortos.** Os catorze botões chegam a um efeito, medidos pela captura que o undo tira. ⛔⛔ E uma **mutação sobreviveu**: apagado o corpo do braço do *Add Smart Bone* na fase do quadro, **23 testes da shell ficaram verdes** — o terceiro elo do §5.0 não tinha instrumento nenhum. Zero schema, zero registo — ver F27 abaixo |
 | **F26** | ⭐⭐⭐ **CORRIGIR UM PESO À MÃO** (auditoria, 2026-09-19) | ✅ **FECHADA no mesmo dia** — o 3.º verbo do osso (**`Weight`**) pinta a influência sobre a arte presa, com os pesos **à vista** por baixo do pincel. A correcção é uma **MANCHA no espaço** (nunca uma tabela por vértice) e é ancorada no **REPOUSO** do ponto que o dedo aponta. `PROJECT_SCHEMA` **+1** — ver F26 abaixo |
 
@@ -497,6 +497,73 @@ Zero contador partilhado, zero contrato, zero ADR. Tecto de LOC curado por **COR
 roteiro saíram para `smoke_bone_roteiro_tests.rs`), nunca por isenção.
 
 ⏳ **ABERTO:** a 2.ª saída que o dono pediu a seguir — **deformar a forma por uma MALHA**.
+
+#### ⛔⛔⛔ F28-b — O SMOKE REPROVOU-A, com DOIS reports, e o primeiro derrubou uma conclusão MINHA
+
+*«não ficou bom. O ponto criado na malha já conectada aos ossos deforma a malha»* · *«não tem
+indicação visual que você está em cima da linha para criar um ponto»* (2026-09-19).
+
+**(1) O SALTO DA FORMA ERA UM DEFEITO, e eu tinha-lhe chamado refinamento.** A F28 mediu o salto,
+mostrou que a escada da subdivisão converge, concluiu *«é a aproximação a ser refinada»* e **disse-o
+ao dono como se fosse normal**. ⛔ *A régua dele é a que manda: o desenho é o que o artista vê.* A
+conclusão não era falsa — era uma explicação a fazer de veredito.
+
+⭐⭐⭐ **A cura é uma INVERSÃO, e ela sai da própria estrutura da lei:** o `recook` lê **uma** linha de
+pesos — a da âncora — e aplica-a às três metades do vértice; com essa linha fixa, `x ↦ blend(x, w)` é
+um **AFIM**. ⇒ o corte faz-se no **DESENHO** (de Casteljau sobre os pontos de controlo já deformados)
+e o ponto de repouso que desenha em `X` é `L⁻¹(X − c)`, com `L` e `c` lidos por **três** avaliações da
+própria porta — sem uma segunda cópia da lei.
+
+| fixtura | ANTES | AGORA |
+|---|---|---|
+| aresta CRUA (um segmento sobre os dois ossos) | `18,89 %` da peça | **`0,000000 %`** |
+| aresta DESENHADA em 8, pior segmento (o da junta) | `0,91 %` | **`0,000023 %`** |
+| escada `1 → 2 → 4 → 8` | `18,89 → 3,13 → 1,00 %` | **`~1e-14`** nos três |
+
+⭐⭐ **Os dois vizinhos não entram na conta, e é por isso que a lei é barata:** o `out` do anterior e o
+`in` do seguinte já saem certos **ao bit** — eles são combinações afins de pontos que usam o MESMO
+peso, logo o corte comuta com a deformação ali. *Só o vértice do meio mistura os pesos das duas
+pontas.*
+
+⭐ **Em REPOUSO a compensação é a IDENTIDADE ao bit** (toda pose é a identidade ⇒ `L = I`, `c = 0`), e
+há gate a afirmá-lo. *Ela só existe onde há deformação para preservar.*
+
+⚠️ **O preço, declarado:** o que absorve a diferença é a geometria de REPOUSO. Acrescentar um ponto
+com o rig POSADO deixa o repouso deslocado do corte ingénuo pela mesma grandeza que o desenho
+deixaria de saltar. ⛔ **As duas coisas não podem ser preservadas ao mesmo tempo** (só o seriam se as
+duas pontas do segmento tivessem o mesmo peso), e a escolha é a do dono: *o desenho é o que ele vê*.
+
+⚠️⚠️ **O número de PASSAGENS ficou observável por uma MUTAÇÃO SOBREVIVENTE, e a fixtura mordeu DUAS
+vezes antes de conter o fenómeno.** A linha de pesos depende da POSIÇÃO (as manchas do pincel, o
+`quota` de um osso que dobra), e mover a âncora muda-a ⇒ a compensação repete. Mas no corpus de então
+**nada** dependia da posição, e `1` passava. A fixtura nova é uma forma com mancha pintada, e ela
+falhou duas vezes: a 1.ª punha o ponto no **cume** da bolha, onde o `clamp(0,1)` **satura** e o peso
+volta a ser constante (*uma mancha saturada não é uma mancha, é um planalto*); a 2.ª escrevia o braço
+de «uma passagem» à mão e **não fazia crescer a tabela de pesos** (*um controlo que não percorre a
+MESMA porta compara dois programas*). Com ela: `0,0772 → 0,0014 → 2,6e-5 → 4,7e-7 → 0` — cada
+passagem divide por **~55**, e **`6`** é onde a escada acaba. ⛔ E uma saída antecipada por
+convergência **SAIU** por outra mutação sobrevivente: ela não muda um bit, só poupa passagens de custo
+nulo.
+
+**(2) A PRÉVIA DE INSERÇÃO — o gesto existia e era INVISÍVEL.** O artista tinha de adivinhar a que
+distância da curva o clique deixa de acrescentar um ponto e passa a **começar uma forma nova** —
+*duas coisas muito diferentes, sem nada na tela a separá-las*. ⇒ um anel VERDE e OCO com uma CRUZ,
+no ponto onde o clique poria o nó.
+
+⭐⭐ **A posição e o RAIO vêm da porta do clique** (`PenTool::previa_de_insercao` chama o `insert_hit`
+e decide o raio com a mesma linha do press) — *um realce calculado por uma segunda conta acende num
+sítio e insere noutro*, o defeito que os realces do Trim e do Balde já nomeiam por escrito. ⚠️ E ele
+é **derivado por quadro** e **LIMPO fora do modo Pen**: um realce deixado a arder depois de trocar de
+ferramenta promete um ponto que nenhum clique põe.
+
+⚠️ **As três metades têm gates separados porque são três defeitos:** ninguém calcula (nunca acende) ·
+ninguém pinta (o report volta inteiro com o trabalho feito por baixo) · e acende onde o clique **não**
+insere (pior do que não acender). ⛔ **O que NÃO se pôde fotografar:** o realce precisa do cursor
+sobre a linha, e o XTest da sessão virtual é ignorado — *a foto prova o que abre, não o que passa o
+rato*.
+
+Portão: `fmt` limpo · clippy `-D warnings` a zero · `nextest-impacted` **15 630 verdes** · mutação **9 de 9** a sangrar (duas sobreviveram primeiro: uma virou fixtura e a outra matou a
+linha). Zero contador partilhado, zero contrato, zero ADR.
 
 ### F27 — ⭐⭐⭐ **O CENSO DOS VERBOS DO OSSO: o clique chega a um EFEITO?** (2026-09-19)
 

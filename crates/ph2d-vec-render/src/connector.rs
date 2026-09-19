@@ -92,3 +92,53 @@ pub fn draw_connector_waypoints(points: &[[f64; 2]], transform: Affine, target: 
         );
     }
 }
+
+/// A **prévia de inserção** — onde um clique da caneta poria um ponto.
+///
+/// ⚠️ **VERDE e OCA, e as duas coisas carregam significado:** a cor é a das pontas flutuantes (algo
+/// que ainda não existe), e o miolo vazio diz que ali **não há** nó — um disco cheio leria-se como
+/// uma âncora já posta, que é a coisa que o artista está a tentar distinguir.
+const PREVIA: Color = Color::from_rgba8(90, 210, 130, 255);
+
+/// ⭐⭐⭐ **Desenha a prévia de inserção da caneta**, num ponto de MUNDO.
+///
+/// ⛔ Report do dono, 2026-09-19: *«não tem indicação visual que você está em cima da linha para
+/// criar um ponto»*. ⚠️ O raio é constante em PÍXEIS (o ponto sobe pelo afim e o raio não), como nas
+/// alças ao lado — um realce que encolhe com o zoom desaparece exactamente quando se aproxima para
+/// acertar.
+pub fn draw_insert_preview(world: [f64; 2], transform: Affine, target: &mut VectorScene) {
+    let p = transform * Point::new(world[0], world[1]);
+    let c = Circle::new(p, HANDLE_R_PX);
+    // O anel branco por baixo destaca de qualquer fundo — a própria linha da forma passa por ali.
+    target.inner_mut().stroke(
+        &Stroke::new(3.0),
+        Affine::IDENTITY,
+        &Brush::Solid(RING),
+        None,
+        &c,
+    );
+    target.inner_mut().stroke(
+        &Stroke::new(1.5),
+        Affine::IDENTITY,
+        &Brush::Solid(PREVIA),
+        None,
+        &c,
+    );
+    // A CRUZ no meio: ela diz *acrescentar*, e é o que separa este realce de uma âncora existente.
+    let b = HANDLE_R_PX * 0.55;
+    for (a, z) in [
+        ((p.x - b, p.y), (p.x + b, p.y)),
+        ((p.x, p.y - b), (p.x, p.y + b)),
+    ] {
+        let mut l = BezPath::new();
+        l.move_to(Point::new(a.0, a.1));
+        l.line_to(Point::new(z.0, z.1));
+        target.inner_mut().stroke(
+            &Stroke::new(1.5),
+            Affine::IDENTITY,
+            &Brush::Solid(PREVIA),
+            None,
+            &l,
+        );
+    }
+}

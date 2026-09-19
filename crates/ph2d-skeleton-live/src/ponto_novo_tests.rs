@@ -222,7 +222,7 @@ fn o_ponto_novo_quase_nao_move_a_forma() {
 
 /// A curva desenhada, amostrada — o que o olho vê, e não os pontos de controlo.
 fn polilinha(cena: &VecScene, id: VecPathId) -> Vec<[f64; 2]> {
-    const AMOSTRAS: usize = 24;
+    const AMOSTRAS: usize = 400;
     let Some(caminho) = cena.path(id) else {
         return Vec::new();
     };
@@ -257,32 +257,33 @@ fn polilinha(cena: &VecScene, id: VecPathId) -> Vec<[f64; 2]> {
     out
 }
 
-/// ⭐⭐⭐ **E a CURVA desenhada — o número que o doc do módulo afirma, nos DOIS lados.**
+/// ⭐⭐⭐ **O DESENHO NÃO SALTA AO GANHAR UM PONTO** — a lei, com o controlo positivo dentro.
 ///
-/// As âncoras ficam exactas (o gate acima), mas as ALÇAS mudam: o corte de de Casteljau reescreve o
-/// `out` do vizinho anterior e o `in` do seguinte. ⚠️ **É aí que o desvio mora**, e ele é inerente:
-/// o desenho cozido é a Bézier dos pontos de controlo **deformados**, e não a imagem verdadeira da
-/// curva de repouso pela pele — logo ele já é uma aproximação, e cada pedaço a mais refina-a (ver
-/// `a_escada_da_subdivisao_diz_se_o_salto_e_refinamento`, que mede a convergência).
+/// ⛔⛔⛔ **Este gate SUBSTITUI o `a_curva_desenhada_move_se_o_que_o_peso_varia_no_segmento`, que
+/// afirmava o CONTRÁRIO** — que a curva *tinha* de se mexer, que isso era refinamento e que a
+/// catraca media quanto. **Report do dono, 2026-09-19: *«o ponto criado na malha já conectada aos
+/// ossos deforma a malha»*.** Eu tinha medido o salto, chamado-lhe refinamento e dito-lhe que era
+/// normal; *a régua dele é a que manda, porque o desenho é o que o artista vê.*
 ///
-/// ⛔⛔ **A barra é sobre a forma DESENHADA e não sobre a grosseira, e a razão está medida:** num
-/// rectângulo cru a aresta de baixo é **UM** segmento a atravessar os **dois** ossos, logo as duas
-/// pontas dele têm pesos opostos e o primeiro corte vale `~19 %` da peça. *Isso não é o custo de
-/// acrescentar um ponto — é o tamanho do erro que aquele único segmento já tinha*, e o corte
-/// mostra-o.
+/// | fixtura | ANTES (corte de repouso) | AGORA (com compensação) |
+/// |---|---|---|
+/// | aresta CRUA (um segmento sobre os dois ossos) | `18,89 %` da peça | **`0,0000 %`** |
+/// | aresta DESENHADA em 8, pior segmento | `0,91 %` | **`0,0000 %`** |
+/// | escada `1 → 2 → 4 → 8` | `18,89 → 3,13 → 1,00 %` | **`~1e-14`** em todos |
 ///
-/// ⚠️⚠️ **E o segmento medido é o PIOR de todos, não o primeiro.** A 1.ª redacção deste gate media o
-/// segmento `0` da aresta desenhada e leu **`0,0000 %`** — os dois extremos dele estão ambos dentro
-/// do primeiro osso, logo a lei preserva a forma **ao bit por construção** e a barra passava por
-/// **vácuo**. Quem o apanhou foi o controlo `gap`: *uma fixtura que não contém o fenómeno não prova
-/// que ele não aconteceu*. O sítio onde o peso varia é a **junta**.
+/// ⭐⭐ **O CONTROLO POSITIVO é o que impede este gate de ser vácuo:** ele corre a MESMA fixtura pelo
+/// caminho **sem** pele (`pele = None`), que é o corte de repouso de antes, e exige que ali a curva
+/// se mexa muito. *Sem ele, uma fixtura em que a pele é a identidade passaria com a compensação
+/// apagada.*
 ///
-/// ⭐ O segundo controlo é a pose em REPOUSO: ali o desvio tem de ser **zero ao bit**, senão o que se
-/// está a medir é o corte e não a deformação.
+/// ⚠️ **A régua amostra 400 pontos por segmento, e o número não é decoração:** com `24` ela lia
+/// `0,0059 %` sobre uma lei exacta — a distância que ela media era o erro de CORDA da própria
+/// polilinha grossa, não o da curva. *Uma régua discreta mede a discretização dela antes de medir o
+/// produto.*
 #[test]
-fn a_curva_desenhada_move_se_o_que_o_peso_varia_no_segmento() {
-    /// O salto ao inserir no segmento `seg`, em unidades de mundo.
-    fn salto(pedacos: usize, rotacao: f32, seg: usize) -> f64 {
+fn o_desenho_nao_salta_ao_ganhar_um_ponto() {
+    /// O salto ao inserir no segmento `seg`, em unidades de mundo. `compensa` desliga a lei nova.
+    fn salto(pedacos: usize, rotacao: f32, seg: usize, compensa: bool) -> f64 {
         let (mut sim, mut cena, mapa, id, [_, ponta]) = if pedacos <= 1 {
             palco()
         } else {
@@ -295,7 +296,20 @@ fn a_curva_desenhada_move_se_o_que_o_peso_varia_no_segmento() {
         crate::skin_live::recook(&sim, &mut cena);
         let antes = polilinha(&cena, id);
         assert!(antes.len() > 8, "a fixtura tem de ter curva para medir");
-        assert!(insere_ponto(&mut sim, &mapa, id, seg, 0.5).is_some());
+        if compensa {
+            assert!(insere_ponto(&mut sim, &mapa, id, seg, 0.5).is_some());
+        } else {
+            // ⛔ O caminho de ANTES, à mão: a fonte parte-se sem a pele, logo sem compensação.
+            let e = Entity::from_bits(*mapa.get(&id).expect("entidade"));
+            let skin = sim.world().get::<SkinBind>(e).expect("presa").clone();
+            let mut fonte = crate::skinned_mesh::le(&skin.source).expect("le");
+            let (_, bytes) = insere_na_fonte(&mut fonte, seg, 0.5, None, &[], PASSAGENS)
+                .expect("o corte de repouso");
+            sim.world_mut()
+                .get_mut::<SkinBind>(e)
+                .expect("presa")
+                .source = bytes;
+        }
         crate::skin_live::recook(&sim, &mut cena);
         polilinha(&cena, id)
             .iter()
@@ -306,7 +320,8 @@ fn a_curva_desenhada_move_se_o_que_o_peso_varia_no_segmento() {
     const PEDACOS: usize = 8;
     let diagonal = 40.0_f64.hypot(10.0);
 
-    // ⛔ O segmento onde o peso MAIS varia — e a fixtura tem de o conter.
+    // ⛔ O segmento onde o peso MAIS varia — e a fixtura tem de o conter, senão a lei preserva a
+    // forma AO BIT por construção e o gate passa por vácuo. O sítio é a JUNTA.
     let (sim, _c, mapa, id, _) = palco_desenhado(PEDACOS);
     let f = fonte(&sim, &mapa, id);
     let (pior_seg, gap) = (0..PEDACOS)
@@ -327,71 +342,59 @@ fn a_curva_desenhada_move_se_o_que_o_peso_varia_no_segmento() {
     assert!(
         gap > 1e-3,
         "nenhum segmento da aresta desenhada tem pesos diferentes nas pontas ({gap}) — a fixtura \
-         nao contem o fenomeno, e a barra abaixo passaria por vacuo"
+         nao contem o fenomeno"
     );
 
-    let repouso = salto(PEDACOS, 0.0, pior_seg);
-    let grosseiro = salto(1, 0.8, 0) / diagonal * 100.0;
-    let desenhado = salto(PEDACOS, 0.8, pior_seg) / diagonal * 100.0;
+    let crua = salto(1, 0.8, 0, true) / diagonal * 100.0;
+    let desenhada = salto(PEDACOS, 0.8, pior_seg, true) / diagonal * 100.0;
+    let repouso = salto(PEDACOS, 0.0, pior_seg, true);
+    let sem_lei = salto(1, 0.8, 0, false) / diagonal * 100.0;
     eprintln!(
-        "[ponto-novo] desvio da curva: repouso={repouso:.9} · aresta CRUA={grosseiro:.4} % · \
-         aresta DESENHADA em {PEDACOS} (pior segmento {pior_seg}, gap {gap:.4})={desenhado:.4} % da peca"
+        "[ponto-novo] salto da curva: aresta CRUA={crua:.6} % · DESENHADA em {PEDACOS} (pior \
+         segmento {pior_seg}, gap {gap:.4})={desenhada:.6} % · repouso={repouso:.9} · CONTROLO sem \
+         compensacao={sem_lei:.4} % da peca"
     );
+
+    // ⭐ **O CONTROLO POSITIVO, primeiro:** sem a lei nova esta mesma fixtura salta muito.
+    assert!(
+        sem_lei > 5.0,
+        "o caminho SEM compensacao saltou so' {sem_lei:.4} % — a fixtura deixou de conter o \
+         fenomeno, e as barras abaixo passam por vacuo"
+    );
+    for (nome, v) in [("crua", crua), ("desenhada", desenhada)] {
+        assert!(
+            v < 1e-3,
+            "a aresta {nome} saltou {v:.6} % da peca ao ganhar um ponto — o dono recusou isto por \
+             escrito: «o ponto criado na malha ja' conectada aos ossos deforma a malha»"
+        );
+    }
     assert!(
         repouso < 1e-9,
-        "em REPOUSO o corte mexeu na curva ({repouso}) — entao o defeito e' do corte e nao da \
-         deformacao, e esta regua esta' a medir a coisa errada"
-    );
-    // ⛔⛔ **CATRACA MEDIDA e não um limite escolhido.** *«Acima de X % o artista vê saltar»* seria
-    // um palpite — não há medição nenhuma por trás de um número desses. O que há é a MEDIÇÃO de
-    // hoje (`0,911 %` no pior segmento), e a regra desta casa para uma dívida tolerada: **ela só
-    // encolhe**. ⚠️ E com o censo de obsolescência ao lado, senão a catraca vira licença.
-    const CATRACA_PCT: f64 = 1.0;
-    assert!(
-        desenhado < CATRACA_PCT,
-        "no PIOR segmento de uma aresta desenhada com {PEDACOS} pedacos a curva mexeu \
-         {desenhado:.4} % da peca, contra a catraca de {CATRACA_PCT} % — a lei da mistura piorou"
-    );
-    assert!(
-        desenhado > CATRACA_PCT * 0.5,
-        "o salto caiu para {desenhado:.4} %, muito abaixo da catraca de {CATRACA_PCT} % — ou alguem \
-         melhorou a lei (e entao BAIXE a catraca, com o numero novo escrito aqui), ou a fixtura \
-         deixou de conter o fenomeno"
-    );
-    assert!(
-        grosseiro > desenhado * 4.0,
-        "a aresta CRUA ({grosseiro:.4} %) deixou de saltar muito mais que a desenhada \
-         ({desenhado:.4} %) — a fixtura grosseira ja' nao contem o fenomeno que esta nota explica"
+        "em REPOUSO o corte mexeu na curva ({repouso}) — ali a compensacao e' a IDENTIDADE ao bit, \
+         logo o que mexeu foi o corte, e esta regua esta' a medir a coisa errada"
     );
 }
 
-/// ⭐⭐⭐ **A MEDIÇÃO QUE DECIDE A LEI: o salto é CORRUPÇÃO ou é REFINAMENTO?**
+/// ⭐⭐⭐ **E NÃO SALTA EM NENHUMA PROFUNDIDADE** — cortar o mesmo segmento `1 → 2 → 4 → 8` vezes.
 ///
-/// ⚠️ **O desenho JÁ é uma aproximação.** O `recook` deforma **pontos de controlo** — a curva cozida
-/// é a Bézier desses pontos, e não a imagem verdadeira da curva de repouso pela pele (que é
-/// `t ↦ blend(repouso(t), peso(t))`, com o peso a variar ao longo do segmento). ⇒ *acrescentar um
-/// ponto aumenta o número de pedaços, e a pergunta é se a aproximação MELHORA*.
-///
-/// A escada mede `1 → 2 → 4 → 8` pedaços no mesmo segmento e compara cada degrau com o seguinte. Se
-/// os desvios **encolherem geometricamente**, a sequência converge e o salto do primeiro degrau é o
-/// preço de uma aproximação grosseira a ser refinada — não um defeito da lei.
+/// ⛔⛔ **Este gate SUBSTITUI o `a_escada_da_subdivisao_diz_se_o_salto_e_refinamento`, e a premissa
+/// dele MORREU.** Ele media se os saltos **encolhiam** (`18,89 → 3,13 → 1,00 %`) para provar que o
+/// desvio era uma aproximação a ser refinada. Com a compensação não há desvio nenhum para encolher:
+/// os três degraus leem `~1e-14`, que é a aritmética da máquina. *Uma escada que já não tem degraus
+/// não se mede pela inclinação.*
 #[test]
-fn a_escada_da_subdivisao_diz_se_o_salto_e_refinamento() {
+fn o_desenho_nao_salta_em_nenhuma_profundidade() {
     let construir = |cortes: usize| -> Vec<[f64; 2]> {
         let (mut sim, mut cena, mapa, id, [_, ponta]) = palco();
         sim.world_mut()
             .get_mut::<Transform>(ponta)
             .expect("Transform")
             .rotation = 0.8;
-        // Corta o segmento 0 repetidamente ao meio, sempre na metade esquerda e na direita.
         for _ in 0..cortes {
             let n = fonte(&sim, &mapa, id).path.verts_all().count();
-            // Todos os segmentos que vieram do original: eles são os primeiros `n_cortes`.
-            let segs: Vec<usize> = (0..n).collect();
-            for seg in segs.iter().rev() {
-                // só os segmentos da aresta de baixo (entre a âncora 0 e a que era a 1)
-                if *seg < cortes_da_aresta(&sim, &mapa, id) {
-                    let _ = insere_ponto(&mut sim, &mapa, id, *seg, 0.5);
+            for seg in (0..n).rev() {
+                if seg < cortes_da_aresta(&sim, &mapa, id) {
+                    let _ = insere_ponto(&mut sim, &mapa, id, seg, 0.5);
                 }
             }
         }
@@ -400,23 +403,115 @@ fn a_escada_da_subdivisao_diz_se_o_salto_e_refinamento() {
     };
     let degraus: Vec<Vec<[f64; 2]>> = (0..4).map(construir).collect();
     let diagonal = 40.0_f64.hypot(10.0);
-    let mut desvios = Vec::new();
-    for k in 0..degraus.len() - 1 {
-        let d = degraus[k + 1]
-            .iter()
-            .map(|p| ph2d_skeleton::dist2_to_polyline(*p, &degraus[k]).sqrt())
-            .fold(0.0_f64, f64::max);
-        desvios.push(d / diagonal * 100.0);
-    }
+    let desvios: Vec<f64> = (0..degraus.len() - 1)
+        .map(|k| {
+            degraus[k + 1]
+                .iter()
+                .map(|p| ph2d_skeleton::dist2_to_polyline(*p, &degraus[k]).sqrt())
+                .fold(0.0_f64, f64::max)
+                / diagonal
+                * 100.0
+        })
+        .collect();
     eprintln!("[ponto-novo] escada da subdivisao (% da peca): {desvios:?}");
     assert!(
-        desvios.windows(2).all(|w| w[1] < w[0]),
-        "a escada NAO converge: {desvios:?} — entao acrescentar um ponto nao esta' a refinar a \
-         aproximacao, esta' a corrompe-la, e a lei da mistura esta' errada"
+        degraus.iter().all(|d| d.len() > 8),
+        "algum degrau da escada ficou sem curva: a fixtura nao esta' a subdividir"
+    );
+    assert!(
+        desvios.iter().all(|d| *d < 1e-6),
+        "a escada tem degraus: {desvios:?} — antes da compensacao ela lia 18,89 -> 3,13 -> 1,00 %, \
+         e a lei nova existe para os levar a zero"
     );
 }
 
 /// Quantos segmentos a aresta de baixo tem agora (ela começa com `1`).
 fn cortes_da_aresta(sim: &SimWorld, mapa: &VecEntityMap, id: VecPathId) -> usize {
     fonte(sim, mapa, id).path.verts_all().count() - 3
+}
+
+/// ⭐⭐⭐ **A SEGUNDA PASSAGEM DA COMPENSAÇÃO NÃO É ZELO — ela é exigida por uma MANCHA.**
+///
+/// ⛔⛔ **Ele nasceu de uma MUTAÇÃO SOBREVIVENTE:** trocar `0..2` por `0..1` passava a suíte inteira.
+/// A razão é que no corpus de então **nada** fazia o peso depender da POSIÇÃO — ossos rectos, sem
+/// manchas —, e ali a primeira passagem já acerta. *Uma linha que a mutação não consegue matar não é
+/// lei; ou se apaga, ou se lhe dá a fixtura que a torna observável.*
+///
+/// A mancha é a correcção que o pincel de peso pinta: ela é uma **bolha no espaço**, logo a linha de
+/// pesos do vértice **muda quando ele se move** — e a compensação move-o. ⇒ a primeira passagem
+/// resolve com a linha da âncora provisória e deixa resíduo; as seguintes repetem com a âncora já
+/// movida, e cada uma divide o resíduo por **~55** (`0,0772 → 0,0014 → 2,6e-5 → 4,7e-7 → 0`).
+///
+/// ⚠️⚠️ **E a fixtura mordeu DUAS vezes antes de conter o fenómeno.** A 1.ª punha a mancha com o
+/// ponto a nascer no **cume** dela, onde o `clamp(0,1)` do `corrige` **satura**: ali o peso volta a
+/// ser constante e uma passagem basta — *uma mancha saturada não é uma mancha, é um planalto*. A
+/// 2.ª escrevia o braço de «uma passagem» à mão e **não fazia crescer a tabela de pesos**, logo o
+/// que ela media era a tabela e não a passagem — *um controlo que não percorre a MESMA porta compara
+/// dois programas*.
+#[test]
+fn a_segunda_passagem_e_exigida_por_uma_mancha() {
+    let com = |passagens_a_mais: bool| -> f64 {
+        let (mut sim, mut cena, mapa, id, [raiz, ponta]) = palco();
+        sim.world_mut()
+            .get_mut::<Transform>(ponta)
+            .expect("Transform")
+            .rotation = 0.8;
+        // ⭐ A MANCHA: centrada no meio da aresta de baixo, que é onde o ponto vai nascer.
+        let e = Entity::from_bits(*mapa.get(&id).expect("entidade"));
+        let osso = sim
+            .world()
+            .get::<ph2d_ecs::StableId>(raiz)
+            .copied()
+            .expect("o osso tem identidade");
+        sim.world_mut()
+            .get_mut::<SkinBind>(e)
+            .expect("presa")
+            .correcoes
+            .push(ph2d_skeleton_ecs::CorreccaoDePeso {
+                bone: osso,
+                // ⛔⛔ **O ponto tem de cair na ENCOSTA da bolha, e não no cume.** A 1.ª redacção
+                // punha o centro em `[20, 0]` com `delta 0,9` — o ponto nascia exactamente no cume,
+                // onde o `clamp(0,1)` do [`ph2d_skeleton::Skin::corrige`] **satura**: ali o peso
+                // volta a ser CONSTANTE, a fixtura deixa de depender da posição, e uma passagem
+                // basta. *Uma mancha saturada não é uma mancha, é um planalto.*
+                centro: [10.0, 0.0],
+                raio: 25.0,
+                delta: 0.35,
+            });
+        crate::skin_live::recook(&sim, &mut cena);
+        let antes = polilinha(&cena, id);
+        // ⭐⭐ **A MESMA PORTA nos dois lados, e só a PASSAGEM muda.** A 1.ª redacção escrevia o
+        // braço de «uma passagem» à mão e esquecia-se de crescer a tabela de pesos — o que ela media
+        // era a tabela, e a mutação que punha `PASSAGENS = 1` sobrevivia. *Um controlo que não
+        // percorre a mesma porta compara dois programas.*
+        let skin = sim.world().get::<SkinBind>(e).expect("presa").clone();
+        let mut fonte = crate::skinned_mesh::le(&skin.source).expect("le");
+        let pele = crate::skin_live::resolve(&sim, &skin, e, &crate::skin_live::bone_index(&sim));
+        let correcoes = skin.correcoes_resolvidas();
+        let n = if passagens_a_mais { PASSAGENS } else { 1 };
+        let (_, bytes) =
+            insere_na_fonte(&mut fonte, 0, 0.5, pele.as_ref(), &correcoes, n).expect("insere");
+        sim.world_mut()
+            .get_mut::<SkinBind>(e)
+            .expect("presa")
+            .source = bytes;
+        crate::skin_live::recook(&sim, &mut cena);
+        polilinha(&cena, id)
+            .iter()
+            .map(|p| ph2d_skeleton::dist2_to_polyline(*p, &antes).sqrt())
+            .fold(0.0_f64, f64::max)
+    };
+    let uma = com(false);
+    let duas = com(true);
+    eprintln!("[ponto-novo] com MANCHA: uma passagem={uma:.6} · duas passagens={duas:.9}");
+    assert!(
+        uma > 1e-4,
+        "com UMA passagem o desenho saltou so' {uma} — a fixtura nao contem o fenomeno (a mancha \\
+         nao esta' a fazer o peso depender da posicao), e a barra abaixo passa por vacuo"
+    );
+    assert!(
+        duas < uma * 0.05,
+        "a segunda passagem so' baixou o salto de {uma} para {duas} — ou ela nao esta' a correr, ou \\
+         a lei precisa de mais do que duas"
+    );
 }

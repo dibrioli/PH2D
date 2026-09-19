@@ -170,7 +170,7 @@ pub fn bone_index(sim: &SimWorld) -> BoneIndex {
 
 /// A pele de uma forma, resolvida para ESTE quadro. `None` quando não há osso vivo nenhum (todos
 /// apagados) ou quando a pose da forma é singular — nos dois casos a forma fica em paz.
-fn resolve(
+pub(crate) fn resolve(
     sim: &SimWorld,
     skin: &SkinBind,
     shape: Entity,

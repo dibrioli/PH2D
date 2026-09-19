@@ -87,7 +87,9 @@ pub use symmetry_overlay::{SymmetryAxis, draw_symmetry_axes};
 /// forma. O raio vive lá dentro, e o hit-test da shell o importa: desenhar num raio e agarrar
 /// noutro faz o usuário clicar no meio da bolinha e não pegar nada.
 mod connector;
-pub use connector::{HANDLE_R_PX, draw_connector_handles, draw_connector_waypoints};
+pub use connector::{
+    HANDLE_R_PX, draw_connector_handles, draw_connector_waypoints, draw_insert_preview,
+};
 
 // NOTA: o `mod corner` (draw_corner_handles, a alça de raio na bissetriz) foi REMOVIDO — o
 // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer no shell. O `corner.rs`

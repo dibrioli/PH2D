@@ -321,6 +321,10 @@ fn an_anchor_far_from_every_bone_is_grabbable_at_its_centre() {
 /// O despacho da caneta, lido como TEXTO — a agulha vive aqui e o sujeito lá, senão um
 /// `include_str!` cuja agulha está dentro do ficheiro que ele lê conta-se a si mesmo.
 const PREMIDO: &str = include_str!("input_dispatch/despacho_clique_vetor_premido.rs");
+/// O passe que resolve *«o que está sob o cursor?»* uma vez por quadro.
+const SUJEITOS: &str = include_str!("render_loop/fase_pointer_subjects.rs");
+/// O passe que pinta os realces do vector.
+const OVERLAYS: &str = include_str!("render_loop/fase_vector_overlays.rs");
 
 /// ⭐⭐⭐ **O PONTO NOVO DA CANETA CHEGA À FONTE DA PELE** — a costura que só aqui pode ser afirmada.
 ///
@@ -343,5 +347,34 @@ fn o_ponto_novo_da_caneta_chega_a_fonte_da_pele() {
         PREMIDO.contains("ponto_novo::insere_ponto("),
         "o despacho drena a insercao e nao a leva a lado nenhum — o `t` do dedo e' lido e deitado \
          fora, que e' o mesmo que nao o ler"
+    );
+}
+
+/// ⭐⭐⭐ **A PRÉVIA DE INSERÇÃO CHEGA A PIXEL** — as três pontas do fio, e nenhuma se vê das outras.
+///
+/// ⛔⛔ **Report do dono, 2026-09-19: *«não tem indicação visual que você está em cima da linha para
+/// criar um ponto»*.** A lei tem o gate dela na `ph2d-vec-edit` (a prévia acende onde o clique
+/// insere, apaga-se onde ele não insere, e aterra no sítio onde o ponto nasce). O que só deste lado
+/// se pode afirmar é que ela é **derivada por quadro** e **pintada** — *uma prévia que ninguém
+/// calcula e uma que ninguém desenha dão o MESMO report, e as curas são diferentes*.
+///
+/// ⚠️ **A terceira metade é a LIMPEZA:** fora do modo Pen ela tem de ser apagada, e não apenas
+/// não-actualizada. Um realce deixado a arder depois de trocar de ferramenta promete um ponto que
+/// nenhum clique põe — a mesma lei que o realce do Trim já escreve.
+#[test]
+fn a_previa_de_insercao_chega_a_pixel() {
+    assert!(
+        SUJEITOS.contains("previa_de_insercao("),
+        "ninguem calcula a previa por quadro: ela nunca acende"
+    );
+    assert!(
+        SUJEITOS.contains("DrawMode::Pen"),
+        "a previa deixou de ser gateada pelo modo: ela acende com a seta na mao, onde o clique nao \
+         insere nada"
+    );
+    assert!(
+        OVERLAYS.contains("draw_insert_preview("),
+        "a previa e' calculada e nao e' PINTADA — o report do dono volta inteiro, com o trabalho \
+         todo feito por baixo"
     );
 }

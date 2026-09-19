@@ -817,3 +817,15 @@ ninguém reconferiu. Medido depois, pela porta do produto, sobre uma faixa de **
 fenómeno **duas vezes seguidas**, uma por cada mudança desta lei — porque montava o estado à mão.
 A cura é uma PORTA que nomeia a condição (`pele_na_lei_derivada`), nunca uma `SkinBind` escrita no
 gate: *uma fixtura montada à mão fica abaixo da lei que se está a medir.*
+- ⛔⛔⛔ **Uma EXPLICAÇÃO medida não é um VEREDITO, e dá-la ao dono como se fosse é o erro.** Medido
+  2026-09-19 (`line/Vector`): acrescentar um ponto a uma forma presa ao esqueleto mexia o desenho, e
+  eu medi a escada da subdivisão (`18,89 → 3,13 → 1,00 %`), vi que converge, concluí *«é a
+  aproximação a ser refinada»* — e **escrevi-lhe isso como se fosse normal**. Ele respondeu *«não
+  ficou bom»*. ⚠️ *A conclusão não era falsa: ela respondia «porque acontece» a quem tinha perguntado
+  «isto é aceitável?».* ⭐ A cura existia e era barata (o corte faz-se no DESENHO e a inversão do
+  afim devolve o ponto de repouso: `18,89 % → 0,000000 %`), e eu não a procurei porque a medição me
+  tinha dado uma história.
+- ⛔⛔ **Uma MANCHA SATURADA não é uma mancha, é um planalto.** Mesma wave: a fixtura que devia provar
+  que o peso depende da POSIÇÃO punha o ponto no cume da bolha, onde o `clamp(0,1)` satura — ali o
+  peso volta a ser constante, e a mutação que reduzia as passagens a uma **sobrevivia**. *Uma fixtura
+  no extremo de uma lei com corte mede o corte, não a lei.*

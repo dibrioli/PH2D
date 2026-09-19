@@ -190,3 +190,58 @@ fn a_caneta_reporta_onde_inseriu_uma_vez_so() {
         "a insercao foi reportada DUAS vezes: um clique daria dois pontos"
     );
 }
+
+/// ⭐⭐⭐ **A PRÉVIA ACENDE ONDE O CLIQUE INSERE, e apaga-se onde ele não insere.**
+///
+/// ⛔⛔ **Report do dono, 2026-09-19: *«não tem indicação visual que você está em cima da linha para
+/// criar um ponto»*.** O gesto existia e era invisível: o artista tinha de adivinhar a que distância
+/// da curva o clique deixa de acrescentar um ponto e passa a **começar uma forma nova** — duas
+/// coisas muito diferentes, sem nada na tela a separá-las.
+///
+/// ⚠️⚠️ **As DUAS metades são dois defeitos, e a segunda é a que importa:** uma prévia que acende
+/// sempre é tão inútil como nenhuma. O CONTROLO NEGATIVO é um cursor longe da linha — ali ela tem de
+/// ser `None`, senão ela promete um ponto onde o clique começaria um desenho.
+///
+/// ⭐ E a terceira asserção é a que a liga ao produto: o sítio que ela devolve é o sítio onde o
+/// ponto de facto NASCE. *Uma prévia calculada por uma segunda conta acende num sítio e insere
+/// noutro.*
+#[test]
+fn a_previa_acende_onde_o_clique_insere() {
+    let (mut scene, mut pen, _id) = selected_square();
+    // ⚠️ Fora do meio de propósito, pela razão do gate vizinho: no meio o `t` verdadeiro é `0,5`.
+    const T_DO_DEDO: f64 = 0.3;
+    let x = -HALF + T_DO_DEDO * 2.0 * HALF;
+    let dedo = [x, -HALF];
+
+    let previa = pen
+        .previa_de_insercao(&scene, dedo, 1.0)
+        .expect("o cursor esta' EM CIMA da linha e a previa nao acendeu");
+
+    // ⛔ O CONTROLO: no CENTRO do quadrado não há linha nenhuma ao alcance.
+    assert_eq!(
+        pen.previa_de_insercao(&scene, [0.0, 0.0], 1.0),
+        None,
+        "a previa acendeu no meio do quadrado, longe de toda linha — ali o clique COMECA UMA FORMA \
+         NOVA, e prometer um ponto e' pior do que nao prometer nada"
+    );
+
+    // ⭐ E ela é o sítio onde o ponto NASCE: o mesmo press, e o vértice novo aterra ali.
+    assert_eq!(
+        pen.on_press(&mut scene, dedo, 1.0, false, &mut |p| p),
+        crate::PenClick::Inserted
+    );
+    let (_, ni) = pen.selected_vert().expect("o vertice novo esta' escolhido");
+    let nascido = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == _id)
+        .and_then(|p| p.verts_all().nth(ni))
+        .expect("o vertice novo")
+        .anchor;
+    let erro = (nascido[0] - previa[0]).hypot(nascido[1] - previa[1]);
+    assert!(
+        erro < 1e-9,
+        "a previa acendeu a {erro} do sitio onde o ponto nasceu ({nascido:?} contra {previa:?}) — \
+         ela e o clique estao a responder por contas diferentes"
+    );
+}

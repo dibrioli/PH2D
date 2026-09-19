@@ -64,6 +64,21 @@ impl crate::App {
         // desenham-se em TODO modo da ferramenta de vetor (`vec_overlay::bones`), então o realce
         // deles tem de existir onde eles existem.
         self.refresh_bone_hover(pointer);
+        // ⭐⭐⭐ **ONDE UM CLIQUE DA CANETA PORIA UM PONTO** (report do dono, 2026-09-19: *«não tem
+        // indicação visual que você está em cima da linha para criar um ponto»*) — ao lado dos três
+        // de cima, e pela mesma razão: é a pergunta *«o que este clique faria?»*, resolvida UMA vez
+        // por quadro. ⚠️ **Fora do modo Pen ele é LIMPO** e não apenas não-actualizado: um realce
+        // deixado a arder depois de trocar de ferramenta promete um ponto que nenhum clique põe.
+        self.vec.previa_insercao = (self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Pen)
+            .then(|| self.vec_world_at(pointer))
+            .flatten()
+            .and_then(|w| {
+                let px = self.vec_px_to_world();
+                let gfx = self.gfx.as_ref()?;
+                self.vec
+                    .pen
+                    .previa_de_insercao(&gfx.vec_scene, [w[0], w[1]], px)
+            });
         player_input
     }
 }

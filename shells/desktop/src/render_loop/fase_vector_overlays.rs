@@ -192,6 +192,17 @@ impl crate::App {
                 vector_scene,
             );
         }
+        // ⭐⭐⭐ **ONDE UM CLIQUE DA CANETA PORIA UM PONTO** (report do dono, 2026-09-19: *«não tem
+        // indicação visual que você está em cima da linha para criar um ponto»*), ao lado dos dois
+        // realces acima e pela mesma razão: ele responde a *«o que este clique faria?»*.
+        //
+        // ⚠️ **A posição vem da MESMA porta que o clique usa** (`PenTool::previa_de_insercao`, que
+        // chama o `insert_hit` e decide o raio com a mesma linha do press). Uma segunda conta aqui
+        // acenderia a marca num sítio em que o clique já não insere — o defeito que o realce do Trim
+        // e o do Balde nomeiam por escrito, logo acima.
+        if let Some(p) = self.vec.previa_insercao {
+            ph2d_vec_render::draw_insert_preview(p, cam_affine, vector_scene);
+        }
         Some((overlay, vec_xf, cam_affine))
     }
 }

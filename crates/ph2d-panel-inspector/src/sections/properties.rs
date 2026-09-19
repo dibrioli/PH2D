@@ -84,7 +84,6 @@ pub(crate) fn paint_properties_card(
     // pintor salta o que passa do teto, e uma altura que contasse o vector inteiro deixaria um vão
     // vazio no fim do cartão.
     let painted = info.rows.len().min(ids::MAX_INSTANCE_AXES);
-    let rows = painted + usize::from(info.beyond > 0);
     // ⛔⛔ **O TÍTULO é MEDIDO, não contado** (auditoria de 2026-08-31, achado A2). Ele carrega o
     // nome que o artista escreveu (`Properties of "…"`) e quebra quando não cabe — e a 1.ª fileira
     // de propriedade era pintada por cima da 2.ª linha dele. É o mesmo defeito que o cartão irmão
@@ -97,7 +96,41 @@ pub(crate) fn paint_properties_card(
         (w - CARD_PAD * 2.0).max(0.0),
         line,
     );
-    let card_h = CARD_PAD * 2.0 + title_h + line * rows as f32;
+    // ⛔⛔⛔ **A `220 px` de coluna estes chips colapsavam a ZERO e pintavam NADA.**
+    //
+    // A aritmetica antiga era `cw = (chips_w - vaos) / n`, sem piso: o rotulo do eixo leva
+    // `AXIS_LABEL_MAX_PX` e o que sobra e repartido em partes IGUAIS. Medido pela escada da
+    // varredura de elisoes em 2026-09-19, com a coluna no minimo o `cw` dava **`0,0 px`** e um chip
+    // de valor (`"2"`) saia VAZIO — nem a reticencia cabia. O doc tres blocos abaixo ja
+    // media o caso a `304` (`~21 px` por chip) e parava ai, porque **nenhuma regua desta casa olhava
+    // a largura em que o dono trabalha**.
+    //
+    // ⭐ **A cura e a lei que esta casa ja pratica: o controlo REFLUI.** A
+    // [`wrapped_cells_for`] da a cada chip o que a PALAVRA dele pede e quebra a fileira quando elas
+    // nao cabem — a mesma porta que a fileira de opcoes do Motion e o par `M | S` do mixer
+    // usam. ⚠️⚠️ **E a altura e MEDIDA antes da moldura**: um cartao desenhado com `line` por
+    // eixo passaria a ser pintado por cima pelas fileiras que quebraram, que e o defeito que o
+    // cartao irmao ja pagou («uma moldura que nao cabe no que ela emoldura»).
+    let tw_medido = (w - CARD_PAD * 2.0).max(0.0);
+    let label_w_medido = (tw_medido * AXIS_LABEL_FRACTION).min(AXIS_LABEL_MAX_PX);
+    let chips_w_medido = (tw_medido - label_w_medido).max(0.0);
+    let fileiras_por_eixo: Vec<usize> = info
+        .rows
+        .iter()
+        .enumerate()
+        .take(painted)
+        .map(|(a, ax)| {
+            if ids::INSP_INSTANCE_AXIS_OPTION.get(a).is_none() || ax.options.len() < 2 {
+                return 1;
+            }
+            celulas_do_eixo(text_system, ax, 0.0, chips_w_medido, 0.0, line)
+                .len()
+                .max(1)
+        })
+        .collect();
+    let linhas_dos_eixos: usize = fileiras_por_eixo.iter().sum();
+    let card_h =
+        CARD_PAD * 2.0 + title_h + line * (linhas_dos_eixos + usize::from(info.beyond > 0)) as f32;
     fill_rounded_rect(
         scene,
         Rect::new(x, y, w, card_h),
@@ -159,14 +192,19 @@ pub(crate) fn paint_properties_card(
             ty += line;
             continue;
         }
-        let n = ax.options.len();
-        let gap = Spacing::Xs.px();
-        let cw = ((chips_w - gap * (n.saturating_sub(1)) as f32) / n as f32).max(0.0);
+        let celulas: Vec<(Rect, ph2d_editor_core::widget::GroupCell)> =
+            celulas_do_eixo(text_system, ax, chips_x, chips_w, ty, line)
+                .into_iter()
+                .flatten()
+                .collect();
         for (i, v) in ax.options.iter().enumerate() {
             let Some(&id) = row_ids.get(i) else {
                 break;
             };
-            let host = Rect::new(chips_x + (cw + gap) * i as f32, ty, cw, line);
+            let Some(&(host, _)) = celulas.get(i) else {
+                break;
+            };
+            let cw = host.w;
             // ⛔⛔ **O rótulo cabe no chip, ou é CORTADO** (auditoria de 2026-08-31, achado A3).
             //
             // O `MAX_INSTANCE_AXIS_VALUES = 8` é um tecto de **tabela de ids**, e o recurso que se
@@ -198,7 +236,17 @@ pub(crate) fn paint_properties_card(
                 .visual(store.button_visual(id));
             paint_button(&button, host, scene, text_system, theme);
         }
-        ty += line;
+        // ⚠️ A altura é a das fileiras que o refluxo de facto produziu — a MESMA contagem que a
+        //    moldura mediu acima (a lei tem dois consumidores, e um `debug_assert` guarda-o).
+        let n_fileiras = fileiras_por_eixo.get(a).copied().unwrap_or(1);
+        debug_assert_eq!(
+            n_fileiras,
+            celulas_do_eixo(text_system, ax, chips_x, chips_w, ty, line)
+                .len()
+                .max(1),
+            "a moldura e o pintor discordam sobre quantas fileiras este eixo ocupa"
+        );
+        ty += line * n_fileiras as f32;
     }
 
     // ⚠️ **O que a tabela de ids não endereça é ESCRITO** — nunca truncado em silêncio. É a mesma
@@ -220,4 +268,30 @@ pub(crate) fn paint_properties_card(
         );
     }
     y + card_h + SECTION_BOTTOM_PAD_PX
+}
+
+/// ⭐⭐⭐ **AS CELULAS DE UM EIXO** — a lei, com DOIS consumidores: a altura da moldura e
+/// o pintor.
+///
+/// ⛔ Uma segunda copia desta aritmetica e como uma moldura passa a nao caber no que ela
+/// emoldura — o cartao vizinho deste ficheiro ja pagou esse defeito, e o doc dele di-lo.
+///
+/// ⚠️ **O tecto de colunas e o numero de opcoes**, logo a quebra vem so da LARGURA: aqui nao
+/// ha grelha de produto a apertar, ao contrario da fileira de enum do Motion.
+fn celulas_do_eixo(
+    text_system: &mut TextSystem,
+    ax: &ph2d_editor_core::screens::hero::variant_axes::VariantAxis,
+    chips_x: f32,
+    chips_w: f32,
+    ty: f32,
+    line: f32,
+) -> Vec<Vec<(Rect, ph2d_editor_core::widget::GroupCell)>> {
+    let rotulos: Vec<&str> = ax.options.iter().map(|v| v.label.as_str()).collect();
+    ph2d_editor_core::widget::wrapped_cells_for(
+        Rect::new(chips_x, ty, chips_w, 0.0),
+        &rotulos,
+        line,
+        rotulos.len().max(1),
+        text_system,
+    )
 }

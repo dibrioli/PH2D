@@ -151,12 +151,34 @@ fn linha(
     } else {
         (row.control.w, Some(row.dot))
     };
-    let ctrl_w = if p.own {
+    // ⛔⛔⛔ **O CAMPO e servido ANTES do `Reset` e, quando os dois nao cabem, o `Reset`
+    // DESCE.**
+    //
+    // A 1.ª redaccao escrevia `control_w - reset_w - gap` com piso ZERO: o botao levava a largura
+    // natural dele e o campo ficava com o resto. Medido em 2026-09-19 pela escada da varredura de
+    // elisoes, com a coluna no minimo (`220 px`, onde o dono trabalha em cinco dos seis espacos) o
+    // campo ficava com **`0,0 px`** e o valor (`"2"`) saia VAZIO — *um numero que nao se le
+    // e um numero que nao existe dao o mesmo report*.
+    //
+    // ⚠️⚠️ **E dar o piso ao campo sozinho TROCOU DE VITIMA** (medido na mesma corrida): o
+    // `Reset` passou a `1,0`–`2,0 px` e ficou ele em branco. *Repartir bem uma fileira MAL FORMADA
+    // so troca de vitima* — a lei que esta casa pagou na grelha de enum do Motion.
+    //
+    // ⭐ **A saida e a lei da casa: o controlo REFLUI.** Quando `campo + vao + Reset` nao
+    // cabe, o campo fica com a linha inteira e o botao desce para a seguinte. ⚠️ A altura e
+    // devolvida por esta funcao (ela acumula), logo nao ha moldura pre-medida a contradizer.
+    //
+    // ⛔ **Esconder o `Reset` esta FORA:** um controlo cortado e mau, um controlo
+    // inalcancavel e pior — e a capacidade de repor um valor proprio nao tem segunda porta.
+    let piso_do_campo = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX.min(control_w);
+    let reset_desce = p.own && control_w - reset_w - gap < piso_do_campo;
+    let ctrl_w = if p.own && !reset_desce {
         control_w - reset_w - gap
     } else {
         control_w
     }
     .max(0.0);
+    let reset_w = reset_w.min(control_w);
     let ctrl = Rect::new(row.control.x, row_y, ctrl_w, FIELD_H);
     match &p.value {
         InspectorScriptValue::Number(_) => {
@@ -219,7 +241,11 @@ fn linha(
         }
     }
     if p.own {
-        let rect = Rect::new(row.control.x + ctrl_w + gap, row_y, reset_w, FIELD_H);
+        let rect = if reset_desce {
+            Rect::new(row.control.x, row_y + FIELD_H + gap, reset_w, FIELD_H)
+        } else {
+            Rect::new(row.control.x + ctrl_w + gap, row_y, reset_w, FIELD_H)
+        };
         botao(
             scene,
             text_system,
@@ -234,7 +260,13 @@ fn linha(
     if let Some(dot) = dot {
         ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     }
-    row_y + FIELD_H + Spacing::Sm.px()
+    // ⚠️ A altura conta a fileira que o refluxo de facto produziu — ver o bloco do `reset_desce`.
+    let alturas = if reset_desce {
+        FIELD_H * 2.0 + gap
+    } else {
+        FIELD_H
+    };
+    row_y + alturas + Spacing::Sm.px()
 }
 
 /// Os avisos do ficheiro e da corrida. Devolve o `y` seguinte.

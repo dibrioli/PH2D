@@ -205,7 +205,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     // Body is scrolled: content lays out from `body_top - scroll`, clipped to the
     // body rect so anything scrolled past the top/bottom is hidden.
     let strip_top = body_top - scroll;
-    let row = StripRow::new(rect, strips.len(), strip_top);
+    let row = StripRow::new(rect, strips.len(), strip_top, ctx.text_system);
     let (content_x, content_w) = (row.content_x, row.content_w);
     ctx.scene.push_clip(&rect_to_vello(body_rect));
     paint_strips(
@@ -233,7 +233,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
         + Spacing::Sm.px()
         + TypeToken::Xs.px()
         + Spacing::Sm.px()
-        + MUTE_H;
+        + row.mute_h();
     let footer_y = strips_bottom + Spacing::Lg.px();
 
     // Master section footer: Play Test · loudness · Limiter · collapsible EQ /
@@ -308,24 +308,63 @@ struct StripRow {
     col_w: f32,
     gap: f32,
     top: f32,
+    /// ⭐⭐⭐ **Quantas FILEIRAS o par `M | S` ocupa** — `1` lado a lado, `2` empilhado.
+    ///
+    /// ⛔⛔⛔ **Ele existe porque a `220 px` de coluna os dois botoes saiam VAZIOS.** Medido em
+    /// 2026-09-19 pela escada da varredura de elisoes: com a coluna no piso, o `M` recebia `10,0 px`
+    /// e o `S` `7,5`, contra `21,9` e `15,5` que as letras pedem — *nem a reticencia cabia*.
+    /// O doc do proprio `nenhum_rotulo_do_app_pinta_nada` ja narrava este defeito curado na largura
+    /// de FABRICA; a escada mostrou que ele voltava no degrau estreito.
+    ///
+    /// ⚠️⚠️ **A cura NAO e subir o piso da coluna.** O piso e o [`FADER_W`] e o corpo do painel
+    /// e RECORTADO (`push_clip`) com rolagem **vertical**: uma coluna mais larga poe as ultimas
+    /// tiras fora do recorte, sem maneira de la chegar — *um controlo cortado e mau, um
+    /// controlo inalcancavel e pior*.
+    ///
+    /// ⭐ **A cura e a lei que esta casa ja pratica: o controlo REFLUI.** A mesma
+    /// [`wrapped_cells_for`] da fileira de opcoes decide pela PALAVRA se o par cabe lado a lado.
+    /// ⚠️ **A decisao e da FILEIRA e nao da tira**: todas as tiras tem o mesmo `col_w` e os
+    /// mesmos dois rotulos, logo quebram juntas — e o `Mute` do Master ocupa a altura toda,
+    /// para os pes das tiras ficarem alinhados.
+    ms_linhas: usize,
 }
 
 impl StripRow {
     /// Reparte a largura do painel pelas `cols` colunas, com o piso de [`FADER_W`].
-    fn new(rect: Rect, cols: usize, top: f32) -> Self {
+    fn new(rect: Rect, cols: usize, top: f32, text_system: &mut TextSystem) -> Self {
         let pad = Spacing::Lg.px();
         let content_x = rect.x + pad;
         let content_w = (rect.w - pad * 2.0).max(1.0);
         let gap = Spacing::Xs.px();
         let n = cols as f32;
         let col_w = ((content_w - gap * (n - 1.0)) / n).max(FADER_W);
+        // ⚠️ A pergunta e feita UMA vez, com os rotulos que as tiras de facto pintam.
+        let ms_linhas = ph2d_editor_core::widget::wrapped_cells_for(
+            Rect::new(0.0, 0.0, col_w, 0.0),
+            &[
+                tr("panel.audio_mixer.strip.mute_short"),
+                tr("panel.audio_mixer.strip.solo_short"),
+            ],
+            MUTE_H,
+            2,
+            text_system,
+        )
+        .len()
+        .max(1);
         Self {
             content_x,
             content_w,
             col_w,
             gap,
             top,
+            ms_linhas,
         }
+    }
+
+    /// A altura que a fileira de botoes consome — ver [`Self::ms_linhas`].
+    fn mute_h(&self) -> f32 {
+        let n = self.ms_linhas as f32;
+        MUTE_H * n + Spacing::Xs.px() * (n - 1.0)
     }
 }
 
@@ -349,6 +388,8 @@ fn paint_strips(
             col_x,
             row.top,
             row.col_w,
+            row.mute_h(),
+            row.ms_linhas,
             scene,
             text_system,
             theme,
@@ -365,6 +406,8 @@ fn paint_strip(
     col_x: f32,
     top: f32,
     col_w: f32,
+    mute_h: f32,
+    ms_linhas: usize,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -460,7 +503,7 @@ fn paint_strip(
     match strip.solo_id {
         None => {
             paint_toggle(
-                Rect::new(col_x, y, col_w, MUTE_H),
+                Rect::new(col_x, y, col_w, mute_h),
                 tr("panel.audio_mixer.strip.mute"),
                 strip.muted,
                 ColorToken::Danger,
@@ -477,16 +520,29 @@ fn paint_strip(
             );
         }
         Some(solo_id) => {
-            // ⭐ `M | S` é UM par (wave 20): as duas coisas que se fazem à audição de uma faixa.
-            let ms = ph2d_editor_core::widget::segment_rects_for(
-                Rect::new(col_x, y, col_w, MUTE_H),
+            // ⭐ `M | S` e UM par (wave 20): as duas coisas que se fazem a audicao de uma
+            // faixa. ⚠️⚠️ **E ele REFLUI quando a coluna nao o aguenta lado a lado** —
+            // ver [`StripRow::ms_linhas`] para o defeito medido que o obrigou (os dois botoes
+            // saiam VAZIOS a `220 px` de coluna).
+            let fileiras = ph2d_editor_core::widget::wrapped_cells_for(
+                Rect::new(col_x, y, col_w, 0.0),
                 &[
                     tr("panel.audio_mixer.strip.mute_short"),
                     tr("panel.audio_mixer.strip.solo_short"),
                 ],
-                ph2d_editor_core::widget::panel_chrome::segmented_label_font(),
+                MUTE_H,
+                2,
                 text_system,
             );
+            // ⚠️ A decisao e da FILEIRA e nao desta tira: se as duas discordassem, uma tira
+            // empilhava e a vizinha nao, com os pes desalinhados. O `debug_assert` guarda-o.
+            debug_assert_eq!(
+                fileiras.len(),
+                ms_linhas,
+                "a tira quebrou o par de maneira diferente da fileira"
+            );
+            let ms: Vec<(Rect, ph2d_editor_core::widget::GroupCell)> =
+                fileiras.into_iter().flatten().collect();
             paint_toggle(
                 ms[0].0,
                 tr("panel.audio_mixer.strip.mute_short"),

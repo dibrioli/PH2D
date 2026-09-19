@@ -44,5 +44,6 @@ mod the_camera_section_is_alive;
 mod the_ordering_labels_come_from_the_descriptor;
 mod the_sheet_grid_switch_is_offered_only_where_there_is_a_grid;
 mod the_slice_hints_take_the_room_they_actually_use;
+mod todo_chip_de_variante_e_pintado;
 mod two_sections_never_stack;
 mod uma_linha_de_marcar_ocupa_a_linha_inteira;

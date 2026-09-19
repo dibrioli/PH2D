@@ -4183,3 +4183,92 @@ com os **mesmos 11 ficheiros pré-existentes**, nenhum desta wave.
 `the_cost_of_a_player_is_linear_in_their_number`, **membro já nomeado** da família
 de flakes de fan-out do §5.0: **3 de 3 verde sozinho** a `load 34,5` · `33,3` ·
 `33,3`.
+
+---
+
+## §94 — ⭐⭐ O `Edge Flow` NÃO ESTÁ À VISTA, e a cena passa a DIZER onde ele fica
+
+**Decisão do dono, em três passos no mesmo dia (2026-09-19).** Aprovado o smoke
+da lei da normal (§93), ele perguntou *«qual a próxima?»* e escolheu **ligar o
+pente de topologia**. Medido o valor de fábrica (`scenes_pente_fabrica_tests.rs`),
+a resposta foi que **ligá-lo por omissão reproduz a queixa dele de 21/09**
+(*«algoritmo mais lento que o modo padrão»* — o pente custa `~8,5×` o dab em
+**toda** densidade, `75,5 %` do orçamento no valor de fábrica da cena e `182,8 %`
+uma marca mais fina) ⇒ ele escolheu **(c) deixar desligado e tornar o botão
+achável**. Medido o painel, mover a fileira **funciona e custa a dobra do Pose**
+(abaixo), ⇒ ele escolheu **(4): deixar a disposição como está e escrever no
+roteiro onde o botão fica**, com uma *«etapa de arrumação»* anunciada para
+depois.
+
+### §94.1 — O que a tela mede (`diag_onde_cai_a_pista_do_pente`, encaixe `880 px`)
+
+| o que | `y` | |
+|---|---|---|
+| secção `Tool` | `108` | visível |
+| secção `Brush` | `534` | visível |
+| `Radius` | `611` | visível |
+| **a dobra** | **`880`** | |
+| `Connected Only` | `922` | ⛔ |
+| secção `Symmetry` | `1132` | ⛔ |
+| secção `Topology` | `1191` | ⛔ |
+| ⭐ `Edge Flow` | `1271` | ⛔ |
+| secção `Shading` | `1557` | ⛔ |
+| secção `Scene` | `1790` | ⛔ |
+| secção `Bake` | `1945` | ⛔ |
+
+⛔⛔ **TRÊS afirmações minhas ao dono estavam erradas, e as três eram sobre a
+TELA:** que a fileira vivia no `Pro` (é **`Basic`** — `rows_topology.rs`), que
+ela estava **atrás** do sombreado (o sombreado está `286 px` **abaixo** dela) e,
+implícita nessa, que a ordem de pintura é a da tabela `SECTIONS`. ⚠️ **Ela não
+é:** a `SECTIONS` declara `Brush · Shading · Topology` e o `paint/body.rs` pinta
+`… Symmetry → Topology → Shading …`. *A ordem da tela lê-se do `y`, nunca da
+tabela* — a sonda passou a imprimi-la **ordenada**, com os sete cabeçalhos.
+
+### §94.2 — A cura que foi CONSTRUÍDA, MEDIDA e REVERTIDA
+
+Mover a fileira para o bloco de knobs do `BRUSH` leva-a de `1271` para **`661`**
+(visível), e o preço está medido: uma fileira a mais naquele bloco empurra **os
+controlos próprios de TODOS os pincéis `+47 px`, uniformemente** (Cloth
+`1107 → 1154` · Boundary `1083 → 1130` · Plane `1003 → 1050` · SmearMultires
+`964 → 1011` · BoxTrim `961 → 1008`) — e o **Pose** passa de `857` para `904`,
+**através da dobra**: *um pincel cujos controlos eram alcançáveis deixa de o
+ser*, que é defeito **novo e em espécie**. ⇒ revertida; a medição vive no commit
+`dc33c0997`.
+
+⇒ **o painel está sobre o orçamento**: o `BRUSH` sozinho ocupa `657` dos `880`, e
+qualquer fileira nova custa `47` a toda a gente. *A escolha do que encolhe é de
+produto* — é a arrumação que o dono anunciou.
+
+### §94.3 — O passo (1) da `=49` faz QUATRO afirmações sobre a tela, e as quatro são gateadas
+
+O roteiro deixou de dizer *«na secção `Topology` … logo abaixo está o `Edge
+Flow`»* (verdadeiro como estrutura e falso como GESTO) e passou a mandar **rolar
+a roda sobre o painel**, nomeando o que se passa pelo caminho e o que fazer se a
+secção estiver dobrada.
+
+`o_roteiro_da_49_diz_onde_o_edge_flow_esta` (na costura do painel, que é onde
+existe `paint`):
+
+1. **o NOME** — os rótulos que o roteiro imprime são os que o painel pinta;
+2. **o NÍVEL** — a fileira é `Basic` com o carimbo na mão, logo o roteiro **não**
+   manda trocar de nível;
+3. **a DOBRA** — ⭐ escrita como **EQUIVALÊNCIA** (`y > 880` ⟺ o roteiro contém
+   a frase da rolagem), que é uma **catraca ao contrário**: no dia em que a
+   arrumação trouxer a fileira para cima da dobra o gate **reprova**, e a cura é
+   **apagar a frase**, nunca afrouxar o número. *Uma cena que manda rolar à
+   procura de um controlo que já está à vista mente do mesmo jeito que uma que
+   promete um efeito que não acontece* (§5.0);
+4. **a ORDEM** — `Tool → Brush → Symmetry → Topology → Edge Flow → Shading`,
+   lida do `y`.
+
+**Mutação `4 de 4`**, uma por metade (o rótulo do pente · o nível da fileira · a
+frase da rolagem · a ordem de pintura das secções), com controlo sobre o próprio
+filtro e sobre a árvore restaurada.
+
+### §94.4 — A prova
+
+`nextest-impacted` **16 477 / 16 477** · a suíte de costura do painel `75/75` ·
+os gates da `=49` verdes · `cargo fmt` limpo · clippy `-D warnings` zero — ⚠️ com
+**um aviso pré-existente curado** no caminho (`f64::from` sobre um `f64` na sonda
+de fábrica do `ccda50553`): *um `-D warnings` que só corre no fecho é um portão
+que a wave não vê.*

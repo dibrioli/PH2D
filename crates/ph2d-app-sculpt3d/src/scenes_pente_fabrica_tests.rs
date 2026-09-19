@@ -71,7 +71,7 @@ fn diag_o_valor_de_fabrica_do_pente() {
             grade += g;
             f50 += fa;
             f90 += fb;
-            vinco += f64::from(v);
+            vinco += v;
             pior += pior_angulo(&m, &c, raio).0;
             lasca += lascas(&m, &c, raio, LIMIAR_DA_LASCA).0;
             relogio += dt;

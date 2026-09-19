@@ -240,6 +240,42 @@ pub(crate) const DETALHE_DA_CENA: f32 = 1.0;
 /// conferir o desenho corre [`super::tests::sondas::diag_desenha_o_arame`] e
 /// compara os dois `.ppm`. *Uma cena que promete mais do que o desenho mostra é
 /// a espécie que o `CLAUDE.md` §5.0 chama de pior que uma cena ausente.*
+///
+/// # ⛔⛔ E o passo (1) diz ONDE o botão está, porque ele NÃO está à vista
+///
+/// Decisão do dono (2026-09-19), depois de ver o preço medido de o mover para
+/// junto do `Radius` (funciona — `1271 → 661` — e empurra os controlos de TODOS
+/// os pincéis `+47 px`, atirando os do `Pose` de `857` para `904`, através da
+/// dobra): *«deixar desligado e eu tornar o botão achável»* ⇒ **deixar a
+/// disposição como está e escrever no roteiro onde ele fica**.
+///
+/// **Medido** por [`diag_onde_cai_a_pista_do_pente`], contra o encaixe de
+/// `880 px` desta casa:
+///
+/// | o que | `y` | |
+/// |---|---|---|
+/// | secção `Tool` | `108` | visível |
+/// | secção `Brush` | `534` | visível |
+/// | `Radius` | `611` | visível |
+/// | **a dobra** | **`880`** | |
+/// | `Connected Only` | `922` | ⛔ |
+/// | secção `Symmetry` | `1132` | ⛔ |
+/// | secção `Topology` | `1191` | ⛔ |
+/// | ⭐ `Edge Flow` | `1271` | ⛔ |
+/// | secção `Shading` | `1557` | ⛔ |
+///
+/// ⚠️⚠️ **A ordem da tela lê-se do `y`, nunca da tabela `SECTIONS`** — eu disse
+/// ao dono que este botão estava atrás do sombreado, e o sombreado está `286 px`
+/// **abaixo** dele; e que ele vivia no `Pro`, e ele é `Basic`, que é porque o
+/// roteiro não manda trocar de nível nenhum.
+///
+/// ⛔ **As quatro afirmações que o passo (1) faz sobre a tela são GATEADAS**
+/// (`o_roteiro_da_49_diz_onde_o_edge_flow_esta`, na costura do painel) — nome ·
+/// nível · dobra · ordem —, e a da **dobra** é uma catraca ao contrário: no dia
+/// em que a arrumação trouxer a fileira para cima dela, o gate **reprova**, e a
+/// cura é **apagar a frase da rolagem**, nunca afrouxar o número. *Uma cena que
+/// manda rolar à procura de um controlo que já está à vista mente do mesmo jeito
+/// que uma que promete um efeito que não acontece.*
 pub(crate) fn announce() {
     if !pente_scene() {
         return;
@@ -247,9 +283,16 @@ pub(crate) fn announce() {
     eprintln!(
         "[sculpt3d] =49 EDGE FLOW -- a malha debaixo do risco passa a seguir o risco\n\
          [sculpt3d]\n\
-         [sculpt3d]    (1) Abra o painel com a CRASE (`). Na seccao `Topology` o\n\
-         [sculpt3d]        `Dynamic Topology` ja' vem LIGADO e o `Detail` no TOPO. Logo\n\
-         [sculpt3d]        abaixo esta' o `Edge Flow`, em zero.\n\
+         [sculpt3d]    (1) Abra o painel com a CRASE (`). O `Edge Flow` NAO esta' a'\n\
+         [sculpt3d]        vista: ele mora na seccao `Topology`, que comeca abaixo da\n\
+         [sculpt3d]        borda de baixo do painel. Ponha o ponteiro EM CIMA DO PAINEL\n\
+         [sculpt3d]        e role a roda do rato para baixo -- cerca de meia altura do\n\
+         [sculpt3d]        painel --, passando o `Tool`, o `Brush` (a fila comprida de\n\
+         [sculpt3d]        numeros) e o `Symmetry`. Quando aparecer o titulo `Topology`,\n\
+         [sculpt3d]        o `Dynamic Topology` ja' vem LIGADO e o `Detail` no TOPO; e\n\
+         [sculpt3d]        logo abaixo deles esta' o `Edge Flow`, em zero.\n\
+         [sculpt3d]        (Se a seccao aparecer sem nada dentro, ela esta' FECHADA:\n\
+         [sculpt3d]        carregue no titulo `Topology` para a abrir.)\n\
          [sculpt3d]    (2) Risque uma vez com ele em ZERO.\n\
          [sculpt3d]    (3) Ponha-o no MAXIMO e risque outra vez, ao lado do primeiro.\n\
          [sculpt3d]    (4) Compare os dois riscos de PERTO (aproxime com a roda): no\n\

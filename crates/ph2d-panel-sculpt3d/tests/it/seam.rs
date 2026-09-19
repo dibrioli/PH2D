@@ -3223,12 +3223,125 @@ fn o_pente_e_alcancavel_some_para_quem_o_ignora_e_diz_porque_dorme() {
     );
 }
 
+/// ⭐⭐⭐⭐ **GATE — O ROTEIRO DA `=49` DIZ ONDE O `Edge Flow` ESTÁ, e as QUATRO
+/// coisas que ele afirma sobre a tela são medidas aqui.**
+///
+/// Decisão do dono (2026-09-19), depois de ver o preço medido de mover a
+/// fileira: **deixar a disposição como está e escrever no roteiro onde ela
+/// fica**. ⇒ o passo (1) passou a fazer quatro afirmações sobre a tela, e *uma
+/// afirmação sobre a tela mede-se na tela* — eu já disse ao dono que esta
+/// fileira vivia no `Pro` (é `Basic`) e que ela estava atrás do sombreado (o
+/// sombreado está `286 px` **abaixo** dela).
+///
+/// # As quatro metades, e porque nenhuma basta
+///
+/// 1. **o NOME** — o roteiro imprime os rótulos que o painel pinta (se um deles
+///    for renomeado, o dono procura uma palavra que não está na tela);
+/// 2. **o NÍVEL** — a fileira é `Basic`, logo o roteiro **não** manda trocar de
+///    nível; se ela passasse a `Pro`, o passo ficaria impossível em silêncio;
+/// 3. **a DOBRA** — ela cai em `1271` contra os `880` do encaixe, e é isso que
+///    torna a frase *«role a roda»* necessária em vez de ruído;
+/// 4. **a ORDEM** — o que o dono rola até lá é `Tool` → `Brush` → `Symmetry` →
+///    `Topology` → `Edge Flow` → `Shading`, e ela lê-se do `y`, ⛔ **nunca** da
+///    tabela `SECTIONS`, que está noutra ordem (foi daí que veio o meu erro).
+///
+/// ⛔⛔ **A metade (3) é uma CATRACA AO CONTRÁRIO, de propósito:** no dia em que
+/// a arrumação que o dono anunciou trouxer esta fileira para cima da dobra, ela
+/// **reprova** — e a cura é apagar a frase da rolagem do roteiro, nunca afrouxar
+/// o número. Por isso ela é uma EQUIVALÊNCIA e não uma desigualdade: hoje
+/// apanha quem apague a frase com o botão ainda escondido, e amanhã apanha quem
+/// deixe a frase depois de o pôr à vista. *Uma cena que manda rolar à procura de
+/// um controlo que já está à vista é a espécie que o `CLAUDE.md` §5.0 chama de
+/// pior que uma cena ausente.*
+#[test]
+fn o_roteiro_da_49_diz_onde_o_edge_flow_esta() {
+    /// O encaixe MEDIDO desta casa — o mesmo número do gate irmão
+    /// [`os_controlos_proprios_de_um_pincel_cabem_no_encaixe`].
+    const ALTURA_DO_ENCAIXE_PX: f32 = 880.0;
+    let roteiro = include_str!("../../../ph2d-app-sculpt3d/src/scenes_pente.rs");
+
+    // ── (1) os nomes ───────────────────────────────────────────────────────
+    for chave in [
+        "panel.sculpt3d.pente",
+        "panel.sculpt3d.dyntopo",
+        "panel.sculpt3d.section.tool",
+        "panel.sculpt3d.section.brush",
+        "panel.sculpt3d.section.symmetry",
+        "panel.sculpt3d.section.topology",
+    ] {
+        let rotulo = ph2d_i18n::tr(chave);
+        assert!(
+            roteiro.contains(&format!("`{rotulo}`")),
+            "o roteiro da =49 manda o dono procurar `{rotulo}` e nao o nomeia — \
+             ou o rotulo mudou e o roteiro ficou para tras"
+        );
+    }
+
+    // ── (2) o nível ────────────────────────────────────────────────────────
+    let mut ui = Sculpt3dUi::default();
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Draw);
+    ui.ui_level = UiLevel::Basic;
+    let fileira = rows::rows()
+        .find(|r| r.label == "panel.sculpt3d.pente")
+        .expect("o painel perdeu a fileira do pente e o roteiro ainda a nomeia");
+    assert!(
+        fileira.visible(&ui),
+        "o roteiro da =49 nao manda trocar de nivel nenhum, e a fileira do pente \
+         nao e' pintada no `Basic` com o carimbo na mao — o dono procura e nao acha"
+    );
+
+    // ── (3) a dobra e (4) a ordem ──────────────────────────────────────────
+    // ⚠️ Com a topologia ARMADA, que é como a `=49` abre.
+    let mut snap = snapshot(ui, true);
+    snap.dyntopo = true;
+    let (mut host, mut state) = arrange_with(snap);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    let onde = |id: ph2d_a11y::NodeId, nome: &str| -> f32 {
+        painted
+            .iter()
+            .rev()
+            .find(|(p, _)| *p == id)
+            .map(|(_, r)| r.y)
+            .unwrap_or_else(|| panic!("o painel nao pintou `{nome}`"))
+    };
+    let y_pente = onde(ids::SCULPT3D_PENTE, "Edge Flow");
+    assert_eq!(
+        y_pente > ALTURA_DO_ENCAIXE_PX,
+        roteiro.contains("role a roda"),
+        "o passo (1) e a tela discordam: o `Edge Flow` cai em y = {y_pente:.0} \
+         contra um encaixe de {ALTURA_DO_ENCAIXE_PX:.0} px. Se ele subiu para \
+         cima da dobra, APAGUE a frase da rolagem do roteiro; se a frase saiu \
+         com ele ainda escondido, o dono vai procura-lo e nao o achar"
+    );
+    let escada = [
+        (ids::SCULPT3D_SEC_TOOL, "Tool"),
+        (ids::SCULPT3D_SEC_BRUSH, "Brush"),
+        (ids::SCULPT3D_SEC_SYMMETRY, "Symmetry"),
+        (ids::SCULPT3D_SEC_TOPOLOGY, "Topology"),
+        (ids::SCULPT3D_PENTE, "Edge Flow"),
+        (ids::SCULPT3D_SEC_SHADING, "Shading"),
+    ];
+    for par in escada.windows(2) {
+        let (a, b) = (par[0], par[1]);
+        assert!(
+            onde(a.0, a.1) < onde(b.0, b.1),
+            "o roteiro manda passar `{}` antes de `{}` e a tela pinta-os ao \
+             contrario ({:.0} contra {:.0}) — o dono rola para o lado errado",
+            a.1,
+            b.1,
+            onde(a.0, a.1),
+            onde(b.0, b.1)
+        );
+    }
+}
+
 /// ⭐⭐⭐⭐ **SONDA — ONDE O `Edge Flow` CAI NO PAINEL, com o pincel de fábrica.**
 ///
 /// Decisão do dono (2026-09-19): *«deixar desligado e tornar o botão achável»*.
 /// ⚠️ **Antes de mover nada, a pergunta é a do dock:** a dobra desta casa é
 /// `880 px` (o mesmo número do gate irmão), e a pista do pente vive na TERCEIRA
-/// secção contínua, atrás do `TOOL`, do `BRUSH` e do `SHADING`.
+/// secção contínua, atrás do `TOOL`, do `BRUSH` e do `SYMMETRY` — ⛔ e **não**
+/// do `SHADING`, que fica `286 px` abaixo dela.
 ///
 /// ⛔ *Uma afirmação sobre a tela mede-se na tela* — eu já disse ao dono que ela
 /// estava em `Pro` e ela é `Basic`.
@@ -3251,25 +3364,35 @@ fn diag_onde_cai_a_pista_do_pente() {
                 .map(|(_, r)| r.y)
         };
         println!("\n== {nome} ==");
-        for (rotulo, id) in [
+        // ⚠️ **Em ORDEM DE TELA, e não na ordem da tabela** — as duas discordam,
+        // e escrevê-la de memória foi o que me fez dizer ao dono que o `Edge
+        // Flow` está atrás do sombreado: ele está *à frente* dele (`1271` contra
+        // `1557`). *A ordem de pintura lê-se do `y`, nunca da `SECTIONS`.*
+        let mut linhas: Vec<(f32, &str)> = [
+            ("secção TOOL", ids::SCULPT3D_SEC_TOOL),
             ("secção BRUSH", ids::SCULPT3D_SEC_BRUSH),
             ("Radius", ids::SCULPT3D_RADIUS),
             ("Connected Only", ids::SCULPT3D_SURFACE_ONLY),
-            ("secção SHADING", ids::SCULPT3D_SEC_SHADING),
+            ("secção SYMMETRY", ids::SCULPT3D_SEC_SYMMETRY),
             ("secção TOPOLOGY", ids::SCULPT3D_SEC_TOPOLOGY),
             ("⭐ Edge Flow", ids::SCULPT3D_PENTE),
-        ] {
-            match acha(id) {
-                Some(y) => println!(
-                    "  {rotulo:<18} y = {y:>7.0}   {}",
-                    if y > ALTURA_DO_ENCAIXE_PX {
-                        "⛔ ABAIXO DA DOBRA"
-                    } else {
-                        "visível"
-                    }
-                ),
-                None => println!("  {rotulo:<18} NAO PINTADO"),
-            }
+            ("secção SHADING", ids::SCULPT3D_SEC_SHADING),
+            ("secção SCENE", ids::SCULPT3D_SEC_SCENE),
+            ("secção BAKE", ids::SCULPT3D_SEC_BAKE),
+        ]
+        .into_iter()
+        .filter_map(|(rotulo, id)| acha(id).map(|y| (y, rotulo)))
+        .collect();
+        linhas.sort_by(|a, b| a.0.total_cmp(&b.0));
+        for (y, rotulo) in linhas {
+            println!(
+                "  {rotulo:<18} y = {y:>7.0}   {}",
+                if y > ALTURA_DO_ENCAIXE_PX {
+                    "⛔ ABAIXO DA DOBRA"
+                } else {
+                    "visível"
+                }
+            );
         }
     }
 }

@@ -229,6 +229,13 @@ pub struct Smoke {
     ///
     /// *Uma semente usa-se uma vez.* Depois de plantada, a cena é a fonte — e apagar a peça apaga-a.
     pub seed: Option<FieldDoc>,
+    /// ⭐⭐⭐ **O MATERIAL COM QUE A CENA ABRE** — `None` é o de omissão, que é o que todas as cenas
+    /// tiveram até 2026-09-18. Ver [`crate::smoke::scenes::materiais_da_cena`].
+    ///
+    /// ⚠️ **Ele viaja com a SEMENTE e gasta-se com ela**, pela mesma lei: vale uma vez. Depois de
+    /// plantado, quem manda no material é o mundo — e um `Vec` que ficasse aqui sobrescreveria o
+    /// que o artista pintou, a cada replantio.
+    pub seed_materials: Option<Vec<ph2d_field_ecs::FieldMaterial>>,
     pub(super) matcap: Arc<MatcapTexels>,
     /// ⭐⭐⭐ **OS VIEWPORTS** — nunca vazio, e o [`Smoke::active`] é o que o gesto comanda.
     ///

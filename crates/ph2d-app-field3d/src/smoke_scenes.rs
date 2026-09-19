@@ -132,7 +132,7 @@ pub fn leaf(p: Primitive, x: Xform) -> Node {
 /// ⚠️ Ele **conta-se lendo o `match` abaixo**, nunca de memória: o gate
 /// `the_router_answers_for_every_level_it_claims` mede-o pelas DUAS pontas — a cena `CENAS` tem de
 /// ser dela própria, e a `CENAS + 1` tem de cair no `_`.
-pub const CENAS: u32 = 33;
+pub const CENAS: u32 = 34;
 
 /// **As cenas PODADAS em 2026-09-11** — nenhum doc as citava pelo número e nenhum código as usava
 /// (ordem do Enio, briefing W2 §3.2). `952` linhas.
@@ -154,6 +154,50 @@ pub const CENAS: u32 = 33;
 ///
 /// [`every_smoke_scene_builds_and_is_its_own`]: crate::smoke::scenes::scene_tests
 pub const PODADAS: &[u32] = &[8, 9, 10, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+
+/// ⭐⭐⭐ **O MATERIAL COM QUE UMA CENA ABRE** — `None` quer dizer *«o de omissão»*, que é o que
+/// todas as cenas tiveram até 2026-09-18.
+///
+/// # ⛔⛔⛔ Porque isto existe, e é um report do dono que o paga
+///
+/// A lei da matiz que segue a profundidade (`docs/Render3d/10` §18) foi construída, medida e
+/// ligada a um interruptor — e o dono viu **a mesma imagem** dos dois lados. A causa não era a lei:
+/// o material de omissão é **CINZENTO**, e uma lei que redistribui saturação **entre canais** não
+/// tem o que fazer quando os três já são iguais (`1,00` byte de diferença média, contra `23,19` num
+/// jade). ⇒ *uma cena que não consegue conter o fenómeno não pode demonstrá-lo*, e até aqui uma
+/// cena não tinha como pedir o material de que precisa.
+///
+/// ⚠️ **A ordem é a das FOLHAS do documento**, que é a mesma que o
+/// [`ph2d_field_ecs::spawn_doc`] usa (`spawned[i]` indexado pelo nó) e a mesma que a
+/// [`crate::materials::leaves`] percorre ao construir a tabela. *Três percursos, uma ordem* — e um
+/// `Vec` mais curto que as folhas deixa as que sobram no material de omissão, de propósito.
+#[must_use]
+pub fn materiais_da_cena(n: u32) -> Option<Vec<ph2d_field_ecs::FieldMaterial>> {
+    // ⭐ A cena da COR: quatro esferas, a MESMA tinta, as quatro profundidades do oráculo.
+    if n != 34 {
+        return None;
+    }
+    Some(
+        edge::PROFUNDIDADES_DA_COR
+            .iter()
+            .map(|&mfp| ph2d_field_ecs::FieldMaterial {
+                subsurface_weight: 1.0,
+                // ⭐ O jade contra o qual a lei foi calibrada (§17.3) — ⛔ não uma cor bonita: é a
+                // cor das fixturas, e é por isso que esta cena pode prometer o que mostra.
+                subsurface_color: [0.75, 0.35, 0.35],
+                base_color: [0.75, 0.35, 0.35],
+                subsurface_radius: mfp,
+                // ⭐ IGUAIS nos três canais: a família que ISOLA a profundidade. Com a escala de
+                // omissão `(1 · 0,5 · 0,25)` a matiz também mudaria por cada canal viajar o seu, e
+                // a cena deixaria de responder a uma pergunta só.
+                subsurface_radius_scale: [1.0, 1.0, 1.0],
+                // ⚠️ Zero, como a medição: um realce branco por cima lava o que se quer ver.
+                specular_weight: 0.0,
+                ..ph2d_field_ecs::FieldMaterial::default()
+            })
+            .collect(),
+    )
+}
 
 pub fn scene(n: u32) -> FieldDoc {
     let s = std::f32::consts::FRAC_1_SQRT_2;
@@ -403,6 +447,8 @@ pub fn scene(n: u32) -> FieldDoc {
         // ⭐⭐⭐ AS CINCO JUNTAS NOVAS da W145 — ver [`edge::cena_32`].
         32 => edge::cena_32(),
         33 => edge::cena_33(),
+        // ⭐⭐⭐ A COR QUE A PROFUNDIDADE DEIXA — ver [`edge::cena_34`].
+        34 => edge::cena_34(),
         _ => {
             // ⛔⛔ **O ROTEADOR DIZ QUANDO O NÚMERO NÃO EXISTE** (W2).
             //

@@ -1,4 +1,4 @@
-//! **O smoke do módulo de modelagem 3D** — `PH2D_FIELD_SMOKE=1..33` (ADR-0161).
+//! **O smoke do módulo de modelagem 3D** — `PH2D_FIELD_SMOKE=1..34` (ADR-0161).
 //!
 //! Põe na tela o que o módulo de facto é: o **campo traçado**, não uma malha. É por aqui que o Enio
 //! vê a quina de navalha e o filete liso que a W0 mediu.
@@ -120,6 +120,8 @@ fn boot() -> Option<Smoke> {
     let mut smoke = Smoke {
         doc: Some(doc.clone()),
         seed: Some(doc),
+        // ⭐ O material que ESTA cena pede — ver [`scenes::materiais_da_cena`].
+        seed_materials: scenes::materiais_da_cena(n),
         isolated: v.isolated,
         flight: None,
         flight_gen: 0,

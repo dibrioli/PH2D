@@ -474,3 +474,172 @@ fn sonda_a_lei_da_cor_da_profundidade() {
         pior_hoje / pior_cura.max(1e-6)
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+//  OS GATES DA CENA `=34` — e o primeiro deles é o que teria apanhado o erro de 18/09
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **A CENA CONTÉM O FENÓMENO QUE PROMETE — e este gate nasceu de um report do dono.**
+///
+/// A lei da matiz foi construída, medida e ligada a um interruptor, e o smoke que eu escrevi
+/// mandava o dono olhar para a `=33` — que abre com o material de omissão, **CINZENTO**. Uma lei que
+/// redistribui saturação **entre canais** não tem o que fazer quando os três já são iguais, logo ele
+/// correu as duas metades e viu a mesma imagem. *O defeito era do smoke, não da lei.*
+///
+/// ⛔⛔ **Nenhum gate deste repo fazia esta pergunta:** havia gates a provar que a cena constrói,
+/// que ela é ela própria, que o roteiro é anunciado — e **nenhum** a perguntar *«a cena mostra o que
+/// o roteiro diz que ela mostra?»*. É a família do `CLAUDE.md` §5.0 (*uma cena que ensina o
+/// contrário é pior que uma cena ausente*) num degrau acima: aqui a cena não ensinava o contrário,
+/// **não podia ensinar nada**.
+///
+/// ⚠️ A barra é `0,15` de matiz (`15 %`) porque no quadro inteiro o jade mede `23` bytes de média
+/// contra `1` do cinzento — *uma barra que o cinzento passasse não afirmaria nada*, e a segunda
+/// metade deste gate é exactamente esse controlo.
+#[test]
+fn a_cena_da_cor_contem_o_fenomeno_que_promete() {
+    let pedidos = crate::smoke::scenes::materiais_da_cena(34).expect("a `=34` declara materiais");
+    assert_eq!(pedidos.len(), 4, "são as quatro profundidades do oráculo");
+
+    let matiz = |m: &ph2d_field_ecs::FieldMaterial, cura: f32| -> f32 {
+        let s = ph2d_material::OpenPbr {
+            subsurface_weight: m.subsurface_weight,
+            subsurface_color: m.subsurface_color,
+            base_color: m.base_color,
+            subsurface_radius: m.subsurface_radius,
+            subsurface_radius_scale: m.subsurface_radius_scale,
+            specular_weight: m.specular_weight,
+            subsurface_depth_hue: cura,
+            geometry_thin_walled: false,
+            ..ph2d_material::OpenPbr::default()
+        }
+        .prepare()
+        .at_curvature(1.0 / 0.30); // o raio das esferas desta cena
+        let c = s.direct([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.6, 0.0, 0.8], [1.0; 3]);
+        c[0] / c[2].max(1e-12)
+    };
+
+    // (a) O interruptor MEXE em cada esfera.
+    let mut pior = 0.0f32;
+    for m in &pedidos {
+        let (sem, com) = (matiz(m, 0.0), matiz(m, 1.0));
+        pior = pior.max((com / sem - 1.0).abs());
+    }
+    assert!(
+        pior >= 0.15,
+        "a cena mal reage ao interruptor ({:.1} %) — ela não contém o fenómeno",
+        100.0 * pior
+    );
+
+    // (b) ⭐ E as quatro esferas têm de ser DIFERENTES ENTRE SI com a cura ligada — é isso que faz
+    //     o fenómeno ver-se DENTRO de uma imagem, e não só entre duas corridas.
+    let com: Vec<f32> = pedidos.iter().map(|m| matiz(m, 1.0)).collect();
+    let (lo, hi) = com
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
+    assert!(
+        hi / lo >= 1.15,
+        "com a cura as quatro esferas quase não diferem ({hi:.3} contra {lo:.3}) — o gradiente não \
+         se vê numa imagem só"
+    );
+
+    // (c) ⛔ O CONTROLO, e é ele que dá sentido à barra: o material de OMISSÃO (cinzento) tem de
+    //     REPROVAR na mesma régua. Sem isto, uma barra frouxa passaria com a cena que o dono viu.
+    let cinzento = ph2d_field_ecs::FieldMaterial {
+        subsurface_weight: 1.0,
+        ..ph2d_field_ecs::FieldMaterial::default()
+    };
+    let (sem, com_) = (matiz(&cinzento, 0.0), matiz(&cinzento, 1.0));
+    assert!(
+        (com_ / sem - 1.0).abs() < 0.15,
+        "o cinzento reagiu {:.1} % — o controlo deixou de separar o material que mostra do que não \
+         mostra",
+        100.0 * (com_ / sem - 1.0).abs()
+    );
+}
+
+/// ⭐⭐ **O que a cena declara é o que a MEDIÇÃO usou** — ⛔ não uma cor bonita.
+///
+/// ⚠️ E a escala por canal tem de ser **IGUAL nos três**: com a de omissão (`1 · 0,5 · 0,25`) a
+/// matiz também mudaria por cada canal viajar a sua distância, e a cena deixaria de responder a uma
+/// pergunta só.
+#[test]
+fn a_cena_da_cor_declara_o_material_da_medicao() {
+    let pedidos = crate::smoke::scenes::materiais_da_cena(34).expect("a `=34` declara materiais");
+    for (m, esperado) in pedidos
+        .iter()
+        .zip(crate::smoke::scenes::edge::PROFUNDIDADES_DA_COR)
+    {
+        assert!(
+            (m.subsurface_radius - esperado).abs() < 1e-6,
+            "a profundidade saiu da tabela do oráculo"
+        );
+        assert_eq!(m.subsurface_color, COR, "a cor é a das fixturas");
+        assert_eq!(m.subsurface_radius_scale, [1.0; 3], "raios IGUAIS nos três canais");
+        assert!(m.subsurface_weight >= 1.0, "subsuperfície pura, como a medição");
+        assert!(m.specular_weight <= 0.0, "sem realce a lavar o que se quer ver");
+    }
+    // ⚠️ E nenhuma OUTRA cena pede material — o mecanismo nasceu para esta e um segundo consumidor
+    // silencioso mudaria uma cena que alguém já aprovou.
+    for n in 1..=crate::smoke::scenes::CENAS {
+        assert_eq!(
+            crate::smoke::scenes::materiais_da_cena(n).is_some(),
+            n == 34,
+            "a cena {n} mudou de material sem ninguém dizer"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O MATERIAL CHEGA ÀS ESFERAS — pelo caminho do produto, não pela tabela.**
+///
+/// ⛔⛔ As duas metades acima provam que a cena **declara** o material certo e que esse material
+/// **contém** o fenómeno. As duas são cegas ao elo do meio: *alguém tem de PÔR o material nas
+/// entidades*. Um `Vec` declarado e deitado fora lê-se exactamente como um `Vec` aplicado — e é o
+/// mesmo buraco que o `CLAUDE.md` §5.0 nomeia sobre si mesmo (*«nenhum instrumento pergunta se o
+/// VALOR chega a um consumidor»*).
+///
+/// ⚠️ Ele entra pela [`crate::scene::sync_scene_and_birth`], que é a porta que o smoke percorre, e
+/// não por uma montagem à mão do mundo.
+#[test]
+fn o_material_da_cena_chega_as_esferas() {
+    let doc = crate::smoke::scenes::edge::cena_34().expect("a cena `=34`");
+    let pedidos = crate::smoke::scenes::materiais_da_cena(34).expect("os materiais dela");
+    crate::smoke::set_armed_by_panel(true);
+    crate::smoke::with_smoke(|s| s.seed_materials = Some(pedidos.clone()));
+    let mut sim = ph2d_ecs::SimWorld::new();
+    crate::scene::sync_scene_and_birth(
+        &mut sim,
+        Some(&doc),
+        &[],
+        0.0,
+        &crate::scene::no_drawing(),
+    );
+    let world = sim.world_mut();
+    let mut q = world.query::<&ph2d_field_ecs::FieldMaterial>();
+    let mut raios: Vec<f32> = q.iter(world).map(|m| m.subsurface_radius).collect();
+    let cores: Vec<[f32; 3]> = {
+        let mut q2 = world.query::<&ph2d_field_ecs::FieldMaterial>();
+        q2.iter(world).map(|m| m.subsurface_color).collect()
+    };
+    crate::smoke::set_armed_by_panel(false);
+
+    assert_eq!(
+        raios.len(),
+        4,
+        "só {} das 4 esferas receberam material — o elo do meio está partido",
+        raios.len()
+    );
+    raios.sort_by(f32::total_cmp);
+    let mut alvo = crate::smoke::scenes::edge::PROFUNDIDADES_DA_COR;
+    alvo.sort_by(f32::total_cmp);
+    for (a, b) in raios.iter().zip(alvo) {
+        assert!(
+            (a - b).abs() < 1e-6,
+            "as profundidades que chegaram ({raios:?}) não são as que a cena pediu ({alvo:?})"
+        );
+    }
+    // ⚠️ E a COR também — um material com o raio certo e a cor de omissão voltaria a ser cinzento,
+    // que é exactamente o defeito que esta cena existe para não ter.
+    for c in &cores {
+        assert_eq!(*c, COR, "uma esfera ficou com a cor de omissão");
+    }
+}

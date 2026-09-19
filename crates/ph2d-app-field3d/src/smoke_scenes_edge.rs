@@ -181,3 +181,79 @@ pub fn cena_33() -> Result<FieldDoc, ph2d_field::FieldError> {
         NodeId(2),
     )
 }
+
+/// ⭐⭐⭐ **A CENA DA COR: quatro esferas, a MESMA tinta, QUATRO profundidades** (`docs/Render3d/10`
+/// §§17–18; ordem do dono, 2026-09-18: *«faça a cena»*).
+///
+/// # ⛔⛔⛔ Por que esta cena existe, e é um report do dono que a paga
+///
+/// A lei da matiz foi construída, medida e ligada a um interruptor — e o dono correu as duas
+/// metades lado a lado e viu **a mesma imagem**. A causa não era a lei: a `=33` abre com o material
+/// de omissão, que é **CINZENTO**, e *uma lei que redistribui saturação ENTRE canais não tem o que
+/// fazer num material onde os três já são iguais*. Medido no quadro inteiro: `1,00` byte de
+/// diferença média em cinzento, contra **`23,19`** num jade.
+///
+/// ⇒ é a espécie que o `CLAUDE.md` §5.0 chama de **pior que uma cena ausente**, um andar acima: não
+/// era a cena a ensinar o contrário — era o SMOKE a prometer o que aquela cena não podia mostrar.
+///
+/// # O desenho, e cada escolha responde a uma medição
+///
+/// | escolha | porquê |
+/// |---|---|
+/// | **quatro** esferas | são as **quatro profundidades** do oráculo convergido (`0,03 · 0,10 · 0,30 · 1,00`) |
+/// | a **mesma** tinta nas quatro | assim a única coisa que varia entre elas é a PROFUNDIDADE |
+/// | raios **IGUAIS** nos três canais | é a família que **isola** a pergunta — sem ela, a matiz também muda por cada canal viajar o seu |
+/// | especular a **zero** | é o que a medição usou, e um realce branco por cima lava o que se quer ver |
+///
+/// ⭐ **O fenómeno vê-se DENTRO de uma imagem** (as quatro deviam escurecer de tom da esquerda para
+/// a direita) **e entre as duas corridas** (com o interruptor, a da direita lava para o neutro).
+///
+/// ⚠️ **Sem `PH2D_SSS_DEPTH_HUE=1` as quatro saem com EXACTAMENTE o mesmo tom** — e isso não é a
+/// cena partida, é o defeito que ela existe para mostrar.
+pub fn cena_34() -> Result<FieldDoc, ph2d_field::FieldError> {
+    println!(
+        "[field-smoke] cena 34 — A COR QUE A PROFUNDIDADE DEIXA. Quatro esferas, a MESMA tinta, e a \
+         luz a viajar 0,03 · 0,10 · 0,30 · 1,00 dentro de cada uma."
+    );
+    println!(
+        "[field-smoke]            (1) MODEL · Shading · Render — (2) olhe o TOM das quatro: elas \
+         saem TODAS IGUAIS, e e' esse o defeito."
+    );
+    println!(
+        "[field-smoke]            (3) feche, e corra outra vez com PH2D_SSS_DEPTH_HUE=1 — agora a \
+         tinta tem de LAVAR para o neutro da esquerda para a direita."
+    );
+    println!(
+        "[field-smoke]            (4) como saber que falhou: se as duas corridas ficarem iguais, o \
+         interruptor nao chegou."
+    );
+    let esferas: Vec<Node> = PROFUNDIDADES_DA_COR
+        .iter()
+        .enumerate()
+        .map(|(i, _)| {
+            #[allow(clippy::cast_precision_loss)]
+            let x = -1.05 + 0.70 * i as f32;
+            leaf(
+                Primitive::Sphere { radius: 0.30 },
+                Xform {
+                    translation: [x, 0.0, 0.0],
+                    ..Xform::IDENTITY
+                },
+            )
+        })
+        .collect();
+    #[allow(clippy::cast_possible_truncation)]
+    let n = esferas.len() as u32;
+    let mut nodes = esferas;
+    nodes.push(combine(
+        Op::Union(ph2d_field::Blend::Sharp),
+        (0..n).map(NodeId).collect(),
+    ));
+    FieldDoc::new(nodes, NodeId(n))
+}
+
+/// As quatro profundidades da cena da cor, em unidades do MUNDO.
+///
+/// ⛔ **São as do oráculo** (`docs/Render3d/10` §17.3) e não números escolhidos: é contra estas
+/// quatro que a lei foi calibrada, logo é sobre estas quatro que a cena pode prometer o que mostra.
+pub const PROFUNDIDADES_DA_COR: [f32; 4] = [0.03, 0.10, 0.30, 1.00];

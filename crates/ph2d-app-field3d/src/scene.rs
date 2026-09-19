@@ -302,6 +302,36 @@ pub fn sync_scene_and_birth(
                 return (None, None);
             };
             let root = ph2d_field_ecs::spawn_doc(world, doc, PART_NAME);
+            // ⭐⭐⭐ **E O MATERIAL QUE A CENA PEDE entra AQUI, folha a folha** (2026-09-18).
+            //
+            // ⛔⛔ Ele existe por um report do dono: a lei da matiz que segue a profundidade
+            // (`docs/Render3d/10` §18) foi construída e ligada, e ele viu **a mesma imagem** dos
+            // dois lados — porque o material de omissão é **CINZENTO**, e uma lei que redistribui
+            // saturação *entre canais* não tem o que fazer quando os três já são iguais. *Uma cena
+            // que não consegue conter o fenómeno não pode demonstrá-lo*, e até aqui uma cena não
+            // tinha como pedir o material de que precisa.
+            //
+            // ⚠️ **A ordem é a das FOLHAS**, a mesma que o `spawn_doc` usa (`spawned[i]` indexado
+            // pelo nó) e a mesma que a [`crate::materials::leaves`] percorre. ⭐ E a semente
+            // **gasta-se**: depois do plantio quem manda no material é o mundo, senão isto
+            // sobrescreveria o que o artista pintou a cada replantio.
+            if let Some(pedidos) = crate::smoke::with_smoke(|s| s.seed_materials.take()).flatten() {
+                let folhas: Vec<bevy_ecs::entity::Entity> = ph2d_field_ecs::walk(world, root)
+                    .into_iter()
+                    .filter(|(e, _)| {
+                        matches!(
+                            world.get::<ph2d_field_ecs::FieldNode>(*e),
+                            Some(ph2d_field_ecs::FieldNode {
+                                shape: ph2d_field::NodeShape::Leaf(_)
+                            })
+                        )
+                    })
+                    .map(|(e, _)| e)
+                    .collect();
+                for (e, m) in folhas.into_iter().zip(pedidos) {
+                    world.entity_mut(e).insert(m);
+                }
+            }
             // ⭐⭐⭐ **E UMA LUZ NASCE COM ELA** (ordem do dono, 14/09: *«a luz deve virar objeto 3d
             // como nos app 3d»*) — como num aplicativo 3D, uma cena nova já tem uma.
             //

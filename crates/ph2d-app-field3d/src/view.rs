@@ -160,6 +160,10 @@ impl View {
             // ⚠️ **CACHE, e não vista** — a tabela de materiais é DERIVADA do mundo a cada cozimento
             // (`docs/Render3d/05`). Atravessar um fecho com ela seria carregar uma cópia de uma
             // coisa que a peça já tem, e ela ficaria a descrever a peça de ontem.
+            // ⚠️ **CACHE, e não vista** — ele gasta-se no plantio da semente, como a própria
+            // semente. Guardá-lo na vista fá-lo-ia repor o material da cena por cima do que o
+            // artista pintou, sempre que o painel reabrisse.
+            seed_materials: _,
             materials: _,
             // ⭐ CACHE, como a tabela de materiais: derivada do mundo, refeita no quadro seguinte.
             lights: _,

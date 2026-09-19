@@ -86,7 +86,7 @@
 
 use ph2d_nodegraph::attr::{
     COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, INV_INERTIA_COLUMN,
-    SIZE_IDENTITY, Stream, par_build_com_bloco,
+    SIZE_IDENTITY, Stream, par_preenche_em_blocos,
 };
 
 pub mod atrito;
@@ -95,8 +95,11 @@ pub mod atrito;
 /// de comportamento, cada um com a tabela de onde saiu.
 mod cercas;
 mod grelha;
-pub use cercas::{PECAS_PARA_PARALELIZAR, REPOUSO_VISIVEL};
+/// A REFERÊNCIA — a mesma lei por todos-os-pares, que nenhum caminho de produto chama.
+mod referencia;
+pub use cercas::{GRAO_POR_TAREFA_MIN, PECAS_PARA_PARALELIZAR, REPOUSO_VISIVEL, grao_de};
 pub use grelha::candidatos;
+pub use referencia::separate_all_pairs;
 /// O impulso do par — a velocidade que responde ao contacto. Ver o cabeçalho dele.
 mod impulso;
 mod par;
@@ -504,6 +507,26 @@ fn separate_com(
     paralelo: bool,
     repouso: f32,
 ) -> usize {
+    separate_grao(
+        p,
+        saida,
+        pecas,
+        varreduras,
+        paralelo,
+        repouso,
+        grao_de(p.len()),
+    )
+}
+
+fn separate_grao(
+    p: &mut [[f32; 2]],
+    saida: &mut Saida<'_>,
+    pecas: &Pecas<'_>,
+    varreduras: usize,
+    paralelo: bool,
+    repouso: f32,
+    grao: usize,
+) -> usize {
     let n = p.len();
     confere(n, saida, pecas);
     let ativo: Vec<bool> = (0..n)
@@ -531,6 +554,8 @@ fn separate_com(
         .map(|i| pecas.colisores[i].map(|c| c.girado(girado[i])))
         .collect();
     let mut grade = grelha::Grelha::default();
+    // O destino de uma varredura, **fora do laço** — ver o comentário na chamada.
+    let mut novas: Vec<Nova> = vec![None; n];
     for v in 0..varreduras {
         foto.copy_from_slice(p);
         // As formas COMO ESTÃO: o que as varreduras anteriores rodaram já conta.
@@ -544,25 +569,35 @@ fn separate_com(
             }
         }
         grade.constroi(&foto, &ativo, lado);
-        // ⭐ **O bloco de vizinhos é REAPROVEITADO por trabalhador** — ele era um `Vec` novo por
-        // peça e por varredura (um milhão num quadro de `1024` varreduras com `1000` peças).
-        // ⛔ **Isto NÃO curou o paralelo, e a medição está no doc da porta:** o que o segura é o
-        // `fork/join` por varredura, não o alocador.
-        let novas: Vec<Nova> = par_build_com_bloco(paralelo, n, Vec::<u32>::new, |vizinhos, k| {
-            if !ativo[k] {
-                return None;
-            }
-            grade.vizinhos_de(k, vizinhos);
-            varredura::corrigida(
-                k,
-                vizinhos.iter().map(|&j| j as usize),
-                &foto,
-                &agora,
-                pecas,
-                &ativo,
-            )
-        });
-        let andou = aplica(p, saida, novas, alcance_max);
+        // ⭐⭐⭐ **O BUFFER É REAPROVEITADO E A PARTIÇÃO É EXPLÍCITA** (report do dono, 2026-09-18:
+        // `1000 pecas x 68 varreduras x 156 vizinhos`, com o mesmo trabalho a correr em `4`–`5`
+        // núcleos de 32). A rota anterior fazia `collect()` por varredura: um `Vec` novo de cada
+        // vez, e a árvore de partição do rayon a descer até pedaços pequenos, com roubo de trabalho
+        // e espera entre eles — **`5×` o CPU da série** para o mesmo resultado.
+        //
+        // ⇒ `novas` vive fora do laço e cada tarefa leva [`GRAO_POR_TAREFA`] peças.
+        par_preenche_em_blocos(
+            paralelo,
+            &mut novas,
+            grao,
+            Vec::<u32>::new,
+            |vizinhos, k, slot| {
+                *slot = if ativo[k] {
+                    grade.vizinhos_de(k, vizinhos);
+                    varredura::corrigida(
+                        k,
+                        vizinhos.iter().map(|&j| j as usize),
+                        &foto,
+                        &agora,
+                        pecas,
+                        &ativo,
+                    )
+                } else {
+                    None
+                };
+            },
+        );
+        let andou = aplica(p, saida, &mut novas, alcance_max);
         // ⭐⭐⭐ **O PONTO FIXO** — e ele não é uma heurística, é uma INDUÇÃO: uma varredura que não
         // mexe um bit deixa a seguinte com a MESMA entrada (a mesma foto, os mesmos ângulos, a
         // mesma grelha), logo com a mesma saída. ⇒ parar aqui é **bit-idêntico** a varrer até ao
@@ -591,42 +626,6 @@ fn separate_com(
     varreduras
 }
 
-/// **A referência**: a mesma lei por todos-os-pares, na ordem do laço `i < j`. `O(n²)`.
-///
-/// Pública para que o gate de cada cliente possa comparar-se com ela; nenhum caminho de produto a
-/// chama.
-pub fn separate_all_pairs(
-    p: &mut [[f32; 2]],
-    saida: &mut Saida<'_>,
-    pecas: &Pecas<'_>,
-    varreduras: usize,
-) {
-    let n = p.len();
-    confere(n, saida, pecas);
-    let ativo: Vec<bool> = (0..n)
-        .map(|i| ativo(p[i], pecas.colisores[i].as_ref()))
-        .collect();
-    for _ in 0..varreduras {
-        let foto = p.to_vec();
-        let girado = saida.giro.to_vec();
-        let agora: Vec<Option<Colisor>> = (0..n)
-            .map(|i| pecas.colisores[i].map(|c| c.girado(girado[i])))
-            .collect();
-        let novas: Vec<Nova> = (0..n)
-            .map(|k| {
-                if ativo[k] {
-                    varredura::corrigida(k, 0..n, &foto, &agora, pecas, &ativo)
-                } else {
-                    None
-                }
-            })
-            .collect();
-        // ⚠️ A referência varre SEMPRE até ao fim: ela é o padrão contra o qual os dois atalhos se
-        // medem, e um atalho que também vivesse aqui não poderia ser medido.
-        let _ = aplica(p, saida, novas, 0.0);
-    }
-}
-
 /// Escreve o que uma varredura produziu, e devolve **quanto o ponto que mais andou andou** — a
 /// grandeza que decide as duas saídas antecipadas do [`separate`].
 ///
@@ -635,11 +634,17 @@ pub fn separate_all_pairs(
 ///
 /// ⚠️ Conservador de propósito: devolve `f32::INFINITY` se algum valor escrito não for finito, para
 /// que um `NaN` nunca seja lido como *«nada mudou»*.
-fn aplica(p: &mut [[f32; 2]], saida: &mut Saida<'_>, novas: Vec<Nova>, alcance: f32) -> f32 {
+///
+/// ⚠️⚠️ **Ele LÊ o buffer e não o limpa, e isso é uma propriedade de quem o enche:** o
+/// `par_preenche_em_blocos` escreve **todos** os índices em cada varredura (o braço inactivo escreve
+/// `None`), logo não há resto da passagem anterior. A 1.ª redacção fazia `take()` — uma escrita por
+/// peça e por varredura para nada —, e foi uma **mutação sobrevivente** que o mostrou: *uma linha
+/// que a mutação não consegue matar não é lei, é comentário com sintaxe de código*.
+fn aplica(p: &mut [[f32; 2]], saida: &mut Saida<'_>, novas: &mut [Nova], alcance: f32) -> f32 {
     const POR_GRAU: f32 = core::f32::consts::PI / 180.0;
     let mut maior = 0.0_f32;
-    for (k, nova) in novas.into_iter().enumerate() {
-        if let Some((q, g)) = nova {
+    for (k, nova) in novas.iter_mut().enumerate() {
+        if let Some((q, g)) = *nova {
             let (antes_p, antes_g) = (p[k], saida.giro[k]);
             p[k] = q;
             saida.giro[k] += g;

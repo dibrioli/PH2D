@@ -1451,3 +1451,36 @@ fn uma_peca_que_so_roda_nao_e_lida_como_parada() {
         "a paragem leu uma peca que SO' roda como parada: {usadas} varredura(s), {g:?} graus"
     );
 }
+
+/// ⭐⭐⭐ **O GRÃO TEM DE DAR TRABALHO A TODOS OS NÚCLEOS** — a lei que a minha 1.ª escolha violou.
+///
+/// ⛔⛔ Eu escrevi `GRAO = 64` como número redondo, e com `1000` peças isso são **16 tarefas** numa
+/// máquina de 32 núcleos: **metade dela fica parada**, e a medição leu-o em voz alta (`3,4` núcleos
+/// a grão `256` contra `11,0` a grão `32`). *Um grão que não olha para o `n` nem para os núcleos é
+/// um tecto escondido.*
+///
+/// ⇒ o grão é DERIVADO, e este gate afirma a propriedade que importa: **pelo menos uma tarefa por
+/// núcleo**, com folga para o escalonador equilibrar (numa pilha o número de vizinhos varia muito
+/// de peça para peça, logo as tarefas não custam todas o mesmo).
+#[test]
+fn o_grao_da_tarefa_da_trabalho_a_todos_os_nucleos() {
+    let nucleos = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+    for n in [PECAS_PARA_PARALELIZAR, 500, 1000, 4000, 100_000] {
+        let grao = super::grao_de(n);
+        assert!(
+            grao >= GRAO_POR_TAREFA_MIN,
+            "o grao tem piso: {n} -> {grao}"
+        );
+        let tarefas = n.div_ceil(grao);
+        // ⚠️ A cerca só faz sentido quando há peças para toda a gente — abaixo disso o piso do grão
+        // manda, e é ele que impede tarefas mais caras de criar do que de correr.
+        if n >= nucleos * GRAO_POR_TAREFA_MIN {
+            assert!(
+                tarefas >= nucleos,
+                "com {n} pecas o grao {grao} da' {tarefas} tarefas para {nucleos} nucleos — \
+                 {} ficam parados",
+                nucleos - tarefas
+            );
+        }
+    }
+}

@@ -474,3 +474,61 @@ fn cpu_segundos() -> f64 {
     // `resto` começa no campo 3, logo utime (14) e stime (15) estão em 11 e 12.
     (tick(11) + tick(12)) / 100.0
 }
+
+/// ⭐⭐⭐ **O GRÃO DA TAREFA** — de onde sai a [`crate::GRAO_POR_TAREFA`].
+///
+/// ⚠️⚠️ **A 1.ª escolha foi um número redondo e estava ERRADA:** com grão `64` e `1000` peças
+/// existem **16 tarefas** — metade dos núcleos desta máquina fica sem nada para fazer. *Um grão que
+/// não olha para o `n` nem para os núcleos é um tecto escondido.*
+///
+/// A coluna que decide é a dos **núcleos** (CPU/parede): ela diz quantos de facto trabalharam, e a
+/// carga da máquina não a estraga como estraga o relógio.
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn o_grao_da_tarefa() {
+    const RAIO: f32 = 100.0;
+    const V: usize = 64;
+    let nucleos = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+    eprintln!("\n  ═══ O GRÃO DA TAREFA ({nucleos} núcleos na máquina) ═══\n");
+    eprintln!(
+        "  {:<8} │ {:<7} │ {:>8} │ {:>11} │ {:>11} │ {:>9}",
+        "discos", "grão", "tarefas", "parede", "CPU", "núcleos"
+    );
+    eprintln!("  ---------|---------|----------|-------------|-------------|----------");
+    for n in [1000usize, 4000] {
+        let (p0, c, w) = campo_de_discos(n, RAIO, 0.5);
+        let inv: Vec<f32> = (0..n)
+            .map(|i| c[i].map_or(0.0, |x| x.inv_inercia(w[i])))
+            .collect();
+        let pecas = Pecas::novas(&c, &w, &inv);
+        for grao in [8usize, 16, 32, 64, 128, 256] {
+            let mut melhor = (f64::INFINITY, 0.0f64);
+            for _ in 0..3 {
+                let mut p = p0.clone();
+                let mut g = vec![0.0; n];
+                let (c0, t0) = (cpu_segundos(), Instant::now());
+                separate_grao(
+                    &mut p,
+                    &mut Saida { giro: &mut g },
+                    &pecas,
+                    V,
+                    true,
+                    REPOUSO_VISIVEL,
+                    grao,
+                );
+                let parede = t0.elapsed().as_secs_f64();
+                if parede < melhor.0 {
+                    melhor = (parede, cpu_segundos() - c0);
+                }
+            }
+            eprintln!(
+                "  {n:<8} │ {grao:<7} │ {:>8} │ {:>8.1} ms │ {:>8.1} ms │ {:>8.1}×",
+                n.div_ceil(grao),
+                melhor.0 * 1e3,
+                melhor.1 * 1e3,
+                melhor.1 / melhor.0.max(1e-9)
+            );
+        }
+    }
+    eprintln!("\n  load: {}\n", carga());
+}

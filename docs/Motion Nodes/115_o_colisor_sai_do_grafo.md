@@ -1913,3 +1913,72 @@ penetração visível):
 ⚠️ **E o produto tem um lever que não é de engenharia nenhuma:** a cena está `30×` acima da
 capacidade. Menos objectos, objectos menores ou mais espaço entre eles custam **zero** e mudam a
 coluna dos vizinhos — que é a que multiplica tudo o resto.
+
+---
+
+## §26 — *«vai»* — a região paralela: de `4,4` para `8`–`11` núcleos
+
+Ordem do dono, 2026-09-18, sobre o lever que a §25 nomeou.
+
+### §26.1 — O que segurava o paralelo: o `collect` por varredura
+
+O caminho paralelo fazia `(0..n).into_par_iter().map_init(..).collect()` **uma vez por varredura**, e
+isso paga duas coisas `N` vezes: um `Vec` novo de cada vez, e a **árvore de partição** que o
+`collect` indexado do rayon constrói até pedaços pequenos — com o roubo de trabalho e a espera que
+isso traz.
+
+⇒ [`par_preenche_em_blocos`] no mesmo seam auditado: o buffer vive **fora do laço** e a partição é
+**explícita**. ⭐ A garantia de bits é a mesma (cada elemento escrito no índice dele, a partir de
+entradas só-leitura), e os gates de paridade não se mexeram.
+
+### §26.2 — ⛔⛔ E a minha primeira escolha de GRÃO era um tecto escondido
+
+Escrevi `64` — um número redondo. Com `1000` peças isso são **16 tarefas numa máquina de 32
+núcleos**: metade dela fica parada. A medição diz-o em voz alta
+([`custo_probe_atribuicao::o_grao_da_tarefa`], `1000` discos a `64` varreduras):
+
+| grão | tarefas | parede | núcleos de facto |
+|---|---|---|---|
+| 8 | 125 | 16,0 ms | **10,6×** |
+| 16 | 63 | **15,4 ms** | 10,4× |
+| 32 | 32 | 15,5 ms | **11,0×** |
+| 64 | 16 | 18,4 ms | 8,2× |
+| 128 | 8 | 23,1 ms | 5,6× |
+| 256 | 4 | 32,2 ms | 3,4× |
+
+⇒ o grão é **DERIVADO** (`n / (núcleos × 4)`, com piso `8`) e tem gate
+(`o_grao_da_tarefa_da_trabalho_a_todos_os_nucleos`). *Um grão que não olha para o `n` nem para os
+núcleos é um tecto escondido.*
+
+### §26.3 — O resultado, na densidade do dono
+
+| vizinhos por peça | série | **paralelo** |
+|---|---|---|
+| 12 | 13,8 ms | 7,3 ms |
+| 37 | 28,8 ms | 8,3 ms |
+| 73 | 49,9 ms | **9,3 ms** |
+| **132** | 82,6 ms | **16,4 ms** — `5,0×` |
+
+E o discriminador que a carga não estraga, a `1000` discos e `256` varreduras: **`4,4` núcleos antes,
+`7,9` depois**, com o CPU desperdiçado a cair de `5,4×` o da série para `~2×`.
+
+⚠️ **As leituras de escalonamento desta jornada saíram todas com a máquina entre `load 22` e `32`**
+(outras linhas a correr suítes): numa máquina calma o número de núcleos sobe, e o que fica provado
+aqui é a RAZÃO entre as duas rotas, não o tecto.
+
+### §26.4 — As duas mutações que expuseram fixturas cegas
+
+⛔ **Duas mutações minhas eram NO-OPs semânticas, e a causa era a mesma fixtura:** a peça `0` da
+[`nuvem`] **não tem colisor**. Saltar a escrita de uma peça inactiva deixa lá o `None` que já
+estava; saltar o PRIMEIRO elemento do ramo em série salta precisamente essa peça. ⇒ as duas foram
+reescritas para algo observável (não escrever um resultado `None` sobre um `Some` anterior; saltar o
+ÚLTIMO elemento), e as quatro sangram.
+
+⭐ **E uma delas apagou código meu:** o `aplica` fazia `take()` — uma escrita por peça e por
+varredura — quando quem enche o buffer já escreve **todos** os índices. *Uma linha que a mutação não
+consegue matar não é lei.*
+
+⚠️ **Três tectos caíram e os três foram CORTE por responsabilidade:** o `grao_de` foi para as
+[`cercas`](../../crates/ph2d-contact/src/cercas.rs) (ele é a derivação de uma delas) e a
+[`referencia`](../../crates/ph2d-contact/src/referencia.rs) — todos-os-pares, que **nenhum caminho
+de produto chama** — saiu do `lib.rs` para o módulo dela.

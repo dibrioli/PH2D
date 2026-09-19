@@ -102,6 +102,52 @@ where
     }
 }
 
+/// **Preenche um buffer JÁ ALOCADO, em blocos GROSSOS** — a porta para quem repete a mesma passagem
+/// muitas vezes sobre a mesma nuvem.
+///
+/// ⚠️⚠️ **Porque ela existe, medido** (report do dono, 2026-09-18): o [`par_build_com_bloco`] faz
+/// `collect()`, e isso custa **duas** coisas que um laço de `N` varreduras paga `N` vezes — um
+/// `Vec` novo por passagem, e a árvore de partição que o `collect` indexado do rayon constrói até
+/// pedaços pequenos, com o roubo de trabalho e a espera que isso traz. Medido no passe de
+/// contactos: `4`–`5` núcleos de 32 a trabalhar, com **`5×` o CPU da série** para o mesmo
+/// resultado.
+///
+/// ⇒ aqui o alvo é **reaproveitado** entre passagens e a partição é **explícita**: `grao` elementos
+/// por tarefa, escolhido por quem chama a partir do trabalho que cada elemento custa.
+///
+/// ⭐ **A garantia de bits é a mesma:** cada elemento é escrito no índice DELE, a partir de entradas
+/// partilhadas só por leitura — não há redução de vírgula flutuante a reordenar. O bloco é
+/// rascunho de trabalhador, nunca estado com significado entre elementos.
+pub fn par_preenche_em_blocos<T, B, I, F>(
+    paralelo: bool,
+    alvo: &mut [T],
+    grao: usize,
+    init: I,
+    f: F,
+) where
+    T: Send,
+    B: Send,
+    I: Fn() -> B + Sync + Send,
+    F: Fn(&mut B, usize, &mut T) + Sync + Send,
+{
+    let grao = grao.max(1);
+    if paralelo {
+        alvo.par_chunks_mut(grao)
+            .enumerate()
+            .for_each_init(&init, |bloco, (ci, pedaco)| {
+                let base = ci * grao;
+                for (o, slot) in pedaco.iter_mut().enumerate() {
+                    f(bloco, base + o, slot);
+                }
+            });
+    } else {
+        let mut bloco = init();
+        for (i, slot) in alvo.iter_mut().enumerate() {
+            f(&mut bloco, i, slot);
+        }
+    }
+}
+
 /// The identity of the reserved `size` column: **unit scale**.
 ///
 /// A node only writes the columns it changes, so every node that MATERIALIZES

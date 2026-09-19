@@ -32,3 +32,30 @@ pub const PECAS_PARA_PARALELIZAR: usize = 128;
 /// ⇒ `1e-5` é o joelho: a última coluna **não muda** e a conta cai `6,9×`. ⛔ A `1e-3` a resposta
 /// já é outra — *o número não é «um epsilon razoável», é onde a saída deixa de depender dele*.
 pub const REPOUSO_VISIVEL: f32 = 1e-5;
+
+/// ⭐⭐ **Quantas peças leva uma TAREFA do caminho paralelo** — a partição explícita que substituiu a
+/// árvore do `collect` do rayon.
+///
+/// ⚠️ **Ele é um compromisso entre dois custos medidos:** um grão pequeno faz tarefas de mais (cada
+/// uma com o seu roubo de trabalho e a sua espera — foi isso que pôs `4`–`5` núcleos de 32 a
+/// trabalhar com `5×` o CPU da série), e um grão grande deixa núcleos sem trabalho no fim. A
+/// tabela de onde ele sai está na sonda [`crate::custo_probe::o_grao_da_tarefa`].
+/// Quantas TAREFAS por núcleo — mais do que uma dá ao escalonador com que equilibrar quando uma
+/// peça custa mais que outra (numa pilha, o número de vizinhos varia muito).
+const FATOR: usize = 4;
+
+/// O piso do grão: abaixo disto a tarefa é mais barata de criar do que de correr.
+pub const GRAO_POR_TAREFA_MIN: usize = 8;
+
+/// **O grão de uma tarefa para uma nuvem de `n` peças** — a DERIVAÇÃO das duas constantes acima.
+///
+/// ⛔⛔ **A 1.ª escolha foi um número redondo (`64`) e estava errada:** com `1000` peças isso são
+/// **16 tarefas** numa máquina de 32 núcleos, e metade dela fica parada. Medido: `3,4` núcleos a
+/// grão `256` contra `11,0` a grão `32`. *Um grão que não olha para o `n` nem para os núcleos é um
+/// tecto escondido*, e há gate (`o_grao_da_tarefa_da_trabalho_a_todos_os_nucleos`).
+#[must_use]
+pub fn grao_de(n: usize) -> usize {
+    let nucleos = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+    n.div_ceil(nucleos.saturating_mul(FATOR))
+        .max(GRAO_POR_TAREFA_MIN)
+}

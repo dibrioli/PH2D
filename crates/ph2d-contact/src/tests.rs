@@ -1706,3 +1706,42 @@ fn a_porta_de_bisseccao_le_o_que_o_dono_escreve() {
     assert!(!ordem_de(Some("0")), "=0 é o caminho de omissão, explícito");
     assert!(!ordem_de(Some("")), "=<vazio> NÃO é uma ordem");
 }
+
+/// ⭐⭐⭐ **A DECISÃO DO PLANO VÊ AS CÉLULAS, E UMA RÉGUA DE CANDIDATOS É CEGA ALI.**
+///
+/// ⚠️⚠️ **Este gate nasceu de um report do dono** (*«motor anterior mais rápido»*, 19/09): a
+/// decisão contava CANDIDATOS, e a malha fina paga também `O(células)` **por varredura**. A sonda
+/// [`crate::custo_probe::contagens::quanto_custa_uma_celula_contra_um_candidato`] mede o regime
+/// onde isso decide: a `1 000` candidatos PARADOS, quadruplicar as células leva uma varredura de
+/// `25,7` para `56,8 µs`.
+///
+/// ⭐ O CONTROLO está dentro do gate: a régua de candidatos **empata** onde a medida separa.
+#[test]
+fn a_decisao_do_plano_ve_as_celulas() {
+    let (p, _, _) = nuvem(400);
+    let c: Vec<Option<Colisor>> = (0..p.len()).map(|_| Some(Colisor::disco(0.2))).collect();
+    let vivo: Vec<bool> = (0..p.len()).map(|i| ativo(p[i], c[i].as_ref())).collect();
+    let mede = |lado: f32| {
+        let mut g = crate::grelha::Grelha::default();
+        g.planeia_numa_camada(&vivo, lado);
+        g.constroi(&p, &vivo);
+        (g.candidatos_previstos(), g.celulas(), g.custo_medido())
+    };
+    // Duas malhas já tão finas que refiná-las quase não tira candidatos — e QUADRUPLICA as células.
+    let (cand_a, cel_a, custo_a) = mede(0.05);
+    let (cand_b, cel_b, custo_b) = mede(0.025);
+    assert!(
+        cand_b < cand_a,
+        "o CONTROLO: uma régua de candidatos preferiria a malha FINA ({cand_a} contra {cand_b})"
+    );
+    assert!(
+        cel_b > cel_a * 3,
+        "a malha fina tinha de ter muito mais células: {cel_a} contra {cel_b}"
+    );
+    assert!(
+        custo_b > custo_a,
+        "a régua do plano é cega às células: {custo_a} contra {custo_b}"
+    );
+    // E a composição é a que a cerca declara — nem mais um termo, nem menos.
+    assert_eq!(custo_a, cand_a + cel_a / crate::CELULAS_POR_CANDIDATO);
+}

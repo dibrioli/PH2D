@@ -97,7 +97,9 @@ mod cercas;
 mod grelha;
 /// A REFERÊNCIA — a mesma lei por todos-os-pares, que nenhum caminho de produto chama.
 mod referencia;
-pub use cercas::{MARGEM_DO_CORTE, PECAS_PARA_PARALELIZAR, PISO_DA_TAREFA, REPOUSO_VISIVEL};
+pub use cercas::{
+    CELULAS_POR_CANDIDATO, MARGEM_DO_CORTE, PECAS_PARA_PARALELIZAR, PISO_DA_TAREFA, REPOUSO_VISIVEL,
+};
 pub use grelha::{candidatos, candidatos_e_grandes};
 pub use referencia::separate_all_pairs;
 /// O impulso do par — a velocidade que responde ao contacto. Ver o cabeçalho dele.

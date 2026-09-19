@@ -158,6 +158,13 @@ pub struct Relatorio {
     /// inflar a grelha de todas»*, e sem o qual eu tive de INFERIR a causa da cena do dono a partir
     /// de uma contagem de vizinhos (ver o cabeçalho da [`crate::grelha`]).
     pub grandes: usize,
+    /// ⛔ **`true` quando a porta de bissecção `PH2D_CONTACT_UMA_CAMADA` está armada.**
+    ///
+    /// ⚠️⚠️ **Ela existe porque o readout não sabia dizer QUAL motor o produziu** (report do dono,
+    /// 19/09): com o corte a não armar, as duas rotas imprimem `0 grande(s)` e a linha lê-se igual
+    /// nos dois lados de um A/B. *Um instrumento de bissecção que não se identifica não bissecta
+    /// nada.*
+    pub bisseccao: bool,
 }
 
 impl Relatorio {
@@ -197,6 +204,7 @@ fn separa_contando(entrada: &Stream, varreduras: usize, r: &mut Relatorio) -> Op
     let mut giro = vec![0.0f32; n];
     r.pecas = n;
     (r.candidatos, r.grandes) = crate::candidatos_e_grandes(&colisores, &pos, &w);
+    r.bisseccao = crate::grelha::uma_camada_por_ordem();
     r.varreduras = crate::separate(
         &mut pos,
         &mut Saida { giro: &mut giro },

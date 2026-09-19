@@ -442,3 +442,65 @@ fn o_que_o_plano_custa_quando_nao_arma() {
     );
     eprintln!("  load: {}\n", carga());
 }
+
+/// ⛔⛔⛔ **QUANTO CUSTA UMA CÉLULA CONTRA UM CANDIDATO** — o buraco que a decisão do plano tinha:
+/// ela contava CANDIDATOS e a malha fina paga também `O(células)` **por varredura** (zerar o
+/// `inicio`, correr a soma acumulada).
+///
+/// ⚠️ A sonda varre o LADO da célula sobre a MESMA nuvem: à medida que ele encolhe, os candidatos
+/// caem e as células sobem. *Se existir um ponto onde o relógio volta a subir enquanto os
+/// candidatos ainda descem, uma regra que só olhe candidatos escolhe o lado errado.*
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn quanto_custa_uma_celula_contra_um_candidato() {
+    const N: usize = 1000;
+    const RAIO: f32 = 100.0;
+    const REPS: usize = 30;
+    let (p0, c, w) = super::atribuicao::campo_de_discos(N, RAIO, 1.8);
+    let inv: Vec<f32> = (0..N)
+        .map(|i| c[i].map_or(0.0, |x| x.inv_inercia(w[i])))
+        .collect();
+    let pecas = Pecas::novas(&c, &w, &inv);
+    let vivo: Vec<bool> = (0..N).map(|i| ativo(p0[i], c[i].as_ref())).collect();
+    eprintln!("\n  ═══ UMA CÉLULA CONTRA UM CANDIDATO ({N} discos, R = {RAIO:.0}) ═══\n");
+    eprintln!("   lado │ células │ candidatos │ uma varredura");
+    eprintln!("  ──────┼─────────┼────────────┼──────────────");
+    for lado in [4.0_f32, 2.0, 1.0, 0.5, 0.25, 0.125, 0.0625] {
+        let mut g = crate::grelha::Grelha::default();
+        g.planeia_numa_camada(&vivo, lado * 2.0 * RAIO);
+        g.constroi(&p0, &vivo);
+        let (celulas, cand) = (g.celulas(), g.candidatos_previstos());
+        let mut melhor = f64::INFINITY;
+        for _ in 0..CORRIDAS {
+            let agora = std::time::Instant::now();
+            for _ in 0..REPS {
+                let mut gg = crate::grelha::Grelha::default();
+                gg.planeia_numa_camada(&vivo, lado * 2.0 * RAIO);
+                gg.constroi(&p0, &vivo);
+                let (mut viz, mut t) = (Vec::<u32>::new(), 0usize);
+                for k in 0..N {
+                    gg.vizinhos_de(k, &mut viz);
+                    if crate::varredura::corrigida(
+                        k,
+                        viz.iter().map(|&j| j as usize),
+                        &p0,
+                        &c,
+                        &pecas,
+                        &vivo,
+                    )
+                    .is_some()
+                    {
+                        t += 1;
+                    }
+                }
+                std::hint::black_box(t);
+            }
+            #[expect(clippy::cast_precision_loss, reason = "uma contagem de repeticoes")]
+            let reps = REPS as f64;
+            melhor = melhor.min(agora.elapsed().as_secs_f64() * 1e6 / reps);
+        }
+        eprintln!("   {lado:>4.2} │ {celulas:>7} │ {cand:>10} │ {melhor:>10.1} µs");
+    }
+    eprintln!("\n  ⇒ onde o relógio vira enquanto os candidatos ainda caem, a célula manda.");
+    eprintln!("\n  load: {}\n", carga());
+}

@@ -97,3 +97,26 @@ pub const PISO_DA_TAREFA: usize = 8;
 /// onde (`1000` discos, dispersão `4 ×`): `1` grande dá `11,3 ×`, `64` dão `1,18 ×`, **`128` dão
 /// `0,64 ×`**. *O minimizador encontra esse joelho sem que ninguém escreva o número.*
 pub const MARGEM_DO_CORTE: f32 = 2.0;
+
+/// ⭐⭐⭐ **QUANTAS CÉLULAS VALEM UM CANDIDATO** — o segundo termo do custo de uma varredura, e o que
+/// faltava à decisão do plano.
+///
+/// ⚠️⚠️ **Ela nasceu de um report do dono** (*«motor anterior mais rápido»*, 19/09): a decisão
+/// contava CANDIDATOS e a malha fina paga também `O(células)` por varredura — zerar o `inicio` e
+/// correr a soma acumulada. *Uma regra que só olha metade do custo escolhe pela metade errada
+/// exactamente onde a outra metade explode.*
+///
+/// Medido varrendo o LADO da célula sobre a MESMA nuvem (`1000` discos, perfil `smoke`,
+/// `load 4,17`): à medida que ele encolhe os candidatos caem e as células sobem.
+///
+/// | lado | células | candidatos | uma varredura |
+/// |---|---|---|---|
+/// | `4,00` | `70` | `159 396` | `1 594,4 µs` |
+/// | `1,00` | `782` | `12 132` | `219,7 µs` |
+/// | `0,25` | `11 438` | `1 000` | **`25,7 µs`** ⇠ o joelho |
+/// | `0,125` | `45 315` | `1 000` | **`56,8 µs`** ⇠ *o relógio DOBRA com os candidatos parados* |
+///
+/// ⇒ as duas últimas linhas isolam a célula (`+33 877` células por `+31,1 µs` ⇒ **`0,92 ns`**), e o
+/// par `1,00 → 0,25` isola o candidato (**`9,16 ns`**, já descontada a célula). A razão dá **`10,0`**,
+/// e é esse o número — ⛔ não um peso escolhido.
+pub const CELULAS_POR_CANDIDATO: usize = 10;

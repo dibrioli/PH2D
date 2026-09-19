@@ -58,7 +58,7 @@
 //! que se perde é **relógio e nunca resposta**: um plano mau dá uma grelha pior, não uma grelha
 //! errada.
 
-use super::{MARGEM_DO_CORTE, celula};
+use super::{CELULAS_POR_CANDIDATO, MARGEM_DO_CORTE, celula};
 
 /// ⛔ **A PORTA DE BISSECÇÃO** (`PH2D_CONTACT_UMA_CAMADA=1`) — devolve o plano de UMA camada, que é
 /// o de antes de 2026-09-18, sem recompilar nada.
@@ -67,7 +67,7 @@ use super::{MARGEM_DO_CORTE, celula};
 /// [`Grelha::planeia_com_margem`] e o [`Grelha::planeia_numa_camada`] ficam de fora de propósito,
 /// para que um gate continue a medir a lei e não o ambiente. *Uma bandeira global lida no fundo da
 /// pilha é uma corrida escrita à mão, e esta casa já a pagou.*
-fn uma_camada_por_ordem() -> bool {
+pub(super) fn uma_camada_por_ordem() -> bool {
     static ORDEM: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ORDEM.get_or_init(|| ordem_de(std::env::var("PH2D_CONTACT_UMA_CAMADA").ok().as_deref()))
 }
@@ -143,7 +143,7 @@ impl Grelha {
         if uma_camada_por_ordem() {
             return;
         }
-        let uma = self.candidatos_previstos();
+        let uma = self.custo_medido();
         // O modelo PROPÕE (a margem é `1`: aqui ele só escolhe QUAL corte vale a pena tentar).
         self.planeia_com_margem(foto, ativo, alcances, 1.0);
         if self.grandes.is_empty() {
@@ -153,7 +153,7 @@ impl Grelha {
         self.constroi(foto, ativo);
         // ⭐⭐⭐ **E a CONTAGEM REAL decide.** Ver [`MARGEM_DO_CORTE`].
         #[expect(clippy::cast_precision_loss, reason = "contagens de uma cena")]
-        let (d, u) = (self.candidatos_previstos() as f32, uma as f32);
+        let (d, u) = (self.custo_medido() as f32, uma as f32);
         if d * MARGEM_DO_CORTE >= u {
             uma_camada(self);
         }
@@ -417,9 +417,18 @@ impl Grelha {
 
     /// Quantas CÉLULAS a malha fina tem — o trabalho `O(células)` que o [`Grelha::constroi`] paga
     /// **por varredura** (zerar o `inicio` e correr a soma acumulada).
-    #[cfg(test)]
     pub(super) fn celulas(&self) -> usize {
         self.cols * self.rows
+    }
+
+    /// **O CUSTO MEDIDO de uma varredura com esta grelha**, nas duas moedas dela: os candidatos que
+    /// ela entrega mais as células que ela obriga a varrer.
+    ///
+    /// ⚠️⚠️ **A 1.ª redacção da decisão contava só a primeira**, e o report do dono de 19/09 obrigou
+    /// a medir a segunda: a `1 000` candidatos parados, quadruplicar as células **dobra o relógio**
+    /// de uma varredura. Ver [`CELULAS_POR_CANDIDATO`].
+    pub(super) fn custo_medido(&self) -> usize {
+        self.candidatos_previstos() + self.celulas() / CELULAS_POR_CANDIDATO
     }
 
     /// Quantas peças o plano promoveu a GRANDE — o número que NOMEIA a causa de uma cena cara.

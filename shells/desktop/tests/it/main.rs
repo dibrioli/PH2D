@@ -76,6 +76,7 @@ mod o_cursor_e_mapeado_pela_banda_da_cena;
 mod o_hud_conduz_a_raiz_antes_de_as_ancoras_a_lerem;
 mod o_painel_pinta_todo_o_modelo_aceita;
 mod o_pincel_de_peso_esta_fiado;
+mod o_perfilador_diz_qual_motor_da_grelha_correu;
 mod o_quadro_publica_o_que_o_pintor_mediu;
 mod o_rebobinar_repoe_o_estado_vivo;
 mod o_rotulo_do_botao_do_hud_e_filho_dele;

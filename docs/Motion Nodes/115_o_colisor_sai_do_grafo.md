@@ -2270,3 +2270,65 @@ evita: medido, `4,06` contra `4,32 ms` na cena onde ele não compra nada.
 
 **Mutação: 9 de 9 sangram** (as seis da §28 mais `R7` a régua discorda · `R8` o modelo manda sozinho ·
 `R9` o vazio lido como ordem).
+
+---
+
+## §30 — ⛔⛔⛔ *«Motor anterior mais rápido»* — a linha dele achou DOIS buracos meus
+
+Report do dono, 2026-09-19, com o perfilador:
+
+```text
+MOTION: media 18.62ms pico 24.01ms · 1000 pecas x 68 varreduras x 104 vizinhos,
+        1 separacao(oes)/quadro, 0 grande(s)          ⇠ total 20.97ms (~48 fps)
+```
+
+### §30.1 — ⚠️ O primeiro buraco é do INSTRUMENTO: a linha não diz QUAL motor a produziu
+
+Com **`0 grande(s)`** o corte não armou — e nesse regime **as duas rotas do A/B imprimem exactamente
+a mesma linha**. ⇒ eu recebi um relatório e não sei se ele é do motor novo ou do antigo, que é a
+única coisa que a corrida existia para responder.
+
+*Um instrumento de bissecção que não se identifica não bissecta nada.* ⇒ a [`Relatorio`] ganha
+`bisseccao` e a linha acaba em **`grelha medida`** ou **`grelha 1 camada (POR ORDEM)`**, com gate de
+TEXTO na shell nas três pontas da fiação (o contador existe · a corrente enche-o · o relatório
+lê-o) — o alvo pede um `GpuContext` e não é alcançável de um teste.
+
+### §30.2 — ⭐⭐⭐ O segundo é REAL e é meu: a decisão contava metade do custo
+
+A §29 pôs a **contagem real** a decidir — e ela contava **CANDIDATOS**. A malha fina paga também
+`O(células)` **por varredura** (zerar o `inicio`, correr a soma acumulada), e eu tinha escrito isso
+na cerca como razão para manter a margem **sem nunca o pôr na conta**.
+
+Medido varrendo o LADO da célula sobre a MESMA nuvem (`1000` discos, perfil **`smoke`** — o dele —,
+`load 4,17`):
+
+| lado | células | candidatos | uma varredura |
+|---|---|---|---|
+| `4,00` | `70` | `159 396` | `1 594,4 µs` |
+| `1,00` | `782` | `12 132` | `219,7 µs` |
+| `0,25` | `11 438` | `1 000` | **`25,7 µs`** ⇠ o joelho |
+| `0,125` | `45 315` | `1 000` | **`56,8 µs`** ⇠ *o relógio DOBRA com os candidatos PARADOS* |
+
+⇒ as duas últimas linhas isolam a célula (`+33 877` por `+31,1 µs` ⇒ **`0,92 ns`**) e o par
+`1,00 → 0,25` isola o candidato (**`9,16 ns`**, já descontada a célula). A razão dá **`10,0`**, e é
+essa a [`CELULAS_POR_CANDIDATO`] — ⛔ não um peso escolhido.
+
+⭐ **O gate leva o CONTROLO dentro** (`a_decisao_do_plano_ve_as_celulas`): na fixtura dele uma régua
+de candidatos **prefere a malha fina** e a medida prefere a grossa. *A cegueira é demonstrada, não
+descrita.*
+
+### §30.3 — E o que continua a NÃO reproduzir
+
+Com `0 grande(s)` as duas rotas percorrem o **mesmo código**, logo a diferença de FPS que ele mediu
+não pode vir da grelha nessa corrida. Medido no perfil **dele** (`smoke`) e com a máquina calma
+(`load 3,08`), na cena onde o plano não arma: **`4,89 ms` com o plano contra `5,23 ms` sem** — o
+caminho novo não é mais lento.
+
+⚠️⚠️ **O que falta para fechar isto é a linha das DUAS corridas**, e a razão é medida: o custo de um
+quadro é `vizinhos × varreduras`, e **duas corridas de `motion.boids` não são a mesma cena** — o
+bando muda de forma, os vizinhos mudam com ele, e o laço pára noutra varredura. *Comparar FPS entre
+duas cenas diferentes não é um A/B.* A linha agora traz os quatro números e diz qual motor os
+produziu.
+
+**Mutação: 12 de 12 sangram** (as nove da §28-29 mais `R10` a célula sem peso · `R11` o termo das
+células fora da conta · `R12` a corrente não enche o marcador).

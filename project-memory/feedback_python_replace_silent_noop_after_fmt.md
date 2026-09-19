@@ -90,3 +90,33 @@ um script reescreve uma FRONTEIRA, ponha a fronteira a recusar o que ele possa t
 trás: a suíte de costura corre-a, e o script não.*
 
 Ver [[feedback_changing_a_shared_widgets_arithmetic_is_swept_by_consumer_not_by_call_site]].
+
+---
+
+## ⛔⛔⛔ E a irmã DESTRUTIVA: `open(p, "w").write(open(p).read()...)` **trunca antes de ler**
+
+```python
+# ⛔ APAGA o ficheiro. Python avalia `open(p, "w")` PRIMEIRO — o que trunca —,
+#    e só depois corre `open(p).read()`, que lê zero bytes.
+open(p, "w").write(open(p).read().replace(v, n))
+```
+
+Medido em 2026-09-19 (`line/UIUX`): perdi um módulo de 154 linhas acabado de escrever, e o sintoma
+foi um erro de compilação em OUTRA crate (`no Publicado in fronteira`) — o ficheiro vazio não se
+queixa de si próprio.
+
+**Why:** a ordem de avaliação de Python é da esquerda para a direita nos argumentos, mas o
+**receptor** (`open(p, "w")`) é avaliado antes do argumento. A forma segura lê primeiro, para uma
+variável:
+
+```python
+s = open(p).read()
+assert s.count(v) == 1
+open(p, "w").write(s.replace(v, n))
+```
+
+**How to apply:** nunca ponha uma leitura do MESMO ficheiro dentro da expressão que o escreve. E
+quando encadear duas substituições, guarde o resultado numa variável entre elas — foi exactamente aí
+que a segunda chamada comeu o que a primeira escrevera. Irmã de
+[[feedback_a_mutation_restore_by_mv_leaves_cargo_with_the_mutated_build]]: a operação de ficheiro
+faz algo diferente do que a linha parece dizer.

@@ -449,3 +449,29 @@ linha**. A lei: **uma tradução por caminho, e ela vive onde o TIPO a deixa viv
 `&'static str` troca-se na fronteira; um `&'static [&'static str]` dentro de um struct `Copy` com
 800 sítios de literal **não se reconstrói sem alocar**, logo ali quem traduz é o pintor, e cada
 consumidor precisa do seu gate.
+
+## ⛔⛔ UMA SONDA DE `pgrep` CONTA-SE A SI PRÓPRIA (2026-09-19)
+
+`pgrep -f cargo-nextest` dentro de um laço de espera **casa com o texto do próprio comando de
+espera** — e o contador nunca chega a zero. Eu li isso como *«a varredura ainda corre»* durante
+~25 minutos, e a varredura de facto só tinha começado a fase de testes.
+
+**Como medir:** pergunte pelo `comm` (`ps -eo etimes,pid,comm | awk '$3=="cargo-nextest"'`), ou
+pelos **scopes** do cgroup, que é onde este repo põe cada corrida:
+`systemctl --user list-units --type=scope --no-legend | grep ph2d` — ele diz **de que LINHA** é
+cada corrida, e foi assim que se viu que **três linhas** estavam a martelar a máquina ao mesmo
+tempo (`line_uiux` · `line_components` · `line_3dmodeling`), o que explicava a `load 65–130` e as
+flakes de fan-out da corrida anterior.
+
+*É a mesma família do `looks_like_a_key`, cuja 1.ª corrida acusou o próprio ficheiro do gate: uma
+régua textual mede tudo o que a forma dela casa, e a forma de um `grep` é a mesma em toda parte.*
+
+## ⛔⛔ DUAS CORRIDAS DE MUTAÇÃO NA MESMA ÁRVORE COMEM-SE UMA À OUTRA (2026-09-19)
+
+Um encadeamento sob **fish** abortou num glob sem correspondência (`ls *.bak-mut` com zero matches
+é erro fatal ali) e eu relancei o script — mas a 1.ª corrida **não** tinha abortado: as duas
+correram juntas, e a restauração de uma apagou o backup da outra, deixando **uma mutação APLICADA
+na árvore**. Apanhada por uma conferência explícita (`grep` pelo texto mutado) antes do commit.
+
+**How to apply:** uma corrida de mutação é **exclusiva da árvore** — confirme que a anterior morreu
+antes de lançar a seguinte, e **sempre** varra por `*.bak-mut` e pelo texto mutado no fim.

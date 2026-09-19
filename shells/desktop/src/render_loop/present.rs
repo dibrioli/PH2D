@@ -221,9 +221,9 @@ impl crate::App {
         // `&self` reads of the same cook; no readback.
         // ⭐⭐⭐ **A LEI DO DONO também vale no DISPOSITIVO** (report de 2026-09-19: *«os retângulos
         // voltaram»*). O lowering de CPU cala uma corrente de posições, e o caminho da GPU **nunca
-        // perguntava** — ver `ponto_gizmo::a_arte_desenha`, que responde pela FRONTEIRA e sem ler o
-        // dispositivo de volta.
-        let arte_desenha = ph2d_app_motion::ponto_gizmo::a_arte_desenha(
+        // perguntava** — ver `lei_da_aparencia::a_arte_desenha`, que responde pela FRONTEIRA e sem
+        // ler o dispositivo de volta.
+        let arte_desenha = ph2d_app_motion::lei_da_aparencia::a_arte_desenha(
             motion,
             ph2d_eval_motion::so_com_forma_por_ordem(),
         );

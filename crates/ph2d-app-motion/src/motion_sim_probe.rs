@@ -142,26 +142,6 @@ fn which_sim_nodes_have_a_place() {
 /// `band_len = params + secções` e uma secção aberta custa **+1 fileira**).
 const SECTION_FLOOR: usize = 9;
 
-/// ⛔⛔⛔ **A SECÇÃO DO GIZMO NÃO ENTRA NESTE CENSO, e a exclusão é uma LEI, não um alívio.**
-///
-/// O piso mede *«o menor cartão que esta casa julgou valer uma secção»*, e a pergunta por trás dele
-/// é **organizar os params que o cartão já tem** — o `field.box`, onde *«numa carta de 3, 4 ou 6
-/// rows dois cabeçalhos organizam menos do que ocupam»*.
-///
-/// A secção do gizmo (ordem do dono, 2026-09-19) é outra coisa: ela **acrescenta um assunto
-/// separado**, vem de uma crate PARTILHADA e nasce **FECHADA** — custa **uma** fileira e esconde
-/// duas. *Um cabeçalho que esconde mais do que ocupa é o oposto do que este piso proíbe.*
-///
-/// ⚠️⚠️ **E contá-la CASCATEIA:** a 1.ª tentativa baixou o piso para `8` (o `motion.grid` com a
-/// secção) e a segunda metade do gate passou a exigir secções do `force.buoyancy` e do
-/// `force.vortex`, que têm `8` params e nunca foram julgados por ninguém. *Baixar um piso porque a
-/// população mudou de NATUREZA é afrouxar a régua com cara de a re-medir.*
-///
-/// ⚠️ A exclusão é por **referência à constante que declara a secção**, nunca por uma lista de nós.
-fn e_do_proprio_cartao(g: &ph2d_node_registry::ParamGroup) -> bool {
-    g.group != ph2d_gizmo_params::SECCAO
-}
-
 /// ⭐⭐⭐ **NENHUM CARTÃO GRANDE DESTE GRUPO É UMA PAREDE DE SLIDERS.**
 ///
 /// A pergunta do ciclo 4 (o `field.box` a pintar nove rows em fila ao lado de um irmão
@@ -186,12 +166,7 @@ fn no_big_card_in_this_group_is_a_wall_of_sliders() {
         .registry
         .manifests()
         .filter(|man| !man.params.is_empty())
-        .filter(|man| {
-            m.registry
-                .param_groups(man.id)
-                .iter()
-                .any(e_do_proprio_cartao)
-        })
+        .filter(|man| !m.registry.param_groups(man.id).is_empty())
         .map(|man| man.params.len())
         .min()
         .expect("a casa tem pelo menos um no com seccoes");
@@ -209,7 +184,7 @@ fn no_big_card_in_this_group_is_a_wall_of_sliders() {
             let tid = ph2d_nodegraph::node::NodeTypeId::of(nome);
             let op = m.registry.resolve(tid)?;
             let n = op.manifest().params.len();
-            let arruma_o_proprio = m.registry.param_groups(tid).iter().any(e_do_proprio_cartao);
+            let arruma_o_proprio = !m.registry.param_groups(tid).is_empty();
             (n >= SECTION_FLOOR && !arruma_o_proprio).then_some((nome, n))
         })
         .collect();

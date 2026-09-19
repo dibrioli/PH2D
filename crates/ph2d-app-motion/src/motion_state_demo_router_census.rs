@@ -9,6 +9,32 @@
 use super::tests::shape_origin;
 use super::*;
 
+/// **A coluna `size` da corrente, como multiplicador por elemento** — `None` quando ela não a traz.
+///
+/// ⚠️ Estas leituras viviam no gizmo de posições, que a ordem do dono de 2026-09-19 RETIROU
+/// (*«retire tudo relacionado a gizmos desses nós»*). Elas ficam aqui porque o que as sondas abaixo
+/// medem é a **CORRENTE** — um facto sobre o que as cenas autoram —, e isso sobrevive ao desenho.
+///
+/// ⚠️ Uma coluna `Vec2` colapsa na MÉDIA dos eixos: as sondas perguntam *«que números o `size`
+/// tem»*, e um par não cabe num histograma de um eixo.
+fn escalas_da_corrente(s: &ph2d_nodegraph::attr::Stream) -> Option<Vec<f32>> {
+    use ph2d_nodegraph::attr::Column;
+    match s.get("size") {
+        Some(Column::Scalar(v)) => Some(v.to_vec()),
+        Some(Column::Vec2(v)) => Some(v.iter().map(|e| (e[0] + e[1]) * 0.5).collect()),
+        _ => None,
+    }
+}
+
+/// **A coluna `rot` da corrente, em graus** — `None` quando ela não a traz. Irmã da acima.
+fn rotacoes_da_corrente(s: &ph2d_nodegraph::attr::Stream) -> Option<Vec<f32>> {
+    use ph2d_nodegraph::attr::Column;
+    match s.get("rot") {
+        Some(Column::Scalar(v)) => Some(v.to_vec()),
+        _ => None,
+    }
+}
+
 /// **NENHUMA CENA DA CONFERÊNCIA MONTA UM GRAFO COM BURACO DE SETUP.**
 ///
 /// ⚠️ **Este portão nasceu de um smoke reprovado** (Enio, 2026-08-20: *"6.
@@ -683,14 +709,8 @@ fn o_que_cada_cena_anima() {
                     break;
                 };
                 let s = out[0].as_stream();
-                let esc = crate::ponto_gizmo::escalas(
-                    s,
-                    &crate::ponto_gizmo::Amostra::inteira(s.count()),
-                );
-                let rot = crate::ponto_gizmo::rotacoes(
-                    s,
-                    &crate::ponto_gizmo::Amostra::inteira(s.count()),
-                );
+                let esc = escalas_da_corrente(s);
+                let rot = rotacoes_da_corrente(s);
                 existe = (existe.0 || esc.is_some(), existe.1 || rot.is_some());
                 let p = match s.get("P") {
                     Some(ph2d_nodegraph::attr::Column::Vec2(v)) => {
@@ -759,9 +779,7 @@ fn que_numeros_o_size_tem() {
                 continue;
             };
             let s = out[0].as_stream();
-            let Some(esc) =
-                crate::ponto_gizmo::escalas(s, &crate::ponto_gizmo::Amostra::inteira(s.count()))
-            else {
+            let Some(esc) = escalas_da_corrente(s) else {
                 continue;
             };
             if esc.is_empty() {
@@ -1062,32 +1080,31 @@ fn o_que_o_cartao_do_grid_pinta() {
     eprintln!();
 }
 
-/// ⛔⛔⛔ **O `gap_y` NA GRELHA DO DONO — a que NÃO cabe no tecto do gizmo.**
+/// ⭐⭐⭐ **O `gap_y` NA GRELHA DO DONO — a grelha estava CERTA, e este é o número que o prova.**
 ///
 /// Report de 2026-09-19: *«Gap y quebrou e movimenta tudo em vez de criar espaço»*, sobre a
 /// *«grade do segundo exemplo»* — a cena **`=2`**, que é uma `motion.grid` de **360 × 360 =
 /// 129 600** elementos.
 ///
-/// ⚠️⚠️ **A sonda irmã [`o_gap_y_ainda_espaca`] mediu uma grelha de `4 × 4` e saiu LIMPA — e é
-/// por isso que ela não podia ver este defeito:** `16` pontos cabem no [`MAX_PONTOS`] e o tecto
-/// **nunca engata**. *Uma fixtura abaixo do tecto não testa o tecto.*
+/// ⚠️⚠️ **A causa NÃO era o nó, e esta sonda é o que o mostra:** a nuvem inteira ESPAÇA (o centro
+/// fica parado e a extensão cresce) em todas as posições do knob. Quem mentia era o **desenho** —
+/// o gizmo de posições, que segurava um PREFIXO da nuvem (uma faixa na borda, que voava) e que a
+/// ordem do dono do mesmo dia **retirou**.
 ///
-/// A régua é a mesma das duas (extensão contra centro), aplicada a **DOIS sujeitos**: a nuvem
-/// INTEIRA, que é o que o nó produz, e o **PREFIXO** que o gizmo segura, que é o que o dono vê.
+/// ⚠️ **A sonda irmã [`o_gap_y_ainda_espaca`] mede uma grelha de `4 × 4`**, e é por isso que ela
+/// não podia ver nada: *uma fixtura pequena não testa o que só aparece na escala do dono.*
 ///
 /// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture o_gap_y_na_grelha_do_dono`
 #[test]
 #[ignore = "sonda, nao um gate"]
 fn o_gap_y_na_grelha_do_dono() {
-    use crate::ponto_gizmo::MAX_PONTOS;
     use ph2d_nodegraph::attr::Column;
     use ph2d_nodegraph::graph::{Edge, Graph};
     // A geometria da cena `=2`, lida dela: `motion_state_gpu_demos.rs`.
     const ROWS: f32 = 360.0;
     const COLS: f32 = 360.0;
     eprintln!("\n=== O `gap_y` NA GRELHA DE {ROWS:.0}x{COLS:.0} (a cena `=2`) ===\n");
-    eprintln!("             NUVEM INTEIRA          │        O QUE O GIZMO SEGURA");
-    eprintln!("  gap_y │  extensao Y │   centro Y  │  extensao Y │   centro Y  │ pontos");
+    eprintln!("  gap_y │  extensao Y │   centro Y  │ pontos");
     let mut antes: Option<(f32, f32)> = None;
     for gy in [1.0f32, 1.5, 2.0, 3.0] {
         let mut m = MotionState::new();
@@ -1113,7 +1130,6 @@ fn o_gap_y_na_grelha_do_dono() {
         let Some(Column::Vec2(p)) = s.get("P") else {
             continue;
         };
-        // ⚠️ A MESMA operação que o `ponto_gizmo::posicoes` faz — um `take` do PREFIXO.
         let medir = |v: &[[f32; 2]]| {
             let (mut lo, mut hi) = (f32::MAX, f32::MIN);
             for q in v {
@@ -1123,32 +1139,18 @@ fn o_gap_y_na_grelha_do_dono() {
             (hi - lo, (hi + lo) / 2.0)
         };
         let (ext_t, cen_t) = medir(p);
-        // ⚠️⚠️ **PELA PORTA DO PRODUTO, e não por um `take` escrito aqui.** Uma sonda que
-        // reimplementa o corte mede a sua própria cópia e diz o mesmo para sempre — esta tem de
-        // MUDAR de resposta no dia em que o corte mudar, que é o dia em que ela vale alguma coisa.
-        let vistos = crate::ponto_gizmo::posicoes_amostradas(s);
-        let (ext_g, cen_g) = medir(&vistos);
-        eprintln!(
-            "  {gy:>5} │ {ext_t:>11.3} │ {cen_t:>11.3} │ {ext_g:>11.3} │ {cen_g:>11.3} │ {} de {}",
-            vistos.len(),
-            p.len()
-        );
+        eprintln!("  {gy:>5} │ {ext_t:>11.3} │ {cen_t:>11.3} │ {}", p.len());
         if let Some((e0, c0)) = antes {
             eprintln!(
-                "        │             │             │  Δextensao {:>+8.3} │ Δcentro {:>+8.3}  ⇒ mover/espacar = {:.1}x",
-                ext_g - e0,
-                cen_g - c0,
-                (cen_g - c0).abs() / (ext_g - e0).abs().max(f32::EPSILON)
+                "        │  Δextensao {:>+8.3} │ Δcentro {:>+8.3}  ⇒ mover/espacar = {:.2}x",
+                ext_t - e0,
+                cen_t - c0,
+                (cen_t - c0).abs() / (ext_t - e0).abs().max(f32::EPSILON)
             );
         }
-        antes = Some((ext_g, cen_g));
+        antes = Some((ext_t, cen_t));
     }
     eprintln!(
-        "\n  ⇒ o tecto do gizmo e' {MAX_PONTOS} e ele CORTA — mas a amostra VARRE a nuvem: o centro\n     \
-         fica em 0,000 e a extensao acompanha a do todo, logo o `gap_y` le-se como ESPACAMENTO.\n\n  \
-         ANTES desta cura o corte era um `take` — um PREFIXO —, e com {COLS:.0} colunas ele segurava\n     \
-         as primeiras {:.1} FILEIRAS de {ROWS:.0}: uma faixa na BORDA, que VOAVA (centro -174 → -522,\n     \
-         extensao 11 → 33) ⇒ mover/espacar = 15,8x, que e' o report do dono a' letra.\n",
-        MAX_PONTOS as f32 / COLS,
+        "\n  ⇒ o `gap_y` ESPACA: o centro fica em 0,000 e a extensao acompanha, em todo o curso\n              do knob. O report do dono era o DESENHO — o gizmo de posicoes segurava as primeiras\n              fileiras da nuvem (uma faixa na borda) e ela VOAVA; esse gizmo foi RETIRADO.\n"
     );
 }

@@ -10,7 +10,6 @@ authors.workspace = true
 [lib]
 
 [dependencies]
-ph2d-gizmo-params = { path = "../ph2d-gizmo-params" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-motion-region = { path = "../ph2d-motion-region" }

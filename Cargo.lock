@@ -9256,6 +9256,7 @@ dependencies = [
  "ph2d-poly2d",
  "ph2d-skeleton",
  "ph2d-skin-weights",
+ "ph2d-vec-envelope",
  "ph2d-vec-scene",
 ]
 

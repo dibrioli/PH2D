@@ -504,3 +504,71 @@ fn diag_a_caixa_que_ja_existe_cura_sozinha() {
         }
     }
 }
+
+/// ⭐⭐⭐⭐ **SONDA — que verbos o pente de facto PENTEIA?**
+///
+/// O [`ph2d_sculpt3d::Verb::honra_o_pente`] exclui cinco por medição. ⚠️ Mas a
+/// **pista** dele é pintada para todos os outros, e para os cinco pincéis que já
+/// passam a dobra do encaixe isso custa uma fileira. ⇒ *se algum deles não
+/// penteia, a pista dele é um knob morto e a exclusão está incompleta.*
+#[test]
+#[ignore = "sonda: imprime a tabela, nao afirma nada"]
+fn diag_que_verbos_o_pente_de_facto_penteia() {
+    use ph2d_sculpt3d::Verb;
+    let olho = [0.0f32, 0.0, -1.0];
+    println!("\n== o pente MOVE a malha destes verbos? ==");
+    println!("   esfera 48x96 · um traco de 2 dabs · pente 0 contra 1\n");
+    println!(
+        "{:>18} {:>10} {:>12} {:>10}",
+        "verbo", "honra?", "desvio", "veredito"
+    );
+    println!("{}", "-".repeat(56));
+
+    for verbo in [
+        Verb::Cloth,
+        Verb::Boundary,
+        Verb::Plane,
+        Verb::SmearMultires,
+        Verb::BoxTrim,
+        Verb::Draw,
+    ] {
+        let base = shapes::uv_sphere(48, 96, 1.0);
+        let corre = |pente: f32| -> Vec<[f32; 3]> {
+            let mut m = base.clone();
+            m.triangulate();
+            let b = Brush {
+                verb: verbo,
+                radius: 0.35,
+                strength: 0.5,
+                pente,
+                ..Brush::default()
+            };
+            let mut st = SculptStroke::default();
+            st.begin(&m);
+            for k in 0..2 {
+                let c = [0.05 * k as f32, 0.0, 1.0];
+                st.dab(&mut m, &b, &Dab::at(c, 0.35, olho), Symmetry::default());
+            }
+            m.positions().to_vec()
+        };
+        let (a, b) = (corre(0.0), corre(1.0));
+        let desvio = if a.len() == b.len() {
+            a.iter()
+                .zip(&b)
+                .map(|(p, q)| d3(*p, *q))
+                .fold(0.0f32, f32::max)
+        } else {
+            f32::INFINITY
+        };
+        println!(
+            "{:>18} {:>10} {desvio:>12.3e} {:>10}",
+            format!("{verbo:?}"),
+            verbo.honra_o_pente(),
+            if desvio > 1e-6 {
+                "PENTEIA"
+            } else {
+                "⛔ INERTE"
+            }
+        );
+    }
+}

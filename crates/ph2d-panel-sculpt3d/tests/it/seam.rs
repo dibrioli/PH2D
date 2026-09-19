@@ -3222,3 +3222,54 @@ fn o_pente_e_alcancavel_some_para_quem_o_ignora_e_diz_porque_dorme() {
          controlo que nem esta' na tela: {mudo_off} glifos contra {mudo_on}"
     );
 }
+
+/// ⭐⭐⭐⭐ **SONDA — ONDE O `Edge Flow` CAI NO PAINEL, com o pincel de fábrica.**
+///
+/// Decisão do dono (2026-09-19): *«deixar desligado e tornar o botão achável»*.
+/// ⚠️ **Antes de mover nada, a pergunta é a do dock:** a dobra desta casa é
+/// `880 px` (o mesmo número do gate irmão), e a pista do pente vive na TERCEIRA
+/// secção contínua, atrás do `TOOL`, do `BRUSH` e do `SHADING`.
+///
+/// ⛔ *Uma afirmação sobre a tela mede-se na tela* — eu já disse ao dono que ela
+/// estava em `Pro` e ela é `Basic`.
+#[test]
+#[ignore = "sonda: imprime a posicao, nao afirma nada"]
+fn diag_onde_cai_a_pista_do_pente() {
+    const ALTURA_DO_ENCAIXE_PX: f32 = 880.0;
+    for (nome, dyntopo) in [("dyntopo DESARMADO", false), ("dyntopo armado", true)] {
+        let mut ui = Sculpt3dUi::default();
+        ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Draw);
+        let mut snap = snapshot(ui, true);
+        snap.dyntopo = dyntopo;
+        let (mut host, mut state) = arrange_with(snap);
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        let acha = |id: ph2d_a11y::NodeId| -> Option<f32> {
+            painted
+                .iter()
+                .rev()
+                .find(|(p, _)| *p == id)
+                .map(|(_, r)| r.y)
+        };
+        println!("\n== {nome} ==");
+        for (rotulo, id) in [
+            ("secção BRUSH", ids::SCULPT3D_SEC_BRUSH),
+            ("Radius", ids::SCULPT3D_RADIUS),
+            ("Connected Only", ids::SCULPT3D_SURFACE_ONLY),
+            ("secção SHADING", ids::SCULPT3D_SEC_SHADING),
+            ("secção TOPOLOGY", ids::SCULPT3D_SEC_TOPOLOGY),
+            ("⭐ Edge Flow", ids::SCULPT3D_PENTE),
+        ] {
+            match acha(id) {
+                Some(y) => println!(
+                    "  {rotulo:<18} y = {y:>7.0}   {}",
+                    if y > ALTURA_DO_ENCAIXE_PX {
+                        "⛔ ABAIXO DA DOBRA"
+                    } else {
+                        "visível"
+                    }
+                ),
+                None => println!("  {rotulo:<18} NAO PINTADO"),
+            }
+        }
+    }
+}

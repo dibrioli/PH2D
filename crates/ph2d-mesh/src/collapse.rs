@@ -166,6 +166,52 @@ pub fn collapse_in_sphere_sized(
     remap: &mut Remap,
     scratch: &mut RegionScratch,
 ) -> Collapse {
+    collapse_in_sphere_com(
+        mesh,
+        center,
+        radius,
+        edge_min,
+        sizing,
+        Guarda::Topologia,
+        remap,
+        scratch,
+    )
+}
+
+/// ⭐⭐⭐ **QUE GUARDAS o colapso corre, além das quatro TOPOLÓGICAS.**
+///
+/// ⛔⛔⛔ **A quinta guarda é do CHAMADOR e não do motor, e isso está MEDIDO.**
+/// A 1.ª redacção pô-la dentro do `plan`, logo alcançava todos os chamadores — e
+/// o portão devolveu **onze** vermelhos numa cadeia que esta wave não toca (o
+/// remalhador isotrópico, o `ph2d-gridmap`, o `ph2d-quadextract`, o `ph2d-trace`
+/// e o `ph2d-quadchain`). *É a mesma lição que o `PH2D_ISO_ADAPT` desta linha já
+/// pagou: um motor partilhado não muda de lei por causa de um consumidor.*
+///
+/// ⚠️ **O que a retopologia faz com uma face invertida é OUTRA pergunta**, com
+/// outras réguas e outro dono — e ela fica NOMEADA no §81.6 do handoff, não
+/// resolvida à socapa por uma linha que veio curar um pincel.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Guarda {
+    /// As quatro recusas de sempre — o caminho do remalhador isotrópico e de
+    /// toda a cadeia de retopologia, **byte-idêntico**.
+    Topologia,
+    /// E mais a quinta, geométrica: **nenhuma face do anel vira do avesso**.
+    /// É o caminho do dab de escultura — ver [`vira_alguma_face`].
+    ETambemAForma,
+}
+
+/// A mesma porta, com a [`Guarda`] por parâmetro.
+#[allow(clippy::too_many_arguments)]
+pub fn collapse_in_sphere_com(
+    mesh: &mut Mesh,
+    center: [f32; 3],
+    radius: f32,
+    edge_min: f32,
+    sizing: Sizing<'_>,
+    guarda: Guarda,
+    remap: &mut Remap,
+    scratch: &mut RegionScratch,
+) -> Collapse {
     *remap = Remap {
         faces: mesh.face_count(),
         verts: mesh.vert_count(),
@@ -180,7 +226,7 @@ pub fn collapse_in_sphere_sized(
     let (v0, f0) = (mesh.vert_count(), mesh.face_count());
     let mut passes = 0;
     while passes < MAX_PASSES {
-        let Some(step) = one_pass(mesh, center, radius, edge_min, sizing, scratch) else {
+        let Some(step) = one_pass(mesh, center, radius, edge_min, sizing, guarda, scratch) else {
             break;
         };
         remap.then(step);
@@ -290,6 +336,7 @@ fn one_pass(
     radius: f32,
     edge_min: f32,
     sizing: Sizing<'_>,
+    guarda: Guarda,
     scratch: &mut RegionScratch,
 ) -> Option<Remap> {
     let r2 = radius * radius;
@@ -324,7 +371,7 @@ fn one_pass(
         let Some((a, b)) = shortest_edge_under(mesh.positions(), v, emin2, sizing) else {
             continue;
         };
-        let Some(p) = plan(mesh, a, b) else {
+        let Some(p) = plan(mesh, a, b, guarda) else {
             continue;
         };
         if touches_locked(mesh, &locked, p.keep, p.gone) {
@@ -415,7 +462,7 @@ fn shortest_edge_under(
 
 /// Decide se a aresta `a—b` pode colapsar, e para onde. Ver as quatro recusas no
 /// cabeçalho do módulo.
-fn plan(mesh: &Mesh, a: u32, b: u32) -> Option<Planned> {
+fn plan(mesh: &Mesh, a: u32, b: u32, guarda: Guarda) -> Option<Planned> {
     let adj = mesh.adjacency();
     let faces = mesh.faces();
     // (1) exatamente duas faces dividem a aresta.
@@ -463,12 +510,85 @@ fn plan(mesh: &Mesh, a: u32, b: u32) -> Option<Planned> {
     // pode decidir quem sobrevive — duas faces vizinhas proporiam a mesma aresta
     // com os extremos trocados.
     let (keep, gone) = if a < b { (a, b) } else { (b, a) };
+    let at = landing(mesh, keep, gone);
+    // ⭐⭐⭐ **(5) GEOMETRIA: nenhuma face do anel pode virar-se DO AVESSO.**
+    // Ver [`vira_alguma_face`] — é a única recusa deste ficheiro que não é
+    // topologia, e ela nasceu de um report com FOTO.
+    if guarda == Guarda::ETambemAForma && vira_alguma_face(mesh, keep, gone, pair, at) {
+        return None;
+    }
     Some(Planned {
         keep,
         gone,
         pair,
-        at: landing(mesh, keep, gone),
+        at,
     })
+}
+
+/// ⭐⭐⭐ **A QUINTA RECUSA, e a única GEOMÉTRICA: o colapso viraria uma face do
+/// anel do avesso?**
+///
+/// ⛔⛔⛔ **Ela nasceu de um report com FOTO** (2026-09-19: *«o resultado fica
+/// pior que o original, com irregularidade a 90 graus da direcção do
+/// movimento»*). O cabeçalho deste ficheiro diz, desde que existe, *«as quatro
+/// recusas, e todas são TOPOLOGIA»* — e isso lia-se como um facto arrumado
+/// quando era uma **ausência**: nada aqui olhava para o que a fusão faz à FORMA
+/// das faces que sobrevivem.
+///
+/// ⭐⭐ **A atribuição é MEDIDA e não era onde parecia.** Medindo o pior ângulo
+/// entre normais vizinhas **depois de cada um dos quatro passos do dab**, o
+/// número salta no **COLAPSO** (dab 4: `5,49° → 177,8°`), não na troca de
+/// diagonal que a wave do pente tinha acabado de soltar. *A troca prepara a
+/// configuração; quem a dobra é a fusão seguinte.*
+///
+/// ⚠️ **Por que só aparece com o pente:** as quatro recusas topológicas bastam
+/// numa malha ISOTRÓPICA, onde o anel de um vértice é aproximadamente regular e
+/// mover o sobrevivente para o centroide nunca atravessa uma aresta oposta. Com
+/// a malha alinhada o anel fica **alongado**, e o centroide de um anel alongado
+/// pode cair **do outro lado** de um dos triângulos — que é exactamente a
+/// inversão que isto recusa.
+///
+/// ⚠️ **O teste é o do sinal, não o de um ângulo:** compara-se a normal de cada
+/// face antes e depois, e recusa-se se elas apontarem para lados opostos. Uma
+/// barra em graus pediria um número escolhido; a inversão é um FACTO.
+///
+/// ⛔ As duas faces que morrem (`pair`) ficam de fora — elas não existem depois.
+fn vira_alguma_face(mesh: &Mesh, keep: u32, gone: u32, pair: [u32; 2], at: [f32; 3]) -> bool {
+    let adj = mesh.adjacency();
+    let pos = mesh.positions();
+    let faces = mesh.faces();
+    let depois = |v: u32| if v == keep || v == gone { at } else { pos[v as usize] };
+    for extremo in [keep, gone] {
+        for &fi in adj.vert_faces.neighbours(extremo as usize) {
+            if fi == pair[0] || fi == pair[1] {
+                continue;
+            }
+            let f = faces[fi as usize];
+            let vs = f.verts();
+            if vs.len() != 3 {
+                continue;
+            }
+            let (a0, a1, a2) = (pos[vs[0] as usize], pos[vs[1] as usize], pos[vs[2] as usize]);
+            let (b0, b1, b2) = (depois(vs[0]), depois(vs[1]), depois(vs[2]));
+            let antes = normal_de(a0, a1, a2);
+            let agora = normal_de(b0, b1, b2);
+            if antes[0] * agora[0] + antes[1] * agora[1] + antes[2] * agora[2] <= 0.0 {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// A normal (não unitária) de um triângulo — o produto vectorial dos dois lados.
+fn normal_de(p0: [f32; 3], p1: [f32; 3], p2: [f32; 3]) -> [f32; 3] {
+    let u = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
+    let w = [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]];
+    [
+        u[1] * w[2] - u[2] * w[1],
+        u[2] * w[0] - u[0] * w[2],
+        u[0] * w[1] - u[1] * w[0],
+    ]
 }
 
 /// Onde o sobrevivente pousa: o **centroide do anel fundido, projetado de volta

@@ -235,3 +235,5 @@
 - ⭐ [**Campo IMPLÍCITO (SDF) e réguas de FORMA** — a família inteira (16): união coplanar incha · `max` cru = aresta viva · o semiespaço INFINITO ganha o `min` dentro da peça · o gate no REPRESENTANTE](reference_topic_implicit_field_laws.md)
 - [Provas de mutação (8) — 3 controles no arnês · ⛔ corpus onde a desigualdade nunca aperta não a testa (2 de 8 sobreviveram)](reference_topic_mutation_proofs.md)
 - ⛔⛔ [Atribuição VELHA de um vermelho não cobre o suspeito de HOJE — abla o teu e confirma o número AO BIT](feedback_an_old_attribution_is_worth_more_after_ablating_todays_suspect.md)
+- ⛔⛔⛔ [Um par ida/volta `w = t+c` / `orçamento = w−c` NÃO fecha em f32 (2,65 % a 96 % do domínio, défice de 1 ULP corta a palavra) — a inversa confere-se contra a LEI (`next_up`), e a prova VARRE em vez de amostrar seis pontos](feedback_an_inverse_law_in_f32_does_not_close_by_algebra.md)
+- ⛔⛔ [`git mv` de um ficheiro com edições por encenar grava o blob de HEAD no destino — o commit tem sucesso e a árvore dele NÃO COMPILA (sinal: `M <destino>` depois do commit)](feedback_git_mv_stages_the_index_blob_not_the_worktree.md)

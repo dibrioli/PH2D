@@ -43,6 +43,83 @@ pub struct Table {
 /// acima: ela **já era paga** — a [`ph2d_material::Surface::emission`] corria por amostra e somava
 /// `[0,0,0]`, `4,6 %` do relógio de sombreamento — e nenhum controlo lhe chegava. *Uma capacidade
 /// viva sem botão nenhum é o defeito de que o §5.1 do `CLAUDE.md` fala, não uma poupança.*
+/// ⭐ **O interruptor de DIAGNÓSTICO da matiz que segue a profundidade** — `PH2D_SSS_DEPTH_HUE`.
+///
+/// ⚠️⚠️ **Isto NÃO é o botão do produto, e a diferença é deliberada.** O botão do produto é um
+/// campo da [`ph2d_field_ecs::FieldMaterial`] com uma fileira no painel, e custa um degrau de
+/// `PROJECT_SCHEMA` — ele nasce no dia em que o dono decidir que a lei ship. Até lá o dono precisa
+/// de **VER** a diferença para poder decidir, e *uma lei que ele não consegue olhar não é uma lei
+/// que ele possa aprovar* (CLAUDE.md §0.8: o smoke é onde ele aprende).
+///
+/// ⛔ **Ele é lido UMA vez e vale para a sessão inteira** — não é estado de cena, não entra no
+/// ficheiro, não entra no desfazer. E **ausente ⇒ `0,0`**, logo o caminho de omissão é
+/// byte-idêntico e as paridades ficam de pé.
+///
+/// ```text
+/// cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling
+/// env PH2D_FIELD_SMOKE=33 PH2D_FIELD_GPU=0 PH2D_SSS_DEPTH_HUE=1 \
+///   cargo run -p ph2d-host-desktop --profile smoke
+/// ```
+fn depth_hue_de_diagnostico() -> f32 {
+    use std::sync::OnceLock;
+    static V: OnceLock<f32> = OnceLock::new();
+    *V.get_or_init(|| depth_hue_de(std::env::var("PH2D_SSS_DEPTH_HUE").ok().as_deref()))
+}
+
+/// A leitura, **separada da variável de ambiente** para poder ser afirmada.
+///
+/// ⛔ Sem esta separação o valor viveria dentro de um `OnceLock` que a primeira chamada do processo
+/// congela — e *um gate que não consegue escolher a entrada não afirma nada sobre a saída*.
+///
+/// ⚠️ **Lixo lê-se como `0`, e não como «ligado»:** o valor de omissão de um diagnóstico tem de ser
+/// o caminho byte-idêntico, senão um erro de escrita muda o produto em silêncio.
+fn depth_hue_de(v: Option<&str>) -> f32 {
+    v.and_then(|s| s.trim().parse::<f32>().ok())
+        .unwrap_or(0.0)
+        .clamp(0.0, 1.0)
+}
+
+#[cfg(test)]
+mod diagnostico_da_matiz {
+    /// ⭐ A leitura: ausente e lixo caem no caminho byte-idêntico; o resto é limitado à faixa da lei.
+    #[test]
+    fn a_leitura_do_interruptor_cai_no_neutro_quando_nao_e_um_numero() {
+        assert!((super::depth_hue_de(None) - 0.0).abs() < f32::EPSILON, "ausente");
+        assert!((super::depth_hue_de(Some("lixo")) - 0.0).abs() < f32::EPSILON, "lixo");
+        assert!((super::depth_hue_de(Some("")) - 0.0).abs() < f32::EPSILON, "vazio");
+        assert!((super::depth_hue_de(Some(" 1 ")) - 1.0).abs() < f32::EPSILON, "com espaços");
+        assert!((super::depth_hue_de(Some("0.5")) - 0.5).abs() < f32::EPSILON, "fracção");
+        assert!((super::depth_hue_de(Some("5")) - 1.0).abs() < f32::EPSILON, "acima da faixa");
+        assert!((super::depth_hue_de(Some("-3")) - 0.0).abs() < f32::EPSILON, "abaixo da faixa");
+    }
+
+    /// ⭐⭐⭐ **A metade que este repo cobra sempre: o valor CHEGA ao consumidor.**
+    ///
+    /// ⛔ A régua acima prova que a leitura está certa e é **cega** a se alguém a liga ao material —
+    /// um interruptor lido e deitado fora lê-se exactamente como um interruptor ligado. Esta lê o
+    /// próprio ficheiro: se a linha da fiação sair, ela reprova com o endereço.
+    ///
+    /// ⛔⛔⛔ **A 1.ª redacção SOBREVIVEU à mutação, e a causa vale para todo gate por
+    /// `include_str!` deste repo:** ela escrevia a agulha à letra, e o ficheiro que ela lê é **o
+    /// próprio** ⇒ *a asserção encontrava-se a si mesma* e ficava verde com a fiação cortada. A
+    /// agulha passa a ser **montada em pedaços** (`concat!` corre antes, mas o ficheiro só contém os
+    /// pedaços) — e o controlo disto é a mutação, que agora sangra.
+    #[test]
+    fn o_interruptor_chega_ao_material() {
+        let fonte = include_str!("materials.rs");
+        let agulha = concat!("subsurface_depth_hue: depth_hue", "_de_diagnostico()");
+        assert!(
+            fonte.contains(agulha),
+            "a fiação do interruptor para o material saiu do `surface_of`"
+        );
+        let nome = concat!("PH2D_SSS_", "DEPTH_HUE");
+        assert!(
+            fonte.contains(nome),
+            "o nome da variável de diagnóstico saiu — o smoke do dono deixa de ter interruptor"
+        );
+    }
+}
+
 #[must_use]
 pub fn surface_of(m: FieldMaterial) -> ph2d_material::Surface {
     ph2d_material::OpenPbr {
@@ -70,13 +147,13 @@ pub fn surface_of(m: FieldMaterial) -> ph2d_material::Surface {
         //
         // A lei existe e está calibrada ([`ph2d_material::OpenPbr::subsurface_depth_hue`]), e o que
         // falta é a DECISÃO: ligá-la muda toda peça translúcida de toda cena e move a paridade
-        // contra o renderizador de referência (uma divergência declarada, `docs/Render3d/10` §17).
+        // contra o renderizador de referência (uma divergência declarada, `docs/Render3d/10` §18).
         // ⇒ enquanto essa decisão não for tomada, o caminho da cena é **byte-idêntico**.
         //
         // ⚠️ E quando for tomada, o campo entra na [`ph2d_field_ecs::FieldMaterial`] — que É
         // serializada — logo custa um degrau de `PROJECT_SCHEMA`, ao contrário deste, que não custa
         // nenhum. *É por isso que a lei nasce onde nasceu.*
-        subsurface_depth_hue: 0.0,
+        subsurface_depth_hue: depth_hue_de_diagnostico(),
         // ⚠️ O booleano viaja como número porque a tabela do painel é de `f32` — ver
         // [`ph2d_field_ecs::FieldMaterial::thin_walled`].
         geometry_thin_walled: m.thin_walled > 0.5,

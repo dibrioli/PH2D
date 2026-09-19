@@ -89,6 +89,8 @@ pub mod component_smoke;
 pub mod counter_watch_bridge;
 pub mod counter_watch_inspector;
 pub mod counter_watch_smoke;
+/// ⭐⭐⭐ **O smoke do GOLPE** (suplente #24) — duas fileiras de alvos e uma caixa de diferença.
+pub mod dano_smoke;
 pub mod factory_bridge;
 /// ⭐⭐⭐ **A FÁBRICA e o CICLO DE VIDA** (TOP-20 #11 e #12) — as duas cenas do dono.
 pub mod factory_smoke;
@@ -231,6 +233,11 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         // ⭐⭐⭐ O EMISSOR DE PARTÍCULAS (TOP-20 #18): `=1` a galeria das quatro fontes · `=2` o
         // rasto e a tocha. ⚠️ O `max_level` é **contado** no `match` do `montar`.
         r("PH2D_PARTICLES_SMOKE", particles_smoke::CENAS),
+        // ⭐⭐⭐ O GATILHO (suplente #24, 18/09) e o GOLPE (19/09) — ⚠️ **o do gatilho nasceu FORA
+        // desta lista** e entra agora: ela é a declaração que a família faz à shell, e uma cena que
+        // não está aqui é uma cena que a família não declara possuir.
+        r("PH2D_TRIGGER_SMOKE", trigger_smoke::CENAS),
+        r("PH2D_DANO_SMOKE", dano_smoke::CENAS),
     ],
 };
 

@@ -389,6 +389,53 @@ impl crate::App {
         self.playhead.play();
     }
 
+    /// ⭐⭐⭐ **O GOLPE** (suplente #24, 19/09) — `PH2D_DANO_SMOKE=1`. Prólogo do quadro, uma vez.
+    ///
+    /// ⚠️ **Ele é o do gatilho mais o relógio a andar**, e as duas metades são obrigatórias: a
+    /// acção `fire` não existe de fábrica (as sete do `with_player_defaults` são outras), e sem a
+    /// corrida nem os alvos nascem nem o `Q` dispara.
+    pub(crate) fn dano_smoke(&mut self) {
+        if self.components.smokes.dano {
+            return;
+        }
+        if std::env::var_os("PH2D_DANO_SMOKE").is_none() {
+            return;
+        }
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        // ⚠️ **A árvore de tags entra aqui** — a cena autora três tags (os dois postos e a `Bala`),
+        // e ela é documento do PROJECTO, não do mundo.
+        let montada = ph2d_app_components::dano_smoke::montar(cx.sim.world_mut(), cx.tags, 1);
+        self.components.smokes.dano = true;
+        self.timeline.flags.simulate_physics = true;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            // ⚠️ **A acção nasce AQUI e a TECLA vem da cena do gatilho**, que é a fonte: ela foi
+            // MEDIDA (o espaço é o Play/Pause do transporte, e o dono devolveu a 1.ª redacção por
+            // isso). Escrever o código da tecla aqui daria a segunda resposta a *«qual é a tecla?»*.
+            let id = hero
+                .input_map
+                .create(ph2d_app_components::dano_smoke::ACCAO);
+            if let Some(a) = hero.input_map.get_mut(id) {
+                a.bindings.push(ph2d_input::Binding::Key(ph2d_input::Key(
+                    ph2d_app_components::trigger_smoke::TECLA,
+                )));
+            }
+            hero.panel_visibility.insert("inspector", true);
+            // ⚠️ **A RÉGUA abre junto** — esta cena inteira depende do relógio A ANDAR (os alvos
+            // nascem de um `Timer`), e sem a timeline o dono não vê que a corrida anda nem tem onde
+            // a parar. *Uma instrução que fala do transporte sobre um ecrã sem ele devolve «que
+            // régua?»* — a lição da cena 67 da física.
+            hero.panel_visibility.insert("timeline", true);
+            // ⛔ **O HERÓI nasce ESCOLHIDO** — o roteiro manda ver a secção no painel da direita, e
+            // com ninguém escolhido o Inspector diz *«Select an entity in the Hierarchy»*.
+            hero.gizmo.selection = Some(montada.escolhido);
+            hero.gizmo.extra_selection.clear();
+        }
+        self.playhead.rewind();
+        self.playhead.play();
+    }
+
     pub(crate) fn topdown_smoke(&mut self) {
         if self.components.smokes.topdown {
             return;

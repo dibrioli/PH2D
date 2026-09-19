@@ -33,6 +33,7 @@ impl crate::App {
         self.sequence_smoke();
         self.counter_watch_smoke();
         self.trigger_smoke();
+        self.dano_smoke();
         // ⭐⭐⭐ **O HUD** (TOP-20 #20) — DEPOIS da câmera, que ela compõe (ver o cabeçalho).
         self.hud_smoke();
         #[cfg(feature = "panel-audio-editor")]

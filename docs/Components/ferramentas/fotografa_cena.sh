@@ -38,6 +38,22 @@ RAIZ="$(cd "$(dirname "$0")/../../.." && pwd)"
 BIN="$RAIZ/target/smoke/ph2d-host-desktop"
 [ -x "$BIN" ] || { echo "falta o binario: cargo build -p ph2d-host-desktop --profile smoke" >&2; exit 2; }
 
+# ⛔⛔⛔ **ELE NÃO CONSTRÓI, LOGO SEM ISTO FOTOGRAFA O PROGRAMA ANTERIOR** (medido 2026-09-19).
+# A cena do golpe foi curada, fotografada DUAS vezes com o binário de antes da cura, e as duas fotos
+# mostraram o defeito já curado — uma delas com o log a reproduzi-lo à letra. *Uma sonda que mede
+# outro programa é pior do que nenhuma: ela não fica em silêncio, ela CONFIRMA.*
+# ⚠️ **A recusa é ALTA e não um aviso:** o modo de falha que ela substitui é mudo por construção
+# (a foto sai, é bonita, e é de outra build), e este roteiro é lido por quem já está a caçar um
+# defeito. ⭐ E a régua é o PRÓPRIO ficheiro mais novo, com o nome dele na mensagem — nunca um
+# relógio: `find -newer` compara os dois mtimes e não tem calibração para envelhecer.
+NOVO="$(find "$RAIZ/crates" "$RAIZ/shells" -name '*.rs' -newer "$BIN" -print -quit 2>/dev/null || true)"
+if [ -n "$NOVO" ]; then
+  echo "RECUSA: ha' codigo mais novo que o binario (ex.: ${NOVO#"$RAIZ/"})" >&2
+  echo "  a foto seria do programa ANTERIOR. Corra primeiro:" >&2
+  echo "  bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke" >&2
+  exit 2
+fi
+
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/cfg"

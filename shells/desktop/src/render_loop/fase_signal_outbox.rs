@@ -10,20 +10,6 @@
 use super::*;
 use ph2d_i18n::tr_with;
 
-/// ⭐ **O diagnóstico do dreno, e ele IMPRIME MESMO A ZERO** — é esse o caso que interessa: um
-/// sinal que soa e não resolve efeito nenhum é o modo de falha MUDO desta tabela (um reactor sem
-/// `StableId` não entra na consulta do `resolve`, e o toast aparece na mesma).
-///
-/// ⚠️ Vive fora da fase por TECTO DE FUNÇÃO — e é o sítio certo: ela não decide nada do quadro.
-///
-/// ⚠️ **A guarda entra AQUI e não na fase** — pelo tecto de função dela, e porque «imprimir ou não»
-/// é assunto do diagnóstico, não do quadro.
-fn diga_o_que_resolveu(ligado: bool, nomes: &[&str], efeitos: usize) {
-    if ligado {
-        eprintln!("[signal] {nomes:?} -> {efeitos} efeito(s)");
-    }
-}
-
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     /// ⭐⭐⭐ **As acções resolvidas deste quadro, pelo NOME** — a entrada do motor do gatilho.

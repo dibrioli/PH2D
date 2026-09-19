@@ -146,6 +146,8 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) counter_watch: bool,
     /// ⭐ O GATILHO (suplente #24) — `PH2D_TRIGGER_SMOKE=1`.
     pub(crate) trigger: bool,
+    /// ⭐ O GOLPE (suplente #24) — `PH2D_DANO_SMOKE=1`.
+    pub(crate) dano: bool,
     /// Quantos quadros ainda trazem o Inspector à frente na cena da vigia — ver `sequence_raise`.
     pub(crate) counter_watch_raise: u8,
     /// Quantos quadros ainda trazem o Inspector à frente na cena da cutscene — ver o irmão

@@ -204,6 +204,18 @@ pub fn apply_tween_edit(world: &mut World, entity_bits: u64, edit: &TweenFieldEd
             t.ao_acabar = novo;
             true
         }),
+        // ⭐⭐⭐ **A COR de um extremo, de uma vez** — report do dono, 19/09.
+        //
+        // ⚠️ **Escrita nas QUATRO componentes**, e não na aridade do canal: uma amostra devolve
+        // sempre um rgba, e limitar a escrita faria uma troca de canal deixar lixo nas de trás.
+        TweenFieldEdit::Cor(i, fim, rgba) => campo(&mut tweens, *i, |t| {
+            let alvo = if *fim { &mut t.para } else { &mut t.de };
+            if *alvo == *rgba {
+                return false;
+            }
+            *alvo = *rgba;
+            true
+        }),
         TweenFieldEdit::Ciclo(i, tag) => campo(&mut tweens, *i, |t| {
             let novo = ph2d_tween::Ciclo::from_tag(*tag);
             if t.ciclo == novo {

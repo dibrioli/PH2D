@@ -484,3 +484,61 @@ fn as_colunas_do_relogio_vem_do_indice_certo() {
     assert!(i.rows[0].repeat && i.rows[0].autostart);
     assert!(!i.rows[1].repeat && !i.rows[1].autostart);
 }
+
+/// ⭐⭐⭐ **UMA COR CHEGA AO COMPONENTE DE UMA VEZ** — report do dono, 2026-09-19 (*«por que usar
+/// cores em números se temos caixas selectoras?»*).
+///
+/// ⚠️ **A edição escreve as QUATRO componentes**, e não a aridade do canal: uma amostra devolve
+/// sempre um rgba, e limitar a escrita deixaria lixo das componentes de trás numa troca de canal.
+///
+/// **Mutações que devem sangrar:** apagar o braço do dreno · escrever no extremo errado.
+#[test]
+fn uma_cor_chega_ao_componente_de_uma_vez() {
+    let (mut w, e) = mundo(1, 1, true);
+    let ent = Entity::from_bits(e);
+    apply_tween_edit(&mut w, e, &TweenFieldEdit::Canal(0, Canal::Tint.tag()));
+
+    let vermelho = [1.0, 0.2, 0.15, 1.0];
+    assert!(apply_tween_edit(
+        &mut w,
+        e,
+        &TweenFieldEdit::Cor(0, false, vermelho)
+    ));
+    assert_eq!(w.get::<Tweens>(ent).unwrap().0[0].de, vermelho);
+    // ⛔ O CONTROLO: o OUTRO extremo não se mexeu — senão uma escolha no `de` reescrevia o `para`.
+    assert_ne!(w.get::<Tweens>(ent).unwrap().0[0].para, vermelho);
+
+    let azul = [0.1, 0.3, 0.95, 0.5];
+    assert!(apply_tween_edit(
+        &mut w,
+        e,
+        &TweenFieldEdit::Cor(0, true, azul)
+    ));
+    assert_eq!(w.get::<Tweens>(ent).unwrap().0[0].para, azul);
+    assert_eq!(w.get::<Tweens>(ent).unwrap().0[0].de, vermelho);
+
+    // …e escrever a MESMA cor não conta como mudança (a lei do `Changed<…>` desta secção).
+    assert!(!apply_tween_edit(
+        &mut w,
+        e,
+        &TweenFieldEdit::Cor(0, true, azul)
+    ));
+}
+
+/// ⭐⭐ **Só um canal de COR é pintado como cor** — a régua é o motor, nunca uma lista do painel.
+///
+/// ⛔ *Duas listas sobre a mesma pergunta divergem no dia em que alguém acrescentar um canal* — e
+/// aqui a resposta é DERIVADA da aridade, que é a mesma que decide se o painel pinta 1 campo ou 4.
+#[test]
+fn e_cor_e_derivado_da_aridade_e_nomeia_exactamente_dois_canais() {
+    let cores: Vec<Canal> = Canal::ALL.iter().copied().filter(|c| c.e_cor()).collect();
+    assert_eq!(cores, vec![Canal::Tint, Canal::Silhueta]);
+    for c in Canal::ALL {
+        assert_eq!(
+            c.e_cor(),
+            c.aridade() == 4,
+            "o `{}` responde uma coisa a `e_cor` e outra a `aridade`",
+            c.label()
+        );
+    }
+}

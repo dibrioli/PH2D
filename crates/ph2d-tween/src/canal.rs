@@ -116,6 +116,22 @@ impl Canal {
         )
     }
 
+    /// ⭐⭐⭐ **Este canal é uma COR?** — e é isto que decide se o painel pinta uma AMOSTRA ou um
+    /// número.
+    ///
+    /// ⛔⛔ **Report do dono, 2026-09-19 (com foto):** *«por que usar cores em números se temos
+    /// caixas selectoras?»*. O `de`/`para` de um `Tint` saía como **quatro campos numéricos** —
+    /// `0 · 0 · 0 · 0` — e o app tem um selector de cor desde sempre (a secção *Color & Tint*, as
+    /// duas amostras do emissor de partículas).
+    ///
+    /// ⚠️ **É DERIVADO da [`Self::aridade`], e não uma segunda lista:** um canal de cor é
+    /// exactamente aquele cujas quatro componentes contam. *Duas listas sobre a mesma pergunta
+    /// divergem no dia em que alguém acrescentar um canal.*
+    #[must_use]
+    pub const fn e_cor(self) -> bool {
+        self.aridade() == 4
+    }
+
     /// A posição em [`Self::ALL`] — a tag que o segmentado do painel usa.
     #[must_use]
     pub const fn tag(self) -> u8 {

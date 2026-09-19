@@ -37,6 +37,26 @@ pub(crate) fn apply_tween_event(
     };
 
     if let WidgetEvent::Click(id) = ev {
+        // ⭐⭐⭐ **UMA AMOSTRA ABRE O SELECTOR**, semeado com a cor do documento — a MESMA porta da
+        // secção Color & Tint e do emissor de partículas. A escolha volta pelo `widget_color`, e é
+        // a semente (`sync_tween`) que a devolve ao documento.
+        if let Some(r) = info.rows.get(aberto)
+            && matches!(
+                id,
+                crate::ids::INSP_TWEEN_COR_DE | crate::ids::INSP_TWEEN_COR_PARA
+            )
+        {
+            let fim = id == crate::ids::INSP_TWEEN_COR_PARA;
+            let atual = if fim { r.para } else { r.de };
+            let seed = crate::state_tint::tint_f32_to_u8(atual);
+            host.store_mut().set_widget_color(id, seed);
+            host.store_mut().set_picker_target(Some(id));
+            host.store_mut().set_blender_value(
+                ph2d_editor_core::ids::INSP_BLENDER_PICKER,
+                ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
+            );
+            return true;
+        }
         // ⭐ A ESCOLHA da linha — o único evento desta secção que NÃO vai ao barramento.
         if let Some(n) = crate::ids::INSP_TWEEN_ROW.iter().position(|&r| r == id)
             && n < info.rows.len()

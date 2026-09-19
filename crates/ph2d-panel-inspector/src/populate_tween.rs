@@ -28,6 +28,13 @@ use ph2d_editor_core::widget::TextInputState;
 const FAIXA: (f64, f64, f64) = (-50.0, 50.0, 0.05); // LITERAL-PX-OK: a união das unidades dos canais
 
 pub(crate) fn populate_tween(store: &mut WidgetStore) {
+    // ⚠️⚠️ **As duas AMOSTRAS DE COR são `Plain`, e a ausência delas aqui seria MUDA:** a amostra
+    // não carrega valor nenhum (a cor vive na tabela lateral `widget_colors`), logo ela pinta-se e
+    // hit-regista-se na mesma — e o clique morre no `is_focusable`, sem o selector abrir. É a lei
+    // que o Color & Tint e o emissor de partículas já escrevem.
+    for id in [ids::INSP_TWEEN_COR_DE, ids::INSP_TWEEN_COR_PARA] {
+        store.register(id, InteractiveState::Plain);
+    }
     // ⭐⭐⭐ **O RELÓGIO do tween, dentro da secção dele** (report do dono, 19/09). ⛔ Estes três
     // NÃO são chips: eles escrevem no `Timers` do mesmo índice, pela porta que a secção TIMERS já
     // usa — ver [`crate::ids::INSP_TWEEN_DURACAO`].

@@ -210,11 +210,52 @@ fn without_tests(src: &str) -> String {
     }
 }
 
+/// ⭐⭐⭐ **É este ficheiro o módulo de TESTE de um irmão?** — e a resposta é DERIVADA, nunca um nome.
+///
+/// ⛔⛔ **A régua acima só apara o que está DENTRO do ficheiro**, logo um bloco `#[cfg(test)]` que
+/// sai para um irmão (`x.rs` + `x/tests.rs`, o corte que o `command_palette` e o `button` pagaram
+/// ao tecto de LOC) **deixa de ser aparado e passa a ler-se como PRODUTO** — com a mensagem a
+/// acusar uma asserção de teste de escolher uma quina.
+///
+/// ⚠️ É a armadilha que o `CLAUDE.md` §5.0 nomeia por escrito (*«a cura NÃO é mover a isenção, é
+/// a classificação passar a ser DERIVADA»*), e ela mordeu em 2026-09-19 ao cortar o `button.rs`.
+///
+/// ⇒ a pergunta certa é **quem me declara**: se o módulo pai me declara sob `#[cfg(test)]`, sou
+/// código de teste. *Um nome de ficheiro é uma convenção; uma declaração é um facto.*
+fn declared_as_test_module(path: &Path) -> bool {
+    let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+        return false;
+    };
+    // `x/tests.rs` é declarado pelo `x.rs` ao lado da pasta; `x_tests.rs` pelo `x.rs` irmão.
+    let (pai, modulo) = match path.parent() {
+        Some(dir) if stem == "tests" => (dir.with_extension("rs"), "tests".to_owned()),
+        Some(dir) => match stem.strip_suffix("_tests") {
+            Some(base) => (dir.join(format!("{base}.rs")), stem.to_owned()),
+            None => return false,
+        },
+        None => return false,
+    };
+    let Ok(src) = fs::read_to_string(&pai) else {
+        return false;
+    };
+    let Some(at) = src.find("#[cfg(test)]") else {
+        return false;
+    };
+    // O `mod <nome>;` tem de vir DEPOIS do `#[cfg(test)]` — senão um módulo de produto com o mesmo
+    // nome passaria a ser saltado.
+    src[at..].contains(&format!("mod {modulo};"))
+}
+
 fn strays() -> Vec<String> {
     let root = repo_root();
     let exempt: Vec<&str> = OUTSIDE_THE_DOOR.iter().map(|(f, _)| *f).collect();
     let mut out = Vec::new();
     for p in ui_sources() {
+        // ⚠️ Ver [`declared_as_test_module`]: o corpo de teste que saiu para um irmão continua a
+        //    ser código de TESTE, e não um pintor.
+        if declared_as_test_module(&p) {
+            continue;
+        }
         let rel = p
             .strip_prefix(&root)
             .unwrap_or(&p)

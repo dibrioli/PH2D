@@ -45,8 +45,46 @@ use ph2d_editor_core::tween_edits::{InspectorTweenRow, TweenQueixa};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tween::{AoAcabar, Canal};
 
-/// Quantos chips cabem numa fileira da coluna do Inspector — ver o cabeçalho.
+/// O **tecto** de chips numa fileira — quantos de facto cabem é [`cabem_por_fileira`], que os MEDE.
+///
+/// ⚠️ Ele existe para a fileira não ficar com chips de largura ridícula numa família de dois
+/// rótulos curtos; o corte real é sempre o do texto.
 const CHIPS_POR_FILEIRA: usize = 4;
+
+/// ⭐⭐⭐ **Quantos chips cabem nesta fileira — MEDIDO, nunca escolhido.**
+///
+/// ⛔⛔ **Report do dono, 2026-09-19 (com foto):** com o `4` fixo, o grupo dos CANAIS saía com
+/// `Silhouette`, `Position X` e `Position Y` **cortados** — e os dois de posição liam-se
+/// «Positio...» **os dois**, que é uma escolha que o artista não consegue fazer. *Duas opções que
+/// se leem igual são indistinguíveis sob o dedo* — a lei que o chip da vigia do contador já
+/// escreve.
+///
+/// ⚠️⚠️ **A fonte vem da PORTA DO BOTÃO** ([`ph2d_editor_core::widget::Button::label_font_px`]) e
+/// não de um token escolhido aqui: a 1.ª régua desta medição usou a `Sm` — a fonte da *legenda* —
+/// e leu **«nenhum cortado»** sobre a foto do dono. *Uma régua que adivinha a fonte do widget mede
+/// outro programa.*
+///
+/// ⭐ A folga de cada lado é a porta do espaçamento, e não um número: sem ela o texto encosta às
+/// duas bordas do chip.
+pub fn cabem_por_fileira(text_system: &mut TextSystem, w: f32, labels: &[&str]) -> usize {
+    let fonte = ph2d_editor_core::widget::Button::label_font_px();
+    let mais_largo = labels
+        .iter()
+        .map(|t| text_system.prefix_width(t, fonte))
+        .fold(0.0_f32, f32::max);
+    let folga = 2.0 * Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
+    for n in (1..=CHIPS_POR_FILEIRA.min(labels.len().max(1))).rev() {
+        #[allow(clippy::cast_precision_loss)]
+        let nf = n as f32;
+        if (w - gap * (nf - 1.0)) / nf >= mais_largo + folga {
+            return n;
+        }
+    }
+    // ⚠️ **Nunca zero**: um rótulo que não cabe nem sozinho corta — e cortar é correcto —, mas uma
+    // fileira de zero chips deixaria a família **inalcançável**.
+    1
+}
 
 /// **A CHAVE de cada queixa — a PORTA, e não um `match` dentro do pintor.**
 ///
@@ -136,8 +174,11 @@ fn grupo(
         resolve(ColorToken::Text2, theme),
     );
     let mut cur_y = y + font + Spacing::Xs.px();
-    for (bloco, chunk) in ids_.chunks(CHIPS_POR_FILEIRA).enumerate() {
-        let base = bloco * CHIPS_POR_FILEIRA;
+    // ⭐ **A largura da fileira é a MESMA para todos os blocos da família** — medida no rótulo mais
+    // largo dela. Medi-la por bloco daria chips de tamanhos diferentes na mesma pergunta.
+    let por_fileira = cabem_por_fileira(text_system, w, labels);
+    for (bloco, chunk) in ids_.chunks(por_fileira).enumerate() {
+        let base = bloco * por_fileira;
         cur_y = fileira(
             scene,
             text_system,
@@ -241,6 +282,56 @@ fn relogio(
     )
 }
 
+/// ⭐ **As duas linhas de CAMPOS de um canal numérico** — o outro ramo do [`editor`].
+///
+/// ⚠️ **Ela existe porque o ramo da COR é exclusivo deste**: separá-los em duas funções é o que
+/// impede alguém de pintar os dois e dar ao artista duas respostas para a mesma pergunta.
+#[allow(clippy::too_many_arguments)]
+fn campos_de_para(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    canal: Canal,
+) -> f32 {
+    let mut cur_y = y;
+    let n = canal.aridade();
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        n,
+        &[
+            tr("panel.inspector.tween.from"),
+            tr("panel.inspector.tween.to"),
+        ],
+    );
+    for (label, ids_) in [
+        (tr("panel.inspector.tween.from"), &crate::ids::INSP_TWEEN_DE),
+        (tr("panel.inspector.tween.to"), &crate::ids::INSP_TWEEN_PARA),
+    ] {
+        cur_y = super::rows::fields_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            label,
+            &ids_[..n],
+            0.05, // LITERAL-PX-OK: passo de arrasto — adimensional numa cor, metros numa pose
+            None,
+            seccao,
+        );
+    }
+
+    cur_y
+}
+
 /// O editor do tween aberto. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn editor(
@@ -333,20 +424,43 @@ pub(super) fn editor(
     );
 
     // ⭐ **Uma componente ou quatro — DERIVADO do canal**, nunca uma segunda lista.
-    let n = canal.aridade();
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        n,
-        &[
-            tr("panel.inspector.tween.from"),
-            tr("panel.inspector.tween.to"),
-        ],
-    );
-    for (label, ids_) in [
-        (tr("panel.inspector.tween.from"), &crate::ids::INSP_TWEEN_DE),
-        (tr("panel.inspector.tween.to"), &crate::ids::INSP_TWEEN_PARA),
-    ] {
-        cur_y = super::rows::fields_row(
+    // ⭐⭐⭐ **UMA COR É UMA AMOSTRA, NUNCA QUATRO NÚMEROS** — report do dono, 2026-09-19 (com foto):
+    // *«por que usar cores em números se temos caixas selectoras?»*.
+    //
+    // ⚠️ **A escolha é DERIVADA do canal** ([`Canal::e_cor`]) e os dois caminhos são exclusivos:
+    // pintar os dois daria duas respostas a *«que cor é esta?»*, e elas divergiriam no primeiro
+    // arrasto de um dos campos.
+    if canal.e_cor() {
+        for (id, label, rgba) in [
+            (
+                crate::ids::INSP_TWEEN_COR_DE,
+                tr("panel.inspector.tween.from"),
+                row.de,
+            ),
+            (
+                crate::ids::INSP_TWEEN_COR_PARA,
+                tr("panel.inspector.tween.to"),
+                row.para,
+            ),
+        ] {
+            let cell = Rect::new(x, cur_y, w, ROW_H);
+            super::color_tint::paint_tint_swatch_cell(
+                cell,
+                label,
+                id,
+                crate::state_tint::tint_f32_to_u8(rgba),
+                false,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+            cur_y += ph2d_tokens::row_pitch_px();
+        }
+        cur_y += ph2d_tokens::control_gap_px();
+    } else {
+        cur_y = campos_de_para(
             scene,
             text_system,
             theme,
@@ -355,11 +469,7 @@ pub(super) fn editor(
             x,
             w,
             cur_y,
-            label,
-            &ids_[..n],
-            0.05, // LITERAL-PX-OK: passo de arrasto — adimensional numa cor, metros numa pose
-            None,
-            seccao,
+            canal,
         );
     }
 

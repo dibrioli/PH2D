@@ -179,14 +179,17 @@ fn todo_chip_da_seccao_tween_chega_ao_barramento_com_a_sua_tag() {
 fn toda_familia_de_chip_da_seccao_esta_varrida() {
     const POPULATE: &str = include_str!("../../src/populate_tween.rs");
     /// O que o `populate` regista e **não** é uma família de chip — cada um com a sua lei e o seu
-    /// gate: a lista, os dois blocos de campos numéricos, os dois botões da lista e os TRÊS
-    /// controlos do RELÓGIO (que escrevem no `Timers`, por outra porta).
-    const NAO_SAO_CHIPS: [&str; 8] = [
+    /// gate: a lista, os dois blocos de campos numéricos, os dois botões da lista, os TRÊS
+    /// controlos do RELÓGIO (que escrevem no `Timers`, por outra porta) e as DUAS amostras de COR
+    /// (que abrem o selector, e têm gates próprios neste ficheiro).
+    const NAO_SAO_CHIPS: [&str; 10] = [
         "ROW",
         "DE",
         "PARA",
         "ADD",
         "REMOVE",
+        "COR_DE",
+        "COR_PARA",
         "DURACAO",
         "REPEAT",
         "AUTOSTART",
@@ -364,5 +367,144 @@ fn o_campo_da_duracao_mostra_o_relogio_do_objecto() {
         (lido - 1.5).abs() < 1.0e-6,
         "o campo mostra {lido} s e o relogio da linha aberta tem 1,5 s — o painel esta' a mostrar \
          o valor de FABRICA do `populate` (ou o da linha errada)"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A COR (W10) — report do dono: *«por que usar cores em números se temos caixas selectoras?»*.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Uma linha cujo canal é uma COR — é ela que faz a secção pintar amostras em vez de campos.
+fn linha_de_cor() -> InspectorTweenInfo {
+    let mut r = linha();
+    r.canal = ph2d_tween::Canal::Tint.tag();
+    r.de = [1.0, 0.0, 0.0, 1.0];
+    r.para = [0.0, 0.0, 1.0, 1.0];
+    InspectorTweenInfo {
+        entity_bits: ENTITY,
+        rows: vec![r],
+        tem_sprite: true,
+        selected_count: 1,
+    }
+}
+
+/// ⭐⭐⭐ **UM CANAL DE COR PINTA AMOSTRAS, E OS CAMPOS NUMÉRICOS DESAPARECEM.**
+///
+/// ⛔ **Os dois caminhos são EXCLUSIVOS**, e é a segunda metade que o afirma: um painel que
+/// pintasse os dois daria duas respostas a *«que cor é esta?»*, e elas divergiriam no primeiro
+/// arrasto de um dos campos.
+///
+/// **Mutações que devem sangrar:** trocar o `canal.e_cor()` por `false` · pintar os dois ramos.
+#[test]
+fn um_canal_de_cor_pinta_amostras_e_nao_campos() {
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_tween(Some(linha_de_cor()));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let tem = |id| rects.iter().any(|(n, _)| *n == id);
+    assert!(
+        tem(ids::INSP_TWEEN_COR_DE) && tem(ids::INSP_TWEEN_COR_PARA),
+        "um canal de COR nao pintou as duas amostras"
+    );
+    for id in ids::INSP_TWEEN_DE.iter().chain(ids::INSP_TWEEN_PARA.iter()) {
+        assert!(
+            !tem(*id),
+            "o campo numerico {id:?} foi pintado AO LADO da amostra — duas respostas a` mesma cor"
+        );
+    }
+    set_current_inspector_tween(None);
+
+    // ⛔ O CONTROLO: um canal ESCALAR faz exactamente o contrário.
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_tween(Some(info()));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let tem = |id| rects.iter().any(|(n, _)| *n == id);
+    assert!(
+        tem(ids::INSP_TWEEN_DE[0]) && !tem(ids::INSP_TWEEN_COR_DE),
+        "controlo: um canal escalar tem de pintar CAMPOS e nenhuma amostra"
+    );
+    set_current_inspector_tween(None);
+}
+
+/// ⭐⭐⭐ **CARREGAR NUMA AMOSTRA ABRE O SELECTOR, semeado com a cor do documento.**
+///
+/// ⚠️ **É o gesto REAL** (`click_at`): uma amostra não carrega valor nenhum (a cor vive na tabela
+/// lateral), logo ela pinta-se e hit-regista-se na mesma — e sem o registo o clique morre no
+/// `is_focusable`, **sem o selector abrir**.
+///
+/// **Mutações que devem sangrar:** tirar as duas amostras do `populate` · tirar o braço do
+/// despacho · semear o selector com a cor errada.
+#[test]
+fn carregar_numa_amostra_abre_o_selector_com_a_cor_do_documento() {
+    for (id, esperada, nome) in [
+        (ids::INSP_TWEEN_COR_DE, [255_u8, 0, 0, 255], "de"),
+        (ids::INSP_TWEEN_COR_PARA, [0_u8, 0, 255, 255], "para"),
+    ] {
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_tween(Some(linha_de_cor()));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        let r = rects
+            .iter()
+            .find(|(n, _)| *n == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("a amostra «{nome}» nao foi pintada"));
+        let evs = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "a amostra «{nome}» nao aceitou o clique: {evs:?} — ela esta' MORTA SOB O DEDO"
+        );
+        for ev in evs {
+            let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
+        }
+        assert_eq!(
+            host.store().picker_target(),
+            Some(id),
+            "a amostra «{nome}» nao abriu o selector"
+        );
+        assert_eq!(
+            host.store().widget_color(id),
+            Some(esperada),
+            "o selector da amostra «{nome}» abriu com a cor errada"
+        );
+        set_current_inspector_tween(None);
+    }
+}
+
+/// ⭐⭐⭐ **A COR ESCOLHIDA CHEGA AO TWEEN** — a metade em que o fio costuma morrer.
+///
+/// ⛔⛔ **E ela corre ANTES da saída antecipada da semente:** enquanto o artista escolhe, o
+/// DOCUMENTO ainda não mudou, logo a assinatura é a mesma — e um `return` ali deixaria a cor morrer
+/// no `widget_color`. *O fio estaria completo até ao último passo.*
+///
+/// **Mutações que devem sangrar:** pôr o bloco da cor DEPOIS da saída antecipada · não comparar
+/// com o que está gravado (o barramento gira para sempre).
+#[test]
+fn a_cor_escolhida_chega_ao_tween() {
+    use ph2d_editor_core::panel::PanelHostInternal as _;
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_tween(Some(linha_de_cor()));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    // O artista abre o selector e escolhe outra cor.
+    host.store_mut()
+        .set_picker_target(Some(ids::INSP_TWEEN_COR_DE));
+    host.store_mut()
+        .set_widget_color(ids::INSP_TWEEN_COR_DE, [0, 255, 0, 255]);
+    let _ = host.drained_actions();
+    // …e o quadro seguinte tem de a levar ao documento.
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let acoes = host.drained_actions();
+    set_current_inspector_tween(None);
+
+    let esperado = ph2d_editor_core::action_bus::EditorAction::InspectorComponentEdit {
+        entity_bits: ENTITY,
+        edit: ComponentEdit::Tween(TweenFieldEdit::Cor(0, false, [0.0, 1.0, 0.0, 1.0])),
+    };
+    assert!(
+        acoes.contains(&esperado),
+        "a cor escolhida NAO chegou ao tween: {acoes:?}"
     );
 }

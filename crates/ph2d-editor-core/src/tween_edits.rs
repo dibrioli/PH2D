@@ -134,6 +134,12 @@ pub enum TweenFieldEdit {
     AoAcabar(u8, u8),
     /// A tag do `Ciclo` — *do princípio* ou *vai-e-volta*.
     Ciclo(u8, u8),
+    /// ⭐⭐⭐ **A COR de um extremo** — `(índice, é o «para»?, rgba)`.
+    ///
+    /// ⚠️ **Uma cor é UM facto, e por isso é UMA edição** — e não quatro `De`/`Para` seguidas. O
+    /// modelo já o diz ([`ph2d_tween::Canal::e_cor`]), e é o que decide se o painel pinta uma
+    /// amostra ou um número. *A forma da edição segue a forma da pergunta.*
+    Cor(u8, bool, [f32; 4]),
     /// ⭐⭐⭐ **Um PRESET de um clique** — `(índice, tag do `ph2d_tween::Preset`)`.
     ///
     /// ⚠️ **Ele escreve os CAMPOS e nada mais fica dele** (a lei do módulo de presets: *açúcar
@@ -261,10 +267,11 @@ mod tests {
             TweenFieldEdit::Modo(0, 0),
             TweenFieldEdit::AoAcabar(0, 0),
             TweenFieldEdit::Ciclo(0, 0),
+            TweenFieldEdit::Cor(0, false, [0.0; 4]),
         ];
         assert_eq!(
             variantes.len(),
-            9,
+            10,
             "o `Tween` tem SEIS campos (canal, de, para, easing, ao_acabar, ciclo) — o `easing` \
              conta DOIS porque a familia e o modo escolhem-se a` parte — mais o `Add` e o `Remove`"
         );

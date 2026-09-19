@@ -103,6 +103,19 @@ pub const INSP_TWEEN_AO_ACABAR: [NodeId; 2] = [
     hash_node_id("insp_tween_ao_acabar_1"),
 ];
 
+/// ⭐⭐⭐ **AS DUAS AMOSTRAS DE COR** — o `de` e o `para` de um canal de COR.
+///
+/// ⛔⛔ **Report do dono, 2026-09-19 (com foto):** *«por que usar cores em números se temos caixas
+/// selectoras?»*. Um `Tint` saía como **quatro campos numéricos** por extremo — `0 · 0 · 0 · 0` —
+/// e o app tem selector de cor desde sempre.
+///
+/// ⚠️ **Elas substituem os campos, nunca se somam a eles:** qual dos dois se pinta é DERIVADO do
+/// [`ph2d_tween::Canal::e_cor`], e um painel que mostrasse os dois daria duas respostas a *«que
+/// cor é esta?»*.
+pub const INSP_TWEEN_COR_DE: NodeId = hash_node_id("insp_tween_cor_de");
+/// A amostra do `para` — ver [`INSP_TWEEN_COR_DE`].
+pub const INSP_TWEEN_COR_PARA: NodeId = hash_node_id("insp_tween_cor_para");
+
 /// ⭐⭐⭐ **O RELÓGIO do tween, DENTRO da secção dele** — a duração e os dois interruptores.
 ///
 /// ⛔⛔ **Eles escrevem no MESMO sítio que a secção TIMERS**, pela mesma porta

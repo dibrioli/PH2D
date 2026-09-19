@@ -56,6 +56,7 @@ diz onde ler o mecanismo:
 | **F11** | ✅ **Imagens em 9 fatias e folhas de quadros DEFORMAM com os ossos** (ordem do dono, 2026-09-17) | ✅ **FECHADO** — ver F11 abaixo |
 | **F21** | ✅ **A cena dedicada do ENVELOPE** (*«melhor montar uma cena específica para me mostrar isso»*, 2026-09-18) | ✅ **FECHADA em 2026-09-19 — e ela REFUTOU a lei da F20**: o envelope é inerte em toda forma FECHADA (amplitude `0,000000` numa faixa de `80 ×`), porque uma forma fechada também usa o padrão-ouro desde 15/09. A lei passou a perguntar ao **BIND** e não à mídia. Cena **`PH2D_VEC_BONE_SMOKE=2`** — ver F21 abaixo |
 | **F22** | ⭐⭐⭐ **A ESCOLHA da lei de pele, POR DESENHO** (ordem do dono, 2026-09-19: *«construa. por desenho»*) | ✅ **FECHADA no mesmo dia** — fileira **`Deform By`** (`Artwork` \| `Bone Reach`) no painel Bones, por DESENHO e para as duas mídias. ⭐ A escolha diz se o quadro **LÊ** a tabela do padrão-ouro, nunca se a calcula ⇒ a volta é **exacta ao bit** e não re-resolve nada. `PROJECT_SCHEMA` **+1** — ver F22 abaixo |
+| **F27** | ⭐⭐⭐ **O CENSO DOS VERBOS DO OSSO** (o aberto que a F16 deixou por escrito) | ✅ **FECHADO no mesmo dia — ZERO verbos mortos.** Os catorze botões chegam a um efeito, medidos pela captura que o undo tira. ⛔⛔ E uma **mutação sobreviveu**: apagado o corpo do braço do *Add Smart Bone* na fase do quadro, **23 testes da shell ficaram verdes** — o terceiro elo do §5.0 não tinha instrumento nenhum. Zero schema, zero registo — ver F27 abaixo |
 | **F26** | ⭐⭐⭐ **CORRIGIR UM PESO À MÃO** (auditoria, 2026-09-19) | ✅ **FECHADA no mesmo dia** — o 3.º verbo do osso (**`Weight`**) pinta a influência sobre a arte presa, com os pesos **à vista** por baixo do pincel. A correcção é uma **MANCHA no espaço** (nunca uma tabela por vértice) e é ancorada no **REPOUSO** do ponto que o dedo aponta. `PROJECT_SCHEMA` **+1** — ver F26 abaixo |
 
 ---
@@ -389,6 +390,69 @@ Mutação **12 de 12** a sangrar.
 
 ⏳ **ABERTO:** o espelho não tem gesto de canvas (só o painel) · e a arte presa não é espelhada com
 os ossos — o ramo novo nasce sem pele, e prendê-la é o gesto que já existe (*Bind*).
+
+### F27 — ⭐⭐⭐ **O CENSO DOS VERBOS DO OSSO: o clique chega a um EFEITO?** (2026-09-19)
+
+**O item que a F16 deixou aberto por escrito, fechado — e o veredito é bom: ZERO verbos mortos.** Os
+**catorze** botões da secção chegam a um efeito: **treze** mexem no mundo e **um** declara que o
+consumidor dele é o clique seguinte.
+
+⛔⛔ **É a segunda metade da pergunta que o `§5.0` nomeia sobre o repo inteiro** (*«nenhum instrumento
+pergunta se o VALOR chega a um consumidor»*). A F16 fechou-a para os **números** em 18/09 e escreveu
+na própria célula que os verbos ficavam com censo de *chegam ao barramento* e nenhum de *chegam a um
+efeito* — que é a família de metade dos reports do dono nesta linha: *o botão pinta, acende sob o
+rato, o clique atravessa o painel, e o mundo não se mexe.*
+
+⭐⭐ **A régua é o PRODUTO e a fotografia é a do UNDO.** Cada verbo corre pela **porta que a shell
+chama**, sobre um palco montado para ele, e o que se mede é a captura
+[`world_to_snapshot`](../../crates/ph2d-ecs/src/scene/save.rs) — a mesma que a fila do undo tira.
+⚠️ **A cena vectorial entra ao lado dela**, e não por gosto: o *Expand* escreve a geometria deformada
+no **documento do vector**, que não é uma entidade — sem essa metade, uma mutação que fizesse o
+*Expand* chamar o *Release* ficava invisível, porque os dois tiram o `SkinBind`.
+
+⛔⛔⛔ **E UMA MUTAÇÃO SOBREVIVEU, e é o achado da wave: NADA no repo liga as duas pontas.** Apagado o
+corpo do braço do *Add Smart Bone* na fase do quadro, **`23` testes da shell ficaram verdes**. O censo
+da família prova que a **PORTA** faz efeito; a costura do painel prova que o clique chega ao
+**BARRAMENTO**; e o terceiro elo — *o braço que recebe chama alguma porta?* — não tinha instrumento
+nenhum. É a quarta vez que esta rota morre nesta linha. ⇒ `VerboDoOsso::rastos_na_shell` mais o censo
+[`todo_verbo_do_osso_deixa_rasto_na_shell`](../../shells/desktop/tests/it/os_verbos_do_osso_chegam_do_botao_ate_a_lei.rs),
+que vive **ao lado dos três gates que já faziam isto à mão** para o *Look At*, o desvio e o espelho —
+*uma segunda superfície para a mesma pergunta seria a lista que envelhece*.
+
+⚠️⚠️ **Ele mede TEXTO e não uma chamada, e a limitação é DECLARADA:** as fases são métodos de `App`,
+que segura uma surface de janela real, logo nenhum teste as corre. *Ele apanha o braço que deixou de
+chamar a porta; o braço que a chama com o argumento errado é apanhado do outro lado* — pelo censo da
+família, que corre as duas portas e exige que elas **difiram**.
+
+⭐⭐⭐ **E a `smart::add` NASCEU por causa do censo.** Das catorze rotas, o *Add Smart Bone* era a única
+cujo efeito estava escrito **dentro da fase do quadro** (um `insert` de uma linha), logo a única que o
+censo não conseguia correr sem re-escrever a lei — *e uma régua que re-escreve a lei mede outro
+programa*. A shell decide a ORDEM; **o que** um verbo faz é conhecimento de quem possui o componente,
+que é a lei que o [`knobs`](../../crates/ph2d-app-skeleton/src/knobs.rs) já escreve.
+
+⚠️ **A tradução `id → verbo` resolve pela POSIÇÃO na tabela** (a mesma lei do lado da dobra e do
+sentido do pincel de peso), e é isso que impede uma segunda lista de catorze braços. ⛔ **O preço está
+pago com gate:** trocar dois itens da `VECTOR_BONE_VERBS` faria o botão que diz *Bind* mandar
+*Release* — *um botão que faz o contrário do que diz é pior do que um morto* —, e por isso o censo
+pina **cada id ao verbo pelo NOME**, um a um.
+
+⛔ **A ÚNICA isenção é NOMEADA e tem gate próprio:** o *Pick Object* arma um **MODO** e o consumidor
+dele é o clique seguinte. *Uma célula sem proveniência e uma com proveniência têm o mesmo aspecto numa
+tabela* — é a mesma forma do `Strength` no censo dos números, e o número de isentos está gateado em
+`1`.
+
+⚠️⚠️ **DUAS armadilhas de FIXTURA, as duas apanhadas pela primeira corrida:**
+1. **Prender e assar no mesmo instante devolve a FONTE** — o `bind` guarda a pose de AGORA como
+   repouso, logo *o Expand não tem nada para assar num corpo que não saiu do repouso*, e os dois
+   verbos liam-se idênticos. A ordem do palco é **prender · dobrar · re-cozinhar**.
+2. **O piso do censo textual era a SOMA e tinha de ser POR VERBO.** Quatro verbos declaram dois
+   rastos (a porta partilhada mais o discriminador), logo esvaziar um verbo inteiro deixava
+   `16 >= 14` e o censo verde. *Uma lista vazia lê-se exactamente como aprovada* — a catraca sem
+   censo de obsolescência, um nível abaixo.
+
+Mutação **16 de 16** a sangrar (duas sobreviveram primeiro e as duas viraram gate). Zero contador
+partilhado, zero contrato, zero ADR, zero linha de produto mudada — a única troca no caminho do
+artista é o `insert` do *Add Smart Bone* passar a ir pela porta.
 
 ### F26 — ⭐⭐⭐ **CORRIGIR UM PESO À MÃO — o pincel, a mancha e o olho** (2026-09-19)
 
@@ -895,8 +959,10 @@ tabela*.
 
 Mutação **5 de 5** a sangrar; portão `15 088` verdes.
 
-⏳ **ABERTO:** o censo cobre os **números**; os **verbos** (Bind · Expand · Release · Add/Remove IK ·
-Add/Remove Limit · Smart) têm censo de *chegam ao barramento* e **não** de *chegam a um efeito*.
+✅ **FECHADO na F27 (2026-09-19):** este item dizia que o censo cobria os **números** e que os
+**verbos** tinham censo de *chegam ao barramento* e nenhum de *chegam a um efeito*. Os catorze têm-no
+agora, e a construção devolveu o terceiro elo que faltava — *nada no repo perguntava se o braço que
+recebe o pedido chama alguma porta*.
 
 ### F15 — ✅ **AS TRÊS RECUSAS DOS VERBOS DO OSSO SOBEM À TELA** (2026-09-18)
 

@@ -178,6 +178,33 @@ pub fn governed_controls(sim: &SimWorld) -> Vec<Entity> {
         .collect()
 }
 
+/// ⭐⭐⭐ **ANEXA O CONTROLO VAZIO a este osso.** `true` quando ele ainda não era um.
+///
+/// ⚠️⚠️ **ELE NÃO CRIA NADA** (ordem do dono, 2026-09-08: *«porque criar Bone Action no inspector e
+/// na timeline? Melhor não criar nada»*) — o gesto anexa o controlo e mais nada; quem lhe dá sujeito
+/// são as duas linhas do painel (*Pick Object* e o selector *Action*). ⛔ E adoptar o clip **aberto**
+/// era pior: um documento novo tem **uma** acção chamada `"Main"`, logo todo controlo casava com a
+/// animação principal da cena, calado.
+///
+/// ⛔⛔ **Ela nasceu na SHELL e veio para cá pelo censo dos verbos** (2026-09-19): era a única das
+/// catorze rotas cujo efeito estava escrito **dentro da fase do quadro** (um `insert` de uma linha),
+/// logo a única que o censo não conseguia correr sem re-escrever a lei — *e uma régua que re-escreve
+/// a lei mede outro programa*. A shell decide a ORDEM; **o que** um verbo faz é conhecimento de quem
+/// possui o componente (a mesma lei do [`crate::knobs`]).
+///
+/// ⚠️ **O `false` não é uma recusa a mostrar:** anexar duas vezes não é um erro do artista — o
+/// painel já não oferece o botão a um osso que tem controlo. Ele existe para o censo poder afirmar
+/// que a 2.ª chamada **não** mexe no mundo.
+pub fn add(sim: &mut SimWorld, osso: Entity) -> bool {
+    if sim.world().get::<SmartBone>(osso).is_some() {
+        return false;
+    }
+    sim.world_mut()
+        .entity_mut(osso)
+        .insert(SmartBone::default());
+    true
+}
+
 /// ⭐⭐⭐ **APAGA o controlo deste osso E DEVOLVE A POSE QUE O ARTISTA AUTOROU.** `true` se havia um.
 ///
 /// ⛔⛔ **Achado da auditoria de 2026-09-08 (o irmão já o fazia e este não):** o *Remove Smart Bone*

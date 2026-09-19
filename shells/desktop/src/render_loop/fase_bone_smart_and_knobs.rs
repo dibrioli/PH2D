@@ -48,10 +48,12 @@ impl crate::App {
         //
         // ⇒ o gesto **anexa** o controlo e mais nada; quem lhe dá sujeito são as duas
         // linhas do painel — o *Pick Object* e o selector *Action*.
+        //
+        // ⛔ **A lei saiu daqui para a família** (censo dos verbos, 2026-09-19): das catorze rotas
+        // desta secção esta era a única cujo efeito estava escrito **dentro da fase do quadro**, e
+        // por isso a única que o censo não conseguia correr sem re-escrever a lei.
         if pending_smart_add {
-            sim.world_mut()
-                .entity_mut(osso)
-                .insert(ph2d_skeleton_ecs::SmartBone::default());
+            let _ = ph2d_app_skeleton::smart::add(sim, osso);
         }
         // ⭐⭐⭐ **ARMAR O PICK DO ALVO** — o OSSO é capturado aqui, e não lido no clique
         // seguinte: aquele clique MUDA a selecção, então lê-lo então leria o alvo no lugar

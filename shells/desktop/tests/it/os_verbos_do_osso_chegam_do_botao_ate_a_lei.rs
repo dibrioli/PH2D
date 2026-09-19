@@ -92,3 +92,72 @@ fn o_espelho_chega_do_botao_ate_a_lei_com_o_registo() {
          esta shell nao conhece, em silencio"
     );
 }
+
+/// A fase que aplica os verbos de PELE (prender, assar, soltar, e os dois da pose de repouso).
+const PELE: &str = include_str!("../../src/render_loop/fase_skeleton_verbs.rs");
+
+/// ⭐⭐⭐ **O CENSO: TODO verbo da secção deixa RASTO na shell** — a metade que faltava, e que uma
+/// mutação sobrevivente encomendou.
+///
+/// ⛔⛔⛔ **MEDIDO em 2026-09-19:** apagado o corpo do braço do *Add Smart Bone* na fase do quadro,
+/// **`23` testes da shell ficaram verdes**. O censo da família prova que a PORTA faz efeito
+/// (`ph2d_app_skeleton::verbos::censo_dos_verbos_do_osso_tests`); a costura do painel prova que o
+/// clique chega ao BARRAMENTO; *nada juntava as duas pontas.* É o terceiro elo do `CLAUDE.md` §5.0 —
+/// **o leitor decide, ou entrega a alguém que descarta?** — e a quarta vez que esta rota morre nesta
+/// linha.
+///
+/// ⚠️⚠️ **Ele mede TEXTO e não uma chamada**, e a limitação é declarada: as fases são métodos de
+/// `App`, que segura uma surface de janela real, logo nenhum teste as corre. *Ele apanha o braço que
+/// deixou de chamar a porta; o braço que a chama com o argumento errado é apanhado do outro lado* —
+/// pelo censo da família, que corre as duas portas e exige que elas **difiram**.
+///
+/// ⭐⭐ **A população é DERIVADA** ([`ph2d_app_skeleton::verbos::VerboDoOsso::TODOS`], guardada por um
+/// `match` exaustivo): um verbo novo **não compila** até alguém dizer qual é o rasto dele. *É a
+/// diferença entre uma lista que alguém tem de se lembrar de estender e uma que não fica verde sem a
+/// extensão.*
+#[test]
+fn todo_verbo_do_osso_deixa_rasto_na_shell() {
+    use ph2d_app_skeleton::verbos::VerboDoOsso;
+
+    let texto = format!("{CLICKS}{FASE}{KNOBS}{PELE}");
+    // ⛔ **O CONTROLO POSITIVO, e sem ele o censo é vácuo:** se o `include_str!` apontasse para um
+    // ficheiro que encolheu, ou se a busca não funcionasse, os catorze liam-se vivos para sempre.
+    assert!(
+        !texto.contains("espelho::espelha_o_ramo_todo("),
+        "a busca deste censo acusa como PRESENTE uma agulha que nao existe — ela nao mede nada"
+    );
+    assert!(
+        texto.len() > 40_000,
+        "as fases do osso encolheram para {} bytes: o `include_str!` esta' a ler outra coisa, e um \
+         censo sobre um texto vazio fica verde sobre tudo",
+        texto.len()
+    );
+
+    let mut mudos = Vec::new();
+    let mut sem_rasto_declarado = Vec::new();
+    for v in VerboDoOsso::TODOS {
+        // ⛔⛔ **O PISO É POR VERBO e não a soma — foi uma MUTAÇÃO que o exigiu.** A 1.ª redacção
+        // contava as agulhas todas contra o número de verbos, e como quatro deles declaram DUAS
+        // (a porta partilhada mais o discriminador) a soma sobrava: esvaziar um verbo inteiro
+        // deixava `16 >= 14` e o censo verde. *Uma lista vazia le'-se exactamente como aprovada.*
+        if v.rastos_na_shell().is_empty() {
+            sem_rasto_declarado.push(v);
+        }
+        for agulha in v.rastos_na_shell() {
+            if !texto.contains(agulha) {
+                mudos.push((v, *agulha));
+            }
+        }
+    }
+    assert!(
+        sem_rasto_declarado.is_empty(),
+        "estes verbos nao declaram rasto NENHUM: {sem_rasto_declarado:?} — eles saem da populacao \
+         do censo em silencio, que e' a forma como um verbo morto passa despercebido"
+    );
+    assert!(
+        mudos.is_empty(),
+        "estes verbos do osso nao deixam rasto nenhum nas fases do quadro: {mudos:?} — o botao \
+         pinta, acende sob o rato, o clique atravessa o painel, e o braco que o recebe nao chama \
+         porta nenhuma"
+    );
+}

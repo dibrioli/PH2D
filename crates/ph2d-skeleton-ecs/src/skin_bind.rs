@@ -73,8 +73,12 @@ pub struct CorreccaoDePeso {
     pub centro: [f64; 2],
     /// O raio da mancha, nas mesmas unidades.
     pub raio: f64,
-    /// Quanto somar ao peso deste osso no CENTRO. **Negativo TIRA**, e o sinal é a direcção: não há
-    /// um segundo modo «apagar» a lembrar nem um modificador de teclado a adivinhar.
+    /// Quanto somar ao peso deste osso no CENTRO. **Negativo TIRA**, e o sinal é a direcção.
+    ///
+    /// ⛔ **O resto desta frase dizia *«não há um segundo modo «apagar» a lembrar»* e foi revogado
+    /// pelo dono** em 2026-09-19 — ele quis os botões *Add*/*Subtract*. ⚠️ A revogação é da TELA: o
+    /// campo continua a ser um número com sinal, e o mecanismo está no doc da
+    /// [`ph2d_skeleton::Correccao::delta`].
     pub delta: f64,
 }
 

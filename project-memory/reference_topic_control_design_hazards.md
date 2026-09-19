@@ -38,3 +38,20 @@ as últimas linhas desapareciam em silêncio. Cada entrada continua a ser um fic
   pôr o nome AO LADO com as caixas a refluírem **desaparece** — um nome que descreve duas caixas
   EMPILHADAS não diz qual é qual. ⇒ *mudar a disposição de uma linha FORÇA o corte de uma linha que
   fazia duas perguntas*, e isso é ganho, não custo.
+- ⛔⛔⛔ **O terceiro elo não tem instrumento em lado nenhum: o BRAÇO que recebe o pedido pode não
+  chamar porta nenhuma.** Medido 2026-09-19 (`line/Vector`, os 14 verbos do osso): apagado o corpo do
+  braço do *Add Smart Bone* na fase do quadro, **23 testes da shell ficaram verdes**. Havia censo de
+  que a PORTA faz efeito (a família, a correr a lei) e censo de que o clique chega ao BARRAMENTO (a
+  costura do painel) — *e nada juntava as duas pontas*, que é literalmente a pergunta que o
+  `CLAUDE.md` §5.0 escreve (*«o leitor DECIDE, ou entrega a alguém que descarta?»*). ⚠️ A cura foi um
+  censo **textual** (`include_str!` sobre as fases, com o rasto de cada verbo declarado num `match`
+  exaustivo), e a limitação é declarada: as fases são métodos de `App`, que segura uma surface real,
+  logo **nenhum teste as corre** — ele apanha o braço que deixou de chamar a porta, não o que a chama
+  com o argumento errado; essa metade é do censo da família, que corre as duas portas e exige que
+  elas **difiram**. ⭐ E o que tornou o censo possível foi mover **uma linha** da fase para a família:
+  das 14 rotas, a única cujo efeito estava escrito dentro do quadro era a única que o censo não
+  conseguia correr sem re-escrever a lei — *e uma régua que re-escreve a lei mede outro programa*.
+- ⛔⛔ **Num censo textual, o PISO tem de ser POR SUJEITO e nunca a SOMA.** Mesma wave: quatro dos
+  catorze verbos declaram **dois** rastos (a porta partilhada mais o discriminador), logo esvaziar um
+  verbo inteiro ainda deixava `16 >= 14` e o censo verde. *Uma lista vazia lê-se exactamente como
+  aprovada* — é a catraca sem censo de obsolescência, um nível abaixo, e só uma mutação a apanhou.

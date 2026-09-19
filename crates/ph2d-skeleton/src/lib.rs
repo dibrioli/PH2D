@@ -535,10 +535,15 @@ pub struct Correccao {
     pub centro: [f64; 2],
     /// O raio, nas unidades da coisa deformada. `<= 0` ⇒ a mancha não alcança nada.
     pub raio: f64,
-    /// Quanto somar ao peso deste osso no CENTRO da mancha. Negativo TIRA.
+    /// Quanto somar ao peso deste osso no CENTRO da mancha. Negativo TIRA — **o sinal é a
+    /// direcção**, e a lei nunca pergunta por um modo.
     ///
-    /// ⚠️ **O sinal é a direcção, e é isso que faz o gesto ser um só:** não há um segundo modo
-    /// «apagar» a lembrar, nem um modificador de teclado a adivinhar.
+    /// ⛔⛔ **A frase que estava aqui — *«não há um segundo modo «apagar» a lembrar»* — era sobre a
+    /// TELA e foi REVOGADA pelo dono** (2026-09-19: *«no lugar de valores negativos em Brush
+    /// Strength prefiro botões Add e Subtract»*). ⚠️ *O que ele revogou foi a superfície, não o
+    /// dado:* a força é uma MAGNITUDE no painel e a direcção sai de dois botões, e é o
+    /// `WeightDirection::delta` que volta a juntar as duas num sinal antes de chegar aqui. **Este
+    /// campo não mudou um bit.**
     pub delta: f64,
 }
 

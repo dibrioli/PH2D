@@ -50,6 +50,9 @@ pub mod reveal;
 pub mod skin_law;
 pub mod smart;
 pub mod state;
+/// ⭐⭐⭐ O que cada BOTÃO do painel significa para um osso — e em que grandeza o efeito dele
+/// se vê. O irmão do [`knobs`], e a casa do censo que pergunta se o clique chega a um efeito.
+pub mod verbos;
 
 /// **A família, para o registo gerado** ([`ph2d_app_host`]).
 ///

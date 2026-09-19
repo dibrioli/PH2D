@@ -1310,6 +1310,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   OS IGNORADOS** — um filtro que casa três `#[ignore]` sem `--ignored` imprime `running 3 tests`,
   corre **ZERO** e lê-se exactamente como *«a mutação sobreviveu»*; a população honesta é
   `passed + failed` do `test result:`. **Mutação 7 de 7**, com controlo; portão `15 067` verdes.
+  ⛔⛔ **E a FOTO da cena apanhou o que a suíte não vê:** o roteiro da `=35` mandava o dono carregar
+  em **três** nomes que esta mesma wave tinha renomeado (`Rim Width` → `Rim Falloff`, e o
+  `Curvature Sharpness` partido em dois) — *um `println!` não é compilado contra nada* —, e o painel
+  À FRENTE na bancada dele é o do **Sculpt 3D**, logo o passo (1) mandava procurar a secção num
+  painel que não está na tela. ⇒ o roteiro nomeia o separador `Model`, e o gate
+  `o_roteiro_da_cena_nomeia_controlos_que_existem` **deriva** os candidatos do texto (corridas em
+  Maiúscula Inicial, que é a forma de todo rótulo e que a ênfase em CAIXA ALTA não tem) e exige que
+  cada um esteja na **mesma tabela que pinta as fileiras**. ⚠️ A 1.ª redacção aceitava CAIXA ALTA e
+  acusou a minha própria ênfase — *a cura barata era uma lista de excepções, que é como uma lista
+  dessas cresce até não medir nada*.
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

@@ -151,6 +151,7 @@ fn sonda_a_unreal_contra_nos_e_contra_a_verdade() {
             com_sombra: true,
             chao: None,
             sem_ceu: true,
+            mole: true,
         });
         px
     };

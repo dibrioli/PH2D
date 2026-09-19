@@ -166,6 +166,7 @@ fn sonda_o_ecra_com_e_sem_a_cura() {
                 com_sombra: true,
                 chao: None,
                 sem_ceu: false,
+                mole: true,
             });
             px
         };
@@ -282,6 +283,7 @@ fn sonda_a_lei_da_cor_da_profundidade() {
         com_sombra: true,
         chao: None,
         sem_ceu: true,
+        mole: true,
     });
     let n_px = (W as usize) * (H as usize);
     let mascara: Vec<bool> = (0..n_px)

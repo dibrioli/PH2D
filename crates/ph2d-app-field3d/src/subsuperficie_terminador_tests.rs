@@ -60,6 +60,23 @@ struct Quadro<'a> {
     chao: Option<ph2d_field_render::Ground>,
     /// ⭐ Apaga o céu — a condição da comparação com o oráculo. Ver [`CeuPreto`].
     sem_ceu: bool,
+    /// ⭐⭐⭐ **A sombra tem a borda MOLE?** `false` desenha o quadro como o DISPOSITIVO o desenha.
+    ///
+    /// # ⛔⛔ Ele existe porque as duas metades do produto não desenham o mesmo
+    ///
+    /// A cura da §12 (*a visibilidade que uma closure translúcida lê é a média da vizinhança*) foi
+    /// assada no traçado de **CPU** e o dispositivo **ainda não tem o gémeo** — ele calcula a
+    /// visibilidade dentro da pintura, e dá-la mole pede a passagem que a escreve. O §12 declarou-o
+    /// por escrito e **nada media a diferença**: as paridades CPU↔dispositivo ficam verdes porque
+    /// nenhuma delas assa este canal.
+    ///
+    /// ⇒ *uma diferença declarada e não medida é uma nota que envelhece* — com este campo ela é um
+    /// número, e o gate que o lê reprova no dia em que o gémeo chegar (que é quando ele deve
+    /// reprovar: para alguém apagar a nota).
+    ///
+    /// ⚠️ **`false` NÃO é «sem sombra»** — é a sombra com a borda DURA, que é o que o dispositivo
+    /// entrega hoje e o que o dono fotografou em 18/09.
+    mole: bool,
 }
 
 /// A vista é a mesma nos dois gates — a cena é que muda.
@@ -109,7 +126,9 @@ fn quadro(
     // ⭐⭐⭐ **A BORDA MOLE, pela MESMA porta que o app usa** — ⚠️ a 1.ª redacção desta sonda
     // derivava a distância de espalhamento aqui, o que a fazia a segunda resposta à mesma pergunta.
     let mut sh = sh;
-    if let Some(espalha) = crate::materials::maior_espalhamento(&surfaces) {
+    if q.mole
+        && let Some(espalha) = crate::materials::maior_espalhamento(&surfaces)
+    {
         let raio = ph2d_field_render::sss_shadow::raio_em_pixeis(cam, h, espalha);
         let canais = (0..1)
             .map(|l| ph2d_field_render::sss_shadow::blur_por_canal(&g, sh.lamp_channel(l), raio))
@@ -137,6 +156,136 @@ fn quadro(
         [0, 0, 0, 0],
     );
     (g, sh, px)
+}
+
+/// ⭐ **O ARRANJO DO DONO** — a cena `=33` com a câmera, a luz e o chão de abertura.
+///
+/// ⚠️ Ele é uma porta porque o gate da sombra e a sonda dos dois caminhos têm de medir **a mesma
+/// cena**: *duas montagens do mesmo arranjo divergem no dia em que uma delas ganhar uma linha.*
+fn arranjo_do_dono() -> (
+    ph2d_field::FieldDoc,
+    Orbit,
+    [f32; 3],
+    ph2d_field_ecs::FieldLight,
+    Option<ph2d_field_render::Ground>,
+) {
+    let doc = crate::smoke::scenes::edge::cena_33().expect("a cena do dono");
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = Orbit::default();
+    let (onde, luz) = crate::lights::opening_light(&cam);
+    let chao = ph2d_field_render::lowest_point(&doc, &reg)
+        .map(|height| ph2d_field_render::Ground { height });
+    (doc, cam, onde, luz, chao)
+}
+
+/// ⭐⭐⭐ **A BOLA SOZINHA** — o experimento que o DONO fez, e que decide o que a linha É.
+///
+/// *«Descobri que a presença da placa faz a linha dura aparecer»* (18/09). Tirada a lâmina da cena,
+/// no **mesmo** enquadramento e com a **mesma** luz, a bola sai lisa ⇒ a linha é a borda da SOMBRA
+/// que a placa lança, e não o terminador.
+///
+/// ⚠️ Ela é uma PORTA e não uma variável de ambiente numa sonda: *o experimento que decidiu o
+/// diagnóstico é o que um gate tem de poder repetir.*
+fn so_a_bola() -> ph2d_field::FieldDoc {
+    ph2d_field::FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            ph2d_field::Primitive::Sphere { radius: 0.42 },
+            ph2d_field::Xform {
+                translation: [0.55, 0.0, 0.0],
+                ..ph2d_field::Xform::IDENTITY
+            },
+        )],
+        ph2d_field::NodeId(0),
+    )
+    .expect("a bola sozinha")
+}
+
+/// Os bytes do quadro do dono — a metade que o gate compara **ao bit**.
+fn bytes_do_quadro(
+    doc: &ph2d_field::FieldDoc,
+    m: ph2d_material::OpenPbr,
+    cam: &Orbit,
+    onde: [f32; 3],
+    luz: ph2d_field_ecs::FieldLight,
+    chao: Option<ph2d_field_render::Ground>,
+    mole: bool,
+) -> Vec<u8> {
+    quadro(&Quadro {
+        doc,
+        m,
+        cam,
+        onde,
+        luz,
+        com_sombra: true,
+        chao,
+        sem_ceu: false,
+        mole,
+    })
+    .2
+}
+
+/// ⭐⭐⭐ **A QUEBRA NA BANDA onde a sombra da placa corta a bola, e o CONTRASTE que lá vive.**
+///
+/// Devolve `(p99 da segunda diferença da luminância, claro − escuro)`, sobre os píxeis da ESFERA
+/// cujo `N·L` está a menos de `0,15` de zero — que é a banda do terminador, e não a bola inteira.
+///
+/// ⚠️ **A segunda diferença e não a primeira:** o terminador tem um gradiente legítimo, e é a
+/// CURVATURA dele que diz se há um degrau. *Uma primeira diferença acusaria toda a banda.*
+///
+/// ⭐ `mole = false` desenha o quadro **como o dispositivo o desenha** — ver [`Quadro::mole`].
+fn quebra_na_banda(
+    doc: &ph2d_field::FieldDoc,
+    m: ph2d_material::OpenPbr,
+    cam: &Orbit,
+    onde: [f32; 3],
+    luz: ph2d_field_ecs::FieldLight,
+    chao: Option<ph2d_field_render::Ground>,
+    mole: bool,
+) -> (f32, f32) {
+    let (g, _, px) = quadro(&Quadro {
+        doc,
+        m,
+        cam,
+        onde,
+        luz,
+        com_sombra: true,
+        chao,
+        sem_ceu: false,
+        mole,
+    });
+    let (wu, hu) = (W as usize, H as usize);
+    let (right, up, fwd) = cam.basis();
+    let da_bola = |i: usize| g.hit[i] && g.point[i][0] > 0.1;
+    let lum = |i: usize| {
+        let b = i * 4;
+        0.2126 * f32::from(px[b]) + 0.7152 * f32::from(px[b + 1]) + 0.0722 * f32::from(px[b + 2])
+    };
+    let ndl = |i: usize| {
+        let p = g.point[i];
+        let d = [onde[0] - p[0], onde[1] - p[1], onde[2] - p[2]];
+        let r = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+        let n = [0, 1, 2]
+            .map(|k| g.normal[i][0] * right[k] + g.normal[i][1] * up[k] + g.normal[i][2] * fwd[k]);
+        (n[0] * d[0] + n[1] * d[1] + n[2] * d[2]) / r.max(1e-9)
+    };
+    let mut saltos: Vec<f32> = Vec::new();
+    let (mut claro, mut escuro) = (0.0f32, f32::MAX);
+    for y in 0..hu {
+        for x in 1..wu - 1 {
+            let (a, b, c) = (y * wu + x - 1, y * wu + x, y * wu + x + 1);
+            if !da_bola(a) || !da_bola(b) || !da_bola(c) || ndl(b).abs() > 0.15 {
+                continue;
+            }
+            saltos.push((lum(a) - 2.0 * lum(b) + lum(c)).abs());
+            claro = claro.max(lum(b));
+            escuro = escuro.min(lum(b));
+        }
+    }
+    assert!(saltos.len() > 2_000, "só {} px na banda", saltos.len());
+    saltos.sort_by(f32::total_cmp);
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let k = ((saltos.len() as f32 - 1.0) * 0.99).round() as usize;
+    (saltos[k], claro - escuro)
 }
 
 /// ⛔⛔⛔ **RECUSA MEDIDA — «marchar o raio de costas» foi construída, fotografada e REVERTIDA.**
@@ -215,6 +364,7 @@ fn a_folha_com_a_luz_atras_nao_se_apaga() {
             com_sombra,
             chao: None,
             sem_ceu: false,
+            mole: true,
         });
         let (mut soma, mut n) = (0.0f64, 0usize);
         for i in 0..g.hit.len() {
@@ -301,12 +451,7 @@ fn um_corpo_convexo_nao_se_tapa_a_si_proprio() {
 ///    lia a banda lisíssima e passava.
 #[test]
 fn a_borda_da_sombra_num_jade_e_mole_e_a_do_opaco_continua_dura() {
-    let doc = crate::smoke::scenes::edge::cena_33().expect("a cena do dono");
-    let reg = ph2d_field_eval::hybrid::Registry::new();
-    let cam = Orbit::default();
-    let (onde, luz) = crate::lights::opening_light(&cam);
-    let chao = ph2d_field_render::lowest_point(&doc, &reg)
-        .map(|height| ph2d_field_render::Ground { height });
+    let (doc, cam, onde, luz, chao) = arranjo_do_dono();
     let base = ph2d_material::OpenPbr {
         subsurface_color: [0.75, 0.35, 0.35],
         base_color: [0.75, 0.35, 0.35],
@@ -317,54 +462,15 @@ fn a_borda_da_sombra_num_jade_e_mole_e_a_do_opaco_continua_dura() {
         geometry_thin_walled: false,
         ..base
     };
+    // ⚠️ **A régua é a PORTA**, com dois chamadores (este gate e a sonda dos dois caminhos) —
+    // *duas cópias de uma régua medem dois programas*.
     let medida = |m: ph2d_material::OpenPbr| {
-        let (g, _, px) = quadro(&Quadro {
-            doc: &doc,
-            m,
-            cam: &cam,
-            onde,
-            luz,
-            com_sombra: true,
-            chao,
-            sem_ceu: false,
-        });
-        let (wu, hu) = (W as usize, H as usize);
-        let (right, up, fwd) = cam.basis();
-        let da_bola = |i: usize| g.hit[i] && g.point[i][0] > 0.1;
-        let lum = |i: usize| {
-            let b = i * 4;
-            0.2126 * f32::from(px[b])
-                + 0.7152 * f32::from(px[b + 1])
-                + 0.0722 * f32::from(px[b + 2])
-        };
-        let ndl = |i: usize| {
-            let p = g.point[i];
-            let d = [onde[0] - p[0], onde[1] - p[1], onde[2] - p[2]];
-            let r = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
-            let n = [0, 1, 2].map(|k| {
-                g.normal[i][0] * right[k] + g.normal[i][1] * up[k] + g.normal[i][2] * fwd[k]
-            });
-            (n[0] * d[0] + n[1] * d[1] + n[2] * d[2]) / r.max(1e-9)
-        };
-        // A quebra na banda onde a sombra da placa corta a bola, e o CONTRASTE que lá vive.
-        let mut saltos: Vec<f32> = Vec::new();
-        let (mut claro, mut escuro) = (0.0f32, f32::MAX);
-        for y in 0..hu {
-            for x in 1..wu - 1 {
-                let (a, b, c) = (y * wu + x - 1, y * wu + x, y * wu + x + 1);
-                if !da_bola(a) || !da_bola(b) || !da_bola(c) || ndl(b).abs() > 0.15 {
-                    continue;
-                }
-                saltos.push((lum(a) - 2.0 * lum(b) + lum(c)).abs());
-                claro = claro.max(lum(b));
-                escuro = escuro.min(lum(b));
-            }
-        }
-        assert!(saltos.len() > 2_000, "só {} px na banda", saltos.len());
-        saltos.sort_by(f32::total_cmp);
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let k = ((saltos.len() as f32 - 1.0) * 0.99).round() as usize;
-        (saltos[k], claro - escuro, px)
+        let (quebra, contraste) = quebra_na_banda(&doc, m, &cam, onde, luz, chao, true);
+        (
+            quebra,
+            contraste,
+            bytes_do_quadro(&doc, m, &cam, onde, luz, chao, true),
+        )
     };
 
     let (dura_op, _, bytes_op) = medida(base);
@@ -391,6 +497,107 @@ fn a_borda_da_sombra_num_jade_e_mole_e_a_do_opaco_continua_dura() {
         contraste >= 8.0,
         "o contraste através da banda do jade é {contraste:.1} — a sombra foi apagada em vez de \
          amaciada, e a metade (1) não distingue as duas"
+    );
+}
+
+/// ⭐⭐⭐ **OS DOIS CAMINHOS DESENHAM COISAS DIFERENTES, E A DIFERENÇA É SÓ A BORDA DA SOMBRA.**
+///
+/// # ⛔⛔ O report do dono (18/09), e porque nenhum gate o via
+///
+/// *«Por que a linha dura voltou em Solid? A luz está diferente?»* — com a foto do ecrã dele, onde
+/// a cura da §12 **não aparece**. E, a seguir, o achado dele: ***«a presença da placa faz a linha
+/// dura aparecer»***, que confirma a §11 (sem a placa, a bola sai lisa).
+///
+/// ⭐ **A luz NÃO está diferente**, e este gate é quem o prova: o **contraste** através da banda é o
+/// mesmo nos dois caminhos (`61,2` contra `61,1`) — *a sombra está lá, com a mesma força, nos dois*.
+/// O que muda é a **quebra**: `9,21` no dispositivo contra `1,00` na referência, `9,2×`.
+///
+/// A causa é que a §12 assou a borda mole no traçado de **CPU** e o **dispositivo ainda não tem o
+/// gémeo** — ele calcula a visibilidade dentro da pintura. ⛔ Aquela secção declarou-o por escrito, e
+/// **nada media a diferença**: as paridades CPU↔dispositivo ficam verdes porque *nenhuma delas assa
+/// este canal* — elas comparam duas metades que concordam, e a metade em que discordam não entra.
+///
+/// # ⭐ Este gate reprova no dia em que o gémeo chegar, e isso é o desenho
+///
+/// Ele exige que a diferença **EXISTA**. Quando alguém escrever a passagem no dispositivo, ele cai —
+/// e quem o curar tem de apagar a dívida declarada na §12 no mesmo gesto. *Uma diferença declarada e
+/// não medida é uma nota que envelhece; uma com gate é uma propriedade com data de fim.*
+///
+/// ⚠️ **As três metades, e nenhuma chega sozinha:** sem (2) uma cura que apagasse a sombra dos dois
+/// lados passaria em (1); sem (3) uma que a apagasse só de um lado também.
+#[test]
+fn o_dispositivo_ainda_desenha_a_borda_dura_e_a_referencia_nao() {
+    let (doc, cam, onde, luz, chao) = arranjo_do_dono();
+    let jade = ph2d_material::OpenPbr {
+        subsurface_weight: 1.0,
+        geometry_thin_walled: false,
+        subsurface_color: [0.75, 0.35, 0.35],
+        base_color: [0.75, 0.35, 0.35],
+        ..ph2d_material::OpenPbr::default()
+    };
+    let (dura, contraste_duro) = quebra_na_banda(&doc, jade, &cam, onde, luz, chao, false);
+    let (mole, contraste_mole) = quebra_na_banda(&doc, jade, &cam, onde, luz, chao, true);
+
+    // (1) ⛔ A DÍVIDA AINDA EXISTE — medido `9,21` contra `1,00`, e a barra é `3×` para não medir
+    // ruído. *Se isto reprovar, o gémeo chegou: apague a dívida da §12 e este gate com ela.*
+    assert!(
+        dura >= mole * 3.0,
+        "os dois caminhos passaram a desenhar a mesma borda (dispositivo {dura:.2} contra          referência {mole:.2}) — se o gémeo do dispositivo foi escrito, esta é a linha que sai, e          com ela a dívida declarada em `docs/Render3d/10` §12"
+    );
+    // (2) ⭐⭐⭐ A METADE QUE RESPONDE AO DONO: a LUZ é a mesma. O contraste através da banda mede a
+    // FORÇA da sombra, e ele não se mexe — o que muda é só a borda dela.
+    assert!(
+        (contraste_duro - contraste_mole).abs() <= contraste_duro * 0.05,
+        "o contraste da banda mudou entre os caminhos ({contraste_duro:.1} contra          {contraste_mole:.1}) — então não é só a BORDA que difere, e a resposta «a luz é a mesma»          deixou de ser verdade"
+    );
+    // (3) ⚠️ E os DOIS continuam a ter sombra: sem isto, um caminho que a apagasse leria a banda
+    // lisíssima e passaria em (1) pelo motivo errado.
+    assert!(
+        contraste_duro >= 8.0 && contraste_mole >= 8.0,
+        "a sombra desapareceu num dos caminhos ({contraste_duro:.1} · {contraste_mole:.1})"
+    );
+}
+
+/// ⭐⭐⭐ **A RÉGUA LÊ ~ZERO NUM GRADIENTE LISO — e é isso que a prende à SEGUNDA diferença.**
+///
+/// # ⛔⛔ Ela nasceu de uma mutação que SOBREVIVEU a DOIS gates
+///
+/// Trocar a segunda diferença (`a − 2b + c`) pela primeira (`a − c`) deixava verdes tanto o gate da
+/// borda mole (barra ABSOLUTA) como o dos dois caminhos (uma RAZÃO) — o segundo por construção, já
+/// que ele compara **dois renders com a mesma régua** e por isso é invariante ao operador dela.
+///
+/// ⚠️⚠️ **E a troca não é inofensiva:** um terminador tem um gradiente LEGÍTIMO, e uma primeira
+/// diferença acusa-o inteiro. Os números desta página (`9,21` · `1,00` · a barra `4,0`) passariam a
+/// medir a inclinação da banda em vez do DEGRAU nela, e ninguém saberia.
+///
+/// ⭐ **O discriminador é o experimento do DONO**, virado do avesso: na [`so_a_bola`] — sem a placa,
+/// logo sem sombra a cortar — a banda é um gradiente puro. Ali a segunda diferença lê **~0** e a
+/// primeira lê a inclinação toda. *Uma régua de degrau que acusa uma rampa não é uma régua de
+/// degrau.*
+///
+/// ⚠️ **A barra é a RAZÃO contra a cena com placa**, e não um número escolhido: o que se afirma é
+/// que a régua **separa** as duas situações, não que ela devolve um valor.
+#[test]
+fn a_regua_da_banda_le_quase_zero_num_gradiente_sem_degrau() {
+    let (com_placa, cam, onde, luz, chao) = arranjo_do_dono();
+    let jade = ph2d_material::OpenPbr {
+        subsurface_weight: 1.0,
+        geometry_thin_walled: false,
+        subsurface_color: [0.75, 0.35, 0.35],
+        base_color: [0.75, 0.35, 0.35],
+        ..ph2d_material::OpenPbr::default()
+    };
+    // ⚠️ O caminho DURO nos dois lados: é ele que tem o degrau, e é sobre ele que a pergunta é feita.
+    let (com, _) = quebra_na_banda(&com_placa, jade, &cam, onde, luz, chao, false);
+    let (sem, _) = quebra_na_banda(&so_a_bola(), jade, &cam, onde, luz, chao, false);
+    assert!(
+        sem * 4.0 <= com,
+        "a régua lê {sem:.2} na bola SOZINHA (um gradiente sem degrau nenhum) contra {com:.2} na          cena com a placa — ela deixou de separar um DEGRAU de uma RAMPA, e é o que acontece se a          segunda diferença virar primeira"
+    );
+    // ⭐ O CONTROLO: a cena com placa tem mesmo o degrau, senão o teste acima passa por vácuo.
+    assert!(
+        com >= 4.0,
+        "a cena com a placa lê {com:.2} — o degrau que o dono fotografou desapareceu da fixtura, e          este gate deixou de ter sujeito"
     );
 }
 

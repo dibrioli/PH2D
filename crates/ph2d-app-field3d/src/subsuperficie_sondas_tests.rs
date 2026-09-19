@@ -346,6 +346,7 @@ fn sonda_o_vinco_contra_o_lado_aprovado() {
             com_sombra: true,
             chao,
             sem_ceu: false,
+            mole: true,
         });
         const FAIXAS: usize = 200;
         let (mut soma, mut conta) = ([0.0f64; FAIXAS], [0usize; FAIXAS]);
@@ -582,6 +583,7 @@ fn sonda_fotografa_o_terminador() {
             com_sombra: true,
             chao,
             sem_ceu: false,
+            mole: true,
         });
         let mut ppm = format!("P6\n{} {}\n255\n", g.width, g.height).into_bytes();
         for i in 0..(g.width * g.height) as usize {
@@ -591,4 +593,51 @@ fn sonda_fotografa_o_terminador() {
         std::fs::write(&caminho, ppm).expect("gravar");
         println!("  gravado {caminho}");
     }
+}
+
+/// ⏱️⭐⭐⭐ **SONDA — O QUE O DISPOSITIVO DESENHA CONTRA O QUE A REFERÊNCIA DESENHA**, na banda onde a
+/// sombra da placa corta a bola.
+///
+/// # ⛔⛔ O report que a obrigou (dono, 2026-09-18)
+///
+/// *«Por que a linha dura voltou em Solid? A luz está diferente?»* — e, no mesmo dia, o achado dele:
+/// ***«a presença da placa faz a linha dura aparecer»***, que é exactamente o que a §11 já tinha
+/// medido (sem a placa, a bola sai lisa).
+///
+/// ⭐ **A luz NÃO está diferente.** A cura da §12 — *a visibilidade que uma closure translúcida lê é
+/// a média da vizinhança sobre a distância de espalhamento* — foi assada no traçado de **CPU**, e o
+/// **dispositivo ainda não tem o gémeo**. O §12 declarou-o por escrito, e ⛔ **nada media a
+/// diferença**: as paridades CPU↔dispositivo ficam verdes porque *nenhuma delas assa este canal*.
+///
+/// ⚠️⚠️ **E o meu roteiro de smoke não trazia o interruptor** — `PH2D_FIELD_GPU` ausente ⇒ o
+/// dispositivo, que é o caminho SEM a cura. *Um roteiro que manda olhar para onde a cura não corre
+/// ensina que ela não existe*, que é a espécie que o `CLAUDE.md` §5.0 chama de pior que uma cena
+/// ausente.
+///
+/// ⇒ esta sonda põe um NÚMERO na diferença, e ela é o instrumento de quem for construir o gémeo:
+/// *uma diferença declarada e não medida é uma nota que envelhece.*
+#[test]
+#[ignore = "sonda: imprime os dois caminhos lado a lado, não afirma"]
+fn sonda_o_que_o_dispositivo_desenha_contra_a_referencia() {
+    let (doc, cam, onde, luz, chao) = super::arranjo_do_dono();
+    let jade = ph2d_material::OpenPbr {
+        subsurface_weight: 1.0,
+        geometry_thin_walled: false,
+        subsurface_color: [0.75, 0.35, 0.35],
+        base_color: [0.75, 0.35, 0.35],
+        ..ph2d_material::OpenPbr::default()
+    };
+    println!("\n  ── A BANDA DO TERMINADOR NA BOLA DE JADE, por caminho ──");
+    println!("    caminho                                   · quebra p99 · contraste");
+    for (nome, mole) in [
+        ("DISPOSITIVO (o que o dono fotografou)", false),
+        ("REFERÊNCIA  (PH2D_FIELD_GPU=0)", true),
+    ] {
+        let (quebra, contraste) = super::quebra_na_banda(&doc, jade, &cam, onde, luz, chao, mole);
+        println!("     {nome:<40} ·  {quebra:>8.2} ·  {contraste:>7.1}");
+    }
+    println!(
+        "\n    ⭐ A luz é a MESMA nos dois — o que muda é a passagem que dá à sombra a borda mole,\n \
+         \x20     e ela só existe no traçado de CPU (`docs/Render3d/10` §12)."
+    );
 }

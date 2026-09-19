@@ -438,6 +438,9 @@ e a leitura — o mesmo desenho que o ricochete lá já tem. ⇒ **hoje a cura v
 REFERÊNCIA** (`PH2D_FIELD_GPU=0`), e as paridades CPU↔dispositivo continuam verdes porque nenhuma
 delas assa o canal.
 
+⚠️⚠️ **E em 18/09 essa dívida declarada custou um report** — ver a **§21**: ela era uma NOTA, e uma
+nota não se mede.
+
 ⏳ E fica também: a média é **separável** (duas passagens de uma dimensão) e a guarda de normal não é
 separável em rigor — a divergência é declarada no cabeçalho do [`sss_shadow`], e vale o preço
 (`O(r)` contra `O(r²)`; a `r = 24` isso são `2 401` toques por pixel e por canal).
@@ -1153,3 +1156,68 @@ gates vivem em `ph2d-editor-core/tests/it/` e um portão que só corre as crates
 
 ⭐ *Um ficheiro em que uma sonda e uma lei se leem iguais é onde uma lei passa a `#[ignore]` sem
 ninguém dar por isso* — e a bancada do oráculo é outra pergunta: *«comparada com quê, medida como?»*.
+
+
+## §21 — ⛔⛔ «Por que a linha dura voltou em Solid? A luz está diferente?»
+
+Report do dono, 2026-09-18, com a foto do ecrã dele: a bola de jade em `Thin Walled: Solid`, **com a
+linha dura de volta** — e, no mesmo dia, o achado dele: ***«descobri que a presença da placa faz a
+linha dura aparecer»***.
+
+### §21.1 — ⭐ Ele tem razão, e confirmou a §11 por si
+
+Sem a lâmina na cena, no mesmo enquadramento e com a mesma luz, a bola sai **lisa** ⇒ a linha é a
+borda da **sombra que a placa lança**. É exactamente o que a §11 mediu com `PH2D_TERM_SO_A_BOLA=1`.
+
+### §21.2 — ⭐⭐⭐ A luz NÃO está diferente: MEDIDO, na banda do terminador
+
+| caminho | quebra `p99` | contraste através da banda |
+|---|---|---|
+| **DISPOSITIVO** (o que ele fotografou) | **`9,21`** | `61,2` |
+| **REFERÊNCIA** (`PH2D_FIELD_GPU=0`) | **`1,00`** | `61,1` |
+
+⭐⭐ **O contraste é o mesmo e a quebra é `9,2×`** — *a sombra está lá, com a mesma força, nos dois; o
+que muda é só a BORDA dela.* ⇒ a resposta à pergunta é **não**: a luz é a mesma, e o que falta no
+ecrã dele é a passagem da §12.
+
+### §21.3 — ⛔⛔ A causa é a dívida da §12, e ela era uma NOTA em vez de um número
+
+A cura da §12 foi assada no traçado de **CPU** e o **dispositivo não tem o gémeo**. A §12 declarou-o
+por escrito — e **nada media a diferença**: as paridades CPU↔dispositivo ficam verdes porque
+*nenhuma delas assa este canal*. Elas comparam as metades em que os dois concordam, e a metade em
+que discordam não entra em nenhuma.
+
+⚠️⚠️ **E o roteiro de smoke que eu escrevi não trazia o interruptor** (`PH2D_FIELD_GPU` ausente ⇒ o
+dispositivo). *Um roteiro que manda olhar para onde a cura não corre ensina que ela não existe* — a
+espécie que o `CLAUDE.md` §5.0 chama de pior que uma cena ausente, e desta vez fui eu que a escrevi.
+
+### §21.4 — ⭐ A dívida passa a ter NÚMERO e data de fim
+
+`Quadro::mole` desenha o quadro **como o dispositivo o desenha**, e dois gates leem-no:
+
+| gate | o que ele afirma |
+|---|---|
+| `o_dispositivo_ainda_desenha_a_borda_dura_e_a_referencia_nao` | a diferença **existe** (`≥ 3×`) · o **contraste não muda** (a luz é a mesma) · os dois **continuam a ter sombra** |
+| `a_regua_da_banda_le_quase_zero_num_gradiente_sem_degrau` | a régua separa um **degrau** de uma **rampa** — ver abaixo |
+
+⭐⭐ **O primeiro REPROVA no dia em que o gémeo chegar, e isso é o desenho:** quem o curar tem de
+apagar a dívida da §12 e o gate com ela. *Uma diferença declarada e não medida é uma nota que
+envelhece; uma com gate é uma propriedade com data de fim.*
+
+### §21.5 — ⚠️ E uma mutação SOBREVIVEU a DOIS gates, com a cura no experimento do DONO
+
+Trocar a **segunda** diferença (`a − 2b + c`) pela **primeira** (`a − c`) na régua da banda deixava
+verdes o gate da borda mole (barra ABSOLUTA) **e** o dos dois caminhos (uma RAZÃO — invariante ao
+operador **por construção**, já que compara dois renders com a mesma régua).
+
+⛔ E a troca **não é inofensiva**: um terminador tem um gradiente legítimo, e uma primeira diferença
+acusa-o inteiro — os números desta página passariam a medir a **inclinação** da banda em vez do
+**degrau** nela.
+
+⭐⭐⭐ **O discriminador é o experimento do dono, virado do avesso:** na bola **sem a placa** a banda é
+um gradiente puro, e ali a segunda diferença lê `~0` enquanto a primeira lê a inclinação toda.
+*Uma régua de degrau que acusa uma rampa não é uma régua de degrau* — e a `so_a_bola` deixou de ser
+uma variável de ambiente numa sonda para ser uma **porta**: o experimento que decidiu o diagnóstico
+é o que um gate tem de poder repetir.
+
+**4 mutações, 4 sangram.**

@@ -191,6 +191,7 @@ fn sonda_nos_contra_a_verdade() {
             com_sombra: true,
             chao: None,
             sem_ceu: true,
+            mole: true,
         });
         let (w, h) = (W as usize, H as usize);
         if let Some(d) = &dump {
@@ -474,6 +475,7 @@ fn sonda_a_varredura_da_cor() {
             com_sombra: true,
             chao: None,
             sem_ceu: true,
+            mole: true,
         });
         let (nosso_rb, nosso_n) = razao_rb(&nossos);
         let Some((_, _, linear)) = le_pfm(&format!("{dir}/ref_jade_{tag}_e5.pfm")) else {

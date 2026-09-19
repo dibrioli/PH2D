@@ -3530,3 +3530,138 @@ zero. Contadores partilhados **intocados**.
 - a razão `0,72` continua a ser **curvatura**;
 - o botão nasce **DESLIGADO** (`pente: 0.0`) e as fileiras mais longas estão no
   **topo** do slider — é decisão do dono se o valor de fábrica muda.
+
+---
+
+## §88 — ⭐⭐⭐⭐ «INTENSIFIQUE»: a régua da grade estava SATURADA e eu não sabia
+
+**Report do dono (21/09):** *«quase bom. Intensifique»*.
+
+### §88.1 — ⛔⛔⛔ Passo zero: nenhuma régua sabia dizer ONDE
+
+Todas as quatro réguas desta cena agregam a **faixa inteira**, e o dono fala de
+*«várias áreas»*. É a forma que esta linha já pagou quatro vezes — o `edge_max`
+global cego ao quad fino, o `χ` cego à almofada, as três réguas da ponta a
+deitarem fora o índice antes de devolver. ⇒
+[`grade_por_banda`](../../../crates/ph2d-sculpt3d/src/medida_do_pente_banda.rs),
+que reparte por distância ao percurso.
+
+⛔ **E a hipótese óbvia ficou REFUTADA à primeira:** a queda do pincel faria o
+miolo receber peso cheio e a orla quase nada, logo a grade seria boa ao centro
+e má nas beiras. Medido: **`64,3` · `64,6` · `64,0`** — *uniforme*.
+
+### §88.2 — ⭐⭐⭐⭐ E isso levantou a pergunta que nunca tinha sido feita
+
+*Qual é o TECTO da régua da grade?* Medido numa grade **PERFEITA** triangulada:
+**`66,7 %`** — dois terços exactos, porque uma grade quadrada triangulada tem
+três famílias de aresta (as duas do quadrado, que a dobra de `90°` põe as duas
+em `0°`, e a **DIAGONAL**, a `45°`, que é o balde mais afastado).
+
+**O produto lia `64,4 %` — `96,4 %` do tecto.**
+
+⚠️⚠️ *Ler uma fracção sem saber de que* quase gastou uma wave a perseguir dois
+pontos numa coluna sem por onde subir. Hoje é gate:
+`o_tecto_da_regua_da_grade_e_dois_tercos`, com a metade que o aperta (**o balde
+do meio tem de estar VAZIO** — numa grade perfeita não existe aresta a `15`–`30°`;
+sem ela, qualquer malha com um terço das arestas a `45°` passaria).
+
+### §88.3 — ⭐ A grandeza que sobra é a que o olho usa NA VISTA QUE ELE LIGA
+
+Depois de esconder as diagonais, um cruzamento de grade tem **quatro** braços.
+Régua:
+[`bracos_na_vista_da_grade`](../../../crates/ph2d-mesh-render/src/wire.rs) — e
+ela **deriva da mesma lista que a vista desenha**, nunca de uma segunda cópia da
+regra de esconder.
+
+| lei | 4 braços |
+|---|---|
+| por pentear | `48,3 %` |
+| pente (antes desta wave) | `89,4 %` |
+| **pente (hoje)** | **`93,0 %`** |
+
+⇒ *esta* não está saturada.
+
+### §88.4 — ⭐⭐⭐ E a cura estava à mão, com a razão escrita
+
+**A retícula move vértices e NUNCA muda quem se liga a quem** ⇒ um cruzamento
+com cinco braços é um defeito que ela **não pode** curar. O `relax` de valência
+já vivia na `ph2d-mesh` com o critério clássico; faltava a porta **REGIONAL**
+([`relaxa_valencia_em`](../../../crates/ph2d-mesh/src/dyntopo_flip.rs), aditiva).
+
+⚠️ **Ela NÃO é a troca que o §81 mediu a estragar o relevo:** aquela seguia o
+**TRAÇO** (`alinha_arestas`); esta só quer seis vizinhos e não tem direcção
+preferida nenhuma. Medido, o vinco **melhora** (`2,765 → 2,714`).
+
+⭐⭐ **As duas são complementares** — uma move e nunca re-liga, a outra re-liga e
+nunca move — e **alternar** dá à segunda passagem da retícula um grafo melhor:
+
+| alternâncias | 4 braços |
+|---|---|
+| `1` | `92,32 %` |
+| **`2`** | **`93,01 %`** |
+| `4` | `91,73 %` |
+
+⛔ **E pôr a troca no FIM do passe — a ordem clássica da remalhagem isotrópica
+(*partir → fundir → trocar → alisar*) — foi CONSTRUÍDO, MEDIDO e REVERTIDO:**
+`4 braços 93,0 → 92,4`, `fil50 38,8 → 27,5`. *No fim não a segue mais nada.*
+
+### §88.5 — O placar
+
+Medido no traço, knob no topo, contra o estado de há duas waves:
+
+| coluna | antes | **hoje** |
+|---|---|---|
+| grade | `64,42 %` | **`65,44 %`** (`98,1 %` do tecto) |
+| **fileira p50** | `21,5` | **`38,8`** |
+| fileira p90 | `61,2` | **`70,8`** |
+| **4 braços** | `89,4 %` | **`93,0 %`** |
+| vinco p90 | `2,765°` | **`2,714°`** |
+| lascas | `0` | `0` |
+| relógio | `4,18 ms` | `4,62 ms` (`57,7 %`) |
+
+⚠️ **Mais rondas não compram nada** (`4`/`6`/`8` ⇒ `65,44`/`65,52`/`65,44`).
+
+### §88.6 — ⭐⭐⭐ O gate da FILEIRA não existia, e ele matou três mutações
+
+A coluna que o dono julga **não tinha gate nenhum no produto**. Escrito, ele
+tornou **três** mutações antes inmatáveis em matáveis: a alternância, a posição
+da troca, e a porta regional a varrer a peça inteira. *Uma medida que não separa
+as duas composições não pode defender a que foi escolhida.*
+
+⚠️⚠️ **E a barra do gate irmão nasceu larga e uma mutação sobreviveu:** posta em
+`88 %`, ela deixava passar os `89,4 %` de ontem **e** os `93,0` de hoje. Hoje é
+`91`, calibrada no **vale medido entre os dois lados**.
+
+⛔ **Um gate meu foi construído e APAGADO:** *«correr o relax outra vez sobre a
+saída não muda nada»* (um PONTO FIXO, sem barra nenhuma) é
+**arquitecturalmente impossível** — cada dab deixa a **pegada** dele no ponto
+fixo e o dab seguinte, que se sobrepõe, volta a mexer nela. Medido: `21` trocas
+pendentes contra `19` numa malha **por pentear** ⇒ *a grandeza nem discrimina*.
+
+### §88.7 — Prova
+
+**Três gates novos**; **mutação `6` a sangrar + `2` NOMEADAS** (as duas são
+*«tirar uma metade de controlo enfraquece o gate, não o torna vermelho»*).
+
+**Quatro tectos de LOC curados por CORTE**, nunca por isenção:
+`medida_do_pente.rs` `861 → 685` · `dyntopo.rs` `722 → 612` · mais os dois
+ficheiros novos (`medida_do_pente_banda.rs`, `dyntopo_numeros.rs`).
+
+**Portão `16 449/16 449`**, clippy `-D warnings` zero. ⚠️ Duas vermelhas na
+corrida a `load 35,79` eram membros **NOMEADOS** da família de flakes de
+fan-out (`the_cost_of_sampling_a_path_is_flat_in_its_anchors` ·
+`a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs`), **3 de 3
+verdes sozinhas** — ⚠️ e a primeira corrida de confirmação de uma delas casou
+**zero testes** e leu-se como verde, que é a mentira de arnês que este repo tem
+escrita: a confirmação vale com `running 1 test` à vista.
+
+**Contadores partilhados intocados**; zero contrato, zero ADR.
+
+### §88.8 — ⏳ ABERTO
+
+- os `7 %` de cruzamentos irregulares que sobram — uma grade sobre superfície
+  curva tem de ter **alguns**, e quantos é que ninguém mediu;
+- o relógio está em `57,7 %` do orçamento do carimbo; `8` rondas custariam
+  `99 %` e **não compram nada**;
+- o botão nasce **DESLIGADO** e o melhor está no **topo** do slider — o valor de
+  fábrica é decisão do dono.

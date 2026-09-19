@@ -56,6 +56,10 @@ ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # nomes dos modos, e não por bytes de fio escritos à mão.
 ph2d-topdown = { path = "../ph2d-topdown" }
 
+# ⭐ A lei do TWEEN (suplente #22) — a ponte traduz o relógio do `Timer` no `Relogio` que ela lê,
+# e usa o `Canal` para escolher o campo E a entrada do ledger.
+ph2d-tween = { path = "../ph2d-tween" }
+
 # ⭐ A lei do PROJÉCTIL (TOP-20 #14) — a cena de smoke monta as balas pela porta `from_law`.
 ph2d-projectile = { path = "../ph2d-projectile" }
 # ⭐ A lei do emissor de partículas (TOP-20 #18) — o compilador e a corrida.

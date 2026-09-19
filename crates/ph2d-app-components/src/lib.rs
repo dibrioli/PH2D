@@ -160,6 +160,7 @@ pub mod topdown_smoke;
 pub mod trigger_bridge;
 /// ⭐⭐⭐ **O GATILHO** (suplente #24) — a arma que aponta e a que não aponta; ver o cabeçalho.
 pub mod trigger_smoke;
+pub mod tween_bridge;
 
 /// ⚠️ **`#[cfg(any(test, feature = "test-support"))]` e não `#[cfg(test)]`** (HOWTO §2.5): daqui a
 /// shell é um **consumidor**, e um `cfg(test)` desta crate é falso quando ela a compila. As duas

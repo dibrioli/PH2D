@@ -118,6 +118,25 @@ pub enum Driver {
     /// caixa de referência à vista da câmera do jogo, e por isso **não é documento**: sem esta
     /// entrada, *«o HUD acompanhou a câmera»* seria um passo de `Ctrl+Z` por quadro.
     CanvasPose,
+    /// ⭐⭐⭐ **A pose que um TWEEN escreve** (suplente #22).
+    ///
+    /// ⚠️ **Não é o [`Self::SolverPose`], e a razão é a do [`Self::ScriptPose`] e a do
+    /// [`Self::PrefabStage`]:** a chave do ledger é `(entidade, driver)`, e um objecto que seja
+    /// também um corpo — ou que tenha uma curva de timeline — teria duas mãos na mesma entrada, e o
+    /// *«outra mão escreveu»* de uma engoliria o autorado da outra.
+    TweenPose,
+    /// ⭐⭐ **A COR que um tween escreve** — o `self_tint` do `Sprite` e, com ele, o `tint_fill`.
+    ///
+    /// ⚠️ **Os DOIS campos numa entrada só, e é obrigatório:** eles são um facto — *«a silhueta
+    /// está acesa nesta cor»* — e separá-los deixaria um `Rewind` a devolver a cor e a esquecer o
+    /// interruptor, o que pinta o objecto como uma silhueta BRANCA em vez de o devolver à arte.
+    ///
+    /// ⛔ **E NÃO há uma entrada para a OPACIDADE**, que é o achado desta wave: o `tint[3]` já tem
+    /// dono — o [`Self::SpriteAlpha`], que a curva de `Opacity` da timeline escreve. Um driver novo
+    /// sobre o **mesmo campo** seria duas entradas para um valor, e o `authored` de uma apagaria o
+    /// da outra; usar o que existe é a leitura certa, porque é o **mesmo facto vindo de outro
+    /// motor** — exactamente o que o doc daquele driver já declara para o solver e a timeline.
+    TweenTint,
 }
 
 /// **O FACTO que um motor escreve** — o recorte exacto do componente que é dele, e nada mais.
@@ -170,6 +189,16 @@ pub enum Driven {
     ScriptPose(Transform),
     /// ⭐ A pose conduzida da raiz de um HUD — ver [`Driver::CanvasPose`].
     CanvasPose(Transform),
+    /// ⭐ A pose que um tween escreve — ver [`Driver::TweenPose`].
+    TweenPose(Transform),
+    /// ⭐⭐ A cor que um tween escreve — o `self_tint` **e** o `tint_fill`, que são um facto só.
+    /// Ver [`Driver::TweenTint`].
+    TweenTint {
+        /// O `Sprite::self_tint`.
+        self_tint: [f32; 4],
+        /// O `Sprite::tint_fill` — o interruptor da silhueta.
+        fill: bool,
+    },
 }
 
 impl Driven {
@@ -186,6 +215,8 @@ impl Driven {
             Self::Visible(_) => Driver::SignalVisibility,
             Self::ScriptPose(_) => Driver::ScriptPose,
             Self::CanvasPose(_) => Driver::CanvasPose,
+            Self::TweenPose(_) => Driver::TweenPose,
+            Self::TweenTint { .. } => Driver::TweenTint,
         }
     }
 
@@ -227,6 +258,14 @@ impl Driven {
             )),
             Driver::ScriptPose => Some(Self::ScriptPose(*sim.world().get::<Transform>(entity)?)),
             Driver::CanvasPose => Some(Self::CanvasPose(*sim.world().get::<Transform>(entity)?)),
+            Driver::TweenPose => Some(Self::TweenPose(*sim.world().get::<Transform>(entity)?)),
+            Driver::TweenTint => {
+                let s = sim.world().get::<Sprite>(entity)?;
+                Some(Self::TweenTint {
+                    self_tint: s.self_tint,
+                    fill: s.tint_fill,
+                })
+            }
         }
     }
 
@@ -279,6 +318,21 @@ impl Driven {
                     && s.tint[3] != a
                 {
                     s.tint[3] = a;
+                }
+            }
+            Self::TweenPose(pose) => {
+                if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity)
+                    && *t != pose
+                {
+                    *t = pose;
+                }
+            }
+            Self::TweenTint { self_tint, fill } => {
+                if let Some(mut s) = sim.world_mut().get_mut::<Sprite>(entity)
+                    && (s.self_tint != self_tint || s.tint_fill != fill)
+                {
+                    s.self_tint = self_tint;
+                    s.tint_fill = fill;
                 }
             }
             Self::MorphT(v) => {

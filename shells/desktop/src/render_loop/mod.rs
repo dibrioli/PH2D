@@ -405,6 +405,9 @@ mod fase_timeline_view;
 mod fase_tool_mirrors;
 /// Fase do quadro: as operacoes de transformacao.
 mod fase_transform_ops;
+/// ⭐⭐⭐ **OS TWEENS** (suplente #22) — fase-filha da `fase_signal_outbox`, como a tabela e a
+/// fábrica, e pela mesma razão: um `Start Timer` publicado neste quadro tem de mexer NESTE quadro.
+mod fase_tweens;
 /// Fase do quadro: a poeira de impacto (as faíscas por cima do chrome).
 mod fase_ui_burst_paint;
 /// Fase do quadro: a transicao do hospedeiro.

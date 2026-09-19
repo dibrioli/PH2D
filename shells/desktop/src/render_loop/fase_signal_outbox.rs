@@ -204,6 +204,11 @@ impl crate::App {
         // a lei que o oráculo mediu — um moribundo continua visível a toda consulta até ao fim do
         // quadro.
         self.fase_fabrica_e_morte(deaths, camera_rect);
+        // ⭐⭐⭐ **OS TWEENS** (suplente #22) — ver [`super::fase_tweens`]. ⚠️ **Depois da tabela**,
+        // senão um `Start Timer` publicado neste quadro só mexeria no seguinte, e o artista lê isso
+        // como *«o sinal falhou»*; e **depois do apply da timeline** (mais acima no quadro), que é
+        // o que faz o ledger compor `autorado → A → B` em vez de trocar o autorado.
+        self.fase_tweens();
         // ⭐ **E o DIAGNÓSTICO**, que é assunto próprio e mora no irmão (`fase_signal_log`).
         //
         // ⚠️ **Ela chama-se `fase_*` e isso NÃO é estilo:** o texto emendado do quadro colhe só

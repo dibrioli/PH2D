@@ -20,6 +20,24 @@
 (tecto `2,00 × R` sobre a distância), não um ideal desenhado à mão. *Uma figura
 que mostra um ideal que o código não implementa é uma promessa, não uma medição.*
 
+## Como VER — a cena `=50`
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULPT3D_SMOKE=50 cargo run -p ph2d-host-desktop --profile smoke
+```
+
+A peça é uma **barbatana**: `2,0` de lado e `0,06` de espessura. O roteiro é
+impresso no terminal, e o passo **(5)** é o CONTROLO — desmarcar `Connected Only`
+faz a bossa voltar a aparecer dos dois lados.
+
+⛔⛔ **A cena tem de carimbar PERTO DA BEIRA, e isso é MEDIDO.** A lei antiga (só
+o tecto absoluto) corta quando `2d + t > 2,00 × R`; a nova, quando
+`(2d + t)/t > 3,5`. ⇒ **só existe banda nova entre `d = 0,10` e `d = 0,35`**
+(sonda `diag_onde_a_razao_e_a_unica_que_cura`), e a 1.ª redacção do roteiro
+mandava o dono carimbar *«a meio caminho entre o centro e a beira»* — `d = 0,50`,
+onde **a lei antiga já cortava**. *A cena teria mostrado uma cura que existia
+antes desta wave.*
+
 ## O que mudou, em números
 
 Barbatana `2,0 × 2,0` com `0,06` de espessura, pincel `R = 0,40` a força `1,00`,
@@ -138,6 +156,14 @@ lado de lá da parede clean-room (o mesmo precedente da `ph2d-boundary`).
    lei** — §5.0 manda o contrário, e a medição custou a wave inteira em tempo.
 6. ⛔ **O leque da semente não tinha régua** — os gates mediam a *faixa da
    decisão*, e o leque age na primeira coroa.
+7. ⛔⛔⛔ **O gate da CENA ficou VERDE com a lei APAGADA**, porque a fixtura dele
+   estava fora da banda (acima). *Uma fixtura que não contém o fenómeno responde
+   que ele não existe* — a mesma armadilha nº 2, agora do lado do produto em vez
+   do da cratera. Quem a expôs foi a prova de mutação, não a suíte.
+8. ⛔⛔ **E a metade que lê o DESPACHO procurava os dois NOMES soltos**, logo uma
+   mutação que prefixa `false &&` deixava os dois presentes, o despacho morto e o
+   gate verde. A agulha passou a ser o **braço inteiro**. *Um censo textual sobre
+   um despacho tem de casar a forma que DECIDE, nunca os símbolos que ela nomeia.*
 
 ## ⏳ O que fica ABERTO, com o mecanismo
 
@@ -158,5 +184,5 @@ e toca em como a pegada flui para a normal de área.
 bash scripts/ph2d-run.sh cargo test -p ph2d-sculpt3d --test it \
   sonda_da_parede_fina -- --ignored --nocapture --test-threads=1
 
-bash docs/3D/geodesica/mutacao_2026-09-19.sh     # 11 de 11 sangram
+bash docs/3D/geodesica/mutacao_2026-09-19.sh     # 15 de 15 sangram
 ```

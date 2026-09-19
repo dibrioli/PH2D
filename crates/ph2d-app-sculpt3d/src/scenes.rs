@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 49;
+pub const CENAS: u32 = 50;
 
 /// ⭐⭐ **O PRÓLOGO — o que uma cena ARMA depois de a cena nascer.**
 ///
@@ -498,6 +498,12 @@ pub(crate) mod boundary;
 /// onde o artista aprende de que família este pincel é.
 #[path = "scenes_erase.rs"]
 pub(crate) mod erase;
+/// **A PAREDE FINA** (`=50`) — ver [`parede_fina`]. ⚠️ Ela abre numa BARBATANA
+/// (`2,0` de lado, `0,06` de espessura) e a proporção é MEDIDA: a lei da razão
+/// escreve-se `d > 1,25 × espessura`, logo numa peça grossa o fenómeno **não
+/// existe** e a cena mostraria a cura a não fazer nada.
+#[path = "scenes_parede_fina.rs"]
+pub(crate) mod parede_fina;
 /// **O PINCEL DE PLANO** (`=47`) — ver [`plano`]. ⚠️ Ela abre num campo de
 /// BOSSAS: numa esfera lisa este pincel pára sozinho, e o dono veria uma
 /// ferramenta que «não faz nada».

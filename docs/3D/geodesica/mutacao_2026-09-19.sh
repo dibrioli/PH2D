@@ -176,6 +176,61 @@ muta "uma das duas atravessa" \
   as_duas_marchas ph2d-sculpt3d
 
 echo
+echo "== A CENA \`=50\` (ph2d-app-sculpt3d) =="
+
+# ⚠️ Os três casos seguintes NÃO mutam a lei: mutam a CENA e a FIAÇÃO dela.
+# *Uma cena que ensina o contrário do que acontece é pior que uma cena ausente*
+# (CLAUDE.md §5.0), e quem a defende tem de sangrar quando ela deixa de conter o
+# fenómeno — ou quando o app deixa de a usar.
+
+# (10) A peça deixa de ser FINA ⇒ o fenómeno não existe e a cena não ensina nada.
+muta "a barbatana engorda" \
+  crates/ph2d-app-sculpt3d/src/scenes_parede_fina.rs \
+  'const ESPESSURA: f32 = 0.06;' \
+  'const ESPESSURA: f32 = 0.60;' \
+  parede_fina ph2d-app-sculpt3d
+
+# (11) O selector deixa de escolher a barbatana ⇒ a cena abre na peça de fábrica,
+#      que é GROSSA. ⛔ O gate que chama `barbatana()` directamente fica VERDE
+#      sobre isto — é por isso que existe a metade que lê o DESPACHO.
+#      ⚠️⚠️ **E a 1.ª redacção dessa metade procurava os dois NOMES soltos, logo
+#      esta mutação SOBREVIVEU:** prefixar `false &&` deixa os dois presentes e o
+#      despacho morto. A agulha passou a ser o BRAÇO inteiro.
+muta "o selector de malha" \
+  crates/ph2d-app-sculpt3d/src/scenes_mesh.rs \
+  '    if parede_fina::parede_fina_scene() {
+        return parede_fina::barbatana();
+    }' \
+  '    if false && parede_fina::parede_fina_scene() {
+        return parede_fina::barbatana();
+    }' \
+  parede_fina ph2d-app-sculpt3d
+
+# (12) O roteiro existe e ninguém o imprime — o defeito que um `warning: never
+#      used` apanhou uma vez e que deixa de ser visível assim que a função é
+#      `pub`. *Um aviso do compilador mede VISIBILIDADE, nunca a lei.*
+muta "o roteiro mudo" \
+  crates/ph2d-app-sculpt3d/src/scripts.rs \
+  '    crate::scenes::parede_fina::announce();' \
+  '' \
+  parede_fina ph2d-app-sculpt3d
+
+# (13) E a LEI outra vez, agora medida PELA CENA: sem a razão as costas da
+#      barbatana movem-se, e o passo (4) do roteiro passa a mentir.
+#      ⛔⛔⛔ **Ela SOBREVIVEU à 1.ª redacção, e o defeito era a FIXTURA:** o gate
+#      carimbava a meio caminho da beira (`d = 0,50`), onde a superfície mede
+#      `1,06` contra o tecto ABSOLUTO de `0,80` ⇒ *a lei antiga já cortava ali*,
+#      e o gate media uma cura que existia antes desta wave. A sonda
+#      `diag_onde_a_razao_e_a_unica_que_cura` deu a banda (`0,10`–`0,35`), o
+#      carimbo mudou-se para `0,20`, e o ROTEIRO mudou com ele — ele mandava o
+#      dono carimbar exactamente no sítio onde não havia nada de novo para ver.
+muta "a razão, medida na cena do dono" \
+  crates/ph2d-sculpt3d/src/dab_alcance.rs \
+  'pub const RAZAO_MAXIMA: f32 = 3.5;' \
+  'pub const RAZAO_MAXIMA: f32 = 1000.0;' \
+  a_cena_contem_o_defeito_e_a_cura ph2d-app-sculpt3d
+
+echo
 echo "-----------------------------------------"
 echo "  sangram: $vermelhos   ·   sobrevivem: $verdes"
 [ "$verdes" -eq 0 ]

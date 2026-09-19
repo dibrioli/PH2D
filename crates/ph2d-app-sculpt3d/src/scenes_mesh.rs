@@ -142,6 +142,14 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     if boundary::boundary_scene() {
         return boundary::tigela();
     }
+    // ⭐⭐ **A `=50` abre numa BARBATANA, e a proporção é o fenómeno:** a lei da
+    // razão `superfície/ar` escreve-se numa chapa como `(2d + t)/t > 3,5`, ou
+    // seja **`d > 1,25 × t`** — ela não depende do raio do pincel, só da
+    // ESPESSURA. Numa esfera (ou em qualquer peça grossa ao lado do carimbo) o
+    // carimbo nunca atravessava, logo a cena mostraria a cura a não fazer nada.
+    if parede_fina::parede_fina_scene() {
+        return parede_fina::barbatana();
+    }
     // ⭐ **A `=40` abre na MESMA enrugada, e a razão é a mesma da `=34` vista de
     // outro lado:** os dois gestos tangenciais movem o barro NO PLANO da
     // superfície, e numa esfera lisa isso não muda a silhueta nem quase a luz —

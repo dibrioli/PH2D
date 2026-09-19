@@ -80,6 +80,9 @@ mod probe_cloth_front;
 mod probe_layer_product;
 mod sculptgl_parity;
 mod sonda_da_onda_da_prega;
+/// ⭐⭐⭐⭐ **O que um carimbo na FRENTE de uma parede fina faz nas COSTAS dela**
+/// — a régua na grandeza do artista, e a foto. Ver [`sonda_da_parede_fina`].
+mod sonda_da_parede_fina;
 mod sonda_do_expand_que_nao_para;
 mod sonda_do_falloff_pela_superficie;
 mod taubin_pair;

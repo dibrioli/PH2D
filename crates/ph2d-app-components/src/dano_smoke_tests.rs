@@ -194,18 +194,35 @@ fn as_duas_fabricas_apontam_as_duas_receitas() {
 #[test]
 fn o_roteiro_nomeia_rotulos_que_existem() {
     const FONTE: &str = include_str!("dano_smoke.rs");
-    let i = FONTE.find("[dano-smoke]").expect("o roteiro existe");
-    let roteiro = &FONTE[i..];
+    // ⛔⛔ **A ÂNCORA É A ASPA, e a 1.ª redacção não a tinha** — ela procurava `[dano-smoke]` nu, e
+    // a primeira ocorrência disso no ficheiro é o **comentário de módulo da linha 42**: o gate lia
+    // `14 201` bytes de prosa em vez dos `~1 200` do roteiro, e o controlo de comprimento passava
+    // trivialmente. *Uma régua que mede o ficheiro inteiro aprova um roteiro que não nomeia nada,
+    // porque a prosa à volta dele cita os mesmos rótulos* — apanhado por uma mutação que
+    // SOBREVIVEU (19/09): tirar o chip `Reset` do passo (5) deixava o gate verde, porque a palavra
+    // continuava no comentário que EXPLICA o passo.
+    let i = FONTE
+        .find("\"[dano-smoke]")
+        .expect("o literal do roteiro existe");
+    let fim = FONTE[i..].find("\n    );").expect("o println fecha");
+    let roteiro = &FONTE[i..i + fim];
     let rotulos = [
         ph2d_i18n::tr("panel.inspector.actions.signal_actions"),
         ph2d_i18n::tr("panel.inspector.actions.from_myself"),
         ph2d_i18n::tr("panel.inspector.actions.from_anyone"),
         ph2d_i18n::tr("panel.inspector.actions.who_hit"),
         SignalVerb::Destroy.label(),
+        // ⭐⭐ **Os dois chips do TRANSPORTE** — o passo (5) manda carregar neles, e eles são
+        // pintados com o rótulo por cima (`topbar/cluster_painter.rs`, `TopBarCluster::Play`).
+        // ⛔ A 1.ª redacção deste roteiro mandava carregar em `STOP` (que **não é pintado em lado
+        // nenhum**) e no `Home` (que é o *frame selection* do editor) — report do dono, 19/09.
+        // *Dois passos impossíveis na mesma frase, e nenhuma régua desta cena os via.*
+        ph2d_i18n::tr("chrome.topbar.pause"),
+        ph2d_i18n::tr("chrome.topbar.reset"),
     ];
     for r in &rotulos {
         assert!(
-            !r.is_empty() && !r.starts_with("panel."),
+            !r.is_empty() && !r.starts_with("panel.") && !r.starts_with("chrome."),
             "o rotulo resolveu para a CHAVE («{r}») — a entrada de i18n foi apagada"
         );
         assert!(
@@ -214,12 +231,18 @@ fn o_roteiro_nomeia_rotulos_que_existem() {
              noutra linha e o dono vai procurar uma coisa que ja' nao esta' na tela"
         );
     }
-    // ⛔ O CONTROLO da régua: sem ele, um `find` que falhasse e um roteiro apagado deixariam as
-    // cinco asserções verdes por vácuo sobre o ficheiro INTEIRO (que cita os mesmos nomes na prosa).
+    // ⛔ O CONTROLO da régua, em TRÊS metades — as duas primeiras já existiam e **não chegavam**.
+    // A terceira é a que prova que estamos DENTRO do literal: um comentário nunca chega ao terminal
+    // do dono, e foi por a região os conter que a mutação do chip `Reset` sobreviveu.
     assert!(
         roteiro.len() > 600 && roteiro.contains("(6) deu errado se"),
         "a regua deixou de medir o roteiro — ela esta' a ler {} bytes",
         roteiro.len()
+    );
+    assert!(
+        !roteiro.contains("//!") && !roteiro.contains("    // "),
+        "a regua saiu do literal e voltou a ler PROSA — os rotulos abaixo passariam a ser \
+         satisfeitos pelo comentario que EXPLICA o passo, nao pelo passo"
     );
 }
 

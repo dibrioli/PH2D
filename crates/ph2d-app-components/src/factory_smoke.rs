@@ -12,9 +12,10 @@
 //! ecrã continua a parecer igual durante um minuto. *A prova de que a vida funciona é a contagem
 //! parar de subir.*
 //!
-//! ⚠️ **Rebobinar (`Home`) limpa o ecrã**, e isso é a LEI da wave: o que nasce numa corrida não é
-//! documento — ele não entra no ficheiro, não entra no `Ctrl+Z`, e não sobrevive ao relógio voltar
-//! ao princípio.
+//! ⚠️ **Rebobinar (o `Reset` da barra de cima) limpa o ecrã**, e isso é a LEI da wave: o que nasce
+//! numa corrida não é documento — ele não entra no ficheiro, não entra no `Ctrl+Z`, e não sobrevive
+//! ao relógio voltar ao princípio. ⛔ **Não é o `Home`**: essa tecla é o *frame selection* do
+//! editor, e um roteiro que a mandasse carregar moveria a CÂMERA (report do dono, 19/09).
 //!
 //! # `=2` — **nascer NUM PONTO marcado, com limite e sem lixo fora do ecrã**
 //!

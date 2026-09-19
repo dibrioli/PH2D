@@ -275,13 +275,13 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
          (4) role o painel da direita ate' ao fim (o «Heroi» ja' esta' escolhido): a seccao TRIGGER \
          e' quem ouve a tecla, e a caixa «Aim from spawner» da seccao FACTORY e' a unica diferenca \
          para o cinzento\n\
-         (5) carregue em STOP na regua de baixo: o {TECLA_NOME} deixa de disparar e volta a ser do \
-         editor. PLAY devolve-o\n\
+         (5) na barra de CIMA carregue em `Pause`: o {TECLA_NOME} deixa de disparar e volta a ser \
+         do editor. `Play`, ao lado, devolve-o\n\
          (6) na seccao TRIGGER troque o nome da accao de `{ACCAO}` para `{ACCAO_SEM_TECLA}`: ela \
          EXISTE e nao tem tecla, e o painel diz isso com OUTRA frase — porque a cura e' outra \
          (ligar uma tecla, nao criar a accao). Escreva `fier` e compare: o aviso muda\n\
          (7) deu errado se: nada sai ao carregar no {TECLA_NOME} · as DUAS balas saem para o mesmo \
-         lado · alguma coisa sai com a regua PARADA · ou o passo (6) nao muda o aviso"
+         lado · alguma coisa sai com o relogio PARADO · ou o passo (6) nao muda o aviso"
     );
     Montada {
         nivel: 1,

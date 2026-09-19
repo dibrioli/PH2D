@@ -423,9 +423,12 @@ impl crate::App {
             }
             hero.panel_visibility.insert("inspector", true);
             // ⚠️ **A RÉGUA abre junto** — esta cena inteira depende do relógio A ANDAR (os alvos
-            // nascem de um `Timer`), e sem a timeline o dono não vê que a corrida anda nem tem onde
-            // a parar. *Uma instrução que fala do transporte sobre um ecrã sem ele devolve «que
-            // régua?»* — a lição da cena 67 da física.
+            // nascem de um `Timer`), e sem a timeline o dono não VÊ que a corrida anda. *Uma
+            // instrução que fala do transporte sobre um ecrã sem ele devolve «que régua?»* — a
+            // lição da cena 67 da física.
+            // ⛔ **Mas quem o roteiro manda carregar são os chips `Pause`/`Reset` da barra de
+            // CIMA**, e não esta régua: ela pinta ÍCONES, e a 1.ª redacção mandava carregar num
+            // «STOP» que não é pintado em lado nenhum (report do dono, 19/09).
             hero.panel_visibility.insert("timeline", true);
             // ⛔ **O HERÓI nasce ESCOLHIDO** — o roteiro manda ver a secção no painel da direita, e
             // com ninguém escolhido o Inspector diz *«Select an entity in the Hierarchy»*.

@@ -217,7 +217,11 @@ fn cena_um(world: &mut World, tree: &mut TagTree) -> Entity {
     ));
 
     // ⭐ O RELÓGIO que arranca as duas fábricas — ⚠️ `autostart` e SEM repetição: os alvos nascem
-    // uma vez, ao entrar a corrida, e o `Home` devolve a cena ao princípio.
+    // uma vez, ao entrar a corrida, e o `Reset` da barra de cima devolve a cena ao princípio.
+    // ⛔ **Nunca o `Home`**: essa tecla é o *frame selection* do editor
+    // ([`handlers_teclas_editor`]), e o roteiro que a mandava carregar movia a CÂMERA e não o
+    // relógio — report do dono, 19/09. O censo `um_roteiro_nunca_rouba_uma_tecla_do_editor` recusa
+    // a recaída.
     world.spawn((
         Name::new("Arranque"),
         Transform::from_translation(Vec2::new(0.0, 5.0)),
@@ -362,8 +366,8 @@ pub fn montar(world: &mut World, tree: &mut TagTree, _nivel: u32) -> Montada {
          (4) agora segure a seta para BAIXO ate' o heroi ficar a' altura dos CINZENTOS, depois a \
          seta para a DIREITA (ele vira-se para onde anda) e carregue no {TECLA_NOME}: morrem OS \
          TRES. E' o CONTROLO — a mesma tabela sem a cerca\n\
-         (5) carregue em STOP na regua de baixo: o {TECLA_NOME} deixa de disparar. `Home` rebobina \
-         e os alvos voltam — eles nasceram na corrida, logo nao estao no ficheiro\n\
+         (5) na barra de CIMA carregue em `Pause`: o {TECLA_NOME} deixa de disparar. `Reset`, ao \
+         lado, rebobina e os alvos voltam — eles nasceram na corrida, logo nao estao no ficheiro\n\
          (6) deu errado se: os alvos nao nascem · o tiro de cima leva mais do que um · o de baixo \
          leva so' um · a bala atravessa o alvo e continua · ou carregar no {TECLA_NOME} nao faz nada"
     );

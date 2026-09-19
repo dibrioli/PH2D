@@ -132,3 +132,101 @@ fn a_origem_atravessa_a_leitura_do_sinal() {
     assert_eq!(quem, None);
     assert_eq!(outro, None);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ **O VERBO QUE RECOMEÇA A CORRIDA** (o FIM DE JOGO, 2026-09-19)
+// ─────────────────────────────────────────────────────────────────────────────
+
+fn recomecar(target: Entity, source: Entity) -> SignalEffect {
+    SignalEffect {
+        target,
+        verb: SignalVerb::RestartRun,
+        arg: String::new(),
+        source,
+    }
+}
+
+/// ⭐⭐⭐ **Ele ANUNCIA, e nunca age** — o mesmo idioma da morte, na 2.ª vez que ele se usa.
+///
+/// ⚠️ **As duas metades:** o pedido sai no relatório, **e** o mundo fica intocado. Sem a segunda,
+/// uma ponte que rebobinasse aqui passaria — e rebobinar no meio da resolução mediria um mundo que
+/// os efeitos seguintes ainda não tinham visto.
+///
+/// **Mutações que devem sangrar:** tirar o braço do `match` · pôr a ponte a agir em vez de anunciar.
+#[test]
+fn o_verbo_do_recomeco_anuncia_e_nao_toca_no_mundo() {
+    let (mut sim, autorado, nascido) = cena();
+    let antes = sim.world().entities().len();
+    let mut drive = PreviewDrive::default();
+    let r = apply(
+        &mut sim,
+        &[recomecar(autorado, autorado)],
+        &mut drive,
+        &mut mudo(),
+    );
+    assert!(r.recomecar, "o pedido tem de sair no relatorio");
+    assert_eq!(r.applied, 1, "ele nunca e' inerte: a corrida existe sempre");
+    assert_eq!(
+        sim.world().entities().len(),
+        antes,
+        "a ponte tocou no mundo — ela ANUNCIA, e quem rebobina e' a shell"
+    );
+    assert!(
+        sim.world().get_entity(nascido).is_ok(),
+        "a copia nascida na corrida so' sai pelo dreno da shell"
+    );
+}
+
+/// ⭐⭐⭐ **DEZ pedidos no mesmo quadro são UM recomeço** — e quem o diz é o TIPO.
+///
+/// ⚠️ Dez inimigos a morrer juntos, cada um com *«ao morrer → recomeça»*, pedem dez vezes. *Uma
+/// contagem aqui convidaria o dreno a rebobinar dez vezes, e a décima mediria um mundo que a
+/// primeira já tinha refeito.*
+///
+/// **Mutação que deve sangrar:** trocar o `bool` por um `usize` que soma.
+#[test]
+fn dez_pedidos_no_mesmo_quadro_sao_um_recomeco() {
+    let (mut sim, autorado, _) = cena();
+    let efeitos: Vec<SignalEffect> = (0..10).map(|_| recomecar(autorado, autorado)).collect();
+    let mut drive = PreviewDrive::default();
+    let r = apply(&mut sim, &efeitos, &mut drive, &mut mudo());
+    // ⛔ O tipo é a lei: um booleano não sabe contar até dez.
+    assert!(r.recomecar);
+    assert_eq!(
+        r.applied, 10,
+        "os dez efeitos aplicaram-se; o que e' UM e' a CORRIDA"
+    );
+}
+
+/// ⚠️ **E ele não contamina o relatório de quem não o pediu** — o CONTROLO.
+///
+/// Sem esta metade, um `recomecar` que nascesse `true` faria toda a tabela do app recomeçar a
+/// corrida a cada sinal, e os dois gates acima ficariam verdes.
+///
+/// **Mutação que deve sangrar:** `recomecar: true` no `Default` do relatório.
+#[test]
+fn os_outros_verbos_nao_pedem_recomeco() {
+    let (mut sim, autorado, nascido) = cena();
+    let mut drive = PreviewDrive::default();
+    let outros: Vec<SignalEffect> = SignalVerb::ALL
+        .iter()
+        .filter(|v| **v != SignalVerb::RestartRun)
+        .map(|v| SignalEffect {
+            target: nascido,
+            verb: *v,
+            arg: String::new(),
+            source: autorado,
+        })
+        .collect();
+    assert_eq!(outros.len(), 9, "piso de populacao: os outros nove");
+    let r = apply(&mut sim, &outros, &mut drive, &mut mudo());
+    assert!(
+        !r.recomecar,
+        "um verbo que nao e' o `Restart Run` pediu o recomeco"
+    );
+    assert_eq!(
+        r.mortes.len(),
+        1,
+        "controlo positivo: o `Destroy` continua a anunciar a morte da copia"
+    );
+}

@@ -124,12 +124,34 @@ pub enum SignalVerb {
     ///
     /// ⛔ **Ele NÃO lê o `arg`** — *«tira este»* não tem parâmetro.
     Destroy,
+    /// ⭐⭐⭐ **A CORRIDA RECOMEÇA** — o sétimo passo do laço de um jogo, e o único sem porta até
+    /// aqui.
+    ///
+    /// A sonda do §5.0 (`mede_o_que_a_composicao_ja_da_ao_fim_de_jogo`) mediu-o pelo caminho do
+    /// produto: ligando os **nove** verbos anteriores ao sinal de fim, um contador de vidas que
+    /// chegou a `0` fica em `1` — e o princípio dele é `3`. *Andar · nascer · bater · morrer ·
+    /// contar · perder já se autoravam; recomeçar não.*
+    ///
+    /// # ⚠️⚠️ Ele é o PRIMEIRO verbo cujo sujeito NÃO é uma entidade
+    ///
+    /// Os outros nove agem sobre um alvo; este age sobre a **corrida**. ⇒ ele **não lê o
+    /// `target`**, e o painel di-lo em vez de pintar uma escolha que o consumidor deita fora — a
+    /// lei que esta casa escreve para todo controlo morto.
+    ///
+    /// # ⚠️ Ele ANUNCIA, e é a segunda vez que este idioma se usa
+    ///
+    /// Como o [`SignalVerb::Destroy`], ele não age: põe um pedido no relatório da ponte e quem o
+    /// serve é a shell, **uma vez por quadro**. ⛔ *Dois recomeços no mesmo quadro são UM* — o
+    /// pedido é um booleano e não uma contagem, e é o tipo que o diz.
+    ///
+    /// ⛔ **Ele NÃO lê o `arg`** — *«recomeça»* não tem parâmetro.
+    RestartRun,
 }
 
 impl SignalVerb {
     /// Todos, em ordem — **a fonte da iteração**. ⛔ Nunca escreva a lista uma segunda vez.
     /// ⚠️ **APPEND-ONLY**: a posição é a tag e ela viaja no ficheiro. Um verbo novo entra no FIM.
-    pub const ALL: [SignalVerb; 9] = [
+    pub const ALL: [SignalVerb; 10] = [
         SignalVerb::StartTimer,
         SignalVerb::StopTimer,
         SignalVerb::Show,
@@ -139,6 +161,7 @@ impl SignalVerb {
         SignalVerb::StopSound,
         SignalVerb::AddToCounter,
         SignalVerb::Destroy,
+        SignalVerb::RestartRun,
     ];
 
     /// O rótulo que o artista lê, em INGLÊS — um ACESSÓRIO derivado da tabela desde 2026-09-19
@@ -163,6 +186,7 @@ impl SignalVerb {
             SignalVerb::StopSound => "ecs.signal_verb.stop_sound",
             SignalVerb::AddToCounter => "Add to Counter",
             SignalVerb::Destroy => "Destroy",
+            SignalVerb::RestartRun => "Restart Run",
         }
     }
 
@@ -176,6 +200,19 @@ impl SignalVerb {
             self,
             SignalVerb::StartTimer | SignalVerb::StopTimer | SignalVerb::AddToCounter
         )
+    }
+
+    /// **Este verbo tem ALVO?** — é o que decide se o painel pinta a coluna de quem sofre.
+    ///
+    /// ⚠️ **Nove dos dez respondem `true`, e é o décimo que faz a pergunta existir:** o
+    /// [`SignalVerb::RestartRun`] age sobre a **corrida** e não sobre uma entidade. Pintar-lhe uma
+    /// escolha de alvo seria um controlo cujo consumidor a deita fora — o defeito que a caça de
+    /// 2026-08-30 mediu em 34 controlos, e a mesma razão pela qual o [`Self::uses_arg`] existe.
+    ///
+    /// ⛔ **Derivado do verbo, nunca uma segunda lista.**
+    #[must_use]
+    pub const fn uses_target(self) -> bool {
+        !matches!(self, SignalVerb::RestartRun)
     }
 
     /// A posição em [`Self::ALL`] — a tag que o painel usa nos segmentados.

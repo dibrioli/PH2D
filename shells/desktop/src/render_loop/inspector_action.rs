@@ -50,6 +50,7 @@ pub(super) fn build_action_info(
             verb_tag: a.verb.tag(),
             arg: a.arg.clone(),
             uses_arg: a.verb.uses_arg(),
+            uses_target: a.verb.uses_target(),
             // ⭐⭐⭐ **Os dois campos do suplente #24** — o modo do alvo e a cerca. ⚠️ **A tradução
             // mora AQUI e nos dois sentidos** (ver o dreno abaixo): o painel é chrome e não vê o
             // `ph2d-ecs` (ADR-0029), logo o que atravessa é a POSIÇÃO.

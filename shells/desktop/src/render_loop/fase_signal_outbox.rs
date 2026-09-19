@@ -196,14 +196,17 @@ impl crate::App {
         // o `preview_drive` cada porta que abre viraria um passo de `Ctrl+Z`.
         // ⭐⭐⭐ **A TABELA nome → acção** (TOP-20 #5) — fase-filha, cortada por tecto de FUNÇÃO.
         // ⚠️ **Depois do dreno e dos motores, e antes da fábrica** — ver o cabeçalho de lá.
-        self.fase_tabela_de_accoes(&mut deaths);
+        // ⭐ **O pedido de recomeçar é do QUADRO**, e nasce aqui: a tabela enche-o e o dreno
+        // serve-o. Ver [`super::fase_fabrica_e_morte`].
+        let mut recomecar = false;
+        self.fase_tabela_de_accoes(&mut deaths, &mut recomecar);
         // ⭐⭐⭐ **A FÁBRICA** (TOP-20 #11) e **O DRENO DA MORTE** (#12) — ver
         // [`super::fase_fabrica_e_morte`]. ⚠️ **Aqui, nesta ordem, e não noutro sítio:** a fábrica lê os
         // MESMOS sinais que a tabela de acções (logo depois dela, para que um `SignalActions` que
         // arranque um timer não tenha de esperar um quadro), e a morte drena **por último**, que é
         // a lei que o oráculo mediu — um moribundo continua visível a toda consulta até ao fim do
         // quadro.
-        self.fase_fabrica_e_morte(deaths, camera_rect);
+        self.fase_fabrica_e_morte(deaths, camera_rect, recomecar);
         // ⭐⭐⭐ **OS TWEENS** (suplente #22) — ver [`super::fase_tweens`]. ⚠️ **Depois da tabela**,
         // senão um `Start Timer` publicado neste quadro só mexeria no seguinte, e o artista lê isso
         // como *«o sinal falhou»*; e **depois do apply da timeline** (mais acima no quadro), que é

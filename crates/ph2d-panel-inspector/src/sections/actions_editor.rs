@@ -33,17 +33,24 @@ pub(super) fn editor(
         TextInput::new(ids::INSP_ACTION_ON, "")
             .placeholder(tr("panel.inspector.actions.on_signal")),
     );
-    cur_y = target_rows(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        row,
-    );
+    // ⭐⭐⭐ **A escolha de QUEM SOFRE só existe onde o verbo a LÊ** (o FIM DE JOGO, 2026-09-19) — a
+    // mesma lei do `arg` uma linha abaixo, e o `Restart Run` é o primeiro verbo cujo sujeito é a
+    // CORRIDA e não uma entidade. ⛔ Pintá-la ali seria uma escolha que o consumidor deita fora.
+    cur_y = if row.uses_target {
+        target_rows(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            row,
+        )
+    } else {
+        cur_y
+    };
     cur_y = from_row(
         scene,
         text_system,

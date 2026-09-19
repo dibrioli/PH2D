@@ -88,6 +88,16 @@ pub struct ActionReport {
     /// que isto sai da cena?»* é uma pergunta só, e quem responde é o dreno da
     /// `fase_fabrica_e_morte` da shell, uma vez por quadro, depois de todos os produtores.
     pub mortes: Vec<ph2d_ecs::Death>,
+    /// ⭐⭐⭐ **Alguém pediu que a corrida RECOMEÇASSE** (o [`SignalVerb::RestartRun`]).
+    ///
+    /// ⚠️⚠️ **Um booleano e NÃO uma contagem, e o tipo é a lei:** dez inimigos a morrer no mesmo
+    /// quadro, cada um com *«ao morrer → recomeça»*, pedem dez vezes e a corrida recomeça **UMA**.
+    /// *Uma contagem aqui convidaria o dreno a rebobinar N vezes, e a N-ésima mediria um mundo que
+    /// a primeira já tinha refeito.*
+    ///
+    /// ⚠️ Como as [`Self::mortes`], ele sai daqui em vez de a ponte agir: *«quando é que a corrida
+    /// volta ao princípio?»* é uma pergunta só, e quem responde é a shell.
+    pub recomecar: bool,
 }
 
 /// ⭐⭐ **Aplica os efeitos deste quadro.**
@@ -137,6 +147,17 @@ pub fn apply(
                 }
                 None => false,
             },
+            // ⭐⭐⭐ **A CORRIDA RECOMEÇA** — e ele **anuncia** pelo mesmo idioma da morte, que é a
+            // 2.ª vez que ele se usa. ⛔ Ele não toca no mundo: quem sabe rebobinar é a shell, uma
+            // vez por quadro, DEPOIS de todos os produtores.
+            //
+            // ⚠️ **Ele não pode ser inerte, e é a única linha deste `match` que devolve `true`
+            // incondicionalmente:** os outros nove podem não ter onde pegar (um alvo sem relógio,
+            // sem som, sem contador), e este não tem alvo nenhum — a corrida existe sempre.
+            SignalVerb::RestartRun => {
+                report.recomecar = true;
+                true
+            }
         };
         if ok {
             report.applied += 1;

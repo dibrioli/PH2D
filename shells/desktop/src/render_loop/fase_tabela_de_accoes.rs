@@ -30,7 +30,13 @@ impl crate::App {
     /// ⚠️ **O `gfx` é RE-DERIVADO aqui e não passado**, como na irmã `fase_fabrica_e_morte`: o
     /// `sim` e a árvore de tags vêm do destructure do `gfx`, e passá-los a um método `&mut self`
     /// emprestaria a `App` duas vezes. *Os guardas do quadro já correram na `fase_chrome_clock`.*
-    pub(super) fn fase_tabela_de_accoes(&mut self, deaths: &mut Vec<ph2d_ecs::Death>) {
+    /// ⚠️ O `recomecar` é **OU-lógico** e nunca uma atribuição: esta fase corre uma vez por
+    /// quadro, mas o pedido é do QUADRO — e um `=` apagaria o pedido de outro produtor.
+    pub(super) fn fase_tabela_de_accoes(
+        &mut self,
+        deaths: &mut Vec<ph2d_ecs::Death>,
+        recomecar: &mut bool,
+    ) {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -105,5 +111,10 @@ impl crate::App {
         // o dreno da `fase_fabrica_e_morte`, que corre por último — *um moribundo continua visível a
         // toda consulta até ao fim do quadro*.
         deaths.extend(r.mortes);
+        // ⭐⭐⭐ **E o pedido de RECOMEÇAR vai ao mesmo despachante** — a 2.ª vez que o idioma do
+        // anúncio se usa. ⛔ Ele não rebobina aqui: *«quando é que a corrida volta ao princípio?»* é
+        // uma pergunta só, e quem a responde é o dreno da `fase_fabrica_e_morte`, que corre por
+        // último.
+        *recomecar |= r.recomecar;
     }
 }

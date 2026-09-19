@@ -166,7 +166,7 @@ pub const INSP_ACTION_ROW: [NodeId; 16] = [
 /// até 2026-09-09 (*«as actions deveriam ficar num dropdown e não em muitos botões»*, report do
 /// dono): passaram a ser as linhas do popover **sem mudar de significado**, que é o que manteve o
 /// despacho — `position(|&o| o == id)` — intacto.
-pub const INSP_ACTION_VERB: [NodeId; 9] = [
+pub const INSP_ACTION_VERB: [NodeId; 10] = [
     hash_node_id("insp_action_verb_start"),
     hash_node_id("insp_action_verb_stop"),
     hash_node_id("insp_action_verb_show"),
@@ -182,6 +182,9 @@ pub const INSP_ACTION_VERB: [NodeId; 9] = [
     // sem este id o verbo existe, tem lei, tem gates — e o artista **não lhe chega**. *É a forma
     // exacta do defeito que o `Density` da escultura pagou.*
     hash_node_id("insp_action_verb_destroy"),
+    // ⭐⭐⭐ **O `Restart Run`** (o FIM DE JOGO, 2026-09-19), APENDADO pela mesma lei — e escrito no
+    // mesmo commit da variante, que é a lição que o `Destroy` deixou uma wave antes.
+    hash_node_id("insp_action_verb_restart_run"),
 ];
 
 /// **As opções do filtro por tag da §11 Physics** (TOP-20 #9, W3c).

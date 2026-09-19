@@ -69,6 +69,7 @@ fn actions() -> InspectorActionInfo {
             verb_tag: 3,
             arg: String::new(),
             uses_arg: false,
+            uses_target: true,
             target_mode: 0,
             from_tag: 0,
             target_tag: None,
@@ -84,6 +85,7 @@ fn actions() -> InspectorActionInfo {
             "Stop Sound".into(),
             "Add to Counter".into(),
             "Destroy".into(),
+            "Restart Run".into(),
         ],
         selected_count: 1,
     }

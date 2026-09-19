@@ -18,12 +18,60 @@
 
 use super::*;
 
+/// ⭐⭐⭐ **O RENASCIMENTO DA CORRIDA — a porta, e ela tem DOIS chamadores.**
+///
+/// Ela era o corpo do invariante *«parado e no início»* do [`crate::App::fase_fabrica_e_morte`], e
+/// virou porta no dia em que um **verbo** passou a poder pedir o mesmo
+/// ([`ph2d_ecs::SignalVerb::RestartRun`]). ⛔ *Uma lei escrita em dois sítios ainda não é uma lei —
+/// só uma PORTA é*, e aqui o modo de falha da cópia é o caro: a segunda esqueceria uma das quatro
+/// metades e a 2.ª corrida nasceria com o resto da primeira, **em silêncio**.
+///
+/// # ⚠️⚠️ E foi a MEDIÇÃO que obrigou a porta a existir
+///
+/// O invariante do rebobinar exige a corrida **PARADA** (`!a_correr && time <= 0`), e um recomeço
+/// que continua a jogar nunca o satisfaz. ⇒ pôr `time = 0` e seguir deixaria as cópias na cena, os
+/// relógios corridos e os contadores gastos — *«recomecei e continuo a perder»*. A porta é o que
+/// torna as duas leituras a mesma.
+///
+/// As **quatro** metades, e nenhuma é opcional:
+///
+/// | metade | porquê |
+/// |---|---|
+/// | varrer quem nasceu | uma cópia da corrida anterior não é da nova |
+/// | o estado vivo do mundo | relógios, contas, sementes, a vigia, o amortecimento da câmera |
+/// | os SCRIPTS | a VM não mora no mundo, logo a porta do `ph2d-ecs` não os alcança |
+/// | os EMISSORES | uma corrida de partículas também não é um componente |
+fn renascer_a_corrida(
+    sim: &mut ph2d_ecs::SimWorld,
+    script: &mut Option<ph2d_script::ScriptHost>,
+    particles: &mut ph2d_app_components::particles_bridge::ParticlesState,
+    drive: &mut ph2d_preview_drive::PreviewDrive,
+) -> usize {
+    let varridas = ph2d_app_components::factory_bridge::sweep_spawned(sim);
+    let mut repostos = ph2d_ecs::rewind_runtime::rewind_runtime_state(sim.world_mut());
+    // ⭐ **Os SCRIPTS do artista renascem com eles** (TOP-20 #16): a VM não mora no mundo, então a
+    // porta da família `Logic` não os alcança — a irmã dela é a da ponte, que também devolve a pose
+    // que a corrida escreveu.
+    if let Some(host) = script.as_mut() {
+        repostos += ph2d_app_components::script_bridge::rewind(host, sim, drive);
+    }
+    // ⭐ **E os EMISSORES DE PARTÍCULAS** (TOP-20 #18): uma corrida de partículas não é um
+    // componente (não está no mundo), então a porta da família `Logic` também não a alcança.
+    repostos += particles.rewind();
+    varridas + repostos
+}
+
 impl crate::App {
     /// Ver o cabeçalho do módulo.
+    /// ⚠️ **O `recomecar` é um PARÂMETRO e não um campo do `App`**, e é deliberado: um verbo novo
+    /// que produza um pedido tem de o passar por aqui, e esquecê-lo é **erro de compilação**. É a
+    /// mesma forçagem que o abanão da câmera pagou (o offset é argumento do passe da vista, não uma
+    /// leitura de componente).
     pub(super) fn fase_fabrica_e_morte(
         &mut self,
         mut deaths: Vec<ph2d_ecs::Death>,
         camera_rect: Option<([f32; 2], [f32; 2])>,
+        recomecar: bool,
     ) {
         // ⚠️ **O mapa documento↔entidade é do `App`, não do `AppGfx`** — é o mesmo empréstimo
         // disjunto que o `sync_instances` faz.
@@ -145,10 +193,6 @@ impl crate::App {
         // ⚠️ **Ela não tem custo com a cena parada:** a query é sobre quem tem a marca, e sem
         // corrida não há ninguém com ela.
         if !a_correr && self.playhead.time() <= 0.0 {
-            let varridas = ph2d_app_components::factory_bridge::sweep_spawned(sim);
-            if self.signal_readers.logging() && varridas > 0 {
-                eprintln!("[fabrica] rebobinou: {varridas} copia(s) varrida(s)");
-            }
             // ⭐⭐⭐ **E o ESTADO VIVO de toda a gente volta ao tique 0** (TOP-20 #15, W0) — o
             // relógio de um `Timer`, a conta e a SEMENTE de uma `Factory`, a vida de um
             // `Lifetime` e o amortecimento de uma `GameCamera`.
@@ -161,18 +205,7 @@ impl crate::App {
             // ⚠️ **Aqui, dentro do MESMO invariante**, e não num gancho próprio: o transporte tem
             // mais de um caminho até ao zero (o botão, o arrasto da régua, o reset do documento),
             // e um gancho em cada um é a lista que envelhece.
-            let mut repostos = ph2d_ecs::rewind_runtime::rewind_runtime_state(sim.world_mut());
-            // ⭐ **E os SCRIPTS do artista renascem com eles** (TOP-20 #16): a VM não mora no mundo,
-            // então a porta da família `Logic` não os alcança — a irmã dela é a da ponte, que também
-            // devolve a pose que a corrida escreveu.
-            if let Some(host) = script.as_mut() {
-                repostos +=
-                    ph2d_app_components::script_bridge::rewind(host, sim, &mut self.preview_drive);
-            }
-            // ⭐ **E os EMISSORES DE PARTÍCULAS renascem com eles** (TOP-20 #18): uma corrida de
-            // partículas não é um componente (não está no mundo), então a porta da família `Logic`
-            // também não a alcança.
-            repostos += particles.rewind();
+            let repostos = renascer_a_corrida(sim, script, particles, &mut self.preview_drive);
             if self.signal_readers.logging() && repostos > 0 {
                 eprintln!("[rebobinar] {repostos} estado(s) vivo(s) reposto(s)");
             }
@@ -192,6 +225,55 @@ impl crate::App {
         for (bits, nome) in mortes {
             self.signals
                 .publish(ph2d_runtime::Signal::from_death(&nome, bits));
+        }
+
+        // ⭐⭐⭐ **E A CORRIDA RECOMEÇA** (`SignalVerb::RestartRun`) — o sétimo passo do laço de um
+        // jogo, servido aqui e em mais lado nenhum.
+        //
+        // ⚠️⚠️ **DEPOIS de tudo, e é a única posição possível:** as mortes deste quadro já saíram,
+        // os nascimentos já foram publicados, e o renascimento apaga exactamente o que a corrida
+        // produziu. *Servi-lo antes faria o dreno da morte medir um mundo que já tinha sido
+        // refeito.*
+        //
+        // ⚠️ **O relógio volta ao zero e o `playing` NÃO se toca**: um recomeço que parasse a
+        // corrida seria *«acabou»*, não *«outra vez»* — o dono teria de carregar em Play. É a
+        // diferença entre este verbo e o botão *Rewind* da barra, que pausa de propósito.
+        //
+        // ⛔ E o invariante acima **não** serve este caso: ele exige a corrida PARADA, e esta
+        // continua a jogar. É por isso que o renascimento é uma PORTA com dois chamadores.
+        if recomecar && self.playhead.is_playing() {
+            // ⛔⛔⛔ **A CERCA CONTRA O LAÇO, e o número é DERIVADO e não escolhido.**
+            //
+            // Uma condição que já é verdade quando a corrida começa — um `Counter Watch` escrito
+            // `pontos AtLeast 0`, por exemplo — pede o recomeço em **todo** quadro: o relógio nunca
+            // passa do primeiro tique, nada avança, e o dono vê um app **congelado** sem uma linha
+            // de erro. É a mesma classe do laço `a → b → a` que o doc do `SignalActions` recusa por
+            // escrito, com o relógio no lugar do sinal.
+            //
+            // ⭐ **A cerca é «a corrida tem de ter CORRIDO»**, e a unidade de uma corrida é o PASSO
+            // FIXO — não um segundo escolhido, não um contador de recomeços por janela. Uma corrida
+            // cuja vida inteira é o tique que acabou de andar **não é uma corrida**, e é
+            // exactamente essa a assinatura do laço: no caso patológico o relógio lê `fixed_dt` em
+            // todo quadro, e no legítimo lê os segundos que o dono jogou.
+            //
+            // ⚠️ **E ela FALA.** Um recomeço recusado em silêncio é indistinguível de um verbo
+            // partido — a lei que os pincéis da escultura pagaram três vezes.
+            let vida = self.playhead.time();
+            if vida > self.fixed_step.fixed_dt() {
+                self.playhead.rewind();
+                let repostos = renascer_a_corrida(sim, script, particles, &mut self.preview_drive);
+                if self.signal_readers.logging() {
+                    eprintln!(
+                        "[recomecar] a corrida voltou ao inicio ({repostos} estado(s) reposto(s))"
+                    );
+                }
+            } else {
+                eprintln!(
+                    "[recomecar] RECUSADO: a corrida tem {vida:.4} s, que e' o primeiro tique — a \
+                     condicao que pede o recomeco ja' e' verdade quando ela COMECA, e servir isto \
+                     congelaria o app sem dizer porque"
+                );
+            }
         }
     }
 }

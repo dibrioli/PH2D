@@ -66,6 +66,13 @@ pub struct InspectorActionRow {
     /// não conhece o enum, e re-derivá-lo seria uma segunda resposta a *«este campo serve para
     /// alguma coisa?»* — a que o artista vê seria a que envelhece.
     pub uses_arg: bool,
+    /// ⭐⭐⭐ **Este verbo tem ALVO?** — `false` só no `Restart Run`, que age sobre a CORRIDA e não
+    /// sobre uma entidade.
+    ///
+    /// ⚠️ **Derivado na shell como o irmão [`Self::uses_arg`]**, e pela mesma lei: pintar a escolha
+    /// de quem sofre para um verbo que a deita fora é um controlo morto — a família que a caça de
+    /// 2026-08-30 mediu em 34 controlos.
+    pub uses_target: bool,
     /// ⭐⭐⭐ **A QUEM ela acerta** — a posição em [`ActionTargetMode::ALL`] (suplente #24).
     ///
     /// ⚠️ **É ELE que manda**, e os campos abaixo são a carga de um dos modos: o [`Self::target`]

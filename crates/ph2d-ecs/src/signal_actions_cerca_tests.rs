@@ -339,31 +339,71 @@ fn uma_linha_reage_por_disparo_e_nao_por_nome() {
 // G4 — O VERBO NOVO
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// ⭐⭐ **O verbo que tira da cena existe, é o ÚLTIMO da lista, e não lê o `arg`.**
+/// ⭐⭐⭐ **A TAG DE UM VERBO JÁ GRAVADO NUNCA SE MEXE** — a lei, no lugar da promessa que ela
+/// substitui.
 ///
-/// ⚠️ **A posição é a TAG e ela viaja no ficheiro** — um verbo no meio reescreveria o sentido de
-/// todas as linhas já gravadas, em silêncio. O gate prende as duas metades: a contagem e o fim.
+/// ⚠️⚠️ **Este gate dizia *«o `Destroy` é o ÚLTIMO da lista»* e a premissa MORREU em 2026-09-19,
+/// quando o [`SignalVerb::RestartRun`] foi apendado** — ele reprovou com `left: 10, right: 9`, que
+/// é o gate a funcionar. ⭐ E a reescrita deixa-o **mais forte do que era**: *«ser o último»* é uma
+/// propriedade do verbo mais recente e expira a cada wave; **a tag de cada verbo já gravado** é a
+/// propriedade que o FICHEIRO depende, e ela nunca expira.
 ///
-/// **Mutações que devem sangrar:** pôr o `Destroy` antes do `AddToCounter` no `ALL` · dar-lhe
-/// `uses_arg = true`.
+/// ⛔ A posição é a tag e ela viaja no `.ph2dproj` pelo postcard, que é POSICIONAL — um verbo
+/// inserido no meio reescreveria o sentido de **todas** as linhas de acção já gravadas, em
+/// silêncio. A tabela abaixo é o que impede isso, e um verbo novo entra no FIM dela.
+///
+/// **Mutações que devem sangrar:** trocar dois verbos de posição no `ALL` · dar `uses_arg = true`
+/// ao `Destroy` ou ao `RestartRun` · apagar uma entrada do `ALL`.
 #[test]
-fn o_verbo_que_apaga_e_o_ultimo_e_nao_le_o_arg() {
+fn a_tag_de_um_verbo_ja_gravado_nunca_se_mexe() {
+    // ⚠️ **Escrita à mão de propósito**: derivá-la do `ALL` mediria o `ALL` contra si próprio.
+    const GRAVADAS: [(SignalVerb, u8); 10] = [
+        (SignalVerb::StartTimer, 0),
+        (SignalVerb::StopTimer, 1),
+        (SignalVerb::Show, 2),
+        (SignalVerb::Hide, 3),
+        (SignalVerb::ToggleVisibility, 4),
+        (SignalVerb::PlaySound, 5),
+        (SignalVerb::StopSound, 6),
+        (SignalVerb::AddToCounter, 7),
+        (SignalVerb::Destroy, 8),
+        (SignalVerb::RestartRun, 9),
+    ];
+    for (v, tag) in GRAVADAS {
+        assert_eq!(
+            v.tag(),
+            tag,
+            "{v:?} mudou de tag — os ficheiros gravados leem outro verbo"
+        );
+    }
     assert_eq!(
         SignalVerb::ALL.len(),
-        9,
-        "a lista de verbos mudou de tamanho"
+        GRAVADAS.len(),
+        "a lista de verbos mudou de tamanho: um verbo novo entra no FIM desta tabela, e a\n         contagem sobe aqui de propósito — e' o que obriga alguem a olhar para a posicao"
     );
-    assert_eq!(
-        *SignalVerb::ALL.last().expect("nao vazia"),
-        SignalVerb::Destroy,
-        "o verbo novo tem de entrar no FIM — a posicao e' a tag do ficheiro"
-    );
+    // ⛔ **Os dois verbos SEM parâmetro**, e por razões diferentes: *«tira este»* e *«recomeça»*
+    // não têm o que parametrizar.
     assert!(
         !SignalVerb::Destroy.uses_arg(),
         "«tira este» nao tem parametro"
     );
-    // ⚠️ A ida-e-volta da tag: um clique escreve a posição, e a posição tem de voltar ao verbo.
+    assert!(
+        !SignalVerb::RestartRun.uses_arg(),
+        "«recomeca» nao tem parametro"
+    );
+    // ⭐⭐ **E o único SEM ALVO** — o primeiro verbo cujo sujeito é a CORRIDA e não uma entidade.
+    // ⚠️ As duas metades: ele não tem, e **todos os outros têm** — sem a segunda, um `uses_target`
+    // que devolvesse `false` a toda a gente passaria, e o painel deixaria de pintar a coluna de
+    // quem sofre em nove verbos que a lêem.
+    assert!(
+        !SignalVerb::RestartRun.uses_target(),
+        "a corrida nao e' um alvo"
+    );
     for v in SignalVerb::ALL {
+        if v != SignalVerb::RestartRun {
+            assert!(v.uses_target(), "{v:?} perdeu o alvo que a lei dele le");
+        }
+        // ⚠️ A ida-e-volta da tag: um clique escreve a posição, e a posição tem de voltar ao verbo.
         assert_eq!(SignalVerb::from_tag(v.tag()), v, "{v:?} nao volta da tag");
     }
 }

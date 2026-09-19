@@ -266,6 +266,9 @@ pub(crate) fn announce() {
          [sculpt3d]    (6) Agora desligue o arame (`Wireframe`) e olhe para o RELEVO\n\
          [sculpt3d]        dos dois riscos. Eles tem de ficar IGUAIS de lisos. O\n\
          [sculpt3d]        alinhamento do passo (4) nao custa ondulacao nenhuma.\n\
+         [sculpt3d]    (7) Risque com calma e repare na MAO: o pente deixou de arrastar.\n\
+         [sculpt3d]        Ele custa agora 5,9 milesimos de segundo por marca contra\n\
+         [sculpt3d]        7,9 -- de 99 % do orcamento de uma marca para 74 %.\n\
          [sculpt3d]\n\
          [sculpt3d]    COMO SABER QUE DEU ERRADO: se os dois riscos ficarem iguais no\n\
          [sculpt3d]    passo (4), se a malha ficar com triangulos finos como lascas de\n\
@@ -276,13 +279,15 @@ pub(crate) fn announce() {
          [sculpt3d]\n\
          [sculpt3d]    (medido nesta peca: das linhas da malha debaixo do risco, 33 de\n\
          [sculpt3d]    cada 100 correm com ele antes -- que e' o que uma malha SEM\n\
-         [sculpt3d]    direccao nenhuma da' -- e 64 a 66 no tecto, contra 42 a 45 da\n\
-         [sculpt3d]    versao que voce reprovou. E a dobra entre faces vizinhas fica em\n\
-         [sculpt3d]    2,7 a 2,9 graus contra 2,6 da malha por pentear -- ou seja, o\n\
-         [sculpt3d]    relevo fica como se ninguem tivesse penteado, e antes ela ia a\n\
-         [sculpt3d]    4,4. E as linhas do passo (5): as do segundo risco medem 10 a 23\n\
-         [sculpt3d]    pedacos de comprimento, contra 2 a 4 do primeiro, e a mais\n\
-         [sculpt3d]    comprida atravessa o risco inteiro.)\n"
+         [sculpt3d]    direccao nenhuma da' -- e 66 no tecto, contra 42 a 45 da versao\n\
+         [sculpt3d]    que voce reprovou. E a dobra entre faces vizinhas fica em 2,7\n\
+         [sculpt3d]    graus contra 2,6 da malha por pentear -- ou seja, o relevo fica\n\
+         [sculpt3d]    como se ninguem tivesse penteado, e antes ela ia a 4,4. E as\n\
+         [sculpt3d]    linhas do passo (5): as do segundo risco medem cerca de 50\n\
+         [sculpt3d]    pedacos de comprimento (40 a 60 conforme o rumo) contra 2 a 4 do\n\
+         [sculpt3d]    primeiro, e a mais comprida atravessa o risco inteiro. Nos\n\
+         [sculpt3d]    cruzamentos, 95 de cada 100 tem os quatro bracos certos, contra\n\
+         [sculpt3d]    48 sem pente.)\n"
     );
 }
 

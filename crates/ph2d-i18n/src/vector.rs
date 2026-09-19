@@ -338,6 +338,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bone.ik.chain" => "IK Chain",
         "panel.vector.bone.ik.bend" => "IK Bend",
         "panel.vector.bone.ik.bend.auto" => "Auto",
+        // ⭐ O `Auto` com o lado que ele deriva agora — ver o doc do `set_current_bone_ik_auto_side`.
+        "panel.vector.bone.ik.bend.auto_is" => "Auto ({lado})",
         "panel.vector.bone.ik.bend.ccw" => "CCW",
         "panel.vector.bone.ik.bend.cw" => "CW",
         "panel.vector.bone.ik.bend.mixed" => "Mixed",

@@ -194,6 +194,35 @@ fn limit_rows(r: &mut RowCtx, y: f32) -> f32 {
 /// âncora, e *Remove IK* mais os três números só em quem tem. Oferecer as duas portas ao mesmo
 /// tempo daria um botão que só sabe recusar — e o gesto recusa-o também, então o painel estaria
 /// a prometer o que o app não faz.
+/// ⭐⭐⭐ **O RÓTULO DO CHIP `Auto`, que DIZ o lado que ele está a derivar** (report do dono,
+/// 2026-09-18: *«IK Bend não funcionou com Auto IK e trocando CCw por CW»*).
+///
+/// ⛔⛔⛔ **A causa está MEDIDA e não era a fiação:** com o `Chain` de fábrica (`2`) o `Auto` e o `Cw`
+/// dão a **MESMA pose, ao bit** (soma das diferenças de rotação `0,0000`; com `Chain = 3` ela é
+/// `2,9991`), e a cena do osso captura `Cw`. ⇒ o artista clicava em **dois** dos quatro chips e não
+/// via nada mudar — indistinguível de um controlo partido. *Só o `Ccw` move (`3,0000`).*
+///
+/// ⚠️ **Não se esconde o `Auto`:** ele significa *«deriva o lado da pose que chega»* e coincide
+/// NESTA pose, não sempre. ⇒ ele **diz**, e o artista vê sem clicar que pedir esse lado é um no-op.
+///
+/// ⚠️ **É uma função PURA e não um `format!` dentro do pintor**, porque o testkit desta casa não
+/// tem leitor de texto pintado: *quando a lei fica dentro do pintor, o gate dela não existe*.
+/// ⏳ A dívida fica nomeada — o pixel não é alcançável de um teste, e o que o liga é o gate
+/// `include_str!` que exige o pintor a chamar esta porta.
+fn rotulo_do_auto(derivado: Option<usize>) -> String {
+    // ⛔ Só `Ccw` (1) e `Cw` (2) são lados nomeáveis: o `Keep` (0) seria circular e o `Mixed` (3)
+    // não tem um lado só. *Um rótulo que inventa um lado é pior que nenhum.*
+    let lado = derivado.and_then(|i| match i {
+        1 => Some(tr("panel.vector.bone.ik.bend.ccw")),
+        2 => Some(tr("panel.vector.bone.ik.bend.cw")),
+        _ => None,
+    });
+    match lado {
+        Some(l) => ph2d_i18n::tr_with("panel.vector.bone.ik.bend.auto_is", &[("lado", &l)]),
+        None => tr("panel.vector.bone.ik.bend.auto").to_string(),
+    }
+}
+
 fn ik_rows(r: &mut RowCtx, y: f32) -> f32 {
     let Some((_, _, _, lado)) = state::current_bone_ik() else {
         return r.action_button(ids::VECTOR_BONE_IK_ADD, tr("panel.vector.bone.ik.add"), y);
@@ -224,8 +253,9 @@ fn ik_rows(r: &mut RowCtx, y: f32) -> f32 {
         ids::VECTOR_BONE_BEND_IDS.len() == ph2d_skeleton::BendSide::ALL.len(),
         "um lado novo na LEI precisa de um id ao lado dele"
     );
+    let auto = rotulo_do_auto(state::current_bone_ik_auto_side());
     let rotulos = [
-        tr("panel.vector.bone.ik.bend.auto"),
+        auto.as_str(),
         tr("panel.vector.bone.ik.bend.ccw"),
         tr("panel.vector.bone.ik.bend.cw"),
         tr("panel.vector.bone.ik.bend.mixed"),
@@ -444,3 +474,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "section_rotulo_tests.rs"]
+mod rotulo_do_auto_tests;

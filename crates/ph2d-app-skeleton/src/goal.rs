@@ -644,3 +644,7 @@ pub fn osso(
     }
     e
 }
+
+#[cfg(test)]
+#[path = "sonda_do_lado_do_joelho_tests.rs"]
+mod sonda_do_lado_do_joelho_tests;

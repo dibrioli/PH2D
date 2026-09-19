@@ -13,6 +13,7 @@ use std::cell::{Cell, RefCell};
 thread_local! {
     /// A seleção contém pelo menos uma forma PRESA a um esqueleto? Decide se as duas saídas
     /// (Keep Pose / Release) são oferecidas — *um botão que só sabe recusar é pior que um ausente*.
+    static CURRENT_IK_AUTO_SIDE: Cell<Option<usize>> = const { Cell::new(None) };
     static CURRENT_ENVELOPE_MANDA: Cell<bool> = const { Cell::new(true) };
     static CURRENT_SKINNED: Cell<Skinned> = const { Cell::new(Skinned { vector: false, imagem: false }) };
     /// O OSSO em foco existe? Sem ele, `Length`/`Strength` não têm sujeito.
@@ -244,6 +245,27 @@ pub(crate) fn bone_tool() -> Option<usize> {
 
 /// A âncora do osso em foco e os três números dela (`mix`, `softness`, `chain`). `None` ⇒ ele não
 /// tem uma, e o painel oferece a porta de entrada.
+/// ⭐⭐⭐ **QUE LADO O `Auto` ESTÁ A DERIVAR** (report do dono, 2026-09-18: *«IK Bend não funcionou
+/// com Auto IK e trocando CCw por CW»*).
+///
+/// ⛔⛔⛔ **MEDIDO: com o `Chain` de fábrica (`2`) o `Auto` e o `Cw` são a MESMA pose, ao bit**
+/// (distância `0,0000` entre as três rotações; com `Chain = 3` ela é `2,9991`). A cena do osso
+/// captura `Cw`, logo o artista clica em **dois** dos quatro chips e não vê nada mudar — e isso é
+/// indistinguível de um controlo partido. *Só o `Ccw` move (`3,0000`).*
+///
+/// ⚠️ **A cura não é esconder o `Auto`:** ele significa *«deriva o lado da pose que chega»*, e
+/// coincide **nesta** pose, não sempre. ⇒ o chip **diz** qual lado está a derivar, e o artista vê,
+/// sem clicar, que pedir esse lado não vai mudar nada.
+///
+/// `None` ⇒ não se sabe (sem âncora, ou a corrente não tem lado), e o chip fica com o rótulo nu.
+pub fn set_current_bone_ik_auto_side(v: Option<usize>) {
+    CURRENT_IK_AUTO_SIDE.with(|c| c.set(v));
+}
+
+pub(crate) fn current_bone_ik_auto_side() -> Option<usize> {
+    CURRENT_IK_AUTO_SIDE.with(Cell::get)
+}
+
 pub fn set_current_bone_ik(v: Option<(f64, f64, f64, ph2d_skeleton::BendSide)>) {
     CURRENT_HAS_IK.with(|c| c.set(v.is_some()));
     if let Some((mix, softness, chain, bend)) = v {

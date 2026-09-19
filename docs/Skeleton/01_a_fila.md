@@ -59,6 +59,47 @@ diz onde ler o mecanismo:
 
 ---
 
+### F19 — ✅ **O CHIP `Auto` DIZ QUE LADO DERIVA** (report do dono, 2026-09-18)
+
+*«IK Bend não funcionou com Auto IK e trocando CCw por CW no painel lateral»* — ⭐ **reproduzido, e
+a lei estava CERTA.**
+
+⛔⛔⛔ **A causa, MEDIDA** (`sonda_do_lado_do_joelho_tests`, no braço em **S** da cena dele): com o
+`IK Chain` de **fábrica (`2`)** o `Auto` e o `Cw` dão a **MESMA pose, ao bit** (`0,0000`), e a cena
+do osso **captura `Cw`** (lido do log dela). ⇒ o artista clica em **dois** dos quatro chips e não vê
+nada mudar — indistinguível de um controlo partido. *Só o `Ccw` move (`3,0000`).* ⚠️ Com
+`Chain = 3` o `Auto` **deixa** de coincidir (`2,9991`), e é essa metade que impede a leitura errada
+*«o Auto é sempre o Cw»* — que levaria alguém a esconder um chip vivo.
+
+⚠️ **A cura NÃO é esconder nem mexer no solver:** o `Auto` significa *«deriva o lado da pose que
+chega»* e coincide **nesta** pose, não sempre. ⇒ ele **diz**: o rótulo passa a ser `Auto (CW)`, e o
+artista vê, sem clicar, que pedir esse lado é um no-op.
+
+⭐ **A porta do lado derivado é a MESMA que o solver usa** (`goal::side_for_chain`) — uma segunda
+resposta a *«de que lado a pose está?»* divergiria da que governa a corrente, e o chip mentiria.
+
+⛔⛔ **E TRÊS hipóteses caíram por medição antes desta**, cada uma com o número: a fiação do chip
+está completa (`fase_bus_clicks` → `g.bend = lado`) · o painel **já** marca o chip activo · e os
+chips **só** são pintados no osso que tem a âncora (a lei do controlo morto já lá estava).
+
+⛔⛔ **E a minha régua mediu a grandeza errada, a QUARTA vez nesta sequência:** a 1.ª redacção lia a
+**translação** do cotovelo e devolvia `[10, 0]` nos três lados — *o solver escreve ÂNGULOS*, e a
+translação de um osso filho é fixa. *Uma régua que mede o campo que a lei não escreve dá sempre o
+mesmo número*, e ela acusava o produto pelo report do dono.
+
+⛔⛔⛔ **E uma MUTAÇÃO expôs uma cegueira do gate do elo:** ele lê o pintor por
+`include_str!("section.rs")` e **a agulha que procura estava escrita nele próprio** ⇒ apagar a
+chamada deixava-o VERDE. ⇒ os gates do rótulo mudaram para um ficheiro irmão. *Um gate
+`include_str!` que procura uma string escrita nele mesmo não afirma nada.*
+
+⛔ Tecto de LOC da fase (`208` contra `200`) curado por **CORTE** (`publica_a_ancora`), nunca por
+uma entrada nova no `FN_OVERAGE_OK`.
+
+Mutação **4 de 4** a sangrar; portão `15 099` verdes.
+
+⏳ **ABERTO e nomeado:** o **pixel** do rótulo não é alcançável de um teste — o testkit desta casa
+não tem leitor de texto pintado, e o que liga a lei ao pintor é um gate `include_str!`.
+
 ### F18 — ✅ **O LADO DA DOBRA ANIMA** (pedido do dono, 2026-09-18)
 
 Ele escolheu *«o lado da dobra é escolhido e é consistente, mas **não é animável**»*. ⇒

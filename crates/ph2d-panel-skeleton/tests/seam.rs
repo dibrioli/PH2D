@@ -54,6 +54,7 @@ fn publica_tudo() {
 }
 
 fn limpa() {
+    state::set_current_bone_ik_auto_side(None);
     // ⚠️ O envelope repõe-se a `true` (o default conservador): sem isto o teste que o desliga
     // contamina todos os seguintes, e eles ficam verdes sobre um painel sem aquele campo.
     state::set_current_envelope_manda(true);

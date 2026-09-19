@@ -113,8 +113,13 @@ pub struct VecState {
     /// imagem não é um caminho. Enfiá-la lá pediria um id inventado, e o passo que espera as
     /// entidades (`vec_entities::contains_key`) procuraria por ele para sempre.
     pub bone_smoke_img: Option<(u64, Option<ph2d_ecs::Entity>)>,
-    /// As três peças da cena entre os dois tempos: `(forma, raiz do esqueleto dela)`.
-    pub bone_smoke_pend: Option<[(ph2d_vec_scene::VecPathId, Option<ph2d_ecs::Entity>); 3]>,
+    /// As peças da cena entre os dois tempos: `(forma, raiz do esqueleto dela)`.
+    ///
+    /// ⚠️ **`Vec` e não `[_; 3]`:** quantas peças há é propriedade da CENA, não do estado — e com o
+    /// tamanho pregado aqui, a segunda cena deste roteador (`=2`, a do envelope) teria de inventar
+    /// uma terceira peça ou de arranjar um id falso para a que lhe falta. *Um número de uma cena
+    /// escrito no estado partilhado é o estado a mandar na cena.*
+    pub bone_smoke_pend: Option<Vec<(ph2d_vec_scene::VecPathId, Option<ph2d_ecs::Entity>)>>,
 
     /// In-app path clipboard for Vector Ctrl+C/X/V — a clone of the copied path
     /// (geometry + style, id-less). `None` until the first copy/cut.

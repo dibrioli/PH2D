@@ -66,6 +66,37 @@ impl crate::App {
                         ppm,
                         &mut self.vec,
                     );
+                    // ⭐⭐⭐ **O PRÓLOGO DA CENA DO ENVELOPE, e ele corre AQUI e não no 1.º tempo.**
+                    //
+                    // ⚠️ **Enquadrar antes de prender enquadraria a arte de REPOUSO**, que é recta
+                    // — e a cena abre DOBRADA. *O que o `Frame All` tem de medir é o que o dono vai
+                    // ver.*
+                    //
+                    // ⚠️ **A DECISÃO é da cena** (`smoke_bone_envelope::prologo`, gateada sem janela
+                    // nenhuma); o que mora aqui é o EFEITO, porque fechar um painel e empurrar uma
+                    // acção no barramento são duas coisas da `App`. *O molde é o da física: o que
+                    // sai são os CORPOS; o que decide a ordem do quadro fica.*
+                    {
+                        let pro = ph2d_app_vec::smoke_bone_envelope::prologo_do_nivel(
+                            ph2d_app_vec::smoke_bone::nivel(),
+                        );
+                        if let Some(hero) = gfx.hero_screen.as_mut() {
+                            if pro.timeline_fechada {
+                                <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
+                                    hero,
+                                    <ph2d_panel_timeline::TimelinePanel as ph2d_editor_core::panel::Panel>::ID,
+                                    false,
+                                );
+                            }
+                            if pro.enquadrar {
+                                hero.bus.push(
+                                    ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                                        kind: ph2d_editor_core::ViewFocusKind::All,
+                                    },
+                                );
+                            }
+                        }
+                    }
                 }
             }
             _ => {}

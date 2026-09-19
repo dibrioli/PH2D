@@ -54,6 +54,7 @@ diz onde ler o mecanismo:
 | **F9** | ⏸️ **A PELE DEFORMADA NA GPU** (pedido do dono, 2026-09-16) | ⏸️ **PARADA em 2026-09-17, com o gatilho escrito** — a premissa dela (*«o `Smooth` a alisar em qualquer cena»*) foi **refutada por medição** e o botão foi apagado por ordem do dono; o que sobrava é um ganho de RELÓGIO (`~11 %` de um quadro a 8 imagens) e **zero pixels**. Ver F9 abaixo |
 | **F10** | ✅ **O AutoKey com a corrente de ossos** (decisão do dono, 2026-09-16) | ✅ **JÁ ESTAVA FEITO — a nota envelheceu, e auditá-la contra o CÓDIGO custou dez minutos** (2026-09-18). O passe grava **a corrente INTEIRA que a mão moveu** (não só o osso seleccionado) desde 2026-09-14, e também **o ALVO de uma restrição de IK** — porque com uma restrição viva a rotação dos ossos é DERIVADA e o que o artista autora é a âncora. ⚠️ Quem filtra é o **DIFF**: um osso cuja pose é a da curva não cunha nada. Seis gates em [`autokey_bone_tests.rs`](../../shells/desktop/src/render_loop/autokey_bone_tests.rs), entre eles `autokey_records_every_bone_the_hand_moved_not_only_the_selected_one`, `dragging_the_ik_anchor_records_the_anchor` e o controlo `a_bone_the_hand_holds_but_did_not_move_keys_nothing`. ⛔ **O que FALTAVA não era a lei, era o SMOKE:** nenhuma cena do app armava o AutoKey, logo o dono nunca lhe chegou ⇒ cena **`PH2D_VEC_BONE_MEDIA_SMOKE=3`** |
 | **F11** | ✅ **Imagens em 9 fatias e folhas de quadros DEFORMAM com os ossos** (ordem do dono, 2026-09-17) | ✅ **FECHADO** — ver F11 abaixo |
+| **F21** | ✅ **A cena dedicada do ENVELOPE** (*«melhor montar uma cena específica para me mostrar isso»*, 2026-09-18) | ✅ **FECHADA em 2026-09-19 — e ela REFUTOU a lei da F20**: o envelope é inerte em toda forma FECHADA (amplitude `0,000000` numa faixa de `80 ×`), porque uma forma fechada também usa o padrão-ouro desde 15/09. A lei passou a perguntar ao **BIND** e não à mídia. Cena **`PH2D_VEC_BONE_SMOKE=2`** — ver F21 abaixo |
 
 ---
 
@@ -92,9 +93,80 @@ endereço** (`pub use`), a mesma lei que o `bend_live` já aplica no mesmo síti
 
 Mutação **4 de 4** a sangrar; portão `15 101` verdes.
 
-⏳ **ABERTO:** a **cena dedicada** que o dono pediu (*«melhor montar uma cena específica para me
-mostrar isso»*) — ela precisa de uma forma vectorial presa a uma corrente onde **dois** ossos
-disputem a mesma região, que é o único regime em que o envelope se vê.
+✅ **A CENA DEDICADA EXISTE — e ela REFUTOU a lei que esta secção acabara de shipar.** Ver **F21**.
+
+### F21 — ⭐⭐⭐ **O ENVELOPE MANDA ONDE O PADRÃO-OURO NÃO RESOLVEU — a MÍDIA nunca foi a pergunta**
+(a cena que o dono pediu, 2026-09-19)
+
+⛔⛔⛔ **A minha resposta ao dono estava ERRADA, e a F20 shipou a lei errada por cima dela.** Eu
+disse-lhe que *«numa forma vectorial o envelope manda como sempre»*, com o argumento — escrito no
+doc da porta — de que *«o padrão-ouro precisa de uma malha do domínio, e uma Bézier não tem uma»*.
+⚠️ **Essa premissa expirou em 2026-09-15**, quando o `ph2d_vec_skin::pesos::pesos_do_caminho` passou
+a construir a malha do **INTERIOR** de um contorno fechado e a resolver os mesmos BBW. *Quem move o
+número que tornava algo inalcançável tem de reconferir a nota* (§0.0) — e ninguém reconferiu.
+
+**Medido pela porta do produto** (`sonda_do_envelope_no_vector_tests`, `ph2d-skeleton-live`),
+variando o `strength` do osso do meio de `0,1` a `8,0` — uma faixa de **`80 ×`**:
+
+| forma | fechada? | amplitude da deformação |
+|---|---|---:|
+| `Rectangle` · `Ellipse` · `Star` · `Polygon` · `Segment` · `Pie` | fechada | **`0,000000`** |
+| `Line` | ABERTA | `2,03` |
+| `Arc` | ABERTA | `4,25` |
+| `Spiral` | ABERTA | `2,05` |
+
+⇒ **o dono tinha mais razão do que a minha resposta lhe deu:** o envelope é inerte em **toda** forma
+preenchida e em **toda** imagem que resolve. Ele manda num sítio só — onde a tabela de pesos do bind
+está **VAZIA**, porque um caminho **ABERTO** não tem interior, logo não tem domínio para a energia.
+
+⭐⭐ **A lei passou a perguntar ao BIND** (`caiu_na_lei_derivada`): *este bind guarda a tabela do
+padrão-ouro?* As duas mídias respondem pela mesma porta — uma [`SkinnedMesh`] e um [`SkinnedPath`]
+guardam a MESMA coisa —, e a mídia entra só para **escolher o descodificador**. ⛔ Uma `source` que
+nem descodifica responde **não**: ali o quadro pula a pele, e acender a mancha seria prometer um
+efeito que não existe.
+
+⭐⭐⭐ **E a CENA é `PH2D_VEC_BONE_SMOKE=2`** — três fileiras, a mesma corrente de três ossos, a mesma
+dobra; só muda o alcance do osso do meio:
+
+| fileira | o que é | o envelope |
+|---|---|---|
+| `Corda (alcance 1)` | um traço ABERTO, alcance de fábrica | VIVO — mancha e alça |
+| `Corda (alcance 4)` | o MESMO traço, alcance `4` no osso do meio | VIVO — e a corda acaba **noutro sítio** |
+| `Barra preenchida` | o MESMO arco, fechado pela corda | INERTE — sem mancha, sem alça |
+
+⚠️ **A env `PH2D_VEC_BONE_SMOKE` era de PRESENÇA e passou a ter níveis** (`NIVEIS = 2`): ilegível ou
+ausente ⇒ `1`, a cena que o dono já aprovou.
+
+⛔⛔ **A FOTO apanhou QUATRO defeitos que os gates não podiam ver** (`fotografa_cena.sh`, com um
+`HOME` temporário sobre uma CÓPIA do `~/.ph2d` do dono): a terceira fileira **cortada** pela borda
+de baixo (a arrumação dele abre a timeline, que come um terço da altura ⇒ a cena passou a
+**fechá-la e só depois pedir o *Frame All***, nesta ordem) · as duas cordas desenhadas como um **fio
+fino** (um caminho aberto não se vê pelo preenchimento ⇒ traço grosso) · o controlo como uma **barra
+recta com um vinco** (a deformação vectorial corre nos PONTOS DE CONTROLO, e um `RoundRect` tem
+oito ⇒ ele passou a ser o **mesmo arco fechado pela corda**, que tem os mesmos pontos) · e o
+preenchimento de um arco aberto a desenhar **a corda da corda**.
+
+⛔⛔ **E o `when_two_handles_overlap_the_nearer_one_wins` reprovou PELA SEGUNDA VEZ, pela mesma
+forma:** a fixtura dele perde o fenómeno sempre que esta lei muda. ⇒ ela passou a vir de uma PORTA
+que nomeia a condição (`test_support::pele_na_lei_derivada`), em vez de uma `SkinBind` montada à
+mão. *Uma fixtura montada à mão fica abaixo da lei que se está a medir.*
+
+⛔ **Uma mutação SOBREVIVEU e mudou o desenho:** trocar o guarda da ponte (`if nivel() == 2`) por
+`if false` deixava **tudo verde** — *um gate de texto afirma que o código EXISTE, nunca que ele
+CORRE*. ⇒ o guarda saiu: a ponte passou a ter **uma chamada incondicional** (`prologo_do_nivel(n)`)
+e a inércia do `=1` virou uma lei PURA, medida pelos dois lados. O que sobra por medir — a ponte
+CORRER — fica **dívida nomeada**, com um gate que reprova se alguém repuser o guarda.
+
+⚠️ **E o número da dobra é MEDIDO:** a `40°` por junta o alcance `1 → 4` move a corda **`18,4 %`** do
+comprimento dela (a `15°` são `8,9 %`; a `60°`, `27,7 %` — e aí o bloco deixa de caber no ecrã).
+
+Mutação **10 de 10** a sangrar; portão `15 110`, com o único ✗ a ser o
+`an_abandoned_march_returns_nothing_and_returns_fast` — membro **confirmado** da família de flakes de
+fan-out (3 de 3 verde sozinho a `load 18,36`, zero linhas do diff naquela crate).
+
+⏳ **ABERTO, e é decisão do dono:** com o envelope inerte em toda arte preenchida, o `Strength`
+serve **um** caso — um traço aberto preso a ossos (uma corda, um cabelo, um cabo). *Manter o
+controlo escondido por osso é o que shipa; tirá-lo do produto é a outra saída, e é dele.*
 
 ### F19 — ✅ **O CHIP `Auto` DIZ QUE LADO DERIVA** (report do dono, 2026-09-18)
 

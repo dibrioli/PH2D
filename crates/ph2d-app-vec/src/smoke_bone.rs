@@ -37,10 +37,37 @@ use ph2d_skeleton_demo::{
     ponta_da_cadeia, seed_arm_swing, seed_demo_action,
 };
 
+/// ⭐⭐⭐ **DUAS CENAS, e a `=2` nasceu de um report** (2026-09-18, o dono: *«melhor montar uma cena
+/// específica para me mostrar isso»*, sobre o envelope não fazer diferença nenhuma).
+///
+/// - **`=1`** — o DESENHO GANHA OSSOS: o braço, o tentáculo, a folha solta, a imagem e a
+///   bifurcação. É a cena que ele já aprovou.
+/// - **`=2`** — O ENVELOPE: a mesma corda com dois alcances e uma barra preenchida ao lado, que é
+///   onde o alcance não manda. Ver [`crate::smoke_bone_envelope`].
+///
+/// ⚠️ **A env ERA de presença** (`is_some`) e passou a ter níveis: um valor ilegível cai em `1`, o
+/// caminho de omissão — *a cena que o dono já aprovou, nunca uma que ele não pediu*.
+pub const NIVEIS: u32 = 2;
+
 /// **O roteador desta cena** — lê a `PH2D_VEC_BONE_SMOKE`.
 #[must_use]
 pub fn armed() -> bool {
     std::env::var_os("PH2D_VEC_BONE_SMOKE").is_some()
+}
+
+/// O nível pedido, coagido a `1..=NIVEIS`.
+#[must_use]
+pub fn nivel() -> u32 {
+    nivel_de(std::env::var("PH2D_VEC_BONE_SMOKE").ok().as_deref())
+}
+
+/// A LEI do [`nivel`], sem a env — ela não se escreve num gate (`set_var` é `unsafe` na edição 2024
+/// e corre numa árvore com threads).
+#[must_use]
+pub(crate) fn nivel_de(v: Option<&str>) -> u32 {
+    v.and_then(|v| v.trim().parse::<u32>().ok())
+        .unwrap_or(1)
+        .clamp(1, NIVEIS)
 }
 
 /// ⭐ **O rectângulo do BRAÇO PINTADO** — `(centro, tamanho)` em metros de mundo, com a imagem de
@@ -75,6 +102,9 @@ pub fn overlap_bar(ppm: f32) -> ([f32; 2], [f32; 2]) {
 }
 
 /// O 1.º tempo: a arte e os três esqueletos.
+///
+/// ⚠️ **O despacho do nível é AQUI e não na shell**: a ponte dela é a máquina de dois tempos, e
+/// *o que decide a ordem do quadro fica; o que sai são os CORPOS*.
 pub fn build(
     scene: &mut ph2d_vec_scene::VecScene,
     sim: &mut ph2d_ecs::SimWorld,
@@ -83,6 +113,10 @@ pub fn build(
     ppm: f32,
     st: &mut crate::state::VecState,
 ) {
+    if nivel() == 2 {
+        crate::smoke_bone_envelope::build(scene, sim, st);
+        return;
+    }
     // ⭐ O BRAÇO e o TENTÁCULO: barras deitadas, com a cadeia pelo MEIO delas.
     let braco = scene.push_path(shape(
         ShapeKind::RoundRect,
@@ -169,7 +203,7 @@ pub fn build(
         eprintln!("[vec-bone-smoke] a BIFURCACAO nao montou -- PARE");
     }
     st.bone_smoke_img = img;
-    st.bone_smoke_pend = Some([(braco, a), (tentaculo, t), (folha, f)]);
+    st.bone_smoke_pend = Some(vec![(braco, a), (tentaculo, t), (folha, f)]);
     st.bone_smoke_step = 1;
 }
 
@@ -187,6 +221,10 @@ pub fn bind(
     ppm: f32,
     st: &mut crate::state::VecState,
 ) {
+    if nivel() == 2 {
+        crate::smoke_bone_envelope::bind(scene, sim, st);
+        return;
+    }
     st.bone_smoke_step = 2;
     let Some(pecas) = st.bone_smoke_pend.take() else {
         return;
@@ -494,7 +532,45 @@ fn arm_pixels() -> Vec<u8> {
 }
 
 #[cfg(test)]
+#[path = "smoke_bone_despacho_tests.rs"]
+mod smoke_bone_despacho_tests;
+
+#[cfg(test)]
 mod tests {
+    /// ⚠️⚠️ **O nível tem DUAS leis e elas não são a mesma** (a lição que a família das mídias já
+    /// pagou): **ilegível ou ausente ⇒ `1`**, o caminho de OMISSÃO — a cena que o dono já aprovou —,
+    /// e **legível e fora de faixa ⇒ COAGIDO** à faixa, que preserva *«ele pediu uma alta»*.
+    ///
+    /// ⭐ A última asserção é a que impede a [`super::NIVEIS`] de mentir: o topo declarado tem de ser
+    /// ALCANÇÁVEL, senão acrescentar uma cena e esquecer a constante deixa-a inatingível.
+    ///
+    /// ⚠️ **E a ausência tem de dar `1` e não `0`:** a env ERA de presença (`is_some`), e todo
+    /// comando que o dono já tem escrito é `PH2D_VEC_BONE_SMOKE=1` — ⛔ mas também há quem a arme
+    /// com `=`, que é a env VAZIA.
+    #[test]
+    fn o_nivel_da_cena_dos_ossos_e_coagido_a_faixa() {
+        for (v, esperado, porque) in [
+            (Some("1"), 1, "a cena que o dono ja' aprovou"),
+            (Some("2"), 2, "a cena do ENVELOPE"),
+            (
+                Some("9"),
+                super::NIVEIS,
+                "legivel e alto demais: COAGIDO ao topo, nao mandado para o principio",
+            ),
+            (Some("0"), 1, "legivel e baixo demais: coagido ao piso"),
+            (Some(""), 1, "a env vazia e' como um `env VAR=` a arma"),
+            (Some("sim"), 1, "um valor ilegivel cai na cena de omissao"),
+            (None, 1, "sem env"),
+        ] {
+            assert_eq!(super::nivel_de(v), esperado, "{porque} (pedido: {v:?})");
+        }
+        assert_eq!(
+            super::nivel_de(Some(&super::NIVEIS.to_string())),
+            super::NIVEIS,
+            "o topo declarado tem de ser alcancavel — senao a `NIVEIS` mente sobre quantas cenas ha'"
+        );
+    }
+
     use super::{overlap_bar, painted_arm_rect};
 
     /// ⭐⭐ **A peça que ensina a ORDEM tem de ATRAVESSAR a imagem — e não a tapar.**

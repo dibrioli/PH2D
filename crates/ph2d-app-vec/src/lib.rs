@@ -160,6 +160,7 @@ pub mod pick;
 pub mod shape_live;
 pub mod smoke_appearance;
 pub mod smoke_bone;
+pub mod smoke_bone_envelope;
 /// ⭐⭐⭐ Um canvas do Painter PRESO a ossos e dobrado — a cena que faltava à cura das guias chatas.
 pub mod smoke_bone_media;
 pub mod smoke_bone_paint;
@@ -222,7 +223,10 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
             env: "PH2D_VEC_BONE_MEDIA_SMOKE",
             max_level: smoke_bone_media::NIVEIS,
         },
-        r("PH2D_VEC_BONE_SMOKE"),
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VEC_BONE_SMOKE",
+            max_level: smoke_bone::NIVEIS,
+        },
         ph2d_app_host::SmokeRouter {
             env: "PH2D_VEC_BONE_PAINT_SMOKE",
             max_level: smoke_bone_paint::NIVEIS,

@@ -69,6 +69,44 @@ pub mod test_support {
             .clone()
     }
 
+    /// ⭐⭐⭐ **UMA PELE QUE CAIU NA LEI DERIVADA, presa a `ossos`** — a fixtura de *«aqui o envelope
+    /// ainda manda»*.
+    ///
+    /// ⛔⛔ **Ela atravessa a fronteira porque uma fixtura escrita à mão do outro lado já se partiu
+    /// DUAS vezes.** O gate `when_two_handles_overlap_the_nearer_one_wins` (na
+    /// `ph2d-app-skeleton`) precisa de um osso com região de influência, e montava a
+    /// [`ph2d_skeleton_ecs::SkinBind`] com `source: Vec::new()`. Isso funcionou enquanto a lei
+    /// perguntava pela MÍDIA, e deixou de funcionar no dia em que ela passou a perguntar pelo
+    /// **BIND** — *uma fixtura montada à mão fica abaixo da lei que se está a medir*, e a cura é
+    /// sempre da fixtura, nunca da lei.
+    ///
+    /// ⚠️ **O que a torna honesta é a tabela VAZIA e o caminho ABERTO**: é exactamente o que o
+    /// [`crate::skin_live::bind`] escreve quando o padrão-ouro não tem domínio para resolver.
+    /// ⛔ Uma `source` que nem descodifica NÃO serve — ali o quadro pula a pele e não há deformação
+    /// nenhuma para o alcance governar.
+    #[must_use]
+    pub fn pele_na_lei_derivada(ossos: &[ph2d_ecs::StableId]) -> ph2d_skeleton_ecs::SkinBind {
+        let guardado = crate::skinned_mesh::SkinnedPath {
+            path: ph2d_vec_scene::cook(
+                ph2d_vec_scene::ShapeKind::Line,
+                [0.0, 0.0],
+                [1.0, 0.0],
+                &[],
+            ),
+            pesos: Vec::new(),
+        };
+        ph2d_skeleton_ecs::SkinBind::new(
+            postcard::to_allocvec(&guardado).expect("a pele codifica"),
+            ossos
+                .iter()
+                .map(|bone| ph2d_skeleton_ecs::Tendon {
+                    bone: *bone,
+                    rest: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                })
+                .collect(),
+        )
+    }
+
     /// O maior desvio, em qualquer eixo, entre os vértices de dois estados do mesmo caminho.
     #[must_use]
     pub fn pior_desvio(a: &VecPath, b: &VecPath) -> f64 {
@@ -90,3 +128,7 @@ pub mod test_support {
 #[cfg(test)]
 #[path = "sonda_do_envelope_tests.rs"]
 mod sonda_do_envelope_tests;
+
+#[cfg(test)]
+#[path = "sonda_do_envelope_no_vector_tests.rs"]
+mod sonda_do_envelope_no_vector_tests;

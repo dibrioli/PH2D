@@ -47,54 +47,91 @@ pub fn bone_roots(sim: &SimWorld) -> Vec<Entity> {
 #[path = "esqueletos_tests.rs"]
 mod tests;
 
-/// ⭐⭐⭐ **O ENVELOPE AINDA MANDA EM ALGUMA COISA NESTA CENA?** (report do dono, 2026-09-18:
-/// *«Por que o envelope já não influencia na deformação?»*).
+/// ⭐⭐⭐ **ESTE BIND CAIU NA LEI DERIVADA?** — a pergunta de que o envelope depende, e a única que
+/// o separa do padrão-ouro.
 ///
-/// ⛔⛔⛔ **Ele deixou de mandar numa IMAGEM, e isso está MEDIDO há waves** (a tabela vive no doc do
-/// [`crate::skin_image`] via a cena do pincel): os pesos do **padrão-ouro** são resolvidos *sobre a
-/// arte* e não sobre um raio, logo `strength = 1` e `strength = 2` dão a MESMA deformação, coluna a
-/// coluna. ⚠️ **O envelope não morreu — MUDOU DE DONO:** uma forma **vectorial** presa ao mesmo
-/// esqueleto continua na lei euclidiana (o padrão-ouro precisa de uma malha do domínio, e uma
-/// Bézier não tem uma), e ali ele manda como sempre.
+/// ⚠️ **Ela é sobre o BIND e nunca sobre a mídia.** Uma [`crate::skinned_mesh::SkinnedMesh`] (uma
+/// imagem) e um [`crate::skinned_mesh::SkinnedPath`] (uma forma) guardam a MESMA coisa: a tabela
+/// dos *Bounded Biharmonic Weights* resolvida ao prender, ou **nada**. Com tabela, o quadro lê os
+/// pesos guardados e o `strength` **não entra na conta**; sem tabela, o quadro cai na lei euclidiana
+/// (`bump` sobre a distância ao eixo), que é onde o alcance manda.
 ///
-/// ⇒ o painel pintava um número que, num rig só de imagens, **não muda um pixel** — a espécie de
-/// controlo morto que o `§5.0` nomeia, e que o dono apanhou perguntando.
+/// ⛔ **Os bytes são opacos de propósito** e quem os sabe ler é quem sabe o que a coisa É — a lei
+/// que o [`crate::skin_image::skinned_mesh_of`] já escreve. ⇒ a mídia entra aqui só para ESCOLHER o
+/// descodificador, nunca para decidir a resposta.
 ///
-/// ⚠️ **A pergunta é da CENA e não do osso, de propósito:** o `SkinBind` guarda a malha e os pesos,
-/// **não a que ossos ficou preso** — logo *«este esqueleto tem forma vectorial?»* não é derivável
-/// daqui. A pergunta mais larga erra sempre para o lado **conservador**: com uma forma vectorial
-/// presa em qualquer sítio, o campo fica à vista. *Esconder um controlo vivo é pior do que mostrar
-/// um inerte.*
+/// ⚠️ **Vazia é uma resposta, e é a que interessa:** um caminho ABERTO não tem interior, logo não
+/// tem domínio, logo não tem pesos; e uma imagem cujo solver não convergiu escreve o mesmo vazio
+/// (com a queixa no log). *Nos dois casos o envelope volta a mandar.*
+#[must_use]
+fn caiu_na_lei_derivada(mundo: &ph2d_ecs::World, e: ph2d_ecs::Entity) -> bool {
+    let Some(skin) = mundo.get::<ph2d_skeleton_ecs::SkinBind>(e) else {
+        return false;
+    };
+    if crate::skin_image::is_skinned_image(mundo, e) {
+        return match postcard::from_bytes::<crate::skinned_mesh::SkinnedMesh>(&skin.source) {
+            // ⛔ `ossos() == 0` e não `pesos.is_empty()`: a tabela que **não fecha** com a malha é
+            // recusada a jusante e cai na mesma lei derivada — as duas leituras têm de concordar,
+            // senão o gizmo some exactamente no caso em que o alcance volta a mandar.
+            Ok(m) => !m.valida() || m.ossos() == 0,
+            // Uma fonte que nem descodifica é pulada pelo quadro: não há deformação nenhuma para o
+            // envelope governar, e acender a mancha ali seria prometer um efeito que não existe.
+            Err(_) => false,
+        };
+    }
+    match postcard::from_bytes::<crate::skinned_mesh::SkinnedPath>(&skin.source) {
+        Ok(m) => !m.valida() || m.ossos() == 0,
+        Err(_) => false,
+    }
+}
+
+/// ⭐⭐⭐ **O ENVELOPE AINDA MANDA NESTE OSSO?** (report do dono, 2026-09-18:
+/// *«Por que o envelope já não influencia na deformação?»* e, no dia seguinte, *«não vi em nenhum
+/// dos casos o envelope fazer diferença»*).
 ///
-/// ⚠️⚠️ **LIMITE MEDIDO, necessário-mas-não-suficiente:** o envelope também é **inerte** numa forma
-/// presa a **UM** osso — os pesos renormalizam e o único osso leva sempre a fatia inteira (medido:
-/// `[1.0]` a `strength = 0,3` **e** a `4,0`; com **três** ossos vai de `[1, 0, 0]` a
-/// `[0,42, 0,58, 0]`). *O alcance só decide quando DOIS ossos disputam o mesmo ponto.* ⛔ Contar
-/// essa disputa por ponto seria caro e frágil ⇒ esta porta esconde o caso **claro** e mostra o
-/// resto, que é o lado conservador.
+/// ⛔⛔⛔ **A REDACÇÃO ANTERIOR ESTAVA ERRADA, e a medição que a derruba está na
+/// [`crate::sonda_do_envelope_no_vector_tests`].** Ela perguntava *«há aqui uma forma VECTORIAL
+/// presa?»*, com o argumento escrito de que *«o padrão-ouro precisa de uma malha do domínio, e uma
+/// Bézier não tem uma»*. ⚠️ **Essa premissa expirou em 2026-09-15**, quando o
+/// `ph2d_vec_skin::pesos::pesos_do_caminho` passou a construir a malha do INTERIOR de um contorno
+/// fechado e a resolver os mesmos BBW. Medido, pela porta do produto, sobre o mesmo esqueleto de
+/// três ossos, variando o `strength` do do meio de `0,1` a `8,0`:
 ///
-/// ⚠️ **E a pergunta por CENA foi APAGADA, não guardada:** ela ficou sem chamador no instante em que
-/// esta nasceu, e *uma lei viva que nenhum gesto consulta é uma lei órfã*.
+/// | forma | fechada? | amplitude da deformação |
+/// |---|---|---:|
+/// | `Rectangle` · `Ellipse` · `Star` · `Polygon` | fechada | **`0,000000`** |
+/// | `Line` | ABERTA | `2,03` |
+/// | `Arc` | ABERTA | `4,25` |
+/// | `Spiral` | ABERTA | `2,05` |
 ///
-/// ⛔⛔⛔ **E ELA É POR OSSO, não por cena — a 1.ª redacção errou por uma premissa MINHA que caiu.**
-/// Eu escrevi que *«o `SkinBind` guarda a malha e os pesos, **não** a que ossos ficou preso»*, e ele
-/// guarda: cada [`ph2d_skeleton_ecs::Tendon`] carrega o `StableId` do osso. ⇒ a pergunta larga
-/// («a CENA tem alguma forma vectorial?») acendia a mancha em **todos** os ossos de uma cena mista,
-/// e foi a cena que o dono pediu — a que mostra as duas mídias lado a lado — que a expôs.
+/// ⇒ *o dono tinha mais razão do que a minha resposta lhe deu*: o envelope é inerte em **toda**
+/// forma preenchida e em **toda** imagem que resolve — a mídia nunca foi a pergunta certa.
+///
+/// ⭐⭐ **A pergunta certa é a do BIND:** ele guarda a tabela do padrão-ouro, ou não guarda? Ver
+/// [`caiu_na_lei_derivada`]. Um osso cujo alcance ainda governa alguma coisa é um osso que alguma
+/// pele consulta pela lei euclidiana.
+///
+/// ⚠️⚠️ **LIMITE MEDIDO, necessário-mas-não-suficiente:** o envelope também é **inerte** numa pele
+/// presa a **UM** osso — os pesos renormalizam e o único osso leva sempre a fatia inteira (medido
+/// na [`crate::sonda_do_envelope_tests`]: `[1.0]` a `strength = 0,3` **e** a `4,0`; com **três**
+/// ossos vai de `[1, 0, 0]` a `[0,42, 0,58, 0]`). *O alcance só decide quando DOIS ossos disputam o
+/// mesmo ponto.* ⛔ Contar essa disputa por ponto seria caro e frágil ⇒ esta porta esconde o caso
+/// **claro** e mostra o resto, que é o lado conservador — *esconder um controlo vivo é pior do que
+/// mostrar um inerte.*
+///
+/// ⚠️ **Sem `StableId` a resposta é SIM**, porque nenhum tendão pode nomear um osso acabado de
+/// nascer: ali a ausência de prova não é prova de ausência.
 #[must_use]
 pub fn o_envelope_deste_osso_manda(sim: &SimWorld, osso: ph2d_ecs::Entity) -> bool {
     let mundo = sim.world();
     let Some(id) = mundo.get::<ph2d_ecs::StableId>(osso).copied() else {
-        // Sem identidade durável nenhum tendão o pode nomear — e a resposta conservadora é SIM,
-        // para nunca esconder um controlo vivo num osso acabado de nascer.
         return true;
     };
     let Some(mut q) = mundo.try_query::<(ph2d_ecs::Entity, &ph2d_skeleton_ecs::SkinBind)>() else {
         return false;
     };
-    q.iter(mundo).any(|(e, b)| {
-        !crate::skin_image::is_skinned_image(mundo, e) && b.tendons.iter().any(|t| t.bone == id)
-    })
+    q.iter(mundo)
+        .any(|(e, b)| b.tendons.iter().any(|t| t.bone == id) && caiu_na_lei_derivada(mundo, e))
 }
 
 #[must_use]

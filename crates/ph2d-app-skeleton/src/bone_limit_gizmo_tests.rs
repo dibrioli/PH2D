@@ -198,27 +198,28 @@ fn when_two_handles_overlap_the_nearer_one_wins() {
     if let Some(mut o) = sim.world_mut().get_mut::<Bone>(ombro) {
         o.strength = (arc.handle_max[1] - arc.apex[1]).abs() / comp;
     }
-    // ⚠️⚠️ **E o osso precisa de uma FORMA VECTORIAL presa, senão a região não existe** (2026-09-18):
+    // ⚠️⚠️ **E o osso precisa de uma PELE QUE CAIU NA LEI DERIVADA, senão a região não existe**:
     // desde o report do dono (*«o gizmo do envelope fica sempre visível mesmo quando não é
-    // usado?»*) a mancha só nasce onde o envelope manda, e num osso que nenhuma forma vectorial usa
-    // ela é `None`. *A lei mudou debaixo desta fixtura e ela deixou de conter o fenómeno* — a cura é
-    // da fixtura, nunca da lei.
+    // usado?»*) a mancha só nasce onde o envelope manda.
+    //
+    // ⛔⛔ **Esta fixtura já se partiu DUAS vezes, e as duas por a lei ter mudado debaixo dela.** Em
+    // 2026-09-18 ela passou a precisar de uma forma vectorial presa; em 2026-09-19 a medição
+    // mostrou que uma forma **fechada** também usa o padrão-ouro, e a lei passou a perguntar ao
+    // BIND (*«há tabela de pesos guardada?»*) em vez da mídia — e a `source: Vec::new()` que aqui
+    // estava nem sequer descodifica. *Uma fixtura montada à mão fica abaixo da lei que se está a
+    // medir*, e a cura é da fixtura, nunca da lei.
+    //
+    // ⭐ ⇒ ela passa a vir da PORTA que nomeia a condição
+    // ([`ph2d_skeleton_live::test_support::pele_na_lei_derivada`]): um caminho ABERTO com tabela
+    // vazia, que é o que o `bind` escreve quando o padrão-ouro não tem domínio.
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let id = sim
         .world()
         .get::<ph2d_ecs::StableId>(ombro)
         .copied()
         .expect("o osso tem identidade duravel");
-    sim.world_mut().spawn((
-        ph2d_ecs::Transform::IDENTITY,
-        ph2d_skeleton_ecs::SkinBind {
-            source: Vec::new(),
-            tendons: vec![ph2d_skeleton_ecs::Tendon {
-                bone: id,
-                rest: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-            }],
-        },
-    ));
+    let pele = ph2d_skeleton_live::test_support::pele_na_lei_derivada(&[id]);
+    sim.world_mut().spawn((ph2d_ecs::Transform::IDENTITY, pele));
     let (r, a, b) = ph2d_skeleton_live::skin_live::influence_region(&sim, ombro.to_bits())
         .expect("o osso tem região de influência");
     let forca = ph2d_skeleton_render::influence_handle(a, b, r).expect("a alça da força existe");

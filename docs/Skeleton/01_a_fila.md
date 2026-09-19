@@ -689,6 +689,23 @@ num único peso de âncora. *É dívida de tamanho, nunca de resultado.*
 `uma_alca_move_se_pelo_peso_da_ancora_dela`, **na mesma fixtura**, com o veredito invertido e o
 controlo positivo dentro) e o `o_indicador_segue_a_arte_do_traco_e_nao_o_dedo`.
 
+**E o ROTEIRO da cena passou a ENSINAR o pincel** — ele nunca o mencionava, em **três** reports do
+dono sobre ele. ⛔⛔ **E o osso que ele nomeia é o do MEIO, nunca a PONTA, medido por FOTOGRAFIA:**
+a 1.ª redacção reaproveitava o nome que a lição do *Onion* já tinha à mão (o da ponta) e dali a
+parte visível do braço lê-se **quase toda azul** — a zona que a ponta governa sozinha cai atrás do
+painel *Bones*. ⚠️ *É a mesma armadilha do «Bone 2» do 1.º report, e ela voltou porque o nome mais
+fácil de alcançar no código não era o nome certo para o gesto.* ⭐ A derivação virou **porta**
+(`osso_do_meio`) por causa de mais uma mutação sobrevivente: com ela inline, o gate tinha de
+**copiar** a conta — e uma cópia julga a cópia.
+
+**Mutação `11 + 2` a sangrar, TRÊS sobreviveram à primeira e as três eram achados** (a barra da
+rampa cega ao espaçamento uniforme em OKLab · o filtro por tendão que era a segunda resposta à
+mesma pergunta · o instantâneo posado que podia divergir do desenho sem nada acusar). Portão:
+**15 280** testes verdes, censos da árvore `90/90`, clippy `-D warnings` a zero. ⚠️ A `15 281.ª`
+corrida acusou o `the_cost_of_depth_is_linear_not_explosive` — **membro nomeado** da família de
+flakes de fan-out do `CLAUDE.md` §5.0, com **zero linhas** do diff naquela crate e a `line/UIUX` a
+correr a suíte dela na mesma máquina (`load 30`); `2` de `3` verde isolado.
+
 ### F19 — ✅ **O CHIP `Auto` DIZ QUE LADO DERIVA** (report do dono, 2026-09-18)
 
 *«IK Bend não funcionou com Auto IK e trocando CCw por CW no painel lateral»* — ⭐ **reproduzido, e

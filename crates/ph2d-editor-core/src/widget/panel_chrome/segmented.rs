@@ -130,7 +130,7 @@ pub fn paint_segmented_button_in_group(
         scene,
         label,
         rect,
-        TypeToken::Sm.px(),
+        segmented_label_font(),
         resolve(fg, theme),
     );
 }
@@ -142,6 +142,14 @@ pub fn paint_segmented_button_in_group(
 /// the Widget Gallery's Low/Mid/High, previously had zero gap).
 pub fn segmented_gap() -> f32 {
     crate::widget::SEGMENT_HAIRLINE
+}
+
+/// ⭐⭐ **O TAMANHO em que uma peça segmentada escreve o rótulo dela** — irmã da
+/// [`crate::widget::button_label_font`], e pela mesma razão: quem **dispõe** a fileira
+/// ([`crate::widget::segment_rects_for`]) tem de medir na fonte em que se **pinta**.
+#[must_use]
+pub fn segmented_label_font() -> f32 {
+    TypeToken::Sm.px()
 }
 
 /// Canonical segmented / toggle GROUP: lays out `segments` as N

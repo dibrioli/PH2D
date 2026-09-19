@@ -220,3 +220,145 @@ fn a_grouped_button_rounds_only_its_outer_corners_and_a_lone_one_is_unchanged() 
          dentro continuam arredondadas e o par encostado le^-se como dois controlos"
     );
 }
+
+/// ⭐⭐⭐ **E A FILEIRA MEDE AS PALAVRAS — uma que CABE INTEIRA nunca corta a peça mais larga.**
+///
+/// ⛔⛔ **Segunda metade da lei, medida em 2026-09-19** pela varredura de elisões com o Inspector
+/// armado: o [`ph2d_editor_core::widget::segment_rects`] reparte em partes **IGUAIS**, e *uma
+/// média não é um máximo* — `w/n` pode ser menor do que UMA das peças precisa mesmo quando a soma
+/// delas cabe de sobra. `+ Add Transition | x Remove Transition` recebia `118 px` cada e pintava
+/// **`x Remove Transi…`** com a fileira a caber inteira.
+///
+/// ⚠️ **A fixtura é a do report**, com a largura DERIVADA (a soma das duas larguras naturais mais
+/// o traço), e não um número escolhido: é isso que torna a premissa — *ela cabia* — parte do gate
+/// em vez de uma afirmação no comentário.
+///
+/// ⭐ **As duas metades são obrigatórias.** A negativa (a divisão igual CORTA) é o controlo
+/// positivo: sem ela, uma fixtura em que nada é cortado passaria com a lei apagada.
+///
+/// (Mutação: `segment_rects_for` devolver `segment_rects(row, labels.len())` ⇒ a 1.ª metade acusa
+/// a peça larga, RED.)
+#[test]
+fn uma_fileira_que_cabe_nunca_corta_a_peca_mais_larga() {
+    use ph2d_editor_core::paint::{label_budget, rect_for_label};
+    use ph2d_editor_core::widget::{button_label_font, segment_rects, segment_rects_for};
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_text::TextSystem;
+
+    let mut ts = TextSystem::without_system_fonts();
+    let font = button_label_font();
+    let rotulos = [
+        ph2d_i18n::tr("panel.inspector.statemachine.add_transition"),
+        ph2d_i18n::tr("panel.inspector.statemachine.x_remove_transition"),
+    ];
+    let palavras: Vec<f32> = rotulos.iter().map(|r| ts.prefix_width(r, font)).collect();
+    // A coluna é a que a fileira PEDE — nem um pixel a mais. ⚠️ **Ao PIXEL**, porque a costura de
+    // um grupo cai em inteiros: pedir a soma fraccionária seria pedir uma coluna que não existe, e
+    // a lei leria «não cabe» sobre uma fileira que o artista vê caber.
+    let w = rect_for_label(palavras[0]).ceil() + rect_for_label(palavras[1]).ceil() + 1.0;
+    let row = Rect::new(0.0, 0.0, w, 30.0);
+
+    // ── A LEI ────────────────────────────────────────────────────────────────
+    let seg = segment_rects_for(row, &rotulos, font, &mut ts);
+    assert_eq!(seg.len(), 2);
+    for (i, (rect, _)) in seg.iter().enumerate() {
+        assert!(
+            label_budget(rect.w) >= palavras[i],
+            "a peca {i} ({:?}) pede {:.1} px de palavra e recebeu uma caixa de {:.1} \
+             (orcamento {:.1}) — e a fileira CABIA em {w:.1}",
+            rotulos[i],
+            palavras[i],
+            rect.w,
+            label_budget(rect.w)
+        );
+    }
+    // A fileira acaba exactamente na borda da coluna.
+    let fim = seg[1].0.x + seg[1].0.w;
+    assert!(
+        (fim - w).abs() < 1e-3,
+        "a fileira acaba em {fim:.2} numa coluna de {w:.2}"
+    );
+
+    // ── O CONTROLO POSITIVO: em partes IGUAIS, a mais larga É cortada ────────
+    let iguais = segment_rects(row, 2);
+    let largo = if palavras[1] >= palavras[0] { 1 } else { 0 };
+    assert!(
+        label_budget(iguais[largo].0.w) < palavras[largo],
+        "a fixtura nao contem o fenomeno: em partes iguais a peca mais larga ({:?}, {:.1} px) \
+         ainda cabia em {:.1} — sem isto a metade de cima passa com a lei apagada",
+        rotulos[largo],
+        palavras[largo],
+        iguais[largo].0.w
+    );
+}
+
+/// ⭐⭐ **A DEGENERADA: palavras do mesmo tamanho devolvem o que a divisão igual devolvia, AO
+/// PIXEL.**
+///
+/// ⛔ Sem ela, medir as palavras teria movido toda fileira do app cujas peças já eram do mesmo
+/// tamanho (`M | S` do mixer, os nove tipos de grelha) — e o diff passaria a ser ilegível.
+#[test]
+fn com_palavras_iguais_a_fileira_nao_se_mexe() {
+    use ph2d_editor_core::widget::{button_label_font, segment_rects, segment_rects_for};
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_text::TextSystem;
+
+    let mut ts = TextSystem::without_system_fonts();
+    let row = Rect::new(7.0, 3.0, 240.0, 22.0);
+    let rotulos = ["Mute", "Mute", "Mute"];
+    let medido = segment_rects_for(row, &rotulos, button_label_font(), &mut ts);
+    let igual = segment_rects(row, rotulos.len());
+    assert_eq!(medido.len(), igual.len());
+    for (i, ((a, ca), (b, cb))) in medido.iter().zip(igual.iter()).enumerate() {
+        assert!(
+            (a.x - b.x).abs() < 1e-3 && (a.w - b.w).abs() < 1e-3,
+            "a peca {i} mudou de sitio: medida x={:.2} w={:.2}, igual x={:.2} w={:.2}",
+            a.x,
+            a.w,
+            b.x,
+            b.w
+        );
+        assert_eq!(ca, cb, "a peca {i} mudou de posicao no grupo");
+    }
+}
+
+/// ⛔⛔ **NENHUM PAINEL REPARTE UMA FILEIRA DE PEÇAS COM RÓTULO EM PARTES IGUAIS.**
+///
+/// ⚠️ O [`ph2d_editor_core::widget::segment_rects`] continua a existir e a ser a base de toda a
+/// família (o `block_cells` chama-o), mas o que um PAINEL dispõe tem sempre uma palavra dentro —
+/// e para essas a porta é a [`ph2d_editor_core::widget::segment_rects_for`], que as mede.
+///
+/// ⭐ A catraca está a **ZERO**: os 13 sítios que existiam passaram à porta nova em 2026-09-19, e
+/// já não há linha onde escrever uma fileira que corta a palavra mais larga.
+#[test]
+fn nenhum_painel_reparte_uma_fileira_de_rotulos_em_partes_iguais() {
+    let root = repo_root();
+    let mut found = Vec::new();
+    for p in panel_sources() {
+        let rel = p
+            .strip_prefix(&root)
+            .unwrap_or(&p)
+            .to_string_lossy()
+            .replace('\\', "/");
+        let Ok(src) = fs::read_to_string(&p) else {
+            continue;
+        };
+        for (n, line) in src.lines().enumerate() {
+            let t = line.trim();
+            if t.starts_with("//") {
+                continue;
+            }
+            if line.contains("segment_rects(") {
+                found.push(format!("{rel}:{}: {t}", n + 1));
+            }
+        }
+    }
+    assert!(
+        found.is_empty(),
+        "{} sitio(s) repartem uma fileira em partes IGUAIS. Uma media nao e' um maximo: a fileira \
+         pode caber inteira e cortar a peca mais larga na mesma. Chame \
+         `ph2d_editor_core::widget::segment_rects_for`, que mede as palavras:\n  {}",
+        found.len(),
+        found.join("\n  ")
+    );
+}

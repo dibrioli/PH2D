@@ -138,7 +138,21 @@ fn buttons(
     if n == 0 {
         return y;
     }
-    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, BTN_H), n);
+    // ⭐ A fileira mede as PALAVRAS, e só as que de facto vão ser pintadas: com `+` escondido no
+    //    tecto, a fileira tem UMA peça e o rótulo dela é o único a medir.
+    let rotulos: Vec<&str> = [
+        (can_add, tr("panel.inspector.actions.plus_add_action")),
+        (can_remove, tr("panel.inspector.actions.x_remove_action")),
+    ]
+    .into_iter()
+    .filter_map(|(ativo, l)| ativo.then_some(l))
+    .collect();
+    let seg = ph2d_editor_core::widget::segment_rects_for(
+        Rect::new(x, y, w, BTN_H),
+        &rotulos,
+        ph2d_editor_core::widget::button_label_font(),
+        text_system,
+    );
     let mut cell = 0usize;
     if can_add {
         let (rect, group) = seg[cell];
@@ -198,7 +212,7 @@ pub(crate) fn verb_options(labels: &[String]) -> Vec<DropdownOption<u8>> {
 ///
 /// ⚠️ **Era uma fileira de cinco botões até 2026-09-09** (*«as actions deveriam ficar num dropdown
 /// e não em muitos botões»*, report do dono). E a fileira não era só ruidosa: ela **escala mal**.
-/// O `segment_rects` reparte a largura do painel por `N`, e esta secção existe para CRESCER — o
+/// O `segment_rects_for` reparte a largura do painel pelas `N` palavras, e esta secção existe para CRESCER — o
 /// doc do `SignalVerb` já nomeia os verbos que faltam (som, animação, spawn) —, logo o sexto verbo
 /// entregaria rótulos cortados numa coluna estreita. *Um chip mostra UM nome, inteiro.*
 ///

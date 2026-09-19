@@ -18,6 +18,8 @@
 //! ⇒ o mapa duro é **privado**, e foi a privacidade que fez o **compilador** enumerar os sítios.
 //! *É a diferença entre uma convenção e uma lei.*
 
+mod cor;
+
 use super::ButtonState;
 use ph2d_tokens::{ColorToken, Theme};
 

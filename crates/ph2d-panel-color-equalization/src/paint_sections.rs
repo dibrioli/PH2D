@@ -18,8 +18,8 @@ use crate::state::{self, PendingDropdownPopover};
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, Dropdown, DropdownOption, paint_button, paint_dropdown_chip,
-    paint_slider_with_chip_layout_adaptive, segment_rects,
+    Button, ButtonKind, ButtonState, Dropdown, DropdownOption, button_label_font, paint_button,
+    paint_dropdown_chip, paint_slider_with_chip_layout_adaptive, segment_rects_for,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -467,9 +467,15 @@ pub(crate) fn paint_apply_cta_section(
     let mut y = y_in + layout.row_h + layout.row_gap;
 
     // ⭐⭐ `Cancel | Apply` é UM par (wave 20) — ver o irmão no `ph2d-panel-padding`.
-    let seg = segment_rects(
+    // ⭐ A fileira mede as PALAVRAS — ver `segment_rects_for`.
+    let seg = segment_rects_for(
         Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h),
-        2,
+        &[
+            tr("panel.color_eq.adjust.cancel"),
+            tr("panel.color_eq.adjust.apply"),
+        ],
+        button_label_font(),
+        text_system,
     );
     let cancel_state = store.button_visual(ids::CEQ_CANCEL);
     let cancel = Button::new(ids::CEQ_CANCEL, tr("panel.color_eq.adjust.cancel"))

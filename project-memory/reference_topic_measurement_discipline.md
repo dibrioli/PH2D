@@ -570,3 +570,46 @@ para não ficar verde a medir nada. Contados os rótulos **por painel**:
 **Irmã:** a mesma jornada mostrou que *o `desarma` de uma fixtura era uma promessa num doc-comment*
 — apagá-lo não acordava gate nenhum. A régua honesta é: **pintar VAZIO, armar, desarmar, pintar
 VAZIO — e as duas leituras do vazio têm de ser a mesma.**
+
+---
+
+## ⛔⛔ Uma lei que reparte com `floor` não se cumpre se os naturais forem FRACCIONÁRIOS (2026-09-19)
+
+A lei *«numa fileira que cabe, cada peça leva pelo menos o que a palavra dela pede»* foi escrita
+como `floor(natural + folga/n)` — e **reprovou no próprio gate que a devia provar**: `+ Add
+Transition` pede `102,4 px` de palavra, a caixa saiu `118,0` e o orçamento dela `102,0`. Défice:
+**`0,4 px`**, e a elisão compara `<=` ⇒ *a palavra INTEIRA é cortada por quatro décimos de pixel*.
+
+⭐ A causa é aritmética e não de desenho: as larguras **têm** de cair em pixels inteiros (a costura
+de um grupo é de 1 px), logo `floor(natural + folga)` fica abaixo de `natural` sempre que a folga
+for menor que a parte fraccionária dele. A cura é **subir os naturais ao pixel ANTES de repartir a
+folga** — aí `natural` é inteiro, `folga >= 0`, e a desigualdade passa a valer por construção.
+
+⚠️ **E a FIXTURA tem de subir com a lei:** o gate construía a coluna como a soma fraccionária dos
+naturais, que depois do tecto deixa de caber — a lei lia «não cabe» sobre uma fileira que o artista
+vê caber. *Uma régua cuja granularidade não é a do produto mede outro programa.*
+
+⭐⭐ Irmã declarada de três pares ida/volta que esta casa curou pelo mesmo motivo no mesmo dia
+(`rect_for_label`, `dropdown_chip_width_for`, `Tag::width_for`), e a lição é a mesma uma escala
+acima: **a álgebra fecha e a aritmética de máquina não** — uma lei de repartição confere-se contra
+a LEI que a consome, nunca contra a expressão que a escreveu.
+
+**How to apply:** ao escrever qualquer repartição de largura com arredondamento, o gate afirma
+`orcamento(peça_i) >= palavra_i` para **todas** as peças, com o controlo positivo (a repartição
+ingénua CORTA) e a degenerada (peças iguais devolvem a divisão igual **ao pixel**).
+
+## ⛔⛔ Uma linha de dívida com o NÚMERO errado convida a curar o que já mudou (2026-09-19)
+
+A lista de cortes tolerados do Inspector trazia `hand_right` como **`26 px`** e a medição dava
+**`57,1`**; o resumo de um timer estava como `128` e media `147,4` depois de a coluna dele passar a
+sair da lista. Os dois números tinham sido escritos numa corrida anterior e **nenhum censo os
+verificava** — o censo de obsolescência daquela lista pergunta *«ainda corta?»* e nunca *«corta
+ASSIM?»*.
+
+⚠️ O estrago não é cosmético: `26 px para um nome não é uma caixa, é um resto` foi escrito **como
+diagnóstico** ao lado do número errado, e com `57,1` esse diagnóstico deixa de valer — a caixa é a
+coluna de controlo de uma linha de propriedade, honesta pela lei da casa. *Uma dívida com o número
+errado é pior do que uma sem número: ela prescreve a cura de um defeito que não existe.*
+
+**How to apply:** re-meça o número de uma linha de dívida antes de a pegar, e escreva ao lado dela
+**de que espécie** é o corte (rótulo do programa = defeito · texto que o artista escreveu = a lei).

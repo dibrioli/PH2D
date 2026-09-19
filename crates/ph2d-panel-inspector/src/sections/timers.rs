@@ -82,6 +82,30 @@ fn list(
 ) -> f32 {
     let font = TypeToken::Sm.px();
     let mut cur_y = y;
+    // ⭐⭐⭐ **AS DUAS COLUNAS DESTA LISTA SAEM DA LISTA, e antes eram DOIS literais.**
+    //
+    // ⛔⛔ O resumo vivia em `x + w/2` com `w/2 − Sm` de orçamento e o nome recebia **`w` inteiro**.
+    //    Eram **dois** defeitos que se leem ao contrário um do outro: um nome comprido pintava POR
+    //    CIMA do resumo (nenhuma régua desta casa vê sobreposição — a elisão nunca dispara), e o
+    //    resumo saía cortado a `128 px` (`2.50s · repeats · → r…`, medido pela varredura de elisões
+    //    com o Inspector armado em 2026-09-19).
+    //
+    // ⭐ A coluna do resumo é a do MEMBRO MAIS LARGO da lista — a mesma lei que a coluna dos dez
+    //   toggles da timeline e a da secção *Inspect* da grelha já usam, e a razão é a mesma: *uma
+    //   coluna que muda de linha para linha lê-se como uma lista desalinhada*.
+    //
+    // ⚠️ **O tecto de `0,55` é sobre o NOME, não sobre o resumo:** o nome é o que o artista escreveu
+    //   e é por ele que se acha a linha; sem tecto, um resumo comprido (`→ um_sinal_com_nome_longo`)
+    //   engoliria a coluna que serve para escolher.
+    let resumos: Vec<String> = info.rows.iter().map(summary).collect();
+    let sum_col = ph2d_editor_core::paint::label_column_width(
+        text_system,
+        font,
+        resumos.iter().map(String::as_str),
+    )
+    .min(w * 0.55); // LITERAL-PX-OK: o tecto e' do NOME — ver acima
+    let sum_x = x + w - Spacing::Sm.px() - sum_col;
+    let nome_w = (sum_x - x - Spacing::Sm.px() * 2.0).max(0.0);
     // ⚠️ **`zip` com o array de ids**: uma lista com mais timers do que ids (impossível enquanto o
     // gate `the_timer_row_ids_cover_the_model_cap` viver) perde os excedentes em vez de os pintar
     // uns sobre os outros.
@@ -135,19 +159,17 @@ fn list(
             x + Spacing::Sm.px(),
             cur_y + (ROW_H - font) * 0.5,
             font,
-            w,
+            nome_w,
             color,
         );
-        let sum = summary(row);
-        let sum_x = x + w * 0.5;
         paint_text(
             text_system,
             scene,
-            &sum,
+            &resumos[i],
             sum_x,
             cur_y + (ROW_H - font) * 0.5,
             font,
-            w * 0.5 - Spacing::Sm.px(),
+            sum_col,
             resolve(ColorToken::Text3, theme),
         );
         cur_y += ROW_H;
@@ -182,7 +204,20 @@ fn buttons(
     if n == 0 {
         return y;
     }
-    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, BTN_H), n);
+    // ⭐ A fileira mede as PALAVRAS, e só as que de facto vão ser pintadas.
+    let rotulos: Vec<&str> = [
+        (can_add, tr("panel.inspector.timers.plus_add_timer")),
+        (can_remove, tr("panel.inspector.timers.x_remove_timer")),
+    ]
+    .into_iter()
+    .filter_map(|(ativo, l)| ativo.then_some(l))
+    .collect();
+    let seg = ph2d_editor_core::widget::segment_rects_for(
+        Rect::new(x, y, w, BTN_H),
+        &rotulos,
+        ph2d_editor_core::widget::button_label_font(),
+        text_system,
+    );
     let mut cell = 0usize;
     if can_add {
         let (rect, group) = seg[cell];

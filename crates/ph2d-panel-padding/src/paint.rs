@@ -32,9 +32,9 @@ use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, PADDING_SCROLLBAR_ID, paint_button, paint_scrollbar,
-    paint_slider_with_chip_layout_adaptive, scrollbar_is_needed, scrollbar_thumb_rect,
-    scrollbar_track_rect, segment_rects,
+    Button, ButtonKind, ButtonState, PADDING_SCROLLBAR_ID, button_label_font, paint_button,
+    paint_scrollbar, paint_slider_with_chip_layout_adaptive, scrollbar_is_needed,
+    scrollbar_thumb_rect, scrollbar_track_rect, segment_rects_for,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -270,7 +270,16 @@ fn paint_body_sections(
     //    pendente*. ⚠️ O editor de áudio já os juntava (`button_in_group`) e estas quatro
     //    ferramentas de imagem desenhavam-nos separados, porque o `Button` não conhecia a lei do
     //    grupo e o chip segmentado conhecia. Hoje conhece.
-    let seg = segment_rects(Rect::new(inner_x, y, inner_w, row_h), 2);
+    // ⭐ A fileira mede as PALAVRAS — ver `segment_rects_for`.
+    let seg = segment_rects_for(
+        Rect::new(inner_x, y, inner_w, row_h),
+        &[
+            tr("panel.padding.padding.cancel"),
+            tr("panel.padding.padding.apply"),
+        ],
+        button_label_font(),
+        text_system,
+    );
     let cancel_state = store.button_visual(ids::PAD_CANCEL);
     let cancel = Button::new(ids::PAD_CANCEL, tr("panel.padding.padding.cancel"))
         .kind(ButtonKind::Default)

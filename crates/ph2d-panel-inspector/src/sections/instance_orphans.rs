@@ -69,7 +69,14 @@ pub(crate) fn paint(
     for (i, row) in info.orphan_rows.iter().enumerate() {
         let text = row_text(row);
         let h = super::text_h(text_system, &text, at.font, at.orphan_tw, at.line);
-        paint_text(
+        // ⛔⛔ **`paint_text_block` e nunca `paint_text`** (2026-09-19, varredura de elisões com o
+        //    Inspector armado): esta linha é uma FRASE (`• AudioSource2D — was on "footsteps"`, com
+        //    um `Name` que o artista escreveu lá dentro), a altura dela é medida com o
+        //    [`super::text_h`], que **QUEBRA**, e o `paint_text` **ELIDE para uma linha** desde
+        //    06/09 ⇒ *um contentor medido por uma regra e preenchido por outra*: o cartão reservava
+        //    duas linhas e pintava `• AudioSource2D — was on "foots…` numa só.
+        //    ⚠️ A mesma cura que a proveniência e o resumo deste cartão levaram no mesmo dia.
+        paint_text_block(
             text_system,
             scene,
             &text,

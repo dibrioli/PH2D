@@ -355,8 +355,13 @@ pub(crate) fn paint_neighborhood_button_row(
             },
         ),
     };
-    // ⭐ **Um par ENCOSTA** — a lei do Blender.
-    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, h), 2);
+    // ⭐ **Um par ENCOSTA** — a lei do Blender — e cada peça leva o que a PALAVRA dela pede.
+    let seg = ph2d_editor_core::widget::segment_rects_for(
+        Rect::new(x, y, w, h),
+        &[label_l, label_r],
+        ph2d_editor_core::widget::panel_chrome::segmented_label_font(),
+        text_system,
+    );
     let (rect_l, cell_l) = seg[0];
     let (rect_r, cell_r) = seg[1];
     paint_segmented_button_in_group(
@@ -421,8 +426,14 @@ pub(crate) fn paint_labeled_segmented_row(
     let gap = Spacing::Xs.px();
     let n = options.len() as f32;
     let _cell_w = ((w - gap * (n - 1.0)) / n).max(40.0); // LITERAL-PX-OK: minimum cell width for segmented row (panel-specific design floor)
-    // ⭐ **A fileira ENCOSTA** — a lei do Blender.
-    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, h), options.len());
+    // ⭐ **A fileira ENCOSTA** — a lei do Blender — e cada peça leva o que a PALAVRA dela pede.
+    let rotulos: Vec<&str> = options.iter().map(|(l, _)| *l).collect();
+    let seg = ph2d_editor_core::widget::segment_rects_for(
+        Rect::new(x, y, w, h),
+        &rotulos,
+        ph2d_editor_core::widget::panel_chrome::segmented_label_font(),
+        text_system,
+    );
     for (i, (lbl, oid)) in options.iter().enumerate() {
         let (rect, cell) = seg[i];
         paint_segmented_button_in_group(

@@ -478,7 +478,15 @@ fn paint_strip(
         }
         Some(solo_id) => {
             // ⭐ `M | S` é UM par (wave 20): as duas coisas que se fazem à audição de uma faixa.
-            let ms = ph2d_editor_core::widget::segment_rects(Rect::new(col_x, y, col_w, MUTE_H), 2);
+            let ms = ph2d_editor_core::widget::segment_rects_for(
+                Rect::new(col_x, y, col_w, MUTE_H),
+                &[
+                    tr("panel.audio_mixer.strip.mute_short"),
+                    tr("panel.audio_mixer.strip.solo_short"),
+                ],
+                ph2d_editor_core::widget::panel_chrome::segmented_label_font(),
+                text_system,
+            );
             paint_toggle(
                 ms[0].0,
                 tr("panel.audio_mixer.strip.mute_short"),

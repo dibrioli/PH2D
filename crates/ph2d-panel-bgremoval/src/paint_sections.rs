@@ -19,8 +19,8 @@
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, ColorSwatch, SwatchSize, paint_button, paint_color_swatch,
-    paint_slider_with_chip_layout_adaptive, segment_rects,
+    Button, ButtonKind, ButtonState, ColorSwatch, SwatchSize, button_label_font, paint_button,
+    paint_color_swatch, paint_slider_with_chip_layout_adaptive, segment_rects_for,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -536,7 +536,16 @@ pub(crate) fn paint_apply_cta(
     //    pendente*. ⚠️ O editor de áudio já os juntava (`button_in_group`) e estas quatro
     //    ferramentas de imagem desenhavam-nos separados, porque o `Button` não conhecia a lei do
     //    grupo e o chip segmentado conhecia. Hoje conhece.
-    let seg = segment_rects(Rect::new(inner_x, y, inner_w, row_h), 2);
+    // ⭐ A fileira mede as PALAVRAS — ver `segment_rects_for`.
+    let seg = segment_rects_for(
+        Rect::new(inner_x, y, inner_w, row_h),
+        &[
+            tr("panel.bg_removal.mask.cancel"),
+            tr("panel.bg_removal.mask.apply"),
+        ],
+        button_label_font(),
+        text_system,
+    );
     let cancel_state = store.button_visual(ph2d_tool_bgremoval::ids::BGR_CANCEL);
     let cancel = Button::new(
         ph2d_tool_bgremoval::ids::BGR_CANCEL,

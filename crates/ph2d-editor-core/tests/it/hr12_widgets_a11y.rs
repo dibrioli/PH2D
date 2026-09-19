@@ -39,6 +39,13 @@ use std::path::{Path, PathBuf};
 //    `#[cfg(test)]`, porque já está dentro de um). *A enumeração apodrece; a lei não.*
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
+    // ⚠️ **A COR de um botão não tem semântica** (2026-09-19, quando o tecto de LOC partiu o
+    //    `button.rs`): este ficheiro é uma `impl Button` que devolve TOKENS por estado — quem
+    //    emite o no' de AccessKit e quem regista o hit e' o `paint_button`, no irmao.
+    (
+        "button_surface/cor.rs",
+        "tabela de cor por estado: o no' e' do `Button`, emitido pelo `build_a11y`/`paint_button`",
+    ),
     (
         "segmented_layout.rs",
         "aritmetica pura de disposicao (larguras e quebra de fileira); nao emite no' nem pinta — quem regista a a11y e o hit de cada peca e' o `panel_chrome::paint_segmented_group_adaptive`, que a chama.",

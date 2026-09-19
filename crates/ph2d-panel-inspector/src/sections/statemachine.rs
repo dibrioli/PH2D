@@ -146,7 +146,19 @@ fn botoes(
     if n == 0 {
         return y;
     }
-    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, BTN_H), n);
+    // ⭐ A fileira mede as PALAVRAS, e só as que de facto vão ser pintadas.
+    //    ⛔⛔ Medido em 2026-09-19: em partes iguais `x Remove Transition` recebia `118 px` e saía
+    //    `x Remove Transi…` com a fileira a caber inteira — *uma média não é um máximo*.
+    let rotulos: Vec<&str> = [(pode_add, add.1), (pode_remover, remove.1)]
+        .into_iter()
+        .filter_map(|(ativo, l)| ativo.then_some(l))
+        .collect();
+    let seg = ph2d_editor_core::widget::segment_rects_for(
+        Rect::new(x, y, w, BTN_H),
+        &rotulos,
+        ph2d_editor_core::widget::button_label_font(),
+        text_system,
+    );
     let mut cell = 0usize;
     for (ativo, (id, rotulo)) in [(pode_add, add), (pode_remover, remove)] {
         if !ativo {

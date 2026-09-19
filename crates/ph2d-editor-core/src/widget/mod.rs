@@ -77,13 +77,16 @@ pub use blender_color_picker::{
     paint_blender_color_picker_with_store, paint_blender_color_picker_with_store_compat, parse_hex,
     rgba_to_hsv, value_pick, wheel_pick,
 };
-pub use button::{Button, ButtonKind, ButtonState, ICON_BUTTON_SIZE_PX, paint_button};
+pub use button::{
+    Button, ButtonKind, ButtonState, ICON_BUTTON_SIZE_PX, button_label_font, paint_button,
+};
 pub use button_surface::{
     GroupCell, GroupPos, SEGMENT_HAIRLINE, block_cells, block_cells_of, chip_axis_color,
     chip_axis_t, chip_feel, flat_button_surface_color, grid_cells, grid_height, segment_rects,
     stepper_middle_w,
 };
 pub use card::{Card, paint_card, pop_card_body_clip, push_card_body_clip};
+// ⭐ A fileira que mede as PALAVRAS — irmã do `segment_rects`, que reparte em partes iguais.
 pub use checkbox::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue, paint_checkbox};
 pub use color_picker::{ColorPicker, ColorPickerMode, paint_color_picker};
 pub use color_swatch::{ColorSwatch, SwatchSize, SwatchState, paint_color_swatch};
@@ -99,6 +102,7 @@ pub use dropdown::{
     opaque as resolve_opaque, paint_dropdown, paint_dropdown_chip, paint_dropdown_popover,
     paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,
 };
+pub use segmented_layout::segment_rects_for;
 // ⚠️ A lei da borda de um campo, já com o eixo do hover — `pub(crate)` porque os seus
 // consumidores são os três pintores da família e os gates, nunca um painel.
 pub use icon_button::{IconButtonStyle, IconGlyph, icon_glyph, paint_icon_button};

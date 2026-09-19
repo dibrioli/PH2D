@@ -18,7 +18,8 @@ use crate::{
 };
 use ph2d_editor_core::paint::{paint_text_centered, resolve};
 use ph2d_editor_core::widget::{
-    Slider, SliderOrientation, paint_slider, paint_slider_track, segment_rects,
+    Slider, SliderOrientation, button_label_font, paint_slider, paint_slider_track,
+    segment_rects_for,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -49,7 +50,17 @@ pub(crate) fn paint_loop_section(
     let label_h = TypeToken::Xs.px();
 
     // Set (from selection) | Clear.
-    let seg = segment_rects(Rect::new(x, y, w, row_h), 2);
+    // ⭐ A fileira mede as PALAVRAS (`segment_rects_for`): em partes iguais, a peça mais larga
+    //    podia ser cortada com a fileira a caber inteira.
+    let seg = segment_rects_for(
+        Rect::new(x, y, w, row_h),
+        &[
+            tr("panel.audio_editor.loop.set_loop"),
+            tr("panel.audio_editor.loop.clear"),
+        ],
+        button_label_font(),
+        text_system,
+    );
     button_in_group(
         seg[0].0,
         tr("panel.audio_editor.loop.set_loop"),

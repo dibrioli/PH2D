@@ -63,15 +63,20 @@ fn buttons(
     w: f32,
     y: f32,
 ) -> f32 {
-    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, BTN_H), 3);
-    for (i, (id, label)) in [
+    let fila = [
         (ids::INSP_AUDIO_BROWSE, tr("panel.inspector.audio.browse")),
         (ids::INSP_AUDIO_PREVIEW, tr("panel.inspector.audio.preview")),
         (ids::INSP_AUDIO_STOP, tr("panel.inspector.audio.stop")),
-    ]
-    .into_iter()
-    .enumerate()
-    {
+    ];
+    // ⭐ A fileira mede as PALAVRAS — ver `segment_rects_for`.
+    let rotulos: Vec<&str> = fila.iter().map(|(_, l)| *l).collect();
+    let seg = ph2d_editor_core::widget::segment_rects_for(
+        Rect::new(x, y, w, BTN_H),
+        &rotulos,
+        ph2d_editor_core::widget::button_label_font(),
+        text_system,
+    );
+    for (i, (id, label)) in fila.into_iter().enumerate() {
         let Some(&(rect, group)) = seg.get(i) else {
             continue;
         };

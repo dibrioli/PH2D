@@ -275,7 +275,16 @@ fn paint_body_sections(
 
     // ── Cancel (ghost) + Apply (accent CTA) row ────────────────────
     // ⭐⭐ `Cancel | Apply` é UM par (wave 20) — ver o irmão no `ph2d-panel-padding`.
-    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(inner_x, y, inner_w, row_h), 2);
+    // ⭐ A fileira mede as PALAVRAS — ver `segment_rects_for`.
+    let seg = ph2d_editor_core::widget::segment_rects_for(
+        Rect::new(inner_x, y, inner_w, row_h),
+        &[
+            tr("panel.upscale.scale.cancel"),
+            tr("panel.upscale.scale.apply"),
+        ],
+        ph2d_editor_core::widget::button_label_font(),
+        text_system,
+    );
     let cancel_state = store.button_visual(ph2d_tool_upscale::tool::ids::UPS_CANCEL);
     let cancel = Button::new(
         ph2d_tool_upscale::tool::ids::UPS_CANCEL,

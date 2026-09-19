@@ -81,3 +81,35 @@ que uma régua é frágil não é o mesmo que a tornar robusta.*
 **How to apply:** os **três** membros que esta linha mediu (`the_cache_makes_a_preview_frame_cost_the_tail_not_the_stroke`,
 `interaction_dispatch_no_alloc`, `the_ui_clock_does_not_allocate_per_frame`) esperam promoção para
 a lista nomeada do `CLAUDE.md` §5.0 — **a linha pede, o integrador escreve** (DIRETRIZ §1.5.9).
+
+---
+
+## 2026-09-19 — mais UM membro, e o doc-comment dele narra a PRÓPRIA cura de uma flake
+
+`ph2d-tool-painter tool::paint::tests::measure_input_cost::the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`
+— **único ✗ de `24 546`** numa corrida de workspace da `line/UIUX`, com **zero** linhas do diff
+naquela crate (a linha mexeu em `ph2d-editor-core` e em dez painéis), e verde **3 de 3** sozinho a
+`load 20,72` · `21,58` · `21,58`.
+
+⛔⛔ **É o SÉTIMO deste repo cujo doc-comment se declara imune — e este declara-o contando como já
+foi curado de uma flake:**
+
+> *«⚠️ **O oráculo é a RAZÃO contra a CÓPIA DO CANVAS medida no mesmo instante**, e a primeira
+> versão errou isso: ela comparava o pen-down a 1024² com o de 4096², que são dois instantes
+> diferentes — sob a carga da suíte completa os dois flutuam de forma independente e o gate
+> **flakou na 1ª rodada**. … Medidos juntos, os dois números sobem e descem juntos.»*
+
+⭐⭐⭐ **A frase está certa sobre a DERIVA e falsa sobre o FAN-OUT**, que é exactamente a distinção
+que esta família existe para guardar: medir os dois no mesmo instante cura o *drift* lento da
+máquina (os dois sobem juntos ao longo de segundos) e **não** cura uma interrupção de escalonamento
+que caia sobre UM dos dois `ms(&mut || …)`, que duram microssegundos. *Duas medições «no mesmo
+instante» são dois instantes diferentes à escala em que o fan-out morde.*
+
+⚠️ E a linha **acredita** na cura ao ponto de escrever *«um gate que flaka é pior que ausente»* logo
+a seguir — o que faz dele o caso mais difícil de apanhar por leitura: não é um gate descuidado, é um
+gate **já uma vez endurecido contra a grandeza errada**.
+
+**How to apply:** promoção pedida à lista nomeada do `CLAUDE.md` §5.0 — **a linha pede, o integrador
+escreve** (DIRETRIZ §1.5.9). Antes de culpar um diff por este ✗, confira as três assinaturas:
+gate de razão · zero linhas do diff naquela crate · 3/3 verde sozinho **com o `loadavg` impresso ao
+lado**.

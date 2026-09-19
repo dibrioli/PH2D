@@ -50,8 +50,12 @@
 //! |---|---:|
 //! | rótulos que pintavam **NADA** | **8** (as unidades `px` e `1/s`) |
 //! | cortados (`prefixo…`) | **24** |
-//! | curados no mesmo dia | **18** (16 por três portas + 2 por ordem do dono) |
-//! | por curar, nomeados | **6** — `A_PASSAGEM_ARMADA_AINDA_CORTA` |
+//! | curados no mesmo dia | **21** (19 por seis portas + 2 por ordem do dono) |
+//! | por curar, nomeados | **3** no Inspector + **2** na Hierarquia — `A_PASSAGEM_ARMADA_AINDA_CORTA` |
+//!
+//! ⚠️ **Os `5` que ficam cortam texto que o ARTISTA escreveu** (o nome de uma âncora, de um sinal,
+//! de uma propriedade de script, de dois objectos) — e a lista traz o número de cada caixa para que
+//! isso possa ser conferido em vez de acreditado.
 //!
 //! ⚠️ **A passagem armada NÃO alimenta o censo da tabela de strings** — ela põe no painel texto do
 //! DOCUMENTO (`Hero`, `Enemy`, `Closed`), que a tabela não sabe produzir e nem devia. A razão está
@@ -161,12 +165,27 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
 ///   e três cópias locais da disposição passaram pela porta;
 /// - os avisos das secções — **seis cópias byte a byte** — viraram uma porta que QUEBRA.
 ///
-/// ⛔⛔ **Os `8` que ficam são UMA família e por isso não se curam um a um:** todos são fileiras
-/// cuja coluna de nome é a da SECÇÃO ([`ph2d_editor_core::widget::property_box::Seccao`]), medida
-/// para caber ao lado de um CONTROLO de campos — e uma fileira de **marcar** tem um controlo de
-/// `18 px`, uma de **lista** tem o nome do artista. *Alargar a coluna de uma delas parte o
-/// alinhamento da secção inteira, que é a doença que aquela porta existe para curar.* ⇒ a wave
-/// seguinte é da lei da linha de propriedade, não deste censo.
+/// ⭐⭐⭐ **E em 2026-09-19 a dívida do Inspector foi de `6` para `3`, com TRÊS curas estruturais:**
+/// - a **fileira de botões** passou a medir as PALAVRAS ([`ph2d_editor_core::widget::segment_rects_for`]):
+///   em partes iguais `x Remove Transition` recebia `118 px` e saía `x Remove Transi…` **com a
+///   fileira a caber inteira** — *uma média não é um MÁXIMO*, a mesma lei do grupo segmentado, agora
+///   na família do `Button` e em **13** sítios;
+/// - a coluna de nomes da secção da **roldana** era `font × 5,0` — *cinco alturas de letra*, escrita
+///   em TRÊS sítios, com um deles a dizer *«same label column as the Rope row»* — e passou a medir a
+///   LISTA das três palavras que pinta (`Mounted On` · `Gear` · `Rope`);
+/// - a linha de **órfão** do cartão de instância era MEDIDA a quebrar (`text_h`) e PINTADA a cortar
+///   (`paint_text` elide desde 06/09) ⇒ *um contentor medido por uma regra e preenchido por outra*.
+///
+/// ⛔⛔ **Os `5` que ficam NÃO são dívida da mesma espécie, e cada linha di-lo:** `3` deles cortam
+/// **texto que o ARTISTA escreveu** (o nome de uma âncora, o nome de um sinal, o nome de uma
+/// propriedade de script) numa caixa cuja largura é a que a lei da linha de propriedade dá, e `2`
+/// são nomes de objecto numa linha de árvore. *Um corte não é sempre um defeito* — o que seria
+/// defeito é a CAIXA, e cada linha traz o número dela para que isso possa ser conferido.
+///
+/// ⚠️ **E o número de uma linha destas ENVELHECE:** o `hand_right` estava aqui como `26 px` e mede
+/// `57,1`, e o resumo do timer estava como `128` e mede `147,4` depois de a coluna dele passar a
+/// sair da lista. *Uma dívida com o número errado é pior do que uma sem número: ela convida a curar
+/// o que já mudou.* ⇒ re-meça antes de pegar uma destas linhas.
 ///
 /// ⚠️ **Cada linha diz o NÚMERO e o MECANISMO**, e a lista **só encolhe** — o censo de
 /// obsolescência abaixo reprova quem deixar de descrever um corte.
@@ -179,29 +198,44 @@ const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
     //    `Show anchors at runtime`, com a consequência de cada uma no BALÃO. ⚠️ Quem as apagou
     //    daqui foi o censo de obsolescência deste ficheiro. Metade que PÕE:
     //    `ph2d-panel-inspector/tests/it/as_caixas_que_encurtaram_guardam_a_explicacao.rs`.
-    // Fileira de LISTA: o texto é do DOCUMENTO (o nome que o artista deu à âncora / ao sinal / à
-    // propriedade do script / à peça). ⚠️ Um corte aqui **não é sempre defeito** — o que é defeito
-    // é a caixa: `26 px` para um nome não é uma caixa, é um resto.
-    ("inspector", "hand_right", "lista · 26 px · nome do artista"),
+    // ✅ **E TRÊS saíram no mesmo dia por CURA ESTRUTURAL** — o preâmbulo acima diz qual foi cada
+    //    uma: `x Remove Transition` (a fileira mede as palavras), `Mounted On` (a coluna mede a
+    //    lista) e `• AudioSource2D — was on "footsteps"` (a frase passou a QUEBRAR, que é como a
+    //    altura dela já era medida).
+    //
+    // ── O que fica: texto que o ARTISTA escreveu, numa caixa que a lei da linha dá ────────────
+    //
+    // O chip que escolhe em que âncora do PAI este objecto se monta. A coluna do nome desta secção
+    // é medida sobre as TRÊS palavras dela (`Rides Parent Anchor` · `Always show anchors` ·
+    // `Show anchors at runtime`) e o chip fica com o resto, menos o recuo e o chevron dele.
+    // ⚠️ **Alargar o chip aqui ESTREITA a coluna das duas caixas de marcar**, que o dono acabou de
+    //    mandar encurtar — é uma troca entre um rótulo do programa e um nome do artista, e a lei da
+    //    casa manda cortar o segundo.
     (
         "inspector",
-        "2.50s · repeats · → respawn_done",
-        "lista · 128 px · resumo com sinal do artista",
+        "hand_right",
+        "chip de escolha · 57,1 px · nome que o artista deu a' ancora",
     ),
+    // O resumo de um timer, na coluna da DIREITA da lista. ⭐ Desde 19/09 essa coluna sai da LISTA
+    // dos resumos e não de `w/2` (o nome deixou de poder pintar por cima dela), com tecto de
+    // `0,55 × w` — e o tecto é sobre o NOME, que é por onde o artista acha a linha.
+    // ⚠️ O que fica cortado é o fim: `→ respawn_done`, o nome do SINAL que o artista escreveu.
     (
         "inspector",
-        "legacy_speed = 1 — not in the script",
-        "lista · 189 px · nome do artista",
+        "2.50s \u{b7} repeats \u{b7} \u{2192} respawn_done",
+        "lista · 147,4 px · acaba no nome do sinal, que e' do artista",
     ),
+    // A linha de uma propriedade que o ficheiro `.luau` deixou de declarar. ⚠️ A frase compõe
+    // `<nome do artista> = <valor> — <razão do programa>` numa fileira de altura FIXA (ela tem um
+    // botão `Remove` ao lado, logo não pode quebrar).
+    // ⛔ **A saída NÃO é elidir o nome em vez da razão:** quando há vários órfãos a razão repete-se
+    //    e o NOME é o único discriminador — cortá-lo tornaria a lista ilegível. A saída honesta é a
+    //    razão deixar de ser repetida por linha (a nota da secção já a diz), que é produto.
     (
         "inspector",
-        "• AudioSource2D — was on \u{201c}footsteps\u{201d}",
-        "lista · 229 px · nome da peça",
+        "legacy_speed = 1 \u{2014} not in the script",
+        "lista · 189,0 px · frase composta com o nome do artista a' cabeca",
     ),
-    // Rótulo de fileira numa secção cuja coluna é estreita por ter muitos campos.
-    ("inspector", "Mounted On", "campos · 60 px"),
-    // Botão dentro de uma fileira de lista: a legenda cresceu com o verbo e a caixa não.
-    ("inspector", "x Remove Transition", "botão · 118 px"),
     // ⭐ A HIERARQUIA, armada em 2026-09-19: **zero** rótulos do programa cortados. Os dois que
     //    saem são NOMES QUE O ARTISTA DEU, numa linha de árvore que ja' desconta o recuo e os
     //    selos — a caixa e' honesta (`110`–`133 px`) e elidir um nome comprido e' o que toda

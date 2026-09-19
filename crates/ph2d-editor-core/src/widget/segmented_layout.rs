@@ -12,14 +12,16 @@
 //! arrumação: *um contentor medido por uma regra e preenchido por outra é como a secção seguinte
 //! pinta por cima destes botões e lhes mata o alvo*.
 
-use super::panel_chrome::segmented_gap;
+use super::panel_chrome::{segmented_gap, segmented_label_font};
+use super::{GroupCell, block_cells_of};
+use crate::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Spacing, TypeToken};
+use ph2d_tokens::Spacing;
 
 /// Each label's natural width — the text plus the canonical breathing room. The paint side and the
 /// measure side must agree to the pixel, so they both come here.
 pub(crate) fn segmented_natural_widths(labels: &[&str], text_system: &mut TextSystem) -> Vec<f32> {
-    let font_size = TypeToken::Sm.px();
+    let font_size = segmented_label_font();
     let pad_inside = Spacing::Lg.px() * 2.0;
     labels
         .iter()
@@ -99,6 +101,19 @@ pub(crate) fn segmented_row_widths(rect_w: f32, naturals: &[f32]) -> Vec<f32> {
     if n == 0 {
         return Vec::new();
     }
+    // ⛔⛔ **A largura natural sobe ao PIXEL INTEIRO antes de a folga ser repartida, e sem isso a
+    //    lei desta função não se cumpre.** As larguras saem arredondadas **para baixo** (a costura
+    //    de um grupo tem de cair em pixels inteiros), logo `floor(natural + folga)` fica ABAIXO do
+    //    natural sempre que a folga for menor do que a parte fraccionária dele — e um défice de
+    //    `0,4 px` corta a palavra INTEIRA, porque a elisão compara `<=`.
+    //    Medido em 2026-09-19: `+ Add Transition` pede `102,4` e recebia uma caixa de `118` com
+    //    orçamento `102,0`. Com o tecto, `natural` é inteiro e `floor(natural + folga) >= natural`
+    //    por construção, com `folga >= 0`.
+    //    ⭐ **E a degenerada fica intacta:** com `n` naturais IGUAIS o tecto aplica-se a todas por
+    //    igual e a conta colapsa outra vez em `floor(disponivel / n)`, que é o que a divisão em
+    //    partes iguais devolve — há gate sobre as duas metades.
+    let naturals: Vec<f32> = naturals.iter().map(|w| w.ceil()).collect();
+    let naturals = &naturals[..];
     let gaps = segmented_gap() * (n - 1) as f32;
     let disponivel = (rect_w - gaps).max(n as f32);
     let soma: f32 = naturals.iter().sum();
@@ -113,6 +128,47 @@ pub(crate) fn segmented_row_widths(rect_w: f32, naturals: &[f32]) -> Vec<f32> {
     let usado: f32 = larguras.iter().take(n - 1).sum();
     larguras[n - 1] = (disponivel - usado).max(1.0);
     larguras
+}
+
+/// ⭐⭐⭐ **A FILEIRA DE PEÇAS COM RÓTULO: cada uma leva o que a PALAVRA dela pede.**
+///
+/// ⛔⛔ **É a irmã do [`super::segment_rects`], e existe porque aquela reparte em partes IGUAIS.**
+/// *Uma média não é um máximo:* `w/n` pode ser menor do que UMA das peças precisa mesmo quando a
+/// soma delas cabe de sobra — e aí a fileira cabe inteira e corta a peça mais larga na mesma.
+/// Medido em 2026-09-19 com o Inspector armado: `+ Add Transition | x Remove Transition` recebia
+/// `118 px` cada e pintava `x Remove Transi…`, com as duas larguras naturais a caberem na coluna.
+///
+/// ⭐ **A largura natural de uma peça é a INVERSA do orçamento que o pintor lhe dá**
+/// ([`crate::paint::rect_for_label`]): toda peça desta família acaba num
+/// [`crate::paint::paint_text_centered`], que desconta `Spacing::Md` de cada lado. *Derivar o
+/// respiro aqui seria a segunda cópia dele, e ela divergiria no dia em que o token mudasse.*
+///
+/// ⚠️ **O `font_size` é do CHAMADOR porque as duas famílias pintam em fontes diferentes:** um
+/// [`super::Button`] escreve a `TypeToken::Base` e um chip segmentado a `TypeToken::Sm`. *Medir num
+/// tamanho e pintar noutro corta exactamente na fronteira em que o corte existe.*
+///
+/// ⭐ **Com rótulos de larguras iguais ela devolve o que o [`super::segment_rects`] devolvia, ao
+/// pixel** — é isso que mantém intacta toda fileira do app cujas palavras já eram do mesmo
+/// tamanho (`M | S` do mixer, `Cancel | Apply`), e há gate sobre as duas metades.
+#[must_use]
+pub fn segment_rects_for(
+    row: Rect,
+    labels: &[&str],
+    font_size: f32,
+    text_system: &mut TextSystem,
+) -> Vec<(Rect, GroupCell)> {
+    if labels.is_empty() {
+        return Vec::new();
+    }
+    let naturais: Vec<f32> = labels
+        .iter()
+        .map(|l| crate::paint::rect_for_label(text_system.prefix_width(l, font_size)))
+        .collect();
+    let larguras = segmented_row_widths(row.w, &naturais);
+    block_cells_of(Rect::new(row.x, row.y, row.w, 0.0), &[&larguras], row.h)
+        .into_iter()
+        .next()
+        .unwrap_or_default()
 }
 
 #[cfg(test)]

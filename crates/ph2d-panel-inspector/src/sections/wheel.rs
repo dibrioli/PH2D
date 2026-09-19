@@ -273,6 +273,33 @@ fn paint_break_rows(
     )
 }
 
+/// ⭐⭐⭐ **A COLUNA DOS NOMES desta secção — medida sobre as TRÊS palavras que ela pinta.**
+///
+/// ⛔⛔ **Ela era `font * 5.0` — *cinco alturas de letra* — escrita em TRÊS sítios** (o mount, o
+/// `Gear` e o `Rope`), e o comentário de um deles já dizia *«same label column as the Rope row»*:
+/// uma coluna partilhada respondida três vezes. Medido em 2026-09-19 pela varredura de elisões com
+/// o Inspector armado, aqueles `60 px` cortavam **`Mounted On`** (`Mounte…`).
+///
+/// ⚠️ **A régua é a LISTA e não a linha em mãos** — `Gear` e `Rope` cabiam, e uma coluna por linha
+/// sairia esfarrapada; é a mesma lei da [`ph2d_editor_core::property_row::Seccao`] um nível acima e
+/// a mesma porta que a coluna dos dez toggles da timeline usa.
+///
+/// ⚠️ **O tecto de `0,42` da linha FICA**, e não é sobre a palavra: é sobre o que tem de sobrar
+/// para o NOME do corpo e para os dois ícones à direita.
+fn coluna_dos_nomes(text_system: &mut TextSystem, w: f32) -> f32 {
+    let font = TypeToken::Sm.px();
+    (ph2d_editor_core::paint::label_column_width(
+        text_system,
+        font,
+        [
+            tr("panel.inspector.wheel.mounted_on"),
+            tr("panel.inspector.wheel.gear"),
+            tr("panel.inspector.wheel.rope"),
+        ],
+    ) + Spacing::Xs.px())
+    .min(w * 0.42) // LITERAL-PX-OK: o tecto da linha — o que sobra e' do nome do corpo e dos icones
+}
+
 /// **Em que CORPO esta roldana se monta** (W3) — o nome vigente, o eyedropper que
 /// arma o pick de canvas, e o botão de desmontar.
 ///
@@ -303,7 +330,7 @@ fn paint_mount_row(
     let h = ROW_H_PX;
     let font = TypeToken::Sm.px();
     let icon_w = (h * 0.82).min(w); // LITERAL-PX-OK: icon inset ratio (compact square in the row)
-    let label_w = (font * 5.0).min(w * 0.42); // LITERAL-PX-OK: label = 5 char-heights, capped at 0.42 of the row
+    let label_w = coluna_dos_nomes(text_system, w);
     let gap = Spacing::Xs.px();
     let mounted = !info.mount_name.is_empty();
     let icons = if mounted { 2.0 } else { 1.0 };
@@ -404,7 +431,7 @@ fn paint_gear_readout(
 ) -> f32 {
     let h = ROW_H_PX;
     let font = TypeToken::Sm.px();
-    let label_w = (font * 5.0).min(w * 0.42); // LITERAL-PX-OK: same label column as the Rope row
+    let label_w = coluna_dos_nomes(text_system, w);
     let text_y = y + (h - font) * 0.5;
     paint_text(
         text_system,
@@ -447,7 +474,7 @@ fn paint_rope_row(
     let h = ROW_H_PX;
     let font = TypeToken::Sm.px();
     let icon_w = (h * 0.82).min(w); // LITERAL-PX-OK: icon inset ratio (compact square in the row)
-    let label_w = (font * 5.0).min(w * 0.42); // LITERAL-PX-OK: label = 5 char-heights, capped at 0.42 of the row
+    let label_w = coluna_dos_nomes(text_system, w);
     let gap = Spacing::Xs.px();
     let text_y = y + (h - font) * 0.5;
     paint_text(

@@ -198,7 +198,7 @@ pub(crate) fn paint_toggle(
         scene,
         label,
         rect,
-        TypeToken::Sm.px(),
+        ph2d_editor_core::widget::panel_chrome::segmented_label_font(),
         resolve(fg, theme),
     );
     hit_index.register(id, rect);

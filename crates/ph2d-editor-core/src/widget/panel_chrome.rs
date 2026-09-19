@@ -166,7 +166,7 @@ mod segmented;
 //    um caminho novo seria a segunda maneira de nomear a mesma porta.
 pub use segmented::{
     paint_segmented_button, paint_segmented_button_in_group, paint_segmented_group,
-    paint_segmented_group_adaptive, segmented_gap,
+    paint_segmented_group_adaptive, segmented_gap, segmented_label_font,
 };
 
 /// Outer corner radius of every panel rect (Inspector, Hierarchy,

@@ -406,7 +406,13 @@ fn command_pair(
     y: f32,
 ) -> f32 {
     // ⭐ As duas ordens são UM par (wave 20): mesma fileira, mesmo assunto.
-    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, ROW_H_PX), 2);
+    // ⭐ A fileira mede as PALAVRAS — ver `segment_rects_for`.
+    let seg = ph2d_editor_core::widget::segment_rects_for(
+        Rect::new(x, y, w, ROW_H_PX),
+        &[left.1, right.1],
+        ph2d_editor_core::widget::button_label_font(),
+        ctx.text_system,
+    );
     command_at(ctx, left.0, left.1, seg[0].0, seg[0].1);
     command_at(ctx, right.0, right.1, seg[1].0, seg[1].1);
     y + ROW_H_PX

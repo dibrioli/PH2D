@@ -15,7 +15,9 @@
 //! nenhum com as secções — só o `y` que já vinha a descer.
 
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::widget::{Button, ButtonKind, paint_button, segment_rects};
+use ph2d_editor_core::widget::{
+    Button, ButtonKind, button_label_font, paint_button, segment_rects_for,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::Theme;
@@ -61,7 +63,16 @@ pub(crate) fn paint_action_rows(
     //    pendente*. ⚠️ O editor de áudio já os juntava (`button_in_group`) e estas quatro
     //    ferramentas de imagem desenhavam-nos separados, porque o `Button` não conhecia a lei do
     //    grupo e o chip segmentado conhecia. Hoje conhece.
-    let seg = segment_rects(Rect::new(inner_x, y, inner_w, row_h), 2);
+    // ⭐ A fileira mede as PALAVRAS — ver `segment_rects_for`.
+    let seg = segment_rects_for(
+        Rect::new(inner_x, y, inner_w, row_h),
+        &[
+            tr("panel.equalize_sizes.actions.cancel"),
+            tr("panel.equalize_sizes.actions.apply"),
+        ],
+        button_label_font(),
+        text_system,
+    );
     let cancel_state = store.button_visual(ph2d_tool_equalize_sizes::ids::EQS_CANCEL);
     let cancel = Button::new(
         ph2d_tool_equalize_sizes::ids::EQS_CANCEL,

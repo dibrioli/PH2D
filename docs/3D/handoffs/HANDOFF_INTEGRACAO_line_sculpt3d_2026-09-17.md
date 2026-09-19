@@ -2044,3 +2044,83 @@ metade (`M12` a do defeito, `M13` a do controlo do carimbo único).
 (`PH2D_RAKE_SWEEPS`, `PH2D_RAKE_ALVO`, `PH2D_FROM_LIVE` e o do `Grip::Stamp`)
 foram removidos, e a suíte da crate fecha **463 verdes**. *Um defeito medido
 com esta força merece a cura certa, não a primeira.*
+
+## §76 — ⭐⭐⭐⭐ O ORÁCULO ARBITROU: A NOSSA POLARIDADE ESTÁ INVERTIDA, e a prova é EXACTA
+
+A janela **E** colheu a metade da tabela-verdade que faltava (família
+[`acumula/`](../cleanroom/fixtures/rake/acumula/), **18** células, mesmo binário
+do corpus: `5.2.2 LTS`, pacote `17:5.2.2-1`, build 2026-09-15).
+
+### §76.1 A âncora, que é o que torna a colheita de confiar
+
+⭐ **`acumula/escada_n14_off` é byte-idêntica, no corpo, a
+`mecanismo/y_parado_p000`**, cujo cabeçalho diz `acumular=False` — conferido por
+mim, não aceite do relatório. ⇒ *o interruptor foi identificado por IDENTIDADE e
+nunca por leitura do rótulo*, o que importa porque **o sentido dele é
+contra-intuitivo**: há dois booleanos públicos candidatos no pincel do alvo, e o
+que tem o nome de «acumular» é o que **PÕE O TECTO**.
+
+### §76.2 A escada do alvo, e a nossa ao lado
+
+Cursor parado, `N` carimbos, maior deslocamento:
+
+| `N` | **ALVO desligado** | **ALVO ligado** | **NOSSO ligado** |
+|---|---|---|---|
+| 1 | `0,08736818` | `0,08736818` | `0,08736818` |
+| 2 | `0,16113299` | `0,16113299` | `0,16113299` |
+| 4 | `0,24074651` | **`0,21000004`** | `0,24074651` |
+| 8 | `0,29316160` | **`0,21000004`** | `0,29316160` |
+| 14 | `0,31712657` | **`0,21000004`** | `0,31712657` |
+| 27 | `0,33279914` | **`0,21000004`** | `0,33279914` |
+| 40 | `0,33833069` | **`0,21000004`** | `0,33833069` |
+
+⭐⭐⭐⭐ **A terceira coluna é a primeira, às OITO casas, nas SETE contagens:** o
+nosso ramo **LIGADO** reproduz o ramo **DESLIGADO** dele, exactamente.
+
+⇒ **é o LIGADO que trava e o desligado que continua a subir** — o oposto do que
+o gate `the_disarmed_brush_saturates_at_one_radius_and_the_armed_one_passes_it`
+declara. E o nosso ramo desligado satura em `0,43684089`, que é **`5,0000 ×` o
+primeiro carimbo**: uma lei que o alvo não tem em nenhum dos dois estados.
+
+### §76.3 O que a troca de polaridade compra, medido
+
+Com `Stamp => (false, !accumulate, …)`, sobre as **64** células comparáveis do
+corpus (19 verbos), **juntas por CHAVE**:
+
+**`16` MELHOR · `0` PIOR · `48` iguais** — e as 16 colapsam para ruído de `f32`
+(`1,416e-7`, `2,235e-8`, `2,533e-7`): o pincel base fica **exacto** em todo
+traço recto, em arco, de ida-e-volta e repetido. O `y_parado` vai de `1,197e-1`
+a `5,937e-3`.
+
+⚠️⚠️ **E a 1.ª leitura desta tabela era FABRICADA:** eu comparei os dois
+ficheiros com `paste`, e eles tinham `64` e `82` linhas (a família nova entrou
+na sonda) ⇒ **linhas desalinhadas**, com nomes repetidos a denunciá-lo. *Uma
+comparação posicional entre duas corridas cuja população mudou não compara
+nada.* Refeita com `join` pela chave.
+
+### §76.4 ⛔ O que a troca NÃO tem provado, e é por isso que ela não shipou
+
+Ela reprova **quatro** gates de lei declarada. Três são a polaridade a ser
+invertida e caem com esta tabela por baixo. **A quarta não:**
+`the_thumb_saturates_at_the_ceiling_instead_of_tilting_for_ever` mede `120` e
+`200` carimbos, e a escada do oráculo **pára em `40`** ⇒ *o regime em que ela
+falha é um regime que o corpus não alcança*, e com a troca a inclinação **decresce**
+com os carimbos (`40 → −40,64°`, `120 → −21,31°`), que é uma reversão que
+ninguém mediu no alvo.
+
+⏳ **E o TECTO do ramo ligado continua por escrever:** o nosso é `5 ×` o
+primeiro carimbo, o do alvo é `2,40 ×` a raio `0,35` / força `0,5`. ⛔ A
+hipótese `0,6 × raio` foi **refutada pelo E** com sondas fora do corpus (a raio
+`0,20` dá `0,11977170`; a força `0,25` dá `0,17575644`) — ele move-se com o raio
+**e** com a força, e dois pontos não fazem uma lei.
+
+### §76.5 De quem é cada coisa agora
+
+| | de quem |
+|---|---|
+| inverter a polaridade e reescrever os três gates da lei antiga | **meu**, e está medido |
+| colher `N > 40` para arbitrar o quarto gate, e mais pontos para o tecto | **meu** (outra ida do E) |
+| **o TACTO**: depois da troca o pincel cava `38 %` menos num traço repetido (`0,4368 → 0,3171` a 14 carimbos) | **do dono** |
+
+⚠️ **A árvore fica INTACTA:** a troca foi aplicada só para medir e revertida; a
+suíte da crate fecha **463 verdes** e a lei que ship é a de sempre.

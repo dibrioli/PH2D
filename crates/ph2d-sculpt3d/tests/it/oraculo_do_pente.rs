@@ -876,3 +876,51 @@ fn diag_a_escada_da_acumulacao() {
         );
     }
 }
+
+/// ⭐⭐⭐⭐ **A ESCADA DO INTERRUPTOR — a metade da tabela-verdade que faltava.**
+///
+/// Colhida em 2026-09-18 pela janela **E** (família `acumula/`), ela arbitra a
+/// contradição do §75: o mesmo carimbo repetido `N` vezes no mesmo sítio, nos
+/// **dois** estados do `acumular`.
+///
+/// ⚠️ A âncora que a torna de confiar é uma IDENTIDADE: `escada_n14_off` é
+/// byte-idêntica (no corpo) a `mecanismo/y_parado_p000`, cujo cabeçalho diz
+/// `acumular=False`. *O interruptor foi identificado por identidade, nunca por
+/// leitura do rótulo* — e o sentido dele é contra-intuitivo.
+#[test]
+#[ignore = "sonda: a escada do interruptor"]
+fn diag_a_escada_do_interruptor() {
+    println!(
+        "{:>4} {:>14} {:>14} {:>8} {:>14} {:>14} {:>8}",
+        "N", "ALVO off", "nosso off", "razao", "ALVO on", "nosso on", "razao"
+    );
+    for n in [1usize, 2, 4, 8, 14, 27, 40] {
+        let mut col = Vec::new();
+        for lado in ["off", "on"] {
+            let c = ler("acumula", &format!("escada_n{n}_{lado}"));
+            let dentro = entrada(&c);
+            let maior = |p: &[[f32; 3]]| -> f64 {
+                dentro
+                    .positions()
+                    .iter()
+                    .zip(p)
+                    .map(|(a, b)| {
+                        f64::from(b[0] - a[0])
+                            .hypot(f64::from(b[1] - a[1]))
+                            .hypot(f64::from(b[2] - a[2]))
+                    })
+                    .fold(0.0, f64::max)
+            };
+            col.push((maior(&c.saida), maior(&correr(&c))));
+        }
+        println!(
+            "{n:>4} {:>14.8} {:>14.8} {:>8.3} {:>14.8} {:>14.8} {:>8.3}",
+            col[0].0,
+            col[0].1,
+            col[0].1 / col[0].0,
+            col[1].0,
+            col[1].1,
+            col[1].1 / col[1].0
+        );
+    }
+}

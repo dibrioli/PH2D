@@ -176,3 +176,14 @@ verbo moveu contra o repouso. Sem ele, um verbo **inerte** lê-se exactamente co
 ignora o pente — e duas células deste corpus (a torção com um percurso recto, e a esfera sem passe
 de refino) foram apanhadas assim, **medidas como inertes e refeitas** com a fixtura que contém o
 fenómeno (uma varredura angular; o passe armado).
+
+⚠️ **Família `acumula` (18 células), colhida 2026-09-18** — a metade da tabela-verdade
+que faltava: o interruptor de acumulação nos **dois** estados, com o cursor parado e
+`N ∈ {1,2,4,8,14,27,40}` carimbos, mais quatro espelhos das células do `mecanismo`.
+⚠️ **Elas NÃO entram na população do §3** (são `modo_de_detalhe=MANUAL` e não mudam a
+contagem de vértices), logo o vale e a barra ficam intactos. ⭐ A âncora que as liga ao
+corpus antigo é uma IDENTIDADE: `acumula/escada_n14_off` é byte-idêntica, no corpo, a
+`mecanismo/y_parado_p000`.
+
+⛔ **Risco de leitura nomeado:** em `escada/` o prefixo `n_x*` quer dizer **passagens**;
+em `acumula/` o `escada_n*` quer dizer **carimbos**.

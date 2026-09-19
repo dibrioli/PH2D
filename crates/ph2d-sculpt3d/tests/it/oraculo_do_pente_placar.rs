@@ -242,10 +242,33 @@ fn o_placar_do_pente_nao_regride() {
     let mut falhas = Vec::new();
     let mut vistas = 0usize;
 
+    let mut fora = 0usize;
     for (fam, nome) in celulas_sem_remalha() {
         let k = chave(&fam, &nome);
-        vistas += 1;
         let c = ler(&fam, &nome);
+
+        // ⛔⛔ A família `acumula/` NÃO é do pente — ela varia o interruptor de
+        // acumulação e o número de carimbos, com o pente a ZERO. Pô-la neste
+        // placar mediria outra coisa com esta régua.
+        //
+        // ⚠️ **A exclusão é VERIFICADA e não uma condição de nome:** cada
+        // célula saltada tem de provar que o pente lhe é inerte, senão um
+        // ficheiro novo naquela pasta desaparecia deste placar em silêncio —
+        // que é o censo a varrer menos e a ficar verde.
+        if fam == "acumula" {
+            assert_eq!(
+                c.num("pente"),
+                0.0,
+                "{k}: saltada por ser da família da acumulação, e ela tem o \
+                 pente a {} — se uma célula dali passar a exercitar o pente, \
+                 ela pertence a este placar",
+                c.num("pente")
+            );
+            fora += 1;
+            continue;
+        }
+
+        vistas += 1;
 
         // ⭐⭐⭐ A premissa que torna um placar de POSIÇÕES completo: nestas
         // células o pente do alvo não vira uma única aresta. *Uma grade é
@@ -315,6 +338,11 @@ fn o_placar_do_pente_nao_regride() {
         ));
     }
 
+    assert!(
+        fora >= 18,
+        "a família da acumulação tem de continuar a ser saltada e CONTADA \
+         ({fora} saltadas) — se ela encolher, alguém apagou corpus"
+    );
     assert!(
         vistas >= PISO,
         "piso de população: {vistas} células, esperadas ao menos {PISO} — \

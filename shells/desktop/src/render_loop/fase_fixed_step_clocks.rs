@@ -78,10 +78,19 @@ impl crate::App {
         }
         let report = self.fixed_step.advance(wall_dt);
         if report.dropped_secs > 0.0 {
-            eprintln!(
-                "warn: dropped {:.3}s of sim time (max_substeps cap)",
-                report.dropped_secs
-            );
+            // ⚠️⚠️ **UMA vez por corrida** (ordem do dono, 2026-09-19: *«podemos tirar os logs»*).
+            // Ele dispara por QUADRO enquanto a simulação está atrasada, logo aparece exactamente
+            // quando o app já está lento — e escrever no terminal a 60 Hz é trabalho no caminho do
+            // quadro, que **agrava o que ele está a reportar**. ⭐ A informação não se perde: o que
+            // interessa é QUE aconteceu, e o perfilador (`PH2D_FLUID_PROFILE=1`) mede o quanto.
+            static JA_AVISOU: std::sync::atomic::AtomicBool =
+                std::sync::atomic::AtomicBool::new(false);
+            if !JA_AVISOU.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                eprintln!(
+                    "warn: dropped {:.3}s of sim time (max_substeps cap)",
+                    report.dropped_secs
+                );
+            }
         }
         panic::set_frame_id(self.fixed_step.tick_count());
         // Advance the engine-wide timeline cursor by the ticks that ran this

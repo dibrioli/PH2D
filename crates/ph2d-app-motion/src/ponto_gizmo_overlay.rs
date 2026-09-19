@@ -189,7 +189,14 @@ pub(crate) fn caminhos(
     let mut cheios = BezPath::new();
     let mut tracos = BezPath::new();
     for g in &v.grupos {
-        let peg = |i: usize| pegada_px(g.escala_em(i), altura_da_area);
+        // ⭐⭐⭐ **O TAMANHO ABSOLUTO GANHA DA PEÇA** (ordem do dono, 2026-09-19): quando o artista
+        // escreve um número na secção do gizmo, ele é o glifo **em pixels**, e a escala do grafo
+        // deixa de o dimensionar. ⚠️ *Ele continua a responder ao grafo pela FORMA e pela AGULHA* —
+        // o que ele compra é uma marca do tamanho que o artista quer, e não do tamanho da peça.
+        let peg = |i: usize| {
+            g.tamanho_em(i)
+                .map_or_else(|| pegada_px(g.escala_em(i), altura_da_area), f64::from)
+        };
         match g.feicao {
             Feicao::Osso => desenha_ossos(g, pt, &peg, ppu, &mut cheios, &mut tracos),
             Feicao::Corda => desenha_corda(g, pt, &peg, &mut tracos),
@@ -291,10 +298,25 @@ fn desenha_pontos(
         let c = pt(*p);
         let pegada = peg(i);
         let braco = glifo_px(CRUZ_DA_PECA, pegada);
-        tracos.move_to(Point::new(c.x - braco, c.y));
-        tracos.line_to(Point::new(c.x + braco, c.y));
-        tracos.move_to(Point::new(c.x, c.y - braco));
-        tracos.line_to(Point::new(c.x, c.y + braco));
+        // ⭐⭐⭐ **AS TRÊS FORMAS** (ordem do dono, 2026-09-19). ⚠️ A escada vem da crate que as
+        // declara — um `match` sobre literais aqui seria a segunda resposta à mesma pergunta, e a
+        // que envelhece no dia da quarta forma.
+        match g.forma_em(i) {
+            f if f >= ph2d_gizmo_params::RECT => {
+                tracos.move_to(Point::new(c.x - braco, c.y - braco));
+                tracos.line_to(Point::new(c.x + braco, c.y - braco));
+                tracos.line_to(Point::new(c.x + braco, c.y + braco));
+                tracos.line_to(Point::new(c.x - braco, c.y + braco));
+                tracos.close_path();
+            }
+            f if f >= ph2d_gizmo_params::CIRCULO => anel(tracos, c, braco),
+            _ => {
+                tracos.move_to(Point::new(c.x - braco, c.y));
+                tracos.line_to(Point::new(c.x + braco, c.y));
+                tracos.move_to(Point::new(c.x, c.y - braco));
+                tracos.line_to(Point::new(c.x, c.y + braco));
+            }
+        }
         if let Some(graus) = g.rot_em(i) {
             // ⚠️ A coluna é em GRAUS — a unidade de ângulo autorada desta casa (a mesma conversão
             // que o lowering faz, e no mesmo sítio: a borda onde a base é construída).

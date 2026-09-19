@@ -223,6 +223,8 @@ fn mede_o_custo_do_gizmo_de_pontos() {
                     pontos,
                     segmentos,
                     rot: None,
+                    forma: None,
+                    tamanho: None,
                     escala: None,
                     total: n,
                 }],
@@ -280,6 +282,8 @@ fn um_ponto(rot: Option<f32>, escala: Option<f32>) -> PontoGizmoView {
             pontos: vec![[0.0, 0.0]],
             segmentos: Vec::new(),
             rot: rot.map(|r| vec![r]),
+            forma: None,
+            tamanho: None,
             escala: escala.map(|e| vec![e]),
             total: 1,
         }],
@@ -498,6 +502,8 @@ fn um_osso_nunca_e_mais_gordo_do_que_o_proprio_comprimento() {
             pontos: vec![[0.0, 0.0], [comp_mundo, 0.0]],
             segmentos: vec![[0, 1]],
             rot: None,
+            forma: None,
+            tamanho: None,
             // ⚠️ Uma peça ENORME: sem o limite a meia-largura pedia `225 px` sobre um osso de 22,5.
             escala: Some(vec![5.0, 5.0]),
             total: 2,
@@ -536,6 +542,8 @@ fn o_osso_nao_afina_com_o_zoom() {
                 pontos: vec![[0.0, 0.0], [0.25, 0.0]],
                 segmentos: vec![[0, 1]],
                 rot: None,
+                forma: None,
+                tamanho: None,
                 escala: Some(vec![1.0, 1.0]),
                 total: 2,
             }],
@@ -708,5 +716,151 @@ fn com_a_lei_desligada_o_gizmo_nao_pede_tomadas() {
     assert!(
         taps_for(&m, false).is_empty(),
         "com a lei desligada ele nao pode cobrar um cozimento de CPU"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ A SECÇÃO DO GIZMO — *«uma seção para tamanho absoluto do gizmo assim como algumas opções de
+// forma para ele como cruz, circulo e rect»* (ordem do dono, 2026-09-19).
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// Um grupo de um ponto com a forma e o tamanho que a secção escreveria.
+fn um_ponto_com(forma: f32, tamanho: Option<f32>) -> PontoGizmoView {
+    let mut v = um_ponto(None, Some(REAL));
+    v.grupos[0].forma = Some(vec![forma]);
+    v.grupos[0].tamanho = tamanho.map(|t| vec![t]);
+    v
+}
+
+/// **AS TRÊS FORMAS DÃO TRÊS DESENHOS** — e a régua é o que elas SÃO, nunca a caixa: uma cruz, um
+/// anel e um rectângulo do mesmo braço têm a MESMA caixa (a lição da mutação `R4`).
+#[test]
+fn as_tres_formas_dao_tres_desenhos() {
+    use ph2d_vector::PathEl;
+    let perfil = |forma: f32| {
+        let (_, t) =
+            crate::ponto_gizmo_overlay::caminhos(&um_ponto_com(forma, None), &olho(1.0), ALTURA);
+        let els = t.elements().to_vec();
+        let curvas = els
+            .iter()
+            .filter(|e| matches!(e, PathEl::CurveTo(..) | PathEl::QuadTo(..)))
+            .count();
+        let fecha = els.iter().any(|e| matches!(e, PathEl::ClosePath));
+        (curvas > 0, fecha)
+    };
+    // ⚠️ **Os TRÊS pares são distintos, e é isso que o gate afirma** — não o «fecha» sozinho: um
+    // círculo **é** um caminho fechado, e a minha 1.ª expectativa (`(true, false)`) estava errada.
+    // A cruz: rectas e ABERTA · o círculo: CURVAS · o rect: rectas e FECHADO.
+    let (cruz, circulo, rect) = (
+        perfil(ph2d_gizmo_params::CRUZ),
+        perfil(ph2d_gizmo_params::CIRCULO),
+        perfil(ph2d_gizmo_params::RECT),
+    );
+    assert_eq!(cruz, (false, false), "a cruz");
+    assert_eq!(circulo, (true, true), "o circulo");
+    assert_eq!(rect, (false, true), "o rect");
+    assert!(
+        cruz != circulo && circulo != rect && cruz != rect,
+        "as tres formas tem de dar tres desenhos DISTINTOS"
+    );
+}
+
+/// **O TAMANHO ABSOLUTO GANHA DA PEÇA, e é ABSOLUTO** — o pedido à letra.
+#[test]
+fn o_tamanho_absoluto_ganha_da_peca_e_nao_ve_o_zoom() {
+    let largura = |t: Option<f32>, z: f64| {
+        let (_, tr) = crate::ponto_gizmo_overlay::caminhos(
+            &um_ponto_com(ph2d_gizmo_params::CRUZ, t),
+            &olho(z),
+            ALTURA,
+        );
+        tr.bounding_box().width()
+    };
+    let da_peca = largura(None, 1.0);
+    let absoluto = largura(Some(40.0), 1.0);
+    assert!(
+        (absoluto - 40.0).abs() < 1e-6,
+        "o tamanho absoluto e' o GLIFO em pixels: pedi 40, saiu {absoluto}"
+    );
+    assert!(
+        (da_peca - absoluto).abs() > 1.0,
+        "o CONTROLO: sem ele o glifo sai da peca ({da_peca})"
+    );
+    // ⚠️ E o zoom não lhe toca — a lei 1 continua de pé por cima da secção.
+    assert!((largura(Some(40.0), 8.0) - absoluto).abs() < 1e-9);
+    // ⛔ E `0` quer dizer «derivado da peça», nunca «um glifo de zero».
+    assert!(
+        (largura(Some(0.0), 1.0) - da_peca).abs() < 1e-9,
+        "0 = da peca"
+    );
+}
+
+/// ⭐⭐⭐ **E A ESCOLHA CHEGA DO NÓ ATÉ AO RETRATO** — a rota inteira, e não a porta.
+///
+/// ⚠️ **Sem esta metade, tudo acima passa sobre um `Grupo` construído à mão:** ela monta um
+/// `motion.grid` com a secção preenchida, coze pela porta do produto e lê o retrato.
+#[test]
+fn a_escolha_do_cartao_chega_ao_retrato() {
+    use ph2d_nodegraph::graph::{Edge, Graph};
+    let mut m = MotionState::new();
+    let mut g = Graph::new();
+    let grelha = g.add_node("motion.grid");
+    let saida = g.add_node("motion.output");
+    g.set_param(grelha, ph2d_gizmo_params::FORMA, ph2d_gizmo_params::RECT);
+    g.set_param(grelha, ph2d_gizmo_params::TAMANHO, 24.0);
+    g.connect(Edge {
+        from: (grelha, 0),
+        to: (saida, 0),
+        delayed: false,
+    })
+    .expect("liga");
+    m.doc.graph = g;
+    m.sinks = vec![saida];
+    m.pump.set_taps(&taps_for(&m, true));
+    let sinks = m.sinks.clone();
+    coze(&mut m, &sinks);
+
+    let v = resolve(&m, true, true).expect("a grelha da' gizmo");
+    let grupo = &v.grupos[0];
+    assert!(!grupo.pontos.is_empty());
+    assert_eq!(
+        grupo.forma_em(0),
+        ph2d_gizmo_params::RECT,
+        "a forma escolhida no cartao tem de chegar"
+    );
+    assert_eq!(
+        grupo.tamanho_em(0),
+        Some(24.0),
+        "o tamanho absoluto tem de chegar"
+    );
+}
+
+/// **E NO PONTO NEUTRO A CORRENTE SAI COMO ENTROU** — a lei que mantém as 111 cenas intactas.
+#[test]
+fn no_ponto_neutro_a_grelha_nao_ganha_colunas() {
+    use ph2d_nodegraph::graph::{Edge, Graph};
+    let mut m = MotionState::new();
+    let mut g = Graph::new();
+    let grelha = g.add_node("motion.grid");
+    let saida = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (grelha, 0),
+        to: (saida, 0),
+        delayed: false,
+    })
+    .expect("liga");
+    m.doc.graph = g;
+    m.sinks = vec![saida];
+    m.pump.set_taps(&taps_for(&m, true));
+    let sinks = m.sinks.clone();
+    coze(&mut m, &sinks);
+    let v = resolve(&m, true, true).expect("gizmo");
+    assert!(
+        v.grupos[0].forma.is_none(),
+        "sem escolha, sem coluna de forma"
+    );
+    assert!(
+        v.grupos[0].tamanho.is_none(),
+        "sem escolha, sem coluna de tamanho"
     );
 }

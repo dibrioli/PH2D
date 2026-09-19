@@ -108,6 +108,14 @@ pub struct Grupo {
     /// mesmo símbolo — uma cruz esmagada num eixo lê-se como uma barra, e o artista deixaria de
     /// saber que aquilo é um ponto. A média dos dois eixos é o que a `SIZE_IDENTITY` torna `1`.
     pub escala: Option<Vec<f32>>,
+    /// ⭐⭐⭐ **A FORMA que o artista escolheu para o gizmo**, por elemento (ordem do dono,
+    /// 2026-09-19). `None` ⇒ a de omissão, a CRUZ.
+    ///
+    /// ⚠️ **Por elemento e não por grupo:** um `motion.mixer` de uma grelha com uma dispersão
+    /// mostra **duas** formas, cada uma a do seu produtor — que é o que o artista autorou.
+    pub forma: Option<Vec<f32>>,
+    /// ⭐⭐⭐ **O TAMANHO ABSOLUTO, em pixels.** `None` ou `0` ⇒ derivado da peça, que é o de sempre.
+    pub tamanho: Option<Vec<f32>>,
     /// Quantas posições a corrente tinha ANTES do tecto — o que a legenda diria.
     pub total: usize,
 }
@@ -127,6 +135,27 @@ impl Grupo {
     #[must_use]
     pub fn rot_em(&self, i: usize) -> Option<f32> {
         self.rot.as_ref().and_then(|v| v.get(i)).copied()
+    }
+
+    /// A FORMA do gizmo no elemento `i` — a cruz quando o artista não escolheu.
+    #[must_use]
+    pub fn forma_em(&self, i: usize) -> f32 {
+        self.forma
+            .as_ref()
+            .and_then(|v| v.get(i))
+            .copied()
+            .unwrap_or(ph2d_gizmo_params::CRUZ)
+    }
+
+    /// O TAMANHO ABSOLUTO do gizmo no elemento `i`, em pixels — `None` quando ele é derivado da
+    /// peça, que é o de sempre.
+    #[must_use]
+    pub fn tamanho_em(&self, i: usize) -> Option<f32> {
+        self.tamanho
+            .as_ref()
+            .and_then(|v| v.get(i))
+            .copied()
+            .filter(|t| *t > 0.0 && t.is_finite())
     }
 }
 
@@ -162,7 +191,14 @@ pub(crate) fn escalas(s: &Stream, n: usize) -> Option<Vec<f32>> {
 
 /// **A ROTAÇÃO de cada elemento, em graus** — `None` quando a corrente não a traz.
 pub(crate) fn rotacoes(s: &Stream, n: usize) -> Option<Vec<f32>> {
-    match s.get("rot") {
+    escalares(s, "rot", n)
+}
+
+/// Uma coluna escalar da corrente, limitada pelo tecto. ⚠️ **Uma porta e não três cópias:** a
+/// `rot`, a forma e o tamanho do gizmo fazem a MESMA leitura, e três cópias divergiriam no dia em
+/// que uma delas ganhasse um filtro.
+fn escalares(s: &Stream, nome: &str, n: usize) -> Option<Vec<f32>> {
+    match s.get(nome) {
         Some(Column::Scalar(v)) => Some(v.iter().take(n).copied().collect()),
         _ => None,
     }
@@ -293,6 +329,10 @@ pub fn resolve(
             feicao,
             rot: rotacoes(s, n),
             escala: escalas(s, n),
+            // ⭐ A secção do gizmo, escrita pelo nó de ORIGEM e que VIAJOU até aqui — ver
+            // [`ph2d_gizmo_params`] e a sonda que mediu que uma coluna nova sobrevive à cadeia.
+            forma: escalares(s, ph2d_gizmo_params::FORMA_COL, n),
+            tamanho: escalares(s, ph2d_gizmo_params::TAMANHO_COL, n),
             pontos,
             segmentos,
             total,

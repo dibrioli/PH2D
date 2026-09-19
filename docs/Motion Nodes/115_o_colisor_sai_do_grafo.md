@@ -2686,6 +2686,59 @@ outra não*. O mesmo vale para o piso `OSSO_MIN_PX`: com o ecrã, afastar a câm
   media `20` de mundo como `20 px` de ecrã, e no regime novo isso são `1 800 px` — uma cadeia enorme
   onde a cerca **não morde**. *A fixtura tinha de mudar de regime junto com a lei.*
 
+### §32.4-quinquies — ✅ A SECÇÃO DO GIZMO: *«tamanho absoluto […] e algumas opções de forma como cruz, circulo e rect»*
+
+> **Ordem do dono, 2026-09-19, com o smoke da §32.4-quater APROVADO.**
+
+⭐⭐⭐ **A população é DERIVADA** (`quem_e_como_o_grid`): **14 fontes de posições** — emitem
+instâncias e **não** recebem — contra `121` de passagem. É a elas que a secção pertence.
+
+⭐⭐⭐ **E a arquitectura foi decidida por uma MEDIÇÃO, não por gosto**
+(`uma_coluna_nova_sobrevive_a_cadeia`): uma coluna inventada **atravessa** `motion.move`,
+`motion.scale`, `motion.rotate`, `motion.clone` (que a replica por cópia) e `motion.cull`. *Sem
+esse número a secção teria de viver no SINK — e o dono pediu-a no NÓ.* ⇒ o nó escreve duas colunas
+(`gizmo_forma`, `gizmo_tamanho`) e elas **viajam** até onde o gizmo é resolvido.
+
+⭐ **Por ELEMENTO, e é isso que faz uma junção ler-se certa:** um `motion.mixer` de uma grelha com
+uma dispersão mostra **duas** formas, cada uma a do seu produtor.
+
+**A crate é [`ph2d-gizmo-params`]** (folha, `SPECS` · `HINTS` · `GRUPOS` · `escreve`): *catorze
+cópias de dois params são catorze sítios onde o rótulo pode divergir, e o rótulo é a face do
+artista*. A secção **nasce FECHADA** e, no ponto neutro, a porta **não escreve coluna nenhuma** ⇒
+toda cena de hoje sai **byte-idêntica**.
+
+⛔ **O `Gizmo Size` é ABSOLUTO em pixels e GANHA da peça**; `0` quer dizer *«derivado da peça»*, que
+é o de sempre. O tecto é `256 px` e nomeia o recurso: o ECRÃ — um terço da altura útil de um canvas
+é onde uma marca deixa de ser uma marca.
+
+⛔⛔ **E o registo apagou seis dicas em silêncio, até o censo falar.** O
+`NodeRegistry::register_param_ui` é *«a última escrita vence»*: um **segundo** registo no mesmo nó
+**APAGA** a tabela que ele já tinha. A 1.ª redacção fez isso ao `motion.grid` e **seis** censos do
+cartão reprovaram de uma vez, com os nomes dentro (*«6 of 819 params have no `ParamUiHint`»* —
+`rows`, `cols`, `gap_x`, `gap_y`, `shape`, `inner`). ⇒ *a secção entra NA tabela do nó*, e as
+constantes são nomeadas (`HINT_FORMA`) e nunca indexadas — a armadilha dos `SHAPES.len() − N`.
+
+⛔⛔⛔ **E um CENSO teve de ser AFINADO, não afrouxado.** O `SECTION_FLOOR` mede *«o menor cartão que
+esta casa julgou valer uma secção»*, e o `motion.grid` com `8` params passou a ser ele. Baixar o
+piso para `8` **cascateia**: a 2.ª metade daquele gate passou a exigir secções do `force.buoyancy` e
+do `force.vortex`, que nunca foram julgados por ninguém. ⭐ *A secção do gizmo não organiza os params
+do cartão — ela acrescenta um assunto separado, vem de uma crate partilhada e nasce fechada: custa
+uma fileira e esconde duas.* ⇒ ela sai do censo **por referência à constante que a declara**
+(`e_do_proprio_cartao`), nunca por uma lista de nós, e o piso fica em `9`.
+*Baixar um piso porque a população mudou de NATUREZA é afrouxar a régua com cara de a re-medir.*
+
+**Mutação: 6 de 6 sangram** (a forma não chega · o tamanho não chega · o absoluto perde para a peça
+· um tamanho zero apaga o glifo · a grelha deixa de escrever · a porta deixa de escrever a forma).
+⚠️ **E a primeira corrida de uma delas mentiu:** o arnês correu `-p ph2d-node-motion-grid` e o gate
+que a cobre vive na `ph2d-app-motion` ⇒ *«SOBREVIVEU»* sobre produto correcto — a lei do §5.0 sobre
+portões cegos aos gates de outra crate, agora dentro de uma prova de mutação.
+
+⏳ **ABERTO, e nomeado:** a secção está no **`motion.grid`**, que é a raiz de **97** das 111 cenas.
+As outras 13 fontes derivadas (`scatter`, `distribute_poisson`, `fibonacci`, `emitter`,
+`rig.skeleton`, `source.table`, `source.camera`, …) herdam-na com **três linhas cada**, e os
+produtores que TÊM entrada (a corda, o corpo mole, o bando, os `distribute_*`) recebem as colunas
+por PROPAGAÇÃO quando a cadeia começa numa fonte que as escreve.
+
 ### §32.5 — ⏳ O que FICA, e a ordem
 
 1. **As cenas migram** — cada sink de posições ganha `source.shape → motion.duplicator`. ⭐ Isto é

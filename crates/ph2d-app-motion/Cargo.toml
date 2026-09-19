@@ -82,6 +82,7 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-motion-doc = { path = "../ph2d-motion-doc" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+ph2d-gizmo-params = { path = "../ph2d-gizmo-params" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-render = { path = "../ph2d-render" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }

@@ -71,6 +71,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: ph2d_motion_region::INNER,
             default: 0.5,
         },
+        // ⭐⭐⭐ **A SECÇÃO DO GIZMO** (ordem do dono, 2026-09-19: *«para nós como Grid e outros
+        // similares vamos criar uma seção para tamanho absoluto do gizmo assim como algumas opções
+        // de forma»*). Uma grelha sem `motion.duplicator` não vira pixel — ela aparece como gizmo,
+        // e estes dois dizem COMO. ⚠️ Os `ParamSpec` vêm da crate que os declara, nunca copiados:
+        // dois params copiados por catorze fontes são catorze sítios onde o rótulo pode divergir.
+        ph2d_gizmo_params::SPEC_FORMA,
+        ph2d_gizmo_params::SPEC_TAMANHO,
     ],
     // `lowerings` describes the `ph2d-expr` path only, and the grid is a
     // structural *generator* (it produces an element count), not a per-element
@@ -228,12 +235,14 @@ impl NodeOp for MotionGrid {
         // them per copy, so each copy is a self-contained indexed set.
         let index: Vec<f32> = par_build(n, |i| i as f32);
         let count = vec![n as f32; n];
-        ctx.emit(
-            Stream::new(n)
-                .with("P", Column::Vec2(positions))
-                .with("Index", Column::Scalar(index))
-                .with("Count", Column::Scalar(count)),
-        );
+        let mut out = Stream::new(n)
+            .with("P", Column::Vec2(positions))
+            .with("Index", Column::Scalar(index))
+            .with("Count", Column::Scalar(count));
+        // ⭐ A escolha do gizmo viaja como COLUNA até ao sink, que é onde ele é resolvido — e no
+        // ponto neutro esta porta **não escreve nada**, logo a corrente sai byte-idêntica.
+        ph2d_gizmo_params::escreve(ctx, &mut out);
+        ctx.emit(out);
     }
 }
 
@@ -253,6 +262,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     // M1.P1 — param rows: whole-number row/column counts, continuous per-axis gap.
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // ⭐ A SECÇÃO do cartão, e ela nasce FECHADA: o artista só a abre quando quer mexer no gizmo,
+    // e um cartão que abre com duas linhas a mais empurra as que ele veio ver.
+    reg.register_param_groups(MANIFEST.id, ph2d_gizmo_params::GRUPOS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
@@ -341,6 +353,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.01,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ **A secção do gizmo entra NESTA tabela, e não num 2.º `register_param_ui`:** o registo é
+    // *«a última escrita vence»*, logo um segundo registo APAGARIA as seis dicas acima — foi o que
+    // a 1.ª redacção desta wave fez, e seis censos do cartão reprovaram com os nomes delas.
+    ph2d_gizmo_params::HINT_FORMA,
+    ph2d_gizmo_params::HINT_TAMANHO,
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is

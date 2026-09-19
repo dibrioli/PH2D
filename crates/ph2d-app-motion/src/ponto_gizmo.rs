@@ -202,13 +202,29 @@ fn corda(n: usize) -> Vec<[usize; 2]> {
 /// ⚠️ **Não dá para escolher só os que não têm aparência** — essa pergunta é sobre a CORRENTE, e a
 /// corrente só existe depois do cozimento. Pedir todos é a resposta honesta.
 ///
-/// ⭐ **E é barato, com o mecanismo:** desde o doc 115 §21 quem DESENHA publica o que separou, logo
-/// uma tomada sobre um sink **não re-coze nada**; o que ela custa é um `Stream::clone`, e um
-/// `Stream` guarda `Arc<Column>` ⇒ refcount, nunca uma cópia das colunas. ⛔ Foi exactamente o
-/// oposto disto que custou metade de um quadro ao dono quando a tomada do colisor obrigava a uma
-/// segunda separação.
+/// ⛔ **E ELA É VAZIA COM A LEI DESLIGADA, que é a configuração de FÁBRICA:** *um gizmo que não é
+/// desenhado não pode cobrar o cozimento de que ele precisaria.* Na rota do DISPOSITIVO a bomba
+/// **não marcha**, logo uma tomada obriga o `cook_taps_only` a cozinhar aquele sink **na CPU**.
+///
+/// ⚠️⚠️ **E o PREÇO disso foi MEDIDO, depois de eu o ter invocado errado.** Eu justifiquei esta
+/// cerca com os `195,9 ms` que a auditoria de performance do módulo mede para a CPU a `4,19 M`
+/// objectos — *um número de outro regime*. Medido no sítio (`o_que_a_tomada_do_gizmo_custa`,
+/// `--release`, mediana de 5, `load 6,03`):
+///
+/// | cena | linhas | o cozimento do sink | de um quadro |
+/// |---|---|---|---|
+/// | `=111` | 12 800 | `0,226 ms` | `1,4 %` |
+/// | `=116` | **102 400** | **`0,216 ms`** | **`1,3 %`** |
+/// | `=120` | 20 | `0,001 ms` | `0,0 %` |
+///
+/// ⇒ **a cerca fica pela lei e não pelo relógio** (zero custo na configuração de fábrica é a mesma
+/// lei do interruptor único), e o gizmo é utilizável mesmo nas cenas grandes. *Invocar um número
+/// medido noutro regime para justificar uma decisão é o que o §0.0 proíbe, e eu fi-lo aqui.*
 #[must_use]
-pub fn taps_for(motion: &MotionState) -> Vec<NodeId> {
+pub fn taps_for(motion: &MotionState, so_com_forma: bool) -> Vec<NodeId> {
+    if !so_com_forma {
+        return Vec::new();
+    }
     motion.sinks.clone()
 }
 

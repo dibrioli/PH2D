@@ -799,3 +799,161 @@ fn que_numeros_o_size_tem() {
     }
     eprintln!();
 }
+
+/// ⭐⭐⭐ **QUEM É «COMO O GRID»** — a população da ordem do dono de 2026-09-19 (*«para nós como Grid
+/// e outros similares vamos criar uma seção para tamanho absoluto do gizmo…»*), **DERIVADA do
+/// manifesto** e nunca de uma lista escrita à mão.
+///
+/// A regra: um nó é FONTE DE POSIÇÕES quando **não recebe** uma corrente de instâncias e **emite**
+/// uma. É esse o nó que, sem um Duplicator, não tem como virar pixel — e é a ele que a secção do
+/// gizmo pertence.
+///
+/// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture quem_e_como_o_grid`
+#[test]
+#[ignore = "sonda, nao um gate"]
+fn quem_e_como_o_grid() {
+    use ph2d_nodegraph::port::Domain;
+    let reg = MotionState::new().registry;
+    let inst = |t: &ph2d_nodegraph::port::PortType| t.domain == Domain::Instances;
+    let mut fontes: Vec<&str> = Vec::new();
+    let mut passagens = 0usize;
+    for m in reg.manifests() {
+        let emite = m.outputs.iter().any(|p| inst(&p.ty));
+        let recebe = m.inputs.iter().any(|p| inst(&p.ty));
+        if emite && !recebe {
+            fontes.push(m.name);
+        } else if emite {
+            passagens += 1;
+        }
+    }
+    fontes.sort_unstable();
+    eprintln!(
+        "\n=== FONTES DE POSICOES · {} de {} nos que emitem instancias ===\n",
+        fontes.len(),
+        fontes.len() + passagens
+    );
+    for f in &fontes {
+        eprintln!("  {f}");
+    }
+    eprintln!("\n  ({passagens} sao de PASSAGEM: recebem instancias e devolvem-nas)\n");
+}
+
+/// ⭐⭐⭐ **UMA COLUNA NOVA SOBREVIVE À CADEIA?** — a premissa que decide a arquitectura da secção
+/// do gizmo (ordem do dono, 2026-09-19). Se uma coluna escrita pela FONTE não chega ao sink, então
+/// a secção **não pode** viver no nó de origem e tem de viver no sink.
+///
+/// ⚠️ Ela é medida com uma coluna INVENTADA (`zz_sonda`) posta num external, atravessando a cadeia
+/// que as cenas de facto usam.
+///
+/// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture uma_coluna_nova_sobrevive`
+#[test]
+#[ignore = "sonda, nao um gate"]
+fn uma_coluna_nova_sobrevive_a_cadeia() {
+    use ph2d_nodegraph::attr::Column;
+    use ph2d_nodegraph::graph::{Edge, Graph};
+    let cadeias: [&[&str]; 6] = [
+        &["motion.move"],
+        &["motion.scale"],
+        &["motion.rotate"],
+        &["motion.move", "motion.scale", "motion.rotate"],
+        &["motion.clone"],
+        &["motion.cull"],
+    ];
+    eprintln!("\n=== UMA COLUNA NOVA SOBREVIVE A' CADEIA? ===\n");
+    for cadeia in cadeias {
+        let mut m = MotionState::new();
+        let mut g = Graph::new();
+        // A fonte é um `source.object` porque ele lê um EXTERNAL, que é onde a sonda põe a coluna.
+        let fonte = g.add_node("source.object");
+        g.set_text_param(fonte, "object", "Sonda");
+        let mut cur = fonte;
+        for t in cadeia {
+            let n = g.add_node(*t);
+            g.connect(Edge {
+                from: (cur, 0),
+                to: (n, 0),
+                delayed: false,
+            })
+            .expect("liga");
+            cur = n;
+        }
+        let saida = g.add_node("motion.output");
+        g.connect(Edge {
+            from: (cur, 0),
+            to: (saida, 0),
+            delayed: false,
+        })
+        .expect("liga");
+        m.doc.graph = g;
+        let com_sonda = crate::motion_bridge::appearance_tile(
+            [1.0, 1.0],
+            [1.0, 1.0, 1.0, 1.0],
+            [0.0, 0.0, 1.0, 1.0],
+            0,
+            false,
+        )
+        .with("zz_sonda", Column::Scalar(vec![7.0]));
+        m.pump.cook.set_external("Sonda".to_string(), com_sonda);
+        let Ok(out) = m.pump.cook.cook(&m.doc.graph, &m.registry, saida, 0.0) else {
+            eprintln!("  {cadeia:?} │ NAO COZE");
+            continue;
+        };
+        let s = out[0].as_stream();
+        let chegou =
+            matches!(s.get("zz_sonda"), Some(Column::Scalar(v)) if v.first() == Some(&7.0));
+        eprintln!(
+            "  {:<52} │ {} linhas │ a coluna {}",
+            format!("{cadeia:?}"),
+            s.count(),
+            if chegou { "CHEGOU" } else { "SUMIU" }
+        );
+    }
+    eprintln!();
+}
+
+/// ⛔⛔ **O QUE A TOMADA DO GIZMO CUSTA NUMA CENA DE DISPOSITIVO** — o número que decide se o gizmo
+/// é utilizável nas cenas grandes (ordem do dono, 2026-09-19).
+///
+/// Na rota do device a bomba **não marcha**: uma tomada obriga o `cook_taps_only` a cozinhar aquele
+/// sink **na CPU**, e é esse o preço por quadro que o gizmo cobra quando a lei está ligada.
+///
+/// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture o_que_a_tomada_custa`
+#[test]
+#[ignore = "sonda de relogio, nao um gate"]
+fn o_que_a_tomada_do_gizmo_custa() {
+    eprintln!("\n=== O PRECO DA TOMADA DO GIZMO (cozimento de CPU do sink) ===\n");
+    for level in [111u32, 116, 117, 120] {
+        let mut state = MotionState::new();
+        let sinks =
+            crate::motion_demo_legend::monta(&level.to_string(), &mut state.doc, &state.registry).0;
+        let Some(&sink) = sinks.first() else { continue };
+        // Aquece (o memo do cook) e depois mede a mediana de cinco.
+        let _ = state
+            .pump
+            .cook
+            .cook(&state.doc.graph, &state.registry, sink, 0.0);
+        let mut ms: Vec<f64> = (0..5)
+            .map(|k| {
+                let t = f64::from(k) / 60.0;
+                let i = std::time::Instant::now();
+                let _ = state
+                    .pump
+                    .cook
+                    .cook(&state.doc.graph, &state.registry, sink, t);
+                i.elapsed().as_secs_f64() * 1e3
+            })
+            .collect();
+        ms.sort_by(f64::total_cmp);
+        let n = state
+            .pump
+            .cook
+            .cook(&state.doc.graph, &state.registry, sink, 0.0)
+            .map_or(0, |o| o[0].as_stream().count());
+        eprintln!(
+            "  ={level:<4} │ {n:>7} linhas │ {:>8.3} ms │ {:>6.1} % de um quadro de 16,7",
+            ms[2],
+            ms[2] * 100.0 / 16.67
+        );
+    }
+    eprintln!();
+}

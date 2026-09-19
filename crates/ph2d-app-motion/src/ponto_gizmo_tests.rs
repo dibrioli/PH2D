@@ -92,7 +92,7 @@ fn uma_grelha_sem_forma_vira_gizmo_de_pontos() {
     m.sinks = sinks.clone();
 
     // As tomadas, pela MESMA porta que o quadro usa.
-    let taps = taps_for(&m);
+    let taps = taps_for(&m, true);
     assert_eq!(taps, sinks, "o gizmo pede todos os sinks");
     m.pump.set_taps(&taps);
 
@@ -123,7 +123,7 @@ fn sem_a_ferramenta_motion_nao_ha_gizmo() {
     let mut m = MotionState::new();
     let sinks = crate::motion_demo_legend::monta("117", &mut m.doc, &m.registry).0;
     m.sinks = sinks.clone();
-    m.pump.set_taps(&taps_for(&m));
+    m.pump.set_taps(&taps_for(&m, true));
     coze(&mut m, &sinks);
     assert!(
         resolve(&m, true, true).is_some(),
@@ -157,7 +157,7 @@ fn quem_tem_aparencia_nao_ganha_gizmo() {
     m.sinks = vec![saida];
     // A membrana publica a aparência, pela MESMA porta do shell.
     crate::motion_lsystem_testkit::publish_object_alpha(&mut m, "Bola", 0, false);
-    m.pump.set_taps(&taps_for(&m));
+    m.pump.set_taps(&taps_for(&m, true));
     let sinks = m.sinks.clone();
     coze(&mut m, &sinks);
 
@@ -569,7 +569,7 @@ fn com_a_lei_desligada_nao_ha_gizmo() {
     let mut m = MotionState::new();
     let sinks = crate::motion_demo_legend::monta("117", &mut m.doc, &m.registry).0;
     m.sinks = sinks.clone();
-    m.pump.set_taps(&taps_for(&m));
+    m.pump.set_taps(&taps_for(&m, true));
     coze(&mut m, &sinks);
     assert!(
         resolve(&m, true, true).is_some(),
@@ -588,7 +588,7 @@ fn a_arte_do_device_obedece_a_lei() {
     let mut m = MotionState::new();
     let sinks = crate::motion_demo_legend::monta("117", &mut m.doc, &m.registry).0;
     m.sinks = sinks.clone();
-    m.pump.set_taps(&taps_for(&m));
+    m.pump.set_taps(&taps_for(&m, true));
     coze(&mut m, &sinks);
     // Uma cena de posições: sem fronteira com aparência ⇒ a arte NÃO desenha.
     assert!(
@@ -686,4 +686,27 @@ fn fronteira_de_posicoes() -> MotionState {
         "a fixtura tem de COZER a fronteira"
     );
     m
+}
+
+/// ⛔⛔⛔ **COM A LEI DESLIGADA O GIZMO NÃO PEDE TOMADA NENHUMA** — e isto não é conforto.
+///
+/// Na rota do **DISPOSITIVO** a bomba não marcha, logo uma tomada obriga o `cook_taps_only` a
+/// cozinhar aquele sink **na CPU**. *Um gizmo que não é desenhado não pode cobrar o cozimento de
+/// que ele precisaria* — e a 1.ª redacção pedia a tomada SEMPRE.
+///
+/// ⚠️ **O preço está MEDIDO e é pequeno** (`0,216 ms` a `102 400` linhas — ver [`taps_for`]): esta
+/// cerca fica pela LEI (zero custo de fábrica), e não por um relógio.
+#[test]
+fn com_a_lei_desligada_o_gizmo_nao_pede_tomadas() {
+    let mut m = MotionState::new();
+    let sinks = crate::motion_demo_legend::monta("117", &mut m.doc, &m.registry).0;
+    m.sinks = sinks.clone();
+    assert!(
+        !taps_for(&m, true).is_empty(),
+        "o CONTROLO: com a lei ligada ele pede os sinks"
+    );
+    assert!(
+        taps_for(&m, false).is_empty(),
+        "com a lei desligada ele nao pode cobrar um cozimento de CPU"
+    );
 }

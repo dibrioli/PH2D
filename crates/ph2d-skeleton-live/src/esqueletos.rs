@@ -46,3 +46,31 @@ pub fn bone_roots(sim: &SimWorld) -> Vec<Entity> {
 #[cfg(test)]
 #[path = "esqueletos_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ **O ENVELOPE AINDA MANDA EM ALGUMA COISA NESTA CENA?** (report do dono, 2026-09-18:
+/// *«Por que o envelope já não influencia na deformação?»*).
+///
+/// ⛔⛔⛔ **Ele deixou de mandar numa IMAGEM, e isso está MEDIDO há waves** (a tabela vive no doc do
+/// [`crate::skin_image`] via a cena do pincel): os pesos do **padrão-ouro** são resolvidos *sobre a
+/// arte* e não sobre um raio, logo `strength = 1` e `strength = 2` dão a MESMA deformação, coluna a
+/// coluna. ⚠️ **O envelope não morreu — MUDOU DE DONO:** uma forma **vectorial** presa ao mesmo
+/// esqueleto continua na lei euclidiana (o padrão-ouro precisa de uma malha do domínio, e uma
+/// Bézier não tem uma), e ali ele manda como sempre.
+///
+/// ⇒ o painel pintava um número que, num rig só de imagens, **não muda um pixel** — a espécie de
+/// controlo morto que o `§5.0` nomeia, e que o dono apanhou perguntando.
+///
+/// ⚠️ **A pergunta é da CENA e não do osso, de propósito:** o `SkinBind` guarda a malha e os pesos,
+/// **não a que ossos ficou preso** — logo *«este esqueleto tem forma vectorial?»* não é derivável
+/// daqui. A pergunta mais larga erra sempre para o lado **conservador**: com uma forma vectorial
+/// presa em qualquer sítio, o campo fica à vista. *Esconder um controlo vivo é pior do que mostrar
+/// um inerte.*
+#[must_use]
+pub fn ha_forma_vectorial_presa(sim: &SimWorld) -> bool {
+    let mundo = sim.world();
+    let Some(mut q) = mundo.try_query::<(ph2d_ecs::Entity, &ph2d_skeleton_ecs::SkinBind)>() else {
+        return false;
+    };
+    q.iter(mundo)
+        .any(|(e, _)| !crate::skin_image::is_skinned_image(mundo, e))
+}

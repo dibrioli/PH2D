@@ -13,6 +13,7 @@ use std::cell::{Cell, RefCell};
 thread_local! {
     /// A seleção contém pelo menos uma forma PRESA a um esqueleto? Decide se as duas saídas
     /// (Keep Pose / Release) são oferecidas — *um botão que só sabe recusar é pior que um ausente*.
+    static CURRENT_ENVELOPE_MANDA: Cell<bool> = const { Cell::new(true) };
     static CURRENT_SKINNED: Cell<Skinned> = const { Cell::new(Skinned { vector: false, imagem: false }) };
     /// O OSSO em foco existe? Sem ele, `Length`/`Strength` não têm sujeito.
     static CURRENT_HAS_BONE: Cell<bool> = const { Cell::new(false) };
@@ -66,6 +67,23 @@ impl Skinned {
     pub fn alguma(self) -> bool {
         self.vector || self.imagem
     }
+}
+
+/// ⭐⭐⭐ **O ENVELOPE AINDA MANDA EM ALGUMA COISA?** (publicado pela shell, todo quadro).
+///
+/// ⛔ `false` ⇒ a cena não tem **nenhuma** forma vectorial presa, e nesse caso o campo *Strength* é
+/// **provadamente inerte**: com os pesos do padrão-ouro uma imagem deforma igual a `1` e a `2`
+/// (medido, coluna a coluna). ⇒ o painel esconde-o, pela mesma lei que já esconde as quatro alças
+/// de curvatura num osso que não as sabe ler.
+///
+/// ⚠️ **O default é `true`, e a escolha é conservadora:** antes de a shell publicar o que quer que
+/// seja, o campo fica **à vista**. *Esconder um controlo vivo é pior do que mostrar um inerte.*
+pub fn set_current_envelope_manda(v: bool) {
+    CURRENT_ENVELOPE_MANDA.with(|c| c.set(v));
+}
+
+pub(crate) fn envelope_manda() -> bool {
+    CURRENT_ENVELOPE_MANDA.with(Cell::get)
 }
 
 /// O que a seleção tem preso a esqueleto (publicado pela shell, todo quadro).

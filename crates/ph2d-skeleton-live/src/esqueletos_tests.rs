@@ -49,3 +49,63 @@ fn um_esqueleto_dentro_de_um_grupo_continua_a_ser_um() {
          que nao e' osso, e o botao passaria a ver esqueletos onde ha' um so'"
     );
 }
+
+/// Uma pele sem conteúdo — o que interessa a esta lei é a PRESENÇA do componente.
+fn pele_vazia() -> ph2d_skeleton_ecs::SkinBind {
+    ph2d_skeleton_ecs::SkinBind {
+        source: Vec::new(),
+        tendons: Vec::new(),
+    }
+}
+
+/// ⭐⭐⭐ **O ENVELOPE MANDA ONDE HÁ FORMA VECTORIAL, E SÓ AÍ** (report do dono, 2026-09-18).
+///
+/// ⚠️ **As DUAS metades, porque as curas são opostas:** uma lei que respondesse sempre `true`
+/// deixaria o campo à vista num rig só de imagens (o controlo morto que o dono apanhou), e uma que
+/// respondesse sempre `false` esconderia o envelope das formas vectoriais, que é um controlo VIVO.
+#[test]
+fn o_envelope_manda_onde_ha_forma_vectorial_e_so_ai() {
+    use ph2d_ecs::Transform;
+
+    // (a) cena VAZIA — nada preso, e o envelope pode vir a mandar ⇒ a resposta conservadora.
+    let mut sim = SimWorld::default();
+    cadeias(&mut sim, 1);
+    assert!(
+        !ha_forma_vectorial_presa(&sim),
+        "uma cena sem NADA preso leu «ha' forma vectorial»: a lei esta' a contar entidades que \
+         nao tem pele"
+    );
+
+    // (b) uma IMAGEM presa — o padrão-ouro manda, o envelope é inerte.
+    let imagem = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+            pele_vazia(),
+        ))
+        .id();
+    assert!(
+        !ha_forma_vectorial_presa(&sim),
+        "uma IMAGEM presa leu «ha' forma vectorial»: o envelope voltaria a ser pintado no rig \
+         onde ele e' provadamente inerte, que e' o report do dono a' letra"
+    );
+
+    // (c) e uma FORMA VECTORIAL presa — sem `Sprite`, a lei euclidiana manda e o campo volta.
+    sim.world_mut().spawn((Transform::IDENTITY, pele_vazia()));
+    assert!(
+        ha_forma_vectorial_presa(&sim),
+        "uma FORMA VECTORIAL presa leu «nao ha'»: o envelope dela ficaria escondido, e ali ele \
+         manda como sempre — esconder um controlo VIVO e' pior do que mostrar um inerte"
+    );
+
+    // ⚠️ E o CONTROLO de que é a PELE que decide, não a existência da entidade: tirar a pele à
+    // forma vectorial devolve a cena ao estado (b).
+    sim.world_mut()
+        .entity_mut(imagem)
+        .remove::<ph2d_skeleton_ecs::SkinBind>();
+    assert!(
+        ha_forma_vectorial_presa(&sim),
+        "tirar a pele a' IMAGEM mudou a resposta: a lei esta' a olhar para a entidade errada"
+    );
+}

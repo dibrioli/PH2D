@@ -54,6 +54,9 @@ fn publica_tudo() {
 }
 
 fn limpa() {
+    // ⚠️ O envelope repõe-se a `true` (o default conservador): sem isto o teste que o desliga
+    // contamina todos os seguintes, e eles ficam verdes sobre um painel sem aquele campo.
+    state::set_current_envelope_manda(true);
     state::set_current_skinned(state::Skinned::default());
     state::set_current_bone(None);
     state::set_current_bone_handles(None);
@@ -803,4 +806,39 @@ fn the_tip_picker_lists_the_children_and_the_choice_reaches_the_bus() {
          (falta `VECTOR_BONE_TIP_IDS` na allowlist do `event_clicks`)"
     );
     limpa();
+}
+
+/// ⭐⭐⭐ **O ENVELOPE SÓ É PINTADO ONDE AINDA MANDA** (ordem do dono, 2026-09-18, a seguir à pergunta
+/// dele: *«Por que o envelope já não influencia na deformação?»*).
+///
+/// ⛔⛔ Com os pesos do **padrão-ouro** uma imagem deforma **igual** a `1` e a `2` — medido, coluna a
+/// coluna. Num rig só de imagens este campo aceitava teclas, gravava no documento e **não mudava um
+/// pixel**: a mesma mentira que as quatro alças de curvatura já tinham pago neste painel.
+///
+/// ⚠️ **As DUAS metades**, porque as curas são opostas: um gate que só pedisse a ausência ficaria
+/// verde sobre um painel que **nunca** o pinta — e aí seria o envelope das formas vectoriais a
+/// desaparecer, que é um controlo VIVO escondido.
+#[test]
+fn the_envelope_is_painted_only_where_it_still_rules() {
+    let pintado = || {
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_STRENGTH)
+            .is_some()
+    };
+    publica_tudo();
+    state::set_current_envelope_manda(true);
+    assert!(
+        pintado(),
+        "o envelope sumiu com uma forma VECTORIAL presa — ali ele manda como sempre (a lei \
+         euclidiana), e escondê-lo e' esconder um controlo vivo"
+    );
+    state::set_current_envelope_manda(false);
+    assert!(
+        !pintado(),
+        "o envelope foi pintado num rig so' de IMAGENS, onde ele e' provadamente inerte: o painel \
+         promete um numero que nao muda um pixel"
+    );
+    limpa();
+    state::set_current_envelope_manda(true);
 }

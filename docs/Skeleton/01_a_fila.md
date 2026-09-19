@@ -59,6 +59,38 @@ diz onde ler o mecanismo:
 
 ---
 
+### F17 — ✅ **O ENVELOPE SÓ É PINTADO ONDE AINDA MANDA** (ordem do dono, 2026-09-18)
+
+Ele perguntou *«Por que o envelope já não influencia na deformação?»* e a resposta expôs um
+**controlo morto**: com os pesos do **padrão-ouro** uma imagem deforma **igual** a `1` e a `2` —
+medido, coluna a coluna, na tabela que vive no doc da cena do pincel. Num rig só de imagens aquele
+campo aceitava teclas, gravava no documento e **não mudava um pixel**.
+
+⭐ **O envelope não morreu — MUDOU DE DONO:** uma forma **vectorial** presa continua na lei
+euclidiana (o padrão-ouro precisa de uma malha do domínio, e uma Bézier não tem uma), e ali ele
+manda como sempre. ⇒ o campo **volta** assim que houver uma forma vectorial presa.
+
+⚠️ **A pergunta é da CENA e não do osso, e isso é uma limitação NOMEADA:** o `SkinBind` guarda a
+malha e os pesos e **não os ossos**, logo *«este esqueleto tem forma vectorial?»* não é derivável.
+A pergunta mais larga erra sempre para o lado **conservador** — *esconder um controlo vivo é pior do
+que mostrar um inerte*.
+
+⚠️ **O default publicado é `true`**, e a `limpa()` do arnês repõe-no: sem isso o teste que o desliga
+contamina os seguintes, e eles ficam verdes sobre um painel sem aquele campo.
+
+⛔ **E o meu censo de ontem (F16) não o apanhou:** ele mediu o alcance pela lei **euclidiana** (os
+pesos por raio), onde ele é vivo — e é falso para uma imagem. *Uma régua que mede a lei antiga não
+vê o que a lei nova apagou.*
+
+Mutação **3 de 3** a sangrar, mais uma **inerte de controlo que sobrevive** (o arnês não é
+hipersensível).
+
+⚠️ **Promoção pedida à lista de flakes de fan-out do `§5.0`:**
+`the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` (`ph2d-tool-painter`) — gate de
+RAZÃO, irmã de ficheiro de um membro já listado, reprovou no meio de um fan-out de `15 090` e passa
+**3 de 3 a `load 64–74`**, que é carga MAIOR do que aquela em que reprovou, com zero linhas do diff
+naquela crate.
+
 ### F16 — ✅ **O CENSO DOS NÚMEROS DO OSSO: o valor chega a um CONSUMIDOR?** (2026-09-18)
 
 **O instrumento que faltava, e o veredito é bom: ZERO knobs mortos.** Os sete números do osso chegam

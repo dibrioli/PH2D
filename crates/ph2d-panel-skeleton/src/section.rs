@@ -303,18 +303,31 @@ pub(crate) fn campos_do_osso() -> Option<Vec<(ph2d_a11y::NodeId, &'static str, f
             osso.length,
         ),
         (
-            ids::VECTOR_BONE_STRENGTH,
-            tr("panel.vector.bone.strength"),
-            STRENGTH_STEP,
-            osso.strength,
-        ),
-        (
             ids::VECTOR_BONE_SEGMENTS,
             tr("panel.vector.bone.segments"),
             SEGMENTS_STEP,
             f64::from(osso.segments),
         ),
     ];
+    // ⭐⭐⭐ **O ENVELOPE SÓ É PINTADO ONDE AINDA MANDA** (ordem do dono, 2026-09-18, a seguir à
+    // pergunta dele: *«Por que o envelope já não influencia na deformação?»*).
+    //
+    // ⛔⛔ Com os pesos do **padrão-ouro** uma imagem deforma **igual** a `1` e a `2` — está medido,
+    // coluna a coluna. Num rig só de imagens este campo aceita teclas, grava no documento e **não
+    // muda um pixel**: é a mesma mentira que as quatro alças de curvatura pagaram logo abaixo.
+    // ⚠️ **E ele VOLTA assim que houver uma forma vectorial presa**, onde a lei euclidiana manda
+    // como sempre — o envelope não morreu, mudou de dono.
+    if state::envelope_manda() {
+        campos.insert(
+            1,
+            (
+                ids::VECTOR_BONE_STRENGTH,
+                tr("panel.vector.bone.strength"),
+                STRENGTH_STEP,
+                osso.strength,
+            ),
+        );
+    }
     // ⭐⭐⭐ **A CURVATURA SÓ É PINTADA NUM OSSO QUE A SABE LER** (F8) — com um segmento só ela é
     // **provadamente inerte**, e há gate a dizê-lo pelo nome
     // (`one_segment_never_bends_whatever_the_handles_say`, em `ph2d-skeleton`).

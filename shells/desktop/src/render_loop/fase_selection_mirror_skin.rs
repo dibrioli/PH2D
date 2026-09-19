@@ -44,6 +44,16 @@ impl crate::App {
             })
         });
         ph2d_panel_skeleton::set_current_skinned(ph2d_panel_skeleton::Skinned { vector, imagem });
+        // ⭐⭐⭐ **E SE O ENVELOPE AINDA MANDA EM ALGUMA COISA** (report do dono, 2026-09-18). A lei é
+        // pura e vive na crate; aqui só se publica o que ela responde.
+        //
+        // ⚠️ **A pergunta é da CENA e não da selecção**, porque o `SkinBind` guarda a malha e os
+        // pesos e **não** os ossos — logo *«este esqueleto tem forma vectorial?»* não é derivável.
+        // A pergunta mais larga erra para o lado conservador: o campo fica à vista enquanto houver
+        // uma forma vectorial presa em qualquer sítio.
+        ph2d_panel_skeleton::set_current_envelope_manda(
+            ph2d_skeleton_live::esqueletos::ha_forma_vectorial_presa(sim),
+        );
         // E se a CENA tem esqueleto — é isso que faz a seção aparecer (ou não) fora do modo
         // Osso. ⛔ Sem esta metade ela seria um cabeçalho permanente num app que nunca viu
         // um osso, que é exactamente o report que a tabela de escopo curou em 31/08.

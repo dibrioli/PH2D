@@ -409,9 +409,9 @@ pub const BRILHOS_DA_CENA: [f32; 3] = [2.0, 8.0, 32.0];
 pub fn cena_36() -> Result<FieldDoc, ph2d_field::FieldError> {
     println!("[field-smoke] cena 36 — O BRILHO: a luz forte DERRAMA para fora da peca.");
     println!(
-        "[field-smoke]            (0) ⚠️ ESTA CENA PRECISA DE UMA BANDEIRA. Feche o app e abra-o \
-         com PH2D_FIELD_GPU=0 (esta' no comando que lhe foi dado). Sem ela as fileiras do brilho \
-         aparecem APAGADAS e dizem porque'."
+        "[field-smoke]            (0) o comando que lhe foi dado ja' traz PH2D_FIELD_GPU=0, e e' \
+         ela que acende os controlos do brilho. Se abriu sem ela, as fileiras aparecem APAGADAS e \
+         dizem porque' — nao e' defeito."
     );
     println!(
         "[field-smoke]            (1) MODEL · separador Model, em cima · painel do topo, Shading · \

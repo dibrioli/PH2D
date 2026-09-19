@@ -334,3 +334,39 @@ fn o_heroi_anda_quando_o_dono_carrega_na_seta() {
         antes.y - depois.y
     );
 }
+
+/// ⭐⭐⭐ **E O DEDO DO DONO ALCANÇA-O — a metade que o gate acima NÃO mede.**
+///
+/// ⛔⛔ **O irmão entra pelo canal INTERNO da ponte** (`set_player_input`), que fica **ABAIXO** da
+/// rotura que o TOP-20 #13 pagou por report: ali a lei estava certa, os `24` gates eram verdes, e a
+/// **ENTREGA** — quem varre o mundo à procura de quem lê o teclado — não conhecia o componente ⇒
+/// *«nada se move»*, com a fita a nem gravar porque a contagem dava `0`.
+///
+/// ⇒ esta metade pergunta à **PORTA** ([`ph2d_physics_ecs::keyboard_driven`]), que é a mesma que a
+/// shell varre todo o quadro. ⚠️ Ela responde `false` a um mover com `default_controls` desligado —
+/// e um herói assim seria um motor puro à espera de alguém que lhe escrevesse a intenção, que nesta
+/// cena não existe.
+#[test]
+fn a_porta_do_teclado_alcanca_o_heroi_da_cena() {
+    let mut sim = SimWorld::new();
+    montar(sim.world_mut(), 1);
+    let heroi = {
+        let m = sim.world_mut();
+        m.query::<(Entity, &Name)>()
+            .iter(m)
+            .find(|(_, n)| n.0 == "Heroi")
+            .map(|(e, _)| e)
+            .expect("a cena tem de ter o herói")
+    };
+    let mut alcancados = Vec::new();
+    ph2d_physics_ecs::keyboard_driven::for_each_keyboard_driven(sim.world(), |e| {
+        alcancados.push(e);
+    });
+    assert!(
+        alcancados.contains(&heroi),
+        "a varredura do teclado não alcança o herói: as setas do dono não chegam a ele, e a fita \
+         determinística nem grava (a contagem de players daria zero)"
+    );
+    // ⛔ **E só ele** — a bomba e a câmera não são conduzidas pelo dedo.
+    assert_eq!(alcancados.len(), 1, "quem mais lê o teclado nesta cena?");
+}

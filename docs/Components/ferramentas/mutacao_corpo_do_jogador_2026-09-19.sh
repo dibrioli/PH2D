@@ -92,6 +92,15 @@ bloco "cena: o heroi sem collider" ph2d-app-components \
             }," \
   ""
 
+# 10) O herói deixa de ler o TECLADO — a lei fica certa e a ENTREGA morre.
+#     ⚠️ É a metade que o canal INTERNO da ponte NÃO mede: com `set_player_input` escrito à mão o
+#     gate irmão continua VERDE, que é exactamente a rotura que o TOP-20 #13 pagou por report.
+bloco "cena: o heroi nao le o teclado" ph2d-app-components \
+  a_porta_do_teclado_alcanca_o_heroi "$CENA" 1 \
+  "                direction: DirectionMode::Free," \
+  "                direction: DirectionMode::Free,
+                default_controls: false,"
+
 echo
 echo "════ A SEMENTE (ph2d-app-physics) ════"
 

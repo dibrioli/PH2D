@@ -361,6 +361,23 @@ pub fn posed_sprite_mesh(
     anchor: [f32; 2],
     size: [f32; 2],
 ) -> Option<SpriteMesh> {
+    posed_sprite_mesh_corrigida(mesh, p2l, pele, pesos, anchor, size, &[])
+}
+
+/// ⭐⭐⭐ **A MESMA, COM AS CORRECÇÕES À MÃO DO ARTISTA** — ver [`ph2d_skeleton::Correccao`].
+///
+/// ⛔ Com a lista vazia ela é **byte-idêntica** à irmã, e é por isso que aquela delega aqui: *duas
+/// cópias do mesmo percurso divergem no primeiro ajuste*.
+#[must_use]
+pub fn posed_sprite_mesh_corrigida(
+    mesh: Mesh2d,
+    p2l: Xform,
+    pele: &ph2d_skeleton::Skin,
+    pesos: &[f64],
+    anchor: [f32; 2],
+    size: [f32; 2],
+    correcoes: &[ph2d_skeleton::Correccao],
+) -> Option<SpriteMesh> {
     let mut escrever = pele.scratch();
     // ⭐ **UMA porta por lei, escolhida UMA vez** — e não um `if` por vértice: a tabela ou existe
     // para esta malha ou não existe, e isso é um facto do bind, não de um ponto.
@@ -371,11 +388,9 @@ pub fn posed_sprite_mesh(
     };
     let mut campo = |q: [f64; 2], w: &[f64]| {
         let p = p2l.apply(q);
-        if ossos == 0 {
-            pele.point(p, &mut escrever)
-        } else {
-            pele.point_with(p, w, &mut escrever)
-        }
+        // ⭐ **A escolha da lei é um `Option`, e a porta é UMA** — a mesma da mídia vectorial. É
+        // ela que faz a correcção à mão valer nas duas sem ser escrita duas vezes.
+        pele.point_corrected(p, (ossos != 0).then_some(w), &mut escrever, correcoes)
     };
     // ⭐⭐⭐ **UMA LEI, e é a de sempre: um afim por triângulo da malha que chegou.** O refinamento
     // POR QUADRO morreu em 2026-09-17 com a fileira `Deform` (ordem do dono) — a densidade é uma
@@ -614,7 +629,17 @@ pub fn attach_skin_meshes(
             continue;
         };
         let pesos = skin.pesos_do_quadro(&pesos);
-        let Some(malha) = posed_sprite_mesh(mesh, p2l, &pele, pesos, inst.anchor, inst.size) else {
+        // ⭐⭐⭐ **E AS CORRECÇÕES À MÃO** — a porta é a mesma das duas mídias.
+        let correcoes = skin.correcoes_resolvidas();
+        let Some(malha) = posed_sprite_mesh_corrigida(
+            mesh,
+            p2l,
+            &pele,
+            pesos,
+            inst.anchor,
+            inst.size,
+            &correcoes,
+        ) else {
             continue;
         };
         // ⚠️ **O diagnóstico da família** (`PH2D_BONE_LOG=1`): sem ele um report de *«facetou»* não

@@ -51,7 +51,7 @@ use ph2d_skeleton::bend::{Bend, BoneSpec, Handles};
 // (ver o cabeçalho de [`skin_bind`]). ⚠️ O endereço público **não muda**: quem escrevia
 // `ph2d_skeleton_ecs::SkinBind` continua a escrevê-lo, que é a mesma lei do `bend_live`.
 mod skin_bind;
-pub use skin_bind::{SkinBind, SkinLaw};
+pub use skin_bind::{CorreccaoDePeso, SkinBind, SkinLaw};
 
 // ⭐⭐⭐ **A POSE DE REPOUSO** — componente próprio, pela mesma lei do [`BoneLimit`]: *a ausência é
 // uma resposta*. Ver o cabeçalho de [`bone_rest`], que tem o defeito medido que ela cura.

@@ -18,7 +18,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing, Theme};
 
-use crate::section::ANGLE_STEP;
+use crate::section_campos::ANGLE_STEP;
 
 /// ⭐⭐⭐ **O OSSO INTELIGENTE** — girar este osso percorre uma acção inteira.
 ///

@@ -40,6 +40,19 @@ impl VectorTool {
             PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_PENCIL_STABILIZER => {
                 self.pencil_stabilizer = (v as f32).clamp(0.0, 1.0);
             }
+            // ⭐⭐ **Os dois knobs do PINCEL DE PESO.** Nenhum deles restila a selecção: eles são o
+            // pincel, e o que eles produzem é uma MANCHA no documento — não uma propriedade da
+            // forma escolhida.
+            //
+            // ⚠️ **O raio tem PISO e o valor tem SINAL**, e a assimetria é a lei: um raio nulo faria
+            // o pen-down nunca achar arte (`ForaDaArte` calado, que se lê como pincel partido),
+            // enquanto um valor negativo é **metade do gesto** — é assim que se TIRA peso.
+            PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_BONE_WEIGHT_RADIUS => {
+                self.weight_radius = v.max(crate::params::WEIGHT_RADIUS_MIN);
+            }
+            PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_BONE_WEIGHT_AMOUNT => {
+                self.weight_amount = v.clamp(-1.0, 1.0);
+            }
             // **Campo de forma** — um braço só para TODAS as formas: o id carrega o
             // ÍNDICE do parâmetro no catálogo, e a forma ativa diz o que ele significa.
             // Antes era um braço por parâmetro por forma; com 25 formas seria um pântano.
@@ -101,6 +114,10 @@ impl VectorTool {
             PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_ACT_TRANSFORM => {
                 self.mode = DrawMode::Bone;
                 self.bone_action = crate::params::BoneAction::Transform;
+            }
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_ACT_WEIGHT => {
+                self.mode = DrawMode::Bone;
+                self.bone_action = crate::params::BoneAction::Weight;
             }
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_PENCIL => {
                 self.mode = DrawMode::Pencil;

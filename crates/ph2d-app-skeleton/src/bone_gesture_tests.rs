@@ -1,6 +1,7 @@
 //! Os gates do gesto do modo Osso — o que o artista aponta contra o que o documento guarda.
 
 use super::*;
+use crate::bone_gesture::Pincel;
 // ⚠️ Declarado AQUI e não herdado do pai: a `create` delegou para a folha e o pai deixou de
 // nomear o `Name` no código dele. *Um `use` que só o filho usa é um aviso no pai.*
 use ph2d_ecs::Name;
@@ -107,6 +108,7 @@ fn a_press_over_a_shape_in_the_bone_tool_picks_it_so_bind_has_a_subject() {
         1.0,
         None,
         BoneAction::Create,
+        Pincel::INERTE,
     );
     assert_eq!(
         d,
@@ -134,7 +136,8 @@ fn a_press_over_a_shape_in_the_bone_tool_picks_it_so_bind_has_a_subject() {
             [6.0, 0.0],
             1.0,
             None,
-            BoneAction::Create
+            BoneAction::Create,
+            Pincel::INERTE
         ),
         BonePress::Start {
             birth: BoneBirth {
@@ -175,7 +178,8 @@ fn only_a_press_on_the_tip_makes_the_new_bone_a_child() {
             [40.0, 0.0],
             1.0,
             None,
-            BoneAction::Create
+            BoneAction::Create,
+            Pincel::INERTE
         ),
         BonePress::Start {
             birth: BoneBirth {
@@ -195,7 +199,8 @@ fn only_a_press_on_the_tip_makes_the_new_bone_a_child() {
             [60.0, 40.0],
             1.0,
             Some(osso),
-            BoneAction::Create
+            BoneAction::Create,
+            Pincel::INERTE
         ),
         BonePress::Start {
             birth: BoneBirth {
@@ -233,7 +238,8 @@ fn a_press_on_a_mid_chain_tip_branches_from_that_bone() {
             [10.0, 0.0],
             1.0,
             Some(ossos[2]),
-            BoneAction::Create
+            BoneAction::Create,
+            Pincel::INERTE
         ),
         BonePress::Start {
             birth: BoneBirth {
@@ -253,7 +259,8 @@ fn a_press_on_a_mid_chain_tip_branches_from_that_bone() {
             [30.0, 0.0],
             1.0,
             None,
-            BoneAction::Create
+            BoneAction::Create,
+            Pincel::INERTE
         ),
         BonePress::Start {
             birth: BoneBirth {
@@ -289,7 +296,16 @@ fn the_same_press_means_different_things_in_create_and_in_transform() {
     // SOBRE o corpo do osso (longe da raiz e da ponta).
     let sobre = [20.0, 0.0];
     assert_eq!(
-        press(&sim, &scene, &pen, sobre, 1.0, None, BoneAction::Create),
+        press(
+            &sim,
+            &scene,
+            &pen,
+            sobre,
+            1.0,
+            None,
+            BoneAction::Create,
+            Pincel::INERTE
+        ),
         BonePress::Start {
             birth: BoneBirth {
                 origin: sobre,
@@ -300,7 +316,16 @@ fn the_same_press_means_different_things_in_create_and_in_transform() {
         "CRIAR sobre o corpo de um osso: arma um osso NOVO ali, sem parentesco"
     );
     assert_eq!(
-        press(&sim, &scene, &pen, sobre, 1.0, None, BoneAction::Transform),
+        press(
+            &sim,
+            &scene,
+            &pen,
+            sobre,
+            1.0,
+            None,
+            BoneAction::Transform,
+            Pincel::INERTE
+        ),
         BonePress::Grab {
             bone: osso,
             part: BonePart::Body
@@ -310,7 +335,16 @@ fn the_same_press_means_different_things_in_create_and_in_transform() {
     // ⭐ E na PONTA os dois verbos divergem: CRIAR ramifica, TRANSFORMAR pega o *end effector*.
     let ponta = [40.0, 0.0];
     assert_eq!(
-        press(&sim, &scene, &pen, ponta, 1.0, None, BoneAction::Create),
+        press(
+            &sim,
+            &scene,
+            &pen,
+            ponta,
+            1.0,
+            None,
+            BoneAction::Create,
+            Pincel::INERTE
+        ),
         BonePress::Start {
             birth: BoneBirth {
                 origin: ponta,
@@ -321,7 +355,16 @@ fn the_same_press_means_different_things_in_create_and_in_transform() {
         "CRIAR na ponta: ramifica"
     );
     assert_eq!(
-        press(&sim, &scene, &pen, ponta, 1.0, None, BoneAction::Transform),
+        press(
+            &sim,
+            &scene,
+            &pen,
+            ponta,
+            1.0,
+            None,
+            BoneAction::Transform,
+            Pincel::INERTE
+        ),
         BonePress::Grab {
             bone: osso,
             part: BonePart::Tip
@@ -331,7 +374,16 @@ fn the_same_press_means_different_things_in_create_and_in_transform() {
     // NO VAZIO, longe de tudo.
     let vazio = [200.0, 200.0];
     assert_eq!(
-        press(&sim, &scene, &pen, vazio, 1.0, None, BoneAction::Create),
+        press(
+            &sim,
+            &scene,
+            &pen,
+            vazio,
+            1.0,
+            None,
+            BoneAction::Create,
+            Pincel::INERTE
+        ),
         BonePress::Start {
             birth: BoneBirth {
                 origin: vazio,
@@ -342,7 +394,16 @@ fn the_same_press_means_different_things_in_create_and_in_transform() {
         "CRIAR no vazio: marca a origem de um osso novo"
     );
     assert_eq!(
-        press(&sim, &scene, &pen, vazio, 1.0, None, BoneAction::Transform),
+        press(
+            &sim,
+            &scene,
+            &pen,
+            vazio,
+            1.0,
+            None,
+            BoneAction::Transform,
+            Pincel::INERTE
+        ),
         BonePress::Pick { path: None },
         "TRANSFORMAR no vazio NAO pode armar osso nenhum - e' o verbo a ser um so'"
     );
@@ -420,6 +481,7 @@ fn two_separate_chains_become_one_and_the_adopted_one_does_not_move() {
         1.0,
         None,
         BoneAction::Create,
+        Pincel::INERTE,
     ) else {
         panic!("o press na ponta de A tem de armar um osso");
     };
@@ -595,4 +657,42 @@ fn what_is_drawn_is_the_bone_that_will_be_born() {
         "o encaixe poe a ponta a 4 unidades da origem (limiar 12) e mesmo assim armou — o limiar \
          esta' a medir o PONTEIRO, que fica a 13"
     );
+}
+
+/// ⭐⭐⭐ **O VERBO DO PESO NUNCA CRIA UM OSSO — e nunca agarra um.**
+///
+/// ⛔⛔ **Sem esta linha ele CAÍA no braço de *Criar***: o `press` decidia por
+/// `action == Transform`, logo tudo o que não fosse *Transformar* armava um osso novo. O artista
+/// arrastaria para pintar peso e a cada traço nasceria um osso — e a suíte inteira ficava verde,
+/// porque nenhum gate media o terceiro verbo.
+///
+/// ⚠️ **As TRÊS células**, e cada uma é um sítio onde os outros dois verbos fazem algo: sobre o
+/// CORPO (*Transformar* agarra), na PONTA (*Criar* ramifica) e no VAZIO (*Criar* arma uma raiz).
+/// *Uma célula só ficaria verde sobre um `press` que ainda criasse noutro ponto do canvas.*
+///
+/// ⚠️ **O `alvo` é `None` aqui de propósito** — não há pele nenhuma nesta fixtura, e é a resposta
+/// certa: quem diz porquê é a recusa do [`ph2d_skeleton_live::peso_a_mao`], no pen-down.
+///
+/// (Mutação: apagar o braço do `Weight` ⇒ RED nas três, com `BonePress::Start`.)
+#[test]
+fn o_verbo_do_peso_nunca_cria_nem_agarra_um_osso() {
+    let mut sim = SimWorld::default();
+    let scene = ph2d_vec_scene::VecScene::new();
+    let pen = ph2d_vec_edit::PenTool::default();
+    let _osso = create(&mut sim, None, [0.0, 0.0], [40.0, 0.0]).expect("osso");
+    let pincel = Pincel {
+        ppm: 100.0,
+        raio: 8.0,
+    };
+    for (p, onde) in [
+        ([20.0, 0.0], "sobre o CORPO"),
+        ([40.0, 0.0], "na PONTA"),
+        ([200.0, 200.0], "no VAZIO"),
+    ] {
+        assert_eq!(
+            press(&sim, &scene, &pen, p, 1.0, None, BoneAction::Weight, pincel),
+            BonePress::Weight { alvo: None },
+            "o verbo do PESO fez outra coisa {onde}"
+        );
+    }
 }

@@ -319,6 +319,16 @@ impl crate::App {
                 let sel = self.selected_bone_bits();
                 // ⭐ O VERBO do arrasto, que o grupo alternável da seção SKELETON diz.
                 let acao = self.vec.draw_config.bone_action;
+                // ⭐ O PINCEL de peso — os dois números que o painel autora. Os outros dois verbos
+                // não os lêem, e o `Pincel::INERTE` di-lo em voz alta lá dentro.
+                let pincel = crate::bone_gesture::Pincel {
+                    ppm: self
+                        .gfx
+                        .as_ref()
+                        .and_then(|g| g.hero_screen.as_ref())
+                        .map_or(crate::EPS_PIXELS_PER_METER, |h| h.project.pixels_per_meter),
+                    raio: self.vec.draw_config.weight_radius,
+                };
                 let decisao = self.gfx.as_ref().map(|g| {
                     crate::bone_gesture::press(
                         &g.sim,
@@ -328,6 +338,7 @@ impl crate::App {
                         px,
                         sel,
                         acao,
+                        pincel,
                     )
                 });
                 match decisao {
@@ -363,12 +374,64 @@ impl crate::App {
                             self.vec.pen.select(Some(pid));
                         }
                     }
+                    // ⭐⭐⭐ **O PINCEL DE PESO** — o traço fica preso à arte em que começou (o
+                    // `weight_drag`), e a 1.ª pincelada sai já neste press: *um pincel que só pinta
+                    // quando a mão se move faz um clique parecer um clique morto*.
+                    Some(crate::bone_gesture::BonePress::Weight { alvo }) => {
+                        self.skeleton.weight_drag = alvo;
+                        self.vec_pinta_peso(world);
+                    }
                     None => {}
                 }
             }
             return true;
         }
         false
+    }
+
+    /// ⭐⭐⭐ **UMA PINCELADA DE PESO** — a porta que o press e o movimento partilham.
+    ///
+    /// ⚠️ **Ela é UMA e não duas** porque a lei do pen-down e a do arrasto são a mesma: *duas
+    /// cópias divergiriam no primeiro ajuste, e o sintoma seria o clique a pintar diferente do
+    /// arrasto*. O que difere entre os dois é **quem escolhe a arte** — o press, e só ele.
+    ///
+    /// ⚠️ **A recusa é IMPRESSA com a entrada que falta** (a família que o `CLAUDE.md` §5.0 nomeia:
+    /// *um pincel que não faz nada e não diz porquê é indistinguível de um pincel partido*), e ⛔
+    /// **só no press** — uma queixa por evento de ponteiro é ruído que o artista aprende a ignorar.
+    pub(super) fn vec_pinta_peso(&mut self, world: [f64; 2]) {
+        let Some(alvo) = self.skeleton.weight_drag else {
+            // ⛔ Sem arte sob o dedo o traço nem começou — a queixa é do pen-down, e sai UMA vez.
+            eprintln!("[peso] o cursor nao caiu sobre arte presa a esqueleto nenhum");
+            return;
+        };
+        let Some(osso) = self.selected_bone_bits() else {
+            eprintln!("[peso] nenhum osso em foco - escolha o osso que vai corrigir");
+            self.skeleton.weight_drag = None;
+            return;
+        };
+        let raio = self.vec.draw_config.weight_radius;
+        let quanto = self.vec.draw_config.weight_amount;
+        let ppm = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .map_or(crate::EPS_PIXELS_PER_METER, |h| h.project.pixels_per_meter);
+        let Some(gfx) = self.gfx.as_mut() else { return };
+        let r = ph2d_skeleton_live::peso_a_mao::pinta(
+            &mut gfx.sim,
+            ph2d_ecs::Entity::from_bits(alvo),
+            ph2d_ecs::Entity::from_bits(osso),
+            ppm,
+            world,
+            raio,
+            quanto,
+        );
+        if let ph2d_skeleton_live::peso_a_mao::Pincelada::OssoDeFora = r {
+            eprintln!(
+                "[peso] o osso em foco nao esta' preso a esta arte - prenda-o ou escolha outro"
+            );
+            self.skeleton.weight_drag = None;
+        }
     }
 
     /// O topo da prioridade do press: a região do Node no vazio, as alças de gradiente, e os modos cujo gesto é

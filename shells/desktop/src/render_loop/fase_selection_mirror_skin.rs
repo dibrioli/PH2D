@@ -101,8 +101,19 @@ impl crate::App {
         let ferramenta_osso = self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Bone;
         // ⭐ E o VERBO do arrasto, como ÍNDICE — é o que mantém aquele painel sem depender
         // da crate da ferramenta de vector.
-        ph2d_panel_skeleton::set_current_bone_tool(ferramenta_osso.then(|| {
-            usize::from(self.vec.draw_config.bone_action == ph2d_tool_vector::BoneAction::Transform)
-        }));
+        //
+        // ⛔⛔ **O índice sai da PORTA ([`BoneAction::indice`]) e não de uma comparação.** Ele era
+        // `usize::from(acao == Transform)`, que está certo com DOIS verbos e mente em silêncio com
+        // três: o terceiro lia `0` e acendia o primeiro segmento. *Um índice derivado de uma
+        // comparação é uma tabela escrita à mão com outra sintaxe.*
+        ph2d_panel_skeleton::set_current_bone_tool(
+            ferramenta_osso.then(|| self.vec.draw_config.bone_action.indice()),
+        );
+        // ⭐ E os dois números do PINCEL DE PESO — publicados SEMPRE, porque o sujeito deles é a
+        // ferramenta: é a secção que decide se os pinta, e ela só o faz com o verbo armado.
+        ph2d_panel_skeleton::set_current_bone_weight(
+            self.vec.draw_config.weight_radius,
+            self.vec.draw_config.weight_amount,
+        );
     }
 }

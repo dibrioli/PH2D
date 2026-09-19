@@ -63,6 +63,39 @@ pub enum BonePress {
     Pick {
         path: Option<ph2d_vec_scene::VecPathId>,
     },
+    /// ⭐⭐⭐ **Peso:** o traço vai pintar a influência do osso aceso sobre esta arte presa.
+    ///
+    /// `alvo` são os bits da coisa que o dedo apanhou — `None` quando ele não caiu em arte presa
+    /// nenhuma, e nesse caso o gesto **não começa** (a recusa é do [`ph2d_skeleton_live::peso_a_mao`],
+    /// que a diz com o nome da entrada que falta).
+    ///
+    /// ⛔ **Ele não toca na selecção.** O sujeito do pincel é o OSSO em foco, e trocar a selecção
+    /// no press arrancaria o artista do osso que ele está a corrigir.
+    Weight { alvo: Option<u64> },
+}
+
+/// ⭐⭐ **O PINCEL DE PESO** — o que o [`press`] precisa de saber para achar a arte sob o dedo.
+///
+/// ⚠️ **Ele viaja como ARGUMENTO e não é lido de um estado global**, e é a mesma razão de o
+/// `action` o ser: *a decisão do press tem de ser observável de um teste*, e um `OnceLock` ali
+/// tornaria o verbo impossível de medir sem montar a shell inteira.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Pincel {
+    /// O `pixels_per_meter` do projecto — só a mídia IMAGEM o lê.
+    pub ppm: f32,
+    /// O raio, em unidades de MUNDO. É também a tolerância do dedo: fora dele, não há arte.
+    pub raio: f64,
+}
+
+impl Pincel {
+    /// ⚠️ **O pincel de quem NÃO está a pintar peso** — raio nulo ⇒ nenhuma arte é apanhada.
+    ///
+    /// Ele existe para os dois outros verbos e para os gates deles: *um argumento que um braço não
+    /// lê ainda tem de ter um valor que diga isso em voz alta*.
+    pub const INERTE: Self = Self {
+        ppm: 1.0,
+        raio: 0.0,
+    };
 }
 
 /// ⭐⭐⭐ **O OSSO QUE ESTÁ A NASCER** — de onde ele parte, e de quem é filho.
@@ -85,6 +118,11 @@ pub struct BoneBirth {
 /// está fica confuso para o usuário»*). Antes, o mesmo arrasto criava OU posava consoante o que
 /// estava por baixo do cursor — e isso torna inalcançáveis dois gestos legítimos: começar um osso
 /// **em cima** de outro, e posar um osso **sem medo** de criar um por engano.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "os oito sao o que a DECISAO do press precisa, e a alternativa e' a decisao viver \
+              dentro do dispatch - que e' exactamente o defeito que esta porta curou"
+)]
 pub fn press(
     sim: &SimWorld,
     scene: &ph2d_vec_scene::VecScene,
@@ -93,8 +131,23 @@ pub fn press(
     px_to_world: f64,
     selected: Option<u64>,
     action: ph2d_tool_vector::BoneAction,
+    pincel: Pincel,
 ) -> BonePress {
     use ph2d_tool_vector::BoneAction;
+    // ⭐⭐⭐ **O PESO é o primeiro braço porque ele não pergunta nada ao rig** — o sujeito dele é a
+    // ARTE presa, e o osso vem do foco. ⛔ Cair no `hover` antes disto poria o dedo a competir com
+    // as alças de um osso que este verbo nunca move.
+    if action == BoneAction::Weight {
+        return BonePress::Weight {
+            alvo: ph2d_skeleton_live::peso_a_mao::pele_sob_o_cursor(
+                sim,
+                pincel.ppm,
+                world,
+                pincel.raio,
+            )
+            .map(ph2d_ecs::Entity::to_bits),
+        };
+    }
     // ⭐⭐⭐ **O clique PERGUNTA AO REALCE** — não é uma segunda varredura que um gate compara com a
     // primeira: é a MESMA função. O que o artista vê aceso é, por construção, o que ele vai pegar.
     let foco = selected_bone(sim, selected);

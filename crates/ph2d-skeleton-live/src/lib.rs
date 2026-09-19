@@ -38,6 +38,8 @@ pub mod esqueletos;
 #[path = "esqueletos_tests_support.rs"]
 mod esqueletos_tests_support;
 pub mod goal;
+/// ⭐⭐⭐ **O PESO À MÃO** — o gesto e o olho da correcção que o artista pinta.
+pub mod peso_a_mao;
 /// ⭐⭐⭐ **A POSE DE REPOUSO** — voltar ao repouso, e o que o *Reset Transform* quer dizer num osso.
 pub mod pose_de_repouso;
 pub mod recusa_do_osso;

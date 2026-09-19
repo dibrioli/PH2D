@@ -354,6 +354,121 @@ impl Skin {
         self.blend(p, w)
     }
 
+    /// ⭐⭐⭐ **OS PESOS DE UM PONTO, COM AS CORRECÇÕES DO ARTISTA** — a porta ÚNICA por onde as
+    /// duas leis de peso passam.
+    ///
+    /// `guardados` escolhe a lei: `Some(tabela)` é o padrão-ouro ([`Skin::weights_from`]), `None` é
+    /// a euclidiana ([`Skin::weights_at`]). ⛔ Com `correcoes` vazio o resultado é **byte-idêntico**
+    /// ao das duas — o laço nem corre e nada é renormalizado uma segunda vez.
+    ///
+    /// ⚠️ **Ela existe para a correcção não ter de ser escrita duas vezes**, uma por lei: o artista
+    /// corrige *aquele ponto*, e de que lei veio o peso que ele está a corrigir não é pergunta dele.
+    pub fn weights_corrected(
+        &self,
+        p: [f64; 2],
+        guardados: Option<&[f64]>,
+        w: &mut [f64],
+        correcoes: &[Correccao],
+    ) {
+        match guardados {
+            Some(t) => self.weights_from(p, t, w),
+            None => {
+                self.weights_at(p, w);
+            }
+        }
+        self.corrige(p, w, correcoes);
+    }
+
+    /// [`Skin::weights_corrected`] seguido da mistura — a porta que uma mídia chama por ponto.
+    #[must_use]
+    pub fn point_corrected(
+        &self,
+        p: [f64; 2],
+        guardados: Option<&[f64]>,
+        w: &mut [f64],
+        correcoes: &[Correccao],
+    ) -> [f64; 2] {
+        self.weights_corrected(p, guardados, w, correcoes);
+        self.blend(p, w)
+    }
+
+    /// ⭐⭐⭐ **A CORRECÇÃO À MÃO** — o artista soma (ou tira) peso a um osso, num sítio.
+    ///
+    /// # ⚠️ Porque ela é uma MANCHA no espaço e não uma tabela por vértice
+    ///
+    /// *Uma tabela indexada por ordem de varredura é o vector paralelo que o
+    /// `VecVertex::corner_radius` proíbe por escrito*: dezenas de operações inserem, apagam,
+    /// invertem e soldam vértices, e cada uma teria de se lembrar de mexer nela. Uma mancha é
+    /// **ancorada na geometria** — ela diz *«aqui»*, e continua a dizer «aqui» depois de o artista
+    /// mexer no desenho.
+    ///
+    /// # ⚠️ O bump é o MESMO da lei euclidiana
+    ///
+    /// `(1 − x²)²` com `x = d/raio`: `1` no centro, **`0` E derivada `0`** na borda. ⛔ Uma queda
+    /// linear deixaria uma aresta visível no sítio exacto onde o artista pintou — o estalo que a
+    /// continuidade C¹ da casa existe para não ter.
+    ///
+    /// # ⚠️ O sujeito é o TENDÃO e não o sub-osso
+    ///
+    /// O artista corrige *o osso que ele desenhou*; um osso que dobra tem `N` poses, e a correcção
+    /// reparte-se por elas pela **mesma** lei que já reparte o peso ([`bend::share`]). ⛔ Corrigir
+    /// um sub-osso seria expor ao artista uma divisão que ele não fez.
+    ///
+    /// ⚠️ **Renormaliza no fim, e só se alguma mancha alcançou o ponto** — senão isto não seria um
+    /// no-op sobre a lei que já normalizou.
+    fn corrige(&self, p: [f64; 2], w: &mut [f64], correcoes: &[Correccao]) {
+        if correcoes.is_empty() {
+            return;
+        }
+        let mut mexeu = false;
+        for c in correcoes {
+            if c.raio <= 0.0 || !c.delta.is_finite() {
+                continue;
+            }
+            let d2 = (p[0] - c.centro[0]).powi(2) + (p[1] - c.centro[1]).powi(2);
+            let x2 = d2 / (c.raio * c.raio);
+            if x2 >= 1.0 {
+                continue;
+            }
+            let t = 1.0 - x2;
+            let bump = t * t;
+            for (i, b) in self.bones.iter().enumerate() {
+                if b.tendon != c.tendon {
+                    continue;
+                }
+                w[i] = (c.delta * bump)
+                    .mul_add(self.quota(b, p), w[i])
+                    .clamp(0.0, 1.0);
+                mexeu = true;
+            }
+        }
+        if !mexeu {
+            return;
+        }
+        let soma: f64 = w.iter().sum();
+        // ⛔ **Soma zero deixa `w` como está** — o artista tirou tudo, e a mistura devolve o ponto
+        // INTACTO (a lei do [`Skin::blend`]). ⚠️ Dividir por zero daria `NaN` em toda a arte.
+        if soma > 0.0 {
+            for v in w.iter_mut() {
+                *v /= soma;
+            }
+        }
+    }
+
+    /// A fracção deste sub-osso no osso autorado a que ele pertence — `1.0` ao bit num osso recto.
+    ///
+    /// ⚠️ **Uma função e não três cópias:** a mesma conta vive no [`Skin::weights_at`], no
+    /// [`Skin::weights_from`] e agora na correcção, e três cópias divergiriam no dia em que a
+    /// repartição mudasse — com o sintoma a ser um osso curvo a corrigir-se de outra maneira do
+    /// que se pesa.
+    fn quota(&self, b: &SkinBone, p: [f64; 2]) -> f64 {
+        if b.sub.1 <= 1 {
+            return 1.0;
+        }
+        let (u, _) = project_to_segment(p, b.rest_a, b.rest_b);
+        bend::share(b.sub.0, b.sub.1, u)
+    }
+
     /// A mistura `Σ ŵ_j · (M_j · p)` — a única aritmética que move um ponto, seja de onde vierem
     /// os pesos.
     ///
@@ -387,6 +502,31 @@ impl Skin {
             *p = self.point(*p, &mut w);
         }
     }
+}
+
+/// ⭐⭐⭐ **UMA CORRECÇÃO DE PESO FEITA À MÃO** — uma mancha no espaço que soma (ou tira) peso a um
+/// osso, onde a conta automática errou.
+///
+/// ⚠️ Ver [`Skin::corrige`] para o mecanismo, o bump e a razão de ela ser uma MANCHA e não uma
+/// tabela por vértice.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Correccao {
+    /// ⭐ **O TENDÃO** — o índice do osso **que o artista desenhou** na lista que o chamador
+    /// resolveu, o mesmo espaço do [`SkinBone::tendon`].
+    ///
+    /// ⚠️ **E não o sub-osso:** o artista corrige o osso que ele vê, e a repartição por sub-ossos
+    /// de um osso que dobra é feita pela lei, não por ele.
+    pub tendon: u32,
+    /// O centro da mancha, **no espaço da coisa deformada** (o mesmo dos eixos de repouso) — logo
+    /// ela fica onde o artista a pôs, mesmo que ele mexa no desenho depois.
+    pub centro: [f64; 2],
+    /// O raio, nas unidades da coisa deformada. `<= 0` ⇒ a mancha não alcança nada.
+    pub raio: f64,
+    /// Quanto somar ao peso deste osso no CENTRO da mancha. Negativo TIRA.
+    ///
+    /// ⚠️ **O sinal é a direcção, e é isso que faz o gesto ser um só:** não há um segundo modo
+    /// «apagar» a lembrar, nem um modificador de teclado a adivinhar.
+    pub delta: f64,
 }
 
 /// Distância AO QUADRADO de `p` ao segmento `a..b` (a raiz nunca é precisa: a lei compara com
@@ -484,3 +624,7 @@ pub use reach::{
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "correccao_tests.rs"]
+mod correccao_tests;

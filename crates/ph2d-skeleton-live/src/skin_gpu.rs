@@ -27,6 +27,25 @@
 //! shader vai fazer, escrita aqui para a paridade CPU×GPU ter contra o que medir (o molde é o do
 //! Flip: dois motores, uma lei). ⛔ Ele ainda não escreve buffer nenhum nem desenha: isso é a outra
 //! metade, e ela precisa de um buffer por-bind com invalidação própria.
+//!
+//! # ⛔⛔ DÍVIDA NOMEADA: as CORRECÇÕES À MÃO não chegam aqui
+//!
+//! A tabela que este módulo empacota é a do **BIND**, e a correcção que o artista pinta
+//! ([`ph2d_skeleton_ecs::CorreccaoDePeso`], 2026-09-19) é uma **MANCHA no espaço** aplicada por
+//! ponto — ela não vive na tabela, é somada depois dela.
+//!
+//! ⚠️ **Hoje isso não é um defeito observável, e a razão é MEDIDA e não uma promessa:** este
+//! caminho **não tem consumidor de produto** (nenhum sítio escreve buffer nem desenha por ele), e
+//! as duas mídias vivas passam pela porta corrigida (`ph2d_vec_skin::aplica_corrigido` e
+//! `skin_image::posed_sprite_mesh_corrigida`). *Uma lei que falta num caminho que ninguém percorre
+//! é dívida, não um bug.*
+//!
+//! ⚠️⚠️ **Mas ela vira um DEFEITO MUDO no dia em que a outra metade shipar:** a arte desenharia
+//! pela placa **sem** as correcções e pela CPU **com** elas, e o sintoma seria *«a correcção
+//! funciona e depois some»* — sem um erro. ⇒ quem ligar o buffer tem de decidir onde a mancha
+//! entra (a tabela é do bind e a mancha é por ponto: ou ela é **assada na tabela** no bind, e aí
+//! muda quando o artista pinta, ou vai ao shader como uma lista), e há gate a lembrá-lo
+//! (`crate::skin_gpu_tests::a_pele_da_placa_nao_conhece_as_correccoes_e_isso_esta_nomeado`).
 
 use ph2d_poly2d::Mesh2d;
 use ph2d_skeleton::{Skin, Xform};

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use ph2d_ecs::SimComponent;
 
-use crate::Tendon;
+use crate::{StableId, Tendon};
 
 /// ⭐⭐⭐ **POR QUE LEI ESTE DESENHO SE DEFORMA** — a escolha que o dono mandou construir
 /// (2026-09-19: *«como se escolhe se os envelopes vão ou não influenciar?»* ⇒ *«construa. por
@@ -44,6 +44,38 @@ pub enum SkinLaw {
     /// ⚠️ **Ela vale em QUALQUER desenho**, e é isso que a torna uma escolha: até aqui uma forma
     /// preenchida não tinha como correr nesta lei, por mais que o artista a quisesse.
     Envelope,
+}
+
+/// ⭐⭐⭐ **UMA CORRECÇÃO DE PESO FEITA À MÃO** — a mancha que o artista pinta onde a conta
+/// automática errou (report do dono, 2026-09-19: *«quando a conta automática erra num sítio, não há
+/// como acertar aquele ponto»*).
+///
+/// # ⚠️ Porque ela é uma MANCHA no espaço, e não uma tabela por vértice
+///
+/// O doc do [`SkinBind`] já escreve a lei: *«uma tabela de pesos indexada por ordem de varredura é
+/// o vector paralelo que o `corner_radius` proíbe por escrito»* — dezenas de operações inserem,
+/// apagam, invertem e soldam vértices, e cada uma teria de se lembrar de mexer nela. ⇒ a correcção
+/// é **ancorada na geometria**: ela diz *«aqui»*, e continua a dizer «aqui» depois de o artista
+/// mexer no desenho.
+///
+/// ⭐ **E por isso ela vale nas DUAS leis** ([`SkinLaw`]): o artista corrige *aquele ponto*, e de
+/// que lei veio o peso que ele está a corrigir não é pergunta dele.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CorreccaoDePeso {
+    /// ⭐ **A identidade durável do osso** — o [`StableId`], nunca a posição dele na lista.
+    ///
+    /// ⚠️ A mesma cerca do [`Tendon::bone`], e pelo mesmo defeito medido: uma posição guardada
+    /// passa a apontar para o osso do lado no instante em que alguém apagar um osso — e a arte
+    /// corrige-se no sítio errado sem nada reprovar.
+    pub bone: StableId,
+    /// O centro, em coordenadas **locais da coisa no bind** — o mesmo espaço da [`SkinBind::source`]
+    /// e dos eixos de repouso dos tendões.
+    pub centro: [f64; 2],
+    /// O raio da mancha, nas mesmas unidades.
+    pub raio: f64,
+    /// Quanto somar ao peso deste osso no CENTRO. **Negativo TIRA**, e o sinal é a direcção: não há
+    /// um segundo modo «apagar» a lembrar nem um modificador de teclado a adivinhar.
+    pub delta: f64,
 }
 
 /// **A PELE DE UMA COISA** — a que ossos ela responde, e o que ela era antes de responder.
@@ -82,6 +114,16 @@ pub struct SkinBind {
     /// pose actual»*, e ele não pode apagar em silêncio uma escolha que o artista fez. *A chave que
     /// o artista fez manda mais que a correcção automática.*
     pub law: SkinLaw,
+    /// ⭐⭐⭐ **AS CORRECÇÕES QUE O ARTISTA PINTOU** — ver [`CorreccaoDePeso`]. Vazio é o nascimento,
+    /// e um no-op **ao bit** nas duas leis.
+    ///
+    /// ⚠️ **Elas moram AQUI e não nos bytes opacos da [`Self::source`]**, pela mesma razão da
+    /// [`Self::law`]: aqueles bytes são **por mídia**, e a correcção é a mesma pergunta para as
+    /// duas. *Escrevê-la lá seria escrevê-la duas vezes.*
+    ///
+    /// ⚠️ **Ela sobrevive a um RE-BIND**, como a lei: prender outra vez é *«re-prender na pose
+    /// actual»*, e não pode apagar em silêncio o trabalho à mão do artista.
+    pub correcoes: Vec<CorreccaoDePeso>,
 }
 
 impl SimComponent for SkinBind {}
@@ -95,7 +137,36 @@ impl SkinBind {
             source,
             tendons,
             law: SkinLaw::Auto,
+            correcoes: Vec::new(),
         }
+    }
+
+    /// ⭐⭐⭐ **AS CORRECÇÕES NO ESPAÇO DA LEI** — a porta ÚNICA que traduz `StableId → TENDÃO`.
+    ///
+    /// ⚠️ **O índice é a posição na [`Self::tendons`]**, que é exactamente o que o
+    /// [`ph2d_skeleton::SkinBone::tendon`] carrega — e é por isso que a tradução é uma busca nesta
+    /// lista e não uma contagem de ossos da cena: *a resolução salta ossos apagados, e a posição na
+    /// PELE não é a posição no BIND*.
+    ///
+    /// ⛔ Uma correcção cujo osso já não está nos tendões é **saltada**: ela nomeia um osso que foi
+    /// solto desta pele, e aplicá-la ao tendão que ficou naquele índice corrigiria o osso errado.
+    ///
+    /// ⚠️ **Ela é a mesma para as DUAS mídias**, e é isso que impede a forma e a imagem de
+    /// divergirem no primeiro ajuste.
+    #[must_use]
+    pub fn correcoes_resolvidas(&self) -> Vec<ph2d_skeleton::Correccao> {
+        self.correcoes
+            .iter()
+            .filter_map(|c| {
+                let j = self.tendons.iter().position(|t| t.bone == c.bone)?;
+                Some(ph2d_skeleton::Correccao {
+                    tendon: u32::try_from(j).ok()?,
+                    centro: c.centro,
+                    raio: c.raio,
+                    delta: c.delta,
+                })
+            })
+            .collect()
     }
 
     /// ⭐⭐⭐ **OS PESOS QUE O QUADRO DEVE LER** — vazio quer dizer *«cai na lei euclidiana»*.

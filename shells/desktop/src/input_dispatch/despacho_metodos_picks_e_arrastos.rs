@@ -215,6 +215,22 @@ impl crate::App {
         }
     }
 
+    /// ⭐⭐⭐ **Um quadro de PINCEL DE PESO** — no-op fora do traço.
+    ///
+    /// ⚠️ **Ele NÃO re-pergunta qual é a arte:** o alvo foi congelado no press, e a razão está no
+    /// doc do [`ph2d_app_skeleton::state::SkeletonState::weight_drag`] — *um traço pertence à arte
+    /// em que começou*.
+    pub(super) fn vec_peso_move(&mut self) -> bool {
+        if self.skeleton.weight_drag.is_none() {
+            return false;
+        }
+        let Some(world) = self.vec_world_at(self.last_pointer) else {
+            return false;
+        };
+        self.vec_pinta_peso(world);
+        true
+    }
+
     /// Um quadro de POSE de osso — no-op sem osso agarrado.
     pub(super) fn vec_bone_pose_move(&mut self) -> bool {
         let Some((bits, parte)) = self.skeleton.bone_pose else {

@@ -32,12 +32,60 @@ pub enum BoneAction {
     /// Arrastar **posa** o que está sob o cursor: corpo gira, bolinha desloca, quadradinho da
     /// mancha muda a força, anel duplo da ponta dobra a corrente (IK). ⛔ Nunca cria.
     Transform,
+    /// ⭐⭐⭐ **Arrastar PINTA o peso** do osso aceso sobre a arte presa — a correcção à mão de
+    /// [`ph2d_skeleton::Correccao`], para quando a conta automática erra num sítio.
+    ///
+    /// ⚠️ **É um verbo do mesmo nível dos outros dois, e não um modo dentro do *Transformar*:** a
+    /// pergunta que a fileira responde é *«o que este arrasto faz»*, e pintar peso não é posar nem
+    /// criar. ⛔ Escondê-lo atrás de um modificador de teclado seria a meia-porta que o §5.0 nomeia
+    /// (*«um gesto que só existe se o artista adivinhar o modificador é meio gesto»*).
+    ///
+    /// ⚠️ **O SINAL do valor é a direcção** — não há um segundo verbo «apagar peso» a lembrar.
+    Weight,
 }
 
 impl BoneAction {
-    /// As duas, na ordem em que o grupo as mostra. ⛔ Fonte única da iteração.
-    pub const ALL: [BoneAction; 2] = [BoneAction::Create, BoneAction::Transform];
+    /// As três, na ordem em que o grupo as mostra. ⛔ Fonte única da iteração.
+    pub const ALL: [BoneAction; 3] = [
+        BoneAction::Create,
+        BoneAction::Transform,
+        BoneAction::Weight,
+    ];
+
+    /// ⭐⭐ **O ÍNDICE deste verbo em [`Self::ALL`]** — a porta que a fileira do painel acende.
+    ///
+    /// ⛔⛔ **Ela existe porque o índice era um `bool`** (`usize::from(acao == Transform)`), e isso
+    /// está certo com dois verbos e **mente em silêncio** com três: o terceiro leria `0` e acenderia
+    /// o primeiro segmento. *Um índice derivado de uma comparação é uma tabela escrita à mão com
+    /// outra sintaxe.*
+    #[must_use]
+    pub fn indice(self) -> usize {
+        Self::ALL.iter().position(|a| *a == self).unwrap_or(0)
+    }
 }
+
+/// ⭐ **O RAIO de fábrica do pincel de peso**, em unidades do desenho.
+///
+/// ⚠️ **Ele NÃO é derivado do desenho**, e a ausência é a decisão: um raio em fracção da forma daria
+/// ao mesmo gesto dois tamanhos em dois desenhos, e o artista veria o pincel mudar de tamanho ao
+/// trocar de peça. ⛔ E o slider existe exactamente para ele não ter de servir toda a gente — o que
+/// este número tem de ser é *visível numa forma do tamanho das que o app desenha*, que é a escala
+/// do `LENGTH_STEP` do painel.
+pub const WEIGHT_RADIUS_DEFAULT: f64 = 20.0;
+
+/// ⭐ **QUANTO cada pincelada empurra o peso, de fábrica.**
+///
+/// ⚠️ **Pequeno de propósito:** o peso vive em `0..1` e a pincelada SOMA, logo o artista chega ao
+/// extremo insistindo — e o caminho de volta é o mesmo número com sinal trocado. *Um valor de
+/// fábrica que salta para o extremo numa pincelada faz o gesto ser um interruptor.*
+pub const WEIGHT_AMOUNT_DEFAULT: f64 = 0.15;
+
+/// ⭐ **O PISO do raio do pincel de peso**, em unidades do desenho.
+///
+/// ⚠️ **O recurso é o GESTO e não a memória:** com raio nulo o pen-down nunca acha arte, e a recusa
+/// (`ForaDaArte`) lê-se exactamente como um pincel partido. Este número é o menor que ainda deixa o
+/// dedo apanhar um ponto de uma forma do tamanho das que o app desenha.
+pub const WEIGHT_RADIUS_MIN: f64 = 0.5;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum DrawMode {

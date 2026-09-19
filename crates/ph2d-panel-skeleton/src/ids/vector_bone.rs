@@ -12,11 +12,18 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;
-use ph2d_tool_vector::ids::{VECTOR_BONE_ACT_CREATE, VECTOR_BONE_ACT_TRANSFORM};
+use ph2d_tool_vector::ids::{
+    VECTOR_BONE_ACT_CREATE, VECTOR_BONE_ACT_TRANSFORM, VECTOR_BONE_ACT_WEIGHT,
+};
 
-/// Os dois segmentos, **índice-alinhados** com [`ph2d_tool_vector::BoneAction::ALL`]. ⚠️ Alinhar
-/// por índice é o que impede a lista do painel e a do vocabulário de divergirem em silêncio.
-pub const VECTOR_BONE_ACTION_IDS: [NodeId; 2] = [VECTOR_BONE_ACT_CREATE, VECTOR_BONE_ACT_TRANSFORM];
+/// Os TRÊS segmentos, **índice-alinhados** com [`ph2d_tool_vector::BoneAction::ALL`]. ⚠️ Alinhar
+/// por índice é o que impede a lista do painel e a do vocabulário de divergirem em silêncio — e há
+/// gate a compará-las (`a_fileira_de_verbos_do_osso_tem_um_segmento_por_accao`).
+pub const VECTOR_BONE_ACTION_IDS: [NodeId; 3] = [
+    VECTOR_BONE_ACT_CREATE,
+    VECTOR_BONE_ACT_TRANSFORM,
+    VECTOR_BONE_ACT_WEIGHT,
+];
 
 /// ⭐⭐⭐ **Action** — QUAL acção este osso percorre. O chip que abre a lista das acções da timeline.
 ///

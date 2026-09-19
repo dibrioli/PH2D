@@ -578,6 +578,117 @@ fn both_segments_of_create_and_transform_reach_the_tool() {
     state::set_current_bone_tool(None);
 }
 
+/// ⭐⭐⭐ **A FILEIRA TEM UM SEGMENTO POR VERBO — nem mais, nem menos.**
+///
+/// ⛔⛔ **Ela e a [`ph2d_tool_vector::BoneAction::ALL`] são alinhadas por POSIÇÃO**, e é isso que o
+/// doc da `VECTOR_BONE_ACTION_IDS` promete por escrito. Um verbo novo sem id é um gesto que o
+/// artista **não alcança**; um id a mais é um segmento que acende e não troca nada. *As duas
+/// falhas são mudas, e as curas são opostas.*
+///
+/// ⚠️ **E o ÍNDICE de cada verbo tem de ser o dele** — sem esta metade, um `indice()` que
+/// devolvesse `0` para todos passaria a contagem e acenderia sempre o primeiro segmento, que é
+/// exactamente o defeito que o `usize::from(acao == Transform)` tinha com três verbos.
+///
+/// (Mutação: `indice()` a devolver `0` ⇒ RED na 2.ª metade. Um id a mais ⇒ RED na 1.ª.)
+#[test]
+fn a_fileira_de_verbos_do_osso_tem_um_segmento_por_accao() {
+    use ph2d_tool_vector::BoneAction;
+    assert_eq!(
+        ph2d_panel_skeleton::ids::VECTOR_BONE_ACTION_IDS.len(),
+        BoneAction::ALL.len(),
+        "a fileira do painel e a tabela do vocabulario tem tamanhos diferentes"
+    );
+    for (i, a) in BoneAction::ALL.iter().enumerate() {
+        assert_eq!(a.indice(), i, "o verbo {a:?} acende o segmento errado");
+    }
+}
+
+/// ⭐⭐⭐ **O SEGMENTO DO PESO CHEGA À FERRAMENTA, e os dois números dele também.**
+///
+/// ⚠️ **É a lei do bug #29 aplicada ao terceiro verbo**: um controlo que produz `Click` e não
+/// produz `ToolPanelEvent` acende sob o rato, consome o gesto e **não faz nada** — e aqui ele
+/// pareceria um pincel partido, que é a queixa que esta casa já pagou sete vezes.
+///
+/// ⚠️ **Os dois números viajam por `ValueChanged` e não por `Click`**, e o gate mede-os pela porta
+/// que o painel de facto usa (`apply_event`): sem eles na condição, o artista digita um raio e o
+/// pincel continua com o de fábrica, **sem um erro**.
+#[test]
+fn o_verbo_do_peso_e_os_dois_numeros_dele_chegam_a_ferramenta() {
+    publica_tudo();
+    modo_osso(2);
+    let acoes = clica(ph2d_tool_vector::ids::VECTOR_BONE_ACT_WEIGHT, "Weight");
+    assert!(
+        acoes.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::Click(c))
+                if *c == ph2d_tool_vector::ids::VECTOR_BONE_ACT_WEIGHT
+        )),
+        "o segmento Weight nao chegou a' ferramenta"
+    );
+    for (id, nome) in [
+        (
+            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS,
+            "Brush Radius",
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT,
+            "Brush Strength",
+        ),
+    ] {
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        host.store_mut().set_number_value(id, 0.5);
+        host.apply_panel_event::<SkeletonPanel>(&mut st, WidgetEvent::ValueChanged(id));
+        assert!(
+            host.drained_actions().iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, _)) if *c == id
+            )),
+            "o campo {nome} aceita teclas e nao fala com ninguem"
+        );
+    }
+    limpa();
+    state::set_current_bone_tool(None);
+}
+
+/// ⭐⭐ **OS DOIS NÚMEROS DO PINCEL SÓ EXISTEM COM O PINCEL NA MÃO.**
+///
+/// ⚠️ **As DUAS metades:** pintados nos outros dois verbos, eles seriam controlos que não fazem
+/// nada — a espécie de morto que o `CLAUDE.md` §5.0 nomeia; ausentes no verbo deles, o pincel é
+/// inalcançável. *Uma metade sozinha fica verde sobre o defeito oposto.*
+#[test]
+fn os_numeros_do_pincel_seguem_o_verbo() {
+    let pintado = |verbo: Option<usize>, id| {
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        publica_tudo();
+        state::set_current_bone_tool(verbo);
+        let v = host
+            .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+            .is_some();
+        limpa();
+        state::set_current_bone_tool(None);
+        v
+    };
+    for id in [
+        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS,
+        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT,
+    ] {
+        assert!(
+            pintado(Some(2), id),
+            "o numero do pincel nao e' pintado com o verbo Weight armado"
+        );
+        assert!(
+            !pintado(Some(0), id),
+            "o numero do pincel e' pintado em Criar"
+        );
+        assert!(
+            !pintado(None, id),
+            "o numero do pincel e' pintado fora da ferramenta Osso"
+        );
+    }
+}
+
 /// ⭐⭐⭐ **O GRUPO É A PORTA, e por isso é pintado SEMPRE — mas nada acende sem estar armado.**
 ///
 /// ⛔⛔ **Ordem do dono, 2026-09-09**, e ela INVERTE a lei anterior deste gate (*«o grupo só existe

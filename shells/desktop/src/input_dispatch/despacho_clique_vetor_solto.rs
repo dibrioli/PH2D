@@ -227,6 +227,10 @@ impl crate::App {
         // ⚠️ **Consome SÓ com o gesto VIVO** (a origem marcada), pela lei que o
         // `shape_up_consumes` documenta: soltar sobre um botão do painel neste modo não
         // pode engolir o clique.
+        // ⭐ **O traço de PESO acaba aqui** — e a lei do fim é largar o alvo, não pintar mais um
+        // dab: o último já saiu no movimento. ⛔ Ele não consome o `up`, porque nada mais no modo
+        // Osso reage a um `up` sem `bone_drag`.
+        self.skeleton.weight_drag = None;
         if let Some(nascimento) = self.skeleton.bone_drag.take() {
             let px = self.vec_px_to_world();
             let mut nasceu = None;

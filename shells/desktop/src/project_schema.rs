@@ -335,4 +335,24 @@
 /// `ph2d_skeleton_live::goal::aponta`.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — a OITAVA vez (99, 100, 114, 119, 129, 144, 145 e este).
-pub(crate) const PROJECT_SCHEMA: u32 = 157;
+/// # `157 → 158` — a PELE ganha as CORRECÇÕES À MÃO (report do dono, 2026-09-19)
+///
+/// O `ph2d_skeleton_ecs::SkinBind` ganhou `correcoes: Vec<CorreccaoDePeso>` — as manchas que o
+/// artista pinta onde a conta automática errou (*«quando a conta automática erra num sítio, não há
+/// como acertar aquele ponto»*).
+///
+/// ⚠️ **Campo novo numa struct que já se grava** ⇒ a regra dos degraus 109/110: os bytes de toda
+/// `SkinBind` gravada mudam, e o postcard é posicional. Um ficheiro anterior é **recusado em voz
+/// alta**.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08.
+///
+/// ⭐ **A aparência de um rig já autorado não muda:** a lista nasce vazia, e com ela vazia as duas
+/// leis de peso devolvem exactamente o que devolviam — gate `sem_correccao_as_duas_leis_ficam_ao_bit`.
+///
+/// ⚠️ **A correcção é uma MANCHA no espaço e não uma tabela por vértice**, e a razão está escrita no
+/// doc do `CorreccaoDePeso`: uma tabela por ordem de varredura é o vector paralelo que o
+/// `VecVertex::corner_radius` proíbe por escrito.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — a NONA vez (99, 100, 114, 119, 129, 144, 145, 146 e este).
+pub(crate) const PROJECT_SCHEMA: u32 = 158;

@@ -232,3 +232,88 @@ fn um_ponto_que_ninguem_reclama_fica_onde_esta() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A PELE DA PLACA NÃO CONHECE AS CORRECÇÕES — e isso está NOMEADO, não esquecido.**
+///
+/// ⛔⛔ **É a metade que impede a dívida de virar um defeito mudo.** O cabeçalho do
+/// [`crate::skin_gpu`] declara-a por escrito; este gate mede as duas coisas que a tornam segura
+/// HOJE, e reprova no dia em que qualquer uma deixar de valer:
+///
+/// 1. **este caminho não tem consumidor de produto** — nenhuma linha fora dos testes constrói uma
+///    [`crate::skin_gpu::PeleGpu`]. É isso, e só isso, que faz a ausência ser inofensiva;
+/// 2. **as duas mídias vivas passam pela porta corrigida** — se uma delas voltar a chamar a versão
+///    sem correcções, a arte do artista deixa de mostrar o que ele pintou.
+///
+/// ⚠️ **Sem a 1.ª metade este gate seria uma nota:** *uma dívida sem régua é uma frase que envelhece
+/// no dia em que alguém liga o buffer* — e o sintoma seria *«a correcção funciona e depois some»*.
+#[test]
+fn a_pele_da_placa_nao_conhece_as_correccoes_e_isso_esta_nomeado() {
+    // (1) A pele da placa não é construída em produto nenhum.
+    let mut consumidores = Vec::new();
+    for e in walkdir_src() {
+        let src = std::fs::read_to_string(&e).unwrap_or_default();
+        let nome = e
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        if nome.contains("_tests") || nome == "skin_gpu.rs" {
+            continue;
+        }
+        // ⚠️ O fonte SEM comentários: o cabeçalho que EXPLICA a dívida cita o nome do tipo, e um
+        // censo que o leia acusa a própria nota — a armadilha que a Fase B da física já pagou.
+        let codigo: String = src
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        if codigo.contains("PeleGpu") {
+            consumidores.push(nome);
+        }
+    }
+    assert!(
+        consumidores.is_empty(),
+        "a pele da placa ganhou consumidor(es) {consumidores:?} — as correcções à mão NÃO entram \
+         nela, e a arte passa a desenhar diferente na placa e na CPU. Ver o cabeçalho do `skin_gpu`."
+    );
+    // (2) As duas mídias vivas chamam a porta CORRIGIDA.
+    let recook = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/skin_live.rs"))
+        .expect("o recook da mídia vectorial");
+    assert!(
+        recook.contains("aplica_corrigido("),
+        "o recook do vector deixou de passar pela porta corrigida"
+    );
+    let imagem = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/skin_image.rs"))
+        .expect("o desenho da mídia imagem");
+    assert!(
+        imagem.contains("posed_sprite_mesh_corrigida("),
+        "o desenho da imagem deixou de passar pela porta corrigida"
+    );
+}
+
+/// Os `.rs` do `src/` desta crate — o censo acima varre TODOS, ⛔ nunca por prefixo de nome
+/// (`CLAUDE.md` §5.0: um censo por prefixo passa a varrer zero e fica verde).
+fn walkdir_src() -> Vec<std::path::PathBuf> {
+    let raiz = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/src"));
+    let mut fora = Vec::new();
+    let mut pilha = vec![raiz.to_path_buf()];
+    while let Some(d) = pilha.pop() {
+        let Ok(it) = std::fs::read_dir(&d) else {
+            continue;
+        };
+        for e in it.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                pilha.push(p);
+            } else if p.extension().is_some_and(|x| x == "rs") {
+                fora.push(p);
+            }
+        }
+    }
+    assert!(
+        fora.len() > 20,
+        "a varredura leu {} ficheiros — o censo está a medir o nada",
+        fora.len()
+    );
+    fora
+}

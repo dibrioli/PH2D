@@ -101,6 +101,16 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in ids::VECTOR_BONE_FIELDS {
         world_number_field(store, id);
     }
+    // ⭐ Os dois números do PINCEL DE PESO. ⚠️ Eles NÃO entram na `VECTOR_BONE_FIELDS`, e a razão
+    // é o [`ph2d_editor_core::ids::needs_focused_bone`]: aquela tabela declara *«o sujeito é o
+    // osso em foco»*, e o sujeito destes dois é **o pincel** — eles valem antes de haver osso
+    // nenhum, e recusá-los por falta de foco seria uma recusa que o artista não consegue curar.
+    for id in [
+        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS,
+        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT,
+    ] {
+        world_number_field(store, id);
+    }
 }
 
 /// **Este id é deste painel?** — a mesma lista que o `populate` regista e que o `paint` pinta.
@@ -115,6 +125,8 @@ fn meu(id: ph2d_a11y::NodeId) -> bool {
         || ids::VECTOR_BONE_SKIN_LAW_IDS.contains(&id)
         || id == crate::ids::VECTOR_BONE_SMART_CLIP
         || id == crate::ids::VECTOR_BONE_TIP
+        || id == ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS
+        || id == ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT
 }
 
 pub(crate) fn apply_event(
@@ -130,7 +142,11 @@ pub(crate) fn apply_event(
         }
         // ⚠️ **O COMMIT é que viaja, não cada tecla** — `ValueChanged` chega no fim da edição, e é
         // o valor do store que atravessa (o buffer ainda pode estar a meio de um número).
-        WidgetEvent::ValueChanged(id) if ids::VECTOR_BONE_FIELDS.contains(&id) => {
+        WidgetEvent::ValueChanged(id)
+            if ids::VECTOR_BONE_FIELDS.contains(&id)
+                || id == ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS
+                || id == ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT =>
+        {
             let v = host.store().number_value(id).unwrap_or(0.0);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v)));

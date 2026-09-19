@@ -34,7 +34,7 @@ thread_local! {
     static CURRENT_BONE_LENGTH: Cell<f64> = const { Cell::new(0.0) };
     static CURRENT_BONE_STRENGTH: Cell<f64> = const { Cell::new(1.0) };
     /// ⭐ Os SEGMENTOS e a CURVATURA do osso em foco (a F8). ⚠️ Eles decidem se as quatro fileiras
-    /// da curvatura são pintadas — ver [`crate::section::campos_do_osso`].
+    /// da curvatura são pintadas — ver [`crate::section_campos::campos_do_osso`].
     static CURRENT_BONE_SEGMENTS: Cell<u8> = const { Cell::new(1) };
     static CURRENT_BONE_CURVE: Cell<ph2d_skeleton::bend::Bend> =
         const { Cell::new(ph2d_skeleton::bend::Bend::STRAIGHT) };
@@ -263,6 +263,25 @@ thread_local! {
 /// **O verbo do arrasto** (shell → painel). `None` fora da ferramenta Osso.
 pub fn set_current_bone_tool(v: Option<usize>) {
     BONE_TOOL.with(|c| c.set(v));
+}
+
+thread_local! {
+    /// ⭐⭐⭐ **OS DOIS NÚMEROS DO PINCEL DE PESO** (raio · quanto), publicados pela shell a partir
+    /// do `VectorDrawConfig`.
+    ///
+    /// ⚠️ **O sujeito deles é o PINCEL e não o osso**, e é por isso que não viajam no `BoneSpec`:
+    /// eles valem antes de haver osso nenhum em foco, e um campo sem sujeito é a classe de
+    /// controlo morto que o `CLAUDE.md` §5.0 nomeia — *ao contrário*.
+    static BONE_WEIGHT: Cell<(f64, f64)> = const { Cell::new((0.0, 0.0)) };
+}
+
+/// **Os dois números do pincel de peso** (shell → painel, todo quadro).
+pub fn set_current_bone_weight(raio: f64, quanto: f64) {
+    BONE_WEIGHT.with(|c| c.set((raio, quanto)));
+}
+
+pub(crate) fn bone_weight() -> (f64, f64) {
+    BONE_WEIGHT.with(Cell::get)
 }
 
 pub(crate) fn bone_tool() -> Option<usize> {

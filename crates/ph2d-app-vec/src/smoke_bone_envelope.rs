@@ -171,7 +171,15 @@ pub const fn prologo_do_nivel(n: u32) -> Prologo {
     Prologo {
         timeline_fechada: n == 2,
         enquadrar: n == 2,
-        painel_do_osso: n == 2,
+        // ⭐⭐⭐ **O PAINEL DOS OSSOS ABRE NAS DUAS, e a premissa que o prendia ao `=2` MORREU**
+        // (2026-09-19, ao chegar o pincel de PESO): aquele painel é a ÚNICA porta dos três verbos
+        // do osso — criar, transformar e **pintar peso** —, logo a cena `=1`, que é a que tem arte
+        // PRESA, mostrava um esqueleto cujas ferramentas o artista não conseguia alcançar.
+        //
+        // ⚠️ **As outras duas metades do prólogo continuam do `=2`**, e é o que mantém intacta a
+        // cena que o dono aprovou: a timeline fica como ele a deixou e a câmera não se mexe. *Abrir
+        // uma coluna lateral não é reenquadrar.*
+        painel_do_osso: true,
     }
 }
 
@@ -393,10 +401,19 @@ mod tests {
         // ⭐⭐⭐ **E a metade NEGATIVA vale tanto como a outra**, porque a ponte chama isto SEM
         // guarda: a cena `=1` é a que o dono já aprovou, e um prólogo que armasse ali fechar-lhe-ia
         // a timeline e reenquadrá-la-ia por baixo da mesa.
+        //
+        // ⚠️⚠️ **E ela ENCOLHEU de três para duas em 2026-09-19, com a morte visível no diff:** o
+        // `painel_do_osso` saiu desta lista quando o pincel de PESO chegou, porque aquele painel é
+        // a única porta dos três verbos do osso — *uma cena sobre esqueletos cuja ferramenta o
+        // artista não alcança é a espécie que o `CLAUDE.md` §5.0 chama de pior que cena nenhuma*.
         let um = prologo_do_nivel(1);
         assert!(
-            !um.timeline_fechada && !um.enquadrar && !um.painel_do_osso,
+            !um.timeline_fechada && !um.enquadrar,
             "o prologo passou a armar a cena =1, que o dono ja' aprovou sem ele: {um:?}"
+        );
+        assert!(
+            um.painel_do_osso,
+            "a cena =1 tem arte PRESA e deixou de abrir o painel que arma os verbos do osso: {um:?}"
         );
     }
 }

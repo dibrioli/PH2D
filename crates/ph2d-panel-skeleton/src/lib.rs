@@ -41,6 +41,9 @@ pub mod ids;
 mod paint;
 mod seam;
 mod section;
+/// ⭐ A TABELA dos campos numéricos — irmã do `section` pelo tecto de LOC, cortada por
+/// assunto: o `section` diz que linhas desenha, esta diz que NÚMEROS existem e com que passo.
+mod section_campos;
 /// ⭐ As linhas do OSSO INTELIGENTE — irmão do `section` pelo tecto de LOC, cortado por assunto.
 mod section_smart;
 /// ⭐ A linha de QUEM MANDA NA PONTA da curva — irmã do `section` pela mesma razão.
@@ -51,8 +54,8 @@ pub use state::{
     Skinned, SmartBoneView, TipView, set_current_bone, set_current_bone_actions,
     set_current_bone_aim, set_current_bone_handles, set_current_bone_ik,
     set_current_bone_ik_auto_side, set_current_bone_limit, set_current_bone_smart,
-    set_current_bone_tip, set_current_bone_tool, set_current_envelope_manda,
-    set_current_skin_law_envelope, set_current_skinned,
+    set_current_bone_tip, set_current_bone_tool, set_current_bone_weight,
+    set_current_envelope_manda, set_current_skin_law_envelope, set_current_skinned,
 };
 
 use ph2d_a11y::NodeId;

@@ -194,7 +194,7 @@ pub fn build(
             "[vec-bone-smoke] em BAIXO, ao MEIO, dois esqueletos pequenos: o osso do MEIO de cada \
              um curva-se pela corrente (Curve Handles: From Chain). A esquerda («{}») ele tem UM \
              filho e a curva entra nele; a direita («{}») tem DOIS filhos e a ponta fica RECTA por \
-             omissao. Para ESCOLHER quem manda: abra o painel Skeleton (menu Window), toque no osso \
+             omissao. Para ESCOLHER quem manda: no painel **Bones** (ja' aberto a' direita), toque no osso \
              e use «Curve Tip» -- ele lista «From Chain», «Nobody» e um filho por linha.",
             ph2d_skeleton_demo::BRANCH_ONE_CHILD,
             ph2d_skeleton_demo::BRANCH_TWO_CHILDREN

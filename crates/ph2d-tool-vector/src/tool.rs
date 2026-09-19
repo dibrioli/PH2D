@@ -139,6 +139,12 @@ pub struct VectorTool {
     /// ⭐ **O que o arrasto faz no modo Osso** (Enio, 2026-09-07). A tool é a dona; o painel pinta
     /// os dois segmentos e a shell lê o espelho.
     bone_action: crate::params::BoneAction,
+    /// ⭐ **Os dois números do PINCEL DE PESO** — o raio em unidades do desenho e quanto cada
+    /// pincelada empurra (COM SINAL). Estado AUTORADO da ferramenta, como o estabilizador do
+    /// lápis: o documento guarda a MANCHA que eles produziram, não os números.
+    weight_radius: f64,
+    /// Ver [`Self::weight_radius`].
+    weight_amount: f64,
     /// **O estilo da SIMETRIA de desenho** (plano 25 W6.3) — que espelho, quantas cópias, funde
     /// ou não. O LUGAR da linha não está aqui: ele pertence ao desenho e viaja no componente dele
     /// (`ph2d_ecs::VecSymmetry`). Um centro guardado na ferramenta seria um campo que nunca se lê.
@@ -221,6 +227,8 @@ impl Default for VectorTool {
             pencil_stabilizer: crate::params::PENCIL_STABILIZER_DEFAULT,
             pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
             bone_action: crate::params::BoneAction::default(),
+            weight_radius: crate::params::WEIGHT_RADIUS_DEFAULT,
+            weight_amount: crate::params::WEIGHT_AMOUNT_DEFAULT,
             symmetry: ph2d_symmetry::SymmetryStyle::default(),
             marquee: crate::params::MarqueeShape::default(),
             mode: DrawMode::Select,
@@ -495,6 +503,8 @@ impl VectorTool {
             pencil_stabilizer: self.pencil_stabilizer,
             pencil_width_source: self.pencil_width_source,
             bone_action: self.bone_action,
+            weight_radius: self.weight_radius,
+            weight_amount: self.weight_amount,
             symmetry: self.symmetry,
             marquee: self.marquee,
         }

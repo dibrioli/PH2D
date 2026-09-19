@@ -210,7 +210,11 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // APONTAR (o `additional_rotation` do `SkeletonModification2DLookAt` do Godot). Campo novo
         // numa struct já gravada ⇒ a mesma regra dos degraus 109/110. ⚠️ **A tripla NÃO vê este
         // degrau** (a OITAVA vez): o `IkGoal` viaja no `WorldSnapshot`.
-        (157, 13, 22),
+        // ⚠️ **PROJECT 146→147** (2026-09-19): o `SkinBind` ganhou `correcoes` — as manchas de
+        // peso que o artista pinta a` mao. Campo novo numa struct ja' gravada ⇒ a regra dos degraus
+        // 109/110. ⚠️ **A tripla NÃO vê este degrau** (a NONA vez): o `SkinBind` viaja no
+        // `WorldSnapshot`.
+        (158, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

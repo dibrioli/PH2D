@@ -8,7 +8,7 @@
 //! lista pintada lá dentro seria cortada na borda.
 
 use crate::state::{self, SkeletonPanelState};
-use crate::{SkeletonPanel, section};
+use crate::{SkeletonPanel, section, section_campos};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel, RowCtx};
@@ -69,12 +69,17 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
     // recebe o store **imutável** — a fileira pinta, não escreve.
     {
         let store = ctx.host.store_mut();
-        for (id, _, _, valor) in section::campos_do_osso().into_iter().flatten() {
+        for (id, _, _, valor) in section_campos::campos_do_osso().into_iter().flatten() {
             store.set_number_value(id, valor);
         }
-        for (id, _, _, valor) in section::campos_da_ancora().into_iter().flatten() {
+        for (id, _, _, valor) in section_campos::campos_da_ancora().into_iter().flatten() {
             store.set_number_value(id, valor);
         }
+        // ⭐ E os dois do PINCEL de peso, pela mesma porta — ⚠️ o sujeito deles é a ferramenta e
+        // não o osso, logo eles são semeados **sempre** (a secção é que decide se os pinta).
+        let (raio, quanto) = state::bone_weight();
+        store.set_number_value(ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS, raio);
+        store.set_number_value(ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT, quanto);
     }
     let content_h = {
         let scene = &mut *ctx.scene;

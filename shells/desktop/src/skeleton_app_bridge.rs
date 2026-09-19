@@ -73,8 +73,11 @@ impl crate::App {
         let Some(world) = self.vec_world_at(pointer) else {
             self.skeleton.bone_hover = None;
             self.skeleton.bone_preview = None;
+            self.skeleton.weight_cursor = None;
             return;
         };
+        // ⭐ E o TERCEIRO slot da mesma leitura — ver o doc do `weight_cursor`.
+        self.skeleton.weight_cursor = Some(world);
         let px_to_world = self.vec_px_to_world();
         // ⚠️ O osso em FOCO entra: a alça da força só existe onde ela se desenha, e o que a desenha
         // é a selecção. Sem ele o dedo procuraria uma alça que não está na tela.

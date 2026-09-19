@@ -102,4 +102,21 @@ pub struct SkeletonState {
     ///
     /// ⚠️ Como o irmão acima, é estado de GESTO: morre no Up, não entra no snapshot.
     pub bone_pose: Option<(u64, ph2d_skeleton_render::BonePart)>,
+    /// ⭐⭐⭐ **A ARTE em que o traço de PESO começou** — os bits dela. `None` fora do gesto.
+    ///
+    /// ⚠️⚠️ **O alvo é CONGELADO no press, e isso é a lei e não uma cache.** *Um traço pertence à
+    /// arte em que começou* — a mesma regra que a escultura escreve por gate
+    /// (`a_stroke_belongs_to_the_piece_it_started_on`), e pela mesma razão: com duas formas presas
+    /// a encostar-se, um arrasto que re-perguntasse a cada evento saltaria de uma para a outra a
+    /// meio da pincelada, e o artista veria metade da correcção no desenho errado.
+    ///
+    /// ⚠️ Estado de GESTO, como os dois irmãos acima: morre no Up, não entra no snapshot.
+    pub weight_drag: Option<u64>,
+    /// ⭐ **ONDE O CURSOR ESTÁ, em MUNDO** — o que o anel do pincel de peso desenha.
+    ///
+    /// ⚠️⚠️ **Ele sai da MESMA leitura que o realce e a pré-visualização** (`refresh_bone_hover`), e
+    /// a saída antecipada dela limpa os TRÊS — a lei que o cabeçalho daquela função já escreve por
+    /// escrito: *um par de slots resolvido no mesmo sítio esquece-se meio a meio*, e com três o
+    /// risco só cresce. ⛔ Ler a câmara no sítio do desenho seria um segundo empréstimo do `gfx`.
+    pub weight_cursor: Option<[f64; 2]>,
 }

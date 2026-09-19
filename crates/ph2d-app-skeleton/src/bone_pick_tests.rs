@@ -107,6 +107,7 @@ fn in_create_the_hover_lights_exactly_the_bone_the_click_would_branch_from() {
             1.0,
             Some(ossos[2]),
             BoneAction::Create,
+            crate::bone_gesture::Pincel::INERTE,
         ) else {
             panic!("em CRIAR todo press arma um osso — em {p:?} nao armou");
         };
@@ -164,6 +165,7 @@ fn the_hover_lights_exactly_what_the_click_would_grab() {
             1.0,
             Some(osso),
             BoneAction::Transform,
+            crate::bone_gesture::Pincel::INERTE,
         ) else {
             panic!("o press devia agarrar o osso em {p:?}");
         };

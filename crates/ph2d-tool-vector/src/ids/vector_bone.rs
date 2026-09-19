@@ -20,3 +20,12 @@ pub const VECTOR_BONE_ACT_CREATE: NodeId = hash_node_id("vector.bone.action.crea
 /// **Transformar** — arrastar posa o que está sob o cursor (girar · deslocar · força · IK), e
 /// ⛔ nunca cria.
 pub const VECTOR_BONE_ACT_TRANSFORM: NodeId = hash_node_id("vector.bone.action.transform");
+
+/// ⭐⭐⭐ **Peso** — arrastar pinta a influência do osso aceso sobre a arte presa.
+pub const VECTOR_BONE_ACT_WEIGHT: NodeId = hash_node_id("vector.bone.action.weight");
+
+/// ⭐ **O RAIO do pincel de peso**, nas unidades do desenho.
+pub const VECTOR_BONE_WEIGHT_RADIUS: NodeId = hash_node_id("vector.bone.weight.radius");
+
+/// ⭐ **QUANTO cada pincelada empurra** — e o **SINAL é a direcção**: negativo TIRA.
+pub const VECTOR_BONE_WEIGHT_AMOUNT: NodeId = hash_node_id("vector.bone.weight.amount");

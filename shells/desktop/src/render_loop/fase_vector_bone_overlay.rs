@@ -37,15 +37,6 @@ impl crate::App {
             // morto sob o dedo.
             let ossos = crate::skeleton_live::bone_polylines(sim);
             if !ossos.is_empty() {
-                // ⭐⭐⭐ **A REGIÃO DE INFLUÊNCIA do osso em foco** — o *Bone Strength* do Moho.
-                // Ela entra ANTES dos ossos: é um fundo, e o rig desenha-se por cima dela.
-                //
-                // ⚠️ **O foco é a SELECÇÃO, e é a mesma pergunta que o dedo faz** — a alça só é
-                // agarrável onde ela é pintada (`bone_pick::hover` recebe o mesmo `foco`).
-                //
-                // ⚠️ A selecção CRUA basta e filtra-se sozinha: `influence_region` devolve
-                // `None` para o que não é osso, então não há aqui uma segunda pergunta
-                // *"isto é um osso?"* a divergir da que o `hover` faz.
                 // ⭐⭐⭐ **O OSSO EM FOCO SAI DA MESMA PORTA QUE O DEDO USA**
                 // ([`crate::bone_gesture::selected_bone`]), e não do primário do gizmo.
                 //
@@ -63,44 +54,59 @@ impl crate::App {
                 // acima — a lei é a mesma, e é por isso que ela vive numa função só»*.
                 let osso_focado =
                     crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected());
-                ph2d_skeleton_render::draw_influence(
-                    osso_focado.and_then(|b| crate::skeleton_live::influence_region(sim, b)),
-                    matches!(
-                        self.skeleton.bone_hover,
-                        Some(h) if h.part == ph2d_skeleton_render::BonePart::Influence
-                    ),
+                // ⭐ **O FUNDO do osso em foco** — a mancha de influência e o arco de limite, os
+                // dois por BAIXO do rig. Ver [`fundo_do_osso_focado`]: aqui decide-se a ORDEM
+                // dos passes, não o que cada um desenha.
+                fundo_do_osso_focado(
+                    sim,
+                    osso_focado,
+                    self.skeleton.bone_hover,
+                    vec_px_to_world,
                     cam_affine,
                     hero.theme,
                     vector_scene,
                 );
-                // ⭐⭐⭐ **O ARCO DE LIMITE do osso em foco** — o setor por onde a ponta dele
-                // pode passar, mais as duas paredes agarráveis.
+                // ⭐⭐⭐ **O PESO À VISTA, por BAIXO dos ossos** — cada ponto da arte presa colorido
+                // pela influência do osso em foco. Ele só existe com o verbo `Weight` armado, e é
+                // a razão de o pincel deixar de ser cego (`ph2d_skeleton_render::peso`).
                 //
-                // ⚠️ **Depois da influência e ANTES dos ossos**: os dois são fundo, e o arco
-                // vive por cima da mancha (é por isso que o véu dele é mais fraco). O rig
-                // desenha-se por cima dos dois.
+                // ⚠️ **ANTES do rig, como a mancha e o arco:** ele é uma leitura sobre o desenho, e
+                // o corpo do osso continua a ser o que se vê e o que se agarra.
                 //
-                // ⚠️ **A mesma pergunta que o dedo faz** — `bone_pick::hover` só oferece as
-                // paredes do osso em FOCO, e é esta linha que decide de quem elas são.
-                ph2d_skeleton_render::draw_limit(
-                    osso_focado
-                        .and_then(|b| {
-                            // ⚠️ **O MESMO zoom que o dedo usa** (`bone_pick::hover` recebe
-                            // este `vec_px_to_world`): a folga das alças é uma grandeza de TELA
-                            // sobre geometria de MUNDO, e dois zooms diferentes poriam a alça
-                            // pintada num sítio e a agarrável noutro.
-                            crate::bone_limit::arc(
-                                sim,
-                                ph2d_ecs::Entity::from_bits(b),
-                                vec_px_to_world,
-                            )
-                        })
-                        .as_ref(),
-                    self.skeleton.bone_hover.map(|h| h.part),
-                    cam_affine,
-                    hero.theme,
-                    vector_scene,
-                );
+                // ⛔ **O alvo é o que está sob o cursor, e não a selecção** — o pincel escolhe a
+                // arte pela ponta do dedo (é o que o pen-down faz), logo a pré-visualização tem de
+                // responder à MESMA pergunta. *Mostrar os pesos de outra arte é pior que não
+                // mostrar nenhum.*
+                if self.vec.draw_config.bone_action == ph2d_tool_vector::BoneAction::Weight {
+                    let raio = self.vec.draw_config.weight_radius;
+                    // ⚠️ **Qual arte é o sujeito é LEI e mora na crate**
+                    // ([`ph2d_skeleton_live::peso_a_mao::pontos_do_indicador`]): aqui decide-se a
+                    // ORDEM dos passes, não de quem se mostram os pesos.
+                    let pontos = ph2d_skeleton_live::peso_a_mao::pontos_do_indicador(
+                        sim,
+                        hero.project.pixels_per_meter,
+                        osso_focado.map(ph2d_ecs::Entity::from_bits),
+                        self.skeleton.weight_drag.map(ph2d_ecs::Entity::from_bits),
+                        self.skeleton.weight_cursor,
+                        raio,
+                    );
+                    ph2d_skeleton_render::draw_weights(
+                        &pontos,
+                        cam_affine,
+                        hero.theme,
+                        vector_scene,
+                    );
+                    // ⚠️ **A escala vem do MESMO número que o zoom dá ao dedo** — o anel é uma
+                    // distância de MUNDO, e o `vec_px_to_world` é o factor inverso.
+                    ph2d_skeleton_render::draw_weight_brush(
+                        self.skeleton.weight_cursor,
+                        raio,
+                        1.0 / vec_px_to_world,
+                        cam_affine,
+                        hero.theme,
+                        vector_scene,
+                    );
+                }
                 // ⚠️ **Que pontas recebem anel é um CORPO e mora na família**
                 // ([`ph2d_app_skeleton::goal::ring_targets`]): aqui decide-se a ORDEM dos passes,
                 // não o que cada um desenha.
@@ -184,4 +190,67 @@ impl crate::App {
         }
         Some(cam_affine)
     }
+}
+
+/// ⭐⭐⭐ **O FUNDO DO OSSO EM FOCO** — a mancha de influência e o arco de limite.
+///
+/// ⚠️ **Os dois vêm ANTES do rig e nesta ordem**, e é a ordem que diz o que eles são: a mancha é
+/// fundo, o arco vive por cima dela (é por isso que o véu dele é mais fraco), e o corpo do osso
+/// desenha-se por cima dos dois — é ele que se vê e que se agarra.
+///
+/// ⚠️ **Função LIVRE e não método**, e não é estilo: no laço de desenho o `gfx` está emprestado
+/// mutável de ponta a ponta (`sim` e o alvo saem dele), logo um `&mut self` aqui não compila. É a
+/// mesma razão que já põe o [`crate::bone_gesture::selected_bone`] numa função livre.
+fn fundo_do_osso_focado(
+    sim: &SimWorld,
+    osso_focado: Option<u64>,
+    hover: Option<ph2d_skeleton_render::BoneHover>,
+    vec_px_to_world: f64,
+    cam_affine: ph2d_vector::Affine,
+    theme: ph2d_tokens::Theme,
+    target: &mut ph2d_vector::VectorScene,
+) {
+    // ⭐⭐⭐ **A REGIÃO DE INFLUÊNCIA do osso em foco** — o *Bone Strength* do Moho.
+    // Ela entra ANTES dos ossos: é um fundo, e o rig desenha-se por cima dela.
+    //
+    // ⚠️ **O foco é a SELECÇÃO, e é a mesma pergunta que o dedo faz** — a alça só é
+    // agarrável onde ela é pintada (`bone_pick::hover` recebe o mesmo `foco`).
+    //
+    // ⚠️ A selecção CRUA basta e filtra-se sozinha: `influence_region` devolve
+    // `None` para o que não é osso, então não há aqui uma segunda pergunta
+    // *"isto é um osso?"* a divergir da que o `hover` faz.
+    ph2d_skeleton_render::draw_influence(
+        osso_focado.and_then(|b| crate::skeleton_live::influence_region(sim, b)),
+        matches!(
+            hover,
+            Some(h) if h.part == ph2d_skeleton_render::BonePart::Influence
+        ),
+        cam_affine,
+        theme,
+        target,
+    );
+    // ⭐⭐⭐ **O ARCO DE LIMITE do osso em foco** — o setor por onde a ponta dele
+    // pode passar, mais as duas paredes agarráveis.
+    //
+    // ⚠️ **Depois da influência e ANTES dos ossos**: os dois são fundo, e o arco
+    // vive por cima da mancha (é por isso que o véu dele é mais fraco). O rig
+    // desenha-se por cima dos dois.
+    //
+    // ⚠️ **A mesma pergunta que o dedo faz** — `bone_pick::hover` só oferece as
+    // paredes do osso em FOCO, e é esta linha que decide de quem elas são.
+    ph2d_skeleton_render::draw_limit(
+        osso_focado
+            .and_then(|b| {
+                // ⚠️ **O MESMO zoom que o dedo usa** (`bone_pick::hover` recebe
+                // este `vec_px_to_world`): a folga das alças é uma grandeza de TELA
+                // sobre geometria de MUNDO, e dois zooms diferentes poriam a alça
+                // pintada num sítio e a agarrável noutro.
+                crate::bone_limit::arc(sim, ph2d_ecs::Entity::from_bits(b), vec_px_to_world)
+            })
+            .as_ref(),
+        hover.map(|h| h.part),
+        cam_affine,
+        theme,
+        target,
+    );
 }

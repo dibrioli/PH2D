@@ -338,7 +338,9 @@ pub fn recook(sim: &SimWorld, scene: &mut VecScene) {
         };
         let pesos = skin.pesos_do_quadro(fecha);
         let mut src = guardado.path.clone();
-        ph2d_vec_skin::aplica_com(&pele, &mut src, pesos);
+        // ⭐⭐⭐ **E AS CORRECÇÕES À MÃO** — a porta é a mesma das duas mídias
+        // (`SkinBind::correcoes_resolvidas`), e com a lista vazia isto é byte-idêntico ao que era.
+        ph2d_vec_skin::aplica_corrigido(&pele, &mut src, pesos, &skin.correcoes_resolvidas());
         if let Some(p) = scene.path_mut(id) {
             p.replace_cooked(src);
         }

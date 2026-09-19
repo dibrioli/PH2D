@@ -312,6 +312,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bone.action" => "Bone Tool",
         "panel.vector.bone.create" => "Create",
         "panel.vector.bone.transform" => "Transform",
+        // ⭐ O 3.º verbo do arrasto — pintar a influência do osso aceso sobre a arte presa.
+        "panel.vector.bone.weight" => "Weight",
+        "panel.vector.bone.weight.radius" => "Brush Radius",
+        // ⚠️ *Strength* e não *Amount*: o número é COM SINAL e o rótulo tem de o deixar ler-se
+        // nos dois sentidos. Um *Amount* negativo lê-se como um erro; uma *Strength* negativa
+        // lê-se como o que é — a mesma força, do outro lado.
+        "panel.vector.bone.weight.amount" => "Brush Strength",
         "panel.vector.bone.bind" => "Bind to Skeleton",
         "panel.vector.bone.expand" => "Keep Pose",
         "panel.vector.bone.release" => "Release",

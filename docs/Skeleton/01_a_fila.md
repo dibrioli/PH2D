@@ -56,6 +56,7 @@ diz onde ler o mecanismo:
 | **F11** | ✅ **Imagens em 9 fatias e folhas de quadros DEFORMAM com os ossos** (ordem do dono, 2026-09-17) | ✅ **FECHADO** — ver F11 abaixo |
 | **F21** | ✅ **A cena dedicada do ENVELOPE** (*«melhor montar uma cena específica para me mostrar isso»*, 2026-09-18) | ✅ **FECHADA em 2026-09-19 — e ela REFUTOU a lei da F20**: o envelope é inerte em toda forma FECHADA (amplitude `0,000000` numa faixa de `80 ×`), porque uma forma fechada também usa o padrão-ouro desde 15/09. A lei passou a perguntar ao **BIND** e não à mídia. Cena **`PH2D_VEC_BONE_SMOKE=2`** — ver F21 abaixo |
 | **F22** | ⭐⭐⭐ **A ESCOLHA da lei de pele, POR DESENHO** (ordem do dono, 2026-09-19: *«construa. por desenho»*) | ✅ **FECHADA no mesmo dia** — fileira **`Deform By`** (`Artwork` \| `Bone Reach`) no painel Bones, por DESENHO e para as duas mídias. ⭐ A escolha diz se o quadro **LÊ** a tabela do padrão-ouro, nunca se a calcula ⇒ a volta é **exacta ao bit** e não re-resolve nada. `PROJECT_SCHEMA` **+1** — ver F22 abaixo |
+| **F26** | ⭐⭐⭐ **CORRIGIR UM PESO À MÃO** (auditoria, 2026-09-19) | ✅ **FECHADA no mesmo dia** — o 3.º verbo do osso (**`Weight`**) pinta a influência sobre a arte presa, com os pesos **à vista** por baixo do pincel. A correcção é uma **MANCHA no espaço** (nunca uma tabela por vértice) e é ancorada no **REPOUSO** do ponto que o dedo aponta. `PROJECT_SCHEMA` **+1** — ver F26 abaixo |
 
 ---
 
@@ -388,6 +389,94 @@ Mutação **12 de 12** a sangrar.
 
 ⏳ **ABERTO:** o espelho não tem gesto de canvas (só o painel) · e a arte presa não é espelhada com
 os ossos — o ramo novo nasce sem pele, e prendê-la é o gesto que já existe (*Bind*).
+
+### F26 — ⭐⭐⭐ **CORRIGIR UM PESO À MÃO — o pincel, a mancha e o olho** (2026-09-19)
+
+O quarto e último item da auditoria: *«quando a conta automática erra num sítio, não há como
+acertar aquele ponto»*. Hoje há — um **terceiro verbo** na fileira do osso (**`Weight`**), e
+arrastar sobre a arte presa empurra a influência do osso em foco para cima (ou, com o valor
+NEGATIVO, para baixo).
+
+#### A lei: uma MANCHA no espaço, nunca uma tabela por vértice
+
+⛔⛔ **A tabela por ordem de varredura é o *vector paralelo* que o `VecVertex::corner_radius` proíbe
+por escrito**, e este módulo já a recusou uma vez (os pesos *derivam-se*, não se guardam): dezenas
+de operações inserem, apagam, invertem e soldam vértices, e cada uma teria de se lembrar de a
+mexer. ⇒ a correcção é **ancorada na geometria** ([`CorreccaoDePeso`]): ela diz *«aqui»*, e
+continua a dizer «aqui» depois de o artista mexer no desenho.
+
+A bossa é `(1 − x²)²`, a **mesma** da lei euclidiana — `C¹` na borda por construção, logo a
+correcção não põe um degrau no campo. ⭐ E por ser somada DEPOIS da lei, ela vale nas **duas**
+(`Auto` do padrão-ouro · `Envelope`): *o artista corrige aquele ponto, e de que lei veio o peso que
+ele está a corrigir não é pergunta dele.*
+
+#### ⭐⭐⭐ O que a torna correcta: a mancha é pintada na POSE e guardada no REPOUSO
+
+O artista vê a arte **deformada** — é lá que ele vê o defeito — e a correcção tem de viver na
+geometria de repouso, senão ela andaria com a pose e corrigiria o sítio errado no quadro seguinte.
+⇒ o dedo escolhe o ponto **POSADO** mais perto e o que se guarda é o **repouso desse mesmo ponto**
+([`peso_a_mao`]). ⚠️ E o **centro nunca é o cursor cru**: ancorá-lo ali poria a mancha no vazio
+quando o dedo passa ao lado da arte, e ela deixaria de corrigir exactamente quando o artista pensa
+que a pôs.
+
+#### O olho: o pincel deixou de ser cego
+
+⛔ Corrigir um peso sem o ver é apontar para um número que não está na tela. Com o verbo armado,
+cada ponto da arte presa é um **ponto colorido** pela influência do osso em foco — a rampa
+`Info → Danger` que toda ferramenta de rig usa —, mais o **anel** do pincel (raio em MUNDO, porque
+o raio *é* uma distância do desenho). ⭐ **Um peso de `0` é pintado, e é a metade que importa:** sem
+ele o artista vê onde o osso já manda e **não vê onde ele devia mandar e não manda**.
+
+⚠️ **O olho lê a MESMA porta que o quadro** (`weights_corrected`, com as manchas já dentro) — *uma
+pré-visualização que ignora o trabalho feito faria o artista pintar duas vezes o que já pintou*.
+
+#### As duas constantes, e o que cada uma é
+
+| const | valor | o recurso |
+|---|---|---|
+| `MANCHAS_MAX` | `128` | o **relógio do quadro**: `205 µs` sobre `2 000` pontos com o tecto cheio (`--release`), `1,2 %` de um quadro de 60 Hz — `8 ×` abaixo do décimo que o gate exige |
+| `FUSAO` | `0,5` | a **distância**: duas pinceladas a menos de meio raio uma da outra são a mesma mancha, e é isso que faz um arrasto custar o que ele percorre |
+
+⚠️⚠️ **E a `FUSAO` quase ficou sem régua:** o gate óbvio (*«pintar duas vezes no mesmo sítio dá uma
+mancha»*) fica **verde com ela a zero**, porque o centro é snapado ao ponto da pele e duas
+pinceladas no mesmo sítio fundem por igualdade **exacta**. Quem a mede é a irmã, com dois pontos
+**vizinhos** e o raio DERIVADO da distância entre eles. *Uma mutação que sobrevive é a régua a
+dizer onde ela não olha* — e o tecto pagou a mesma lição (a estrela nunca o alcança; ele é medido
+na LEI).
+
+**Na tela:** a fileira do osso passa a ter **três** segmentos, e com o `Weight` armado aparecem
+**`Brush Radius`** e **`Brush Strength`** (com sinal — negativo TIRA; ⛔ não há um segundo verbo
+«apagar» a lembrar nem um modificador a adivinhar). `PROJECT_SCHEMA` **+1** — conte o DELTA.
+
+⚠️ **O traço pertence à arte em que começou** (o alvo congela no press): com duas formas presas a
+encostar-se, re-perguntar a cada evento poria metade da correcção no desenho errado.
+
+#### ⛔⛔ E a FOTO mostrou que o verbo era inalcançável na própria cena dele
+
+O painel dos ossos é a **única** porta dos três verbos (`Create` · `Transform` · `Weight`), e o
+prólogo da cena `PH2D_VEC_BONE_SMOKE` só o abria no nível `=2` — logo o `=1`, que é o que **tem
+arte presa**, mostrava um esqueleto cujas ferramentas o artista não conseguia alcançar. ⭐ *A cena
+estava certa como DADOS e era impossível como GESTO* — a mesma forma que o `#15` da `line/components`
+pagou, e que nenhum dos gates dela via, porque todos liam a cena como dados.
+⇒ `painel_do_osso` passa a ser **incondicional** (a timeline e o enquadramento continuam do `=2`,
+e é isso que mantém intacta a cena que o dono aprovou), com a morte da premissa **visível no diff**
+do gate que a prendia. ⚠️ E o texto que a cena imprime deixou de mandar *«abra o painel Skeleton»*:
+*uma instrução que descreve o app de ontem é mais cara que instrução nenhuma.*
+
+#### ⚠️ A escolha do alvo é LEI, e vivia no laço de desenho
+
+O tecto de LOC da fase do overlay obrigou o corte, e ele achou o defeito: *«de quem se mostram os
+pesos»* — o alvo congelado do traço, senão o que está sob o dedo — estava escrita dentro do laço de
+desenho da shell, **onde teste nenhum lhe chega**. ⇒ [`peso_a_mao::pontos_do_indicador`], com gate
+de **quatro** braços e a fixtura de **duas** peles que é o que o torna discriminante (com uma só,
+«o congelado ganha» e «o dedo escolhe» devolvem o mesmo bloco).
+
+Mutação **18 de 18** a sangrar, **duas** delas sobreviventes à primeira e curadas com gates novos.
+
+⏳ **ABERTO e nomeado:** o caminho de **GPU** não conhece as manchas — dívida **com gate**
+(`a_pele_da_placa_nao_conhece_as_correccoes_e_isso_esta_nomeado`), inofensiva só enquanto ele não
+tiver consumidor de produto · não há botão de *limpar as correcções* (o `Ctrl+Z` e o valor negativo
+cobrem-no) · e a mancha não é espelhada pelo `Mirror Branch`.
 
 ### F19 — ✅ **O CHIP `Auto` DIZ QUE LADO DERIVA** (report do dono, 2026-09-18)
 

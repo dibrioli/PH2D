@@ -47,6 +47,20 @@ pub fn apply(skin: &Skin, path: &mut VecPath) {
 /// ⛔ **Uma tabela que não fecha com o caminho é IGNORADA** (cai na lei derivada) em vez de ser lida
 /// deslocada: uma tabela deslocada por um ponto entrega pesos plausíveis e arte errada.
 pub fn aplica_com(skin: &Skin, path: &mut VecPath, pesos: &[f64]) {
+    aplica_corrigido(skin, path, pesos, &[]);
+}
+
+/// ⭐⭐⭐ **O MESMO, COM AS CORRECÇÕES À MÃO DO ARTISTA** — ver [`ph2d_skeleton::Correccao`].
+///
+/// ⛔ Com `correcoes` vazio ela é **byte-idêntica** ao [`aplica_com`], e é por isso que aquele
+/// delega aqui em vez de duplicar o laço: *duas cópias do mesmo percurso divergem no primeiro
+/// ajuste*, e este já se partiu uma vez quando o padrão-ouro chegou.
+pub fn aplica_corrigido(
+    skin: &Skin,
+    path: &mut VecPath,
+    pesos: &[f64],
+    correcoes: &[ph2d_skeleton::Correccao],
+) {
     let mut w = skin.scratch();
     let pontos = path.verts_all().count() * 3;
     let n = pesos.len().checked_div(pontos).unwrap_or(0);
@@ -54,11 +68,12 @@ pub fn aplica_com(skin: &Skin, path: &mut VecPath, pesos: &[f64]) {
     let mut k = 0usize;
     path.for_each_vert_mut(|v| {
         for p in [&mut v.anchor, &mut v.in_handle, &mut v.out_handle] {
-            *p = if usa {
-                skin.point_with(*p, &pesos[k * n..(k + 1) * n], &mut w)
-            } else {
-                skin.point(*p, &mut w)
-            };
+            // ⭐ **A escolha da lei é um `Option`, e a porta é UMA** — ver
+            // [`ph2d_skeleton::Skin::point_corrected`]. Ela colapsa o `if` que cada consumidor
+            // tinha de escrever, e é o que faz a correcção valer nas duas sem ser escrita duas
+            // vezes.
+            let guardados = usa.then(|| &pesos[k * n..(k + 1) * n]);
+            *p = skin.point_corrected(*p, guardados, &mut w, correcoes);
             k += 1;
         }
     });

@@ -34,12 +34,17 @@ mod reset;
 #[path = "rows_paint_sections.rs"]
 pub(crate) mod sections;
 use reset::{RESET_GUTTER_W, paint_reset_button, row_is_modified};
+#[path = "rows_paint_queixa.rs"]
+mod queixa;
+use queixa::paint_queixa;
 #[path = "rows_paint_kinds.rs"]
 mod kinds;
+#[path = "rows_paint_pickers.rs"]
+mod pickers;
 use kinds::{
-    paint_channels_row, paint_color_row, paint_driven_row, paint_enum_row, paint_scalar_row,
-    paint_source_row, paint_toggle_row,
+    paint_color_row, paint_driven_row, paint_enum_row, paint_scalar_row, paint_toggle_row,
 };
+use pickers::{paint_channels_row, paint_source_row};
 
 /// **QUE WIDGET CADA ESPÉCIE DE ROW PINTA** — o `match` que o [`paint_rows`] delega.
 ///
@@ -148,36 +153,20 @@ fn paint_one_row(
         // ⭐ A row de TEXTO é a única que pode estar ERRADA — ela é a única com texto livre.
         // Pinta a mesma caixa das irmãs e, se houver queixa, mais UMA linha por baixo.
         ParamRow::Text(text) if text.problem.is_some() => {
-            let used = number::paint_box_row(
+            y = paint_queixa(
                 row,
                 i,
+                text.problem.as_deref().unwrap_or_default(),
                 inner_x,
                 inner_w,
                 y,
+                label_font,
                 store,
                 hit_index,
                 scene,
                 text_system,
                 theme,
-            )
-            .expect("o braço e a porta casam por construção");
-            y += used;
-            let msg = text.problem.as_deref().unwrap_or_default();
-            // ⚠️ **Alinhada com o CAMPO, não com a margem** — ela fala do que está na caixa, e
-            // uma linha à esquerda do rótulo leria-se como outra propriedade.
-            paint_text_elided(
-                text_system,
-                scene,
-                msg,
-                inner_x + DEFAULT_LABEL_W,
-                y + (ROW_H_PX - label_font) * 0.5,
-                label_font,
-                (inner_w - DEFAULT_LABEL_W).max(0.0),
-                resolve(ColorToken::Danger, theme),
             );
-            // ⚠️ **Nada é registado no `HitIndex`**: um aviso não se clica. Registá-lo poria um
-            // alvo mudo por cima do campo, que é o defeito que a caça aos knobs mortos nomeia.
-            y += ph2d_tokens::row_pitch_px();
         }
         ParamRow::Angle(_) | ParamRow::Seed(_) | ParamRow::Text(_) => {
             // As rows-CAIXA: uma altura de row, um `Rect` explícito.

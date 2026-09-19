@@ -56,6 +56,14 @@ pub const TABELA: &[Armacao] = &[
         arma: |_| arma_as_tags(),
         desarma: desarma_as_tags,
     },
+    // ⭐⭐ **O painel de params do Motion** — ele estava declarado como «precisa de um GRAFO», e
+    //    precisa de um SNAPSHOT, que são dados. Os rótulos dele são **derivados** das `828`
+    //    entradas do catálogo de params: ver [`super::o_motion_armado`].
+    Armacao {
+        painel: "motion_params",
+        arma: |_| super::o_motion_armado::arma(),
+        desarma: super::o_motion_armado::desarma,
+    },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────

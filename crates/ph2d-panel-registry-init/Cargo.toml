@@ -118,6 +118,9 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 # Wave 10 / Etapa 4.1 — staleness gate uses the codegen library.
 ph2d-panel-sync = { path = "../../tools/ph2d-panel-sync" }
 ph2d-text = { path = "../ph2d-text" }
+# ⭐ A varredura ORDENA os rótulos do catálogo pelo que eles PINTAM, e para isso precisa do
+# tamanho de fonte em que o painel os escreve — o token, nunca um número.
+ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
 # O gate do gesto de arrastar uma aba encena um ponteiro REAL pelo dispatch.
 ph2d-host = { path = "../ph2d-host" }

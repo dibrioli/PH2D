@@ -102,7 +102,7 @@ pub use dropdown::{
     opaque as resolve_opaque, paint_dropdown, paint_dropdown_chip, paint_dropdown_popover,
     paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,
 };
-pub use segmented_layout::segment_rects_for;
+pub use segmented_layout::{segment_rects_for, wrapped_cells_for};
 // ⚠️ A lei da borda de um campo, já com o eixo do hover — `pub(crate)` porque os seus
 // consumidores são os três pintores da família e os gates, nunca um painel.
 pub use icon_button::{IconButtonStyle, IconGlyph, icon_glyph, paint_icon_button};

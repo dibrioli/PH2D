@@ -12,6 +12,7 @@
 //! arrumação: *um contentor medido por uma regra e preenchido por outra é como a secção seguinte
 //! pinta por cima destes botões e lhes mata o alvo*.
 
+use super::panel_chrome::segmented_label_font as _fonte_do_chip;
 use super::panel_chrome::{segmented_gap, segmented_label_font};
 use super::{GroupCell, block_cells_of};
 use crate::zones::Rect;
@@ -169,6 +170,62 @@ pub fn segment_rects_for(
         .into_iter()
         .next()
         .unwrap_or_default()
+}
+
+/// ⭐⭐⭐ **O BLOCO cujas fileiras medem as PALAVRAS** — o irmão do [`super::block_cells`], que
+/// reparte cada fileira em partes IGUAIS.
+///
+/// ⛔⛔ **Mesma lei do [`segment_rects_for`], na segunda dimensão.** Medido em 2026-09-19 com o
+/// painel de params do Motion armado: a grelha de opções de um selector dava `44`–`66 px` a cada
+/// peça e pintava `Near…`, `Neare…`, `Nearest…` e `Linear An…` — quatro opções de UM selector
+/// real do catálogo, todas cortadas, com a fileira a caber.
+///
+/// ⛔⛔⛔ **E a QUEBRA também sai das palavras, senão a cura é meia.** A 1.ª redacção desta porta
+/// recebia as fileiras já formadas por um `cols = k.clamp(1, 4)` — um literal — e o resultado
+/// mediu-se no produto: as quatro opções largas passaram a caber e **três outras passaram a ser
+/// cortadas**, porque uma fileira que não cabe encolhe TUDO na mesma proporção (que é a lei certa:
+/// ali *falta coluna, não disposição*). *Repartir bem uma fileira mal formada troca de vítima.*
+/// ⇒ quem decide quantas peças por fileira é o [`segmented_row_counts`], guloso sobre as larguras
+/// naturais, com `max_cols` a continuar a ser o tecto de PRODUTO.
+///
+/// Devolve uma fileira por linha, na ordem das opções. ⭐ Com palavras do mesmo tamanho e uma
+/// fileira que cabe, devolve o que o [`super::block_cells`] devolvia, ao pixel.
+#[must_use]
+pub fn wrapped_cells_for(
+    origin: Rect,
+    labels: &[&str],
+    row_h: f32,
+    max_cols: usize,
+    text_system: &mut TextSystem,
+) -> Vec<Vec<(Rect, GroupCell)>> {
+    if labels.is_empty() {
+        return Vec::new();
+    }
+    let font_size = _fonte_do_chip();
+    let naturais: Vec<f32> = labels
+        .iter()
+        .map(|l| crate::paint::rect_for_label(text_system.prefix_width(l, font_size)))
+        .collect();
+    // ⚠️ O tecto de colunas é do PRODUTO (uma grelha de opções não passa de `max_cols` de largura),
+    //    e a quebra por largura só o pode APERTAR — nunca alargar.
+    let contagens: Vec<usize> = segmented_row_counts(origin.w, &naturais)
+        .into_iter()
+        .flat_map(|n| {
+            let cheias = n / max_cols.max(1);
+            let resto = n % max_cols.max(1);
+            (0..cheias)
+                .map(move |_| max_cols.max(1))
+                .chain((resto > 0).then_some(resto))
+        })
+        .collect();
+    let mut por_fileira: Vec<Vec<f32>> = Vec::with_capacity(contagens.len());
+    let mut j = 0usize;
+    for n in &contagens {
+        por_fileira.push(segmented_row_widths(origin.w, &naturais[j..j + n]));
+        j += n;
+    }
+    let refs: Vec<&[f32]> = por_fileira.iter().map(Vec::as_slice).collect();
+    block_cells_of(origin, &refs, row_h)
 }
 
 #[cfg(test)]

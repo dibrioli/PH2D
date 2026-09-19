@@ -8099,6 +8099,7 @@ dependencies = [
  "ph2d-panel-widget-gallery",
  "ph2d-panel-widget-lab",
  "ph2d-text",
+ "ph2d-tokens",
  "ph2d-ui-testkit",
  "ph2d-vector",
 ]

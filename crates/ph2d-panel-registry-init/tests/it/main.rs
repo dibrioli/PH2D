@@ -14,6 +14,7 @@ mod a_tab_dragged_to_another_dock_moves_the_panel;
 mod global_palette_catalog;
 mod nenhum_rotulo_do_app_pinta_nada;
 mod o_inspector_armado;
+mod o_motion_armado;
 mod paineis_armados;
 mod resetting_the_layout_puts_all_three_things_back;
 mod scrub_range_census;

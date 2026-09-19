@@ -57,6 +57,26 @@
 //! de uma propriedade de script, de dois objectos) — e a lista traz o número de cada caixa para que
 //! isso possa ser conferido em vez de acreditado.
 //!
+//! # ⭐⭐⭐ E em 2026-09-19 a mesma pergunta foi feita ao PAINEL DE PARAMS DO MOTION
+//!
+//! Ele estava na lista dos medidos vazios com a justificação *«precisa de um grafo»* — e isso era
+//! **uma ausência afirmada sem olhar a API**: o painel lê um `ParamsSnapshot` publicado numa porta
+//! `thread_local`, e um snapshot são DADOS, não um motor. A fixtura ([`super::o_motion_armado`])
+//! arma uma fileira de **cada uma das 13 espécies**, com os rótulos **derivados** das `828`
+//! entradas `node.*.param.*` do catálogo (`444` distintas), ordenadas pelo que PINTAM.
+//!
+//! | a 1.ª corrida com o Motion armado | |
+//! |---|---:|
+//! | rótulos que pintam **NADA** | **0** |
+//! | cortados (`prefixo…`) | **16** |
+//! | curados no mesmo dia | **4** (a grelha de opções mede as palavras nas DUAS dimensões) |
+//! | por curar, nomeados | **12** — a coluna do NOME · três chips · uma FRASE · dois do artista |
+//!
+//! ⛔⛔ **E a terceira família achou uma LEI que a cura óbvia violava:** trocar o pintor da queixa
+//! por um que QUEBRA fez reprovar o `the_motion_chrome_never_gives_a_row_label_a_wrap_budget`, cuja
+//! razão é um report do dono de 2026-08-30 — no chrome do Motion uma linha de `22 px` que quebra
+//! derrama a segunda metade por cima da entrada seguinte. *A lei é mais velha e está medida.*
+//!
 //! ⚠️ **A passagem armada NÃO alimenta o censo da tabela de strings** — ela põe no painel texto do
 //! DOCUMENTO (`Hero`, `Enemy`, `Closed`), que a tabela não sabe produzir e nem devia. A razão está
 //! escrita no filtro daquele teste.
@@ -235,6 +255,95 @@ const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
         "inspector",
         "legacy_speed = 1 \u{2014} not in the script",
         "lista · 189,0 px · frase composta com o nome do artista a' cabeca",
+    ),
+    // ── O PAINEL DE PARAMS DO MOTION, armado em 2026-09-19 ───────────────────────────────────
+    //
+    // ⭐⭐⭐ **`16` cortes na primeira corrida, num painel que nenhuma régua de largura tinha
+    //    medido** — a declaração que o deixava de fora (*«precisa de um grafo»*) era uma ausência
+    //    afirmada sem olhar a API: ele lê um SNAPSHOT, que são dados. Ver
+    //    [`super::o_motion_armado`], cujos rótulos são DERIVADOS das `828` entradas do catálogo.
+    //
+    // ⛔⛔ **Eles são TRÊS famílias e nenhuma se cura uma linha de cada vez:**
+    //
+    // **(a) a coluna do NOME é um literal** — `DEFAULT_LABEL_W = 70` do
+    // `slider_with_chip`, que o painel empresta como coluna de param. Os seis rótulos abaixo são
+    // do PROGRAMA e o catálogo tem `444` distintos: *uma coluna escrita como número não pergunta
+    // pela lista que vai pintar*, e o `79`/`82` ao lado do `70` diz que ela é respondida em mais
+    // do que um sítio.
+    //
+    // **(b) um CHIP de escolha é dimensionado pelo item em mãos** — o doc da
+    // [`ph2d_editor_core::widget::dropdown_label_budget`] já escreve a lei que estes violam:
+    // *«quem dimensiona um chip de escolha tem de o fazer pela LISTA, nunca pelo item»*.
+    //
+    // **(c) a QUEIXA de uma fórmula é uma FRASE cortada a meio** — a mesma família que a linha
+    // de órfão do cartão de instância e os avisos das secções do Inspector já pagaram, **e aqui a
+    // cura delas está PROIBIDA**: o `the_motion_chrome_never_gives_a_row_label_a_wrap_budget`
+    // reprovou o `paint_text_block`, e a lei dele é do report do dono de 30/08 — no chrome do
+    // Motion uma linha de `22 px` que quebra derrama a segunda metade **por cima da entrada
+    // seguinte**. ⚠️ *A lei é mais velha e está medida; a cura óbvia não a vencia, contornava-a.*
+    // ⇒ o que esta linha pede é uma FILEIRA que saiba que segura uma frase (altura própria), que
+    // é desenho e não uma troca de pintor.
+    //
+    // ⇒ a wave seguinte é a das DUAS portas que ficam; cada linha aqui traz o número de hoje.
+    //
+    // (a) a coluna do NOME
+    (
+        "motion_params",
+        "Restitution Randomness",
+        "coluna de nome · 70,0 px",
+    ),
+    (
+        "motion_params",
+        "Sides / Points / Teeth",
+        "coluna de nome · 70,0 px",
+    ),
+    (
+        "motion_params",
+        "Skip Unused Inputs",
+        "coluna de nome · 70,0 px",
+    ),
+    (
+        "motion_params",
+        "Use Selected Path",
+        "coluna de nome · 70,0 px",
+    ),
+    (
+        "motion_params",
+        "Effects Reach Leaves",
+        "coluna de nome · 79,0 px",
+    ),
+    (
+        "motion_params",
+        "Seed Per Element",
+        "coluna de nome · 82,0 px",
+    ),
+    // ✅ **(b) as QUATRO opções de selector SAÍRAM no mesmo dia** — a grelha delas era o
+    //    `block_cells` sobre uma contagem fixa de `4` por fileira, e passou a medir as PALAVRAS
+    //    nas duas dimensões (`wrapped_cells_for`). ⚠️⚠️ **A 1.ª tentativa curou só a LARGURA e
+    //    TROCOU DE VÍTIMA** — as quatro passaram a caber e `Project` · `Linear` · `Linear Mip`
+    //    passaram a ser cortadas: *repartir bem uma fileira MAL FORMADA não cura nada*, porque
+    //    uma fileira que não cabe encolhe tudo na mesma proporção (que é a lei certa: ali falta
+    //    coluna, não disposição). ⇒ a quebra também tem de sair das palavras.
+    // ⛔ **O pior da lista, e e' do PRODUTO:** o chip do espaco de cor do editor de gradiente tem
+    //    `24 px` para TRES letras.
+    ("motion_params", "RGB", "chip do espaco de cor · 24,0 px"),
+    // ⚠️ Os tres nomes de canal sao PLAUSIVEIS e nao derivados (um canal e' uma coluna do stream,
+    //    que o artista cria) — mas a CAIXA de `44 px` e' a do produto, e nenhuma palavra de oito
+    //    letras cabe nela.
+    ("motion_params", "Position", "chip de canal · 44,0 px"),
+    ("motion_params", "Velocity", "chip de canal · 44,0 px"),
+    ("motion_params", "Lifetime", "chip de canal · 44,0 px"),
+    // (c) a QUEIXA de uma fórmula — uma FRASE cortada a meio, e a cura óbvia está PROIBIDA
+    (
+        "motion_params",
+        "Unknown function `noize` \u{2014} did you mean `noise`?",
+        "frase de queixa · 176,0 px · quebrar esta' PROIBIDO por lei medida (ver abaixo)",
+    ),
+    // Nome de uma forma que o artista desenhou, num chip de fonte.
+    (
+        "motion_params",
+        "Background Parallax Layer",
+        "chip de fonte · 106,0 px · nome do artista",
     ),
     // ⭐ A HIERARQUIA, armada em 2026-09-19: **zero** rótulos do programa cortados. Os dois que
     //    saem são NOMES QUE O ARTISTA DEU, numa linha de árvore que ja' desconta o recuo e os
@@ -476,11 +585,6 @@ const PAINEIS_MEDIDOS_VAZIOS: &[(&str, &str)] = &[
         "motion_graph",
         "pinta um GRAFO de nos vivo (`ph2d-nodegraph`), com o cartao e os pinos derivados do \
          manifesto de cada no; o arnes nao monta um grafo.",
-    ),
-    (
-        "motion_params",
-        "irmao do de cima: as fileiras dele sao os params do no ESCOLHIDO no grafo, logo ele e' \
-         vazio enquanto nao houver grafo nem escolha.",
     ),
     (
         "sculpt3d",

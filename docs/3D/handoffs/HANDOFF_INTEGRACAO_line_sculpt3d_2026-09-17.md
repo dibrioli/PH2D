@@ -3665,3 +3665,115 @@ escrita: a confirmação vale com `running 1 test` à vista.
   `99 %` e **não compram nada**;
 - o botão nasce **DESLIGADO** e o melhor está no **topo** do slider — o valor de
   fábrica é decisão do dono.
+
+---
+
+## §89 — ⭐⭐⭐⭐ «FALTA POUCO PARA A PERFEIÇÃO»: a regra de esconder perdia metade
+
+**Report do dono (21/09):** *«melhorou. falta pouco para perfeição. quer tentar?»*
+
+### §89.1 — ⛔⛔⛔ Passo zero: os `7 %` não são uma coisa só
+
+A pista foi a **ASSIMETRIA**: a vista lia `323` cruzamentos com **cinco** braços
+e **ZERO** com três — e num grafo de grade os defeitos topológicos vêm **aos
+pares** (um `+1` e um `−1` cancelam-se na conta de Euler). ⇒ *`323` contra `0`
+não pode ser topologia.*
+
+Cruzada a **valência na MALHA** contra os **braços na VISTA**:
+
+| val (malha) | braços (vista) | quantos | o que é |
+|---|---|---|---|
+| `6` | `4` | `3 825` | ✅ perfeito |
+| **`6`** | **`5`** | **`182`** | ⛔ a malha é **perfeita**; quem falha é a VISTA |
+| **`7`** | **`5`** | **`106`** | ⛔ defeito real de valência |
+| outros | `5`/`6` | ~`44` | |
+
+### §89.2 — ⭐⭐⭐⭐ E os `182` têm causa exacta
+
+A regra escondia uma aresta *iff ela fosse a mais longa dos **DOIS** triângulos*
+— um casamento por **acordo mútuo**. Numa célula **enviesada** a malha partiu o
+quadrado pela diagonal **CURTA**, que é a escolha **CERTA** (partir pela longa
+daria triângulos de `25°`–`25°`–`130°`), e a diagonal curta **não é a mais longa
+de ninguém** ⇒ ninguém a escondia.
+
+⚠️ **E a margem não era fina:** a candidata perde por `15 %` na mediana
+(`p10 0,74` · `p50 0,84` · `p90 0,96`), com só `6,5 %` a menos de `3 %` de
+fechar. ⇒ *a malha estava certa; a régua de esconder é que não a sabia ler.*
+
+### §89.3 — A regra que fica: um EMPARELHAMENTO
+
+Esconder uma aresta interior é dizer *«estes dois triângulos são UM quadrado»*,
+logo a pergunta é **quem faz par com quem** — e um par usa os dois triângulos,
+portanto é um **emparelhamento**. Guloso pela aresta mais longa primeiro, com
+cada triângulo num par só.
+
+| regra | com pente | **sem pente** (o controlo) | cintilação |
+|---|---|---|---|
+| mútua (a anterior) | `93,01 %` | **`48,29 %`** | `0,86 %` |
+| **esta** (par + cerca) | **`96,10 %`** | `66,86 %` | `1,09 %` |
+| guloso sem cerca | `96,18 %` | `72,00 %` | `1,30 %` |
+
+⭐ **A CERCA — *«só é candidata quem é a mais longa de PELO MENOS UM dos dois»*
+— compra a mesma regularidade do guloso e mantém o CONTRASTE** com a malha por
+pentear.
+
+⚠️⚠️ **E o contraste é coluna de PRODUTO, não vaidade:** a vista existe para o
+artista ver **ONDE** a grade dele está, e uma regra que emparelha tudo mostra
+quadrados também onde não há grade nenhuma. *A que shipa é a mais ambiciosa que
+ainda deixa os dois lados distinguíveis.*
+
+⚠️ **A ordem DECRESCENTE é load-bearing na coluna da CINTILAÇÃO e não na da
+regularidade:** crescente lê `96,87 %` de regularidade (melhor!) e **`1,44 %`**
+de cintilação. ⭐ *A aresta mais longa é a mais parecida com uma diagonal, logo
+emparelhá-la primeiro é o guloso que respeita o próprio critério* — duas razões
+a apontar ao mesmo lado.
+
+### §89.4 — ⚠️⚠️ E isto NÃO melhora a malha
+
+Ela sai **bit a bit igual**: mudou uma regra de **desenho**. O que melhora é o
+que a vista consegue **mostrar** dela — que é exactamente do que o report fala
+(*«áreas ainda não muito boas»* era a vista a não conseguir fechar o quadrado).
+
+*Um número que sobe porque a régua mudou de regra não é o produto a melhorar, e
+a diferença tem de estar escrita onde alguém a possa ler.*
+
+### §89.5 — ⛔ Uma MUTAÇÃO SOBREVIVENTE achou um gate em falta
+
+Apagar a cerca do emparelhamento (o `gasto`) deixa um triângulo entrar em
+**dois** pares — ele perde **duas** arestas e o desenho vira um **buraco** de
+cinco lados — e os **oito** gates daquela crate ficavam **verdes**: o
+`no_edge_of_any_face_is_missing` pergunta pela **FACE** e o de Euler conta por
+**vértice**; *nenhum vê um triângulo usado duas vezes*. ⇒
+`cada_triangulo_perde_no_maximo_uma_aresta`.
+
+### §89.6 — ⚠️ A sonda da cintilação mentiu DUAS vezes antes de medir
+
+1. **um vértice só** lê `0` nas duas regras até `20 %` da aresta — *um vértice
+   sozinho quase nunca troca qual aresta é a mais longa*, e a pergunta é sobre o
+   que muda entre dois **dabs** ⇒ a perturbação é de muitos vértices;
+2. **a unidade tem de ser a aresta DA FAIXA**, não a da peça: a faixa está
+   refinada e o resto não, logo a média da peça é muito maior — com ela o gate
+   sacudia `4×` mais forte e leu `4,22 %` onde a sonda lia `1,09`.
+
+### §89.7 — Prova
+
+**Três gates** (`cada_triangulo_perde_no_maximo_uma_aresta` ·
+`a_vista_da_grade_nao_pisca`, com a metade de baixo que exige que a vista
+REAJA · a recalibração do dos quatro braços). **Mutação `5` a sangrar + `1`
+NOMEADA** (o desempate pela chave: o `BTreeMap` de origem já dá ordem estável a
+empates exactos, e a cerca é contra uma mudança futura da fonte).
+
+**Um tecto de LOC curado por CORTE** (`scenes_pente_grelha_tests.rs`
+`1 013 → 490`, com a família da **VISTA** a ganhar ficheiro próprio), nunca por
+isenção. **Portão `16 451/16 451`**, clippy zero. ⚠️ A vermelha da corrida a
+`load 44,59` era o `the_cost_of_a_player_is_linear_in_their_number`, membro
+**NOMEADO** da família de flakes de fan-out — `3` de `3` verde sozinho.
+
+### §89.8 — ⏳ ABERTO
+
+- os `106` de **valência `7`** são defeito real e o relax já correu até ao ponto
+  fixo dele: os que sobram são os que as cercas do vinco e da dobra **recusam**,
+  e recusam bem (flipar ali destrói o relevo);
+- a vista mostra quadrados também fora da grade — é o preço medido do
+  emparelhamento, e a alternativa (a regra mútua) está na tabela;
+- o botão nasce **DESLIGADO** e o melhor está no **topo** do slider.

@@ -219,11 +219,19 @@ impl crate::App {
         // binding the object's texture per run — an EMPTY partition (a
         // non-object stream) is the legacy single atlas draw. Both are
         // `&self` reads of the same cook; no readback.
-        let motion_gpu: Option<(&wgpu::Buffer, u32, &[ph2d_render::GpuTexRun])> = (motion_active
-            && motion.gpu_live)
-            .then(|| motion.gpu_cook.instances())
-            .flatten()
-            .map(|gi| (gi.buffer(), gi.len(), motion.gpu_cook.texture_runs()));
+        // ⭐⭐⭐ **A LEI DO DONO também vale no DISPOSITIVO** (report de 2026-09-19: *«os retângulos
+        // voltaram»*). O lowering de CPU cala uma corrente de posições, e o caminho da GPU **nunca
+        // perguntava** — ver `ponto_gizmo::a_arte_desenha`, que responde pela FRONTEIRA e sem ler o
+        // dispositivo de volta.
+        let arte_desenha = ph2d_app_motion::ponto_gizmo::a_arte_desenha(
+            motion,
+            ph2d_eval_motion::so_com_forma_por_ordem(),
+        );
+        let motion_gpu: Option<(&wgpu::Buffer, u32, &[ph2d_render::GpuTexRun])> =
+            (motion_active && arte_desenha && motion.gpu_live)
+                .then(|| motion.gpu_cook.instances())
+                .flatten()
+                .map(|gi| (gi.buffer(), gi.len(), motion.gpu_cook.texture_runs()));
         let motion_slice: &[ph2d_render::RenderInstance] = if motion_active && motion_gpu.is_none()
         {
             &motion.pump.instances

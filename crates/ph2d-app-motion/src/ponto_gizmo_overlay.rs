@@ -65,7 +65,9 @@ const CRUZ_DA_PECA: f64 = 0.5;
 /// O comprimento da agulha da direcção, em fracção da pegada.
 const AGULHA_DA_PECA: f64 = 1.0;
 
-/// ⚠️ **Um osso curto demais desenha-se como uma JUNTA e mais nada.** Sem esta cerca, o losango de
+/// ⚠️ **Um osso curto demais desenha-se como uma JUNTA e mais nada** — e «curto» é medido em
+/// pixels de REFERÊNCIA (o mundo no zoom de fábrica), nunca no ecrã de agora: com o ecrã, afastar a
+/// câmara fazia a cadeia inteira DESAPARECER. Sem esta cerca, o losango de
 /// um segmento de comprimento ~0 fica com as duas pontas do lado errado da largura e pinta uma
 /// gravata — uma cadeia com juntas coincidentes (o caso normal de uma corda em repouso) ficaria
 /// coberta de borrões.
@@ -102,13 +104,20 @@ const GLIFO_MIN_PX: f64 = CIRCULO_TOL_PX;
 /// um literal: ela é o que faz uma peça autorada para se ver bem no arranque ter um glifo que se vê
 /// bem. E **é a câmara de FÁBRICA e não a de agora** — é isso, e só isso, que mantém a lei 1: o
 /// zoom do artista não entra nesta conta.
+/// **Quantos pixels vale uma unidade de MUNDO no zoom de FÁBRICA.** A porta de que a pegada e o
+/// comprimento de um osso saem — as duas têm de vir daqui, senão uma é absoluta e a outra não.
+#[must_use]
+pub(crate) fn ppu_de_referencia(altura_da_area: f64) -> f64 {
+    altura_da_area / f64::from(Camera2d::default().height_world)
+}
+
 #[must_use]
 pub(crate) fn pegada_px(escala: f32, altura_da_area: f64) -> f64 {
     let s = f64::from(escala);
     if !s.is_finite() {
         return 0.0;
     }
-    s.abs() * (altura_da_area / f64::from(Camera2d::default().height_world))
+    s.abs() * ppu_de_referencia(altura_da_area)
 }
 
 /// O glifo que ocupa `fracao` da pegada, com o piso de legibilidade.
@@ -176,12 +185,13 @@ pub(crate) fn caminhos(
     pt: &dyn Fn([f32; 2]) -> Point,
     altura_da_area: f64,
 ) -> (BezPath, BezPath) {
+    let ppu = ppu_de_referencia(altura_da_area);
     let mut cheios = BezPath::new();
     let mut tracos = BezPath::new();
     for g in &v.grupos {
         let peg = |i: usize| pegada_px(g.escala_em(i), altura_da_area);
         match g.feicao {
-            Feicao::Osso => desenha_ossos(g, pt, &peg, &mut cheios, &mut tracos),
+            Feicao::Osso => desenha_ossos(g, pt, &peg, ppu, &mut cheios, &mut tracos),
             Feicao::Corda => desenha_corda(g, pt, &peg, &mut tracos),
             Feicao::Ponto => desenha_pontos(g, pt, &peg, &mut tracos),
         }
@@ -198,6 +208,7 @@ fn desenha_ossos(
     g: &Grupo,
     pt: &dyn Fn([f32; 2]) -> Point,
     peg: &dyn Fn(usize) -> f64,
+    ppu: f64,
     cheios: &mut BezPath,
     tracos: &mut BezPath,
 ) {
@@ -205,13 +216,26 @@ fn desenha_ossos(
         let (a, b) = (pt(g.pontos[*de]), pt(g.pontos[*para]));
         let (dx, dy) = (b.x - a.x, b.y - a.y);
         let comp = dx.hypot(dy);
-        if comp < OSSO_MIN_PX {
+        // ⛔⛔⛔ **O COMPRIMENTO QUE DECIDE A GORDURA É O DE MUNDO, medido no zoom de FÁBRICA** —
+        // report do dono, 2026-09-19: *«os gizmos estão relativos ao zoom»*, e **ele tinha razão**.
+        // A 1.ª redacção limitava a meia-largura por `comp`, que é o comprimento em pixels de
+        // ECRÃ: afastar a câmara encolhia `comp`, o limite mordia, e o osso **afinava com o zoom**.
+        // *Uma cerca em pixels de ecrã dentro de uma lei que se diz absoluta é a lei revogada.*
+        let (wx, wy) = (
+            f64::from(g.pontos[*para][0] - g.pontos[*de][0]),
+            f64::from(g.pontos[*para][1] - g.pontos[*de][1]),
+        );
+        let comp_ref = wx.hypot(wy) * ppu;
+        if comp_ref < OSSO_MIN_PX {
             continue; // ver `OSSO_MIN_PX`
+        }
+        if comp <= f64::EPSILON {
+            continue; // no ecrã as duas juntas caíram no mesmo pixel: não há direcção a desenhar
         }
         // A meia-largura é a do FILHO: é o elemento que este osso representa. ⚠️ E é limitada
         // pelo PRÓPRIO comprimento — uma peça grande numa cadeia curta desenharia um losango mais
         // largo do que longo, que já não é um osso.
-        let meia = glifo_px(OSSO_DA_PECA, peg(*para)).min(comp * OSSO_DO_COMPRIMENTO);
+        let meia = glifo_px(OSSO_DA_PECA, peg(*para)).min(comp_ref * OSSO_DO_COMPRIMENTO);
         let (nx, ny) = (-dy / comp * meia, dx / comp * meia);
         // O ombro fica a um quinto do caminho: é onde a armadura do referencial o põe, e é o
         // que dá a direcção sem engordar a cadeia inteira.

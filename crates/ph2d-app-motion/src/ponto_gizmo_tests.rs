@@ -98,13 +98,13 @@ fn uma_grelha_sem_forma_vira_gizmo_de_pontos() {
 
     // ⚠️ **Sem cozer não há retrato**, e é essa a metade que prova que ele lê o COZIDO.
     assert!(
-        resolve(&m, true).is_none(),
+        resolve(&m, true, true).is_none(),
         "montada e nao cozida: sem tomadas, sem gizmo"
     );
 
     coze(&mut m, &sinks);
 
-    let v = resolve(&m, true).expect("a cena so'-posicoes tem de dar gizmo");
+    let v = resolve(&m, true, true).expect("a cena so'-posicoes tem de dar gizmo");
     assert!(!v.grupos.is_empty());
     for g in &v.grupos {
         assert_eq!(g.feicao, Feicao::Ponto, "uma grelha e' uma nuvem");
@@ -126,10 +126,10 @@ fn sem_a_ferramenta_motion_nao_ha_gizmo() {
     m.pump.set_taps(&taps_for(&m));
     coze(&mut m, &sinks);
     assert!(
-        resolve(&m, true).is_some(),
+        resolve(&m, true, true).is_some(),
         "o CONTROLO: com a ferramenta ha'"
     );
-    assert!(resolve(&m, false).is_none(), "sem ela, nada");
+    assert!(resolve(&m, false, true).is_none(), "sem ela, nada");
 }
 
 /// ⭐⭐ **UMA CORRENTE COM APARÊNCIA NÃO TEM GIZMO** — a mesma porta que o lowering usa.
@@ -176,7 +176,7 @@ fn quem_tem_aparencia_nao_ganha_gizmo() {
     assert!(cozida.count() > 0, "e tem de ter linhas");
 
     assert!(
-        resolve(&m, true).is_none(),
+        resolve(&m, true, true).is_none(),
         "quem veio de uma forma desenha PIXEIS, nao gizmo"
     );
 }
@@ -479,28 +479,211 @@ fn a_marca_de_um_ponto_e_uma_cruz_e_nao_um_anel() {
 /// numa cadeia curta desenha um losango mais largo do que longo, que já não se lê como osso.
 ///
 /// ⚠️ Foi uma **mutação sobrevivente** (`R5`) que a pediu: apagar o limite não partia nada, porque
-/// todos os outros gates medem PONTOS, onde ele não existe.
+/// todos os outros gates medem PONTOS.
+///
+/// ⛔⛔ **E a PREMISSA deste gate MORREU no dia seguinte, o que é o gate a funcionar.** Ele media o
+/// comprimento em pixels de **ECRÃ** (dois pontos a `20` de mundo com um olho de `z = 1` eram
+/// `20 px`), e a cura do report *«os gizmos estão relativos ao zoom»* passou a cerca para pixels de
+/// **REFERÊNCIA** — ali `20` de mundo são `1 800 px`, uma cadeia enorme, e a cerca deixa de morder.
+/// *A fixtura tinha de mudar de regime junto com a lei.*
 #[test]
 fn um_osso_nunca_e_mais_gordo_do_que_o_proprio_comprimento() {
-    let comp = 20.0_f64; // px, com `olho(1.0)`
+    // Curto no MUNDO (`0,25` ⇒ `22,5 px` de referência) com uma peça grande: é aqui que a cerca
+    // manda.
+    let comp_mundo = 0.25_f32;
     let v = PontoGizmoView {
         grupos: vec![Grupo {
             node: ph2d_nodegraph::graph::NodeId(0),
             feicao: Feicao::Osso,
-            pontos: vec![[0.0, 0.0], [comp as f32, 0.0]],
+            pontos: vec![[0.0, 0.0], [comp_mundo, 0.0]],
             segmentos: vec![[0, 1]],
             rot: None,
-            // ⚠️ Uma peça ENORME: sem o limite, a meia-largura pedia `225 px` sobre um osso de 20.
+            // ⚠️ Uma peça ENORME: sem o limite a meia-largura pedia `225 px` sobre um osso de 22,5.
             escala: Some(vec![5.0, 5.0]),
             total: 2,
         }],
     };
     let (cheios, _) = crate::ponto_gizmo_overlay::caminhos(&v, &olho(1.0), ALTURA);
     let caixa = cheios.bounding_box();
+    let comp_ref = f64::from(comp_mundo) * crate::ponto_gizmo_overlay::ppu_de_referencia(ALTURA);
     assert!(!cheios.is_empty(), "a fixtura tem de desenhar o osso");
     assert!(
-        caixa.height() <= comp + 1e-6,
-        "um osso de {comp} px saiu com {:.1} px de gordura",
+        caixa.height() <= comp_ref + 1e-6,
+        "um osso de {comp_ref:.1} px saiu com {:.1} px de gordura",
         caixa.height()
     );
+}
+
+/// ⛔⛔⛔ **O OSSO NÃO AFINA COM O ZOOM** — report do dono, 2026-09-19: *«os gizmos estão relativos
+/// ao zoom»*, e ele tinha razão sobre esta feição.
+///
+/// A cerca que impede um osso de ser mais gordo do que longo era medida em pixels de **ECRÃ**:
+/// afastar a câmara encolhia o comprimento, o limite mordia, e a cadeia **afinava**. Hoje ela é
+/// medida no mundo, convertido no zoom de FÁBRICA.
+///
+/// ⚠️ **A fixtura tem de estar NO REGIME onde a cerca morde** (um osso curto com uma peça grande),
+/// senão o gate mede o caso em que a cerca é inerte — *que é como esta mesma cerca já sobreviveu a
+/// uma mutação*.
+#[test]
+fn o_osso_nao_afina_com_o_zoom() {
+    let osso = |z: f64| {
+        let v = PontoGizmoView {
+            grupos: vec![Grupo {
+                node: ph2d_nodegraph::graph::NodeId(0),
+                feicao: Feicao::Osso,
+                // 0,25 de mundo = 22,5 px de referência: a cerca (35 %) dá 7,9 px, e a pegada de
+                // uma peça de `1,0` pediria 45 — logo a CERCA é quem manda.
+                pontos: vec![[0.0, 0.0], [0.25, 0.0]],
+                segmentos: vec![[0, 1]],
+                rot: None,
+                escala: Some(vec![1.0, 1.0]),
+                total: 2,
+            }],
+        };
+        let (cheios, _) = crate::ponto_gizmo_overlay::caminhos(&v, &olho(z), ALTURA);
+        assert!(
+            !cheios.is_empty(),
+            "a fixtura tem de desenhar o osso a z={z}"
+        );
+        cheios.bounding_box().height()
+    };
+    let (perto, longe) = (osso(8.0), osso(0.5));
+    assert!(
+        (perto - longe).abs() < 1e-9,
+        "a gordura do osso mudou com o zoom: {perto:.3} contra {longe:.3}"
+    );
+    // ⚠️ E o CONTROLO de que a cerca está mesmo a morder: sem ela a meia-largura seria a da peça
+    // (`0,5 × 22,5 = 11,25` ⇒ altura `22,5`), e com ela é `7,9` ⇒ altura `15,75`.
+    assert!(
+        perto < 20.0,
+        "a cerca nao esta' a morder nesta fixtura — o gate mede o caso inerte ({perto:.3})"
+    );
+}
+
+/// ⛔⛔⛔ **O GIZMO SÓ EXISTE COM A LEI LIGADA** — *«os retângulos voltaram e os gizmos…»*: com a lei
+/// desligada as peças desenham-se, e o gizmo por cima delas é ruído sobre arte correcta.
+///
+/// ⚠️ **E ele aparecia na configuração de FÁBRICA**, que é a lei da casa violada.
+#[test]
+fn com_a_lei_desligada_nao_ha_gizmo() {
+    let mut m = MotionState::new();
+    let sinks = crate::motion_demo_legend::monta("117", &mut m.doc, &m.registry).0;
+    m.sinks = sinks.clone();
+    m.pump.set_taps(&taps_for(&m));
+    coze(&mut m, &sinks);
+    assert!(
+        resolve(&m, true, true).is_some(),
+        "o CONTROLO: com a lei ligada ha' gizmo"
+    );
+    assert!(
+        resolve(&m, true, false).is_none(),
+        "com a lei desligada as pecas desenham-se, e o gizmo seria ruido por cima"
+    );
+}
+
+/// ⛔⛔⛔ **A ARTE DO DISPOSITIVO OBEDECE À LEI** — a metade que o caminho da GPU não tinha, e que o
+/// dono cobrou com *«os retângulos voltaram»*.
+#[test]
+fn a_arte_do_device_obedece_a_lei() {
+    let mut m = MotionState::new();
+    let sinks = crate::motion_demo_legend::monta("117", &mut m.doc, &m.registry).0;
+    m.sinks = sinks.clone();
+    m.pump.set_taps(&taps_for(&m));
+    coze(&mut m, &sinks);
+    // Uma cena de posições: sem fronteira com aparência ⇒ a arte NÃO desenha.
+    assert!(
+        !a_arte_desenha(&m, true),
+        "uma cena de posicoes nao pode desenhar arte no device"
+    );
+    // ⛔⛔ **E uma fronteira que EXISTE e não traz aparência** — sem esta metade o gate não
+    // discrimina: sobre uma lista VAZIA, *«nenhuma fronteira conta»* e *«toda fronteira conta»*
+    // dão a mesma resposta, e foi uma mutação (`Z5`) que o disse.
+    let grid = fronteira_de_posicoes();
+    assert!(
+        !a_arte_desenha(&grid, true),
+        "uma FRONTEIRA de posicoes tambem nao e' aparencia"
+    );
+    // ⚠️ E o CONTROLO: com a lei DESLIGADA ela desenha — senão isto apagaria o app inteiro.
+    assert!(
+        a_arte_desenha(&m, false),
+        "com a lei desligada a arte tem de desenhar"
+    );
+}
+
+/// ⛔⛔⛔ **E A METADE POSITIVA: uma cena COM aparência desenha no dispositivo.**
+///
+/// ⚠️ **Sem ela a irmã é VÁCUA, e foi uma mutação sobrevivente (`Z4`) que o disse:** trocar o
+/// predicado por *«nenhuma fronteira tem aparência»* apaga toda cena de objectos no device e passa
+/// a irmã à mesma. *Um gate que só mede o lado que cala nunca vê o lado que apaga o app.*
+#[test]
+fn uma_cena_com_aparencia_desenha_no_device() {
+    use ph2d_nodegraph::graph::Graph;
+    let mut m = MotionState::new();
+    let mut g = Graph::new();
+    let obj = g.add_node("source.object");
+    let saida = g.add_node("motion.output");
+    g.set_text_param(obj, "object", "Bola");
+    g.connect(ph2d_nodegraph::graph::Edge {
+        from: (obj, 0),
+        to: (saida, 0),
+        delayed: false,
+    })
+    .expect("liga");
+    m.doc.graph = g;
+    m.sinks = vec![saida];
+    crate::motion_lsystem_testkit::publish_object_alpha(&mut m, "Bola", 0, false);
+
+    // ⚠️ **A FRONTEIRA é o que viaja para o dispositivo** — cozê-la é o que o hand-off da rota
+    // híbrida faz, e é a porta que o `a_arte_desenha` lê.
+    let graph = m.doc.graph.clone();
+    let MotionState { pump, registry, .. } = &mut m;
+    pump.advance_or_scrub_to_nodes_scoped(
+        &graph,
+        registry,
+        &[obj],
+        0,
+        |t| t as f64 / 60.0,
+        &ph2d_nodegraph::cook::TimeScopes::new(),
+    );
+    assert!(
+        !m.pump.boundary_streams().is_empty(),
+        "a fixtura tem de COZER a fronteira, senao o gate mede o vazio"
+    );
+    assert!(
+        a_arte_desenha(&m, true),
+        "uma cena de OBJECTOS tem de continuar a desenhar no device"
+    );
+}
+
+/// Um estado cuja FRONTEIRA está cozida e **não traz aparência** — a metade que discrimina
+/// *«nenhuma conta»* de *«toda conta»*.
+fn fronteira_de_posicoes() -> MotionState {
+    use ph2d_nodegraph::graph::Graph;
+    let mut m = MotionState::new();
+    let mut g = Graph::new();
+    let grelha = g.add_node("motion.grid");
+    let saida = g.add_node("motion.output");
+    g.connect(ph2d_nodegraph::graph::Edge {
+        from: (grelha, 0),
+        to: (saida, 0),
+        delayed: false,
+    })
+    .expect("liga");
+    m.doc.graph = g;
+    m.sinks = vec![saida];
+    let graph = m.doc.graph.clone();
+    let MotionState { pump, registry, .. } = &mut m;
+    pump.advance_or_scrub_to_nodes_scoped(
+        &graph,
+        registry,
+        &[grelha],
+        0,
+        |t| t as f64 / 60.0,
+        &ph2d_nodegraph::cook::TimeScopes::new(),
+    );
+    assert!(
+        !m.pump.boundary_streams().is_empty(),
+        "a fixtura tem de COZER a fronteira"
+    );
+    m
 }

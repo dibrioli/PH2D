@@ -56,7 +56,7 @@ pub use sink_style::{
     SINK_BLEND_PARAM, SINK_COLLIDE_ITERATIONS_DEFAULT, SINK_COLLIDE_ITERATIONS_MAX,
     SINK_COLLIDE_ITERATIONS_PARAM, SINK_COLLIDE_PARAM, SINK_FILTER_PARAM, SINK_PIVOT_LIMIT,
     SINK_PIVOT_X_PARAM, SINK_PIVOT_Y_PARAM, SINK_SORT_PARAM, o_que_o_sink_desenha, sink_blend_tag,
-    sink_collide_sweeps, sink_style,
+    sink_collide_sweeps, sink_style, so_com_forma_por_ordem,
 };
 
 mod lower;

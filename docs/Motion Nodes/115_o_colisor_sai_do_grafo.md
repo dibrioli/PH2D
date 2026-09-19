@@ -2646,6 +2646,46 @@ para **dois** pontos, e o 2.º caía na identidade (`size = 1`) — uma pegada *
 ⚠️ **Dois `assert` de script dispararam** sobre strings que o `cargo fmt` tinha reflowado (uma
 assinatura colapsada numa linha) — que é exactamente para isso que eles existem.
 
+### §32.4-quater — ⛔⛔⛔ *«os retângulos voltaram e os gizmos estão relativos ao zoom»* — TRÊS defeitos meus, e um deles estava DOCUMENTADO como feito
+
+> **Report, 2026-09-19.** As duas metades são defeitos distintos, e a segunda tem duas causas.
+
+**(1) OS RETÂNGULOS: o caminho do DISPOSITIVO nunca perguntou pela lei.** A W1 escreveu a saída
+cedo nos **dois lowerings de CPU**, e a §32.2 acima declarou por escrito que *«por corrente o device
+apenas não despacha»* — **uma propriedade que ninguém construiu**. Medido:
+`grep -c so_com_forma crates/ph2d-gpu-cook/src` devolve **`0`**. ⚠️⚠️ E a cena que eu próprio lhe
+apontei — a **`=116`**, *«102 400 peças no dispositivo»* — é precisamente uma cena de device.
+*Escrever a propriedade no doc não a constrói, e foi preciso o dono abrir o app para a cobrar.*
+
+⭐ **A cura responde SEM ler o dispositivo de volta:** no caminho da GPU a aparência só pode chegar
+por uma **FRONTEIRA** (o `source.object` lê um external que a membrana publica na CPU), logo
+*«a arte do device tem aparência» ⟺ «alguma corrente de fronteira tem aparência»* —
+[`ponto_gizmo::a_arte_desenha`], com a **mesma porta** `tem_aparencia`.
+⛔ **A partição de texturas NÃO serve**, e o doc dela di-lo: ela também fica vazia num *«grafo de
+objectos cujos ladrilhos vivem todos no atlas partilhado»* — usá-la apagaria uma cena legítima.
+
+**(2a) O GIZMO aparecia com a lei DESLIGADA.** O `resolve` nunca perguntou pela porta ⇒ ele
+desenhava-se sobre a arte **na configuração de fábrica**, que é *«tudo o que é novo shipa
+desligado»* violado. ⭐ Hoje é **um interruptor só: ou se vêem as peças, ou se vê o gizmo** — e a
+lei entra por ARGUMENTO, nunca lida do ambiente ali (a lição do §31).
+
+**(2b) O OSSO ERA MESMO RELATIVO AO ZOOM, e ele tinha razão.** A cerca que impede um osso de ser
+mais gordo do que longo media o comprimento em pixels de **ECRÃ**: afastar a câmara encolhia-o, o
+limite mordia, e a cadeia **afinava**. Hoje o comprimento é o de **MUNDO** convertido no zoom de
+fábrica (`ppu_de_referencia`), e a porta é a mesma de que a pegada sai — *senão uma é absoluta e a
+outra não*. O mesmo vale para o piso `OSSO_MIN_PX`: com o ecrã, afastar a câmara fazia a cadeia
+**desaparecer**.
+
+**Mutação: 6 de 6 sangram**, e **DUAS** nasceram de sobreviventes que mudaram gates:
+
+- **`Z4`/`Z5` — o predicado da fronteira.** Sobre uma lista **VAZIA**, *«nenhuma fronteira conta»* e
+  *«toda fronteira conta»* dão **a mesma resposta**: a minha fixtura negativa não tinha fronteira
+  nenhuma, logo não discriminava. ⇒ o gate ganhou **duas** metades novas — uma cena de OBJECTOS que
+  tem de continuar a desenhar, e uma **fronteira cozida de posições** que não conta.
+- **A premissa do `um_osso_nunca_e_mais_gordo…` MORREU**, o que é o gate a funcionar: a fixtura dele
+  media `20` de mundo como `20 px` de ecrã, e no regime novo isso são `1 800 px` — uma cadeia enorme
+  onde a cerca **não morde**. *A fixtura tinha de mudar de regime junto com a lei.*
+
 ### §32.5 — ⏳ O que FICA, e a ordem
 
 1. **As cenas migram** — cada sink de posições ganha `source.shape → motion.duplicator`. ⭐ Isto é

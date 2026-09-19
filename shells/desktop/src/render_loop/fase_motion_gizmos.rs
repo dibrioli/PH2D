@@ -75,6 +75,9 @@ impl crate::App {
         ph2d_app_motion::ponto_gizmo::publish(ph2d_app_motion::ponto_gizmo::resolve(
             motion,
             motion_tool_active,
+            // ⭐ A PORTA DO PRODUTO, lida num sítio só — ver `ponto_gizmo::resolve`: ou se vêem as
+            // peças, ou se vê o gizmo.
+            ph2d_eval_motion::so_com_forma_por_ordem(),
         ));
     }
 }

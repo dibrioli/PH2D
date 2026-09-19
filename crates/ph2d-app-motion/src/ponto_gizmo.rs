@@ -230,9 +230,23 @@ fn tap(motion: &MotionState, node: NodeId) -> Option<&Stream> {
 ///
 /// `None` sem a ferramenta Motion na mão: um gizmo é de EDITOR, e o quadro que o produto entrega
 /// não o tem.
+///
+/// ⛔⛔⛔ **E `None` com a LEI DESLIGADA** — report do dono, 2026-09-19: *«os retângulos voltaram e
+/// os gizmos estão relativos ao zoom»*. Com a lei desligada as peças **desenham-se**, e o gizmo por
+/// cima delas é ruído sobre arte correcta; pior, ele aparecia na configuração de FÁBRICA, que é a
+/// lei desta casa violada (*tudo o que é novo shipa desligado*). ⭐ **Os dois lados são o mesmo
+/// interruptor: ou se vêem as peças, ou se vê o gizmo.**
+///
+/// ⚠️ **A lei entra como ARGUMENTO e não é lida do ambiente aqui** — é a lição da auditoria do
+/// §31: um gate constrói a resposta à mão e mede a LEI; quem lê o ambiente é a porta do produto,
+/// num sítio só.
 #[must_use]
-pub fn resolve(motion: &MotionState, tool_is_motion: bool) -> Option<PontoGizmoView> {
-    if !tool_is_motion {
+pub fn resolve(
+    motion: &MotionState,
+    tool_is_motion: bool,
+    so_com_forma: bool,
+) -> Option<PontoGizmoView> {
+    if !tool_is_motion || !so_com_forma {
         return None;
     }
     let mut grupos = Vec::new();
@@ -290,3 +304,38 @@ pub fn view() -> Option<PontoGizmoView> {
 #[cfg(test)]
 #[path = "ponto_gizmo_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ **A ARTE DO DISPOSITIVO DESENHA NESTE QUADRO?** — a metade da lei que o caminho da GPU
+/// devia ter e não tinha.
+///
+/// ⛔⛔⛔ **Report do dono, 2026-09-19: *«os retângulos voltaram»*.** A [W1] escreveu a saída cedo
+/// nos **dois lowerings de CPU** e o [doc 115 §32.2] declarou, por escrito, que *«por corrente o
+/// device apenas não despacha»* — **uma propriedade que ninguém construiu**. Medido:
+/// `grep -c so_com_forma crates/ph2d-gpu-cook/src` devolve **`0`**. E a cena que eu próprio lhe
+/// apontei — a `=116`, *«102 400 peças no dispositivo»* — é exactamente uma cena de device.
+/// *Escrever a propriedade no doc não a constrói; foi preciso o dono abrir o app para a cobrar.*
+///
+/// ## Como a pergunta se responde SEM ler o dispositivo de volta
+///
+/// No caminho da GPU a aparência só pode chegar por uma **FRONTEIRA** — o `source.object` lê um
+/// external que a membrana publica na CPU, e é a fronteira que viaja para o device. Logo:
+///
+/// > *a arte do device tem aparência* ⟺ *alguma corrente de fronteira tem aparência*
+///
+/// ⚠️ E a pergunta é a MESMA porta que o lowering usa ([`ph2d_eval_motion::tem_aparencia`]) — um
+/// segundo predicado aqui divergiria no dia em que uma origem nova nascesse.
+///
+/// ⛔ **A partição de texturas NÃO serve para isto**, e a razão está escrita no doc dela: ela
+/// também fica vazia num *«grafo de objectos cujos ladrilhos vivem todos no atlas partilhado»* —
+/// usá-la apagaria uma cena de objectos legítima.
+#[must_use]
+pub fn a_arte_desenha(motion: &MotionState, so_com_forma: bool) -> bool {
+    if !so_com_forma {
+        return true;
+    }
+    motion
+        .pump
+        .boundary_streams()
+        .iter()
+        .any(|(_, s)| ph2d_eval_motion::tem_aparencia(s))
+}

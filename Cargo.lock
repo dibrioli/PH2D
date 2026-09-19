@@ -5024,7 +5024,6 @@ dependencies = [
  "ph2d-label-census",
  "ph2d-motion-diagnose",
  "ph2d-motion-doc",
- "ph2d-motion-region",
  "ph2d-node-audio-bands",
  "ph2d-node-force-attractor",
  "ph2d-node-force-buoyancy",
@@ -6791,7 +6790,6 @@ dependencies = [
 name = "ph2d-node-motion-grid"
 version = "0.0.0"
 dependencies = [
- "ph2d-motion-region",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6816,7 +6814,6 @@ dependencies = [
 name = "ph2d-node-motion-lattice"
 version = "0.0.0"
 dependencies = [
- "ph2d-motion-region",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]

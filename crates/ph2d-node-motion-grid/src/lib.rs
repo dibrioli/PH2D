@@ -27,7 +27,6 @@ use ph2d_nodegraph::node::{
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 // ⚠️ **`Region`, e não `Domain`** — este arquivo já importa o `Domain` do `port`, que
 // diz em que PLANO de dados a porta vive.
-use ph2d_motion_region::carve;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -59,18 +58,6 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "gap_y",
             default: 1.0,
         },
-        // **A FORMA** (doc 89, folha 01) — `Rect` é a grade de sempre, ao bit.
-        ParamSpec {
-            name: ph2d_motion_region::SHAPE,
-            default: 0.0,
-        },
-        // ⚠️ **O `fill = Shell` do C4D é este knob**, e não um param próprio: uma casca
-        // É um anel de buraco grande, e `inner` intermédios dão espessuras que o par
-        // *Solid/Shell* não sabe exprimir. Ver `ph2d_motion_region`.
-        ParamSpec {
-            name: ph2d_motion_region::INNER,
-            default: 0.5,
-        },
     ],
     // `lowerings` describes the `ph2d-expr` path only, and the grid is a
     // structural *generator* (it produces an element count), not a per-element
@@ -79,25 +66,6 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     // never this frozen manifest field.
     lowerings: &[LoweringKind::Cpu],
 };
-
-/// **A REGIÃO desta grade** — a forma inscrita na extensão que os pontos de facto
-/// ocupam, `(cols−1)·gap_x` por `(rows−1)·gap_y`.
-///
-/// ⚠️ **A extensão é a dos PONTOS, não a das células.** Usar `cols·gap_x` poria a
-/// fronteira meia célula para fora e o círculo nunca tocaria a coluna de fora — o
-/// artista veria um disco que não encosta na grade que o gerou.
-fn grid_region(
-    rows: usize,
-    cols: usize,
-    gap_x: f32,
-    gap_y: f32,
-    shape: f32,
-    inner: f32,
-) -> ph2d_motion_region::Region {
-    let w = (cols.max(1) as f32 - 1.0) * gap_x;
-    let h = (rows.max(1) as f32 - 1.0) * gap_y;
-    ph2d_motion_region::Region::of(shape, w, h, inner)
-}
 
 /// Build the `rows × cols` position grid (row-major), **centered on the origin**
 /// with independent `gap_x` / `gap_y`, capping the element count at `max` so a
@@ -188,11 +156,11 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     // o `probability` do `motion.emitter` já paga pelo mesmo mecanismo — *um portão que
     // torna a contagem dependente de DADOS sai do caminho do device.*
     //
-    // ⚠️ **O default fica no device.** Só `shape != Rect` cai para a CPU, e é por isso
-    // que a fronteira custa zero a todo documento que não usa a forma nova. A saída
-    // certa, quando alguém a quiser, é o prefix-sum que o `motion.cull` já tem — ligá-lo
-    // a um GERADOR é uma wave própria.
-    applicable: Some(|param| param(ph2d_motion_region::SHAPE).round() as i32 == 0),
+    // ⭐ **E a grade está SEMPRE no device** desde 2026-09-19: a única coisa que a
+    // derrubava para a CPU era a forma que RECORTAVA (`shape != Rect`), e o dono mandou
+    // retirá-la dos quatro distribuidores. *Uma fronteira que ninguém pode accionar é
+    // uma cerca sobre um caso que deixou de existir.*
+    applicable: None,
 };
 
 struct MotionGrid;
@@ -210,18 +178,6 @@ impl NodeOp for MotionGrid {
         let cols = param_as_count(ctx.param("cols"), RECOMMENDED_MAX_ELEMENTS);
         let (gap_x, gap_y) = (ctx.param("gap_x"), ctx.param("gap_y"));
         let positions = build_grid(rows, cols, gap_x, gap_y, RECOMMENDED_MAX_ELEMENTS);
-        // **A FORMA RECORTA** (doc 89, folha 01) — ver `carve`.
-        let positions = carve(
-            positions,
-            &grid_region(
-                rows,
-                cols,
-                gap_x,
-                gap_y,
-                ctx.param(ph2d_motion_region::SHAPE),
-                ctx.param(ph2d_motion_region::INNER),
-            ),
-        );
         let n = positions.len();
         // Per-instance identity: `Index` (0..n) + `Count` (n) — the stable handle
         // downstream palette / ramp / normalized effects read. `clone` replicates
@@ -252,7 +208,6 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     // M1.P1 — param rows: whole-number row/column counts, continuous per-axis gap.
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 1 (ADR-0126): the WGSL lowering, registered on the side.
@@ -322,24 +277,6 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.1,
         widget: ParamWidget::Slider,
     },
-    ParamUiHint {
-        param: ph2d_motion_region::SHAPE,
-        label: "node.motion.grid.param.shape",
-        min: 0.0,
-        max: 2.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: ph2d_motion_region::SHAPE_LABELS,
-        },
-    },
-    ParamUiHint {
-        param: ph2d_motion_region::INNER,
-        label: "node.motion.grid.param.inner",
-        min: 0.0,
-        max: 0.98,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -361,16 +298,6 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
         unit: ParamUnit::Length,
     },
 ];
-
-/// O buraco só existe no anel.
-static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
-    param: ph2d_motion_region::INNER,
-    when: ph2d_motion_region::SHAPE,
-    values: &[ph2d_motion_region::SHAPE_RING],
-}];
-
-#[cfg(test)]
-mod region_tests;
 
 #[cfg(test)]
 mod tests {

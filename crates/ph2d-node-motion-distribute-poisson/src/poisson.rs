@@ -31,12 +31,6 @@
 use crate::hash::Draws;
 use ph2d_motion_region::Region;
 
-/// Sorteios da SEMENTE numa forma recortada antes de o nó desistir. A aceitação é a
-/// razão de áreas (um disco na sua caixa aceita `π/4 ≈ 79%`, um anel de buraco `0,98`
-/// aceita `~3%`), e `64` leva a probabilidade de falhar todos abaixo de `1e-9` no pior
-/// anel que o [`Region`] deixa construir.
-const SEED_TRIES: u32 = 64;
-
 /// Bridson's cell size is `r/√2` — see the module doc.
 const SQRT2: f32 = std::f32::consts::SQRT_2;
 
@@ -245,18 +239,13 @@ pub(crate) fn sample(
         hw,
         hh,
     });
-    // ⚠️ **A caixa é o caminho de sempre, e ele não ganha uma pergunta a mais.** Um
-    // `region.contains` incondicional daria a MESMA resposta num `Rect` e ainda assim
-    // mudaria o resultado, porque o ponto-semente abaixo passa a poder ser rejeitado —
-    // e uma rejeição a mais desloca toda a sequência de sorteios que vem depois.
-    let boxed = region.is_rect();
-    let inside = |p: [f32; 2]| {
-        p[0] >= 0.0
-            && p[0] < w
-            && p[1] >= 0.0
-            && p[1] < h
-            && (boxed || region.contains([p[0] - hw, p[1] - hh]))
-    };
+    // ⚠️ **A caixa é o caminho de sempre, e ele não ganha uma pergunta a mais.**
+    //
+    // ⭐ Isto era `bounds && (boxed || region.contains(…))`, com `boxed = region.is_rect()`. Com a
+    // retirada do param `Shape` (ordem do dono, 2026-09-19) a região é SEMPRE a caixa, logo
+    // `boxed` é sempre `true` e o segundo ramo nunca corria — a expressão colapsa nos limites, e
+    // o resultado é **byte-idêntico** por construção, não por medição.
+    let inside = |p: [f32; 2]| p[0] >= 0.0 && p[0] < w && p[1] >= 0.0 && p[1] < h;
 
     let place = |p: [f32; 2], grid: &mut [u32], pts: &mut Vec<[f32; 2]>, active: &mut Vec<u32>| {
         let (cx, cy) = cell_of(p, cell, gw, gh);
@@ -265,21 +254,14 @@ pub(crate) fn sample(
         pts.push(p);
     };
 
-    // A semente. Numa caixa o primeiro sorteio serve sempre; numa forma recortada ele
-    // pode cair fora, e aí re-sorteia-se um número LIMITADO de vezes — a aceitação de
-    // um anel fino é pequena, mas nunca zero, e desistir devolve o conjunto vazio em
-    // vez de rodar para sempre.
-    let mut seedp = [d.next() * w, d.next() * h];
-    if !boxed {
-        let mut tries = 0;
-        while !inside(seedp) && tries < SEED_TRIES {
-            seedp = [d.next() * w, d.next() * h];
-            tries += 1;
-        }
-        if !inside(seedp) {
-            return Vec::new();
-        }
-    }
+    // A semente. **Numa caixa o primeiro sorteio serve sempre** — `d.next()` devolve `[0,1)` e a
+    // caixa é `[0,w) × [0,h)`.
+    //
+    // ⭐ Aqui havia um laço de re-sorteio guardado por `if !boxed`, para as formas recortadas: um
+    // anel fino aceita poucos dardos, e desistir ao fim de `SEED_TRIES` devolvia o conjunto vazio
+    // em vez de rodar para sempre. Com a retirada do param `Shape` (ordem do dono, 2026-09-19) o
+    // guarda é sempre falso e o laço **nunca corria**, logo apagá-lo não move um bit.
+    let seedp = [d.next() * w, d.next() * h];
     place(seedp, &mut grid, &mut pts, &mut active);
 
     while !active.is_empty() && pts.len() < MAX_CELLS {
@@ -324,7 +306,7 @@ mod tests {
 
     /// O retangulo de sempre — o que estes gates mediam antes de a regiao existir.
     fn rect(w: f32, h: f32) -> Region {
-        Region::of(0.0, w, h, 0.0)
+        Region::rect(w, h)
     }
 
     /// The closest pair in the set. `f32::MAX` for fewer than two points.

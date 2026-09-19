@@ -115,10 +115,11 @@ pub mod conferencia_demos_body;
 #[path = "motion_state_conferencia_demos_echo.rs"]
 pub mod conferencia_demos_echo;
 
-/// A cena de ONDE AS COISAS NASCEM (`=93`) — a forma do domínio, a densidade graduada,
-/// a métrica do Voronoi e a variância de vida.
-/// ⚠️ As quatro primeiras fileiras são PARADAS de propósito: uma distribuição é função
-/// pura dos params, e pô-la a mexer esconderia o que a cena existe para mostrar.
+/// A cena de ONDE AS COISAS NASCEM (`=93`) — a densidade graduada, a métrica do Voronoi e a
+/// variância de vida.
+/// ⚠️ As duas primeiras fileiras são PARADAS de propósito: uma distribuição é função pura dos
+/// params, e pô-la a mexer esconderia o que a cena existe para mostrar.
+/// ⛔ **A forma do domínio SAIU** (ordem do dono, 2026-09-19) e com ela os dois primeiros pares.
 #[path = "motion_state_conferencia_demos_born.rs"]
 pub mod conferencia_demos_born;
 

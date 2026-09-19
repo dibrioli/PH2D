@@ -83,15 +83,6 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "seed",
             default: 1.0,
         },
-        // **A REGIÃO** (doc 89, folha 01) — `Rect` é o retângulo de sempre, ao bit.
-        ParamSpec {
-            name: ph2d_motion_region::SHAPE,
-            default: 0.0,
-        },
-        ParamSpec {
-            name: ph2d_motion_region::INNER,
-            default: 0.5,
-        },
         // **A DENSIDADE GRADUADA** — `0` é uniforme, e uniforme é o de hoje.
         ParamSpec {
             name: DENSITY_FALLOFF,
@@ -322,12 +313,7 @@ impl NodeOp for MotionScatter {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let count = param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS);
-        let region = Region::of(
-            ctx.param(ph2d_motion_region::SHAPE),
-            ctx.param("width"),
-            ctx.param("height"),
-            ctx.param(ph2d_motion_region::INNER),
-        );
+        let region = Region::rect(ctx.param("width"), ctx.param("height"));
         let seed = ctx.param("seed").max(0.0).round() as u32;
         let positions = scatter(count, &region, ctx.param(DENSITY_FALLOFF), seed);
         ctx.emit(Stream::new(positions.len()).with("P", Column::Vec2(positions)));
@@ -350,17 +336,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
-    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
-
-/// O buraco só existe no anel — nas outras duas formas ele seria um controle vivo
-/// que não muda nada, que é a doença que um gate cura.
-static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
-    param: ph2d_motion_region::INNER,
-    when: ph2d_motion_region::SHAPE,
-    values: &[ph2d_motion_region::SHAPE_RING],
-}];
 
 use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 /// **O teto DURO de `count` — e aqui ele é um limite de RECURSO, não um freio ergonômico** (doc 88
@@ -418,24 +395,6 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Seed,
     },
     ParamUiHint {
-        param: ph2d_motion_region::SHAPE,
-        label: "node.motion.scatter.param.shape",
-        min: 0.0,
-        max: 2.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: ph2d_motion_region::SHAPE_LABELS,
-        },
-    },
-    ParamUiHint {
-        param: ph2d_motion_region::INNER,
-        label: "node.motion.scatter.param.inner",
-        min: 0.0,
-        max: 0.98,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
         param: DENSITY_FALLOFF,
         label: "node.motion.scatter.param.density_falloff",
         min: 0.0,
@@ -466,16 +425,14 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
 ];
 
 #[cfg(test)]
-mod region_tests;
-
-#[cfg(test)]
 mod tests {
     use super::*;
     use ph2d_nodegraph::cook::OpResolver;
 
-    /// O retângulo de sempre — o que estes gates mediam antes de a região existir.
+    /// O retângulo — desde 2026-09-19 a única região que existe (ordem do dono: *«tire de
+    /// todos»*), e a fachada fica porque estes gates a nomeiam dezenas de vezes.
     pub(super) fn rect(w: f32, h: f32) -> Region {
-        Region::of(0.0, w, h, 0.0)
+        Region::rect(w, h)
     }
 
     fn nearest_neighbour_sq(pts: &[[f32; 2]]) -> f32 {
@@ -579,7 +536,13 @@ mod grid_tests {
     use ph2d_motion_region::Region;
 
     /// ⭐⭐⭐ **A GRELHA DEVOLVE EXACTAMENTE O QUE A VARREDURA DEVOLVIA** — ponto a ponto, bit a
-    /// bit, nas três formas de região.
+    /// bit.
+    ///
+    /// ⚠️ **Ele varria as TRÊS formas e passou a varrer três EXTENSÕES** (2026-09-19): o `Shape`
+    /// saiu por ordem do dono, e a grandeza que de facto discrimina a grelha de vizinhança é a
+    /// forma da CAIXA — uma caixa larga e baixa põe mais pontos por célula numa direcção do que
+    /// na outra, que é onde um raio de busca errado se vê. *Varrer um param que já não existe
+    /// seria varrer o mesmo caso três vezes.*
     ///
     /// ⚠️ É este gate que autoriza a troca: o critério de Mitchell escolhe pelo `>` sobre a
     /// pontuação, então **um único `f32` diferente muda o ponto escolhido** e daí em diante a
@@ -587,8 +550,8 @@ mod grid_tests {
     /// (perde-se um vizinho na célula ao lado e a distância vem maior).
     #[test]
     fn the_grid_returns_exactly_what_the_scan_returned() {
-        for forma in [0.0_f32, 1.0, 2.0] {
-            let region = Region::of(forma, 400.0, 260.0, 0.4);
+        for (w, h) in [(400.0_f32, 260.0_f32), (400.0, 40.0), (60.0, 400.0)] {
+            let region = Region::rect(w, h);
             let mut placed: Vec<[f32; 2]> = Vec::new();
             let mut grelha = NearGrid::new(&region, 600);
             for i in 0..600u32 {
@@ -598,7 +561,7 @@ mod grid_tests {
                 assert_eq!(
                     pela_grelha.to_bits(),
                     pela_varredura.to_bits(),
-                    "forma {forma}, ponto {i}: a grelha deu {pela_grelha} e a varredura {pela_varredura}"
+                    "caixa {w}x{h}, ponto {i}: a grelha deu {pela_grelha} e a varredura {pela_varredura}"
                 );
                 grelha.insert(placed.len() as u32, p);
                 placed.push(p);
@@ -610,12 +573,12 @@ mod grid_tests {
     /// FALSIFICADO por qualquer diferença na ordem de inserção ou no critério de paragem.
     #[test]
     fn the_cloud_is_bit_identical_to_the_quadratic_one() {
-        for (forma, count, falloff) in [
-            (0.0_f32, 400usize, 0.0_f32),
-            (1.0, 250, 0.7),
-            (2.0, 300, 0.0),
+        for (w, h, count, falloff) in [
+            (300.0_f32, 200.0_f32, 400usize, 0.0_f32),
+            (300.0, 40.0, 250, 0.7),
+            (40.0, 300.0, 300, 0.0),
         ] {
-            let region = Region::of(forma, 300.0, 200.0, 0.35);
+            let region = Region::rect(w, h);
             let novo = scatter(count, &region, falloff, 3);
             // O algoritmo de referência, escrito aqui à letra do que existia antes da grelha.
             let mut placed: Vec<[f32; 2]> = Vec::with_capacity(count);
@@ -644,7 +607,7 @@ mod grid_tests {
                 assert_eq!(
                     (a[0].to_bits(), a[1].to_bits()),
                     (b[0].to_bits(), b[1].to_bits()),
-                    "forma {forma}, ponto {i}: {a:?} contra {b:?}"
+                    "caixa {w}x{h}, ponto {i}: {a:?} contra {b:?}"
                 );
             }
         }
@@ -656,7 +619,7 @@ mod grid_tests {
     #[test]
     #[ignore = "medicao"]
     fn measure_scatter_cost() {
-        let region = Region::of(0.0, 800.0, 600.0, 0.0);
+        let region = Region::rect(800.0, 600.0);
         eprintln!(
             "  load: {}",
             std::fs::read_to_string("/proc/loadavg")

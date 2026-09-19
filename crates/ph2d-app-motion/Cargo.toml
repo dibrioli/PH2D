@@ -35,7 +35,6 @@ ph2d-flip-render = { path = "../ph2d-flip-render" }
 ph2d-gpu-cook = { path = "../ph2d-gpu-cook" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-motion-diagnose = { path = "../ph2d-motion-diagnose" }
-ph2d-motion-region = { path = "../ph2d-motion-region" }
 ph2d-node-audio-bands = { path = "../ph2d-node-audio-bands" }
 ph2d-node-force-attractor = { path = "../ph2d-node-force-attractor" }
 ph2d-node-force-buoyancy = { path = "../ph2d-node-force-buoyancy" }

@@ -1,19 +1,28 @@
-//! **ONDE AS COISAS NASCEM** — a cena `=93` (doc 89, folha 01, as oito últimas).
+//! **ONDE AS COISAS NASCEM** — a cena `=93` (doc 89, folha 01).
 //!
-//! Cinco pares. As quatro primeiras fileiras são **paradas**; só a última anda.
+//! Três pares. As duas primeiras fileiras são **paradas**; só a última anda.
 //!
 //! | par | esquerda | direita |
 //! |---|---|---|
-//! | `motion.grid` | retângulo | **`Shape = Circle`** — a forma RECORTA, e a contagem cai |
-//! | `motion.scatter` | retângulo | **`Shape = Ring`** — o amostrador EMPACOTA: a mesma contagem |
 //! | `motion.distribute_poisson` | densidade uniforme | **`Density Falloff`** — a borda fica mais RALA, não esburacada |
 //! | `motion.voronoi` | `Distance = Euclidean` | **`Chebyshev`** — as células puxam para quadrados |
 //! | `motion.emitter` | toda partícula vive o mesmo | **`Life Random`** — cada uma morre na sua hora |
 //!
-//! ⚠️ **As duas primeiras fileiras são a mesma pergunta com respostas OPOSTAS, e é de
-//! propósito:** um reticulado não se dobra para caber num círculo (só pode perder
-//! pontos), e um amostrador só muda onde o dardo cai (não perde nenhum). *Uma cena que
-//! mostrasse só uma delas ensinaria a lei errada sobre a outra.*
+//! ## ⛔⛔ Duas fileiras SAÍRAM daqui, e a razão é o produto e não a cena
+//!
+//! Ela tinha **cinco** pares, e os dois primeiros eram `motion.grid` (retângulo contra
+//! `Shape = Circle`) e `motion.scatter` (retângulo contra `Shape = Ring`). Juntos ensinavam a lei
+//! que o §5.0 do roteador guarda — *um RETICULADO recorta e um AMOSTRADOR redistribui* —, e eram
+//! a melhor metade desta cena.
+//!
+//! **Ordem do dono, 2026-09-19: *«tire de todos»*.** O param `Shape` saiu dos quatro
+//! distribuidores, logo **a lei deixou de existir no produto** e as duas fileiras passariam a
+//! mostrar a mesma figura dos dois lados.
+//!
+//! ⚠️ **Elas foram CORTADAS e não substituídas por um contraste novo.** Inventar aqui uma
+//! diferença que ninguém pediu seria autorar produto por conta própria — e uma cena mais curta que
+//! é toda verdade vale mais do que uma do tamanho antigo com uma lição fabricada dentro. *Uma cena
+//! que ensina o contrário do que acontece é pior que uma cena ausente* (§5.0).
 
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
@@ -25,8 +34,6 @@ const GAP_Y: f32 = 3.6;
 /// A extensão que as quatro distribuições partilham — um lado só, para as formas se
 /// compararem entre si.
 const EXTENT: f32 = 3.0;
-/// O buraco que o anel do `motion.scatter` autora.
-const RING_HOLE: f32 = 0.45;
 /// A gradação que o par do Poisson autora.
 const FALLOFF: f32 = 1.0;
 /// A variância de vida que o par do emissor autora.
@@ -60,37 +67,7 @@ fn finish(g: &mut Graph, head: NodeId, rgb: [f32; 3], at: [f32; 2], ey: f32) -> 
     Some(out)
 }
 
-/// **A GRADE** — a rede que a forma RECORTA.
-fn grid(g: &mut Graph, ey: f32, circular: bool) -> NodeId {
-    let n = g.add_node("motion.grid");
-    g.set_pos(n, Pos { x: 400.0, y: ey });
-    g.set_param(n, "rows", 15.0);
-    g.set_param(n, "cols", 15.0);
-    let gap = EXTENT / 14.0;
-    g.set_param(n, "gap_x", gap);
-    g.set_param(n, "gap_y", gap);
-    if circular {
-        g.set_param(n, ph2d_motion_region::SHAPE, 1.0);
-    }
-    n
-}
-
-/// **O ESPALHAMENTO** — o amostrador que a forma REDISTRIBUI.
-fn scatter(g: &mut Graph, ey: f32, ring: bool) -> NodeId {
-    let n = g.add_node("motion.scatter");
-    g.set_pos(n, Pos { x: 400.0, y: ey });
-    g.set_param(n, "count", 200.0);
-    g.set_param(n, "width", EXTENT);
-    g.set_param(n, "height", EXTENT);
-    g.set_param(n, "seed", 5.0);
-    if ring {
-        g.set_param(n, ph2d_motion_region::SHAPE, 2.0);
-        g.set_param(n, ph2d_motion_region::INNER, RING_HOLE);
-    }
-    n
-}
-
-/// **O POISSON** — o disco onde a densidade vira o RAIO.
+/// **O POISSON** — a caixa onde a densidade vira o RAIO.
 fn poisson(g: &mut Graph, ey: f32, graded: bool) -> NodeId {
     let n = g.add_node("motion.distribute_poisson");
     g.set_pos(n, Pos { x: 400.0, y: ey });
@@ -98,9 +75,9 @@ fn poisson(g: &mut Graph, ey: f32, graded: bool) -> NodeId {
     g.set_param(n, "width", EXTENT);
     g.set_param(n, "height", EXTENT);
     g.set_param(n, "seed", 2.0);
-    // ⚠️ **As DUAS são círculos** — o que muda entre elas é só a gradação. Comparar um
-    // quadrado com um disco graduado mediria duas coisas ao mesmo tempo.
-    g.set_param(n, ph2d_motion_region::SHAPE, 1.0);
+    // ⚠️ **As DUAS são a MESMA caixa** — o que muda entre elas é só a gradação. Medir duas
+    // coisas ao mesmo tempo era o que um par de formas diferentes faria; até 2026-09-19 as duas
+    // eram discos pela mesma razão, e hoje são rectângulos porque o `Shape` saiu.
     if graded {
         g.set_param(
             n,
@@ -144,34 +121,26 @@ fn emitter(g: &mut Graph, ey: f32, varied: bool) -> NodeId {
     n
 }
 
-/// Monta a cena. Devolve os dez sinks, em pares.
+/// Monta a cena. Devolve os seis sinks, em pares.
 pub fn build_born_demo_document(
     doc: &mut MotionDoc,
     registry: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {
     let g = &mut doc.graph;
-    let rgb = [
-        [0.46, 0.72, 1.0],
-        [1.0, 0.74, 0.3],
-        [0.62, 1.0, 0.66],
-        [1.0, 0.6, 0.72],
-        [0.82, 0.7, 1.0],
-    ];
-    let mut sinks = Vec::with_capacity(10);
+    let rgb = [[0.62, 1.0, 0.66], [1.0, 0.6, 0.72], [0.82, 0.7, 1.0]];
+    let mut sinks = Vec::with_capacity(6);
     for (row, colour) in rgb.iter().enumerate() {
         for col in 0..2 {
             let ey = (row * 2 + col) as f32 * 260.0;
             let on = col == 1;
             let head = match row {
-                0 => grid(g, ey, on),
-                1 => scatter(g, ey, on),
-                2 => poisson(g, ey, on),
-                3 => voronoi(g, ey, on),
+                0 => poisson(g, ey, on),
+                1 => voronoi(g, ey, on),
                 _ => emitter(g, ey, on),
             };
             let at = [
                 if col == 0 { -GAP_X } else { GAP_X },
-                GAP_Y * 2.0 - row as f32 * GAP_Y,
+                GAP_Y - row as f32 * GAP_Y,
             ];
             sinks.push(finish(g, head, *colour, at, ey)?);
         }
@@ -180,13 +149,9 @@ pub fn build_born_demo_document(
     Some(sinks)
 }
 
-/// Os rótulos das dez bandas, na ordem em que a cena as monta.
+/// Os rótulos das seis bandas, na ordem em que a cena as monta.
 pub fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
     [
-        "GRADE retangular -- a rede de sempre, 225 pontos",
-        "GRADE Shape=Circle -- a forma RECORTA: os cantos caem e a contagem baixa",
-        "ESPALHAMENTO retangular -- 200 pontos bem repartidos",
-        "ESPALHAMENTO Shape=Ring -- os MESMOS 200 pontos, agora dentro do anel",
         "POISSON uniforme -- todo par a' mesma distancia minima",
         "POISSON Density Falloff -- a borda fica mais RALA (espacamento maior), nao esburacada",
         "VORONOI Euclidean -- as celulas arredondam",
@@ -205,7 +170,7 @@ pub fn captions() -> Vec<crate::motion_demo_legend::Caption> {
             let (row, col) = (k / 2, k % 2);
             let at = [
                 if col == 0 { -GAP_X } else { GAP_X },
-                GAP_Y * 2.0 - row as f32 * GAP_Y + GAP_Y * 0.44,
+                GAP_Y - row as f32 * GAP_Y + GAP_Y * 0.44,
             ];
             crate::motion_demo_legend::Caption::new(at, short_of(label))
         })
@@ -221,8 +186,8 @@ fn short_of(label: &'static str) -> &'static str {
 }
 
 /// Os números que a mensagem do smoke cita.
-pub fn authored() -> (f32, f32, f32) {
-    (RING_HOLE, FALLOFF, LIFE_RANDOM)
+pub fn authored() -> (f32, f32) {
+    (FALLOFF, LIFE_RANDOM)
 }
 
 #[cfg(test)]

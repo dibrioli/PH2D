@@ -104,29 +104,186 @@ fn pincel(pente: f32) -> Brush {
     }
 }
 
-/// Um traço recto ao longo de `+x`, com o refino a correr antes de cada carimbo
-/// quando `refina`.
+/// O instrumento da varredura do viés — ver [`diag_a_varredura_do_vies`].
+///
+/// ⚠️ **Ele NÃO é o produto**: os dois `k` são livres aqui e no produto eles
+/// saem de [`ph2d_rake::VIES_DA_GRADE`] vezes o botão. É por isso que o gate
+/// chama o [`traco`], que os crava na lei — *uma sonda que escolhe os próprios
+/// números não pode ser a régua de quem os escolheu.*
+#[derive(Clone, Copy)]
+struct Vies {
+    /// ⭐⭐ **`None` é o campo DO PRODUTO** ([`ph2d_rake::campo_do_pente`]), e é
+    /// com ele que o gate corre — *uma fixtura que reescreve a lei mede a cópia
+    /// dela*. `Some((k, escala))` é a SONDA, com os dois números livres.
+    ///
+    /// ⛔⛔ A `escala` é o **CONTROLO** da varredura: sem ela a leitura fica
+    /// CONFUNDIDA, porque o viés compra `Q` **e** adensa a malha — *uma malha só
+    /// mais fina podia ler `Q` mais alto sem anisotropia nenhuma*.
+    livre: Option<(f32, f32)>,
+    /// O que a metade do COLAPSO faz. ⚠️ Ela é do PRODUTO (o `passe_nos_motores`
+    /// colapsa antes de refinar) e a varredura mede as três, porque *uma metade
+    /// que custa `Q` — ou que custa ÂNGULO — tem de aparecer numa coluna*.
+    colapso: Colapso,
+}
+
+/// ⛔⛔⛔ **As três células, e a do meio é a que decide.** Medido em 18/09: o
+/// colapso ENVIESADO leva o pior triângulo da faixa de `4,56°` para **`1,96°`**
+/// — ele funde preferencialmente as diagonais, e fundir uma diagonal numa
+/// configuração fina deixa uma LASCA. *O `Q` não vê isso*, que é exactamente o
+/// que o gate `o_pente_nao_compra_alinhamento_com_lascas` existe para apanhar.
+#[derive(Clone, Copy, PartialEq)]
+enum Colapso {
+    /// Nem corre — o regime da fixtura até 18/09. ⚠️ Não é o do produto.
+    Fora,
+    /// Corre com o alvo NU, que é o que o produto fazia antes desta wave.
+    Nu,
+    /// Corre com o campo do pente normalizado como o do refino (mínimo em
+    /// `base`) — ⛔ ele funde arestas **mais longas** do que antes, e é essa a
+    /// origem das lascas.
+    Enviesado,
+    /// Corre com o campo do pente normalizado pelo **MÁXIMO** (`1/(1+k)`): ele
+    /// pode fundir MENOS do que o passe isotrópico e nunca mais.
+    Conservador,
+}
+
+/// O campo que uma corrida entrega ao passe — o do produto, ou o da sonda.
+///
+/// ⛔⛔ **`pente = 0` tem de desarmar os DOIS ramos**, e a 1.ª redacção desarmava
+/// só o do produto: o ramo livre ignorava o argumento, logo as células `Nu` e
+/// `Enviesado` do colapso liam **exactamente o mesmo número** e a varredura
+/// dizia que a metade do colapso não tinha efeito nenhum. *Uma sonda que não
+/// distingue os dois lados de uma pergunta responde sempre «não há diferença».*
+fn campo(
+    vies: Vies,
+    base: f32,
+    direccao: [f32; 3],
+    pente: f32,
+    porta: ph2d_rake::Porta,
+) -> Box<dyn Fn([f32; 3], [f32; 3]) -> f32 + Sync> {
+    match vies.livre {
+        None => Box::new(ph2d_rake::campo_do_pente(base, direccao, pente, porta)),
+        // ⛔⛔ **As DUAS cercas do produto têm de estar aqui**, senão a sonda mede
+        // outro programa: `pente = 0` desarma, e **sem TRAÇO o campo é o alvo
+        // NU**. A 1.ª redacção esquecia a segunda e lia `Q 0,0598` onde o
+        // produto lê `0,0435` — *um carimbo de vinte e quatro, e a sonda
+        // escolhia o número da lei com ele*.
+        Some(_) if pente <= 0.0 || direccao.iter().all(|c| *c == 0.0) => {
+            Box::new(move |_p: [f32; 3], _u: [f32; 3]| base)
+        }
+        Some((k, escala)) => Box::new(move |_p: [f32; 3], u: [f32; 3]| {
+            base * escala * (1.0 - k * ph2d_rake::quatro_dobras(direccao, u))
+        }),
+    }
+}
+
+/// Um traço recto ao longo de `+x`, com o passe de topologia a correr antes de
+/// cada carimbo quando `refina`.
 fn traco(pente: f32, refina: bool) -> (Mesh, Vec<[f32; 3]>) {
+    traco_com(
+        pente,
+        refina,
+        Vies {
+            livre: None,
+            colapso: Colapso::Enviesado,
+        },
+    )
+}
+
+fn traco_com(pente: f32, refina: bool, vies: Vies) -> (Mesh, Vec<[f32; 3]>) {
     let mut malha = chapa(61, 3.0);
     let brush = pincel(pente);
     let mut stroke = SculptStroke::default();
     stroke.begin(&malha);
     let mut births = Vec::new();
+    let mut remap = ph2d_mesh::Remap::default();
     let mut region = ph2d_mesh::RegionScratch::default();
     let mut centros = Vec::new();
+    const ALVO: f32 = 0.035;
     for k in 0..24 {
         let centro = [-1.2 + 0.1 * k as f32, 0.0, 0.0];
         centros.push(centro);
         if refina {
-            let _ = ph2d_mesh::refine_in_sphere(
+            // ⭐⭐⭐ **O PASSE RECEBE O CAMPO DO PENTE** — é AQUI que o
+            // alinhamento nasce, e é por isso que este gate tem de o conter.
+            //
+            // ⚠️ **A direcção é lida ANTES do carimbo**, que é exactamente o
+            // instante em que o produto a lê: o `last_center` ainda descreve o
+            // carimbo anterior, e a porta é a mesma
+            // ([`SculptStroke::direccao_do_traco`]) — *uma segunda escrita dela
+            // poria o refino a pentear numa direcção e o deslocamento noutra,
+            // com os dois gates verdes.*
+            let direccao = stroke.direccao_do_traco(centro);
+            // ⚠️ **A ORDEM é a do produto: o COLAPSO primeiro.** As duas metades
+            // falam com o traço em voo por canais diferentes — o colapso por uma
+            // renumeração, o refino por uma lista de nascimentos —, e o segundo
+            // afirma que a malha cresceu exactamente o que ele partiu.
+            if vies.colapso != Colapso::Fora {
+                let alvo = ph2d_mesh::collapse_target(ALVO);
+                // ⚠️ `Nu` passa `pente = 0`, e o campo devolve o alvo **ao bit**
+                // — é o mesmo caminho, sem um segundo braço de chamada.
+                let forca = if vies.colapso == Colapso::Nu {
+                    0.0
+                } else {
+                    brush.pente
+                };
+                // ⚠️ A normalização CONSERVADORA põe o máximo do campo em `alvo`
+                // em vez do mínimo — ver [`Colapso::Conservador`]. ⭐ No caminho
+                // do PRODUTO (`livre: None`) ela é a própria
+                // [`ph2d_rake::Porta::Colapso`], e esta linha é inerte: *a sonda
+                // reproduz à mão o que a lei faz, para poder medir a alternativa
+                // que a lei não escolheu.*
+                let vies_do_colapso = if vies.colapso == Colapso::Conservador {
+                    Vies {
+                        livre: vies.livre.map(|(k, _)| (k, 1.0 / (1.0 + k))),
+                        ..vies
+                    }
+                } else {
+                    vies
+                };
+                let campo = campo(
+                    vies_do_colapso,
+                    alvo,
+                    direccao,
+                    forca,
+                    ph2d_rake::Porta::Colapso,
+                );
+                if matches!(
+                    ph2d_mesh::collapse_in_sphere_sized(
+                        &mut malha,
+                        centro,
+                        brush.radius,
+                        alvo,
+                        Some(&campo),
+                        &mut remap,
+                        &mut region,
+                    ),
+                    ph2d_mesh::Collapse::Done { .. }
+                ) {
+                    stroke.shrink_with(&remap);
+                }
+            }
+            let campo = campo(vies, ALVO, direccao, brush.pente, ph2d_rake::Porta::Refino);
+            let _ = ph2d_mesh::refine_in_sphere_sized(
                 &mut malha,
                 centro,
                 brush.radius,
-                0.035,
+                ALVO,
+                Some(&campo),
                 &mut births,
                 &mut region,
             );
             stroke.grow_with(&malha, &births);
+            // ⭐⭐⭐ **A terceira metade**, na ordem do produto: depois do refino.
+            if brush.pente > 0.0 {
+                let preferencia = ph2d_rake::preferencia_do_pente(direccao, brush.pente);
+                ph2d_mesh::alinha_arestas(
+                    &mut malha,
+                    centro,
+                    brush.radius,
+                    &preferencia,
+                    &mut region,
+                );
+            }
         }
         stroke.dab(
             &mut malha,
@@ -449,3 +606,7 @@ fn um_traco_penteado_desfaz_se_inteiro() {
          fotografar, e o Ctrl+Z devolveria a peca pela metade"
     );
 }
+
+/// **A varredura que escolheu as constantes** — o instrumento, não a lei.
+#[path = "rake_varredura_tests.rs"]
+mod varredura;

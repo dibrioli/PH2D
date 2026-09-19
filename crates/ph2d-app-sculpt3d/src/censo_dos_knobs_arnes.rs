@@ -191,6 +191,12 @@ pub(super) fn corre(b: &Brush) -> Mesh {
                     births: &mut births,
                     region: &mut region,
                 },
+                // ⚠️ **Este arnês NÃO penteia**, e a ausência é deliberada: ele
+                // compara DUAS posições de um knob, e o campo do pente mudaria a
+                // topologia dos dois lados ao mesmo tempo — *um censo cujo
+                // arranjo muda entre as duas leituras não mede o knob, mede o
+                // arranjo*. O pente tem bancada própria (o placar do oráculo).
+                None,
             );
             s.begin(&mesh);
         }

@@ -48,6 +48,17 @@ pub use footprint::{Blade, Footprint, Strip, Tectos, rounded_box};
 /// A lei de quanto pente um traço leva. Ver [`stroke_rake::pente_do_traco`].
 pub use stroke::stroke_rake::pente_do_traco;
 
+/// ⭐⭐⭐ **A metade do pente que mora no PASSE DE TOPOLOGIA** — ver
+/// [`ph2d_rake::campo_do_pente`].
+///
+/// ⚠️ **Ela é re-exportada daqui e não importada directamente pela crate da
+/// app**, pela mesma razão que o [`pente_do_traco`] vive neste ficheiro: esta
+/// crate é a **porta** da família para a lei, e uma segunda entrada na
+/// crate-folha seria um segundo sítio a manter alinhado com ela. *O deslocamento
+/// e o alinhamento são duas metades da MESMA lei, e quem as chama tem de as ver
+/// pela mesma porta.*
+pub use ph2d_rake::{Porta, campo_do_pente, preferencia_do_pente};
+
 /// Os controlos próprios do pincel de CONTORNO — ver [`boundary_controlos`].
 pub mod boundary_controlos;
 mod brush;

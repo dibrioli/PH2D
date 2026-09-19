@@ -37,7 +37,8 @@
 //!    achatar a pilha em silêncio.
 
 use ph2d_mesh::{
-    Collapse, Refine, collapse_in_sphere, collapse_target, edge_target_for_mesh, refine_in_sphere,
+    Collapse, Refine, collapse_in_sphere_sized, collapse_target, edge_target_for_mesh,
+    refine_in_sphere_sized,
 };
 
 use super::Sculpt3dScene;
@@ -267,6 +268,28 @@ impl Sculpt3dScene {
         // `Dyntopo` guarda o que o artista autorou (o interruptor e o detalhe) e
         // segue `Copy`. Reusá-lo entre dabs é o que mantém o refino sem alocação
         // no caminho quente.
+        // ⭐⭐⭐ **O PENTE ENTRA AQUI, e é ESTE o sítio onde o alinhamento nasce.**
+        //
+        // A metade de DESLOCAMENTO da lei ([`ph2d_rake::pentear`]) reproduz o
+        // campo do alvo (`cos 0,971` contra `0,583` da lei que ela substituiu) e
+        // **não produz grade nenhuma** (`Q +0,0000` contra a barra `+0,0465`):
+        // *o alinhamento não mora no deslocamento.* Quem o produz é o alvo de
+        // aresta deste passe passar a depender da DIRECÇÃO da aresta — ver
+        // [`ph2d_sculpt3d::campo_do_pente`] para o mecanismo e para a hipótese
+        // oposta, que foi construída e refutada.
+        //
+        // ⚠️ **A força passa pela MESMA porta que o carimbo lê**
+        // ([`crate::space::pente_do_traco`]): com a topologia desarmada ela é
+        // zero, e é isso que mantém a célula `porta/c_nodyn` do corpus — onde o
+        // alvo não move um vértice — a bater.
+        //
+        // ⚠️ **E a direcção é lida ANTES do carimbo**, do `last_center` que ainda
+        // descreve o dab anterior. ⛔ No primeiro carimbo ela é NULA e o campo
+        // devolve o alvo nu: a inércia da espec §4.3 cai por construção, aqui
+        // como no deslocamento, porque as duas metades leem a **mesma** porta.
+        let forca = crate::space::pente_do_traco(self.dyntopo.armed, self.brush.pente);
+        let direccao = self.stroke.direccao_do_traco(centre);
+        let pente = (forca > 0.0 && verbo.honra_o_pente()).then_some(Pente { direccao, forca });
         let mut births = std::mem::take(&mut self.dyn_births);
         let mut remap = std::mem::take(&mut self.dyn_remap);
         let mesh = self.objects[self.active].stack.mesh_mut();
@@ -305,6 +328,7 @@ impl Sculpt3dScene {
                 births: &mut births,
                 region: &mut region,
             },
+            pente,
         );
         self.dyn_region = region;
         if cut {
@@ -409,6 +433,20 @@ pub(crate) struct Rascunho<'a> {
 }
 
 /// Devolve `(colapsou, refinou)`.
+/// **O que o passe precisa de saber sobre o PENTE** — `None` quando ele está
+/// desligado, quando o verbo não o honra, ou no PRIMEIRO carimbo (sem direcção).
+///
+/// ⭐⭐⭐ **É por aqui que o alinhamento entra no produto**, e a razão está medida
+/// em [`ph2d_sculpt3d::campo_do_pente`]: a lei de deslocamento reproduz o campo do
+/// alvo (`cos 0,971`) e **não produz grade nenhuma** (`Q +0,0000`); quem produz
+/// a grade é o passe de topologia a receber um alvo de aresta que depende da
+/// DIRECÇÃO da aresta.
+#[derive(Clone, Copy)]
+pub(crate) struct Pente {
+    pub(crate) direccao: [f32; 3],
+    pub(crate) forca: f32,
+}
+
 pub(crate) fn passe_nos_motores(
     mesh: &mut ph2d_mesh::Mesh,
     verbo: ph2d_sculpt3d::Verb,
@@ -416,19 +454,45 @@ pub(crate) fn passe_nos_motores(
     centre: [f32; 3],
     radius: f32,
     rascunho: Rascunho<'_>,
+    pente: Option<Pente>,
 ) -> (bool, bool) {
     let Rascunho {
         remap,
         births,
         region,
     } = rascunho;
+    // ⚠️ **As duas portas passam SEMPRE pela variante `_sized`**, e não há um
+    // braço para «sem pente»: `Sizing = None` é **byte-idêntico** à porta nua
+    // (a `collapse_in_sphere` literalmente delega nela), logo um `match` aqui
+    // seria duas escritas da mesma chamada — e a que alguém esquecesse de
+    // emendar era a que o pente desligado percorre, ou seja a de fábrica.
+    let alvo_do_colapso = collapse_target(alvo_de_aresta);
+    let campo_colapso = pente.map(|p| {
+        ph2d_sculpt3d::campo_do_pente(
+            alvo_do_colapso,
+            p.direccao,
+            p.forca,
+            ph2d_sculpt3d::Porta::Colapso,
+        )
+    });
+    let campo_refino = pente.map(|p| {
+        ph2d_sculpt3d::campo_do_pente(
+            alvo_de_aresta,
+            p.direccao,
+            p.forca,
+            ph2d_sculpt3d::Porta::Refino,
+        )
+    });
     let cut = verbo.colapsa_no_dyntopo()
         && matches!(
-            collapse_in_sphere(
+            collapse_in_sphere_sized(
                 mesh,
                 centre,
                 radius,
-                collapse_target(alvo_de_aresta),
+                alvo_do_colapso,
+                campo_colapso
+                    .as_ref()
+                    .map(|f| f as &(dyn Fn([f32; 3], [f32; 3]) -> f32 + Sync)),
                 remap,
                 region,
             ),
@@ -436,8 +500,35 @@ pub(crate) fn passe_nos_motores(
         );
     let done = verbo.refina_no_dyntopo()
         && matches!(
-            refine_in_sphere(mesh, centre, radius, alvo_de_aresta, births, region),
+            refine_in_sphere_sized(
+                mesh,
+                centre,
+                radius,
+                alvo_de_aresta,
+                campo_refino
+                    .as_ref()
+                    .map(|f| f as &(dyn Fn([f32; 3], [f32; 3]) -> f32 + Sync)),
+                births,
+                region
+            ),
             Refine::Done { .. }
         );
+    // ⭐⭐⭐ **A TERCEIRA METADE — e é ela que carrega o alinhamento.**
+    //
+    // Medido na peça da cena `=49`, os quatro rumos do traço: com as duas
+    // primeiras metades o `ΔQ` lê `+0,028`–`+0,064` contra a barra de `+0,0465`
+    // (e a `30°` ele **não chega** com `k` nenhum); com esta, **`+0,25`–`+0,35`**
+    // nos quatro, com ZERO lascas. *A lei antiga entregava `+0,074`.*
+    //
+    // ⭐⭐ **Ela é a única das três que não paga nada:** uma troca de diagonal
+    // muda a direcção de uma aresta **a contagem constante** — sem densidade e,
+    // pela cerca de qualidade do motor, sem afinar triângulo.
+    //
+    // ⚠️ **Ela corre DEPOIS do refino**, sobre as faces que ele deixou: trocar
+    // antes seria alinhar o que o corte vai substituir.
+    if let Some(p) = pente {
+        let preferencia = ph2d_sculpt3d::preferencia_do_pente(p.direccao, p.forca);
+        ph2d_mesh::alinha_arestas(mesh, centre, radius, &preferencia, region);
+    }
     (cut, done)
 }

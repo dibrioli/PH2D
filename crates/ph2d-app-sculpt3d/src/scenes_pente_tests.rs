@@ -315,6 +315,7 @@ fn traco_com(pente: f32, e: [f32; 2], raio: f32, alvo: f32) -> (ph2d_mesh::Mesh,
     let mut stroke = SculptStroke::default();
     stroke.begin(&malha);
     let mut births = Vec::new();
+    let mut remap = ph2d_mesh::Remap::default();
     let mut region = ph2d_mesh::RegionScratch::default();
     let mut centros = Vec::new();
     // ⚠️ O percurso anda **em raios de pincel**, não em unidades fixas: com um
@@ -324,15 +325,70 @@ fn traco_com(pente: f32, e: [f32; 2], raio: f32, alvo: f32) -> (ph2d_mesh::Mesh,
         let u = -passo * 12.0 + passo * k as f32;
         let centro = [u.sin() * e[0], u.sin() * e[1], u.cos()];
         centros.push(centro);
-        let _ = ph2d_mesh::refine_in_sphere(
+        // ⭐⭐⭐ **O PASSE RECEBE O CAMPO DO PENTE**, que é onde o alinhamento
+        // mora — e sem esta linha o gate mediria a lei de deslocamento sozinha,
+        // que reproduz o campo do alvo e **não produz grade nenhuma**
+        // (`Q +0,0000` contra a barra). *Uma fixtura que corre a porta nua mede
+        // um programa que o produto já não percorre.*
+        //
+        // ⚠️ **A direcção é lida ANTES do carimbo**, do `last_center` que ainda
+        // descreve o dab anterior — o mesmo instante e a mesma porta que o
+        // `refine_for_dab` usa.
+        let direccao = stroke.direccao_do_traco(centro);
+        // ⛔⛔ **O COLAPSO PRIMEIRO, como o produto** (`passe_nos_motores`), e a
+        // ausência dele custava metade do efeito: sem esta metade a fixtura media
+        // um passe que o app **não corre**, e o gate lia `ΔQ +0,0197` contra a
+        // barra de `+0,0465` sobre uma lei que entrega `+0,074`. *Uma fixtura à
+        // qual falta uma das duas metades do passe mede outro programa.*
+        let alvo_do_colapso = ph2d_mesh::collapse_target(alvo);
+        // ⭐⭐ **As TRÊS metades contribuem, e a do campo vale o DOBRO do flip
+        // sozinho:** medido neste rumo, `Q +0,1292` só com a troca de diagonal
+        // contra **`+0,2733`** com o campo de tamanho também. *Nenhuma das três
+        // é decoração.*
+        let campo_colapso = ph2d_sculpt3d::campo_do_pente(
+            alvo_do_colapso,
+            direccao,
+            pente,
+            ph2d_sculpt3d::Porta::Colapso,
+        );
+        if matches!(
+            ph2d_mesh::collapse_in_sphere_sized(
+                &mut malha,
+                centro,
+                brush.radius,
+                alvo_do_colapso,
+                Some(&campo_colapso),
+                &mut remap,
+                &mut region,
+            ),
+            ph2d_mesh::Collapse::Done { .. }
+        ) {
+            stroke.shrink_with(&remap);
+        }
+        let campo =
+            ph2d_sculpt3d::campo_do_pente(alvo, direccao, pente, ph2d_sculpt3d::Porta::Refino);
+        let _ = ph2d_mesh::refine_in_sphere_sized(
             &mut malha,
             centro,
             brush.radius,
             alvo,
+            Some(&campo),
             &mut births,
             &mut region,
         );
         stroke.grow_with(&malha, &births);
+        // ⭐⭐⭐ **A TERCEIRA METADE — alinhar TROCANDO diagonais**, a contagem
+        // constante e sem poder piorar um triângulo.
+        if pente > 0.0 {
+            let preferencia = ph2d_sculpt3d::preferencia_do_pente(direccao, pente);
+            let _ = ph2d_mesh::alinha_arestas(
+                &mut malha,
+                centro,
+                brush.radius,
+                &preferencia,
+                &mut region,
+            );
+        }
         stroke.dab(
             &mut malha,
             &brush,

@@ -84,14 +84,7 @@ impl SculptStroke {
         // cópias são todas do mesmo gesto; o `mirrored` abaixo a leva a cada uma
         // como leva o `pull`.
         let dab = &Dab {
-            path: match self.last_center {
-                Some(p) => [
-                    dab.center[0] - p[0],
-                    dab.center[1] - p[1],
-                    dab.center[2] - p[2],
-                ],
-                None => [0.0; 3],
-            },
+            path: self.direccao_do_traco(dab.center),
             ..*dab
         };
         // ⚠️ **A INCLINAÇÃO DO POLEGAR avança aqui, e a ORDEM é a da

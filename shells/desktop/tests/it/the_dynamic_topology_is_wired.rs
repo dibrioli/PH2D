@@ -62,8 +62,19 @@ fn the_refinement_is_off_by_default_and_the_guard_is_the_first_question() {
     // guarda seria contornável: bastava um chamador novo do `refine_in_sphere`
     // para o passe correr desarmado, e a asserção de ordem acima continuaria
     // verde sobre um produto errado.
+    // ⛔⛔ **A LISTA MUDOU DUAS VEZES em 2026-09-18, e as duas mudanças são a
+    // wave do pente:** os dois motores passaram a ser as variantes `_sized` (o
+    // alvo de aresta deixou de ser um número e passou a ser um CAMPO que depende
+    // da direcção da aresta), e nasceu um **terceiro** — a troca de diagonal
+    // enviesada, que é a metade que de facto carrega o alinhamento.
+    // *Um gate que continuasse a nomear os dois antigos ficaria verde a medir
+    // chamadas que já não existem.*
     let porta_body = function_body(&src, "passe_nos_motores");
-    for motor in ["refine_in_sphere(", "collapse_in_sphere("] {
+    for motor in [
+        "refine_in_sphere_sized(",
+        "collapse_in_sphere_sized(",
+        "alinha_arestas(",
+    ] {
         assert!(
             porta_body.contains(motor),
             "o `{motor}` mora na porta — ver o doc dela (a ORDEM viaja lá dentro)"

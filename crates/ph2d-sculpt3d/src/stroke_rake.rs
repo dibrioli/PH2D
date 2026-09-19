@@ -53,6 +53,32 @@ use ph2d_mesh::Mesh;
 use crate::{Brush, SculptStroke};
 
 impl SculptStroke {
+    /// ⭐⭐⭐ **A DIRECÇÃO DO TRAÇO até este centro — e ela tem DOIS leitores.**
+    ///
+    /// Ela é a diferença entre CENTROS de carimbos consecutivos (ver
+    /// [`crate::Dab::path`] para a lição de 2D que escolheu os centros em vez de
+    /// uma tangente suavizada: **52,4°** de atraso num heading por média móvel,
+    /// com o atraso a ESCALAR com o pincel).
+    ///
+    /// ⛔⛔ **Porque ela é uma porta e não duas linhas em cada sítio:** o
+    /// deslocamento lê-a pelo `Dab::path`, e o **passe de topologia** lê-a antes
+    /// disso — ele corre *antes* do carimbo, logo não tem `Dab` nenhum de onde a
+    /// tirar. Escrita nos dois sítios, ela divergia no dia em que um deles
+    /// ganhasse uma cerca; e as duas metades do pente ficariam a pentear em
+    /// direcções diferentes **sem nada acusar**, porque cada uma passa nos
+    /// gates da outra.
+    ///
+    /// ⚠️ **O primeiro carimbo devolve o vector NULO**, e é isso que faz a
+    /// inércia da espec §4.3 cair por construção: sem dois centros não há
+    /// direcção, e nem o deslocamento nem o refino inventam uma.
+    #[must_use]
+    pub fn direccao_do_traco(&self, centro: [f32; 3]) -> [f32; 3] {
+        match self.last_center {
+            Some(p) => [centro[0] - p[0], centro[1] - p[1], centro[2] - p[2]],
+            None => [0.0; 3],
+        }
+    }
+
     /// Uma passagem do pente sobre a pegada de **uma** cópia de simetria.
     ///
     /// Enche `self.moved` e `self.region` como o [`Self::dab_core`] faz, e quem

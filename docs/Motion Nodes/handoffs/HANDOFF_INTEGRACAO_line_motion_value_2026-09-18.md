@@ -47,6 +47,7 @@ W0..W6 + os abertos + **dois reports do dono já fechados e com smoke APROVADO**
 | §26 | ⭐⭐⭐ **a REGIÃO PARALELA** (ordem do dono) — o `collect` por varredura sai, o grão passa a ser DERIVADO dos núcleos, e a densidade do dono vai de `82,6` para `16,4 ms` (**`5×`**, de `4,4` para `7,9` núcleos). Toca no seam auditado do `ph2d-nodegraph` (`par_preenche_em_blocos`, append-only) |
 | §28 | ⭐⭐⭐ **uma PEÇA GRANDE inflava a grelha de TODAS** (*«siga implementando»*) — o lado da célula saía do **máximo global**, logo uma peça `4 ×` maior levava os candidatos de `12` para **`159` por peça** com os TOQUES parados em `5,7`; e `159` é o número que o perfilador DELE imprimiu. A grelha passa a ter **duas camadas** (bit-idêntica, com o superconjunto provado caso a caso): `separate` de ponta a ponta `15,99 → 4,50 ms` (**`3,55×`**). ⛔ E o corte **não é um número**: é uma minimização, com a margem a cobrir um erro MEDIDO do modelo |
 | §29 | ⛔⛔⛔ **o report *«fps caiu para 24»* NÃO reproduz** — as três hipóteses medidas por CONTAGEM, e a máquina estava a `load 25`–`69` (esta árvore a correr `17 334` testes). Fica a porta **`PH2D_CONTACT_UMA_CAMADA=1`** e, sobretudo, **a decisão do plano a deixar de acreditar num modelo**: ele PROPÕE, a **contagem real** decide, com gate a dobrar a régua à mão |
+| §30 | ⛔⛔⛔ **a linha do dono achou DOIS buracos meus** — o instrumento não se identificava (as duas rotas imprimiam a mesma linha) e **a decisão contava metade do custo** (candidatos sim, CÉLULAS não). A `CELULAS_POR_CANDIDATO = 10` sai de uma varredura do LADO: a `1 000` candidatos parados, `4×` as células **dobram** o relógio. Gate com o CONTROLO dentro |
 | §22 | **os MIL já estão no lado do Motion** (4.º report) — `1000` objectos a `64` varreduras custam `6,8 ms` e `2000` custam `12,2`. ⛔ Uma hipótese minha CAIU: o paralelo não é o alocador, é o `fork/join` por varredura (`5×` o CPU da série para o mesmo trabalho). Porta nova no seam auditado (`par_build_com_bloco`) |
 
 ---
@@ -198,13 +199,13 @@ Sobre a árvore **já rebasada** no `main` de hoje:
 |---|---|
 | formatação | limpa |
 | lint com `-D warnings` (crates tocadas + shell) | **zero** |
-| varredura impactada | **17 336** testes, **17 336 passaram**, 0 falharam |
+| varredura impactada | **17 338** testes, **17 338 passaram**, 0 falharam |
 | censos da árvore combinada (HR-15 + tecto de LOC) | **87 de 87**, com controlo do filtro |
 | placar da conferência (DERIVADO) | `exit 0` · **P0 = P1 = P2 = 0** |
 | rebase sobre o `main` | **sem um conflito** |
 
 **Provas de mutação da jornada:** W6 `4 de 4` · §15 `5 de 5` · §16 `2 de 2` · §17 `3 de 3` · §18 `4 de 4` ·
-§21 `4 de 4` · §26-27 `4 de 4` · **§28-29 `9 de 9`** ·
+§21 `4 de 4` · §26-27 `4 de 4` · **§28-30 `12 de 12`** ·
 **§19 `7 de 8`** — todas com **controlo negativo** (a árvore intacta sobrevive) e **controlo sobre o próprio
 filtro**. ⚠️ A 8.ª está documentada **no código** como não-sangrante de propósito: ela corrigiu um comentário meu
 (a ordem crescente dentro de uma célula da grelha **não** é load-bearing — quem cumpre a promessa é o `sort`).

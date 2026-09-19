@@ -206,7 +206,11 @@ fn a_curvatura_e_medida_quando_o_estilo_a_le() {
         wgsl.contains("k_estilo * pintor.knobs.w"),
         "o dispositivo passa ao estilo a curvatura do MATERIAL e não a dele"
     );
-    let setup = include_str!("../../ph2d-field-gpu/src/paint.rs");
+    // ⚠️ **A arrumação do uniforme MUDOU DE FICHEIRO em 2026-09-19** (corte por responsabilidade,
+    // forçado pelo tecto de LOC quando o brilho entrou no dispositivo) — e este gate falhou **alto**,
+    // que é a espécie barata da família que o `CLAUDE.md` §5.0 nomeia. *A que fica VERDE é a que se
+    // leva para o main.*
+    let setup = include_str!("../../ph2d-field-gpu/src/paint_uniforme.rs");
     assert!(
         setup.contains("u32::from(pintor.style.reads_curvature())"),
         "a bandeira do estilo não chega ao uniforme"
@@ -228,8 +232,12 @@ fn o_estilo_entra_antes_do_olhar_nos_dois_motores() {
     let estilo = gpu
         .find("let cena = st_apply(")
         .expect("o estilo no dispositivo");
+    // ⚠️ **A agulha perdeu o `return` em 2026-09-19** e a lei não se mexeu: o pintor passou a
+    // devolver as DUAS metades (o ecrã e a CENA, que o brilho lê), logo o olhar deixou de ser a
+    // última expressão da função e passou a ser um argumento. *Uma agulha textual mede o sítio, e o
+    // sítio muda quando a assinatura muda* — a propriedade medida continua a ser a ORDEM.
     let olhar = gpu
-        .find("return vt_to_display(cena,")
+        .find("vt_to_display(cena,")
         .expect("o olhar no dispositivo");
     assert!(
         estilo < olhar,
@@ -416,7 +424,12 @@ fn o_dispositivo_e_a_referencia_pintam_o_mesmo_estilo() {
         ..vestido()
     };
     let Some((cpu, gpu, _)) = crate::gpu_frame::paint_parity_tests::dois_caminhos_vestidos(
-        &surfaces, &doc, &luz, None, style,
+        &surfaces,
+        &doc,
+        &luz,
+        None,
+        style,
+        ph2d_field_render::Bloom::default(),
     ) else {
         panic!("sem adaptador de GPU — este gate não pode ser saltado em silêncio");
     };
@@ -469,6 +482,7 @@ fn o_estilo_de_fabrica_e_byte_identico_no_dispositivo() {
         &luz,
         None,
         Style::default(),
+        ph2d_field_render::Bloom::default(),
     ) else {
         panic!("sem adaptador de GPU");
     };

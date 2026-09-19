@@ -200,7 +200,21 @@ fn ricochete_no_pixel(x: u32, y: u32, i: u32, n0: vec3<f32>) -> vec3<f32> {
 }
 
 // A luz que UM material devolve ao olho, já com o olhar — o `shade_render::radiance` da CPU.
-fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu_vis: f32, ric: vec3<f32>, k: f32, k_estilo: f32) -> vec3<f32> {
+// ⭐⭐⭐ **AS DUAS METADES DE UM PIXEL** — o que vai para o ECRÃ e o que a CENA tem.
+//
+// ⚠️ **O brilho lê a segunda** (`docs/Render3d/12` §11): ele nasce em cena-linear, **antes** do
+// olhar, e é isso que o torna honesto — ler depois dele seria colher o que o tonemapper já
+// comprimiu. ⛔ Devolver só o ecrã obrigaria o passe do halo a desfazer o olhar, que não é
+// invertível.
+//
+// ⚠️ **Com o brilho desligado isto não custa nada:** a `cena` é o valor que o `vt_to_display` já
+// consome, e o que muda é só ele viajar mais uma função acima.
+struct Luz {
+    ecra: vec3<f32>,
+    cena: vec3<f32>,
+}
+
+fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu_vis: f32, ric: vec3<f32>, k: f32, k_estilo: f32) -> Luz {
     // ⭐⭐⭐ **A OCLUSÃO É A SOMBRA DO CÉU** — ela multiplica o que o AMBIENTE entrega, e mais nada.
     // Não toca nas lâmpadas (que têm sombra a sério) nem na emissão.
     var rgb = mx_indirect(m, n, v) * ceu_vis;
@@ -259,12 +273,12 @@ fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu
         abs(dot(n, v)),
         k_estilo * pintor.knobs.w,
     );
-    return vt_to_display(cena, pintor.knobs.x, pintor.modo.x);
+    return Luz(vt_to_display(cena, pintor.knobs.x, pintor.modo.x), cena);
 }
 
 // ⭐⭐ **Sombreia DUAS vezes e mistura o RESULTADO**, nunca os materiais: um metal e um dieléctrico
 // a meio caminho não são um meio-metal. E só paga o dobro onde há fronteira.
-fn radiancia(p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, i: u32, ceu_vis: f32, ric: vec3<f32>) -> vec3<f32> {
+fn radiancia(p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, i: u32, ceu_vis: f32, ric: vec3<f32>) -> Luz {
     let d = dono_mix(p, pintor.knobs.y);
     let ma = ler_mat(d.a);
     let mb = ler_mat(d.b);
@@ -297,7 +311,14 @@ fn radiancia(p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, i: u32, ceu_vis: f32, ric
     let ca = luz_do_material(com_a_curvatura(ma, k), n, v, p, i, ceu_vis, ric, k, k_estilo);
     if (d.t <= 0.0) { return ca; }
     let cb = luz_do_material(com_a_curvatura(mb, k), n, v, p, i, ceu_vis, ric, k, k_estilo);
-    return ca + (cb - ca) * d.t;
+    // ⚠️ **Cada metade mistura-se na SUA unidade**, e não é a mesma conta: o ecrã mistura valores
+    // JÁ passados pelo olhar (o `mixed_radiance` da CPU) e a cena mistura os de antes dele (o
+    // `mixed_radiance_scene`). ⛔ Misturar uma e derivar a outra daria um terceiro programa — o
+    // olhar não é linear.
+    return Luz(
+        ca.ecra + (cb.ecra - ca.ecra) * d.t,
+        ca.cena + (cb.cena - ca.cena) * d.t,
+    );
 }
 
 // A curva do `ph2d_color::srgb::linear_to_srgb_byte`, com o mesmo arredondamento.
@@ -530,12 +551,16 @@ fn pinta(@builtin(global_invocation_id) g: vec3<u32>) {
         } else {
             saida[i] = pintor.modo.z;
         }
+        // ⭐⭐⭐ **O FUNDO NÃO ENTRA NA CADEIA DO BRILHO** — o gémeo exacto do `campo_de_cena` da
+        // CPU: *«só os píxeis da PEÇA entram; o fundo é uma cor de bytes que nunca passou pelo
+        // olhar, e pô-lo aqui seria inventar uma luz de cena que ninguém autorou»*.
+        if (pintor.modo2.w != 0u) { cena_hdr[i] = vec4<f32>(0.0); }
         return;
     }
     let r = ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5));
     // ⭐ O PONTO reconstrói-se do `t` — a mesma álgebra do `Rays::point_at`.
     let p = r.o + r.d * c.x;
-    let rgb = radiancia(
+    let luz_px = radiancia(
         p,
         c.yzw,
         direccao_de_vista(r.d),
@@ -543,7 +568,11 @@ fn pinta(@builtin(global_invocation_id) g: vec3<u32>) {
         ceu_em(g.x, g.y, i, c.yzw),
         ricochete_no_pixel(g.x, g.y, i, c.yzw),
     );
-    saida[i] = empacota(vec4<f32>(rgb, 1.0));
+    saida[i] = empacota(vec4<f32>(luz_px.ecra, 1.0));
+    // ⭐⭐⭐ **E a CENA deste pixel fica guardada para o brilho** — ver `Luz`. ⚠️ Quem escreve é
+    // **só** este passe: o `campo_de_cena` da CPU lê o CENTRO mesmo nos píxeis de silhueta, logo o
+    // `pinta_bordas` não pode tocar aqui. *Uma segunda escrita faria a cadeia ler outro quadro.*
+    if (pintor.modo2.w != 0u) { cena_hdr[i] = vec4<f32>(luz_px.cena, 0.0); }
 }
 
 // ⭐⭐⭐ **A BORDA: quatro sub-amostras, média em LINEAR DE ECRÃ.**
@@ -577,7 +606,7 @@ fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
     for (var j = 0u; j < 4u; j = j + 1u) {
         let q = borda[slot * 5u + 1u + j];
         var cor = fundo;
-        if (q.x >= 0.0) { cor = vec4<f32>(radiancia(p, q.yzw, v, i, ceu_vis, ric), 1.0); }
+        if (q.x >= 0.0) { cor = vec4<f32>(radiancia(p, q.yzw, v, i, ceu_vis, ric).ecra, 1.0); }
         acc = acc + cor * 0.25;
     }
     saida[i] = empacota(acc);

@@ -53,6 +53,9 @@ pub struct PaintSetup<'a> {
     pub env_consts: &'a [f32],
     /// O armazém que o [`Self::env_source`] lê.
     pub env_tables: &'a [f32],
+    /// ⭐⭐⭐ **O BRILHO da cena** (`docs/Render3d/12`) — o gémeo do que a cauda do sombreamento de
+    /// CPU lê. Desligado, nada da cadeia é criado e o quadro é o de sempre **ao bit**.
+    pub bloom: ph2d_bloom::Bloom,
     /// A radiância que cada lâmpada entrega a **uma** unidade de distância — o
     /// [`ph2d_field_render::PointLamp::radiance_at_one`]. As posições são as
     /// [`crate::trace::MarchSetup::lamps`], e as duas listas **têm de ter o mesmo comprimento e a
@@ -365,6 +368,7 @@ pub(crate) fn pinta(
             armazem(4, false),
             armazem(5, false),
             armazem(6, true),
+            armazem(7, false),
         ],
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -437,80 +441,9 @@ pub(crate) fn pinta(
         usage: wgpu::BufferUsages::STORAGE,
     });
 
-    let bg = pintor.background;
-    let a = f32::from(bg[3]) / 255.0;
-    let mut u: Vec<u8> = Vec::with_capacity(64 + crate::trace::MAX_LAMPS * 16);
-    for f in [
-        pintor.stops,
-        pintor.pixel_world,
-        pintor.curv_eps,
-        // ⭐ O `w` do `knobs` era um slot morto e passa a ser o raio da PEÇA — ver
-        // [`PaintSetup::piece_radius`].
-        pintor.piece_radius,
-        // ⚠️ **O fundo da BORDA é LINEAR e PRÉ-MULTIPLICADO** — a média das quatro amostras corre
-        // em linear de ecrã, e o alfa entra nela como as outras três componentes.
-        ph2d_color::srgb::srgb_to_linear_byte(bg[0]) * a,
-        ph2d_color::srgb::srgb_to_linear_byte(bg[1]) * a,
-        ph2d_color::srgb::srgb_to_linear_byte(bg[2]) * a,
-        a,
-    ] {
-        u.extend_from_slice(&f.to_le_bytes());
-    }
-    #[allow(clippy::cast_possible_truncation)]
-    let n_bordas = bordas as u32;
-    let empacotado = u32::from(bg[0])
-        | (u32::from(bg[1]) << 8)
-        | (u32::from(bg[2]) << 16)
-        | (u32::from(bg[3]) << 24);
-    // ⚠️ **`modo2.y` é a contagem de células do campo do chão**, e `0` ali quer dizer «campo
-    // vazio»: é o que mantém o quadro sem esta wave byte a byte o de sempre.
-    #[allow(clippy::cast_possible_truncation)]
-    let n_chao = pintor.ground_bounce.n as u32;
-    for v in [
-        pintor.view,
-        n_bordas,
-        empacotado,
-        n_mats,
-        tem_foscas,
-        n_chao,
-        // ⭐⭐⭐ **O ESTILO LÊ A CURVATURA?** — `modo2.z`, e é ele que faz a tinta por aresta deixar
-        // de ser um knob morto: sem esta bandeira o shader só perguntaria ao MATERIAL, e a grandeza
-        // que o botão escolhe nunca seria medida (`ph2d_style::Style::reads_curvature`).
-        u32::from(pintor.style.reads_curvature()),
-        0,
-    ] {
-        u.extend_from_slice(&v.to_le_bytes());
-    }
-    for f in [
-        pintor.ground_bounce.origin[0],
-        pintor.ground_bounce.origin[1],
-        pintor.ground_bounce.step,
-        pintor.ground_bounce.height,
-    ] {
-        u.extend_from_slice(&f.to_le_bytes());
-    }
-    // ⚠️ **O array vai INTEIRO** — a mesma razão do `MarchSetup::lamps`: um `array<vec4, 8>` de
-    // uniforme tem tamanho fixo.
-    for r in pintor.lamp_radiance {
-        for f in r {
-            u.extend_from_slice(&f.to_le_bytes());
-        }
-        u.extend_from_slice(&0f32.to_le_bytes());
-    }
-    // ⭐⭐⭐ **A CAMADA DE ESTILO, no FIM do uniforme** — e a posição é deliberada: acrescentar um
-    // campo ao meio moveria a compensação de tudo o que vem depois, e um uniforme lido com a
-    // compensação errada não estoura, **pinta**.
-    //
-    // ⚠️ **O [`ph2d_style::wgsl::pack`] é a porta**: ele arruma E saneia, logo nenhum `NaN` de
-    // painel chega ao dispositivo por alguém se ter esquecido de uma chamada.
-    let mut bloco = ph2d_style::wgsl::pack(&pintor.style);
-    // ⭐⭐⭐ **A posição que o `pack` deixa a zero de propósito** — ver
-    // [`ph2d_style::wgsl::EPS_DO_ESTILO`]: o passo não é do `Style` (ele precisa do raio da PEÇA),
-    // e é a montagem que o escreve.
-    bloco[ph2d_style::wgsl::EPS_DO_ESTILO] = pintor.curv_eps_estilo;
-    for f in bloco {
-        u.extend_from_slice(&f.to_le_bytes());
-    }
+    // ⭐ **A arrumação dos bytes vive no irmão** — ver [`crate::paint_uniforme`]. ⛔ Corte por
+    // responsabilidade e por tecto de LOC, nunca por isenção.
+    let (u, n_bordas) = crate::paint_uniforme::arruma(pintor, bordas, n_mats, tem_foscas);
     let ub_pintor = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("pintor"),
         contents: &u,
@@ -569,6 +502,19 @@ pub(crate) fn pinta(
         contents: &chao,
         usage: wgpu::BufferUsages::STORAGE,
     });
+    // ⭐⭐⭐ **O QUADRO EM CENA-LINEAR, que só o brilho lê** (`docs/Render3d/12`) — e ele **é o
+    // mesmo buffer em que o halo acaba por ser escrito**: quando a cadeia chega ao último degrau
+    // ninguém volta a ler a cena. *Um quadro de `1898×916` são `27,8 MB`.*
+    //
+    // ⚠️ **Com o brilho desligado ele tem UM texel** — a rede que o binding exige —, e o `pinta`
+    // não lhe toca (`modo2.w`).
+    let cena_n = if pintor.bloom.contributes() { n } else { 1 };
+    let b_cena = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("cena"),
+        size: cena_n * 16,
+        usage: wgpu::BufferUsages::STORAGE,
+        mapped_at_creation: false,
+    });
     let bg1 = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: None,
         layout: &bgl1,
@@ -580,6 +526,7 @@ pub(crate) fn pinta(
             recurso(&b_saida, 4),
             recurso(&b_sondas, 5),
             recurso(&b_chao, 6),
+            recurso(&b_cena, 7),
         ],
     });
 
@@ -646,6 +593,22 @@ pub(crate) fn pinta(
         cp.set_bind_group(1, &bg1, &[]);
         cp.dispatch_workgroups(n_bordas.div_ceil(64), 1, 1);
     }
+    // ⭐⭐⭐ **E O BRILHO, por último** — a cadeia e a composição, no dispositivo. Ver
+    // [`crate::brilho`]. ⚠️ Os buffers dela são guardados até à submissão.
+    let _brilho = crate::brilho::encadeia(
+        device,
+        cache,
+        fita,
+        &mut enc,
+        &b_cena,
+        &b_saida,
+        (width, height),
+        &pintor.bloom,
+        &crate::brilho::Olhar {
+            stops: pintor.stops,
+            view: pintor.view,
+        },
+    );
     let leitura = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("leitura"),
         size: (n * 4).max(16),

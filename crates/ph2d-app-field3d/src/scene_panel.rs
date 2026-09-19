@@ -45,14 +45,13 @@ pub fn publish_snapshot(
     // ⭐⭐⭐ **E AS FILEIRAS DO BRILHO** (`docs/Render3d/12`, a `W7`) — a seguir às do estilo, que é
     // a ordem do pipeline: o estilo é por pixel, o brilho é o passe que vem depois dele.
     //
-    // ⚠️⚠️ **A terceira resposta é `no_dispositivo`, e ela é o que torna esta secção honesta:** o
-    // brilho corre na cauda do sombreamento de CPU e o caminho de omissão é o dispositivo ⇒ com ele
-    // a tomar o quadro, as onze fileiras ficam à vista, APAGADAS, com a razão. *Um knob que se mexe
-    // e não faz nada é o defeito que este módulo já pagou três vezes noutra família.*
+    // ✅ **A terceira resposta ERA `no_dispositivo` e foi APAGADA em 19/09** — o brilho vivia só na
+    // cauda do sombreamento de CPU e este módulo pinta no dispositivo por omissão, logo as fileiras
+    // apareciam à vista e apagadas a dizê-lo. Desde que o gémeo em WGSL existe
+    // ([`ph2d_bloom::wgsl`]) elas acendem nos dois caminhos.
     rows.extend(crate::brilho_painel::rows(
         with_smoke(|s| s.bloom).unwrap_or_default(),
         no_render,
-        crate::gpu_frame::enabled(),
     ));
     let rows = rows;
     // ⚠️ A lista de verbos é **derivada de `Mode::ALL`**, que é a fonte da contagem. O painel não

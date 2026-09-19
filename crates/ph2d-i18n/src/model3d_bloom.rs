@@ -72,14 +72,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
 
         // ⭐⭐⭐ **AS TRÊS RAZÕES de uma fileira apagada**, da mais geral para a mais específica.
         //
-        // ⚠️ **A do MOTOR vem primeiro**, e é a que existe hoje na configuração de fábrica: o passe
-        // corre na cauda do sombreamento de CPU e o caminho de omissão deste módulo é o
-        // dispositivo. *Dizer «o brilho está desligado» a quem também está no caminho errado é
-        // mandá-lo resolver a metade errada.*
-        "field.inert.bloom_runs_on_the_reference_path" => {
-            "Inactive: bloom is drawn by the reference renderer, which this view is not using. \
-             Start the app with PH2D_FIELD_GPU=0 to see it."
-        }
+        // ⛔ **Havia uma QUARTA — a do MOTOR — e ela SAIU em 2026-09-19.** Ela dizia ao artista para
+        // reabrir o app com `PH2D_FIELD_GPU=0`, porque o brilho corria só na cauda do sombreamento
+        // de CPU e o caminho de omissão deste módulo é o dispositivo. Com o gémeo em WGSL
+        // (`ph2d_bloom::wgsl`) ele corre nos dois, e *uma instrução que manda reabrir o app com uma
+        // variável de ambiente é a última coisa que se quer deixar num painel depois de ela deixar
+        // de ser verdade*. As três que ficam são da LEI, e não de motor nenhum.
         "field.inert.bloom_is_off" => "Inactive: bloom is off. Switch Bloom to On to use it.",
         "field.inert.bloom_is_round" => {
             "Inactive: the halo is round, so it has no direction to point. Raise Anamorphic above \

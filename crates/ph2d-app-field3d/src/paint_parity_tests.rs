@@ -120,7 +120,14 @@ pub(crate) fn dois_caminhos_com(
     luz: &[ph2d_field_render::PointLamp],
     chao: Option<ph2d_field_render::Ground>,
 ) -> Option<(Vec<u8>, Vec<u8>, usize)> {
-    dois_caminhos_vestidos(surfaces, doc, luz, chao, ph2d_style::Style::default())
+    dois_caminhos_vestidos(
+        surfaces,
+        doc,
+        luz,
+        chao,
+        ph2d_style::Style::default(),
+        ph2d_field_render::Bloom::default(),
+    )
 }
 
 /// ⭐⭐⭐ **O mesmo, com a camada de ESTILO vestida** (`docs/Render3d/03`, a `W8`).
@@ -135,6 +142,12 @@ pub(crate) fn dois_caminhos_vestidos(
     luz: &[ph2d_field_render::PointLamp],
     chao: Option<ph2d_field_render::Ground>,
     style: ph2d_style::Style,
+    // ⭐⭐⭐ **E O BRILHO** (`docs/Render3d/12` §11) — ele entra na assinatura, e não por omissão,
+    // pela lição que o cabeçalho desta função já paga três vezes: *um arnês que decide sozinho o
+    // que a apresentação leva mede outro programa que o produto*. Com um `Default` escondido aqui,
+    // a wave que ligou o halo no dispositivo teria uma paridade verde a comparar dois quadros sem
+    // halo nenhum.
+    bloom: ph2d_field_render::Bloom,
 ) -> Option<(Vec<u8>, Vec<u8>, usize)> {
     let t = crate::gpu_frame::shared()?;
     let reg = ph2d_field_eval::hybrid::Registry::new();
@@ -145,7 +158,7 @@ pub(crate) fn dois_caminhos_vestidos(
         look: ph2d_view_transform::Look::default(),
         style: style.sanitized(),
         piece_radius: ph2d_field_eval::bounds::bounding_ball(doc, &reg).map_or(1.0, |b| b.radius),
-        bloom: ph2d_field_render::Bloom::default(),
+        bloom: bloom.sanitized(),
     };
     let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
 

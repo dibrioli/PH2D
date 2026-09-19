@@ -90,6 +90,14 @@ struct Pintor {
 // em ordem `z * n + x`, três floats cada. ⚠️ **Ela é assada na CPU e ENVIADA**, ao contrário das
 // sondas — ver a medição no `PaintSetup::ground_bounce`.
 @group(1) @binding(6) var<storage, read> chao_luz: array<f32>;
+// ⭐⭐⭐ **O QUADRO EM CENA-LINEAR, que só o BRILHO lê** (`docs/Render3d/12`) — o gémeo do
+// `ph2d_field_render::brilho::campo_de_cena`.
+//
+// ⚠️ **Com o brilho desligado ele tem UM texel** (o chamador liga uma rede de 1 elemento) e o
+// `pinta` **não escreve**, porque `modo2.w` o diz. ⭐ O ramo é de graça: a bandeira é **uniforme em
+// todo o despacho**, logo não há divergência de warp nenhuma — e sem ele o caminho de omissão
+// pagaria uma escrita de `16 B` por pixel para lado nenhum.
+@group(1) @binding(7) var<storage, read_write> cena_hdr: array<vec4<f32>>;
 
 const BLUR_COS: f32 = {BLUR_COS};
 const PISO_LUZ: f32 = {PISO_LUZ};

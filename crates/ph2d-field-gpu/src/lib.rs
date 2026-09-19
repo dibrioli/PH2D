@@ -93,6 +93,8 @@ pub fn supports(doc: &FieldDoc, reg: &ph2d_field_eval::hybrid::Registry) -> bool
 // dispositivo de facto entregou com o que a CPU entregou, como o divisor da pré-visualização já faz
 // com o orçamento. Está nomeada em `docs/Render3d/05` §43.10 e **ninguém a mediu**.
 
+/// ⭐⭐⭐ **O BRILHO no dispositivo** — ver o módulo.
+pub mod brilho;
 pub mod material_parity;
 pub mod owners_parity;
 pub mod paint;
@@ -104,6 +106,8 @@ pub mod paint;
 /// (`PINTOR` e `PINTOR_SONDAS` são marcas por preencher, e um texto com `{…}` lá fora é uma forma
 /// de alguém esquecer uma). *Uma lei com dois leitores exporta-se; um corpo de shader por montar,
 /// não.*
+/// ⭐ **Os bytes do uniforme do pintor** — ver o módulo.
+mod paint_uniforme;
 pub mod paint_wgsl;
 /// ⭐ **A segunda metade do shader do pintor** — o hemisfério que ele integra.
 mod paint_wgsl_sondas;

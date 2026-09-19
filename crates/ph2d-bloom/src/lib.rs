@@ -295,8 +295,24 @@ pub const LADO_MINIMO: usize = 4;
 /// ⭐ **Com `k = 0` o primeiro ramo desaparece** (`s ≡ 0`) e sobra `max(l − t, 0)`, que é o corte
 /// duro **exacto** — há gate sobre isso, e é ele que torna o joelho um *controlo* em vez de uma
 /// aproximação permanente.
+///
+/// ⭐⭐⭐ **E o TECTO (`clamp`) entra ANTES de tudo, por CANAL** — o antídoto do *firefly*: um pixel
+/// que estourou não pode arrastar a cena inteira para o halo.
+///
+/// ⛔⛔ **Ele FALTAVA aqui até 2026-09-19, e a fileira `Clamp` do painel era um BOTÃO MORTO** — a
+/// lei estava escrita no shader que já shipava (`bloom.wgsl`, `fs_prefilter`) e o
+/// [`BloomParams::clamp_limit`] tinha **um** leitor no repositório inteiro, do outro lado. *Um fio
+/// completo, uma fileira pintada, um valor que chega ao tipo — e a LEI a não o ler.*
+///
+/// ⚠️ **Por CANAL e não na luminância**, e a razão vem do shader: limitar a luminância e reescalar
+/// mudaria o **matiz** do pixel que estourou. ⚠️ Com o knob desligado o tecto é o maior finito do
+/// `Rgba16Float`, logo o `min` não morde nada que um quadro consiga guardar.
 #[must_use]
 pub fn bright(rgb: [f32; 3], b: &BloomParams) -> [f32; 3] {
+    // ⭐⭐⭐ **O TECTO, ANTES da luminância e POR CANAL** — ver a nota acima e o gate
+    // [`crate::lei_tests::o_tecto_do_corte_morde_e_a_omissao_fica_ao_bit`].
+    let lim = b.clamp_limit();
+    let rgb = [rgb[0].min(lim), rgb[1].min(lim), rgb[2].min(lim)];
     let l = rgb[0].max(rgb[1]).max(rgb[2]);
     if l.is_nan() || l <= 0.0 {
         return [0.0; 3];
@@ -553,6 +569,10 @@ fn amostra_bilinear(src: &[[f32; 3]], sw: usize, sh: usize, u: f32, v: f32) -> [
     out
 }
 
+/// ⭐⭐⭐ **A MESMA LEI, em WGSL** — para quem pinta no dispositivo. Ver o módulo.
+#[path = "wgsl.rs"]
+pub mod wgsl;
+
 #[cfg(test)]
 #[path = "lei_tests.rs"]
 mod lei_tests;
@@ -645,65 +665,8 @@ pub const MIN_STRETCH: f32 = 0.05;
 /// impõe, e o valor com que o clamp desligado passa pelo `min` sem morder.
 pub const F16_MAX: f32 = 65_504.0;
 
-// ⭐ O seno SEM TRANSCENDENTAIS (HR-5) que a base da tenda usa — veio com ela.
-fn frac(p: f32) -> f32 {
-    p - p.floor()
-}
-
-/// The corrected parabolic sine at `phase` cycles, in `[-1, 1]`.
-fn sin_cycles(phase: f32) -> f32 {
-    let f = frac(phase);
-    let p = if f < 0.5 {
-        let u = f * 2.0;
-        4.0 * u * (1.0 - u)
-    } else {
-        let u = (f - 0.5) * 2.0;
-        -4.0 * u * (1.0 - u)
-    };
-    const Q: f32 = 0.225;
-    Q * (p * p.abs() - p) + p
-}
-
-/// `(cos, sin)` of `phase` cycles. `cos(x) = sin(x + ¼ cycle)`.
-pub(crate) fn cos_sin_cycles(phase: f32) -> (f32, f32) {
-    (sin_cycles(phase + 0.25), sin_cycles(phase))
-}
-
-// ⭐ Os gates do seno vieram COM ele — *uma lei que se muda de casa sem os testes dela chega
-// à casa nova sem régua.*
-#[cfg(test)]
-mod trig_tests {
-    use super::*;
-
-    #[test]
-    fn anchors_match_true_trig() {
-        // 0 cycles → (1, 0); ¼ → (0, 1); ½ → (-1, 0); ¾ → (0, -1).
-        let approx = |ph: f32| cos_sin_cycles(ph);
-        for (ph, (c, s)) in [
-            (0.0, (1.0, 0.0)),
-            (0.25, (0.0, 1.0)),
-            (0.5, (-1.0, 0.0)),
-            (0.75, (0.0, -1.0)),
-        ] {
-            let (ac, as_) = approx(ph);
-            assert!((ac - c).abs() < 1e-6, "cos at {ph}");
-            assert!((as_ - s).abs() < 1e-6, "sin at {ph}");
-        }
-    }
-
-    #[test]
-    fn stays_near_unit_circle() {
-        // cos²+sin² ≈ 1 (radius stable within the approximation) at many angles.
-        for k in 0..64 {
-            let ph = k as f32 / 64.0;
-            let (c, s) = cos_sin_cycles(ph);
-            let r2 = c * c + s * s;
-            assert!((r2 - 1.0).abs() < 0.02, "radius² = {r2} at {ph}");
-        }
-    }
-
-    #[test]
-    fn is_deterministic() {
-        assert_eq!(cos_sin_cycles(0.37), cos_sin_cycles(0.37));
-    }
-}
+/// ⭐ **A aritmética da FASE** (o seno polinomial que a anamorfose lê) vive no irmão — ver
+/// [`trig`]. ⛔ Corte por responsabilidade e por tecto de LOC, nunca por isenção.
+#[path = "trig.rs"]
+mod trig;
+pub(crate) use trig::cos_sin_cycles;

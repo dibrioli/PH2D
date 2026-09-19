@@ -457,3 +457,121 @@ fn o_halo_do_motion_e_o_da_cena_sao_a_mesma_estrutura() {
         "o raio de fábrica mudou sem ninguém dizer"
     );
 }
+
+/// ⏱️ **QUANTO CUSTA A CADEIA NA CPU** — a medição que mandou o brilho para o dispositivo.
+///
+/// Medido (`--release`, melhor de 5, nesta máquina), nos **dois tamanhos que o produto usa**:
+///
+/// | tamanho | quadro | cadeia |
+/// |---|---|---:|
+/// | `445×305` | o de MOVIMENTO | **`24,1 ms`** |
+/// | `1898×916` | o ASSENTE | **`347,2 ms`** |
+///
+/// ⚠️ **O de movimento sozinho já não cabe num quadro de `16,7 ms`**, e o assente custa **um terço
+/// de segundo**. ⇒ trazer o quadro do dispositivo para a CPU só para o brilho está fora de
+/// questão, e o gémeo em WGSL não é uma optimização: é a única forma de este efeito existir no
+/// caminho de omissão.
+///
+/// ⚠️ **A razão de ser tão caro é estrutural e está declarada:** esta crate é uma FOLHA de **zero
+/// dependências** (a lei da casa para uma lei partilhada), logo não tem `rayon` — enquanto o resto
+/// do sombreador corre em `par_chunks_mut`. *O preço da pureza da folha paga-se aqui, e é por isso
+/// que o caminho de referência fica lento com o brilho ligado.*
+#[test]
+#[ignore = "sonda"]
+fn quanto_custa_a_cadeia() {
+    for (w, h) in [(445usize, 305usize), (1898usize, 916usize)] {
+        let mut hdr = vec![[0.0f32; 3]; w * h];
+        for j in 0..h {
+            for i in 0..w {
+                let (dx, dy) = (i as f32 - w as f32 / 2.0, j as f32 - h as f32 / 2.0);
+                if dx * dx + dy * dy < (h as f32 / 8.0).powi(2) {
+                    hdr[j * w + i] = [11.0, 10.0, 9.0];
+                }
+            }
+        }
+        let b = Bloom {
+            enabled: true,
+            params: BloomParams::default(),
+        };
+        let mut melhor = f64::MAX;
+        for _ in 0..5 {
+            let t = std::time::Instant::now();
+            let r = halo(&hdr, w, h, &b);
+            let ms = t.elapsed().as_secs_f64() * 1000.0;
+            assert!(!r.is_empty());
+            melhor = melhor.min(ms);
+        }
+        println!("SONDA {w}x{h}: {melhor:.2} ms (melhor de 5)");
+    }
+}
+
+/// ⭐⭐⭐ **O TECTO DO CORTE (o `Clamp`) MORDE — e até 2026-09-19 ele era um BOTÃO MORTO.**
+///
+/// # ⛔⛔ O que a medição achou
+///
+/// O painel do modelador oferece a fileira **Clamp** desde que a wave shipou, e a [`halo`] **nunca
+/// lia** `params.clamp`: o [`BloomParams::clamp_limit`] tinha **um** leitor no repositório inteiro,
+/// o gémeo do Motion (`motion_fx.rs`). ⇒ *o artista arrastava a fileira e a imagem não mudava um
+/// bit* — a espécie de knob morto que o `CLAUDE.md` §5.0 nomeia e que **nenhuma sonda deste repo
+/// pergunta**: o fio existe, a fileira é pintada, o valor chega ao tipo, e a LEI não o lê.
+///
+/// ⚠️ **A lei não se inventou: ela já estava escrita no shader que shipa** (`bloom.wgsl`,
+/// `fs_prefilter`) — `min` **POR CANAL, antes da luminância**. Por canal de propósito: limitar a
+/// luminância e reescalar mudaria o **matiz** do pixel que estourou, e o antídoto do *firefly* não
+/// pode recolorir a cena.
+///
+/// ⚠️ **Com o knob desligado o tecto é o maior finito do `Rgba16Float`** ⇒ o `min` não morde nada
+/// que o quadro consiga guardar, e o caminho de omissão fica **ao bit** (a metade de baixo).
+#[test]
+fn o_tecto_do_corte_morde_e_a_omissao_fica_ao_bit() {
+    let (w, h) = (96usize, 96usize);
+    let mut hdr = vec![[0.0f32; 3]; w * h];
+    // Uma fonte MUITO acima do tecto, para o `min` ter o que morder.
+    for j in 40..56 {
+        for i in 40..56 {
+            hdr[j * w + i] = [40.0, 30.0, 10.0];
+        }
+    }
+    let liga = |clamp: f32| Bloom {
+        enabled: true,
+        params: BloomParams {
+            clamp,
+            ..BloomParams::default()
+        },
+    };
+    let solto = halo(&hdr, w, h, &liga(0.0));
+    let preso = halo(&hdr, w, h, &liga(2.0));
+    let maior = |v: &[[f32; 3]]| v.iter().flatten().fold(0.0f32, |a, &b| a.max(b));
+    assert!(
+        maior(&preso) < maior(&solto) * 0.5,
+        "o tecto não mordeu: solto {:.3}, preso {:.3}",
+        maior(&solto),
+        maior(&preso)
+    );
+    // ⭐ **A MATIZ sobrevive ao tecto** — é isto que separa o `min` por canal de um `min` na
+    // luminância com reescala. O pixel de origem é `40 · 30 · 10`; depois do tecto a `2` os três
+    // canais ficam iguais e o halo sai CINZENTO, que é o que um corte por canal faz.
+    let pico = preso.iter().copied().fold([0.0f32; 3], |a, b| {
+        [a[0].max(b[0]), a[1].max(b[1]), a[2].max(b[2])]
+    });
+    assert!(
+        (pico[0] - pico[1]).abs() < pico[0] * 0.02,
+        "o tecto por canal devia igualar os canais saturados: {pico:?}"
+    );
+    // ⚠️ **A metade de baixo**: com o knob DESLIGADO o tecto é o maior finito do formato, e nenhuma
+    // cena real o alcança ⇒ a imagem tem de ser a de sempre, ao bit.
+    let teto_alto = halo(&hdr, w, h, &liga(F16_MAX));
+    assert_eq!(
+        solto
+            .iter()
+            .flatten()
+            .map(|f| f.to_bits())
+            .collect::<Vec<_>>(),
+        teto_alto
+            .iter()
+            .flatten()
+            .map(|f| f.to_bits())
+            .collect::<Vec<_>>(),
+        "o knob desligado e o tecto do formato têm de dar o MESMO halo"
+    );
+}

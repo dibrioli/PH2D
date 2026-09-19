@@ -413,11 +413,6 @@ pub const BRILHOS_DA_CENA: [f32; 3] = [1.2, 3.6, 10.8];
 pub fn cena_36() -> Result<FieldDoc, ph2d_field::FieldError> {
     println!("[field-smoke] cena 36 — O BRILHO: a luz forte DERRAMA para fora da peca.");
     println!(
-        "[field-smoke]            (0) o comando que lhe foi dado ja' traz PH2D_FIELD_GPU=0, e e' \
-         ela que acende os controlos do brilho. Se abriu sem ela, as fileiras aparecem APAGADAS e \
-         dizem porque' — nao e' defeito."
-    );
-    println!(
         "[field-smoke]            (1) MODEL · separador Model, em cima · painel do topo, Shading · \
          Render. A seccao BLOOM e' a ULTIMA do painel da direita, a seguir a STYLE."
     );

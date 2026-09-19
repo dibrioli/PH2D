@@ -479,7 +479,7 @@ fn o_roteiro_da_cena_nomeia_controlos_que_existem() {
         .map(|l| ph2d_i18n::tr(l.key).to_string())
         .collect();
     vivos.extend(
-        crate::brilho_painel::rows(ph2d_field_render::Bloom::default(), true, false)
+        crate::brilho_painel::rows(ph2d_field_render::Bloom::default(), true)
             .iter()
             .map(|r| ph2d_i18n::tr(r.key).to_string()),
     );

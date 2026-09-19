@@ -52,7 +52,12 @@ fn a_tabela_knob_a_knob_no_pixel() {
     println!("\n  BATERIA                              movidos   fora(>0)  fora(>1)   pior");
     for (rot, style) in baterias() {
         let Some((cpu, gpu, _)) = crate::gpu_frame::paint_parity_tests::dois_caminhos_vestidos(
-            &surfaces, &doc, &luz, None, style,
+            &surfaces,
+            &doc,
+            &luz,
+            None,
+            style,
+            ph2d_field_render::Bloom::default(),
         ) else {
             continue;
         };
@@ -130,6 +135,7 @@ fn a_imagem_lado_a_lado() {
             &luz,
             None,
             style.sanitized(),
+            ph2d_field_render::Bloom::default(),
         ) else {
             println!("sem adaptador — saltado");
             return;
@@ -232,7 +238,12 @@ fn os_pixeis_que_divergem_sao_os_da_borda_e_nao_os_do_miolo() {
     };
     for (rot, style) in baterias() {
         let Some((cpu, gpu, _)) = crate::gpu_frame::paint_parity_tests::dois_caminhos_vestidos(
-            &surfaces, &doc, &luz, None, style,
+            &surfaces,
+            &doc,
+            &luz,
+            None,
+            style,
+            ph2d_field_render::Bloom::default(),
         ) else {
             println!("sem adaptador — saltado");
             return;

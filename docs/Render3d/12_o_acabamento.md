@@ -334,6 +334,99 @@ cobertura (`a = 1 − f`), e evapora onde o chão está limpo. Ali isso é quase
 devolvida é forte justamente dentro da sombra) e mudá-lo mexe na imagem de **toda** cena com chão
 ⇒ fica nomeado aqui, com o mecanismo, para quem lhe pegar não redescobrir a causa.
 
+## §11 — ⭐⭐⭐ O BRILHO PASSA A CORRER NO DISPOSITIVO (o caminho de OMISSÃO)
+
+> *«Bloom sem o comando especial»* — o dono, 2026-09-19, escolhendo entre as três frentes abertas.
+
+### §11.1 — O que estava errado, e não era um defeito: era metade da feature
+
+O modelador pinta no dispositivo desde a [`05` §39](05_o_modo_render_do_modelador.md) — a marcha e o
+pintor correm lá e o que volta é a **imagem**. O brilho vivia só na cauda do sombreamento de CPU ⇒
+com a placa a tomar o quadro, **as onze fileiras do painel nasciam APAGADAS**, o interruptor
+incluído: *o artista não conseguia sequer LIGAR o efeito sem reabrir o app com `PH2D_FIELD_GPU=0`.*
+
+⚠️ **E não havia atalho pelo relógio.** Medido (`--release`, melhor de 5, a sonda
+`quanto_custa_a_cadeia` da `ph2d-bloom`), trazer a imagem de volta para a CPU custaria:
+
+| tamanho | quadro | cadeia em CPU |
+|---|---|---:|
+| `445×305` | o de **MOVIMENTO** | **`24,1 ms`** |
+| `1898×916` | o **ASSENTE** | **`347,2 ms`** |
+
+O de movimento sozinho já não cabe num quadro de `16,7 ms`. ⚠️ **A razão é estrutural e declarada:**
+a `ph2d-bloom` é uma FOLHA de **zero dependências** (a lei que os dois motores têm de responder
+igual), logo não tem `rayon` — enquanto o resto do sombreador corre em `par_chunks_mut`. *O preço da
+pureza da folha paga-se ali, e é por isso que o caminho de REFERÊNCIA fica lento com o brilho ligado.*
+
+### §11.2 — A lei atravessa como TEXTO — a quarta a fazê-lo
+
+[`ph2d_bloom::wgsl`] junta-se ao material, ao olhar e à lei do dono. ⚠️ **E o contrato tem uma
+forma que as outras três não tinham: a porta de leitura entra NO MEIO da lei.** O WGSL exige
+declaração antes do uso, e:
+
+- o **corte** (`bl_corte`, `bl_cor`) não toca em dados ⇒ vem **primeiro**, e é isso que deixa o
+  chamador chamá-lo de dentro da própria porta — que é como o tecto do *firefly* entra no primeiro
+  degrau **sem um passe e sem um buffer do tamanho do quadro**;
+- a **cadeia** (`bl_amostra_uv`, `bl_desce13`, `bl_sobe_tenda`) chama a porta ⇒ vem **depois**.
+
+⇒ a folha exporta `fonte(bl_le: &str) -> String` em vez de uma const. *Uma const única obrigaria o
+chamador a escolher entre não poder cortar e pagar uma cópia do quadro inteiro.*
+
+⭐ **E a amostragem é bilinear escrita à mão, nunca um `textureSample`:** a referência de CPU faz a
+sua própria bilinear em UV, e um *sampler* de hardware traz arredondamento próprio. *Duas leis
+iguais amostradas por portas diferentes deixam de ser a mesma lei* — e é por isso que a paridade
+abaixo fecha onde fecha.
+
+### §11.3 — A paridade, medida
+
+`crates/ph2d-app-field3d/src/brilho_parity_tests.rs`, pelo caminho do **produto** (o mesmo
+`Presentation` nos dois motores, a mesma peça, o mesmo fundo transparente):
+
+| bateria | acendeu (CPU) | acendeu (dispositivo) | canais fora de `1` byte | pior |
+|---|---:|---:|---:|---:|
+| fábrica | `58 124` | `58 124` | `0` | `1` |
+| raio `8` | `59 340` | `59 340` | `0` | `1` |
+| tingido (sat `0`) | `56 936` | `56 936` | `0` | `1` |
+| tecto `2` | `53 391` | `53 391` | `0` | `1` |
+| anamórfico (`3×`, `30°`) | `58 748` | `58 748` | `0` | `1` |
+
+⚠️ **As duas colunas do meio são o CONTROLO**, e sem elas a tabela não afirma nada: uma cadeia que
+não corresse em nenhum dos dois lados daria `0` fora da barra e leria-se como vitória.
+
+**Custo no dispositivo**, contra a mesma cadeia em CPU:
+
+| tamanho | no dispositivo | na CPU |
+|---|---:|---:|
+| `445×305` | **`0,35 ms`** | `24,1 ms` |
+| `1898×916` | **`1,7`–`4,1 ms`** | `347,2 ms` |
+
+⚠️ **O número do assente BALANÇA, e a razão é conhecida:** cada quadro cria os buffers da cadeia
+(`~50 MB` a essa resolução) e deita-os fora ⇒ o relógio segue o alocador do driver. *É uma
+optimização com endereço — uma cache por tamanho, como o traçador já tem — e não um defeito.*
+
+### §11.4 — ⭐⭐ Três notas que esta wave APAGOU, e uma que ela criou
+
+1. O cabeçalho do `brilho_painel.rs` **encomendava esta wave por escrito** (*«o `p_pinta` a escrever
+   o cena-linear num segundo buffer, a cadeia de níveis em compute e a composição»*) — está feita, e
+   a nota foi substituída pelo registo de que ela existiu.
+2. A razão de inércia `field.inert.bloom_runs_on_the_reference_path` **saiu do i18n**: ela mandava o
+   artista reabrir o app com uma variável de ambiente. ⚠️ Ficam as **três razões da LEI** (o brilho
+   desligado · o joelho com o limiar em zero · o ângulo num halo redondo), que não dependem de motor.
+3. O passo `(0)` do roteiro da `=36` (*«o comando já traz `PH2D_FIELD_GPU=0`»*) **saiu**.
+4. ⏳ **E a que fica nomeada:** o caminho de REFERÊNCIA continua a pagar os `347 ms`. Ele é o que
+   corre numa máquina sem placa, e a cura é paralelizar a cadeia — ⛔ o que a folha não pode fazer
+   sem deixar de ser uma folha de zero dependências. *A saída provável é o chamador emprestar-lhe o
+   paralelismo, e ela não foi medida.*
+
+### §11.5 — ⛔ O que a prova de mutação apanhou
+
+`7` mutações, `7` sangram — incluindo a que reproduz o report de 19/09 **do lado do dispositivo** (a
+cobertura não sobe) e a que apaga a escrita do cena-linear no pintor. ⚠️ **E o gate que corre em
+TODA máquina é outro:** o shader é montado de três fontes em tempo de execução, logo um erro de
+sintaxe só apareceria quando o artista ligasse o Bloom — `ph2d-field-gpu/tests/brilho_wgsl_valido.rs`
+parsa e valida os dois textos com o `naga`, sem placa nenhuma. *Os gates de paridade são
+`#[ignore]`, logo o CI nunca os corre.*
+
 ## ⛔ Recusas MEDIDAS
 
 | o que foi recusado | porquê, com o número |
@@ -346,6 +439,8 @@ devolvida é forte justamente dentro da sombra) e mudá-lo mexe na imagem de **t
 | portar o CORTE do alvo (os três botões de HDR) | dois estão inertes e o limiar não gateia: entrada `2` com limiar `3` ainda brilha `0,0802` (§3.5) |
 | mudar a assinatura do `shade_render` | `50` chamadores, `1` de produto — a porta nova **delega** e o churn é zero (§5) |
 | uma wave só de substrato (o buffer sem o brilho) | um canal sem consumidor é código morto, que é a lei que a `11` §11 já escreve (§5) |
+| trazer a imagem do dispositivo para a CPU só para o brilho | a cadeia em CPU custa `24,1 ms` no quadro de MOVIMENTO e `347,2 ms` no assente (§11.1) |
+| um `textureSample` na cadeia do dispositivo | a referência de CPU faz a própria bilinear em UV; um sampler traz arredondamento próprio e a paridade de `1` byte não fecharia (§11.2) |
 | o `if c > 0.0` à volta da cobertura | a ida e volta `byte → f32 → byte` é exacta nos **256** valores ⇒ guarda provadamente morta (§10.2) |
 | `soma` dos canais como cobertura | over-cobre um halo tingido: `[0,4 · 0,3 · 0,3]` sairia **opaco** e taparia a grelha; `max` é a MENOR cobertura válida (§10.3) |
 | a profundidade de campo LIGADA por omissão | num modelador ela esconde a peça que se está a modelar — proposta, decisão do dono (§5) |

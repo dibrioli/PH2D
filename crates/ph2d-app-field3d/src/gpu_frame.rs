@@ -286,6 +286,9 @@ pub fn paint_com(
         // ⭐⭐⭐ **A camada de ESTILO, no MESMO tipo que a CPU recebeu** (`docs/Render3d/03`, a
         // `W8`) — quem a arruma e a saneia é o `ph2d_style::wgsl::pack`, dentro do `PaintSetup`.
         style: pres.style,
+        // ⭐⭐⭐ **E O BRILHO, da MESMA apresentação** (`docs/Render3d/12` §11) — é isto que o faz
+        // existir no caminho de omissão em vez de só no de referência.
+        bloom: pres.bloom,
         piece_radius: pres.piece_radius,
         background,
         // ⚠️ **A largura da fronteira de cor sai do [`ph2d_field_render::boundary_world`]**, que é
@@ -495,3 +498,9 @@ pub(crate) mod estilo_lei_parity_tests;
 #[cfg(test)]
 #[path = "estilo_pixel_parity_tests.rs"]
 mod estilo_pixel_parity_tests;
+
+/// ⭐⭐⭐ **E O BRILHO nos dois motores** (`docs/Render3d/12` §11) — a quarta lei a atravessar como
+/// texto, e a primeira cujo consumidor é um PASSE e não um pixel.
+#[cfg(test)]
+#[path = "brilho_parity_tests.rs"]
+mod brilho_parity_tests;

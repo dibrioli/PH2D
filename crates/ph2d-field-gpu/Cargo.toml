@@ -16,6 +16,7 @@ authors.workspace = true
 # ⛔ Ela é a IRMÃ do `ph2d-field-render`, nunca um substituto: aquele é a referência de CPU contra
 # a qual esta se mede (*dois motores, uma lei* — o molde do Flip e do pincel de tecido).
 [dependencies]
+ph2d-bloom = { path = "../ph2d-bloom" }
 ph2d-field      = { path = "../ph2d-field" }
 ph2d-field-eval = { path = "../ph2d-field-eval" }
 # ⛔ A direcção é esta e nunca a contrária: o `ph2d-field-render` recusa o `wgpu` por escrito, e é
@@ -33,3 +34,11 @@ pollster = "0.4.0"
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+# ⭐⭐⭐ **naga (o mesmo major do wgpu 29) — para o shader do BRILHO ser PARSADO e VALIDADO em
+# `cargo test`.** O texto dele é montado em tempo de execução a partir de TRÊS fontes (a lei da
+# `ph2d-bloom`, a porta desta crate e as entradas), logo um erro de sintaxe só aparece quando o
+# pipeline é construído — ou seja, **na primeira vez que o artista liga o Bloom**, com a tela a não
+# mudar e uma mensagem no terminal. ⚠️ É o mesmo gate que o `bloom.wgsl` do `ph2d-render` já tem.
+naga = { version = "29.0.4", features = ["wgsl-in"] }

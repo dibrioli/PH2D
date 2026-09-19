@@ -7,21 +7,18 @@
 //! própria seria a segunda resposta à tabela do `pack`, e a que envelhece no dia em que nascer um
 //! botão — a lei que o módulo [`crate::estilo`] já paga.
 //!
-//! # ⚠️⚠️ Porque TODAS estas fileiras nascem apagadas no caminho de OMISSÃO
+//! # ✅ A NOTA QUE AQUI ESTAVA FOI APAGADA PELA WAVE QUE ELA ENCOMENDOU
 //!
-//! O brilho corre na cauda do sombreamento de **CPU**, e o caminho de omissão deste módulo é o
-//! **dispositivo** ([`crate::gpu_frame::enabled`], que é `true` sem a env var). ⇒ com o dispositivo
-//! a tomar o quadro, mexer nestes números **não muda um pixel**.
+//! Até 2026-09-19 **todas** estas fileiras nasciam apagadas, com a razão
+//! *«o brilho corre no caminho de referência»* — porque ele vivia só na cauda do sombreamento de
+//! CPU e o caminho de omissão deste módulo é o **dispositivo**. A dívida estava nomeada aqui, com o
+//! desenho por escrito (*o pintor a guardar o cena-linear, a cadeia de níveis em compute, a
+//! composição*), e o gémeo existe desde então: [`ph2d_bloom::wgsl`] atravessa como texto e o
+//! `ph2d-field-gpu` hospeda-o, com paridade medida contra a referência em **`1` byte**.
 //!
-//! ⭐ *Isso não é razão para esconder a secção — é razão para ela DIZER.* A decisão do dono de
-//! 2026-09-18 (`ParamRow::inert`) é exactamente esta: a fileira fica à vista, apagada, com a razão
-//! ao lado. ⛔ Um knob que se mexe e não faz nada é o defeito que este módulo já pagou três vezes
-//! noutra família (*«não vejo efeito com density»*); um knob apagado que diz porquê é uma
-//! instrução.
-//!
-//! ⏳ **E a dívida tem nome:** o gémeo em WGSL (o `p_pinta` do `ph2d-field-gpu` a escrever o
-//! cena-linear num segundo buffer, a cadeia de níveis em compute e a composição) é a metade que
-//! apaga esta nota. Até lá, `PH2D_FIELD_GPU=0` acende as fileiras.
+//! ⇒ *as fileiras acendem nos DOIS caminhos, e o `PH2D_FIELD_GPU=0` deixou de ser condição para o
+//! artista ver o efeito.* ⚠️ As outras três razões de uma fileira apagada (o brilho desligado, o
+//! joelho com o limiar em zero, o ângulo num halo redondo) **ficam** — essas são da LEI.
 
 // ⚠️ **Pelo RE-EXPORT do renderer e não pela crate da lei**, e é de propósito: esta crate fala com
 // o motor, e o motor declara a superfície que ele aceita. *Duas importações do mesmo tipo não são
@@ -163,10 +160,7 @@ const LINHAS: [Linha; 10] = [
 /// ⚠️ **Dizer *«o brilho está desligado»* a quem também está no caminho do dispositivo é mandá-lo
 /// resolver a metade errada** — é a lei que a `recusa::Entradas` do módulo da escultura já escreve,
 /// e é por isso que a razão do MOTOR vem primeiro.
-fn apagada(l: &Linha, b: &Bloom, no_dispositivo: bool) -> Option<&'static str> {
-    if no_dispositivo {
-        return Some("field.inert.bloom_runs_on_the_reference_path");
-    }
+fn apagada(l: &Linha, b: &Bloom) -> Option<&'static str> {
     if l.slot != 0 && !b.enabled {
         return Some("field.inert.bloom_is_off");
     }
@@ -188,7 +182,7 @@ fn apagada(l: &Linha, b: &Bloom, no_dispositivo: bool) -> Option<&'static str> {
 /// ⚠️ **`entity` é `0` e ninguém o lê** — ver [`ph2d_field::Param::Bloom`]. O dreno decide o sujeito
 /// pela FAMÍLIA, e o sujeito do brilho é a cena.
 #[must_use]
-pub fn rows(bloom: Bloom, render: bool, no_dispositivo: bool) -> Vec<ph2d_panel_model3d::ParamRow> {
+pub fn rows(bloom: Bloom, render: bool) -> Vec<ph2d_panel_model3d::ParamRow> {
     if !render {
         return Vec::new();
     }
@@ -205,7 +199,7 @@ pub fn rows(bloom: Bloom, render: bool, no_dispositivo: bool) -> Vec<ph2d_panel_
             // ⚠️ **`Soft` e não `Hard`**: nenhum destes tectos é uma parede do documento — a lei
             // aceita qualquer número finito (e sanea-o na porta), e o que eles limitam é o GESTO.
             bound: Bound::Soft((l.teto)(&bloom)),
-            inert: apagada(l, &bloom, no_dispositivo),
+            inert: apagada(l, &bloom),
             // ⚠️ **Uma escolha também é inteira**, como a do eixo no painel do nó.
             integral: l.escolha,
             choices: if l.escolha { &LIGA } else { &[] },
@@ -254,3 +248,14 @@ pub fn with_number(bloom: Bloom, slot: u8, value: f32) -> Bloom {
 #[cfg(test)]
 #[path = "brilho_painel_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ **E a metade que mede PÍXEIS na cena do dono** — irmão por responsabilidade e por tecto de
+/// LOC, nunca por isenção.
+#[cfg(test)]
+#[path = "brilho_cena_tests.rs"]
+mod cena_tests;
+
+/// ⏱️ **E as SONDAS** — as que imprimem e não afirmam. Ver o módulo.
+#[cfg(test)]
+#[path = "brilho_sondas_tests.rs"]
+mod sondas_tests;

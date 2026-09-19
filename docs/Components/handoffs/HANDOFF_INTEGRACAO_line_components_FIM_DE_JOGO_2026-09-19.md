@@ -154,3 +154,67 @@ bash scripts/ph2d-run.sh bash docs/Components/ferramentas/mutacao_fim_de_jogo_20
 ```
 
 Portão: **15 397 testes verdes**, clippy `-D warnings` a zero nas seis crates, `fmt` limpo.
+
+---
+
+## §11 — ⛔⛔⛔ O SMOKE do dono: *«funcionou mas não recomeça e as luzes não voltam nem com Rewind»*
+
+### §11.1 — O verbo CORRIA. Medido na app, instrumentando o dreno
+
+`is_playing=true`, `time=5,5333` → `rebobinei: 0,0000` → `renasceu: 3 estado(s)` — e **outra vez
+`5,5` segundos depois**. ⇒ *o recomeço acontece.* O que não voltava eram as **LUZES**, e sem elas
+ele é **invisível** — que se lê exactamente como *«não recomeça»*.
+
+⚠️ **O report tinha duas metades e só uma era um defeito**, e isso só se soube por medir o produto a
+correr. A cena foi posta a **conduzir-se sozinha** (um relógio temporário a bater `golpe`) porque
+os eventos sintéticos não chegam à Xwayland virtual — *é assim que se mede uma cena de jogo sem uma
+mão*.
+
+### §11.2 — A causa é a lei do `settle`, e não o verbo
+
+O que um **verbo** escreve é pré-visualização; o `settle` de cada quadro esquece quem não foi
+declarado ⇒ **um `Hide` sobrevive dois quadros e depois é DOCUMENTO**. É a mesma lei que faz uma
+corrida colapsar em **um** passo de `Ctrl+Z`.
+
+⇒ **nem o recomeço nem o `Rewind` desfazem um facto do documento — só o `Ctrl+Z`.** Isto vale para
+toda a app, não só para esta cena, e é a resposta à segunda metade do report.
+
+### §11.3 — ⛔ A «quinta metade» do §4.2 foi REFUTADA e RETIRADA
+
+A porta `PreviewDrive::release_all_to_authored` e o gate dela **saíram**, com duas medições:
+
+1. ⛔ **Não cura o caso que a motivou** — cinco segundos depois o memo já não tem as entradas.
+2. ⛔⛔ **E ela LUTAVA contra o artista:** as linhas `Show` que a tabela corre no MESMO sinal já
+   tinham escrito, e o «autorado» guardado por baixo delas era o **apagado** ⇒ a devolução desfazia
+   o `Show`. *Uma porta que devolve «o que estava antes» não sabe distinguir o que a corrida
+   escreveu do que o artista acabou de mandar escrever.*
+
+⭐ E o que ela ia comprar já estava pago: a **pose** volta sozinha, porque a ponte da física rebobina
+quando o tique recua (`rewind_to` → `rebuild_from_rest`).
+
+⚠️ A recusa fica escrita **no ficheiro da crate**, onde alguém a iria reconstruir.
+
+### §11.4 — ⛔⛔ E o meu GATE não podia ver isto: ele media outro programa
+
+Ele montava o estado à mão e **não corria o `settle` do fim do quadro** ⇒ o ledger guardava o
+autorado para sempre e a devolução acendia as luzes sozinha. *Um arnês que não corre o que o quadro
+corre não afirma nada sobre o quadro* — e foi **exactamente** essa a diferença entre o gate verde e
+o dono a ver as luzes apagadas.
+
+⇒ substituído pelo `o_jogo_joga_se_recomeca_e_as_luzes_voltam`, que percorre a corrente **quadro a
+quadro com o `settle`** (relógios · vigia · tabela) e tem **controlo de meio caminho**: as três
+luzes têm de CHEGAR a apagar-se, senão uma cena inerte daria o mesmo verde.
+
+⚠️ E a mutação que o prova é o report à letra: **tirar as três linhas `Show`** ⇒ vermelho.
+
+### §11.5 — A cura é a que o modelo prescreve
+
+**O que a corrida escreve, a corrida desfaz.** Três linhas `Show` no mesmo sinal — a cena passa de
+seis para **nove** linhas, e a foto da app aos `13 s` mostra as três luzes **acesas** depois de um
+ciclo completo de perder e recomeçar.
+
+⚠️ **E isto responde ao §9 do handoff:** o `Time(s)` da régua lia `0` com a corrida a andar — o
+relógio **corre** (medido: `5,5333`), logo aquele campo é o painel a não ser semeado, a família que
+esta linha já curou duas vezes noutros painéis. **Dívida nomeada, e não desta wave.**
+
+**13 de 13 mutações sangram**; portão a **15 396** testes verdes.

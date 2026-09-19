@@ -2,7 +2,7 @@
 //! *o jogo chega a RECOMEÇAR, e o que a corrida escreveu volta ao princípio?*
 
 use super::*;
-use ph2d_ecs::{SimWorld, Visibility};
+use ph2d_ecs::SimWorld;
 
 fn montada() -> (SimWorld, Montada) {
     let mut sim = SimWorld::new();

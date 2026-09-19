@@ -26,22 +26,25 @@ fn o_osso_e_afilado_e_nao_um_losango() {
     assert_eq!(p.verts.len(), 4, "junta · ombro · ponta · ombro");
 
     let u = us(&p);
-    // ⚠️ **A JUNTA está em `u = 1` (`+X`), por ordem do dono** (2026-09-19: *«ficou 180 graus
-    // rodado»*): o `rot` de um rig é a direcção em que a cadeia CRESCE, logo a cabeça do osso
-    // tem de ficar do lado para onde ela vai. *Isto é o inverso das setas do catálogo, e é o
-    // que separa uma forma que aponta com a PONTA de uma que aponta com a BASE.*
-    assert!((u[0] - 1.0).abs() < 1e-9, "a junta esta' em u = 1: {u:?}");
-    assert!((u[2] - 0.0).abs() < 1e-9, "a ponta esta' em u = 0: {u:?}");
+    // ⚠️⚠️ **A JUNTA está em `u = 0` (`−X`), por ordem do dono** (2026-09-19, o SEGUNDO report:
+    // *«Shape Bone deveria ser gerado por padrão a 180 graus de rotação do atual pois está
+    // invertido»*, na mesma mensagem em que ele pediu o offset). ⛔ **Esta linha já disse `u = 1`
+    // e estava errada**: o report da manhã foi obedecido virando a SILHUETA, que não era o
+    // defeito — com a forma CENTRADA na junta, as duas orientações lêem-se uma como a outra.
+    // *Metade da lei vive na caixa que o `motion_shape_gen` escolhe* (`[0, 2s]`), e só com ela a
+    // cabeça do osso cai sobre a posição e o corpo afila para `+X`, que é para onde a cadeia vai.
+    assert!((u[0] - 0.0).abs() < 1e-9, "a junta esta' em u = 0: {u:?}");
+    assert!((u[2] - 1.0).abs() < 1e-9, "a ponta esta' em u = 1: {u:?}");
     // E os DOIS ombros estão no mesmo `u`, encostados à junta.
     assert!((u[1] - u[3]).abs() < 1e-9, "os dois ombros partilham o u");
     assert!(
-        (u[1] - (1.0 - super::OMBRO)).abs() < 1e-9,
+        (u[1] - super::OMBRO).abs() < 1e-9,
         "o ombro fica a {} da junta (o numero do gizmo): {u:?}",
         super::OMBRO
     );
     // ⛔ O CONTROLO: bem longe do meio, senão isto é um losango com outro nome.
     assert!(
-        u[1] > 0.65,
+        u[1] < 0.35,
         "um ombro a meio faz um LOSANGO, nao um osso: u = {}",
         u[1]
     );
@@ -61,32 +64,46 @@ fn o_olho_da_junta_fura_e_sem_pedido_nao_existe() {
     assert!(!macico.is_compound(), "sem olho, sem compound");
 }
 
-/// ⛔⛔ **O OLHO NUNCA FURA A ARESTA, e a régua é a distância PONTO-RECTA e não a caixa.**
+/// ⛔⛔ **O OLHO NUNCA FURA A SILHUETA, e a régua é a distância PONTO-RECTA e não a caixa.**
 ///
 /// ⚠️ **Uma régua de bounding-box aprovaria um olho partido:** o quadrilátero é muito mais
 /// estreito junto da junta do que a caixa que o contém, e um disco que cabe na caixa atravessa
 /// as duas arestas curtas com folga. *É a mesma forma do `edge_max` global que este repo já
 /// pagou* — medir o envelope quando o que morde é a peça.
+///
+/// ⛔⛔ **E ele mediu METADE das arestas até 2026-09-19, com o nome a prometer a silhueta
+/// inteira:** só as duas que saem da junta. Quem o apanhou foi uma prova de mutação — pôr o olho
+/// do lado da PONTA **sobreviveu**, porque ali ele fura as arestas LONGAS, que esta régua não
+/// olhava. *Um gate cujo nome é mais largo que a população que ele varre lê-se como cumprido.*
 #[test]
 fn o_olho_cabe_dentro_da_silhueta() {
     let p = super::bone(A, B, 1.0);
     let olho = p.subpaths.first().expect("com eye = 1 o olho existe");
 
-    // As duas arestas que saem da junta (em `+X`), em coordenadas de MUNDO.
-    let (x0, y0) = (B[0], 0.5 * (A[1] + B[1]));
-    let ombro_x = B[0] - super::OMBRO * (B[0] - A[0]);
-    for (ax, ay) in [(ombro_x, A[1]), (ombro_x, B[1])] {
-        let (dx, dy) = (ax - x0, ay - y0);
+    // Os QUATRO cantos da silhueta em coordenadas de MUNDO, na ordem do contorno.
+    let meio_y = 0.5 * (A[1] + B[1]);
+    let ombro_x = A[0] + super::OMBRO * (B[0] - A[0]);
+    let cantos = [
+        [A[0], meio_y],  // a junta
+        [ombro_x, B[1]], // ombro de cima
+        [B[0], meio_y],  // a ponta
+        [ombro_x, A[1]], // ombro de baixo
+    ];
+    // O centro do olho é o ponto de referência do «lado de dentro» — ele é, por construção, o
+    // sítio mais largo da forma.
+    let centro = [ombro_x, meio_y];
+
+    for i in 0..4 {
+        let (o, f) = (cantos[i], cantos[(i + 1) % 4]);
+        let (dx, dy) = (f[0] - o[0], f[1] - o[1]);
         let n = dx.hypot(dy);
+        let lado = |q: [f64; 2]| ((q[0] - o[0]) * dy - (q[1] - o[1]) * dx) / n;
+        let dc = lado(centro);
         for v in &olho.verts {
-            // Distância com sinal do vértice à recta junta→ombro; o interior é o lado do centro.
-            let (px, py) = (v.anchor[0] - x0, v.anchor[1] - y0);
-            let d = (px * dy - py * dx) / n;
-            let (cx, cy) = (ombro_x - x0, 0.0_f64);
-            let dc = (cx * dy - cy * dx) / n;
+            let d = lado(v.anchor);
             assert!(
                 d * dc > 0.0,
-                "um vertice do olho saiu pela aresta da junta: d = {d:.6}"
+                "um vertice do olho saiu pela aresta {i} da silhueta: d = {d:.6}"
             );
         }
     }

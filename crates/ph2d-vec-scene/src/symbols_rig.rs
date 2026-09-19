@@ -21,7 +21,7 @@ use crate::space::{Unit, Uv, add_sub, fit, poly, punch};
 // OSSO
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// **Onde fica o OMBRO**, em fracção do comprimento, contado da JUNTA (em `+X`) para a ponta.
+/// **Onde fica o OMBRO**, em fracção do comprimento, contado da JUNTA (em `−X`) para a ponta.
 ///
 /// ⚠️ **`0,2` é o número do gizmo que esta forma substitui** — lá a linha era
 /// `a + d·0.2`, com o comentário *«o ombro fica a um quinto do caminho: é onde a armadura do
@@ -35,45 +35,50 @@ const OMBRO: f64 = 0.2;
 
 /// **O OSSO** — a silhueta de armadura: larga na junta, afilada para a ponta, com o olho na junta.
 ///
-/// A caixa `a..b` é lida com a **JUNTA à direita (`+X`)** e a **PONTA à esquerda**: o `rot` que um
-/// rig publica é a direcção em que a cadeia CRESCE, logo `+X` é *«para a junta seguinte»* — e é
-/// ali que a cabeça do osso tem de estar.
+/// A caixa `a..b` é lida com a **JUNTA à esquerda (`−X`)** e a **PONTA à direita (`+X`)**: o `rot`
+/// que um rig publica é a direcção em que a cadeia CRESCE, logo `+X` é *«para a junta seguinte»* —
+/// e o osso tem de **afilar** para lá, com a cabeça na junta em que ele está pendurado.
 ///
-/// ⚠️ **Isto é o INVERSO das setas do catálogo** (`ArrowRight`, `Chevron`), que têm o bico em `+X`,
-/// e a diferença não é um acidente: uma seta aponta com a PONTA e um osso aponta com a BASE.
+/// ⭐⭐⭐ **É a mesma ponta que as setas do catálogo** (`ArrowRight`, `Chevron`) põem em `+X`, e por
+/// uma razão diferente: a seta aponta com a PONTA porque é isso que uma seta é, e o osso afila
+/// para `+X` porque a cabeça dele fica na junta ANTERIOR, que é a que o roda.
+///
+/// ⚠️⚠️ **Metade da lei NÃO está aqui: está na CAIXA.** Uma silhueta larga-à-esquerda só se lê
+/// como um osso se a junta cair sobre a POSIÇÃO, e é o [`ph2d_app_motion::motion_shape_gen`] que
+/// corta esta forma de `[0, 2s]` em vez de `[−s, s]` — pelo que o `u = 0` desta caixa é a origem
+/// local da instância. *Autorar a silhueta sem a caixa entrega um osso que roda pelo meio; autorar
+/// a caixa sem a silhueta entrega um osso pendurado pela ponta fina.*
 ///
 /// `eye` é o olho da junta como fracção do MÁXIMO que lá cabe (`0` = maciço). ⚠️ **O máximo é
 /// DERIVADO e não escolhido** — ver [`raio_do_olho`].
 #[must_use]
 pub fn bone(a: [f64; 2], b: [f64; 2], eye: f64) -> VecPath {
     let u = Unit::of(a, b);
-    // ⛔⛔⛔ **A JUNTA FICA EM `+X`, e o report do dono é a razão** (2026-09-19: *«Shape:Bone em
-    // Skeleton:Duplicator ficou 180 graus rodado»*). A primeira redacção pôs a junta em `−X` por
-    // analogia com as setas do catálogo, e medido no produto isso desenha o osso **ao contrário
-    // do que um esqueleto pede**: o `rot` de uma junta é a direcção em que a cadeia CRESCE (o
-    // `fk::resolve` põe `p[i] = p[j] + len·(cos,sin)` desse ângulo), e a peça carimbada nela tem
-    // de ser LARGA onde a junta está e afilar para a SEGUINTE — que é a cabeça-cauda do osso de
-    // armadura. Com o largo em `−X` ele ficava a apontar para a junta ANTERIOR.
+    // ⛔⛔⛔ **A JUNTA FICA EM `−X`, e foram precisos DOIS reports do dono para a pôr lá** — o de
+    // 2026-09-19 de manhã (*«Shape:Bone em Skeleton:Duplicator ficou 180 graus rodado»*) e o da
+    // tarde (*«Shape Bone deveria ser gerado por padrão a 180 graus de rotação do atual pois está
+    // invertido. […] os ossos estão rotacionando a partir do centro e não da cabeça dos ossos»*).
     //
-    // ⚠️ **A aritmética da rotação nunca esteve errada** (medido: a ponta `+X` aterra em `(0,+1)`
-    // com `rot = 90°`, que é para cima, que é onde a cadeia vai) — *o que estava trocado era qual
-    // ponta da forma eu tinha chamado de junta.*
-    let mut p = poly(
-        &u,
-        &[
-            (1.0, 0.5),
-            (1.0 - OMBRO, 0.0),
-            (0.0, 0.5),
-            (1.0 - OMBRO, 1.0),
-        ],
-    );
+    // ⚠️⚠️ **O primeiro report foi obedecido pela metade, e a metade errada.** Ele dizia que a
+    // peça saía virada, eu medi a foto dele, virei a SILHUETA — e a silhueta não era o defeito. O
+    // defeito era a forma estar **centrada na junta**: com metade do osso a recuar para trás dela,
+    // qualquer das duas orientações se lê como a outra, porque não há nada no desenho que diga
+    // qual das pontas é o pivô. *Uma forma centrada não tem como declarar uma cabeça.*
+    //
+    // ⇒ as duas metades entram juntas ou nenhuma serve: aqui a silhueta volta a ser larga em
+    // `u = 0`, e a receita corta-a numa caixa que começa na origem. Só então o «180 graus» tem
+    // significado observável.
+    //
+    // ⚠️ **A aritmética da rotação nunca esteve errada em nenhuma das duas voltas** (medido: a
+    // ponta `+X` aterra em `(0,+1)` com `rot = 90°`, que é para cima, que é onde a cadeia vai).
+    let mut p = poly(&u, &[(0.0, 0.5), (OMBRO, 0.0), (1.0, 0.5), (OMBRO, 1.0)]);
 
     let r = raio_do_olho(eye);
     if r > 1e-6 {
         // ⚠️ **O olho é centrado no OMBRO e não na junta**, e a diferença é geométrica: na junta
         // o quadrilátero tem largura ZERO (é um vértice), logo qualquer disco ali atravessa as
         // duas arestas e parte a forma. No ombro é onde ele é mais largo.
-        let mut olho = u.arc((1.0 - OMBRO, 0.5), r, r, 0.0, -360.0);
+        let mut olho = u.arc((OMBRO, 0.5), r, r, 0.0, -360.0);
         olho.pop();
         add_sub(&mut p, olho, true);
         punch(&mut p);

@@ -465,30 +465,109 @@ fn the_pivot_rides_before_the_basis_on_the_vector_route() {
     );
 }
 
-/// SONDA: para onde a PONTA local `(+1, 0)` de uma forma aterra com `rot = 90°`.
+/// ⭐⭐⭐ **A CABEÇA DO OSSO CAI SOBRE A POSIÇÃO — a metade da lei que NÃO vive na silhueta.**
+///
+/// Ordem do dono (2026-09-19): *«EM skeleton deveríamos ter um offset do centro para os bones; os
+/// ossos estão rotacionando a partir do centro e não da cabeça dos ossos»*.
+///
+/// ⚠️⚠️ **Ela não custou mecanismo nenhum, e é por isso que precisa de gate:** o
+/// [`super::instance_pose`] põe o ponto local `q` em `P + basis·(anchor + q·size)`, logo **a
+/// origem local É o pivô** — e a única coisa que decide quem é a origem de uma forma é a CAIXA de
+/// que o `cook` a corta. *Nada no código diz «pivô»; a lei é toda a escolha de um intervalo.*
+///
+/// ⛔ **O CONTROLO é obrigatório:** `lo ≈ 0` sozinho fica verde sobre uma normalização partida que
+/// pusesse TODA forma em `[0, 2]`. A circunferência é medida na mesma corrida e tem de continuar
+/// centrada — *é ela que prova que isto é uma excepção nomeada e não a lei nova da casa.*
 #[test]
-#[ignore = "sonda"]
-fn sonda_para_onde_a_ponta_vai() {
-    let r = 90.0_f32.to_radians();
-    let (sin_r, cos_r) = r.sin_cos();
+fn a_cabeca_do_osso_cai_sobre_a_posicao() {
+    // As duas formas de rig são polígonos de QUINAS (as alças coincidem com as âncoras), e o
+    // `fit` do catálogo força a bbox a preencher a caixa exactamente ⇒ as âncoras bastam.
+    let extensao_x = |k: ShapeKind| {
+        // ⚠️ `size: 1` é o que o produto de facto cozinha: a `read_unit` normaliza a geometria
+        // para raio 1 e o tamanho autorado viaja na coluna `size` (doc 89 folha 14).
+        let p = build_shape_path(&ShapeParams {
+            kind: k,
+            size: 1.0,
+            ..ShapeParams::read(super::manifest_default)
+        });
+        p.verts.iter().fold((f64::MAX, f64::MIN), |(l, h), v| {
+            (l.min(v.anchor[0]), h.max(v.anchor[0]))
+        })
+    };
+
+    for k in [ShapeKind::Bone, ShapeKind::RopeSegment] {
+        let (lo, hi) = extensao_x(k);
+        assert!(
+            lo.abs() < 1e-9,
+            "{k:?}: a cabeca tem de ser a ORIGEM local, e esta' em x = {lo}"
+        );
+        assert!(
+            (hi - 2.0).abs() < 1e-9,
+            "{k:?}: o corpo tem de chegar a x = 2 (o mesmo COMPRIMENTO das outras), e chega a {hi}"
+        );
+    }
+
+    // ⛔⛔ **O CONTROLO são DUAS formas, e a segunda foi exigida por uma mutação SOBREVIVENTE:**
+    // a `Circle` é uma das OITO tratadas por nome, com braço próprio que nunca chega ao `match`
+    // da caixa — logo ela ilibava a normalização e **não** dizia nada sobre a selectividade do
+    // braço. A `Cross` passa pela rota genérica, ao lado do osso, e é ela que reprova se alguém
+    // trocar o `_ => box_` por `_ => rig_box`. *Um controlo que não percorre o mesmo código que a
+    // metade positiva afirma sobre código que não corre.*
+    for controlo in [ShapeKind::Circle, ShapeKind::Cross] {
+        let (lo, hi) = extensao_x(controlo);
+        assert!(
+            (lo + 1.0).abs() < 1e-9 && (hi - 1.0).abs() < 1e-9,
+            "{controlo:?}: um carimbo comum continua centrado: [{lo}, {hi}]"
+        );
+    }
+}
+
+/// ⭐⭐ **E a consequência no PRODUTO: com `rot = 90°` a cabeça não se mexe e o osso aponta para
+/// cima** — a pose real, pela mesma função que o `encode` chama.
+///
+/// ⚠️ **Esta metade nasceu de uma SONDA `#[ignore]`** escrita para responder ao primeiro report do
+/// dono (*«ficou 180 graus rodado»*). Ela dizia a verdade — a ponta `+X` aterra em `(0, +1)`, que é
+/// para onde a cadeia cresce — e **eu li a resposta errada nela**: a aritmética nunca esteve
+/// trocada, o que estava era qual ponta da forma se chamava junta. *Uma sonda que responde uma
+/// pergunta e não gateia nada deixa a leitura dela por conta de quem a corre.*
+#[test]
+fn com_rot_de_90_graus_a_junta_fica_parada_e_o_osso_aponta_para_cima() {
+    let (sin_r, cos_r) = 90.0_f32.to_radians().sin_cos();
     let inst = ph2d_eval_motion::VectorInstance {
         geometry_id: 1,
         texture_id: 0,
         atlas_uv: [0.0, 0.0, 1.0, 1.0],
         premultiplied: 0.0,
-        world_pos: [0.0, 0.0],
-        size: [1.0, 1.0],
+        world_pos: [3.0, -7.0],
+        size: [0.5, 0.5],
         basis: [cos_r, sin_r, -sin_r, cos_r],
         tint: [1.0; 4],
         anchor: [0.0, 0.0],
     };
     let a = super::instance_pose(&inst, ph2d_vector::Affine::IDENTITY);
-    for (nome, q) in [("ponta (+X)", (1.0, 0.0)), ("junta (-X)", (-1.0, 0.0))] {
-        let p = a * ph2d_vector::Point::new(q.0, q.1);
-        eprintln!("  {nome} -> ({:+.3}, {:+.3})", p.x, p.y);
-    }
-    eprintln!(
-        "  (basis = [{cos_r:+.2}, {sin_r:+.2}, {:+.2}, {cos_r:+.2}])",
-        -sin_r
+
+    let cabeca = a * ph2d_vector::Point::new(0.0, 0.0);
+    assert!(
+        (cabeca.x - 3.0).abs() < 1e-9 && (cabeca.y + 7.0).abs() < 1e-9,
+        "a cabeca (q = 0) tem de aterrar NA posicao: ({}, {})",
+        cabeca.x,
+        cabeca.y
+    );
+
+    // A ponta do osso em espaço local é `x = 2` (ver o gate acima); com `size = 0,5` ela anda
+    // exactamente um metro, e com `rot = 90°` anda para CIMA.
+    //
+    // ⚠️ **A barra da ponta é `f32` e a da cabeça é EXACTA, e a assimetria é o mecanismo:** o
+    // `basis` vem em `f32` e `cosf(π/2)` vale `−4,37e-8`, não zero — logo a ponta carrega esse
+    // resíduo vezes o braço (medido: `x = 2,99999996`). A cabeça está em `q = (0, 0)`, e **zero
+    // vezes um erro é zero** ⇒ ela aterra na posição ao bit, em qualquer ângulo. *É por isso que
+    // pendurar a forma pela cabeça é mais forte do que a centrar: o pivô deixa de ter aritmética.*
+    let folga = 4.0 * f64::from(f32::EPSILON);
+    let ponta = a * ph2d_vector::Point::new(2.0, 0.0);
+    assert!(
+        (ponta.x - 3.0).abs() < folga && (ponta.y - (-7.0 + 1.0)).abs() < folga,
+        "a ponta tem de andar 1 m para CIMA: ({}, {})",
+        ponta.x,
+        ponta.y
     );
 }

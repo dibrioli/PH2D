@@ -476,7 +476,6 @@ na árvore**. Apanhada por uma conferência explícita (`grep` pelo texto mutado
 **How to apply:** uma corrida de mutação é **exclusiva da árvore** — confirme que a anterior morreu
 antes de lançar a seguinte, e **sempre** varra por `*.bak-mut` e pelo texto mutado no fim.
 
----
 
 ## ⛔⛔ O CUSTO que justifica uma cegueira pode ser um DEFEITO da régua (2026-09-19)
 
@@ -516,7 +515,6 @@ carrega: um leitor tem de saber TODAS as formas do que lê, e «todas» inclui a
 ⚠️ **E `… | tail -30 && echo ok` lê o estado do `tail`**: ele imprimiu «check ok» sobre **quatro
 `E0609`**. Quem os apanhou foi o clippy, três comandos depois.
 
----
 
 ## ⛔⛔ Uma MÉDIA não é um MÁXIMO — a fileira cabia e a peça mais larga saía cortada
 
@@ -539,7 +537,6 @@ delas cabe de sobra**. `Inherit · Fwd · Rev · PP · PP Rev` recebia `34,4 px`
   **media** com um `layout(...).height()` (que quebra) e **pintava** com `paint_text` (que elide) —
   *o espaço da segunda linha já estava reservado e a linha nunca era pintada*.
 
----
 
 ## ⛔⛔⛔ Um PISO sobre a SOMA não pergunta por ninguém
 
@@ -571,7 +568,6 @@ para não ficar verde a medir nada. Contados os rótulos **por painel**:
 — apagá-lo não acordava gate nenhum. A régua honesta é: **pintar VAZIO, armar, desarmar, pintar
 VAZIO — e as duas leituras do vazio têm de ser a mesma.**
 
----
 
 ## ⛔⛔ Uma lei que reparte com `floor` não se cumpre se os naturais forem FRACCIONÁRIOS (2026-09-19)
 
@@ -641,7 +637,6 @@ duas vezes, o painel prometeria uma coisa e o motor faria outra); e o pedido de 
 num sentido (`request_keys_tab`), ganhou o **irmão simétrico**. ⛔ Sem ele a única saída era
 **esconder** o painel, que tira a régua do tempo ao artista exactamente quando ele a quer ver.
 
----
 
 ## ⛔⛔ Uma régua que CONTA aprova a lei mudada de quadro (2026-09-18, o gatilho)
 
@@ -661,7 +656,6 @@ que se larga. ⇒ o percurso tem **quatro paragens**, e cada uma existe para **s
 ⭐ É a mesma família do `edge_max` global cego ao quad fino, do `χ` cego à almofada e da `ENTREGA`
 cega à ponta que engrossou: **a régua mede uma agregação, e o defeito vive na posição.**
 
----
 
 ## ⛔⛔ Uma afirmação sobre um ATALHO é uma medição que alguém não fez (2026-09-18)
 
@@ -689,7 +683,6 @@ estava escrita noutro sítio do repo, por quem tinha feito a mesma pergunta ante
 ⛔ A cura durável é o gate com **controlo positivo** (o próprio ESPAÇO, que TEM de ser reclamado) e
 um **controlo de alcance** (uma letra sabidamente tomada), senão a varredura mede o nada.
 
----
 
 ## ⛔⛔⛔ Uma sonda que não CONSTRÓI mede o programa anterior — e ela não fica calada, ela CONFIRMA
 
@@ -719,7 +712,6 @@ concordância lê-se como confirmação.
 nomeia-o), e a seguir a um build tem de correr até ao fim. *Sem a metade negativa, uma recusa que
 dispara sempre lê-se como a sonda a estar partida — e alguém apaga-a.*
 
----
 
 ## ⛔⛔⛔ Um gate que mede a REGRA nunca vê a POSIÇÃO (HUD, 2026-09-20)
 
@@ -766,7 +758,6 @@ ele, nunca no estado. ⚠️ A lei tinha de ser pura porque *um gate que precisa
 superfície para medir dois números está no sítio errado* — e o gate afirma o ponto fixo com o
 controlo (*a escada de facto ANDA*) primeiro, senão uma escada que devolvesse sempre o fim passaria.
 
----
 
 ## ⚠️ Adoptadas na integração de 2026-09-20 (da `teste-cascadeur`)
 
@@ -798,7 +789,6 @@ contorno fechado. *Quem move o número que tornava algo inalcançável tem de re
 ninguém reconferiu. Medido depois, pela porta do produto, sobre uma faixa de **80×** no alcance:
 
 | forma | amplitude da deformação |
-|---|---:|
 | toda forma FECHADA (`Rectangle`, `Ellipse`, `Star`, `Polygon`, `Segment`, `Pie`) | **`0,000000`** |
 | toda forma ABERTA (`Line`, `Arc`, `Spiral`) | `2,03` – `4,25` |
 
@@ -878,3 +868,48 @@ ponderação ser observável* — a mesma família do corpus no ponto neutro de 
 - ⛔⛔⛔ [Uma cena que MUDA de aspecto depois de uma wave pode ser a CURA — construa o lado convergido e meça os dois contra ele (`0,3767` contra `0,0142`)](feedback_a_photograph_found_what_no_gate_could_see.md)
 - ⛔⛔ [Gate que mede com a MESMA função que julga fica verde sobre qualquer mutação dela](feedback_a_ruler_that_is_the_law_approves_any_law.md)
 - ⛔⛔ [Uma recusa medida guarda o VEREDITO; o mecanismo escrito ao lado é hipótese, e pode mandar procurar no sítio errado](feedback_a_refusal_names_a_mechanism_and_the_mechanism_can_be_wrong.md)
+## ⛔⛔⛔ Uma forma CENTRADA no pivô não consegue declarar uma cabeça (2026-09-19)
+
+Report do dono, de manhã: *«Shape:Bone em Skeleton:Duplicator ficou 180 graus rodado.»* Eu medi a
+foto dele ao pixel (o perfil de largura por linha, dentro de um período da cadeia: o mais largo a
+**71 %**), virei a **silhueta**, medi outra vez (`27 %`) e dei por corrigido. À tarde ele voltou:
+*«deveria ser gerado a 180 graus de rotação do atual pois está invertido»* — **mais** a frase que era
+o diagnóstico inteiro: *«os ossos estão rotacionando a partir do centro e não da cabeça.»*
+
+⇒ **a orientação era INOBSERVÁVEL**: a peça era cortada de `[−s, s]`, logo o pivô caía a meio dela e
+metade do osso recuava para trás da junta. *Com o pivô ao meio, «a ponta gorda aponta para a frente»
+e «aponta para trás» produzem a MESMA leitura* — não há no desenho nada que diga qual das pontas é o
+sujeito. A medição da foto estava certa e respondia a uma pergunta que não tinha resposta.
+
+**Why:** eu tratei um report de ORIENTAÇÃO como um facto sobre a silhueta, e ele era um facto sobre
+a ÂNCORA. Virar a silhueta é um gesto que tem exactamente 50 % de hipótese de parecer certo.
+
+**How to apply:** antes de virar uma forma por causa de um report, pergunte **onde está o pivô
+dela**. Se ele é o centro, a queixa não é sobre a rotação — é sobre a âncora, e a cura tem duas
+metades que entram juntas (aqui: a silhueta larga em `u = 0` **mais** a caixa a começar na origem).
+⭐ E a cura não custou mecanismo: `instance_pose` põe o ponto local `q` em `P + basis·(anchor + q·size)`,
+logo **a origem local É o pivô** e a única coisa que a escolhe é o intervalo de que o `cook` corta a
+forma. *Nada no código diz «pivô»; a lei é toda a escolha de uma caixa.* Relacionado:
+[[feedback_a_gesture_written_in_two_halves_accepts_a_new_variant_in_only_one]].
+
+## ⛔⛔ Um gate cujo NOME é mais largo que a população que ele varre lê-se como cumprido (2026-09-19)
+
+`o_olho_cabe_dentro_da_silhueta` media **duas** das quatro arestas do osso (as que saem da junta), e
+o nome prometia a silhueta inteira. Quem o apanhou foi uma prova de mutação: pôr o olho do lado da
+ponta **sobreviveu** — ali ele fura as arestas LONGAS, que a régua não olhava. **How to apply:** ao
+escrever um gate geométrico, conte a população que ele de facto percorre e compare com o substantivo
+do nome; irmão de [[feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak]].
+
+## ⛔⛔ A ORIGEM DO MUNDO não é o centro do canvas — nos dois eixos (2026-09-19, medido)
+
+Numa cena de smoke deste app (`1930×1040`, painéis abertos) o zero fica a `720 px` da borda esquerda
+da área de desenho e a `608` da direita; a `190` do topo e a `287` da base — a faixa do grafo e a
+timeline comem o resto. ⇒ **uma cena centrada na origem só pode contar com a metade CURTA de cada
+eixo** (`±10,9 × ±3,4` em unidades de mundo, a `55,5 px` por unidade).
+
+**Why:** duas redacções seguidas de uma cena contaram com a média das duas metades — a 1.ª cortou a
+fileira de cima, a 2.ª cortou a coluna da direita, e **o gate de enquadramento passou nas duas**,
+porque a barra dele era a constante errada. *Uma barra medida ao olho é um gate a afirmar o palpite
+de quem o escreveu.* **How to apply:** meça as quatro distâncias na FOTO (a régua do topo dá a
+escala), tome o mínimo por eixo, e some a transbordância da própria peça (uma marca transborda meia
+pegada; uma forma pendurada transborda o comprimento inteiro para um lado).

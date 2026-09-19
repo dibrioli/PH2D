@@ -14,38 +14,112 @@
 //!
 //! # As DUAS metades, lado a lado
 //!
-//! | fileira | o que tem | o que se vê |
+//! | metade | o que tem | o que se vê |
 //! |---|---|---|
-//! | de cima | `motion.grid` → `motion.output` | **marcas** — cruzes, uma por posição, e mais nada |
-//! | de baixo | o MESMO grid → `motion.duplicator` ← `source.shape` (**Bone**) | as **peças** |
+//! | esquerda | `motion.grid` → `motion.output` | **marcas** — cruzes, uma por posição, e mais nada |
+//! | direita | o MESMO grid → `motion.duplicator` ← `source.shape` (**Bone**) | as **peças** |
 //!
-//! ⚠️⚠️ **A metade de baixo é o CONTROLO, e sem ela a de cima não ensina nada:** *«não desenha»* e
+//! ⚠️⚠️ **A metade da direita é o CONTROLO, e sem ela a outra não ensina nada:** *«não desenha»* e
 //! *«está partido»* têm exactamente o mesmo aspecto no ecrã, e o que os separa é ver a mesma nuvem
 //! de posições a virar coisas assim que uma forma chega.
+//!
+//! ⛔⛔ **E elas ficam LADO A LADO porque empilhadas não cabiam** — ver [`VISTA_MEIA_ALTURA`]. A
+//! foto da cena é que o disse: *um controlo que o dono não vê sem procurar não é um controlo.*
 
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Edge, NodeId, Pos};
 
 use ph2d_motion_doc::MotionDoc;
 
-/// ⭐ **`20 × 20`, o número que o dono pediu** — e ele é confortável nas duas pontas: `400`
-/// posições cabem com folga no tecto do gizmo (`ph2d_app_motion::ponto_gizmo::MAX_PONTOS`, que é
-/// `4 096` e foi MEDIDO contra o orçamento de um décimo de quadro), logo a amostra **não engata** e
-/// o que se vê é a grelha inteira, posição a posição.
-pub(super) const LADO: f32 = 20.0;
+/// **A PEGADA de uma marca, em unidades de MUNDO.**
+///
+/// A marca é derivada da pegada do elemento (`ponto_gizmo_overlay::glifo_px`), e uma corrente sem
+/// coluna `size` — que é o que uma grelha nua é — cai na IDENTIDADE dela. ⇒ *o tamanho da cruz não
+/// é um número desta cena: é aquele.*
+const MARCA: f32 = ph2d_nodegraph::attr::SIZE_IDENTITY[0];
 
-/// O vão entre posições. ⚠️ **Maior que o `1,0` de fábrica de propósito:** a marca é chrome e
-/// mede-se em píxeis de ECRÃ, logo com a grelha muito apertada as cruzes encostam-se umas às
-/// outras e a nuvem lê-se como uma mancha. Aqui elas ficam separadas em qualquer zoom razoável.
-const VAO: f32 = 1.6;
+/// O vão entre posições: a pegada de uma marca mais `20 %` de ar.
+///
+/// ⛔⛔ **Abaixo da pegada as cruzes ENCOSTAM e a nuvem lê-se como uma GRADE** — não como
+/// posições. A foto de 19/09 mostrou-o com todas as letras: a `0,4` de vão elas fundiam-se numa
+/// treliça azul contínua, e o passo (1) do roteiro (*«são cruzinhas, uma por posição»*) ensinava
+/// o contrário do que estava na tela.
+const VAO: f32 = 1.2 * MARCA;
 
-/// O tamanho da peça na fileira de baixo — a mesma ordem de grandeza do vão, para as cópias
-/// quase se tocarem e a fileira ler-se como uma superfície.
-const TAMANHO: f32 = 1.4;
+/// ⭐⭐⭐ **QUANTAS POSIÇÕES CABEM numa extensão — a régua que decide o tamanho desta cena.**
+///
+/// Duas leis puxam em sentidos opostos e **o vão não pode ceder** (ver acima): uma fila de `n`
+/// posições mede `(n − 1) × VAO` mais uma pegada de marca a transbordar, e o todo tem de caber na
+/// extensão pedida. Com `10 %` de margem isso dá `n ≤ 1 + (0,9 × extensão − MARCA) / VAO`.
+///
+/// ⛔⛔⛔ **A 1.ª redacção cravou `20 × 20` aqui, «o número que o dono pediu», e as duas frases
+/// dele eram sobre OUTRA coisa:** ele viu `360 × 360` na cena `=2` — o demo de PERFORMANCE — e
+/// leu-a como o valor de fábrica do nó (que é `3 × 3`). *Nenhuma das duas frases era sobre esta
+/// cena*, e cravar aqui um número que não cabe entrega uma grelha que o dono não consegue ler.
+///
+/// ⚠️ E ele continua **muito** abaixo do tecto do gizmo (`ponto_gizmo::MAX_PONTOS`, `4 096`), logo
+/// a amostra não engata e o que se vê é a grelha inteira, posição a posição.
+///
+/// ⚠️ **O `as u32` não é cosmético:** o lado de uma grelha é uma CONTAGEM, e o nó arredonda-o em
+/// silêncio — um gate que multiplicasse o `f32` cru esperaria uma população que a cena não monta.
+/// *Quem trunca é quem escreve o número, não quem o lê.*
+///
+/// ⛔⛔ **E a grelha é RECTANGULAR de propósito: a vista é `23,6 × 6,8` e uma grelha QUADRADA é
+/// governada pelo lado curto**, o que deitaria fora dois terços da largura — cinco marcas por
+/// metade e o ecrã vazio dos dois lados.
+const fn quantas(extensao: f32) -> f32 {
+    // O `− MARCA` está lá porque a marca da ponta transborda a nuvem por meia pegada de cada lado.
+    (1.0 + (0.9 * extensao - MARCA) / VAO) as u32 as f32
+}
 
-/// Quanto a fileira de baixo desce. ⚠️ Derivado do próprio grid (`LADO × VAO`) mais uma folga,
-/// senão as duas fileiras sobrepõem-se no dia em que alguém mexer no vão.
-const DESCIDA: f32 = -(LADO * VAO + 4.0 * VAO);
+/// Quantas posições ao longo da largura de UMA metade.
+pub(super) const COLUNAS: f32 = quantas(VISTA_MEIA_LARGURA);
+/// Quantas ao longo da altura.
+pub(super) const LINHAS: f32 = quantas(2.0 * VISTA_MEIA_ALTURA);
+
+/// ⚠️⚠️ **O PISO da derivação, e ele é ERRO DE COMPILAÇÃO de propósito.** A grelha sai de uma
+/// divisão pelo vão: quem subisse o vão (ou apertasse a vista) levava-a a `2 × 2` **sem uma linha
+/// vermelha**, e uma cena com quatro marcas não mostra a NUVEM de posições que é o assunto dela.
+///
+/// ⛔ Ele **não** pode viver num teste: um `assert!` sobre duas constantes é dobrado pelo
+/// compilador antes de correr — o clippy recusa-o em voz alta, e o `ponto_gizmo_overlay` já
+/// escreve a mesma lei por extenso. *O que morde é esta linha.*
+const _: () = assert!(
+    COLUNAS >= 5.0 && LINHAS >= 4.0,
+    "a grelha derivou para menos do que se le' como uma nuvem de posicoes"
+);
+
+/// **O que a câmera de arranque MOSTRA**, em unidades de mundo, medido na foto da cena.
+///
+/// ⛔⛔⛔ **A 1.ª redacção desta cena punha as duas metades EMPILHADAS com o vão a `1,6`, e a foto
+/// mostrou que ela era impossível:** um bloco de `20 × 20` a esse vão mede `30,4` unidades de
+/// lado, a de baixo descia mais `38,4`, e **o que a câmera de arranque mostra são `23,6 × 8,6`**
+/// ⇒ *o dono abria a cena e via CRUZES e mais nada* — a metade de baixo, que é o CONTROLO sem o
+/// qual a de cima não ensina nada, ficava três ecrãs abaixo.
+///
+/// ⚠️ **O número saiu da régua do próprio app** (a barra do topo lê `-1200 .. 1000`, com `100`
+/// dela por unidade de mundo), e a razão vertical é a do canvas — *não é um palpite de
+/// enquadramento, é o rectângulo em que a cena tem de caber.*
+/// ⚠️⚠️ **A ORIGEM DO MUNDO NÃO É O CENTRO DO CANVAS, nos DOIS eixos** (medido na foto, a
+/// `55,5 px` por unidade): o zero fica a `720 px` da borda esquerda e a `608` da direita; a `190`
+/// do topo e a `287` da base — a faixa do grafo e a timeline comem o resto. ⇒ **uma cena centrada
+/// na origem só pode contar com a metade CURTA de cada eixo**, e foi por contar com a média que a
+/// 1.ª redacção cortou a fileira de cima e a 2.ª cortou a coluna da direita.
+pub(super) const VISTA_MEIA_LARGURA: f32 = 10.9;
+pub(super) const VISTA_MEIA_ALTURA: f32 = 3.4;
+
+/// A largura de um bloco, em unidades de mundo.
+const BLOCO: f32 = (COLUNAS - 1.0) * VAO;
+
+/// **Quanto a metade com forma se afasta da outra** — um bloco mais dois vãos de intervalo.
+///
+/// ⚠️ Cada metade desloca-se METADE disto, em sentidos opostos, para o PAR ficar centrado: mover
+/// só uma delas empurraria a cena inteira para um lado da vista.
+const AFASTAMENTO: f32 = BLOCO + 2.0 * VAO;
+
+/// O tamanho da peça na metade com forma — **METADE do vão, porque o osso se pendura na CABEÇA**
+/// e mede `2 × size`: assim cada peça vai exactamente de uma posição à seguinte.
+pub(super) const TAMANHO: f32 = VAO / 2.0;
 
 /// Constrói o documento. `None` se algum tipo de nó não estiver registado.
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
@@ -61,16 +135,16 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         g.set_pos(n, Pos { x, y });
         n
     };
-    let grade = |g: &mut ph2d_nodegraph::graph::Graph, n: NodeId, dy: f32| {
-        g.set_param(n, "rows", LADO);
-        g.set_param(n, "cols", LADO);
+    let grade = |g: &mut ph2d_nodegraph::graph::Graph, n: NodeId, dx: f32, y: f32| {
+        g.set_param(n, "rows", LINHAS);
+        g.set_param(n, "cols", COLUNAS);
         g.set_param(n, "gap_x", VAO);
         g.set_param(n, "gap_y", VAO);
-        // O deslocamento vertical da fileira, autorado no nó que o produz.
-        if dy != 0.0 {
+        // O deslocamento HORIZONTAL da metade, autorado no nó que o produz.
+        if dx != 0.0 {
             let m = g.add_node("motion.move".to_string());
-            g.set_pos(m, Pos { x: 200.0, y: 260.0 });
-            g.set_param(m, "dy", dy);
+            g.set_pos(m, Pos { x: 200.0, y });
+            g.set_param(m, "dx", dx);
             let _ = g.connect(Edge {
                 from: (n, 0),
                 to: (m, 0),
@@ -81,9 +155,9 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         n
     };
 
-    // ── A fileira DE CIMA: só posições.
+    // ── A metade DA ESQUERDA: só posições.
     let so_posicoes = no(g, "motion.grid", 0.0, 0.0);
-    let cabeca = grade(g, so_posicoes, 0.0);
+    let cabeca = grade(g, so_posicoes, -0.5 * AFASTAMENTO, 0.0);
     let saida_a = no(g, "motion.output", 420.0, 0.0);
     g.connect(Edge {
         from: (cabeca, 0),
@@ -92,12 +166,15 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     })
     .ok()?;
 
-    // ── A fileira DE BAIXO: o MESMO grid, vestido.
+    // ── A metade DA DIREITA: o MESMO grid, vestido.
     let com_forma = no(g, "motion.grid", 0.0, 260.0);
-    let corpo = grade(g, com_forma, DESCIDA);
+    let corpo = grade(g, com_forma, 0.5 * AFASTAMENTO, 260.0);
     let forma = no(g, "source.shape", 0.0, 380.0);
     g.set_param(forma, ph2d_node_motion_shape::param::KIND, osso);
     g.set_param(forma, ph2d_node_motion_shape::param::SIZE, TAMANHO);
+    // ⭐ A mesma esbelteza da cena do osso: com o `aspect` de fábrica (`1`) a peça sai tão alta
+    // quanto longa, e uma grelha deles lê-se como um mosaico de blocos, não como ossos.
+    g.set_param(forma, ph2d_node_motion_shape::param::ASPECT, 1.0 / 3.0);
     let dup = no(g, "motion.duplicator", 220.0, 320.0);
     let saida_b = no(g, "motion.output", 420.0, 320.0);
     // ⚠️ A forma na porta `0`, os pontos na `1` — a ordem que o manifesto do duplicador declara.
@@ -120,23 +197,25 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
 /// O roteiro que o dono segue. ⚠️ **Cada passo nomeia o que aparece NA TELA** (§0.8).
 pub(super) fn announce() {
-    let n = (LADO * LADO) as u32;
+    let n = (COLUNAS * LINHAS) as u32;
     eprintln!(
-        "\n[pontos] DUAS fileiras do MESMO grid de {LADO:.0}x{LADO:.0} ({n} posicoes cada).\n\
+        "\n[pontos] DUAS metades do MESMO grid de {COLUNAS:.0}x{LINHAS:.0} ({n} posicoes cada),\n\
+         lado a lado — as duas cabem no ecra' sem mexer na camera.\n\
          \n\
-         EM CIMA  = so' posicoes: o grid vai direito ao Output. Nao ha' forma nenhuma.\n\
-         EM BAIXO = as MESMAS posicoes com uma forma, por um Duplicator.\n\
+         A' ESQUERDA = so' posicoes: o grid vai direito ao Output. Nao ha' forma nenhuma.\n\
+         A' DIREITA  = as MESMAS posicoes com uma forma, por um Duplicator.\n\
          \n\
-         (1) Olhe a fileira DE CIMA: sao CRUZINHAS, uma por posicao — nao ha' quadrado nenhum.\n    \
-         Elas sao do EDITOR: nao entram no que o app entrega.\n\
-         (2) Olhe a de BAIXO: as mesmas posicoes, agora com OSSOS. E' o que um Duplicator faz.\n\
-         (3) Clique no cartao `Grid` de cima. Ele tem um (!) no canto — carregue nele e leia.\n\
+         (1) Olhe a metade da ESQUERDA: sao CRUZINHAS, uma por posicao — nao ha' quadrado\n    \
+         nenhum. Elas sao do EDITOR: nao entram no que o app entrega.\n\
+         (2) Olhe a da DIREITA: as mesmas posicoes, agora com OSSOS. E' o que um Duplicator faz.\n\
+         (3) Clique no cartao `Grid` da esquerda. Ele tem um (!) no canto — carregue e leia.\n\
          (4) No mesmo cartao, mexa em `Gap X` / `Gap Y`: as cruzes AFASTAM-SE, e o centro da\n    \
          nuvem fica parado. (Era isto que estava quebrado no report do `gap y`.)\n\
-         (5) Carregue no cartao `Duplicator` de baixo e no `Shape`: sao eles que fazem pixels.\n\
+         (5) Carregue no cartao `Duplicator` da direita e no `Shape`: sao eles que fazem pixels.\n\
          \n\
-         DEU ERRADO se: a fileira de cima tiver QUADRADOS em vez de cruzes; se as cruzes nao\n    \
-         aparecerem de todo; ou se mexer no `Gap` fizer a nuvem VIAJAR em vez de espacar.\n"
+         DEU ERRADO se: a metade da esquerda tiver QUADRADOS em vez de cruzes; se as cruzes nao\n    \
+         aparecerem de todo; se so' aparecer UMA das duas metades; ou se mexer no `Gap` fizer a\n    \
+         nuvem VIAJAR em vez de espacar.\n"
     );
 }
 

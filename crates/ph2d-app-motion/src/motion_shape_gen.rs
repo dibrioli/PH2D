@@ -87,6 +87,29 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
     let corner = f64::from(p.corner.clamp(0.0, 1.0)) * s;
     let sq = ([-s, -s], [s, s]);
     let box_ = ([-s, -ry], [s, ry]);
+    // ⭐⭐⭐ **A CAIXA DOS SÍMBOLOS DE RIG COMEÇA NA ORIGEM** — ordem do dono (2026-09-19):
+    // *«EM skeleton deveríamos ter um offset do centro para os bones; os ossos estão rotacionando
+    // a partir do centro e não da cabeça dos ossos»*.
+    //
+    // ⚠️⚠️ **O eixo desta lei é o [`instance_pose`]**, e ela não custa uma linha de plumbing: o
+    // ponto local `q` de uma forma vai para `P + basis·(anchor + q·size)`, logo **a origem local
+    // É o pivô**. Toda a outra forma do catálogo é cortada de `[−s, s]`, ficando com a origem no
+    // MEIO — que é o que um carimbo quer. Um osso não é um carimbo: ele é um MEMBRO, e um membro
+    // pendura-se da junta. Cortá-lo de `[0, 2s]` põe a cabeça em `q = (0, 0)` e deixa-o afilar
+    // para `+X`, que é a direcção que o `fk` publica.
+    //
+    // ⚠️ **O COMPRIMENTO não muda**: `[−s, s]` e `[0, 2s]` medem os mesmos `2s`, e o `ry` nem é
+    // tocado ⇒ um osso do mesmo `size` continua do mesmo tamanho, só que pendurado noutro ponto.
+    // *Era a única forma de obedecer sem redefinir o que `size` quer dizer.*
+    //
+    // ⛔ **O segmento de corda entra pela MESMA porta**, e não por simetria de gosto: o gizmo que
+    // ele substituiu punha *«uma marca em cada nó»*, e um segmento centrado põe os dois nós a
+    // meio caminho ENTRE as posições. Pendurado na origem, ele vai do nó `i` ao nó `i+1` e as
+    // marcas caem onde o gizmo as punha.
+    //
+    // ⚠️ E ela é lida pelo `fit` do catálogo, que força a bbox da forma a preencher exactamente
+    // esta caixa — logo não há como uma silhueta «esquecer» de a honrar.
+    let rig_box = ([0.0, -ry], [2.0 * s, ry]);
     // ⚠️ **A SENTINELA do `sweep`** (doc 89 folha 14): `0` quer dizer *"como a forma nasce"*,
     // e não *"uma fatia de zero graus"*. Sem ela o default não reduz — o círculo passa `0`
     // (que a biblioteca lê como volta inteira) e a `Pie` passa o ângulo canónico dela.
@@ -271,13 +294,23 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
                 VecKind::RopeSegment if p.inner != 0.0 => v[0] = inner,
                 _ => {}
             }
-            (k, box_.0, box_.1, v)
+            // ⭐ O osso e o segmento de corda penduram-se na CABEÇA (ver `rig_box`).
+            let caixa = match k {
+                VecKind::Bone | VecKind::RopeSegment => rig_box,
+                _ => box_,
+            };
+            (k, caixa.0, caixa.1, v)
         }
     }
 }
 
-/// Build the `VecPath` for a shape descriptor (ADR-0154). World-unit geometry,
-/// centred at the origin; the instance transform places, rotates and scales it.
+/// Build the `VecPath` for a shape descriptor (ADR-0154). World-unit geometry; the
+/// instance transform places, rotates and scales it.
+///
+/// ⚠️ **Nem toda forma é centrada na origem, e a excepção é uma LEI:** os dois símbolos de rig
+/// (`Bone`, `RopeSegment`) são cortados de `[0, 2s]` para que a origem local seja a CABEÇA — ver
+/// o `rig_box` do [`vec_recipe`]. *Escrever «centrada na origem» aqui era a promessa que o
+/// report do dono de 19/09 desmentiu.*
 ///
 /// Everything goes through `ph2d_vec_scene::cook`, which declares itself the single
 /// door for parametric geometry — *"o `ShapeTool` e o re-cook da forma viva passam

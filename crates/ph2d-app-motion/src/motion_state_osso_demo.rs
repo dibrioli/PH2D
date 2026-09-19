@@ -37,6 +37,13 @@ const JUNTAS: f32 = 12.0;
 /// afastar a vista antes de ver o que ela existe para mostrar.*
 const OSSO: f32 = 0.6;
 
+// ⚠️⚠️ **O `±12,8` da nota acima é a metade LONGA do eixo, e isso foi medido depois** (19/09, na
+// foto da cena irmã `=124`): a origem do mundo **não é o centro do canvas** — ela fica a `720 px`
+// da borda esquerda e a `608` da direita —, logo uma cena centrada na origem só pode contar com
+// `±10,9`. ⇒ **esta cena cabe por `0,17` unidades, e só porque a coluna curva se estende para o
+// lado LONGO**; a foto de 19/09 prova que ela cabe hoje, e quem lhe mexer nos números tem de
+// re-medir contra `pontos_demo::VISTA_MEIA_LARGURA`, que é o valor honesto.
+
 /// Quanto cada junta vira em relação à anterior, na coluna CURVA.
 ///
 /// ⚠️ **`14°` é derivado e não escolhido:** `JUNTAS × 14° ≈ 168°`, que é uma cadeia a fechar
@@ -47,11 +54,26 @@ const CURVA: f32 = 14.0;
 /// O tamanho do osso — **METADE do vão, porque o `size` é o SEMI-eixo**.
 ///
 /// ⛔⛔ **A primeira redacção usou o vão inteiro e a foto mostrou porquê:** a receita do
-/// `source.shape` corta toda forma da caixa `[-s, -ry] .. [s, ry]`, logo o comprimento desenhado
-/// é `2 × size`. Com `size = OSSO` cada osso media o DOBRO do vão entre duas juntas, e a cadeia
-/// saía como uma massa branca contínua em que não se distinguia peça nenhuma — *e muito menos
-/// para que lado cada uma aponta*, que é o que a cena existe para mostrar.
+/// `source.shape` corta toda forma de uma caixa de LARGURA `2 × size`, logo o comprimento
+/// desenhado é `2 × size`. Com `size = OSSO` cada osso media o DOBRO do vão entre duas juntas, e a
+/// cadeia saía como uma massa branca contínua em que não se distinguia peça nenhuma — *e muito
+/// menos para que lado cada uma aponta*, que é o que a cena existe para mostrar.
+///
+/// ⭐ **E desde o 2.º report do dono (19/09) o osso pendura-se na CABEÇA** (a caixa dele é
+/// `[0, 2s]` e não `[−s, s]`), logo com este número cada peça vai **exactamente** da junta em que
+/// está à seguinte — a cadeia ladrilha, em vez de cada osso montar metade do vizinho.
 const TAMANHO: f32 = OSSO / 2.0;
+
+/// ⭐⭐ **A ESBELTEZA do osso, e ela é DERIVADA da própria silhueta.**
+///
+/// O `aspect` multiplica o semi-eixo `y` da caixa, logo a altura do osso é `2 × aspect × size` e
+/// o comprimento é `2 × size` ⇒ **`1/3` é, à letra, «três vezes mais comprido do que largo»**.
+///
+/// ⛔⛔ **Sem ele a foto mostra BLOCOS e não ossos:** o valor de fábrica do `aspect` é `1` — o que
+/// serve um carimbo qualquer e faz desta forma um quadrado —, e a peça sai tão alta quanto longa.
+/// ⚠️ *A alavanca não é nova: o cabeçalho do [`ph2d_vec_scene::symbols_rig`] já declara que o
+/// `OMBRO` não é knob **porque o `aspect` é a alavanca** que muda o que o olho de facto lê.*
+const ESBELTEZA: f32 = 1.0 / 3.0;
 
 /// ⭐⭐⭐ **A ONDA da coluna do meio** — a *«simulação com ele»* que o dono pediu.
 ///
@@ -170,6 +192,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         let forma = no(g, "source.shape", 0.0, y + 120.0);
         g.set_param(forma, ph2d_node_motion_shape::param::KIND, osso);
         g.set_param(forma, ph2d_node_motion_shape::param::SIZE, TAMANHO);
+        g.set_param(forma, ph2d_node_motion_shape::param::ASPECT, ESBELTEZA);
         let dup = no(g, "motion.duplicator", 380.0, y);
         // ⚠️ A forma na porta `0`, os pontos na `1` — a ordem do manifesto do duplicador.
         for (de, porta) in [(forma, 0u16), (corpo, 1)] {

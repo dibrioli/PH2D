@@ -54,6 +54,151 @@ const PROFUNDIDADES: [(&str, f32); 4] = [
     ("g100", 1.00),
 ];
 
+/// ⏱️⛔⛔⛔ **QUANDO É QUE A CURA SE VÊ? — a sonda que o report *«não vejo diferença»* obrigou.**
+///
+/// O dono correu as duas metades lado a lado e leu a **mesma imagem**. ⚠️ Antes de procurar um fio
+/// partido, a pergunta certa é *de que tamanho é o efeito NAS DEFINIÇÕES DELE* — porque a lei mexe
+/// na saturação **relativa entre canais**, e a cena `=33` abre com `subsurface_color` no valor de
+/// omissão, que é **cinzento** (`0,8 · 0,8 · 0,8`).
+///
+/// ⛔ *Uma lei que muda o contraste entre canais quase não tem o que fazer num material onde os três
+/// canais já são iguais* — e a medição de onde ela veio (§17) usou um jade **saturado**
+/// (`0,75 · 0,35 · 0,35`), com a subsuperfície a `1` e o especular a `0`.
+///
+/// Esta sonda varre as combinações e imprime o que o **OLHO** recebe (bytes), não a lei nua.
+#[test]
+#[ignore = "sonda: imprime uma tabela, não afirma"]
+fn sonda_quando_a_cura_se_ve() {
+    let olhar = ph2d_view_transform::Look::default();
+    let bytes = |c: [f32; 3]| -> [i32; 3] {
+        olhar.apply(c).map(|v| {
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                (v.clamp(0.0, 1.0) * 255.0 + 0.5) as i32
+            }
+        })
+    };
+    println!(
+        "\n  ── QUANDO A CURA SE VÊ (bytes do olho, luz branca de π, κ = 1/0,42) ──\n    \
+         cor da subsup.  · peso · espec ·  N·L ·      SEM a cura ·     COM a cura · Δ máx"
+    );
+    for (nome, cor) in [
+        ("CINZENTO .8", [0.8f32, 0.8, 0.8]),
+        ("o JADE §17 ", [0.75, 0.35, 0.35]),
+        ("VERMELHO 1 ", [1.0, 0.0, 0.0]),
+        ("âmbar      ", [0.9, 0.55, 0.2]),
+    ] {
+        for (peso_ss, espec) in [(0.514f32, 1.0f32), (1.0, 0.0)] {
+            for ndl in [0.4f32, 0.0, -0.3] {
+                let faz = |cura: f32| {
+                    let s = ph2d_material::OpenPbr {
+                        subsurface_weight: peso_ss,
+                        subsurface_color: cor,
+                        subsurface_radius: 1.0,
+                        subsurface_radius_scale: [1.0, 0.5, 0.25],
+                        subsurface_depth_hue: cura,
+                        specular_weight: espec,
+                        geometry_thin_walled: false,
+                        ..ph2d_material::OpenPbr::default()
+                    }
+                    .prepare()
+                    .at_curvature(1.0 / RAIO_DA_PECA);
+                    let l = [(1.0 - ndl * ndl).max(0.0).sqrt(), 0.0, ndl];
+                    bytes(s.direct([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], l, [1.0; 3]))
+                };
+                let (a, b) = (faz(0.0), faz(1.0));
+                let d = (0..3).map(|k| (a[k] - b[k]).abs()).max().unwrap_or(0);
+                println!(
+                    "    {nome} · {peso_ss:.2} ·  {espec:.0}   · {ndl:>4.1} · {a:>3?} · {b:>3?} · \
+                     {d:>3}{}",
+                    if d >= 3 { "  ⭐ VISÍVEL" } else { "" }
+                );
+            }
+        }
+    }
+    println!(
+        "\n    ⚠️ Um byte de diferença é INVISÍVEL num ecrã. A lei precisa de canais com valores\n \
+         \x20     DIFERENTES entre si para ter o que mover — num material cinzento ela quase não age."
+    );
+}
+
+/// ⏱️⭐⭐⭐ **O QUADRO INTEIRO, os dois lados — quantos bytes o ECRÃ de facto muda.**
+///
+/// ⛔⛔ A [`sonda_quando_a_cura_se_ve`] mede a lei com radiância unitária, que é a lei e não a CENA:
+/// os bytes dela são todos baixos porque a lâmpada do produto é outra. *Prometer visibilidade a
+/// partir daquela tabela seria prometer sobre outro programa* — esta renderiza a `=33` de verdade,
+/// pelo mesmo caminho do smoke, e conta píxeis.
+#[test]
+#[ignore = "sonda: imprime uma tabela, não afirma"]
+fn sonda_o_ecra_com_e_sem_a_cura() {
+    let mut cam = Orbit::default();
+    cam.half_extent *= 0.42;
+    cam.target = [0.55, 0.0, 0.0];
+    let doc = crate::smoke::scenes::edge::cena_33().expect("a cena");
+    let (onde, luz) = crate::lights::opening_light(&cam);
+    println!("\n  ── O QUADRO INTEIRO da `=33`, com e sem a cura ──");
+    println!("    material            · peso · Δ médio · Δ p99 · Δ MÁX · px mudados");
+    for (nome, cor, peso_ss, espec) in [
+        ("cinzento (a cena)  ", [0.8f32, 0.8, 0.8], 0.514f32, 1.0f32),
+        ("cinzento, sss=1    ", [0.8, 0.8, 0.8], 1.0, 0.0),
+        ("JADE (a medição)   ", [0.75, 0.35, 0.35], 1.0, 0.0),
+        ("JADE, como a cena  ", [0.75, 0.35, 0.35], 0.514, 1.0),
+        ("âmbar, sss=1       ", [0.9, 0.55, 0.2], 1.0, 0.0),
+    ] {
+        let faz = |cura: f32| {
+            let (_, _, px) = quadro(&Quadro {
+                doc: &doc,
+                m: ph2d_material::OpenPbr {
+                    subsurface_weight: peso_ss,
+                    subsurface_color: cor,
+                    base_color: cor,
+                    subsurface_radius: 1.0,
+                    subsurface_radius_scale: [1.0, 0.5, 0.25],
+                    subsurface_depth_hue: cura,
+                    specular_weight: espec,
+                    geometry_thin_walled: false,
+                    ..ph2d_material::OpenPbr::default()
+                },
+                cam: &cam,
+                onde,
+                luz,
+                com_sombra: true,
+                chao: None,
+                sem_ceu: false,
+            });
+            px
+        };
+        let (a, b) = (faz(0.0), faz(1.0));
+        let mut deltas: Vec<i32> = Vec::new();
+        for i in 0..(W as usize) * (H as usize) {
+            let q = i * 4;
+            let soma = u32::from(a[q]) + u32::from(a[q + 1]) + u32::from(a[q + 2]);
+            if soma > 30 {
+                deltas.push(
+                    (0..3)
+                        .map(|k| i32::from(a[q + k]).abs_diff(i32::from(b[q + k])) as i32)
+                        .max()
+                        .unwrap_or(0),
+                );
+            }
+        }
+        deltas.sort_unstable();
+        let n = deltas.len().max(1);
+        #[allow(clippy::cast_precision_loss)]
+        let media = deltas.iter().sum::<i32>() as f32 / n as f32;
+        let p99 = deltas[(n * 99 / 100).min(n - 1)];
+        let maximo = deltas.last().copied().unwrap_or(0);
+        let mudados = deltas.iter().filter(|d| **d >= 2).count();
+        println!(
+            "    {nome} · {peso_ss:.2} · {media:>7.2} · {p99:>5} · {maximo:>5} · {mudados:>5} de {n}"
+        );
+    }
+    println!(
+        "\n    ⚠️ Lado a lado, um olho treinado apanha `2`–`3` bytes numa área grande; abaixo disso\n \
+         \x20     a promessa de «vai ver a diferença» é falsa, e é ela que este número julga."
+    );
+}
+
 /// `R/B` **linear** sobre uma máscara fixa.
 ///
 /// ⭐ Em linear o quociente é **invariante à exposição** (os dois canais escalam juntos), logo aqui

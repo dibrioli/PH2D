@@ -43,11 +43,13 @@ fn o_patio_cobre_mais_do_que_a_vista_enquadra() {
         "a grelha tem {altura} m de alto e a vista enquadra {vista_h}"
     );
     assert!(largura > altura, "e o ecrã é mais largo que alto");
-    // ⭐ **E o PASSO é menor que a vista** — senão o herói pode parar entre duas fileiras e não ter
-    // um único poste na tela, que é o defeito de volta num sítio só.
+    // ⭐⭐ **E o PASSO é menor que METADE da vista, e a FOTO é que o corrigiu:** esta régua media a
+    // JANELA, e o que o dono vê é a **BANDA** que sobra com a timeline aberta — ~metade dela. Com
+    // `5` m de passo a foto mostrou **uma** fileira de postes atrás da bomba.
     assert!(
-        POSTE_PASSO < vista_h,
-        "com passo {POSTE_PASSO} numa vista de {vista_h} há sítios sem poste nenhum"
+        POSTE_PASSO < vista_h * 0.5,
+        "com passo {POSTE_PASSO} numa BANDA de ~{:.1} m há sítios com uma fileira só",
+        vista_h * 0.5
     );
 }
 
@@ -227,4 +229,41 @@ fn a_cena_atribui_identidade() {
     let cam = ph2d_ecs::active_camera_of(sim.world_mut());
     assert!(cam.is_some(), "a cena tem de ter uma câmera ACTIVA");
     assert!(sim.world().get::<StableId>(cam.unwrap()).is_some());
+}
+
+/// ⭐⭐⭐ **A BOMBA CABE NA VISTA quando a cena abre** — a régua que a FOTO obrigou a escrever.
+///
+/// ⛔⛔ **Ela nasceu de um defeito que os DEZ gates acima não viam:** a 1.ª redacção punha o herói a
+/// `5` m da bomba, a câmera segue o herói, e a banda de canvas que sobra com a timeline aberta
+/// enquadra **~6 m** — logo o quadrado vermelho do passo (1) ficava FORA DO ECRÃ. *Nenhum gate de
+/// «a cena tem as três peças» vê isso: as três peças estavam lá.*
+///
+/// ⚠️ **A barra é a META-ALTURA da vista dividida por DOIS**, e a divisão não é folga: ela é o preço
+/// medido de a timeline abrir junto (o prólogo abre-a, porque o passo (6) manda parar a corrida).
+#[test]
+fn a_bomba_cabe_na_vista_quando_a_cena_abre() {
+    let (mut sim, m) = montada();
+    let bomba = Entity::from_bits(m.escolhido);
+    let pos_bomba = sim.world().get::<Transform>(bomba).unwrap().translation;
+    // Onde a câmera vai pousar no 1.º quadro: em cima de quem ela segue (`settled = false`).
+    let mundo = sim.world_mut();
+    let alvo = mundo
+        .query::<(&Name, &ph2d_physics_ecs::TopDownPlayer, &Transform)>()
+        .iter(mundo)
+        .next()
+        .map(|(_, _, t)| t.translation)
+        .expect("a cena tem de ter quem a câmera siga");
+    let meia = ph2d_ecs::GameCamera::default().height_world * 0.5;
+    let dy = (pos_bomba.y - alvo.y).abs();
+    assert!(
+        dy < meia * 0.5,
+        "a bomba está a {dy:.2} m de quem a câmera segue, e com a timeline aberta só cabem \
+         ~{:.2} m: o quadrado vermelho do passo (1) fica FORA DO ECRÃ",
+        meia
+    );
+    // ⭐ E o CONTROLO: ela não nasce EM CIMA dele, senão o herói e o realce tapam-na.
+    assert!(
+        dy > 0.5,
+        "a bomba tem de estar VISÍVEL ao lado do herói, não debaixo dele: {dy:.2} m"
+    );
 }

@@ -51,16 +51,29 @@ pub const TECLA_NOME: &str = crate::trigger_smoke::TECLA_NOME;
 /// ⚠️ **O número é MEDIDO pela vista E pelo ALCANCE, e a 1.ª redacção foi REPROVADA por um gate
 /// desta crate:** com `7 × 5` a `3` m o pátio media `18` m de largura e a fonte alcançava `18` ⇒
 /// *o dono não conseguia ANDAR PARA FORA do alcance sem sair do pátio*, e o passo (2) do roteiro
-/// era inalcançável. A grelha é `9 × 5` a `5` m ⇒ **`40 × 20` m**, o dobro do alcance.
+/// era inalcançável. A grelha é `13 × 9` a `3` m ⇒ **`36 × 24` m**, o dobro do alcance.
 ///
-/// ⚠️ **E o PASSO é menor que a altura da vista** (`5` contra `11,25`), que é o que garante que há
-/// sempre postes na tela em qualquer sítio onde o herói pare — sem isso ele podia parar entre duas
-/// fileiras e o abanão ficava invisível ali, que é o defeito de volta num sítio só.
-pub const POSTES_X: i32 = 9;
+/// ⚠️⚠️ **E o PASSO é menor que METADE da altura da vista, e a FOTO é que o corrigiu:** a régua
+/// media a JANELA (`11,25` m) e o que o dono vê é a **BANDA** que sobra com a timeline aberta, que é
+/// ~metade dela. Com `5` m de passo a foto mostrou **uma** fileira; com `3` mostra três. *Um gate que
+/// mede o enquadramento da janela aprova uma cena que o artista vê cortada ao meio.*
+pub const POSTES_X: i32 = 13;
 /// Ver [`POSTES_X`].
-pub const POSTES_Y: i32 = 5;
+pub const POSTES_Y: i32 = 9;
 /// O passo da grelha, em metros. Ver [`POSTES_X`].
-pub const POSTE_PASSO: f32 = 5.0;
+pub const POSTE_PASSO: f32 = 3.0;
+
+/// ⭐⭐⭐ **Onde o herói nasce, e a FOTO é que o decidiu** (`docs/Components/ferramentas/fotografa_cena.sh`).
+///
+/// ⛔⛔ **A 1.ª redacção punha-o a `−5` m da bomba e a FOTO mostrou a bomba FORA DO ECRÃ**, com a
+/// suíte inteira verde: a câmera segue o herói, e a banda do canvas que sobra com a timeline aberta
+/// enquadra **~6 m** — logo `5` m de distância põem o sujeito do passo (1) fora da vista. *Um passo
+/// que manda olhar para um quadrado vermelho que não está na tela é a espécie que o `CLAUDE.md`
+/// §5.0 chama de pior que uma cena ausente.*
+///
+/// ⚠️ **E ele não nasce EM CIMA dela** — a `1,5` m: em cima, a bomba fica tapada pelo herói e pelo
+/// realce da selecção, e o dono não vê o que explodiu.
+pub const HEROI_Y: f32 = -1.5;
 
 const CHAO_RGBA: [f32; 4] = [0.13, 0.14, 0.17, 1.0];
 const POSTE_RGBA: [f32; 4] = [0.42, 0.45, 0.52, 1.0];
@@ -81,7 +94,7 @@ fn patio(world: &mut World) {
     // ordem de CRIAÇÃO, logo quem nasce primeiro desenha por baixo.
     world.spawn((
         Name::new("Ground"),
-        Sprite::atlas(WHITE_TILE_KEY, [48.0, 28.0], CHAO_RGBA),
+        Sprite::atlas(WHITE_TILE_KEY, [44.0, 32.0], CHAO_RGBA),
         Transform::from_translation(Vec2::ZERO),
     ));
     for iy in 0..POSTES_Y {
@@ -108,7 +121,7 @@ fn cena_um(world: &mut World) -> Entity {
         .spawn((
             Name::new("Heroi"),
             Sprite::atlas(WHITE_TILE_KEY, [0.9, 0.9], HEROI_RGBA),
-            Transform::from_translation(Vec2::new(0.0, -5.0)),
+            Transform::from_translation(Vec2::new(0.0, HEROI_Y)),
             ph2d_physics_ecs::TopDownPlayer::from_law(TopDownLaw {
                 speed: 6.0,
                 direction: DirectionMode::Free,
@@ -152,7 +165,7 @@ fn cena_um(world: &mut World) -> Entity {
     // a câmera a apanhar o herói.
     world.spawn((
         Name::new("Camera"),
-        Transform::from_translation(Vec2::new(0.0, -5.0)),
+        Transform::from_translation(Vec2::new(0.0, HEROI_Y)),
         GameCamera::default(),
         CameraFollow {
             target: "Heroi".to_owned(),
@@ -179,7 +192,8 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
          (2) ande para LONGE com as SETAS (a camera segue o quadrado azul) e carregue no \
          {TECLA_NOME} outra vez: o MESMO estrondo abana MENOS. Va' ainda mais longe e ele deixa de \
          chegar\n\
-         (3) no painel da direita (a «Bomba» ja' esta' escolhida) esta' a seccao SHAKE EMITTER: \
+         (3) role o painel da direita ate' ao fim (a «Bomba» ja' esta' escolhida): a seccao \
+         SHAKE EMITTER e' onde ela grita. \
          suba o «Nothing Beyond» de 18 para 40 e repita o passo (2) — agora ele chega de longe\n\
          (4) na Hierarchy escolha a «Camera»: a seccao CAMERA SHAKE e' o COMO. Suba a «Amplitude» \
          e baixe o «Decay» para 0,5; carregue no {TECLA_NOME} e veja um abanao grande e longo\n\

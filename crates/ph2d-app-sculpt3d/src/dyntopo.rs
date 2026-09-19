@@ -86,6 +86,67 @@ impl Default for Dyntopo {
 /// tem com a pista do raio.*
 pub(super) const DETAIL_STEPS: [(f32, &str); 3] = [(0.15, "grosso"), (0.5, "medio"), (1.0, "fino")];
 
+/// Quantas passagens cada um dos dois campos da retícula leva por carimbo.
+///
+/// ⛔⛔ **Número MEDIDO, e a medição refutou a hipótese natural:** o risco que a
+/// pesquisa nomeou para esta wave — *«a retícula de um vizinho discorda da do
+/// outro por uma célula»* — **não é convergência**. A escada `1 · 2 · 3 · 4 · 6
+/// · 8 · 16` no lado de célula que shipa:
+///
+/// | rondas | grade | vinco p50 | vinco p90 |
+/// |---|---|---|---|
+/// | `1` | `61,8 %` | `1,059°` | `2,810°` |
+/// | **`2`** | **`64,2 %`** | **`0,994°`** | **`2,620°`** |
+/// | `3` | `64,3 %` | `0,963°` | `2,653°` |
+/// | `6` | `64,4 %` | `0,953°` | `2,631°` |
+/// | `16` | `65,4 %` | `0,977°` | `2,661°` |
+///
+/// ⇒ **o patamar é em `2`**, e o que sobra acima dele é relógio. **Medido em
+/// `--release`, o mínimo de cinco** (`diag_o_relogio_da_reticula`), com a pegada
+/// a crescer porque o pincel mede píxeis e a malha adensa:
+///
+/// | vértices | pegada | `6` rondas | **`2` rondas** |
+/// |---|---|---|---|
+/// | `5 276` | `21` | `0,328 ms` | **`0,099 ms`** |
+/// | `21 098` | `115` | `1,490 ms` | **`0,499 ms`** |
+/// | `84 386` | `539` | `7,710 ms` (**96 %** do orçamento) | **`2,435 ms`** (`30 %`) |
+///
+/// ⚠️ **O recurso é o orçamento do carimbo (`8 ms`)** e o custo é **linear na
+/// PEGADA** (`~4,5 µs` por vértice a `2` rondas), nunca na peça — é isso que a
+/// [`crate::regiao`] existe para garantir.
+///
+/// ⚠️⚠️ **A primeira corrida desta escada leu «sem tendência» e estava a medir
+/// outro programa:** ela varreu as rondas com o [`LADO_DA_CELULA`] em `1,0`,
+/// onde TODAS as leituras são más — *uma escada corrida no regime errado
+/// responde sobre um produto que não existe*. Sonda: `diag_a_escada_das_rondas`.
+pub(crate) const RONDAS_DA_GRELHA: usize = 2;
+
+/// O lado da célula, em aresta média da pegada.
+///
+/// ⭐⭐⭐ **É ESTA a alavanca, e a escada é brutal** (peça da cena `=49`, rumo
+/// `x`, com o vinco a ser o que a LUZ mostra):
+///
+/// | `k` | grade | vinco p50 | vinco p90 |
+/// |---|---|---|---|
+/// | `0,80` | **`64,9 %`** | **`0,96°`** | **`2,70°`** |
+/// | `0,90` | `64,9 %` | `1,13°` | `3,27°` |
+/// | `0,931` | `64,1 %` | `1,20°` | `3,49°` |
+/// | `1,00` | `57,3 %` | `2,13°` | `20,64°` |
+/// | `1,10` | `45,4 %` | `5,90°` | `98,49°` |
+/// | `1,25` | `39,8 %` | `15,99°` | `126,42°` |
+///
+/// ⚠️ **O recurso é a CAPACIDADE da célula:** um quadrado de lado `e` cobre `e²`
+/// por vértice e um triângulo equilátero de aresta `e` cobre `0,866 e²` ⇒ pedir
+/// a uma malha de triângulos que pouse numa grelha quadrada do **mesmo** lado
+/// empilha vértices, e um empilhamento é uma dobra. O ponto de empate teórico é
+/// `√0,866 = 0,931`, e a medição põe o joelho **abaixo** dele — entre `0,931` e
+/// `1,00` o vinco p90 salta `5,9×`.
+///
+/// ⛔ **Abaixo de `0,80` não se mediu ganho:** `0,80` e `0,90` leem a mesma
+/// grade (`64,9 %`), logo o que `0,80` compra é só o vinco, e ele já está ao
+/// nível da malha **por pentear**.
+pub(crate) const LADO_DA_CELULA: f32 = 0.80;
+
 impl Sculpt3dScene {
     /// Liga/desliga. Devolve `(ligado, faces trianguladas)` — o segundo é zero
     /// quando a malha já era de triângulos, e é o número que o log mostra
@@ -289,7 +350,11 @@ impl Sculpt3dScene {
         // como no deslocamento, porque as duas metades leem a **mesma** porta.
         let forca = crate::space::pente_do_traco(self.dyntopo.armed, self.brush.pente);
         let direccao = self.stroke.direccao_do_traco(centre);
-        let pente = (forca > 0.0 && verbo.honra_o_pente()).then_some(Pente { direccao, forca });
+        let pente = (forca > 0.0 && verbo.honra_o_pente()).then_some(Pente {
+            direccao,
+            forca,
+            queda: self.brush.falloff,
+        });
         let mut births = std::mem::take(&mut self.dyn_births);
         let mut remap = std::mem::take(&mut self.dyn_remap);
         let mesh = self.objects[self.active].stack.mesh_mut();
@@ -317,7 +382,7 @@ impl Sculpt3dScene {
         // está sob o limiar»*, que é um facto sobre a MALHA — usá-lo para dizer
         // *«o verbo não pediu»* poria duas coisas diferentes no mesmo byte, que
         // é o defeito que este módulo acabou de pagar noutro sítio.
-        let (cut, done) = passe_nos_motores(
+        let (cut, done, arrumou) = passe_nos_motores(
             mesh,
             verbo,
             target,
@@ -349,7 +414,7 @@ impl Sculpt3dScene {
             self.stroke.grow_with(mesh, &births);
         }
         self.dyn_births = births;
-        if !done && !cut {
+        if !done && !cut && !arrumou {
             // ⚠️ **A razão mais provável, e a mais difícil de adivinhar de
             // fora:** o alvo de aresta é `raio × f(detalhe)`, logo a malha pode
             // já estar exactamente no ponto que o slider pede.
@@ -432,7 +497,12 @@ pub(crate) struct Rascunho<'a> {
     pub(crate) region: &'a mut ph2d_mesh::RegionScratch,
 }
 
-/// Devolve `(colapsou, refinou)`.
+/// Devolve `(colapsou, refinou, arrumou_na_grelha)`.
+///
+/// ⚠️ **A terceira é obrigatória e não é conforto:** a retícula move vértices
+/// sem mudar a contagem, logo um carimbo em que só ela trabalhe não acorda nem
+/// o `cut` nem o `done` — e sem a terceira o quadro sairia com as posições
+/// velhas na tela **com a malha certa na CPU**.
 /// **O que o passe precisa de saber sobre o PENTE** — `None` quando ele está
 /// desligado, quando o verbo não o honra, ou no PRIMEIRO carimbo (sem direcção).
 ///
@@ -445,6 +515,10 @@ pub(crate) struct Rascunho<'a> {
 pub(crate) struct Pente {
     pub(crate) direccao: [f32; 3],
     pub(crate) forca: f32,
+    /// A queda do pincel — a **NUA**, sem a dureza, pela mesma razão que o
+    /// deslocamento já escrevia: a dureza é do VERBO em mãos e mudaria o
+    /// alcance de uma coisa que não é do verbo.
+    pub(crate) queda: ph2d_sculpt3d::Falloff,
 }
 
 pub(crate) fn passe_nos_motores(
@@ -455,7 +529,7 @@ pub(crate) fn passe_nos_motores(
     radius: f32,
     rascunho: Rascunho<'_>,
     pente: Option<Pente>,
-) -> (bool, bool) {
+) -> (bool, bool, bool) {
     let Rascunho {
         remap,
         births,
@@ -466,23 +540,41 @@ pub(crate) fn passe_nos_motores(
     // (a `collapse_in_sphere` literalmente delega nela), logo um `match` aqui
     // seria duas escritas da mesma chamada — e a que alguém esquecesse de
     // emendar era a que o pente desligado percorre, ou seja a de fábrica.
+    let mut arrumou = false;
+    if let Some(p) = pente {
+        let mut andaram = Vec::new();
+        let queda = |q: [f32; 3]| {
+            let d = [q[0] - centre[0], q[1] - centre[1], q[2] - centre[2]];
+            let r = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+            p.forca * p.queda.weight(r / radius.max(f32::MIN_POSITIVE))
+        };
+        if ph2d_quadflow::regiao::arruma_na_grelha_com(
+            mesh,
+            centre,
+            radius,
+            p.direccao,
+            &queda,
+            RONDAS_DA_GRELHA,
+            LADO_DA_CELULA,
+            &mut andaram,
+        ) > 0
+        {
+            mesh.refresh_region(&andaram, region);
+            arrumou = true;
+        }
+    }
+
     let alvo_do_colapso = collapse_target(alvo_de_aresta);
-    let campo_colapso = pente.map(|p| {
-        ph2d_sculpt3d::campo_do_pente(
-            alvo_do_colapso,
-            p.direccao,
-            p.forca,
-            ph2d_sculpt3d::Porta::Colapso,
-        )
-    });
-    let campo_refino = pente.map(|p| {
-        ph2d_sculpt3d::campo_do_pente(
-            alvo_de_aresta,
-            p.direccao,
-            p.forca,
-            ph2d_sculpt3d::Porta::Refino,
-        )
-    });
+    // ⛔⛔⛔ **O CAMPO DE TAMANHO POR DIRECÇÃO SAIU**, e a medição está na
+    // terceira metade, lá em baixo: ele era metade da lei que o dono reprovou
+    // em 19/09 (*«pior que o original, com irregularidade a 90 graus da
+    // direcção do movimento»*), e o que ele faz é prescrever a anisotropia —
+    // pedir arestas mais curtas numa direcção do que na outra. A retícula não
+    // precisa dele: ela alinha **e** iguala o espaçamento pela mesma
+    // construção. *A [`ph2d_sculpt3d::campo_do_pente`] fica, com os gates e a
+    // bancada dela; o que saiu foi o CHAMADOR.*
+    let campo_colapso: Option<&(dyn Fn([f32; 3], [f32; 3]) -> f32 + Sync)> = None;
+    let campo_refino: Option<&(dyn Fn([f32; 3], [f32; 3]) -> f32 + Sync)> = None;
     let cut = verbo.colapsa_no_dyntopo()
         && matches!(
             // ⭐⭐⭐ **A QUINTA GUARDA é pedida AQUI, e não escrita no motor.**
@@ -498,9 +590,7 @@ pub(crate) fn passe_nos_motores(
                 centre,
                 radius,
                 alvo_do_colapso,
-                campo_colapso
-                    .as_ref()
-                    .map(|f| f as &(dyn Fn([f32; 3], [f32; 3]) -> f32 + Sync)),
+                campo_colapso,
                 ph2d_mesh::Guarda::ETambemAForma,
                 remap,
                 region,
@@ -514,30 +604,57 @@ pub(crate) fn passe_nos_motores(
                 centre,
                 radius,
                 alvo_de_aresta,
-                campo_refino
-                    .as_ref()
-                    .map(|f| f as &(dyn Fn([f32; 3], [f32; 3]) -> f32 + Sync)),
+                campo_refino,
                 births,
                 region
             ),
             Refine::Done { .. }
         );
-    // ⭐⭐⭐ **A TERCEIRA METADE — e é ela que carrega o alinhamento.**
+    // ⭐⭐⭐⭐ **A TERCEIRA METADE — A RETÍCULA**, e ela substituiu as outras duas
+    // leis do pente por ORDEM DO DONO (*«vamos modificar completamente esse
+    // algoritmo … traga o estado da arte»*, 19/09).
     //
-    // Medido na peça da cena `=49`, os quatro rumos do traço: com as duas
-    // primeiras metades o `ΔQ` lê `+0,028`–`+0,064` contra a barra de `+0,0465`
-    // (e a `30°` ele **não chega** com `k` nenhum); com esta, **`+0,25`–`+0,35`**
-    // nos quatro, com ZERO lascas. *A lei antiga entregava `+0,074`.*
+    // A classe é a do **campo de posição** do *Instant Field-Aligned Meshes*: em
+    // vez de escolher que triângulos se ligam, dá-se a cada vértice **o ponto de
+    // uma grelha quadrada** alinhada com o traço e manda-se ele para lá ⇒
+    // *alinhamento e espaçamento igual são a MESMA construção*, e por isso ela
+    // não compra um à custa do outro.
     //
-    // ⭐⭐ **Ela é a única das três que não paga nada:** uma troca de diagonal
-    // muda a direcção de uma aresta **a contagem constante** — sem densidade e,
-    // pela cerca de qualidade do motor, sem afinar triângulo.
+    // ⭐ **Medido na peça da cena `=49`, os quatro rumos** (`grade` é a fracção
+    // das arestas a menos de `15°` da grade do traço; `vinco` é o ângulo entre
+    // normais vizinhas, que é o que a LUZ mostra):
     //
-    // ⚠️ **Ela corre DEPOIS do refino**, sobre as faces que ele deixou: trocar
-    // antes seria alinhar o que o corte vai substituir.
-    if let Some(p) = pente {
-        let preferencia = ph2d_sculpt3d::preferencia_do_pente(p.direccao, p.forca);
-        ph2d_mesh::alinha_arestas(mesh, centre, radius, &preferencia, region);
-    }
-    (cut, done)
+    // | lei | grade | vinco p50 | vinco p90 |
+    // |---|---|---|---|
+    // | por pentear | `32`–`39 %` | `0,92`–`1,38°` | `2,58`–`2,65°` |
+    // | a que o dono REPROVOU | `42`–`45 %` | `1,75`–`1,89°` | `4,13`–`4,35°` |
+    // | ⭐ **a retícula** | **`64`–`65 %`** | **`0,88`–`1,03°`** | `2,64`–`2,86°` |
+    //
+    // ⇒ ela **quebra a troca** que o §81 tinha medido (*«alinhamento e ondulação
+    // são o mesmo botão»*): metade outra vez do alinhamento, com o relevo ao
+    // nível da malha por pentear.
+    //
+    // ⛔⛔ **As outras duas metades SAEM do caminho do produto, e não do
+    // código:** o campo de tamanho por direcção ([`ph2d_sculpt3d::campo_do_pente`])
+    // deixa de entrar nos dois motores (`None` acima) e a troca de diagonal
+    // ([`ph2d_mesh::alinha_arestas`]) deixa de ser chamada daqui — as duas
+    // continuam com os gates e a bancada de paridade delas, que é o que mede a
+    // lei do ALVO. *A ordem do dono foi trocar o algoritmo, não apagar a
+    // medição.*
+    //
+    // ⭐⭐⭐⭐ **ELA CORRE ANTES DOS DOIS MOTORES, e a ordem foi MEDIDA — a minha
+    // primeira redacção dizia o contrário e o gate da cena reprovou-a.**
+    //
+    // Com a retícula em ÚLTIMO, a faixa fica com `3` triângulos abaixo de `5°`
+    // em `2 418` (o pior a `0,26°`), onde a lei que ela substituiu deixava
+    // **zero**. ⚠️ E a cerca de forma que ela ganhou (`lasca`, que recusa um
+    // destino que afine um triângulo do anel) **não os apanha**: ela julga um
+    // vértice de cada vez contra as posições de entrada, e um empilhamento é
+    // feito por DOIS vizinhos que, cada um por si, não afinam nada.
+    //
+    // ⭐ **Em PRIMEIRO, zero.** O mecanismo é direto: dois vértices no mesmo
+    // ponto de retícula são uma **aresta curta**, e uma aresta curta é
+    // exactamente o que o colapso existe para comer. *Arrumar e depois limpar;
+    // limpar e depois arrumar deixa por limpar o que o último carimbo arrumou.*
+    (cut, done, arrumou)
 }

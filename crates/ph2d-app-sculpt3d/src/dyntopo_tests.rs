@@ -430,3 +430,143 @@ fn o_smooth_deixou_de_subdividir_e_o_gancho_passou_a_subdividir() {
          `Thumb`, e sem este lado o fio passaria a responder pelo grip"
     );
 }
+
+/// ⭐⭐⭐ **GATE — O CARIMBO NÃO PENTEIA E O PASSE PENTEIA.**
+///
+/// A ordem do dono de 19/09 (*«vamos modificar completamente esse algoritmo»*)
+/// mudou a lei do pente de SÍTIO: ela saiu do carimbo (o deslocamento pelo
+/// centroide do anel, que é a lei do ALVO e que a bancada de paridade mede) e
+/// passou a ser a **retícula**, no passe de topologia.
+///
+/// ⛔⛔ **As duas metades, porque cada uma sozinha MENTE:**
+///
+/// - só a primeira lê-se como *«o pente morreu»* — e ele não morreu, mudou de
+///   dono;
+/// - só a segunda lê-se como *«há pente»* — e deixaria o produto a correr as
+///   DUAS leis ao mesmo tempo, uma a puxar para o centroide do anel e a outra
+///   para o ponto da grelha.
+///
+/// ⚠️ **A primeira metade é TEXTUAL de propósito.** O `armed_brush_on` vive na
+/// [`Sculpt3dScene`], que pede um `wgpu::Device` para nascer ⇒ um gate a sério
+/// ali seria `#[ignore]` e **o CI nunca o correria**. A segunda, essa, mede o
+/// BARRO, pela porta sem cena e sem device.
+#[test]
+fn o_carimbo_nao_penteia_e_o_passe_penteia() {
+    // (1) O carimbo: o pincel armado leva `pente: 0.0`, e a porta que o
+    // calculava **não é chamada** ali.
+    let space = include_str!("space.rs");
+    let armado = space
+        .split("fn armed_brush_on")
+        .nth(1)
+        .expect("o `armed_brush_on` tem de existir — ele é quem monta o pincel do dab");
+    let corpo = &armado[..armado.find("\n    /// ").unwrap_or(armado.len())];
+    assert!(
+        corpo.contains("pente: 0.0,"),
+        "o pincel que o produto entrega ao `dab` voltou a levar pente — as duas \
+         leis passariam a correr ao mesmo tempo"
+    );
+    assert!(
+        !corpo.contains("pente: pente_do_traco("),
+        "o `armed_brush_on` voltou a chamar o `pente_do_traco` — é a lei do \
+         ALVO, e ela saiu do caminho do produto por ordem do dono"
+    );
+
+    // (2) O passe: com o knob em cima ele MOVE barro; com ele a zero, nada.
+    let alvo = 0.06f32;
+    let (centro, raio) = ([0.0, 0.0, 1.0], 0.34f32);
+    let direccao = [0.28f32, 0.0, 0.0];
+    let com = passe_com_pente(alvo, centro, raio, Some((direccao, 1.0)));
+    let sem = passe_com_pente(alvo, centro, raio, None);
+    let base = passe_com_pente(alvo, centro, raio, Some(([0.0; 3], 1.0)));
+
+    assert!(
+        com > 0.0,
+        "o passe com o pente no tecto não moveu um vértice: {com:.3e}"
+    );
+    assert_eq!(
+        sem, 0.0,
+        "o passe SEM pente moveu barro — a retícula tem de ser inerte ali"
+    );
+    // ⛔ E a terceira: sem DIRECÇÃO não há retícula, que é a inércia que o
+    // primeiro carimbo de todo traço percorre.
+    assert_eq!(
+        base, 0.0,
+        "com a direcção nula a retícula moveu barro — ela tem de ser inerte no \
+         primeiro carimbo, como as leis que substituiu"
+    );
+}
+
+/// Corre o passe de topologia **sem cena e sem device** e devolve o maior
+/// deslocamento que a retícula produziu.
+///
+/// ⚠️ **Ele mede o que SOBRA depois dos dois motores**, e por isso compara com
+/// a mesma corrida sem pente: o colapso e o refino também mexem em posições, e
+/// uma medição contra a malha de entrada leria o trabalho deles como sendo da
+/// retícula.
+fn passe_com_pente(
+    alvo: f32,
+    centro: [f32; 3],
+    raio: f32,
+    pente: Option<([f32; 3], f32)>,
+) -> f32 {
+    let mut malha = uv_sphere(32, 48, 1.0);
+    malha.triangulate();
+    let referencia = {
+        let mut m = malha.clone();
+        corre_o_passe(&mut m, alvo, centro, raio, None);
+        m
+    };
+    corre_o_passe(
+        &mut malha,
+        alvo,
+        centro,
+        raio,
+        pente.map(|(direccao, forca)| super::Pente {
+            direccao,
+            forca,
+            queda: ph2d_sculpt3d::Falloff::Smooth,
+        }),
+    );
+    if malha.vert_count() != referencia.vert_count() {
+        panic!(
+            "as duas corridas mudaram a contagem de maneiras diferentes \
+             ({} contra {}) — a comparação por índice deixaria de afirmar nada",
+            malha.vert_count(),
+            referencia.vert_count()
+        );
+    }
+    malha
+        .positions()
+        .iter()
+        .zip(referencia.positions())
+        .map(|(a, b)| {
+            let d = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+            d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt()
+        })
+        .fold(0.0f32, f32::max)
+}
+
+fn corre_o_passe(
+    malha: &mut ph2d_mesh::Mesh,
+    alvo: f32,
+    centro: [f32; 3],
+    raio: f32,
+    pente: Option<super::Pente>,
+) {
+    let mut remap = ph2d_mesh::Remap::default();
+    let mut births = Vec::new();
+    let mut region = ph2d_mesh::RegionScratch::default();
+    let _ = super::passe_nos_motores(
+        malha,
+        Verb::Draw,
+        alvo,
+        centro,
+        raio,
+        super::Rascunho {
+            remap: &mut remap,
+            births: &mut births,
+            region: &mut region,
+        },
+        pente,
+    );
+}

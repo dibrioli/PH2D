@@ -13,6 +13,9 @@
 
 use super::*;
 
+// ⭐ Os dois números da retícula vêm do PRODUTO — ver o irmão [`grelha`].
+use crate::dyntopo::{LADO_DA_CELULA, RONDAS_DA_GRELHA};
+
 /// ⛔⛔⛔ **SONDA — QUAL das três metades enruga a superfície**, e quanto.
 ///
 /// O report de 19/09 (*«o resultado fica pior que o original, com irregularidade
@@ -51,7 +54,7 @@ fn diag_quem_enruga() {
     }
     // ⭐ O CONTROLO da curvatura: tudo ligado e o carimbo a ZERO — a esfera
     // continua curva, e o traço não levanta relevo nenhum.
-    let (m, c, _) = traco_por_metades_com(e, raio, alvo, true, true, true, 0.0);
+    let (m, c, _) = traco_por_metades_com(e, raio, alvo, true, true, true, 0.0, false);
     eprintln!("{:<24}{}", "TUDO, carimbo a ZERO", colunas_da_superficie(&m, &c, raio));
 }
 
@@ -106,6 +109,12 @@ fn diag_a_chapa_estica() {
     ] {
         let (m, c) = traco_na_chapa(&base, raio, ALVO, campo, flip, desloca);
         eprintln!("{nome:<24}{}", colunas_da_superficie(&m, &c, raio));
+    }
+    // ⭐ A RETÍCULA na CHAPA: se a razão volta a `~1`, o esticão dela é da
+    // CURVATURA; se fica em `0,73`, é da lei.
+    for k in [LADO_DA_CELULA, 0.90] {
+        let (m, c) = traco_na_chapa_com(&base, raio, ALVO, false, false, false, k);
+        eprintln!("grelha {k:<17.2}{}", colunas_da_superficie(&m, &c, raio));
     }
 }
 
@@ -406,6 +415,21 @@ fn traco_na_chapa(
     flip: bool,
     desloca: bool,
 ) -> (ph2d_mesh::Mesh, Vec<[f32; 3]>) {
+    traco_na_chapa_com(base, raio, alvo, campo, flip, desloca, 0.0)
+}
+
+/// O mesmo, com a RETÍCULA por parâmetro (`0` = desligada) — é ela que separa
+/// *«a retícula estica»* de *«a curvatura estica»*, a partição do §81.
+#[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
+fn traco_na_chapa_com(
+    base: &ph2d_mesh::Mesh,
+    raio: f32,
+    alvo: f32,
+    campo: bool,
+    flip: bool,
+    desloca: bool,
+    k_grelha: f32,
+) -> (ph2d_mesh::Mesh, Vec<[f32; 3]>) {
     let mut malha = base.clone();
     let brush = Brush {
         verb: Verb::Draw,
@@ -463,6 +487,27 @@ fn traco_na_chapa(
             let pref = ph2d_sculpt3d::preferencia_do_pente(direccao, 1.0);
             let _ = ph2d_mesh::alinha_arestas(&mut malha, centro, raio, &pref, &mut region);
         }
+        if k_grelha > 0.0 {
+            let mut andaram = Vec::new();
+            let queda = |p: [f32; 3]| {
+                let d = [p[0] - centro[0], p[1] - centro[1], p[2] - centro[2]];
+                let r = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+                brush.falloff.weight(r / raio.max(f32::MIN_POSITIVE))
+            };
+            if ph2d_quadflow::regiao::arruma_na_grelha_com(
+                &mut malha,
+                centro,
+                raio,
+                direccao,
+                &queda,
+                RONDAS_DA_GRELHA,
+                k_grelha,
+                &mut andaram,
+            ) > 0
+            {
+                malha.refresh_region(&andaram, &mut region);
+            }
+        }
         stroke.dab(
             &mut malha,
             &brush,
@@ -482,11 +527,14 @@ fn traco_por_metades(
     flip: bool,
     desloca: bool,
 ) -> (ph2d_mesh::Mesh, Vec<[f32; 3]>, usize) {
-    traco_por_metades_com(e, raio, alvo, campo, flip, desloca, 0.25)
+    traco_por_metades_com(e, raio, alvo, campo, flip, desloca, 0.25, false)
 }
 
 /// O mesmo, com a FORÇA do carimbo por parâmetro — `0` risca sem levantar
-/// relevo, que é o que separa a curvatura da PEÇA da que o traço cria.
+/// relevo, que é o que separa a curvatura da PEÇA da que o traço cria — e com a
+/// **GRELHA** (a lei da retícula) por parâmetro, para a atribuição poder correr
+/// as leis uma contra a outra na MESMA fixtura.
+#[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
 fn traco_por_metades_com(
     e: [f32; 2],
     raio: f32,
@@ -495,6 +543,7 @@ fn traco_por_metades_com(
     flip: bool,
     desloca: bool,
     forca: f32,
+    grelha: bool,
 ) -> (ph2d_mesh::Mesh, Vec<[f32; 3]>, usize) {
     let mut malha = peca_uma_vez();
     malha.triangulate();
@@ -564,6 +613,26 @@ fn traco_por_metades_com(
             trocas +=
                 ph2d_mesh::alinha_arestas(&mut malha, centro, brush.radius, &pref, &mut region);
         }
+        if grelha {
+            let mut andaram = Vec::new();
+            let queda = |p: [f32; 3]| {
+                let d = [p[0] - centro[0], p[1] - centro[1], p[2] - centro[2]];
+                let r = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+                brush.falloff.weight(r / brush.radius.max(f32::MIN_POSITIVE))
+            };
+            if ph2d_quadflow::regiao::arruma_na_grelha(
+                &mut malha,
+                centro,
+                brush.radius,
+                direccao,
+                &queda,
+                RONDAS_DA_GRELHA,
+                &mut andaram,
+            ) > 0
+            {
+                malha.refresh_region(&andaram, &mut region);
+            }
+        }
         stroke.dab(
             &mut malha,
             &brush,
@@ -617,3 +686,7 @@ fn o_colapso_nao_vira_uma_face_do_avesso() {
          ~16° com ela)"
     );
 }
+
+/// As sondas da RETÍCULA — irmãs destas, cortadas por tecto de LOC.
+#[path = "scenes_pente_grelha_tests.rs"]
+mod grelha;

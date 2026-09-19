@@ -322,7 +322,26 @@ impl Sculpt3dScene {
             // ⭐ Todo dab da app vem de um traço ARRASTADO a passos fixos — o pincel de plano
             // enfraquece cada um para a soma não depender do passo (espec §14.4).
             traco_arrastado: true,
-            pente: pente_do_traco(self.dyntopo.armed, self.brush.pente),
+            // ⛔⛔⛔ **O CARIMBO DEIXOU DE PENTEAR, por ordem do dono** (19/09:
+            // *«vamos modificar completamente esse algoritmo … traga o estado
+            // da arte»*, e a escolha dele foi a família do campo de posição).
+            //
+            // ⚠️⚠️ **Zero aqui NÃO quer dizer «o pente está desligado»** — quer
+            // dizer que a lei dele mudou de SÍTIO. O knob continua a ser lido,
+            // pelo passe de topologia ([`crate::dyntopo::passe_nos_motores`]),
+            // que é onde a retícula corre; o que este `0` desliga é a lei de
+            // DESLOCAMENTO pelo centroide do anel ([`ph2d_rake::pentear`]), que
+            // era a metade que o `SculptStroke::dab` carregava.
+            //
+            // ⭐ **E ela fica viva, inteira, com a bancada dela** — as `221`
+            // corridas do corpus do alvo entram por `SculptStroke::dab` com o
+            // `Brush::pente` do CABEÇALHO de cada célula, logo continuam a medir
+            // a lei do alvo contra a nossa. *A ordem foi trocar o algoritmo do
+            // produto, não apagar a medição que diz o que o alvo faz.*
+            //
+            // ⚠️ Gate: `o_carimbo_nao_penteia_e_o_passe_penteia` (as duas
+            // metades, porque só a primeira leria como *«o pente morreu»*).
+            pente: 0.0,
             ..self.brush.clone()
         }
     }

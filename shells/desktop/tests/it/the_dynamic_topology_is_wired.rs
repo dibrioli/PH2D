@@ -62,15 +62,25 @@ fn the_refinement_is_off_by_default_and_the_guard_is_the_first_question() {
     // guarda seria contornável: bastava um chamador novo do `refine_in_sphere`
     // para o passe correr desarmado, e a asserção de ordem acima continuaria
     // verde sobre um produto errado.
-    // ⛔⛔ **A LISTA MUDOU TRÊS VEZES em 2026-09-18/19, e as três são a wave do
-    // pente:** os dois motores passaram a ser as variantes `_sized` (o alvo de
-    // aresta deixou de ser um número e passou a ser um CAMPO que depende da
-    // direcção da aresta); nasceu um **terceiro** — a troca de diagonal
-    // enviesada, que é a metade que de facto carrega o alinhamento; e o colapso
-    // passou a pedir a **quinta guarda** ([`ph2d_mesh::Guarda`]), que recusa uma
-    // fusão que vire uma face do avesso. ⚠️ Esta última é uma porta DIFERENTE
-    // (`collapse_in_sphere_com`) e não um argumento a mais: o motor é partilhado
-    // com a cadeia de retopologia, e ali a lei **não muda**.
+    // ⛔⛔ **A LISTA MUDOU QUATRO VEZES em 2026-09-18/20, e as quatro são a wave
+    // do pente.** Em 18/09 os dois motores passaram a ser as variantes `_sized`,
+    // nasceu a troca de diagonal enviesada, e o colapso passou a pedir a quinta
+    // guarda ([`ph2d_mesh::Guarda`], que recusa uma fusão que vire uma face do
+    // avesso — porta DIFERENTE e não um argumento a mais: o motor é partilhado
+    // com a cadeia de retopologia, e ali a lei **não muda**).
+    //
+    // ⭐⭐⭐⭐ **E em 20/09 a lei mudou de CLASSE por ordem do dono** (*«vamos
+    // modificar completamente esse algoritmo … traga o estado da arte»*): a
+    // troca de diagonal SAIU e entrou a **retícula** — o campo de posição do
+    // *Instant Field-Aligned Meshes*, que dá a cada vértice o ponto de uma
+    // grelha quadrada alinhada com o traço. ⚠️ **A `alinha_arestas` continua a
+    // existir, com os gates dela**; o que saiu foi o CHAMADOR, e é por isso que
+    // ela desaparece desta lista em vez de aparecer como zero.
+    //
+    // ⚠️ **E a ORDEM dela é load-bearing**: a retícula corre ANTES dos dois
+    // motores, porque dois vértices no mesmo ponto de grelha são uma aresta
+    // curta e é o colapso que a come — medido, ao contrário ficam `3` lascas
+    // abaixo de `5°`.
     // *Um gate que continuasse a nomear os antigos ficaria verde a medir
     // chamadas que já não existem.*
     let porta_body = function_body(&src, "passe_nos_motores");
@@ -78,7 +88,7 @@ fn the_refinement_is_off_by_default_and_the_guard_is_the_first_question() {
         "refine_in_sphere_sized(",
         "collapse_in_sphere_com(",
         "Guarda::ETambemAForma",
-        "alinha_arestas(",
+        "arruma_na_grelha_com(",
     ] {
         assert!(
             porta_body.contains(motor),

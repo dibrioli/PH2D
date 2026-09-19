@@ -63,6 +63,8 @@ pub mod im_weights;
 pub mod orientation;
 /// **O CAMPO DE POSIÇÃO** — ver [`position`].
 pub mod position;
+/// **OS DOIS CAMPOS NUMA MANCHA** — a pegada de um pincel. Ver [`regiao`].
+pub mod regiao;
 /// **A ESCALA, uniforme ou adaptativa** — ver [`scale`].
 pub mod scale;
 /// **OS CAMPOS resolvidos de cima para baixo** — ver [`solve`].

@@ -33,9 +33,54 @@ pub struct Link {
 #[must_use]
 pub fn cotangent_adjacency(mesh: &Mesh) -> Vec<Vec<Link>> {
     let n = mesh.vert_count();
-    let p = mesh.positions();
+    let weight = edge_weights(mesh.positions(), mesh.faces().iter());
+    let mut adj: Vec<Vec<Link>> = vec![Vec::new(); n];
+    for ((a, b), w) in weight {
+        adj[a as usize].push(Link { id: b, weight: w });
+        adj[b as usize].push(Link { id: a, weight: w });
+    }
+    for list in &mut adj {
+        list.sort_by_key(|l| l.id);
+    }
+    adj
+}
+
+/// **OS MESMOS PESOS, sobre um punhado de faces** — em ids da MALHA.
+///
+/// ⭐⭐ **Ela existe para a MANCHA** ([`crate::regiao`]): a pegada de um pincel
+/// é uma vizinhança de algumas centenas de vértices numa peça de centenas de
+/// milhares, e a [`cotangent_adjacency`] é `O(faces da peça)` mais um mapa de
+/// **todas** as arestas. *O que um dab tem para gastar é a pegada dele.*
+///
+/// ⚠️ **NÃO é uma segunda lei:** ela e a irmã chamam a mesma [`edge_weights`],
+/// e quem passar **todas** as faces recebe **exactamente** o mapa que a irmã
+/// constrói (gate `os_pesos_de_uma_mancha_que_cobre_tudo_sao_os_da_peca`).
+///
+/// ⚠️ **O peso de uma aresta é geométrico, não regional:** ele soma os dois
+/// triângulos que a partilham. Quem quiser um peso COMPLETO para a aresta
+/// `(a,b)` tem de passar as faces incidentes a `a` **e** a `b` — e é por isso
+/// que a [`crate::regiao::mancha`] colhe as faces do anel de cada vértice da
+/// pegada, e não as faces contidas nela.
+#[must_use]
+pub fn cotangent_edge_weights_on(
+    mesh: &Mesh,
+    faces: &[u32],
+) -> std::collections::BTreeMap<(u32, u32), f32> {
+    let all = mesh.faces();
+    edge_weights(
+        mesh.positions(),
+        faces.iter().filter_map(|&f| all.get(f as usize)),
+    )
+}
+
+/// O miolo dos dois — uma aresta de cada vez, `½·cot(ângulo oposto)` por
+/// triângulo que a usa.
+fn edge_weights<'a>(
+    p: &[[f32; 3]],
+    faces: impl Iterator<Item = &'a ph2d_mesh::Face>,
+) -> std::collections::BTreeMap<(u32, u32), f32> {
     let mut weight: std::collections::BTreeMap<(u32, u32), f32> = std::collections::BTreeMap::new();
-    for f in mesh.faces() {
+    for f in faces {
         let v = f.verts();
         for k in 1..v.len() - 1 {
             let tri = [v[0], v[k], v[k + 1]];
@@ -54,15 +99,7 @@ pub fn cotangent_adjacency(mesh: &Mesh) -> Vec<Vec<Link>> {
             }
         }
     }
-    let mut adj: Vec<Vec<Link>> = vec![Vec::new(); n];
-    for ((a, b), w) in weight {
-        adj[a as usize].push(Link { id: b, weight: w });
-        adj[b as usize].push(Link { id: a, weight: w });
-    }
-    for list in &mut adj {
-        list.sort_by_key(|l| l.id);
-    }
-    adj
+    weight
 }
 
 /// **A ÁREA DUAL de cada vértice** — a célula baricêntrica.

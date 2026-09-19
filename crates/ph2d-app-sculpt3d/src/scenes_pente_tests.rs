@@ -123,26 +123,43 @@ const GRADE_DO_GRAO_MAXIMO: f64 = 45.0;
 ///
 /// ⭐⭐ **E o lado APROVADO está medido:** a mesma régua sobre a saída do PRÓPRIO
 /// alvo (`fixtures/rake/rotacao/*_p100`) lê **`43,6 %`** contra `34,1 %`
-/// desligado — *a nossa lei entrega a classe dele*.
-const GRADE_MINIMA: f64 = 41.0;
+/// desligado.
+///
+/// ⭐⭐⭐⭐ **E EM 20/09 A LEI MUDOU DE CLASSE, por ordem do dono, e este número
+/// SUBIU de `41,0` para `60,0`.** A retícula ([`crate::dyntopo`], a família do
+/// campo de posição) lê **`63,5`–`65,9 %`** nos quatro rumos, contra os
+/// `41,8`–`45,2 %` da lei que ela substituiu e os `43,6 %` da saída do ALVO.
+/// ⚠️ *Uma catraca que fica onde estava quando a medição saltou meia dezena de
+/// pontos é uma licença* — o vale novo é `[45,2 ; 63,5]` e `60,0` é folga de
+/// `5,5` pontos sobre o pior rumo, não o meio dele: o que se prega é o PISO, e
+/// prega-se perto.
+const GRADE_MINIMA: f64 = 60.0;
 
 /// **Quanto o vinco pode subir a UM QUARTO do botão** — a parte do curso que
 /// tem de ser grátis.
 ///
-/// ⛔ **Medido nos quatro rumos (`p90`):** `2,45`/`2,75`/`2,52`/`2,70` contra
-/// `2,56`/`2,70`/`2,57`/`2,67` por pentear — pior caso **`1,019×`**, e em
-/// dois dos quatro o pente deixa a superfície **mais lisa** do que ela estava.
-/// O tecto é `1,10` para não pinar ruído de `f32` na terceira casa.
-const VINCO_NO_QUARTO: f64 = 1.10;
+/// ⛔ **Medido nos quatro rumos com a RETÍCULA (`p90`):**
+/// `2,60`/`2,84`/`2,67`/`2,78` contra `2,59`/`2,65`/`2,58`/`2,63` por pentear —
+/// pior caso **`1,072×`**. O tecto é `1,12`, folga de meio ponto percentual.
+const VINCO_NO_QUARTO: f64 = 1.12;
 
 /// **Quanto o vinco pode subir no TECTO do botão** — a catraca da troca.
 ///
-/// ⛔⛔⛔ **Ela nasceu do report de 19/09** (a foto do relevo). Medido:
-/// `4,391°` de `p90` contra `2,563°` por pentear (**`1,71×`**), e a `24°` de
-/// chão já era `1,22×` — *a ondulação não é nova, ela estava debaixo de um
-/// efeito que ninguém via*. ⚠️ **Este número só pode DESCER:** ele não é uma
-/// licença para a troca, é o registo de quanto ela custa hoje.
-const VINCO_NO_TECTO: f64 = 1.85;
+/// ⛔⛔⛔ **Ela nasceu do report de 19/09** (a foto do relevo), e o número que
+/// ela registava era `1,85` — `4,391°` de `p90` contra `2,563°` por pentear.
+///
+/// ⭐⭐⭐⭐ **A RETÍCULA leva-o a `1,094×`, e é ISSO que responde ao report.**
+/// Medido nos quatro rumos: `2,77`/`2,90`/`2,71`/`2,80` contra
+/// `2,59`/`2,65`/`2,58`/`2,63` por pentear ⇒ **o relevo fica ao nível da malha
+/// que ninguém penteou**, enquanto a grade salta de `33 %` para `64 %`.
+///
+/// ⛔⛔ **E isso REFUTA a lei que este ficheiro declarava:** *«alinhamento e
+/// ondulação são o MESMO botão, não existe ponto do curso em que o pente alinhe
+/// de graça»*. Era verdade da CLASSE de lei que a mediu — a que escolhe que
+/// triângulos se ligam —, e falsa da classe nova, que dá a cada vértice o ponto
+/// de uma grelha quadrada: *ali o alinhamento e o espaçamento igual são a mesma
+/// construção, logo não há um a comprar o outro.*
+const VINCO_NO_TECTO: f64 = 1.15;
 
 /// Quantos vértices um traço penteado tem de DESLOCAR para o artista ver.
 ///
@@ -151,8 +168,10 @@ const VINCO_NO_TECTO: f64 = 1.85;
 /// no `Detail` de fábrica ele lia `+0,1926`, o maior de todos, movendo **`121`**
 /// vértices num traço inteiro. *Uma régua que só vê a fracção não vê a
 /// magnitude*, que é a mesma forma que o `Density` custou. Medido no regime que
-/// a cena arma: **`2 715`**.
-const MOVIDOS_MINIMOS: usize = 1_000;
+/// a cena arma: **`2 188`–`2 264`** com a retícula (eram `2 715` com a lei que
+/// ela substituiu, e o número desceu porque a retícula **recusa** um destino que
+/// afine um triângulo do anel).
+const MOVIDOS_MINIMOS: usize = 2_000;
 
 /// Os rumos em que a cena é medida.
 ///
@@ -245,7 +264,8 @@ fn a_cena_do_pente_tem_o_que_mostrar() {
         assert!(
             q1 - q0 > BARRA,
             "{nome}: o pente no maximo move o Q de {q0:+.4} para {q1:+.4} \
-             (Delta {:+.4}, medido +0,074 no pior rumo) contra a barra do corpus \
+             (Delta {:+.4}, medido +0,261 no pior rumo com a reticula, e +0,074 \
+             com a lei que ela substituiu) contra a barra do corpus \
              {BARRA:+.4} — o artista nao vai ver as linhas alinharem-se, e o \
              passo (3) do roteiro promete que ele ve'",
             q1 - q0
@@ -272,14 +292,16 @@ fn a_cena_do_pente_tem_o_que_mostrar() {
         assert!(
             movidos >= MOVIDOS_MINIMOS,
             "{nome}: o pente deslocou {movidos} vertices num traco inteiro \
-             (medido 2 715; no `Detail` de fabrica eram 121, invisiveis) — o `Q` \
+             (medido 2 188-2 264 com a reticula; no `Detail` de fabrica eram \
+             121, invisiveis) — o `Q` \
              pode estar alto na mesma, porque ele e' uma MEDIA"
         );
         assert!(
             finas <= LASCAS_TOLERADAS,
             "{nome}: a faixa ficou com {finas} triangulo(s) abaixo de \
              {LIMIAR_DA_LASCA}° em {total} (o pior mede {pior:.2}°; medido ZERO \
-             nos quatro rumos) — sao as ESTRIAS que o `DEU ERRADO SE` do roteiro \
+             em tres dos quatro rumos e UMA a 45°, a 4,35°) — sao as ESTRIAS que \
+             o `DEU ERRADO SE` do roteiro \
              nomeia, e o `Q` sozinho nao as ve'"
         );
         // ⭐⭐⭐ **A TERCEIRA COLUNA — a que o dono julga, e a que este gate não
@@ -332,20 +354,28 @@ fn a_cena_do_pente_tem_o_que_mostrar() {
         // as quatro medem a LIGAÇÃO — que direcção as arestas tomam, que forma
         // os triângulos têm — e nenhuma mede o que a LUZ vê.
         //
-        // ⛔ **O alinhamento e o vinco são o MESMO botão**, e isso está medido
-        // (`diag_quem_enruga`, com o chão do flip a variar):
+        // ⛔⛔⛔ **A LEI QUE ESTE BLOCO DECLARAVA MORREU EM 20/09, e a morte
+        // fica à vista.** Ela dizia:
         //
-        // | chão | grade | vinco `p90` | razão do comprimento |
-        // |---|---|---|---|
-        // | desligado | `32,9 %` | `2,563` | `1,011` |
-        // | `24°` | `35,9 %` | `3,124` | `0,903` |
-        // | `20°` | `37,4 %` | `3,397` | `0,854` |
-        // | **`16°`** | **`41,1 %`** | **`4,391`** | `0,653` |
+        // > *«o alinhamento e o vinco são o MESMO botão … não existe ponto do
+        // > curso em que o pente alinhe de graça»*
         //
-        // ⇒ *não existe ponto do curso em que o pente alinhe de graça*, e a
-        // ondulação já lá estava quando o efeito era invisível. O que estas
-        // duas metades fazem é **pregar a troca**: ela não pode piorar sem que
-        // alguém escreva o número novo aqui.
+        // e trazia a escada do chão da troca de diagonal (`32,9 % / 2,563°` →
+        // `41,1 % / 4,391°`) como prova. ⚠️ **Ela era verdade da CLASSE de lei
+        // que a mediu** — a que alinha escolhendo que triângulos se ligam — e a
+        // ordem do dono foi trocar de classe.
+        //
+        // ⭐⭐⭐ **A retícula quebra a troca, medida nos quatro rumos:**
+        //
+        // | lei | grade | vinco `p90` |
+        // |---|---|---|
+        // | por pentear | `32,4`–`38,9 %` | `2,58`–`2,65°` |
+        // | a que o dono REPROVOU | `41,8`–`45,2 %` | `4,13`–`4,35°` |
+        // | ⭐ **a retícula** | **`63,5`–`65,9 %`** | **`2,71`–`2,90°`** |
+        //
+        // ⇒ *quase o dobro do alinhamento com o relevo ao nível da malha por
+        // pentear.* O que estas duas metades fazem continua a ser **pregar**: o
+        // número não pode subir sem que alguém o escreva aqui.
         let (_, v0, _, nv0) = vinco_da_faixa(&m0, &c0, raio);
         let (_, v1, _, _) = vinco_da_faixa(&m1, &c1, raio);
         let (mq, cq) = traco(0.25, e);
@@ -359,16 +389,16 @@ fn a_cena_do_pente_tem_o_que_mostrar() {
             vq <= v0 * VINCO_NO_QUARTO,
             "{nome}: a um QUARTO do botao o vinco p90 e' {vq:.3}° contra os \
              {v0:.3}° por pentear ({:.3}×, tecto {VINCO_NO_QUARTO:.2}×; medido \
-             1,018× no pior rumo) — a metade de baixo do curso deixou de ser \
-             gratis, e e' a unica parte dele que o e'",
+             1,072× no pior rumo com a reticula) — a metade de baixo do curso \
+             deixou de ser gratis",
             vq / v0
         );
         assert!(
             v1 <= v0 * VINCO_NO_TECTO,
             "{nome}: no TECTO do botao o vinco p90 e' {v1:.3}° contra os \
              {v0:.3}° por pentear ({:.3}×, tecto {VINCO_NO_TECTO:.2}×; medido \
-             1,71× no p90) — e' a ondulacao que o dono fotografou em 19/09, e \
-             ela so' pode DESCER",
+             1,094× com a reticula, contra 1,71× da lei que ela substituiu) — \
+             e' a ondulacao que o dono fotografou em 19/09, e ela so' pode DESCER",
             v1 / v0
         );
         eprintln!(
@@ -458,6 +488,21 @@ fn a_cena_do_pente_esta_fiada() {
 }
 
 /// O mesmo traço do gate, com o raio e o alvo de refino como PARÂMETROS.
+///
+/// ⭐⭐⭐⭐ **ELE PERCORRE A PORTA DO PRODUTO** ([`crate::dyntopo::passe_nos_motores`])
+/// **e não uma segunda cópia dela.**
+///
+/// ⛔⛔⛔ **Ele reconstruía o passe à mão — «como o produto» — e isso deixou-o
+/// VERDE enquanto a lei do produto mudava INTEIRA** (19/09 → 20/09: o campo de
+/// tamanho por direcção saiu, a troca de diagonal saiu, e a retícula entrou).
+/// As cinco réguas deste gate continuaram a medir três leis que o app já não
+/// corre. *Um gate que chama as funções em vez de percorrer a rota afirma que
+/// as leis existem, nunca que a cena as usa* — a mesma frase que o §24 desta
+/// linha já tinha escrito para outra fixtura, e que ela própria violava.
+///
+/// ⚠️ **O `Brush` leva `pente: 0.0`, como o produto leva** — a lei de
+/// deslocamento pelo centroide do anel saiu do carimbo (ver
+/// [`crate::space`]); quem lê o knob é o passe, por argumento.
 fn traco_com(pente: f32, e: [f32; 2], raio: f32, alvo: f32) -> (ph2d_mesh::Mesh, Vec<[f32; 3]>) {
     let mut malha = peca_uma_vez();
     malha.triangulate();
@@ -465,7 +510,7 @@ fn traco_com(pente: f32, e: [f32; 2], raio: f32, alvo: f32) -> (ph2d_mesh::Mesh,
         verb: Verb::Draw,
         radius: raio,
         strength: 0.25,
-        pente,
+        pente: 0.0,
         ..Brush::default()
     };
     let mut stroke = SculptStroke::default();
@@ -481,70 +526,33 @@ fn traco_com(pente: f32, e: [f32; 2], raio: f32, alvo: f32) -> (ph2d_mesh::Mesh,
         let u = -passo * 12.0 + passo * k as f32;
         let centro = [u.sin() * e[0], u.sin() * e[1], u.cos()];
         centros.push(centro);
-        // ⭐⭐⭐ **O PASSE RECEBE O CAMPO DO PENTE**, que é onde o alinhamento
-        // mora — e sem esta linha o gate mediria a lei de deslocamento sozinha,
-        // que reproduz o campo do alvo e **não produz grade nenhuma**
-        // (`Q +0,0000` contra a barra). *Uma fixtura que corre a porta nua mede
-        // um programa que o produto já não percorre.*
-        //
         // ⚠️ **A direcção é lida ANTES do carimbo**, do `last_center` que ainda
         // descreve o dab anterior — o mesmo instante e a mesma porta que o
-        // `refine_for_dab` usa.
+        // `refine_for_dab` usa. ⛔ No primeiro carimbo ela é NULA e o passe é
+        // inerte: a inércia da espec §4.3 cai por construção.
         let direccao = stroke.direccao_do_traco(centro);
-        // ⛔⛔ **O COLAPSO PRIMEIRO, como o produto** (`passe_nos_motores`), e a
-        // ausência dele custava metade do efeito: sem esta metade a fixtura media
-        // um passe que o app **não corre**, e o gate lia `ΔQ +0,0197` contra a
-        // barra de `+0,0465` sobre uma lei que entrega `+0,074`. *Uma fixtura à
-        // qual falta uma das duas metades do passe mede outro programa.*
-        let alvo_do_colapso = ph2d_mesh::collapse_target(alvo);
-        // ⭐⭐ **As TRÊS metades contribuem, e a do campo vale o DOBRO do flip
-        // sozinho:** medido neste rumo, `Q +0,1292` só com a troca de diagonal
-        // contra **`+0,2733`** com o campo de tamanho também. *Nenhuma das três
-        // é decoração.*
-        let campo_colapso = ph2d_sculpt3d::campo_do_pente(
-            alvo_do_colapso,
-            direccao,
-            pente,
-            ph2d_sculpt3d::Porta::Colapso,
-        );
-        if matches!(
-            ph2d_mesh::collapse_in_sphere_com(
-                &mut malha,
-                centro,
-                brush.radius,
-                alvo_do_colapso,
-                Some(&campo_colapso),
-                ph2d_mesh::Guarda::ETambemAForma,
-                &mut remap,
-                &mut region,
-            ),
-            ph2d_mesh::Collapse::Done { .. }
-        ) {
-            stroke.shrink_with(&remap);
-        }
-        let campo =
-            ph2d_sculpt3d::campo_do_pente(alvo, direccao, pente, ph2d_sculpt3d::Porta::Refino);
-        let _ = ph2d_mesh::refine_in_sphere_sized(
+        let (cut, done, _) = crate::dyntopo::passe_nos_motores(
             &mut malha,
+            brush.verb,
+            alvo,
             centro,
             brush.radius,
-            alvo,
-            Some(&campo),
-            &mut births,
-            &mut region,
+            crate::dyntopo::Rascunho {
+                remap: &mut remap,
+                births: &mut births,
+                region: &mut region,
+            },
+            (pente > 0.0).then_some(crate::dyntopo::Pente {
+                direccao,
+                forca: pente,
+                queda: brush.falloff,
+            }),
         );
-        stroke.grow_with(&malha, &births);
-        // ⭐⭐⭐ **A TERCEIRA METADE — alinhar TROCANDO diagonais**, a contagem
-        // constante e sem poder piorar um triângulo.
-        if pente > 0.0 {
-            let preferencia = ph2d_sculpt3d::preferencia_do_pente(direccao, pente);
-            let _ = ph2d_mesh::alinha_arestas(
-                &mut malha,
-                centro,
-                brush.radius,
-                &preferencia,
-                &mut region,
-            );
+        if cut {
+            stroke.shrink_with(&remap);
+        }
+        if done {
+            stroke.grow_with(&malha, &births);
         }
         stroke.dab(
             &mut malha,

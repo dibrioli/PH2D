@@ -228,9 +228,34 @@ pub fn smooth_on(
     adjacency: &[Vec<crate::im_weights::Link>],
     iterations: usize,
 ) {
+    smooth_on_fixed(dirs, normals, adjacency, &[], iterations);
+}
+
+/// **A MESMA suavização, com vértices PREGADOS** — `fixos[v] = true` quer dizer
+/// *este não se move, e serve de condição de fronteira a quem se move*.
+///
+/// ⭐⭐ **Ela existe para a MANCHA** ([`crate::regiao`]), e é escrita como a
+/// quinta recusa do colapso: *um motor partilhado não muda de lei por causa de
+/// um consumidor*. Com `fixos = &[]` — que é o que a [`smooth_on`] passa — o
+/// caminho é o de sempre **ao bit**, e a cadeia de retopologia não vê diferença
+/// nenhuma.
+///
+/// ⚠️ **Um vértice pregado é SALTADO, não recalculado-e-descartado.** As duas
+/// leituras dão o mesmo resultado (a escrita é o único efeito do corpo), e a
+/// primeira é a que não paga o anel dele.
+pub fn smooth_on_fixed(
+    dirs: &mut [[f32; 3]],
+    normals: &[[f32; 3]],
+    adjacency: &[Vec<crate::im_weights::Link>],
+    fixos: &[bool],
+    iterations: usize,
+) {
     let count = dirs.len();
     for _ in 0..iterations {
         for v in 0..count {
+            if fixos.get(v).copied().unwrap_or(false) {
+                continue;
+            }
             let nv = normals[v];
             // ⚠️ **`weight_sum` começa em ZERO, e o próprio valor entra só como
             // MOLDURA.** A primeira parcela é `a·0 + b·w`, ou seja o vizinho

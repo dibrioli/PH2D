@@ -2719,3 +2719,242 @@ própria ou sai* — é a lei que o §26 desta linha já escreveu sobre um braç
 ⛔ **O roteiro da `=49` passou a DIZER a troca** (passo 5, com o número), porque ele mandava-o para o
 extremo do curso sem o avisar do preço — a espécie que o `CLAUDE.md` §5.0 chama de pior que uma cena
 ausente.
+
+---
+
+## §82 — ⭐⭐⭐⭐ A RETÍCULA: o pente troca de CLASSE, e a troca do §81 deixa de existir
+
+> **Ordem do dono (19/09):** *«vamos modificar competamente esse algoritmo que vc
+> trouxe. faça uma pesquisa em busca de um melhor. traga o estado da arte»* — e,
+> apresentadas as três saídas do §6 da pesquisa, **«1»**: a família do **campo de
+> posição**.
+
+### §82.1 — O que a pesquisa achou, e porque não foi preciso portar nada
+
+A pesquisa está em
+[`24_pesquisa_o_estado_da_arte_do_alinhamento.md`](../24_pesquisa_o_estado_da_arte_do_alinhamento.md).
+O achado que mudou o preço da obra é o da §3 dela: **o `ph2d-quadflow` já é um
+porte fiel BSD-3 do *Instant Field-Aligned Meshes*** e já contém
+`orientation::{field_from, smooth_on}` **e** `position::{solve_position,
+position_round_4, smooth_on}` — e **as duas `smooth_on` operam sobre FATIAS com
+adjacência explícita**, porque foram escritas assim para a hierarquia.
+
+⭐ *É exactamente a assinatura de que um pincel precisa.* A wave não porta
+algoritmo nenhum: ela **constrói o DOMÍNIO** (a pegada) e liga-o.
+
+### §82.2 — A MANCHA, e porque ela é exacta e não aproximada
+
+[`ph2d_quadflow::regiao`](../../../crates/ph2d-quadflow/src/regiao.rs) é o módulo
+novo. Ele responde *«quais vértices, com que vizinhança, e quais estão
+pregados»*:
+
+- a **franja** — quem tem vizinho fora da pegada — é **pregada** e serve de
+  condição de fronteira. É a mesma frase que o pincel já diz do outro lado:
+  *fora da pegada, nem um bit*;
+- o **miolo** tem o anel inteiro dentro ⇒ os pesos cotangente dele são **os
+  mesmos números** que a peça inteira daria.
+
+⭐⭐⭐ **E isso é gateado AO BIT** (`o_miolo_de_uma_mancha_e_a_peca_inteira`):
+correr a lei na pegada e correr a lei na peça inteira com a mesma fronteira
+pregada dá **o mesmo `f32`** em cada vértice de miolo. *Se isso é verdade, tudo
+o que a cadeia de retopologia já provou sobre a lei vale aqui sem se medir outra
+vez; se fosse falso, a mancha era um segundo motor disfarçado.*
+
+⚠️⚠️ **E o gate apanhou o primeiro defeito na primeira corrida, com uma
+divergência de UM ULP:** a franja saía do `vert_verts` (os vizinhos de **aresta**)
+e os pesos cotangente incluem a **DIAGONAL de cada quad**, que não é aresta ⇒ `4`
+de `55` vértices de miolo tinham um parceiro fora da mancha, com peso `~1e-7`, e
+o `smooth_on` só salta o **zero exacto**. ⇒ *a franja passou a sair da adjacência
+que a LEI lê.* **Um link que quase não pesa ainda é um link que falta.**
+
+### §82.3 — As duas portas partilhadas, e porque a cadeia de retopologia não vê nada
+
+| porta | o que mudou | quem paga |
+|---|---|---|
+| `im_weights::cotangent_edge_weights_on` | os **mesmos** pesos sobre um punhado de faces | gate: uma mancha que cobre tudo devolve o mapa da irmã, ao bit |
+| `orientation::smooth_on_fixed` · `position::smooth_on_fixed` | a mesma suavização com vértices **PREGADOS** | com `fixos = &[]` o caminho é o de sempre **ao bit**, e é isso que as `smooth_on` passam |
+
+⚠️ **É o padrão do [`ph2d_mesh::Guarda`]** que esta linha pagou em 19/09: *um
+motor partilhado não muda de lei por causa de um consumidor.*
+
+### §82.4 — A lei, e as TRÊS COLUNAS
+
+[`regiao::arruma_na_grelha`] corre no **passe de topologia**
+([`crate::dyntopo::passe_nos_motores`]) e faz, por carimbo: o campo de
+orientação 4-RoSy **semeado pelo traço**, dele o campo de posição de lado `ρ`, e
+cada vértice do miolo caminha `peso` do caminho até **ao ponto de retícula dele**.
+
+Medido na peça da cena `=49`, os quatro rumos, **pela porta do produto**:
+
+| lei | grade (`[0°,15°)`) | vinco `p50` | vinco `p90` | razão |
+|---|---|---|---|---|
+| por pentear | `32,4`–`38,9 %` | `0,92`–`1,38°` | `2,58`–`2,65°` | `0,98`–`1,02` |
+| **a que o dono REPROVOU** | `41,8`–`45,2 %` | `1,75`–`1,89°` | `4,13`–`4,35°` | `0,73`–`0,86` |
+| ⭐ **a retícula** | **`63,5`–`65,9 %`** | **`0,91`–`1,12°`** | **`2,71`–`2,90°`** | `0,70`–`0,73` |
+
+⭐⭐⭐⭐ **⇒ A LEI DO §81 MORREU.** Ela dizia *«alinhamento e ondulação são o MESMO
+botão, e não há ponto do curso em que o pente alinhe de graça»*, e era **verdade
+da CLASSE que a mediu** — a que alinha escolhendo que triângulos se ligam.
+A retícula dá a cada vértice o ponto de uma grelha quadrada ⇒ *o alinhamento e o
+espaçamento igual são a MESMA construção*, logo não há um a comprar o outro:
+**quase o dobro do alinhamento com o relevo ao nível da malha por pentear.**
+
+⚠️ **A coluna que não melhorou é a RAZÃO** (`0,72` contra `0,86` da lei antiga),
+e ela **não é da retícula**: na CHAPA a mesma lei lê **`0,997`**. *O esticão que
+sobra é da curvatura*, que é a mesma partição que o §81.5 já tinha corrido.
+
+### §82.5 — Os dois números, e as DUAS medições que se corrigiram
+
+**`LADO_DA_CELULA = 0,80`** (o lado da célula em aresta média da pegada) —
+⭐⭐⭐ **é ESTA a alavanca**, e a escada é brutal:
+
+| `k` | grade | vinco `p50` | vinco `p90` |
+|---|---|---|---|
+| **`0,80`** | **`64,4 %`** | **`0,95°`** | **`2,63°`** |
+| `0,90` | `65,0 %` | `0,98°` | `3,07°` |
+| `0,931` | `63,6 %` | `1,08°` | `3,18°` |
+| `1,10` | `45,4 %` | `2,03°` | `21,17°` |
+| `1,25` | `38,6 %` | `3,13°` | `33,04°` |
+
+⚠️ **O recurso é a CAPACIDADE da célula:** um quadrado de lado `e` cobre `e²` por
+vértice e um triângulo equilátero de aresta `e` cobre `0,866 e²` ⇒ pedir a uma
+malha de triângulos que pouse numa grelha quadrada do **mesmo** lado empilha
+vértices, e um empilhamento é uma dobra. O empate teórico é `√0,866 = 0,931`, e
+a medição põe o joelho **abaixo** dele.
+
+**`RONDAS_DA_GRELHA = 2`** — o patamar, medido `1 · 2 · 3 · 4 · 6 · 8 · 16`.
+⚠️⚠️ **A PRIMEIRA corrida desta escada leu «sem tendência nenhuma» e estava a
+medir outro programa:** ela varreu as rondas com o lado da célula em `1,0`, onde
+**todas** as leituras são más. *Uma escada corrida no regime errado responde
+sobre um produto que não existe.*
+
+### §82.6 — ⛔⛔⛔ A ORDEM É LOAD-BEARING, e a minha primeira redacção dizia o contrário
+
+Eu escrevi que a retícula corre **DEPOIS** dos dois motores (*«arrumar antes
+seria pousar na grelha o barro que o corte vai substituir»*) e **o gate da cena
+reprovou-a**: `3` triângulos abaixo de `5°` em `2 418`, onde a lei substituída
+deixava zero.
+
+⚠️ **E a cerca de forma que a lei ganhou não os apanha** — ela julga **um**
+vértice de cada vez contra as posições de entrada (Jacobi), e um empilhamento é
+feito por **DOIS** vizinhos que, cada um por si, não afinam nada.
+
+⭐ **Em PRIMEIRO, zero.** O mecanismo é directo: *dois vértices no mesmo ponto de
+retícula são uma ARESTA CURTA, e uma aresta curta é exactamente o que o colapso
+existe para comer.* **Arrumar e depois limpar; limpar e depois arrumar deixa por
+limpar o que o último carimbo arrumou.**
+
+### §82.7 — A cerca da FORMA, e ela nasceu de um gate vermelho
+
+[`regiao::lasca`] recusa um destino que **afine** um triângulo do anel:
+`depois > antes && depois > cos(5°)`.
+
+⚠️ **É `pior && abaixo do chão`, nunca só uma das duas.** Só *«pior»* congelaria
+a malha (a retícula reforma triângulos de propósito); só *«abaixo do chão»*
+prenderia para sempre um vértice cujo anel já nasceu com uma lasca — e essa é a
+metade que o produto encontra numa peça esculpida.
+
+⚠️ **O `5°` é o número do GATE DA CENA** (`LIMIAR_DA_LASCA`), e não um valor
+escolhido na crate: é ali que o dono julga o resultado, e duas respostas à
+pergunta *«isto é uma lasca?»* divergiriam no dia em que uma delas mudasse.
+
+### §82.8 — ⛔⛔⛔ O GATE DA CENA reconstruía o passe à mão, e ficou VERDE enquanto a lei mudou inteira
+
+O `traco_com` do `a_cena_do_pente_tem_o_que_mostrar` montava o passe passo a
+passo — com o comentário *«como o produto»* ao lado. ⇒ quando o campo de tamanho
+por direcção saiu, a troca de diagonal saiu e a retícula entrou, **as cinco
+réguas do gate continuaram a medir três leis que o app já não corre** e a
+reprovar/aprovar sobre elas.
+
+⭐ Hoje ele percorre a **porta** (`crate::dyntopo::passe_nos_motores`). *Um gate
+que chama as funções em vez de percorrer a rota afirma que as leis existem,
+nunca que a cena as usa* — a mesma frase que o §24 desta linha já tinha escrito
+para outra fixtura, e que ela própria violava.
+
+### §82.9 — As catracas apertadas, com o número medido
+
+| catraca | antes | agora | medido |
+|---|---|---|---|
+| `GRADE_MINIMA` | `41,0` | **`60,0`** | `63,5`–`65,9 %` |
+| `VINCO_NO_QUARTO` | `1,10×` | **`1,12×`** | `1,072×` |
+| `VINCO_NO_TECTO` | `1,85×` | **`1,15×`** | `1,094×` |
+| `MOVIDOS_MINIMOS` | `1 000` | **`2 000`** | `2 188`–`2 264` |
+
+⚠️ *Uma catraca que fica onde estava quando a medição saltou meia dezena de
+pontos é uma licença.*
+
+⏳ **E o custo declarado:** `1` lasca a `4,35°` no rumo de `45°` (zero nos outros
+três), dentro do `LASCAS_TOLERADAS = 1` que já existia — a lei substituída lia
+zero nos quatro. *Fica registado e não escondido.*
+
+### §82.10 — O RELÓGIO, e o recurso que ele nomeia
+
+`--release`, mínimo de cinco (`diag_o_relogio_da_reticula`):
+
+| vértices | pegada | `6` rondas | **`2` rondas (o que shipa)** |
+|---|---|---|---|
+| `5 276` | `21` | `0,328 ms` | **`0,099 ms`** (`1,2 %`) |
+| `21 098` | `115` | `1,490 ms` | **`0,499 ms`** (`6,2 %`) |
+| `84 386` | `539` | `7,710 ms` (**96 %**) | **`2,435 ms`** (`30 %`) |
+
+⚠️ **O custo é LINEAR NA PEGADA** (`~4,5 µs` por vértice a `2` rondas), nunca na
+peça — é isso que a `regiao` existe para garantir, e é por isso que ela não
+chama a `cotangent_adjacency` da peça inteira.
+
+### §82.11 — O que SAIU do caminho do produto, e o que ficou
+
+| lei | estado |
+|---|---|
+| `ph2d_sculpt3d::campo_do_pente` (o alvo de aresta por direcção) | **sem chamador de produto**; gates e doc intactos |
+| `ph2d_mesh::alinha_arestas` (a troca de diagonal enviesada) | **sem chamador de produto**; doc-comment NOMEIA a orfandade |
+| `ph2d_rake::pentear` (o deslocamento pelo centroide do anel) | **sem chamador de produto** (`space.rs` entrega `pente: 0.0` ao dab) — ⭐ **a bancada de paridade das `221` corridas do alvo continua a correr por ela, intacta** |
+
+⭐⭐ **A ordem do dono foi trocar o algoritmo do produto, não apagar a medição do
+que o ALVO faz.** As três leis são a tradução medida da lei dele; o que mudou foi
+quem o produto chama.
+
+⚠️ **Gate `o_carimbo_nao_penteia_e_o_passe_penteia`, em DUAS metades** — só a
+primeira lê-se como *«o pente morreu»*, só a segunda deixaria o produto a correr
+as duas leis ao mesmo tempo, uma a puxar para o centroide e a outra para a
+grelha.
+
+### §82.12 — O roteiro da `=49` foi reescrito
+
+O passo `(5)` mandava o dono ver *«um pouco mais de ondulação»* e explicava a
+troca. Hoje manda-o ver os dois riscos **igualmente lisos**, e o `DEU ERRADO SE`
+passou a nomear *«o segundo risco visivelmente mais ondulado»* como defeito.
+
+### §82.13 — ⏳ ABERTO
+
+- a **razão** fica em `0,72` na bola (`0,997` na chapa) — é curvatura, e a cura,
+  se o dono a quiser, é do mesmo mecanismo do factor de escala conforme que a
+  linha do quad remesh já tem especificado;
+- o **botão satura**: a meio curso a grade lê `62,5`–`64,3 %` contra `63,5`–`65,9`
+  no tecto, porque `24` carimbos sobrepostos convergem para a retícula de
+  qualquer maneira. *O knob escolhe a velocidade, não o destino* — decisão de
+  produto se isso deve mudar;
+- `alinha_arestas` e `campo_do_pente` ficam **vivas e órfãs**, e nenhuma sonda
+  deste repo pergunta se uma porta tem chamador;
+- a lasca a `4,35°` do rumo de `45°`.
+
+### §82.14 — O portão
+
+- `nextest-impacted`: **16 431 / 16 431** verdes (10 613 saltados).
+- `clippy --all-targets -D warnings` nas duas crates: zero.
+- Tectos de LOC: todos os onze ficheiros tocados abaixo de `700` — o
+  `scenes_pente_superficie_tests.rs` chegou a `899` e foi curado por **CORTE**
+  (a retícula é assunto próprio ⇒ `scenes_pente_grelha_tests.rs`), **nunca** por
+  uma entrada no `FILE_OVERAGE_OK`.
+- `doc-index.sh --check`: ✓ 20 índices em dia.
+- **Mutação: 10 de 10**, com **dois CONTROLOS** que não podem sangrar (um `let _`
+  inerte e um segundo no-op) e **controlo sobre o próprio filtro** (uma corrida
+  que case zero testes é acusada como defeito do arnês, nunca lida como
+  sobrevivência).
+
+⚠️⚠️ **E UMA MUTAÇÃO SOBREVIVEU primeiro, por não alcançar a propriedade:** a da
+tangencialidade deslocava a **SEMENTE** do campo de posição — e a
+`position_round_4` volta a reduzir ao ponto de retícula mais perto do vértice,
+logo o alvo continuava no plano tangente e a menos de meia diagonal. *Uma
+mutação que não alcança a propriedade lê-se exactamente como uma que
+sobreviveu.* Refeita **dentro** da `position_round_4` (uma componente normal no
+ponto devolvido), ela sangra.

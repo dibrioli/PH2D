@@ -126,9 +126,30 @@ pub fn smooth_on(
     adjacency: &[Vec<crate::im_weights::Link>],
     iterations: usize,
 ) {
+    smooth_on_fixed(pos, p, n, dirs, scales, adjacency, &[], iterations);
+}
+
+/// **A MESMA suavização, com vértices PREGADOS** — irmã da
+/// [`crate::orientation::smooth_on_fixed`] e pela mesma razão.
+///
+/// ⚠️ Com `fixos = &[]` o caminho é o de sempre **ao bit**.
+#[allow(clippy::too_many_arguments)]
+pub fn smooth_on_fixed(
+    pos: &mut [[f32; 3]],
+    p: &[[f32; 3]],
+    n: &[[f32; 3]],
+    dirs: &[[f32; 3]],
+    scales: &[f32],
+    adjacency: &[Vec<crate::im_weights::Link>],
+    fixos: &[bool],
+    iterations: usize,
+) {
     let count = pos.len();
     for _ in 0..iterations {
         for v in 0..count {
+            if fixos.get(v).copied().unwrap_or(false) {
+                continue;
+            }
             let (pv, nv, qv, sv) = (p[v], n[v], dirs[v], scales[v]);
             // ⚠️ **`weight_sum` começa em ZERO** — a mesma correção da
             // orientação, e pela mesma razão.

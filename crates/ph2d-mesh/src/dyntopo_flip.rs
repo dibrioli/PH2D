@@ -271,6 +271,18 @@ const CHAO_DO_ALINHAMENTO: f32 = -0.961262; // -cos(16°)
 /// ⚠️ **Ponto de extensão APPEND-ONLY:** ela não muda o [`relax`] nem o
 /// [`relax_valence`], e com `preferencia = None` o caminho é o de sempre **ao
 /// bit**.
+/// ⛔⛔⛔ **EM 2026-09-20 ELA FICOU SEM CHAMADOR DE PRODUTO, por ordem do dono**
+/// (*«vamos modificar completamente esse algoritmo … traga o estado da arte»*):
+/// o pente do dab passou a ser a **retícula** (`ph2d_quadflow::regiao`), e a
+/// única chamada de produto que esta porta tinha — o passe de topologia da
+/// escultura — deixou de a fazer.
+///
+/// ⚠️ **A lei FICA, e isso é uma decisão e não inércia:** ela é a tradução
+/// medida de uma metade da lei do ALVO, tem os gates dela e a tabela da janela
+/// do chão. *Apagá-la levava a medição junto.* ⛔ Mas **uma porta sem chamador
+/// não é testemunhada pelo produto** — quem a re-ligar tem de re-medir as três
+/// colunas (grade · vinco · razão) contra a retícula, não contra a lei que ela
+/// substituiu.
 pub fn alinha_arestas(
     mesh: &mut Mesh,
     center: [f32; 3],

@@ -257,23 +257,23 @@ pub(crate) fn announce() {
          [sculpt3d]        longo do risco; no primeiro elas apontam para todos os lados.\n\
          [sculpt3d]        Nao e' uma grelha certinha -- e' o grao a virar-se para o lado\n\
          [sculpt3d]        em que a sua mao andou.\n\
-         [sculpt3d]    (5) Agora desligue o arame (`Wireframe`) e olhe para o RELEVO.\n\
-         [sculpt3d]        O segundo risco fica um pouco mais ondulado que o primeiro:\n\
-         [sculpt3d]        este botao TROCA uma coisa pela outra, e nao ha ponto do\n\
-         [sculpt3d]        curso em que ele alinhe de graca. A meio curso quase nao ha\n\
-         [sculpt3d]        ondulacao -- e quase nao ha alinhamento tambem.\n\
+         [sculpt3d]    (5) Agora desligue o arame (`Wireframe`) e olhe para o RELEVO\n\
+         [sculpt3d]        dos dois riscos. Eles tem de ficar IGUAIS de lisos. O\n\
+         [sculpt3d]        alinhamento do passo (4) nao custa ondulacao nenhuma.\n\
          [sculpt3d]\n\
-         [sculpt3d]    COMO SABER QUE DEU ERRADO: se os dois riscos ficarem iguais, se\n\
-         [sculpt3d]    a malha ficar com triangulos finos como lascas de vidro, ou se a\n\
-         [sculpt3d]    ondulacao do passo (5) for MAIS do que um pouco -- as tres coisas\n\
-         [sculpt3d]    estao medidas e nenhuma devia acontecer.\n\
+         [sculpt3d]    COMO SABER QUE DEU ERRADO: se os dois riscos ficarem iguais no\n\
+         [sculpt3d]    passo (4), se a malha ficar com triangulos finos como lascas de\n\
+         [sculpt3d]    vidro, ou se o segundo risco ficar VISIVELMENTE mais ondulado que\n\
+         [sculpt3d]    o primeiro no passo (5) -- as tres coisas estao medidas e nenhuma\n\
+         [sculpt3d]    devia acontecer.\n\
          [sculpt3d]\n\
          [sculpt3d]    (medido nesta peca: das linhas da malha debaixo do risco, 33 de\n\
          [sculpt3d]    cada 100 correm com ele antes -- que e' o que uma malha SEM\n\
-         [sculpt3d]    direccao nenhuma da' -- e 41 a 47 no tecto, sem um unico\n\
-         [sculpt3d]    triangulo fino. O preco esta' medido: a dobra entre faces\n\
-         [sculpt3d]    vizinhas passa de 2,6 para 4,4 graus, que e' a ondulacao do\n\
-         [sculpt3d]    passo (5).)\n"
+         [sculpt3d]    direccao nenhuma da' -- e 64 a 66 no tecto, contra 42 a 45 da\n\
+         [sculpt3d]    versao que voce reprovou. E a dobra entre faces vizinhas fica em\n\
+         [sculpt3d]    2,7 a 2,9 graus contra 2,6 da malha por pentear -- ou seja, o\n\
+         [sculpt3d]    relevo fica como se ninguem tivesse penteado, e antes ela ia a\n\
+         [sculpt3d]    4,4.)\n"
     );
 }
 

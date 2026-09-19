@@ -2591,3 +2591,131 @@ medida num rumo só; quem pegar corre
 (`ph2d-tool-painter`, `tool::paint::tests::measure_input_cost`) — reprovou no meio do fan-out de
 `16 420` e passa **3 de 3 sozinha a `load 3,8`–`4,5`**, com **zero linhas do diff desta linha**
 naquela crate. É um relógio de cópia de canvas: a família que o §5.0 já nomeia.
+
+---
+
+## §81 — ⛔⛔⛔⛔ «PIOR QUE O ORIGINAL»: o alinhamento e a ONDULAÇÃO são o mesmo botão
+
+**Report (2026-09-19, com foto do RELEVO — não do arame):** *«o resultado fica pior que o original,
+com irregularidade a 90 graus da direcção do movimento»*, sobre a `=49` do §80.
+
+### §81.1 — As CINCO réguas da cena mediam a LIGAÇÃO; nenhuma media a LUZ
+
+| régua | o que julga |
+|---|---|
+| `q_da_faixa` · `grade_da_faixa` | que direcção as arestas tomam |
+| `pior_angulo` · `lascas` | que forma os triângulos têm |
+| `movidos` | quantos vértices diferem, **ao bit** |
+
+⇒ *uma malha pode ficar mais alinhada e mais feia ao mesmo tempo, e até este report esta linha não
+tinha como o dizer*. A régua nova é [`ph2d_sculpt3d::medida_do_pente::vinco_da_faixa`] — o ângulo
+entre as normais de duas faces vizinhas, que é **o que o sombreamento usa**.
+
+⚠️ **E a régua ÓBVIA não servia:** a rugosidade (`|p − centroide do anel|`) muda quando a LIGAÇÃO
+muda, e uma troca de diagonal muda o anel **sem mover um vértice**. O ângulo entre normais também,
+mas ali isso é a resposta certa: *a face é o que a luz vê*.
+
+### §81.2 — ⭐⭐⭐ A atribuição, metade a metade, e o DESLOCAMENTO está ILIBADO
+
+Na faixa do traço, com o chão do flip em `16°` (`diag_quem_enruga`):
+
+| metades | rug `p50` | vinco `p90` | razão do comprimento | grade |
+|---|---|---|---|---|
+| nenhuma (o controlo) | `0,0580` | `2,563` | `1,011` | `32,9 %` |
+| só o campo de tamanho | `0,0548` | `2,677` | `1,023` | `39,7 %` |
+| **só a TROCA DE DIAGONAL** | **`0,2373`** | **`3,643`** | `0,897` | `37,8 %` |
+| **só o DESLOCAMENTO** | **`0,0201`** | **`2,507`** | `0,969` | `33,1 %` |
+| tudo (o que shipa) | `0,1081` | `4,391` | `0,653` | `41,1 %` |
+
+⭐ **A relaxação isotrópica que a H1 trouxe ALISA** (`0,0580 → 0,0201`, `2,9×`) — é ela que segura a
+superfície enquanto a troca a puxa.
+
+### §81.3 — ⭐⭐⭐⭐ O vinco nasce no COLAPSO, e o `collapse.rs` não tinha uma única guarda GEOMÉTRICA
+
+Medindo o pior vinco **depois de cada um dos quatro passos do dab** (`diag_em_que_passo`), o número
+salta no **colapso do dab 4**: `5,49° → 177,8°`. ⇒ *a troca de diagonal prepara a configuração;
+quem a dobra é a fusão seguinte.*
+
+⛔⛔ O cabeçalho do [`collapse.rs`](../../../crates/ph2d-mesh/src/collapse.rs) diz, desde que existe,
+**«as quatro recusas, e todas são TOPOLOGIA»** — e isso lia-se como um facto arrumado quando era uma
+**ausência**: nada ali olhava para o que a fusão faz à FORMA das faces que sobrevivem.
+
+⭐ **A quinta recusa** ([`vira_alguma_face`]) compara a normal de cada face do anel antes e depois de
+o sobrevivente pousar, e recusa se alguma apontar para o lado oposto. **O teste é o do SINAL** — uma
+barra em graus pediria um número escolhido; a inversão é um facto.
+
+⚠️ **Por que só aparece com o pente:** as quatro recusas topológicas bastam numa malha ISOTRÓPICA,
+onde o anel é aproximadamente regular e o centroide nunca atravessa uma aresta oposta. Com a malha
+alinhada o anel fica **alongado**, e o centroide de um anel alongado pode cair **do outro lado** de
+um dos triângulos.
+
+**Medido:** o pior vinco da faixa passa de `180,000°` para `15,8°` na configuração que reproduz, e de
+`16,2°` para `11,0°` no produto inteiro.
+
+⛔⛔⛔ **E ela é do CHAMADOR, não do motor — o portão obrigou-o.** A 1.ª redacção pôs a recusa dentro
+do `plan`, logo ela alcançava **todos** os chamadores, e a varredura impactada devolveu **onze**
+vermelhos numa obra que esta wave não toca: `ph2d-remesh-iso` (a fase zero da retopologia), três do
+`ph2d-gridmap`, três do `ph2d-quadextract`, dois do `ph2d-trace`, o gate da chapa do próprio pente e
+um TIMEOUT na `ph2d-quadchain`. ⇒ [`ph2d_mesh::Guarda`], com `Topologia` (byte-idêntico, o caminho
+da retopologia) e `ETambemAForma` (o dab de escultura) — *é a mesma lição que o `PH2D_ISO_ADAPT`
+desta linha já pagou: um motor partilhado não muda de lei por causa de um consumidor*.
+
+⏳ **E o que a RETOPOLOGIA faz com uma face invertida fica NOMEADO e por medir** — é outra pergunta,
+com outras réguas e outro dono. *O facto de onze gates mudarem de resposta quando a recusa entra diz
+que ela lá tem efeito; não diz qual.*
+
+### §81.4 — ⛔⛔ E o que SOBRA é a lei, não um defeito de afinação
+
+| posição do botão | grade | vinco `p90` | razão |
+|---|---|---|---|
+| desligado | `32,9 %` | `2,563°` | `1,011` |
+| `0,25` | `38,8 %` | **`2,455°`** | `0,946` |
+| `0,50` | `40,0 %` | `3,156°` | `0,890` |
+| `0,75` | `42,6 %` | `3,887°` | `0,709` |
+| **`1,00`** | `41,1 %` | **`4,391°`** | `0,653` |
+
+⭐⭐⭐ **As duas colunas sobem JUNTAS**, e a `24°` de chão a ondulação já era `1,22×` a do lado
+desligado — *ela não é nova; estava debaixo de um efeito que ninguém via*. ⛔ **E não há ponto
+grátis:** a `0,25` a superfície fica **mais lisa** que por pentear e o arame é **indistinguível** do
+lado desligado (conferido imagem a imagem).
+
+⭐⭐ **O mecanismo, em três degraus:** a mesma lei sobre uma **CHAPA** dá razão `1,029`; sobre a bola
+**sem carimbo**, `0,885`; sobre a bola **com** o carimbo a levantar relevo, `0,653`. ⇒ o esticão
+**não está nos alvos do campo** — eles são simétricos (`cos 4α` médio `+0,809` ao longo contra
+`+0,814` atravessado) — *ele nasce da dinâmica sobre a superfície que o próprio traço encurva*.
+
+⚠️⚠️ **E a razão de nenhuma bancada o ver:** as fixturas do oráculo são **CHAPAS**, e ali a saída
+DELE lê razão `1,04`–`1,13` (com as **diagonais** mais longas, que é o que uma lei de quatro dobras
+tem de fazer) — igual à nossa no plano. *Uma paridade medida numa fixtura plana não afirma nada
+sobre uma peça curva.*
+
+### §81.5 — O que fica gateado
+
+| gate | onde | o que afirma |
+|---|---|---|
+| `o_colapso_nao_vira_uma_face_do_avesso` | app | nenhuma aresta da faixa passa de `90°` (era `180,000°`) |
+| `a_troca_por_direccao_nao_compra_alinhamento_com_vinco` | `ph2d-mesh` | quad sintético NÃO PLANO recusa, o PLANO aceita |
+| `VINCO_NO_QUARTO` (`1,10×`) | cena | a metade de baixo do curso é grátis (medido `1,019×`) |
+| `VINCO_NO_TECTO` (`1,85×`) | cena | a troca no tecto **só pode descer** (medido `1,715×`) |
+
+⚠️ **A cerca do vinco no flip é quase inerte no produto** (`4,493 → 4,391`, `2 %`) e por isso ganhou
+**fixtura sintética** com controlo positivo: *uma cerca de zero disparos mensuráveis ou ganha fixtura
+própria ou sai* — é a lei que o §26 desta linha já escreveu sobre um braço de `match` redundante.
+
+**Prova de mutação 5 de 5**, com controlo sobre o próprio filtro.
+
+### §81.6 — ⏳ ABERTO, e é decisão do DONO
+
+**O botão troca alinhamento por ondulação, e a troca está medida acima.** O que fica por decidir é
+**quanto** dela ele quer — e as três saídas, com o preço de cada uma:
+
+1. **ficar como está** — o curso inteiro é dele, do «invisível e liso» ao «visível e ondulado»;
+2. **baixar o tecto** (`VIES_DA_GRADE`) até onde a ondulação desaparece — custa o alinhamento
+   VISÍVEL, que foi o report anterior;
+3. **uma quarta metade** que desfaça a ondulação sem desfazer o alinhamento — não existe hoje, e a
+   pista é a única grandeza que a medição isolou: a **razão do comprimento** (`0,653` contra
+   `1,04`–`1,13` do alvo). *Uma lei de quatro dobras não devia produzir um esticão de duas.*
+
+⛔ **O roteiro da `=49` passou a DIZER a troca** (passo 5, com o número), porque ele mandava-o para o
+extremo do curso sem o avisar do preço — a espécie que o `CLAUDE.md` §5.0 chama de pior que uma cena
+ausente.

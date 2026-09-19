@@ -424,3 +424,20 @@ uma CORCOVA).
 acompanhar» medido no ÚLTIMO quadro lê `1,6°` na animação dele, porque ali o delta acaba em zero. Nos
 dados reais a régua é a **EXCURSÃO**. *As duas réguas são diferentes porque as duas fixturas são
 diferentes.*
+
+### 2026-09-19 (3.ª volta) — copiar e colar a posição de um ponto (botão direito)
+
+Pedido do dono. ⛔⛔ **«A mesma posição» tem DUAS leituras e a MEDIÇÃO escolheu**: entre dois quadros
+dos exemplos dele a bacia anda 34 a 123 cm e o braço estica 49 cm do ombro ⇒ colar a posição do PALCO
+fica fora de alcance no pulo, no mortal e na aterrissagem. As duas ficam, no menu.
+
+⭐⭐⭐ **E o que as separa é a RAIZ**: com ela livre o ponto chega ao alvo (0,0–0,2 cm) mas a BACIA anda
+13 a 17 cm, e o erro medido no corpo de DEPOIS vai a 36 cm — ⛔ e iterar NÃO cura (36 → 14 → 7 → 6 →
+11). Com a raiz PRESA no modo do corpo: 0,00–0,15 cm e o corpo não anda nada.
+
+⛔⛔ **O gesto novo expôs uma dívida de portão**: `PORTAO_CIRCULO` estava declarada e não era usada
+por mutação nenhuma. Ao escrevê-la, duas armadilhas — a 1.ª mutação era INERTE (a `raiz` do braço
+neste rig é o OMBRO, de comprimento ~0) e a 1.ª cura do portão era uma **TAUTOLOGIA** (medir o raio dá
+sempre o comprimento do osso, porque o cotovelo É a ponta dele). A afirmação com conteúdo é a
+IDENTIDADE DO PONTO MAIS PERTO: ele NÃO alcança o rato e fica a exactamente o quanto o rato está fora
+do círculo. Escrita nos dois portões, e a mutação mata os dois.

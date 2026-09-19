@@ -187,3 +187,146 @@ corpus antigo é uma IDENTIDADE: `acumula/escada_n14_off` é byte-idêntica, no 
 
 ⛔ **Risco de leitura nomeado:** em `escada/` o prefixo `n_x*` quer dizer **passagens**;
 em `acumula/` o `escada_n*` quer dizer **carimbos**.
+
+---
+
+## §8 — A família `acumula` cresceu para **125** células (2ª colheita, 2026-09-18)
+
+⚠️ **O número é CONTADO da pasta** (`find acumula -name '*.gz' | wc -l`), como manda o §5.
+Mesmo binário da 1ª colheita — **5.2.2 LTS, pacote `17:5.2.2-1`, build 2026-09-15** — e a prova
+disso é a **regeneração byte-idêntica** de duas células da 1ª leva, uma de cada estado do
+interruptor: `escada_n27_on` → `ceb750f09e5b` e `escada_n40_off` → `5e07463ab717`, iguais no
+`sha256` do corpo (receita do §6).
+
+### §8.1 — O regime longo (`escada_n60..n800`, +12 células)
+
+O lado **LIGADO** fica em `0.21000004` de `N = 4` a **`N = 800`** — o tecto não se move.
+O lado **DESLIGADO** não sobe para sempre: ele **converge para o RAIO**.
+
+| | `N=27` | `40` | `60` | `80` | `120` | `200` | `400` | `800` |
+|---|---|---|---|---|---|---|---|---|
+| desligado | 0,33280 | 0,33833 | 0,34218 | 0,34410 | 0,34603 | 0,34758 | 0,34874 | **0,34933** |
+
+⭐ Ajustado por Richardson em `d(N) = A − c/N`, os pares `(60, 80)` e `(120, 200)` dão
+**`A = 0,3499` os dois** — e `A` é o **raio** (`0,35`). A previsão foi feita ANTES de colher
+a cauda e as duas células novas caem em cima dela: `d(400)` previsto `0,34885` / medido
+`0,34874`; `d(800)` previsto `0,34942` / medido `0,34933`.
+
+### §8.2 — `CLAY_THUMB`: o interruptor é INERTE neste verbo, e a escada parada não o mede
+
+⛔⛔ **O cursor parado deixa este verbo INERTE** — `maxd = 0,00000000` e `movidos = 0` em
+`N ∈ {5, 40, 120, 200}`, nos dois estados (`thumb_n*`, 8 células). ⚠️ **Sem controlo, esses
+zeros lêem-se como «o interruptor não faz nada a este verbo» quando o que não aconteceu foi o
+VERBO.** Os dois controlos que os separam ficam no corpus:
+
+- `thumbpuro_n*_off` — o **`THUMB`** simples, que já vive em `verbos/`, é **igualmente inerte**
+  parado ⇒ é uma propriedade da família **ancorada**, não deste verbo nem do arnês;
+- `thumbdeg_n*` — carimbos **idênticos** (âncora na origem, todos os outros pontos no mesmo
+  sítio deslocado): `N = 5` e `N = 200` dão a **mesma** saída (`0,00003946`) ⇒ só a **primeira
+  transição** age, e as outras `N−2` não fazem nada. *O que este verbo conta são EVENTOS COM
+  MOVIMENTO, não carimbos.*
+
+⇒ duas escadas que **contêm** o fenómeno, com nome próprio porque o enquadramento é outro
+(e o cabeçalho de cada uma declara-o em `comprimento_do_percurso` e `forma_do_percurso`):
+
+| `N` | `thumbmov` (percurso fixo `0,0100`) | `thumbfix` (passo fixo `0,0001`) |
+|---|---|---|
+| 5 | 0,00111620 | 0,00111386 |
+| 40 | 0,08741962 | 0,08720104 |
+| 120 | 0,28273601 | 0,28348203 |
+| 200 | 0,28390929 | 0,28851722 |
+| 400 | — | 0,29953384 |
+
+⭐ **Ele SATURA**: de `120` para `200` o `thumbmov` move `+0,4 %`. ⚠️ A subida que o `thumbfix`
+ainda mostra a `N = 400` é **confundida**: ali o cursor já andou `0,0399` (11 % do raio) e a
+pegada passou de `50` para `57` vértices — deixou de ser uma pilha e passou a ser um traço.
+
+⛔ **E o interruptor não muda nada**: `off` e `on` são iguais ao bit em `N ∈ {5, 40}` e diferem
+`1,7e-8` em `{120, 200}` — **um ulp de `f32`** naquela magnitude, com `maxd` idêntico a oito
+casas. ⚠️ O chão de ruído deste regime está medido ao lado (`thumbmov_n200_off_rep1/rep2` e
+`_on_rep1`): **três corridas do MESMO spec dão dois corpos diferentes**, até `2,1e-9`.
+*Sem esse chão, «os corpos diferem» não separa o interruptor de uma corrida que não repete.*
+
+### §8.3 — A lei do tecto (`tecto_*`, 60 células)
+
+⚠️ **Cada ponto leva DOIS controlos, e é isso que o torna legível**: o gémeo `_off` (o travão
+**mordeu** naquele enquadramento?) e o `_on_n200` (o valor lido é o **planalto** ou ainda subia?).
+
+**Contra o RAIO — a lei é limpa e é PROPORCIONAL** (força `0,5`, `N = 27`, os cinco usáveis):
+
+| raio | 0,15 | 0,20 | 0,25 | 0,35 | 0,50 |
+|---|---|---|---|---|---|
+| tecto | 0,08963172 | 0,11977170 | 0,14986703 | 0,21000004 | 0,30014169 |
+| **tecto / raio** | 0,5975 | 0,5989 | 0,5995 | **0,6000** | 0,6003 |
+
+**Contra a FORÇA — ela NÃO é limpa, e o corpus diz onde** (raio `0,35`, `N = 27`):
+
+| força | 0,125 | 0,25 | 0,375 | 0,50 | 0,625 | 0,69 | 0,70 | 0,71 | **0,725** | 0,75 | 0,775 | 0,80 | 0,875 | 1,00 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| tecto/raio | *0,3718* | 0,5022 | 0,5555 | 0,6000 | 0,6484 | 0,7306 | 0,7418 | **0,7525** | **0,5248** | 0,5617 | 0,5997 | 0,6390 | 0,7645 | *0,9985* |
+
+⛔⛔ **Há um PENHASCO entre `0,710` e `0,725`** — o tecto **cai** `0,7525 → 0,5248` e depois
+volta a subir. ⚠️ **Não é amostragem de um vértice**: a soma de `|Δ|` sobre a pegada inteira cai
+com ele (`4,742 → 2,870`). ⚠️ **Nem é convergência**: os dois lados do penhasco são planaltos
+(`ON` a `N = 27` e a `N = 200` são iguais ao bit nos dois).
+
+⛔⛔ **E o penhasco mora no PAR `(raio, força)`, não na força** (`tecto_r020_f071*`,
+`tecto_r020_f0725*`): a raio `0,20` **não há penhasco** entre `0,71` e `0,725` — ali sobe
+`0,5018 → 0,5232`. *A raio `0,20` ele já aconteceu antes de `0,71`.*
+
+⛔ **Dois dos pontos NÃO medem o tecto, e ficam marcados em itálico acima:**
+
+- **força `0,125`** — a `N = 27` o travão **não morde** (`ON == OFF` ao bit): o lado sem travão
+  ainda não chegou onde o travão o apanharia. O planalto dele existe mais fundo e está colhido:
+  `tecto_f0125_on_n200` = `tecto_f0125_on_n800` = **`0,17565575`** ⇒ o ponto é recuperável, mas
+  **só com `N ≥ 200`**;
+- **força `1,00`** — `ON` e `OFF` diferem `1,1e-4` (`0,011 %`): ali o lado **sem** travão já
+  chegou ao próprio limite (o raio), logo o travão fica **em cima** dele e não se pode dizer que
+  mordeu. O tecto ali é, à vista, o próprio raio.
+
+⛔ **Risco de leitura nomeado:** em `acumula/` o `escada_n*` e o `thumb*_n*` contam **carimbos**
+(ou, no `thumb*`, *eventos com movimento*), enquanto o `n_x*` de `escada/` conta **passagens**.
+
+### §8.4 — ⛔⛔ O QUE O ALVO RECEBE É UM PONTO 3D, E ELE NÃO O RE-PICA
+
+⚠️ **Sem esta secção o corpus lê-se ao contrário.** O harness entrega, por ponto do percurso,
+**DUAS** coisas: a posição 3D (`# ponto x y z`) e a projecção 2D dela no ecrã. *O harness não
+decide qual delas o alvo usa* — quem decidiu foi a medição.
+
+⭐ **Discriminador, com o plano em `z = 0` EXACTAMENTE e vista de topo ortográfica** — os três
+pontos projectam-se no **mesmo pixel**, `(655,5 · 440,0)`, e isso está no log do próprio harness:
+
+| célula | ponto alimentado | saída |
+|---|---|---|
+| `altura_acima` | `(0, 0, +2)` | `0,00000000` · **0** vértices |
+| `altura_no_plano` | `(0, 0, 0)` | `0,31712657` · 49 vértices |
+| `altura_abaixo` | `(0, 0, −2)` | `0,00000000` · **0** vértices |
+
+⇒ **o alvo lê a posição 3D e NÃO re-lança raio do rato.** Com um raio do rato os três dariam a
+mesma saída, porque o pixel é o mesmo.
+
+⇒ **e o centro NÃO se move entre carimbos:** ele é o ponto alimentado, verbatim, nas `N` vezes.
+A prova é a convergência da §8.1 — o barro sobe e **foge** de um centro que fica parado, logo o
+vértice pára exactamente a `R` do centro, que é onde a queda vale zero. *Se o centro seguisse a
+superfície, o deslocamento crescia sem limite.*
+
+⭐⭐ **A lei por carimbo sai disto e reproduz o alvo a `0,00 %` nos TREZE `N` (1..800):**
+
+```
+h ← h + forca² · R · queda( |posição VIVA − centro FIXO| / R )
+queda(t) = 1 − (3t² − 2t³)        // 1 no CENTRO, 0 no RAIO
+```
+
+⛔⛔ **A distância é medida da posição VIVA, e é isso que decide tudo.** Medida da posição de
+REPOUSO a mesma lei diverge — linear, `69,89` a `N = 800` contra `0,3493` (`+19 908 %`).
+
+⚠️⚠️ **LIMITE DO CORPUS, nomeado:** como o harness entrega a posição, **a política de re-pique do
+próprio alvo é CONTORNADA e este corpus não a mede.** Ele mede a lei do pincel com o centro
+PREGADO. Quem comparar um produto que re-pica ao vivo contra estas células está a variar **duas**
+coisas ao mesmo tempo — a polaridade da curva e a posição de onde a distância é medida — e as duas
+leituras dão conclusões opostas.
+
+⭐ E é isto que explica a §5 das células de ESFERA (`x_esf_*`, `y_esf*`): o percurso delas corre
+**dentro** da esfera (raio `0,8`, centro na origem, pontos de `x = −0,45` a `+0,45` em `z = 0`), e
+o vértice mais próximo fica a `0,35`–`0,80` — **nunca dentro** do raio do pincel. Por isso o alvo
+não move um vértice: *o ponto cai no MIOLO da peça*. Um raio de cima teria acertado em `z = +0,8`.

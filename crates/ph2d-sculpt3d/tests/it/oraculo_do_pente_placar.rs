@@ -434,7 +434,18 @@ fn com_o_interruptor_desarmado_o_par_da_o_mesmo_bloco() {
     );
 }
 
-/// ⛔⛔⛔ **AFIRMA UM DEFEITO DE PROPÓSITO — a contradição do §75 do handoff.**
+/// ⛔⛔ **AFIRMA UMA DIFERENÇA DE PROPÓSITO — e ela é do REGIME DO CORPUS.**
+///
+/// ⚠️⚠️ **CORRIGIDO (2026-09-18):** a 1.ª redacção chamava a isto *«a
+/// contradição do §75»* e lia-o como defeito do nosso pincel base. Não é —
+/// ou pelo menos o corpus não o prova. Estas células carimbam com o centro
+/// **PREGADO** (o alvo lê a posição 3D e não relança raio, medido), e o nosso
+/// produto **repica da superfície viva**. No regime do corpus a nossa lei
+/// diverge; no regime do produto ela é a que os gates de `accum_tests`
+/// descrevem, e esses continuam verdes.
+///
+/// *Um número medido num regime que o produto não corre é um facto sobre a
+/// bancada.*
 ///
 /// Com o pente **INERTE** (`acumular = False` em todo o corpus), o nosso
 /// pincel base carimba na direcção EXACTA sobre os vértices EXACTOS, e cava
@@ -551,7 +562,31 @@ fn o_pincel_base_sobre_acumula_e_isso_e_a_contradicao_do_p75() {
     );
 }
 
-/// ⭐⭐⭐⭐ **A ARBITRAGEM, presa: o nosso ramo LIGADO é o ramo DESLIGADO dele.**
+/// ⭐⭐⭐ **A identidade: o nosso ramo LIGADO é o ramo DESLIGADO dele.**
+///
+/// # ⛔⛔⛔ CORRIGIDO (2026-09-18) — isto NÃO arbitra a polaridade do produto
+///
+/// A 1.ª redacção deste gate lia-se como *«a nossa polaridade está invertida,
+/// prova exacta»*. **É falso**, e a refutação veio do arnês do oráculo:
+///
+/// São **DUAS** escolhas binárias independentes — **(A)** a polaridade da
+/// curva de queda e **(B)** de que posição a distância é medida (viva ou
+/// congelada) —, e as duas experiências que eu corri **variaram-nas JUNTAS**:
+/// *cursor fixo com alvo vivo* e *cursor vivo com alvo congelado* são a
+/// **mesma geometria relativa**. Daí a identidade ao bit, e daí eu quase ter
+/// trocado uma lei certa.
+///
+/// ⛔⛔ **E o corpus não mede o regime do PRODUTO.** O arnês entrega ao alvo a
+/// posição **3D** (medido: três células com o mesmo pixel e `z = +2 · 0 · −2`
+/// dão `0` · `49` · `0` vértices movidos ⇒ ele lê a posição e **não relança
+/// raio**), logo o centro fica **PREGADO** nas `N` repetições. O nosso produto
+/// **repica da superfície viva** a cada carimbo. *Comparar um produto que
+/// repica contra células de centro pregado é variar duas coisas de uma vez.*
+///
+/// ⇒ o que este gate afirma é uma **propriedade da nossa lei no regime do
+/// corpus**, e **não** um veredito sobre o interruptor. ⚠️ Com o centro
+/// pregado, a lei do alvo mede a distância da posição **VIVA** com a curva
+/// **não** invertida (ajuste do E: erro `0,00 %` nos treze `N`).
 ///
 /// A família `acumula/` (18 células, colhida 2026-09-18) trouxe a metade da
 /// tabela-verdade que faltava, e ela diz que a nossa polaridade está

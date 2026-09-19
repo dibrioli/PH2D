@@ -152,6 +152,9 @@ pub fn pincel(c: &Celula) -> Brush {
         "BLOB" => Verb::Blob,
         "NUDGE" => Verb::Nudge,
         "THUMB" => Verb::Thumb,
+        // ⚠️ **`CLAY_THUMB` é um verbo DISTINTO do `THUMB`** no alvo (a lista
+        // pública dele tem os dois), e o corpus só o cobre desde 2026-09-18.
+        "CLAY_THUMB" => Verb::ClayThumb,
         "GRAB" => Verb::Move,
         "SNAKE_HOOK" => Verb::SnakeHook,
         "ROTATE" => Verb::Twist,
@@ -215,6 +218,15 @@ pub fn correr(c: &Celula) -> Vec<[f32; 3]> {
 /// pontos do cabeçalho **são** os carimbos.
 /// A direcção da vista que este corpus usa — a mesma em todas as células.
 const OLHO: [f32; 3] = [0.0, 0.0, -1.0];
+
+/// De onde o raio da SONDA do repique parte, acima do plano da peça.
+///
+/// ⛔ **Ele não está no caminho da bancada, e isso é o achado:** medido, o
+/// arnês do oráculo entrega ao alvo a **posição 3D** e o alvo **não relança
+/// raio** (três células com o mesmo pixel e `z = +2 · 0 · −2` movem `0` · `49`
+/// · `0` vértices). A bancada carimba no ponto do cabeçalho, como ele; este
+/// raio serve só à sonda que mediu a diferença entre os dois regimes.
+const ALTURA_DO_RAIO: f32 = 10.0;
 
 pub fn correr_com(c: &Celula, reamostra: bool) -> Vec<[f32; 3]> {
     let mut m = entrada(c);
@@ -936,6 +948,108 @@ fn diag_a_escada_do_interruptor() {
             col[1].0,
             col[1].1,
             col[1].1 / col[1].0
+        );
+    }
+}
+
+/// ⭐ **O CLAY THUMB contra o alvo, nos dois estados do interruptor.**
+///
+/// A quarta regra contrariada pela troca de polaridade
+/// (`the_thumb_saturates_at_the_ceiling_instead_of_tilting_for_ever`) julga
+/// este verbo, e o corpus antigo não o cobria. A colheita de 2026-09-18 trouxe
+/// três enquadramentos, e o achado dela é que **o interruptor é INERTE neste
+/// verbo no alvo** (`off` e `on` diferem por um ulp de `f32`, abaixo do chão de
+/// ruído medido de `2,1e-9` entre corridas do MESMO spec).
+#[test]
+#[ignore = "sonda: o clay thumb"]
+fn diag_o_clay_thumb() {
+    println!(
+        "{:<22} {:>13} {:>13} {:>8}",
+        "celula", "ALVO", "nosso", "razao"
+    );
+    for base in ["thumbmov", "thumbfix"] {
+        for n in [5usize, 40, 120, 200] {
+            for lado in ["off", "on"] {
+                let nome = format!("{base}_n{n}_{lado}");
+                let c = ler("acumula", &nome);
+                let dentro = entrada(&c);
+                let maior = |p: &[[f32; 3]]| -> f64 {
+                    dentro
+                        .positions()
+                        .iter()
+                        .zip(p)
+                        .map(|(a, b)| {
+                            f64::from(b[0] - a[0])
+                                .hypot(f64::from(b[1] - a[1]))
+                                .hypot(f64::from(b[2] - a[2]))
+                        })
+                        .fold(0.0, f64::max)
+                };
+                let (d, n2) = (maior(&c.saida), maior(&correr(&c)));
+                println!(
+                    "{nome:<22} {d:>13.8} {n2:>13.8} {:>8.3}",
+                    if d > 0.0 { n2 / d } else { f64::NAN }
+                );
+            }
+        }
+    }
+}
+
+/// ⛔⛔⛔ **A EXPERIÊNCIA QUE SEPARA DUAS FIXTURAS MINHAS.**
+///
+/// A bancada carimba em pontos FIXOS do mundo; o app **repica da superfície
+/// VIVA** a cada carimbo, e o gate `…saturates_at_one_radius…` também. Com a
+/// polaridade trocada, a bancada reproduz o alvo ao bit e aquele gate dispara
+/// (`9,49` raios). ⇒ *ou o alvo satura mesmo com repique vivo — e a
+/// discordância é da fixtura do gate —, ou a identidade da bancada é artefacto
+/// de eu alimentar pontos fixos.*
+///
+/// Esta sonda corre a escada nas DUAS maneiras, com a mesma lei.
+#[test]
+#[ignore = "sonda: o repique vivo contra o ponto fixo"]
+fn diag_o_repique_vivo_contra_o_ponto_fixo() {
+    println!(
+        "{:>5} {:>13} {:>13} {:>13}",
+        "N", "ALVO off", "fixo (nosso)", "vivo (nosso)"
+    );
+    for n in [4usize, 14, 40, 200, 800] {
+        let c = ler("acumula", &format!("escada_n{n}_off"));
+        let b = pincel(&c);
+        let dentro = entrada(&c);
+        let maior = |p: &[[f32; 3]]| -> f64 {
+            dentro
+                .positions()
+                .iter()
+                .zip(p)
+                .map(|(a, b)| {
+                    f64::from(b[0] - a[0])
+                        .hypot(f64::from(b[1] - a[1]))
+                        .hypot(f64::from(b[2] - a[2]))
+                })
+                .fold(0.0, f64::max)
+        };
+        // A mesma lei, com o centro REPICADO da superfície viva a cada carimbo.
+        let mut m = entrada(&c);
+        let mut s = SculptStroke::default();
+        s.begin(&m);
+        let p0 = c.percurso[0];
+        let normais0 = m.normals().to_vec();
+        for _ in 0..n {
+            let raio = ph2d_mesh::Ray::new([p0[0], p0[1], p0[2] + ALTURA_DO_RAIO], OLHO);
+            let centro = m.raycast(&raio).map_or([p0[0], p0[1], p0[2]], |h| h.point);
+            s.dab(
+                &mut m,
+                &b,
+                &Dab::at(centro, b.radius, [0.0, 0.0, -1.0]),
+                Symmetry::default(),
+            );
+            m.pregar_normais_para_teste(&normais0);
+        }
+        println!(
+            "{n:>5} {:>13.8} {:>13.8} {:>13.8}",
+            maior(&c.saida),
+            maior(&correr(&c)),
+            maior(m.positions())
         );
     }
 }

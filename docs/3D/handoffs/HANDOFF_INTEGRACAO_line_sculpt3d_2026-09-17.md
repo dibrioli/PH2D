@@ -2124,3 +2124,89 @@ hipótese `0,6 × raio` foi **refutada pelo E** com sondas fora do corpus (a rai
 
 ⚠️ **A árvore fica INTACTA:** a troca foi aplicada só para medir e revertida; a
 suíte da crate fecha **463 verdes** e a lei que ship é a de sempre.
+
+## §77 — ⛔⛔⛔⛔ O §76 ESTÁ REFUTADO: a «polaridade invertida» era o meu ARNÊS
+
+**Leia isto antes do §75 e do §76.** Os dois concluem que a nossa polaridade
+está invertida, com uma identidade exacta por baixo. **A conclusão é falsa** e
+o produto **não** foi mudado.
+
+### §77.1 O que me travou foi o PRODUTO, não eu
+
+A troca reprovou **quatro** gates de `accum_tests`/`verb_thumb`. Eu li-os como
+*«leis nossas escritas sem a outra metade da tabela»* e ia reescrevê-los. O que
+me fez parar foi um número deles: `o DESARMADO passou de um raio (9,49)` — a
+troca tirava o **tecto de profundidade** do pincel no regime em que o artista
+o usa. *Quatro gates a dizer a mesma coisa não são quatro leis velhas; são o
+produto a defender-se.*
+
+### §77.2 A causa: DUAS escolhas binárias, variadas JUNTAS
+
+- **(A)** a polaridade da curva de queda;
+- **(B)** de que posição a distância é medida — **viva** ou **congelada**.
+
+⭐⭐⭐ *Cursor fixo com alvo vivo* e *cursor vivo com alvo congelado* são a
+**mesma geometria relativa**. As minhas duas experiências trocaram as duas ao
+mesmo tempo, logo deram conclusões **opostas** — e a identidade «exacta em treze
+contagens» do §76 é precisamente esse espelho, não uma prova.
+
+⚠️ É a família que o §5 deste repo já regista **duas** vezes (*«as duas casas
+escrevem a curva com argumentos OPOSTOS e as duas estão certas em casa»* — o
+contorno em 14/09 e a pose em 15/09). **Terceira ocorrência.**
+
+### §77.3 O que o arnês do oráculo de facto faz — medido, não inferido
+
+Ele entrega ao alvo **a posição 3D** (`location`) **e** a projecção dela no
+ecrã (`mouse`). Qual delas o alvo lê foi decidido por três células novas
+(`acumula/altura_{acima,no_plano,abaixo}`), que projectam **no mesmo pixel**:
+
+| ponto | vértices movidos |
+|---|---|
+| `(0, 0, +2)` | **`0`** |
+| `(0, 0, 0)` | `49` |
+| `(0, 0, −2)` | **`0`** |
+
+⇒ **o alvo lê a POSIÇÃO e não relança raio nenhum**, logo o centro fica
+**PREGADO** nas `N` repetições. ⭐ E isso explica de graça as `x_esf_*`/`y_esf*`
+serem vácuo: o percurso delas cai **DENTRO** da esfera (raio `0,8`, pontos a
+`≤ 0,45` do centro) e não há superfície ao alcance do pincel.
+
+### §77.4 ⛔⛔ O limite do corpus, nomeado pelo próprio E
+
+**Este corpus mede a LEI com o centro pregado; ele não mede a política de
+re-pique.** O nosso produto **repica da superfície viva** a cada carimbo.
+*Comparar um produto que repica contra células de centro pregado é variar duas
+coisas de uma vez* — e medir o re-pique do alvo **não é possível com este
+harness** (a operação de traço exige os dois campos).
+
+⇒ **o corpus NÃO arbitra o interruptor do produto.** O que ele arbitra é a lei
+com o centro pregado, e aí o ajuste do E fecha a **`0,00 %`** nos treze `N`:
+distância medida da posição **VIVA**, curva **não** invertida, `forca²`.
+
+### §77.5 O estado verdadeiro, e ele é MUITO melhor do que o §75 dizia
+
+Com o centro repicado ao vivo — o regime do app — a nossa lei **actual** lê
+`1,000` · `1,002` · `1,007` · `1,012` · `1,015` · `1,018` · `1,019` do alvo em
+`N = 1..40`. ⇒ **`+0,7 %` a `+1,9 %`**, e não os `+22,6 %` que o §75 anunciou.
+
+⛔ E essa leitura também não pode ser adoptada como bancada: com ela **onze**
+células pioram (as esferas passam de vácuo a `2,1e0`, porque o meu raio acerta
+onde o alvo não chegou). *Nenhuma das duas leituras serve para o corpus
+inteiro, e escolher a que dá o número que eu queria seria afinar o instrumento
+aos dados.* A bancada fica como está — **ponto fixo**, que é o que o arnês
+alimenta — e a sua leitura é *«a lei com o centro pregado»*, nada mais.
+
+### §77.6 O que fica
+
+| | |
+|---|---|
+| **produto** | **INTACTO** — zero linhas de lei mudadas em toda esta investigação; `463` verdes na crate |
+| §75, §76 | **suspensos**, com esta correcção no topo e nos dois gates que os pinavam |
+| o corpus `acumula/` (**128** células) | **fica e vale** — ele mede a lei com centro pregado, e a lei ajustada fecha a `0,00 %` |
+| ⏳ o que arbitraria o interruptor | conduzir o **nosso** produto com o centro pregado e comparar (é o que a bancada faz) **e** medir o re-pique do alvo, que **este harness não consegue** — obra nova |
+
+⚠️⚠️ **A lição, e ela é a mais cara da jornada:** *uma identidade exacta entre
+duas leis não prova que elas são a mesma lei — prova que o arranjo em que foram
+medidas não as distingue.* Duas escolhas binárias que se cancelam produzem
+concordância perfeita, e a concordância perfeita foi exactamente o que me
+convenceu.

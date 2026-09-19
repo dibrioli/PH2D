@@ -80,7 +80,7 @@ const VARREDURAS: [(&str, [&str; 3], [&str; 3]); 2] = [
 /// `64` e `256` amostras, sobre a mesma máscara — *essa é a reprodutibilidade do próprio número*.
 /// Duas células mais próximas do que isto não são dois pontos, e um balanço calculado sobre elas é
 /// um **PISO** e não um valor.
-const INDISTINGUIVEL: f32 = 0.002;
+pub(super) const INDISTINGUIVEL: f32 = 0.002;
 
 /// O balanço de uma família: `maior/menor`, e se algum par é **indistinguível**.
 ///

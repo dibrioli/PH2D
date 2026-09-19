@@ -1380,6 +1380,13 @@ fn casa_a_populacao(linear: &[[f32; 3]], alvo_n: usize) -> (Vec<u8>, f32) {
 #[path = "unreal_contendor_tests.rs"]
 mod unreal_contendor;
 
+/// ⭐ **A LEI DA COR** — ordem do dono depois do veredito a quatro colunas: *«atacamos agora a cor»*.
+///
+/// Mesmo desenho do irmão: módulo-filho por `#[path]`, para usar a régua deste módulo sem abrir
+/// visibilidade e sem uma segunda cópia dela.
+#[path = "cor_da_profundidade_tests.rs"]
+mod cor_da_profundidade;
+
 #[test]
 #[ignore = "sonda: precisa do lote 2 do oráculo em $PH2D_VERDADE2"]
 fn sonda_a_varredura_da_cor() {

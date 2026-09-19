@@ -817,3 +817,86 @@ dizer para onde é.
   mapeamento ou lei: **não medido**.
 - **O tecto do alvo** está cercado entre o campo `60` e `80`, com assinatura dupla (congela ao bit ·
   G e B colapsam). É informação sobre a ferramenta, e não bloqueia nada.
+
+---
+
+## §17 — ⭐⭐⭐ ATACAR A COR: o diagnóstico, e a nossa lei é o LIMITE RASO da verdade
+
+Ordem do dono, 2026-09-18, depois do veredito da §16: *«atacamos agora a cor»*.
+⛔ **Esta secção MEDE e não cura.** Uma lei escrita antes de as duas verdades concordarem sobre a
+curva seria um ajuste a três pontos com cara de mecanismo.
+
+### §17.1 — ⛔⛔ O mecanismo da nossa surdez está numa DIVISÃO
+
+O `integrate_burley` devolve `Σ(R·w) / Σ R` — e o perfil `R` aparece **em cima e em baixo**. Tudo o
+que ele sabe sobre a profundidade (a forma `1/mfp`, as duas exponenciais, a escala) **cancela-se na
+divisão**, e o que sobra é uma média direccional pura. A cor sai depois por
+`sss = subsurface_color × isso`.
+
+⇒ *a informação da profundidade não se perde por aproximação — ela é **DIVIDIDA FORA por
+construção**.* Com o `mfp` partilhado pelos três canais o quociente é o mesmo nos três, e a matiz é a
+que o artista escreveu.
+
+### §17.2 — ⭐⭐⭐ A surdez deixou de ser argumento e passou a ser uma CORRIDA
+
+Medida pela **porta do material** (`Surface::direct` com luz branca ⇒ radiância linear, e o
+quociente é a matiz da lei) — ⭐ *não precisa de um quadro linear, e por isso não herda a exposição*:
+
+| `mfp` | `N·L = 0,9` | `0,4` | `0,0` | **`−0,3`** |
+|---:|---:|---:|---:|---:|
+| `0,03` | `2,14286` | `2,14286` | `2,14286` | `2,14286` |
+| `0,10` | `2,14286` | `2,14286` | `2,14286` | `2,14286` |
+| `0,30` | `2,14286` | `2,14286` | `2,14286` | `2,14286` |
+| `1,00` | `2,14286` | `2,14286` | `2,14286` | `2,14286` |
+
+**Dezasseis células, cinco casas decimais, um só número** — e `0,75/0,35 = 2,142857` é a cor
+autorada **ao dígito**. ⚠️ Inclusive em `N·L = −0,3`, o lado **sombreado**, onde a luz só chega por
+dentro da peça: *mesmo ali a matiz é a do painel.* Balanço `1,0000×`, `p = 1,0000`.
+
+### §17.3 — A curva da VERDADE, e as duas verdades concordam onde ambas vivem
+
+`R/B` **linear**, família de raios IGUAIS, **máscara geométrica fixa** (a silhueta iluminada do
+controlo opaco). O expoente é `p` em `R/B = (0,75/0,35)^p`: `p = 1` é *«a cor autorada»*, `p = 0` é
+*«branco»*.
+
+| `mfp/raio` | CYCLES `R/B` | `p` | UNREAL-PT `R/B` | `p` |
+|---:|---:|---:|---:|---:|
+| `0,071` | `2,1092` | **`0,979`** | `2,1362` | **`0,996`** |
+| `0,238` | `1,7007` | `0,697` | `1,7480` | `0,733` |
+| `0,714` | `1,3467` | `0,391` | `1,9474` | `0,874` ⛔ |
+| `2,381` | `1,1931` | `0,232` | `1,9474` | `0,874` ⛔ saturado |
+
+⭐ **Nos dois pontos em que o alvo está vivo, as duas verdades concordam a `~5 %`** (`0,979` contra
+`0,996`; `0,697` contra `0,733`) — dois motores independentes, de projectos independentes. ⛔ Nos
+outros dois o alvo está dentro do tecto dele (§16.2) e a coluna não é uma medição.
+
+### §17.4 — ⭐⭐⭐ O ACHADO: a nossa lei é o LIMITE RASO da verdade, truncado
+
+**No extremo raso a verdade converge para NÓS** (`p → 0,979`, e a tendência é para `1`). ⇒ *a nossa
+lei não está errada — ela está INCOMPLETA*: é a assímptota de `mfp ≪ peça`, publicada como se
+valesse em todo o lado.
+
+⭐⭐ **E o mecanismo é nomeável, com física e não com ajuste.** Num passeio aleatório cada evento de
+espalhamento multiplica a luz pelo albedo do canal:
+
+| regime | o que acontece | a matiz que volta |
+|---|---|---|
+| `mfp ≪ peça` (espesso) | **muitos** eventos antes de sair | a **reflectância difusa** — a cor autorada, `2,14` |
+| `mfp ≳ peça` (fino) | **poucos** eventos; a luz atravessa e não volta | tende para o **albedo CRU**, muito mais perto de `1` |
+
+⚠️ ⇒ o limite fino **não é branco** — é o quociente dos albedos, e ele é bem mais próximo de `1` que
+o das reflectâncias porque a reflectância satura com o albedo. Os `1,19` medidos a `mfp/raio =
+2,381` são consistentes com isso.
+
+⇒ **a grandeza que falta à nossa lei é a ESPESSURA ÓPTICA da peça** (`2·raio / mfp`) — e ⭐ num campo
+de distância ela **mede-se**, que é a vantagem estrutural que a §15 já nomeava como candidata a
+superar. ⛔ Nenhuma das duas referências de tempo real a lê.
+
+### §17.5 — ⏳ O que falta, e a ordem
+
+1. ⏳ **Fechar a curva:** o quarto ponto do alvo é inalcançável, logo a curva é do Cycles, com o
+   alvo a confirmar dois pontos. Mais profundidades **rasas** (onde os dois vivem) apertariam a
+   concordância.
+2. ⏳ **Derivar a forma fechada** do limite fino ao espesso — ⚠️ **derivar, não ajustar**: um ajuste
+   de duas constantes a três pontos passa por mecanismo e não é.
+3. ⏳ **Só então** o produto, atrás de porta, com estas oito células como corpus de gates.

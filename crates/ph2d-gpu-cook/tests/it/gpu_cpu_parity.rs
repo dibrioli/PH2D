@@ -1730,7 +1730,7 @@ fn color_ramp_kernel_matches_the_cpu_within_epsilon() {
         assert!(
             plan.is_fully_gpu(),
             "preset {}: {:?}",
-            preset.name(),
+            preset.label_key(),
             plan.boundaries
         );
         assert_eq!(plan.dispatching_stages(&reg), 2, "grid + the ramp");
@@ -1759,7 +1759,7 @@ fn color_ramp_kernel_matches_the_cpu_within_epsilon() {
         assert!(
             spread.1 - spread.0 > 0.5,
             "preset {} must span colours, got {spread:?}",
-            preset.name()
+            preset.label_key()
         );
         let mut max_tint = 0.0f32;
         for (c, gg) in cpu.iter().zip(&gpu_out) {
@@ -1770,7 +1770,7 @@ fn color_ramp_kernel_matches_the_cpu_within_epsilon() {
         }
         eprintln!(
             "color_ramp preset {}: spread {spread:?}, max |Δtint| = {max_tint:e}",
-            preset.name()
+            preset.label_key()
         );
     }
 }

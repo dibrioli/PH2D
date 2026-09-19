@@ -8,6 +8,7 @@ use crate::paint_ramp_widget::{RampIds, RampView, paint_color_ramp_section};
 use crate::state;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
+use ph2d_i18n::tr;
 use ph2d_tool_painter::ids::{
     painter_brush_texture_ramp_alpha_option_id, painter_brush_texture_ramp_handle_id,
     painter_brush_texture_ramp_interp_option_id, painter_brush_texture_ramp_mode_option_id,
@@ -119,7 +120,7 @@ fn ramp_mode_options() -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 painter_brush_texture_ramp_mode_option_id(m),
                 m,
-                RampColorMode::from_u8(m).name(),
+                tr(RampColorMode::from_u8(m).label_key()),
             )
         })
         .collect()
@@ -131,7 +132,7 @@ fn ramp_interp_options() -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 painter_brush_texture_ramp_interp_option_id(i),
                 i,
-                RampInterp::from_u8(i).name(),
+                tr(RampInterp::from_u8(i).label_key()),
             )
         })
         .collect()

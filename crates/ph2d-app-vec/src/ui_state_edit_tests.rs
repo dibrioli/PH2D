@@ -433,7 +433,7 @@ fn every_curve_chip_resolves_and_nothing_else_does() {
             easing_pick_for_id(ph2d_panel_vector::ids::vector_easing_family_id(i)),
             Some(EasingPick::Family(*f)),
             "o chip da familia {} nao resolve",
-            f.label()
+            f.label_key()
         );
     }
     for (i, m) in EasingMode::ALL.iter().enumerate() {
@@ -441,7 +441,7 @@ fn every_curve_chip_resolves_and_nothing_else_does() {
             easing_pick_for_id(ph2d_panel_vector::ids::vector_easing_mode_id(i)),
             Some(EasingPick::Mode(*m)),
             "o chip da direcao {} nao resolve",
-            m.label()
+            m.label_key()
         );
     }
     assert_eq!(

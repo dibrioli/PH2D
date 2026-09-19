@@ -207,7 +207,7 @@ fn paint_controls(
         theme,
         ids.mode,
         view.mode,
-        RampColorMode::from_u8(view.mode).name(),
+        tr(RampColorMode::from_u8(view.mode).label_key()),
         mode_rect,
     ) {
         (ids.set_pending_mode)(Some((mode_rect, view.mode)));
@@ -218,7 +218,7 @@ fn paint_controls(
         theme,
         ids.interp,
         view.interp,
-        RampInterp::from_u8(view.interp).name(),
+        tr(RampInterp::from_u8(view.interp).label_key()),
         interp_rect,
     ) {
         (ids.set_pending_interp)(Some((interp_rect, view.interp)));

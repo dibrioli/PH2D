@@ -82,30 +82,31 @@ fn the_mode_is_dead_exactly_where_the_catalogue_says_it_is() {
                 spread > 1e-6,
                 "{}: uses_mode() diz que o modo importa, e as tres curvas coincidem (spread {spread:.3e}) \
                  -- o seletor ofereceria tres chips identicos",
-                f.label()
+                f.label_key()
             );
         } else {
             assert!(
                 spread == 0.0,
                 "{}: uses_mode() diz que o modo e' inerte, e as curvas DIFEREM (spread {spread:.3e}) \
                  -- esconder os chips esconderia uma escolha real",
-                f.label()
+                f.label_key()
             );
         }
     }
 }
 
-/// **Nenhuma família se chama como outra.** Um catálogo com dois rótulos iguais é um seletor em
-/// que duas linhas dizem a mesma palavra e fazem coisas diferentes.
+/// **Nenhuma família se chama como outra.** Um catálogo com duas CHAVES iguais é um seletor em
+/// que duas linhas dizem a mesma palavra e fazem coisas diferentes. ⚠️ Desde 2026-09-19 o que o
+/// motor publica é a chave, e o controlo é o mesmo — a palavra do outro lado é da tabela.
 #[test]
 fn every_family_has_its_own_name() {
     use ph2d_anim::EasingFamily;
     for a in EasingFamily::ALL {
         for b in EasingFamily::ALL {
             assert!(
-                a == b || a.label() != b.label(),
-                "duas familias partilham o rotulo {:?}",
-                a.label()
+                a == b || a.label_key() != b.label_key(),
+                "duas familias partilham a chave {:?}",
+                a.label_key()
             );
         }
     }

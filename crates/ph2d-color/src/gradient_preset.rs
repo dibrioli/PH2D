@@ -29,14 +29,19 @@ impl GradientPreset {
         GradientPreset::Grayscale,
     ];
 
-    /// English label (HR-15).
+    /// ⭐ **A CHAVE do rótulo que um selector mostra**, resolvida por quem pinta
+    /// (`ph2d_i18n::tr`). ⚠️ Ela deriva da VARIANTE, nunca da palavra inglesa.
+    ///
+    /// ⛔ Este motor **não** depende da `ph2d-i18n`: quem precisa da palavra é o pintor, e ele já
+    /// fala a tabela. Publicar o inglês por `tr_em(Ingles, …)` seria o acessório que um pintor
+    /// chama por engano sem que teste de igualdade nenhum o separe do caminho certo.
     #[must_use]
-    pub fn name(self) -> &'static str {
+    pub fn label_key(self) -> &'static str {
         match self {
-            GradientPreset::Rainbow => "Rainbow",
-            GradientPreset::Heat => "Heat",
-            GradientPreset::Ice => "Ice",
-            GradientPreset::Grayscale => "Grayscale",
+            GradientPreset::Rainbow => "color.gradient.rainbow",
+            GradientPreset::Heat => "color.gradient.heat",
+            GradientPreset::Ice => "color.gradient.ice",
+            GradientPreset::Grayscale => "color.gradient.grayscale",
         }
     }
 
@@ -97,18 +102,18 @@ mod tests {
     fn presets_are_well_formed_ramps() {
         for p in GradientPreset::ALL {
             let r = p.ramp();
-            assert!(r.len() >= 2, "{} has >= 2 stops", p.name());
+            assert!(r.len() >= 2, "{} has >= 2 stops", p.label_key());
             assert_eq!(r.color_mode, RampColorMode::Rgb);
             assert_eq!(r.interp, RampInterp::Linear);
             assert!(
                 (r.stops()[0].pos - 0.0).abs() < 1e-6,
                 "{} starts at 0",
-                p.name()
+                p.label_key()
             );
             assert!(
                 (r.stops()[r.len() - 1].pos - 1.0).abs() < 1e-6,
                 "{} ends at 1",
-                p.name()
+                p.label_key()
             );
         }
         assert_eq!(GradientPreset::Rainbow.ramp().len(), 7);

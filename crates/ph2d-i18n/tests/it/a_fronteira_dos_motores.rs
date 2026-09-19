@@ -64,36 +64,15 @@ use ph2d_label_census::{Publicacao, published_names};
 /// ⛔ Ela **só encolhe**, e o número é exacto nos dois sentidos: quem paga uma parte escreve o
 /// número novo, e quem paga tudo **apaga a linha**. Um tecto folgado seria uma licença.
 ///
-/// ⚠️ **Ela estava VAZIA e voltou a encher-se em 2026-09-19 — e isso não é uma regressão:** é a
-/// POPULAÇÃO que passou de `44` para `325` crates quando o filtro estreito caiu. Cada linha aqui é
-/// um rótulo que já chegava ao ecrã e que régua nenhuma deste repo via.
-const POR_PAGAR: &[(&str, usize, &str)] = &[
-    (
-        "ph2d-anim",
-        12,
-        "as doze curvas de interpolacao (`Quad`..`Elastic`, `In`/`Out`/`In-Out`), pintadas pelo \
-selector do editor de curvas da timeline. Sao a familia mais barata de migrar e a mais visivel.",
-    ),
-    (
-        "ph2d-color",
-        17,
-        "os espacos da rampa (`RGB`/`HSV`/`HSL`), as interpolacoes, os sentidos do matiz, os quatro \
-gradientes de fabrica e os quatro formatos de paleta — todos pintados pelo editor de rampa e pelo \
-dialogo de paleta.",
-    ),
-    (
-        "ph2d-input",
-        22,
-        "os nomes dos botoes e eixos de comando, pintados pela janela do Input Map. ⚠️ `A / Cross` \
-e `L1 / LB` nomeiam o BOTAO FISICO de duas familias de comando — a chave existe para a ordem e a \
-barra, nao para traduzir a letra.",
-    ),
-    (
-        "ph2d-timeline",
-        8,
-        "as oito recusas de aninhar e de pousar uma chave, pintadas como aviso na timeline.",
-    ),
-];
+/// ⚠️⚠️ **Ela estava vazia, encheu-se com `107` rótulos e voltou a ZERO no mesmo dia (2026-09-19)
+/// — e as duas metades dessa frase dizem coisas diferentes.** O que a encheu não foi texto novo: foi
+/// a POPULAÇÃO passar de `44` para `325` crates quando o filtro estreito caiu. O que a esvaziou foi
+/// pagá-la, em quatro fatias.
+///
+/// ⭐⭐⭐ **Uma catraca vazia é a mais apertada que existe:** sobre a população LARGA, já não há
+/// linha nenhuma onde escrever um rótulo cru novo — qualquer um reprova este gate à primeira
+/// corrida, e a cura é a chave ou uma isenção COM O MECANISMO.
+const POR_PAGAR: &[(&str, usize, &str)] = &[];
 
 /// ⭐ **As isenções, por crate — `(crate, ficheiro ou "*", porquê)`.**
 ///

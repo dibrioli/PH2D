@@ -84,13 +84,18 @@ impl RampColorMode {
             _ => Self::Rgb,
         }
     }
-    /// English label for a picker.
+    /// ⭐ **A CHAVE do rótulo que um selector mostra**, resolvida por quem pinta
+    /// (`ph2d_i18n::tr`). ⚠️ Ela deriva da VARIANTE, nunca da palavra inglesa.
+    ///
+    /// ⛔ Este motor **não** depende da `ph2d-i18n`: quem precisa da palavra é o pintor, e ele já
+    /// fala a tabela. Publicar o inglês por `tr_em(Ingles, …)` seria o acessório que um pintor
+    /// chama por engano sem que teste de igualdade nenhum o separe do caminho certo.
     #[must_use]
-    pub fn name(self) -> &'static str {
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Rgb => "RGB",
-            Self::Hsv => "HSV",
-            Self::Hsl => "HSL",
+            Self::Rgb => "color.ramp.space.rgb",
+            Self::Hsv => "color.ramp.space.hsv",
+            Self::Hsl => "color.ramp.space.hsl",
         }
     }
 }
@@ -120,15 +125,20 @@ impl RampInterp {
             _ => Self::Linear,
         }
     }
-    /// English label for a picker.
+    /// ⭐ **A CHAVE do rótulo que um selector mostra**, resolvida por quem pinta
+    /// (`ph2d_i18n::tr`). ⚠️ Ela deriva da VARIANTE, nunca da palavra inglesa.
+    ///
+    /// ⛔ Este motor **não** depende da `ph2d-i18n`: quem precisa da palavra é o pintor, e ele já
+    /// fala a tabela. Publicar o inglês por `tr_em(Ingles, …)` seria o acessório que um pintor
+    /// chama por engano sem que teste de igualdade nenhum o separe do caminho certo.
     #[must_use]
-    pub fn name(self) -> &'static str {
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Ease => "Ease",
-            Self::Cardinal => "Cardinal",
-            Self::Linear => "Linear",
-            Self::BSpline => "B-Spline",
-            Self::Constant => "Constant",
+            Self::Ease => "color.ramp.interp.ease",
+            Self::Cardinal => "color.ramp.interp.cardinal",
+            Self::Linear => "color.ramp.interp.linear",
+            Self::BSpline => "color.ramp.interp.b_spline",
+            Self::Constant => "color.ramp.interp.constant",
         }
     }
 }
@@ -156,14 +166,19 @@ impl RampHue {
             _ => Self::Near,
         }
     }
-    /// English label for a picker.
+    /// ⭐ **A CHAVE do rótulo que um selector mostra**, resolvida por quem pinta
+    /// (`ph2d_i18n::tr`). ⚠️ Ela deriva da VARIANTE, nunca da palavra inglesa.
+    ///
+    /// ⛔ Este motor **não** depende da `ph2d-i18n`: quem precisa da palavra é o pintor, e ele já
+    /// fala a tabela. Publicar o inglês por `tr_em(Ingles, …)` seria o acessório que um pintor
+    /// chama por engano sem que teste de igualdade nenhum o separe do caminho certo.
     #[must_use]
-    pub fn name(self) -> &'static str {
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Near => "Near",
-            Self::Far => "Far",
-            Self::Cw => "CW",
-            Self::Ccw => "CCW",
+            Self::Near => "color.ramp.hue.near",
+            Self::Far => "color.ramp.hue.far",
+            Self::Cw => "color.ramp.hue.cw",
+            Self::Ccw => "color.ramp.hue.ccw",
         }
     }
 }

@@ -59,11 +59,15 @@ use ph2d_vector::VectorScene;
 pub fn binding_label(b: Binding) -> (String, &'static str) {
     match b {
         Binding::Key(k) => (k.label(), tr("input_map.binding.key")),
-        Binding::PadButton(p) => (p.label().to_string(), tr("input_map.binding.pad")),
+        Binding::PadButton(p) => (tr(p.label_key()).to_string(), tr("input_map.binding.pad")),
         // ⚠️ A metade da haste diz-se com uma SETA e não com `+`/`-`: o artista empurrou para um
         // lado, e é o lado que ele reconhece.
         Binding::PadAxis { axis, positive } => (
-            format!("{} {}", axis.label(), if positive { "(+)" } else { "(-)" }),
+            format!(
+                "{} {}",
+                tr(axis.label_key()),
+                if positive { "(+)" } else { "(-)" }
+            ),
             tr("input_map.binding.axis"),
         ),
     }

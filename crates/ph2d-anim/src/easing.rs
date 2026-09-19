@@ -89,26 +89,29 @@ impl EasingFamily {
         )
     }
 
-    /// O nome desta família na interface.
+    /// ⭐ **A CHAVE do nome desta família na interface**, resolvida por quem pinta.
     ///
-    /// ⚠️ Mora aqui, e não numa tabela do consumidor, porque uma segunda lista divergiria da
-    /// primeira no dia em que alguém acrescentasse uma família — o mesmo motivo escrito no
-    /// `SymmetryKind::label`. Hoje há **dois** consumidores (o menu de easing da timeline e o
-    /// seletor de curva dos estados de UI) e um gate a exigir que digam a mesma palavra.
+    /// ⚠️ **A lei que aqui estava continua a valer, uma grafia depois:** ela dizia que a palavra
+    /// mora aqui *«porque uma segunda lista divergiria da primeira no dia em que alguém
+    /// acrescentasse uma família»* — e a lista única deste app é a TABELA DE STRINGS. O que se
+    /// publica passou a ser a chave; o gate que exige que os consumidores digam a mesma palavra
+    /// continua a medir exactamente isso, porque eles resolvem a MESMA chave.
+    ///
+    /// ⛔ Este motor **não** depende da `ph2d-i18n`: quem precisa da palavra é o pintor.
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn label_key(self) -> &'static str {
         match self {
-            EasingFamily::Linear => "Linear",
-            EasingFamily::Quad => "Quad",
-            EasingFamily::Cubic => "Cubic",
-            EasingFamily::Quart => "Quart",
-            EasingFamily::Quint => "Quint",
-            EasingFamily::Back => "Back",
-            EasingFamily::Bounce => "Bounce",
-            EasingFamily::Sine => "Sine",
-            EasingFamily::Expo => "Expo",
-            EasingFamily::Circ => "Circ",
-            EasingFamily::Elastic => "Elastic",
+            EasingFamily::Linear => "anim.easing.family.linear",
+            EasingFamily::Quad => "anim.easing.family.quad",
+            EasingFamily::Cubic => "anim.easing.family.cubic",
+            EasingFamily::Quart => "anim.easing.family.quart",
+            EasingFamily::Quint => "anim.easing.family.quint",
+            EasingFamily::Back => "anim.easing.family.back",
+            EasingFamily::Bounce => "anim.easing.family.bounce",
+            EasingFamily::Sine => "anim.easing.family.sine",
+            EasingFamily::Expo => "anim.easing.family.expo",
+            EasingFamily::Circ => "anim.easing.family.circ",
+            EasingFamily::Elastic => "anim.easing.family.elastic",
         }
     }
 
@@ -144,18 +147,18 @@ impl EasingMode {
     /// Every mode, for iteration.
     pub const ALL: [EasingMode; 3] = [EasingMode::In, EasingMode::Out, EasingMode::InOut];
 
-    /// O nome deste modo na interface — o par do [`EasingFamily::label`], e pelo mesmo motivo.
+    /// ⭐ **A CHAVE do nome deste modo** — o par do [`EasingFamily::label_key`], e pelo mesmo motivo.
     ///
     /// ⚠️ Curto de propósito: quem o pinta é uma fileira de três chips ao lado do nome da família,
     /// e ali *"Ease In"* repetiria uma palavra que a linha inteira já diz. O menu da timeline
     /// decora os seus (*"Ease In ▶"*) porque ali eles são rows de uma cascata — o gate compara as
     /// **famílias**, que são o vocabulário partilhado, e não a decoração de cada consumidor.
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn label_key(self) -> &'static str {
         match self {
-            EasingMode::In => "In",
-            EasingMode::Out => "Out",
-            EasingMode::InOut => "In-Out",
+            EasingMode::In => "anim.easing.mode.in",
+            EasingMode::Out => "anim.easing.mode.out",
+            EasingMode::InOut => "anim.easing.mode.in_out",
         }
     }
 }

@@ -25,6 +25,7 @@ use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::paint::paint_text_elided;
 use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect, paint_text_centered, resolve};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::{Color, VectorScene};
@@ -207,16 +208,16 @@ pub fn paint(
     // e não muda um pixel.
     let mut buttons: Vec<(f32, &'static str, NodeId)> = Vec::with_capacity(5);
     if ramp.color_mode != RampColorMode::Rgb {
-        buttons.push((mode_w, ramp.hue.name(), key.sub("hue")));
+        buttons.push((mode_w, tr(ramp.hue.label_key()), key.sub("hue")));
     }
-    buttons.push((mode_w, ramp.color_mode.name(), key.sub("space")));
+    buttons.push((mode_w, tr(ramp.color_mode.label_key()), key.sub("space")));
     // ⚠️ **O rótulo é o da PARADA quando há uma selecionada com interpolação
     // própria** — o botão cicla aquela, e um rótulo que continuasse a mostrar a
     // global seria pintar de uma fonte e despachar de outra.
     buttons.push((
         interp_w,
         sel.and_then(|i| ramp.stops()[i].interp)
-            .map_or_else(|| interp_name(ramp.interp), RampInterp::name),
+            .map_or_else(|| interp_name(ramp.interp), |i| tr(i.label_key())),
         key.sub("interp"),
     ));
     buttons.push((btn_w, "+", key.sub("add")));
@@ -518,7 +519,7 @@ pub fn cycle_hue(value: &str) -> String {
 
 /// The English caption for the ramp interp (the interp button label).
 fn interp_name(interp: RampInterp) -> &'static str {
-    interp.name()
+    tr(interp.label_key())
 }
 
 #[cfg(test)]

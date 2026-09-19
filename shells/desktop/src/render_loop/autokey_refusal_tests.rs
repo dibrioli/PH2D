@@ -75,7 +75,10 @@ fn a_pose_keyed_where_the_clip_does_not_play_is_refused_out_loud_exactly_once() 
         1,
         "three refusing frames, ONE toast: {msgs:?} (the latch is the feature)"
     );
-    assert_eq!(msgs[0], ph2d_timeline::KeyRefusal::NotPlaying.message());
+    assert_eq!(
+        msgs[0],
+        ph2d_i18n::tr(ph2d_timeline::KeyRefusal::NotPlaying.message_key())
+    );
     assert_eq!(
         ak.refusal,
         Some(ph2d_timeline::KeyRefusal::NotPlaying),
@@ -123,7 +126,7 @@ fn a_pose_a_lane_above_overrides_is_refused_with_the_reason_that_names_it() {
     assert_eq!(msgs.len(), 1, "one reason, said once: {msgs:?}");
     assert_eq!(
         msgs[0],
-        ph2d_timeline::KeyRefusal::Overridden.message(),
+        ph2d_i18n::tr(ph2d_timeline::KeyRefusal::Overridden.message_key()),
         "the clip DOES play here — the reason is the lane above it, and saying \
          `does not play here` would send the animator hunting the wrong thing"
     );
@@ -299,9 +302,9 @@ fn an_anchor_refused_outside_the_keys_tab_says_so() {
     assert_eq!(
         msgs,
         vec![
-            ph2d_timeline::KeyRefusal::PathNeedsKeysTab
-                .message()
-                .to_string()
+            // ⚠️ O TOAST leva o texto RESOLVIDO (a shell é quem fala a tabela); o que a lei
+            //    publica é a chave. Comparar a chave aqui mediria o lado errado da ponte.
+            ph2d_i18n::tr(ph2d_timeline::KeyRefusal::PathNeedsKeysTab.message_key()).to_string()
         ],
         "e o artista ouve o motivo, uma vez"
     );

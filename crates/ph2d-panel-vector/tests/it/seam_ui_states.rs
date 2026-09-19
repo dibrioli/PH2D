@@ -387,14 +387,14 @@ fn every_curve_chip_is_alive_under_the_pointer() {
         click_reaches_bus(
             st(cur),
             ids::vector_easing_family_id(i),
-            &format!("o chip da familia {}", f.label()),
+            &format!("o chip da familia {}", f.label_key()),
         );
     }
     for (i, m) in EasingMode::ALL.iter().enumerate() {
         click_reaches_bus(
             st(cur),
             ids::vector_easing_mode_id(i),
-            &format!("o chip da direcao {}", m.label()),
+            &format!("o chip da direcao {}", m.label_key()),
         );
     }
     clear();
@@ -415,7 +415,7 @@ fn the_direction_row_is_offered_exactly_where_the_mode_is_alive() {
             painted,
             f.uses_mode(),
             "{}: a fileira da direcao {} pintada, e uses_mode() diz {}",
-            f.label(),
+            f.label_key(),
             if painted { "esta'" } else { "NAO esta'" },
             f.uses_mode()
         );

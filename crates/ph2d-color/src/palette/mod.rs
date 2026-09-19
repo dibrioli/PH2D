@@ -58,14 +58,21 @@ impl PaletteFormat {
         }
     }
 
-    /// Short human label for a UI menu.
+    /// ⭐ **A CHAVE do rótulo que um selector mostra**, resolvida por quem pinta
+    /// (`ph2d_i18n::tr`). ⚠️ Ela deriva da VARIANTE, nunca da palavra inglesa.
+    ///
+    /// ⛔ Este motor **não** depende da `ph2d-i18n`: quem precisa da palavra é o pintor, e ele já
+    /// fala a tabela. Publicar o inglês por `tr_em(Ingles, …)` seria o acessório que um pintor
+    /// chama por engano sem que teste de igualdade nenhum o separe do caminho certo.
+    /// ⚠️ Os quatro trazem a EXTENSÃO entre parênteses, e ela não se traduz — é o que o artista
+    /// procura no disco. A chave existe para a palavra que a rodeia.
     #[must_use]
-    pub fn label(self) -> &'static str {
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Gpl => "GIMP palette (.gpl)",
-            Self::HexList => "Hex list (.hex)",
-            Self::Ase => "Adobe Swatch Exchange (.ase)",
-            Self::Aco => "Adobe Color (.aco)",
+            Self::Gpl => "color.palette.format.gpl",
+            Self::HexList => "color.palette.format.hex",
+            Self::Ase => "color.palette.format.ase",
+            Self::Aco => "color.palette.format.aco",
         }
     }
 }

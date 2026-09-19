@@ -118,7 +118,7 @@ fn mode_options() -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 painter_shape_ramp_mode_option_id(m),
                 m,
-                RampColorMode::from_u8(m).name(),
+                tr(RampColorMode::from_u8(m).label_key()),
             )
         })
         .collect()
@@ -130,7 +130,7 @@ fn interp_options() -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 painter_shape_ramp_interp_option_id(i),
                 i,
-                RampInterp::from_u8(i).name(),
+                tr(RampInterp::from_u8(i).label_key()),
             )
         })
         .collect()

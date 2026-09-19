@@ -187,7 +187,7 @@ impl BodyCtx<'_> {
 
     /// **O SELETOR DE CURVA** — a forma da transição, e a direção quando ela tem uma.
     ///
-    /// ⚠️ **As duas fileiras saem de `ALL` + `label()`**, nunca de uma tabela deste painel: uma
+    /// ⚠️ **As duas fileiras saem de `ALL` + `label_key()`**, nunca de uma tabela deste painel: uma
     /// família nova entra no vocabulário e ganha o chip de graça, exactamente como os tipos de
     /// simetria. É também o que faz os dois consumidores do catálogo (este e o menu da timeline)
     /// dizerem a mesma palavra, com gate na shell a exigi-lo.
@@ -202,7 +202,13 @@ impl BodyCtx<'_> {
         let fams: Vec<(ph2d_a11y::NodeId, &str, bool)> = EasingFamily::ALL
             .iter()
             .enumerate()
-            .map(|(i, f)| (ids::vector_easing_family_id(i), f.label(), *f == e.family))
+            .map(|(i, f)| {
+                (
+                    ids::vector_easing_family_id(i),
+                    tr(f.label_key()),
+                    *f == e.family,
+                )
+            })
             .collect();
         let y = self.segmented(tr("panel.vector.states.curve"), &fams, y);
 
@@ -212,7 +218,13 @@ impl BodyCtx<'_> {
         let modes: Vec<(ph2d_a11y::NodeId, &str, bool)> = EasingMode::ALL
             .iter()
             .enumerate()
-            .map(|(i, m)| (ids::vector_easing_mode_id(i), m.label(), *m == e.mode))
+            .map(|(i, m)| {
+                (
+                    ids::vector_easing_mode_id(i),
+                    tr(m.label_key()),
+                    *m == e.mode,
+                )
+            })
             .collect();
         self.segmented(tr("panel.vector.states.curve.mode"), &modes, y)
     }

@@ -109,6 +109,8 @@ mod node_params_motion;
 /// As palavras dos motores do pincel e dos efeitos — a 2.ª fatia da fronteira.
 mod paint_engines;
 mod painter_layers;
+/// ⭐⭐ **A COR, a CURVA, o COMANDO e as RECUSAS da timeline** — quatro motores numa fatia.
+mod quatro_motores;
 mod sculpt3d;
 /// ⭐⭐ **As palavras do MOTOR da escultura** — a 6.ª fatia da fronteira dos motores.
 mod sculpt_engine;
@@ -589,6 +591,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| audio_fx::tr(k))
             .or_else(|| audio_engines::tr(k))
             .or_else(|| blend_modes::tr(k))
+            .or_else(|| quatro_motores::tr(k))
             .or_else(|| vector_engine::tr(k))
             .or_else(|| shell::tr(k))
             .or_else(|| shell_media::tr(k))

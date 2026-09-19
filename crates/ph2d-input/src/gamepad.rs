@@ -47,26 +47,29 @@ impl GamepadButton {
     ///
     /// ⛔ Não confundir com o `as_lua_key`, que é o nome de **FIO** (`"south"`) — esse é contrato
     /// com o script e não pode mudar; este é cara de produto e pode.
+    ///
+    /// ⚠️ **Desde 2026-09-19 o que se publica é a CHAVE**, e a palavra vive na tabela. A razão de a
+    /// frase nomear as duas famílias não mudou — ela mudou de ficheiro.
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn label_key(self) -> &'static str {
         match self {
-            Self::South => "A / Cross",
-            Self::East => "B / Circle",
-            Self::West => "X / Square",
-            Self::North => "Y / Triangle",
-            Self::LeftBumper => "L1 / LB",
-            Self::RightBumper => "R1 / RB",
-            Self::LeftTrigger => "L2 / LT",
-            Self::RightTrigger => "R2 / RT",
-            Self::Select => "Select",
-            Self::Start => "Start",
-            Self::Mode => "Home",
-            Self::LeftStick => "Left Stick Press",
-            Self::RightStick => "Right Stick Press",
-            Self::DPadUp => "D-Pad Up",
-            Self::DPadDown => "D-Pad Down",
-            Self::DPadLeft => "D-Pad Left",
-            Self::DPadRight => "D-Pad Right",
+            Self::South => "input.pad.button.south",
+            Self::East => "input.pad.button.east",
+            Self::West => "input.pad.button.west",
+            Self::North => "input.pad.button.north",
+            Self::LeftBumper => "input.pad.button.left_bumper",
+            Self::RightBumper => "input.pad.button.right_bumper",
+            Self::LeftTrigger => "input.pad.button.left_trigger",
+            Self::RightTrigger => "input.pad.button.right_trigger",
+            Self::Select => "input.pad.button.select",
+            Self::Start => "input.pad.button.start",
+            Self::Mode => "input.pad.button.mode",
+            Self::LeftStick => "input.pad.button.left_stick",
+            Self::RightStick => "input.pad.button.right_stick",
+            Self::DPadUp => "input.pad.button.dpad_up",
+            Self::DPadDown => "input.pad.button.dpad_down",
+            Self::DPadLeft => "input.pad.button.dpad_left",
+            Self::DPadRight => "input.pad.button.dpad_right",
         }
     }
 
@@ -145,16 +148,16 @@ pub enum GamepadAxis {
 }
 
 impl GamepadAxis {
-    /// **O NOME QUE O ARTISTA LÊ** — irmão do [`GamepadButton::label`].
+    /// ⭐ **A CHAVE do nome que o artista lê** — irmã do [`GamepadButton::label_key`].
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn label_key(self) -> &'static str {
         match self {
-            Self::LeftStickX => "Left Stick X",
-            Self::LeftStickY => "Left Stick Y",
-            Self::RightStickX => "Right Stick X",
-            Self::RightStickY => "Right Stick Y",
-            Self::LeftTrigger => "Left Trigger",
-            Self::RightTrigger => "Right Trigger",
+            Self::LeftStickX => "input.pad.axis.left_stick_x",
+            Self::LeftStickY => "input.pad.axis.left_stick_y",
+            Self::RightStickX => "input.pad.axis.right_stick_x",
+            Self::RightStickY => "input.pad.axis.right_stick_y",
+            Self::LeftTrigger => "input.pad.axis.left_trigger",
+            Self::RightTrigger => "input.pad.axis.right_trigger",
         }
     }
 

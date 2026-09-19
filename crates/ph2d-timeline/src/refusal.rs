@@ -62,35 +62,35 @@ pub enum NestRefusal {
 }
 
 impl NestRefusal {
-    /// One line, for the animator. English by canon
-    /// ([[feedback_app_ui_english_only]]).
+    /// ⭐ **A CHAVE da linha que o animador lê**, resolvida por quem a mostra (a shell, num toast).
+    ///
+    /// ⛔ Este motor **não** depende da `ph2d-i18n`: uma folha de lei não precisa do catálogo, e um
+    /// `message()` que devolvesse o inglês por `tr_em(Ingles, …)` é indistinguível do caminho certo
+    /// num processo em inglês.
     #[must_use]
-    pub fn message(self) -> &'static str {
+    pub fn message_key(self) -> &'static str {
         match self {
-            Self::SelfNest => "Can't nest: a container cannot contain itself",
-            Self::WouldCycle => "Can't nest: that container already contains this one",
-            Self::NoSuchContainer => "Can't nest: that container no longer exists",
+            Self::SelfNest => "timeline.nest.self",
+            Self::WouldCycle => "timeline.nest.cycle",
+            Self::NoSuchContainer => "timeline.nest.missing",
         }
     }
 }
 
 impl KeyRefusal {
-    /// One line, for the animator. English by canon
-    /// ([[feedback_app_ui_english_only]]); each says what happened AND what the
-    /// stack is doing, because "can't key here" without a reason is only slightly
-    /// better than silence.
+    /// ⭐ **A CHAVE da linha que o animador lê**, resolvida por quem a mostra (a shell, num toast).
+    ///
+    /// ⚠️ **A lei da frase fica onde estava**, e ela é o motivo de cada uma existir: *cada uma diz o
+    /// que aconteceu E o que a pilha está a fazer, porque «can't key here» sem razão é só um pouco
+    /// melhor que silêncio*. O texto mudou de sítio — para a tabela —, não de intenção.
     #[must_use]
-    pub fn message(self) -> &'static str {
+    pub fn message_key(self) -> &'static str {
         match self {
-            Self::NotPlaying => "Can't key: the clip you are editing does not play here",
-            Self::PlaysTwice => "Can't key: the clip you are editing plays twice here",
-            Self::Overridden => "Can't key: a lane above overrides this clip here",
-            Self::ExpressionDriven => {
-                "Can't key: an expression drives this channel — clean or rewrite the formula"
-            }
-            Self::PathNeedsKeysTab => {
-                "Can't key the path here: a trajectory belongs to its clip — switch to the Keys tab"
-            }
+            Self::NotPlaying => "timeline.key.not_playing",
+            Self::PlaysTwice => "timeline.key.plays_twice",
+            Self::Overridden => "timeline.key.overridden",
+            Self::ExpressionDriven => "timeline.key.expression_driven",
+            Self::PathNeedsKeysTab => "timeline.key.path_needs_keys_tab",
         }
     }
 }

@@ -138,7 +138,8 @@ impl crate::App {
                                     // O `push` da fila de toasts devolve se coube; derrubar
                                     // um toast nunca derruba trabalho, e aqui não há
                                     // trabalho — a recusa É o resultado.
-                                    let _ = toasts.push(Toast::warning(r.message()));
+                                    let _ =
+                                        toasts.push(Toast::warning(ph2d_i18n::tr(r.message_key())));
                                 }
                             }
                         }

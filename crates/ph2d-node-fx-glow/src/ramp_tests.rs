@@ -49,7 +49,7 @@ fn bake(ramp: &ColorRamp, n: usize) -> Vec<[f32; 4]> {
 fn corpus() -> Vec<(&'static str, ColorRamp)> {
     let mut out: Vec<(&'static str, ColorRamp)> = GradientPreset::ALL
         .iter()
-        .map(|p| (p.name(), p.ramp()))
+        .map(|p| (p.label_key(), p.ramp()))
         .collect();
     let mut eased = GradientPreset::Heat.ramp();
     eased.interp = RampInterp::Ease;

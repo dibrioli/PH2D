@@ -488,7 +488,9 @@ pub(crate) fn apply_samples(
     // frame, and sixty identical toasts a second is not information.
     if refused_now != ak.refusal {
         if let Some(r) = refused_now {
-            toasts.push(ph2d_editor_core::Toast::warning(r.message()));
+            toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
+                r.message_key(),
+            )));
         }
         ak.refusal = refused_now;
     }

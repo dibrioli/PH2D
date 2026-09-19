@@ -251,11 +251,11 @@ fn the_easing_menu_names_every_family_exactly_as_the_catalogue_does() {
             panic!("a row {label:?} do menu de easing nao resolve numa curva");
         };
         assert_eq!(
-            e.family.label(),
+            ph2d_i18n::tr(e.family.label_key()),
             label,
             "a row do menu diz {:?} e o catalogo diz {:?} -- duas listas de nomes",
             label,
-            e.family.label()
+            ph2d_i18n::tr(e.family.label_key())
         );
         seen += 1;
     }
@@ -285,7 +285,7 @@ fn the_cascade_offers_exactly_the_families_whose_mode_is_alive() {
             in_cascade.contains(&f),
             f.uses_mode(),
             "{}: esta' na cascata familia x modo? {} -- mas uses_mode() diz {}",
-            f.label(),
+            ph2d_i18n::tr(f.label_key()),
             in_cascade.contains(&f),
             f.uses_mode()
         );

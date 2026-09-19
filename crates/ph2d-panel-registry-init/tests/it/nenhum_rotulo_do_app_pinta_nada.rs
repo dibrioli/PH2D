@@ -75,8 +75,10 @@ const PISO_DE_PAINEIS: usize = 24;
 /// descrever um corte que já não acontece.
 ///
 /// ⚠️ **Um corte não é sempre um defeito** (o nome de um ficheiro, o nome que o artista escreveu),
-/// mas **estes dez são todos texto de INTERFACE** — rótulos, valores e frases de estado vazio,
-/// que a casa escreve e a casa dimensiona. ⇒ a lista é dívida, nunca licença.
+/// e desde 19/09 as **duas** que sobram são as duas espécies que NÃO são dívida — uma **decisão de
+/// produto** (a tira do master) e uma **DEMONSTRAÇÃO** (a régua de largura do laboratório, que
+/// existe para mostrar um rótulo a ser espremido). ⇒ toda linha que aqui entrar a partir de agora
+/// diz de que espécie é, com o número; *sem isso a lista deixa de ser dívida e passa a licença.*
 const CORTADOS_HOJE: &[(&str, &str)] = &[
     // ⛔ O nome da faixa mestra no Audio Mixer com o dock estreito — **declarado** em 18/09: a
     //    tira do master mede menos do que a palavra pede, e alargá-la é decisão de produto.
@@ -103,29 +105,28 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
     //    literal `80,0` e aquele rótulo mede `94,48`. Hoje ela mede a LISTA dos quatro
     //    (`ph2d-editor-core/src/grid_snap/inspect.rs`), e as linhas de sonda partilham-na — antes
     //    elas tinham uma **segunda** coluna, de `70`, que nenhuma régua textual desta casa via.
-    // ⛔ Opções e rótulos que não cabem no chip deles.
-    ("widget_gallery", "Float"),
-    ("widget_gallery", "Color"),
-    ("widget_gallery", "filter"),
+    // ✅ **Os TRÊS chips da galeria saíram em 19/09** (`Float` · `Color` · `filter`), e os dois
+    //    mecanismos são os que esta varredura já cobrou noutros painéis:
+    //    · o chip de espécie do editor de variantes era **`45 %` do que sobrava da linha** e passou
+    //      a medir a FAMÍLIA (`ph2d-editor-core/src/widget/variant_editor.rs`) — e o censo só via
+    //      dois dos seis, porque ele mede a opção ESCOLHIDA;
+    //    · a pílula `filter` recebia o respiro de uma caixa de rótulo **por cima** do recuo que ela
+    //      já tem, logo pagava-o DUAS vezes (`24,26` px de palavra em `12,13` de orçamento). ⚠️ O
+    //      mesmo defeito estava vivo em **todo chip da secção *Tags* do Inspector** e em **seis dos
+    //      sete selos da Hierarquia**, e esta varredura **não podia vê-los**: um painel de fábrica
+    //      não tem objecto seleccionado. Mecanismo: `Tag::label_budget` / `Tag::width_for`.
+    // ⛔ **A régua de largura do laboratório — e ela é a DEMONSTRAÇÃO, nunca dívida por curar.**
+    //    A §2 daquele painel chama-se *«the chosen design, squeezed»* e desenha a MESMA linha a
+    //    `268` · `184` · `140` · `110` px, com um rótulo comprido de propósito. A `110` a coluna do
+    //    rótulo fica com `70,00` e `Geometry Offset` mede `95,16` ⇒ ele **tem** de aparecer
+    //    cortado: *é isso que a régua existe para mostrar*. Nas outras três larguras ele cabe.
+    //    ⚠️ Curar esta linha seria apagar a medição que o painel foi construído para fazer.
     ("widget_lab", "Geometry Offset"),
-    // ✅ **As duas frases de estado vazio do PRODUTO saíram em 18/09** — a do Inspector (*«Select
-    //    an entity…»*, a primeira coisa que se lê ao abrir o app) e a do painel de Tags. Elas eram
-    //    elididas a UMA linha pelo `paint_text`; hoje QUEBRAM (`paint_text_block`), e a linha do
-    //    Tags cresce com a frase. ⚠️ As duas de baixo ficam: são legendas de painéis de
-    //    LABORATÓRIO, cujo texto é prosa de referência para quem constrói widgets.
-    (
-        "widget_gallery",
-        "Canonical widget showcase \u{b7} reference for peripheral agents",
-    ),
-    (
-        "widget_lab",
-        "Bar \u{b7} the fill is the whole background \u{b7} reads at a glance \u{b7} competes with \
-         the number",
-    ),
-    (
-        "widget_lab",
-        "268 = today's Inspector \u{b7} 184 = the app's MINIMUM column \u{b7} 140 and 110 = tablet",
-    ),
+    // ✅ **As três LEGENDAS de prosa saíram em 19/09** — a do cabeçalho da galeria (`290,76` px numa
+    //    coluna de `268`) e as duas da bancada (`399,79` e `386,58` em `384`). Elas eram elididas a
+    //    UMA linha; hoje QUEBRAM, que é a mesma cura das duas frases de estado vazio do produto em
+    //    18/09. ⚠️ E as três devolvem a ALTURA ao chamador: sem isso a 2.ª linha escreveria por
+    //    cima do risco do cabeçalho e da fileira seguinte da bancada.
 ];
 
 /// ⭐ **Os painéis que ESTA build liga** — lidos do registo, e não do que a pintura produziu.

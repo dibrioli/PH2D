@@ -41,20 +41,6 @@ const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual 
 /// A linha de uma lista é a linha do app — pela porta, nunca por um literal que coincide.
 const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 
-/// **A largura de um chip com `×`** — derivada da geometria do próprio widget.
-///
-/// ⛔ **Não é um palpite nem um literal:** o [`Tag::close_rect`] põe o `×` a
-/// `pad_x + close_size` da direita e o pintor dá ao rótulo `w − 2,5·pad_x − close_size`. Invertê-lo
-/// é o que faz o chip ter exactamente o tamanho do nome que carrega. *Escrever aqui um número que
-/// «costuma dar» é como o rótulo passa a ser cortado no dia em que a altura da linha mudar.*
-fn chip_w(text_system: &mut TextSystem, label: &str, h: f32) -> f32 {
-    let pad_x = (h * 0.5).max(8.0); // LITERAL-PX-OK: espelha o `paint_tag`
-    let close = (h * 0.7).clamp(10.0, 16.0); // LITERAL-PX-OK: espelha o `Tag::close_rect`
-    // O inverso EXACTO da geometria do `paint_tag`: `pad_x` à esquerda, `pad_x` à direita do
-    // rótulo, e meio `pad_x` antes do `×`.
-    text_system.prefix_width(label, TypeToken::Xs.px()) + pad_x * 2.5 + close // LITERAL-PX-OK: fator de contagem de vãos, não uma medida
-}
-
 /// **A nuvem de chips**, quebrada em linhas. Devolve o `y` seguinte.
 ///
 /// ⚠️ **`zip` com o array de ids**: um objecto com mais tags do que ids (impossível enquanto o gate
@@ -76,14 +62,6 @@ fn chips(
     let mut cx = x;
     let mut cy = y;
     for (row, &id) in rows.iter().zip(crate::ids::INSP_TAGS_CHIP.iter()) {
-        // ⚠️ **O chip mostra o RÓTULO e o balão o caminho inteiro** — `Flying` cabe numa nuvem,
-        // `Enemy/Ground/Flying` não; e é o rótulo que o artista reconhece.
-        let cw = chip_w(text_system, &row.label, ROW_H).min(w);
-        if cx > x && cx + cw > x + w {
-            cx = x;
-            cy += ROW_H + gap;
-        }
-        let rect = Rect::new(cx, cy, cw, ROW_H);
         let state = match store.get(id) {
             Some(InteractiveState::Tag { state }) => *state,
             _ => TagState::Normal,
@@ -95,6 +73,21 @@ fn chips(
             .tone(TagTone::Accent)
             .removable(true)
             .visual((state, store.hover_live(id)));
+        // ⚠️ **O chip mostra o RÓTULO e o balão o caminho inteiro** — `Flying` cabe numa nuvem,
+        // `Enemy/Ground/Flying` não; e é o rótulo que o artista reconhece.
+        //
+        // ⛔⛔ **A largura sai da PÍLULA, e esta linha era a segunda cópia da geometria dela.**
+        // A cópia daqui somava `2,5·pad + ×` ao texto e o pintor descontava, por cima disso, o
+        // respiro de uma caixa de rótulo ⇒ **todo chip desta secção era cortado a metade**
+        // (`Ground` pede `38,95` e recebia `22,95`). ⚠️ E a varredura de elisões do app **não o
+        // via**: um Inspector de fábrica não tem objecto seleccionado, logo não pinta um único
+        // chip. *Uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é.*
+        let cw = chip.natural_width(text_system, ROW_H).min(w);
+        if cx > x && cx + cw > x + w {
+            cx = x;
+            cy += ROW_H + gap;
+        }
+        let rect = Rect::new(cx, cy, cw, ROW_H);
         paint_tag(&chip, rect, scene, text_system, theme);
         // ⭐⭐ **Só o `×` é hit-registado, e é isso que separa os dois gestos**: carregar no corpo
         // do chip não faz nada (ainda não há *ir para a tag*), carregar no `×` tira-a. Registar a

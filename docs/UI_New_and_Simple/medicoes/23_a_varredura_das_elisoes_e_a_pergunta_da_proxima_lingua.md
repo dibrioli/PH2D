@@ -493,3 +493,142 @@ sobre o canvas.*
 listado** da família de flakes de fan-out do `CLAUDE.md` §5.0: zero linhas do diff naquela crate,
 reprovou a `load 33,57` no meio do fan-out e passa **`3` de `3` a `load 106`–`109`** — *o triplo da
 carga em que reprovou*, que é a assinatura da família.
+
+---
+
+## 12. A sexta cura: uma PÍLULA mede a palavra que carrega — e uma INVERSA em `f32` não fecha por álgebra
+
+**2026-09-19**, a seguir à §11. A dívida nomeada estava em **oito** e as cinco linhas que sobravam
+eram dos dois painéis de LABORATÓRIO (`widget_gallery`, `widget_lab`). Ao medi-las, a varredura
+devolveu **dois defeitos VIVOS no produto que ela própria nunca poderia ver** — e uma terceira
+família de aritmética que atravessa a casa inteira.
+
+### 12.1 — O que a medição deu
+
+Sonda no caminho do produto (os dois painéis, três viewports):
+
+| painel | rótulo | mede | orçamento | saía |
+|---|---|---:|---:|---|
+| gallery | `Float` | `30,72` | `27,82` | `Fl…` |
+| gallery | `Color` | `33,54` | `27,82` | `C…` |
+| gallery | `filter` | `24,26` | `21,10` | `fil…` |
+| gallery | *«Canonical widget showcase · …»* | `290,76` | `268,00` | `…peripheral…` |
+| lab | *«Bar · the fill is …»* | `399,79` | `384,00` | `…the n…` |
+| lab | *«268 = today's Inspector · …»* | `386,58` | `384,00` | `…= tab…` |
+| lab | `Geometry Offset` | `95,16` | `70,00` | **a demonstração** |
+
+### 12.2 — ⛔⛔⛔ Os dois defeitos que a varredura do app NÃO PODIA ver
+
+A varredura pinta **cada painel do registo com o estado de FÁBRICA**. Um Inspector de fábrica não
+tem objecto seleccionado e uma Hierarquia de fábrica tem uma linha sem selo — logo **nenhum dos dois
+pinta uma pílula**. *Um censo que varre painéis vazios mede o painel vazio.*
+
+O `filter` da vitrina é a MESMA pílula desses dois painéis, e ao medi-lo apareceu o mecanismo:
+
+> **O `paint_tag` cobrava o respiro DUAS vezes.** A pílula reserva `pad_x = max(h/2, 8)` de cada
+> lado (o recuo dela), e depois entregava essa faixa ao `paint_text_centered`, que **volta a
+> descontar** o respiro de uma caixa de rótulo (`Md·2 = 16`). Numa pílula esse respiro **já foi
+> pago**, e o `pad_x` dela é maior do que ele.
+
+| sítio | rótulo | mede | orçamento antigo | saía |
+|---|---|---:|---:|---|
+| Inspector · secção *Tags* | `Ground` | `38,95` | `22,95` | `Grou…` |
+| Inspector · secção *Tags* | `Enemy` | `35,64` | `19,64` | `Ene…` |
+| Hierarquia · selo | `CAM` | `25,66` | `20,00` | `CA…` |
+| Hierarquia · selo | `ENT` | `22,13` | `20,00` | `EN…` |
+| Hierarquia · selo | `GRP` · `LNK` · `SPR` · `PRF` | `20,67`–`22,41` | `20,00` | cortados |
+| Hierarquia · selo | `ISO` | `18,54` | `20,00` | **cabia** |
+
+**Seis dos sete selos da Hierarquia e TODO chip da secção *Tags* saíam com reticência.**
+
+### 12.3 — ⭐⭐ E a lei mudou de dono: a pílula mede a palavra
+
+A secção *Tags* tinha uma **segunda cópia** da geometria da pílula, com o doc dela a dizê-lo por
+escrito (*«o inverso EXACTO da geometria do `paint_tag`»*). *Uma lei escrita em dois sítios ainda
+não é uma lei — só uma PORTA é.* Hoje:
+
+- `pad_x(h)` · `close_size(h)` · `removable_chrome(h)` são **funções**, e o `close_rect`, o pintor e
+  as duas inversas chamam-nas — antes eram **três** cópias.
+- `Tag::label_rect` / `Tag::label_budget` — o que a pílula GASTA.
+- `Tag::width_for` / `Tag::natural_width` — o caminho INVERSO, com **três** consumidores (a vitrina,
+  a secção *Tags*, o selo da Hierarquia).
+- ⭐ **A pílula LISA é uma caixa de rótulo**, logo o par dela é o `rect_for_label`/`label_budget` que
+  a casa já tinha — e o caminho dela fica **byte a byte** como estava.
+- ⭐ **O selo da Hierarquia tem PISO**, que é a ranhura do cacho de ícones (`ICON_BTN_SIZE_PX`): o
+  selo é uma daquelas ranhuras, logo nunca encolhe abaixo dela e só CRESCE quando a palavra pede.
+
+### 12.4 — ⛔⛔⛔ A terceira família: uma inversa em `f32` não fecha por álgebra
+
+Curada a coluna da espécie do `VariantEditor` (`45 %` da linha → a FAMÍLIA), apareceu um corte
+**novo** que a álgebra diz ser impossível:
+
+```
+widget_gallery  CORTE "Dictionary" -> "Dictiona…"  | orçamento 63.62 | precisa 63.62
+```
+
+A coluna pedia **exactamente** o que a palavra mede e recebia esse número de volta — e ela era
+cortada. Em `f32`, `(t + c) − c` fica **abaixo** de `t`, e a elisão compara `<=`: *um défice de um
+ULP corta a palavra inteira.* Varrido o domínio em passos de `~1e-3 px`:
+
+| par ida/volta | falhas | pior défice |
+|---|---:|---:|
+| `rect_for_label` / `label_budget` (**já shipava**) | `22 812` de `859 927` (**`2,65 %`**) | `3,05e-5 px` |
+| `Tag::width_for` / `Tag::label_budget` | `440 535` de `460 599` (**`~96 %`**) | `3,05e-5 px` |
+| `dropdown_chip_width_for` / `dropdown_label_budget` | apanhado pelo **PRODUTO** | — |
+
+⛔⛔ **E a prova que guardava o primeiro par amostrava SEIS pontos, e passava nos seis.** *Uma prova
+por amostras sobre uma lei que falha em `2,65 %` do domínio lê-se como prova.*
+
+⇒ a inversa passou a **conferir-se contra a LEI** (`if orçamento(w) < t { w.next_up() }`), nos três
+pares, com gate a varrer `~460 000` pontos por altura. Depois da cura: **`0` falhas em `7 361 552`
+pontos**.
+
+### 12.5 — A coluna de uma escolha mede a FAMÍLIA (a 3.ª vez)
+
+| espécie | mede | orçamento antigo | saía |
+|---|---:|---:|---|
+| `Dictionary` | `63,62` | `27,82` num filho | — |
+| `Integer` | `44,01` | `27,82` | `Inte…` |
+| `Color` | `33,54` | `27,82` | `C…` |
+| `None` | `33,14` | `27,82` | `No…` |
+| `Float` | `30,72` | `27,82` | `Fl…` |
+| `Text` | `26,72` | `27,82` | cabia |
+
+⚠️ **O censo via DOIS dos seis** — ele mede a opção ESCOLHIDA de cada linha. ⛔ E a coluna da
+**CHAVE** continua a ser uma fracção, que é a decisão: *a chave é dado do ARTISTA e não tem tamanho
+conhecido; o que não pode ser uma fracção é a coluna que a CASA escreve.*
+
+### 12.6 — As três legendas QUEBRAM, e a régua fica
+
+As três frases de prosa passaram a `paint_text_block` — a mesma cura das duas frases de estado vazio
+do produto em 18/09 — e as três **devolvem a altura ao chamador**: sem isso a 2.ª linha escreveria
+por cima do risco do cabeçalho da vitrina e da fileira seguinte da bancada.
+
+⛔ **O `Geometry Offset` FICA na lista, e não é dívida: é a DEMONSTRAÇÃO.** A §2 do laboratório
+chama-se *«the chosen design, squeezed»* e desenha a mesma linha a `268 · 184 · 140 · 110` px com um
+rótulo comprido de propósito. A `110` a coluna do rótulo fica com `70,00` e a palavra mede `95,16`
+⇒ ela **tem** de sair cortada. *Curar aquela linha seria apagar a medição que o painel existe para
+fazer.*
+
+### 12.7 — Provas de mutação
+
+| # | mutação | o que sangra |
+|---|---|---|
+| M30 | a pílula volta a pagar o respiro duas vezes | os chips da secção *Tags* |
+| M31 | o selo volta a ser o slot do ícone | seis dos sete selos |
+| M32 | o selo perde o piso do slot | a coluna da direita fica irregular |
+| M33′ | o Inspector re-deriva a geometria e erra **um vão** | os chips |
+| M34 | a pílula confia na álgebra | a varredura da pílula |
+| M35 | a caixa de rótulo confia na álgebra | a varredura da caixa |
+| M36 | o chip de escolha confia na álgebra | a varredura do chip |
+| M37 | a coluna da espécie volta a ser fracção | `Float`/`Color` |
+| M38 | a coluna mede o item EM MÃOS | `Dictionary` |
+| M39 | a legenda da vitrina volta a ser cortada | a catraca de cortes do app |
+| M40 | a legenda da bancada volta a ser cortada | a catraca de cortes do app |
+
+⚠️⚠️ **E a M33 ORIGINAL — restaurar a cópia EXACTA — SOBREVIVEU, e isso é um facto e não um
+buraco:** a cópia calcula hoje o mesmo número que a porta. *O mal de uma segunda cópia não é o
+número de hoje, é o de AMANHÃ* — e é isso que a M33′ mede, contando os vãos como a cópia os contaria
+no dia em que o recuo da pílula mudasse.
+
+**11 de 11 sangram. Dívida: 8 → 2** (uma decisão de produto + uma demonstração).

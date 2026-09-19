@@ -6,7 +6,7 @@
 //! right edge; non-removable tags read as `Role::Label`.
 
 use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, resolve};
+use crate::paint::{fill_rounded_rect, paint_icon, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -36,6 +36,9 @@ pub enum TagTone {
     /// `DangerSoft` — for "blocked / error" tokens.
     Danger,
 }
+
+mod geometria;
+use geometria::LABEL_FONT_SIZE_TOKEN;
 
 #[derive(Clone, Debug)]
 pub struct Tag {
@@ -102,28 +105,6 @@ impl Tag {
                 .action(Action::Click);
         }
         builder.build()
-    }
-
-    /// Rect of the close `X` icon inside `host` (or `None` for
-    /// non-removable tags). Hosts use this to register a dedicated
-    /// hit zone for the close action so a click on the X removes
-    /// the tag rather than activating the whole pill.
-    pub fn close_rect(&self, host: Rect) -> Option<Rect> {
-        if !self.removable {
-            return None;
-        }
-        let pad_x = (host.h * 0.5).max(8.0); // LITERAL-PX-OK: tag pill horizontal pad scales with height (chrome geometry)
-        let close_size = (host.h * 0.7).clamp(10.0, 16.0); // LITERAL-PX-OK: close icon scales 70% of pill height with min/max
-        // ⚠️ O `X` mora numa ESQUINA e o host é variável: `pad_x + close_size` pode passar da
-        // largura da pílula, e aí a borda esquerda do ícone cai FORA dela — por cima do rótulo,
-        // que é o vizinho da esquerda. O piso é `host.x`; num host mais estreito que o próprio
-        // ícone nada cabe, e transbordar pela DIREITA (na borda da pílula) é o menor dos males.
-        Some(Rect::new(
-            (host.x + host.w - pad_x - close_size).max(host.x),
-            host.y + (host.h - close_size) * 0.5,
-            close_size,
-            close_size,
-        ))
     }
 
     fn bg_token(&self) -> ColorToken {
@@ -209,22 +190,20 @@ pub fn paint_tag(
         );
     }
 
-    let pad_x = (rect.h * 0.5).max(8.0); // LITERAL-PX-OK: pill horizontal pad scales with height (geometry)
+    // ⚠️ **Pela PORTA, e não pela conta escrita aqui** — é esta faixa e este orçamento que a
+    //    [`Tag::width_for`] inverte, e duas cópias divergiriam no dia em que o recuo mudasse.
+    //    A pílula lisa continua **byte a byte** como estava: ali o orçamento É o da caixa de
+    //    rótulo da casa.
+    crate::paint::paint_text_centered_com_orcamento(
+        text_system,
+        scene,
+        &tag.label,
+        tag.label_rect(rect),
+        tag.label_budget(rect),
+        LABEL_FONT_SIZE_TOKEN.px(),
+        fg,
+    );
     if let Some(close_rect) = tag.close_rect(rect) {
-        let label_rect = Rect::new(
-            rect.x + pad_x,
-            rect.y,
-            (close_rect.x - rect.x - pad_x * 1.5).max(0.0), // LITERAL-PX-OK: label width budget composite (mirrors close-rect math)
-            rect.h,
-        );
-        paint_text_centered(
-            text_system,
-            scene,
-            &tag.label,
-            label_rect,
-            TypeToken::Xs.px(),
-            fg,
-        );
         paint_icon(
             scene,
             IconId::Close,
@@ -232,8 +211,6 @@ pub fn paint_tag(
             fg,
             StrokeToken::Default.px(),
         );
-    } else {
-        paint_text_centered(text_system, scene, &tag.label, rect, TypeToken::Xs.px(), fg);
     }
 }
 

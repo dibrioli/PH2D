@@ -66,14 +66,7 @@ pub(super) fn paint_actions_section(
         .visual(icon_state);
     paint_button(&icon_btn, ir, scene, text_system, theme);
 
-    let tag_w = 80.0_f32; // LITERAL-PX-OK: showcase tag chip width
     let tag_h = Density::Compact.row_h_px();
-    let tr = Rect::new(
-        x + icon_size + Spacing::Md.px(),
-        y + (icon_size - tag_h) * 0.5,
-        tag_w,
-        tag_h,
-    );
     let tag_state = match store.get(ids::INSP_SAMPLE_TAG_REMOVE) {
         Some(InteractiveState::Tag { state }) => *state,
         _ => TagState::Normal,
@@ -82,6 +75,15 @@ pub(super) fn paint_actions_section(
         .tone(TagTone::Accent)
         .removable(true)
         .state(tag_state);
+    // ⛔ Era o literal `80,0`. Uma vitrina que reserva um número redondo demonstra a pílula do
+    //    dia em que a palavra couber nele — e `filter` já não cabia.
+    let tag_w = tag.natural_width(text_system, tag_h);
+    let tr = Rect::new(
+        x + icon_size + Spacing::Md.px(),
+        y + (icon_size - tag_h) * 0.5,
+        tag_w,
+        tag_h,
+    );
     paint_tag(&tag, tr, scene, text_system, theme);
     if let Some(close_r) = tag.close_rect(tr) {
         hit_index.register(ids::INSP_SAMPLE_TAG_REMOVE, close_r);

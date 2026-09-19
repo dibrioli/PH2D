@@ -57,7 +57,18 @@ pub fn rect_for_label(text_w: f32) -> f32 {
     // ⚠️ A inversa das DUAS leis do [`label_budget`]: a caixa mais pequena que serve é a menor das
     //    duas soluções — `t + respiro` (o regime normal) ou `2t` (o regime pequeno).
     let respiro = ph2d_tokens::Spacing::Md.px() * 2.0;
-    (text_w + respiro).min(text_w * 2.0).max(1.0)
+    let w = (text_w + respiro).min(text_w * 2.0).max(1.0);
+    // ⛔⛔⛔ **E ela confere-se contra a LEI, nunca contra a álgebra que a escreveu.** Medido em
+    //    2026-09-19 varrendo o domínio em passos de `0,0007 px`: `(t + respiro) − respiro` fica
+    //    **abaixo** de `t` em **`2,65 %`** dos casos, com um défice de até `3,05e-5 px` — e a
+    //    elisão compara `<=`, logo *um défice de um ULP corta a palavra inteira*. ⚠️ O gate que
+    //    guardava este par amostrava **seis** valores e passava nos seis: *uma prova por amostras
+    //    sobre uma lei que falha em 2,65 % do domínio lê-se como prova*.
+    if label_budget(w) < text_w {
+        w.next_up()
+    } else {
+        w
+    }
 }
 
 pub fn paint_text_centered(

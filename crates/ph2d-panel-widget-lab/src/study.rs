@@ -17,7 +17,7 @@
 
 use crate::state::WidgetLabState;
 use ph2d_editor_core::interaction::HitIndex;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_block, resolve};
 use ph2d_editor_core::widget::{PropertyBox, PropertyBoxState, paint_property_box, surface_rect};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -97,8 +97,15 @@ impl Bench<'_> {
         self.y += Spacing::Sm.px();
     }
 
+    /// ⭐⭐ **Uma legenda é PROSA: ela QUEBRA, nunca é cortada** (2026-09-19).
+    ///
+    /// Duas desta bancada mediam `399,79` e `386,58` px numa coluna de `384`, logo saíam
+    /// `…with the n…` e `…110 = tab…` — *uma frase de referência que acaba em reticência ensina
+    /// uma frase que ninguém escreveu*. ⚠️ E a altura VOLTA do pintor em vez de ser estimada: com
+    /// `Xxs + Xs` fixo, a 2.ª linha ficaria por baixo do que vem a seguir (a lei que o
+    /// [`ph2d_editor_core::paint::paint_text_block`] tem escrita no doc dele).
     fn caption(&mut self, s: &str) {
-        paint_text(
+        let h = paint_text_block(
             self.text,
             self.scene,
             s,
@@ -108,7 +115,7 @@ impl Bench<'_> {
             self.w,
             resolve(ColorToken::Text3, self.theme),
         );
-        self.y += TypeToken::Xxs.px() + Spacing::Xs.px();
+        self.y += h + Spacing::Xs.px();
     }
 
     /// Uma amostra da caixa, com a aparência dada.

@@ -34,7 +34,14 @@ pub fn paint_showcase_body(
     // reserve ≈ICON_BTN_SIZE on the right for the Close button.
     let title_y = rect.y + PANEL_TITLE_BASELINE;
     let title_size = paint_panel_title(rect, "Widget Gallery", 40.0, scene, text_system, theme); // LITERAL-PX-OK: Close-button reserve
-    paint_text(
+    // ⭐⭐ **A legenda QUEBRA, nunca é cortada** (2026-09-19): ela mede `290,76` px e a coluna do
+    //    cabeçalho dá `268`, logo saía `…peripheral…`. *Uma frase é PROSA: ela desce uma linha;
+    //    quem se elide é um rótulo, que tem uma coluna.* É a mesma cura que a frase de estado
+    //    vazio do Inspector e a do painel de Tags levaram em 18/09.
+    //
+    // ⚠️ E a altura VOLTA: o risco por baixo, o corpo e o recorte saem todos do `div_y`, logo
+    //    quebrar sem devolver a altura escreveria a 2.ª linha por cima do risco.
+    let subtitle_h = crate::paint::paint_text_block(
         text_system,
         scene,
         "Canonical widget showcase \u{00b7} reference for peripheral agents",
@@ -61,7 +68,7 @@ pub fn paint_showcase_body(
         StrokeToken::Default.px(),
     );
 
-    let div_y = title_y + title_size + TypeToken::Xs.px() + Spacing::Xl.px();
+    let div_y = title_y + title_size + subtitle_h + Spacing::Xl.px();
     let div = Rect::new(
         rect.x + PANEL_HEAD_PAD,
         div_y,

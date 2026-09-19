@@ -266,14 +266,7 @@ pub(crate) fn paint_hierarchy_row(
         right_x -= sw + icon_cluster_gap;
     }
     if let Some(badge) = &entity.badge {
-        let badge_w = ICON_BTN_SIZE_PX;
         let badge_h = TypeToken::Lg.px();
-        let badge_rect = Rect::new(
-            right_x - badge_w,
-            rect.y + (rect.h - badge_h) * 0.5,
-            badge_w,
-            badge_h,
-        );
         let tone = badge_tone(badge);
         let tag = Tag::new(ph2d_a11y::NodeId(0), badge)
             .tone(tone)
@@ -282,6 +275,25 @@ pub(crate) fn paint_hierarchy_row(
             } else {
                 TagState::Normal
             });
+        // ⛔⛔⛔ **O SELO ERA CORTADO, e é uma linha que o dono vê em toda sessão.** Medido em
+        //    2026-09-19: a caixa era o slot de ícone (`36 px`), que dá ao rótulo um orçamento de
+        //    `20,00` — e `ENT` mede `22,13`, `CAM` `25,66`, `GRP` `22,41`, `LNK` `22,10`, `PRF`
+        //    `20,67`, `SPR` `21,29`. **Seis dos sete selos deste painel saíam com reticência**, e
+        //    só `ISO` (`18,54`) cabia. ⚠️ A varredura de elisões do app **não podia vê-lo**: um
+        //    painel de fábrica não tem objecto nenhum, logo não pinta selo nenhum.
+        //
+        // ⭐ O **PISO** é o slot do ícone, e não um número escolhido: o selo é uma das ranhuras do
+        //    cacho da direita, logo nunca fica mais estreito do que elas — ele só CRESCE quando a
+        //    palavra que carrega pede mais.
+        let badge_w = tag
+            .natural_width(text_system, badge_h)
+            .max(ICON_BTN_SIZE_PX);
+        let badge_rect = Rect::new(
+            right_x - badge_w,
+            rect.y + (rect.h - badge_h) * 0.5,
+            badge_w,
+            badge_h,
+        );
         paint_tag(&tag, badge_rect, scene, text_system, theme);
         right_x -= badge_w + icon_cluster_gap;
     }

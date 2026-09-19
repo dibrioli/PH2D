@@ -47,6 +47,18 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "property_box/row.rs",
         "geometria de linha: o no' e' do controlo, nao da faixa",
     ),
+    // ⚠️ **E a geometria de uma PÍLULA e de um CHIP também não** (2026-09-19, quando o tecto de LOC
+    //    partiu os dois): os dois ficheiros respondem *quanto de uma caixa é do TEXTO* e *que
+    //    caixa serve este texto* — aritmética pura, sem um pixel e sem um gesto. Quem tem nome,
+    //    papel e foco é a `Tag` e o `Dropdown`, que os constroem no `mod.rs` ao lado.
+    (
+        "tag/geometria.rs",
+        "geometria de pilula: o no' e' da Tag, que vive no mod.rs ao lado",
+    ),
+    (
+        "dropdown/geometria.rs",
+        "geometria de chip: o no' e' do Dropdown, que vive no mod.rs ao lado",
+    ),
     // ⚠️ **E o TEXTO do nome também não** (2026-09-15, quando o tecto de LOC partiu o `row.rs` em
     //    dois): o `label.rs` mede, trunca e pousa o texto do nome. Esse texto **já é** o `label` do
     //    nó do controlo — o `NumberInput`/`PropertyBox` leva-o no `NodeBuilder::label`. *Um nó

@@ -26,9 +26,11 @@ use ph2d_vector::VectorScene;
 pub const MAX_VARIANT_DEPTH: usize = 4;
 
 /// Fraction of the row width given to a dict child's key column.
+///
+/// ⚠️ **A CHAVE é dado do artista e por isso continua a ser uma FRACÇÃO:** ela não tem tamanho
+/// conhecido, logo o que se lhe pode garantir é uma parte da linha — e ser elidida ali é a
+/// resposta certa. ⛔ O que **não** pode ser uma fracção é a coluna ao lado, que a casa escreve.
 const KEY_COL_FRACTION: f32 = 0.3; // LITERAL-PX-OK: layout proportion (key column share)
-/// Fraction of the remaining row width given to the kind dropdown chip.
-const KIND_CHIP_FRACTION: f32 = 0.45; // LITERAL-PX-OK: layout proportion (kind chip share)
 
 /// The discriminant a [`VariantValue`] can take.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -177,20 +179,64 @@ impl VariantEditor {
         flatten(&self.value)
     }
 
-    /// Hit rect for the kind dropdown of row `i`. `host` is the full
-    /// row strip; `row_h` the per-row height. The dropdown sits after
-    /// the row's indent and (optional) key column.
-    pub fn kind_chip_rect(host: Rect, row: &VariantRow, row_index: usize, row_h: f32) -> Rect {
+    /// ⭐⭐⭐ **A COLUNA DA ESPÉCIE MEDE A FAMÍLIA, nunca o item em mãos.**
+    ///
+    /// ⛔⛔ Ela era `45 %` do que sobrava da linha, e uma fracção não sabe quantas letras a palavra
+    /// tem: medido em 2026-09-19, o chip entregava **`27,82 px`** ao rótulo enquanto `Float` pede
+    /// `30,72` e `Color` `33,54` ⇒ saíam **`Fl…`** e **`C…`**. ⚠️ E o censo só via dois dos seis:
+    /// ele mede a opção ESCOLHIDA, e `Integer` (`44,01`) e `Dictionary` (`63,62`) vivem na mesma
+    /// lista sem nunca terem sido medidos por ninguém.
+    ///
+    /// ⭐ A conta do invólucro sai da porta que o PINTOR usa
+    /// ([`super::dropdown_chip_width_for`]), nunca de uma segunda cópia aqui — é a mesma lei que a
+    /// barra da tira do Flip e a coluna do transporte da Timeline já seguem.
+    #[must_use]
+    pub fn kind_col_w(text_system: &mut TextSystem, row_h: f32) -> f32 {
+        super::dropdown_chip_width_for(
+            crate::paint::label_column_width(
+                text_system,
+                TypeToken::Base.px(),
+                VariantKind::ALL.iter().map(|k| k.label()),
+            ),
+            row_h,
+        )
+    }
+
+    /// As três medidas horizontais de uma linha, a partir da coluna da família.
+    ///
+    /// ⚠️ **A ordem de quem cede é a lei:** a coluna da ESPÉCIE serve-se primeiro porque a casa
+    /// sabe exactamente o que ela tem de mostrar; a da CHAVE fica com o que a fracção dela pede,
+    /// limitado ao que sobrou. *Quem tem tamanho conhecido não pode ser o que cede.*
+    fn row_columns(host: Rect, row: &VariantRow, kind_col: f32) -> (f32, f32, f32) {
         let indent = row.depth as f32 * ph2d_tokens::list_indent_px();
+        let livre = (host.w - indent).max(0.0);
+        let chip_w = kind_col.min(livre);
         let key_w = if row.key.is_some() {
-            host.w * KEY_COL_FRACTION
+            (host.w * KEY_COL_FRACTION).min(livre - chip_w).max(0.0)
         } else {
             0.0
         };
-        let x = host.x + indent + key_w;
-        let y = host.y + row_index as f32 * row_h;
-        let chip_w = ((host.w - indent - key_w) * KIND_CHIP_FRACTION).max(0.0);
-        Rect::new(x, y, chip_w, row_h)
+        (indent, key_w, chip_w)
+    }
+
+    /// Hit rect for the kind dropdown of row `i`. `host` is the full
+    /// row strip; `row_h` the per-row height; `kind_col` the family
+    /// column from [`Self::kind_col_w`]. The dropdown sits after the
+    /// row's indent and (optional) key column.
+    pub fn kind_chip_rect(
+        host: Rect,
+        row: &VariantRow,
+        row_index: usize,
+        row_h: f32,
+        kind_col: f32,
+    ) -> Rect {
+        let (indent, key_w, chip_w) = Self::row_columns(host, row, kind_col);
+        Rect::new(
+            host.x + indent + key_w,
+            host.y + row_index as f32 * row_h,
+            chip_w,
+            row_h,
+        )
     }
 
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
@@ -219,15 +265,11 @@ pub fn paint_variant_editor(
 ) {
     let rows = editor.rows();
     let font = TypeToken::Sm.px();
+    // ⭐ **Uma vez por editor, nunca por linha:** a família não muda entre as linhas dele.
+    let kind_col = VariantEditor::kind_col_w(text_system, row_h);
     for (i, row) in rows.iter().enumerate() {
-        let indent = row.depth as f32 * ph2d_tokens::list_indent_px();
+        let (indent, key_w, _) = VariantEditor::row_columns(host, row, kind_col);
         let row_y = host.y + i as f32 * row_h;
-        // Key column (for dict children).
-        let key_w = if row.key.is_some() {
-            host.w * KEY_COL_FRACTION
-        } else {
-            0.0
-        };
         if let Some(key) = &row.key {
             paint_text(
                 text_system,
@@ -241,7 +283,7 @@ pub fn paint_variant_editor(
             );
         }
         // Kind dropdown chip.
-        let chip = VariantEditor::kind_chip_rect(host, row, i, row_h);
+        let chip = VariantEditor::kind_chip_rect(host, row, i, row_h, kind_col);
         let dd = Dropdown::new(
             editor.row_kind_id(i),
             tr("chrome.widget.kind"),

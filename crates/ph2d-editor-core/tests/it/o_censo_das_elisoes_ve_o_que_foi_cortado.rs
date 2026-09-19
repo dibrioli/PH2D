@@ -208,8 +208,19 @@ fn um_corte_para_nada_tambem_e_registado() {
 /// dava `35,9` e o orçamento era `19,9`. ⚠️ *E o gate que a conferia media a MESMA grandeza
 /// errada, logo passava sobre nomes que continuavam cortados no ecrã.*
 ///
-/// ⇒ quem dimensiona pergunta pela [`rect_for_label`] e quem confere pela [`label_budget`]; esta
-/// prova é a que impede as duas de divergirem.
+/// ⇒ quem dimensiona pergunta pela [`rect_for_label`] e quem confere pela [`label_budget`].
+///
+/// ⛔⛔⛔ **E ESTA PROVA NÃO CHEGAVA — ela amostrava SEIS pontos sobre uma lei que falhava em
+/// `2,65 %` do domínio** (medido 2026-09-19, varrendo em passos de `0,0007 px`): em `f32`
+/// `(t + respiro) − respiro` cai **abaixo** de `t`, com um défice de até `3,05e-5 px`, e a elisão
+/// compara `<=` ⇒ *um défice de um ULP corta a palavra inteira*. Os seis valores daqui passavam
+/// nos seis. ⚠️ *Uma prova por amostras sobre uma lei que falha em 2,65 % do domínio lê-se como
+/// prova.*
+///
+/// ⇒ a prova a sério é a VARREDURA, em
+/// [`uma_inversa_confere_se_contra_a_lei`](super::uma_inversa_confere_se_contra_a_lei), que cobre
+/// os **três** pares ida/volta desta casa. O que fica aqui é o que ela não diz: que os valores
+/// exactos que o defeito original produziu continuam a fechar.
 #[test]
 fn quem_dimensiona_e_quem_confere_falam_a_mesma_lei() {
     use ph2d_editor_core::paint::{label_budget, rect_for_label};

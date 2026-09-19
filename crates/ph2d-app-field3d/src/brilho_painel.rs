@@ -62,7 +62,7 @@ struct Linha {
 ///
 /// | linha | tecto | de que recurso, e o número |
 /// |---|---|---|
-/// | **limiar** | `16` | ⚠️ o recurso é o **PICO DA CENA**, e ele não tem tecto (um material emissivo escreve-o). Numa cena de pico `40`: a `16` já foram **`38 %`** do halo, a `32` **`80 %`**, e a `64` — acima do pico — ele é **ZERO**. ⇒ o slider cobre o curso útil e o campo digita mais (`Bound::Soft`) |
+/// | **limiar** | `32` | ⚠️ o recurso é o **PICO DA CENA**, e ele não tem tecto (um material emissivo escreve-o). ⭐ **O número é DERIVADO de uma medição que já existia neste repo:** a nota do [`ph2d_field_ecs::FieldMaterial::emission`] mede que *«acima de `32` a saída é bit a bit a mesma»* ⇒ acima disso o artista já não consegue autorar uma luz mais clara pelo slider, e um limiar que não alcança a luz mais forte é um limiar que **não a pode apagar**. ⛔ **Era `16`, e o report do dono expôs o preço:** a luz de `32` da cena `=36` era inapagável, e o passo do roteiro que manda subir o limiar prometia o que o painel não deixava fazer. Medido numa cena de pico `40`: a `16` já foram `38 %` do halo, a `32` `80 %` |
 /// | **joelho** | **o LIMIAR** | ⭐⭐⭐ **derivado, e é o tecto mais bem fundamentado desta secção**: a passagem mede `2k` de largura e a borda de baixo é `limiar − k`, logo em `k = limiar` ela **encosta no zero** — medido, a 1.ª luz cai de `0,876` (`k = 0,125`) para `0,002` (`k = 1`, o limiar). *Acima disso ele deixa de suavizar a entrada e passa a fazer TUDO brilhar*, que é outra pergunta |
 /// | **intensidade** | `4` | o halo é **linear** nela (`0,1 → 1 141` · `1,0 → 11 412`, exactamente `10×`) e o **raio SATURA** (`51 → 68 px`, parado a partir de `4`) ⇒ acima de `4` ela só multiplica o que o byte já satura |
 /// | **níveis 1..7** | `1` | ⭐ o peso é linear no halo e **NÃO muda o raio** (`27 → 30 px` sobre uma varredura de `64×`) ⇒ acima de `1` ele é a **MESMA alavanca** que a intensidade, e *duas alavancas para a mesma coisa é o que esta casa proíbe* |
@@ -80,7 +80,7 @@ const LINHAS: [Linha; 4 + Bloom::LEVELS] = [
     Linha {
         slot: 1,
         key: "panel.model3d.bloom.threshold",
-        teto: |_| 16.0,
+        teto: |_| 32.0,
         escolha: false,
     },
     Linha {

@@ -584,6 +584,12 @@ fn o_roteiro_da_cena_nomeia_controlos_que_existem() {
 
     let orfaos: Vec<String> = corridas
         .iter()
+        // ⛔ **Uma corrida só de DÍGITOS nunca é um rótulo** — é prosa («as luzes valem 2, 6 e 18»).
+        // Os dígitos entraram no extractor porque um rótulo pode tê-los (`Size 5`), e sem esta
+        // linha ele colhia `2 6` e acusava o roteiro de nomear um controlo inexistente.
+        // ⚠️ *A cura barata era pôr «2 6» no [`FORA`]*, e essa lista passaria a crescer com cada
+        // número que alguém escrevesse num roteiro.
+        .filter(|c| c.iter().any(|w| w.chars().any(char::is_alphabetic)))
         .filter(|c| !contem_rotulo(c))
         .filter(|c| !c.iter().any(|w| FORA.contains(w)))
         .map(|c| c.join(" "))

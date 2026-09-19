@@ -384,16 +384,20 @@ pub fn cena_35() -> Result<FieldDoc, ph2d_field::FieldError> {
 
 /// ⭐⭐⭐ **OS BRILHOS da cena `=36`** — três luzes, e o que as separa é UM número: quão fortes são.
 ///
-/// ⚠️⚠️ **A escada é de `4×` e não de `2×`, e isso é MEDIDO:** o limiar de fábrica é `1` e a lei
-/// corta na luminância de **pico**, logo duas luzes a `2` e a `4` acendem-se as duas e o artista vê
-/// *«o limiar apagou tudo de uma vez»*. Com `2 · 8 · 32` cada volta do limiar apaga **uma**, e é
-/// isso que faz a cena ENSINAR o botão em vez de o demonstrar.
+/// ⚠️⚠️ **A escada é de `3×`, e os dois extremos são DERIVADOS, não escolhidos:**
 ///
-/// ⭐ **E o `32` é o número que a nota do [`ph2d_field_ecs::FieldMaterial::emission`] mede:** acima
-/// dele a peça sai **bit a bit a mesma** na tela. *Ele satura a IMAGEM e continua a alimentar o
-/// BRILHO* — que é a melhor demonstração de que este passe lê o quadro ANTES do olhar, e o roteiro
-/// di-lo por extenso.
-pub const BRILHOS_DA_CENA: [f32; 3] = [2.0, 8.0, 32.0];
+/// - o **piso** está acima do limiar de fábrica (`1`), senão a luz mais fraca nunca acende;
+/// - o **tecto** (`18`) cabe debaixo do tecto do slider do limiar (`32`), senão a luz mais forte
+///   **não pode ser apagada** e o passo (3) do roteiro promete o que o painel não deixa fazer;
+/// - e o **passo** é `3×` porque o corte lê a luminância de pico: com passos curtos o limiar
+///   apaga-as **todas ao mesmo tempo** e a cena deixa de ensinar o botão.
+///
+/// ⛔⛔ **A 1.ª redacção era `2 · 8 · 32` com o limiar a parar em `16`** — e o report do dono
+/// (19/09, com foto) mostrou as três bolas **igualmente brancas**: medido, elas leem `251,1 ·
+/// 253,6 · 254,6` com `99 %` dos píxeis saturados. *Tudo o que brilha está acima do ponto branco,
+/// logo tudo o que brilha é BRANCO* — e o que as distingue é o HALO, não o corpo delas. O roteiro
+/// dizia «fraca, média, forte» como se ele as visse na bola; hoje diz onde olhar.
+pub const BRILHOS_DA_CENA: [f32; 3] = [2.0, 6.0, 18.0];
 
 /// ⭐⭐⭐ **A cena `=36` — O BRILHO** (`docs/Render3d/12`, a `W7`).
 ///
@@ -418,28 +422,34 @@ pub fn cena_36() -> Result<FieldDoc, ph2d_field::FieldError> {
          Render. A seccao BLOOM e' a ULTIMA do painel da direita, a seguir a STYLE."
     );
     println!(
-        "[field-smoke]            (2) ponha Bloom em ON. As tres bolas ganham um HALO que derrama \
-         para fora delas; a barra escura nao ganha nada."
+        "[field-smoke]            (2) ⚠️ AS TRES BOLAS PARECEM IGUAIS, e isso NAO e' defeito: tudo \
+         o que brilha esta' acima do branco, logo tudo o que brilha e' BRANCO. E' o HALO que diz \
+         qual e' mais forte — e sem o Bloom ligado nao ha' halo nenhum."
     );
     println!(
-        "[field-smoke]            (3) suba Threshold devagar. As bolas apagam-se UMA DE CADA VEZ, \
-         da mais fraca para a mais forte — e' isso que o numero faz: escolhe quao forte uma luz \
-         tem de ser para brilhar."
+        "[field-smoke]            (3) ponha Bloom em ON. As tres ganham um HALO que derrama para \
+         fora delas, e o da DIREITA derrama mais longe: ela e' a mais forte. A barra escura nao \
+         ganha nada."
     );
     println!(
-        "[field-smoke]            (4) Intensity muda a FORCA do halo; as fileiras Size 1..7 mudam o \
+        "[field-smoke]            (4) suba Threshold devagar. Os halos apagam-se UM DE CADA VEZ, \
+         da bola mais fraca para a mais forte — e' isso que o numero faz: escolhe quao forte uma \
+         luz tem de ser para brilhar. (as luzes valem 2, 6 e 18; o slider vai ate' 32)"
+    );
+    println!(
+        "[field-smoke]            (5) Intensity muda a FORCA do halo; as fileiras Size 1..7 mudam o \
          TAMANHO dele (cada uma e' o dobro da anterior). Suba Size 5 e o halo abre-se pelo ecra."
     );
     println!(
-        "[field-smoke]            (5) Knee arredonda a passagem: com ele a zero uma bola acende \
+        "[field-smoke]            (6) Knee arredonda a passagem: com ele a zero uma bola acende \
          DE REPENTE ao cruzar o Threshold; com ele alto ela acende aos poucos."
     );
     println!(
-        "[field-smoke]            (6) uma fileira APAGADA nao e' um defeito: ela diz porque e' que \
+        "[field-smoke]            (7) uma fileira APAGADA nao e' um defeito: ela diz porque e' que \
          nao faz nada agora. Faca o que a frase manda e ela acende."
     );
     println!(
-        "[field-smoke]            (7) como saber que falhou: se pos Bloom em ON e NENHUMA bola \
+        "[field-smoke]            (8) como saber que falhou: se pos Bloom em ON e NENHUMA bola \
          ganhou halo, PARE. Se o halo aparecer com Bloom em OFF, PARE. E se a BARRA ESCURA ganhar \
          halo proprio, PARE — o que brilha e' o que e' CLARO."
     );

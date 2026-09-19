@@ -259,36 +259,47 @@ pub fn halo(hdr: &[[f32; 3]], w: usize, h: usize, b: &Bloom) -> Vec<[f32; 3]> {
     }
 
     // (1) o corte, na resolução cheia.
-    let mut nivel: Vec<[f32; 3]> = hdr[..w * h].iter().map(|c| bright(*c, b)).collect();
-    let (mut lw, mut lh) = (w, h);
+    let corte: Vec<[f32; 3]> = hdr[..w * h].iter().map(|c| bright(*c, b)).collect();
 
-    // (2) desce a cadeia, guardando cada degrau — ⚠️ o peso é aplicado na SUBIDA, para que um nível
-    // com peso zero continue a alimentar o seguinte. *Um nível mudo não é um nível ausente.*
-    let mut degraus: Vec<(Vec<[f32; 3]>, usize, usize)> = Vec::with_capacity(n);
+    // (2) DESCE a cadeia com o filtro de 13 taps.
+    let mut mips: Vec<(Vec<[f32; 3]>, usize, usize)> = Vec::with_capacity(n);
+    let (mut lw, mut lh) = (w, h);
+    let mut actual = corte;
     for _ in 0..n {
         let (dw, dh) = (lw / 2, lh / 2);
-        nivel = downsample(&nivel, lw, lh);
+        actual = desce13(&actual, lw, lh);
         lw = dw;
         lh = dh;
-        // ⛔⛔ **REDUZIR NÃO É BORRAR, e o gate apanhou-o na 1.ª corrida:** com só a média de `2×2`
-        // e a subida bilinear, os níveis `0` e `1` liam meia-largura **`1` px** (o oráculo lê `3` e
-        // `9`) e um quadrado de `8` px **desaparecia** na cadeia em vez de se espalhar. O borrão é o
-        // tento, **na resolução do próprio nível** — é isso que o faz dobrar em píxeis de ecrã.
-        nivel = tento(&nivel, lw, lh);
-        degraus.push((nivel.clone(), lw, lh));
+        mips.push((actual.clone(), lw, lh));
     }
 
-    // (3) a soma dos níveis, cada um reamostrado de volta ao tamanho do quadro.
-    let mut halo = vec![[0.0f32; 3]; w * h];
-    for (k, (buf, bw, bh)) in degraus.iter().enumerate() {
-        let peso = b.levels[k];
-        if peso.is_nan() || peso <= 0.0 {
-            continue;
+    // (3) SOBE um degrau de cada vez, somando. ⭐ É esta a metade que dá a qualidade: cada nível é
+    // re-borrado por TODAS as tendas mais finas por onde passa, e é isso que dissolve os cantos.
+    #[allow(clippy::cast_precision_loss)]
+    let aspecto = w as f32 / h.max(1) as f32;
+    let (raio_u, raio_v) = (RAIO_DA_TENDA, RAIO_DA_TENDA * aspecto);
+    let (topo, tw, th) = mips[n - 1].clone();
+    let mut acc: Vec<[f32; 3]> = topo
+        .iter()
+        .map(|c| c.map(|x| x * peso_do_nivel(b, n - 1)))
+        .collect();
+    let (mut aw, mut ah) = (tw, th);
+    for k in (0..n - 1).rev() {
+        let (mip, mw, mh) = &mips[k];
+        let mut subido = sobe_tenda(&acc, aw, ah, *mw, *mh, raio_u, raio_v);
+        let peso = peso_do_nivel(b, k);
+        for (d, s) in subido.iter_mut().zip(mip) {
+            for c in 0..3 {
+                d[c] += s[c] * peso;
+            }
         }
-        acumula_ampliado(&mut halo, w, h, buf, *bw, *bh, peso);
+        acc = subido;
+        aw = *mw;
+        ah = *mh;
     }
 
-    // (4) a intensidade é do halo, não da soma — quem compõe recebe-o pronto.
+    // (4) e o último degrau, de volta ao quadro — a intensidade é do halo, não da soma.
+    let mut halo = sobe_tenda(&acc, aw, ah, w, h, raio_u, raio_v);
     for px in &mut halo {
         for canal in px {
             *canal *= b.intensity;
@@ -297,100 +308,130 @@ pub fn halo(hdr: &[[f32; 3]], w: usize, h: usize, b: &Bloom) -> Vec<[f32; 3]> {
     halo
 }
 
-/// ⭐⭐ **O TENTO `(1,2,1)` separável, na resolução do nível.**
+/// ⭐ **O peso do nível `k`**, com o tecto da tabela — um índice fora dela vale `1`, que é o neutro
+/// da cadeia da referência (ela não tem pesos por nível).
+fn peso_do_nivel(b: &Bloom, k: usize) -> f32 {
+    b.levels
+        .get(k)
+        .copied()
+        .map_or(1.0, |w| if w.is_nan() || w < 0.0 { 0.0 } else { w })
+}
+
+/// ⭐⭐⭐ **O RAIO DA TENDA, em unidades de UV** — o mesmo número do gémeo que já shipa
+/// (`ph2d_render::motion_fx::BASE_FILTER_RADIUS`).
 ///
-/// ⚠️ **É ele, e não a redução, que faz o halo ter LARGURA** — ver o comentário no [`apply`], que é
-/// onde o gate `o_raio_do_halo_dobra_por_nivel` reprovou a 1.ª redacção desta crate.
-fn tento(src: &[[f32; 3]], w: usize, h: usize) -> Vec<[f32; 3]> {
-    if w == 0 || h == 0 {
+/// ⚠️ **Em UV e não em píxeis, e isso é a lei:** a tenda corre em TODOS os degraus da cadeia, e um
+/// raio em píxeis faria o halo encolher com a resolução. *É por ser fracção do quadro que o halo de
+/// uma janela pequena e o de uma grande são o mesmo halo.*
+pub const RAIO_DA_TENDA: f32 = 0.006;
+
+/// ⭐⭐⭐ **O FILTRO DE 13 TAPS QUE DESCE** — o da referência (Call of Duty / Jimenez, SIGGRAPH 2014),
+/// que é o que o [`ph2d_render`] já corre no dispositivo para o brilho do Motion.
+///
+/// ⛔⛔ **A 1.ª redacção desta crate usava uma média de `2×2` e subia CADA nível directamente ao
+/// quadro cheio**, e o dono viu o resultado numa foto: *«bloom bizarro de baixa qualidade»*, com
+/// blocos à volta das peças. A causa é aritmética — um bilinear a partir de um nível de `15` px de
+/// largura para `1900` desenha a GRELHA desse nível —, e a cura é a da referência: descer com um
+/// filtro largo e subir **um degrau de cada vez**.
+///
+/// ⚠️⚠️ **E o achado maior é que esta lei já existia neste repositório** (`ph2d-render/src/shaders/
+/// bloom.wgsl`, doc 67 do Motion). *Antes de construir, MEÇA se a composição já o exprime*
+/// (`CLAUDE.md` §5.0) — e eu construí um motor pior ao lado de um melhor.
+fn desce13(src: &[[f32; 3]], sw: usize, sh: usize) -> Vec<[f32; 3]> {
+    let (dw, dh) = (sw / 2, sh / 2);
+    if dw == 0 || dh == 0 {
         return Vec::new();
     }
-    let em = |x: isize, lim: usize| -> usize {
-        #[allow(clippy::cast_possible_wrap, clippy::cast_sign_loss)]
-        let v = x.clamp(0, lim as isize - 1) as usize;
-        v
-    };
-    let mut mid = vec![[0.0f32; 3]; w * h];
-    for y in 0..h {
-        for x in 0..w {
-            #[allow(clippy::cast_possible_wrap)]
-            let xi = x as isize;
-            let (a, b, c) = (
-                src[y * w + em(xi - 1, w)],
-                src[y * w + x],
-                src[y * w + em(xi + 1, w)],
-            );
-            for k in 0..3 {
-                mid[y * w + x][k] = a[k].mul_add(0.25, b[k].mul_add(0.5, c[k] * 0.25));
-            }
-        }
-    }
-    let mut out = vec![[0.0f32; 3]; w * h];
-    for y in 0..h {
-        #[allow(clippy::cast_possible_wrap)]
-        let yi = y as isize;
-        for x in 0..w {
-            let (a, b, c) = (
-                mid[em(yi - 1, h) * w + x],
-                mid[y * w + x],
-                mid[em(yi + 1, h) * w + x],
-            );
-            for k in 0..3 {
-                out[y * w + x][k] = a[k].mul_add(0.25, b[k].mul_add(0.5, c[k] * 0.25));
-            }
-        }
-    }
-    out
-}
-
-/// Metade da resolução, pela média de `2×2`.
-///
-/// ⚠️ **A média de quatro é o que faz o raio DOBRAR por nível** (§3.4) — um subamostrador que
-/// escolhesse um dos quatro daria uma cadeia de aliasing, não de borrão.
-fn downsample(src: &[[f32; 3]], w: usize, h: usize) -> Vec<[f32; 3]> {
-    let (dw, dh) = (w / 2, h / 2);
+    #[allow(clippy::cast_precision_loss)]
+    let (tx, ty) = (1.0 / sw as f32, 1.0 / sh as f32);
     let mut out = vec![[0.0f32; 3]; dw * dh];
-    for y in 0..dh {
-        for x in 0..dw {
-            let mut acc = [0.0f32; 3];
-            for (dy, dx) in [(0, 0), (0, 1), (1, 0), (1, 1)] {
-                let s = src[(y * 2 + dy) * w + (x * 2 + dx)];
-                for c in 0..3 {
-                    acc[c] += s[c];
-                }
+    for j in 0..dh {
+        for i in 0..dw {
+            #[allow(clippy::cast_precision_loss)]
+            let (u, v) = ((i as f32 + 0.5) / dw as f32, (j as f32 + 0.5) / dh as f32);
+            let s = |du: f32, dv: f32| amostra_uv(src, sw, sh, u + du, v + dv);
+            let (a, c, g, i2) = (
+                s(-2.0 * tx, 2.0 * ty),
+                s(2.0 * tx, 2.0 * ty),
+                s(-2.0 * tx, -2.0 * ty),
+                s(2.0 * tx, -2.0 * ty),
+            );
+            let (b2, d, f, h2) = (
+                s(0.0, 2.0 * ty),
+                s(-2.0 * tx, 0.0),
+                s(2.0 * tx, 0.0),
+                s(0.0, -2.0 * ty),
+            );
+            let e = s(0.0, 0.0);
+            let (j2, k2, l2, m2) = (s(-tx, ty), s(tx, ty), s(-tx, -ty), s(tx, -ty));
+            let px = &mut out[j * dw + i];
+            for ch in 0..3 {
+                px[ch] = e[ch].mul_add(
+                    0.125,
+                    (a[ch] + c[ch] + g[ch] + i2[ch]).mul_add(
+                        0.031_25,
+                        (b2[ch] + d[ch] + f[ch] + h2[ch])
+                            .mul_add(0.0625, (j2[ch] + k2[ch] + l2[ch] + m2[ch]) * 0.125),
+                    ),
+                );
             }
-            out[y * dw + x] = [acc[0] * 0.25, acc[1] * 0.25, acc[2] * 0.25];
         }
     }
     out
 }
 
-/// Soma `src` ampliado ao tamanho de `dst`, com peso, por interpolação bilinear.
-fn acumula_ampliado(
-    dst: &mut [[f32; 3]],
-    w: usize,
-    h: usize,
+/// ⭐⭐⭐ **A TENDA DE 9 TAPS QUE SOBE UM DEGRAU** — `[1 2 1; 2 4 2; 1 2 1] / 16`, a da referência.
+///
+/// ⚠️ **Ela sobe UM degrau**, e é isso que a separa da 1.ª redacção desta crate: subir do nível `k`
+/// direito ao quadro é um bilinear de `2^k` para `1`, e o que ele desenha é a grelha do nível `k`.
+fn sobe_tenda(
     src: &[[f32; 3]],
     sw: usize,
     sh: usize,
-    peso: f32,
-) {
-    if sw == 0 || sh == 0 {
-        return;
+    dw: usize,
+    dh: usize,
+    raio_u: f32,
+    raio_v: f32,
+) -> Vec<[f32; 3]> {
+    let mut out = vec![[0.0f32; 3]; dw * dh];
+    if sw == 0 || sh == 0 || dw == 0 || dh == 0 {
+        return out;
     }
-    #[allow(clippy::cast_precision_loss)]
-    let (fx, fy) = (sw as f32 / w as f32, sh as f32 / h as f32);
-    for y in 0..h {
-        for x in 0..w {
+    for j in 0..dh {
+        for i in 0..dw {
             #[allow(clippy::cast_precision_loss)]
-            let (u, v) = ((x as f32 + 0.5) * fx - 0.5, (y as f32 + 0.5) * fy - 0.5);
-            let s = amostra_bilinear(src, sw, sh, u, v);
-            let d = &mut dst[y * w + x];
-            for c in 0..3 {
-                d[c] += s[c] * peso;
+            let (u, v) = ((i as f32 + 0.5) / dw as f32, (j as f32 + 0.5) / dh as f32);
+            let s = |du: f32, dv: f32| amostra_uv(src, sw, sh, u + du, v + dv);
+            let e = s(0.0, 0.0);
+            let (b2, d, f, h2) = (
+                s(0.0, raio_v),
+                s(-raio_u, 0.0),
+                s(raio_u, 0.0),
+                s(0.0, -raio_v),
+            );
+            let (a, c, g, i2) = (
+                s(-raio_u, raio_v),
+                s(raio_u, raio_v),
+                s(-raio_u, -raio_v),
+                s(raio_u, -raio_v),
+            );
+            let px = &mut out[j * dw + i];
+            for ch in 0..3 {
+                px[ch] = e[ch].mul_add(
+                    4.0,
+                    (b2[ch] + d[ch] + f[ch] + h2[ch]).mul_add(2.0, a[ch] + c[ch] + g[ch] + i2[ch]),
+                ) / 16.0;
             }
         }
     }
+    out
+}
+
+/// Amostra bilinear em coordenadas de **UV**, com a borda presa — é o `textureSample` do gémeo.
+fn amostra_uv(src: &[[f32; 3]], sw: usize, sh: usize, u: f32, v: f32) -> [f32; 3] {
+    #[allow(clippy::cast_precision_loss)]
+    let (x, y) = (u.mul_add(sw as f32, -0.5), v.mul_add(sh as f32, -0.5));
+    amostra_bilinear(src, sw, sh, x, y)
 }
 
 fn amostra_bilinear(src: &[[f32; 3]], sw: usize, sh: usize, u: f32, v: f32) -> [f32; 3] {

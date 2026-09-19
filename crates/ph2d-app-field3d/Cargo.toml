@@ -30,6 +30,7 @@ ph2d-field-eval    = { path = "../ph2d-field-eval" }
 ph2d-field-gpu     = { path = "../ph2d-field-gpu" }
 ph2d-field-mesh    = { path = "../ph2d-field-mesh" }
 ph2d-field-profile = { path = "../ph2d-field-profile" }
+ph2d-bloom         = { path = "../ph2d-bloom" }
 ph2d-field-render  = { path = "../ph2d-field-render" }
 # ⭐ A TRAVESSIA sRGB ↔ linear da cor base (`materials::base_color_srgb8`). O documento guarda a cor
 # em linear e o selector da casa fala sRGB8; a curva é uma só, e é esta — uma cópia local seria uma

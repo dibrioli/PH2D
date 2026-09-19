@@ -930,3 +930,73 @@ abaixo dele o botão não faz nada.*
 §0.0: *um limite legítimo diz de que recurso ele é*. Um guarda numérico deveria ser **relativo à
 peça**, não absoluto. ⛔ Mudá-lo é **divergência declarada** da referência e move os gates da §4.1:
 fica **nomeado e não curado** nesta wave.
+
+---
+
+## §18 — ⭐⭐⭐ A CURA: a matiz passa a seguir a profundidade, e o neutro é BYTE-IDÊNTICO
+
+[`ph2d_material::subsurface::cor_na_profundidade`], atrás de
+[`OpenPbr::subsurface_depth_hue`] — **nasce em `0`**.
+
+### §18.1 — A lei, e ela é a cirurgia mais pequena possível
+
+A §17.6 mediu que **a magnitude já funciona** (`1,76×` no terminador, `3,50×` do lado escuro) e que
+**só a matiz é surda**. ⇒ *não se toca na forma da lei — só na COR que a multiplica*:
+
+```text
+C_k = A_k · (α_k / A_k)^((1 − f) · peso)        f = 1 / (1 + (mfp_k·κ / X0)^N)
+```
+
+| peça | `f` | a matiz | de onde vem |
+|---|---|---|---|
+| espessa (`mfp·κ → 0`) | `1` | a **reflectância autorada** | **DERIVADO** — é a lei de hoje |
+| fina (`mfp·κ → ∞`) | `0` | o **albedo cru** | **DERIVADO** — inversão publicada de Christensen & Burley |
+| a transição | — | — | `X0 = 0,306` · `N = 2,25`, **calibrados** no oráculo |
+
+⭐⭐ **Os dois extremos são derivados e só a transição é calibrada** — e há gate a afirmá-lo: se
+alguém trocar a inversão publicada, o `os_dois_extremos_da_matiz_sao_derivados_e_nao_calibrados`
+reprova.
+
+⭐ **E ela não precisa de entrada nova:** `mfp·κ` é exactamente o adimensional que a §2.1 já tinha
+medido como a **única** grandeza de que esta lei depende.
+
+### §18.2 — ⭐⭐⭐ O que ela compra
+
+| `mfp/raio` | VERDADE | NÓS hoje | erro | NÓS com a cura | erro |
+|---:|---:|---:|---:|---:|---:|
+| `0,0714` | `2,1092` | `2,1429` | `+1,6 %` | `2,0992` | **`−0,5 %`** |
+| `0,2381` | `1,7007` | `2,1429` | `+26,0 %` | `1,7467` | **`+2,7 %`** |
+| `0,7143` | `1,3467` | `2,1429` | `+59,1 %` | `1,3114` | **`−2,6 %`** |
+| `2,3810` | `1,1931` | `2,1429` | `+79,6 %` | `1,2259` | **`+2,8 %`** |
+
+⇒ **pior erro de matiz `79,6 % → 2,8 %`, `28,9×` melhor.**
+
+### §18.3 — ⚠️ O NEUTRO é byte-idêntico por ÁLGEBRA, não por uma cerca
+
+A lei escreve-se `A · (α/A)^((1−f)·peso)`. Com `peso = 0` o expoente é **exactamente** `0`, e `x^0` é
+`1` ao bit para todo `x` finito; a renormalização de luminância divide `lum(cor)` por si próprio, e
+`y/y` é `1,0` exacto em IEEE-754.
+
+⭐⭐ **E isso está PROVADO por mutação**: apagar o `if peso <= 0` deixa os quatro gates **VERDES** ⇒
+*aquele `if` é um atalho de desempenho e não uma cerca de correcção*. As outras **seis** mutações
+sangram (expoente invertido · a lei como no-op · a renormalização fora · `X0` · `N` · a inversão do
+albedo).
+
+⇒ as quatro paridades contra o renderizador de referência (§4.1) correm **verdes e intactas**, e o
+produto de hoje não muda um bit.
+
+### §18.4 — ⚠️ Ela preserva a LUMINÂNCIA, e isso é uma decisão MEDIDA
+
+`α ≥ A` sempre (o espalhamento múltiplo perde energia), logo a correcção crua **clarearia** a peça
+inteira. ⛔ O defeito medido é **só de matiz** ⇒ curar o que não está partido seria trocar um defeito
+medido por um não medido. A correcção é renormalizada, e ⭐ **reescalar por um escalar não muda
+`R/B`** — a curva que a calibração mediu fica intacta.
+
+### §18.5 — ⛔ O que fica por fazer, e porquê nesta ordem
+
+| | |
+|---|---|
+| ⏳ **a decisão do dono** | ligá-la muda **toda peça translúcida de toda cena** e move a paridade da §4.1 — *superar a referência e alcançá-la são duas coisas, e só uma se liga sem ele saber* |
+| ⏳ o campo na cena + o painel | custa um degrau de `PROJECT_SCHEMA`; ⭐ o `OpenPbr` **não é serializado**, e é por isso que a lei nasceu onde nasceu — **zero** contadores partilhados nesta wave |
+| ⏳ o gémeo em **WGSL** | a paridade de `100,000 %` exige-o; ⛔ mas construí-lo para uma lei ainda **não aprovada** seria a ordem errada, e com o botão a `0` o dispositivo e a CPU concordam por construção |
+| ⏳ o piso `max(mfp, 0.1)` | a §17.7 mediu-o inerte abaixo de um quarto do raio da peça — **nomeado e não curado** |

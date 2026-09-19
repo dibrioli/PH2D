@@ -86,6 +86,22 @@ pub struct OpenPbr {
     pub subsurface_radius_scale: Rgb,
     /// A fase: `0` espalha por igual, positivo para a frente, negativo para trás.
     pub subsurface_scatter_anisotropy: f32,
+    /// ⭐⭐⭐ **A matiz SEGUE A PROFUNDIDADE** — `0` é a aproximação publicada, `1` a cura medida.
+    ///
+    /// ⛔ **Isto NÃO está no OpenPBR, e é de propósito:** o modelo publicado faz
+    /// `sss = subsurface_color × integrate_burley(…)`, e aquele integral é um QUOCIENTE que divide
+    /// fora tudo o que sabe sobre a profundidade ⇒ a matiz que sai é a autorada, a qualquer
+    /// profundidade. Medido em dezasseis células a `2,14286` (§17.2), contra um traçado convergido
+    /// que varre `2,11 → 1,19` sobre a mesma faixa — e contra **dois** traçados independentes que
+    /// concordam (§17.3).
+    ///
+    /// ⚠️ **Nasce em `0` e o caminho de omissão é BYTE-IDÊNTICO**, porque ligá-la muda toda peça
+    /// translúcida de toda cena e **move a paridade da §4.1 contra o renderizador de referência** —
+    /// que é uma divergência declarada, não um acidente. *Superar a referência e alcançá-la são
+    /// duas coisas, e só uma delas se liga sem o dono saber.*
+    ///
+    /// A lei, os dois extremos derivados e a calibração: [`subsurface::cor_na_profundidade`].
+    pub subsurface_depth_hue: f32,
     /// ⭐⭐⭐ **A peça é uma PAREDE FINA?** — é este booleano que escolhe entre os dois caminhos da
     /// [`crate::subsurface`], e a escolha muda o fenómeno e não o grau.
     pub geometry_thin_walled: bool,
@@ -114,6 +130,7 @@ impl Default for OpenPbr {
             subsurface_radius: 1.0,
             subsurface_radius_scale: [1.0, 0.5, 0.25],
             subsurface_scatter_anisotropy: 0.0,
+            subsurface_depth_hue: 0.0,
             geometry_thin_walled: false,
         }
     }
@@ -466,7 +483,12 @@ impl Surface {
         } else {
             subsurface::thick(
                 1.0,
-                self.subsurface_colour,
+                subsurface::cor_na_profundidade(
+                    self.subsurface_colour,
+                    self.subsurface_mfp,
+                    self.curvature,
+                    self.m.subsurface_depth_hue,
+                ),
                 self.subsurface_mfp,
                 self.curvature,
                 n,
@@ -603,3 +625,9 @@ pub mod wgsl;
 
 #[cfg(test)]
 mod tests;
+
+/// ⭐ Os gates da **matiz que segue a profundidade** — a primeira lei desta crate que DIVERGE da
+/// referência de propósito. Módulo próprio porque o [`tests`] está a `681` linhas de um tecto de
+/// `700`, e a cura de um tecto é corte por responsabilidade.
+#[cfg(test)]
+mod tests_cor_da_profundidade;

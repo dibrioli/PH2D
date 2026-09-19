@@ -66,6 +66,17 @@ pub fn surface_of(m: FieldMaterial) -> ph2d_material::Surface {
         subsurface_radius: m.subsurface_radius,
         subsurface_radius_scale: m.subsurface_radius_scale,
         subsurface_scatter_anisotropy: m.subsurface_scatter_anisotropy,
+        // ⛔⛔ **A MATIZ QUE SEGUE A PROFUNDIDADE ainda NÃO TEM DONO NA CENA, e o zero é literal.**
+        //
+        // A lei existe e está calibrada ([`ph2d_material::OpenPbr::subsurface_depth_hue`]), e o que
+        // falta é a DECISÃO: ligá-la muda toda peça translúcida de toda cena e move a paridade
+        // contra o renderizador de referência (uma divergência declarada, `docs/Render3d/10` §17).
+        // ⇒ enquanto essa decisão não for tomada, o caminho da cena é **byte-idêntico**.
+        //
+        // ⚠️ E quando for tomada, o campo entra na [`ph2d_field_ecs::FieldMaterial`] — que É
+        // serializada — logo custa um degrau de `PROJECT_SCHEMA`, ao contrário deste, que não custa
+        // nenhum. *É por isso que a lei nasce onde nasceu.*
+        subsurface_depth_hue: 0.0,
         // ⚠️ O booleano viaja como número porque a tabela do painel é de `f32` — ver
         // [`ph2d_field_ecs::FieldMaterial::thin_walled`].
         geometry_thin_walled: m.thin_walled > 0.5,

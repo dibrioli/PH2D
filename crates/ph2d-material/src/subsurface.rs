@@ -156,6 +156,109 @@ pub(crate) fn thick(
     }
 }
 
+/// ⭐⭐⭐ **O ALBEDO CRU a partir da reflectância difusa** — a inversão publicada de Christensen &
+/// Burley (*Approximate Reflectance Profiles for Efficient Subsurface Scattering*, Pixar, 2015), o
+/// ajuste da fonte pontual.
+///
+/// ⚠️ `α ≥ A` **sempre**, e por uma razão física: o espalhamento múltiplo perde energia, logo a
+/// reflectância que se vê é menor que o albedo de um evento. É essa desigualdade que faz a matiz
+/// LAVAR ao afinar a peça — e é também por ela que a correcção crua **clareia**, o que a
+/// [`cor_na_profundidade`] tem de desfazer.
+fn albedo_cru(a: f32) -> f32 {
+    let a = a.clamp(0.0, 1.0);
+    1.0 - (-5.09406 * a + 2.61188 * a * a - 4.31805 * a * a * a).exp()
+}
+
+/// A profundidade adimensional (`mfp·κ`) a que a transição está a meio — **calibrada no oráculo**.
+const X0_DA_TRANSICAO: f32 = 0.306;
+
+/// Quão abrupta é a transição — **calibrada no oráculo**.
+const N_DA_TRANSICAO: f32 = 2.25;
+
+/// ⭐⭐⭐ **A COR QUE A PROFUNDIDADE DEIXA** — a cura do defeito medido na
+/// [`§17`](../../../docs/Render3d/10_a_luz_que_atravessa_a_peca.md).
+///
+/// # ⛔⛔ O defeito
+///
+/// O [`integrate_burley`] devolve `Σ(R·w) / Σ R`, e o perfil aparece **em cima e em baixo**: tudo o
+/// que ele sabe sobre a profundidade cancela-se. Com o `mfp` partilhado pelos canais a matiz que
+/// sai é a que o artista escreveu — **a qualquer profundidade**, medido a `2,14286` em dezasseis
+/// células (quatro profundidades × quatro ângulos, cinco casas). ⚠️ *É a aproximação publicada que
+/// é surda; o nosso porte dela é fiel.*
+///
+/// # ⭐⭐⭐ Os DOIS extremos são DERIVADOS, e só a transição é calibrada
+///
+/// | regime | o que acontece | a matiz |
+/// |---|---|---|
+/// | `mfp ≪ peça` | **muitos** eventos de espalhamento | a **reflectância** autorada — *a lei de hoje* |
+/// | `mfp ≳ peça` | **poucos**; a luz atravessa e não volta | o **albedo cru** ([`albedo_cru`]) |
+///
+/// ⇒ a lei é `A · (α/A)^(1−f)`, com `f: 1 → 0` a percorrer a transição. ⭐ **Escrita assim, em
+/// `f = 1` o expoente é `0` e a potência devolve `1` EXACTAMENTE** — a cor volta a ser `A` ao bit,
+/// que é o que faz o ponto neutro ser byte-idêntico sem uma cerca a lembrar.
+///
+/// # ⚠️ Ela preserva a LUMINÂNCIA, e isso é uma decisão MEDIDA
+///
+/// `α ≥ A` sempre ⇒ a correcção crua **clareia** toda a peça. ⛔ Mas o defeito medido na §17.6 é
+/// **só de matiz**: a magnitude da nossa lei responde `1,76×` no terminador e `3,50×` do lado
+/// escuro sobre a mesma faixa de profundidade — *ela já faz o trabalho dela*. ⇒ curar o que não
+/// está partido seria trocar um defeito medido por um não medido, e a correcção é renormalizada
+/// para deixar a luminância onde estava. ⚠️ Reescalar por um escalar **não muda `R/B`**, logo a
+/// curva que a calibração mediu fica intacta.
+///
+/// # ⛔ O `mfp` entra CRU, e não pelo piso do perfil
+///
+/// O `max(mfp, 0.1)` do [`integrate_burley`] guarda um recurso **numérico** — o perfil diverge em
+/// `mfp → 0`. Esta lei não tem essa divergência (`mfp → 0` ⇒ `f → 1` ⇒ a cor autorada), logo herdar
+/// aquele piso importaria para aqui um defeito que a §17.7 mediu do outro lado: *um quarto do raio
+/// da peça é o chão do botão do artista, e abaixo dele ele não faz nada.*
+///
+/// # A calibração
+///
+/// `X0 = 0,306` · `N = 2,25`, contra as quatro profundidades do oráculo convergido (raio da peça
+/// `0,42`), com o piso fino **derivado** e não ajustado:
+///
+/// | `mfp/raio` | matiz MEDIDA | matiz da lei | erro |
+/// |---:|---:|---:|---:|
+/// | `0,0714` | `2,1088` | `2,0992` | `−0,46 %` |
+/// | `0,2381` | `1,7010` | `1,7467` | `+2,69 %` |
+/// | `0,7143` | `1,3472` | `1,3114` | `−2,65 %` |
+/// | `2,3810` | `1,1934` | `1,2259` | `+2,73 %` |
+///
+/// ⇒ pior erro de matiz **`2,73 %`** sobre uma faixa de `33×`, contra os **`+79,6 %`** que a lei
+/// de hoje erra no ponto mais fundo.
+pub(crate) fn cor_na_profundidade(cor: V3, mfp: V3, curvature: f32, peso: f32) -> V3 {
+    // ⭐⭐ **Isto é um atalho de DESEMPENHO e não uma cerca de correcção — e há prova de mutação.**
+    //
+    // Apagá-lo deixa os quatro gates **VERDES** (medido), porque com `peso = 0` o expoente é
+    // exactamente `0`, `x^0` é `1` ao bit, e a renormalização divide `lum(cor)` por si próprio, que
+    // é `1,0` exacto em IEEE-754. ⇒ *o ponto neutro é byte-idêntico por ÁLGEBRA*, e este `if` só
+    // evita três `powf` e três `exp` por pixel no caminho de omissão, que é todo o produto de hoje.
+    //
+    // ⚠️ As outras seis mutações desta lei **sangram** — ver o cabeçalho acima.
+    if peso <= 0.0 {
+        return cor;
+    }
+    let k = curvature.max(CURVATURE_FLOOR);
+    let bruto = [0, 1, 2].map(|i| {
+        let a = cor[i];
+        if a <= 0.0 {
+            return a;
+        }
+        let x = (mfp[i].max(0.0) * k) / X0_DA_TRANSICAO;
+        let f = 1.0 / (1.0 + x.powf(N_DA_TRANSICAO));
+        a * (albedo_cru(a) / a).powf((1.0 - f) * peso)
+    });
+    // ⭐ A luminância de Rec.709 — a mesma que as réguas desta linha usam.
+    let lum = |c: V3| 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    let (antes, depois) = (lum(cor), lum(bruto));
+    if depois <= EPS {
+        return cor;
+    }
+    let escala = antes / depois;
+    bruto.map(|c| c * escala)
+}
+
 /// `mx_burley_diffusion_profile` — as duas exponenciais sobre a distância.
 fn diffusion_profile(dist: f32, shape: V3) -> V3 {
     let denom = dist.max(EPS);

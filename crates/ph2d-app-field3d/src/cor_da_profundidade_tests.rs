@@ -167,6 +167,7 @@ fn sonda_a_lei_da_cor_da_profundidade() {
          mfp   · mfp/raio ·   CYCLES R/B ·   p ·  UNREAL-PT R/B ·   p"
     );
     let mut anterior: Option<f32> = None;
+    let mut verdade: Vec<Option<f32>> = Vec::new();
     for (tag, mfp) in PROFUNDIDADES {
         let ler = |caminho: String| -> Option<f32> {
             let (_, _, px) = le_pfm(&caminho)?;
@@ -199,6 +200,7 @@ fn sonda_a_lei_da_cor_da_profundidade() {
             f(un),
             if sat { "  ⛔ SATURADO" } else { "" }
         );
+        verdade.push(cy);
     }
 
     // ── A NOSSA LEI, medida pela PORTA DO MATERIAL e não pela imagem ─────────────────────────────
@@ -283,5 +285,47 @@ fn sonda_a_lei_da_cor_da_profundidade() {
         hi / lo.max(1e-12),
         expoente(lo),
         COR[0] / COR[2]
+    );
+
+    // ── ⭐⭐⭐ O QUE A CURA COMPRA ────────────────────────────────────────────────────────────────
+    //
+    // A mesma porta do material, com o `subsurface_depth_hue` a `0` (a aproximação publicada) e a
+    // `1` (a lei nova). ⚠️ A matiz é a mesma em todo ângulo — a lei toca na COR e não na forma —,
+    // logo um ângulo chega, e os quatro acima já provaram isso.
+    println!("\n  ── ⭐ O QUE A CURA COMPRA (matiz R/B contra a VERDADE) ──");
+    println!("    mfp/raio ·  VERDADE ·  NÓS hoje ·   erro ·  NÓS c/ cura ·   erro");
+    let (mut pior_hoje, mut pior_cura) = (0.0f32, 0.0f32);
+    for (i, (_, mfp)) in PROFUNDIDADES.iter().enumerate() {
+        let Some(v) = verdade[i] else { continue };
+        let matiz = |peso: f32| -> f32 {
+            let s = ph2d_material::OpenPbr {
+                subsurface_weight: 1.0,
+                geometry_thin_walled: false,
+                subsurface_color: COR,
+                base_color: COR,
+                specular_weight: 0.0,
+                subsurface_radius: *mfp,
+                subsurface_radius_scale: [1.0, 1.0, 1.0],
+                subsurface_depth_hue: peso,
+                ..ph2d_material::OpenPbr::default()
+            }
+            .prepare()
+            .at_curvature(1.0 / RAIO_DA_PECA);
+            let c = s.direct([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.6, 0.0, 0.8], [1.0; 3]);
+            c[0] / c[2].max(1e-12)
+        };
+        let (h, cura) = (matiz(0.0), matiz(1.0));
+        let (eh, ec) = (100.0 * (h / v - 1.0), 100.0 * (cura / v - 1.0));
+        pior_hoje = pior_hoje.max(eh.abs());
+        pior_cura = pior_cura.max(ec.abs());
+        println!(
+            "     {:>7.4} · {v:>8.4} · {h:>9.4} · {eh:>+6.1} % · {cura:>12.4} · {ec:>+6.1} %",
+            mfp / RAIO_DA_PECA
+        );
+    }
+    println!(
+        "\n    ⇒ pior erro de matiz: HOJE {pior_hoje:.1} %  ·  COM A CURA {pior_cura:.1} %  \
+         ({:.1}× melhor)",
+        pior_hoje / pior_cura.max(1e-6)
     );
 }

@@ -498,6 +498,38 @@ fn o_tecto_de_manchas_custa_uma_razao_e_nao_uma_ordem_de_grandeza() {
     }
 }
 
+/// ⭐⭐⭐ **O INDICADOR CUSTA O QUE O QUADRO JÁ PAGA PELA MESMA ARTE** — a régua do report de
+/// 2026-09-19, que fez dele um passe permanente em vez de um que só acende sob o dedo.
+///
+/// ⚠️ **A régua é uma RAZÃO contra o `recook`**, e não um relógio de parede: o recook é o que o
+/// quadro já gasta a deformar esta mesma arte, e o indicador faz a mesma conta de peso mais uma
+/// mistura. *Um número absoluto aqui seria mais um membro da família de flakes de fan-out do
+/// `CLAUDE.md` §5.0.*
+///
+/// ⛔⛔ **E é por isto que o preço de mostrar SEMPRE é pequeno:** antes ele corria sobre a arte sob
+/// o dedo — que na cena do smoke é a imagem de `925` pontos —, e agora corre sobre toda a arte do
+/// osso. *Deixou de haver um quadro barato (o dedo no vão) e um caro (o dedo na arte); todos os
+/// quadros passaram a custar o caro*, que é o que esta razão limita.
+#[test]
+fn o_indicador_custa_o_que_o_quadro_ja_paga_pela_mesma_arte() {
+    let (sim, mut scene, map, id, ossos) = palco_estrela();
+    let _ = forma(&map, id);
+    let quadro = mede(|| {
+        crate::skin_live::recook(&sim, &mut scene);
+    });
+    let visto = mede(|| {
+        let v = crate::peso_a_mao::pontos_do_indicador(&sim, PPM, Some(ossos[0]));
+        assert!(!v.is_empty(), "a fixtura deixou de mostrar pontos");
+    });
+    let razao = visto.as_secs_f64() / quadro.as_secs_f64().max(1e-9);
+    eprintln!("[peso] indicador {visto:?} contra recook {quadro:?} ({razao:.2}x)");
+    assert!(
+        razao < 4.0,
+        "o indicador custa {razao:.2}x o recook da mesma arte ({visto:?} contra {quadro:?}) — ele \
+         corre TODO quadro com o pincel na mao, e este e' o orcamento que o justifica"
+    );
+}
+
 fn mede(mut f: impl FnMut()) -> std::time::Duration {
     // A mediana de cinco — o mínimo de ruído que uma máquina partilhada permite.
     let mut v: Vec<std::time::Duration> = (0..5)
@@ -549,66 +581,55 @@ fn peso_em(sim: &SimWorld, alvo: Entity, osso: Entity, p: [f64; 2]) -> f64 {
     peso_visto(sim, alvo, osso, p)
 }
 
-/// ⭐⭐⭐ **O INDICADOR MOSTRA A ARTE DESTE TRAÇO — e o traço PERTENCE À ARTE EM QUE COMEÇOU.**
+/// ⭐⭐⭐ **O INDICADOR MOSTRA TODA A ARTE QUE O OSSO GOVERNA — e não espera pelo dedo.**
 ///
-/// ⚠️ **Esta lei vivia no laço de desenho da shell, onde teste nenhum lhe chega** — e ela tem
-/// quatro braços que se leem todos como *«apareceram pontos»*: o alvo congelado ganha do dedo · o
-/// dedo escolhe quando não há traço · sem osso não há de quem mostrar peso · o dedo no vão não
-/// mostra nada.
+/// ⛔⛔⛔ **Este gate SUBSTITUI o `o_indicador_segue_a_arte_do_traco_e_nao_o_dedo`, cuja premissa
+/// MORREU no report de 2026-09-19** (*«As cores só aparecem se o mouse estiver sobre a forma»*).
+/// Ele afirmava que o indicador devia responder *«que arte está debaixo do dedo?»* — a mesma
+/// pergunta que o pen-down faz — e isso confundia **duas** perguntas: *onde o traço vai pintar* (do
+/// dedo, e continua a ser: ver [`super::peso_a_mao::pinta`]) e *o que este osso governa* (do OSSO).
+/// A morte fica visível neste diff, que é a lei desta casa.
 ///
-/// ⛔⛔ **A fixtura tem DUAS peles de propósito:** com uma só, «o congelado ganha» e «o dedo
-/// escolhe» devolvem o MESMO bloco de pontos — *uma fixtura que não contém o fenómeno não prova
-/// nada*, que é o defeito que esta jornada já pagou duas vezes.
+/// ⛔⛔ **A fixtura tem TRÊS peles e DOIS esqueletos de propósito:** com um esqueleto só, a metade
+/// que prova o filtro por TENDÃO não teria como reprovar — *uma fixtura que não contém o fenómeno
+/// não prova nada*.
 #[test]
-fn o_indicador_segue_a_arte_do_traco_e_nao_o_dedo() {
+fn o_indicador_mostra_toda_a_arte_do_osso_sem_esperar_pelo_dedo() {
     let mut sim = SimWorld::default();
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();
     let perto = scene.push_path(cook(ShapeKind::Rectangle, [0.0, 0.0], [40.0, 10.0], &[]));
     let longe = scene.push_path(cook(ShapeKind::Rectangle, [200.0, 0.0], [40.0, 10.0], &[]));
+    let alheia = scene.push_path(cook(ShapeKind::Rectangle, [600.0, 0.0], [40.0, 10.0], &[]));
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let raiz = osso(&mut sim, "Root", [0.0, 5.0], 20.0, None);
-    crate::skin_live::bind(&mut sim, &scene, &map, &[perto, longe], None);
-    let (a, b) = (forma(&map, perto), forma(&map, longe));
-    let sobre_b = [200.0, 0.0];
-    let em_a = |v: &[([f64; 2], f64)]| v.iter().all(|(p, _)| p[0] < 100.0);
+    let outro = osso(&mut sim, "Outro", [600.0, 5.0], 20.0, None);
+    crate::skin_live::bind(&mut sim, &scene, &map, &[perto, longe], Some(raiz));
+    crate::skin_live::bind(&mut sim, &scene, &map, &[alheia], Some(outro));
 
-    // O dedo escolhe quando NÃO há traço: ele está sobre a `b`, e é a `b` que aparece.
-    let pelo_dedo =
-        crate::peso_a_mao::pontos_do_indicador(&sim, PPM, Some(raiz), None, Some(sobre_b), 30.0);
+    let v = crate::peso_a_mao::pontos_do_indicador(&sim, PPM, Some(raiz));
+    // ⭐ A METADE DO REPORT: as DUAS artes do osso aparecem, sem cursor nenhum na conversa.
     assert!(
-        !pelo_dedo.is_empty() && !em_a(&pelo_dedo),
-        "o dedo sobre a segunda arte devia mostrar a segunda arte: {} ponto(s)",
-        pelo_dedo.len()
+        v.iter().any(|(p, _)| p[0] < 100.0),
+        "a arte perto da origem nao apareceu: {} ponto(s)",
+        v.len()
     );
-    // ⭐ O DISCRIMINADOR: o mesmo dedo, com um traço preso na `a`, mostra a `a`.
-    let preso =
-        crate::peso_a_mao::pontos_do_indicador(&sim, PPM, Some(raiz), Some(a), Some(sobre_b), 30.0);
     assert!(
-        !preso.is_empty() && em_a(&preso),
-        "o traço começou na primeira arte e o indicador saltou para onde o dedo está"
+        v.iter().any(|(p, _)| (150.0..400.0).contains(&p[0])),
+        "a SEGUNDA arte do mesmo osso nao apareceu — e' o report de 19/09: o indicador so' acendia \
+         onde o dedo estava"
     );
-    assert_ne!(
-        preso, pelo_dedo,
-        "as duas metades devolveram o mesmo bloco — a fixtura não contém o fenómeno"
-    );
-    // Sem osso em foco não há de quem mostrar peso; e o dedo no vão não mostra nada.
+    // ⭐ A METADE NEGATIVA, e ela e' a que a fixtura de um esqueleto so' nao consegue fazer: a arte
+    // de OUTRO esqueleto fica de fora. ⛔ Ela e' exactamente a que o `pinta` recusa com
+    // `OssoDeFora` — pinta-la de azul prometeria um pincel que a porta ao lado recusa.
     assert!(
-        crate::peso_a_mao::pontos_do_indicador(&sim, PPM, None, Some(b), Some(sobre_b), 30.0)
-            .is_empty(),
+        !v.iter().any(|(p, _)| p[0] > 500.0),
+        "a arte presa a OUTRO esqueleto apareceu — o filtro por TENDAO deixou de existir"
+    );
+    // Sem osso em foco nao ha' de quem mostrar peso.
+    assert!(
+        crate::peso_a_mao::pontos_do_indicador(&sim, PPM, None).is_empty(),
         "sem osso em foco o indicador inventou pesos"
-    );
-    assert!(
-        crate::peso_a_mao::pontos_do_indicador(
-            &sim,
-            PPM,
-            Some(raiz),
-            None,
-            Some([0.0, 5_000.0]),
-            30.0
-        )
-        .is_empty(),
-        "o dedo no vão devia não mostrar nada"
     );
 }
 

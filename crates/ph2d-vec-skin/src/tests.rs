@@ -30,16 +30,30 @@ fn osso_movido(x0: f64, len: f64, strength: f64, d: [f64; 2]) -> SkinBone {
     .expect("repouso nao-singular")
 }
 
-/// ⭐⭐ **AS TRÊS METADES DE UM VÉRTICE RESPONDEM À POSIÇÃO DELAS** — o `CubicWeight` do Rive.
+/// ⭐⭐⭐ **UMA ALÇA MOVE-SE PELO PESO DA ÂNCORA DELA** — a lei do módulo, com o preço dentro.
 ///
-/// A âncora fica dentro do alcance do osso da ESQUERDA e a alça de saída dentro do da DIREITA; ao
-/// mexer só o da direita, a alça anda e a âncora **não**. Pesar o vértice inteiro pela âncora
-/// deixaria a alça parada, e o sintoma é a curva a rasgar-se numa junta.
+/// ⛔⛔⛔ **Este gate SUBSTITUI o `the_three_halves_of_a_vertex_answer_to_their_own_position`, que
+/// afirmava o CONTRÁRIO** (*«as três metades respondem à posição delas»*, o `CubicWeight` do Rive).
+/// Ordem do dono, 2026-09-19, repetida duas vezes: *«o algoritmo continua considerando pesos em
+/// alças e não apenas nos pontos»*. A fixtura é a MESMA — ela é o discriminador das duas leis — e é
+/// o veredito que se inverteu.
 ///
-/// ⚠️ **É o gate que justifica esta crate existir.** Ele não é exprimível na `ph2d-skeleton`: lá
-/// não há vértice nenhum, só pontos.
+/// A âncora está dentro do alcance do osso da ESQUERDA e a alça de saída dentro do da DIREITA. Ao
+/// mexer só o da direita:
+///
+/// | | lei de ontem | lei de hoje |
+/// |---|---|---|
+/// | a alça de saída | **anda** (segue o osso em que ELA está) | **não anda** (segue a âncora) |
+/// | a âncora | não anda | não anda |
+///
+/// ⭐⭐ **O CONTROLO POSITIVO está dentro do gate e é o que o impede de ser vácuo:** ele calcula a
+/// lei de ontem à mão ([`ph2d_skeleton::Skin::point_corrected`] sobre a alça) e **exige** que ela
+/// mova a alça. Sem isso, uma fixtura em que as duas leis concordam passaria — e a maioria das
+/// formas reais é exactamente assim (numa quina arredondada as alças ficam a meio milímetro da
+/// âncora, e os pesos das três são iguais na prática). *A objecção que a lei de ontem escrevia
+/// continua registada e não vencida: é ESTE número que ela nomeava.*
 #[test]
-fn the_three_halves_of_a_vertex_answer_to_their_own_position() {
+fn uma_alca_move_se_pelo_peso_da_ancora_dela() {
     let esq = osso(0.0, 4.0, 1.0);
     let dir_parado = osso(20.0, 4.0, 1.0);
     let dir_movido = osso_movido(20.0, 4.0, 1.0, [0.0, 7.0]);
@@ -51,17 +65,31 @@ fn the_three_halves_of_a_vertex_answer_to_their_own_position() {
 
     let mut parado = forma.clone();
     apply(&Skin::new(vec![esq, dir_parado]).unwrap(), &mut parado);
+    let pele_movida = Skin::new(vec![esq, dir_movido]).unwrap();
     let mut movido = forma.clone();
-    apply(&Skin::new(vec![esq, dir_movido]).unwrap(), &mut movido);
+    apply(&pele_movida, &mut movido);
 
     let danca = |a: [f64; 2], b: [f64; 2]| (a[1] - b[1]).abs();
+
+    // ⭐ O CONTROLO: pela lei de ONTEM esta alça andava. Se ele parar de medir, a fixtura deixou de
+    // conter o fenómeno e as duas asserções abaixo passam a ser verdades triviais.
+    let mut w = pele_movida.scratch();
+    let pela_posicao_dela = pele_movida.point_corrected(v.out_handle, None, &mut w, &[]);
     assert!(
-        danca(parado.verts[0].out_handle, movido.verts[0].out_handle) > 5.0,
-        "a alca de saida esta' dentro do osso que se mexeu e nao o seguiu"
+        danca(parado.verts[0].out_handle, pela_posicao_dela) > 5.0,
+        "a fixtura deixou de discriminar as duas leis: pela posicao da ALCA ela move-se {}, e as \
+         asserções desta prova passam a ser vazias",
+        danca(parado.verts[0].out_handle, pela_posicao_dela)
+    );
+
+    assert!(
+        danca(parado.verts[0].out_handle, movido.verts[0].out_handle) < 1e-9,
+        "a alca de saida seguiu o osso em que ELA esta' — o peso voltou a ser por metade, e o no' \
+         deixou de ser o dono dele (report do dono, 19/09)"
     );
     assert!(
         danca(parado.verts[0].anchor, movido.verts[0].anchor) < 1e-9,
-        "a ancora esta' FORA do osso que se mexeu e mexeu-se na mesma - os pesos estao a sair da \
+        "a ancora esta' FORA do osso que se mexeu e mexeu-se na mesma — os pesos estao a sair da \
          posicao errada"
     );
 }

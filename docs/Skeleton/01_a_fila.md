@@ -614,6 +614,81 @@ Mutação **27 de 27** a sangrar, **cinco** delas sobreviventes à primeira e cu
 tiver consumidor de produto · não há botão de *limpar as correcções* (o `Ctrl+Z` e o valor negativo
 cobrem-no) · e a mancha não é espelhada pelo `Mirror Branch`.
 
+#### ⭐⭐⭐ F26-b — O TERCEIRO REPORT: *«as cores não ficam tão boas como no blender · o algoritmo continua considerando pesos em alças · as cores só aparecem se o mouse estiver sobre a forma»*
+
+Três queixas, **três mecanismos diferentes**, e nenhuma delas era a mesma coisa que as duas rondas
+anteriores tinham curado.
+
+**(1) A rampa era uma CONFUSÃO DE CATEGORIA.** Ela era `ColorToken::Info → ColorToken::Danger`, e um
+token semântico é escolhido para ser **CALMO** dentro do chrome (`Info` é `oklch(0,720 0,110 235)`,
+um azul de baixa croma); uma leitura de VALOR é escolhida para ser **DISTINGUÍVEL**. São requisitos
+opostos. Medida em OKLab com `21` amostras:
+
+| rampa | caminho total | **pior passo** | uniformidade |
+|---|---|---|---|
+| `Info → Danger` (a de ontem) | `0,305` | `0,0131` | `0,739` |
+| as 5 paradas da indústria, espaçadas em `t` (o porte INGÉNUO) | `1,435` | `0,0082` | **`0,057`** |
+| as 5 paradas em OKLCH, por arco | `1,397` | `0,0383` | `0,443` |
+| **as 5 paradas em OKLab, por ARCO** (a que shipa) | `1,393` | **`0,0497`** | `0,651` |
+
+⭐⭐ **O número que decide é o PIOR passo e não o caminho** — é ele que diz se dois pesos vizinhos se
+distinguem —, e por ele o **porte ingénuo da rampa da indústria seria PIOR que o que havia**
+(`0,63 ×`): o verde puro é um **planalto**. ⇒ a cura não é mudar as cores, é **parametrizar por
+comprimento de arco perceptual**, o que põe as paradas em `0,000 · 0,380 · 0,546 · 0,680 · 1,000`.
+O verde — a única referência que um artista lê («metade») — desloca-se `+0,046`; o ciano, que
+ninguém lê como número, paga os `+0,130`. ⚠️ **Ela não muda com o tema, e isso é lei:** *uma rampa
+que muda com o tema deixa de ser a leitura de um número.*
+
+**(2) «Pesos em alças» — a ordem do dono, agora na LEI e não só no desenho.** A ronda anterior curou
+o **DESENHO** (um ponto por nó) e deixou a lei como estava, com a objecção escrita: *«uma alça parada
+com a âncora a andar quebrava a curva»* (o `CubicWeight` do Rive). ⛔ **Ele repetiu, e a objecção
+fica registada e NÃO VENCIDA** — mas a medição deu-lhe razão por um mecanismo que a objecção não
+via: a mancha do pincel é um **bump radial**, vale `1` no centro (a âncora) e menos nas alças, que
+estão ao lado. Medido na arte dele (a barra de `PH2D_VEC_BONE_SMOKE=1`, um dab de `amount = 1`):
+
+| ponto | lei de hoje (peso do NÓ) | lei de ontem (peso da posição) |
+|---|---|---|
+| âncora | `0,5000` | `0,5000` |
+| alça de entrada | `0,5000` | **`0,2150`** |
+| alça de saída | `0,5000` | `0,5000` |
+
+⭐⭐ **A assimetria é o mais duro:** das duas alças do MESMO nó, uma seguia e a outra não — a
+tangente partia-se exactamente no ponto que o artista acabara de pintar. *Um peso que ele não
+consegue entregar ao nó inteiro num gesto não é um peso que ele controla.*
+
+⭐ **E a cura tem TRÊS metades, porque «pesos em alças» aparecia em três sítios:** a deformação
+([`ph2d_vec_skin::aplica_corrigido`] faz **uma** conta por vértice, na âncora), o instantâneo posado
+que o hit-test usa, e — a que ninguém tinha visto — **onde a mancha é ANCORADA**: o
+[`ponto_sob_o_cursor`] escolhia entre todos os pontos, logo o centro de uma correcção podia cair
+numa alça. Os três lêem a MESMA porta ([`ph2d_vec_skin::dono_do_peso`]).
+
+⚠️ **Sem dab as duas leis CONCORDAM nesta arte** (as alças de uma quina ficam a `0,28` da âncora) —
+é a pincelada que as separa, e é por isso que a régua que só olhava o repouso não via nada.
+
+**(3) «As cores só aparecem se o mouse estiver sobre a forma» — DUAS perguntas lidas como uma.** O
+indicador perguntava *«que arte está debaixo do dedo?»* — a mesma pergunta do pen-down, com a
+justificação escrita no código —, e devolvia **vazio** no vão entre as formas. ⛔ *Onde o traço vai
+pintar* é do DEDO; *o que este osso governa* é do OSSO, e não tem cursor nenhum dentro. ⇒ o
+indicador mostra toda a pele cujos tendões contêm o osso em foco, sempre. ⭐ **A população é exacta
+e não uma escolha:** uma pele que não o tenha é a que o `pinta` recusa com `OssoDeFora` — *pintá-la
+de azul prometeria um pincel que a porta ao lado recusa*. Preço medido: **`2,16 ×` o `recook` da
+mesma arte** (`27,75 µs` contra `12,83 µs` na estrela), com a razão gateada contra `4 ×` — *deixou
+de haver um quadro barato (o dedo no vão) e um caro; todos passaram a custar o caro.*
+
+**E a auditoria achou um QUARTO, da família do controlo morto:** o aviso do bind
+(*«N pontos de controlo caem FORA do interior da forma»*) contava as **alças**, cuja linha da tabela
+deixou de ser lida. ⇒ ele conta só os **NÓS** — *queixar-se de uma condição que já não tem consumidor
+é ensinar o artista a ignorar a queixa*. ⚠️ As linhas das alças continuam a ser **gravadas** (a
+tabela viaja em bytes opacos dentro do `SkinBind::source`) e ficam **dívida NOMEADA**: elas são
+AMOSTRAS e não incógnitas — o sistema resolve-se na malha do domínio —, logo tirá-las não mexeria
+num único peso de âncora. *É dívida de tamanho, nunca de resultado.*
+
+⛔ **Três premissas MORRERAM e as três morrem à vista no diff:** o cabeçalho do
+[`ph2d-vec-skin`] (*«cada metade com os pesos da posição dela»*), o gate
+`the_three_halves_of_a_vertex_answer_to_their_own_position` (substituído por
+`uma_alca_move_se_pelo_peso_da_ancora_dela`, **na mesma fixtura**, com o veredito invertido e o
+controlo positivo dentro) e o `o_indicador_segue_a_arte_do_traco_e_nao_o_dedo`.
+
 ### F19 — ✅ **O CHIP `Auto` DIZ QUE LADO DERIVA** (report do dono, 2026-09-18)
 
 *«IK Bend não funcionou com Auto IK e trocando CCw por CW no painel lateral»* — ⭐ **reproduzido, e

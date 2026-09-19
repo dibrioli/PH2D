@@ -56,6 +56,12 @@ const ALVO_DE_TRIANGULOS: usize = 1_200;
 /// `ossos` pesos. ⚠️ Ela é estável porque o caminho GUARDADO é que a define, e ele não muda depois
 /// do bind.
 ///
+/// ⚠️⚠️ **Só a linha `3k` é LIDA desde 2026-09-19** — o peso é do NÓ ([`crate::dono_do_peso`]). As
+/// duas das alças continuam a ser gravadas porque a forma da tabela viaja em bytes opacos dentro do
+/// `SkinBind::source`, e encolhê-la mudaria o que já está guardado por uma economia que ninguém
+/// mediu. ⛔ **Elas são AMOSTRAS e não incógnitas:** o sistema resolve-se na malha do domínio, logo
+/// tirá-las não mexeria num único peso de âncora — *é dívida de tamanho, nunca de resultado*.
+///
 /// `ossos` são os eixos no espaço LOCAL do caminho (o mesmo em que os vértices vivem).
 ///
 /// `None` quando não há domínio (caminho aberto, área nula) ou quando o solver não responde — ⛔ nos
@@ -84,26 +90,37 @@ pub fn pesos_do_caminho(path: &VecPath, ossos: &[Handle]) -> Option<Vec<f64>> {
     )?;
     let n = ossos.len();
     let mut out = Vec::new();
-    let mut faltou = 0usize;
+    let mut nos_de_fora = 0usize;
     for v in path.verts_all() {
-        for p in [v.anchor, v.in_handle, v.out_handle] {
+        for (j, p) in [v.anchor, v.in_handle, v.out_handle]
+            .into_iter()
+            .enumerate()
+        {
             match amostra(&malha, &w.por_vertice, para_malha(p), n) {
                 Some(ws) => out.extend_from_slice(&ws),
                 None => {
-                    faltou += 1;
                     // ⚠️ **Uma ALÇA pode viver FORA da forma** (ela é uma tangente, não um ponto do
                     // desenho), e ali não há domínio. A resposta é o vértice da malha mais próximo —
                     // ⛔ nunca zeros, que a normalização a jusante leria como *«este ponto não é de
                     // ninguém»* e entregaria ao primeiro osso.
+                    if crate::e_no(j) {
+                        nos_de_fora += 1;
+                    }
                     out.extend_from_slice(&mais_proximo(&malha, &w.por_vertice, para_malha(p), n));
                 }
             }
         }
     }
-    if faltou > 0 {
+    // ⛔⛔ **A queixa conta só os NÓS, e a mudança é de 2026-09-19** (auditoria do report do dono):
+    // desde que o peso é do NÓ ([`crate::dono_do_peso`]), a linha de uma alça é **gravada e nunca
+    // lida** — queixar-se dela é descrever uma condição que já não tem consumidor nenhum, e o
+    // artista lia *«N pontos de controlo caem fora da forma»* sobre pontos cujo peso não governa
+    // nada. ⚠️ **Um nó de fora continua a ser real e continua a falar:** ali o peso que o desenho
+    // usa é herdado de um vizinho.
+    if nos_de_fora > 0 {
         eprintln!(
-            "[bone] {faltou} pontos de controlo caem FORA do interior da forma (alcas tangentes) — \
-             cada um herdou os pesos do vertice mais proximo da malha"
+            "[bone] {nos_de_fora} NO(S) do desenho caem FORA do interior da forma — cada um herdou \
+             os pesos do vertice mais proximo da malha"
         );
     }
     Some(out)

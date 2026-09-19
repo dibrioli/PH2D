@@ -292,6 +292,23 @@ pub fn bind(
                  MEIO e ligue «Onion» na barra dela — os fantasmas mostram a arte DOBRADA em t+-k. \
                  Ate' 13/09 eles mostravam o quad de REPOUSO, e um rig nao produzia fantasma nenhum."
             );
+            // ⭐⭐⭐ **O PINCEL DE PESO tem de ser DITO, e a cena nunca o dizia** (3.º report do dono
+            // sobre ele, 2026-09-19). ⚠️ **E ele nomeia a peça PINTADA e não a barra:** o peso de um
+            // caminho vive nos NÓS, e a barra tem oito, os oito nas duas pontas — ali o indicador é
+            // honesto e quase mudo. *Mandar o artista provar uma ferramenta na peça em que ela tem
+            // menos a mostrar é ensinar que ela não funciona.*
+            eprintln!(
+                "[vec-bone-smoke] PINCEL DE PESO: escolha a linha «{nome}» (ou outro osso do braco \
+                 pintado), carregue «Weight» no painel Bones e olhe para o braco PINTADO — cada \
+                 ponto da malha dele fica colorido pela influencia desse osso, do AZUL (nao manda \
+                 nada) ao VERMELHO (manda sozinho), passando por ciano, verde e amarelo. Arraste \
+                 por cima para empurrar o peso para cima; «Brush Strength» negativo tira."
+            );
+            eprintln!(
+                "[vec-bone-smoke] ⚠️ na BARRA laranja o mesmo pincel mostra 8 pontos e mais nada — \
+                 um caminho so' tem peso nos NOS dele, e os dela estao nas duas pontas (uma delas \
+                 fora do enquadramento). E' a peca errada para julgar o pincel."
+            );
         }
     }
     let mut presas = 0;

@@ -73,16 +73,17 @@ impl crate::App {
                 // ⚠️ **ANTES do rig, como a mancha e o arco:** ele é uma leitura sobre o desenho, e
                 // o corpo do osso continua a ser o que se vê e o que se agarra.
                 //
-                // ⛔ **O alvo é o que está sob o cursor, e não a selecção** — o pincel escolhe a
-                // arte pela ponta do dedo (é o que o pen-down faz), logo a pré-visualização tem de
-                // responder à MESMA pergunta. *Mostrar os pesos de outra arte é pior que não
-                // mostrar nenhum.*
+                // ⛔⛔ **O sujeito é o OSSO EM FOCO, e não a arte sob o dedo** (report do dono,
+                // 2026-09-19: *«As cores só aparecem se o mouse estiver sobre a forma»*). O que
+                // estava escrito aqui — *«o pincel escolhe a arte pela ponta do dedo, logo a
+                // pré-visualização tem de responder à MESMA pergunta»* — juntava duas perguntas
+                // diferentes: *onde o traço vai pintar* (do dedo, e continua a ser) e *o que este
+                // osso governa* (do osso). A segunda não tem cursor nenhum dentro.
                 if self.vec.draw_config.bone_action == ph2d_tool_vector::BoneAction::Weight {
-                    // ⚠️ **O raio do painel e' de ECRA.** A lei quer MUNDO (converte-se com o
-                    // mesmo factor do pick) e o anel quer PIXEIS — e e' por eles falarem unidades
-                    // diferentes que os dois numeros aparecem aqui lado a lado.
+                    // ⚠️ **O raio do painel e' de ECRA e o anel quer PIXEIS** — ele é o único
+                    // consumidor dele nesta fase desde que o indicador deixou de perguntar «que
+                    // arte está debaixo do dedo?», que era a pergunta que pedia MUNDO.
                     let raio_px = self.vec.draw_config.weight_radius;
-                    let raio = raio_px * vec_px_to_world;
                     // ⚠️ **Qual arte é o sujeito é LEI e mora na crate**
                     // ([`ph2d_skeleton_live::peso_a_mao::pontos_do_indicador`]): aqui decide-se a
                     // ORDEM dos passes, não de quem se mostram os pesos.
@@ -90,9 +91,6 @@ impl crate::App {
                         sim,
                         hero.project.pixels_per_meter,
                         osso_focado.map(ph2d_ecs::Entity::from_bits),
-                        self.skeleton.weight_drag.map(ph2d_ecs::Entity::from_bits),
-                        self.skeleton.weight_cursor,
-                        raio,
                     );
                     ph2d_skeleton_render::draw_weights(
                         &pontos,
@@ -100,8 +98,9 @@ impl crate::App {
                         hero.theme,
                         vector_scene,
                     );
-                    // ⚠️ **A escala vem do MESMO número que o zoom dá ao dedo** — o anel é uma
-                    // distância de MUNDO, e o `vec_px_to_world` é o factor inverso.
+                    // ⚠️ **O anel desenha-se em PIXEIS, sem escala nenhuma** — ele mostra o
+                    // número que o artista escolheu no painel, que é uma grandeza de ECRÃ (ver o
+                    // doc de [`ph2d_skeleton_render::draw_weight_brush`], com a tabela medida).
                     ph2d_skeleton_render::draw_weight_brush(
                         self.skeleton.weight_cursor,
                         raio_px,

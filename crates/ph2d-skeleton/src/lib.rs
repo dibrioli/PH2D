@@ -475,7 +475,20 @@ impl Skin {
     /// ⚠️ **Com todos os pesos a zero devolve o ponto INTACTO** (e não a origem): é a resposta
     /// certa a *«nenhum osso reclama este ponto»*, e o que a torna segura é que as duas portas de
     /// peso renormalizam antes de chegar aqui.
-    fn blend(&self, p: [f64; 2], w: &[f64]) -> [f64; 2] {
+    /// ⭐⭐⭐ **A MISTURA COM OS PESOS JÁ SABIDOS** — `Σ ŵ_i · (M_i · p)`.
+    ///
+    /// ⚠️ **Ela é pública porque há uma mídia em que o peso NÃO é do ponto que se está a mover.**
+    /// Num caminho vectorial o peso é do **NÓ**, e a âncora e as duas alças dele movem-se pelos
+    /// pesos da âncora ([`ph2d_vec_skin`], ordem do dono de 2026-09-19) — quem chama já tem o `w` e
+    /// só precisa de mover um ponto por ele. ⛔ As portas que **calculam** o peso
+    /// ([`Skin::point`], [`Skin::point_with`], [`Skin::point_corrected`]) continuam a ser o caminho
+    /// normal: esta só serve a quem tem uma resposta a *«de quem é este peso»* que não é «do ponto».
+    ///
+    /// ⛔ **Soma zero devolve o ponto INTACTO** e nunca a origem: é a leitura honesta de *«nenhum
+    /// osso manda aqui»*, e é o que impede uma arte de saltar para o zero do mundo quando o artista
+    /// tira todo o peso com o pincel.
+    #[must_use]
+    pub fn blend(&self, p: [f64; 2], w: &[f64]) -> [f64; 2] {
         let mut out = [0.0, 0.0];
         let mut soma = 0.0;
         for (b, &peso) in self.bones.iter().zip(w.iter()) {

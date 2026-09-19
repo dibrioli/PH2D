@@ -133,7 +133,7 @@ fn a_escala_da_barra_e_a_que_a_tabela_do_raio_cita() {
 /// poses LOCAIS: só a raiz está no mundo, e cada filho nasce na ponta do pai. ⛔ Com absolutas ela
 /// dobra-se sobre si mesma e todo o peso colapsa no primeiro osso — foi o que a 1.ª redacção destas
 /// sondas mediu, e lia-se exactamente como um defeito do produto.
-fn barra_da_cena() -> (SimWorld, VecEntityMap, VecPathId, Vec<Entity>) {
+fn barra_da_cena() -> (SimWorld, VecScene, VecEntityMap, VecPathId, Vec<Entity>) {
     let mut sim = SimWorld::default();
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();
@@ -162,7 +162,7 @@ fn barra_da_cena() -> (SimWorld, VecEntityMap, VecPathId, Vec<Entity>) {
     sim.world_mut()
         .entity_mut(alvo)
         .insert(ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]));
-    (sim, map, id, ids)
+    (sim, scene, map, id, ids)
 }
 
 /// O raio do pincel de fábrica, em unidades de MUNDO a esta `ppm`.
@@ -183,7 +183,7 @@ fn raio_de_fabrica() -> f64 {
 /// onde o pincel alcança»* e *«que arte está debaixo do dedo»*, e o segundo nunca foi uma distância.
 #[test]
 fn o_cursor_no_meio_da_arte_acha_a_arte() {
-    let (sim, map, id, _) = barra_da_cena();
+    let (sim, _scene, map, id, _) = barra_da_cena();
     let alvo = forma(&map, id);
     let r = raio_de_fabrica();
     let dentro: Vec<f64> = vec![-8.0, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0];
@@ -204,29 +204,30 @@ fn o_cursor_no_meio_da_arte_acha_a_arte() {
     );
 }
 
-/// ⭐⭐⭐ **UM PONTO POR NÓ, e o peso continua a ser aplicado às ALÇAS.**
+/// ⭐⭐⭐ **UM PONTO POR NÓ, E O PESO DAS ALÇAS É O DO NÓ.**
 ///
-/// ⛔⛔ **Report do dono (2026-09-19):** *«parece que os pesos não são aplicados apenas nos nós, mas
-/// também nos handles (alças)»* — **verdade**, e tem de continuar a ser: o esqueleto transforma a
-/// âncora E as duas alças, e uma alça parada com a âncora a andar quebrava a curva. O que estava
-/// errado era o DESENHO: numa forma de cantos arredondados as alças ficam em posições distintas,
-/// logo `8` nós apareciam como **`24` pontinhos**.
+/// ⛔⛔ **Report do dono, duas vezes (2026-09-19):** *«parece que os pesos não são aplicados apenas
+/// nos nós, mas também nos handles»* e depois *«o algoritmo continua considerando pesos em alças e
+/// não apenas nos pontos»*. A 1.ª resposta desta casa curou só o DESENHO (numa forma de cantos
+/// arredondados as alças ficam em posições distintas, logo `8` nós apareciam como **`24`
+/// pontinhos**) e deixou a LEI como estava — é o que o segundo report veio dizer.
 ///
-/// ⚠️ **As duas metades, porque as curas seriam opostas:** o indicador mostra `8`, e a lei continua
-/// a devolver `24` — esconder um e apagar o outro leem-se igual numa tabela.
+/// ⚠️ **As duas metades, porque as curas seriam opostas:** o indicador mostra `8` pontos, e a lei
+/// continua a devolver `24` POSIÇÕES — as alças são desenhadas, logo têm de ser deformadas.
+/// O que elas deixaram de ter é peso PRÓPRIO.
+///
+/// ⛔⛔ **A 3.ª metade é uma coerência e NÃO o discriminador, e dizê-lo é o que a torna honesta:**
+/// **no repouso** as duas leis concordam nesta arte (as alças de uma quina arredondada ficam a
+/// `0,28` da âncora e os pesos derivados dão o mesmo). Quem as separa são dois gates construídos
+/// para isso: o [`um_dab_chega_inteiro_as_duas_alcas_do_no`] — **nesta mesma arte, depois de uma
+/// pincelada**, que é onde o report do dono vive — e o `ph2d_vec_skin` com uma forma de alças
+/// longas a atravessar uma junta. *Os dois trazem o controlo positivo dentro.*
 #[test]
-fn o_indicador_mostra_um_ponto_por_no_e_a_lei_guarda_as_alcas() {
-    let (sim, map, id, ossos) = barra_da_cena();
+fn o_indicador_mostra_um_ponto_por_no_e_a_alca_pesa_o_do_no() {
+    let (sim, _scene, map, id, ossos) = barra_da_cena();
     let alvo = forma(&map, id);
     let todos = crate::peso_a_mao::pontos_da_pele(&sim, alvo, ossos[0], PPM);
-    let vistos = crate::peso_a_mao::pontos_do_indicador(
-        &sim,
-        PPM,
-        Some(ossos[0]),
-        Some(alvo),
-        None,
-        raio_de_fabrica(),
-    );
+    let vistos = crate::peso_a_mao::pontos_do_indicador(&sim, PPM, Some(ossos[0]));
     assert_eq!(
         todos.len(),
         vistos.len() * 3,
@@ -248,6 +249,17 @@ fn o_indicador_mostra_um_ponto_por_no_e_a_lei_guarda_as_alcas() {
             "o ponto {i} do indicador nao e' a ancora do no' {i}"
         );
     }
+    // ⭐ A 3.ª metade: as duas alças de cada nó carregam o peso DELE, e não um seu.
+    for k in 0..todos.len() / 3 {
+        let (a, entra, sai) = (&todos[k * 3], &todos[k * 3 + 1], &todos[k * 3 + 2]);
+        assert!(
+            (entra.peso - a.peso).abs() < 1e-12 && (sai.peso - a.peso).abs() < 1e-12,
+            "o no' {k} tem alcas com peso proprio ({} / {} contra {}) — o peso deixou de ser do NO'",
+            entra.peso,
+            sai.peso,
+            a.peso
+        );
+    }
 }
 
 /// ⭐⭐⭐ **COM UM OSSO QUE POSSUI METADE DA ARTE, A TELA TEM AS DUAS CORES.**
@@ -260,17 +272,10 @@ fn o_indicador_mostra_um_ponto_por_no_e_a_lei_guarda_as_alcas() {
 /// meu passo de smoke mandou clicar.*
 #[test]
 fn com_o_osso_certo_a_tela_tem_as_duas_cores() {
-    let (sim, map, id, ossos) = barra_da_cena();
+    let (sim, _scene, map, id, ossos) = barra_da_cena();
     let _ = forma(&map, id);
     for (n, o) in [(1usize, ossos[0]), (3, ossos[2])] {
-        let v = crate::peso_a_mao::pontos_do_indicador(
-            &sim,
-            PPM,
-            Some(o),
-            None,
-            Some([-5.0, 2.5]),
-            raio_de_fabrica(),
-        );
+        let v = crate::peso_a_mao::pontos_do_indicador(&sim, PPM, Some(o));
         let quentes = v.iter().filter(|(_, w)| *w > 0.5).count();
         let frios = v.iter().filter(|(_, w)| *w <= 0.5).count();
         assert!(
@@ -279,17 +284,210 @@ fn com_o_osso_certo_a_tela_tem_as_duas_cores() {
              19/09 a` letra"
         );
     }
-    let meio = crate::peso_a_mao::pontos_do_indicador(
-        &sim,
-        PPM,
-        Some(ossos[1]),
-        None,
-        Some([-5.0, 2.5]),
-        raio_de_fabrica(),
-    );
+    let meio = crate::peso_a_mao::pontos_do_indicador(&sim, PPM, Some(ossos[1]));
     assert!(
         !meio.is_empty() && meio.iter().all(|(_, w)| *w <= 0.5),
         "o osso do MEIO passou a possuir alguma coisa nesta arte — a lei mudou, e o passo do smoke \
          que o nomeava deixou de estar errado pelo motivo que o handoff regista"
+    );
+}
+
+/// ⭐⭐⭐ **UM DAB DO ARTISTA CHEGA INTEIRO ÀS DUAS ALÇAS DO NÓ** — a medição que dá razão ao dono.
+///
+/// ⛔⛔⛔ **Este é o defeito do report de 2026-09-19, medido na arte DELE** (a barra de
+/// `PH2D_VEC_BONE_SMOKE=1`). Com o peso por METADE, a mancha do pincel é um bump radial no espaço:
+/// ela vale `1` no centro — que é a âncora — e menos nas alças, que estão ao lado. Um dab de
+/// `amount = 1` sobre um nó entrega:
+///
+/// | ponto | lei de hoje (peso do NÓ) | lei de ontem (peso da posição) |
+/// |---|---|---|
+/// | âncora | `0,5000` | `0,5000` |
+/// | alça de entrada | `0,5000` | **`0,2150`** |
+/// | alça de saída | `0,5000` | `0,5000` |
+///
+/// ⭐⭐ **E o mais duro é a assimetria:** das duas alças do MESMO nó, uma seguia e a outra não — é
+/// a tangente a partir-se exactamente no ponto que o artista acabou de pintar. *Um peso que o
+/// artista não consegue entregar ao nó inteiro num gesto não é um peso que ele controla.*
+///
+/// ⚠️ **Sem o dab as duas leis CONCORDAM nesta arte** (as alças de uma quina arredondada ficam a
+/// `0,28` da âncora e os pesos derivados são iguais) — é a pincelada que as separa. *É por isso que
+/// este gate pinta antes de medir, e é por isso que a régua que só olhava o repouso não via nada.*
+#[test]
+fn um_dab_chega_inteiro_as_duas_alcas_do_no() {
+    let (mut sim, _scene, map, id, ossos) = barra_da_cena();
+    let alvo = forma(&map, id);
+    let raio = raio_de_fabrica();
+    // O no' mais perto da ponta esquerda, que e' o que o Bone 1 governa.
+    let quem = ossos[2];
+    let pts = crate::peso_a_mao::pontos_de_peso(&sim, alvo, quem, PPM);
+    let (i, alvo_no) = pts
+        .iter()
+        .enumerate()
+        .min_by(|a, b| a.1.mundo[0].partial_cmp(&b.1.mundo[0]).unwrap())
+        .map(|(i, p)| (i, *p))
+        .unwrap();
+    assert!(
+        alvo_no.peso < 0.01,
+        "a fixtura precisa de um no' que este osso NAO governa (peso {:.4}), senao o dab satura e \
+         as duas leis concordam por acidente",
+        alvo_no.peso
+    );
+    let r = crate::peso_a_mao::pinta(&mut sim, alvo, quem, PPM, alvo_no.mundo, raio, 1.0);
+    assert!(
+        matches!(r, crate::peso_a_mao::Pincelada::Pintada { .. }),
+        "a pincelada foi recusada ({r:?}) — sem mancha este gate nao mede nada"
+    );
+    // Agora leio a ancora e as duas alcas pela lei de HOJE (peso do no') e pela de ONTEM (peso da posicao).
+    let todos = crate::peso_a_mao::pontos_da_pele(&sim, alvo, quem, PPM);
+    let skin = sim
+        .world()
+        .get::<ph2d_skeleton_ecs::SkinBind>(alvo)
+        .unwrap()
+        .clone();
+    let pele = crate::skin_live::skin_of(&sim, alvo).unwrap();
+    let correcoes = skin.correcoes_resolvidas();
+    let repousos = crate::peso_a_mao::repousos(&sim, alvo, PPM);
+    let mut w = pele.scratch();
+    let tendao = skin
+        .tendons
+        .iter()
+        .position(|t| t.bone == *sim.world().get::<ph2d_ecs::StableId>(quem).unwrap())
+        .unwrap();
+    let mut divergiu = 0;
+    for k in (i * 3)..(i * 3 + 3) {
+        pele.weights_corrected(repousos[k], None, &mut w, &correcoes);
+        let ontem = w.get(tendao).copied().unwrap_or(0.0);
+        let hoje = todos[k].peso;
+        let nome = ["ancora", "alca-entra", "alca-sai"][k - i * 3];
+        eprintln!("[peso] {nome}: hoje {hoje:.4} · lei de ontem {ontem:.4}");
+        assert!(
+            (hoje - todos[i * 3].peso).abs() < 1e-12,
+            "o {nome} do no' nao recebeu o peso do NO' ({hoje:.4} contra {:.4})",
+            todos[i * 3].peso
+        );
+        if (ontem - todos[i * 3].peso).abs() > 0.05 {
+            divergiu += 1;
+        }
+    }
+    // ⭐ O CONTROLO: a lei de ontem TEM de discordar em pelo menos uma das metades, senao esta
+    // fixtura deixou de conter o fenomeno e as asserções acima passam a ser verdades triviais.
+    assert!(
+        divergiu >= 1,
+        "as duas leis concordam nas tres metades — a fixtura deixou de discriminar, e este gate \
+         deixou de afirmar o que o report de 19/09 pediu"
+    );
+
+    // ⭐⭐⭐ **A 4.ª metade: a mancha é ANCORADA no NÓ, mesmo com o dedo mais perto de uma alça.**
+    // ⛔ «pesos em alças» tinha TRÊS sítios, e este é o que ninguém tinha visto: o
+    // [`crate::peso_a_mao::ponto_sob_o_cursor`] escolhia entre TODOS os pontos, logo o centro de uma
+    // correcção podia cair numa alça — um sítio cujo peso já ninguém lê.
+    let alca = repousos[i * 3 + 1];
+    let no = repousos[i * 3];
+    let rumo = [(alca[0] - no[0]) * 0.8, (alca[1] - no[1]) * 0.8];
+    assert!(
+        rumo[0].hypot(rumo[1]) > 1e-6,
+        "a alca coincide com a ancora nesta fixtura — o dedo nao consegue ficar mais perto dela, e \
+         esta metade nao mede nada"
+    );
+    let dedo = crate::skin_live::world_of(&sim, alvo).apply([no[0] + rumo[0], no[1] + rumo[1]]);
+    let antes = skin.correcoes.len();
+    crate::peso_a_mao::pinta(&mut sim, alvo, quem, PPM, dedo, raio, 0.3);
+    let depois = sim
+        .world()
+        .get::<ph2d_skeleton_ecs::SkinBind>(alvo)
+        .expect("a pele")
+        .correcoes
+        .clone();
+    assert!(depois.len() >= antes, "a pincelada perdeu manchas");
+    let dist = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).hypot(a[1] - b[1]);
+    assert!(
+        depois
+            .iter()
+            .all(|c| dist(c.centro, no) < dist(c.centro, alca) + 1e-12),
+        "uma mancha foi ancorada mais perto de uma ALCA do que do NO' — o centro da correccao caiu \
+         num sitio cujo peso ja' ninguem le^"
+    );
+}
+
+/// ⭐⭐⭐ **O QUE O DEDO APANHA É O QUE O OLHO VÊ** — o instantâneo posado do hit-test é, ponto a
+/// ponto, a geometria que o quadro DESENHA.
+///
+/// ⛔⛔ **Este gate nasceu de uma mutação SOBREVIVENTE:** fazer o [`crate::peso_a_mao::posados`]
+/// voltar a pesar cada metade pela posição DELA não reprovava nada. Ele alimenta a silhueta do
+/// [`crate::peso_a_mao::pele_sob_o_cursor`], logo uma divergência ali é *o dedo a tocar num sítio
+/// com a arte noutro* — o defeito mais caro desta casa, e nenhuma régua o via.
+///
+/// ⚠️⚠️ **A fixtura tem de conter o fenómeno, e no REPOUSO ela não contém:** as duas leis de peso
+/// concordam numa quina arredondada. É preciso **uma pincelada** (a mancha é um bump radial e
+/// separa-as) **e** um osso fora da pose de repouso (senão tudo é a identidade). O gate arma as
+/// duas coisas e depois compara contra o `recook`, que é o que de facto desenha.
+#[test]
+fn o_instantaneo_do_hit_test_e_a_geometria_desenhada() {
+    let (mut sim, mut scene, map, id, ossos) = barra_da_cena();
+    let alvo = forma(&map, id);
+    // (a) um osso fora do repouso — sem isto toda a pele e' a identidade.
+    sim.world_mut()
+        .get_mut::<Transform>(ossos[1])
+        .expect("o osso tem pose")
+        .rotation += 25.0_f32.to_radians();
+    // (b) uma pincelada — e' ela que separa a lei do NO' da lei da POSICAO nesta arte.
+    let pts = crate::peso_a_mao::pontos_de_peso(&sim, alvo, ossos[2], PPM);
+    let no = pts
+        .iter()
+        .min_by(|a, b| a.mundo[0].partial_cmp(&b.mundo[0]).expect("finito"))
+        .copied()
+        .expect("a barra tem nos");
+    let r = crate::peso_a_mao::pinta(
+        &mut sim,
+        alvo,
+        ossos[2],
+        PPM,
+        no.mundo,
+        raio_de_fabrica(),
+        1.0,
+    );
+    assert!(
+        matches!(r, crate::peso_a_mao::Pincelada::Pintada { .. }),
+        "sem mancha as duas leis concordam e este gate nao mede nada ({r:?})"
+    );
+
+    crate::skin_live::recook(&sim, &mut scene);
+    let desenhado = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == id)
+        .expect("o caminho da cena");
+    let x = crate::skin_live::world_of(&sim, alvo);
+    let mundo: Vec<[f64; 2]> = desenhado
+        .verts_all()
+        .flat_map(|v| [v.anchor, v.in_handle, v.out_handle])
+        .map(|q| x.apply(q))
+        .collect();
+    let visto = crate::peso_a_mao::posados(&sim, alvo, PPM);
+    assert_eq!(
+        visto.len(),
+        mundo.len(),
+        "o instantaneo do hit-test deixou de ter um ponto por ponto desenhado"
+    );
+    // ⭐ O CONTROLO: a pose TEM de mover a arte, senao comparar duas identidades nao afirma nada.
+    let repousos = crate::peso_a_mao::repousos(&sim, alvo, PPM);
+    let andou = repousos
+        .iter()
+        .zip(&mundo)
+        .map(|(a, b)| (x.apply(*a)[0] - b[0]).hypot(x.apply(*a)[1] - b[1]))
+        .fold(0.0_f64, f64::max);
+    assert!(
+        andou > 0.05,
+        "a fixtura nao move a arte ({andou:.4}) — comparar duas identidades passa sempre"
+    );
+    let pior = visto
+        .iter()
+        .zip(&mundo)
+        .map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]))
+        .fold(0.0_f64, f64::max);
+    assert!(
+        pior < 1e-9,
+        "o hit-test ve^ a arte {pior:.6} fora de onde ela e' desenhada — o dedo toca num sitio e o \
+         desenho esta' noutro"
     );
 }

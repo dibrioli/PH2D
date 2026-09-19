@@ -19,6 +19,12 @@
 //! só: *o que é um ponto aqui*. Numa forma são as três metades de cada vértice (a âncora e as duas
 //! alças, que é o que a [`ph2d_vec_skin`] deforma); numa imagem são os vértices da malha do bind,
 //! levados de pixels ao local pelo mesmo afim que a desenha.
+//!
+//! ⭐⭐⭐ **E o PESO é do NÓ** (ordem do dono, 2026-09-19): numa forma as três metades de um vértice
+//! movem-se pelos pesos da ÂNCORA, e quem diz isso é UMA porta — [`ph2d_vec_skin::dono_do_peso`],
+//! a mesma que o laço da deformação exprime. ⛔ Escrever `k % 3` aqui seria a segunda resposta à
+//! pergunta de que mídia é o ponto, e o sintoma seria o indicador a pintar um peso que a arte não
+//! tem.
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_skeleton::Xform;
@@ -131,6 +137,20 @@ pub fn repousos(sim: &SimWorld, alvo: Entity, ppm: f32) -> Vec<[f64; 2]> {
     g.mesh.rest.iter().map(|&q| p2l.apply(q)).collect()
 }
 
+/// ⭐⭐ **DE QUE PONTO SAI O PESO DO PONTO `k`** — a lei da mídia, num sítio só.
+///
+/// Numa forma é a ÂNCORA da tripla ([`ph2d_vec_skin::dono_do_peso`]); numa imagem cada vértice é o
+/// dono do peso dele. ⚠️ **Os três leitores desta crate passam por aqui** — o instantâneo posado, os
+/// pontos com peso e a escolha do ponto sob o cursor —, porque *três cópias de `k % 3` divergiriam
+/// no dia em que uma mídia nova chegasse*.
+const fn dono_do_peso(caminho: bool, k: usize) -> usize {
+    if caminho {
+        ph2d_vec_skin::dono_do_peso(k)
+    } else {
+        k
+    }
+}
+
 /// **As posições POSADAS da arte**, na mesma ordem dos [`repousos`] — o que o artista está a ver.
 ///
 /// ⚠️ Ela existe para a [`pele_sob_o_cursor`] poder perguntar *«o cursor está DENTRO desta arte?»*,
@@ -149,15 +169,22 @@ fn posados(sim: &SimWorld, alvo: Entity, ppm: f32) -> Vec<[f64; 2]> {
     let correcoes = skin.correcoes_resolvidas();
     let (x, _) = mundo_e_escala(sim, alvo);
     let mut w = pele.scratch();
+    let cam = e_caminho(sim, alvo);
     repousos
         .iter()
         .enumerate()
         .map(|(k, &p)| {
+            // ⚠️ **O peso sai do DONO e a mistura move ESTE ponto** — se o instantâneo posado
+            // usasse o peso do próprio ponto, o hit-test mediria uma silhueta que o desenho não
+            // tem, e o dedo tocaria num sítio com a arte noutro.
+            let d = dono_do_peso(cam, k);
+            let base = repousos.get(d).copied().unwrap_or(p);
             let fatia = guardados
                 .as_ref()
-                .and_then(|g| g.get(k * n..(k + 1) * n))
+                .and_then(|g| g.get(d * n..(d + 1) * n))
                 .filter(|_| n != 0);
-            x.apply(pele.point_corrected(p, fatia, &mut w, &correcoes))
+            pele.weights_corrected(base, fatia, &mut w, &correcoes);
+            x.apply(pele.blend(p, &w))
         })
         .collect()
 }
@@ -354,71 +381,95 @@ pub fn pontos_da_pele(sim: &SimWorld, alvo: Entity, osso: Entity, ppm: f32) -> V
     let correcoes = skin.correcoes_resolvidas();
     let (x, _) = mundo_e_escala(sim, alvo);
     let mut w = pele.scratch();
+    let cam = e_caminho(sim, alvo);
     repousos
         .iter()
         .enumerate()
         .map(|(k, &p)| {
+            // ⚠️ **Uma conta só, e o peso é do DONO** — a 1.ª redacção chamava `weights_corrected`
+            // e a seguir `point_corrected`, que refaz a mesma conta: o peso lido e o peso que moveu
+            // o ponto eram derivados duas vezes, e bastava uma das duas ganhar uma cerca para o
+            // indicador passar a mostrar um número que a arte não usa.
+            let d = dono_do_peso(cam, k);
+            let base = repousos.get(d).copied().unwrap_or(p);
             let fatia = guardados
                 .as_ref()
-                .and_then(|g| g.get(k * n..(k + 1) * n))
+                .and_then(|g| g.get(d * n..(d + 1) * n))
                 .filter(|_| n != 0);
-            pele.weights_corrected(p, fatia, &mut w, &correcoes);
-            let peso = w.get(tendao).copied().unwrap_or(0.0);
+            pele.weights_corrected(base, fatia, &mut w, &correcoes);
             PontoDaPele {
                 repouso: p,
-                mundo: x.apply(pele.point_corrected(p, fatia, &mut w, &correcoes)),
-                peso,
+                mundo: x.apply(pele.blend(p, &w)),
+                peso: w.get(tendao).copied().unwrap_or(0.0),
             }
         })
         .collect()
 }
 
-/// ⭐⭐⭐ **O QUE O INDICADOR MOSTRA** — os pontos da arte que ESTE traço governa, já com o peso.
+/// ⭐⭐⭐ **OS PONTOS QUE CARREGAM PESO** — os que o pincel pode pousar e o indicador pode pintar.
 ///
-/// ⚠️ **Ela existe porque a escolha do alvo é uma LEI e vivia no laço de desenho da shell**, onde
-/// teste nenhum lhe chega: *o traço pertence à arte em que começou* (`preso`, congelado no
-/// pen-down) e, fora do traço, à arte sob o dedo — a MESMA pergunta que o pen-down faz.
-/// ⛔ Perguntar à SELECÇÃO seria uma segunda resposta: o pincel escolhe pela ponta do dedo, e
-/// *mostrar os pesos de outra arte é pior que não mostrar nenhum*.
+/// Numa imagem são todos; numa forma são os **NÓS**, porque é neles que o peso vive
+/// ([`ph2d_vec_skin::dono_do_peso`]).
 ///
-/// Vazio sem osso em foco (não há de quem mostrar peso) e vazio sem alvo (o dedo está no vão).
+/// ⚠️ **Ela tem DOIS consumidores e é por isso que existe:** o indicador (o que se vê) e o
+/// [`ponto_sob_o_cursor`] (onde a mancha é ancorada). ⛔ Com a escolha escrita só no indicador, o
+/// pincel continuava a ancorar manchas em ALÇAS — o centro da correcção cairia a meio caminho de um
+/// nó, e o artista via a cor mudar num sítio onde não carregou.
 #[must_use]
-pub fn pontos_do_indicador(
-    sim: &SimWorld,
-    ppm: f32,
-    osso: Option<Entity>,
-    preso: Option<Entity>,
-    cursor: Option<[f64; 2]>,
-    raio_mundo: f64,
-) -> Vec<([f64; 2], f64)> {
+pub fn pontos_de_peso(sim: &SimWorld, alvo: Entity, osso: Entity, ppm: f32) -> Vec<PontoDaPele> {
+    let cam = e_caminho(sim, alvo);
+    pontos_da_pele(sim, alvo, osso, ppm)
+        .into_iter()
+        .enumerate()
+        .filter(|(k, _)| !cam || ph2d_vec_skin::e_no(*k))
+        .map(|(_, p)| p)
+        .collect()
+}
+
+/// ⭐⭐⭐ **O QUE O INDICADOR MOSTRA** — os pontos de TODA a arte que este osso governa, com o peso.
+///
+/// ⛔⛔⛔ **Report do dono (2026-09-19): *«As cores só aparecem se o mouse estiver sobre a forma»*** —
+/// e ele tem razão. A redacção anterior perguntava *«que arte está debaixo do dedo?»* e devolvia
+/// **vazio** no vão entre as formas, logo a tela acendia e apagava ao passar o rato. ⚠️ **A
+/// justificação que estava escrita aqui — *«o pincel escolhe a arte pela ponta do dedo, logo a
+/// pré-visualização tem de responder à MESMA pergunta»* — confundia DUAS perguntas:** *onde o traço
+/// vai pintar* (que é do dedo, e continua a ser) e *o que o osso governa* (que é do OSSO, e não tem
+/// nada que ver com onde o rato está). ⇒ a premissa morreu e a morte está à vista neste diff.
+///
+/// ⭐ **A população é EXACTA e não uma escolha:** as peles cujos tendões contêm este osso. Uma que
+/// não o tenha é a que o [`pinta`] recusa com [`Pincelada::OssoDeFora`] — *pintá-la de azul
+/// prometeria um pincel que a porta ao lado recusa*.
+///
+/// ⛔⛔ **E quem responde a isso é o [`tendao_de`], UMA camada abaixo** — esta função varre todas as
+/// peles e não filtra nenhuma. A 1.ª redacção filtrava aqui por `tendons.iter().any(...)`, e uma
+/// **mutação SOBREVIVENTE** mostrou que aquilo era a segunda resposta à mesma pergunta: apagá-la
+/// não mudava um único ponto, porque o [`pontos_da_pele`] já devolve vazio (e devolve-o **antes**
+/// de resolver os repousos, logo nem o custo era o que eu supunha). *Duas respostas à mesma
+/// pergunta não se mantêm por serem baratas — tira-se a que não é a lei.*
+///
+/// Vazio sem osso em foco: não há de quem mostrar peso.
+#[must_use]
+pub fn pontos_do_indicador(sim: &SimWorld, ppm: f32, osso: Option<Entity>) -> Vec<([f64; 2], f64)> {
     let Some(osso) = osso else {
         return Vec::new();
     };
-    let Some(alvo) =
-        preso.or_else(|| cursor.and_then(|w| pele_sob_o_cursor(sim, ppm, w, raio_mundo)))
-    else {
-        return Vec::new();
-    };
-    let todos = pontos_da_pele(sim, alvo, osso, ppm);
-    // ⭐⭐⭐ **UM PONTO POR NÓ, e não por ponto de controlo** (report do dono, 2026-09-19: *«parece
-    // que os pesos não são aplicados apenas nos nós, mas também nos handles»*).
-    //
-    // ⚠️ **A observação dele é VERDADE e o peso continua a ser aplicado às alças** — tem de ser: o
-    // esqueleto transforma âncora E alças, e uma alça parada com a âncora a andar quebrava a curva.
-    // O que estava errado era o DESENHO: numa forma com cantos arredondados as alças ficam em
-    // posições distintas, logo `8` nós apareciam como **`24` pontinhos** e a leitura era ruído.
-    //
-    // ⭐ **E MEDIDO: elas nunca divergem da âncora** nesta arte (`divergem 0` nos três ossos), o que
-    // torna o ponto do nó uma descrição fiel e não um resumo. ⛔ Elas PODEM divergir em geral (o
-    // peso sai da posição, e uma alça longa alcança território de outro osso), e é por isso que a
-    // mancha continua a apanhá-las pelo espaço — *o que se esconde é a repetição, nunca o efeito*.
-    let so_os_nos = e_caminho(sim, alvo);
-    todos
-        .into_iter()
-        .enumerate()
-        .filter(|(k, _)| !so_os_nos || k % 3 == 0)
-        .map(|(_, p)| (p.mundo, p.peso))
-        .collect()
+    // ⚠️ **A varredura junta-se ANTES de perguntar os pesos** — o `iter_entities` empresta o mundo,
+    // e o [`pontos_de_peso`] volta a lê-lo.
+    let peles: Vec<Entity> = sim
+        .world()
+        .iter_entities()
+        .filter(|er| er.get::<SkinBind>().is_some())
+        .map(|er| er.id())
+        .collect();
+    let mut fora = Vec::new();
+    for alvo in peles {
+        fora.extend(
+            pontos_de_peso(sim, alvo, osso, ppm)
+                .into_iter()
+                .map(|q| (q.mundo, q.peso)),
+        );
+    }
+    fora
 }
 
 /// **Esta arte é um CAMINHO?** (a alternativa é uma imagem, que não tem alças).
@@ -456,6 +507,11 @@ fn tendao_de(sim: &SimWorld, skin: &SkinBind, osso: Entity) -> Option<usize> {
 ///
 /// ⛔ **Sem tecto de distância, de propósito:** quem decide se o dedo caiu na arte é o
 /// [`pinta`], e ele mede-o contra o RAIO do pincel — uma segunda régua aqui divergiria dela.
+///
+/// ⛔⛔ **E ela escolhe entre os pontos que CARREGAM peso** ([`pontos_de_peso`]), nunca entre todos:
+/// ancorar a mancha numa ALÇA punha o centro da correcção num sítio que não pesa nada, e o peso do
+/// nó ao lado subia por tabela. *É a segunda metade do report de 2026-09-19 — «pesos em alças» não
+/// era só o desenho, era também onde o gesto pousava.*
 #[must_use]
 pub fn ponto_sob_o_cursor(
     sim: &SimWorld,
@@ -464,7 +520,7 @@ pub fn ponto_sob_o_cursor(
     ppm: f32,
     mundo: [f64; 2],
 ) -> Option<PontoDaPele> {
-    pontos_da_pele(sim, alvo, osso, ppm)
+    pontos_de_peso(sim, alvo, osso, ppm)
         .into_iter()
         .filter(|p| p.mundo[0].is_finite() && p.mundo[1].is_finite())
         .min_by(|a, b| {

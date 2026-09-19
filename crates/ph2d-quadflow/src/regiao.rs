@@ -243,11 +243,35 @@ pub fn posicao_da_mancha(
     passo: f32,
     iteracoes: usize,
 ) -> Vec<[f32; 3]> {
+    posicao_da_mancha_com(m, dirs, passo, iteracoes, false)
+}
+
+/// A mesma, com a **SEMENTE** por parâmetro — a variável que a sonda do arame
+/// varre. `false` é o que a referência faz (cada vértice é a própria origem).
+#[must_use]
+pub fn posicao_da_mancha_com(
+    m: &Mancha,
+    dirs: &[[f32; 3]],
+    passo: f32,
+    iteracoes: usize,
+    semente_unica: bool,
+) -> Vec<[f32; 3]> {
     if m.is_empty() || dirs.len() != m.len() || passo.partial_cmp(&0.0) != Some(Ordering::Greater) {
         return Vec::new();
     }
     let escalas = vec![passo; m.len()];
-    let mut pos = m.pos.clone();
+    // ⚠️ **A SEMENTE decide a COERÊNCIA**, e é ela que a sonda varre: com cada
+    // vértice a nascer como a própria origem, a suavização só faz consenso
+    // LOCAL; com uma origem só, a mancha inteira partilha uma retícula.
+    let mut pos = if semente_unica {
+        let n = m.len() as f32;
+        let c = m.pos.iter().fold([0.0f32; 3], |a, p| {
+            [a[0] + p[0] / n, a[1] + p[1] / n, a[2] + p[2] / n]
+        });
+        vec![c; m.len()]
+    } else {
+        m.pos.clone()
+    };
     crate::position::smooth_on_fixed(
         &mut pos,
         &m.pos,
@@ -347,6 +371,25 @@ pub fn arruma_na_grelha_com(
     k_passo: f32,
     movidos: &mut Vec<u32>,
 ) -> usize {
+    arruma_na_grelha_semeada(
+        mesh, centro, raio, direccao, peso, iteracoes, k_passo, false, movidos,
+    )
+}
+
+/// A mesma, com a SEMENTE do campo de posição por parâmetro — ver
+/// [`posicao_da_mancha_com`].
+#[allow(clippy::too_many_arguments)]
+pub fn arruma_na_grelha_semeada(
+    mesh: &mut Mesh,
+    centro: [f32; 3],
+    raio: f32,
+    direccao: [f32; 3],
+    peso: &(dyn Fn([f32; 3]) -> f32 + Sync),
+    iteracoes: usize,
+    k_passo: f32,
+    semente_unica: bool,
+    movidos: &mut Vec<u32>,
+) -> usize {
     movidos.clear();
     if raio <= 0.0 || norm(direccao) <= 0.0 {
         return 0;
@@ -385,7 +428,7 @@ pub fn arruma_na_grelha_com(
         return 0;
     }
     let dirs = orientacao_semeada(&m, direccao, iteracoes);
-    let grelha = posicao_da_mancha(&m, &dirs, passo, iteracoes);
+    let grelha = posicao_da_mancha_com(&m, &dirs, passo, iteracoes, semente_unica);
     if grelha.len() != m.len() {
         return 0;
     }

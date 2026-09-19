@@ -49,7 +49,7 @@ fn diag_desenha_o_arame() {
 
 /// Um arame ortográfico, olhando de `+z`, centrado no percurso — em `.ppm`,
 /// que se converte com `magick`.
-fn desenha(m: &ph2d_mesh::Mesh, percurso: &[[f32; 3]], raio: f32, caminho: &str) {
+pub(crate) fn desenha(m: &ph2d_mesh::Mesh, percurso: &[[f32; 3]], raio: f32, caminho: &str) {
     const N: usize = 900;
     // A janela é o percurso mais dois raios de cada lado — o enquadramento que
     // o artista teria se olhasse para o traço dele.

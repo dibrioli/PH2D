@@ -20,6 +20,12 @@ use super::*;
 // forma exacta que o gate desta cena pagou em 20/09.
 use crate::dyntopo::{LADO_DA_CELULA, RONDAS_DA_GRELHA};
 
+// ⚠️ A variável da sonda viaja por `thread_local` e não por argumento: o arnês
+// tem seis parâmetros e o que se varre aqui é UMA hipótese de cada vez.
+thread_local! {
+    static SEMENTE_UNICA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// ⭐⭐⭐ **SONDA — A GRELHA CONTRA A LEI DE HOJE, nas TRÊS colunas.**
 ///
 /// A pergunta do dono depois do segundo report foi *«traga o estado da arte»*, e
@@ -212,7 +218,7 @@ fn traco_com_grelha_com(
             let r = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
             brush.falloff.weight(r / raio.max(f32::MIN_POSITIVE))
         };
-        if ph2d_quadflow::regiao::arruma_na_grelha_com(
+        if ph2d_quadflow::regiao::arruma_na_grelha_semeada(
             &mut malha,
             centro,
             raio,
@@ -220,6 +226,7 @@ fn traco_com_grelha_com(
             &queda,
             rondas,
             k_passo,
+            SEMENTE_UNICA.with(|c| c.get()),
             &mut andaram,
         ) > 0
         {
@@ -291,6 +298,75 @@ fn diag_o_relogio_da_reticula() {
             "{:>8}  {pegada:>8}  {melhor:>10.3}  {:>10.1}",
             malha.vert_count(),
             100.0 * melhor / 8.0
+        );
+    }
+}
+
+/// ⛔⛔⛔ **SONDA — DESENHA a retícula com N RONDAS, para se OLHAR.**
+///
+/// Report do dono (20/09): *«os dois ficaram lisos mas não percebo nenhuma
+/// vantagem visualmente»* — com a grade a ler `65 %` contra `33 %`.
+///
+/// ⚠️ **Olhada, a saída tem RETALHOS de grelha e não FILEIRAS**: cada pedaço
+/// tem a própria fase. A hipótese é que `2` rondas de Gauss-Seidel propagam a
+/// fase ~`2` anéis e a pegada tem ~`10` — *a escada das rondas não a viu porque
+/// a `grade` conta ARESTAS uma a uma e é cega à continuidade*.
+///
+/// ```text
+/// cargo test -p ph2d-app-sculpt3d --release --lib diag_desenha_as_rondas -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda: escreve .ppm para se olhar"]
+fn diag_desenha_as_rondas() {
+    let dir = std::env::var("PH2D_PENTE_DUMP").unwrap_or_else(|_| "/tmp".into());
+    let (raio, alvo) = (raio_do_app(), alvo_do_refino());
+    for rondas in [2usize, 8, 30, 90] {
+        let (m, c) = traco_com_grelha(RUMOS[2].1, raio, alvo, rondas, LADO_DA_CELULA);
+        let caminho = format!("{dir}/rondas_{rondas:03}.ppm");
+        crate::scenes::pente::tests::desenhos::desenha(&m, &c, raio, &caminho);
+        let (g, nb) = grade_da_faixa(&m, &c, raio);
+        println!(
+            "rondas {rondas:>3}: grade {:.2} % -> {caminho}",
+            100.0 * g[0] as f64 / nb.max(1) as f64
+        );
+    }
+}
+
+/// ⛔⛔⛔ **SONDA — A SEMENTE do campo de posição, desenhada.**
+///
+/// Report do dono: *«não percebo nenhuma vantagem visualmente»*. Olhada, a saída
+/// tem RETALHOS de grelha com fases diferentes, e a escada das rondas
+/// (`2 · 8 · 30 · 90`) **não os junta** — a propagação está refutada.
+///
+/// A hipótese seguinte é a SEMENTE: a referência faz cada vértice nascer como a
+/// **própria** origem de retícula, e um Gauss-Seidel de um nível só só chega a
+/// consenso LOCAL (é para isso que o *Instant Meshes* tem hierarquia). Com uma
+/// origem ÚNICA a mancha inteira partilha uma retícula.
+///
+/// ```text
+/// cargo test -p ph2d-app-sculpt3d --release --lib diag_desenha_a_semente -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda: escreve .ppm para se olhar"]
+fn diag_desenha_a_semente() {
+    let dir = std::env::var("PH2D_PENTE_DUMP").unwrap_or_else(|_| "/tmp".into());
+    let (raio, alvo) = (raio_do_app(), alvo_do_refino());
+    for (nome, unica, rondas, k) in [
+        ("cada_um", false, RONDAS_DA_GRELHA, LADO_DA_CELULA),
+        ("unica_r2", true, 2, LADO_DA_CELULA),
+        ("unica_r8", true, 8, LADO_DA_CELULA),
+        ("unica_k100", true, 2, 1.0),
+    ] {
+        SEMENTE_UNICA.with(|c| c.set(unica));
+        let (m, c) = traco_com_grelha(RUMOS[2].1, raio, alvo, rondas, k);
+        SEMENTE_UNICA.with(|c| c.set(false));
+        let caminho = format!("{dir}/semente_{nome}.ppm");
+        crate::scenes::pente::tests::desenhos::desenha(&m, &c, raio, &caminho);
+        let (g, nb) = grade_da_faixa(&m, &c, raio);
+        let (v50, v90, _, _) = vinco_da_faixa(&m, &c, raio);
+        println!(
+            "{nome:<12} grade {:.2} %  vinco {v50:.3}/{v90:.3}  -> {caminho}",
+            100.0 * g[0] as f64 / nb.max(1) as f64
         );
     }
 }

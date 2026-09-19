@@ -2958,3 +2958,78 @@ logo o alvo continuava no plano tangente e a menos de meia diagonal. *Uma
 mutação que não alcança a propriedade lê-se exactamente como uma que
 sobreviveu.* Refeita **dentro** da `position_round_4` (uma componente normal no
 ponto devolvido), ela sangra.
+
+---
+
+## §83 — ⛔⛔⛔⛔ «NÃO PERCEBO NENHUMA VANTAGEM VISUALMENTE»: eu OLHEI, e ele tem razão
+
+> **Report do dono (20/09):** *«os dois ficaram lisos mas não percebo nenhuma
+> vantagem visualmente. Faça uns testes lá e dê uns traços e veja se há qualquer
+> melhoria»* — com a grade a ler **`65 %` contra `33 %`**.
+
+### §83.1 — O que a IMAGEM diz, e a régua não dizia
+
+Desenhado o arame dos dois lados (`diag_desenha_o_arame`, o mesmo instrumento
+que decidiu os dois reports anteriores) e **olhado**:
+
+- **há diferença** e ela é visível a zoom alto: a saída com pente tem zonas com
+  triângulos a formar **quadrados com diagonal**, alinhados ao traço;
+- ⛔ **mas são RETALHOS, não FILEIRAS.** Cada pedaço tem a própria **fase**: as
+  linhas não atravessam o traço, elas começam e acabam ao fim de meia dúzia de
+  arestas, e entre dois retalhos a malha fica **pior** do que estava;
+- ⛔⛔ **e no enquadramento de FÁBRICA do app não há diferença nenhuma** — ali o
+  pincel cobre `4`–`5` vértices, e uma retícula precisa de várias células de
+  largura para produzir fileira nenhuma.
+
+⇒ ⭐⭐⭐⭐ **A régua está um nível abaixo do que o olho lê, pela TERCEIRA vez
+nesta cena.** O §80 curou *«o `Q` é uma média»* com uma CONTAGEM; a contagem mede
+a **direcção de cada aresta, uma a uma**, e o que o artista chama *edge flow* é
+**o comprimento das linhas contínuas**. *Uma aresta alinhada não é uma fileira.*
+
+### §83.2 — TRÊS hipóteses construídas, medidas e REFUTADAS
+
+| hipótese | o que se mediu | veredito |
+|---|---|---|
+| **a fase não PROPAGA** (poucas rondas) | `2 · 8 · 30 · 90` rondas: grade `63,6` · `64,9` · `64,8` · `64,6 %`, e as **quatro imagens são iguais** | ⛔ refutada |
+| **a SEMENTE** (cada vértice nasce como a própria origem) | uma origem ÚNICA por mancha: grade **desce** para `57,7 %` e a imagem não junta nada | ⛔ refutada |
+| **o pente de DENTES FIXOS** (uma retícula para o traço inteiro) | **não termina**: `6 min 19 s` de CPU e **`7,9 GB`** de RSS antes de ser morto | ⛔ refutada |
+
+⚠️ **A primeira é a mais informativa:** um Gauss-Seidel de **um nível** não tem
+acoplamento de longo alcance, e isso é uma propriedade conhecida da lei — é
+exactamente por isso que o *Instant Meshes* resolve o campo de posição com
+**multigrid** sobre uma hierarquia. *Subir rondas num nível só não compra
+alcance: compra relógio.*
+
+⚠️ **A terceira tem um mecanismo e vale como recusa medida:** uma retícula
+**fixa no espaço** sobre uma superfície **curva** entra em realimentação com o
+par refino/colapso — a célula deixa de bater com a superfície à medida que o
+traço se afasta da origem, nascem arestas longas, o refino parte-as, e o passe
+seguinte volta a puxá-las. O instrumento foi **apagado** e a recusa fica aqui.
+
+### §83.3 — O que isto diz sobre a FEATURE, e não sobre a implementação
+
+O que o produto tem hoje é **o alinhamento LOCAL a funcionar** — medido, e com o
+relevo ao nível da malha por pentear (§82). O que ele **não** tem, e não pode ter
+com uma lei local por carimbo, são **fileiras que atravessam o traço**: para isso
+a retícula tem de ser coerente numa escala muito maior que a pegada, e quem já
+faz isso nesta casa é o **botão de retopologia** (campo global + extracção), que
+resolve a peça inteira sob comando.
+
+⇒ **É uma pergunta de PRODUTO e ela é do dono**, com as três saídas medidas:
+
+1. **ficar como está** — o alinhamento local é real, custa `~30 %` do orçamento
+   do carimbo no pior caso, e não estraga a superfície (é o que o §82 mede);
+2. **retirar o `Edge Flow`** — o controlo desaparece e a malha fica a isotrópica,
+   que é o que ele hoje parece ser a olho;
+3. **pagar a hierarquia** (a família B inteira da pesquisa, com multigrid na
+   mancha) — é a única saída medida que pode produzir fileiras contínuas, e o
+   preço é uma wave própria com o relógio por medir.
+
+### §83.4 — ⏳ ABERTO
+
+- **a régua que falta é o COMPRIMENTO DA FILEIRA** (quantas arestas seguidas
+  continuam a mesma linha), e nenhuma régua desta linha a tem. *Ela é a que teria
+  reprovado a wave do §82 antes de o dono a ver* — e escrevê-la é o passo zero de
+  qualquer tentativa seguinte;
+- o enquadramento de fábrica (`4`–`5` vértices sob o pincel) é onde o dono
+  primeiro olha, e nenhum gate desta cena o mede.

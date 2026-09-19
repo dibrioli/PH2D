@@ -23,10 +23,17 @@ fn cena(tweens: Vec<Tween>, n_timers: usize) -> (World, bevy_ecs::entity::Entity
 fn fade() -> Tween {
     Tween::linear(Canal::Opacity, 1.0, 0.0)
 }
-
-/// **O tween corre no relógio, e a meio do período escreve metade.**
+/// **Um tween lê o PROGRESSO do relógio dele** — meio período, meio caminho.
+///
+/// ⛔⛔ **Este gate chamou-se `o_tween_corre_no_relogio_do_mesmo_indice` e o nome MENTIA:**
+/// a fixtura tem UM tween e UM relógio, e com um só elemento `get(i)` e `first()` devolvem a
+/// mesma coisa — a mutação que troca o índice pelo zero passava por cima dele, VERDE. *Uma
+/// fixtura com um elemento não pode testar um índice*, e o nome prometia exactamente isso.
+/// ⇒ quem afirma a lei do índice é o irmão [`o_indice_e_que_liga_o_tween_ao_timer`], que tem
+/// DOIS de cada e lê o segundo; este afirma o que de facto mede, e passou a dizê-lo.
+/// (Achado pela prova de mutação de 2026-09-19 — a única das 17 que sobreviveu.)
 #[test]
-fn o_tween_corre_no_relogio_do_mesmo_indice() {
+fn um_tween_le_o_progresso_do_relogio_dele() {
     let (mut w, e) = cena(vec![fade()], 1);
     // Meio segundo.
     {

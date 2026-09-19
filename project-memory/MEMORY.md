@@ -105,6 +105,7 @@
 - ⛔⛔ [Campo que varia sob consumidor com TAMANHO mede-se a esse tamanho](feedback_a_field_under_an_extent_is_measured_at_that_extent.md)
 - ⛔⛔ [Modo caro com orçamento GLOBAL fica inerte na cena cheia e pode continuar a PAGAR (5,9 ms por nada)](feedback_an_inert_mode_can_still_pay_its_full_price.md)
 - ⛔⛔ [Um portão pode ter um DEFEITO escrito dentro dele como LEI — e fica verde sobre a lista truncada que o defeito criou (menu 6, lista 14)](feedback_a_gate_can_record_a_loading_defect_as_a_law.md)
+- ⛔⛔⛔ [Duas leis a responder à mesma pergunta em CAMADAS diferentes: a de cima apaga a de baixo, e o portão de baixo deixa de afirmar sem ficar vermelho](feedback_two_laws_answering_the_same_question_in_different_layers.md)
 - [Ofício de gate (52) — censo textual · censo que presume o destino · censo que partilha estado · …](reference_topic_gate_discipline.md)
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) · [modo que não exclui ninguém é outro produtor](feedback_a_mode_whose_entry_excludes_nobody_is_just_another_producer.md)
 - ⛔⛔ [«fecho e reabro e volta ao normal» é assinatura de CICLO](feedback_close_and_reopen_cures_it_is_the_signature_of_a_feedback_loop.md)

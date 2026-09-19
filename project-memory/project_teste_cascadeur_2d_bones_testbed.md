@@ -477,3 +477,43 @@ afirma que o limite CONTÉM o medido (folga mais apertada `6,9°`).
 ⛔⛔ **MEDIDO e não curado:** a caminhada dele abana a cauda **2,25 m para o lado** (138 cm de média
 fora do plano). O importador declara por GRUPO — pernas `11,5` entram, braços `22,3`, tronco `14,0` e
 cauda `138,2` não —, e a reconstrução fica a `43,4 cm` no pior osso e `4,0 cm` em média.
+
+### 2026-09-19 (5.ª volta) — «pernas ruins, ultrapassando o chão e dando saltos sem fluidez»
+
+Report do dono sobre o dinossauro, aprovando o resto. Duas queixas, **uma causa**, e nenhuma era do
+esqueleto: a lei do pé apoiado (`fixarApoios`) levava a animação de `−5,6 cm` de fundo e `31,2 cm` de
+passo para **`−26,8` e `107,3`**. As outras três leis da física são inertes aqui (medido uma a uma).
+
+⭐⭐⭐ **A PREMISSA: `fixarApoios` supõe que a animação TEM um pé apoiado.** Ele trata um pé dentro da
+janela de contacto como um pé parado de propósito e o que ele anda como **deriva a corrigir**. A
+caminhada que o Cascadeur traz do Dracorex é um ciclo **no lugar** — a raiz mexe `7,5 cm` e os pés
+deslizam `152` —, logo ali o pé desliza porque **foi feito para deslizar**.
+
+⛔⛔ **DUAS CERCAS foram construídas, medidas e RECUSADAS antes da que ficou** (todas em fracções da
+altura da anca, porque um número em centímetros seria a altura de UM dos dois bichos escrita dentro
+da lei):
+
+| régua | pessoa | dinossauro | vale |
+|---|---|---|---|
+| percurso da PIOR faixa | 0,244 | 0,822 | 3,4× |
+| velocidade da PIOR faixa | 0,029 | 0,077 | 2,6× |
+| **velocidade da faixa mais QUIETA da ANIMAÇÃO** | **0,0037** | **0,0348** | **9,3×** |
+
+⚠️⚠️ **E a primeira PASSOU e foi implementada — até uma CURA POSTERIOR fechar o vale.** Aterrar a
+caminhada pelo pé parte as faixas dele em pedaços mais curtos (`0,114`–`0,870`), que encostam no pior
+da pessoa (`0,244`). *Uma cerca medida sobre uma versão dos dados deixa de separar quando outra cura
+muda os dados* — e o que a substituiu é de outra NATUREZA: uma cerca por faixa mede um pedaço, e a
+pergunta era sobre a **animação inteira**.
+
+⛔⛔⛔ **E a lei, escrita dentro do `fixarApoios`, tornou DOIS portões alheios VÁCUOS** — está em
+[[feedback_two_laws_answering_the_same_question_in_different_layers]]. Quem o disse foi a prova de
+mutação; a suíte ficou verde.
+
+⭐ **E uma premissa minha do MESMO dia caiu:** o importador dizia que aterrar a animação seria
+«corrigir um erro que não existe, porque o bicho é o mesmo». O bicho é o mesmo, a **reconstrução**
+não é — o pé está no fim de uma cadeia de cinco ossos e a projeção de perfil acumula (`1,4 cm` são da
+cena dele, os outros `4,2` são a projeção).
+
+⭐⭐ **O controlo que torna o resultado uma afirmação:** importada `−0,0 / 31,3` · com a nossa física
+`−0,0 / 31,3` · **e na cena DELE o mesmo osso salta `31,8`**. O que sobra é a passada dele, e estamos
+`0,5 cm` abaixo — sem esse número, «31 cm entre dois quadros» não diria de quem é a falta de fluidez.

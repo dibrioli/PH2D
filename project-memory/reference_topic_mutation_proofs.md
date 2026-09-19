@@ -69,3 +69,15 @@ e escrever-lhe torna a suíte mais um membro da família de flakes de fan-out.
 ⇒ **o instrumento tem de ser TEXTUAL** (quem CHAMA o acessório), e o teste vácuo foi **apagado**:
 *um teste vácuo é pior do que nenhum — ele lê-se como cobertura.*
 - ⛔⛔ [Restaurar com `git checkout` numa árvore SUJA apaga a FATIA, não a mutação](feedback_a_mutation_restore_by_git_checkout_deletes_the_wave.md) — 3 ficheiros perdidos; quem o disse foi o controlo do filtro.
+- ⛔⛔⛔ **O arnês tem de perguntar se o teste está VERDE antes de mutar — senão ele certifica
+  qualquer coisa.** Medido 2026-09-19 (`line/Vector`): um gate meu estava vermelho (a régua esperava
+  a fracção ao longo da CORDA e o código devolve o parâmetro da CURVA — numa quina os pontos de
+  controlo colapsam e a posição avança com `3t² − 2t³`, o *smoothstep*, logo `0,3` de corda são
+  `0,375` de parâmetro), e **todas** as mutações sobre ele imprimiram *«SANGRA»*. *Um teste já
+  vermelho não discrimina nada.* ⇒ o arnês corre o filtro **antes** e recusa (`exit 5`) se já houver
+  `test result: FAILED`. ⚠️ É a QUARTA cegueira deste arnês, ao lado das três que ele já cobria (o
+  filtro que casa zero e imprime `ok` · a mutação que não compila e se lê como sangrar · o `mv` que
+  devolve mtime antigo).
+- ⭐⭐ **E a cura da régua foi trocar o número medido pelo PRODUTO:** em vez de afirmar o parâmetro,
+  afirmar **onde o ponto nasceu** — a pergunta do artista, que não depende da parameterização e mata
+  na mesma o valor cravado. *Uma régua escrita sobre uma grandeza interna herda a convenção dela.*

@@ -137,6 +137,41 @@ impl SkinnedPath {
         let n = self.pontos();
         n > 0 && self.pesos.len().is_multiple_of(n)
     }
+
+    /// ⭐⭐⭐ **A LINHA DE PESOS DO NÓ `k`** — a única que o desenho lê.
+    ///
+    /// ⚠️ **O peso é do NÓ** ([`ph2d_vec_skin::dono_do_peso`], ordem do dono de 2026-09-19): as duas
+    /// linhas das alças continuam gravadas e **nunca são lidas**. ⛔ Devolve `None` quando a tabela
+    /// não fecha com o caminho — *pesos plausíveis sobre os pontos errados dão arte errada sem um
+    /// erro*, que é a cerca que o `recook` já aplica.
+    #[must_use]
+    pub fn linha_do_no(&self, k: usize) -> Option<&[f64]> {
+        if !self.valida() {
+            return None;
+        }
+        let n = self.ossos();
+        self.pesos.get(k * 3 * n..k * 3 * n + n)
+    }
+}
+
+/// ⭐⭐⭐ **A PORTA do formato guardado** — o `SkinBind::source` lê-se por aqui, e só por aqui.
+///
+/// ⛔⛔ **Ela existe porque o formato era descodificado À MÃO em SETE sítios** (medido 2026-09-19),
+/// cada um com a sua cerca e a sua maneira de desistir. *Uma lei escrita em sete sítios ainda não é
+/// uma lei* — e a oitava chamada seria a que esqueceria uma das cercas.
+///
+/// `None` é a resposta para uma fonte que não se lê: quem chama cai na lei derivada, que é a decisão
+/// que os sete já tomavam cada um por si.
+#[must_use]
+pub fn le(bytes: &[u8]) -> Option<SkinnedPath> {
+    postcard::from_bytes::<SkinnedPath>(bytes).ok()
+}
+
+/// ⭐⭐ **O sentido inverso da [`le`].** `None` quando a serialização falha — e aí quem chama **não
+/// escreve**, porque meia fonte é pior do que a antiga.
+#[must_use]
+pub fn grava(g: &SkinnedPath) -> Option<Vec<u8>> {
+    postcard::to_allocvec(g).ok()
 }
 
 #[cfg(test)]

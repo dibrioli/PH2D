@@ -317,3 +317,31 @@ fn an_anchor_far_from_every_bone_is_grabbable_at_its_centre() {
     assert_eq!(h.bone, cotovelo.to_bits());
     assert_eq!(h.part, ph2d_skeleton_render::BonePart::Tip);
 }
+
+/// O despacho da caneta, lido como TEXTO — a agulha vive aqui e o sujeito lá, senão um
+/// `include_str!` cuja agulha está dentro do ficheiro que ele lê conta-se a si mesmo.
+const PREMIDO: &str = include_str!("input_dispatch/despacho_clique_vetor_premido.rs");
+
+/// ⭐⭐⭐ **O PONTO NOVO DA CANETA CHEGA À FONTE DA PELE** — a costura que só aqui pode ser afirmada.
+///
+/// ⛔⛔ **A lei tem os gates dela** (seis, em `ph2d_skeleton_live::ponto_novo`) e a sonda do defeito
+/// tem os dela (`ph2d_app_skeleton::sonda_do_ponto_novo_tests`). O que só deste lado se pode dizer é
+/// o FIO: a caneta reporta onde inseriu, a shell drena isso, e a família escreve na geometria
+/// autorada. *Sem esta linha o ponto aparece sob o dedo e desaparece sozinho no quadro seguinte,
+/// sem erro e sem aviso* — e nenhum dos gates da lei dá por isso, porque todos entram pela porta.
+///
+/// ⚠️ **Ele mede TEXTO e não uma chamada**, pela mesma razão do censo dos verbos: este despacho é um
+/// método de `App`, que segura uma surface de janela real, logo nenhum teste o corre.
+#[test]
+fn o_ponto_novo_da_caneta_chega_a_fonte_da_pele() {
+    assert!(
+        PREMIDO.contains("take_insercao()"),
+        "o despacho da caneta deixou de drenar onde ela inseriu: o ponto novo numa forma PRESA \
+         volta a evaporar-se no quadro seguinte"
+    );
+    assert!(
+        PREMIDO.contains("ponto_novo::insere_ponto("),
+        "o despacho drena a insercao e nao a leva a lado nenhum — o `t` do dedo e' lido e deitado \
+         fora, que e' o mesmo que nao o ler"
+    );
+}

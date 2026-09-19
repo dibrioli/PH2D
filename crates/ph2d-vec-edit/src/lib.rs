@@ -161,6 +161,9 @@ pub struct PenTool {
     /// ⚠️ **A ORDEM é semântica** (é por isso que é uma lista e não um mapa): o ÚLTIMO par é o
     /// primário, e um mapa ordenado por id perderia *quem foi tocado por último*.
     selected_verts: Vec<(VecPathId, usize)>,
+    /// ⭐⭐⭐ **ONDE a última pressão inseriu um vértice** — `(caminho, segmento, t)`, drenado
+    /// pela shell. Ver [`PenTool::take_insercao`], que é onde a razão está escrita.
+    ultima_insercao: Option<(VecPathId, usize, f64)>,
     /// Arrastando o handle do vértice recém-posto (desenho, entre press e release).
     dragging: bool,
     /// Elemento agarrado para edição (entre press e release).

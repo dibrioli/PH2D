@@ -108,3 +108,85 @@ fn the_door_and_the_press_share_one_hit_radius() {
         "o press armou um arrasto fora do raio que a porta declarou"
     );
 }
+
+/// ⭐⭐⭐ **A CANETA REPORTA ONDE INSERIU** — `(caminho, segmento, t)`, uma vez só.
+///
+/// ⛔⛔ **Ele nasceu de uma MUTAÇÃO SOBREVIVENTE** (2026-09-19): pôr `ultima_insercao = None` no sítio
+/// da escrita deixava `10` testes da shell verdes. O gate de costura de lá lê o TEXTO do despacho —
+/// ele afirma que a shell *drena*, nunca que a caneta *grava*. *As duas pontas de um fio precisam
+/// cada uma do seu gate.*
+///
+/// ⚠️ **As três metades são três defeitos diferentes:** não reportar nada (o ponto evapora-se numa
+/// forma presa); reportar o `t` errado (o ponto nasce noutro sítio da mesma curva, e o gesto
+/// desobedece ao dedo); e reportar duas vezes (dois pontos por um clique).
+#[test]
+fn a_caneta_reporta_onde_inseriu_uma_vez_so() {
+    let (mut scene, mut pen, id) = selected_square();
+    assert_eq!(
+        pen.take_insercao(),
+        None,
+        "a caneta reporta uma insercao que nao aconteceu"
+    );
+
+    // ⛔⛔ **FORA DO MEIO, de propósito — e foi uma MUTAÇÃO que o exigiu.** A 1.ª redacção carregava
+    // no MEIO da aresta, onde o `t` verdadeiro **é** `0,5`: cravar `0,5` no sítio da escrita passava
+    // este gate. *Um corpus no ponto neutro de um valor não testa esse valor* — a mesma família que
+    // este repo já pagou noutras linhas. Aqui o dedo fica a `30 %` da aresta de baixo.
+    const T_DO_DEDO: f64 = 0.3;
+    let x = -HALF + T_DO_DEDO * 2.0 * HALF;
+    assert_eq!(
+        pen.on_press(&mut scene, [x, -HALF], 1.0, false, &mut |p| p),
+        crate::PenClick::Inserted,
+        "a fixtura deixou de inserir: o resto deste gate passa a ser vacuo"
+    );
+
+    let (pid, _seg, t) = pen
+        .take_insercao()
+        .expect("a caneta inseriu e nao reportou onde: numa forma PRESA o ponto evapora-se");
+    assert_eq!(pid, id, "reportou a insercao no caminho ERRADO");
+    // ⛔ O `t` é do DEDO: o cursor está no meio da aresta, logo tem de sair perto de `0,5`. Um `t`
+    // reconstruído do outro lado (com `0,5` fixo, por exemplo) passaria aqui — e é por isso que a
+    // outra metade deste gate é ele ser **lido** e não inventado; ver `take_insercao`.
+    // ⛔⛔⛔ **O `t` É O PARÂMETRO DA CURVA, e NÃO a fracção ao longo da corda.** A 1.ª redacção
+    // esperava `0,3` (a fracção onde o dedo estava) e leu **`0,375`**: numa quina os dois pontos de
+    // controlo interiores colapsam nas âncoras, logo a cúbica é `P0,P0,P1,P1` e a posição avança com
+    // `3t² − 2t³` — o *smoothstep*. Resolvendo `3t² − 2t³ = 0,3` dá exactamente `0,375`. *A régua
+    // estava errada e o código certo*, e é este o `t` que o `split_segment` precisa.
+    //
+    // ⭐ ⇒ a régua passa a medir o **PRODUTO**: onde o ponto NASCEU. É a pergunta do artista (*«ele
+    // aparece onde eu carreguei?»*), ela não depende da parameterização, e mata na mesma o `t`
+    // cravado — com o dedo fora do meio, um `0,5` põe o ponto noutro sítio da aresta.
+    assert!(
+        (t - 0.5).abs() > 0.05,
+        "o `t` reportado foi {t}: o dedo esta' fora do meio, entao um `0,5` aqui e' um valor \
+         CRAVADO, e o gate abaixo deixa de discriminar"
+    );
+    let nascido = scene
+        .path(id)
+        .expect("o caminho")
+        .verts_all()
+        .map(|v| v.anchor)
+        .min_by(|a, b| {
+            (a[0] - x)
+                .hypot(a[1] + HALF)
+                .total_cmp(&(b[0] - x).hypot(b[1] + HALF))
+        })
+        .expect("ha' vertices");
+    // ⚠️ **A barra é MEDIDA e a fracção que sobra não é desta wave:** o ponto nasce a `1,3125` de um
+    // segmento de `2·HALF`, que é **`1,6 %`** dele. O resíduo é a granularidade da busca do ponto
+    // mais próximo da caneta (`insert_hit`), **pré-existente** — ela devolve o parâmetro de uma
+    // amostragem, não o mínimo exacto. *Nomeado, e deixado onde está: curá-lo é outra wave, e a
+    // pergunta desta é se o `t` do dedo VIAJA.*
+    let erro = (nascido[0] - x).hypot(nascido[1] + HALF);
+    assert!(
+        erro < 2.0 * HALF * 0.03,
+        "o ponto nasceu a {erro} do dedo (em {nascido:?}, o dedo em [{x}, {}]) — um `t` inventado \
+         faz o ponto nascer NOUTRO sitio da mesma curva, e o gesto desobedece ao dedo",
+        -HALF
+    );
+    assert_eq!(
+        pen.take_insercao(),
+        None,
+        "a insercao foi reportada DUAS vezes: um clique daria dois pontos"
+    );
+}

@@ -56,6 +56,7 @@ diz onde ler o mecanismo:
 | **F11** | ✅ **Imagens em 9 fatias e folhas de quadros DEFORMAM com os ossos** (ordem do dono, 2026-09-17) | ✅ **FECHADO** — ver F11 abaixo |
 | **F21** | ✅ **A cena dedicada do ENVELOPE** (*«melhor montar uma cena específica para me mostrar isso»*, 2026-09-18) | ✅ **FECHADA em 2026-09-19 — e ela REFUTOU a lei da F20**: o envelope é inerte em toda forma FECHADA (amplitude `0,000000` numa faixa de `80 ×`), porque uma forma fechada também usa o padrão-ouro desde 15/09. A lei passou a perguntar ao **BIND** e não à mídia. Cena **`PH2D_VEC_BONE_SMOKE=2`** — ver F21 abaixo |
 | **F22** | ⭐⭐⭐ **A ESCOLHA da lei de pele, POR DESENHO** (ordem do dono, 2026-09-19: *«construa. por desenho»*) | ✅ **FECHADA no mesmo dia** — fileira **`Deform By`** (`Artwork` \| `Bone Reach`) no painel Bones, por DESENHO e para as duas mídias. ⭐ A escolha diz se o quadro **LÊ** a tabela do padrão-ouro, nunca se a calcula ⇒ a volta é **exacta ao bit** e não re-resolve nada. `PROJECT_SCHEMA` **+1** — ver F22 abaixo |
+| **F28** | ⭐⭐⭐ **UM PONTO NOVO NUMA FORMA PRESA** (a 1.ª das duas saídas da F26, escolhida pelo dono: *«primeiro 1 e depois o 2»*) | ✅ **FECHADA no mesmo dia.** A caneta acrescenta controlo onde o artista quer e ele **sobrevive ao quadro**, já com peso (a mistura dos dois vizinhos). ⛔⛔ A nota que dizia *«custo: zero de arquitectura»* estava **errada e foi medida**: o ponto evaporava-se, sem erro e sem aviso. Zero schema, zero registo — ver F28 abaixo |
 | **F27** | ⭐⭐⭐ **O CENSO DOS VERBOS DO OSSO** (o aberto que a F16 deixou por escrito) | ✅ **FECHADO no mesmo dia — ZERO verbos mortos.** Os catorze botões chegam a um efeito, medidos pela captura que o undo tira. ⛔⛔ E uma **mutação sobreviveu**: apagado o corpo do braço do *Add Smart Bone* na fase do quadro, **23 testes da shell ficaram verdes** — o terceiro elo do §5.0 não tinha instrumento nenhum. Zero schema, zero registo — ver F27 abaixo |
 | **F26** | ⭐⭐⭐ **CORRIGIR UM PESO À MÃO** (auditoria, 2026-09-19) | ✅ **FECHADA no mesmo dia** — o 3.º verbo do osso (**`Weight`**) pinta a influência sobre a arte presa, com os pesos **à vista** por baixo do pincel. A correcção é uma **MANCHA no espaço** (nunca uma tabela por vértice) e é ancorada no **REPOUSO** do ponto que o dedo aponta. `PROJECT_SCHEMA` **+1** — ver F26 abaixo |
 
@@ -391,6 +392,112 @@ Mutação **12 de 12** a sangrar.
 ⏳ **ABERTO:** o espelho não tem gesto de canvas (só o painel) · e a arte presa não é espelhada com
 os ossos — o ramo novo nasce sem pele, e prendê-la é o gesto que já existe (*Bind*).
 
+### F28 — ⭐⭐⭐ **UM PONTO NOVO NUMA FORMA PRESA SOBREVIVE, E JÁ NASCE COM PESO** (ordem do dono, 2026-09-19)
+
+A 1.ª das duas saídas que a F26 deixou ao dono para *«pintar peso entre os vértices de uma forma
+vectorial»*, e ele escolheu-as **em ordem**: *«primeiro 1 e depois o 2»*.
+
+⛔⛔⛔ **E a nota que descrevia esta saída estava ERRADA no ponto que decidia o preço.** Ela dizia
+*«acrescentar vértices com a caneta … o gesto já existe nesta casa. **Custo: zero de
+arquitectura**»*. **Medido pelo caminho do produto antes de escrever uma linha**
+([`sonda_do_ponto_novo_tests`](../../crates/ph2d-app-skeleton/src/sonda_do_ponto_novo_tests.rs)): a
+caneta escreve no documento **VIVO**, e o `recook` reconstrói esse documento a partir da geometria
+**autorada** que o bind guardou — uma vez por quadro. *O ponto aparece sob o dedo e desaparece
+sozinho*, sem erro, sem aviso e sem recusa. ⇒ *uma PRESENÇA afirmada sem olhar o caminho do produto
+é um palpite com cara de medição* — a mesma família que este repo já pagou no sentido oposto.
+
+⛔ **E o contorno óbvio — «acrescente o ponto e carregue em *Bind* outra vez» — custa o trabalho do
+artista:** o `SkinBind::new` nasce com `correcoes: vazio` e `law: Auto`, logo um re-bind deita fora
+**todas as correcções pintadas à mão** (a feature da F26) e a escolha de lei daquele desenho.
+
+⭐⭐ **A lei: a FONTE é que ganha o ponto, e a tabela cresce com ele**
+([`ph2d_skeleton_live::ponto_novo`](../../crates/ph2d-skeleton-live/src/ponto_novo.rs)). O ponto
+entra na geometria autorada, no mesmo segmento e no mesmo parâmetro em que a mão o pediu, pelo mesmo
+`split_segment` de sempre; o quadro seguinte re-deriva o desenho dali. ⛔ *Escrever também no
+documento vivo seria a segunda resposta à mesma pergunta.*
+
+⚠️ **A linha de pesos do nó novo é a MISTURA das dos dois vizinhos, no mesmo `t`** — e não a lei
+automática. A tabela guardada vem do padrão-ouro (uma resolução **global** sobre a malha do domínio):
+pedir a lei derivada só para este nó poria **um ponto a obedecer a outra lei** no meio de uma forma,
+e re-resolver o global mudaria o peso de **todos** os outros nós, apagando a linha de base que o
+artista corrigiu. ⭐ A mistura é uma combinação **convexa** de duas partições da unidade, logo não há
+normalização a fazer — e há gate a afirmá-lo.
+
+⭐⭐⭐ **E o desenho move-se um pouco ao acrescentar o ponto — o que parecia um defeito é REFINAMENTO,
+e a escada prova-o.** O desenho cozido é a Bézier dos pontos de controlo **deformados**, e não a
+imagem verdadeira da curva de repouso pela pele: *ele já é uma aproximação*. Cortando o mesmo
+segmento `1 → 2 → 4 → 8` vezes, o desvio entre degraus cai **`18,89 % → 3,13 % → 1,00 %`** da peça —
+uma sequência que converge geometricamente não corrompe nada.
+
+| fixtura | salto ao acrescentar um ponto |
+|---|---|
+| esqueleto em **REPOUSO** | **`0` ao bit** |
+| aresta **CRUA** (um segmento a atravessar os dois ossos) | **`18,89 %`** da peça |
+| aresta **DESENHADA** em 8, pior segmento (o da junta) | **`0,91 %`** da peça |
+
+⚠️ **Os `18,89 %` não são o custo de acrescentar um ponto — são o tamanho do erro que aquele único
+segmento já tinha, e o corte mostra-o.** A barra do gate é uma **catraca MEDIDA** (`1 %`) com censo
+de obsolescência nos dois sentidos, ⛔ nunca um *«acima de X o artista vê»*, que seria um palpite.
+
+⚠️⚠️ **DUAS armadilhas de FIXTURA, as duas apanhadas pelos controlos e nenhuma pelo olho:**
+1. A 1.ª régua da forma desenhada leu **`0,0000 %`** — os dois extremos do segmento `0` estão ambos
+   dentro do primeiro osso, logo a lei preserva a forma **ao bit por construção** e a barra passava
+   por **vácuo**. Quem a apanhou foi o controlo `gap`. O sítio onde o peso varia é a **junta**, e o
+   gate passa a medir o **pior** segmento.
+2. O construtor da fixtura «desenhada» subdividia sempre o **primeiro** pedaço, deixando o **último**
+   a atravessar a junta inteira — ela chamava-se desenhada e media o mesmo segmento grosseiro do
+   outro palco. *Uma fixtura com o nome errado responde à pergunta do vizinho.*
+
+⭐ **TRÊS peças de substrato que a wave obrigou, e as três são melhores do que o que substituem:**
+o formato guardado ganhou **porta** (`skinned_mesh::le`/`grava` — ele era descodificado **à mão em
+sete sítios**, cada um com a sua cerca); a caneta passa a **reportar onde inseriu**
+(`PenTool::take_insercao`, porque o `t` é do dedo e reconstruí-lo do outro lado faria o ponto nascer
+noutro sítio da mesma curva); e o `SkinnedPath` ganhou `linha_do_no`.
+
+⛔⛔ **E uma cerca SAIU por uma mutação que sobreviveu:** o `if !fonte.valida()` depois do splice é
+inalcançável por construção, e o `recook` já o faz a jusante, onde ele defende do caso real (uma
+fonte gravada por outra versão). *Uma linha que a mutação não consegue matar não é lei, é comentário
+com sintaxe de código.*
+
+⛔⛔⛔ **E o FIO teve DUAS mutações sobreviventes, uma em cada ponta:** apagar o registo na caneta
+deixava `10` testes da shell verdes (o gate de costura de lá lê o TEXTO do despacho — ele afirma que
+a shell *drena*, nunca que a caneta *grava*), e cravar `t = 0,5` no registo passava o gate novo,
+porque o dedo dele estava **no meio do segmento**, onde o `t` verdadeiro *é* `0,5`. *As duas pontas
+de um fio precisam cada uma do seu gate, e um corpus no ponto neutro de um valor não testa esse
+valor.*
+
+**Na tela:** nada de novo — é a CANETA de sempre, e o roteiro da cena `PH2D_VEC_BONE_SMOKE=1`
+ensina-a **onde a limitação aparece**: no aviso de que a barra laranja só tem oito nós (gate a exigir
+que a cura fique a menos de 400 bytes do aviso que a motiva — *duas linhas separadas por vinte lêem-se
+como dois assuntos*).
+
+⛔⛔⛔ **E o PORTÃO DE FECHO apanhou um gate MEU vermelho, com uma causa que vale para toda régua de
+curva desta casa: o `t` é o PARÂMETRO DA CURVA, não a fracção ao longo da CORDA.** A minha régua
+esperava `0,3` (onde o dedo estava) e leu **`0,375`** — numa quina os dois pontos de controlo
+interiores colapsam nas âncoras, logo a cúbica é `P0,P0,P1,P1` e a posição avança com `3t² − 2t³`, o
+*smoothstep*; resolvendo, dá exactamente `0,375`. *A régua estava errada e o código certo.* ⇒ ela
+passa a medir o **PRODUTO** — onde o ponto NASCEU —, que é a pergunta do artista, não depende da
+parameterização, e mata na mesma o `t` cravado.
+
+⛔⛔⛔ **E isso expôs um furo no ARNÊS DE MUTAÇÃO que invalidava as provas daquele gate: ele não
+perguntava se o teste estava VERDE antes de mutar.** Com o gate já vermelho, **todas** as mutações
+sobre ele liam *«SANGRA»* — *um teste já vermelho certifica qualquer mutação*. O arnês ganhou o
+controlo (`exit 5`, com a razão), e as duas provas daquela ponta foram **refeitas** com ele.
+
+⚠️ **Promoção pedida à lista de flakes de carga do `CLAUDE.md` §5.0:**
+`a_long_stroke_is_bounded_by_the_redundancy_floor_not_by_a_budget`
+([`ph2d-app-flip`](../../crates/ph2d-app-flip/)) — reprovou no meio de um fan-out de **15 506** testes
+e passa **3 de 3 sozinho a `load 33–38`**, com **zero** linhas do diff desta wave naquela crate. Na
+mesma corrida reprovou o `no_expression_allocates_no_link_frame`, que **já é membro nomeado**.
+
+Portão: `fmt` limpo · clippy `-D warnings` a zero · `nextest-impacted` **15 506 verdes** (eram
+`15 297`) · mutação **12 de 12** a sangrar (três sobreviveram primeiro — duas viraram gate e uma
+matou uma cerca —, e duas foram refeitas depois do arnês ganhar o controlo de verde).
+Zero contador partilhado, zero contrato, zero ADR. Tecto de LOC curado por **CORTE** (os gates do
+roteiro saíram para `smoke_bone_roteiro_tests.rs`), nunca por isenção.
+
+⏳ **ABERTO:** a 2.ª saída que o dono pediu a seguir — **deformar a forma por uma MALHA**.
+
 ### F27 — ⭐⭐⭐ **O CENSO DOS VERBOS DO OSSO: o clique chega a um EFEITO?** (2026-09-19)
 
 **O item que a F16 deixou aberto por escrito, fechado — e o veredito é bom: ZERO verbos mortos.** Os
@@ -574,8 +681,13 @@ só pode mover os pontos que o desenho tem*. E o report 2 tem três causas, **as
    `VariosEsqueletos` — que viaja como **valor** vindo da porta e nunca é nomeada ⇒ o universo passa
    a ser as superfícies **mais os produtores da crate**.
 
-⏳ **A pergunta de PRODUTO que fica para o dono, com o número:** pintar peso **entre** os vértices de
-uma forma vectorial é hoje impossível, porque não há lá peso nenhum para corrigir. Duas saídas:
+✅ **RESPONDIDA pelo dono em 2026-09-19: *«primeiro 1 e depois o 2»***. A primeira FECHOU no mesmo dia
+(ver **F28**) e ⛔ **a nota abaixo sobre ela estava errada — *«custo: zero de arquitectura»* foi
+medido e é falso**: a caneta escreve no documento vivo e o `recook` deita-o fora todo quadro. A
+segunda está ABERTA, e é a próxima.
+
+⏳ **A pergunta, como ela foi posta:** pintar peso **entre** os vértices de
+uma forma vectorial era impossível, porque não há lá peso nenhum para corrigir. Duas saídas:
 
 - **acrescentar vértices com a caneta** onde se quer controlo — o modelo do Moho/Spine, e o gesto já
   existe nesta casa. Custo: zero de arquitectura.

@@ -110,6 +110,8 @@ impl PenTool {
     ) -> Option<PenClick> {
         let (sel, seg, t) = self.insert_hit(scene, p, hit_r)?;
         let ni = ph2d_vec_scene::split_segment(scene.path_mut(sel)?, seg, t)?;
+        // ⭐⭐⭐ **O SÍTIO viaja, porque só aqui ele é conhecido** — ver [`Self::take_insercao`].
+        self.ultima_insercao = Some((sel, seg, t));
         self.selected_paths = vec![sel];
         self.selected_verts = vec![(sel, ni)];
         self.grab = Some(Grab {
@@ -121,6 +123,25 @@ impl PenTool {
             chamfer: None,
         });
         Some(PenClick::Inserted)
+    }
+
+    /// ⭐⭐⭐ **ONDE a caneta acabou de inserir um vértice** — `(caminho, segmento, t)`, uma vez só.
+    ///
+    /// ⛔⛔ **Ela existe porque uma forma PRESA a um esqueleto não se edita no documento vivo.** O
+    /// desenho de uma forma presa é **re-derivado** a cada quadro da geometria autorada que o bind
+    /// guardou, logo o vértice que esta ferramenta acabou de escrever é deitado fora — *ele aparece
+    /// sob o dedo e desaparece sozinho, sem erro e sem aviso* (medido 2026-09-19). Quem sabe se a
+    /// forma está presa é a shell, não a caneta.
+    ///
+    /// ⚠️⚠️ **O `t` VIAJA e não se re-deriva.** O artista carregou num ponto da curva, e só quem
+    /// mediu a distância ao segmento sabe em que parâmetro foi: reconstruí-lo do outro lado (com
+    /// `t = 0,5`, por exemplo) faria o ponto nascer NOUTRO sítio da mesma curva — o gesto a
+    /// desobedecer ao dedo.
+    ///
+    /// ⚠️ **Uma vez só**, como todo dreno desta casa: lê-la duas vezes daria dois pontos.
+    #[must_use]
+    pub fn take_insercao(&mut self) -> Option<(VecPathId, usize, f64)> {
+        self.ultima_insercao.take()
     }
 }
 

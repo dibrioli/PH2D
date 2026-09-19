@@ -118,9 +118,9 @@ fn caiu_na_lei_derivada(mundo: &ph2d_ecs::World, e: ph2d_ecs::Entity) -> bool {
             Err(_) => false,
         };
     }
-    match postcard::from_bytes::<crate::skinned_mesh::SkinnedPath>(&skin.source) {
-        Ok(m) => !m.valida() || m.ossos() == 0,
-        Err(_) => false,
+    match crate::skinned_mesh::le(&skin.source) {
+        Some(m) => !m.valida() || m.ossos() == 0,
+        None => false,
     }
 }
 

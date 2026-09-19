@@ -41,6 +41,8 @@ pub mod goal;
 /// ⭐⭐⭐ **O PESO À MÃO** — o gesto e o olho da correcção que o artista pinta.
 pub mod peso_a_mao;
 /// ⭐⭐⭐ **A POSE DE REPOUSO** — voltar ao repouso, e o que o *Reset Transform* quer dizer num osso.
+/// ⭐⭐⭐ Um ponto NOVO numa forma presa — ele entra na fonte guardada e sobrevive ao quadro.
+pub mod ponto_novo;
 pub mod pose_de_repouso;
 pub mod recusa_do_osso;
 /// ⭐ O ORÇAMENTO de peças do quadro — irmão do `skin_image` pelo tecto de LOC, cortado por assunto.
@@ -102,7 +104,7 @@ pub mod test_support {
             pesos: Vec::new(),
         };
         ph2d_skeleton_ecs::SkinBind::new(
-            postcard::to_allocvec(&guardado).expect("a pele codifica"),
+            crate::skinned_mesh::grava(&guardado).expect("a pele codifica"),
             ossos
                 .iter()
                 .map(|bone| ph2d_skeleton_ecs::Tendon {

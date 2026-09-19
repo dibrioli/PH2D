@@ -54,6 +54,12 @@ pub mod state;
 /// se vê. O irmão do [`knobs`], e a casa do censo que pergunta se o clique chega a um efeito.
 pub mod verbos;
 
+/// ⭐ **A sonda que mede o custo REAL de «acrescentar um ponto com a caneta»** — a 1.ª das duas
+/// saídas que o dono escolheu na F26. Ela corre antes de qualquer linha de cura.
+#[cfg(test)]
+#[path = "sonda_do_ponto_novo_tests.rs"]
+mod sonda_do_ponto_novo_tests;
+
 /// **A família, para o registo gerado** ([`ph2d_app_host`]).
 ///
 /// ⛔⛔ **`routers: &[]` é uma AUSÊNCIA DECLARADA, não uma omissão.** A única cena de smoke que

@@ -320,8 +320,7 @@ pub fn recook(sim: &SimWorld, scene: &mut VecScene) {
         }
         // Uma fonte corrompida é PULADA (não há o que deformar, e melhor não escrever lixo) — a
         // forma fica com a última geometria boa. Mesma escolha do envelope.
-        let Ok(guardado) = postcard::from_bytes::<crate::skinned_mesh::SkinnedPath>(&skin.source)
-        else {
+        let Some(guardado) = crate::skinned_mesh::le(&skin.source) else {
             continue;
         };
         // ⛔ Uma tabela que não fecha com o caminho cai na lei derivada em vez de ser lida
@@ -396,7 +395,7 @@ pub fn bind(
             path: src.clone(),
             pesos,
         };
-        let Ok(bytes) = postcard::to_allocvec(&guardado) else {
+        let Some(bytes) = crate::skinned_mesh::grava(&guardado) else {
             continue;
         };
         let tendoes = pares.into_iter().map(|o| o.tendon).collect();
@@ -573,7 +572,7 @@ pub fn release(
             continue;
         };
         if keep == Keep::Source
-            && let Ok(g) = postcard::from_bytes::<crate::skinned_mesh::SkinnedPath>(&skin.source)
+            && let Some(g) = crate::skinned_mesh::le(&skin.source)
             && let Some(p) = scene.path_mut(id)
         {
             p.replace_cooked(g.path);

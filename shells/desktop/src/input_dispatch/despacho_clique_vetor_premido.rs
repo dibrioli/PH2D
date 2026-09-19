@@ -145,6 +145,27 @@ impl crate::App {
                 }
             }
             self.vec.snap_targets = targets;
+            // ⭐⭐⭐ **UM PONTO NOVO NUMA FORMA PRESA VAI À FONTE, e não ao documento vivo.**
+            //
+            // ⛔ O desenho de uma forma presa é **re-derivado** todo quadro da geometria autorada
+            // que o bind guardou, logo o vértice que a caneta acabou de escrever é deitado fora —
+            // *ele aparece sob o dedo e desaparece sozinho* (medido 2026-09-19). Quem sabe se ela
+            // está presa é aqui, e a lei é da família.
+            //
+            // ⚠️ **O dreno fica DEPOIS do `match` inteiro, e não dentro do braço da caneta.** Quem
+            // insere hoje é só o `on_press` — o modo **Node** REFORMA o segmento e não lhe
+            // acrescenta nó (a divisão do Illustrator, escrita no doc do `on_press_node`) —, mas o
+            // dreno é do GESTO e não do braço: a ferramenta que amanhã também inserir liga-se aqui
+            // por construção, em vez de precisar de uma segunda linha que alguém tem de lembrar.
+            if let Some((pid, seg, t)) = self.vec.pen.take_insercao() {
+                ph2d_skeleton_live::ponto_novo::insere_ponto(
+                    &mut gfx.sim,
+                    &self.vec.entities,
+                    pid,
+                    seg,
+                    t,
+                );
+            }
             // Tocar um filho seleciona o GRUPO (a árvore é a Hierarquia).
             // Depois do press, porque só agora sabemos o que foi agarrado.
             if let Some(primary) = self.vec.pen.selected() {

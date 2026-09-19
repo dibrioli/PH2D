@@ -247,7 +247,7 @@ fn the_order_of_the_bones_in_a_skin_does_not_change_the_drawing() {
         .clone();
     skin.tendons.reverse();
     // E as COLUNAS da tabela com eles — as duas metades do mesmo facto.
-    if let Ok(mut g) = postcard::from_bytes::<crate::skinned_mesh::SkinnedPath>(&skin.source)
+    if let Some(mut g) = crate::skinned_mesh::le(&skin.source)
         && g.ossos() > 0
     {
         let n = g.ossos();

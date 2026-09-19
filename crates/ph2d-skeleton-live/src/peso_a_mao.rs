@@ -115,7 +115,7 @@ pub fn repousos(sim: &SimWorld, alvo: Entity, ppm: f32) -> Vec<[f64; 2]> {
     let Some(skin) = sim.world().get::<SkinBind>(alvo) else {
         return Vec::new();
     };
-    if let Ok(g) = postcard::from_bytes::<crate::skinned_mesh::SkinnedPath>(&skin.source) {
+    if let Some(g) = crate::skinned_mesh::le(&skin.source) {
         let mut out = Vec::new();
         let mut caminho = g.path;
         caminho.for_each_vert_mut(|v| {
@@ -478,14 +478,14 @@ pub fn pontos_do_indicador(sim: &SimWorld, ppm: f32, osso: Option<Entity>) -> Ve
 /// para decidir se emitem triplas, e duas respostas divergiriam no primeiro formato novo.
 #[must_use]
 fn e_caminho(sim: &SimWorld, alvo: Entity) -> bool {
-    sim.world().get::<SkinBind>(alvo).is_some_and(|skin| {
-        postcard::from_bytes::<crate::skinned_mesh::SkinnedPath>(&skin.source).is_ok()
-    })
+    sim.world()
+        .get::<SkinBind>(alvo)
+        .is_some_and(|skin| crate::skinned_mesh::le(&skin.source).is_some())
 }
 
 /// A tabela do padrão-ouro, quando ela fecha com a contagem de pontos desta pele.
 fn pesos_guardados(skin: &SkinBind, pontos: usize) -> Option<Vec<f64>> {
-    if let Ok(g) = postcard::from_bytes::<crate::skinned_mesh::SkinnedPath>(&skin.source) {
+    if let Some(g) = crate::skinned_mesh::le(&skin.source) {
         let fecha: &[f64] = if g.valida() { &g.pesos } else { &[] };
         let p = skin.pesos_do_quadro(fecha);
         return (!p.is_empty() && p.len().is_multiple_of(pontos.max(1))).then(|| p.to_vec());

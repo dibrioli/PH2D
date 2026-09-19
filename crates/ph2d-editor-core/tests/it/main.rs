@@ -148,6 +148,7 @@ mod the_tool_bar_is_a_region_of_the_area;
 mod the_top_column_wears_the_flat_skin;
 mod the_two_looks_are_one_switch_apart;
 mod the_ui_pill_opens_the_authored_panel;
+mod um_orcamento_de_texto_e_a_largura_de_um_espaco;
 mod uma_coluna_de_rotulo_cabe_a_familia_inteira;
 mod uma_frase_de_ajuda_quebra_em_vez_de_ser_cortada;
 mod vello_bin_budget_of_an_editor_frame;

@@ -376,3 +376,149 @@ fn a_property_label_is_flush_against_its_control() {
         "varredura magra: {encostados} encostados / {degradados} degradados"
     );
 }
+
+/// ⭐⭐⭐ **A QUARTA metade — a que a régua acima NÃO podia ver: um ORÇAMENTO SEM NOME.**
+///
+/// ⛔⛔ O censo do topo deste ficheiro procura uma **atribuição** cujo nome contenha
+/// `label_col`/`label_w`, e o doc dele já narra quatro grafias da mesma pergunta. **A quinta é a
+/// ausência de grafia:** um número passado *inline*, como sétimo argumento de um pintor de texto,
+/// não tem nome nenhum — logo passa por baixo de toda régua que enumere por NOME.
+///
+/// > *Um censo cuja população é «quem escreve este nome» é cego a quem não escreve nome nenhum.*
+///
+/// **Medido em 2026-09-19** (o app inteiro: `ph2d-editor-core/src`, os `ph2d-panel-*` e a shell):
+/// a família tinha **TRÊS** membros, e os três eram defeito —
+///
+/// | sítio | orçamento | o que ele tinha |
+/// |---|---:|---|
+/// | `grid_snap/inspect.rs` | `80,0` | `Line / Neighbors` mede **`94,48`** ⇒ cortado em inglês |
+/// | `hero/selection.rs` (nome) | `80,0` | a coluna até ao emblema mede **`60,0`** ⇒ **invadia-o** |
+/// | `hero/selection.rs` (posição) | `100,0` | a coluna mede **`104,0`** ⇒ apertado sem razão |
+///
+/// ⚠️ **O do meio é o mais instrutivo, e é o oposto do que se procura:** um orçamento MAIOR que a
+/// coluna **não corta nada** — ele deixa as letras subirem por cima do vizinho. *A reticência que
+/// não aparece não é uma boa notícia; é a prova de que o número não descreve o espaço.*
+///
+/// ⛔ **A lista nasce VAZIA e não se estende:** quem precisar de um orçamento escreve-o como a
+/// LARGURA de alguma coisa (uma coluna, um rect, o que a porta devolveu) — *um orçamento é sempre
+/// a medida de um espaço, e um espaço tem sempre um nome*.
+const ORCAMENTO_LITERAL_TOLERADO: &[&str] = &[];
+
+/// Os pintores de texto cujo 7.º argumento é o ORÇAMENTO.
+const PINTORES: &[&str] = &[
+    "paint_text(",
+    "paint_text_elided(",
+    "paint_text_block(",
+    "paint_text_title(",
+];
+
+/// ⚠️ **PISO DE POPULAÇÃO.** Sem ele, uma varredura que deixasse de achar chamadas devolveria zero
+/// acusações e leria-se como aprovação — a forma exacta que o `CLAUDE.md` §5.0 nomeia.
+const PISO_DE_CHAMADAS: usize = 120;
+
+/// Devolve os argumentos de topo da chamada cujo `(` abre em `src[abre]`, e onde ela fecha.
+fn argumentos(src: &str, abre: usize) -> Option<Vec<String>> {
+    let b = src.as_bytes();
+    let (mut prof, mut arg, mut args) = (0usize, String::new(), Vec::new());
+    for (i, &c) in b.iter().enumerate().skip(abre) {
+        let c = c as char;
+        if matches!(c, '(' | '[' | '{') {
+            prof += 1;
+            if prof == 1 {
+                continue;
+            }
+        } else if matches!(c, ')' | ']' | '}') {
+            prof -= 1;
+            if prof == 0 {
+                args.push(arg.trim().to_string());
+                return Some(args);
+            }
+        }
+        if prof == 1 && c == ',' {
+            args.push(arg.trim().to_string());
+            arg.clear();
+        } else {
+            arg.push(c);
+        }
+        let _ = i;
+    }
+    None
+}
+
+fn e_literal(t: &str) -> bool {
+    let t = t.trim().trim_end_matches("_f32").trim_end_matches("f32");
+    !t.is_empty()
+        && t.chars()
+            .all(|c| c.is_ascii_digit() || c == '.' || c == '-')
+        && t.chars().any(|c| c.is_ascii_digit())
+}
+
+/// `(acusações, chamadas varridas)`.
+fn orcamentos_literais(root: &Path) -> (Vec<String>, usize) {
+    let (mut out, mut vistas) = (Vec::new(), 0usize);
+    for p in ui_sources(root) {
+        let rel = p
+            .strip_prefix(root)
+            .unwrap_or(&p)
+            .to_string_lossy()
+            .replace('\\', "/");
+        if rel.ends_with("_tests.rs") {
+            continue;
+        }
+        let Ok(src) = fs::read_to_string(&p) else {
+            continue;
+        };
+        for pintor in PINTORES {
+            let mut de = 0usize;
+            while let Some(k) = src[de..].find(pintor) {
+                let k = de + k;
+                de = k + 1;
+                let Some(args) = argumentos(&src, k + pintor.len() - 1) else {
+                    continue;
+                };
+                if args.len() < 7 {
+                    continue;
+                }
+                vistas += 1;
+                if e_literal(&args[6]) {
+                    let n = src[..k].matches('\n').count() + 1;
+                    out.push(format!(
+                        "{rel}:{n}: {}(… {} …)",
+                        pintor.trim_end_matches('('),
+                        args[6]
+                    ));
+                }
+            }
+        }
+    }
+    (out, vistas)
+}
+
+/// ⭐ **Nenhum orçamento de texto é um número escrito no sítio da pintura.**
+#[test]
+fn no_text_budget_is_a_bare_literal_at_the_painting_site() {
+    let root = repo_root();
+    let (found, vistas) = orcamentos_literais(&root);
+    assert!(
+        vistas >= PISO_DE_CHAMADAS,
+        "⛔ PISO: a varredura só viu {vistas} chamadas de pintor de texto (piso {PISO_DE_CHAMADAS}) \
+         — ou os nomes dos pintores mudaram, ou ela deixou de alcançar as fontes de UI, e nos dois \
+         casos um `0 acusados` não quer dizer nada"
+    );
+    let fora: Vec<&String> = found
+        .iter()
+        .filter(|l| !ORCAMENTO_LITERAL_TOLERADO.iter().any(|d| l.starts_with(*d)))
+        .collect();
+    assert!(
+        fora.is_empty(),
+        "{} orçamento(s) de texto escritos como LITERAL no sítio da pintura (de {vistas} chamadas \
+         varridas):\n  {}\n\nUm orçamento é a medida de um ESPAÇO — escreva-o como a largura da \
+         coluna, do rect ou do que a porta devolveu. ⚠️ Maior que o espaço é PIOR que menor: ele \
+         não corta nada e deixa as letras por cima do vizinho.",
+        fora.len(),
+        fora.iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .join("\n  ")
+    );
+}

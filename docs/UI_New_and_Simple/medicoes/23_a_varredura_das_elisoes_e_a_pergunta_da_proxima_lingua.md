@@ -407,3 +407,89 @@ ela pede*; as duas crescem por motivos diferentes.
 declara imune por escrito (*«medidos juntos, os dois números sobem e descem juntos»*) — **verdade
 sobre a deriva da MÁQUINA e falso sobre o FAN-OUT**, que é exactamente a distinção que aquela lista
 existe para guardar.
+
+## 11. A quinta cura: um ORÇAMENTO de texto é a largura de um ESPAÇO
+
+**Data:** 2026-09-19. **Gatilho:** a régua da §10 ficou escrita, e a pergunta seguinte é *quem mais
+escreve um orçamento à mão?*
+
+### 11.1 — O censo da família, e ela tinha TRÊS membros
+
+A varredura mede as chamadas de pintor de texto (`paint_text`, `paint_text_elided`,
+`paint_text_block`, `paint_text_title`) em `ph2d-editor-core/src`, nos `ph2d-panel-*` e na shell, e
+pergunta se o **7.º argumento** — o orçamento — é um número escrito ali. De `~120` chamadas
+varridas, **três**:
+
+| sítio | orçamento | o espaço REAL | o que se via |
+|---|---:|---:|---|
+| secção *Inspect* do Grid Snap | `80,0` | `Line / Neighbors` mede **`94,48`** | `Line / Neigh…` |
+| etiqueta de selecção, o NOME | `80,0` | **`60,0`** até ao emblema | as letras **por cima** dele |
+| etiqueta de selecção, a POSIÇÃO | `100,0` | **`104,0`** | apertado sem razão |
+
+⛔⛔ **O do meio é o instrutivo, e é o OPOSTO do defeito que se procurava.** Um orçamento **maior**
+que a coluna não corta nada: `Platform Player` mede `79,88`, cabia nos `80` que lhe davam, e era
+desenhado **inteiro — `19,88 px` por baixo do emblema**.
+
+> **A reticência que não aparece não é boa notícia: é a prova de que o número não descreve o
+> espaço.**
+
+⚠️ E a etiqueta de selecção mostra o **nome do objecto na Hierarquia**, que é texto do artista —
+`Platform Player` é literalmente o nome de um componente que este app ship.
+
+### 11.2 — ⛔⛔ Porque as réguas TEXTUAIS não os viam
+
+O `the_label_column_is_one_answer` enumera **por NOME**: ele procura uma atribuição cujo nome
+contenha `label_col`, ou `label_w` **só dentro de `crates/ph2d-panel-*`** (a extensão a tudo foi
+medida e recusada: `16` acusações falsas para `5` verdadeiras). O doc dele já narra **quatro**
+grafias da mesma pergunta.
+
+> **A quinta é a AUSÊNCIA de grafia.** Um número passado *inline*, como argumento, não tem nome
+> nenhum — logo passa por baixo de toda régua que enumere por nome.
+
+⇒ aquele ficheiro ganha a metade `no_text_budget_is_a_bare_literal_at_the_painting_site`, com
+**piso de população** (`≥ 120` chamadas varridas) e a lista de tolerância a nascer **vazia**.
+
+### 11.3 — ⭐⭐⭐ E um QUARTO membro só o gate que PINTA podia achar
+
+Curada a secção *Inspect*, o gate novo reprovou com `Probe A` a receber `70` enquanto os irmãos
+recebiam `94,48`. A causa: as **linhas de sonda** daquela secção (`label | [x][y]`) tinham uma
+**segunda** coluna, `let label_w = 70.0`, no mesmo ficheiro.
+
+⛔ Ela escapava às **duas** réguas textuais ao mesmo tempo: a primeira só aceita `label_w` em
+`ph2d-panel-*` (isto é `ph2d-editor-core`) e a segunda procura um número **sem nome**, e este tinha
+um.
+
+> *Uma régua que LÊ o fonte mede o que alguém escreveu; uma que PINTA mede o que o artista vê — e
+> só a segunda vê duas colunas onde o desenho tem uma.*
+
+Hoje a coluna é medida uma vez da lista dos quatro rótulos e **chega às linhas de sonda por
+argumento**, o que também devolve `~12 px` a cada um dos dois campos numéricos delas.
+
+### 11.4 — A geometria da etiqueta não se move nem um pixel
+
+O emblema continua a começar a `60` do início do nome e o texto de posição onde sempre esteve; o
+que muda são os dois ORÇAMENTOS, que passam a ser as colunas (`60 − Sm = 54` e `104`). ⛔ **As
+colunas ficam FIXAS de propósito:** dar ao nome o que sobra faria o emblema **dançar** a cada
+objecto escolhido, e o texto de posição muda quando o objecto se MOVE — a etiqueta tremeria a
+arrastar. *Uma coluna elástica é certa numa linha de formulário e errada numa etiqueta que paira
+sobre o canvas.*
+
+### 11.5 — Provas de mutação
+
+| # | mutação | o que sangra |
+|---|---|---|
+| M22 | a coluna do *Inspect* volta ao literal `80` | o rótulo mais largo é cortado |
+| M23 | o literal reposto **no sítio da pintura** | a régua TEXTUAL nova |
+| M24 | a coluna ganha folga (`+40`) | a metade *tight* |
+| M25 | as linhas de sonda voltam a ter coluna própria | «uma coluna só» |
+| M26 | o nome da etiqueta volta ao orçamento de `80` | ele deixa de ser cortado |
+| M27 | a coluna da posição volta ao literal `100` | ela deixa de ser o que sobra |
+| M28 | o emblema muda de sítio | a geometria que não se move |
+| M29 | a régua textual deixa de achar chamadas | o **piso de população** |
+
+**8 de 8 sangram. Dívida: 9 → 8. Portão: `19 729` impactados, `19 728` verdes.**
+
+⚠️ O único ✗ foi `the_cost_of_a_player_is_linear_in_their_number` (`ph2d-physics-ecs`), **membro já
+listado** da família de flakes de fan-out do `CLAUDE.md` §5.0: zero linhas do diff naquela crate,
+reprovou a `load 33,57` no meio do fan-out e passa **`3` de `3` a `load 106`–`109`** — *o triplo da
+carga em que reprovou*, que é a assinatura da família.

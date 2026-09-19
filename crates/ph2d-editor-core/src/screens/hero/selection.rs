@@ -82,6 +82,7 @@ pub fn paint_selection_overlay(
     );
     let pad = Spacing::Md.px();
     let label_y = tag_rect.y + (tag_rect.h - TypeToken::Xs.px()) * 0.5;
+    let (name_col, badge_x, badge_w, pos_col) = tag_columns(tag_rect, pad);
     paint_text(
         text_system,
         scene,
@@ -89,11 +90,9 @@ pub fn paint_selection_overlay(
         tag_rect.x + pad,
         label_y,
         TypeToken::Xs.px(),
-        80.0, // LITERAL-PX-OK: selection label width budget (chrome-specific)
+        name_col,
         resolve(ColorToken::Text1, theme),
     );
-    let badge_x = tag_rect.x + pad + 60.0; // LITERAL-PX-OK: badge offset within selection tag (chrome-specific)
-    let badge_w = Spacing::Xl3.px();
     let badge_rect = Rect::new(
         badge_x,
         tag_rect.y + Spacing::Xs.px(),
@@ -125,7 +124,48 @@ pub fn paint_selection_overlay(
         badge_x + badge_w + Spacing::Md.px(),
         label_y,
         TypeToken::Xs.px(),
-        100.0, // LITERAL-PX-OK: pos-text width budget (chrome-specific)
+        pos_col,
         resolve(ColorToken::Text3, theme),
     );
+}
+
+/// ⭐⭐⭐ **AS TRÊS COLUNAS DA ETIQUETA DE SELECÇÃO — e o orçamento de cada texto É a coluna dele.**
+///
+/// A etiqueta é `nome · [EMBLEMA] · x, y` dentro de uma caixa de largura FIXA (`tag_w`), e as três
+/// peças eram posicionadas por uns números e orçadas por outros. Medido em 2026-09-19:
+///
+/// | peça | espaço REAL | orçamento que ela recebia |
+/// |---|---:|---:|
+/// | nome | **`60,0`** até ao emblema | **`80,0`** |
+/// | posição | **`104,0`** até ao recuo direito | `100,0` |
+///
+/// ⛔⛔ **O nome invadia o emblema, e a reticência nunca disparava:** `Platform Player` mede
+/// `79,88` e cabia nos `80` que lhe eram dados — logo era **desenhado inteiro, `19,88 px` por
+/// baixo do emblema**. *Um orçamento maior que a coluna não corta texto nenhum: ele empurra as
+/// letras para cima do vizinho, que é o pior dos dois resultados possíveis* — com a coluna certa o
+/// artista lê `Platform Pl…` e sabe que há mais nome.
+///
+/// ⚠️ **A GEOMETRIA não se move nem um pixel:** o emblema continua a começar em `pad + 60` e o
+/// texto de posição onde sempre esteve. O que muda são os dois ORÇAMENTOS, que passam a ser as
+/// colunas — e é por isso que a cura é segura sobre uma etiqueta que já shipava.
+///
+/// ⛔ **As colunas são FIXAS de propósito:** dar ao nome o que sobra faria o emblema **dançar** a
+/// cada objecto escolhido, e o texto de posição muda quando o objecto se MOVE — a etiqueta
+/// tremeria a arrastar. *Uma coluna elástica é certa numa linha de formulário e errada numa
+/// etiqueta que paira sobre o canvas.*
+fn tag_columns(tag: Rect, pad: f32) -> (f32, f32, f32, f32) {
+    // A distância do início do nome ao início do emblema — a geometria que esta etiqueta já tinha.
+    const NAME_TO_BADGE: f32 = 60.0; // LITERAL-PX-OK: selection-tag column (chrome geometry)
+    let gap = Spacing::Sm.px();
+    let badge_x = tag.x + pad + NAME_TO_BADGE;
+    let badge_w = Spacing::Xl3.px();
+    let pos_x = badge_x + badge_w + Spacing::Md.px();
+    (
+        // O nome pára um VÃO antes do emblema — é essa a coluna dele, e é esse o orçamento.
+        (NAME_TO_BADGE - gap).max(0.0),
+        badge_x,
+        badge_w,
+        // A posição fica com o que sobra até ao recuo do lado direito.
+        (tag.x + tag.w - pad - pos_x).max(0.0),
+    )
 }

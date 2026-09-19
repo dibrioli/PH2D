@@ -31,7 +31,7 @@
 //! | a pintar **NADA** em inglês | **0** | **0** |
 //! | a pintar **NADA** no idioma de teste | **0** | **0** |
 //! | cortados (`prefixo…`) em inglês, ANTES da cura | 15 | 17 |
-//! | cortados hoje (número · frases · chip de escolha · coluna de toggle) | **9** | **9** — `CORTADOS_HOJE` |
+//! | cortados hoje (número · frases · chip · colunas de rótulo) | **8** | **8** — `CORTADOS_HOJE` |
 //! | cortados no idioma de teste | ~130, em 16 painéis | — |
 //!
 //! ⚠️ **Um painel pintado com o estado de FÁBRICA mostra o estado VAZIO dele** (o Inspector sem
@@ -99,8 +99,11 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
     //    no idioma de teste **seis** daqueles rótulos estouravam a coluna, e nenhuma das duas leis
     //    desta varredura pergunta isso — elas perguntam se algo pinta NADA. Mecanismo:
     //    `ph2d-panel-timeline/tests/it/a_coluna_do_toggle_mede_a_lista.rs`.
+    // ✅ **O `Line / Neighbors` do Grid Snap SAIU em 19/09** — a coluna da secção *Inspect* era o
+    //    literal `80,0` e aquele rótulo mede `94,48`. Hoje ela mede a LISTA dos quatro
+    //    (`ph2d-editor-core/src/grid_snap/inspect.rs`), e as linhas de sonda partilham-na — antes
+    //    elas tinham uma **segunda** coluna, de `70`, que nenhuma régua textual desta casa via.
     // ⛔ Opções e rótulos que não cabem no chip deles.
-    ("grid_snap", "Line / Neighbors"),
     ("widget_gallery", "Float"),
     ("widget_gallery", "Color"),
     ("widget_gallery", "filter"),

@@ -364,6 +364,26 @@ pub fn paint(
         ),
     ];
 
+    // ⭐⭐⭐ **A coluna do rótulo MEDE A LISTA, e o orçamento É a coluna.**
+    //
+    // Ela era o literal `80,0` com o valor a `+90` e o orçamento dele a `rect.w − 100`. Medido em
+    // 2026-09-19, os quatro rótulos desta secção dão `Probe A 45,53` · `Probe B 44,91` ·
+    // `Distance 50,30` · **`Line / Neighbors 94,48`** ⇒ o último saía `Line / Neigh…` **em inglês**.
+    //
+    // ⛔⛔ E o gate `the_label_column_is_one_answer` **não o via**: a régua dele procura uma
+    // ATRIBUIÇÃO cujo nome contenha `label_col`/`label_w`, e aqui o número era passado **inline,
+    // como argumento, sem nome nenhum**. *Um censo que enumera por NOME é cego a quem não tem nome*
+    // — a metade nova daquele gate fecha essa porta.
+    let label_w = crate::paint::label_column_width(
+        text_system,
+        LABEL_FONT_SIZE,
+        rows.iter().map(|(l, _)| l.as_str()),
+    );
+    let gap = Spacing::Md.px();
+    let value_x = x + label_w + gap;
+    // ⚠️ A margem direita é a que esta secção já tinha (`rect.w − 100` a partir de `+90` deixava
+    //    `Spacing::Xs`), agora escrita como o token que ela é.
+    let value_w = (rect.x + rect.w - Spacing::Xs.px() - value_x).max(0.0);
     for (label, value) in &rows {
         if label.is_empty() && value.is_empty() {
             continue;
@@ -377,21 +397,21 @@ pub fn paint(
                 x,
                 row_y,
                 LABEL_FONT_SIZE,
-                80.0,
+                label_w,
                 resolve(ColorToken::Text1, theme),
             );
         }
-        // Value right of the label; offset by 90px so labels and
-        // values align across rows.
+        // O valor à direita do rótulo, na coluna que sobra — as duas alinham em todas as linhas
+        // porque saem do MESMO par de números, medido uma vez acima.
         if !value.is_empty() {
             paint_text(
                 text_system,
                 scene,
                 value,
-                x + 90.0,
+                value_x,
                 row_y,
                 LABEL_FONT_SIZE,
-                rect.w - 100.0,
+                value_w,
                 label_color,
             );
         }
@@ -402,6 +422,7 @@ pub fn paint(
     y += list_row_gap_px();
     paint_probe_pair_row(
         ph2d_i18n::tr("chrome.grid_snap.probe_a"),
+        label_w,
         super::ids::GS_PROBE_A_X,
         super::ids::GS_PROBE_A_Y,
         state.probe_a,
@@ -419,6 +440,7 @@ pub fn paint(
     y += ROW_H + list_row_gap_px();
     paint_probe_pair_row(
         ph2d_i18n::tr("chrome.grid_snap.probe_b"),
+        label_w,
         super::ids::GS_PROBE_B_X,
         super::ids::GS_PROBE_B_Y,
         state.probe_b,
@@ -439,6 +461,7 @@ pub fn paint(
 #[allow(clippy::too_many_arguments)]
 fn paint_probe_pair_row(
     label: &str,
+    label_w: f32,
     x_id: crate::NodeId,
     y_id: crate::NodeId,
     value: Vec2,
@@ -453,8 +476,15 @@ fn paint_probe_pair_row(
     display_unit: DisplayUnit,
     pixels_per_meter: f32,
 ) {
-    let label_w = 70.0;
-    let gap = 4.0;
+    // ⭐⭐ **A coluna chega de fora — é a MESMA que as linhas de diagnóstico usam**, medida uma vez
+    //    da lista inteira. Ela era o literal `70,0` aqui dentro, e a ARMADILHA é que ele passava
+    //    por baixo das duas réguas textuais desta casa ao mesmo tempo: o
+    //    `the_label_column_is_one_answer` só aceita a grafia `label_w` dentro de `ph2d-panel-*`
+    //    (aqui é `ph2d-editor-core`), e a régua dos orçamentos LITERAIS procura um número sem
+    //    nome, e este tinha um. *Quem o apanhou foi o gate que PINTA* — o censo de elisões viu
+    //    `Probe A` com orçamento `70` ao lado do irmão com `94,48` e disse que a secção tinha
+    //    DUAS colunas.
+    let gap = Spacing::Xs.px();
     let input_w = (w - label_w - gap - Spacing::Sm.px() * 2.0) / 2.0;
     paint_text(
         text_system,

@@ -297,8 +297,17 @@ pub fn bind(
             // caminho vive nos NÓS, e a barra tem oito, os oito nas duas pontas — ali o indicador é
             // honesto e quase mudo. *Mandar o artista provar uma ferramenta na peça em que ela tem
             // menos a mostrar é ensinar que ela não funciona.*
+            // ⛔⛔ **E o osso que ele nomeia é o do MEIO, nunca a PONTA — isto foi MEDIDO por
+            // fotografia e a minha suposição estava errada.** Com o osso da ponta a parte visível
+            // do braço lê-se quase toda AZUL: a zona que ele governa sozinho (o vermelho) cai
+            // atrás do painel *Bones*. Com o do meio a rampa inteira cabe no enquadramento, porque
+            // ele tem território dos DOIS lados. *É a mesma armadilha do «Bone 2» do 1.º report —
+            // mandar o artista julgar a ferramenta no osso em que ela tem menos a mostrar.*
+            let meio = osso_do_meio(sim, raiz)
+                .and_then(|e| sim.world().get::<ph2d_ecs::Name>(e))
+                .map_or_else(|| nome.clone(), |n| n.as_str().to_string());
             eprintln!(
-                "[vec-bone-smoke] PINCEL DE PESO: escolha a linha «{nome}» (ou outro osso do braco \
+                "[vec-bone-smoke] PINCEL DE PESO: escolha a linha «{meio}» (o osso do MEIO do braco \
                  pintado), carregue «Weight» no painel Bones e olhe para o braco PINTADO — cada \
                  ponto da malha dele fica colorido pela influencia desse osso, do AZUL (nao manda \
                  nada) ao VERMELHO (manda sozinho), passando por ciano, verde e amarelo. Arraste \
@@ -548,6 +557,20 @@ fn arm_pixels() -> Vec<u8> {
     px
 }
 
+/// ⭐⭐ **O OSSO DO MEIO DE UMA CADEIA** — o que o roteiro do pincel de peso manda escolher.
+///
+/// ⛔⛔ **Ela é uma porta e não duas linhas no sítio onde é usada, e a razão é uma mutação
+/// SOBREVIVENTE:** com a derivação inline, o gate que a julga tinha de a **copiar** — e uma cópia
+/// julga a cópia. Trocar o índice para `.last()` no produto deixava o gate verde.
+///
+/// ⚠️ **Porque o MEIO e não a ponta:** medido por fotografia (2026-09-19) — da ponta, a parte
+/// visível do braço pintado lê-se quase toda azul, porque a zona que ela governa sozinha cai atrás
+/// do painel. O do meio tem território dos dois lados, e a rampa inteira cabe no enquadramento.
+fn osso_do_meio(sim: &ph2d_ecs::SimWorld, raiz: ph2d_ecs::Entity) -> Option<ph2d_ecs::Entity> {
+    let cadeia = ph2d_skeleton_live::esqueletos::ossos_desde(sim, raiz);
+    cadeia.get(cadeia.len() / 2).copied()
+}
+
 #[cfg(test)]
 #[path = "smoke_bone_despacho_tests.rs"]
 mod smoke_bone_despacho_tests;
@@ -585,6 +608,58 @@ mod tests {
             super::nivel_de(Some(&super::NIVEIS.to_string())),
             super::NIVEIS,
             "o topo declarado tem de ser alcancavel — senao a `NIVEIS` mente sobre quantas cenas ha'"
+        );
+    }
+
+    /// ⭐⭐⭐ **O ROTEIRO MANDA CLICAR NO OSSO DO MEIO DO BRAÇO PINTADO, e não na PONTA.**
+    ///
+    /// ⛔⛔⛔ **Isto foi MEDIDO por fotografia depois de eu ter suposto o contrário** (2026-09-19,
+    /// 3.º report do dono sobre o pincel de peso). A 1.ª redacção do roteiro reaproveitava o nome
+    /// que a lição do *Onion* já tinha à mão — o da **ponta** —, e na foto a parte visível do braço
+    /// lê-se quase toda **AZUL**: a zona que a ponta governa sozinha cai atrás do painel *Bones*.
+    /// Com o osso do MEIO a rampa inteira (azul → ciano → verde → amarelo → vermelho) cabe no
+    /// enquadramento, porque ele tem território dos dois lados.
+    ///
+    /// ⚠️⚠️ **É a MESMA armadilha do «Bone 2» do 1.º report** — *mandar o artista julgar a
+    /// ferramenta no osso em que ela tem menos a mostrar*. Ela voltou porque o nome mais fácil de
+    /// alcançar no código não era o nome certo para o gesto.
+    ///
+    /// ⭐ **As duas metades, porque as regressões são diferentes:** o índice tem de ser o do meio
+    /// (uma cadeia de três), e a linha do roteiro tem de nomear ESSE e não o da ponta — a segunda
+    /// lê o ficheiro por [`include_str!`], logo deixa de compilar se ele mudar de sítio.
+    #[test]
+    fn o_roteiro_do_pincel_de_peso_nomeia_o_osso_do_meio() {
+        // (a) o índice: numa cadeia de três, `len / 2` é o do meio, qualquer que seja a ordem em
+        // que o passeio a devolve.
+        let mut sim = ph2d_ecs::SimWorld::default();
+        let raiz = super::cadeia(&mut sim, [3.6, 2.5], [7.4, 2.5], 3).expect("a cadeia monta");
+        let ossos = ph2d_skeleton_live::esqueletos::ossos_desde(&sim, raiz);
+        assert_eq!(
+            ossos.len(),
+            3,
+            "a cadeia do braco pintado deixou de ter tres ossos"
+        );
+        let ponta = super::ponta_da_cadeia(&sim, raiz);
+        // ⚠️ **A PORTA do produto, nunca uma copia da conta** — a 1.ª redacção deste gate escrevia
+        // `ossos[ossos.len() / 2]` aqui, e a mutação que trocava o índice do PRODUTO por `.last()`
+        // sobrevivia: *uma cópia da lei julga a cópia.*
+        let meio = super::osso_do_meio(&sim, raiz).expect("a porta responde numa cadeia de tres");
+        assert_ne!(meio, raiz, "o osso escolhido e' a RAIZ da cadeia");
+        assert_ne!(
+            meio, ponta,
+            "o osso escolhido e' a PONTA — e' a foto de 19/09 a` letra: dali o braco le^-se quase \
+             todo azul, porque o vermelho cai atras do painel"
+        );
+
+        // (b) a linha do roteiro nomeia o do meio.
+        let texto = include_str!("smoke_bone.rs");
+        let linha = texto.split("PINCEL DE PESO:").nth(1).expect(
+            "o roteiro deixou de ensinar o pincel de peso — e o dono ja' reportou 3x sobre ele",
+        );
+        let cabeca = &linha[..linha.len().min(120)];
+        assert!(
+            cabeca.contains("{meio}"),
+            "o roteiro do pincel voltou a nomear outro osso que nao o do MEIO: {cabeca:?}"
         );
     }
 

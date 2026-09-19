@@ -1087,3 +1087,15 @@ um tinha `64` linhas e o outro `82` (corpus novo entrara na sonda) ⇒ a tabela 
 comparação POSICIONAL é válida só enquanto as duas populações forem a mesma, e é exactamente uma
 mudança de população que se está a medir. **How to apply:** junte sempre **por chave** (`join`),
 e o sinal de que se errou é barato — **nomes repetidos** na saída.
+
+## ⛔⛔⛔ Uma cerca que veta um SUBCONJUNTO de um passo SIMULTÂNEO pode criar o que ela impede (2026-09-21)
+Num passe Jacobi (todos decidem contra a entrada, só depois se escreve) cujos alvos são
+**mutuamente consistentes** — no caso, nós da MESMA grade —, vetar alguns movimentos deixa a malha
+**meio-movida**: uma configuração que **nem a entrada nem o alvo têm**. Medido: a cerca por-vértice
+deixava `4` triângulos abaixo de 5° e o portão VERMELHO; **sem cerca nenhuma, zero**. **Why:** a
+cerca julga cada movimento contra o estado de ENTRADA, e a saída real é o estado com TODOS
+aplicados — são duas perguntas diferentes, e só a segunda é a que o artista vê. **How to apply:**
+quando um passe decide em lote, a cerca pergunta-se **depois** e com todos os destinos aplicados; e
+se ela vetar, tem de vetar um grupo coerente (ali, o triângulo inteiro — escolher um culpado entre
+dois pediria um desempate por índice, que faria a saída depender da numeração da malha).
+Ver [[reference_topic_mutation_proofs]] e [[reference_topic_gate_discipline]].

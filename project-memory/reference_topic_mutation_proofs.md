@@ -123,3 +123,17 @@ casa zero, da mutação que não compila e do `| tail` que destrói o exit code.
 padrão é `running ([0-9]+) tests?`; e ⭐ esta falha é do lado **SEGURO** — ela acusa-se a si mesma em
 vez de se ler como sobrevivência, que é como todo controlo de arnês devia falhar. Ver
 [[reference_topic_measurement_discipline]].
+
+## ⭐⭐⭐⭐ Uma mutação SOBREVIVENTE às vezes diz que a EXPLICAÇÃO está trocada, não que falta um gate (2026-09-21)
+A `line/sculpt3d` construiu uma cerca de forma nova para destravar um knob que o portão do produto
+recusava, mediu `9 → 0` lascas e ia shipar a história *«a cerca nova é mais esperta e destrava»*. A
+prova de mutação incluía *«a cerca desaparece do caminho do produto»* — e ela **ficou VERDE**, o que
+não podia acontecer se a cerca fosse o que fazia o portão passar. Medido a sério pela porta do
+produto: **sem cerca nenhuma também dá zero**, e quem dava `4` lascas era a cerca **ANTIGA**. ⇒ a
+cerca antiga era a **FÁBRICA** do defeito que existia para impedir. **Why:** o reflexo ao ver um
+sobrevivente é *«falta-me um gate»*, e a leitura mais valiosa é *«o meu modelo do porquê está ao
+contrário»* — ali o `9 → 0` vinha de uma sonda com arnês escrito à mão e a porta do produto dizia
+outra coisa. **How to apply:** antes de escrever o gate que mata o sobrevivente, pergunte se ele é
+**refutação da causa**: corra a tabela nas TRÊS configurações (com a peça nova · com a antiga · com
+NENHUMA) pela porta do produto. A terceira coluna é a que quase nunca se mede e foi a que decidiu.
+Ver [[reference_topic_measurement_discipline]].

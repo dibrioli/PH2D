@@ -69,20 +69,38 @@ pub const BATIDA_US: u64 = 1_000_000;
 
 /// O prefixo do nome de cada luz — o alvo que a tabela nomeia.
 pub const LUZ: &str = "Vida ";
-/// ⚠️ **A altura das luzes, e ela é MEDIDA e não escolhida:** a 1.ª redacção punha-as a `3,2` m e a
-/// cena media `5,70` m de alto contra a **BANDA** de `5,00` — o que sobra do canvas com a timeline
-/// aberta é ~metade da janela, e as luzes ficavam FORA DO ECRÃ. Há gate.
-const LUZ_Y: f32 = 1.8;
+/// ⚠️ A altura das luzes. Ver [`BANDA_ACIMA`].
+const LUZ_Y: f32 = 3.0;
+
+/// ⭐⭐⭐ **A BANDA QUE O DONO VÊ NÃO ESTÁ CENTRADA NA ORIGEM, e a FOTO é que o mediu.**
+///
+/// ⛔⛔ **A 1.ª redacção desta cena punha o herói a `−2,0` m e ele saía FORA DO ECRÃ**, com os sete
+/// gates verdes — e o gate que eu tinha escrito media a coisa errada: ele comparava a **ALTURA** do
+/// conteúdo (`4,0 m`) com a da banda (`5,0 m`) e dava verde, porque *uma altura não diz ONDE*.
+///
+/// ⚠️ **O que a foto mede** (`fotografa_cena.sh`, janela `1930×1012`, zoom `100 %`): a área de
+/// canvas vai do fundo da barra de ferramentas ao topo da timeline, e **o centro da JANELA não é o
+/// centro dela** — sobram `~4,2 m` acima da origem e só `~1,3 m` abaixo. *É a mesma família do
+/// defeito do abanão (a bomba fora do ecrã com os dez gates verdes), com a assimetria no lugar da
+/// distância.*
+///
+/// ⇒ tudo o que esta cena monta vive em `[−BANDA_ABAIXO, BANDA_ACIMA]`, e há gate.
+pub const BANDA_ACIMA: f32 = 4.2;
+/// Ver [`BANDA_ACIMA`].
+pub const BANDA_ABAIXO: f32 = 1.3;
 
 /// Quantos espinhos o pátio tem. ⚠️ **Tantos quantas as vidas**, para o dono poder perder andando
 /// em frente uma vez por espinho — sem ter de voltar a nenhum.
 pub const ESPINHOS: i64 = VIDAS_INICIAIS;
 /// O passo entre espinhos, em metros.
 const ESPINHO_PASSO: f32 = 3.0;
+/// A altura da fileira de espinhos. ⚠️ **Acima do herói**, para o passo (1) do roteiro ser a seta
+/// para cima — e dentro da banda (ver [`BANDA_ACIMA`]).
+const ESPINHO_Y: f32 = 1.5;
 
 /// Onde o herói nasce. ⚠️ **Abaixo da fileira de espinhos**, para o passo (1) do roteiro ser uma
 /// tecla: a seta para cima leva-o ao primeiro.
-pub const HEROI_Y: f32 = -2.0;
+pub const HEROI_Y: f32 = 0.0;
 
 const CHAO_RGBA: [f32; 4] = [0.13, 0.14, 0.17, 1.0];
 const HEROI_RGBA: [f32; 4] = [0.35, 0.62, 0.95, 1.0];
@@ -160,7 +178,7 @@ fn espinhos(world: &mut World) {
             },
             SignalOnHit(GOLPE.to_owned()),
             Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], ESPINHO_RGBA),
-            Transform::from_translation(Vec2::new(x, 0.0)),
+            Transform::from_translation(Vec2::new(x, ESPINHO_Y)),
         ));
     }
 }

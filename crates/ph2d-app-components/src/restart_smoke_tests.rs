@@ -258,27 +258,39 @@ fn quem_nasce_escolhido_tem_a_seccao_e_o_corpo() {
     );
 }
 
-/// ⚠️ **O pátio CABE na banda que o dono vê** — a régua que a foto do abanão obrigou a escrever: o
-/// que sobra com a timeline aberta é ~metade da janela.
+/// ⭐⭐⭐ **TUDO O QUE A CENA MONTA ESTÁ DENTRO DA BANDA QUE O DONO VÊ** — e a régua mudou depois
+/// da FOTO.
+///
+/// ⛔⛔ **A 1.ª redacção deste gate media a ALTURA do conteúdo** (`4,0 m` contra uma banda de
+/// `5,0 m`) e dava **verde** com o herói FORA DO ECRÃ, a `−2,0` m. *Uma altura não diz ONDE*: a
+/// banda de canvas que sobra com a timeline aberta **não está centrada na origem** — sobram
+/// `~4,2 m` acima e `~1,3 m` abaixo (medido na foto, `1930×1012` a `100 %`).
+///
+/// ⚠️ É a mesma família do defeito que o abanão pagou dois dias antes (*a bomba fora do ecrã com os
+/// dez gates da cena verdes*), com a **assimetria** no lugar da distância.
+///
+/// **Mutações que devem sangrar:** pôr qualquer peça abaixo de `−BANDA_ABAIXO` ou acima de
+/// `BANDA_ACIMA`.
 #[test]
-fn a_cena_cabe_na_banda_que_o_dono_ve() {
+fn tudo_o_que_a_cena_monta_esta_dentro_da_banda() {
     let (mut sim, _) = montada();
     let mundo = sim.world_mut();
-    let alto = mundo
-        .query::<&Transform>()
+    let fora: Vec<(String, f32)> = mundo
+        .query::<(&Name, &Transform, &Sprite)>()
         .iter(mundo)
-        .map(|t| t.translation.y)
-        .fold(f32::MIN, f32::max);
-    let baixo = mundo
-        .query::<&Transform>()
-        .iter(mundo)
-        .map(|t| t.translation.y)
-        .fold(f32::MAX, f32::min);
-    let banda = ph2d_ecs::GameCamera::default().height_world * 0.5;
+        // ⚠️ **O chão fica de fora**: ele é maior que a vista de propósito, e mede-se pelo CENTRO.
+        .filter(|(n, _, _)| n.0 != "Ground")
+        .map(|(n, t, _)| (n.0.clone(), t.translation.y))
+        .filter(|(_, y)| *y > BANDA_ACIMA || *y < -BANDA_ABAIXO)
+        .collect();
     assert!(
-        alto - baixo < banda,
-        "a cena mede {:.2} m de alto e a banda enquadra ~{banda:.2} m — as luzes ou os espinhos \
-         ficam fora do ecrã",
-        alto - baixo
+        fora.is_empty(),
+        "estas peças ficam FORA DO ECRÃ (a banda vai de −{BANDA_ABAIXO} a +{BANDA_ACIMA} m): \
+         {fora:?}"
     );
+    // ⛔ **E o CONTROLO: a cena tem mesmo peças** — sem ele um `montar` que não montasse nada
+    // passaria por vácuo.
+    let mundo = sim.world_mut();
+    let pecas = mundo.query::<&Sprite>().iter(mundo).count();
+    assert!(pecas >= 7, "piso de população: a cena monta {pecas} peças");
 }

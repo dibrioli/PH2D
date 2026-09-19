@@ -2289,9 +2289,16 @@ a mesma linha**. ⇒ eu recebi um relatório e não sei se ele é do motor novo 
 única coisa que a corrida existia para responder.
 
 *Um instrumento de bissecção que não se identifica não bissecta nada.* ⇒ a [`Relatorio`] ganha
-`bisseccao` e a linha acaba em **`grelha medida`** ou **`grelha 1 camada (POR ORDEM)`**, com gate de
-TEXTO na shell nas três pontas da fiação (o contador existe · a corrente enche-o · o relatório
-lê-o) — o alvo pede um `GpuContext` e não é alcançável de um teste.
+`bisseccao` e a linha acaba em **`uma-camada-por-ordem=0`** (o motor novo) ou **`=1`** (o de antes),
+com gate de TEXTO na shell nas três pontas da fiação (o contador existe · a corrente enche-o · o
+relatório lê-o) — o alvo pede um `GpuContext` e não é alcançável de um teste.
+
+⚠️ **E o marcador vive DENTRO da linha de formato, não num `&str` à parte:** a 1.ª redacção pôs
+duas frases num `let`, e **as duas ficaram vermelhas em dois portões de uma vez** — o censo do HR-15
+leu-as como texto com cara de língua no fonte da shell, e o `let` levou a
+`fase_frame_profile_report` a `205` LOC contra o tecto de `200`. *Um número dentro do formato não
+precisa de isenção nenhuma e não custa uma linha*; o corte foi por aí, nunca por uma entrada nova
+numa lista de dívida.
 
 ### §30.2 — ⭐⭐⭐ O segundo é REAL e é meu: a decisão contava metade do custo
 

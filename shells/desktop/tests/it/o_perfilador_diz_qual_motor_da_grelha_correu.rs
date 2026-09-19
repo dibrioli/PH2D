@@ -28,14 +28,11 @@ fn o_perfilador_diz_qual_motor_da_grelha_correu() {
         RELATORIO.contains("FRAME_PROF_BISSECCAO.with(std::cell::Cell::get)"),
         "o relatório deixou de LER o contador da bissecção"
     );
+    // ⚠️ O marcador vive DENTRO da linha de formato, e não num `&str` à parte: ali ele seria texto
+    // com cara de língua no fonte da shell, e o censo do HR-15 manda-o para uma isenção nomeada.
+    // *Um número dentro do formato não precisa de isenção nenhuma.*
     assert!(
-        RELATORIO.contains("{grelha}"),
+        RELATORIO.contains("uma-camada-por-ordem={bisseccao}"),
         "a linha do perfilador deixou de NOMEAR o motor da grelha"
-    );
-    // ⚠️ E as duas leituras têm de ser DISTINGUÍVEIS — uma delas escrita nos dois braços seria um
-    // marcador que marca sempre a mesma coisa.
-    assert!(
-        RELATORIO.contains("grelha 1 camada (POR ORDEM)") && RELATORIO.contains("grelha medida"),
-        "os dois braços do marcador têm de dizer coisas diferentes"
     );
 }

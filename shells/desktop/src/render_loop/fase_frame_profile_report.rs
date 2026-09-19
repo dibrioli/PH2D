@@ -95,13 +95,6 @@ impl crate::App {
         // água com a etiqueta da simulação. *Um instrumento que mente é pior que instrumento
         // nenhum*, e quem o apanhou foi o aviso de variável não usada.
         let (pecas, varreduras, vizinhos, separacoes, grandes, bisseccao) = numeros_da_separacao();
-        // ⚠️ O motor da grelha, NOMEADO na linha: sem isto as duas rotas de um A/B imprimem a mesma
-        // coisa quando o corte não arma, e o report não diz qual delas correu.
-        let grelha = if bisseccao == 1 {
-            "grelha 1 camada (POR ORDEM)"
-        } else {
-            "grelha medida"
-        };
         let (tiques_avg, tiques_max, tiques_n) = janela(
             &FRAME_PROF_SIM_SUM_US,
             &FRAME_PROF_SIM_MAX_US,
@@ -221,7 +214,7 @@ impl crate::App {
                      | acquire(medido)={acq_ms:.2}ms | fora-do-encode={outside_ms:.2}ms \
                      | painter-dispatch(cpu)={dispatch_ms:.2}ms \
                      ({prev_mpx:.2} M px publicados em {prev_n} quadros) | hero-paint={hero_ms:.2}ms\n\
-                     [frame]   MOTION (cozer + separar): media {motion_avg:.2}ms pico {motion_max:.2}ms em {motion_n}/120 · {pecas} pecas x {varreduras} varreduras x {vizinhos} vizinhos, {separacoes} separacao(oes)/quadro, {grandes} grande(s), {grelha} \
+                     [frame]   MOTION (cozer + separar): media {motion_avg:.2}ms pico {motion_max:.2}ms em {motion_n}/120 · {pecas} pecas x {varreduras} varreduras x {vizinhos} vizinhos, {separacoes} separacao(oes)/quadro, {grandes} grande(s), uma-camada-por-ordem={bisseccao} \
                      | SIMULACAO (os tiques): media {tiques_avg:.2}ms pico {tiques_max:.2}ms em {tiques_n}/120\n\
                      [frame]   tool-tick: media {tick_avg:.2}ms pico {tick_max:.2}ms em {tick_n}/120 frames \
                      | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120 \

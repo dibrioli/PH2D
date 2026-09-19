@@ -149,15 +149,23 @@ fn o_roteiro_ensina_a_acrescentar_um_ponto_onde_falta_controlo() {
     let quem = texto.find("BARRA LARANJA obedece").expect("quem governa a barra");
     let pincel = texto.find("PINCEL DE PESO NA BARRA").expect("a licao do pincel");
     let caneta = texto.find("A OUTRA SAIDA").expect("a outra saida");
+    // ⚠️⚠️ **A régua é o VÃO entre as lições, e não a distância entre os princípios delas** — a 1.ª
+    // redacção media `inicio → inicio` e reprovou no dia em que a lição do meio **cresceu**, sobre
+    // um roteiro correcto. *Uma régua que cresce com o tamanho do que ela separa mede a coisa
+    // errada.*
+    let vao = |a: usize, b: usize| {
+        let fim = texto[a..].find(");").map_or(a, |k| a + k);
+        b.saturating_sub(fim)
+    };
     assert!(
-        pincel > quem && pincel - quem < 800,
-        "a licao do pincel ficou a {} bytes de quem governa a barra",
-        pincel.saturating_sub(quem)
+        pincel > quem && vao(quem, pincel) < 400,
+        "a licao do pincel ficou a {} bytes do fim de quem governa a barra",
+        vao(quem, pincel)
     );
     assert!(
-        caneta > pincel && caneta - pincel < 800,
-        "a outra saida ficou a {} bytes da licao do pincel",
-        caneta.saturating_sub(pincel)
+        caneta > pincel && vao(pincel, caneta) < 400,
+        "a outra saida ficou a {} bytes do fim da licao do pincel",
+        vao(pincel, caneta)
     );
 }
 

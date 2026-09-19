@@ -343,19 +343,27 @@ pub fn bind(
             .map(|e| nome(*e))
             .collect::<Vec<_>>()
             .join(", ");
-        let meio = osso_do_meio(sim, raiz).map_or_else(|| nome(raiz), nome);
+        // ⚠️ **O osso da PONTA, e não o do meio** — e a diferença é a única coisa que torna o passo
+        // demonstrável: *em repouso o peso não move nada*, qualquer que seja ele. O artista tem de
+        // DOBRAR alguma coisa primeiro, e o osso que ele dobra é o mesmo que ele pinta — é assim
+        // que a pincelada tem um efeito para mostrar. (Medido na mesma pose: `0,141983` contra
+        // `0,000000` da lei de ontem.)
+        let ponta_da_barra = nome(ponta_da_cadeia(sim, raiz));
         eprintln!(
             "[vec-bone-smoke] a BARRA LARANJA obedece a «{lista}» — e mais nenhum osso da cena lhe \
              toca. ⚠️ O braco PINTADO tem um esqueleto SEPARADO: escolher um osso dele e pintar na \
              barra nao faz nada, e esta' certo."
         );
         eprintln!(
-            "[vec-bone-smoke] PINCEL DE PESO NA BARRA: escolha «{meio}» (o osso do MEIO dela), \
-             carregue «Weight» no painel Bones e arraste POR CIMA DA BARRA, longe das duas pontas. \
-             ⭐ Desde 19/09 a barra MUDA DE FORMA ali: o desenho deixou de ser a curva dos pontos \
-             de controlo e passou a ser a imagem verdadeira dela. Antes disso o pincel RECUSAVA \
-             aquele sitio — os oito nos da barra estao todos nas duas pontas, e a mancha era \
-             ancorada no no' mais perto."
+            "[vec-bone-smoke] PINCEL DE PESO NA BARRA, e a ORDEM importa: (1) em «Transform», \
+             arraste o CORPO de «{ponta_da_barra}» (o ultimo osso da barra) para dobrar a ponta \
+             dela -- EM REPOUSO o peso nao move nada, seja ele qual for; (2) escolha a linha \
+             «{ponta_da_barra}» na Hierarquia e carregue «Weight» no painel Bones; (3) arraste POR \
+             CIMA DA BARRA, no MEIO dela, longe das duas pontas. ⭐ A barra MUDA DE FORMA ali \
+             (medido: 0,141983 contra 0,000000 da lei de ontem). Ate' 19/09 o pincel RECUSAVA \
+             aquele sitio -- os oito nos da barra estao todos nas duas pontas, e a mancha era \
+             ancorada no no' mais perto. ⚠️ Os oito pontos coloridos NAO mudam: eles mostram onde o \
+             peso e' GUARDADO, e o que muda entre eles e' a FORMA."
         );
         eprintln!(
             "[vec-bone-smoke] ⭐ A OUTRA SAIDA, se quiser um no' de verdade ali: pegue na CANETA e \

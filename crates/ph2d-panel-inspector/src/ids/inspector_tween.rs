@@ -102,3 +102,13 @@ pub const INSP_TWEEN_AO_ACABAR: [NodeId; 2] = [
     hash_node_id("insp_tween_ao_acabar_0"),
     hash_node_id("insp_tween_ao_acabar_1"),
 ];
+
+/// ⭐⭐⭐ **Os TRÊS presets de um clique** — *Fade In* · *Fade Out* · *Flash*.
+///
+/// ⚠️ O comprimento é o do `ph2d_tween::Preset::ALL`, com gate: *um preset sem chip existe, tem lei,
+/// tem gates — e o artista não lhe chega.*
+pub const INSP_TWEEN_PRESET: [NodeId; 3] = [
+    hash_node_id("insp_tween_preset_0"),
+    hash_node_id("insp_tween_preset_1"),
+    hash_node_id("insp_tween_preset_2"),
+];

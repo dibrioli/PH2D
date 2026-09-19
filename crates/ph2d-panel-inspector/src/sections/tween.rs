@@ -338,6 +338,26 @@ fn editor(
             ColorToken::Text3,
         );
     }
+    // ⭐⭐⭐ **Os PRESETS primeiro** — eles reescrevem tudo o que vem a seguir, e é isso que os põe
+    // em cima: *um botão que muda os cinco campos abaixo dele lê-se; um que os muda acima, não.*
+    let presets: Vec<&str> = ph2d_tween::Preset::ALL.iter().map(|p| p.label()).collect();
+    cur_y = grupo(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.tween.preset"),
+        &crate::ids::INSP_TWEEN_PRESET,
+        &presets,
+        // ⚠️ **NENHUM fica aceso**, e é a decisão: um preset não é um MODO — depois do clique ele
+        // desaparece e sobram os cinco campos. Acender um deles prometeria um estado que o
+        // componente não guarda, e ele mentiria no instante em que o artista afinasse um número.
+        usize::MAX,
+    );
     let canal = Canal::from_tag(row.canal);
     let canais: Vec<&str> = Canal::ALL.iter().map(|c| c.label()).collect();
     cur_y = grupo(

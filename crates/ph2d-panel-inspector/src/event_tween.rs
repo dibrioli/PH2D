@@ -54,6 +54,14 @@ pub(crate) fn apply_tween_event(
         // ⚠️ **Os quatro grupos de chips, cada um pela POSIÇÃO no array** — a mesma lei que o
         // `SignalVerb::from_tag` escreve: a posição **é** a tag, e reordenar o array faria um
         // clique escrever outro valor (e compila).
+        // ⭐⭐⭐ Os PRESETS — antes dos outros grupos, porque um clique num deles reescreve o que
+        // eles mostram.
+        if let Some(n) = crate::ids::INSP_TWEEN_PRESET.iter().position(|&c| c == id)
+            && let Ok(n) = u8::try_from(n)
+        {
+            push(host, bits, TweenFieldEdit::Preset(i, n));
+            return true;
+        }
         for (ids_, faz) in [
             (
                 &crate::ids::INSP_TWEEN_CANAL[..],

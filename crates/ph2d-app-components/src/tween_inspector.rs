@@ -131,6 +131,38 @@ pub fn apply_tween_edit(world: &mut World, entity_bits: u64, edit: &TweenFieldEd
             t.easing.mode = m;
             true
         }),
+        // ⭐⭐⭐ **O PRESET escreve DUAS coisas, e a segunda é o que o faz um clique.**
+        //
+        // ⚠️ Sem a duração, o artista fica com um *flash* de **um segundo** (o valor de fábrica do
+        // timer) — oito vezes mais lento do que a coisa que ele pediu —, e lê isso como *«o preset
+        // não funcionou»*. ⛔ E ela vai para o `Timers` do MESMO ÍNDICE, que é o relógio dele.
+        TweenFieldEdit::Preset(i, tag) => {
+            let p = ph2d_tween::Preset::from_tag(*tag);
+            let mexeu = campo(&mut tweens, *i, |t| {
+                let novo = p.tween();
+                if *t == novo {
+                    return false;
+                }
+                *t = novo;
+                true
+            });
+            // ⚠️ **O `Tweens` tem de estar LARGADO antes de pegar no `Timers`** — dois `get_mut`
+            // vivos sobre o mesmo `World` não compilam, e é o compilador a dizer que são dois
+            // componentes. ⛔ **E isso NÃO se escreve com um `drop`**: um `Option<Mut<_>>` não tem
+            // destrutor, logo o empréstimo acaba na ÚLTIMA LEITURA (o `campo` acima) e o `drop`
+            // explícito é só ruído que o clippy recusa (`drop_non_drop`). *A cerca é a ordem das
+            // linhas, e ela é verificada pelo compilador — não por um comentário.*
+            let relogio = world
+                .get_mut::<ph2d_ecs::Timers>(e)
+                .and_then(|mut ts| {
+                    let t = ts.0.get_mut(*i as usize)?;
+                    (t.duration_us != p.duracao_us()).then(|| {
+                        t.duration_us = p.duracao_us();
+                    })
+                })
+                .is_some();
+            mexeu || relogio
+        }
         TweenFieldEdit::AoAcabar(i, tag) => campo(&mut tweens, *i, |t| {
             let novo = AoAcabar::from_tag(*tag);
             if t.ao_acabar == novo {

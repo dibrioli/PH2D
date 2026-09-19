@@ -57,6 +57,8 @@ use serde::{Deserialize, Serialize};
 
 mod canal;
 pub use canal::Canal;
+mod preset;
+pub use preset::Preset;
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]

@@ -193,3 +193,96 @@ fn escrever_o_mesmo_valor_nao_conta_como_mudanca() {
         &TweenFieldEdit::AoAcabar(0, t.ao_acabar.tag())
     ));
 }
+
+/// ⭐⭐⭐ **UM CLIQUE NUM PRESET DEIXA O PAINEL SEM QUEIXA** — e o gate mede a PORTA da queixa, que
+/// é o que o artista lê.
+///
+/// ⚠️ **É a régua certa e não «os campos batem»:** um preset que escrevesse `de == para`, ou o
+/// `Flash` com `Hold`, produziria um tween que o painel acusa no mesmo instante — *e um botão que
+/// deixa um aviso aceso lê-se como um botão partido*.
+///
+/// ⛔ E a metade que a torna honesta é o CONTROLO: o tween de fábrica **tem** queixa (ele nasce com
+/// um canal de aparência e a cena do gate não tem sprite), senão isto passaria por vacuidade.
+#[test]
+fn um_preset_deixa_o_painel_sem_queixa() {
+    for p in ph2d_tween::Preset::ALL {
+        let (mut w, e) = mundo(1, 1, true);
+        assert!(apply_tween_edit(
+            &mut w,
+            e,
+            &TweenFieldEdit::Preset(0, p.tag())
+        ));
+        let i = build_tween_info(&w, e, 1).unwrap();
+        assert_eq!(
+            i.rows[0].queixa(i.tem_sprite),
+            None,
+            "o preset `{}` deixou uma queixa",
+            p.label()
+        );
+    }
+    // ⛔ O CONTROLO: sem sprite, o MESMO preset de aparência queixa-se — a porta está viva.
+    let (mut w, e) = mundo(1, 1, false);
+    apply_tween_edit(
+        &mut w,
+        e,
+        &TweenFieldEdit::Preset(0, ph2d_tween::Preset::Flash.tag()),
+    );
+    let i = build_tween_info(&w, e, 1).unwrap();
+    assert!(
+        i.rows[0].queixa(i.tem_sprite).is_some(),
+        "controlo: sem sprite a queixa TEM de existir"
+    );
+}
+
+/// ⭐⭐⭐ **E ele escreve TAMBÉM a duração do relógio** — é isso que o faz um clique em vez de dois.
+///
+/// ⚠️ Sem esta metade o artista fica com um *flash* de **um segundo** (o valor de fábrica do
+/// timer), oito vezes mais lento do que a coisa que ele pediu, e lê isso como *«o preset não
+/// funcionou»*. **A mutação que apaga a escrita do timer tem de sangrar aqui.**
+#[test]
+fn um_preset_escreve_tambem_a_duracao_do_relogio() {
+    let (mut w, e) = mundo(1, 1, true);
+    let ent = Entity::from_bits(e);
+    let antes = w.get::<Timers>(ent).unwrap().0[0].duration_us;
+    assert_eq!(
+        antes, 1_000_000,
+        "controlo: o timer de fabrica dura um segundo"
+    );
+
+    apply_tween_edit(
+        &mut w,
+        e,
+        &TweenFieldEdit::Preset(0, ph2d_tween::Preset::Flash.tag()),
+    );
+    assert_eq!(
+        w.get::<Timers>(ent).unwrap().0[0].duration_us,
+        ph2d_tween::Preset::Flash.duracao_us(),
+        "o preset nao escreveu a duracao"
+    );
+    // …e um preset diferente escreve outra: o gate distingue as DUAS leis.
+    apply_tween_edit(
+        &mut w,
+        e,
+        &TweenFieldEdit::Preset(0, ph2d_tween::Preset::FadeOut.tag()),
+    );
+    assert_eq!(
+        w.get::<Timers>(ent).unwrap().0[0].duration_us,
+        ph2d_tween::Preset::FadeOut.duracao_us()
+    );
+}
+
+/// ⚠️ **Um preset sem timer no mesmo índice escreve o TWEEN e cala-se sobre o relógio** — e ainda
+/// conta como mudança, porque o tween mudou.
+#[test]
+fn um_preset_sem_relogio_escreve_o_que_pode() {
+    let (mut w, e) = mundo(1, 0, true);
+    assert!(apply_tween_edit(
+        &mut w,
+        e,
+        &TweenFieldEdit::Preset(0, ph2d_tween::Preset::Flash.tag())
+    ));
+    assert_eq!(
+        w.get::<Tweens>(Entity::from_bits(e)).unwrap().0[0].canal,
+        Canal::Silhueta
+    );
+}

@@ -430,6 +430,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.tween.curve" => "Curve",
         "panel.inspector.tween.ease" => "Ease",
         "panel.inspector.tween.when_done" => "When Done",
+        "panel.inspector.tween.preset" => "Preset",
         // ⚠️ **As quatro QUEIXAS, e as duas primeiras dizem que ele nem CORRE** — dizer «ele não
         // move nada» a quem não tem relógio é mandá-lo resolver a metade errada.
         "panel.inspector.tween.no_timer_at_this_slot" => {

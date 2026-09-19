@@ -106,6 +106,13 @@ pub enum TweenFieldEdit {
     Modo(u8, u8),
     /// A tag do `AoAcabar`.
     AoAcabar(u8, u8),
+    /// ⭐⭐⭐ **Um PRESET de um clique** — `(índice, tag do `ph2d_tween::Preset`)`.
+    ///
+    /// ⚠️ **Ele escreve os CAMPOS e nada mais fica dele** (a lei do módulo de presets: *açúcar
+    /// sobre o motor, nunca 2.º motor*) — mais a **duração do relógio**, que é o que o torna um
+    /// clique em vez de dois. ⛔ Não há um campo `preset` no componente: depois de carregar, os
+    /// cinco campos estão à vista e todos se mexem.
+    Preset(u8, u8),
 }
 
 #[cfg(test)]

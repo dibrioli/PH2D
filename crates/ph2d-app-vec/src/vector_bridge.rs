@@ -45,6 +45,15 @@ use style::{
 /// downcast fica confinado a este bridge (allowlist da gate
 /// `no_downcast_to_concrete_tool_in_shell`); o resto do shell chama por aqui. No-op se
 /// a tool Vector não está no registry.
+pub fn set_bone_action(tools: &mut ToolRegistry, acao: ph2d_tool_vector::BoneAction) {
+    if let Some(tool) = tools.tool_by_id_mut(&ToolId::new("vector")).and_then(|t| {
+        t.as_any_mut()
+            .downcast_mut::<ph2d_tool_vector::VectorTool>()
+    }) {
+        tool.set_bone_action(acao);
+    }
+}
+
 pub fn set_mode(tools: &mut ToolRegistry, mode: ph2d_tool_vector::DrawMode) {
     if let Some(tool) = tools.tool_by_id_mut(&ToolId::new("vector")).and_then(|t| {
         t.as_any_mut()

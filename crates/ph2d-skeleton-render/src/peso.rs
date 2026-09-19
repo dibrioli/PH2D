@@ -17,10 +17,22 @@ use ph2d_vector::{Affine, Brush, Circle, Color as VelloColor, Fill, Point, Strok
 
 /// O raio de cada ponto, em píxeis de ecrã.
 ///
-/// ⚠️ **Pequeno de propósito:** ele tem de deixar ver a ARTE por baixo — um ponto que a tapa
-/// responde *«qual é o peso aqui»* e apaga *«o que está aqui»*, e o artista precisa dos dois ao
-/// mesmo tempo para saber se a correcção caiu no sítio certo.
-pub const WEIGHT_DOT_R_PX: f64 = 2.5;
+/// ⚠️ **Ele tem de deixar ver a ARTE por baixo** — um ponto que a tapa responde *«qual é o peso
+/// aqui»* e apaga *«o que está aqui»*, e o artista precisa dos dois ao mesmo tempo para saber se a
+/// correcção caiu no sítio certo.
+///
+/// ⛔⛔ **Mas `2,5` era pequeno demais para a cor ser LEGÍVEL, e o número que o diz é o vão entre
+/// dois nós desenhados** (report do dono, 2026-09-19: *«nada fica vermelho e nada fica azul»*):
+///
+/// | grandeza | píxeis |
+/// |---|---|
+/// | dois nós vizinhos da barra da cena | `70,7` |
+/// | o ponto de então (raio) | `2,5` — **`3,5 %`** do vão |
+/// | o ponto de hoje (raio) | `5,0` — `14 %` do vão, `60,7` px de folga entre vizinhos |
+///
+/// ⚠️ **E o diâmetro de `10` px não é escolhido:** é a família das alças de gradiente desta casa
+/// (`~9` px), que é o tamanho a que um ponto de UI deste app já é apontável e legível.
+pub const WEIGHT_DOT_R_PX: f64 = 5.0; // LITERAL-PX-OK: raio de ecrã, tabela medida acima
 
 /// A opacidade dos pontos.
 ///

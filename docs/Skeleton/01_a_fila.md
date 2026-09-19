@@ -521,7 +521,93 @@ uma forma vectorial é hoje impossível, porque não há lá peso nenhum para co
   passaria a ser deformado por uma amostragem dele em vez de pelos próprios pontos — o que muda o
   que o traço é. ⛔ Arquitectura, e não é minha para decidir.
 
-Mutação **21 de 21** a sangrar, **quatro** delas sobreviventes à primeira e curadas com gates novos.
+#### ⛔⛔⛔ E O SMOKE SEGUINTE REPROVOU OUTRA VEZ — *«nada fica vermelho e nada fica azul»*
+
+⭐⭐⭐ **A causa foi a minha PRÓPRIA cura anterior a expor um segundo defeito que ela escondia.** A
+porta que responde *«que arte está sob o cursor»* media a **distância ao PONTO posado mais perto** —
+e os pontos de uma forma vivem nos CANTOS dela. Medido na barra da cena, com o cursor a meio do
+comprimento:
+
+| cursor em `x` | achou a arte? |
+|---|---|
+| `−8,4` (canto) | sim |
+| `−8,0` … `−2,0` (todo o miolo) | **NÃO** |
+| `−1,6` (canto) | sim |
+
+Sem arte encontrada não há ponto nenhum para desenhar ⇒ a tela fica **vazia**, que é o report à
+letra. ⚠️⚠️ **E enquanto o raio valia `20` unidades de mundo (`2 000` px) isto era invisível**, porque
+a arte era sempre encontrada — *por acidente*. ⇒ **um número a fazer dois trabalhos esconde o defeito
+do segundo enquanto estiver errado no primeiro**: aqui eram *«até onde o pincel alcança»* (um
+tamanho de pincel) e *«que arte está debaixo do dedo»* (um teste de acerto), e o segundo **nunca foi
+uma distância**.
+
+⇒ a porta passa a perguntar pela **SILHUETA POSADA**: dentro do contorno achatado (par/ímpar) para um
+caminho, dentro de um triângulo posado para uma imagem, com a proximidade a um SEGMENTO — e nunca a
+um vértice — como rede para o caminho ABERTO, que não tem interior. ⛔ Tudo em geometria pura: a
+crate é folha e não traz a `kurbo` para responder a um teste de ponto. ⭐ Quem CONTÉM ganha de quem
+está perto, senão com duas artes sobrepostas o dedo pintaria a que só passa por ali.
+
+#### ⭐ E a segunda observação do dono estava CERTA, com a cura ao contrário do que parece
+
+*«parece que os pesos não são aplicados apenas nos nós, mas também nos handles (alças)»* — **é
+verdade, e tem de continuar a ser**: o esqueleto transforma a âncora **e** as duas alças, e uma alça
+parada com a âncora a andar quebrava a curva. O que estava errado era o **DESENHO**: numa forma de
+cantos arredondados as alças ficam em posições distintas, logo `8` nós apareciam como **`24`
+pontinhos**, e a leitura era ruído. ⇒ o indicador mostra **um ponto por NÓ**; a lei continua a
+devolver os três. ⚠️ **E as duas metades são gateadas juntas**, porque as curas seriam opostas:
+esconder o desenho e apagar o efeito leem-se igual numa tabela.
+
+⭐ **Medido: âncora e alças nunca divergem nesta arte** (`divergem 0` nos três ossos), o que torna o
+ponto do nó uma descrição fiel e não um resumo. ⛔ Elas **podem** divergir em geral (o peso sai da
+POSIÇÃO, e uma alça longa alcança território de outro osso), e é por isso que a mancha continua a
+apanhá-las pelo espaço.
+
+#### O ponto era pequeno demais para a cor ser legível
+
+| grandeza | píxeis |
+|---|---|
+| dois NÓS vizinhos da barra | `70,7` |
+| o ponto de então (raio) | `2,5` — **`3,5 %`** do vão |
+| o ponto de hoje (raio) | `5,0` — `14 %` do vão |
+
+⚠️ O diâmetro de `10` px não é escolhido: é a família das alças de gradiente desta casa (`~9` px).
+⛔ E a rampa foi **ilibada com número** antes de se lhe tocar: os dois extremos são tokens de hue
+`25` e `235` — vermelho e azul de verdade.
+
+**Resultado, pelo caminho do produto, com o cursor no meio da barra:** `8` pontos, **`4` vermelhos e
+`4` azuis** no `Bone 1` e no `Bone 3`; uma cor só no `Bone 2`, que é a resposta CERTA (o osso do
+meio de uma cadeia de três sobre oito nós não possui nada) — *e foi ele que o meu passo de smoke
+mandou clicar*.
+
+#### ⛔⛔⛔ E A FOTOGRAFIA ACHOU UM TERCEIRO DEFEITO QUE GATE NENHUM PODIA VER
+
+Com os dois curados acima, a tela continuava vazia — e o que o mostrou foi **ver**, não medir. A
+sonda `PH2D_VEC_WEIGHT_PROBE=1` arma o verbo, escolhe o osso pelo NOME e pousa o cursor no meio da
+barra; com ela, o diagnóstico do caminho do produto diz `pontos=8` e **a tela não os desenha**.
+
+⭐⭐⭐ **A causa: para escolher entre CAMINHO e IMAGEM eu perguntei `tem Sprite?`** — e no app (ao
+contrário da fixtura de unidade) **uma forma vectorial também carrega um `Sprite`**. Toda arte
+vectorial ia pelo ramo da imagem, onde o `SkinnedMesh` não parseia, a porta respondia *«não achei»*
+e não havia ponto nenhum. ⚠️ **A porta certa já existia no mesmo ficheiro** (a `e_caminho`, escrita
+para o indicador uma hora antes): *duas respostas à mesma pergunta divergem, e estas divergiram em
+duas horas.*
+
+⚠️⚠️ **E a fixtura de unidade estava VERDE sobre o defeito** porque a entidade dela não tinha
+`Sprite` — *uma fixtura que não contém o fenómeno não prova nada sobre ele*. Ela passou a ter um, e
+a mutação que repõe a pergunta pelo `Sprite` sangra.
+
+#### ⚠️ E o que a foto mostrou a seguir mudou o SMOKE, não o código
+
+Com tudo certo, na barra laranja o artista **continua a ver uma cor só** — e a razão é geométrica:
+os `8` nós dela estão nos dois extremos, e **a câmara da cena corta a ponta esquerda**, que é a que
+o `Bone 1` possui. Com o `Bone 1` vê-se o extremo direito (todo a `0`, azul); com o `Bone 3`, o
+contrário.
+
+⭐⭐⭐ **Na IMAGEM pintada da mesma cena o indicador é o que devia ser:** `925` pontos numa nuvem
+densa de **azul → vermelho**. ⇒ *o pincel é demonstrável na mídia que tem malha, e quase inútil numa
+forma de oito nós* — que é a pergunta de produto abaixo, agora com foto dos dois lados.
+
+Mutação **27 de 27** a sangrar, **cinco** delas sobreviventes à primeira e curadas com gates novos.
 
 ⏳ **ABERTO e nomeado:** o caminho de **GPU** não conhece as manchas — dívida **com gate**
 (`a_pele_da_placa_nao_conhece_as_correccoes_e_isso_esta_nomeado`), inofensiva só enquanto ele não

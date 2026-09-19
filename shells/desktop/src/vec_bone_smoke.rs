@@ -109,6 +109,59 @@ impl crate::App {
                                 hero.store.bump_panel_z(
                                     <ph2d_panel_skeleton::SkeletonPanel as ph2d_editor_core::panel::Panel>::NODE_ID,
                                 );
+                                // ⭐⭐⭐ **A SONDA DA FOTOGRAFIA** (`PH2D_VEC_WEIGHT_PROBE=1`) — ela
+                                // arma o verbo `Weight`, escolhe o 1.º osso e pousa o cursor no meio
+                                // da barra, que e' o estado que o artista alcanca com tres gestos.
+                                //
+                                // ⛔⛔ **Ela existe porque a lei da casa manda FOTOGRAFAR um smoke
+                                // antes de ele ir ao dono, e os pontos do peso so' aparecem com o
+                                // verbo ARMADO e o rato SOBRE a arte** — um arranque limpo nao os
+                                // mostra, logo duas curas seguidas foram-lhe enviadas sem eu alguma
+                                // vez ter visto o que ele veria. *Uma foto que nao contem o fenomeno
+                                // nao prova nada sobre ele.*
+                                //
+                                // ⚠️ Ela NAO muda o caminho de omissao: sem a env nada disto corre, e
+                                // o gate `a_sonda_do_peso_nao_toca_no_caminho_de_omissao` di-lo.
+                                if std::env::var_os("PH2D_VEC_WEIGHT_PROBE").is_some() {
+                                    // ⛔⛔ **Na FERRAMENTA, nunca no `draw_config`** — a 1.ª redacção
+                                    // escreveu no segundo e a foto mostrou o painel do *Transform*: o
+                                    // `draw_config` e' uma CO'PIA derivada, reescrita da ferramenta a
+                                    // cada quadro pela `fase_tool_mirrors`. *Escrever num espelho lê-se
+                                    // como escrever no objecto, até alguem fotografar.*
+                                    ph2d_app_vec::vector_bridge::set_mode(
+                                        &mut gfx.tools,
+                                        ph2d_tool_vector::DrawMode::Bone,
+                                    );
+                                    ph2d_app_vec::vector_bridge::set_bone_action(
+                                        &mut gfx.tools,
+                                        ph2d_tool_vector::BoneAction::Weight,
+                                    );
+                                    // ⚠️ **Pelo NOME, e nunca «o primeiro que a iteracao der»:** o
+                                    // osso do MEIO de uma cadeia de tres nao possui nada nesta arte, e
+                                    // uma foto tirada com ele escolhido mostraria UMA cor so' — que e'
+                                    // exactamente o retrato que o report de 19/09 trouxe.
+                                    let escolhido = gfx
+                                        .sim
+                                        .world()
+                                        .iter_entities()
+                                        .find(|er| {
+                                            er.get::<ph2d_skeleton_ecs::Bone>().is_some()
+                                                && er.get::<ph2d_ecs::Name>().is_some_and(|n| {
+                                                    n.0 == if std::env::var("PH2D_VEC_WEIGHT_PROBE")
+                                                        .as_deref()
+                                                        == Ok("2")
+                                                    {
+                                                        "Bone 14"
+                                                    } else {
+                                                        "Bone 1"
+                                                    }
+                                                })
+                                        })
+                                        .map(|er| er.id().to_bits());
+                                    if let Some(b) = escolhido {
+                                        hero.gizmo.selection = Some(b);
+                                    }
+                                }
                             }
                             if pro.enquadrar {
                                 hero.bus.push(
@@ -124,4 +177,21 @@ impl crate::App {
             _ => {}
         }
     }
+}
+
+/// ⭐⭐⭐ **ONDE A SONDA DA FOTOGRAFIA POUSA O CURSOR** — `None` sem a env, que é o caminho de todos.
+///
+/// O meio da barra laranja em mundo, que é onde o report do dono de 2026-09-19 estava: ali a arte
+/// tem interior e nenhum vértice por perto, logo é o ponto que separa *«a porta pergunta pela
+/// silhueta»* de *«a porta mede a distância a um canto»*.
+///
+/// ⚠️ **Lida UMA vez** (`OnceLock`): ela corre no caminho do cursor, que é por quadro.
+pub(crate) fn sonda_do_peso() -> Option<[f64; 2]> {
+    static P: std::sync::OnceLock<Option<[f64; 2]>> = std::sync::OnceLock::new();
+    *P.get_or_init(|| {
+        std::env::var("PH2D_VEC_WEIGHT_PROBE").ok().map(|v| {
+            // `=2` aponta a` IMAGEM pintada (malha densa); o resto, ao meio da barra.
+            if v == "2" { [5.0, 2.5] } else { [-5.0, 2.5] }
+        })
+    })
 }

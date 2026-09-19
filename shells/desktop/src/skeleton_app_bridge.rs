@@ -77,7 +77,16 @@ impl crate::App {
             return;
         };
         // ⭐ E o TERCEIRO slot da mesma leitura — ver o doc do `weight_cursor`.
-        self.skeleton.weight_cursor = Some(world);
+        //
+        // ⭐⭐⭐ **A SONDA DA FOTOGRAFIA manda aqui, e só aqui** (`PH2D_VEC_WEIGHT_PROBE=1`): os
+        // pontos do peso só existem com o rato SOBRE a arte, e numa tela virtual o rato não se
+        // move — o XTest é ignorado e o `ydotool` mexeria no rato REAL do dono. Sem ela, duas
+        // curas seguidas foram enviadas sem eu alguma vez ter visto o que ele veria.
+        //
+        // ⚠️ **Ela mora NESTE sítio porque o cursor é reescrito a cada quadro:** a 1.ª redacção
+        // pousava-o no prólogo da cena e o quadro seguinte apagava-o — *um estado que outra coisa
+        // recalcula por quadro não se semeia uma vez*.
+        self.skeleton.weight_cursor = Some(crate::vec_bone_smoke::sonda_do_peso().unwrap_or(world));
         let px_to_world = self.vec_px_to_world();
         // ⚠️ O osso em FOCO entra: a alça da força só existe onde ela se desenha, e o que a desenha
         // é a selecção. Sem ele o dedo procuraria uma alça que não está na tela.

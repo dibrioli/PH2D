@@ -24,6 +24,21 @@ impl crate::App {
         // Mirror the tool's mode + shape params for the input dispatch's
         // pen-vs-shape routing (the downcast lives in the bridge).
         self.vec.draw_config = vec_cfg;
+        // ⭐⭐⭐ **A SONDA DA FOTOGRAFIA arma o verbo AQUI, e o sítio é a lei dela**
+        // (`PH2D_VEC_WEIGHT_PROBE=1`, ver [`crate::vec_bone_smoke::sonda_do_peso`]).
+        //
+        // ⛔⛔ **Escolher um osso FORÇA o verbo a `Transform`** (a porta de aresta da
+        // `fase_selection_mirror_bone_focus`, com razão: o artista que acabou de escolher um osso
+        // quer transformá-lo). Uma sonda que arme o verbo no prólogo da cena é reposta no quadro
+        // seguinte — *duas fotos seguidas mostraram-me o painel do `Transform` e eu li as duas como
+        // «o pincel não desenha nada»*.
+        //
+        // ⇒ ela mora na ÚNICA linha que escreve o espelho, logo ganha a toda a porta de aresta e a
+        // tudo o que lê `draw_config` a jusante — o painel e o overlay.
+        if crate::vec_bone_smoke::sonda_do_peso().is_some() {
+            self.vec.draw_config.mode = ph2d_tool_vector::DrawMode::Bone;
+            self.vec.draw_config.bone_action = ph2d_tool_vector::BoneAction::Weight;
+        }
 
         // ADR-0114 W2 T2.17 (ready-to-smoke): ativar a tool Flip num documento
         // VAZIO cria um objeto inicial (1 camada) pra desenhar na hora — sem

@@ -28,32 +28,6 @@ use ph2d_i18n::tr;
 
 const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
 
-/// Uma linha de aviso. Devolve o `y` seguinte. (Gémea da da fábrica — ver a irmã.)
-#[allow(clippy::too_many_arguments)]
-fn warn(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    texto: &str,
-    token: ColorToken,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(token, theme),
-    );
-    y + font + ph2d_tokens::control_gap_px()
-}
-
 /// Um segmentado. ⚠️ **A selecção vem do SNAPSHOT, nunca do store** — ler o store faria o primeiro
 /// clique depois de trocar de objecto mandar o valor do objecto anterior.
 #[allow(clippy::too_many_arguments)]
@@ -83,28 +57,24 @@ fn seg_row(
         resolve(ColorToken::Text2, theme),
     );
     let row_y = y + font + Spacing::Xs.px();
-    let gap = Spacing::Xs.px();
-    let n = ids.len() as f32;
-    let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
-    for (i, &id) in ids.iter().enumerate() {
-        let rect = Rect::new(x + (cw + gap) * i as f32, row_y, cw, ph2d_tokens::ROW_H_PX);
-        hit_index.register(id, rect);
-        let kind = if i == escolhido {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        };
-        paint_button(
-            &Button::new(id, rotulos.get(i).copied().unwrap_or(""))
-                .kind(kind)
-                .visual(store.button_visual(id)),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    row_y + ph2d_tokens::row_pitch_px()
+    // ⭐⭐ **A disposição é a PORTA da casa** — ver o irmão em `sections/anim.rs` (2026-09-19): as
+    //    quatro linhas que repartiam a coluna em partes IGUAIS cortavam `Top-Down` · `Custom` ·
+    //    `Don't Turn` · `Face Move` a `48 px` cada, com as palavras a caberem de sobra na coluna.
+    let segments: Vec<(&str, bool, ph2d_a11y::NodeId)> = ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (rotulos.get(i).copied().unwrap_or(""), i == escolhido, id))
+        .collect();
+    let seg_h = ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive(
+        Rect::new(x, row_y, w, ph2d_tokens::ROW_H_PX),
+        &segments,
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    row_y + seg_h + ph2d_tokens::control_gap_px()
 }
 
 /// **Os AVISOS** — a metade que responde a *«pus o componente e ele não anda»*.
@@ -123,7 +93,7 @@ fn avisos(
 ) -> f32 {
     let mut cur_y = y;
     if !i.has_body {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -134,7 +104,7 @@ fn avisos(
             ColorToken::Danger,
         );
     } else if !i.body_is_kinematic {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -148,7 +118,7 @@ fn avisos(
         );
     }
     if i.conflicts_with_platformer {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -161,7 +131,7 @@ fn avisos(
             ColorToken::Warn,
         );
     } else if !i.clock_playing {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -414,7 +384,7 @@ fn deslize(
     );
     cur_y += CHECK_H + ph2d_tokens::control_gap_px();
     if !i.default_controls {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -469,7 +439,7 @@ pub(crate) fn paint_topdown_section(
     };
     let mut cur_y = y + header_h;
     if info.selected_count > 1 {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,

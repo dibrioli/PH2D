@@ -35,32 +35,6 @@ use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{BitmaskGrid32, paint_bitmask_grid32};
 use ph2d_i18n::tr;
 
-/// Uma linha de aviso. Devolve o `y` seguinte.
-#[allow(clippy::too_many_arguments)]
-fn warn(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    texto: &str,
-    token: ColorToken,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(token, theme),
-    );
-    y + font + ph2d_tokens::control_gap_px()
-}
-
 // ⭐ **A caixa de marcar desta secção MUDOU-SE para a porta** (2026-09-15) — este ficheiro tinha a
 //    quarta cópia do mesmo `register` + `checkbox_visual` + `bool → CheckboxValue`, e a lei *«o
 //    valor vem do SNAPSHOT, nunca do store»* estava escrita em cada uma delas.
@@ -85,7 +59,7 @@ fn camera_body(
     // ⚠️ **Os avisos vêm ANTES dos números**, e é deliberado: quem não vê a câmera reagir não quer
     // afinar um amortecimento — quer saber porquê.
     if !cam.active {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -96,7 +70,7 @@ fn camera_body(
             ColorToken::Warn,
         );
     } else if !info.is_active_camera && info.camera_count > 1 {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -215,7 +189,7 @@ fn follow_body(
     );
 
     if !f.target.trim().is_empty() && !f.target_found {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -296,7 +270,7 @@ fn limits_body(
 ) -> f32 {
     let mut cur_y = y;
     if l.smaller_than_view {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -447,7 +421,7 @@ pub(crate) fn paint_camera_section(
     let mut cur_y = y + header_h;
 
     if info.selected_count > 1 {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,

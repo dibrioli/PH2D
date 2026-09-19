@@ -39,6 +39,10 @@ use std::path::{Path, PathBuf};
 //    `#[cfg(test)]`, porque já está dentro de um). *A enumeração apodrece; a lei não.*
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
+    (
+        "segmented_layout.rs",
+        "aritmetica pura de disposicao (larguras e quebra de fileira); nao emite no' nem pinta — quem regista a a11y e o hit de cada peca e' o `panel_chrome::paint_segmented_group_adaptive`, que a chama.",
+    ),
     // ⚠️ **A GEOMETRIA de uma linha não tem semântica própria** (2026-09-14): o `row.rs` reparte
     //    uma faixa entre um nome e um controlo — quem tem nome, papel e foco é o CONTROLO,
     //    registado por quem o desenha. Um nó aqui poria um alvo focável por baixo de cada linha do

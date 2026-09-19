@@ -34,32 +34,6 @@ use ph2d_i18n::{tr, tr_with};
 
 const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
 
-/// Uma linha de aviso. Devolve o `y` seguinte. (Gémea da da câmera — ver o irmão.)
-#[allow(clippy::too_many_arguments)]
-fn warn(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    texto: &str,
-    token: ColorToken,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(token, theme),
-    );
-    y + font + ph2d_tokens::control_gap_px()
-}
-
 /// O segmentado do ONDE. ⚠️ A selecção vem do SNAPSHOT, nunca do store.
 #[allow(clippy::too_many_arguments)]
 fn where_row(
@@ -302,7 +276,7 @@ fn factory_body(
     }
     // ⭐ **O número que muda sozinho** — é ele que responde *«a fábrica está a trabalhar?»* sem o
     // artista contar objectos no ecrã.
-    warn(
+    super::rows::aviso(
         scene,
         text_system,
         theme,
@@ -330,7 +304,7 @@ fn factory_avisos(
 ) -> f32 {
     let mut cur_y = y;
     if f.recipe.trim().is_empty() || !f.recipe_found {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -342,7 +316,7 @@ fn factory_avisos(
         );
     }
     if f.on_signal.trim().is_empty() {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -353,7 +327,7 @@ fn factory_avisos(
             ColorToken::Warn,
         );
     } else if !clock_playing {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -398,7 +372,7 @@ fn lifecycle_body(
     );
     // ⭐⭐ **A metade honesta** — a lei é *a morte só alcança quem nasceu numa corrida*.
     if !info.is_spawned {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -443,7 +417,7 @@ fn lifecycle_body(
     }
     if l.outside_margin.is_some() {
         if !info.has_game_camera {
-            cur_y = warn(
+            cur_y = super::rows::aviso(
                 scene,
                 text_system,
                 theme,
@@ -516,7 +490,7 @@ pub(crate) fn paint_factory_section(
     };
     let mut cur_y = y + header_h;
     if info.selected_count > 1 {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,

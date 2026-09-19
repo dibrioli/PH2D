@@ -251,7 +251,14 @@ fn paint_head(
     // superfície que o diz — a Hierarquia mostra a árvore, não o vínculo. ⚠️ A frase sai do modelo
     // (`provenance()`): *Instance* e *Variant* são estados diferentes, e escrevê-la aqui poria a
     // escolha num sítio que nenhum gate de modelo alcança.
-    paint_text(
+    // ⭐⭐⭐ **PINTA A QUEBRAR, porque a ALTURA já era a da frase QUEBRADA** (2026-09-19).
+    //
+    // ⛔⛔ O cartão media com `text_h` (`layout(text, font, max_w).height()`, que **quebra**) e
+    //    pintava com `paint_text`, que **elide para uma linha** desde 06/09 — *duas leis para o
+    //    mesmo texto, e o espaço já estava reservado para a segunda linha que nunca era pintada*.
+    //    Medido na coluna de `252 px` com uma cópia real na mão:
+    //    `2 override(s) on this piece · 1 unused · 1 a…`.
+    paint_text_block(
         text_system,
         scene,
         &info.provenance(),
@@ -264,7 +271,7 @@ fn paint_head(
     // ⚠️ **O avanço é o MEDIDO** — ver a nota da altura: um `+= line` fixo aqui é exactamente o que
     // punha o resumo por cima da 2.ª linha da proveniência.
     ty += super::text_h(text_system, &info.provenance(), font, tw, line);
-    paint_text(
+    paint_text_block(
         text_system,
         scene,
         &info.summary(),

@@ -262,17 +262,19 @@ fn range_and_timing_rows(
     // animação não anda naquele ritmo. O Inspector não a edita (a §8.8 põe essa edição no editor de
     // timeline futuro); ele diz que ela existe, que é a diferença entre um dado e um mistério.
     if row.has_per_frame_timing() {
-        paint_text(
-            text_system,
+        // ⭐ **É uma FRASE, logo QUEBRA** — a porta é a mesma dos avisos das outras secções
+        //    (`rows::aviso`, 2026-09-19). Medida na coluna de `268 px` ela saía
+        //    `• this animation has per-frame timing (impor…`.
+        cur_y = super::rows::aviso(
             scene,
-            tr("panel.inspector.animation.this_animation_has_per_frame"),
+            text_system,
+            theme,
             x,
-            cur_y,
-            TypeToken::Sm.px(),
             w,
-            resolve(ColorToken::Warn, theme),
+            cur_y,
+            tr("panel.inspector.animation.this_animation_has_per_frame"),
+            ColorToken::Warn,
         );
-        cur_y += TypeToken::Sm.px() + ph2d_tokens::control_gap_px();
     }
     for (chave, id, passo, unidade) in DEPOIS {
         cur_y = super::rows::fields_row(

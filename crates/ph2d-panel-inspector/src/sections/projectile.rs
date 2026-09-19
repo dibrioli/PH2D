@@ -24,32 +24,6 @@ use ph2d_i18n::tr;
 
 const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
 
-/// Uma linha de aviso. Devolve o `y` seguinte. (Gémea da do irmão de vista de cima.)
-#[allow(clippy::too_many_arguments)]
-fn warn(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    texto: &str,
-    token: ColorToken,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(token, theme),
-    );
-    y + font + ph2d_tokens::control_gap_px()
-}
-
 /// **Os AVISOS** — a metade que responde a *«pus o componente e ele não faz nada»*.
 ///
 /// ⚠️ Eles vêm ANTES dos números, e por isso são uma função própria: quem não vê nada mexer não
@@ -66,7 +40,7 @@ fn avisos(
 ) -> f32 {
     let mut cur_y = y;
     if !i.has_body {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -77,7 +51,7 @@ fn avisos(
             ColorToken::Danger,
         );
     } else if !i.body_is_kinematic {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -91,7 +65,7 @@ fn avisos(
         );
     }
     if i.flight_over {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -102,7 +76,7 @@ fn avisos(
             ColorToken::Text3,
         );
     } else if !i.clock_playing {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -263,7 +237,7 @@ fn corpo(
         // ⚠️ **Um nome escrito que ninguém tem** não é o mesmo que nenhum nome, e o painel diz a
         // diferença — senão um alvo apagado lê-se como uma perseguição partida.
         if i.homing_target_missing {
-            cur_y = warn(
+            cur_y = super::rows::aviso(
                 scene,
                 text_system,
                 theme,
@@ -336,7 +310,7 @@ pub(crate) fn paint_projectile_section(
     };
     let mut cur_y = y + header_h;
     if info.selected_count > 1 {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,

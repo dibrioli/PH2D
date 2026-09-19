@@ -120,32 +120,6 @@ const ROTULOS: [(TextKey, f64, Option<ph2d_editor_core::widget::Unit>); 19] = [
     ), // LITERAL-PX-OK: fracção do tamanho ao nascer
 ];
 
-/// Uma linha de aviso. (Gémea da do projéctil — ver a irmã.)
-#[allow(clippy::too_many_arguments)]
-fn warn(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    texto: &str,
-    token: ColorToken,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(token, theme),
-    );
-    y + font + ph2d_tokens::control_gap_px()
-}
-
 /// Um título de módulo — a arrumação que separa *quantas* de *como saem* e de *como são*.
 fn titulo(
     scene: &mut VectorScene,
@@ -190,28 +164,25 @@ fn seg_row(
     escolhido: usize,
 ) -> f32 {
     let row_y = titulo(scene, text_system, theme, x, w, y, titulo_txt);
-    let gap = Spacing::Xs.px();
-    let n = ids.len() as f32;
-    let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
-    for (i, &id) in ids.iter().enumerate() {
-        let rect = Rect::new(x + (cw + gap) * i as f32, row_y, cw, ph2d_tokens::ROW_H_PX);
-        hit_index.register(id, rect);
-        let kind = if i == escolhido {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        };
-        paint_button(
-            &Button::new(id, rotulos.get(i).copied().unwrap_or(""))
-                .kind(kind)
-                .visual(store.button_visual(id)),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    row_y + ph2d_tokens::row_pitch_px()
+    // ⭐⭐ **A disposição é a PORTA da casa** — ver o irmão em `sections/anim.rs` (2026-09-19). Esta
+    //    cópia não chegou a cortar nada porque os rótulos dela são curtos (`Point · Sphere · Box`,
+    //    `Local · World`); ⚠️ *o que a fazia passar era o CORPUS, não a lei* — e uma cópia que hoje
+    //    cabe é a que corta no dia em que alguém traduzir.
+    let segments: Vec<(&str, bool, ph2d_a11y::NodeId)> = ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (rotulos.get(i).copied().unwrap_or(""), i == escolhido, id))
+        .collect();
+    let seg_h = ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive(
+        Rect::new(x, row_y, w, ph2d_tokens::ROW_H_PX),
+        &segments,
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    row_y + seg_h + ph2d_tokens::control_gap_px()
 }
 
 /// Uma caixa.

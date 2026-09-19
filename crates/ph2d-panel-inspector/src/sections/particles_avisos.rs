@@ -19,7 +19,7 @@ pub(super) fn avisos(
 ) -> f32 {
     let mut cur_y = y;
     if !i.clock_playing {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -32,7 +32,7 @@ pub(super) fn avisos(
             ColorToken::Text3,
         );
     } else if i.alive == 0 {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -46,7 +46,7 @@ pub(super) fn avisos(
         );
     }
     if !i.emitting {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -303,7 +303,7 @@ pub(crate) fn paint_particles_section(
     };
     let mut cur_y = y + header_h;
     if info.selected_count > 1 {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,

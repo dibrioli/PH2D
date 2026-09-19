@@ -25,6 +25,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (file slug under `widget/`, one-line reason).
 const WIDGET_OPT_OUT: &[(&str, &str)] = &[
     (
+        "segmented_layout",
+        "nao e' um widget: e' a LEI DA DISPOSICAO do grupo segmentado (quantas pecas por fileira e que largura tem cada uma), lida pelo pintor de chrome e pelo medidor de altura. Ela nao pinta um pixel nem tem controlo proprio — quem a galeria mostra e' o `SegmentedAdaptive`, que a consome. Nasceu em 2026-09-19 do CORTE por responsabilidade que o tecto de 500 LOC daquele ficheiro impos.",
+    ),
+    (
         "list_rows",
         "not a widget: it is the ALTERNATING TONE a list paints BEHIND its rows (the Blender Outliner law the owner pointed at, 2026-09-06) — it registers nothing, has no state and paints no control; a gallery section for it would show a rectangle 5/255 away from the one behind it, and the rows it stripes (`list_item`, the Hierarchy, the Inspector lists) are already shown. The law is proved by `widget::list_rows::tests` (which measures the SCENE) and by `ph2d-panel-hierarchy/tests/it/the_rows_of_the_list_touch.rs` (which measures the PRODUCT)",
     ),

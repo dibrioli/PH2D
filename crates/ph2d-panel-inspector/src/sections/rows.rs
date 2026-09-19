@@ -299,3 +299,134 @@ pub(super) fn num_row_unit(
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
     y + ph2d_tokens::row_pitch_px()
 }
+
+/// ⭐⭐⭐ **O AVISO de uma secção — uma FRASE, e por isso ela QUEBRA.**
+///
+/// ⛔⛔⛔ **Esta porta nasceu de duas medições no mesmo dia (2026-09-19).**
+///
+/// **(a) Ela estava escrita SEIS vezes, byte a byte igual** — `audio` · `camera` · `factory` ·
+/// `particles` · `projectile` · `topdown` —, cada cópia com um doc a dizer *«gémea da do
+/// projéctil — ver a irmã»*. *Uma lei escrita em seis sítios não é uma lei.*
+///
+/// **(b) E as seis pintavam com a lei de um RÓTULO.** O `paint_text` **elide para uma linha**
+/// desde 06/09 (report do dono: *«a palavra passa para baixo e some»*), o que está certo para o
+/// nome de uma fileira e **errado para uma frase**. Medido pela varredura de elisões com o
+/// Inspector armado, na coluna de `268 px`:
+///
+/// | frase | como saía |
+/// |---|---|
+/// | `These are the scene's ears — sound is heard from here.` | `…sound is hear…` |
+/// | `Nothing is born from this object — put this on the recipe a Factory makes.` | `…put this o…` |
+///
+/// ⇒ ela passa pelo [`paint_text_block`], que existe PARA quebrar e **devolve a altura**; é a
+/// mesma cura que as três frases de estado vazio pagaram em 18/09.
+///
+/// ⚠️ **A altura VOLTA ao chamador e é ela que empurra o resto** — sem isso a segunda linha da
+/// frase é escrita por cima da fileira seguinte, que foi o defeito que a cura de 18/09 apanhou por
+/// mutação sobrevivente.
+///
+/// ⛔ **E o censo de elisões NÃO é régua disto:** um texto que quebra não passa pela lei da
+/// reticência, logo não deixa registo — *zero lê-se como aprovação*. A régua é a TINTA, no gate
+/// irmão da crate `ph2d-editor-core`.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn aviso(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    texto: &str,
+    token: ColorToken,
+) -> f32 {
+    let font = TypeToken::Sm.px();
+    let alta = ph2d_editor_core::paint::paint_text_block(
+        text_system,
+        scene,
+        texto,
+        x,
+        y,
+        font,
+        w,
+        resolve(token, theme),
+    );
+    y + alta.max(font) + ph2d_tokens::control_gap_px()
+}
+
+#[cfg(test)]
+mod aviso_tests {
+    use super::*;
+    use ph2d_editor_core::paint::paint_text;
+
+    /// A frase que a varredura de elisões apanhou cortada em `268 px` (secção AUDIO, 19/09).
+    const FRASE: &str = "These are the scene's ears — sound is heard from here.";
+    const COLUNA: f32 = 268.0;
+
+    fn mede(prosa: bool) -> (f32, bool) {
+        let mut ts = TextSystem::without_system_fonts();
+        let mut cena = VectorScene::new();
+        let (alta, medidos) = ph2d_editor_core::text_elide::elisao::medindo(|| {
+            if prosa {
+                aviso(
+                    &mut cena,
+                    &mut ts,
+                    Theme::Dark,
+                    0.0,
+                    COLUNA,
+                    0.0,
+                    FRASE,
+                    ColorToken::Text3,
+                )
+            } else {
+                paint_text(
+                    &mut ts,
+                    &mut cena,
+                    FRASE,
+                    0.0,
+                    0.0,
+                    TypeToken::Sm.px(),
+                    COLUNA,
+                    resolve(ColorToken::Text3, Theme::Dark),
+                );
+                0.0
+            }
+        });
+        let cortou = medidos.iter().any(|m| m.texto == FRASE && !m.coube());
+        (alta, cortou)
+    }
+
+    /// ⭐⭐⭐ **UM AVISO DE SECÇÃO É UMA FRASE: ele QUEBRA, e o pintor de RÓTULO corta.**
+    ///
+    /// ⛔⛔ **As duas metades são obrigatórias, e a segunda é o controlo.** Um texto que quebra
+    /// **não deixa registo na lei da reticência** — logo um aviso que simplesmente deixasse de ser
+    /// pintado leria-se exactamente igual a um que coube. *Zero lê-se como aprovação* (a lei que a
+    /// cura das frases de estado vazio já pagou em 18/09). ⇒ o lado que PROVA que a frase não cabe
+    /// nesta coluna é o pintor de rótulo, corrido sobre o mesmo texto e a mesma largura.
+    ///
+    /// ⚠️ E a ALTURA é a terceira metade: ela é o que empurra a fileira seguinte. Sem ela a 2.ª
+    /// linha da frase é escrita por cima do que vem abaixo — o defeito que a irmã de 18/09 só
+    /// apanhou por mutação sobrevivente.
+    ///
+    /// (Mutação: trocar o `paint_text_block` por `paint_text` ⇒ `cortou = true` e a altura cai para
+    /// uma linha, RED nas duas metades.)
+    #[test]
+    fn um_aviso_quebra_e_o_pintor_de_rotulo_corta() {
+        let (alta, cortou_prosa) = mede(true);
+        let (_, cortou_rotulo) = mede(false);
+        assert!(
+            cortou_rotulo,
+            "o CONTROLO não reproduz o fenómeno: {FRASE:?} caberia em {COLUNA} px pintada como \
+             rótulo — sem isso esta régua não afirma nada"
+        );
+        assert!(
+            !cortou_prosa,
+            "o aviso saiu CORTADO: ele é uma frase e tem de quebrar"
+        );
+        let uma_linha = TypeToken::Sm.px() + ph2d_tokens::control_gap_px();
+        assert!(
+            alta > uma_linha,
+            "o aviso devolveu {alta} px, a altura de UMA linha ({uma_linha}) — quem empilha por \
+             baixo vai escrever por cima da segunda linha"
+        );
+    }
+}

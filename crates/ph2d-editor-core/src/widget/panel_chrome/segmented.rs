@@ -214,17 +214,32 @@ pub fn paint_segmented_group_adaptive(
     }
     let _gap = segmented_gap();
     let labels: Vec<&str> = segments.iter().map(|(l, _, _)| *l).collect();
-    let widths = crate::widget::segmented_adaptive::segmented_natural_widths(&labels, text_system);
+    let widths = crate::widget::segmented_layout::segmented_natural_widths(&labels, text_system);
     // ONE answer to "how does this group wrap", shared with the measurer. See `segmented_row_counts`:
     // greedy flow, so a long list packs every row instead of stacking one button per line.
-    let rows = crate::widget::segmented_adaptive::segmented_row_counts(rect.w, &widths);
+    let rows = crate::widget::segmented_layout::segmented_row_counts(rect.w, &widths);
 
     let row_h = rect.h;
     // ⭐⭐⭐ **Um grupo que QUEBRA continua a ser UM corpo** — as fileiras encostam entre si como
     //    as peças encostam dentro de cada uma, e só os quatro cantos do BLOCO arredondam. É a lei
     //    do Blender nas duas direcções (`block_cells`), e é o que impede uma escolha entre irmãos
     //    de se ler como dois controlos por ter mudado de linha.
-    let block = crate::widget::block_cells(Rect::new(rect.x, rect.y, rect.w, 0.0), &rows, row_h);
+    //
+    // ⭐⭐⭐ **E dentro de cada fileira a peça leva o que a PALAVRA dela pede**
+    //    (`segmented_row_widths`, 2026-09-19): antes isto era `block_cells`, que reparte em partes
+    //    IGUAIS — e uma fileira podia caber inteira e ainda assim cortar a peça mais larga. *Duas
+    //    leis para uma disposição: a que quebra media cada rótulo, a que pintava não.*
+    let mut por_fileira: Vec<Vec<f32>> = Vec::with_capacity(rows.len());
+    let mut j = 0usize;
+    for count in &rows {
+        por_fileira.push(crate::widget::segmented_layout::segmented_row_widths(
+            rect.w,
+            &widths[j..j + count],
+        ));
+        j += count;
+    }
+    let refs: Vec<&[f32]> = por_fileira.iter().map(Vec::as_slice).collect();
+    let block = crate::widget::block_cells_of(Rect::new(rect.x, rect.y, rect.w, 0.0), &refs, row_h);
     let mut i = 0usize;
     for (r, count) in rows.iter().enumerate() {
         for k in 0..*count {

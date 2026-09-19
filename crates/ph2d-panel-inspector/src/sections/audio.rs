@@ -51,32 +51,6 @@ pub(crate) fn bus_options(labels: &[String]) -> Vec<DropdownOption<u8>> {
         .collect()
 }
 
-/// Uma linha de aviso. Devolve o `y` seguinte.
-#[allow(clippy::too_many_arguments)]
-fn warn(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    texto: &str,
-    token: ColorToken,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(token, theme),
-    );
-    y + font + ph2d_tokens::control_gap_px()
-}
-
 /// A fileira `Browse…` / `Preview` / `Stop`, **pela porta do grupo**.
 #[allow(clippy::too_many_arguments)]
 fn buttons(
@@ -183,7 +157,7 @@ fn source_body(
     // ⚠️ **Os avisos vêm ANTES dos números**, e é deliberado: quem não ouve nada não quer afinar um
     // expoente de atenuação — quer saber porquê.
     if src.sound.trim().is_empty() {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -194,7 +168,7 @@ fn source_body(
             ColorToken::Text3,
         );
     } else if src.file_missing {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -206,7 +180,7 @@ fn source_body(
         );
     }
     if src.never_sounds() {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -218,7 +192,7 @@ fn source_body(
         );
     }
     if info.listener_count == 0 {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -385,7 +359,7 @@ pub(crate) fn paint_audio_section(
     let mut cur_y = y + header_h;
 
     if info.selected_count > 1 {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -401,7 +375,7 @@ pub(crate) fn paint_audio_section(
     // ele faz. ⛔ Sem ela, anexar o `Audio Listener 2D` não muda nada na tela: exactamente o report
     // que o `Timers` custou.
     if info.is_listener {
-        cur_y = warn(
+        cur_y = super::rows::aviso(
             scene,
             text_system,
             theme,
@@ -425,7 +399,7 @@ pub(crate) fn paint_audio_section(
                     &[("n", &info.listener_count)],
                 )
             };
-            cur_y = warn(
+            cur_y = super::rows::aviso(
                 scene,
                 text_system,
                 theme,

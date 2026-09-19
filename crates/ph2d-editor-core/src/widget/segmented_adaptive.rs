@@ -9,12 +9,13 @@
 //! Inspector's narrow column width. Owns the option list + a11y; the
 //! paint helper registers per-segment hits as it lays them out.
 
-use super::panel_chrome::{paint_segmented_group_adaptive, segmented_gap};
+use super::panel_chrome::paint_segmented_group_adaptive;
+use super::segmented_layout::{segmented_natural_widths, segmented_row_counts};
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Spacing, Theme, TypeToken};
+use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
 #[derive(Clone, Debug)]
@@ -127,56 +128,6 @@ fn measure_segmented_group_adaptive(
     // cima destes botões e lhes mata o alvo* — está escrito no doc do `segmented_row_counts`, e
     // era exactamente o que ia acontecer.
     super::grid_height(rows, row_h)
-}
-
-/// Each label's natural width — the text plus the canonical breathing room. The paint side and the
-/// measure side must agree to the pixel, so they both come here.
-pub(crate) fn segmented_natural_widths(labels: &[&str], text_system: &mut TextSystem) -> Vec<f32> {
-    let font_size = TypeToken::Sm.px();
-    let pad_inside = Spacing::Lg.px() * 2.0;
-    labels
-        .iter()
-        .map(|label| text_system.layout(label, font_size, f32::INFINITY).width() + pad_inside)
-        .collect()
-}
-
-/// **How the group wraps: how many buttons on each row.** Greedy flow — fill a row with as many as fit
-/// at their natural widths, then start the next.
-///
-/// ⚠️ This replaced an **END-demotion** rule (fit a prefix in the top row, then give every leftover a
-/// full-width row of its own). The two agree wherever there are 0 or 1 leftovers, which is every group
-/// of two to four options in the app — so the difference was invisible until a list of **ten** arrived
-/// (the Impasto TOOL list) and rendered as three across the top and seven stacked one per line, each
-/// stretched edge to edge. Enio, 2026-07-19: *"deve organizar os botões como na primeira linha de
-/// botões, quantos couberem por linha e não um por linha."*
-///
-/// ⚠️ **Both the painter and the measurer call this**, and that is structural rather than tidy: they used
-/// to implement the wrap twice, and a container measured by one rule and filled by another is how the
-/// next section quietly paints over these buttons and kills their hit targets
-/// (`seam_impasto_rig.rs::no_impasto_widget_loses_its_hit_to_the_section_below`).
-///
-/// A label wider than the whole row still gets a row — never an empty one, or the walk would not
-/// terminate.
-pub(crate) fn segmented_row_counts(rect_w: f32, widths: &[f32]) -> Vec<usize> {
-    let gap = segmented_gap();
-    let mut rows = Vec::new();
-    let mut i = 0;
-    while i < widths.len() {
-        let mut n = 0usize;
-        let mut used = 0.0f32;
-        while i + n < widths.len() {
-            let extra = widths[i + n] + if n > 0 { gap } else { 0.0 };
-            if n > 0 && used + extra > rect_w {
-                break;
-            }
-            used += extra;
-            n += 1;
-        }
-        let n = n.max(1);
-        rows.push(n);
-        i += n;
-    }
-    rows
 }
 
 #[cfg(test)]

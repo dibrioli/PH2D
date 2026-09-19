@@ -64,30 +64,34 @@ fn segmented_row(
         resolve(ColorToken::Text2, theme),
     );
     let row_y = y + font + Spacing::Xs.px();
-    let gap = Spacing::Xs.px();
-    let n = ids_.len().max(1) as f32;
-    let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
-    for (i, (&id, text)) in ids_.iter().zip(labels.iter()).enumerate() {
-        let rect = Rect::new(x + (cw + gap) * i as f32, row_y, cw, ROW_H_PX);
-        hit_index.register(id, rect);
-        // ⚠️ **A seleção vem do SNAPSHOT**, não do store: o store guarda o visual do botão, e ler
-        // dali qual está aceso faria o realce sobreviver à troca de sprite.
-        let kind = if i == sel {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        };
-        paint_button(
-            &Button::new(id, *text)
-                .kind(kind)
-                .visual(store.button_visual(id)),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    row_y + ph2d_tokens::row_pitch_px()
+    // ⭐⭐⭐ **A disposição é a PORTA da casa, não uma cópia local** (2026-09-19).
+    //
+    // ⛔⛔ Aqui viviam quatro linhas que repartiam a coluna em `n` partes **iguais** — a terceira
+    //    cópia dessa lei no Inspector, e a que a varredura de elisões apanhou com o documento na
+    //    mão: `Inherit · Fwd · Rev · PP · PP Rev` dava `34,4 px` a cada uma e pintava `Inh…` e
+    //    `PP…`. *Uma lei escrita em quatro sítios não é uma lei.*
+    //
+    // ⭐ O que a porta traz de graça: a peça leva o que a PALAVRA pede, a fileira QUEBRA quando não
+    //    cabe, e as peças encostam como um grupo (a lei do Blender que o resto do painel já segue).
+    //
+    // ⚠️ **A selecção vem do SNAPSHOT**, não do store: o store guarda o visual do botão, e ler dali
+    //    qual está aceso faria o realce sobreviver à troca de sprite.
+    let segments: Vec<(&str, bool, NodeId)> = ids_
+        .iter()
+        .zip(labels.iter())
+        .enumerate()
+        .map(|(i, (&id, &text))| (text, i == sel, id))
+        .collect();
+    let seg_h = ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive(
+        Rect::new(x, row_y, w, ROW_H_PX),
+        &segments,
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    row_y + seg_h + ph2d_tokens::control_gap_px()
 }
 
 /// **As duas SUBSTITUIÇÕES do tocador** — a direcção e o laço que esta reprodução impõe por cima

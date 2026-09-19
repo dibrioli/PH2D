@@ -47,6 +47,7 @@ mod scrollbar_ids;
 pub mod section_cards;
 mod section_header;
 mod segmented_adaptive;
+mod segmented_layout;
 pub mod showcase;
 mod skin;
 mod slider;

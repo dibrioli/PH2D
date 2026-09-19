@@ -65,12 +65,68 @@ mod tests;
 /// daqui. A pergunta mais larga erra sempre para o lado **conservador**: com uma forma vectorial
 /// presa em qualquer sítio, o campo fica à vista. *Esconder um controlo vivo é pior do que mostrar
 /// um inerte.*
+///
+/// ⚠️⚠️ **LIMITE MEDIDO, necessário-mas-não-suficiente:** o envelope também é **inerte** numa forma
+/// presa a **UM** osso — os pesos renormalizam e o único osso leva sempre a fatia inteira (medido:
+/// `[1.0]` a `strength = 0,3` **e** a `4,0`; com **três** ossos vai de `[1, 0, 0]` a
+/// `[0,42, 0,58, 0]`). *O alcance só decide quando DOIS ossos disputam o mesmo ponto.* ⛔ Contar
+/// essa disputa por ponto seria caro e frágil ⇒ esta porta esconde o caso **claro** e mostra o
+/// resto, que é o lado conservador.
+///
+/// ⚠️ **E a pergunta por CENA foi APAGADA, não guardada:** ela ficou sem chamador no instante em que
+/// esta nasceu, e *uma lei viva que nenhum gesto consulta é uma lei órfã*.
+///
+/// ⛔⛔⛔ **E ELA É POR OSSO, não por cena — a 1.ª redacção errou por uma premissa MINHA que caiu.**
+/// Eu escrevi que *«o `SkinBind` guarda a malha e os pesos, **não** a que ossos ficou preso»*, e ele
+/// guarda: cada [`ph2d_skeleton_ecs::Tendon`] carrega o `StableId` do osso. ⇒ a pergunta larga
+/// («a CENA tem alguma forma vectorial?») acendia a mancha em **todos** os ossos de uma cena mista,
+/// e foi a cena que o dono pediu — a que mostra as duas mídias lado a lado — que a expôs.
 #[must_use]
-pub fn ha_forma_vectorial_presa(sim: &SimWorld) -> bool {
+pub fn o_envelope_deste_osso_manda(sim: &SimWorld, osso: ph2d_ecs::Entity) -> bool {
     let mundo = sim.world();
+    let Some(id) = mundo.get::<ph2d_ecs::StableId>(osso).copied() else {
+        // Sem identidade durável nenhum tendão o pode nomear — e a resposta conservadora é SIM,
+        // para nunca esconder um controlo vivo num osso acabado de nascer.
+        return true;
+    };
     let Some(mut q) = mundo.try_query::<(ph2d_ecs::Entity, &ph2d_skeleton_ecs::SkinBind)>() else {
         return false;
     };
-    q.iter(mundo)
-        .any(|(e, _)| !crate::skin_image::is_skinned_image(mundo, e))
+    q.iter(mundo).any(|(e, b)| {
+        !crate::skin_image::is_skinned_image(mundo, e) && b.tendons.iter().any(|t| t.bone == id)
+    })
+}
+
+#[must_use]
+pub fn influence_radius(sim: &SimWorld, bits: u64) -> Option<f64> {
+    let e = Entity::from_bits(bits);
+    let forca = sim.world().get::<Bone>(e)?.strength;
+    let (_, a, b) = crate::skin_live::bone_segments(sim)
+        .into_iter()
+        .find(|(x, _, _)| *x == bits)?;
+    Some((b[0] - a[0]).hypot(b[1] - a[1]) * forca.max(0.0))
+}
+
+/// **A região de influência de um osso** — `(raio, origem, ponta)` em MUNDO, para o overlay.
+pub fn influence_region(sim: &SimWorld, bits: u64) -> Option<(f64, [f64; 2], [f64; 2])> {
+    // ⭐⭐⭐ **A MANCHA SÓ EXISTE ONDE O ENVELOPE MANDA** (report do dono, 2026-09-18: *«o gizmo do
+    // envelope fica sempre visível mesmo quando não é usado?»* — sim, ficava).
+    //
+    // ⛔⛔ Com os pesos do **padrão-ouro** uma imagem deforma igual a `1` e a `2` (medido, coluna a
+    // coluna), logo num rig só de imagens esta região desenhava *«até onde este osso alcança»* sobre
+    // uma lei que **não usa alcance nenhum**. ⚠️ E o envelope não morreu — **mudou de dono**: uma
+    // forma vectorial presa continua na lei euclidiana, e ali a mancha diz a verdade.
+    //
+    // ⭐⭐ **A lei entra AQUI e não em quem desenha, porque esta porta tem DOIS consumidores** — o
+    // desenho da mancha e o **hit-test da alça**. Curar só o pintor deixaria o artista a arrastar
+    // uma alça invisível, que é pior do que a mancha a mais.
+    let e = Entity::try_from_bits(bits)?;
+    if !crate::esqueletos::o_envelope_deste_osso_manda(sim, e) {
+        return None;
+    }
+    let r = influence_radius(sim, bits)?;
+    let (_, a, b) = crate::skin_live::bone_segments(sim)
+        .into_iter()
+        .find(|(x, _, _)| *x == bits)?;
+    Some((r, a, b))
 }

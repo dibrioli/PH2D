@@ -86,3 +86,7 @@ pub mod test_support {
             })
     }
 }
+
+#[cfg(test)]
+#[path = "sonda_do_envelope_tests.rs"]
+mod sonda_do_envelope_tests;

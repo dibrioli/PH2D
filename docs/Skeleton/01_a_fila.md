@@ -59,6 +59,43 @@ diz onde ler o mecanismo:
 
 ---
 
+### F20 — ✅ **O GIZMO DO ENVELOPE SÓ EXISTE ONDE ELE MANDA, e agora POR OSSO** (report do dono, 2026-09-18)
+
+*«O gizmo do envelope fica sempre visível mesmo quando não é usado?»* — **sim, ficava.** A F17 curou
+o CAMPO do painel e deixou a **mancha** e a **alça** no canvas.
+
+⭐⭐ **A lei entra na [`influence_region`] e não em quem desenha, porque essa porta tem DOIS
+consumidores** — o desenho da mancha e o **hit-test da alça**. *Curar só o pintor deixaria o artista
+a arrastar uma alça invisível, que é pior do que a mancha a mais.*
+
+⛔⛔⛔ **E a pergunta passou de CENA para OSSO, porque uma premissa MINHA caiu.** Eu escrevi que *«o
+`SkinBind` guarda a malha e os pesos, **não** a que ossos ficou preso»* — e ele guarda
+(`Tendon::bone`, um `StableId`). Com a pergunta larga, numa cena **mista** a mancha acendia em
+**todos** os ossos — e foi **a cena que o dono pediu** que expôs isso, antes de ela existir.
+
+⭐⭐⭐ **E a medição que explica o resto do report** (*«não vi em nenhum dos casos o envelope fazer
+diferença na deformação»*): com **UM** osso o envelope é **INERTE** — os pesos renormalizam e o
+único osso leva sempre a fatia inteira (`[1.0]` a `0,3` **e** a `4,0`). Com **três**, ele manda
+(`[1, 0, 0]` → `[0,42, 0,58, 0]`). *O alcance só decide quando DOIS ossos disputam o mesmo ponto.*
+⚠️ ⇒ a porta é **necessária e não suficiente**: ela esconde o caso claro e mostra o resto, que é o
+lado conservador, e o limite está escrito nela.
+
+⛔ **A lei por CENA foi APAGADA, não guardada** — ficou sem chamador no instante em que a por osso
+nasceu, e *uma lei viva que nenhum gesto consulta é uma lei órfã*.
+
+⛔⛔ **E um gate de OUTRO assunto reprovou, com razão:** o `when_two_handles_overlap_the_nearer_one_wins`
+construía a sobreposição a partir da região, e a fixtura dele **deixou de conter o fenómeno** quando
+a lei mudou. *A cura é da fixtura, nunca da lei* — ela ganhou uma forma vectorial presa ao osso.
+
+⛔ Tecto de LOC (`707` contra `700`) curado por **CORTE**: a mancha mudou de **ficheiro e não de
+endereço** (`pub use`), a mesma lei que o `bend_live` já aplica no mesmo sítio.
+
+Mutação **4 de 4** a sangrar; portão `15 101` verdes.
+
+⏳ **ABERTO:** a **cena dedicada** que o dono pediu (*«melhor montar uma cena específica para me
+mostrar isso»*) — ela precisa de uma forma vectorial presa a uma corrente onde **dois** ossos
+disputem a mesma região, que é o único regime em que o envelope se vê.
+
 ### F19 — ✅ **O CHIP `Auto` DIZ QUE LADO DERIVA** (report do dono, 2026-09-18)
 
 *«IK Bend não funcionou com Auto IK e trocando CCw por CW no painel lateral»* — ⭐ **reproduzido, e

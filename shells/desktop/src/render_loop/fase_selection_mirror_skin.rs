@@ -51,8 +51,18 @@ impl crate::App {
         // pesos e **não** os ossos — logo *«este esqueleto tem forma vectorial?»* não é derivável.
         // A pergunta mais larga erra para o lado conservador: o campo fica à vista enquanto houver
         // uma forma vectorial presa em qualquer sítio.
+        // ⚠️ **POR OSSO e não por cena** — a 1.ª redacção perguntava à cena inteira, e numa cena
+        // MISTA (imagens de um lado, formas vectoriais do outro) ela acendia o campo nos dois. A
+        // premissa que a justificava era minha e caiu: o `SkinBind` **guarda** os ossos, em
+        // `Tendon::bone`.
+        let osso_do_painel = hero_screen
+            .as_ref()
+            .and_then(|h| crate::bone_gesture::selected_bone(sim, h.gizmo.iter_selected()))
+            .and_then(ph2d_ecs::Entity::try_from_bits);
         ph2d_panel_skeleton::set_current_envelope_manda(
-            ph2d_skeleton_live::esqueletos::ha_forma_vectorial_presa(sim),
+            osso_do_painel.is_none_or(|e| {
+                ph2d_skeleton_live::esqueletos::o_envelope_deste_osso_manda(sim, e)
+            }),
         );
         // E se a CENA tem esqueleto — é isso que faz a seção aparecer (ou não) fora do modo
         // Osso. ⛔ Sem esta metade ela seria um cabeçalho permanente num app que nunca viu

@@ -50,62 +50,106 @@ fn um_esqueleto_dentro_de_um_grupo_continua_a_ser_um() {
     );
 }
 
-/// Uma pele sem conteúdo — o que interessa a esta lei é a PRESENÇA do componente.
-fn pele_vazia() -> ph2d_skeleton_ecs::SkinBind {
-    ph2d_skeleton_ecs::SkinBind {
-        source: Vec::new(),
-        tendons: Vec::new(),
-    }
-}
-
-/// ⭐⭐⭐ **O ENVELOPE MANDA ONDE HÁ FORMA VECTORIAL, E SÓ AÍ** (report do dono, 2026-09-18).
+/// ⭐⭐⭐ **A PERGUNTA É POR OSSO, e é isso que faz uma cena MISTA ser legível** (report do dono,
+/// 2026-09-18: *«melhor montar uma cena específica para me mostrar isso»*).
 ///
-/// ⚠️ **As DUAS metades, porque as curas são opostas:** uma lei que respondesse sempre `true`
-/// deixaria o campo à vista num rig só de imagens (o controlo morto que o dono apanhou), e uma que
-/// respondesse sempre `false` esconderia o envelope das formas vectoriais, que é um controlo VIVO.
+/// ⛔⛔⛔ **A 1.ª redacção perguntava à CENA**, e numa cena com as duas mídias ela respondia `true`
+/// para **todos** os ossos — a cena que o dono pediu não mostraria diferença nenhuma. A premissa que
+/// a justificava era minha e **caiu**: eu escrevi que o `SkinBind` não guarda os ossos, e ele
+/// guarda (`Tendon::bone`, um `StableId`).
 #[test]
-fn o_envelope_manda_onde_ha_forma_vectorial_e_so_ai() {
+fn o_envelope_manda_no_osso_que_uma_forma_vectorial_usa_e_so_nele() {
     use ph2d_ecs::Transform;
 
-    // (a) cena VAZIA — nada preso, e o envelope pode vir a mandar ⇒ a resposta conservadora.
     let mut sim = SimWorld::default();
-    cadeias(&mut sim, 1);
-    assert!(
-        !ha_forma_vectorial_presa(&sim),
-        "uma cena sem NADA preso leu «ha' forma vectorial»: a lei esta' a contar entidades que \
-         nao tem pele"
-    );
+    let a = cadeias(&mut sim, 1)[0];
+    let b = cadeias(&mut sim, 1)[0];
+    assert_ne!(a, b, "as duas cadeias tem de ser esqueletos diferentes");
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let id = |e: Entity| {
+        sim.world()
+            .get::<ph2d_ecs::StableId>(e)
+            .copied()
+            .expect("id")
+    };
 
-    // (b) uma IMAGEM presa — o padrão-ouro manda, o envelope é inerte.
-    let imagem = sim
-        .world_mut()
-        .spawn((
-            Transform::IDENTITY,
-            ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
-            pele_vazia(),
-        ))
-        .id();
-    assert!(
-        !ha_forma_vectorial_presa(&sim),
-        "uma IMAGEM presa leu «ha' forma vectorial»: o envelope voltaria a ser pintado no rig \
-         onde ele e' provadamente inerte, que e' o report do dono a' letra"
-    );
+    // Uma FORMA VECTORIAL presa ao esqueleto `a`, e uma IMAGEM presa ao `b`.
+    let tendao = |e: Entity| ph2d_skeleton_ecs::SkinBind {
+        source: Vec::new(),
+        tendons: vec![ph2d_skeleton_ecs::Tendon {
+            bone: id(e),
+            rest: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+        }],
+    };
+    let forma = tendao(a);
+    let imagem = tendao(b);
+    sim.world_mut().spawn((Transform::IDENTITY, forma));
+    sim.world_mut().spawn((
+        Transform::IDENTITY,
+        ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+        imagem,
+    ));
 
-    // (c) e uma FORMA VECTORIAL presa — sem `Sprite`, a lei euclidiana manda e o campo volta.
-    sim.world_mut().spawn((Transform::IDENTITY, pele_vazia()));
     assert!(
-        ha_forma_vectorial_presa(&sim),
-        "uma FORMA VECTORIAL presa leu «nao ha'»: o envelope dela ficaria escondido, e ali ele \
-         manda como sempre — esconder um controlo VIVO e' pior do que mostrar um inerte"
+        crate::esqueletos::o_envelope_deste_osso_manda(&sim, a),
+        "o osso com a FORMA VECTORIAL perdeu o envelope: ali ele manda pela lei euclidiana, e \
+         esconde-lo tira um controlo VIVO"
     );
-
-    // ⚠️ E o CONTROLO de que é a PELE que decide, não a existência da entidade: tirar a pele à
-    // forma vectorial devolve a cena ao estado (b).
-    sim.world_mut()
-        .entity_mut(imagem)
-        .remove::<ph2d_skeleton_ecs::SkinBind>();
     assert!(
-        ha_forma_vectorial_presa(&sim),
-        "tirar a pele a' IMAGEM mudou a resposta: a lei esta' a olhar para a entidade errada"
+        !crate::esqueletos::o_envelope_deste_osso_manda(&sim, b),
+        "o osso so' com IMAGEM manteve o envelope: numa cena MISTA a pergunta larga acende os dois, \
+         e a cena que mostra a diferenca deixa de a mostrar"
+    );
+}
+
+/// ⭐⭐⭐ **A MANCHA E A ALÇA DO ENVELOPE PASSAM PELA MESMA PORTA** (report do dono, 2026-09-18:
+/// *«o gizmo do envelope fica sempre visível mesmo quando não é usado?»* — sim, ficava).
+///
+/// ⚠️ **A lei entra na `influence_region` e não em quem desenha, porque essa porta tem DOIS
+/// consumidores** — o desenho da mancha e o **hit-test da alça**. *Curar só o pintor deixaria o
+/// artista a arrastar uma alça invisível, que é pior do que a mancha a mais.*
+///
+/// ⛔⛔ **A 1.ª redacção deste gate media a lei por CENA e a premissa dele MORREU** quando ela passou
+/// a ser por OSSO — ele fica com a morte visível no diff, a medir a PORTA (que é o que o desenho e
+/// o pick chamam) em vez da lei, que já tem o gate dela acima.
+#[test]
+fn a_mancha_e_a_alca_passam_pela_mesma_porta() {
+    use ph2d_ecs::Transform;
+
+    let mut sim = SimWorld::default();
+    let so_imagem = cadeias(&mut sim, 1)[0];
+    let com_forma = cadeias(&mut sim, 1)[0];
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let id = |e: Entity| {
+        sim.world()
+            .get::<ph2d_ecs::StableId>(e)
+            .copied()
+            .expect("id")
+    };
+    let tendao = |e: Entity| ph2d_skeleton_ecs::SkinBind {
+        source: Vec::new(),
+        tendons: vec![ph2d_skeleton_ecs::Tendon {
+            bone: id(e),
+            rest: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+        }],
+    };
+    let forma = tendao(com_forma);
+    let imagem = tendao(so_imagem);
+    sim.world_mut().spawn((Transform::IDENTITY, forma));
+    sim.world_mut().spawn((
+        Transform::IDENTITY,
+        ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+        imagem,
+    ));
+
+    assert!(
+        crate::skin_live::influence_region(&sim, so_imagem.to_bits()).is_none(),
+        "a mancha foi desenhada num osso que so' uma IMAGEM usa: ela diz «ate' onde este osso \
+         alcanca» sobre uma lei que nao usa alcance nenhum, e a alca dela fica agarravel por cima"
+    );
+    assert!(
+        crate::skin_live::influence_region(&sim, com_forma.to_bits()).is_some(),
+        "a mancha sumiu do osso que uma FORMA VECTORIAL usa: o artista perdeu o controlo do \
+         alcance exactamente onde ele decide a deformacao"
     );
 }

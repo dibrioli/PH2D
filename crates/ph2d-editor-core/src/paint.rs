@@ -77,8 +77,8 @@ fn snap_x_apply(x: f32, snap: ph2d_tokens::SnapX) -> f32 {
 mod icons_paint;
 pub use icons_paint::{paint_icon, paint_icon_path, paint_icon_rotated};
 pub use text::{
-    paint_text, paint_text_block, paint_text_elided, paint_text_rotated_ccw, paint_text_title,
-    paint_text_title_elided,
+    label_column_width, paint_text, paint_text_block, paint_text_elided, paint_text_rotated_ccw,
+    paint_text_title, paint_text_title_elided,
 };
 
 /// Convert a `ph2d_tokens::Color` (sRGB 8-bit + alpha) to Vello's

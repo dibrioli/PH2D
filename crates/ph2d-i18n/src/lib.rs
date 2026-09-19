@@ -181,7 +181,14 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.timeline.length" => "Dur(s)",
         "panel.timeline.frame" => "Frame",
         "panel.timeline.loop" => "Loop",
-        "panel.timeline.ping_pong" => "PingPong",
+        // ⭐⭐ **`Ping-Pong`, com hífen — decisão do Enio (2026-09-19).** O app tinha DUAS grafias
+        // para a mesma coisa: `PingPong` aqui e `Ping-Pong` nos outros quatro sítios que a
+        // nomeiam (o menu desta mesma timeline, a tira do Flip, a direcção de animação do
+        // Inspector, o eco do áudio). ⚠️ E a grafia colada era justamente a que NÃO CABIA na
+        // coluna dela — `54,90 px` contra `52,0` —, o que a fazia pintar-se `PingPon…`:
+        // *duas grafias de uma coisa só, e a que o artista via era a truncada*. A colada saiu;
+        // há gate a exigir que estas duas concordem (`transport_toggle_column.rs`).
+        "panel.timeline.ping_pong" => "Ping-Pong",
         "panel.timeline.autokey" => "AutoKey",
         "panel.timeline.record" => "Record",
         // Motion Path keying mode (ADR-0141): a new position key is a trajectory

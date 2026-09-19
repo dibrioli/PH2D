@@ -31,7 +31,7 @@
 //! | a pintar **NADA** em inglês | **0** | **0** |
 //! | a pintar **NADA** no idioma de teste | **0** | **0** |
 //! | cortados (`prefixo…`) em inglês, ANTES da cura | 15 | 17 |
-//! | cortados hoje (número · frases · chip de escolha) | **10** | **10** — `CORTADOS_HOJE` |
+//! | cortados hoje (número · frases · chip de escolha · coluna de toggle) | **9** | **9** — `CORTADOS_HOJE` |
 //! | cortados no idioma de teste | ~130, em 16 painéis | — |
 //!
 //! ⚠️ **Um painel pintado com o estado de FÁBRICA mostra o estado VAZIO dele** (o Inspector sem
@@ -92,9 +92,15 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
     //    de invólucro; hoje ele DERIVA da lista que oferece. ⚠️ E o censo só via metade do defeito:
     //    `Ping-Pong` (`65,5`) e `Ease In-Out` (`72,9`) vivem nas mesmas listas e nunca foram
     //    pintados por omissão. Mecanismo: `ph2d-panel-flip-frames/src/toolbar_plan.rs::chip_w`.
+    // ✅ **O `PingPong` da barra da timeline SAIU em 19/09**, e por DUAS razões que chegaram
+    //    juntas: o dono unificou a grafia (`Ping-Pong`, a que os outros quatro sítios do app já
+    //    usavam) e a coluna de rótulo dos dez toggles deixou de ser o literal `52 px` — ela mede a
+    //    LISTA (`60,45` em inglês, `91,34` no idioma de teste). ⚠️ E o censo só via UM dos dez:
+    //    no idioma de teste **seis** daqueles rótulos estouravam a coluna, e nenhuma das duas leis
+    //    desta varredura pergunta isso — elas perguntam se algo pinta NADA. Mecanismo:
+    //    `ph2d-panel-timeline/tests/it/a_coluna_do_toggle_mede_a_lista.rs`.
     // ⛔ Opções e rótulos que não cabem no chip deles.
     ("grid_snap", "Line / Neighbors"),
-    ("timeline", "PingPong"),
     ("widget_gallery", "Float"),
     ("widget_gallery", "Color"),
     ("widget_gallery", "filter"),

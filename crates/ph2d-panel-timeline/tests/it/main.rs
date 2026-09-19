@@ -6,6 +6,7 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+mod a_coluna_do_toggle_mede_a_lista;
 mod buffer_curves_seam;
 mod close_button_seam;
 mod containers_tab_seam;

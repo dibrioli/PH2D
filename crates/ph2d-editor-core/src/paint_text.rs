@@ -47,6 +47,34 @@ pub fn paint_text(
     );
 }
 
+/// ⭐⭐⭐ **A LARGURA DE UMA COLUNA DE RÓTULO PARTILHADA POR UMA FAMÍLIA: a do membro mais largo.**
+///
+/// ⛔⛔ **A porta existe porque a pergunta é sobre a LISTA e é sempre respondida com o item em
+/// mãos.** Uma família de controlos que alinha os rótulos numa coluna só (os dez toggles da barra
+/// de transporte, por exemplo) tem UMA largura para todos — e quem a escreve mede a palavra mais
+/// larga *do dia em que escreveu*. Medido em 2026-09-19, aquele número (`52 px`, escolhido por
+/// `AutoKey`) cortava `Ping-Pong` em inglês e **seis dos dez** rótulos no idioma de teste: *um
+/// literal é uma aposta na tradução que ainda não existe.*
+///
+/// ⚠️ **Mede no MESMO peso em que o [`paint_text`] pinta** (`FontWeight::MEDIUM`) — e é por isso
+/// que ela mora neste ficheiro, colada ao pintor: medir num peso e pintar noutro corta
+/// exactamente na fronteira em que o corte existe (`prefix_width_weighted`, 2026-08-30).
+///
+/// ⚠️ Uma família VAZIA devolve `0,0`, que é a resposta certa: não há rótulo para reservar
+/// coluna nenhuma. *Quem quiser um piso põe-no na chamada, onde ele é visível.*
+///
+/// ⭐ Irmã da [`crate::widget::dropdown_label_budget`] um nível acima: lá a lista é a das
+/// OPÇÕES de um chip, aqui a dos RÓTULOS de uma família — a mesma lei, dois sujeitos.
+pub fn label_column_width<'a>(
+    text_system: &mut TextSystem,
+    font_size: f32,
+    rotulos: impl IntoIterator<Item = &'a str>,
+) -> f32 {
+    rotulos.into_iter().fold(0.0_f32, |w, r| {
+        w.max(text_system.prefix_width_weighted(r, font_size, FontWeight::MEDIUM))
+    })
+}
+
 /// [`paint_text`] que devolve a **ALTURA que o texto de fato ocupou**, já com a
 /// quebra de linha aplicada.
 ///

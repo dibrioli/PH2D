@@ -5,7 +5,7 @@
 //! e de arquivo); é um módulo IRMÃO do `widgets`, e usa o mesmo `toggle`/`icon_button`.
 
 use super::widgets::{icon_button, toggle};
-use super::{BarView, Item};
+use super::{BarView, Item, rotulo};
 use crate::ids;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::panel::PaintCtx;
@@ -15,6 +15,7 @@ use ph2d_tokens::Theme;
 /// Pinta a célula de vista `item` (Speed · Onion · OnionMode · OnionSettings). Os toggles leem do
 /// snapshot como todo toggle da barra (o switch pintado não pode discordar do que o passe desenha);
 /// a engrenagem é um `icon_button` cujo Click abre o card no `hero.store` da shell.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn paint(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -23,6 +24,7 @@ pub(super) fn paint(
     item: Item,
     snap: &TimelineViewSnapshot,
     view: BarView,
+    label_col: f32,
 ) {
     // `toggle` devolve a largura pintada; a barra já reservou a célula, então aqui ela é
     // descartada (`let _`), como os arms de toggle do `paint_item` faziam.
@@ -33,8 +35,9 @@ pub(super) fn paint(
             x,
             y,
             ids::TIMELINE_SPEED,
-            ph2d_i18n::tr("panel.timeline.speed"),
+            rotulo(item),
             view.speed_view,
+            label_col,
         ),
         Item::Onion => toggle(
             ctx,
@@ -42,8 +45,9 @@ pub(super) fn paint(
             x,
             y,
             ids::TIMELINE_ONION,
-            ph2d_i18n::tr("panel.timeline.onion"),
+            rotulo(item),
             snap.onion.enabled,
+            label_col,
         ),
         Item::OnionMode => toggle(
             ctx,
@@ -51,8 +55,9 @@ pub(super) fn paint(
             x,
             y,
             ids::TIMELINE_ONION_MODE,
-            ph2d_i18n::tr("panel.timeline.onion_keys"),
+            rotulo(item),
             snap.onion.mode == OnionMode::Keys,
+            label_col,
         ),
         // The gear opens the settings card. A plain button (not a view toggle): its Click reaches
         // the shell, which owns the `hero.store` the card lives in.

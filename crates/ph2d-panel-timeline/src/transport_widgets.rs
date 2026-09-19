@@ -147,6 +147,7 @@ pub(crate) fn chip(
 /// column then a `TypeToken::Xl3`-wide, `Density::Compact`-tall pill switch
 /// (proper 2:1 track + thumb), vertically centred in the row. Register the
 /// switch hit. Returns the right edge.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn toggle(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -155,13 +156,14 @@ pub(crate) fn toggle(
     id: ph2d_a11y::NodeId,
     text: &str,
     on: bool,
+    label_col: f32,
 ) -> f32 {
     let sw = TypeToken::Xl3.px();
     let sh = Density::Compact.row_h_px();
     let pad = Spacing::Xs.px();
     // Outlined cell grouping [label | switch] so each toggle is demarcated from
     // its neighbours (Enio 2026-07-08).
-    let cell_w = pad + TOGGLE_LABEL_W + pad + sw + pad;
+    let cell_w = pad + label_col + pad + sw + pad;
     let cell = Rect::new(x, y, cell_w, ROW_H_PX);
     // ⭐ Pela porta do TEMA: o contorno da célula é do clássico (o pedido de 2026-07-08 fica
     //    intacto lá); num tema moderno a célula é plana e o espaçamento faz a demarcação.
@@ -174,8 +176,8 @@ pub(crate) fn toggle(
         StrokeToken::Thin.px(),
         resolve(ColorToken::Border, theme),
     );
-    label(ctx, theme, text, x + pad, y, TOGGLE_LABEL_W);
-    let sx = x + pad + TOGGLE_LABEL_W + pad;
+    label(ctx, theme, text, x + pad, y, label_col);
+    let sx = x + pad + label_col + pad;
     let rect = Rect::new(sx, y + (ROW_H_PX - sh) * 0.5, sw, sh);
     // Mirror the snapshot's on-state into the store (when not focused) so the
     // painted switch reflects the document and the edit baseline stays correct.

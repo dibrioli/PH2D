@@ -310,3 +310,100 @@ Cura: os dois vãos passam a pedir `control_gap_px()`.
 ⏳ **E a varredura deixou uma pergunta de PRODUTO, com a medição ao lado:** na barra da timeline o
 mesmo botão chama-se **`PingPong`** e no menu da timeline ele chama-se **`Ping-Pong`** — duas
 grafias para a mesma coisa, e a primeira é a que não cabe na coluna dela (`54,9` contra `52,0`).
+
+## 10. A quarta cura: a coluna de rótulo de uma FAMÍLIA mede a família
+
+**Data:** 2026-09-19. **Gatilho:** a pergunta de produto que fecha a §9.2 — o dono respondeu
+**`Ping-Pong`**, unificando as duas grafias que o app tinha para a mesma coisa.
+
+### 10.1 — A decisão do dono, e porque ela sozinha não bastava
+
+`panel.timeline.ping_pong` era **`PingPong`** (colado) e os outros quatro sítios que nomeiam a mesma
+coisa — o menu da própria timeline, a tira do Flip, a direcção de animação do Inspector, o eco do
+áudio — já escreviam **`Ping-Pong`**. A grafia colada saiu.
+
+⚠️ **Mas ela era a palavra que não cabia, e com hífen ela cabe AINDA MENOS:** `54,90 px` colada,
+**`60,45`** com hífen, contra uma coluna de `52,0`. *Uma decisão de grafia que não olha para a
+coluna troca um rótulo cortado por outro.*
+
+### 10.2 — ⛔⛔ E o censo só via UM dos dez
+
+A coluna de rótulo dos **dez** toggles da barra de transporte era o literal `TOGGLE_LABEL_W = 52,0`,
+escolhido pela palavra `AutoKey` (`48,44`) no dia em que alguém a escreveu. Medida a família inteira
+pelo caminho do produto:
+
+| rótulo | inglês | idioma de teste |
+|---|---:|---:|
+| **`Ping-Pong`** | **60,45** | **91,34** |
+| `AutoKey` | 48,44 | 71,37 |
+| `Physics` | 44,51 | 67,97 |
+| `Record` | 40,66 | 63,70 |
+| `Speed` | 36,69 | 56,09 |
+| `Onion` | 33,91 | 53,67 |
+| `Snap` | 29,20 | 45,33 |
+| `Loop` | 28,70 | 44,82 |
+| `Keys` | 27,96 | 44,09 |
+| `Path` | 25,78 | 42,02 |
+
+⛔ Em inglês **um** estourava os `52`. ⛔⛔ **No idioma de teste estouravam SEIS dos dez** — e a
+varredura do §3 **não o dizia**, porque as duas leis dela perguntam se um rótulo pinta **NADA**, e
+um rótulo cortado pinta alguma coisa. *A dívida nomeada tinha uma linha onde a medição tem seis.*
+
+> **Um número escolhido pela palavra mais larga do dia é uma aposta na tradução que ainda não
+> existe.**
+
+### 10.3 — A cura: uma porta, e a lista a alimentá-la
+
+**Porta** (`ph2d_editor_core::paint::label_column_width`, colada ao `paint_text` que a consome): a
+largura de uma coluna de rótulo partilhada por uma família é a do **membro mais largo**, medida no
+**peso em que se pinta** (`FontWeight::MEDIUM`).
+
+⭐ Irmã da `dropdown_label_budget` da §9, um nível acima: *lá a lista é a das OPÇÕES de um chip,
+aqui a dos RÓTULOS de uma família — a mesma lei, dois sujeitos.*
+
+**Lista** (`transport_labels.rs`): os rótulos viviam inline, um `tr(...)` por braço do `match` do
+pintor. Hoje há **uma** tabela `Item → chave`, lida pela régua **e** pelo pintor, e um `Item` novo
+esquecido dela pinta **sem rótulo nenhum** — que se vê — em vez de pintar um rótulo cortado, que
+não se vê.
+
+**Resultado:** coluna `52,0 → 60,45` em inglês (e `91,34` no idioma de teste, sozinha), os dez
+rótulos inteiros nas duas línguas, e a barra continua a quebrar em linhas como sempre fez.
+
+### 10.4 — A coluna é TIGHT, e isso é metade do gate
+
+Sem essa metade, repor um literal generoso (`120 px`) passaria o gate do corte: nada seria cortado e
+a barra gastaria meia linha por célula. *Uma folga escondida é onde o próximo rótulo cabe por sorte
+e o seguinte não — e ninguém sabe qual dos dois casos tem em mãos.*
+
+O par ida-e-volta vive na crate do pintor: com a coluna da porta nada é elidido; **com um pixel a
+menos, o mais largo É** — e o gate nomeia qual, senão a porta podia estar a medir outra coisa que
+por acaso chega ao mesmo número.
+
+### 10.5 — ⛔ E o tecto de LOC mordeu, curado por CORTE
+
+`transport.rs` foi de `577` a `663` contra o tecto de `600`. **Nunca uma entrada no
+`FILE_OVERAGE_OK`:** a lei dos rótulos saiu para `transport_labels.rs` (`663 → 592`), e o corte é
+por RESPONSABILIDADE — aquele ficheiro dispõe a barra, este responde *que palavra* e *quanto espaço
+ela pede*; as duas crescem por motivos diferentes.
+
+### 10.6 — Provas de mutação
+
+| # | mutação | o que sangra |
+|---|---|---|
+| M15 | a grafia volta a `PingPong` | a decisão do dono, que é um gate |
+| M16 | a coluna volta ao literal `52` | o corte no produto **e** a tightness |
+| M17 | a coluna mede o item em mãos (`.take(1)`) | idem — é o defeito que o §9 já pagara |
+| M18 | o pintor encolhe a coluna que recebeu | «uma coluna só» e a tightness |
+| M19 | a tabela esquece o `PingPong` | o rótulo não chega à tinta |
+| M20 | a porta devolve folga infinita | a VOLTA (ida sozinha passaria) |
+| M21 | a porta mede noutro peso | a VOLTA, pela fronteira do corte |
+
+**7 de 7 sangram. Dívida: 10 → 9. Portão: `19 724` impactados, `19 724` verdes.**
+
+⚠️ **Promoção pedida à lista de flakes de carga do `CLAUDE.md` §5.0:**
+`the_pen_down_is_still_a_canvas_copy_and_this_is_its_number` (`ph2d-tool-painter`) — único ✗ de
+`19 724` no pico do fan-out, **zero linhas do diff naquela crate**, e `3 de 3` verde sozinho a
+`load 6,5`–`9,9`; a re-corrida da suíte inteira também passou. ⛔ É mais um cujo doc-comment se
+declara imune por escrito (*«medidos juntos, os dois números sobem e descem juntos»*) — **verdade
+sobre a deriva da MÁQUINA e falso sobre o FAN-OUT**, que é exactamente a distinção que aquela lista
+existe para guardar.

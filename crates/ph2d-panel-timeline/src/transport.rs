@@ -34,7 +34,6 @@ pub(crate) const BTN_W: f32 = 30.0; // LITERAL-PX-OK: square transport icon-butt
 const ADD_MARKER_W: f32 = 40.0; // LITERAL-PX-OK: "+M" add-marker button width
 const CHIP_W: f32 = 72.0; // LITERAL-PX-OK: seconds/frame number chip width
 const CHIP_LABEL_W: f32 = 48.0; // LITERAL-PX-OK: "Time(s)"/"Frames" chip-label column
-const TOGGLE_LABEL_W: f32 = 52.0; // LITERAL-PX-OK: "AutoKey" label column
 /// The Dur(s) chip's stepper increment — **0.2 s per click** (Enio, 2026-07-23:
 /// *"faça cada clique subir ou descer o valor em 0.2 seg"*). The Time/Frame chips
 /// step by a frame (`1/fps`); a DURATION is coarser, so `1/fps` (≈0.04 s) produced
@@ -182,6 +181,10 @@ pub(crate) fn paint_bar(
 ) -> (f32, Option<ClipChip>) {
     let gap = Spacing::Xs.px();
     let row_step = ph2d_tokens::row_pitch_px();
+    // ⭐ UMA medição por quadro, partilhada pela régua do fluxo e pelos dez pintores — ver
+    //   [`toggle_label_w`]. Medi-la dentro de cada célula daria a mesma resposta e pagaria
+    //   dez vezes o preço; medi-la em dois sítios é como as duas passam a discordar.
+    let label_col = toggle_label_w(ctx);
     let mut clip_chip = None;
     // Row 0 is the header strip; row 1+ are full-width rows in the body.
     let mut row = header;
@@ -189,7 +192,7 @@ pub(crate) fn paint_bar(
     let mut x = row.x;
 
     for item in ITEMS {
-        let w = width(item, snap, view);
+        let w = width(item, snap, view, label_col);
         // Does not fit? Take the next row. Never split a cluster across rows — a
         // short row reads better than a broken control.
         if x > row.x && x + w > row.x + row.w {
@@ -202,7 +205,7 @@ pub(crate) fn paint_bar(
             );
             x = row.x;
         }
-        if let Some(chip) = paint_item(ctx, theme, item, x, row.y, snap, view) {
+        if let Some(chip) = paint_item(ctx, theme, item, x, row.y, snap, view, label_col) {
             clip_chip = Some(chip);
         }
         x += w + gap;
@@ -214,7 +217,7 @@ pub(crate) fn paint_bar(
 /// How wide `item` paints. The single source the flow measures against — every
 /// painter below lays out from these same constants, so the fit test and the
 /// pixels cannot disagree.
-fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView) -> f32 {
+fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView, label_col: f32) -> f32 {
     let gap = Spacing::Xs.px();
     let half = gap * 0.5;
     match item {
@@ -244,14 +247,17 @@ fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView) -> f32 {
         | Item::Snap
         | Item::Speed
         | Item::Onion
-        | Item::OnionMode => toggle_w(),
+        | Item::OnionMode => toggle_w(label_col),
     }
 }
 
 /// The outlined `[label | switch]` cell's width (mirrors [`toggle`]'s layout).
-fn toggle_w() -> f32 {
+///
+/// `label_col` é a coluna medida da família ([`toggle_label_w`]) — a mesma que o pintor recebe,
+/// **pelo mesmo argumento**: é o que impede a régua do fluxo e os pixels de discordarem.
+fn toggle_w(label_col: f32) -> f32 {
     let pad = Spacing::Xs.px();
-    pad + TOGGLE_LABEL_W + pad + TypeToken::Xl3.px() + pad
+    pad + label_col + pad + TypeToken::Xl3.px() + pad
 }
 
 /// Paint one item at `(x, y)`. Returns the clip chip's rect when that item is the
@@ -357,6 +363,7 @@ fn labeled_chip(
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn paint_item(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -365,6 +372,7 @@ fn paint_item(
     y: f32,
     snap: &TimelineViewSnapshot,
     view: BarView,
+    label_col: f32,
 ) -> Option<ClipChip> {
     let gap = Spacing::Xs.px();
     let half = gap * 0.5;
@@ -457,8 +465,9 @@ fn paint_item(
                 x,
                 y,
                 TIMELINE_LOOP,
-                ph2d_i18n::tr("panel.timeline.loop"),
+                rotulo(item),
                 snap.loop_range.is_some() && !snap.loop_ping_pong,
+                label_col,
             );
         }
         Item::PingPong => {
@@ -468,8 +477,9 @@ fn paint_item(
                 x,
                 y,
                 TIMELINE_PINGPONG,
-                ph2d_i18n::tr("panel.timeline.ping_pong"),
+                rotulo(item),
                 snap.loop_range.is_some() && snap.loop_ping_pong,
+                label_col,
             );
         }
         // Physics (ADR-0131) — one transport, two consumers. Reads from the
@@ -482,8 +492,9 @@ fn paint_item(
                 x,
                 y,
                 TIMELINE_PHYSICS,
-                ph2d_i18n::tr("panel.timeline.physics"),
+                rotulo(item),
                 snap.simulate_physics,
+                label_col,
             );
         }
         Item::AutoKey => {
@@ -493,8 +504,9 @@ fn paint_item(
                 x,
                 y,
                 TIMELINE_AUTOKEY,
-                ph2d_i18n::tr("panel.timeline.autokey"),
+                rotulo(item),
                 snap.auto_key,
+                label_col,
             );
         }
         // Record / performing (W5) — records the pose LIVE while playing +
@@ -506,8 +518,9 @@ fn paint_item(
                 x,
                 y,
                 TIMELINE_RECORD,
-                ph2d_i18n::tr("panel.timeline.record"),
+                rotulo(item),
                 snap.performing,
+                label_col,
             );
         }
         // Motion Path mode (ADR-0141) — the SELECTED object animates its position as
@@ -521,8 +534,9 @@ fn paint_item(
                 x,
                 y,
                 TIMELINE_MOTION_PATH,
-                ph2d_i18n::tr("panel.timeline.motion_path"),
+                rotulo(item),
                 snap.position_is_path,
+                label_col,
             );
         }
         Item::Snap => {
@@ -532,15 +546,16 @@ fn paint_item(
                 x,
                 y,
                 TIMELINE_SNAP,
-                ph2d_i18n::tr("panel.timeline.snap"),
+                rotulo(item),
                 snap.frame_snap,
+                label_col,
             );
         }
         // Os toggles de VISTA (Speed · Onion · Onion Keys) — o que a tela MOSTRA, não
         // comando de documento. Vivem no módulo irmão (cap de LOC do `paint_item`) — incluindo a
         // engrenagem OnionSettings (um botão, mas mora com o cluster do onion).
         Item::Speed | Item::Onion | Item::OnionMode | Item::OnionSettings => {
-            view_toggles::paint(ctx, theme, x, y, item, snap, view);
+            view_toggles::paint(ctx, theme, x, y, item, snap, view, label_col);
         }
     }
     None
@@ -566,6 +581,13 @@ fn add_marker_button(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32) {
 #[path = "transport_widgets.rs"]
 mod widgets;
 pub(crate) use widgets::{chip, icon_button, label, mirror_number, toggle};
+
+/// Os RÓTULOS dos toggles e a coluna que eles partilham — a lista de que a régua se mede e o
+/// pintor pinta, num sítio só. Irmão por RESPONSABILIDADE: este ficheiro dispõe a barra, aquele
+/// responde *que palavra* e *quanto espaço ela pede*.
+#[path = "transport_labels.rs"]
+mod labels;
+use labels::{rotulo, toggle_label_w};
 
 /// Os toggles de VISTA da barra (Speed · Onion · Onion Keys) — separados do `paint_item`
 /// (cap de LOC de fn/arquivo) por serem um grupo coeso: nenhum é comando de documento.

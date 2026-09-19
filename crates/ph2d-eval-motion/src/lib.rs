@@ -154,6 +154,33 @@ pub struct MotionCookPump {
     separacoes: u64,
     /// Ver [`MotionCookPump::ultimo_relatorio`].
     ultimo_relatorio: ph2d_contact::passe::Relatorio,
+    /// ⭐⭐⭐ **O LADRILHO DA MARCA** — o `uv_rect` do disco que uma corrente sem aparência
+    /// amostra (ver [`ph2d_render::SinkStyle::ponto_uv`] e [`ph2d_render::DOT_TILE_KEY`]).
+    ///
+    /// ⚠️ **Campo da bomba e não argumento do `pump`**, e o motivo é uma contagem: a assinatura
+    /// atravessa **50** sítios de chamada em 17 ficheiros, e nenhum deles tem uma opinião sobre o
+    /// átlas — só a shell tem. Um argumento a mais obrigaria 49 deles a escrever um valor que não
+    /// lhes diz respeito.
+    ///
+    /// ⚠️ Omissão: o átlas INTEIRO, que é o que um gate sem GPU quer. Quem arranca o app chama
+    /// [`Self::define_o_ladrilho_do_ponto`] uma vez.
+    ponto_uv_rect: [f32; 4],
+}
+
+/// O estilo de um sink **com o ladrilho da marca já dentro** — a porta única por onde os dois
+/// lowerings da bomba recebem o estilo.
+///
+/// ⚠️ **Ela existe para não haver duas composições:** o [`sink_style`] lê o GRAFO e não pode
+/// conhecer o átlas, logo alguém tem de juntar os dois. Escrita nos dois sítios de chamada, um
+/// deles esquecia o ladrilho e a marca saía com o átlas inteiro **num passe só**.
+///
+/// ⚠️ **Função LIVRE e não método**, e é o emprestador que o decide: no sítio de chamada o
+/// `&mut self.instances` já está tomado, logo um `&self` ali não compila. O número viaja copiado.
+fn estilo_do_sink(ponto_uv: [f32; 4], graph: &Graph, sink: NodeId) -> ph2d_render::SinkStyle {
+    ph2d_render::SinkStyle {
+        ponto_uv,
+        ..sink_style(graph, sink)
+    }
 }
 
 mod cook_target;
@@ -187,7 +214,21 @@ impl MotionCookPump {
             separa_o_desenho: true,
             separacoes: 0,
             ultimo_relatorio: ph2d_contact::passe::Relatorio::default(),
+            ponto_uv_rect: ph2d_render::SinkStyle::PLAIN.ponto_uv,
         }
+    }
+
+    /// Diz à bomba QUE ladrilho do átlas é a marca de uma posição — ver [`Self::ponto_uv_rect`].
+    /// Chamada uma vez, quando o átlas é composto.
+    pub fn define_o_ladrilho_do_ponto(&mut self, uv: [f32; 4]) {
+        self.ponto_uv_rect = uv;
+    }
+
+    /// O ladrilho da marca, para quem baixa a corrente por fora desta bomba — a rota do
+    /// DISPOSITIVO, que tem o seu próprio lowering e precisa do mesmo número.
+    #[must_use]
+    pub fn ponto_uv_rect(&self) -> [f32; 4] {
+        self.ponto_uv_rect
     }
 
     /// Force a re-cook on the next [`Self::pump`], even at the same tick (call
@@ -335,6 +376,8 @@ impl MotionCookPump {
         scopes: &TimeScopes,
     ) {
         self.last_error = None;
+        // Içado antes do laço: lá dentro o `&mut self.instances` já está tomado.
+        let ponto_uv_rect = self.ponto_uv_rect;
         match *target {
             CookTarget::Sinks {
                 sinks,
@@ -394,6 +437,10 @@ impl MotionCookPump {
                                 // `vector_instances`. Disjoint by construction (each
                                 // reads/skips on the same `geometry_id > 0` test), so
                                 // a shape is drawn once, as vector.
+                                // ⚠️ Uma leitura, dois lowerings: eles TÊM de receber o mesmo
+                                // estilo, e compô-lo duas vezes é como um deles fica sem o
+                                // ladrilho da marca.
+                                let estilo = estilo_do_sink(ponto_uv_rect, graph, sink);
                                 lower_to_instances_onto(
                                     stream,
                                     default_uv_rect,
@@ -401,12 +448,12 @@ impl MotionCookPump {
                                     // Per SINK, not per document: two Output nodes
                                     // may draw the same document in two modes, and
                                     // each lowers with its own tag.
-                                    sink_style(graph, sink),
+                                    estilo,
                                     &mut self.instances,
                                 );
                                 lower_to_vector_instances_onto(
                                     stream,
-                                    sink_style(graph, sink),
+                                    estilo,
                                     &mut self.vector_instances,
                                 );
                             }

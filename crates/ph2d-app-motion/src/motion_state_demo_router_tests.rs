@@ -20,7 +20,7 @@ fn no_conference_scene_ships_a_setup_hole() {
             continue;
         }
         built += 1;
-        let d = ph2d_motion_diagnose::diagnose(&doc.graph, &reg);
+        let d = ph2d_motion_diagnose::diagnose_setup(&doc.graph, &reg);
         if !d.is_empty() {
             bad.push(format!("=`{level}`: {d:?}"));
         }

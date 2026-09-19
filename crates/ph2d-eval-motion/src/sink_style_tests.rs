@@ -334,6 +334,7 @@ fn a_vector_row_gets_the_geometric_half_of_the_style_and_declares_the_rest() {
         sampling: RenderInstance::pack_sampling(1, 0),
         stream_order: true,
         so_com_forma: false,
+        ponto_uv: SinkStyle::PLAIN.ponto_uv,
     };
     let vector_rows = a_stream()
         .with("geometry_id", Column::Scalar(vec![7.0, 7.0, 7.0]))

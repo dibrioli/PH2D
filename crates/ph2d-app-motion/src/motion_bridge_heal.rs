@@ -322,6 +322,14 @@ fn explain(d: &Diagnostic) -> String {
             "app.motion.motion_bridge_heal.input_is_empty_but_a_later_one_is_wired_that_bra",
             &[("port", &port)],
         ),
+        // ⭐⭐⭐ **Só posições, e nada a jusante que as vista.** A frase diz as TRÊS coisas que
+        // o artista precisa: o que ele está a ver AGORA (marcas), o que falta (um duplicador) e
+        // o que o duplicador quer (uma forma) — sem a primeira ele lê «não funciona», e sem a
+        // terceira ele põe o duplicador e volta a ficar sem nada.
+        (Deficit::SemQuemVista, _) => ph2d_i18n::tr(
+            "app.motion.motion_bridge_heal.this_node_only_gives_positions_add_a_duplicator",
+        )
+        .into(),
         _ => ph2d_i18n::tr(
             "app.motion.motion_bridge_heal.this_node_produces_data_nothing_downstream_consu",
         )

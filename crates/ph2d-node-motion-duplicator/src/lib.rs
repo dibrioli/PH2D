@@ -543,6 +543,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // A PORT requirement, not a column one, so it is declared (unlike `motion.integrate`,
     // whose `forces` port is optional — a static integration).
     reg.register_required_inputs(MANIFEST.id, &["shape", "points"]);
+    // ⭐⭐⭐ **Ele é quem VESTE as posições** — a metade que faz uma nuvem virar coisas que se
+    // vêem, e o que o diagnosticador procura a jusante de uma fonte de posições. Declarado aqui,
+    // no nó, porque nenhuma leitura do manifesto o distingue do `field.shape`: os dois exigem uma
+    // porta `shape` e os dois emitem `Instances/Vec2` (medido).
+    reg.register_veste_as_posicoes(MANIFEST.id);
     Ok(())
 }
 

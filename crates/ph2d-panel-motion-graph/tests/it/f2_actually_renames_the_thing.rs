@@ -64,7 +64,6 @@ fn card(id: u32, name: &str, kind: NodeViewKind, x: f32) -> GraphNodeView {
         readout: None,
         count: None,
         hot: false,
-        so_posicoes: false,
         is_sink: false,
         preview: None,
         bypassed: false,

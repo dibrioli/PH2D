@@ -110,7 +110,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ **Ela NOMEIA o nó que resolve o problema** — *«um Duplicator»*, que é o que o artista
         // escreve na paleta —, porque uma frase que só diz «isto não aparece» manda-o adivinhar a
         // cura. Curta de propósito: ela mora numa fileira de `190 px`.
-        "panel.motion_graph.card.needs_a_duplicator" => "Needs a Duplicator + a shape",
         _ => return None,
     })
 }

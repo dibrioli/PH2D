@@ -100,12 +100,30 @@ pub fn lower_to_instances_onto(
     style: SinkStyle,
     out: &mut Vec<RenderInstance>,
 ) {
-    // ⭐⭐⭐ A lei do dono: uma corrente de POSIÇÕES não produz pixel nenhum — ver
-    // [`tem_aparencia`] e [`SinkStyle::so_com_forma`]. Desligada (o de sempre) o corpo abaixo
-    // corre byte a byte como sempre correu.
-    if style.so_com_forma && !tem_aparencia(stream) {
-        return;
-    }
+    // ⭐⭐⭐ **A lei do dono: uma corrente de POSIÇÕES não desenha CONTEÚDO — ela desenha uma
+    // MARCA.** Ver [`tem_aparencia`], [`SinkStyle::so_com_forma`] e [`PONTO_DO_TAMANHO`].
+    //
+    // ⚠️⚠️ **Ela devolvia CEDO até 2026-09-19, e a mudança é ordem do dono** (*«A ordem foi não
+    // desenhar nada. se quiser coloque apenas pontos nas posições»*): não desenhar nada está
+    // **medido a apagar `111` das `123` cenas** do roteador do módulo, e um módulo inteiro sem
+    // imagem não ensina ninguém. Com a marca, a posição continua legível e **deixa de se ler
+    // como o objecto**, que é o defeito que ele reportou.
+    //
+    // ⚠️⚠️ **A lei troca DOIS valores de OMISSÃO e não toca em coluna nenhuma** — ver
+    // [`PONTO_DO_TAMANHO`]. Uma corrente que DIZ o seu tamanho (um `motion.scale` a montante,
+    // um campo a conduzi-lo) é obedecida: ela tomou uma decisão. ⛔ Multiplicar o `size` de cada
+    // linha foi a 1.ª redacção e está MEDIDA e refutada — na cena dos campos, cujo canal É o
+    // tamanho, as marcas caíam para `0,022` e a cena ficava preta.
+    //
+    // ⚠️ E o ladrilho vem do ESTILO, não do `default_uv_rect`: a corrente que esta lei apanha
+    // **não tem coluna `uv_rect`** (é metade da definição de [`tem_aparencia`]), logo todas as
+    // linhas dela leem o valor de omissão — trocá-lo troca a marca inteira, e mais nada.
+    let (default_uv_rect, default_size) = ph2d_render::sink_style::omissoes_da_marca(
+        style,
+        tem_aparencia(stream),
+        default_uv_rect,
+        default_size,
+    );
     let n = stream.count();
     let p = stream.get("P");
     let size = stream.get("size");
@@ -192,9 +210,12 @@ pub fn lower_to_instances_onto(
         // Radians live nowhere in the Motion authoring surface; only this
         // conversion, at the very edge where the basis is built.
         let (sin_r, cos_r) = scalar_at(rot, i, 0.0).to_radians().sin_cos();
+        // ⚠️ **Içado, e lido DUAS vezes**: o `size` e o `anchor` têm de ver o mesmo número,
+        // senão o pivô é calculado sobre um tamanho que a linha não tem.
+        let sz = vec2_at(size, i, default_size);
         RenderInstance {
             world_pos: vec2_at(p, i, [0.0, 0.0]),
-            size: vec2_at(size, i, default_size),
+            size: sz,
             atlas_uv: vec4_at(uv_rect, i, default_uv_rect),
             tint: vec4_at(tint, i, [1.0, 1.0, 1.0, 1.0]),
             basis: [cos_r, sin_r, -sin_r, cos_r],
@@ -204,7 +225,7 @@ pub fn lower_to_instances_onto(
             // e ela multiplica pelo tamanho DESTA linha — um stream tem um `size` por
             // elemento, e um pivô em metros deslocaria as peças pequenas de outra
             // maneira que as grandes.
-            anchor: style.anchor_for(vec2_at(size, i, default_size)),
+            anchor: style.anchor_for(sz),
             // Sprite-Inspector-v2 v4 ABI fields: a Motion node stream has no
             // per-corner/opacity authoring surface, so those take their identity
             // values (white gradient, full opacity). `flip_uv` DOES have one now
@@ -416,9 +437,10 @@ pub fn lower_to_vector_instances_onto(
     style: SinkStyle,
     out: &mut Vec<VectorInstance>,
 ) {
-    // ⭐⭐⭐ A MESMA lei, e ela tem de ser lida pelos DOIS lowerings: uma corrente de posições
-    // não desenha nem como quad nem como forma. Escrita só de um lado, o outro passe continuaria
-    // a pintá-la — que é a forma de defeito que o cabeçalho de [`MediaColumns`] já nomeia.
+    // ⭐⭐⭐ A MESMA lei, e ela tem de ser lida pelos DOIS lowerings. ⚠️ **Aqui ela devolve cedo
+    // e no passe das sprites não**, e a assimetria é a lei e não um esquecimento: a MARCA é
+    // desenhada **uma vez**, pelo passe que sabe amostrar um ladrilho do átlas. Se este passe
+    // também emitisse, a mesma posição levaria duas peças sobrepostas.
     if style.so_com_forma && !tem_aparencia(stream) {
         return;
     }

@@ -257,6 +257,6 @@ fn every_target_is_born_in_the_quadrant_of_the_cloud_that_chases_it() {
 fn the_house_diagnoser_finds_no_hole_in_this_scene() {
     let (doc, _) = scene();
     let reg = registry();
-    let d = ph2d_motion_diagnose::diagnose(&doc.graph, &reg);
+    let d = ph2d_motion_diagnose::diagnose_setup(&doc.graph, &reg);
     assert!(d.is_empty(), "a cena não encena defeito nenhum: {d:?}");
 }

@@ -82,6 +82,25 @@ pub enum Deficit {
     /// ⚠️ **Sempre [`Fix::Offer`]**: o que ligar ali é escolha do artista, e ligar por
     /// palpite é a única cura desta casa que INVENTA conteúdo. Carrega o NOME DA PORTA.
     DeadBranch(&'static str),
+    /// ⭐⭐⭐ **ESTE NÓ SÓ ENTREGA POSIÇÕES, E NADA A JUSANTE AS VESTE** — a cadeia acaba no ecrã
+    /// a mostrar MARCAS, e não o objecto que o artista pensa estar a arranjar.
+    ///
+    /// Ordem do dono (2026-09-19): *«coloque um alerta de que se não forem usados com duplicator
+    /// e um objeto a ser copiado, são invisíveis»* — e, na mesma jornada, *«o módulo tem um
+    /// sistema de alerta. não era para colocar a mensagem no próprio nó»*.
+    ///
+    /// ⚠️ **É o irmão exacto do [`Self::MissingSource`], do outro lado da corrente:** aquele diz
+    /// *«não entra nada»*, este diz *«o que sai não chega a ser desenhado»*. Os dois são sobre a
+    /// POSIÇÃO do nó no grafo e nenhum é sobre os params dele.
+    ///
+    /// ⚠️⚠️ **A metade «e um objeto a ser copiado» NÃO está aqui, e é de propósito:** um
+    /// duplicador sem forma ligada já acusa [`Self::MissingInput`]`("shape")`, **nele**. Um nó
+    /// que acusasse os dois ensinaria dois problemas onde há um, e apontaria para o sítio errado
+    /// — quem tem de receber a forma é o duplicador, não a grelha.
+    ///
+    /// ⚠️ **Sempre [`Fix::Offer`]**: inserir um duplicador é conteúdo, não canalização. Ele
+    /// nasceria vazio e o aviso mudava de sítio sem nada ficar resolvido.
+    SemQuemVista,
 }
 
 impl Deficit {
@@ -106,6 +125,7 @@ impl Deficit {
         Deficit::MissingChoice("path"),
         Deficit::Shadowed("fx.glow"),
         Deficit::DeadBranch("in1"),
+        Deficit::SemQuemVista,
     ];
 }
 

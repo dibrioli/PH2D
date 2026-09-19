@@ -19,7 +19,6 @@ fn node(id: u32, is_sink: bool, count: Option<u32>) -> GraphNodeView {
         readout: None,
         count,
         hot: false,
-        so_posicoes: false,
         is_sink,
         preview: None,
         bypassed: false,

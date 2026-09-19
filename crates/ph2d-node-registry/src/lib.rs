@@ -194,6 +194,8 @@ pub struct NodeRegistry {
     /// ⚠️ **DERIVADO, nunca escrito à mão:** quem o preenche é o
     /// `ph2d_node_registry_init::register_all_nodes`, a partir do MANIFESTO.
     so_posicoes: std::collections::BTreeSet<NodeTypeId>,
+    /// ⭐⭐⭐ **OS QUE VESTEM AS POSIÇÕES** — ver [`Self::register_veste_as_posicoes`].
+    veste_as_posicoes: std::collections::BTreeSet<NodeTypeId>,
     /// doc 115 W4 — node types that READ the collider a stream DECLARES
     /// (`ph2d_contact::colisores`: `ph2d_collider` · `ph2d_collider_box` ·
     /// `ph2d_collider_offset`).

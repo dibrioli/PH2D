@@ -65,6 +65,43 @@ impl GpuCook {
                 .get(lower::LOWER_COLUMNS[i])
                 .is_some_and(|c| c.dim == expected_lower_dim(i))
         });
+        // ⭐⭐⭐ **A OUTRA METADE DA LEI DO DONO, e ela é do HOST** — ver o `marca` do
+        // [`lower::lower_module`]. A rota da CPU pergunta `uv_rect` **ou** `geometry_id > 0`; o
+        // shader só consegue a primeira, porque a segunda é por VALOR e lê-la aqui custaria uma
+        // descarga do buffer por quadro.
+        //
+        // ⚠️ **A divergência é NOMEADA e cai para o lado conservador:** assim que a coluna da
+        // geometria existe, este caminho desliga a lei e desenha como sempre desenhou. Uma
+        // corrente com a coluna toda a ZERO (uma `source.shape` sem forma escolhida) recebe
+        // marcas na CPU e quads aqui — e chegar aqui exige que o planeador a tenha deixado ir à
+        // placa, que hoje não acontece com nenhuma fonte de geometria.
+        let style = if style.so_com_forma && stream.cols.contains_key("geometry_id") {
+            ph2d_render::SinkStyle {
+                so_com_forma: false,
+                ..style
+            }
+        } else {
+            style
+        };
+        // ⭐⭐⭐ **A LEI DO DONO, e ela é DOIS VALORES DE OMISSÃO — zero codegen.** O ladrilho da
+        // marca e o tamanho dela entram no lugar do `default_uv`/`default_size`, e é isso que
+        // basta: a corrente que a lei apanha **não tem coluna `uv_rect`** (é a condição), logo o
+        // `read_uv_rect` do shader devolve o valor de omissão em todas as linhas, e o
+        // `read_size` faz o mesmo quando a coluna também falta.
+        //
+        // ⚠️ **Uma corrente que DIZ o seu tamanho é obedecida nas duas rotas** (`present[1]`
+        // aqui, a coluna `size` na CPU) — ver [`ph2d_render::sink_style::PONTO_DO_TAMANHO`],
+        // onde a medição que matou a lei alternativa está escrita.
+        //
+        // ⛔ **E é por isto que o `lower_module` fica INTOCADO:** uma redacção anterior assava a
+        // lei no WGSL e obrigava o `so_com_forma` a entrar na assinatura do pipeline. *Uma lei
+        // que cabe num uniform não tem porque gerar uma segunda fonte.*
+        let (default_uv_rect, default_size) = ph2d_render::sink_style::omissoes_da_marca(
+            style,
+            present[4],
+            default_uv_rect,
+            default_size,
+        );
         let sig = lower::lower_signature(present, style);
         self.lower_pipelines.entry(sig).or_insert_with(|| {
             let src = lower::lower_module(present, style);

@@ -229,7 +229,6 @@ fn the_ghost_end_snaps_to_the_target_socket() {
             readout: None,
             count: None,
             hot: false,
-            so_posicoes: false,
             is_sink: false,
             preview: None,
             bypassed: false,

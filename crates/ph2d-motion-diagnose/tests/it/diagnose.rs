@@ -2,7 +2,7 @@
 //! (`register_all_nodes`) so the couplings under test are the ones the app ships,
 //! not a fixture's private copy.
 
-use ph2d_motion_diagnose::{Deficit, Fix, canonical_consumer, diagnose};
+use ph2d_motion_diagnose::{Deficit, Fix, canonical_consumer, diagnose, diagnose_setup};
 use ph2d_node_registry::{Coupling, NodeRegistry};
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_nodegraph::node::NodeTypeId;
@@ -39,7 +39,7 @@ fn a_force_with_no_integrator_is_diagnosed_inert() {
     let mut g = Graph::new();
     let ids = chain(&mut g, &["motion.grid", "force.wind", "motion.output"]);
 
-    let ds = diagnose(&g, &reg);
+    let ds = diagnose_setup(&g, &reg);
     assert_eq!(ds.len(), 1, "exactly the force is inert");
     assert_eq!(ds[0].node, ids[1], "the force.wind node");
     assert_eq!(ds[0].deficit, Deficit::InertProducer("accel"));
@@ -77,7 +77,7 @@ fn a_healthy_chain_is_diagnosed_clean() {
         .expect("connect");
     }
     assert!(
-        diagnose(&g, &reg).is_empty(),
+        diagnose_setup(&g, &reg).is_empty(),
         "a force with an integrator downstream is healthy"
     );
 }
@@ -101,7 +101,7 @@ fn a_force_downstream_of_the_integrator_is_a_reorder_not_a_second_insert() {
         ],
     );
 
-    let ds = diagnose(&g, &reg);
+    let ds = diagnose_setup(&g, &reg);
     assert_eq!(ds.len(), 1, "only the misplaced force");
     assert_eq!(
         ds[0].node, ids[2],
@@ -124,7 +124,7 @@ fn a_particle_chain_heals_with_sim_step() {
     let mut g = Graph::new();
     let ids = chain(&mut g, &["sim.spawn", "force.wind", "motion.output"]);
 
-    let ds = diagnose(&g, &reg);
+    let ds = diagnose_setup(&g, &reg);
     assert_eq!(ds.len(), 1, "the force in the particle chain");
     assert_eq!(ds[0].node, ids[1]);
     assert_eq!(ds[0].fix, Fix::Insert("sim.step"));
@@ -146,7 +146,7 @@ fn a_pin_with_no_solver_is_an_offer_not_a_guess() {
         &["motion.grid", "motion.pin_constraint", "motion.output"],
     );
 
-    let ds = diagnose(&g, &reg);
+    let ds = diagnose_setup(&g, &reg);
     assert_eq!(ds.len(), 1);
     assert_eq!(ds[0].node, ids[1], "the pin");
     assert_eq!(ds[0].deficit, Deficit::InertProducer("inv_mass"));
@@ -231,7 +231,7 @@ fn a_field_wired_to_nothing_is_an_inert_falloff_offer() {
     // ⚠️ SEM sink: é isto que «wired to nothing» quer dizer.
     let ids = chain(&mut g, &["motion.grid", "field.box"]);
 
-    let ds = diagnose(&g, &reg);
+    let ds = diagnose_setup(&g, &reg);
     assert_eq!(ds.len(), 1, "exactly the field is inert");
     assert_eq!(ds[0].node, ids[1], "the field.box node");
     assert_eq!(ds[0].deficit, Deficit::InertProducer("falloff"));
@@ -256,7 +256,7 @@ fn a_field_that_reaches_the_sink_is_healthy() {
     let mut g = Graph::new();
     chain(&mut g, &["motion.grid", "field.box", "motion.output"]);
     assert!(
-        diagnose(&g, &reg).is_empty(),
+        diagnose_setup(&g, &reg).is_empty(),
         "o sink consome `falloff` desde a W6 — o campo que lhe chega nao e' inerte"
     );
 }
@@ -277,7 +277,7 @@ fn a_field_read_by_a_force_is_a_healthy_falloff() {
         &["motion.grid", "field.box", "force.wind", "motion.output"],
     );
 
-    let ds = diagnose(&g, &reg);
+    let ds = diagnose_setup(&g, &reg);
     // The field is NOT among the inert — its falloff is read by the force.
     assert!(
         !ds.iter().any(|d| d.node == ids[1]),
@@ -304,7 +304,7 @@ fn two_forces_with_no_integrator_are_both_inert() {
         &["motion.grid", "force.wind", "force.wind", "motion.output"],
     );
 
-    let ds = diagnose(&g, &reg);
+    let ds = diagnose_setup(&g, &reg);
     assert_eq!(
         ds.len(),
         2,
@@ -341,7 +341,7 @@ fn a_cpu_only_falloff_consumer_makes_the_field_healthy() {
         ],
     );
 
-    let ds = diagnose(&g, &reg);
+    let ds = diagnose_setup(&g, &reg);
     assert!(
         !ds.iter().any(|d| d.node == ids[1]),
         "field.box is healthy: fx.drop_shadow (CPU-only) declares it consumes falloff"
@@ -365,7 +365,7 @@ fn a_lowered_column_wired_to_output_is_never_inert() {
     chain(&mut g, &["motion.grid", "motion.move", "motion.output"]);
 
     assert!(
-        diagnose(&g, &reg).is_empty(),
+        diagnose_setup(&g, &reg).is_empty(),
         "P is lowered to instances, so a node writing P to the output is not inert"
     );
 }
@@ -392,7 +392,7 @@ fn a_deformer_with_nothing_wired_needs_points() {
     })
     .expect("bend -> output");
 
-    let ds = diagnose(&g, &reg);
+    let ds = diagnose_setup(&g, &reg);
     assert_eq!(ds.len(), 1, "exactly the floating deformer");
     assert_eq!(ds[0].node, bend, "the motion.bend node");
     assert_eq!(ds[0].deficit, Deficit::MissingSource("P"));
@@ -413,7 +413,7 @@ fn a_deformer_fed_by_a_source_is_clean() {
     let mut g = Graph::new();
     chain(&mut g, &["motion.grid", "motion.bend", "motion.output"]);
     assert!(
-        diagnose(&g, &reg).is_empty(),
+        diagnose_setup(&g, &reg).is_empty(),
         "a fed deformer that writes lowered P is healthy"
     );
 }
@@ -437,7 +437,7 @@ fn a_floating_force_needs_points_not_an_integrator() {
     })
     .expect("force -> output");
 
-    let ds = diagnose(&g, &reg);
+    let ds = diagnose_setup(&g, &reg);
     assert_eq!(
         ds.len(),
         1,
@@ -462,7 +462,7 @@ fn a_source_is_never_told_it_needs_points() {
     let mut g = Graph::new();
     chain(&mut g, &["motion.grid", "motion.output"]);
     assert!(
-        diagnose(&g, &reg).is_empty(),
+        diagnose_setup(&g, &reg).is_empty(),
         "grid writes P without reading it — it IS the source, not a needer of one"
     );
 }
@@ -496,7 +496,7 @@ fn a_duplicator_missing_points_names_the_port() {
     .expect("dup -> output");
     // points (port 1) left unwired.
 
-    let ds = diagnose(&g, &reg);
+    let ds = diagnose_setup(&g, &reg);
     assert_eq!(ds.len(), 1, "exactly the duplicator, missing an input");
     assert_eq!(ds[0].node, dup, "the duplicator node");
     assert_eq!(ds[0].deficit, Deficit::MissingInput("points"));
@@ -530,7 +530,7 @@ fn a_duplicator_with_both_inputs_is_clean() {
         .expect("connect");
     }
     assert!(
-        !diagnose(&g, &reg)
+        !diagnose_setup(&g, &reg)
             .iter()
             .any(|d| d.node == dup && matches!(d.deficit, Deficit::MissingInput(_))),
         "both required inputs are wired — not missing"
@@ -581,7 +581,7 @@ fn a_force_in_a_sims_state_chain_is_clean_because_the_sim_consumes_accel() {
         })
         .expect("sim --> output");
 
-        let inert: Vec<_> = diagnose(&g, &reg)
+        let inert: Vec<_> = diagnose_setup(&g, &reg)
             .into_iter()
             .filter(|d| d.deficit == Deficit::InertProducer("accel"))
             .collect();
@@ -611,7 +611,7 @@ fn the_second_screen_pass_is_diagnosed_and_the_first_is_not() {
     let mut g = Graph::new();
     let first = g.add_node("fx.glow");
     assert!(
-        !diagnose(&g, &reg)
+        !diagnose_setup(&g, &reg)
             .iter()
             .any(|d| matches!(d.deficit, Deficit::Shadowed(_))),
         "um unico passe de tela nao pode ser acusado de nada"
@@ -620,7 +620,7 @@ fn the_second_screen_pass_is_diagnosed_and_the_first_is_not() {
     // Dois: o SEGUNDO é o inerte, e o primeiro fica limpo.
     let second = g.add_node("fx.glow");
     let third = g.add_node("fx.glow");
-    let found: Vec<_> = diagnose(&g, &reg)
+    let found: Vec<_> = diagnose_setup(&g, &reg)
         .into_iter()
         .filter(|d| matches!(d.deficit, Deficit::Shadowed(_)))
         .collect();
@@ -657,7 +657,7 @@ fn a_node_that_composes_is_never_called_shadowed() {
         g.add_node("fx.drop_shadow");
     }
     assert!(
-        !diagnose(&g, &reg)
+        !diagnose_setup(&g, &reg)
             .iter()
             .any(|d| matches!(d.deficit, Deficit::Shadowed(_))),
         "o drop_shadow COMPOE: tres deles aplicam tres vezes, nenhum e' sombreado"
@@ -683,7 +683,7 @@ fn a_glow_over_live_vector_geometry_is_no_longer_diagnosed() {
     let reg = registry();
     let mut g = Graph::new();
     chain(&mut g, &["source.shape", "fx.glow", "motion.output"]);
-    let d = diagnose(&g, &reg);
+    let d = diagnose_setup(&g, &reg);
     assert!(
         d.is_empty(),
         "a forma desenha, o glow alcança-a: nada a avisar — {d:?}"
@@ -691,7 +691,11 @@ fn a_glow_over_live_vector_geometry_is_no_longer_diagnosed() {
     // ⚠️ CONTROLE: o mesmo grafo com DOIS glows continua a avisar sobre o segundo,
     // então a varredura não ficou muda por acidente.
     g.add_node("fx.glow");
-    assert_eq!(diagnose(&g, &reg).len(), 1, "o `Shadowed` continua vivo");
+    assert_eq!(
+        diagnose_setup(&g, &reg).len(),
+        1,
+        "o `Shadowed` continua vivo"
+    );
 }
 
 /// **A CABEÇA DE UMA CADEIA DE FORÇA NÃO É SOURCE-LESS** — ela é alimentada pelo
@@ -722,7 +726,7 @@ fn a_force_fed_by_the_integrators_pre_loop_is_not_source_less() {
     ] {
         g.connect(Edge { from, to, delayed }).expect("connect");
     }
-    let d = diagnose(&g, &reg);
+    let d = diagnose_setup(&g, &reg);
     assert!(
         d.is_empty(),
         "o laço canónico da força está CORRECTO e não pode acusar: {d:?}"
@@ -746,9 +750,39 @@ fn a_force_with_no_edge_at_all_is_still_source_less() {
     })
     .expect("connect");
     assert!(
-        diagnose(&g, &reg)
+        diagnose_setup(&g, &reg)
             .iter()
             .any(|x| matches!(x.deficit, Deficit::MissingSource("P"))),
         "uma força sem NADA ligado continua a ser um no-op silencioso"
+    );
+}
+
+/// ⭐⭐⭐ **A NOTA DAS POSIÇÕES SAI PELA [`diagnose`] E NÃO PELA [`diagnose_setup`]** — as duas
+/// metades da separação que esta wave fez.
+///
+/// ⚠️ **A metade negativa é a que importa:** sem ela, `diagnose_setup` podia ser um alias de
+/// `diagnose` e todo censo desta casa voltaria a contar a nota como buraco — que é o que fazia
+/// `107` cenas do roteador reprovarem.
+#[test]
+fn a_nota_das_posicoes_nao_e_um_buraco_de_setup() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let grelha = g.add_node("motion.grid");
+    let saida = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (grelha, 0),
+        to: (saida, 0),
+        delayed: false,
+    })
+    .expect("liga");
+    assert!(
+        diagnose(&g, &reg)
+            .iter()
+            .any(|d| d.deficit == Deficit::SemQuemVista),
+        "o badge do cartao TEM de a ver"
+    );
+    assert!(
+        diagnose_setup(&g, &reg).is_empty(),
+        "e o censo de setup NAO: esta cena nao tem buraco de ligacao nenhum"
     );
 }

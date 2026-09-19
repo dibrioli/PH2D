@@ -82,14 +82,28 @@ fn the_scene_marks_exactly_the_hole_and_not_the_free_tail() {
 
 /// **A cena inteira não tem OUTRO aviso** — um badge a mais e o Enio clica no errado, e a
 /// contagem que a mensagem imprime deixa de bater com o que ele vê.
+///
+/// ⚠️⚠️ **Ela tem DOIS badges desde 2026-09-19, e o segundo é uma nota e não um buraco:** a
+/// fonte desta cena entrega posições e nada a jusante as veste, que é a ordem do dono a ser
+/// cumprida ([`Deficit::SemQuemVista`]). ⇒ o gate passou a ter DUAS metades, e a segunda é a
+/// que o mantém forte: *um buraco de setup, a nota, e mais NADA*. Sem ela, filtrar a nota
+/// deixaria a porta aberta a um terceiro aviso que ninguém previu.
 #[test]
 fn nothing_else_in_the_scene_is_diagnosed() {
     let reg = registry();
     let (g, _) = scene();
-    let all = diagnose(&g, &reg);
+    let buracos = ph2d_motion_diagnose::diagnose_setup(&g, &reg);
     assert_eq!(
-        all.len(),
+        buracos.len(),
         1,
-        "a cena tem de ter exactamente um aviso: {all:?}"
+        "a cena tem de ter exactamente um BURACO DE SETUP: {buracos:?}"
+    );
+    let outros: Vec<_> = diagnose(&g, &reg)
+        .into_iter()
+        .filter(|d| !buracos.contains(d))
+        .collect();
+    assert!(
+        outros.iter().all(|d| d.deficit == Deficit::SemQuemVista),
+        "o unico outro aviso da cena tem de ser a nota das posicoes: {outros:?}"
     );
 }

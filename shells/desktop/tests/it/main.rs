@@ -74,6 +74,7 @@ mod o_cerebro_fala_antes_de_a_tabela_ouvir;
 mod o_corte_esta_fiado;
 mod o_cursor_e_mapeado_pela_banda_da_cena;
 mod o_hud_conduz_a_raiz_antes_de_as_ancoras_a_lerem;
+mod o_ladrilho_da_marca_chega_a_bomba;
 mod o_painel_pinta_todo_o_modelo_aceita;
 mod o_pincel_de_peso_esta_fiado;
 mod o_perfilador_diz_qual_motor_da_grelha_correu;

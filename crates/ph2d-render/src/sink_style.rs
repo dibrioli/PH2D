@@ -77,10 +77,17 @@ pub struct SinkStyle {
     /// sem nenhuma capacidade de gerar pixels na tela»*, e *«sem o duplicator só aparece um gizmo
     /// de osso ou segmento de corda […] que não renderiza em runtime»*.
     ///
-    /// `true` ⇒ uma corrente que **não carrega aparência** (nem ladrilho, nem geometria viva) não
-    /// produz uma única instância: ela é um conjunto de POSIÇÕES, e quem a quiser ver liga um
-    /// `motion.duplicator` com um `source.shape`/`source.object`. `false` (o de sempre) é o
-    /// ladrilho de omissão da shell, byte a byte.
+    /// `true` ⇒ uma corrente que **não carrega aparência** (nem ladrilho, nem geometria viva)
+    /// desenha-se como uma **MARCA**: um disco pequeno na posição de cada linha, em vez do quad
+    /// do tamanho de uma cópia. Ela é um conjunto de POSIÇÕES, e quem quiser ver OBJECTOS liga um
+    /// `motion.duplicator` com um `source.shape`/`source.object`. `false` é o ladrilho de omissão
+    /// da shell, byte a byte — o caminho de bissecção (`PH2D_MOTION_SO_COM_FORMA=0`).
+    ///
+    /// ⚠️⚠️ **Ela dizia *«não produz uma única instância»* até 2026-09-19**, e essa lei foi
+    /// medida a apagar **`107`** cenas do roteador do módulo. O dono deu a saída na mesma
+    /// mensagem em que reabriu o report: *«se quiser coloque apenas pontos nas posições»*. A
+    /// mudança é de DESENHO e não de alcance — a população que a lei apanha é exactamente a
+    /// mesma, e o que mudou foi o que ela desenha.
     ///
     /// ⚠️⚠️ **É uma LEI carregada pelo estilo, não um param que o artista autora** — nenhum
     /// controlo do cartão do `Output` a escreve, e há gate a afirmá-lo. Ela mora aqui por uma razão
@@ -97,19 +104,87 @@ pub struct SinkStyle {
     /// MISTA (uma junção de formas com pontos) carrega a coluna do ladrilho, logo continua a
     /// desenhar-se como hoje, com o `RowMedium` a decidir quem vai a que passe.
     pub so_com_forma: bool,
+    /// ⭐⭐⭐ **O LADRILHO DO PONTO** — o `uv_rect` que uma corrente **sem aparência** amostra
+    /// quando a lei acima está ligada (ver [`crate::DOT_TILE_KEY`]).
+    ///
+    /// ⚠️ **A lei mudou de «não desenha» para «desenha um PONTO», e foi ordem do dono**
+    /// (2026-09-19): *«o grid continua desenhando quadrados. A ordem foi não desenhar nada. se
+    /// quiser coloque apenas pontos nas posições»*. Não desenhar NADA era a ordem primária e
+    /// está **medida a apagar `111` das `123` cenas** do roteador do módulo — a segunda frase é
+    /// a saída que ele deu, e é a que ship: a posição continua a ver-se, e **como marca**.
+    ///
+    /// ⚠️ **Ele viaja no ESTILO e não como argumento** pela mesma razão que o `so_com_forma`: é
+    /// o único canal que já atravessa os dois lowerings **e** o device. O valor de
+    /// [`SinkStyle::PLAIN`] é o átlas inteiro, que é o que um gate sem átlas quer; quem tem o
+    /// átlas (o pump, e a rota do dispositivo) sobrescreve-o.
+    ///
+    /// ⛔ **Ele NÃO entra na assinatura do pipeline do device**, e isso é deliberado: o codegen
+    /// não o assa — ele chega pelo uniform, no lugar do `default_uv`, porque a corrente que a
+    /// lei apanha é por construção uma corrente **sem coluna `uv_rect`**, logo todas as linhas
+    /// dela lêem o valor de omissão.
+    pub ponto_uv: [f32; 4],
 }
 
-/// ⭐⭐⭐ **A LEI DO DONO SHIPA DESLIGADA, E ISSO É ERRO DE COMPILAÇÃO** — não um teste.
+/// ⭐⭐⭐ **O TAMANHO DE UMA MARCA** — em unidades de mundo, e ele é um **valor de OMISSÃO**, não
+/// um factor.
 ///
-/// ⚠️ Um `assert!` de teste sobre uma constante é **dobrado pelo compilador** antes de correr (o
-/// clippy di-lo em voz alta), logo ele não afirmaria nada. Aqui a afirmação é do compilador: no dia
-/// em que alguém quiser o contrário, tem de **apagar esta linha** — que é uma decisão, e não uma
-/// deriva. A linha desta casa já violou a lei uma vez (doc 115 §31, o corte em duas camadas que
-/// shipou ligado e foi invertido por auditoria).
+/// ⚠️⚠️ **A LEI É ESTA: uma POSIÇÃO não tem o tamanho de uma CÓPIA.** O que a corrente sem forma
+/// desenhava era o `ph2d_nodegraph::attr::SIZE_IDENTITY` (`1,0`), que é por definição *«o tamanho
+/// de uma cópia»* — e com o `motion.grid` a nascer com `gap = 1,0` os quads de omissão **ENCOSTAM**
+/// uns nos outros. É isso, à letra, o report do dono: *«o grid continua desenhando quadrados»*.
+/// Uma marca mede `0,15` do vão e sobram `5,7` marcas de espaço entre duas — *o arranjo passa a
+/// ser o que se lê, e a marca o que se aponta*.
+///
+/// ⭐⭐ **E é um DEFAULT, o que quer dizer que uma corrente que DIZ o seu tamanho é obedecida.**
+/// Esta foi a segunda redacção: a primeira multiplicava o `size` de cada linha por `0,15`, e a
+/// medição matou-a — na cena dos campos, **onde o canal do campo É o tamanho**, as marcas caíam
+/// para `0,022` (o gate `the_dots_never_touch_so_the_field_is_readable` calibrou `0,12` como
+/// *«menos de 5 px na tela»*) e a cena ficava preta. ⛔ E um PISO também foi construído e medido:
+/// ele **SATURA** — os quatro valores da banda passaram a diferir `3,6e-9`, apagando o campo que
+/// a cena existe para mostrar, que é a mesma forma do `ADAPT_RATIO` emprestado.
+///
+/// ⇒ *quem escreveu uma coluna `size` tomou uma decisão, e a lei não a sobrepõe; quem não a
+/// escreveu está a entregar posições, e uma posição não mede uma cópia.*
+///
+/// ⚠️ **Em unidades de MUNDO e não em píxeis de ecrã**: um tamanho constante no ecrã seria
+/// invariante ao zoom e **não é exprimível aqui** — o lowering não conhece a câmara, e ensiná-lo
+/// poria a pose a depender dela, o que nenhuma outra lei desta casa faz.
+pub const PONTO_DO_TAMANHO: [f32; 2] = [0.15, 0.15];
+
+/// ⚠️ **A marca é MENOR que uma cópia, e isso é ERRO DE COMPILAÇÃO** — não um teste. Uma marca
+/// do tamanho da identidade **é** o quadrado que o report do dono acusa, e um `assert!` de teste
+/// sobre duas constantes é dobrado pelo compilador antes de correr (o clippy di-lo em voz alta):
+/// ele não afirmaria nada. É a mesma lei que o `const _` do estilo neutro já aplica, logo abaixo.
 const _: () = assert!(
-    !SinkStyle::PLAIN.so_com_forma,
-    "tudo o que e' novo shipa desligado"
+    PONTO_DO_TAMANHO[0] < 1.0 && PONTO_DO_TAMANHO[1] < 1.0,
+    "uma marca do tamanho de uma copia e' o quadrado que o report acusa"
 );
+
+/// ⭐⭐⭐ **OS DOIS VALORES DE OMISSÃO QUE A LEI DA MARCA TROCA** — a porta ÚNICA, lida pelas
+/// DUAS rotas de lowering.
+///
+/// `tem_aparencia` é a metade que cada rota resolve por si, porque elas não conseguem a mesma
+/// coisa: a CPU tem a corrente inteira e pergunta *«ladrilho **ou** geometria viva?»*; o
+/// dispositivo só tem a PRESENÇA das colunas e pergunta *«ladrilho?»*, recusando a lei assim que
+/// uma coluna de geometria existe. ⚠️ **A divergência é declarada e cai para o lado
+/// conservador** (desenhar como sempre), e está escrita no sítio onde o device a aplica.
+///
+/// ⚠️ **O que NÃO é por rota é o RESULTADO**, e é por isso que ele mora aqui: escrito duas
+/// vezes, uma das rotas ficaria com o ladrilho do ponto e o tamanho de uma cópia — discos
+/// enormes num lado e marcas no outro, sobre o mesmo documento.
+#[must_use]
+pub fn omissoes_da_marca(
+    style: SinkStyle,
+    tem_aparencia: bool,
+    uv: [f32; 4],
+    size: [f32; 2],
+) -> ([f32; 4], [f32; 2]) {
+    if style.so_com_forma && !tem_aparencia {
+        (style.ponto_uv, PONTO_DO_TAMANHO)
+    } else {
+        (uv, size)
+    }
+}
 
 impl SinkStyle {
     /// O estilo que os dois lowerings cravavam antes destes params existirem:
@@ -119,9 +194,14 @@ impl SinkStyle {
         pivot: [0.0, 0.0],
         sampling: RenderInstance::SAMPLING_DEFAULT,
         stream_order: false,
-        // ⚠️ A lei nasce DESLIGADA: ligá-la muda o que 111 das 123 cenas do roteador desenham
-        // (medido — `quem_desenha_sem_forma`), e nesta casa tudo o que é novo shipa desligado.
+        // ⚠️ **O PLAIN continua DESLIGADO de propósito, e o produto é que liga** (ver
+        // `ph2d_eval_motion::so_com_forma_por_ordem`): este é o estilo NEUTRO, o que um gate
+        // constrói à mão para medir tudo o resto, e um gate que o construísse já com a lei
+        // ligada mediria a lei em vez do que diz medir.
         so_com_forma: false,
+        // O átlas inteiro — o mesmo valor de omissão que o `default_uv_rect` tem antes de a
+        // shell o preencher. Quem tem o átlas sobrescreve-o.
+        ponto_uv: [0.0, 0.0, 1.0, 1.0],
     };
 
     /// O `flip_uv` que este estilo produz para uma linha SEM coluna `blend`.
@@ -143,9 +223,24 @@ impl SinkStyle {
 
     /// `true` se este estilo é a identidade — o que permite às duas rotas
     /// afirmarem *«sem params, o quadro é o de antes»* sem repetir a lista.
+    ///
+    /// ⚠️⚠️ **Ela mede os PARAMS, e a LEI do dono não é um param** — nem o ladrilho que a lei
+    /// lê. Os dois campos são normalizados antes da comparação, e a razão está na frase acima:
+    /// quem pergunta isto pergunta *«o artista mexeu em alguma coisa deste sink?»*, e a resposta
+    /// não pode mudar porque o produto passou a desenhar marcas em vez de quads.
+    ///
+    /// ⛔ **A assinatura de pipeline do dispositivo NÃO pode usar isto sozinho**, e o
+    /// `lower_signature` não o faz: lá a pergunta é *«a fonte WGSL é a de sempre?»*, e a lei
+    /// **muda a fonte**. Duas perguntas parecidas, duas réguas — juntá-las serviria a pipeline
+    /// dos quads a um sink que pede marcas.
     #[must_use]
     pub fn is_plain(&self) -> bool {
-        *self == Self::PLAIN
+        let comparavel = Self {
+            so_com_forma: Self::PLAIN.so_com_forma,
+            ponto_uv: Self::PLAIN.ponto_uv,
+            ..*self
+        };
+        comparavel == Self::PLAIN
     }
 }
 
@@ -257,5 +352,46 @@ mod tests {
         assert_eq!(s.anchor_for([2.0, 4.0]), [1.0, -1.0]);
         assert_eq!(s.anchor_for([8.0, 4.0]), [4.0, -1.0]);
         assert!(!s.is_plain());
+    }
+}
+
+#[cfg(test)]
+mod marca_tests {
+    use super::*;
+
+    /// ⭐⭐⭐ **A PORTA DA MARCA: quatro células, e as três negativas valem mais que a positiva.**
+    ///
+    /// ⚠️ **Sem a célula «tem aparência», a lei apagaria o átlas de toda sprite do módulo**; sem
+    /// a célula «lei desligada», `PH2D_MOTION_SO_COM_FORMA=0` deixaria de bissectar coisa
+    /// nenhuma; e sem a última, a lei ficaria a depender de um ladrilho que ninguém pôs.
+    #[test]
+    fn a_marca_troca_as_omissoes_so_onde_a_lei_manda() {
+        let uv = [0.1, 0.2, 0.3, 0.4];
+        let sz = [1.0, 1.0];
+        let ponto = [0.9, 0.9, 1.0, 1.0];
+        let com_lei = SinkStyle {
+            so_com_forma: true,
+            ponto_uv: ponto,
+            ..SinkStyle::PLAIN
+        };
+
+        // (1) A lei ligada sobre uma corrente SEM aparência: as duas omissões trocam.
+        assert_eq!(
+            omissoes_da_marca(com_lei, false, uv, sz),
+            (ponto, PONTO_DO_TAMANHO),
+            "uma posicao amostra o disco e nao mede uma copia"
+        );
+        // (2) A MESMA lei sobre uma corrente COM aparência: nada muda.
+        assert_eq!(
+            omissoes_da_marca(com_lei, true, uv, sz),
+            (uv, sz),
+            "quem trouxe forma desenha com o que trouxe"
+        );
+        // (3) A lei desligada: nada muda, nem sem aparência.
+        assert_eq!(
+            omissoes_da_marca(SinkStyle::PLAIN, false, uv, sz),
+            (uv, sz),
+            "`PH2D_MOTION_SO_COM_FORMA=0` tem de devolver o quadro de antes"
+        );
     }
 }

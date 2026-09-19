@@ -89,3 +89,41 @@ impl NodeRegistry {
         }
     }
 }
+
+impl super::NodeRegistry {
+    /// ⭐⭐⭐ **ESTE NÓ VESTE POSIÇÕES COM UMA FORMA** — a metade que faz uma nuvem de posições
+    /// virar coisas que se vêem (ordem do dono, 2026-09-19: *«se não forem usados com duplicator
+    /// e um objeto a ser copiado, são invisíveis»*).
+    ///
+    /// ⚠️⚠️ **DECLARADO pelo próprio nó e NÃO derivado — e as duas derivações foram MEDIDAS e
+    /// refutadas antes de esta linha existir:**
+    ///
+    /// | derivação tentada | o que ela leu |
+    /// |---|---|
+    /// | *«produz a coluna `uv_rect`/`geometry_id`/`texture_id`»*, pelo canal que o diagnosticador já usa | **`0` de `135`** — quem escreve essas colunas fá-lo no `eval`, sem binding de dispositivo e sem `Coupling` |
+    /// | *«exige uma porta `shape` e emite `Instances/Vec2`»* | **`2`**: o `motion.duplicator` **e o `field.shape`**, que lê a forma como CAMPO e não põe arte nenhuma na corrente — e os dois manifestos são **indistinguíveis** (`out:Instances/Vec2` nos dois) |
+    ///
+    /// ⇒ é side-metadata opt-in, como o [`super::NodeRegistry::register_live_vector_source`] e o
+    /// [`super::NodeRegistry::register_object_source`], e vive na função `register` do próprio
+    /// nó — *um nó novo que vista posições declara-se, e não há lista em sítio nenhum para
+    /// alguém se esquecer de estender.*
+    pub fn register_veste_as_posicoes(&mut self, id: NodeTypeId) {
+        self.veste_as_posicoes.insert(id);
+    }
+
+    /// Este tipo VESTE posições — ver [`Self::register_veste_as_posicoes`].
+    #[must_use]
+    pub fn veste_as_posicoes(&self, id: NodeTypeId) -> bool {
+        self.veste_as_posicoes.contains(&id)
+    }
+
+    /// ⭐ **Este tipo põe ARTE numa corrente** — ou porque a VESTE (o duplicador) ou porque a
+    /// TRAZ (uma `source.object` · `source.shape` · `source.text`).
+    ///
+    /// A porta ÚNICA da pergunta, para o diagnosticador não a compor de três predicados e o
+    /// leitor seguinte não a compor de dois.
+    #[must_use]
+    pub fn poe_arte(&self, id: NodeTypeId) -> bool {
+        self.veste_as_posicoes(id) || self.is_object_source(id) || self.is_live_vector_source(id)
+    }
+}

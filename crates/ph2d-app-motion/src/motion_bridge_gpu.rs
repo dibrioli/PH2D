@@ -378,7 +378,15 @@ pub(super) fn cook_gpu(
     // AQUI, ao lado do sink que o plano escolheu: um segundo leitor teria liberdade de
     // arredondar diferente, e as duas rotas desenhariam o mesmo documento de maneiras
     // diferentes, que nenhum gate que olha para uma rota consegue ver.
-    let blend = ph2d_eval_motion::sink_style(&motion.doc.graph, motion.sinks[0]);
+    // ⚠️ **Com o ladrilho da MARCA dentro** — a bomba da CPU é quem o guarda (a shell dá-lho
+    // uma vez, quando o átlas é composto), e sem esta linha a rota do dispositivo desenharia a
+    // marca com o átlas INTEIRO enquanto a da CPU a desenha com o disco: as duas rotas a
+    // discordar sobre o mesmo documento, que é exactamente o que a porta única existe para
+    // impedir.
+    let blend = ph2d_render::SinkStyle {
+        ponto_uv: motion.pump.ponto_uv_rect(),
+        ..ph2d_eval_motion::sink_style(&motion.doc.graph, motion.sinks[0])
+    };
     // The count-changing cerca (this wave): an OBJECT graph whose GPU suffix
     // reorders / changes count would mis-bind the texture-run partition — the
     // boundary `texture_id` column aligns with the sink ONLY when the suffix is

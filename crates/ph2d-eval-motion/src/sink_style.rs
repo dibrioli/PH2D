@@ -117,10 +117,16 @@ fn tag(graph: &Graph, sink: NodeId, name: &str, top: u8) -> u8 {
 /// > nenhuma capacidade de gerar pixels na tela»* · *«sem o duplicator só aparece um gizmo de osso
 /// > ou segmento de corda (ou outro tipo de segmento) que não renderiza em runtime»*.
 ///
-/// ⚠️ **Ela nasce DESLIGADA, e o número é a razão:** ligada, **111 das 123** cenas do roteador
-/// deixam de desenhar o que desenham hoje (medido — `quem_desenha_sem_forma`), porque **90 %**
-/// delas nunca receberam uma forma e vivem do ladrilho de omissão da shell. A migração das cenas
-/// é o que a liga; até lá, o de sempre.
+/// ⭐⭐⭐ **Ela nasce LIGADA desde 2026-09-19, e a mudança veio com a saída que a torna barata.**
+/// A redacção anterior dizia *«ela nasce DESLIGADA, e o número é a razão: ligada, 111 das 123
+/// cenas deixam de desenhar o que desenham hoje»* — e isso continua verdade **sobre a lei que ela
+/// descrevia**, que era *não desenhar nada*. O dono reabriu o report (*«o grid continua desenhando
+/// quadrados. A ordem foi não desenhar nada. se quiser coloque apenas pontos nas posições»*), e a
+/// segunda frase é o que ship: as `111` cenas continuam a desenhar, **como MARCAS**, e o custo que
+/// mantinha a lei desligada deixou de existir.
+///
+/// ⚠️ **`PH2D_MOTION_SO_COM_FORMA=0` devolve os quads de omissão** — o caminho de bissecção, e a
+/// única maneira de ver o que uma cena desenhava antes desta wave.
 ///
 /// ⚠️ **LIDA UMA VEZ POR CORRIDA e NUM SÍTIO SÓ.** Este é o único leitor do ambiente desta lei —
 /// os dois lowerings recebem-na como DADO, dentro do estilo, e é isso que os torna gateáveis sem
@@ -133,10 +139,14 @@ pub fn so_com_forma_por_ordem() -> bool {
 }
 
 /// A leitura de uma ordem do ambiente, **pura**, para o gate a poder medir sem mexer no processo.
-/// Vazio e `"0"` são desligado; tudo o resto é ligado — a mesma escada das outras portas da casa.
+///
+/// ⚠️⚠️ **A escada está INVERTIDA em relação às outras portas da casa, e é de propósito:** aqui a
+/// ausência quer dizer *«a lei do dono»* e só um `0` explícito a desliga. As irmãs (`PH2D_GPU_COOK`
+/// e companhia) armam uma feature nova e por isso leem a ausência como desligado; esta **já não é
+/// nova** — ela é o produto, e o que a variável oferece é a saída de bissecção.
 #[must_use]
 pub fn ordem_de(v: Option<&str>) -> bool {
-    matches!(v, Some(x) if !x.is_empty() && x != "0")
+    !matches!(v, Some("0"))
 }
 
 #[must_use]
@@ -168,6 +178,11 @@ pub fn sink_style(graph: &Graph, sink: NodeId) -> SinkStyle {
         stream_order: param(graph, sink, SINK_SORT_PARAM) >= 0.5,
         // ⭐⭐⭐ **A LEI DO DONO, e ela NÃO sai de um param** — ver [`so_com_forma_por_ordem`].
         so_com_forma: so_com_forma_por_ordem(),
+        // ⚠️ **O ladrilho da marca NÃO se lê do grafo — ele vem do ÁTLAS**, que esta função não
+        // conhece. O valor de omissão é o átlas inteiro, e quem o tem (a bomba, pelo
+        // [`crate::Pump::define_o_ladrilho_do_ponto`], e a rota do dispositivo) sobrescreve-o.
+        // *Um sítio que não pode saber a resposta devolve a omissão e nomeia quem sabe.*
+        ponto_uv: SinkStyle::PLAIN.ponto_uv,
     }
 }
 

@@ -61,6 +61,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_bridge_heal.this_node_has_nothing_wired_into_it_so_it_has_no" => {
             "This node has nothing wired into it, so it has no data to work on"
         }
+        "app.motion.motion_bridge_heal.this_node_only_gives_positions_add_a_duplicator" => {
+            "This node only gives positions — on screen they are just dots. Add a Duplicator after it and wire a shape into the Duplicator to see objects"
+        }
         "app.motion.motion_bridge_heal.this_node_has_no_points_to_work_on_wire_a_source" => {
             "This node has no points to work on — wire a source (Grid / Emitter) into it"
         }

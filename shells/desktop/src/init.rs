@@ -115,8 +115,14 @@ pub(crate) fn build_initial_state(
     ph2d_gpu::pass_profiler::init(&gpu.device, &gpu.queue);
     let surface = SurfaceContext::new(gpu, raw_surface, size).expect("SurfaceContext::new");
 
-    let (asset_db, mut logical_texture_map, atlas_is_real, motion_default_uv, renderer) =
-        subsystems::boot_assets_and_renderer(handler, &surface);
+    let (
+        asset_db,
+        mut logical_texture_map,
+        atlas_is_real,
+        motion_default_uv,
+        motion_ponto_uv,
+        renderer,
+    ) = subsystems::boot_assets_and_renderer(handler, &surface);
 
     let (hero_live_enabled, sim, present, prop_state, worklist, hero_live) =
         subsystems::boot_sim_world(handler, &asset_db, &mut logical_texture_map);
@@ -205,6 +211,10 @@ pub(crate) fn build_initial_state(
         motion: {
             let mut m = ph2d_app_motion::motion_state::MotionState::new();
             m.default_uv_rect = motion_default_uv;
+            // ⭐ A MARCA de uma posição (ordem do dono, 2026-09-19): uma corrente sem forma
+            // desenha um PONTO e não um quad — ver `ph2d_render::DOT_TILE_KEY`. A bomba guarda-o
+            // e as DUAS rotas (CPU e dispositivo) o leem dela.
+            m.pump.define_o_ladrilho_do_ponto(motion_ponto_uv);
             m
         },
         // ⭐ Os emissores de partículas (TOP-20 #18) — o MESMO ladrilho branco do Motion: uma

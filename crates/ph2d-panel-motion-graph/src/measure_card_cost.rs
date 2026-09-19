@@ -52,7 +52,6 @@ fn card_with_params(id: u32, k: usize) -> GraphNodeView {
         readout: Some("400 rows".into()),
         count: Some(400),
         hot: false,
-        so_posicoes: false,
         is_sink: false,
         preview: None,
         bypassed: false,

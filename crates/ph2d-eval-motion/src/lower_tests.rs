@@ -168,22 +168,36 @@ const SO_COM_FORMA: SinkStyle = SinkStyle {
     ..SinkStyle::PLAIN
 };
 
-/// **UMA CORRENTE DE POSIÇÕES NÃO PRODUZ PIXEL NENHUM** — a ordem do dono, nos DOIS lowerings.
+/// **UMA CORRENTE DE POSIÇÕES DESENHA MARCAS, E SÓ NUM PASSE** — a ordem do dono, nos DOIS
+/// lowerings.
 ///
-/// ⚠️ **As duas metades são obrigatórias.** Escrita só no lowering das sprites, o passe VECTORIAL
-/// continuaria a pintar a mesma corrente — a forma de defeito que o cabeçalho de `MediaColumns` já
-/// nomeia (*«a mesma linha desenhava-se duas vezes ou nenhuma»*).
+/// ⚠️⚠️ **Este gate pedia `sprites.is_empty()` até 2026-09-19**, e a premissa morreu por ordem
+/// do dono: *«A ordem foi não desenhar nada. se quiser coloque apenas pontos nas posições»* — e
+/// não desenhar nada está **medido a apagar `107` das cenas do roteador**. O que ele afirma agora
+/// é mais forte, porque diz o que se vê e não só o que não se vê: a contagem fica, o ladrilho é
+/// o do PONTO e o tamanho é o da MARCA.
+///
+/// ⚠️ **As duas metades continuam obrigatórias.** O passe VECTORIAL tem de se calar, senão a
+/// mesma posição leva duas peças sobrepostas — a forma de defeito que o cabeçalho de
+/// `MediaColumns` já nomeia.
 #[test]
-fn uma_corrente_de_posicoes_nao_desenha_quando_a_lei_esta_ligada() {
+fn uma_corrente_de_posicoes_desenha_marcas_quando_a_lei_esta_ligada() {
     let s = Stream::new(4).with("P", Column::Vec2(vec![[0.0, 0.0]; 4]));
 
     let mut sprites: Vec<RenderInstance> = Vec::new();
     lower_to_instances_onto(&s, UV, SZ, SO_COM_FORMA, &mut sprites);
-    assert!(
-        sprites.is_empty(),
-        "posicoes sem forma nao viram sprite: {} linhas",
-        sprites.len()
-    );
+    assert_eq!(sprites.len(), 4, "a posicao continua a ver-se");
+    for i in &sprites {
+        assert_eq!(
+            i.size,
+            ph2d_render::sink_style::PONTO_DO_TAMANHO,
+            "uma posicao nao mede uma COPIA"
+        );
+        assert_eq!(
+            i.atlas_uv, SO_COM_FORMA.ponto_uv,
+            "e amostra o ladrilho do PONTO, nao o quad branco"
+        );
+    }
 
     // ⛔⛔ **A 2.ª metade tem de trazer a TERCEIRA MÉDIA, e isto foi uma MUTAÇÃO SOBREVIVENTE.**
     //
@@ -271,7 +285,9 @@ fn geometria_a_zeros_continua_a_ser_posicoes() {
     assert!(!crate::lower::tem_aparencia(&s));
     let mut sprites: Vec<RenderInstance> = Vec::new();
     lower_to_instances_onto(&s, UV, SZ, SO_COM_FORMA, &mut sprites);
-    assert!(sprites.is_empty());
+    assert_eq!(sprites.len(), 3, "ela desenha-se, e desenha-se como MARCA");
+    assert_eq!(sprites[0].size, ph2d_render::sink_style::PONTO_DO_TAMANHO);
+    assert_eq!(sprites[0].atlas_uv, SO_COM_FORMA.ponto_uv);
 }
 
 /// **UMA CORRENTE MISTA DESENHA** — a junção de formas com pontos carrega a coluna do ladrilho,
@@ -305,27 +321,36 @@ fn uma_corrente_mista_continua_a_desenhar() {
 /// redacção perguntava a `so_com_forma_por_ordem()` directamente, e cravar a resposta do fio
 /// dentro do `sink_style` (`so_com_forma: true`) deixava-a **verde**. *Um gate que chama a função
 /// em vez de percorrer a rota afirma que a peça certa existe, nunca que o produto a usa.*
+///
+/// ⚠️⚠️ **Ele chamava-se `a_porta_do_produto_shipa_desligada` até 2026-09-19, e a inversão é
+/// uma ordem do dono** — a lei deixou de ser *«não desenha nada»* (que apagava o módulo) e
+/// passou a ser *«desenha marcas»*, que é barato. O que o gate guarda não mudou: que a rota do
+/// produto lê a porta, e não um literal.
 #[test]
-fn a_porta_do_produto_shipa_desligada() {
+fn a_porta_do_produto_shipa_ligada() {
     use ph2d_nodegraph::graph::Graph;
     let mut g = Graph::new();
     let sink = g.add_node("motion.output");
     assert!(
-        !crate::sink_style::sink_style(&g, sink).so_com_forma,
-        "sem `PH2D_MOTION_SO_COM_FORMA` o estilo que o produto monta tem a lei desligada"
+        crate::sink_style::sink_style(&g, sink).so_com_forma,
+        "sem `PH2D_MOTION_SO_COM_FORMA` o estilo que o produto monta tem a lei LIGADA"
     );
     // E a porta pura, pelo mesmo caminho — as duas metades, porque uma porta certa ligada a nada
     // e um fio certo com a porta errada dão o mesmo sintoma.
-    assert!(!crate::sink_style::so_com_forma_por_ordem());
+    assert!(crate::sink_style::so_com_forma_por_ordem());
 }
 
-/// **E A PORTA LÊ O QUE O DONO ESCREVE** — a escada das outras portas da casa.
+/// **E A PORTA LÊ O QUE O DONO ESCREVE** — ⚠️ a escada INVERTIDA em relação às outras portas
+/// da casa, e de propósito: ali a ausência arma uma feature nova, aqui ela é a lei, e o que a
+/// variável oferece é a saída de bissecção. Ver [`crate::sink_style::ordem_de`].
 #[test]
 fn a_porta_le_o_que_o_dono_escreve() {
     use crate::sink_style::ordem_de;
-    assert!(!ordem_de(None), "ausente = desligada");
-    assert!(!ordem_de(Some("")), "vazia = desligada");
-    assert!(!ordem_de(Some("0")), "zero = desligada");
+    assert!(ordem_de(None), "ausente = a lei do dono");
+    assert!(!ordem_de(Some("0")), "so' um zero explicito a desliga");
     assert!(ordem_de(Some("1")));
     assert!(ordem_de(Some("sim")));
+    // ⚠️ A cadeia VAZIA fica do lado de LIGADO, ao contrário das irmãs: `PH2D_…=` não é uma
+    // ordem para desligar, é uma variável mal escrita, e a lei não se desarma por acidente.
+    assert!(ordem_de(Some("")), "vazia nao e' um `0`");
 }

@@ -67,7 +67,6 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 count: None,
                 // ⭐ Um facto sobre o TIPO, logo ele vem do registo e não do cook — ao contrário
                 // dos três acima, que a shell preenche depois.
-                so_posicoes: registry.so_posicoes(type_id),
                 hot: false,
                 is_sink: false,
                 preview: None,

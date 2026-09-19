@@ -71,3 +71,26 @@ fn every_deficit_has_its_own_advisory_and_none_falls_into_the_catch_all() {
         "a mensagem tem de nomear a porta: {dead}"
     );
 }
+
+/// ⭐⭐⭐ **A FRASE DA ORDEM DO DONO NOMEIA AS TRÊS COISAS** — o que se vê agora, o que falta, e
+/// o que o que falta precisa.
+///
+/// ⚠️ **O irmão acima só exige que ela DIFIRA do catch-all**, e uma frase diferente e inútil
+/// passa nele. A ordem era literal (*«coloque um alerta de que se não forem usados com
+/// duplicator e um objeto a ser copiado, são invisíveis»*), e sem a 1.ª parte o artista lê
+/// *«não funciona»*; sem a 3.ª ele põe o duplicador e continua sem ver nada.
+#[test]
+fn a_frase_das_posicoes_diz_o_que_se_ve_e_o_que_falta() {
+    let msg = explain(&Diagnostic {
+        node: NodeId(0),
+        deficit: Deficit::SemQuemVista,
+        fix: Fix::Offer,
+    })
+    .to_lowercase();
+    for parte in ["positions", "dots", "duplicator", "shape"] {
+        assert!(
+            msg.contains(parte),
+            "a frase tem de nomear {parte:?}, e diz: {msg:?}"
+        );
+    }
+}

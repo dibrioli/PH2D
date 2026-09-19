@@ -121,6 +121,28 @@ const REQUIRED_UPSTREAM: &[&str] = &["P"];
 /// tem de ser **uma linha**, e não uma regra nova a redescobrir.
 const SINGLETON_SCREEN_PASSES: &[&str] = &["fx.glow"];
 
+/// ⭐⭐⭐ **OS BURACOS DE LIGAÇÃO, sem a nota sobre o DESTINO** — a [`diagnose`] menos o
+/// [`Deficit::SemQuemVista`].
+///
+/// ⚠️⚠️ **Ela existe porque as duas perguntas são diferentes, e a medição obrigou a separá-las:**
+/// um buraco de setup é *«este grafo está mal ligado»* e tem cura no grafo; o `SemQuemVista` é
+/// *«esta cadeia entrega posições, e posições desenham-se como marcas»*, que é um FACTO sobre o
+/// que o artista escolheu montar. Medido em 2026-09-19, sobre o roteador de cenas do módulo:
+/// **`107` cenas** o acusam — quase todas, porque quase toda cena de demonstração deste módulo
+/// existe para mostrar um ARRANJO e não um objecto.
+///
+/// ⇒ os censos que perguntam *«esta cena tem buraco?»* leem esta porta, e o badge do cartão lê a
+/// [`diagnose`]. ⛔ **Não é afrouxar um gate:** se fosse, o `SemQuemVista` sairia do produto
+/// também. Ele fica, e é ele que responde à ordem do dono — o que sai é a AFIRMAÇÃO de que
+/// entregar posições é um defeito de ligação, que nunca foi verdade.
+#[must_use]
+pub fn diagnose_setup(graph: &Graph, reg: &NodeRegistry) -> Vec<Diagnostic> {
+    diagnose(graph, reg)
+        .into_iter()
+        .filter(|d| d.deficit != Deficit::SemQuemVista)
+        .collect()
+}
+
 /// Walk the graph and report every node whose output is semantically inert
 /// (ADR-0155). Pure: reads only the graph structure and the registry's derived
 /// roles (GPU bindings + [`Coupling`] side-channel). A node that produces no
@@ -193,6 +215,19 @@ pub fn diagnose(graph: &Graph, reg: &NodeRegistry) -> Vec<Diagnostic> {
             });
             continue;
         }
+        // ⭐⭐⭐ Uma fonte de POSIÇÕES cuja cadeia não chega a nada que as vista: o que se vê no
+        // ecrã são marcas, e não o objecto. ⚠️ **Vem DEPOIS dos quatro acima e ANTES dos
+        // transientes**, e a ordem é a lei dos irmãos: os de causa-raiz saem com `continue` (um
+        // nó sem entrada não tem saída que possa não ser vestida), e este é sobre o DESTINO da
+        // corrente, que continua a valer mesmo que o nó também produza um transiente inerte —
+        // por isso não corta o laço.
+        if reg.so_posicoes(ty) && !arte_alcancavel(graph, reg, inst.id) {
+            out.push(Diagnostic {
+                node: inst.id,
+                deficit: Deficit::SemQuemVista,
+                fix: Fix::Offer,
+            });
+        }
         let param = param_reader(graph, reg, inst.id, ty);
         for &col in TRANSIENT_COLUMNS {
             if !produces(reg, ty, col, &param) {
@@ -239,6 +274,23 @@ pub fn canonical_consumer(col: &str, particle: bool) -> Option<&'static str> {
 /// Does the node type `ty` **produce** `col` — write it to its output? United from
 /// the two static, registry-queryable sources: a GPU `ColumnBinding` that writes
 /// it, or a `Coupling::Produces`.
+/// A [`produces`] exposta à SONDA de medição, com os params no default do manifesto.
+///
+/// ⚠️ **Existe só para a sonda `quem_da_aparencia` poder correr sobre o catálogo inteiro** sem
+/// um grafo: ela mede se a pergunta *«quem acrescenta aparência?»* é derivável do registo, que é
+/// a premissa de que a lei da marca depende. ⛔ Não é a porta do produto — essa é a [`diagnose`].
+#[doc(hidden)]
+#[must_use]
+pub fn produz_para_a_sonda(reg: &NodeRegistry, ty: NodeTypeId, col: &str) -> bool {
+    let default = |name: &str| -> f32 {
+        reg.manifests()
+            .find(|m| m.id == ty)
+            .and_then(|m| m.params.iter().find(|p| p.name == name))
+            .map_or(0.0, |p| p.default)
+    };
+    produces(reg, ty, col, &default)
+}
+
 fn produces(reg: &NodeRegistry, ty: NodeTypeId, col: &str, param: &dyn Fn(&str) -> f32) -> bool {
     coupling_produces(reg, ty, col, param) || gpu_binding(reg, ty, col, is_producer)
 }
@@ -526,6 +578,54 @@ fn consumer_reachable(graph: &Graph, reg: &NodeRegistry, from: NodeId, col: &str
         for e in graph.edges() {
             if e.from.0 == n && !e.delayed && seen.insert(e.to.0) {
                 if node_consumes(graph, reg, e.to.0, col) {
+                    return true;
+                }
+                stack.push(e.to.0);
+            }
+        }
+    }
+    false
+}
+
+/// ⭐⭐⭐ **Alguma coisa a jusante de `from` CARREGA ARTE?** — a régua do
+/// [`Deficit::SemQuemVista`].
+///
+/// ⚠️⚠️ **São DUAS perguntas, e a segunda é a que uma leitura rápida esquece:** não basta
+/// procurar a jusante um nó que PÕE arte (o duplicador, uma `source.object`); basta que um nó
+/// alcançável **receba** de um que põe. O caso é uma junção — a grelha e uma `source.object`
+/// entram as duas num `motion.merge` —, e ali a fonte da arte **não está a jusante da grelha**,
+/// é IRMÃ dela: um passeio só para a frente a partir da grelha nunca a encontra e acusaria um
+/// grafo perfeitamente certo.
+///
+/// ⇒ o fecho para a frente é calculado **a partir de todas as fontes de arte** e a pergunta
+/// final é uma intersecção. Custo `O(nós × arestas)` num grafo de editor, pago uma vez por
+/// diagnóstico.
+fn arte_alcancavel(graph: &Graph, reg: &NodeRegistry, from: NodeId) -> bool {
+    // (1) Quem carrega arte: as fontes, mais tudo o que recebe delas (fecho para a frente).
+    let mut carrega: BTreeSet<NodeId> = graph
+        .nodes()
+        .iter()
+        .filter(|n| reg.poe_arte(NodeTypeId::of(&n.type_name)))
+        .map(|n| n.id)
+        .collect();
+    let mut cresceu = true;
+    while cresceu {
+        cresceu = false;
+        for e in graph.edges() {
+            if !e.delayed && carrega.contains(&e.from.0) && carrega.insert(e.to.0) {
+                cresceu = true;
+            }
+        }
+    }
+    // (2) Alguém a jusante de `from` está lá dentro? ⚠️ O próprio `from` NÃO conta: ele é uma
+    // fonte de posições por construção, e se ele já carregasse arte a pergunta não se punha.
+    let mut seen = BTreeSet::new();
+    seen.insert(from);
+    let mut stack = vec![from];
+    while let Some(n) = stack.pop() {
+        for e in graph.edges() {
+            if e.from.0 == n && !e.delayed && seen.insert(e.to.0) {
+                if carrega.contains(&e.to.0) {
                     return true;
                 }
                 stack.push(e.to.0);

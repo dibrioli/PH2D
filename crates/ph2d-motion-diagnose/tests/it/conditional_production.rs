@@ -15,7 +15,7 @@
 //! afirmasse a presença ficaria verde sobre um `Produces` seco, que é o defeito
 //! mais provável de alguém introduzir "simplificando".
 
-use ph2d_motion_diagnose::{Deficit, diagnose};
+use ph2d_motion_diagnose::{Deficit, diagnose_setup};
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
@@ -59,7 +59,7 @@ fn lone_make_point(target: f32) -> (Graph, NodeId) {
 }
 
 fn inert_accel(g: &Graph, reg: &NodeRegistry, node: NodeId) -> bool {
-    diagnose(g, reg)
+    diagnose_setup(g, reg)
         .iter()
         .any(|d| d.node == node && d.deficit == Deficit::InertProducer("accel"))
 }
@@ -72,7 +72,7 @@ fn a_make_point_that_writes_acceleration_with_no_integrator_is_reported() {
     assert!(
         inert_accel(&g, &reg, mp),
         "uma aceleracao escrita que ninguem consome tem de ser dita: {:?}",
-        diagnose(&g, &reg)
+        diagnose_setup(&g, &reg)
     );
 }
 
@@ -86,7 +86,7 @@ fn the_modes_that_do_not_write_acceleration_are_not_reported() {
         assert!(
             !inert_accel(&g, &reg, mp),
             "target = {target} nao escreve `accel`, entao nao ha o que dizer: {:?}",
-            diagnose(&g, &reg)
+            diagnose_setup(&g, &reg)
         );
     }
 }
@@ -118,7 +118,7 @@ fn an_integrator_downstream_makes_the_acceleration_healthy() {
     assert!(
         !inert_accel(&g, &reg, mp),
         "com um consumidor a jusante a producao e saudavel: {:?}",
-        diagnose(&g, &reg)
+        diagnose_setup(&g, &reg)
     );
 }
 

@@ -111,30 +111,6 @@ pub(super) fn draw_card(
     // ⭐ **A faixa de params** (ciclo 1, doc 103): o que o cartão CONTROLA, sob os sockets.
     draw_card_params(ctx, n, view, theme);
 
-    // ⭐⭐⭐ **O AVISO DE VISIBILIDADE** — *este nó só entrega posições; sem um `motion.duplicator`
-    // e um objecto a copiar, nada do que ele faz vira pixel* (ordem do dono, 2026-09-19).
-    //
-    // ⚠️ **`Text2`, o tom apagado, e no tamanho do readout** — ele é uma NOTA sobre o tipo do nó,
-    // não um defeito deste grafo. O aviso a sério desta casa é o disco vermelho do `paint_inert_badge`
-    // (ADR-0155), e pintar os dois com a mesma força faria o artista aprender a ignorar o que
-    // importa: *uma queixa que soa em catorze tipos de nó, sempre, é ruído se gritar.*
-    //
-    // ⚠️ **Elidido como o readout**, e pela mesma razão: a fileira mede `CARD_W` e a frase é a face
-    // do artista — cortá-la é melhor do que a deixar correr por cima do socket do vizinho.
-    if let Some(top) = geom::nota_top(n) {
-        let row_y = sy + top * view.zoom;
-        paint_text_title_elided(
-            ctx.text_system,
-            ctx.scene,
-            ph2d_i18n::tr("panel.motion_graph.card.needs_a_duplicator"),
-            sx + TITLE_PAD_X * view.zoom,
-            row_y + READOUT_PAD_Y * view.zoom,
-            READOUT_SIZE * view.zoom,
-            w - TITLE_INSET_R * view.zoom,
-            resolve(ColorToken::Text2, theme),
-        );
-    }
-
     // The inline readout: what this card produced on this frame's cook, under its sockets.
     // Text2 (the muted tone), not Text1 — it is a live instrument reading, not a label the
     // artist authored, and it must not compete with the node's own name.
@@ -206,7 +182,3 @@ pub(super) fn draw_card(
     draw_inert_badge(ctx, n, view, theme);
     body
 }
-
-#[cfg(test)]
-#[path = "paint_card_nota_tests.rs"]
-mod nota_tests;

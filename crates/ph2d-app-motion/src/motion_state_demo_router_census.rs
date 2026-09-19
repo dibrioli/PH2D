@@ -520,6 +520,14 @@ fn what_feeds_every_duplicators_shape_port() {
 /// > direção […] e deveriam ser dependentes de Duplicator e Shape (e demais objetos) para
 /// > aparecer na tela.»*
 ///
+/// ⚠️⚠️ **O NÚMERO desta sonda decidiu uma wave e depois mudou de significado.** Ela mediu
+/// `111` de `123` cenas a desenhar sem forma, e esse número foi a razão de a lei shipar
+/// DESLIGADA. Em 2026-09-19 o dono reabriu o report (*«o grid continua desenhando quadrados»*) e
+/// deu a saída na mesma mensagem (*«coloque apenas pontos nas posições»*): a lei passou a
+/// desenhar uma MARCA em vez de nada, e o custo que a segurava desapareceu. ⇒ *o que esta sonda
+/// conta hoje não é «quantas cenas seriam apagadas», é «quantas cenas mostram um ARRANJO», que é
+/// uma resposta sobre o catálogo e não sobre o risco.*
+///
 /// ⚠️ **A pergunta é por SINK e não por nó**, porque quem gera pixels é o lowering: um
 /// `rig.skeleton` ligado direito ao `motion.output` desenha um quadrado por junta, com o
 /// `default_uv_rect` da shell — e o cabeçalho do próprio nó diz que isso é o desenho
@@ -669,7 +677,7 @@ fn colunas_que_chegam_ao_sink() {
                 if s.get("uv_rect").is_some() || geo_vivo {
                     "SIM"
                 } else {
-                    "NAO — hoje isto desenha quadrados pelo default do shell"
+                    "NAO — isto desenha MARCAS (a lei do dono, desde 2026-09-19)"
                 }
             );
         }

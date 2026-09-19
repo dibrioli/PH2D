@@ -125,42 +125,105 @@ fn a_grelha_ganha_o_aviso_e_a_passagem_nao() {
     }
 }
 
-/// ⭐⭐⭐ **A BANDEIRA CHEGA AO CARTÃO** — a pergunta que o CLAUDE.md §5.0 diz que nenhum
+/// ⭐⭐⭐ **A LEI CHEGA AO SISTEMA DE ALERTA** — a pergunta que o CLAUDE.md §5.0 diz que nenhum
 /// instrumento desta casa faz: *o valor chega ao consumidor?*
 ///
-/// Os gates acima medem o REGISTO e os do painel medem o CARTÃO — e entre os dois está o
-/// `snapshot_from`, que é onde a bandeira é copiada. ⚠️ **Sem esta metade, cravar
-/// `so_posicoes: false` no construtor da vista deixa as duas pontas verdes e o aviso nunca
-/// aparece** — é a rotura que a `line/components` pagou duas vezes (os 24 gates que entravam
-/// todos pelo canal interno, abaixo do corte).
+/// ⚠️⚠️ **Este gate substituiu um irmão que media OUTRA costura, e a troca é ordem do dono**
+/// (2026-09-19): *«o módulo tem um sistema de alerta. não era para colocar a mensagem no próprio
+/// nó»*. O que existia era o `a_bandeira_chega_ao_cartao` — ele media a bandeira a viajar do
+/// registo para o `GraphNodeView`, e essa costura **deixou de existir** (a nota permanente saiu
+/// do cartão, e com ela o campo). *Um gate cujo sujeito foi apagado não se afrouxa: substitui-se
+/// pelo que mede a costura NOVA.*
 ///
-/// **Mutação que deve sangrar:** `so_posicoes: false` no `snapshot_build.rs`.
-#[cfg(feature = "panel-motion-graph")]
+/// **Mutação que deve sangrar:** cravar `false` no `reg.so_posicoes(ty)` do `diagnose`, ou
+/// apagar o `register_veste_as_posicoes` do `motion.duplicator` (a metade negativa).
 #[test]
-fn a_bandeira_chega_ao_cartao() {
-    use ph2d_nodegraph::graph::Graph;
+fn a_lei_chega_ao_sistema_de_alerta() {
+    use ph2d_motion_diagnose::{Deficit, diagnose};
+    use ph2d_nodegraph::graph::{Edge, Graph};
     let m = MotionState::new();
+    let liga = |g: &mut Graph, a: ph2d_nodegraph::graph::NodeId, b, porta| {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, porta),
+            delayed: false,
+        })
+        .expect("liga");
+    };
+    let acusa = |g: &Graph, n: ph2d_nodegraph::graph::NodeId| {
+        diagnose(g, &m.registry)
+            .iter()
+            .any(|d| d.node == n && d.deficit == Deficit::SemQuemVista)
+    };
+
+    // (a) A grelha sozinha, a desenhar directo no sink: o ecrã mostra MARCAS.
     let mut g = Graph::new();
     let grelha = g.add_node("motion.grid");
-    let mover = g.add_node("motion.move");
-    let vista = ph2d_panel_motion_graph::snapshot_from(&g, &m.registry);
-    let card = |n: ph2d_nodegraph::graph::NodeId| {
-        vista
-            .nodes
-            .iter()
-            .find(|c| c.id == n.0)
-            .map(|c| c.so_posicoes)
-    };
-    assert_eq!(
-        card(grelha),
-        Some(true),
-        "o cartao da `motion.grid` tem de trazer a bandeira do registo -- senao o aviso nunca \
-         e' pintado, com os gates das duas pontas verdes"
+    let saida = g.add_node("motion.output");
+    liga(&mut g, grelha, saida, 0);
+    assert!(
+        acusa(&g, grelha),
+        "uma grelha que desenha directo no sink tem de acusar -- e' o report do dono a letra"
     );
-    assert_eq!(
-        card(mover),
-        Some(false),
-        "e o de um no' de passagem NAO a traz -- sem esta metade, cravar `true` passava"
+
+    // (b) A MESMA grelha com um duplicador vestido: calada.
+    //
+    // ⚠️ **A porta `points` é a `1`** (o manifesto do duplicador declara `shape` na `0`), e a
+    // forma tem de estar LIGADA: sem ela o duplicador acusa `MissingInput("shape")` — nele, que
+    // é onde a cura mora — e a grelha continua calada na mesma, porque o que ela pergunta é se
+    // há alguém a jusante que veste, não se esse alguém já tem a forma.
+    let mut g = Graph::new();
+    let grelha = g.add_node("motion.grid");
+    let dup = g.add_node("motion.duplicator");
+    let forma = g.add_node("source.shape");
+    let saida = g.add_node("motion.output");
+    liga(&mut g, forma, dup, 0);
+    liga(&mut g, grelha, dup, 1);
+    liga(&mut g, dup, saida, 0);
+    assert!(
+        !acusa(&g, grelha),
+        "com um duplicador vestido a jusante a grelha nao tem do que se queixar"
+    );
+
+    // (c) ⭐⭐ **A JUNÇÃO — a metade que um passeio só para a frente nunca veria.** A arte entra
+    // por um IRMÃO da grelha, não por um descendente dela: sem o fecho a partir das fontes, este
+    // caso acusava um grafo perfeitamente certo.
+    let mut g = Graph::new();
+    let grelha = g.add_node("motion.grid");
+    let objecto = g.add_node("source.object");
+    let juncao = g.add_node("motion.merge");
+    let saida = g.add_node("motion.output");
+    liga(&mut g, grelha, juncao, 0);
+    liga(&mut g, objecto, juncao, 1);
+    liga(&mut g, juncao, saida, 0);
+    assert!(
+        !acusa(&g, grelha),
+        "a arte entra pelo IRMAO: a corrente fundida desenha, logo a grelha esta' certa"
+    );
+
+    // (d) ⭐⭐⭐ **O DUPLICADOR SEM FORMA — a metade que a marca `veste_as_posicoes` existe para
+    // comprar, e que uma MUTAÇÃO SOBREVIVENTE nomeou.** Sem a declaração do duplicador, o fecho
+    // do (b) ainda funciona (a arte vem da `source.shape`, que é uma fonte declarada) e o gate
+    // ficava verde com a marca apagada — *o corpus não continha o caso em que ela decide*.
+    //
+    // ⚠️ **Aqui não há fonte de arte nenhuma no grafo**, e é exactamente onde a pergunta muda:
+    // sem a marca a grelha TAMBÉM acusaria, e o artista leria dois problemas onde há um. Quem
+    // tem de receber a forma é o duplicador, e é ele que o diz.
+    let mut g = Graph::new();
+    let grelha = g.add_node("motion.grid");
+    let dup = g.add_node("motion.duplicator");
+    let saida = g.add_node("motion.output");
+    liga(&mut g, grelha, dup, 1);
+    liga(&mut g, dup, saida, 0);
+    assert!(
+        !acusa(&g, grelha),
+        "com um duplicador a jusante a grelha cala-se, mesmo que a FORMA dele ainda falte"
+    );
+    assert!(
+        diagnose(&g, &m.registry)
+            .iter()
+            .any(|d| d.node == dup && d.deficit == Deficit::MissingInput("shape")),
+        "e quem acusa e' o duplicador, que e' onde a cura mora"
     );
 }
 

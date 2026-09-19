@@ -6,11 +6,11 @@
 //! forma — só a COR diz o que mudou. A linha é rotulada **no canvas**.
 //!
 //! ```text
-//!            ANTES              DEPOIS
-//!   [ · · · · · ]   CORTE   [ · · · · · ]     a rampa alcança o fim?
-//!   [ ▦ ]           BANDA   [ ▦ ]             que peças acendem?
-//!   [ · · · · · ]   RAMPA   [ · · · · · ]     onde a rampa recomeça?
-//!   [ ▦ ]           FORMA   [ ▦ ]             cheio ou contorno?
+//!            BEFORE             AFTER
+//!   [ · · · · · ]   CULL    [ · · · · · ]     a rampa alcança o fim?
+//!   [ ▦ ]           RANGE   [ ▦ ]             que peças acendem?
+//!   [ · · · · · ]   RAMP    [ · · · · · ]     onde a rampa recomeça?
+//!   [ ▦ ]           SHAPE   [ ▦ ]             cheio ou contorno?
 //! ```
 //!
 //! ## ⚠️ A LEI QUE ESTA CENA PAGOU: **posicionar é UPSTREAM da máscara**
@@ -264,7 +264,7 @@ fn label(g: &mut Graph, word: &str, at: [f32; 2], ey: f32) -> Option<NodeId> {
     out_of(g, tinted, ey)
 }
 
-/// **LINHA 1 · CORTE** — a renumeração do `motion.cull`. As duas metades cortam
+/// **LINHA 1 · CULL** — a renumeração do `motion.cull`. As duas metades cortam
 /// igual; o que difere é a contagem que a lista ANUNCIA ao degradê.
 fn cull_band(g: &mut Graph, right: bool) -> Option<NodeId> {
     let ey = f32::from(u8::from(right)) * 240.0;
@@ -300,7 +300,7 @@ fn cull_band(g: &mut Graph, right: bool) -> Option<NodeId> {
     out_of(g, tint, ey)
 }
 
-/// **LINHA 2 · BANDA** — o posto por atributo. À direita a banda segue o VALOR de um
+/// **LINHA 2 · RANGE** — o posto por atributo. À direita a banda segue o VALOR de um
 /// campo, e o conjunto fica exactamente onde estava.
 fn rank_band(g: &mut Graph, right: bool) -> Option<NodeId> {
     let ey = (2 + usize::from(right)) as f32 * 240.0;
@@ -334,7 +334,7 @@ fn rank_band(g: &mut Graph, right: bool) -> Option<NodeId> {
     out_of(g, tint, ey)
 }
 
-/// **LINHA 3 · RAMPA** — o deslocamento da curva. A máscara é a rampa `0..1` do
+/// **LINHA 3 · RAMP** — o deslocamento da curva. A máscara é a rampa `0..1` do
 /// índice; o `field.remap` no contorno `Curve` (sem curva autorada = a identidade)
 /// devolve-a tal e qual, e o deslocamento fá-la desfilar.
 fn shift_band(g: &mut Graph, right: bool) -> Option<NodeId> {
@@ -376,7 +376,7 @@ fn shift_band(g: &mut Graph, right: bool) -> Option<NodeId> {
     out_of(g, tint, ey)
 }
 
-/// **LINHA 4 · FORMA** — o nó NOVO: uma geometria como campo. O mesmo pentágono dos
+/// **LINHA 4 · SHAPE** — o nó NOVO: uma geometria como campo. O mesmo pentágono dos
 /// dois lados; só o *Path Mode* muda.
 fn shape_band(g: &mut Graph, right: bool) -> Option<NodeId> {
     let ey = (6 + usize::from(right)) as f32 * 240.0;
@@ -439,8 +439,8 @@ pub fn build_rank_demo_document(
         sinks.push((3usize, shape_band(g, right)?));
     }
     // As legendas, por último: elas não são bandas.
-    label(g, "ANTES", [-COL_X, HEADER_Y], 2000.0)?;
-    label(g, "DEPOIS", [COL_X, HEADER_Y], 2140.0)?;
+    label(g, "BEFORE", [-COL_X, HEADER_Y], 2000.0)?;
+    label(g, "AFTER", [COL_X, HEADER_Y], 2140.0)?;
     for (k, word) in ROW_LABELS.iter().enumerate() {
         #[expect(clippy::cast_precision_loss, reason = "quatro linhas")]
         let ey = 2280.0 + k as f32 * 140.0;
@@ -452,7 +452,18 @@ pub fn build_rank_demo_document(
 }
 
 /// O nome de cada linha, pintado no vão entre as duas colunas.
-pub const ROW_LABELS: [&str; 4] = ["CORTE", "BANDA", "RAMPA", "FORMA"];
+/// ⛔⛔⛔ **EM INGLÊS POR ORDEM DO DONO (2026-09-19): *«tudo em inglês»*.**
+///
+/// A pergunta foi posta com a medição na mão — estas cenas pintavam **23 palavras em português**
+/// no canvas, e o resto do app é inglês por lei (*«toda string que o artista LÊ é inglês»*). ⚠️ E
+/// ela **tinha de ser posta**: as cenas são isentas da tabela de i18n por decisão escrita (o
+/// cabeçalho do `app_motion.rs` e o gate da família), logo *nada aqui reprova por elas estarem
+/// numa língua ou noutra* — e uma delas foi **escolhida pelo próprio dono num smoke**.
+///
+/// ⚠️ **A prosa da CONSOLA fica em português**, de propósito: ela são as instruções de smoke, e o
+/// leitor delas é ele (`CLAUDE.md` §0.8). *O que o ARTISTA lê no ecrã é inglês; o que o DONO lê no
+/// terminal é a língua dele* — são duas audiências, e esta é a linha que as separa.
+pub const ROW_LABELS: [&str; 4] = ["CULL", "RANGE", "RAMP", "SHAPE"];
 
 /// Os números que a mensagem do smoke cita, para ela não os repetir à mão.
 pub fn authored() -> (f32, f32) {

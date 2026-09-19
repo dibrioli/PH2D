@@ -703,3 +703,88 @@ quando manda MEDIR se a composição já exprime o item antes de o construir.
 | M46′ | uma letra solta volta a ser palavra | o controlo `"a b"` |
 
 **3 de 3 sangram. Dívida do censo de porta: `62` → `0`** (tudo o que resta é isenção declarada).
+
+---
+
+## 14. «Tudo em inglês» — a ordem do dono, e a régua que nenhuma catraca tinha
+
+**2026-09-19.** A §13 acabou com uma pergunta ao dono: as `23` palavras que as cenas da conferência
+do Motion pintam em português ficam como estão (são dele) ou vão a inglês? Resposta:
+
+> **«tudo em inglês»**
+
+### 14.1 — ⛔⛔⛔ E a pergunta abriu uma porta que nenhuma catraca do HR-15 guardava
+
+As **trinta** catracas perguntam *«esta palavra veio da TABELA?»*. **Nenhuma pergunta em que
+LÍNGUA a tabela está.** Medido sobre as `5 226` entradas:
+
+| onde | quantas | o que são |
+|---|---:|---|
+| `app_sculpt3d.rs` | **8** | frases que o artista lê na caixa de saída da escultura — **em português** |
+| cenas da conferência (5 ficheiros) | **23** | palavras pintadas no canvas — **em português** |
+| `shell.undo_app.*` | 5 | ⛔ **NÃO são defeito**: diagnóstico que só corre com o log ligado |
+
+⚠️ **As oito viviam FORA dos marcadores do script de migração**, e o comentário ao lado delas
+declara-as *«a frase que o artista lê, e não diagnóstico de consola»* — *um texto escrito à mão
+depois da migração entra na tabela pela porta que a migração não guarda*.
+
+### 14.2 — A linha que separa as duas audiências
+
+⭐ **O que o ARTISTA lê no ecrã é inglês; o que o DONO lê no terminal é a língua dele**
+(`CLAUDE.md` §0.8). É por isso que a prosa de consola das cenas — as instruções de smoke, que são
+para ele — **fica em português**, e as cinco chaves do `undo_app` ficam isentas **com o mecanismo**.
+
+### 14.3 — As 23 palavras, e a que herdou uma decisão
+
+| cena | era | ficou | porquê |
+|---|---|---|---|
+| todas | `ANTES` · `DEPOIS` | `BEFORE` · `AFTER` | |
+| goal | `ALVO` · `MIRA` | `TARGET` · `AIM` | |
+| operator | `RASTRO` | `TRAIL` | o *Echo Operator* |
+| rank | `CORTE` · `BANDA` · `RAMPA` · `FORMA` | `CULL` · `RANGE` · `RAMP` · `SHAPE` | cada um NOMEIA o nó da linha |
+| sim | `SOLTA` · `DESVIA` | **`RELEASE`** · `AVOID` | ⬇️ |
+| style | `BORDA` · `APARADO` · `PICOTADO` | `STROKE` · `TRIM` · `DASH` | |
+
+⛔⛔ **`RELEASE`, e não `BREAK` — a decisão do dono ATRAVESSA a tradução.** A palavra portuguesa já
+era uma correcção dele por smoke (2026-08-21: *«funciona mas não rasga o pano»*): o que rompe é o
+**PREGO**, e o pano sai INTEIRO. O knob chama-se `Break Above`, e traduzir `SOLTA` pelo nome do knob
+reintroduzia, em inglês, exactamente a promessa que ele mandou tirar. *Um rótulo promete o que o
+modelo entrega — e uma tradução herda a promessa, não só a palavra.*
+
+### 14.4 — A régua vive numa PORTA, com os dois controlos
+
+[`ph2d_label_census::portuguese_tokens`] — classe fechada do português ∪ morfologia
+(`-ção/-cao`, `-ões/-oes`, `-ão/-ao`, `-mente`, `-ando/-endo/-indo`), com os marcadores de `format!`
+retirados primeiro (foi isso que fez a 1.ª sonda acusar `"never fires · {verbo} · {alvo}"`, que é
+uma frase inglesa).
+
+⚠️ **Ela declara-se um PISO**: `"colorize a recalcular"` passa-lhe ao lado. *Uma régua heurística
+que se declara é utilizável; uma que se julga completa é uma licença.* E vive na folha partilhada
+porque tem **dois** consumidores — a tabela e as cenas.
+
+### 14.5 — ⛔⛔ E o LEITOR mentiu antes da régua
+
+A 1.ª sonda lia as entradas com um `.` que não casa quebra de linha ⇒ **toda entrada com `\` de
+continuação evaporava**: ela leu `3` das `8`, e as cinco que faltavam eram as mais compridas. ⚠️ E
+a 2.ª redacção estourou num `á` (`end byte index … is not a char boundary`) por contar a linha
+fatiando o `&str` com um índice de **carácter**. *Um índice de carácter e um índice de byte leem-se
+igual num `usize`.*
+
+⇒ o gate ganhou uma metade **sobre o leitor** (`a_leitura_junta_uma_entrada_partida_em_duas_linhas`)
+— os outros três não a apanham: o piso conta ENTRADAS (que não mudam), o controlo positivo usa
+fixturas escritas à mão (que não passam pelo leitor), e a tabela está curada (logo não há português
+que se perca).
+
+### 14.6 — Provas de mutação
+
+| # | mutação | o que sangra |
+|---|---|---|
+| M47 | uma frase da escultura volta ao português | o gate da tabela |
+| M48′ | a régua da língua deixa de ver português | o controlo da própria régua |
+| M49′ | o leitor da tabela trunca na continuação | a régua sobre o leitor |
+| M50 | a isenção de consola fica órfã | o censo de obsolescência |
+| M51 | o cabeçalho da cena volta ao português | o gate das cenas |
+| M52 | os rótulos de linha voltam ao português | o gate das cenas |
+| M53 | o leitor da cena deixa de ver a TABELA | o controlo da leitura |
+
+**7 de 7 sangram. Português que o artista lê: `31` → `0`.**

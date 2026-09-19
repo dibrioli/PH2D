@@ -3,7 +3,7 @@
 //!
 //! | linha | esquerda | direita |
 //! |---|---|---|
-//! | **RASTRO** | a cauda TAPA o que está atrás | a cauda **SOMA** — onde os ecos se cruzam, acende |
+//! | **TRAIL** | a cauda TAPA o que está atrás | a cauda **SOMA** — onde os ecos se cruzam, acende |
 //! | **FLASH** | o flash tapa | o flash **SOMA** — o pico estoura de branco |
 //!
 //! ⚠️ **SÓ SE JULGA COM O PLAY.** As duas linhas são temporais: um rastro é o passado dos
@@ -24,7 +24,18 @@ const COL_X: f32 = 3.6;
 const ROW_Y: [f32; 2] = [2.6, -2.9];
 const HEADER_Y: f32 = 5.6;
 const LABEL_SIZE: f32 = 0.42;
-const ROW_LABELS: [&str; 2] = ["RASTRO", "FLASH"];
+/// ⛔⛔⛔ **EM INGLÊS POR ORDEM DO DONO (2026-09-19): *«tudo em inglês»*.**
+///
+/// A pergunta foi posta com a medição na mão — estas cenas pintavam **23 palavras em português**
+/// no canvas, e o resto do app é inglês por lei (*«toda string que o artista LÊ é inglês»*). ⚠️ E
+/// ela **tinha de ser posta**: as cenas são isentas da tabela de i18n por decisão escrita (o
+/// cabeçalho do `app_motion.rs` e o gate da família), logo *nada aqui reprova por elas estarem
+/// numa língua ou noutra* — e uma delas foi **escolhida pelo próprio dono num smoke**.
+///
+/// ⚠️ **A prosa da CONSOLA fica em português**, de propósito: ela são as instruções de smoke, e o
+/// leitor delas é ele (`CLAUDE.md` §0.8). *O que o ARTISTA lê no ecrã é inglês; o que o DONO lê no
+/// terminal é a língua dele* — são duas audiências, e esta é a linha que as separa.
+const ROW_LABELS: [&str; 2] = ["TRAIL", "FLASH"];
 const LABEL_RGB: [f32; 3] = [0.62, 0.64, 0.70];
 
 /// **`Add` no dropdown dos dois nós** — `Sink`(0) · `Normal`(1) · **`Add`(2)**.
@@ -317,8 +328,8 @@ pub fn build_operator_demo_document(
     for right in [false, true] {
         sinks.push(flash_band(g, right)?);
     }
-    label(g, "ANTES", [-COL_X, HEADER_Y], 2000.0)?;
-    label(g, "DEPOIS", [COL_X, HEADER_Y], 2140.0)?;
+    label(g, "BEFORE", [-COL_X, HEADER_Y], 2000.0)?;
+    label(g, "AFTER", [COL_X, HEADER_Y], 2140.0)?;
     for (k, word) in ROW_LABELS.iter().enumerate() {
         #[expect(clippy::cast_precision_loss, reason = "duas linhas")]
         let ey = 2280.0 + k as f32 * 140.0;

@@ -79,32 +79,40 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         //    escultura — a queixa do passe de topologia, as três recusas do pen-down e as duas do
         //    corte. ⚠️ Cada uma é *a frase que o artista lê*, e não diagnóstico de consola: quem
         //    só vê o terminal é o `sonda_undo.rs`, isento com o mecanismo no gate da crate.
+        //
+        // ⛔⛔⛔ **AS OITO NASCERAM EM PORTUGUÊS, E ISSO PASSOU POR TODA A MIGRAÇÃO DO HR-15.**
+        //    Elas estão FORA dos marcadores do script, logo nenhuma das trinta catracas do texto as
+        //    tocou — e a régua que as apanhou foi outra: *a tabela INGLESA do app tem de falar
+        //    inglês*, medida em 2026-09-19 sobre as `5 226` entradas. ⚠️ **Elas são exactamente a
+        //    metade que o comentário acima declara artista-facing** — a metade de terminal daquele
+        //    mesmo ficheiro está certa em português, e é essa diferença que torna estas um defeito.
+        //    Traduzidas por ORDEM DO DONO (*«tudo em inglês»*, 2026-09-19).
         "app.sculpt3d.dyntopo.pilha_montada_j_reverte" => {
-            "ha' uma pilha de multiresolucao montada -- J reverte-a"
+            "a multiresolution stack is mounted -- J reverts it"
         }
         "app.sculpt3d.dyntopo.ja_no_ponto_que_o_detail_pede" => {
-            "a malha aqui ja' esta' no ponto que o Detail pede -- mova o slider (ou a tecla U) \
-             para pedir outra densidade, ou aumente o pincel com ] para alcancar mais peca"
+            "the mesh here is already at the density Detail asks for -- move the slider (or \
+             press U) to ask for another one, or grow the brush with ] to reach more of the piece"
         }
         "app.sculpt3d.recusa.precisa_de_uma_pilha" => {
-            "{nome} precisa de uma pilha de multiresolucao -- sem um nivel ABAIXO nao ha' \
-             deslocamento nenhum (K subdivide, ',' desce)"
+            "{nome} needs a multiresolution stack -- with no level BELOW there is no \
+             displacement at all (K subdivides, ',' steps down)"
         }
         "app.sculpt3d.recusa.trabalha_a_beira_de_uma_peca_aberta" => {
-            "{nome} trabalha a BEIRA de uma peca aberta -- esta peca e' fechada, e a regiao dele \
-             comeca na borda (experimente uma tigela, ou apague faces para abrir uma boca)"
+            "{nome} works the RIM of an open piece -- this piece is closed, and its region \
+             starts at the border (try a bowl, or delete faces to open a mouth)"
         }
         "app.sculpt3d.recusa.precisa_de_outra_peca_a_vista" => {
-            "{nome} precisa de OUTRA peca A' VISTA -- a{plural} que ha' esta' escondida (abra o \
-             olho dela na Hierarquia, ou saia do isolamento)"
+            "{nome} needs ANOTHER piece IN SIGHT -- the one{plural} there is are hidden (open \
+             its eye in the Hierarchy, or leave isolation)"
         }
         "app.sculpt3d.recusa.precisa_de_outra_peca_na_cena" => {
-            "{nome} precisa de OUTRA peca na cena -- ele empurra o barro ate' encostar nela, e \
-             aqui so' ha' uma"
+            "{nome} needs ANOTHER piece in the scene -- it pushes the clay until it meets \
+             that piece, and here there is only one"
         }
-        "app.sculpt3d.trim_aplica.sem_peca_para_cortar" => "nao ha' peca nenhuma para cortar",
+        "app.sculpt3d.trim_aplica.sem_peca_para_cortar" => "there is no piece to cut",
         "app.sculpt3d.trim_aplica.pilha_montada_j_reverte" => {
-            "ha' uma pilha de multiresolucao montada -- J reverte-a e o corte volta"
+            "a multiresolution stack is mounted -- J reverts it and the cut comes back"
         }
         _ => return None,
     })

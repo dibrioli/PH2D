@@ -3,8 +3,8 @@
 //!
 //! | linha | esquerda | direita |
 //! |---|---|---|
-//! | **RASGA** | o pin segura para sempre | **`Break Above`** — a carga do vento arranca-o |
-//! | **DESVIA** | o bando atravessa a pedra | **`Avoid`** — ele contorna-a |
+//! | **RELEASE** | o pin segura para sempre | **`Break Above`** — a carga do vento arranca-o |
+//! | **AVOID** | o bando atravessa a pedra | **`Avoid`** — ele contorna-a |
 //!
 //! ⚠️ **SÓ SE JULGA COM O PLAY.** As duas linhas são simulação: paradas, as quatro
 //! bandas são quatro nuvens iguais.
@@ -35,13 +35,28 @@ pub const COL_X: f32 = 3.1;
 pub const ROW_Y: [f32; 2] = [2.6, -2.9];
 const HEADER_Y: f32 = 5.6;
 const LABEL_SIZE: f32 = 0.42;
-/// ⚠️ **`SOLTA`, e não «RASGA» — a palavra foi corrigida por um smoke** (Enio,
-/// 2026-08-21: *"funciona mas não rasga o pano (os cubos não se separam)"*). O que
-/// rompe é o **PREGO**; o pano sai inteiro. Partir o TECIDO é outra coisa e este solver
-/// não a tem: o `motion.soft_body` guarda a forma por correspondência GLOBAL (Müller
-/// shape matching), não por ligações uma-a-uma — não há aresta que se possa quebrar.
-/// *Um rótulo promete o que o modelo entrega.*
-pub const ROW_LABELS: [&str; 2] = ["SOLTA", "DESVIA"];
+/// ⚠️⚠️ **`RELEASE`, e não `BREAK` — a decisão que o dono tomou em 2026-08-21 ATRAVESSA a
+/// tradução.** A palavra portuguesa era `SOLTA`, e ela já era uma correcção dele por smoke
+/// (*"funciona mas não rasga o pano (os cubos não se separam)"*): o que rompe é o **PREGO**; o
+/// pano sai INTEIRO. Partir o tecido é outra coisa e este solver não a tem — o `motion.soft_body`
+/// guarda a forma por correspondência GLOBAL (Müller shape matching), não por ligações
+/// uma-a-uma, e não há aresta que se possa quebrar.
+///
+/// ⛔ **É por isso que o rótulo NÃO é o nome do knob** (`Break Above`): traduzir `SOLTA` por
+/// `BREAK` reintroduzia, em inglês, exactamente a promessa que ele mandou tirar. *Um rótulo
+/// promete o que o modelo entrega, e uma tradução herda a promessa — não só a palavra.*
+/// ⛔⛔⛔ **EM INGLÊS POR ORDEM DO DONO (2026-09-19): *«tudo em inglês»*.**
+///
+/// A pergunta foi posta com a medição na mão — estas cenas pintavam **23 palavras em português**
+/// no canvas, e o resto do app é inglês por lei (*«toda string que o artista LÊ é inglês»*). ⚠️ E
+/// ela **tinha de ser posta**: as cenas são isentas da tabela de i18n por decisão escrita (o
+/// cabeçalho do `app_motion.rs` e o gate da família), logo *nada aqui reprova por elas estarem
+/// numa língua ou noutra* — e uma delas foi **escolhida pelo próprio dono num smoke**.
+///
+/// ⚠️ **A prosa da CONSOLA fica em português**, de propósito: ela são as instruções de smoke, e o
+/// leitor delas é ele (`CLAUDE.md` §0.8). *O que o ARTISTA lê no ecrã é inglês; o que o DONO lê no
+/// terminal é a língua dele* — são duas audiências, e esta é a linha que as separa.
+pub const ROW_LABELS: [&str; 2] = ["RELEASE", "AVOID"];
 
 /// A cortina da linha 1 — um **tecido**: `(colunas, linhas, passo, tamanho da peça)`.
 pub const CURTAIN: (f32, f32, f32, f32) = (7.0, 7.0, 0.22, 0.11);
@@ -336,8 +351,8 @@ pub fn build_sim_demo_document(
         rocks.push(rock);
     }
     sinks.extend(rocks);
-    label(g, "ANTES", [-COL_X, HEADER_Y], 2000.0)?;
-    label(g, "DEPOIS", [COL_X, HEADER_Y], 2140.0)?;
+    label(g, "BEFORE", [-COL_X, HEADER_Y], 2000.0)?;
+    label(g, "AFTER", [COL_X, HEADER_Y], 2140.0)?;
     for (k, word) in ROW_LABELS.iter().enumerate() {
         #[expect(clippy::cast_precision_loss, reason = "duas linhas")]
         let ey = 2280.0 + k as f32 * 140.0;

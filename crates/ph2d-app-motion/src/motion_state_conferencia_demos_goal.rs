@@ -3,8 +3,8 @@
 //!
 //! | linha | esquerda | direita |
 //! |---|---|---|
-//! | **ALVO** | um ponto só (os dois params) | **um STREAM** — cada peça vai ao ponto mais PRÓXIMO dela |
-//! | **MIRA** | mirar onde o alvo ESTÁ | **antecipar** — cada peça lidera pelo próprio tempo-de-chegada |
+//! | **TARGET** | um ponto só (os dois params) | **um STREAM** — cada peça vai ao ponto mais PRÓXIMO dela |
+//! | **AIM** | mirar onde o alvo ESTÁ | **antecipar** — cada peça lidera pelo próprio tempo-de-chegada |
 //!
 //! ⚠️ **SÓ SE JULGA COM O PLAY.** Uma força não move nada sozinha: ela acumula em
 //! `accel` e é o `motion.integrate` que aplica. Paradas, as quatro bandas são quatro
@@ -26,7 +26,18 @@ pub const ROW_Y: [f32; 2] = [2.6, -2.9];
 const HEADER_Y: f32 = 5.6;
 const LABEL_SIZE: f32 = 0.42;
 /// O nome de cada linha, pintado no vão entre as duas colunas.
-pub const ROW_LABELS: [&str; 2] = ["ALVO", "MIRA"];
+/// ⛔⛔⛔ **EM INGLÊS POR ORDEM DO DONO (2026-09-19): *«tudo em inglês»*.**
+///
+/// A pergunta foi posta com a medição na mão — estas cenas pintavam **23 palavras em português**
+/// no canvas, e o resto do app é inglês por lei (*«toda string que o artista LÊ é inglês»*). ⚠️ E
+/// ela **tinha de ser posta**: as cenas são isentas da tabela de i18n por decisão escrita (o
+/// cabeçalho do `app_motion.rs` e o gate da família), logo *nada aqui reprova por elas estarem
+/// numa língua ou noutra* — e uma delas foi **escolhida pelo próprio dono num smoke**.
+///
+/// ⚠️ **A prosa da CONSOLA fica em português**, de propósito: ela são as instruções de smoke, e o
+/// leitor delas é ele (`CLAUDE.md` §0.8). *O que o ARTISTA lê no ecrã é inglês; o que o DONO lê no
+/// terminal é a língua dele* — são duas audiências, e esta é a linha que as separa.
+pub const ROW_LABELS: [&str; 2] = ["TARGET", "AIM"];
 
 /// A nuvem de cada linha: `(colunas, linhas, passo, tamanho da peça)`.
 pub const BANDS: [(f32, f32, f32, f32); 2] = [(6.0, 6.0, 0.30, 0.13), (10.0, 1.0, 0.22, 0.13)];
@@ -372,8 +383,8 @@ pub fn build_goal_demo_document(
         clouds.push(c);
         marks.push(m);
     }
-    label(g, "ANTES", [-COL_X, HEADER_Y], 2000.0)?;
-    label(g, "DEPOIS", [COL_X, HEADER_Y], 2140.0)?;
+    label(g, "BEFORE", [-COL_X, HEADER_Y], 2000.0)?;
+    label(g, "AFTER", [COL_X, HEADER_Y], 2140.0)?;
     for (k, word) in ROW_LABELS.iter().enumerate() {
         #[expect(clippy::cast_precision_loss, reason = "duas linhas")]
         let ey = 2280.0 + k as f32 * 140.0;

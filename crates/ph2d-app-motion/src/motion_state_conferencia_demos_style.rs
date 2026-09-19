@@ -3,9 +3,9 @@
 //!
 //! | linha | esquerda | direita |
 //! |---|---|---|
-//! | **BORDA** | a forma chapada | a MESMA forma com **borda de outra cor** — miolo E borda |
-//! | **APARADO** | o anel inteiro | só um **trecho** dele, e o trecho **CORRE** |
-//! | **PICOTADO** | o contorno contínuo | o contorno **picotado** |
+//! | **STROKE** | a forma chapada | a MESMA forma com **borda de outra cor** — miolo E borda |
+//! | **TRIM** | o anel inteiro | só um **trecho** dele, e o trecho **CORRE** |
+//! | **DASH** | o contorno contínuo | o contorno **picotado** |
 //!
 //! ⚠️ **A linha do meio é a única que precisa de PLAY** — o `trim_offset` dela é conduzido
 //! pelo relógio por um FIO (`Graph::drive_param`, doc 58). As outras duas leem-se paradas.
@@ -28,7 +28,18 @@ const ROW_Y: [f32; 3] = [3.1, 0.0, -3.1];
 const HEADER_Y: f32 = 5.8;
 const LABEL_SIZE: f32 = 0.42;
 /// O nome de cada linha, pintado no vão entre as duas colunas.
-const ROW_LABELS: [&str; 3] = ["BORDA", "APARADO", "PICOTADO"];
+/// ⛔⛔⛔ **EM INGLÊS POR ORDEM DO DONO (2026-09-19): *«tudo em inglês»*.**
+///
+/// A pergunta foi posta com a medição na mão — estas cenas pintavam **23 palavras em português**
+/// no canvas, e o resto do app é inglês por lei (*«toda string que o artista LÊ é inglês»*). ⚠️ E
+/// ela **tinha de ser posta**: as cenas são isentas da tabela de i18n por decisão escrita (o
+/// cabeçalho do `app_motion.rs` e o gate da família), logo *nada aqui reprova por elas estarem
+/// numa língua ou noutra* — e uma delas foi **escolhida pelo próprio dono num smoke**.
+///
+/// ⚠️ **A prosa da CONSOLA fica em português**, de propósito: ela são as instruções de smoke, e o
+/// leitor delas é ele (`CLAUDE.md` §0.8). *O que o ARTISTA lê no ecrã é inglês; o que o DONO lê no
+/// terminal é a língua dele* — são duas audiências, e esta é a linha que as separa.
+const ROW_LABELS: [&str; 3] = ["STROKE", "TRIM", "DASH"];
 const LABEL_RGB: [f32; 3] = [0.62, 0.64, 0.70];
 
 /// O miolo da estrela da linha 0, e a borda dela — duas cores, e é isso que a linha diz.
@@ -233,8 +244,8 @@ pub fn build_style_demo_document(
             sinks.push(band(g, k, right, &ps, fill)?);
         }
     }
-    label(g, "ANTES", [-COL_X, HEADER_Y], 2000.0)?;
-    label(g, "DEPOIS", [COL_X, HEADER_Y], 2140.0)?;
+    label(g, "BEFORE", [-COL_X, HEADER_Y], 2000.0)?;
+    label(g, "AFTER", [COL_X, HEADER_Y], 2140.0)?;
     for (k, word) in ROW_LABELS.iter().enumerate() {
         #[expect(clippy::cast_precision_loss, reason = "três linhas")]
         let ey = 2280.0 + k as f32 * 140.0;

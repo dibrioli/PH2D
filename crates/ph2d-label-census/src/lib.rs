@@ -47,9 +47,11 @@ pub mod cfg_test;
 pub mod gate;
 pub mod keys;
 mod lexical;
+pub mod portugues;
 mod source;
 
 pub use lexical::{
     Cegueira, Literal, blind_literals_in, cegueira, is_language, language_literals,
     language_literals_in,
 };
+pub use portugues::{is_english, portuguese_tokens};

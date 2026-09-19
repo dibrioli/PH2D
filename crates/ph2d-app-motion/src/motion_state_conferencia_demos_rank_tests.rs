@@ -179,7 +179,11 @@ fn every_row_is_named_on_the_canvas() {
                 .and_then(|m| m.get(ph2d_node_source_text::TEXT_KEY).cloned())
         })
         .collect();
-    for w in ROW_LABELS.iter().chain(["ANTES", "DEPOIS"].iter()) {
+    // ⚠️ **`BEFORE`/`AFTER` desde 2026-09-19, por ordem do dono (*«tudo em inglês»*).** A lei é a
+    //    mesma — *toda linha é NOMEADA no canvas* —, e o que mudou foi a língua das duas legendas
+    //    de coluna. ⛔ Elas ficam escritas à mão aqui de propósito: derivá-las do ficheiro da cena
+    //    faria este gate medir-se a si próprio (o `ROW_LABELS` já é derivado, e é a outra metade).
+    for w in ROW_LABELS.iter().chain(["BEFORE", "AFTER"].iter()) {
         assert!(
             words.iter().any(|s| s == w),
             "falta a legenda `{w}`: {words:?}"

@@ -122,7 +122,10 @@ fn o_contorno_numa_peca_fechada_diz_porque() {
     let fechada = bola();
     let motivo = entradas(&fechada, &b, 0).recusa().unwrap_or_default();
     assert!(
-        motivo.contains("BEIRA"),
+        // ⚠️ **A palavra mudou de LÍNGUA em 2026-09-19, por ordem do dono (*«tudo em inglês»*).** A
+        //    lei é a mesma — *a recusa NOMEIA a entrada que falta* —, e o que se ajustou foi a palavra
+        //    que a prova: estas frases são as que o ARTISTA lê, e o app é inglês.
+        motivo.contains("RIM"),
         "com o contorno numa bola fechada a recusa foi `{motivo}` — ela tem de \
          nomear a BEIRA, que é a entrada que falta"
     );
@@ -146,7 +149,10 @@ fn o_projectar_sozinho_na_cena_diz_porque() {
     let m = bola();
     let motivo = entradas(&m, &b, 0).recusa().unwrap_or_default();
     assert!(
-        motivo.contains("OUTRA peca"),
+        // ⚠️ **A palavra mudou de LÍNGUA em 2026-09-19, por ordem do dono (*«tudo em inglês»*).** A
+        //    lei é a mesma — *a recusa NOMEIA a entrada que falta* —, e o que se ajustou foi a palavra
+        //    que a prova: estas frases são as que o ARTISTA lê, e o app é inglês.
+        motivo.contains("ANOTHER piece"),
         "com o projectar sozinho na cena a recusa foi `{motivo}` — ela tem de \
          nomear a outra peça, que é a entrada que falta"
     );
@@ -169,7 +175,10 @@ fn os_verbos_de_deslocamento_sem_pilha_dizem_porque() {
         };
         let motivo = entradas(&m, &b, 0).recusa().unwrap_or_default();
         assert!(
-            motivo.contains("multiresolucao"),
+            // ⚠️ **A palavra mudou de LÍNGUA em 2026-09-19, por ordem do dono (*«tudo em inglês»*).** A
+            //    lei é a mesma — *a recusa NOMEIA a entrada que falta* —, e o que se ajustou foi a palavra
+            //    que a prova: estas frases são as que o ARTISTA lê, e o app é inglês.
+            motivo.contains("multiresolution"),
             "com o {} sem pilha a recusa foi `{motivo}`",
             verb.label()
         );
@@ -221,7 +230,10 @@ fn a_recusa_separa_a_peca_que_falta_da_peca_escondida() {
     // (1) Cena de uma peça só: não HÁ outra.
     let motivo = entradas(&m, &b, 0).recusa().unwrap_or_default();
     assert!(
-        motivo.contains("OUTRA peca na cena"),
+        // ⚠️ **A palavra mudou de LÍNGUA em 2026-09-19, por ordem do dono (*«tudo em inglês»*).** A
+        //    lei é a mesma — *a recusa NOMEIA a entrada que falta* —, e o que se ajustou foi a palavra
+        //    que a prova: estas frases são as que o ARTISTA lê, e o app é inglês.
+        motivo.contains("ANOTHER piece in the scene"),
         "sem outra peça a recusa tem de falar de a criar, e foi `{motivo}`"
     );
     // (2) A outra existe e está escondida: a cura é o olho.
@@ -231,7 +243,10 @@ fn a_recusa_separa_a_peca_que_falta_da_peca_escondida() {
     };
     let motivo = escondida.recusa().unwrap_or_default();
     assert!(
-        motivo.contains("escondida") && motivo.contains("Hierarquia"),
+        // ⚠️ **A palavra mudou de LÍNGUA em 2026-09-19, por ordem do dono (*«tudo em inglês»*).** A
+        //    lei é a mesma — *a recusa NOMEIA a entrada que falta* —, e o que se ajustou foi a palavra
+        //    que a prova: estas frases são as que o ARTISTA lê, e o app é inglês.
+        motivo.contains("hidden") && motivo.contains("Hierarchy"),
         "com o único alvo escondido a recusa tem de nomear o olho, e foi \
          `{motivo}`"
     );

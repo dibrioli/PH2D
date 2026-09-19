@@ -94,6 +94,9 @@ mod sonda_da_parede_fina;
 mod sonda_da_normal;
 mod sonda_do_expand_que_nao_para;
 mod sonda_do_falloff_pela_superficie;
+/// ⛔⛔⛔ A reprodução do report de 19/09 (*«Snake Hook se dá muito mal com
+/// `Connected Only`»*) — ver [`sonda_do_gancho`].
+mod sonda_do_gancho;
 mod taubin_pair;
 mod the_frame_is_hoisted_out_of_the_vertex_loop;
 mod the_stamp_is_pinned_to_the_view;

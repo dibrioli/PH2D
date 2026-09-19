@@ -398,6 +398,12 @@ impl Sculpt3dScene {
 #[path = "dyntopo_tests.rs"]
 mod tests;
 
+/// ⛔⛔⛔ **A reprodução do report de 19/09** (*«Snake Hook se dá muito mal com
+/// `Connected Only`»*) — ver [`gancho_report`].
+#[cfg(test)]
+#[path = "gancho_report_tests.rs"]
+mod gancho_report;
+
 /// ⭐⭐⭐ **OS DOIS MOTORES, SEM CENA E SEM DEVICE** — o miolo do
 /// [`Sculpt3dScene::refine_for_dab`], com **dois** chamadores.
 ///

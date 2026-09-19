@@ -4272,3 +4272,126 @@ os gates da `=49` verdes · `cargo fmt` limpo · clippy `-D warnings` zero — �
 **um aviso pré-existente curado** no caminho (`f64::from` sobre um `f64` na sonda
 de fábrica do `ccda50553`): *um `-D warnings` que só corre no fecho é um portão
 que a wave não vê.*
+
+---
+
+## §95 — ⛔⛔⛔⛔ O GANCHO RASGAVA AS COSTAS COM `Connected Only`: a folha era escolhida DUAS vezes no mesmo traço
+
+**Report do dono (2026-09-19, foto):** *«Snake Hook se dá muito mal com
+`Connected Only`, deformando com má remesh ou má topologia a face POSTERIOR do
+traço»* — a bossa puxada sai com as costas **pretas**, rasgadas, e um refino
+explodido à volta delas.
+
+### §95.1 — ⚠️ A primeira reprodução mediu ZERO, e estava certa
+
+A sonda sem passe de topologia
+([`sonda_do_gancho`](../../../crates/ph2d-sculpt3d/tests/it/sonda_do_gancho.rs))
+corre o gancho numa esfera lisa e a máscara corta **nada**: as colunas com e sem
+`Connected Only` saem iguais em `10` das `18` células e a diferença nas outras é
+o rasgo, não o preto. *Numa peça convexa a máscara não corta — é o que o gate
+`numa_peca_convexa_a_mascara_nao_corta_nada` afirma desde que ela existe.*
+
+⇒ a foto tem **duas** metades a correr juntas, e a que faltava é do EDITOR: o
+passe parte a aresta **longa**, logo *um rasgo a montante fabrica o refino a
+jusante*. A reprodução mudou-se para o laço do produto
+([`gancho_report_tests`](../../../crates/ph2d-app-sculpt3d/src/gancho_report_tests.rs):
+`passe_nos_motores` → `dab`, com os dois canais do traço em voo) — ⛔ e **não**
+para o `Sculpt3dScene`, que pede um device e poria a resposta atrás de um
+`#[ignore]` que o CI nunca corre.
+
+### §95.2 — ⭐⭐⭐⭐ A ATRIBUIÇÃO: uma condição de cada vez
+
+Célula `raio 0,25 · len 0,90 · 12 dabs`, neutralizando **uma** constante de cada
+vez (protocolo da casa: backup → mutar → correr → restaurar):
+
+| corrida | `verts` | `estica` | `avesso` | `lasca` |
+|---|---|---|---|---|
+| máscara **desligada** (o controlo) | `97 636` | `3,44` | `0` | `1,88°` |
+| como shipava | `99 699` | `8,10` | **`296`** | `0,33°` |
+| sem a `RAZAO_MAXIMA` | `99 702` | `8,10` | `292` | `0,33°` |
+| sem o `ALCANCE_TECTO` | `99 699` | `8,10` | `296` | `0,33°` |
+| ⭐ **sem a `NORMAL_LIMIAR`** | `97 636` | `3,44` | **`0`** | `1,88°` |
+
+⇒ **a condição da NORMAL é a causa única** — a lei de ontem (§93) —, e as outras
+duas estão ilibadas com número.
+
+### §95.3 — ⭐⭐⭐ O mecanismo, e porque nenhum valor da constante o cura
+
+Um gancho **puxa um tubo para fora da superfície**, e a face de trás de um tubo
+vira-se para longe do olho **por construção**. Lida na malha VIVA, a lei muda de
+veredito a meio do traço: o vértice que no 1.º dab estava virado ao artista sai
+da pegada no 5.º. *Quem já andava pára enquanto o vizinho continua* — e isso é um
+rasgo, que o passe depois refina.
+
+⛔ **Não há dois casos para uma barra separar:** é a MESMA folha, medida em dois
+instantes. Apertar ou afrouxar o `NORMAL_LIMIAR` move o instante, nunca a lei.
+
+### §95.4 — ⭐⭐⭐⭐ A cura: a folha escolhe-se UMA vez, quando o traço chega ao vértice
+
+[`dab_alcance::OlhoDoTraco`] — a normal que decide é a **congelada** se o traço
+já capturou o vértice, a viva se é a primeira vez. ⭐ **A normal já existe:** é o
+`base_nrm` que o congelamento do UNDO grava no `capture`, e um vértice **nascido**
+no refino herda-a dos dois pais pelo canal `grow_with` que já existe ⇒ *a lei
+atravessa a topologia dinâmica sem uma linha nova*.
+
+⚠️ **O lado do defeito de ontem fica intacto, e é estrutural:** numa parede fina
+as costas **nunca são capturadas** (o 1.º dab já as corta), logo continuam a ser
+julgadas pela normal viva, dab após dab. *A cura muda quem já estava dentro,
+nunca quem nunca entrou* — e os quatro gates da `=50` ficam verdes sem uma linha
+tocada.
+
+**Medido na célula do report:** `verts` `99 699 → 97 636` · `estica` `8,10 → 3,44`
+· `avesso` **`296 → 0`** · `lasca` `0,33° → 1,88°` — ou seja, **ligar a máscara
+passa a deixar a peça exactamente como a deixa sem ela**.
+
+### §95.5 — Os gates, e a metade que uma MUTAÇÃO SOBREVIVENTE escreveu
+
+* **A lei** (`a_folha_escolhe_se_uma_vez_e_nao_a_meio_do_traco`, quatro metades):
+  o controlo (sem memória a lei corta) · os mesmos vértices declarados como
+  capturados pela frente FICAM · ela vale **vértice a vértice** (com metade
+  declarada, só essa metade fica) · e ⭐ **a CERCA julga pela mesma grandeza que
+  o corte**.
+* ⛔⛔ **A quarta nasceu de uma mutação que SOBREVIVEU:** a cerca do
+  «se toda a pegada aponta para longe, não se corta» lia a normal VIVA enquanto o
+  corte já lia a congelada, e **nenhuma fixtura do corpus separava as duas**. O
+  regime que separa é *uma pegada inteiramente virada ao contrário de que o traço
+  já capturou metade pela frente*, e ali as duas leituras dão produtos OPOSTOS.
+  ⇒ uma porta só (`dot`), com a fixtura construída para o regime.
+* **O produto** (`o_gancho_com_a_mascara_nao_rasga_as_costas`): as três colunas
+  da foto contra o **CONTROLO** (nunca contra um número escolhido), mais **três**
+  metades de vacuidade — o verbo oferece a máscara · o gancho puxou · o passe
+  mexeu na topologia.
+
+**Mutação `4 de 4`** onde tinha de sangrar: a memória ignorada (lei + produto) ·
+o **fio** que não a passa (produto) · a memória ao contrário (lei + produto) · as
+duas leituras (lei). As duas não-sangrantes estão declaradas no script: o fio não
+é lei, e o regime da cerca é de unidade.
+
+### §95.6 — ⚠️ Quatro erros MEUS de régua, no caminho
+
+1. **A fixtura da 1.ª redacção do gate era a CHAPA FINA**, onde as costas são
+   cortadas **também** pela razão (`11,0`) ⇒ devolver-lhes a memória salvava `38`
+   de `166` e o gate reprovava sobre uma lei correcta. *Um gate de uma condição
+   pede uma peça onde só ela corte.*
+2. **O raio `1,3` não alcançava o regime:** a consulta é pela CORDA, logo ele
+   pára aos `79°` do polo e a condição só morde acima de `107°` — o gate lia
+   *«0 cortados de 1689»*. O `1,8` é **contado**, não escolhido.
+3. **A régua do puxão era o maior `x`** e leu `1,018` sobre um puxão real: a
+   esfera de repouso já mede `1,0` em `x` no equador. A régua é a distância à
+   origem.
+4. **«O passe refinou»** era falso: com alvo `0,03` sobre a esfera de escultura
+   ele **colapsa** no total (`98 306 → 97 636`), e a asserção reprovava sobre
+   produto correcto. O que a fixtura tem de conter é o passe a **mexer**.
+
+### §95.7 — A prova
+
+`nextest-impacted` **16 479 / 16 479** · censos da árvore COMBINADA **90 / 90** ·
+`cargo fmt --all --check` limpo · clippy `-D warnings` zero nas duas crates ·
+suíte de unidade da `ph2d-sculpt3d` `474` (era `473`: `+1` é o gate novo, e o
+número prova que o **corte** do ficheiro de gates não evaporou nenhum).
+
+⚠️ **Tecto de LOC curado por CORTE:** o `dab_alcance_tests.rs` cruzou os `700`
+(`841`) ao ganhar a memória ⇒ irmão `dab_alcance_olho_tests.rs` (`284` + `569`),
+com a fronteira na PERGUNTA — *«a superfície liga isto?»* de um lado, *«é a folha
+que o olho vê, e QUANDO isso se decide?»* do outro. ⛔ Nenhuma entrada nova no
+`FILE_OVERAGE_OK`.

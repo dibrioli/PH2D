@@ -216,6 +216,79 @@ pub const RAZAO_MAXIMA: f32 = 3.5;
 /// o nada* — a terceira vez que esta wave paga a mesma armadilha.
 pub const NORMAL_LIMIAR: f32 = 0.30;
 
+/// ⭐⭐⭐⭐ **A FOLHA ESCOLHE-SE UMA VEZ, QUANDO O TRAÇO CHEGA AO VÉRTICE — e a
+/// lei acima lida VIVA rasgava o barro.**
+///
+/// # O report que a escreveu (2026-09-19, foto)
+///
+/// *«Snake Hook se dá muito mal com `Connected Only`, deformando com má remesh
+/// ou má topologia a face POSTERIOR do traço»*: a bossa puxada saía com as
+/// costas **pretas** e um refino explodido à volta delas.
+///
+/// **Atribuição MEDIDA** (`diag_de_quem_e_o_corte`, arrasto de `0,90` com raio
+/// `0,25`, o passe de topologia a correr como no produto) — neutralizando **uma
+/// condição de cada vez**:
+///
+/// | corrida | `verts` | `estica` | `avesso` | `lasca` |
+/// |---|---|---|---|---|
+/// | máscara **desligada** (o controlo) | `97 636` | `3,44` | `0` | `1,88°` |
+/// | como shipava | `99 699` | `8,10` | **`296`** | `0,33°` |
+/// | sem a [`RAZAO_MAXIMA`] | `99 702` | `8,10` | `292` | `0,33°` |
+/// | sem o [`ALCANCE_TECTO`] | `99 699` | `8,10` | `296` | `0,33°` |
+/// | ⭐ **sem a [`NORMAL_LIMIAR`]** | `97 636` | `3,44` | **`0`** | `1,88°` |
+///
+/// ⇒ *a condição da normal é a causa ÚNICA, e as outras duas estão ilibadas.*
+///
+/// # ⭐⭐⭐ O mecanismo, e porque ele não é uma afinação
+///
+/// Um gancho **puxa um tubo para fora da superfície**. A face de trás desse tubo
+/// vira-se para longe do olho **por construção** — é o que um tubo é —, e a lei
+/// lida na malha VIVA muda de veredito a meio do traço: o vértice que no primeiro
+/// dab estava virado ao artista sai da pegada no quinto. *Quem já estava a andar
+/// pára enquanto o vizinho continua*, e isso é um rasgo; o passe de topologia
+/// então parte a aresta longa que o rasgo abriu, que é o refino explodido da foto.
+///
+/// ⛔ **Nenhum valor de [`NORMAL_LIMIAR`] separa os dois casos**, porque não há
+/// dois casos: é a MESMA folha, medida em dois instantes diferentes.
+///
+/// # A lei
+///
+/// A pergunta *«que folha o artista vê?»* responde-se **uma vez por vértice**,
+/// com a normal que ele tinha quando o traço lhe chegou — e essa normal já existe:
+/// é o [`SculptStroke::base_normals`](crate::SculptStroke::base_normals), que o
+/// congelamento do undo grava no `capture`. ⭐ Um vértice **nascido** no refino
+/// herda-a dos dois pais pelo canal que já existe, logo a lei atravessa a
+/// topologia dinâmica sem uma linha nova.
+///
+/// ⚠️ **O lado do defeito fica intacto:** numa parede fina as costas **nunca são
+/// capturadas** (o primeiro dab já as corta), logo continuam a ser julgadas pela
+/// normal viva, dab após dab. *A cura muda quem já estava dentro, nunca quem
+/// nunca entrou.*
+pub(crate) struct OlhoDoTraco<'a> {
+    /// `stamp[v] == epoca` ⇔ o traço já capturou `v`.
+    pub stamp: &'a [u32],
+    /// O índice de `v` na janela do traço.
+    pub slot: &'a [u32],
+    /// As normais congeladas, na ordem da janela.
+    pub base_nrm: &'a [[f32; 3]],
+    pub epoca: u32,
+}
+
+impl OlhoDoTraco<'_> {
+    /// A normal que decide: a **congelada** se o traço já cá passou, a viva se
+    /// esta é a primeira vez.
+    fn normal(&self, v: u32, viva: [f32; 3]) -> [f32; 3] {
+        let vi = v as usize;
+        if vi < self.stamp.len() && self.stamp[vi] == self.epoca {
+            let s = self.slot[vi] as usize;
+            if s < self.base_nrm.len() {
+                return self.base_nrm[s];
+            }
+        }
+        viva
+    }
+}
+
 // ⛔⛔ **UMA CONSTANTE QUE FOI CONSTRUÍDA, MEDIDA E REMOVIDA — e o registo fica.**
 //
 // Havia aqui um `SEMENTE_RECUO = 0,25`: o ponto de semeadura era deslocado na
@@ -311,6 +384,7 @@ impl Alcance {
         olho: [f32; 3],
         raio: f32,
         pegada: &mut Vec<u32>,
+        memoria: Option<&OlhoDoTraco<'_>>,
     ) -> usize {
         if pegada.len() < 2 || raio <= 0.0 {
             return 0;
@@ -400,12 +474,16 @@ impl Alcance {
         // mesma mensagem (*«o dab não moveu nada»*) — entre eles o
         // `a_footprint_entirely_facing_away_still_fits_a_sane_plane`, que é
         // exactamente este caso com o nome dele.
-        let corta_normal = olho_bom
-            && tem_normais
-            && pegada.iter().any(|&v| {
-                let n = nrm[v as usize];
-                n[0] * olho_u[0] + n[1] * olho_u[1] + n[2] * olho_u[2] <= NORMAL_LIMIAR
-            });
+        // ⭐ **A normal que decide é a do [`OlhoDoTraco`]**, e a mesma porta serve
+        // a cerca acima e o `retain` abaixo: escrita duas vezes, a cerca poderia
+        // armar sobre um veredito e o corte correr sobre outro.
+        let dot = |v: u32| -> f32 {
+            let viva = nrm[v as usize];
+            let n = memoria.map_or(viva, |m| m.normal(v, viva));
+            n[0] * olho_u[0] + n[1] * olho_u[1] + n[2] * olho_u[2]
+        };
+        let corta_normal =
+            olho_bom && tem_normais && pegada.iter().any(|&v| dot(v) <= NORMAL_LIMIAR);
 
         let antes = pegada.len();
         let (marca, dd, epoca) = (&self.marca, &self.dist, self.epoca);
@@ -417,13 +495,10 @@ impl Alcance {
             if dd[vi] > RAZAO_MAXIMA * dist2(pos[vi], centro).sqrt() {
                 return false;
             }
-            // ⭐⭐⭐ **E a folha que o artista vê** — ver [`NORMAL_LIMIAR`].
-            if corta_normal {
-                let n = nrm[vi];
-                let dot = n[0] * olho_u[0] + n[1] * olho_u[1] + n[2] * olho_u[2];
-                if dot > NORMAL_LIMIAR {
-                    return false;
-                }
+            // ⭐⭐⭐ **E a folha que o artista vê** — ver [`NORMAL_LIMIAR`] e,
+            // para o instante em que ela se decide, [`OlhoDoTraco`].
+            if corta_normal && dot(v) > NORMAL_LIMIAR {
+                return false;
             }
             true
         });
@@ -434,3 +509,10 @@ impl Alcance {
 #[cfg(test)]
 #[path = "dab_alcance_tests.rs"]
 mod tests;
+
+/// **Quem decide a folha que o artista vê** — o irmão (`#[path]`) dos gates
+/// acima, cortado por responsabilidade quando o ficheiro cruzou o tecto de LOC.
+/// Ver [`olho`].
+#[cfg(test)]
+#[path = "dab_alcance_olho_tests.rs"]
+mod olho;

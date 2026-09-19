@@ -82,6 +82,9 @@
 ## Auditoria (famílias — 2 saltos)
 - ⛔ [`touch` não mede uma edição; `--timings` dobra sob contenção](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)
 
+- ⭐ [**Como uma RÉGUA mente** — a família (74)](reference_topic_measurement_discipline.md)
+- ⛔⛔ [Uma lei escrita PARA a régua passa na régua e faz outra coisa — o CONTROLO ganhou (cos 0,886 contra 0,583)](reference_topic_measurement_discipline.md)
+- ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)
 - ⛔⛔ [Contar operações ≠ perfil; o PERFIL DE BUILD decide o número](feedback_an_operation_count_is_not_a_profile_and_the_build_profile_decides_the_number.md)
 - ⛔⛔⛔ [Régua de calma que não nomeia o PERFIL: a leitura a 98 % ociosa foi a PIOR das quatro — era debug](feedback_a_calm_ruler_that_does_not_name_the_build_profile_reads_as_a_verdict.md)
 - [Reprodução/diagnóstico (23) — ⛔ o SÍTIO onde um defeito ATERRA não é o que o PROVOCA](reference_topic_repro_discipline.md) · [Réguas do quad remesh (19)](reference_topic_quad_remesh_rulers.md)

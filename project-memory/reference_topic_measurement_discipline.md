@@ -1065,3 +1065,25 @@ poder correr, e o `!refinar` que o guarda é o valor de FÁBRICA ⇒ o código c
 placa), o que é o pior caso: *dava confiança sobre um programa que ninguém tinha observado, e a RAZÃO
 escrita ao lado do número estava errada*. Detalhe e a cura (um gate ESTRUTURAL sobre a ORDEM, que
 corre sem placa): [[feedback_a_cure_on_a_path_the_product_does_not_execute]].
+## ⛔⛔⛔⛔ Uma lei escrita PARA a régua passa na régua e faz outra coisa (2026-09-18)
+O pente de topologia da `line/sculpt3d` passava o gate da grade com folga (`Q +0,1471` contra a
+barra `+0,0465`) e o campo de deslocamento dele estava **54° fora** do alvo, vértice a vértice
+(cosseno ponderado `0,583`). Testadas quatro configurações-alvo, ganhou a que eu escrevera **como
+CONTROLO**, com o comentário *«não deve alinhar nada»* — a regularização pura do anel, `cos 0,886`
+—, e ela **REPROVA** o gate da grade (`−0,0076`). **Why:** a nossa lei roda arestas para os eixos,
+que é *maximizar a régua directamente*; no alvo a grade é **consequência** de outra coisa. Duas
+réguas, vereditos opostos, e o produto passa na que foi escrita ao lado dele. **How to apply:**
+quando uma lei e o gate que a julga nasceram na mesma cabeça, **arranje uma segunda régua de outra
+grandeza** (aqui: o campo por vértice contra o do oráculo) antes de acreditar na primeira; e
+desconfie do gate que a lei satisfaz *por construção*. ⭐ O discriminador barato que separa
+«relaxação por convergir» de «outro óptimo» é correr mais iterações: se a amplitude sobe e o
+**cosseno não**, é outro óptimo. Ver [[reference_topic_oracle_discipline]] e
+[[reference_topic_gate_discipline]].
+
+## ⛔⛔ Comparar duas corridas com `paste` quando a POPULAÇÃO mudou compara linhas desalinhadas (2026-09-18)
+Ao medir o efeito de uma mudança sobre um placar de oráculo, juntei os dois ficheiros com `paste`:
+um tinha `64` linhas e o outro `82` (corpus novo entrara na sonda) ⇒ a tabela dizia `45 MELHOR /
+17 PIOR` e era **fabricada**; com `join` pela chave é `16 MELHOR / 0 PIOR`. **Why:** uma
+comparação POSICIONAL é válida só enquanto as duas populações forem a mesma, e é exactamente uma
+mudança de população que se está a medir. **How to apply:** junte sempre **por chave** (`join`),
+e o sinal de que se errou é barato — **nomes repetidos** na saída.

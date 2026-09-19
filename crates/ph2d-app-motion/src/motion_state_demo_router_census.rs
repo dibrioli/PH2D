@@ -683,8 +683,14 @@ fn o_que_cada_cena_anima() {
                     break;
                 };
                 let s = out[0].as_stream();
-                let esc = crate::ponto_gizmo::escalas(s, s.count());
-                let rot = crate::ponto_gizmo::rotacoes(s, s.count());
+                let esc = crate::ponto_gizmo::escalas(
+                    s,
+                    &crate::ponto_gizmo::Amostra::inteira(s.count()),
+                );
+                let rot = crate::ponto_gizmo::rotacoes(
+                    s,
+                    &crate::ponto_gizmo::Amostra::inteira(s.count()),
+                );
                 existe = (existe.0 || esc.is_some(), existe.1 || rot.is_some());
                 let p = match s.get("P") {
                     Some(ph2d_nodegraph::attr::Column::Vec2(v)) => {
@@ -753,7 +759,9 @@ fn que_numeros_o_size_tem() {
                 continue;
             };
             let s = out[0].as_stream();
-            let Some(esc) = crate::ponto_gizmo::escalas(s, s.count()) else {
+            let Some(esc) =
+                crate::ponto_gizmo::escalas(s, &crate::ponto_gizmo::Amostra::inteira(s.count()))
+            else {
                 continue;
             };
             if esc.is_empty() {
@@ -1052,4 +1060,95 @@ fn o_que_o_cartao_do_grid_pinta() {
         );
     }
     eprintln!();
+}
+
+/// ⛔⛔⛔ **O `gap_y` NA GRELHA DO DONO — a que NÃO cabe no tecto do gizmo.**
+///
+/// Report de 2026-09-19: *«Gap y quebrou e movimenta tudo em vez de criar espaço»*, sobre a
+/// *«grade do segundo exemplo»* — a cena **`=2`**, que é uma `motion.grid` de **360 × 360 =
+/// 129 600** elementos.
+///
+/// ⚠️⚠️ **A sonda irmã [`o_gap_y_ainda_espaca`] mediu uma grelha de `4 × 4` e saiu LIMPA — e é
+/// por isso que ela não podia ver este defeito:** `16` pontos cabem no [`MAX_PONTOS`] e o tecto
+/// **nunca engata**. *Uma fixtura abaixo do tecto não testa o tecto.*
+///
+/// A régua é a mesma das duas (extensão contra centro), aplicada a **DOIS sujeitos**: a nuvem
+/// INTEIRA, que é o que o nó produz, e o **PREFIXO** que o gizmo segura, que é o que o dono vê.
+///
+/// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture o_gap_y_na_grelha_do_dono`
+#[test]
+#[ignore = "sonda, nao um gate"]
+fn o_gap_y_na_grelha_do_dono() {
+    use crate::ponto_gizmo::MAX_PONTOS;
+    use ph2d_nodegraph::attr::Column;
+    use ph2d_nodegraph::graph::{Edge, Graph};
+    // A geometria da cena `=2`, lida dela: `motion_state_gpu_demos.rs`.
+    const ROWS: f32 = 360.0;
+    const COLS: f32 = 360.0;
+    eprintln!("\n=== O `gap_y` NA GRELHA DE {ROWS:.0}x{COLS:.0} (a cena `=2`) ===\n");
+    eprintln!("             NUVEM INTEIRA          │        O QUE O GIZMO SEGURA");
+    eprintln!("  gap_y │  extensao Y │   centro Y  │  extensao Y │   centro Y  │ pontos");
+    let mut antes: Option<(f32, f32)> = None;
+    for gy in [1.0f32, 1.5, 2.0, 3.0] {
+        let mut m = MotionState::new();
+        let mut g = Graph::new();
+        let grelha = g.add_node("motion.grid");
+        g.set_param(grelha, "rows", ROWS);
+        g.set_param(grelha, "cols", COLS);
+        g.set_param(grelha, "gap_x", 1.0);
+        g.set_param(grelha, "gap_y", gy);
+        let saida = g.add_node("motion.output");
+        g.connect(Edge {
+            from: (grelha, 0),
+            to: (saida, 0),
+            delayed: false,
+        })
+        .expect("liga");
+        m.doc.graph = g;
+        let Ok(out) = m.pump.cook.cook(&m.doc.graph, &m.registry, saida, 0.0) else {
+            eprintln!("  {gy} │ NAO COZE");
+            continue;
+        };
+        let s = out[0].as_stream();
+        let Some(Column::Vec2(p)) = s.get("P") else {
+            continue;
+        };
+        // ⚠️ A MESMA operação que o `ponto_gizmo::posicoes` faz — um `take` do PREFIXO.
+        let medir = |v: &[[f32; 2]]| {
+            let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+            for q in v {
+                lo = lo.min(q[1]);
+                hi = hi.max(q[1]);
+            }
+            (hi - lo, (hi + lo) / 2.0)
+        };
+        let (ext_t, cen_t) = medir(p);
+        // ⚠️⚠️ **PELA PORTA DO PRODUTO, e não por um `take` escrito aqui.** Uma sonda que
+        // reimplementa o corte mede a sua própria cópia e diz o mesmo para sempre — esta tem de
+        // MUDAR de resposta no dia em que o corte mudar, que é o dia em que ela vale alguma coisa.
+        let vistos = crate::ponto_gizmo::posicoes_amostradas(s);
+        let (ext_g, cen_g) = medir(&vistos);
+        eprintln!(
+            "  {gy:>5} │ {ext_t:>11.3} │ {cen_t:>11.3} │ {ext_g:>11.3} │ {cen_g:>11.3} │ {} de {}",
+            vistos.len(),
+            p.len()
+        );
+        if let Some((e0, c0)) = antes {
+            eprintln!(
+                "        │             │             │  Δextensao {:>+8.3} │ Δcentro {:>+8.3}  ⇒ mover/espacar = {:.1}x",
+                ext_g - e0,
+                cen_g - c0,
+                (cen_g - c0).abs() / (ext_g - e0).abs().max(f32::EPSILON)
+            );
+        }
+        antes = Some((ext_g, cen_g));
+    }
+    eprintln!(
+        "\n  ⇒ o tecto do gizmo e' {MAX_PONTOS} e ele CORTA — mas a amostra VARRE a nuvem: o centro\n     \
+         fica em 0,000 e a extensao acompanha a do todo, logo o `gap_y` le-se como ESPACAMENTO.\n\n  \
+         ANTES desta cura o corte era um `take` — um PREFIXO —, e com {COLS:.0} colunas ele segurava\n     \
+         as primeiras {:.1} FILEIRAS de {ROWS:.0}: uma faixa na BORDA, que VOAVA (centro -174 → -522,\n     \
+         extensao 11 → 33) ⇒ mover/espacar = 15,8x, que e' o report do dono a' letra.\n",
+        MAX_PONTOS as f32 / COLS,
+    );
 }

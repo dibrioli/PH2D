@@ -120,6 +120,55 @@ pub(crate) fn pegada_px(escala: f32, altura_da_area: f64) -> f64 {
     s.abs() * ppu_de_referencia(altura_da_area)
 }
 
+/// ⚠️⚠️ **A REFERÊNCIA do tamanho absoluto é a IDENTIDADE da coluna `size`, e isto é ERRO DE
+/// COMPILAÇÃO se ela deixar de ser `1`.** Um `assert!` de teste sobre uma const é dobrado pelo
+/// compilador antes de correr; o que morde é esta linha.
+const _: () = assert!(
+    ph2d_nodegraph::attr::SIZE_IDENTITY[0] == 1.0 && ph2d_nodegraph::attr::SIZE_IDENTITY[1] == 1.0,
+    "a pegada absoluta divide pela identidade da coluna `size`; se ela deixar de ser 1, \
+     `pegada_absoluta` tem de a dividir explicitamente"
+);
+
+/// ⭐⭐⭐ **A PEGADA ABSOLUTA — o número do artista como BASE, e o grafo como MULTIPLICADOR.**
+///
+/// > **Report do dono, 2026-09-19:** *«Se coloco o tamanho, para de animar.»*
+///
+/// ⛔⛔⛔ **Ele tinha razão, e era um defeito de DESENHO meu, não um bug.** A 1.ª redacção da
+/// secção do gizmo fez o `Gizmo Size` **GANHAR** da peça: preenchido, ele *substituía* a pegada
+/// derivada, e com ela ia embora a coluna `size` — que é exactamente o que um `motion.oscillator`
+/// anima. ⇒ *o absoluto matava a animação*, e a §32.4-bis tinha declarado por escrito que as duas
+/// leis não brigam.
+///
+/// ⭐ **As duas coisas que ele pediu são compatíveis, e a composição é a resposta:** o tamanho
+/// absoluto é a pegada **na IDENTIDADE da corrente**, e a escala do grafo multiplica-a a partir
+/// dali. Um grafo que não fala de escala entrega `1` e o glifo mede exactamente o que o artista
+/// escreveu; um `motion.scale(0,4)` entrega `0,4` e o glifo fica a 40 %; um oscilador a pulsar
+/// entre `0,8` e `1,2` faz o glifo **pulsar**, que é o pedido original.
+///
+/// ⚠️⚠️ **E a REFERÊNCIA é a identidade porque o nó que CARREGA este controlo emite na
+/// identidade.** As 14 fontes de posições (`quem_e_como_o_grid`) emitem `P`/`Index`/`Count` e
+/// **nenhuma coluna `size`** ⇒ toda `size` que o sink vê foi escrita **a jusante**, logo ela *é* a
+/// modulação do grafo. Não é uma convenção escolhida: é uma propriedade da população, e o
+/// `const _` acima prende-a.
+///
+/// ⛔⛔ **E é por isso que a referência NÃO pode ser uma estatística da corrente.** A mediana (ou a
+/// média, ou o elemento `0`) **anularia uma pulsação UNIFORME** — se toda a nuvem pulsa junta,
+/// `size_i / mediana` é `1` o tempo todo e o glifo fica parado, que é o defeito que esta função
+/// existe para curar. *Uma referência tirada do mesmo instante cancela exactamente o que se quer
+/// ver.*
+///
+/// ⚠️ **Um `size` não-finito devolve `0`**, como a [`pegada_px`] — o glifo desaparece em vez de
+/// pintar um caminho degenerado.
+#[must_use]
+pub(crate) fn pegada_absoluta(tamanho_px: f32, escala: f32) -> f64 {
+    let s = f64::from(escala);
+    if !s.is_finite() {
+        return 0.0;
+    }
+    // ÷ `SIZE_IDENTITY` (= 1) — ver o `const _` acima.
+    f64::from(tamanho_px) * s.abs()
+}
+
 /// O glifo que ocupa `fracao` da pegada, com o piso de legibilidade.
 #[must_use]
 pub(crate) fn glifo_px(fracao: f64, pegada: f64) -> f64 {
@@ -189,13 +238,16 @@ pub(crate) fn caminhos(
     let mut cheios = BezPath::new();
     let mut tracos = BezPath::new();
     for g in &v.grupos {
-        // ⭐⭐⭐ **O TAMANHO ABSOLUTO GANHA DA PEÇA** (ordem do dono, 2026-09-19): quando o artista
-        // escreve um número na secção do gizmo, ele é o glifo **em pixels**, e a escala do grafo
-        // deixa de o dimensionar. ⚠️ *Ele continua a responder ao grafo pela FORMA e pela AGULHA* —
-        // o que ele compra é uma marca do tamanho que o artista quer, e não do tamanho da peça.
+        // ⭐⭐⭐ **O TAMANHO ABSOLUTO É A BASE, E O GRAFO MODULA-A** — ver [`pegada_absoluta`],
+        // que tem o report do dono (*«Se coloco o tamanho, para de animar»*) e o mecanismo.
+        // ⛔ A 1.ª redacção fazia o número do artista GANHAR da peça, e ao fazê-lo deitava fora a
+        // coluna `size` — que é justamente o que um oscilador anima.
         let peg = |i: usize| {
-            g.tamanho_em(i)
-                .map_or_else(|| pegada_px(g.escala_em(i), altura_da_area), f64::from)
+            let escala = g.escala_em(i);
+            g.tamanho_em(i).map_or_else(
+                || pegada_px(escala, altura_da_area),
+                |t| pegada_absoluta(t, escala),
+            )
         };
         match g.feicao {
             Feicao::Osso => desenha_ossos(g, pt, &peg, ppu, &mut cheios, &mut tracos),

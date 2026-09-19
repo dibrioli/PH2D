@@ -63,6 +63,14 @@ pub const FORMAS: usize = 3;
 /// Um glifo maior do que a menor dimensão de uma janela de trabalho deixa de marcar um ponto e
 /// passa a tapar a cena. ⛔ Não é um «razoável»: `256 px` é um terço da altura útil de um canvas de
 /// `~800`, que é o ponto em que uma marca deixa de ser uma marca.
+///
+/// ⚠️⚠️ **A PREMISSA DESTE TECTO FOI EMENDADA em 2026-09-19, e a emenda é o report do dono**
+/// (*«Se coloco o tamanho, para de animar»*): o número deixou de **substituir** a pegada da peça
+/// e passou a ser a **BASE que o grafo multiplica** (`ph2d_app_motion::ponto_gizmo_overlay::pegada_absoluta`).
+/// ⭐ O tecto SOBREVIVE à emenda e o argumento não muda de forma — ele passa a ler-se *«`256 px`
+/// para um elemento na IDENTIDADE»*, que é o mesmo terço de canvas. ⛔ **Acima da identidade o
+/// grafo pode passá-lo, e isso é a lei e não uma fuga:** quem escreve `motion.scale(4)` pediu
+/// peças quatro vezes maiores, e um gizmo que recusasse segui-las deixaria de mostrar o grafo.
 pub const TAMANHO_MAX: f32 = 256.0;
 
 /// ⛔⛔ **UM NÓ ESCREVE ESTAS CONSTANTES PELO NOME, nunca `SPECS[0]`.** A tabela de um nó cresce, e

@@ -6,13 +6,18 @@ use ph2d_nodegraph::attr::{Column, Stream};
 
 /// Coze pela porta do PRODUTO (a mesma que o quadro chama), e é ela que enche as tomadas.
 fn coze(m: &mut MotionState, sinks: &[ph2d_nodegraph::graph::NodeId]) {
+    coze_em(m, sinks, 0);
+}
+
+/// O mesmo, num QUADRO escolhido — para quem precisa de dois instantes do mesmo grafo.
+fn coze_em(m: &mut MotionState, sinks: &[ph2d_nodegraph::graph::NodeId], quadro: u64) {
     let graph = m.doc.graph.clone();
     let MotionState { pump, registry, .. } = m;
     pump.advance_or_scrub_scoped(
         &graph,
         registry,
         sinks,
-        0,
+        quadro,
         |t| t as f64 / 60.0,
         [0.0, 0.0, 1.0, 1.0],
         [1.0, 1.0],
@@ -182,12 +187,176 @@ fn quem_tem_aparencia_nao_ganha_gizmo() {
 }
 
 /// **O TECTO CORTA E O TOTAL FICA** — a legenda continua a poder dizer quantas há.
+///
+/// ⚠️ **A PREMISSA DESTE GATE MORREU PELA METADE em 2026-09-19** (report do dono: *«Gap y quebrou e
+/// movimenta tudo em vez de criar espaço»*): ele media só que o tecto CORTA, e o corte era um
+/// `take` — um PREFIXO. Numa grelha de `360 × 360` isso são as primeiras 11,4 fileiras de 360, uma
+/// faixa na borda que **voa** quando o `gap_y` muda (medido: `15,8×` mais deslocamento do que
+/// espaçamento). *Cortar quanto baste e cortar de onde deve são duas propriedades, e só a primeira
+/// estava gateada.*
 #[test]
 fn o_tecto_corta_e_o_total_fica() {
     let n = MAX_PONTOS + 500;
     let s = nuvem(n);
-    assert_eq!(super::posicoes(&s).len(), MAX_PONTOS);
+    let am = super::Amostra::de(&s).1;
+    assert_eq!(super::posicoes(&s, &am).len(), MAX_PONTOS);
     assert_eq!(s.count(), n, "o total nao e' o que o tecto deixou");
+}
+
+/// ⭐⭐⭐ **TODA COLUNA LÊ PELOS MESMOS ÍNDICES — o vector paralelo, gateado.**
+///
+/// ⚠️⚠️ **É o defeito MUDO que a amostra por passo introduz:** a `P`, a `size`, a `rot`, a forma e o
+/// tamanho do gizmo são vectores paralelos, e uma delas colhida com outro passo daria ao elemento
+/// `i` o tamanho do elemento `j` — **sem erro, sem aviso, e com toda régua de contagem verde**.
+///
+/// ⭐ **A régua amarra as duas colunas PELOS DADOS:** cada elemento leva o próprio índice em `P.x`
+/// **e** em `size`, logo um desalinhamento de um único passo é visível como uma desigualdade —
+/// ⛔ sem precisar de expor o `Amostra::indice`, que é o que tornaria o gate uma cópia da lei.
+#[test]
+fn toda_coluna_le_pelos_mesmos_indices() {
+    let total = MAX_PONTOS * 3 + 7; // acima do tecto, e NÃO múltiplo dele
+    #[allow(clippy::cast_precision_loss)]
+    let marca: Vec<f32> = (0..total).map(|i| i as f32).collect();
+    let s = Stream::new(total)
+        .with("P", Column::Vec2(marca.iter().map(|&i| [i, 0.0]).collect()))
+        .with("size", Column::Scalar(marca.clone()))
+        .with("rot", Column::Scalar(marca.clone()))
+        .with(
+            ph2d_gizmo_params::TAMANHO_COL,
+            Column::Scalar(marca.iter().map(|&i| i + 1.0).collect()),
+        );
+    let am = super::Amostra::de(&s).1;
+    let pontos = super::posicoes(&s, &am);
+    let escala = super::escalas(&s, &am).expect("a coluna existe");
+    let rot = super::rotacoes(&s, &am).expect("a coluna existe");
+    let tam = super::escalares(&s, ph2d_gizmo_params::TAMANHO_COL, &am).expect("a coluna existe");
+    assert_eq!(pontos.len(), MAX_PONTOS, "o tecto continua a cortar");
+    assert_eq!(escala.len(), pontos.len(), "as colunas tem o mesmo tamanho");
+    for k in 0..pontos.len() {
+        let i = pontos[k][0]; // o índice de quem este glifo É
+        assert!(
+            (escala[k] - i).abs() < f32::EPSILON
+                && (rot[k] - i).abs() < f32::EPSILON
+                && (tam[k] - (i + 1.0)).abs() < f32::EPSILON,
+            "o glifo {k} e' o elemento {i} e leva os valores de outro: \
+             escala {}, rot {}, tamanho {}",
+            escala[k],
+            rot[k],
+            tam[k]
+        );
+    }
+    // ⛔ **O CONTROLO:** a amostra tem de SALTAR de facto, senão isto passaria sobre um prefixo —
+    // e um prefixo alinha trivialmente.
+    assert!(
+        pontos[1][0] > 1.5,
+        "o CONTROLO: com um prefixo o alinhamento e' trivial ({})",
+        pontos[1][0]
+    );
+}
+
+/// ⛔⛔ **UMA CADEIA CORTA-SE POR PREFIXO, e a razão é a TOPOLOGIA.**
+///
+/// Os `segmentos` indexam a AMOSTRA (`corda(n)` liga `k−1` a `k`), logo um passo maior que `1`
+/// desenharia linhas entre juntas **que não se tocam**. ⚠️ Nenhuma régua de tamanho vê isso: a
+/// contagem é a mesma, o laço fecha na mesma, e o desenho sai um ziguezague plausível.
+#[test]
+fn uma_cadeia_corta_se_por_prefixo_e_uma_nuvem_nao() {
+    let total = MAX_PONTOS * 3 + 7;
+    #[allow(clippy::cast_precision_loss)]
+    let ps: Vec<[f32; 2]> = (0..total).map(|i| [i as f32, 0.0]).collect();
+    let base = Stream::new(total).with("P", Column::Vec2(ps));
+    let corda = base
+        .clone()
+        .with("rope_prev", Column::Vec2(vec![[0.0, 0.0]; total]));
+    let osso = base.clone().with(
+        "parent",
+        #[allow(clippy::cast_precision_loss)]
+        Column::Scalar((0..total).map(|i| i as f32 - 1.0).collect()),
+    );
+    for (nome, s) in [("corda", &corda), ("osso", &osso)] {
+        let vistos = super::posicoes(s, &super::Amostra::de(s).1);
+        assert_eq!(vistos.len(), MAX_PONTOS, "{nome}: o tecto corta");
+        for (k, p) in vistos.iter().enumerate() {
+            #[allow(clippy::cast_precision_loss)]
+            let esperado = k as f32;
+            assert!(
+                (p[0] - esperado).abs() < f32::EPSILON,
+                "{nome}: o corte de uma cadeia tem de ser o PREFIXO — o glifo {k} e' o elemento {}",
+                p[0]
+            );
+        }
+    }
+    // ⛔ **O CONTROLO:** a MESMA contagem numa NUVEM salta — senão este gate estaria a afirmar que
+    // a amostra nunca salta, que é o oposto da wave.
+    let nuvem_vista = super::posicoes(&base, &super::Amostra::de(&base).1);
+    assert!(
+        nuvem_vista[1][0] > 1.5,
+        "o CONTROLO: uma nuvem tem de saltar ({})",
+        nuvem_vista[1][0]
+    );
+}
+
+/// ⭐⭐⭐ **A METADE NOVA: A AMOSTRA VARRE A NUVEM INTEIRA, e não uma FAIXA dela.**
+///
+/// A régua é a do report — a mesma das duas sondas: **extensão contra centro**. Uma amostra
+/// representativa tem o centro da nuvem e quase toda a extensão dela; um prefixo tem os dois
+/// errados, e é isso que faz o `gap_y` ler-se como deslocamento.
+///
+/// ⚠️ **A fixtura é uma GRELHA `row-major` e tem de estar ACIMA do tecto** — é a forma exacta da
+/// cena do dono, e a sonda que saiu limpa em 2026-09-19 usava `4 × 4`, que cabe no tecto e por isso
+/// **nunca o engatava**. *Uma fixtura abaixo do tecto não testa o tecto.*
+#[test]
+fn a_amostra_varre_a_nuvem_e_nao_uma_faixa_dela() {
+    // `row-major`, como a `motion.grid`: o índice `i` é a célula `(i / COLS, i % COLS)`.
+    const COLS: usize = 360;
+    const ROWS: usize = 360;
+    let total = ROWS * COLS;
+    let pontos: Vec<[f32; 2]> = (0..total)
+        .map(|i| {
+            let (r, c) = (i / COLS, i % COLS);
+            #[allow(clippy::cast_precision_loss)]
+            [
+                c as f32 - (COLS as f32 - 1.0) * 0.5,
+                r as f32 - (ROWS as f32 - 1.0) * 0.5,
+            ]
+        })
+        .collect();
+    let s = Stream::new(total).with("P", Column::Vec2(pontos.clone()));
+    let am = super::Amostra::de(&s).1;
+    let vistos = super::posicoes(&s, &am);
+    assert_eq!(vistos.len(), MAX_PONTOS, "o tecto continua a cortar");
+
+    let medir = |v: &[[f32; 2]]| {
+        let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+        for q in v {
+            lo = lo.min(q[1]);
+            hi = hi.max(q[1]);
+        }
+        (hi - lo, (hi + lo) / 2.0)
+    };
+    let (ext_todo, cen_todo) = medir(&pontos);
+    let (ext_visto, cen_visto) = medir(&vistos);
+
+    // O CENTRO: a nuvem é centrada na origem, e a amostra tem de o ser também.
+    assert!(
+        cen_visto.abs() <= 1.0,
+        "a amostra esta' descentrada: centro {cen_visto} contra {cen_todo} da nuvem — \
+         e' uma FAIXA, nao uma amostra"
+    );
+    // A EXTENSÃO: ela tem de varrer quase tudo. ⚠️ A barra é `95 %` e não `100 %` porque o último
+    // índice amostrado é `(n−1)·total/n`, que fica a menos de uma fileira do fim por construção.
+    assert!(
+        ext_visto >= ext_todo * 0.95,
+        "a amostra so' varre {ext_visto} de {ext_todo}"
+    );
+    // ⛔ **O CONTROLO**: o prefixo que esta wave substituiu reprova nas duas metades — sem ele um
+    // `Amostra` que devolvesse a nuvem inteira passaria e não se saberia que a régua vê o defeito.
+    let prefixo: Vec<[f32; 2]> = pontos.iter().take(MAX_PONTOS).copied().collect();
+    let (ext_pref, cen_pref) = medir(&prefixo);
+    assert!(
+        cen_pref.abs() > 1.0 && ext_pref < ext_todo * 0.95,
+        "o CONTROLO tem de reprovar: o prefixo mede centro {cen_pref} e extensao {ext_pref}"
+    );
 }
 
 /// ⭐⭐⭐ **O CUSTO DE PINTAR O GIZMO, por feição** — a medição que decide o [`MAX_PONTOS`] (§0.0:
@@ -412,14 +581,21 @@ fn o_retrato_carrega_as_colunas_do_grafo() {
         .with("size", Column::Vec2(vec![[2.0, 4.0]; 3]))
         .with("rot", Column::Scalar(vec![10.0, 20.0, 30.0]));
     assert_eq!(
-        super::escalas(&s, 3),
+        super::escalas(&s, &super::Amostra::inteira(3)),
         Some(vec![3.0, 3.0, 3.0]),
         "a media dos eixos"
     );
-    assert_eq!(super::rotacoes(&s, 3), Some(vec![10.0, 20.0, 30.0]));
-    assert_eq!(super::escalas(&nuvem(3), 3), None, "sem coluna, sem escala");
     assert_eq!(
-        super::rotacoes(&nuvem(3), 3),
+        super::rotacoes(&s, &super::Amostra::inteira(3)),
+        Some(vec![10.0, 20.0, 30.0])
+    );
+    assert_eq!(
+        super::escalas(&nuvem(3), &super::Amostra::inteira(3)),
+        None,
+        "sem coluna, sem escala"
+    );
+    assert_eq!(
+        super::rotacoes(&nuvem(3), &super::Amostra::inteira(3)),
         None,
         "sem coluna, sem agulha"
     );
@@ -765,32 +941,59 @@ fn as_tres_formas_dao_tres_desenhos() {
     );
 }
 
-/// **O TAMANHO ABSOLUTO GANHA DA PEÇA, e é ABSOLUTO** — o pedido à letra.
+/// ⭐⭐⭐ **O TAMANHO ABSOLUTO É A BASE QUE O GRAFO MODULA — e continua a ser ABSOLUTO.**
+///
+/// ⛔⛔⛔ **A PREMISSA DA 1.ª REDACÇÃO MORREU AQUI, e quem a matou foi o dono** (2026-09-19:
+/// *«Se coloco o tamanho, para de animar»*). Ela dizia-se
+/// `o_tamanho_absoluto_GANHA_da_peca_e_nao_ve_o_zoom` e afirmava que o número do artista **é** o
+/// glifo em pixels, ponto final — e era isso, exactamente isso, que deitava fora a coluna `size`
+/// e parava a animação. *As duas coisas que ele pediu (absoluto **e** a responder ao grafo) são
+/// compatíveis, e a 1.ª redacção escolheu uma.*
+///
+/// A lei nova está em [`crate::ponto_gizmo_overlay::pegada_absoluta`]: o número é a pegada **na
+/// IDENTIDADE da corrente**, e a escala do grafo multiplica-a a partir dali.
 #[test]
-fn o_tamanho_absoluto_ganha_da_peca_e_nao_ve_o_zoom() {
-    let largura = |t: Option<f32>, z: f64| {
-        let (_, tr) = crate::ponto_gizmo_overlay::caminhos(
-            &um_ponto_com(ph2d_gizmo_params::CRUZ, t),
-            &olho(z),
-            ALTURA,
-        );
+fn o_tamanho_absoluto_e_a_base_que_o_grafo_modula_e_nao_ve_o_zoom() {
+    // ⚠️ `escala` explícita: este gate é sobre a COMPOSIÇÃO das duas, logo ele tem de a mover.
+    let largura = |escala: f32, t: Option<f32>, z: f64| {
+        let mut v = um_ponto(None, Some(escala));
+        v.grupos[0].forma = Some(vec![ph2d_gizmo_params::CRUZ]);
+        v.grupos[0].tamanho = t.map(|t| vec![t]);
+        let (_, tr) = crate::ponto_gizmo_overlay::caminhos(&v, &olho(z), ALTURA);
         tr.bounding_box().width()
     };
-    let da_peca = largura(None, 1.0);
-    let absoluto = largura(Some(40.0), 1.0);
+    // (a) **ABSOLUTO**: na identidade, o número do artista É o glifo em pixels — a metade da lei
+    // que sobreviveu, e o sentido em que «absoluto» continua a querer dizer o que ele pediu.
+    let na_identidade = largura(1.0, Some(40.0), 1.0);
     assert!(
-        (absoluto - 40.0).abs() < 1e-6,
-        "o tamanho absoluto e' o GLIFO em pixels: pedi 40, saiu {absoluto}"
+        (na_identidade - 40.0).abs() < 1e-6,
+        "na identidade o absoluto e' o glifo em pixels: pedi 40, saiu {na_identidade}"
+    );
+    // (b) ⭐⭐⭐ **E O GRAFO MODULA-O — a metade NOVA, que é o report do dono.** O triplo da escala
+    // tem de dar o triplo do glifo, com o mesmo número no cartão.
+    let triplo = largura(3.0, Some(40.0), 1.0);
+    let metade = largura(0.5, Some(40.0), 1.0);
+    assert!(
+        (triplo / na_identidade - 3.0).abs() < 1e-6,
+        "o triplo da escala tem de dar o triplo do glifo: {na_identidade} → {triplo}"
     );
     assert!(
-        (da_peca - absoluto).abs() > 1.0,
-        "o CONTROLO: sem ele o glifo sai da peca ({da_peca})"
+        (metade / na_identidade - 0.5).abs() < 1e-6,
+        "metade da escala tem de dar metade do glifo: {na_identidade} → {metade}"
     );
-    // ⚠️ E o zoom não lhe toca — a lei 1 continua de pé por cima da secção.
-    assert!((largura(Some(40.0), 8.0) - absoluto).abs() < 1e-9);
-    // ⛔ E `0` quer dizer «derivado da peça», nunca «um glifo de zero».
+    // ⛔ **O CONTROLO da metade (b):** a lei ANTIGA devolvia `40` nas três escalas. Sem esta
+    // asserção, um `pegada_absoluta` que voltasse a ignorar a escala passaria em (a), em (c) e em
+    // (d) — *era assim que o defeito do dono cabia numa suíte verde*.
     assert!(
-        (largura(Some(0.0), 1.0) - da_peca).abs() < 1e-9,
+        (triplo - metade).abs() > 1.0,
+        "o CONTROLO: com a lei antiga as tres escalas davam o mesmo glifo ({triplo} vs {metade})"
+    );
+    // (c) ⚠️ **E o zoom não lhe toca** — a lei 1 continua de pé por cima da secção.
+    assert!((largura(1.0, Some(40.0), 8.0) - na_identidade).abs() < 1e-9);
+    // (d) ⛔ E `0` quer dizer «derivado da peça», nunca «um glifo de zero».
+    let da_peca = largura(REAL, None, 1.0);
+    assert!(
+        (largura(REAL, Some(0.0), 1.0) - da_peca).abs() < 1e-9,
         "0 = da peca"
     );
 }
@@ -832,6 +1035,94 @@ fn a_escolha_do_cartao_chega_ao_retrato() {
         grupo.tamanho_em(0),
         Some(24.0),
         "o tamanho absoluto tem de chegar"
+    );
+}
+
+/// ⭐⭐⭐ **O REPORT DO DONO, PELA ROTA INTEIRA: com o `Gizmo Size` posto, o glifo AINDA ANIMA.**
+///
+/// > **2026-09-19:** *«Se coloco o tamanho, para de animar.»*
+///
+/// ⚠️⚠️ **Sem esta metade, o gate de unidade acima não chega:** ele monta um [`Grupo`] à MÃO e
+/// prova a LEI; este monta um `motion.grid` com a secção preenchida, põe um `motion.oscillator` a
+/// animar a coluna `size` — que é a cena `=116` à letra —, coze em DOIS instantes pela porta do
+/// produto e mede o GLIFO. *Um gate que chama a função em vez de percorrer a rota afirma que a
+/// peça existe, nunca que o produto a usa* (a lição da mutação `M8`).
+#[test]
+fn com_o_tamanho_posto_o_glifo_ainda_anima() {
+    use ph2d_nodegraph::graph::{Edge, Graph};
+    let larguras = |tamanho: f32| {
+        let mut m = MotionState::new();
+        let mut g = Graph::new();
+        let grelha = g.add_node("motion.grid");
+        // ⚠️ UMA célula: a régua é a caixa do traçado, e com nove pontos ela mediria o
+        // ESPALHAMENTO da grelha (que é geometria e segue o zoom) em vez do glifo.
+        g.set_param(grelha, "rows", 1.0);
+        g.set_param(grelha, "cols", 1.0);
+        g.set_param(grelha, ph2d_gizmo_params::TAMANHO, tamanho);
+        // O oscilador na coluna `size` — o *«scale do oscilador»* que o dono nomeou.
+        // ⚠️ O canal é o **`3`**, e ele lê-se no cabeçalho do nó (`0` X · `1` Y · `2` Rotation ·
+        // `3` Size), nunca de memória.
+        let osc = g.add_node("motion.oscillator");
+        g.set_param(osc, "channel", 3.0);
+        g.set_param(osc, "amplitude", 0.5);
+        g.set_param(osc, "frequency", 1.0);
+        let saida = g.add_node("motion.output");
+        for (de, para) in [(grelha, osc), (osc, saida)] {
+            g.connect(Edge {
+                from: (de, 0),
+                to: (para, 0),
+                delayed: false,
+            })
+            .expect("liga");
+        }
+        m.doc.graph = g;
+        m.sinks = vec![saida];
+        m.pump.set_taps(&taps_for(&m, true));
+        // Dois instantes do MESMO grafo. ⚠️ A `1 Hz` e `60` quadros por segundo, o quadro `15` é
+        // um QUARTO de período — onde um seno vai do zero ao pico, que é o maior sinal que há.
+        [0_u64, 15]
+            .map(|quadro| {
+                let sinks = m.sinks.clone();
+                coze_em(&mut m, &sinks, quadro);
+                let v = resolve(&m, true, true).expect("a grelha da' gizmo");
+                caixa(&v, 1.0).width()
+            })
+            .to_vec()
+    };
+    // (a) ⭐ **COM o tamanho posto, o glifo TEM de se mexer** — o defeito do report.
+    let com = larguras(40.0);
+    assert!(
+        (com[0] - com[1]).abs() > 1e-3,
+        "com o `Gizmo Size` posto o glifo parou de animar: {com:?} — e' o report de 19/09"
+    );
+    // (b) ⛔ **O CONTROLO**: sem o tamanho posto ele já animava, e tem de continuar a animar.
+    // Sem esta metade, um `pegada_absoluta` que devolvesse ruído passaria em (a).
+    let sem = larguras(0.0);
+    assert!(
+        (sem[0] - sem[1]).abs() > 1e-3,
+        "o CONTROLO: sem o tamanho o glifo ja' animava, e tem de continuar: {sem:?}"
+    );
+    // (c) ⭐⭐⭐ **A RAZÃO É A MESMA COM E SEM O NÚMERO — é isto que «BASE que o grafo MODULA»
+    // quer dizer, escrito como uma igualdade.** O cartão escolhe a base; o grafo escolhe o factor;
+    // e o factor não depende da base.
+    //
+    // ⚠️⚠️ **A 1.ª redacção desta metade afirmava `com[0] > sem[0]` e REPROVOU sobre produto
+    // CERTO** — medido, `com = [40, 60]` e `sem = [90, 135]`. O derivado de uma peça na identidade
+    // é `1 × ppu_de_referencia`, que a `900 px` de área vale `90`; pedir `40` é pedir **menos** do
+    // que o derivado, e é o artista a mandar. *Eu supus que um número escrito à mão é maior do que
+    // o derivado, e isso não é uma lei — é um palpite sobre a cena.*
+    let razao = |w: &[f64]| w[1] / w[0];
+    assert!(
+        (razao(&com) - razao(&sem)).abs() < 1e-9,
+        "o grafo tem de modular por igual com e sem a base: {:?} contra {:?}",
+        razao(&com),
+        razao(&sem)
+    );
+    // (d) ⚠️ **E o número do artista manda na MAGNITUDE**: o dobro no cartão é o dobro no glifo.
+    let dobro = larguras(80.0);
+    assert!(
+        (dobro[0] / com[0] - 2.0).abs() < 1e-9,
+        "o dobro no cartao tem de dar o dobro no glifo: {com:?} → {dobro:?}"
     );
 }
 

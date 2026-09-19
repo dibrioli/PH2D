@@ -165,12 +165,125 @@ pub struct PontoGizmoView {
     pub grupos: Vec<Grupo>,
 }
 
-/// As posições de uma corrente, limitadas pelo tecto.
-fn posicoes(s: &Stream) -> Vec<[f32; 2]> {
+/// ⭐⭐⭐ **A AMOSTRA QUE O TECTO DEIXA PASSAR — e ela não é um PREFIXO numa nuvem.**
+///
+/// > **Report do dono, 2026-09-19:** *«Gap y quebrou e movimenta tudo em vez de criar espaço»*,
+/// > sobre a grelha da cena `=2` — `360 × 360 = 129 600` elementos.
+///
+/// ⛔⛔⛔ **A causa era o corte, e ele era `take(MAX_PONTOS)`.** Numa grelha *row-major* os
+/// primeiros `4 096` de `129 600` são as primeiras **11,4 FILEIRAS de 360** — uma faixa na BORDA
+/// de baixo, não uma amostra. Medido (`o_gap_y_na_grelha_do_dono`):
+///
+/// | `gap_y` | a nuvem inteira | o que o gizmo segurava |
+/// |---|---|---|
+/// | | extensão Y · centro Y | extensão Y · centro Y |
+/// | `1,0` | `359,0` · **`0,000`** | `11,0` · `−174,0` |
+/// | `2,0` | `718,0` · **`0,000`** | `22,0` · `−348,0` |
+/// | `3,0` | `1077,0` · **`0,000`** | `33,0` · `−522,0` |
+///
+/// ⇒ o nó espaçava **certo** (o centro nunca se move) e o gizmo mostrava uma faixa que **voava**:
+/// por cada `+5,5` de espaçamento ela deslocava-se `−87`, uma razão de **`15,8×`**. *Isso é, à
+/// letra, «movimenta tudo em vez de criar espaço».*
+///
+/// ⚠️⚠️ **A sonda irmã [`super::motion_state::demo_router::census::o_gap_y_ainda_espaca`] mediu uma
+/// grelha de `4 × 4` e saiu LIMPA — e não podia ser de outra maneira: `16` pontos cabem no tecto e
+/// ele NUNCA ENGATA.** *Uma fixtura abaixo do tecto não testa o tecto.*
+///
+/// ⛔⛔ **E o passo NÃO é uniforme para toda feição, porque nem toda corrente é uma nuvem:**
+///
+/// | feição | corte | porquê |
+/// |---|---|---|
+/// | **Ponto** | passo uniforme | uma nuvem **não tem ordem**: uma amostra espalhada é representativa, e é ela que faz o `gap_y` ler-se como espaçamento |
+/// | **Osso** · **Corda** | prefixo | ali a ORDEM **é** a topologia — saltar elementos ligaria juntas que não se tocam. O prefixo de uma cadeia é uma sub-cadeia **LIGADA**, que é a leitura honesta |
+///
+/// ⚠️⚠️ **TODA coluna lê pelos MESMOS índices**, e é isso que este tipo existe para garantir: a
+/// `P`, a `size`, a `rot`, a forma e o tamanho do gizmo são **vectores paralelos**, e uma delas
+/// amostrada com outro passo daria ao elemento `i` o tamanho do elemento `j` — em silêncio.
+/// ⭐⭐ **UMA FÓRMULA SÓ, e a feição muda apenas o DENOMINADOR** (`indice(k) = k · alcance / n`):
+/// numa nuvem o alcance é a corrente inteira (a amostra espalha-se), numa cadeia o alcance é a
+/// própria amostra (`alcance == n` ⇒ `indice(k) == k`, o prefixo). ⛔ E com tudo a caber, `alcance
+/// == n == total` nas TRÊS feições ⇒ a identidade, **ao bit**, que é o que mantém toda cena
+/// pequena exactamente como estava.
+///
+/// ⛔ **Não é um passo INTEIRO** (`ceil(total/MAX)`), e a razão é orçamento: com `4 596` pontos um
+/// passo de `2` entregaria `2 298` glifos — **metade do tecto desperdiçada** — enquanto esta
+/// fórmula entrega os `4 096` que o tecto paga.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Amostra {
+    /// O alcance que a amostra varre, na corrente. Ver o cabeçalho.
+    alcance: usize,
+    /// Quantos elementos a amostra tem.
+    n: usize,
+}
+
+impl Amostra {
+    /// **A FEIÇÃO e a amostra dela, LIDAS DA MESMA CORRENTE.**
+    ///
+    /// ⛔⛔ **Ela recebe o `Stream` e não uma `Feicao`, e isso foi uma MUTAÇÃO SOBREVIVENTE.** A 1.ª
+    /// redacção era `de(feicao, total)`, e o gate da cadeia chamava-a **directamente**: trocar o
+    /// argumento no `resolve` por `Feicao::Ponto` punha as cadeias a saltar com os **30** testes do
+    /// gizmo verdes — *um gate que chama a porta afirma que ela responde bem, nunca que o produto a
+    /// consulta*. ⭐ A cura não é um gate a mais: é a porta **deixar de poder ser chamada errada** —
+    /// ela deriva a feição da corrente e devolve-a, logo não há argumento onde enganar-se, e quem
+    /// precisa da feição recebe **a mesma**.
+    pub(crate) fn de(s: &Stream) -> (Feicao, Self) {
+        let feicao = feicao_de(s);
+        let total = s.count();
+        let n = total.min(MAX_PONTOS);
+        let am = match feicao {
+            // Ver a tabela do cabeçalho: numa cadeia a ORDEM é a topologia ⇒ o alcance é a
+            // própria amostra, e o corte volta a ser o prefixo LIGADO.
+            Feicao::Osso | Feicao::Corda => Self { alcance: n, n },
+            Feicao::Ponto => Self { alcance: total, n },
+        };
+        (feicao, am)
+    }
+
+    /// A amostra que não corta nada — para quem mede a corrente INTEIRA.
+    ///
+    /// ⚠️ **`#[cfg(test)]` porque o PRODUTO nunca a quer:** o gizmo tem tecto sempre, e uma porta
+    /// que o ignora só faz sentido a uma sonda ou a um gate. *Marcá-la assim é a resposta honesta;
+    /// um `#[allow(dead_code)]` seria calar a pergunta.*
+    #[cfg(test)]
+    pub(crate) fn inteira(total: usize) -> Self {
+        Self {
+            alcance: total,
+            n: total,
+        }
+    }
+
+    /// O índice, na corrente, do `k`-ésimo elemento da amostra.
+    fn indice(&self, k: usize) -> usize {
+        if self.n == 0 {
+            return 0;
+        }
+        k * self.alcance / self.n
+    }
+
+    /// **Lê uma coluna pelos índices DESTA amostra** — a porta por onde todas passam.
+    fn colhe<T: Copy, U>(&self, v: &[T], f: impl Fn(T) -> U) -> Vec<U> {
+        (0..self.n)
+            .filter_map(|k| v.get(self.indice(k)).copied().map(&f))
+            .collect()
+    }
+}
+
+/// As posições de uma corrente, pelos índices da amostra.
+fn posicoes(s: &Stream, am: &Amostra) -> Vec<[f32; 2]> {
     match s.get("P") {
-        Some(Column::Vec2(v)) => v.iter().take(MAX_PONTOS).copied().collect(),
+        Some(Column::Vec2(v)) => am.colhe(v, |q| q),
         _ => Vec::new(),
     }
+}
+
+/// **O que o gizmo SEGURA de uma corrente** — a porta por onde uma sonda pergunta o mesmo que o
+/// produto responde. ⚠️ Sem ela, uma sonda reimplementa o corte e mede a própria cópia.
+///
+/// ⚠️ `#[cfg(test)]`: no produto quem chama é o [`resolve`], que já tem a amostra em mãos.
+#[cfg(test)]
+#[must_use]
+pub(crate) fn posicoes_amostradas(s: &Stream) -> Vec<[f32; 2]> {
+    posicoes(s, &Amostra::de(s).1)
 }
 
 /// **A ESCALA de cada elemento, como MULTIPLICADOR do glifo** — `None` quando a corrente não a
@@ -181,25 +294,25 @@ fn posicoes(s: &Stream) -> Vec<[f32; 2]> {
 /// *o gizmo mostra o que o grafo fez, e não o que o desenhador dele achou bonito*.
 ///
 /// ⚠️ **Uma coluna `Vec2` colapsa na MÉDIA dos eixos** — ver [`Grupo::escala`] para a razão.
-pub(crate) fn escalas(s: &Stream, n: usize) -> Option<Vec<f32>> {
+pub(crate) fn escalas(s: &Stream, am: &Amostra) -> Option<Vec<f32>> {
     match s.get("size") {
-        Some(Column::Scalar(v)) => Some(v.iter().take(n).copied().collect()),
-        Some(Column::Vec2(v)) => Some(v.iter().take(n).map(|e| (e[0] + e[1]) * 0.5).collect()),
+        Some(Column::Scalar(v)) => Some(am.colhe(v, |e| e)),
+        Some(Column::Vec2(v)) => Some(am.colhe(v, |e| (e[0] + e[1]) * 0.5)),
         _ => None,
     }
 }
 
 /// **A ROTAÇÃO de cada elemento, em graus** — `None` quando a corrente não a traz.
-pub(crate) fn rotacoes(s: &Stream, n: usize) -> Option<Vec<f32>> {
-    escalares(s, "rot", n)
+pub(crate) fn rotacoes(s: &Stream, am: &Amostra) -> Option<Vec<f32>> {
+    escalares(s, "rot", am)
 }
 
-/// Uma coluna escalar da corrente, limitada pelo tecto. ⚠️ **Uma porta e não três cópias:** a
+/// Uma coluna escalar da corrente, pelos índices da amostra. ⚠️ **Uma porta e não três cópias:** a
 /// `rot`, a forma e o tamanho do gizmo fazem a MESMA leitura, e três cópias divergiriam no dia em
-/// que uma delas ganhasse um filtro.
-fn escalares(s: &Stream, nome: &str, n: usize) -> Option<Vec<f32>> {
+/// que uma delas ganhasse um filtro — ou, pior, um PASSO diferente (ver [`Amostra`]).
+fn escalares(s: &Stream, nome: &str, am: &Amostra) -> Option<Vec<f32>> {
     match s.get(nome) {
-        Some(Column::Scalar(v)) => Some(v.iter().take(n).copied().collect()),
+        Some(Column::Scalar(v)) => Some(am.colhe(v, |e| e)),
         _ => None,
     }
 }
@@ -313,12 +426,17 @@ pub fn resolve(
         if total == 0 {
             continue;
         }
-        let pontos = posicoes(s);
+        // ⚠️ **A FEIÇÃO e a amostra saem da MESMA chamada**, e isso é a cura de uma mutação
+        // sobrevivente — ver [`Amostra::de`]: com dois argumentos, o `resolve` podia pedir a
+        // amostra de uma NUVEM para uma cadeia, e trinta gates ficavam verdes.
+        let (feicao, am) = Amostra::de(s);
+        let pontos = posicoes(s, &am);
         if pontos.is_empty() {
             continue;
         }
-        let feicao = feicao_de(s);
         let n = pontos.len();
+        // ⚠️ Os segmentos indexam a AMOSTRA, e por isso as cadeias a cortam por prefixo
+        // (`passo == 1`): com um passo maior estes índices ligariam juntas que não se tocam.
         let segmentos = match feicao {
             Feicao::Osso => ossos(s, n),
             Feicao::Corda => corda(n),
@@ -327,12 +445,12 @@ pub fn resolve(
         grupos.push(Grupo {
             node,
             feicao,
-            rot: rotacoes(s, n),
-            escala: escalas(s, n),
+            rot: rotacoes(s, &am),
+            escala: escalas(s, &am),
             // ⭐ A secção do gizmo, escrita pelo nó de ORIGEM e que VIAJOU até aqui — ver
             // [`ph2d_gizmo_params`] e a sonda que mediu que uma coluna nova sobrevive à cadeia.
-            forma: escalares(s, ph2d_gizmo_params::FORMA_COL, n),
-            tamanho: escalares(s, ph2d_gizmo_params::TAMANHO_COL, n),
+            forma: escalares(s, ph2d_gizmo_params::FORMA_COL, &am),
+            tamanho: escalares(s, ph2d_gizmo_params::TAMANHO_COL, &am),
             pontos,
             segmentos,
             total,

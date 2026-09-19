@@ -271,4 +271,25 @@ na âncora e a prova conta como FALHA —, que é a sorte da história: *a forma
 ⚠️ A 9.ª **sobreviveu** primeiro: o filtro `pose_owner` corre `5` testes e **nenhum continha o
 projéctil** — reapontada para o gate da ponte dele, que é o que prova que a porta tem dois leitores.
 
-Portão: **15 383 testes verdes**, clippy `-D warnings` a zero nas quatro crates, `fmt` limpo.
+### §11.6 — ⚠️ PROMOÇÃO PEDIDA à lista de flakes de fan-out do §5.0
+
+**`the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`**
+([`ph2d-tool-painter`](../../../crates/ph2d-tool-painter/src/tool/paint/measure_input_cost.rs)) —
+único ✗ de **`15 384`**, com as **três** assinaturas:
+
+| assinatura | medido |
+|---|---|
+| zero linhas do diff naquela crate | `0` |
+| 3 de 3 VERDE sozinho, com a carga ao lado | `load 8,49` · `8,02` · `8,02` |
+| mede um RECURSO partilhado | `down / copy` — **duas medianas de relógio de parede** |
+
+⛔ **É o SÉTIMO deste repo cujo doc-comment se declara imune por escrito** (*«medidos juntos, os dois
+números sobem e descem juntos, e a razão entre eles é exactamente a afirmação que interessa»*) — e o
+doc **narra uma flake anterior** dele, curada por essa mesma razão. ⚠️ *Verdade sobre a deriva do
+PERFIL e falsa sobre o FAN-OUT*, que é a distinção que aquela lista existe para guardar.
+A re-corrida do MESMO commit fechou **`15 384` de `15 384`**.
+
+---
+
+Portão: **15 384 testes verdes** (2.ª corrida), clippy `-D warnings` a zero nas quatro crates,
+`fmt` limpo, **10 de 10 mutações a sangrar**.

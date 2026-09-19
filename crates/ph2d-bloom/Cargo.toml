@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-bloom"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ ZERO dependências de produção — o molde da `ph2d-style` e da `ph2d-view-transform`. Esta é a lei
+# que o traçado de CPU e o pintor do DISPOSITIVO têm de responder IGUAL, e o gémeo em WGSL nasce com
+# gate de paridade contra ESTA.
+#
+# ⚠️ **E ao contrário da `ph2d-style`, ela NÃO é por-pixel:** o brilho lê os VIZINHOS, logo a
+# assinatura recebe o quadro inteiro. É por isso que ele não podia viver lá dentro — ver o §4 da
+# `docs/Render3d/12_o_acabamento.md`.
+[dependencies]
+
+[lints]
+workspace = true

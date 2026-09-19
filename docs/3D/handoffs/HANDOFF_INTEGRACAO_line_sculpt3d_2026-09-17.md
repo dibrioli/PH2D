@@ -3412,3 +3412,121 @@ zero contrato, zero ADR, zero pacote novo.
 - a razão `0,72` (o esticão que sobra) continua a ser **curvatura** e não a lei;
 - o botão **satura a meio curso** (§82) — *o knob escolhe a velocidade, não o
   destino*.
+
+---
+
+## §87 — ⭐⭐⭐⭐ «INTENSIFICAR»: a cerca da forma era a FÁBRICA das lascas
+
+**Report do dono (21/09, com foto):** *«pela primeira vez em muitas tentativas
+se vê alguma organização em quads bem desenhados, contudo, com várias áreas
+ainda não muito boas. Teria como intensificar? Parece que estamos no caminho
+certo»* — **o primeiro report positivo desta cena.**
+
+### §87.1 — ⛔⛔⛔⛔ A dívida de ontem apontava para o sítio certo pela razão ERRADA
+
+O §86.4 deixou escrito: *«as fileiras QUEREM mais varreduras e quem as impede é
+o chão da forma — a cura é uma cerca que veja PARES, nunca um número maior»*.
+
+A cerca por-vértice **não era fraca: era ERRADA**. Ela pergunta *«pôr ESTE
+vértice aqui afina um triângulo do anel dele?»* e veta-o sozinho — mas o laço é
+**Jacobi** e os alvos são **mutuamente consistentes**, porque são todos nós da
+**MESMA grade**. Vetar um subconjunto deixa a malha **meio-movida**: *uma
+configuração que nem a entrada nem o alvo têm.*
+
+**Medido pela porta do produto** (quatro rumos, `4` rondas, knob no topo):
+
+| cerca | lascas | pior ângulo | portão da cena |
+|---|---|---|---|
+| **por-vértice** (a de ontem) | **`4`** | `3,81°` | ⛔ **VERMELHO** |
+| nenhuma | `0` | `19,58°` | ✅ |
+| **combinada** (a de hoje) | `0` | `5,07°` | ✅ |
+
+⇒ *o que bloqueava o degrau seguinte não era o número — era a cerca a fabricar
+aquilo que ela existia para impedir.*
+
+### §87.2 — ⭐⭐⭐ E quem o expôs foi uma MUTAÇÃO SOBREVIVENTE
+
+A prova de mutação incluía *«a cerca desaparece do caminho do produto»*, à
+espera que o portão da cena reprovasse. Ele ficou **VERDE** — o que não podia
+acontecer se a cerca fosse o que o fazia passar.
+
+⚠️⚠️ **Sem essa prova eu tinha shipado a história ao contrário.** O que eu ia
+escrever era *«a cerca nova leva as lascas a zero e destrava as rondas»*, e o
+`9 → 0` que eu tinha na mão vinha de uma **sonda com arnês escrito à mão**; a
+medição pela porta do produto diz que **sem cerca nenhuma também dá zero**, e
+que quem dava `4` era a cerca antiga.
+
+*Uma mutação que sobrevive não é só um gate em falta: às vezes é a tabela a
+dizer que a explicação está trocada.*
+
+### §87.3 — O que fica
+
+| peça | o que é |
+|---|---|
+| [`regiao_cerca::veta_combinado`](../../../crates/ph2d-quadflow/src/regiao_cerca.rs) | a cerca julgada com **todos** os movimentos aplicados |
+| `RONDAS_DO_VETO = 3` | **medido**: no traço da cena a ronda `0` veta `84` vezes, a `1` **uma**, a `2` **nenhuma** |
+| `RONDAS_DA_GRELHA` `2 → 4` | `fil90` `50,0 → 62,8`, **zero** lascas |
+| a cerca por-vértice | **APAGADA** — é o caso particular desta com um movimento só, e manter as duas recusaria pares que **juntos** estão bem |
+
+⚠️⚠️ **A cerca nova é um GUARDA, e isso está declarado:** no corpus do produto
+ela é **indistinguível de não ter cerca nenhuma** (a tabela do §87.1 di-lo à
+letra, e a mutação também). Ela fica porque sem cerca um movimento de retícula é
+**incondicional** — o vértice vai onde a grade manda, seja o que for que isso
+faça ao triângulo —, e numa peça **esculpida** (vincos, pontas, paredes finas) é
+exactamente o que esta linha já pagou meia dúzia de vezes. O caso que ela recusa
+está gateado em **fixtura construída para isso**, porque o corpus do produto
+**não o contém**.
+
+⭐ **Custo:** `4,172 → 4,180 ms` a `4` rondas (`0,2 %`) — ela é `O(faces da
+pegada)` × `3`, ao lado de dois campos suavizados. O que aperta volta a ser o
+**RELÓGIO**: `4` rondas custam `52 %` do orçamento do carimbo e `8` custariam
+`94 %`.
+
+### §87.4 — ⭐⭐ E a nota «o knob satura a meio» MORREU — a TERCEIRA na mesma forma
+
+O §82 mediu *«o botão satura a meio curso»* e concluiu *«o knob escolhe a
+velocidade, não o destino»*. Medido outra vez com a régua da **fileira** (que
+não existia nesse dia) e com a cerca nova:
+
+| knob | grade | **fil p50** | **fil p90** |
+|---|---|---|---|
+| `0,00` | `34,4 %` | `2,0` | `11,0` |
+| `0,50` | `63,5 %` | `10,0` | `50,0` |
+| `0,75` | `64,2 %` | `15,5` | `56,5` |
+| **`1,00`** | `64,4 %` | **`21,5`** | **`61,2`** |
+
+⇒ a `grade` assenta a meio (`+1,4 %` de metade ao topo) e a **fileira mais do
+que DOBRA**. *O botão é alavanca até ao fim, e a nota anterior media a coluna
+errada.* A tabela mudou-se para **a régua que a produziu**
+([`medida_da_fileira`](../../../crates/ph2d-sculpt3d/src/medida_da_fileira.rs)),
+que é a lei que o `brush.rs` já declarava por escrito.
+
+**As três ocorrências da mesma forma, nesta cena:** §80 (o `Q` é uma média ⇒
+contagem), §84 (uma aresta alinhada não é uma fileira ⇒ comprimento), §87 (o
+knob satura na grade e não nas fileiras).
+
+### §87.5 — Resultado e prova
+
+No traço da cena: fileira `p50` **`20 → 23`**, `p90` **`43 → 70`**, cadeias
+**`52 → 39`** — *menos cadeias e mais longas*, que é a definição da grandeza.
+
+**Três gates novos** (`dois_vizinhos_nao_conspiram_numa_lasca`, com as duas
+metades e a aritmética dos três ângulos · `uma_lasca_que_ja_la_estava_nao_prende_o_vertice`,
+nascido de uma mutação sobrevivente · e os da wave anterior).
+
+**Mutação: `4` a sangrar + `3` NOMEADAS**, cada uma com a medição ao lado (a
+cerca como guarda · uma ronda de veto já chegar nesta fixtura · `2` rondas ser
+um produto pior e não inválido).
+
+**Dois tectos de LOC curados por CORTE** (`regiao.rs` `746 → 588`, `brush.rs`
+`712 → 695`), nunca por isenção. **Portão `16 447/16 447`**, clippy `-D warnings`
+zero. Contadores partilhados **intocados**.
+
+### §87.6 — ⏳ ABERTO
+
+- **`8` rondas ficam no relógio, não na forma** (`94 %` do orçamento) — quem
+  quiser o degrau seguinte tem de tornar o campo mais barato, não a cerca mais
+  esperta;
+- a razão `0,72` continua a ser **curvatura**;
+- o botão nasce **DESLIGADO** (`pente: 0.0`) e as fileiras mais longas estão no
+  **topo** do slider — é decisão do dono se o valor de fábrica muda.

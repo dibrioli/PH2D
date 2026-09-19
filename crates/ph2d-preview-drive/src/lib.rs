@@ -493,6 +493,40 @@ impl PreviewDrive {
         true
     }
 
+    /// ⭐⭐⭐ **TUDO O QUE A CORRIDA ESCREVEU VOLTA AO AUTORADO** — e é isto que faz um recomeço ser
+    /// um recomeço.
+    ///
+    /// # ⛔⛔ Porque ela existe (o FIM DE JOGO, 2026-09-19)
+    ///
+    /// O [`ph2d_ecs::SignalVerb::RestartRun`] rebobina o relógio e faz renascer o estado vivo — os
+    /// relógios, as contas, as sementes, os emissores. ⚠️ **Mas o que um VERBO escreveu no mundo
+    /// não é estado vivo: é pré-visualização**, e ela fica exactamente onde a corrida a deixou.
+    /// Medido no desenho: três luzes de vida apagadas por `Hide` continuam **apagadas** depois do
+    /// recomeço, e o dono vê *«as vidas voltaram a três e o painel de luzes ficou às escuras»* —
+    /// um recomeço pela metade, que é pior que nenhum.
+    ///
+    /// ⇒ a definição de recomeçar é **esta**: *tudo o que a corrida escreveu volta ao valor que o
+    /// artista autorou.* É a mesma frase do [`Self::release_to_authored`], que esta porta aplica a
+    /// toda a gente em vez de a uma condução.
+    ///
+    /// ⚠️ **Ela ESVAZIA o memo, e é obrigatório:** deixar as entradas lá faria o `settle` do fim do
+    /// quadro ver conduções que já não existem, e a captura seguinte registaria como documento um
+    /// valor que acabou de ser devolvido.
+    ///
+    /// Devolve quantas conduções foram devolvidas.
+    pub fn release_all_to_authored(&mut self, sim: &mut SimWorld) -> usize {
+        let n = self.memo.len();
+        // ⚠️ **Drenar e escrever, e não iterar a escrever**: a escrita toca no mundo e o memo é
+        // deste tipo — separar as duas metades é o que mantém o empréstimo simples e o que torna o
+        // esvaziamento uma consequência e não um passo que alguém possa esquecer.
+        for ((bits, _), e) in std::mem::take(&mut self.memo) {
+            if let Some(entity) = ph2d_ecs::Entity::try_from_bits(bits) {
+                e.authored.write(sim, entity);
+            }
+        }
+        n
+    }
+
     /// **Esquece quem deixou de ser conduzido.** Uma vez por quadro, no topo do
     /// `post_frame_undo` — antes da captura, para que a fotografia deste quadro já veja o vivo de
     /// quem parou.

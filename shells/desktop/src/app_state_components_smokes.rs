@@ -161,6 +161,10 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) tween: bool,
     /// Quantos quadros ainda trazem o Inspector à frente na cena do tween — ver `ray_raise`.
     pub(crate) tween_raise: u8,
+    /// ⭐⭐⭐ O FIM DE JOGO — `PH2D_RESTART_SMOKE=1`. O laço de um jogo fechado.
+    pub(crate) restart: bool,
+    /// Quantos quadros ainda trazem o Inspector à frente na cena do fim de jogo — ver `shake_raise`.
+    pub(crate) restart_raise: u8,
     /// ⭐ O ABANÃO DA VISTA (suplente #25) — `PH2D_SHAKE_SMOKE=1`.
     pub(crate) shake: bool,
     /// Quantos quadros ainda trazem o Inspector à frente na cena do abanão — ver `trigger_raise`.

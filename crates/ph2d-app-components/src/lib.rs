@@ -143,6 +143,8 @@ pub mod projectile_smoke;
 pub mod ray_inspector;
 /// ⭐⭐⭐ **O smoke do OLHO** (suplente #21, W6) — um poste com dois olhos e uma caixa que chega.
 pub mod ray_smoke;
+/// ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — a cena do dono; ver o cabeçalho.
+pub mod restart_smoke;
 pub mod scene_ctx;
 pub mod script_bridge;
 /// ⭐ TOP-20 #16 — a secção SCRIPT do Inspector: o instantâneo e o dreno.
@@ -155,7 +157,6 @@ pub mod sequence_inspector;
 pub mod shake_bridge;
 /// ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — o instantâneo e o dreno do Inspector.
 pub mod shake_inspector;
-/// ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — a cena do dono; ver o cabeçalho.
 pub mod shake_smoke;
 pub mod signal_action_smoke;
 /// ⭐⭐⭐ **A PONTE da tabela nome→acção** (TOP-20 #5) — onde um sinal deixa de ser um toast e vira
@@ -247,6 +248,7 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         r("PH2D_TAGS_SMOKE", tags_smoke::CENAS),
         // ⭐⭐⭐ O ABANÃO DA VISTA (suplente #25): `=1` o pátio onde a mesma bomba abana mais de
         // perto. ⚠️ O `max_level` é **contado** no corpo do `montar`.
+        r("PH2D_RESTART_SMOKE", restart_smoke::CENAS),
         r("PH2D_SHAKE_SMOKE", shake_smoke::CENAS),
         r("PH2D_TIMER_SMOKE", 1),
         // ⭐⭐⭐ O mover de VISTA DE CIMA (TOP-20 #13): `=1` o corredor · `=2` a isometria com o

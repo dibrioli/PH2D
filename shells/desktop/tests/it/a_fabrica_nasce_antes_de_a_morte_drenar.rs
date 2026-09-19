@@ -65,10 +65,19 @@ fn the_factory_reads_the_signal_before_the_death_drains() {
 #[test]
 fn the_sweep_is_read_from_the_clock_and_not_hooked_to_a_button() {
     let text = crate::frame_text::render_frame();
+    // ⚠️⚠️ **A 1.ª redacção procurava o `sweep_spawned(` AQUI e a premissa morreu em 2026-09-19:**
+    // o renascimento virou a porta `renascer_a_corrida` (dois chamadores, desde o
+    // `SignalVerb::RestartRun`), e o texto emendado do quadro colhe **só** as funções `fn fase_*`
+    // — uma porta que não é uma fase **desaparece dali**. Ele leu `0` e reprovou sobre produto
+    // correcto. ⭐ *É a lei do prefixo `fase_` a cobrar-se do lado de quem MEDE, e não de quem
+    // escreve.*
+    //
+    // ⇒ o que o QUADRO tem de mostrar é a varredura a ser **derivada do relógio**, e o sítio único
+    // dela é a porta — que o gate irmão (`o_rebobinar_repoe_o_estado_vivo`) mede no ficheiro.
     assert_eq!(
-        text.matches("factory_bridge::sweep_spawned(").count(),
+        text.matches("renascer_a_corrida(").count(),
         1,
-        "a varredura do rebobinar tem de ter UM sítio no quadro"
+        "o renascimento tem de ter UM sítio no quadro"
     );
     assert!(
         crate::frame_text::find_chain(&text, "!a_correr && self.playhead.time()", "<= 0.0")

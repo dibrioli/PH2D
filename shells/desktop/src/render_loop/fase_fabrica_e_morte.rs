@@ -41,6 +41,21 @@ use super::*;
 /// | o estado vivo do mundo | relógios, contas, sementes, a vigia, o amortecimento da câmera |
 /// | os SCRIPTS | a VM não mora no mundo, logo a porta do `ph2d-ecs` não os alcança |
 /// | os EMISSORES | uma corrida de partículas também não é um componente |
+///
+/// # ⛔⛔⛔ E a QUINTA metade NÃO mora aqui — ela é do RECOMEÇO, e a assimetria é real
+///
+/// O que um **verbo** escreveu no mundo (`Hide`, `Show`, uma pose) não é estado vivo: é
+/// **condução**, e o [`ph2d_preview_drive`] guarda o valor autorado por baixo dela. Devolvê-la é
+/// obrigatório num recomeço — sem isso três luzes apagadas por `Hide` continuam apagadas e o dono
+/// vê *«as vidas voltaram a três e o painel ficou às escuras»*.
+///
+/// ⚠️⚠️ **Mas ela NÃO pode entrar nesta porta**, e a razão é medida no modelo da casa: esta função
+/// corre no invariante *«parado e no início»*, que é **todo quadro** em que o relógio está ali — e
+/// ali quem conduz pode ser o **scrub da timeline**. Devolver as conduções nesse caminho faria um
+/// arrasto da régua até ao zero **saltar o objecto para a pose autorada**. ⇒ ali quem trata da
+/// condução é o `settle` + a captura do `post_frame_undo` (*«a corrida colapsa em UM passo»*), e
+/// num recomeço não há captura nenhuma no meio. *Duas situações, duas respostas, e escrevê-las
+/// iguais quebraria a que já funciona.*
 fn renascer_a_corrida(
     sim: &mut ph2d_ecs::SimWorld,
     script: &mut Option<ph2d_script::ScriptHost>,
@@ -59,6 +74,97 @@ fn renascer_a_corrida(
     // componente (não está no mundo), então a porta da família `Logic` também não a alcança.
     repostos += particles.rewind();
     varridas + repostos
+}
+
+/// ⭐⭐⭐ **SERVIR O RECOMEÇO** (`ph2d_ecs::SignalVerb::RestartRun`) — o sétimo passo do laço de um
+/// jogo, servido aqui e em mais lado nenhum.
+///
+/// ⚠️⚠️ **DEPOIS de tudo, e é a única posição possível:** as mortes deste quadro já saíram, os
+/// nascimentos já foram publicados, e o renascimento apaga exactamente o que a corrida produziu.
+/// *Servi-lo antes faria o dreno da morte medir um mundo que já tinha sido refeito.*
+///
+/// ⚠️ **O relógio volta ao zero e o `playing` NÃO se toca**: um recomeço que parasse a corrida
+/// seria *«acabou»*, não *«outra vez»* — o dono teria de carregar em Play. É a diferença entre este
+/// verbo e o botão *Rewind* da barra, que pausa de propósito.
+///
+/// ⛔ E o invariante do rebobinar **não** serve este caso: ele exige a corrida PARADA, e esta
+/// continua a jogar. É por isso que o renascimento é uma PORTA com dois chamadores.
+///
+/// ⚠️ **Ela nasceu de um CORTE** — a fase chegou a `213` linhas contra o tecto de `200` —, e o
+/// corte é por RESPONSABILIDADE: *servir um pedido do quadro* tem nome próprio.
+///
+/// ⚠️⚠️ **O `#[allow]` dela mora COLADO a ela, uma dúzia de linhas abaixo** — a 1.ª redacção pôs a
+/// cerca pura entre o atributo e o dono, e o `clippy` acusou o `servir_o_recomeco` com o atributo
+/// ainda no ficheiro. *Um item novo colado a um atributo rouba-o ao dono*, que é a lei que o
+/// `ph2d-preview-drive` desta casa já tem escrita (lá o roubo foi um `#[cfg(test)]`, e o produto
+/// deixou de compilar).
+/// ⭐⭐⭐ **A CERCA CONTRA O LAÇO, como função PURA** — *a corrida tem de ter CORRIDO*.
+///
+/// ⚠️ **Ela sai do corpo de propósito**, e é a lei que esta casa já escreve: *quando um gate precisa
+/// de um device (ou de um `Playhead`, de uma VM e de um mundo) para medir uma decisão que não tem
+/// pixel nenhum, a lei está no sítio errado.* Aqui a decisão são **dois números**, e assim ela tem
+/// gate e prova de mutação a sério.
+///
+/// ⛔ **O número é DERIVADO:** a unidade de uma corrida é o PASSO FIXO. Uma corrida cuja vida
+/// inteira é o tique que acabou de andar não é uma corrida — e é essa, exactamente, a assinatura do
+/// laço (uma condição já verdade no tique `0` pede o recomeço em todo quadro, e o relógio nunca
+/// passa dali).
+#[must_use]
+pub(crate) fn a_corrida_ja_correu(vida: f64, passo_fixo: f64) -> bool {
+    vida > passo_fixo
+}
+
+#[allow(clippy::too_many_arguments)]
+fn servir_o_recomeco(
+    recomecar: bool,
+    playhead: &mut ph2d_core::Playhead,
+    passo_fixo: f64,
+    falar: bool,
+    sim: &mut ph2d_ecs::SimWorld,
+    script: &mut Option<ph2d_script::ScriptHost>,
+    particles: &mut ph2d_app_components::particles_bridge::ParticlesState,
+    drive: &mut ph2d_preview_drive::PreviewDrive,
+) {
+    if !recomecar || !playhead.is_playing() {
+        return;
+    }
+    // ⛔⛔⛔ **A CERCA CONTRA O LAÇO, e o número é DERIVADO e não escolhido.**
+    //
+    // Uma condição que já é verdade quando a corrida começa — um `Counter Watch` escrito
+    // `pontos AtLeast 0`, por exemplo — pede o recomeço em **todo** quadro: o relógio nunca passa
+    // do primeiro tique, nada avança, e o dono vê um app **congelado** sem uma linha de erro. É a
+    // mesma classe do laço `a → b → a` que o doc do `SignalActions` recusa por escrito, com o
+    // relógio no lugar do sinal.
+    //
+    // ⭐ **A cerca é «a corrida tem de ter CORRIDO»**, e a unidade de uma corrida é o PASSO FIXO —
+    // não um segundo escolhido, não um contador de recomeços por janela. Uma corrida cuja vida
+    // inteira é o tique que acabou de andar **não é uma corrida**, e é exactamente essa a
+    // assinatura do laço: no caso patológico o relógio lê `fixed_dt` em todo quadro, e no legítimo
+    // lê os segundos que o dono jogou.
+    //
+    // ⚠️ **E ela FALA.** Um recomeço recusado em silêncio é indistinguível de um verbo partido — a
+    // lei que os pincéis da escultura pagaram três vezes.
+    let vida = playhead.time();
+    if !a_corrida_ja_correu(vida, passo_fixo) {
+        eprintln!(
+            "[recomecar] RECUSADO: a corrida tem {vida:.4} s, que e' o primeiro tique — a condicao \
+             que pede o recomeco ja' e' verdade quando ela COMECA, e servir isto congelaria o app \
+             sem dizer porque"
+        );
+        return;
+    }
+    playhead.rewind();
+    let mut repostos = renascer_a_corrida(sim, script, particles, drive);
+    // ⭐⭐⭐ **A QUINTA METADE, e ela é SÓ do recomeço** (ver o doc da porta acima): tudo o que um
+    // VERBO escreveu volta ao autorado. Sem ela, três luzes de vida apagadas por `Hide` ficavam
+    // apagadas — *«as vidas voltaram a três e o painel ficou às escuras»*, um recomeço pela metade.
+    //
+    // ⛔ Ela não entra na porta porque o outro chamador dela corre em TODO quadro com o relógio
+    // parado no zero, e ali quem conduz pode ser o scrub da timeline.
+    repostos += drive.release_all_to_authored(sim);
+    if falar {
+        eprintln!("[recomecar] a corrida voltou ao inicio ({repostos} estado(s) reposto(s))");
+    }
 }
 
 impl crate::App {
@@ -227,53 +333,21 @@ impl crate::App {
                 .publish(ph2d_runtime::Signal::from_death(&nome, bits));
         }
 
-        // ⭐⭐⭐ **E A CORRIDA RECOMEÇA** (`SignalVerb::RestartRun`) — o sétimo passo do laço de um
-        // jogo, servido aqui e em mais lado nenhum.
-        //
-        // ⚠️⚠️ **DEPOIS de tudo, e é a única posição possível:** as mortes deste quadro já saíram,
-        // os nascimentos já foram publicados, e o renascimento apaga exactamente o que a corrida
-        // produziu. *Servi-lo antes faria o dreno da morte medir um mundo que já tinha sido
-        // refeito.*
-        //
-        // ⚠️ **O relógio volta ao zero e o `playing` NÃO se toca**: um recomeço que parasse a
-        // corrida seria *«acabou»*, não *«outra vez»* — o dono teria de carregar em Play. É a
-        // diferença entre este verbo e o botão *Rewind* da barra, que pausa de propósito.
-        //
-        // ⛔ E o invariante acima **não** serve este caso: ele exige a corrida PARADA, e esta
-        // continua a jogar. É por isso que o renascimento é uma PORTA com dois chamadores.
-        if recomecar && self.playhead.is_playing() {
-            // ⛔⛔⛔ **A CERCA CONTRA O LAÇO, e o número é DERIVADO e não escolhido.**
-            //
-            // Uma condição que já é verdade quando a corrida começa — um `Counter Watch` escrito
-            // `pontos AtLeast 0`, por exemplo — pede o recomeço em **todo** quadro: o relógio nunca
-            // passa do primeiro tique, nada avança, e o dono vê um app **congelado** sem uma linha
-            // de erro. É a mesma classe do laço `a → b → a` que o doc do `SignalActions` recusa por
-            // escrito, com o relógio no lugar do sinal.
-            //
-            // ⭐ **A cerca é «a corrida tem de ter CORRIDO»**, e a unidade de uma corrida é o PASSO
-            // FIXO — não um segundo escolhido, não um contador de recomeços por janela. Uma corrida
-            // cuja vida inteira é o tique que acabou de andar **não é uma corrida**, e é
-            // exactamente essa a assinatura do laço: no caso patológico o relógio lê `fixed_dt` em
-            // todo quadro, e no legítimo lê os segundos que o dono jogou.
-            //
-            // ⚠️ **E ela FALA.** Um recomeço recusado em silêncio é indistinguível de um verbo
-            // partido — a lei que os pincéis da escultura pagaram três vezes.
-            let vida = self.playhead.time();
-            if vida > self.fixed_step.fixed_dt() {
-                self.playhead.rewind();
-                let repostos = renascer_a_corrida(sim, script, particles, &mut self.preview_drive);
-                if self.signal_readers.logging() {
-                    eprintln!(
-                        "[recomecar] a corrida voltou ao inicio ({repostos} estado(s) reposto(s))"
-                    );
-                }
-            } else {
-                eprintln!(
-                    "[recomecar] RECUSADO: a corrida tem {vida:.4} s, que e' o primeiro tique — a \
-                     condicao que pede o recomeco ja' e' verdade quando ela COMECA, e servir isto \
-                     congelaria o app sem dizer porque"
-                );
-            }
-        }
+        servir_o_recomeco(
+            recomecar,
+            &mut self.playhead,
+            self.fixed_step.fixed_dt(),
+            self.signal_readers.logging(),
+            sim,
+            script,
+            particles,
+            &mut self.preview_drive,
+        );
     }
 }
+
+/// ⭐ O gate da CERCA contra o laço do recomeço — módulo irmão, porque `tests/it/` é outro binário
+/// e não alcança o `render_loop`.
+#[cfg(test)]
+#[path = "a_cerca_do_laco_do_recomeco_tests.rs"]
+mod cerca_tests;

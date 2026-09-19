@@ -96,6 +96,48 @@ impl crate::App {
         self.playhead.play();
     }
 
+    /// ⭐⭐⭐ **O FIM DE JOGO** — `PH2D_RESTART_SMOKE=1`. Prólogo do quadro, uma vez.
+    ///
+    /// ⚠️⚠️ **Ele faz DUAS coisas que a cena não pode fazer:**
+    ///
+    /// 1. **Põe o relógio a andar.** ⛔ Sem isto nada nesta cena acontece: a física não corre, o
+    ///    espinho não bate, o relógio da batida não anda, e o dono vê um pátio parado. *A corrida é
+    ///    o relógio a andar* — a lei que a fábrica e o gatilho já pagam.
+    /// 2. **Abre a régua do transporte e escolhe o HERÓI.** O roteiro manda ver as secções
+    ///    *Signal Actions* e *Counter Watch*, e com ninguém escolhido o Inspector diz *«Select an
+    ///    entity in the Hierarchy»*.
+    ///
+    /// ⛔ **E ele NÃO toma a vista da câmera do jogo**, ao contrário do irmão do abanão: esta cena
+    /// não tem câmera nenhuma — o pátio inteiro cabe na banda, e há gate a medi-lo.
+    pub(crate) fn restart_smoke(&mut self) {
+        if self.components.smokes.restart {
+            self.components.smokes.restart_raise =
+                self.levanta_o_inspector(self.components.smokes.restart_raise);
+            return;
+        }
+        if std::env::var_os("PH2D_RESTART_SMOKE").is_none() {
+            return;
+        }
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        let montada = ph2d_app_components::restart_smoke::montar(cx.sim.world_mut(), 1);
+        self.components.smokes.restart = true;
+        self.components.smokes.restart_raise = crate::components_scenes::LEVANTA_O_INSPECTOR;
+        self.timeline.flags.simulate_physics = true;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.panel_visibility.insert("inspector", true);
+            // ⚠️ **A RÉGUA DO TRANSPORTE abre junto** — o dono tem de ver que a corrida ANDA, e o
+            // recomeço é o relógio a voltar ao princípio: sem a régua ele não vê a prova.
+            hero.panel_visibility.insert("timeline", true);
+            // ⛔ **O HERÓI nasce ESCOLHIDO** — os passos (4) a (6) do roteiro nomeiam secções dele.
+            hero.gizmo.selection = Some(montada.escolhido);
+            hero.gizmo.extra_selection.clear();
+        }
+        self.playhead.rewind();
+        self.playhead.play();
+    }
+
     /// ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — `PH2D_SHAKE_SMOKE=1`. Prólogo do quadro, uma vez.
     ///
     /// ⚠️⚠️ **Ele faz TRÊS coisas que a cena não pode fazer, e sem qualquer uma delas o smoke

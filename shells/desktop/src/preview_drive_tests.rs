@@ -480,3 +480,51 @@ fn still_driving_keeps_what_exists_and_invents_nothing() {
         "a fixtura nao produz o fenomeno: sem o «ainda conduzo» a conducao tinha de morrer"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ **O QUE A CORRIDA ESCREVEU VOLTA AO AUTORADO** (o FIM DE JOGO, 2026-09-19)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **A quinta metade de um recomeço: devolver TUDO ao autorado.**
+///
+/// ⛔⛔ **Sem ela o recomeço é pela metade**, e o sintoma é exacto: três luzes de vida apagadas por
+/// um verbo `Hide` continuam apagadas depois de a corrida voltar ao princípio — *«as vidas voltaram
+/// a três e o painel ficou às escuras»*. O que um verbo escreve no mundo **não é estado vivo**: é
+/// condução, e o valor que o artista autorou vive por baixo dela.
+///
+/// ⚠️ **As DUAS metades:** o mundo volta ao autorado **e** o memo fica vazio. Sem a segunda, o
+/// `settle` do fim do quadro veria conduções que já não existem e a captura seguinte registaria
+/// como documento um valor que acabou de ser devolvido.
+///
+/// **Mutações que devem sangrar:** não escrever o autorado (só esvaziar) · não esvaziar o memo ·
+/// devolver `0`.
+#[test]
+fn um_recomeco_devolve_ao_autorado_tudo_o_que_a_corrida_escreveu() {
+    let mut sim = SimWorld::new();
+    let e = playing_sprite(&mut sim);
+    let mut drive = PreviewDrive::default();
+
+    let autorado = live(&sim, e);
+    frame(&mut sim, &mut drive, 7);
+    let conduzido = live(&sim, e);
+    assert_ne!(
+        conduzido, autorado,
+        "a fixtura tem de CONTER o fenomeno: sem a corrida escrever, nao ha' o que devolver"
+    );
+    assert!(drive.drives(e.to_bits()), "o memo tem de estar cheio");
+
+    let devolvidas = drive.release_all_to_authored(&mut sim);
+    assert!(devolvidas >= 1, "nada foi devolvido: {devolvidas}");
+    assert_eq!(
+        live(&sim, e),
+        autorado,
+        "o mundo nao voltou ao que o artista autorou"
+    );
+    assert!(
+        !drive.drives(e.to_bits()),
+        "o memo ficou com conducoes que ja' nao existem — a captura seguinte registaria como \
+         documento um valor que acabou de ser devolvido"
+    );
+    // ⛔ **E correr duas vezes não faz nada** — um recomeço pedido por dez inimigos é UM.
+    assert_eq!(drive.release_all_to_authored(&mut sim), 0);
+}

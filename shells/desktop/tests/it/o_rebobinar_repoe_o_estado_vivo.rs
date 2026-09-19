@@ -16,7 +16,21 @@ fn fonte(rel: &str) -> String {
     fs::read_to_string(&p).unwrap_or_else(|e| panic!("{p}: {e}"))
 }
 
-/// **Mutação que deve sangrar:** apagar a chamada do `fase_fabrica_e_morte.rs`.
+/// ⚠️⚠️ **A PREMISSA DESTES DOIS GATES MORREU em 2026-09-19, e eles reprovaram a dizê-lo.**
+///
+/// Eles mediam uma ORDEM POR POSIÇÃO — *«a chamada aparece DEPOIS da guarda no ficheiro»* — e o
+/// renascimento virou uma **porta** (`renascer_a_corrida`) quando um verbo passou a poder pedir o
+/// mesmo (`SignalVerb::RestartRun`). A porta é declarada no topo do ficheiro, logo as chamadas que
+/// eles procuravam passaram a vir ANTES da guarda: `chamada < guarda`, e os dois ficaram vermelhos
+/// **sobre produto correcto**.
+///
+/// ⛔ **Reescrevê-los para «procure em qualquer sítio» seria apagar a lei.** O que eles protegem é
+/// real: repor o vivo com o relógio a andar apagaria a corrida a 60 Hz. ⇒ a régua passa a medir a
+/// **PROPRIEDADE em duas metades** — *a porta CONTÉM as quatro coisas* e *ela é CHAMADA de dentro
+/// do invariante* —, que é mais forte do que a posição era: ela sobrevive ao ficheiro ser
+/// reorganizado, e uma metade esquecida dentro da porta passa a ser visível.
+///
+/// **Mutação que deve sangrar:** apagar a chamada do invariante · tirar uma das metades da porta.
 #[test]
 fn a_porta_do_rebobinar_e_chamada_pelo_invariante_do_transporte() {
     let src = fonte("render_loop/fase_fabrica_e_morte.rs");
@@ -36,17 +50,27 @@ fn a_porta_do_rebobinar_e_chamada_pelo_invariante_do_transporte() {
         "a porta que repoe o estado vivo nao tem chamador na shell — um `Timer` corrido ficaria \
          corrido depois de um Reset, e uma `Factory` com `Max Total` gasto recusar-se-ia a produzir"
     );
-    // E ela mora DENTRO da guarda do invariante, ao lado da varredura que já lá estava.
+    // ⭐ E o RENASCIMENTO é chamado DENTRO da guarda do invariante.
     let guarda = codigo
         .find("self.playhead.time() <= 0.0")
         .expect("o invariante do rebobinar tem de existir neste ficheiro");
-    let chamada = codigo
-        .find("rewind_runtime_state(")
-        .expect("ja' afirmado acima");
+    let chamada = codigo[guarda..]
+        .find("renascer_a_corrida(")
+        .map(|i| i + guarda);
     assert!(
-        chamada > guarda,
+        chamada.is_some(),
         "a reposicao tem de correr DENTRO do invariante do rebobinar, e nao em todo quadro: \
          repor o vivo com o relogio a andar apagaria a corrida a 60 Hz"
+    );
+    // ⭐⭐ **E a porta tem DOIS chamadores — o invariante e o recomeço.** ⚠️ Sem esta contagem o
+    // teste acima passaria com a chamada do invariante APAGADA: ele acharia a do recomeço, que
+    // também vem depois da guarda no ficheiro. *Uma régua de posição precisa de uma de população
+    // ao lado.*
+    assert_eq!(
+        codigo.matches("renascer_a_corrida(").count(),
+        3,
+        "a porta do renascimento tem de ser DECLARADA uma vez e CHAMADA duas — pelo invariante do \
+         rebobinar e pelo `SignalVerb::RestartRun`"
     );
 }
 
@@ -65,15 +89,23 @@ fn os_scripts_renascem_no_invariante_do_transporte() {
         })
         .collect::<Vec<_>>()
         .join("\n");
-    let guarda = codigo
-        .find("self.playhead.time() <= 0.0")
-        .expect("o invariante do rebobinar tem de existir neste ficheiro");
-    let chamada = codigo.find("script_bridge::rewind(").expect(
-        "os scripts nao renascem ao rebobinar: o `self` da corrida anterior continuaria, e a pose \
-         que a corrida escreveu nao voltaria a do artista",
-    );
-    assert!(
-        chamada > guarda,
-        "o renascer dos scripts tem de correr DENTRO do invariante do rebobinar"
-    );
+    // ⭐⭐ **As QUATRO metades vivem na PORTA**, e o gate mede-as lá — ver a nota da irmã acima
+    // sobre a premissa que morreu. ⛔ Uma metade esquecida faz a 2.ª corrida nascer com o resto da
+    // primeira, **em silêncio**.
+    let porta = codigo
+        .find("fn renascer_a_corrida(")
+        .expect("o renascimento tem de ser uma PORTA: ele tem dois chamadores");
+    let corpo = &codigo[porta..];
+    for (metade, agulha) in [
+        ("varrer quem nasceu", "factory_bridge::sweep_spawned("),
+        ("o estado vivo do mundo", "rewind_runtime_state("),
+        ("os SCRIPTS", "script_bridge::rewind("),
+        ("os EMISSORES", "particles.rewind("),
+    ] {
+        assert!(
+            corpo.contains(agulha),
+            "a porta do renascimento perdeu a metade «{metade}» ({agulha}) — a 2.ª corrida nasce \
+             com o resto da primeira, e nada o diz"
+        );
+    }
 }

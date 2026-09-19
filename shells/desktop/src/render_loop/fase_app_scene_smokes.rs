@@ -33,6 +33,7 @@ impl crate::App {
         self.sequence_smoke();
         self.counter_watch_smoke();
         self.trigger_smoke();
+        self.restart_smoke();
         self.shake_smoke();
         self.dano_smoke();
         self.ray_smoke();

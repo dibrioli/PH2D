@@ -22,3 +22,24 @@ metadata:
 - [[feedback_moving_a_doc_means_resolving_links_not_matching_strings]] — mover doc = RESOLVER link, não casar string; `ls-files` pós-`mv` mente
 - [[feedback_mutation_undo_with_cp_never_git_checkout]] — desfaça mutação com `cp` do backup, nunca `git checkout`
 - ⛔ **Crase numa mensagem de `git commit -m "…"` é SUBSTITUIÇÃO DE COMANDO** (zsh/bash, 2026-09-14): `` `fase_*` `` executou e a mensagem foi gravada com duas palavras **em falta**, sem erro nenhum. ⇒ mensagem densa vai por **`-F ficheiro`** (ou `<<'MSG'` com o delimitador entre plicas), nunca por `-m` com crases.
+
+## ⛔⛔⛔ PROSA DENTRO DE UM HEREDOC `<<EOF` É CÓDIGO — as crases EXECUTAM (2026-09-19)
+
+Ao acrescentar um bloco de comentário explicativo **dentro** de um `cat > ficheiro <<EOF` (heredoc
+**sem aspas**), as crases do meu próprio texto viraram **substituição de comando**. O comentário
+dizia *«a mesma família do `spectacle` a fotografar o ecrã real»* — e o bash **correu o
+`spectacle`**, que é precisamente o programa proibido nesta máquina porque fala com o KWin pelo
+D-Bus da sessão do DONO. Ele ficou vivo **449 s** e pendurou o roteiro; a varredura de `~/Imagens`,
+`~/Pictures`, `~/Desktop` e `$HOME` por ficheiros novos deu **zero** (abriu e esperou, não gravou).
+
+O sintoma visível foi outro braço da mesma causa: `linha 59: /home/enio/.ph2d/layout.txt: Permissão
+negada` — o bash a tentar EXECUTAR o caminho que as outras crases delimitavam. ⚠️ **`bash -n`
+passa**: a sintaxe está correcta, o defeito é semântico.
+
+**How to apply:** prosa fica **FORA** do heredoc (ali as crases são inertes); dentro dele só código.
+E ponha um guarda sobre o ficheiro gerado — `grep -q '\`' "$gerado" && exit`. *Um heredoc sem aspas
+é um programa, e escrever texto lá dentro é escrever um programa sem saber.*
+
+⚠️ Da mesma corrida: um `target/smoke/ph2d-host-desktop` **órfão de 46 minutos** estava a segurar a
+placa (a armadilha do `CLAUDE.md` §2 — um binário reparenta-se ao `systemd --user` e sobrevive a
+quem o lançou). *Depois de uma fotografia, confira `pgrep -f ph2d-host-desktop`.*

@@ -82,6 +82,12 @@ mod grip;
 /// diferentes — a bancada da lei (sobre uma chapa) e o gate da cena de smoke
 /// (sobre uma bola, noutra crate). Ver [`medida_do_pente`].
 pub mod medida_do_pente;
+
+/// ⭐⭐⭐⭐ **A RÉGUA QUE O OLHO USA — o comprimento da FILEIRA.** Irmã da
+/// [`medida_do_pente`], e o corte é a GRANDEZA: ali conta-se **cada aresta uma
+/// a uma**, aqui mede-se **quantas seguidas continuam a mesma linha**. Ver
+/// [`medida_da_fileira`].
+pub mod medida_da_fileira;
 /// ⭐⭐ **PARA ONDE O ESFREGÃO EMPURRA** — ver [`smear_mode`].
 mod smear_mode;
 

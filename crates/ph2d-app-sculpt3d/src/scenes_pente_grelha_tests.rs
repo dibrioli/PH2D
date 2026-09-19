@@ -44,7 +44,7 @@ thread_local! {
 #[ignore = "sonda: imprime a tabela das duas leis, não afirma nada"]
 fn diag_a_grelha_contra_a_lei_de_hoje() {
     let (raio, alvo) = (raio_do_app(), alvo_do_refino());
-    println!("rumo            lei        grade%   vinco_p50  vinco_p90  razão   V");
+    println!("rumo            lei        grade%   vinco_p50  vinco_p90  fil50 fil90 filmax");
     for (nome, e) in RUMOS.iter().map(|(n, e)| (*n, *e)) {
         for (lei, campo, flip, desloca, grelha) in [
             ("por pentear ", false, false, false, 0.0f32),
@@ -70,11 +70,10 @@ fn diag_a_grelha_contra_a_lei_de_hoje() {
             let (g, nb) = grade_da_faixa(&m, &c, raio);
             let grade = 100.0 * g[0] as f64 / nb.max(1) as f64;
             let (v50, v90, _, _) = vinco_da_faixa(&m, &c, raio);
-            let l = comprimento_por_direccao(&m, &c, raio);
+            let (f50, f90, fmax, fn_) =
+                ph2d_sculpt3d::medida_da_fileira::fileira_da_faixa(&m, &c, raio);
             println!(
-                "{nome:14}  {lei}  {grade:7.2}  {v50:9.3}  {v90:9.3}  {:6.3}  {}",
-                l[0] / l[1].max(1e-12),
-                m.vert_count()
+                "{nome:14}  {lei}  {grade:7.2}  {v50:9.3}  {v90:9.3}  {f50:5.0} {f90:5.0} {fmax:5} ({fn_})",
             );
         }
     }
@@ -103,7 +102,7 @@ fn diag_a_grelha_contra_a_lei_de_hoje() {
 fn diag_a_escada_das_rondas() {
     let (raio, alvo) = (raio_do_app(), alvo_do_refino());
     let e = RUMOS[0].1;
-    println!("rondas  k_passo   grade%   vinco_p50  vinco_p90  razão   V");
+    println!("rondas  k_passo   grade%   vinco_p50  vinco_p90  fil50 fil90 filmax      V");
     // ⚠️ **A escada das rondas corre-se no lado de célula que SHIPA.** A
     // primeira corrida varreu-a a `k = 1,0`, onde tudo está mau, e leu «sem
     // tendência» — *uma escada medida no regime errado responde sobre outro
@@ -141,10 +140,9 @@ fn linha_da_grelha(
     let (g, nb) = grade_da_faixa(m, c, raio);
     let grade = 100.0 * g[0] as f64 / nb.max(1) as f64;
     let (v50, v90, _, _) = vinco_da_faixa(m, c, raio);
-    let l = comprimento_por_direccao(m, c, raio);
+    let (f50, f90, fmax, _) = ph2d_sculpt3d::medida_da_fileira::fileira_da_faixa(m, c, raio);
     format!(
-        "{rondas:>6}  {k:>7.3}  {grade:7.2}  {v50:9.3}  {v90:9.3}  {:6.3}  {}",
-        l[0] / l[1].max(1e-12),
+        "{rondas:>6}  {k:>7.3}  {grade:7.2}  {v50:9.3}  {v90:9.3}  {f50:5.0} {f90:5.0} {fmax:5}  {}",
         m.vert_count()
     )
 }
@@ -368,5 +366,31 @@ fn diag_desenha_a_semente() {
             "{nome:<12} grade {:.2} %  vinco {v50:.3}/{v90:.3}  -> {caminho}",
             100.0 * g[0] as f64 / nb.max(1) as f64
         );
+    }
+}
+
+/// ⭐⭐⭐⭐ **SONDA — DESENHA as FILEIRAS, porque duas testemunhas discordam.**
+///
+/// Em 20/09 eu olhei um recorte do arame e escrevi *«são RETALHOS, não
+/// fileiras»*; a régua da fileira, escrita a seguir e pregada entre uma grade
+/// verdadeira e uma malha sacudida, lê `12`–`23` arestas de mediana contra
+/// `2`–`4` do controlo. *Uma das duas testemunhas está errada, e quem desempata
+/// é a imagem da própria grandeza.*
+///
+/// ```text
+/// cargo test -p ph2d-app-sculpt3d --release --lib diag_desenha_as_fileiras -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda: escreve .ppm para se olhar"]
+fn diag_desenha_as_fileiras() {
+    let dir = std::env::var("PH2D_PENTE_DUMP").unwrap_or_else(|_| "/tmp".into());
+    let (raio, alvo) = (raio_do_app(), alvo_do_refino());
+    for (nome, pente) in [("off", 0.0f32), ("on", 1.0)] {
+        let (m, c) = super::super::traco_com(pente, RUMOS[2].1, raio, alvo);
+        let caminho = format!("{dir}/fileiras_{nome}.ppm");
+        crate::scenes::pente::tests::desenhos::desenha_fileiras(&m, &c, raio, &caminho);
+        let (f50, f90, fmax, fn_) =
+            ph2d_sculpt3d::medida_da_fileira::fileira_da_faixa(&m, &c, raio);
+        println!("{nome}: fileira p50 {f50} p90 {f90} max {fmax} ({fn_} cadeias) -> {caminho}");
     }
 }

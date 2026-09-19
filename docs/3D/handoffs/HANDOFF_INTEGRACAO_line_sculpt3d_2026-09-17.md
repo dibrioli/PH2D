@@ -3033,3 +3033,84 @@ resolve a peça inteira sob comando.
   qualquer tentativa seguinte;
 - o enquadramento de fábrica (`4`–`5` vértices sob o pincel) é onde o dono
   primeiro olha, e nenhum gate desta cena o mede.
+
+---
+
+## §84 — ⛔⛔⛔⛔ A RÉGUA DA FILEIRA REFUTA O §83: as fileiras EXISTEM, e quem estava errado era o meu OLHO
+
+> **Ordem do dono (20/09), sobre as três saídas do §83.3:** *«Pagar o cálculo por
+> níveis»*. ⚠️ **A premissa dessa ordem era MINHA e está agora REFUTADA** — o
+> passo zero que o §83.4 encomendou (a régua do comprimento da fileira) foi
+> escrito primeiro, e ele derruba a conclusão que o motivou.
+
+### §84.1 — A régua que faltava, e os DOIS extremos que a tornam uma régua
+
+[`ph2d_sculpt3d::medida_da_fileira`](../../../crates/ph2d-sculpt3d/src/medida_da_fileira.rs):
+colhem-se as arestas da faixa que correm a menos de `15°` do traço — **a mesma
+população do balde zero da `grade_da_faixa`**, de propósito — e **encadeiam-se**
+enquanto duas seguidas divergirem menos de `30°`. Devolve `(p50, p90, máx, n)`
+do comprimento das cadeias, em arestas.
+
+⚠️ **Ela nasce pregada entre os dois extremos, e é isso que a torna uma régua:**
+
+| fixtura | `p50` | `máx` |
+|---|---|---|
+| uma chapa que **É** uma grade (`25×25`) | `≥ 20` | **`23`** de `24` (a que falta cai fora da faixa) |
+| a mesma, com os vértices **sacudidos** `0,7` do passo | `≤ 4` | — |
+
+⛔ *Sem a segunda metade, uma régua que devolvesse «a faixa inteira» a toda a
+malha passava na primeira e aprovava qualquer coisa* — que é exactamente como as
+três réguas anteriores desta cena deixaram passar três reprovações.
+
+### §84.2 — O que ela lê no que SHIPA
+
+| lei | `fil p50` | `fil p90` | `fil máx` | cadeias |
+|---|---|---|---|---|
+| por pentear | `2`–`4` | `4`–`22` | `6`–`47` | `71`–`145` |
+| a que o dono REPROVOU (18/09) | **`2`** | **`4`** | `8`–`14` | `194`–`243` |
+| ⭐ **a retícula** | **`10`–`23`** | **`43`–`61`** | **`63`–`74`** | `37`–`60` |
+
+⇒ **`5×`–`10×` a mediana do controlo**, com **menos** cadeias e **mais** longas —
+que é a assinatura de estrutura e não de ruído. E o **máximo de `63`–`74`** quer
+dizer que há fileiras a atravessar o **traço inteiro**.
+
+### §84.3 — ⛔⛔⛔⛔ E a IMAGEM desempatou CONTRA MIM
+
+O §83 diz, com todas as letras, *«são RETALHOS, não FILEIRAS»*. Isso saiu de eu
+olhar um recorte do **arame inteiro** — onde as três famílias de arestas de uma
+malha triangulada estão todas desenhadas com o mesmo traço.
+
+Desenhada a **grandeza** (`diag_desenha_as_fileiras`: as arestas alinhadas a
+preto, todas as outras a cinzento claro), a resposta é o contrário da minha:
+
+- **sem pente** — tracinhos partidos, espalhados, sem direcção comum;
+- ⭐ **com a retícula** — **linhas contínuas de ponta a ponta do traço.**
+
+⇒ ⭐⭐⭐⭐ **Eu chamei retalhos a uma grade que estava escondida no meio das outras
+duas famílias de arestas.** *Uma leitura a olho de um arame cheio não é uma
+medição — e foi ela que eu pus num handoff e num report ao dono.*
+
+### §84.4 — O que isto faz à ordem do dono
+
+A ordem *«pagar o cálculo por níveis»* foi dada sobre a frase *«fileiras que
+atravessam o traço uma lei local por carimbo não produz»*. **Ela produz**, e está
+medida e desenhada.
+
+⇒ **A wave da hierarquia não deve ser gasta sem ele reconsiderar**, e o que
+sobra é uma pergunta muito mais estreita:
+
+- a **mediana** das fileiras é `10`–`23` arestas e o **máximo** é `63`–`74` ⇒
+  *algumas* fileiras atravessam o traço e metade são curtas. A hierarquia
+  compraria **mais fileiras completas**, não as primeiras;
+- e o que o dono **não consegue ver** continua sem cura: no arame do app as
+  fileiras estão lá e **não se lêem**, porque as outras duas famílias de arestas
+  são desenhadas com o mesmo traço. *Isso é um problema de VISIBILIDADE, e
+  nenhuma quantidade de cálculo o resolve.*
+
+### §84.5 — ⏳ ABERTO
+
+- **decisão do dono**, com a premissa corrigida: mais fileiras completas (a
+  hierarquia) · ou fazer as que existem **verem-se** · ou parar;
+- o §83 fica no ficheiro **com esta refutação ao lado**, e não apagado: *a
+  leitura errada faz parte do registo, e quem a repetir tem de ver que ela já foi
+  feita e como caiu.*

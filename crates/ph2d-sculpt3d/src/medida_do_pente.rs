@@ -99,7 +99,15 @@ pub const FAIXA: f32 = 0.5;
 
 /// O ponto do percurso mais perto de `p`, e a direcção LOCAL dele — ou `None`
 /// quando `p` cai fora da faixa.
-fn troco(percurso: &[[f32; 3]], p: [f32; 3], raio: f32) -> Option<[f32; 3]> {
+///
+/// ⚠️ **`pub(crate)` porque a régua da FILEIRA a lê** ([`crate::medida_da_fileira`]):
+/// *«que troço do traço é este ponto, e que faixa conta»* é uma pergunta só, e
+/// duas respostas divergiriam no dia em que a [`FAIXA`] mudasse.
+pub(crate) fn direccao_do_troco(
+    percurso: &[[f32; 3]],
+    p: [f32; 3],
+    raio: f32,
+) -> Option<[f32; 3]> {
     let mut melhor = f32::INFINITY;
     let mut direccao = None;
     for par in percurso.windows(2) {
@@ -156,7 +164,7 @@ pub fn q_da_faixa(malha: &Mesh, percurso: &[[f32; 3]], raio: f32) -> (f64, usize
                 (pa[1] + pb[1]) * 0.5,
                 (pa[2] + pb[2]) * 0.5,
             ];
-            let Some(direccao) = troco(percurso, meio, raio) else {
+            let Some(direccao) = direccao_do_troco(percurso, meio, raio) else {
                 continue;
             };
             let aresta = sub(pb, pa);
@@ -218,7 +226,7 @@ pub fn grade_da_faixa(malha: &Mesh, percurso: &[[f32; 3]], raio: f32) -> ([usize
                 (pa[1] + pb[1]) * 0.5,
                 (pa[2] + pb[2]) * 0.5,
             ];
-            let Some(direccao) = troco(percurso, meio, raio) else {
+            let Some(direccao) = direccao_do_troco(percurso, meio, raio) else {
                 continue;
             };
             let aresta = sub(pb, pa);
@@ -295,7 +303,7 @@ pub fn vinco_da_faixa(malha: &Mesh, percurso: &[[f32; 3]], raio: f32) -> (f64, f
             (pa[1] + pb[1]) * 0.5,
             (pa[2] + pb[2]) * 0.5,
         ];
-        if troco(percurso, meio, raio).is_none() {
+        if direccao_do_troco(percurso, meio, raio).is_none() {
             continue;
         }
         let (Some(n0), Some(n1)) = (
@@ -347,7 +355,7 @@ pub fn pior_angulo(malha: &Mesh, percurso: &[[f32; 3]], raio: f32) -> (f64, usiz
             (p[0][1] + p[1][1] + p[2][1]) / 3.0,
             (p[0][2] + p[1][2] + p[2][2]) / 3.0,
         ];
-        if troco(percurso, centro, raio).is_none() {
+        if direccao_do_troco(percurso, centro, raio).is_none() {
             continue;
         }
         n += 1;
@@ -403,7 +411,7 @@ pub fn lascas(malha: &Mesh, percurso: &[[f32; 3]], raio: f32, grau: f64) -> (usi
             (p[0][1] + p[1][1] + p[2][1]) / 3.0,
             (p[0][2] + p[1][2] + p[2][2]) / 3.0,
         ];
-        if troco(percurso, centro, raio).is_none() {
+        if direccao_do_troco(percurso, centro, raio).is_none() {
             continue;
         }
         total += 1;

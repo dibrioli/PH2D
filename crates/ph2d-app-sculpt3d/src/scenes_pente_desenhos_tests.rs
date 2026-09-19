@@ -50,6 +50,46 @@ fn diag_desenha_o_arame() {
 /// Um arame ortográfico, olhando de `+z`, centrado no percurso — em `.ppm`,
 /// que se converte com `magick`.
 pub(crate) fn desenha(m: &ph2d_mesh::Mesh, percurso: &[[f32; 3]], raio: f32, caminho: &str) {
+    desenha_com(m, percurso, raio, caminho, false);
+}
+
+/// ⭐⭐⭐⭐ **O mesmo arame, com as FILEIRAS realçadas.**
+///
+/// ⛔⛔⛔ **Ele existe porque eu OLHEI e disse o contrário do que a régua diz.**
+/// Em 20/09 olhei um recorte do arame e escrevi *«são RETALHOS, não fileiras»*;
+/// a régua da [`ph2d_sculpt3d::medida_da_fileira`], escrita a seguir e pregada
+/// entre uma grade verdadeira e uma malha sacudida, lê fileiras de **`12`–`23`**
+/// arestas contra `2`–`4` do controlo.
+///
+/// *Duas testemunhas em desacordo sobre a MESMA malha é o achado, e quem
+/// desempata é a imagem da própria grandeza:* aqui as arestas **ALINHADAS** (a
+/// população que a régua encadeia) saem a **PRETO** e todas as outras a
+/// cinzento claro.
+///
+/// ⭐⭐⭐⭐ **E a imagem decidiu contra mim:** à esquerda tracinhos partidos, à
+/// direita **linhas contínuas de ponta a ponta do traço**. *Eu tinha olhado um
+/// recorte do arame inteiro e chamado retalhos ao que era uma grade escondida no
+/// meio das outras duas famílias de arestas.*
+///
+/// ⚠️ **O que sai a preto é a população ALINHADA e não as cadeias** — as cadeias
+/// são uma estrutura sobre ela, e desenhar só as cadeias esconderia a aresta que
+/// duas delas disputam.
+pub(crate) fn desenha_fileiras(
+    m: &ph2d_mesh::Mesh,
+    percurso: &[[f32; 3]],
+    raio: f32,
+    caminho: &str,
+) {
+    desenha_com(m, percurso, raio, caminho, true);
+}
+
+fn desenha_com(
+    m: &ph2d_mesh::Mesh,
+    percurso: &[[f32; 3]],
+    raio: f32,
+    caminho: &str,
+    realca: bool,
+) {
     const N: usize = 900;
     // A janela é o percurso mais dois raios de cada lado — o enquadramento que
     // o artista teria se olhasse para o traço dele.
@@ -71,7 +111,15 @@ pub(crate) fn desenha(m: &ph2d_mesh::Mesh, percurso: &[[f32; 3]], raio: f32, cam
 
     let mut buf = vec![255u8; N * N * 3];
     let pos = m.positions();
-    let linha = |a: (i32, i32), b: (i32, i32), buf: &mut Vec<u8>| {
+    // As arestas que a régua da fileira encadeia, para o realce.
+    let fileiras: std::collections::BTreeSet<(u32, u32)> = if realca {
+        ph2d_sculpt3d::medida_da_fileira::arestas_das_fileiras(m, percurso, raio)
+            .into_iter()
+            .collect()
+    } else {
+        std::collections::BTreeSet::new()
+    };
+    let linha = |a: (i32, i32), b: (i32, i32), tom: [u8; 3], buf: &mut Vec<u8>| {
         let (dx, dy) = ((b.0 - a.0).abs(), -(b.1 - a.1).abs());
         let (sx, sy) = (
             if a.0 < b.0 { 1 } else { -1 },
@@ -81,9 +129,9 @@ pub(crate) fn desenha(m: &ph2d_mesh::Mesh, percurso: &[[f32; 3]], raio: f32, cam
         loop {
             if x >= 0 && y >= 0 && (x as usize) < N && (y as usize) < N {
                 let i = ((y as usize) * N + x as usize) * 3;
-                buf[i] = 40;
-                buf[i + 1] = 40;
-                buf[i + 2] = 60;
+                buf[i] = tom[0];
+                buf[i + 1] = tom[1];
+                buf[i + 2] = tom[2];
             }
             if x == b.0 && y == b.1 {
                 break;
@@ -99,16 +147,32 @@ pub(crate) fn desenha(m: &ph2d_mesh::Mesh, percurso: &[[f32; 3]], raio: f32, cam
             }
         }
     };
-    for f in m.faces() {
-        let vs = f.verts();
-        for k in 0..vs.len() {
-            let a = pos[vs[k] as usize];
-            let b = pos[vs[(k + 1) % vs.len()] as usize];
-            // Só a calota virada a nós, senão o arame de trás polui a leitura.
-            if a[2] < 0.3 || b[2] < 0.3 {
-                continue;
+    // ⚠️ **As claras primeiro e as escuras por cima** — na ordem das faces, uma
+    // aresta comum apagaria a fileira que passa por ela.
+    for passagem in 0..2 {
+        for f in m.faces() {
+            let vs = f.verts();
+            for k in 0..vs.len() {
+                let (ia, ib) = (vs[k], vs[(k + 1) % vs.len()]);
+                let (a, b) = (pos[ia as usize], pos[ib as usize]);
+                // Só a calota virada a nós, senão o arame de trás polui a leitura.
+                if a[2] < 0.3 || b[2] < 0.3 {
+                    continue;
+                }
+                let na_fileira = fileiras.contains(&(ia.min(ib), ia.max(ib)));
+                if realca && na_fileira != (passagem == 1) {
+                    continue;
+                }
+                if !realca && passagem == 1 {
+                    continue;
+                }
+                let tom = if realca && !na_fileira {
+                    [205, 205, 215]
+                } else {
+                    [20, 20, 40]
+                };
+                linha(para_px(a), para_px(b), tom, &mut buf);
             }
-            linha(para_px(a), para_px(b), &mut buf);
         }
     }
     let mut ficheiro = format!("P6\n{N} {N}\n255\n").into_bytes();

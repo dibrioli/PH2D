@@ -48,3 +48,29 @@ nada. O script tem exit codes distintos (`1` teste vermelho · `2` não compila)
 resumo não os distingue** — foram precisas duas leituras e um `cargo test` cru para ver o erro.
 ⇒ num controlo de filtro, leia o **exit code**, nunca só a contagem: `0 passaram` com `exit 2`
 não é um gate vazio, é uma árvore partida.
+
+⚠️⚠️⚠️ **E em 2026-09-19 o MESMO arnês mentiu QUATRO vezes numa corrida, cada uma na direcção que
+faz desistir — as quatro em `line/UIUX`, a armar a varredura de elisões:**
+
+1. **`error: test failed` casa `^error:`.** A cerca de *«a mutação compila?»* era um `grep` por
+   `^error(\[|:)`, e o cargo imprime `error: test failed, to rerun pass …` quando um teste fica
+   VERMELHO — que é exactamente o que uma mutação a sangrar produz. **As seis mutações leram-se
+   como *«NÃO COMPILA»*.** ⇒ a cerca é `error[E<n>]` ou `could not compile`, nunca `^error:`.
+2. **`running 1 test` é SINGULAR.** O contador de *«quantos testes correram?»* casava
+   `running <n> tests`, e **quatro** das seis mutações atacavam um gate só ⇒ o contador leu vazio e
+   imprimiu *«O FILTRO CASOU 0 TESTES»* sobre mutações que sangravam à primeira. *Um arnês que só
+   conhece o plural é cego a toda mutação de um gate.*
+3. **Um caminho de BACKUP relativo, resolvido depois do `cd`.** `BAK=$(dirname "$0")/bak` com o
+   `mkdir` antes do `cd` para a raiz: as cópias de backup e de restauro passaram a apontar para uma
+   pasta que não existe e **falharam em silêncio** — as seis mutações **ficaram na árvore**, e a
+   corrida seguinte leu-as como *«a mutação não entrou»*. ⇒ caminho **absoluto**, o backup conferido
+   com `-s` depois de escrito, e o restauro **conferido por `sha256sum`** contra o hash de antes.
+4. **A suíte que corria em FUNDO mediu a árvore MUTADA e saiu VERDE.** Ela foi lançada antes das
+   mutações e terminou no meio delas ⇒ o `93 passed` não afirmava nada. É
+   [[feedback_a_harness_that_writes_to_the_real_tree_cannot_be_parallel]] outra vez, e a cura é a
+   mesma: *nada corre em paralelo com um arnês que escreve na árvore de verdade.*
+
+⭐ **A leitura das quatro é uma só:** cada uma faz uma mutação **honesta** ler-se como um defeito do
+instrumento (*não compila* · *filtro vazio* · *não entrou*), e as três primeiras só apareceram
+porque as seis mutações sangravam de verdade — *um arnês estreado contra mutações que MORREM
+esconde os próprios furos, porque «✗» lê-se como trabalho a fazer no produto*.

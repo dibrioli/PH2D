@@ -52,6 +52,12 @@ pub enum RecusaDoOsso {
     /// ⚠️ **E ela NÃO cobre *«já estava nessa lei»***: escrever a lei que já lá está não é um
     /// acontecimento, e queixar-se disso é o ruído que o artista aprende a ignorar.
     NadaAQuemMudarALei,
+    /// O *Rest Pose* não tem destino: nenhum osso da sub-árvore tem repouso guardado (2026-09-19).
+    ///
+    /// ⚠️ **Ela é INERTE de propósito** — a alternativa era cair na identidade, que é exactamente o
+    /// defeito medido que a pose de repouso veio curar. *Um osso sem repouso guardado não é um osso
+    /// que se possa mandar para a origem; é um osso sobre o qual não há resposta.*
+    SemPoseDeRepouso,
 }
 
 impl RecusaDoOsso {
@@ -67,6 +73,7 @@ impl RecusaDoOsso {
             Self::NadaAPrender => "skeleton.recusa.nada_a_prender",
             Self::NadaASoltar => "skeleton.recusa.nada_a_soltar",
             Self::NadaAQuemMudarALei => "skeleton.recusa.nada_a_quem_mudar_a_lei",
+            Self::SemPoseDeRepouso => "skeleton.recusa.sem_pose_de_repouso",
         }
     }
 
@@ -78,7 +85,10 @@ impl RecusaDoOsso {
     pub fn quantos(self) -> Option<usize> {
         match self {
             Self::VariosEsqueletos { quantos } => Some(quantos),
-            Self::NadaAPrender | Self::NadaASoltar | Self::NadaAQuemMudarALei => None,
+            Self::NadaAPrender
+            | Self::NadaASoltar
+            | Self::NadaAQuemMudarALei
+            | Self::SemPoseDeRepouso => None,
         }
     }
 
@@ -86,11 +96,12 @@ impl RecusaDoOsso {
     ///
     /// ⚠️ Escrita à mão e **guardada por um gate de exaustividade** (o `match` do [`Self::chave`]),
     /// porque um `enum` com dados não se enumera sozinho.
-    pub const TODAS: [Self; 4] = [
+    pub const TODAS: [Self; 5] = [
         Self::VariosEsqueletos { quantos: 2 },
         Self::NadaAPrender,
         Self::NadaASoltar,
         Self::NadaAQuemMudarALei,
+        Self::SemPoseDeRepouso,
     ];
 }
 

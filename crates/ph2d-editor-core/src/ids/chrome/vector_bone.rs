@@ -45,6 +45,21 @@ pub const VECTOR_BONE_EXPAND: NodeId = hash_node_id("vector.bone.expand");
 /// **Release** — solta as formas e devolve o que o artista DESENHOU.
 pub const VECTOR_BONE_RELEASE: NodeId = hash_node_id("vector.bone.release");
 
+/// ⭐⭐⭐ **Rest Pose** — devolve este osso e a descendência dele à pose de repouso.
+///
+/// É o `apply_rest()` do `Bone2D` do Godot e o *Rest Position* do Blender. ⚠️ Sem ele, a única
+/// saída de uma pose experimentada era desfazer passo a passo — e o botão que *parecia* fazer isto
+/// (o *Reset Transform* da Hierarquia) mandava a arte presa **26,48 unidades num desenho de 60**,
+/// com uma mensagem verde (`ph2d_skeleton_live::sonda_do_reset_na_hierarquia_tests`).
+pub const VECTOR_BONE_REST_APPLY: NodeId = hash_node_id("vector.bone.rest.apply");
+
+/// ⭐⭐ **Set Rest Pose** — faz da pose de AGORA o repouso deste osso e da descendência dele.
+///
+/// ⚠️ Par do de cima, e a razão de serem **dois** botões: um osso nasce com o repouso em que
+/// nasceu, e re-definir o repouso é uma decisão do artista — não pode acontecer por acidente cada
+/// vez que ele posa o boneco.
+pub const VECTOR_BONE_REST_SET: NodeId = hash_node_id("vector.bone.rest.set");
+
 /// **Length** — o comprimento do osso seleccionado, em unidades locais dele.
 pub const VECTOR_BONE_LENGTH: NodeId = hash_node_id("vector.bone.length");
 
@@ -285,10 +300,12 @@ pub const VECTOR_BONE_SMART_CLIP_IDS: [NodeId; MAX_SMART_CLIPS] = [
 ///
 /// ⇒ *Uma lista escrita à mão ao lado de outra é duas respostas à mesma pergunta, e a que o artista
 /// vê é a que envelhece.* Com uma tabela só, acrescentar um verbo liga-o nos dois sítios.
-pub const VECTOR_BONE_VERBS: [NodeId; 10] = [
+pub const VECTOR_BONE_VERBS: [NodeId; 12] = [
     VECTOR_BONE_BIND,
     VECTOR_BONE_EXPAND,
     VECTOR_BONE_RELEASE,
+    VECTOR_BONE_REST_APPLY,
+    VECTOR_BONE_REST_SET,
     VECTOR_BONE_IK_ADD,
     VECTOR_BONE_IK_REMOVE,
     VECTOR_BONE_LIMIT_ADD,

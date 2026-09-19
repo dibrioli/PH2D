@@ -38,6 +38,9 @@ mod hierarchy_asset_verbs;
 /// ⭐⭐ **O gesto de APAGAR e as três respostas dele** — irmão por assunto do `hierarchy`.
 mod hierarchy_delete;
 mod hierarchy_rename;
+/// ⭐ O que *Reset Transform* quer dizer numa linha — irmão do `hierarchy` pelo tecto de função,
+/// cortado por assunto. Ver o cabeçalho dele para o defeito medido que ele cura.
+mod hierarchy_reset;
 // ⚠️ **A row *Duplicate*, por ASSUNTO** — o `hierarchy.rs` voltou ao tecto de 600 LOC quando a
 // cópia ganhou as duas leis que lhe faltavam (auditoria §1.4/§1.2). Lá o dreno das intenções, aqui
 // o que duplicar quer dizer.

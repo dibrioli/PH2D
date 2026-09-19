@@ -1,4 +1,4 @@
-//! **A família do ESQUELETO** — os 6 componentes de `ph2d-skeleton-ecs`.
+//! **A família do ESQUELETO** — os 7 componentes de `ph2d-skeleton-ecs`.
 //!
 //! ⚠️ **Família própria, e não uma prateleira do vetor.** Ela nasceu em 2026-09-06, quando os
 //! ossos saíram de dentro do módulo vectorial: nas quatro referências do mercado um esqueleto só
@@ -41,6 +41,10 @@ pub const DESCS: &[D] = &[
         O::ANY,
         &[],
     ),
+    // ⭐ O REPOUSO — `intrinsic`, e a ausência do default é a LEI e não uma folga: o valor neutro de
+    // uma pose é a identidade, que é o defeito medido que este componente existe para curar (ver o
+    // cabeçalho de `ph2d_skeleton_ecs::bone_rest`). Ele chega com o osso, ou com *Set Rest Pose*.
+    D::intrinsic("ph2d::skeleton::BoneRest", "Rest Pose", C::Skeleton, &[]),
     // ⭐ A ÂNCORA — `intrinsic` pela mesma razão da pele: ela chega com o gesto (*Add IK*), que cria
     // o ALVO no mesmo passo. Pendurá-la por paleta daria uma restrição sem alvo — inerte, e sem
     // caminho pelo qual o artista a completasse.

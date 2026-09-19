@@ -9,6 +9,7 @@ pub(super) struct SkeletonVerbsIntents {
     pub(super) pending_bone_release: Option<crate::skeleton_live::Keep>,
     pub(super) pending_bone_knob: Option<(ph2d_app_skeleton::knobs::BoneKnob, f64)>,
     pub(super) pending_skin_law: Option<ph2d_skeleton_ecs::SkinLaw>,
+    pub(super) pending_bone_rest: Option<ph2d_skeleton_live::pose_de_repouso::Verbo>,
     pub(super) osso_selecionado: Option<u64>,
     pub(super) selecao_bits: Vec<u64>,
 }
@@ -114,9 +115,30 @@ impl crate::App {
             pending_bone_release,
             pending_bone_knob,
             pending_skin_law,
+            pending_bone_rest,
             osso_selecionado,
             selecao_bits,
         } = intents;
+        // ⭐⭐⭐ **A POSE DE REPOUSO** — voltar, ou fazer da pose de agora o repouso.
+        //
+        // ⚠️ **O sujeito é o osso em FOCO**, e é por isso que ele é drenado aqui e não com a lei de
+        // pele (cujo sujeito é a selecção de formas). ⚠️ **Sem osso em foco os botões nem são
+        // PINTADOS** — o `campos_do_osso()` do painel decide —, então a recusa que importa é a
+        // outra: um osso **sem repouso guardado**, que é o que um rig anterior a esta wave entrega.
+        if let Some(verbo) = pending_bone_rest
+            && let Some(bits) = osso_selecionado
+        {
+            let alvo = ph2d_ecs::Entity::from_bits(bits);
+            let n = ph2d_skeleton_live::pose_de_repouso::aplica(sim, alvo, verbo);
+            if n == 0 {
+                avisa(
+                    toasts,
+                    ph2d_skeleton_live::recusa_do_osso::RecusaDoOsso::SemPoseDeRepouso,
+                );
+            } else {
+                eprintln!("[ph2d-vec] osso: {n} osso(s) · {verbo:?} da pose de repouso");
+            }
+        }
         // ⭐⭐⭐ **POR QUE LEI CADA DESENHO ESCOLHIDO SE DEFORMA** — a lei mora no irmão.
         //
         // ⛔ **Corte por RESPONSABILIDADE, imposto pelo tecto de 200 LOC** (`217`): prender, soltar

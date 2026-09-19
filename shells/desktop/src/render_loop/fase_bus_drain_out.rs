@@ -224,6 +224,12 @@ pub(in crate::render_loop) struct DrainOut {
     /// ⚠️ **O sujeito é a SELECÇÃO e não o osso em foco**, e é por isso que ele é drenado com o
     /// *Bind* e o *Release* (`fase_skeleton_verbs`) e não com os números do osso.
     pub(in crate::render_loop) pending_skin_law: Option<ph2d_skeleton_ecs::SkinLaw>,
+    /// ⭐ Voltar ao repouso, ou fazer da pose de agora o repouso (2026-09-19).
+    ///
+    /// ⚠️ **O sujeito é o osso em FOCO e a descendência dele** — ao contrário da lei de pele acima,
+    /// cujo sujeito é a selecção de formas.
+    pub(in crate::render_loop) pending_bone_rest:
+        Option<ph2d_skeleton_live::pose_de_repouso::Verbo>,
     /// A LINHA escolhida no selector de ponta da curva — o índice na lista publicada neste quadro.
     pub(in crate::render_loop) pending_bone_tip: Option<usize>,
     pub(in crate::render_loop) pending_ik_knob: Option<(IkKnob, f64)>,

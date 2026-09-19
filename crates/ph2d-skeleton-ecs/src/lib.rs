@@ -53,6 +53,11 @@ use ph2d_skeleton::bend::{Bend, BoneSpec, Handles};
 mod skin_bind;
 pub use skin_bind::{SkinBind, SkinLaw};
 
+// ⭐⭐⭐ **A POSE DE REPOUSO** — componente próprio, pela mesma lei do [`BoneLimit`]: *a ausência é
+// uma resposta*. Ver o cabeçalho de [`bone_rest`], que tem o defeito medido que ela cura.
+mod bone_rest;
+pub use bone_rest::BoneRest;
+
 /// ⭐ **Os dois tipos que um campo público do [`Bone`] nomeia, re-exportados daqui.**
 ///
 /// ⚠️ **Não é conveniência — era uma lacuna:** quem vê `bone.handles` e `bone.curve` não
@@ -548,6 +553,12 @@ pub fn register_skeleton_components(reg: &mut ComponentRegistry) {
     // metades da mesma decisão**, e o gate `every_offered_component_can_be_constructed` reprova
     // quem mexer numa só.
     reg.register_default::<SmartBone>("ph2d::skeleton::SmartBone");
+    // ⛔⛔ **`register` e NUNCA `register_default`, e a ausência do default É a cura desta wave:** o
+    // valor neutro de uma pose é a **identidade**, que é exactamente o byte que mandava a arte
+    // presa 20 unidades para longe. Um repouso que não diz QUAL pose não é um repouso — ele chega
+    // com o osso (o gesto de o criar) ou com o verbo *Set Rest Pose*, e um osso sem ele faz o
+    // verbo recusar em voz alta em vez de adivinhar.
+    reg.register::<BoneRest>("ph2d::skeleton::BoneRest");
 }
 
 #[cfg(test)]
@@ -561,11 +572,15 @@ mod tests {
     fn registers_every_skeleton_component() {
         let mut reg = ComponentRegistry::new();
         register_skeleton_components(&mut reg);
-        assert_eq!(reg.len(), 6);
+        assert_eq!(reg.len(), 7);
         assert!(reg.get_by_name("ph2d::skeleton::Bone").is_some());
         assert!(reg.get_by_name("ph2d::skeleton::Skin").is_some());
         assert!(reg.get_by_name("ph2d::skeleton::IkGoal").is_some());
         assert!(reg.get_by_name("ph2d::skeleton::IkTarget").is_some());
+        // ⚠️ **Nomeado, e não só contado:** um repouso que salte o registo evapora no primeiro
+        // Ctrl+Z, e o sintoma é *«o botão de voltar ao repouso deixou de funcionar»* — depois de
+        // desfazer, que é o pior modo de falha que há.
+        assert!(reg.get_by_name("ph2d::skeleton::BoneRest").is_some());
     }
 
     /// ⭐ **O NOME CANÓNICO NÃO DIZ "VECTOR"** — e é a metade destrutiva-depois desta wave.

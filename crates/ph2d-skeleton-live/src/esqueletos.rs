@@ -43,6 +43,35 @@ pub fn bone_roots(sim: &SimWorld) -> Vec<Entity> {
     out
 }
 
+/// **Os ossos desta RAIZ para baixo** — ela própria e toda a descendência que ainda é osso.
+///
+/// ⚠️ **Ela é uma PORTA com dois leitores desde o dia em que nasceu**, e é por isso que existe: a
+/// descida estava escrita dentro do [`crate::skin_live::skeleton_of`] (que a chama com a raiz do
+/// esqueleto) e o repouso precisa dela a partir do osso **escolhido** — *uma lei escrita em dois
+/// sítios ainda não é uma lei*. As duas perguntas são a mesma descida, só muda de onde se parte.
+///
+/// ⚠️ **Pára onde a árvore deixa de ser osso**, o espelho exacto do [`raiz_do_osso`]: pendurar uma
+/// forma num osso não põe a forma no esqueleto.
+///
+/// ⚠️ **A ordem é por `to_bits` e é DETERMINÍSTICA de propósito** — ver a nota do `skeleton_of`
+/// sobre a ordem da soma em `f64`. ⛔ Isto não é o `canonicalize` que o `CLAUDE.md` §5 proíbe.
+#[must_use]
+pub fn ossos_desde(sim: &SimWorld, raiz: Entity) -> Vec<Entity> {
+    let mut out = Vec::new();
+    let mut pilha = vec![raiz];
+    while let Some(e) = pilha.pop() {
+        if sim.world().get::<Bone>(e).is_none() {
+            continue;
+        }
+        out.push(e);
+        if let Some(f) = sim.world().get::<ph2d_ecs::Children>(e) {
+            pilha.extend(f.iter());
+        }
+    }
+    out.sort_by_key(|e| e.to_bits());
+    out
+}
+
 #[cfg(test)]
 #[path = "esqueletos_tests.rs"]
 mod tests;

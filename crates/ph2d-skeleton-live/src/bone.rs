@@ -31,22 +31,28 @@ pub fn create(
     let d = [b[0] - a[0], b[1] - a[1]];
     let length = d[0].hypot(d[1]);
     let rotation = d[1].atan2(d[0]);
+    // ⭐⭐⭐ **A POSE EM QUE ELE NASCE É O REPOUSO DELE** (2026-09-19). ⚠️ Escrita a partir do MESMO
+    // `Transform` que o spawn leva — e não de uma segunda montagem dos números —, senão os dois
+    // divergem no dia em que alguém acrescentar um campo à pose do osso novo. *Um osso que nasce
+    // sem repouso é um osso a que o `Reset Transform` não sabe responder.*
+    let pose = Transform {
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "o `Transform` da casa é f32; a geometria do documento é f64"
+        )]
+        translation: ph2d_core::Vec2::new(a[0] as f32, a[1] as f32),
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "idem — a rotação do `Transform` é f32"
+        )]
+        rotation: rotation as f32,
+        ..Transform::IDENTITY
+    };
     let e = sim
         .world_mut()
         .spawn((
-            Transform {
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    reason = "o `Transform` da casa é f32; a geometria do documento é f64"
-                )]
-                translation: ph2d_core::Vec2::new(a[0] as f32, a[1] as f32),
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    reason = "idem — a rotação do `Transform` é f32"
-                )]
-                rotation: rotation as f32,
-                ..Transform::IDENTITY
-            },
+            pose,
+            ph2d_skeleton_ecs::BoneRest::de(&pose),
             Bone {
                 length,
                 ..Bone::default()

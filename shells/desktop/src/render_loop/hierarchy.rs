@@ -237,17 +237,11 @@ pub(super) fn dispatch(
         toasts.push(Toast::success(tr("shell.hierarchy.added_empty_object")));
         title_dirty = true;
     }
-    if let Some(row) = reset_transform_row
-        && let Some(live) = hero_live.as_ref()
-        && let Some(entity_bits) = live.bridge.entity_for(row)
-    {
-        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-        if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity) {
-            *t = Transform::IDENTITY;
-            toasts.push(Toast::info(tr("shell.hierarchy.transform_reset")));
-            title_dirty = true;
-        }
-    }
+    // ⭐⭐⭐ **O que *Reset Transform* QUER DIZER numa linha mora no irmão** [`super::hierarchy_reset`]
+    // — corte por assunto, imposto pelo tecto de 200 LOC quando a cura do osso entrou. Ali estão as
+    // TRÊS respostas que este verbo pode ter nesta casa, e a medição do defeito que as obrigou.
+    title_dirty |=
+        super::hierarchy_reset::drain(reset_transform_row, hero_live.as_ref(), sim, toasts);
     // ⭐⭐ **O gesto de APAGAR vive no irmão** [`super::hierarchy_delete`] — corte por assunto,
     // imposto pelo tecto de 600 LOC quando a recusa de uma peça entrou (F5.10). Ali estão as TRÊS
     // respostas que um `Delete` pode ter nesta casa, e a voz que as distingue.

@@ -33,6 +33,12 @@ impl crate::App {
         } else if *id == ph2d_editor_core::ids::VECTOR_BONE_BIND {
             // ⭐⭐⭐ O ESQUELETO (estudo 42 item 5): prende a seleção aos ossos.
             pd.pending_bone_bind = true;
+        } else if *id == ph2d_editor_core::ids::VECTOR_BONE_REST_APPLY {
+            // ⭐⭐⭐ A POSE DE REPOUSO: devolve o osso em foco e a descendência dele ao repouso.
+            pd.pending_bone_rest = Some(ph2d_skeleton_live::pose_de_repouso::Verbo::Repor);
+        } else if *id == ph2d_editor_core::ids::VECTOR_BONE_REST_SET {
+            // ⭐⭐ E o par dele: a pose de AGORA passa a ser o repouso.
+            pd.pending_bone_rest = Some(ph2d_skeleton_live::pose_de_repouso::Verbo::Guardar);
         } else if *id == ph2d_editor_core::ids::VECTOR_BONE_IK_ADD {
             // ⭐⭐⭐ A ÂNCORA: dá ao osso em foco um alvo que a corrente persegue.
             pd.pending_ik_add = true;

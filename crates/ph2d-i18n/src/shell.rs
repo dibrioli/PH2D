@@ -150,6 +150,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Nothing to change: select a shape or an image that is bound to the skeleton, then \
              choose how it deforms."
         }
+        "skeleton.recusa.sem_pose_de_repouso" => {
+            "This bone has no rest pose saved. Pose it the way it should rest and press Set Rest \
+             Pose."
+        }
         "shell.label_live.label" => "{base} Label",
         "shell.label_live.path" => "Path {host}",
         "shell.fase_bone_smart_and_knobs.this_bone_is_driven_by" => {
@@ -245,6 +249,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.hierarchy.that_prefab_is_no" => "That prefab is no longer in the project",
         "shell.hierarchy.view_zero_camera_reset" => "View · Zero (camera reset)",
         "shell.hierarchy.transform_reset" => "Transform reset",
+        // ⭐⭐⭐ As duas respostas que um OSSO dá ao *Reset Transform* — ver
+        // `ph2d_skeleton_live::pose_de_repouso`. ⚠️ A palavra é **repouso** e não *«transformação
+        // reposta»*: num osso as duas coisas não são a mesma, e foi essa confusão que mandou a arte
+        // presa 26 unidades para longe.
+        "shell.hierarchy.bone_back_to_rest" => "{n} bone(s) back to their rest pose",
+        "shell.hierarchy.bone_has_no_rest" => {
+            "This bone has no rest pose saved — use Set Rest Pose in the Skeleton panel"
+        }
         "shell.hierarchy.added_empty_object" => "Added empty object",
         "shell.hierarchy.added_child_entity" => "Added child entity",
         "shell.hierarchy.child" => "Child",

@@ -142,6 +142,23 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
     // Os dois números do OSSO em foco. Sem osso não há sujeito — e um campo sem sujeito é a
     // classe de controlo morto que o `CLAUDE.md` §5.0 nomeia.
     if let Some(campos) = campos_do_osso() {
+        // ⭐⭐⭐ **A POSE DE REPOUSO, ANTES dos números** — e a ordem é a lei: estes dois são sobre
+        // *onde o osso volta*, e os números abaixo são sobre *o que ele é*. ⚠️ Pintá-los depois
+        // dos campos poria o gesto mais frequente do rig (experimentar uma pose e voltar) no fim
+        // de uma lista que rola.
+        //
+        // ⚠️ **Só com osso em foco**, como todo o resto deste bloco: um *Rest Pose* sem sujeito
+        // seria a classe de controlo morto que o `CLAUDE.md` §5.0 nomeia.
+        let repouso: [(ph2d_a11y::NodeId, &str); 2] = [
+            (
+                ids::VECTOR_BONE_REST_APPLY,
+                tr("panel.vector.bone.rest.apply"),
+            ),
+            (ids::VECTOR_BONE_REST_SET, tr("panel.vector.bone.rest.set")),
+        ];
+        for (id, label) in repouso {
+            y = r.action_button(id, label, y);
+        }
         for (id, label, step, _valor) in campos {
             y = r.labeled_number_field(label, id, step, y);
         }

@@ -36,6 +36,8 @@ pub mod esqueletos;
 #[path = "esqueletos_tests_support.rs"]
 mod esqueletos_tests_support;
 pub mod goal;
+/// ⭐⭐⭐ **A POSE DE REPOUSO** — voltar ao repouso, e o que o *Reset Transform* quer dizer num osso.
+pub mod pose_de_repouso;
 pub mod recusa_do_osso;
 /// ⭐ O ORÇAMENTO de peças do quadro — irmão do `skin_image` pelo tecto de LOC, cortado por assunto.
 pub mod skin_bake;
@@ -132,3 +134,7 @@ mod sonda_do_envelope_tests;
 #[cfg(test)]
 #[path = "sonda_do_envelope_no_vector_tests.rs"]
 mod sonda_do_envelope_no_vector_tests;
+
+#[cfg(test)]
+#[path = "sonda_do_reset_na_hierarquia_tests.rs"]
+mod sonda_do_reset_na_hierarquia_tests;

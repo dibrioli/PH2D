@@ -440,38 +440,65 @@ pub fn cena_36() -> Result<FieldDoc, ph2d_field::FieldError> {
     );
     println!(
         "[field-smoke]            (7) como saber que falhou: se pos Bloom em ON e NENHUMA bola \
-         ganhou halo, PARE. Se o halo aparecer com Bloom em OFF, PARE. E se a BARRA escura ganhar \
-         halo proprio, PARE — ela nao emite luz."
+         ganhou halo, PARE. Se o halo aparecer com Bloom em OFF, PARE. E se a BARRA ESCURA ganhar \
+         halo proprio, PARE — o que brilha e' o que e' CLARO."
     );
     println!(
         "[field-smoke]            (⚠️) se uma janela flutuante estiver por cima da peca, feche-a no \
          X dela: a arrumacao dos paineis fica gravada entre sessoes, fora do projecto."
     );
-    // ⚠️ **A ORDEM é a da TRAVESSIA** — os filhos, depois o combine. A `cena_35` pagou esta.
+    // ⛔⛔⛔ **A 1.ª REDACÇÃO ALINHOU AS BOLAS EM `x` E A FOTO MOSTROU-AS EMPILHADAS** — a terceira
+    // e a barra caíam **fora do ecrã**. A câmera de omissão é uma três-quartos, logo o eixo `x` do
+    // MUNDO recua na diagonal: uma fileira em `x` lê-se como uma **pilha**, não como uma fileira.
+    //
+    // ⭐ ⇒ o eixo é o **DIREITA DA VISTA**, lido da própria câmera ([`Orbit::basis`]) — a mesma lei
+    // que a [`cena_35`] já escreve (*«as posições são DERIVADAS do olho»*), agora com a porta em vez
+    // da aritmética à mão. *Uma disposição escolhida a olho é uma que a foto corrige duas vezes.*
+    let (direita, _, _) = ph2d_field_render::Orbit::default().basis();
+    // ⭐ O **passo** e o **raio** saem da régua da `=35`, que é a cena que o dono APROVOU: ali uma
+    // bola de raio `0,45` ocupa ~`530` de `1290` px. Três bolas numa fileira pedem ~`1/3` disso
+    // cada, com vão entre elas.
+    const RAIO: f32 = 0.17;
+    const PASSO: f32 = 0.46;
     let mut nodes: Vec<Node> = BRILHOS_DA_CENA
         .iter()
         .enumerate()
         .map(|(i, _)| {
             #[allow(clippy::cast_precision_loss)]
-            let x = -0.70 + 0.70 * i as f32;
+            let t = PASSO * (i as f32 - 1.0);
             leaf(
-                Primitive::Sphere { radius: 0.22 },
+                Primitive::Sphere { radius: RAIO },
                 Xform {
-                    translation: [x, 0.12, 0.0],
+                    translation: [direita[0] * t, direita[1].mul_add(t, 0.14), direita[2] * t],
                     ..Xform::IDENTITY
                 },
             )
         })
         .collect();
-    // ⭐ A BARRA escura, atravessada — o CONTROLO da cena: ela não emite, logo não pode brilhar.
+    // ⭐ A BARRA escura, atravessada — o CONTROLO da cena.
+    //
+    // ⛔⛔ **A razão é ela ser ESCURA, e não «não emitir», e foi uma MUTAÇÃO que o corrigiu:** baixar
+    // a emissão das três luzes `100×` **não mata o halo delas**, porque o céu de estúdio já põe uma
+    // peça clara acima do limiar. ⇒ *o que brilha nesta cena é o que é CLARO*, e emitir é uma
+    // maneira de o ser. A 1.ª redacção do roteiro dizia a razão errada sobre o comportamento certo.
+    //
+    // ⚠️ Ela deita-se no MESMO eixo das bolas, senão ela recua na diagonal e deixa de as atravessar.
+    // ⛔ Uma caixa não sabe rodar sozinha ⇒ a rotação vem da guinada da câmera, pela mesma porta.
     nodes.push(leaf(
         Primitive::Box {
-            half: [1.05, 0.06, 0.06],
-            round: 0.03,
+            half: [0.80, 0.045, 0.045],
+            round: 0.02,
             chamfer: 0.0,
         },
         Xform {
-            translation: [0.0, -0.26, 0.0],
+            translation: [0.0, -0.22, 0.0],
+            // ⚠️ `atan2(-z, x)` do vector direita: é o ângulo em torno de `y` que põe o eixo longo
+            // da caixa sobre ele. *Escrever `0,72` à mão seria a segunda cópia da guinada.*
+            rotation: ph2d_field::xform::quat_from_euler([
+                0.0,
+                (-direita[2]).atan2(direita[0]),
+                0.0,
+            ]),
             ..Xform::IDENTITY
         },
     ));

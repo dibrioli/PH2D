@@ -177,6 +177,15 @@ pub fn materiais_da_cena(n: u32) -> Option<Vec<ph2d_field_ecs::FieldMaterial>> {
     // controlo — ela não emite, logo não pode brilhar. ⚠️ O `Vec` é mais curto do que as folhas
     // **de propósito** (a barra fica no material de omissão), que é a lei escrita no doc acima.
     if n == 36 {
+        // ⛔⛔ **A BARRA LEVA MATERIAL PRÓPRIO, e a FOTO é que o exigiu:** sem ele ela herdava a
+        // omissão — o MESMO rosa das bolas —, e o roteiro chama-lhe *«a barra escura»*. *Uma cena
+        // que diz uma coisa e mostra outra é a espécie que o `CLAUDE.md` §5.0 chama de pior que uma
+        // cena ausente*, e nenhum gate desta crate a via: a suíte lê números e a foto lê a tela.
+        let barra = ph2d_field_ecs::FieldMaterial {
+            base_color: [0.055, 0.055, 0.065],
+            specular_weight: 0.0,
+            ..ph2d_field_ecs::FieldMaterial::default()
+        };
         return Some(
             edge::BRILHOS_DA_CENA
                 .iter()
@@ -190,6 +199,7 @@ pub fn materiais_da_cena(n: u32) -> Option<Vec<ph2d_field_ecs::FieldMaterial>> {
                     specular_weight: 0.0,
                     ..ph2d_field_ecs::FieldMaterial::default()
                 })
+                .chain(std::iter::once(barra))
                 .collect(),
         );
     }

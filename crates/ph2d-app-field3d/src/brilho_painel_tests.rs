@@ -229,3 +229,224 @@ fn a_cena_apende_as_fileiras_e_o_dreno_ouve_antes_do_generico() {
          onze fileiras ficam mortas sob o dedo"
     );
 }
+
+/// ⭐⭐⭐ **A CENA `=36` CONTÉM O FENÓMENO** — as luzes derramam e a BARRA não, medido em píxeis.
+///
+/// ⛔⛔ **É a lei que esta casa exige de toda cena de smoke**, e ela não é um detalhe: *uma cena que
+/// ensina o CONTRÁRIO do que acontece é pior que uma cena ausente, porque a ausente não é
+/// acreditada* (`CLAUDE.md` §5.0). O roteiro promete três coisas e este gate mede as três:
+///
+/// 1. com o brilho LIGADO as bolas ganham halo **fora** delas;
+/// 2. a barra **não** ganha halo próprio — ela não emite, e é o CONTROLO da cena;
+/// 3. com o brilho DESLIGADO a imagem é a de sempre, **ao bit**.
+///
+/// ⚠️ **A metade (2) é a que faz as outras duas valerem alguma coisa:** sem ela, «tudo acendeu»
+/// passa — e «tudo acendeu» é um passe que ignora o limiar.
+#[test]
+fn a_cena_do_brilho_contem_o_fenomeno() {
+    use crate::render_light::{StudioSky, lamps};
+    let (w, h) = (280u32, 200u32);
+    let cam = ph2d_field_render::Orbit::default();
+    let doc = crate::smoke::scenes::scene(36);
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let g = ph2d_field_render::trace(&doc, &reg, &cam, w, h);
+
+    // ⭐⭐⭐ **OS MATERIAIS ENTRAM PELO MUNDO, e a 1.ª redacção passava-os numa lista com
+    // `owners: None` — o que faz TODO pixel usar `all[0]`.**
+    //
+    // ⛔ O controlo da barra leu `12 475` contra `12 475`: *acender a barra não mudava um byte,
+    // porque a barra estava a ser pintada com o material da primeira bola*. Um gate assim mede uma
+    // cena com um material só, que não é a cena do app — e ele teria ficado VERDE sobre a metade
+    // que interessa se eu tivesse escrito a barra ao contrário.
+    //
+    // ⇒ a tabela é a do PRODUTO ([`crate::materials::Table::build`]), construída do MUNDO como o
+    // quadro a constrói. *É ela que sabe qual folha usa qual material.*
+    let rig = ph2d_light::LightRig::default();
+    let lam = lamps(&rig);
+    let light = ph2d_field_render::Lighting {
+        lamps: &lam,
+        points: &[],
+        sky: &StudioSky,
+        shadows: None,
+    };
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let root = ph2d_field_ecs::spawn_doc(sim.world_mut(), &doc, "peça");
+    // ⚠️ As folhas são os FILHOS da raiz — a mesma porta que o `materials_tests` usa, e a mesma
+    // ordem que o [`crate::smoke::scenes::materiais_da_cena`] declara por escrito.
+    let folhas: Vec<bevy_ecs::entity::Entity> = sim
+        .world()
+        .get::<bevy_ecs::hierarchy::Children>(root)
+        .expect("a raiz tem filhos")
+        .iter()
+        .copied()
+        .collect();
+    let seed = crate::smoke::scenes::materiais_da_cena(36).expect("a cena 36 pede material");
+    assert_eq!(
+        folhas.len(),
+        seed.len(),
+        "a cena semeia {} materiais para {} folhas — a ordem do `materiais_da_cena` é a das FOLHAS",
+        seed.len(),
+        folhas.len()
+    );
+    let semeia = |sim: &mut ph2d_ecs::SimWorld, mats: &[ph2d_field_ecs::FieldMaterial]| {
+        for (e, m) in folhas.iter().zip(mats) {
+            sim.world_mut().entity_mut(*e).insert(*m);
+        }
+    };
+    semeia(&mut sim, &seed);
+    let tabela = crate::materials::Table::build(sim.world(), root, cam.half_extent, w as f32);
+    const FUNDO: [u8; 4] = [0, 0, 0, 255];
+    let pinta_com = |t: &crate::materials::Table, b: ph2d_field_render::Bloom| {
+        ph2d_field_render::shade_render(
+            &g,
+            &cam,
+            &t.surfaces_for(),
+            &light,
+            &ph2d_field_render::Presentation {
+                bloom: b,
+                ..ph2d_field_render::Presentation::of(crate::shading::OPENING_LOOK)
+            },
+            FUNDO,
+        )
+    };
+    let pinta = |b: ph2d_field_render::Bloom| pinta_com(&tabela, b);
+    let sem = pinta(ph2d_field_render::Bloom::default());
+    let com_brilho = pinta(ph2d_field_render::Bloom {
+        enabled: true,
+        ..ph2d_field_render::Bloom::default()
+    });
+
+    // (3) A omissão é a imagem de sempre — e ela vem primeiro porque protege tudo o que já shipou.
+    let base = pinta(ph2d_field_render::Bloom::default());
+    assert_eq!(
+        sem, base,
+        "a cena não é determinista, e o resto não vale nada"
+    );
+
+    // ⭐⭐⭐ **(1) e (2) medem-se com um CONTROLO, e a 1.ª redacção mediu sem ele.**
+    //
+    // ⛔ Ela contava os píxeis acesos na metade de BAIXO do ecrã e exigia que fossem poucos —
+    // e leu **`49,7 %`** sobre uma cena CERTA. *A cadeia de níveis espalha o halo das bolas por
+    // dezenas de píxeis, logo ele atravessa a linha média por construção*: a régua media a
+    // GEOMETRIA da janela, não a lei.
+    //
+    // ⇒ a régua é **relativa**: a MESMA cena com a barra ACESA tem de acender muito mais em baixo.
+    // *É o controlo que transforma «acendeu pouco» numa afirmação sobre o que a barra emite.*
+    let com_barra_acesa = {
+        let mut m = seed.clone();
+        let ultimo = m.len() - 1;
+        m[ultimo] = ph2d_field_ecs::FieldMaterial {
+            emission: 8.0,
+            emission_color: [1.0, 0.92, 0.80],
+            specular_weight: 0.0,
+            ..ph2d_field_ecs::FieldMaterial::default()
+        };
+        semeia(&mut sim, &m);
+        let t2 = crate::materials::Table::build(sim.world(), root, cam.half_extent, w as f32);
+        pinta_com(
+            &t2,
+            ph2d_field_render::Bloom {
+                enabled: true,
+                ..ph2d_field_render::Bloom::default()
+            },
+        )
+    };
+
+    let meio = (h / 2) as usize;
+    let conta = |img: &[u8], de: usize, ate: usize| {
+        let mut n = 0usize;
+        for y in de..ate {
+            for x in 0..w as usize {
+                let i = y * w as usize + x;
+                if !g.hit[i] && sem[i * 4..i * 4 + 3] != img[i * 4..i * 4 + 3] {
+                    n += 1;
+                }
+            }
+        }
+        n
+    };
+    let em_cima = conta(&com_brilho, 0, meio);
+    let em_baixo = conta(&com_brilho, meio, h as usize);
+    let em_baixo_acesa = conta(&com_barra_acesa, meio, h as usize);
+
+    // (1) As luzes derramam.
+    assert!(
+        em_cima > 300,
+        "as luzes não derramam: só {em_cima} píxeis de fundo acenderam junto às bolas"
+    );
+    // ⭐⭐⭐ **(1-bis) A BARRA É ESCURA, e a régua pergunta POR FOLHA** — medido no caminho do RENDER.
+    //
+    // ⚠️⚠️ **A FOTO não podia dizer isto:** a cena abre em **Matcap**, e o matcap ignora a cor do
+    // material (ele é a luz do olho). A primeira foto mostrou a barra do mesmo rosa das bolas e eu
+    // quase a li como defeito — *o que a foto mostra ali é o MODO, não o material*.
+    //
+    // ⛔⛔ **E a 1.ª redacção deste gate media uma BANDA DO ECRÃ** (o quarto de baixo) e ficou VERDE
+    // sobre uma mutação que pintava a barra de rosa: aquela banda cai quase toda ABAIXO da barra, e
+    // a média dela é feita de meia dúzia de píxeis. ⇒ quem diz de quem é cada pixel é o
+    // [`ph2d_field_eval::owners::Owners`] que a tabela do produto já construiu — *a mesma porta que
+    // o quadro usa para saber que material pintar*.
+    let donos = tabela.owners.as_ref().expect("quatro folhas pedem um dono");
+    let barra_idx = folhas.len() - 1;
+    let (mut luz_bolas, mut n_bolas) = (0u64, 0u64);
+    let (mut luz_barra, mut n_barra) = (0u64, 0u64);
+    for i in 0..(w * h) as usize {
+        if !g.hit[i] {
+            continue;
+        }
+        let soma = u64::from(sem[i * 4]) + u64::from(sem[i * 4 + 1]) + u64::from(sem[i * 4 + 2]);
+        match donos.at(g.point[i]) {
+            Some(k) if k == barra_idx => {
+                luz_barra += soma;
+                n_barra += 3;
+            }
+            Some(_) => {
+                luz_bolas += soma;
+                n_bolas += 3;
+            }
+            None => {}
+        }
+    }
+    assert!(
+        n_barra > 200 && n_bolas > 200,
+        "a régua não achou as duas populações ({n_barra} píxeis de barra, {n_bolas} de bolas) — \
+         ela partiu-se e mediria o nada"
+    );
+    #[allow(clippy::cast_precision_loss)]
+    let (mb, mbo) = (
+        luz_barra as f64 / n_barra as f64,
+        luz_bolas as f64 / n_bolas as f64,
+    );
+    assert!(
+        mb < mbo * 0.5,
+        "o roteiro chama-lhe «a barra ESCURA» e ela lê {mb:.0} contra {mbo:.0} das bolas — \
+         uma cena que diz uma coisa e mostra outra é pior que uma cena ausente"
+    );
+
+    // ⭐⭐⭐ **(1-ter) A ESCADA DAS LUZES separa-as, e isso é o que faz o limiar ENSINAR.**
+    //
+    // ⛔ Uma mutação que baixasse as três forças NÃO mata o halo — e isso é um facto sobre a cena
+    // que vale a pena guardar: **o céu de estúdio já põe uma peça clara acima do limiar**, logo o
+    // que faz uma coisa brilhar aqui é ser CLARA, e emitir é uma maneira de o ser. *A barra não
+    // brilha por ser escura, e não por «não emitir».*
+    //
+    // ⇒ o que esta cena tem de garantir é a ESCADA: com passos de menos de `4×` o limiar apaga-as
+    // todas ao mesmo tempo e o roteiro («apagam-se UMA DE CADA VEZ») passa a mentir.
+    for par in crate::smoke::scenes::edge::BRILHOS_DA_CENA.windows(2) {
+        assert!(
+            par[1] >= par[0] * 3.5,
+            "a escada das luzes é {par:?} — com passos curtos o limiar apaga-as todas de uma vez"
+        );
+    }
+    assert!(
+        crate::smoke::scenes::edge::BRILHOS_DA_CENA[0]
+            > ph2d_field_render::Bloom::default().threshold,
+        "a luz mais fraca tem de começar ACIMA do limiar de fábrica, senão ela nunca acende"
+    );
+
+    // (2) E a BARRA não é quem acende a metade de baixo — o controlo di-lo.
+    assert!(
+        em_baixo_acesa > em_baixo * 3 / 2,
+        "o controlo não separa as duas cenas: a barra ESCURA acendeu {em_baixo} e a ACESA \
+         {em_baixo_acesa} — se a barra já brilhasse, os dois números seriam parecidos"
+    );
+}

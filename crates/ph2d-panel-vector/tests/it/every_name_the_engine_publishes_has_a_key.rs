@@ -89,7 +89,9 @@ fn every_name_the_engine_publishes_has_a_key() {
         modos.extend(s.modes.iter().copied());
     }
     let misturas: Vec<&'static str> = (0..ph2d_fx_op::FxOp::BLEND_KINDS)
-        .map(|m| ph2d_blend_mode::BlendMode::from_u8(m).name())
+        // ⚠️ Desde 2026-09-19 o motor publica a CHAVE: o que este gate mede é o texto de
+        //    CHEGADA dela, que é a mesma palavra que ele media antes.
+        .map(|m| ph2d_i18n::tr(ph2d_blend_mode::BlendMode::from_u8(m).label_key()))
         .collect();
     // ⛔ Controlo de vacuidade: as tabelas medidas em 2026-09-16, menos folga para encolher.
     assert!(

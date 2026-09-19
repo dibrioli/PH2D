@@ -252,14 +252,10 @@ impl PaintEntry {
         }
     }
 
-    /// O nome que o painel mostra nesta linha.
-    #[must_use]
-    pub fn label(&self) -> &'static str {
-        match self.kind {
-            PaintKind::Fill(_) => "Fill",
-            PaintKind::Stroke(_) => "Stroke",
-        }
-    }
+    // ⛔⛔ **Aqui viveu um `label()` ORFAO, apagado em 2026-09-19.** O doc dizia *«o nome que o
+    // painel mostra nesta linha»* — e o painel de vector escreve, no `state_appearance.rs`, que o
+    // que ele tem e' uma VISTA propria e NAO o `PaintEntry`. A sonda foi o compilador: renomeada a
+    // funcao, a workspace inteira compilou sem um vermelho.
 }
 
 /// O que uma camada pinta, **emprestado** — o que a porta [`VecPath::paint_stack`] devolve.

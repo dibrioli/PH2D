@@ -97,7 +97,7 @@ impl BodyCtx<'_> {
         // paralela aqui nasceria incompleta no dia do quinto — e o chip que falta é invisível.
         let kinds: Vec<(ph2d_a11y::NodeId, &str, bool)> = SymmetryKind::ALL
             .iter()
-            .map(|k| (symmetry_kind_id(*k), k.label(), *k == sym.kind))
+            .map(|k| (symmetry_kind_id(*k), tr(k.label_key()), *k == sym.kind))
             .collect();
         y = self.segmented(tr("panel.vector.symmetry.axis"), &kinds, y);
 

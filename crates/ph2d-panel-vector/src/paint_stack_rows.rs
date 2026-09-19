@@ -210,7 +210,7 @@ impl BodyCtx<'_> {
             vec![DropdownOption::new(
                 crate::ids::VECTOR_PAINT_BLEND,
                 (),
-                atual.name(),
+                tr(atual.label_key()),
             )],
         )
         .selected(())
@@ -282,7 +282,9 @@ pub(crate) fn paint_layer_blend_popover(
     let options: Vec<DropdownOption<usize>> = modos
         .iter()
         .enumerate()
-        .map(|(i, m)| DropdownOption::new(ids::vector_paint_blend_option_id(i), i, m.name()))
+        .map(|(i, m)| {
+            DropdownOption::new(ids::vector_paint_blend_option_id(i), i, tr(m.label_key()))
+        })
         .collect();
     let dd = Dropdown::new(crate::ids::VECTOR_PAINT_BLEND, "", options)
         .selected(sel)

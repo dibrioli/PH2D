@@ -73,20 +73,12 @@ impl ReshapeKind {
         ReshapeKind::Randomize,
     ];
 
-    /// O rótulo do painel (inglês — a UI do app é inglês, sempre).
-    #[must_use]
-    pub fn label(self) -> &'static str {
-        match self {
-            ReshapeKind::Smooth => "Smooth",
-            ReshapeKind::Push => "Push",
-            ReshapeKind::Grab => "Grab",
-            ReshapeKind::Pinch => "Pinch",
-            ReshapeKind::Twist => "Twist",
-            ReshapeKind::Thickness => "Thickness",
-            ReshapeKind::Strength => "Strength",
-            ReshapeKind::Randomize => "Randomize",
-        }
-    }
+    // ⛔⛔ **Aqui viveu um ``ReshapeKind::label()`` ORFAO, apagado em 2026-09-19.** O doc dizia *«o rotulo do painel»* e a seccao do painel do Flip nao o lia.
+    //
+    // ⚠️ A sonda foi o COMPILADOR: renomeada a funcao, a workspace inteira compilou — o unico
+    // vermelho veio de NENHUM ficheiro — nem um teste. ⇒ e' a terceira especie do `CLAUDE.md` §5.0 (um orfao
+    // le'-se igual a um morto), e traduzi-lo poria uma SEGUNDA palavra por variante na tabela de
+    // strings, ao lado da que quem pinta ja' usa.
 
     /// O pincel tem direção (o invert, via Ctrl, faz o OPOSTO)?
     ///

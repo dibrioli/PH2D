@@ -74,15 +74,27 @@ impl SymmetryKind {
         }
     }
 
-    /// O rótulo que o painel mostra. Mora aqui, e não numa tabela do painel, porque uma segunda
-    /// lista divergiria da primeira assim que alguém acrescentasse um tipo.
+    /// ⭐ **A CHAVE do rótulo que o painel mostra**, resolvida por quem pinta (`ph2d_i18n::tr`).
+    ///
+    /// ⚠️ **O doc que aqui esteve dizia que a palavra morava aqui *«porque uma segunda lista
+    /// divergiria da primeira»*** — e a lei continua a ser essa, só que a lista única deste app é a
+    /// TABELA DE STRINGS desde o HR-15. O que muda é o tipo do que se publica: uma chave, não uma
+    /// palavra.
+    ///
+    /// ⛔ Este motor **não** ganha a `ph2d-i18n` como dependência: quem precisa da palavra é o
+    /// pintor (a fileira de simetria do painel de vector), e ele já fala a tabela.
+    ///
+    /// ⛔⛔ **E ele quase foi apagado como ÓRFÃO por uma sonda inválida** — ver o cabeçalho de
+    /// `ph2d-i18n/src/blend_modes.rs`: um `cargo check` pára de agendar unidades no primeiro erro,
+    /// logo uma renomeação que parta uma crate a montante deixa os painéis a jusante POR VERIFICAR,
+    /// e o relatório lê-se igual a *«sem chamadores»*.
     #[must_use]
-    pub fn label(self) -> &'static str {
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::MirrorX => "Mirror X",
-            Self::MirrorY => "Mirror Y",
-            Self::Custom => "Custom",
-            Self::Radial => "Radial",
+            Self::MirrorX => "symmetry.kind.mirror_x",
+            Self::MirrorY => "symmetry.kind.mirror_y",
+            Self::Custom => "symmetry.kind.custom",
+            Self::Radial => "symmetry.kind.radial",
         }
     }
 

@@ -113,7 +113,9 @@ pub fn build(scene: &mut ph2d_vec_scene::VecScene) {
         FILEIRA.len(),
         FILEIRA
             .iter()
-            .map(|m| m.name())
+            // ⚠️ A linha do roteiro é do TERMINAL e é do dono; ainda assim ela lê a mesma
+            //    palavra que o painel pinta, e ela vem da tabela desde 2026-09-19.
+            .map(|m| ph2d_i18n::tr(m.label_key()))
             .collect::<Vec<_>>()
             .join(", ")
     );

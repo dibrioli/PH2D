@@ -9,6 +9,13 @@
 /// A tradução de uma chave `panel.vector.engine.*`, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
+        // ⭐ **A fileira de SIMETRIA** — as chaves que o `ph2d_symmetry::SymmetryKind::label_key`
+        // publica (2026-09-19). ⚠️ Elas derivam da VARIANTE: um `symmetry.kind.custom` casado por
+        // PALAVRA apanharia qualquer outro *Custom* do app.
+        "symmetry.kind.mirror_x" => "Mirror X",
+        "symmetry.kind.mirror_y" => "Mirror Y",
+        "symmetry.kind.custom" => "Custom",
+        "symmetry.kind.radial" => "Radial",
         "panel.vector.engine.efeito.arc" => "Arc",
         "panel.vector.engine.efeito.arc_lower" => "Arc Lower",
         "panel.vector.engine.efeito.arc_upper" => "Arc Upper",

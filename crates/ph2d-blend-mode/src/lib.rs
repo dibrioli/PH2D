@@ -137,33 +137,44 @@ impl BlendMode {
         self as u8
     }
 
-    /// Display name for the layer panel + blend-mode popover
-    /// (`02_layers.md` §2.2 wording). UI string — English.
+    /// ⭐ **A CHAVE do nome que o painel mostra**, resolvida por quem pinta (`ph2d_i18n::tr`).
+    ///
+    /// ⛔⛔ Aqui esteve um `name()` que devolvia a palavra crua, pintado por **TRES** paineis
+    /// (camadas do Painter, camadas do Flip, pilha de aparencia do Vector) e por regua nenhuma
+    /// visto: esta crate e' um MOTOR, e nem o censo lexical nem o de porta chegam a ela.
+    ///
+    /// ⚠️ **Ela deriva da VARIANTE, nunca da palavra inglesa.** Uma ponte que casasse por palavra
+    /// daria ao `Color` desta lista a palavra de qualquer outro *Color* do app — a colisao que o
+    /// painel de Vector ja' teve de partir em cinco familias.
+    ///
+    /// ⛔ E este motor **nao** ganha a `ph2d-i18n` como dependencia: quem precisa da palavra e' o
+    /// pintor, e ele ja' fala a tabela. Um `name()` que fosse `tr_em(Ingles, …)` e' indistinguivel
+    /// do caminho certo num processo em ingles.
     #[must_use]
-    pub fn name(self) -> &'static str {
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::Normal => "Normal",
-            Self::Multiply => "Multiply",
-            Self::Darken => "Darken",
-            Self::ColorBurn => "Color Burn",
-            Self::LinearBurn => "Linear Burn",
-            Self::Lighten => "Lighten",
-            Self::Screen => "Screen",
-            Self::ColorDodge => "Color Dodge",
-            Self::Add => "Add",
-            Self::Overlay => "Overlay",
-            Self::SoftLight => "Soft Light",
-            Self::HardLight => "Hard Light",
-            Self::VividLight => "Vivid Light",
-            Self::LinearLight => "Linear Light",
-            Self::Difference => "Difference",
-            Self::Exclusion => "Exclusion",
-            Self::Hue => "Hue",
-            Self::Saturation => "Saturation",
-            Self::Color => "Color",
-            Self::Luminosity => "Luminosity",
-            Self::Behind => "Behind",
-            Self::Clear => "Clear",
+            Self::Normal => "blend.mode.normal",
+            Self::Multiply => "blend.mode.multiply",
+            Self::Darken => "blend.mode.darken",
+            Self::ColorBurn => "blend.mode.color_burn",
+            Self::LinearBurn => "blend.mode.linear_burn",
+            Self::Lighten => "blend.mode.lighten",
+            Self::Screen => "blend.mode.screen",
+            Self::ColorDodge => "blend.mode.color_dodge",
+            Self::Add => "blend.mode.add",
+            Self::Overlay => "blend.mode.overlay",
+            Self::SoftLight => "blend.mode.soft_light",
+            Self::HardLight => "blend.mode.hard_light",
+            Self::VividLight => "blend.mode.vivid_light",
+            Self::LinearLight => "blend.mode.linear_light",
+            Self::Difference => "blend.mode.difference",
+            Self::Exclusion => "blend.mode.exclusion",
+            Self::Hue => "blend.mode.hue",
+            Self::Saturation => "blend.mode.saturation",
+            Self::Color => "blend.mode.color",
+            Self::Luminosity => "blend.mode.luminosity",
+            Self::Behind => "blend.mode.behind",
+            Self::Clear => "blend.mode.clear",
         }
     }
 }
@@ -451,17 +462,6 @@ mod tests {
     fn from_u8_out_of_range_falls_back_to_normal() {
         assert_eq!(BlendMode::from_u8(MAX_BLEND_MODES), BlendMode::Normal);
         assert_eq!(BlendMode::from_u8(255), BlendMode::Normal);
-    }
-
-    #[test]
-    fn every_mode_has_a_distinct_nonempty_name() {
-        let mut seen = std::collections::BTreeSet::new();
-        for v in 0..MAX_BLEND_MODES {
-            let n = BlendMode::from_u8(v).name();
-            assert!(!n.is_empty(), "mode {v} has empty name");
-            assert!(seen.insert(n), "duplicate blend name {n:?}");
-        }
-        assert_eq!(seen.len(), MAX_BLEND_MODES as usize);
     }
 
     #[test]

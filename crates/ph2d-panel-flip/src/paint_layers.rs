@@ -58,7 +58,7 @@ fn blend_options(layer_u64: u64) -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 ids::flip_layer_blend_option_id(layer_u64, m),
                 m,
-                BlendMode::from_u8(m).name(),
+                ph2d_i18n::tr(BlendMode::from_u8(m).label_key()),
             )
         })
         .collect()

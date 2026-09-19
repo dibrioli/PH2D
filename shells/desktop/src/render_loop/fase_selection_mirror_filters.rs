@@ -47,7 +47,9 @@ impl crate::App {
         // decidida, e oferecê-las seria a opção que despacha e mente.
         ph2d_panel_vector::set_filter_blend_names(
             (0..ph2d_ecs::FxOp::BLEND_KINDS)
-                .map(|m| ph2d_painter_effects::BlendMode::from_u8(m).name())
+                // ⚠️ `tr(label_key())` desde 2026-09-19: o motor publica a CHAVE, e quem resolve é
+                //    quem já fala a tabela — aqui, a shell.
+                .map(|m| ph2d_i18n::tr(ph2d_painter_effects::BlendMode::from_u8(m).label_key()))
                 .collect(),
         );
         ph2d_panel_vector::set_current_filters(

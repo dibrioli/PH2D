@@ -207,10 +207,7 @@ fn the_priced_rows_still_say_something_true_about_each_target() {
         .iter()
         .map(|p| {
             let conformed = ph2d_audio_edit::conform(&data, p.format());
-            (
-                p.id,
-                cost(&conformed, p.codec, p.quality).expect("priced"),
-            )
+            (p.id, cost(&conformed, p.codec, p.quality).expect("priced"))
         })
         .collect();
     assert_eq!(priced.len(), 3, "a target stopped pricing");

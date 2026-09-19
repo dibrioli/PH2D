@@ -75,34 +75,11 @@ const POR_PAGAR: &[(&str, usize, &str)] = &[
 selector do editor de curvas da timeline. Sao a familia mais barata de migrar e a mais visivel.",
     ),
     (
-        "ph2d-blend-mode",
-        2,
-        "`Behind` e `Clear`, pintados pelo selector de mistura. ⚠️ Sao DOIS de dezoito: os outros \
-dezasseis ja' sao texto de chegada de uma chave da tabela, logo a ponte do gate os reconhece — \
-*uma familia migrada pela metade le'-se como uma familia limpa com dois literais soltos*.",
-    ),
-    (
         "ph2d-color",
         17,
         "os espacos da rampa (`RGB`/`HSV`/`HSL`), as interpolacoes, os sentidos do matiz, os quatro \
 gradientes de fabrica e os quatro formatos de paleta — todos pintados pelo editor de rampa e pelo \
 dialogo de paleta.",
-    ),
-    (
-        "ph2d-flip-reshape",
-        5,
-        "os dois verbos de remodelar e os tres knobs deles, pintados pela seccao do painel do Flip.",
-    ),
-    (
-        "ph2d-grid",
-        4,
-        "as quatro leis de encaixe (`Center`..`Center + Intersection + Corners`), pintadas pelo \
-painel de grelha.",
-    ),
-    (
-        "ph2d-host",
-        1,
-        "`Pixel Art`, o nome do filtro de amostragem, pintado pelo Inspector da sprite.",
     ),
     (
         "ph2d-input",
@@ -112,20 +89,9 @@ e `L1 / LB` nomeiam o BOTAO FISICO de duas familias de comando — a chave exist
 barra, nao para traduzir a letra.",
     ),
     (
-        "ph2d-symmetry",
-        3,
-        "`Mirror X`/`Mirror Y`/`Custom`, pintados pela fileira de simetria do painel de vector.",
-    ),
-    (
         "ph2d-timeline",
         8,
         "as oito recusas de aninhar e de pousar uma chave, pintadas como aviso na timeline.",
-    ),
-    (
-        "ph2d-vec-scene",
-        2,
-        "`Fill` e `Stroke`, os dois papeis de uma camada de aparencia, pintados pela pilha do \
-painel de vector.",
     ),
 ];
 

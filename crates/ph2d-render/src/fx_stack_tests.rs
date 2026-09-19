@@ -239,8 +239,12 @@ fn the_fx_offers_the_colour_laws_and_not_the_coverage_ones() {
         "o FX deixa de fora exactamente as duas leis de COBERTURA"
     );
     // …e elas são estas duas, nomeadas — não "as duas últimas", que é o que apodrece.
-    for (code, name) in [(20u8, "Behind"), (21u8, "Clear")] {
-        assert_eq!(BlendMode::from_u8(code).name(), name);
+    // ⚠️ Desde 2026-09-19 o motor publica a CHAVE e não a palavra, logo o par nomeado aqui é
+    //    `(código, chave)`. ⛔ Resolver a chave exigiria a `ph2d-i18n` nesta crate de RENDER, e o
+    //    que este controlo afirma não é a palavra: é que estes dois códigos são estas duas
+    //    modalidades e que elas ficam FORA do alcance do FX.
+    for (code, name) in [(20u8, "blend.mode.behind"), (21u8, "blend.mode.clear")] {
+        assert_eq!(BlendMode::from_u8(code).label_key(), name);
         assert!(
             code >= ph2d_ecs::FxOp::BLEND_KINDS,
             "{name} tem de ficar fora do alcance do FX"

@@ -51,6 +51,8 @@ mod audio;
 mod audio_engines;
 /// As strings do RACK do Audio Editor (efeitos, parâmetros, presets, unidades).
 mod audio_fx;
+/// ⭐⭐ **Os nomes das MISTURAS** que o motor `ph2d-blend-mode` publica — pintados por três painéis.
+mod blend_modes;
 /// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).
 mod chrome_menus;
 /// As strings do RESTO da moldura (barra do topo, HUD, diálogos, seletor de cor, cartão de instância).
@@ -586,6 +588,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| chrome_panes::tr(k))
             .or_else(|| audio_fx::tr(k))
             .or_else(|| audio_engines::tr(k))
+            .or_else(|| blend_modes::tr(k))
             .or_else(|| vector_engine::tr(k))
             .or_else(|| shell::tr(k))
             .or_else(|| shell_media::tr(k))

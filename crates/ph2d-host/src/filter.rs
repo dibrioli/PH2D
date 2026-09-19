@@ -41,13 +41,12 @@ pub enum ImageFilterMode {
 }
 
 impl ImageFilterMode {
-    /// Stable string label for menu rows / telemetry.
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::PixelArt => "Pixel Art",
-            Self::Smooth => "Smooth",
-        }
-    }
+    // ⛔⛔ **Aqui viveu um ``ImageFilterMode::label()`` ORFAO, apagado em 2026-09-19.** O doc dizia *«stable string label for menu rows / telemetry»* e nenhum menu o lia.
+    //
+    // ⚠️ A sonda foi o COMPILADOR: renomeada a funcao, a workspace inteira compilou — o unico
+    // vermelho veio de um teste desta crate. ⇒ e' a terceira especie do `CLAUDE.md` §5.0 (um orfao
+    // le'-se igual a um morto), e traduzi-lo poria uma SEGUNDA palavra por variante na tabela de
+    // strings, ao lado da que quem pinta ja' usa.
 }
 
 #[cfg(test)]
@@ -60,15 +59,5 @@ mod tests {
         // canvas sampler and the Settings menu checkmark agree on
         // first paint (Enio 2026-05-25 fix).
         assert_eq!(ImageFilterMode::default(), ImageFilterMode::Smooth);
-    }
-
-    #[test]
-    fn labels_are_distinct_and_stable() {
-        assert_eq!(ImageFilterMode::PixelArt.label(), "Pixel Art");
-        assert_eq!(ImageFilterMode::Smooth.label(), "Smooth");
-        assert_ne!(
-            ImageFilterMode::PixelArt.label(),
-            ImageFilterMode::Smooth.label()
-        );
     }
 }

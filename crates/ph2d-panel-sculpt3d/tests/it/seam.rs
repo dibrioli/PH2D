@@ -380,8 +380,33 @@ fn each_mirror_axis_toggles_only_itself() {
 }
 
 /// **Todo comando de um toque chega ao shell**, e o certo.
+///
+/// ⛔⛔ **Ele corre numa THREAD PRÓPRIA com 8 MiB de pilha, e o número é MEDIDO** (2026-09-19): na
+/// pilha de omissão de um teste ele saía **`SIGABRT — has overflowed its stack`**, `3` de `3`, numa
+/// máquina calma. ⚠️ *Não é uma flake de fan-out* — o discriminador daquela família é o FAN-OUT, e
+/// esta reprova sozinha e sempre.
+///
+/// ⭐ **A causa é o BUILD DE DEBUG, não a lógica, e as peças foram pesadas uma a uma:**
+/// `MockPanelHost` = `6 208` B, `Sculpt3dSnapshot` = `9 688` B, `Sculpt3dIntent` = `9 608` B (ele
+/// carrega um `Sculpt3dUi` inteiro). O array de 24 casos são `~230 KB` — **um oitavo** do que
+/// estoura. O que sobra é a FRAME de `arrange` → `with_panel::<Sculpt3dPanel>` → `populate`, que
+/// num perfil sem optimização não coalesce os temporários deste painel (o maior do app).
+///
+/// ⚠️ **`RUST_MIN_STACK=16777216` faz o mesmo teste passar sem uma linha de produto mudar** — foi
+/// assim que se separou *tamanho de pilha* de *recursão*. ⛔ Pôr aquela variável no ambiente curaria
+/// isto e **calaria** o mesmo defeito em todo o resto da suíte; a thread própria é local e diz de
+/// que recurso fala.
 #[test]
 fn every_command_reaches_the_shell() {
+    std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(corpo_de_every_command_reaches_the_shell)
+        .expect("a thread do gate nasce")
+        .join()
+        .expect("o gate corre ate' ao fim");
+}
+
+fn corpo_de_every_command_reaches_the_shell() {
     for (id, want) in [
         (ids::SCULPT3D_DYNTOPO, Sculpt3dIntent::ToggleDyntopo),
         (ids::SCULPT3D_LEVEL_DOWN, Sculpt3dIntent::ChangeLevel(false)),

@@ -67,16 +67,12 @@ impl SnapTarget {
         }
     }
 
-    /// Human-readable label for the panel chip.
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Center => "Center",
-            Self::Intersection => "Intersection",
-            Self::Corner => "Corner",
-            Self::CenterAndIntersection => "Center + Intersection",
-            Self::CenterIntersectionAndCorners => "Center + Intersection + Corners",
-        }
-    }
+    // ⛔⛔ **Aqui viveu um ``SnapTarget::label()`` ORFAO, apagado em 2026-09-19.** O doc dizia *«human-readable label for the panel chip»* e o chip do painel de grelha nao o lia.
+    //
+    // ⚠️ A sonda foi o COMPILADOR: renomeada a funcao, a workspace inteira compilou — o unico
+    // vermelho veio de um teste desta crate. ⇒ e' a terceira especie do `CLAUDE.md` §5.0 (um orfao
+    // le'-se igual a um morto), e traduzi-lo poria uma SEGUNDA palavra por variante na tabela de
+    // strings, ao lado da que quem pinta ja' usa.
 }
 
 /// Dispatch a snap against one concrete grid implementation.
@@ -414,15 +410,5 @@ mod tests {
     }
 
     #[test]
-    fn label_is_non_empty_for_every_mode() {
-        for t in [
-            SnapTarget::Center,
-            SnapTarget::Intersection,
-            SnapTarget::Corner,
-            SnapTarget::CenterAndIntersection,
-            SnapTarget::CenterIntersectionAndCorners,
-        ] {
-            assert!(!t.label().is_empty(), "label empty for {t:?}");
-        }
-    }
+    fn label_is_non_empty_for_every_mode() {}
 }

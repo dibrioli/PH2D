@@ -225,7 +225,7 @@ fn shape_blend_options(i: u8) -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 ph2d_tool_painter::ids::painter_shape_layer_blend_option_id(i, m),
                 m,
-                BlendMode::from_u8(m).name(),
+                ph2d_i18n::tr(BlendMode::from_u8(m).label_key()),
             )
         })
         .collect()
@@ -306,7 +306,7 @@ fn paint_shape_blend_chip(
     paint_text(
         ctx.text_system,
         ctx.scene,
-        BlendMode::from_u8(cur_mode).name(),
+        ph2d_i18n::tr(BlendMode::from_u8(cur_mode).label_key()),
         rect.x + pad,
         rect.y + (rect.h - font) * 0.5,
         font,

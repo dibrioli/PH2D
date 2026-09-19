@@ -38,7 +38,7 @@ use crate::state;
 
 /// O rótulo de um modo, como o artista o lê (a tabela do vocabulário, não uma cópia).
 fn nome(m: ph2d_vec_scene::BlendMode) -> &'static str {
-    m.name()
+    ph2d_i18n::tr(m.label_key())
 }
 
 /// Em que linha da lista OFERECIDA este modo está.

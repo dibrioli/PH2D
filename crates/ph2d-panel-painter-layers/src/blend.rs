@@ -36,7 +36,14 @@ fn fitted_label(ts: &mut TextSystem, mode: u8, font: f32, max_w: f32) -> String 
         let mut cache = c.borrow_mut();
         if (cache.0 - max_w).abs() > 0.5 || cache.1.len() != MAX_BLEND_MODES as usize {
             cache.1 = (0..MAX_BLEND_MODES)
-                .map(|m| fit_one(ts, BlendMode::from_u8(m).name(), font, max_w))
+                .map(|m| {
+                    fit_one(
+                        ts,
+                        ph2d_i18n::tr(BlendMode::from_u8(m).label_key()),
+                        font,
+                        max_w,
+                    )
+                })
                 .collect();
             cache.0 = max_w;
         }
@@ -68,7 +75,7 @@ fn blend_options(layer_u64: u64) -> Vec<DropdownOption<u8>> {
             DropdownOption::new(
                 painter_layer_blend_option_id(layer_u64, m),
                 m,
-                BlendMode::from_u8(m).name(),
+                ph2d_i18n::tr(BlendMode::from_u8(m).label_key()),
             )
         })
         .collect()

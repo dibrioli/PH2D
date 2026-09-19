@@ -525,11 +525,20 @@ fn a_mirrored_hole_is_still_a_hole() {
 /// devolvesse o vizinho leria um documento salvo como outra simetria, em silêncio.
 #[test]
 fn every_kind_round_trips_and_is_named() {
+    // ⚠️ A metade do RÓTULO saiu em 2026-09-19 com o `SymmetryKind::label()`, que era órfão (quem
+    //    pinta a fileira de simetria é o painel de vector, pelas chaves dele). O que fica é a
+    //    metade que o FORMATO GRAVADO exige: a ida e volta do discriminante.
     let mut seen: Vec<&str> = Vec::new();
     for k in SymmetryKind::ALL {
         assert_eq!(SymmetryKind::from_u8(k.to_u8()), *k);
-        assert!(!seen.contains(&k.label()), "rótulo repetido: {}", k.label());
-        seen.push(k.label());
+        // ⚠️ Desde 2026-09-19 o que se publica é a CHAVE e não a palavra; o controlo continua a ser
+        //    o mesmo — duas variantes com a mesma etiqueta seriam dois chips indistinguíveis.
+        assert!(
+            !seen.contains(&k.label_key()),
+            "chave repetida: {}",
+            k.label_key()
+        );
+        seen.push(k.label_key());
     }
     assert_eq!(
         SymmetryKind::from_u8(200),

@@ -66,12 +66,19 @@ pub const PISO_DA_TAREFA: usize = 8;
 
 /// ⭐⭐⭐ **QUÃO GRANDE TEM DE SER O GANHO PREVISTO para a grelha partir em DUAS CAMADAS.**
 ///
-/// ⚠️⚠️ **Ela não é a cerca de um recurso — é a cerca de um MODELO**, e é por isso que existe. O
-/// plano da [`crate::grelha::Grelha::planeia`] escolhe o corte minimizando os candidatos
-/// *previstos* por `9 · ρ · lado²`; esse modelo acerta o ponto de viragem quase à unidade, e
-/// **sobrestima a coluna de UMA camada em `24 %`** (ele conta o bloco `3 × 3` inteiro, e nas bordas
-/// da nuvem ele está cortado). ⇒ sem margem, uma cena a `1,25 ×` de dispersão seria promovida e
-/// pagaria `0,91 ×` — *uma piora de `9 %` escondida num modelo*.
+/// ⚠️⚠️ **Ela aplica-se à CONTAGEM REAL, e a história de porquê é o valor desta cerca.** A 1.ª
+/// redacção aplicava-a ao número que o MODELO prevê (`9 · ρ · lado²`), e ele **sobrestima a coluna
+/// de uma camada em `24 %`** — o bloco `3 × 3` está cortado nas bordas da nuvem. Isso obrigava a
+/// margem a cobrir um erro que ninguém consegue medir na cena de OUTRA pessoa.
+///
+/// ⇒ hoje o modelo só **PROPÕE** qual corte tentar, e o plano **CONSTRÓI as duas hipóteses e
+/// CONTA-AS** (`candidatos_previstos`, três leituras do CSR por peça, uma vez por passe — nunca por
+/// varredura). *Uma decisão que se mede não precisa de acreditar num modelo numa cena que eu nunca
+/// vi*, e o preço é um `constroi` a mais por passe contra as dezenas que ele evita.
+///
+/// ⚠️ A margem FICA porque o candidato não é o único custo: a malha fina tem `k²` vezes mais
+/// CÉLULAS, e zerá-las é `O(células)` por varredura. Sem ela, uma dispersão de `1,25 ×` — que em
+/// candidatos REAIS já perde (`0,91 ×`) — passaria por um empate técnico.
 ///
 /// Medido em [`crate::custo_probe::contagens::onde_o_corte_dos_grandes_paga`] (`1000` discos, passo
 /// `1,8 · R`, candidatos totais de uma varredura):

@@ -2129,13 +2129,17 @@ da grelha já declarava para o lado que dobra.
 ### §28.6 — O que isso vale
 
 Medido na cena do dono (1000 discos, passo `1,8 · R`, **uma** peça a `4 × R`, 64 varreduras;
-mínimo de 15 corridas, `load 7,4`–`8,2` — *limite superior do melhor caso*):
+mínimo de 15 corridas, **`load 3,70`** — máquina calma):
 
 | | uma camada | duas camadas | |
 |---|---|---|---|
 | candidatos por varredura | `159 396` | **`14 122`** | `11,3 ×` |
-| uma varredura, em série | `1 183,9 µs` | **`180,7 µs`** | `6,5 ×` |
-| **`separate` de ponta a ponta, paralelo** | **`15,99 ms`** | **`4,50 ms`** | **`3,55 ×`** |
+| uma varredura, em série | `1 140,7 µs` | **`185,5 µs`** | `6,2 ×` |
+| **`separate` de ponta a ponta, paralelo** | **`10,28 ms`** | **`3,57 ms`** | **`2,88 ×`** |
+
+⚠️ A 1.ª redacção desta tabela dizia `15,99 → 4,50 ms` (`3,55 ×`) e saiu a `load 7,4`–`8,2`. *Os dois
+lados sobem juntos sob carga, e a razão sai inflada* — a linha de `load` ao lado de cada corrida é o
+que permitiu corrigi-la em vez de a acreditar.
 
 ⚠️ **O A/B é entre dois PLANOS da mesma grelha**, nunca entre duas versões do ficheiro — a
 [`Grelha::planeia_numa_camada`] é o plano de antes desta wave, alcançável por uma porta própria, e
@@ -2187,3 +2191,82 @@ grande · `R4` a grande duplicada · `R5` a grande sem parceiros · `R6` o model
   camadas, e o ganho é o que a escada der. A generalização é uma hierarquia de níveis por potência
   de dois, e ela é wave própria — o modelo do plano já está escrito de forma a aceitá-la.
 - ⛔ **A rota da PLACA continua sem o passe** (§20), e continua a ser o tecto real dos *milhares*.
+
+---
+
+## §29 — ⛔⛔⛔ *«fps caiu para 24»* — e eu NÃO consigo reproduzir
+
+Report do dono logo a seguir à §28. O smoke anterior tinha dado `40`–`50` FPS.
+
+### §29.1 — O que eu procurei, e não achei
+
+Três hipóteses, todas medidas com **contagens** (que a carga não estraga) antes de qualquer cura:
+
+1. **As CÉLULAS.** A malha fina tem `k²` vezes mais células que a grossa, e o `constroi` paga
+   `O(células)` **por varredura** (zerar o `inicio`, correr a soma acumulada). Numa cena de bandos —
+   caixa grande, peças juntas — isso podia comer o que os candidatos poupam.
+   ⇒ **Medido e NÃO reproduz** ([`a_caca_a_regressao_das_celulas`]): onde o corte arma, as células
+   vão de `70` para `782` e de `567` para `8 320` — ordens de grandeza abaixo do tecto —, e onde a
+   caixa é grande o corte **nem arma**.
+
+2. **A ESCADA CONTÍNUA de tamanhos.** A fixtura da §28 tem **UM** outlier; uma cena de `motion.boids`
+   com `size` variado tem uma escada, e aí o minimizador podia promover MUITAS peças — cada uma das
+   quais passa a ver a nuvem inteira.
+   ⇒ **Medido e NÃO reproduz** ([`a_caca_a_regressao_da_escada`]): numa escada log-uniforme de `R` a
+   `16 · R`, com `946 448` candidatos numa camada, o plano promove **ZERO** peças em todas as seis
+   linhas. *Naquela forma o caminho novo é INERTE.*
+
+3. **O plano custar alguma coisa mesmo quando não arma.** Ele ordena os alcances e constrói a grelha
+   das duas maneiras, uma vez por passe.
+   ⇒ **Medido e NÃO reproduz** ([`o_que_o_plano_custa_quando_nao_arma`], `load 5,90`): a mesma cena
+   uniforme dá `4,06 ms` **com** o plano e `4,32 ms` **sem** ele. *A diferença é ruído, e o sinal
+   está do lado errado para ser um custo.*
+
+### §29.2 — ⚠️ E a explicação que EU não posso descartar: a MÁQUINA era minha
+
+Na janela em que o report saiu, esta árvore estava a correr a varredura impactada (**17 334 testes**)
+e os censos da árvore combinada, e outra linha estava a ligar (`ld.mold` a **2 246 %** de CPU). O
+`/proc/loadavg` desta máquina leu **`25`**, **`53`** e **`69`** nesse período.
+
+⛔ *Nenhuma leitura de relógio desta workstation vale nada acima de `load ~5`* — é a lei que este
+repo já tem escrita, e ela vale para o FPS do app tanto como para um gate de razão. Os números da
+§28.6 tiveram de ser re-tirados por isso mesmo (`3,55 ×` sob carga contra `2,88 ×` calmo).
+
+⇒ **isto é uma hipótese, não um veredito**, e a forma de a separar da outra é um instrumento e não
+um argumento.
+
+### §29.3 — ⭐⭐ A PORTA DE BISSECÇÃO, e porque ela não é lida no fundo da pilha
+
+`PH2D_CONTACT_UMA_CAMADA=1` devolve o plano de ANTES desta wave, sem recompilar. Uma corrida com e
+uma sem respondem a pergunta em dois minutos.
+
+⚠️ Ela é lida **uma vez** e **só no [`Grelha::planeia`]**, que é a porta do PRODUTO — o
+`planeia_com_margem` e o `planeia_numa_camada` ficam de fora **de propósito**, para que um gate
+continue a medir a LEI e não o AMBIENTE. *Uma bandeira global lida no fundo da pilha é uma corrida
+escrita à mão, e esta casa já a pagou no remalhador da escultura.*
+
+⚠️ E a leitura dela está **gateada** com a armadilha que este repo já registou: `env VAR=` **define**
+a variável, vazia — e um controlo escrito assim corre a mesma lei que devia contradizer.
+
+⭐ Medido pela porta, na máquina calma (`load 3,70`), na cena de UM outlier: `10,28 ms` sem o corte
+contra **`3,57 ms`** com ele. *O interruptor funciona de ponta a ponta, e é isso que o torna uma
+resposta e não uma promessa.*
+
+### §29.4 — ⭐⭐⭐ E a decisão do plano deixou de acreditar num MODELO
+
+Independentemente da causa, o report expôs uma fraqueza real: **a decisão de partir a grelha era
+tomada por um modelo (`9 · ρ · lado²`) que eu só pude validar nas MINHAS cenas.** Numa cena que eu
+nunca vi, ele podia errar — e a margem de `2 ×` era um palpite sobre o tamanho desse erro.
+
+⇒ hoje o modelo apenas **PROPÕE** qual corte tentar; o plano **constrói as duas hipóteses e
+CONTA-AS** (`candidatos_previstos`, três leituras do CSR por peça), e **a contagem real decide**.
+
+⚠️ **A régua tem gate próprio** (`a_regua_do_plano_conta_o_que_a_grelha_entrega`, que a dobra à mão
+nas quatro configurações): *se ela discordasse do que o `vizinhos_de` devolve, a decisão passaria a
+ser sobre um número que não existe.*
+
+⭐ E o preço é **um `constroi` a mais por PASSE** — nunca por varredura — contra as dezenas que ele
+evita: medido, `4,06` contra `4,32 ms` na cena onde ele não compra nada.
+
+**Mutação: 9 de 9 sangram** (as seis da §28 mais `R7` a régua discorda · `R8` o modelo manda sozinho ·
+`R9` o vazio lido como ordem).

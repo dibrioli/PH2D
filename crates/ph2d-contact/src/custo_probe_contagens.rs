@@ -261,3 +261,184 @@ fn onde_o_corte_dos_grandes_paga() {
     }
     eprintln!("\n  load: {}\n", carga());
 }
+
+/// Uma nuvem em CACHOS espalhados — a forma de uma cena de `motion.boids`, onde as peças se
+/// juntam em bandos e a CAIXA da nuvem é muito maior que qualquer bando.
+///
+/// ⚠️ É a forma que a [`super::atribuicao::campo_de_discos`] **não** tem: aquela é um campo
+/// hexagonal uniforme, onde a caixa é justa e o número de células da grelha é pequeno.
+fn campo_em_cachos(
+    n: usize,
+    raio: f32,
+    cachos: usize,
+    extensao: f32,
+) -> (Vec<[f32; 2]>, Vec<Option<Colisor>>, Vec<f32>) {
+    let por_cacho = n.div_ceil(cachos);
+    #[expect(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "coordenadas de fixtura"
+    )]
+    let lado = ((por_cacho as f32).sqrt() * 1.15).ceil() as usize;
+    let (mut p, mut c) = (Vec::with_capacity(n), Vec::with_capacity(n));
+    for i in 0..n {
+        let (cacho, dentro) = (i / por_cacho, i % por_cacho);
+        #[expect(clippy::cast_possible_truncation, reason = "um indice de fixtura")]
+        let (kc, ki) = (cacho as u32, i as u32);
+        let (ox, oy) = (
+            (acaso(kc, 11) - 0.5) * extensao,
+            (acaso(kc, 12) - 0.5) * extensao,
+        );
+        #[expect(clippy::cast_precision_loss, reason = "coordenadas de fixtura")]
+        let (gx, gy) = ((dentro % lado) as f32, (dentro / lado) as f32);
+        let passo = 1.8 * raio;
+        p.push([
+            ox + gx * passo + (acaso(ki, 1) - 0.5) * passo * 0.08,
+            oy + gy * passo * 0.87 + (acaso(ki, 2) - 0.5) * passo * 0.08,
+        ]);
+        c.push(Some(Colisor::disco(raio)));
+    }
+    (p, c, vec![1.0; n])
+}
+
+/// ⛔⛔⛔ **A CAÇA À REGRESSÃO DO DONO** (*«fps caiu para 24»*, 2026-09-18).
+///
+/// ⚠️ A hipótese: o [`crate::grelha::Grelha::constroi`] paga `O(células)` **por varredura** (zerar o
+/// `inicio` e a soma acumulada), e a malha FINA tem `k²` vezes mais células que a grossa. Numa cena
+/// de bandos — caixa grande, peças juntas — isso pode custar mais do que os candidatos poupam.
+///
+/// ⭐ As colunas de CÉLULAS e CANDIDATOS são contagens: a carga da máquina não lhes toca.
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn a_caca_a_regressao_das_celulas() {
+    const N: usize = 1000;
+    const RAIO: f32 = 100.0;
+    eprintln!("\n  ═══ A CAÇA À REGRESSÃO: células por varredura ({N} discos + 1 a 4 × R) ═══\n");
+    eprintln!("   cachos │ extensão │ células 1 camada │ células 2 camadas │ cand. 1 │ cand. 2");
+    eprintln!("  ────────┼──────────┼──────────────────┼───────────────────┼─────────┼────────");
+    for (cachos, extensao) in [
+        (1usize, 0.0_f32),
+        (8, 20_000.0),
+        (8, 100_000.0),
+        (40, 100_000.0),
+        (40, 400_000.0),
+    ] {
+        let (p, mut c, _) = campo_em_cachos(N, RAIO, cachos, extensao);
+        c[0] = Some(Colisor::disco(4.0 * RAIO));
+        let vivo: Vec<bool> = (0..N).map(|i| ativo(p[i], c[i].as_ref())).collect();
+        let alcances = crate::grelha::alcances_de(&c, &vivo);
+        let alcance_max = alcances.iter().fold(0.0_f32, |a, b| a.max(*b));
+        let conta = |duas: bool| {
+            let mut g = crate::grelha::Grelha::default();
+            if duas {
+                g.planeia(&p, &vivo, &alcances);
+            } else {
+                g.planeia_numa_camada(&vivo, 2.0 * alcance_max);
+            }
+            g.constroi(&p, &vivo);
+            let (mut viz, mut cand) = (Vec::new(), 0usize);
+            for k in 0..N {
+                g.vizinhos_de(k, &mut viz);
+                cand += viz.len();
+            }
+            (g.celulas(), cand)
+        };
+        let ((cel1, cand1), (cel2, cand2)) = (conta(false), conta(true));
+        eprintln!(
+            "   {cachos:>6} │ {extensao:>8.0} │ {cel1:>16} │ {cel2:>17} │ {cand1:>7} │ {cand2:>7}"
+        );
+    }
+    eprintln!("\n  load: {}\n", carga());
+}
+
+/// ⛔⛔⛔ **A CAÇA À REGRESSÃO, 2.ª forma: a ESCADA CONTÍNUA de tamanhos.**
+///
+/// ⚠️ A fixtura da wave tinha **UM** outlier. Uma cena de `motion.boids` com `size` variado tem uma
+/// ESCADA — e aí o minimizador pode promover MUITAS peças, cada uma das quais passa a ver a nuvem
+/// inteira. *É a coluna `g · m` do modelo a ser paga a sério.*
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn a_caca_a_regressao_da_escada() {
+    const N: usize = 1000;
+    const RAIO: f32 = 100.0;
+    eprintln!("\n  ═══ A CAÇA À REGRESSÃO: a ESCADA de tamanhos ({N} discos) ═══\n");
+    eprintln!("   raios      │ grandes │ cand. 1 camada │ cand. 2 camadas │ ganho REAL");
+    eprintln!("  ────────────┼─────────┼────────────────┼─────────────────┼───────────");
+    for topo in [1.5_f32, 2.0, 3.0, 4.0, 8.0, 16.0] {
+        let (p, c0, _) = super::atribuicao::campo_de_discos(N, RAIO, 1.8);
+        // Uma escada log-uniforme de `R` a `topo · R` — nenhum outlier, uma distribuição.
+        let c: Vec<Option<Colisor>> = (0..N)
+            .map(|i| {
+                #[expect(clippy::cast_possible_truncation, reason = "um indice de fixtura")]
+                let u = acaso(i as u32, 21);
+                let _ = c0[i];
+                Some(Colisor::disco(RAIO * topo.powf(u)))
+            })
+            .collect();
+        let vivo: Vec<bool> = (0..N).map(|i| ativo(p[i], c[i].as_ref())).collect();
+        let alcances = crate::grelha::alcances_de(&c, &vivo);
+        let alcance_max = alcances.iter().fold(0.0_f32, |a, b| a.max(*b));
+        let conta = |duas: bool| {
+            let mut g = crate::grelha::Grelha::default();
+            if duas {
+                g.planeia(&p, &vivo, &alcances);
+            } else {
+                g.planeia_numa_camada(&vivo, 2.0 * alcance_max);
+            }
+            g.constroi(&p, &vivo);
+            let (mut viz, mut cand) = (Vec::new(), 0usize);
+            for k in 0..N {
+                g.vizinhos_de(k, &mut viz);
+                cand += viz.len();
+            }
+            (cand, g.grandes())
+        };
+        let ((cand1, _), (cand2, gr)) = (conta(false), conta(true));
+        #[expect(clippy::cast_precision_loss, reason = "contagens de fixtura")]
+        let razao = cand1 as f32 / cand2 as f32;
+        let marca = if razao < 1.0 { "  ⇠ PIOROU" } else { "" };
+        eprintln!(
+            "   R..{topo:>4.1}·R │ {gr:>7} │ {cand1:>14} │ {cand2:>15} │ {razao:>6.2} ×{marca}"
+        );
+    }
+    eprintln!("\n  load: {}\n", carga());
+}
+
+/// ⛔⛔⛔ **O QUE O PLANO CUSTA QUANDO ELE NÃO ARMA** — a pergunta que o report do dono
+/// (*«fps caiu para 24»*) obriga a responder.
+///
+/// ⚠️ Numa cena de tamanho UNIFORME — e numa ESCADA contínua, medida — o corte nunca arma. Mas o
+/// plano continua a correr: ele ordena os alcances, constrói a grelha das duas maneiras e conta as
+/// duas. *Se isso custasse alguma coisa, toda cena sem dispersão pagava por uma cura que não usa.*
+///
+/// O A/B é a porta de bissecção (`PH2D_CONTACT_UMA_CAMADA`), que salta o plano inteiro.
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn o_que_o_plano_custa_quando_nao_arma() {
+    const N: usize = 1000;
+    const RAIO: f32 = 100.0;
+    const VARR: usize = 64;
+    let (p0, c, w) = super::atribuicao::campo_de_discos(N, RAIO, 1.8);
+    let inv: Vec<f32> = (0..N)
+        .map(|i| c[i].map_or(0.0, |x| x.inv_inercia(w[i])))
+        .collect();
+    let pecas = Pecas::novas(&c, &w, &inv);
+    let mut melhor = f64::INFINITY;
+    for _ in 0..CORRIDAS {
+        let mut p = p0.clone();
+        let mut g = vec![0.0_f32; N];
+        let agora = std::time::Instant::now();
+        let v = separate(&mut p, &mut Saida { giro: &mut g }, &pecas, VARR);
+        melhor = melhor.min(agora.elapsed().as_secs_f64() * 1e3);
+        std::hint::black_box((v, &p));
+    }
+    let grandes = candidatos_e_grandes(&c, &p0, &w).1;
+    eprintln!("\n  ═══ O PLANO NUMA CENA QUE NÃO O USA ({N} discos uniformes) ═══\n");
+    eprintln!("  peças promovidas a GRANDE ..... {grandes}");
+    eprintln!("  separate, {VARR} varreduras ......... {melhor:>7.2} ms");
+    eprintln!(
+        "\n  ⇒ corra de novo com PH2D_CONTACT_UMA_CAMADA=1: a diferença é o que o plano custa.\n"
+    );
+    eprintln!("  load: {}\n", carga());
+}

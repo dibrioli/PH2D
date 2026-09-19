@@ -60,6 +60,26 @@
 
 use super::{MARGEM_DO_CORTE, celula};
 
+/// ⛔ **A PORTA DE BISSECÇÃO** (`PH2D_CONTACT_UMA_CAMADA=1`) — devolve o plano de UMA camada, que é
+/// o de antes de 2026-09-18, sem recompilar nada.
+///
+/// ⚠️ Ela é lida **uma vez** e **só no [`Grelha::planeia`]**, que é a porta do PRODUTO: o
+/// [`Grelha::planeia_com_margem`] e o [`Grelha::planeia_numa_camada`] ficam de fora de propósito,
+/// para que um gate continue a medir a lei e não o ambiente. *Uma bandeira global lida no fundo da
+/// pilha é uma corrida escrita à mão, e esta casa já a pagou.*
+fn uma_camada_por_ordem() -> bool {
+    static ORDEM: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ORDEM.get_or_init(|| ordem_de(std::env::var("PH2D_CONTACT_UMA_CAMADA").ok().as_deref()))
+}
+
+/// A leitura da porta acima, **separada do ambiente para poder ser gateada**.
+///
+/// ⚠️⚠️ **`env VAR=` DEFINE a variável, vazia** — esta casa já pagou o erro: um controlo escrito
+/// assim corre a mesma lei que devia contradizer, e lê-se como se o interruptor não existisse.
+pub(super) fn ordem_de(v: Option<&str>) -> bool {
+    matches!(v, Some(x) if !x.is_empty() && x != "0")
+}
+
 /// O tecto de células da grelha densa — o recurso é **MEMÓRIA** (`4 B` por célula no `inicio`,
 /// logo `256 KiB` no pior caso), e não um palpite: acima dele o lado dobra (ver o cabeçalho).
 const CELULAS_MAX: usize = 1 << 16;
@@ -114,7 +134,56 @@ impl Grelha {
     /// ⛔ **`g = 0` é o caminho de sempre, ao bit**: sem dispersão de tamanhos nada é promovido, e
     /// a grelha é exactamente a de antes desta wave.
     pub(super) fn planeia(&mut self, foto: &[[f32; 2]], ativo: &[bool], alcances: &[f32]) {
-        self.planeia_com_margem(foto, ativo, alcances, MARGEM_DO_CORTE);
+        let alcance_max = alcances.iter().fold(0.0_f32, |a, b| a.max(*b));
+        let uma_camada = |g: &mut Self| {
+            g.planeia_numa_camada(ativo, 2.0 * alcance_max);
+            g.constroi(foto, ativo);
+        };
+        uma_camada(self);
+        if uma_camada_por_ordem() {
+            return;
+        }
+        let uma = self.candidatos_previstos();
+        // O modelo PROPÕE (a margem é `1`: aqui ele só escolhe QUAL corte vale a pena tentar).
+        self.planeia_com_margem(foto, ativo, alcances, 1.0);
+        if self.grandes.is_empty() {
+            uma_camada(self);
+            return;
+        }
+        self.constroi(foto, ativo);
+        // ⭐⭐⭐ **E a CONTAGEM REAL decide.** Ver [`MARGEM_DO_CORTE`].
+        #[expect(clippy::cast_precision_loss, reason = "contagens de uma cena")]
+        let (d, u) = (self.candidatos_previstos() as f32, uma as f32);
+        if d * MARGEM_DO_CORTE >= u {
+            uma_camada(self);
+        }
+    }
+
+    /// **Quantos candidatos esta grelha entregaria, sem os MATERIALIZAR** — três leituras do CSR por
+    /// peça pequena, uma por grande.
+    ///
+    /// ⚠️ Ela é a régua que torna a decisão do plano uma MEDIÇÃO e não uma previsão, e por isso tem
+    /// de contar **exactamente** o que o [`Self::vizinhos_de`] devolve — há gate a dobrar as duas.
+    pub(super) fn candidatos_previstos(&self) -> usize {
+        let mut soma = self.grandes.len() * self.ativas.len();
+        if self.cols == 0 {
+            return soma;
+        }
+        for (k, c) in self.celula_de.iter().enumerate() {
+            if *c == u32::MAX {
+                continue;
+            }
+            debug_assert!(!self.e_grande[k]);
+            let (x, y) = (*c as usize % self.cols, *c as usize / self.cols);
+            let (x0, x1) = (x.saturating_sub(1), (x + 1).min(self.cols - 1));
+            let (y0, y1) = (y.saturating_sub(1), (y + 1).min(self.rows - 1));
+            for yy in y0..=y1 {
+                let linha = yy * self.cols;
+                soma += (self.inicio[linha + x1 + 1] - self.inicio[linha + x0]) as usize;
+            }
+            soma += self.grandes.len();
+        }
+        soma
     }
 
     /// O [`Grelha::planeia`] com a margem **por argumento**.
@@ -208,10 +277,9 @@ impl Grelha {
     /// ⚠️ Ele existe para que a comparação seja entre dois PLANOS e não entre duas versões do
     /// ficheiro: *uma medição contra um binário antigo não é reproduzível por quem vier a seguir*.
     ///
-    /// ⛔ **`#[cfg(test)]` porque os DOIS consumidores dele são gates e sondas** — um controlo que
-    /// ficasse no binário do produto seria uma segunda porta para planear a grelha, e o `-D
-    /// warnings` do fecho diz isso em voz alta.
-    #[cfg(test)]
+    /// ⭐ **E ele deixou de ser `#[cfg(test)]` quando passou a ter consumidor de PRODUTO:** o
+    /// [`Grelha::planeia`] mede-o contra o corte e fica com o vencedor, e a porta de bissecção
+    /// devolve-o inteiro.
     pub(super) fn planeia_numa_camada(&mut self, ativo: &[bool], lado: f32) {
         let n = ativo.len();
         self.e_grande.clear();
@@ -345,6 +413,13 @@ impl Grelha {
         // partição é exclusiva), logo a soma de `k` não conta ninguém duas vezes.
         out.extend_from_slice(&self.grandes);
         out.sort_unstable();
+    }
+
+    /// Quantas CÉLULAS a malha fina tem — o trabalho `O(células)` que o [`Grelha::constroi`] paga
+    /// **por varredura** (zerar o `inicio` e correr a soma acumulada).
+    #[cfg(test)]
+    pub(super) fn celulas(&self) -> usize {
+        self.cols * self.rows
     }
 
     /// Quantas peças o plano promoveu a GRANDE — o número que NOMEIA a causa de uma cena cara.

@@ -1654,3 +1654,55 @@ fn uma_dispersao_pequena_nao_paga_o_corte() {
         "o corte teria comprado alguma coisa ({uma} contra {duas}) — a recusa seria errada"
     );
 }
+
+/// ⭐⭐⭐ **A RÉGUA DO PLANO CONTA EXACTAMENTE O QUE A GRELHA ENTREGA.**
+///
+/// ⚠️⚠️ **Ela é a metade que torna a decisão do plano uma MEDIÇÃO e não uma previsão** — o
+/// [`crate::grelha::Grelha::planeia`] constrói as duas hipóteses, conta-as por
+/// `candidatos_previstos` e fica com a que ganhou. *Se essa contagem discordar do que o
+/// `vizinhos_de` devolve, a decisão passa a ser sobre um número que não existe.*
+///
+/// ⛔ Por isso ela é dobrada à mão, nas TRÊS configurações: uma camada, duas camadas, e a nuvem
+/// mista de sempre.
+#[test]
+fn a_regua_do_plano_conta_o_que_a_grelha_entrega() {
+    for (nome, (p, c, _w)) in [
+        ("uniforme", nuvem(400)),
+        ("uma grande", nuvem_com_uma_grande(400)),
+    ] {
+        let vivo: Vec<bool> = (0..p.len()).map(|i| ativo(p[i], c[i].as_ref())).collect();
+        let alcances = crate::grelha::alcances_de(&c, &vivo);
+        let alcance_max = alcances.iter().fold(0.0_f32, |a, b| a.max(*b));
+        for camadas in [1usize, 2] {
+            let mut g = crate::grelha::Grelha::default();
+            if camadas == 1 {
+                g.planeia_numa_camada(&vivo, 2.0 * alcance_max);
+                g.constroi(&p, &vivo);
+            } else {
+                g.planeia(&p, &vivo, &alcances);
+            }
+            let (mut viz, mut mao) = (Vec::new(), 0usize);
+            for k in 0..p.len() {
+                g.vizinhos_de(k, &mut viz);
+                mao += viz.len();
+            }
+            assert_eq!(
+                g.candidatos_previstos(),
+                mao,
+                "{nome}, {camadas} camada(s): a régua do plano discorda da grelha"
+            );
+        }
+    }
+}
+
+/// ⭐ **A PORTA DE BISSECÇÃO lê-se como o dono a escreve** — e a armadilha que esta casa já pagou é
+/// a do meio: `env PH2D_CONTACT_UMA_CAMADA=` **define** a variável, vazia.
+#[test]
+fn a_porta_de_bisseccao_le_o_que_o_dono_escreve() {
+    use crate::grelha::ordem_de;
+    assert!(ordem_de(Some("1")), "=1 desliga o corte");
+    assert!(ordem_de(Some("sim")), "qualquer valor nao-vazio desliga");
+    assert!(!ordem_de(None), "ausente é o caminho de omissão");
+    assert!(!ordem_de(Some("0")), "=0 é o caminho de omissão, explícito");
+    assert!(!ordem_de(Some("")), "=<vazio> NÃO é uma ordem");
+}

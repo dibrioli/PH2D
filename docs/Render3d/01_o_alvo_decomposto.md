@@ -50,10 +50,15 @@ fecharam no mesmo dia e a linha de fecho desta secção ainda dizia que o `2` n�
 | 5 | Sombras que POUSAM | ✅ | `W4` — o chão invisível ([`07`](07_o_chao_que_so_recebe.md)) |
 | 6 | Sub-superfície | ✅ com **dívida nomeada** | 17/09 ([`10`](10_a_luz_que_atravessa_a_peca.md)); a borda mole só corre no caminho de REFERÊNCIA ⇒ `W10` |
 | 7 | Pós | ⛔ | `W7`, por construir |
-| 8 | Estilo | ⛔ | `W8`, por construir |
+| 8 | Estilo | ✅ | `W8` — a [`11`](11_a_camada_de_estilo.md), 19/09, por ordem do dono |
 
-⭐⭐ **SEIS de oito.** O que falta ao ALVO são o `7` e o `8`; o resto da fila é **autoria** (`W6`),
-**medição** (`W9`) e **uma dívida** (`W10`).
+⭐⭐ **SETE de oito.** O que falta ao ALVO é **o `7`**, e o dono já o pôs a seguir (*«8 e depois do
+smoke o 7»*, 19/09); o resto da fila é **autoria** (`W6`), **medição** (`W9`) e **uma dívida**
+(`W10`).
+
+⚠️ **E a linha do `8` mudou no MESMO dia em que esta tabela foi auditada** — a auditoria de 19/09
+escreveu-a `⛔` e o dono mandou construí-la a seguir. *Uma tabela de estado envelhece em horas quando
+alguém lê a fila que ela descreve.*
 
 ⛔ **E a frase que aqui esteve — *«o `6` já existe e o `2` não, e isso é a ordem invertida»* — MORREU
 em 2026-09-17**, quando a `W5` fechou o `2`. Ela foi verdade por **um dia**: *a inversão que ela

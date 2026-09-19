@@ -1163,6 +1163,37 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   parede é o protocolo; desde então as corridas vão para o **E**, e foi o relatório dele que apanhou
   **dois defeitos meus** no leitor de PFM (big-endian lido como little; a linha da escala nunca lida)
   que eram a origem do «desvio de `96 %`».
+  ⭐⭐⭐ **E A CAMADA DE ESTILO EXISTE desde 19/09** (ordem do dono: *«8 e depois do smoke o 7»* — o
+  ingrediente **`8`** do [`01`](docs/Render3d/01_o_alvo_decomposto.md), ⇒ **SETE dos oito**;
+  mecanismo na [`11`](docs/Render3d/11_a_camada_de_estilo.md), cena **`=35`**): a crate-folha
+  [`ph2d-style`](crates/ph2d-style/src/lib.rs) (zero deps, o molde da `ph2d-view-transform`) com
+  **quatro** botões — contorno · tinta por **curvatura** · grade por **zona** · saturação da
+  **indirecta** —, gémeo em WGSL e **dez fileiras** no painel, só no Render. ⭐⭐ **A omissão é a
+  identidade AO BIT por CONSTRUÇÃO** (toda tinta é uma cor cujo valor de fábrica é o branco, toda
+  soma tem um peso cujo valor de fábrica é zero) ⇒ as paridades já pagas ficam de pé sem serem
+  re-medidas (`0` píxeis fora, pior `0`). ⛔⛔ **E uma premissa minha caiu por DUAS mutações
+  SOBREVIVENTES:** a forma ingénua `a·(1−w) + b·w` **não é** insegura — `(1−w)+w` dá `1,0` exacto em
+  `2 044 824` amostras de `f32` (o erro é meia ULP e o desempate é para o par) —; o perigo é
+  **reconstruir `b` por `a + (b − a)` quando `a ≠ b`**, que é onde a mutação sangrou. ⭐⭐⭐ **E o
+  SINAL da curvatura já existia, deitado fora UMA LINHA antes de alguém o poder ler:** `H = ∇²f/2`
+  distingue bossa de cova, e o consumidor que a estreou (a subsuperfície) pede um COMPRIMENTO — hoje
+  ela toma o módulo do lado dela (imagem byte a byte a mesma) e a tinta lê o sinal, que é a diferença
+  entre um contorno e uma sujidade (medido: `584` de `3 631` píxeis negativos, `min = −3,361` =
+  `−1/0,30`, o raio da cratera ao 3.º decimal). ⭐⭐⭐ **A lição do §24 foi aplicada ANTES da 1.ª
+  linha:** o estilo entra na **ASSINATURA** (`ph2d_field_render::Presentation`, o MESMO tipo nos dois
+  motores), a apresentação é montada **uma vez e antes** do ramo do dispositivo, e a curvatura é
+  medida quando **o material OU o estilo** a lê — ⛔ perguntar só ao material faria o artista mexer na
+  tinta de aresta e a peça não mudar um pixel. ⛔⛔ **A paridade achou uma divergência PRÉ-EXISTENTE
+  que só um consumidor LINEAR revela:** a contagem satura em `~165` píxeis e a magnitude cresce com o
+  ganho (`nitidez 0,2 → 0` fora · `1 → 7` bytes · `2 → 13` · `8 → 45`) ⇒ os dois motores medem a
+  curvatura por caminhos diferentes e o único consumidor que ela tinha **satura**-a numa tabela
+  pré-integrada; ⏳ dívida nomeada, e **a barra não foi afrouxada** — a tinta mede-se onde não
+  amplifica. ⛔ **O MATCAP fica FORA por decisão** (ele é a luz do OLHO; tingi-lo faria o artista
+  medir a peça através de uma mentira), com censo a nomear a excepção. ⚠️ O estilo é **VISTA** ao lado
+  do olhar e passa a documento no mesmo dia que ele. ⚠️⚠️ **E a FOTO reenquadrou a cena** — as covas
+  ficavam de lado (a câmera de omissão é uma três-quartos: as posições passam a ser DERIVADAS do
+  olho), a barra saía do ecrã, e ⛔ **fotografar com o `$HOME` do dono fotografa a BANCADA dele**
+  (`~/.ph2d/layout.txt`), não a cena.
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas
@@ -1209,7 +1240,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   citava; a lista é `scenes::PODADAS` e o roteador diz o porquê a quem pedir uma delas) — as vivas
   são as mesmas de antes, com os **mesmos números**. Molde, armadilhas e provas:
   [`HOWTO_partir_uma_familia_da_shell.md`](docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md).
-  **Smokes:** pill **MODEL** · `PH2D_FIELD_SMOKE=<n>` (o roteador é
+  **Smokes:** pill **MODEL** · `PH2D_FIELD_SMOKE=<n>` (a camada de ESTILO é a cena **`=35`**; o roteador é
   [`smoke_scenes.rs`](crates/ph2d-app-field3d/src/smoke_scenes.rs)).
   ⚠️ **Preferência fora do repo:** `~/.ph2d/prefs.txt` — um `reduced_motion=1` esquecido reprova
   smokes sobre produto correto **em todo o resto do app**, e a viagem entre vistas é a excepção.

@@ -80,6 +80,14 @@
 
 ## Auditoria (famílias — 2 saltos)
 - ⛔ [`touch` não mede uma edição; `--timings` dobra sob contenção](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)
+
+- ⭐ [**Como uma RÉGUA mente** — a família (72)](reference_topic_measurement_discipline.md)
+- ⛔⛔ [Sujeito NOVO ⇒ toda régua e toda nota sobre o antigo têm de ser reconferidas (o «cima» humanoide deitou o dinossauro; a tira tinha «1,80 m» escrito dentro)](feedback_when_the_subject_changes_every_ruler_and_note_about_the_old_one_must_be_rechecked.md)
+- ⛔⛔ [`(1−w)+w` é `1,0` EXACTO em f32 (2 044 824 amostras) — o perigo é reconstruir `b` por `a + (b − a)` com `a ≠ b`](feedback_the_naive_mix_is_exact_and_the_danger_is_reconstruction.md)
+- ⛔⛔ [Um consumidor que SATURA esconde uma divergência entre dois motores; o 1.º consumidor LINEAR revela-a — varra o GANHO antes de olhar para a lei](feedback_a_saturating_consumer_hides_a_divergence_a_linear_one_reveals.md)
+- ⛔⛔ [Fotografar um smoke com o `$HOME` do dono fotografa a BANCADA dele (`~/.ph2d/layout.txt`), não a cena — corra a foto com um `HOME` limpo](feedback_the_front_panel_is_not_a_property_of_the_code.md)
+- ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)
+- ⛔⛔ [Contar operações ≠ perfil; o PERFIL DE BUILD decide o número](feedback_an_operation_count_is_not_a_profile_and_the_build_profile_decides_the_number.md)
 - ⛔ [Carga de fundo ~7: meça o MÍNIMO de N corridas — e o `loadavg` MENTE a decair (`7,5` com a CPU ocupada): espere pela OCIOSIDADE](feedback_the_background_load_of_this_workstation_never_falls_below_five.md)
 - [Reprodução/diagnóstico (23) — ⛔ o SÍTIO onde um defeito ATERRA não é o que o PROVOCA](reference_topic_repro_discipline.md) · [Réguas do quad remesh (19)](reference_topic_quad_remesh_rulers.md)
 - ⛔ [Id errado numa lista só é visível depois de ler quem a consome](feedback_a_wrong_id_in_a_list_is_not_a_visible_defect_until_its_reader_is_read.md)

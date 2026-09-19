@@ -25,3 +25,15 @@ ali a LINHA tinha de estar na lista, aqui o PAINEL tem de estar à frente.
 (`panel_visibility`), (2) traga-o à frente **por alguns quadros** depois do arranque, (3) abra a cena
 com o objecto **já escolhido** (senão o painel diz *«Select an entity…»*), e (4) **fotografe** — a
 foto é a única régua que vê isto ([[feedback_a_smoke_for_the_owner_explains_what_each_thing_on_screen_is]]).
+
+## ⛔⛔ E há uma SEGUNDA metade, medida em 2026-09-19: a FOTO também a apanha
+
+O `docs/Components/ferramentas/fotografa_cena.sh` corre o app com o `$HOME` de quem o
+invoca ⇒ ele lê o `~/.ph2d/layout.txt` **do dono**. Nas duas primeiras fotos da cena
+`=35` do modelador uma janela flutuante *«Grid Settings»*, deixada aberta noutra
+sessão, **tapava a peça inteira** — e a foto lia-se como *«a cena está partida»*.
+
+⇒ **a foto de uma cena corre com um `HOME` limpo** (`env HOME=<tmp> bash
+fotografa_cena.sh …`), senão o que se fotografa é a **bancada** e não a cena. ⭐ E o
+roteiro da cena passa a **avisar o dono** de que uma janela por cima da peça é
+arrumação gravada entre sessões — *dizê-lo é mais barato do que ele descobrir.*

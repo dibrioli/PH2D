@@ -6,9 +6,12 @@ Cada wave acaba num **smoke** (a lei da casa) e traz a régua que a julga.
 ⚠️ **ESTADO, 2026-09-19 — auditado contra o código, não contra a memória:** `W1`..`W5` estão
 **FECHADAS** e vivem no modo *Render* do modelador (a marca de cada uma diz onde se lê o mecanismo),
 e com elas fecharam **SEIS dos oito ingredientes** do [`01`](01_o_alvo_decomposto.md) — o `6` (a
-translucidez) entrou em 17/09 fora desta numeração. Faltam a **`W6`**, a **`W7`** e a **`W8`**,
-mais a **`W9`** (medição, que o dono pôs ao fim da fila em 17/09) e a **`W10`** (o gémeo do
-amaciamento no dispositivo, que ele pôs **depois dela** em 19/09).
+translucidez) entrou em 17/09 fora desta numeração.
+
+⭐⭐ **E a `W8` FECHOU em 19/09, por ordem do dono** (*«8 e depois do smoke o 7»*) ⇒ são **SETE dos
+oito ingredientes**. Faltam a **`W6`** (autoria), a **`W7`** (o pós — a seguir, por ordem dele), mais
+a **`W9`** (medição, que ele pôs ao fim da fila em 17/09) e a **`W10`** (o gémeo do amaciamento no
+dispositivo, que ele pôs **depois dela** em 19/09).
 
 ⚠️ **São DUAS numerações e elas não coincidem:** as `W` são waves de TRABALHO, os `1`..`8` do `01`
 são INGREDIENTES do alvo. A `W6` (autoria) e a `W9`/`W10` não são ingredientes de nenhum — *contar
@@ -136,16 +139,32 @@ O artista vê **um nó** com a foto que o dono mandou. Quem quiser mais, abre o 
 
 Bloom sobre HDR verdadeiro · profundidade de campo · anti-aliasing temporal.
 
-## W8 — ⭐ A camada de ESTILO (a que faz *aquele* jogo)
+## W8 — ⭐ A camada de ESTILO ✅ **FECHADA (19/09, ordem do dono: *«8 e depois do smoke o 7»*)**
 
-Os botões para mentir de propósito, por cima de um pipeline honesto: **rim light** autorada, tinta
-por **curvatura**, **grade de cor por zona**, saturação da luz indirecta, contorno onde o artista o
-pedir.
+Os botões para mentir de propósito, por cima de um pipeline honesto — o mecanismo inteiro está na
+[`11`](11_a_camada_de_estilo.md).
 
-- ⚠️ **É a última de propósito.** Estilo sobre um pipeline sem `W1` e `W5` é o protótipo que o
-  `01` §4 nomeia. ⭐ **E essa razão EXPIROU em 16/09:** a `W1` e a `W5` estão fechadas, logo a
-  cerca que punha esta wave no fim já não a prende — *quem move o número que tornava algo
-  inalcançável tem de reconferir a nota* (`CLAUDE.md` §0.0).
+- ⚠️ **Era a última de propósito.** Estilo sobre um pipeline sem `W1` e `W5` é o protótipo que o
+  `01` §4 nomeia. ⭐ **E essa razão EXPIROU em 16/09:** a `W1` e a `W5` fecharam, logo a cerca que
+  punha esta wave no fim já não a prendia — *quem move o número que tornava algo inalcançável tem de
+  reconferir a nota* (`CLAUDE.md` §0.0).
+- ✅ **O que shipou:** a crate-folha [`ph2d-style`](../../crates/ph2d-style/src/lib.rs) (zero
+  dependências, o molde da `ph2d-view-transform`) com **quatro** botões — o contorno, a tinta por
+  **curvatura**, a grade por **zona** e a saturação da **indirecta** —, o gémeo em WGSL, e **dez
+  fileiras** no painel, só no modo *Render*. Cena **`=35`**.
+- ⭐⭐⭐ **O SINAL da curvatura já existia e era deitado fora uma linha antes de alguém o poder ler**
+  ([`11` §3](11_a_camada_de_estilo.md)): `H = ∇²f/2` distingue uma bossa de uma cova, e o consumidor
+  que a estreou pede um comprimento. Hoje a subsuperfície toma o módulo do lado dela — imagem byte a
+  byte a mesma — e a tinta lê o sinal, que é a diferença entre um contorno e uma sujidade.
+- ⭐⭐⭐ **A lição do [§24 da `10`](10_a_luz_que_atravessa_a_peca.md) foi aplicada ANTES da primeira
+  linha:** o estilo entra na **assinatura** (`Presentation`), a apresentação é montada **uma vez e
+  antes** do ramo do dispositivo, e há **gate estrutural** que corre sem placa.
+- ⛔⛔ **A paridade achou uma divergência PRÉ-EXISTENTE** que só um consumidor **linear** na
+  curvatura revela — a tabela dose-resposta está na [`11` §5](11_a_camada_de_estilo.md), e ⛔ a barra
+  **não** foi afrouxada para a engolir.
+- ⛔ **O CONTORNO desenhado fica de fora**, com o mecanismo: ele lê os VIZINHOS no ecrã, logo é um
+  passe e não uma multiplicação — pô-lo na crate da lei obrigaria-a a receber um G-buffer e ela
+  deixaria de ser a lei que os dois motores partilham.
 
 ## W9 — ⏱️ A AVALIAÇÃO DE PERFORMANCE (ordem do dono, 2026-09-17: *«coloque na fila ao final»*)
 

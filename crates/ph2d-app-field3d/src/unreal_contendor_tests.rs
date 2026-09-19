@@ -113,18 +113,47 @@ fn sonda_a_unreal_contra_nos_e_contra_a_verdade() {
     let nossos = nosso_quadro(opaco);
     let (nosso_rb, nosso_n) = razao_rb(&nossos);
     println!("    NÓS                 R/B {nosso_rb:>6.3}   ({nosso_n} px iluminados)");
+
+    // ⭐⭐⭐ **A BARRA É O LADO APROVADO, e só ele — nunca um número escolhido.**
+    //
+    // ⛔⛔ A 1.ª redacção desta sonda punha `0,05`, tirado do `1,32` que a §14.2 publica para o
+    // Cycles. **Ela reprovou o próprio Cycles.** O motivo é que aquele `1,32` foi medido por OUTRA
+    // régua — a sonda do controlo casa a exposição pelo **perfil de bytes de uma coluna**, esta
+    // casa-a pela **população iluminada do quadro** (o método da §14.4, que é o veredito corrigido)
+    // —, e ⚠️ **`R/B` em bytes NÃO é invariante à exposição**, porque a transformação de vista é
+    // não-linear. *Misturar dois critérios de casamento é comparar dois números que nunca mediram a
+    // mesma coisa.*
+    //
+    // ⇒ a barra passa a ser **medida na mesma corrida**: o desvio que o lado aprovado produz, mais
+    // meia folga. Assim ela **não pode** reprovar o aprovado por construção — que é a lei do §0.9
+    // levada à letra (*duas barras do tecido foram retiradas por reprovarem a saída do próprio
+    // alvo*).
+    let aprovado = dir_v
+        .as_ref()
+        .and_then(|dv| oraculo(&format!("{dv}/ref_opaco_e5.pfm"), nosso_n));
+    let Some((v_rb, v_n, v_stops)) = aprovado else {
+        println!(
+            "    ⛔⛔ SEM O LADO APROVADO (o opaco do Cycles em $PH2D_VERDADE2) o portão NÃO ARMA.\n\
+             \x20      Uma barra calibrada sem ele mede os NOSSOS defeitos — os números do jade ficam SELADOS."
+        );
+        return;
+    };
+    let folga_do_metodo = (v_rb - nosso_rb).abs();
+    println!(
+        "    VERDADE (Cycles)    R/B {v_rb:>6.3}   ({v_n} px · {v_stops:+.2} st) · Δ \
+         {folga_do_metodo:.3} ⇐ É ESTA A BARRA"
+    );
+    let barra = folga_do_metodo * 1.5;
+
     let mut controlo_ok = true;
     for (sufixo, rotulo) in MOTORES {
         match oraculo(&format!("{dir_u}/ctrl_opaco_{sufixo}.pfm"), nosso_n) {
             Some((rb, n, stops)) => {
                 let d = (rb - nosso_rb).abs();
-                // ⚠️ A barra sai do vale MEDIDO que inclui o lado aprovado: o Cycles leu `1,32`
-                // contra os nossos `1,33` (§14.2), logo `0,05` é folga com margem sobre o que a
-                // montagem certa já produziu — e não um número escolhido.
-                if d > 0.05 {
+                if d > barra {
                     controlo_ok = false;
                 }
-                let v = if d > 0.05 { "⛔ FORA" } else { "✓" };
+                let v = if d > barra { "⛔ FORA" } else { "✓" };
                 println!(
                     "    UNREAL {rotulo:<11} R/B {rb:>6.3}   ({n} px · {stops:+.2} st) · Δ {d:.3} {v}"
                 );
@@ -135,11 +164,7 @@ fn sonda_a_unreal_contra_nos_e_contra_a_verdade() {
             }
         }
     }
-    if let Some(dv) = &dir_v
-        && let Some((rb, n, stops)) = oraculo(&format!("{dv}/ref_opaco_e5.pfm"), nosso_n)
-    {
-        println!("    VERDADE (Cycles)    R/B {rb:>6.3}   ({n} px · {stops:+.2} st)");
-    }
+    println!("    (barra = Δ do aprovado × 1,5 = {barra:.3})");
 
     if !controlo_ok {
         println!(
@@ -190,6 +215,13 @@ fn sonda_a_unreal_contra_nos_e_contra_a_verdade() {
             || "  ·            —".to_string(),
             |(rb, _, _)| format!("  · {rb:>11.2}"),
         );
+        // ⛔ A 1.ª redacção calculava esta coluna, IMPRIMIA-a, e não a somava ao balanço — a tabela
+        // do veredito saía **sem o lado aprovado**, que é a única linha contra a qual as outras
+        // três significam alguma coisa. *Uma régua que deixa o aprovado fora da conta compara os
+        // contendores uns com os outros e chama-lhe verdade.*
+        if let Some((rb, _, _)) = v {
+            balanco[3].1.push(rb);
+        }
         println!("{linha}");
     }
 

@@ -282,13 +282,22 @@ pub(crate) fn traca(p: &Pedido) {
             // ⚠️ **Sem material translúcido não se assa nada** e o [`Shadows::soft_at`] devolve a
             // visibilidade DURA ⇒ o quadro é byte a byte o de sempre. É a mesma cerca da curvatura,
             // logo acima.
-            if let Some(sh) = sombras.as_mut()
-                && let Some(espalha) = crate::materials::maior_espalhamento(&surfaces)
-            {
-                let raio = ph2d_field_render::sss_shadow::raio_em_pixeis(&p.cam, p.th, espalha);
+            //
+            // ⭐⭐⭐ **O RAIO É DE CADA MATERIAL desde 19/09** (ordem do dono) — ver
+            // [`ph2d_field_render::sss_shadow::blur_por_material`]. Até 18/09 era o **MÁXIMO da
+            // cena**, e uma chapa gorda escolhia o espalhamento de uma esfera magra (`18×` medido).
+            // ⚠️ Com **um** valor distinto o resultado é byte-idêntico, e é o caso de toda cena de
+            // hoje: *paga-se a correcção exactamente quando se usa a capacidade.*
+            if let Some(sh) = sombras.as_mut() {
                 let canais: Vec<Vec<[f32; 3]>> = (0..p.lights.len())
                     .map(|l| {
-                        ph2d_field_render::sss_shadow::blur_por_canal(&g, sh.lamp_channel(l), raio)
+                        ph2d_field_render::sss_shadow::blur_por_material(
+                            &g,
+                            sh.lamp_channel(l),
+                            &surfaces,
+                            &p.cam,
+                            p.th,
+                        )
                     })
                     .collect();
                 sh.set_soft(canais);

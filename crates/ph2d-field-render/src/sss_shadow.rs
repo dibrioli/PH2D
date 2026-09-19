@@ -142,6 +142,109 @@ pub fn raio_em_pixeis(cam: &crate::Orbit, altura_px: u32, mundo: [f32; 3]) -> [f
     mundo.map(|m| (m.max(0.0) * px_por_mundo).min(MAX_RAIO_PX))
 }
 
+/// ⭐⭐⭐ **QUANTAS PASSAGENS DE BORRÃO esta cena pede** — os espalhamentos DISTINTOS dela.
+///
+/// # ⚠️ Ela é o PREÇO da cura, e por isso é uma porta
+///
+/// O borrão é uma passagem sobre a imagem inteira: o custo é o número de **valores distintos**, e
+/// não o de materiais. ⭐ Dois materiais com o mesmo número pedem a **mesma** passagem, e é isso
+/// que faz toda cena de hoje — um valor só — continuar a pagar o que pagava.
+///
+/// ⛔⛔ **Ela existe porque o gate do preço tinha uma SEGUNDA CÓPIA desta dedução**, e uma mutação
+/// que apagava a de cá **sobreviveu**: a saída não muda (todas as passagens dão a mesma imagem), só
+/// o **custo** dobra — *e um gate que mede a imagem é cego a um custo que dobra em silêncio*.
+///
+/// ⚠️ **Os distintos comparam-se pelos BITS**, e é o que se quer: a pergunta não é *«são
+/// parecidos»*, é *«é a mesma passagem»*.
+///
+/// ⛔ **Um material que não lê curvatura não pede passagem nenhuma** — ele não tem termo de
+/// subsuperfície que a leia, por mais gordo que o raio dele esteja.
+#[must_use]
+pub fn espalhamentos_distintos(surfaces: &crate::Surfaces<'_>) -> Vec<[f32; 3]> {
+    let mut distintos: Vec<[f32; 3]> = Vec::new();
+    for s in surfaces.all {
+        if !s.reads_curvature() {
+            continue;
+        }
+        let e = s.scatter_distance();
+        if !distintos
+            .iter()
+            .any(|d| d.map(f32::to_bits) == e.map(f32::to_bits))
+        {
+            distintos.push(e);
+        }
+    }
+    distintos
+}
+
+/// ⭐⭐⭐ **A BORDA MOLE COM O RAIO DE CADA MATERIAL** — a cura do vazamento entre peças (ordem do
+/// dono, 2026-09-19).
+///
+/// # ⛔⛔ O que ela cura
+///
+/// Até 18/09 o raio era o **MÁXIMO da cena**: uma esfera de espalhamento `0,05` ao lado de uma
+/// chapa de `0,90` desenhava a borda dela com `0,90` — **`18×`**, e a razão declarada no código
+/// dizia que *«só se via onde as duas peças se tocam»*, o que era falso (o raio é a **largura** com
+/// que toda borda de sombra é amaciada). *A chapa escolhia o espalhamento da esfera.*
+///
+/// # ⭐⭐ Porque ela é por RAIO DISTINTO e não por material
+///
+/// O borrão é uma passagem sobre a imagem inteira, logo o preço é o número de passagens. ⚠️ Mas dois
+/// materiais com o **mesmo** espalhamento pedem a **mesma** passagem ⇒ o custo é o número de
+/// **valores distintos**, que numa cena real é `1` ou `2` e não o número de peças.
+///
+/// ⭐⭐⭐ **E com UM valor distinto ela é BYTE-IDÊNTICA ao que ship**, sem sequer olhar a quem é cada
+/// pixel: *paga-se a correcção exactamente quando se usa a capacidade*, e uma cena de um material
+/// só — que é toda cena de hoje — não paga nada.
+///
+/// ⚠️ **Um pixel cujo material não espalha leva a visibilidade DURA**, e não a de um vizinho: ele
+/// não tem termo de subsuperfície para a ler, e emprestar-lhe um raio seria inventar espalhamento
+/// onde o artista pôs zero.
+#[must_use]
+pub fn blur_por_material(
+    g: &Gbuffer,
+    vis: &[f32],
+    surfaces: &crate::Surfaces<'_>,
+    cam: &crate::Orbit,
+    altura_px: u32,
+) -> Vec<[f32; 3]> {
+    if vis.len() != g.hit.len() {
+        return Vec::new();
+    }
+    // ⚠️ **Os valores DISTINTOS, pelos bits** — comparar `f32` por igualdade é exactamente o que se
+    // quer aqui: dois materiais com o mesmo número escrito pedem a mesma passagem, e dois que
+    // diferem no último bit pedem duas. *A pergunta não é «são parecidos», é «é a mesma passagem».*
+    let distintos = espalhamentos_distintos(surfaces);
+    if distintos.is_empty() {
+        return Vec::new();
+    }
+    let passagens: Vec<Vec<[f32; 3]>> = distintos
+        .iter()
+        .map(|e| blur_por_canal(g, vis, raio_em_pixeis(cam, altura_px, *e)))
+        .collect();
+    // ⭐⭐⭐ **O CAMINHO DE UM VALOR SÓ devolve a passagem CRUA** — byte-idêntico ao que ship, e sem
+    // perguntar a quem é cada pixel. *Uma cena de um material não paga a pergunta que só uma cena de
+    // dois precisa de fazer.*
+    if passagens.len() == 1 {
+        return passagens.into_iter().next().unwrap_or_default();
+    }
+    let mut out = vec![[0.0f32; 3]; vis.len()];
+    for (i, o) in out.iter_mut().enumerate() {
+        let s = surfaces.of(g.point[i]);
+        if !s.reads_curvature() {
+            *o = [vis[i]; 3];
+            continue;
+        }
+        let e = s.scatter_distance().map(f32::to_bits);
+        let k = distintos
+            .iter()
+            .position(|d| d.map(f32::to_bits) == e)
+            .unwrap_or(0);
+        *o = passagens[k][i];
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,6 +270,191 @@ mod tests {
             curvature: Vec::new(),
             edges: Vec::new(),
         }
+    }
+
+    /// TRÊS bolas lado a lado, cada uma a sua FOLHA — para o `Owners` ter o que responder.
+    ///
+    /// ⚠️⚠️ **TRÊS e não duas, e foi uma mutação que o exigiu:** com duas, um caso *«translúcida +
+    /// opaca»* tem **um** espalhamento distinto e cai no caminho rápido, onde a pergunta *«de quem é
+    /// este pixel?»* nem chega a ser feita. *Para ver a regra do opaco é preciso que o caminho
+    /// por-pixel corra*, e para isso a cena precisa de dois raios translúcidos **mais** o opaco.
+    fn tres_pecas() -> (Gbuffer, ph2d_field_eval::owners::Owners) {
+        const N: usize = 33;
+        let reg = ph2d_field_eval::hybrid::Registry::new();
+        let bola = |x: f32| {
+            ph2d_field::FieldDoc::new(
+                vec![ph2d_field_eval::leaf(
+                    ph2d_field::Primitive::Sphere { radius: 0.5 },
+                    ph2d_field::Xform {
+                        translation: [x, 0.0, 0.0],
+                        ..ph2d_field::Xform::IDENTITY
+                    },
+                )],
+                ph2d_field::NodeId(0),
+            )
+            .expect("uma bola")
+        };
+        let owners =
+            ph2d_field_eval::owners::Owners::new(&[bola(-2.0), bola(0.0), bola(2.0)], &reg, 1e-3);
+        #[allow(clippy::cast_precision_loss)]
+        let g = Gbuffer {
+            // ⚠️ Um TERÇO dos píxeis DENTRO de cada bola — é o `point` que o `Owners` lê, e sem ele
+            // este gate mediria um material só.
+            point: (0..N)
+                .map(|i| [((i * 3 / N) as f32 - 1.0) * 2.0, 0.0, 0.0])
+                .collect(),
+            // ⭐ Normais TODAS iguais: sem isto a guarda da quina corta a média a meio e o gate
+            // passaria a medir a quina em vez do raio.
+            normal: vec![[0.0, 0.0, 1.0]; N],
+            ..tira_com_quina(N)
+        };
+        (g, owners)
+    }
+
+    /// ⭐⭐⭐ **CADA PEÇA É AMACIADA COM O RAIO DELA** — a cura do vazamento entre peças (ordem do
+    /// dono, 2026-09-19).
+    ///
+    /// # ⛔⛔ O defeito que ela fecha
+    ///
+    /// Até 18/09 o raio era o **MÁXIMO da cena**: uma esfera de espalhamento `0,05` ao lado de uma
+    /// chapa de `0,90` desenhava a borda dela com `0,90` — **`18×`**. *A vizinha escolhia o
+    /// espalhamento da peça.*
+    ///
+    /// ⭐ **A régua é a IGUALDADE AO BIT com o que cada peça teria SOZINHA**, e não uma barra: o que
+    /// se afirma é que a vizinha deixou de entrar na conta, e isso ou é exacto ou não aconteceu.
+    #[test]
+    fn cada_peca_e_amaciada_com_o_raio_dela_e_nao_com_o_da_vizinha() {
+        let (g, owners) = tres_pecas();
+        let n = g.hit.len();
+        let vis: Vec<f32> = (0..n).map(|i| f32::from(i % 2 == 0)).collect();
+        let jade = |raio: f32| {
+            ph2d_material::OpenPbr {
+                subsurface_weight: 1.0,
+                subsurface_radius: raio,
+                ..ph2d_material::OpenPbr::default()
+            }
+            .prepare()
+        };
+        // ⚠️ **O opaco tem RAIO GORDO**: o que o deixa de fora é o PESO — *uma fixtura cujo valor
+        // «mau» é zero não testa o filtro que o deita fora.*
+        let opaco = ph2d_material::OpenPbr {
+            subsurface_weight: 0.0,
+            subsurface_radius: 0.90,
+            ..ph2d_material::OpenPbr::default()
+        }
+        .prepare();
+        let (magra, gorda) = (jade(0.05), jade(0.90));
+        let cam = crate::Orbit::default();
+        let mats = [magra, gorda, opaco];
+        let out = blur_por_material(
+            &g,
+            &vis,
+            &crate::Surfaces {
+                all: &mats,
+                owners: Some(&owners),
+            },
+            &cam,
+            64,
+        );
+        // O que cada uma teria SOZINHA, sobre a mesma imagem.
+        let so = |s: &ph2d_material::Surface| {
+            blur_por_canal(&g, &vis, raio_em_pixeis(&cam, 64, s.scatter_distance()))
+        };
+        let (so_magra, so_gorda) = (so(&magra), so(&gorda));
+        for i in 0..n {
+            let peca = i * 3 / n;
+            // ⭐⭐ **O terço OPACO leva a visibilidade DURA**, e não o borrão de um vizinho: ele não
+            // tem termo de subsuperfície que a leia, e emprestar-lhe um raio seria inventar
+            // espalhamento onde o artista pôs zero.
+            let esperado = match peca {
+                0 => so_magra[i],
+                1 => so_gorda[i],
+                _ => [vis[i]; 3],
+            };
+            assert_eq!(
+                out[i].map(f32::to_bits),
+                esperado.map(f32::to_bits),
+                "o pixel {i} (peça {peca}) não levou o que a peça dele pede"
+            );
+        }
+        // ⭐ **O CONTROLO**: as duas passagens translúcidas têm mesmo de ser DIFERENTES, senão o
+        // teste acima passa por vácuo — *um gate que compara duas coisas iguais não afirma nada*.
+        assert_ne!(
+            so_magra[n / 6].map(f32::to_bits),
+            so_gorda[n / 6].map(f32::to_bits),
+            "os dois raios deram a mesma imagem — a fixtura deixou de conter o fenómeno"
+        );
+    }
+
+    /// ⭐⭐⭐ **COM UM RAIO SÓ, A SAÍDA É BYTE-IDÊNTICA À QUE JÁ SHIP** — e é isso que faz a cura
+    /// não tocar em nenhuma cena de hoje.
+    ///
+    /// ⚠️ **Ela nem sequer pergunta a quem é cada pixel** nesse caso: *paga-se a correcção
+    /// exactamente quando se usa a capacidade*, e uma cena de um material não paga a pergunta que
+    /// só uma cena de dois precisa de fazer.
+    #[test]
+    fn com_um_raio_so_a_saida_e_a_de_sempre_ao_bit() {
+        let (g, owners) = tres_pecas();
+        let n = g.hit.len();
+        let vis: Vec<f32> = (0..n).map(|i| f32::from(i % 2 == 0)).collect();
+        let m = ph2d_material::OpenPbr {
+            subsurface_weight: 1.0,
+            subsurface_radius: 0.30,
+            ..ph2d_material::OpenPbr::default()
+        }
+        .prepare();
+        let cam = crate::Orbit::default();
+        let mats = [m, m];
+        let out = blur_por_material(
+            &g,
+            &vis,
+            &crate::Surfaces {
+                all: &mats,
+                owners: Some(&owners),
+            },
+            &cam,
+            64,
+        );
+        let sempre = blur_por_canal(&g, &vis, raio_em_pixeis(&cam, 64, m.scatter_distance()));
+        assert_eq!(
+            out.iter().map(|v| v.map(f32::to_bits)).collect::<Vec<_>>(),
+            sempre
+                .iter()
+                .map(|v| v.map(f32::to_bits))
+                .collect::<Vec<_>>(),
+            "com um raio só a saída deixou de ser a de sempre — a cura passou a mexer no que ship"
+        );
+    }
+
+    /// ⭐⭐ **UMA CENA SÓ DE OPACOS NÃO ASSA CANAL NENHUM** — o `soft_at` cai na visibilidade DURA e
+    /// o quadro é byte a byte o de sempre.
+    #[test]
+    fn uma_cena_so_de_opacos_nao_assa_canal_nenhum() {
+        let (g, owners) = tres_pecas();
+        let vis = vec![0.5f32; g.hit.len()];
+        // ⚠️ **Opaco com RAIO GORDO**: o que o deixa de fora é o PESO, e não o raio dele estar a
+        // zero — uma fixtura cujo valor «mau» é zero não testa o filtro que o deita fora.
+        let opaco = ph2d_material::OpenPbr {
+            subsurface_weight: 0.0,
+            subsurface_radius: 0.90,
+            ..ph2d_material::OpenPbr::default()
+        }
+        .prepare();
+        let mats = [opaco, opaco];
+        assert!(
+            blur_por_material(
+                &g,
+                &vis,
+                &crate::Surfaces {
+                    all: &mats,
+                    owners: Some(&owners),
+                },
+                &crate::Orbit::default(),
+                64,
+            )
+            .is_empty(),
+            "uma cena só de opacos assou um canal — o quadro deixa de ser byte a byte o de sempre"
+        );
     }
 
     /// ⭐⭐⭐ **A MÉDIA NÃO ATRAVESSA UMA QUINA** — o gémeo do gate que o céu já tem.

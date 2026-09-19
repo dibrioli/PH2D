@@ -7,18 +7,22 @@
 //! |---|---|---|
 //! | **(A) a SOMBRA** que a chapa lança | ⭐ **sim** — e ela TEM de alcançar a subsuperfície | é o que se vê |
 //! | **(B) o PASSO DA CURVATURA** sai da bola do DOCUMENTO | ⛔ não | `2,54×` no `ε`, e **`1` byte** na imagem |
-//! | **(C) o RAIO DO BORRÃO** é o MÁXIMO da cena | ⛔ não | `18×` no raio — **dormente** enquanto a vizinha for opaca |
+//! | ~~**(C) o RAIO DO BORRÃO** era o MÁXIMO da cena~~ | ✅ **CURADO 19/09** | era `18×` — hoje o raio é de cada material |
 //!
 //! ⭐⭐⭐ **Porque (A) é legítimo, e é a resposta ao «não faz sentido»:** o termo de subsuperfície é
 //! *a luz que entrou PERTO e saiu aqui*. Se a chapa impede a luz de entrar perto, sai menos — logo
 //! uma sombra sobre uma peça translúcida **tem** de a escurecer. ⚠️ É exactamente por isso que a
 //! cura da §12 **borra** a visibilidade que aquela closure lê, em vez de a remover.
 //!
-//! # ⛔⛔ E os outros dois são vazamentos REAIS, medidos e NÃO curados
+//! # ⛔⛔ Os outros dois eram vazamentos REAIS, e o dono decidiu um de cada vez
 //!
-//! Eles ficam com gate no tamanho MEDIDO de hoje — *um vazamento nomeado com número é uma dívida;
-//! um sem número é uma nota que envelhece*. Curá-los muda toda imagem que já ship (o `ε`) ou custa
-//! `n` passagens de borrão (o raio), e isso é **decisão do dono**.
+//! - **(C) CURADO em 19/09** (*«cure»*): o raio passou a ser de **cada material**, e o preço é uma
+//!   passagem por **valor distinto** — não por peça. ⭐ Com um valor só a saída é **byte-idêntica**
+//!   à que ship, logo nenhuma cena de hoje paga a correcção. A cura vive na
+//!   [`ph2d_field_render::sss_shadow::blur_por_material`] e é gateada lá, ao bit.
+//! - **(B) fica**, com gate no tamanho MEDIDO de hoje — *um vazamento nomeado com número é uma
+//!   dívida; um sem número é uma nota que envelhece*. Curá-lo muda toda imagem que já ship e move a
+//!   paridade com o dispositivo ⇒ **decisão do dono**.
 
 use super::{Quadro, arranjo_do_dono, quadro, quebra_na_banda, so_a_bola};
 
@@ -108,77 +112,82 @@ fn a_chapa_move_a_curvatura_da_esfera_e_isso_nao_passa_de_um_byte() {
     );
 }
 
-/// ⭐⭐⭐ **(C) O RAIO DO BORRÃO DA SOMBRA É O MÁXIMO DA CENA** — a chapa escolhe o raio da esfera.
+/// ✅ **(C) CURADO em 2026-09-19, por ordem do dono — o raio do borrão é de CADA MATERIAL.**
 ///
-/// ⛔⛔ **E a razão declarada no código estava ERRADA no ponto que decide:** ela diz que é *«uma
-/// diferença que só se vê onde as duas peças se tocam»*. Não é — o raio é a **largura** com que
-/// TODA borda de sombra da imagem é amaciada, e a sombra que a chapa lança **sobre a esfera** é
-/// precisamente onde o raio da chapa apareceria. *Uma divergência declarada com o mecanismo errado
-/// é pior que uma não declarada: ela convence quem a lê a não a medir.*
+/// # ⛔⛔ O que aqui esteve, e o que o fechou
 ///
-/// ⭐ **Medido:** uma esfera de raio `0,05` ao lado de uma chapa de `0,90` desenha a borda dela com
-/// `0,90` — **`18×`**.
+/// O raio era o **MÁXIMO da cena**: uma esfera de espalhamento `0,05` ao lado de uma chapa de
+/// `0,90` desenhava a borda dela com `0,90` — **`18×`** —, e a razão declarada no código dizia que
+/// *«só se via onde as duas peças se tocam»*, o que era **falso**. O dono mandou curar (*«cure»*).
 ///
-/// ⚠️⚠️ **E é por isso que o dono NÃO o vê na cena `=33`:** a lâmina dele está **opaca**, e um
-/// material sem subsuperfície devolve `0` de espalhamento ⇒ não entra no máximo. *O vazamento é
-/// real e está dormente, e a diferença entre as duas coisas é uma peça translúcida ao lado.*
+/// ⭐ A cura vive na [`ph2d_field_render::sss_shadow::blur_por_material`] e é gateada **lá**, contra
+/// o que cada peça teria SOZINHA, **ao bit** — *o que se afirma é que a vizinha deixou de entrar na
+/// conta, e isso ou é exacto ou não aconteceu.*
+///
+/// ⚠️⚠️ **Esta linha fica porque o vazamento ERA REAL e o gate dele MORREU COM A CURA** — não por
+/// ele nunca ter existido. ⛔ E o `maior_espalhamento`, que o produzia, foi **APAGADO**: ele ficou
+/// sem chamador de produto, e *um método que ninguém chama é lixo* (a lei que o `Surfaces::of`
+/// deste repo já escreve).
+///
+/// ⭐⭐ **O que fica medido aqui é o preço:** o borrão custa uma passagem por **valor distinto** de
+/// espalhamento, e não por material — dois materiais com o mesmo número pedem a mesma passagem.
+/// *Numa cena de um valor só a saída é byte-idêntica e a pergunta «de quem é este pixel?» nem
+/// chega a ser feita.*
 #[test]
-fn a_chapa_escolhe_o_raio_do_borrao_da_esfera_e_so_dorme_por_ela_ser_opaca() {
-    let jade = |raio: f32| ph2d_material::OpenPbr {
-        subsurface_weight: 1.0,
-        geometry_thin_walled: false,
-        subsurface_radius: raio,
-        ..ph2d_material::OpenPbr::default()
+fn o_raio_do_borrao_custa_uma_passagem_por_valor_distinto_e_nao_por_peca() {
+    let jade = |raio: f32| {
+        ph2d_material::OpenPbr {
+            subsurface_weight: 1.0,
+            geometry_thin_walled: false,
+            subsurface_radius: raio,
+            ..ph2d_material::OpenPbr::default()
+        }
+        .prepare()
     };
-    // ⚠️⚠️ **A vizinha opaca tem de ter um RAIO GORDO**, e a 1.ª redacção não tinha: com o raio a
-    // zero, tirar a guarda do `reads_curvature` era **invisível** e a mutação SOBREVIVEU. *Uma
-    // fixtura cujo valor «mau» é zero não testa o filtro que o deita fora.*
-    //
-    // ⭐ E é a situação REAL: a lâmina da `=33` tem um número no slider do raio e o **peso** a
-    // zero. O que a mantém fora do máximo é o PESO, não o raio — e é isso que este gate afirma.
-    let opaca = ph2d_material::OpenPbr {
+    // ⚠️ **O opaco tem RAIO GORDO**: o que o deixa de fora é o PESO, e não o raio estar a zero —
+    // *uma fixtura cujo valor «mau» é zero não testa o filtro que o deita fora*, e foi uma mutação
+    // sobrevivente que o disse.
+    let opaco = ph2d_material::OpenPbr {
         subsurface_weight: 0.0,
         subsurface_radius: 0.90,
         ..ph2d_material::OpenPbr::default()
-    };
-    let maior = |m: &[ph2d_material::Surface]| {
-        crate::materials::maior_espalhamento(&ph2d_field_render::Surfaces {
+    }
+    .prepare();
+    // ⛔⛔ **PELA PORTA, e não por uma segunda cópia da dedução** — a 1.ª redacção deste gate
+    // reimplementava-a, e uma mutação que apagava a do produto **SOBREVIVEU**: a saída não muda
+    // (todas as passagens dão a mesma imagem), só o **custo** dobra. *Um gate que reimplementa o
+    // que mede não mede nada.*
+    let distintos = |m: &[ph2d_material::Surface]| {
+        ph2d_field_render::sss_shadow::espalhamentos_distintos(&ph2d_field_render::Surfaces {
             all: m,
             owners: None,
         })
+        .len()
     };
-    let magra = [jade(0.05).prepare()];
-    let par_translucido = [jade(0.05).prepare(), jade(0.90).prepare()];
-    let par_opaco = [jade(0.05).prepare(), opaca.prepare()];
-
-    let so = maior(&magra).expect("a esfera é translúcida")[0];
-    let com = maior(&par_translucido).expect("as duas são translúcidas")[0];
-    let dorme = maior(&par_opaco).expect("a esfera é translúcida")[0];
-
-    // (1) ⛔ O VAZAMENTO EXISTE, e é grande: a vizinha gorda escolhe o raio da magra.
-    assert!(
-        com >= so * 10.0,
-        "a vizinha translúcida deixou de mandar no raio da esfera ({so:.3} sozinha contra \
-         {com:.3} acompanhada) — se alguém passou a fazer um borrão por material, esta linha sai e \
-         a nota do `maior_espalhamento` com ela"
+    // (1) ⭐ Dois materiais com o MESMO número são UMA passagem — é isto que faz toda cena de hoje
+    // continuar a pagar o que pagava.
+    assert_eq!(
+        distintos(&[jade(0.30), jade(0.30), jade(0.30)]),
+        1,
+        "três peças com o mesmo espalhamento pediram mais de uma passagem"
     );
-    // (2) ⭐ E ELE DORME quando a vizinha é OPACA — é isto que explica por que a `=33` não o mostra.
-    assert!(
-        (dorme - so).abs() <= f32::EPSILON,
-        "uma vizinha OPACA passou a entrar no máximo ({so:.3} contra {dorme:.3}) — então o \
-         vazamento deixou de estar dormente na cena do dono, e ele vai vê-lo"
+    // (2) ⛔ E dois valores diferentes são DUAS — o preço da capacidade que o dono mandou construir.
+    assert_eq!(
+        distintos(&[jade(0.05), jade(0.90)]),
+        2,
+        "duas peças com espalhamentos diferentes deixaram de pedir duas passagens — se voltou a\
+         haver um raio só para a cena, o vazamento de 18/09 voltou com ele"
     );
-    // (3) ⭐⭐⭐ **E UMA CENA SÓ DE OPACOS DEVOLVE `None`** — *esta* é a metade que o filtro de
-    // `reads_curvature` compra, e a que faz um quadro sem subsuperfície não pagar NADA e sair byte
-    // a byte o de sempre.
-    //
-    // ⛔⛔ Ela nasceu de uma mutação que SOBREVIVEU: apagar aquele filtro não move (1) nem (2),
-    // porque a [`ph2d_material::Surface::scatter_distance`] tem a **mesma** guarda dentro dela e
-    // devolve `0`. *O que o filtro decide sozinho não é o número — é o `Some` contra o `None`.*
-    assert!(
-        maior(&[opaca.prepare(), opaca.prepare()]).is_none(),
-        "uma cena SÓ de materiais opacos devolveu um espalhamento — então o borrão passa a correr \
-         sobre um quadro que não o pediu, e ele deixa de ser byte a byte o de sempre"
+    // (3) ⭐⭐ Um OPACO não pede passagem nenhuma, por mais gordo que seja o raio dele.
+    assert_eq!(
+        distintos(&[jade(0.05), opaco]),
+        1,
+        "um material OPACO passou a pedir uma passagem de borrão — ele não tem termo que a leia"
+    );
+    assert_eq!(
+        distintos(&[opaco, opaco]),
+        0,
+        "uma cena só de opacos pediu uma passagem — o quadro deixa de ser byte a byte o de sempre"
     );
 }
 
@@ -222,7 +231,7 @@ fn sonda_por_onde_a_chapa_alcanca_a_esfera() {
         ec / es.max(1e-9)
     );
 
-    // ── (C) O RAIO DO BORRAO ─────────────────────────────────────────────────────────────────
+    // ── (C) O RAIO DO BORRAO — CURADO em 19/09 ───────────────────────────────────────────────
     let magro = ph2d_material::OpenPbr {
         subsurface_radius: 0.05,
         ..jade
@@ -231,19 +240,26 @@ fn sonda_por_onde_a_chapa_alcanca_a_esfera() {
         subsurface_radius: 0.90,
         ..jade
     };
-    let so = [magro.prepare()];
-    let par = [magro.prepare(), gordo.prepare()];
-    let ver = |m: &[ph2d_material::Surface]| {
-        crate::materials::maior_espalhamento(&ph2d_field_render::Surfaces {
-            all: m,
-            owners: None,
-        })
-        .map_or(0.0, |e| e[0])
+    let passagens = |m: &[ph2d_material::Surface]| {
+        let mut v: Vec<[u32; 3]> = Vec::new();
+        for s in m {
+            if !s.reads_curvature() {
+                continue;
+            }
+            let e = s.scatter_distance().map(f32::to_bits);
+            if !v.contains(&e) {
+                v.push(e);
+            }
+        }
+        v.len()
     };
     println!(
-        "  (C) O RAIO DO BORRAO da sombra e' o MAXIMO da cena:\n               so' a esfera magra        ⇒ {:.4}\n               esfera magra + chapa gorda ⇒ {:.4}   ⛔ a chapa escolheu o raio da esfera",
-        ver(&so),
-        ver(&par)
+        "  (C) O RAIO DO BORRAO e' de CADA MATERIAL desde 19/09 (era o MAXIMO da cena):\n         \
+         \x20     esfera magra sozinha        ⇒ 1 passagem, raio dela\n         \
+         \x20     esfera magra + chapa gorda  ⇒ {} passagens, cada peca com o raio dela\n         \
+         \x20     duas pecas com o MESMO raio ⇒ {} passagem  (byte-identico ao que ship)",
+        passagens(&[magro.prepare(), gordo.prepare()]),
+        passagens(&[magro.prepare(), magro.prepare()]),
     );
 
     // ── O QUE SOBRA COM A SOMBRA DESLIGADA ───────────────────────────────────────────────────

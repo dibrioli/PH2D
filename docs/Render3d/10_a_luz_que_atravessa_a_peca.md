@@ -1256,7 +1256,7 @@ paridade com o dispositivo, que deriva o dele da mesma bola. ⇒ **decisão do d
 `eps_para` quadrático na escala **não** move aquele byte, porque a curvatura de uma **esfera** é
 robusta ao passo. *Numa peça com detalhe fino um `ε` `2,54×` mais grosso apagaria feição.*
 
-### §22.3 — ⛔⛔ (C) O raio do borrão é o MÁXIMO da cena, e a razão declarada estava ERRADA
+### §22.3 — ✅ (C) O raio do borrão era o MÁXIMO da cena — **CURADO em 19/09** (ver §23)
 
 O código declarava que era *«uma diferença que só se vê onde as duas peças se tocam»*. **Não é** — o
 raio é a **largura** com que toda borda de sombra da imagem é amaciada, e a sombra que uma peça
@@ -1304,3 +1304,41 @@ primeiro só não a pisou porque percorre as lâmpadas que existem.
   trivialmente, com o gate a afirmar que não há vazamento nenhum.
 
 **5 mutações, 5 sangram.**
+
+## §23 — ✅ O RAIO DO BORRÃO É DE CADA MATERIAL (ordem do dono, 2026-09-19: *«cure»*)
+
+### §23.1 — ⭐⭐ A lei, e porque o preço é por VALOR DISTINTO e não por peça
+
+O borrão é uma passagem sobre a imagem inteira ⇒ o custo é o número de passagens. ⚠️ Mas dois
+materiais com o **mesmo** espalhamento pedem a **mesma** passagem ⇒ o preço é o número de **valores
+distintos**, que numa cena real é `1` ou `2` e não o número de peças
+([`espalhamentos_distintos`], uma porta com **dois** leitores: o borrão e o gate do preço).
+
+⭐⭐⭐ **E com UM valor distinto a saída é BYTE-IDÊNTICA à que ship, sem sequer perguntar a quem é
+cada pixel** — *paga-se a correcção exactamente quando se usa a capacidade*, e uma cena de um
+material só, que é toda cena de hoje, não paga nada.
+
+⚠️ **Um pixel cujo material não espalha leva a visibilidade DURA**, e não o borrão de um vizinho:
+ele não tem termo de subsuperfície para a ler, e emprestar-lhe um raio seria inventar espalhamento
+onde o artista pôs zero.
+
+### §23.2 — ⛔ E o `maior_espalhamento` foi APAGADO
+
+Ele ficou sem chamador de produto, e *um método que ninguém chama é lixo* — a lei que o
+`Surfaces::of` deste repo já escreve. ⚠️ **O gate que media o vazamento morreu com ele** e foi
+reescrito do lado da cura: hoje afirma o **preço** (uma passagem por valor distinto), e a lei em si
+é gateada na crate do borrão, **ao bit**, contra o que cada peça teria sozinha.
+
+### §23.3 — ⚠️⚠️ TRÊS mutações sobreviveram, e cada uma nomeou uma cegueira diferente
+
+1. **Um pixel opaco levava o borrão de um vizinho** — a fixtura tinha as **duas** peças
+   translúcidas, logo o braço do opaco nunca corria. ⭐ E ao curá-la apareceu um defeito **na
+   própria cura**: com *«translúcida + opaca»* há **um** valor distinto ⇒ cai no caminho rápido,
+   onde a pergunta *«de quem é este pixel?»* nem é feita. ⇒ a fixtura passou a ter **três** peças
+   (dois raios translúcidos **mais** o opaco), que é o mínimo em que o caminho por-pixel corre.
+2. **A dedução dos valores distintos estava escrita DUAS vezes** — no produto e no gate do preço —,
+   e apagar a do produto **não movia a imagem**: todas as passagens dão o mesmo resultado, só o
+   **custo** dobra. ⇒ *um gate que reimplementa o que mede não mede nada*, e a dedução virou porta.
+3. **O gate da saída é cego ao preço** — e o do preço é cego à saída. *Duas grandezas, dois gates.*
+
+**5 mutações, 5 sangram.** Portão: `2 221` testes verdes, clippy `-D warnings` a zero.

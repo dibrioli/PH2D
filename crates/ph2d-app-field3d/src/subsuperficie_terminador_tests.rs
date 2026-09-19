@@ -126,14 +126,19 @@ fn quadro(
     // ⭐⭐⭐ **A BORDA MOLE, pela MESMA porta que o app usa** — ⚠️ a 1.ª redacção desta sonda
     // derivava a distância de espalhamento aqui, o que a fazia a segunda resposta à mesma pergunta.
     let mut sh = sh;
-    if q.mole
-        && let Some(espalha) = crate::materials::maior_espalhamento(&surfaces)
-    {
-        let raio = ph2d_field_render::sss_shadow::raio_em_pixeis(cam, h, espalha);
+    if q.mole {
         // ⚠️ **As lâmpadas que EXISTEM**, e não `0..1`: com a sombra desligada não há canal
         // nenhum, e um `0..1` pedia o canal de uma lâmpada que o passe não escreveu.
         let canais = (0..sh.lamps())
-            .map(|l| ph2d_field_render::sss_shadow::blur_por_canal(&g, sh.lamp_channel(l), raio))
+            .map(|l| {
+                ph2d_field_render::sss_shadow::blur_por_material(
+                    &g,
+                    sh.lamp_channel(l),
+                    &surfaces,
+                    cam,
+                    h,
+                )
+            })
             .collect();
         sh.set_soft(canais);
     }

@@ -110,6 +110,35 @@ fn tag(graph: &Graph, sink: NodeId, name: &str, top: u8) -> u8 {
 /// Um nó sem overrides — e todo nó que não é sink — devolve [`SinkStyle::PLAIN`],
 /// que é exactamente o que os dois lowerings cravavam antes destes params
 /// existirem.
+/// ⭐⭐⭐ **A PORTA DO PRODUTO da lei [`ph2d_render::SinkStyle::so_com_forma`]** — `PH2D_MOTION_SO_COM_FORMA=1`.
+///
+/// > **Ordem do dono, 2026-09-17, reaberta em 19/09 como report:** *«Prefiro que toda visualização
+/// > passe pelo Duplicator e que nós como Grid, rope, etc, não passem de posições do espaço, sem
+/// > nenhuma capacidade de gerar pixels na tela»* · *«sem o duplicator só aparece um gizmo de osso
+/// > ou segmento de corda (ou outro tipo de segmento) que não renderiza em runtime»*.
+///
+/// ⚠️ **Ela nasce DESLIGADA, e o número é a razão:** ligada, **111 das 123** cenas do roteador
+/// deixam de desenhar o que desenham hoje (medido — `quem_desenha_sem_forma`), porque **90 %**
+/// delas nunca receberam uma forma e vivem do ladrilho de omissão da shell. A migração das cenas
+/// é o que a liga; até lá, o de sempre.
+///
+/// ⚠️ **LIDA UMA VEZ POR CORRIDA e NUM SÍTIO SÓ.** Este é o único leitor do ambiente desta lei —
+/// os dois lowerings recebem-na como DADO, dentro do estilo, e é isso que os torna gateáveis sem
+/// o ambiente (a auditoria do doc 115 §31: *«um gate que lê o ambiente mede a máquina»*).
+/// Um `OnceLock` porque `sink_style` corre por sink e por quadro.
+#[must_use]
+pub fn so_com_forma_por_ordem() -> bool {
+    static PORTA: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *PORTA.get_or_init(|| ordem_de(std::env::var("PH2D_MOTION_SO_COM_FORMA").ok().as_deref()))
+}
+
+/// A leitura de uma ordem do ambiente, **pura**, para o gate a poder medir sem mexer no processo.
+/// Vazio e `"0"` são desligado; tudo o resto é ligado — a mesma escada das outras portas da casa.
+#[must_use]
+pub fn ordem_de(v: Option<&str>) -> bool {
+    matches!(v, Some(x) if !x.is_empty() && x != "0")
+}
+
 #[must_use]
 pub fn sink_style(graph: &Graph, sink: NodeId) -> SinkStyle {
     // O tecto do blend é o array de pipelines, lido DO RENDERER — um literal `5`
@@ -137,6 +166,8 @@ pub fn sink_style(graph: &Graph, sink: NodeId) -> SinkStyle {
             0,
         ),
         stream_order: param(graph, sink, SINK_SORT_PARAM) >= 0.5,
+        // ⭐⭐⭐ **A LEI DO DONO, e ela NÃO sai de um param** — ver [`so_com_forma_por_ordem`].
+        so_com_forma: so_com_forma_por_ordem(),
     }
 }
 

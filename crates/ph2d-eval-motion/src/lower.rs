@@ -48,6 +48,36 @@ fn blend_at(col: Option<&Column>, i: usize, fallback: u32) -> u32 {
     RenderInstance::pack_blend_bits(tag)
 }
 
+/// ⭐⭐⭐ **ESTA CORRENTE CARREGA APARÊNCIA?** — a porta única da lei [`SinkStyle::so_com_forma`]
+/// (ordem do dono, 2026-09-17/19: *«nós como Grid, rope, etc, não passam de posições do espaço»*).
+///
+/// Responde `true` quando a corrente traz uma das duas coisas que UMA ORIGEM escreve:
+///
+/// | o quê | quem a escreve | como se lê |
+/// |---|---|---|
+/// | um **ladrilho** | `source.object` (sprite · vector assado · Flip) | a coluna `uv_rect` existe |
+/// | **geometria viva** | `source.shape` · `source.text` · `source.lsystem` | `geometry_id > 0` |
+///
+/// ⚠️ **O ladrilho pergunta-se pela EXISTÊNCIA da coluna e a geometria pelo VALOR**, e a
+/// assimetria é a convenção desta casa, não um descuido: `geometry_id = 0` quer dizer
+/// *«não é forma»* (é a mesma cerca `> 0.5` que o [`RowMedium`] usa há muito), enquanto um
+/// `uv_rect` só existe se alguém o escreveu — não há valor dele que signifique *«sem ladrilho»*.
+///
+/// ⚠️ **Por CORRENTE e não por linha** — ver a nota de [`SinkStyle::so_com_forma`]: por linha, o
+/// device teria de compactar a saída, e a paridade passaria a depender de duas compactações
+/// concordarem. Uma corrente MISTA carrega a coluna do ladrilho ⇒ desenha-se como hoje.
+///
+/// ⛔ **Não pergunta pelo `texture_id`.** Ele é `0` para o atlas partilhado, logo uma corrente sem
+/// aparência nenhuma leria *«tem textura 0»*; e um `texture_id` sem `uv_rect` mandaria o shader
+/// amostrar o atlas INTEIRO, que não é a aparência de nada.
+#[must_use]
+pub fn tem_aparencia(stream: &Stream) -> bool {
+    if stream.get("uv_rect").is_some() {
+        return true;
+    }
+    matches!(stream.get("geometry_id"), Some(Column::Scalar(v)) if v.iter().any(|&x| x > 0.5))
+}
+
 pub fn lower_to_instances_into(
     stream: &Stream,
     default_uv_rect: [f32; 4],
@@ -70,6 +100,12 @@ pub fn lower_to_instances_onto(
     style: SinkStyle,
     out: &mut Vec<RenderInstance>,
 ) {
+    // ⭐⭐⭐ A lei do dono: uma corrente de POSIÇÕES não produz pixel nenhum — ver
+    // [`tem_aparencia`] e [`SinkStyle::so_com_forma`]. Desligada (o de sempre) o corpo abaixo
+    // corre byte a byte como sempre correu.
+    if style.so_com_forma && !tem_aparencia(stream) {
+        return;
+    }
     let n = stream.count();
     let p = stream.get("P");
     let size = stream.get("size");
@@ -380,6 +416,12 @@ pub fn lower_to_vector_instances_onto(
     style: SinkStyle,
     out: &mut Vec<VectorInstance>,
 ) {
+    // ⭐⭐⭐ A MESMA lei, e ela tem de ser lida pelos DOIS lowerings: uma corrente de posições
+    // não desenha nem como quad nem como forma. Escrita só de um lado, o outro passe continuaria
+    // a pintá-la — que é a forma de defeito que o cabeçalho de [`MediaColumns`] já nomeia.
+    if style.so_com_forma && !tem_aparencia(stream) {
+        return;
+    }
     // ⚠️ **A saída cedo desapareceu de propósito:** uma corrente sem `geometry_id` pode ainda
     // ter quads no passe vectorial (a terceira média), e o [`row_medium`] é quem decide.
     let n = stream.count();

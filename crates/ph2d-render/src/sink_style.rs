@@ -72,7 +72,44 @@ pub struct SinkStyle {
     /// rápida supõe. Um sink por índice global faria o 2.º desenhar sempre por
     /// cima do 1.º, que é uma afirmação que ninguém autorou.
     pub stream_order: bool,
+    /// ⭐⭐⭐ **SÓ DESENHA O QUE VEIO DE UMA FORMA** — a ordem do dono de 2026-09-17, reaberta em
+    /// 19/09 como report de defeito: *«nós como Grid, rope, etc, não passam de posições do espaço,
+    /// sem nenhuma capacidade de gerar pixels na tela»*, e *«sem o duplicator só aparece um gizmo
+    /// de osso ou segmento de corda […] que não renderiza em runtime»*.
+    ///
+    /// `true` ⇒ uma corrente que **não carrega aparência** (nem ladrilho, nem geometria viva) não
+    /// produz uma única instância: ela é um conjunto de POSIÇÕES, e quem a quiser ver liga um
+    /// `motion.duplicator` com um `source.shape`/`source.object`. `false` (o de sempre) é o
+    /// ladrilho de omissão da shell, byte a byte.
+    ///
+    /// ⚠️⚠️ **É uma LEI carregada pelo estilo, não um param que o artista autora** — nenhum
+    /// controlo do cartão do `Output` a escreve, e há gate a afirmá-lo. Ela mora aqui por uma razão
+    /// medida: o estilo é o único canal que já atravessa os DOIS lowerings, e a alternativa —
+    /// uma bandeira lida do ambiente lá dentro — é exactamente o que a auditoria do
+    /// [doc 115 §31] recusou (*«uma lei que só é alcançável pelo ambiente não é gateável, e um
+    /// gate que lê o ambiente mede a máquina»*). Assim um gate constrói o estilo à mão e mede a
+    /// LEI; a porta do produto fica na borda, num sítio só.
+    ///
+    /// ⚠️ **A pergunta é por CORRENTE e não por LINHA**, e isso foi uma decisão com preço medido:
+    /// por linha, o caminho do DISPOSITIVO teria de compactar a saída (o `read_uv_rect` do WGSL
+    /// escreve sempre as quatro palavras), e a paridade CPU↔device passaria a depender de duas
+    /// compactações concordarem. Por corrente, o device apenas não despacha — e uma corrente
+    /// MISTA (uma junção de formas com pontos) carrega a coluna do ladrilho, logo continua a
+    /// desenhar-se como hoje, com o `RowMedium` a decidir quem vai a que passe.
+    pub so_com_forma: bool,
 }
+
+/// ⭐⭐⭐ **A LEI DO DONO SHIPA DESLIGADA, E ISSO É ERRO DE COMPILAÇÃO** — não um teste.
+///
+/// ⚠️ Um `assert!` de teste sobre uma constante é **dobrado pelo compilador** antes de correr (o
+/// clippy di-lo em voz alta), logo ele não afirmaria nada. Aqui a afirmação é do compilador: no dia
+/// em que alguém quiser o contrário, tem de **apagar esta linha** — que é uma decisão, e não uma
+/// deriva. A linha desta casa já violou a lei uma vez (doc 115 §31, o corte em duas camadas que
+/// shipou ligado e foi invertido por auditoria).
+const _: () = assert!(
+    !SinkStyle::PLAIN.so_com_forma,
+    "tudo o que e' novo shipa desligado"
+);
 
 impl SinkStyle {
     /// O estilo que os dois lowerings cravavam antes destes params existirem:
@@ -82,6 +119,9 @@ impl SinkStyle {
         pivot: [0.0, 0.0],
         sampling: RenderInstance::SAMPLING_DEFAULT,
         stream_order: false,
+        // ⚠️ A lei nasce DESLIGADA: ligá-la muda o que 111 das 123 cenas do roteador desenham
+        // (medido — `quem_desenha_sem_forma`), e nesta casa tudo o que é novo shipa desligado.
+        so_com_forma: false,
     };
 
     /// O `flip_uv` que este estilo produz para uma linha SEM coluna `blend`.

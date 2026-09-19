@@ -12,7 +12,7 @@
 //! bancada da lei corre sobre a chapa. *Uma cópia aqui divergiria na primeira
 //! wave que mexesse numa delas, e a que o dono vê é a que envelhece.*
 
-use ph2d_sculpt3d::medida_do_pente::{lascas, pior_angulo, q_da_faixa};
+use ph2d_sculpt3d::medida_do_pente::{grade_da_faixa, lascas, pior_angulo, q_da_faixa};
 use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
 
 /// ⭐⭐⭐ **O RAIO COM QUE A CENA É MEDIDA — DERIVADO, e não escolhido.**
@@ -77,6 +77,52 @@ const LASCAS_TOLERADAS: usize = 1;
 /// esfera UV lê `+0,55`. *Uma ordem de grandeza entre os dois lados é o que uma
 /// barra honesta separa.*
 const GRAO_MAXIMO: f64 = 0.15;
+
+/// **O ZERO da régua do olho** — a fracção que uma malha SEM direcção nenhuma lê.
+///
+/// ⭐ Ele não é escolhido: o desvio à grade de uma direcção qualquer é uniforme
+/// em `[0°, 45°]`, logo as três faixas de `15°` enchem-se por igual. Medido
+/// nesta peça com o pente desligado: `32,4 %` a `38,1 %` (o `45°` é o mais alto
+/// — ⚠️ *o resto de direcção que sobra a um remalhador isotrópico aparece nesta
+/// régua e NÃO no `Q`, que ali lê `+0,0078`: uma média cancela o que uma
+/// contagem mostra*).
+const GRADE_ISOTROPICA: f64 = 100.0 / 3.0;
+
+/// **Quanto GRADE a peça pode ter ANTES de o pente lhe tocar** — o controlo.
+///
+/// ⛔ **A barra sai de um vale MEDIDO com esta mesma porta:** a peça desta cena
+/// lê `32,4 %`–`38,1 %` nos quatro rumos (o `45°` é o mais alto — um resto de
+/// direcção que o `Q` não vê, porque ele é uma média) e uma **esfera UV** lê
+/// `62,2 %`–`66,6 %`. *O que esta metade separa é «a peça tem um resto» de «a
+/// peça JÁ É uma grade», e isso é meia tabela de distância.*
+const GRADE_DO_GRAO_MAXIMO: f64 = 45.0;
+
+/// **Que fracção das arestas da faixa tem de correr com a grade do traço.**
+///
+/// ⛔⛔⛔ **É a barra que faltava no dia em que o dono reprovou a cena com foto**
+/// (*«pouca ou nenhuma diferença»*, 18/09) — com as outras quatro metades deste
+/// gate VERDES, e o arame dos dois lados do controlo indistinguível.
+///
+/// ⭐ **O número é o MEIO de um vale cujos dois lados são leis REAIS**, medido
+/// nos quatro rumos com esta porta:
+///
+/// | chão do flip | grade, pior rumo | pior ângulo | lascas |
+/// |---|---|---|---|
+/// | desligado | `32,4 %` | `22,8°` | `0` |
+/// | `24°` (a lei REPROVADA) | **`35,9 %`** | `22,5°` | `0` |
+/// | `20°` | `37,0 %` | `17,3°` | `0` |
+/// | `18°` | `38,4 %` | `5,5°` | `0` |
+/// | **`16°` (a de hoje)** | **`42,1 %`** | `8,0°` | `0` |
+/// | `14°` | `44,7 %` | `5,1°` | `0` |
+/// | `12°` | `46,7 %` | `3,2°` | `1` ⛔ |
+///
+/// ⇒ o vale é `[39,8 ; 42,1]` (o melhor rumo da lei reprovada contra o pior da
+/// de hoje) e `41,0` é o meio dele.
+///
+/// ⭐⭐ **E o lado APROVADO está medido:** a mesma régua sobre a saída do PRÓPRIO
+/// alvo (`fixtures/rake/rotacao/*_p100`) lê **`43,6 %`** contra `34,1 %`
+/// desligado — *a nossa lei entrega a classe dele*.
+const GRADE_MINIMA: f64 = 41.0;
 
 /// Quantos vértices um traço penteado tem de DESLOCAR para o artista ver.
 ///
@@ -216,9 +262,52 @@ fn a_cena_do_pente_tem_o_que_mostrar() {
              nos quatro rumos) — sao as ESTRIAS que o `DEU ERRADO SE` do roteiro \
              nomeia, e o `Q` sozinho nao as ve'"
         );
+        // ⭐⭐⭐ **A TERCEIRA COLUNA — a que o dono julga, e a que este gate não
+        // tinha no dia em que ele reprovou a cena com foto.**
+        //
+        // ⛔⛔ As quatro metades acima ficaram TODAS verdes enquanto as duas
+        // imagens do arame eram indistinguíveis: o `Q` é uma média, os
+        // `movidos` contam diferenças **ao bit** (um vértice deslocado um
+        // milionésimo entra na conta) e as lascas são uma cerca. *Nenhuma
+        // responde «que fracção das arestas mudou de rumo», que é o que o olho
+        // faz.*
+        let (b0, nb0) = grade_da_faixa(&m0, &c0, raio);
+        let (b1, nb1) = grade_da_faixa(&m1, &c1, raio);
+        let (g0, g1) = (
+            100.0 * b0[0] as f64 / nb0.max(1) as f64,
+            100.0 * b1[0] as f64 / nb1.max(1) as f64,
+        );
+        assert!(
+            g0 < GRADE_DO_GRAO_MAXIMO,
+            "{nome}: a peca ja' nasce com {g0:.1} % das arestas na grade do \
+             traco (isotropico e' {GRADE_ISOTROPICA:.1} %, medido 32,4–38,1 \
+             nesta peca e 62,2 % numa esfera UV) — o controlo do passo (2) do \
+             roteiro nao seria controlo nenhum"
+        );
+        assert!(
+            g1 >= GRADE_MINIMA,
+            "{nome}: com o pente no tecto so' {g1:.1} % das arestas da faixa \
+             correm a menos de 15° da grade do traco, contra {GRADE_MINIMA:.1} % \
+             (medido 42,1–45,2; o ALVO entrega 43,6 % e uma malha sem direccao \
+             nenhuma le' {GRADE_ISOTROPICA:.1} %) — foi ISTO que o dono \
+             reprovou com foto em 18/09, com as outras quatro metades verdes"
+        );
+        // ⛔⛔ **E a SUBIDA tem de acontecer em TODO rumo, que é a metade que a
+        // absoluta não cobre.** Com a lei reprovada o `45°` **DESCIA** (`38,1 %`
+        // desligado contra `36,0 %` no tecto): *a peça tem ali um resto de
+        // direcção, e um pente fraco desarruma-o mais do que o alinha* — e o
+        // `Q` daquela célula subia na mesma (`+0,0078 → +0,0657`), porque ele é
+        // uma média e esta é uma contagem.
+        assert!(
+            g1 > g0,
+            "{nome}: a grade foi de {g0:.1} % para {g1:.1} % — o pente DESARRUMOU \
+             a faixa em vez de a alinhar (a lei reprovada em 18/09 fazia isto a \
+             45°, e as outras metades deste gate ficavam verdes)"
+        );
         eprintln!(
-            "[=49] {nome:<16} Q {q0:+.4} -> {q1:+.4} · movidos {movidos} · \
-             lascas {finas}/{total} · pior {pior:.2}°"
+            "[=49] {nome:<16} Q {q0:+.4} -> {q1:+.4} · grade {g0:.1} % -> \
+             {g1:.1} % · movidos {movidos} · lascas {finas}/{total} · \
+             pior {pior:.2}°"
         );
     }
 }
@@ -402,3 +491,7 @@ fn traco_com(pente: f32, e: [f32; 2], raio: f32, alvo: f32) -> (ph2d_mesh::Mesh,
 /// As sondas desta cena — instrumentos, não lei. Ver [`sondas`].
 #[path = "scenes_pente_sondas_tests.rs"]
 mod sondas;
+
+/// Os DESENHADORES desta cena — irmão das [`sondas`], cortado por tecto de LOC.
+#[path = "scenes_pente_desenhos_tests.rs"]
+mod desenhos;

@@ -48,17 +48,19 @@
 //! esta cena arma), `Q` desligado → no tecto, e quantos vértices o pente desloca
 //! num traço:
 //!
-//! | rumo do traço | `Q` desligado → no tecto | vértices movidos | lascas |
+//! | rumo do traço | `Q` desligado → no tecto | **grade** desligado → no tecto | lascas |
 //! |---|---|---|---|
-//! | ao longo de `x` | `−0,0008 → +0,0985` | `2 786` | `0` |
-//! | `30°` | `−0,0665 → −0,0001` | `2 775` | `0` |
-//! | `45°` | `−0,0807 → +0,0775` | `2 791` | `1` |
-//! | atravessado | `+0,0516 → +0,1285` | `2 803` | `0` |
+//! | ao longo de `x` | `−0,0458 → +0,2255` | `33,1 % → 42,1 %` | `0` |
+//! | `30°` | `−0,0133 → +0,2478` | `32,4 % → 42,6 %` | `0` |
+//! | `45°` | `+0,0078 → +0,2139` | `38,1 % → 42,1 %` | `0` |
+//! | atravessado | `−0,0217 → +0,2732` | `33,5 % → 45,2 %` | `0` |
 //!
-//! ⇒ **a malha deixa de CRUZAR o traço nos quatro** e o Δ passa a barra do
-//! corpus em todos. ⚠️ **E o que ele NÃO faz está aqui também:** a `30°` um traço
-//! só aterra em `−0,0001` — *ali ele neutraliza o cruzamento e não constrói
-//! grade* —, logo o gate mede o **Δ** e *«já não cruza»*, nunca um `Q` absoluto.
+//! ⇒ **a malha deixa de CRUZAR o traço nos quatro** e a fracção alinhada sobe
+//! acima da barra em todos. ⚠️⚠️ **A coluna da GRADE é a que o dono julga, e ela
+//! entrou depois de um report:** *«pouca ou nenhuma diferença»* (18/09), com o
+//! `Q` a subir `+0,09` e as duas imagens do arame indistinguíveis. **`33 %` é o
+//! que uma malha sem direcção nenhuma lê**, porque o desvio à grade é uniforme
+//! em `[0°, 45°]` — logo o que se vê é a distância a esse `33`, não o valor.
 //!
 //! ⛔⛔ **E esta escolha REFUTOU uma recusa minha, medida horas antes.** A 1.ª
 //! redacção desta cena abria na esfera UV e declarava a remalhada recusada com
@@ -177,26 +179,32 @@ pub(crate) const DETALHE_DA_CENA: f32 = 1.0;
 
 /// O roteiro da `=49`.
 ///
-/// ⛔⛔⛔ **ELE MUDOU DUAS VEZES, e as duas por MEDIÇÃO.**
+/// ⛔⛔⛔ **ELE MUDOU TRÊS VEZES, e as três por MEDIÇÃO — duas delas depois de o
+/// dono reprovar a cena com FOTO.**
 ///
-/// A 1.ª redacção prometia *«as linhas viram-se e passam a correr ao longo do
-/// risco»* e o dono reprovou-a com foto (*«não sei o que é para esperar. não
-/// vejo diferença»*, 18/09) — o arame desenhado mostrava os dois lados do
-/// controlo **indistinguíveis**. A 2.ª passou a dizer o contrário: *«o efeito é
-/// medível e quase invisível»*.
+/// | redacção | o que prometia | como caiu |
+/// |---|---|---|
+/// | 1.ª | *«as linhas viram-se e correm ao longo do risco»* | foto: *«não sei o que é para esperar»* |
+/// | 2.ª | *«o efeito é medível e quase invisível»* | a lei ganhou a 3.ª metade no mesmo dia |
+/// | 3.ª | *«os triângulos ficam mais compridos e apontam a direcção»* | foto: **«pouca ou nenhuma diferença»** |
 ///
-/// ⭐⭐⭐ **E essa segunda MORREU no mesmo dia, quando a lei ganhou a terceira
-/// metade** (a troca de diagonal — ver [`ph2d_mesh::alinha_arestas`]). Medido na
-/// peça desta cena, nos quatro rumos do traço, o `ΔQ` passou de `+0,028`–`+0,064`
-/// para **`+0,10`–`+0,24`**, contra os `+0,074` da lei que ela substituiu — e o
-/// arame, ampliado na faixa do risco, mostra agora arestas visivelmente mais
-/// longas e alinhadas com ele.
+/// ⭐⭐⭐ **A 3.ª caiu porque as réguas desta cena eram todas MÉDIAS ou cercas, e
+/// o olho conta ARESTAS.** O `ΔQ` lia `+0,09` e as duas imagens do arame eram
+/// indistinguíveis; a régua que faltava é a [`ph2d_sculpt3d::medida_do_pente::grade_da_faixa`],
+/// e nela a lei de então subia a fracção alinhada de `33 %` para **`35,9 %`** —
+/// contra os `33 %` que uma malha **sem direcção nenhuma** já lê. *Três pontos
+/// não se vêem.*
 ///
-/// ⚠️ **O que ele NÃO volta a prometer é uma GRADE de livro.** O que se vê é a
-/// malha debaixo do risco a ficar direccional; quem quiser conferir o desenho
-/// corre a sonda [`super::tests::sondas::diag_desenha_o_arame`] e compara os dois
-/// `.ppm`. *Uma cena que promete mais do que o desenho mostra é a espécie que o
-/// `CLAUDE.md` §5.0 chama de pior que uma cena ausente.*
+/// ⭐ Com o chão do flip no meio da janela medida (ver
+/// [`ph2d_mesh::alinha_arestas`]) ela sobe para **`42,1 %`–`45,2 %`** nos quatro
+/// rumos, que é a classe do próprio alvo (`43,6 %` medido na saída dele), e o
+/// arame ampliado mostra faixas que correm com o risco.
+///
+/// ⚠️ **O que ele NÃO promete é uma GRADE de livro** — nem o alvo a entrega. O
+/// que se vê é a malha debaixo do risco a ficar direccional; quem quiser
+/// conferir o desenho corre [`super::tests::sondas::diag_desenha_o_arame`] e
+/// compara os dois `.ppm`. *Uma cena que promete mais do que o desenho mostra é
+/// a espécie que o `CLAUDE.md` §5.0 chama de pior que uma cena ausente.*
 pub(crate) fn announce() {
     if !pente_scene() {
         return;
@@ -210,16 +218,19 @@ pub(crate) fn announce() {
          [sculpt3d]    (2) Risque uma vez com ele em ZERO.\n\
          [sculpt3d]    (3) Ponha-o no MAXIMO e risque outra vez, ao lado do primeiro.\n\
          [sculpt3d]    (4) Compare os dois riscos de PERTO (aproxime com a roda): no\n\
-         [sculpt3d]        segundo os triangulos ficam mais COMPRIDOS e apontam na\n\
-         [sculpt3d]        direccao em que a sua mao andou; no primeiro eles apontam para\n\
-         [sculpt3d]        todos os lados.\n\
+         [sculpt3d]        segundo as linhas da malha juntam-se em FAIXAS que correm ao\n\
+         [sculpt3d]        longo do risco; no primeiro elas apontam para todos os lados.\n\
+         [sculpt3d]        Nao e' uma grelha certinha -- e' o grao a virar-se para o lado\n\
+         [sculpt3d]        em que a sua mao andou.\n\
          [sculpt3d]\n\
          [sculpt3d]    COMO SABER QUE DEU ERRADO: se os dois riscos ficarem iguais, ou se\n\
          [sculpt3d]    a malha ficar com triangulos finos como lascas de vidro, diga-me --\n\
          [sculpt3d]    as duas coisas estao medidas e nenhuma devia acontecer.\n\
          [sculpt3d]\n\
-         [sculpt3d]    (medido nesta peca: o alinhamento da faixa sobe 4x mais do que subia\n\
-         [sculpt3d]    antes de hoje, e sem um unico triangulo fino)\n"
+         [sculpt3d]    (medido nesta peca: das linhas da malha debaixo do risco, 33 de\n\
+         [sculpt3d]    cada 100 correm com ele antes -- que e' o que uma malha SEM\n\
+         [sculpt3d]    direccao nenhuma da' -- e 42 a 45 depois, sem um unico triangulo\n\
+         [sculpt3d]    fino. Antes de hoje eram 36, e o senhor nao viu diferenca.)\n"
     );
 }
 

@@ -55,7 +55,11 @@ fn diag_o_grao_das_pecas_candidatas() {
                 centros.push(c);
             }
             let (q, n) = q_da_faixa(&m, &centros, raio_do_app());
-            eprintln!("{nome:<30} {rotulo:<12} v={v:<7} Q={q:+.4} (n={n})");
+            let (bins, nb) = grade_da_faixa(&m, &centros, raio_do_app());
+            eprintln!(
+                "{nome:<30} {rotulo:<12} v={v:<7} Q={q:+.4} grade={:.1}% (n={n}/{nb})",
+                100.0 * bins[0] as f64 / nb.max(1) as f64
+            );
         }
     }
 }
@@ -196,314 +200,224 @@ fn diag_o_pente_contra_as_arestas_por_raio() {
     }
 }
 
-/// ⛔⛔⛔ **SONDA — DESENHA o arame, porque o produto desta wave é uma IMAGEM.**
+/// ⛔⛔⛔ **SONDA — ONDE O EFEITO SE PERDE** (report do dono, 18/09: *«pouca ou
+/// nenhuma diferença»*, com foto do arame).
 ///
-/// O report do dono veio com FOTO e a frase *«não sei o que é para esperar»*.
-/// ⚠️ **Toda régua desta cena é um NÚMERO** (o `Q`, a contagem, as lascas), e
-/// nenhuma responde *«o que é que isto parece»*. Esta escreve dois `.ppm` — o
-/// mesmo traço com o pente desligado e no tecto — para se OLHAR.
+/// ⚠️ **Toda régua desta cena é uma MÉDIA (`Q`) ou uma contagem AO BIT
+/// (`mexidos`).** Nenhuma responde à pergunta do olho: *que fracção das arestas
+/// da faixa corre com o traço?* Esta conta-as, por faixa de ângulo à grade, e
+/// imprime ao lado quanto TRABALHO cada metade fez.
 ///
 /// ```text
-/// cargo test -p ph2d-app-sculpt3d --release --lib diag_desenha_o_arame -- --ignored --nocapture
+/// cargo test -p ph2d-app-sculpt3d --release --lib diag_onde_o_efeito_se_perde -- --ignored --nocapture
 /// ```
 #[test]
 #[ignore = "sonda"]
-fn diag_desenha_o_arame() {
-    let dir = std::env::var("PH2D_PENTE_DUMP").unwrap_or_else(|_| "/tmp".into());
+fn diag_onde_o_efeito_se_perde() {
+    eprintln!(
+        "{:<18} {:<6} {:>8}  {:>7} {:>7} {:>7}   {:>6} {:>6} {:>6}",
+        "regime", "pente", "Q", "0-15°", "15-30°", "30-45°", "cortes", "fusoes", "trocas"
+    );
     for (nome, raio, alvo) in [
-        ("app_fabrica", 0.1634f32, 0.0805f32),
-        ("cena_detail1", raio_do_app(), alvo_do_refino()),
-        ("pincel_3x", raio_do_app() * 3.0, alvo_do_refino()),
+        ("regime da cena", raio_do_app(), alvo_do_refino()),
+        ("gate de hoje", 0.35f32, 0.035f32),
     ] {
         for pente in [0.0f32, 1.0] {
-            let (m, c) = traco_com(pente, RUMOS[2].1, raio, alvo);
-            let alvo_png = format!(
-                "{dir}/pente_{nome}_{}.ppm",
-                if pente > 0.0 { "on" } else { "off" }
-            );
-            desenha(&m, &c, raio, &alvo_png);
-        }
-        eprintln!("{nome}: raio {raio:.4} alvo {alvo:.4} -> {dir}/pente_{nome}_*.ppm");
-    }
-}
-
-/// Um arame ortográfico, olhando de `+z`, centrado no percurso — em `.ppm`,
-/// que se converte com `magick`.
-fn desenha(m: &ph2d_mesh::Mesh, percurso: &[[f32; 3]], raio: f32, caminho: &str) {
-    const N: usize = 900;
-    // A janela é o percurso mais dois raios de cada lado — o enquadramento que
-    // o artista teria se olhasse para o traço dele.
-    let (mut x0, mut x1, mut y0, mut y1) = (f32::MAX, f32::MIN, f32::MAX, f32::MIN);
-    for p in percurso {
-        x0 = x0.min(p[0]);
-        x1 = x1.max(p[0]);
-        y0 = y0.min(p[1]);
-        y1 = y1.max(p[1]);
-    }
-    let pad = raio * 2.0;
-    let (cx, cy) = ((x0 + x1) * 0.5, (y0 + y1) * 0.5);
-    let meia = ((x1 - x0).max(y1 - y0) * 0.5 + pad).max(1e-4);
-    let para_px = |p: [f32; 3]| -> (i32, i32) {
-        let u = (p[0] - cx) / (2.0 * meia) + 0.5;
-        let v = 0.5 - (p[1] - cy) / (2.0 * meia);
-        ((u * N as f32) as i32, (v * N as f32) as i32)
-    };
-
-    let mut buf = vec![255u8; N * N * 3];
-    let pos = m.positions();
-    let linha = |a: (i32, i32), b: (i32, i32), buf: &mut Vec<u8>| {
-        let (dx, dy) = ((b.0 - a.0).abs(), -(b.1 - a.1).abs());
-        let (sx, sy) = (
-            if a.0 < b.0 { 1 } else { -1 },
-            if a.1 < b.1 { 1 } else { -1 },
-        );
-        let (mut x, mut y, mut err) = (a.0, a.1, dx + dy);
-        loop {
-            if x >= 0 && y >= 0 && (x as usize) < N && (y as usize) < N {
-                let i = ((y as usize) * N + x as usize) * 3;
-                buf[i] = 40;
-                buf[i + 1] = 40;
-                buf[i + 2] = 60;
-            }
-            if x == b.0 && y == b.1 {
-                break;
-            }
-            let e2 = 2 * err;
-            if e2 >= dy {
-                err += dy;
-                x += sx;
-            }
-            if e2 <= dx {
-                err += dx;
-                y += sy;
-            }
-        }
-    };
-    for f in m.faces() {
-        let vs = f.verts();
-        for k in 0..vs.len() {
-            let a = pos[vs[k] as usize];
-            let b = pos[vs[(k + 1) % vs.len()] as usize];
-            // Só a calota virada a nós, senão o arame de trás polui a leitura.
-            if a[2] < 0.3 || b[2] < 0.3 {
-                continue;
-            }
-            linha(para_px(a), para_px(b), &mut buf);
-        }
-    }
-    let mut ficheiro = format!("P6\n{N} {N}\n255\n").into_bytes();
-    ficheiro.extend_from_slice(&buf);
-    std::fs::write(caminho, ficheiro).expect("escreve o ppm");
-}
-
-/// ⛔⛔⛔ **SONDA — o alinhamento ACUMULA com as passagens?**
-///
-/// A espec §3.1 diz que o pente **move vértices** e não troca arestas; quem
-/// muda a ligação é o passe de topologia, que parte e funde **seguindo** as
-/// posições. ⇒ a hipótese é que a grade se forma ao longo de VÁRIAS passagens.
-/// Esta sonda mede e **desenha** um recorte legível.
-#[test]
-#[ignore = "sonda"]
-fn diag_o_pente_acumula_com_as_passagens() {
-    let dir = std::env::var("PH2D_PENTE_DUMP").unwrap_or_else(|_| "/tmp".into());
-    // ⚠️ O regime do ORÁCULO: raio `0,35` e um alvo de refino da ORDEM da aresta
-    // da peça — ali o passe **mantém** a densidade em vez de a afinar a cada
-    // passagem, e é isso que deixa o alinhamento acumular.
-    let (raio, alvo) = (0.35f32, 0.05f32);
-    for passagens in [1usize, 4, 8, 16] {
-        for pente in [0.0f32, 1.0] {
-            let (m, c) = traco_repetido(pente, RUMOS[2].1, raio, alvo, passagens);
-            let (q, n) = q_da_faixa(&m, &c, raio);
-            let (ang, _) = pior_angulo(&m, &c, raio);
+            let (m, c, (cortes, fusoes, trocas)) = traco_contado(pente, RUMOS[0].1, raio, alvo);
+            let (q, _) = q_da_faixa(&m, &c, raio);
+            let (bins, n) = grade_da_faixa(&m, &c, raio);
+            let pc = |k: usize| 100.0 * bins[k] as f64 / n.max(1) as f64;
             eprintln!(
-                "passagens {passagens:>2}  pente {pente:.1}  Q={q:+.4} (n={n:>5})  \
-                 pior={ang:5.2}°  v={}",
-                m.positions().len()
+                "{nome:<18} {pente:<6.2} {q:>+8.4}  {:>6.1}% {:>6.1}% {:>6.1}%   \
+                 {cortes:>6} {fusoes:>6} {trocas:>6}   (n={n})",
+                pc(0),
+                pc(1),
+                pc(2)
             );
-            if pente > 0.0 || passagens == 1 {
-                desenha_recorte(
-                    &m,
-                    &c,
-                    raio,
-                    &format!(
-                        "{dir}/acum_{passagens:02}_{}.ppm",
-                        if pente > 0.0 { "on" } else { "off" }
-                    ),
-                );
-            }
         }
     }
 }
 
-/// O mesmo traço, `n` vezes por cima — como a mão faz.
-fn traco_repetido(
+/// O mesmo traço do gate, com as TRÊS contagens de trabalho por dentro.
+fn traco_contado(
     pente: f32,
     e: [f32; 2],
     raio: f32,
     alvo: f32,
-    passagens: usize,
-) -> (ph2d_mesh::Mesh, Vec<[f32; 3]>) {
+) -> (ph2d_mesh::Mesh, Vec<[f32; 3]>, (usize, usize, usize)) {
     let mut malha = peca_uma_vez();
     malha.triangulate();
     let brush = Brush {
         verb: Verb::Draw,
         radius: raio,
-        strength: 0.05,
+        strength: 0.25,
         pente,
         ..Brush::default()
     };
-    let passo = raio * 0.15;
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&malha);
+    let mut births = Vec::new();
+    let mut remap = ph2d_mesh::Remap::default();
+    let mut region = ph2d_mesh::RegionScratch::default();
     let mut centros = Vec::new();
-    for _ in 0..passagens {
-        let mut stroke = SculptStroke::default();
-        stroke.begin(&malha);
-        let mut births = Vec::new();
-        let mut region = ph2d_mesh::RegionScratch::default();
-        centros.clear();
-        for k in 0..24 {
-            let u = -passo * 12.0 + passo * k as f32;
-            let centro = [u.sin() * e[0], u.sin() * e[1], u.cos()];
-            centros.push(centro);
-            let _ = ph2d_mesh::refine_in_sphere(
+    let (mut cortes, mut fusoes, mut trocas) = (0usize, 0usize, 0usize);
+    let passo = raio * 0.15;
+    for k in 0..24 {
+        let u = -passo * 12.0 + passo * k as f32;
+        let centro = [u.sin() * e[0], u.sin() * e[1], u.cos()];
+        centros.push(centro);
+        let direccao = stroke.direccao_do_traco(centro);
+        let alvo_do_colapso = ph2d_mesh::collapse_target(alvo);
+        let campo_colapso = ph2d_sculpt3d::campo_do_pente(
+            alvo_do_colapso,
+            direccao,
+            pente,
+            ph2d_sculpt3d::Porta::Colapso,
+        );
+        let antes = malha.positions().len();
+        if matches!(
+            ph2d_mesh::collapse_in_sphere_sized(
                 &mut malha,
                 centro,
                 brush.radius,
-                alvo,
-                &mut births,
+                alvo_do_colapso,
+                Some(&campo_colapso),
+                &mut remap,
                 &mut region,
-            );
-            stroke.grow_with(&malha, &births);
-            stroke.dab(
-                &mut malha,
-                &brush,
-                &Dab::at(centro, brush.radius, [0.0, 0.0, -1.0]),
-                Symmetry::default(),
-            );
+            ),
+            ph2d_mesh::Collapse::Done { .. }
+        ) {
+            stroke.shrink_with(&remap);
         }
-    }
-    (malha, centros)
-}
-
-/// Um recorte de `3` raios à volta do meio do traço — grande o bastante para os
-/// triângulos se lerem.
-fn desenha_recorte(m: &ph2d_mesh::Mesh, percurso: &[[f32; 3]], raio: f32, caminho: &str) {
-    const N: usize = 900;
-    let meio = percurso[percurso.len() / 2];
-    let meia = raio * 1.5;
-    let para_px = |p: [f32; 3]| -> (i32, i32) {
-        let u = (p[0] - meio[0]) / (2.0 * meia) + 0.5;
-        let v = 0.5 - (p[1] - meio[1]) / (2.0 * meia);
-        ((u * N as f32) as i32, (v * N as f32) as i32)
-    };
-    let mut buf = vec![255u8; N * N * 3];
-    let pos = m.positions();
-    let linha = |a: (i32, i32), b: (i32, i32), buf: &mut Vec<u8>| {
-        let (dx, dy) = ((b.0 - a.0).abs(), -(b.1 - a.1).abs());
-        let (sx, sy) = (
-            if a.0 < b.0 { 1 } else { -1 },
-            if a.1 < b.1 { 1 } else { -1 },
+        fusoes += antes.saturating_sub(malha.positions().len());
+        let antes = malha.positions().len();
+        let campo =
+            ph2d_sculpt3d::campo_do_pente(alvo, direccao, pente, ph2d_sculpt3d::Porta::Refino);
+        let _ = ph2d_mesh::refine_in_sphere_sized(
+            &mut malha,
+            centro,
+            brush.radius,
+            alvo,
+            Some(&campo),
+            &mut births,
+            &mut region,
         );
-        let (mut x, mut y, mut err) = (a.0, a.1, dx + dy);
-        loop {
-            if x >= 0 && y >= 0 && (x as usize) < N && (y as usize) < N {
-                let i = ((y as usize) * N + x as usize) * 3;
-                buf[i] = 30;
-                buf[i + 1] = 30;
-                buf[i + 2] = 50;
-            }
-            if x == b.0 && y == b.1 {
-                break;
-            }
-            let e2 = 2 * err;
-            if e2 >= dy {
-                err += dy;
-                x += sx;
-            }
-            if e2 <= dx {
-                err += dx;
-                y += sy;
-            }
+        stroke.grow_with(&malha, &births);
+        cortes += malha.positions().len().saturating_sub(antes);
+        if pente > 0.0 {
+            let preferencia = ph2d_sculpt3d::preferencia_do_pente(direccao, pente);
+            trocas +=
+                ph2d_mesh::alinha_arestas(&mut malha, centro, brush.radius, &preferencia, &mut region);
         }
-    };
-    for f in m.faces() {
-        let vs = f.verts();
-        for k in 0..vs.len() {
-            let a = pos[vs[k] as usize];
-            let b = pos[vs[(k + 1) % vs.len()] as usize];
-            if a[2] < 0.3 || b[2] < 0.3 {
-                continue;
-            }
-            linha(para_px(a), para_px(b), &mut buf);
-        }
+        stroke.dab(
+            &mut malha,
+            &brush,
+            &Dab::at(centro, brush.radius, [0.0, 0.0, -1.0]),
+            Symmetry::default(),
+        );
     }
-    let mut ficheiro = format!("P6\n{N} {N}\n255\n").into_bytes();
-    ficheiro.extend_from_slice(&buf);
-    std::fs::write(caminho, ficheiro).expect("escreve o ppm");
+    (malha, centros, (cortes, fusoes, trocas))
 }
 
-/// ⛔⛔⛔ **SONDA — e sobre uma peça que É uma GRADE, vê-se?**
+/// ⛔⛔⛔ **SONDA — o CHÃO do flip contra a grade, nos QUATRO rumos** (report do
+/// dono, 18/09).
 ///
-/// A pergunta que sobra depois de o oráculo mostrar que a saída DELE é uma sopa
-/// de triângulos: numa malha com grade (a esfera UV, que é o que o artista tem)
-/// o pente **vira** linhas que existem — e isso pode ser visível.
+/// A varredura das três constantes do flip (`docs/3D/ferramentas/varre_as_constantes_do_flip.py`) diz que a
+/// alavanca é o [`chão de qualidade`] e não o ganho nem as rondas. Esta sonda
+/// corre os quatro rumos que o gate da cena mede e imprime, por rumo, o que o
+/// olho lê e o que a cerca defende — para o chão se escolher no MEIO de uma
+/// janela medida, e não no primeiro número que funciona.
+///
+/// ```text
+/// cargo test -p ph2d-app-sculpt3d --release --lib diag_o_chao_por_rumo -- --ignored --nocapture
+/// ```
 #[test]
 #[ignore = "sonda"]
-fn diag_desenha_sobre_uma_grade() {
-    let dir = std::env::var("PH2D_PENTE_DUMP").unwrap_or_else(|_| "/tmp".into());
-    let e = RUMOS[2].1;
-    for (nome, alvo) in [
-        ("neutro", 0.0527f32),
-        ("fino", alvo_do_refino()),
-        ("grosso", 0.09f32),
-    ] {
+fn diag_o_chao_por_rumo() {
+    let (raio, alvo) = (raio_do_app(), alvo_do_refino());
+    for (nome, e) in RUMOS {
+        let mut linha = String::new();
         for pente in [0.0f32, 1.0] {
-            let mut malha = ph2d_mesh::shapes::sphere_with_triangles(12_000, 1.0);
-            malha.triangulate();
-            let raio = raio_do_app() * 2.0;
-            let brush = Brush {
-                verb: Verb::Draw,
-                radius: raio,
-                strength: 0.05,
-                pente,
-                ..Brush::default()
-            };
-            let mut stroke = SculptStroke::default();
-            stroke.begin(&malha);
-            let mut births = Vec::new();
-            let mut region = ph2d_mesh::RegionScratch::default();
-            let mut centros = Vec::new();
-            let passo = raio * 0.15;
-            for k in 0..24 {
-                let u = -passo * 12.0 + passo * k as f32;
-                let centro = [u.sin() * e[0], u.sin() * e[1], u.cos()];
-                centros.push(centro);
-                let _ = ph2d_mesh::refine_in_sphere(
-                    &mut malha,
-                    centro,
-                    raio,
-                    alvo,
-                    &mut births,
-                    &mut region,
-                );
-                stroke.grow_with(&malha, &births);
-                stroke.dab(
-                    &mut malha,
-                    &brush,
-                    &Dab::at(centro, raio, [0.0, 0.0, -1.0]),
-                    Symmetry::default(),
-                );
-            }
-            let (q, n) = q_da_faixa(&malha, &centros, raio);
-            eprintln!("grade {nome} pente {pente:.1}  Q={q:+.4} (n={n})");
-            desenha_recorte(
-                &malha,
-                &centros,
-                raio,
-                &format!(
-                    "{dir}/grade_{nome}_{}.ppm",
-                    if pente > 0.0 { "on" } else { "off" }
-                ),
-            );
+            let agora = std::time::Instant::now();
+            let (m, c, (_, _, trocas)) = traco_contado(pente, e, raio, alvo);
+            let ms = agora.elapsed().as_secs_f64() * 1000.0 / 24.0;
+            let (q, _) = q_da_faixa(&m, &c, raio);
+            let (bins, n) = grade_da_faixa(&m, &c, raio);
+            let (ang, _) = pior_angulo(&m, &c, raio);
+            let (finas, tri) = lascas(&m, &c, raio, LIMIAR_DA_LASCA);
+            linha.push_str(&format!(
+                "  |{pente:>4.1}| Q {q:>+7.4} grade {:>5.1}% pior {ang:>6.2} lascas {finas:>3}/{tri:<5} \
+                 trocas {trocas:>5} {ms:>6.2}ms/dab (n={n})",
+                100.0 * bins[0] as f64 / n.max(1) as f64
+            ));
+        }
+        eprintln!("{nome:<18}{linha}");
+    }
+}
+
+/// ⛔⛔⛔ **SONDA — o flip muda a malha FORA do pincel?** (a pergunta que o gate
+/// `o_alinhamento_para_na_borda_da_esfera` levantou ao ficar vermelho com o chão
+/// mais baixo).
+///
+/// A região do passe **cresce** por rodada: cada uma semeia a seguinte com as
+/// faces que mudou. Esta sonda mede o alcance em RAIOS DE PINCEL, no regime que
+/// a `=49` dá — que é a única pergunta de produto.
+///
+/// ```text
+/// cargo test -p ph2d-app-sculpt3d --release --lib diag_o_alcance_do_flip -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda"]
+fn diag_o_alcance_do_flip() {
+    let (raio, alvo) = (raio_do_app(), alvo_do_refino());
+    let mut malha = peca_uma_vez();
+    malha.triangulate();
+    let mut births = Vec::new();
+    let mut region = ph2d_mesh::RegionScratch::default();
+    let centro = [0.0, 0.0, 1.0];
+    let direccao = [1.0, 0.0, 0.0];
+    // Um refino primeiro, como no produto — é ele que semeia o que o flip vê.
+    let campo = ph2d_sculpt3d::campo_do_pente(alvo, direccao, 1.0, ph2d_sculpt3d::Porta::Refino);
+    let _ = ph2d_mesh::refine_in_sphere_sized(
+        &mut malha,
+        centro,
+        raio,
+        alvo,
+        Some(&campo),
+        &mut births,
+        &mut region,
+    );
+    let antes = malha.faces().to_vec();
+    let pos = malha.positions().to_vec();
+    let preferencia = ph2d_sculpt3d::preferencia_do_pente(direccao, 1.0);
+    let trocas = ph2d_mesh::alinha_arestas(&mut malha, centro, raio, &preferencia, &mut region);
+    let mut alcance = 0.0f32;
+    for (i, f) in antes.iter().enumerate() {
+        if *f == malha.faces()[i] {
+            continue;
+        }
+        for v in f.verts() {
+            let p = pos[*v as usize];
+            let d = [p[0] - centro[0], p[1] - centro[1], p[2] - centro[2]];
+            alcance = alcance.max((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt());
         }
     }
+    let aresta = {
+        let (mut soma, mut n) = (0.0f64, 0usize);
+        for f in &antes {
+            let vs = f.verts();
+            for k in 0..vs.len() {
+                let (a, b) = (pos[vs[k] as usize], pos[vs[(k + 1) % vs.len()] as usize]);
+                soma += f64::from((a[0] - b[0]).hypot(a[1] - b[1]).hypot(a[2] - b[2]));
+                n += 1;
+            }
+        }
+        soma / n.max(1) as f64
+    };
+    eprintln!(
+        "raio {raio:.4} · aresta {aresta:.4} · trocas {trocas} · \
+         alcance {alcance:.4} = {:.2} raios ({:.1} arestas)",
+        alcance / raio,
+        f64::from(alcance) / aresta
+    );
 }

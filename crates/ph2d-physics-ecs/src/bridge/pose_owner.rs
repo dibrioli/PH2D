@@ -230,6 +230,27 @@ impl crate::PhysicsBridge {
     }
 }
 
+/// ⭐⭐⭐ **ESTA ENTIDADE CARREGA UM CONTROLADOR QUE ESCREVE A PRÓPRIA POSE?** — a lista que o
+/// [`pose_owner`] consulta, aberta como PORTA (report do dono, 19/09).
+///
+/// ⚠️⚠️ **Ela é pública porque tem um SEGUNDO leitor, e ele vive noutra crate:** a semente que
+/// anexar um `RigidBody` corre ([`ph2d_app_physics::physics_seed`]) precisa exactamente desta
+/// pergunta para saber que **um corpo debaixo de um destes nasce `Kinematic`**. Escrita duas vezes
+/// ela divergiria no dia do quarto controlador — e o modo de falha é o caro: a lista do seed ficaria
+/// a dizer *«este não é um deles»* sobre um componente que a ponte trata como sendo, e o artista
+/// anexaria um corpo que a gravidade leva.
+///
+/// ⛔ **O `PlatformPlayer` NÃO entra**, e a ausência é medida: ele funciona nos dois corpos — a perna
+/// de MOLA (`Dynamic`, o valor de fábrica do `PlayerMode`) e a de POUSO (`Kinematic`) —, logo
+/// responder «sim» por ele faria a semente escolher por um artista que tem duas leis legítimas.
+#[must_use]
+pub fn controlador_cinematico(world: &World, entity: Entity) -> bool {
+    world.get::<TopDownPlayer>(entity).is_some()
+        || world
+            .get::<crate::components::ProjectileMotion>(entity)
+            .is_some()
+}
+
 /// A porta. `kind` vem do registro de corpos da ponte (o que de facto foi
 /// construído no rapier), e não do componente — é o corpo que existe que
 /// importa, não o que foi pedido.
@@ -261,11 +282,7 @@ pub(super) fn pose_owner(world: &World, entity: Entity, kind: BodyKind) -> PoseO
     // gates da ponte nova nasceram vermelhos com a bala parada na origem: sem esta linha o
     // `drive_kinematic` repõe a pose autorada em todo tique, e a bala fica onde nasceu *com todos
     // os números certos*. ⇒ **quem escreve a própria pose declara-se AQUI**, e a lista é esta.
-    let controlador_cinematico = world.get::<TopDownPlayer>(entity).is_some()
-        || world
-            .get::<crate::components::ProjectileMotion>(entity)
-            .is_some();
-    if kind == BodyKind::Kinematic && controlador_cinematico {
+    if kind == BodyKind::Kinematic && controlador_cinematico(world, entity) {
         let mode = if matches!(world.get::<PlayerMode>(entity), Some(PlayerMode::Pure)) {
             PlayerMode::Pure
         } else {

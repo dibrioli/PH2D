@@ -48,6 +48,53 @@ pub fn seed_attached_collider(sim: &mut SimWorld, entity_bits: u64) {
     sim.world_mut().entity_mut(entity).insert(col);
 }
 
+/// ⭐⭐⭐ **UM CORPO DEBAIXO DE UM CONTROLADOR CINEMÁTICO NASCE `Kinematic`** (report do dono,
+/// 19/09: *«quando eu coloquei a física travou»*).
+///
+/// ⛔⛔ **O que ele viu, medido:** o `RigidBody::default()` é **`Dynamic`**, e um mover de vista de
+/// cima ou um projéctil debaixo de um corpo dinâmico é **inerte por construção** — a pose passa a
+/// ser do SOLVER (`ph2d_physics_ecs::controlador_cinematico` / `bridge::pose_owner`) e a gravidade
+/// leva o objecto: `y = −492 m` ao fim de dez segundos, com a câmera a segui-lo. *Em ~2 s não há
+/// cena nenhuma no ecrã, e nada do que o artista carregue a traz de volta.*
+///
+/// ⚠️⚠️ **E o gesto que produz isso é o NORMAL:** o `TopDownPlayer` e o `ProjectileMotion`
+/// **requerem** `RigidBody` no catálogo, logo escolher qualquer um deles na paleta anexa o corpo em
+/// cascata — sem esta semente, **o caminho de omissão da paleta entrega um componente que não
+/// funciona**. O Inspector já diz o porquê em vermelho (*«the body must be kinematic»*), e um aviso
+/// certo sobre um valor de fábrica errado ainda é um valor de fábrica errado.
+///
+/// # ⚠️ Ela é registada em TRÊS nomes porque há DUAS ordens de chegada
+///
+/// | o artista escolhe | o que acontece | quem tem de semear |
+/// |---|---|---|
+/// | *Physics Body* num objecto que já tem o mover | o corpo chega por último | a semente do **`RigidBody`** |
+/// | *Top-Down Player* / *Projectile Motion* num objecto nu | a **cascata** anexa o corpo ANTES do mover | a semente do **mover** |
+///
+/// ⛔ A segunda metade não é opcional: a cascata corre **antes** do `attach_one` do dependente (é o
+/// que deixa o seed do `PlatformPlayer` medir o collider), logo no momento em que o corpo nasce a
+/// entidade ainda **não** tem o controlador — e uma semente só no `RigidBody` leria `false` e
+/// deixaria o corpo dinâmico. *As duas entradas são a MESMA função: uma lei, uma porta, três nomes.*
+///
+/// ⚠️ **Conservadora e idempotente**, como as irmãs: só morde no corpo ainda no **ponto neutro**
+/// (`BodyKind::default()`), logo nunca rebaixa um `Static` que o artista pôs, e correr duas vezes
+/// não move nada.
+pub fn seed_kinematic_controller_body(sim: &mut SimWorld, entity_bits: u64) {
+    use ph2d_physics_ecs::{BodyKind, RigidBody};
+    let entity = Entity::from_bits(entity_bits);
+    if !ph2d_physics_ecs::controlador_cinematico(sim.world(), entity) {
+        return;
+    }
+    let Some(corpo) = sim.world().get::<RigidBody>(entity).copied() else {
+        return;
+    };
+    if corpo.kind != BodyKind::default() {
+        return;
+    }
+    sim.world_mut().entity_mut(entity).insert(RigidBody {
+        kind: BodyKind::Kinematic,
+    });
+}
+
 /// A semente de um componente: recebe o mundo e os bits da entidade acabada de anexar.
 /// ⚠️ Estruturalmente IGUAL a `ph2d_app_components::component_seed::Seed`, e escrita aqui de
 /// propósito — nomear a outra família seria a aresta que a A1 cortou.
@@ -66,5 +113,16 @@ pub const COMPONENT_SEEDS: &[(&str, Seed)] = &[
     (
         "ph2d::physics::PlatformPlayer",
         crate::inspector::player::seed_attached_player,
+    ),
+    // ⭐ **As TRÊS entradas da mesma lei** — ver [`seed_kinematic_controller_body`]: são duas
+    // ordens de chegada, e cada uma precisa de uma delas.
+    (
+        "ph2d::physics::ProjectileMotion",
+        seed_kinematic_controller_body,
+    ),
+    ("ph2d::physics::RigidBody", seed_kinematic_controller_body),
+    (
+        "ph2d::physics::TopDownPlayer",
+        seed_kinematic_controller_body,
     ),
 ];

@@ -299,3 +299,124 @@ fn seeding_twice_changes_nothing() {
         assert_eq!(once, twice, "o seed de {name} nao e' idempotente");
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ **UM CORPO DEBAIXO DE UM CONTROLADOR CINEMÁTICO NASCE `Kinematic`**
+// (report do dono, 19/09: *«quando eu coloquei a física travou, não consigo dar play»*).
+//
+// ⛔⛔ **O que ele fez e o que o app entregou:** o herói da cena do abanão tinha `TopDownPlayer` e
+// nenhum corpo; ele anexou um pela paleta, e o `RigidBody::default()` é **`Dynamic`** ⇒ a pose
+// passou a ser do SOLVER, o mover ficou inerte, e a gravidade levou o objecto (medido: `y = −492 m`
+// em dez segundos, com a câmera a segui-lo — em ~2 s não há cena no ecrã).
+//
+// ⚠️ **São DUAS ordens de chegada e por isso são DOIS gates**, um por metade da tabela do seed.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A entidade nua que os gates abaixo anexam sobre.
+fn objecto_nu(sim: &mut SimWorld) -> ph2d_ecs::Entity {
+    sim.world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            ph2d_ecs::Name::new("Hero"),
+            ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+        ))
+        .id()
+}
+
+fn anexa(sim: &mut SimWorld, e: ph2d_ecs::Entity, nome: &str) {
+    ph2d_app_components::component_attach::attach_by_name(
+        sim,
+        &registry(),
+        SEEDS,
+        e.to_bits(),
+        nome,
+    )
+    .expect("anexa");
+}
+
+fn tipo_do_corpo(sim: &SimWorld, e: ph2d_ecs::Entity) -> ph2d_physics_ecs::BodyKind {
+    sim.world()
+        .get::<ph2d_physics_ecs::RigidBody>(e)
+        .expect("a cascata do catálogo tem de ter trazido o corpo")
+        .kind
+}
+
+/// ⭐⭐⭐ **A 1.ª ordem — o gesto EXACTO do dono:** o objecto já tem o mover, e ele anexa o corpo.
+///
+/// **Mutações que devem sangrar:** tirar a entrada `RigidBody` da tabela · trocar o `Kinematic`
+/// escrito pelo `BodyKind::default()` · inverter a guarda do [`controlador_cinematico`].
+#[test]
+fn um_corpo_anexado_a_um_mover_de_vista_de_cima_nasce_cinematico() {
+    let mut sim = SimWorld::new();
+    let e = objecto_nu(&mut sim);
+    sim.world_mut()
+        .entity_mut(e)
+        .insert(ph2d_physics_ecs::TopDownPlayer::default());
+    anexa(&mut sim, e, "ph2d::physics::RigidBody");
+    assert_eq!(
+        tipo_do_corpo(&sim, e),
+        ph2d_physics_ecs::BodyKind::Kinematic,
+        "o corpo nasceu DINÂMICO debaixo de um mover de vista de cima: a pose passa a ser do \
+         solver, o mover fica inerte e a gravidade leva o objecto para fora do ecrã"
+    );
+}
+
+/// ⭐⭐⭐ **A 2.ª ordem — a paleta:** objecto NU, e o artista escolhe o mover. A cascata do catálogo
+/// anexa o corpo **ANTES** do mover, logo a semente do `RigidBody` não pode ver o controlador —
+/// quem semeia aqui é a do próprio mover.
+///
+/// ⚠️ **É esta a metade que o caminho de OMISSÃO da paleta percorre**, e sem ela escolher
+/// *Top-Down Player* entrega um componente que não funciona.
+#[test]
+fn escolher_um_mover_na_paleta_nao_entrega_um_corpo_que_cai() {
+    for nome in [
+        "ph2d::physics::TopDownPlayer",
+        "ph2d::physics::ProjectileMotion",
+    ] {
+        let mut sim = SimWorld::new();
+        let e = objecto_nu(&mut sim);
+        anexa(&mut sim, e, nome);
+        assert_eq!(
+            tipo_do_corpo(&sim, e),
+            ph2d_physics_ecs::BodyKind::Kinematic,
+            "escolher «{nome}» na paleta entregou um corpo DINÂMICO — o componente nasce inerte e \
+             o objecto cai"
+        );
+    }
+}
+
+/// ⛔⛔ **O CONTROLO, e ele é metade do valor: a semente NÃO alcança toda a gente.**
+///
+/// Um corpo anexado a um objecto comum continua **`Dynamic`**, que é o ponto neutro do tipo e o que
+/// um objecto simulado quer. *Sem esta metade, a cura leria como «todo corpo nasce cinemático».*
+#[test]
+fn um_corpo_num_objecto_comum_continua_dinamico() {
+    let mut sim = SimWorld::new();
+    let e = objecto_nu(&mut sim);
+    anexa(&mut sim, e, "ph2d::physics::RigidBody");
+    assert_eq!(
+        tipo_do_corpo(&sim, e),
+        ph2d_physics_ecs::BodyKind::Dynamic,
+        "um objecto sem controlador cinemático tem de receber o ponto NEUTRO do tipo"
+    );
+}
+
+/// ⚠️ **E ela nunca rebaixa o que o artista autorou:** um corpo posto a `Static` à mão fica
+/// `Static`, e anexar o mover por cima não lho tira. *A mesma lei conservadora do seed do
+/// `Collider`, medida do outro lado.*
+#[test]
+fn a_semente_nao_reescreve_um_corpo_que_o_artista_autorou() {
+    let mut sim = SimWorld::new();
+    let e = objecto_nu(&mut sim);
+    sim.world_mut()
+        .entity_mut(e)
+        .insert(ph2d_physics_ecs::RigidBody {
+            kind: ph2d_physics_ecs::BodyKind::Static,
+        });
+    anexa(&mut sim, e, "ph2d::physics::TopDownPlayer");
+    assert_eq!(
+        tipo_do_corpo(&sim, e),
+        ph2d_physics_ecs::BodyKind::Static,
+        "a semente reescreveu um corpo autorado"
+    );
+}

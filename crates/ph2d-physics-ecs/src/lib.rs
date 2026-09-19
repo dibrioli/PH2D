@@ -61,6 +61,9 @@ pub use bridge::player_view::{ProbeKind, ProbeMark, ProbeShape, ProbeState};
 // shell re-derivá-la do `PlayerMode` foi o que fazia o painel mentir sobre um
 // player assado.
 pub use bridge::pose_owner::PlayerLiveness;
+// ⭐ **Quem escreve a própria pose** — a lista que o `pose_owner` consulta, aberta porque a
+// SEMENTE de anexar um corpo faz a mesma pergunta (report do dono, 19/09). Ver o doc dela.
+pub use bridge::pose_owner::controlador_cinematico;
 pub use bridge::rope::pulley_rig;
 // A geometria da corda de uma polia. Re-exportada porque a shell **não depende
 // de `ph2d-physics`** — a mesma contenção que mantém o rapier confinado — e o

@@ -30,7 +30,8 @@
 //! | rótulos medidos | **3 146** | **4 022** |
 //! | a pintar **NADA** em inglês | **0** | **0** |
 //! | a pintar **NADA** no idioma de teste | **0** | **0** |
-//! | cortados (`prefixo…`) em inglês | **15** | **17** — `CORTADOS_HOJE` |
+//! | cortados (`prefixo…`) em inglês, ANTES da cura | 15 | 17 |
+//! | cortados depois da cura da caixa de número | **12** | **14** — `CORTADOS_HOJE` |
 //! | cortados no idioma de teste | ~130, em 16 painéis | — |
 //!
 //! ⚠️ **Um painel pintado com o estado de FÁBRICA mostra o estado VAZIO dele** (o Inspector sem
@@ -74,18 +75,17 @@ const PISO_DE_PAINEIS: usize = 24;
 /// descrever um corte que já não acontece.
 ///
 /// ⚠️ **Um corte não é sempre um defeito** (o nome de um ficheiro, o nome que o artista escreveu),
-/// mas **estes dezassete são todos texto de INTERFACE** — rótulos, valores e frases de estado vazio,
+/// mas **estes catorze são todos texto de INTERFACE** — rótulos, valores e frases de estado vazio,
 /// que a casa escreve e a casa dimensiona. ⇒ a lista é dívida, nunca licença.
 const CORTADOS_HOJE: &[(&str, &str)] = &[
     // ⛔ O nome da faixa mestra no Audio Mixer com o dock estreito — **declarado** em 18/09: a
     //    tira do master mede menos do que a palavra pede, e alargá-la é decisão de produto.
     ("audio_mixer", "Master"),
-    // ⛔⛔ **VALORES cortados, que é o pior desta lista:** um número que se lê `0.…` mente sobre
-    //    si próprio. Os três são a mesma família — a caixa de número gasta `rect − stepper −
-    //    respiro`, e o que sobra é **menos de metade** dela (`56 → 24 px`, medido).
-    ("color_equalization", "+0.00 EV"),
-    ("tokens", "0.500"),
-    ("tokens", "1.500"),
+    // ✅ **Os três VALORES cortados (`+0.00 EV`, `0.500`, `1.500`) SAÍRAM desta lista em 18/09** —
+    //    a caixa de número contava a borda do stepper DUAS vezes (`56 → 24 px` de orçamento) e hoje
+    //    conta uma (`32`). Quem os apagou daqui foi este gate: o censo de obsolescência acusou as
+    //    três linhas como já não descrevendo corte nenhum. Mecanismo:
+    //    `ph2d-editor-core/tests/it/a_caixa_de_numero_nao_corta_o_numero.rs`.
     // ⛔⛔ **Estes dois só existem quando a build liga TODOS os painéis** — ver a nota do
     //    `PISO_DE_MEDICOES`. Eles são a prova de que a lista capturada com `-p <crate>` sozinho
     //    está incompleta por CONSTRUÇÃO.

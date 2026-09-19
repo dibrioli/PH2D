@@ -16,6 +16,7 @@ mod foundation_module_tree;
 mod hero_sources;
 
 mod a_button_row_is_laid_out_by_the_door;
+mod a_caixa_de_numero_nao_corta_o_numero;
 mod a_column_closes_by_the_gesture_that_resizes_it;
 mod a_label_that_does_not_fit_is_elided_not_wrapped;
 mod a_label_that_fits_is_never_painted_with_dots;

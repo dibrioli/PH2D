@@ -141,3 +141,57 @@ reprovou, e **zero linhas** do diff desta linha naquela crate.
 
 `cargo fmt --all --check` limpo · `clippy -D warnings` a zero nas três crates tocadas, nas duas
 configurações de features.
+
+---
+
+## 7. A primeira cura que a varredura pagou: a caixa de número
+
+Dos 17 cortes, **três eram VALORES** — `+0.00 EV`, `0.500`, `1.500`. *Um número que se lê `0.…`
+mente sobre si próprio*, e a conta era esta:
+
+| grandeza | valor |
+|---|---:|
+| caixa do chip (Design Tokens) | `56,0 px` |
+| coluna do stepper (`(h·0,6).clamp(16,22)`) | `16,0` |
+| área de texto | `40,0` |
+| **orçamento que ela pedia** (`label_budget`) | **`24,0`** |
+| `0.500` na fonte do chip | `31,0` (`28,2` com as fontes do sistema) |
+
+⛔ **A área de texto já está recuada da borda direita pela coluna INTEIRA do stepper**, e pedir por
+cima dela o orçamento de um RÓTULO conta essa borda **duas vezes**: `40 − 8 − 8 = 24`.
+
+⇒ `paint_text_centered_com_orcamento` (a irmã com o orçamento dado), e a caixa de número conta
+**uma** borda: `24,0 → 32,0`. Com o texto centrado sobram `Md/2 = Xs` de cada lado — o recuo que
+esta caixa **já usa** na vertical para a selecção.
+
+⚠️ **O que NÃO muda:** a caixa continua do mesmo tamanho, o stepper continua na coluna dele, nada
+se move de sítio, e um valor genuinamente longo (`-141.881`, `42,6 px`) continua **elidido** — *a
+reticência é mais honesta que um recorte a meio de um dígito, que se lê como outro número*.
+
+⛔ **A fronteira que fica, com o número:** um valor **negativo** de três decimais (`-0.500`,
+`36,1 px`) ainda não cabe em `56 px`. A alavanca ali não é o respiro — é a **largura da caixa**,
+que é do painel que a escolhe. Está num gate que reprova no dia em que alguém a alargar.
+
+⭐⭐ **E quem apagou as três linhas da dívida foi o próprio gate:** o censo de obsolescência acusou-as
+como já não descrevendo corte nenhum. A catraca desceu **17 → 14** sem ninguém a editar à mão.
+
+### 7.1 — Duas mutações a mais, uma delas sobrevivente
+
+| # | mutação | gate |
+|---|---|---|
+| M7 | a caixa volta a pagar o respiro de um rótulo | `a_caixa_de_numero_*` (4 testes) |
+| M8 | o orçamento passa a ser a área INTEIRA | `o_respiro_da_caixa_conta_uma_borda` |
+
+⚠️ **M8 SOBREVIVEU** à primeira redacção, que só tinha a metade de baixo (*«não paga o respiro de
+um rótulo»*): um orçamento maior passa-a sempre. ⇒ a régua ganhou a metade de cima (*«ainda há
+respiro»*), e as **duas** grandezas lêem-se do produto — uma pintura centrada que elide deixa dois
+registos no censo, o orçamento e a área.
+
+### 7.2 — ⛔ Tecto de LOC, curado por CORTE
+
+O `paint.rs` foi a `712` contra `700`. Cura: o **respiro de um rótulo e a centragem que o gasta**
+saíram para `paint_label_box.rs` (`610` + `119`) — as quatro funções são uma lei só, com ida
+(`rect_for_label`), volta (`label_budget`) e os dois pintores que a gastam. ⛔ Nunca uma entrada
+nova no `FILE_OVERAGE_OK`.
+
+**Portão final: `19 710` impactados, `19 710` verdes.**

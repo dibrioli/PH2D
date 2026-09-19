@@ -203,12 +203,20 @@ fn paint_number_chip_inner(
         }
     }
     // Centered text inside the reduced text-area rect (not the full chip).
+    //
+    // ⛔⛔ **O ORÇAMENTO é o da CAIXA DE NÚMERO e não o de um rótulo** (2026-09-18): esta área já
+    // está recuada da borda direita pela coluna INTEIRA do stepper, logo pedir o `label_budget`
+    // por cima dela conta essa borda duas vezes — medido, `56 px` de caixa entregavam `24` ao
+    // número e `0.500` (que mede `31,0`) saía **`0.…`**. ⇒ conta-se **uma** borda; com o texto
+    // centrado sobra `Md/2 = Xs` de cada lado, que é o recuo que esta caixa já usa na vertical.
     let text_area_rect = Rect::new(rect.x, rect.y, text_area_w, rect.h);
-    paint_text_centered(
+    let orcamento = (text_area_w - Spacing::Md.px()).max(1.0);
+    crate::paint::paint_text_centered_com_orcamento(
         text_system,
         scene,
         display,
         text_area_rect,
+        orcamento,
         font_size,
         resolve(ColorToken::Text1, theme),
     );

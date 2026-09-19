@@ -227,3 +227,57 @@ o pino prega o CALCANHAR no chão quando o artista o deixa 3,5 cm levantado (ele
 âncora 2D nos marcos. ⏳ **Decisão:** o choque — ele 4,6 g em 4 quadros afundando 8,7 cm abaixo da
 chave, nós 6,4 g num quadro afundando 3,7. ⛔ O deslocamento do peso **não tem oráculo**: ele também
 não o faz (1,5 cm). *Um oráculo que se corre responde também «isto ele NÃO faz».*
+
+
+## 19/09 — «porque no PULO os pés não deslizam e ao POUSAR de pernas abertas sim?»
+
+Pergunta do dono. A resposta não era a física: era **quem manda no pé**. As chaves do `pulo` não são
+COLOCAÇÕES DE PÉ (vieram com o exemplo), então o pino prega o pé onde tocou e ignora-as; as da
+aterrissagem são (é o que o artista grava), e ali a chave ganha — *a animação ATERRA num sítio e a
+colocação manda o pé estar NOUTRO dois quadros depois* (93,4 → 97,3 cm), e o motor arrastava-o.
+
+⭐ A cura tem TRÊS metades e nenhuma basta: **(1)** o pé PROCURA o sítio enquanto ainda está no ar
+(`mirarAPousada`; janela = o comprimento do pé, nunca atravessa chave; régua adimensional: a última
+passada antes de encostar, 0,97× com mira e 1,37× sem — *pôr a âncora no sítio da chave SEM mirar
+troca o arrasto no chão por um SALTO no ar, e um número de deslize não vê isso*); **(2)** no trecho
+em que o pé acabou de pousar a âncora do pino é já a da colocação (a única metade que alcança o
+TORNOZELO: 1,34 → 0,04 cm); **(3)** um contacto que o IMPULSO criou não manda num que já existia (ele
+desce o corpo, o tornozelo encosta, e «manda quem tocou primeiro» arrastava a PONTA 3,39 cm para fora
+da colocação pela distância fixa do osso).
+
+Deslize: `aterrar_aberto` **8,9 → 3,9 → 0,8 cm**; os outros 0,0. Detalhe: `ACHADOS` B32.
+
+
+## 19/09 (2.ª) — o CALCANHAR: o impulso encostava-o e o pino declarava o pé ASSENTE
+
+Ordem do dono («ataque o calcanhar»). ⛔⛔ **A minha nota da auditoria dizia a causa ERRADA** — que o
+`det` «roçava a janela de 3 cm»; medido, ele NUNCA marca aquele tornozelo. Quem o marca é a
+**augmentação do impulso**, e foi a BISSECÇÃO que o mostrou. *Uma causa escrita numa auditoria e não
+bissectada é uma hipótese com cara de medição.*
+
+O impulso desce o corpo, o calcanhar encosta, a augmentação declara-o contacto (ela existe para ele
+não ESCORREGAR, 70 mm medidos) e o ramo «os dois no chão» impõe a geometria de pé ASSENTE (o `dy` sai
+das SOLAS): o tornozelo era pregado a 0,00 por quatro quadros e SALTAVA de volta no quinto.
+
+⭐ A lei ganhou um degrau: de «não MANDA num que já existia» (um desempate) para **CEDE POR INTEIRO**
+— não conta sequer como segundo ponto de apoio. ⚠️⚠️ E **quem cede a geometria não cede o CHÃO**: a
+1.ª redacção deixava o ponto enterrado 0,84 mm; o resgate é o `tirarDoChao`, que roda o pé sobre o
+outro ponto sem mexer na altura de quem manda. Calcanhar: **3,49 fora → 0,01 cm**; o pé inteiro
+4,47 → 1,24 cm da colocação. ⚠️ A régua é NA CHAVE e só nela — entre chaves o calcanhar desce e sobe
+de propósito. Detalhe: `ACHADOS` B33.
+
+
+## 19/09 (3.ª) — a prova de mutação dizia «SOBREVIVEU» sobre uma mutação que MORREU
+
+A prova final do calcanhar fechou vermelha com uma sobrevivente. Aplicada à mão, ela **reprova** — na
+fixtura sintética da metade simétrica da lei de cedência. Não era a lei: era a **escrituração**. O
+caso nomeava o portão da colocação, que é consequência do ramo de CIMA (o calcanhar é obra do
+impulso); o ramo mutado é o simétrico (a ponta é obra do impulso), e **nenhum exemplo desta bancada
+pousa de calcanhar**, logo ele não alcança a colocação. Medido ramo a ramo: `fimCriado` defende
+TRÊS portões (a mira 1,51× · a colocação 3,39 cm · o calcanhar 3,49 cm) e `pontaCriada` defende
+**só** a fixtura própria (3,90 → 0,00 cm).
+
+⇒ o portão da colocação não tinha **nenhuma** mutação que o matasse. ⛔⛔ E o arnês escondia a prova
+de que a mutação tinha morrido: na sobrevivência ele imprime só os portões ESPERADOS que ficaram
+verdes, e um vermelho que ninguém nomeou só aparece **quando ela morre**. Curado nas duas leituras.
+Detalhe: `ACHADOS` B34.

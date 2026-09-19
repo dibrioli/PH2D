@@ -330,3 +330,73 @@ leituras dão conclusões opostas.
 **dentro** da esfera (raio `0,8`, centro na origem, pontos de `x = −0,45` a `+0,45` em `z = 0`), e
 o vértice mais próximo fica a `0,35`–`0,80` — **nunca dentro** do raio do pincel. Por isso o alvo
 não move um vértice: *o ponto cai no MIOLO da peça*. Um raio de cima teria acertado em `z = +0,8`.
+
+---
+
+## §9 — ⛔⛔⛔ O PENTE NÃO ALINHA PELO DESLOCAMENTO: ALINHA PELO PASSE DE REFINO
+
+⚠️⚠️ **Esta secção CORRIGE a leitura do §2.** A tabela das quatro rotações lá em cima está certa
+como medição e a conclusão tirada dela — *«o alvo segue o traço»* — atribui o efeito ao sítio
+errado. As células do §2 são **todas `CONSTANT`**, logo o passe de refino corre em todas, e
+nenhuma delas isola o deslocamento.
+
+### §9.1 — O controlo que faltava (`rotacao/m_*` e `rotacao/c_*`, 16 células, 2026-09-18)
+
+Tudo igual — força `0,2` · 1 passagem · a mesma malha de entrada · o mesmo traço — e **só** muda o
+`modo_de_detalhe`:
+
+| rotação do traço | `m_*` **MANUAL** (sem refino) | `c_*` **CONSTANT** (com refino) |
+|---|---|---|
+| 0° | **+0,22920** | +0,16727 |
+| 22,5° | **−0,00276** | +0,16217 |
+| 45° | **−0,00355** | +0,12741 |
+| 67,5° | **+0,01295** | +0,15458 |
+
+⇒ **com refino o alvo alinha nas QUATRO rotações, uniformemente; sem refino ele não alinha em
+NENHUMA** — excepto a `0°`, e ali o traço **coincide com a grelha da malha de entrada**, que é
+regular e alinhada com `x`. *A `0°` «alinhar ao traço» e «regularizar a malha» são a mesma coisa, e
+foi por isso que a `0°` passou por alinhamento durante todo este tempo.*
+
+⛔ **Consequência para quem implementa:** uma lei que só move vértices **não pode** reproduzir o
+alinhamento. Ele nasce de o passe de partir/fundir correr dentro de uma pegada que **ANDA** ao
+longo do traço.
+
+### §9.2 — A lei do deslocamento, ajustada à saída
+
+`96,3 %` do `Δ` do pente é **tangencial**. O termo dominante é uma **relaxação ISOTRÓPICA**:
+
+```
+por DAB, para cada vértice na pegada:
+    m ← centróide(anel) − p                  # vizinhos da malha VIVA
+    p ← p + queda(dist_ao_centro_do_dab / R) · tangencial(m)
+```
+
+⭐ **Um passo COMPLETO por dab** (`α = 1,0`; a escala óptima sai `0,957`). O perfil radial medido
+não é a queda — é a **SATURAÇÃO** dela sobre os dabs que tocam cada vértice (`k ≈ 0,85` no planalto,
+`0,019` na borda).
+
+| | cos ponderado | resíduo |
+|---|---|---|
+| encaixe duro em 4 eixos (o que se shipa) | `0,583` | — |
+| só regularizar o raio médio | `0,886` | — |
+| **relaxação ao centróide, 1 passo por dab, com queda** | **`0,9830`** | **`0,2272`** |
+
+⛔ **Qualquer peso direccional PIORA** (`cos2θ` contra o traço, `k` de `−0,6` a `+0,6`): o óptimo
+do grid de 84 células é **`k = 0,00`**. *Não há direcção na lei por vértice para encontrar — foi
+por isso que as cinco tentativas falharam.*
+
+### §9.3 — ⏳ O que este ajuste NÃO explica
+
+⚠️ Fora do eixo o alvo move **~30 % MAIS** (`Σ|Δ|` de `2,00` a `0°` para `2,52`–`2,64` nas outras
+três) e em direcções que a relaxação isotrópica não prevê:
+
+| rotação | cos ponderado | resíduo |
+|---|---|---|
+| 0° | `0,983` | `0,227` |
+| 22,5° | `0,802` | `0,640` |
+| 45° | `0,711` | `0,682` |
+| 67,5° | `0,811` | `0,621` |
+
+⛔ **E esse excesso NÃO é alinhamento** — o `ΔQ` dele é zero (§9.1). É um termo real, por medir.
+*Uma lei isotrópica não tem porque ajustar-se pior quando o traço roda; que se ajuste, é a prova de
+que falta um termo.*

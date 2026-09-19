@@ -1053,3 +1053,42 @@ fn diag_o_repique_vivo_contra_o_ponto_fixo() {
         );
     }
 }
+
+/// ⭐⭐⭐⭐ **O CONTROLO QUE SEPARA O DESLOCAMENTO DO PASSE DE REFINO.**
+///
+/// A espec mede que o pente do alvo **alinha ao traço** (rodar o traço move a
+/// régua no mesmo sentido nas quatro rotações) — e o campo de deslocamento
+/// dele é reproduzido por uma relaxação **sem direcção nenhuma**. Uma lei sem
+/// direcção não pode seguir um traço.
+///
+/// As dezasseis células de 2026-09-18 resolvem-no: tudo igual — força `0,2`,
+/// uma passagem, a mesma entrada, o mesmo traço — e **só** muda o
+/// `modo_de_detalhe`. `m_*` corre **sem** refino, `c_*` **com**.
+///
+/// ⚠️ **Conferido por mim, e não aceite do relatório**, porque a mesma
+/// hipótese já tinha sido refutada uma vez por uma comparação que **também**
+/// variava a rotação — *uma comparação entre dois regimes que difere numa
+/// terceira coisa mede a terceira coisa.*
+#[test]
+#[ignore = "sonda: o refino contra o deslocamento"]
+fn diag_o_refino_contra_o_deslocamento() {
+    println!("{:<10} {:>12} {:>12}", "rotacao", "MANUAL", "CONSTANT");
+    for a in ["a0000", "a0225", "a0450", "a0675"] {
+        let mut col = Vec::new();
+        for pre in ["m", "c"] {
+            let off = ler("rotacao", &format!("{pre}_{a}_p000"));
+            let on = ler("rotacao", &format!("{pre}_{a}_p100"));
+            let raio = off.num("raio_em_unidades_de_objecto");
+            let q = |c: &Celula| {
+                // ⚠️ Das posições **E** faces da SAÍDA: com refino armado a
+                // contagem de vértices muda, logo reaproveitar a malha de
+                // entrada estoura — e isso é o próprio fenómeno.
+                let m = ph2d_mesh::Mesh::from_parts(c.saida.clone(), c.faces.clone())
+                    .expect("a saida do oraculo tem de formar malha");
+                ph2d_sculpt3d::medida_do_pente::q_da_faixa(&m, &c.percurso, raio).0
+            };
+            col.push(q(&on) - q(&off));
+        }
+        println!("{a:<10} {:>+12.5} {:>+12.5}", col[0], col[1]);
+    }
+}

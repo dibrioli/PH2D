@@ -2210,3 +2210,93 @@ duas leis não prova que elas são a mesma lei — prova que o arranjo em que fo
 medidas não as distingue.* Duas escolhas binárias que se cancelam produzem
 concordância perfeita, e a concordância perfeita foi exactamente o que me
 convenceu.
+
+## §78 — ⭐⭐⭐⭐ A RESPOSTA AO «(a) CORRIGIR A FORMA DO PENTE»: o alinhamento NÃO mora no deslocamento
+
+### §78.1 As duas metades da resposta
+
+**(1) A lei de deslocamento foi AJUSTADA à saída do alvo** (acto do E, sobre
+dado livre): `96,3 %` do `Δ` é tangencial, e o termo dominante é uma relaxação
+**isotrópica** ao centróide do anel VIVO, com a queda do pincel como peso e
+**um passo COMPLETO por carimbo** (`α = 1,0`; o óptimo sai `0,957`).
+
+| modelo | `cos` ponderado |
+|---|---|
+| encaixe duro em 4 eixos (**o que shipamos**) | `0,583` |
+| só regularizar o raio médio | `0,886` |
+| anisotrópico | `0,887` |
+| **relaxação ao centróide, 1 passo/dab, com queda** | **`0,9830`** |
+
+⭐⭐ **A peça que faltava não era a FORMA da lei — era o RELÓGIO dela.** O
+perfil radial que se mede (`k ≈ 0,85` no planalto, `0,019` na borda) **não é a
+queda**: é a **saturação** de `1 − Π(1 − α·w)` sobre os carimbos que tocam cada
+vértice. *Ajustar UM passo a uma soma de muitos* foi o que travou as minhas
+cinco tentativas e a primeira dele — a mesma armadilha da lei base.
+
+**(2) E NÃO HÁ termo direccional para achar.** Varredura em grelha de `cos 2θ`
+contra o traço: `k ∈ [−0,6, +0,6]` × 3 quedas × 4 `α` = **84 células**, e o
+óptimo é **`k = 0,00`**. *As cinco famílias que eu refutei não falharam por
+falta de forma: falharam porque o termo não existe.*
+
+### §78.2 ⭐⭐⭐⭐ O paradoxo resolvido — e ele corrige o §2 do próprio corpus
+
+*Uma lei sem direcção não pode seguir um traço*, e a espec mede que o alvo
+segue. O controlo que faltava: **16 células** com tudo igual (força `0,2`, uma
+passagem, a mesma entrada, o mesmo traço) e **só** o `modo_de_detalhe` a mudar.
+Medido **por mim**, com a régua desta casa:
+
+| rotação | `m_*` **sem refino** | `c_*` **com refino** |
+|---|---|---|
+| 0° | `+0,17681` | `+0,17212` |
+| 22,5° | **`+0,00590`** | `+0,16977` |
+| 45° | **`+0,01290`** | `+0,12172` |
+| 67,5° | **`+0,03921`** | `+0,15668` |
+
+⇒ **com refino alinha nas QUATRO, uniformemente; sem refino não alinha em
+NENHUMA** — excepto a `0°`, e ali o traço **coincide com a grelha** da malha de
+entrada: *a `0°`, «alinhar ao traço» e «regularizar a malha» são a mesma
+coisa*, e o modelo puramente isotrópico reproduz aquele `ΔQ` sem uma linha de
+direcção.
+
+⛔⛔ **Consequência dura: uma lei que só move vértices NÃO PODE reproduzir o
+alinhamento.** Ele nasce de **partir e fundir arestas** dentro de uma pegada
+que **ANDA** ao longo do traço.
+
+⚠️ **A tabela do §2 do corpus está certa como MEDIÇÃO e a conclusão tirada dela
+atribui o efeito ao sítio errado** — todas as células dela são `CONSTANT`, logo
+o refino corre em todas e nenhuma isola o deslocamento. ⚠️⚠️ E o E tinha
+**refutado** esta hipótese uma vez, com uma comparação que também variava a
+rotação: *uma comparação entre dois regimes que difere numa terceira coisa mede
+a terceira coisa.*
+
+### §78.3 O que isto diz sobre a NOSSA lei
+
+⭐⭐⭐ **O nosso pente foi construído sobre uma premissa falsa.** Ele alinha
+**rodando arestas** dentro da lei de deslocamento; o alvo não faz isso em lado
+nenhum. É por isso que ele passa o gate da grade (`Q +0,1471`) com o campo
+`54°` fora — o §74 chamou-lhe *«a lei foi escrita PARA a régua»*, e agora
+sabe-se **porquê**: a barra daquela régua saiu de células **com refino**, e uma
+lei só-de-deslocamento tinha de a falsificar.
+
+### §78.4 ⏳ O que o ajuste NÃO explica
+
+Fora do eixo o alvo move **~30 % MAIS**, em direcções que a relaxação
+isotrópica não prevê (`cos` cai de `0,983` a `0°` para `0,711`–`0,811` nas
+outras três) — e **esse excesso não é alinhamento** (o `ΔQ` dele é zero).
+⚠️⚠️ *E o facto de uma lei isotrópica se ajustar PIOR quando o traço roda é ele
+próprio a prova de que falta um termo* — uma lei sem direcção não tem porque
+saber que o traço rodou.
+
+### §78.5 De quem é o que vem a seguir
+
+| | de quem |
+|---|---|
+| trocar a lei de deslocamento pela relaxação ajustada (`0,583 → 0,983`) | **meu**, e está medido |
+| ⛔ **mas ela sozinha REPROVA o gate da grade** (a regularização pura lê `Q −0,0076` contra a barra `+0,0465`) | — |
+| construir o alinhamento onde ele mora — **enviesar o partir/fundir do refino pela direcção do traço** | **obra nova, de tamanho**: é a terceira opção que eu pus ao dono no início desta jornada, e que a bancada agora prova ser a certa |
+| o termo de `~30 %` fora do eixo | por medir |
+| **o TACTO** do pente novo | **do dono** |
+
+⚠️ **O produto continua INTACTO.** Nenhuma das duas metades shipou: a lei nova
+sozinha troca um gate verde por um vermelho, e o alinhamento que o justificaria
+ainda não existe.

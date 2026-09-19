@@ -127,6 +127,19 @@ const ABERTO: &[(&str, f32)] = &[
     ("mecanismo/y_parado_p100", 1.197e-1),
     ("mecanismo/y_volta_p000", 2.954e-2),
     ("mecanismo/y_volta_p100", 6.252e-2),
+    // ⭐ As oito da ROTAÇÃO (2026-09-18) trazem um CONTROLO dentro: com o
+    // pente desligado as quatro leem `1,6e-4`, ou seja a lei base é
+    // rotação-invariante e certa — **toda** a dependência da rotação está no
+    // pente, e o erro dele DOBRA fora do eixo (`2,8e-2` a `0°` contra
+    // `6,1e-2` a `67,5°`). É o termo que o ajuste do §78 não explica.
+    ("rotacao/m_a0000_p000", 1.624e-4),
+    ("rotacao/m_a0000_p100", 2.815e-2),
+    ("rotacao/m_a0225_p000", 1.609e-4),
+    ("rotacao/m_a0225_p100", 5.382e-2),
+    ("rotacao/m_a0450_p000", 1.603e-4),
+    ("rotacao/m_a0450_p100", 6.048e-2),
+    ("rotacao/m_a0675_p000", 1.620e-4),
+    ("rotacao/m_a0675_p100", 6.146e-2),
     ("porta/c_nodyn_p000", 2.234e-2),
     ("porta/c_nodyn_p100", 2.234e-2),
     ("verbos/r_collapse_p000", 2.984e-2),

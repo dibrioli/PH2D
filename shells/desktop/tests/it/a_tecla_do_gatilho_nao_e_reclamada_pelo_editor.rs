@@ -132,7 +132,7 @@ fn o_prologo_deixa_uma_accao_ligada_e_outra_por_ligar() {
     //
     // ⚠️ O `include_str!` é a régua mais fraca que alcança o prólogo (ele precisa de uma janela,
     // de um `gfx` e de um `HeroScreen`), e ela **falha a compilar** se o ficheiro mudar de sítio.
-    const PROLOGO: &str = include_str!("../../src/components_scenes.rs");
+    const PROLOGO: &str = include_str!("../../src/components_scenes_suplentes.rs");
     assert!(
         PROLOGO.contains("trigger_smoke::ACCAO_SEM_TECLA"),
         "o prologo deixou de criar a accao por ligar — o passo (6) do roteiro passa a mentir"

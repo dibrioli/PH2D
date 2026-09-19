@@ -1,7 +1,11 @@
 //! **O PRÓLOGO das cenas da família das instâncias** — o invólucro que traduz `&mut App` para a
 //! assinatura que a [`ph2d_app_components`] expõe.
 //!
-//! # Por que estas seis funções ficam aqui
+//! ⚠️ **Os prólogos dos SUPLENTES vivem no irmão [`crate::components_scenes_suplentes`]** —
+//! este ficheiro chegou ao tecto de LOC em 2026-09-19 e a cura foi o CORTE, com a fronteira que
+//! o `CLAUDE.md` §5 já usa para narrar estas cenas (TOP-20 aqui, suplentes lá).
+//!
+//! # Por que estes prólogos ficam aqui
 //!
 //! É a lei que a `line/app-physics` pagou na Fase C e que o `ESTADO_W2` escreve: *o que sai são os
 //! CORPOS; o que decide a ordem do quadro fica.* Cada método abaixo é **só** o prólogo — três
@@ -25,7 +29,7 @@ use ph2d_app_components::scene_ctx::SceneCtx;
 /// ⚠️ **Três e não um**, e o número é o da vigia do contador: o `reconcile_z` acrescenta os painéis
 /// em falta no início de cada quadro, logo um `bump` feito no quadro do arranque fica **por baixo**
 /// do que ele acrescenta a seguir.
-const LEVANTA_O_INSPECTOR: u8 = 3;
+pub(crate) const LEVANTA_O_INSPECTOR: u8 = 3;
 
 impl crate::App {
     /// Empresta à família o que uma cena dela toca.
@@ -326,186 +330,6 @@ impl crate::App {
     /// ⚠️ **E o TECLADO tem de chegar lá:** o mover lê as acções nomeadas do Input Map
     /// (`move_left`/`move_right`/`move_up`/`move_down`), que o `resolve_player_input` resolve todo
     /// o quadro — as duas primeiras já existiam, as duas últimas nasceram nesta wave.
-    /// ⭐⭐⭐ **O GATILHO** (suplente #24). Prólogo do quadro, uma vez.
-    ///
-    /// ⚠️⚠️ **Ele faz DUAS coisas que a cena não pode fazer, e sem qualquer uma delas o smoke
-    /// ensina o contrário do que diz:**
-    ///
-    /// 1. **Cria a acção `fire` no Input Map e liga-a ao ESPAÇO.** O
-    ///    `InputMap::with_player_defaults` tem sete acções e **nenhuma é disparar** (medido) —
-    ///    e a lei do gatilho cala uma acção que o mapa não conhece, de propósito. Sem este passo o
-    ///    dono carrega na tecla, nada sai, e ele lê *«o gatilho não funciona»* sobre um componente
-    ///    que está certo.
-    /// 2. **Põe o relógio a andar.** As teclas do jogo são as teclas do editor, logo um gatilho só
-    ///    fala com a corrida a correr — e a fábrica dele também.
-    ///
-    /// ⛔ *Uma cena de smoke que ensina o CONTRÁRIO do que acontece é pior que uma cena ausente*
-    /// (`CLAUDE.md` §5.0).
-    pub(crate) fn trigger_smoke(&mut self) {
-        if self.components.smokes.trigger {
-            return;
-        }
-        if std::env::var_os("PH2D_TRIGGER_SMOKE").is_none() {
-            return;
-        }
-        let Some(cx) = self.components_ctx() else {
-            return;
-        };
-        let montada = ph2d_app_components::trigger_smoke::montar(cx.sim.world_mut(), 1);
-        self.components.smokes.trigger = true;
-        self.timeline.flags.simulate_physics = true;
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            // ⚠️ **A acção nasce AQUI e não na cena** — o mapa vive no `HeroScreen`, que é do
-            // editor, e a cena só vê o mundo. ⭐ O `create` devolve a que já existe se o nome
-            // repetir, logo isto é idempotente por construção.
-            let id = hero
-                .input_map
-                .create(ph2d_app_components::trigger_smoke::ACCAO);
-            if let Some(a) = hero.input_map.get_mut(id) {
-                // ⛔⛔ **A tecla é MEDIDA e vive na cena** — ver [`trigger_smoke::TECLA`]. A 1.ª
-                // redacção usava o ESPAÇO, e o dono devolveu-a: *«espaço é o atalho do play da
-                // timeline e há conflito»*. Ele é o **Play/Pause do transporte**, logo um toque
-                // parava a corrida E disparava.
-                a.bindings.push(ph2d_input::Binding::Key(ph2d_input::Key(
-                    ph2d_app_components::trigger_smoke::TECLA,
-                )));
-            }
-            // ⭐⭐⭐ **E uma acção SEM TECLA, de propósito** — o sujeito do passo (6) do roteiro.
-            //
-            // ⛔⛔ **Ela tem de ser criada aqui, e isso foi MEDIDO:** as sete acções do
-            // `with_player_defaults` têm todas ligação, logo nenhuma serve de exemplo. Ela é o
-            // estado que qualquer artista alcança ao criar uma acção e esquecer a tecla — o
-            // gatilho fica calado, e o painel dizia que estava tudo bem.
-            let _ = hero
-                .input_map
-                .create(ph2d_app_components::trigger_smoke::ACCAO_SEM_TECLA);
-            hero.panel_visibility.insert("inspector", true);
-            // ⚠️⚠️ **A RÉGUA DO TRANSPORTE abre junto, e a FOTO é que o disse:** esta cena inteira
-            // é sobre uma cerca do RELÓGIO (*Play → a arma dispara · Stop → o teclado volta a ser
-            // do editor*), e sem a timeline o dono não vê que a corrida anda nem tem onde a parar.
-            // *Uma instrução que fala do transporte sobre um ecrã sem ele devolve «que régua?»* —
-            // a lição da cena 67 da física, que as irmãs `=1` do topdown e do projéctil já pagam.
-            hero.panel_visibility.insert("timeline", true);
-            // ⛔ **O HERÓI nasce ESCOLHIDO** — o roteiro manda ver a secção *Trigger* no painel da
-            // direita, e com ninguém escolhido o Inspector diz *«Select an entity in the
-            // Hierarchy»*. ⚠️ O `clear()` anda colado ao `selection` (a lei da cena de física).
-            hero.gizmo.selection = Some(montada.escolhido);
-            hero.gizmo.extra_selection.clear();
-        }
-        self.playhead.rewind();
-        self.playhead.play();
-    }
-
-    /// ⭐⭐⭐ **O GOLPE** (suplente #24, 19/09) — `PH2D_DANO_SMOKE=1`. Prólogo do quadro, uma vez.
-    ///
-    /// ⚠️ **Ele é o do gatilho mais o relógio a andar**, e as duas metades são obrigatórias: a
-    /// acção `fire` não existe de fábrica (as sete do `with_player_defaults` são outras), e sem a
-    /// corrida nem os alvos nascem nem o `Q` dispara.
-    pub(crate) fn dano_smoke(&mut self) {
-        if self.components.smokes.dano {
-            return;
-        }
-        if std::env::var_os("PH2D_DANO_SMOKE").is_none() {
-            return;
-        }
-        let Some(cx) = self.components_ctx() else {
-            return;
-        };
-        // ⚠️ **A árvore de tags entra aqui** — a cena autora três tags (os dois postos e a `Bala`),
-        // e ela é documento do PROJECTO, não do mundo.
-        let montada = ph2d_app_components::dano_smoke::montar(cx.sim.world_mut(), cx.tags, 1);
-        self.components.smokes.dano = true;
-        self.timeline.flags.simulate_physics = true;
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            // ⚠️ **A acção nasce AQUI e a TECLA vem da cena do gatilho**, que é a fonte: ela foi
-            // MEDIDA (o espaço é o Play/Pause do transporte, e o dono devolveu a 1.ª redacção por
-            // isso). Escrever o código da tecla aqui daria a segunda resposta a *«qual é a tecla?»*.
-            let id = hero
-                .input_map
-                .create(ph2d_app_components::dano_smoke::ACCAO);
-            if let Some(a) = hero.input_map.get_mut(id) {
-                a.bindings.push(ph2d_input::Binding::Key(ph2d_input::Key(
-                    ph2d_app_components::trigger_smoke::TECLA,
-                )));
-            }
-            hero.panel_visibility.insert("inspector", true);
-            // ⚠️ **A RÉGUA abre junto** — esta cena inteira depende do relógio A ANDAR (os alvos
-            // nascem de um `Timer`), e sem a timeline o dono não VÊ que a corrida anda. *Uma
-            // instrução que fala do transporte sobre um ecrã sem ele devolve «que régua?»* — a
-            // lição da cena 67 da física.
-            // ⛔ **Mas quem o roteiro manda carregar são os chips `Pause`/`Reset` da barra de
-            // CIMA**, e não esta régua: ela pinta ÍCONES, e a 1.ª redacção mandava carregar num
-            // «STOP» que não é pintado em lado nenhum (report do dono, 19/09).
-            hero.panel_visibility.insert("timeline", true);
-            // ⛔ **O HERÓI nasce ESCOLHIDO** — o roteiro manda ver a secção no painel da direita, e
-            // com ninguém escolhido o Inspector diz *«Select an entity in the Hierarchy»*.
-            hero.gizmo.selection = Some(montada.escolhido);
-            hero.gizmo.extra_selection.clear();
-        }
-        self.playhead.rewind();
-        self.playhead.play();
-    }
-
-    /// ⭐⭐⭐ **O OLHO** (suplente #21, W6) — `PH2D_RAY_SMOKE=1`. Prólogo do quadro, uma vez.
-    ///
-    /// ⚠️ **As três metades do prólogo são obrigatórias**, e cada uma por uma razão medida: sem a
-    /// física ARMADA o raio nunca casta (o toggle nasce desmarcado); sem o relógio a ANDAR a caixa
-    /// não chega; e ⭐⭐ **sem o `show_colliders` a cena inteira é invisível** — o desenho do raio
-    /// acompanha o MESMO interruptor do contorno, porque é a mesma pergunta (*mostre-me a física
-    /// que não se vê*), e uma cena cuja lição é uma LINHA que o artista tem de saber ligar é uma
-    /// cena que ensina o contrário do que promete.
-    pub(crate) fn ray_smoke(&mut self) {
-        if std::env::var_os("PH2D_RAY_SMOKE").is_none() {
-            return;
-        }
-        if self.components.smokes.ray {
-            // ⚠️ **A ordem dos dois guardas é a lei**: a cena monta-se uma vez e o Inspector tem de
-            // subir em VÁRIOS quadros, logo a saída antecipada não pode ser a primeira.
-            self.ray_smoke_traz_o_inspector();
-            return;
-        }
-        let Some(cx) = self.components_ctx() else {
-            return;
-        };
-        let montada = ph2d_app_components::ray_smoke::montar(cx.sim.world_mut(), 1);
-        self.components.smokes.ray = true;
-        self.timeline.flags.simulate_physics = true;
-        // ⭐⭐ **O overlay da física LIGADO** — ver o doc acima. É ele que desenha a linha do raio.
-        self.show_colliders = true;
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.panel_visibility.insert("inspector", true);
-            // ⚠️ A régua abre junto — os passos (2) e (3) falam do relógio a andar, e *uma
-            // instrução que fala do transporte sobre um ecrã sem ele devolve «que régua?»* (a
-            // lição da cena 67 da física).
-            hero.panel_visibility.insert("timeline", true);
-            // ⛔ **O OLHO DA FRENTE nasce ESCOLHIDO** — o roteiro manda ler a secção `Ray Sensor`
-            // no painel da direita, e com ninguém escolhido o Inspector diz *«Select an entity in
-            // the Hierarchy»*.
-            hero.gizmo.selection = Some(montada.escolhido);
-            hero.gizmo.extra_selection.clear();
-        }
-        // ⛔⛔ **E o Inspector tem de SUBIR durante alguns quadros, não só ficar visível** — a
-        // `panel_visibility` diz *«existe»* e não *«está à frente»*. O `reconcile_z` acrescenta os
-        // painéis em falta no **início de cada quadro**, logo um `bump` feito no quadro do arranque
-        // fica **por baixo** do que ele acrescenta a seguir. ⚠️ A FOTO desta cena abriu com o painel
-        // do **Sculpt 3D** à frente, sobre um roteiro que manda ler a secção `Ray Sensor` — a lição
-        // que a wave das PARTÍCULAS pagou, e a primeira cura dela também não chegou.
-        self.components.smokes.ray_raise = LEVANTA_O_INSPECTOR;
-        self.playhead.rewind();
-        self.playhead.play();
-    }
-
-    /// Traz o Inspector à frente por alguns quadros — ver o irmão da vigia do contador.
-    pub(crate) fn ray_smoke_traz_o_inspector(&mut self) {
-        if self.components.smokes.ray_raise == 0 {
-            return;
-        }
-        self.components.smokes.ray_raise -= 1;
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.bump_panel_z(ph2d_editor_core::ids::INSP_PANEL);
-        }
-    }
-
     pub(crate) fn topdown_smoke(&mut self) {
         if self.components.smokes.topdown {
             return;

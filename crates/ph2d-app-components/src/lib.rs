@@ -162,6 +162,9 @@ pub mod trigger_bridge;
 pub mod trigger_smoke;
 pub mod tween_bridge;
 pub mod tween_inspector;
+/// ⭐⭐⭐ **O TWEEN** (suplente #22) — a galeria dos canais e a cópia que nasce a meio da
+/// corrida; ver o cabeçalho.
+pub mod tween_smoke;
 
 /// ⚠️ **`#[cfg(any(test, feature = "test-support"))]` e não `#[cfg(test)]`** (HOWTO §2.5): daqui a
 /// shell é um **consumidor**, e um `cfg(test)` desta crate é falso quando ela a compila. As duas
@@ -248,6 +251,9 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         r("PH2D_DANO_SMOKE", dano_smoke::CENAS),
         // ⭐⭐⭐ O OLHO (suplente #21, W6): `=1` o poste com dois olhos e a caixa que chega.
         r("PH2D_RAY_SMOKE", ray_smoke::CENAS),
+        // ⭐⭐⭐ O TWEEN (suplente #22): `=1` a galeria dos canais · `=2` a cópia que nasce a
+        // meio da corrida. ⚠️ O `max_level` é **contado** no `match` do `montar`.
+        r("PH2D_TWEEN_SMOKE", tween_smoke::CENAS),
     ],
 };
 

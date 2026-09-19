@@ -148,6 +148,19 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) trigger: bool,
     /// ⭐ O GOLPE (suplente #24) — `PH2D_DANO_SMOKE=1`.
     pub(crate) dano: bool,
+    /// ⛔⛔ **Quantos quadros falta ainda trazer o Inspector à frente nas duas cenas do #24.**
+    ///
+    /// ⚠️ **Elas shiparam SEM isto e a FOTO é que o disse** (2026-09-19): as duas mandam olhar
+    /// *«o painel da direita»* e o que estava à frente era o painel do **Vector** — elas punham
+    /// o Inspector VISÍVEL e nunca o traziam ao TOPO do encaixe. *Visível e à frente são duas
+    /// perguntas, e a segunda não tem resposta no `panel_visibility`.*
+    pub(crate) trigger_raise: u8,
+    /// Idem para a cena do golpe — ver `trigger_raise`.
+    pub(crate) dano_raise: u8,
+    /// ⭐ O TWEEN (suplente #22) — `PH2D_TWEEN_SMOKE=1|2`.
+    pub(crate) tween: bool,
+    /// Quantos quadros ainda trazem o Inspector à frente na cena do tween — ver `ray_raise`.
+    pub(crate) tween_raise: u8,
     /// ⭐ O OLHO (suplente #21, W6) — `PH2D_RAY_SMOKE=1`.
     pub(crate) ray: bool,
     /// Quantos quadros ainda trazem o Inspector à frente na cena do olho — ver `ray_raise`.

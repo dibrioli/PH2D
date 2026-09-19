@@ -146,6 +146,7 @@ mod component_seed_seam_tests;
 /// assinatura da [`ph2d_app_components`]. *O que sai são os corpos; o que decide a ordem do quadro
 /// fica.*
 mod components_scenes;
+mod components_scenes_suplentes;
 mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).
 #[cfg(test)]

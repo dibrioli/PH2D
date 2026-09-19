@@ -38,6 +38,24 @@
 //! selecção mede **um** rótulo). A varredura mede o que um painel pinta **sozinho**; o piso é
 //! GLOBAL de propósito, porque um piso por painel seria uma lista de números escritos à mão sobre
 //! populações que dependem do documento.
+//!
+//! # ⭐⭐⭐ E desde 2026-09-19 há uma SEGUNDA passagem: o painel com um DOCUMENTO na mão
+//!
+//! A frase acima era, até esse dia, uma **cegueira declarada**: o Inspector tem **28** secções que
+//! só existem com um objecto seleccionado, e nenhuma régua de largura deste repo as via. A fixtura
+//! [`super::o_inspector_armado`] arma as 28 e a varredura pinta o painel **duas** vezes por
+//! viewport — vazio e armado —, com o `Achado::armado` a dizer qual.
+//!
+//! | a passagem ARMADA (1.ª corrida, três viewports) | |
+//! |---|---:|
+//! | rótulos que pintavam **NADA** | **8** (as unidades `px` e `1/s`) |
+//! | cortados (`prefixo…`) | **24** |
+//! | curados no mesmo dia | **16** |
+//! | por curar, nomeados | **8** — `O_INSPECTOR_ARMADO_AINDA_CORTA` |
+//!
+//! ⚠️ **A passagem armada NÃO alimenta o censo da tabela de strings** — ela põe no painel texto do
+//! DOCUMENTO (`Hero`, `Enemy`, `Closed`), que a tabela não sabe produzir e nem devia. A razão está
+//! escrita no filtro daquele teste.
 
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::text_elide::elisao::Medido;
@@ -129,6 +147,59 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
     //    cima do risco do cabeçalho e da fileira seguinte da bancada.
 ];
 
+/// ⭐⭐⭐ **O QUE O PONTO CEGO ESCONDIA — a dívida do Inspector com um DOCUMENTO na mão.**
+///
+/// Esta lista nasceu em 2026-09-19, no dia em que a varredura passou a pintar o Inspector armado
+/// ([`super::o_inspector_armado`]). ⚠️ **Ela não é uma tolerância nova: é uma população que nunca
+/// tinha sido medida** — o painel de fábrica não tem objecto seleccionado, e as **28** secções
+/// condicionais dele estavam, por construção, fora de toda régua de largura deste repo.
+///
+/// **A primeira corrida acusou `24` cortes; `16` foram curados no mesmo dia**, por três
+/// mecanismos e não por 16 remendos:
+/// - a UNIDADE de um campo de número passou a ser tudo-ou-nada (`px` e `1/s` pintavam **NADA**);
+/// - o grupo segmentado passou a dar a cada peça o que a PALAVRA dela pede (`segmented_row_widths`)
+///   e três cópias locais da disposição passaram pela porta;
+/// - os avisos das secções — **seis cópias byte a byte** — viraram uma porta que QUEBRA.
+///
+/// ⛔⛔ **Os `8` que ficam são UMA família e por isso não se curam um a um:** todos são fileiras
+/// cuja coluna de nome é a da SECÇÃO ([`ph2d_editor_core::widget::property_box::Seccao`]), medida
+/// para caber ao lado de um CONTROLO de campos — e uma fileira de **marcar** tem um controlo de
+/// `18 px`, uma de **lista** tem o nome do artista. *Alargar a coluna de uma delas parte o
+/// alinhamento da secção inteira, que é a doença que aquela porta existe para curar.* ⇒ a wave
+/// seguinte é da lei da linha de propriedade, não deste censo.
+///
+/// ⚠️ **Cada linha diz o NÚMERO e o MECANISMO**, e a lista **só encolhe** — o censo de
+/// obsolescência abaixo reprova quem deixar de descrever um corte.
+const O_INSPECTOR_ARMADO_AINDA_CORTA: &[(&str, &str)] = &[
+    // Fileira de MARCAR: o controlo precisa de `18 px` e a coluna do nome fica com `174`, porque
+    // ela é medida para as fileiras de CAMPOS da mesma secção. O nome pede `~190`.
+    ("Center (makes it a 9-slice Region)", "marcar · 174 px"),
+    (
+        "Show anchors at runtime (no game runtime yet)",
+        "marcar · 174 px",
+    ),
+    // Fileira de LISTA: o texto é do DOCUMENTO (o nome que o artista deu à âncora / ao sinal / à
+    // propriedade do script / à peça). ⚠️ Um corte aqui **não é sempre defeito** — o que é defeito
+    // é a caixa: `26 px` para um nome não é uma caixa, é um resto.
+    ("hand_right", "lista · 26 px · nome do artista"),
+    (
+        "2.50s · repeats · → respawn_done",
+        "lista · 128 px · resumo com sinal do artista",
+    ),
+    (
+        "legacy_speed = 1 — not in the script",
+        "lista · 189 px · nome do artista",
+    ),
+    (
+        "• AudioSource2D — was on \u{201c}footsteps\u{201d}",
+        "lista · 229 px · nome da peça",
+    ),
+    // Rótulo de fileira numa secção cuja coluna é estreita por ter muitos campos.
+    ("Mounted On", "campos · 60 px"),
+    // Botão dentro de uma fileira de lista: a legenda cresceu com o verbo e a caixa não.
+    ("x Remove Transition", "botão · 118 px"),
+];
+
 /// ⭐ **Os painéis que ESTA build liga** — lidos do registo, e não do que a pintura produziu.
 fn paineis_do_registo() -> std::collections::BTreeSet<&'static str> {
     let _ = ph2d_panel_registry_init::register_all_panels();
@@ -141,7 +212,21 @@ fn paineis_do_registo() -> std::collections::BTreeSet<&'static str> {
 struct Achado {
     painel: &'static str,
     viewport_w: f32,
+    /// ⭐ **A passagem com o documento na mão** ([`super::o_inspector_armado`]) — hoje só o
+    /// Inspector a tem. ⚠️ Ela **não** muda o `painel`, de propósito: o censo de obsolescência
+    /// filtra a dívida pelos painéis do REGISTO, e um nome inventado (`"inspector (armado)"`)
+    /// nunca lá estaria ⇒ a linha dele passaria a ser saltada **para sempre**, em silêncio. É a
+    /// mesma armadilha que a 1.ª redacção daquele censo já pagou.
+    armado: bool,
     m: Medido,
+}
+
+impl Achado {
+    /// O sítio, como uma mensagem de falha o nomeia.
+    fn onde(&self) -> String {
+        let estado = if self.armado { " (armado)" } else { " (vazio)" };
+        format!("{}{estado} @ {:.0}px", self.painel, self.viewport_w)
+    }
 }
 
 /// ⭐ Pinta **todo** painel do registo nos três viewports e devolve tudo o que o censo viu.
@@ -173,8 +258,33 @@ fn varre() -> Vec<Achado> {
                     tudo.push(Achado {
                         painel: id,
                         viewport_w: w,
+                        armado: false,
                         m,
                     });
+                }
+                // ⭐⭐⭐ **A SEGUNDA PASSAGEM: o painel com um DOCUMENTO na mão.**
+                //
+                // ⚠️ **Armar vem ANTES do `populate`**, e não é ordem de conveniência: as
+                // `populate_*` das secções condicionais semeiam os widgets a partir da informação
+                // publicada, logo um `populate` corrido antes veria o painel vazio e a passagem
+                // mediria as mesmas fileiras da primeira.
+                if id
+                    == <ph2d_panel_inspector::InspectorPanel as ph2d_editor_core::panel::Panel>::ID
+                {
+                    super::o_inspector_armado::arma_tudo();
+                    let mut host = MockPanelHost::new();
+                    painel.populate(host.store_mut());
+                    for m in host.medindo_a_pintura_do_registo(painel, viewport) {
+                        tudo.push(Achado {
+                            painel: id,
+                            viewport_w: w,
+                            armado: true,
+                            m,
+                        });
+                    }
+                    // ⛔ O estado que uma fixtura deixa para trás é o estado que a régua seguinte
+                    //    mede — e estas portas são `thread_local`, partilhadas por todo o binário.
+                    super::o_inspector_armado::desarma_tudo();
                 }
             }
         });
@@ -205,8 +315,10 @@ fn nenhum_rotulo_do_app_pinta_nada() {
         .filter(|a| a.m.nada())
         .map(|a| {
             format!(
-                "{} @ {:.0}px: {:?} não cabe em {:.1} px — nem a reticência",
-                a.painel, a.viewport_w, a.m.texto, a.m.largura
+                "{}: {:?} não cabe em {:.1} px — nem a reticência",
+                a.onde(),
+                a.m.texto,
+                a.m.largura
             )
         })
         .collect();
@@ -241,8 +353,10 @@ fn nenhum_rotulo_pintaria_nada_na_proxima_lingua() {
         let cabe = ts.prefix_width_weighted(&deformado, a.m.fonte, a.m.peso) <= a.m.largura;
         if !cabe && largura_da_reticencia(&mut ts, a.m.fonte, a.m.peso) > a.m.largura {
             mudos.push(format!(
-                "{} @ {:.0}px: {:?} vira {deformado:?} e some — a caixa tem {:.1} px",
-                a.painel, a.viewport_w, a.m.texto, a.m.largura
+                "{}: {:?} vira {deformado:?} e some — a caixa tem {:.1} px",
+                a.onde(),
+                a.m.texto,
+                a.m.largura
             ));
         }
     }
@@ -260,10 +374,21 @@ fn nenhum_corte_novo_entra_sem_ser_nomeado() {
         .iter()
         .filter(|a| !a.m.coube() && !a.m.nada())
         .filter(|a| !CORTADOS_HOJE.contains(&(a.painel, a.m.texto.as_str())))
+        // ⭐ E a dívida que o PONTO CEGO escondia — ela é por TEXTO e não por painel: a passagem
+        //    armada é do Inspector por construção, e o que a lista descreve é o RÓTULO.
+        .filter(|a| {
+            !a.armado
+                || !O_INSPECTOR_ARMADO_AINDA_CORTA
+                    .iter()
+                    .any(|(t, _)| *t == a.m.texto)
+        })
         .map(|a| {
             format!(
-                "{} @ {:.0}px: {:?} -> {:?} em {:.1} px",
-                a.painel, a.viewport_w, a.m.texto, a.m.pintado, a.m.largura
+                "{}: {:?} -> {:?} em {:.1} px",
+                a.onde(),
+                a.m.texto,
+                a.m.pintado,
+                a.m.largura
             )
         })
         .collect();
@@ -293,6 +418,21 @@ fn nenhuma_linha_da_divida_ficou_obsoleta() {
     //    silêncio. *Uma catraca cuja população encolhe com a cura vira licença* — a mesma forma
     //    que o piso do `every_host_that_rewrites_verts` já pagou.
     let presentes = paineis_do_registo();
+    // ⭐ A metade justa da lista NOVA: uma linha que já não descreve corte nenhum sai.
+    let armadas_mortas: Vec<String> = O_INSPECTOR_ARMADO_AINDA_CORTA
+        .iter()
+        .filter(|(texto, _)| {
+            !tudo
+                .iter()
+                .any(|a| a.armado && a.m.texto == *texto && !a.m.coube())
+        })
+        .map(|(texto, porque)| format!("inspector (armado): {texto:?} ({porque})"))
+        .collect();
+    assert!(
+        armadas_mortas.is_empty(),
+        "estas linhas da dívida do Inspector armado já não descrevem corte nenhum — APAGUE-AS:\n  {}",
+        armadas_mortas.join("\n  ")
+    );
     let obsoletas: Vec<String> = CORTADOS_HOJE
         .iter()
         .filter(|(painel, _)| presentes.contains(painel))
@@ -493,6 +633,22 @@ fn toda_palavra_que_um_painel_pinta_a_tabela_sabe_produzir() {
     );
     let mut crus: Vec<String> = varre()
         .iter()
+        // ⛔⛔ **A passagem ARMADA fica de fora, e a razão é a PERGUNTA deste censo.**
+        //
+        // Ele pergunta *«esta palavra está escrita no CÓDIGO?»*, e a fixtura do
+        // [`super::o_inspector_armado`] põe na mão do painel um DOCUMENTO — nomes de objecto
+        // (`Hero`), de tag (`Enemy` · `Flying`), de estado (`Closed` · `Open`), de acção
+        // (`hit → Hide · Door`). ⚠️ **A tabela não os sabe produzir e nem devia**: eles são o que
+        // o artista escreveu. Medido em 19/09, incluí-la acusa `12` textos, **os doze do
+        // documento**, e a única cura disponível seria uma lista de isenções sobre palavras
+        // inventadas por uma fixtura — *uma lista que não descreve o produto*.
+        //
+        // ⚠️ **O que esta cegueira custa está medido e é PEQUENO:** um literal escrito à mão
+        // DENTRO de uma secção condicional não é visto aqui, e continua a ser visto pelos **30
+        // censos lexicais**, que lêem o FONTE de `ph2d-panel-inspector` inteiro
+        // (`every_word_this_panel_shows_comes_from_the_string_table`). *Este censo é a segunda
+        // testemunha, não a única.*
+        .filter(|a| !a.armado)
         // ⭐⭐ **O que é um RÓTULO já tem régua nesta casa** — a mesma `is_language` dos 30 censos
         //    lexicais (duas letras ASCII adjacentes, fora de um marcador). Sem ela a lista abre com
         //    `231` acusados e a esmagadora maioria são VALORES: `"0.010"`, `"-9.81"`, `"+0.00"`,

@@ -957,3 +957,99 @@ fn o_que_a_tomada_do_gizmo_custa() {
     }
     eprintln!();
 }
+
+/// ⛔⛔⛔ **O `gap_y` DA GRELHA AINDA ESPAÇA?** — report do dono, 2026-09-19: *«Gap y quebrou e
+/// movimenta tudo em vez de criar espaço»*, depois de a secção do gizmo ter entrado no manifesto
+/// daquele nó.
+///
+/// A régua é a **extensão** da nuvem contra o **centro** dela: espaçar cresce a extensão e deixa o
+/// centro quieto; mover desloca o centro e deixa a extensão quieta.
+///
+/// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture o_gap_y_ainda_espaca`
+#[test]
+#[ignore = "sonda, nao um gate"]
+fn o_gap_y_ainda_espaca() {
+    use ph2d_nodegraph::attr::Column;
+    use ph2d_nodegraph::graph::{Edge, Graph};
+    eprintln!("\n=== O `gap_y` DA GRELHA ===\n");
+    eprintln!("  gap_y │ extensao Y │  centro Y  │ extensao X │  centro X");
+    for gy in [0.5f32, 1.0, 2.0, 4.0] {
+        let mut m = MotionState::new();
+        let mut g = Graph::new();
+        let grelha = g.add_node("motion.grid");
+        g.set_param(grelha, "rows", 4.0);
+        g.set_param(grelha, "cols", 4.0);
+        g.set_param(grelha, "gap_x", 1.0);
+        g.set_param(grelha, "gap_y", gy);
+        let saida = g.add_node("motion.output");
+        g.connect(Edge {
+            from: (grelha, 0),
+            to: (saida, 0),
+            delayed: false,
+        })
+        .expect("liga");
+        m.doc.graph = g;
+        let Ok(out) = m.pump.cook.cook(&m.doc.graph, &m.registry, saida, 0.0) else {
+            eprintln!("  {gy} │ NAO COZE");
+            continue;
+        };
+        let s = out[0].as_stream();
+        let Some(Column::Vec2(p)) = s.get("P") else {
+            continue;
+        };
+        let (mut lox, mut hix, mut loy, mut hiy) = (f32::MAX, f32::MIN, f32::MAX, f32::MIN);
+        for q in p {
+            lox = lox.min(q[0]);
+            hix = hix.max(q[0]);
+            loy = loy.min(q[1]);
+            hiy = hiy.max(q[1]);
+        }
+        eprintln!(
+            "  {gy:>5} │ {:>10.3} │ {:>10.3} │ {:>10.3} │ {:>10.3}",
+            hiy - loy,
+            (hiy + loy) / 2.0,
+            hix - lox,
+            (hix + lox) / 2.0
+        );
+    }
+    eprintln!();
+}
+
+/// ⛔⛔ **O QUE O CARTÃO DO GRID PINTA, NA ORDEM** — o instrumento que o report do dono de
+/// 2026-09-19 (*«Gap y quebrou e movimenta tudo em vez de criar espaço»*) obriga a ter.
+///
+/// ⚠️ A secção do gizmo entrou naquele cartão na mesma wave, e **uma tabela de grupos PARCIAL** é a
+/// hipótese que esta sonda serve para confirmar ou matar: se a ordem ou o dono de cada linha
+/// mudou, o artista arrasta uma linha e escreve noutro param.
+///
+/// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture o_que_o_cartao_do_grid_pinta`
+#[test]
+#[ignore = "sonda, nao um gate"]
+fn o_que_o_cartao_do_grid_pinta() {
+    let m = MotionState::new();
+    let tid = ph2d_nodegraph::node::NodeTypeId::of("motion.grid");
+    use ph2d_nodegraph::cook::OpResolver;
+    let op = m.registry.resolve(tid).expect("o Grid existe");
+    eprintln!("\n=== O CARTAO DO `motion.grid` ===\n");
+    eprintln!("  # │ param          │ rotulo          │ seccao");
+    for (i, p) in op.manifest().params.iter().enumerate() {
+        let hint = m
+            .registry
+            .param_ui(tid)
+            .into_iter()
+            .flat_map(|t| t.iter())
+            .find(|h| h.param == p.name);
+        let grupo = m
+            .registry
+            .param_groups(tid)
+            .iter()
+            .find(|g| g.param == p.name)
+            .map_or("—", |g| g.group);
+        eprintln!(
+            "  {i} │ {:<14} │ {:<15} │ {grupo}",
+            p.name,
+            hint.map_or("(SEM DICA)", |h| h.label)
+        );
+    }
+    eprintln!();
+}

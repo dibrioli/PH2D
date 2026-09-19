@@ -213,3 +213,17 @@ Deslize: `aterrar_aberto` **8,9 → 3,9 cm** (e os 3,9 são o CHOQUE da aterriss
 `soco` **0,0**. ⏳ ABERTO: falta **deslocar o peso** antes de levantar o pé — a cerca «um pé só anda se
 o corpo puder ficar sobre o outro» foi construída, medida, e **recusa o passo que o dono quer** (para
 fechar 55 cm de passada o peso está a 41,4 cm do pé que fica). Decisão do dono. Detalhe: `ACHADOS` B30.
+
+## 18/09 (4.ª) — auditoria da aterrissagem CONTRA a física do Cascadeur
+
+Pedido: «auditoria buscando melhorias simulando a mesma animação no cascadeur». A cena com os passos
+entrou como chave em todos os quadros e a física automática dele correu por cima
+(`medir_aterrissagem_deles.js`; `auditoria/AUDITORIA_aterrissagem_vs_cascadeur_2026-09-18.md`).
+⭐ **Na queixa do dono a nossa física é 4× melhor que a automática dele: 3,9 contra 16,2 cm de deslize**
+— ele ACHATA o 2.º passo e arrasta o pé; a ferramenta dele de prender pés é manual. ⭐ **Achado e
+curado:** o pé que pousa do passo recuava 3 cm (a faixa do pino nascia onde o pé a DESCER roçava a
+janela de 3 cm, ainda a andar; um quadro de passo deixou de semear faixa). ⏳ **Aberto com desenho:**
+o pino prega o CALCANHAR no chão quando o artista o deixa 3,5 cm levantado (ele honra-o) — a cura é a
+âncora 2D nos marcos. ⏳ **Decisão:** o choque — ele 4,6 g em 4 quadros afundando 8,7 cm abaixo da
+chave, nós 6,4 g num quadro afundando 3,7. ⛔ O deslocamento do peso **não tem oráculo**: ele também
+não o faz (1,5 cm). *Um oráculo que se corre responde também «isto ele NÃO faz».*

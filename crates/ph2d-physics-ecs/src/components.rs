@@ -249,6 +249,9 @@ mod overrides;
 mod player;
 /// ⭐ O PROJÉCTIL de arcade (TOP-20 #14) — a lei vive na folha [`ph2d_projectile`].
 mod projectile;
+/// ⭐⭐⭐ **O RAIO persistente e autorado** (suplente #21) — ver o cabeçalho dele, que traz a tabela
+/// medida de por que a composição (um sensor fino) não o exprime: ordem · métrica · direcção.
+mod ray_sensor;
 mod rope;
 mod signal;
 /// A SUPERFÍCIE que o pé encontra (docs dele).
@@ -265,6 +268,7 @@ pub use overrides::{
 };
 pub use player::{PlatformLift, PlatformPlayer, PlayerMode};
 pub use projectile::ProjectileMotion;
+pub use ray_sensor::{RayHit, RaySensor, RaySignals};
 pub use rope::{
     PulleyWheel, RopeStops, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry,
     rope_joint_of,

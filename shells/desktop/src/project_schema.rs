@@ -448,4 +448,42 @@
 ///
 /// ⛔ **Sem degrau de migração para o v148**, pela mesma decisão de 26/08 — um ficheiro daquele
 /// número já era recusado antes desta wave, como todos os do meio.
-pub(crate) const PROJECT_SCHEMA: u32 = 149;
+/// # 149 -> 150 — o RAIO persistente (suplente #21, `line/components`)
+///
+/// **DOIS** componentes registados novos: `ph2d::physics::RaySensor` e `ph2d::physics::RaySignals`.
+/// Mesmo mecanismo dos degraus `123`, `125`, `126`, `127`, `130`, `131` e `132` — um
+/// `ComponentBlob` de `type_id` desconhecido **recusa o load inteiro**, e o degrau transforma isso
+/// em *«este ficheiro é de outra versão»* em vez de *«type id desconhecido»* a meio da travessia.
+///
+/// ⚠️ **Dois tipos e UM degrau**, e não dois: o número mede **o que o ficheiro passa a conter**, e
+/// não quantos tipos nasceram — é a lei que o degrau `130` já escreve, onde três componentes da
+/// fábrica valeram `+1`.
+///
+/// ⭐⭐⭐ **E ele só existe porque a composição foi MEDIDA primeiro** (§5.0), com o precedente fresco
+/// do **#3 `SensorZone`**, que dois dias antes fechou **sem uma linha de código**. A sonda
+/// `ph2d-physics-ecs/tests/it/mede_o_que_a_composicao_ja_da_ao_raio.rs` pôs a melhor composição que
+/// a casa tem — um colisor `is_sensor` fino deitado ao longo da linha — contra o motor, e o buraco
+/// tem **três** nomes: **ORDEM** (o sensor devolve `["Barra"]`, um elemento, com as duas paredes lá
+/// dentro) · **MÉTRICA** (`0` contactos de pé, porque um sensor atravessa ⇒ `point`/`normal` vazios)
+/// · **DIRECÇÃO** (uma FORMA é simétrica e apanha a parede de trás). O `cast_ray` responde às três:
+/// `d = 1,7500`, ponto `(1,75 ; 0)`, normal `(−1 ; 0)`, e a de trás não volta.
+///
+/// ⛔⛔ **E a nota da porta do motor foi RECONFERIDA, não herdada** (§0.0): ela põe
+/// `EXCLUDE_SENSORS` dentro do `cast_ray` porque *«os cinco consumidores querem matéria; um
+/// parâmetro seria uma escolha oferecida a ninguém»* — e este componente é o **sexto**, o primeiro
+/// autorável. **Veredito: a nota fica, e por uma razão mais forte** — *há chão? há parede? a arma
+/// aponta a quê?* são todas sobre matéria, e um volume de gatilho que bloqueasse a linha de visão
+/// seria um defeito e não uma opção.
+///
+/// ⛔ **O que o raio VÊ não é componente nenhum:** ele vive no mapa da ponte (`ray_hits`), como o
+/// canal de triggers — o que nasce numa corrida não é documento (a lei do #11 e do #20), e um campo
+/// assim dentro de um componente registado faria o `canonicalize` do undo ver **cada quadro como um
+/// passo**. ⚠️ É por isso que este degrau vale `+1` sobre DOIS tipos e não sobre três.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v149 não
+/// tem os componentes, logo lê-se inteiro por este binário. O degrau existe para o sentido
+/// contrário, que é o que recusa em voz alta.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima primeira** vez: os componentes viajam em
+/// `ComponentBlob`s, que para ela são opacos.
+pub(crate) const PROJECT_SCHEMA: u32 = 150;

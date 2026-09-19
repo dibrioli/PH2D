@@ -53,6 +53,8 @@ pub mod player_view;
 pub(crate) mod pose_owner;
 /// ⭐⭐⭐ **A ponte do mover de VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dela.
 mod projectile;
+/// ⭐⭐⭐ **O RAIO persistente e autorado** (suplente #21) — ver o cabeçalho dele.
+mod ray_sensors;
 mod readback;
 mod rewind;
 pub mod rope;
@@ -110,7 +112,7 @@ use joints::JointRef;
 
 use crate::settings::PhysicsSettings;
 
-use crate::components::{BodyKind, Collider, RigidBody};
+use crate::components::{BodyKind, Collider, RayHit, RigidBody};
 
 /// ⭐ **O FILTRO que torna um mestre INERTE** — a condição (a) da [refutação 1], e a razão de ele
 /// aparecer nas **SEIS** consultas cacheadas desta ponte.
@@ -391,6 +393,21 @@ pub struct PhysicsBridge {
     /// non-trigger scene pays nothing. `BTreeMap` for the determinism reason
     /// `bodies` documents.
     triggers: BTreeMap<Entity, Vec<Entity>>,
+    /// ⭐⭐⭐ **O que cada [`RaySensor`](crate::RaySensor) vê AGORA** (suplente #21) — a leitura que
+    /// o painel e o desenho consomem, e ao mesmo tempo a baseline do tique seguinte.
+    ///
+    /// ⛔ **Aqui e não num componente:** o que nasce numa corrida não é documento (a lei do #11 e
+    /// do #20), e um campo assim dentro de um componente registado faria o `canonicalize` do undo
+    /// ver **cada quadro como um passo**. O precedente é o `triggers` uma linha acima.
+    ///
+    /// ⚠️ **Ele é MEMÓRIA entre tiques, logo quem o limpa é uma DESCONTINUIDADE** — o
+    /// `rebuild_from_rest`, e não o dispatch. *É a família que o smoke do #14 expôs por report:
+    /// três mapas de controlador foram esquecidos ali, um de cada vez.*
+    ray_hits: BTreeMap<Entity, RayHit>,
+    /// Os raios que PASSARAM A ver alguém neste dispatch — `(quem olha, quem foi visto)`.
+    ray_enters: Vec<(Entity, Entity)>,
+    /// E os que DEIXARAM de ver — o espelho do campo acima, enchido pelo MESMO diff.
+    ray_exits: Vec<(Entity, Entity)>,
     /// O conjunto do dispatch ANTERIOR — a baseline de que `trigger_events`
     /// sai (W-Signal). Irmão de `contact_since`.
     trigger_since: BTreeMap<Entity, Vec<Entity>>,
@@ -621,6 +638,9 @@ impl PhysicsBridge {
             ring: PhysicsCheckpointRing::new(),
             steps_taken: 0,
             triggers: BTreeMap::new(),
+            ray_hits: BTreeMap::new(),
+            ray_enters: Vec::new(),
+            ray_exits: Vec::new(),
             trigger_since: BTreeMap::new(),
             trigger_events: Vec::new(),
             trigger_exits: Vec::new(),

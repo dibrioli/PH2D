@@ -74,9 +74,9 @@ pub use components::{
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
     Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
     MassOverride, MaterialCombine, NoWallCling, OneWayPlatform, PlatformLift, PlatformPlayer,
-    PlayerMode, PlayerSignals, ProjectileMotion, PulleyWheel, RigidBody, RopeStops, SignalOnHit,
-    SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide,
-    reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    PlayerMode, PlayerSignals, ProjectileMotion, PulleyWheel, RayHit, RaySensor, RaySignals,
+    RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface,
+    WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -165,6 +165,12 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     // ⭐ O filtro por TAG (TOP-20 #9, W3c). ⚠️ Sem o registo, o artista calibra uma armadilha,
     // grava, reabre — e ela passa a gritar com tudo, em silêncio.
     reg.register_default::<SignalTagFilter>("ph2d::physics::SignalTagFilter");
+    // ⭐⭐⭐ O RAIO persistente (suplente #21). ⚠️ **Os dois custam UM degrau de `PROJECT_SCHEMA`**,
+    // e não zero: um `ComponentBlob` de `type_id` desconhecido **recusa o load inteiro**, e o degrau
+    // é o que transforma isso em «este ficheiro é de outra versão» em vez de «type id desconhecido»
+    // a meio da travessia (a lei dos degraus 123, 125, 126, 127, 130, 131 e 132).
+    reg.register_default::<RaySensor>("ph2d::physics::RaySensor");
+    reg.register_default::<RaySignals>("ph2d::physics::RaySignals");
     reg.register_default::<InitialVelocity>("ph2d::physics::InitialVelocity");
     reg.register_default::<Ccd>("ph2d::physics::Ccd");
     reg.register_default::<LockRotation>("ph2d::physics::LockRotation");
@@ -215,7 +221,13 @@ mod tests {
         // `main` desta linha passa a ser **+2**. Quem integrar conta o DELTA, nunca o literal.
         // ⭐ **+1 outra vez (TOP-20 #14, o `ProjectileMotion`)** ⇒ `34 -> 35`, e o delta contra o
         // `main` passa a **+3**.
-        assert_eq!(reg.len(), 35);
+        // ⭐ **+2 (suplente #21, o RAIO: `RaySensor` e `RaySignals`)** ⇒ `35 -> 37`, e o delta
+        // contra o `main` passa a **+5**. ⚠️ **Dois tipos e UM degrau de `PROJECT_SCHEMA`** — os
+        // dois números medem coisas diferentes: este conta TIPOS registados, aquele conta o que o
+        // FICHEIRO passa a poder conter.
+        assert_eq!(reg.len(), 37);
+        assert!(reg.get_by_name("ph2d::physics::RaySensor").is_some());
+        assert!(reg.get_by_name("ph2d::physics::RaySignals").is_some());
         assert!(reg.get_by_name("ph2d::physics::SignalTagFilter").is_some());
         assert!(reg.get_by_name("ph2d::physics::TopDownPlayer").is_some());
         assert!(reg.get_by_name("ph2d::physics::ProjectileMotion").is_some());

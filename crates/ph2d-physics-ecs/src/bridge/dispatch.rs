@@ -131,6 +131,11 @@ impl PhysicsBridge {
         // primeiro era apagada pelo segundo e a bala nunca saía da cena. É o irmão exacto do
         // `accumulate_joint_breaks`, que o laço abaixo documenta pelo mesmo motivo.
         self.discard_projectile_deaths();
+        // ⭐ E as ARESTAS dos raios (suplente #21), que são **do dispatch** como as do contacto —
+        // ⛔ e o `ray_hits` NÃO é limpo aqui: ele é a memória entre tiques, e um dispatch não é uma
+        // descontinuidade. Quem o limpa é o `rebuild_from_rest`, que é uma.
+        self.ray_enters.clear();
+        self.ray_exits.clear();
         match target.cmp(&self.last_stepped) {
             // The clock went BACKWARDS — Reset, or a scrub. rapier has no
             // rewind, so replay from the rest state (see `rewind_to`).
@@ -194,6 +199,11 @@ impl PhysicsBridge {
                     // only place the clock stepped through the transitions, and the one
                     // that catches a touch shorter than a whole tick (W-TickContacts).
                     self.accumulate_contact_events(&by_handle);
+                    // ⭐⭐⭐ E os RAIOS deste tique (suplente #21) — **depois do passo**, porque a
+                    // pergunta é sobre o mundo que o passo deixou; e **por tique** pela razão que a
+                    // linha acima documenta: uma parede que apareça e suma dentro de um quadro que
+                    // deve três tiques seria invisível a uma amostragem por quadro.
+                    self.cast_ray_sensors(sim, &by_handle);
                     // And the joints that parted during that same tick (W-J7) —
                     // the wrapper clears its own list every `step`, so a break in
                     // an early tick of a multi-tick dispatch is gone by the last.
@@ -244,6 +254,11 @@ impl PhysicsBridge {
                     // relógio parado que se afina um alcance. DEPOIS do `settle`,
                     // que é quem põe o corpo rapier onde o `Transform` o pôs.
                     self.preview_player_probes(sim);
+                    // ⭐ E os RAIOS pela MESMA razão, palavra por palavra: é com o relógio parado
+                    // que se afina um alcance, e uma leitura que descrevesse o último tique
+                    // simulado mostraria a linha onde o objecto ESTAVA.
+                    let by_handle = self.handle_map();
+                    self.cast_ray_sensors(sim, &by_handle);
                 }
             }
         }

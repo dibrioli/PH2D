@@ -48,11 +48,22 @@
 //! # ⚠️ Dois componentes, e a razão é o custo de um BUMP
 //!
 //! `SignalOnHit` é uma tupla serializada **posicionalmente** pelo postcard, então
-//! apendar o segundo nome nela seria um bump de `PROJECT_SCHEMA` — e **um bump
-//! RECUSA todo projeto já salvo**. Um componente recém-*registrado* é chaveado
-//! pelo hash do próprio nome de tipo e é puramente aditivo. É o mesmo trade que o
-//! W-AreaDrag pagou (`AreaEffector` + `AreaDrag` separados pelo mesmo motivo),
-//! escrito aqui para ninguém "arrumar" os dois num struct só.
+//! apendar o segundo nome nela custaria um degrau de `PROJECT_SCHEMA` **e** um
+//! braço na escada de migração. Dois componentes são chaveados pelo hash do
+//! próprio nome de tipo, logo cada um é lido ou saltado por si. É o mesmo trade
+//! que o W-AreaDrag pagou (`AreaEffector` + `AreaDrag` separados pelo mesmo
+//! motivo), escrito aqui para ninguém "arrumar" os dois num struct só.
+//!
+//! ⚠️⚠️ **E a redacção anterior desta frase dizia que um componente novo é
+//! «puramente aditivo» e NÃO bumpa — isso descreve a casa de outra época.** Desde
+//! os degraus `123`, `125`, `126`, `127`, `130`, `131` e `132`, **um componente
+//! registado novo CUSTA um degrau**: um `ComponentBlob` de `type_id` desconhecido
+//! **recusa o load inteiro**, e o degrau é o que transforma isso em *«este
+//! ficheiro é de outra versão»* em vez de *«type id desconhecido»* a meio da
+//! travessia. O doc do `PlatformPlayer` dizia o mesmo e foi corrigido em 15/09;
+//! **esta era a segunda cópia**, achada pela wave do `RaySensor` ao reconferir a
+//! lei antes de escrever o delta. *Uma nota que descreve a casa de outra época
+//! lê-se exactamente como uma que descreve a de agora.*
 
 use bevy_ecs::prelude::Component;
 use ph2d_ecs::SimComponent;

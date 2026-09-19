@@ -24,7 +24,7 @@ use ph2d_ecs::{Entity, SimWorld};
 
 use ph2d_platformer::{JumpKind, PlayerEvent};
 
-use crate::{PlayerSignals, SignalOnHit, SignalOnLeave, SignalTagFilter};
+use crate::{PlayerSignals, RaySignals, SignalOnHit, SignalOnLeave, SignalTagFilter};
 
 use super::PhysicsBridge;
 use super::contacts::ContactPhase;
@@ -142,6 +142,38 @@ impl PhysicsBridge {
                         name,
                         source: ev.sensor,
                         other: ev.other,
+                    });
+                }
+            }
+        }
+        // ── E OS RAIOS (suplente #21) ────────────────────────────────────────
+        // ⚠️ **A QUARTA fonte da MESMA porta, e não uma quarta porta.** É aqui que o `other` existe,
+        // logo é aqui que o `SignalTagFilter` é consultado — o raio herda o filtro **sem uma linha
+        // nova**, que é o que o plano dele prometeu (*«zero filtros novos»*).
+        //
+        // ⚠️ **Os nomes vêm do [`RaySignals`] e não do `SignalOnHit`**, e a razão é que as duas
+        // perguntas são diferentes: *«algo me TOCOU»* e *«eu passei a VER algo»* são dois contratos,
+        // e um objecto que queira os dois autora os dois. ⛔ Reaproveitar o `SignalOnHit` faria uma
+        // armadilha de chão gritar quando o raio dela varresse o tecto.
+        for (evs, nome) in [
+            (self.ray_enters(), &|e: Entity| -> Option<String> {
+                sim.world()
+                    .get::<RaySignals>(e)
+                    .and_then(|s| s.enter().map(str::to_owned))
+            }
+                as &dyn Fn(Entity) -> Option<String>),
+            (self.ray_exits(), &|e: Entity| -> Option<String> {
+                sim.world()
+                    .get::<RaySignals>(e)
+                    .and_then(|s| s.exit().map(str::to_owned))
+            }),
+        ] {
+            for &(source, other) in evs {
+                if let Some(name) = nome(source).filter(|_| passa(source, other)) {
+                    out.push(SignalEvent {
+                        name,
+                        source,
+                        other,
                     });
                 }
             }

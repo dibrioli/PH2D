@@ -183,6 +183,15 @@ impl PhysicsBridge {
         // `launched` é o que converte `initial_speed` + o ângulo do corpo numa velocidade, **uma
         // vez só**, e nada a jusante o re-deriva de uma amostra do mundo.
         self.projectile_state.clear();
+        // ⭐⭐⭐ E o que cada RAIO via (suplente #21) — o QUARTO mapa desta família, e ele entra no
+        // mesmo commit em que nasce, de propósito: os três acima foram esquecidos aqui **um de cada
+        // vez**, e o último custou um report do dono (*«o Rewind não está funcionando com os
+        // projéteis»*).
+        //
+        // ⚠️ **Sem isto o defeito é MUDO e ao contrário do que se espera:** a 2.ª corrida começa
+        // com o raio a «já ver» o que via no fim da primeira, logo a entrada **não** volta a soar —
+        // uma porta que abriu ao ver o herói fica calada para sempre depois do primeiro Reset.
+        self.ray_hits.clear();
         // ⚠️ **As POLIAS saem do mundo velho ANTES de ele morrer** (W-Weston), e isso
         // é uma correção de bug, não arrumação. A tabela de polias vive DENTRO do
         // `PhysicsWorld`, então `PhysicsWorld::new()` a apagava — e o laço de replay

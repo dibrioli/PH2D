@@ -441,3 +441,39 @@ neste rig é o OMBRO, de comprimento ~0) e a 1.ª cura do portão era uma **TAUT
 sempre o comprimento do osso, porque o cotovelo É a ponta dele). A afirmação com conteúdo é a
 IDENTIDADE DO PONTO MAIS PERTO: ele NÃO alcança o rato e fica a exactamente o quanto o rato está fora
 do círculo. Escrita nos dois portões, e a mutação mata os dois.
+
+### 2026-09-19 (4.ª volta) — o DINOSSAURO: um segundo esqueleto 2D
+
+Pedido do dono («o T-Rex do Cascadeur»). O bípede embutido dele chama-se **Dracorex**, e vem com uma
+caminhada feita por eles. 100 juntas · 30 corpos · 62 pontos · **413 kg** (o número que o próprio
+centro de massa declara) → **29 ossos** aqui, com cauda de 4 peças e a perna de pássaro.
+
+⭐⭐⭐ **A HIERARQUIA NÃO SE LÊ — DERIVA-SE, e isso é uma medição com resíduo.** A API dele não expõe
+pai nenhum (introspeção: nem `get_parent` no `model_viewer`, nem dado «Parent» numa junta), e a
+saída óbvia seria adivinhar a cadeia pelos NOMES. O que há em cada junta é a posição **LOCAL** e a
+matriz **GLOBAL** ⇒ *o pai é a única junta cuja matriz leva a local do filho à global dele*. A
+convenção da matriz também se mede (por linhas `1e-5 cm`, por colunas `100 cm` — não é um empate), e
+o **CONTROLO** é a Cascy: a derivação reproduz **12 de 12** ligações que o gerador tem escritas à
+mão, pior resíduo `2,31e-5 cm`. *É o controlo que separa uma medição de um palpite com cara dela.*
+⛔ A mesma porta NÃO serve para os pontos de controle (36 de 43 não têm posição local; dos 7 que têm,
+a derivação dá disparate) — tentado, medido, revertido com a razão escrita no extractor.
+
+⛔⛔ **A régua do «cima» era HUMANOIDE e falhou em silêncio.** O gerador da Cascy escolhe o eixo
+vertical perguntando *onde a cabeça está acima da anca*; neste bicho a cabeça está **1,4 m à FRENTE**
+e 13 cm acima ⇒ o rig saía **DEITADO** e nada no ficheiro o dizia. A régua que fica é **a anca acima
+do PÉ**, com portão (focinho à frente, anca acima do pé, cauda atrás).
+
+⭐⭐ **A perna de pássaro decide-se por medição, não por anatomia.** Os quatro segmentos trabalham
+(fémur 82°, tíbia 76°, tarso 67°, dedos 108°) e a IK do motor dobra DOIS; o `fim` do membro tem de
+ser o ponto que **toca o chão**, e o tornozelo dele anda a **29 cm** ⇒ o membro é
+`joelho → tornozelo → planta`. ⛔ A alternativa (fémur+tíbia, ponta no tornozelo) foi recusada com
+número: ali `rig.sola` do tornozelo daria 29 cm e a lei de apoio leria *«o tornozelo toca o chão»*
+sempre que o bicho voltasse à altura de estar de pé. As duas recusas têm mutação que as mata.
+
+⭐ **Os LIMITES saem da caminhada dele; o que é LEI é a CONTINÊNCIA.** Os 15 limites foram medidos nos
+41 quadros; o número escrito é decisão nossa (**alargar** — uma caminhada é UM andamento), e o portão
+afirma que o limite CONTÉM o medido (folga mais apertada `6,9°`).
+
+⛔⛔ **MEDIDO e não curado:** a caminhada dele abana a cauda **2,25 m para o lado** (138 cm de média
+fora do plano). O importador declara por GRUPO — pernas `11,5` entram, braços `22,3`, tronco `14,0` e
+cauda `138,2` não —, e a reconstrução fica a `43,4 cm` no pior osso e `4,0 cm` em média.

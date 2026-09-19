@@ -58,3 +58,33 @@ metadata:
 - ⛔ [[feedback_a_law_parity_corpus_does_not_measure_the_product_the_owner_uses]] — lei a 1e-8 e o pincel piorava a superfície: peça a 2.ª missão de PRODUTO (valores de fábrica, gesto real, cursor na superfície, ablação)
 - [[feedback_an_attested_spec_is_refutable_by_the_corpus_and_the_blind_spot_is_the_corpus]] — a fórmula ATESTADA concorda com a certa em toda peça CENTRADA na origem; 4 fixturas deslocadas refutaram-na (43 → 49 de 61)
 - [[feedback_a_parity_measured_upstream_of_a_conversion_says_nothing_about_it]] — 51/61 fixturas verdes sobre uma ponte que invertia a curva: a bancada corre a lei DIRECTAMENTE e nunca atravessa a conversão do produto
+
+---
+
+### ⭐⭐⭐ Uma relação que a API do oráculo não expõe pode ser DERIVADA — e aí é medição, com resíduo e com CONTROLO (2026-09-19)
+
+Ao trazer um segundo esqueleto do Cascadeur, a pergunta era «quem é pai de quem». A introspeção da
+API pública diz que **não há porta**: nenhum método de pai no `model_viewer`, nenhum dado «Parent»
+numa junta. A saída barata seria adivinhar a cadeia pelos NOMES dos ossos — e um nome não diz de que
+lado do corpo um osso se pendura.
+
+O que a API expõe é, em cada junta, a **posição LOCAL** e a **matriz GLOBAL**. ⇒ *o pai é a única
+junta cuja matriz global leva a posição local do filho à posição global dele.* Isso não é um
+palpite: é uma equação com **resíduo**, e o resíduo imprime-se.
+
+Três coisas que a tornam honesta, e nenhuma é opcional:
+- **a convenção também se mede** — por LINHAS o resíduo é `1e-5 cm` e por colunas `100 cm`. Isso não
+  é um empate, é um discriminador;
+- **o segundo candidato** — se o segundo melhor também fechar, o pai é ambíguo e a derivação não vale
+  (aqui: zero ambíguos, uma raiz só);
+- ⭐ **o CONTROLO num caso conhecido** — a mesma derivação corrida sobre o boneco cuja cadeia já
+  estava escrita à mão reproduziu **12 de 12** ligações, com pior resíduo `2,31e-5 cm`. *Sem esse
+  controlo isto seria um palpite com cara de medição.*
+
+⛔ **E a mesma porta não serve para tudo**: os pontos de controle dele não são filhos de juntas (36 de
+43 não carregam posição local; dos 7 que carregam, a derivação dá disparate — um ponto da bacia
+«daria» o dedo do pé, a 22,6 cm). Tentado, medido, **revertido com a razão escrita no extractor**.
+Para eles ficou uma tabela derivada da ESTRUTURA do nosso rig (o osso que COBRE a junta, para os
+pontos principais; o que PARTE dela, para os outros), conferida contra a tabela escrita à mão do
+primeiro boneco: **38 de 43** batem, e das 5 que diferem **3 são ossos FIXOS** (movem-se igual) e 2
+são uma junta que o primeiro boneco não tem.

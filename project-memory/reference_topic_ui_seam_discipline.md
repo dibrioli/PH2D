@@ -56,3 +56,35 @@ metadata:
   demos mais cheias, não na dele* (5 px de margem compraram 46 px de folga).
 - [[feedback_a_deferred_popover_that_never_publishes_its_rect_cannot_be_light_dismissed]] — popover pintado num passe DIFERIDO nunca fecha ao clique de fora sem `set_dropdown_popover`; os 4 seletores do Inspector viveram assim · e a IRMÃ: eles penduravam a lista SEMPRE abaixo do chip, e o clamp sem rolagem e' meia-cura
 - ⛔⛔⛔ **«À VISTA» NÃO É «DENTRO DO RECTÂNGULO» — É ALCANÇÁVEL PELO DEDO** (Teste Cascadeur, 19/09): o auxiliar que rola um painel até um controlo parava assim que o centro dele caía na faixa `50 < y < altura − 50`, e o **RODAPÉ** da app está por cima dessa faixa. Medido: o botão parou a `y = 758`, o `elementFromPoint` ali devolvia `FOOTER`, o clique atravessou para o rodapé e o gesto NÃO ACONTECEU — e o portão, que media o efeito do gesto, reprovou **a apontar para a LEI**. ⚠️⚠️ E era LATENTE: bastaram **três linhas novas no painel (57 px)** para empurrar aquele botão para dentro do rodapé, numa wave que não tocou no código do arrasto. *Um instrumento que erra a apontar para o produto é o mais caro de todos* — fui procurar o defeito na lei, que estava intacta, e a árvore comitada passava. ⇒ o auxiliar exige que o `elementFromPoint` devolva o próprio elemento (ou um parente), senão continua a rolar; curado nas SEIS cópias.
+
+---
+
+### ⛔⛔ O guarda que aceita um ANTEPASSADO aceita um clique que NÃO CHEGA (2026-09-19, 2.ª volta)
+
+⚠️⚠️ **A cura da 1.ª volta (a entrada acima) deixou o buraco escrito dentro dela:** *«exige que o
+`elementFromPoint` devolva o próprio elemento (ou um parente)»*. **«Ou um parente» É o buraco** — e
+mordeu no mesmo dia, noutro botão. *Uma cura que nomeia a folga que deixa está a marcar o sítio onde
+vai ser paga outra vez.*
+
+Os testes de rato desta bancada trazem um `trazerAVista(sel)` que rola até o elemento estar na vista e
+confirma, com `document.elementFromPoint`, que o ponto é mesmo dele. O guarda era:
+
+```js
+!!(sob && (sob === e || e.contains(sob) || sob.contains(e)))
+```
+
+⛔ A terceira cláusula — `sob.contains(e)`, «o que está debaixo do ponto é um ANTEPASSADO» — é
+exactamente o caso em que o clique não chega. **Um elemento recortado fora da área visível de um
+painel que ROLA continua a devolver `getBoundingClientRect` normalmente**, e ali o `elementFromPoint`
+devolve o **painel**. O guarda passava, o clique caía no painel, e o teste lia *«a base do apoio não
+desapareceu»* — um defeito de PRODUTO inventado por um buraco do arnês.
+
+⚠️ **A prova de que o portão estava a afirmar nada**: a mutação dele lia **o mesmo número** com e sem
+a cura (`151 verdes` nos dois) — *ela estava vácua e lia-se como MORREU*. Depois da cura separa `0/0`
+de `0/42`.
+
+⇒ o guarda passa a aceitar **o próprio elemento ou um descendente dele**, mais um caso legítimo e
+**NOMEADO**: um `LABEL` que comanda o elemento (clicar no texto liga a caixa). Curado nas **seis**
+cópias. ⚠️ O gatilho foi acrescentar um `<select>` ao cabeçalho: ele fez a barra dobrar em duas linhas
+(50 → 96 px) e tudo desceu 46 px. *Uma mudança de layout de um controlo novo paga-se num botão do
+outro lado da página, e o teste acusa a lei.*

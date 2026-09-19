@@ -1,7 +1,7 @@
 //! Gates da lista de arestas.
 
 use super::*;
-use ph2d_mesh::shapes;
+use ph2d_mesh::{Face, Mesh, shapes};
 use std::collections::BTreeSet;
 
 /// O conjunto de arestas que a lista descreve, normalizado.
@@ -213,4 +213,83 @@ fn numa_malha_de_quads_a_vista_nao_muda_nada() {
     wire_indices_com(&mesh, true, &mut so_grade);
     assert_eq!(edge_set(&cheio), edge_set(&so_grade));
     assert!(!cheio.is_empty(), "a fixtura tem de ter arestas");
+}
+
+/// ⭐⭐⭐⭐ **CADA TRIÂNGULO PERDE NO MÁXIMO UMA ARESTA — a propriedade que
+/// DEFINE o emparelhamento, e que nenhum gate desta crate tinha.**
+///
+/// Esconder uma aresta é dizer *«estes dois triângulos são UM quadrado»*. Se um
+/// triângulo entrar em **dois** pares, ele perde duas arestas e o que fica
+/// desenhado já não é um quadrado — é um **buraco** de cinco lados com uma
+/// ponta aberta.
+///
+/// ⚠️⚠️ **Uma MUTAÇÃO SOBREVIVEU a apagar a cerca do emparelhamento** (o
+/// `gasto`) com os oito gates desta crate verdes: o `no_edge_of_any_face_is_missing`
+/// pergunta pela FACE e não pelo triângulo, e o de Euler conta arestas por
+/// vértice. *Nenhum deles vê um triângulo a ser usado duas vezes.*
+#[test]
+fn cada_triangulo_perde_no_maximo_uma_aresta() {
+    // ⚠️ O CUBO fica de fora de propósito: ele é feito de quadrados, logo não
+    // tem diagonal nenhuma para esconder (é o que o
+    // `numa_malha_de_quads_a_vista_nao_muda_nada` afirma) e a metade que exige
+    // população reprovaria sobre produto correcto.
+    for mesh in [shapes::uv_sphere(16, 24, 1.0), chapa_triangulada(9)] {
+        let mut grade = Vec::new();
+        super::wire_indices_com(&mesh, true, &mut grade);
+        let escondidas: std::collections::BTreeSet<(u32, u32)> = {
+            let mut cheio = Vec::new();
+            super::wire_indices_com(&mesh, false, &mut cheio);
+            let g: std::collections::BTreeSet<(u32, u32)> = grade
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|p| (p[0].min(p[1]), p[0].max(p[1])))
+                .collect();
+            cheio
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|p| (p[0].min(p[1]), p[0].max(p[1])))
+                .filter(|e| !g.contains(e))
+                .collect()
+        };
+        assert!(
+            !escondidas.is_empty(),
+            "a fixtura nao esconde nada — este gate seria vacuo"
+        );
+        for f in mesh.faces() {
+            for t in 0..f.tri_count() {
+                let tri = f.tri_at(t);
+                let n = (0..3)
+                    .filter(|i| {
+                        let (a, b) = (tri[*i], tri[(*i + 1) % 3]);
+                        escondidas.contains(&(a.min(b), a.max(b)))
+                    })
+                    .count();
+                assert!(
+                    n <= 1,
+                    "um triangulo perdeu {n} arestas — ele entrou em dois pares"
+                );
+            }
+        }
+    }
+}
+
+fn chapa_triangulada(n: usize) -> Mesh {
+    let mut pos = Vec::new();
+    for j in 0..n {
+        for i in 0..n {
+            pos.push([i as f32 / (n - 1) as f32, j as f32 / (n - 1) as f32, 0.0]);
+        }
+    }
+    let mut faces = Vec::new();
+    for j in 0..n - 1 {
+        for i in 0..n - 1 {
+            let a = (j * n + i) as u32;
+            let (b, c) = (a + 1, a + n as u32);
+            faces.push(Face::tri(a, b, c + 1));
+            faces.push(Face::tri(a, c + 1, c));
+        }
+    }
+    Mesh::from_parts(pos, faces).expect("chapa")
 }

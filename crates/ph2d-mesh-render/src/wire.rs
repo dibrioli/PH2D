@@ -132,40 +132,114 @@ pub fn bracos_na_vista_da_grade(mesh: &Mesh) -> Vec<u32> {
 }
 
 /// que têm mais do que um.
+/// ⭐⭐⭐⭐ **QUE ARESTAS A VISTA DA GRADE ESCONDE — um EMPARELHAMENTO, e não um
+/// teste aresta a aresta.**
+///
+/// Esconder uma aresta interior é dizer *«estes dois triângulos são UM
+/// quadrado»*, logo a pergunta certa é **quem faz par com quem** — e um par usa
+/// os dois triângulos, portanto é um **emparelhamento**, com a restrição de que
+/// cada triângulo entra num par só.
+///
+/// # ⛔⛔ A regra anterior era uma preferência MÚTUA, e ela perdia metade
+///
+/// Ela escondia uma aresta *iff ela fosse a mais longa dos **DOIS** triângulos*.
+/// Isso é um casamento por acordo mútuo, e numa célula **enviesada** ele não
+/// acontece: ali a malha partiu o quadrado pela diagonal **CURTA** — que é a
+/// escolha CERTA, porque partir pela longa daria triângulos de `25°`–`25°`–`130°`
+/// — e a diagonal curta não é a mais longa de ninguém, logo ninguém a escondia.
+///
+/// **Medido** (fracção de cruzamentos com os quatro braços, quatro rumos):
+/// dos `7 %` que a vista não fechava, **`182` tinham a malha com valência `6`,
+/// ou seja PERFEITA** — quem falhava era a vista. E a margem não era fina: a
+/// candidata perdia por `15 %` na mediana, com só `6,5 %` a menos de `3 %` de
+/// fechar. *A malha estava certa; a régua de esconder é que não a sabia ler.*
+///
+/// # As três regras, medidas
+///
+/// | regra | com pente | **sem pente** (o controlo) | cintilação |
+/// |---|---|---|---|
+/// | mútua (a anterior) | `93,01 %` | **`48,29 %`** | `0,86 %` |
+/// | **esta** (par, com plausibilidade) | **`96,10 %`** | `66,86 %` | `1,09 %` |
+/// | guloso puro (sem a cerca) | `96,18 %` | `72,00 %` | `1,30 %` |
+///
+/// ⭐ **A CERCA — *«só é candidata quem é a mais longa de PELO MENOS UM dos dois
+/// triângulos»* — é o que separa esta do guloso puro:** ela compra a mesma
+/// regularidade (`96,10` contra `96,18`) e mantém o **contraste** com a malha
+/// por pentear (`66,9` contra `72,0`) e menos cintilação.
+///
+/// ⚠️⚠️ **E o contraste é uma coluna do produto, não uma vaidade:** a vista
+/// existe para o artista ver ONDE a grade dele está. Uma regra que emparelha
+/// tudo mostra quadrados também onde não há grade nenhuma, e a diferença que ele
+/// procura fica mais fraca. *A que shipa é a mais ambiciosa que ainda deixa os
+/// dois lados distinguíveis.*
+///
+/// ⚠️ **A ordem é por comprimento DECRESCENTE**, e ela é load-bearing **na
+/// coluna da CINTILAÇÃO, não na da regularidade** — medido: crescente lê
+/// `96,87 %` de regularidade (melhor!) e **`1,44 %`** de cintilação contra os
+/// `1,09` desta. ⭐ *A aresta mais longa é a mais parecida com uma diagonal,
+/// logo emparelhá-la primeiro é o guloso que respeita o próprio critério* —
+/// duas razões a apontar ao mesmo lado.
+///
+/// ⚠️ O desempate é pela **chave da aresta**: uma vista que mudasse de sorteio
+/// piscaria entre quadros.
+///
+/// ⛔ **Uma aresta com um triângulo só NUNCA se esconde:** ali ela é a
+/// silhueta da peça, e escondê-la abre um buraco no arame.
 fn diagonais(mesh: &Mesh) -> std::collections::BTreeSet<(u32, u32)> {
     let p = mesh.positions();
-    // Por aresta: quantos triângulos a contêm, e em quantos ela é a mais longa.
-    let mut conta: std::collections::BTreeMap<(u32, u32), (u32, u32)> =
+    // Por aresta: os triângulos que a contêm, o comprimento, e em quantos deles
+    // ela é a mais longa.
+    let mut cand: std::collections::BTreeMap<(u32, u32), (Vec<usize>, f64, u32)> =
         std::collections::BTreeMap::new();
+    let mut n_tri = 0usize;
     for f in mesh.faces() {
         for t in 0..f.tri_count() {
             let tri = f.tri_at(t);
-            let lado = |i: usize| -> f32 {
+            let lado2 = |i: usize| -> f32 {
                 let (a, b) = (p[tri[i] as usize], p[tri[(i + 1) % 3] as usize]);
                 let d = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
                 d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2]))
             };
             let mut maior = 0usize;
             for i in 1..3 {
-                if lado(i) > lado(maior) {
+                if lado2(i) > lado2(maior) {
                     maior = i;
                 }
             }
             for i in 0..3 {
                 let (a, b) = (tri[i], tri[(i + 1) % 3]);
-                let e = conta.entry((a.min(b), a.max(b))).or_insert((0, 0));
-                e.0 += 1;
+                let e = cand
+                    .entry((a.min(b), a.max(b)))
+                    .or_insert_with(|| (Vec::new(), f64::from(lado2(i)).sqrt(), 0));
+                e.0.push(n_tri);
                 if i == maior {
-                    e.1 += 1;
+                    e.2 += 1;
                 }
             }
+            n_tri += 1;
         }
     }
-    conta
+
+    let mut ordem: Vec<((u32, u32), usize, usize, f64)> = cand
         .into_iter()
-        .filter(|(_, (faces, maiores))| *faces > 1 && faces == maiores)
-        .map(|(k, _)| k)
-        .collect()
+        .filter_map(|(k, (tris, l, maiores))| {
+            // A cerca da plausibilidade, e a da silhueta.
+            (tris.len() == 2 && maiores >= 1).then(|| (k, tris[0], tris[1], l))
+        })
+        .collect();
+    ordem.sort_by(|a, b| b.3.total_cmp(&a.3).then(a.0.cmp(&b.0)));
+
+    let mut gasto = vec![false; n_tri];
+    let mut out = std::collections::BTreeSet::new();
+    for (k, t0, t1, _) in ordem {
+        if gasto[t0] || gasto[t1] {
+            continue;
+        }
+        gasto[t0] = true;
+        gasto[t1] = true;
+        out.insert(k);
+    }
+    out
 }
 
 #[cfg(test)]

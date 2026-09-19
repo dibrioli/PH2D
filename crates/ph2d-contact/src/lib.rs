@@ -97,7 +97,7 @@ mod cercas;
 mod grelha;
 /// A REFERÊNCIA — a mesma lei por todos-os-pares, que nenhum caminho de produto chama.
 mod referencia;
-pub use cercas::{GRAO_POR_TAREFA_MIN, PECAS_PARA_PARALELIZAR, REPOUSO_VISIVEL, grao_de};
+pub use cercas::{PECAS_PARA_PARALELIZAR, PISO_DA_TAREFA, REPOUSO_VISIVEL};
 pub use grelha::candidatos;
 pub use referencia::separate_all_pairs;
 /// O impulso do par — a velocidade que responde ao contacto. Ver o cabeçalho dele.
@@ -514,7 +514,7 @@ fn separate_com(
         varreduras,
         paralelo,
         repouso,
-        grao_de(p.len()),
+        PISO_DA_TAREFA,
     )
 }
 
@@ -575,7 +575,8 @@ fn separate_grao(
         // vez, e a árvore de partição do rayon a descer até pedaços pequenos, com roubo de trabalho
         // e espera entre eles — **`5×` o CPU da série** para o mesmo resultado.
         //
-        // ⇒ `novas` vive fora do laço e cada tarefa leva [`GRAO_POR_TAREFA`] peças.
+        // ⇒ `novas` vive fora do laço, e o [`PISO_DA_TAREFA`] só impede o rayon de partir até um
+        // elemento — a partição continua a ser dele.
         par_preenche_em_blocos(
             paralelo,
             &mut novas,

@@ -475,11 +475,13 @@ fn cpu_segundos() -> f64 {
     (tick(11) + tick(12)) / 100.0
 }
 
-/// ⭐⭐⭐ **O GRÃO DA TAREFA** — de onde sai a [`crate::GRAO_POR_TAREFA`].
+/// ⭐⭐⭐ **O PISO DA TAREFA** — de onde sai a [`crate::PISO_DA_TAREFA`].
 ///
-/// ⚠️⚠️ **A 1.ª escolha foi um número redondo e estava ERRADA:** com grão `64` e `1000` peças
-/// existem **16 tarefas** — metade dos núcleos desta máquina fica sem nada para fazer. *Um grão que
-/// não olha para o `n` nem para os núcleos é um tecto escondido.*
+/// ⚠️⚠️ **DUAS escolhas minhas caíram aqui.** A 1.ª foi um número redondo (`64` peças por tarefa):
+/// com `1000` peças são **16 tarefas** numa máquina de 32 núcleos. A 2.ª derivava o número de
+/// PEDAÇOS do `n` e dos núcleos, e **piorou o app do dono de `18,6` para `30,4 ms`** — fixar os
+/// pedaços tira ao rayon a decisão de partir só quando há quem trabalhe, e isso só se nota com a
+/// máquina PARADA (as minhas tabelas saíram todas a `load 22`–`32`).
 ///
 /// A coluna que decide é a dos **núcleos** (CPU/parede): ela diz quantos de facto trabalharam, e a
 /// carga da máquina não a estraga como estraga o relógio.
@@ -489,10 +491,10 @@ fn o_grao_da_tarefa() {
     const RAIO: f32 = 100.0;
     const V: usize = 64;
     let nucleos = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
-    eprintln!("\n  ═══ O GRÃO DA TAREFA ({nucleos} núcleos na máquina) ═══\n");
+    eprintln!("\n  ═══ O PISO DA TAREFA ({nucleos} núcleos na máquina) ═══\n");
     eprintln!(
         "  {:<8} │ {:<7} │ {:>8} │ {:>11} │ {:>11} │ {:>9}",
-        "discos", "grão", "tarefas", "parede", "CPU", "núcleos"
+        "discos", "piso", "n/piso", "parede", "CPU", "núcleos"
     );
     eprintln!("  ---------|---------|----------|-------------|-------------|----------");
     for n in [1000usize, 4000] {

@@ -1982,3 +1982,51 @@ consegue matar não é lei.*
 [`cercas`](../../crates/ph2d-contact/src/cercas.rs) (ele é a derivação de uma delas) e a
 [`referencia`](../../crates/ph2d-contact/src/referencia.rs) — todos-os-pares, que **nenhum caminho
 de produto chama** — saiu do `lib.rs` para o módulo dela.
+
+---
+
+## §27 — ⛔⛔⛔ A minha cura PIOROU o app dele, e a causa era a MÁQUINA onde eu medi
+
+Report do dono a seguir à §26: **`MOTION 18,61 → 30,41 ms`**, e numa cena mais FÁCIL (`128` vizinhos
+contra `156`).
+
+### §27.1 — O que eu fiz de errado
+
+A §26 substituiu a partição adaptativa do rayon por um número **FIXO** de pedaços
+(`n / (núcleos × 4)`). ⚠️ **Numa máquina OCUPADA isso não se nota** — os trabalhadores já estão
+acordados e a roubar trabalho — e **numa máquina PARADA acordar `125` tarefas de `~2 µs` custa mais
+do que o trabalho que elas fazem.**
+
+⛔⛔ **E as minhas tabelas da §26 saíram TODAS com a máquina entre `load 22` e `32`**, porque outras
+linhas correram suítes o dia inteiro. *Uma medição de escalonamento feita sob carga não transfere
+para a máquina calma onde o artista trabalha* — e o dono mediu na calma, que é o caso que conta.
+
+### §27.2 — A cura: o rayon volta a decidir, e o número passa a ser um PISO
+
+`with_min_len` em vez de `par_chunks_mut`: o rayon parte **quando há um trabalhador livre**, e o
+número só o impede de descer a um elemento. ⭐ O buffer reaproveitado da §26 **fica** — ele nunca foi
+o problema.
+
+Medido a **`load 3,4`** (a primeira janela calma do dia), `1000` discos e `64` varreduras:
+
+| vizinhos por peça | série | **paralelo** |
+|---|---|---|
+| 12 | 11,5 ms | 3,5 ms |
+| 37 | 27,1 ms | 5,4 ms |
+| 73 | 47,1 ms | 8,1 ms |
+| **132** (a densidade do dono) | 78,5 ms | **10,7 ms** — `7,3×` |
+
+E o piso, medido na mesma janela: `8` → `13,2 ms`/`9,1` núcleos · `64` → `21,7`/`5,1` · `256` →
+`41,4`/`1,9`. ⇒ ele é **pequeno e constante**; derivá-lo do `n` foi o segundo palpite a cair.
+
+### §27.3 — ⛔ E o gate que eu escrevi para isto tinha uma GUARDA que o desligava
+
+A 1.ª redacção dizia `if n >= nucleos * PISO { … }` — e **com um piso enorme essa condição é falsa
+para toda a cena**, logo o gate passava por vácuo. A mutação que punha o piso em `4096`
+**SOBREVIVEU**.
+
+⇒ a cerca passou a ser sobre a **CENA** (a população que o dono nomeou), nunca sobre o número que
+está a ser testado. *Uma guarda escrita em função da grandeza sob teste desliga a lei exactamente
+quando ela é violada.*
+
+**Mutação: 4 de 4 sangram.**

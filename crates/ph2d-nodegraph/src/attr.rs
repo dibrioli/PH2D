@@ -132,14 +132,16 @@ pub fn par_preenche_em_blocos<T, B, I, F>(
 {
     let grao = grao.max(1);
     if paralelo {
-        alvo.par_chunks_mut(grao)
+        // ⚠️⚠️ **`with_min_len` e NÃO `par_chunks_mut`**, e a diferença foi medida no app do dono:
+        // um número FIXO de pedaços obriga a esse número de tarefas, aconteça o que acontecer.
+        // Numa máquina **ocupada** isso não se nota (os trabalhadores já estão acordados), e numa
+        // máquina **parada** acordar 125 tarefas de `2 µs` custa mais do que o trabalho — o
+        // relatório dele piorou de `18,6` para `30,4 ms`. ⇒ o rayon volta a decidir a partição, e o
+        // `grao` passa a ser só o **PISO** de uma tarefa.
+        alvo.par_iter_mut()
             .enumerate()
-            .for_each_init(&init, |bloco, (ci, pedaco)| {
-                let base = ci * grao;
-                for (o, slot) in pedaco.iter_mut().enumerate() {
-                    f(bloco, base + o, slot);
-                }
-            });
+            .with_min_len(grao)
+            .for_each_init(&init, |bloco, (i, slot)| f(bloco, i, slot));
     } else {
         let mut bloco = init();
         for (i, slot) in alvo.iter_mut().enumerate() {

@@ -40,22 +40,26 @@ pub const REPOUSO_VISIVEL: f32 = 1e-5;
 /// uma com o seu roubo de trabalho e a sua espera — foi isso que pôs `4`–`5` núcleos de 32 a
 /// trabalhar com `5×` o CPU da série), e um grão grande deixa núcleos sem trabalho no fim. A
 /// tabela de onde ele sai está na sonda [`crate::custo_probe::o_grao_da_tarefa`].
-/// Quantas TAREFAS por núcleo — mais do que uma dá ao escalonador com que equilibrar quando uma
-/// peça custa mais que outra (numa pilha, o número de vizinhos varia muito).
-const FATOR: usize = 4;
-
-/// O piso do grão: abaixo disto a tarefa é mais barata de criar do que de correr.
-pub const GRAO_POR_TAREFA_MIN: usize = 8;
-
-/// **O grão de uma tarefa para uma nuvem de `n` peças** — a DERIVAÇÃO das duas constantes acima.
+/// ⭐⭐⭐ **O PISO de uma tarefa do caminho paralelo** — abaixo disto o rayon não parte mais.
 ///
-/// ⛔⛔ **A 1.ª escolha foi um número redondo (`64`) e estava errada:** com `1000` peças isso são
-/// **16 tarefas** numa máquina de 32 núcleos, e metade dela fica parada. Medido: `3,4` núcleos a
-/// grão `256` contra `11,0` a grão `32`. *Um grão que não olha para o `n` nem para os núcleos é um
-/// tecto escondido*, e há gate (`o_grao_da_tarefa_da_trabalho_a_todos_os_nucleos`).
-#[must_use]
-pub fn grao_de(n: usize) -> usize {
-    let nucleos = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
-    n.div_ceil(nucleos.saturating_mul(FATOR))
-        .max(GRAO_POR_TAREFA_MIN)
-}
+/// ⚠️⚠️ **Ele é um PISO e não uma partição, e a diferença foi medida NO APP DO DONO.** A 1.ª
+/// redacção fixava o número de pedaços (`n / (núcleos × 4)`): numa máquina **ocupada** isso não se
+/// nota, porque os trabalhadores já estão acordados, e numa máquina **PARADA** acordar `125` tarefas
+/// de `2 µs` custa mais do que o trabalho — o relatório dele piorou de `18,6` para `30,4 ms`.
+/// ⛔ *As minhas tabelas foram todas tiradas com a máquina entre `load 22` e `32`, e a conclusão não
+/// transferia.*
+///
+/// ⇒ o rayon decide a partição (ele parte quando há um trabalhador livre) e isto só o impede de
+/// descer a UM elemento. Medido a `load 4,5`, `1000` discos e `64` varreduras:
+///
+/// | piso | parede | núcleos de facto |
+/// |---|---|---|
+/// | **8** | **13,2 ms** | 9,1× |
+/// | 16 | 11,8 ms | 11,9× |
+/// | 64 | 21,7 ms | 5,1× |
+/// | 256 | 41,4 ms | 1,9× |
+///
+/// ⚠️ E a `4000` discos o piso pequeno ganha por mais (`43,0` contra `51,8` a `64`): *um piso
+/// grande tira ao rayon a liberdade de que ele precisa quando o trabalho por peça varia* — numa
+/// pilha o número de vizinhos varia muito de peça para peça.
+pub const PISO_DA_TAREFA: usize = 8;

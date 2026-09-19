@@ -1452,35 +1452,35 @@ fn uma_peca_que_so_roda_nao_e_lida_como_parada() {
     );
 }
 
-/// ⭐⭐⭐ **O GRÃO TEM DE DAR TRABALHO A TODOS OS NÚCLEOS** — a lei que a minha 1.ª escolha violou.
+/// ⭐⭐⭐ **O PISO DA TAREFA TEM DE DEIXAR TRABALHO PARA TODOS OS NÚCLEOS** — a lei que as minhas
+/// DUAS primeiras escolhas violaram.
 ///
-/// ⛔⛔ Eu escrevi `GRAO = 64` como número redondo, e com `1000` peças isso são **16 tarefas** numa
-/// máquina de 32 núcleos: **metade dela fica parada**, e a medição leu-o em voz alta (`3,4` núcleos
-/// a grão `256` contra `11,0` a grão `32`). *Um grão que não olha para o `n` nem para os núcleos é
-/// um tecto escondido.*
+/// ⛔⛔ A 1.ª foi um número redondo (`64` peças por tarefa): com `1000` peças isso são **16 tarefas**
+/// numa máquina de 32 núcleos. A 2.ª derivava o número de PEDAÇOS do `n` e dos núcleos — e isso
+/// piorou o app do dono de `18,6` para `30,4 ms`, porque *fixar os pedaços tira ao rayon a decisão
+/// de partir só quando há quem trabalhe*.
 ///
-/// ⇒ o grão é DERIVADO, e este gate afirma a propriedade que importa: **pelo menos uma tarefa por
-/// núcleo**, com folga para o escalonador equilibrar (numa pilha o número de vizinhos varia muito
-/// de peça para peça, logo as tarefas não custam todas o mesmo).
+/// ⇒ hoje é um **PISO** pequeno e medido, e o que este gate afirma é a propriedade que sobra: com
+/// uma cena real, o piso deixa **pelo menos uma tarefa por núcleo**.
 #[test]
-fn o_grao_da_tarefa_da_trabalho_a_todos_os_nucleos() {
+fn o_piso_da_tarefa_deixa_trabalho_para_todos_os_nucleos() {
     let nucleos = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
-    for n in [PECAS_PARA_PARALELIZAR, 500, 1000, 4000, 100_000] {
-        let grao = super::grao_de(n);
+    // ⚠️ `const _` e não `assert!`: os dois lados são constantes, logo o compilador dobra-o — e
+    // assim ele passa a ser **erro de compilação**, que é mais forte do que um teste.
+    const _: () = assert!(
+        PISO_DA_TAREFA >= 1,
+        "um piso de zero deixaria o rayon partir ate' um elemento por tarefa"
+    );
+    // ⚠️⚠️ **A GUARDA da 1.ª redacção deste gate DESLIGAVA a lei exactamente quando ela era
+    // violada:** ela dizia `if n >= nucleos * PISO`, e com um piso enorme essa condição é FALSA
+    // para toda a cena — o gate passava por vácuo. Uma mutação que punha o piso em `4096`
+    // **sobreviveu**. ⇒ a cerca é sobre a CENA (a população que o dono nomeou), nunca sobre o
+    // número que está a ser testado.
+    for n in [1000usize, 4000, 100_000] {
+        let tarefas = n / PISO_DA_TAREFA;
         assert!(
-            grao >= GRAO_POR_TAREFA_MIN,
-            "o grao tem piso: {n} -> {grao}"
+            tarefas >= nucleos.min(n / 8),
+            "com {n} pecas o piso {PISO_DA_TAREFA} da' {tarefas} tarefas para {nucleos} nucleos"
         );
-        let tarefas = n.div_ceil(grao);
-        // ⚠️ A cerca só faz sentido quando há peças para toda a gente — abaixo disso o piso do grão
-        // manda, e é ele que impede tarefas mais caras de criar do que de correr.
-        if n >= nucleos * GRAO_POR_TAREFA_MIN {
-            assert!(
-                tarefas >= nucleos,
-                "com {n} pecas o grao {grao} da' {tarefas} tarefas para {nucleos} nucleos — \
-                 {} ficam parados",
-                nucleos - tarefas
-            );
-        }
     }
 }

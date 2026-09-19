@@ -433,6 +433,49 @@ pub fn shade_render(
         }
     });
 
+    /// ⭐⭐⭐ **O PONTO DE UM PIXEL DE SILHUETA — e ele TEM de estar na peça** (report do dono,
+    /// 2026-09-19: *«toda forma apresenta uma falsa outline branca de 1 pixel»*).
+    ///
+    /// # ⛔⛔⛔ O defeito, medido
+    ///
+    /// O material de uma sub-amostra é escolhido pela POSIÇÃO (`Surfaces::mix_of(p, …)`, e o
+    /// `dono_mix(p, …)` do WGSL faz o mesmo). O laço da borda passava `g.point[i]` — o ponto do CENTRO
+    /// do pixel —, e **num pixel de silhueta o centro pode FALHAR a peça**: ali a marcha não escreve
+    /// `point[i]`, que fica no valor inicial `[0,0,0]`, e o do dispositivo fica pior ainda
+    /// (`origem + direcção × t` com `t < 0`, isto é **atrás da câmara**).
+    ///
+    /// ⇒ o material vinha de um ponto que não está na superfície. Medido na cena `=36`, sobre os
+    /// **`555`** pixels de silhueta cujo centro falha: o dispositivo pintava-os **`+56,3`** bytes de
+    /// verde acima da CPU, porque o ponto bogus caía numa folha **emissiva** — e uma emissiva depois da
+    /// exposição é BRANCA. *É o fio branco de um pixel que o dono fotografou, e ele só se vê nas peças
+    /// escuras porque a cor que ele põe é sempre a mesma.*
+    ///
+    /// ⭐ **A cura é o idioma que este módulo já usa:** o [`edge_ground_factor`] empresta o factor dos
+    /// vizinhos de cruz que FALHAM; aqui empresta-se o ponto do primeiro vizinho de cruz que **ACERTA**,
+    /// na mesma ordem (esquerda, direita, cima, baixo — a do dispositivo). ⚠️ É a mesma aproximação
+    /// declarada do resto da borda (a vista e o material do centro servem às quatro amostras), agora
+    /// sobre um ponto que existe.
+    ///
+    /// ⚠️ **Sem vizinho que acerte, devolve o que havia** — um pixel de silhueta sem um único vizinho
+    /// de cruz na peça é uma peça com menos de um pixel de largura, e ali não há material a emprestar.
+    fn pixel_da_borda(g: &Gbuffer, i: usize) -> usize {
+        if g.hit[i] {
+            return i;
+        }
+        let (w, h) = (g.width as usize, g.height as usize);
+        let (x, y) = (i % w, i / w);
+        [
+            (x > 0).then(|| i - 1),
+            (x + 1 < w).then(|| i + 1),
+            (y > 0).then(|| i - w),
+            (y + 1 < h).then(|| i + w),
+        ]
+        .into_iter()
+        .flatten()
+        .find(|&j| g.hit[j])
+        .unwrap_or(i)
+    }
+
     for e in &g.edges {
         let i = e.pixel as usize;
         // ⚠️ **A vista do CENTRO do pixel serve às quatro amostras**: dentro de um pixel a direcção do
@@ -444,6 +487,8 @@ pub fn shade_render(
         let fundo = shadowed_background(bg, edge_ground_factor(g, &fatores, i));
         // ⭐ **E a luz devolvida viaja ao lado**, pela mesma razão do ramo do fundo acima.
         let luz_do_fundo = edge_ground_bounce(g, &postas, i);
+        // ⭐⭐⭐ **O PIXEL DE QUEM A BORDA PEDE EMPRESTADO** — ver [`pixel_da_borda`].
+        let j = pixel_da_borda(g, i);
         // ⚠️ **E o MATERIAL do centro serve às quatro amostras**, pela mesma razão da vista: a borda
         // não guarda os pontos das sub-amostras. ⛔ Numa silhueta entre DUAS peças de cores
         // diferentes isto pinta a borda com a cor da que o centro apanhou — declarado, e é a mesma
@@ -455,14 +500,19 @@ pub fn shade_render(
                 let rgb = mixed_radiance(
                     surfaces,
                     PixelGeom {
+                        // ⛔⛔⛔ **O ÍNDICE fica no do pixel que se PINTA; só o PONTO é emprestado.**
+                        // A 1.ª redacção emprestou também a oclusão, a sombra e o ricochete (`i: j`)
+                        // — e isso NÃO move o rebordo um byte (medido: `+0,0` das duas maneiras) e
+                        // parte **nove** paridades entre os motores. *Uma cura maior do que a
+                        // medição pede é uma regressão com um bom argumento ao lado.*
                         i,
-                        p: g.point[i],
+                        p: g.point[j],
                         n: e.normal[k],
                         v,
                         // ⚠️ Vazio ⇒ `0` ⇒ o piso do GLSL dá o raio de `100`, que é «plano».
-                        k: g.curvature.get(i).copied().unwrap_or(0.0),
+                        k: g.curvature.get(j).copied().unwrap_or(0.0),
                         // ⚠️ Vazio ⇒ `0` ⇒ tinta nenhuma, que é o que o estilo de fábrica quer.
-                        k_estilo: g.curvature_style.get(i).copied().unwrap_or(0.0),
+                        k_estilo: g.curvature_style.get(j).copied().unwrap_or(0.0),
                         basis,
                     },
                     pixel_world,

@@ -120,9 +120,9 @@ pub(super) fn quadro_na_cpu(
 /// ⛔ **E as cenas que ficam grossas não são uma lista escrita à mão:** elas saem da medição, com as
 /// três colunas que dizem **porquê**. Ver a nota do módulo.
 ///
-/// # ⛔⛔⛔ COMO LER UMA REPROVAÇÃO DESTE GATE (as cinco leituras de 2026-09-19)
+/// # ⛔⛔⛔ COMO LER UMA REPROVAÇÃO DESTE GATE (as SETE leituras de 2026-09-19)
 ///
-/// O MESMO commit, medido cinco vezes no mesmo dia:
+/// O MESMO commit, medido sete vezes no mesmo dia:
 ///
 /// | corrida | perfil | contexto | veredito |
 /// |---|---|---|---|
@@ -132,12 +132,17 @@ pub(super) fn quadro_na_cpu(
 /// | sozinha | **debug** | `ociosa 98 %` | `9 de 22` ✗ |
 /// | conjunto inteiro, máquina calma | release | `load 7` | **`22` testes, `0` ✗** ✓ |
 /// | sozinha, logo a seguir ao próprio build | release | `load 20,68` · `ociosa 92 %` | `10 de 22` ✗ |
+/// | conjunto inteiro, com a linha do lado a compilar | release | **`load 130,26`** | `9 de 22` ✗ |
 ///
 /// ⭐⭐⭐ **Nenhuma das duas réguas de calma discrimina sozinha:** `ociosa 92 %` reprovou e `load 7`
 /// passou. A ociosidade é **instantânea** e lida no arranque do laço; o que atrasa as cenas é a
 /// **cauda** do que acabou de correr — o compilador de release, a suíte da linha do lado — e é a
 /// `loadavg` que ainda a vê. ⇒ *não corra este gate a seguir a um build; corra-o com a `loadavg`
 /// abaixo de ~10.*
+///
+/// ⚠️ **E a assinatura da carga lê-se na TABELA por cena:** a `load 130` quase todas caem **logo
+/// acima** do orçamento (`17,4`–`19,2 ms` contra `16,7`), que é um abrandamento uniforme. Uma
+/// regressão de lei não move dez cenas para `1,05×` a barra ao mesmo tempo.
 ///
 /// ⚠️ E a tabela por cena **imita a assinatura da flake sem o ser** quando o perfil muda: a cena de
 /// `93` instruções mede `14 ms` em debug e `58 ms` numa release contendida, e outra de `934` faz o

@@ -489,6 +489,27 @@ fn fator_no_pixel(j: u32, x: u32, y: u32) -> f32 {
 
 // ⭐⭐ **O factor de uma BORDA** — o do próprio pixel quando ele falha a peça; senão, a média dos
 // vizinhos de cruz que a falham (esquerda, direita, cima, baixo — a ordem da CPU).
+// ⭐⭐⭐ **O PONTO DE UM PIXEL DE SILHUETA — e ele TEM de estar na peça.**
+//
+// ⛔⛔⛔ O material sai da POSIÇÃO (`dono_mix(p, …)`), e o `p` da borda era montado com o `t` do
+// CENTRO do pixel. Num pixel de silhueta o centro pode FALHAR: ali `centro[i].x < 0` (o mesmo
+// teste que o `fator_da_borda` faz por baixo) e `origem + direcção × t` cai ATRÁS da câmara. ⇒ o
+// material vinha de um ponto que não está na superfície — medido na cena `=36`, `+56,3` bytes de
+// verde acima da CPU nos `555` pixels em causa, porque o ponto bogus caía numa folha EMISSIVA, e
+// uma emissiva depois da exposição é BRANCA.
+//
+// ⭐ A cura é o espelho do `fator_da_borda`: ele empresta dos vizinhos de cruz que FALHAM, isto
+// empresta do primeiro que ACERTA, na MESMA ordem (esquerda, direita, cima, baixo). Sem nenhum,
+// devolve o que havia — uma peça com menos de um pixel de largura não tem material a emprestar.
+fn pixel_da_borda(i: u32, x: u32, y: u32) -> u32 {
+    if (centro[i].x >= 0.0) { return i; }
+    if (x > 0u && centro[i - 1u].x >= 0.0) { return i - 1u; }
+    if (x + 1u < s.w && centro[i + 1u].x >= 0.0) { return i + 1u; }
+    if (y > 0u && centro[i - s.w].x >= 0.0) { return i - s.w; }
+    if (y + 1u < s.h && centro[i + s.w].x >= 0.0) { return i + s.w; }
+    return i;
+}
+
 fn fator_da_borda(i: u32, x: u32, y: u32) -> f32 {
     if (s.chao == 0u) { return 1.0; }
     if (centro[i].x < 0.0) { return fator_no_pixel(i, x, y); }
@@ -611,13 +632,22 @@ fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
     if (i >= s.w * s.h) { return; }
     let x = i % s.w;
     let y = i / s.w;
+    // ⭐⭐⭐ **O PIXEL DE QUEM A BORDA PEDE O PONTO EMPRESTADO** — ver `pixel_da_borda`. Dele sai a
+    // POSIÇÃO, que é o que escolhe o material.
+    //
+    // ⛔⛔⛔ **E SÓ a posição.** A 1.ª redacção emprestou também o céu e o ricochete: isso não move
+    // o rebordo um byte (medido, `+0,0` das duas maneiras) e parte **nove** paridades com a CPU.
+    // *Uma cura maior do que a medição pede é uma regressão com um bom argumento ao lado.*
+    let j = pixel_da_borda(i, x, y);
+    let cj = centro[j];
     let c = centro[i];
     let r = ray_at_plane(raio(f32(x) + 0.5, f32(y) + 0.5));
     let v = direccao_de_vista(r.d);
-    let p = r.o + r.d * c.x;
+    let rj = ray_at_plane(raio(f32(j % s.w) + 0.5, f32(j / s.w) + 0.5));
+    let p = rj.o + rj.d * cj.x;
     let ceu_vis = ceu_em(x, y, i, c.yzw);
-    // ⚠️ **As sub-amostras partilham o ricochete do CENTRO**, exactamente como partilham o ponto e
-    // o material — a mesma aproximação declarada da borda, e pela mesma razão.
+    // ⚠️ **As sub-amostras partilham o ricochete do CENTRO**, exactamente como partilham o material
+    // — a mesma aproximação declarada da borda, e pela mesma razão.
     let ric = ricochete_no_pixel(x, y, i, c.yzw);
     // ⭐⭐ **O fundo de uma sub-amostra que falha é o fundo COM o chão** — sem isto a silhueta de
     // baixo pinta um fio do fundo limpo entre a peça e a sombra de contacto.

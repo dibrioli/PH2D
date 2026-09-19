@@ -165,6 +165,79 @@ que acabou de correr, e só a `loadavg` ainda a vê.*
 **proibido** (HR-5 · ADR-0022). A cura é melhor do que a régua era: uma máscara `vec![bool]`
 indexada pelo pixel, que responde sem procurar.
 
+## §8 — ⛔⛔⛔ O 2.º report: *«pixel branco continua lá»* — e a §1 deste doc curou OUTRA coisa
+
+A cura da §1 é real e está medida (a invariante do formato foi de `1 182` canais a `0`). **Ela não
+era o defeito do dono**, e o número que o disse estava impresso na §4 deste mesmo documento: o
+recorte atravessava `110 · 179 · 214 · 216` — uma **RAMPA** monótona do fundo para uma peça CLARA.
+⚠️ *O que ele fotografa é um PICO*: fundo `110`, barra escura `~25`, e entre os dois um pixel mais
+claro que **ambos**. Uma mistura de duas cores nunca sai do intervalo delas ⇒ aquilo não podia vir de
+composição nenhuma.
+
+### §8.1 — As três medições que localizaram a causa
+
+| pergunta | instrumento | resposta |
+|---|---|---|
+| está na imagem que o motor produz? | perfil pela silhueta da peça escura | **sim** (`37,8 → 65,1 → 51,9`) |
+| é do chão? | o mesmo, com `ground = None` | **sim**: `+0,0` sem chão |
+| é dos dois motores? | a MESMA cena nos dois | **não**: dispositivo `+72,8`, CPU `+0,0` |
+
+⛔⛔ **E duas sondas minhas mediram o programa errado antes disto funcionar:**
+
+1. A 1.ª corrida achou **`0` pixels de peça escura** numa cena cuja peça escura é o assunto — o
+   [`quadro`] das sondas da borda pinta tudo com `OpenPbr::default()`, e a barra desta cena só é
+   escura porque a [`materiais_da_cena`] lhe dá `base_color` própria. *Uma sonda que rende a cena com
+   o material de omissão não pode ver um defeito cujo contraste vem do material.*
+2. A 1.ª régua achava a peça por **`luminância composta < 60`**. Os dois motores não pintam a barra
+   com o mesmo brilho (o dispositivo sai `19` bytes mais escuro), logo o mesmo limiar caía DENTRO da
+   barra num e FORA no outro: li `+18,9` no dispositivo e `+0,1` na CPU **sobre o mesmo defeito**, e
+   concluí que a CPU estava limpa. ⇒ a régua que fica acha a fronteira pelo **ALFA**.
+
+### §8.2 — ⭐⭐⭐ A causa: a borda pede ao CENTRO o que o centro não tem
+
+O material sai da **POSIÇÃO** (`Surfaces::mix_of(p, …)` na CPU, `dono_mix(p, …)` no WGSL). O laço da
+borda montava essa posição a partir do CENTRO do pixel — e **num pixel de silhueta o centro pode
+FALHAR a peça**:
+
+* na CPU a marcha não escreve `point[i]` num falhanço, e ele fica no valor inicial **`[0,0,0]`**;
+* no dispositivo fica pior: `origem + direcção × t` com **`t < 0`**, isto é **atrás da câmara** — e o
+  mesmo shader já testava `centro[i].x < 0.0` duas funções acima, no `fator_da_borda`.
+
+⇒ o material vinha de um ponto fora da superfície. No dispositivo aquele ponto caía numa folha
+**EMISSIVA** (a cena tem três), e uma emissiva depois da exposição é **BRANCA**. *É o fio branco de
+um pixel, e ele só se vê nas peças escuras porque a cor que ele põe é sempre a mesma.*
+
+Medido sobre os **`555`** pixels de silhueta cujo centro falha:
+
+| | Δ verde médio (dispositivo − CPU) | pico da silhueta, dispositivo |
+|---|---:|---:|
+| antes | **`+56,3`** bytes | **`+72,8`** |
+| depois | `0,0` | `0,0` |
+
+### §8.3 — A cura é o PONTO emprestado de um vizinho que ACERTA
+
+⭐ O idioma já existia neste módulo: o `edge_ground_factor` empresta o factor dos vizinhos de cruz
+que **FALHAM**. Aqui empresta-se o **primeiro que ACERTA**, na mesma ordem nos dois motores
+(esquerda, direita, cima, baixo).
+
+⛔⛔⛔ **E empresta-se SÓ o ponto — a cura maior foi construída, MEDIDA e REVERTIDA.** Emprestar
+também o céu, a sombra e o ricochete (o índice, e não só a posição) é o desenho que se argumenta
+sozinho: *um centro que falha não tem nenhuma das três*. Medido, ele **não move o rebordo um byte**
+(`Δ` da silhueta `+0,0` das duas maneiras) e parte **NOVE** paridades entre os motores — entre elas
+`o_quadro_de_movimento_nao_paga_o_ricochete`, que é uma regressão que o dono já reprovou uma vez, e
+o `os_pixeis_que_divergem_sao_os_da_borda_e_nao_os_do_miolo`, cujo miolo divergente subiu a `257`
+contra a barra de `60`.
+
+⇒ *uma cura maior do que a medição pede é uma regressão com um bom argumento ao lado.* O que fica é
+o **ponto** (e a curvatura, que é dele); o índice continua a ser o do pixel que se pinta.
+
+### §8.4 — ⏳ O que FICA, medido e nomeado
+
+Com o chão ligado sobra um pico de **`+33` bytes** na silhueta contra a sombra de contacto — **igual
+nos dois motores** (`dispositivo +32,9` · `CPU +35,9`), logo é outro defeito e não este. ⛔ E não é a
+luz devolvida: zerá-la não move o número (`+35,9` com e sem). A prova visual composta mostra a barra
+**sem o fio branco**, com um traço claro ténue na aresta de baixo.
+
 ## ⛔ Recusas MEDIDAS
 
 | o que foi recusado | porquê, com o número |
@@ -173,4 +246,8 @@ indexada pelo pixel, que responde sem procurar.
 | pré-multiplicar o `rgb` inteiro pelo alfa | a luz devolvida ao chão SOMA e não tapa: o gate do chão leu `0,004777` contra `0,011194` (§3) |
 | curar o brilho na mesma wave | a lei dele foi aprovada pelo dono um dia antes, e a premissa que ela contraria é agora uma decisão de produto e não um defeito (§5) |
 | usar a FOTO como A/B do rebordo | o prato roda entre as duas corridas, e o detector simples apanha a grelha do canvas e o texto do painel (§4) |
+| a sonda com o material de OMISSÃO | ela achou `0` pixels de peça escura numa cena cuja peça escura é o assunto — a barra só é escura pela `materiais_da_cena` (§8.1) |
+| a régua do pico por LIMIAR de brilho | o dispositivo pinta a barra `19` bytes mais escura que a CPU: o mesmo limiar caía dentro num e fora no outro, e eu li a CPU como limpa (§8.1) |
+| emprestar à borda o ÍNDICE e não só o ponto | não move o rebordo um byte (`+0,0` das duas maneiras) e parte NOVE paridades, o miolo divergente a `257` contra a barra de `60` (§8.3) |
+| culpar a luz devolvida pelo pico que sobra | zerá-la não move o número: `+35,9` com e sem (§8.4) |
 | medir o rebordo desfazendo `sRGB(C·a)` | *a régua supunha a fórmula do defeito*: depois da cura ela continuou a imprimir `+15,8` sobre uma imagem correcta (§1) |

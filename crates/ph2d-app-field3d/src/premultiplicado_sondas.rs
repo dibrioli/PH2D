@@ -25,7 +25,11 @@ use super::borda_tests::{banda, camara, quadro};
 use super::device_tests::{LH, LW, cpu_ociosa_pct};
 
 /// A cena do report: as três bolas e a barra escura.
-const CENA: u32 = 36;
+///
+/// ⚠️ **`pub(super)` porque o irmão [`super::rebordo_sondas`] a lê** — os dois ficheiros nasceram do
+/// mesmo report e medem a MESMA cena; duas constantes seriam duas respostas à mesma pergunta, e a
+/// que envelhece é a que ninguém está a olhar.
+pub(super) const CENA: u32 = 36;
 
 /// ⭐⭐⭐ **QUANTOS CANAIS PASSAM DO ALFA, E POR QUANTO** — a assinatura do rebordo, em bytes.
 #[test]

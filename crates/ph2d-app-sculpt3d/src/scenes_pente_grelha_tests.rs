@@ -24,7 +24,13 @@ use crate::dyntopo::{LADO_DA_CELULA, RONDAS_DA_GRELHA};
 // tem seis parâmetros e o que se varre aqui é UMA hipótese de cada vez.
 thread_local! {
     static SEMENTE_UNICA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// `0` = um nivel (a lei que shipa); `n > 0` = pela HIERARQUIA, parando em
+    /// `n` vertices.
+    static MAIS_GROSSO: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
+
+#[path = "scenes_pente_niveis_tests.rs"]
+mod niveis;
 
 /// ⭐⭐⭐ **SONDA — A GRELHA CONTRA A LEI DE HOJE, nas TRÊS colunas.**
 ///
@@ -124,9 +130,11 @@ fn diag_a_escada_das_rondas() {
     // a mesma partição que o §81 correu para a lei de hoje (chapa `1,029`, bola
     // sem carimbo `0,885`, bola com carimbo `0,653`).
     for (nome, forca) in [("carimbo 0,25", 0.25f32), ("carimbo ZERO", 0.0)] {
-        let (m, c) =
-            traco_com_grelha_com(e, raio, alvo, RONDAS_DA_GRELHA, LADO_DA_CELULA, forca);
-        println!("{nome}  {}", linha_da_grelha(&m, &c, raio, RONDAS_DA_GRELHA, 0.80));
+        let (m, c) = traco_com_grelha_com(e, raio, alvo, RONDAS_DA_GRELHA, LADO_DA_CELULA, forca);
+        println!(
+            "{nome}  {}",
+            linha_da_grelha(&m, &c, raio, RONDAS_DA_GRELHA, 0.80)
+        );
     }
 }
 
@@ -207,7 +215,13 @@ fn traco_com_grelha_com(
             stroke.shrink_with(&remap);
         }
         let _ = ph2d_mesh::refine_in_sphere_sized(
-            &mut malha, centro, raio, alvo, None, &mut births, &mut region,
+            &mut malha,
+            centro,
+            raio,
+            alvo,
+            None,
+            &mut births,
+            &mut region,
         );
         stroke.grow_with(&malha, &births);
         let mut andaram = Vec::new();
@@ -216,7 +230,13 @@ fn traco_com_grelha_com(
             let r = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
             brush.falloff.weight(r / raio.max(f32::MIN_POSITIVE))
         };
-        if ph2d_quadflow::regiao::arruma_na_grelha_semeada(
+        let classe = match MAIS_GROSSO.with(std::cell::Cell::get) {
+            0 => ph2d_quadflow::regiao::Campos::UmNivel {
+                semente_unica: SEMENTE_UNICA.with(std::cell::Cell::get),
+            },
+            n => ph2d_quadflow::regiao::Campos::PorNiveis { mais_grosso: n },
+        };
+        if ph2d_quadflow::regiao::arruma_na_grelha_por(
             &mut malha,
             centro,
             raio,
@@ -224,7 +244,7 @@ fn traco_com_grelha_com(
             &queda,
             rondas,
             k_passo,
-            SEMENTE_UNICA.with(|c| c.get()),
+            classe,
             &mut andaram,
         ) > 0
         {
@@ -256,8 +276,25 @@ fn traco_com_grelha_com(
 #[ignore = "sonda: imprime o relógio, não afirma nada"]
 fn diag_o_relogio_da_reticula() {
     let raio = raio_do_app();
-    println!("vertices    pegada   ms/carimbo   % do orcamento de 8 ms");
-    for k in [0usize, 1, 2] {
+    println!("vertices    pegada  rondas   ms/carimbo   % do orcamento de 8 ms");
+    // ⚠️ **A escada das RONDAS entra aqui** porque a coluna da FILEIRA — a que o
+    // dono le — sobe ate `16` enquanto a `grade`, que escolheu o `2`, ja tinha
+    // assentado. *O tecto desta lei e' o RELOGIO, e ele mede-se ao lado da
+    // qualidade ou o numero e' escolhido.*
+    for (k, rondas) in [
+        (0usize, 2usize),
+        (1, 2),
+        (2, 2),
+        (0, 4),
+        (1, 4),
+        (2, 4),
+        (0, 8),
+        (1, 8),
+        (2, 8),
+        (0, 16),
+        (1, 16),
+        (2, 16),
+    ] {
         let mut malha = peca_uma_vez();
         malha.triangulate();
         for _ in 0..k {
@@ -285,7 +322,7 @@ fn diag_o_relogio_da_reticula() {
                 raio,
                 direccao,
                 &queda,
-                RONDAS_DA_GRELHA,
+                rondas,
                 LADO_DA_CELULA,
                 &mut andaram,
             );
@@ -293,7 +330,7 @@ fn diag_o_relogio_da_reticula() {
             pegada = n;
         }
         println!(
-            "{:>8}  {pegada:>8}  {melhor:>10.3}  {:>10.1}",
+            "{:>8}  {pegada:>8}  {rondas:>6}  {melhor:>10.3}  {:>10.1}",
             malha.vert_count(),
             100.0 * melhor / 8.0
         );

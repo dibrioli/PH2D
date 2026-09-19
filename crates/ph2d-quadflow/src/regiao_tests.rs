@@ -28,6 +28,17 @@ fn pegada(mesh: &Mesh, centro: [f32; 3], raio: f32) -> Vec<u32> {
     out
 }
 
+/// ⚠️⚠️ **A peça das DUAS últimas: a [`peca`] não contém o fenómeno.**
+///
+/// Com ela e um raio de `0,45` a mancha tem **`27`** vértices de miolo, e a
+/// pegada que o produto de facto forma tem **`790`** — *numa mancha minúscula a
+/// fase local também não assenta*, e a primeira redacção destes gates reprovou
+/// sobre produto correcto por isso. A regra é a que esta linha já pagou cinco
+/// vezes: **a fixtura tem de ser do tamanho do que o produto vê.**
+fn peca_densa() -> Mesh {
+    shapes::uv_sphere(64, 96, 1.0)
+}
+
 const TRACO: [f32; 3] = [0.371, 0.642, -0.183];
 const ITERACOES: usize = 6;
 
@@ -177,7 +188,10 @@ fn uma_pegada_fina_demais_e_toda_franja() {
     let mesh = peca();
     let ids = pegada(&mesh, [0.0, 0.0, 1.0], 0.05);
     let m = mancha(&mesh, &ids);
-    assert!(!m.is_empty(), "a pegada não pode ser vazia: seria outro caso");
+    assert!(
+        !m.is_empty(),
+        "a pegada não pode ser vazia: seria outro caso"
+    );
     assert_eq!(m.miolo(), 0, "miolo: {}", m.miolo());
 }
 
@@ -280,4 +294,188 @@ fn numa_grelha_ja_certa_a_reticula_nao_move_nada() {
     }
     assert!(conferidos >= 40, "miolo: {conferidos}");
     assert!(pior <= 1.0e-4, "a chapa certa moveu-se: {pior} passos");
+}
+
+/// ⭐⭐⭐⭐ **UMA PILHA DE UM NÍVEL É A LEI DE HOJE — e sem este gate a recusa
+/// da hierarquia não afirma nada.**
+///
+/// A [`super::campos_em_niveis`] foi construída por ordem do dono, mediu **pior
+/// que um nível** em todas as colunas, e a primeira pergunta sobre uma tabela
+/// dessas é sempre a mesma: *está a lei errada, ou está o meu código errado?*
+///
+/// ⇒ com `mais_grosso` acima do tamanho da pegada, a pilha tem **um nível só** e
+/// a porta hierárquica tem de devolver **os mesmos `f32`** que a dupla
+/// [`super::orientacao_semeada`] + [`super::posicao_da_mancha_com`]. Foi este
+/// controlo que transformou aquela tabela numa medição — e ele é o que reprova
+/// no dia em que alguém mexer na prolongação, na reposição dos fixos ou na
+/// pilha e achar que só tocou no caminho de vários níveis.
+///
+/// ⚠️ **AO BIT e não «perto»:** a pergunta é *«é a mesma lei?»*, e uma barra de
+/// tolerância responderia *«é parecida»*, que é outra pergunta.
+#[test]
+fn uma_pilha_de_um_nivel_e_a_lei_de_hoje() {
+    let mesh = peca_densa();
+    let centro = [0.0, 0.0, 1.0];
+    let ids = pegada(&mesh, centro, 0.55);
+    let m = mancha(&mesh, &ids);
+    assert!(m.miolo() > 200, "a pegada precisa de miolo: {}", m.miolo());
+    let passo = super::passo_da_pegada(&mesh, &ids);
+
+    let dirs = orientacao_semeada(&m, TRACO, ITERACOES);
+    let pos = super::posicao_da_mancha_com(&m, &dirs, passo, ITERACOES, false);
+    // ⚠️ Acima do tamanho da mancha ⇒ o `coarsen` nunca corre.
+    let (d2, p2) = super::campos_em_niveis(&m, TRACO, passo, ITERACOES, m.len() + 1);
+
+    assert_eq!(d2.len(), dirs.len());
+    assert_eq!(p2.len(), pos.len());
+    for i in 0..m.len() {
+        assert_eq!(
+            d2[i], dirs[i],
+            "a direccao do vertice {i} nao e' a mesma lei"
+        );
+        assert_eq!(
+            p2[i], pos[i],
+            "a reticula do vertice {i} nao e' a mesma lei"
+        );
+    }
+}
+
+// ⚠️⚠️ **O gate do MECANISMO não mora aqui, e a primeira redacção dele morava.**
+// Ele precisa de uma malha que já esteja numa retícula — e a única coisa que a
+// produz é o TRAÇO (a retícula sozinha, sobre uma esfera de conectividade fixa,
+// não converge: medido, `0,400 → 0,367` em oito passagens, porque mover os
+// vértices re-deriva o consenso). ⇒ ele vive em `scenes_pente_grelha_tests.rs`,
+// pela porta do produto. *A fixtura tem de ser a da cena que o dono usou.*
+
+/// ⭐⭐ **A ÁREA DUAL DE UMA MANCHA SOMA A ÁREA DAS FACES DELA.**
+///
+/// A coluna nasceu para a hierarquia (o `coarsen` emparelha por razão de áreas
+/// e faz a média ponderada por elas), e *uma coluna que ninguém confere é uma
+/// coluna que pode estar cheia de uns*. Um terço da área de cada triângulo
+/// incidente vai a cada canto ⇒ a soma sobre a mancha é **exactamente** a área
+/// das faces colhidas.
+///
+/// ⚠️ **As faces são as do ANEL de cada vértice, não as contidas na mancha** —
+/// é a mesma propriedade que torna os pesos cotangente do miolo exactos, e é
+/// por isso que a soma se mede contra as faces COLHIDAS e não contra a pegada.
+#[test]
+fn a_area_dual_de_uma_mancha_soma_a_area_das_faces() {
+    let mesh = peca_densa();
+    let ids = pegada(&mesh, [0.0, 0.0, 1.0], 0.55);
+    let m = mancha(&mesh, &ids);
+    assert_eq!(m.areas.len(), m.len());
+    assert!(
+        m.areas.iter().all(|a| *a > 0.0),
+        "uma area nula ou negativa"
+    );
+
+    // As faces do anel, colhidas como a `mancha` as colhe.
+    let dentro: std::collections::BTreeSet<u32> = m.ids.iter().copied().collect();
+    let mut faces: std::collections::BTreeSet<u32> = std::collections::BTreeSet::new();
+    for (f, face) in mesh.faces().iter().enumerate() {
+        if face.verts().iter().any(|v| dentro.contains(v)) {
+            faces.insert(f as u32);
+        }
+    }
+    let p = mesh.positions();
+    let mut area_das_faces = 0.0f64;
+    for &f in &faces {
+        let face = mesh.faces()[f as usize];
+        for t in 0..face.tri_count() {
+            let tri = face.tri_at(t);
+            let (a, b, c) = (p[tri[0] as usize], p[tri[1] as usize], p[tri[2] as usize]);
+            let u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+            let w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+            let x = [
+                u[1] * w[2] - u[2] * w[1],
+                u[2] * w[0] - u[0] * w[2],
+                u[0] * w[1] - u[1] * w[0],
+            ];
+            area_das_faces += f64::from(dot(x, x).sqrt()) * 0.5;
+        }
+    }
+    // ⚠️ Só os cantos DENTRO da mancha recebem — um triângulo do anel com dois
+    // cantos fora entrega um terço só, logo a soma é MENOR que a das faces.
+    let soma: f64 = m.areas.iter().map(|a| f64::from(*a)).sum();
+    assert!(
+        soma > area_das_faces * 0.5 && soma <= area_das_faces * 1.000_01,
+        "a area dual ({soma:.6}) nao descreve as faces colhidas ({area_das_faces:.6})"
+    );
+}
+
+/// ⭐⭐⭐ **A FRANJA SOBREVIVE À PROLONGAÇÃO — a metade (2) da lei da
+/// [`super::campos_em_niveis`], como gate.**
+///
+/// A prolongação **reescreve todos os vértices do nível filho**, franja
+/// incluída; sem a reposição a condição de fronteira desaparece do nível fino,
+/// que é o único que o produto lê. Um `fixos` sozinho não chega: ele impede o
+/// núcleo de MOVER, não impede a prolongação de ter ESCRITO.
+///
+/// ⚠️ Ela é a irmã hierárquica da [`a_franja_fica_onde_a_semente_a_pos`], e
+/// existe por uma razão que vale mesmo com o caminho de níveis RECUSADO: *a
+/// tabela da recusa só descreve esta lei enquanto esta lei for esta*.
+#[test]
+fn a_franja_sobrevive_a_prolongacao() {
+    let mesh = peca_densa();
+    let ids = pegada(&mesh, [0.0, 0.0, 1.0], 0.55);
+    let m = mancha(&mesh, &ids);
+    let passo = super::passo_da_pegada(&mesh, &ids);
+    let (dirs, pos) = super::campos_em_niveis(&m, TRACO, passo, ITERACOES, 24);
+
+    let mut vistos = 0usize;
+    for i in 0..m.len() {
+        if !m.fronteira[i] {
+            continue;
+        }
+        vistos += 1;
+        assert_eq!(pos[i], m.pos[i], "a franja {i} saiu do sitio");
+        assert_eq!(
+            dirs[i],
+            crate::orientation::project_tangent(TRACO, m.nrm[i]),
+            "a direccao da franja {i} nao e' a semente"
+        );
+    }
+    assert!(vistos > 20, "a fixtura mal tem franja: {vistos}");
+}
+
+/// ⭐⭐ **A CLASSE ESCOLHIDA CHEGA AO BARRO — senão a sonda da recusa mede duas
+/// vezes a mesma lei.**
+///
+/// O [`super::Campos::PorNiveis`] **não tem chamador de produto e não deve
+/// ter**; o único que o exercita é a sonda que produziu a tabela da recusa. ⇒
+/// um despacho que ignorasse o enum deixaria essa sonda a comparar um nível
+/// consigo próprio e a imprimir *«não há diferença»* — que é a conclusão
+/// OPOSTA à medida.
+#[test]
+fn a_classe_escolhida_chega_ao_barro() {
+    let base = peca_densa();
+    let centro = [0.0, 0.0, 1.0];
+    let um = |_p: [f32; 3]| 1.0f32;
+    let mut saidas = Vec::new();
+    for classe in [
+        super::Campos::UmNivel {
+            semente_unica: false,
+        },
+        super::Campos::PorNiveis { mais_grosso: 24 },
+    ] {
+        let mut mesh = base.clone();
+        let mut movidos = Vec::new();
+        super::arruma_na_grelha_por(
+            &mut mesh,
+            centro,
+            0.55,
+            TRACO,
+            &um,
+            ITERACOES,
+            0.80,
+            classe,
+            &mut movidos,
+        );
+        assert!(!movidos.is_empty(), "{classe:?} nao moveu nada");
+        saidas.push(mesh.positions().to_vec());
+    }
+    assert_ne!(
+        saidas[0], saidas[1],
+        "as duas classes deram o MESMO barro — o despacho nao chega"
+    );
 }

@@ -89,13 +89,34 @@ impl Hierarchy {
     /// Constrói parando em `coarsest` vértices — a porta que a sonda varre.
     #[must_use]
     pub fn build_to(mesh: &Mesh, coarsest: usize) -> Self {
-        let mut levels = vec![Level {
-            positions: mesh.positions().to_vec(),
-            normals: mesh.normals().to_vec(),
-            areas: dual_vertex_areas(mesh),
-            adjacency: cotangent_adjacency(mesh),
-            parent: Vec::new(),
-        }];
+        Self::from_level(
+            Level {
+                positions: mesh.positions().to_vec(),
+                normals: mesh.normals().to_vec(),
+                areas: dual_vertex_areas(mesh),
+                adjacency: cotangent_adjacency(mesh),
+                parent: Vec::new(),
+            },
+            coarsest,
+        )
+    }
+
+    /// ⭐⭐⭐ **A MESMA PILHA, a partir de um nível JÁ CONSTRUÍDO** — a porta
+    /// pela qual uma MANCHA (uma pegada de pincel) entra na hierarquia.
+    ///
+    /// ⚠️ **Ela é ADITIVA e o [`Self::build_to`] DELEGA-LHE**, de propósito: o
+    /// `coarsen` sempre trabalhou sobre um `Level` e nunca sobre a `Mesh` — o
+    /// que a malha dava era só o nível `0`. Escrever um segundo laço ao lado
+    /// deste seria a segunda resposta à mesma pergunta, e a que divergisse
+    /// seria a que ninguém corre.
+    ///
+    /// ⚠️ **Quem constrói o nível `0` responde pela coerência dele** — as
+    /// posições, as normais, as áreas e a adjacência têm de descrever os MESMOS
+    /// vértices, na mesma ordem. A [`crate::regiao::nivel_da_mancha`] é quem o
+    /// faz para uma pegada.
+    #[must_use]
+    pub fn from_level(level0: Level, coarsest: usize) -> Self {
+        let mut levels = vec![level0];
 
         while levels.len() < MAX_LEVELS {
             let fine = levels.last().expect("a pilha nunca esta' vazia");

@@ -65,6 +65,17 @@ pub struct Mancha {
     pub adj: Vec<Vec<Link>>,
     /// **Quem está pregado** — a franja da mancha e a borda da malha aberta.
     pub fronteira: Vec<bool>,
+    /// **A ÁREA DUAL** de cada vértice — a massa que ele representa.
+    ///
+    /// ⚠️ **Ela existe para a HIERARQUIA**, que emparelha pela razão de áreas:
+    /// sem ela um vértice de um pólo (que representa uma fatia minúscula) puxa
+    /// a média tanto quanto um de uma barriga lisa, e o nível grosso deixa de
+    /// ser uma amostra da superfície.
+    ///
+    /// ⭐ **E ela é COMPLETA mesmo na franja**, porque as faces colhidas são as
+    /// do ANEL de cada vértice da mancha e não as contidas nela — a mesma razão
+    /// que torna os pesos cotangente do miolo exactos.
+    pub areas: Vec<f32>,
 }
 
 impl Mancha {
@@ -109,6 +120,7 @@ pub fn mancha(mesh: &Mesh, ids: &[u32]) -> Mancha {
             nrm: Vec::new(),
             adj: Vec::new(),
             fronteira: Vec::new(),
+            areas: Vec::new(),
         };
     }
 
@@ -172,13 +184,44 @@ pub fn mancha(mesh: &Mesh, ids: &[u32]) -> Mancha {
         .map(|(i, &v)| truncado[i] || adjacency.is_border(v as usize))
         .collect();
 
+    // A área dual: um TERÇO da área de cada triângulo incidente, que é o mesmo
+    // número a que o caminho longo da referência chega.
+    let mut areas = vec![0.0f32; locais.len()];
+    {
+        let todas = mesh.faces();
+        for &f in &faces {
+            let face = todas[f as usize];
+            for t in 0..face.tri_count() {
+                let tri = face.tri_at(t);
+                let (a, b, c) = (p[tri[0] as usize], p[tri[1] as usize], p[tri[2] as usize]);
+                let u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+                let w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+                let terco = norm(cruz(u, w)) / 6.0;
+                for &v in &tri {
+                    if let Some(i) = indice(v) {
+                        areas[i] += terco;
+                    }
+                }
+            }
+        }
+    }
+
     Mancha {
         ids: locais.clone(),
         pos: locais.iter().map(|&v| p[v as usize]).collect(),
         nrm: locais.iter().map(|&v| nrm_all[v as usize]).collect(),
         adj,
         fronteira,
+        areas,
     }
+}
+
+fn cruz(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [
+        a[1].mul_add(b[2], -(a[2] * b[1])),
+        a[2].mul_add(b[0], -(a[0] * b[2])),
+        a[0].mul_add(b[1], -(a[1] * b[0])),
+    ]
 }
 
 /// **O CAMPO DE ORIENTAÇÃO da mancha, semeado pelo TRAÇO.**
@@ -352,9 +395,7 @@ pub fn arruma_na_grelha(
     iteracoes: usize,
     movidos: &mut Vec<u32>,
 ) -> usize {
-    arruma_na_grelha_com(
-        mesh, centro, raio, direccao, peso, iteracoes, 1.0, movidos,
-    )
+    arruma_na_grelha_com(mesh, centro, raio, direccao, peso, iteracoes, 1.0, movidos)
 }
 
 /// A mesma, com o **factor do lado da célula** por parâmetro — a variável que a
@@ -376,6 +417,26 @@ pub fn arruma_na_grelha_com(
     )
 }
 
+/// **COMO os dois campos da mancha são resolvidos** — a variável que separa as
+/// duas classes de lei, e que a sonda varre.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Campos {
+    /// Um nível só: [`orientacao_semeada`] + [`posicao_da_mancha_com`].
+    ///
+    /// ⚠️ **Sem acoplamento de longo alcance** — uma varredura propaga uma
+    /// aresta, e a malha fina é um ponto fixo da média (medido no cabeçalho do
+    /// [`crate::hierarchy`]).
+    UmNivel {
+        /// A semente do campo de posição — ver [`posicao_da_mancha_com`].
+        semente_unica: bool,
+    },
+    /// Pela HIERARQUIA: [`campos_em_niveis`], do mais grosso ao mais fino.
+    PorNiveis {
+        /// Abaixo de quantos vértices se pára de engrossar.
+        mais_grosso: usize,
+    },
+}
+
 /// A mesma, com a SEMENTE do campo de posição por parâmetro — ver
 /// [`posicao_da_mancha_com`].
 #[allow(clippy::too_many_arguments)]
@@ -388,6 +449,32 @@ pub fn arruma_na_grelha_semeada(
     iteracoes: usize,
     k_passo: f32,
     semente_unica: bool,
+    movidos: &mut Vec<u32>,
+) -> usize {
+    arruma_na_grelha_por(
+        mesh,
+        centro,
+        raio,
+        direccao,
+        peso,
+        iteracoes,
+        k_passo,
+        Campos::UmNivel { semente_unica },
+        movidos,
+    )
+}
+
+/// A mesma, com a CLASSE da resolução dos campos por parâmetro.
+#[allow(clippy::too_many_arguments)]
+pub fn arruma_na_grelha_por(
+    mesh: &mut Mesh,
+    centro: [f32; 3],
+    raio: f32,
+    direccao: [f32; 3],
+    peso: &(dyn Fn([f32; 3]) -> f32 + Sync),
+    iteracoes: usize,
+    k_passo: f32,
+    campos: Campos,
     movidos: &mut Vec<u32>,
 ) -> usize {
     movidos.clear();
@@ -427,8 +514,16 @@ pub fn arruma_na_grelha_semeada(
     if m.miolo() == 0 || passo.partial_cmp(&0.0) != Some(Ordering::Greater) {
         return 0;
     }
-    let dirs = orientacao_semeada(&m, direccao, iteracoes);
-    let grelha = posicao_da_mancha_com(&m, &dirs, passo, iteracoes, semente_unica);
+    let (_dirs, grelha) = match campos {
+        Campos::UmNivel { semente_unica } => {
+            let dirs = orientacao_semeada(&m, direccao, iteracoes);
+            let g = posicao_da_mancha_com(&m, &dirs, passo, iteracoes, semente_unica);
+            (dirs, g)
+        }
+        Campos::PorNiveis { mais_grosso } => {
+            campos_em_niveis(&m, direccao, passo, iteracoes, mais_grosso)
+        }
+    };
     if grelha.len() != m.len() {
         return 0;
     }
@@ -539,6 +634,11 @@ fn maior_cosseno(t: [[f32; 3]; 3]) -> f32 {
 fn norm(a: [f32; 3]) -> f32 {
     a[0].mul_add(a[0], a[1].mul_add(a[1], a[2] * a[2])).sqrt()
 }
+
+#[path = "regiao_niveis.rs"]
+mod niveis;
+
+pub use niveis::{campos_em_niveis, nivel_da_mancha, retrato_da_pilha};
 
 #[cfg(test)]
 #[path = "regiao_tests.rs"]

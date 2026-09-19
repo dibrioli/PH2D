@@ -140,11 +140,7 @@ pub fn fileira_da_faixa(
 /// ⚠️ Ela devolve a MESMA população que a [`fileira_da_faixa`] conta; escrever
 /// um segundo percurso para o desenho seria desenhar outra coisa.
 #[must_use]
-pub fn arestas_das_fileiras(
-    malha: &Mesh,
-    percurso: &[[f32; 3]],
-    raio: f32,
-) -> Vec<(u32, u32)> {
+pub fn arestas_das_fileiras(malha: &Mesh, percurso: &[[f32; 3]], raio: f32) -> Vec<(u32, u32)> {
     alinhadas(malha, percurso, raio)
         .into_iter()
         .map(|(a, b, _)| (a.min(b), a.max(b)))
@@ -165,9 +161,10 @@ fn continua(
         if gasta[j] || j == atual {
             continue;
         }
-        let c = f64::from(
-            d0[0].mul_add(arestas[j].2[0], d0[1].mul_add(arestas[j].2[1], d0[2] * arestas[j].2[2])),
-        )
+        let c = f64::from(d0[0].mul_add(
+            arestas[j].2[0],
+            d0[1].mul_add(arestas[j].2[1], d0[2] * arestas[j].2[2]),
+        ))
         .abs()
         .clamp(0.0, 1.0);
         if c.acos().to_degrees() > CONTINUA {

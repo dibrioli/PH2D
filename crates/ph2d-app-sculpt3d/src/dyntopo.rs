@@ -36,10 +36,7 @@
 //!    motivo pelo qual o remesh recusa, e a recusa é NOMEADA no log em vez de
 //!    achatar a pilha em silêncio.
 
-use ph2d_mesh::{
-    Collapse, Refine, collapse_target, edge_target_for_mesh,
-    refine_in_sphere_sized,
-};
+use ph2d_mesh::{Collapse, Refine, collapse_target, edge_target_for_mesh, refine_in_sphere_sized};
 
 use super::Sculpt3dScene;
 
@@ -88,36 +85,68 @@ pub(super) const DETAIL_STEPS: [(f32, &str); 3] = [(0.15, "grosso"), (0.5, "medi
 
 /// Quantas passagens cada um dos dois campos da retícula leva por carimbo.
 ///
-/// ⛔⛔ **Número MEDIDO, e a medição refutou a hipótese natural:** o risco que a
-/// pesquisa nomeou para esta wave — *«a retícula de um vizinho discorda da do
-/// outro por uma célula»* — **não é convergência**. A escada `1 · 2 · 3 · 4 · 6
-/// · 8 · 16` no lado de célula que shipa:
+/// ⛔⛔⛔ **A PREMISSA ANTERIOR DESTA CONSTANTE MORREU, e o diff mostra-a a
+/// morrer.** Ela dizia, com escada ao lado, *«o patamar é em `2`, e o que sobra
+/// acima dele é relógio»* — e era **verdade sobre a `grade`**, que foi a régua
+/// com que a escada foi lida. A régua da FILEIRA
+/// ([`ph2d_sculpt3d::medida_da_fileira`], escrita em 20/09 como passo zero da
+/// ordem seguinte do dono) mede a grandeza que ele de facto vê — *quantas
+/// arestas seguidas continuam a MESMA linha* — e ela **não assenta em `2`**:
 ///
-/// | rondas | grade | vinco p50 | vinco p90 |
-/// |---|---|---|---|
-/// | `1` | `61,8 %` | `1,059°` | `2,810°` |
-/// | **`2`** | **`64,2 %`** | **`0,994°`** | **`2,620°`** |
-/// | `3` | `64,3 %` | `0,963°` | `2,653°` |
-/// | `6` | `64,4 %` | `0,953°` | `2,631°` |
-/// | `16` | `65,4 %` | `0,977°` | `2,661°` |
+/// | rondas | grade | vinco p50 | vinco p90 | **fil p90** |
+/// |---|---|---|---|---|
+/// | **`2`** (shipa) | **`64,03 %`** | **`0,973°`** | **`2,724°`** | **`47,0`** |
+/// | `4` | `64,52 %` | `0,966°` | `2,727°` | `56,0` |
+/// | `8` | `64,92 %` | `0,964°` | `2,703°` | `64,0` |
+/// | `16` | `65,17 %` | `0,943°` | `2,681°` | `68,5` |
+/// | `32` | `64,93 %` | `0,963°` | `2,704°` | `68,5` |
 ///
-/// ⇒ **o patamar é em `2`**, e o que sobra acima dele é relógio. **Medido em
-/// `--release`, o mínimo de cinco** (`diag_o_relogio_da_reticula`), com a pegada
-/// a crescer porque o pincel mede píxeis e a malha adensa:
+/// ⚠️⚠️ **Cada linha é a MÉDIA dos quatro rumos, e isso não é decoração:** num
+/// rumo só a coluna da fileira salta entre degraus adjacentes (`fil90` leu `63`
+/// na ronda `3` e `34` na `4`), porque o percurso dela é guloso e uma aresta a
+/// entrar ou a sair do balde alinhado funde ou parte duas cadeias longas de uma
+/// vez. *Uma coluna de alta variância lida numa amostra só fabrica uma
+/// tendência* — e eu quase escrevi uma.
 ///
-/// | vértices | pegada | `6` rondas | **`2` rondas** |
-/// |---|---|---|---|
-/// | `5 276` | `21` | `0,328 ms` | **`0,099 ms`** |
-/// | `21 098` | `115` | `1,490 ms` | **`0,499 ms`** |
-/// | `84 386` | `539` | `7,710 ms` (**96 %** do orçamento) | **`2,435 ms`** (`30 %`) |
+/// ⇒ a fileira **sobe monotonamente e satura em `16`**; quem escolhe o degrau é
+/// o **RELÓGIO**. Medido em `--release`, o mínimo de cinco
+/// (`diag_o_relogio_da_reticula`), contra o orçamento de `8 ms` do carimbo:
+///
+/// | vértices | pegada | `2` | **`4`** | `8` | `16` |
+/// |---|---|---|---|---|---|
+/// | `5 276` | `21` | **`0,102 ms`** | `0,162 ms` | `0,298 ms` | `0,559 ms` |
+/// | `21 098` | `115` | **`0,518 ms`** | `1,140 ms` | `1,634 ms` | `3,237 ms` |
+/// | `84 386` | `539` | **`2,402` (`30 %`)** | `4,172` (`52 %`) | `7,534` (**`94 %`**) | `14,520` (**`182 %`**) |
+///
+/// ⛔⛔⛔ **E SUBIR O DEGRAU FOI CONSTRUÍDO, MEDIDO e RECUSADO — pelo PORTÃO DO
+/// PRODUTO, não pelo relógio.** Com `4`, o `a_cena_do_pente_tem_o_que_mostrar`
+/// reprovou no rumo de `30°` com **`2` triângulos abaixo de `5°`** (o pior a
+/// `4,03°`), onde `2` deixa ZERO em três dos quatro rumos.
+///
+/// ⚠️⚠️ **A minha escada não tinha a coluna que o portão lê.** Ela media grade,
+/// vinco e fileira, concluiu que `4` era melhor, e a cerca da forma disse que
+/// não — *uma escada sem a coluna da cerca que o produto aplica recomenda um
+/// degrau que o produto recusa*. A coluna existe agora (`lascas`/`pior`).
+///
+/// ⭐ **O mecanismo é o que a [`ph2d_quadflow::regiao::lasca`] já declara por
+/// escrito:** ela julga **um vértice de cada vez** (Jacobi), e uma lasca feita
+/// por DOIS vizinhos que se aproximam não é vista por nenhum dos dois. Mais
+/// varreduras ⇒ deslocamento acumulado maior ⇒ mais pares a conspirar.
+///
+/// ⏳ ⇒ **fica `2`, e a dívida está NOMEADA:** as fileiras QUEREM mais
+/// varreduras e quem as impede é o chão da forma. Quem quiser o degrau seguinte
+/// tem de trazer uma cerca que veja **pares**, não um número maior.
+///
+/// ⚠️ E o relógio seria a cerca a seguir: `4` custa `52 %` do orçamento do
+/// carimbo na maior peça medida, `8` custa `94 %` e `16` estoura (`182 %`).
 ///
 /// ⚠️ **O recurso é o orçamento do carimbo (`8 ms`)** e o custo é **linear na
-/// PEGADA** (`~4,5 µs` por vértice a `2` rondas), nunca na peça — é isso que a
-/// [`crate::regiao`] existe para garantir.
+/// PEGADA** (nunca na peça) — é isso que a [`ph2d_quadflow::regiao`] existe
+/// para garantir.
 ///
-/// ⚠️⚠️ **A primeira corrida desta escada leu «sem tendência» e estava a medir
-/// outro programa:** ela varreu as rondas com o [`LADO_DA_CELULA`] em `1,0`,
-/// onde TODAS as leituras são más — *uma escada corrida no regime errado
+/// ⚠️⚠️ **A primeira corrida da escada original leu «sem tendência» e estava a
+/// medir outro programa:** ela varreu as rondas com o [`LADO_DA_CELULA`] em
+/// `1,0`, onde TODAS as leituras são más — *uma escada corrida no regime errado
 /// responde sobre um produto que não existe*. Sonda: `diag_a_escada_das_rondas`.
 pub(crate) const RONDAS_DA_GRELHA: usize = 2;
 

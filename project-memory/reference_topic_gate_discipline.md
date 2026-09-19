@@ -339,3 +339,57 @@ do 9-slice são INICIAIS, e a legenda que as explica (*«S stretch, R repeat, M 
 tabela — traduzida ela e não as letras, passava a explicar letras que a grelha nunca mostra.
 Irmãs: [[feedback_a_key_and_a_text_of_the_same_type_is_a_defect_waiting]] ·
 [[reference_topic_measurement_discipline]].
+
+## ⛔⛔ UM PISO SATISFEITO PELA FORMA QUE A RÉGUA CONHECE NÃO AFIRMA NADA SOBRE A OUTRA (2026-09-19)
+
+O gate `a_tabela_inglesa_fala_ingles` declara *«nenhuma frase que o artista lê está em português»*
+com piso de `>= 5 000` entradas. O leitor dele conhecia **só** a forma `match` (`"k" => "v"`), e a
+régua irmã (`keys_declared`) tinha aprendido a forma **TUPLO** (`("k", "v"),`) dois dias antes.
+
+⇒ **1 432 entradas — 23 % da tabela — nunca foram conferidas** (`node_options` 601 ·
+`node_params_motion` 430 · `node_params` 398). E o piso não o podia dizer: a forma conhecida traz
+`4 815` sozinha, acima do piso.
+
+**How to apply:** um piso só afirma alguma coisa se estiver **acima do que a parte já coberta
+produz sozinha**. Depois da cura: `6 706` lidas, piso em `6 400`. E a cura de fundo é **uma PORTA**
+— havia dois leitores da mesma tabela, e só um aprendeu.
+
+⚠️ Da mesma corrida, a irmã: o leitor juntava a continuação de linha com um `' '` que o Rust **não**
+insere, e não descodificava `\u{…}` (a tabela declara `"+ Track  \u{25be}"`, o painel pinta
+`+ Track ▾`, e a régua comparava `u{25be}` com `▾`). *Inócuo para um censo de LÍNGUA; decisivo para
+quem compara ao BIT.*
+
+## ⭐⭐⭐ O CENSO QUE SÓ O DONO CONSEGUIA CORRER VIRA UM GATE (2026-09-19)
+
+Os 30 censos do HR-15 leem o FONTE de uma crate; a pergunta do HR-15 é sobre o **PIXEL**, e um
+rótulo escrito à mão pinta-se **exactamente igual** ao que veio da tabela. Quem os distinguia era o
+dono, a olho, com `PH2D_LANG=teste` — três defeitos achados assim, um report cada.
+
+A varredura que pinta **todo painel do registo** já existia (`nenhum_rotulo_do_app_pinta_nada`).
+Faltava-lhe a pergunta: **a tabela sabe produzir este texto?** (exacto, ou preenchendo um modelo
+`{marcador}`). Ela achou três rótulos que nenhuma régua de fonte podia ver.
+
+⚠️ **Filtre pelo que é uma PALAVRA** (`is_language`): sem isso a lista abre com `231` acusados e a
+maioria são VALORES (`"0.010"`, `"-9.81"`, `"▶"`). E **texto já ELIDIDO é artefacto da medição**
+(`"Mas…"` é `Master` medido outra vez) ⇒ regra, nunca isenção: *uma lista de isenções sobre texto
+elidido muda sempre que uma coluna muda de largura.*
+
+## ⛔⛔ UM GATE DE POPULAÇÃO CORRIDO COM `-p` MEDE UM APP COM MENOS PAINÉIS (2026-09-19)
+
+Metade dos painéis do registo deste repo está atrás de uma **feature opcional**
+(`panel-wet-tuning`, …). Um `cargo test -p ph2d-panel-registry-init` **não as acende**; a
+**unificação de features** de um build de WORKSPACE acende. ⇒ o gate novo fechou VERDE com `-p` e
+acusou **dois** rótulos na varredura da árvore inteira.
+
+⚠️ A assimetria já estava MEDIDA no cabeçalho daquele ficheiro desde 18/09 (duas colunas: *«`-p`
+sozinho (24 painéis)»* e *«árvore inteira (28)»*), e o piso de painéis está no número **menor** de
+propósito, para o gate passar das duas maneiras. *Um piso posto no menor dos dois deixa de afirmar o
+que acontece no maior — e é lá que o app corre.*
+
+**How to apply:** um gate cuja população são «todos os X do registo» corre-se `--workspace` antes de
+se acreditar nele; e a prova de mutação dele também (com `-p` a mutação não é observável).
+
+⚠️ Da mesma corrida: **uma linha de parágrafo não é um texto da tabela**. Um painel que pinte prosa
+com `paint_text_block` quebra-a, e o censo mede **cada linha** ⇒ a régua aceita SUBSTRING contígua,
+com o afrouxamento declarado. *A alternativa seria uma lista de isenções sobre pedaços de frase, e
+esses mudam sempre que uma coluna muda de largura.*

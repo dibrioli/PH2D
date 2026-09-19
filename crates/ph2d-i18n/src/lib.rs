@@ -403,7 +403,11 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.hierarchy.count.entities_components" => {
             "{entities} entities \u{00b7} {components} components"
         }
-        "panel.tokens.authored" => "authored",
+        // ⚠️ A FORMA da linha de cabeçalho (o travessão e a ordem das peças) estava no `format!`
+        //    do pintor — só as duas palavras vinham da tabela, e a gramática ficava no fonte.
+        //    ⛔ A `panel.tokens.authored` que morava aqui ficou ÓRFÃ com esta entrada e foi
+        //    apagada: a palavra dela vive dentro do modelo.
+        "panel.tokens.header" => "{tema}  \u{2014}  {n} authored",
         "panel.tokens.reset" => "Reset",
         "panel.tokens.reset_all" => "Reset This Mode",
         // O readout de CONTRASTE (plano UI/UX W4b). ⚠️ O nome do CRITÉRIO ("WCAG 2.2 AA 1.4.3")
@@ -517,7 +521,9 @@ fn tr_ingles(key: &str) -> &'static str {
         // `px/m` é um SÍMBOLO de unidade e fica dentro dela: ele é igual em toda língua, e parti-lo
         // num argumento daria a alguém a ideia de o traduzir.
         "panel.physics.scale_readout" => "{label}: {value} px/m",
-        "panel.physics.bodies" => "Bodies",
+        // ⚠️ O MODELO, e não só a palavra: o `": "` vivia no `format!` do pintor, e há
+        //    línguas em que o dois-pontos leva espaço antes.
+        "panel.physics.bodies_count" => "Bodies: {n}",
         // As oito operações do Pathfinder. As quatro primeiras eram literais no painel até a W5;
         // passam por aqui agora porque a fileira é UMA e metade dela em i18n seria o pior dos dois.
         // A BOOLEANA VIVA (plano UI/UX W1): o modo dos oito acima + o commit.

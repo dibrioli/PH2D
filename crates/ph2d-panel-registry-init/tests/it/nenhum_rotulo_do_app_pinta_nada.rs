@@ -310,3 +310,231 @@ fn nenhuma_linha_da_divida_ficou_obsoleta() {
         obsoletas.join("\n  ")
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ **A TABELA SABE PRODUZIR ISTO?** — o censo que só o DONO conseguia correr.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// ⭐ As TABELAS de string do app — derivadas do directório, nunca uma lista à mão.
+fn tabelas() -> Vec<String> {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .expect("crates/<crate>/ tem dois pais")
+        .join("crates/ph2d-i18n/src");
+    let mut v: Vec<String> = std::fs::read_dir(&dir)
+        .expect("a pasta da tabela existe")
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|x| x == "rs"))
+        .filter_map(|p| std::fs::read_to_string(p).ok())
+        .collect();
+    v.sort();
+    v
+}
+
+/// O que a tabela sabe devolver: os textos EXACTOS e os MODELOS (com `{marcador}`).
+struct Tabela {
+    exactos: std::collections::BTreeSet<String>,
+    /// `(prefixo, pedaços fixos do meio, sufixo)` de um modelo, para casar sem uma regex.
+    modelos: Vec<Vec<String>>,
+}
+
+impl Tabela {
+    fn ler() -> Self {
+        let mut exactos = std::collections::BTreeSet::new();
+        let mut modelos = Vec::new();
+        for src in tabelas() {
+            for par in ph2d_label_census::keys::declared_pairs_in(&src) {
+                if par.texto.contains('{') {
+                    // ⚠️ Um MODELO (`"{n} entities"`): o painel pinta-o PREENCHIDO, logo a
+                    // comparação é pelos pedaços FIXOS, na ordem em que eles aparecem.
+                    let pedacos: Vec<String> = par
+                        .texto
+                        .split(['{', '}'])
+                        .step_by(2)
+                        .filter(|s| !s.is_empty())
+                        .map(str::to_string)
+                        .collect();
+                    if !pedacos.is_empty() {
+                        modelos.push(pedacos);
+                    }
+                }
+                exactos.insert(par.texto);
+            }
+        }
+        Self { exactos, modelos }
+    }
+
+    /// A tabela consegue produzir este texto?
+    fn produz(&self, t: &str) -> bool {
+        if self.exactos.contains(t) {
+            return true;
+        }
+        // ⭐⭐ **UMA LINHA DE PARÁGRAFO não é um texto da tabela — é um PEDAÇO dele.**
+        //
+        // ⛔ Achado na varredura da árvore inteira: o `wet_tuning` pinta prosa com
+        // `paint_text_block`, que a QUEBRA em linhas, e o censo das elisões mede **cada linha**.
+        // Saíam acusados `"extensions (diffusion, backrun, fingering,"` e `"the tuning registry's
+        // hidden group."` — os dois pedaços contíguos da mesma frase, que a tabela declara inteira.
+        //
+        // ⚠️ **O preço está declarado:** aceitar SUBSTRING afrouxa a régua — um rótulo curto escrito
+        // à mão que por acaso caia dentro de uma frase longa da tabela passa. Ele fica do lado
+        // BARATO (um falso negativo raro) contra a alternativa, que seria uma lista de isenções
+        // sobre pedaços de frase — e esses mudam sempre que uma coluna muda de largura.
+        if t.len() >= 8 && self.exactos.iter().any(|x| x.len() > t.len() && x.contains(t)) {
+            return true;
+        }
+        self.modelos.iter().any(|pedacos| {
+            let mut resto = t;
+            pedacos.iter().all(|p| match resto.find(p.as_str()) {
+                Some(i) => {
+                    resto = &resto[i + p.len()..];
+                    true
+                }
+                None => false,
+            })
+        })
+    }
+}
+
+/// ⭐ Os painéis cujas palavras NÃO são chrome — `(id, porquê)`.
+///
+/// ⛔ Uma isenção de painel inteiro é grosseira de propósito, e por isso ela tem a metade justa
+/// abaixo: um painel que deixe de abrigar acusação nenhuma sai da lista.
+const PAINEIS_QUE_NAO_SAO_CHROME: &[(&str, &str)] = &[
+    (
+        "widget_gallery",
+        "e' a BANCADA de widgets: a razao de existir dela e' demonstrar cada controlo com texto de \
+         AMOSTRA (`Item A`, `Entity name`, `Rect2Editor`, `\"muzzle\"`). Traduzir uma amostra e' \
+         traduzir a regua. Decisao do dono, ja' registada para o `widget_lab` e para o \
+         `Geometry Offset`.",
+    ),
+    (
+        "widget_lab",
+        "idem — e mais: metade do texto dele NOMEIA a medicao que ele faz (`1 · THE FOUR DESIGNS`, \
+         `LIVE BOX — drag it`, `row 22`). O `Geometry Offset` ja' e' isencao NOMEADA no censo das \
+         elisoes deste mesmo ficheiro, pela mesma razao.",
+    ),
+    (
+        "authored",
+        "as palavras deste painel sao do ARTISTA, nao do programa: ele desenha a arvore e o app \
+         ESCREVE o codigo do painel (`src/generated/panel.rs`, com o gate \
+         `the_generated_panel_is_what_the_emitter_emits` a compara-lo byte a byte com o que o \
+         emissor produz). `Design`/`Preview`/`Code` sao conteudo do documento, como o nome de uma \
+         camada — e o proprio gate do painel se chama `the_program_writes_no_word_into_this_panel`.",
+    ),
+];
+
+/// ⭐⭐ **O texto ja' CORTADO é um artefacto da medição, não um rótulo.**
+///
+/// O censo das elisões regista o que cada painter MEDIU, e alguns medem de novo a forma já elidida
+/// (`"Mas…"` do `audio_mixer`, cujo original `Master` é a dívida NOMEADA em [`CORTADOS_HOJE`]).
+/// ⇒ um texto que acaba em reticência e cujo começo é começo de um texto da tabela é a mesma
+/// palavra, medida duas vezes. ⛔ Uma linha de isenção por cada um deles seria uma lista que muda
+/// sempre que uma coluna muda de largura.
+fn e_a_mesma_palavra_ja_cortada(t: &str, tabela: &Tabela) -> bool {
+    let Some(prefixo) = t.strip_suffix('\u{2026}') else {
+        return false;
+    };
+    let prefixo = prefixo.trim_end();
+    !prefixo.is_empty() && tabela.exactos.iter().any(|x| x.starts_with(prefixo))
+}
+
+/// ⭐⭐⭐ **TODA PALAVRA QUE UM PAINEL PINTA, A TABELA SABE PRODUZIR.**
+///
+/// # ⛔⛔ O buraco: os 30 censos lêem o FONTE de UMA crate, e o ecrã não tem fronteiras
+///
+/// Um rótulo escrito à mão pinta-se **exactamente igual** ao que veio da tabela — nada nesta árvore
+/// os distingue. O `Idioma::Teste` distingue-os, e até hoje era **o DONO** quem o corria, a olho,
+/// numa fotografia. Três defeitos desta família foram achados assim, um por report.
+///
+/// ⇒ este gate faz a mesma pergunta por construção: ele pinta **todo painel do registo** (a mesma
+/// varredura do resto do ficheiro) e pergunta, de cada rótulo medido, se a **tabela sabe
+/// produzi-lo** — exacto, ou preenchendo um modelo `{marcador}`.
+///
+/// ⚠️ **Ele é sólido num sentido só, e isso está declarado:** um texto que a tabela NÃO produz é,
+/// por construção, escrito no código; um que ela produz **pode** ser uma coincidência (uma palavra
+/// escrita à mão igual a uma da tabela). *O erro fica do lado barato.*
+///
+/// # ⛔⛔ CORRA-O SOBRE A ÁRVORE INTEIRA — com `-p` ele vê MENOS painéis
+///
+/// Metade dos painéis do registo está atrás de uma **feature opcional** (`panel-wet-tuning`,
+/// `panel-…`), e um `cargo test -p ph2d-panel-registry-init` não as acende: a unificação de
+/// features de um build de WORKSPACE acende. ⇒ este gate fechou **VERDE** com `-p` e acusou **2**
+/// rótulos na varredura da árvore — os dois do `wet_tuning`, que com `-p` nem é registado.
+///
+/// ⚠️ **A assimetria já estava medida no cabeçalho deste ficheiro** (a tabela de 18/09 tem duas
+/// colunas: *«`-p` sozinho (24 painéis)»* e *«árvore inteira (28)»*), e o
+/// [`PISO_DE_PAINEIS`] está no número MENOR de propósito, para o gate passar das duas maneiras.
+/// *Um piso posto no menor dos dois deixa de afirmar o que acontece no maior* — e é lá que o app
+/// de facto corre.
+#[test]
+fn toda_palavra_que_um_painel_pinta_a_tabela_sabe_produzir() {
+    let tabela = Tabela::ler();
+    // ⛔ Controlo de vacuidade: uma tabela vazia aprova tudo.
+    assert!(
+        // ⚠️ `4 155` textos DISTINTOS para `6 706` entradas — muitas chaves partilham a mesma
+        //    palavra (`Size`, `Angle`, `Mix`), e o piso é sobre o CONJUNTO, não sobre as entradas.
+        //    *Um piso copiado da grandeza vizinha reprova sobre uma régua correcta.*
+        // ⚠️ E `415` modelos e não `606`: descodificar o `\u{…}` tirou `191` textos da classe
+        //    MODELO — a chaveta do escape disfarçava-os de marcador. *O piso apanhou a mudança, que
+        //    é para o que ele existe.*
+        tabela.exactos.len() >= 4_000 && tabela.modelos.len() >= 380,
+        "a régua leu {} textos e {} modelos — o leitor da tabela partiu-se, e um censo com a \
+         tabela vazia acusa TUDO (ou, com ela cheia de nada, aprova tudo)",
+        tabela.exactos.len(),
+        tabela.modelos.len()
+    );
+    let mut crus: Vec<String> = varre()
+        .iter()
+        // ⭐⭐ **O que é um RÓTULO já tem régua nesta casa** — a mesma `is_language` dos 30 censos
+        //    lexicais (duas letras ASCII adjacentes, fora de um marcador). Sem ela a lista abre com
+        //    `231` acusados e a esmagadora maioria são VALORES: `"0.010"`, `"-9.81"`, `"+0.00"`,
+        //    `"0:00.0 / 0:00.0"`, `"▶"`, `"☰"`. *Um número que um painel pinta não é uma palavra, e
+        //    uma lista de isenções sobre eles seria uma lista de números escritos à mão.*
+        .filter(|a| ph2d_label_census::is_language(&a.m.texto))
+        .filter(|a| {
+            !PAINEIS_QUE_NAO_SAO_CHROME
+                .iter()
+                .any(|(id, _)| *id == a.painel)
+        })
+        .filter(|a| !tabela.produz(&a.m.texto))
+        .filter(|a| !e_a_mesma_palavra_ja_cortada(&a.m.texto, &tabela))
+        .map(|a| format!("{} · {:?}", a.painel, a.m.texto))
+        .collect();
+    crus.sort();
+    crus.dedup();
+    assert!(
+        crus.is_empty(),
+        "estes {} rótulos são pintados por um painel e a tabela de strings NÃO os sabe produzir — \
+         eles estão escritos no código, e nenhum dos 30 censos os vê:\n  {}",
+        crus.len(),
+        crus.join("\n  ")
+    );
+}
+
+/// ⭐ **A METADE JUSTA da lista de painéis isentos** — sem ela, um painel que já não escreva uma
+/// palavra à mão fica isento para sempre, e a isenção passa a cobrir o que aparecer amanhã.
+#[test]
+fn nenhum_painel_isento_deixou_de_abrigar_uma_palavra_escrita_a_mao() {
+    let tabela = Tabela::ler();
+    let todos = varre();
+    let mut mortas = Vec::new();
+    for (id, porque) in PAINEIS_QUE_NAO_SAO_CHROME {
+        assert!(porque.len() > 40, "a isenção `{id}` não diz o mecanismo");
+        let abriga = todos.iter().any(|a| {
+            a.painel == *id
+                && ph2d_label_census::is_language(&a.m.texto)
+                && !tabela.produz(&a.m.texto)
+                && !e_a_mesma_palavra_ja_cortada(&a.m.texto, &tabela)
+        });
+        if !abriga {
+            mortas.push(format!(
+                "`{id}`: já não pinta uma única palavra que a tabela não saiba produzir — apague a \
+                 linha, e o painel passa a ser guardado como os outros"
+            ));
+        }
+    }
+    assert!(mortas.is_empty(), "{}", mortas.join("\n"));
+}

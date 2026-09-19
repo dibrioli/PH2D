@@ -18,7 +18,7 @@ use ph2d_editor_core::widget::{
     scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::tr;
+use ph2d_i18n::{tr, tr_with};
 use ph2d_tokens::contrast::{failing_pairs, token_is_in_a_failing_pair};
 use ph2d_tokens::num_overrides::num_overridden_count;
 use ph2d_tokens::overrides::{TokenValue, color_override, overridden_count};
@@ -109,10 +109,10 @@ fn paint_body(
     paint_text(
         ctx.text_system,
         ctx.scene,
-        &format!(
-            "{}  —  {n} {}",
-            theme_label(theme),
-            tr("panel.tokens.authored")
+        // ⚠️ A FORMA da linha vem da tabela: a ordem das peças e o travessão não são universais.
+        &tr_with(
+            "panel.tokens.header",
+            &[("tema", &theme_label(theme)), ("n", &n.to_string())],
         ),
         x,
         y + (ROW_H_PX - font) * 0.5,

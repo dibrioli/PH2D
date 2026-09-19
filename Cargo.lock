@@ -5347,6 +5347,7 @@ dependencies = [
 name = "ph2d-asset-index"
 version = "0.0.0"
 dependencies = [
+ "ph2d-i18n",
  "ph2d-label-path",
 ]
 
@@ -8067,6 +8068,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-label-census",
  "ph2d-panel-asset-browser",
  "ph2d-panel-audio-editor",
  "ph2d-panel-audio-mixer",

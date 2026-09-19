@@ -162,3 +162,124 @@ os dois nomes.
   hit-test (`input_handlers.rs`). Achado desta medição; curá-lo mexe no contrato `Tool` (§6).
 - O molde do `sculpt_engine` é anterior ao terceiro gate: as **sete** famílias que ele já migrou
   ficam fora da varredura do pintor, e acrescentá-las é uma linha por família.
+
+---
+
+## 7. A segunda metade: perguntar ao ECRÃ, e não ao fonte
+
+A régua do §3 lê **fonte**. Ela responde *«esta crate publica uma palavra crua?»* e não responde
+*«a palavra que o painel PINTOU saiu da tabela?»* — que é a pergunta do HR-15. Até aqui quem a
+respondia era o **dono**, a olho, com `PH2D_LANG=teste` numa fotografia; três defeitos desta família
+foram achados assim, um report cada.
+
+### A varredura já existia — faltava-lhe a pergunta
+
+O `nenhum_rotulo_do_app_pinta_nada` pinta **todo painel do registo** e regista cada rótulo medido.
+⇒ o gate novo usa a mesma varredura e pergunta, de cada texto, se a **tabela sabe produzi-lo**:
+exacto, ou preenchendo um modelo `{marcador}`.
+
+> ⚠️ **Ele é sólido num sentido só, e está declarado:** um texto que a tabela não produz está, por
+> construção, escrito no código; um que ela produz **pode** ser coincidência. *O erro fica do lado
+> barato.*
+
+### Como a lista encolheu, e o que cada corte ensinou
+
+| passo | acusados | o que o corte diz |
+|---|---:|---|
+| a 1.ª corrida | **231** | — |
+| filtrar pelo que é uma PALAVRA (`is_language`, a régua dos 30 censos) | **39** | ⚠️ a maioria eram VALORES: `"0.010"`, `"-9.81"`, `"0:00.0 / 0:00.0"`, `"▶"`, `"☰"`. *Um número que um painel pinta não é uma palavra, e uma lista de isenções sobre eles seria uma lista de números escritos à mão.* |
+| ⛔ descodificar `\u{…}` no leitor da tabela | **40** | a tabela declara `"+ Track  \u{25be}"` e o painel pinta `+ Track ▾` — **a régua comparava `u{25be}` com `▾`**. Curá-lo tirou seis acusações e acrescentou uma (o piso dos modelos caiu de `606` para `415`, porque a chaveta do escape disfarçava 191 textos de modelo). |
+| a BANCADA e o painel AUTORADO | **6** | decisão do dono, já registada; e o `authored` é o painel que **o app escreve** a partir da árvore que o artista desenhou — `Design`/`Code` são conteúdo do documento |
+| a regra do texto **já cortado** | **3** | `"Mas…"` é `Master` medido outra vez depois da elisão. ⇒ regra, não isenção: *uma lista de isenções sobre texto elidido muda sempre que uma coluna muda de largura.* |
+
+### ⭐ As TRÊS que sobraram eram dívida, e nenhuma seria achada de outra maneira
+
+| painel | o que estava cru | a cura |
+|---|---|---|
+| **Asset Browser** | `Name · Type · Recent` | o `ph2d-asset-index` publicava-os; hoje publica a CHAVE |
+| **Physics** | `Bodies: 0` | só a PALAVRA vinha da tabela; o `": "` estava no `format!` |
+| **Tokens** | `Forge  —  0 authored` | as duas palavras vinham da tabela; a FORMA da linha não |
+
+> ⭐⭐ *Uma frase composta é um MODELO. Traduzir só as peças dela deixa a gramática no fonte* — e há
+> línguas em que o dois-pontos leva espaço antes, e em que a ordem das peças muda.
+
+### ⛔⛔ E o `Recent` expôs a cegueira da régua do §3
+
+O filtro de população dela é *«a crate depende da `ph2d-editor-core` ou da `ph2d-i18n`»*, e o
+`ph2d-asset-index` **não dependia de nenhuma** — ele ficava fora da varredura e aquele gate fechava
+verde sobre ele. A relação verdadeira é *«algum painel depende desta crate»*, que é o grafo inteiro.
+
+⇒ a cegueira fica **declarada no cabeçalho do gate**, com o cúmplice nomeado: o gate de RUNTIME
+**não tem filtro de população nenhum**. *Duas réguas com cegueiras COMPLEMENTARES valem mais que uma
+com a população certa — desde que esteja escrito qual cobre o quê.*
+
+---
+
+## 8. E o leitor da tabela tinha duas cegueiras, uma delas com 23 % da tabela dentro
+
+Havia **dois** leitores das tabelas de string: o `keys_declared` (que aprendeu a forma TUPLO
+`("k", "v")` em 17/09) e a cópia dentro do gate do português (que ficou a conhecer só o `match`).
+
+⇒ **1 432 entradas — 23 % da tabela — nunca tinham sido conferidas contra o português**
+(`node_options` 601 · `node_params_motion` 430 · `node_params` 398).
+
+> ⚠️⚠️ **E o piso de população não o podia dizer:** ele exigia `>= 5 000`, e a forma que a régua
+> conhecia traz `4 815` sozinha. *Um piso satisfeito pela forma que a régua conhece não afirma nada
+> sobre a forma que ela não conhece.* Hoje a leitura é de **6 706** e o piso está em `6 400` — acima
+> do que a forma antiga produz sozinha, que é a única posição em que ele afirma alguma coisa.
+
+A cura é uma **PORTA** (`ph2d_label_census::keys::declared_pairs_in`), com as duas formas, o
+`\u{…}` descodificado e a continuação de linha corrigida — ela inseria um espaço que o Rust **não**
+insere. *Inócuo para um censo de língua; decisivo para quem compara ao bit.* Corridas as 1 432
+entradas recém-visíveis: **zero português**.
+
+### ⛔ E uma mutação SOBREVIVEU porque o meu controlo não continha o fenómeno
+
+A cerca do parêntese (*«um tuplo reconhece-se pelo `(` que o abre»*) foi testada com duas linhas de
+`match` lado a lado — e ali ela é inerte: depois de emparelhar por `=>` o percurso segue sem guardar
+o valor. Quem a discrimina é um **ARRAY** (`&["Paint", "Erase"]`), onde há uma vírgula entre dois
+literais e o que abre é um `[`. *Uma mutação que o corpus não discrimina lê-se exactamente como uma
+lei que não existe.*
+
+---
+
+## 9. ⛔⛔ E o gate fechou VERDE com `-p` e acusou 2 na árvore inteira
+
+Metade dos painéis do registo está atrás de uma **feature opcional** (`panel-wet-tuning`, …), e um
+`cargo test -p ph2d-panel-registry-init` **não as acende** — a unificação de features de um build de
+WORKSPACE acende. ⇒ o gate novo passou com `-p` e acusou **dois** rótulos na varredura da árvore.
+
+> ⚠️ **A assimetria já estava medida no cabeçalho do próprio ficheiro** desde 18/09 — a tabela dele
+> tem duas colunas, *«`-p` sozinho (24 painéis)»* e *«árvore inteira (28)»* —, e o
+> `PISO_DE_PAINEIS` está no número MENOR de propósito, para o gate passar das duas maneiras.
+> *Um piso posto no menor dos dois deixa de afirmar o que acontece no maior* — e é lá que o app
+> corre.
+
+### E os dois acusados eram PEDAÇOS de um parágrafo
+
+```
+wet_tuning · "extensions (diffusion, backrun, fingering,"
+wet_tuning · "the tuning registry's hidden group."
+```
+
+O painel pinta prosa com `paint_text_block`, que a **quebra em linhas**, e o censo das elisões mede
+**cada linha**. A tabela declara a frase inteira.
+
+⇒ regra: um texto que é **substring contígua** de um texto da tabela é uma linha dele.
+⚠️ **O preço está declarado:** aceitar substring afrouxa a régua — um rótulo curto escrito à mão que
+por acaso caia dentro de uma frase longa passa. Ele fica do lado BARATO contra a alternativa, que
+seria uma lista de isenções sobre pedaços de frase, e esses mudam sempre que uma coluna muda de
+largura.
+
+---
+
+## ⛔⛔⛔ Duas armadilhas de MÉTODO que esta fatia pagou
+
+1. **`open(p, "w").write(open(p).read()…)` trunca antes de ler.** Python avalia o receptor primeiro.
+   Perdi um módulo de 154 linhas acabado de escrever, e o sintoma foi um erro de compilação **noutra
+   crate**.
+2. **Prosa dentro de um heredoc sem aspas é CÓDIGO.** As crases de um comentário meu dentro de um
+   `<<EOF` executaram o `spectacle` — o programa que esta casa proíbe porque fotografa o ecrã real
+   do dono (449 s vivo, zero ficheiros gravados; verificado). ⚠️ E eu **repeti-a na mesma hora**, num
+   `<<PY` de Python, onde as crases tentaram correr `wet_tuning`, `nextest` e `-p`. *A cura é
+   estrutural — prosa fora do heredoc, e um guarda sobre o ficheiro gerado —, nunca «ter cuidado».*

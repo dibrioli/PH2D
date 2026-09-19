@@ -21,6 +21,22 @@
 //!
 //! ⚠️ **A população são as crates que NÃO são painel, `ph2d-app-*` nem a shell** — essas têm as 30
 //! réguas lexicais, e a fronteira é exactamente o que fica de fora delas.
+//!
+//! # ⛔⛔ E o FILTRO desta população tem uma cegueira MEDIDA, com o cúmplice nomeado
+//!
+//! Ele exige que a crate dependa da `ph2d-editor-core` ou da `ph2d-i18n` — *«se ela pinta ou fala a
+//! tabela»*. Em 2026-09-19 o `ph2d-asset-index` publicava `SortBy::label()` (*Name · Type ·
+//! Recent*, pintados pela fileira de ordenação do Asset Browser) e **não dependia de nenhuma das
+//! duas**: ele ficava fora da varredura, e este gate fechava VERDE sobre ele.
+//!
+//! ⚠️ A relação verdadeira é *«algum painel depende desta crate»*, que é o grafo inteiro — varrê-lo
+//! custaria a árvore toda por corrida. ⇒ **a cegueira fica DECLARADA, e o cúmplice é o gate de
+//! RUNTIME** `toda_palavra_que_um_painel_pinta_a_tabela_sabe_produzir` (na
+//! `ph2d-panel-registry-init`), que **não tem filtro de população nenhum**: ele pinta todo painel
+//! do registo e lê o que saiu. Foi ele que achou o `Recent`.
+//!
+//! *Duas réguas com cegueiras COMPLEMENTARES valem mais que uma régua com a população certa — e é
+//! preciso escrever qual delas cobre o quê, senão a próxima fatia acredita na que estiver à mão.*
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};

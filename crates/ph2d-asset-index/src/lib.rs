@@ -62,11 +62,23 @@ impl AssetKind {
     /// O cartão do Inspector já diz *Instance of* e *Variant of*, que é o vocabulário da Unity
     /// (Prefab · Prefab Instance · Prefab Variant). ⛔ O Figma diz *Component* e pode: ele não tem
     /// componentes de ECS para colidir.
+    /// O rótulo em INGLÊS — um acessório derivado da tabela (ver [`Self::label_key`]).
     #[must_use]
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `asset.kind.<variante>`.
+    ///
+    /// ⚠️ **Nenhuma das duas palavras é derivável da variante** (`Component` mostra-se *Prefab*,
+    /// `Texture` mostra-se *Image*), que é exactamente por isso que a chave deriva da VARIANTE e o
+    /// texto vive na tabela. A decisão de produto sobre a palavra *Prefab* fica no doc-comment
+    /// acima, ao lado da variante que a carrega: *o texto muda de idioma; a decisão não.*
+    #[must_use]
+    pub const fn label_key(self) -> &'static str {
         match self {
-            AssetKind::Component => "Prefab",
-            AssetKind::Texture => "Image",
+            AssetKind::Component => "asset.kind.component",
+            AssetKind::Texture => "asset.kind.texture",
         }
     }
 
@@ -229,13 +241,23 @@ pub enum SortBy {
 }
 
 impl SortBy {
-    /// O rótulo do chip.
+    /// O rótulo do chip em INGLÊS — um acessório derivado da tabela (ver [`Self::label_key`]).
     #[must_use]
     pub fn label(self) -> &'static str {
+        ph2d_i18n::tr_em(ph2d_i18n::Idioma::Ingles, self.label_key())
+    }
+
+    /// ⭐⭐ **A CHAVE do rótulo** — `asset.sort.<variante>`, resolvida pelo
+    /// `ph2d-panel-asset-browser`, que pinta a fileira de chips de ordenação.
+    ///
+    /// ⚠️ **`Kind` chama-se *Type* na tela**, e é por isso que a chave deriva da VARIANTE e nunca
+    /// da palavra: o texto não é derivável do nome.
+    #[must_use]
+    pub const fn label_key(self) -> &'static str {
         match self {
-            SortBy::Name => "Name",
-            SortBy::Kind => "Type",
-            SortBy::Recent => "Recent",
+            SortBy::Name => "asset.sort.name",
+            SortBy::Kind => "asset.sort.kind",
+            SortBy::Recent => "asset.sort.recent",
         }
     }
 

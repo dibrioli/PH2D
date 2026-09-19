@@ -112,6 +112,9 @@ panel-widget-lab = ["dep:ph2d-panel-widget-lab"]
 # pela porta do arnês. ⚠️ Aresta de DEV: o `architecture_cycle_prevention` lê `[dependencies]`.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 ph2d-i18n = { path = "../ph2d-i18n" }
+# ⭐ A régua registada das TABELAS de string — ela sabe ler as duas formas de declarar um par
+# (`"k" => "v"` e `("k", "v")`), que é o que o censo «a tabela sabe produzir isto?» precisa.
+ph2d-label-census = { path = "../ph2d-label-census" }
 # Wave 10 / Etapa 4.1 — staleness gate uses the codegen library.
 ph2d-panel-sync = { path = "../../tools/ph2d-panel-sync" }
 ph2d-text = { path = "../ph2d-text" }

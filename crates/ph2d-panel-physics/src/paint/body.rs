@@ -9,7 +9,7 @@ use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, SectionFold, SectionHeader, paint_button, paint_section_header,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::tr;
+use ph2d_i18n::{tr, tr_with};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 
 use crate::rows;
@@ -196,7 +196,14 @@ pub(super) fn paint_sections(
     // and "nothing in this scene has a body yet".
     y = readout(
         ctx,
-        &format!("{}: {}", tr("panel.physics.bodies"), snapshot.body_count),
+        // ⚠️ **A forma da frase vem da tabela, não do `format!`.** Antes só a PALAVRA era
+        // traduzida e o `": "` ficava no código — e há línguas em que o dois-pontos leva espaço
+        // antes. *Uma frase composta é um MODELO; traduzir só as peças dela deixa a gramática no
+        // fonte.*
+        &tr_with(
+            "panel.physics.bodies_count",
+            &[("n", &snapshot.body_count.to_string())],
+        ),
         x,
         w,
         y,

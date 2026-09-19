@@ -267,3 +267,194 @@ mod tests_forma_da_chave {
         assert!(!looks_like_a_key("zz_fixtura.a b", "zz_fixtura."));
     }
 }
+
+/// Um par declarado numa tabela de strings.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Par {
+    /// A chave (`panel.x.y`).
+    pub chave: String,
+    /// O inglês que ela devolve, com as continuações de linha já juntas.
+    pub texto: String,
+    /// A linha do TEXTO, a contar de 1.
+    pub linha: usize,
+}
+
+/// ⭐⭐⭐ **OS PARES DE UMA TABELA, NAS DUAS FORMAS QUE ESTE REPO USA.**
+///
+/// ⛔⛔ **Ela existe porque havia DOIS leitores da mesma tabela e só um aprendeu a segunda forma.**
+/// O [`keys_declared`] acima aprendeu o TUPLO (`("k", "v"),`) em 2026-09-17; o leitor do gate
+/// `a_tabela_inglesa_fala_ingles` ficou a conhecer só o `match` (`"k" => "v"`) — e assim
+/// **1 432 entradas, 23 % da tabela**, nunca foram conferidas contra o português
+/// (`node_options` 601 · `node_params_motion` 430 · `node_params` 398).
+///
+/// ⚠️⚠️ **E o piso de população não o podia dizer:** ele exige `>= 5 000` entradas, e a forma que a
+/// régua conhece traz `4 815` + as outras tabelas — *um piso satisfeito pela forma que a régua
+/// conhece não afirma nada sobre a forma que ela não conhece.*
+///
+/// # A cerca do TUPLO, que a 1.ª redacção da irmã pagou
+///
+/// Num `match` o VALOR também acaba em vírgula (`"k" => "v",`), logo *«há uma vírgula entre os
+/// dois»* emparelharia o valor de uma linha com a chave da seguinte. ⇒ um tuplo reconhece-se pelo
+/// **PARÊNTESE que o abre**, e é essa a cerca.
+#[must_use]
+pub fn declared_pairs_in(src: &str) -> Vec<Par> {
+    let b: Vec<char> = src.chars().collect();
+    let mut out = Vec::new();
+    let mut i = 0usize;
+    // `(texto, índice do `"` de abertura, índice logo após o `"` de fecho)`
+    let mut ultima: Option<(String, usize, usize)> = None;
+    while i < b.len() {
+        if b[i] != '"' {
+            i += 1;
+            continue;
+        }
+        let inicio = i;
+        i += 1;
+        let mut s = String::new();
+        while i < b.len() && b[i] != '"' {
+            if b[i] == '\\' {
+                i += 1;
+                match b.get(i) {
+                    // ⚠️⚠️ **A CONTINUAÇÃO NÃO INSERE NADA**, e é aqui que o leitor irmão erra:
+                    // em Rust, `\` seguido de quebra come a quebra **e** o espaço em branco do
+                    // início da linha seguinte, e acrescenta o VAZIO. O leitor do gate
+                    // `a_tabela_inglesa_fala_ingles` empurra um `' '`, logo devolve
+                    // `"uma frase  comprida"` (dois espaços) onde o binário tem um. Para um censo
+                    // de LÍNGUA isso é inócuo — a tokenização não vê espaços a mais —, e para uma
+                    // comparação EXACTA com o que um painel pintou é a diferença entre casar e
+                    // acusar. *Um leitor que erra num espaço só é apanhado por quem compara ao bit.*
+                    Some('\n') => {
+                        i += 1;
+                        while i < b.len() && b[i].is_whitespace() {
+                            i += 1;
+                        }
+                        continue;
+                    }
+                    // ⛔⛔ **O `\u{…}` tem de ser DESCODIFICADO, senão a régua lê `u{25be}`.**
+                    // Medido: a tabela declara `"+ Track  \u{25be}"` e o painel pinta `+ Track ▾`
+                    // — sem esta linha o censo acusa um rótulo que veio da tabela. *Uma régua que
+                    // lê o ESCAPE em vez do carácter compara duas coisas diferentes.*
+                    Some('u') if b.get(i + 1) == Some(&'{') => {
+                        let mut j = i + 2;
+                        let mut hex = String::new();
+                        while j < b.len() && b[j] != '}' {
+                            hex.push(b[j]);
+                            j += 1;
+                        }
+                        if let Some(c) = u32::from_str_radix(&hex, 16).ok().and_then(char::from_u32)
+                        {
+                            s.push(c);
+                        }
+                        i = j;
+                    }
+                    Some('n') => s.push('\n'),
+                    Some('t') => s.push('\t'),
+                    Some('r') => s.push('\r'),
+                    Some('0') => s.push('\0'),
+                    Some(c) => s.push(*c),
+                    None => break,
+                }
+            } else {
+                s.push(b[i]);
+            }
+            i += 1;
+        }
+        i += 1;
+        if let Some((chave, abre, fim)) = ultima.take() {
+            let meio: String = b[fim..inicio].iter().collect();
+            let antes: String = b[..abre].iter().collect();
+            let seta = meio.contains("=>");
+            let tuplo = antes.trim_end().ends_with('(') && meio.trim() == ",";
+            if seta || tuplo {
+                let linha = b[..inicio].iter().filter(|c| **c == '\n').count() + 1;
+                out.push(Par {
+                    chave,
+                    texto: s,
+                    linha,
+                });
+                continue;
+            }
+        }
+        ultima = Some((s, inicio, i));
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests_pares_das_duas_formas {
+    use super::*;
+
+    fn pares(src: &str) -> Vec<(String, String)> {
+        declared_pairs_in(src)
+            .into_iter()
+            .map(|p| (p.chave, p.texto))
+            .collect()
+    }
+
+    #[test]
+    fn a_forma_match_e_a_forma_tuplo_leem_se_as_duas() {
+        assert_eq!(
+            pares("        \"a.b\" => \"Mix\",\n"),
+            vec![("a.b".to_string(), "Mix".to_string())]
+        );
+        assert_eq!(
+            pares("    (\"c.d\", \"Angle\"),\n"),
+            vec![("c.d".to_string(), "Angle".to_string())]
+        );
+    }
+
+    /// ⛔⛔ **A cerca do PARÊNTESE, e o fenómeno vive num ARRAY — não num `match`.**
+    ///
+    /// ⚠️ A 1.ª redacção deste controlo pôs duas linhas de `match` lado a lado e a mutação que
+    /// apaga a cerca **SOBREVIVEU**: depois de emparelhar por `=>` o percurso segue sem guardar o
+    /// valor, logo `"Mix"` nunca chega a ser candidato a chave. *Uma mutação que o corpus não
+    /// discrimina lê-se exactamente como uma lei que não existe.*
+    ///
+    /// Quem discrimina é um **array** (`&["Paint", "Erase"]`, que as tabelas deste repo têm aos
+    /// montes): ali há uma vírgula entre dois literais e o que abre é um `[`. Sem a cerca, a régua
+    /// inventa o par `("Paint", "Erase")`.
+    #[test]
+    fn dois_literais_separados_por_virgula_num_array_nao_sao_um_par() {
+        assert!(
+            pares("const X: &[&str] = &[\"Paint\", \"Erase\"];\n").is_empty(),
+            "um array não declara pares: {:?}",
+            pares("const X: &[&str] = &[\"Paint\", \"Erase\"];\n")
+        );
+        // ⭐ E o CONTROLO do outro lado: com o parêntese, é um par.
+        assert_eq!(
+            pares("    (\"c.d\", \"Angle\"),\n"),
+            vec![("c.d".to_string(), "Angle".to_string())]
+        );
+    }
+
+    /// ⛔ **O `\u{…}` chega como CARÁCTER** — sem isto a régua compara `u{25be}` com `▾`.
+    #[test]
+    fn um_escape_unicode_chega_descodificado() {
+        let v = pares("        \"a.b\" => \"+ Track  \\u{25be}\",\n");
+        assert_eq!(v.len(), 1, "{v:?}");
+        assert_eq!(v[0].1, "+ Track  \u{25be}");
+        assert!(
+            !v[0].1.contains('{'),
+            "o escape sobreviveu cru: {:?}",
+            v[0].1
+        );
+    }
+
+    /// Duas entradas de `match` seguidas continuam a ler-se como duas.
+    #[test]
+    fn duas_entradas_de_match_leem_se_como_duas() {
+        let v = pares("        \"a.b\" => \"Mix\",\n        \"e.f\" => \"Add\",\n");
+        assert_eq!(v.len(), 2, "{v:?}");
+        assert_eq!(v[0].1, "Mix");
+        assert_eq!(v[1], ("e.f".to_string(), "Add".to_string()));
+    }
+
+    /// ⚠️ A continuação de linha faz parte do literal — sem ela a frase chega partida ao censo.
+    #[test]
+    fn uma_entrada_partida_em_duas_linhas_chega_inteira() {
+        let v = pares("        \"a.b\" => \"uma frase \\\n             comprida\",\n");
+        assert_eq!(v.len(), 1, "{v:?}");
+        // ⚠️ UM espaço — o que vinha ANTES do `\`. A continuação não acrescenta nenhum.
+        assert_eq!(v[0].1, "uma frase comprida");
+    }
+}

@@ -8,6 +8,17 @@
 /// A tradução de uma chave do navegador de assets, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
+        // ⭐⭐ **O vocabulário que o MOTOR publica** (`ph2d-asset-index`) e este painel pinta —
+        //    a fileira de ordenação e as famílias de asset. A chave deriva da VARIANTE, nunca
+        //    da palavra: `Kind` mostra-se *Type*, `Component` mostra-se *Prefab* e `Texture`
+        //    mostra-se *Image*. ⚠️ A crate estava FORA da varredura do `a_fronteira_dos_motores`
+        //    (ela não dependia da `editor-core` nem da `i18n`) e quem a achou foi o gate de
+        //    RUNTIME, que não tem filtro de população nenhum.
+        "asset.kind.component" => "Prefab",
+        "asset.kind.texture" => "Image",
+        "asset.sort.kind" => "Type",
+        "asset.sort.name" => "Name",
+        "asset.sort.recent" => "Recent",
         // ph2d-migrar-texto:begin
         "panel.asset_browser.title" => "Assets",
         "panel.asset_browser.panel.search_assets" => "Search assets\u{2026}",

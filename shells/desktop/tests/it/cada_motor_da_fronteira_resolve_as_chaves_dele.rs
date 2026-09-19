@@ -207,9 +207,8 @@ fn nenhum_pintor_chama_o_acessorio_ingles_de_um_motor_da_fronteira() {
     // *Toda lista deste repo se declara «só encolhe», e nenhuma encolhe sozinha.*
     for (tipo, metodo) in INGLES {
         let vivo = ficheiros.iter().any(|f| {
-            std::fs::read_to_string(f).is_ok_and(|r| {
-                ph2d_label_census::sem_comentarios(&r).contains(tipo)
-            })
+            std::fs::read_to_string(f)
+                .is_ok_and(|r| ph2d_label_census::sem_comentarios(&r).contains(tipo))
         }) || {
             // O tipo pode viver só na crate do MOTOR (nenhum pintor o nomeia hoje) — e é
             // exactamente aí que ele tem de continuar a existir para a entrada valer.
@@ -220,8 +219,9 @@ fn nenhum_pintor_chama_o_acessorio_ingles_de_um_motor_da_fronteira() {
                 }
             }
             motores.iter().any(|f| {
-                std::fs::read_to_string(f)
-                    .is_ok_and(|r| r.contains(&format!("enum {tipo}")) || r.contains(&format!("impl {tipo}")))
+                std::fs::read_to_string(f).is_ok_and(|r| {
+                    r.contains(&format!("enum {tipo}")) || r.contains(&format!("impl {tipo}"))
+                })
             })
         };
         assert!(

@@ -42,3 +42,16 @@ arco foge), e só então a mutação morre.
 - ⛔⛔ **Um portão que mede se algo foi ESCRITO não pode partilhar o sujeito com quem escreveu antes dele** (mesma corrida): o portão *«a lei não escreve na entrada»* fotografava o array que os portões de cima já tinham usado — com a lei a escrever na entrada, aquele array vinha **já achatado**, e uma lei que não tem nada para tirar não escreve nada. ⇒ o sujeito constrói-se **do zero**, por uma função, dentro do próprio portão.
 - ⛔⛔⛔ **PARA GATEAR UMA PROPRIEDADE DE FASE É PRECISO UMA FIXTURA QUE TENHA FASE** (Teste Cascadeur, 19/09): a mutação que torna uma média móvel **causal** (olhar só para trás) SOBREVIVEU — e com razão, porque uma média causal ainda cobre um período inteiro e ainda anula a oscilação. O que a fase zero compra é a **HORA**: o que é guardado atrasa-se meia janela. Sobre uma **rampa** isso é invisível (uma recta atrasada é a mesma recta com outro offset) ⇒ a fixtura ganhou uma **corcova** e o portão passou a medir em que quadro o que ficou atinge o pico (`q21` contra `q22`). *Uma fixtura monótona não pode reprovar um filtro que só erra no tempo.*
 - ⛔⛔ **«Um corpus no ponto neutro de um osso não testa esse osso» cobrou-se DUAS vezes na mesma wave** (mesma corrida): primeiro no antebraço, depois na COLUNA — e a segunda foi **duas horas depois de eu registar a primeira**. A cura é a mesma e tem de ser feita para TODA a população que a lei podia alcançar, não só para a que a mutação daquele dia nomeou: a fixtura passou a mexer em ossos de fora do escopo, **com um controlo a provar que ela os mexe**, senão o `0,0000 cm` do portão é vácuo.
+
+## ⛔⛔ UMA MUTAÇÃO QUE O CORPUS NÃO DISCRIMINA LÊ-SE COMO UMA LEI QUE NÃO EXISTE (2026-09-19)
+
+A cerca *«um tuplo reconhece-se pelo `(` que o abre»* foi testada com duas linhas de `match` lado a
+lado — e ali ela é **inerte**: depois de emparelhar por `=>` o percurso segue sem guardar o valor,
+logo o valor nunca chega a ser candidato a chave. A mutação que a apagava **SOBREVIVEU**.
+
+Quem a discrimina é um **ARRAY** (`&["Paint", "Erase"]`): ali há uma vírgula entre dois literais e o
+que abre é um `[`. Com a fixtura certa, sangra.
+
+**How to apply:** antes de escrever a mutação, pergunte **por que caminho** o corpus faz a lei
+correr. Se a fixtura não contém o fenómeno, a sobrevivência não diz nada sobre a lei — diz sobre a
+fixtura. Irmã de [[feedback_a_corpus_at_full_strength_cannot_test_the_strength_curve]].

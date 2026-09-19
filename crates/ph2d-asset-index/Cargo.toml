@@ -10,6 +10,10 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# ⭐ A tabela de strings (folha, ZERO dependências): os três nomes de ordenação que esta crate
+# PUBLICA são pintados pelo `ph2d-panel-asset-browser`, e a fronteira entre os dois e' cega
+# as 30 reguas do HR-15 dos DOIS lados.
+ph2d-i18n = { path = "../ph2d-i18n" }
 # ⭐ A álgebra dos caminhos de catálogo mora numa folha PARTILHADA com as tags
 # (`docs/Components/08_plano_tags.md` §2.1) — zero dependências, então esta crate continua folha.
 ph2d-label-path = { path = "../ph2d-label-path" }

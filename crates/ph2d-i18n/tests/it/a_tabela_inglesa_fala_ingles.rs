@@ -72,58 +72,24 @@ fn entradas() -> Vec<(String, usize, String, String)> {
     out
 }
 
-/// Extrai `"chave" => … "texto"` percorrendo o fonte uma vez, com a LINHA de cada texto.
+/// ⭐⭐⭐ **O LEITOR É AGORA UMA PORTA PARTILHADA** — `ph2d_label_census::keys::declared_pairs_in`.
 ///
-/// ⚠️ **A linha conta-se no vector de CARACTERES, nunca fatiando o `&str` por um índice de
-/// carácter** — a 1.ª redacção fazia o segundo e estourou num `á` da tabela (`end byte index … is
-/// not a char boundary`). *Um índice de carácter e um índice de byte leem-se igual num `usize`.*
+/// ⛔⛔ **A cópia que morava aqui conhecia SÓ a forma `match`** (`"k" => "v"`), e a irmã
+/// `keys_declared` aprendeu o TUPLO (`("k", "v"),`) em 2026-09-17. ⇒ **1 432 entradas — 23 % da
+/// tabela — nunca foram conferidas contra o português** (`node_options` 601 ·
+/// `node_params_motion` 430 · `node_params` 398).
+///
+/// ⚠️⚠️ **E o piso de população não o podia dizer:** ele exige `>= 5 000`, e a forma que a régua
+/// conhecia já traz `4 815` + o resto. *Um piso satisfeito pela forma que a régua conhece não
+/// afirma nada sobre a forma que ela não conhece.* A cura é uma PORTA, nunca a terceira cópia.
+///
+/// ⚠️ A porta também corrige um espaço: a continuação de linha do Rust não insere NADA, e esta
+/// cópia empurrava um `' '`. Inócuo para a língua, decisivo para quem compara ao bit.
 fn pares(src: &str) -> Vec<(String, String, usize)> {
-    let b: Vec<char> = src.chars().collect();
-    let mut out = Vec::new();
-    let mut i = 0usize;
-    let mut ultima: Option<(String, usize)> = None;
-    while i < b.len() {
-        if b[i] == '"' {
-            let inicio = i;
-            i += 1;
-            let mut s = String::new();
-            while i < b.len() && b[i] != '"' {
-                if b[i] == '\\' {
-                    i += 1;
-                    match b.get(i) {
-                        // ⚠️ A CONTINUAÇÃO: `\` seguido de quebra come o espaço em branco à frente.
-                        Some('\n') => {
-                            i += 1;
-                            while i < b.len() && b[i].is_whitespace() {
-                                i += 1;
-                            }
-                            s.push(' ');
-                            continue;
-                        }
-                        Some(c) => s.push(*c),
-                        None => break,
-                    }
-                } else {
-                    s.push(b[i]);
-                }
-                i += 1;
-            }
-            i += 1;
-            // uma seta entre a chave e o texto?
-            if let Some((chave, fim)) = ultima.take() {
-                let meio: String = b[fim..inicio].iter().collect();
-                if meio.contains("=>") {
-                    let linha = b[..inicio].iter().filter(|c| **c == '\n').count() + 1;
-                    out.push((chave, s.clone(), linha));
-                    continue;
-                }
-            }
-            ultima = Some((s, i));
-            continue;
-        }
-        i += 1;
-    }
-    out
+    ph2d_label_census::keys::declared_pairs_in(src)
+        .into_iter()
+        .map(|p| (p.chave, p.texto, p.linha))
+        .collect()
 }
 
 /// ⭐⭐⭐ **NENHUMA FRASE QUE O ARTISTA LÊ ESTÁ EM PORTUGUÊS.**
@@ -132,10 +98,17 @@ fn nenhuma_frase_que_o_artista_le_esta_em_portugues() {
     let todas = entradas();
     // ⛔ PISO DE POPULAÇÃO: uma leitura que encolhesse devolveria zero acusados e leria-se como
     //    aprovação — a forma exacta que o censo por prefixo de nome deste repo já pagou.
+    //
+    // ⛔⛔ **E o piso SOBE com a porta, senão ele vira uma licença.** Ele esteve em `5 000` enquanto
+    //    o leitor conhecia só a forma `match`, que sozinha traz `4 815` — ou seja, perder o TUPLO
+    //    outra vez passaria despercebido. Hoje a leitura é de **6 706** entradas e o piso fica em
+    //    `6 400`: acima do que a forma antiga produz sozinha, que é a única posição em que ele
+    //    afirma alguma coisa sobre a forma nova.
     assert!(
-        todas.len() >= 5_000,
-        "a régua leu {} entradas da tabela — em 2026-09-19 eram 5 226. Ou a tabela encolheu, ou o \
-         leitor partiu-se (a CONTINUAÇÃO de linha foi a 1.ª forma a mordê-lo)",
+        todas.len() >= 6_400,
+        "a régua leu {} entradas da tabela — em 2026-09-19 eram 6 706, das quais 1 432 na forma \
+         TUPLO. Ou a tabela encolheu, ou o leitor partiu-se (a CONTINUAÇÃO de linha e a forma \
+         TUPLO foram as duas que já o morderam)",
         todas.len()
     );
     let mas: Vec<String> = todas

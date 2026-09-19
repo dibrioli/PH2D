@@ -257,7 +257,7 @@ fn paint_controls(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect) -> 
         |i| {
             ph2d_asset_index::SortBy::ALL
                 .get(i)
-                .map_or_else(String::new, |s| s.label().to_string())
+                .map_or_else(String::new, |s| tr(s.label_key()).to_string())
         },
         |i| ph2d_asset_index::SortBy::ALL.get(i) == Some(&state.sort),
         ids::ASSET_SORT,

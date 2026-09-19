@@ -66,7 +66,12 @@ PONTE=crates/ph2d-app-components/src/shake_bridge.rs
 INSP=crates/ph2d-app-components/src/shake_inspector.rs
 CENA=crates/ph2d-app-components/src/shake_smoke.rs
 EVENTO=crates/ph2d-panel-inspector/src/event_shake.rs
-VISTA=shells/desktop/src/render_loop/camera_2d.rs
+# ⚠️⚠️ **Este caminho MUDOU na mesma jornada e a 1.ª redacção ficou obsoleta:** a catraca
+# `the_shell_only_shrinks` mandou a fase da câmera para a crate da família, e o script continuou a
+# apontar para `shells/desktop/src/render_loop/camera_2d.rs`, que já não existe. *Uma sonda que
+# aponta para um ficheiro que se mudou não fica em silêncio — o `muta` aborta e a prova conta como
+# FALHA*, que é a sorte desta história: a forma cara é a que fica verde.
+VISTA=crates/ph2d-app-components/src/camera_2d.rs
 
 echo "════ A LEI (ph2d-shake) ════"
 
@@ -167,14 +172,13 @@ bloco "rewind: o abanao fora do censo" ph2d-app-components \
   "        let _ = &mut rt;"
 
 echo
-echo "════ A VISTA (shells/desktop) ════"
+echo "════ A VISTA (ph2d-app-components) ════"
 
 # 14) O offset deixa de CHEGAR ao centro da vista — o motor todo fica invisível.
-bloco "vista: o offset nao chega ao centro" ph2d-host-desktop \
+bloco "vista: o offset nao chega ao centro" ph2d-app-components \
   o_abanao_chega_ao_centro_da_vista "$VISTA" 1 \
   "            rt.center[0] + cam.offset[0] + abanao[0]," \
-  "            rt.center[0] + cam.offset[0]," \
-  "--bins"
+  "            rt.center[0] + cam.offset[0],"
 
 echo
 echo "════ O PAINEL (ph2d-panel-inspector) ════"

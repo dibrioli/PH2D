@@ -105,6 +105,19 @@ pub struct Sculpt3dScene {
     /// tornaria uma alocação por movimento do mouse, que é o que o
     /// [`ph2d_mesh::RegionScratch`] existe para evitar.
     pub(crate) dyn_region: ph2d_mesh::RegionScratch,
+    /// ⭐⭐⭐⭐ **A MEMÓRIA DO CAMPO DE POSIÇÃO AO LONGO DO TRAÇO** — a fase da
+    /// retícula que atravessa os carimbos.
+    ///
+    /// ⚠️ **Ela NÃO é rascunho, ao contrário dos três acima: ela é ESTADO DO
+    /// GESTO**, e é por isso que tem um dono no pen-down
+    /// ([`ph2d_quadflow::regiao::CampoDoTraco::esquece`]) e dois canais de
+    /// tamanho — as **mesmas** duas portas por onde o `SculptStroke` sobrevive à
+    /// topologia dinâmica. *Uma terceira resposta para «a malha mudou de
+    /// tamanho» é como os dois lados passam a descrever vértices diferentes.*
+    ///
+    /// O mecanismo, e porque é do campo de posição e não do de orientação:
+    /// [`ph2d_quadflow::regiao::CampoDoTraco`].
+    pub(crate) pente_campo: ph2d_quadflow::regiao::CampoDoTraco,
     /// ⭐⭐ **A QUEIXA DO PASSE DE TOPOLOGIA JÁ FOI DITA NESTE TRAÇO?**
     ///
     /// ⚠️ **Report do dono, 2026-09-14: *«não vejo efeito com density»*.** Ele

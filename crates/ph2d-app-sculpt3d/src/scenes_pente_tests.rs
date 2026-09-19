@@ -518,6 +518,12 @@ fn traco_com(pente: f32, e: [f32; 2], raio: f32, alvo: f32) -> (ph2d_mesh::Mesh,
     let mut births = Vec::new();
     let mut remap = ph2d_mesh::Remap::default();
     let mut region = ph2d_mesh::RegionScratch::default();
+    // ⭐⭐⭐⭐ **A MEMÓRIA DO PENTE, porque o PRODUTO a carrega.** Ela nasce com
+    // o `begin` e morre com ele, e é mantida em dia pelos **mesmos dois canais**
+    // que o traço usa — *um arnês que a deixe de fora mede outro programa, que
+    // é a quarta vez que este módulo paga a mesma forma*. O CONTROLO é o
+    // [`crate::dyntopo::SEM_MEMORIA_NO_TESTE`], e ele corre por aqui.
+    let mut campo = ph2d_quadflow::regiao::CampoDoTraco::default();
     let mut centros = Vec::new();
     // ⚠️ O percurso anda **em raios de pincel**, não em unidades fixas: com um
     // pincel menor, um passo fixo seria um traço aos saltos.
@@ -542,17 +548,20 @@ fn traco_com(pente: f32, e: [f32; 2], raio: f32, alvo: f32) -> (ph2d_mesh::Mesh,
                 births: &mut births,
                 region: &mut region,
             },
-            (pente > 0.0).then_some(crate::dyntopo::Pente {
+            (pente > 0.0).then(|| crate::dyntopo::Pente {
                 direccao,
                 forca: pente,
                 queda: brush.falloff,
+                campo: crate::dyntopo::campo_do_teste(&mut campo),
             }),
         );
         if cut {
             stroke.shrink_with(&remap);
+            campo.encolheu(&remap);
         }
         if done {
             stroke.grow_with(&malha, &births);
+            campo.cresceu(&malha, &births);
         }
         stroke.dab(
             &mut malha,

@@ -72,7 +72,49 @@
 /// medir outro programa:** ela varreu as rondas com o [`LADO_DA_CELULA`] em
 /// `1,0`, onde TODAS as leituras são más — *uma escada corrida no regime errado
 /// responde sobre um produto que não existe*. Sonda: `diag_a_escada_das_rondas`.
-pub(crate) const RONDAS_DA_GRELHA: usize = 4;
+///
+/// # ⭐⭐⭐⭐ E EM 21/09 ELA DESCEU A `2`, PORQUE A MEMÓRIA MUDOU A ESCADA
+///
+/// Ordem do dono, depois de eu lhe ter posto na mesa a troca de `−26 %` de
+/// relógio por `0,7` pontos de regularidade: ***«quero o melhor possível, o
+/// padrão ouro»***. A obra que ela destravou é a que estava nomeada aqui em
+/// baixo — **carregar o campo de posição ENTRE dabs**
+/// ([`ph2d_quadflow::regiao::CampoDoTraco`]) —, e ela não é uma optimização: é
+/// a **fase** que o §86 nomeou como o que um pincel precisa e uma hierarquia não
+/// dá.
+///
+/// ⛔⛔ **E ela MATA a premissa desta constante.** A tabela acima diz *«a fileira
+/// sobe monotonamente e satura em `16`; quem escolhe o degrau é o RELÓGIO»* —
+/// **verdade sobre um campo que recomeça do zero a cada carimbo, e FALSA sobre
+/// um que se lembra**. Medido pela porta do produto, oito rumos, com a memória
+/// ligada:
+///
+/// | rondas | alt | memória | grade % | fil p50 | fil p90 | 4 braços % | ms/traço |
+/// |---|---|---|---|---|---|---|---|
+/// | `4` | `2` | **não** (o que shipava) | `65,36` | `35,1` | `70,9` | `92,74` | `207,8` |
+/// | **`2`** | **`2`** | **sim** (shipa) | **`65,91`** | **`50,4`** | **`71,9`** | **`95,38`** | **`161,4`** |
+/// | `4` | `2` | sim | `65,63` | `42,1` | `71,6` | `95,28` | `238,7` |
+/// | `2` | `1` | sim | `65,35` | `43,4` | `71,0` | `93,94` | `124,8` |
+/// | `2` | `2` | não | `64,64` | `16,5` | `57,2` | `88,46` | `184,9` |
+///
+/// ⭐⭐⭐ **Duas leituras, e a segunda é a que muda o desenho:**
+///
+/// 1. `2`/`2` com memória **ganha ao `4`/`2` de ontem em TODAS as colunas** —
+///    grade, as duas da fileira e os quatro braços — e custa **`−22 %`**. *Não é
+///    a troca que o dono recusou; é o contrário dela.*
+/// 2. ⛔ **`4` COM memória é PIOR que `2` com memória**, e mais caro: com uma
+///    semente já coerente, varrer mais é **sobre-relaxar** — o campo afasta-se
+///    da retícula que a malha de facto tem para servir uma média mais larga.
+///
+/// ⭐⭐ **E a memória baixa a DISPERSÃO entre rumos**, que é uma coluna de
+/// qualidade por si: `grade ±0,17` contra `±0,31`, `4 braços ±0,72` contra
+/// `±1,98`. *O resultado deixa de depender tanto da direcção em que o artista
+/// risca.*
+///
+/// ⚠️ **O que a alternância `2` continua a comprar** está na linha `2`/`1`: ela
+/// é `23 %` mais barata e paga `1,4` pontos de quatro braços — a troca de
+/// ligação continua a ser metade do trabalho ([`ALTERNANCIAS`]).
+pub(crate) const RONDAS_DA_GRELHA: usize = 2;
 
 /// ⭐⭐⭐ **Quantas vezes a retícula e a troca de ligação se ALTERNAM.**
 ///
@@ -112,16 +154,24 @@ pub(crate) const RONDAS_DA_GRELHA: usize = 4;
 /// | **semear o relax nos MOVIDOS** | ⛔ `−5 %` a `−11 %` por `1,2` pontos — a retícula move quase toda a pegada |
 /// | ⭐ **`ALTERNANCIAS` `2 → 1`** | **`−26 %`** (`212 → 158 ms` no traço), por `0,7` pontos de regularidade e `fil90 70,8 → 68,5` |
 ///
-/// ⏳ **E o que daria um MÚLTIPLO está nomeado e é wave própria: carregar o
-/// campo de posição ENTRE dabs.** Hoje ele é re-derivado do zero em cada dab
-/// (a semente é a posição do vértice), e é por isso que o conjunto activo deu
-/// zero; com ele guardado por-vértice a convergência seria de `~1` varredura em
-/// vez de `4`. ⭐ A maquinaria existe — o `SculptStroke` já carrega dados
-/// por-vértice através do `grow_with`/`shrink_with`.
+/// # ⭐⭐⭐⭐ E A SOBREVIVENTE NÃO FOI TOMADA — o dono escolheu a outra saída
 ///
-/// ⚠️ **A troca do `2 → 1` NÃO foi tomada por mim:** ela desfaz parte do que o
-/// dono aprovou (*«melhorou»*, na configuração `4`/`2`), e escolher entre a
-/// qualidade que ele viu e a velocidade de que se queixou **é decisão dele**.
+/// A troca do `2 → 1` foi-lhe posta com o preço ao lado (ela desfaz parte do que
+/// ele aprovara), e a resposta foi ***«quero o melhor possível, o padrão
+/// ouro»***. ⇒ **ela fica RECUSADA**, e o que shipou foi a última linha desta
+/// tabela: **carregar o campo de posição ENTRE dabs**.
+///
+/// ⭐ A nota dizia que a memória valeria *«`~1` varredura em vez de `4`»* e a
+/// medição deu-lhe razão pela metade que importa: o produto corre hoje **`2`**
+/// varreduras ([`RONDAS_DA_GRELHA`]) e entrega **mais** qualidade em todas as
+/// colunas por **`−22 %`** de relógio. ⛔ *A sobrevivente teria custado
+/// qualidade para comprar `26 %`; a memória compra `22 %` e ainda paga
+/// qualidade de volta.*
+///
+/// ⚠️ **E a 3.ª recusa desta tabela — o «conjunto activo» a `0 %`** — era o
+/// mesmo defeito visto do lado errado: com a semente a ser a posição do vértice
+/// a 1.ª varredura move toda a gente, logo não há quem saltar. *A cura não era
+/// saltar trabalho: era não deitar fora a resposta do carimbo anterior.*
 pub(crate) const ALTERNANCIAS: usize = 2;
 
 /// O lado da célula, em aresta média da pegada.

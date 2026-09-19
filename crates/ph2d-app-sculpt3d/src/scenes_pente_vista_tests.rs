@@ -534,5 +534,8 @@ fn a_vista_da_grade_nao_pisca() {
     );
 }
 
+#[path = "scenes_pente_memoria_tests.rs"]
+mod memoria;
+
 #[path = "scenes_pente_relogio_tests.rs"]
 mod relogio;

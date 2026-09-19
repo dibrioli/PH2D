@@ -224,110 +224,6 @@ fn cruz(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
     ]
 }
 
-/// **O CAMPO DE ORIENTAÇÃO da mancha, semeado pelo TRAÇO.**
-///
-/// Cada vértice nasce com a direcção do traço projectada no plano tangente
-/// dele, e a suavização 4-RoSy torna o campo **consistente** sobre a curvatura
-/// — que é o trabalho que a projecção sozinha não faz: dois vértices vizinhos
-/// com normais diferentes recebem tangentes que, comparadas, podem estar a 90°
-/// uma da outra sem que nada esteja errado, e é a compatibilização extrínseca
-/// que escolhe o representante certo de cada uma.
-///
-/// ⚠️ **A franja é semeada como o miolo e depois PREGADA.** Ela é a direcção
-/// que o artista pediu, não a que a superfície tinha — o dab IMPÕE, e a
-/// atenuação do pincel é que decide quanto do que o campo diz chega ao barro.
-///
-/// ⛔ **Direcção nula devolve o campo VAZIO**, nunca um eixo inventado: é a
-/// mesma degenerescência que o `ph2d_rake::pentear` declara — com menos de dois
-/// carimbos não há direcção, e não há lei que dizer.
-#[must_use]
-pub fn orientacao_semeada(m: &Mancha, direccao: [f32; 3], iteracoes: usize) -> Vec<[f32; 3]> {
-    if m.is_empty() || norm(direccao) <= 0.0 {
-        return Vec::new();
-    }
-    let mut dirs: Vec<[f32; 3]> = m
-        .nrm
-        .iter()
-        .map(|&n| crate::orientation::project_tangent(direccao, n))
-        .collect();
-    debug_assert_eq!(dirs.len(), m.len());
-    crate::orientation::smooth_on_fixed(&mut dirs, &m.nrm, &m.adj, &m.fronteira, iteracoes);
-    dirs
-}
-
-/// ⭐⭐⭐ **O CAMPO DE POSIÇÃO da mancha — a RETÍCULA de lado `passo`.**
-///
-/// Devolve, para cada vértice, **o ponto da grelha quadrada onde ele devia
-/// estar**: uma retícula de lado `passo` alinhada com [`orientacao_semeada`],
-/// consensual entre vizinhos, e reduzida ao ponto mais perto do vértice.
-///
-/// # Porque esta é a classe certa e a troca de diagonais não era
-///
-/// Trocar diagonais escolhe **que vértices se ligam**; ela não tem como dizer
-/// *«e a que distância»*. Uma retícula diz as duas coisas de uma vez — o
-/// alinhamento e o espaçamento **igual nas duas direcções** são a mesma
-/// construção —, e é por isso que ela não compra uma à custa da outra.
-///
-/// # ⚠️ O deslocamento é TANGENCIAL e LIMITADO, e as duas coisas são por
-/// construção
-///
-/// A `position_round_4` monta o ponto a partir de `q` e `n×q`, que são tangentes
-/// ao vértice, e devolve o **mais perto** da posição dele ⇒ o alvo vive no plano
-/// tangente e nunca está a mais de meia diagonal (`0,71 · passo`). *A malha
-/// desliza; ela não incha nem encolhe.*
-///
-/// ⛔ **`dirs` tem de ser o campo desta mancha** (mesmo comprimento). Com
-/// `passo` não positivo, ou sem campo, devolve vazio — não há retícula que
-/// dizer.
-#[must_use]
-pub fn posicao_da_mancha(
-    m: &Mancha,
-    dirs: &[[f32; 3]],
-    passo: f32,
-    iteracoes: usize,
-) -> Vec<[f32; 3]> {
-    posicao_da_mancha_com(m, dirs, passo, iteracoes, false)
-}
-
-/// A mesma, com a **SEMENTE** por parâmetro — a variável que a sonda do arame
-/// varre. `false` é o que a referência faz (cada vértice é a própria origem).
-#[must_use]
-pub fn posicao_da_mancha_com(
-    m: &Mancha,
-    dirs: &[[f32; 3]],
-    passo: f32,
-    iteracoes: usize,
-    semente_unica: bool,
-) -> Vec<[f32; 3]> {
-    if m.is_empty() || dirs.len() != m.len() || passo.partial_cmp(&0.0) != Some(Ordering::Greater) {
-        return Vec::new();
-    }
-    let escalas = vec![passo; m.len()];
-    // ⚠️ **A SEMENTE decide a COERÊNCIA**, e é ela que a sonda varre: com cada
-    // vértice a nascer como a própria origem, a suavização só faz consenso
-    // LOCAL; com uma origem só, a mancha inteira partilha uma retícula.
-    let mut pos = if semente_unica {
-        let n = m.len() as f32;
-        let c = m.pos.iter().fold([0.0f32; 3], |a, p| {
-            [a[0] + p[0] / n, a[1] + p[1] / n, a[2] + p[2] / n]
-        });
-        vec![c; m.len()]
-    } else {
-        m.pos.clone()
-    };
-    crate::position::smooth_on_fixed(
-        &mut pos,
-        &m.pos,
-        &m.nrm,
-        dirs,
-        &escalas,
-        &m.adj,
-        &m.fronteira,
-        iteracoes,
-    );
-    pos
-}
-
 /// **O LADO DA RETÍCULA que a própria pegada pede** — a aresta média dela.
 ///
 /// ⭐ Ele sai da MALHA e não de um slider, pela mesma razão que o alvo do dab
@@ -477,6 +373,46 @@ pub fn arruma_na_grelha_por(
     campos: Campos,
     movidos: &mut Vec<u32>,
 ) -> usize {
+    arruma_na_grelha_lembrando(
+        mesh, centro, raio, direccao, peso, iteracoes, k_passo, campos, None, movidos,
+    )
+}
+
+/// ⭐⭐⭐⭐ **A MESMA, com a MEMÓRIA DO TRAÇO** — a fase que atravessa os dabs.
+///
+/// É a porta mais funda, e a única que o produto chama. As quatro irmãs acima
+/// delegam-lhe com `memoria = None`.
+///
+/// # O que a memória muda, e o que não
+///
+/// - **Muda a SEMENTE do campo de posição** e mais nada: os dois campos correm
+///   as mesmas varreduras, a cerca é a mesma, o Jacobi é o mesmo.
+/// - ⛔ **Com `None`, ou com uma memória vazia, o caminho é BYTE-IDÊNTICO** ao
+///   que esta função fazia antes de ela existir (a semente cai em `m.pos`).
+///   *É essa propriedade que faz a memória ser uma alavanca e não um segundo
+///   produto* — e há gate.
+/// - ⚠️ **Ela só é escrita pelo MIOLO**, e só quando a lei de facto resolveu a
+///   mancha ([`CampoDoTraco::guarda`]).
+///
+/// ⚠️ **A memória tem de descrever a MALHA DE AGORA.** Quem a guarda entre dabs
+/// passa-lhe as duas portas do tamanho ([`CampoDoTraco::cresceu`] /
+/// [`CampoDoTraco::encolheu`]) pelos mesmos canais que o traço já usa. Aqui ela
+/// é acomodada por [`CampoDoTraco::acomoda`], que **cresce sem inventar** e
+/// **esquece** se a malha tiver encolhido sem a renumeração ter chegado — a
+/// única leitura honesta de uma memória que já não sabe de quem fala.
+#[allow(clippy::too_many_arguments)]
+pub fn arruma_na_grelha_lembrando(
+    mesh: &mut Mesh,
+    centro: [f32; 3],
+    raio: f32,
+    direccao: [f32; 3],
+    peso: &(dyn Fn([f32; 3]) -> f32 + Sync),
+    iteracoes: usize,
+    k_passo: f32,
+    campos: Campos,
+    memoria: Option<&mut CampoDoTraco>,
+    movidos: &mut Vec<u32>,
+) -> usize {
     movidos.clear();
     if raio <= 0.0 || norm(direccao) <= 0.0 {
         return 0;
@@ -514,10 +450,46 @@ pub fn arruma_na_grelha_por(
     if m.miolo() == 0 || passo.partial_cmp(&0.0) != Some(Ordering::Greater) {
         return 0;
     }
-    let (_dirs, grelha) = match campos {
+    // ⚠️ **A memória é acomodada ANTES de ser lida**, e o tamanho que ela tem de
+    // descrever é o da malha DE AGORA — depois do colapso e do refino deste
+    // dab, que correm antes desta chamada no passe do produto.
+    let mut memoria = memoria;
+    if let Some(mem) = &mut memoria {
+        mem.acomoda(mesh.vert_count());
+    }
+    let (dirs, grelha) = match campos {
         Campos::UmNivel { semente_unica } => {
-            let dirs = orientacao_semeada(&m, direccao, iteracoes);
-            let g = posicao_da_mancha_com(&m, &dirs, passo, iteracoes, semente_unica);
+            // ⭐ **A ORIENTAÇÃO também pode vir do carimbo anterior**, e quando
+            // vem ela entra pela MESMA porta — o que a memória troca é a
+            // semente, nunca a lei.
+            let dirs = match memoria
+                .as_deref()
+                .and_then(|mem| mem.semente_da_orientacao(&m, direccao))
+            {
+                Some(mut d) => {
+                    crate::orientation::smooth_on_fixed(
+                        &mut d,
+                        &m.nrm,
+                        &m.adj,
+                        &m.fronteira,
+                        iteracoes,
+                    );
+                    d
+                }
+                None => orientacao_semeada(&m, direccao, iteracoes),
+            };
+            // ⭐⭐⭐ **A SEMENTE VEM DO CARIMBO ANTERIOR quando há memória**, e é
+            // aqui que a fase atravessa o traço. A `semente_unica` continua a
+            // ser a variável da sonda do arame, e a memória ganha dela: quando
+            // as duas estão armadas, a memória fala por quem já foi resolvido e
+            // o centroide por quem nunca foi.
+            let g = match memoria.as_deref() {
+                Some(mem) if !mem.is_empty() => {
+                    let s = mem.semente(&m, &dirs, passo);
+                    posicao_da_mancha_de(&m, &dirs, passo, iteracoes, &s)
+                }
+                _ => posicao_da_mancha_com(&m, &dirs, passo, iteracoes, semente_unica),
+            };
             (dirs, g)
         }
         Campos::PorNiveis { mais_grosso } => {
@@ -526,6 +498,13 @@ pub fn arruma_na_grelha_por(
     };
     if grelha.len() != m.len() {
         return 0;
+    }
+    // ⚠️ **Guarda-se o que a lei resolveu, e não o que o barro fez com ele:** o
+    // vértice anda `peso` do caminho até ao nó (e a cerca pode vetá-lo), mas o
+    // **nó** é a resposta do campo e é ele que o carimbo seguinte quer ouvir.
+    // *Guardar a posição final faria a memória medir a atenuação do pincel.*
+    if let Some(mem) = &mut memoria {
+        mem.guarda(&m, &dirs, &grelha);
     }
 
     // ⭐⭐⭐ **JACOBI, e a cerca da FORMA no meio.** Primeiro decide-se tudo
@@ -575,6 +554,18 @@ fn norm(a: [f32; 3]) -> f32 {
 mod cerca;
 
 use cerca::veta_combinado;
+
+#[path = "regiao_campos.rs"]
+mod campos_da_mancha;
+
+pub use campos_da_mancha::{
+    orientacao_semeada, posicao_da_mancha, posicao_da_mancha_com, posicao_da_mancha_de,
+};
+
+#[path = "regiao_memoria.rs"]
+mod memoria;
+
+pub use memoria::CampoDoTraco;
 
 #[path = "regiao_niveis.rs"]
 mod niveis;

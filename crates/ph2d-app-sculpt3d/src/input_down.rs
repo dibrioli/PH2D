@@ -303,6 +303,12 @@ pub fn pointer_down(
             // velha, isso é um pânico no primeiro dab.
             scene.aim(pos.0, pos.1);
             scene.stroke.begin(scene.objects[scene.active].stack.mesh());
+            // ⭐⭐ **A MEMÓRIA DO PENTE MORRE AQUI, e ela morre com o `begin` de
+            // propósito:** as duas são indexadas pelo id de vértice da peça
+            // ACTIVA, logo a mesma linha que redimensiona o traço na malha certa
+            // é a que impede a fase da retícula de atravessar um traço — ou,
+            // pior, de atravessar uma PEÇA.
+            scene.pente_campo.esquece();
             // A queixa do passe de topologia é UMA POR TRAÇO — ver
             // [`super::cena::Sculpt3dScene::dyn_queixa_dita`].
             scene.dyn_queixa_dita = false;

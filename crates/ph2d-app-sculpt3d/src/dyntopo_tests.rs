@@ -520,6 +520,9 @@ fn passe_com_pente(alvo: f32, centro: [f32; 3], raio: f32, pente: Option<([f32; 
             direccao,
             forca,
             queda: ph2d_sculpt3d::Falloff::Smooth,
+            // UM dab: com a memória vazia o caminho é o mesmo ao bit, e é isso
+            // que este gate afirma sobre a lei nua.
+            campo: None,
         }),
     );
     if malha.vert_count() != referencia.vert_count() {

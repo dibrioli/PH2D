@@ -286,15 +286,23 @@ impl Sculpt3dScene {
         // como no deslocamento, porque as duas metades leem a **mesma** porta.
         let forca = crate::space::pente_do_traco(self.dyntopo.armed, self.brush.pente);
         let direccao = self.stroke.direccao_do_traco(centre);
-        let pente = (forca > 0.0 && verbo.honra_o_pente()).then_some(Pente {
-            direccao,
-            forca,
-            queda: self.brush.falloff,
-        });
+        let liga_o_pente = forca > 0.0 && verbo.honra_o_pente();
         let mut births = std::mem::take(&mut self.dyn_births);
         let mut remap = std::mem::take(&mut self.dyn_remap);
+        // ⭐⭐⭐⭐ **A MEMÓRIA DO PENTE é TOMADA e devolvida**, como os três
+        // rascunhos ao lado — e por uma razão a mais: ela é emprestada `&mut`
+        // ao mesmo tempo que a malha, que vive noutro campo desta struct.
+        // *Tomar é o que torna as duas metades independentes sem depender de o
+        // empréstimo por campo continuar a resolver.*
+        let mut campo = std::mem::take(&mut self.pente_campo);
         let mesh = self.objects[self.active].stack.mesh_mut();
         let mut region = std::mem::take(&mut self.dyn_region);
+        let pente = liga_o_pente.then_some(Pente {
+            direccao,
+            forca,
+            queda: brush.falloff,
+            campo: Some(&mut campo),
+        });
         // ⚠️ **O COLAPSO PRIMEIRO, e a ordem é a do canal.** As duas metades
         // falam com o traço em voo por canais diferentes — o colapso por uma
         // RENUMERAÇÃO, o refino por uma lista de NASCIMENTOS —, e o segundo
@@ -332,12 +340,18 @@ impl Sculpt3dScene {
             pente,
         );
         self.dyn_region = region;
+        self.pente_campo = campo;
         if cut {
             // ⚠️ **Antes do `grow_with`, sempre.** Ele afirma que a malha cresceu
             // exactamente o número de nascimentos que chegaram, e a conta é
             // contra `slot.len()` — que ainda descreve a malha de antes do
             // colapso enquanto ninguém aplicar o remap.
             self.stroke.shrink_with(&remap);
+            // ⛔ **A MESMA renumeração, na MESMA linha que a do traço.** Saltá-la
+            // não deixa a memória incompleta: deixa-a a MENTIR — a âncora de um
+            // vértice morto passaria a descrever quem ocupou a casa dele, e a
+            // fase viajava para o sítio errado **em silêncio**.
+            self.pente_campo.encolheu(&remap);
         }
         self.dyn_remap = remap;
         if done {
@@ -348,6 +362,10 @@ impl Sculpt3dScene {
             // traço duas vezes (a agulha).
             let mesh = self.objects[self.active].stack.mesh();
             self.stroke.grow_with(mesh, &births);
+            // ⚠️ **E o vértice novo HERDA a âncora de um pai, nunca a média das
+            // duas** — o ponto médio de dois nós de uma retícula não é um nó
+            // dela. Ver [`ph2d_quadflow::regiao::CampoDoTraco::cresceu`].
+            self.pente_campo.cresceu(mesh, &births);
         }
         self.dyn_births = births;
         if !done && !cut && !arrumou {
@@ -447,14 +465,25 @@ pub(crate) struct Rascunho<'a> {
 /// alvo (`cos 0,971`) e **não produz grade nenhuma** (`Q +0,0000`); quem produz
 /// a grade é o passe de topologia a receber um alvo de aresta que depende da
 /// DIRECÇÃO da aresta.
-#[derive(Clone, Copy)]
-pub(crate) struct Pente {
+pub(crate) struct Pente<'a> {
     pub(crate) direccao: [f32; 3],
     pub(crate) forca: f32,
     /// A queda do pincel — a **NUA**, sem a dureza, pela mesma razão que o
     /// deslocamento já escrevia: a dureza é do VERBO em mãos e mudaria o
     /// alcance de uma coisa que não é do verbo.
     pub(crate) queda: ph2d_sculpt3d::Falloff,
+    /// ⭐⭐⭐⭐ **O QUE O PENTE LEMBRA DO CARIMBO ANTERIOR** — a fase da retícula.
+    ///
+    /// ⚠️ **É por isto que o `Pente` deixou de ser `Copy`**, e a troca é a lei:
+    /// *o pente carrega o que o pente lembra*. Pô-la no [`Rascunho`] tê-la-ia
+    /// posto ao lado de três buffers que são **rascunho** — reusados por
+    /// conveniência e sem significado entre dabs —, e ela é o contrário disso:
+    /// **estado do gesto**, com dono no pen-down e duas portas de tamanho.
+    ///
+    /// ⛔ `None` devolve o caminho de antes desta wave, **ao bit** — é o que os
+    /// controlos das sondas usam. Ver
+    /// [`ph2d_quadflow::regiao::CampoDoTraco`].
+    pub(crate) campo: Option<&'a mut ph2d_quadflow::regiao::CampoDoTraco>,
 }
 
 #[path = "dyntopo_numeros.rs"]
@@ -463,44 +492,29 @@ mod numeros;
 pub(crate) use numeros::{ALTERNANCIAS, LADO_DA_CELULA, RONDAS_DA_GRELHA};
 
 #[cfg(test)]
-thread_local! {
-    pub(crate) static RONDAS_DO_TESTE: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
-    pub(crate) static ALTERNANCIAS_DO_TESTE: std::cell::Cell<usize> =
-        const { std::cell::Cell::new(0) };
-    pub(crate) static RAIO_DO_TESTE: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
-}
+#[path = "dyntopo_interruptores.rs"]
+mod interruptores;
 
-fn rondas_da_grelha() -> usize {
-    #[cfg(test)]
-    {
-        let n = RONDAS_DO_TESTE.with(std::cell::Cell::get);
-        if n > 0 {
-            return n;
-        }
-    }
-    RONDAS_DA_GRELHA
-}
+#[cfg(test)]
+pub(crate) use interruptores::{
+    ALTERNANCIAS_DO_TESTE, ANEIS_NO_TESTE, ORIENTACAO_NO_TESTE, RAIO_DO_TESTE, RONDAS_DO_TESTE,
+    SEM_MEMORIA_NO_TESTE, campo_do_teste,
+};
 
-fn raio_do_pente() -> f32 {
-    #[cfg(test)]
-    {
-        let r = RAIO_DO_TESTE.with(std::cell::Cell::get);
-        if r > 0.0 {
-            return r;
-        }
-    }
-    1.0
-}
+use interruptores::{alternancias, raio_do_pente, rondas_da_grelha};
 
-fn alternancias() -> usize {
-    #[cfg(test)]
-    {
-        let n = ALTERNANCIAS_DO_TESTE.with(std::cell::Cell::get);
-        if n > 0 {
-            return n;
-        }
+#[cfg(not(test))]
+mod interruptores {
+    //! Em produção as três portas devolvem as constantes medidas, **ao bit**.
+    pub(super) fn rondas_da_grelha() -> usize {
+        super::RONDAS_DA_GRELHA
     }
-    ALTERNANCIAS
+    pub(super) fn raio_do_pente() -> f32 {
+        1.0
+    }
+    pub(super) fn alternancias() -> usize {
+        super::ALTERNANCIAS
+    }
 }
 
 pub(crate) fn passe_nos_motores(
@@ -510,7 +524,7 @@ pub(crate) fn passe_nos_motores(
     centre: [f32; 3],
     radius: f32,
     rascunho: Rascunho<'_>,
-    pente: Option<Pente>,
+    pente: Option<Pente<'_>>,
 ) -> (bool, bool, bool) {
     let Rascunho {
         remap,
@@ -524,11 +538,21 @@ pub(crate) fn passe_nos_motores(
     // emendar era a que o pente desligado percorre, ou seja a de fábrica.
     let mut arrumou = false;
     if let Some(p) = pente {
+        // ⚠️ **Destruturado, e não lido por campo:** a atenuação é um fecho que
+        // captura a força e a curva, e a memória é emprestada `&mut` na mesma
+        // expressão — sem separar os campos, o empréstimo do fecho e o da
+        // memória colidem sobre o mesmo `p`.
+        let Pente {
+            direccao,
+            forca,
+            queda: curva,
+            mut campo,
+        } = p;
         let mut andaram = Vec::new();
         let queda = |q: [f32; 3]| {
             let d = [q[0] - centre[0], q[1] - centre[1], q[2] - centre[2]];
             let r = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
-            p.forca * p.queda.weight(r / radius.max(f32::MIN_POSITIVE))
+            forca * curva.weight(r / radius.max(f32::MIN_POSITIVE))
         };
         // ⭐⭐⭐⭐ **DUAS leis que se ALTERNAM, e elas são complementares:** a
         // retícula move vértices e **nunca muda quem se liga a quem**; o relax
@@ -541,14 +565,18 @@ pub(crate) fn passe_nos_motores(
         let (rondas, alternancias) = (rondas_da_grelha(), alternancias());
         let por_vez = (rondas / alternancias).max(1);
         for _ in 0..alternancias {
-            if ph2d_quadflow::regiao::arruma_na_grelha_com(
+            if ph2d_quadflow::regiao::arruma_na_grelha_lembrando(
                 mesh,
                 centre,
                 radius * raio_do_pente(),
-                p.direccao,
+                direccao,
                 &queda,
                 por_vez,
                 LADO_DA_CELULA,
+                ph2d_quadflow::regiao::Campos::UmNivel {
+                    semente_unica: false,
+                },
+                campo.as_deref_mut(),
                 &mut andaram,
             ) > 0
             {

@@ -571,3 +571,6 @@ fn uma_lasca_que_ja_la_estava_nao_prende_o_vertice() {
         "o vertice ficou preso por uma lasca que ele proprio nao criou"
     );
 }
+
+#[path = "regiao_memoria_tests.rs"]
+mod memoria;

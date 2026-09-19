@@ -83,12 +83,21 @@ fn the_refinement_is_off_by_default_and_the_guard_is_the_first_question() {
     // abaixo de `5°`.
     // *Um gate que continuasse a nomear os antigos ficaria verde a medir
     // chamadas que já não existem.*
+    //
+    // ⭐⭐⭐⭐ **E a agulha da retícula MUDOU de nome em 21/09, com a premissa à
+    // vista no diff:** ela dizia `arruma_na_grelha_com(`, que é a porta **sem
+    // memória**. O pente passou a carregar a fase da retícula entre carimbos
+    // ([`ph2d_quadflow::regiao::CampoDoTraco`]) e a porta do produto é a
+    // `arruma_na_grelha_lembrando(`. ⚠️ *Este gate reprovou no dia da troca, que
+    // é exactamente para o que ele existe* — se ele tivesse ficado verde, o
+    // produto teria mudado de lei com a fiação declarada por escrito a apontar
+    // para outra função.
     let porta_body = function_body(&src, "passe_nos_motores");
     for motor in [
         "refine_in_sphere_sized(",
         "collapse_in_sphere_com(",
         "Guarda::ETambemAForma",
-        "arruma_na_grelha_com(",
+        "arruma_na_grelha_lembrando(",
     ] {
         assert!(
             porta_body.contains(motor),

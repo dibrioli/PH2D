@@ -3777,3 +3777,187 @@ isenção. **Portão `16 451/16 451`**, clippy zero. ⚠️ A vermelha da corrid
 - a vista mostra quadrados também fora da grade — é o preço medido do
   emparelhamento, e a alternativa (a regra mútua) está na tabela;
 - o botão nasce **DESLIGADO** e o melhor está no **topo** do slider.
+
+## §90 — ⛔⛔⛔ «ALGORITMO MAIS LENTO QUE O MODO PADRÃO»: a caça ao relógio, cinco tentativas e UMA sobrevivente
+
+**Report do dono (21/09):** *«algoritmo mais lento que o modo padrão. tem que
+otimizar»*. Ele tem razão e há número: medido pela **porta do produto** na peça
+da cena, o passe de topologia custa **`0,559 ms` por dab sem pente e `7,893`
+com** — `99 %` do orçamento de `8 ms` do carimbo, que é literalmente o artista a
+ver a mão a atrasar-se.
+
+⚠️⚠️ **DUAS medidas da mesma grandeza discordam neste handoff, e a discordância
+é o achado:** o §90 original registou `0,104 ms` sem pente, e a sonda desta wave
+lê `0,559` com o **mínimo de vinte e cinco** corridas (logo **não** é
+contaminação de carga — o mínimo de cinco lê `0,571`). ⇒ *elas respondem a
+perguntas diferentes*: aquela mede **UM dab** sobre uma malha já no alvo, esta a
+**média por dab ao longo do traço de 24**, onde o refino ainda tem trabalho nos
+primeiros. **A régua desta wave é a segunda**, porque é a que descreve o que o
+artista sente. ⭐ E o controlo de que o mínimo é robusto onde a grandeza é grande
+é a linha do pente: ela reproduz `7,69`–`7,89 ms` em corridas de `load 15` a
+`load 35`.
+
+**O perfil**, por alternância (pegada `626`):
+`mancha 0,330` · `orientação 0,553` · **`posição 2,797`** · `relax 1,442`.
+
+| tentativa | resultado |
+|---|---|
+| **pentear a cada `N` dabs** | ⛔ `fil50` `38,8 → 18,8` só a saltar UM — *a qualidade vem da ACUMULAÇÃO ao longo do traço, e saltar dabs é fazer MENOS trabalho, não o mesmo trabalho mais barato* |
+| **içar as 16 quinas** do miolo do campo (16 avaliações onde bastam 4+4) | ⛔ **`1 %`** — o compilador já o fazia |
+| **conjunto activo** nas varreduras (saltar quem não mudou) | ⛔ **`0 %`** — a semente do campo é a POSIÇÃO do vértice, logo a 1.ª varredura move toda a gente |
+| **encolher a pegada** do pente (`0,9` · `0,8` · `0,7` do raio) | ⛔ a qualidade cai **proporcionalmente** (`−29 %` de relógio por `−4,9` pontos) |
+| **semear o relax nos MOVIDOS** | ⛔ `−5 %` a `−11 %` por `1,2` pontos — a retícula move quase toda a pegada |
+| ⭐ **`ALTERNANCIAS` `2 → 1`** | **`−26 %`**, por `0,7` pontos de regularidade e `fil90 70,8 → 68,5` |
+
+⚠️ **A sobrevivente foi posta ao DONO com o preço ao lado e NÃO foi tomada por
+mim:** ela desfaz parte do que ele aprovara duas mensagens antes (*«melhorou»*,
+na configuração `4`/`2`), e escolher entre a qualidade que ele viu e a
+velocidade de que se queixa é decisão DELE.
+
+⭐⭐⭐ **E a 3.ª recusa é a mais importante das cinco, porque ela aponta para a
+cura:** *«o conjunto activo deu `0 %` porque a 1.ª varredura move toda a gente»*
+é a mesma frase que *«o campo é re-derivado do ZERO a cada carimbo»*. A cura não
+era saltar trabalho — era **não deitar fora a resposta do carimbo anterior**.
+
+## §91 — ⭐⭐⭐⭐ «QUERO O MELHOR POSSÍVEL, O PADRÃO OURO»: a MEMÓRIA DO TRAÇO inverte a troca
+
+**Ordem do dono (21/09)**, em resposta à sobrevivente do §90: ***«quero o melhor
+possível, o padrão ouro»***. ⇒ a troca fica **RECUSADA**, e o que shipou foi a
+obra que o §90 deixou nomeada.
+
+### §91.1 — O mecanismo: as duas sementes têm qualidade OPOSTA
+
+| campo | semente | coerência | custo/alternância |
+|---|---|---|---|
+| orientação | a direcção do traço projectada em cada normal | **global por construção** (é UMA direcção do mundo) | `0,553 ms` |
+| posição | **a própria posição de cada vértice** | **a pior possível** — cada vértice declara-se a origem da sua retícula | **`2,797 ms`** |
+
+⇒ *o campo de orientação chega quase resolvido e o de posição recomeça do zero a
+cada carimbo* — e é por isso que a memória é **só do de posição**: não é uma
+escolha de economia, é onde a informação de facto falta.
+
+A obra é [`ph2d_quadflow::regiao::CampoDoTraco`]: o **nó de retícula** de cada
+vértice sobrevive ao carimbo, e a **franja** — que está **PREGADA** e é a
+condição de fronteira dos dois campos — passa a impor ao dab seguinte a retícula
+que a zona já penteada tem. *É a «fase que um pincel pode REPETIR» que o §86
+nomeou como o que a hierarquia não dá.*
+
+### §91.2 — ⛔⛔⛔ A 1.ª redacção PIOROU o produto, e a causa é a COSTURA DA FRENTE
+
+Semeando só quem lembra e deixando o resto na própria posição, a medida foi
+`fil50` **`38,8 → 29,0`** — *mais cadeias e mais curtas*, exactamente a coluna
+que a memória existia para subir.
+
+⭐⭐⭐ **A pegada ANDA:** a cada carimbo o crescente da frente é território
+virgem e o resto vem lembrado ⇒ havia uma **descontinuidade de fase desenhada ao
+longo da testa do traço**, que é precisamente onde as fileiras novas se formam.
+*Sem memória nenhuma não havia costura porque TODA a mancha nascia em fase zero:
+uma semente uniformemente má não tem costura; uma semente boa pela metade tem.*
+
+⇒ a memória **TRANSBORDA** `N` anéis para o território virgem, e a escada dela é
+medida (`2`/`2`, oito rumos):
+
+| anéis | grade % | fil p90 | 4 braços % |
+|---|---|---|---|
+| `0` (a 1.ª redacção) | `65,02` | `71,0` | `90,97` |
+| `1` | `65,24` | `69,2` | `92,41` |
+| **`2`** (shipa) | **`65,91`** | **`71,9`** | **`95,38`** |
+| `3` | `65,65` | `71,0` | `94,83` |
+| `4` | `65,85` | `71,5` | `95,15` |
+
+### §91.3 — O placar, e as DUAS leituras dele
+
+Pela porta do produto, **oito rumos** (os quatro do gate mais os intermédios),
+com a dispersão entre rumos ao lado:
+
+| | grade % | vinco p90 | fil p50 | fil p90 | 4 braços % | ms/traço |
+|---|---|---|---|---|---|---|
+| **CONTROLO** `4`/`2` s/memória (o que shipava) | `65,36±0,31` | `2,679` | `35,1±12,0` | `70,9±2,1` | `92,74±1,98` | `207,8` |
+| **`2`/`2` c/memória (SHIPA)** | **`65,91±0,17`** | `2,733` | **`50,4±10,0`** | **`71,9±1,1`** | **`95,38±0,72`** | **`161,4`** |
+| `4`/`2` c/memória | `65,63±0,35` | `2,755` | `42,1±18,0` | `71,6±2,0` | `95,28±0,95` | `238,7` |
+| `2`/`1` c/memória | `65,35±0,33` | `2,730` | `43,4±18,7` | `71,0±1,7` | `93,94±1,04` | `124,8` |
+| `2`/`2` s/memória | `64,64` | `2,708` | `16,5` | `57,2` | `88,46` | `184,9` |
+
+1. **`2`/`2` com memória ganha ao `4`/`2` de ontem em TODAS as colunas** e custa
+   **`−22 %`** no traço · **`−24,6 %` por dab** (`7,893 → 5,949 ms` no mínimo de
+   25, ou seja de `99 %` do orçamento do carimbo para **`74 %`**). *Não é a troca
+   que o dono recusou: é o contrário dela.*
+2. ⛔ **`4` COM memória é PIOR que `2` com memória, e mais caro**: com uma
+   semente já coerente, varrer mais é **SOBRE-RELAXAR** — o campo afasta-se da
+   retícula que a malha de facto tem para servir uma média mais larga.
+
+⭐⭐ **E a memória baixa a DISPERSÃO entre rumos**, que é uma coluna de qualidade
+por si: `grade ±0,17` contra `±0,31`, `4 braços ±0,72` contra `±1,98` —
+*o resultado deixa de depender tanto da direcção em que o artista risca.*
+
+### §91.4 — ⛔ A orientação lembrada foi construída, medida e RECUSADA
+
+| orientação | grade % | fil p90 | 4 braços % | ms/traço |
+|---|---|---|---|---|
+| **nasce do traço** (shipa) | **`65,91`** | **`71,9`** | **`95,38`** | **`161,4`** |
+| lembrada | `65,74` | `71,9` | `94,98` | `176,4` |
+
+Ela **paga `9 %` de relógio para entregar menos**, e a razão é a da §91.1: não há
+fase por lembrar num campo cuja semente já é globalmente coerente. ⚠️ **E há uma
+segunda razão, de produto:** a semente da orientação é *a direcção que o artista
+pediu* — **o dab IMPÕE** —, e é ela que faz o pente acompanhar uma pincelada que
+CURVA. Lembrá-la poria o pente a resistir à mão. *A lei fica viva e alcançável
+(`CampoDoTraco::lembra_orientacao`), com a sonda a exercitá-la.*
+
+### §91.5 — As armadilhas que esta wave pagou
+
+⛔⛔⛔ **(a) `guarda` era um NO-OP SILENCIOSO numa memória por dimensionar.** O
+produto entra pela porta que a acomoda antes, logo ali estava certo; uma sonda
+que chamasse a lei directamente guardava **ZERO**, e o lado *«com memória»* dela
+media o lado *«sem»* — que foi o que a 1.ª corrida do gate do mecanismo leu
+(`0,1029` contra `0,1029`). *Um no-op silencioso numa porta de ESCRITA lê-se como
+uma medição.*
+
+⛔⛔⛔ **(b) A tradução de um colapso é uma CADEIA, e o gate escreveu-a plana.**
+Ele reprovou com `a ancora de 6049 nao seguiu para 5958` sobre uma implementação
+**CERTA**: o plano é uma **sequência** — `(11→10)`, `(10→9)` quer dizer que quem
+começou em `11` acaba em `9`, passando por um endereço que não é dele. É a mesma
+lei que o §27 desta linha já tinha pago na pegada congelada do polegar, e ela
+mordeu outra vez do lado do instrumento.
+
+⛔⛔⛔ **(c) A régua da FASE media a grandeza errada, e a 1.ª versão dela lia
+`95,7 %` dos dois lados.** Comparar o nó de um vértice entre dois carimbos é
+dominado por *«o vértice não se moveu muito»*, porque
+[`crate::position::position_round_4`] devolve sempre o nó mais perto **dele**.
+⇒ a régua do mecanismo mudou-se para onde a grandeza existe: o **PRODUTO**
+(fileira e quatro braços, pela porta do traço), com o controlo dentro.
+
+⛔⛔⛔ **(d) TRÊS mutações sobreviveram ao gate de comportamento, e a razão é uma
+REDE.** Apagar `pente_campo.encolheu(&remap)` do produto deixava tudo verde,
+porque o `CampoDoTraco::acomoda` **esquece** quando a malha encolheu sem a
+renumeração chegar — *a rede torna o produto robusto e torna o defeito
+INOBSERVÁVEL no barro*, a mesma forma do §25 (*«um recorte que desiste em
+silêncio não recorta nada»*). ⚠️ E a 1.ª tentativa de gate **não podia**
+apanhá-las: ela montava o laço do traço à mão e chamava as três portas ela
+própria — *um gate que reconstrói a fiação afirma que as leis existem, nunca que
+o produto as usa*, que é a frase do §24 desta linha, violada por mim outra vez.
+⇒ **censo DERIVADO** do ficheiro que declara a fiação
+(`as_duas_portas_do_tamanho_viajam_com_as_do_traco`): cada porta de tamanho do
+`SculptStroke` tem de ter a irmã da memória ao lado.
+
+⚠️ **(e) `grep -cF` conta LINHAS e não OCORRÊNCIAS** — o arnês da mutação leu
+*«a agulha casou 2 vezes»* sobre agulhas multilinha únicas, e passou a contar a
+string inteira por `python3`. Ele também **acusa `running 0 tests`** como defeito
+do arnês, que é o controlo sobre o próprio filtro.
+
+### §91.6 — O que fica ABERTO, com o número
+
+- ⏳ **O relax é agora METADE do custo** (`1,442 ms` por alternância, `2,88` dos
+  `5,95` por dab). As duas curas óbvias estão **medidas e recusadas** (semear nos
+  movidos: `−5 %` a `−11 %` por `1,2` pontos; a troca só no fim: `fil50
+  38,8 → 27,5`) ⇒ quem quiser o degrau seguinte ataca **a troca de ligação**, não
+  o campo.
+- ⏳ **Duas mutações NOMEADAS e não-sangrantes**, as duas com o número: a
+  re-quantização da semente ao passo de agora (`4 braços 95,34` contra `95,38`) e
+  a franja não gravar memória (`95,05` contra `95,38`). As duas ficam por serem
+  a leitura **CONSERVADORA**, e o corpus não as discrimina.
+- ⚠️ **As leituras de relógio desta wave correram entre `load 12` e `load 66`** —
+  a peça que as valida é que o pente de ontem **reproduz `7,69`–`7,89 ms/dab`**
+  em corridas de carga muito diferente. *As razões entre linhas da MESMA corrida
+  valem; os absolutos de grandeza pequena pedem máquina calma, e é por isso que
+  a linha «sem pente» é a única deste handoff com a discordância nomeada.*

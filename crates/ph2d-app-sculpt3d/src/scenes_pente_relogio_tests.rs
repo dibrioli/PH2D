@@ -98,6 +98,9 @@ fn diag_quanto_de_cada_dab_e_trabalho_novo() {
                 direccao,
                 forca: 1.0,
                 queda: brush.falloff,
+                // Esta sonda mede o trabalho que cada dab AINDA tem pela frente,
+                // antes de o passe correr; a memória não entra na conta.
+                campo: None,
             }),
         );
         if cut {

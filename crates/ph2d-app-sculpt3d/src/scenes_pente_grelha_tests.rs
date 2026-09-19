@@ -315,6 +315,8 @@ fn diag_o_custo_do_dab_com_pente() {
                         direccao: [raio * 0.15, 0.0, 0.0],
                         forca: knob,
                         queda: brush.falloff,
+                        // UM dab: com a memória vazia o caminho é o mesmo ao bit.
+                        campo: None,
                     }),
                 );
                 melhor = melhor.min(t.elapsed().as_secs_f64() * 1000.0);

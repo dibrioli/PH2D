@@ -1000,3 +1000,52 @@ medido por um não medido. A correcção é renormalizada, e ⭐ **reescalar por
 | ⏳ o campo na cena + o painel | custa um degrau de `PROJECT_SCHEMA`; ⭐ o `OpenPbr` **não é serializado**, e é por isso que a lei nasceu onde nasceu — **zero** contadores partilhados nesta wave |
 | ⏳ o gémeo em **WGSL** | a paridade de `100,000 %` exige-o; ⛔ mas construí-lo para uma lei ainda **não aprovada** seria a ordem errada, e com o botão a `0` o dispositivo e a CPU concordam por construção |
 | ⏳ o piso `max(mfp, 0.1)` | a §17.7 mediu-o inerte abaixo de um quarto do raio da peça — **nomeado e não curado** |
+
+---
+
+## §19 — ⭐⭐⭐ «SS Anisotropy está morto?» — não: são CINCO, e é uma PARTIÇÃO
+
+Pergunta do dono, 2026-09-18, depois de aprovar o smoke da `=34`.
+
+⛔ **Responder a UM botão por leitura de código deixaria os outros trinta e dois por perguntar** — e
+a caça de 2026-08-30 achou `34` controlos mortos sobre ~`504`. ⇒ a resposta é um **censo**
+([`censo_dos_knobs_do_material_tests`](../../crates/ph2d-app-field3d/src/censo_dos_knobs_do_material_tests.rs)):
+para cada campo do material, o mesmo material com **duas** posições do botão, comparado **ao bit**,
+nos **dois** caminhos.
+
+### §19.1 — A tabela
+
+| botão | `Solid` | `Thin Walled` | porquê |
+|---|---|---|---|
+| **`subsurface_anisotropy`** | ⛔ **morto** | vivo | a fase só entra nos dois factores da parede fina |
+| **`subsurface_radius`** | vivo | ⛔ **morto** | a parede fina **não sabe nada sobre a forma da peça** |
+| **`subsurface_scale_r/g/b`** | vivo | ⛔ **morto** | idem — sem profundidade, não há distância por canal |
+| base · especular · verniz (`0`–`18`) | vivo | vivo | |
+| `subsurface_weight` · a cor (`23`–`26`) | vivo | vivo | |
+| emissão (`19`–`22`) | — | — | ⚠️ **fora do alcance deste censo** (ele mede a luz de uma LÂMPADA; a emissão sai por porta própria) |
+
+⭐ **As duas metades são o PORTE FIEL:** a parede fina é a lambertiana do lado de lá — ela não tem
+profundidade, logo um caminho livre médio não lhe diz nada; e a maciça integra um perfil
+**isotrópico**, logo uma fase não lhe diz nada. ⇒ o gate **FIXA** a partição em vez de a curar.
+
+### §19.2 — ⚠️⚠️ Mas as cinco SÃO controlos mortos, e a cura é de PRODUTO
+
+*«o painel escreve onde · quem lê · o leitor DECIDE, ou entrega a alguém que descarta?»*
+(`CLAUDE.md` §5.0). **O painel mostra a UNIÃO e a lei lê uma PARTIÇÃO** ⇒ em qualquer dos dois modos
+há fileiras que o barro não sente. É a mesma forma do `Strength` do `Density` na família do
+esculpir, e a cura é a mesma: **esconder**, ou **pintar desactivado com a razão à vista**.
+
+⏳ **Decisão do dono**, e as duas saídas estão medidas — ⛔ o que não se pode é deixar como está, que
+é um painel a prometer cinco coisas que o modo em mãos não lê.
+
+### §19.3 — ⭐ O que o censo tem para não mentir
+
+| cerca | o defeito que ela impede |
+|---|---|
+| material de base com **tudo armado** | *um botão cujo dono está desligado mede-se morto sem o ser* — a forma mais barata de fabricar dívida |
+| `subsurface_weight` a **meio** e não a `1` | com `1` a difusa desaparece e metade dos botões da base lê-se morta |
+| varrer `0,25`/`0,75` e não `0`/`1` | *um par degenerado mede a AUSÊNCIA do ramo em vez do botão* |
+| **piso** (`vivos·2 > total`) | um arnês partido faria a tabela inteira ler `MORTO`, e isso leria-se como um achado enorme |
+| **controlo positivo nomeado** | a cor da base tem de acusar nos dois caminhos |
+| o que fica **de fora**, nomeado | a emissão e o céu saem por portas próprias — *um morto nesta tabela pode viver numa delas* |
+| os índices com o **nome conferido** | se a tabela do documento se mexer, o gate reprova a dizer isso, em vez de medir outro campo |

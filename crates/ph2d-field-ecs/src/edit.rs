@@ -19,6 +19,17 @@ mod params;
 #[path = "edit_params_write.rs"]
 mod params_write;
 pub use params_write::{dims_of, set_dim, set_param};
+
+/// ⭐ **A chave i18n de um campo de material**, DERIVADA da mesma tabela que o painel pinta.
+///
+/// ⚠️ Ela existe para um CENSO poder nomear o que mede sem escrever uma segunda lista — e uma
+/// segunda lista ao lado desta é exactamente o que o doc do [`ph2d_field::MATERIAL_FIELDS`] proíbe
+/// por escrito. ⛔ Fora da faixa devolve `None` em vez de entrar em pânico: quem varre `0..N` com o
+/// `N` errado tem de ver um buraco, não um estouro.
+#[must_use]
+pub fn material_key(field: u8) -> Option<&'static str> {
+    params::MATERIAL_KEYS.get(field as usize).copied()
+}
 #[path = "edit_pose.rs"]
 mod pose;
 #[path = "edit_tree.rs"]

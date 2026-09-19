@@ -159,3 +159,8 @@ mod render_bounce_vaso_tests;
 /// ⭐ A régua do TERMINADOR — o report de 18/09 sobre a linha dura no `Thin Walled: Solid`.
 #[cfg(test)]
 mod subsuperficie_terminador_tests;
+
+/// ⭐⭐⭐ O CENSO dos botões do material — *«qual deles chega a um consumidor, e em que caminho»*
+/// (pergunta do dono, 18/09: *«SS Anisotropy está morto?»*).
+#[cfg(test)]
+mod censo_dos_knobs_do_material_tests;

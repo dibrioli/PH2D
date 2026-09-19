@@ -143,6 +143,8 @@ pub mod hud_edits;
 pub mod particles_edits;
 /// ⭐⭐⭐ **O vocabulário do MOVER DE VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
 pub mod projectile_edits;
+/// ⭐⭐⭐ **O vocabulário do RAIO** (suplente #21) — ver o cabeçalho dele.
+pub mod ray_edits;
 /// ⭐⭐⭐ **O vocabulário do SCRIPT DO ARTISTA** (TOP-20 #16) — o sexto degrau da mesma migração.
 pub mod script_edits;
 pub mod sequence_edits;

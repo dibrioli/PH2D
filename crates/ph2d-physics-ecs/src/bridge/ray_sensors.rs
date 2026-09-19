@@ -70,7 +70,12 @@ impl PhysicsBridge {
                 };
                 // ⭐ **Os dois vectores são LOCAIS**, logo a pose roda-os — é isso que faz a mira de
                 // uma torreta seguir a torreta sem uma segunda lei.
-                let (s, c) = ang.sin_cos();
+                // ⚠️⚠️ **`libm` e nunca o `std`** — este código corre no caminho do `physics_ecs_c9`,
+                // e a libc de cada SO devolve o último ulp do seno diferente: o hash partiria entre
+                // as três plataformas, e **só o CI o mediria**. O gate
+                // `no_std_transcendental_reaches_the_deterministic_hash` apanhou-o na primeira
+                // corrida desta wave, com o ficheiro e a linha.
+                let (s, c) = (libm::sinf(ang), libm::cosf(ang));
                 let gira = |v: ph2d_core::Vec2| [v.x * c - v.y * s, v.x * s + v.y * c];
                 let o = gira(r.origin);
                 let d = gira(r.dir);

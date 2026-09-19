@@ -73,18 +73,39 @@ marcador, não matéria*). ⇒ **nenhum parâmetro novo na porta**, e a decisão
 
 - **Contrato congelado (§6):** ⛔ nenhum. `Tool`, `NodeOp` e a superfície do vector ficam intactos —
   isto é um componente de ECS e uma fase do quadro.
-- **`PROJECT_SCHEMA`:** **+1** (tipo novo gravado). O postcard é posicional.
-- **Registos:** `ph2d-physics-ecs` **+1**; ⛔ os **dois espelhos não se mexem** (eles contam
+- **`PROJECT_SCHEMA`:** **+1** *quando o registo entrar* — ⚠️ **DOIS tipos e UM degrau**: o número
+  mede o que o FICHEIRO passa a conter, não quantos tipos nasceram (a lei do degrau `130`).
+- **Registos:** `ph2d-physics-ecs` **+2**; ⛔ os **dois espelhos não se mexem** (eles contam
   `ecs + render` e `ecs + script`) — a lição que o #13 pagou e o plano dele escreveu errado.
+
+### §3.1 — ⛔⛔⛔ O REGISTO ESPERA PELA UI, e a decisão tem endereço
+
+O gate [`every_registered_physics_component_has_a_ui_writer`](../../shells/desktop/tests/it/every_physics_component_is_authorable.rs)
+**reprovou no instante** em que os dois componentes entraram no `register_physics_components`, e a
+mensagem dele oferece duas saídas: *«ou dê a ele uma row na §11 (e um arm em `apply_physics_edit`),
+ou **não o registre ainda**»*.
+
+⇒ **A wave da LEI fechou e a da UI não**, logo o registo, o degrau de schema e as entradas do
+catálogo **ficam para a W4**. ⚠️ *Registar agora seria pior do que esperar, e a razão não é gosto:*
+com o registo o componente entra no `.ph2dproj` e no `Ctrl+Z`, e o artista que o anexasse pelo `+`
+ficaria com quatro números que **nenhuma row deixa mexer**, gravados para sempre no ficheiro dele —
+o **órfão** que a DIRETIVA §2 proíbe, e que funciona em toda cena de smoke porque as cenas
+constroem com código.
+
+⭐ **O que a W4 herda pronto:** o vocabulário do painel
+([`ph2d_editor_core::ray_edits`](../../crates/ph2d-editor-core/src/ray_edits.rs)) já existe, com o
+instantâneo, as oito edições e a **porta da queixa** — as quatro razões pelas quais um raio pode não
+fazer o que o artista espera, *da mais específica para a mais geral*, com dois gates e sem um device
+à vista.
 
 ## §4 — As waves
 
 | # | o que fecha | a prova |
 |---|---|---|
-| **W1** | o componente + a lei (uma fase que lança um raio por sensor e diz o que ele viu) | gates de unidade sobre ordem · métrica · direcção |
-| **W2** | os sinais de entrar e sair, com a cerca de tag | o diff de um tique, e o CONTROLO (sem tag, cala-se) |
-| **W3** | rebobinar RENASCE — o mapa do bridge entra no `rebuild_from_rest` | ⚠️ a família que o smoke do #14 expôs por report |
-| **W4** | a secção do Inspector, com o que ele vê AGORA | gate de costura (clique REAL) |
+| ✅ **W1** | o componente + a lei (uma fase que lança um raio por sensor e diz o que ele viu) | gates de unidade sobre ordem · métrica · direcção |
+| ✅ **W2** | os sinais de entrar e sair, com a cerca de tag | o diff de um tique, e o CONTROLO (sem tag, cala-se) |
+| ✅ **W3** | rebobinar RENASCE — o mapa do bridge entra no `rebuild_from_rest` | ⚠️ a família que o smoke do #14 expôs por report |
+| ⏳ **W4** | a secção do Inspector **+ o registo + o degrau de schema + o catálogo** (§3.1) | gate de costura (clique REAL) |
 | **W5** | o desenho no canvas | o gate que mede a LINHA, não a contagem |
 | **W6** | a cena `PH2D_RAY_SMOKE=1` + o roteiro | ⚠️ e o censo de teclas de 19/09 já o vigia |
 

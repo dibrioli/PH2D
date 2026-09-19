@@ -587,12 +587,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // razão nova: ela mede o `FlipDoc` e a `VecScene`, e quem mudou foi um blob de COMPONENTE.
         // *É a primeira vez em onze waves desta linha que nem a tripla nem o registo o veem* — quem
         // o vê é o `signal_actions_tests`, que fixa os bytes do v128 reescrito.
-        // ⭐ **PROJECT 149→150** (2026-09-19): O RAIO (suplente #21) — **DOIS** componentes novos no
-        // registo (`RaySensor` e `RaySignals`) e **UM** degrau, porque o número mede o que o
-        // FICHEIRO passa a conter e não quantos tipos nasceram (a lei do degrau `130`, que valeu
-        // `+1` para três). ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA PRIMEIRA vez, e pela razão
-        // de sempre: os componentes viajam em `ComponentBlob`s, que para ela são opacos.
-        (150, 13, 22),
+        (149, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

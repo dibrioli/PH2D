@@ -165,12 +165,22 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     // ⭐ O filtro por TAG (TOP-20 #9, W3c). ⚠️ Sem o registo, o artista calibra uma armadilha,
     // grava, reabre — e ela passa a gritar com tudo, em silêncio.
     reg.register_default::<SignalTagFilter>("ph2d::physics::SignalTagFilter");
-    // ⭐⭐⭐ O RAIO persistente (suplente #21). ⚠️ **Os dois custam UM degrau de `PROJECT_SCHEMA`**,
-    // e não zero: um `ComponentBlob` de `type_id` desconhecido **recusa o load inteiro**, e o degrau
-    // é o que transforma isso em «este ficheiro é de outra versão» em vez de «type id desconhecido»
-    // a meio da travessia (a lei dos degraus 123, 125, 126, 127, 130, 131 e 132).
-    reg.register_default::<RaySensor>("ph2d::physics::RaySensor");
-    reg.register_default::<RaySignals>("ph2d::physics::RaySignals");
+    // ⛔⛔⛔ **O RAIO (suplente #21) NÃO se regista ainda, e a ausência é uma DECISÃO com endereço.**
+    //
+    // O gate `every_registered_physics_component_has_a_ui_writer` reprovou no instante em que os
+    // dois entraram aqui, e a mensagem dele oferece duas saídas: *«ou dê a ele uma row na §11 (e um
+    // arm em `apply_physics_edit`), ou NÃO O REGISTRE AINDA»*. A wave da LEI fechou (a fase, as
+    // arestas, o rebobinar, 9 gates verdes); a da UI não — e um componente registado sem UI é o
+    // **órfão que a DIRETIVA §2 proíbe**: ele funciona em toda cena de smoke, que constrói com
+    // código, e é inalcançável no produto.
+    //
+    // ⚠️ **Registar agora seria pior do que esperar**, e a razão não é gosto: com o registo, o
+    // componente entra no `.ph2dproj` e no `Ctrl+Z` — e o artista que o anexasse pelo `+` ficaria
+    // com quatro números que **nenhuma row deixa mexer**, gravados para sempre no ficheiro dele.
+    //
+    // ⇒ a wave da UI acrescenta estas duas linhas, o degrau de `PROJECT_SCHEMA` (**+1**, DOIS tipos
+    // e um degrau — a lei do `130`), a contagem deste gate (`35 → 37`) e as entradas do catálogo.
+    // O vocabulário do painel já existe e está gateado: [`ph2d_editor_core::ray_edits`].
     reg.register_default::<InitialVelocity>("ph2d::physics::InitialVelocity");
     reg.register_default::<Ccd>("ph2d::physics::Ccd");
     reg.register_default::<LockRotation>("ph2d::physics::LockRotation");
@@ -221,13 +231,10 @@ mod tests {
         // `main` desta linha passa a ser **+2**. Quem integrar conta o DELTA, nunca o literal.
         // ⭐ **+1 outra vez (TOP-20 #14, o `ProjectileMotion`)** ⇒ `34 -> 35`, e o delta contra o
         // `main` passa a **+3**.
-        // ⭐ **+2 (suplente #21, o RAIO: `RaySensor` e `RaySignals`)** ⇒ `35 -> 37`, e o delta
-        // contra o `main` passa a **+5**. ⚠️ **Dois tipos e UM degrau de `PROJECT_SCHEMA`** — os
-        // dois números medem coisas diferentes: este conta TIPOS registados, aquele conta o que o
-        // FICHEIRO passa a poder conter.
-        assert_eq!(reg.len(), 37);
-        assert!(reg.get_by_name("ph2d::physics::RaySensor").is_some());
-        assert!(reg.get_by_name("ph2d::physics::RaySignals").is_some());
+        // ⛔ **E o RAIO (suplente #21) NÃO está aqui de propósito** — ver a decisão escrita no
+        // `register_physics_components`: a lei dele fechou, a UI não, e um componente registado sem
+        // UI é um órfão. A wave da UI põe `35 -> 37`.
+        assert_eq!(reg.len(), 35);
         assert!(reg.get_by_name("ph2d::physics::SignalTagFilter").is_some());
         assert!(reg.get_by_name("ph2d::physics::TopDownPlayer").is_some());
         assert!(reg.get_by_name("ph2d::physics::ProjectileMotion").is_some());

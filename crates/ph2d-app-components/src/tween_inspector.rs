@@ -47,15 +47,23 @@ pub fn build_tween_info(
                 modo: modo_tag(t.easing.mode),
                 ao_acabar: t.ao_acabar.tag(),
                 ciclo: t.ciclo.tag(),
-                duracao_us: relogios
-                    .as_ref()
-                    .and_then(|ts| ts.0.get(i))
-                    .map(|t| t.duration_us),
+                duracao_us: relogio(relogios, i).map(|t| t.duration_us),
+                repeat: relogio(relogios, i).is_some_and(|t| t.repeat),
+                autostart: relogio(relogios, i).is_some_and(|t| t.autostart),
             })
             .collect(),
         tem_sprite,
         selected_count,
     })
+}
+
+/// ⭐ **O relógio do índice `i`** — a porta que a lei do módulo exige (*o tween `i` corre no timer
+/// `i`*), lida pelas TRÊS colunas do relógio.
+///
+/// ⚠️ **Escrita três vezes, ela seria três oportunidades de uma delas ler `first()`** — que é
+/// exactamente a mutação que a W7 pôs a sangrar.
+fn relogio(timers: Option<&Timers>, i: usize) -> Option<&ph2d_ecs::Timer> {
+    timers.and_then(|ts| ts.0.get(i))
 }
 
 /// ⚠️ **A tag de uma família é a POSIÇÃO no `ALL` dela**, e a tradução vive aqui e em mais lado
@@ -95,6 +103,25 @@ pub fn apply_tween_edit(world: &mut World, entity_bits: u64, edit: &TweenFieldEd
                 return false;
             }
             tweens.0.push(Tween::default());
+            // ⭐⭐⭐ **UM TWEEN NASCE COM RELÓGIO** — report do dono, 2026-09-19 (*«porque usar timer
+            // para isso?»*). Sem esta linha o segundo tween de um objecto nasce **INERTE e calado**,
+            // e o artista tem de descobrir sozinho que a cura vive noutra secção.
+            //
+            // ⚠️ **Só ACRESCENTA, e só até ao índice dele** (o `Timers` já existe: o descritor
+            // declara `requires`, logo a paleta trouxe-o com o `Tweens`). ⛔ E não toca num timer
+            // que já lá esteja — ele pode estar a servir uma cutscene, uma fábrica ou um sinal.
+            let precisa = tweens.0.len();
+            // ⚠️ **O `Tweens` fica LARGADO pela ordem das linhas, nunca por um `drop`** — um
+            // `Option<Mut<_>>` não tem destrutor, logo o empréstimo acaba na ÚLTIMA LEITURA (a
+            // linha acima) e o `drop` explícito é ruído que o clippy recusa (`drop_non_drop`). *A
+            // cerca é verificada pelo compilador, e não por um comentário.* É a mesma lei que o
+            // braço do preset, logo abaixo, já escreve.
+            if let Some(mut ts) = world.get_mut::<ph2d_ecs::Timers>(e)
+                && ts.0.len() < precisa
+                && ts.0.len() < ph2d_ecs::TIMERS_MAX
+            {
+                ts.0.push(ph2d_ecs::Timer::default());
+            }
             true
         }
         TweenFieldEdit::Remove(i) => {

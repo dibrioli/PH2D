@@ -373,13 +373,13 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
                  que ele espreme e estica fora de fase\n\
                  (3) role o painel da direita ate' ao FIM (o «Aparece» ja' esta' escolhido): a \
                  seccao TWEEN e' a ultima, e tem a lista; escolha a linha e veja o canal, o de/para \
-                 e a curva — e a linha «Duration … set in Timer N, above» diz QUANTO tempo ele leva \
-                 e ONDE se muda, porque o tempo e' do RELOGIO e nao do tween\n\
-                 (4) na seccao TIMER do mesmo objecto DESLIGUE o `Repeat`: o desvanecer acontece \
-                 UMA vez e FICA. Faca o mesmo no «Pisca» e ele acende uma vez e a ARTE VOLTA — e' a \
-                 diferenca entre `Hold` e `Rewind`, e ela nao se ve^ num laco\n\
-                 (5) na seccao TWEEN carregue em `Flash`: um clique escreve os cinco campos E a \
-                 duracao do relogio\n\
+                 e a curva. Logo abaixo dos presets esta' o RELOGIO dele — `Duration`, `Repeat` e \
+                 `Autostart` —, e a legenda diz qual dos timers e'\n\
+                 (4) ali mesmo, DESLIGUE o `Repeat`: o desvanecer acontece UMA vez e FICA. Faca o \
+                 mesmo no «Pisca» e ele acende uma vez e a ARTE VOLTA — e' a diferenca entre \
+                 `Hold` e `Rewind`, e ela nao se ve^ num laco\n\
+                 (5) carregue em `Flash`: um clique escreve os campos E a `Duration`, que muda a` \
+                 sua frente — e' a prova de que UM clique fez as duas coisas\n\
                  (5-bis) escolha o «Vai-e-volta» e na fileira `Cycle` carregue em `Restart`: ele \
                  passa a SALTAR de volta ao principio. `Ping-Pong` devolve o ir-e-voltar suave\n\
                  (6) carregue em `Pause` na barra de CIMA: tudo congela onde esta'. `Play` devolve\n\

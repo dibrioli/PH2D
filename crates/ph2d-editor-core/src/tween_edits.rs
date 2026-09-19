@@ -34,6 +34,11 @@ pub struct InspectorTweenRow {
     /// `tem_relogio` a secção sabia que o relógio existe e não sabia dizer quanto ele dura, e o
     /// artista tinha de o adivinhar noutra secção.
     pub duracao_us: Option<u64>,
+    /// O `repeat` do relógio deste índice. ⚠️ **Vem da CENA**, e é lido pelo pintor da caixa —
+    /// nunca do store, senão ela sobrevive à troca de objecto (a lei que a §11 pagou com um report).
+    pub repeat: bool,
+    /// O `autostart` do relógio deste índice — ver [`Self::repeat`].
+    pub autostart: bool,
 }
 
 /// O que o Inspector mostra da secção TWEEN.
@@ -152,6 +157,8 @@ mod tests {
             ao_acabar: ph2d_tween::AoAcabar::Hold.tag(),
             ciclo: ph2d_tween::Ciclo::Reinicia.tag(),
             duracao_us: Some(400_000),
+            repeat: true,
+            autostart: true,
         }
     }
 

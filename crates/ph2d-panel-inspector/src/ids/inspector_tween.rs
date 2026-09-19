@@ -103,6 +103,20 @@ pub const INSP_TWEEN_AO_ACABAR: [NodeId; 2] = [
     hash_node_id("insp_tween_ao_acabar_1"),
 ];
 
+/// ⭐⭐⭐ **O RELÓGIO do tween, DENTRO da secção dele** — a duração e os dois interruptores.
+///
+/// ⛔⛔ **Eles escrevem no MESMO sítio que a secção TIMERS**, pela mesma porta
+/// ([`TimerFieldEdit`](ph2d_editor_core::screens::hero::TimerFieldEdit)) e no timer do mesmo
+/// índice. *Não são uma segunda superfície sobre um valor — são dois CHAMADORES de uma porta*, que
+/// é o que o teclado e o menu do `project_io` já fazem para gravar.
+///
+/// ⚠️ **Report do dono, 2026-09-19:** *«por que não embutir na própria secção?»*.
+pub const INSP_TWEEN_DURACAO: NodeId = hash_node_id("insp_tween_duracao");
+/// O `Repeat` do relógio deste tween — ver [`INSP_TWEEN_DURACAO`].
+pub const INSP_TWEEN_REPEAT: NodeId = hash_node_id("insp_tween_repeat");
+/// O `Autostart` do relógio deste tween — ver [`INSP_TWEEN_DURACAO`].
+pub const INSP_TWEEN_AUTOSTART: NodeId = hash_node_id("insp_tween_autostart");
+
 /// ⭐⭐⭐ **O que ele faz DENTRO de um período** (`Restart` · `Ping-Pong`) — o pedido do dono de
 /// 2026-09-19, e a sonda do §5.0 mediu que a composição não o dava.
 pub const INSP_TWEEN_CICLO: [NodeId; 2] = [

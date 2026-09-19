@@ -28,6 +28,36 @@ use ph2d_editor_core::widget::TextInputState;
 const FAIXA: (f64, f64, f64) = (-50.0, 50.0, 0.05); // LITERAL-PX-OK: a união das unidades dos canais
 
 pub(crate) fn populate_tween(store: &mut WidgetStore) {
+    // ⭐⭐⭐ **O RELÓGIO do tween, dentro da secção dele** (report do dono, 19/09). ⛔ Estes três
+    // NÃO são chips: eles escrevem no `Timers` do mesmo índice, pela porta que a secção TIMERS já
+    // usa — ver [`crate::ids::INSP_TWEEN_DURACAO`].
+    for id in [ids::INSP_TWEEN_REPEAT, ids::INSP_TWEEN_AUTOSTART] {
+        store.register(
+            id,
+            InteractiveState::Checkbox {
+                state: ph2d_editor_core::widget::CheckboxState::Normal,
+                value: ph2d_editor_core::widget::CheckboxValue::Unchecked,
+            },
+        );
+    }
+    // ⚠️ **Um segundo, e não zero** — o default do [`ph2d_ecs::Timer`], e pela razão escrita lá:
+    // `0` é o valor que NÃO dispara, e um campo que nasce mudo lê-se como partido.
+    let segundos = 1.0_f64;
+    store.register(
+        ids::INSP_TWEEN_DURACAO,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: segundos,
+            buffer: ph2d_editor_core::widget::format_number(segundos),
+            caret: 0,
+            last_committed: segundos,
+            selection_anchor: None,
+        },
+    );
+    // ⚠️ **A MESMA faixa da secção TIMERS**, porque é o MESMO campo: uma hora, em segundos (o
+    // `ph2d_ecs::TIMER_MAX_US`). ⛔ O número é literal pela razão escrita no irmão — este painel
+    // não depende do `ph2d-ecs` —, e o gate da shell prende os dois.
+    store.set_number_range(ids::INSP_TWEEN_DURACAO, 0.0, 3600.0, 0.1); // LITERAL-PX-OK: faixa do motor, em segundos
     // ⚠️ **Os chips são BOTÕES** — sem registo eles pintam e morrem sob o dedo, que é exactamente o
     // defeito que os treze chips da escultura e as duas amostras do emissor pagaram.
     //

@@ -433,12 +433,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⭐ O CICLO — o que ele faz DENTRO de uma volta (`Restart` · `Ping-Pong`).
         "panel.inspector.tween.cycle" => "Cycle",
         "panel.inspector.tween.preset" => "Preset",
-        // ⭐⭐⭐ **A DURAÇÃO — a linha que responde «onde selecciono o tempo?»** (report do dono,
-        // 19/09). Ela NOMEIA o relógio pelo número do slot, porque com dois tweens o artista tem de
-        // saber a qual dos timers ir.
-        "panel.inspector.tween.duration_lives_in_timer" => {
-            "Duration {s} s — set in Timer {n}, above."
-        }
+        // ⭐⭐⭐ **O RELÓGIO, dentro da secção** (report do dono, 19/09: *«por que não embutir na
+        // própria secção?»*). ⚠️ A legenda NOMEIA o timer porque ele **não é privado deste tween** —
+        // o mesmo relógio pode estar a arrancar uma cutscene ou a publicar um sinal.
+        "panel.inspector.tween.clock_is_timer" => "Clock — Timer {n}, same as in Timers.",
+        "panel.inspector.tween.duration_seconds" => "Duration",
+        "panel.inspector.tween.repeat" => "Repeat",
+        "panel.inspector.tween.autostart" => "Autostart",
         // ⚠️ **As CINCO QUEIXAS, e as três primeiras dizem que ele nem CORRE** — dizer «ele não
         // move nada» a quem não tem relógio é mandá-lo resolver a metade errada.
         "panel.inspector.tween.no_timer_at_this_slot" => {

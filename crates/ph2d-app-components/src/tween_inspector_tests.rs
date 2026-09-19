@@ -405,3 +405,82 @@ fn um_preset_sem_relogio_escreve_o_que_pode() {
         Canal::Silhueta
     );
 }
+
+/// ⭐⭐⭐ **UM TWEEN NASCE COM RELÓGIO** — report do dono, 2026-09-19 (*«porque usar timer para
+/// isso?»*).
+///
+/// ⚠️ Sem esta lei o SEGUNDO tween de um objecto nasce **inerte e calado**, e o artista tem de
+/// descobrir sozinho que a cura vive noutra secção. *Um componente que nasce a não fazer nada
+/// lê-se como partido.*
+///
+/// ⛔ **E ele não toca num relógio que já lá esteja:** aquele timer pode estar a arrancar uma
+/// cutscene, a alimentar uma fábrica ou a publicar um sinal.
+///
+/// **Mutações que devem sangrar:** apagar o acréscimo · deixá-lo escrever por cima do timer `0`.
+#[test]
+fn um_tween_nasce_com_relogio() {
+    let (mut w, e) = mundo(1, 1, true);
+    let ent = Entity::from_bits(e);
+    // ⛔ O CONTROLO primeiro: um relógio JÁ AUTORADO, que a lei não pode tocar.
+    {
+        let mut ts = w.get_mut::<Timers>(ent).unwrap();
+        ts.0[0].duration_us = 7_000_000;
+        ts.0[0].name = "recarga".to_owned();
+    }
+    assert!(apply_tween_edit(&mut w, e, &TweenFieldEdit::Add));
+
+    let ts = w.get::<Timers>(ent).unwrap().clone();
+    assert_eq!(ts.0.len(), 2, "o tween novo nasceu SEM relogio");
+    assert_eq!(
+        ts.0[0].duration_us, 7_000_000,
+        "o acrescimo escreveu por cima de um relogio AUTORADO"
+    );
+    assert_eq!(ts.0[0].name, "recarga", "o acrescimo renomeou o vizinho");
+    // …e o tween novo deixa de se queixar de falta de relógio.
+    let i = build_tween_info(&w, e, 1).unwrap();
+    assert_eq!(
+        i.rows[1].duracao_us,
+        Some(ph2d_ecs::Timer::default().duration_us)
+    );
+
+    // ⚠️ **E ele só ACRESCENTA até ao índice de quem precisa:** um `Add` sobre um objecto que já
+    // tem relógios a mais não inventa um terceiro.
+    let (mut w, e) = mundo(1, 3, true);
+    apply_tween_edit(&mut w, e, &TweenFieldEdit::Add);
+    assert_eq!(
+        w.get::<Timers>(Entity::from_bits(e)).unwrap().0.len(),
+        3,
+        "o acrescimo criou um relogio que ninguem pediu"
+    );
+}
+
+/// ⭐⭐ **As duas colunas do relógio que o painel pinta vêm da CENA** — e do índice CERTO.
+///
+/// ⚠️ A fixtura põe o **segundo** relógio com valores diferentes do primeiro: *uma fixtura cujos
+/// dois elementos são iguais não testa um índice*, que é a lição que a prova de mutação da W6
+/// pagou com uma mutação sobrevivente.
+#[test]
+fn as_colunas_do_relogio_vem_do_indice_certo() {
+    let mut w = World::new();
+    let e = w
+        .spawn((
+            Tweens(vec![Tween::default(), Tween::default()]),
+            Timers(vec![
+                Timer {
+                    repeat: true,
+                    autostart: true,
+                    ..Timer::default()
+                },
+                Timer {
+                    repeat: false,
+                    autostart: false,
+                    ..Timer::default()
+                },
+            ]),
+        ))
+        .id()
+        .to_bits();
+    let i = build_tween_info(&w, e, 1).unwrap();
+    assert!(i.rows[0].repeat && i.rows[0].autostart);
+    assert!(!i.rows[1].repeat && !i.rows[1].autostart);
+}

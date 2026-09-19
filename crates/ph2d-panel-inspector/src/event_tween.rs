@@ -16,6 +16,7 @@
 use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::screens::hero::TimerFieldEdit;
 use ph2d_editor_core::tween_edits::TweenFieldEdit;
 
 /// Despacha um evento da secção TWEEN. `true` = consumido.
@@ -90,6 +91,29 @@ pub(crate) fn apply_tween_event(
         return false;
     }
 
+    // ⭐⭐⭐ **AS DUAS CAIXAS DO RELÓGIO** — elas escrevem no `Timers[i]`, pela porta que a secção
+    // TIMERS já usa.
+    //
+    // ⚠️⚠️ **Uma caixa emite `Toggled`, NUNCA `Click`**, e é o gate de costura que o diz: a 1.ª
+    // redacção pôs os dois braços dentro do ramo do clique e eles ficaram **inalcançáveis**, com o
+    // widget vivo sob o dedo e a suíte inteira verde. *Um controlo que responde ao evento errado
+    // lê-se exactamente como um controlo morto.*
+    //
+    // ⚠️ **O estado de partida vem do SNAPSHOT e não do store** — a lei desta secção inteira: ler o
+    // store faria o primeiro clique depois de trocar de objecto mandar o valor do objecto ANTERIOR.
+    if let WidgetEvent::Toggled(id) = ev
+        && let Some(r) = info.rows.get(aberto)
+    {
+        if id == crate::ids::INSP_TWEEN_REPEAT {
+            relogio(host, bits, TimerFieldEdit::Repeat(i, !r.repeat));
+            return true;
+        }
+        if id == crate::ids::INSP_TWEEN_AUTOSTART {
+            relogio(host, bits, TimerFieldEdit::Autostart(i, !r.autostart));
+            return true;
+        }
+    }
+
     if let WidgetEvent::ValueChanged(id) = ev {
         let v = host.store().number_value(id).unwrap_or(0.0);
         #[allow(clippy::cast_possible_truncation)]
@@ -110,8 +134,23 @@ pub(crate) fn apply_tween_event(
                 return true;
             }
         }
+        // ⭐⭐⭐ **A DURAÇÃO do relógio deste tween** — em SEGUNDOS, como a da secção TIMERS, e pela
+        // MESMA variante: quem satura no `TIMER_MAX_US` continua a ser a shell, num sítio só.
+        if id == crate::ids::INSP_TWEEN_DURACAO {
+            relogio(host, bits, TimerFieldEdit::DurationSecs(i, f));
+            return true;
+        }
     }
     false
+}
+
+/// ⭐⭐ **A segunda chamadora da porta do relógio** — a primeira é o [`crate::event_timer`].
+///
+/// ⛔ *Não* é uma segunda superfície sobre um valor: é a MESMA `TimerFieldEdit`, no MESMO índice, e
+/// o dreno da shell é um só. É a forma que o teclado e o menu do `project_io` já têm para gravar.
+fn relogio(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: TimerFieldEdit) {
+    host.bus_mut()
+        .push(EditorAction::InspectorTimerEdit { entity_bits, edit });
 }
 
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: TweenFieldEdit) {

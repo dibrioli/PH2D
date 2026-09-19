@@ -41,6 +41,9 @@ fn assinatura(info: &InspectorTweenInfo, aberto: usize) -> u64 {
         for v in r.de.iter().chain(r.para.iter()) {
             v.to_bits().hash(&mut h);
         }
+        // ⚠️ **A DURAÇÃO entra na assinatura** — sem ela, carregar num preset (que a reescreve)
+        // não re-semeava o campo, e o artista via o número ANTERIOR sobre um relógio já mudado.
+        r.duracao_us.hash(&mut h);
     }
     h.finish()
 }
@@ -79,6 +82,19 @@ pub(crate) fn sync(
                 continue; // a mão do artista ganha ao instantâneo
             }
             host.store_mut().set_number_value(id, f64::from(v));
+        }
+    }
+    // ⭐⭐⭐ **A DURAÇÃO do relógio, em SEGUNDOS** — a quinta vez que esta casa escreve esta linha,
+    // e a razão é sempre a mesma: *números plausíveis são a pior forma deste defeito*, porque não
+    // parecem partidos e quem escreve por cima de um grava o default nos outros.
+    //
+    // ⛔ **As duas CAIXAS não entram aqui:** elas leem o valor do SNAPSHOT dentro do pintor, como
+    // os chips — semeá-las seria a segunda resposta a *«está marcada?»*.
+    if let Some(us) = row.duracao_us {
+        let id = crate::ids::INSP_TWEEN_DURACAO;
+        if focus != Some(id) && drag != Some(id) {
+            #[allow(clippy::cast_precision_loss)]
+            host.store_mut().set_number_value(id, us as f64 / 1e6);
         }
     }
 }

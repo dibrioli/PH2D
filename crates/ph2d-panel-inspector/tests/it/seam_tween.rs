@@ -50,6 +50,8 @@ fn linha() -> InspectorTweenRow {
         ao_acabar: ph2d_tween::AoAcabar::Hold.tag(),
         ciclo: ph2d_tween::Ciclo::Reinicia.tag(),
         duracao_us: Some(400_000),
+        repeat: true,
+        autostart: true,
     }
 }
 
@@ -64,6 +66,17 @@ fn info() -> InspectorTweenInfo {
 
 /// Carrega no MEIO do chip e devolve o que foi ao barramento.
 fn clica(id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
+    dispara(
+        id,
+        |e, alvo| matches!(e, WidgetEvent::Click(c) if *c == alvo),
+    )
+}
+
+/// O gesto REAL, com a prova de que ele produziu o evento que aquele widget deve produzir.
+fn dispara(
+    id: ph2d_a11y::NodeId,
+    esperado: impl Fn(&WidgetEvent, ph2d_a11y::NodeId) -> bool,
+) -> Vec<EditorAction> {
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
     let mut state = InspectorState::default();
     set_current_inspector_tween(Some(info()));
@@ -75,11 +88,9 @@ fn clica(id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
         .unwrap_or_else(|| panic!("a secção TWEEN nunca pintou o chip {id:?}"));
     let events = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
     assert!(
-        events
-            .iter()
-            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
-        "clicar no meio de {id:?} produziu {events:?} — o chip e' pintado e hit-registado, mas o \
-         store nao o considera focalizavel: ele esta' MORTO SOB O DEDO"
+        events.iter().any(|e| esperado(e, id)),
+        "clicar no meio de {id:?} produziu {events:?} — ele e' pintado e hit-registado, mas nao \
+         produziu o evento que o despacho espera: esta' MORTO SOB O DEDO"
     );
     for ev in events {
         let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
@@ -168,8 +179,18 @@ fn todo_chip_da_seccao_tween_chega_ao_barramento_com_a_sua_tag() {
 fn toda_familia_de_chip_da_seccao_esta_varrida() {
     const POPULATE: &str = include_str!("../../src/populate_tween.rs");
     /// O que o `populate` regista e **não** é uma família de chip — cada um com a sua lei e o seu
-    /// gate: a lista, os dois blocos de campos numéricos e os dois botões da lista.
-    const NAO_SAO_CHIPS: [&str; 5] = ["ROW", "DE", "PARA", "ADD", "REMOVE"];
+    /// gate: a lista, os dois blocos de campos numéricos, os dois botões da lista e os TRÊS
+    /// controlos do RELÓGIO (que escrevem no `Timers`, por outra porta).
+    const NAO_SAO_CHIPS: [&str; 8] = [
+        "ROW",
+        "DE",
+        "PARA",
+        "ADD",
+        "REMOVE",
+        "DURACAO",
+        "REPEAT",
+        "AUTOSTART",
+    ];
 
     let mut familias: Vec<&str> = POPULATE
         .match_indices("ids::INSP_TWEEN_")
@@ -198,5 +219,150 @@ fn toda_familia_de_chip_da_seccao_esta_varrida() {
         "o `populate_tween` regista {} familias de chip ({familias:?}) e o gate acima varre 6 — \
          uma familia fora da varredura pode morrer sob o dedo sem nada reprovar",
         familias.len()
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// O RELÓGIO, dentro da secção (W9) — report do dono: *«por que não embutir na própria secção?»*.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Duas linhas, com o relógio da SEGUNDA **diferente** da primeira.
+///
+/// ⚠️⚠️ **É isto que torna os gates do relógio testes de ÍNDICE:** *uma fixtura com um elemento não
+/// pode testar um índice* — com uma linha só, `i` é `0` e a mutação *«manda o índice `0`»* é um
+/// no-op. A W6 desta linha já pagou esta lição com uma mutação SOBREVIVENTE, e a 1.ª redacção
+/// deste ficheiro voltou a pagá-la.
+fn duas_linhas() -> InspectorTweenInfo {
+    let mut segunda = linha();
+    segunda.repeat = false;
+    segunda.autostart = false;
+    segunda.duracao_us = Some(1_500_000);
+    InspectorTweenInfo {
+        entity_bits: ENTITY,
+        rows: vec![linha(), segunda],
+        tem_sprite: true,
+        selected_count: 1,
+    }
+}
+
+/// Abre a SEGUNDA linha da lista (pelo clique REAL nela) e devolve o anfitrião pronto.
+fn na_segunda_linha() -> (MockPanelHost, InspectorState) {
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_tween(Some(duas_linhas()));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let alvo = ids::INSP_TWEEN_ROW[1];
+    let r = rects
+        .iter()
+        .find(|(n, _)| *n == alvo)
+        .map(|(_, r)| *r)
+        .expect("a lista nunca pintou a segunda linha");
+    for ev in host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+        let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
+    }
+    let _ = host.drained_actions(); // a escolha da linha NÃO vai ao barramento
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    (host, state)
+}
+
+/// ⭐⭐⭐ **OS TRÊS CONTROLOS DO RELÓGIO CHEGAM AO BARRAMENTO — e pela porta dos TIMERS.**
+///
+/// ⛔⛔ **É isto que prova que não são uma segunda lei:** a edição que sai é uma
+/// [`TimerFieldEdit`] no `Timers` do MESMO índice — a mesma que a secção TIMERS emite. Quem satura
+/// no `TIMER_MAX_US`, quem recusa e quem grava continua a ser um só.
+///
+/// ⚠️⚠️ **A fixtura tem DUAS linhas e a aberta é a SEGUNDA** — ver [`duas_linhas`]. Com uma só, a
+/// mutação que manda o índice `0` seria um no-op, e o gate afirmaria menos do que promete.
+///
+/// **Mutações que devem sangrar:** tirar qualquer um dos três do despacho · mandar o índice `0`
+/// em vez do slot aberto · ler o estado da caixa do store em vez do instantâneo · pôr as caixas no
+/// evento errado (`Click` em vez de `Toggled`).
+#[test]
+fn os_tres_controlos_do_relogio_chegam_a_porta_dos_timers() {
+    use ph2d_editor_core::screens::hero::TimerFieldEdit;
+
+    // As duas CAIXAS: o clique inverte o que o INSTANTÂNEO diz — e a segunda linha tem-nas
+    // DESLIGADAS, logo o esperado é `true` (o contrário da primeira, que é o discriminador).
+    for (id, esperado, nome) in [
+        (
+            ids::INSP_TWEEN_REPEAT,
+            TimerFieldEdit::Repeat(1, true),
+            "repeat",
+        ),
+        (
+            ids::INSP_TWEEN_AUTOSTART,
+            TimerFieldEdit::Autostart(1, true),
+            "autostart",
+        ),
+    ] {
+        let (mut host, mut state) = na_segunda_linha();
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        let r = rects
+            .iter()
+            .find(|(n, _)| *n == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("a seccao nunca pintou a caixa «{nome}»"));
+        let evs = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Toggled(c) if *c == id)),
+            "a caixa «{nome}» nao produziu `Toggled`: {evs:?} — ela esta' MORTA SOB O DEDO"
+        );
+        for ev in evs {
+            let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
+        }
+        let acoes = host.drained_actions();
+        set_current_inspector_tween(None);
+        assert_eq!(
+            acoes,
+            [EditorAction::InspectorTimerEdit {
+                entity_bits: ENTITY,
+                edit: esperado,
+            }],
+            "a caixa «{nome}» do relogio nao chegou a` porta dos TIMERS com o INDICE da linha aberta"
+        );
+    }
+
+    // E a DURAÇÃO, que é um campo numérico: ela sai em SEGUNDOS, como a da secção irmã.
+    let (mut host, mut state) = na_segunda_linha();
+    host.set_number_value(ids::INSP_TWEEN_DURACAO, 2.5);
+    let _ = host.apply_panel_event::<InspectorPanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(ids::INSP_TWEEN_DURACAO),
+    );
+    let acoes = host.drained_actions();
+    set_current_inspector_tween(None);
+    assert_eq!(
+        acoes,
+        [EditorAction::InspectorTimerEdit {
+            entity_bits: ENTITY,
+            edit: TimerFieldEdit::DurationSecs(1, 2.5),
+        }],
+        "a duracao da seccao TWEEN nao chegou a` porta dos TIMERS com o INDICE da linha aberta"
+    );
+}
+
+/// ⭐⭐ **O campo mostra o número DO OBJECTO, e não o de fábrica** — a quinta vez que esta casa
+/// escreve este gate, e a razão é sempre a mesma.
+///
+/// ⚠️ **A fixtura difere do default do `Timer`** (`0,4 s` contra `1 s`), senão um campo semeado no
+/// ponto neutro passaria com a semente apagada — *um corpus no NEUTRO de um knob não testa esse
+/// knob*.
+///
+/// **Mutação que deve sangrar:** tirar o bloco da duração do `sync_tween`.
+#[test]
+fn o_campo_da_duracao_mostra_o_relogio_do_objecto() {
+    let (host, _state) = na_segunda_linha();
+    let lido = host
+        .store()
+        .number_value(ids::INSP_TWEEN_DURACAO)
+        .expect("o campo da duracao nem sequer esta' registado");
+    set_current_inspector_tween(None);
+    // ⚠️ **`1,5 s` é o relógio da SEGUNDA linha** — diferente do da primeira (`0,4`) e do default
+    //    do `populate` (`1,0`), logo ele discrimina as três leituras possíveis de uma vez.
+    assert!(
+        (lido - 1.5).abs() < 1.0e-6,
+        "o campo mostra {lido} s e o relogio da linha aberta tem 1,5 s — o painel esta' a mostrar \
+         o valor de FABRICA do `populate` (ou o da linha errada)"
     );
 }

@@ -157,6 +157,90 @@ fn grupo(
     cur_y + ph2d_tokens::control_gap_px()
 }
 
+/// ⭐⭐⭐ **O bloco do RELÓGIO** — a duração e os dois interruptores, dentro da secção do tween.
+/// Devolve o `y` seguinte.
+///
+/// ⛔⛔ **Eles escrevem no MESMO `Timers[i]` que a secção TIMERS, pela MESMA porta.** Não é uma
+/// segunda superfície sobre um valor (a armadilha que os três chips de `Detail` da escultura
+/// pagaram): é a porta com **dois chamadores**, como o teclado e o menu do `project_io`. Quem
+/// clampa, quem satura e quem recusa continua a ser um só.
+///
+/// ⚠️ **A legenda NOMEIA o timer** porque ele não é privado deste tween — ele pode estar a arrancar
+/// uma cutscene, a alimentar uma fábrica ou a publicar um sinal, e o artista tem de saber que é o
+/// mesmo objecto que vê na outra secção.
+#[allow(clippy::too_many_arguments)]
+fn relogio(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    row: &InspectorTweenRow,
+    slot: usize,
+) -> f32 {
+    let mut cur_y = warn(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        &tr_with(
+            "panel.inspector.tween.clock_is_timer",
+            &[("n", &(slot + 1))],
+        ),
+        ColorToken::Text3,
+    );
+    let sec = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[tr("panel.inspector.tween.duration_seconds")],
+    );
+    cur_y = super::rows::fields_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.tween.duration_seconds"),
+        &[crate::ids::INSP_TWEEN_DURACAO],
+        0.1, // LITERAL-PX-OK: passo de scrub em SEGUNDOS, como o da secção TIMERS
+        None,
+        sec,
+    );
+    // ⚠️ **O valor das caixas vem do SNAPSHOT**, nunca do store: ler dali faria a caixa sobreviver
+    // à troca de objecto — a lei que a §11 escreveu para o `Playing`.
+    ph2d_editor_core::property_row::paint_check_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        &[
+            (
+                crate::ids::INSP_TWEEN_REPEAT,
+                tr("panel.inspector.tween.repeat"),
+                row.repeat,
+            ),
+            (
+                crate::ids::INSP_TWEEN_AUTOSTART,
+                tr("panel.inspector.tween.autostart"),
+                row.autostart,
+            ),
+        ],
+        sec,
+    )
+}
+
 /// O editor do tween aberto. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn editor(
@@ -211,27 +295,24 @@ pub(super) fn editor(
         // componente não guarda, e ele mentiria no instante em que o artista afinasse um número.
         usize::MAX,
     );
-    // ⭐⭐⭐ **ONDE MORA O TEMPO** — ver o cabeçalho deste ficheiro.
+    // ⭐⭐⭐ **O RELÓGIO, AQUI** — ver o cabeçalho deste ficheiro.
     //
-    // ⚠️ **Vem DEPOIS dos presets de propósito:** eles reescrevem este número, e vê-lo mudar debaixo
-    // do botão é o que prova ao artista que UM clique fez as duas coisas. ⛔ E ele fica calado quando
-    // não há relógio, porque aí quem fala é a queixa — *duas frases sobre a mesma ausência ensinam
-    // que são dois problemas*.
-    if let Some(us) = row.duracao_us {
-        #[allow(clippy::cast_precision_loss)]
-        let segundos = format!("{:.2}", us as f64 / 1e6);
-        cur_y = warn(
+    // ⚠️ **Vem DEPOIS dos presets de propósito:** eles reescrevem a duração, e vê-la mudar debaixo
+    // do botão é o que prova ao artista que UM clique fez as duas coisas. ⛔ E o bloco inteiro
+    // desaparece quando não há relógio, porque aí quem fala é a queixa — *duas superfícies sobre a
+    // mesma ausência ensinam que são dois problemas*.
+    if row.duracao_us.is_some() {
+        cur_y = relogio(
             scene,
             text_system,
             theme,
+            hit_index,
+            store,
             x,
             w,
             cur_y,
-            &tr_with(
-                "panel.inspector.tween.duration_lives_in_timer",
-                &[("s", &segundos), ("n", &(slot + 1))],
-            ),
-            ColorToken::Text2,
+            row,
+            slot,
         );
     }
     let canal = Canal::from_tag(row.canal);

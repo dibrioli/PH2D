@@ -29,6 +29,12 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) game_camera: bool,
     /// ⭐ As duas cenas das TAGS (TOP-20 #9). `PH2D_TAGS_SMOKE=1|2`.
     pub(crate) tags: bool,
+    /// ⛔⛔ **Quantos quadros falta ainda trazer o Inspector à frente na cena das TAGS** — o irmão
+    /// exacto do [`Self::particles_raise`], e pela mesma razão medida. ⚠️ Ele existe porque o smoke
+    /// daquela cena mandava ler uma secção do Inspector **sobre um ecrã sem objecto escolhido**
+    /// (report do dono, 2026-09-19): sem selecção não há um único chip, e sem a subida o painel que
+    /// o `~/.ph2d/layout.txt` deixou aberto fica por cima.
+    pub(crate) tags_raise: u8,
     /// ⭐ A FÁBRICA e o CICLO DE VIDA (TOP-20 #11 e #12) — `PH2D_FACTORY_SMOKE`.
     pub(crate) factory: bool,
     /// ⭐ O MOVER DE VISTA DE CIMA (TOP-20 #13) — `PH2D_TOPDOWN_SMOKE=1|2`.

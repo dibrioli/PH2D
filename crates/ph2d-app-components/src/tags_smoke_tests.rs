@@ -14,7 +14,11 @@ fn monta(nivel: u32) -> (SimWorld, TagTree, Arvore) {
     let mut sim = SimWorld::new();
     match nivel {
         2 => cena_dois(sim.world_mut(), &a),
-        _ => cena_um(sim.world_mut(), &a),
+        // ⚠️ A `=1` devolve o SUJEITO que a cena escolhe (o Herói) — este arnês não o lê, e a
+        //    metade que o lê é o `a_cena_um_escolhe_o_heroi` abaixo.
+        _ => {
+            cena_um(sim.world_mut(), &a);
+        }
     }
     (sim, tree, a)
 }
@@ -231,7 +235,7 @@ fn an_unknown_level_falls_back_to_the_first_scene() {
     let conta = |nivel: u32| {
         let mut tree = TagTree::new();
         let mut sim = SimWorld::new();
-        let cena = montar(sim.world_mut(), &mut tree, nivel);
+        let (cena, _) = montar(sim.world_mut(), &mut tree, nivel);
         (cena, sim.world().iter_entities().count())
     };
     let (c1, n1) = conta(1);
@@ -242,4 +246,41 @@ fn an_unknown_level_falls_back_to_the_first_scene() {
     assert_eq!(n7, n1, "a `=7` montou outra coisa que não a `=1`");
     assert!(n1 >= 8, "a `=1` monta os sete objectos e o cérebro");
     assert_ne!(n1, n2, "as duas cenas montam a MESMA coisa");
+}
+
+/// ⭐⭐⭐ **A `=1` NOMEIA quem ela escolhe, e é o HERÓI — o único objecto desta cena que sobrevive
+/// ao alarme E carrega o rótulo mais largo.**
+///
+/// ⛔⛔ **Ela nasceu de um report do dono** (2026-09-19): o smoke desta cena mandava ler a secção
+/// *Tags* do Inspector, e a cena abria **sem objecto escolhido** — logo o painel mostrava o estado
+/// vazio e não existia um único chip no ecrã. *A cena estava certa como DADOS e era impossível
+/// como GESTO*, a mesma forma que o #15 pagou.
+///
+/// ⚠️ **As duas metades**: o sujeito existe, e ele é um dos que FICA. Escolher um inimigo poria o
+/// artista a olhar para um objecto que desaparece aos 2 s — a cena a ensinar o contrário de si.
+#[test]
+fn a_cena_um_escolhe_o_heroi_e_ele_sobrevive_ao_alarme() {
+    let mut tree = TagTree::new();
+    let mut sim = SimWorld::new();
+    let (cena, sujeito) = montar(sim.world_mut(), &mut tree, 1);
+    assert_eq!(cena, 1);
+    let bits =
+        sujeito.expect("a `=1` tem de NOMEAR quem ela escolhe — sem isso o smoke é uma caça");
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    assert_eq!(
+        nome(sim.world(), e),
+        "Hero",
+        "a cena escolheu outro objecto — e os cinco inimigos SOMEM aos 2 s"
+    );
+    // ⛔ CONTROLO: a `=2` NÃO escolhe ninguém. Ali o assunto é a armadilha a decidir no canvas, e
+    //    pôr o Inspector à frente seria tapar a cena com um painel.
+    let mut tree2 = TagTree::new();
+    let mut sim2 = SimWorld::new();
+    let (cena2, sujeito2) = montar(sim2.world_mut(), &mut tree2, 2);
+    assert_eq!(cena2, 2);
+    assert!(
+        sujeito2.is_none(),
+        "a `=2` escolheu um objecto — ela é uma cena de CANVAS, e o Inspector taparia o que ela \
+         existe para mostrar"
+    );
 }

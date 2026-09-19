@@ -110,6 +110,7 @@ impl crate::App {
     /// *uma cena ausente ensina menos que uma cena errada, mas um ecrã VAZIO não ensina nada*.
     pub(crate) fn tags_smoke(&mut self) {
         if self.components_smokes.tags {
+            self.tags_smoke_traz_o_inspector();
             return;
         }
         let Some(v) = std::env::var_os("PH2D_TAGS_SMOKE") else {
@@ -119,8 +120,26 @@ impl crate::App {
         let Some(mut cx) = self.components_ctx() else {
             return;
         };
-        let cena = ph2d_app_components::tags_smoke::tags_smoke(&mut cx, nivel);
+        let (cena, sujeito) = ph2d_app_components::tags_smoke::tags_smoke(&mut cx, nivel);
         self.components_smokes.tags = true;
+        // ⛔⛔⛔ **A `=1` ABRE COM O HERÓI ESCOLHIDO E O INSPECTOR À FRENTE, e foi o DONO que o
+        // disse:** o smoke desta cena mandava ler a secção *Tags* do painel da direita e isso era
+        // **impossível** — a cena abria sem selecção, logo o Inspector mostrava o estado vazio e não
+        // havia um único chip no ecrã (report de 2026-09-19: *«não faço ideia do que seja»*).
+        // *A cena estava certa como DADOS e era impossível como GESTO.*
+        //
+        // ⚠️ **E a subida do `z` é obrigatória, não defensiva:** a arrumação vive FORA do repositório
+        // (`~/.ph2d/layout.txt`), e naquele encaixe pode estar outro painel por cima — foi a FOTO
+        // que o disse aqui e no #18. ⇒ o mesmo `bump_panel_z` por alguns quadros, porque o
+        // `reconcile_z` acrescenta os painéis em falta no INÍCIO de cada quadro.
+        if let Some(sujeito) = sujeito
+            && let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
+        {
+            hero.panel_visibility.insert("inspector", true);
+            hero.gizmo.selection = Some(sujeito);
+            hero.gizmo.extra_selection.clear();
+            self.components_smokes.tags_raise = 3;
+        }
         // ⭐⭐⭐ **A `=2` é de FÍSICA, e sem isto ela demonstra um mundo CONGELADO.**
         //
         // ⛔⛔ *Uma cena de smoke que ensina o CONTRÁRIO do que acontece é pior que uma cena
@@ -139,6 +158,47 @@ impl crate::App {
             }
             self.playhead.rewind();
             self.playhead.play();
+        }
+    }
+
+    /// Traz o Inspector à frente **e rola-o até à secção das TAGS**, por alguns quadros.
+    ///
+    /// ⛔⛔ **As duas coisas TÊM de acontecer nos quadros SEGUINTES, e por razões diferentes:**
+    ///
+    /// - a subida do `z`, porque o `reconcile_z` acrescenta no INÍCIO de cada quadro os painéis que
+    ///   faltam na ordem (a lição do #18, medida numa foto);
+    /// - a ROLAGEM, porque o pintor **corta** o valor contra `conteúdo − visível`, e esses dois
+    ///   números só existem DEPOIS do primeiro desenho do painel: pedi-la no quadro em que a cena
+    ///   monta é pedi-la contra um conteúdo de altura `0`, e ela volta cortada ao topo.
+    ///   ⚠️ **Foi a FOTO que o disse** — a 1.ª tentativa punha o Inspector à frente e aberto no
+    ///   TOPO (*Transform*, *Render Source*, *Color & Tint*, *Sprite Sheet*…), com a secção *Tags*
+    ///   fora do ecrã: o passo continuava a ser uma caça.
+    ///
+    /// ⚠️ O valor é `f32::MAX` de propósito: quem sabe onde o painel acaba é o PINTOR, contra o
+    /// conteúdo real daquele objecto — um número escrito aqui seria a segunda resposta à mesma
+    /// pergunta, e envelhecia na primeira secção nova.
+    fn tags_smoke_traz_o_inspector(&mut self) {
+        if self.components_smokes.tags_raise == 0 {
+            return;
+        }
+        self.components_smokes.tags_raise -= 1;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            let insp = ph2d_editor_core::ids::INSP_PANEL;
+            hero.store.bump_panel_z(insp);
+            // ⭐ **O fim é DERIVADO do que o painel publicou**, nunca um número escolhido: ele
+            //    escreve a altura do conteúdo e a da faixa visível ao fim de cada desenho.
+            let fim = match (
+                hero.store.panel_content_h(insp),
+                hero.store.panel_visible_h(insp),
+            ) {
+                (Some(c), Some(v)) => (c - v).max(0.0),
+                _ => return, // ainda não desenhou: tenta no quadro seguinte
+            };
+            // ⚠️ **As DUAS metades**: o `scroll` é o ALVO autorado e o `scroll_live` é onde a
+            //    superfície está agora — escrever só o alvo faz a rolagem suave começar e a cena
+            //    abre a meio caminho, porque o contador de quadros acaba antes dela.
+            hero.store.set_panel_scroll(insp, fim);
+            hero.store.set_panel_scroll_live(insp, fim);
         }
     }
 

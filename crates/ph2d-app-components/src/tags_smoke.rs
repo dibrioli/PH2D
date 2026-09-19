@@ -43,7 +43,7 @@
 use ph2d_core::Vec2;
 use ph2d_ecs::tags::Tags;
 use ph2d_ecs::{
-    Name, SignalAction, SignalActions, SignalTarget, SignalVerb, Timer, Timers, Transform,
+    Entity, Name, SignalAction, SignalActions, SignalTarget, SignalVerb, Timer, Timers, Transform,
     Visibility, World,
 };
 use ph2d_physics_ecs::{
@@ -95,18 +95,21 @@ fn arvore(tree: &mut TagTree) -> Arvore {
 }
 
 /// Um objecto marcado, com nome e cor.
-fn marcado(world: &mut World, nome: &str, x: f32, cor: [f32; 4], tag: TagId) {
-    world.spawn((
-        Transform::from_translation(Vec2::new(x, 0.0)),
-        Sprite::atlas(WHITE_TILE_KEY, [1.1, 1.6], cor),
-        Name::new(nome),
-        Visibility::visible(),
-        Tags::from_ids([tag]),
-    ));
+fn marcado(world: &mut World, nome: &str, x: f32, cor: [f32; 4], tag: TagId) -> Entity {
+    world
+        .spawn((
+            Transform::from_translation(Vec2::new(x, 0.0)),
+            Sprite::atlas(WHITE_TILE_KEY, [1.1, 1.6], cor),
+            Name::new(nome),
+            Visibility::visible(),
+            Tags::from_ids([tag]),
+        ))
+        .id()
 }
 
 /// A cena `=1` — a fixtura inteira mais o cérebro que fala com a família.
-fn cena_um(world: &mut World, a: &Arvore) {
+fn cena_um(world: &mut World, a: &Arvore) -> Option<u64> {
+    let mut heroi = None;
     for (nome, x, cor, tag) in [
         ("Goblin A", -3.6, INIMIGO_RGBA, a.enemy),
         ("Goblin B", -2.4, INIMIGO_RGBA, a.enemy),
@@ -116,7 +119,24 @@ fn cena_um(world: &mut World, a: &Arvore) {
         ("Statue", 2.4, ESTATUA_RGBA, a.statue),
         ("Hero", 3.6, HEROI_RGBA, a.player),
     ] {
-        marcado(world, nome, x, cor, tag);
+        let e = marcado(world, nome, x, cor, tag);
+        // ⭐⭐⭐ **O HERÓI é quem a cena ESCOLHE, e a escolha é medida.**
+        //
+        // ⛔⛔ O smoke desta cena mandava ler a secção *Tags* do Inspector e **isso era impossível**
+        // (report do dono, 2026-09-19: *«não faço ideia do que seja»*): a cena abre sem objecto
+        // escolhido, logo o Inspector mostra o estado vazio e não existe um único chip no ecrã.
+        // *A cena estava certa como DADOS e era impossível como GESTO* — a mesma forma que o #15
+        // pagou, e que o prólogo do #18 já cura trazendo o Inspector à frente.
+        //
+        // ⚠️ **E é o Herói e não um Goblin por MEDIÇÃO:** o cérebro desta cena esconde os cinco
+        // inimigos aos 2 s, logo um deles como sujeito deixaria o artista a olhar para um objecto
+        // que desaparece. O `Statue` e o `Hero` sobrevivem, e o rótulo do Herói (`Player`) é o mais
+        // largo dos dois — é ele que mostra o que a pílula faz.
+        if nome == "Hero" {
+            // ⚠️ **Em BITS, como as cenas irmãs** — a `hero.gizmo.selection` é um `u64`, e é o que
+            //    a ponte da shell sabe traduzir de volta para uma linha da Hierarquia.
+            heroi = Some(e.to_bits());
+        }
     }
     // ⭐⭐⭐ **O cérebro da cena** — um relógio de 2 s e UMA linha de tabela. Antes desta wave, a
     // mesma coisa pedia cinco linhas, uma por nome, e cada objecto novo pedia a sexta.
@@ -141,6 +161,7 @@ fn cena_um(world: &mut World, a: &Arvore) {
             target_by: SignalTarget::Tagged(a.enemy.0),
         }]),
     ));
+    heroi
 }
 
 /// A cena `=2` — a armadilha filtrada, o corpo que passa e o que não passa.
@@ -218,17 +239,18 @@ fn cena_dois(world: &mut World, a: &Arvore) {
 /// um roteador que não se pode chamar mede o texto em vez do produto.
 ///
 /// ⚠️ **Um nível que o roteador não conhece cai na `=1`** — um ecrã vazio não ensina nada.
-pub(crate) fn montar(world: &mut World, tree: &mut TagTree, nivel: u32) -> u32 {
+/// Monta a cena pedida e devolve **(que cena montou, quem ela escolhe)**.
+///
+/// ⚠️ O sujeito é `None` na `=2`: ali o que se lê é a armadilha a decidir, e escolher um corpo
+/// poria o Inspector à frente de uma cena cujo assunto é o CANVAS.
+pub(crate) fn montar(world: &mut World, tree: &mut TagTree, nivel: u32) -> (u32, Option<u64>) {
     let a = arvore(tree);
     match nivel {
         2 => {
             cena_dois(world, &a);
-            2
+            (2, None)
         }
-        _ => {
-            cena_um(world, &a);
-            1
-        }
+        _ => (1, cena_um(world, &a)),
     }
 }
 
@@ -238,8 +260,8 @@ pub(crate) fn montar(world: &mut World, tree: &mut TagTree, nivel: u32) -> u32 {
 /// ⚠️ **O transporte NÃO se arma aqui**, e é a lei que a `line/app-physics` pagou na Fase C: *o que
 /// sai são os CORPOS; o que decide a ordem do quadro fica*. Uma cena que armasse o `simulate_physics`
 /// seria a família a ter opinião sobre o relógio.
-pub fn tags_smoke(cx: &mut crate::scene_ctx::SceneCtx, nivel: u32) -> u32 {
-    let cena = montar(cx.sim.world_mut(), cx.tags, nivel);
+pub fn tags_smoke(cx: &mut crate::scene_ctx::SceneCtx, nivel: u32) -> (u32, Option<u64>) {
+    let (cena, sujeito) = montar(cx.sim.world_mut(), cx.tags, nivel);
     // ⭐⭐ **O painel abre-se**, e é ele o sujeito desta wave: sem ele o artista vê objectos a sumir
     // e não tem onde ler PORQUÊ.
     if let Some(hero) = cx.hero_screen.as_mut() {
@@ -252,10 +274,11 @@ pub fn tags_smoke(cx: &mut crate::scene_ctx::SceneCtx, nivel: u32) -> u32 {
             "[tags-smoke] =2 armadilha *Only for tag* `Player`: o Goblin atravessa (nada), o Hero abre a porta"
         ),
         _ => eprintln!(
-            "[tags-smoke] =1 Enemy(5) > Flying(3) > Boss(1) · Statue(1) · Player(1) — aos 2 s somem CINCO"
+            "[tags-smoke] =1 Enemy(5) > Flying(3) > Boss(1) · Statue(1) · Player(1) — aos 2 s somem CINCO; \
+             o HERO abre escolhido, com a etiqueta `Player` na seccao Tags do Inspector"
         ),
     }
-    cena
+    (cena, sujeito)
 }
 
 #[cfg(test)]

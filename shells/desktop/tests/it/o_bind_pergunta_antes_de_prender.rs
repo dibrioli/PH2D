@@ -10,6 +10,39 @@
 
 const FASE: &str = include_str!("../../src/render_loop/fase_skeleton_verbs.rs");
 
+/// O despacho do ponteiro — a SEGUNDA superfície que recusa em nome do osso (o pincel de peso,
+/// 2026-09-19). ⚠️ Ela é outra porque o gesto dela acontece no press, e não num botão de painel.
+const DESPACHO: &str = include_str!("../../src/input_dispatch/despacho_peso_do_osso.rs");
+
+/// A fonte que DECLARA a população das recusas — o oráculo do censo abaixo.
+const DECLARACAO: &str =
+    include_str!("../../../../crates/ph2d-skeleton-live/src/recusa_do_osso.rs");
+
+/// **Os nomes das variantes, lidos do `TODAS` que a crate declara.**
+///
+/// ⚠️ **Derivado e não escrito à mão:** a lista à mão foi a 1.ª redacção deste censo, e ela pediu
+/// para ser SUBIDA no dia em que uma recusa nova nasceu — que é como uma catraca vira licença.
+fn variantes() -> Vec<String> {
+    let bloco = DECLARACAO
+        .split_once("pub const TODAS:")
+        .expect("a crate deixou de declarar a populacao das recusas")
+        .1;
+    let bloco = bloco.split_once("];").expect("o `TODAS` nao fecha").0;
+    let mut v: Vec<String> = bloco
+        .match_indices("Self::")
+        .map(|(i, _)| {
+            bloco[i + 6..]
+                .chars()
+                .take_while(char::is_ascii_alphanumeric)
+                .collect::<String>()
+        })
+        .filter(|n: &String| !n.is_empty())
+        .collect();
+    v.sort();
+    v.dedup();
+    v
+}
+
 /// ⭐ **A pergunta vem ANTES das duas rotas de prender**, e as duas contam.
 ///
 /// ⚠️ Perguntar depois de prender não é perguntar: a forma já ficou com os seis ossos.
@@ -66,33 +99,53 @@ fn a_recusa_do_bind_nao_cancela_os_outros_verbos() {
 /// recusa nasce muda) · e avisar com texto CRU, que na tela viola o HR-15.
 #[test]
 fn as_recusas_do_osso_chegam_a_tela_por_uma_porta() {
-    assert_eq!(
-        FASE.matches("Toast::warning(").count(),
-        1,
-        "a recusa chega a' tela por mais (ou menos) de UMA porta: com varias, a proxima recusa \
-         nasce muda e ninguem ve'"
+    // ⚠️ **UMA porta POR SUPERFÍCIE**, e não uma no repo inteiro: o botão de painel e o gesto de
+    // ponteiro acontecem em sítios que não se alcançam. O que a lei proíbe é uma superfície com
+    // `push` espalhados — *com vários, a próxima recusa daquele ficheiro nasce muda*.
+    for (nome, src) in [
+        ("a fase dos verbos", FASE),
+        ("o traco do pincel de peso", DESPACHO),
+    ] {
+        assert_eq!(
+            src.matches("Toast::warning(").count(),
+            1,
+            "{nome}: a recusa chega a' tela por mais (ou menos) de UMA porta"
+        );
+    }
+    // ⭐⭐⭐ **O CENSO: toda recusa da população tem de ser NOMEADA numa superfície.**
+    //
+    // ⛔⛔ **A 1.ª redacção contava CHAMADAS num ficheiro só** (`avisa(` na fase), e ela reprovou
+    // no dia em que o pincel de peso trouxe três recusas que saem do DESPACHO — *sobre produto
+    // certo*. ⚠️ E contar chamadas era a régua errada por uma segunda razão, que só a cura
+    // revelou: uma mesma recusa pode ter DOIS sítios que a levantam (o `ForaDaArte` sai da guarda
+    // do pen-down **e** do resultado da lei), logo o número de chamadas nunca foi o número de
+    // recusas. ⇒ a pergunta certa é *este nome aparece nalguma superfície?*
+    //
+    // ⛔⛔ **E há DUAS formas de ter voz, o que a 2.ª redacção não viu:** uma recusa ou é NOMEADA
+    // na superfície (as três do pincel) ou viaja como VALOR devolvido por uma porta que a
+    // superfície reencaminha (a `VariosEsqueletos`, que só o `recusa_do_bind` constrói). *Um censo
+    // que só procurasse nomes na shell acusaria de muda uma recusa que fala há uma wave.*
+    // ⇒ a pergunta é *alguém consegue EMITIR isto?*, e o universo são as superfícies mais os
+    // produtores da crate (tudo o que vem depois do `impl`, onde o `chave`/`quantos` nomeiam todas
+    // por construção e não provariam nada).
+    let produtores = DECLARACAO
+        .split_once("\npub fn recusa_")
+        .expect("a crate deixou de ter produtores de recusa")
+        .1;
+    let universo = format!("{FASE}{DESPACHO}{produtores}");
+    let mudas: Vec<String> = variantes()
+        .into_iter()
+        .filter(|v| !universo.contains(v.as_str()))
+        .collect();
+    assert!(
+        mudas.is_empty(),
+        "estas recusas nao sao emitidas por ninguem — declaradas e mudas: {mudas:?}"
     );
-    assert_eq!(
-        // ⚠️ A agulha conta `avisa(` e **não** `avisa(toasts,`: o `cargo fmt` parte as chamadas
-        // longas em várias linhas, e a 1.ª redacção contou `1` de `3` sobre produto CERTO. *Um
-        // literal lê-se do ficheiro já formatado* — a segunda vez que esta jornada o paga.
-        //
-        // ⛔⛔ **E a 2.ª redacção prendia a INDENTAÇÃO (`"                avisa("`, dezasseis
-        // espaços), que é uma propriedade do ANINHAMENTO e não da lei.** Ela reprovou no dia em que
-        // um tecto de LOC obrigou a cortar um dos blocos para uma função livre — *sobre produto
-        // CERTO*, e a cura barata (mudar o número de espaços) só adiaria o mesmo até ao corte
-        // seguinte. ⇒ conta-se `avisa(` em todo o ficheiro e **subtrai-se a definição**, que é o
-        // único `fn avisa(` que existe.
-        FASE.matches("avisa(").count() - FASE.matches("fn avisa(").count(),
-        // ⛔⛔ **A população é DERIVADA, e a 1.ª redacção tinha-a escrita à mão (`3`).** Ela reprovou
-        // no dia em que a quarta recusa nasceu (`NadaAQuemMudarALei`, 2026-09-19) — e isso é o gate
-        // a funcionar, mas a cura barata seria subir o número, que é exactamente como uma catraca
-        // vira LICENÇA. ⇒ o oráculo é a `RecusaDoOsso::TODAS`, a mesma população do censo da chave:
-        // *uma recusa nova fica vermelha até alguém lhe dar voz na tela.*
-        ph2d_skeleton_live::recusa_do_osso::RecusaDoOsso::TODAS.len(),
-        "as {} recusas do osso nao passam todas pela porta do aviso — a que faltar so' existe \
-         no terminal, que e' onde elas estavam antes desta wave",
-        ph2d_skeleton_live::recusa_do_osso::RecusaDoOsso::TODAS.len()
+    assert!(
+        variantes().len() >= 8,
+        "o censo leu {} variantes e a populacao ja' foi 8 — a extraccao do `TODAS` partiu-se e \
+         este gate passou a medir o vazio",
+        variantes().len()
     );
     assert!(
         FASE.contains("ph2d_i18n::tr_with(r.chave()") && FASE.contains("ph2d_i18n::tr(r.chave())"),

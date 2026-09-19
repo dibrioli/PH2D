@@ -64,14 +64,32 @@ impl BoneAction {
     }
 }
 
-/// ⭐ **O RAIO de fábrica do pincel de peso**, em unidades do desenho.
+/// ⭐ **O RAIO de fábrica do pincel de peso, em PÍXEIS DE ECRÃ.**
 ///
-/// ⚠️ **Ele NÃO é derivado do desenho**, e a ausência é a decisão: um raio em fracção da forma daria
-/// ao mesmo gesto dois tamanhos em dois desenhos, e o artista veria o pincel mudar de tamanho ao
-/// trocar de peça. ⛔ E o slider existe exactamente para ele não ter de servir toda a gente — o que
-/// este número tem de ser é *visível numa forma do tamanho das que o app desenha*, que é a escala
-/// do `LENGTH_STEP` do painel.
-pub const WEIGHT_RADIUS_DEFAULT: f64 = 20.0;
+/// ⛔⛔⛔ **Ele era `20.0` em unidades de MUNDO, e o report do dono mediu o que isso vale**
+/// (2026-09-19, *«os pontos não ficam coloridos»*): na barra laranja da cena, a ppm `100`,
+///
+/// | grandeza | mundo | píxeis |
+/// |---|---|---|
+/// | dois pontos vizinhos da peça | `0,2761` | `27,6` |
+/// | a peça INTEIRA, ponta a ponta | `7,0218` | `702,2` |
+/// | **o raio de fábrica de então** | `20,0` | **`2 000`** |
+///
+/// ⇒ o pincel de fábrica era **`2,85 ×` a peça inteira**: um clique agarrava TODOS os pontos dela
+/// ao mesmo tempo, e o anel ficava maior que a janela. *Um pincel que não consegue apontar a um
+/// sítio não é um pincel.*
+///
+/// ⛔⛔ **E a premissa do doc anterior era o defeito:** ele dizia que o número tinha de ser *«visível
+/// numa forma do tamanho das que o app desenha»* — mas **um default em unidades de MUNDO não pode
+/// saber a escala da cena** (um braço de `6` metros e outro de `600` pedem raios `100 ×`
+/// diferentes). O que o artista percebe é o tamanho do pincel **no ecrã**, e é essa a única
+/// grandeza que um valor de fábrica pode fixar. ⇒ o raio passa a ser de ECRÃ, e é convertido a
+/// mundo no sítio onde é usado — o mesmo idioma do `hit_r` do pick desta casa.
+///
+/// ⚠️ **O número sai da tabela acima:** `4 ×` o raio de pick da casa (`10` px — abaixo disso o gesto
+/// lê-se como apontar, não pintar), `1,45 ×` a distância entre dois pontos vizinhos (logo uma
+/// pincelada apanha uma VIZINHANÇA e não um ponto só) e `5,7 %` da peça (logo ela aponta).
+pub const WEIGHT_RADIUS_DEFAULT: f64 = 40.0; // LITERAL-PX-OK: raio de ecrã, tabela medida acima
 
 /// ⭐ **QUANTO cada pincelada empurra o peso, de fábrica.**
 ///
@@ -80,12 +98,11 @@ pub const WEIGHT_RADIUS_DEFAULT: f64 = 20.0;
 /// fábrica que salta para o extremo numa pincelada faz o gesto ser um interruptor.*
 pub const WEIGHT_AMOUNT_DEFAULT: f64 = 0.15;
 
-/// ⭐ **O PISO do raio do pincel de peso**, em unidades do desenho.
+/// ⭐ **O PISO do raio do pincel de peso, em PÍXEIS DE ECRÃ** — ver [`WEIGHT_RADIUS_DEFAULT`].
 ///
-/// ⚠️ **O recurso é o GESTO e não a memória:** com raio nulo o pen-down nunca acha arte, e a recusa
-/// (`ForaDaArte`) lê-se exactamente como um pincel partido. Este número é o menor que ainda deixa o
-/// dedo apanhar um ponto de uma forma do tamanho das que o app desenha.
-pub const WEIGHT_RADIUS_MIN: f64 = 0.5;
+/// ⚠️ **O recurso é o ECRÃ:** abaixo de um píxel o anel deixa de ser desenhável e o pen-down nunca
+/// acha arte — e a recusa (`ForaDaArte`) lê-se exactamente como um pincel partido.
+pub const WEIGHT_RADIUS_MIN: f64 = 1.0; // LITERAL-PX-OK: piso de ecrã, um píxel
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum DrawMode {

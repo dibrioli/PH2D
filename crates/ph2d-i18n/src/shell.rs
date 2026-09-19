@@ -154,6 +154,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "This bone has no rest pose saved. Pose it the way it should rest and press Set Rest \
              Pose."
         }
+        "skeleton.recusa.pincel_fora_da_arte" => {
+            "The weight brush found no bound artwork here. Paint on top of a shape or an image \
+             that is bound to the skeleton - the ring shows how far the brush reaches."
+        }
+        "skeleton.recusa.pincel_sem_pele" => {
+            "That piece is not bound to any skeleton, so it has no weights to correct. Bind it \
+             first (Bind to Skeleton)."
+        }
+        "skeleton.recusa.pincel_osso_de_fora" => {
+            "The bone you have selected does not bind this artwork, so painting it would change \
+             nothing. Pick a bone that this piece is bound to."
+        }
         "shell.label_live.label" => "{base} Label",
         "shell.label_live.path" => "Path {host}",
         "shell.fase_bone_smart_and_knobs.this_bone_is_driven_by" => {

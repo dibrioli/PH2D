@@ -6,7 +6,8 @@
 //!
 //! 1. o verbo armado chega ao painel pelo **ÍNDICE derivado** e não por uma comparação,
 //! 2. o **arrasto** pinta (e não só o press),
-//! 3. o traço **acaba** no soltar.
+//! 3. o traço **acaba** no soltar,
+//! 4. o **raio** chega à lei CONVERTIDO a mundo (2026-09-19, report do dono).
 //!
 //! ⚠️ **Um censo textual, e assumidamente a régua mais fraca da família** — mas as três coisas que
 //! ele mede vivem num caminho que pede um `wgpu::Device` (o `on_mouse_input` da shell), e um gate
@@ -104,5 +105,32 @@ fn o_press_do_peso_ja_pinta_a_primeira_pincelada() {
     assert!(
         pintou < 200,
         "a pincelada do press está longe de onde o traço é armado — as duas linhas são um gesto só"
+    );
+}
+
+/// ⭐⭐⭐ **O RAIO DO PAINEL É DE ECRÃ, E A LEI FALA MUNDO** — a conversão existe nos DOIS sítios.
+///
+/// ⛔⛔ **O defeito que este gate cura está medido** (report do dono, 2026-09-19): o
+/// `weight_radius` ia CRU para a lei, logo o `20.0` de fábrica valia **`20` unidades de mundo** —
+/// `2 000` px, `2,85 ×` a peça inteira da cena. Um clique agarrava todos os pontos dela, e o anel
+/// era maior que a janela.
+///
+/// ⚠️ **Os dois sítios, e é por serem dois que isto é um gate:** o pen-down (que escolhe a arte) e
+/// o arrasto (que pinta). Converter num só deixaria o pincel a escolher a peça com um raio e a
+/// pintar com outro — *o modo de falha mais caro, porque metade funciona*.
+#[test]
+fn o_raio_do_pincel_chega_a_lei_convertido_a_mundo() {
+    let src = code_only(&DISPATCH);
+    let n = src
+        .matches("weight_radius * self.vec_px_to_world()")
+        .count();
+    assert_eq!(
+        n, 2,
+        "esperava a conversao px->mundo do raio nos DOIS sitios do despacho (pen-down e arrasto) e \
+         achei {n} — um raio cru aqui vale unidades de MUNDO e agarra a peca inteira"
+    );
+    assert!(
+        !src.contains("raio: self.vec.draw_config.weight_radius,"),
+        "o pen-down voltou a passar o raio CRU a` lei"
     );
 }

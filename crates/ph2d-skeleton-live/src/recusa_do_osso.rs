@@ -52,6 +52,20 @@ pub enum RecusaDoOsso {
     /// ⚠️ **E ela NÃO cobre *«já estava nessa lei»***: escrever a lei que já lá está não é um
     /// acontecimento, e queixar-se disso é o ruído que o artista aprende a ignorar.
     NadaAQuemMudarALei,
+    /// O pincel de PESO não caiu em arte presa nenhuma (2026-09-19).
+    ///
+    /// ⚠️ **É a recusa mais comum deste verbo**, e é por isso que ela tem de falar: o artista clica
+    /// ao lado da peça, nada acontece, e *um pincel que não faz nada e não diz porquê é
+    /// indistinguível de um pincel partido*.
+    PincelForaDaArte,
+    /// O pincel de PESO caiu numa coisa que não tem pele — a guarda defensiva do alvo.
+    PincelSemPele,
+    /// O osso em foco não é um dos ossos que prendem esta arte (2026-09-19).
+    ///
+    /// ⚠️ **Ela NÃO é «este osso tem peso zero aqui»**, e a diferença decide o que o artista faz:
+    /// um osso com peso zero ganha peso se ele pintar (é literalmente o que o pincel serve para
+    /// fazer); um osso que não prende esta arte **nunca** vai ganhar, por mais que ele pinte.
+    PincelOssoDeFora,
     /// O *Rest Pose* não tem destino: nenhum osso da sub-árvore tem repouso guardado (2026-09-19).
     ///
     /// ⚠️ **Ela é INERTE de propósito** — a alternativa era cair na identidade, que é exactamente o
@@ -74,6 +88,9 @@ impl RecusaDoOsso {
             Self::NadaASoltar => "skeleton.recusa.nada_a_soltar",
             Self::NadaAQuemMudarALei => "skeleton.recusa.nada_a_quem_mudar_a_lei",
             Self::SemPoseDeRepouso => "skeleton.recusa.sem_pose_de_repouso",
+            Self::PincelForaDaArte => "skeleton.recusa.pincel_fora_da_arte",
+            Self::PincelSemPele => "skeleton.recusa.pincel_sem_pele",
+            Self::PincelOssoDeFora => "skeleton.recusa.pincel_osso_de_fora",
         }
     }
 
@@ -88,7 +105,10 @@ impl RecusaDoOsso {
             Self::NadaAPrender
             | Self::NadaASoltar
             | Self::NadaAQuemMudarALei
-            | Self::SemPoseDeRepouso => None,
+            | Self::SemPoseDeRepouso
+            | Self::PincelForaDaArte
+            | Self::PincelSemPele
+            | Self::PincelOssoDeFora => None,
         }
     }
 
@@ -96,12 +116,15 @@ impl RecusaDoOsso {
     ///
     /// ⚠️ Escrita à mão e **guardada por um gate de exaustividade** (o `match` do [`Self::chave`]),
     /// porque um `enum` com dados não se enumera sozinho.
-    pub const TODAS: [Self; 5] = [
+    pub const TODAS: [Self; 8] = [
         Self::VariosEsqueletos { quantos: 2 },
         Self::NadaAPrender,
         Self::NadaASoltar,
         Self::NadaAQuemMudarALei,
         Self::SemPoseDeRepouso,
+        Self::PincelForaDaArte,
+        Self::PincelSemPele,
+        Self::PincelOssoDeFora,
     ];
 }
 

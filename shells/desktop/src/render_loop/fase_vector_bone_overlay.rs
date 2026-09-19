@@ -78,7 +78,11 @@ impl crate::App {
                 // responder à MESMA pergunta. *Mostrar os pesos de outra arte é pior que não
                 // mostrar nenhum.*
                 if self.vec.draw_config.bone_action == ph2d_tool_vector::BoneAction::Weight {
-                    let raio = self.vec.draw_config.weight_radius;
+                    // ⚠️ **O raio do painel e' de ECRA.** A lei quer MUNDO (converte-se com o
+                    // mesmo factor do pick) e o anel quer PIXEIS — e e' por eles falarem unidades
+                    // diferentes que os dois numeros aparecem aqui lado a lado.
+                    let raio_px = self.vec.draw_config.weight_radius;
+                    let raio = raio_px * vec_px_to_world;
                     // ⚠️ **Qual arte é o sujeito é LEI e mora na crate**
                     // ([`ph2d_skeleton_live::peso_a_mao::pontos_do_indicador`]): aqui decide-se a
                     // ORDEM dos passes, não de quem se mostram os pesos.
@@ -100,8 +104,7 @@ impl crate::App {
                     // distância de MUNDO, e o `vec_px_to_world` é o factor inverso.
                     ph2d_skeleton_render::draw_weight_brush(
                         self.skeleton.weight_cursor,
-                        raio,
-                        1.0 / vec_px_to_world,
+                        raio_px,
                         cam_affine,
                         hero.theme,
                         vector_scene,

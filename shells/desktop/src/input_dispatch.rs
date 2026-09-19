@@ -80,6 +80,7 @@ mod despacho_metodos_janela_e_vetor;
 mod despacho_metodos_modos_e_alcas;
 mod despacho_metodos_picks_e_arrastos;
 mod despacho_mover;
+mod despacho_peso_do_osso;
 mod despacho_vetor_alinhar_e_forma;
 mod despacho_vetor_gradiente;
 mod despacho_vetor_ops;

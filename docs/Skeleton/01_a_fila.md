@@ -471,7 +471,57 @@ desenho da shell, **onde teste nenhum lhe chega**. ⇒ [`peso_a_mao::pontos_do_i
 de **quatro** braços e a fixtura de **duas** peles que é o que o torna discriminante (com uma só,
 «o congelado ganha» e «o dedo escolhe» devolvem o mesmo bloco).
 
-Mutação **18 de 18** a sangrar, **duas** delas sobreviventes à primeira e curadas com gates novos.
+#### ⛔⛔⛔ O SMOKE DO DONO REPROVOU-O, e os DOIS reports eram o mesmo defeito com duas caras
+
+*«a barra laranja não é subdividida o bastante (só tem pontos nas extremidades)»* · *«os pontos não
+ficam coloridos (não há indicativo de peso)»*. Medido na peça REAL da cena (o `RoundRect` do braço,
+3 ossos, `ppm 100`):
+
+| osso | peso `0` | peso `1` | **entre** |
+|---|---|---|---|
+| `Bone 1` | 12 | 12 | **0** |
+| **`Bone 2`** | **24** | 0 | **0** |
+| `Bone 3` | 12 | 12 | **0** |
+
+⭐ **O peso vive por VÉRTICE, e a barra tem `14` posições distintas — todas em quatro cachos nos
+cantos, nenhuma ao longo do comprimento.** O report 1 descreve o modelo com exactidão: *o esqueleto
+só pode mover os pontos que o desenho tem*. E o report 2 tem três causas, **as três minhas**:
+
+1. ⛔⛔ **O passo do smoke que eu escrevi mandava clicar no `Bone 2`** — o único osso da cadeia que
+   não possui **nada** naquela arte (o miolo de uma cadeia de 3 sobre 4 cantos). Com ele em foco
+   todos os pontos leem `0`, e a tela fica de uma cor só. *Um passo que nomeia uma coisa AFIRMA que
+   ela serve para o que o passo diz* — a família do §0.8, outra vez.
+2. ⛔⛔⛔ **O raio de fábrica era `20` unidades de MUNDO = `2 000` px**, contra `702` px da peça
+   inteira e `27,6` px entre dois pontos vizinhos: **`2,85 ×` a peça**. Um clique agarrava todos os
+   pontos de uma vez e o anel era maior que a janela. ⇒ o raio passa a ser de **ECRÃ** (`40` px,
+   com a tabela derivada: `4 ×` o raio de pick da casa, `1,45 ×` a distância entre vizinhos, `5,7 %`
+   da peça), convertido a mundo nos **dois** sítios do despacho — com gate, porque converter num só
+   deixaria o pincel a escolher a peça com um raio e a pintar com outro.
+   ⚠️ **E o doc do anel ARGUMENTAVA a favor da unidade errada** (*«o raio do pincel É uma distância
+   do desenho»*): verdade sobre o que a **mancha guarda** e falso sobre o que o **artista escolhe**
+   — e um número de mundo **não pode ter valor de fábrica**, porque teria de saber a escala da cena.
+3. ⛔⛔ **As três recusas do pincel eram `eprintln!`** — *uma recusa que só o terminal vê é um botão
+   mudo*, e a porta para a tela tinha sido construída por esta mesma linha **um dia antes**. Elas
+   entram agora na população `RecusaDoOsso`, que é a que o censo deriva.
+   ⚠️ **E o censo da família reprovou ao recebê-las, duas vezes, cada uma por uma cegueira própria:**
+   ele contava **chamadas num ficheiro só** (as do pincel saem do despacho, não da fase) e uma mesma
+   recusa pode ter **dois** sítios que a levantam ⇒ passou a perguntar *«alguém consegue EMITIR
+   isto?»*; e a 2.ª redacção, que procurava o NOME nas superfícies, acusou de muda a
+   `VariosEsqueletos` — que viaja como **valor** vindo da porta e nunca é nomeada ⇒ o universo passa
+   a ser as superfícies **mais os produtores da crate**.
+
+⏳ **A pergunta de PRODUTO que fica para o dono, com o número:** pintar peso **entre** os vértices de
+uma forma vectorial é hoje impossível, porque não há lá peso nenhum para corrigir. Duas saídas:
+
+- **acrescentar vértices com a caneta** onde se quer controlo — o modelo do Moho/Spine, e o gesto já
+  existe nesta casa. Custo: zero de arquitectura.
+- **deformar a forma por uma MALHA**, como a imagem já é. ⚠️ **E o preço NÃO é «a `ph2d-poly2d` já
+  existe»**: ela parte de uma **grelha de ALFA** (*«geometria pura sobre uma grelha de alfa»*, diz o
+  cabeçalho dela), logo a forma teria de ser **rasterizada** para se tirar a cobertura, e o desenho
+  passaria a ser deformado por uma amostragem dele em vez de pelos próprios pontos — o que muda o
+  que o traço é. ⛔ Arquitectura, e não é minha para decidir.
+
+Mutação **21 de 21** a sangrar, **quatro** delas sobreviventes à primeira e curadas com gates novos.
 
 ⏳ **ABERTO e nomeado:** o caminho de **GPU** não conhece as manchas — dívida **com gate**
 (`a_pele_da_placa_nao_conhece_as_correccoes_e_isso_esta_nomeado`), inofensiva só enquanto ele não

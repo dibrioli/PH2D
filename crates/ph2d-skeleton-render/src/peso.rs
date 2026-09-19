@@ -67,19 +67,27 @@ pub fn draw_weights(
 
 /// **O ANEL do pincel** — onde ele vai pintar, e com que tamanho.
 ///
-/// ⚠️ **O raio deste é em MUNDO**, ao contrário dos pontos, e a diferença não é um descuido: o raio
-/// do pincel *é* uma distância do desenho (é o que a mancha guarda), logo aproximar o zoom tem de o
-/// mostrar maior. *Um anel de tamanho fixo no ecrã mentiria sobre o que a pincelada vai alcançar.*
+/// ⛔⛔ **O raio deste era em MUNDO, com um argumento escrito aqui, e a medição refutou-o**
+/// (2026-09-19): *«o raio do pincel É uma distância do desenho, logo aproximar o zoom tem de o
+/// mostrar maior»*. Verdade sobre o que a MANCHA guarda e falso sobre o que o ARTISTA escolhe — e o
+/// preço da confusão foi um valor de fábrica de `2 000` px (`2,85 ×` a peça inteira), porque **um
+/// número de mundo não pode ter um valor de fábrica**: ele teria de saber a escala da cena.
+///
+/// ⇒ o artista escolhe **píxeis de ecrã** ([`ph2d_tool_vector::WEIGHT_RADIUS_DEFAULT`], com a
+/// tabela medida), quem chama converte a mundo com o factor do pick, e este anel desenha o que o
+/// artista escolheu, sem escala nenhuma. ⚠️ **A propriedade declarada que isso traz:** a mesma
+/// posição do slider pinta uma área de MUNDO diferente em dois zooms — o que é precisamente o que
+/// faz aproximar-se para corrigir um sítio fino funcionar, e é o que toda ferramenta de pintura
+/// desta casa já faz.
 pub fn draw_weight_brush(
     centro: Option<[f64; 2]>,
-    raio_mundo: f64,
-    escala: f64,
+    raio_ecra: f64,
     transform: Affine,
     theme: Theme,
     target: &mut VectorScene,
 ) {
     let Some(c) = centro else { return };
-    if !(raio_mundo.is_finite() && raio_mundo > 0.0 && escala.is_finite() && escala > 0.0) {
+    if !(raio_ecra.is_finite() && raio_ecra > 0.0) {
         return;
     }
     let cor = ColorToken::Accent.resolve(theme);
@@ -89,7 +97,7 @@ pub fn draw_weight_brush(
         Affine::IDENTITY,
         &Brush::Solid(VelloColor::from_rgba8(cor.r, cor.g, cor.b, cor.a)),
         None,
-        &Circle::new(p, raio_mundo * escala),
+        &Circle::new(p, raio_ecra),
     );
 }
 

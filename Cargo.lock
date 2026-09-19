@@ -8675,6 +8675,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-style"
+version = "0.0.0"
+dependencies = [
+ "ph2d-color",
+]
+
+[[package]]
 name = "ph2d-sweep"
 version = "0.0.0"
 

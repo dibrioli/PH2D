@@ -40,7 +40,7 @@ fn scene_with_one_union() {
             key: "field.dim.round",
             value: 0.05,
             lo: 0.0,
-            live: true,
+            inert: None,
             integral: false,
             section: None,
             choices: &[],
@@ -218,7 +218,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
             key: "field.dim.round",
             value: 0.05,
             lo: 0.0,
-            live: true,
+            inert: None,
             integral: false,
             section: None,
             choices: &[],
@@ -649,7 +649,7 @@ fn scene_with_one_position_row() {
             key: "field.dim.pos_x",
             value: ROW_VALUE,
             lo: FLOOR,
-            live: true,
+            inert: None,
             integral: false,
             section: None,
             choices: &[],
@@ -842,13 +842,13 @@ fn a_wall_clamps_what_is_typed_and_a_suggestion_does_not() {
 /// *alcançável pelo rato*, que é onde este painel já quebrou uma vez.
 #[test]
 fn an_inert_row_registers_nothing_to_click() {
-    let row = |live: bool| ParamRow {
+    let row = |inert: Option<&'static str>| ParamRow {
         entity: THE_UNION,
         param: ph2d_field::Param::Rot(2),
         key: "field.dim.rot_z",
         value: 0.0,
         lo: -180.0,
-        live,
+        inert,
         integral: false,
         section: None,
         choices: &[],
@@ -861,9 +861,12 @@ fn an_inert_row_registers_nothing_to_click() {
     let mut panel_state = Model3dPanelState;
     let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
 
-    let painted = |host: &mut MockPanelHost, state: &mut Model3dPanelState, live: bool| -> bool {
+    let painted = |host: &mut MockPanelHost,
+                   state: &mut Model3dPanelState,
+                   inert: Option<&'static str>|
+     -> bool {
         publish(ModelSnapshot {
-            rows: vec![row(live)],
+            rows: vec![row(inert)],
             views: Vec::new(),
             camera: Vec::new(),
             isolated: None,
@@ -879,11 +882,11 @@ fn an_inert_row_registers_nothing_to_click() {
 
     // ⚠️ **O controle POSITIVO primeiro**: sem ele, um painel que não pintasse nada passaria.
     assert!(
-        painted(&mut host, &mut panel_state, true),
+        painted(&mut host, &mut panel_state, None),
         "uma linha viva tem de registar o slider e o campo — senão o gate abaixo não prova nada"
     );
     assert!(
-        !painted(&mut host, &mut panel_state, false),
+        !painted(&mut host, &mut panel_state, Some("field.inert.gimbal_axis")),
         "a linha inerte deixou um controle agarrável: ele despacharia uma edição que a escrita recusa"
     );
 }
@@ -903,7 +906,7 @@ fn an_inert_row_does_not_dispatch_even_if_an_event_arrives() {
             key: "field.dim.rot_z",
             value: 0.0,
             lo: -180.0,
-            live: false,
+            inert: Some("field.inert.gimbal_axis"),
             integral: false,
             section: None,
             choices: &[],
@@ -1327,7 +1330,7 @@ fn scene_with_one_choice_row() {
             key: "field.mod.axis",
             value: 2.0,
             lo: 0.0,
-            live: true,
+            inert: None,
             integral: true,
             section: None,
             choices: &ph2d_field::Axis::KEYS,
@@ -1673,7 +1676,7 @@ fn scene_with_one_colour_row_row() -> ParamRow {
         // é esse número que ela ancora.
         value: 0.5,
         lo: 0.0,
-        live: true,
+        inert: None,
         integral: false,
         section: None,
         choices: &[],
@@ -1932,10 +1935,13 @@ fn a_locked_swatch_is_painted_and_unreachable() {
         "a amostra viva tem de ocupar área"
     );
 
-    // ── A travada: a MESMA linha com `live: false` ──
+    // ── A travada: a MESMA linha, com uma razão ──
+    // ⚠️ **QUAL razão é indiferente aqui**: o sujeito deste gate é o que uma amostra TRAVADA faz, e
+    // a razão é só o que a trava. *Ela não afirma nada sobre que campo o material tranca* — quem o
+    // afirma é o censo, na `ph2d-app-field3d`, contra a medição ao bit.
     publish(ModelSnapshot {
         rows: vec![ParamRow {
-            live: false,
+            inert: Some("field.inert.subsurface_is_off"),
             ..scene_with_one_colour_row_row()
         }],
         node_count: 1,
@@ -2022,5 +2028,129 @@ fn no_row_of_this_panel_wraps_its_label() {
             .lines()
             .any(|l| !l.trim_start().starts_with("//") && l.contains("paint_text_elided")),
         "o censo não encontrou o pintor que corta — ele está a varrer o ficheiro errado"
+    );
+}
+
+/// ⭐⭐⭐ **A RAZÃO DE UMA FILEIRA APAGADA CHEGA A PIXEL** (decisão do dono, 2026-09-18: as fileiras
+/// que o modo em mãos não lê ficam *«à vista, apagadas»*, **com a razão ao lado**).
+///
+/// # ⛔⛔ Porque a régua é a contagem de GLIFOS
+///
+/// É o achado §4.2 da auditoria do `source.lsystem`: um gate que prometia medir *«a queixa chega a
+/// PIXEL»* media o `y +=`, que **não é a pintura** — apagar o texto inteiro deixava-o verde. O que
+/// conta texto é `resources.glyphs`, porque o Vello encaminha texto por `draw_glyphs` e **nenhum
+/// glifo entra na contagem de caminhos**.
+///
+/// ⚠️ **A fixtura é a MESMA fileira, e só o `inert` muda.** Uma fileira viva pinta rótulo + número;
+/// a apagada pinta rótulo + número **+ a frase**. *Comparar duas fileiras diferentes mediria o
+/// rótulo de cada uma, e não a razão.*
+#[test]
+fn a_razao_de_uma_fileira_apagada_chega_a_pixel() {
+    let glifos = |inert: Option<&'static str>| -> u32 {
+        publish(ModelSnapshot {
+            rows: vec![ParamRow {
+                entity: THE_UNION,
+                param: ph2d_field::Param::Material(27),
+                key: "field.dim.subsurface_radius",
+                value: 0.3,
+                lo: 0.0,
+                inert,
+                integral: false,
+                section: None,
+                choices: &[],
+                swatch: None,
+                subject: None,
+                bound: Bound::Soft(1.0),
+            }],
+            node_count: 1,
+            ..ModelSnapshot::default()
+        });
+        let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+        host.set_panel_visible(Model3dPanel::ID, true);
+        let mut state = Model3dPanelState;
+        host.paint_and_count_geometry::<Model3dPanel>(
+            &mut state,
+            ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0),
+        )
+        .0
+    };
+    let viva = glifos(None);
+    let apagada = glifos(Some("field.inert.thin_wall_has_no_depth"));
+    assert!(
+        apagada > viva,
+        "a fileira apagada pintou {apagada} glifos contra {viva} da viva — a razão não chegou a \
+         pixel, e o artista vê uma linha morta sem explicação nenhuma"
+    );
+    // ⭐ **O CONTROLO de que o balde se encheu com a FRASE e não com ruído:** a diferença tem de ter
+    // o tamanho de uma frase, não de um dígito a mudar de largura.
+    assert!(
+        apagada - viva > 40,
+        "a diferença é de {} glifo(s) — isso é um número a mudar de largura, não uma frase",
+        apagada - viva
+    );
+}
+
+/// ⭐⭐⭐ **A MESMA RAZÃO DITA UMA VEZ POR CORRIDA** — ver [`ph2d_panel_model3d`], `razao_a_pintar`.
+///
+/// # ⛔ O defeito que ela evita, com o número
+///
+/// Com `Thin Walled` ligado são **DUAS** fileiras seguidas com a mesma razão (o *Subsurface Radius*
+/// e a amostra do *Radius Scale*), e o material sem subsuperfície tranca **nove** posições de uma
+/// vez. Escrever a frase por baixo de cada uma é o defeito que a família do esculpir já nomeou por
+/// escrito: *um pincel que se queixa sempre é ruído que o artista aprende a ignorar, exactamente
+/// quando a queixa passar a ser verdade.*
+///
+/// ⚠️ **As DUAS metades, e nenhuma basta:** *«duas iguais dizem uma vez»* passaria com uma lei que
+/// nunca diz nada, e *«duas diferentes dizem duas»* passaria com uma lei que diz sempre.
+#[test]
+fn a_mesma_razao_seguida_e_dita_uma_vez_so() {
+    let glifos = |segunda: &'static str| -> u32 {
+        let fileira = |k: u8, chave: &'static str, razao: &'static str| ParamRow {
+            entity: THE_UNION,
+            param: ph2d_field::Param::Material(k),
+            key: chave,
+            value: 0.3,
+            lo: 0.0,
+            inert: Some(razao),
+            integral: false,
+            section: None,
+            choices: &[],
+            swatch: None,
+            subject: None,
+            bound: Bound::Soft(1.0),
+        };
+        publish(ModelSnapshot {
+            rows: vec![
+                fileira(
+                    27,
+                    "field.dim.subsurface_radius",
+                    "field.inert.thin_wall_has_no_depth",
+                ),
+                fileira(31, "field.dim.subsurface_anisotropy", segunda),
+            ],
+            node_count: 1,
+            ..ModelSnapshot::default()
+        });
+        let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+        host.set_panel_visible(Model3dPanel::ID, true);
+        let mut state = Model3dPanelState;
+        host.paint_and_count_geometry::<Model3dPanel>(
+            &mut state,
+            ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0),
+        )
+        .0
+    };
+    let repetida = glifos("field.inert.thin_wall_has_no_depth");
+    let diferente = glifos("field.inert.solid_scatters_isotropically");
+    assert!(
+        diferente > repetida,
+        "duas razões DIFERENTES pintaram {diferente} glifos e duas IGUAIS pintaram {repetida} — se \
+         são iguais, ou a corrida não colapsa, ou nenhuma das duas é dita"
+    );
+    assert!(
+        diferente - repetida > 40,
+        "a diferença é de {} glifo(s), que não tem o tamanho de uma frase — a corrida está a \
+         colapsar o que devia dizer duas vezes",
+        diferente - repetida
     );
 }

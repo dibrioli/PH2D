@@ -76,17 +76,31 @@ pub struct ParamRow {
     /// silêncio é a pior forma de recusa — e ela sobreviveu a um smoke porque o valor experimentado
     /// era positivo.
     pub lo: f32,
-    /// ⭐ **Esta linha pode ser mexida agora?** `false` ⇒ ela é pintada como um **facto** (rótulo e
-    /// número), sem slider, sem campo e **sem entrada no índice de acerto**.
+    /// ⭐⭐⭐ **PORQUE É QUE ESTA LINHA NÃO PODE SER MEXIDA AGORA** — `None` ⇒ ela é viva; `Some` é a
+    /// **chave i18n da razão**, e a linha é pintada como um **facto** (rótulo e número), sem
+    /// slider, sem campo e **sem entrada no índice de acerto**.
     ///
     /// ⚠️ *Uma affordance que não pode ser honrada é pior do que nenhuma* — é a lei que este arquivo
-    /// já aplica ao texto puro e à fileira de operações vazia. O caso de hoje é o terceiro ângulo na
-    /// trava de cardan, onde ele deixa de ser um eixo independente
-    /// ([`ph2d_field::xform::rotation_axis_is_free`], que é a **mesma** porta que recusa a escrita).
+    /// já aplica ao texto puro e à fileira de operações vazia. Os casos de hoje são o terceiro
+    /// ângulo na trava de cardan ([`ph2d_field::xform::rotation_axis_is_free`], que é a **mesma**
+    /// porta que recusa a escrita) e as seis famílias do material.
     ///
     /// ⛔ **E não é «esconder a linha»**: o valor continua a ser um facto que o artista precisa de
     /// ler, e uma linha que aparece e desaparece faria o painel saltar de tamanho a cada travessia.
-    pub live: bool,
+    ///
+    /// # ⛔⛔ Ela era um `bool` e a razão faltava — decisão do dono, 2026-09-18
+    ///
+    /// Perguntado o que fazer com as fileiras que o modo em mãos não lê, ele escolheu
+    /// *«deixá-las à vista, apagadas»*, com a razão ao lado. ⚠️ E a medição do mesmo dia mostrou que
+    /// o defeito não era de **cinco** fileiras: o travamento existia desde 14/09 e era **mudo em
+    /// todas** — *um controlo travado e sem razão à vista lê-se exactamente como um controlo morto*,
+    /// que é a conclusão que o dono já tirou três vezes noutra família (*«não vejo efeito com
+    /// density»*).
+    ///
+    /// ⛔ **Um `live: bool` com um `reason` ao lado seriam duas respostas à mesma pergunta**, e a
+    /// combinação `apagado sem razão` — o defeito de hoje — continuaria exprimível. Num
+    /// [`Option`] ela não é.
+    pub inert: Option<&'static str>,
     /// ⭐ **O número desta linha é INTEIRO** — quantas cópias, e não quanto.
     ///
     /// ⚠️ Três coisas mudam de uma vez, e é por isso que é um campo e não uma dedução do valor: o

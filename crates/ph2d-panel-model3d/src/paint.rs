@@ -194,12 +194,25 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // ⚠️ **Corta na família, e o rodapé DIZ que cortou** — ver `MAX_ROWS`. Uma linha além dela
     // ficaria sem controle registado: pintada e morta sob o rato, que é a falha de paridade de
     // fiação na sua forma mais cara.
+    // ⭐⭐⭐ **A RAZÃO DE UMA LINHA APAGADA** (decisão do dono, 2026-09-18) — ver
+    // [`crate::paint_rows::razao_a_pintar`], que é quem decide se ela é dita **agora**.
+    //
+    // ⚠️ **O estado vive AQUI e não na linha**, porque a pergunta é sobre a VIZINHA: uma linha não
+    // sabe o que foi pintado antes dela, e sem isso a mesma frase sairia quatro vezes seguidas.
+    let mut razao_ja_dita: Option<&'static str> = None;
     for (slot, row) in snapshot.rows.iter().enumerate().take(MAX_ROWS) {
         // ⭐⭐⭐ **O CABEÇALHO DA SECÇÃO** (report do Enio, 2026-08-30) — ver `ParamRow::section`.
         if let Some(key) = row.section {
             y = paint_section(ctx, tr(key), x, w, y);
+            // ⚠️ **Um cabeçalho QUEBRA a corrida** — ele separa as duas fileiras à vista, e a razão
+            // dita acima dele deixa de estar ao lado da de baixo.
+            razao_ja_dita = None;
         }
         y = crate::paint_rows::paint_row(ctx, row, slot as u32, x, w, y);
+        if let Some(key) = crate::paint_rows::razao_a_pintar(razao_ja_dita, row.inert) {
+            y = paint_note(ctx, tr(key), x, w, y);
+        }
+        razao_ja_dita = row.inert;
     }
     // ⭐⭐⭐ **O SELECTOR SEGUE O SUJEITO** — ver [`close_a_stranded_picker`].
     // ⚠️ **As amostras são contadas NA MESMA FAIXA que foi pintada** (`take(MAX_ROWS)`): uma linha

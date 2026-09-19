@@ -35,7 +35,7 @@ fn model_with_rows(n: usize) -> state::ModelSnapshot {
                 key: "field.dim.scale",
                 value: 0.5,
                 lo: 0.0,
-                live: true,
+                inert: None,
                 integral: false,
                 section: None,
                 choices: &[],

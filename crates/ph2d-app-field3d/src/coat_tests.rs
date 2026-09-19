@@ -288,7 +288,7 @@ fn the_coat_numbers_are_locked_while_the_coat_is_off() {
         super::colour_row_tests::rows_of(sim, folha)
             .iter()
             .filter(|r| matches!(r.param, ph2d_field::Param::Material(_)))
-            .map(|r| (r.key, r.live))
+            .map(|r| (r.key, r.inert.is_none()))
             .collect()
     };
     let do_verniz = [

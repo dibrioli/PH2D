@@ -20,7 +20,7 @@ use ph2d_ecs::SimWorld;
 use ph2d_field::{FieldDoc, NodeId, Primitive, Xform};
 
 /// Uma peça de UMA folha — uma esfera. A cor é da folha, e é ela que o painel mostra.
-pub(super) fn a_ball() -> (SimWorld, Entity) {
+pub(crate) fn a_ball() -> (SimWorld, Entity) {
     let mut sim = SimWorld::new();
     let doc = FieldDoc::new(
         vec![ph2d_field_eval::leaf(
@@ -46,7 +46,7 @@ pub(super) fn a_ball() -> (SimWorld, Entity) {
 /// isso **comia o pedido que o gate acabara de empurrar** — o `the_colour_intent_reaches_the_document`
 /// leu a cor de omissão e acusou uma costura partida que estava inteira. *Um arnês que limpa a fila
 /// mede o programa em que ninguém pediu nada.*
-pub(super) fn rows_of(sim: &mut SimWorld, e: Entity) -> Vec<ph2d_panel_model3d::ParamRow> {
+pub(crate) fn rows_of(sim: &mut SimWorld, e: Entity) -> Vec<ph2d_panel_model3d::ParamRow> {
     crate::scene::sync_scene_and_birth(sim, None, &[e], 0.0, &crate::scene::no_drawing());
     ph2d_panel_model3d::state::current().rows
 }

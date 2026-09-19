@@ -114,7 +114,7 @@ fn coagido(value: f32, span: Span) -> Option<f32> {
         | Span::Along
         | Span::Choice(_)
         | Span::Turn(_)
-        | Span::Locked
+        | Span::Locked(_)
         | Span::FromZero => None,
     }
 }

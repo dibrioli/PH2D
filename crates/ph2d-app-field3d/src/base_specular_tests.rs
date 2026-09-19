@@ -273,7 +273,7 @@ fn the_two_dielectric_only_numbers_are_exactly_inert_on_a_metal() {
     let vivas = |sim: &mut ph2d_ecs::SimWorld| -> Vec<(&'static str, bool)> {
         super::colour_row_tests::rows_of(sim, folha)
             .iter()
-            .map(|r| (r.key, r.live))
+            .map(|r| (r.key, r.inert.is_none()))
             .collect()
     };
     let so_dielectricas = ["field.dim.base_diffuse_roughness", "field.dim.specular_ior"];

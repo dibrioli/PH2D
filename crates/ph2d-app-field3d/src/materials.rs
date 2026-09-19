@@ -84,13 +84,34 @@ mod diagnostico_da_matiz {
     /// ⭐ A leitura: ausente e lixo caem no caminho byte-idêntico; o resto é limitado à faixa da lei.
     #[test]
     fn a_leitura_do_interruptor_cai_no_neutro_quando_nao_e_um_numero() {
-        assert!((super::depth_hue_de(None) - 0.0).abs() < f32::EPSILON, "ausente");
-        assert!((super::depth_hue_de(Some("lixo")) - 0.0).abs() < f32::EPSILON, "lixo");
-        assert!((super::depth_hue_de(Some("")) - 0.0).abs() < f32::EPSILON, "vazio");
-        assert!((super::depth_hue_de(Some(" 1 ")) - 1.0).abs() < f32::EPSILON, "com espaços");
-        assert!((super::depth_hue_de(Some("0.5")) - 0.5).abs() < f32::EPSILON, "fracção");
-        assert!((super::depth_hue_de(Some("5")) - 1.0).abs() < f32::EPSILON, "acima da faixa");
-        assert!((super::depth_hue_de(Some("-3")) - 0.0).abs() < f32::EPSILON, "abaixo da faixa");
+        assert!(
+            (super::depth_hue_de(None) - 0.0).abs() < f32::EPSILON,
+            "ausente"
+        );
+        assert!(
+            (super::depth_hue_de(Some("lixo")) - 0.0).abs() < f32::EPSILON,
+            "lixo"
+        );
+        assert!(
+            (super::depth_hue_de(Some("")) - 0.0).abs() < f32::EPSILON,
+            "vazio"
+        );
+        assert!(
+            (super::depth_hue_de(Some(" 1 ")) - 1.0).abs() < f32::EPSILON,
+            "com espaços"
+        );
+        assert!(
+            (super::depth_hue_de(Some("0.5")) - 0.5).abs() < f32::EPSILON,
+            "fracção"
+        );
+        assert!(
+            (super::depth_hue_de(Some("5")) - 1.0).abs() < f32::EPSILON,
+            "acima da faixa"
+        );
+        assert!(
+            (super::depth_hue_de(Some("-3")) - 0.0).abs() < f32::EPSILON,
+            "abaixo da faixa"
+        );
     }
 
     /// ⭐⭐⭐ **A metade que este repo cobra sempre: o valor CHEGA ao consumidor.**
@@ -303,9 +324,15 @@ mod tests;
 
 /// ⭐⭐⭐ **A LINHA DA COR** — os três canais dobrados numa amostra (Enio, 2026-09-14). Irmão por
 /// assunto: ele mede a ponte painel↔documento, não a tabela de materiais.
+///
+/// ⚠️ **`pub(crate)` desde 18/09, e a razão é o SEXTO consumidor:** o arnês dele (*uma peça de uma
+/// folha* + *as linhas que o painel publica para ela*) tinha cinco leitores dentro deste módulo, e
+/// o censo dos botões do material — que é de topo, porque mede o `ph2d-material` e não a tabela —
+/// precisa do mesmo. ⛔ *Copiá-lo seria a segunda montagem de mundo a divergir da do produto*, que
+/// é exactamente o defeito que os `rows_of` existem para não ter.
 #[cfg(test)]
 #[path = "colour_row_tests.rs"]
-mod colour_row_tests;
+pub(crate) mod colour_row_tests;
 
 /// ⭐⭐⭐ **A TABELA SEGUE A PEÇA** — chamada uma vez por quadro, depois do cozimento.
 ///

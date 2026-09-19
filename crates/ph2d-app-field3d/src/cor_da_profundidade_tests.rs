@@ -27,13 +27,14 @@
 //!
 //! # ⚠️ A cerca que as réguas de hoje NÃO têm: a ORIENTAÇÃO
 //!
-//! As linhas de um PFM vêm de **baixo para cima**. A [`super::razao_rb`] e a
-//! [`super::casa_a_populacao`] somam sobre um limiar, logo são **invariantes a um espelho
+//! As linhas de um PFM vêm de **baixo para cima**. A [`super::oraculo::razao_rb`] e a
+//! [`super::oraculo::casa_a_populacao`] somam sobre um limiar, logo são **invariantes a um espelho
 //! vertical** — a janela E notou isso por conta própria e passou a reportar a posição do píxel mais
 //! brilhante. Uma **máscara geométrica fixa**, que é o que esta sonda usa, *não* é invariante: um
 //! ficheiro ao contrário mediria o fundo. ⇒ a cerca é medida, não assumida.
 
-use super::{Quadro, W, H, le_pfm, quadro};
+use super::oraculo::le_pfm;
+use super::{H, Quadro, W, quadro};
 use ph2d_field_render::Orbit;
 
 /// O raio da esfera da cena `=33`, em unidades do mundo — ⛔ leia-o da cena, não daqui, se ela mudar.
@@ -252,10 +253,8 @@ fn expoente(rb: f32) -> f32 {
 #[test]
 #[ignore = "sonda: precisa dos dois oráculos em $PH2D_UNREAL e $PH2D_VERDADE2"]
 fn sonda_a_lei_da_cor_da_profundidade() {
-    let (Ok(dir_u), Ok(dir_v)) = (
-        std::env::var("PH2D_UNREAL"),
-        std::env::var("PH2D_VERDADE2"),
-    ) else {
+    let (Ok(dir_u), Ok(dir_v)) = (std::env::var("PH2D_UNREAL"), std::env::var("PH2D_VERDADE2"))
+    else {
         println!("sem $PH2D_UNREAL e/ou $PH2D_VERDADE2 — saltado");
         return;
     };
@@ -404,12 +403,18 @@ fn sonda_a_lei_da_cor_da_profundidade() {
     // ⭐⭐⭐ **A razão de existir desta lei é AMACIAR O TERMINADOR**, logo a resposta tem de aparecer
     // em `N·L ≈ 0` e do lado de lá — medir só de frente mede o sítio onde ela não tem trabalho.
     println!("\n    ⇒ quanto a MAGNITUDE se mexe sobre as quatro profundidades, por ângulo:");
-    for (j, ndl) in ["N·L=0,9", "N·L=0,4", "N·L=0,0", "N·L=−0,3"].into_iter().enumerate() {
+    for (j, ndl) in ["N·L=0,9", "N·L=0,4", "N·L=0,0", "N·L=−0,3"]
+        .into_iter()
+        .enumerate()
+    {
         let v: Vec<f32> = magnitudes.iter().map(|m| m[j]).collect();
         let (lo, hi) = v
             .iter()
             .fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
-        println!("       {ndl:<9} · {lo:.6} .. {hi:.6} · balanço {:.3}×", hi / lo.max(1e-12));
+        println!(
+            "       {ndl:<9} · {lo:.6} .. {hi:.6} · balanço {:.3}×",
+            hi / lo.max(1e-12)
+        );
     }
     for (i, (tag, mfp)) in PROFUNDIDADES.iter().enumerate().skip(1) {
         let (a, b) = (magnitudes[i - 1], magnitudes[i]);
@@ -574,9 +579,18 @@ fn a_cena_da_cor_declara_o_material_da_medicao() {
             "a profundidade saiu da tabela do oráculo"
         );
         assert_eq!(m.subsurface_color, COR, "a cor é a das fixturas");
-        assert_eq!(m.subsurface_radius_scale, [1.0; 3], "raios IGUAIS nos três canais");
-        assert!(m.subsurface_weight >= 1.0, "subsuperfície pura, como a medição");
-        assert!(m.specular_weight <= 0.0, "sem realce a lavar o que se quer ver");
+        assert_eq!(
+            m.subsurface_radius_scale, [1.0; 3],
+            "raios IGUAIS nos três canais"
+        );
+        assert!(
+            m.subsurface_weight >= 1.0,
+            "subsuperfície pura, como a medição"
+        );
+        assert!(
+            m.specular_weight <= 0.0,
+            "sem realce a lavar o que se quer ver"
+        );
     }
     // ⚠️ E nenhuma OUTRA cena pede material — o mecanismo nasceu para esta e um segundo consumidor
     // silencioso mudaria uma cena que alguém já aprovou.
@@ -606,13 +620,7 @@ fn o_material_da_cena_chega_as_esferas() {
     crate::smoke::set_armed_by_panel(true);
     crate::smoke::with_smoke(|s| s.seed_materials = Some(pedidos.clone()));
     let mut sim = ph2d_ecs::SimWorld::new();
-    crate::scene::sync_scene_and_birth(
-        &mut sim,
-        Some(&doc),
-        &[],
-        0.0,
-        &crate::scene::no_drawing(),
-    );
+    crate::scene::sync_scene_and_birth(&mut sim, Some(&doc), &[], 0.0, &crate::scene::no_drawing());
     let world = sim.world_mut();
     let mut q = world.query::<&ph2d_field_ecs::FieldMaterial>();
     let mut raios: Vec<f32> = q.iter(world).map(|m| m.subsurface_radius).collect();

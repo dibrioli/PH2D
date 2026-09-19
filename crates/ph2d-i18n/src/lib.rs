@@ -110,6 +110,10 @@ mod node_params;
 mod node_params_motion;
 /// As palavras dos motores do pincel e dos efeitos — a 2.ª fatia da fronteira.
 mod paint_engines;
+/// ⭐ **As RAZÕES de uma fileira apagada** (18/09) — irmão de ASSUNTO do [`model3d`], e não de
+/// painel: o corte foi imposto pelo tecto de LOC dele e separa *nomes de coisas* de *frases para o
+/// artista*.
+mod model3d_inert;
 mod painter_layers;
 /// ⭐⭐ **A COR, a CURVA, o COMANDO e as RECUSAS da timeline** — quatro motores numa fatia.
 mod quatro_motores;
@@ -474,6 +478,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| timeline::tr(k))
             .or_else(|| sculpt3d::tr(k))
             .or_else(|| model3d::tr(k))
+            .or_else(|| model3d_inert::tr(k))
             .or_else(|| tags::tr(k))
             .or_else(|| factory::tr(k))
             .or_else(|| topdown::tr(k))

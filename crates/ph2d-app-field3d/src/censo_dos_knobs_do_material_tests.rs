@@ -123,9 +123,13 @@ fn sonda_o_censo_dos_knobs_do_material() {
 ///
 /// ⚠️⚠️ **Mas isto É um controlo morto no sentido do `CLAUDE.md` §5.0** — *«o painel escreve onde ·
 /// quem lê · o leitor DECIDE, ou entrega a alguém que descarta?»*. Com `Thin Walled: Solid` o painel
-/// oferece uma fileira que o barro não sente, que é a mesma forma do `Strength` do `Density` na
-/// família do esculpir. ⇒ **a cura tem dono e é de produto**: esconder a fileira no `Solid`, ou
-/// pintá-la desactivada com a razão à vista.
+/// oferecia uma fileira que o barro não sente, que é a mesma forma do `Strength` do `Density` na
+/// família do esculpir.
+///
+/// ✅ **DECIDIDO pelo dono em 18/09: *«deixá-las à vista, apagadas»*** — com a razão ao lado. A cura
+/// ship em [`ph2d_field_ecs`] (`razao_inerte`), viaja no [`ph2d_field::Span::Locked`] e é afirmada
+/// pelo [`o_painel_apaga_exactamente_o_que_a_medicao_diz_estar_morto`], que compara o que o painel
+/// apaga com esta medição **ao bit**.
 ///
 /// ⭐ Este gate FIXA a medição para que essa decisão não se perca: no dia em que alguém ligar a
 /// anisotropia ao caminho maciço — ou esconder a fileira — ele reprova e obriga a dizer o que
@@ -143,11 +147,14 @@ fn sonda_o_censo_dos_knobs_do_material() {
 /// nada. **As duas metades são o porte fiel**, e é por isso que este gate as FIXA em vez de as
 /// curar.
 ///
-/// ⚠️⚠️ **Mas as cinco SÃO controlos mortos no sentido do `CLAUDE.md` §5.0** — *«o painel escreve
-/// onde · quem lê · o leitor DECIDE, ou entrega a alguém que descarta?»*. O painel mostra a UNIÃO e
-/// a lei lê uma PARTIÇÃO ⇒ em qualquer modo há fileiras que o barro não sente. É a mesma forma do
-/// `Strength` do `Density` na família do esculpir, e a cura é a mesma e **é de produto**: esconder,
-/// ou pintar desactivado com a razão à vista.
+/// ⚠️⚠️ **E as cinco ERAM controlos mortos no sentido do `CLAUDE.md` §5.0** — *«o painel escreve
+/// onde · quem lê · o leitor DECIDE, ou entrega a alguém que descarta?»*. O painel mostrava a UNIÃO
+/// e a lei lê uma PARTIÇÃO ⇒ em qualquer modo havia fileiras que o barro não sente.
+///
+/// ✅ **CURADO em 18/09, por decisão do dono: *«deixá-las à vista, apagadas»***, com a razão ao
+/// lado. ⚠️ **E o defeito não eram cinco fileiras: eram SEIS FAMÍLIAS** — o travamento existia desde
+/// 14/09 e era **mudo em todas**, e *um controlo travado sem razão à vista lê-se exactamente como um
+/// controlo morto*.
 #[test]
 fn os_botoes_da_subsuperficie_sao_uma_particao_entre_os_dois_caminhos() {
     // ⛔ A lista é de ÍNDICES com o nome CONFERIDO, e não de nomes escritos à mão: se a tabela do
@@ -227,5 +234,193 @@ fn o_censo_dos_knobs_mede_alguma_coisa() {
         Some("field.dim.base_r"),
         "o índice do controlo positivo mexeu-se"
     );
-    assert!(vivo(cor, false) && vivo(cor, true), "o controlo positivo não acusou");
+    assert!(
+        vivo(cor, false) && vivo(cor, true),
+        "o controlo positivo não acusou"
+    );
+}
+
+/// ⭐⭐⭐ **O PAINEL APAGA EXACTAMENTE O QUE A MEDIÇÃO DIZ ESTAR MORTO — nos dois caminhos, nos dois
+/// sentidos.**
+///
+/// Decisão do dono, 2026-09-18, depois de ler a tabela acima: as fileiras que o modo em mãos não lê
+/// ficam *«à vista, apagadas»*, com a razão ao lado.
+///
+/// # ⛔⛔ Porque este gate existe, e porque ele é o que torna a cura honesta
+///
+/// A cura vive numa lista de índices ([`ph2d_field_ecs`], `razao_inerte`) e a verdade vive na
+/// [`ph2d_material::Surface::direct`]. *Uma segunda lista escrita à mão ao lado de uma medição é a
+/// que envelhece* — e o modo de falha é mudo nos dois sentidos: uma fileira apagada que o barro
+/// SENTE é um controlo roubado, e uma fileira viva que ele não sente é o defeito que o dono
+/// encontrou.
+///
+/// ⇒ ele compara o conjunto que o **painel** apaga com o conjunto que o [`vivo`] mede **ao bit**,
+/// com um `assert_eq!` que falha nos dois sentidos de uma vez.
+///
+/// ⚠️ **O material é o MESMO dos dois lados** — o [`base`] deste ficheiro, escrito no documento
+/// posição a posição pela porta do produto. *Comparar uma medição feita num material com um
+/// travamento decidido noutro seria comparar dois programas.*
+///
+/// ⚠️ **A população é a família da subsuperfície (`24`–`31`)**, e não o material inteiro: as outras
+/// quatro famílias de travamento são sobre um knob estar DESLIGADO, que este censo não mede (ele
+/// arma tudo de propósito — ver o cabeçalho).
+#[test]
+fn o_painel_apaga_exactamente_o_que_a_medicao_diz_estar_morto() {
+    for parede_fina in [false, true] {
+        let (mut sim, folha) = crate::materials::colour_row_tests::a_ball();
+        // ⚠️ Pela PORTA DO PRODUTO, posição a posição: é o mesmo caminho que um arrasto do painel
+        // percorre, e é o que faz este gate medir o app em vez de uma struct montada à mão.
+        let mut m = base();
+        m.set(CAMPO_DA_PAREDE_FINA, if parede_fina { 1.0 } else { 0.0 });
+        for k in 0..ph2d_field::MATERIAL_FIELDS {
+            let v = m.get(k).expect("a tabela cobre a faixa");
+            ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(k), v)
+                .expect("a porta de escrita aceita as posições todas");
+        }
+
+        let familia = 24..=31u8;
+        // ⭐⭐⭐ **UM CANAL SEGUIDOR NÃO TEM FILEIRA — ele viaja na AMOSTRA da âncora**, e é por isso
+        // que a pergunta não é *«esta fileira está apagada?»* mas *«o artista consegue mexer neste
+        // número?»*. ⚠️ A 1.ª redacção deste gate comparava fileiras e reprovou a dizer que o
+        // painel apagava `[27, 28]` onde a medição via `[27, 28, 29, 30]` — sobre produto
+        // **CORRECTO**: o `subsurface_radius_scale` é uma cor (`CORES`, âncora em `28`), logo
+        // apagar a amostra apaga os três canais de uma vez.
+        //
+        // ⇒ cada fileira **cobre** os campos dela (um número cobre-se a si; uma amostra cobre os
+        // três canais que a `colour_channels` devolve), e o conjunto que interessa é a UNIÃO.
+        let linhas = crate::materials::colour_row_tests::rows_of(&mut sim, folha);
+        let campos_de = |r: &ph2d_panel_model3d::ParamRow| -> Vec<u8> {
+            match (r.swatch.is_some(), r.param.colour_channels()) {
+                (true, Some(canais)) => canais
+                    .iter()
+                    .filter_map(|p| match p {
+                        ph2d_field::Param::Material(c) => Some(*c),
+                        _ => None,
+                    })
+                    .collect(),
+                _ => match r.param {
+                    ph2d_field::Param::Material(k) => vec![k],
+                    _ => Vec::new(),
+                },
+            }
+        };
+        // ⭐⭐ **E a METADE ESTRUTURAL vem primeiro: todo campo da família é ALCANÇÁVEL.** Um campo
+        // sem fileira e sem amostra não está nem vivo nem apagado — está **AUSENTE**, que é
+        // exactamente a saída que o dono recusou. *Sem esta asserção, apagar uma linha do painel
+        // faria o `assert_eq!` abaixo passar a mentir em silêncio.*
+        let cobertos: Vec<u8> = {
+            let mut v: Vec<u8> = linhas
+                .iter()
+                .flat_map(&campos_de)
+                .filter(|k| familia.contains(k))
+                .collect();
+            v.sort_unstable();
+            v.dedup();
+            v
+        };
+        assert_eq!(
+            cobertos,
+            familia.clone().collect::<Vec<_>>(),
+            "com `thin_walled = {}` há campos da subsuperfície que o painel não mostra de forma \
+             nenhuma — nem fileira, nem amostra",
+            u8::from(parede_fina)
+        );
+
+        let apagado_no_painel: Vec<u8> = {
+            let mut v: Vec<u8> = linhas
+                .iter()
+                .filter(|r| r.inert.is_some())
+                .flat_map(&campos_de)
+                .filter(|k| familia.contains(k))
+                .collect();
+            v.sort_unstable();
+            v.dedup();
+            v
+        };
+        let medido_morto: Vec<u8> = familia.clone().filter(|k| !vivo(*k, parede_fina)).collect();
+
+        assert_eq!(
+            apagado_no_painel,
+            medido_morto,
+            "com `thin_walled = {}`, o painel apaga {apagado_no_painel:?} e a medição ao bit diz \
+             que os mortos são {medido_morto:?} — um apagado a mais é um controlo roubado ao \
+             artista, e um a menos é a fileira que ele vai arrastar sem nada acontecer",
+            u8::from(parede_fina)
+        );
+        // ⭐ **O PISO**, e ele é por caminho: cada modo tem de apagar ALGUMA coisa. Sem isto, uma
+        // lei que deixasse de travar seja o que for e uma medição que deixasse de acusar seja o
+        // que for concordariam no conjunto VAZIO — e este gate ficaria verde a medir o nada.
+        assert!(
+            !medido_morto.is_empty(),
+            "com `thin_walled = {}` a medição não achou nenhum botão morto na subsuperfície — a \
+             partição que o dono perguntou deixou de existir, ou o arnês está partido",
+            u8::from(parede_fina)
+        );
+    }
+}
+
+/// ⭐⭐ **E TODA FILEIRA APAGADA DIZ PORQUÊ** — em qualquer material, em qualquer caminho.
+///
+/// ⛔⛔ **Este é o gate do report**, e a forma dele é o que importa: ele **não** nomeia quais
+/// fileiras são apagadas (isso é do gate acima, contra a medição) — ele afirma que *não existe
+/// travamento MUDO*. Antes de 18/09 existiam seis famílias e as seis eram mudas: *um controlo
+/// travado sem razão à vista lê-se exactamente como um controlo morto*, que é a conclusão que o
+/// dono já tirou três vezes noutra família.
+///
+/// ⚠️ **A razão tem de chegar TRADUZIDA** — uma chave que o `ph2d-i18n` não conheça sai pintada em
+/// cru (o `leak_key` é assim de propósito), e o artista lê `field.inert.coat_is_off` por baixo de
+/// uma fileira apagada. *Por isso o gate atravessa a tradução em vez de comparar chaves.*
+#[test]
+fn nenhuma_fileira_apagada_fica_muda() {
+    let mut apagadas = 0usize;
+    // ⚠️ Os quatro cantos que acordam as quatro famílias de «o dono está desligado», mais os dois
+    // caminhos da partição — a população é construída, nunca escrita à mão.
+    for (metal, coat, emissao, peso) in [
+        (0.0f32, 0.5f32, 0.5f32, 0.5f32),
+        (1.0, 0.0, 0.0, 0.0),
+        (1.0, 0.5, 0.5, 0.5),
+    ] {
+        for parede_fina in [false, true] {
+            let (mut sim, folha) = crate::materials::colour_row_tests::a_ball();
+            let mut m = base();
+            m.metalness = metal;
+            m.coat = coat;
+            m.emission = emissao;
+            m.subsurface_weight = peso;
+            m.thin_walled = if parede_fina { 1.0 } else { 0.0 };
+            for k in 0..ph2d_field::MATERIAL_FIELDS {
+                let v = m.get(k).expect("a tabela cobre a faixa");
+                ph2d_field_ecs::set_param(
+                    sim.world_mut(),
+                    folha,
+                    ph2d_field::Param::Material(k),
+                    v,
+                )
+                .expect("a porta de escrita aceita as posições todas");
+            }
+            for r in crate::materials::colour_row_tests::rows_of(&mut sim, folha) {
+                let Some(chave) = r.inert else { continue };
+                apagadas += 1;
+                let frase = ph2d_i18n::tr(chave);
+                assert_ne!(
+                    frase, chave,
+                    "a fileira `{}` está apagada com a razão `{chave}`, que a tradução não conhece \
+                     — ela sai pintada em CRU por baixo do número",
+                    r.key
+                );
+                assert!(
+                    frase.len() > 20,
+                    "a razão de `{}` é `{frase}`, curta demais para dizer o que fazer a seguir",
+                    r.key
+                );
+            }
+        }
+    }
+    // ⭐ **O PISO:** sem ele, um painel que deixasse de apagar seja o que for passaria este gate
+    // trivialmente — *um laço sobre uma lista vazia afirma tudo*.
+    assert!(
+        apagadas >= 30,
+        "só {apagadas} fileiras apagadas em seis materiais — ou o travamento morreu, ou o arnês \
+         deixou de o alcançar"
+    );
 }

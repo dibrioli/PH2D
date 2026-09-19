@@ -184,7 +184,7 @@ pub fn param_rows(
                 // ⭐ **Sem faixa nenhuma**: a grandeza tem valor e não é editável neste estado. As
                 // duas pontas colapsam no próprio valor — não há para onde arrastar — e a linha
                 // segue marcada para o painel a pintar como facto.
-                Span::Locked => (d.value, Bound::Wrap(d.value)),
+                Span::Locked(_) => (d.value, Bound::Wrap(d.value)),
                 // ⭐ **Contagem**: as duas pontas são do DOCUMENTO — uma matriz começa em 1 (zero
                 // cópias é a peça a desaparecer, e apagar já tem botão) e um prisma em 3 (abaixo
                 // não há polígono).
@@ -228,7 +228,13 @@ pub fn param_rows(
                 value: d.value,
                 lo,
                 bound,
-                live: d.span != Span::Locked,
+                // ⭐ **A razão viaja da FAIXA para a LINHA sem ninguém a reescrever** — ver
+                // [`ph2d_field::Span::Locked`]. *Um `match` com um segundo vocabulário aqui seria a
+                // lista que envelhece na primeira razão nova.*
+                inert: match d.span {
+                    Span::Locked(razao) => Some(razao),
+                    _ => None,
+                },
                 // ⚠️ **Uma escolha também é inteira** — meio eixo não existe, e sem isto o passo
                 // do arrasto e as casas decimais seriam os de um número contínuo.
                 integral: matches!(d.span, Span::Count { .. } | Span::Choice(_)),

@@ -318,16 +318,40 @@ pub enum Span {
     /// documento nem a vista têm voto, e um número além delas não é recusado, é renomeado.
     Turn(f32),
     /// ⭐ **Não há faixa nenhuma agora**: a grandeza existe, tem valor, e **não é editável neste
-    /// estado**.
+    /// estado** — e o `&str` é a **chave i18n da RAZÃO**, que o painel pinta ao lado dela.
     ///
     /// ⚠️ É diferente de *"não aparece"*. O valor continua a ser um facto que o artista precisa de
     /// ler — e esconder a linha faria o painel saltar de tamanho a cada travessia. O que ela perde é
     /// o **controle**: quem a recebe pinta um facto, não um slider (*uma affordance que não pode ser
     /// honrada é pior do que nenhuma*).
     ///
-    /// O caso de hoje é o terceiro ângulo na trava de cardan — ver
-    /// [`crate::xform::rotation_axis_is_free`], que é a **mesma** porta que recusa a escrita.
-    Locked,
+    /// # ⛔⛔ Porque a razão viaja DENTRO dela, e não num campo ao lado
+    ///
+    /// Ela nasceu **muda** (2026-09-14) e ficou assim por quatro famílias de travamento. Medido no
+    /// painel de 2026-09-18: um artista com `Thin Walled` ligado via quatro fileiras apagadas e
+    /// **nada** que dissesse porquê — e a conclusão que ele tira é que a ferramenta está partida,
+    /// não que falta ligar outra coisa. *Um controlo travado e mudo lê-se exactamente como um
+    /// controlo morto* (`CLAUDE.md` §5.0), e é o report que a família do esculpir já pagou três
+    /// vezes (*«não vejo efeito com density»*).
+    ///
+    /// ⛔ **Um `Locked` + um `reason: Option<..>` ao lado seriam DUAS respostas à mesma pergunta**, e
+    /// a combinação `travado sem razão` — que é precisamente o defeito de hoje — continuaria
+    /// exprimível. Aqui ela não é: *não há como travar uma linha sem dizer porquê*.
+    ///
+    /// ⚠️ **Uma CHAVE e nunca um rótulo** (HR-15), e a mesma convenção da [`Span::Choice`] logo
+    /// acima: quem traduz é o painel. ⭐ Ela pode ser uma chave porque este documento **já** carrega
+    /// o vocabulário dos params (o [`Dim::key`]) — ⛔ é o oposto do `ph2d_sculpt3d::CurvaInerte`,
+    /// onde o MOTOR devolve um **enum** por não saber o vocabulário da interface. *A fronteira é de
+    /// quem carrega os nomes, e este carrega.*
+    ///
+    /// ⚠️ **Escrita para o ARTISTA, e nomeando o que a destranca** — a lei do
+    /// `shape_palette::why_not`: *«escolha um contorno fechado»* é acionável; *«profile_pick is
+    /// none»* não é.
+    ///
+    /// Os casos de hoje são o terceiro ângulo na trava de cardan — ver
+    /// [`crate::xform::rotation_axis_is_free`], que é a **mesma** porta que recusa a escrita — e as
+    /// seis famílias do material (`ph2d_field_ecs::params_of`).
+    Locked(&'static str),
     /// ⭐ **Simétrica, e fechada pelo DOCUMENTO**: `±max`, sem a vista ter voto.
     ///
     /// ⚠️ É a irmã da [`Span::Free`] com as pontas fechadas, e a diferença é de onde vem o número:

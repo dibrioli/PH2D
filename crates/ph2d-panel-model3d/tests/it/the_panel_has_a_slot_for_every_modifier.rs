@@ -47,11 +47,17 @@ fn the_slot_budget_still_has_room_for_the_next_modifier() {
 /// exactamente o estado que o report descreve. ⛔ O cabeçalho **não** entra no índice de acerto (é
 /// rótulo, não controle), então nenhum gate de costura o vê — este é textual de propósito, e fixa a
 /// INSTRUÇÃO INTEIRA: uma asserção só sobre o nome da função sobrevive a `if false &&`.
+///
+/// ⚠️ **A agulha deixou de conter o `}` de fecho em 18/09**, e a razão é que o corpo do `if let`
+/// ganhou uma segunda instrução (repor a corrida das razões — ver `razao_a_pintar`): *uma agulha
+/// que prende o FECHO prende também tudo o que alguém acrescente lá dentro*, e reprova sobre
+/// produto correcto. O que ela tem de fixar é a CONDIÇÃO com a CHAMADA e os argumentos dela, que é
+/// o que um `if false &&` ou um argumento trocado partiria.
 #[test]
 fn the_row_loop_paints_the_section_header() {
     let src = std::fs::read_to_string("src/paint.rs").expect("paint.rs");
     assert!(
-        src.contains("if let Some(key) = row.section {\n            y = paint_section(ctx, tr(key), x, w, y);\n        }"),
+        src.contains("if let Some(key) = row.section {\n            y = paint_section(ctx, tr(key), x, w, y);\n"),
         "o laco das linhas deixou de pintar o cabecalho de seccao — os numeros de um modificador \
          voltam a ficar no meio dos da forma, sem dizer de quem sao"
     );

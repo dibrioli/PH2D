@@ -181,8 +181,8 @@ pub(crate) fn apply_event(
                     // `populate` cunha a família inteira às cegas), e um arrasto que atravessasse a
                     // trava a meio ainda podia disparar. Emitir aqui daria uma edição que a escrita
                     // recusa — o número a saltar e a voltar, que é o defeito na sua forma mais
-                    // confusa. Ver `ParamRow::live`.
-                    Some(row) if !row.live => false,
+                    // confusa. Ver `ParamRow::inert`.
+                    Some(row) if row.inert.is_some() => false,
                     Some(row) => {
                         state::push_intent(ModelIntent::SetParam {
                             // ⭐ **A ENTIDADE e o ÍNDICE, nunca a posição do controle.** A posição
@@ -223,7 +223,7 @@ pub(crate) fn apply_event(
                 // ⚠️ **Uma linha inerte não despacha**, e um id cuja linha deste quadro não é uma
                 // escolha também não: a família está registada às cegas para `MAX_ROWS × MAX_CHOICES`
                 // (ver `populate`), então um clique num id que o retrato não pintou é alcançável.
-                Some(row) if row.live && (cell as usize) < row.choices.len() => {
+                Some(row) if row.inert.is_none() && (cell as usize) < row.choices.len() => {
                     state::push_intent(ModelIntent::SetParam {
                         entity: row.entity,
                         param: row.param,

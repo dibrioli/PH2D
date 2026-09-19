@@ -67,10 +67,15 @@ pub(crate) fn paint_row(
     if let Some(rgb) = row.swatch {
         return paint_swatch(ctx, row, rgb, x, w, y);
     }
-    // ⭐ **Uma linha que não pode agir não é pintada como se pudesse** — ver [`ParamRow::live`]. Ela
-    // sai daqui como facto e **não regista nada** no índice de acerto, então não há slider a agarrar
-    // nem campo a receber texto: é a mesma lei do [`paint_note`], neste mesmo arquivo.
-    if !row.live {
+    // ⭐ **Uma linha que não pode agir não é pintada como se pudesse** — ver [`ParamRow::inert`].
+    // Ela sai daqui como facto e **não regista nada** no índice de acerto, então não há slider a
+    // agarrar nem campo a receber texto: é a mesma lei do [`paint_note`], neste mesmo arquivo.
+    //
+    // ⚠️ **A RAZÃO não é pintada aqui**, e é de propósito: ela pertence à **corrida** de linhas que
+    // a partilham, e só o orquestrador vê a linha anterior — ver [`razao_a_pintar`], neste mesmo
+    // arquivo. *Quatro fileiras seguidas com a mesma frase por baixo de cada uma é ruído que o
+    // artista aprende a ignorar, exactamente quando ela passar a ser a que importa.*
+    if row.inert.is_some() {
         return paint_fact(ctx, row, x, w, y);
     }
     // ⭐⭐⭐ **UMA ESCOLHA NÃO É UM SLIDER** — ver [`ParamRow::choices`] (Enio, 2026-08-31). Ela
@@ -335,7 +340,7 @@ fn paint_swatch(ctx: &mut PaintCtx, row: &ParamRow, rgb: [u8; 3], x: f32, w: f32
     // `register_picker_swatch` o selector não a reconhece; sem o `hit_index` ela não é clicável;
     // sem o `SwatchState::Disabled` ela **parece** clicável. *Uma amostra que parece viva e não
     // responde é o controlo morto na forma que o artista mais rapidamente lê como avaria.*
-    if !row.live {
+    if row.inert.is_some() {
         return paint_dead_swatch(ctx, row, id, rgb, x, w, y);
     }
     let aberto = {
@@ -379,6 +384,32 @@ fn paint_swatch(ctx: &mut PaintCtx, row: &ParamRow, rgb: [u8; 3], x: f32, w: f32
     // `pointer_down`, e ele só vê o que o índice de acerto reclamou.
     ctx.host.hit_index_mut().register(id, gutter);
     y + ROW_H_PX + ph2d_tokens::control_gap_px()
+}
+
+/// ⭐⭐⭐ **A RAZÃO DE UMA LINHA APAGADA PINTA-SE UMA VEZ POR CORRIDA** — `Some` ⇒ pinta-a agora.
+///
+/// Decisão do dono, 2026-09-18: as fileiras que o modo em mãos não lê ficam *«à vista, apagadas»*,
+/// com a razão ao lado. ⚠️ Com `Thin Walled` ligado são **quatro** fileiras seguidas com a mesma
+/// razão (o raio da subsuperfície e os três canais da escala dele) — e escrevê-la quatro vezes é o
+/// defeito que a família do esculpir já nomeou por escrito: *um pincel que se queixa sempre é ruído
+/// que o artista aprende a ignorar, exactamente quando a queixa passar a ser verdade.*
+///
+/// ⭐ **A corrida é DERIVADA e não uma lista de famílias:** ela quebra sozinha quando a razão muda,
+/// quando aparece uma linha viva (`inerte == None`) e quando o orquestrador pinta um cabeçalho de
+/// secção — nesse caso ele repõe `ja_dita`, porque o cabeçalho separa as duas **à vista** e a razão
+/// de cima deixa de estar ao lado da de baixo.
+///
+/// ⛔ **A comparação é por PONTEIRO-e-conteúdo (`Option<&str>`) e não por família**: duas razões
+/// diferentes que calhem seguidas continuam a ser ditas as duas. *Agrupar por família seria uma
+/// segunda lista ao lado da do `params_of`, e a que envelhece na primeira razão nova.*
+pub(crate) fn razao_a_pintar(
+    ja_dita: Option<&'static str>,
+    inerte: Option<&'static str>,
+) -> Option<&'static str> {
+    match inerte {
+        Some(k) if ja_dita != Some(k) => Some(k),
+        _ => None,
+    }
 }
 
 fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32 {

@@ -16,7 +16,7 @@
 //! # ⛔⛔ A régua é a do módulo PAI, e isso é a decisão de desenho desta sonda
 //!
 //! Este é um módulo-**filho** por `#[path]`, e não um irmão de `lib.rs`: assim ele chama o
-//! [`super::le_pfm`], o [`super::razao_rb`], a [`super::casa_a_populacao`] e o [`super::quadro`]
+//! [`super::oraculo::le_pfm`], o [`super::oraculo::razao_rb`], a [`super::oraculo::casa_a_populacao`] e o [`super::quadro`]
 //! **sem que o pai abra visibilidade nenhuma** — e, sobretudo, sem uma segunda cópia de nenhuma
 //! delas. *Três colunas medidas por três funções diferentes não são uma comparação.*
 //!
@@ -28,10 +28,11 @@
 //! outro seria medir a curva de exibição e chamar-lhe material* — e é por isso que esta sonda passa
 //! os quadros dela pelo MESMO caminho que passou os do Cycles.
 
-use super::{Quadro, casa_a_populacao, le_pfm, quadro, razao_rb};
+use super::oraculo::{casa_a_populacao, le_pfm, razao_rb};
+use super::{Quadro, quadro};
 use ph2d_field_render::Orbit;
 
-/// As seis células da varredura — as mesmas da [`super::sonda_a_varredura_da_cor`].
+/// As seis células da varredura — as mesmas da [`super::oraculo::sonda_a_varredura_da_cor`].
 ///
 /// ⭐ As três `g*` (raio IGUAL nos três canais) são **o controlo da wave inteira**: é ali que se
 /// separa *«a cor muda com a PROFUNDIDADE»* de *«a cor muda porque cada canal viaja o seu»*. Nós
@@ -102,7 +103,7 @@ const MOTORES: [(&str, &str); 2] = [("realtime", "TEMPO REAL"), ("pathtracer", "
 
 /// Lê um quadro de oráculo e põe-no no NOSSO olhar com a população iluminada casada com a nossa.
 ///
-/// ⚠️ Devolve `None` **em voz alta** quando o ficheiro não existe ou não fecha — o [`super::le_pfm`]
+/// ⚠️ Devolve `None` **em voz alta** quando o ficheiro não existe ou não fecha — o [`super::oraculo::le_pfm`]
 /// recusa magia errada, cabeçalho curto, tamanho que não bate e valores não-finitos. *Um leitor que
 /// devolve lixo plausível é pior que um que falha*, e esta linha já pagou isso uma vez.
 fn oraculo(caminho: &str, alvo_n: usize) -> Option<(f32, usize, f32)> {
@@ -212,7 +213,9 @@ fn sonda_a_unreal_contra_nos_e_contra_a_verdade() {
             }
             None => {
                 controlo_ok = false;
-                println!("    UNREAL {rotulo:<11} ⛔ sem quadro em {dir_u}/ctrl_opaco_{sufixo}.pfm");
+                println!(
+                    "    UNREAL {rotulo:<11} ⛔ sem quadro em {dir_u}/ctrl_opaco_{sufixo}.pfm"
+                );
             }
         }
     }

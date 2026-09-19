@@ -555,7 +555,7 @@ fn at_the_pole_the_third_angle_reaches_the_panel_as_a_fact() {
         crate::scene::panel::param_rows(world, &[leaf], VIEW)
             .into_iter()
             .find(|r| r.param == Param::Rot(axis))
-            .map(|r| r.live)
+            .map(|r| r.inert.is_none())
             .expect("a linha existe")
     };
 

@@ -1035,8 +1035,8 @@ profundidade, logo um caminho livre médio não lhe diz nada; e a maciça integr
 há fileiras que o barro não sente. É a mesma forma do `Strength` do `Density` na família do
 esculpir, e a cura é a mesma: **esconder**, ou **pintar desactivado com a razão à vista**.
 
-⏳ **Decisão do dono**, e as duas saídas estão medidas — ⛔ o que não se pode é deixar como está, que
-é um painel a prometer cinco coisas que o modo em mãos não lê.
+✅ **DECIDIDO pelo dono em 2026-09-18: *«deixá-las à vista, apagadas»*** — a segunda saída, com a
+razão ao lado. Ver a **§20**.
 
 ### §19.3 — ⭐ O que o censo tem para não mentir
 
@@ -1049,3 +1049,107 @@ esculpir, e a cura é a mesma: **esconder**, ou **pintar desactivado com a razã
 | **controlo positivo nomeado** | a cor da base tem de acusar nos dois caminhos |
 | o que fica **de fora**, nomeado | a emissão e o céu saem por portas próprias — *um morto nesta tabela pode viver numa delas* |
 | os índices com o **nome conferido** | se a tabela do documento se mexer, o gate reprova a dizer isso, em vez de medir outro campo |
+
+
+## §20 — ✅ AS FILEIRAS APAGADAS DIZEM PORQUÊ — e não eram cinco, eram SEIS FAMÍLIAS
+
+### §20.1 — ⛔⛔ O mecanismo já existia; o que faltava era a RAZÃO
+
+Uma fileira que o modo em mãos não lê **já** era pintada como facto, sem slider, sem campo e sem
+entrada no índice de acerto — é a [`ph2d_field::Span::Locked`], que existe desde 14/09 por ordem do
+dono (*«não devem desaparecer, mas apenas serem inativados, mas sempre visíveis»*).
+
+⚠️⚠️ **E ela era MUDA — em todas as famílias.** O censo do travamento:
+
+| posições | inertes quando | a razão que o artista passa a ler |
+|---|---|---|
+| `4`, `11` | `metalness == 1` | *um metal cheio não tem camada difusa* |
+| `13`–`18` | `coat == 0` | *o verniz está desligado* |
+| `20`–`22` | `emission == 0` | *o objecto não emite luz* |
+| `24`–`32` | `subsurface_weight == 0` | *a subsuperfície está desligada* |
+| **`27`–`30`** | **`thin_walled == 1`** | *uma parede fina não tem profundidade* |
+| **`31`** | **`thin_walled == 0`** | *um sólido espalha por igual em todas as direcções* |
+| o 3.º ângulo | trava de cardan | *mexa no ângulo do meio para separar os eixos* |
+
+⭐ *Um controlo travado e sem razão à vista lê-se exactamente como um controlo morto* — é a conclusão
+que o dono já tirou três vezes noutra família (*«não vejo efeito com density»*). ⇒ **curar só as duas
+famílias que ele perguntou deixaria as outras cinco a mentir do mesmo modo.**
+
+### §20.2 — ⛔ Porque a razão viaja DENTRO da faixa, e não num campo ao lado
+
+A [`Span::Locked`] passou a ser `Locked(&'static str)` — a **chave i18n** da razão — e a
+[`ParamRow::live: bool`] passou a ser `inert: Option<&'static str>`.
+
+⛔ **Um `live: bool` com um `reason` ao lado seriam duas respostas à mesma pergunta**, e a combinação
+`apagado sem razão` — que é precisamente o defeito de hoje — continuaria exprimível. Num `Option`
+ela **não é**: *não há como travar uma fileira sem dizer porquê.*
+
+⚠️ **Uma CHAVE e não um rótulo** (HR-15), e é a convenção que a [`Span::Choice`] vizinha já usa: este
+documento **já** carrega o vocabulário dos params. ⛔ É o oposto do `ph2d_sculpt3d::CurvaInerte`,
+onde o MOTOR devolve um **enum** por não saber o vocabulário da interface — *a fronteira é de quem
+carrega os nomes, e este carrega*.
+
+### §20.3 — ⭐⭐ A razão é dita UMA VEZ por corrida
+
+Com `Thin Walled` ligado são **duas** fileiras seguidas com a mesma razão (o *Subsurface Radius* e a
+amostra do *Radius Scale*); com a subsuperfície desligada são **nove posições**. Escrever a frase por
+baixo de cada uma é o defeito que a família do esculpir já nomeou por escrito: *um pincel que se
+queixa sempre é ruído que o artista aprende a ignorar, exactamente quando a queixa passar a ser
+verdade.*
+
+⭐ A corrida é **derivada** (`razao_a_pintar`) e quebra sozinha quando a razão muda, quando aparece
+uma fileira viva, e quando o orquestrador pinta um cabeçalho de secção — *nesse caso ele separa as
+duas à vista, e a razão de cima deixa de estar ao lado da de baixo*.
+
+### §20.4 — ⭐⭐⭐ O gate que torna isto honesto: o painel apaga o que a MEDIÇÃO diz
+
+A cura vive numa lista de índices e a verdade vive na `ph2d_material::Surface::direct`. *Uma segunda
+lista escrita à mão ao lado de uma medição é a que envelhece*, e o modo de falha é mudo **nos dois
+sentidos**: uma fileira apagada que o barro SENTE é um controlo roubado, e uma viva que ele não sente
+é o defeito que o dono encontrou.
+
+⇒ `o_painel_apaga_exactamente_o_que_a_medicao_diz_estar_morto` compara os dois conjuntos com um
+`assert_eq!` que falha nos dois sentidos, **sobre o mesmo material**, escrito no documento posição a
+posição pela porta do produto.
+
+⛔⛔ **E a 1.ª redacção dele reprovou sobre produto CORRECTO**, o que mudou a régua: ela comparava
+*fileiras* e leu `[27, 28]` contra `[27, 28, 29, 30]` — porque o `subsurface_radius_scale` **é uma
+cor** (âncora em `28`), e os canais seguidores não têm fileira própria: eles viajam na amostra.
+⇒ a pergunta não é *«esta fileira está apagada?»* mas ***«o artista consegue mexer neste número?»***,
+e cada fileira **cobre** os campos dela. ⭐ A metade estrutural veio com ela: *todo campo da família
+é alcançável* — um campo sem fileira e sem amostra não está nem vivo nem apagado, está **AUSENTE**,
+que é a saída que o dono recusou.
+
+| gate | o que ele afirma |
+|---|---|
+| `o_painel_apaga_exactamente_o_que_a_medicao_diz_estar_morto` | o conjunto apagado **é** o medido ao bit, nos dois caminhos · todo campo é alcançável · cada caminho apaga alguma coisa |
+| `nenhuma_fileira_apagada_fica_muda` | não existe travamento mudo, e a razão chega **traduzida** (uma chave que o `ph2d-i18n` não conheça sai pintada em cru) |
+| `a_razao_de_uma_fileira_apagada_chega_a_pixel` | a frase entra na cena — medido em **glifos**, porque o Vello encaminha texto por `draw_glyphs` e *nenhum glifo entra na contagem de caminhos* |
+| `a_mesma_razao_seguida_e_dita_uma_vez_so` | a corrida colapsa, e **só** quando as razões são iguais |
+| `cada_caminho_tranca_a_metade_que_nao_le` | a partição, com o controlo dos que vivem nos dois |
+| `com_a_subsuperficie_desligada_a_razao_e_essa_e_nao_a_do_caminho` | **o bloqueio mais externo fala primeiro** |
+| `toda_razao_e_uma_chave_do_vocabulario_desta_familia` | nenhum braço tranca com uma chave de fora, com piso de população |
+
+⚠️ **A ordem dos braços é a LEI, e não arrumação:** com o peso a zero **e** a parede fina ligada, as
+posições `27`–`30` têm duas razões verdadeiras — e dizer *«uma parede fina não tem profundidade»* a
+quem também tem a subsuperfície desligada é mandá-lo resolver a metade que **não** o destranca. É a
+mesma lei da `recusa::Entradas::recusa` na família do esculpir.
+
+**9 mutações, 9 sangram.**
+
+### §20.5 — ⚠️ E o tecto de LOC estava VERMELHO desde antes desta wave
+
+O `subsuperficie_terminador_tests.rs` estava a **`1 455`** linhas contra o tecto de `700` — no `HEAD`,
+**antes** desta wave. ⚠️ É a sexta ocorrência da cegueira que o `CLAUDE.md` §5.0 nomeia: *aqueles
+gates vivem em `ph2d-editor-core/tests/it/` e um portão que só corre as crates editadas não os vê.*
+
+⛔ Curado por **CORTE POR RESPONSABILIDADE**, nunca por uma entrada no `FILE_OVERAGE_OK`:
+
+| ficheiro | o que ele responde | LOC |
+|---|---|---|
+| `subsuperficie_terminador_tests.rs` | a moldura (`quadro`) e as **três leis** que reprovam | `430` |
+| `subsuperficie_sondas_tests.rs` | as quatro **sondas** que decompõem o report (todas `#[ignore]`) | `594` |
+| `subsuperficie_oraculo_tests.rs` | a **bancada do oráculo externo** (PFM, exposição casada, `R/B`) | `502` |
+
+⭐ *Um ficheiro em que uma sonda e uma lei se leem iguais é onde uma lei passa a `#[ignore]` sem
+ninguém dar por isso* — e a bancada do oráculo é outra pergunta: *«comparada com quê, medida como?»*.

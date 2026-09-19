@@ -257,7 +257,7 @@ fn the_colour_of_the_glow_is_locked_while_the_glow_is_off() {
     let amostras = |rows: &[ph2d_panel_model3d::ParamRow]| -> Vec<(ph2d_field::Param, bool)> {
         rows.iter()
             .filter(|r| r.swatch.is_some())
-            .map(|r| (r.param, r.live))
+            .map(|r| (r.param, r.inert.is_none()))
             .collect()
     };
     let rows = super::colour_row_tests::rows_of(&mut sim, folha);
@@ -278,7 +278,7 @@ fn the_colour_of_the_glow_is_locked_while_the_glow_is_off() {
     );
     assert!(
         rows.iter()
-            .any(|r| r.param == ph2d_field::Param::Material(19) && r.live),
+            .any(|r| r.param == ph2d_field::Param::Material(19) && r.inert.is_none()),
         "a linha do BRILHO tem de estar VIVA — ela é o controlo que destrava a cor dele"
     );
 

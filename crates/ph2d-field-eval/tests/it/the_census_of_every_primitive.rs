@@ -803,7 +803,7 @@ fn march_over_the_declared_rows(k: PrimitiveKind) -> Vec<(String, f64)> {
             // ⭐ As duas pontas são do documento: varrem-se as DUAS e o meio.
             Span::Range { min, max } => vec![min, 0.5 * (min + max), max],
             Span::Turn(h) | Span::Walls(h) => vec![-h * 0.8, h * 0.8],
-            Span::Locked | Span::Choice(_) => continue,
+            Span::Locked(_) | Span::Choice(_) => continue,
             // ⚠️ Sem parede, a faixa é o alcance da VISTA — e o que se varre é uma década em
             // volta do valor de nascimento, que é o que uma mão alcança.
             // ⚠️ A `SoftFromZero` entra AQUI e não com as paredes: o número dela é o curso do
@@ -1135,7 +1135,7 @@ fn every_row_of_every_primitive_can_be_written() {
                 // ⛔ **A ÚNICA faixa que declara «não se escreve»** — e a porta que a recusa é a
                 // mesma que a pinta. Uma linha assim não é um controlo morto: é um controlo que diz
                 // que não é um.
-                Span::Locked => continue,
+                Span::Locked(_) => continue,
             };
             let mut q = p.clone();
             match ph2d_field::set_dim(&mut q, 0, i, alvo) {

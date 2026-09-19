@@ -14,6 +14,13 @@ use ph2d_field::{
 
 use crate::{FieldMods, FieldNode, FieldPose};
 
+/// ⭐ **PORQUE É QUE UM NÚMERO DO MATERIAL NÃO CHEGA AO PIXEL** — ver o cabeçalho do módulo.
+///
+/// ⚠️ Ele saiu deste ficheiro em 18/09 ao ganhar a **razão** e a **partição**: a lei passou a ser
+/// uma resposta que outros querem fazer directamente, e este ficheiro passou dos `700`.
+#[path = "edit_params_inerte.rs"]
+mod inerte;
+
 /// **A árvore em pré-ordem**, com a profundidade de cada nó — a mesma ordem e o mesmo aninhamento
 /// que a Hierarquia mostra.
 ///
@@ -401,10 +408,15 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                     value: degrees[k as usize],
                     // ⚠️ **A mesma porta que recusa a escrita** decide se há faixa: um eixo que a
                     // trava de cardan tirou do mapa não é um slider curto, é um facto sem controle.
+                    //
+                    // ⭐ **E ele DIZ porquê desde 18/09** (ver [`Span::Locked`]): esta trava era
+                    // muda, e um eixo apagado sem razão à vista lê-se como o painel avariado — a
+                    // razão nomeia o gesto que o destranca (mexer no ângulo do MEIO), que é a lei
+                    // do `shape_palette::why_not`.
                     span: if ph2d_field::xform::rotation_axis_is_free(pose, k) {
                         Span::Turn(ROT_SPAN_DEG[k as usize])
                     } else {
-                        Span::Locked
+                        Span::Locked("field.inert.gimbal_axis")
                     },
                 },
             )
@@ -531,40 +543,18 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
         // controlo** que não pode ser honrado; ela **não** manda apagar a linha. *Duas leis que se
         // leem parecidas, e a diferença entre elas é o painel a saltar debaixo do dedo.*
         //
-        // ⚠️ **O que cada uma destas condições significa** — todas medidas (`docs/Render3d/05`
-        // §20–§22), e todas com o mesmo mecanismo: o número é multiplicado por algo que é zero.
-        //
-        // | posições | inertes quando | porquê |
-        // |---|---|---|
-        // | `4`, `11` | `metalness == 1` | alimentam o lóbulo **dieléctrico**, que o metal mistura para fora |
-        // | `13`–`18` | `coat == 0` | o `prepare` mistura os quatro do verniz pelo peso dele |
-        // | `20`–`22` | `emission == 0` | a cor **multiplica** a luminância |
-        // | `24`–`32` | `subsurface_weight == 0` | o `mix` do grafo deita fora o ramo inteiro |
-        //
-        // ⚠️ **E as nove da subsuperfície incluem a PAREDE FINA** (`32`): com o peso a zero, o
-        // caminho que ela escolhe não é avaliado, logo o interruptor não move um pixel. *Um
-        // controlo que só faz sentido depois de outro estar ligado é a mesma lei do verniz.*
-        //
-        // ⚠️ **A porta de ESCRITA não se estreita** — o `set_param` continua a aceitar as 23
-        // posições. Travar é da apresentação; um pedido guardado de um quadro atrás tem de poder
-        // aterrar.
-        let inerte = |k: u8| match k {
-            4 | 11 => m.metalness >= 1.0,
-            13..=18 => m.coat <= 0.0,
-            20..=22 => m.emission <= 0.0,
-            24..=32 => m.subsurface_weight <= 0.0,
-            _ => false,
-        };
+        // ⭐ **QUAIS posições, e porquê cada uma, vive no [`inerte::razao_inerte`]** — ela
+        // saiu daqui em 18/09 ao ganhar a RAZÃO e a PARTIÇÃO, e o corte é por responsabilidade: a
+        // lei passou a ser uma resposta que o censo quer fazer **sem montar um painel**.
         out.extend((0..ph2d_field::MATERIAL_FIELDS).filter_map(|k| {
             Some((
                 Param::Material(k),
                 Dim {
                     key: MATERIAL_KEYS[k as usize],
                     value: m.get(k)?,
-                    span: if inerte(k) {
-                        Span::Locked
-                    } else {
-                        material_span(k)
+                    span: match inerte::razao_inerte(&m, k) {
+                        Some(razao) => Span::Locked(razao),
+                        None => material_span(k),
                     },
                 },
             ))

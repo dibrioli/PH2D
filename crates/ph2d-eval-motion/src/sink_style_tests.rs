@@ -31,7 +31,18 @@ fn an_untouched_sink_lowers_to_the_flip_uv_this_app_always_wrote() {
     assert_eq!(sink_blend_tag(&g, sink), 0, "untouched sink must be Mix");
 
     let mut out: Vec<RenderInstance> = Vec::new();
-    lower_to_instances_onto(&a_stream(), UV, SZ, crate::sink_style(&g, sink), &mut out);
+    lower_to_instances_onto(
+        &a_stream(),
+        UV,
+        SZ, // ⚠️ **A lei do dono DESLIGADA: estes gates medem o ESTILO** — ver
+        // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+        // não haveria instância nenhuma onde ler o pivô ou o blend.
+        ph2d_render::SinkStyle {
+            so_com_forma: false,
+            ..crate::sink_style(&g, sink)
+        },
+        &mut out,
+    );
     assert_eq!(out.len(), 3);
     for inst in &out {
         assert_eq!(inst.flip_uv, 0, "the neutral tag must write a zero word");
@@ -152,7 +163,13 @@ fn an_untouched_sink_lowers_to_the_instance_this_app_always_wrote() {
         &a_stream_of_mixed_sizes(),
         UV,
         SZ,
-        crate::sink_style(&g, sink),
+        // ⚠️ **A lei do dono DESLIGADA: estes gates medem o ESTILO** — ver
+        // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+        // não haveria instância nenhuma onde ler o pivô ou o blend.
+        ph2d_render::SinkStyle {
+            so_com_forma: false,
+            ..crate::sink_style(&g, sink)
+        },
         &mut out,
     );
     for inst in &out {
@@ -183,7 +200,13 @@ fn the_pivot_is_a_fraction_of_each_rows_own_size() {
         &a_stream_of_mixed_sizes(),
         UV,
         SZ,
-        crate::sink_style(&g, sink),
+        // ⚠️ **A lei do dono DESLIGADA: estes gates medem o ESTILO** — ver
+        // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+        // não haveria instância nenhuma onde ler o pivô ou o blend.
+        ph2d_render::SinkStyle {
+            so_com_forma: false,
+            ..crate::sink_style(&g, sink)
+        },
         &mut out,
     );
     assert_eq!(out[0].anchor, [1.0, -1.0]);
@@ -258,7 +281,18 @@ fn the_row_order_only_beats_the_texture_tiebreak_when_the_sink_asks() {
         let sink = g.add_node("motion.output");
         g.set_param(sink, SINK_SORT_PARAM, f32::from(u8::from(stream_order)));
         let mut out: Vec<RenderInstance> = Vec::new();
-        lower_to_instances_onto(&s, UV, SZ, crate::sink_style(&g, sink), &mut out);
+        lower_to_instances_onto(
+            &s,
+            UV,
+            SZ, // ⚠️ **A lei do dono DESLIGADA: estes gates medem o ESTILO** — ver
+            // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+            // não haveria instância nenhuma onde ler o pivô ou o blend.
+            ph2d_render::SinkStyle {
+                so_com_forma: false,
+                ..crate::sink_style(&g, sink)
+            },
+            &mut out,
+        );
         ph2d_render::sort_render_order(&mut out);
         out.iter().map(|i| i.world_pos[0]).collect::<Vec<_>>()
     };
@@ -334,7 +368,6 @@ fn a_vector_row_gets_the_geometric_half_of_the_style_and_declares_the_rest() {
         sampling: RenderInstance::pack_sampling(1, 0),
         stream_order: true,
         so_com_forma: false,
-        ponto_uv: SinkStyle::PLAIN.ponto_uv,
     };
     let vector_rows = a_stream()
         .with("geometry_id", Column::Scalar(vec![7.0, 7.0, 7.0]))

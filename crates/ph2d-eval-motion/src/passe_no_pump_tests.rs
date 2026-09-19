@@ -75,6 +75,14 @@ fn desenhado(armado: Option<f32>) -> Vec<[f32; 2]> {
         g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, varreduras);
     }
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o PASSE** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // as instâncias que o passe separa seriam zero por construção.
+    pump.define_a_lei(false);
     assert!(pump.pump(&g, &Ops, &[sink], 0, 0.0, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0]));
     pump.instances.iter().map(|i| i.world_pos).collect()
 }
@@ -135,6 +143,14 @@ fn armar_sem_tocar_no_numero_corre_as_varreduras_de_fabrica() {
     );
     // E a rota inteira: armar sem tocar no número separa de facto.
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o PASSE** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // as instâncias que o passe separa seriam zero por construção.
+    pump.define_a_lei(false);
     assert!(pump.pump(&g, &Ops, &[sink], 0, 0.0, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0]));
     let p: Vec<[f32; 2]> = pump.instances.iter().map(|i| i.world_pos).collect();
     assert!(
@@ -196,6 +212,14 @@ fn desenhado_e_tomada(armado: Option<f32>) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
         g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, varreduras);
     }
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o PASSE** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // as instâncias que o passe separa seriam zero por construção.
+    pump.define_a_lei(false);
     pump.set_taps(&[sink]);
     assert!(pump.pump(&g, &Ops, &[sink], 0, 0.0, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0]));
     let desenho = pump.instances.iter().map(|i| i.world_pos).collect();
@@ -276,6 +300,14 @@ fn uma_tomada_que_nao_e_sink_nunca_e_separada() {
     let sink = g.add_node(SRC_MAN.name);
 
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o PASSE** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // as instâncias que o passe separa seriam zero por construção.
+    pump.define_a_lei(false);
     pump.set_taps(&[forma]);
     assert!(pump.pump(&g, &Ops, &[sink], 0, 0.0, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0]));
 
@@ -312,6 +344,14 @@ fn um_quadro_separa_uma_vez_mesmo_com_o_sink_tapado() {
     g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
     g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, 32.0);
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o PASSE** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // as instâncias que o passe separa seriam zero por construção.
+    pump.define_a_lei(false);
     // ⚠️ A tomada que o gizmo do colisor de facto pede é o **próprio sink** — ver
     // `collider_gizmo::taps_for`. É essa a fixtura, e não uma tomada num nó do meio.
     pump.set_taps(&[sink]);
@@ -350,6 +390,14 @@ fn um_quadro_que_recupera_tiques_separa_uma_vez() {
     g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
     g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, 32.0);
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o PASSE** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // as instâncias que o passe separa seriam zero por construção.
+    pump.define_a_lei(false);
     let (uv, tam) = ([0.0, 0.0, 1.0, 1.0], [1.0, 1.0]);
     let antes = pump.separacoes();
     // Um quadro que recupera QUATRO tiques: três intermédios e o que se desenha.
@@ -379,6 +427,14 @@ fn um_quadro_que_recupera_tiques_separa_uma_vez() {
     );
     // ⚠️ E o CONTROLO NEGATIVO da cerca: com a bandeira ligada em todos, são quatro.
     let mut pump2 = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump2.define_a_lei(false);
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o PASSE** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // as instâncias que o passe separa seriam zero por construção.
+    pump2.define_a_lei(false);
     for tick in 0..4u64 {
         pump2.set_separa_o_desenho(true);
         assert!(pump2.pump(
@@ -416,6 +472,14 @@ fn a_bomba_publica_quantas_varreduras_correram() {
     g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
     g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, 1024.0);
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o PASSE** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // as instâncias que o passe separa seriam zero por construção.
+    pump.define_a_lei(false);
     let (uv, tam) = ([0.0, 0.0, 1.0, 1.0], [1.0, 1.0]);
     assert!(pump.pump(&g, &Ops, &[sink], 0, 0.0, uv, tam));
     let correram = pump.ultimo_relatorio().varreduras;
@@ -434,6 +498,14 @@ fn a_bomba_publica_quantas_varreduras_correram() {
     g1.set_param(s1, SINK_COLLIDE_PARAM, 1.0);
     g1.set_param(s1, SINK_COLLIDE_ITERATIONS_PARAM, 1.0);
     let mut p1 = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    p1.define_a_lei(false);
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o PASSE** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // as instâncias que o passe separa seriam zero por construção.
+    p1.define_a_lei(false);
     assert!(p1.pump(&g1, &Ops, &[s1], 0, 0.0, uv, tam));
     assert_eq!(
         p1.ultimo_relatorio().varreduras,

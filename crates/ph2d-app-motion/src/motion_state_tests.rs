@@ -27,7 +27,13 @@ use ph2d_nodegraph::cook::Cook;
 /// única ([`MotionState::with_snow`]). O que estes gates exercitam continua sendo o runtime da
 /// shell sobre um grafo que um artista poderia ter autorado; só que agora a fixture é DECLARADA.
 fn snow() -> MotionState {
-    MotionState::with_snow()
+    let mut m = MotionState::with_snow();
+    // ⚠️ **A lei do dono DESLIGADA: os gates desta fixtura medem o COZIMENTO** (o estado vivo da
+    // sim, o que o `install` esquece) — ver `MotionCookPump::so_com_forma`. A neve não tem forma
+    // ligada, logo com a lei ligada ela não desenha e a contagem de instâncias seria zero por
+    // construção. *Um gate que mede outra coisa desliga-a.*
+    m.pump.define_a_lei(false);
+    m
 }
 
 /// **O editor de Motion abre com a TELA VAZIA** (Enio, 2026-08-07: *"tire a cena da cachoeira"*).

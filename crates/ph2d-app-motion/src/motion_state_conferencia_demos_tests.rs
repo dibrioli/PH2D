@@ -193,6 +193,10 @@ fn the_formula_force_scene_orbits_with_no_force_node_in_it() {
     // media com o relógio parado e reprovou sobre um produto correto.
     let scopes = ph2d_node_motion_time_remap::time_scopes(&doc.graph, &reg);
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     let mut at0 = Vec::new();
     for tick in 0..40u64 {
         pump.advance_or_scrub_scoped(
@@ -316,6 +320,10 @@ fn probe_conferencia_scenes() {
     let sinks = build_write_on_demo_document(&mut doc, &reg).expect("cena");
     let scopes = ph2d_node_motion_time_remap::time_scopes(&doc.graph, &reg);
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     pump.advance_or_scrub_scoped(
         &doc.graph,
         &reg,
@@ -394,6 +402,10 @@ fn probe_conferencia_scenes() {
     let sinks = build_formula_force_demo_document(&mut doc, &reg).expect("cena");
     let scopes = ph2d_node_motion_time_remap::time_scopes(&doc.graph, &reg);
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     let mut at0 = Vec::new();
     for tick in 0..40u64 {
         pump.advance_or_scrub_scoped(

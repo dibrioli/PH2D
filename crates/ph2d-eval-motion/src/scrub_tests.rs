@@ -82,6 +82,10 @@ fn frame_x(pump: &MotionCookPump) -> f32 {
 fn a_backwards_scrub_restores_the_exact_past_frame() {
     let (g, c) = counter_graph();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     let scopes = TimeScopes::new();
 
     // Forward playback to tick 20 — each frame's P.x equals its tick.
@@ -112,6 +116,10 @@ fn a_backwards_scrub_restores_the_exact_past_frame() {
 fn a_plain_pump_at_a_past_tick_reads_the_future() {
     let (g, c) = counter_graph();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     let scopes = TimeScopes::new();
     for t in 0..=20u64 {
         pump.pump_scoped(&g, &Ops, &[c], t, t as f64 * DT, UV, SIZE, &scopes);
@@ -185,6 +193,10 @@ fn a_loop_wrap_anchors_on_the_previous_laps_backfill() {
     .unwrap();
     let scopes = TimeScopes::new();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     let ph = |t: u64| t as f64 * DT;
 
     // A "loop" of [100, 400] — longer than RECENT_CAPACITY's horizon once the
@@ -227,6 +239,10 @@ fn a_loop_wrap_anchors_on_the_previous_laps_backfill() {
     // the budget so the march MUST evict, re-run the laps, and bound the wrap
     // by the ring's RESOLUTION over the span — never by the loop's position.
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     // The counting state is one Vec2 element (~8 B/checkpoint): 200 B ≈ 25
     // anchors over 401 ticks ⇒ eviction bites hard (half protected-recent,
     // half thinned history ⇒ history gap ≈ 33).
@@ -257,6 +273,10 @@ fn a_loop_wrap_anchors_on_the_previous_laps_backfill() {
 fn an_edit_clears_the_ring_and_the_scrub_resims_from_the_seed() {
     let (g, c) = counter_graph();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     let scopes = TimeScopes::new();
     for t in 0..=10u64 {
         pump.pump_scoped(&g, &Ops, &[c], t, t as f64 * DT, UV, SIZE, &scopes);

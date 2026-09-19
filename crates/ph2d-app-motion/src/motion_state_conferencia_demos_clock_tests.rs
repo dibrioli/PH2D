@@ -15,6 +15,10 @@ fn band_y(band: usize, tick: u64) -> Vec<f32> {
     let sinks = build_clock_demo_document(&mut doc, &reg).expect("a cena monta");
 
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     for k in 0..=tick {
         pump.advance_or_scrub_scoped(
             &doc.graph,
@@ -37,6 +41,10 @@ fn band_xy(band: usize, tick: u64) -> Vec<[f32; 2]> {
     let mut doc = MotionDoc::default();
     let sinks = build_clock_demo_document(&mut doc, &reg).expect("a cena monta");
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     for k in 0..=tick {
         pump.advance_or_scrub_scoped(
             &doc.graph,

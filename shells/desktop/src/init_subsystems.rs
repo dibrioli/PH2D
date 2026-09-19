@@ -20,15 +20,7 @@ use ph2d_i18n::tr;
 pub(super) fn boot_assets_and_renderer(
     handler: &LoggingHandler,
     surface: &SurfaceContext,
-) -> (
-    AssetDb,
-    LogicalTextureMap,
-    bool,
-    // o ladrilho BRANCO (o quad de omissao) e o do PONTO (a marca de uma posicao)
-    [f32; 4],
-    [f32; 4],
-    SpriteRenderer,
-) {
+) -> (AssetDb, LogicalTextureMap, bool, [f32; 4], SpriteRenderer) {
     // M6: try to compose the atlas from real PNG files on disk.
     // Auto-generates 16 procedural fixtures on first launch so the
     // demo is self-contained (no committed binary fixtures). Any
@@ -69,12 +61,6 @@ pub(super) fn boot_assets_and_renderer(
     let motion_default_uv = atlas
         .insert_white_tile(surface.gpu())
         .unwrap_or([0.0, 0.0, 1.0, 1.0]);
-    // ⭐ O ladrilho da MARCA (`ph2d_render::DOT_TILE_KEY`): o disco que uma corrente de POSIÇÕES
-    // amostra, por ordem do dono (2026-09-19). Se ele não couber, a marca cai no ladrilho branco
-    // — ela fica quadrada e continua pequena, que é o lado seguro de falhar.
-    let motion_ponto_uv = atlas
-        .insert_dot_tile(surface.gpu())
-        .unwrap_or(motion_default_uv);
     // M14.5: sprite pipeline now targets the offscreen HDR game RT
     // (Rgba16Float) instead of the swap chain. The tonemap +
     // compositor passes carry pixels through to the surface.
@@ -89,7 +75,6 @@ pub(super) fn boot_assets_and_renderer(
         logical_texture_map,
         atlas_is_real,
         motion_default_uv,
-        motion_ponto_uv,
         renderer,
     )
 }

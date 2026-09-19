@@ -70,14 +70,12 @@
 //! one.
 
 mod demo;
-mod dot;
 mod gpu_ops;
 mod region;
 
 pub use region::{AtlasInsertError, AtlasRegion};
 
 use demo::make_hsv_tile;
-use dot::make_dot_tile;
 use gpu_ops::{clear_level0_transparent, create_texture, readback_atlas_texture, upload_region};
 use ph2d_gpu::GpuContext;
 // BTreeMap (not HashMap): HR-5 / ADR-0022 forbid unordered maps in
@@ -124,31 +122,10 @@ pub const FIRST_IMPORT_KEY: u32 = 16;
 /// happened to sit at the fallback tile.
 pub const WHITE_TILE_KEY: u32 = u32::MAX;
 
-/// Reserved key of the **DOT** tile ([`TextureAtlas::insert_dot_tile`]) — a filled, soft-edged
-/// disc on a transparent field.
-///
-/// ⭐⭐⭐ **Ele existe porque uma POSIÇÃO não é um objecto** (ordem do dono, 2026-09-19:
-/// *«o grid continua desenhando quadrados. A ordem foi não desenhar nada. se quiser coloque
-/// apenas pontos nas posições»*). Uma corrente que não traz aparência nenhuma desenhava-se com
-/// o ladrilho BRANCO, e um quad branco do tamanho da unidade lê-se como **conteúdo** — é a
-/// leitura que a ordem recusa. Amostrando este ladrilho, a mesma instância lê-se como uma
-/// MARCA: *aqui há uma posição, e nada foi copiado para cá*.
-///
-/// ⚠️ **Sentinela ao lado da do branco, e por baixo dela**, pela mesma razão: o alocador do
-/// importador conta a subir de [`FIRST_IMPORT_KEY`], logo nenhuma chave de utilizador lhe
-/// chega, e não é preciso combinar numeração com ninguém.
-pub const DOT_TILE_KEY: u32 = u32::MAX - 1;
-
 // Compile-time guard on the sentinel: it must sit past every key the demo seeds
 // and every key the importer can allocate, or the white tile would be silently
 // overwritten by a user sprite.
 const _: () = assert!(WHITE_TILE_KEY > FIRST_IMPORT_KEY && WHITE_TILE_KEY > DEMO_TILE_COUNT);
-// O mesmo guarda para o ladrilho do PONTO, e mais um: as duas sentinelas não podem ser a
-// MESMA chave, senão a segunda inserção reescreve a primeira em silêncio e o branco passa a
-// ter um buraco redondo — o modo de falha mais caro desta família, porque ele se vê como uma
-// textura errada e não como um erro.
-const _: () = assert!(DOT_TILE_KEY > FIRST_IMPORT_KEY && DOT_TILE_KEY > DEMO_TILE_COUNT);
-const _: () = assert!(DOT_TILE_KEY != WHITE_TILE_KEY);
 
 pub struct TextureAtlas {
     pub texture: wgpu::Texture,
@@ -307,31 +284,6 @@ impl TextureAtlas {
     pub fn insert_white_tile(&mut self, gpu: &GpuContext) -> Result<[f32; 4], AtlasInsertError> {
         let px = vec![0xff; (DEMO_TILE_PX * DEMO_TILE_PX * 4) as usize];
         self.insert(gpu, WHITE_TILE_KEY, DEMO_TILE_PX, DEMO_TILE_PX, &px)
-            .map(|r| r.uv(self.size_px))
-    }
-
-    /// Insert (or refresh) the reserved **dot** tile at [`DOT_TILE_KEY`], returning its UV rect
-    /// — the ladrilho que uma corrente **sem aparência** amostra (ver [`DOT_TILE_KEY`]).
-    ///
-    /// ⚠️ **Branco PREMULTIPLICADO pela cobertura**, e não branco com alfa: o caminho da sprite
-    /// deste app compõe `RGB·α` quando a instância declara `premultiplied`, e o lowering do
-    /// Motion declara `0.0` (alfa DIRECTA) para toda corrente sem a coluna. Escrito como
-    /// `RGB = 255` com `α` variável, a borda do disco viria clara sobre fundo escuro — o mesmo
-    /// halo que o report do Bug #4 (o `Multiply` a inverter a alfa) já pagou nesta casa. Com o
-    /// RGB a acompanhar a cobertura as duas convenções dão a MESMA borda, porque no interior
-    /// (`α = 1`) elas coincidem por construção e fora dele o texel é `0`.
-    ///
-    /// ⚠️ **A borda é uma rampa de UM texel**, medida do raio em unidades de texel — não um
-    /// corte duro. Um disco de arestas duras a 64² amostrado por baixo de um texel por pixel
-    /// (que é onde um ponto vive) cintila ao mover-se; a rampa é o que o mip-chain do átlas
-    /// consegue filtrar sem serrilha.
-    ///
-    /// Do tamanho de um ladrilho de demonstração como o branco, e pela mesma razão (o sampler
-    /// filtra nas bordas da região). Idempotente — uma segunda chamada é o caminho de
-    /// substituição do [`Self::insert`].
-    pub fn insert_dot_tile(&mut self, gpu: &GpuContext) -> Result<[f32; 4], AtlasInsertError> {
-        let px = make_dot_tile(DEMO_TILE_PX);
-        self.insert(gpu, DOT_TILE_KEY, DEMO_TILE_PX, DEMO_TILE_PX, &px)
             .map(|r| r.uv(self.size_px))
     }
 

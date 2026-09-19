@@ -31,7 +31,7 @@ use super::*;
 /// número em dois sítios, que é como ele envelhece. *Um valor sob `cfg(test)` é invisível do
 /// outro lado da fronteira (HOWTO §2.5) — e aqui a cura não é abrir uma feature, é reconhecer
 /// que a constante deixou de ser só do teste.*
-pub const MAX_DEMO_LEVEL: u32 = 123;
+pub const MAX_DEMO_LEVEL: u32 = 124;
 
 /// **As cenas de smoke dos CICLOS** — irmãs pelo tecto de LOC, cortadas por responsabilidade;
 /// ver o cabeçalho delas.
@@ -492,6 +492,14 @@ pub fn build_level(
             passe_sim_demo::announce();
             sinks
         }
+        // ⭐⭐⭐ **AS POSIÇÕES E A MARCA** — a cena que o report de 2026-09-19 pedia
+        // (*«deveria ser 20x20»*), e a que eu devia ter apontado em vez da `=2`, que é o demo de
+        // PERFORMANCE. Ver o cabeçalho de [`pontos_demo`].
+        Some("124") => {
+            let sinks = pontos_demo::build(doc, registry).unwrap_or_default();
+            pontos_demo::announce();
+            sinks
+        }
         Some("123") => {
             let sinks = passe_cadeia_demo::build(doc, registry).unwrap_or_default();
             passe_cadeia_demo::announce();
@@ -626,3 +634,6 @@ mod tests;
 #[cfg(test)]
 #[path = "motion_state_demo_router_census.rs"]
 mod census;
+#[cfg(test)]
+#[path = "motion_state_demo_router_census_da_lei.rs"]
+mod census_da_lei;

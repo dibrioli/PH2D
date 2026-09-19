@@ -14,6 +14,42 @@ use crate::stream::GpuStream;
 use crate::{CachedPipeline, GpuCook, UNIFORM_BYTES, codegen, create_pipeline, lower};
 use ph2d_gpu::GpuContext;
 
+/// ⭐⭐⭐ **O VEREDITO DA LEI DO DONO, DO LADO DO DISPOSITIVO — e ele é PURO de propósito.**
+///
+/// A [`GpuCook::encode_lowering`] pede um `GpuContext` e um `CommandEncoder`, logo um gate sobre
+/// ela nasceria `#[ignore]` e **o CI nunca o correria**. ⛔⛔ E esta é a rota de OMISSÃO deste
+/// módulo (o cozimento é GPU-resident por default): até 2026-09-19 a lei **não existia aqui**, o
+/// report do dono — *«o grid continua desenhando quadrados»* — reproduzia-se com a rota da CPU
+/// inteiramente gateada, e **duas mutações sobreviveram** a apagá-la porque nenhum teste desta
+/// crate a nomeava. *Quando um gate precisa de um device para medir uma decisão que não tem pixel
+/// nenhum, a lei está no sítio errado.*
+///
+/// Devolve `(desenha, estilo)`:
+/// - `desenha = false` ⇒ a corrente não produz instância nenhuma (o despacho nem corre).
+/// - o `estilo` devolvido é o que o `lower_signature`/`lower_module` assam, e pode ter a lei
+///   **desligada** pelo braço da geometria viva.
+///
+/// ⚠️ **A pergunta aqui é a metade do LADRILHO** e na CPU é a corrente inteira
+/// (`uv_rect` **ou** `geometry_id > 0`): a outra metade é por VALOR, e lê-la aqui custaria uma
+/// descarga do buffer por quadro. A divergência é **NOMEADA** e cai para o lado conservador —
+/// assim que a coluna da geometria existe, a lei desliga-se e desenha-se como sempre.
+#[must_use]
+pub fn veredito_do_dispositivo(
+    style: ph2d_render::SinkStyle,
+    tem_geometria: bool,
+    tem_ladrilho: bool,
+) -> (bool, ph2d_render::SinkStyle) {
+    let style = if style.so_com_forma && tem_geometria {
+        ph2d_render::SinkStyle {
+            so_com_forma: false,
+            ..style
+        }
+    } else {
+        style
+    };
+    (!(style.so_com_forma && !tem_ladrilho), style)
+}
+
 /// The GPU-resident instance output of a cook: a buffer laid out as
 /// `[RenderInstance; len]`, usable directly as the sprite renderer's instance
 /// vertex buffer (usage VERTEX) and mappable for the parity gates (COPY_SRC).
@@ -75,33 +111,25 @@ impl GpuCook {
         // corrente com a coluna toda a ZERO (uma `source.shape` sem forma escolhida) recebe
         // marcas na CPU e quads aqui — e chegar aqui exige que o planeador a tenha deixado ir à
         // placa, que hoje não acontece com nenhuma fonte de geometria.
-        let style = if style.so_com_forma && stream.cols.contains_key("geometry_id") {
-            ph2d_render::SinkStyle {
-                so_com_forma: false,
-                ..style
-            }
-        } else {
-            style
-        };
-        // ⭐⭐⭐ **A LEI DO DONO, e ela é DOIS VALORES DE OMISSÃO — zero codegen.** O ladrilho da
-        // marca e o tamanho dela entram no lugar do `default_uv`/`default_size`, e é isso que
-        // basta: a corrente que a lei apanha **não tem coluna `uv_rect`** (é a condição), logo o
-        // `read_uv_rect` do shader devolve o valor de omissão em todas as linhas, e o
-        // `read_size` faz o mesmo quando a coluna também falta.
+        let (desenha, style) =
+            veredito_do_dispositivo(style, stream.cols.contains_key("geometry_id"), present[4]);
+        // ⭐⭐⭐ **A LEI DO DONO, DO LADO DO DISPOSITIVO** — e até 2026-09-19 ela **não existia
+        // aqui**: o `lower_module` nunca leu o `so_com_forma` e o `lower_signature` nem sequer o
+        // comia, logo uma cena que fosse à placa (o caminho de OMISSÃO deste módulo) desenhava os
+        // quads de sempre com a lei ligada. *Uma lei escrita só na CPU é uma lei que o produto
+        // não tem.*
         //
-        // ⚠️ **Uma corrente que DIZ o seu tamanho é obedecida nas duas rotas** (`present[1]`
-        // aqui, a coluna `size` na CPU) — ver [`ph2d_render::sink_style::PONTO_DO_TAMANHO`],
-        // onde a medição que matou a lei alternativa está escrita.
+        // ⚠️ **A pergunta aqui é a metade do LADRILHO** (`present[4]`, a coluna `uv_rect`) e na
+        // CPU é a corrente inteira (`uv_rect` **ou** `geometry_id > 0`). A outra metade é por
+        // VALOR, e lê-la aqui custaria uma descarga do buffer por quadro — quem a cobre é o
+        // braço da geometria logo acima, que **desliga a lei** e desenha como sempre desenhou
+        // assim que a coluna existe. ⚠️ A divergência cai para o lado conservador, e é NOMEADA.
         //
-        // ⛔ **E é por isto que o `lower_module` fica INTOCADO:** uma redacção anterior assava a
-        // lei no WGSL e obrigava o `so_com_forma` a entrar na assinatura do pipeline. *Uma lei
-        // que cabe num uniform não tem porque gerar uma segunda fonte.*
-        let (default_uv_rect, default_size) = ph2d_render::sink_style::omissoes_da_marca(
-            style,
-            present[4],
-            default_uv_rect,
-            default_size,
-        );
+        // ⛔ E o despacho não corre: a corrente não produz instância nenhuma.
+        if !desenha {
+            instances.len = 0;
+            return;
+        }
         let sig = lower::lower_signature(present, style);
         self.lower_pipelines.entry(sig).or_insert_with(|| {
             let src = lower::lower_module(present, style);

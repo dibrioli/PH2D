@@ -227,6 +227,64 @@ fn a_lei_chega_ao_sistema_de_alerta() {
     );
 }
 
+/// ⛔⛔ **A LEI DO DONO É CONFIGURAÇÃO, E CARREGAR UM FICHEIRO NÃO LHE PODE TOCAR.**
+///
+/// ⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE** (2026-09-19): apagar as três linhas que
+/// levam a lei através do [`MotionState::install`] deixava os seis gates desta família VERDES,
+/// porque **todos** constroem o estado com `MotionState::new()` e nunca carregam nada.
+///
+/// O mecanismo é o que torna isto caro de ver: o `install` **substitui a bomba de propósito**
+/// (ela guarda os flocos que estão no ar), e a lei viaja dentro dela. ⇒ um `load` repunha o valor
+/// de omissão — no produto isso é inofensivo enquanto a omissão for a lei do dono, e num ARNÊS
+/// que a tivesse desligado **o programa medido muda a meio**, que é o defeito que não dá erro.
+///
+/// ⭐ **As duas metades são obrigatórias:** sem a segunda, um `install` que cravasse `true`
+/// passaria — e é exactamente o `true` que a omissão devolve.
+#[test]
+fn a_lei_do_dono_sobrevive_a_um_load() {
+    for lei in [false, true] {
+        let mut m = MotionState::new();
+        m.pump.define_a_lei(lei);
+        let texto = m.doc.to_text();
+        m.load_text(&texto).expect("o proprio texto volta");
+        assert_eq!(
+            m.pump.a_lei(),
+            lei,
+            "um `load` nao pode ligar nem desligar a lei do dono (esperado {lei})"
+        );
+    }
+}
+
+/// ⛔⛔⛔ **A LEI É DO MÓDULO MOTION, E A BOMBA NASCE NEUTRA — as duas metades, porque as curas
+/// são OPOSTAS.**
+///
+/// ⚠️⚠️ **Este gate nasceu de ONZE vermelhos que só a varredura impactada viu** (2026-09-19): a
+/// [`MotionCookPump`] nascia com a porta do ambiente, e o emissor de PARTÍCULAS
+/// (`ph2d-particles`) constrói uma bomba **própria**. Uma partícula é uma posição pura — sem
+/// `uv_rect` e sem `geometry_id` —, logo a lei cortava-a e **o emissor desaparecia do produto**,
+/// com o oráculo do Godot a ler `len 0`. *Uma lei que viaja na peça partilhada alcança todo
+/// consumidor dela, incluindo os que não são o módulo cujo dono a ordenou.*
+///
+/// ⭐ **A metade (2) é a que impede a cura barata:** desligar a lei em todo o lado põe os onze
+/// verdes e apaga a ordem do dono do produto — *e o report dele — «o grid continua desenhando
+/// quadrados» — reabre sem um único teste vermelho.*
+#[test]
+fn uma_bomba_nasce_neutra_e_o_motion_e_que_liga() {
+    // (1) A peça PARTILHADA é neutra: um consumidor que não é o Motion não herda lei nenhuma.
+    assert!(
+        !ph2d_eval_motion::MotionCookPump::new().a_lei(),
+        "a bomba e' a peca NEUTRA: quem a constroi sem ser o Motion nao pode ser cortado"
+    );
+
+    // (2) E o MÓDULO liga-a, senão a ordem do dono não chega ao produto.
+    let m = MotionState::new();
+    assert_eq!(
+        m.pump.a_lei(),
+        ph2d_eval_motion::so_com_forma_por_ordem(),
+        "o MotionState e' o dono da ordem: ele tem de a ligar no arranque"
+    );
+}
+
 /// ⭐⭐⭐ **SONDA: a bandeira estática concorda com a LEI, cozinhando?** — para cada candidato,
 /// coze-se o nó sozinho e pergunta-se `tem_aparencia` à corrente que ele entrega.
 ///
@@ -278,4 +336,144 @@ fn a_bandeira_contra_a_lei() {
         );
     }
     eprintln!();
+}
+
+/// ⭐⭐⭐ **SONDA: uma FORMA SOLTA no grafo dá aparência à corrente do grid?** — o report do dono
+/// de 2026-09-19: *«Ao colocar uma shape no grafo, mesmo desconectado e sem Duplicator, esferas
+/// aparecem nas posições do grid.»*
+///
+/// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture uma_forma_solta`
+#[test]
+#[ignore = "sonda, nao um gate"]
+fn uma_forma_solta_no_grafo() {
+    use ph2d_nodegraph::graph::{Edge, Graph};
+    let mut m = MotionState::new();
+    let mut g = Graph::new();
+    let grelha = g.add_node("motion.grid");
+    let saida = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (grelha, 0),
+        to: (saida, 0),
+        delayed: false,
+    })
+    .expect("liga");
+    let sinks = vec![saida];
+
+    let mede = |m: &mut MotionState, g: &Graph, quando: &str| {
+        m.doc.graph = g.clone();
+        m.pump.mark_dirty();
+        m.pump.pump(
+            &m.doc.graph.clone(),
+            &m.registry,
+            &sinks,
+            0,
+            0.0,
+            [0.0, 0.0, 1.0, 1.0],
+            [1.0, 1.0],
+        );
+        let n = m.pump.instances.len();
+        let tamanhos: Vec<[f32; 2]> = m.pump.instances.iter().take(2).map(|i| i.size).collect();
+        let uvs: Vec<[f32; 4]> = m
+            .pump
+            .instances
+            .iter()
+            .take(2)
+            .map(|i| i.atlas_uv)
+            .collect();
+        let vect = m.pump.vector_instances.len();
+        eprintln!("  {quando:<28} sprites={n:<4} vector={vect:<4} size={tamanhos:?} uv={uvs:?}");
+    };
+
+    eprintln!("\n=== UMA FORMA SOLTA NO GRAFO ===\n");
+    mede(&mut m, &g, "so' a grelha");
+
+    // A forma, SOLTA: nenhuma aresta a liga a coisa nenhuma.
+    let mut com_forma = g.clone();
+    let forma = com_forma.add_node("source.shape");
+    eprintln!("  (a forma solta e' o no' {})", forma.0);
+    mede(&mut m, &com_forma, "grelha + forma SOLTA");
+
+    // ⭐ E a hipótese seguinte: a forma LIGADA ao mesmo sink (o que a palette faz ao inserir
+    // com um nó escolhido — o splice).
+    let mut ligada = g.clone();
+    let f2 = ligada.add_node("source.shape");
+    match ligada.connect(Edge {
+        from: (f2, 0),
+        to: (saida, 0),
+        delayed: false,
+    }) {
+        Ok(()) => mede(&mut m, &ligada, "grelha + forma NO MESMO SINK"),
+        Err(e) => eprintln!("  a 2.a aresta no mesmo pino foi RECUSADA: {e:?}"),
+    }
+
+    // ⭐⭐⭐ **E a CENA QUE O DONO USOU** (`PH2D_GPU_COOK_DEMO=2`), que é o único sítio onde o
+    // report pode ter nascido: a de laboratório acima não o reproduz.
+    let mut cena = MotionState::new();
+    let sinks2 =
+        crate::motion_state::demo_router::build_level(Some("2"), &mut cena.doc, &cena.registry);
+    if let Some(&s2) = sinks2.first() {
+        let g2 = cena.doc.graph.clone();
+        let conta = |c: &mut MotionState, gr: &Graph, rot: &str| {
+            c.pump.mark_dirty();
+            c.pump.pump(
+                gr,
+                &c.registry,
+                &[s2],
+                0,
+                0.0,
+                [0.0, 0.0, 1.0, 1.0],
+                [1.0, 1.0],
+            );
+            let n = c.pump.instances.len();
+            let sz = c.pump.instances.first().map(|i| i.size);
+            let uv = c.pump.instances.first().map(|i| i.atlas_uv);
+            eprintln!("  [cena=2] {rot:<24} sprites={n:<7} size={sz:?} uv={uv:?}");
+        };
+        conta(&mut cena, &g2, "como o dono a abre");
+        let mut g3 = g2.clone();
+        g3.add_node("source.shape");
+        conta(&mut cena, &g3, "+ uma shape SOLTA");
+    }
+
+    // ⭐ E QUE CENA mostra um grid PEQUENO — a pergunta que o report do `360×360` levanta.
+    eprintln!("\n  cena │ maior sink │ tem grid");
+    for nivel in ["2", "90", "91", "97", "110", "121"] {
+        let mut c = MotionState::new();
+        let sinks =
+            crate::motion_state::demo_router::build_level(Some(nivel), &mut c.doc, &c.registry);
+        if sinks.is_empty() {
+            continue;
+        }
+        let tem_grid = c
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .any(|n| n.type_name == "motion.grid");
+        let mut cook = ph2d_nodegraph::cook::Cook::new();
+        let _ = cook.advance_tick(&c.doc.graph, &c.registry, 0.0);
+        let mut maior = 0usize;
+        for &sk in &sinks {
+            if let Ok(o) = cook.cook(&c.doc.graph, &c.registry, sk, 0.0) {
+                maior = maior.max(o[0].as_stream().count());
+            }
+        }
+        eprintln!("  ={nivel:<4} │ {maior:>10} │ {tem_grid}");
+    }
+
+    // E o que a corrente do sink de facto carrega, lida pelo COOK directo.
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+    cook.advance_tick(&com_forma, &m.registry, 0.0)
+        .expect("avanca");
+    let out = cook
+        .cook(&com_forma, &m.registry, saida, 0.0)
+        .expect("coze");
+    let st = out[0].as_stream();
+    eprintln!(
+        "  corrente do SINK: n={} uv_rect={} geometry_id={} tem_aparencia={}",
+        st.count(),
+        st.get("uv_rect").is_some(),
+        st.get("geometry_id").is_some(),
+        ph2d_eval_motion::tem_aparencia(st)
+    );
 }

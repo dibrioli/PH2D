@@ -182,7 +182,6 @@ pub fn sink_style(graph: &Graph, sink: NodeId) -> SinkStyle {
         // conhece. O valor de omissão é o átlas inteiro, e quem o tem (a bomba, pelo
         // [`crate::Pump::define_o_ladrilho_do_ponto`], e a rota do dispositivo) sobrescreve-o.
         // *Um sítio que não pode saber a resposta devolve a omissão e nomeia quem sabe.*
-        ponto_uv: SinkStyle::PLAIN.ponto_uv,
     }
 }
 

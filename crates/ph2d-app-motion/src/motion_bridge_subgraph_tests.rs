@@ -25,6 +25,10 @@ fn cook(motion: &mut MotionState, ticks: u64) -> Vec<u8> {
     let mut playhead = ph2d_core::Playhead::new(FIXED_DT);
     playhead.play();
     motion.sinks = output_nodes(&motion.doc.graph);
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    motion.pump.define_a_lei(false);
     let scopes = ph2d_node_motion_time_remap::time_scopes(&motion.doc.graph, &motion.registry);
     for step in 0..=ticks {
         if step > 0 {

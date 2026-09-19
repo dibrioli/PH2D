@@ -3,17 +3,27 @@
 # «coloque um alerta de que se não forem usados com duplicator e um objeto a ser copiado,
 # são invisíveis»).
 #
-# A corrente que o aviso atravessa tem QUATRO elos, e cada bloco mata um:
+# A corrente atravessa SEIS elos, e cada bloco mata um:
 #
 #   manifesto  →  a REGRA (marca_as_fontes_de_posicoes)      · os gates do app-motion
 #              →  a BANDEIRA no registo                       · idem
 #              →  quem VESTE, e o alcance a jusante           · a_lei_chega_ao_sistema_de_alerta
 #              →  o SISTEMA DE ALERTA (diagnose)              · idem + os do diagnosticador
+#              →  a LEI que retira o quadrado, nas TRES rotas · lower (x2) + o DISPOSITIVO
+#              →  o GIZMO que poe os pontos no lugar dele     · ponto_gizmo + o pintor
 #
 # ⚠️⚠️ **Os elos 3 e 4 mudaram em 2026-09-19, por ordem do dono** (*«o módulo tem um sistema de
 #    alerta. não era para colocar a mensagem no próprio nó»*): a nota permanente SAIU do cartão e
 #    a mensagem passou a viajar pelo `ph2d-motion-diagnose`. Os blocos que mediam a vista do
 #    cartão e a tinta da fileira **foram apagados com o sujeito deles**, não afrouxados.
+# ⛔⛔ **E o elo 5 foi RE-ESCRITO no mesmo dia, pela mesma razão, um nível acima:** ele media uma
+#    MARCA desenhada no canal do conteúdo (`PONTO_DO_TAMANHO`, `omissoes_da_marca`), que foi
+#    construída, medida e REVERTIDA — *uma marca no canal do conteúdo herda os controlos do
+#    conteúdo*, e multiplicar o `size` por `0,15` apagava a cena dos campos. O que ela mede hoje é
+#    a lei a CORTAR (três rotas) e o GIZMO a pôr os pontos, que é chrome.
+# ⚠️ **Um script de mutação cujo sujeito foi apagado NÃO fica verde — ele aborta na âncora**, e é
+#    por isso que o `muta` conta as ocorrências: *um bloco que não encontra o que vai mutar
+#    lê-se, num relatório, exactamente como um que sangrou.*
 #
 # ⚠️ `touch` no fim de cada restauro (o `cp` devolve mtime antigo e o cargo serve o MUTADO).
 # ⚠️⚠️ CONTROLO sobre o próprio FILTRO — um filtro que casa ZERO testes sai VERDE e lê-se
@@ -28,7 +38,7 @@
 #    `muta` abortar (bem) — releia o fonte antes de corrigir a âncora, nunca a escreva de memória.
 #
 # Corra-o pela porta de recursos:
-#   bash scripts/ph2d-run.sh bash "docs/Motion Nodes/ferramentas/mutacao_a_marca_e_o_alerta_2026-09-19.sh"
+#   bash scripts/ph2d-run.sh bash "docs/Motion Nodes/ferramentas/mutacao_a_lei_o_gizmo_e_o_alerta_2026-09-19.sh"
 set -u
 cd "$(dirname "$0")/../../.." || exit 1
 
@@ -37,10 +47,12 @@ INIT=crates/ph2d-node-registry-init/src/lib.rs
 DUP=crates/ph2d-node-motion-duplicator/src/lib.rs
 DIAG=crates/ph2d-motion-diagnose/src/lib.rs
 HEAL=crates/ph2d-app-motion/src/motion_bridge_heal.rs
-STYLE=crates/ph2d-render/src/sink_style.rs
 ORDEM=crates/ph2d-eval-motion/src/sink_style.rs
-DOT=crates/ph2d-render/src/atlas/dot.rs
-SHELL_INIT=shells/desktop/src/init.rs
+LOWER=crates/ph2d-eval-motion/src/lower.rs
+DEVICE=crates/ph2d-gpu-cook/src/instances.rs
+GIZMO=crates/ph2d-app-motion/src/ponto_gizmo.rs
+PINTOR=crates/ph2d-app-motion/src/ponto_gizmo_overlay.rs
+ESTADO=crates/ph2d-app-motion/src/motion_state.rs
 
 TMP="$(mktemp -d)"
 FALHAS=0
@@ -229,42 +241,88 @@ bloco "a frase do toast cai no catch-all (o artista le' outro defeito)" \
   "        (Deficit::SemQuemVista, _) if false => ph2d_i18n::tr("
 
 echo
-echo "=== ELO 5 — a MARCA que se desenha no lugar do quadrado ==="
+echo "=== ELO 5 — a LEI que retira o quadrado, nas TRES rotas ==="
 
-bloco_nao_compila "a marca volta a medir uma COPIA (o report do dono reabre)" \
-  ph2d-render "$STYLE" 1 \
-  "pub const PONTO_DO_TAMANHO: [f32; 2] = [0.15, 0.15];" \
-  "pub const PONTO_DO_TAMANHO: [f32; 2] = [1.0, 1.0];"
+# ⛔⛔ **As tres tem de sangrar em separado.** A do DISPOSITIVO e' a que o produto de facto corre
+#    (o cozimento e' GPU-resident por omissao), e ate' 2026-09-19 ela **nao existia**: a lei
+#    estava escrita so' na CPU, logo o report do dono — *«o grid continua desenhando quadrados»* —
+#    reproduzia-se com os gates da CPU todos verdes. *Uma lei escrita numa rota so' e' uma lei que
+#    o produto nao tem.*
 
-bloco "a porta da marca nunca troca nada (o quad branco volta)" \
-  ph2d-render "a_marca_troca_as_omissoes" "$STYLE" 1 \
-  "    if style.so_com_forma && !tem_aparencia {
-        (style.ponto_uv, PONTO_DO_TAMANHO)
-    } else {
-        (uv, size)
-    }" \
-  "    let _ = (style, tem_aparencia);
-    (uv, size)"
+bloco "a rota das SPRITES deixa de cortar (o quadrado volta na CPU)" \
+  ph2d-eval-motion "lower" "$LOWER" 1 \
+  "    if style.so_com_forma && !tem_aparencia(stream) {
+        return;
+    }
+    let n = stream.count();" \
+  "    let n = stream.count();"
 
-bloco "a porta ignora a APARENCIA (toda sprite perde o seu ladrilho)" \
-  ph2d-eval-motion "lower_tests" "$STYLE" 1 \
-  "    if style.so_com_forma && !tem_aparencia {" \
-  "    if style.so_com_forma {"
+bloco "a rota VECTORIAL deixa de cortar (a mesma posicao ganha DUAS pecas)" \
+  ph2d-eval-motion "lower" "$LOWER" 1 \
+  "    if style.so_com_forma && !tem_aparencia(stream) {
+        return;
+    }
+    // ⚠️ **A saída cedo desapareceu de propósito:**" \
+  "    // ⚠️ **A saída cedo desapareceu de propósito:**"
+
+# ⚠️ **O filtro é `a_lei_do_dono` e NÃO `lower`** — e a troca nasceu de duas mutações que
+#    SOBREVIVERAM: o `lower` casa 14 testes desta crate e **nenhum** deles nomeia a lei. *Um
+#    filtro largo que casa muitos testes lê-se como cobertura e pode não cobrir nada.*
+
+bloco_it "o DISPOSITIVO ignora a lei (a rota de OMISSAO volta ao report do dono)" \
+  ph2d-gpu-cook "a_lei_do_dono" "$DEVICE" 1 \
+  "    (!(style.so_com_forma && !tem_ladrilho), style)" \
+  "    let _ = tem_ladrilho;
+    (true, style)"
+
+bloco_it "o dispositivo deixa de ver GEOMETRIA VIVA (toda forma do grafo desaparece)" \
+  ph2d-gpu-cook "a_lei_do_dono" "$DEVICE" 1 \
+  "    let style = if style.so_com_forma && tem_geometria {" \
+  "    let style = if false {"
 
 bloco "a lei volta a shipar DESLIGADA (o grid volta aos quadrados)" \
   ph2d-eval-motion "a_porta" "$ORDEM" 1 \
   '    !matches!(v, Some("0"))' \
   '    matches!(v, Some(x) if !x.is_empty() && x != "0")'
 
-bloco_it "a shell esquece de dar o ladrilho a' bomba (a marca vira o atlas INTEIRO)" \
-  ph2d-host-desktop "o_ladrilho_da_marca" "$SHELL_INIT" 1 \
-  "            m.pump.define_o_ladrilho_do_ponto(motion_ponto_uv);" \
-  "            let _ = motion_ponto_uv;"
+bloco "a lei EVAPORA ao carregar um ficheiro (o arnes passa a medir outro programa)" \
+  ph2d-app-motion "lei_da_aparencia" "$ESTADO" 1 \
+  "        let lei = self.pump.a_lei();
+        self.pump = MotionCookPump::new();
+        self.pump.define_a_lei(lei);" \
+  "        self.pump = MotionCookPump::new();"
 
-bloco "o ladrilho do ponto vira um QUADRADO cheio" \
-  ph2d-render "o_ponto_e_redondo" "$DOT" 1 \
-  "            let cobertura = ((raio - d) / RAMPA_TEXELS).clamp(0.0, 1.0);" \
-  "            let cobertura = 1.0_f32.min((raio - d.min(0.0)) / RAMPA_TEXELS).clamp(0.0, 1.0);"
+echo
+echo "=== ELO 6 — o GIZMO que poe os pontos no lugar do quadrado ==="
+
+# ⚠️ **Ele e' CHROME e nao conteudo**, e e' isso que o separa da MARCA que esta jornada construiu,
+#    mediu e REVERTEU: uma marca desenhada no mesmo canal do conteudo herda os controlos do
+#    conteudo (multiplicar o `size` por `0,15` apagava a cena dos campos, medido). O gizmo mede-se
+#    em pixeis de ecra e nenhum no' do grafo lhe pode mexer no tamanho.
+
+bloco "o gizmo nunca pede TOMADAS (nao ha' retrato: o ecra fica vazio)" \
+  ph2d-app-motion "ponto_gizmo" "$GIZMO" 1 \
+  "    if !so_com_forma {
+        return Vec::new();
+    }
+    motion.sinks.clone()" \
+  "    let _ = so_com_forma;
+    Vec::new()"
+
+bloco "a amostra vira PREFIXO (o `gap_y` volta a ler-se como uma faixa a voar)" \
+  ph2d-app-motion "a_amostra_varre_a_nuvem" "$GIZMO" 1 \
+  "        k * self.alcance / self.n" \
+  "        k"
+
+bloco "o tecto deixa de cortar (o custo do quadro passa a seguir a cena)" \
+  ph2d-app-motion "o_tecto_corta" "$GIZMO" 1 \
+  "            n: total.min(MAX_PONTOS)," \
+  "            n: total,"
+
+bloco "a CRUZ vira um anel (o report do dono — *«apenas pontos»* — reabre)" \
+  ph2d-app-motion "uma_cruz_e_nao_um_anel" "$PINTOR" 1 \
+  "        let braco = glifo_px(CRUZ_DA_PECA, pegada);" \
+  "        let braco = 0.0;"
 
 echo
 echo "── TOTAL: $TOTAL provas · $FALHAS falha(s)"

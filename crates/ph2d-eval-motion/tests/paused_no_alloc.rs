@@ -62,6 +62,10 @@ fn paused_frames_allocate_nothing() {
     g.validate(&reg).expect("default vertical is well-typed");
 
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este gate mede ALOCAÇÕES** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada a cadeia `grid → clone` não desenha, e
+    // o gate mediria um quadro que não faz trabalho nenhum.
+    pump.define_a_lei(false);
 
     // Warm: the first pump cooks (dirty from `new`) + fills the buffer to its
     // steady capacity. A second pump at the same tick must already skip.

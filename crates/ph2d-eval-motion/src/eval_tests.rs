@@ -171,6 +171,10 @@ fn several_sinks_compose_into_one_instance_buffer() {
     let a = g.add_node("motion.test.src");
     let b = g.add_node("motion.test.src");
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     let (uv, size) = ([0.0, 0.0, 1.0, 1.0], [1.0, 1.0]);
 
     assert!(pump.pump(&g, &Ops, &[a, b], 0, 0.0, uv, size));
@@ -208,6 +212,10 @@ fn pump_cooks_on_change_and_skips_a_paused_frame() {
     let mut g = Graph::new();
     let src = g.add_node("motion.test.src");
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     let uv = [0.0, 0.0, 1.0, 1.0];
     let size = [1.0, 1.0];
 

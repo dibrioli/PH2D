@@ -130,6 +130,10 @@ fn a_tomada_cavalga_a_marcha_dos_sinks() {
     let scopes = TimeScopes::new();
     reset_evals();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     pump.set_taps(&[mid]);
     pump.advance_or_scrub_scoped(&g, &Ops, &[sink], 0, |t| t as f64, UV, SIZE, &scopes);
     assert_eq!(
@@ -150,6 +154,10 @@ fn a_lista_vazia_e_o_mundo_anterior() {
     let scopes = TimeScopes::new();
     reset_evals();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     pump.advance_or_scrub_scoped(&g, &Ops, &[sink], 0, |t| t as f64, UV, SIZE, &scopes);
     assert_eq!(evals(), 1);
     assert!(
@@ -166,6 +174,10 @@ fn o_scrub_tambem_entrega_as_tomadas() {
     let (g, mid, sink) = chain();
     let scopes = TimeScopes::new();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     pump.set_taps(&[mid]);
     for t in 0..=4 {
         pump.advance_or_scrub_scoped(&g, &Ops, &[sink], t, |t| t as f64, UV, SIZE, &scopes);
@@ -191,6 +203,10 @@ fn a_tomada_cavalga_a_marcha_de_boundaries() {
     let (g, mid, sink) = chain();
     let scopes = TimeScopes::new();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     pump.set_taps(&[mid]);
     pump.advance_or_scrub_to_nodes_scoped(&g, &Ops, &[sink], 0, |t| t as f64, &scopes);
     assert_eq!(
@@ -211,6 +227,10 @@ fn o_livro_guarda_o_tique_pedido_e_nao_a_re_simulacao() {
     let (g, mid, sink) = chain();
     let scopes = TimeScopes::new();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     pump.set_taps(&[mid]);
     for t in 0..=8 {
         pump.advance_or_scrub_scoped(&g, &Ops, &[sink], t, |t| t as f64, UV, SIZE, &scopes);
@@ -236,6 +256,10 @@ fn sem_armar_o_livro_fica_vazio() {
     let (g, _mid, sink) = chain();
     let scopes = TimeScopes::new();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     pump.advance_or_scrub_scoped(&g, &Ops, &[sink], 0, |t| t as f64, UV, SIZE, &scopes);
     assert!(pump.tap_fires().is_empty());
     assert!(pump.tap_streams().is_empty());
@@ -262,6 +286,10 @@ fn cooking_the_taps_fills_them_without_marching_the_clock() {
     let (graph, mid, _sink) = chain();
     let ops = Ops;
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     pump.set_taps(&[mid]);
     let antes = pump.last_cooked_tick();
 
@@ -284,6 +312,10 @@ fn cooking_the_taps_fills_them_without_marching_the_clock() {
     // nada, nao limpa nada, e nao custa nada no caso comum (nenhum no' de warp seleccionado e
     // nenhum `pulse.signal` no grafo).
     let mut vazia = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    vazia.define_a_lei(false);
     vazia.cook_taps_only(&graph, &ops, 0.0, &TimeScopes::new());
     assert!(
         vazia.tap_streams().is_empty(),

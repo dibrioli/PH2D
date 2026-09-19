@@ -60,6 +60,16 @@ impl crate::App {
             motion,
             motion_tool_active,
         ));
+        // ⭐⭐⭐ **O gizmo de uma corrente de POSIÇÕES** — a mesma janela e a mesma modalidade.
+        // Ele lê as tomadas deste cozimento e pergunta, por sink, a MESMA coisa que o lowering
+        // pergunta (`tem_aparencia`): o que não veio de uma forma não vira pixel, vira gizmo.
+        ph2d_app_motion::ponto_gizmo::publish(ph2d_app_motion::ponto_gizmo::resolve(
+            motion,
+            motion_tool_active,
+            // ⭐ A PORTA DO PRODUTO, lida num sítio só — ver `ponto_gizmo::resolve`: ou se vêem
+            // as peças, ou se vê o gizmo.
+            ph2d_eval_motion::so_com_forma_por_ordem(),
+        ));
         // **O gizmo do COLISOR da forma** (doc 109 §5) — a mesma modalidade.
         ph2d_app_motion::collider_gizmo::publish(ph2d_app_motion::collider_gizmo::resolve_at(
             motion,

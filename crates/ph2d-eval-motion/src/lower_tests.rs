@@ -181,23 +181,16 @@ const SO_COM_FORMA: SinkStyle = SinkStyle {
 /// mesma posição leva duas peças sobrepostas — a forma de defeito que o cabeçalho de
 /// `MediaColumns` já nomeia.
 #[test]
-fn uma_corrente_de_posicoes_desenha_marcas_quando_a_lei_esta_ligada() {
+fn uma_corrente_de_posicoes_nao_desenha_quando_a_lei_esta_ligada() {
     let s = Stream::new(4).with("P", Column::Vec2(vec![[0.0, 0.0]; 4]));
 
     let mut sprites: Vec<RenderInstance> = Vec::new();
     lower_to_instances_onto(&s, UV, SZ, SO_COM_FORMA, &mut sprites);
-    assert_eq!(sprites.len(), 4, "a posicao continua a ver-se");
-    for i in &sprites {
-        assert_eq!(
-            i.size,
-            ph2d_render::sink_style::PONTO_DO_TAMANHO,
-            "uma posicao nao mede uma COPIA"
-        );
-        assert_eq!(
-            i.atlas_uv, SO_COM_FORMA.ponto_uv,
-            "e amostra o ladrilho do PONTO, nao o quad branco"
-        );
-    }
+    assert!(
+        sprites.is_empty(),
+        "posicoes sem forma nao viram sprite: {} linhas",
+        sprites.len()
+    );
 
     // ⛔⛔ **A 2.ª metade tem de trazer a TERCEIRA MÉDIA, e isto foi uma MUTAÇÃO SOBREVIVENTE.**
     //
@@ -285,9 +278,7 @@ fn geometria_a_zeros_continua_a_ser_posicoes() {
     assert!(!crate::lower::tem_aparencia(&s));
     let mut sprites: Vec<RenderInstance> = Vec::new();
     lower_to_instances_onto(&s, UV, SZ, SO_COM_FORMA, &mut sprites);
-    assert_eq!(sprites.len(), 3, "ela desenha-se, e desenha-se como MARCA");
-    assert_eq!(sprites[0].size, ph2d_render::sink_style::PONTO_DO_TAMANHO);
-    assert_eq!(sprites[0].atlas_uv, SO_COM_FORMA.ponto_uv);
+    assert!(sprites.is_empty());
 }
 
 /// **UMA CORRENTE MISTA DESENHA** — a junção de formas com pontos carrega a coluna do ladrilho,

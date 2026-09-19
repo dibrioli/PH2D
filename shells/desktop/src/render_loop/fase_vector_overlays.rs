@@ -93,6 +93,19 @@ impl crate::App {
                 vector_scene,
             );
         }
+        // ⭐⭐⭐ **O GIZMO DE UMA CORRENTE DE POSIÇÕES** (ordem do dono, 2026-09-19: *«coloque
+        // gizmos de pequenos pontos visíveis para as posições dos nós»*). ⚠️ **Aqui e não no
+        // prólogo, pela MESMA razão do irmão do colisor** (doc 115 §17): ele sai das tomadas, e as
+        // tomadas só existem depois do cook. E **depois** da arte, para ficar por cima dela.
+        if let Some(v) = ph2d_app_motion::ponto_gizmo::view() {
+            ph2d_app_motion::ponto_gizmo_overlay::draw(
+                &v,
+                camera,
+                hero.view.center_split,
+                surface.size(),
+                vector_scene,
+            );
+        }
         // O **overlay** do Blend Object (ADR-0128): os passos virtuais + as fontes de cima
         // reempilhadas, na ordem de z (a última fonte por cima do último passo). Desenha depois
         // do `dispatch` (que já pôs as fontes no z da cena, embaixo); o overlay reestabelece a

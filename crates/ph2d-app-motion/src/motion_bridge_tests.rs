@@ -194,6 +194,11 @@ fn grid_index_drives_the_tint_gradient() {
 fn every_output_node_is_a_render_sink() {
     use ph2d_nodegraph::graph::{Edge, Graph};
     let mut motion = MotionState::new();
+    // ⚠️ **Este gate mede o COZIMENTO, não a lei do dono** — ver
+    // `MotionCookPump::so_com_forma`: com ela ligada uma corrente sem forma não
+    // desenha, e a contagem de instâncias que este gate lê seria zero por
+    // construção. *Um gate que mede outra coisa desliga-a.*
+    motion.pump.define_a_lei(false);
     let (uv, size) = (motion.default_uv_rect, motion.default_size);
 
     // Fresh graph: two independent grids, each into its own Output.
@@ -362,6 +367,10 @@ fn a_loop_range_replays_the_simulation_from_its_start() {
     };
 
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     let lap1 = lap(&mut pump); // ticks 1..=LAP  (LAP wraps to 0)
     let lap2 = lap(&mut pump); // wraps back through 0 → must replay lap1
 

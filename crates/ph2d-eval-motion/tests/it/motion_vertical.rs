@@ -59,12 +59,7 @@ fn grid_transform_clone_lowers_to_render_instances() {
     // copy 2 = grid + (4, 0): instances[18] = grid[0] + (4,0).
     assert_eq!(instances[18].world_pos, [3.0, -1.0]);
     // defaults stamped by the lowering:
-    //
-    // ⚠️⚠️ **Era `[1.0, 1.0]` até 2026-09-19 — o `SIZE_IDENTITY`, *«o tamanho de uma cópia»*.**
-    // Esta cadeia é `grid → transform → clone`: ela entrega POSIÇÕES e nenhuma forma, e por
-    // ordem do dono uma corrente assim desenha-se como MARCA. *A cadeia não mudou; o que uma
-    // posição mede é que mudou.*
-    assert_eq!(instances[0].size, ph2d_render::sink_style::PONTO_DO_TAMANHO);
+    assert_eq!(instances[0].size, [1.0, 1.0]);
     assert_eq!(instances[0].tint, [1.0, 1.0, 1.0, 1.0]);
 }
 

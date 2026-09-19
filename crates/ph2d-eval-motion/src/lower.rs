@@ -100,30 +100,28 @@ pub fn lower_to_instances_onto(
     style: SinkStyle,
     out: &mut Vec<RenderInstance>,
 ) {
-    // ⭐⭐⭐ **A lei do dono: uma corrente de POSIÇÕES não desenha CONTEÚDO — ela desenha uma
-    // MARCA.** Ver [`tem_aparencia`], [`SinkStyle::so_com_forma`] e [`PONTO_DO_TAMANHO`].
+    // ⭐⭐⭐ **A lei do dono: uma corrente de POSIÇÕES não produz pixel nenhum.** Ver
+    // [`tem_aparencia`] e [`SinkStyle::so_com_forma`]. Quem a quiser ver liga um
+    // `motion.duplicator` com uma forma; quem a quiser LOCALIZAR enquanto monta tem o
+    // [`crate`-vizinho `ph2d_app_motion::ponto_gizmo`], que desenha uma cruz por posição — no
+    // EDITOR, e nunca no quadro que o produto entrega.
     //
-    // ⚠️⚠️ **Ela devolvia CEDO até 2026-09-19, e a mudança é ordem do dono** (*«A ordem foi não
-    // desenhar nada. se quiser coloque apenas pontos nas posições»*): não desenhar nada está
-    // **medido a apagar `111` das `123` cenas** do roteador do módulo, e um módulo inteiro sem
-    // imagem não ensina ninguém. Com a marca, a posição continua legível e **deixa de se ler
-    // como o objecto**, que é o defeito que ele reportou.
+    // ⚠️⚠️ **Uma MARCA desenhada como instância foi construída e RETIRADA no mesmo dia
+    // (2026-09-19), e a medição é o motivo.** A ideia era trocar os valores de omissão (ladrilho
+    // de disco, tamanho `0,15`) para a posição continuar visível; ela cumpria a ordem numa cadeia
+    // NUA e **falhava exactamente onde o dono a foi ver**: bastava um `motion.scale` a montante
+    // (a cena `=2` tem um, a `1,6`) para a corrente DIZER o seu tamanho, e uma lei que só troca a
+    // omissão é obedecida — os quadrados voltavam, com tudo verde. ⛔ E as duas curas óbvias
+    // estão medidas e refutadas: multiplicar o `size` de cada linha apaga a cena dos campos (o
+    // canal dela É o tamanho: as marcas caem para `0,022`, contra `0,12` do visível), e pôr-lhe
+    // um piso SATURA (os quatro valores da banda passam a diferir `3,6e-9`).
     //
-    // ⚠️⚠️ **A lei troca DOIS valores de OMISSÃO e não toca em coluna nenhuma** — ver
-    // [`PONTO_DO_TAMANHO`]. Uma corrente que DIZ o seu tamanho (um `motion.scale` a montante,
-    // um campo a conduzi-lo) é obedecida: ela tomou uma decisão. ⛔ Multiplicar o `size` de cada
-    // linha foi a 1.ª redacção e está MEDIDA e refutada — na cena dos campos, cujo canal É o
-    // tamanho, as marcas caíam para `0,022` e a cena ficava preta.
-    //
-    // ⚠️ E o ladrilho vem do ESTILO, não do `default_uv_rect`: a corrente que esta lei apanha
-    // **não tem coluna `uv_rect`** (é metade da definição de [`tem_aparencia`]), logo todas as
-    // linhas dela leem o valor de omissão — trocá-lo troca a marca inteira, e mais nada.
-    let (default_uv_rect, default_size) = ph2d_render::sink_style::omissoes_da_marca(
-        style,
-        tem_aparencia(stream),
-        default_uv_rect,
-        default_size,
-    );
+    // ⇒ *uma marca desenhada no mesmo canal do conteúdo herda os controlos do conteúdo.* O gizmo
+    // não tem esse problema: ele é chrome, mede-se em píxeis de ecrã, e nenhum nó do grafo lhe
+    // pode mexer no tamanho.
+    if style.so_com_forma && !tem_aparencia(stream) {
+        return;
+    }
     let n = stream.count();
     let p = stream.get("P");
     let size = stream.get("size");
@@ -581,7 +579,17 @@ pub fn evaluate_motion_into(
             default_size,
             // This helper COOKS a target, so the target IS the sink — it gets the
             // same answer the pump's loop gets, from the same door.
-            crate::sink_style(graph, target),
+            //
+            // ⚠️⚠️ **Menos a LEI DO DONO, que é desligada aqui de propósito.** Este ajudante
+            // tem **28 chamadores e nenhum é o produto**: são os gates de paridade CPU↔device e
+            // as sondas de densidade, e todos medem o COZIMENTO pelo canal das instâncias. Com a
+            // lei ligada, uma cadeia sem forma não desenha — e os 28 leriam zero sobre um
+            // cozimento correcto. *Um ajudante que só os testes chamam mede o que os testes
+            // medem;* quem quiser a lei usa a bomba, que é o que o produto usa.
+            ph2d_render::SinkStyle {
+                so_com_forma: false,
+                ..crate::sink_style(graph, target)
+            },
             out,
         ),
         None => out.clear(),

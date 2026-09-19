@@ -8,6 +8,10 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 /// `grid -> move -> output`. The wire under test lands on `move`'s input (node 1, port 0).
 fn wired() -> MotionState {
     let mut motion = MotionState::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    motion.pump.define_a_lei(false);
     let mut g = Graph::new();
     let grid = g.add_node("motion.grid");
     let mv = g.add_node("motion.move");
@@ -91,6 +95,15 @@ fn splicing_a_reroute_does_not_move_a_single_pixel() {
 #[test]
 fn the_splice_picks_the_reroute_that_fits_the_wire() {
     let mut motion = MotionState::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    motion.pump.define_a_lei(false);
+    // ⚠️ **Este gate mede o COZIMENTO, não a lei do dono** — ver
+    // `MotionCookPump::so_com_forma`: com ela ligada uma corrente sem forma não
+    // desenha, e a contagem de instâncias que este gate lê seria zero por
+    // construção. *Um gate que mede outra coisa desliga-a.*
+    motion.pump.define_a_lei(false);
     let mut g = Graph::new();
     let lfo = g.add_node("value.lfo");
     let drive = g.add_node("motion.drive"); // takes a VALUE on some input
@@ -139,6 +152,10 @@ fn the_splice_picks_the_reroute_that_fits_the_wire() {
 #[test]
 fn moving_a_wire_end_leaves_the_old_input_empty() {
     let mut motion = MotionState::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    motion.pump.define_a_lei(false);
     let mut g = Graph::new();
     let grid = g.add_node("motion.grid");
     let a = g.add_node("motion.move");
@@ -176,6 +193,10 @@ fn moving_a_wire_end_leaves_the_old_input_empty() {
 #[test]
 fn a_refused_move_destroys_nothing() {
     let mut motion = MotionState::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    motion.pump.define_a_lei(false);
     let mut g = Graph::new();
     let grid = g.add_node("motion.grid"); // an INSTANCE stream
     let mv = g.add_node("motion.move");
@@ -337,6 +358,10 @@ fn deleting_a_mid_chain_node_heals_the_wire() {
 #[test]
 fn healing_bridges_the_source_to_every_output_target() {
     let mut motion = MotionState::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    motion.pump.define_a_lei(false);
     let mut g = Graph::new();
     let grid = g.add_node("motion.grid");
     let mid = g.add_node("motion.move");

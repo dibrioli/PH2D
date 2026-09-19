@@ -80,6 +80,11 @@ fn the_postage_stamp_is_a_bounded_strided_subsample() {
 #[test]
 fn the_postage_stamp_of_a_lattice_is_not_a_diagonal_streak() {
     let mut motion = MotionState::new();
+    // ⚠️ **Este gate mede o COZIMENTO, não a lei do dono** — ver
+    // `MotionCookPump::so_com_forma`: com ela ligada uma corrente sem forma não
+    // desenha, e a contagem de instâncias que este gate lê seria zero por
+    // construção. *Um gate que mede outra coisa desliga-a.*
+    motion.pump.define_a_lei(false);
     let mut g = Graph::new();
     let grid = g.add_node("motion.grid");
     let out = g.add_node("motion.output");

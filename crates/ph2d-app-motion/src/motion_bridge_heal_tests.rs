@@ -34,6 +34,10 @@ fn wire(m: &mut MotionState, from: NodeId, fp: u16, to: NodeId, tp: u16) {
 /// `grid → force.wind` plus a detached `motion.output`. Fresh history.
 fn wind_setup() -> (MotionState, NodeId, NodeId, NodeId) {
     let mut m = MotionState::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    m.pump.define_a_lei(false);
     m.doc = MotionDoc::new();
     let grid = add(&mut m, "motion.grid");
     let force = add(&mut m, "force.wind");
@@ -47,6 +51,10 @@ fn wind_setup() -> (MotionState, NodeId, NodeId, NodeId) {
 /// of the integrator, so its `accel` is never consumed — the Reorder case.
 fn reorder_setup() -> (MotionState, NodeId, NodeId, NodeId, NodeId) {
     let mut m = MotionState::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    m.pump.define_a_lei(false);
     m.doc = MotionDoc::new();
     let grid = add(&mut m, "motion.grid");
     let integ = add(&mut m, "motion.integrate");
@@ -238,6 +246,10 @@ fn a_batch_that_also_removes_does_not_heal() {
 #[test]
 fn two_forces_in_a_chain_get_one_integrator() {
     let mut m = MotionState::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    m.pump.define_a_lei(false);
     m.doc = MotionDoc::new();
     let grid = add(&mut m, "motion.grid");
     let fa = add(&mut m, "force.wind");
@@ -267,6 +279,10 @@ fn two_forces_in_a_chain_get_one_integrator() {
 #[test]
 fn a_force_that_reaches_no_output_is_not_healed() {
     let mut m = MotionState::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    m.pump.define_a_lei(false);
     m.doc = MotionDoc::new();
     let grid = add(&mut m, "motion.grid");
     let force = add(&mut m, "force.wind");
@@ -383,6 +399,10 @@ fn the_badge_set_is_the_completed_inert_setups_not_the_mid_builds() {
 
     // Mid-build: grid -> force -> tint (a consumer, but not the render output).
     let mut b = MotionState::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    b.pump.define_a_lei(false);
     b.doc = MotionDoc::new();
     let g = add(&mut b, "motion.grid");
     let f = add(&mut b, "force.wind");
@@ -455,6 +475,15 @@ fn clicking_a_fixable_badge_heals_the_node_and_the_points_move() {
 #[test]
 fn clicking_an_advisory_badge_changes_nothing() {
     let mut m = MotionState::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    m.pump.define_a_lei(false);
+    // ⚠️ **Este gate mede o COZIMENTO, não a lei do dono** — ver
+    // `MotionCookPump::so_com_forma`: com ela ligada uma corrente sem forma não
+    // desenha, e a contagem de instâncias que este gate lê seria zero por
+    // construção. *Um gate que mede outra coisa desliga-a.*
+    m.pump.define_a_lei(false);
     m.doc = MotionDoc::new();
     let grid = add(&mut m, "motion.grid");
     let pin = add(&mut m, "motion.pin_constraint");
@@ -496,6 +525,10 @@ fn clicking_an_advisory_badge_changes_nothing() {
 #[test]
 fn a_source_less_deformer_badges_and_only_explains() {
     let mut m = MotionState::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    m.pump.define_a_lei(false);
     m.doc = MotionDoc::new();
     let bend = add(&mut m, "motion.bend");
     let out = add(&mut m, "motion.output");
@@ -533,6 +566,10 @@ fn a_source_less_deformer_badges_and_only_explains() {
 #[test]
 fn a_duplicator_missing_an_input_badges_and_only_explains() {
     let mut m = MotionState::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não
+    // desenha, e toda contagem de instâncias aqui seria zero por construção.
+    m.pump.define_a_lei(false);
     m.doc = MotionDoc::new();
     let grid = add(&mut m, "motion.grid");
     let dup = add(&mut m, "motion.duplicator");

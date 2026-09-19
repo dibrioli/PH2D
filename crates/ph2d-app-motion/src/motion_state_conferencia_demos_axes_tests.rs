@@ -26,6 +26,10 @@ fn cook_at(t_seconds: f64) -> Vec<Band> {
         .iter()
         .map(|s| {
             let mut pump = MotionCookPump::new();
+            // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+            // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+            // toda contagem de instâncias aqui seria zero por construção.
+            pump.define_a_lei(false);
             for k in 0..=tick {
                 pump.advance_or_scrub_scoped(
                     &doc.graph,
@@ -61,6 +65,10 @@ fn mean_y_track(band: usize, ticks: &[u64]) -> Vec<f32> {
     let sink = std::slice::from_ref(&sinks[band]);
 
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     let mut out = Vec::with_capacity(ticks.len());
     let last = ticks.last().copied().unwrap_or(0);
     let mut next = 0usize;

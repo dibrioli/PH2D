@@ -146,6 +146,10 @@ fn mark_of(s: &Stream) -> f32 {
 fn the_pump_hands_over_every_boundary_in_one_march() {
     let (g, a, b) = two_boundary_graph();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     SRC_EVALS.with(|c| c.set(0));
 
     assert!(pump.advance_or_scrub_to_nodes_scoped(
@@ -181,6 +185,10 @@ fn the_pump_hands_over_every_boundary_in_one_march() {
 fn two_boundaries_sharing_a_prefix_do_not_re_cook_it() {
     let (g, a, b) = two_boundary_graph();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     SRC_EVALS.with(|c| c.set(0));
 
     pump.advance_or_scrub_to_nodes_scoped(
@@ -209,6 +217,10 @@ fn two_boundaries_sharing_a_prefix_do_not_re_cook_it() {
 fn a_boundary_named_twice_is_handed_over_once() {
     let (g, a, _) = two_boundary_graph();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
 
     pump.advance_or_scrub_to_nodes_scoped(
         &g,
@@ -233,6 +245,10 @@ fn a_boundary_named_twice_is_handed_over_once() {
 fn n_boundaries_advance_the_clock_once() {
     let (g, a, b) = two_boundary_graph();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
 
     for tick in 0..3u64 {
         pump.advance_or_scrub_to_nodes_scoped(
@@ -260,6 +276,10 @@ fn one_failing_boundary_leaves_the_others_intact() {
     // A node whose type nothing resolves — the mid-edit shape.
     let bad = g.add_node("motion.test.nonexistent");
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
 
     pump.advance_or_scrub_to_nodes_scoped(
         &g,
@@ -301,6 +321,10 @@ fn two_boundaries_with_disjoint_prefixes_each_cook_once() {
         ends.push(tap);
     }
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     SRC_EVALS.with(|c| c.set(0));
 
     pump.advance_or_scrub_to_nodes_scoped(
@@ -339,6 +363,10 @@ fn two_boundaries_with_disjoint_prefixes_each_cook_once() {
 fn a_backwards_scrub_rewinds_every_boundary() {
     let (g, a, b) = two_boundary_graph();
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     let clock = |t: u64| t as f64 * 0.016;
 
     for tick in 0..6u64 {

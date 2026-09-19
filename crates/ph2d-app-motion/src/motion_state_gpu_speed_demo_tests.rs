@@ -170,6 +170,10 @@ fn probe_cpu_pump_rewind() {
         let sinks = build_gpu_speed_demo_document(&mut doc, &reg, LIMIT).expect("bem tipada");
         let scopes = ph2d_node_motion_time_remap::time_scopes(&doc.graph, &reg);
         let mut pump = MotionCookPump::new();
+        // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+        // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+        // toda contagem de instâncias aqui seria zero por construção.
+        pump.define_a_lei(false);
         for &target in seq {
             for tick in ticks_owed(pump.last_cooked_tick(), target) {
                 pump.advance_or_scrub_scoped(

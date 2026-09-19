@@ -16,6 +16,10 @@ fn band_field(band: usize) -> Vec<f32> {
     let sinks = build_field_space_demo_document(&mut doc, &reg).expect("a cena monta");
 
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     pump.advance_or_scrub_scoped(
         &doc.graph,
         &reg,
@@ -40,6 +44,10 @@ fn band_tint(band: usize) -> Vec<f32> {
     let mut doc = MotionDoc::default();
     let sinks = build_field_space_demo_document(&mut doc, &reg).expect("a cena monta");
     let mut pump = MotionCookPump::new();
+    // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
+    // `MotionCookPump::so_com_forma`. Com ela ligada uma corrente sem forma não desenha, e
+    // toda contagem de instâncias aqui seria zero por construção.
+    pump.define_a_lei(false);
     pump.advance_or_scrub_scoped(
         &doc.graph,
         &reg,

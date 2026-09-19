@@ -154,36 +154,34 @@ pub struct MotionCookPump {
     separacoes: u64,
     /// Ver [`MotionCookPump::ultimo_relatorio`].
     ultimo_relatorio: ph2d_contact::passe::Relatorio,
-    /// ⭐⭐⭐ **O LADRILHO DA MARCA** — o `uv_rect` do disco que uma corrente sem aparência
-    /// amostra (ver [`ph2d_render::SinkStyle::ponto_uv`] e [`ph2d_render::DOT_TILE_KEY`]).
+    /// ⭐⭐⭐ **A LEI DO DONO, COMO DADO** — *«nós como Grid, rope, etc, não passam de posições do
+    /// espaço, sem nenhuma capacidade de gerar pixels na tela»* (ver
+    /// [`crate::sink_style::so_com_forma_por_ordem`], que é de onde ela nasce).
     ///
-    /// ⚠️ **Campo da bomba e não argumento do `pump`**, e o motivo é uma contagem: a assinatura
-    /// atravessa **50** sítios de chamada em 17 ficheiros, e nenhum deles tem uma opinião sobre o
-    /// átlas — só a shell tem. Um argumento a mais obrigaria 49 deles a escrever um valor que não
-    /// lhes diz respeito.
+    /// ⚠️⚠️ **Ela é um CAMPO e não uma leitura do ambiente lá dentro, e a razão está medida:** ao
+    /// ligar a lei por omissão, **doze** gates desta casa passaram a ler zero — *e nenhum deles é
+    /// sobre a lei*. Eles medem o cozimento (o realinhamento de um fio, o healing de uma força, o
+    /// carimbo do cartão) pelo canal do DESENHO, e com a lei ligada o desenho de uma corrente sem
+    /// forma é, por construção, vazio. ⇒ *um gate que mede outra coisa desliga-a numa linha*, e a
+    /// auditoria do doc 115 §31 já pedia exactamente isto: **uma lei só alcançável pelo ambiente
+    /// não é gateável.**
     ///
-    /// ⚠️ Omissão: o átlas INTEIRO, que é o que um gate sem GPU quer. Quem arranca o app chama
-    /// [`Self::define_o_ladrilho_do_ponto`] uma vez.
-    ponto_uv_rect: [f32; 4],
-}
-
-/// O estilo de um sink **com o ladrilho da marca já dentro** — a porta única por onde os dois
-/// lowerings da bomba recebem o estilo.
-///
-/// ⚠️ **Ela existe para não haver duas composições:** o [`sink_style`] lê o GRAFO e não pode
-/// conhecer o átlas, logo alguém tem de juntar os dois. Escrita nos dois sítios de chamada, um
-/// deles esquecia o ladrilho e a marca saía com o átlas inteiro **num passe só**.
-///
-/// ⚠️ **Função LIVRE e não método**, e é o emprestador que o decide: no sítio de chamada o
-/// `&mut self.instances` já está tomado, logo um `&self` ali não compila. O número viaja copiado.
-fn estilo_do_sink(ponto_uv: [f32; 4], graph: &Graph, sink: NodeId) -> ph2d_render::SinkStyle {
-    ph2d_render::SinkStyle {
-        ponto_uv,
-        ..sink_style(graph, sink)
-    }
+    /// ⛔⛔⛔ **ELA NASCE DESLIGADA, E ISSO É A LEI — não uma omissão conservadora.** Até
+    /// 2026-09-19 ela nascia com a porta do ambiente, e a varredura impactada devolveu **onze**
+    /// vermelhos: o emissor de PARTÍCULAS (`ph2d-particles`) constrói uma bomba PRÓPRIA, e uma
+    /// partícula é uma posição pura — sem `uv_rect`, sem `geometry_id` —, logo a lei cortava-a e
+    /// **o emissor desaparecia do produto**, com o oráculo do Godot a ler zero instâncias.
+    ///
+    /// ⇒ *a lei é do MÓDULO MOTION — o grafo que o artista edita —, e não de toda a gente que
+    /// usa esta bomba.* Quem a liga é o [`MotionState`], que é o dono da ordem do dono; a bomba é
+    /// a peça NEUTRA, exactamente como o [`ph2d_render::SinkStyle::PLAIN`] já declara por escrito
+    /// para o estilo. ⚠️ **Um segundo consumidor desta bomba herda o neutro por construção**, e é
+    /// isso que o gate `uma_bomba_nasce_neutra_e_o_motion_e_que_liga` afirma.
+    so_com_forma: bool,
 }
 
 mod cook_target;
+mod scrub;
 /// A caixa de saída dos TAPS — o readout inline do doc 43, num irmão.
 mod taps;
 use cook_target::CookTarget;
@@ -214,21 +212,24 @@ impl MotionCookPump {
             separa_o_desenho: true,
             separacoes: 0,
             ultimo_relatorio: ph2d_contact::passe::Relatorio::default(),
-            ponto_uv_rect: ph2d_render::SinkStyle::PLAIN.ponto_uv,
+            so_com_forma: false,
         }
     }
 
-    /// Diz à bomba QUE ladrilho do átlas é a marca de uma posição — ver [`Self::ponto_uv_rect`].
-    /// Chamada uma vez, quando o átlas é composto.
-    pub fn define_o_ladrilho_do_ponto(&mut self, uv: [f32; 4]) {
-        self.ponto_uv_rect = uv;
+    /// Liga ou desliga a lei do dono NESTA bomba — ver [`Self::so_com_forma`].
+    ///
+    /// ⚠️ **Chamada pelo PRODUTO** — o [`MotionState`] liga-a com a porta do ambiente, porque a
+    /// lei é do módulo Motion e não desta bomba (ver [`Self::so_com_forma`]). Gates e sondas que
+    /// medem OUTRA coisa desligam-na aqui numa linha.
+    pub fn define_a_lei(&mut self, so_com_forma: bool) {
+        self.so_com_forma = so_com_forma;
     }
 
-    /// O ladrilho da marca, para quem baixa a corrente por fora desta bomba — a rota do
-    /// DISPOSITIVO, que tem o seu próprio lowering e precisa do mesmo número.
+    /// A lei que esta bomba carrega — ver [`Self::so_com_forma`]. Lida por quem SUBSTITUI a
+    /// bomba e tem de a levar consigo.
     #[must_use]
-    pub fn ponto_uv_rect(&self) -> [f32; 4] {
-        self.ponto_uv_rect
+    pub fn a_lei(&self) -> bool {
+        self.so_com_forma
     }
 
     /// Force a re-cook on the next [`Self::pump`], even at the same tick (call
@@ -377,7 +378,7 @@ impl MotionCookPump {
     ) {
         self.last_error = None;
         // Içado antes do laço: lá dentro o `&mut self.instances` já está tomado.
-        let ponto_uv_rect = self.ponto_uv_rect;
+        let so_com_forma = self.so_com_forma;
         match *target {
             CookTarget::Sinks {
                 sinks,
@@ -437,10 +438,13 @@ impl MotionCookPump {
                                 // `vector_instances`. Disjoint by construction (each
                                 // reads/skips on the same `geometry_id > 0` test), so
                                 // a shape is drawn once, as vector.
-                                // ⚠️ Uma leitura, dois lowerings: eles TÊM de receber o mesmo
-                                // estilo, e compô-lo duas vezes é como um deles fica sem o
-                                // ladrilho da marca.
-                                let estilo = estilo_do_sink(ponto_uv_rect, graph, sink);
+                                // ⚠️ Uma leitura, dois lowerings: eles TÊM de receber o MESMO
+                                // estilo, e perguntá-lo duas vezes é como um deles passa a ler
+                                // outra coisa no dia em que a porta ganhar um campo.
+                                let estilo = ph2d_render::SinkStyle {
+                                    so_com_forma,
+                                    ..sink_style(graph, sink)
+                                };
                                 lower_to_instances_onto(
                                     stream,
                                     default_uv_rect,
@@ -526,175 +530,8 @@ impl MotionCookPump {
     /// a target older than the window re-sims from the seed. Returns `true` once
     /// it has rendered `target_tick` into `instances`.
     #[allow(clippy::too_many_arguments)]
-    pub fn scrub_to_scoped(
-        &mut self,
-        graph: &Graph,
-        ops: &dyn OpResolver,
-        sinks: &[NodeId],
-        target_tick: u64,
-        playhead_of: impl Fn(u64) -> f64,
-        default_uv_rect: [f32; 4],
-        default_size: [f32; 2],
-        scopes: &TimeScopes,
-    ) -> bool {
-        self.scrub_target_scoped(
-            graph,
-            ops,
-            &CookTarget::Sinks {
-                sinks,
-                default_uv_rect,
-                default_size,
-            },
-            target_tick,
-            playhead_of,
-            scopes,
-        )
-    }
-
-    /// The backwards re-sim for either target — restores the newest checkpoint
-    /// ≤ target and re-cooks forward, the same GGPO path for sinks and boundary.
-    fn scrub_target_scoped(
-        &mut self,
-        graph: &Graph,
-        ops: &dyn OpResolver,
-        target: &CookTarget,
-        target_tick: u64,
-        playhead_of: impl Fn(u64) -> f64,
-        scopes: &TimeScopes,
-    ) -> bool {
-        let (anchor, cp) = self.ring.anchor_at_or_before(target_tick);
-        self.cook.restore(&cp);
-        let mut t = anchor;
-        loop {
-            let playhead = playhead_of(t);
-            // Record the state that reproduces frame `t` (before its cook), so a
-            // re-sim past the window rebuilds the ring; a within-window tick is
-            // already covered and the deep clone is skipped.
-            if self.ring.should_record(t) {
-                self.ring.record(t, self.cook.checkpoint());
-            }
-            self.substep_declared_zones(graph, ops, playhead);
-            self.cook_target_into(graph, ops, target, playhead, scopes);
-            if !target.has_work() {
-                break;
-            }
-            // Advance the `pre` feedback exactly as the forward pump does — so
-            // after rendering the target the cook is left ready for `target+1`,
-            // and resumed playback continues bit-exact (no off-by-one).
-            let _ = self
-                .cook
-                .advance_tick_fanned(graph, ops, playhead, scopes, &self.fans);
-            if t == target_tick {
-                break;
-            }
-            t += 1;
-        }
-        // ⚠️ Com `t`, não com `target_tick`: depois do laço `t` É o último tique COZIDO, e os
-        // dois só coincidem quando o alvo tem trabalho. Ver [`Self::record_tap_fires`].
-        self.record_tap_fires(t);
-        self.last_cooked_tick = Some(target_tick);
-        self.dirty = false;
-        true
-    }
-
-    /// Render `tick` correctly whether it is a **forward step** or a **jump**
-    /// (backwards scrub, a loop-wrap, a ruler seek): a contiguous forward tick
-    /// (or a same-tick re-cook) takes the cheap forward [`Self::pump_scoped`]; a
-    /// tick that moved backwards or skipped ahead restores from the ring and
-    /// re-sims via [`Self::scrub_to_scoped`] (M2.N2). One entry point, so the
-    /// shell never branches — a future timeline ruler that sets `transport.tick`
-    /// is handled for free, and a `loop_range` wrap replays the sim from `lo`
-    /// instead of showing the marching-future state. `playhead_of` maps a tick
-    /// to seconds (`tick × fixed_dt`).
-    #[allow(clippy::too_many_arguments)]
-    pub fn advance_or_scrub_scoped(
-        &mut self,
-        graph: &Graph,
-        ops: &dyn OpResolver,
-        sinks: &[NodeId],
-        tick: u64,
-        playhead_of: impl Fn(u64) -> f64,
-        default_uv_rect: [f32; 4],
-        default_size: [f32; 2],
-        scopes: &TimeScopes,
-    ) -> bool {
-        self.advance_or_scrub_target_scoped(
-            graph,
-            ops,
-            &CookTarget::Sinks {
-                sinks,
-                default_uv_rect,
-                default_size,
-            },
-            tick,
-            playhead_of,
-            scopes,
-        )
-    }
-
-    /// Render `tick` into `boundary_streams` (NOT `instances`): cook the CPU
-    /// prefix up to each of `nodes` on the persistent pump — marching every owed
-    /// tick, so a sequential prefix node (`integrate`/`emitter`) sims correctly
-    /// and a scrub is bit-exact — then leave their output streams in
-    /// [`Self::boundary_streams`] for the GPU sequencer to upload (GPU/M5, the
-    /// hybrid CPU-prefix / GPU-suffix cook). The forward/scrub decision, the ring
-    /// and the `pre` feedback are the SAME as the sink pump; only the consume
-    /// step differs (streams vs lowered instances).
-    ///
-    /// **One march, N hand-offs.** `nodes` is `plan.boundaries` — pass the whole
-    /// set, never one node per call: calling this per boundary would advance the
-    /// clock once per boundary and simulate the shared prefix once per boundary.
-    /// Duplicates in the set are handed over once.
-    #[allow(clippy::too_many_arguments)]
-    pub fn advance_or_scrub_to_nodes_scoped(
-        &mut self,
-        graph: &Graph,
-        ops: &dyn OpResolver,
-        nodes: &[NodeId],
-        tick: u64,
-        playhead_of: impl Fn(u64) -> f64,
-        scopes: &TimeScopes,
-    ) -> bool {
-        self.advance_or_scrub_target_scoped(
-            graph,
-            ops,
-            &CookTarget::Boundaries(nodes),
-            tick,
-            playhead_of,
-            scopes,
-        )
-    }
-
-    /// The output streams of the last [`Self::advance_or_scrub_to_nodes_scoped`]
-    /// cook, labelled by node — the boundary hand-off the GPU sequencer uploads.
-    /// Empty before the first boundary cook; **shorter than the set asked for**
-    /// when a boundary failed to cook, which the caller must treat as a fallback
-    /// rather than upload a partial set.
-    #[must_use]
     pub fn boundary_streams(&self) -> &[(NodeId, Stream)] {
         &self.boundary_streams
-    }
-
-    /// The shared forward/scrub dispatch for either target.
-    fn advance_or_scrub_target_scoped(
-        &mut self,
-        graph: &Graph,
-        ops: &dyn OpResolver,
-        target: &CookTarget,
-        tick: u64,
-        playhead_of: impl Fn(u64) -> f64,
-        scopes: &TimeScopes,
-    ) -> bool {
-        let forward = match self.last_cooked_tick {
-            None => tick == 0,
-            Some(last) => tick == last || tick == last + 1,
-        };
-        if forward {
-            let playhead = playhead_of(tick);
-            self.pump_target_scoped(graph, ops, target, tick, playhead, scopes)
-        } else {
-            self.scrub_target_scoped(graph, ops, target, tick, playhead_of, scopes)
-        }
     }
 
     /// The tick this pump last rendered, if any — the ONE record of where the

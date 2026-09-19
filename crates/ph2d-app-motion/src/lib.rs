@@ -32,6 +32,8 @@
 /// ⭐⭐⭐ **A LEI DA APARÊNCIA, do lado do dispositivo** — uma corrente que não veio de uma forma
 /// não vira pixel. A lei mora no avaliador; aqui está a metade que pergunta ao `MotionState`.
 pub mod lei_da_aparencia;
+pub mod ponto_gizmo;
+pub mod ponto_gizmo_overlay;
 
 /// ⭐ **A arte, em CPU, dos quads que o Motion desenha na cena vectorial** — a memoria da terceira
 /// media. O unico modulo da familia que ja' era FECHADO: zero `crate::`, zero `App`, zero `gfx`.

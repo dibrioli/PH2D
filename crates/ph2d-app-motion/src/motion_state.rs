@@ -99,6 +99,12 @@ mod material_demo;
 #[path = "motion_state_passe_demo.rs"]
 mod passe_demo;
 
+/// ⭐⭐⭐ **AS POSIÇÕES E A MARCA** (cena `=124`) — o mesmo grid de `20 × 20` duas vezes: em cima
+/// só posições (cruzes do editor), em baixo vestido por um duplicador. Ver o cabeçalho dela, que
+/// diz porque a `=2` não servia.
+#[path = "motion_state_pontos_demo.rs"]
+mod pontos_demo;
+
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]
 mod passe_sim_demo;
@@ -472,7 +478,7 @@ impl MotionState {
         Self {
             doc,
             history: MotionHistory::new(),
-            pump: MotionCookPump::new(),
+            pump: Self::pump_do_motion(),
             registry,
             selected_shape: FormaEscolhida::Nada,
             sinks,
@@ -568,9 +574,31 @@ impl MotionState {
     /// `sinks` is the exception that proves the rule — the bridge recomputes it from the graph
     /// every frame, so it heals itself; it is cleared anyway so a headless caller between the
     /// load and the first pump never reads the old graph's outputs.
+    /// ⭐⭐⭐ **A BOMBA DO MOTION — a única que nasce com a LEI DO DONO ligada.**
+    ///
+    /// A [`MotionCookPump`] nasce NEUTRA de propósito (ver o campo `so_com_forma` dela): o emissor de
+    /// partículas constrói uma bomba própria, e uma partícula é uma posição pura — com a lei ligada
+    /// por omissão ela era cortada e **o emissor desaparecia do produto**, medido em 11 gates
+    /// vermelhos que só a varredura impactada viu.
+    ///
+    /// ⇒ *a lei é do módulo que o artista edita*, e é aqui que ela entra. ⚠️ **Os DOIS sítios que
+    /// constroem a bomba do Motion passam por esta porta** — o arranque e o `install` de um ficheiro
+    /// —, senão carregar um documento repunha o neutro.
+    fn pump_do_motion() -> MotionCookPump {
+        let mut p = MotionCookPump::new();
+        p.define_a_lei(ph2d_eval_motion::so_com_forma_por_ordem());
+        p
+    }
+
     fn install(&mut self, doc: MotionDoc) {
         self.doc = doc;
-        self.pump = MotionCookPump::new();
+        // ⚠️⚠️ **A LEI VIAJA, o estado da simulação não.** A bomba é substituída de propósito
+        // (ela guarda os flocos que estão no ar), mas a lei do dono é CONFIGURAÇÃO — carregar um
+        // ficheiro não pode ligá-la nem desligá-la. Sem esta linha, um `load` repõe o valor de
+        // omissão e um arnês que a tivesse desligado passa a medir outro programa a meio.
+        let lei = self.pump.a_lei();
+        self.pump = Self::pump_do_motion();
+        self.pump.define_a_lei(lei);
         self.history = MotionHistory::new();
         self.sinks.clear();
         self.probe = None;

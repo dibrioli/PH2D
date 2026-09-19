@@ -146,6 +146,8 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) counter_watch: bool,
     /// ⭐ O GATILHO (suplente #24) — `PH2D_TRIGGER_SMOKE=1`.
     pub(crate) trigger: bool,
+    /// ⭐ A ARMA — `PH2D_WEAPON_SMOKE=1`.
+    pub(crate) weapon: bool,
     /// ⭐ O GOLPE (suplente #24) — `PH2D_DANO_SMOKE=1`.
     pub(crate) dano: bool,
     /// ⛔⛔ **Quantos quadros falta ainda trazer o Inspector à frente nas duas cenas do #24.**
@@ -155,6 +157,8 @@ pub(crate) struct ComponentsSmokeLatches {
     /// o Inspector VISÍVEL e nunca o traziam ao TOPO do encaixe. *Visível e à frente são duas
     /// perguntas, e a segunda não tem resposta no `panel_visibility`.*
     pub(crate) trigger_raise: u8,
+    /// Idem para a cena da ARMA — ver `trigger_raise`.
+    pub(crate) weapon_raise: u8,
     /// Idem para a cena do golpe — ver `trigger_raise`.
     pub(crate) dano_raise: u8,
     /// ⭐ O TWEEN (suplente #22) — `PH2D_TWEEN_SMOKE=1|2`.

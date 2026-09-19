@@ -200,7 +200,12 @@ fn register_ecs_components_populates_registry() {
     //   #25): *isto explodiu, e a vista tremeu*. ⛔ **DOIS componentes e um degrau só de schema**,
     //   porque o `CameraShakeRuntime` NAO se regista -- a cerca e' o TIPO (sem `Serialize`), e a
     //   entrada dele e' no `rewind_runtime`. Quem integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 102);
+    // ⚠️ **2026-09-19: `102` -> `103`, delta +1** -- o `WeaponFire` (a ARMA do jogador): o
+    //   RITMO, o PENTE e a recarga. ⛔ **UM so'**, e as DUAS ausencias ao lado dele sao leis: o
+    //   `WeaponRuntime` nao se regista (a cerca e' o TIPO), e a MUNICAO tambem nao -- ela e' um
+    //   `Counter`, que e' o que a poe no HUD de graca. Quem integrar conta o DELTA.
+    assert_eq!(reg.len(), 103);
+    assert!(reg.get_by_name("ph2d::ecs::WeaponFire").is_some());
     assert!(reg.get_by_name("ph2d::ecs::CameraShake").is_some());
     assert!(reg.get_by_name("ph2d::ecs::ShakeEmitter").is_some());
     assert!(reg.get_by_name("ph2d::ecs::PathFollow").is_some());

@@ -631,6 +631,14 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // (a `ActionState` já guarda um tique atrás), e um estado vivo aqui seria a SEGUNDA resposta
     // a «ela já estava premida?» — ver o cabeçalho de `signal_on_action.rs`.
     reg.register_default::<crate::SignalOnAction>("ph2d::ecs::SignalOnAction");
+    // ⭐⭐⭐ **A ARMA** (`WeaponFire`, 2026-09-19) — a cadência, o nome do pente, a recarga e os
+    // quatro sinais são CONFIG inteira. Sem o registo, o artista afina a arma, grava, reabre, e ela
+    // volta a cuspir sessenta balas por segundo de um pente infinito.
+    //
+    // ⛔⛔ **O `WeaponRuntime` NÃO está aqui**, e a porta fecha-se pelo **TIPO**: ele não deriva
+    // `Serialize`, logo a linha nem compila. ⚠️ E a MUNIÇÃO também não está aqui — ela é o
+    // `Counter` acima, que é o que a põe no HUD de graça.
+    reg.register_default::<crate::WeaponFire>("ph2d::ecs::WeaponFire");
     // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — o NOME do container que este objecto toca, e só isso.
     // ⛔ **Não há um `SequenceRuntime` aqui e não pode haver:** o relógio de corrida é o `Timer`
     // (plano 16 §1-bis), cujo estado vivo já mora fora do ficheiro. Um segundo relógio poria a

@@ -38,6 +38,13 @@ use std::path::{Path, PathBuf};
 const GEOMETRIC_DOOR: &str = "commit_geometric_edit(";
 /// A chamada do funil normal, que converte para 8 bits e avisa.
 const EIGHT_BIT_DOOR: &str = "commit_edited_texture(";
+/// Quem CONSTRÓI o buffer de 16 bits — a geometria pura que as cinco partilham.
+///
+/// ⚠️ **Isto é um ENDEREÇO DE FIAÇÃO, e ele já se mudou uma vez:** a lei vivia em
+/// `crate::precision_geometry` e saiu da shell para a folha [`ph2d-sprite-precision`] em
+/// 2026-09-19, quando a catraca `the_shell_only_shrinks` reprovou. *Um gate que cita um endereço
+/// falha ALTO no dia da mudança, que é a espécie barata* — a cara é a que fica verde a medir nada.
+const PRECISION_DOOR: &str = "ph2d_sprite_precision::";
 
 fn handler(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -68,9 +75,10 @@ fn the_preserving_tools_go_through_the_preserving_door() {
              ali e' uma perda gratuita."
         );
         assert!(
-            src.contains("precision_geometry::"),
+            src.contains(PRECISION_DOOR),
             "`{name}` chama a porta mas nao constroi o buffer de 16 bits — o `None` fa-la cair no \
-             caminho de 8 bits em silencio, e o gate acima passaria na mesma"
+             caminho de 8 bits em silencio, e o gate acima passaria na mesma (a porta e' \
+             `{PRECISION_DOOR}`)"
         );
     }
 }
@@ -150,4 +158,20 @@ fn both_doors_are_real_and_distinct() {
         "o funil de 8 bits `{EIGHT_BIT_DOOR}` deixou de existir com esse nome"
     );
     assert_ne!(GEOMETRIC_DOOR, EIGHT_BIT_DOOR);
+}
+
+/// **Controle positivo do TERCEIRO endereço** — e ele é mais forte que os outros dois.
+///
+/// ⚠️ O `PRECISION_DOOR` é uma string procurada em ficheiros: se a crate mudar de nome, o gate
+/// `the_preserving_tools_go_through_the_preserving_door` passa a procurar algo que não existe em
+/// lado nenhum e fica **verde a medir nada** — a lei que o irmão acima já escreve para as duas
+/// portas. Aqui a referência é ao SÍMBOLO, logo uma renomeação deixa de **compilar**, e quem a
+/// consertar tem a const à vista três linhas acima.
+#[test]
+fn the_precision_door_is_real() {
+    let _: fn(&[u16], u32, u32, [u32; 4], u32, u32, u32, u32) -> Option<Vec<u16>> =
+        ph2d_sprite_precision::blit_rgba16;
+    let _: fn(&[u16], u32, u32, u32, u32) -> Option<Vec<u16>> =
+        ph2d_sprite_precision::replicate_rgba16;
+    let _: fn(&[u16], &[u8]) -> Option<Vec<u16>> = ph2d_sprite_precision::apply_alpha8_to_rgba16;
 }

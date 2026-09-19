@@ -146,6 +146,22 @@ pub struct Factory {
     /// ⛔ **O ângulo é o de MUNDO** ([`crate::world_transform`]), não o local: uma arma pendurada
     /// num herói que roda tem de disparar para onde o HERÓI aponta, e a pose local dela é `0`.
     pub aim_from_spawner: bool,
+    /// ⭐⭐⭐ **A ABERTURA do cone, em graus** — a caçadeira (`WeaponFire`, 2026-09-19).
+    ///
+    /// Cada cópia da rajada sai com um desvio sorteado em `±spread_deg/2` sobre a mira.
+    /// **`0` = byte-idêntico ao de antes desta wave**, e a lei DEGENERA em vez de ramificar: com
+    /// zero o gerador **não é tocado**, logo nem a sequência dele se desloca.
+    ///
+    /// ⚠️ **A medição que o pôs AQUI e não na arma:** um espalhamento precisa de um gerador com
+    /// semente, determinista e que renasça no rebobinar — e esta struct tem um
+    /// ([`FactoryRuntime::rng`], semeado com a identidade dela). Pô-lo na arma criaria um **segundo
+    /// gerador**, que é a forma exacta do defeito que o `splitmix64` desta crate já saiu da fábrica
+    /// para não repetir.
+    ///
+    /// ⛔ **E ele é irmão do [`Factory::burst`], não do gatilho:** `burst` diz *quantas de cada
+    /// vez* e isto diz *com que abertura* — sem os dois juntos, oito chumbos saem empilhados num
+    /// só. A medição do §5.0 lê os três ângulos de uma rajada de `3` como **o MESMO**.
+    pub spread_deg: f32,
 }
 
 impl Default for Factory {
@@ -165,6 +181,7 @@ impl Default for Factory {
             // ⚠️ **Desligado**: a mira é uma escolha, e ligá-la por omissão tornaria a
             // rotação do molde inalcançável em toda fábrica que já existe.
             aim_from_spawner: false,
+            spread_deg: 0.0,
         }
     }
 }
@@ -313,11 +330,21 @@ pub fn tick_factories(world: &mut World, tree: &TagTree, fired: &[&str]) -> Fact
             let poses = onde(world, tree, e, &f, &mut estado, quantas);
             let nasceram = u32::try_from(poses.len()).unwrap_or(u32::MAX);
             for at in poses {
+                // ⚠️ **O sorteio é POR CÓPIA e DEPOIS do `onde`**, senão duas chumbadas da mesma
+                // rajada partilhariam o desvio. ⛔ E com `spread_deg == 0` o gerador **não é
+                // tocado**: é isso que torna o neutro byte-idêntico, incluindo a sequência que uma
+                // `SpawnAt::Area` no mesmo tique vai ler.
+                let aim = match mira {
+                    Some(m) if f.spread_deg != 0.0 => {
+                        Some(m + estado.meio() * f.spread_deg.to_radians())
+                    }
+                    outro => outro,
+                };
                 out.births.push(Birth {
                     factory: e,
                     master: f.master,
                     at,
-                    aim: mira,
+                    aim,
                 });
             }
             if nasceram > 0 {

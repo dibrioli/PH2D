@@ -180,6 +180,12 @@ pub mod tween_inspector;
 /// ⭐⭐⭐ **O TWEEN** (suplente #22) — a galeria dos canais e a cópia que nasce a meio da
 /// corrida; ver o cabeçalho.
 pub mod tween_smoke;
+/// ⭐⭐⭐ **A ARMA** — a ponte que lê o pente, escreve a munição e publica o tiro; ver o cabeçalho.
+pub mod weapon_bridge;
+/// ⭐⭐⭐ **A ARMA** — o instantâneo e o dreno da secção dela; ver o cabeçalho.
+pub mod weapon_inspector;
+/// ⭐⭐⭐ **A ARMA** — três torretas, uma tecla e uma diferença cada; ver o cabeçalho.
+pub mod weapon_smoke;
 
 /// ⚠️ **`#[cfg(any(test, feature = "test-support"))]` e não `#[cfg(test)]`** (HOWTO §2.5): daqui a
 /// shell é um **consumidor**, e um `cfg(test)` desta crate é falso quando ela a compila. As duas

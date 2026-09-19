@@ -63,6 +63,8 @@ pub(super) struct InspectorIntents {
         Vec<(u64, ph2d_editor_core::projectile_edits::ProjectileFieldEdit)>,
     /// ⭐⭐⭐ As edições da secção RAY SENSOR (suplente #21).
     pub(super) ray_edits: Vec<(u64, ph2d_editor_core::ray_edits::RayFieldEdit)>,
+    /// ⭐⭐⭐ As edições da secção WEAPON — a arma do jogador.
+    pub(super) weapon_edits: Vec<(u64, ph2d_editor_core::weapon_edits::WeaponFieldEdit)>,
     /// ⭐⭐⭐ As edições da secção TWEEN (suplente #22).
     pub(super) tween_edits: Vec<(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)>,
     /// ⭐⭐⭐ O SEGUIDOR DE CAMINHO (suplente #23).
@@ -153,6 +155,7 @@ impl crate::App {
             topdown_edits,
             projectile_edits,
             ray_edits,
+            weapon_edits,
             tween_edits,
             path_follow_edits,
             statemachine_edits,
@@ -251,6 +254,7 @@ impl crate::App {
             &topdown_edits,
             &projectile_edits,
             &ray_edits,
+            &weapon_edits,
             &tween_edits,
             &path_follow_edits,
             &statemachine_edits,

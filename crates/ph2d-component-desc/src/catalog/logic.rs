@@ -163,6 +163,21 @@ const PATH_FOLLOW_FIELDS: &[FieldDesc] = &[
 /// ⚠️ **`From` e `To` são `Vec4` porque a ARIDADE é do canal** (`ph2d_tween::Canal::aridade`): o
 /// painel pinta um campo ou quatro, e o descritor descreve o que o modelo guarda. ⛔ Dois pares de
 /// campos — um escalar e um de cor — seriam duas respostas a *«de onde para onde?»*.
+const WEAPON_FIELDS: &[FieldDesc] = &[
+    // ⚠️ **Vazio = nunca dispara**, a lei do consumidor de sinal desta casa.
+    f(1, "On Signal", K::Text),
+    f(2, "Cooldown (ms)", K::Scalar),
+    // ⭐⭐ **O NOME do contador que É o pente** — vazio = munição infinita. ⛔ A munição não é um
+    // campo deste componente, e é isso que a põe no HUD (`LabelSource::Counter`) de graça.
+    f(3, "Ammo Counter", K::Text),
+    f(4, "Reload (ms)", K::Scalar),
+    f(5, "Reload On", K::Text),
+    // ⭐ **O fio para a `Factory`**: sem ele a arma dispara e nada nasce.
+    f(6, "On Fire", K::Text),
+    f(7, "On Empty", K::Text),
+    f(8, "On Reloaded", K::Text),
+];
+
 const TWEEN_FIELDS: &[FieldDesc] = &[
     f(1, "Channel", K::Enum),
     f(2, "From", K::Vec4),
@@ -352,5 +367,24 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         TWEEN_FIELDS,
         &["ph2d::ecs::Timers"],
+    ),
+    // ⭐⭐⭐ **A ARMA DO JOGADOR** — o RITMO, o PENTE e a recarga. `O::ANY` pela razão do `Timers`:
+    // uma torreta é um objecto VAZIO com uma arma e uma fábrica.
+    //
+    // ⚠️ **DEPOIS do `Tweens`, e isso NÃO é estilo:** a lista é procurada por busca binária, e fora
+    // de ordem o descritor devolve `None` para um tipo que existe — *um descritor que não é
+    // encontrado lê-se exactamente como um que não existe*.
+    //
+    // ⭐⭐ **Ela REQUER o `Counter`**, e isso é o mecanismo dos *required components* a pagar-se
+    // outra vez: o pente É um contador, e a ponte lê-o **nesta entidade** (a soma global é a
+    // pergunta certa para um placar e a errada para uma escrita, que precisa de um dono). ⛔ Sem o
+    // `requires`, a arma nasceria com munição infinita em silêncio e o artista descobria-o a jogar.
+    D::authored_requiring(
+        "ph2d::ecs::WeaponFire",
+        "Weapon",
+        C::Logic,
+        O::ANY,
+        WEAPON_FIELDS,
+        &["ph2d::ecs::Counter"],
     ),
 ];

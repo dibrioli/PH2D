@@ -78,6 +78,8 @@ ph2d-render = { path = "../../crates/ph2d-render" }
 # partilhada pela remocao de fundo e pelo Painter (o doc dela ja dizia "tool-agnostic").
 ph2d-preview-slot = { path = "../../crates/ph2d-preview-slot" }
 ph2d-sprite-screen = { path = "../../crates/ph2d-sprite-screen" }
+# ⭐ A lei de quem só move pixels — saiu desta shell em 2026-09-19 pela catraca do tecto.
+ph2d-sprite-precision = { path = "../../crates/ph2d-sprite-precision" }
 # ⭐ A FAMILIA Painter (W2 Fase D): as cenas de smoke, as pontes de desenho e os corpos dos
 # gestos de canvas. A shell chama `ph2d_app_painter::<mod>::<fn>` no ponto certo do laco.
 ph2d-app-painter = { path = "../../crates/ph2d-app-painter" }

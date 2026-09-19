@@ -41,6 +41,7 @@ pub(super) fn aplicar(
     topdown: &[(u64, ph2d_editor_core::topdown_edits::TopDownFieldEdit)],
     projectile: &[(u64, ph2d_editor_core::projectile_edits::ProjectileFieldEdit)],
     ray: &[(u64, ph2d_editor_core::ray_edits::RayFieldEdit)],
+    weapon: &[(u64, ph2d_editor_core::weapon_edits::WeaponFieldEdit)],
     tween: &[(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)],
     path_follow: &[(
         u64,
@@ -55,6 +56,7 @@ pub(super) fn aplicar(
     super::topdown_commits::aplicar(sim, topdown)
         | super::projectile_commits::aplicar(sim, projectile)
         | ph2d_app_components::ray_inspector::apply_all(sim, ray)
+        | ph2d_app_components::weapon_inspector::apply_all(sim, weapon)
         | ph2d_app_components::tween_inspector::apply_all(sim, tween)
         | ph2d_app_components::path_follow_inspector::apply_all(sim, path_follow)
         | super::statemachine_commits::aplicar(sim, statemachine)

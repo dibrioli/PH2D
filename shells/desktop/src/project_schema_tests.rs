@@ -197,7 +197,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⛔ **um TERCEIRO tipo que NÃO se regista**: o `CameraShakeRuntime` guarda o trauma vivo,
         // não deriva `Serialize` (a cerca é o TIPO) e a entrada dele é no `rewind_runtime`.
         // ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA QUINTA vez, e pela razão de sempre.
-        (154, 13, 22),
+        // ⭐ **PROJECT 154→155** (2026-09-19): A ARMA DO JOGADOR — **UM** componente novo no registo
+        // (`WeaponFire`) **e** um campo novo na `Factory` (`spread_deg`), e qualquer um dos dois
+        // sozinho ja' obrigava o degrau (o postcard e' POSICIONAL). ⛔ **A MUNICAO nao viaja aqui**:
+        // ela e' um `Counter`, que ja' se gravava — e e' isso que a poe no HUD de graca.
+        // ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA SEXTA vez, e pela razão de sempre.
+        (155, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

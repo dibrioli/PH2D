@@ -111,7 +111,7 @@ pub(crate) fn drain_upscale(
     let replicated_16 =
         if ups.params.algorithm == ph2d_tool_upscale::params::UpscaleAlgorithm::Nearest {
             pixels_16.as_ref().and_then(|px| {
-                crate::precision_geometry::replicate_rgba16(px, src_w, src_h, out_w, out_h)
+                ph2d_sprite_precision::replicate_rgba16(px, src_w, src_h, out_w, out_h)
             })
         } else {
             None

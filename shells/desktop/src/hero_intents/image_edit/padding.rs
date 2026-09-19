@@ -137,7 +137,7 @@ pub(crate) fn drain_padding(
         let src_y = (-result.pivot_delta_y).max(0) as u32;
         let run_w = (src.image.width - src_x).min(result.width - dst_x);
         let run_h = (src.image.height - src_y).min(result.height - dst_y);
-        crate::precision_geometry::blit_rgba16(
+        ph2d_sprite_precision::blit_rgba16(
             px,
             src.image.width,
             src.image.height,

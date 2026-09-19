@@ -62,6 +62,7 @@ mod event_topdown;
 mod event_transform;
 mod event_tween;
 mod event_value;
+mod event_weapon;
 mod event_wheel;
 pub mod ids;
 mod paint;
@@ -77,6 +78,8 @@ mod paint_optional_factory;
 mod paint_optional_movers;
 /// ⭐ As molduras das DUAS secções do ABANÃO (suplente #25).
 mod paint_optional_shake;
+/// ⭐⭐⭐ O registo dos widgets da secção RAY SENSOR (suplente #21).
+mod paint_optional_suplentes;
 /// ⭐⭐ A CAUDA da cadeia de secções — as quatro da fila do TOP-20; irmã pelo tecto de FUNÇÃO.
 mod paint_optional_top20;
 /// ⭐ Os INSTANTÂNEOS das secções da cauda — irmão por CAP de LOC; ver o cabeçalho.
@@ -102,7 +105,6 @@ mod populate_path_follow;
 mod populate_physics;
 mod populate_player;
 mod populate_projectile;
-/// ⭐⭐⭐ O registo dos widgets da secção RAY SENSOR (suplente #21).
 mod populate_ray;
 /// ⭐ O registo dos widgets da secção SCRIPT — irmão por CAP de ficheiro.
 mod populate_script;
@@ -119,6 +121,7 @@ mod populate_topdown;
 mod populate_tween;
 /// ⭐⭐⭐ O registo dos widgets das secções que chegam por WAVE — ver o cabeçalho.
 mod populate_waves;
+mod populate_weapon;
 mod sections;
 pub mod state;
 /// ⭐ Os instantâneos das secções da fila do TOP-20 — irmão do [`state`] por CAP de LOC.
@@ -151,6 +154,7 @@ mod sync_statemachine;
 /// ⭐ A SEMENTE de um campo de texto — a porta única das três secções que os têm.
 mod sync_text_field;
 mod sync_tween;
+mod sync_weapon;
 
 /// The §11 Bake button's label — exported so a gate can hold the claim that
 /// the button shows the range it would cover.
@@ -250,7 +254,7 @@ pub use state_components::{
     set_current_inspector_projectile, set_current_inspector_ray, set_current_inspector_script,
     set_current_inspector_sequence, set_current_inspector_shake,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
-    set_current_inspector_tween,
+    set_current_inspector_tween, set_current_inspector_weapon,
 };
 
 /// ⭐ **As opções que a caixa de escolha da secção TAGS oferece**, para o gate as poder LER.

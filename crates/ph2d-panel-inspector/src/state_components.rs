@@ -27,6 +27,7 @@ use ph2d_editor_core::script_edits::InspectorScriptInfo;
 use ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo;
 use ph2d_editor_core::topdown_edits::InspectorTopDownInfo;
 use ph2d_editor_core::tween_edits::InspectorTweenInfo;
+use ph2d_editor_core::weapon_edits::InspectorWeaponInfo;
 
 pub fn set_current_inspector_timer(info: Option<InspectorTimerInfo>) {
     CURRENT_INSPECTOR_TIMER.with(|c| *c.borrow_mut() = info);
@@ -99,6 +100,16 @@ pub fn set_current_inspector_ray(info: Option<InspectorRayInfo>) {
 
 pub(crate) fn current_inspector_ray() -> Option<InspectorRayInfo> {
     CURRENT_INSPECTOR_RAY.with(|c| c.borrow().clone())
+}
+
+/// ⭐ O snapshot da ARMA — a shell escreve-o todo o quadro, porque ele carrega a munição VIVA e
+/// não só os campos.
+pub fn set_current_inspector_weapon(info: Option<InspectorWeaponInfo>) {
+    CURRENT_INSPECTOR_WEAPON.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_weapon() -> Option<InspectorWeaponInfo> {
+    CURRENT_INSPECTOR_WEAPON.with(|c| c.borrow().clone())
 }
 
 /// ⭐ O snapshot do CÉREBRO (TOP-20 #15) — a shell escreve-o todo o quadro.
@@ -215,6 +226,14 @@ thread_local! {
     /// quadro** — ao contrário dos campos, que só mudam quando alguém os edita.
     static CURRENT_INSPECTOR_RAY:
         std::cell::RefCell<Option<InspectorRayInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção WEAPON.**
+    ///
+    /// ⚠️ Ele carrega a MUNIÇÃO VIVA (quantas balas ela tem agora, e se está a recarregar), logo a
+    /// shell reescreve-o **todo o quadro** — ao contrário dos campos, que só mudam quando alguém os
+    /// edita.
+    static CURRENT_INSPECTOR_WEAPON:
+        std::cell::RefCell<Option<InspectorWeaponInfo>> = const { std::cell::RefCell::new(None) };
 
     /// ⭐⭐⭐ **O snapshot da secção STATE MACHINE** (TOP-20 #15).
     static CURRENT_INSPECTOR_STATEMACHINE:

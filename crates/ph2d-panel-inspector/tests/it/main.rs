@@ -17,6 +17,7 @@ mod a_seccao_script_esta_viva;
 mod a_seccao_sequence_esta_viva;
 mod a_seccao_tags_esta_viva;
 mod a_seccao_tween_diz_onde_mora_o_tempo;
+mod a_seccao_weapon_esta_viva;
 mod action_verb_is_a_dropdown;
 mod as_caixas_que_encurtaram_guardam_a_explicacao;
 mod every_form_row_reserves_the_animation_column;

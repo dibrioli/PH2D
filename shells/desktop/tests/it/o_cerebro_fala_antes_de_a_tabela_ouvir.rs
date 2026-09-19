@@ -110,6 +110,47 @@ fn a_vigia_fala_antes_de_a_tabela_de_accoes_ler() {
     ordem_dos_motores("vigias(");
 }
 
+/// ⭐⭐⭐ **E as ARMAS disparam na mesma janela** — carregar na tecla e a bala nascer acontecem no
+/// MESMO quadro.
+///
+/// **Mutação que deve sangrar:** tirar o `armas(…)` da porta dos motores.
+#[test]
+fn as_armas_disparam_antes_de_a_tabela_de_accoes_ler() {
+    ordem_dos_motores("armas(");
+}
+
+/// ⭐⭐⭐ **E a ARMA corre DEPOIS do GATILHO, dentro da porta dos motores.**
+///
+/// ⚠️⚠️ **É a única ordem INTERNA que esta janela tem, e ela é load-bearing:** a arma OUVE o que o
+/// gatilho acabou de publicar. Correndo antes, ela leria o `fire` do quadro ANTERIOR e **cada tiro
+/// chegava um quadro atrasado** — *a janela de graça do outbox esconderia o atraso de um toast e
+/// não o de uma bala*.
+///
+/// ⛔ E a lente é o CORPO da porta, não o ficheiro: as duas funções vivem no mesmo ficheiro e a
+/// ordem de DECLARAÇÃO não é a ordem de CHAMADA.
+///
+/// **Mutação que deve sangrar:** trocar as duas chamadas de sítio.
+#[test]
+fn a_arma_corre_depois_do_gatilho() {
+    let irmao = include_str!("../../src/render_loop/motores_do_quadro.rs");
+    let corpo = &irmao[irmao
+        .find("pub(super) fn correm(")
+        .expect("a porta dos motores mudou de nome")..];
+    let fim = corpo.find("\n}\n").expect("a porta acaba");
+    let corpo = &corpo[..fim];
+    let g = corpo
+        .find("gatilhos(")
+        .expect("a porta dos motores nao chama o gatilho");
+    let a = corpo
+        .find("armas(")
+        .expect("a porta dos motores nao chama as armas");
+    assert!(
+        g < a,
+        "as ARMAS correm antes do GATILHO: elas leriam o `fire` do quadro anterior, e cada tiro \
+         chegava um quadro atrasado"
+    );
+}
+
 /// ⚠️ **Cada motor recebe o cursor PRÓPRIO** — partilhar o da tabela deixaria uma das duas sem
 /// sinais. ⛔ A vigia **não aparece aqui de propósito**: ela não OUVE, só fala, e é a única fonte
 /// desta janela cuja entrada é o estado do MUNDO.
@@ -119,6 +160,7 @@ fn cada_motor_que_ouve_tem_cursor_proprio() {
     for (motor, cursor) in [
         ("fn scripts(", "&mut leitores.script"),
         ("fn particulas(", "&mut leitores.particles"),
+        ("fn armas(", "&mut leitores.weapon"),
     ] {
         assert!(
             src.contains(motor),

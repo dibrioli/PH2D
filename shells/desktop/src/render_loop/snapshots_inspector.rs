@@ -131,6 +131,7 @@ pub(super) fn publish(
         inspector_topdown,
         inspector_projectile,
         inspector_ray,
+        inspector_weapon,
         inspector_tween,
         inspector_path_follow,
         inspector_statemachine,
@@ -183,6 +184,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_topdown(inspector_topdown);
         ph2d_panel_inspector::set_current_inspector_projectile(inspector_projectile);
         ph2d_panel_inspector::set_current_inspector_ray(inspector_ray);
+        ph2d_panel_inspector::set_current_inspector_weapon(inspector_weapon);
         ph2d_panel_inspector::set_current_inspector_tween(inspector_tween);
         ph2d_panel_inspector::set_current_inspector_path_follow(inspector_path_follow);
         ph2d_panel_inspector::set_current_inspector_statemachine(inspector_statemachine);
@@ -236,6 +238,7 @@ struct LateSections {
     inspector_projectile: Option<ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
     /// ⭐⭐⭐ A secção RAY SENSOR (suplente #21).
     inspector_ray: Option<ph2d_editor_core::ray_edits::InspectorRayInfo>,
+    inspector_weapon: Option<ph2d_editor_core::weapon_edits::InspectorWeaponInfo>,
     inspector_tween: Option<ph2d_editor_core::tween_edits::InspectorTweenInfo>,
     /// ⭐⭐⭐ A secção PATH FOLLOW (suplente #23).
     inspector_path_follow: Option<ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo>,
@@ -367,6 +370,13 @@ fn late(
             visto,
         )
     });
+    // ⭐⭐⭐ A secção WEAPON — `None` para quem não tem o componente (ADR-0166).
+    //
+    // ⚠️ Ela pede a MUNIÇÃO VIVA, que é o que a distingue das irmãs: sem *«4 de 6 balas»* ela
+    // seria oito campos numa tabela, e o artista não teria como afinar uma cadência a olhar.
+    let inspector_weapon = hero.gizmo.selection.and_then(|b| {
+        ph2d_app_components::weapon_inspector::build_info(sim, b, clock_playing, selected_count)
+    });
     // ⭐⭐⭐ A secção TWEEN (suplente #22) — `None` para quem não tem o componente (ADR-0166).
     //
     // ⚠️ Ela pede DUAS colunas que não vêm do componente — *há timer neste índice?* e *há sprite?*
@@ -418,6 +428,7 @@ fn late(
         inspector_topdown,
         inspector_projectile,
         inspector_ray,
+        inspector_weapon,
         inspector_tween,
         inspector_path_follow,
         inspector_statemachine,

@@ -79,7 +79,7 @@ pub(crate) fn drain_trim_transparency(
     // janela ao buffer de 16 bits devolve a sprite intacta; deixá-la passar pelo caminho de 8 bits
     // destruía 16 bits sem sequer olhar para um valor.
     let cropped_16 = src.pixels_16.as_ref().and_then(|px| {
-        crate::precision_geometry::blit_rgba16(
+        ph2d_sprite_precision::blit_rgba16(
             px,
             src.image.width,
             src.image.height,

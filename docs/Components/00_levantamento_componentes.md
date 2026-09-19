@@ -358,6 +358,17 @@ Quatro medições do [inventário](pesquisa/inventario_ph2d.md) reordenam tudo:
 `PathFollow` (a vitrine da caneta) · `Health`+`WeaponFire` (o domínio combate, §6) ·
 `CameraShake`+`ShakeEmitter`.
 
+> ✅ **Os CINCO suplentes fecharam**, e o `WeaponFire` — a segunda metade do #24 — em 19/09. ⭐⭐ **A
+> §5.0 apagou uma das quatro peças que aquela célula pede:** a **MIRA** já estava paga pelo gatilho
+> (#18, `Factory::aim_from_spawner`), e a sonda mede-a a passar **ao bit**. O que sobrou foram três
+> buracos exactos — o **RITMO** (segurar dá `60` balas/s), o **PENTE** (`10` tiros de um pente de
+> `6`, com o contador a `−4`) e o **ESPALHAMENTO** (três balas da mesma rajada no mesmo ângulo) —,
+> e a **recarga** era inexprimível, porque o único verbo que escreve um contador **SOMA**.
+> ⛔ O `overheat` e a munição de RESERVA que a célula também nomeia ficam **FORA com motivo**
+> ([handoff §11](handoffs/HANDOFF_INTEGRACAO_line_components_ARMA_2026-09-19.md)): o primeiro é a
+> mesma grandeza do pente com outra palavra, e construí-lo agora seria um **segundo motor de
+> munição** antes de alguém o pedir.
+
 ---
 
 ## §8 — Pontos cegos do levantamento inteiro (nenhum dossiê cobriu — [critica.md §2](pesquisa/critica.md))

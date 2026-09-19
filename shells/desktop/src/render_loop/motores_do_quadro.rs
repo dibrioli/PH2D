@@ -71,6 +71,10 @@ pub(super) fn correm(
     );
     vigias(sim, signals, relogio);
     gatilhos(sim, signals, relogio, accoes);
+    // ⭐⭐⭐ **As ARMAS correm DEPOIS do gatilho, e a ordem É a lei:** elas ouvem o que ele acabou
+    // de publicar, logo carregar na tecla e a bala nascer acontecem no MESMO quadro. Correndo
+    // antes, cada tiro chegava um quadro atrasado — a lei que o cabeçalho do outbox já escreve.
+    armas(sim, signals, &mut leitores.weapon, relogio);
 }
 
 /// ⭐⭐⭐ **OS SCRIPTS DO ARTISTA** (TOP-20 #16) — o que um script emite chega à tabela de acções
@@ -152,6 +156,36 @@ fn vigias(sim: &mut SimWorld, signals: &mut SignalOutbox, relogio: &Relogio) {
     let f = ph2d_app_components::counter_watch_bridge::frame(sim, relogio.playing, relogio.ticks);
     for (bits, row, nome) in f.disparos {
         signals.publish(ph2d_runtime::Signal::from_counter_watch(&nome, bits, row));
+    }
+}
+
+/// ⭐⭐⭐ **AS ARMAS** — o que o gatilho pediu vira um tiro NESTE quadro.
+///
+/// ⚠️ **Ela OUVE e FALA**, como os scripts — e é o único motor desta janela que faz as duas coisas
+/// sobre o mesmo barramento. É por isso que ela tem cursor PRÓPRIO: a tabela de acções pode estar a
+/// ouvir o mesmo `fire`, e com um cursor partilhado quem lesse primeiro apagava o outro.
+///
+/// ⚠️⚠️ **Ela corre DEPOIS do [`gatilhos`], e a ordem É a lei:** correndo antes, a arma leria o
+/// `fire` do quadro ANTERIOR e cada tiro chegava um quadro atrasado. *A janela de graça do outbox
+/// esconderia o atraso de um toast e não o de uma bala.*
+///
+/// ⚠️ **O `dt` é o do QUADRO INTEIRO** (`ticks × dt`), como o das vigias: a cadência é um intervalo
+/// de simulação, e um quadro que deve três passos fixos gastou três.
+fn armas(
+    sim: &mut SimWorld,
+    signals: &mut SignalOutbox,
+    reader: &mut SignalReader,
+    relogio: &Relogio,
+) {
+    // ⚠️ **O cursor lê em TODO quadro, mesmo parado** — a lei do `ui_signal_reader`: um leitor que
+    // salta quadros acumula `missed` e passa a ver o passado. A cerca da corrida vive na PONTE.
+    let ouvidos: Vec<String> = signals.read(reader).map(|s| s.name.to_string()).collect();
+    let refs: Vec<&str> = ouvidos.iter().map(String::as_str).collect();
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let dt_us = (f64::from(relogio.ticks) * relogio.dt * 1e6) as u64;
+    let t = ph2d_app_components::weapon_bridge::frame(sim, relogio.playing, dt_us, &refs);
+    for (e, nome) in t.disparos.into_iter().chain(t.secas).chain(t.recarregadas) {
+        signals.publish(ph2d_runtime::Signal::from_weapon(&nome, e.to_bits()));
     }
 }
 

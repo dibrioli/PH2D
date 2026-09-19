@@ -68,6 +68,9 @@ impl Host {
                 SignalOrigin::Action { source, row } => {
                     format!("{} gatilho {}#{row}", sig.name, source.0)
                 }
+                SignalOrigin::Weapon { source } => {
+                    format!("{} arma {}", sig.name, source.0)
+                }
             });
         }
     }

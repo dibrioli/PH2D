@@ -45,7 +45,7 @@ pub(crate) struct SourceRead {
     /// ⚠️ **É o MESMO conteúdo do [`Self::image`], não outro**: mesma janela de região, mesmas
     /// dimensões. O `image` é a versão convertida para 8 bits que as ferramentas sabem ler; este
     /// é o original, para as três que **não calculam valor de pixel nenhum** poderem devolver a
-    /// precisão intacta (ver [`crate::precision_geometry`]).
+    /// precisão intacta (ver [`ph2d_sprite_precision`]).
     ///
     /// `None` para toda sprite de 8 bits — que é quase todas.
     pub pixels_16: Option<Vec<u16>>,
@@ -164,7 +164,7 @@ fn crop_region_16(
     if rect[2] == 0 || rect[3] == 0 {
         return None;
     }
-    crate::precision_geometry::blit_rgba16(px, w, h, rect, rect[2], rect[3], 0, 0)
+    ph2d_sprite_precision::blit_rgba16(px, w, h, rect, rect[2], rect[3], 0, 0)
 }
 
 /// Recorta a imagem à janela que o sprite de facto usa (`region_rect`), ou devolve-a inteira.
@@ -351,7 +351,7 @@ pub(crate) fn commit_geometric_edit(
 /// `docs/Sprite_projeto/18` W4-bis.
 ///
 /// ⚠️ **Só as ferramentas que não calculam valor de pixel nenhum a usam** (trim, make-square,
-/// padding). Ver [`crate::precision_geometry`]: elas publicam a sua geometria, o shell aplica-a ao
+/// padding). Ver [`ph2d_sprite_precision`]: elas publicam a sua geometria, o shell aplica-a ao
 /// buffer de 16 bits, e nenhum valor atravessa 8 bits.
 ///
 /// ⛔ **Nunca a chame com pixels que passaram por 8 bits.** Isso guardaria valores de 8 bits numa

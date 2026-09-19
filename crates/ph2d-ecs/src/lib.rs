@@ -126,6 +126,9 @@ pub mod transform;
 pub mod transform_inverse;
 pub mod transform_versioned;
 pub mod tween;
+/// ⭐⭐⭐ **A ARMA DO JOGADOR** (`WeaponFire`, §6 do levantamento) — o RITMO, o PENTE e a recarga.
+/// Ver o cabeçalho do módulo: a MIRA e o ESPALHAMENTO não moram aqui, e as duas ausências são leis.
+pub mod weapon;
 
 pub use crate::transform_inverse::{
     parent_world_transform, parent_world_transform_into, parent_world_transform_with,
@@ -241,6 +244,10 @@ pub use transform_versioned::{
 pub use tween::{Escrita, TWEENS_MAX, Tweens};
 pub use vec_path_ref::VecPathRef;
 pub use vec_shape::{MAX_SHAPE_VALUES, VecShape, VecTextParams};
+pub use weapon::{
+    Municao, Tiro, WEAPON_MAX_MS, WeaponFire, WeaponRuntime, avanca as weapon_avanca,
+    born as weapon_born,
+};
 
 /// **O CONECTOR** — a linha que gruda em duas formas e as segue. Espelha o padrão da Live
 /// Shape: o componente guarda a RELAÇÃO, a geometria é uma função pura dela. O alvo é um

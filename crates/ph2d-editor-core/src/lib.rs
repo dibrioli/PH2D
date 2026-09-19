@@ -166,6 +166,8 @@ pub mod topdown_edits;
 /// `projectile_edits`, …) — *o vocabulário de uma secção é um módulo de topo, e o `screens` é o
 /// ecrã que o pinta.*
 pub mod tween_edits;
+/// ⭐⭐⭐ **O vocabulário da ARMA** — ver o cabeçalho dele; nasce já no molde dos irmãos mais novos.
+pub mod weapon_edits;
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
 pub use gizmo::{
     GizmoCamera, GizmoDragKind, GizmoDragState, GizmoHit, GizmoModifiers, GizmoSnap, GizmoTarget,

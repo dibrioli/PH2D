@@ -62,4 +62,6 @@ pub enum ComponentEdit {
     /// ⚠️ **Separada da irmã de propósito**: elas moram em objectos diferentes, e fundi-las num
     /// enum só faria o dreno ter de perguntar «em qual?» a cada edição.
     ShakeEmitter(crate::shake_edits::EmitterFieldEdit),
+    /// **WEAPON** — a arma do jogador: o ritmo, o pente e a recarga.
+    Weapon(crate::weapon_edits::WeaponFieldEdit),
 }

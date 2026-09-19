@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-sprite-precision"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Esta folha é a GEOMETRIA de quem só move pixels: aparar, encher, quadrar e mover uma imagem são
+# quatro recortes do MESMO rectângulo, e o que eles têm de preservar é a PRECISÃO (RGBA16) que a
+# ferramenta encontrou.
+#
+# ⛔⛔ **UMA dependência, e a medição que a achou é a lição:** eu escolhi este ficheiro por ele não
+# ter **um único `use`** — e ele tinha uma dependência à mesma, escrita em caminho QUALIFICADO
+# (`ph2d_color::f32_to_half`, dentro de uma função). *Um ficheiro sem `use` não é um ficheiro sem
+# dependências*, e quem o disse foi o compilador, não a régua. ⭐ A folha continua folha: a
+# `ph2d-color` é ela própria uma, e a conversão meio-float é exactamente o assunto dela.
+[dependencies]
+ph2d-color = { path = "../ph2d-color" }
+
+[lints]
+workspace = true

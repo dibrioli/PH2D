@@ -391,7 +391,7 @@ pub(crate) fn paint_optional_sections(
         snaps,
     );
     // ⭐⭐⭐ E o RAIO (suplente #21) — `y = ` outra vez, pela nota acima.
-    y = crate::paint_optional_top20::paint_ray_section(
+    y = crate::paint_optional_suplentes::paint_ray_section(
         scene,
         text_system,
         theme,
@@ -404,6 +404,21 @@ pub(crate) fn paint_optional_sections(
         y,
         header_h,
         snaps.ray_info.as_ref(),
+    );
+    // ⭐⭐⭐ E a ARMA — `y = ` outra vez, pela nota acima.
+    y = crate::paint_optional_suplentes::paint_weapon_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        snaps.weapon_info.as_ref(),
     );
     // ⭐⭐ **A CAUDA da cadeia mora num irmão** — as quatro secções da fila do TOP-20 (o cérebro, o
     // script, o emissor e as tags). ⚠️ **O corte foi imposto pelo tecto de FUNÇÃO** (esta chegou a

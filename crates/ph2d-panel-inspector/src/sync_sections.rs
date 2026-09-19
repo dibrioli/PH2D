@@ -80,6 +80,7 @@ pub(crate) fn sync_new_sections(
     // vigia do contador e a das duas de 10/09: a secção shipou a mostrar `Direction 0 / −1` e
     // `Reach 1 m` sobre um olho autorado a `(1, 0)` com alcance `6`, e quem a apanhou foi uma FOTO.
     crate::sync_ray::sync(host, inspector_state, entity_changed);
+    crate::sync_weapon::sync(host, inspector_state, entity_changed);
     crate::sync_tween::sync(host, inspector_state, entity_changed);
     crate::sync_path_follow::sync(host, inspector_state, entity_changed);
     // ⭐⭐⭐ **A VIGIA DO CONTADOR** — no irmão, pelo mesmo tecto. ⛔ Esta linha FALTAVA: a secção

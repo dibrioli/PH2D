@@ -6052,6 +6052,7 @@ dependencies = [
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
  "ph2d-skeleton-render",
+ "ph2d-sprite-precision",
  "ph2d-sprite-screen",
  "ph2d-sprite-sheet",
  "ph2d-system-fonts",
@@ -8629,6 +8630,13 @@ name = "ph2d-spring"
 version = "0.0.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "ph2d-sprite-precision"
+version = "0.0.0"
+dependencies = [
+ "ph2d-color",
 ]
 
 [[package]]

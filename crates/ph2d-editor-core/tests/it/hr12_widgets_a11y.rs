@@ -718,6 +718,15 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-inspector/src/paint_optional_movers.rs",
         "as TRES MOLDURAS da familia MOVIMENTO (mover de vista de cima, projectil, seguidor de caminho); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
     ),
+    // ⭐ **Nasceu em 2026-09-19 do corte que a secção WEAPON impôs ao `paint_optional_top20`**
+    // (`616` de `600`) — a NONA vez que este ficheiro regista a mesma forma. ⭐⭐ E o corte foi por
+    // RESPONSABILIDADE e não por tamanho: aquele ficheiro declara-se, no próprio cabeçalho, como
+    // *« a CAUDA da fila do TOP-20 »*, e as duas mol duras dos SUPLENTES não são dela.
+    // ⚠️ **A isenção é MEDIDA**: zero ocorrências de `NodeId`, `hit_index.` ou `register(`.
+    (
+        "ph2d-panel-inspector/src/paint_optional_suplentes.rs",
+        "as DUAS MOLDURAS das seccoes dos SUPLENTES (o raio que olha e a arma que dispara); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
+    ),
     (
         "ph2d-panel-inspector/src/paint_optional_top20_tail.rs",
         "a cauda da CAUDA — a moldura da seccao TWEEN, cortada do irmao pelo teto de ficheiro de painel; nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",

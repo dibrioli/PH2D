@@ -34,6 +34,23 @@
 //! preservam (converter o resultado de volta para cima) seria a **pior** das opções: o rótulo
 //! diria 16 e os valores teriam passado por 8.
 
+//! ⭐⭐ **Ela saiu da `shells/desktop` em 2026-09-19**, pela catraca `the_shell_only_shrinks`: a
+//! wave da ARMA acrescentou composição à shell (o motor do quadro, o prólogo da cena, o dreno) e a
+//! shell passou o tecto por `62` linhas. ⛔ *A cura é MOVER, nunca subir o número.*
+//!
+//! ⭐ **O candidato veio de uma MEDIÇÃO e não do tamanho:** ele era um dos poucos ficheiros da shell
+//! sem um único `use` — nem `crate::`, nem uma crate irmã. *Um ficheiro assim, numa shell, já é uma
+//! lei; falta-lhe só o endereço.* Os seis consumidores (as cinco ferramentas de imagem e o funil
+//! `texture_edit`) passaram a escrever `ph2d_sprite_precision::…`.
+//!
+//! ⛔⛔ **E a régua que o escolheu tinha um ponto cego, que o compilador apanhou:** ele TINHA uma
+//! dependência (`ph2d_color::f32_to_half`), escrita em caminho **QUALIFICADO** dentro de uma
+//! função. *Um ficheiro sem `use` não é um ficheiro sem dependências* — e um `grep '^use '` não vê
+//! um caminho que se escreve por inteiro no sítio onde é usado.
+//!
+//! ⚠️ **O `#[cfg(test)] mod tests` viaja DENTRO do ficheiro**, logo não há o órfão que o HOWTO §2.4
+//! nomeia — e a suíte da crate nova corre-os com `cargo test -p ph2d-sprite-precision`.
+
 /// **Copia um rectângulo do buffer de origem para um canvas novo**, preenchendo o resto com zero
 /// (transparente).
 ///
@@ -49,7 +66,7 @@
 /// Recusa devolvendo `None` quando o rectângulo não cabe na origem ou no destino — a mesma lei do
 /// `crop_region` irmão: *errar de forma visível, nunca com aritmética que dá a volta*.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn blit_rgba16(
+pub fn blit_rgba16(
     src: &[u16],
     src_w: u32,
     src_h: u32,
@@ -93,7 +110,7 @@ pub(crate) fn blit_rgba16(
 ///
 /// ⚠️ **As dimensões de saída vêm de FORA**, do resultado do próprio tool — recalculá-las aqui
 /// seria uma segunda cópia da regra de arredondamento dele, a ter de concordar para sempre.
-pub(crate) fn replicate_rgba16(
+pub fn replicate_rgba16(
     src: &[u16],
     src_w: u32,
     src_h: u32,
@@ -136,7 +153,7 @@ pub(crate) fn replicate_rgba16(
 /// premultiplicar valores **lineares** pelo mesmo alfa dá um resultado diferente (e mais correto).
 /// ⛔ Em vez de escolher entre dois erros, isto devolve reto e deixa o shader premultiplicar em
 /// linear no desenho, que é onde isso pertence.
-pub(crate) fn apply_alpha8_to_rgba16(src: &[u16], alpha_rgba8: &[u8]) -> Option<Vec<u16>> {
+pub fn apply_alpha8_to_rgba16(src: &[u16], alpha_rgba8: &[u8]) -> Option<Vec<u16>> {
     const CH: usize = 4;
     if src.len() != alpha_rgba8.len() || !src.len().is_multiple_of(CH) {
         return None;

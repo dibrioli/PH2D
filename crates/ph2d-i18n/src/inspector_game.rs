@@ -557,6 +557,49 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.path_follow.editing_the_primary_selection_only" => {
             "Editing the primary selection only."
         }
+        // ⭐⭐⭐ A ARMA DO JOGADOR — o ritmo, o pente e a recarga.
+        "panel.inspector.weapon.weapon" => "Weapon",
+        // ⚠️ **A unidade vive no CAMPO** (`Unit::Milliseconds`), nunca no rótulo — a spec da linha
+        // de propriedade §7. A CHAVE mantém o sufixo `_ms`: ela é um endereço, não o texto.
+        "panel.inspector.weapon.cooldown_ms" => "Cooldown",
+        "panel.inspector.weapon.reload_ms" => "Reload",
+        "panel.inspector.weapon.signal_that_pulls_the_trigger_u" => {
+            "signal that pulls the trigger\u{2026}"
+        }
+        "panel.inspector.weapon.signal_it_publishes_on_each_shot_u" => {
+            "signal it publishes on each shot\u{2026}"
+        }
+        "panel.inspector.weapon.counter_that_is_the_magazine_u" => {
+            "counter that is the magazine\u{2026}"
+        }
+        "panel.inspector.weapon.signal_that_reloads_it_u" => "signal that reloads it\u{2026}",
+        "panel.inspector.weapon.signal_on_the_dry_click_u" => "signal on the dry click\u{2026}",
+        "panel.inspector.weapon.signal_when_the_magazine_is_full_u" => {
+            "signal when the magazine is full\u{2026}"
+        }
+        // ⚠️ **A QUEIXA, da mais especifica para a mais geral** — a ordem vive na porta
+        // `InspectorWeaponInfo::queixa`, e estas quatro sao so' a lingua dela.
+        "panel.inspector.weapon.this_weapon_has_no_trigger" => {
+            "This weapon has no trigger \u{2014} give it a signal to listen for."
+        }
+        "panel.inspector.weapon.the_shot_goes_nowhere" => {
+            "The shot goes nowhere \u{2014} name the signal a Factory listens for."
+        }
+        "panel.inspector.weapon.the_magazine_is_not_here" => {
+            "The magazine is not here \u{2014} add a Counter with that name to this object."
+        }
+        "panel.inspector.weapon.it_is_dry_for_good" => {
+            "It is dry for good \u{2014} give it a reload time, or more rounds."
+        }
+        // ⭐ A LEITURA VIVA — quantas balas ela tem AGORA.
+        "panel.inspector.weapon.x_of_y_rounds" => "{have} of {full} rounds",
+        "panel.inspector.weapon.reloading_u" => "Reloading\u{2026}",
+        "panel.inspector.weapon.the_clock_is_stopped_u_a_weapon_only_fires_during_a_run" => {
+            "The clock is stopped \u{2014} a weapon only fires during a run."
+        }
+        "panel.inspector.weapon.editing_the_first_of_the_selection_u" => {
+            "Editing the primary selection only."
+        }
         // ph2d-migrar-texto:end
         _ => return None,
     })

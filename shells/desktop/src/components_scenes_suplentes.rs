@@ -385,6 +385,54 @@ impl crate::App {
     }
 }
 
-impl crate::App {}
-
-impl crate::App {}
+impl crate::App {
+    /// ⭐⭐⭐ **A ARMA DO JOGADOR** — `PH2D_WEAPON_SMOKE=1`. Prólogo do quadro, uma vez.
+    ///
+    /// ⚠️⚠️ **Ele faz TRÊS coisas que a cena não pode fazer:**
+    ///
+    /// 1. **Cria a acção no Input Map e liga-a à tecla.** É a MESMA acção e a MESMA tecla da cena
+    ///    do gatilho, lidas das consts dela — ⛔ re-declará-las aqui seria a segunda resposta a
+    ///    *«que tecla dispara neste app?»*.
+    /// 2. **Põe o relógio a andar.** As teclas do jogo são as teclas do editor, logo uma arma só
+    ///    dispara com a corrida a correr — e a cerca vive na PONTE.
+    /// 3. **Abre a régua do transporte e escolhe a ARMA.** O passo (5) manda ver a secção *Weapon*
+    ///    no painel da direita, e com ninguém escolhido o Inspector diz *«Select an entity in the
+    ///    Hierarchy»*; e o passo (6) fala do `Pause`, que sem a régua é *«que régua?»*.
+    ///
+    /// ⛔ *Uma cena de smoke que ensina o CONTRÁRIO do que acontece é pior que uma cena ausente*
+    /// (`CLAUDE.md` §5.0).
+    pub(crate) fn weapon_smoke(&mut self) {
+        if self.components.smokes.weapon {
+            self.components.smokes.weapon_raise =
+                self.levanta_o_inspector(self.components.smokes.weapon_raise);
+            return;
+        }
+        if std::env::var_os("PH2D_WEAPON_SMOKE").is_none() {
+            return;
+        }
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        let montada = ph2d_app_components::weapon_smoke::montar(cx.sim.world_mut(), 1);
+        self.components.smokes.weapon = true;
+        self.components.smokes.weapon_raise = crate::components_scenes::LEVANTA_O_INSPECTOR;
+        self.timeline.flags.simulate_physics = true;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            // ⭐ O `create` devolve a que já existe se o nome repetir, logo isto é idempotente.
+            let id = hero
+                .input_map
+                .create(ph2d_app_components::weapon_smoke::ACCAO);
+            if let Some(a) = hero.input_map.get_mut(id) {
+                a.bindings.push(ph2d_input::Binding::Key(ph2d_input::Key(
+                    ph2d_app_components::weapon_smoke::TECLA,
+                )));
+            }
+            hero.panel_visibility.insert("inspector", true);
+            hero.panel_visibility.insert("timeline", true);
+            hero.gizmo.selection = Some(montada.escolhido);
+            hero.gizmo.extra_selection.clear();
+        }
+        self.playhead.rewind();
+        self.playhead.play();
+    }
+}

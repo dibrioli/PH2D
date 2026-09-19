@@ -85,6 +85,9 @@ impl crate::App {
                             sig.name, source.0
                         );
                     }
+                    ph2d_runtime::SignalOrigin::Weapon { source } => {
+                        eprintln!("[signal] {} <- a ARMA do objecto {}", sig.name, source.0);
+                    }
                 }
             }
         }

@@ -80,6 +80,7 @@ impl crate::App {
                 topdown_edits: take(&mut pd.topdown_edits),
                 projectile_edits: take(&mut pd.projectile_edits),
                 ray_edits: take(&mut pd.ray_edits),
+                weapon_edits: take(&mut pd.weapon_edits),
                 tween_edits: take(&mut pd.tween_edits),
                 path_follow_edits: take(&mut pd.path_follow_edits),
                 statemachine_edits: take(&mut pd.statemachine_edits),

@@ -359,3 +359,107 @@ fn the_births_come_in_factory_identity_order() {
         .collect();
     assert_eq!(xs, vec![1.0, 2.0, 3.0]);
 }
+
+/// ⭐⭐⭐ **O LEQUE a `0` é BYTE-IDÊNTICO, e o gerador NEM É TOCADO.**
+///
+/// ⚠️⚠️ **As duas metades, e a segunda é a que importa:** não basta os ângulos serem iguais — se o
+/// sorteio corresse e o resultado fosse descartado, a SEQUÊNCIA do gerador deslocava-se, e uma
+/// [`SpawnAt::Area`] na mesma fábrica passaria a pôr as cópias noutro sítio. *Uma lei que degenera
+/// tem de degenerar também no estado que deixa atrás.*
+///
+/// **Mutações que devem sangrar:** sortear sempre (mesmo com `0`) · somar `meio()` sem a cerca.
+#[test]
+fn com_leque_zero_o_gerador_nem_e_tocado() {
+    let tree = TagTree::default();
+    let mut estados = Vec::new();
+    for spread in [0.0_f32, 0.0] {
+        let mut w = BevyWorld::new();
+        let e = fabrica(
+            &mut w,
+            1,
+            0.0,
+            Factory {
+                burst: 4,
+                aim_from_spawner: true,
+                spread_deg: spread,
+                ..com_sinal("go")
+            },
+        );
+        let t = tick_factories(&mut w, &tree, &["go"]);
+        let angulos: Vec<Option<f32>> = t.births.iter().map(|b| b.aim).collect();
+        assert_eq!(angulos, vec![Some(0.0); 4], "sem leque, todos a direito");
+        estados.push(w.get::<FactoryRuntime>(e).copied().unwrap_or_default().rng);
+    }
+    // ⭐ O CONTROLO da própria metade: com leque, o gerador ANDA.
+    let mut w = BevyWorld::new();
+    let e = fabrica(
+        &mut w,
+        1,
+        0.0,
+        Factory {
+            burst: 4,
+            aim_from_spawner: true,
+            spread_deg: 30.0,
+            ..com_sinal("go")
+        },
+    );
+    let t = tick_factories(&mut w, &tree, &["go"]);
+    let com_leque = w.get::<FactoryRuntime>(e).copied().unwrap_or_default().rng;
+    assert_ne!(
+        estados[0], com_leque,
+        "com leque o gerador tem de ANDAR — senao a metade de cima nao afirma nada"
+    );
+    // E os ângulos deixam de ser todos iguais.
+    let angulos: Vec<f32> = t.births.iter().filter_map(|b| b.aim).collect();
+    assert_eq!(angulos.len(), 4);
+    assert!(
+        angulos.windows(2).any(|p| (p[0] - p[1]).abs() > 1.0e-6),
+        "quatro chumbos com o MESMO angulo nao sao um leque: {angulos:?}"
+    );
+}
+
+/// ⭐⭐⭐ **O desvio é sorteado POR CÓPIA, e cabe na abertura pedida.**
+///
+/// ⚠️ **As duas metades:** se o sorteio saísse do laço, as quatro cópias partilhavam o desvio e a
+/// rajada saía **inteira torta** em vez de aberta — um defeito que *«os ângulos são diferentes dos
+/// de um leque zero»* não apanharia.
+///
+/// **Mutações que devem sangrar:** sortear uma vez antes do laço · usar a abertura INTEIRA como
+/// meia-abertura (o `meio()` já dá `−0,5..0,5`).
+#[test]
+fn o_desvio_e_por_copia_e_cabe_na_abertura() {
+    let tree = TagTree::default();
+    let abertura = 30.0_f32;
+    let mut w = BevyWorld::new();
+    fabrica(
+        &mut w,
+        1,
+        0.0,
+        Factory {
+            burst: 8,
+            aim_from_spawner: true,
+            spread_deg: abertura,
+            ..com_sinal("go")
+        },
+    );
+    let t = tick_factories(&mut w, &tree, &["go"]);
+    let angulos: Vec<f32> = t.births.iter().filter_map(|b| b.aim).collect();
+    assert_eq!(angulos.len(), 8, "piso de populacao");
+    let meia = abertura.to_radians() * 0.5;
+    for a in &angulos {
+        assert!(
+            a.abs() <= meia + 1.0e-6,
+            "o chumbo saiu a {a} rad, fora da meia-abertura de {meia}"
+        );
+    }
+    // ⭐ **POR CÓPIA**: oito desvios têm de ser oito números, não um repetido oito vezes.
+    let distintos = angulos
+        .iter()
+        .filter(|a| (**a - angulos[0]).abs() > 1.0e-9)
+        .count();
+    assert!(
+        distintos >= 6,
+        "o sorteio saiu do laco: {distintos} de 8 diferem do primeiro — a rajada sai TORTA e nao \
+         aberta ({angulos:?})"
+    );
+}

@@ -36,7 +36,7 @@
 use crate::{
     CameraRuntime, Counter, CounterRuntime, CounterWatch, CounterWatchRuntime, Entity,
     FactoryRuntime, LifetimeRuntime, StateMachine, StateMachineRuntime, TimerRuntime, Timers,
-    World,
+    WeaponRuntime, World,
 };
 
 /// **Repõe o estado vivo de toda a gente, como no tique 0.** Devolve **quantos componentes** foram
@@ -57,6 +57,7 @@ use crate::{
 /// | [`CameraRuntime`] | ⭐⭐ **APAGAR o componente** | o `ensure_runtime` da shell recria-o **da pose autorada**; um `Default` poria a câmera na ORIGEM |
 /// | [`CounterRuntime`] | ⭐ o **`start` da config** | a primeira espécie que LÊ a config: um `Default` poria todos a zero e apagaria as três vidas que o artista autorou |
 /// | [`CounterWatchRuntime`] | [`crate::counter_watch::born`] por slot | ⭐⭐ `held = false` **re-arma a aresta**: sem isso a 2.ª corrida nunca voltaria a anunciar a morte, porque a condição já estava satisfeita quando a 1.ª acabou |
+/// | [`WeaponRuntime`] | [`crate::weapon::born`] | ⭐ «pronta a disparar»; ⛔ o PENTE **não** é reposto aqui — ele é um [`Counter`], e a linha acima já o enche |
 pub fn rewind_runtime_state(world: &mut World) -> usize {
     let mut n = 0;
 
@@ -115,6 +116,18 @@ pub fn rewind_runtime_state(world: &mut World) -> usize {
     for (cfg, mut rt) in q.iter_mut(world) {
         rt.0.clear();
         rt.0.resize(cfg.0.len(), crate::counter_watch::born());
+        n += 1;
+    }
+
+    // ── As ARMAS ─────────────────────────────────────────────────────────────
+    // ⭐ **Nascer é «pronta a disparar»**: a cadência zera e uma recarga a meio é CANCELADA — senão
+    // a 2.ª corrida começaria a meio de uma animação de recarregar que ninguém pediu.
+    // ⚠️ **O PENTE não é reposto aqui**, e a ausência é a lei: ele é um [`Counter`], e o bloco dos
+    // contadores acima já o enche do `start`. *Repô-lo nos dois sítios seria a segunda resposta a
+    // «quantas balas tem uma arma que renasce».*
+    let mut q = world.query::<&mut WeaponRuntime>();
+    for mut rt in q.iter_mut(world) {
+        *rt = crate::weapon::born();
         n += 1;
     }
 

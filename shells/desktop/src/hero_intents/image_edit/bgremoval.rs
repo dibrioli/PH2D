@@ -101,7 +101,7 @@ pub(crate) fn drain_bgremoval(
         // shader premultiplica em linear no desenho — que é onde isso pertence.
         let alpha_applied_16 = pixels_16
             .as_ref()
-            .and_then(|px| crate::precision_geometry::apply_alpha8_to_rgba16(px, &out));
+            .and_then(|px| ph2d_sprite_precision::apply_alpha8_to_rgba16(px, &out));
         let edited = ph2d_render::SpriteImage::from_bytes(
             out_w,
             out_h,

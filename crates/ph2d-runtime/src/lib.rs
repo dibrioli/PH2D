@@ -239,6 +239,16 @@ pub enum SignalOrigin {
         /// **Qual** das linhas dela falou, pela posição na lista.
         row: u16,
     },
+    /// ⭐⭐⭐ **UMA ARMA** — ela disparou, ficou seca ou acabou de recarregar.
+    ///
+    /// ⚠️ **APENDADA no fim**, como as irmãs: este enum viaja e a posição é a tag.
+    ///
+    /// ⛔ **Não há `row`**, e a ausência é a lei: um objecto tem UMA arma, e um índice aqui seria um
+    /// número que nunca deixa de ser zero.
+    Weapon {
+        /// Quem tem a arma.
+        source: EntityBits,
+    },
 }
 
 impl SignalOrigin {
@@ -246,8 +256,8 @@ impl SignalOrigin {
     ///
     /// # ⛔⛔ Porque ela é UMA porta e não um `match` na shell
     ///
-    /// São **catorze** origens e **onze** carregam `source`. Um `match` escrito no consumidor
-    /// esquece a décima quinta **em silêncio** — ela cai no braço `_` e o sinal dela passa a
+    /// São **quinze** origens e **doze** carregam `source`. Um `match` escrito no consumidor
+    /// esquece a décima sexta **em silêncio** — ela cai no braço `_` e o sinal dela passa a
     /// nascer sem sujeito, o que se lê exactamente como *«esta origem não tem sujeito»*. Aqui o
     /// `match` é EXAUSTIVO, e uma variante nova **não compila** até alguém responder.
     ///
@@ -269,13 +279,14 @@ impl SignalOrigin {
             | Self::Particles { source, .. }
             | Self::UiButton { source, .. }
             | Self::CounterWatch { source, .. }
-            | Self::Action { source, .. } => Some(*source),
+            | Self::Action { source, .. }
+            | Self::Weapon { source, .. } => Some(*source),
         }
     }
 
     /// ⭐⭐ **O OUTRO LADO** — hoje só o contacto o tem (*«quem chegou, ou quem saiu»*).
     ///
-    /// ⚠️ **Exaustivo pela mesma razão da irmã**, e a resposta honesta para as outras treze é
+    /// ⚠️ **Exaustivo pela mesma razão da irmã**, e a resposta honesta para as outras catorze é
     /// `None`: um segundo lado que não existe **não é** quem gritou.
     #[must_use]
     pub const fn outro(&self) -> Option<EntityBits> {
@@ -293,7 +304,8 @@ impl SignalOrigin {
             | Self::Particles { .. }
             | Self::UiButton { .. }
             | Self::CounterWatch { .. }
-            | Self::Action { .. } => None,
+            | Self::Action { .. }
+            | Self::Weapon { .. } => None,
         }
     }
 }
@@ -432,6 +444,17 @@ impl Signal {
             origin: SignalOrigin::Action {
                 source: EntityBits(source),
                 row,
+            },
+        }
+    }
+
+    /// **Uma arma disparou, ficou seca ou recarregou** ([`SignalOrigin::Weapon`]).
+    #[must_use]
+    pub fn from_weapon(name: &str, source: u64) -> Self {
+        Self {
+            name: Arc::from(name),
+            origin: SignalOrigin::Weapon {
+                source: EntityBits(source),
             },
         }
     }

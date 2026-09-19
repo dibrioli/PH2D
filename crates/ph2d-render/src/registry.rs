@@ -90,7 +90,10 @@ mod tests {
         // ⚠️ **2026-09-19: `101` -> `103`, delta +2** -- o `CameraShake` e o `ShakeEmitter`
         //   (suplente #25), registados no ECS. ⛔ **DOIS, e o `CameraShakeRuntime` nao conta**: a
         //   cerca dele e' o TIPO. Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 103);
+        // ⚠️ **2026-09-19: `103` -> `104`, delta +1** -- o `WeaponFire` (a ARMA do jogador),
+        //   registado no ECS. ⛔ **UM so'**: nem o `WeaponRuntime` (a cerca e' o TIPO) nem a
+        //   MUNICAO (ela e' um `Counter`, que ja' ca' esta') contam. Quem integrar conta o DELTA.
+        assert_eq!(reg.len(), 104);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());

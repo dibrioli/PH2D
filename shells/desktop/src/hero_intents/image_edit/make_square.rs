@@ -86,7 +86,7 @@ pub(crate) fn drain_make_square(
     // **A moldura PRESERVA a precisão** (plano `docs/Sprite_projeto/18` W4-bis). O Make Square não
     // calcula valor de pixel nenhum: põe a origem num canvas maior e enche o resto de transparente.
     let framed_16 = src.pixels_16.as_ref().and_then(|px| {
-        crate::precision_geometry::blit_rgba16(
+        ph2d_sprite_precision::blit_rgba16(
             px,
             src.image.width,
             src.image.height,

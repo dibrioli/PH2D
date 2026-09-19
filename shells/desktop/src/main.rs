@@ -333,7 +333,6 @@ mod pick_order;
 /// Inspector fazem (plano `docs/Sprite_projeto/18` W5).
 mod precision_convert;
 /// **As ferramentas que só movem pixels preservam a precisão** — veja os docs do módulo.
-mod precision_geometry;
 /// ⭐⭐⭐ **As duas SAÍDAS do palco do prefab** (`Done`/`Cancel`) — a ponte que fica porque o `Cancel`
 /// repõe o `ProjectState`. ⚠️ A LEI do palco vive em `ph2d_app_components::prefab_stage` (2026-09-13).
 mod prefab_exit;
@@ -378,6 +377,7 @@ mod project_schema;
 /// A metade ARQUIVADA da escada do `PROJECT_SCHEMA` (v2..v79) — irmã por LOC (HR-18).
 mod project_schema_history;
 mod project_schema_history_v112;
+mod project_schema_history_v128;
 /// A escada arquivada de `v83` a `v98` — o corte por idade, a 2.ª vez (ver o cabeçalho dela).
 mod project_schema_history_v83;
 mod project_schema_history_v99;

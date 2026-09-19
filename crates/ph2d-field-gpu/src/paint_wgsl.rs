@@ -13,10 +13,44 @@
 //! dos ficheiros que declaram cada constante, nunca escritas aqui. *Uma constante transcrita é uma
 //! divergência à espera de um dia em que alguém mexa na outra.*
 
+/// ⭐⭐⭐ **A CURVATURA MÉDIA COM SINAL de um ponto**, em WGSL — `H = ∇²f/2`, o gémeo exacto do
+/// [`ph2d_field_render::curvatura`]. Ver lá porque ela NÃO pode vir de `fwidth` e porque o passo
+/// dela não é o da normal.
+///
+/// # ⚠️⚠️ Porque ela é uma const PÚBLICA e não uma linha do [`PINTOR`]
+///
+/// Ela tem **dois leitores**: o pintor (que a espeta na marca `{CURVATURA}`) e o **instrumento que
+/// mede a curvatura nos dois motores** — a dívida que o `estilo_tests` deixou nomeada, e que só se
+/// paga comparando a GRANDEZA em vez do pixel. ⛔ *Transcrever estas dezoito linhas num arnês de
+/// teste seria medir uma cópia da lei e chamar-lhe paridade* — é a mesma razão que faz `{BLUR_COS}`
+/// e `{PISO_LUZ}` serem lidos do ficheiro que os declara.
+///
+/// ⚠️ **Ela lê `pintor.knobs.z`**, que é o passo `ε`, e isso é deliberado: quem a usa fora do pintor
+/// declara um `Pintor` com um `knobs: vec4<f32>` e põe o `ε` no `z`. *Passar o `ε` por argumento
+/// mudaria o texto do produto para servir o instrumento, e a lei deixaria de ser a mesma.*
+///
+/// ⚠️ **Ela deixou de viver dentro do `com_a_curvatura`**, e isso compra duas coisas: o SINAL passa
+/// a ser legível por quem o queira (a `W8`), e numa fronteira entre dois materiais que a leem as
+/// cinco amostras passam a ser pagas **uma vez** em vez de duas. *O valor é o mesmo `f32`.*
+pub const CURVATURA: &str = r"
+fn curvatura_em(p: vec3<f32>) -> f32 {
+    let e = pintor.knobs.z;
+    if (e <= 0.0) { return 0.0; }
+    let o0 = vec3<f32>( 1.0, -1.0, -1.0);
+    let o1 = vec3<f32>(-1.0, -1.0,  1.0);
+    let o2 = vec3<f32>(-1.0,  1.0, -1.0);
+    let o3 = vec3<f32>( 1.0,  1.0,  1.0);
+    let soma = field(p + o0 * e) + field(p + o1 * e) + field(p + o2 * e) + field(p + o3 * e);
+    let laplaciano = (soma - 4.0 * field(p)) / (2.0 * e * e);
+    return laplaciano * 0.5;
+}
+";
+
 /// O corpo do pintor — o grupo `1`, as leis de leitura e as duas entradas.
 ///
 /// ⚠️ `{BLUR_COS}` e `{PISO_LUZ}` são **lidos do ficheiro** que os declara, nunca escritos aqui: uma
-/// constante transcrita é uma divergência à espera de um dia em que alguém mexa na outra.
+/// constante transcrita é uma divergência à espera de um dia em que alguém mexa na outra. O mesmo
+/// vale para `{CURVATURA}`, que é a [`CURVATURA`] — ver lá porque ela tem dois leitores.
 pub(crate) const PINTOR: &str = r"
 // ── o grupo 1: o que só o pintor lê ───────────────────────────────────────────────────────────
 struct Pintor {
@@ -121,24 +155,7 @@ fn com_a_curvatura(m_in: Mat, k: f32) -> Mat {
     return m;
 }
 
-// ⭐⭐⭐ **A CURVATURA MÉDIA COM SINAL deste ponto** — `H = ∇²f/2`, o gémeo exacto do
-// `ph2d_field_render::curvatura`. Ver lá porque ela NÃO pode vir de `fwidth` e porque o passo dela
-// não é o da normal.
-//
-// ⚠️ **Ela deixou de viver dentro do `com_a_curvatura`**, e isso compra duas coisas: o SINAL passa a
-// ser legível por quem o queira (a `W8`), e numa fronteira entre dois materiais que a leem as cinco
-// amostras passam a ser pagas **uma vez** em vez de duas. *O valor é o mesmo `f32`.*
-fn curvatura_em(p: vec3<f32>) -> f32 {
-    let e = pintor.knobs.z;
-    if (e <= 0.0) { return 0.0; }
-    let o0 = vec3<f32>( 1.0, -1.0, -1.0);
-    let o1 = vec3<f32>(-1.0, -1.0,  1.0);
-    let o2 = vec3<f32>(-1.0,  1.0, -1.0);
-    let o3 = vec3<f32>( 1.0,  1.0,  1.0);
-    let soma = field(p + o0 * e) + field(p + o1 * e) + field(p + o2 * e) + field(p + o3 * e);
-    let laplaciano = (soma - 4.0 * field(p)) / (2.0 * e * e);
-    return laplaciano * 0.5;
-}
+{CURVATURA}
 
 // **Este material lê a curvatura?** — a metade que o `com_a_curvatura` já perguntava, com nome.
 fn mat_le_curvatura(m: Mat) -> bool {
@@ -222,3 +239,49 @@ fn devolvida_de(q: vec3<f32>, nq_vista: vec3<f32>, veio_de: vec3<f32>) -> vec3<f
 }
 
 ";
+
+/// ⭐⭐ **A EXTRACÇÃO NÃO PODE APODRECER EM SILÊNCIO — e este gate corre SEM PLACA.**
+///
+/// A [`CURVATURA`] saiu do corpo do [`PINTOR`] para ter um segundo leitor (ver o doc dela). Os dois
+/// modos de falha dessa mudança são **de GPU**: sem a substituição o shader leva um `{CURVATURA}`
+/// literal e o `naga` recusa-o; sem a const a função `curvatura_em` fica por declarar. ⛔⛔ **Os
+/// gates que veriam qualquer um dos dois são `#[ignore]`, logo o CI NUNCA os corre** — é a lei do
+/// `CLAUDE.md` §5.0 sobre *skip gracioso não é verde*.
+///
+/// ⇒ as duas metades, medidas no TEXTO, numa máquina qualquer:
+/// a marca existe **uma** vez no corpo, e **alguém a substitui**.
+#[cfg(test)]
+mod extraccao_tests {
+    #[test]
+    fn a_marca_da_curvatura_existe_uma_vez_e_alguem_a_substitui() {
+        let marcas = super::PINTOR.matches("{CURVATURA}").count();
+        assert_eq!(
+            marcas, 1,
+            "o corpo do pintor tem {marcas} marcas `{{CURVATURA}}` — uma a menos e a função fica \
+             por declarar; uma a mais e o shader declara-a duas vezes"
+        );
+        // ⚠️ **O FIO, e não só a porta.** Sem esta metade, apagar o `.replace` do irmão deixa o
+        // gate verde e o shader com um `{CURVATURA}` literal lá dentro.
+        let montagem = include_str!("paint.rs");
+        assert!(
+            montagem.contains(r#".replace("{CURVATURA}", crate::paint_wgsl::CURVATURA)"#),
+            "ninguém substitui a marca `{{CURVATURA}}` na montagem do shader"
+        );
+        // E a const declara exactamente a função que o corpo chama.
+        assert_eq!(
+            super::CURVATURA
+                .matches("fn curvatura_em(p: vec3<f32>) -> f32")
+                .count(),
+            1,
+            "a const não declara `curvatura_em` exactamente uma vez"
+        );
+        // ⚠️⚠️ **Quem CHAMA está na outra metade** (`PINTOR_SONDAS`), e a 1.ª redacção deste gate
+        // procurou-a aqui e reprovou — *as duas metades são UM shader*, como o cabeçalho deste
+        // ficheiro diz, e o corte entre elas foi um tecto de LOC e não um assunto. A declaração
+        // entra por esta marca, a chamada mora no irmão, e o gate tem de olhar para os dois.
+        assert!(
+            crate::paint_wgsl_sondas::PINTOR_SONDAS.contains("curvatura_em(p)"),
+            "o shader deixou de CHAMAR a função — a extracção ficou órfã"
+        );
+    }
+}

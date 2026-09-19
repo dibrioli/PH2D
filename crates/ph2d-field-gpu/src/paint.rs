@@ -198,6 +198,10 @@ pub(crate) fn fonte(
             &formata(ph2d_field_render::POINT_LAMP_MIN_DISTANCE),
         )
         .replace("{PACKED}", &ph2d_material::wgsl::PACKED.to_string())
+        // ⚠️ **Lida do sítio que a declara** ([`crate::paint_wgsl::CURVATURA`]), porque ela tem um
+        // SEGUNDO leitor: o instrumento que mede a curvatura nos dois motores. *Uma lei com dois
+        // leitores não se escreve duas vezes.*
+        .replace("{CURVATURA}", crate::paint_wgsl::CURVATURA)
         // ⚠️ **Lido do ficheiro que o declara**, nunca transcrito — a mesma lei do `{BLUR_COS}`.
         .replace(
             "{FADE}",

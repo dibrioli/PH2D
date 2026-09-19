@@ -469,4 +469,24 @@ pub(crate) mod paint_parity_luz_tests;
 /// primeiro gate dali é **estrutural**, porque é a forma que o §24 do `docs/Render3d/10` cobra.
 #[cfg(test)]
 #[path = "estilo_tests.rs"]
-mod estilo_tests;
+pub(crate) mod estilo_tests;
+
+/// ⭐⭐⭐ **O INSTRUMENTO QUE FALTAVA: a CURVATURA nos dois motores, e não o pixel.**
+///
+/// ⚠️ É a dívida que o [`estilo_tests`] deixou nomeada — ver o cabeçalho dele.
+#[cfg(test)]
+#[path = "curvatura_parity_tests.rs"]
+mod curvatura_parity_tests;
+
+/// ⭐⭐⭐ **E a LEI do estilo nos dois motores, com as entradas ENTREGUES** — a outra metade da
+/// atribuição: se a lei bate ao bit com a curvatura dada, toda divergência de pixel é da curvatura.
+#[cfg(test)]
+#[path = "estilo_lei_parity_tests.rs"]
+pub(crate) mod estilo_lei_parity_tests;
+
+/// ⭐⭐⭐ **E a mesma camada no PIXEL, pelo caminho do produto** — irmão por RESPONSABILIDADE do
+/// acima (a lei com as entradas à mão · o pixel que os dois motores pintam), e o corte foi forçado
+/// pelo tecto de LOC, que escolheu a fronteira certa.
+#[cfg(test)]
+#[path = "estilo_pixel_parity_tests.rs"]
+mod estilo_pixel_parity_tests;

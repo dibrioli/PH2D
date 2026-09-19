@@ -120,6 +120,50 @@ isso o primeiro instrumento que a vê.*
 motores, e não o pixel. ⛔ **A barra não foi afrouxada para engolir os `13` bytes** — a tinta é medida
 onde ela não amplifica, e quem fechar aquela dívida sobe a nitidez desta linha.
 
+### §5-bis — ⛔⛔⛔ A dívida FECHOU, e a leitura acima estava ERRADA em dois pontos
+
+A auditoria de 2026-09-19 construiu o instrumento que falta (`curvatura_parity_tests.rs`, que mede
+`H` nos **três** avaliadores no mesmo ponto: `cpu` · `gpu` · um árbitro `f64` que nenhum motor
+pinta). Duas frases do parágrafo acima não sobrevivem à medição:
+
+**(1) ⛔ «a fita achatada da `ph2d-field-eval` contra o `field()` do WGSL» — a premissa do `f64` é
+FALSA neste caminho.** O `f64` é o `Field::at` (ponto a ponto, serve sondas); quem a
+[`curvatura::curvaturas`] chama é `Hybrid::eval`, que é **`f32` em lote**. ⇒ os dois motores são
+**os dois `f32`**, e o que diverge são **dois avaliadores `f32` do mesmo campo**.
+
+**(2) ⛔⛔ «a divergência chega ao pixel» — ela chega à BORDA, e o clamp absorve o resto.**
+Classificados pelo **alfa**, dos `86` píxeis divergentes **`84` são de borda anti-serrilhada e `2`
+são de miolo** — e a contagem é a **MESMA** a `nitidez 2` e a `8`; só a magnitude cresce. O
+mecanismo: `ΔH ≈ 9,8e-4`, a tinta é `clamp(H·R·nitidez, ±1)`, e a `nitidez ≥ 1` **zero** píxeis de
+cobertura cheia desta peça estão dentro da banda. *A tabela lia-se como «a grandeza chega ao corpo»
+e o que ela mede é a orla.*
+
+⭐⭐⭐ **E a causa fecha em forma fechada.** A divergência é **UM ULP** da avaliação de campo,
+amplificado por `1/(4ε²) = 16 403×` pelo cancelamento da segunda diferença:
+
+```text
+ULP(0,55)/(4ε²) = 9,7769e-4   ← medido na bola      9,778e-4
+ULP(0,30)/(4ε²) = 4,8884e-4   ← medido na cratera   4,890e-4
+```
+
+⇒ **não é afinável**: é o que custa medir `∇²f` com `ε = 0,0064 · raio` em `f32`. ⭐ E a amplificação
+ser `1/(4ε²)` tem uma consequência de desenho: **um `ε` maior divide a divergência pelo quadrado** —
+a mesma alavanca que suaviza a borda da tinta (a §10) cura esta dívida de graça.
+
+⭐ **A lei do estilo está ILIBADA com número:** a tinta por curvatura mede **`0` ULP na lei** a
+`nitidez 2` e a `8` sobre `3 456` amostras com a curvatura **entregue** ⇒ `100 %` do que ela move no
+pixel é a GRANDEZA. *Mexer na lei seria afinar o inocente.*
+
+⛔⛔ **E o instrumento apanhou um gate VERDE sobre uma promessa falsa:** a placa **contrai `a*b + c`
+num `fma`** — o `st_luma` bate com a forma **fundida** em `1 680/1 680` amostras e com a **solta** em
+`1 463`. O cabeçalho da `ph2d-style` promete *«nenhuma conta desta crate usa `mul_add`»*, e isso é
+honrado no **FONTE** e violado pelo **COMPILADOR**; o `nenhuma_conta_desta_crate_e_fundida` está
+verde sobre um produto que corre fundido. ⛔ A contracção **não é exprimível em WGSL hoje** ⇒ a cura
+honesta é o tecto **derivado** com a sonda de atribuição ao lado. Mais duas propriedades do
+controlador, medidas nesta placa: o `pow` do WGSL **não** é o `powf` do Rust (`exp2(y·log2 x)`,
+`870/1 680` iguais, pior `44` ULP, o erro a escalar com o expoente) e os **subnormais são esvaziados
+a zero**.
+
 ## §6 — ⛔ O MATCAP fica de fora, por decisão
 
 Ele é *a luz do OLHO* — um auxiliar de modelação que lê **forma** —, e o estilo é direcção de arte
@@ -234,6 +278,227 @@ sangrar.
 um filtro que casou **zero** testes imprimiu `ok` (lê-se como *«sobreviveu»*), e o parser contava
 `running N tests` quando com **um** teste o libtest escreve `running 1 test`, no **singular**.
 
+## §10 — ⛔⛔⛔ A AUDITORIA DE 2026-09-19: *«bordas muito duras sem ajustes finos»*
+
+Ordem do dono, com foto: *«Edge tint e Cavity tint com bordas muito duras sem ajustes finos, não me
+parece certo. Zone pivot não sei para que serve mas parece morto. Auditoria completa com agentes de
+todo Style. Se for necessário compare com um app que faz bem feito.»* Quatro frentes em paralelo: a
+LEI · o ORÁCULO · o PAINEL · os DOIS MOTORES.
+
+### §10.1 — O campo de curvatura não é contínuo: é um punhado de PLATÔS
+
+Na `=35` (`piece_radius = 0,676`), `H·R` lê-se assim, e **cada platô é uma peça da cena**:
+
+| população | `H·R` | de onde |
+|---|---:|---|
+| faces planas da caixa (`4,5 %`) | `0` | — |
+| a bola (`p50`) | `1,501` | `0,676/0,45` ao 3.º decimal |
+| as três crateras (`12,5 %`) | `−3,38` · `−4,22` · `−5,20` | `−R/0,20`, `−R/0,16`, `−R/0,13` |
+| os filetes (`19,0 %`) | `11,3` · `33,8` | o filete `0,06` e o `round` `0,02` |
+
+**A prova de que os saltos são DESCONTINUIDADES e não um campo suave mal amostrado** — o salto de
+`H·R` entre píxeis vizinhos, em três resoluções:
+
+| resolução | p50 | p99 | **max** |
+|---|---:|---:|---:|
+| 320×240 | `0,113` | `8,56` | **`19,30`** |
+| 640×480 | `0,025` | `5,77` | **`17,61`** |
+| 1280×960 | `0,006` | `2,98` | **`17,09`** |
+
+⇒ o `p99` **encolhe** ao dobrar a resolução (campo suave) e o **max NÃO** (`19,3 → 17,1` sobre `4×`
+de píxeis). *Um campo suave amostrado com metade do pixel tem metade do salto; um degrau tem o
+mesmo.*
+
+⭐⭐⭐ **A consequência é a lei inteira numa frase:** *uma função POR PONTO de um campo constante por
+troço é constante por troço* ⇒ **nenhum botão aplicado a `H` pode produzir um gradiente**; só um
+operador que olhe à VIZINHANÇA pode. E o único operador de vizinhança do caminho é o **`ε` do
+estêncil**, que é escolhido por PRECISÃO NUMÉRICA (`~ulp^{1/4}`, `0,64 %` da peça) — *um acidente de
+diferenciação, não um controlo.*
+
+### §10.2 — O número que dá razão ao olho do dono
+
+Degrau de **byte** entre píxeis vizinhos, com o CONTROLO ao lado (a mesma imagem sem estilo):
+
+**CONTROLO (sem estilo):** p50 `1` · **p99 `16`** · max `73`.
+
+| `Curvature Sharpness` | saturados | degrau p99 | **vs controlo** | p99 **sem** os px de borda |
+|---:|---:|---:|---:|---:|
+| `0,0625` | `1,9 %` | `67` | **`4,19×`** | `41` |
+| `0,25` | `17,4 %` | `135` | `8,44×` | `131` |
+| **`1,00` (fábrica)** | **`86,8 %`** | **`169`** | **`10,56×`** | `161` |
+| `8,00` | `95,3 %` | `205` | `12,81×` | `203` |
+
+⇒ **a tinta põe um penhasco de `169` bytes numa imagem cujo próprio sombreamento nunca passa de
+`16`.**
+
+### §10.3 — ⛔ TRÊS explicações plausíveis, construídas e REFUTADAS
+
+| hipótese | discriminador | veredito |
+|---|---|---|
+| «é o `clamp` a saturar» | a `nitidez 0,0625` só `1,9 %` satura | ⛔ **refutada** — o penhasco já é `4,19×` o controlo |
+| «é o anti-serrilhado, que re-sombreia com 4 normais e UMA curvatura» (ele **faz** isso) | excluir os `1 825` píxeis de borda (`2,9 %`) | ⛔ **refutada** — p99 `169 → 161` |
+| «falta um JOELHO SUAVE no `clamp`» *(a minha própria proposta)* | `smoothstep` no lugar do `clamp`, mesma curvatura | ⛔ **refutada, e PIORA**: `168` contra `162` a `nitidez 1`. *Um joelho actua no domínio do VALOR e a dureza vive no domínio do ESPAÇO* |
+
+### §10.4 — ✅ A escala espacial CONFIRMADA, com a autoridade medida
+
+| `ε/raio` | degrau de byte p99 | **vs controlo** | erro na esfera |
+|---:|---:|---:|---:|
+| **`0,0064` (hoje)** | **`169`** | `10,56×` | `0,16 %` |
+| `0,0256` | `129` | `8,06×` | `0,54 %` |
+| **`0,0512`** | **`103`** | **`6,44×`** | `1,09 %` |
+| **`0,1024`** | **`66`** | **`4,12×`** | `2,15 %` |
+| `0,2048` | `26` | `1,62×` | `4,11 %` |
+
+⭐⭐ **`ε` tem `6,5×` de autoridade sobre a dureza (`169 → 26`); o `Curvature Sharpness` tem `1,5×`
+(`135 → 205` no curso inteiro).** *O botão que existe não é o botão da grandeza de que o dono se
+queixa.*
+
+⛔ **E há uma PAREDE:** a `ε/raio = 0,2048` o `p05` fica **positivo** — as crateras deixam de ser
+côncavas e a `Cavity Tint` **morre**. Janela útil medida: **`ε/raio ∈ [0,03 ; 0,10]`**.
+
+### §10.5 — ⭐⭐⭐ A fábrica está EXACTAMENTE no ponto de saturação
+
+`Point::curvature` é `H · raio_da_peça`, **que numa esfera vale exactamente `1`** ⇒ a nitidez de
+fábrica (`1,0`) põe uma peça arredondada **precisamente** onde o clamp satura. Medido: a `nitidez 1`
+há `2` de `4 593` amostras dentro da banda de transição; a `0,2` há `4 231`.
+
+⇒ **o valor de fábrica escolhe o lado duro da lei**, e nenhum dos dois motores discorda (os `lados
+trocados` são `0` em toda a nitidez).
+
+### §10.6 — O ORÁCULO, e o que ele tem que nós não temos
+
+⚠️ **Triagem de licença primeiro, e ela PARTE A MEIO** (`docs/3DModeling/cleanroom/fixtures/`):
+OpenVDB (**MPL-2.0**) e VTK (**BSD-3**) são portas ABERTAS e respondem só à metade do **estimador** —
+que o nosso já **bate**. A metade que interessa (*que controlos o artista tem*) só existe num
+artefacto **walled**, logo ele foi **CORRIDO**, nunca lido.
+
+⭐⭐ **Achado para o arsenal:** o alvo alcança o toolkit de level-set do OpenVDB **com ZERO GL**, por
+nós de geometria avaliados no depsgraph ⇒ este repo passa a ter um **oráculo de SDF sem interface**.
+
+**Medido, sobre uma peça NOSSA** (caixa `b = 1,0`, 12 arestas filetadas `r = 0,2`, verdade em forma
+fechada `H = 1/(2r) = 2,500`):
+
+| | **nosso** | oráculo SDF (grade) | oráculo malha |
+|---|---:|---:|---:|
+| erro no pico | **`0,22 %`** | `1,2`–`5,6 %` | — |
+| oscilação sobre curvatura CONSTANTE | **`0,1 %`** | `0,8`–`7,4 %` | **`40 %`** (fábrica) · **`205 %`** (sem borrão) |
+
+⇒ **`7`–`74×` mais limpo que a grade dele e `~400×` mais limpo que a rota de malha.** ⭐⭐ E isso tem
+consequência de desenho: **boa parte do borrão que ele oferece serve para esconder o ruído do
+estimador dele** — nós não precisamos dele por essa razão, só pela artística, logo **um raio menor
+chega-nos do que a ele.**
+
+**A largura da rampa dele, em % do arco do filete:** `10 %` (sem escala) → **`62 %`** (escala
+máxima), com a amplitude **parada** (`H·R` pico `4,57 → 4,28`) ⇒ **`6,0×` de faixa de suavidade**.
+A NOSSA, na mesma peça: `4,1 %` abaixo da saturação e **`1,2 %`** na fábrica.
+
+⇒ **a borda que o dono fotografou é `8×` mais dura que a mais dura que o alvo consegue produzir, e
+`50×` mais dura que a mais suave.**
+
+**Controlos que ele tem e nós não:**
+
+| | ele | nós |
+|---|---|---|
+| **raio / distância da leitura** | `matcap_ssao_distance` (`unit = LENGTH`) · `blur_iterations` (`0..40`) | ⛔ **nenhum** |
+| intensidade de aresta e de cova | **quatro** factores (`ridge`/`valley` × ecrã/mundo) | duas cores e **UMA** nitidez partilhada |
+| duas escalas em simultâneo | `cavity_type = BOTH` — *ele julgou que uma não chega* | — |
+
+⛔ **O que é INEXPRIMÍVEL aqui, com o mecanismo:** o `WORLD` dele é **SSAO sobre profundidade** — um
+integral de VISIBILIDADE, não de curvatura; portá-lo é uma **segunda lei**, não «acrescentar um
+raio». E o `SCREEN` dele deriva de derivadas de ecrã ⇒ **muda ao rodar a câmera**, divergência que o
+`curvatura.rs` já declara a nosso favor.
+
+⚠️⚠️ **E se um raio entrar, ele pertence à MEDIDA e não ao CAMPO, com número:** filtrar o SDF **move
+a superfície** (`dshift` até `0,84` voxel); filtrar a curvatura medida não move nada — **e os dois
+dão exactamente as mesmas larguras de rampa**. Não há razão de precisão para pagar o deslocamento.
+
+### §10.7 — ⛔⛔ QUATRO das dez fileiras são INERTES no estado em que o painel ABRE
+
+Censo pelas portas do produto, população **derivada** de `estilo::rows()`:
+
+| fileira | Δ do estado **FÁBRICA** | Δ do estado **ARMADO** | porquê |
+|---|---:|---:|---|
+| **Rim Color** | **`0 · 0`** | `25 756 · 184` | `rim.strength = 0` ⇒ `× 0` |
+| **Rim Width** | **`0 · 0`** | `63 347 · 247` | a mesma causa |
+| **Curvature Sharpness** | **`0 · 0`** | `60 751 · 246` | as duas tintas brancas ⇒ multiplica por `1` |
+| **Zone Pivot** | **`0 · 0`** | **`63 347 · 160`** | `shadow == highlight` ⇒ o parêntesis é **exactamente zero** |
+
+⭐⭐ **A resposta ao *«Zone pivot parece morto»* é literal: na configuração de fábrica ele é
+matematicamente um no-op** — e é a **mesma lei** que faz a omissão ser a identidade ao bit (§2).
+⭐ Mas ele **não é fraco**: armado, é o botão **MAIS FORTE da camada** (de ponta a ponta do curso,
+`63 347` px = `100 %` da peça, pior byte **`233` de `255`**).
+
+⛔⛔ **E o cabeçalho do `estilo.rs` cita a lei que o próprio ficheiro não implementa:** *«uma
+affordance que não pode ser honrada é pior do que nenhuma, que é a lei que o `ParamRow::inert` já
+escreve para as fileiras do material»*. O `ParamRow::inert` existe, tem **seis** frases prontas em
+`ph2d-i18n/src/model3d_inert.rs`, e o doc dele carrega a **decisão do dono de 2026-09-18** — um dia
+antes deste report: *«um controlo travado e sem razão à vista lê-se exactamente como um controlo
+morto»*. **Zero fileiras de estilo a usam** (as dez passam `inert: None` incondicionalmente).
+
+⚠️ **E há uma SEGUNDA rota para o mesmo estado, que esteve viva até às `09:51` de hoje:** o defeito
+da §9 (cinco cores, um controlo) escrevia a MESMA cor nas cinco amostras ⇒ pôr a `Cavity Tint` a
+azul punha `shadow = highlight = azul` e **matava o pivô ao bit**. *Se o report veio antes daquela
+cura, os dois relatos do dono são UM defeito* — o discriminador é a hora da foto contra `61e9d7e8c`.
+
+### §10.8 — Os TECTOS, e três deles são palpites
+
+| knob | tecto | veredito | o número |
+|---|---:|---|---|
+| **Rim Width** | `64` | ✅ **MEDIDO e correcto — o único que sobrevive** | espessura do fio a `1920×1080`: `63,2 px` (`w=3`) · `6,1` (`16`) · **`0,535`** (`64`); o cruzamento de 1 px fica em `w ≈ 45–48`. E `w = 128` dá a imagem de `64` **ao bit** (o `sanitized()` corta) |
+| **Rim Strength** | `4` | ⚠️ defensável como PRODUTO | o **pico** satura por volta de `1,5`–`2`; a **ÁREA** não satura (`18 270 → 47 626` px de `1` a `64`). Tecto de gosto, **com tabela** |
+| **Curvature Sharpness** | `8` | ⛔ **PALPITE — a medição diz `2`** | `s = 1` entrega **`99,0 %`** do que `s = 8` entrega ⇒ **`87,5 %` do curso compra `1 %` do efeito**. *É isto o «sem ajustes finos»* |
+| **Zone Pivot** | `4` | ⛔ **PALPITE, e a faixa útil é OUTRA** | o contraste da grade **pica em `0,5`** (amplitude de `h` p05–p95: `0,204` · `0,395` · **`0,438`** · `0,371` · `0,164` a `0,05 · 0,18 · 0,5 · 1 · 4`) e já está a **cair** no tecto |
+| **Indirect Saturation** | `4` | ⛔ **PALPITE — o efeito cresce até `≥ 16`** | vs `sat = 1`, pior byte: `13` (`s=2`) · `36` (`4`) · `66` (`8`) · **`110`** (`16`) · `119` (`32`) |
+
+⚠️ **Três destes são multiplicativos numa pista LINEAR** (`sharpness`, `pivot`, `rim strength`) ⇒ a
+resolução do dedo está toda no primeiro oitavo: metade do efeito do `sharpness` vive nos primeiros
+**`7 %`** do curso (**`3,35` passos de arrasto**) e o do `Rim Width` em **`3,0 %`** (`3` passos).
+⭐ A casa **já tem a porta**: `ph2d_editor_core::…::link_slider_number_curved`, shipada em 16/09 pela
+`line/sculpt3d` **pela mesma razão**. Expoentes que põem o meio-efeito a meio do slider:
+`sharpness 3,84` · `rim width 5,06` · `pivot 2,18`.
+
+### §10.9 — ⛔ O painel pode ENGOLIR a secção inteira
+
+`publish_snapshot` apenda o estilo **no fim** e `paint` faz `.take(MAX_ROWS)` (`85`). Medido
+(`param_rows = 2n + 31`):
+
+| vértices do polígono | `param_rows` | + estilo | fileiras de ESTILO visíveis |
+|---:|---:|---:|---|
+| `22` | `75` | `85` | 10 de 10 |
+| `23` | `77` | `87` | **8 de 10** |
+| **`27`** (`MAX_POLYGON_VERTICES`) | `85` | `95` | **0 de 10 — a secção INTEIRA desaparece** |
+
+⛔ O gate que defende o tecto (`every_row_of_the_biggest_polygon_fits_the_registered_family`) chama
+`param_rows` **directamente** e **nunca vê** as dez fileiras que o `publish_snapshot` apenda.
+
+### §10.10 — Outros achados do painel
+
+- ⛔ **`Rim Width` tem o nome ao CONTRÁRIO.** A lei é `(1 − |N·V|)^width`: `w = 1` acende `50 %` da
+  silhueta, `w = 3` acende `79 %`, `w = 64` acende `99 %` ⇒ **subir «Width» ESTREITA o contorno**. O
+  comentário do i18n justifica o nome por *«o artista lê a LARGURA»*, e o valor **é** o expoente, sem
+  remapeamento; o doc da própria lei diz o contrário. Ou o valor se inverte, ou o rótulo passa a
+  `Rim Falloff`/`Rim Tightness`.
+- ⛔ **`paint_fact` (as fileiras travadas) tem DOIS defeitos de aritmética**, invariantes na largura
+  do dock (`220` → `720`): o rótulo é encostado à **direita** e acaba **exactamente** onde o valor
+  começa ⇒ **vão `0,00 px` por construção**; e a coluna dela é `w − Lc` enquanto a da fileira viva é
+  `Lc` ⇒ **`16 px` = `2 × Spacing::Md`** de desalinhamento. ⇒ o painel tem **TRÊS** alinhamentos de
+  rótulo ao mesmo tempo (viva · amostra · travada), que é o «embolado» da foto.
+- ⛔ **Atravessar a trava muda a PRECISÃO do número**: `paint_fact` formata com
+  `decimals_for_step(1.0)` = **1 casa**, seja qual for a faixa ⇒ `0.375` vivo lê-se **`0.4`** travado
+  (`Coat IOR 1.6` na foto é a prova).
+- ⛔ **`Subsurface Radius Scale`** mede `142,79 px` a `TypeToken::Sm` contra uma coluna de
+  `138,45 px` na largura real do dono (`~/.ph2d/layout.txt`, `dock_w_right = 296,89`) ⇒ **corta por
+  `4,34 px`**. A cura desenhada para isto (`property_label_col_w_for`, empréstimo por secção) já
+  existe desde o report de 14/09.
+- ⭐ **O BALÃO já alcança este painel — medido, não lido:** um `Move` real sobre o slider do
+  `Zone Pivot` põe `hot_id` correcto e o `store` aceita um `set_tooltip`; as chamadas a `set_tooltip`
+  em `ph2d-panel-model3d` são **`0`**. *A ausência é de duas linhas, não de mecanismo.*
+- ⭐ **A cura da §9 está a segurar:** as dez fileiras chegam ao pixel e ao dreno, e cada cor abre o
+  SEU selector e escreve o SEU slot (gesto real, `10/10`).
+- ⚠️ `ph2d-panel-model3d` é um dos **10 de 29** painéis **sem** o gate
+  `every_word_this_panel_shows_comes_from_the_string_table` (o censo de literais lê `0`, mas não está
+  gateado), e `tests/it/seam.rs` tem **zero** ocorrências de `Param::Style`.
+
 ## ⛔ Recusas MEDIDAS
 
 | o que foi recusado | porquê, com o número |
@@ -245,3 +510,11 @@ um filtro que casou **zero** testes imprimiu `ok` (lê-se como *«sobreviveu»*)
 | um `shade_render_com_estilo` ao lado do outro | é a segunda porta pela qual o defeito do §24 volta |
 | pendurar a amostra do estilo no `model3d_color_swatch(entity, slot)` | a não-colisão passaria a depender do acidente de `Entity::to_bits()` nunca valer `0` (§9) |
 | um braço final que devolva um id «estável» a toda família nova | **é o defeito do §9 escrito outra vez**: `None` cai no controlo normal, que se lê como uma falta |
+| um **joelho suave** (`smoothstep`) no lugar do `clamp` da curvatura | **PIORA** (`168` contra `162`): um joelho actua no domínio do VALOR e a dureza vive no do ESPAÇO (§10.3) |
+| baixar o `Curvature Sharpness` como alavanca de dureza | `1,5×` de autoridade contra `6,5×` do `ε` (§10.4) |
+| culpar o **anti-serrilhado** pela borda dura | p99 `169 → 161` ao excluir os píxeis de borda (§10.3) |
+| culpar a **saturação do `clamp`** | `4,19×` o controlo já com a saturação em `1,9 %` (§10.3) |
+| **borrar o canal de curvatura em espaço de ECRÃ** | ele lê os VIZINHOS ⇒ é um **passe**, e a crate deixaria de ser a lei que os dois motores partilham. Daria uma imagem na referência que o dispositivo não sabe reproduzir |
+| filtrar o **SDF** (em vez da curvatura medida) para ganhar o raio | **move a superfície** (`dshift` até `0,84` voxel) e dá **as mesmas** larguras de rampa (§10.6) |
+| ler a curvatura **de longe demais** (`ε/raio ≥ 0,2`) | o `p05` fica positivo: as crateras deixam de ser côncavas e a **`Cavity Tint` morre** (§10.4) |
+| afinar a **lei** do estilo para curar a divergência CPU↔GPU | a tinta por curvatura mede **`0` ULP na lei**: `100 %` do que ela move é a GRANDEZA (§5-bis) |

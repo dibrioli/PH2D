@@ -98,7 +98,13 @@ pub mod owners_parity;
 pub mod paint;
 /// ⭐ **O corpo do shader do pintor** — irmão por responsabilidade do [`paint`]: ali monta-se, aqui
 /// compila-se. ⛔ Corte por tecto de LOC, nunca isenção (`CLAUDE.md` §5.0).
-mod paint_wgsl;
+///
+/// ⚠️ **Ele é `pub` por UMA coisa só: a [`paint_wgsl::CURVATURA`]**, que tem um segundo leitor — o
+/// instrumento que mede a curvatura nos dois motores. ⛔ O resto do módulo continua `pub(crate)`
+/// (`PINTOR` e `PINTOR_SONDAS` são marcas por preencher, e um texto com `{…}` lá fora é uma forma
+/// de alguém esquecer uma). *Uma lei com dois leitores exporta-se; um corpo de shader por montar,
+/// não.*
+pub mod paint_wgsl;
 /// ⭐ **A segunda metade do shader do pintor** — o hemisfério que ele integra.
 mod paint_wgsl_sondas;
 pub mod parity;

@@ -1214,6 +1214,62 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   controlo normal — *visível e diferente lê-se como uma falta*. Mutação **4 de 4**, com controlo.
   ⚠️ O arnês mentiu **duas** vezes antes: um filtro que casou **zero** testes imprimiu `ok`, e o
   parser contava `running N tests` quando com UM teste o libtest escreve `running 1 test`.
+  ⭐⭐⭐ **E A AUDITORIA DE 19/09 (ordem do dono, quatro frentes em paralelo) devolveu o MECANISMO das
+  «bordas muito duras sem ajustes finos»** ([`11` §10](docs/Render3d/11_a_camada_de_estilo.md)).
+  ⭐⭐⭐ **O campo de curvatura NÃO é contínuo — é um punhado de PLATÔS, um por feição** (`0` na face ·
+  `1,501` na bola · `−3,38/−4,22/−5,20` nas crateras · `11,3/33,8` nos filetes), e a prova é a
+  resolução: o salto por pixel tem o `p99` a **encolher** ao dobrar os píxeis e o **max NÃO**
+  (`19,3 → 17,1` sobre `4×`) — *um campo suave amostrado com metade do pixel tem metade do salto; um
+  degrau tem o mesmo*. ⇒ **uma função POR PONTO de um campo constante por troço é constante por
+  troço: nenhum botão aplicado a `H` pode produzir um gradiente**, só um operador de VIZINHANÇA. E o
+  único do caminho é o **`ε` do estêncil**, escolhido por PRECISÃO (`~ulp^{1/4}`) — *um acidente de
+  diferenciação, não um controlo*. **Medido:** a tinta põe um penhasco de **`169` bytes** entre
+  píxeis vizinhos numa imagem cujo sombreamento nunca passa de **`16`**; o `ε` tem **`6,5×`** de
+  autoridade sobre a dureza e o `Curvature Sharpness` **`1,5×`**. ⛔ **TRÊS explicações plausíveis
+  caíram**, uma delas MINHA: o `clamp` a saturar (`4,19×` o controlo já a `1,9 %` de saturação) · o
+  anti-serrilhado (`169 → 161` sem os píxeis de borda) · e o **joelho suave** (`smoothstep`), que
+  **PIORA** (`168` contra `162`) — *um joelho actua no domínio do VALOR e a dureza vive no do
+  ESPAÇO*. ⛔ **E há uma PAREDE:** a `ε/raio ≥ 0,2` o `p05` fica positivo, as crateras deixam de ser
+  côncavas e a **`Cavity Tint` morre** (janela útil `[0,03 ; 0,10]`). ⭐⭐⭐ **E a fábrica está
+  EXACTAMENTE no ponto de saturação:** `Point::curvature` é `H · raio`, que **numa esfera vale
+  exactamente `1`**, logo a nitidez de fábrica (`1,0`) põe uma peça arredondada precisamente onde o
+  clamp satura (`2` de `4 593` amostras na banda, contra `4 231` a `0,2`). ⭐⭐ **O ORÁCULO (triagem
+  primeiro, e ela PARTE A MEIO — OpenVDB MPL-2.0 e VTK BSD-3 são portas abertas e respondem só à
+  metade do ESTIMADOR, que o nosso já BATE em `7`–`74×`; a metade dos CONTROLOS só existe walled,
+  logo foi CORRIDO):** ele compra **`6,0×`** de faixa de suavidade com a amplitude parada, por um
+  **raio/distância** que nós **não temos**, e dá intensidade própria a aresta e cova (quatro
+  factores contra a nossa nitidez partilhada) ⇒ *a borda que o dono fotografou é `8×` mais dura que a
+  mais dura que o alvo produz e `50×` mais dura que a mais suave*. ⚠️ **Se um raio entrar, ele é da
+  MEDIDA e não do CAMPO** (filtrar o SDF move a superfície `0,84` voxel e dá as MESMAS rampas), e
+  ⛔ um borrão de ECRÃ está recusado pelo mecanismo que a própria crate já escreve (ele lê os
+  VIZINHOS ⇒ é um passe, e a crate deixaria de ser a lei partilhada pelos dois motores). ⭐⭐⭐ **E o
+  *«Zone pivot parece morto»* é LITERAL e tem companhia: QUATRO das dez fileiras são inertes no
+  estado em que o painel ABRE** (`Rim Color` e `Rim Width` porque `strength = 0`; `Curvature
+  Sharpness` e `Zone Pivot` porque as tintas nascem brancas — *a mesma lei que faz a omissão ser a
+  identidade ao bit*), **e as dez shipam `inert: None`** — ⛔ o cabeçalho do `estilo.rs` **cita** a
+  lei que o ficheiro não implementa, e o `ParamRow::inert` carrega a **decisão do dono de 18/09**, um
+  dia antes do report. ⭐ Armado, o pivô é o botão **MAIS FORTE da camada** (`100 %` da peça, pior
+  byte `233`). ⛔ **TRÊS dos cinco tectos são palpites** (`sharpness` mede `2` e não `8` — **`87,5 %`
+  do curso compra `1 %` do efeito**; `pivot` pica em `0,5`; `saturation` cresce até `≥ 16`), e três
+  knobs multiplicativos correm em pista LINEAR com metade do efeito nos primeiros `3`–`7 %`
+  (a porta `link_slider_number_curved` já existe). ⛔ **O painel pode ENGOLIR a secção inteira**: com
+  `27` vértices as dez fileiras caem fora do `MAX_ROWS` e o gate que o defende chama `param_rows`
+  **directamente**, sem ver as dez apendadas. ⛔ **`Rim Width` tem o nome ao CONTRÁRIO** (subir
+  «Width» ESTREITA: `50 %` da silhueta a `w=1`, `99 %` a `w=64`). ⭐⭐⭐ **E a §5 deste doc estava mal
+  lida por mim, em dois pontos:** a premissa `f64`-vs-`f32` é **falsa** (os dois motores são `f32`; o
+  `f64` é o `Field::at`, que ninguém pinta) e a divergência **não chega ao corpo** — dos `86` píxeis,
+  **`84` são de borda anti-serrilhada** e a contagem é a MESMA a `nitidez 2` e `8`, porque a
+  `nitidez ≥ 1` **zero** píxeis de cobertura cheia estão dentro da banda e **o clamp absorve**.
+  ⭐ A causa fecha em forma fechada: **UM ULP** da avaliação de campo amplificado por
+  **`1/(4ε²) = 16 403×`** (`ULP(0,55)/(4ε²) = 9,7769e-4` contra `9,778e-4` medido) ⇒ **não é
+  afinável** — e como a amplificação é `1/(4ε²)`, **um `ε` maior divide a divergência pelo quadrado**:
+  a alavanca que suaviza a borda cura esta dívida de graça. ⭐ A lei do estilo está **ILIBADA**
+  (`0` ULP a `nitidez 2` e `8` com a curvatura entregue) e a borda é **igual nos dois motores**
+  (`lados trocados = 0`). ⛔⛔ **E o instrumento apanhou um gate VERDE sobre promessa falsa: a placa
+  CONTRAI `a*b + c` num `fma`** — o cabeçalho da `ph2d-style` promete *«nenhuma conta desta crate usa
+  `mul_add`»*, honrado no FONTE e violado pelo COMPILADOR (`1 680/1 680` fundido contra `1 463`
+  solto), e a contracção **não é exprimível em WGSL hoje**; mais o `pow` do WGSL que não é o `powf`
+  do Rust (pior `44` ULP, o erro a escalar com o expoente) e os **subnormais esvaziados a zero**.
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

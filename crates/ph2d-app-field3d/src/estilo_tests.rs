@@ -19,7 +19,7 @@ use ph2d_field_render::Presentation;
 use ph2d_style::{Curvature, Rim, Style, Zones};
 
 /// Um estilo bem longe da fábrica — todos os botões fora do neutro, e nenhum deles subtil.
-fn vestido() -> Style {
+pub(crate) fn vestido() -> Style {
     Style {
         rim: Rim {
             color: [0.2, 0.7, 1.0],
@@ -59,7 +59,7 @@ fn vestido() -> Style {
 /// ⭐ **Medida (`128×96`, câmera de omissão):** `3 631` píxeis acertados, `584` deles com curvatura
 /// **negativa** (`16 %`), `min = −3,361` — que é `−1/0,30`, o raio da cratera **ao terceiro
 /// decimal** —, `p50 = +1,819` (a bola, `1/0,55`) e `max = +11,7` (o lábio com filete).
-fn peca_com_aresta_e_cova() -> ph2d_field::FieldDoc {
+pub(crate) fn peca_com_aresta_e_cova() -> ph2d_field::FieldDoc {
     use ph2d_field::{Blend, NodeId, Op, Primitive, Xform};
     let folhas = [
         // A bola — toda ela ARESTA (curvatura `+1/R`, e é o que a sonda mede).

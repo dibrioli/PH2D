@@ -75,8 +75,22 @@ pub const TECTO_DA_VIAGEM: f32 = 0.34;
 /// DIFERENTE.* Mais iterações compram o tamanho certo na direcção errada, e
 /// subir o peso faria o mesmo. **Não reconstrua nenhuma das duas.**
 ///
-/// ⚠️ O que fecha a pergunta não está neste corpus (as estatísticas agregadas
-/// já concordam) — é um acto do **E**, na linha do que a espec §12 já atribui.
+/// ⛔⛔ **E a família ANISOTRÓPICA também foi construída e REFUTADA** (18/09):
+/// regularizar o anel com um raio que depende do ângulo da aresta ao traço —
+/// que endireita a grade **sem rodar aresta nenhuma**, e seria a «grade como
+/// consequência» que o §74 do handoff procura — lê `cos` `0,886 · 0,887 ·
+/// 0,884 · 0,865 · 0,826` para `k = 0 · 0,10 · 0,20 · 0,35 · 0,50` (e `0,873`
+/// a `k = −0,20`). O melhor é **indistinguível do isotrópico puro**.
+///
+/// ⇒ **nenhuma família direccional testada melhora o campo:** encaixe duro
+/// (`0,583`), rodar mantendo o comprimento (`0,154`), quatro dobras suaves
+/// (`0,750`), mistura contínua (monótona a descer de `0,886`) e anisotropia
+/// (`0,887`). *O que reproduz o campo é regularizar, e a direcção do traço não
+/// entra em nenhuma forma que eu saiba escrever.*
+///
+/// ⚠️ O que fecha a pergunta não é mais uma tentativa minha: é **ajustar a lei
+/// à saída do alvo**, como o E fez à lei base (erro `0,00 %` em treze
+/// contagens). Acto do **E**, na linha do que a espec §12 já atribui.
 ///
 /// - `posicoes` — lidas **e** escritas.
 /// - `normais` — uma por vértice, já normalizadas; elas definem o plano tangente

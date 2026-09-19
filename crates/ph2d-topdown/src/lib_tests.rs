@@ -103,7 +103,7 @@ fn sem_intencao_nao_ha_direccao() {
         perto(
             direction::quantize([0.0, 0.0], m, direction::DominantAxis::None),
             [0.0, 0.0],
-            m.label(),
+            &format!("{m:?}"),
         );
     }
 }
@@ -148,7 +148,7 @@ fn a_isometria_manda_as_duas_teclas_para_as_arestas_do_losango() {
 fn a_isometria_preserva_o_comprimento_da_intencao() {
     for v in [Viewpoint::Isometric2to1, Viewpoint::Isometric30] {
         let d = viewpoint::reproject([0.5, 0.0], v, 0.0);
-        assert!((len(d) - 0.5).abs() < EPS, "{}: {:.4}", v.label(), len(d));
+        assert!((len(d) - 0.5).abs() < EPS, "{v:?}: {:.4}", len(d));
     }
 }
 
@@ -169,7 +169,7 @@ fn so_o_modo_custom_le_o_angulo() {
         Viewpoint::Isometric2to1,
         Viewpoint::Isometric30,
     ] {
-        assert!(!v.reads_angle(), "{} nao le o angulo", v.label());
+        assert!(!v.reads_angle(), "{v:?} nao le o angulo");
     }
 }
 
@@ -339,7 +339,7 @@ fn so_quem_roda_le_a_velocidade_de_viragem() {
         RotationMode::Snap90,
         RotationMode::Snap45,
     ] {
-        assert!(m.reads_speed(), "{}", m.label());
+        assert!(m.reads_speed(), "{m:?}");
     }
 }
 
@@ -349,28 +349,13 @@ fn so_quem_roda_le_a_velocidade_de_viragem() {
 #[test]
 fn o_fio_de_cada_enum_e_uma_ida_e_volta_exacta() {
     for m in DirectionMode::ALL {
-        assert_eq!(
-            direction::from_wire(direction::to_wire(m)),
-            m,
-            "{}",
-            m.label()
-        );
+        assert_eq!(direction::from_wire(direction::to_wire(m)), m, "{m:?}");
     }
     for v in Viewpoint::ALL {
-        assert_eq!(
-            viewpoint::from_wire(viewpoint::to_wire(v)),
-            v,
-            "{}",
-            v.label()
-        );
+        assert_eq!(viewpoint::from_wire(viewpoint::to_wire(v)), v, "{v:?}");
     }
     for r in RotationMode::ALL {
-        assert_eq!(
-            rotation::from_wire(rotation::to_wire(r)),
-            r,
-            "{}",
-            r.label()
-        );
+        assert_eq!(rotation::from_wire(rotation::to_wire(r)), r, "{r:?}");
     }
 }
 

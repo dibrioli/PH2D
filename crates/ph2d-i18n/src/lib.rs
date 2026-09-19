@@ -81,7 +81,10 @@ mod vector_engine;
 mod chrome;
 /// As palavras do catálogo de componentes — o 1.º MOTOR a falar pela tabela.
 mod component_catalog;
-/// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
+// ⚠️ **O doc que aqui estava era o do [`tags`]** e descrevia o painel errado — um `///` colado ao
+//    item seguinte é o mesmo acidente que esta fatia quase repetiu duas declarações abaixo. Ele
+//    voltou para o irmão a que pertence; este módulo fica sem doc, que é honesto, em vez de com um
+//    que descreve outra coisa.
 mod factory;
 mod inspector;
 /// ⭐ **As secções de JOGO do Inspector** (TOP-20 #9..#18 — tags, fábrica, ciclo de vida, mover de
@@ -107,7 +110,13 @@ mod painter_layers;
 mod sculpt3d;
 /// ⭐⭐ **As palavras do MOTOR da escultura** — a 6.ª fatia da fronteira dos motores.
 mod sculpt_engine;
+/// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
 mod tags;
+/// ⭐⭐ **As cinco recusas da ÁRVORE de tags**, publicadas pela folha `ph2d-tags`.
+///
+/// ⚠️ Tabela IRMÃ da [`tags`] de propósito: aquela são as palavras que o PAINEL escreve, estas são
+/// as que a LEI produz. Juntá-las esconderia qual das duas uma fatia futura está a mexer.
+mod tags_engine;
 /// ⭐⭐ **As palavras do DESIGN SYSTEM** — temas, desenhos de slider, recusas de fórmula.
 mod tokens;
 /// ⭐⭐ **As palavras dos MOTORES DAS FERRAMENTAS** — a 8.ª fatia da fronteira dos motores.
@@ -553,6 +562,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| paint_engines::tr(k))
             .or_else(|| sculpt_engine::tr(k))
             .or_else(|| ecs_scene::tr(k))
+            .or_else(|| tags_engine::tr(k))
             .or_else(|| tool_engines::tr(k))
             .or_else(|| tokens::tr(k))
             .or_else(|| node_catalog::tr(k))

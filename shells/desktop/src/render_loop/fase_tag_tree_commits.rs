@@ -37,9 +37,11 @@ pub(super) fn aplicar(
                 let _ = born;
             }
             TagEditOutcome::Refused { tag, why } => {
-                // ⚠️ A frase vem da LEI (`TagError::message`), ao lado de quem a produziu — a shell
-                // não a escreve, e o painel não a interpreta.
-                *tags_problem = Some((tag, why.message().to_string()));
+                // ⚠️ A CHAVE vem da LEI (`TagError::message_key`), ao lado de quem a produziu — a
+                // shell não escreve a frase, e o painel não a interpreta. Quem a resolve é aqui,
+                // porque é aqui que o catálogo já está ao alcance e a `ph2d-tags` é uma FOLHA sem
+                // dependências de UI (o doc dela escreve porquê).
+                *tags_problem = Some((tag, ph2d_i18n::tr(why.message_key()).to_string()));
             }
             TagEditOutcome::Select(alvos) => {
                 *tags_problem = None;

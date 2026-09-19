@@ -139,12 +139,7 @@ fn os_outros_modos_nao_mudam_uma_virgula() {
         let _ = mem.observe([1.0, 0.0]);
         let com = direction::quantize([1.0, 1.0], modo, mem.observe([1.0, 1.0]));
         let sem = direction::quantize([1.0, 1.0], modo, direction::DominantAxis::None);
-        assert_eq!(
-            com,
-            sem,
-            "o modo {} mudou por causa da dominancia",
-            modo.label()
-        );
+        assert_eq!(com, sem, "o modo {modo:?} mudou por causa da dominancia");
     }
 }
 

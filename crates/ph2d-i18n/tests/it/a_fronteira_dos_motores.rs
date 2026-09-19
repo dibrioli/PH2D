@@ -117,23 +117,9 @@ barra, nao para traduzir a letra.",
         "`Mirror X`/`Mirror Y`/`Custom`, pintados pela fileira de simetria do painel de vector.",
     ),
     (
-        "ph2d-tags",
-        5,
-        "as cinco recusas da arvore de tags, pintadas NO PAINEL (⛔ nao sao diagnostico de \
-terminal). ⚠️ Elas sao invisiveis ao gate de runtime porque a seccao delas so' e' pintada com uma \
-tag escolhida.",
-    ),
-    (
         "ph2d-timeline",
         8,
         "as oito recusas de aninhar e de pousar uma chave, pintadas como aviso na timeline.",
-    ),
-    (
-        "ph2d-topdown",
-        13,
-        "os modos de direccao, de rotacao e de ponto de vista, pintados pela seccao \
-`TopDownPlayer` do Inspector. ⚠️ Invisiveis ao gate de runtime pela mesma razao das tags: a \
-seccao so' existe com o componente no objecto escolhido.",
     ),
     (
         "ph2d-vec-scene",

@@ -124,8 +124,8 @@ mod tests {
     #[test]
     fn the_mobile_variant_physically_cannot_carry_the_shimmer() {
         let d = delivery_clip();
-        let mobile = PLATFORMS.iter().find(|p| p.name == "Mobile").unwrap();
-        let desktop = PLATFORMS.iter().find(|p| p.name == "Desktop").unwrap();
+        let mobile = PLATFORMS.iter().find(|p| p.id == "Mobile").unwrap();
+        let desktop = PLATFORMS.iter().find(|p| p.id == "Desktop").unwrap();
 
         let master = shimmer_rms(&d);
         let m = shimmer_rms(&ph2d_audio_edit::conform(&d, mobile.format()));
@@ -178,7 +178,7 @@ mod tests {
     #[test]
     #[ignore]
     fn write_mobile_to_disk() {
-        let mobile = PLATFORMS.iter().find(|p| p.name == "Mobile").unwrap();
+        let mobile = PLATFORMS.iter().find(|p| p.id == "Mobile").unwrap();
         let conformed = ph2d_audio_edit::conform(&delivery_clip(), mobile.format());
         let bytes = ph2d_audio_encode::encode_ogg(&conformed, mobile.quality).unwrap();
         let path = std::env::var("PROBE_OUT").expect("set PROBE_OUT=/path/to/out.ogg");
@@ -195,7 +195,7 @@ mod tests {
     /// (conform → encode_ogg → decode) and asserts the body is still there.
     #[test]
     fn the_mobile_export_is_not_silent() {
-        let mobile = PLATFORMS.iter().find(|p| p.name == "Mobile").unwrap();
+        let mobile = PLATFORMS.iter().find(|p| p.id == "Mobile").unwrap();
         let master = delivery_clip();
         let conformed = ph2d_audio_edit::conform(&master, mobile.format());
         let after_conform = rms(&conformed);

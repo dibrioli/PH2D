@@ -116,17 +116,24 @@ pub enum TagError {
 /// dependências de UI, e pô-la a depender do catálogo pelo texto de cinco frases inverteria a
 /// pilha. O dia em que a segunda língua entrar, o que muda é quem chama isto, não a assinatura.
 impl TagError {
-    /// A frase que o painel mostra NA LINHA — nunca num toast.
+    /// ⭐ **A CHAVE da frase que o painel mostra NA LINHA** — nunca num toast.
+    ///
+    /// ⚠️ **O doc acima previu esta cura e nomeou-a por escrito:** *«o dia em que a segunda língua
+    /// entrar, o que muda é quem CHAMA isto, não a assinatura»*. Mudou quem chama — o
+    /// `fase_tag_tree_commits` resolve a chave — e esta folha continua **sem dependência de UI**,
+    /// que era a razão de as cinco frases estarem cruas.
+    ///
+    /// ⛔ Ela devolve a chave e **não** a palavra inglesa: um `message()` que fosse
+    /// `tr_em(Ingles, …)` é indistinguível do caminho certo num processo em inglês, e um pintor que
+    /// o chamasse por engano ficava preso à língua de omissão sem que teste nenhum o visse.
     #[must_use]
-    pub fn message(self) -> &'static str {
+    pub fn message_key(self) -> &'static str {
         match self {
-            Self::Empty => "A tag needs a name.",
-            Self::HasSeparator => {
-                "A name cannot contain \u{201c}/\u{201d} \u{2014} drag the tag instead."
-            }
-            Self::Collision { .. } => "A tag with this name already exists here.",
-            Self::IntoOwnSubtree => "Cannot move a tag inside itself.",
-            Self::Missing => "That tag no longer exists.",
+            Self::Empty => "tags.error.empty",
+            Self::HasSeparator => "tags.error.has_separator",
+            Self::Collision { .. } => "tags.error.collision",
+            Self::IntoOwnSubtree => "tags.error.into_own_subtree",
+            Self::Missing => "tags.error.missing",
         }
     }
 }

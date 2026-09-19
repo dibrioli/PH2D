@@ -361,10 +361,17 @@ fn every_refusal_says_why_in_words_and_no_two_say_the_same() {
         TagError::IntoOwnSubtree,
         TagError::Missing,
     ];
-    let frases: BTreeSet<&str> = todas.iter().map(|e| e.message()).collect();
-    assert_eq!(frases.len(), todas.len(), "duas recusas com a mesma frase");
+    // ⚠️ Desde 2026-09-19 esta folha publica a CHAVE e não a frase, logo o que este controlo
+    //    afirma é que as chaves são distintas e não vazias. ⭐ Quem garante que cada uma tem uma
+    //    frase do outro lado é a `ph2d-i18n` (uma chave sem entrada sai CRUA no idioma de teste, e
+    //    há gate a dizê-lo) — *a recusa muda continua impossível, e agora por duas réguas.*
+    let chaves: BTreeSet<&str> = todas.iter().map(|e| e.message_key()).collect();
+    assert_eq!(chaves.len(), todas.len(), "duas recusas com a mesma chave");
     assert!(
-        todas.iter().all(|e| !e.message().trim().is_empty()),
-        "uma recusa sem frase é uma recusa muda"
+        todas
+            .iter()
+            .all(|e| e.message_key().starts_with("tags.error.")
+                && !e.message_key().trim_start_matches("tags.error.").is_empty()),
+        "uma recusa sem chave é uma recusa muda"
     );
 }

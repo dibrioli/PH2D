@@ -147,17 +147,16 @@ impl DirectionMode {
         Self::AxisY,
     ];
 
-    /// O rótulo que o painel pinta.
-    #[must_use]
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::Free => "Free",
-            Self::EightWay => "8 Directions",
-            Self::FourWay => "4 Directions",
-            Self::AxisX => "Horizontal Only",
-            Self::AxisY => "Vertical Only",
-        }
-    }
+    // ⛔⛔ **Aqui viveu um `label()` e o doc dele dizia *«o rótulo que o painel pinta»* — FALSO**
+    // (apagado em 2026-09-19). Quem o painel pinta é o ESPELHO desta lei em
+    // `ph2d_editor_core::topdown_edits`, cujo `label()` já resolve chaves (`panel.topdown.*`), e
+    // esse espelho é DELIBERADO: o doc dele escreve que a tag do segmentado tem de ser separada da
+    // variante da lei, senão reordenar uma reordena a outra.
+    //
+    // ⚠️ A varredura da workspace inteira não achou um chamador de produto: os únicos eram as
+    // mensagens de `assert!` dos testes desta crate, que passaram a usar `{:?}`. ⇒ ÓRFÃO, e a cura
+    // é apagar — traduzi-lo poria uma SEGUNDA palavra por variante na tabela, ao lado das que o
+    // Inspector já lá tem.
 
     /// De quantos em quantos graus este modo encaixa — `None` é livre.
     ///

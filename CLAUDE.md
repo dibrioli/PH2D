@@ -1309,7 +1309,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   mexeu um pixel contra a peça crua. ⚠️⚠️ **E o arnês mentiu uma QUARTA vez: `running N tests` CONTA
   OS IGNORADOS** — um filtro que casa três `#[ignore]` sem `--ignored` imprime `running 3 tests`,
   corre **ZERO** e lê-se exactamente como *«a mutação sobreviveu»*; a população honesta é
-  `passed + failed` do `test result:`. **Mutação 7 de 7**, com controlo; portão `15 067` verdes.
+  `passed + failed` do `test result:`. **Mutação 7 de 7**, com controlo; portão `15 067` verdes. ✅ **Smoke do dono APROVADO (19/09).**
   ⛔⛔ **E a FOTO da cena apanhou o que a suíte não vê:** o roteiro da `=35` mandava o dono carregar
   em **três** nomes que esta mesma wave tinha renomeado (`Rim Width` → `Rim Falloff`, e o
   `Curvature Sharpness` partido em dois) — *um `println!` não é compilado contra nada* —, e o painel

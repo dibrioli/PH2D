@@ -501,6 +501,8 @@ resolução do dedo está toda no primeiro oitavo: metade do efeito do `sharpnes
 
 ## §11 — ⭐⭐⭐ A CURA: a curvatura ganha uma ESCALA, e a nitidez parte-se em duas
 
+> ✅ **Smoke do dono APROVADO em 2026-09-19**, com os cinco passos do roteiro da `=35`.
+
 Ordem do dono a seguir à auditoria: *«siga como achar melhor mas coloque no estado da arte»*.
 
 ### §11.1 — O que mudou na LEI

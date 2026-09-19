@@ -62,17 +62,22 @@ fn the_refinement_is_off_by_default_and_the_guard_is_the_first_question() {
     // guarda seria contornável: bastava um chamador novo do `refine_in_sphere`
     // para o passe correr desarmado, e a asserção de ordem acima continuaria
     // verde sobre um produto errado.
-    // ⛔⛔ **A LISTA MUDOU DUAS VEZES em 2026-09-18, e as duas mudanças são a
-    // wave do pente:** os dois motores passaram a ser as variantes `_sized` (o
-    // alvo de aresta deixou de ser um número e passou a ser um CAMPO que depende
-    // da direcção da aresta), e nasceu um **terceiro** — a troca de diagonal
-    // enviesada, que é a metade que de facto carrega o alinhamento.
-    // *Um gate que continuasse a nomear os dois antigos ficaria verde a medir
+    // ⛔⛔ **A LISTA MUDOU TRÊS VEZES em 2026-09-18/19, e as três são a wave do
+    // pente:** os dois motores passaram a ser as variantes `_sized` (o alvo de
+    // aresta deixou de ser um número e passou a ser um CAMPO que depende da
+    // direcção da aresta); nasceu um **terceiro** — a troca de diagonal
+    // enviesada, que é a metade que de facto carrega o alinhamento; e o colapso
+    // passou a pedir a **quinta guarda** ([`ph2d_mesh::Guarda`]), que recusa uma
+    // fusão que vire uma face do avesso. ⚠️ Esta última é uma porta DIFERENTE
+    // (`collapse_in_sphere_com`) e não um argumento a mais: o motor é partilhado
+    // com a cadeia de retopologia, e ali a lei **não muda**.
+    // *Um gate que continuasse a nomear os antigos ficaria verde a medir
     // chamadas que já não existem.*
     let porta_body = function_body(&src, "passe_nos_motores");
     for motor in [
         "refine_in_sphere_sized(",
-        "collapse_in_sphere_sized(",
+        "collapse_in_sphere_com(",
+        "Guarda::ETambemAForma",
         "alinha_arestas(",
     ] {
         assert!(

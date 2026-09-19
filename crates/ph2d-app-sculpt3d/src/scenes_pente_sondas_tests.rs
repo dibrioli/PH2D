@@ -276,12 +276,13 @@ fn traco_contado(
         );
         let antes = malha.positions().len();
         if matches!(
-            ph2d_mesh::collapse_in_sphere_sized(
+            ph2d_mesh::collapse_in_sphere_com(
                 &mut malha,
                 centro,
                 brush.radius,
                 alvo_do_colapso,
                 Some(&campo_colapso),
+                ph2d_mesh::Guarda::ETambemAForma,
                 &mut remap,
                 &mut region,
             ),
@@ -421,3 +422,7 @@ fn diag_o_alcance_do_flip() {
         f64::from(alcance) / aresta
     );
 }
+
+/// As sondas da SUPERFÍCIE — filhas destas, cortadas por tecto de LOC.
+#[path = "scenes_pente_superficie_tests.rs"]
+mod superficie;

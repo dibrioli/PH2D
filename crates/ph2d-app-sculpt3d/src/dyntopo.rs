@@ -37,7 +37,7 @@
 //!    achatar a pilha em silêncio.
 
 use ph2d_mesh::{
-    Collapse, Refine, collapse_in_sphere_sized, collapse_target, edge_target_for_mesh,
+    Collapse, Refine, collapse_target, edge_target_for_mesh,
     refine_in_sphere_sized,
 };
 
@@ -485,7 +485,15 @@ pub(crate) fn passe_nos_motores(
     });
     let cut = verbo.colapsa_no_dyntopo()
         && matches!(
-            collapse_in_sphere_sized(
+            // ⭐⭐⭐ **A QUINTA GUARDA é pedida AQUI, e não escrita no motor.**
+            // Ela recusa um colapso que vire uma face do avesso — o defeito que
+            // o dono fotografou em 19/09 (*«pior que o original, com
+            // irregularidade a 90 graus da direcção do movimento»*). ⛔ Escrita
+            // dentro do `plan`, ela alcançava o remalhador isotrópico e a cadeia
+            // de retopologia inteira: **onze** gates vermelhos numa obra que esta
+            // wave não toca. *Um motor partilhado não muda de lei por causa de um
+            // consumidor* — ver [`ph2d_mesh::Guarda`].
+            ph2d_mesh::collapse_in_sphere_com(
                 mesh,
                 centre,
                 radius,
@@ -493,6 +501,7 @@ pub(crate) fn passe_nos_motores(
                 campo_colapso
                     .as_ref()
                     .map(|f| f as &(dyn Fn([f32; 3], [f32; 3]) -> f32 + Sync)),
+                ph2d_mesh::Guarda::ETambemAForma,
                 remap,
                 region,
             ),

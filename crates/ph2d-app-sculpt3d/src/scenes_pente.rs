@@ -76,6 +76,41 @@
 //! cinzento onde não se lê direcção nenhuma; mais grossa e não há arestas que
 //! cheguem para uma grade se formar.
 //!
+//! # ⛔⛔⛔ E o botão TROCA alinhamento por ONDULAÇÃO — não há ponto grátis
+//!
+//! Report de 2026-09-19, com foto do RELEVO: *«o resultado fica pior que o
+//! original, com irregularidade a 90 graus da direcção do movimento»*. Medido
+//! (`diag_quem_enruga` e `diag_a_escada_do_botao`), com o **vinco** — o ângulo
+//! entre as normais de duas faces vizinhas, que é o que a luz lê:
+//!
+//! | posição do botão | grade | vinco `p90` | razão do comprimento |
+//! |---|---|---|---|
+//! | desligado | `32,9 %` | `2,563°` | `1,011` |
+//! | `0,25` | `38,8 %` | **`2,455°`** | `0,946` |
+//! | `0,50` | `40,0 %` | `3,156°` | `0,890` |
+//! | `0,75` | `42,6 %` | `3,887°` | `0,709` |
+//! | **`1,00`** | **`41,1 %`** | **`4,391°`** | `0,653` |
+//!
+//! ⚠️⚠️ **As duas colunas sobem juntas, e isso é a lei e não um defeito de
+//! afinação:** o alinhamento vem de tornar a malha ANISOTRÓPICA, e uma malha
+//! anisotrópica sobre uma superfície CURVA amostra-a de forma desigual — é isso
+//! que o olho lê como ondulação a `90°` do traço. ⛔ Nenhuma posição do curso dá
+//! alinhamento visível sem ela: a `0,25` a superfície fica **mais lisa** que por
+//! pentear e o arame é **indistinguível** do lado desligado (conferido imagem a
+//! imagem).
+//!
+//! ⭐⭐ **E a CURVATURA é necessária, medido em três degraus:** a mesma lei sobre
+//! uma CHAPA dá razão `1,029` (isotrópica); sobre a bola sem carimbo, `0,885`;
+//! sobre a bola com o carimbo a levantar relevo, `0,653`. ⇒ *o esticão não está
+//! nos alvos do campo* — eles são simétricos (`cos 4α` médio: `+0,809` ao longo
+//! contra `+0,814` atravessado) — *ele nasce da dinâmica sobre a superfície que o
+//! próprio traço encurva*.
+//!
+//! ⛔⛔ **E o corpus do oráculo não pode julgar isto:** as fixturas dele são
+//! CHAPAS, e ali a saída dele lê razão `1,04`–`1,13` **como a nossa**. *Uma
+//! paridade medida numa fixtura plana não afirma nada sobre uma peça curva* — a
+//! mesma frase que o `Scene Project` já pagou com um report.
+//!
 //! # ⛔⛔⛔ E o `Detail` é ARMADO no prólogo, por um report: *«não percebi diferença»*
 //!
 //! A 1.ª redacção desta cena abria com o `Detail` de fábrica (`0,50`) e o gate
@@ -222,15 +257,23 @@ pub(crate) fn announce() {
          [sculpt3d]        longo do risco; no primeiro elas apontam para todos os lados.\n\
          [sculpt3d]        Nao e' uma grelha certinha -- e' o grao a virar-se para o lado\n\
          [sculpt3d]        em que a sua mao andou.\n\
+         [sculpt3d]    (5) Agora desligue o arame (`Wireframe`) e olhe para o RELEVO.\n\
+         [sculpt3d]        O segundo risco fica um pouco mais ondulado que o primeiro:\n\
+         [sculpt3d]        este botao TROCA uma coisa pela outra, e nao ha ponto do\n\
+         [sculpt3d]        curso em que ele alinhe de graca. A meio curso quase nao ha\n\
+         [sculpt3d]        ondulacao -- e quase nao ha alinhamento tambem.\n\
          [sculpt3d]\n\
-         [sculpt3d]    COMO SABER QUE DEU ERRADO: se os dois riscos ficarem iguais, ou se\n\
-         [sculpt3d]    a malha ficar com triangulos finos como lascas de vidro, diga-me --\n\
-         [sculpt3d]    as duas coisas estao medidas e nenhuma devia acontecer.\n\
+         [sculpt3d]    COMO SABER QUE DEU ERRADO: se os dois riscos ficarem iguais, se\n\
+         [sculpt3d]    a malha ficar com triangulos finos como lascas de vidro, ou se a\n\
+         [sculpt3d]    ondulacao do passo (5) for MAIS do que um pouco -- as tres coisas\n\
+         [sculpt3d]    estao medidas e nenhuma devia acontecer.\n\
          [sculpt3d]\n\
          [sculpt3d]    (medido nesta peca: das linhas da malha debaixo do risco, 33 de\n\
          [sculpt3d]    cada 100 correm com ele antes -- que e' o que uma malha SEM\n\
-         [sculpt3d]    direccao nenhuma da' -- e 42 a 45 depois, sem um unico triangulo\n\
-         [sculpt3d]    fino. Antes de hoje eram 36, e o senhor nao viu diferenca.)\n"
+         [sculpt3d]    direccao nenhuma da' -- e 41 a 47 no tecto, sem um unico\n\
+         [sculpt3d]    triangulo fino. O preco esta' medido: a dobra entre faces\n\
+         [sculpt3d]    vizinhas passa de 2,6 para 4,4 graus, que e' a ondulacao do\n\
+         [sculpt3d]    passo (5).)\n"
     );
 }
 

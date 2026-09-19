@@ -12,7 +12,9 @@
 //! bancada da lei corre sobre a chapa. *Uma cópia aqui divergiria na primeira
 //! wave que mexesse numa delas, e a que o dono vê é a que envelhece.*
 
-use ph2d_sculpt3d::medida_do_pente::{grade_da_faixa, lascas, pior_angulo, q_da_faixa};
+use ph2d_sculpt3d::medida_do_pente::{
+    grade_da_faixa, lascas, pior_angulo, q_da_faixa, vinco_da_faixa,
+};
 use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
 
 /// ⭐⭐⭐ **O RAIO COM QUE A CENA É MEDIDA — DERIVADO, e não escolhido.**
@@ -123,6 +125,24 @@ const GRADE_DO_GRAO_MAXIMO: f64 = 45.0;
 /// alvo (`fixtures/rake/rotacao/*_p100`) lê **`43,6 %`** contra `34,1 %`
 /// desligado — *a nossa lei entrega a classe dele*.
 const GRADE_MINIMA: f64 = 41.0;
+
+/// **Quanto o vinco pode subir a UM QUARTO do botão** — a parte do curso que
+/// tem de ser grátis.
+///
+/// ⛔ **Medido nos quatro rumos (`p90`):** `2,45`/`2,75`/`2,52`/`2,70` contra
+/// `2,56`/`2,70`/`2,57`/`2,67` por pentear — pior caso **`1,019×`**, e em
+/// dois dos quatro o pente deixa a superfície **mais lisa** do que ela estava.
+/// O tecto é `1,10` para não pinar ruído de `f32` na terceira casa.
+const VINCO_NO_QUARTO: f64 = 1.10;
+
+/// **Quanto o vinco pode subir no TECTO do botão** — a catraca da troca.
+///
+/// ⛔⛔⛔ **Ela nasceu do report de 19/09** (a foto do relevo). Medido:
+/// `4,391°` de `p90` contra `2,563°` por pentear (**`1,71×`**), e a `24°` de
+/// chão já era `1,22×` — *a ondulação não é nova, ela estava debaixo de um
+/// efeito que ninguém via*. ⚠️ **Este número só pode DESCER:** ele não é uma
+/// licença para a troca, é o registo de quanto ela custa hoje.
+const VINCO_NO_TECTO: f64 = 1.85;
 
 /// Quantos vértices um traço penteado tem de DESLOCAR para o artista ver.
 ///
@@ -304,10 +324,57 @@ fn a_cena_do_pente_tem_o_que_mostrar() {
              a faixa em vez de a alinhar (a lei reprovada em 18/09 fazia isto a \
              45°, e as outras metades deste gate ficavam verdes)"
         );
+        // ⛔⛔⛔ **A QUINTA COLUNA — o VINCO, e ela é a que o dono julga.**
+        //
+        // Report de 19/09, com foto do RELEVO: *«o resultado fica pior que o
+        // original, com irregularidade a 90 graus da direcção do movimento»*.
+        // ⚠️⚠️ **As quatro metades acima ficaram verdes por cima disso** porque
+        // as quatro medem a LIGAÇÃO — que direcção as arestas tomam, que forma
+        // os triângulos têm — e nenhuma mede o que a LUZ vê.
+        //
+        // ⛔ **O alinhamento e o vinco são o MESMO botão**, e isso está medido
+        // (`diag_quem_enruga`, com o chão do flip a variar):
+        //
+        // | chão | grade | vinco `p90` | razão do comprimento |
+        // |---|---|---|---|
+        // | desligado | `32,9 %` | `2,563` | `1,011` |
+        // | `24°` | `35,9 %` | `3,124` | `0,903` |
+        // | `20°` | `37,4 %` | `3,397` | `0,854` |
+        // | **`16°`** | **`41,1 %`** | **`4,391`** | `0,653` |
+        //
+        // ⇒ *não existe ponto do curso em que o pente alinhe de graça*, e a
+        // ondulação já lá estava quando o efeito era invisível. O que estas
+        // duas metades fazem é **pregar a troca**: ela não pode piorar sem que
+        // alguém escreva o número novo aqui.
+        let (_, v0, _, nv0) = vinco_da_faixa(&m0, &c0, raio);
+        let (_, v1, _, _) = vinco_da_faixa(&m1, &c1, raio);
+        let (mq, cq) = traco(0.25, e);
+        let (_, vq, _, _) = vinco_da_faixa(&mq, &cq, raio);
+        assert!(
+            nv0 > 200,
+            "{nome}: a faixa tem {nv0} aresta(s) com duas faces — a regua do \
+             vinco esta' a medir o nada"
+        );
+        assert!(
+            vq <= v0 * VINCO_NO_QUARTO,
+            "{nome}: a um QUARTO do botao o vinco p90 e' {vq:.3}° contra os \
+             {v0:.3}° por pentear ({:.3}×, tecto {VINCO_NO_QUARTO:.2}×; medido \
+             1,018× no pior rumo) — a metade de baixo do curso deixou de ser \
+             gratis, e e' a unica parte dele que o e'",
+            vq / v0
+        );
+        assert!(
+            v1 <= v0 * VINCO_NO_TECTO,
+            "{nome}: no TECTO do botao o vinco p90 e' {v1:.3}° contra os \
+             {v0:.3}° por pentear ({:.3}×, tecto {VINCO_NO_TECTO:.2}×; medido \
+             1,71× no p90) — e' a ondulacao que o dono fotografou em 19/09, e \
+             ela so' pode DESCER",
+            v1 / v0
+        );
         eprintln!(
             "[=49] {nome:<16} Q {q0:+.4} -> {q1:+.4} · grade {g0:.1} % -> \
-             {g1:.1} % · movidos {movidos} · lascas {finas}/{total} · \
-             pior {pior:.2}°"
+             {g1:.1} % · vinco {v0:.2}° -> {vq:.2}° (¼) -> {v1:.2}° · \
+             movidos {movidos} · lascas {finas}/{total} · pior {pior:.2}°"
         );
     }
 }
@@ -441,12 +508,13 @@ fn traco_com(pente: f32, e: [f32; 2], raio: f32, alvo: f32) -> (ph2d_mesh::Mesh,
             ph2d_sculpt3d::Porta::Colapso,
         );
         if matches!(
-            ph2d_mesh::collapse_in_sphere_sized(
+            ph2d_mesh::collapse_in_sphere_com(
                 &mut malha,
                 centro,
                 brush.radius,
                 alvo_do_colapso,
                 Some(&campo_colapso),
+                ph2d_mesh::Guarda::ETambemAForma,
                 &mut remap,
                 &mut region,
             ),

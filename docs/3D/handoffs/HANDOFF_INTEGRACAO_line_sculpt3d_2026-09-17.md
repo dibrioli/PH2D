@@ -2403,3 +2403,191 @@ defeito que o artista VÊ, e uma grade um pouco mais fraca não é.
   troca uma única diagonal — com o operador de topologia **parado**. Esta lei é
   NOSSA e está declarada como tal.
 - ⏳ **O TACTO** do pente novo é do dono, e o smoke é a `=49`.
+
+---
+
+## §80 — ⛔⛔⛔⛔ «POUCA OU NENHUMA DIFERENÇA»: as CINCO réguas da cena estavam verdes e o dono tinha razão
+
+**Report (2026-09-18, com foto do arame):** *«pouca ou nenhuma diferença»*, sobre a `=49` acabada
+de fechar no §79 com `ΔQ +0,10..+0,24` medido nos quatro rumos.
+
+### §80.1 — A primeira coisa medida foi o DESENHO, e ele deu-lhe razão
+
+`diag_desenha_o_arame` no regime exacto da cena (`raio 0,1634` · `alvo 0,0170` · 24 dabs), os dois
+lados do controlo lado a lado, recorte de `300 px` ampliado `1,7×`: **indistinguíveis**. A afirmação
+que o §79 deixou escrita — *«o arame mostra arestas visivelmente mais longas e alinhadas»* — vinha de
+um recorte de `260 px` noutra densidade e **não reproduz**.
+
+### §80.2 — ⭐⭐⭐⭐ A causa é de RÉGUA: todas as que a cena tinha são MÉDIAS, cercas ou contagens AO BIT
+
+| régua do gate | o que ela afirma | porque ficou verde |
+|---|---|---|
+| `q_da_faixa` | `média(cos 4α)` | **uma média**: `+0,09` cabe em meia dúzia de arestas perfeitas no meio de milhares paradas |
+| `movidos` | quantos vértices diferem | **ao bit** — um vértice deslocado `1e-7` conta |
+| `lascas` / `pior_angulo` | cercas de qualidade | nunca foram sobre o efeito |
+| `n0/n1 > 200` | piso de população | idem |
+
+⇒ **nenhuma responde *«que fracção das arestas mudou de rumo»*, que é o que o olho faz.**
+
+⭐ A régua nova é [`ph2d_sculpt3d::medida_do_pente::grade_da_faixa`]: para cada aresta da faixa, o
+desvio ao rumo da grade mais próxima (dobrado em `[0°, 45°]`), em três baldes de `15°`. **O zero
+dela não é `0 %`, é `33 %`** — o desvio de uma direcção qualquer é uniforme em `[0°, 45°]`, logo uma
+malha sem direcção nenhuma enche os três baldes por igual. Medido: a peça da `=49` lê `32,4`–`38,1`
+e uma **esfera UV** lê `62,2`–`66,6`.
+
+### §80.3 — ⭐⭐⭐ O lado APROVADO está medido, e nós estávamos abaixo dele
+
+A mesma régua sobre a saída do **PRÓPRIO alvo** (`fixtures/rake/rotacao/d_*`, `v_entrada 841 →
+v_saida 2450`, topologia dinâmica armada):
+
+| célula | `Q` | grade `0-15°` |
+|---|---|---|
+| `d_a0000_p000` (desligado) | `−0,0435` | `34,1 %` |
+| `d_a0000_p100` (no tecto) | `+0,1184` | **`43,6 %`** |
+| `d_a0450_p100` | `+0,1492` | `45,9 %` |
+| `d_rep_p100` | `+0,1045` | `43,5 %` |
+| **a nossa lei de ontem** | `+0,0869` | **`35,9 %`** |
+
+⚠️ **E o alvo também não constrói uma grade de livro** — `43,6 %` contra `33` de isotrópico. *A
+feature faz isto e não mais; o que estava errado era nós fazermos metade disso.*
+
+⛔⛔ **A bancada de paridade NÃO podia ver nada disto:** o `oraculo_do_pente::correr_com` chama só
+`s.dab(...)` — **nunca** os motores de topologia — e o placar corre apenas as células com
+`v_entrada == v_saida`, ou seja **as que o alvo NÃO remalhou**. *A bancada que responde «a nossa lei
+é a dele?» mede a única das três metades que não alinha nada.*
+
+### §80.4 — ⭐⭐⭐⭐ A alavanca é o CHÃO do flip, e as outras duas foram REFUTADAS
+
+Varridas as três constantes do passe ([`docs/3D/ferramentas/varre_as_constantes_do_flip.py`](../ferramentas/varre_as_constantes_do_flip.py), patch com `assert` de contagem por célula):
+
+| alavanca | grade (pior rumo) | veredito |
+|---|---|---|
+| rondas `3 → 8 → 20` | `39,4 %` → `39,4 %` | **converge** — `8` e `20` dão a MESMA malha |
+| ganho `0,20 → 0,05` | `39,5 → 40,6 %` | `+1` ponto |
+| **chão `24° → 12°`** | `39,5 → 45,9 %` | **`+6` pontos** |
+
+⛔⛔ **E a metade do CAMPO DE TAMANHO está refutada com número.** A hipótese natural era pregar a
+normalização pela **média** em vez de por um extremo, para o viés poder fazer o passe trabalhar
+MAIS (hoje ele só o faz trabalhar menos: com o pente no tecto o refino faz `2 100` cortes contra
+`2 909` do passe nu, e o colapso `49` contra `694`). Medido:
+
+| pregagem (refino/colapso) | grade | cortes | pior ângulo | lascas |
+|---|---|---|---|---|
+| **mín/máx (a de hoje)** | `39,5 %` | `2 100` | `22,5°` | `0` |
+| média/máx | `40,7 %` | **`47 624`** | `0,64°` | `18` ⛔ |
+| média/média | `39,0 %` | `47 315` | `1,00°` | `12` ⛔ |
+| máx/mín (o oposto) | `38,8 %` | **`142 586`** | `0,40°` | `39` ⛔ |
+
+⇒ **o tecto do campo de tamanho é `~41 %`** e ele custa duas ordens de grandeza de trabalho. *A
+normalização conservadora fica.*
+
+### §80.5 — A janela do chão, medida nas DUAS peças
+
+Bola da `=49`, pior dos quatro rumos, com a régua que ship (faixa `raio × FAIXA`):
+
+| chão | grade | `Q` | pior ângulo | lascas |
+|---|---|---|---|---|
+| desligado | `32,4 %` | — | `22,8°` | `0` |
+| `24°` | `35,9 %` | `+0,066` | `22,5°` | `0` |
+| `20°` | `37,0 %` | `+0,109` | `17,3°` | `0` |
+| `18°` | `38,4 %` | `+0,168` | `5,5°` | `0` |
+| **`16°`** | **`42,1 %`** | `+0,214` | `8,0°` | `0` |
+| `14°` | `44,7 %` | `+0,245` | `5,1°` | `0` |
+| `12°` | `46,7 %` | `+0,266` | `3,2°` | `1` ⛔ |
+
+**Fundo da janela `14°`** (no degrau seguinte nasce a primeira lasca); **topo `18°`** (acima dele o
+desenho volta a ser indistinguível — conferido imagem a imagem a `24`, `18`, `16`, `14` e `8`).
+**Meio: `16°`.**
+
+⭐⭐ **E a chapa da bancada escolhe o MESMO número por outro caminho** (`diag_a_escada_do_pente`,
+pior ângulo MÍNIMO do curso alcançável, barra de `2°`): `24° → 11,57°` · `18° → 7,27°` · **`16° →
+11,57°`** · `14° → 7,33°` · `12° → 5,33°`. *A `16°` o mínimo do curso é exactamente o da malha por
+pentear — ali o passe nunca deixa a chapa pior do que ela já estava, e é o único degrau da janela de
+que isso se pode dizer.*
+
+⛔⛔ **E a janela de ONTEM foi medida FORA do alcance do botão.** A tabela do `CHAO_DO_ALINHAMENTO`
+dizia `12° → 0,17×` e fechava a janela em `[20°, 28°]`. Re-medida em graus absolutos sobre o curso
+que o slider produz (`pente ∈ [0,1]`), essa queda **não existe**: a chapa lê `5,33°` contra a barra
+de `2°`, e só desce abaixo de `3°` em `pente ≥ 1,25`, que a pista não dá. *Um limite escolhido num
+regime que o produto não alcança é um limite sobre outro programa* (§0.0).
+
+### §80.6 — O que fica no gate
+
+Três metades novas em `a_cena_do_pente_tem_o_que_mostrar`, todas sobre a régua da CONTAGEM:
+
+1. **controlo** — `g0 < 45 %` (vale medido: `38,1` desta peça contra `62,2` de uma esfera UV);
+2. **efeito** — `g1 ≥ 41 %`, o **meio do vale** `[39,8 ; 42,1]` (melhor rumo da lei reprovada contra
+   pior rumo da de hoje), com o lado aprovado (`43,6 %` do alvo) dentro do doc;
+3. ⛔ **`g1 > g0` em TODO rumo** — e esta é a que a absoluta não cobre: **com a lei reprovada o `45°`
+   DESCIA** (`38,1 % → 36,0 %`) *enquanto o `Q` daquela célula subia* (`+0,0078 → +0,0657`). A peça
+   tem ali um resto de direcção, e um pente fraco desarruma-o mais do que o alinha.
+
+**Custo medido** (`--release`): trocas por traço `1 221 → 2 760`, dab `1,11 → 1,43 ms` contra o
+orçamento de `8`. Contagem de vértices e topologia inalteradas — o flip é neutro em contagem.
+
+**Prova de mutação 4 de 4**, com controlo sobre o próprio filtro (`running N tests`, aborta em
+`N = 0`): o chão de volta a `24°` · a régua sem a dobra `[0,45]` · a régua a pôr tudo no 1.º balde ·
+a régua a ignorar o troço.
+
+### §80.7 — ⚠️ Para quem lê o diff
+
+- **`CHAO_DO_ALINHAMENTO` é a ÚNICA linha de produto desta wave.** Tudo o resto é régua, gate, doc e
+  roteiro.
+- ⛔ **A mudança NÃO toca no remesh isotrópico nem na cadeia de retopologia**: aquele chão só é lido
+  no braço `Some(pref)` do critério, e o passe isotrópico entra por `None`.
+- ⛔ **A bancada do oráculo NÃO se move** (o flip não está no caminho dela — §80.3), e o placar das
+  52 tolerâncias fica intacto.
+- ⚠️ **O roteiro da `=49` está na 4.ª redacção** e a tabela das três anteriores vive no doc-comment
+  do `announce`, com a foto que matou cada uma.
+
+### §80.8 — ⚠️ O gate da REGIÃO ficou vermelho, e ele estava no fio da navalha
+
+`o_alinhamento_para_na_borda_da_esfera` afirma que o passe é **local**: nenhuma face com TODOS os
+vértices a mais de `1,4` do centro do dab pode mudar. Medido o alcance real (o vértice mais distante
+de uma face que mudou) **por chão**, naquela fixtura:
+
+| chão | alcance |
+|---|---|
+| `24°` · `20°` | `1,5371` |
+| `18°` · **`16°`** | `1,7254` |
+| `14°` | `1,7144` |
+
+⇒ **a `24°` o gate passava por NÃO EXISTIR face que caísse INTEIRA para lá de `1,4`** — o alcance já
+a ultrapassava. *Uma cerca que depende de nenhuma face cair inteira num anel é uma cerca que a
+constante seguinte move.*
+
+⭐⭐ **E a pergunta de produto que isto levantou tem resposta MEDIDA, e é tranquilizadora:** no
+regime que a `=49` dá (`diag_o_alcance_do_flip`), o alcance é **o MESMO nos dois chãos** — `0,3896`
+de mundo, `2,38` raios de pincel, `8,1` arestas — e o que muda é só quantas trocas acontecem lá
+dentro (`98` a `24°` contra `167` a `16°`). *O que o chão faz crescer é a densidade do trabalho, não
+a pegada.* A fixtura do gate é grosseira de propósito (uma esfera de `16×24`), e é isso que põe três
+anéis a `1,7` de mundo.
+
+⇒ a cerca passa a `LONGE = 1,85` (**derivada**: o alcance medido com folga, num raio-1 cujo antípoda
+está a `2`) **e o gate ganha a metade que faltava** — ele passa a afirmar o **alcance como número**.
+Sem ela, quem encostasse um chão novo à cerca subia a constante e o gate continuava verde a medir
+cada vez menos.
+
+### §80.9 — ⏳ A pista que fica ABERTA, com o número
+
+A varredura das três constantes, **re-corrida com o chão já em `16°`**, diz que o **ganho** é uma
+segunda alavanca que ninguém explorou:
+
+| configuração | grade | pior ângulo | lascas | trocas |
+|---|---|---|---|---|
+| `16°` · ganho `0,20` (a de hoje) | `42,1 %` | `14,92°` | `0` | `2 760` |
+| `16°` · **ganho `0,05`** | **`45,7 %`** | `11,02°` | `0` | `4 589` |
+
+⛔ **Não shipa hoje, e a razão é método:** o ganho é o que faz o BOTÃO ser um botão (o limiar exigido
+vale `GANHO / k`, logo o passe desliga-se sozinho no curso baixo — a `0,20` isso acontece abaixo de
+`13 %` do slider, a `0,05` abaixo de `3,3 %`). Adoptá-lo obriga a re-medir **a escada inteira do
+knob** e a chapa, e *uma constante meio medida é a forma de defeito que esta linha veio curar*. Está
+medida num rumo só; quem pegar corre
+[`varre_as_constantes_do_flip.py`](../ferramentas/varre_as_constantes_do_flip.py) nos quatro.
+
+### §80.10 — ⚠️ Promoção pedida à lista de flakes do `CLAUDE.md` §5.0
+
+`the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`
+(`ph2d-tool-painter`, `tool::paint::tests::measure_input_cost`) — reprovou no meio do fan-out de
+`16 420` e passa **3 de 3 sozinha a `load 3,8`–`4,5`**, com **zero linhas do diff desta linha**
+naquela crate. É um relógio de cópia de canvas: a família que o §5.0 já nomeia.

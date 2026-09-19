@@ -479,3 +479,95 @@ fn a_classe_escolhida_chega_ao_barro() {
         "as duas classes deram o MESMO barro — o despacho nao chega"
     );
 }
+
+/// ⭐⭐⭐⭐ **DOIS VIZINHOS NÃO CONSPIRAM NUMA LASCA — a propriedade que a cerca
+/// por-vértice NÃO PODIA ter, e que destravou as varreduras.**
+///
+/// A cerca antiga perguntava *«pôr ESTE vértice aqui afina um triângulo?»*, e o
+/// laço é **Jacobi**: todos decidem contra as posições de entrada. ⇒ **dois
+/// vizinhos que se aproximam passam os dois, cada um por si**, e juntos fecham
+/// o triângulo que partilham. Foi essa cegueira que fez o portão da cena
+/// recusar o degrau seguinte das varreduras em 20/09.
+///
+/// A fixtura é a aritmética do defeito, e ela **nomeia os três ângulos**:
+///
+/// - o triângulo abre com **`12°`** no canto `C`;
+/// - **cada movimento sozinho** deixa-o em `8°` — pior, e **acima** do chão de
+///   `5°` ⇒ a cerca antiga aprovava, e a nova também tem de aprovar;
+/// - **os dois juntos** deixam-no em `4°` ⇒ abaixo do chão, e os dois são
+///   vetados.
+///
+/// ⚠️ **As duas metades são obrigatórias.** Sem a de baixo, uma cerca que
+/// vetasse TUDO passaria na de cima — e uma retícula que não move nada é
+/// exactamente o produto que o dono já reprovou quatro vezes.
+#[test]
+fn dois_vizinhos_nao_conspiram_numa_lasca() {
+    // `C` na origem, `A` e `B` a `12°` um do outro. Mover cada um `4°` na
+    // direcção do outro deixa `8°`; mover os dois deixa `4°`.
+    let g = |graus: f32| -> [f32; 3] {
+        let r = graus.to_radians();
+        [r.cos(), r.sin(), 0.0]
+    };
+    let mesh = Mesh::from_parts(
+        vec![[0.0, 0.0, 0.0], g(0.0), g(12.0), [0.5, -0.6, 0.0]],
+        // ⚠️ A segunda face existe para `A` e `B` terem anel: uma aresta com um
+        // triângulo só é bordo, e o veto varre o anel dos MOVIDOS.
+        vec![ph2d_mesh::Face::tri(0, 1, 2), ph2d_mesh::Face::tri(0, 3, 1)],
+    )
+    .expect("a fixtura e' bem formada");
+
+    let (a, b) = ((1u32, g(4.0)), (2u32, g(8.0)));
+
+    // ⭐ As duas metades de BAIXO primeiro: cada um sozinho PASSA.
+    for um in [a, b] {
+        let ficou = super::veta_combinado(&mesh, vec![um]);
+        assert_eq!(
+            ficou.len(),
+            1,
+            "o movimento {um:?} sozinho deixa 8 graus, que esta' ACIMA do chao"
+        );
+    }
+
+    // ⛔ E a de cima: juntos, os dois caem.
+    let ficou = super::veta_combinado(&mesh, vec![a, b]);
+    assert!(
+        ficou.is_empty(),
+        "os dois juntos fecham o canto a 4 graus e mesmo assim {} sobreviveu(ram)",
+        ficou.len()
+    );
+}
+
+/// ⭐⭐⭐ **UMA LASCA QUE JÁ LÁ ESTAVA NÃO PRENDE O VÉRTICE PARA SEMPRE — a
+/// metade `pior` da cerca, e ela nasceu de uma MUTAÇÃO SOBREVIVENTE.**
+///
+/// A cerca é `pior && abaixo do chão`, **nunca só uma das duas**: só *«abaixo
+/// do chão»* prenderia para sempre um vértice cujo anel **já nasceu** com uma
+/// lasca, e essa é a metade que o produto encontra numa peça **esculpida** —
+/// não na esfera lisa da cena, que é por isso que a mutação sobreviveu ao
+/// portão dela.
+///
+/// A fixtura é a aritmética: o canto abre com **`3°`** (já abaixo do chão de
+/// `5°`) e o movimento leva-o a **`4°`** — *melhor, e ainda abaixo*. Com as duas
+/// metades ele **passa**; só com o chão, seria vetado e a malha ficava
+/// congelada ali.
+#[test]
+fn uma_lasca_que_ja_la_estava_nao_prende_o_vertice() {
+    let g = |graus: f32| -> [f32; 3] {
+        let r = graus.to_radians();
+        [r.cos(), r.sin(), 0.0]
+    };
+    let mesh = Mesh::from_parts(
+        // `C` na origem, `A` e `B` a `3°` — o anel ja' nasce com uma lasca.
+        vec![[0.0, 0.0, 0.0], g(0.0), g(3.0), [0.5, -0.6, 0.0]],
+        vec![ph2d_mesh::Face::tri(0, 1, 2), ph2d_mesh::Face::tri(0, 3, 1)],
+    )
+    .expect("a fixtura e' bem formada");
+
+    // Mover `A` para `-1°` abre o canto para `4°`: MELHOR, e ainda abaixo do chao.
+    let ficou = super::veta_combinado(&mesh, vec![(1u32, g(-1.0))]);
+    assert_eq!(
+        ficou.len(),
+        1,
+        "o vertice ficou preso por uma lasca que ele proprio nao criou"
+    );
+}

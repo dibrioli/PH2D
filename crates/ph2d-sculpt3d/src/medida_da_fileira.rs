@@ -30,6 +30,27 @@
 //! partição óptima — é a **determinística**, e é a que descreve o que o olho
 //! segue: ele também não volta atrás.
 //!
+//!
+//! # ⭐⭐⭐ O QUE ELA JÁ MUDOU: o knob NÃO satura
+//!
+//! O §82 mediu *«o botão satura a meio curso»* e concluiu *«o knob escolhe a
+//! velocidade, não o destino»* — **verdade sobre a `grade` e FALSA sobre as
+//! fileiras**, que é a grandeza que o artista vê e que não tinha régua nenhuma
+//! nesse dia. Medido pela porta do produto, média dos quatro rumos, com a cerca
+//! de PARES e `4` rondas (sonda `diag_a_escada_do_knob`):
+//!
+//! | knob | grade | **fil p50** | **fil p90** |
+//! |---|---|---|---|
+//! | `0,00` | `34,4 %` | `2,0` | `11,0` |
+//! | `0,25` | `59,8 %` | `7,0` | `34,5` |
+//! | `0,50` | `63,5 %` | `10,0` | `50,0` |
+//! | `0,75` | `64,2 %` | `15,5` | `56,5` |
+//! | **`1,00`** | `64,4 %` | **`21,5`** | **`61,2`** |
+//!
+//! ⇒ a `grade` assenta a meio (`+1,4 %` de metade ao topo) e a **fileira mais
+//! do que DOBRA**. *O botão é alavanca até ao fim, e a nota anterior media a
+//! coluna errada* — a terceira vez que esta cena paga a mesma forma.
+//!
 //! # ⚠️ O que «bom» significa aqui, e de onde sai
 //!
 //! O chão não é `0`: numa malha isotrópica há sempre pares de arestas que por

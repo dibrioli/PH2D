@@ -138,6 +138,48 @@ fn diag_a_escada_das_rondas() {
     }
 }
 
+/// ⭐⭐⭐ **SONDA — A ESCADA DO KNOB, reconferida depois da cerca nova.**
+///
+/// O §82 mediu que *«o botão satura a meio curso»* (`62,5`–`64,3 %` a meio
+/// contra `63,5`–`65,9` no tecto) e concluiu *«o knob escolhe a velocidade, não
+/// o destino»*. ⚠️ **Essa medição foi feita com a cerca da forma ANTIGA**, que
+/// recusava movimentos — e quem move o número que tornava algo inalcançável tem
+/// de reconferir a nota (§0.0). Esta é a reconferência.
+///
+/// ⛔ Ela corre pela **porta do produto** (`traco_com`, que percorre o
+/// `passe_nos_motores`), e a média é dos quatro rumos.
+#[test]
+#[ignore = "sonda: imprime a escada do knob, nao afirma nada"]
+fn diag_a_escada_do_knob() {
+    let (raio, alvo) = (raio_do_app(), alvo_do_refino());
+    println!("knob   lascas  pior   grade%   vinco_p90   fil50 fil90 filmax");
+    for knob in [0.0f32, 0.25, 0.50, 0.75, 1.0] {
+        let (mut g, mut v90, mut f50, mut f90, mut fmax) = (0.0f64, 0.0f64, 0.0f64, 0.0f64, 0usize);
+        let (mut finas, mut pior) = (0usize, 180.0f64);
+        for (_, e) in RUMOS.iter() {
+            let (m, c) = super::super::traco_com(knob, *e, raio, alvo);
+            let (bal, nb) = grade_da_faixa(&m, &c, raio);
+            g += 100.0 * bal[0] as f64 / nb.max(1) as f64;
+            let (_, b, _, _) = vinco_da_faixa(&m, &c, raio);
+            v90 += b;
+            let (x, y, z, _) = ph2d_sculpt3d::medida_da_fileira::fileira_da_faixa(&m, &c, raio);
+            f50 += x;
+            f90 += y;
+            fmax = fmax.max(z);
+            let (lf, _) = lascas(&m, &c, raio, LIMIAR_DA_LASCA);
+            finas += lf;
+            pior = pior.min(pior_angulo(&m, &c, raio).0);
+        }
+        println!(
+            "{knob:4.2}   {finas:4}  {pior:5.2}  {:7.2}   {:9.3}   {:5.1} {:5.1} {fmax:5}",
+            g / 4.0,
+            v90 / 4.0,
+            f50 / 4.0,
+            f90 / 4.0
+        );
+    }
+}
+
 fn linha_da_grelha(
     m: &ph2d_mesh::Mesh,
     c: &[[f32; 3]],

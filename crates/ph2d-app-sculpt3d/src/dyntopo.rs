@@ -95,8 +95,8 @@ pub(super) const DETAIL_STEPS: [(f32, &str); 3] = [(0.15, "grosso"), (0.5, "medi
 ///
 /// | rondas | grade | vinco p50 | vinco p90 | **fil p90** |
 /// |---|---|---|---|---|
-/// | **`2`** (shipa) | **`64,03 %`** | **`0,973°`** | **`2,724°`** | **`47,0`** |
-/// | `4` | `64,52 %` | `0,966°` | `2,727°` | `56,0` |
+/// | `2` | `64,03 %` | `0,973°` | `2,724°` | `47,0` |
+/// | **`4`** (shipa) | **`64,52 %`** | **`0,966°`** | **`2,727°`** | **`56,0`** |
 /// | `8` | `64,92 %` | `0,964°` | `2,703°` | `64,0` |
 /// | `16` | `65,17 %` | `0,943°` | `2,681°` | `68,5` |
 /// | `32` | `64,93 %` | `0,963°` | `2,704°` | `68,5` |
@@ -116,29 +116,30 @@ pub(super) const DETAIL_STEPS: [(f32, &str); 3] = [(0.15, "grosso"), (0.5, "medi
 /// |---|---|---|---|---|---|
 /// | `5 276` | `21` | **`0,102 ms`** | `0,162 ms` | `0,298 ms` | `0,559 ms` |
 /// | `21 098` | `115` | **`0,518 ms`** | `1,140 ms` | `1,634 ms` | `3,237 ms` |
-/// | `84 386` | `539` | **`2,402` (`30 %`)** | `4,172` (`52 %`) | `7,534` (**`94 %`**) | `14,520` (**`182 %`**) |
+/// | `84 386` | `539` | `2,402` (`30 %`) | **`4,180` (`52 %`)** | `7,543` (**`94 %`**) | `14,013` (**`175 %`**) |
 ///
-/// ⛔⛔⛔ **E SUBIR O DEGRAU FOI CONSTRUÍDO, MEDIDO e RECUSADO — pelo PORTÃO DO
-/// PRODUTO, não pelo relógio.** Com `4`, o `a_cena_do_pente_tem_o_que_mostrar`
-/// reprovou no rumo de `30°` com **`2` triângulos abaixo de `5°`** (o pior a
-/// `4,03°`), onde `2` deixa ZERO em três dos quatro rumos.
+/// ⭐⭐⭐⭐ **E A RECUSA DO DEGRAU `4` FOI LEVANTADA — mas NÃO pela razão que a
+/// dívida de 20/09 previa.** Ela dizia *«a cura é uma cerca que veja PARES,
+/// nunca um número maior»*, e apontava para o sítio certo **pela razão errada**:
+/// a cerca por-vértice não era fraca, era **ERRADA**. Ela veta um subconjunto
+/// de um passo Jacobi cujos alvos são todos nós da MESMA grade, e deixa a malha
+/// **meio-movida** — *uma configuração que nem a entrada nem o alvo têm*.
 ///
-/// ⚠️⚠️ **A minha escada não tinha a coluna que o portão lê.** Ela media grade,
-/// vinco e fileira, concluiu que `4` era melhor, e a cerca da forma disse que
-/// não — *uma escada sem a coluna da cerca que o produto aplica recomenda um
-/// degrau que o produto recusa*. A coluna existe agora (`lascas`/`pior`).
+/// **Medido pela porta do produto** (quatro rumos, `4` rondas, knob no topo):
 ///
-/// ⭐ **O mecanismo é o que a [`ph2d_quadflow::regiao::lasca`] já declara por
-/// escrito:** ela julga **um vértice de cada vez** (Jacobi), e uma lasca feita
-/// por DOIS vizinhos que se aproximam não é vista por nenhum dos dois. Mais
-/// varreduras ⇒ deslocamento acumulado maior ⇒ mais pares a conspirar.
+/// | cerca | lascas | portão da cena |
+/// |---|---|---|
+/// | **por-vértice** (a de ontem) | **`4`** | ⛔ **VERMELHO** |
+/// | nenhuma | `0` | ✅ |
+/// | **combinada** (a de hoje) | `0` | ✅ |
 ///
-/// ⏳ ⇒ **fica `2`, e a dívida está NOMEADA:** as fileiras QUEREM mais
-/// varreduras e quem as impede é o chão da forma. Quem quiser o degrau seguinte
-/// tem de trazer uma cerca que veja **pares**, não um número maior.
+/// ⇒ *o que bloqueava o degrau não era o número: era a cerca a fabricar aquilo
+/// que ela existia para impedir.* Mecanismo e as duas metades da lei:
+/// [`ph2d_quadflow::regiao::veta_combinado`].
 ///
-/// ⚠️ E o relógio seria a cerca a seguir: `4` custa `52 %` do orçamento do
-/// carimbo na maior peça medida, `8` custa `94 %` e `16` estoura (`182 %`).
+/// ⇒ o chão da forma deixou de ser o que aperta, e quem aperta volta a ser o
+/// **RELÓGIO**: `4` fica em **`52 %`** do orçamento do carimbo e `8` em `94 %`,
+/// que não deixa nada para o colapso, o refino e o `dab` do mesmo quadro.
 ///
 /// ⚠️ **O recurso é o orçamento do carimbo (`8 ms`)** e o custo é **linear na
 /// PEGADA** (nunca na peça) — é isso que a [`ph2d_quadflow::regiao`] existe
@@ -148,7 +149,7 @@ pub(super) const DETAIL_STEPS: [(f32, &str); 3] = [(0.15, "grosso"), (0.5, "medi
 /// medir outro programa:** ela varreu as rondas com o [`LADO_DA_CELULA`] em
 /// `1,0`, onde TODAS as leituras são más — *uma escada corrida no regime errado
 /// responde sobre um produto que não existe*. Sonda: `diag_a_escada_das_rondas`.
-pub(crate) const RONDAS_DA_GRELHA: usize = 2;
+pub(crate) const RONDAS_DA_GRELHA: usize = 4;
 
 /// O lado da célula, em aresta média da pegada.
 ///

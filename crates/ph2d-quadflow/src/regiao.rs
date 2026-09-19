@@ -552,11 +552,12 @@ pub fn arruma_na_grelha_por(
         if depois == antes {
             continue;
         }
-        if lasca(mesh, v, depois) {
-            continue;
-        }
         aprovados.push((v, depois));
     }
+
+    // ⭐⭐⭐⭐ **O VETO COMBINADO — a cerca da forma julgada com TODOS os
+    // movimentos aplicados.** Ver [`veta_combinado`].
+    let aprovados = veta_combinado(mesh, aprovados);
 
     let posicoes = mesh.positions_mut();
     for (v, p) in aprovados {
@@ -566,74 +567,14 @@ pub fn arruma_na_grelha_por(
     movidos.len()
 }
 
-/// **Este vértice, posto em `destino`, afina um triângulo do anel dele?**
-///
-/// ⭐⭐⭐ **A cerca da FORMA, e ela é a mesma que a troca de diagonal já tinha
-/// por escrito:** *este passe não pode piorar um triângulo*. Ela nasceu de um
-/// gate VERMELHO — a primeira corrida da retícula pelo caminho do produto
-/// deixou `3` lascas abaixo de `5°` em `2 379` triângulos, onde a lei que ela
-/// substituiu deixava **zero**, e *uma lasca não tem normal utilizável*.
-///
-/// ⚠️ **É `pior && abaixo do chão`, nunca só uma das duas.** Só *«pior»*
-/// congelaria a malha (a retícula reforma triângulos de propósito); só *«abaixo
-/// do chão»* prenderia para sempre um vértice cujo anel já nasceu com uma lasca
-/// — e essa é a metade que o produto encontra numa peça esculpida.
-///
-/// ⚠️ **Sem transcendental:** o menor ângulo é o de maior COSSENO, e *abaixo de
-/// `θ`* é *cosseno acima de `cos θ`*. Materializar o ângulo seria pagar um
-/// `acos` por canto para responder o que a comparação já responde.
-fn lasca(mesh: &Mesh, v: u32, destino: [f32; 3]) -> bool {
-    let p = mesh.positions();
-    let faces = mesh.faces();
-    let (mut antes, mut depois) = (-1.0f32, -1.0f32);
-    for &f in mesh.adjacency().vert_faces.neighbours(v as usize) {
-        let face = faces[f as usize];
-        for t in 0..face.tri_count() {
-            let tri = face.tri_at(t);
-            if !tri.contains(&v) {
-                continue;
-            }
-            let leia = |i: u32| if i == v { destino } else { p[i as usize] };
-            antes = antes.max(maior_cosseno([
-                p[tri[0] as usize],
-                p[tri[1] as usize],
-                p[tri[2] as usize],
-            ]));
-            depois = depois.max(maior_cosseno([leia(tri[0]), leia(tri[1]), leia(tri[2])]));
-        }
-    }
-    depois > antes && depois > CHAO_DA_LASCA
-}
-
-/// `cos(5°)` — o chão da lasca.
-///
-/// ⚠️ **O número é o do gate da cena** (`LIMIAR_DA_LASCA`, `5°`), e não um valor
-/// escolhido aqui: é ali que o dono julga o resultado, e duas respostas à
-/// pergunta *«isto é uma lasca?»* divergiriam no dia em que uma delas mudasse.
-const CHAO_DA_LASCA: f32 = 0.996_194_7;
-
-/// O **maior cosseno** dos três cantos — ou seja, o cosseno do MENOR ângulo.
-fn maior_cosseno(t: [[f32; 3]; 3]) -> f32 {
-    let mut pior = -1.0f32;
-    for k in 0..3 {
-        let (a, b, c) = (t[k], t[(k + 1) % 3], t[(k + 2) % 3]);
-        let u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-        let w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
-        let (lu, lw) = (norm(u), norm(w));
-        if lu <= 0.0 || lw <= 0.0 {
-            // Uma aresta de comprimento zero não tem canto: ela é a própria
-            // degenerescência, e devolver `1` (ângulo nulo) é dizê-lo.
-            return 1.0;
-        }
-        let c = u[0].mul_add(w[0], u[1].mul_add(w[1], u[2] * w[2])) / (lu * lw);
-        pior = pior.max(c.clamp(-1.0, 1.0));
-    }
-    pior
-}
-
 fn norm(a: [f32; 3]) -> f32 {
     a[0].mul_add(a[0], a[1].mul_add(a[1], a[2] * a[2])).sqrt()
 }
+
+#[path = "regiao_cerca.rs"]
+mod cerca;
+
+use cerca::veta_combinado;
 
 #[path = "regiao_niveis.rs"]
 mod niveis;

@@ -315,6 +315,11 @@ pub struct Brush {
     /// dos dois lados, o degrau que fixa este tecto e a **fronteira dos 45°**
     /// estão no cabeçalho da [`crate::medida_do_pente`]. Gate do tecto:
     /// `o_pente_nao_compra_alinhamento_com_lascas`.
+    ///
+    /// ⭐⭐ **RECONFERIDO em 21/09 e a nota «satura a meio» MORREU** — ela era
+    /// verdade sobre a GRADE e falsa sobre as FILEIRAS, que é o que o artista
+    /// vê. A escada dos cinco degraus vive com a régua que a produziu:
+    /// [`crate::medida_da_fileira`].
     pub pente: f32,
     pub density_detail: f32,
     /// **PARA ONDE O ESFREGÃO EMPURRA O DESLOCAMENTO** — ⛔ só o

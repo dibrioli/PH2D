@@ -23,8 +23,10 @@ fn a_omissao_e_a_identidade_ao_bit() {
             "ligado e mudo",
             Bloom {
                 enabled: true,
-                intensity: 0.0,
-                ..Bloom::default()
+                params: BloomParams {
+                    intensity: 0.0,
+                    ..BloomParams::default()
+                },
             },
         ),
     ] {
@@ -44,10 +46,10 @@ fn a_omissao_e_a_identidade_ao_bit() {
 /// aproximação permanente.
 #[test]
 fn o_joelho_a_zero_e_o_corte_duro_exacto() {
-    let b = Bloom {
+    let b = BloomParams {
         knee: 0.0,
         threshold: 1.0,
-        ..Bloom::default()
+        ..BloomParams::default()
     };
     for i in 0..400 {
         #[allow(clippy::cast_precision_loss)]
@@ -73,10 +75,10 @@ fn o_joelho_a_zero_e_o_corte_duro_exacto() {
 /// PICO, e uma média ponderada leria `0,8` no vermelho.
 #[test]
 fn o_corte_preserva_a_matiz_e_usa_o_pico() {
-    let b = Bloom {
+    let b = BloomParams {
         threshold: 1.0,
         knee: 0.0,
-        ..Bloom::default()
+        ..BloomParams::default()
     };
     let vermelho = bright([4.0, 0.0, 0.0], &b);
     let branco = bright([4.0, 4.0, 4.0], &b);
@@ -89,48 +91,108 @@ fn o_corte_preserva_a_matiz_e_usa_o_pico() {
     assert_eq!(vermelho[1], 0.0, "a matiz é a do pixel");
 }
 
-/// ⭐⭐⭐ **O RAIO DO HALO DOBRA POR NÍVEL** — a geometria portada do oráculo (`docs/Render3d/12` §3.4).
+/// ⭐⭐⭐ **O RAIO ALARGA O HALO** — o botão do tamanho, no NOSSO modelo.
 ///
-/// A régua é a **largura a meia altura** de um quadrado aceso sobre fundo preto, com **um** nível
-/// aceso de cada vez. ⚠️ Ela mede o PRODUTO (o `apply`) e não o `downsample` — *uma régua sobre a
-/// peça interna não afirma nada sobre a cadeia que o quadro corre*.
+/// ⛔⛔ **Ele substitui dois gates que mediam os SETE PESOS POR NÍVEL do Godot**
+/// (`o_raio_do_halo_dobra_por_nivel` e `um_nivel_mudo_continua_a_alimentar_o_seguinte`), e a
+/// premissa deles morreu com o modelo: por ordem do dono (19/09, *«nosso bloom original é muito
+/// melhor. retire essa implementação godot»*) o tamanho passou a ser **um** número — o
+/// [`BloomParams::radius`], que estica a tenda do upsample.
+///
+/// ⚠️ **A régua é a largura a meia altura** de um quadrado aceso sobre fundo preto, medida no
+/// PRODUTO (o [`apply`]) e não numa peça interna.
 #[test]
-fn o_raio_do_halo_dobra_por_nivel() {
-    const W: usize = 256;
-    let mut meias = Vec::new();
-    for k in 0..4 {
-        let mut niveis = [0.0f32; Bloom::LEVELS];
-        niveis[k] = 1.0;
+fn o_raio_alarga_o_halo() {
+    const W: usize = 512;
+    let mut centros = Vec::new();
+    // ⚠️⚠️ **A varredura começa em `1` porque abaixo disso o knob é INERTE, e isso é MEDIDO**
+    // (`quanto_o_raio_move`): `0,25 · 0,50 · 1,00` leem `9,71 · 9,58 · 9,59`. *Nesta cadeia quem faz
+    // o grosso do borrão é a própria descida por mips; a tenda só o alarga por cima* — e é por isso
+    // que a faixa útil do knob é `1..16` e não `0..1`.
+    for r in [1.0f32, 2.0, 4.0, 8.0, 16.0] {
         let b = Bloom {
             enabled: true,
-            threshold: 1.0,
-            knee: 0.0,
-            intensity: 1.0,
-            levels: niveis,
+            params: BloomParams {
+                threshold: 1.0,
+                knee: 0.0,
+                intensity: 1.0,
+                radius: r,
+                ..BloomParams::default()
+            },
         };
         let mut q = vec![[0.0f32; 3]; W * W];
-        for y in W / 2 - 8..W / 2 + 8 {
-            for x in W / 2 - 8..W / 2 + 8 {
+        for y in W / 2 - 4..W / 2 + 4 {
+            for x in W / 2 - 4..W / 2 + 4 {
                 q[y * W + x] = [8.0; 3];
             }
         }
         apply(&mut q, W, W, &b);
-        let linha: Vec<f32> = (W / 2 + 8..W).map(|x| q[(W / 2) * W + x][0]).collect();
-        let pico = linha[0];
-        assert!(pico > 0.0, "nível {k}: não há halo nenhum");
-        let meia = linha.iter().take_while(|v| **v >= pico * 0.5).count();
-        meias.push(meia);
+        // ⚠️⚠️ **A régua é a DISTÂNCIA MÉDIA ponderada pelo halo, e as duas anteriores falharam a
+        // MEDIR A JANELA, cada uma à sua maneira:** a meia-altura conta píxeis inteiros e leu `3, 3`
+        // entre os raios `0,5` e `1,0`; o alcance até `1/255` leu `120, 120, 120, 120` porque
+        // **satura no fim da linha**; e a própria distância média, num quadro de `256`, saturou
+        // contra a borda. *Uma régua com unidade maior que o passo não mede o passo, e uma que
+        // satura mede a janela* — daí o quadro de `512` com uma fonte de `8`.
+        let (mut soma, mut peso) = (0.0f64, 0.0f64);
+        for x in W / 2 + 4..W {
+            let v = f64::from(q[(W / 2) * W + x][0]);
+            #[allow(clippy::cast_precision_loss)]
+            let d = (x - (W / 2 + 4)) as f64;
+            soma += v * d;
+            peso += v;
+        }
+        assert!(peso > 0.0, "raio {r}: não há halo nenhum");
+        centros.push(soma / peso);
     }
-    for k in 1..meias.len() {
-        #[allow(clippy::cast_precision_loss)]
-        let razao = meias[k] as f32 / meias[k - 1] as f32;
+    for k in 1..centros.len() {
         assert!(
-            (1.5..=3.0).contains(&razao),
-            "do nível {} para o {k} o raio a meia altura fez {razao:.2}× \
-             (medido no oráculo: ~2×). meias = {meias:?}",
-            k - 1
+            centros[k] > centros[k - 1],
+            "dobrar o raio tem de ALARGAR o halo, e leu {centros:?}"
         );
     }
+    // ⭐ E a ponta contra o pé: o botão tem de ser uma alavanca a sério, não um ajuste fino.
+    // Medido: `9,59 → 48,08`, que é `5,0×`.
+    assert!(
+        centros[4] >= centros[0] * 3.0,
+        "de raio 1 a 16 o halo mal se moveu: {centros:?}"
+    );
+}
+
+/// ⭐⭐ **A SATURAÇÃO A ZERO DÁ UM HALO CINZENTO** — um knob que o nosso modelo tem e o do Godot não.
+#[test]
+fn a_saturacao_a_zero_da_um_halo_cinzento() {
+    const W: usize = 96;
+    let faz = |sat: f32| {
+        let b = Bloom {
+            enabled: true,
+            params: BloomParams {
+                threshold: 1.0,
+                knee: 0.0,
+                intensity: 1.0,
+                saturation: sat,
+                ..BloomParams::default()
+            },
+        };
+        let mut q = vec![[0.0f32; 3]; W * W];
+        for y in W / 2 - 6..W / 2 + 6 {
+            for x in W / 2 - 6..W / 2 + 6 {
+                // Um VERMELHO forte — é nele que a dessaturação se lê.
+                q[y * W + x] = [8.0, 0.5, 0.5];
+            }
+        }
+        let halo = halo(&q, W, W, &b);
+        halo[(W / 2) * W + W / 2 + 14]
+    };
+    let colorido = faz(1.0);
+    let cinza = faz(0.0);
+    assert!(
+        colorido[0] > colorido[1] * 2.0,
+        "com saturação 1 o halo tem de guardar o vermelho: {colorido:?}"
+    );
+    assert!(
+        (cinza[0] - cinza[1]).abs() < cinza[0] * 0.05,
+        "com saturação 0 os três canais têm de ficar iguais: {cinza:?}"
+    );
 }
 
 /// ⛔ **A CADEIA É DERIVADA DA RESOLUÇÃO** — um nível cujo borrão não cabe no quadro mede a
@@ -150,36 +212,6 @@ fn a_cadeia_e_derivada_da_resolucao() {
     );
 }
 
-/// ⭐⭐ **UM NÍVEL MUDO NÃO É UM NÍVEL AUSENTE** — ele continua a alimentar o seguinte.
-///
-/// ⚠️ Esta é a metade que uma implementação «saltar o nível cujo peso é zero» quebraria em
-/// silêncio: a fábrica do oráculo tem o **nível 1 a zero** e os seguintes acesos.
-#[test]
-fn um_nivel_mudo_continua_a_alimentar_o_seguinte() {
-    const W: usize = 128;
-    let mut niveis = [0.0f32; Bloom::LEVELS];
-    niveis[2] = 1.0; // o 1.º e o 2.º ficam a zero
-    let b = Bloom {
-        enabled: true,
-        threshold: 1.0,
-        knee: 0.0,
-        intensity: 1.0,
-        levels: niveis,
-    };
-    let mut q = vec![[0.0f32; 3]; W * W];
-    for y in W / 2 - 4..W / 2 + 4 {
-        for x in W / 2 - 4..W / 2 + 4 {
-            q[y * W + x] = [8.0; 3];
-        }
-    }
-    apply(&mut q, W, W, &b);
-    let fora = q[(W / 2) * W + W / 2 + 20][0];
-    assert!(
-        fora > 0.0,
-        "com só o 3.º nível aceso ainda tem de haver halo a 20 px — leu {fora}"
-    );
-}
-
 /// ⭐⭐⭐ **A ARRUMAÇÃO VAI E VOLTA** — e com os DOIS lados, porque uma que só vai é meia arrumação.
 ///
 /// ⚠️ O corpus tem o interruptor nas duas posições e números fora do comum de propósito: *uma
@@ -193,20 +225,36 @@ fn a_arrumacao_vai_e_volta() {
             "ligado e torto",
             Bloom {
                 enabled: true,
-                threshold: 2.75,
-                knee: 0.125,
-                intensity: 1.5,
-                levels: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
+                params: BloomParams {
+                    threshold: 2.75,
+                    knee: 0.125,
+                    intensity: 1.5,
+                    radius: 2.5,
+                    saturation: 0.25,
+                    tint: [0.9, 0.5, 0.2, 1.0],
+                    clamp: 40.0,
+                    stretch: 3.0,
+                    angle: 30.0,
+                    ..BloomParams::default()
+                },
             },
         ),
         (
             "tudo a zero",
             Bloom {
                 enabled: false,
-                threshold: 0.0,
-                knee: 0.0,
-                intensity: 0.0,
-                levels: [0.0; Bloom::LEVELS],
+                params: BloomParams {
+                    threshold: 0.0,
+                    knee: 0.0,
+                    intensity: 0.0,
+                    radius: 0.0,
+                    saturation: 0.0,
+                    tint: [0.0, 0.0, 0.0, 1.0],
+                    clamp: 0.0,
+                    stretch: 0.0,
+                    angle: 0.0,
+                    ..BloomParams::default()
+                },
             },
         ),
     ];
@@ -220,7 +268,8 @@ fn a_arrumacao_vai_e_volta() {
         );
     }
     // ⚠️ E a CONTAGEM é derivada, nunca escrita: `4` números mais os níveis.
-    assert_eq!(Bloom::SLOTS, 4 + Bloom::LEVELS);
+    // ⚠️ A contagem é DERIVADA da própria arrumação, nunca escrita ao lado dela.
+    assert_eq!(Bloom::default().pack().len(), Bloom::SLOTS);
     assert_eq!(Bloom::default().pack().len(), Bloom::SLOTS);
 }
 
@@ -230,32 +279,43 @@ fn a_arrumacao_vai_e_volta() {
 /// poria a cena inteira a brilhar — o oposto do que quem escreveu o `NaN` podia querer.
 #[test]
 fn o_saneamento_devolve_a_fabrica_e_nunca_o_zero() {
+    let f = BloomParams::default();
     let doente = Bloom {
         enabled: true,
-        threshold: f32::NAN,
-        knee: f32::INFINITY,
-        intensity: -3.0,
-        levels: [f32::NAN, -1.0, 0.4, 0.0, 0.0, 0.0, 0.0],
+        params: BloomParams {
+            threshold: f32::NAN,
+            knee: f32::INFINITY,
+            intensity: -3.0,
+            radius: f32::NAN,
+            saturation: 0.4,
+            angle: -45.0,
+            ..BloomParams::default()
+        },
     }
     .sanitized();
     assert_eq!(
-        doente.threshold,
-        Bloom::THRESHOLD,
+        doente.params.threshold, f.threshold,
         "o NaN não virou fábrica"
     );
-    assert_eq!(doente.knee, Bloom::KNEE, "o infinito não virou fábrica");
+    assert_eq!(doente.params.knee, f.knee, "o infinito não virou fábrica");
+    assert_eq!(
+        doente.params.radius, f.radius,
+        "o raio NaN não virou fábrica"
+    );
     // ⭐ Um NEGATIVO é um número: ele tem cerca (`0`), não vale o valor de fábrica.
     assert_eq!(
-        doente.intensity, 0.0,
+        doente.params.intensity, 0.0,
         "um negativo é um número e corta em zero"
     );
     assert_eq!(
-        doente.levels[0],
-        Bloom::NIVEIS[0],
-        "o nível NaN não virou fábrica"
+        doente.params.saturation, 0.4,
+        "um número são não pode ser tocado"
     );
-    assert_eq!(doente.levels[1], 0.0, "um nível negativo corta em zero");
-    assert_eq!(doente.levels[2], 0.4, "um nível são não pode ser tocado");
+    // ⭐ E o ÂNGULO pode ser negativo: ele é uma DIRECÇÃO, não uma grandeza.
+    assert_eq!(
+        doente.params.angle, -45.0,
+        "o ângulo negativo é uma direcção"
+    );
     // ⭐ E o CONTROLO: um brilho já são sai AO BIT.
     let sao = Bloom {
         enabled: true,
@@ -299,10 +359,10 @@ fn a_sonda_do_joelho() {
         "joelho", "soma", "1.ª luz em", "cheio em", "largura"
     );
     for k in [0.0, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0] {
-        let b = Bloom {
+        let b = BloomParams {
             threshold: 1.0,
             knee: k,
-            ..Bloom::default()
+            ..BloomParams::default()
         };
         let mut soma = 0.0f64;
         let (mut primeira, mut cheio) = (None, None);
@@ -320,4 +380,80 @@ fn a_sonda_do_joelho() {
         let (p, c) = (primeira.unwrap_or(f32::NAN), cheio.unwrap_or(f32::NAN));
         println!("{k:>8.3} {soma:>12.3} {p:>14.4} {c:>14.4} {:>12.4}", c - p);
     }
+}
+
+/// Sonda: quanto é que o RAIO de facto move o halo? (`#[ignore]`)
+#[test]
+#[ignore = "sonda"]
+fn quanto_o_raio_move() {
+    const W: usize = 512;
+    println!(
+        "\n{:>8} {:>12} {:>12} {:>12}",
+        "raio", "centro", "alcance", "soma"
+    );
+    for r in [0.25f32, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0] {
+        let b = Bloom {
+            enabled: true,
+            params: BloomParams {
+                threshold: 1.0,
+                knee: 0.0,
+                intensity: 1.0,
+                radius: r,
+                ..BloomParams::default()
+            },
+        };
+        let mut q = vec![[0.0f32; 3]; W * W];
+        for y in W / 2 - 4..W / 2 + 4 {
+            for x in W / 2 - 4..W / 2 + 4 {
+                q[y * W + x] = [8.0; 3];
+            }
+        }
+        apply(&mut q, W, W, &b);
+        let (mut soma, mut peso, mut alc) = (0.0f64, 0.0f64, 0usize);
+        for x in W / 2 + 4..W {
+            let v = f64::from(q[(W / 2) * W + x][0]);
+            #[allow(clippy::cast_precision_loss)]
+            let d = (x - (W / 2 + 4)) as f64;
+            soma += v * d;
+            peso += v;
+            if v >= 1.0 / 255.0 {
+                alc = x - (W / 2 + 4);
+            }
+        }
+        println!(
+            "{r:>8.2} {:>12.2} {alc:>12} {peso:>12.2}",
+            soma / peso.max(1e-9)
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O HALO DO MOTION E O DA CENA 3D SÃO A MESMA ESTRUTURA** — e é um TIPO, não uma promessa.
+///
+/// ⛔⛔ Ordem do dono (19/09): *«nosso bloom original é muito melhor. retire essa implementação
+/// godot»*. A cura não foi copiar os campos dele para cá — foi **mudar o tipo de casa**: o
+/// [`BloomParams`] vivia no `ph2d_render::motion_fx_params` e passou a viver nesta folha, com o
+/// `ph2d-render` a re-exportá-lo. *Duas cópias com uma nota a dizer «mantenha-as iguais» é
+/// exactamente o que diverge no dia em que uma ganha um campo.*
+///
+/// ⚠️ **Este gate mede o que sobra por medir:** que o re-export continua a apontar aqui. Ele reprova
+/// no dia em que alguém declarar um segundo `BloomParams` do outro lado — que é a única forma de a
+/// lei voltar a ter dois donos.
+#[test]
+fn o_halo_do_motion_e_o_da_cena_sao_a_mesma_estrutura() {
+    // ⚠️ A régua é a IDENTIDADE DE TIPO, e ela é do compilador: se o `ph2d_render::BloomParams`
+    // deixar de ser este, esta atribuição deixa de compilar.
+    let meu = BloomParams::default();
+    let dele: BloomParams = meu;
+    assert_eq!(meu, dele);
+    // ⭐ E os valores de fábrica são os NOSSOS, não os do oráculo: o Godot ship `intensity 0,3` e
+    // `knee 0,5`; nós shipamos `0,8` e `0,6`, que são os do halo que o dono já aprovou no Motion.
+    assert!(
+        (meu.intensity - 0.8).abs() < f32::EPSILON && (meu.knee - 0.6).abs() < f32::EPSILON,
+        "os valores de fábrica deixaram de ser os nossos: {meu:?}"
+    );
+    // ⛔ E não há mais nenhum peso por nível — o tamanho é UM número.
+    assert!(
+        (meu.radius - 1.0).abs() < f32::EPSILON,
+        "o raio de fábrica mudou sem ninguém dizer"
+    );
 }

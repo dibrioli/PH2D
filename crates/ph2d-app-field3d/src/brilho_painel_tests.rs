@@ -56,7 +56,10 @@ fn cada_fileira_escreve_no_seu_numero() {
 fn o_tecto_do_joelho_segue_o_limiar() {
     for limiar in [0.5_f32, 1.0, 4.0, 11.25] {
         let b = Bloom {
-            threshold: limiar,
+            params: ph2d_field_render::BloomParams {
+                threshold: limiar,
+                ..ph2d_field_render::BloomParams::default()
+            },
             ..ligado()
         };
         let joelho = rows(b, true, false)
@@ -117,20 +120,46 @@ fn a_razao_certa_para_o_facto_certo() {
         "o interruptor tem de ser vivo"
     );
 
-    // (3) Na referência com ele LIGADO: nenhuma apagada — a metade NEGATIVA, sem a qual «apagar»
-    // vira licença.
+    // (3) Na referência com ele LIGADO: **só o ÂNGULO fica apagado**, e a excepção é DECLARADA.
+    //
+    // ⛔ Este gate dizia *«nenhuma apagada»* e reprovou no dia em que o modelo do Godot saiu: o
+    // nosso tem anamorfose, e um ângulo com o estiramento em `1` é inerte **por geometria** — um
+    // círculo rodado é o mesmo círculo. *A premissa morreu e está reescrita com a morte à vista.*
     let vivo = rows(ligado(), true, false);
+    let apagadas: Vec<&str> = vivo.iter().filter_map(|r| r.inert).collect();
+    assert_eq!(
+        apagadas,
+        vec!["field.inert.bloom_is_round"],
+        "com o brilho ligado a ÚNICA apagada é o ângulo, e só por o halo ser redondo"
+    );
+    // ⭐⭐ **E a metade que impede a excepção de virar licença: com a anamorfose ARMADA ele acende.**
+    // *Sem isto, «o ângulo está sempre apagado» passaria — e seria um controlo morto com uma
+    // desculpa ao lado.*
+    let esticado = rows(
+        Bloom {
+            params: ph2d_field_render::BloomParams {
+                stretch: 2.5,
+                ..ph2d_field_render::BloomParams::default()
+            },
+            ..ligado()
+        },
+        true,
+        false,
+    );
     assert!(
-        vivo.iter().all(|r| r.inert.is_none()),
-        "com o brilho ligado e na referência nenhuma fileira pode estar apagada: {:?}",
-        vivo.iter().filter_map(|r| r.inert).collect::<Vec<_>>()
+        esticado.iter().all(|r| r.inert.is_none()),
+        "com a anamorfose armada nenhuma fileira pode estar apagada: {:?}",
+        esticado.iter().filter_map(|r| r.inert).collect::<Vec<_>>()
     );
 
     // (4) E o joelho com o limiar em ZERO — a razão específica, que só aparece quando a geral não
     // se aplica.
     let sem_limiar = rows(
         Bloom {
-            threshold: 0.0,
+            params: ph2d_field_render::BloomParams {
+                threshold: 0.0,
+                ..ph2d_field_render::BloomParams::default()
+            },
             ..ligado()
         },
         true,
@@ -162,11 +191,24 @@ fn ha_um_cabecalho_e_e_o_primeiro() {
 fn as_onze_posicoes_estao_la_uma_vez_cada() {
     let mut vistas: Vec<u8> = LINHAS.iter().map(|l| l.slot).collect();
     vistas.sort_unstable();
-    assert_eq!(
-        vistas,
-        (0..u8::try_from(Bloom::SLOTS).expect("cabe")).collect::<Vec<_>>(),
-        "as posições da arrumação e as das fileiras têm de ser as mesmas"
+    // ⚠️ **Uma AMOSTRA reclama TRÊS posições** (os três canais da tinta), logo a varredura conta a
+    // largura de cada fileira — *contar fileiras onde a arrumação conta CANAIS deixaria dois slots
+    // por reclamar e o gate leria isso como uma posição órfã*.
+    let mut visto = [0u8; Bloom::SLOTS];
+    for l in &LINHAS {
+        let largura = if l.cor { 3 } else { 1 };
+        for v in visto.iter_mut().skip(l.slot as usize).take(largura) {
+            *v += 1;
+        }
+    }
+    let orfas: Vec<usize> = (0..Bloom::SLOTS).filter(|&i| visto[i] == 0).collect();
+    assert!(orfas.is_empty(), "posições sem fileira nenhuma: {orfas:?}");
+    let repetidas: Vec<usize> = (0..Bloom::SLOTS).filter(|&i| visto[i] > 1).collect();
+    assert!(
+        repetidas.is_empty(),
+        "posições com DUAS fileiras — duas superfícies sobre um valor: {repetidas:?}"
     );
+    let _ = vistas;
 }
 
 /// ⭐⭐⭐ **A CENA USA ESTAS FILEIRAS, e não só a função existe** — a metade que os seis gates acima
@@ -352,41 +394,14 @@ fn a_cena_do_brilho_contem_o_fenomeno() {
         )
     };
 
-    let meio = (h / 2) as usize;
-    let conta = |img: &[u8], de: usize, ate: usize| {
-        let mut n = 0usize;
-        for y in de..ate {
-            for x in 0..w as usize {
-                let i = y * w as usize + x;
-                if !g.hit[i] && sem[i * 4..i * 4 + 3] != img[i * 4..i * 4 + 3] {
-                    n += 1;
-                }
-            }
-        }
-        n
-    };
-    let em_cima = conta(&com_brilho, 0, meio);
-    let em_baixo = conta(&com_brilho, meio, h as usize);
-    let em_baixo_acesa = conta(&com_barra_acesa, meio, h as usize);
+    let donos = tabela.owners.as_ref().expect("quatro folhas pedem um dono");
+    let barra_idx = folhas.len() - 1;
 
-    // (1) As luzes derramam.
-    assert!(
-        em_cima > 300,
-        "as luzes não derramam: só {em_cima} píxeis de fundo acenderam junto às bolas"
-    );
     // ⭐⭐⭐ **(1-bis) A BARRA É ESCURA, e a régua pergunta POR FOLHA** — medido no caminho do RENDER.
     //
     // ⚠️⚠️ **A FOTO não podia dizer isto:** a cena abre em **Matcap**, e o matcap ignora a cor do
     // material (ele é a luz do olho). A primeira foto mostrou a barra do mesmo rosa das bolas e eu
     // quase a li como defeito — *o que a foto mostra ali é o MODO, não o material*.
-    //
-    // ⛔⛔ **E a 1.ª redacção deste gate media uma BANDA DO ECRÃ** (o quarto de baixo) e ficou VERDE
-    // sobre uma mutação que pintava a barra de rosa: aquela banda cai quase toda ABAIXO da barra, e
-    // a média dela é feita de meia dúzia de píxeis. ⇒ quem diz de quem é cada pixel é o
-    // [`ph2d_field_eval::owners::Owners`] que a tabela do produto já construiu — *a mesma porta que
-    // o quadro usa para saber que material pintar*.
-    let donos = tabela.owners.as_ref().expect("quatro folhas pedem um dono");
-    let barra_idx = folhas.len() - 1;
     let (mut luz_bolas, mut n_bolas) = (0u64, 0u64);
     let (mut luz_barra, mut n_barra) = (0u64, 0u64);
     for i in 0..(w * h) as usize {
@@ -408,8 +423,7 @@ fn a_cena_do_brilho_contem_o_fenomeno() {
     }
     assert!(
         n_barra > 200 && n_bolas > 200,
-        "a régua não achou as duas populações ({n_barra} píxeis de barra, {n_bolas} de bolas) — \
-         ela partiu-se e mediria o nada"
+        "a régua não achou as duas populações ({n_barra} píxeis de barra, {n_bolas} de bolas)"
     );
     #[allow(clippy::cast_precision_loss)]
     let (mb, mbo) = (
@@ -418,19 +432,14 @@ fn a_cena_do_brilho_contem_o_fenomeno() {
     );
     assert!(
         mb < mbo * 0.5,
-        "o roteiro chama-lhe «a barra ESCURA» e ela lê {mb:.0} contra {mbo:.0} das bolas — \
-         uma cena que diz uma coisa e mostra outra é pior que uma cena ausente"
+        "o roteiro chama-lhe «a barra ESCURA» e ela lê {mb:.0} contra {mbo:.0} das bolas"
     );
 
     // ⭐⭐⭐ **(1-ter) A ESCADA DAS LUZES separa-as, e isso é o que faz o limiar ENSINAR.**
     //
-    // ⛔ Uma mutação que baixasse as três forças NÃO mata o halo — e isso é um facto sobre a cena
-    // que vale a pena guardar: **o céu de estúdio já põe uma peça clara acima do limiar**, logo o
-    // que faz uma coisa brilhar aqui é ser CLARA, e emitir é uma maneira de o ser. *A barra não
-    // brilha por ser escura, e não por «não emitir».*
-    //
-    // ⇒ o que esta cena tem de garantir é a ESCADA: com passos de menos de `4×` o limiar apaga-as
-    // todas ao mesmo tempo e o roteiro («apagam-se UMA DE CADA VEZ») passa a mentir.
+    // ⛔ Uma mutação que baixasse as três forças NÃO mata o halo — **o céu de estúdio já põe uma
+    // peça clara acima do limiar**, logo o que faz uma coisa brilhar aqui é ser CLARA, e emitir é
+    // uma maneira de o ser. *A barra não brilha por ser escura, e não por «não emitir».*
     for par in crate::smoke::scenes::edge::BRILHOS_DA_CENA.windows(2) {
         assert!(
             par[1] >= par[0] * 2.9,
@@ -439,18 +448,14 @@ fn a_cena_do_brilho_contem_o_fenomeno() {
     }
     assert!(
         crate::smoke::scenes::edge::BRILHOS_DA_CENA[0]
-            > ph2d_field_render::Bloom::default().threshold,
+            > ph2d_field_render::BloomParams::default().threshold,
         "a luz mais fraca tem de começar ACIMA do limiar de fábrica, senão ela nunca acende"
     );
-    // ⭐⭐⭐ **E A MAIS FORTE TEM DE CABER DEBAIXO DO SLIDER DO LIMIAR** — senão o passo (3) do
-    // roteiro («suba o Threshold e elas apagam-se uma de cada vez») promete o que o painel não
-    // deixa fazer. ⛔ *Era esse o estado quando o dono reportou: a luz de `32` era INAPAGÁVEL com o
-    // slider a parar em `16`.*
+    // ⭐⭐⭐ **E A MAIS FORTE TEM DE CABER DEBAIXO DO SLIDER DO LIMIAR** — senão o passo do roteiro
+    // («suba o Threshold e elas apagam-se uma de cada vez») promete o que o painel não deixa fazer.
     let teto = rows(ligado(), true, false)
         .into_iter()
         .find(|r| r.param == Param::Bloom(1))
-        // ⚠️ Pela porta [`Bound::value`] e não por um `match` — *um `match` meu ao lado dela seria
-        // a segunda resposta à mesma pergunta, e a que envelhece no dia em que nascer uma variante.*
         .map(|r| r.bound.value())
         .expect("o tecto do limiar");
     let mais_forte = crate::smoke::scenes::edge::BRILHOS_DA_CENA[2];
@@ -460,11 +465,77 @@ fn a_cena_do_brilho_contem_o_fenomeno() {
          ela seria INAPAGÁVEL, e o roteiro manda apagá-la"
     );
 
-    // (2) E a BARRA não é quem acende a metade de baixo — o controlo di-lo.
+    // ⭐⭐⭐ **A REGIÃO É A PONTA DA BARRA, e as duas redacções anteriores mediram a JANELA.**
+    //
+    // ⛔ A 1.ª contou a metade de BAIXO do ecrã e leu `49,7 %` numa cena certa; a 2.ª comparou-a com
+    // a barra acesa e leu `22 628` contra `25 106` (`1,11×`) — ⚠️ **e a causa da segunda foi a cadeia
+    // da REFERÊNCIA**, que espalha o halo das bolas muito mais longe do que a minha espalhava, logo
+    // ele inunda a metade de baixo por construção. *Uma régua calibrada contra um motor pior mede a
+    // janela quando o motor melhora.*
+    //
+    // ⇒ a região é **derivada da geometria da cena**: a barra é mais COMPRIDA que a fileira de
+    // bolas, logo as pontas dela têm fundo que não é vizinho de bola nenhuma. É lá que a pergunta
+    // *«a barra brilha?»* tem resposta.
+    let caixa = |quem: &dyn Fn(usize) -> bool| {
+        let (mut x0, mut x1, mut y0, mut y1) = (usize::MAX, 0usize, usize::MAX, 0usize);
+        for y in 0..h as usize {
+            for x in 0..w as usize {
+                let i = y * w as usize + x;
+                if g.hit[i] && donos.at(g.point[i]).is_some_and(quem) {
+                    x0 = x0.min(x);
+                    x1 = x1.max(x);
+                    y0 = y0.min(y);
+                    y1 = y1.max(y);
+                }
+            }
+        }
+        (x0, x1, y0, y1)
+    };
+    let (bx0, bx1, by0, by1) = caixa(&|k| k == barra_idx);
+    let (ex0, ex1, _, _) = caixa(&|k| k != barra_idx);
     assert!(
-        em_baixo_acesa > em_baixo * 3 / 2,
-        "o controlo não separa as duas cenas: a barra ESCURA acendeu {em_baixo} e a ACESA \
-         {em_baixo_acesa} — se a barra já brilhasse, os dois números seriam parecidos"
+        bx0 < ex0 && bx1 > ex1,
+        "a barra tem de ser mais comprida que a fileira de bolas para haver ponta: \
+         barra {bx0}..{bx1}, bolas {ex0}..{ex1}"
+    );
+    let na_ponta = |x: usize, y: usize| {
+        (x < ex0 || x > ex1) && (by0..=by1).contains(&y) && x >= bx0 && x <= bx1
+    };
+    // ⚠️⚠️ **A régua é a SOMA da luz acrescentada, e não QUANTOS píxeis mudaram** — a contagem
+    // leu `30` contra `30` porque naquela região **todos** os píxeis já tinham mudado: ela satura.
+    // *Uma régua que conta quantos não vê quanto*, e é a terceira forma desta mesma armadilha nesta
+    // jornada (a meia-altura, o alcance, e agora a contagem).
+    let conta = |img: &[u8]| {
+        let mut soma = 0i64;
+        for y in by0..=by1 {
+            for x in bx0..=bx1 {
+                let i = y * w as usize + x;
+                if !g.hit[i] && na_ponta(x, y) {
+                    for c in 0..3 {
+                        soma += i64::from(img[i * 4 + c]) - i64::from(sem[i * 4 + c]);
+                    }
+                }
+            }
+        }
+        soma
+    };
+    let na_ponta_escura = conta(&com_brilho);
+    let na_ponta_acesa = conta(&com_barra_acesa);
+
+    // (1) As luzes derramam — medido no fundo INTEIRO.
+    let em_cima = (0..(w * h) as usize)
+        .filter(|&i| !g.hit[i] && sem[i * 4..i * 4 + 3] != com_brilho[i * 4..i * 4 + 3])
+        .count();
+    assert!(
+        em_cima > 300,
+        "as luzes não derramam: só {em_cima} píxeis de fundo acenderam"
+    );
+    // (2) E a BARRA não é quem acende: nas pontas dela, acendê-la muda TUDO.
+    assert!(
+        na_ponta_acesa > na_ponta_escura * 3 / 2,
+        "o controlo não separa as duas cenas: nas pontas da barra a ESCURA acendeu \
+         {na_ponta_escura} e a ACESA {na_ponta_acesa} — se a barra já brilhasse, os dois números \
+         seriam parecidos"
     );
 }
 
@@ -626,8 +697,10 @@ fn o_halo_no_tamanho_do_dono() {
             for lim in [1.0f32, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0] {
                 let q = quadro(ph2d_field_render::Bloom {
                     enabled: true,
-                    threshold: lim,
-                    ..ph2d_field_render::Bloom::default()
+                    params: ph2d_field_render::BloomParams {
+                        threshold: lim,
+                        ..ph2d_field_render::BloomParams::default()
+                    },
                 });
                 let vivo = (0..(w * h) as usize).any(|i| {
                     !g.hit[i]
@@ -776,9 +849,11 @@ fn despeja_o_halo() {
             "forte",
             ph2d_field_render::Bloom {
                 enabled: true,
-                intensity: 1.0,
-                levels: [1.0; ph2d_field_render::Bloom::LEVELS],
-                ..ph2d_field_render::Bloom::default()
+                params: ph2d_field_render::BloomParams {
+                    intensity: 2.0,
+                    radius: 8.0,
+                    ..ph2d_field_render::BloomParams::default()
+                },
             },
         ),
     ] {
@@ -800,5 +875,101 @@ fn despeja_o_halo() {
         let p = format!("{dir}/halo_{nome}.ppm");
         std::fs::write(&p, ppm).expect("escrever");
         println!("{p}");
+    }
+}
+
+/// Sonda: que ESCADA de luzes cabe nos NOSSOS valores de fábrica? (`#[ignore]`)
+///
+/// ⚠️ Os nossos são muito mais fortes que os do oráculo (`intensity 0,8` contra `0,3`) — eles estão
+/// afinados para as faíscas do Motion. *Uma cena herdada de outro modelo tem de ser re-afinada.*
+#[test]
+#[ignore = "sonda"]
+fn que_escada_cabe_na_fabrica() {
+    use crate::render_light::{StudioSky, lamps};
+    let (w, h) = (480u32, 360u32);
+    let doc = crate::smoke::scenes::scene(36);
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = ph2d_field_render::Orbit::default();
+    let g = ph2d_field_render::trace(&doc, &reg, &cam, w, h);
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let root = ph2d_field_ecs::spawn_doc(sim.world_mut(), &doc, "peça");
+    let folhas: Vec<bevy_ecs::entity::Entity> = sim
+        .world()
+        .get::<bevy_ecs::hierarchy::Children>(root)
+        .expect("filhos")
+        .iter()
+        .copied()
+        .collect();
+    let rig = ph2d_light::LightRig::default();
+    let lam = lamps(&rig);
+    let light = ph2d_field_render::Lighting {
+        lamps: &lam,
+        points: &[],
+        sky: &StudioSky,
+        shadows: None,
+    };
+    println!(
+        "\n{:>18} {:>12} {:>12} {:>12}",
+        "escada", "fundo lavado", "fundo aceso", "halo médio"
+    );
+    for escada in [
+        [0.5f32, 1.5, 4.5],
+        [1.2, 3.0, 8.0],
+        [2.0, 6.0, 18.0],
+        [1.5, 4.0, 12.0],
+        [1.1, 2.2, 4.4],
+    ] {
+        for (e, f) in folhas.iter().zip(escada.iter().copied()) {
+            sim.world_mut()
+                .entity_mut(*e)
+                .insert(ph2d_field_ecs::FieldMaterial {
+                    emission: f,
+                    emission_color: [1.0, 0.92, 0.80],
+                    specular_weight: 0.0,
+                    ..ph2d_field_ecs::FieldMaterial::default()
+                });
+        }
+        let t = crate::materials::Table::build(sim.world(), root, cam.half_extent, w as f32);
+        let quadro = |b: ph2d_field_render::Bloom| {
+            ph2d_field_render::shade_render(
+                &g,
+                &cam,
+                &t.surfaces_for(),
+                &light,
+                &ph2d_field_render::Presentation {
+                    bloom: b,
+                    ..ph2d_field_render::Presentation::of(crate::shading::OPENING_LOOK)
+                },
+                [90, 90, 92, 255],
+            )
+        };
+        let sem = quadro(ph2d_field_render::Bloom::default());
+        let com = quadro(ph2d_field_render::Bloom {
+            enabled: true,
+            params: ph2d_field_render::BloomParams::default(),
+        });
+        let (mut lavado, mut aceso, mut soma, mut n) = (0usize, 0usize, 0i64, 0i64);
+        for i in 0..(w * h) as usize {
+            if g.hit[i] {
+                continue;
+            }
+            n += 1;
+            let d = i64::from(com[i * 4]) - i64::from(sem[i * 4]);
+            soma += d;
+            if d > 2 {
+                aceso += 1;
+            }
+            if com[i * 4] >= 250 {
+                lavado += 1;
+            }
+        }
+        #[allow(clippy::cast_precision_loss)]
+        let (pl, pa) = (
+            lavado as f64 / n as f64 * 100.0,
+            aceso as f64 / n as f64 * 100.0,
+        );
+        #[allow(clippy::cast_precision_loss)]
+        let media = soma as f64 / n as f64;
+        println!("{escada:>18?} {pl:>11.1}% {pa:>11.1}% {media:>12.1}");
     }
 }

@@ -163,7 +163,9 @@ pub use occlusion::{
 };
 /// ⭐ Os botões do BRILHO, re-exportados — quem monta uma [`Presentation`] não tem de declarar
 /// a dependência, que é a mesma cortesia que o `Presentation` já faz pelo `Look`.
-pub use ph2d_bloom::Bloom;
+// ⭐ **A LEI DO HALO é da folha [`ph2d_bloom`]**, e o `ph2d-render` re-exporta o MESMO
+// [`ph2d_bloom::BloomParams`] — os dois motores autoram-se com uma estrutura só.
+pub use ph2d_bloom::{Bloom, BloomParams};
 pub use probe_doors::*;
 pub use refine::refine_hemisphere;
 #[doc(hidden)]

@@ -397,7 +397,7 @@ pub fn cena_35() -> Result<FieldDoc, ph2d_field::FieldError> {
 /// 253,6 · 254,6` com `99 %` dos píxeis saturados. *Tudo o que brilha está acima do ponto branco,
 /// logo tudo o que brilha é BRANCO* — e o que as distingue é o HALO, não o corpo delas. O roteiro
 /// dizia «fraca, média, forte» como se ele as visse na bola; hoje diz onde olhar.
-pub const BRILHOS_DA_CENA: [f32; 3] = [2.0, 6.0, 18.0];
+pub const BRILHOS_DA_CENA: [f32; 3] = [1.2, 3.6, 10.8];
 
 /// ⭐⭐⭐ **A cena `=36` — O BRILHO** (`docs/Render3d/12`, a `W7`).
 ///
@@ -434,15 +434,17 @@ pub fn cena_36() -> Result<FieldDoc, ph2d_field::FieldError> {
     println!(
         "[field-smoke]            (4) suba Threshold devagar. Os halos apagam-se UM DE CADA VEZ, \
          da bola mais fraca para a mais forte — e' isso que o numero faz: escolhe quao forte uma \
-         luz tem de ser para brilhar. (as luzes valem 2, 6 e 18; o slider vai ate' 32)"
+         luz tem de ser para brilhar. (as luzes valem 1.2, 3.6 e 10.8; o slider vai ate' 32)"
     );
     println!(
-        "[field-smoke]            (5) Intensity muda a FORCA do halo; as fileiras Size 1..7 mudam o \
-         TAMANHO dele (cada uma e' o dobro da anterior). Suba Size 5 e o halo abre-se pelo ecra."
+        "[field-smoke]            (5) Intensity muda a FORCA do halo e Radius muda o TAMANHO dele. \
+         ⚠️ o Radius so' morde a partir de ~2 (abaixo disso a cadeia ja' borra tudo sozinha): ponha-o \
+         em 8 e o halo abre-se pelo ecra."
     );
     println!(
         "[field-smoke]            (6) Knee arredonda a passagem: com ele a zero uma bola acende \
-         DE REPENTE ao cruzar o Threshold; com ele alto ela acende aos poucos."
+         DE REPENTE ao cruzar o Threshold; com ele alto ela acende aos poucos. Saturation a 0 deixa \
+         o halo cinzento, e Tint pinta-o."
     );
     println!(
         "[field-smoke]            (7) uma fileira APAGADA nao e' um defeito: ela diz porque e' que \
@@ -468,8 +470,13 @@ pub fn cena_36() -> Result<FieldDoc, ph2d_field::FieldError> {
     // ⭐ O **passo** e o **raio** saem da régua da `=35`, que é a cena que o dono APROVOU: ali uma
     // bola de raio `0,45` ocupa ~`530` de `1290` px. Três bolas numa fileira pedem ~`1/3` disso
     // cada, com vão entre elas.
-    const RAIO: f32 = 0.17;
-    const PASSO: f32 = 0.46;
+    // ⚠️⚠️ **O raio e o passo foram RE-AFINADOS quando o modelo do Godot saiu** (19/09): com os
+    // NOSSOS valores de fábrica (`intensity 0,8` contra `0,3` dele) e bolas de `0,17`, o halo lavava
+    // **`23 %`** do fundo e os três fundiam-se num clarão só. *Uma cena afinada contra um motor mais
+    // fraco fica sobre-exposta quando o motor melhora.* Medido, com bolas mais pequenas e mais
+    // afastadas cada uma fica com o halo dela.
+    const RAIO: f32 = 0.11;
+    const PASSO: f32 = 0.52;
     let mut nodes: Vec<Node> = BRILHOS_DA_CENA
         .iter()
         .enumerate()
@@ -496,12 +503,12 @@ pub fn cena_36() -> Result<FieldDoc, ph2d_field::FieldError> {
     // ⛔ Uma caixa não sabe rodar sozinha ⇒ a rotação vem da guinada da câmera, pela mesma porta.
     nodes.push(leaf(
         Primitive::Box {
-            half: [0.80, 0.045, 0.045],
+            half: [0.86, 0.040, 0.040],
             round: 0.02,
             chamfer: 0.0,
         },
         Xform {
-            translation: [0.0, -0.22, 0.0],
+            translation: [0.0, -0.26, 0.0],
             // ⚠️ `atan2(-z, x)` do vector direita: é o ângulo em torno de `y` que põe o eixo longo
             // da caixa sobre ele. *Escrever `0,72` à mão seria a segunda cópia da guinada.*
             rotation: ph2d_field::xform::quat_from_euler([

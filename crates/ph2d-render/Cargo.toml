@@ -30,6 +30,7 @@ wgpu = "29.0.4"
 bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
 # Typed color wrapper (SrgbRgba) — Wave 11 migration (ADR-0042 §6 #2):
 # `SpriteImage::new` takes `Vec<SrgbRgba>` instead of `Vec<u8>`.
+ph2d-bloom = { path = "../ph2d-bloom" }
 ph2d-color = { path = "../ph2d-color" }
 # Vello renderer for the M11 widget paint pass. ⛔ TETO: o vello 0.10 pede
 # `wgpu = "^29.0.3"`, e e' ELE que fixa toda a cadeia de GPU em 29.0.4 — o

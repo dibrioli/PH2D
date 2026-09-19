@@ -50,7 +50,9 @@ pub use params::{BloomParams, COMPOSITE_OPERATIONS};
 // finito do formato. Eles moram com a lei que os usa; o `use` aqui é o que mantém o
 // `motion_fx_tests.rs` a chamá-los pelo nome, como sempre chamou.
 #[cfg(test)]
-use params::{BASE_FILTER_RADIUS, F16_MAX};
+// ⚠️ **Da folha e não do irmão**: com o `upsample_basis` e o `clamp_limit` mudados de casa,
+// ninguém no PRODUTO desta crate as lê — só os gates dela, e eles vão buscá-las onde elas moram.
+use ph2d_bloom::{BASE_FILTER_RADIUS, F16_MAX};
 
 /// **O que se reconstrói a cada redimensionamento** — a cadeia de mips e os bind groups.
 #[path = "motion_fx_targets.rs"]
@@ -63,9 +65,6 @@ mod dirt;
 pub use dirt::{DirtMask, scale_offset as dirt_scale_offset};
 
 use ph2d_gpu::GpuContext;
-
-#[path = "motion_fx_trig.rs"]
-mod trig;
 
 /// **AS TEXTURAS DO PASSE** — irmão pelo teto de LOC; ver o cabeçalho dele.
 #[path = "motion_fx_tex.rs"]

@@ -74,6 +74,14 @@ fn pinta(pres: &Presentation) -> Vec<u8> {
     )
 }
 
+/// ⭐ Um brilho LIGADO com os params que o chamador pedir — a porta das fixturas deste ficheiro.
+fn ligado(p: ph2d_bloom::BloomParams) -> ph2d_bloom::Bloom {
+    ph2d_bloom::Bloom {
+        enabled: true,
+        params: p,
+    }
+}
+
 fn com(bloom: ph2d_bloom::Bloom) -> Presentation {
     Presentation {
         bloom,
@@ -150,28 +158,20 @@ fn o_olhar_manda_o_preto_em_preto() {
 fn o_interruptor_do_quadro_e_a_lei_da_crate() {
     let corpus = [
         ("omissão", ph2d_bloom::Bloom::default()),
-        (
-            "ligado",
-            ph2d_bloom::Bloom {
-                enabled: true,
-                ..ph2d_bloom::Bloom::default()
-            },
-        ),
+        ("ligado", ligado(ph2d_bloom::BloomParams::default())),
         (
             "ligado e mudo",
-            ph2d_bloom::Bloom {
-                enabled: true,
+            ligado(ph2d_bloom::BloomParams {
                 intensity: 0.0,
-                ..ph2d_bloom::Bloom::default()
-            },
+                ..ph2d_bloom::BloomParams::default()
+            }),
         ),
         (
-            "ligado, forte e sem níveis",
-            ph2d_bloom::Bloom {
-                enabled: true,
-                levels: [0.0; ph2d_bloom::Bloom::LEVELS],
-                ..ph2d_bloom::Bloom::default()
-            },
+            "ligado e sem raio",
+            ligado(ph2d_bloom::BloomParams {
+                radius: 0.0,
+                ..ph2d_bloom::BloomParams::default()
+            }),
         ),
     ];
     let (mut sim, mut nao) = (0usize, 0usize);
@@ -266,10 +266,7 @@ fn um_halo_nulo_e_a_identidade_ao_bit() {
 #[test]
 fn o_brilho_acende_fora_da_peca() {
     let sem = pinta(&com(ph2d_bloom::Bloom::default()));
-    let com_brilho = pinta(&com(ph2d_bloom::Bloom {
-        enabled: true,
-        ..ph2d_bloom::Bloom::default()
-    }));
+    let com_brilho = pinta(&com(ligado(ph2d_bloom::BloomParams::default())));
 
     let g = disco();
     let (mut acesos, mut dentro) = (0usize, 0usize);
@@ -303,24 +300,22 @@ fn o_brilho_acende_fora_da_peca() {
 fn o_que_nao_passa_do_limiar_nao_brilha() {
     let sem = pinta(&com(ph2d_bloom::Bloom::default()));
 
-    let alto = pinta(&com(ph2d_bloom::Bloom {
-        enabled: true,
+    let alto = pinta(&com(ligado(ph2d_bloom::BloomParams {
         threshold: 1.0e6,
         knee: 0.0,
-        ..ph2d_bloom::Bloom::default()
-    }));
+        ..ph2d_bloom::BloomParams::default()
+    })));
     assert_eq!(
         sem, alto,
         "com o limiar acima de toda a luz da cena a imagem tem de ficar ao bit"
     );
 
     // ⭐ O CONTROLO: o MESMO caminho, com o limiar debaixo do pico da peça acesa.
-    let baixo = pinta(&com(ph2d_bloom::Bloom {
-        enabled: true,
+    let baixo = pinta(&com(ligado(ph2d_bloom::BloomParams {
         threshold: 0.1,
         knee: 0.0,
-        ..ph2d_bloom::Bloom::default()
-    }));
+        ..ph2d_bloom::BloomParams::default()
+    })));
     let movidos = sem
         .as_chunks::<4>()
         .0
@@ -413,10 +408,11 @@ fn os_tectos_do_brilho() {
         }
         (soma, f64::from(pico), raio)
     };
-    let ligado = ph2d_bloom::Bloom {
+    let ligado = |p: ph2d_bloom::BloomParams| ph2d_bloom::Bloom {
         enabled: true,
-        ..ph2d_bloom::Bloom::default()
+        params: p,
     };
+    let f = ph2d_bloom::BloomParams::default;
     let linha = |rot: String, b: ph2d_bloom::Bloom| {
         let (s, p, r) = mede(b);
         println!("{rot:>10} {s:>12.2} {p:>10.4} {r:>8}");
@@ -434,51 +430,54 @@ fn os_tectos_do_brilho() {
         ph2d_bloom::levels_that_fit(w, h)
     );
     cab("LIMIAR (os outros de fábrica)");
-    for t in [0.0, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0] {
+    for v in [0.0, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0] {
         linha(
-            format!("{t:.2}"),
-            ph2d_bloom::Bloom {
-                threshold: t,
-                ..ligado
-            },
+            format!("{v:.2}"),
+            ligado(ph2d_bloom::BloomParams {
+                threshold: v,
+                ..f()
+            }),
         );
     }
-    cab("JOELHO (limiar de fábrica)");
-    for k in [0.0, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0] {
-        linha(format!("{k:.3}"), ph2d_bloom::Bloom { knee: k, ..ligado });
+    cab("JOELHO (numa fixtura CHATA ele é inerte — ver `a_sonda_do_joelho`, que usa uma RAMPA)");
+    for v in [0.0, 0.25, 1.0, 4.0, 16.0] {
+        linha(
+            format!("{v:.3}"),
+            ligado(ph2d_bloom::BloomParams { knee: v, ..f() }),
+        );
     }
     cab("INTENSIDADE");
-    for i in [0.0, 0.1, 0.3, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0] {
+    for v in [0.0, 0.1, 0.4, 0.8, 1.0, 2.0, 4.0, 8.0] {
         linha(
-            format!("{i:.2}"),
-            ph2d_bloom::Bloom {
-                intensity: i,
-                ..ligado
-            },
+            format!("{v:.2}"),
+            ligado(ph2d_bloom::BloomParams {
+                intensity: v,
+                ..f()
+            }),
         );
     }
-    cab("UM NÍVEL DE CADA VEZ (peso 1)");
-    for k in 0..ph2d_bloom::Bloom::LEVELS {
-        let mut niveis = [0.0f32; ph2d_bloom::Bloom::LEVELS];
-        niveis[k] = 1.0;
+    cab("RAIO (o botão do TAMANHO — o nosso modelo tem UM, não sete pesos)");
+    for v in [0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0] {
         linha(
-            format!("n{k}"),
-            ph2d_bloom::Bloom {
-                levels: niveis,
-                ..ligado
-            },
+            format!("{v:.2}"),
+            ligado(ph2d_bloom::BloomParams { radius: v, ..f() }),
         );
     }
-    cab("O PESO DO NÍVEL 1 (o mais forte de fábrica)");
-    for w in [0.0, 0.25, 0.5, 0.8, 1.0, 2.0, 4.0, 8.0, 16.0] {
-        let mut niveis = [0.0f32; ph2d_bloom::Bloom::LEVELS];
-        niveis[1] = w;
+    cab("SATURAÇÃO");
+    for v in [0.0, 0.25, 0.5, 1.0] {
         linha(
-            format!("{w:.2}"),
-            ph2d_bloom::Bloom {
-                levels: niveis,
-                ..ligado
-            },
+            format!("{v:.2}"),
+            ligado(ph2d_bloom::BloomParams {
+                saturation: v,
+                ..f()
+            }),
+        );
+    }
+    cab("TECTO DO CORTE (0 = desligado)");
+    for v in [0.0, 2.0, 8.0, 32.0, 128.0] {
+        linha(
+            format!("{v:.2}"),
+            ligado(ph2d_bloom::BloomParams { clamp: v, ..f() }),
         );
     }
 }

@@ -337,7 +337,17 @@ pub(super) fn apply(
             // ⭐⭐⭐ **O BRILHO** (`docs/Render3d/12`) — a mesma forma do estilo, e pelas mesmas duas
             // razões: o `entity` não é lido (o sujeito é a cena) e o braço vem ANTES do genérico.
             //
-            // ⛔ **Não há braço de COR**: nenhuma das onze fileiras do brilho é uma amostra.
+            // ⭐ **E há braço de COR desde 19/09** — a TINTA do halo, que o nosso modelo tem e o do
+            // Godot não tinha. ⚠️ Ele vem ANTES do genérico pela mesma razão que o do estilo.
+            ph2d_panel_model3d::ModelIntent::SetColor {
+                anchor: ph2d_field::Param::Bloom(slot),
+                srgb,
+                ..
+            } => {
+                crate::smoke::with_smoke(|s| {
+                    s.set_bloom(crate::brilho_painel::with_colour(s.bloom, slot, srgb));
+                });
+            }
             ph2d_panel_model3d::ModelIntent::SetParam {
                 param: ph2d_field::Param::Bloom(slot),
                 value,

@@ -26,15 +26,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // exactamente o que ele faz: arredonda o canto entre «não passa» e «passa».
         "panel.model3d.bloom.knee" => "Knee",
         "panel.model3d.bloom.intensity" => "Intensity",
-        // ⚠️ **Os níveis contam-se de `1`, como no alvo** — a arrumação indexa de `0` e o artista
-        // lê `1..7`. *Um painel que mostrasse `0..6` obrigaria a traduzir de cabeça todo tutorial.*
-        "panel.model3d.bloom.level_1" => "Size 1 (finest)",
-        "panel.model3d.bloom.level_2" => "Size 2",
-        "panel.model3d.bloom.level_3" => "Size 3",
-        "panel.model3d.bloom.level_4" => "Size 4",
-        "panel.model3d.bloom.level_5" => "Size 5",
-        "panel.model3d.bloom.level_6" => "Size 6",
-        "panel.model3d.bloom.level_7" => "Size 7 (widest)",
+        // ⭐⭐⭐ **O TAMANHO é UM número — o nosso modelo.** ⛔ A 1.ª redacção tinha sete
+        // `Size 1..7` (o `glow_levels` do Godot), e o dono mandou-os sair: *«nosso bloom original é
+        // muito melhor»*. ⚠️ **"Radius" é o nome que o nosso próprio `BloomParams` já lhe dá**, e o
+        // artista que lê o halo do Motion lê a mesma palavra.
+        "panel.model3d.bloom.radius" => "Radius",
+        "panel.model3d.bloom.saturation" => "Saturation",
+        "panel.model3d.bloom.tint" => "Tint",
+        // ⚠️ **"Clamp" é o nome do Unity URP** para o mesmo antídoto — um tecto no que entra na
+        // cadeia, para um pixel absurdo não lavar a tela.
+        "panel.model3d.bloom.clamp" => "Clamp",
+        // ⚠️ **"Anamorphic" e não "Stretch"**: é o nome do cinema e o do Unity, e o que ele faz é o
+        // *streak* horizontal das lentes anamórficas.
+        "panel.model3d.bloom.stretch" => "Anamorphic",
+        "panel.model3d.bloom.angle" => "Anamorphic Angle",
 
         // ⭐⭐ **AS DICAS** — e cada uma diz o que MEDIÇÃO deu, não o que a lei é.
         "panel.model3d.bloom.threshold.tip" => {
@@ -49,8 +54,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "How much of the halo comes back into the image. It changes the strength, not the \
              size \u{2014} the sizes below do that."
         }
-        "panel.model3d.bloom.level_1.tip" => {
-            "How much of each halo size to mix in. Each size is twice as wide as the one above it."
+        "panel.model3d.bloom.radius.tip" => {
+            "How far the halo spreads. Below 1 it barely moves \u{2014} the chain already blurs \
+             that much on its own; from 2 up it is the size knob."
+        }
+        "panel.model3d.bloom.saturation.tip" => {
+            "0 pulls the halo to grey, 1 keeps the colour of the light that made it."
+        }
+        "panel.model3d.bloom.clamp.tip" => {
+            "Caps how bright a single pixel may enter the halo. 0 is off; raise it when one stray \
+             highlight washes the screen."
+        }
+        "panel.model3d.bloom.stretch.tip" => {
+            "1 is a round halo. Above 1 it stretches along the angle below \u{2014} the streak an \
+             anamorphic lens makes."
         }
 
         // ⭐⭐⭐ **AS TRÊS RAZÕES de uma fileira apagada**, da mais geral para a mais específica.
@@ -64,6 +81,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
              Start the app with PH2D_FIELD_GPU=0 to see it."
         }
         "field.inert.bloom_is_off" => "Inactive: bloom is off. Switch Bloom to On to use it.",
+        "field.inert.bloom_is_round" => {
+            "Inactive: the halo is round, so it has no direction to point. Raise Anamorphic above \
+             1 to use it."
+        }
         "field.inert.bloom_threshold_is_zero" => {
             "Inactive: with Threshold at zero every light already glows, so there is no edge to \
              soften. Raise Threshold to use it."

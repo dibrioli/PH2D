@@ -263,6 +263,77 @@ cobra automaticamente.
 - ⚠️ **`kwin_wayland` precisa de `--exit-with-session`**; sem ele o comando não corre e não há log
   nenhum para ler — o modo de falha é **mudo**.
 
+## §10 — ⛔⛔⛔ O report de 2026-09-19: o halo era CALCULADO, SOMADO, e NUNCA chegava ao ecrã
+
+> *«Talvez devido a total falta de atmosfera não se possa perceber o efeito ao redor das esferas»*
+> — o dono, com a foto da `=36` em Render, as três bolas brancas e **nenhum halo**.
+
+### §10.1 — O que a medição disse, pelo caminho do produto
+
+Com o app a correr (`=36`, `PH2D_FIELD_GPU=0`, Bloom ligado, `1898×916`):
+
+| grandeza | medido |
+|---|---:|
+| pico da cena em linear (`campo_de_cena`) | `11,8381` |
+| pico do halo (`ph2d_bloom::halo`) | `44,8896` |
+| canais que o `soma_halo` MUDOU | **`2 738 165` de `5 215 704`** |
+| maior salto de um canal | `255` bytes |
+| o que se via na tela | **nada** |
+
+⭐ O buffer que a thread de traçado produz foi despejado e **tem o halo**, magnífico. ⇒ *a lei
+estava certa e o quadro estava certo; o que falhava era o que acontece DEPOIS dele.*
+
+### §10.2 — A causa: luz com cobertura ZERO
+
+O modelador traça com `BACKGROUND = [0, 0, 0, 0]` — **transparente de propósito**, para o canvas
+do app (o cinzento, a grelha) aparecer por baixo; a decisão está escrita no próprio
+`ph2d-app-field3d/src/smoke.rs` desde um smoke do dono de 19/08. E **um halo mora, por definição,
+onde a peça não está** — ou seja, exactamente onde a cobertura é zero.
+
+O `soma_halo` somava a luz e deixava o alfa como estava, com a frase *«luz acrescentada com alfa
+inalterado é o que um compositor lê como luz»* ao lado. Essa frase é a álgebra do pré-multiplicado
+e **é uma afirmação sobre o CONSUMIDOR** — e este consumidor compõe o quadro sobre o canvas e
+multiplica a cor pela cobertura. *Luz com cobertura zero é luz multiplicada por nada.*
+
+⭐ **A cura:** o halo é uma CAMADA de luz, e uma camada tem cobertura —
+`c = max(r, g, b)` da luz que ela põe, composta como toda camada: `c + (1 − c)·a`. É **a mesma
+conta** que a sombra do chão já fazia em `ground_shade::shadowed_background` (`(1 − f) + a·f`).
+*A sombra já sabia que tapar o fundo custa cobertura; a luz é que não sabia.*
+
+⚠️ **E o arredondamento é para CIMA.** A cor vai em **sRGB** e a cobertura em **linear**, e as duas
+quantizam a ritmos muito diferentes: com arredondamento ao mais perto, `12 778` de `52 167` píxeis
+acesos da cena ficavam com cobertura `0` (um linear de `0,0005` sai byte `6` na cor e `0` no alfa).
+*Um pixel que recebeu luz nunca fica com cobertura nenhuma*, e o preço máximo é `1/255` de véu.
+
+⚠️ **E a guarda `if c > 0.0` que a 1.ª redacção da cura tinha era provadamente MORTA** — a ida e
+volta `byte → f32 → byte` é exacta nos **256** valores (medido). Ela saiu, e a propriedade que
+alegava proteger virou gate (`o_alfa_atravessa_a_lei_sem_perder_um_byte`).
+
+### §10.3 — ⛔⛔ Porque NENHUMA régua desta wave o via — são DUAS cegueiras somadas
+
+1. **A fixtura dos gates do passe pintava sobre fundo OPACO** (`FUNDO = [0, 0, 0, 255]`). Ali o
+   alfa é `255` em todo o quadro e **nunca chega a ser a grandeza que decide** — os sete gates
+   mediam bytes de COR e passavam todos. *Uma fixtura com fundo opaco não pode conter este
+   fenómeno.*
+2. **A única coisa que alguém OLHOU foi a sonda `despeja_o_halo` — e ela escreve PPM**, um formato
+   **sem canal alfa**. Foi com ela que eu verifiquei o halo antes de o entregar ao dono.
+   ⭐⭐⭐ *Um despejo que deita fora um canal não pode auditar esse canal* — e o defeito vivia
+   exactamente nesse canal.
+
+⇒ Os gates novos pintam sobre **os dois** fundos, e o da crate do app corre a **cena a sério** com
+o `BACKGROUND` **lido** do módulo (não repetido): se alguém o tornar opaco, é esse gate que diz que
+a lei mudou de sujeito. Prova de mutação: **4 de 4 sangram** — e a 4.ª (`max` → `soma`) só passou a
+sangrar quando ganhou uma fixtura com halo **TINGIDO**, porque *um corpus de uma cor só não testa
+uma lei que fala de canais*.
+
+### §10.4 — ⏳ O VIZINHO, nomeado e NÃO curado
+
+`ground_shade::mais_luz` — a cor que a peça devolve ao chão (`docs/Render3d/09`) — tem a mesma
+forma: soma luz e deixa o alfa. Pelo mesmo mecanismo, ela só chega ao ecrã onde a **sombra** já deu
+cobertura (`a = 1 − f`), e evapora onde o chão está limpo. Ali isso é quase sempre invisível (a luz
+devolvida é forte justamente dentro da sombra) e mudá-lo mexe na imagem de **toda** cena com chão
+⇒ fica nomeado aqui, com o mecanismo, para quem lhe pegar não redescobrir a causa.
+
 ## ⛔ Recusas MEDIDAS
 
 | o que foi recusado | porquê, com o número |
@@ -275,4 +346,6 @@ cobra automaticamente.
 | portar o CORTE do alvo (os três botões de HDR) | dois estão inertes e o limiar não gateia: entrada `2` com limiar `3` ainda brilha `0,0802` (§3.5) |
 | mudar a assinatura do `shade_render` | `50` chamadores, `1` de produto — a porta nova **delega** e o churn é zero (§5) |
 | uma wave só de substrato (o buffer sem o brilho) | um canal sem consumidor é código morto, que é a lei que a `11` §11 já escreve (§5) |
+| o `if c > 0.0` à volta da cobertura | a ida e volta `byte → f32 → byte` é exacta nos **256** valores ⇒ guarda provadamente morta (§10.2) |
+| `soma` dos canais como cobertura | over-cobre um halo tingido: `[0,4 · 0,3 · 0,3]` sairia **opaco** e taparia a grelha; `max` é a MENOR cobertura válida (§10.3) |
 | a profundidade de campo LIGADA por omissão | num modelador ela esconde a peça que se está a modelar — proposta, decisão do dono (§5) |

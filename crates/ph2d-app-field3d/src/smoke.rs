@@ -54,7 +54,7 @@ const SPIN_RATE: f32 = 0.5;
 /// Um cinza opaco aqui era eu **inventando uma cor** — e uma cor de fundo inventada num app com
 /// tema é a segunda resposta a uma pergunta que o tema já responde (HR-15). Com alfa zero o canvas
 /// do app aparece por baixo, e o módulo deixa de ter opinião sobre o fundo.
-const BACKGROUND: [u8; 4] = [0, 0, 0, 0];
+pub(crate) const BACKGROUND: [u8; 4] = [0, 0, 0, 0];
 
 /// ⭐ **O que o smoke É** — os tipos do estado e a célula que o guarda — vive no irmão. Ver
 /// [`field3d_smoke_state`](self::state).

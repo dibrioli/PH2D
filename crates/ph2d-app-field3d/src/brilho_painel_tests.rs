@@ -790,10 +790,119 @@ fn o_halo_no_tamanho_do_dono() {
     }
 }
 
+/// ⭐⭐⭐ **O HALO CHEGA AO ECRÃ NA CENA A SÉRIO — com o FUNDO do módulo, que é TRANSPARENTE.**
+///
+/// # ⛔⛔⛔ O report do dono de 2026-09-19, e o que ele expôs sobre as réguas desta wave
+///
+/// *«Talvez devido a total falta de atmosfera não se possa perceber o efeito ao redor das
+/// esferas»* — com a foto. O halo estava a ser **calculado e somado** (medido no app a correr:
+/// `2 738 165` de `5 215 704` canais mudados, saltos até `255`) e a tela ficava igual, porque ele
+/// mora onde a peça não está e ali o quadro tem **cobertura zero** — e o que se vê é este quadro
+/// **composto** sobre o canvas.
+///
+/// ⚠️⚠️ **Nenhuma régua desta wave podia vê-lo, e são DUAS cegueiras somadas:** os gates do passe
+/// pintavam sobre um fundo **opaco** (ali o alfa é `255` em todo o lado e nunca é a grandeza que
+/// decide), e a única coisa que alguém OLHOU foi a [`despeja_o_halo`] — que escreve **PPM**, um
+/// formato **sem canal alfa**. *Um despejo que deita fora um canal não pode auditar esse canal.*
+///
+/// ⭐ Este gate fecha o furo onde ele existe: a **cena do produto**, com o
+/// [`crate::smoke::BACKGROUND`] **lido** e não repetido — se alguém o tornar opaco, é este gate que
+/// diz que a lei mudou de sujeito.
+#[test]
+fn o_halo_da_cena_chega_com_cobertura_sobre_o_fundo_do_modulo() {
+    use crate::render_light::{StudioSky, lamps};
+    let (w, h) = (320u32, 240u32);
+    let doc = crate::smoke::scenes::scene(36);
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = ph2d_field_render::Orbit::default();
+    let g = ph2d_field_render::trace(&doc, &reg, &cam, w, h);
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let root = ph2d_field_ecs::spawn_doc(sim.world_mut(), &doc, "peça");
+    let folhas: Vec<bevy_ecs::entity::Entity> = sim
+        .world()
+        .get::<bevy_ecs::hierarchy::Children>(root)
+        .expect("filhos")
+        .iter()
+        .copied()
+        .collect();
+    for (e, m) in folhas
+        .iter()
+        .zip(crate::smoke::scenes::materiais_da_cena(36).expect("material"))
+    {
+        sim.world_mut().entity_mut(*e).insert(m);
+    }
+    let t = crate::materials::Table::build(sim.world(), root, cam.half_extent, w as f32);
+    let rig = ph2d_light::LightRig::default();
+    let lam = lamps(&rig);
+    let pinta = |b: ph2d_field_render::Bloom| {
+        ph2d_field_render::shade_render(
+            &g,
+            &cam,
+            &t.surfaces_for(),
+            &ph2d_field_render::Lighting {
+                lamps: &lam,
+                points: &[],
+                sky: &StudioSky,
+                shadows: None,
+            },
+            &ph2d_field_render::Presentation {
+                bloom: b,
+                ..ph2d_field_render::Presentation::of(crate::shading::OPENING_LOOK)
+            },
+            // ⭐ **LIDO do módulo** — ver a nota acima.
+            crate::smoke::BACKGROUND,
+        )
+    };
+    let sem = pinta(ph2d_field_render::Bloom::default());
+    let com = pinta(ph2d_field_render::Bloom {
+        enabled: true,
+        ..ph2d_field_render::Bloom::default()
+    });
+    assert_eq!(
+        crate::smoke::BACKGROUND[3],
+        0,
+        "o fundo do módulo deixou de ser transparente: esta lei mudou de sujeito"
+    );
+    // ⚠️ **A SILHUETA não é fundo**: um pixel de borda leva cobertura PARCIAL das sub-amostras que
+    // acertaram (medido: `64` num deles), e sem esta cerca o controlo acusa produto correcto.
+    let mut borda = vec![false; (w * h) as usize];
+    for e in &g.edges {
+        borda[e.pixel as usize] = true;
+    }
+    let (mut acesos, mut sem_cobertura) = (0usize, 0usize);
+    for i in 0..(w * h) as usize {
+        if g.hit[i] || borda[i] {
+            continue;
+        }
+        // ⚠️ **O CONTROLO**: sem brilho o fundo desta cena é transparente, logo o que a metade de
+        // baixo mede é o HALO e não a peça.
+        assert_eq!(sem[i * 4 + 3], 0, "o controlo falhou no pixel {i}");
+        let luz = com[i * 4].max(com[i * 4 + 1]).max(com[i * 4 + 2]);
+        if luz > 0 {
+            acesos += 1;
+            sem_cobertura += usize::from(com[i * 4 + 3] == 0);
+        }
+    }
+    assert!(
+        acesos > 1000,
+        "a cena não contém o fenómeno: só {acesos} píxeis de fundo acenderam"
+    );
+    assert_eq!(
+        sem_cobertura, 0,
+        "{sem_cobertura} de {acesos} píxeis do halo saem com cobertura ZERO — o canvas apaga-os"
+    );
+}
+
 /// Despeja o quadro do RENDER com e sem brilho, para se VER o halo (`#[ignore]`).
 ///
 /// ⚠️ **A foto da janela não serve para isto:** a cena abre em Matcap, e o matcap não corre o
 /// brilho. *O único sítio onde o halo se vê é o caminho do Render, e é este o despejo dele.*
+///
+/// ⛔⛔⛔ **E ELA NÃO AUDITA O QUADRO — só a COR dele.** O PPM não tem canal alfa, e foi com esta
+/// sonda que eu dei o halo por bom antes do report do dono de 19/09: a imagem estava perfeita e o
+/// quadro saía com **cobertura zero** em todo o halo, logo o canvas apagava-o inteiro. *Um despejo
+/// que deita fora um canal não pode auditar esse canal* — quem quiser o veredito usa o gate
+/// [`o_halo_da_cena_chega_com_cobertura_sobre_o_fundo_do_modulo`], que mede o alfa.
 ///
 /// ```text
 /// PH2D_BLOOM_DUMP=/tmp/x cargo test -p ph2d-app-field3d --lib despeja_o_halo -- --ignored

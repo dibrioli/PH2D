@@ -103,8 +103,41 @@ pub(crate) fn campo_de_cena(
 /// transformações e uma escada de exposições. *No dia em que alguém acrescentar um olhar com
 /// levantamento, aquele gate reprova e diz que este passe conta com isto.*
 ///
-/// ⚠️ **O ALFA não se mexe**, e é a mesma lei que a luz que a peça põe no chão já segue
-/// (`docs/Render3d/09`): *luz acrescentada com alfa inalterado é o que um compositor lê como luz*.
+/// ⛔⛔⛔ **E O ALFA SOBE COM A LUZ — a 1.ª redacção deixava-o quieto e o halo NUNCA CHEGAVA AO
+/// ECRÃ** (report do dono, 2026-09-19, com foto: *«não se percebe o efeito ao redor das esferas»*).
+///
+/// A frase que aqui estava — *«luz acrescentada com alfa inalterado é o que um compositor lê como
+/// luz»* — é a álgebra do pré-multiplicado e **é uma afirmação sobre o CONSUMIDOR**. O consumidor
+/// deste quadro é o canvas do modelador: o traçado usa fundo `[0, 0, 0, 0]` para a grelha aparecer
+/// por baixo, e **o halo mora, por definição, onde a peça não está** — ou seja, onde a cobertura é
+/// zero. Medido pelo caminho do produto, a `1898×916`: o passe acendia **`2 738 165` de `5 215 704`
+/// canais**, com saltos até `255` bytes, e a tela ficava **igual**. *Luz com cobertura zero é luz
+/// multiplicada por nada.*
+///
+/// ⚠️ **A lei que fica:** o halo é uma CAMADA de luz, e uma camada tem cobertura —
+/// `c = max(r, g, b)` da luz que ela põe, composta como toda camada: `c + (1 − c)·a`. É a mesma
+/// conta que a sombra do chão já faz em [`crate::ground_shade::shadowed_background`]
+/// (`(1 − f) + a·f`), e a leitura é a que interessa: *a sombra já sabia que tapar o fundo custa
+/// cobertura; a luz é que não sabia*.
+///
+/// ⚠️ **Com `c = 0` o alfa fica AO BIT**, e isso é MEDIDO e não um `if`: a 1.ª redacção tinha um
+/// `if c > 0.0` a guardá-lo, e a ida e volta `byte → f32 → byte` é **exacta nos 256 valores** (ver
+/// [`crate::brilho_tests::o_alfa_atravessa_a_lei_sem_perder_um_byte`]) ⇒ a guarda era *provavelmente
+/// morta e nenhuma mutação a podia matar* — a mesma forma que a subtracção acima já tinha pago
+/// neste ficheiro. E a peça opaca continua opaca (`c + (1−c)·1 = 1`).
+///
+/// ⚠️⚠️ **E o arredondamento é para CIMA, não para o mais perto** — sem isso a cauda do halo volta
+/// a evaporar-se: a cor é guardada em **sRGB** e a cobertura em **linear**, e as duas quantizam a
+/// ritmos muito diferentes (um linear de `0,0005` sai como byte `6` na cor e como `0` no alfa).
+/// Medido na cena do produto: `12 778` de `52 167` píxeis acesos ficavam com cobertura zero com o
+/// arredondamento ao mais perto. *Um pixel que recebeu luz nunca fica com cobertura nenhuma* — e o
+/// preço máximo é `1/255` de véu onde o halo já é invisível.
+///
+/// ⚠️⚠️ **O VIZINHO tem a mesma forma e NÃO foi mexido:** a [`crate::ground_shade::mais_luz`]
+/// soma a luz que a peça devolve ao chão, também com alfa inalterado — ela só chega ao ecrã onde a
+/// SOMBRA já deu cobertura, e evapora onde o chão está limpo. Ali isso é quase sempre invisível
+/// (a luz devolvida é forte justamente dentro da sombra) e mudá-lo mexe na imagem de toda cena com
+/// chão ⇒ fica **nomeado**, não curado, em `docs/Render3d/12`.
 pub(crate) fn soma_halo(out: &mut [u8], halo: &[[f32; 3]], pres: &Presentation) {
     if halo.is_empty() {
         return;
@@ -121,6 +154,14 @@ pub(crate) fn soma_halo(out: &mut [u8], halo: &[[f32; 3]], pres: &Presentation) 
             }
             let base = ph2d_color::srgb::srgb_to_linear_byte(*canal);
             *canal = ph2d_color::srgb::linear_to_srgb_byte(base + acrescimo);
+        }
+        // ⭐⭐⭐ **E A COBERTURA QUE ESTA LUZ TRAZ CONSIGO** — ver a nota da função: sem ela o
+        // compositor apaga o halo inteiro, que foi o report de 19/09.
+        let cobertura = d[0].max(d[1]).max(d[2]).clamp(0.0, 1.0);
+        let antes = f32::from(px[3]) / 255.0;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        {
+            px[3] = (cobertura.mul_add(-antes, cobertura + antes) * 255.0).ceil() as u8;
         }
     }
 }

@@ -12,7 +12,11 @@ use ph2d_editor_core::projectile_edits::ProjectileFieldEdit;
 pub(super) fn aplicar(sim: &mut SimWorld, edits: &[(u64, ProjectileFieldEdit)]) -> bool {
     let mut mexeu = false;
     for (bits, edit) in edits {
-        if super::inspector_projectile::apply_projectile_edit(sim.world_mut(), *bits, edit) {
+        if ph2d_app_components::projectile_inspector::apply_projectile_edit(
+            sim.world_mut(),
+            *bits,
+            edit,
+        ) {
             mexeu = true;
         }
     }

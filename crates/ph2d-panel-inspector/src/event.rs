@@ -66,6 +66,10 @@ pub(crate) fn apply_event(
     if crate::event_projectile::apply_projectile_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    // ⭐⭐⭐ O RAIO (suplente #21) — sem estado de painel: um objecto tem UM.
+    if crate::event_ray::apply_ray_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     // ⭐⭐⭐ O HUD (TOP-20 #20) — sem estado de painel: um objecto tem UM de cada.
     if crate::event_hud::apply_hud_event(host, ev) {
         return EventOutcome::Consumed;

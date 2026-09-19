@@ -30,7 +30,7 @@ use super::*;
 /// ⚠️ `finish_section` lê `store.section_outline_color(<id da seção>)` para TODA seção viva, por
 /// isso uma seção ausente daqui tem um contorno que o passe de pintura está pronto a desenhar e
 /// gesto nenhum que o possa definir.
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 32] = [
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 33] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_COLOR),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_COLOR),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_COLOR),
@@ -74,6 +74,11 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 32] = [
     (INSP_LIVE_TOPDOWN_SECTION, INSP_LIVE_TOPDOWN_COLOR),
     // ⭐ A 25.ª — PROJECTILE MOTION (TOP-20 #14), a segunda da família MOVIMENTO.
     (INSP_LIVE_PROJECTILE_SECTION, INSP_LIVE_PROJECTILE_COLOR),
+    // ⭐⭐ RAY SENSOR (suplente #21) — o objecto que OLHA. ⚠️ **Entrar aqui não é arrumação:** quem
+    // falta nesta tabela não é `mark_collapsible_section`ado nem é `is_section_header_id`, logo o
+    // cabeçalho pinta o chevron e **a dobra não pode acontecer** — o defeito que a FACTORY e a
+    // LIFECYCLE shiparam em 2026-09-14 e que a wave seguinte apanhou ao vir escrever esta linha.
+    (INSP_LIVE_RAY_SECTION, INSP_LIVE_RAY_COLOR),
     // ⭐ A 26.ª — STATE MACHINE (TOP-20 #15), o cérebro autorável. ⚠️ Entrou **no mesmo commit** que
     // a secção, que é exactamente o que o censo `architecture_every_live_section_is_in_the_table`
     // existe para garantir desde que a fábrica shipou fora desta tabela.

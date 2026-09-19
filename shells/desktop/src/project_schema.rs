@@ -448,4 +448,35 @@
 ///
 /// ⛔ **Sem degrau de migração para o v148**, pela mesma decisão de 26/08 — um ficheiro daquele
 /// número já era recusado antes desta wave, como todos os do meio.
-pub(crate) const PROJECT_SCHEMA: u32 = 149;
+/// # 149 -> 150 — o RAIO persistente (suplente #21, `line/components`)
+///
+/// **DOIS** componentes registados novos: `ph2d::physics::RaySensor` e `ph2d::physics::RaySignals`.
+/// Mesmo mecanismo dos degraus `123`, `125`, `126`, `127`, `130`, `131` e `132`.
+///
+/// ⚠️ **Dois tipos e UM degrau**: o número mede **o que o ficheiro passa a conter**, não quantos
+/// tipos nasceram — a lei do degrau `130`, onde três componentes da fábrica valeram `+1`.
+///
+/// ⭐⭐⭐ **E ele só existe porque a composição foi MEDIDA primeiro** (§5.0), com o precedente fresco
+/// do **#3 `SensorZone`**, que dois dias antes fechou **sem uma linha de código**. A sonda
+/// `mede_o_que_a_composicao_ja_da_ao_raio` pôs a melhor composição que a casa tem — um colisor
+/// `is_sensor` fino deitado ao longo da linha — contra o motor, e o buraco tem **três** nomes:
+/// **ORDEM** (o sensor devolve um elemento, com as duas paredes lá dentro) · **MÉTRICA** (`0`
+/// contactos, porque um sensor atravessa ⇒ `point`/`normal` vazios) · **DIRECÇÃO** (uma FORMA é
+/// simétrica e apanha a parede de trás). O `cast_ray` responde às três: `d = 1,7500`, ponto
+/// `(1,75 ; 0)`, normal `(−1 ; 0)`, e a de trás não volta.
+///
+/// ⛔⛔ **O registo ESPEROU uma wave inteira pela UI**, e isso está escrito no
+/// `register_physics_components`: o gate `every_registered_physics_component_has_a_ui_writer`
+/// reprovou na primeira tentativa, e a saída que ele próprio oferece (*«ou não o registre ainda»*)
+/// foi a que se tomou. *Um componente registado sem UI entra no ficheiro e no `Ctrl+Z` com números
+/// que nenhuma row deixa mexer.*
+///
+/// ⛔ **O que o raio VÊ não é componente nenhum:** ele vive no mapa da ponte (`ray_hits`), como o
+/// canal de triggers — o que nasce numa corrida não é documento (a lei do #11 e do #20).
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v149 não
+/// tem os componentes, logo lê-se inteiro por este binário. O degrau existe para o sentido
+/// contrário, que é o que recusa em voz alta.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima primeira** vez.
+pub(crate) const PROJECT_SCHEMA: u32 = 150;

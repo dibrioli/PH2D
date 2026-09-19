@@ -180,6 +180,66 @@ pub(crate) fn paint_top20_sections(
     )
 }
 
+/// **A secção RAY SENSOR** — moldura e tudo (suplente #21).
+///
+/// ⚠️ Ela mora neste ficheiro e não no [`super::paint_optional`] pela razão das vizinhas: o
+/// orquestrador está no tecto de LOC, e as molduras de secção opcional cabem melhor juntas.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_ray_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    info: Option<&ph2d_editor_core::ray_edits::InspectorRayInfo>,
+) -> f32 {
+    // ⚠️ **A secção só existe se o objecto TIVER o raio** — ADR-0166.
+    let Some(info) = info else {
+        return y;
+    };
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_RAY_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::ray::paint_ray_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        info,
+    );
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_RAY_SECTION,
+        y_before,
+        new_y,
+        &[],
+    )
+}
+
 /// **A secção HUD** — moldura e tudo (TOP-20 #20). ⚠️ Sem estado de painel: um objecto tem UM de
 /// cada componente do HUD, então não há linha aberta a lembrar.
 #[allow(clippy::too_many_arguments)]

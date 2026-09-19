@@ -89,6 +89,8 @@ pub(crate) mod physics_rows;
 pub(crate) mod player;
 pub(crate) mod projectile;
 pub(crate) mod properties;
+/// ⭐⭐⭐ A secção RAY SENSOR (suplente #21).
+pub(crate) mod ray;
 mod render_source;
 /// O par `Format` — irmão do `render_source` pelo cap de LOC.
 mod render_source_precision;

@@ -36,6 +36,9 @@ pub(super) fn publish(
     // física deixou no `PhysicsState`. ⚠️ O facto vive na PONTE (o estado de voo é memória de
     // tique, não componente) e o Inspector não a alcança; este é o mesmo caminho do `clock_playing`.
     projectile_over: &[u64],
+    // ⭐⭐⭐ **O que cada RAIO vê neste quadro** (suplente #21) — `(olha, visto, distância)`, pelo
+    // mesmo caminho do vizinho acima e pela mesma razão: o facto vive na PONTE.
+    ray_hits: &[(u64, u64, f32)],
 ) {
     // M14.5 inspector phase (6.4/§9): publish a per-frame
     // snapshot of the selected sprite so `paint_inspector` can
@@ -127,6 +130,7 @@ pub(super) fn publish(
         inspector_factory,
         inspector_topdown,
         inspector_projectile,
+        inspector_ray,
         inspector_statemachine,
         inspector_visibility_section,
     } = late(
@@ -139,6 +143,7 @@ pub(super) fn publish(
         tags,
         clock_playing,
         projectile_over,
+        ray_hits,
     );
     // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — `None` para quem não tem o componente (ADR-0166).
     //
@@ -175,6 +180,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_factory(inspector_factory);
         ph2d_panel_inspector::set_current_inspector_topdown(inspector_topdown);
         ph2d_panel_inspector::set_current_inspector_projectile(inspector_projectile);
+        ph2d_panel_inspector::set_current_inspector_ray(inspector_ray);
         ph2d_panel_inspector::set_current_inspector_statemachine(inspector_statemachine);
         ph2d_panel_inspector::set_current_inspector_tags(inspector_tags);
         // ⭐ **A ÁRVORE DO PROJECTO** — publicada em TODO quadro, com ou sem selecção: ela não é
@@ -224,6 +230,8 @@ struct LateSections {
     inspector_topdown: Option<ph2d_editor_core::topdown_edits::InspectorTopDownInfo>,
     /// ⭐ A secção PROJECTILE MOTION (TOP-20 #14).
     inspector_projectile: Option<ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
+    /// ⭐⭐⭐ A secção RAY SENSOR (suplente #21).
+    inspector_ray: Option<ph2d_editor_core::ray_edits::InspectorRayInfo>,
     inspector_statemachine: Option<ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
     inspector_visibility_section: Option<ph2d_editor_core::InspectorVisibilitySectionInfo>,
 }
@@ -254,6 +262,8 @@ fn late(
     clock_playing: bool,
     // ⭐ Os projécteis cujo voo acabou (TOP-20 #14) — ver o parâmetro homónimo do [`publish`].
     projectile_over: &[u64],
+    // ⭐⭐⭐ O que cada RAIO vê (suplente #21) — ver o parâmetro homónimo do [`publish`].
+    ray_hits: &[(u64, u64, f32)],
 ) -> LateSections {
     let sel = inspector_selection;
     let inspector_anim = hero.gizmo.selection.and_then(|b| {
@@ -325,12 +335,29 @@ fn late(
     // exactamente o que devia lê-se como partido — está parado no ar com todos os números certos.
     let inspector_projectile = hero.gizmo.selection.and_then(|b| {
         let acabou = projectile_over.contains(&b);
-        crate::render_loop::inspector_projectile::build_projectile_info(
+        ph2d_app_components::projectile_inspector::build_projectile_info(
             sim.world(),
             b,
             selected_count,
             clock_playing,
             acabou,
+        )
+    });
+    // ⭐⭐⭐ A secção RAY SENSOR (suplente #21) — `None` para quem não tem o componente (ADR-0166).
+    //
+    // ⚠️ Ela pede a LEITURA VIVA, que é o que a distingue das irmãs: sem *«vê a Parede, a 1,75 m»*
+    // ela seria seis campos numa tabela, e o artista não teria como afinar um alcance a olhar.
+    let inspector_ray = hero.gizmo.selection.and_then(|b| {
+        let visto = ray_hits
+            .iter()
+            .find(|(olha, ..)| *olha == b)
+            .map(|&(_, v, d)| (ph2d_ecs::Entity::from_bits(v), d));
+        ph2d_app_components::ray_inspector::build_ray_info(
+            sim.world(),
+            b,
+            selected_count,
+            clock_playing,
+            visto,
         )
     });
     // ⭐⭐⭐ A secção STATE MACHINE (TOP-20 #15) — `None` para quem não tem o componente (ADR-0166).
@@ -362,6 +389,7 @@ fn late(
         inspector_factory,
         inspector_topdown,
         inspector_projectile,
+        inspector_ray,
         inspector_statemachine,
         inspector_visibility_section,
     }

@@ -128,7 +128,11 @@ pub mod particles_inspector;
 pub mod particles_smoke;
 pub mod prefab_stage;
 /// ⭐⭐⭐ **O PROJÉCTIL** (TOP-20 #14) — as duas cenas do dono.
+/// ⭐ O instantâneo e o dreno da secção PROJECTILE MOTION (TOP-20 #14).
+pub mod projectile_inspector;
 pub mod projectile_smoke;
+/// ⭐⭐⭐ O instantâneo e o dreno da secção RAY SENSOR (suplente #21).
+pub mod ray_inspector;
 pub mod scene_ctx;
 pub mod script_bridge;
 /// ⭐ TOP-20 #16 — a secção SCRIPT do Inspector: o instantâneo e o dreno.

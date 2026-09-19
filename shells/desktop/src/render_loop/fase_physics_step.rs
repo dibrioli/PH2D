@@ -57,6 +57,16 @@ impl crate::App {
         self.physics
             .projectile_over
             .extend(physics.projectiles_finished().map(|e| e.to_bits()));
+        // ⭐⭐⭐ **E o que cada RAIO vê** (suplente #21) — a leitura viva que a secção dele pinta.
+        // ⚠️ **Reescrito**, nunca acumulado, pela mesma razão do vizinho: uma lista que crescesse
+        // faria o painel dizer que o raio vê uma coisa que ele deixou de ver há dez quadros.
+        self.physics.ray_hits.clear();
+        self.physics.ray_hits.extend(
+            physics
+                .ray_sensor_hits()
+                .iter()
+                .map(|(e, h)| (e.to_bits(), h.body.to_bits(), h.distance)),
+        );
         // O flash do estouro envelhece uma vez por frame, aqui: ao lado do
         // dispatch da física, que é a fase em que o tempo do mundo anda. Um canal
         // PRÓPRIO, porque uma explosão é um impulso e não deixa estado no mundo

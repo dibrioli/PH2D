@@ -38,6 +38,7 @@ pub(super) fn aplicar(
     )],
     topdown: &[(u64, ph2d_editor_core::topdown_edits::TopDownFieldEdit)],
     projectile: &[(u64, ph2d_editor_core::projectile_edits::ProjectileFieldEdit)],
+    ray: &[(u64, ph2d_editor_core::ray_edits::RayFieldEdit)],
     statemachine: &[(
         u64,
         ph2d_editor_core::statemachine_edits::StateMachineFieldEdit,
@@ -46,6 +47,7 @@ pub(super) fn aplicar(
 ) -> bool {
     super::topdown_commits::aplicar(sim, topdown)
         | super::projectile_commits::aplicar(sim, projectile)
+        | ph2d_app_components::ray_inspector::apply_all(sim, ray)
         | super::statemachine_commits::aplicar(sim, statemachine)
         | super::script_commits::aplicar(sim, script)
         | ph2d_app_components::particles_inspector::apply_all(sim, particles)

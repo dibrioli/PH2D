@@ -130,7 +130,6 @@ mod inspector_factory;
 /// ⭐ **A seção COMPONENT do Inspector** (ADR-0164 / F5) — o que esta cópia tem de diferente
 /// da receita, e o gesto que limpa as excepções sem alvo.
 pub(crate) mod inspector_instance;
-mod inspector_projectile;
 mod inspector_properties;
 mod inspector_slice;
 /// ⭐⭐⭐ O instantâneo e o dreno da secção STATE MACHINE (TOP-20 #15) — ver o cabeçalho.

@@ -54,6 +54,8 @@ pub(crate) struct LiveSnapshots {
     pub topdown_info: Option<ph2d_editor_core::topdown_edits::InspectorTopDownInfo>,
     /// ⭐ O PROJÉCTIL (TOP-20 #14).
     pub projectile_info: Option<ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
+    /// ⭐⭐⭐ A secção RAY SENSOR (suplente #21).
+    pub ray_info: Option<ph2d_editor_core::ray_edits::InspectorRayInfo>,
     /// ⭐ O snapshot do CÉREBRO (TOP-20 #15).
     pub statemachine_info: Option<ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
     /// ⭐ O snapshot do SCRIPT (TOP-20 #16).
@@ -117,6 +119,7 @@ impl LiveSnapshots {
         let factory_info = crate::state_components::current_inspector_factory();
         let topdown_info = crate::state_components::current_inspector_topdown();
         let projectile_info = crate::state_components::current_inspector_projectile();
+        let ray_info = crate::state_components::current_inspector_ray();
         let statemachine_info = crate::state_components::current_inspector_statemachine();
         let script_info = crate::state_components::current_inspector_script();
         let particles_info = crate::state_components::current_inspector_particles();
@@ -144,6 +147,7 @@ impl LiveSnapshots {
             factory_info.is_some(),
             topdown_info.is_some(),
             projectile_info.is_some(),
+            ray_info.is_some(),
             statemachine_info.is_some(),
             script_info.is_some(),
             particles_info.is_some(),
@@ -169,6 +173,7 @@ impl LiveSnapshots {
             factory_info,
             topdown_info,
             projectile_info,
+            ray_info,
             statemachine_info,
             script_info,
             particles_info,

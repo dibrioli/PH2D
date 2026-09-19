@@ -39,6 +39,8 @@ mod event_physics;
 mod event_player;
 mod event_precision;
 mod event_projectile;
+/// ⭐⭐⭐ O despacho da secção RAY SENSOR (suplente #21).
+mod event_ray;
 /// ⭐ O despacho da secção SCRIPT — irmão do `event` por CAP de função.
 mod event_script;
 mod event_sequence;
@@ -87,6 +89,8 @@ mod populate_particles;
 mod populate_physics;
 mod populate_player;
 mod populate_projectile;
+/// ⭐⭐⭐ O registo dos widgets da secção RAY SENSOR (suplente #21).
+mod populate_ray;
 /// ⭐ O registo dos widgets da secção SCRIPT — irmão por CAP de ficheiro.
 mod populate_script;
 mod populate_sequence;
@@ -97,6 +101,8 @@ mod populate_tags;
 /// ⭐ O registo dos widgets da secção TIMERS — irmão por CAP de ficheiro.
 mod populate_timer;
 mod populate_topdown;
+/// ⭐⭐⭐ O registo dos widgets das secções que chegam por WAVE — ver o cabeçalho.
+mod populate_waves;
 mod sections;
 pub mod state;
 /// ⭐ Os instantâneos das secções da fila do TOP-20 — irmão do [`state`] por CAP de LOC.
@@ -208,8 +214,9 @@ pub use state_components::{
     set_current_inspector_action, set_current_inspector_action_trigger,
     set_current_inspector_audio, set_current_inspector_camera, set_current_inspector_counter_watch,
     set_current_inspector_factory, set_current_inspector_hud, set_current_inspector_particles,
-    set_current_inspector_projectile, set_current_inspector_script, set_current_inspector_sequence,
-    set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
+    set_current_inspector_projectile, set_current_inspector_ray, set_current_inspector_script,
+    set_current_inspector_sequence, set_current_inspector_statemachine,
+    set_current_inspector_timer, set_current_inspector_topdown,
 };
 
 /// ⭐ **As opções que a caixa de escolha da secção TAGS oferece**, para o gate as poder LER.

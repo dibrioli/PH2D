@@ -61,6 +61,8 @@ pub(super) struct InspectorIntents {
     /// ⭐ As edições do PROJÉCTIL (TOP-20 #14).
     pub(super) projectile_edits:
         Vec<(u64, ph2d_editor_core::projectile_edits::ProjectileFieldEdit)>,
+    /// ⭐⭐⭐ As edições da secção RAY SENSOR (suplente #21).
+    pub(super) ray_edits: Vec<(u64, ph2d_editor_core::ray_edits::RayFieldEdit)>,
     /// ⭐ As edições do CÉREBRO (TOP-20 #15).
     pub(super) statemachine_edits: Vec<(
         u64,
@@ -138,6 +140,7 @@ impl crate::App {
             factory_edits,
             topdown_edits,
             projectile_edits,
+            ray_edits,
             statemachine_edits,
             script_edits,
             particles_edits,
@@ -229,6 +232,7 @@ impl crate::App {
             &action_trigger_edits,
             &topdown_edits,
             &projectile_edits,
+            &ray_edits,
             &statemachine_edits,
             &script_edits,
         );

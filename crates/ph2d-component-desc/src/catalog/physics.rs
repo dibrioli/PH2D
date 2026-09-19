@@ -312,6 +312,23 @@ pub const DESCS: &[D] = &[
         C::Physics,
         PULLEY_WHEEL,
     ),
+    // ⭐⭐⭐ **PORTA 4 — o RAIO persistente** (suplente #21): *este objecto OLHA*, que é uma
+    // intenção do artista e não uma row que a §11 já pinte.
+    //
+    // ⛔ **E ele NÃO requer `RigidBody`**, ao contrário dos dois movers: está MEDIDO
+    // (`um_raio_sem_corpo_nao_exclui_ninguem`) — um olho sem corpo vê na mesma, e ali a resposta
+    // certa é não excluir ninguém. *Exigir um corpo entregaria uma cerca que a lei não tem.*
+    D::authored(
+        "ph2d::physics::RaySensor",
+        "Ray Sensor",
+        C::Physics,
+        O::ANY,
+        &[],
+    ),
+    // ⚠️ Os dois NOMES são `Intrinsic` pela razão dos irmãos `SignalOnHit`/`SignalOnLeave`: eles
+    // nascem das rows da secção, nunca do `+`. Um `RaySignals::default()` anexado à mão é **calado
+    // nos dois extremos**, logo seria uma porta que entrega nada.
+    i("ph2d::physics::RaySignals", "Ray Signals"),
     // ⭐ **PORTA 1 — a que o dono conhecia pelo nome.** Era o botão *Add Physics Body* da face
     // vazia da §11; desde o ADR-0166/F3 a rota é o `+`, e o rótulo passa a dizer o que a secção
     // que nasce diz.
@@ -370,8 +387,13 @@ mod tests {
         //    mover é uma **intenção** do artista (ele escolhe *este objecto é um jogador de
         //    vista de cima*), nunca uma row que a §11 já pinta. ⚠️ Os dois pedem `RigidBody`
         //    junto (`pr`), senão a paleta entregava um componente inerte.
-        const PORTAS: [&str; 3] = [
+        // ⭐ **QUATRO portas desde 19/09** — a nova é o RAIO (suplente #21), da mesma espécie
+        //    dos dois movers: *este objecto OLHA* é uma intenção que o artista escolhe. ⛔ Mas,
+        //    ao contrário deles, ela **não pede companhia**: um olho sem corpo vê na mesma, e
+        //    está medido.
+        const PORTAS: [&str; 4] = [
             "ph2d::physics::ProjectileMotion",
+            "ph2d::physics::RaySensor",
             "ph2d::physics::RigidBody",
             "ph2d::physics::TopDownPlayer",
         ];

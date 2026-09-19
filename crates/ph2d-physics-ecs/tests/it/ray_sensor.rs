@@ -132,33 +132,62 @@ fn um_raio_nao_ve_o_que_esta_atras() {
 /// É isto que faz a mira de uma torreta seguir a torreta sem uma segunda lei — e escrevê-los em
 /// mundo obrigaria o artista a reescrevê-los sempre que o objecto virasse.
 ///
-/// **Mutação que deve sangrar:** aplicar a pose só à origem, ou só à direcção.
+/// ⚠️⚠️ **A ORIGEM é `(1, 0)` e não `(0, 0)`, e a 1.ª redacção deste gate tinha-a a zero:** ali
+/// rodá-la é um **no-op**, logo a mutação que apagava a rotação da origem **SOBREVIVEU**. *Um
+/// corpus no ponto NEUTRO de um knob não testa esse knob* — a lei que esta casa já pagou no
+/// `Accumulate` do apagador de deslocamento e no `Step Scale` do L-System.
+///
+/// ⭐ **A fixtura discrimina as DUAS metades de uma vez:** com a pose a `+90°`, o `(1, 0)` local da
+/// origem tem de virar `(0, 1)` em mundo e o `(1, 0)` local da direcção tem de virar «para cima».
+/// A parede está em `x = 0`, logo um raio que nasça em `(1, 0)` — a origem **não** rodada — passa
+/// ao lado dela, e um que aponte para `+x` também.
+///
+/// **Mutações que devem sangrar:** aplicar a pose só à origem, ou só à direcção.
 #[test]
 fn um_raio_roda_com_o_objecto() {
     let mut sim = SimWorld::new();
     let cima = parede(&mut sim, "Cima", 0.0);
-    // A parede «Cima» é deslocada para `y = 3`: só um raio VIRADO a alcança.
     if let Some(mut t) = sim.world_mut().get_mut::<Transform>(cima) {
         t.translation = Vec2::new(0.0, 3.0);
     }
-    let e = olho(&mut sim, Vec2::ZERO, Vec2::new(1.0, 0.0), 10.0);
+    let e = sim
+        .world_mut()
+        .spawn((
+            Name::new("Olho"),
+            Transform::from_translation(Vec2::ZERO),
+            RaySensor {
+                origin: Vec2::new(1.0, 0.0),
+                dir: Vec2::new(1.0, 0.0),
+                reach: 5.0,
+                layer: 0,
+            },
+        ))
+        .id();
     let mut bridge = PhysicsBridge::new();
     anda(&mut sim, &mut bridge, 1);
     assert!(
         bridge.ray_sensor_hits().get(&e).is_none(),
-        "de pe' o raio aponta para +X e nao ha' nada la'"
+        "de pe' o raio nasce em (1, 0) e aponta para +X — nao ha' nada la'"
     );
 
-    // Um quarto de volta põe o +X local a apontar para +Y do mundo.
+    // Um quarto de volta: a origem vai para `(0, 1)` e o rumo passa a ser «para cima».
     if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
         t.rotation = std::f32::consts::FRAC_PI_2;
     }
     let mut b2 = PhysicsBridge::new();
     b2.dispatch(&mut sim, true, 1);
-    assert_eq!(
-        b2.ray_sensor_hits().get(&e).map(|h| h.body),
-        Some(cima),
-        "o raio nao rodou com o objecto"
+    let h = b2
+        .ray_sensor_hits()
+        .get(&e)
+        .copied()
+        .expect("o raio nao rodou com o objecto");
+    assert_eq!(h.body, cima);
+    // ⭐ E a DISTÂNCIA prova que ele nasceu em `(0, 1)` e não em `(0, 0)`: a face de baixo da parede
+    // está em `y = 2`, logo um raio nascido na origem do objecto leria `2,0`.
+    assert!(
+        (h.distance - 1.0).abs() < 1.0e-3,
+        "distancia lida: {} — esperava 1,0 (nascido em y = 1, face em y = 2)",
+        h.distance
     );
 }
 

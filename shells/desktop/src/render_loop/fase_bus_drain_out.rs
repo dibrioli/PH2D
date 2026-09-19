@@ -441,6 +441,8 @@ pub(in crate::render_loop) struct DrainOut {
     /// ⭐ As edições do PROJÉCTIL (TOP-20 #14).
     pub(in crate::render_loop) projectile_edits:
         Vec<(u64, ph2d_editor_core::projectile_edits::ProjectileFieldEdit)>,
+    /// ⭐⭐⭐ As edições da secção RAY SENSOR (suplente #21).
+    pub(in crate::render_loop) ray_edits: Vec<(u64, ph2d_editor_core::ray_edits::RayFieldEdit)>,
     /// ⭐ As edições do CÉREBRO (TOP-20 #15).
     pub(in crate::render_loop) statemachine_edits: Vec<(
         u64,

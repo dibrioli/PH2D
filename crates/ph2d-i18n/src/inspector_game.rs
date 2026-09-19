@@ -162,6 +162,42 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.projectile.editing_the_primary_selection_only" => {
             "Editing the primary selection only."
         }
+        // ⭐⭐⭐ O RAIO (suplente #21) — o objecto que OLHA.
+        "panel.inspector.ray.ray_sensor" => "Ray Sensor",
+        "panel.inspector.ray.origin" => "Origin",
+        "panel.inspector.ray.direction" => "Direction",
+        // ⚠️ **A CHAVE mantém o sufixo `_m` e o TEXTO não** — ela é um endereço, e a unidade vive
+        // no CAMPO (`Unit::Meters`). O gate `no_row_label_carries_its_own_unit` apanhou a 1.ª
+        // redacção («Reach (m)»): *duas superfícies a dizer a mesma unidade divergem no dia em que
+        // uma delas mudar.*
+        "panel.inspector.ray.reach_m" => "Reach",
+        "panel.inspector.ray.layer" => "Layer",
+        "panel.inspector.ray.signal_when_it_starts_seeing_u" => {
+            "signal when it starts seeing\u{2026}"
+        }
+        "panel.inspector.ray.signal_when_it_stops_seeing_u" => {
+            "signal when it stops seeing\u{2026}"
+        }
+        // ⚠️ **A QUEIXA, da mais especifica para a mais geral** — a ordem vive na porta
+        // `InspectorRayInfo::queixa`, e estas quatro sao so' a lingua dela.
+        "panel.inspector.ray.the_direction_is_zero" => {
+            "The direction is zero \u{2014} that is not a ray."
+        }
+        "panel.inspector.ray.the_reach_is_zero" => {
+            "The reach is zero \u{2014} it starts and ends in the same place."
+        }
+        "panel.inspector.ray.this_ray_says_nothing" => {
+            "This ray says nothing \u{2014} give it a signal name."
+        }
+        "panel.inspector.ray.sees_nothing_right_now" => "Sees nothing right now.",
+        // ⭐ A LEITURA VIVA — o que ele ve^ AGORA, do mapa da ponte.
+        "panel.inspector.ray.sees_x_at_y_m" => "Sees {name}, at {dist} m",
+        "panel.inspector.ray.the_clock_is_stopped_u_the_reading_is_the_pose_you_see" => {
+            "The clock is stopped \u{2014} the reading is the pose you see."
+        }
+        "panel.inspector.ray.editing_the_primary_selection_only" => {
+            "Editing the primary selection only."
+        }
         "panel.inspector.script.reset" => "Reset",
         "panel.inspector.script.no_script_file_yet_u_use_browse_to_pick_a_luau_file" => {
             "No script file yet \u{2014} use Browse to pick a .luau file."

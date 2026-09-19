@@ -57,16 +57,14 @@ pub fn populate(store: &mut WidgetStore) {
     super::populate_action::populate_action(store);
     super::populate_audio::populate_audio(store);
     super::populate_camera::populate_camera(store);
-    super::populate_factory::populate_factory(store);
-    super::populate_projectile::populate_projectile(store);
-    super::populate_statemachine::populate_statemachine(store);
-    super::populate_particles::populate_particles(store);
-    super::populate_hud::populate_hud(store);
-    super::populate_sequence::populate_sequence(store);
-    super::populate_counter_watch::populate_counter_watch(store);
-    super::populate_action_trigger::populate_action_trigger(store);
-    super::populate_script::populate_script(store);
-    super::populate_topdown::populate_topdown(store);
+    // ⭐⭐⭐ **As secções que chegam por WAVE** — numa porta só, e não onze linhas aqui.
+    //
+    // ⚠️ **O corte foi imposto pelo tecto de 600 LOC do painel** (este ficheiro chegou a `601` ao
+    // ganhar o RAIO) **e é o certo por responsabilidade**: o espelho dele já existia do lado da
+    // pintura (`paint_optional_top20`), e a fila do TOP-20 acrescenta uma linha por wave.
+    //
+    // ⛔ **Curado por CORTE, nunca por uma entrada no `FILE_OVERAGE_OK`.**
+    super::populate_waves::populate_das_waves(store);
     populate_visibility_section(store);
     populate_blend(store);
     super::populate_physics::populate_physics(store);

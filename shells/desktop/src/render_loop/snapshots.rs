@@ -175,6 +175,8 @@ pub(super) fn publish(
     tags: &ph2d_tags::TagTree,
     // ⭐ Ver o parâmetro homónimo do [`inspector::publish`] (TOP-20 #14).
     projectile_over: &[u64],
+    // ⭐⭐⭐ O que cada RAIO vê (suplente #21) — ver o parâmetro homónimo do publicador.
+    ray_hits: &[(u64, u64, f32)],
 ) {
     #[cfg(feature = "panel-hierarchy")]
     publish_hierarchy(hero, hero_live, hovered, sim, bool_badges);
@@ -248,6 +250,7 @@ pub(super) fn publish(
         inspector_player,
         tags,
         projectile_over,
+        ray_hits,
     );
 }
 

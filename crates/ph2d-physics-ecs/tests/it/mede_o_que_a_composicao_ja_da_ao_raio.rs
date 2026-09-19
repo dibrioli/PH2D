@@ -199,6 +199,47 @@ fn mede_o_que_a_composicao_ja_da_ao_raio() {
         }
     }
 
+    println!("\n════════ F) O TECTO DO ALCANCE — de que RECURSO ele e'? ════════");
+    {
+        use ph2d_physics::PhysicsWorld;
+        use std::time::Instant;
+        // Uma cena com MUITOS corpos, para o raio ter BVH que atravessar.
+        let mut w = PhysicsWorld::new();
+        for i in 0..2_000 {
+            let x = (i % 50) as f32 * 2.0 - 50.0;
+            let y = (i / 50) as f32 * 2.0 - 40.0;
+            w.add_static_cuboid(x, y, 0.4, 0.4);
+        }
+        w.step();
+        // ⚠️ Duas perguntas diferentes: um raio que ACERTA perto, e um que varre o vazio.
+        for (nome, origem, dir) in [
+            ("ACERTA perto", [-50.0_f32, -40.0_f32], [1.0_f32, 0.0_f32]),
+            (
+                "ERRA (varre o vazio)",
+                [0.0_f32, 500.0_f32],
+                [1.0_f32, 0.0_f32],
+            ),
+        ] {
+            for alcance in [1.0_f32, 10.0, 100.0, 1_000.0, 10_000.0, 100_000.0] {
+                let t = Instant::now();
+                let mut acertos = 0u32;
+                for _ in 0..10_000 {
+                    if w.cast_ray(origem, dir, alcance, None, 0).is_some() {
+                        acertos += 1;
+                    }
+                }
+                println!(
+                    "  {nome:22} alcance {alcance:>9.0} m  ->  {:>8.3} us/raio  (acertou {acertos} de 10000)",
+                    t.elapsed().as_secs_f64() * 1.0e6 / 10_000.0
+                );
+            }
+        }
+        println!(
+            "  ⇒ o custo e' do que o raio ATRAVESSA, nao do numero que se lhe escreve: o\n     \
+             `max_toi` do rapier poda a descida no BVH. Um tecto aqui NAO e' de maquina."
+        );
+    }
+
     println!("\n════════ E) O CENSO — quem chega ao `cast_ray` hoje ════════");
     {
         let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -252,7 +293,8 @@ fn mede_o_que_a_composicao_ja_da_ao_raio() {
         println!(
             "  ⇒ o doc da porta diz «o `cast_ray` tem exactamente CINCO consumidores no repo\n     \
              inteiro — o sensor de chao, os dois de teto, o de headroom e o de parede», e os\n     \
-             cinco vivem DENTRO do platformer. Nenhum componente autoravel lhe chega."
+             cinco vivem DENTRO do platformer.\n  ⚠️ O SEXTO e' o `bridge/ray_sensors.rs` desta wave, e\n     \
+             ele e' o PRIMEIRO autoravel — ate' aqui nenhum componente chegava a esta porta."
         );
     }
     println!();

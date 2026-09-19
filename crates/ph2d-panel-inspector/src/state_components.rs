@@ -5,15 +5,19 @@
 //! este guarda as **fotografias que a shell publica** das secções que a fila do TOP-20 trouxe —
 //! timer, tabela de acções, áudio, câmera, fábrica, mover de vista de cima, projéctil.
 //!
-//! ⚠️ **Os `thread_local!` continuam no ficheiro-mãe**, e de propósito: eles são `pub(crate)`, logo
-//! visíveis daqui, e movê-los partiria a ordem de declaração de um bloco que já tem dez entradas.
-//! O que sai são as PORTAS, que é o que cresce uma por wave.
+//! ⚠️⚠️ **E esta linha dizia o CONTRÁRIO até 2026-09-19:** *«os `thread_local!` continuam no
+//! ficheiro-mãe, e de propósito … movê-los partiria a ordem de declaração de um bloco que já tem dez
+//! entradas»*. Aquele bloco chegou a **trinta** entradas e o ficheiro-mãe voltou a passar o tecto ao
+//! ganhar o RAIO (`607` contra `600`) ⇒ as **treze** que tinham acessor aqui vieram para cá, com as
+//! duas que já cá estavam. *Uma nota que descreve a casa de outra época lê-se exactamente como uma
+//! que descreve a de agora* — e a linha que ela defendia era a que fazia uma secção nova escrever em
+//! DOIS ficheiros, com o segundo a ser só uma célula numa lista.
 //!
 //! ⛔ **Nunca subir o número do cap: ele só desce.**
 
-use super::state::*;
 use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
+use ph2d_editor_core::ray_edits::InspectorRayInfo;
 use ph2d_editor_core::screens::hero::{
     InspectorActionInfo, InspectorAudioInfo, InspectorCameraInfo, InspectorFactoryInfo,
     InspectorTimerInfo,
@@ -67,6 +71,16 @@ pub(crate) fn current_inspector_projectile() -> Option<InspectorProjectileInfo> 
     CURRENT_INSPECTOR_PROJECTILE.with(|c| c.borrow().clone())
 }
 
+/// ⭐ O snapshot do RAIO (suplente #21) — a shell escreve-o todo o quadro, porque ele carrega a
+/// leitura VIVA e não só os campos.
+pub fn set_current_inspector_ray(info: Option<InspectorRayInfo>) {
+    CURRENT_INSPECTOR_RAY.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_ray() -> Option<InspectorRayInfo> {
+    CURRENT_INSPECTOR_RAY.with(|c| c.borrow().clone())
+}
+
 /// ⭐ O snapshot do CÉREBRO (TOP-20 #15) — a shell escreve-o todo o quadro.
 pub fn set_current_inspector_statemachine(info: Option<InspectorStateMachineInfo>) {
     CURRENT_INSPECTOR_STATEMACHINE.with(|c| *c.borrow_mut() = info);
@@ -78,23 +92,23 @@ pub(crate) fn current_inspector_statemachine() -> Option<InspectorStateMachineIn
 
 /// ⭐ O snapshot do HUD (TOP-20 #20) — a shell escreve-o todo o quadro.
 pub fn set_current_inspector_hud(info: Option<ph2d_editor_core::hud_edits::InspectorHudInfo>) {
-    crate::state::CURRENT_INSPECTOR_HUD.with(|c| *c.borrow_mut() = info);
+    CURRENT_INSPECTOR_HUD.with(|c| *c.borrow_mut() = info);
 }
 
 pub(crate) fn current_inspector_hud() -> Option<ph2d_editor_core::hud_edits::InspectorHudInfo> {
-    crate::state::CURRENT_INSPECTOR_HUD.with(|c| c.borrow().clone())
+    CURRENT_INSPECTOR_HUD.with(|c| c.borrow().clone())
 }
 
 /// ⭐ O snapshot da CUTSCENE (TOP-20 #19) — a shell escreve-o todo o quadro.
 pub fn set_current_inspector_sequence(
     info: Option<ph2d_editor_core::sequence_edits::InspectorSequenceInfo>,
 ) {
-    crate::state::CURRENT_INSPECTOR_SEQUENCE.with(|c| *c.borrow_mut() = info);
+    CURRENT_INSPECTOR_SEQUENCE.with(|c| *c.borrow_mut() = info);
 }
 
 pub(crate) fn current_inspector_sequence()
 -> Option<ph2d_editor_core::sequence_edits::InspectorSequenceInfo> {
-    crate::state::CURRENT_INSPECTOR_SEQUENCE.with(|c| c.borrow().clone())
+    CURRENT_INSPECTOR_SEQUENCE.with(|c| c.borrow().clone())
 }
 
 thread_local! {
@@ -115,6 +129,77 @@ thread_local! {
         std::cell::RefCell<
             Option<ph2d_editor_core::action_trigger_edits::InspectorActionTriggerInfo>,
         > = const { std::cell::RefCell::new(None) };
+
+    // ⭐⭐⭐ **E AS TREZE IRMÃS MAIS VELHAS, que estavam no [`crate::state`]** — o corte é o MESMO
+    // que a vigia do contador fez acima, e pela mesma razão: o `state.rs` voltou a passar o tecto
+    // de 600 LOC (chegou a `607` ao ganhar o RAIO), e a linha já estava desenhada pelo nome deste
+    // ficheiro — *o snapshot e o acessor dele moram juntos*.
+    //
+    // ⛔ **Curado por CORTE, nunca por uma entrada no `FILE_OVERAGE_OK`** — aquela lista está
+    // VAZIA, e é isso que a torna a catraca mais apertada que existe.
+    //
+    // ⚠️ Antes disto, uma secção nova escrevia em DOIS ficheiros e o segundo era só uma célula
+    // numa lista — que é exactamente como um deles envelhece sem ninguém ver.
+
+    /// TIMERS — o snapshot da entidade selecionada. `RefCell` pela mesma razão da §11.
+    static CURRENT_INSPECTOR_TIMER:
+        std::cell::RefCell<Option<InspectorTimerInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// SIGNAL ACTIONS — o snapshot da entidade selecionada.
+    static CURRENT_INSPECTOR_ACTION:
+        std::cell::RefCell<Option<InspectorActionInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// AUDIO — o snapshot da entidade selecionada (TOP-20 #4).
+    static CURRENT_INSPECTOR_AUDIO:
+        std::cell::RefCell<Option<InspectorAudioInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// CAMERA — o snapshot da entidade selecionada (TOP-20 #7).
+    static CURRENT_INSPECTOR_CAMERA:
+        std::cell::RefCell<Option<InspectorCameraInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot das secções FACTORY e LIFECYCLE** (TOP-20 #11 e #12).
+    static CURRENT_INSPECTOR_FACTORY:
+        std::cell::RefCell<Option<InspectorFactoryInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção TOP-DOWN PLAYER** (TOP-20 #13).
+    static CURRENT_INSPECTOR_TOPDOWN:
+        std::cell::RefCell<Option<InspectorTopDownInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção PROJECTILE MOTION** (TOP-20 #14).
+    static CURRENT_INSPECTOR_PROJECTILE:
+        std::cell::RefCell<Option<InspectorProjectileInfo>> =
+        const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção RAY SENSOR** (suplente #21).
+    ///
+    /// ⚠️ Ele carrega a LEITURA VIVA (o que o raio vê agora), logo a shell reescreve-o **todo o
+    /// quadro** — ao contrário dos campos, que só mudam quando alguém os edita.
+    static CURRENT_INSPECTOR_RAY:
+        std::cell::RefCell<Option<InspectorRayInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção STATE MACHINE** (TOP-20 #15).
+    static CURRENT_INSPECTOR_STATEMACHINE:
+        std::cell::RefCell<Option<InspectorStateMachineInfo>> =
+        const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção SCRIPT** (TOP-20 #16).
+    static CURRENT_INSPECTOR_SCRIPT: std::cell::RefCell<Option<InspectorScriptInfo>> =
+        const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção HUD** (TOP-20 #20).
+    static CURRENT_INSPECTOR_HUD:
+        std::cell::RefCell<Option<ph2d_editor_core::hud_edits::InspectorHudInfo>> =
+        const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção SEQUENCE** (TOP-20 #19).
+    static CURRENT_INSPECTOR_SEQUENCE:
+        std::cell::RefCell<Option<ph2d_editor_core::sequence_edits::InspectorSequenceInfo>> =
+        const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção PARTICLES** (TOP-20 #18).
+    static CURRENT_INSPECTOR_PARTICLES:
+        std::cell::RefCell<Option<InspectorParticlesInfo>> =
+        const { std::cell::RefCell::new(None) };
 }
 
 /// ⭐ O snapshot da VIGIA DO CONTADOR — a shell escreve-o todo o quadro.

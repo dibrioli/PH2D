@@ -52,6 +52,7 @@ impl crate::App {
         // metade da `App`, e ler `self.physics` lá dentro emprestaria `self` duas vezes. É o mesmo
         // molde do `audio_ready` do `components_ctx`.
         let projectile_over = self.physics.projectile_over.clone();
+        let ray_hits = self.physics.ray_hits.clone();
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
         let FrameGfx {
@@ -198,6 +199,7 @@ impl crate::App {
             // ⭐ Os projécteis cujo voo acabou (TOP-20 #14) — o readout que a fase da física
             // deixou. ⚠️ Ele vem do `PhysicsState` e não da ponte: o Inspector não a alcança.
             &projectile_over,
+            &ray_hits,
         );
         // ⭐⭐⭐ **O painel TAGS** (TOP-20 #9) — fase-filha própria; ver o `mod tags_snapshot`.
         #[cfg(feature = "panel-tags")]

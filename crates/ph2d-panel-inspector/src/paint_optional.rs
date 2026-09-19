@@ -232,32 +232,23 @@ pub(crate) fn paint_optional_sections(
     body_top_y: f32,
     mut y: f32,
     header_h: f32,
-    anim: Option<&ph2d_editor_core::screens::hero::InspectorAnimInfo>,
     anim_selected: &mut usize,
-    anchor: Option<&ph2d_editor_core::screens::hero::InspectorAnchorInfo>,
     anchor_selected: &mut usize,
-    timer: Option<&ph2d_editor_core::screens::hero::InspectorTimerInfo>,
     timer_selected: &mut usize,
-    action: Option<&ph2d_editor_core::screens::hero::InspectorActionInfo>,
     action_selected: &mut usize,
-    audio: Option<&ph2d_editor_core::screens::hero::InspectorAudioInfo>,
-    camera: Option<&ph2d_editor_core::screens::hero::InspectorCameraInfo>,
-    factory: Option<&ph2d_editor_core::screens::hero::InspectorFactoryInfo>,
-    topdown: Option<&ph2d_editor_core::topdown_edits::InspectorTopDownInfo>,
-    projectile: Option<&ph2d_editor_core::projectile_edits::InspectorProjectileInfo>,
-    statemachine: Option<&ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
-    script: Option<&ph2d_editor_core::script_edits::InspectorScriptInfo>,
-    particles: Option<&ph2d_editor_core::particles_edits::InspectorParticlesInfo>,
-    hud: Option<&ph2d_editor_core::hud_edits::InspectorHudInfo>,
-    sequence: Option<&ph2d_editor_core::sequence_edits::InspectorSequenceInfo>,
-    watch: Option<&ph2d_editor_core::counter_watch_edits::InspectorCounterWatchInfo>,
-    trigger: Option<&ph2d_editor_core::action_trigger_edits::InspectorActionTriggerInfo>,
     watch_selected: &mut usize,
     trigger_selected: &mut usize,
     // ⚠️ **Duas selecções e não uma** — as listas de estados e de setas são independentes.
     sm_state_selected: &mut usize,
     sm_trans_selected: &mut usize,
-    tags: Option<&ph2d_editor_core::screens::hero::InspectorTagsInfo>,
+    // ⭐⭐⭐ **A struct do QUADRO, inteira** — e não os dezoito instantâneos desmontados um a um.
+    //
+    // ⚠️ **Desmontá-la na chamada era uma SEGUNDA CÓPIA dela**, e ela cobrava: o `paint_inspector`
+    // chegou a `201` linhas contra o tecto de `200` ao ganhar a linha do RAIO, e cada secção nova
+    // custava uma linha aqui, uma no chamador e uma na struct. ⇒ agora custa **uma**, na struct.
+    //
+    // ⛔ Curado por CORTE, nunca por uma entrada no `FN_OVERAGE_OK` — aquela lista está VAZIA.
+    snaps: &crate::paint_frame::LiveSnapshots,
     notes: &[Vec<(usize, NoteData)>],
 ) -> f32 {
     y = paint_anim_section(
@@ -272,7 +263,7 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        anim,
+        snaps.anim_info.as_ref(),
         anim_selected,
     );
     y = paint_anchor_section(
@@ -287,7 +278,7 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        anchor,
+        snaps.anchor_info.as_ref(),
         anchor_selected,
         notes,
     );
@@ -303,7 +294,7 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        timer,
+        snaps.timer_info.as_ref(),
         timer_selected,
     );
     y = paint_action_section(
@@ -318,7 +309,7 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        action,
+        snaps.action_info.as_ref(),
         action_selected,
     );
     y = crate::paint_optional_factory::paint_audio_section(
@@ -333,7 +324,7 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        audio,
+        snaps.audio_info.as_ref(),
     );
     y = crate::paint_optional_factory::paint_camera_section(
         scene,
@@ -347,7 +338,7 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        camera,
+        snaps.camera_info.as_ref(),
     );
     // ⚠️ **`y = ` na irmã de cima, e não uma chamada solta**: a CAMERA deixou de ser a última desta
     // cadeia, e uma chamada cujo `y` se deita fora empilha a secção seguinte por cima dela — o
@@ -364,7 +355,7 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        factory,
+        snaps.factory_info.as_ref(),
     );
     y = crate::paint_optional_factory::paint_lifecycle_section(
         scene,
@@ -378,7 +369,7 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        factory,
+        snaps.factory_info.as_ref(),
     );
     // ⚠️ **`y = `, e a razão é o gate `two_sections_never_stack`**: uma chamada cujo `y` se deita
     // fora empilha a secção seguinte por cima dela.
@@ -394,7 +385,7 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        topdown,
+        snaps.topdown_info.as_ref(),
     );
     // ⚠️ **`y = ` outra vez** — ver a nota acima: uma chamada cujo `y` se deita fora empilha a
     // secção seguinte por cima dela.
@@ -410,7 +401,22 @@ pub(crate) fn paint_optional_sections(
         body_top_y,
         y,
         header_h,
-        projectile,
+        snaps.projectile_info.as_ref(),
+    );
+    // ⭐⭐⭐ E o RAIO (suplente #21) — `y = ` outra vez, pela nota acima.
+    y = crate::paint_optional_top20::paint_ray_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        snaps.ray_info.as_ref(),
     );
     // ⭐⭐ **A CAUDA da cadeia mora num irmão** — as quatro secções da fila do TOP-20 (o cérebro, o
     // script, o emissor e as tags). ⚠️ **O corte foi imposto pelo tecto de FUNÇÃO** (esta chegou a
@@ -429,16 +435,16 @@ pub(crate) fn paint_optional_sections(
         y,
         header_h,
         crate::paint_optional_top20::Top20 {
-            statemachine,
-            script,
-            particles,
-            hud,
-            sequence,
-            watch,
+            statemachine: snaps.statemachine_info.as_ref(),
+            script: snaps.script_info.as_ref(),
+            particles: snaps.particles_info.as_ref(),
+            hud: snaps.hud_info.as_ref(),
+            sequence: snaps.sequence_info.as_ref(),
+            watch: snaps.watch_info.as_ref(),
             watch_selected: *watch_selected,
-            trigger,
+            trigger: snaps.trigger_info.as_ref(),
             trigger_selected: *trigger_selected,
-            tags,
+            tags: snaps.tags_info.as_ref(),
             sm_state_selected: *sm_state_selected,
             sm_trans_selected: *sm_trans_selected,
         },

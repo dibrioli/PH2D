@@ -35,6 +35,8 @@ pub enum ComponentEdit {
     TopDown(crate::topdown_edits::TopDownFieldEdit),
     /// **PROJECTILE MOTION** (TOP-20 #14).
     Projectile(crate::projectile_edits::ProjectileFieldEdit),
+    /// **RAY SENSOR** (suplente #21) — os seis números do raio e os dois nomes que ele publica.
+    Ray(crate::ray_edits::RayFieldEdit),
     /// **STATE MACHINE** (TOP-20 #15).
     StateMachine(crate::statemachine_edits::StateMachineFieldEdit),
     /// **SCRIPT** (TOP-20 #16) — um número declarado pelo `.luau`.

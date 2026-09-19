@@ -12,20 +12,11 @@
 //! larger churn than the move warrants.
 
 use ph2d_editor_core::screens::hero::{
-    InspectorActionInfo, InspectorAnchorInfo, InspectorAnimInfo, InspectorAudioInfo,
-    InspectorBlendInfo, InspectorCameraInfo, InspectorFactoryInfo, InspectorJointInfo,
+    InspectorAnchorInfo, InspectorAnimInfo, InspectorBlendInfo, InspectorJointInfo,
     InspectorNameInfo, InspectorOrderingInfo, InspectorPhysicsInfo, InspectorPlayerInfo,
-    InspectorSamplingInfo, InspectorSliceInfo, InspectorSpriteInfo, InspectorTimerInfo,
-    InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilitySectionInfo,
-    InspectorWheelInfo,
+    InspectorSamplingInfo, InspectorSliceInfo, InspectorSpriteInfo, InspectorTransformInfo,
+    InspectorVisibilityInfo, InspectorVisibilitySectionInfo, InspectorWheelInfo,
 };
-// ⚠️ **O snapshot do mover de vista de cima vive no módulo de VOCABULÁRIO** (abaixo do
-// `action_bus`), e não no `screens::hero` — ver o cabeçalho do `topdown_edits`.
-use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
-use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
-use ph2d_editor_core::script_edits::InspectorScriptInfo;
-use ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo;
-use ph2d_editor_core::topdown_edits::InspectorTopDownInfo;
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
 /// after Phase C.1; mutated by the panel's `paint` / `apply_event` and
@@ -184,59 +175,6 @@ thread_local! {
     /// `String`s, e uma `String` não é `Copy`.
     pub(crate) static CURRENT_INSPECTOR_ANIM:
         std::cell::RefCell<Option<InspectorAnimInfo>> = const { std::cell::RefCell::new(None) };
-
-    /// TIMERS — o snapshot da entidade selecionada. `RefCell` pela mesma razão da §11.
-    pub(crate) static CURRENT_INSPECTOR_TIMER:
-        std::cell::RefCell<Option<InspectorTimerInfo>> = const { std::cell::RefCell::new(None) };
-
-    /// SIGNAL ACTIONS — o snapshot da entidade selecionada.
-    pub(crate) static CURRENT_INSPECTOR_ACTION:
-        std::cell::RefCell<Option<InspectorActionInfo>> = const { std::cell::RefCell::new(None) };
-
-    /// AUDIO — o snapshot da entidade selecionada (TOP-20 #4).
-    pub(crate) static CURRENT_INSPECTOR_AUDIO:
-        std::cell::RefCell<Option<InspectorAudioInfo>> = const { std::cell::RefCell::new(None) };
-
-    /// CAMERA — o snapshot da entidade selecionada (TOP-20 #7).
-    pub(crate) static CURRENT_INSPECTOR_CAMERA:
-        std::cell::RefCell<Option<InspectorCameraInfo>> = const { std::cell::RefCell::new(None) };
-
-    /// ⭐⭐⭐ **O snapshot das secções FACTORY e LIFECYCLE** (TOP-20 #11 e #12).
-    pub(crate) static CURRENT_INSPECTOR_FACTORY:
-        std::cell::RefCell<Option<InspectorFactoryInfo>> = const { std::cell::RefCell::new(None) };
-
-    /// ⭐⭐⭐ **O snapshot da secção TOP-DOWN PLAYER** (TOP-20 #13).
-    pub(crate) static CURRENT_INSPECTOR_TOPDOWN:
-        std::cell::RefCell<Option<InspectorTopDownInfo>> = const { std::cell::RefCell::new(None) };
-
-    /// ⭐⭐⭐ **O snapshot da secção PROJECTILE MOTION** (TOP-20 #14).
-    pub(crate) static CURRENT_INSPECTOR_PROJECTILE:
-        std::cell::RefCell<Option<InspectorProjectileInfo>> =
-        const { std::cell::RefCell::new(None) };
-
-    /// ⭐⭐⭐ **O snapshot da secção STATE MACHINE** (TOP-20 #15).
-    pub(crate) static CURRENT_INSPECTOR_STATEMACHINE:
-        std::cell::RefCell<Option<InspectorStateMachineInfo>> =
-        const { std::cell::RefCell::new(None) };
-
-    /// ⭐⭐⭐ **O snapshot da secção SCRIPT** (TOP-20 #16).
-    pub(crate) static CURRENT_INSPECTOR_SCRIPT: std::cell::RefCell<Option<InspectorScriptInfo>> =
-        const { std::cell::RefCell::new(None) };
-
-    /// ⭐⭐⭐ **O snapshot da secção HUD** (TOP-20 #20).
-    pub(crate) static CURRENT_INSPECTOR_HUD:
-        std::cell::RefCell<Option<ph2d_editor_core::hud_edits::InspectorHudInfo>> =
-        const { std::cell::RefCell::new(None) };
-
-    /// ⭐⭐⭐ **O snapshot da secção SEQUENCE** (TOP-20 #19).
-    pub(crate) static CURRENT_INSPECTOR_SEQUENCE:
-        std::cell::RefCell<Option<ph2d_editor_core::sequence_edits::InspectorSequenceInfo>> =
-        const { std::cell::RefCell::new(None) };
-
-    /// ⭐⭐⭐ **O snapshot da secção PARTICLES** (TOP-20 #18).
-    pub(crate) static CURRENT_INSPECTOR_PARTICLES:
-        std::cell::RefCell<Option<InspectorParticlesInfo>> =
-        const { std::cell::RefCell::new(None) };
 
     /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**
     ///

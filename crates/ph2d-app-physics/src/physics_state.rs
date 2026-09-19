@@ -86,6 +86,17 @@ pub struct PhysicsState {
     /// anunciada para sempre.
     pub projectile_over: Vec<u64>,
 
+    /// ⭐⭐⭐ **O que cada RAIO vê neste quadro** (suplente #21) — `(quem olha, quem foi visto, a
+    /// que distância)`, em bits de entidade.
+    ///
+    /// ⚠️ **Ele existe pela MESMA razão do vizinho acima, e a razão é mais forte aqui:** a leitura
+    /// viva é o que faz a secção do raio valer a pena — quatro números cabiam numa tabela genérica,
+    /// *«vê a Parede, a 1,75 m»* não cabe. O facto vive na PONTE (`ray_sensor_hits`, que é onde a
+    /// corrida vive), e o Inspector não a alcança.
+    ///
+    /// ⚠️ **Reescrito por quadro**, nunca acumulado — a mesma lei do vizinho.
+    pub ray_hits: Vec<(u64, u64, f32)>,
+
     /// O prólogo da cena de smoke já correu neste processo.
     ///
     /// ⚠️ **Uma vez por processo, não por quadro:** o prólogo só pode montar a

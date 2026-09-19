@@ -1,5 +1,12 @@
 //! **A secção PROJECTILE MOTION: o instantâneo e o dreno** (TOP-20 #14, W3).
 //!
+//! ⛔⛔ **Ele MUDOU-SE da shell para cá em 2026-09-19**, na wave do RAIO (suplente #21), e não foi
+//! arrumação: a catraca `the_shell_only_shrinks` reprovou (`197 070` contra o tecto de `196 990`), e
+//! a cura que ela prescreve por escrito é **MOVER para `crates/ph2d-app-<família>`, nunca subir o
+//! número**. ⭐ O irmão novo nasceu já aqui, e ao escrever no cabeçalho dele *«ao contrário dos
+//! irmãos mais velhos»* ficou claro que a frase certa era mover o velho — *uma nota que explica uma
+//! inconsistência é mais barata de apagar do que de manter*.
+//!
 //! ⚠️ **As duas metades vivem juntas de propósito** — o mesmo molde do
 //! [`super::inspector_topdown`]: quem lê o mundo para o painel e quem escreve a edição de volta
 //! fazem a MESMA tradução, e separá-los seria a porta pela qual as duas divergem.
@@ -41,7 +48,7 @@ fn nome_do_alvo(world: &World, id: u64) -> (String, bool) {
 }
 
 /// **O instantâneo.** `None` para quem não tem o componente (ADR-0166).
-pub(crate) fn build_projectile_info(
+pub fn build_projectile_info(
     world: &World,
     bits: u64,
     selected_count: usize,
@@ -77,11 +84,7 @@ pub(crate) fn build_projectile_info(
 }
 
 /// **O dreno.** `true` = tocou no mundo.
-pub(crate) fn apply_projectile_edit(
-    world: &mut World,
-    bits: u64,
-    edit: &ProjectileFieldEdit,
-) -> bool {
+pub fn apply_projectile_edit(world: &mut World, bits: u64, edit: &ProjectileFieldEdit) -> bool {
     let e = Entity::from_bits(bits);
     if world.get_entity(e).is_err() {
         return false;
@@ -126,5 +129,5 @@ pub(crate) fn apply_projectile_edit(
 }
 
 #[cfg(test)]
-#[path = "inspector_projectile_tests.rs"]
+#[path = "projectile_inspector_tests.rs"]
 mod tests;

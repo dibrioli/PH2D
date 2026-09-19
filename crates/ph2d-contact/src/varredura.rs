@@ -7,7 +7,8 @@
 //! ⚠️ O par é sempre lido na ordem do PAR (menor → maior) e os parceiros chegam em ordem CRESCENTE:
 //! é isso que faz a grelha dar os MESMOS BITS que todos-os-pares. Ver o cabeçalho do `lib.rs`.
 
-use super::{Colisor, GRAUS, Nova, Pecas, manifesto};
+use super::laco::Nova;
+use super::{Colisor, GRAUS, Pecas, manifesto};
 
 /// A posição e o giro de `k` depois desta varredura, ou `None` se nada lhe tocou. Os `parceiros` têm
 /// de vir em ordem CRESCENTE — ver o cabeçalho.

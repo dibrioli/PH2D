@@ -6,7 +6,8 @@
 //! é isso que a torna capaz de julgar os atalhos: um atalho que também vivesse aqui não poderia ser
 //! medido.
 
-use super::{Colisor, Nova, Pecas, Saida, aplica, ativo, confere, varredura};
+use super::laco::{Nova, aplica, confere};
+use super::{Colisor, Pecas, Saida, ativo, varredura};
 
 /// **A referência**: a mesma lei por todos-os-pares, na ordem do laço `i < j`. `O(n²)`.
 ///

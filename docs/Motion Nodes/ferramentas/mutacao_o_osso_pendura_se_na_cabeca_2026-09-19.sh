@@ -23,6 +23,8 @@ cd "$(dirname "$0")/../../.." || exit 1
 
 SIM="crates/ph2d-vec-scene/src/symbols_rig.rs"
 GEN="crates/ph2d-app-motion/src/motion_shape_gen.rs"
+PAR="crates/ph2d-node-motion-shape/src/param.rs"
+HIN="crates/ph2d-node-motion-shape/src/hints.rs"
 
 TMP="$(mktemp -d)"
 FALHAS=0
@@ -117,6 +119,43 @@ bloco "o seno do basis inverte" ph2d-app-motion com_rot_de_90 \
   "                f64::from(-b1 * sx),"
 
 echo
+echo "== O PIVOT: o controlo que o dono pediu =="
+
+# 7. O sinal do deslocamento — a metade que prova que o gate ve' PARA QUE LADO a forma anda.
+bloco "o pivot desloca para o lado errado" ph2d-app-motion o_pivot_desloca \
+  "$GEN" 1 \
+  "    (k, [a[0] + dx, a[1] + dy], [b[0] + dx, b[1] + dy], v)" \
+  "    (k, [a[0] - dx, a[1] + dy], [b[0] - dx, b[1] + dy], v)"
+
+# 8. O eixo `y` — sem esta, um pivot ligado so' em `x` passava metade do gate.
+bloco "o pivot esquece o eixo y" ph2d-app-motion o_pivot_desloca \
+  "$GEN" 1 \
+  "        desloca(p.pivot[1], a[1], b[1])," \
+  "        0.0,"
+
+# 9. O pivot NATURAL do osso — `0` tem de continuar a pendurar, e `-0,5` a centrar.
+#    ⚠️ Ela e' a irmã do bloco 3: la' mede-se a caixa, aqui mede-se que o OFFSET parte dela.
+bloco "o osso perde o pivot natural" ph2d-app-motion o_zero_do_pivot \
+  "$GEN" 1 \
+  "VecKind::Bone | VecKind::RopeSegment => rig_box," \
+  "VecKind::Bone | VecKind::RopeSegment => box_,"
+
+# 10. A CHAVE da geometria: sem o pivot no `ALL`, a 1.ª forma cozida volta do cache para todos
+#     os valores e o controlo fica inerte DEPOIS DA PRIMEIRA VEZ — o defeito do `Pattern Offset`.
+bloco "o pivot sai da chave da geometria" ph2d-app-motion o_pivot_entra_na_chave \
+  "$PAR" 1 \
+  "    PIVOT_X,
+    PIVOT_Y,
+];" \
+  "];"
+
+# 11. O ROTULO do cartao: o roteiro tem de o citar pelo nome que esta' na tela.
+bloco "o rotulo do cartao muda e o roteiro fica a mentir" ph2d-app-motion o_roteiro_nomeia \
+  "$HIN" 1 \
+  '        label: "Pivot X",' \
+  '        label: "Anchor X",'
+
+echo
 if [ "$FALHAS" = 0 ]; then
   echo "✅ $TOTAL de $TOTAL mutacoes sangraram."
 else
@@ -126,7 +165,7 @@ fi
 # `git diff --quiet` e acusou «a arvore ficou suja» sobre um restauro perfeito: a linha estava por
 # commitar, logo o `HEAD` difere por construção. *Um arnês que verifica o próprio restauro contra o
 # `HEAD` mede se a LINHA está commitada, não se ele repôs o que mutou.*
-for f in "$SIM" "$GEN"; do
+for f in "$SIM" "$GEN" "$PAR" "$HIN"; do
   cmp -s "$f" "$TMP/$(basename "$f").orig" || {
     echo "⛔⛔ $f NAO foi restaurado — reponha de $TMP a mao."; exit 1; }
 done

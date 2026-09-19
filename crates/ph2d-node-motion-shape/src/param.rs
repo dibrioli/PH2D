@@ -86,6 +86,28 @@ pub const DASH: &str = "dash";
 /// **O VÃO** entre dois traços, também em múltiplos da largura. Inerte enquanto [`DASH`] for `0`.
 pub const DASH_GAP: &str = "dash_gap";
 
+/// ⭐⭐⭐ **O DESLOCAMENTO DO PIVÔ** — ordem do dono (2026-09-19): *«crie no nó Shape o offset do
+/// Pivot»*, dita depois de duas rondas em que a lei do osso vivia escondida dentro da receita.
+///
+/// **É o ponto da forma que aterra na POSIÇÃO, e portanto aquele em torno do qual ela GIRA.** A
+/// unidade é a FRACÇÃO da extensão da própria forma, e o sinal é o do resto da casa
+/// (`ph2d_render::SinkStyle::pivot`): **`+0,5` empurra a forma toda para a direita, ou seja põe o
+/// pivô na aresta ESQUERDA dela**. `0` é o pivô natural da espécie, e é no-op byte-idêntico.
+///
+/// ⚠️⚠️ **`0` NÃO quer dizer «o centro» — quer dizer «onde esta forma se pendura por natureza»**,
+/// que para quase todo o catálogo é o centro e para os símbolos de RIG é a cabeça (o osso e o
+/// segmento de corda são cortados de `[0, 2s]`, não de `[−s, s]`). *É por isso que o nome é
+/// **offset** e não «pivot»: ele é um desvio, e o que ele desvia é declarado pela forma.*
+///
+/// ⚠️ **Ele entra na CHAVE da geometria** (está no [`ALL`]), logo animá-lo interna um `VecPath`
+/// por valor visitado. ⛔ A alternativa — um `anchor` por LINHA, que a pose da instância já sabe
+/// aplicar — **não existe**: o `RenderInstance::anchor` é servido por um pivô de SINK
+/// (`SinkStyle::anchor_for`), e abrir um canal por-linha obriga o WGSL do device. *Dívida
+/// NOMEADA, com o endereço.*
+pub const PIVOT_X: &str = "pivot_x";
+/// O mesmo no eixo `y`, com o mundo a apontar para CIMA: `+0,5` põe o pivô na aresta de BAIXO.
+pub const PIVOT_Y: &str = "pivot_y";
+
 /// **TODOS eles, na ordem do manifesto.**
 ///
 /// ⚠️ Ela existe para a CHAVE do cache ser derivada em vez de enumerada. A
@@ -122,6 +144,12 @@ pub const ALL: &[&str] = &[
     TRIM_OFFSET,
     DASH,
     DASH_GAP,
+    // ⚠️ **O pivô muda a GEOMETRIA cozida** (ele translada a caixa de que a forma é cortada),
+    // logo tem de estar aqui: sem isto a 1.ª forma cozida com um pivô voltaria do cache para
+    // todos os outros valores, e o controlo ficaria **inerte depois da primeira vez** — que é
+    // à letra o defeito que o cabeçalho desta lista narra.
+    PIVOT_X,
+    PIVOT_Y,
 ];
 
 /// **A COR PRÓPRIA da forma** (doc 89 folha 14 — idem Cavalry / AE / Illustrator: um
@@ -414,6 +442,16 @@ pub const SPECS: &[ParamSpec] = &[
     },
     ParamSpec {
         name: ROLLING,
+        default: 0.0,
+    },
+    // ── O PIVÔ (ordem do dono, 2026-09-19) ──────────────────────────────────
+    // APENDADOS, nunca inseridos. `0` é o pivô natural da espécie ⇒ no-op byte-idêntico.
+    ParamSpec {
+        name: PIVOT_X,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: PIVOT_Y,
         default: 0.0,
     },
 ];

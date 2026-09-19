@@ -236,16 +236,22 @@ pub(super) fn announce() {
          MEIO     = uma cadeia recta a ONDULAR, vestida de ossos.\n\
          DIREITA  = a mesma curva, SEM forma: so' as posicoes (cruzinhas).\n\
          \n\
-         (1) Olhe a do MEIO, que fica no centro do ecra: cada osso e' LARGO do lado para\n    \
-         onde a cadeia CRESCE e AFIA para o lado de onde ela veio. E' a correccao dos\n    \
-         180 graus, e e' a mesma em todas as colunas.\n\
+         (1) Olhe a do MEIO, que fica no centro do ecra: cada osso e' GROSSO na junta em que\n    \
+         esta' pendurado e AFIA para a junta seguinte — como um osso de esqueleto, grosso no\n    \
+         ombro e fino no cotovelo. A ponta grossa marca o ponto em que ele GIRA.\n\
          (2) Carregue em PLAY: a onda PERCORRE essa cadeia, da raiz para a ponta, e cada\n    \
          osso vira com ela. As POSICOES mexem-se, nao so' as pecas.\n\
-         (3) Afaste a vista e olhe a da ESQUERDA (a cadeia enrolada) e a da DIREITA (as\n    \
+         (3) Pause. Clique no cartao `Shape` dessa coluna e arraste `Pivot X`:\n    \
+         em `0` o osso gira pela CABECA (o valor de fabrica desta forma);\n    \
+         em `-0,5` ele passa a girar pelo MEIO, como qualquer carimbo;\n    \
+         em `+0,5` o ponto de giro sai pela PONTA fina.\n    \
+         Com o PLAY ligado a diferenca ve-se de uma vez. Ha' tambem `Pivot Y`.\n\
+         (4) Afaste a vista e olhe a da ESQUERDA (a cadeia enrolada) e a da DIREITA (as\n    \
          cruzinhas, que sao as mesmas posicoes sem forma nenhuma).\n\
          \n\
-         DEU ERRADO se: a parte larga de um osso ficar do lado de ONDE A CADEIA VEIO; se\n    \
-         com o PLAY a do meio ficar PARADA; ou se ela rodar as pecas sem mexer as posicoes.\n"
+         DEU ERRADO se: a parte GROSSA de um osso ficar do lado para onde a cadeia VAI; se\n    \
+         com o PLAY a do meio ficar PARADA; se ela rodar as pecas sem mexer as posicoes; ou\n    \
+         se arrastar o `Pivot X` nao mudar o ponto em torno do qual cada osso roda.\n"
     );
 }
 

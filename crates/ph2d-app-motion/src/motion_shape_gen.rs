@@ -109,6 +109,11 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
     //
     // ⚠️ E ela é lida pelo `fit` do catálogo, que força a bbox da forma a preencher exactamente
     // esta caixa — logo não há como uma silhueta «esquecer» de a honrar.
+    //
+    // ⭐⭐ **E desde 19/09 ela é o PIVÔ NATURAL destas duas espécies, não a lei inteira:** o
+    // `param::PIVOT_X` do cartão desloca-se a partir daqui. *É por isso que o controlo se chama
+    // **offset** — o `0` dele não quer dizer «no centro», quer dizer «onde esta forma se pendura
+    // por natureza», e quem declara isso é esta caixa.*
     let rig_box = ([0.0, -ry], [2.0 * s, ry]);
     // ⚠️ **A SENTINELA do `sweep`** (doc 89 folha 14): `0` quer dizer *"como a forma nasce"*,
     // e não *"uma fatia de zero graus"*. Sem ela o default não reduz — o círculo passa `0`
@@ -123,7 +128,7 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
     // mesma escada, então mexer no `size` leva os quatro juntos.
     let off = |k: usize| f64::from(p.corner_offsets[k].clamp(-1.0, 1.0)) * s;
     let smoothing = f64::from(p.smoothing.clamp(0.0, 1.0));
-    match p.kind {
+    let (k, a, b, v) = match p.kind {
         // ——— the eight that shipped, reproduced exactly ———
         // `ellipse_sweep` with sweep/start/inner all zero is the plain ellipse: the
         // sweep field reads "unset" as a full turn, which is what makes the legacy
@@ -301,7 +306,28 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
             };
             (k, caixa.0, caixa.1, v)
         }
-    }
+    };
+    // ⭐⭐⭐ **O DESLOCAMENTO DO PIVÔ, e ele é a ÚLTIMA coisa que acontece à caixa** — ordem do
+    // dono (2026-09-19): *«crie no nó Shape o offset do Pivot»*.
+    //
+    // ⚠️⚠️ **Ele mora aqui, depois do `match`, de propósito:** a receita escolhe a caixa em
+    // TRINTA E CINCO sítios (as oito por nome mais a rota genérica), e um offset aplicado lá
+    // dentro seria trinta e cinco oportunidades de esquecer um. *Uma lei escrita em N sítios
+    // ainda não é uma lei.*
+    //
+    // ⚠️ **A fracção é da EXTENSÃO REAL da caixa escolhida**, nunca do `s`: as espécies quadradas
+    // são cortadas de `[−s, s]` nos dois eixos e as outras de `[−s, −ry]..[s, ry]` — usar o `s`
+    // daria um pivô que desliza de forma diferente conforme o `aspect`, no mesmo número.
+    //
+    // ⚠️ **E deslocar a CAIXA desloca a forma, não a deforma:** o `fit` do catálogo reescala toda
+    // silhueta para a caixa que recebe, e uma translação preserva a extensão ⇒ os mesmos bits,
+    // noutro sítio. É isso que faz `0` ser no-op BYTE-IDÊNTICO.
+    let desloca = |f: f32, lo: f64, hi: f64| f64::from(f) * (hi - lo);
+    let (dx, dy) = (
+        desloca(p.pivot[0], a[0], b[0]),
+        desloca(p.pivot[1], a[1], b[1]),
+    );
+    (k, [a[0] + dx, a[1] + dy], [b[0] + dx, b[1] + dy], v)
 }
 
 /// Build the `VecPath` for a shape descriptor (ADR-0154). World-unit geometry; the
@@ -630,6 +656,11 @@ fn instance_pose(inst: &VectorInstance, cam: Affine) -> Affine {
 #[cfg(test)]
 #[path = "motion_shape_gen_tests.rs"]
 mod tests;
+
+// ⚠️ Irmão do `tests` pelo tecto de LOC e por PERGUNTA — ver o cabeçalho dele.
+#[cfg(test)]
+#[path = "motion_shape_gen_pivot_tests.rs"]
+mod pivot_tests;
 
 #[cfg(test)]
 #[path = "motion_shape_catalogue_tests.rs"]

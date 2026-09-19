@@ -290,6 +290,9 @@ pub struct ShapeParams {
     /// **O TRACEJADO** — `Some((dash, gap))` em múltiplos da largura do traço;
     /// `None` (ou `dash <= 0`) = contínuo, que é o traço de sempre.
     pub dash: Option<(f32, f32)>,
+    /// **O DESLOCAMENTO DO PIVÔ**, em fracção da extensão da forma (ver [`param::PIVOT_X`]).
+    /// `[0, 0]` = o pivô natural da espécie, e é no-op byte-idêntico.
+    pub pivot: [f32; 2],
 }
 
 /// A largura e a cor do traço de uma forma.
@@ -353,6 +356,10 @@ impl ShapeParams {
             // tracejado é o traço contínuo de sempre, não um tracejado de período
             // zero (que o plano de traço ainda percorreria).
             dash: (get(param::DASH) > 0.0).then(|| (get(param::DASH), get(param::DASH_GAP))),
+            // ⚠️ O `NaN` entra pela porta: um param conduzido por fio pode chegar sujo, e um
+            // `NaN` aqui move a caixa de corte para lugar nenhum — a forma desaparece sem erro.
+            pivot: [get(param::PIVOT_X), get(param::PIVOT_Y)]
+                .map(|v| if v.is_finite() { v } else { 0.0 }),
         }
     }
 

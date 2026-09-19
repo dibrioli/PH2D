@@ -266,6 +266,27 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.1,
         widget: ParamWidget::Slider,
     },
+    // ⭐⭐ **O PIVÔ** (ordem do dono, 2026-09-19). A faixa é `±1` porque **`±0,5` já é a aresta**:
+    // uma volta inteira de folga para cada lado deixa o artista pôr o pivô FORA da forma, que é o
+    // que o *Anchor Point* do AE permite e o que um braço a girar em torno de um ombro distante
+    // pede. ⛔ E não há tecto de recurso nenhum: o pivô TRANSLADA a caixa de corte, o `fit` do
+    // catálogo reescala a forma para ela na mesma, e o teclado aceita o que o artista escrever.
+    ParamUiHint {
+        param: param::PIVOT_X,
+        label: "Pivot X",
+        min: -1.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::PIVOT_Y,
+        label: "Pivot Y",
+        min: -1.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
     // ⭐⭐ **O COLISOR** (doc 109 — ordem do dono: *«colidem sozinhas»*). Um toggle, e não uma
     // sentinela no tamanho: um `Collider Width` de zero é uma caixa sem largura, não a ausência dela.
     ParamUiHint {

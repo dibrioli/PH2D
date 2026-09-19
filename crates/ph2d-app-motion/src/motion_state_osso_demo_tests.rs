@@ -177,11 +177,46 @@ fn a_do_meio_e_uma_simulacao_que_move_as_posicoes() {
 }
 
 /// O roteiro nomeia o que aparece na tela, e nada que não apareça.
+///
+/// ⛔⛔ **E o passo do PIVÔ é DERIVADO do rótulo registado, não escrito à mão:** um passo que manda
+/// arrastar um controlo AFIRMA que ele está na tela com aquele nome, e o dia em que alguém
+/// renomear o `Pivot X` no cartão o roteiro passa a mandar o dono procurar uma coisa que não
+/// existe. *É a mesma lei que o §5.0 cobra de um passo que nomeia uma LINHA de painel.*
+///
+/// ⚠️ **O que este gate NÃO alcança** é a PROSA sobre a geometria — e ela já mordeu: até 19/09 o
+/// passo (1) dizia que o osso é *«largo do lado para onde a cadeia CRESCE»*, que é o inverso do
+/// que ele desenha, e a cláusula do *«deu errado»* descrevia o estado CERTO. O gate ficou verde
+/// porque as palavras estavam todas lá. *O facto vive em `o_osso_e_afilado_e_nao_um_losango` e em
+/// `a_cabeca_do_osso_cai_sobre_a_posicao`; o que está aqui é só a existência dos nomes.*
 #[test]
 fn o_roteiro_nomeia_o_que_a_cena_tem() {
     let texto = include_str!("motion_state_osso_demo.rs");
     for nome in ["ESQUERDA", "MEIO", "DIREITA", "Skeleton", "Duplicator"] {
         let achou = texto.contains(nome) || texto.to_lowercase().contains(&nome.to_lowercase());
         assert!(achou, "o roteiro tem de nomear {nome:?}");
+    }
+
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registram");
+    let hints = reg
+        .param_ui(ph2d_node_motion_shape::MANIFEST.id)
+        .expect("o cartao do `source.shape` tem hints");
+    let rotulo = |nome: &str| {
+        hints
+            .iter()
+            .find(|h| h.param == nome)
+            .unwrap_or_else(|| panic!("o param {nome} tem de ter linha no cartao"))
+            .label
+    };
+    for nome in [
+        ph2d_node_motion_shape::param::PIVOT_X,
+        ph2d_node_motion_shape::param::PIVOT_Y,
+    ] {
+        let l = rotulo(nome);
+        assert!(
+            texto.contains(l),
+            "o roteiro manda arrastar o {nome:?}, entao tem de o chamar pelo nome que esta' na \
+             tela ({l:?})"
+        );
     }
 }

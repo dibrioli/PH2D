@@ -55,3 +55,40 @@ as últimas linhas desapareciam em silêncio. Cada entrada continua a ser um fic
   catorze verbos declaram **dois** rastos (a porta partilhada mais o discriminador), logo esvaziar um
   verbo inteiro ainda deixava `16 >= 14` e o censo verde. *Uma lista vazia lê-se exactamente como
   aprovada* — é a catraca sem censo de obsolescência, um nível abaixo, e só uma mutação a apanhou.
+
+## ⛔⛔⛔ Uma lei escondida na RECEITA não é um controlo — e o dono nota (2026-09-19)
+
+Ele pediu *«um offset do centro para os bones»*. Eu implementei-o **movendo a caixa de que a forma
+é cortada** — correcto, gateado, com prova de mutação, e byte-idêntico para todas as outras formas.
+O report seguinte foi: *«o osso não gira pela cabeça. vc não criou o offset o pivot. Crie no nó
+Shape o offset do Pivot»*.
+
+⚠️ **As duas frases dele não se contradizem: a segunda explica a primeira.** Uma lei que vive dentro
+da receita de uma espécie é **inverificável pelo artista** — ele não tem como a ver, medir, mexer ou
+desligar, logo a única evidência que lhe resta é o desenho, e um desenho sem referência não distingue
+«pendurado na cabeça» de «centrado com o tamanho errado». *O que ele pediu não era o comportamento:
+era a SUPERFÍCIE que torna o comportamento observável.*
+
+**Why:** eu li «offset» como um deslocamento a implementar e ele quis dizer um **controlo**. Um
+param no cartão é, ao mesmo tempo, a feature, a prova e o diagnóstico — e nenhuma das três existia.
+
+**How to apply:** quando o dono pede um *offset*, um *pivot*, uma *escala* ou um *ângulo*, a entrega
+por omissão é um **PARÂMETRO**, não uma constante interna — mesmo que a constante seja suficiente
+para o caso dele. ⭐ E o valor por omissão do param pode continuar a carregar a lei que já estava
+certa: aqui `0` quer dizer *«o pivô natural desta espécie»* (a cabeça, para o osso; o centro, para
+todo o resto), e é por isso que o nome é **offset** — ele é um desvio, e quem declara o ponto de
+partida é a forma. Irmão de [[feedback_a_refusal_only_the_terminal_sees]] (a recusa que só o
+terminal vê é um botão mudo) e de [[feature_worse_than_not_existing]].
+
+## ⛔⛔ Um ROTEIRO de smoke pode descrever a geometria ao contrário e o gate fica verde (2026-09-19)
+
+O passo (1) da cena do osso dizia *«cada osso é LARGO do lado para onde a cadeia CRESCE»* e a
+cláusula do *«deu errado»* descrevia o estado **correcto** — as duas escritas antes da volta de 180°
+e não revistas com ela. O gate `o_roteiro_nomeia_o_que_a_cena_tem` ficou **verde**, porque ele conta
+PALAVRAS e a prosa tinha todas.
+
+⇒ *um roteiro é a única parte de uma cena que nenhum gate lê como afirmação*, e é a primeira que o
+dono lê. **How to apply:** quando uma wave inverte, espelha ou desloca alguma coisa, o roteiro entra
+na lista de sítios a corrigir **ao lado do código** — e o que É gateável ali é o NOME dos controlos:
+derive-o do rótulo REGISTADO (`reg.param_ui(MANIFEST.id)`), para que renomear a linha do cartão parta
+o teste em vez de deixar o roteiro a mandar procurar uma coisa que já não existe.

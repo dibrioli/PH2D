@@ -1,7 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — `line/motion-value`, 2026-09-18
 
-**Para o INTEGRADOR.** Esta linha fecha com **37 commits** sobre o `main` (merge-base `3090cac3f`),
-**171 ficheiros**, `+10 939 / −8 652`. ⛔ Ela **não** integra e **não** faz ship (§0.7) — entrega
+**Para o INTEGRADOR.** Esta linha fecha com **62 commits** sobre o `main` (merge-base `3a423be18`,
+pós-rebase), **190 ficheiros**, `+16 672 / −8 708`. ⛔ Ela **não** integra e **não** faz ship (§0.7) — entrega
 isto e para.
 
 > **Leia primeiro a §2.** Ela é a resposta medida à pergunta que a integração redescobre mil vezes:
@@ -45,6 +45,7 @@ W0..W6 + os abertos + **dois reports do dono já fechados e com smoke APROVADO**
 | §23-25 | **o desenho fica ILIBADO por medição** (`0,85 ms` de GPU, `0,04` de encode a mil formas), o perfilador ganha a partição `MOTION`/`SIMULAÇÃO` e o passe publica o **readout do preço** (`peças × varreduras × vizinhos, separações/quadro`) |
 | §27 | ⛔⛔ **a §26 PIOROU o app do dono e foi corrigida** — fixar o número de pedaços mata uma máquina PARADA (as tabelas da §26 saíram a `load 22`–`32` e não transferiam). O rayon volta a decidir, o número vira **PISO**: `78,5 → 10,7 ms` na densidade dele (**`7,3×`**, medido a `load 3,4`). ✅ **Smoke do dono: `40`–`50` FPS** |
 | §26 | ⭐⭐⭐ **a REGIÃO PARALELA** (ordem do dono) — o `collect` por varredura sai, o grão passa a ser DERIVADO dos núcleos, e a densidade do dono vai de `82,6` para `16,4 ms` (**`5×`**, de `4,4` para `7,9` núcleos). Toca no seam auditado do `ph2d-nodegraph` (`par_preenche_em_blocos`, append-only) |
+| §28 | ⭐⭐⭐ **uma PEÇA GRANDE inflava a grelha de TODAS** (*«siga implementando»*) — o lado da célula saía do **máximo global**, logo uma peça `4 ×` maior levava os candidatos de `12` para **`159` por peça** com os TOQUES parados em `5,7`; e `159` é o número que o perfilador DELE imprimiu. A grelha passa a ter **duas camadas** (bit-idêntica, com o superconjunto provado caso a caso): `separate` de ponta a ponta `15,99 → 4,50 ms` (**`3,55×`**). ⛔ E o corte **não é um número**: é uma minimização, com a margem a cobrir um erro MEDIDO do modelo |
 | §22 | **os MIL já estão no lado do Motion** (4.º report) — `1000` objectos a `64` varreduras custam `6,8 ms` e `2000` custam `12,2`. ⛔ Uma hipótese minha CAIU: o paralelo não é o alocador, é o `fork/join` por varredura (`5×` o CPU da série para o mesmo trabalho). Porta nova no seam auditado (`par_build_com_bloco`) |
 
 ---
@@ -180,6 +181,8 @@ formatador que parte a linha faz o padrão casar zero, e um `grep` largo casa **
 | item | de quem |
 |---|---|
 | ⛔ ~~A realimentação no solver~~ — **FECHADO em 18/09 por ordem do dono** (*«quero todas as possibilidades possíveis, não quero limitações no sistema»*) e o resultado inverteu a pergunta: a recusa era sobre um **número HERDADO** (`64`, o clamp de outro nó), a cadeia **converge sempre**, e as TRÊS acelerações candidatas foram construídas e **medidas e refutadas** — sobre-relaxação `~1,95×`, vermelho-preto `~3,3×`, realimentação **ZERO**. Doc 115 §18 | ✅ fechado |
+| ⛔ ~~A geometria do par calculada duas vezes (`~21 %`)~~ — **a nota está MEDIDA NOUTRO REGIME e não se reconstrói sem re-medir** (§28.9): na cena do dono **`96,4 %` dos candidatos são REJEITADOS**, logo o que se repete é sobretudo a rejeição e não a lei; e um cache por par obriga a segunda leitura a uma **busca binária** na lista do vizinho, que num par disco-disco custa **mais** que a própria rejeição. *Quem lhe pegar mede primeiro a partição rejeição/lei na cena que quer curar.* | re-medir antes |
+| ⏳ **Uma escada CONTÍNUA de tamanhos** só parte em DUAS camadas — a generalização é uma hierarquia de níveis por potência de dois, e o modelo do plano já está escrito de forma a aceitá-la | próxima wave |
 | ⏳ **Acima de `n ≈ 32` a conta é do artista** (`4096` varreduras = `1,6` quadros) — removê-la por inteiro exige método **NÃO-local** (multigrid · resolução directa do grafo de contacto · propagação de choque), que é espec própria. E **o custo não é VISÍVEL** no cartão | próxima wave |
 | Os tectos de `motion.boids` e `motion.wave` seguem por medir (herdado, não desta linha) | próxima wave |
 | ⭐ **Pedido de promoção à lista de flakes do §5.0, agora COM a assinatura completa:** `the_pen_down_is_still_a_canvas_copy_and_this_is_its_number` (`ph2d-tool-painter`) — único ✗ de `17 086` a `load 18,86`, **zero linhas** do diff desta linha naquela crate, e **3 de 3 verde sozinho a `load 21,8`–`25,9`**, que é carga MAIS ALTA do que aquela em que reprovou ⇒ *o discriminador é o FAN-OUT, não o relógio* | integrador escreve |
@@ -194,12 +197,13 @@ Sobre a árvore **já rebasada** no `main` de hoje:
 |---|---|
 | formatação | limpa |
 | lint com `-D warnings` (crates tocadas + shell) | **zero** |
-| varredura impactada | **17 090** testes, **17 090 passaram**, 0 falharam |
+| varredura impactada | **17 334** testes, **17 334 passaram**, 0 falharam |
 | censos da árvore combinada (HR-15 + tecto de LOC) | **87 de 87**, com controlo do filtro |
 | placar da conferência (DERIVADO) | `exit 0` · **P0 = P1 = P2 = 0** |
 | rebase sobre o `main` | **sem um conflito** |
 
 **Provas de mutação da jornada:** W6 `4 de 4` · §15 `5 de 5` · §16 `2 de 2` · §17 `3 de 3` · §18 `4 de 4` ·
+§21 `4 de 4` · §26-27 `4 de 4` · **§28 `6 de 6`** ·
 **§19 `7 de 8`** — todas com **controlo negativo** (a árvore intacta sobrevive) e **controlo sobre o próprio
 filtro**. ⚠️ A 8.ª está documentada **no código** como não-sangrante de propósito: ela corrigiu um comentário meu
 (a ordem crescente dentro de uma célula da grelha **não** é load-bearing — quem cumpre a promessa é o `sort`).

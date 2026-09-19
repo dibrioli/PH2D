@@ -49,7 +49,7 @@ fecharam no mesmo dia e a linha de fecho desta secção ainda dizia que o `2` n�
 | 4 | Céu como FONTE | ✅ | `W3` — o estúdio analítico; ⛔ sem HDRI de ficheiro, **por desenho** |
 | 5 | Sombras que POUSAM | ✅ | `W4` — o chão invisível ([`07`](07_o_chao_que_so_recebe.md)) |
 | 6 | Sub-superfície | ✅ com **dívida nomeada** | 17/09 ([`10`](10_a_luz_que_atravessa_a_peca.md)); a borda mole só corre no caminho de REFERÊNCIA ⇒ `W10` |
-| 7 | Pós | ⛔ | `W7`, por construir |
+| 7 | Pós | ⏳ | `W7` — **plano escrito** em 19/09, com o oráculo já colhido ([`12`](12_o_acabamento.md)) |
 | 8 | Estilo | ✅ | `W8` — a [`11`](11_a_camada_de_estilo.md), 19/09, por ordem do dono |
 
 ⭐⭐ **SETE de oito.** O que falta ao ALVO é **o `7`**, e o dono já o pôs a seguir (*«8 e depois do

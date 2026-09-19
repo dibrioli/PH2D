@@ -135,9 +135,15 @@ O artista vê **um nó** com a foto que o dono mandou. Quem quiser mais, abre o 
   painel `42/42` limpo do repositório.
 - **Régua:** um `.mtlx` do Blender abre aqui e devolve os mesmos pixels que o `MaterialXView`.
 
-## W7 — O pós
+## W7 — O pós ⏳ **PLANO ESCRITO (19/09)** → [`12`](12_o_acabamento.md)
 
 Bloom sobre HDR verdadeiro · profundidade de campo · anti-aliasing temporal.
+
+⭐ **O oráculo é o Godot 4.7.2 (MIT, lido no artefacto) corrido sem interface**, e a lei já está
+colhida: o limiar é **duro** e a cadeia é um **mip chain** cujo raio dobra por nível
+([`12` §3](12_o_acabamento.md)). ⛔⛔ **A primeira peça não é um efeito, é um BUFFER:** os dois
+motores fecham o quadro **pixel a pixel** e nada guarda o HDR que o brilho precisa de ler.
+⚠️ A profundidade de campo está proposta **FORA por omissão** — decisão do dono.
 
 ## W8 — ⭐ A camada de ESTILO ✅ **FECHADA (19/09, ordem do dono: *«8 e depois do smoke o 7»*)**
 

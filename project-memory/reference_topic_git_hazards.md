@@ -44,3 +44,12 @@ E ponha um guarda sobre o ficheiro gerado — `grep -q '\`' "$gerado" && exit`. 
 placa (a armadilha do `CLAUDE.md` §2 — um binário reparenta-se ao `systemd --user` e sobrevive a
 quem o lançou). *Depois de uma fotografia, confira `pgrep -f ph2d-host-desktop`.*
 - ⛔⛔ [`git mv` de um ficheiro com edições por encenar grava o blob de HEAD no destino](feedback_git_mv_stages_the_index_blob_not_the_worktree.md) — o commit tem sucesso e a árvore dele **NÃO COMPILA** (sinal: `M <destino>` depois do commit).
+## ⛔ Um APÓSTROFO numa mensagem de commit inline PENDURA a consola (2026-09-18)
+Duas tentativas de `git commit -m "…que e' maximizar…"` ficaram presas **sem `index.lock` e sem
+carga**, e a segunda sobreviveu ao próprio `timeout 90`. **Why:** esta consola embrulha o comando
+num `eval '…'` de aspa **simples**; um `'` no texto fecha-a e o shell fica à espera de mais
+entrada — não é o git que está lento, é o shell que nunca recebeu o comando inteiro. **How to
+apply:** mensagem de commit vai **sempre** por `-F <ficheiro>` (ou heredoc citado), nunca por `-m`
+inline quando o texto tem apóstrofos — e o sintoma que a distingue de um lock é **não haver
+`index.lock`**: `ls .git/index.lock` antes de culpar o git. ⚠️ Os processos presos matam-se pelo
+PID (`pgrep -af "git commit"`) e saem com **144**, que se lê como falha do comando e não é.

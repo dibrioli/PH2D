@@ -1435,8 +1435,15 @@ concordam, e a metade em que discordam não entra.
   *o gate afirmava «há ALGUM return pelo caminho» e o nome dele promete «ESTE ramo devolve»*.
 - [`sonda_o_dispositivo_a_correr_contra_a_referencia`] — a medição na placa, com a **mesma régua**
   das outras colunas (`regua_da_banda`, extraída como porta única).
-- ⏳ **ABERTO, e é decisão do dono:** o gémeo do amaciamento no dispositivo. O bloqueador tem
-  endereço — o buffer de luz do traçador tem passo `1 + n_lâmpadas + 6` e **não tem slot RGB por
-  lâmpada**, e o `mx_direct` do WGSL recebe **uma** radiância onde o `Surface::direct_sss` da CPU
-  recebe duas. A alternativa (voltar pelo `march` e sombrear na CPU) traz o G-buffer pelo barramento,
-  que é o que a `traca` evita de propósito.
+- ✅ **DECIDIDO pelo dono em 2026-09-19:** *«por enquanto vamos deixar como está; coloque a
+  possibilidade de melhoramento na fila de implementação mais no fim da fila.»* ⇒ o gémeo do
+  amaciamento no dispositivo é a **[`W10`](03_o_plano.md)**, **depois** da `W9`.
+  ⚠️ **A consequência está declarada:** a `W9` mede **o que ship**, logo a tabela de preço dela
+  **não** inclui esta wave.
+  O bloqueador tem endereço e são **duas** coisas — o buffer de luz do traçador tem passo
+  `1 + n_lâmpadas + 6` e **não tem slot RGB por lâmpada**, e o `mx_direct` do WGSL recebe **uma**
+  radiância onde o `Surface::direct_sss` da CPU recebe duas. A alternativa (voltar pelo `march` e
+  sombrear na CPU) traz o G-buffer pelo barramento, que é o que a `traca` evita de propósito.
+  ⚠️ **E a `W10` fecha primeiro DOIS buracos de régua** (§24.4): a paridade de materiais nunca
+  testou subsuperfície, e a única que a testa usa uma esfera sozinha cujo lado de CPU não assa o
+  canal mole.

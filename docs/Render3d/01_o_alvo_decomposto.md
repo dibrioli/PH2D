@@ -23,7 +23,12 @@ plástico, metal pintado — em vez de ler como um desenho colorido.
 
 Ordenados por **salto visual por unidade de trabalho**, que é a ordem em que se constroem.
 
-| # | ingrediente | o que muda na tela | temos hoje? |
+⛔⛔ **A última coluna é a FOTOGRAFIA de 2026-09-09, e não o estado de hoje** — ela fica **verbatim**
+porque cada célula traz a medição que abriu o estudo. *O estado de HOJE está logo abaixo da tabela*,
+e ⚠️ **ela já mentiu uma vez com o cabeçalho antigo** (*«temos hoje?»*): em 17/09 o `2` e o `6`
+fecharam no mesmo dia e a linha de fecho desta secção ainda dizia que o `2` não existia.
+
+| # | ingrediente | o que muda na tela | tínhamos em **2026-09-09**? |
 |---|---|---|---|
 | 1 | **Gestão de cor** — espaço linear, exposição, tonemapper (AgX/ACES) | ⭐⭐⭐ a diferença entre «parece de 2005» e «parece moderno» | ⚠️ **meio**: há `tonemap.wgsl` e `bloom.wgsl` no `ph2d-render`, sem exposição autorada nem espaço de trabalho declarado — ⛔ *remedido 13/09: o passe está em **bypass** (corta em 1) e o bake AgX nunca existiu, logo é **zero** ([`04`](04_a_remedicao_contra_a_arvore.md) §1)* |
 | 2 | **Luz indirecta (GI)** | ⭐⭐⭐ o maior contribuinte isolado; sem ela, sombra é preto e a peça flutua | ⛔ **não** — há um `env_ambient` constante no `ph2d-light` |
@@ -34,8 +39,25 @@ Ordenados por **salto visual por unidade de trabalho**, que é a ordem em que se
 | 7 | **Pós** (bloom sobre HDR real, DOF, AA) | ⭐ acabamento; sem o `1`, o bloom mente | ⚠️ meio (bloom existe) |
 | 8 | **A camada de ESTILO** — mentir com botões: rim light, tinta por curvatura, grade por zona | ⭐⭐ é o que faz *aquele* jogo e não «um jogo PBR» | ⛔ não |
 
-⚠️ **O `6` já existe e o `2` não** — e isso é a ordem invertida. *Uma engine com sub-superfície e sem
-luz indirecta tem o acabamento antes do fundamento*, que é exactamente onde estamos.
+### ⭐ O ESTADO DE HOJE (2026-09-19), auditado contra o código
+
+| # | ingrediente | hoje | onde fechou |
+|---|---|---|---|
+| 1 | Gestão de cor | ✅ | `W1` ([`03`](03_o_plano.md)) — a `ph2d-view-transform`, com a `Neutral` medida contra o OCIO |
+| 2 | Luz indirecta | ✅ | `W5` — **SONDAS** de irradiância, e o dispositivo a `100,000 %` de paridade ([`08` §12, §14](08_a_luz_indirecta.md)) |
+| 3 | Material como MATÉRIA | ✅ no subconjunto declarado | `W2` — a `ph2d-material`; ⛔ ficam `transmission_*`, `fuzz_*`, `thin_film_*`, `geometry_opacity` e a anisotropia |
+| 4 | Céu como FONTE | ✅ | `W3` — o estúdio analítico; ⛔ sem HDRI de ficheiro, **por desenho** |
+| 5 | Sombras que POUSAM | ✅ | `W4` — o chão invisível ([`07`](07_o_chao_que_so_recebe.md)) |
+| 6 | Sub-superfície | ✅ com **dívida nomeada** | 17/09 ([`10`](10_a_luz_que_atravessa_a_peca.md)); a borda mole só corre no caminho de REFERÊNCIA ⇒ `W10` |
+| 7 | Pós | ⛔ | `W7`, por construir |
+| 8 | Estilo | ⛔ | `W8`, por construir |
+
+⭐⭐ **SEIS de oito.** O que falta ao ALVO são o `7` e o `8`; o resto da fila é **autoria** (`W6`),
+**medição** (`W9`) e **uma dívida** (`W10`).
+
+⛔ **E a frase que aqui esteve — *«o `6` já existe e o `2` não, e isso é a ordem invertida»* — MORREU
+em 2026-09-17**, quando a `W5` fechou o `2`. Ela foi verdade por **um dia**: *a inversão que ela
+denunciava era real e foi desfeita pela wave seguinte, e a nota sobreviveu-lhe.*
 
 ## §3 — O que este repositório JÁ tem, medido
 

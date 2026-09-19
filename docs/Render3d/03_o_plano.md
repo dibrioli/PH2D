@@ -3,10 +3,16 @@
 ⚠️ **A ordem é por SALTO VISUAL POR UNIDADE DE TRABALHO**, e não por dificuldade nem por vontade.
 Cada wave acaba num **smoke** (a lei da casa) e traz a régua que a julga.
 
-⚠️ **ESTADO, 2026-09-17 — auditado contra o código, não contra a memória:** `W1`..`W5` estão
-**FECHADAS** e vivem no modo *Render* do modelador (a marca de cada uma diz onde se lê o mecanismo).
-Faltam a **`W6`**, a **`W7`** e a **`W8`**, mais a **`W9`** que o dono acrescentou ao FIM da fila
-(ordem de 2026-09-17).
+⚠️ **ESTADO, 2026-09-19 — auditado contra o código, não contra a memória:** `W1`..`W5` estão
+**FECHADAS** e vivem no modo *Render* do modelador (a marca de cada uma diz onde se lê o mecanismo),
+e com elas fecharam **SEIS dos oito ingredientes** do [`01`](01_o_alvo_decomposto.md) — o `6` (a
+translucidez) entrou em 17/09 fora desta numeração. Faltam a **`W6`**, a **`W7`** e a **`W8`**,
+mais a **`W9`** (medição, que o dono pôs ao fim da fila em 17/09) e a **`W10`** (o gémeo do
+amaciamento no dispositivo, que ele pôs **depois dela** em 19/09).
+
+⚠️ **São DUAS numerações e elas não coincidem:** as `W` são waves de TRABALHO, os `1`..`8` do `01`
+são INGREDIENTES do alvo. A `W6` (autoria) e a `W9`/`W10` não são ingredientes de nenhum — *contar
+umas pelas outras é como esta página já errou uma vez (ver o fim do ficheiro)*.
 
 ⛔ **A linha que aqui esteve — *«nada aqui está construído»* — era verdade em 2026-09-09 e falsa
 desde 13/09.** *Um plano que se declara por começar sobre cinco waves shipadas manda reconstruir
@@ -176,6 +182,42 @@ report em que aprovou o smoke do chão colorido, e a ordem é o que decide a pos
   gateada no dia em que houver duas.
 - **Smoke:** a mesma cena, o mesmo gesto, com o número do quadro à vista antes e depois.
 
+## W10 — ⏳ O GÉMEO DO AMACIAMENTO NO DISPOSITIVO (ordem do dono, 2026-09-19: *«por enquanto vamos deixar como está; coloque a possibilidade de melhoramento na fila mais no fim»*)
+
+A sombra de borda mole que uma closure translúcida lê ([`10` §12](10_a_luz_que_atravessa_a_peca.md))
+e o raio por material ([`10` §23](10_a_luz_que_atravessa_a_peca.md)) existem, estão gateados ao bit
+— e vivem **no traçado de CPU**. O caminho de OMISSÃO do produto **devolve antes de os chamar**
+([`10` §24](10_a_luz_que_atravessa_a_peca.md)), logo o artista vê a sombra da chapa com a borda
+**DURA** sobre o jade.
+
+- ⛔ **Ela vem DEPOIS da `W9`, e isso é a ordem dele.** ⚠️ A consequência está declarada: a `W9` mede
+  **o que ship**, logo a tabela de preço dela **não** inclui esta wave — quem a construir mede-a de
+  novo pela régua da `W9`.
+- **O bloqueador tem endereço, e são DUAS coisas:** o buffer de luz do traçador tem passo
+  `1 + n_lâmpadas + 6` e **não tem slot RGB por lâmpada**; e o `mx_direct` do WGSL recebe **UMA**
+  radiância onde o [`Surface::direct_sss`](../../crates/ph2d-material/src/lib.rs) da CPU recebe
+  **duas**. *Nenhuma das duas é afinação: são fronteiras.*
+- **As duas rotas, com o preço de cada uma:**
+
+  | rota | o que custa | o que arrisca |
+  |---|---|---|
+  | escrever o gémeo em **WGSL** (um canal RGB por lâmpada + duas passagens de borrão separável + a leitura) | o desenho que o ricochete do [`08` §12](08_a_luz_indirecta.md) já pagou naquele passe | a fronteira do `ph2d-material` no dispositivo |
+  | voltar pelo **`march`** e sombrear na CPU | traz o G-buffer pelo barramento — o que a `traca` evita **de propósito** | nenhuma lei nova, e perde a pintura no dispositivo |
+
+- **Régua, e ela já existe:** a quebra na banda do terminador medida **na placa**
+  ([`subsuperficie_dispositivo_tests.rs`](../../crates/ph2d-app-field3d/src/subsuperficie_dispositivo_tests.rs)) —
+  `9,20` com a chapa hoje, contra `1,00` da referência. ⭐ **A wave fecha quando as duas colunas
+  lerem o mesmo**, e o gate estrutural
+  [`a_borda_mole_e_inalcancavel_quando_o_dispositivo_pinta`] **reprova nesse dia**, que é o desenho
+  dele: *quem a curar apaga esse gate e a dívida da §12 no mesmo gesto.*
+- ⚠️ **Dois buracos de RÉGUA que esta wave tem de fechar primeiro**, os dois medidos em 19/09: a
+  paridade de materiais **nunca testou subsuperfície** (os seis materiais partem de
+  `OpenPbr::default()`, que tem `subsurface_weight = 0`), e a única paridade com subsuperfície usa
+  **uma esfera sozinha** cujo lado de CPU não assa o canal mole. *Construir o gémeo contra réguas
+  que não o vêem repetiria, um nível acima, o defeito que esta wave existe para curar.*
+- **Smoke:** a `=33` com o jade, **sem** `PH2D_FIELD_GPU=0`, e a borda mole a aparecer onde hoje
+  está a linha dura.
+
 ---
 
 ## A ordem, num parágrafo
@@ -183,11 +225,19 @@ report em que aprovou o smoke do chão colorido, e a ordem é o que decide a pos
 **`W1` e `W2` são o fundamento e são baratas.** `W3` e `W4` fazem o objecto existir no espaço. `W5`
 é a wave grande e é a nossa vantagem estrutural. `W6` é o que responde ao *«intuitivo para
 artistas»*. `W7` e `W8` são o acabamento — e o `W8` é o que faz a engine parecer-se com o alvo do
-dono em vez de parecer-se com toda a gente. A **`W9`** fecha a fila, por ordem dele.
+dono em vez de parecer-se com toda a gente. A **`W9`** (medição) e a **`W10`** (o gémeo do
+amaciamento no dispositivo) fecham a fila, **nessa ordem e as duas por ordem dele** — a `W9` em
+17/09, a `W10` em 19/09.
 
 ⚠️ **E as cinco primeiras estão FECHADAS** (topo deste ficheiro): dos oito ingredientes do
-[`01`](01_o_alvo_decomposto.md), o que falta são **três** — o `6` (a translucidez, que é uma entrada
-do OpenPBR e não um sistema ao lado), o `7` (o pós) e o `8` (o estilo) — mais a autoria da `W6`.
+[`01`](01_o_alvo_decomposto.md), o que falta são **DOIS** — o `7` (o pós) e o `8` (o estilo) —,
+mais a autoria da `W6`.
+
+⛔ **CORRECÇÃO de 2026-09-19:** esta linha dizia **três** e contava o `6` (a translucidez) entre os
+que faltam. Ele **fechou em 17/09** ([`10`](10_a_luz_que_atravessa_a_peca.md)), no mesmo dia em que
+a `W5` fechou o ingrediente `2` — *o parágrafo envelheceu no dia em que foi escrito*, e é
+exactamente o defeito de que o `CLAUDE.md` §5 avisa sobre si mesmo: **audite a lista contra o código
+antes de pegar um item dela.** A translucidez tem dívida (a `W10`) e **não** é trabalho por começar.
 
 ## ⛔ O que este plano NÃO faz, e porquê
 

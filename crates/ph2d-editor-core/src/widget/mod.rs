@@ -94,8 +94,9 @@ pub use context_menu::{ContextMenu, ContextMenuEntry, paint_context_menu};
 pub use divider::{Divider, DividerOrientation, paint_divider};
 pub use dropdown::{
     DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, DropdownState, chip_border_color,
-    dropdown_feel, opaque as resolve_opaque, paint_dropdown, paint_dropdown_chip,
-    paint_dropdown_popover, paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,
+    dropdown_chevron_size, dropdown_chip_width_for, dropdown_feel, dropdown_label_budget,
+    opaque as resolve_opaque, paint_dropdown, paint_dropdown_chip, paint_dropdown_popover,
+    paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,
 };
 // ⚠️ A lei da borda de um campo, já com o eixo do hover — `pub(crate)` porque os seus
 // consumidores são os três pintores da família e os gates, nunca um painel.

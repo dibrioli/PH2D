@@ -31,7 +31,7 @@
 //! | a pintar **NADA** em inglês | **0** | **0** |
 //! | a pintar **NADA** no idioma de teste | **0** | **0** |
 //! | cortados (`prefixo…`) em inglês, ANTES da cura | 15 | 17 |
-//! | cortados hoje (caixa de número + as duas frases) | **10** | **12** — `CORTADOS_HOJE` |
+//! | cortados hoje (número · frases · chip de escolha) | **10** | **10** — `CORTADOS_HOJE` |
 //! | cortados no idioma de teste | ~130, em 16 painéis | — |
 //!
 //! ⚠️ **Um painel pintado com o estado de FÁBRICA mostra o estado VAZIO dele** (o Inspector sem
@@ -75,7 +75,7 @@ const PISO_DE_PAINEIS: usize = 24;
 /// descrever um corte que já não acontece.
 ///
 /// ⚠️ **Um corte não é sempre um defeito** (o nome de um ficheiro, o nome que o artista escreveu),
-/// mas **estes doze são todos texto de INTERFACE** — rótulos, valores e frases de estado vazio,
+/// mas **estes dez são todos texto de INTERFACE** — rótulos, valores e frases de estado vazio,
 /// que a casa escreve e a casa dimensiona. ⇒ a lista é dívida, nunca licença.
 const CORTADOS_HOJE: &[(&str, &str)] = &[
     // ⛔ O nome da faixa mestra no Audio Mixer com o dock estreito — **declarado** em 18/09: a
@@ -86,11 +86,12 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
     //    conta uma (`32`). Quem os apagou daqui foi este gate: o censo de obsolescência acusou as
     //    três linhas como já não descrevendo corte nenhum. Mecanismo:
     //    `ph2d-editor-core/tests/it/a_caixa_de_numero_nao_corta_o_numero.rs`.
-    // ⛔⛔ **Estes dois só existem quando a build liga TODOS os painéis** — ver a nota do
-    //    `PISO_DE_MEDICOES`. Eles são a prova de que a lista capturada com `-p <crate>` sozinho
-    //    está incompleta por CONSTRUÇÃO.
-    ("flip_frames", "Linear"),
-    ("flip_frames", "No Cycle"),
+    // ✅ **Os dois do `flip_frames` (`Linear`, `No Cycle`) SAÍRAM em 18/09** — e eram a prova de que
+    //    uma lista capturada com `-p <crate>` sozinho está incompleta por CONSTRUÇÃO (aqueles dois
+    //    painéis não estão no `default` desta crate). O chip deles era o literal `84 px`, com `46`
+    //    de invólucro; hoje ele DERIVA da lista que oferece. ⚠️ E o censo só via metade do defeito:
+    //    `Ping-Pong` (`65,5`) e `Ease In-Out` (`72,9`) vivem nas mesmas listas e nunca foram
+    //    pintados por omissão. Mecanismo: `ph2d-panel-flip-frames/src/toolbar_plan.rs::chip_w`.
     // ⛔ Opções e rótulos que não cabem no chip deles.
     ("grid_snap", "Line / Neighbors"),
     ("timeline", "PingPong"),

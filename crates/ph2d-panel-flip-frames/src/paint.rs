@@ -51,7 +51,12 @@ pub(crate) fn paint(state: &mut FlipStripState, ctx: &mut PaintCtx) {
     // (as linhas decidem onde as células começam, mais abaixo) — o que mudou é que ele já não pode
     // fazer a tira **transbordar**: quem quiser mais espaço arrasta a costura do topo da banda.
     let bar_w = (base.w - PANEL_HEAD_PAD * 2.0).max(0.0);
-    let bar_rows = crate::toolbar_plan::rows(Rect::new(0.0, 0.0, bar_w, ROW_H_PX), ROW_H_PX, &snap);
+    let bar_rows = crate::toolbar_plan::rows(
+        Rect::new(0.0, 0.0, bar_w, ROW_H_PX),
+        ROW_H_PX,
+        &snap,
+        ctx.text_system,
+    );
     let rect = base;
 
     ctx.host

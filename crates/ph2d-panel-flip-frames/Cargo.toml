@@ -26,6 +26,9 @@ ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 # A tabela de strings (HR-15) — o painel deixou de escrever texto no fonte em 2026-09-16.
 ph2d-i18n = { path = "../ph2d-i18n" }
+# ⭐ O shaper: desde 2026-09-18 a barra MEDE os rótulos das listas de escolha para dimensionar o
+# chip delas (o literal de 84 px cortava `No Cycle`), e medir texto é perguntar ao shaper.
+ph2d-text = { path = "../ph2d-text" }
 
 [dev-dependencies]
 # A régua lexical do HR-15, para o gate por crate.

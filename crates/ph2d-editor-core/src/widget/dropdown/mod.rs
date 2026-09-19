@@ -334,6 +334,42 @@ pub fn paint_dropdown<T: Clone + PartialEq>(
     }
 }
 
+/// ⭐⭐ **O tamanho do chevron de um chip** — 60 % da altura, entre `14` e `20`.
+///
+/// Sai para uma porta porque a LARGURA do chip depende dele: quem dimensiona precisa da mesma
+/// resposta que quem pinta.
+#[must_use]
+pub fn dropdown_chevron_size(h: f32) -> f32 {
+    (h * 0.6).clamp(14.0, 20.0) // LITERAL-PX-OK: chevron sized 60% of host height with min/max
+}
+
+/// ⭐⭐⭐ **O que sobra de um chip de dropdown para o RÓTULO** — depois dos dois recuos, do vão e do
+/// chevron.
+///
+/// ⛔⛔ **Ela é pública por um defeito medido** (2026-09-18, varredura das elisões): a barra da tira
+/// do Flip reserva `84 px` para o chip do ciclo, e desses **`46` não são texto** ⇒ o rótulo tem
+/// `38`, e `No Cycle` mede `56,4`. Saía **`No…`**.
+///
+/// ⚠️⚠️ **E o censo não vê metade do defeito:** ele mede o rótulo que está PINTADO, que é a opção
+/// escolhida — `Ping-Pong` (`65,5`) e `Ease In-Out` (`72,9`) vivem na mesma lista e nunca foram
+/// medidos por ninguém. *Quem dimensiona um chip de escolha tem de o fazer pela LISTA, nunca pelo
+/// item em mãos.*
+#[must_use]
+pub fn dropdown_label_budget(rect: Rect) -> f32 {
+    let pad_x = Spacing::Lg.px();
+    (rect.w - pad_x * 2.0 - Spacing::Md.px() - dropdown_chevron_size(rect.h)).max(0.0)
+}
+
+/// ⭐⭐⭐ **O caminho INVERSO: que largura de chip um rótulo de `text_w` precisa.**
+///
+/// ⚠️ Ela e a [`dropdown_label_budget`] são uma lei só, com gate de ida-e-volta — derivar a conta à
+/// mão no painel seria a segunda cópia do recuo, que divergiria no dia em que o `Spacing::Lg`
+/// mudasse. *É o mesmo par que o `label_budget`/`rect_for_label` já é para uma caixa de rótulo.*
+#[must_use]
+pub fn dropdown_chip_width_for(text_w: f32, h: f32) -> f32 {
+    text_w + Spacing::Lg.px() * 2.0 + Spacing::Md.px() + dropdown_chevron_size(h)
+}
+
 /// Paint just the chip (no popover) so the caller can defer the
 /// popover to a later z-order pass.
 pub fn paint_dropdown_chip<T: Clone + PartialEq>(
@@ -377,7 +413,7 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
     );
 
     let pad_x = Spacing::Lg.px();
-    let chevron_size = (rect.h * 0.6).clamp(14.0, 20.0); // LITERAL-PX-OK: chevron sized 60% of host height with min/max
+    let chevron_size = dropdown_chevron_size(rect.h);
     let chevron_rect = Rect::new(
         rect.x + rect.w - pad_x - chevron_size,
         rect.y + (rect.h - chevron_size) * 0.5,
@@ -393,7 +429,9 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
     let font_size = TypeToken::Base.px();
     let inner_x = rect.x + pad_x;
     let inner_y = rect.y + (rect.h - font_size) * 0.5;
-    let inner_w = (chevron_rect.x - inner_x - Spacing::Md.px()).max(0.0);
+    // ⚠️ **Pela PORTA**, e não pela conta escrita aqui: é ela que quem dimensiona o chip inverte
+    //    ([`dropdown_chip_width_for`]), e duas cópias divergiriam no dia em que o recuo mudasse.
+    let inner_w = dropdown_label_budget(rect);
     // Hard-clip ao chip rect — `paint_text` pode wrap/overflow em
     // colunas estreitas (sem clip, a label "2 Levels" escapava pra
     // fora do chip do CEQ — Enio 2026-05-26).

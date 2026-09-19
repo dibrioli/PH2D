@@ -5,9 +5,9 @@
 //! [`crate::toolbar_plan`], para que a MEDIDA (de quantas linhas a tira precisa)
 //! e a PINTURA nunca divirjam. Aqui só se pinta o que o plano posicionou.
 
+use crate::ids;
 use crate::state::FlipStripSnapshot;
 use crate::toolbar_plan::{self, Item};
-use crate::{ids, toolbar_plan::CYCLE_W};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
@@ -24,7 +24,7 @@ use ph2d_i18n::TextKey;
 use ph2d_tokens::{ColorToken, Theme, TypeToken};
 
 /// Os 4 modos de ciclo, na ordem do enum (`CycleMode as u8`).
-const CYCLE_NAMES: [TextKey; 4] = [
+pub(crate) const CYCLE_NAMES: [TextKey; 4] = [
     TextKey::new("panel.flip_frames.toolbar.no_cycle"),
     TextKey::new("panel.flip_frames.toolbar.hold"),
     TextKey::new("panel.flip_frames.toolbar.loop"),
@@ -58,7 +58,7 @@ pub(crate) fn paint(
     snap: &FlipStripSnapshot,
 ) -> Option<PendingCycle> {
     let items = toolbar_plan::items(snap);
-    let (rects, _rows) = toolbar_plan::plan(&items, first_row, first_row.h);
+    let (rects, _rows) = toolbar_plan::plan(&items, first_row, first_row.h, ctx.text_system);
 
     let mut pending = None;
     for (item, r) in items.iter().zip(rects) {
@@ -173,7 +173,12 @@ fn dropdown_chip(
     id: NodeId,
     cur: u8,
 ) -> Option<PendingCycle> {
-    debug_assert!((r.w - CYCLE_W).abs() < 1.0, "o plano mediu outro chip");
+    // ⚠️ O plano e o pintor têm de concordar na largura — ela deixou de ser um literal e passou a
+    //    DERIVAR da lista, logo a cerca passa a ser que o rótulo escolhido CABE no que o plano deu.
+    debug_assert!(
+        r.w > ph2d_editor_core::widget::dropdown_chevron_size(r.h),
+        "o plano mediu outro chip"
+    );
     ctx.host.store_mut().register_if_absent(
         id,
         InteractiveState::Dropdown {

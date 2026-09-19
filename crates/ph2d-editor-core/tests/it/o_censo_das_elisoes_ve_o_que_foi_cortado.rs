@@ -271,3 +271,33 @@ fn o_respiro_nunca_come_mais_de_metade_da_caixa() {
         label_budget(25.0)
     );
 }
+
+/// ⭐⭐⭐ **E O CHIP DE ESCOLHA TEM O MESMO PAR** — `dropdown_label_budget` ↔
+/// `dropdown_chip_width_for`.
+///
+/// ⛔⛔ Ele nasceu em 2026-09-18 pelo mesmo defeito, um nível acima: a barra da tira do Flip
+/// reservava o literal `84 px` para o chip do ciclo, e **`46` desses não são texto** (dois recuos,
+/// o vão e o chevron) ⇒ `No Cycle` (`56,4`) saía `No…`. *Quem dimensiona precisa da pergunta ao
+/// contrário, e derivá-la à mão no painel é a segunda cópia do recuo.*
+#[test]
+fn o_chip_de_escolha_tambem_tem_ida_e_volta() {
+    use ph2d_editor_core::widget::{dropdown_chip_width_for, dropdown_label_budget};
+    use ph2d_editor_core::zones::Rect;
+    for h in [22.0_f32, 28.0, 40.0] {
+        for texto_w in [10.0_f32, 38.0, 56.4, 72.9, 240.0] {
+            let w = dropdown_chip_width_for(texto_w, h);
+            let orcamento = dropdown_label_budget(Rect::new(0.0, 0.0, w, h));
+            assert!(
+                orcamento >= texto_w - 0.01,
+                "um rótulo de {texto_w} px pediu um chip de {w} e o orçamento dele é {orcamento} — \
+                 a ida e a volta do chip divergiram (altura {h})"
+            );
+            // ⛔ CONTROLO: o invólucro EXISTE (recuos + vão + chevron), senão o rótulo encosta no
+            //    chevron e a ida-e-volta acima passa com um chip do tamanho do texto.
+            assert!(
+                w > texto_w + 30.0,
+                "o chip tem de reservar o chevron e os recuos: {w} para um texto de {texto_w}"
+            );
+        }
+    }
+}

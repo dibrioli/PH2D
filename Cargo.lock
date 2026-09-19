@@ -7902,6 +7902,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-label-census",
+ "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-registry",
  "ph2d-ui-testkit",

@@ -251,3 +251,62 @@ UMA linha (o `alta` de uma linha é a **altura de linha** do parley, maior que o
 o apanhou foi esse gate, na primeira corrida.
 
 **Dívida: 17 → 14 → 12. Portão: `19 713` impactados, `19 713` verdes.**
+
+---
+
+## 9. A terceira cura: o chip de escolha derivа da LISTA que ele oferece
+
+A barra da tira do Flip reservava o literal `CYCLE_W = 84 px` para os dois chips de escolha
+(o ciclo e a curva do tween). A conta:
+
+| grandeza | valor |
+|---|---:|
+| chip | `84,0 px` |
+| recuo × 2 (`Spacing::Lg`) | `24,0` |
+| vão até ao chevron (`Spacing::Md`) | `8,0` |
+| chevron (`(h·0,6).clamp(14,20)`) | `14,0` |
+| **sobra para o rótulo** | **`38,0`** |
+| `No Cycle` | `56,4` ⇒ saía `No…` |
+
+⭐⭐⭐ **E o censo só via METADE do defeito.** Ele mede o que está **PINTADO**, que é a opção
+ESCOLHIDA — `Ping-Pong` (`65,5`) e `Ease In-Out` (`72,9`) vivem nas mesmas listas, nunca são o valor
+de fábrica, e **nunca tinham sido medidos por ninguém**.
+
+> *Quem dimensiona um chip de escolha mede a LISTA, nunca o item em mãos.*
+
+⇒ `chip_w(ts, row_h, nomes)` = a maior opção + o invólucro, com o invólucro a vir da porta que o
+**pintor** usa: `dropdown_chip_width_for` ↔ `dropdown_label_budget`, o par ida-e-volta que o
+`rect_for_label`/`label_budget` já é para uma caixa de rótulo. O chip passa de `84` a `118,9`.
+
+⚠️ A barra **quebra em linhas** (`toolbar_plan`), logo alargar o chip não esconde controlo nenhum —
+no pior caso a tira ganha uma linha, que é o que ela já faz ao estreitar.
+
+### 9.1 — Dois gates de arquitectura que a cura acordou, os dois com razão
+
+⛔ **`no_magic_numeric`** apanhou o `0.01` de um `debug_assert!` meu — que era uma **segunda cópia da
+lei** a comparar a porta com a conta inline. Apagado: com o pintor a usar a porta, o que resta a
+afirmar é a ida-e-volta, e isso é um gate.
+
+⛔⛔ **`every_stack_of_rows_asks_the_rhythm`** acusou o `toolbar_plan.rs` — e ele **tinha razão desde
+sempre**: a barra empilha LINHAS com `Spacing::Xs` escrito à mão nos dois vãos, que é textualmente o
+que a mensagem daquele gate prescreve. ⚠️ **Ele não o via porque a altura da linha chegava por
+ARGUMENTO**: o sujeito do censo é quem menciona o `ROW_H_PX`, e este ficheiro nunca o nomeava. Foi o
+meu teste novo — que o nomeia — que o tornou visível.
+
+> *Um censo cuja população é «quem nomeia a constante» é cego a quem a recebe por argumento.*
+
+Cura: os dois vãos passam a pedir `control_gap_px()`.
+
+### 9.2 — Provas de mutação
+
+| # | mutação | gate |
+|---|---|---|
+| M12 | o chip volta ao literal `84` | `toda_opcao_das_listas_cabe_no_chip` |
+| M13 | a largura mede o item EM MÃOS e não a lista | idem — é o defeito que o censo não vê |
+| M14 | o pintor volta a calcular o orçamento à mão | a varredura do app (`nenhum_corte_novo`) |
+
+**14 de 14 sangram no dia. Dívida: 17 → 14 → 12 → 10. Portão: `19 716` impactados, `19 716` verdes.**
+
+⏳ **E a varredura deixou uma pergunta de PRODUTO, com a medição ao lado:** na barra da timeline o
+mesmo botão chama-se **`PingPong`** e no menu da timeline ele chama-se **`Ping-Pong`** — duas
+grafias para a mesma coisa, e a primeira é a que não cabe na coluna dela (`54,9` contra `52,0`).

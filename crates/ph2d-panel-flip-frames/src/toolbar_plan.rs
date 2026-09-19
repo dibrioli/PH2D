@@ -20,7 +20,9 @@ use crate::state::FlipStripSnapshot;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
+use ph2d_text::TextSystem;
 use ph2d_tokens::{Spacing, TypeToken};
 
 /// Largura de um botão de ícone (quadrado, altura da linha).
@@ -29,8 +31,38 @@ pub(crate) const ICON_W: f32 = 28.0; // LITERAL-PX-OK: strip toolbar icon slot
 pub(crate) const NUM_W: f32 = 46.0; // LITERAL-PX-OK: strip toolbar number chip
 /// Largura de um toggle de texto (Ghost / Auto / Additive).
 pub(crate) const TOGGLE_W: f32 = 62.0; // LITERAL-PX-OK: strip toolbar toggle
-/// Largura do chip do ciclo.
-pub(crate) const CYCLE_W: f32 = 84.0; // LITERAL-PX-OK: strip cycle dropdown chip
+/// ⭐⭐⭐ **A largura de um chip de escolha DERIVA da lista que ele oferece.**
+///
+/// ⛔⛔ Era o literal `84,0`, e desses **`46` não são texto** (dois recuos, o vão e o chevron) ⇒ o
+/// rótulo ficava com `38`. Medido em 2026-09-18: `No Cycle` mede `56,4` e saía **`No…`**; e o pior
+/// nem era visível ao censo, que mede a opção ESCOLHIDA — `Ping Pong` (`62,9`) e `Ease In Out`
+/// (`70,4`) vivem nas mesmas listas e nunca tinham sido medidos por ninguém.
+///
+/// ⚠️ **A régua é a LISTA, nunca o item em mãos** — é a mesma lei que a coluna dos nomes do Audio
+/// Mixer passou a seguir em 18/09, e a conta do invólucro sai da porta que o PINTOR usa
+/// ([`ph2d_editor_core::widget::dropdown_chip_width_for`]), nunca de uma segunda cópia aqui.
+pub(crate) fn chip_w(text_system: &mut TextSystem, row_h: f32, nomes: &[TextKey]) -> f32 {
+    chip_w_em(ph2d_i18n::idioma(), text_system, row_h, nomes)
+}
+
+/// ⭐⭐ **A mesma, com o IDIOMA dado** — a porta pela qual um gate mede a tensão de uma tradução
+/// sem mexer no ambiente do processo.
+///
+/// ⚠️ Sem ela um gate compararia a palavra DEFORMADA com um chip medido em INGLÊS, e acusaria o
+/// produto certo: foi assim que a 1.ª redacção do gate da coluna do Audio Mixer nasceu vácua.
+pub(crate) fn chip_w_em(
+    idioma: ph2d_i18n::Idioma,
+    text_system: &mut TextSystem,
+    row_h: f32,
+    nomes: &[TextKey],
+) -> f32 {
+    let fonte = TypeToken::Base.px();
+    let maior = nomes
+        .iter()
+        .map(|k| text_system.prefix_width(ph2d_i18n::tr_em(idioma, k.key()), fonte))
+        .fold(0.0_f32, f32::max);
+    ph2d_editor_core::widget::dropdown_chip_width_for(maior, row_h)
+}
 /// Largura média de um glifo em fração do tamanho da fonte — só para RESERVAR o
 /// espaço de um rótulo curto da barra (não é métrica de design; a medida real do
 /// texto sai do shaper, que aqui seria caro por um "FPS").
@@ -51,7 +83,7 @@ pub(crate) enum Item {
 
 impl Item {
     /// A largura que o item reserva. `None` = não é um controle (respiro).
-    fn width(&self) -> Option<f32> {
+    fn width(&self, text_system: &mut TextSystem, row_h: f32) -> Option<f32> {
         Some(match self {
             Item::Icon(..) => ICON_W,
             Item::Toggle(..) => TOGGLE_W,
@@ -59,8 +91,8 @@ impl Item {
             Item::Label(t) => {
                 TypeToken::Sm.px() * GLYPH_W_RATIO * t.len() as f32 + Spacing::Xs.px()
             }
-            Item::Cycle(_) => CYCLE_W,
-            Item::Ease(_) => CYCLE_W,
+            Item::Cycle(_) => chip_w(text_system, row_h, &crate::paint_toolbar::CYCLE_NAMES),
+            Item::Ease(_) => chip_w(text_system, row_h, &crate::paint_toolbar::TWEEN_EASE_NAMES),
             Item::Gap => return None,
         })
     }
@@ -178,11 +210,21 @@ pub(crate) fn items(snap: &FlipStripSnapshot) -> Vec<Item> {
 /// Um item mais largo que a linha inteira transborda em vez de sumir: melhor um
 /// controle cortado (que o usuário vê e pode alcançar redimensionando) do que um
 /// controle ausente (que ele conclui que não existe).
-pub(crate) fn plan(items: &[Item], first_row: Rect, row_h: f32) -> (Vec<Rect>, u32) {
+pub(crate) fn plan(
+    items: &[Item],
+    first_row: Rect,
+    row_h: f32,
+    text_system: &mut TextSystem,
+) -> (Vec<Rect>, u32) {
     let left = first_row.x;
     let right = first_row.x + first_row.w;
-    let gap = Spacing::Xs.px();
-    let row_gap = Spacing::Xs.px();
+    // ⭐⭐ **Pelas portas do RITMO** (2026-09-18). O gate `every_stack_of_rows_asks_the_rhythm`
+    //    acusou este ficheiro assim que ele passou a MEDIR texto e a nomear o `ROW_H_PX` — e ele
+    //    tinha razão desde sempre: a barra empilha LINHAS, e a altura chegava por argumento, logo
+    //    o censo dela não a via. *Um `Spacing::Xs` escrito à mão passa em todo gate desta casa e
+    //    continua fora do ritmo.*
+    let gap = ph2d_tokens::control_gap_px();
+    let row_gap = ph2d_tokens::control_gap_px();
 
     let mut out = Vec::with_capacity(items.len());
     let mut x = left;
@@ -190,7 +232,7 @@ pub(crate) fn plan(items: &[Item], first_row: Rect, row_h: f32) -> (Vec<Rect>, u
     let mut rows = 1u32;
 
     for item in items {
-        let Some(w) = item.width() else {
+        let Some(w) = item.width(text_system, row_h) else {
             // Respiro: só separa grupos DENTRO de uma linha; no começo de uma
             // linha nova ele não deve empurrar o primeiro controle para dentro.
             if x > left {
@@ -213,8 +255,13 @@ pub(crate) fn plan(items: &[Item], first_row: Rect, row_h: f32) -> (Vec<Rect>, u
 
 /// Quantas linhas a barra ocupa nesta largura — o que a tira precisa saber
 /// ANTES de pintar a superfície (ela cresce para caber a barra inteira).
-pub(crate) fn rows(inner: Rect, row_h: f32, snap: &FlipStripSnapshot) -> u32 {
-    plan(&items(snap), inner, row_h).1
+pub(crate) fn rows(
+    inner: Rect,
+    row_h: f32,
+    snap: &FlipStripSnapshot,
+    text_system: &mut TextSystem,
+) -> u32 {
+    plan(&items(snap), inner, row_h, text_system).1
 }
 
 /// A altura total de uma barra de `rows` linhas.
@@ -240,11 +287,16 @@ mod tests {
     #[test]
     fn no_control_is_ever_dropped_at_any_width() {
         let s = snap();
-        let n_controls = items(&s).iter().filter(|i| i.width().is_some()).count();
+        let mut ts0 = ph2d_text::TextSystem::without_system_fonts();
+        let n_controls = items(&s)
+            .iter()
+            .filter(|i| i.width(&mut ts0, 28.0).is_some())
+            .count();
         for w in [
             320.0f32, 640.0, 800.0, 1024.0, 1280.0, 1440.0, 1920.0, 3440.0,
         ] {
-            let (rects, rows) = plan(&items(&s), Rect::new(0.0, 0.0, w, 28.0), 28.0);
+            let mut ts = ph2d_text::TextSystem::without_system_fonts();
+            let (rects, rows) = plan(&items(&s), Rect::new(0.0, 0.0, w, 28.0), 28.0, &mut ts);
             let placed = rects.iter().filter(|r| r.w > 0.0 && r.h > 0.0).count();
             assert_eq!(
                 placed,
@@ -259,7 +311,13 @@ mod tests {
     /// A barra larga cabe numa linha só (não se paga altura à toa).
     #[test]
     fn a_wide_bar_stays_on_one_row() {
-        let (_, rows) = plan(&items(&snap()), Rect::new(0.0, 0.0, 2000.0, 28.0), 28.0);
+        let mut ts = ph2d_text::TextSystem::without_system_fonts();
+        let (_, rows) = plan(
+            &items(&snap()),
+            Rect::new(0.0, 0.0, 2000.0, 28.0),
+            28.0,
+            &mut ts,
+        );
         assert_eq!(rows, 1);
     }
 
@@ -272,7 +330,8 @@ mod tests {
     #[test]
     fn narrower_needs_more_rows_monotonically() {
         let s = snap();
-        let row_at = |w: f32| plan(&items(&s), Rect::new(0.0, 0.0, w, 28.0), 28.0).1;
+        let mut ts = ph2d_text::TextSystem::without_system_fonts();
+        let mut row_at = |w: f32| plan(&items(&s), Rect::new(0.0, 0.0, w, 28.0), 28.0, &mut ts).1;
         assert!(row_at(800.0) > 1, "uma barra de 800px tem de quebrar");
         for pair in [(400.0, 640.0), (640.0, 900.0), (900.0, 1400.0)] {
             assert!(
@@ -290,12 +349,90 @@ mod tests {
     fn controls_stay_inside_the_row_when_they_fit() {
         let s = snap();
         let w = 1280.0;
-        let (rects, _) = plan(&items(&s), Rect::new(0.0, 0.0, w, 28.0), 28.0);
+        let mut ts = ph2d_text::TextSystem::without_system_fonts();
+        let (rects, _) = plan(&items(&s), Rect::new(0.0, 0.0, w, 28.0), 28.0, &mut ts);
         for r in rects.iter().filter(|r| r.w > 0.0) {
             assert!(
                 r.x >= 0.0 && r.x + r.w <= w + 0.01,
                 "controle fora da faixa: {r:?}"
             );
         }
+    }
+
+    /// ⭐⭐⭐ **TODA OPÇÃO das duas listas cabe no chip que o plano reserva — nas DUAS línguas.**
+    ///
+    /// ⛔⛔ Antes de 2026-09-18 o chip era o literal `84 px` e o rótulo ficava com `38`: `No Cycle`
+    /// (`56,4`) saía **`No…`**, e a varredura das elisões só via ESSE, porque ela mede o que está
+    /// PINTADO — a opção escolhida. ⚠️ `Ping-Pong` (`65,5`) e `Ease In-Out` (`72,9`) vivem nas
+    /// mesmas listas e **nunca tinham sido medidos por ninguém**.
+    ///
+    /// ⇒ *quem dimensiona um chip de escolha mede a LISTA, nunca o item em mãos* — e o orçamento
+    /// vem da porta que o PINTOR usa, senão o gate e a cura partilham a suposição.
+    #[test]
+    fn toda_opcao_das_listas_cabe_no_chip_que_o_plano_reserva() {
+        let mut ts = ph2d_text::TextSystem::without_system_fonts();
+        let fonte = TypeToken::Base.px();
+        let row_h = ph2d_tokens::ROW_H_PX;
+        let mut apertados = Vec::new();
+        for idioma in [ph2d_i18n::Idioma::Ingles, ph2d_i18n::Idioma::Teste] {
+            for nomes in [
+                &crate::paint_toolbar::CYCLE_NAMES[..],
+                &crate::paint_toolbar::TWEEN_EASE_NAMES[..],
+            ] {
+                // ⚠️ A largura é a DESSA língua — comparar o texto deformado com um chip medido em
+                //    inglês acusaria o produto certo (a 1.ª redacção do gate do mixer).
+                let w = chip_w_em(idioma, &mut ts, row_h, nomes);
+                let orcamento = ph2d_editor_core::widget::dropdown_label_budget(
+                    ph2d_editor_core::zones::Rect::new(0.0, 0.0, w, row_h),
+                );
+                for k in nomes {
+                    let texto = ph2d_i18n::tr_em(idioma, k.key());
+                    let largura = ts.prefix_width(texto, fonte);
+                    if largura > orcamento {
+                        apertados.push(format!(
+                            "{idioma:?} {texto:?} mede {largura:.1} num orçamento de {orcamento:.1}"
+                        ));
+                    }
+                }
+            }
+        }
+        assert!(
+            apertados.is_empty(),
+            "estas opções saem cortadas no chip delas:\n  {}",
+            apertados.join("\n  ")
+        );
+    }
+
+    /// ⛔ **E o CONTROLO: o literal de antes cortava, e não por pouco.**
+    ///
+    /// Sem esta metade, um chip que por acaso ficasse largo passaria o gate acima sem que a
+    /// MEDIÇÃO da lista tivesse alguma coisa a ver com isso.
+    #[test]
+    fn o_chip_literal_de_84px_cortava_metade_das_opcoes() {
+        let mut ts = ph2d_text::TextSystem::without_system_fonts();
+        let fonte = TypeToken::Base.px();
+        let row_h = ph2d_tokens::ROW_H_PX;
+        let orcamento = ph2d_editor_core::widget::dropdown_label_budget(
+            ph2d_editor_core::zones::Rect::new(0.0, 0.0, 84.0, row_h),
+        );
+        let cortadas: Vec<&str> = crate::paint_toolbar::CYCLE_NAMES
+            .iter()
+            .chain(crate::paint_toolbar::TWEEN_EASE_NAMES.iter())
+            .map(|k| k.tr())
+            .filter(|t| ts.prefix_width(t, fonte) > orcamento)
+            .collect();
+        assert_eq!(
+            cortadas,
+            vec![
+                "No Cycle",
+                "Ping-Pong",
+                "Linear",
+                "Ease In",
+                "Ease Out",
+                "Ease In-Out"
+            ],
+            "a fixtura desta wave é o chip literal de 84 px a cortar SEIS das oito opções — se ela \
+             deixar de as cortar, os rótulos mudaram e a medição do cabeçalho tem de ser refeita"
+        );
     }
 }

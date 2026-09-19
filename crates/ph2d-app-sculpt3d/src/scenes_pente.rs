@@ -177,37 +177,49 @@ pub(crate) const DETALHE_DA_CENA: f32 = 1.0;
 
 /// O roteiro da `=49`.
 ///
-/// ⛔⛔⛔ **ELE DEIXOU DE PROMETER O QUE O DESENHO NÃO MOSTRA** (report do dono,
-/// 18/09: *«não sei o que é para esperar. não vejo diferença»*, com foto). A 1.ª
-/// redacção dizia *«as linhas viram-se e passam a correr ao longo do risco»* — e
-/// o arame desenhado (`diag_desenha_o_arame`) mostra os dois lados do controlo
-/// **indistinguíveis**. ⚠️ *A saída do PRÓPRIO oráculo, desenhada das fixturas
-/// dele, também é indistinguível numa passagem.* Ver o §71 do handoff.
+/// ⛔⛔⛔ **ELE MUDOU DUAS VEZES, e as duas por MEDIÇÃO.**
+///
+/// A 1.ª redacção prometia *«as linhas viram-se e passam a correr ao longo do
+/// risco»* e o dono reprovou-a com foto (*«não sei o que é para esperar. não
+/// vejo diferença»*, 18/09) — o arame desenhado mostrava os dois lados do
+/// controlo **indistinguíveis**. A 2.ª passou a dizer o contrário: *«o efeito é
+/// medível e quase invisível»*.
+///
+/// ⭐⭐⭐ **E essa segunda MORREU no mesmo dia, quando a lei ganhou a terceira
+/// metade** (a troca de diagonal — ver [`ph2d_mesh::alinha_arestas`]). Medido na
+/// peça desta cena, nos quatro rumos do traço, o `ΔQ` passou de `+0,028`–`+0,064`
+/// para **`+0,10`–`+0,24`**, contra os `+0,074` da lei que ela substituiu — e o
+/// arame, ampliado na faixa do risco, mostra agora arestas visivelmente mais
+/// longas e alinhadas com ele.
+///
+/// ⚠️ **O que ele NÃO volta a prometer é uma GRADE de livro.** O que se vê é a
+/// malha debaixo do risco a ficar direccional; quem quiser conferir o desenho
+/// corre a sonda [`super::tests::sondas::diag_desenha_o_arame`] e compara os dois
+/// `.ppm`. *Uma cena que promete mais do que o desenho mostra é a espécie que o
+/// `CLAUDE.md` §5.0 chama de pior que uma cena ausente.*
 pub(crate) fn announce() {
     if !pente_scene() {
         return;
     }
     eprintln!(
-        "[sculpt3d] =49 EDGE FLOW -- EM AVALIACAO: o efeito e' medivel e quase invisivel\n\
-         [sculpt3d]    ⚠️ LEIA ISTO ANTES: este controlo esta' em avaliacao, e o que se pede\n\
-         [sculpt3d]    aqui NAO e' um veredito de qualidade -- e' uma leitura.\n\
-         [sculpt3d]\n\
-         [sculpt3d]    O que ele faz esta' MEDIDO: num traco ele desloca ~2700 vertices e a\n\
-         [sculpt3d]    direccao media das arestas da faixa muda bastante. O que ele NAO faz\n\
-         [sculpt3d]    tambem esta' medido: desenhando o arame antes e depois, os dois lados\n\
-         [sculpt3d]    sao praticamente iguais -- e a saida do programa de referencia, tirada\n\
-         [sculpt3d]    dos ficheiros dele, tambem e'.\n\
+        "[sculpt3d] =49 EDGE FLOW -- a malha debaixo do risco passa a seguir o risco\n\
          [sculpt3d]\n\
          [sculpt3d]    (1) Abra o painel com a CRASE (`). Na seccao `Topology` o\n\
          [sculpt3d]        `Dynamic Topology` ja' vem LIGADO e o `Detail` no TOPO. Logo\n\
          [sculpt3d]        abaixo esta' o `Edge Flow`, em zero.\n\
-         [sculpt3d]    (2) Risque uma vez com ele em zero; depois no MAXIMO, ao lado.\n\
-         [sculpt3d]    (3) Diga-me o que ve': se nao ve' diferenca nenhuma, a leitura bate com\n\
-         [sculpt3d]        a medicao e a decisao e' sua (ver a mensagem que acompanha isto).\n\
+         [sculpt3d]    (2) Risque uma vez com ele em ZERO.\n\
+         [sculpt3d]    (3) Ponha-o no MAXIMO e risque outra vez, ao lado do primeiro.\n\
+         [sculpt3d]    (4) Compare os dois riscos de PERTO (aproxime com a roda): no\n\
+         [sculpt3d]        segundo os triangulos ficam mais COMPRIDOS e apontam na\n\
+         [sculpt3d]        direccao em que a sua mao andou; no primeiro eles apontam para\n\
+         [sculpt3d]        todos os lados.\n\
          [sculpt3d]\n\
-         [sculpt3d]    ONDE ELE SE VE' (medido): numa malha que ja' e' uma GRADE e com o passe\n\
-         [sculpt3d]    de topologia a NAO a afinar. Ali a faixa do risco muda de direccao a\n\
-         [sculpt3d]    olho nu. Debaixo do passe fino -- que e' o estado normal -- nao.\n"
+         [sculpt3d]    COMO SABER QUE DEU ERRADO: se os dois riscos ficarem iguais, ou se\n\
+         [sculpt3d]    a malha ficar com triangulos finos como lascas de vidro, diga-me --\n\
+         [sculpt3d]    as duas coisas estao medidas e nenhuma devia acontecer.\n\
+         [sculpt3d]\n\
+         [sculpt3d]    (medido nesta peca: o alinhamento da faixa sobe 4x mais do que subia\n\
+         [sculpt3d]    antes de hoje, e sem um unico triangulo fino)\n"
     );
 }
 

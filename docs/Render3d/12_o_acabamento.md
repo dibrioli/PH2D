@@ -101,8 +101,11 @@ tudo o resto de fábrica. O halo é a soma em **linear** de tudo o que está **f
 
 **Três leis saem desta tabela:**
 
-1. ⭐⭐ **O limiar é DURO em `1,0`** — exactamente o `glow_hdr_threshold`, e a `1,0` o halo é
-   **zero**, não «pouco». *O que não passa do limiar não brilha, ponto.*
+1. ⚠️⚠️ **A `1,0` o halo é ZERO, não «pouco»** — e a 1.ª redacção desta linha dizia *«o limiar é
+   DURO e ele é exactamente o `glow_hdr_threshold`»*. **A atribuição estava errada** e a §3.5
+   desmente-a: esta varredura correu com o limiar no valor de FÁBRICA, logo ela mede a ENTRADA e
+   não o botão. *Uma varredura de uma variável com as outras no default mede a variável, nunca a
+   causa.*
 2. ⭐ **O RAIO quase não depende da intensidade** (`89 → 107 px` sobre `5,3×` de entrada): a
    extensão do halo é uma propriedade da **cadeia de níveis**, não do brilho.
 3. ⛔ **E a minha régua SATURA:** o pico do halo lê `1,00000` a partir de `4,0` porque a saída é de
@@ -130,6 +133,30 @@ em pixéis de ecrã dobra. ⚠️ **Os níveis `5`, `6` e `7` batem no bordo de 
 `192` a medição é a moldura e não o nível —, e é por isso que os valores de fábrica dele acendem
 **`2`, `3` e `4`** e deixam os outros a zero: *a fábrica é a faixa que cabe no ecrã*.
 
+### §3.5 — ⛔⛔⛔ E o CORTE do alvo não é uma lei limpa: três botões que se pisam
+
+Variando **o botão** em vez da entrada (quadrado a `4,0`, halo lido a `60 px` da borda):
+
+| botão | valores varridos | o que o halo faz |
+|---|---|---|
+| `glow_hdr_threshold` | `0 · 0,25 · 0,5 · 1 · 2 · 3` | **`0,0160 → 0,0152`** — `5 %`, que é a quantização de 8 bits |
+| `glow_hdr_scale` | `0,5 · 1 · 2 · 4` | **nada**: as quatro células lêem o mesmo |
+| `glow_hdr_luminance_cap` | `1 · 3 · 12` | `0,100 · 0,289 · 1,000` — **o único que manda** |
+
+E a `entrada 2,0`, onde um limiar teria mais força, ele move `27 %` sobre uma faixa de `0 → 3`:
+`0,1095 · 0,1046 · 0,0953 · 0,0802`. ⛔ **Com limiar `3` e entrada `2` ainda brilha `0,0802`** —
+um corte a sério daria **zero**. E o `glow_bloom` faz brilhar uma entrada de `0,5`, que está
+**abaixo** de qualquer limiar (`0 · 0,00273 · 0,00518`, linear nele).
+
+⇒ ⭐⭐⭐ **A GEOMETRIA dele é limpa e porta-se; o CORTE dele não é uma lei — é três botões que se
+pisam, um deles quase inerte e um limiar que não gateia.** Portar esse comportamento seria herdar
+um painel em que *«Threshold»* não faz o que o nome diz.
+
+**Decisão:** portamos a **cadeia** (§3.4, medida e limpa) e **escrevemos o nosso corte, declarado** —
+um limiar que de facto gateia, com o gate a prová-lo. É o mesmo movimento que o pincel de POSE fez
+ao bater o modelo de referência da própria espec: *a referência responde o que outro programa FAZ;
+ela não obriga a repetir o que ele faz MAL.*
+
 ## §4 — ⛔⛔ A DECISÃO DE ARQUITECTURA: o brilho é um PASSE, e isso já estava escrito
 
 A [`11` §11](11_a_camada_de_estilo.md) recusou pôr o contorno desenhado na `ph2d-style` com este
@@ -148,6 +175,15 @@ exposição (senão ele mede bytes já comprimidos, que é o defeito que o `01` 
 `1`, o bloom mente»*).
 
 ## §5 — As waves propostas
+
+> ⚠️⚠️ **As `W7a` e `W7b` FUNDEM-SE, e a razão foi medida:** um buffer de HDR sem consumidor é
+> **código morto** — a lei da casa é que *cada canal só é assado se o consumidor DELE estiver vivo*
+> ([`11` §11](11_a_camada_de_estilo.md)). Elas shipam juntas, e a prova de que o substrato é inerte
+> continua a ser a mesma: **com o brilho desligado, a imagem é a de hoje ao bit.**
+>
+> ⭐ E a assinatura **não** muda nos `50` chamadores: `shade_render` passa a **delegar** numa porta
+> que devolve o quadro inteiro (o molde do `move_character`/`move_character_from` do TOP-20 #13).
+> Dos `50`, **um** é produto — o resto são gates e sondas.
 
 ### `W7a` — O QUADRO EM HDR (substrato, zero mudança visível)
 
@@ -236,4 +272,7 @@ cobra automaticamente.
 | `--headless` para colher o oráculo | força o driver **dummy**: a saída é preta e lê-se como «não há brilho» |
 | medir a intensidade pelo PICO do halo | satura em `1,00000` a partir de `entrada 4,0` — 8 bits (§3.3) |
 | fixar a cadeia em `7` níveis | a `512` px os níveis `5`–`7` são maiores que o quadro e medem a moldura (§3.4) |
+| portar o CORTE do alvo (os três botões de HDR) | dois estão inertes e o limiar não gateia: entrada `2` com limiar `3` ainda brilha `0,0802` (§3.5) |
+| mudar a assinatura do `shade_render` | `50` chamadores, `1` de produto — a porta nova **delega** e o churn é zero (§5) |
+| uma wave só de substrato (o buffer sem o brilho) | um canal sem consumidor é código morto, que é a lei que a `11` §11 já escreve (§5) |
 | a profundidade de campo LIGADA por omissão | num modelador ela esconde a peça que se está a modelar — proposta, decisão do dono (§5) |

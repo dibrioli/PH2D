@@ -894,7 +894,22 @@ fn diag_a_escada_do_interruptor() {
         "{:>4} {:>14} {:>14} {:>8} {:>14} {:>14} {:>8}",
         "N", "ALVO off", "nosso off", "razao", "ALVO on", "nosso on", "razao"
     );
-    for n in [1usize, 2, 4, 8, 14, 27, 40] {
+    // ⚠️ **As contagens DERIVAM do corpus, nunca de uma lista escrita à mão.**
+    // Uma célula nova que chegue à pasta aparece aqui sozinha; com a lista à
+    // mão ela ficava invisível e a sonda lia-se como completa. *É a mesma lei
+    // que este repo cobra dos censos por prefixo de nome.*
+    let mut ns: Vec<usize> = celulas_sem_remalha()
+        .into_iter()
+        .filter(|(f, n)| f == "acumula" && n.starts_with("escada_n") && n.ends_with("_on"))
+        .filter_map(|(_, n)| n["escada_n".len()..n.len() - 3].parse().ok())
+        .collect();
+    ns.sort_unstable();
+    assert!(
+        ns.len() >= 7,
+        "a escada do interruptor encolheu para {} contagens — alguém apagou corpus",
+        ns.len()
+    );
+    for n in ns {
         let mut col = Vec::new();
         for lado in ["off", "on"] {
             let c = ler("acumula", &format!("escada_n{n}_{lado}"));

@@ -510,3 +510,176 @@ fn the_border_follows_the_finger_down_to_the_minimum_and_stops() {
         frozen.join("\n  ")
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ O ITEM DE MENU — a metade da ordem do dono que faltava
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **O MENU FECHA E REABRE A COLUNA — e é a ÚNICA porta que o artista tem.**
+///
+/// > *«Vamos retirar a opção de colapsar arrastando. Deixa o colapsar apenas no menu da barra
+/// > superior.»* — Enio, 2026-09-09
+///
+/// ⛔⛔ **Metade daquela ordem foi cumprida e a outra não.** O gesto da borda saiu na w49; o item de
+/// menu nunca foi escrito. Medido em 2026-09-19, o [`dock_columns::close`] tinha **ZERO chamadores
+/// de produto** — a lei da coluna estava viva, gateada pelos três testes acima, e **inalcançável**.
+/// Entre esses dois dias não havia maneira nenhuma de fechar uma coluna.
+///
+/// ⚠️ *Retirar um gesto deixa a lei dele viva e ÓRFÃ, e nenhuma sonda deste repo pergunta se uma
+/// PORTA tem chamador.* O roteador do `CLAUDE.md` escrevia-o por extenso — e uma nota não é um
+/// gate.
+///
+/// ⭐ **Este gate entra pelo DESPACHO REAL** (`chrome::dispatch_all`), e não pela porta da lei: os
+/// três testes acima já provam a lei. O que faltava provar é que **um clique lá chega** — a
+/// distinção entre *«um controlo nunca pintado»* e *«um controlo morto sob o dedo»* que esta casa
+/// já pagou sete vezes.
+#[test]
+fn o_item_de_menu_fecha_e_reabre_a_coluna() {
+    use ph2d_editor_core::ids;
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::screens::hero::chrome;
+
+    for (id, side) in [
+        (ids::MENUBAR_VIEW_COLUMN_LEFT, DockSide::Left),
+        (ids::MENUBAR_VIEW_COLUMN_RIGHT, DockSide::Right),
+    ] {
+        let mut h = settled(&declaring(&settled(&[]), side));
+        let antes = visible(&h);
+        assert!(
+            !antes.is_empty(),
+            "{side:?}: a fixtura abriu zero painéis — o gate mediria o nada"
+        );
+        assert!(!dock_columns::is_closed(&h, side), "{side:?}: nasce aberta");
+
+        // ⭐ O CLIQUE, pela mesma porta que a shell usa.
+        assert!(
+            chrome::dispatch_all(&mut h, WidgetEvent::Click(id)),
+            "{side:?}: a linha do menu não é despachada por ninguém — ela está MORTA sob o dedo"
+        );
+        paint(&mut h, 3);
+        assert!(
+            dock_columns::is_closed(&h, side),
+            "{side:?}: o clique não fechou a coluna"
+        );
+        assert!(
+            visible(&h).len() < antes.len(),
+            "{side:?}: a coluna diz-se fechada e o mesmo conjunto continua visível"
+        );
+
+        // ⭐⭐ E o segundo clique **devolve exactamente o que o primeiro levou** — a involução que
+        //    os três testes acima provam sobre a lei, agora atravessada pelo despacho.
+        assert!(chrome::dispatch_all(&mut h, WidgetEvent::Click(id)));
+        paint(&mut h, 3);
+        assert!(
+            !dock_columns::is_closed(&h, side),
+            "{side:?}: o segundo clique não reabriu"
+        );
+        assert_eq!(
+            visible(&h),
+            antes,
+            "{side:?}: reabrir pelo menu devolveu um conjunto DIFERENTE — é o report «soltou \
+             vários painéis no meio do canvas», uma porta depois"
+        );
+    }
+}
+
+/// ⭐⭐ **A MARCA do menu segue o estado da coluna** — acesa quando ela está aberta.
+///
+/// ⚠️ *«Fiar o clique não é fiar o ESTADO»* — a lei que a barra de menus já pagou dezasseis vezes.
+/// ⛔ E o sentido importa: a verdade é *«está ABERTA»*, para a marca dizer o mesmo que as quinze
+/// linhas à volta (aceso = a coisa está lá). Invertida, o menu diria *ligado* com a coluna
+/// escondida, que é pior do que não ter marca nenhuma.
+#[test]
+fn a_marca_do_menu_diz_se_a_coluna_esta_aberta() {
+    use ph2d_editor_core::ids;
+    use ph2d_editor_core::screens::hero::menu_bar;
+
+    for (id, side) in [
+        (ids::MENUBAR_VIEW_COLUMN_LEFT, DockSide::Left),
+        (ids::MENUBAR_VIEW_COLUMN_RIGHT, DockSide::Right),
+    ] {
+        let mut h = settled(&declaring(&settled(&[]), side));
+        assert_eq!(
+            menu_bar::module_is_on(&h, id),
+            Some(true),
+            "{side:?}: a coluna está aberta e a marca diz que não"
+        );
+        dock_columns::close(&mut h, side, None);
+        paint(&mut h, 3);
+        assert_eq!(
+            menu_bar::module_is_on(&h, id),
+            Some(false),
+            "{side:?}: a coluna está fechada e a marca continua acesa"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **FECHAR PELO MENU NÃO INVENTA UMA ESCOLHA DE LARGURA.**
+///
+/// ⛔⛔ **Este gate nasceu de uma MUTAÇÃO SOBREVIVENTE** (2026-09-19): trocar o
+/// `dock_width_choice(side)` — *a escolha, `None` quando ninguém arrastou* — pelo
+/// `Some(dock_width(side))` — *o número, que devolve o default clampado* — passava a suíte
+/// INTEIRA. E o doc do [`dock_columns::close`] já escrevia a lei que a mutação violava:
+///
+/// > *«Guardar o número que `WidgetStore::dock_width` devolve seria guardar o **default** de uma
+/// > coluna que o artista nunca tocou — e repô-lo ao reabrir transformá-lo-ia numa escolha.»*
+///
+/// ⚠️ *Uma lei escrita num doc-comment e não gateada é uma nota*, e esta esteve assim desde que o
+/// `dock_columns` nasceu — porque até 2026-09-19 **ninguém chamava o `close`**.
+///
+/// ⚠️ **A régua é o `dock_width_choice`, não o `dock_width`:** o segundo devolve o default e nunca
+/// é `None`, logo mediria `220 == 220` e ficaria verde sobre o defeito.
+#[test]
+fn fechar_pelo_menu_nao_inventa_uma_largura_escolhida() {
+    use ph2d_editor_core::ids;
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::screens::hero::chrome;
+
+    for (id, side) in [
+        (ids::MENUBAR_VIEW_COLUMN_LEFT, DockSide::Left),
+        (ids::MENUBAR_VIEW_COLUMN_RIGHT, DockSide::Right),
+    ] {
+        let mut h = settled(&declaring(&settled(&[]), side));
+        // ⚠️ O CONTROLO da fixtura: se alguém já tivesse escolhido, o gate mediria outra coisa.
+        assert_eq!(
+            h.store.dock_width_choice(side),
+            None,
+            "{side:?}: a fixtura já traz uma escolha de largura — o gate perdeu o sujeito"
+        );
+
+        assert!(chrome::dispatch_all(&mut h, WidgetEvent::Click(id)));
+        paint(&mut h, 3);
+        assert!(chrome::dispatch_all(&mut h, WidgetEvent::Click(id)));
+        paint(&mut h, 3);
+
+        assert_eq!(
+            h.store.dock_width_choice(side),
+            None,
+            "{side:?}: fechar e reabrir pelo menu gravou uma ESCOLHA de largura que o artista \
+             nunca fez — e a persistência grava exactamente as escolhas"
+        );
+    }
+
+    // ⭐ E a metade POSITIVA: uma escolha REAL sobrevive à ida e volta. Sem ela, um `close` que
+    //   deitasse a largura fora passaria o teste de cima por vacuidade.
+    let side = DockSide::Left;
+    let mut h = settled(&declaring(&settled(&[]), side));
+    h.store.set_dock_width(side, 420.0);
+    let escolhida = h.store.dock_width_choice(side);
+    assert!(escolhida.is_some(), "o controlo positivo não armou");
+    assert!(chrome::dispatch_all(
+        &mut h,
+        WidgetEvent::Click(ph2d_editor_core::ids::MENUBAR_VIEW_COLUMN_LEFT)
+    ));
+    paint(&mut h, 3);
+    assert!(chrome::dispatch_all(
+        &mut h,
+        WidgetEvent::Click(ph2d_editor_core::ids::MENUBAR_VIEW_COLUMN_LEFT)
+    ));
+    paint(&mut h, 3);
+    assert_eq!(
+        h.store.dock_width_choice(side),
+        escolhida,
+        "a largura que o artista ESCOLHEU não voltou — o doc do `close` promete que volta"
+    );
+}

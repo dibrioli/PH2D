@@ -236,6 +236,20 @@ pub(super) const MENU_BAR_VIEW_ROWS: &[MenuRow] = &[
         ids::MENUBAR_VIEW_RESET_LAYOUT,
         "chrome.menu.reset_panel_layout",
     ),
+    // ⭐⭐⭐ **AS DUAS COLUNAS** (2026-09-19) — a metade da ordem de 2026-09-09 que faltava.
+    //
+    // > *«Vamos retirar a opção de colapsar arrastando. Deixa o colapsar apenas no menu da barra
+    // > superior.»* — Enio
+    //
+    // ⛔ O gesto da borda saiu na w49 e este item nunca foi escrito ⇒ entre esse dia e hoje **não
+    // havia maneira nenhuma de fechar uma coluna**. A lei (`dock_columns`) estava viva, gateada, e
+    // com ZERO chamadores de produto.
+    //
+    // ⚠️ **Elas ficam DEPOIS do `Reset Panel Layout` de propósito:** quem abre este menu com uma
+    // coluna a encher-lhe o ecrã procura primeiro o verbo de recuperação, e foi por ele estar
+    // escondido dentro do selector de TEMA que o dono não o achou em 2026-09-07.
+    menu_row(ids::MENUBAR_VIEW_COLUMN_LEFT, "chrome.menu.left_column"),
+    menu_row(ids::MENUBAR_VIEW_COLUMN_RIGHT, "chrome.menu.right_column"),
 ];
 
 // ⭐ **Os treze toggles de módulo.** Entre a retirada da barra de pills (2026-08-30) e

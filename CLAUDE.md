@@ -1172,10 +1172,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   menu da barra superior»*) — e ⚠️ **a lei ficou sem quem a accione**: a **INVOLUÇÃO** do
   [`hero::dock_columns`](crates/ph2d-editor-core/src/screens/hero/dock_columns.rs) continua certa e gateada (reabrir
   devolve exactamente o que aquele fecho levou; re-derivar do registo abria **22** onde o fecho levara **1** — *uma
-  involução é uma MEMÓRIA, nunca uma re-derivação*), mas medido em 10/09 o `dock_columns::close` tem **ZERO chamadores
-  de produto**, e a shell está **proibida por gate** de o chamar (`the_border_gesture_reaches_the_panel`). ⇒ *retirar um
-  gesto deixa a lei dele viva e órfã, e nenhuma sonda deste repo pergunta se uma PORTA tem chamador* — quem construir o
-  item de menu herda a involução pronta, não a reescreve.
+  involução é uma MEMÓRIA, nunca uma re-derivação*), e em 10/09 o `dock_columns::close` tinha **ZERO chamadores de
+  produto** ⇒ *retirar um gesto deixa a lei dele viva e órfã, e nenhuma sonda deste repo pergunta se uma PORTA tem
+  chamador*. ✅ **CURADO em 19/09: a outra metade da ordem foi escrita** — *View ▸ Left Column* / *Right Column*, dois
+  ALTERNADORES (`MODULE_TRUTHS`, acesos quando a coluna está aberta) que entram pelo despacho real. ⚠️ Entre 09/09 e
+  19/09 **não havia maneira nenhuma de fechar uma coluna**. ⛔ E uma mutação SOBREVIVENTE nomeou a lei que faltava
+  gatear: fechar pelo menu passa a **ESCOLHA** de largura (`dock_width_choice`, `None` quando ninguém arrastou) e nunca
+  o número — o doc do `close` já o escrevia, e ninguém o media porque ninguém o chamava.
   ⚠️ **`HIER_ROW_H_PX` e `SECTION_GAP_PX` deixaram de existir** — a linha da hierarquia usa o `ROW_H_PX` como todas as
   outras, e o vão de secção é a porta `section_gap_px()`. ⛔ A cura de um uso novo é **converter**, nunca repor a
   constante.

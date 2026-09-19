@@ -208,3 +208,17 @@ pub fn fallback(hero: &HeroScreen, side: DockSide) -> Vec<&'static str> {
 pub fn has_memory(hero: &HeroScreen, side: DockSide) -> bool {
     hero.dock_closed[idx(side)].is_some()
 }
+
+/// ⭐⭐⭐ **Esta coluna está FECHADA?** — a pergunta que a marca do menu faz.
+///
+/// ⚠️ **É a MEMÓRIA do fecho e não a largura**, e a distinção é a que o header deste ficheiro
+/// defende: uma coluna arrastada até ao `DOCK_W_MIN` continua **aberta** (desde 2026-09-09 a borda
+/// nem a pode fechar), e ler a largura diria o contrário no dia em que o artista a apertasse.
+///
+/// ⛔ **Um segundo predicado escrito no menu divergiria deste no dia em que a memória mudasse de
+/// forma** — foi exactamente o que aconteceu entre o `close_column` (que lia o rect publicado) e o
+/// `occupants` (que lê o encaixe), e custou o report *«soltou vários painéis no meio do canvas»*.
+#[must_use]
+pub fn is_closed(hero: &HeroScreen, side: DockSide) -> bool {
+    has_memory(hero, side)
+}

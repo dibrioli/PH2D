@@ -395,7 +395,13 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
             let is_toggle = kind == ContextMenuKind::MenuBarWindow
                 || *id == ids::RAIL_SHOW_HIERARCHY
                 || *id == ids::RAIL_SHOW_INSPECTOR
-                || *id == ids::MENUBAR_VIEW_RULERS;
+                || *id == ids::MENUBAR_VIEW_RULERS
+                // ⭐⭐ **As duas COLUNAS** (2026-09-19). ⚠️ Elas entraram no menu e este censo
+                //    reprovou na primeira corrida — que é exactamente o trabalho dele: uma linha de
+                //    alternância sem entrada no `MODULE_TRUTHS` é o menu a dizer a mesma coisa com
+                //    a coluna aberta e fechada, o defeito que ele pagou dezasseis vezes.
+                || *id == ids::MENUBAR_VIEW_COLUMN_LEFT
+                || *id == ids::MENUBAR_VIEW_COLUMN_RIGHT;
             assert_eq!(
                 menu_bar::row_is_marked_by_button_state(*id),
                 is_toggle,
@@ -416,10 +422,12 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
     );
 }
 
-/// As três linhas de alternância que **não** vivem no menu *Window*: as duas colunas laterais e a
-/// régua. ⚠️ Escritas como contagem porque a lista delas está no `is_toggle` acima — se lá
-/// aparecer uma quarta, este número tem de subir no mesmo commit, e o gate diz qual é a diferença.
-const OUTSIDE_WINDOW_TOGGLES: usize = 3;
+/// As linhas de alternância que **não** vivem no menu *Window*: os dois painéis laterais
+/// (*Hierarchy*, *Inspector*), a régua, e — desde 2026-09-19 — as duas COLUNAS.
+///
+/// ⚠️ Escritas como CONTAGEM porque a lista delas está no `is_toggle` acima — se lá aparecer mais
+/// uma, este número tem de subir no mesmo commit, e o gate diz qual é a diferença.
+const OUTSIDE_WINDOW_TOGGLES: usize = 5;
 
 /// **E a régua PUBLICA o estado dela**, porque quem pinta a marca não alcança o `HeroScreen`.
 #[test]

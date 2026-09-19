@@ -80,3 +80,31 @@ pub const MENUBAR_VIEW_RULERS: NodeId = hash_node_id("menubar_view_rulers");
 /// ⛔ **É um VERBO, não um estado:** ele não tem marca de «ligado» e clicá-lo duas vezes é o mesmo
 /// que uma. Por isso não entra no `MODULE_TRUTHS`, que é a tabela dos alternadores.
 pub const MENUBAR_VIEW_RESET_LAYOUT: NodeId = hash_node_id("menubar_view_reset_layout");
+
+/// ⭐⭐⭐ **A COLUNA ESQUERDA — fechar e reabrir**, o verbo que o dono mandou mudar de sítio.
+///
+/// > *«Vamos retirar a opção de colapsar arrastando. Deixa o colapsar apenas no menu da barra
+/// > superior.»* — Enio, 2026-09-09
+///
+/// ⛔⛔ **Metade daquela ordem foi cumprida e a outra metade não, e o resultado foi a CAPACIDADE
+/// desaparecer.** O gesto da borda saiu na w49; o item de menu nunca foi escrito. Medido em
+/// 2026-09-19: o [`crate::screens::hero::dock_columns::close`] tinha **ZERO chamadores de
+/// produto** — a lei da coluna estava viva, gateada e **inalcançável**, e o artista não tinha
+/// maneira nenhuma de fechar uma coluna.
+///
+/// ⚠️ *Retirar um gesto deixa a lei dele viva e órfã, e nenhuma sonda deste repo pergunta se uma
+/// PORTA tem chamador* — o roteador do `CLAUDE.md` escrevia isto por extenso e ninguém o lia como
+/// uma feature em falta.
+///
+/// ⭐ **É um ALTERNADOR e não um verbo** (ao contrário do [`MENUBAR_VIEW_RESET_LAYOUT`] acima):
+/// ele entra no `MODULE_TRUTHS`, acende quando a coluna está aberta, e o segundo clique desfaz o
+/// primeiro — que é exactamente a involução que o `dock_columns` já garante.
+pub const MENUBAR_VIEW_COLUMN_LEFT: NodeId = hash_node_id("menubar_view_column_left");
+
+/// ⭐⭐⭐ **A COLUNA DIREITA — fechar e reabrir.** Irmã da [`MENUBAR_VIEW_COLUMN_LEFT`], e existe
+/// pela mesma ordem do dono.
+///
+/// ⚠️ **Duas linhas e não uma:** o `dock_columns` guarda a memória **por lado**
+/// (`dock_closed: [Option<ClosedColumn>; 2]`), e uma linha só que fechasse as duas perderia a
+/// distinção que a involução precisa — reabrir devolveria a união dos dois fechos.
+pub const MENUBAR_VIEW_COLUMN_RIGHT: NodeId = hash_node_id("menubar_view_column_right");

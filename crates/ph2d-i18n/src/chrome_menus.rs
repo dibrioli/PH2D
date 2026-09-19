@@ -83,6 +83,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.mirror_ui" => "— Mirror UI",
         "chrome.menu.show_statistics" => "— Show Statistics",
         "chrome.menu.reset_panel_layout" => "Reset Panel Layout",
+        // ⭐⭐ **As duas colunas laterais** (2026-09-19) — os alternadores que o dono pediu em
+        // 2026-09-09 ao retirar o gesto da borda, e que nunca tinham sido escritos.
+        //
+        // ⚠️ **O rótulo nomeia a COISA e não o verbo**, como o `Hierarchy` e o `Inspector` duas
+        // linhas acima: a marca de aceso é que diz se ela está lá. *Um rótulo que dissesse
+        // «Collapse» teria de mudar de palavra a cada clique, e a linha de menu é estática.*
+        "chrome.menu.left_column" => "Left Column",
+        "chrome.menu.right_column" => "Right Column",
         "chrome.menu.forge_dark" => "Forge (dark)",
         "chrome.menu.workshop_dark" => "Workshop (dark)",
         "chrome.menu.sunstone_light" => "Sunstone (light)",

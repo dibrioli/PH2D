@@ -92,13 +92,15 @@ pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 5] = [
 /// ⚠️ Existe para o registo não ser uma lista escrita à mão ao lado da tabela de rows: quem
 /// acrescentar um verbo novo a um destes menus acrescenta-o aqui, e o gate
 /// `every_menu_bar_row_is_registered` reprova se esquecer.
-pub const OWN_ROWS: [NodeId; 6] = [
+pub const OWN_ROWS: [NodeId; 8] = [
     ids::MENUBAR_FILE_NEW,
     ids::MENUBAR_FILE_SCENES,
     ids::MENUBAR_EDIT_PREFERENCES,
     ids::MENUBAR_VIEW_THEME,
     ids::MENUBAR_VIEW_RULERS,
     ids::MENUBAR_VIEW_RESET_LAYOUT,
+    ids::MENUBAR_VIEW_COLUMN_LEFT,
+    ids::MENUBAR_VIEW_COLUMN_RIGHT,
 ];
 
 /// Padding horizontal de cada título dentro do seu alvo.
@@ -199,6 +201,17 @@ pub enum ModuleTruth {
     /// doc-comment do handler explica porque ler o estado do botão ali daria a resposta errada
     /// entre uma tecla `D` e o sync seguinte.
     ShellOwned,
+    /// ⭐⭐ **Uma COLUNA lateral está aberta?** — a verdade das duas linhas que o menu *View*
+    /// ganhou em 2026-09-19.
+    ///
+    /// ⚠️ **A pergunta é *«está ABERTA»* e não *«está fechada»***, para a marca ter o mesmo sentido
+    /// das quinze linhas à volta: aceso = a coisa está lá. ⛔ Invertida, o menu diria *ligado* com a
+    /// coluna escondida, que é pior do que não ter marca nenhuma.
+    ///
+    /// ⚠️ E a verdade é a MEMÓRIA do fecho (`hero.dock_closed`), não a largura: uma coluna
+    /// arrastada até ao mínimo continua **aberta**, e desde 2026-09-09 a borda já nem a pode
+    /// fechar.
+    Column(crate::screens::layout::DockSide),
 }
 
 impl ModuleTruth {
@@ -211,13 +224,14 @@ impl ModuleTruth {
             Self::ImageMode => hero.image_edit.mode_on,
             Self::Rulers => hero.view.rulers_visible,
             Self::ShellOwned => return None,
+            Self::Column(side) => !super::dock_columns::is_closed(hero, side),
         })
     }
 }
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 20] = [
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 22] = [
     (ids::TOPBAR_VECTOR, ModuleTruth::Tool("vector")),
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_FLIP, ModuleTruth::Tool("flip")),
@@ -252,6 +266,15 @@ pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 20] = [
     (ids::RAIL_SHOW_HIERARCHY, ModuleTruth::Panel("hierarchy")),
     (ids::RAIL_SHOW_INSPECTOR, ModuleTruth::Panel("inspector")),
     (ids::MENUBAR_VIEW_RULERS, ModuleTruth::Rulers),
+    // ⭐⭐⭐ **As duas colunas** (2026-09-19) — ver `ModuleTruth::Column`.
+    (
+        ids::MENUBAR_VIEW_COLUMN_LEFT,
+        ModuleTruth::Column(crate::screens::layout::DockSide::Left),
+    ),
+    (
+        ids::MENUBAR_VIEW_COLUMN_RIGHT,
+        ModuleTruth::Column(crate::screens::layout::DockSide::Right),
+    ),
 ];
 
 /// ⭐ **Este módulo está LIGADO?** — a pergunta que um toggle faz para escolher a direcção.

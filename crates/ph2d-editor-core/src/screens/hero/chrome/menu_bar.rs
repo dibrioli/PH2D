@@ -45,6 +45,30 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         super::super::slot_tabs::reset(hero);
         hero.store.close_context_menu();
         return true;
+    } else if id == ids::MENUBAR_VIEW_COLUMN_LEFT || id == ids::MENUBAR_VIEW_COLUMN_RIGHT {
+        // ⭐⭐⭐ **FECHAR E REABRIR UMA COLUNA** (2026-09-19) — a metade da ordem de 2026-09-09 que
+        // faltava: *«Vamos retirar a opção de colapsar arrastando. Deixa o colapsar apenas no menu
+        // da barra superior.»* O gesto da borda saiu; este item nunca foi escrito, e entre os dois
+        // dias **não havia maneira nenhuma de fechar uma coluna**.
+        use crate::screens::layout::DockSide;
+        let side = if id == ids::MENUBAR_VIEW_COLUMN_LEFT {
+            DockSide::Left
+        } else {
+            DockSide::Right
+        };
+        // ⚠️ **A LARGURA vem do store e é a ESCOLHA, não o número.** O doc do `close` avisa que
+        //    quem fecha por ARRASTO não pode lê-la ali (cada pixel do arrasto já a reescreveu) —
+        //    aqui não há arrasto nenhum, logo o store sabe, e `dock_width_choice` devolve `None`
+        //    quando ninguém tocou naquela borda. ⛔ Passar o `dock_width()` faria a reabertura
+        //    gravar como escolha um default que o artista nunca escolheu.
+        let escolha = hero.store.dock_width_choice(side);
+        if super::super::dock_columns::is_closed(hero, side) {
+            super::super::dock_columns::open(hero, side);
+        } else {
+            super::super::dock_columns::close(hero, side, escolha);
+        }
+        hero.store.close_context_menu();
+        return true;
     } else if id == ids::MENUBAR_VIEW_RULERS {
         // ⚠️ **A régua é estado do HERO, não da ferramenta** — o mesmo campo que a caixa do painel
         // do vetor mexe. Duas portas, um valor.

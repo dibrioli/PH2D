@@ -1054,3 +1054,14 @@ campo debaixo da peça, que é a **curva CERTA**.
 pelo PICO** (uma célula onde a verdade é quase zero dá erro relativo enorme e contribui zero para a
 imagem) — e ela cai como deve: `8,7 % → 3,5 % → 0,96 %`. ⚠️ *O discriminador entre ruído e sinal é
 variar a AMOSTRAGEM e ver se a régua se mexe*, nunca a forma da régua.
+
+## ⛔⛔⛔ Uma CURA pode estar fora do caminho que o produto corre — e todo gate dela fica verde
+
+Medido 2026-09-19: duas waves entregues com tabela, gates e mutação, e o dono a repetir pela
+terceira vez que o sintoma continuava. O ramo que o dispositivo pinta **devolve** antes de a cura
+poder correr, e o `!refinar` que o guarda é o valor de FÁBRICA ⇒ o código curado **não é executado**.
+⚠️ E o que o escondeu foi a segunda metade: toda coluna daquele módulo rotulada «DISPOSITIVO» era a
+**CPU** com um campo desligado — um sucedâneo que **até acertava no número** (`9,21` contra `9,20` na
+placa), o que é o pior caso: *dava confiança sobre um programa que ninguém tinha observado, e a RAZÃO
+escrita ao lado do número estava errada*. Detalhe e a cura (um gate ESTRUTURAL sobre a ORDEM, que
+corre sem placa): [[feedback_a_cure_on_a_path_the_product_does_not_execute]].

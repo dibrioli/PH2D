@@ -38,7 +38,17 @@ fn linha(on: &str, target: &str, verb: SignalVerb) -> SignalAction {
         verb,
         arg: String::new(),
         target_by: ph2d_ecs::SignalTarget::default(),
+        from: ph2d_ecs::SignalFrom::default(),
     }
+}
+
+/// A resolução com sinais SEM SUJEITO — ver o irmão `mede_o_que_a_composicao_ja_da_ao_golpe`.
+fn resolve_nomes(w: &mut World, t: &TagTree, ns: &[&str]) -> Vec<ph2d_ecs::SignalEffect> {
+    let disparos: Vec<ph2d_ecs::signal_actions::Disparo<'_>> = ns
+        .iter()
+        .map(|n| ph2d_ecs::signal_actions::Disparo::anonimo(n))
+        .collect();
+    ph2d_ecs::signal_actions::resolve(w, t, &disparos)
 }
 
 #[test]
@@ -52,7 +62,7 @@ fn mede_o_que_a_composicao_ja_da_ao_cerebro() {
         linha("botao", "Parede", SignalVerb::Show),
         linha("botao", "Parede", SignalVerb::Hide),
     ]);
-    let efeitos = ph2d_ecs::signal_actions::resolve(&mut w, &t, &["botao"]);
+    let efeitos = resolve_nomes(&mut w, &t, &["botao"]);
     println!("A) O MESMO sinal com duas linhas contraditorias (Show + Hide na mesma parede)");
     println!("   efeitos disparados: {}", efeitos.len());
     for e in &efeitos {

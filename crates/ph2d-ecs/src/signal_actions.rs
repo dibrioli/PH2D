@@ -108,12 +108,28 @@ pub enum SignalVerb {
     /// documento pelo postcard, que é POSICIONAL — uma variante no meio reescreveria o sentido de
     /// todas as linhas de acção já gravadas, em silêncio.
     AddToCounter,
+    /// ⭐⭐⭐ **Tira o alvo da cena** (suplente #24) — o verbo que faltava para um golpe acabar em
+    /// alguma coisa.
+    ///
+    /// ⚠️ **Ele ANUNCIA e nunca apaga:** produz um [`crate::Death`] pelo despachante que já existe,
+    /// com a causa [`crate::DeathCause::Killed`]. ⛔ *Dois despachantes de morte seriam duas
+    /// respostas a «quando é que isto sai da cena?»* — a frase que a fase da fábrica já tem escrita.
+    ///
+    /// ⚠️⚠️ **E ele só tira quem NASCEU numa corrida** ([`crate::is_transient`]), com a fronteira
+    /// FORÇADA e não escolhida: apagar um objecto do documento durante a corrida **tira-o do
+    /// documento** (a captura vê-o sumido e o `Ctrl+Z` herda a remoção), que é a lei *«o que
+    /// acontece numa corrida não é documento»* invertida. O precedente é do #14, com a frase
+    /// inteira: *«um projéctil que ele pôs na cena à mão é documento, e apagá-lo destruiria
+    /// autoria»*. ⇒ um alvo de documento é **recusado em voz** e contado como inerte.
+    ///
+    /// ⛔ **Ele NÃO lê o `arg`** — *«tira este»* não tem parâmetro.
+    Destroy,
 }
 
 impl SignalVerb {
     /// Todos, em ordem — **a fonte da iteração**. ⛔ Nunca escreva a lista uma segunda vez.
     /// ⚠️ **APPEND-ONLY**: a posição é a tag e ela viaja no ficheiro. Um verbo novo entra no FIM.
-    pub const ALL: [SignalVerb; 8] = [
+    pub const ALL: [SignalVerb; 9] = [
         SignalVerb::StartTimer,
         SignalVerb::StopTimer,
         SignalVerb::Show,
@@ -122,6 +138,7 @@ impl SignalVerb {
         SignalVerb::PlaySound,
         SignalVerb::StopSound,
         SignalVerb::AddToCounter,
+        SignalVerb::Destroy,
     ];
 
     /// O rótulo que o artista lê, em INGLÊS — um ACESSÓRIO derivado da tabela desde 2026-09-19
@@ -145,6 +162,7 @@ impl SignalVerb {
             SignalVerb::PlaySound => "ecs.signal_verb.play_sound",
             SignalVerb::StopSound => "ecs.signal_verb.stop_sound",
             SignalVerb::AddToCounter => "Add to Counter",
+            SignalVerb::Destroy => "Destroy",
         }
     }
 
@@ -196,6 +214,19 @@ pub enum SignalTarget {
     ///
     /// ⚠️ `u64` e não [`TagId`] porque a folha das tags não fala `serde` (de propósito).
     Tagged(u64),
+    /// ⭐⭐ **QUEM FALOU** — a entidade que publicou o sinal deste quadro (suplente #24).
+    ///
+    /// ⚠️ **APENDADO**, como o verbo e pela mesma razão: a posição é a tag e ela viaja no ficheiro.
+    ///
+    /// ⚠️ **Um sinal sem sujeito dá NINGUÉM** — a timeline, um botão do painel e o Motion não têm
+    /// `source`, e `None` **não** é *«qualquer um»*. É a lei do alvo que não existe, que este enum
+    /// já escreve para uma tag apagada.
+    Speaker,
+    /// ⭐⭐ **O OUTRO LADO** — hoje, quem tocou em quem gritou (o `other` de um contacto).
+    ///
+    /// ⚠️ **Só o contacto o tem.** Para toda outra origem isto dá **ninguém**, pela mesma lei do
+    /// [`Self::Speaker`].
+    Other,
 }
 
 impl SignalTarget {
@@ -204,7 +235,76 @@ impl SignalTarget {
     pub const fn tag(self) -> Option<TagId> {
         match self {
             Self::Tagged(id) => Some(TagId(id)),
-            Self::Named => None,
+            Self::Named | Self::Speaker | Self::Other => None,
+        }
+    }
+}
+
+/// ⭐⭐⭐ **DE QUEM** o sinal tem de vir para esta linha reagir — a **TERCEIRA** pergunta de uma
+/// linha, e a que faltava (suplente #24, [`plano`]).
+///
+/// [`plano`]: https://github.com/dibrioli/PH2D/blob/main/docs/Components/19_plano_o_sinal_sabe_quem.md
+///
+/// # ⛔⛔ Porque ela é uma CERCA do reactor e não mais um alvo
+///
+/// Medido (a sonda `mede_o_que_a_composicao_ja_da_ao_golpe`): dez inimigos iguais com a linha
+/// *«ao ouvir `golpe`, perco uma vida»* resolvem **dez** efeitos com **um** tiro — o sinal é um nome
+/// global e a tabela não sabia quem levou o golpe.
+///
+/// ⚠️ **E [`SignalTarget::Speaker`] NÃO a substitui:** com ele os dez reactores aplicariam o verbo
+/// ao mesmo sujeito (`-10` numa vida). *Quem reage* e *a quem* são duas perguntas, e esta é a
+/// primeira.
+///
+/// ⚠️ **É o ÚLTIMO campo do [`SignalAction`]**, pela mesma razão do `target_by`: é o que torna a
+/// migração de um v148 uma leitura com um tipo congelado e um re-encode.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SignalFrom {
+    /// **Qualquer um.** O de sempre, e o default: toda linha de um ficheiro v148 migra para aqui.
+    #[default]
+    Anyone,
+    /// **Só se fui EU que falei** — o sinal tem de vir deste objecto.
+    ///
+    /// ⚠️ **Um sinal sem sujeito nunca passa por aqui**, e não é um caso esquecido: a timeline, o
+    /// botão do painel e o Motion publicam sem `source`, e tratar `None` como *«sim»* faria uma
+    /// cerca fechada deixar passar tudo — o modo de falha mais caro que uma cerca pode ter.
+    Myself,
+}
+
+impl SignalFrom {
+    /// Todas, em ordem — **a fonte da iteração** do segmentado do painel.
+    /// ⚠️ **APPEND-ONLY**: a posição é a tag e ela viaja no ficheiro.
+    pub const ALL: [SignalFrom; 2] = [SignalFrom::Anyone, SignalFrom::Myself];
+
+    /// O rótulo que o artista lê. Inglês (HR-15).
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            SignalFrom::Anyone => "Anyone",
+            SignalFrom::Myself => "Myself",
+        }
+    }
+
+    /// A posição em [`Self::ALL`] — a tag que o painel usa no segmentado.
+    #[must_use]
+    pub const fn tag(self) -> u8 {
+        self as u8
+    }
+
+    /// A cerca desta posição, ou a primeira. ⚠️ **A POSIÇÃO NO ARRAY É A TAG.**
+    #[must_use]
+    pub fn from_tag(tag: u8) -> Self {
+        Self::ALL.get(tag as usize).copied().unwrap_or_default()
+    }
+
+    /// **Este disparo passa a cerca de quem reage?**
+    ///
+    /// ⚠️ **A porta ÚNICA da pergunta**, e ela é `const`: escrita duas vezes (aqui e no painel, que
+    /// quer pintar *«esta linha não vai reagir»*), as duas divergiriam no dia da terceira variante.
+    #[must_use]
+    pub fn deixa_passar(self, quem_falou: Option<Entity>, reactor: Entity) -> bool {
+        match self {
+            SignalFrom::Anyone => true,
+            SignalFrom::Myself => quem_falou == Some(reactor),
         }
     }
 }
@@ -223,9 +323,12 @@ pub struct SignalAction {
     /// O parâmetro do verbo — hoje, o nome do timer. Vazio quando o verbo não o lê
     /// ([`SignalVerb::uses_arg`]), e **vazio também significa «todos»** para os verbos de timer.
     pub arg: String,
-    /// ⭐ **Por nome ou por tag** — ver [`SignalTarget`]. ⚠️ O ÚLTIMO campo, de propósito: é o que
-    /// torna a migração de um v128 uma leitura com um tipo congelado e um re-encode.
+    /// ⭐ **Por nome ou por tag** — ver [`SignalTarget`]. ⚠️ Era o ÚLTIMO campo até 2026-09-19.
     pub target_by: SignalTarget,
+    /// ⭐⭐⭐ **De quem o sinal tem de vir** — ver [`SignalFrom`]. ⚠️ **O ÚLTIMO campo agora**, pela
+    /// mesma razão que o `target_by` foi: é o que torna a migração de um v148 uma leitura com um
+    /// tipo congelado e um re-encode.
+    pub from: SignalFrom,
 }
 
 /// **A tabela de uma entidade** — o componente registado.
@@ -234,6 +337,46 @@ pub struct SignalAction {
 /// entidade, e um objecto tem tipicamente várias reacções (*abre com `botao`, fecha com `alarme`*).
 #[derive(Component, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SignalActions(pub Vec<SignalAction>);
+
+/// ⭐⭐⭐ **UM SINAL QUE SOOU NESTE QUADRO, com QUEM o disse** (suplente #24).
+///
+/// # ⛔⛔ Porque o tipo vive AQUI e não no barramento
+///
+/// O `ph2d-ecs` **não pode ver o `ph2d-runtime`** (ADR-0075: a fundação não conhece o barramento —
+/// e o `Cargo.toml` mede-o). ⇒ o dado atravessa a fronteira num tipo desta crate, e quem o constrói
+/// é a shell, que é dona dos dois lados. *A lei devolve factos, a ponte publica-os* — a mesma
+/// fronteira que o `tick_timers` já usa.
+///
+/// # ⚠️ O dado JÁ EXISTIA, e era deitado fora uma linha antes de ser preciso
+///
+/// O `SignalOrigin` tem 14 variantes e **11 carregam `source`**; o `Contact` carrega `source` **e**
+/// `other`, com o doc a chamar-lhes *«quem GRITOU»* e *«quem chegou, ou quem saiu»*. A shell fazia
+/// `.map(|s| s.name)` e a origem morria ali. ⇒ esta wave não descobre o dado: **deixa de o deitar
+/// fora**.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Disparo<'a> {
+    /// O nome que soou.
+    pub nome: &'a str,
+    /// **Quem GRITOU.** `None` = a origem não tem sujeito (a timeline, um botão do painel, o Motion).
+    pub quem: Option<Entity>,
+    /// **O OUTRO lado**, quando o houver — hoje só o contacto o tem.
+    pub outro: Option<Entity>,
+}
+
+impl<'a> Disparo<'a> {
+    /// Um sinal **sem sujeito** — o que todo chamador de teste quer dizer, e o que a timeline e o
+    /// botão do painel de facto publicam.
+    ///
+    /// ⚠️ Ele **não passa** a cerca [`SignalFrom::Myself`], e isso é a lei e não um esquecimento.
+    #[must_use]
+    pub const fn anonimo(nome: &'a str) -> Self {
+        Self {
+            nome,
+            quem: None,
+            outro: None,
+        }
+    }
+}
 
 /// **O efeito que uma acção decidiu**, com o alvo já resolvido para uma entidade.
 ///
@@ -276,8 +419,19 @@ pub struct SignalEffect {
 /// ⚠️ **A árvore de tags entra por parâmetro**, e é o documento do PROJECTO (a shell guarda-a no
 /// `AppGfx`): uma acção por tag pergunta quem pertence à subárvore, e a pertença de um objecto é só
 /// uma lista de ids. Uma acção por nome nunca a lê.
+///
+/// # ⭐⭐⭐ Uma linha reage a um DISPARO, não a um NOME (2026-09-19, suplente #24)
+///
+/// Até esta wave a entrada era `&[&str]` e a pergunta era *«este nome soou?»* — logo dois eventos
+/// com o mesmo nome no mesmo quadro davam **um** efeito. Com o [`Disparo`] a pergunta é *«que
+/// eventos soaram?»*, e uma linha produz um efeito **por evento que casa**.
+///
+/// ⚠️⚠️ **A mudança é OBSERVÁVEL e cura um defeito latente:** duas moedas apanhadas no mesmo quadro
+/// somavam **1** ponto e passam a somar **2**. ⛔ Ela **não** é o colapso que as origens declaram
+/// (`fires`/`cycles`/`rows`/`count`): esse é dentro de **um** produtor — *«sai um evento, com
+/// quantos ele representa»* —, e dois inimigos atingidos são dois produtores diferentes.
 #[must_use]
-pub fn resolve(world: &mut World, tree: &TagTree, fired: &[&str]) -> Vec<SignalEffect> {
+pub fn resolve(world: &mut World, tree: &TagTree, fired: &[Disparo<'_>]) -> Vec<SignalEffect> {
     if fired.is_empty() {
         return Vec::new();
     }
@@ -297,18 +451,27 @@ pub fn resolve(world: &mut World, tree: &TagTree, fired: &[&str]) -> Vec<SignalE
     for (_, source, table) in reactors {
         for action in &table.0 {
             // Um consumidor sem nome não escuta — o espelho da lei do produtor.
-            if action.on.is_empty() || !fired.contains(&action.on.as_str()) {
+            if action.on.is_empty() {
                 continue;
             }
-            // ⚠️ A ordem dentro de uma linha é a dos ALVOS (pela identidade), depois da ordem dos
-            // reactores e da ordem das linhas — as três, deterministas.
-            for target in targets_of(world, tree, source, action) {
-                out.push(SignalEffect {
-                    target,
-                    verb: action.verb,
-                    arg: action.arg.clone(),
-                    source,
-                });
+            // ⚠️ **A ordem dos DISPAROS é a da fila do quadro** — ela é a ordem de publicação, que
+            // é determinista porque cada produtor corre num sítio fixo do quadro.
+            for disparo in fired.iter().filter(|d| d.nome == action.on) {
+                // ⭐⭐⭐ **A CERCA** (suplente #24) — *«só reajo se fui eu que falei»*. Sem ela, um
+                // tiro num inimigo tira vida aos dez (medido: 10 efeitos para 1 sinal).
+                if !action.from.deixa_passar(disparo.quem, source) {
+                    continue;
+                }
+                // ⚠️ A ordem dentro de uma linha é a dos ALVOS (pela identidade), depois da ordem
+                // dos disparos, dos reactores e das linhas — as quatro, deterministas.
+                for target in targets_of(world, tree, source, action, *disparo) {
+                    out.push(SignalEffect {
+                        target,
+                        verb: action.verb,
+                        arg: action.arg.clone(),
+                        source,
+                    });
+                }
             }
         }
     }
@@ -320,21 +483,35 @@ pub fn resolve(world: &mut World, tree: &TagTree, fired: &[&str]) -> Vec<SignalE
 /// - [`SignalTarget::Named`]: o objecto com aquele nome, ou `source` com o nome vazio — zero ou um.
 /// - [`SignalTarget::Tagged`]: todos os que pertencem à subárvore da tag, pela ordem do
 ///   [`crate::StableId`]; uma tag que já não existe dá **ninguém**.
+/// - [`SignalTarget::Speaker`] / [`SignalTarget::Other`]: os dois lados do disparo — **ninguém**
+///   quando a origem não os tem.
 ///
 /// ⛔ Resolver o alvo na shell seria a segunda resposta, e é a que envelhece.
+///
+/// ⚠️ **Os dois lados do disparo são CONFERIDOS contra o mundo** (`get_entity`) pela mesma razão que
+/// o [`target_of`] o faz: entre o quadro em que o sinal foi publicado e este, um dreno de morte pode
+/// ter levado a entidade — e um efeito sobre bits reciclados escreveria no objecto errado.
 #[must_use]
 pub fn targets_of(
     world: &mut World,
     tree: &TagTree,
     source: Entity,
     action: &SignalAction,
+    disparo: Disparo<'_>,
 ) -> Vec<Entity> {
     match action.target_by {
         SignalTarget::Named => target_of(world, source, &action.target)
             .into_iter()
             .collect(),
         SignalTarget::Tagged(id) => crate::tags::tagged(world, tree, TagId(id)),
+        SignalTarget::Speaker => vivo(world, disparo.quem).into_iter().collect(),
+        SignalTarget::Other => vivo(world, disparo.outro).into_iter().collect(),
     }
+}
+
+/// A entidade, se ela **ainda existir** no mundo. Ver o doc de [`targets_of`].
+fn vivo(world: &World, e: Option<Entity>) -> Option<Entity> {
+    e.filter(|&e| world.get_entity(e).is_ok())
 }
 
 /// O alvo de uma acção: `source` quando o nome é vazio, senão quem tiver aquele [`Name`].
@@ -363,3 +540,8 @@ pub use v1::migrate_v1_blob;
 #[cfg(test)]
 #[path = "signal_actions_tests.rs"]
 mod tests;
+
+/// ⭐ **A CERCA e os DOIS LADOS** (suplente #24) — irmão por ASSUNTO; ver o cabeçalho de lá.
+#[cfg(test)]
+#[path = "signal_actions_cerca_tests.rs"]
+mod cerca_tests;

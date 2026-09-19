@@ -17,7 +17,7 @@
 //! recusado (sobram os bytes do `target_by`), mas um com várias pode ler-se como v1 sem erro — quem
 //! garante a origem é o número do ficheiro, não esta função.
 
-use super::{SignalAction, SignalActions, SignalTarget, SignalVerb};
+use super::{SignalAction, SignalActions, SignalFrom, SignalTarget, SignalVerb};
 use serde::Deserialize;
 
 /// Uma linha, na forma v128. ⚠️ A ordem dos campos É o formato.
@@ -33,8 +33,14 @@ struct SignalActionV1 {
 #[derive(Deserialize)]
 struct SignalActionsV1(Vec<SignalActionV1>);
 
-/// ⭐ **Os bytes de um `SignalActions` v128, reescritos no formato vivo** — cada linha com
-/// `target_by = Named`, que é o que ela significava.
+/// ⭐ **Os bytes de um `SignalActions` v128, reescritos no formato VIVO** — cada linha com
+/// `target_by = Named` e `from = Anyone`, que é o que ela significava.
+///
+/// ⚠️⚠️ **Ela escreve o formato VIVO, não o v129** — e por isso ela cresce a cada campo apendado à
+/// linha (o `from` do suplente #24 foi o segundo). *A escada do load tem TRÊS degraus vivos (`95`,
+/// `128`, o corrente) e recusa tudo o que está no meio*, logo um v128 salta direito ao de hoje e
+/// esta função é o salto inteiro. ⛔ Quem apendar o terceiro campo tem de o pôr aqui — senão um
+/// ficheiro v128 deixa de compilar, que é o modo de falha bom.
 ///
 /// `None` = os bytes não se leem como v128 (falha, ou sobra): quem chama deixa o blob como estava e
 /// conta-o, porque reescrever com um palpite seria pior do que deixar.
@@ -55,6 +61,7 @@ pub fn migrate_v1_blob(bytes: &[u8]) -> Option<Vec<u8>> {
                 verb: a.verb,
                 arg: a.arg,
                 target_by: SignalTarget::Named,
+                from: SignalFrom::Anyone,
             })
             .collect(),
     );

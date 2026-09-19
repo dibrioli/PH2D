@@ -263,7 +263,7 @@ fn a_caixa_do_canvas_atravessa_o_ficheiro() {
 /// *Um placar que não conta e um placar que não existe leem-se exactamente igual.*
 #[test]
 fn o_sinal_chega_ao_contador_pelo_nome_e_so_com_identidade() {
-    use crate::{SignalAction, SignalActions, SignalTarget, SignalVerb};
+    use crate::{SignalAction, SignalActions, SignalFrom, SignalTarget, SignalVerb};
 
     fn placar(w: &mut World, com_pose: bool) -> usize {
         let tabela = SignalActions(vec![SignalAction {
@@ -272,6 +272,7 @@ fn o_sinal_chega_ao_contador_pelo_nome_e_so_com_identidade() {
             verb: SignalVerb::AddToCounter,
             arg: "1".into(),
             target_by: SignalTarget::Named,
+            from: SignalFrom::Anyone,
         }]);
         let e = w
             .spawn((
@@ -288,7 +289,12 @@ fn o_sinal_chega_ao_contador_pelo_nome_e_so_com_identidade() {
             w.entity_mut(e).insert(crate::Transform::default());
         }
         crate::assign_missing_stable_ids(w);
-        crate::signal_actions::resolve(w, &TagTree::default(), &["tick"]).len()
+        crate::signal_actions::resolve(
+            w,
+            &TagTree::default(),
+            &[crate::signal_actions::Disparo::anonimo("tick")],
+        )
+        .len()
     }
 
     // ⛔ O CONTROLO NEGATIVO: sem pose, o reactor é invisível — e em silêncio.
@@ -300,7 +306,11 @@ fn o_sinal_chega_ao_contador_pelo_nome_e_so_com_identidade() {
     // ⭐ E com ela, o caminho inteiro fecha.
     let mut w = mundo();
     assert_eq!(placar(&mut w, true), 1, "⛔ o alvo resolve-se pelo NOME");
-    let efeitos = crate::signal_actions::resolve(&mut w, &TagTree::default(), &["tick"]);
+    let efeitos = crate::signal_actions::resolve(
+        &mut w,
+        &TagTree::default(),
+        &[crate::signal_actions::Disparo::anonimo("tick")],
+    );
     assert_eq!(efeitos[0].verb, SignalVerb::AddToCounter);
     assert_eq!(efeitos[0].arg, "1");
 }

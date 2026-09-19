@@ -151,6 +151,12 @@ pub enum DeathCause {
     /// cena?»* é uma pergunta só, e uma segunda porta de remoção seria a segunda resposta. O
     /// produtor é a ponte do projéctil, que **anuncia** e nunca apaga.
     Spent,
+    /// ⭐⭐⭐ **Uma acção AUTORADA mandou-o sair** (suplente #24) — o [`crate::SignalVerb::Destroy`].
+    ///
+    /// ⚠️ **Entra por AQUI pela mesma razão que o [`Self::Spent`]:** *«quando é que isto sai da
+    /// cena?»* é uma pergunta só. E ela herda o mesmo filtro — só quem [`crate::is_transient`],
+    /// senão a acção apagaria trabalho do artista do próprio documento.
+    Killed,
 }
 
 /// **Um facto de morte** — quem, porquê, e o que ele publica.

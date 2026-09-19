@@ -95,12 +95,17 @@ fn mede_o_que_a_composicao_ja_da_ao_golpe() {
     println!("B) As maneiras de a tabela escolher A QUEM a accao se aplica");
     println!("   variantes de `SignalTarget`: Named (nome, ou vazio = este) . Tagged (por tag)");
     println!("   ha' alguma que diga «quem falou» ou «quem bateu»? NAO");
-    println!("   => o `SignalOrigin::Contact` CARREGA `source` e `other`, e a shell deita-os fora:");
+    println!(
+        "   => o `SignalOrigin::Contact` CARREGA `source` e `other`, e a shell deita-os fora:"
+    );
     println!("      `shells/desktop/src/render_loop/fase_signal_outbox.rs` -- `.map(|s| s.name)`");
     println!("      => `resolve(world, tags, &[&str])` recebe SO' NOMES.\n");
 
     // -- C) Existe verbo que tire da cena? -----------------------------------
-    println!("C) Os verbos que a tabela oferece ({}):", SignalVerb::ALL.len());
+    println!(
+        "C) Os verbos que a tabela oferece ({}):",
+        SignalVerb::ALL.len()
+    );
     for v in SignalVerb::ALL {
         println!("      . {v:?}");
     }

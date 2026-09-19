@@ -186,8 +186,8 @@ pub use sibling_order::{
     sibling_key,
 };
 pub use signal_actions::{
-    SIGNAL_ACTIONS_MAX, SignalAction, SignalActions, SignalEffect, SignalTarget, SignalVerb,
-    resolve as resolve_signal_actions,
+    Disparo, SIGNAL_ACTIONS_MAX, SignalAction, SignalActions, SignalEffect, SignalFrom,
+    SignalTarget, SignalVerb, resolve as resolve_signal_actions,
 };
 pub use signal_on_action::{
     ACTION_TRIGGERS_MAX, ActionEdge, ActionFired, ActionTriggerRow, Amostra as ActionSample,

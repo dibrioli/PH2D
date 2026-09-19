@@ -3232,3 +3232,183 @@ consegue matar não é lei, é comentário com sintaxe de código.*
 - a obra **B** (*«pagar o cálculo por níveis»*) continua por fazer, e a pergunta
   dela ficou mais estreita: *mais fileiras COMPLETAS*, não as primeiras;
 - a vista é de **VISTA** e não é gravada — como o `wireframe` e o `matcap`.
+
+---
+
+## §86 — ⛔⛔⛔⛔ A HIERARQUIA FOI CONSTRUÍDA, MEDIDA e RECUSADA (obra **B** de «as duas»)
+
+**Ordem do dono (20/09):** *«Pagar o cálculo por níveis»*, e depois *«As duas»*
+— a obra **A** (a vista da grade, §85) e a **B** (esta).
+
+Ela foi paga. **Mede pior que um nível em todas as colunas**, e a recusa fica
+registada com as três pernas, o mecanismo e a imagem.
+
+### §86.1 — O que foi construído
+
+Zero algoritmo portado: a `ph2d-quadflow` já é um porte fiel BSD-3 do
+*Instant Field-Aligned Meshes* e já tinha a hierarquia. O que faltava era o
+**domínio**, e as quatro peças são **aditivas**:
+
+| porta | o que é |
+|---|---|
+| `Mancha::areas` | a área dual de cada vértice da pegada (um terço por triângulo incidente) |
+| `Hierarchy::from_level` | a pilha a partir de um `Level` já construído — **o `build_to` DELEGA-LHE** |
+| `regiao_niveis::nivel_da_mancha` | a mancha como nível `0` (não converte nada, RENOMEIA) |
+| `regiao_niveis::campos_em_niveis` | os dois campos resolvidos do mais grosso ao mais fino |
+| `regiao::Campos` | a classe da resolução, lida pelo `arruma_na_grelha_por` |
+
+⚠️ **O `build_to` delegar não é arrumação — é a lei da porta única.** O
+`coarsen` sempre trabalhou sobre um `Level`; o que a `Mesh` dava era só o nível
+`0`. Um segundo laço ao lado dele seria a segunda resposta à mesma pergunta.
+
+### §86.2 — A RECUSA, com as três pernas
+
+**1 — o CONTROLO, e sem ele a tabela não afirma nada.** Com `mais_grosso` acima
+do tamanho da pegada a pilha tem **um nível só**, e a porta hierárquica devolve
+a lei que shipa **ao dígito em todas as colunas e nos quatro rumos**:
+
+```
+ao longo de x 1 nivel    64.22   0.994   2.620   20  43  70  8025
+ao longo de x pilha  1   64.22   0.994   2.620   20  43  70  8025
+```
+
+⇒ *a implementação está certa e a tabela mede o programa certo.* Gate:
+`uma_pilha_de_um_nivel_e_a_lei_de_hoje` (**ao bit**, não «perto» — a pergunta é
+*«é a mesma lei?»* e uma tolerância responderia *«é parecida»*).
+
+**2 — ela mede PIOR** (média dos quatro rumos, pela porta do produto):
+
+| classe | lascas | grade | vinco p90 | **fil p50** | **fil p90** |
+|---|---|---|---|---|---|
+| **um nível** (shipa) | **`9`** | **`64,03 %`** | **`2,724°`** | **`17,5`** | **`47,0`** |
+| níveis (`24`) | `87` | `52,73 %` | `3,877°` | `3,2` | `11,0` |
+| níveis (`8`) | `94` | `53,61 %` | `3,252°` | `3,2` | `11,5` |
+
+⛔ **E a saída barata está fechada:** com `2`, `4`, `8`, `16` e `32` varreduras a
+hierarquia fica **plana** em `52`–`55 %` de grade e `fil90` `11`–`13`, enquanto
+um nível vai a `65,17 %` e `68,5`. *Não é afinação.*
+
+**3 — o MECANISMO: ela propõe uma retícula que NÃO É a que a malha tem.**
+Medido sobre a malha a meio de um traço já arrumado (`891` vértices, `790` de
+miolo), o **pedido** — a distância de cada vértice ao nó que a lei lhe aponta —
+lê `p50 0,022` passos com um nível e **`0,375`** com a hierarquia. E `0,375` é o
+**máximo** que duas grades do mesmo passo podem discordar: meia célula é `0,5`,
+e a distância de um ponto qualquer ao nó mais perto de uma grade **rígida** tem
+`p50 ≈ 0,40` por simulação (`0,399`/`0,558` contra `0,375`/`0,540` medidos).
+
+⭐⭐⭐ **E é isso que parte as fileiras, porque um pincel aplica a lei DEZENAS de
+vezes sobre uma pegada que ANDA.** O emparelhamento do `coarsen` é outro a cada
+dab, logo cada dab propõe uma grade sem relação com a do anterior e **nada se
+acumula**. Um nível semeia cada vértice consigo próprio, logo propõe sempre a
+grade de que a malha está mais perto — e os dabs **reforçam-se**. *As fileiras
+de um pincel são feitas de ACUMULAÇÃO ao longo do traço, não de coerência dentro
+de um dab.* Gate: `a_hierarquia_propoe_outra_reticula`.
+
+⇒ **a leitura que fica:** *um extractor precisa de fase GLOBAL porque emite
+malha nova; um PINCEL precisa de uma fase que ele possa REPETIR, porque empurra
+os mesmos vértices dab após dab* — e uma fase decidida no topo de uma pilha
+construída sobre uma pegada que anda não é repetível.
+
+### §86.3 — ⛔⛔ DUAS explicações minhas caíram antes da certa
+
+| hipótese | como caiu |
+|---|---|
+| **saturação da FRANJA** — se os níveis grossos ficassem todos pregados não resolveriam nada | **refutada**: `11 %` no nível `0` e `52 %` no mais grosso (`891/101 · 482/71 · 259/51 · 144/36 · 80/28 · 42/18 · 23/12`) |
+| **a aritmética da fase rígida como custo POR CONSTRUÇÃO** | **refutada pela própria sonda**: numa esfera VIRGEM as duas classes pedem `0,400` e `0,413`. *O `0,022` de um nível não é propriedade da lei — é o que sobra depois de o traço já a ter aplicado doze vezes* |
+| **convergência por repetição** (um nível reforça-se, a hierarquia não) | **refutada**: a retícula sozinha, sobre conectividade fixa, não converge em classe nenhuma (`0,400 → 0,367` em oito passagens). Quem converge é o **PAR** retícula + dyntopo |
+
+### §86.4 — ⭐ E a escada das rondas devolveu OUTRA coisa
+
+A `RONDAS_DA_GRELHA = 2` trazia escrito *«o patamar é em `2`, e o que sobra
+acima dele é relógio»* — **verdade sobre a `grade`**, que foi a régua com que
+aquela escada foi lida. A régua da **fileira** não assenta em `2`:
+
+| rondas | lascas | grade | vinco p90 | **fil p90** | relógio (`84 386` verts) |
+|---|---|---|---|---|---|
+| **`2`** (shipa) | **`9`** | `64,03 %` | `2,724°` | `47,0` | **`2,402 ms`** (`30 %`) |
+| `4` | `12` | `64,52 %` | `2,727°` | `56,0` | `4,172 ms` (`52 %`) |
+| `8` | `14` | `64,92 %` | `2,703°` | `64,0` | `7,534 ms` (**`94 %`**) |
+| `16` | `5` | `65,17 %` | `2,681°` | `68,5` | `14,520 ms` (**`182 %`**) |
+| `32` | `15` | `64,93 %` | `2,704°` | `68,5` | — |
+
+⛔⛔⛔ **Subir para `4` foi construído e RECUSADO pelo PORTÃO DO PRODUTO:** o
+`a_cena_do_pente_tem_o_que_mostrar` reprovou no rumo de `30°` com **`2`
+triângulos abaixo de `5°`** (o pior a `4,03°`), onde `2` deixa ZERO em três dos
+quatro rumos.
+
+⚠️⚠️ **E a minha escada não tinha a coluna que o portão lê.** Ela media grade,
+vinco e fileira, concluiu que `4` era melhor, e a cerca da forma disse que não —
+*uma escada sem a coluna da cerca que o produto aplica recomenda um degrau que o
+produto recusa*. A coluna existe agora (`lascas`/`pior`).
+
+⭐ **O mecanismo é o que a `regiao::lasca` já declara por escrito:** ela julga
+**um vértice de cada vez** (Jacobi), e uma lasca feita por DOIS vizinhos que se
+aproximam não é vista por nenhum dos dois. Mais varreduras ⇒ deslocamento
+acumulado maior ⇒ mais pares a conspirar.
+
+⏳ ⇒ **fica `2`, e a dívida está NOMEADA:** as fileiras **querem** mais
+varreduras e quem as impede é o chão da forma. Quem quiser o degrau seguinte tem
+de trazer uma **cerca que veja PARES**, não um número maior.
+
+⚠️⚠️ **E a escada corre os QUATRO rumos porque a coluna da fileira SALTA num
+rumo só** (`fil90` leu `63` na ronda `3` e `34` na `4`): o percurso dela é guloso
+e uma aresta a entrar ou sair do balde alinhado funde ou parte duas cadeias
+longas de uma vez. *Uma coluna de alta variância lida numa amostra só fabrica uma
+tendência* — e eu quase escrevi uma.
+
+### §86.5 — ⭐ E a IMAGEM confirma a tabela
+
+`PH2D_PENTE_DUMP=<dir> cargo test -p ph2d-app-sculpt3d --release --lib diag_desenha_os_niveis -- --ignored --nocapture`
+
+Com as arestas da fileira a preto e as outras a cinzento: **um nível dá linhas
+contínuas de ponta a ponta** da faixa; a hierarquia dá a mesma região picada em
+fragmentos curtos. *Depois de eu ter lido mal uma imagem duas vezes nesta cena
+(§83, §84), nenhuma tabela desta linha decide sem o desenho ao lado.*
+
+### §86.6 — Gates, mutação e o portão
+
+**Seis gates novos:**
+
+| gate | onde | o que afirma |
+|---|---|---|
+| `uma_pilha_de_um_nivel_e_a_lei_de_hoje` | `ph2d-quadflow` | o CONTROLO, **ao bit** |
+| `a_hierarquia_propoe_outra_reticula` | `ph2d-app-sculpt3d` | o MECANISMO (e a franja que não satura) |
+| `a_franja_sobrevive_a_prolongacao` | `ph2d-quadflow` | a metade (2) da lei: a prolongação reescreve tudo |
+| `a_classe_escolhida_chega_ao_barro` | `ph2d-quadflow` | o despacho chega — senão a sonda compara um nível consigo próprio |
+| `a_area_dual_de_uma_mancha_soma_a_area_das_faces` | `ph2d-quadflow` | a coluna nova não está cheia de uns |
+| (o `a_cena_do_pente_tem_o_que_mostrar` é quem **recusa** o degrau `4`) | | |
+
+⚠️ **O gate do mecanismo vive na crate da APP e não ao lado da lei:** a malha que
+o revela só o **TRAÇO** a produz (a primeira redacção dele morava na
+`ph2d-quadflow` e reprovou sobre produto correcto, porque a fixtura de lá tem
+`27` vértices de miolo contra os `790` da pegada real). *A fixtura tem de ser do
+tamanho do que o produto vê* — quinta vez nesta linha.
+
+**Mutação: `7` de `8` a sangrar, `1` NOMEADA.** A que não sangra é a pregagem
+dos níveis grossos (*«fixo se qualquer filho for»*): apagá-la deixa os `12`
+gates da mancha verdes, porque quem segura a condição de fronteira no nível que
+o produto lê é a **reposição depois da prolongação**. Ela fica **declarada e não
+gateada** — *remover código de um caminho recusado sem re-medir a tabela da
+recusa seria mudar o sujeito dela*.
+
+**Dois tectos de LOC curados por CORTE**, nunca por isenção:
+`regiao.rs` `945 → 652` (o cacho da hierarquia para `regiao_niveis.rs`) e
+`scenes_pente_grelha_tests.rs` `707 → 424` (as sondas da hierarquia para
+`scenes_pente_niveis_tests.rs`).
+
+**Portão:** `nextest-impacted` **16 445/16 445** · clippy `-D warnings` zero ·
+`cargo fmt` (que estava **vermelho latente** desde as waves do vinco e da
+fileira — commit próprio).
+
+**Contadores partilhados:** `PROJECT_SCHEMA`, registos e espelhos **intocados**;
+zero contrato, zero ADR, zero pacote novo.
+
+### §86.7 — ⏳ ABERTO
+
+- **a fileira quer mais varreduras e o chão da forma não deixa** — a cura é uma
+  cerca que veja **PARES** de vértices, não um número maior (§86.4);
+- o `Campos::PorNiveis` é **vivo e órfão de produto por desenho**, como as três
+  leis que o §82 manteve; o único chamador é a sonda da recusa;
+- a razão `0,72` (o esticão que sobra) continua a ser **curvatura** e não a lei;
+- o botão **satura a meio curso** (§82) — *o knob escolhe a velocidade, não o
+  destino*.

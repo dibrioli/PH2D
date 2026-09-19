@@ -95,6 +95,12 @@ pub fn shade(g: &Gbuffer, m: &Matcap<'_>, background: [u8; 4]) -> Vec<u8> {
 /// - **Média em linear**, nunca em bytes sRGB. Metade de branco com metade de preto não é cinza-127
 ///   — é cinza-188. Fazer a média em sRGB escurece toda borda, que é o outro bug clássico e o mais
 ///   difícil de ver porque parece só "um contorno".
+///
+///   ⛔⛔ **E esta nota é sobre duas cores OPACAS — ela NÃO se aplica à cobertura sobre um fundo
+///   TRANSPARENTE, e a confusão entre as duas era o rebordo claro de 2026-09-19.** Ali o que a
+///   média produz não é uma cor, é uma COBERTURA, e ela viaja no alfa: o pixel tem de sair
+///   `sRGB(C)·a` porque é isso que o compositor deste app lê ([`crate::premultiplicado`], com a
+///   medição feita nele). *A média continua a ser em linear; o que mudou é como ela é EMPACOTADA.*
 #[must_use]
 pub fn shade_with(g: &Gbuffer, m: &Matcap<'_>, look: Look, background: [u8; 4]) -> Vec<u8> {
     let bg_a = f32::from(background[3]) / 255.0;
@@ -105,11 +111,17 @@ pub fn shade_with(g: &Gbuffer, m: &Matcap<'_>, look: Look, background: [u8; 4]) 
         ph2d_color::srgb::srgb_to_linear_byte(background[2]) * bg_a,
         bg_a,
     ];
-    let write = |px: &mut [u8], c: [f32; 4]| {
-        px[0] = ph2d_color::srgb::linear_to_srgb_byte(c[0]);
-        px[1] = ph2d_color::srgb::linear_to_srgb_byte(c[1]);
-        px[2] = ph2d_color::srgb::linear_to_srgb_byte(c[2]);
-        px[3] = (c[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    // ⭐⭐⭐ **O ALFA É PRÉ-MULTIPLICADO EM ECRÃ** — ver [`crate::premultiplicado`], que traz a
+    // medição feita NO compositor. ⚠️ A codificação usa o alfa que de facto vai para o byte, e não
+    // o `f32` antes do arredondamento: o consumidor compõe com o byte.
+    let write = |px: &mut [u8], c: [f32; 4], luz: [f32; 3]| {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let a = (c[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+        let rgb = crate::premultiplicado::para_ecra([c[0], c[1], c[2]], a, luz);
+        px[0] = rgb[0];
+        px[1] = rgb[1];
+        px[2] = rgb[2];
+        px[3] = a;
     };
 
     let mut out = vec![0u8; (g.width as usize) * (g.height as usize) * 4];
@@ -127,7 +139,7 @@ pub fn shade_with(g: &Gbuffer, m: &Matcap<'_>, look: Look, background: [u8; 4]) 
     out.par_chunks_mut(4).enumerate().for_each(|(i, px)| {
         if g.hit[i] {
             let rgb = look.apply(m.colour(g.normal[i]));
-            write(px, [rgb[0], rgb[1], rgb[2], 1.0]);
+            write(px, [rgb[0], rgb[1], rgb[2], 1.0], [0.0; 3]);
         } else {
             // ⚠️ Copiado, e não passado pela conversão: um pixel de fundo puro tem de sair
             // **exatamente** com os bytes que o chamador pediu. Levá-lo pela ida-e-volta sRGB faria
@@ -157,7 +169,7 @@ pub fn shade_with(g: &Gbuffer, m: &Matcap<'_>, look: Look, background: [u8; 4]) 
                 acc[j] += c[j] * 0.25;
             }
         }
-        write(&mut out[i * 4..i * 4 + 4], acc);
+        write(&mut out[i * 4..i * 4 + 4], acc, [0.0; 3]);
     }
     out
 }

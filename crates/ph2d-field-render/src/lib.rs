@@ -127,6 +127,8 @@ mod ground_shade;
 mod march;
 /// ⭐⭐⭐ **A oclusão** — a sombra do céu. Irmã do [`shadow`], com a fronteira escrita lá.
 mod occlusion;
+/// ⭐⭐⭐ O alfa desta imagem é pré-multiplicado em ECRÃ — ver [`premultiplicado`].
+mod premultiplicado;
 mod probe_doors;
 pub mod probes;
 /// ⭐⭐⭐ **O refinamento do quadro assente** — o laço que avança as DUAS metades do hemisfério com

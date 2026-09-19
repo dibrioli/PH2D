@@ -41,6 +41,7 @@ mod layers_no_alloc;
 mod mask_interaction_regression;
 mod measure_first_stroke_pipelines;
 mod migrate_sprite_v3_to_v4;
+mod o_compositor_e_meia_cobertura;
 mod precision_parity_gpu;
 mod preview_premul_gpu;
 mod render_instance_pod_size_v4;

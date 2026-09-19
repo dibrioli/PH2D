@@ -17,93 +17,15 @@
 
 use super::*;
 use crate::ground_shade::{
-    edge_ground_bounce, edge_ground_factor, ground_factors, mais_luz, shadowed_background,
+    edge_ground_bounce, edge_ground_factor, ground_factors, shadowed_background,
 };
 use ph2d_material::{Environment, Surface};
 
-/// Uma luz direcional, em espaço de VISTA.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Lamp {
-    /// A direcção **para** a luz, unitária.
-    pub to_light: [f32; 3],
-    /// A radiância que chega (`cor × intensidade`, a convenção do MaterialX).
-    pub radiance: [f32; 3],
-}
-
-/// ⭐⭐⭐ **UMA LUZ QUE É UM OBJECTO DA CENA** — um ponto no MUNDO (ordem do dono, 2026-09-14).
-///
-/// # ⚠️ Porque ela é um tipo À PARTE da [`Lamp`], e não uma variante dela
-///
-/// As duas respondem a perguntas diferentes **por pixel**: a [`Lamp`] é ancorada no ECRÃ e a
-/// direcção dela é a mesma em toda a imagem (é o estúdio — ela não se mexe quando a câmera roda);
-/// esta é ancorada no MUNDO, e a direcção e a distância mudam de pixel para pixel. ⇒ um `enum`
-/// poria um ramo dentro do laço mais quente do sombreamento para distinguir duas listas que o
-/// chamador já tem separadas.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct PointLamp {
-    /// Onde ela está, no **MUNDO** — a pose da entidade, propagada.
-    pub world: [f32; 3],
-    /// A radiância que ela entrega a **UMA unidade** de distância.
-    ///
-    /// ⚠️ A queda é `1/r²`, logo este é o numerador. A unidade é a do rig da casa (`cor ×
-    /// intensidade × π`), medida a uma unidade — ver o doc do `ph2d_field_ecs::FieldLight`.
-    pub radiance_at_one: [f32; 3],
-}
-
-/// **O PISO DA DISTÂNCIA** de uma [`PointLamp`], em unidades de mundo — a remoção de uma
-/// singularidade.
-///
-/// Um ponto matemático diverge quando a superfície o alcança, e `1/0` entra no sombreamento como
-/// `inf`. Abaixo deste piso a peça já está saturada **há muito** — com força `1` e o material de
-/// omissão uma difusa satura a `r ≈ 0,9`, isto é a `18×` este raio —, logo o que ele corta é a
-/// divisão por zero e mais nada. *É o que uma luz ESFÉRICA de raio `0,05` faria.*
-///
-/// # ⚠️⚠️ O VALOR dele não é observável, e a lei que o gate prende é a OUTRA metade
-///
-/// Uma prova de mutação pô-lo a `0` e **sobreviveu**: o byte satura, logo `1/0,0025` e `1/0` pintam
-/// os mesmos `255`. *O que era observável era o defeito ao lado dele* — com a luz exactamente sobre
-/// o ponto, `d` é o vector **ZERO**, a direcção normalizada sai `[0,0,0]`, o `N·L` dá `0` e o pixel
-/// fica **PRETO**. ⇒ abaixo do piso a direcção passa a ser a **NORMAL**, e é essa mutação que sangra
-/// (`a_light_falls_off_with_the_square_of_the_distance`).
-///
-/// *Um piso que protege a aritmética e deixa a geometria degenerada resolve metade de um defeito, e
-/// a metade que fica tem o mesmo sintoma.*
-pub const POINT_LAMP_MIN_DISTANCE: f32 = 0.05;
-
-/// O quadrado do [`POINT_LAMP_MIN_DISTANCE`] — o piso, na grandeza em que ele é comparado.
-pub(crate) const PISO_DA_LAMPADA: f32 = POINT_LAMP_MIN_DISTANCE * POINT_LAMP_MIN_DISTANCE;
-
-/// ⭐⭐ **A radiância que uma [`PointLamp`] ENTREGA a um ponto** — a queda `1/r²`, o piso e a
-/// visibilidade, numa porta.
-///
-/// ⚠️ **É a parte da lei que NÃO depende de referencial**, e é por isso que é ela que se partilha: a
-/// DIRECÇÃO para a luz tem de sair no espaço de quem pergunta (o sombreador quer-a em VISTA, o
-/// [`crate::bounce`] em MUNDO) e o braço degenerado devolve *«a normal»*, que é uma resposta
-/// diferente em cada um. *Partilhar o que é comum e nomear o que não é vale mais que uma porta que
-/// converte duas vezes para caber nos dois.*
-///
-/// ⚠️ A visibilidade entra **aqui, na luz que chega** — nunca no `N·L` e nunca no resultado. Ver o
-/// comentário no laço do [`radiance`] para a razão física.
-pub(crate) fn chega_da_lampada(lamp: &PointLamp, dist2: f32, visivel: f32) -> [f32; 3] {
-    lamp.radiance_at_one
-        .map(|c| c * visivel / dist2.max(PISO_DA_LAMPADA))
-}
-
-/// A luz de uma cena: as lâmpadas de estúdio, as luzes-objecto e o céu.
-pub struct Lighting<'a> {
-    /// Ancoradas no ECRÃ — o estúdio.
-    pub lamps: &'a [Lamp],
-    /// ⭐ Ancoradas no MUNDO — os objectos da cena. `&[]` é o caminho de sempre, ao bit.
-    pub points: &'a [PointLamp],
-    pub sky: &'a (dyn Environment + Sync),
-    /// ⭐⭐⭐ **Quanto de cada [`PointLamp`] CHEGA a cada pixel** — ver [`crate::Shadows`].
-    ///
-    /// ⚠️ **`None` é o caminho de sempre, ao bit**: sem o passe, toda lâmpada chega inteira a todo
-    /// lado, que é exactamente o que o produto fazia até 2026-09-14. ⛔ As luzes de ECRÃ
-    /// ([`Lighting::lamps`]) NÃO têm sombra e não é omissão: elas estão ancoradas no ecrã, logo
-    /// giram com a câmera — uma sombra que gira com o olhar não pousa nada, ensina o contrário.
-    pub shadows: Option<&'a crate::Shadows>,
-}
+/// ⭐⭐ O vocabulário da luz — ver [`shade_render_luz`].
+#[path = "shade_render_luz.rs"]
+mod shade_render_luz;
+pub use shade_render_luz::{Lamp, Lighting, POINT_LAMP_MIN_DISTANCE, PointLamp};
+pub(crate) use shade_render_luz::{PISO_DA_LAMPADA, chega_da_lampada};
 
 /// ⭐ **Um ambiente que só tem a parcela DIFUSA** — a irradiância que a cena devolve a este pixel.
 ///
@@ -440,11 +362,17 @@ pub fn shade_render(
     // [`Surfaces::mix_of`] não pode adivinhar. Ver [`ph2d_field_eval::owners::Owners::mix_at`].
     #[allow(clippy::cast_possible_truncation)]
     let pixel_world = boundary_world(cam.half_extent, w.min(h) as u32);
-    let write = |px: &mut [u8], c: [f32; 4]| {
-        px[0] = ph2d_color::srgb::linear_to_srgb_byte(c[0]);
-        px[1] = ph2d_color::srgb::linear_to_srgb_byte(c[1]);
-        px[2] = ph2d_color::srgb::linear_to_srgb_byte(c[2]);
-        px[3] = (c[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    // ⭐⭐⭐ **O ALFA É PRÉ-MULTIPLICADO EM ECRÃ** — ver [`crate::premultiplicado`], que traz a
+    // medição feita NO compositor. ⚠️ A codificação usa o alfa que de facto vai para o byte, e não
+    // o `f32` antes do arredondamento: o consumidor compõe com o byte.
+    let write = |px: &mut [u8], c: [f32; 4], luz: [f32; 3]| {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let a = (c[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+        let rgb = crate::premultiplicado::para_ecra([c[0], c[1], c[2]], a, luz);
+        px[0] = rgb[0];
+        px[1] = rgb[1];
+        px[2] = rgb[2];
+        px[3] = a;
     };
     let bg_a = f32::from(background[3]) / 255.0;
     let bg = [
@@ -480,7 +408,7 @@ pub fn shade_render(
                     light,
                     pres,
                 );
-                write(px, [c[0], c[1], c[2], 1.0]);
+                write(px, [c[0], c[1], c[2], 1.0], [0.0; 3]);
             } else {
                 // ⭐⭐⭐ **A LUZ QUE A PEÇA PÕE NO CHÃO** — somada em pré-multiplicado e com alfa
                 // ZERO, que é o que um compositor lê como luz acrescentada. ⛔ Ela NÃO pode
@@ -489,12 +417,16 @@ pub fn shade_render(
                 let posta = postas.get(i).copied().unwrap_or([0.0; 3]);
                 match fatores.get(i) {
                     // ⭐ O chão tapado: o fundo com a sombra por cima — ver [`shadowed_background`].
-                    Some(&f) if f < 1.0 => write(px, mais_luz(shadowed_background(bg, f), posta)),
+                    // ⭐⭐⭐ **A LUZ ENTRA SEPARADA DA COBERTURA** (`crate::premultiplicado`): a
+                    // sombra TAPA e por isso é pré-multiplicada; a luz devolvida SOMA e por isso
+                    // não é. ⚠️ Enfiadas no mesmo `vec4` — que é o que a `mais_luz` fazia — o
+                    // empacotamento dividia a luz pelo alfa da sombra, e o gate do chão apanhou-o.
+                    Some(&f) if f < 1.0 => write(px, shadowed_background(bg, f), posta),
                     // ⚠️ Copiado, e não passado pela conversão — a mesma cerca do `shade`. É também
                     // o chão onde nada tapa: a razão é EXACTAMENTE `1`, e os bytes são os de sempre.
                     // ⭐ **Com luz devolvida ele deixa de poder ser copiado** — ela é o que há para
                     // mostrar num pixel cujo fundo é preto transparente.
-                    _ if posta != [0.0; 3] => write(px, mais_luz(bg, posta)),
+                    _ if posta != [0.0; 3] => write(px, bg, posta),
                     _ => px.copy_from_slice(&background),
                 }
             }
@@ -509,15 +441,15 @@ pub fn shade_render(
         // ⭐⭐ **O fundo de uma sub-amostra que falha é o fundo COM o chão** — ver
         // [`edge_ground_factor`]. Sem isto a silhueta de baixo pintava um fio do fundo limpo entre a
         // peça e a sombra de contacto, que é exactamente onde a sombra é mais escura.
-        let fundo = mais_luz(
-            shadowed_background(bg, edge_ground_factor(g, &fatores, i)),
-            edge_ground_bounce(g, &postas, i),
-        );
+        let fundo = shadowed_background(bg, edge_ground_factor(g, &fatores, i));
+        // ⭐ **E a luz devolvida viaja ao lado**, pela mesma razão do ramo do fundo acima.
+        let luz_do_fundo = edge_ground_bounce(g, &postas, i);
         // ⚠️ **E o MATERIAL do centro serve às quatro amostras**, pela mesma razão da vista: a borda
         // não guarda os pontos das sub-amostras. ⛔ Numa silhueta entre DUAS peças de cores
         // diferentes isto pinta a borda com a cor da que o centro apanhou — declarado, e é a mesma
         // aproximação que a direcção de vista já faz.
         let mut acc = [0.0f32; 4];
+        let mut acc_luz = [0.0f32; 3];
         for k in 0..4 {
             let c = if e.hit[k] {
                 let rgb = mixed_radiance(
@@ -539,13 +471,18 @@ pub fn shade_render(
                 );
                 [rgb[0], rgb[1], rgb[2], 1.0]
             } else {
+                // ⚠️ Uma sub-amostra que FALHA traz o fundo E a luz devolvida; uma que ACERTA traz
+                // só a peça. *A média é das duas grandezas, cada uma na sua.*
+                for (canal, &l) in acc_luz.iter_mut().zip(&luz_do_fundo) {
+                    *canal += l * 0.25;
+                }
                 fundo
             };
             for j in 0..4 {
                 acc[j] += c[j] * 0.25;
             }
         }
-        write(&mut out[i * 4..i * 4 + 4], acc);
+        write(&mut out[i * 4..i * 4 + 4], acc, acc_luz);
     }
 
     // ⭐⭐⭐ **O BRILHO, por último** (`docs/Render3d/12`, a `W7`) — ele lê o quadro em CENA-linear e

@@ -9,7 +9,7 @@
 //! ⛔⛔ **As duas medem o quadro INTEIRO nos dois lados** (`device_tests::quadro_na_cpu`), e foi
 //! essa correcção que moveu o tecto **sete vezes** — ver `docs/Render3d/05` §43.5.
 
-use super::device_tests::{LH, LW, anel, cpu_ociosa_pct, quadro_na_cpu};
+use super::device_tests::{LH, LW, anel, contexto, quadro_na_cpu};
 
 #[test]
 #[ignore = "medição — precisa de GPU"]
@@ -30,11 +30,8 @@ fn mede_o_preco_de_uma_aresta_de_perfil() {
     const BG: [u8; 4] = [0, 0, 0, 0];
 
     println!(
-        "\n  arestas · guardados · vivos CRU→ESC · quadro CRU→ESC a 1920×1080 · CPU · load {} · ociosa {:.0} %",
-        std::fs::read_to_string("/proc/loadavg")
-            .unwrap_or_default()
-            .trim(),
-        cpu_ociosa_pct()
+        "\n  arestas · guardados · vivos CRU→ESC · quadro CRU→ESC a 1920×1080 · CPU · {}",
+        contexto()
     );
     let mut pontos: Vec<(u32, usize, usize, f32)> = Vec::new();
     // ⛔⛔ **O TOPO DA VARREDURA É `768` E NÃO `1024`, e o motivo é MEDIDO** (2026-09-15): o ponto de
@@ -201,11 +198,8 @@ fn mede_as_cenas_reais_nos_dois_motores() {
     let olhar = ph2d_view_transform::Look::default();
     const BG: [u8; 4] = [0, 0, 0, 0];
     println!(
-        "\n  cena · guardados · placa · CPU · razão · load {} · ociosa {:.0} %",
-        std::fs::read_to_string("/proc/loadavg")
-            .unwrap_or_default()
-            .trim(),
-        cpu_ociosa_pct()
+        "\n  cena · guardados · placa · CPU · razão · {}",
+        contexto()
     );
     for n in 0..crate::smoke::scenes::CENAS {
         if crate::smoke::scenes::PODADAS.contains(&n) {
@@ -313,13 +307,7 @@ fn audita_o_vaso() {
     let materiais = [ph2d_material::OpenPbr::default().prepare()];
     let olhar = ph2d_view_transform::Look::default();
     const BG: [u8; 4] = [0, 0, 0, 0];
-    println!(
-        "\n  ociosa {:.0} % · load {}",
-        cpu_ociosa_pct(),
-        std::fs::read_to_string("/proc/loadavg")
-            .unwrap_or_default()
-            .trim()
-    );
+    println!("\n  {}", contexto());
 
     // O vaso é a `5`; a `4` é o MESMO contorno extrudado (mesma fita, outra marcha) e a `2` é o
     // cubo — o piso do que um quadro custa quando a fita não é o problema.
@@ -475,13 +463,7 @@ fn audita_o_arredondamento_do_vaso() {
     let materiais = [ph2d_material::OpenPbr::default().prepare()];
     let olhar = ph2d_view_transform::Look::default();
     const BG: [u8; 4] = [0, 0, 0, 0];
-    println!(
-        "\n  ociosa {:.0} % · load {}",
-        cpu_ociosa_pct(),
-        std::fs::read_to_string("/proc/loadavg")
-            .unwrap_or_default()
-            .trim()
-    );
+    println!("\n  {}", contexto());
     println!("  quinas redondas · arestas · fita(ops) · guardados ·   quadro · ms/aresta");
 
     // `n` = quantas das 10 quinas com raio ficam redondas; as restantes ficam VIVAS.
@@ -595,8 +577,8 @@ fn mede_as_faixas_do_vaso() {
     #[allow(clippy::cast_precision_loss)]
     let passo = 2.0 * cam.half_extent / LH as f32;
     println!(
-        "\n  ociosa {:.0} % · vista de FRENTE · motor · picos de faceta · passo mediano · maior pico",
-        cpu_ociosa_pct()
+        "\n  {} · vista de FRENTE · motor · picos de faceta · passo mediano · maior pico",
+        contexto()
     );
     let cpu = ph2d_field_render::trace(&doc, &reg, &cam, LW, LH);
     let (n, med, mx) = facetas(&cpu, passo);

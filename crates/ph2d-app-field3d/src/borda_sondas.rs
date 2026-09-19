@@ -30,7 +30,7 @@
 //!   mesma numa máquina a `load 50` e numa parada.
 
 use super::borda_tests::{banda, camara, luz, parcial, quadro};
-use super::device_tests::{LH, LW, cpu_ociosa_pct};
+use super::device_tests::{LH, LW, contexto};
 
 /// As cenas em que a fervura se lê — silhuetas curvas, que é onde a escada é mais grosseira.
 ///
@@ -62,11 +62,8 @@ fn a_regua_do_fervilhar() {
     };
     let (w, h) = (LW as usize, LH as usize);
     println!(
-        "\n  cena · quadro · banda · parcial · d(rad) · médio · p99 · pior · load {} · ociosa {:.0} %",
-        std::fs::read_to_string("/proc/loadavg")
-            .unwrap_or_default()
-            .trim(),
-        cpu_ociosa_pct()
+        "\n  cena · quadro · banda · parcial · d(rad) · médio · p99 · pior · {}",
+        contexto()
     );
     for &n in CENAS {
         let real = crate::smoke::scene(n);
@@ -134,11 +131,8 @@ fn quanto_custa_a_borda_no_dispositivo() {
         return;
     };
     println!(
-        "\n  cena · bordas · ocupação · sem borda · com borda · delta · razão · load {} · ociosa {:.0} %",
-        std::fs::read_to_string("/proc/loadavg")
-            .unwrap_or_default()
-            .trim(),
-        cpu_ociosa_pct()
+        "\n  cena · bordas · ocupação · sem borda · com borda · delta · razão · {}",
+        contexto()
     );
     for &n in CENAS {
         let real = crate::smoke::scene(n);
@@ -209,11 +203,8 @@ fn quanto_custa_a_borda_no_pintor() {
         ..crate::gpu_frame::Sonda::default()
     };
     println!(
-        "\n  cena · hoje · +borda · delta · razão · assente · load {} · ociosa {:.0} %",
-        std::fs::read_to_string("/proc/loadavg")
-            .unwrap_or_default()
-            .trim(),
-        cpu_ociosa_pct()
+        "\n  cena · hoje · +borda · delta · razão · assente · {}",
+        contexto()
     );
     for &n in CENAS {
         let real = crate::smoke::scene(n);

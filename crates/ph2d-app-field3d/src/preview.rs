@@ -71,6 +71,10 @@ mod device_probes;
 #[cfg(test)]
 #[path = "preview_device_tests.rs"]
 mod device_tests;
+/// ⭐⭐⭐ O rebordo claro de um pixel, medido — ver [`premultiplicado_sondas`].
+#[cfg(test)]
+#[path = "premultiplicado_sondas.rs"]
+mod premultiplicado_sondas;
 /// ⭐⭐⭐ O vaso sem facetas no modo MODEL — ver [`vaso_sem_facetas_tests`].
 #[cfg(test)]
 #[path = "vaso_sem_facetas_tests.rs"]

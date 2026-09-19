@@ -72,6 +72,18 @@ fn a_chapa_move_a_curvatura_da_esfera_e_isso_nao_passa_de_um_byte() {
         if !gc.hit[i] || !gs.hit[i] || gc.point[i][0] <= 0.1 {
             continue;
         }
+        // ⛔⛔ **A COBERTURA CHEIA é parte do sujeito, e isso só apareceu em 2026-09-19:** um pixel
+        // de acerto pode ser de SILHUETA, e desde que o alfa é pré-multiplicado em ECRÃ
+        // ([`ph2d_field_render::premultiplicado`]) o empacotamento desfaz a pré-multiplicação —
+        // o que **amplifica** uma diferença pequena pela inclinação da curva sRGB junto de zero
+        // (`12,92` no pé). Medido: o mesmo vazamento lia `1` byte e passou a ler `4`, *sem o passo
+        // da curvatura se mexer*.
+        //
+        // ⇒ a pergunta desta lei é *«a chapa muda o SOMBREAMENTO da esfera?»*, e a silhueta é outra
+        // grandeza. *Uma régua que mistura cobertura com cor mede a soma das duas.*
+        if pc[i * 4 + 3] != 255 || ps[i * 4 + 3] != 255 {
+            continue;
+        }
         n += 1;
         for k in 0..3 {
             pior = pior.max(pc[i * 4 + k].abs_diff(ps[i * 4 + k]));

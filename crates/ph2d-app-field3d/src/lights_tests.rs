@@ -560,9 +560,27 @@ fn a_light_falls_off_with_the_square_of_the_distance() {
     // e o preto é a resposta certa; **encostada** a `0,02` o divisor é pequeno mas finito, e uma
     // mutação que punha o piso a `0` **sobreviveu**. *Só a distância exactamente zero divide por
     // zero, então é ela que o gate tem de produzir* — e o G-buffer entrega o ponto.
+    // ⛔⛔ **O PRIMEIRO pixel de acerto é de SILHUETA, e isso quase pinou este gate** (2026-09-19):
+    // em ordem de varredura ele cai no topo da peça, onde a cobertura é PARCIAL. Enquanto os bytes
+    // eram pré-multiplicados em linear ele lia `227` e passava a barra de `200`; com o
+    // pré-multiplicado em ECRÃ ([`ph2d_field_render::premultiplicado`]) o mesmo pixel lê
+    // `255 × 0,75 = 191` — *produto correcto, gate vermelho*.
+    //
+    // ⇒ o sujeito desta lei é **o pixel DEBAIXO da luz**, que é o que a mensagem sempre disse: um
+    // pixel de cobertura CHEIA. *Uma barra sobre um pixel cuja cobertura ninguém controlou mede a
+    // silhueta e chama-lhe lâmpada.*
+    //
+    // ⚠️ **A máscara é um vector de `bool` indexado pelo pixel, e não um conjunto** — o `HashSet` é
+    // tipo PROIBIDO neste repositório (HR-5 · ADR-0022, a espinha do determinismo), e aqui ele nem
+    // seria a forma certa: a pergunta é *«este índice está na lista?»* sobre um domínio que já é
+    // `0..hit.len()`, que é exactamente o que um vector responde sem procurar.
+    let mut de_borda = vec![false; g.hit.len()];
+    for e in &g.edges {
+        de_borda[e.pixel as usize] = true;
+    }
     let alvo = (0..g.hit.len())
-        .find(|i| g.hit[*i])
-        .expect("um pixel de peça");
+        .find(|i| g.hit[*i] && !de_borda[*i])
+        .expect("um pixel de peça de cobertura cheia");
     let em_cima = shade_render(
         &g,
         &cam,
@@ -580,6 +598,12 @@ fn a_light_falls_off_with_the_square_of_the_distance() {
         [0, 0, 0, 0],
     );
     let px = em_cima.as_chunks::<4>().0[alvo];
+    assert_eq!(
+        px[3], 255,
+        "o pixel escolhido tem cobertura {} e não 255 — ele é de SILHUETA, e a barra abaixo passaria \
+         a medir a cobertura em vez da luz",
+        px[3]
+    );
     assert!(
         px[1] > 200,
         "o pixel debaixo da luz saiu {px:?} — sem o piso, `1/0` entra como `inf`, sai como `NaN`, e \

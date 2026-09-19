@@ -133,11 +133,17 @@ pub(crate) fn campo_de_cena(
 /// arredondamento ao mais perto. *Um pixel que recebeu luz nunca fica com cobertura nenhuma* — e o
 /// preço máximo é `1/255` de véu onde o halo já é invisível.
 ///
-/// ⚠️⚠️ **O VIZINHO tem a mesma forma e NÃO foi mexido:** a [`crate::ground_shade::mais_luz`]
-/// soma a luz que a peça devolve ao chão, também com alfa inalterado — ela só chega ao ecrã onde a
-/// SOMBRA já deu cobertura, e evapora onde o chão está limpo. Ali isso é quase sempre invisível
-/// (a luz devolvida é forte justamente dentro da sombra) e mudá-lo mexe na imagem de toda cena com
-/// chão ⇒ fica **nomeado**, não curado, em `docs/Render3d/12`.
+/// ⛔⛔⛔ **E A PREMISSA DESTE PARÁGRAFO FOI MEDIDA E É FALSA PARA ESTE CONSUMIDOR** (2026-09-19,
+/// `docs/Render3d/12` §13). A frase acima diz que luz com cobertura zero *«evapora»*; medido no
+/// `VelloPass` real, um pixel `[128,128,128,0]` sobre um fundo `110` devolve **`238`** — *ele
+/// SOMA*. ⇒ a cobertura que esta função acrescenta ao halo não era necessária para o halo aparecer,
+/// e o que ela faz é o halo TAPAR a grelha em vez de a acender.
+///
+/// ⚠️ **Fica como está, e a decisão é do dono:** ele aprovou o smoke do brilho com esta lei, e
+/// trocá-la muda o que ele viu. O que esta nota passa a ser é a medição ao lado da escolha, e não
+/// um mecanismo por confirmar. ⭐ O vizinho (`a luz que a peça devolve ao chão`) foi curado no mesmo
+/// dia, por outra razão: ali a luz estava a ser **dividida pelo alfa da sombra**
+/// ([`crate::premultiplicado`]).
 pub(crate) fn soma_halo(out: &mut [u8], halo: &[[f32; 3]], pres: &Presentation) {
     if halo.is_empty() {
         return;

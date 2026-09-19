@@ -119,8 +119,31 @@ pub(super) fn quadro_na_cpu(
 ///
 /// ⛔ **E as cenas que ficam grossas não são uma lista escrita à mão:** elas saem da medição, com as
 /// três colunas que dizem **porquê**. Ver a nota do módulo.
+///
+/// # ⛔⛔⛔ COMO LER UMA REPROVAÇÃO DESTE GATE (as cinco leituras de 2026-09-19)
+///
+/// O MESMO commit, medido cinco vezes no mesmo dia:
+///
+/// | corrida | perfil | contexto | veredito |
+/// |---|---|---|---|
+/// | conjunto `--ignored` inteiro | release | `load 47` (outra linha a compilar) | `11 de 22` ✗ |
+/// | sozinha | **debug** | `ociosa 68 %` | `8 de 22` ✗ |
+/// | sozinha | **debug** | `ociosa 81 %` | `10 de 22` ✗ |
+/// | sozinha | **debug** | `ociosa 98 %` | `9 de 22` ✗ |
+/// | conjunto inteiro, máquina calma | release | `load 7` | **`22` testes, `0` ✗** ✓ |
+/// | sozinha, logo a seguir ao próprio build | release | `load 20,68` · `ociosa 92 %` | `10 de 22` ✗ |
+///
+/// ⭐⭐⭐ **Nenhuma das duas réguas de calma discrimina sozinha:** `ociosa 92 %` reprovou e `load 7`
+/// passou. A ociosidade é **instantânea** e lida no arranque do laço; o que atrasa as cenas é a
+/// **cauda** do que acabou de correr — o compilador de release, a suíte da linha do lado — e é a
+/// `loadavg` que ainda a vê. ⇒ *não corra este gate a seguir a um build; corra-o com a `loadavg`
+/// abaixo de ~10.*
+///
+/// ⚠️ E a tabela por cena **imita a assinatura da flake sem o ser** quando o perfil muda: a cena de
+/// `93` instruções mede `14 ms` em debug e `58 ms` numa release contendida, e outra de `934` faz o
+/// contrário. *Compare cabeçalhos de log antes de comparar números.*
 #[test]
-#[ignore = "precisa de GPU"]
+#[ignore = "precisa de GPU — e lê relógio: leia o contexto ao lado antes de acusar um diff"]
 fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
     let Some(t) = crate::gpu_frame::shared() else {
         println!("sem adaptador — saltado");
@@ -134,13 +157,15 @@ fn com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento() {
     // (`CLAUDE.md` §5.0). Medido 2026-09-15: com a CPU a **`0 %`** ociosa ele lê `2 de 18` e com a
     // máquina livre lê a mesma cena `0` a `11,5` em vez de `19,0 ms` — *quase todas as cenas caem
     // logo ACIMA do orçamento, que é a assinatura de um abrandamento uniforme e não de uma
-    // regressão*. ⇒ ele imprime a **ociosidade**, e quem o lê confere-a antes de acusar um diff.
+    // regressão*. ⇒ ele imprime o [`contexto`], e quem o lê confere-o antes de acusar um diff.
+    //
+    // ⛔⛔⛔ **E a primeira coluna desse contexto é o PERFIL** (2026-09-19): três corridas em debug
+    // leram `8`, `10` e `9 de 22`, a mais calma delas a `98 %` de CPU ociosa, sobre o mesmo commit
+    // que a corrida de `--release` mede de outra maneira. *Uma leitura deste gate feita em debug
+    // não é uma leitura deste gate.*
     println!(
-        "\n  cena · quadro de MOVIMENTO a {LW}×{LH} · load {} · ociosa {:.0} %",
-        std::fs::read_to_string("/proc/loadavg")
-            .unwrap_or_default()
-            .trim(),
-        cpu_ociosa_pct()
+        "\n  cena · quadro de MOVIMENTO a {LW}×{LH} · {}",
+        contexto()
     );
     let mut medidas = 0;
     let mut na_cpu = 0usize;
@@ -338,6 +363,36 @@ pub(super) fn cpu_ociosa_pct() -> f32 {
     if dt <= 0.0 { f32::NAN } else { di / dt * 100.0 }
 }
 
+/// ⭐⭐⭐ **O CONTEXTO DE UMA MEDIÇÃO DE RELÓGIO — a carga, a ociosidade e o PERFIL DE BUILD.**
+///
+/// ⛔⛔⛔ **O perfil está aqui porque ele DOMINA, e uma régua de calma que não o nomeia mente**
+/// (medido 2026-09-19): três corridas seguidas do
+/// [`com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento`] leram `8`, `10` e `9 de 22` — a
+/// última com a CPU a **`98 %` ociosa**, que é a máquina mais calma das quatro medições daquele dia
+/// —, e as três correram em **debug**, porque ao comando faltava `--release`. *A leitura mais calma
+/// foi a pior, e a coluna que a explicava não estava na tabela.*
+///
+/// ⚠️ A assinatura do erro é o que se lê por cena: a MESMA cena de `93` instruções mediu `14 ms` nas
+/// três corridas de debug e `58 ms` na de release, enquanto outra de `934` instruções fez o
+/// contrário — *nenhum deslocamento uniforme, que é o que um custo novo no shader produziria*.
+///
+/// ⚠️ **Ela é uma PORTA e não um idioma:** esta linha estava escrita à mão em **nove** sítios de
+/// três famílias de sondas (com a leitura do `/proc/loadavg` copiada em seis), e acrescentar a
+/// coluna a uma delas deixaria as outras oito a dizer menos do que sabem.
+pub(super) fn contexto() -> String {
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    let perfil = if cfg!(debug_assertions) {
+        "DEBUG ⚠️ (o relógio não vale)"
+    } else {
+        "release"
+    };
+    format!(
+        "load {} · ociosa {:.0} % · perfil {perfil}",
+        carga.trim(),
+        cpu_ociosa_pct()
+    )
+}
+
 /// ⭐⭐⭐ **NA FAIXA DO PRODUTO A PLACA GANHA COM MARGEM** — a propriedade, ao lado do tecto.
 ///
 /// # ⚠️ Porque a faixa dele PÁRA em `128` arestas
@@ -371,13 +426,7 @@ fn na_faixa_do_produto_a_placa_ganha_com_margem() {
     };
     let olhar = ph2d_view_transform::Look::default();
 
-    println!(
-        "\n  arestas · placa · CPU · razão · load {} · ociosa {:.0} %",
-        std::fs::read_to_string("/proc/loadavg")
-            .unwrap_or_default()
-            .trim(),
-        cpu_ociosa_pct()
-    );
+    println!("\n  arestas · placa · CPU · razão · {}", contexto());
     let mut pior = f32::INFINITY;
     for n in [64u32, 96, 128] {
         let doc = ph2d_field::FieldDoc::new(

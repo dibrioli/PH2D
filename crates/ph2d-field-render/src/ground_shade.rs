@@ -230,15 +230,14 @@ pub(crate) fn edge_ground_bounce(g: &Gbuffer, postas: &[[f32; 3]], i: usize) -> 
     [soma[0] * inv, soma[1] * inv, soma[2] * inv]
 }
 
-/// ⭐⭐⭐ **A SOMA: luz acrescentada em pré-multiplicado, com alfa ZERO.**
-///
-/// ⚠️⚠️ **O alfa NÃO sobe**, e isso é uma decisão com mecanismo: um chão INVISÍVEL não tem albedo
-/// próprio com que se tornar opaco. A sombra sobe o alfa porque ela é uma camada preta a TAPAR o
-/// que está atrás; a luz devolvida é luz a SOMAR-SE ao que está atrás, que em pré-multiplicado é
-/// exactamente `rgb += B, a += 0`.
-///
-/// ⚠️ **Com `B = [0,0,0]` ela devolve a entrada AO BIT** (`x + 0.0 == x` para todo `x` finito), que
-/// é o que mantém o caminho sem luz devolvida byte a byte o de sempre.
-pub(crate) fn mais_luz(base: [f32; 4], b: [f32; 3]) -> [f32; 4] {
-    [base[0] + b[0], base[1] + b[1], base[2] + b[2], base[3]]
-}
+// ⛔⛔⛔ **A `mais_luz` MORREU em 2026-09-19, e a lei dela mudou de sítio.**
+//
+// Ela somava a luz devolvida ao `rgb` do fundo e deixava o alfa quieto — *«um chão INVISÍVEL não
+// tem albedo próprio com que se tornar opaco; a sombra sobe o alfa porque TAPA, a luz devolvida
+// SOMA»* —, e isso continua a ser verdade. O que ela não podia dizer é **qual das duas metades do
+// `vec4` era cobertura**: ao empacotar, a luz era dividida pelo alfa da sombra, que é o rebordo
+// claro que o dono fotografou, um nível acima.
+//
+// ⇒ a cobertura e a luz viajam hoje em **argumentos separados** até ao byte
+// ([`crate::premultiplicado::para_ecra`]), e a soma acontece **depois** da codificação de cada uma.
+// *Uma lei que precisa de saber qual metade do seu resultado é o quê não cabe num `vec4`.*

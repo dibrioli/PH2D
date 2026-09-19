@@ -321,17 +321,42 @@ fn radiancia(p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, i: u32, ceu_vis: f32, ric
     );
 }
 
-// A curva do `ph2d_color::srgb::linear_to_srgb_byte`, com o mesmo arredondamento.
-fn srgb_byte(linear: f32) -> u32 {
+// A curva do `ph2d_color::srgb::linear_to_srgb_unit`.
+fn srgb_unit(linear: f32) -> f32 {
     let v = clamp(linear, 0.0, 1.0);
-    var e = v * 12.92;
-    if (v > 0.0031308) { e = 1.055 * pow(v, 1.0 / 2.4) - 0.055; }
-    return u32(clamp(e * 255.0 + 0.5, 0.0, 255.0));
+    if (v > 0.0031308) { return 1.055 * pow(v, 1.0 / 2.4) - 0.055; }
+    return v * 12.92;
+}
+
+fn byte_de(unidade: f32) -> u32 {
+    return u32(clamp(unidade * 255.0 + 0.5, 0.0, 255.0));
+}
+
+// ⭐⭐⭐ **O ALFA É PRÉ-MULTIPLICADO EM ECRÃ, NUNCA EM LINEAR** — o gémeo do
+// `ph2d_field_render::premultiplicado`, com a medição feita NO compositor (ver o doc daquele
+// módulo). Ele recebe um pixel pré-multiplicado em LINEAR e grava `sRGB(C)·a`.
+//
+// ⚠️ **A codificação usa o alfa que de facto vai para o byte**, como o lado da CPU: o consumidor
+// compõe com o byte, e pré-multiplicar por um `f32` que depois arredonda para outro valor deixa
+// produtor e consumidor a usar dois números.
+//
+// ⚠️ **`a == 0` com `rgb ≠ 0` é LUZ ADITIVA e passa INTACTA** — é a forma que a luz devolvida ao
+// chão usa, e escalá-la por `a` apagava-a.
+// ⛔⛔⛔ **E A LUZ ADITIVA ENTRA POR UM ARGUMENTO PRÓPRIO** — a luz que a peça devolve ao chão
+// SOMA sem tapar, logo não é `C·a` e dividi-la por `a` inventa uma cobertura que ela não tem.
+// Enfiada no mesmo `vec4` que a cobertura, o empacotamento dividia-a pelo alfa da SOMBRA.
+fn empacota_com_luz(c: vec4<f32>, luz: vec3<f32>) -> u32 {
+    let ab = byte_de(clamp(c.w, 0.0, 1.0));
+    let a = f32(ab) / 255.0;
+    let inv = select(0.0, 1.0 / a, ab > 0u);
+    let r = byte_de(srgb_unit(c.x * inv) * a + srgb_unit(luz.x));
+    let g = byte_de(srgb_unit(c.y * inv) * a + srgb_unit(luz.y));
+    let b = byte_de(srgb_unit(c.z * inv) * a + srgb_unit(luz.z));
+    return r | (g << 8u) | (b << 16u) | (ab << 24u);
 }
 
 fn empacota(c: vec4<f32>) -> u32 {
-    let a = u32(clamp(clamp(c.w, 0.0, 1.0) * 255.0 + 0.5, 0.0, 255.0));
-    return srgb_byte(c.x) | (srgb_byte(c.y) << 8u) | (srgb_byte(c.z) << 16u) | (a << 24u);
+    return empacota_com_luz(c, vec3<f32>(0.0));
 }
 
 // A direcção PARA o observador — o raio do traçado, ao contrário.
@@ -544,10 +569,9 @@ fn pinta(@builtin(global_invocation_id) g: vec3<u32>) {
         let posta = chao_no_pixel(g.x, g.y);
         let tem_posta = posta.x != 0.0 || posta.y != 0.0 || posta.z != 0.0;
         if (f < 1.0) {
-            let base = fundo_sombreado(f);
-            saida[i] = empacota(vec4<f32>(base.rgb + posta, base.a));
+            saida[i] = empacota_com_luz(fundo_sombreado(f), posta);
         } else if (tem_posta) {
-            saida[i] = empacota(vec4<f32>(pintor.fundo.rgb + posta, pintor.fundo.a));
+            saida[i] = empacota_com_luz(pintor.fundo, posta);
         } else {
             saida[i] = pintor.modo.z;
         }
@@ -601,14 +625,21 @@ fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
     var fundo = pintor.fundo;
     if (f_chao < 1.0) { fundo = fundo_sombreado(f_chao); }
     // ⭐ **E a borda recebe a luz devolvida pela MESMA média dos vizinhos** — ver `chao_da_borda`.
-    fundo = vec4<f32>(fundo.rgb + chao_da_borda(i, x, y), fundo.a);
+    // ⚠️ Ela viaja AO LADO da cobertura até ao byte: uma sub-amostra que FALHA traz o fundo E a luz,
+    // uma que ACERTA traz só a peça. *A média é das duas grandezas, cada uma na sua.*
+    let luz_do_fundo = chao_da_borda(i, x, y);
     var acc = vec4<f32>(0.0);
+    var acc_luz = vec3<f32>(0.0);
     for (var j = 0u; j < 4u; j = j + 1u) {
         let q = borda[slot * 5u + 1u + j];
         var cor = fundo;
-        if (q.x >= 0.0) { cor = vec4<f32>(radiancia(p, q.yzw, v, i, ceu_vis, ric).ecra, 1.0); }
+        if (q.x >= 0.0) {
+            cor = vec4<f32>(radiancia(p, q.yzw, v, i, ceu_vis, ric).ecra, 1.0);
+        } else {
+            acc_luz = acc_luz + luz_do_fundo * 0.25;
+        }
         acc = acc + cor * 0.25;
     }
-    saida[i] = empacota(acc);
+    saida[i] = empacota_com_luz(acc, acc_luz);
 }
 ";

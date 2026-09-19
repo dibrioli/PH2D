@@ -83,6 +83,18 @@ fn hoje_um_ponto_novo_numa_forma_presa_evapora_se() {
 
     let n = ph2d_skeleton_live::skin_live::bind(&mut sim, &cena, &mapa, &[caminho], Some(raiz));
     assert_eq!(n, 1, "o palco tem de prender, senao nao mede nada");
+    // ⚠️⚠️ **O que o quadro devolve é a FONTE, e ela já não tem a contagem do que o artista
+    // desenhou** (2026-09-19): desde a subdivisão do bind, prender acrescenta pontos de propósito.
+    // *A 1.ª redacção desta sonda comparava o depois com o ANTES — a premissa era «a fonte é a
+    // forma autorada, ponto por ponto», e ela morreu no dia em que o dono mandou pôr pontos ali.*
+    let na_fonte = ph2d_ecs::Entity::try_from_bits(*mapa.get(&caminho).expect("entidade"))
+        .and_then(|e| sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e))
+        .and_then(|sk| ph2d_skeleton_live::skinned_mesh::le(&sk.source))
+        .map_or(0, |g| g.path.verts_all().count());
+    assert!(
+        na_fonte > antes,
+        "o bind nao subdividiu ({na_fonte} contra {antes}) — esta sonda passa a medir outra coisa"
+    );
 
     // ⚠️ **É a porta que a caneta chama**: o `insert_on_selected_segment` do `ph2d-vec-edit` faz
     // `split_segment(scene.path_mut(sel), seg, t)` e mais nada — ela é o núcleo do gesto.
@@ -104,10 +116,17 @@ fn hoje_um_ponto_novo_numa_forma_presa_evapora_se() {
         "[sonda-ponto-novo] antes={antes} com_o_ponto={com_o_ponto} depois_do_quadro={depois}"
     );
     assert_eq!(
-        depois, antes,
+        depois, na_fonte,
         "ESTA SONDA MUDOU DE VEREDITO: o ponto novo SOBREVIVEU ao quadro. Se alguem curou isto, \
          apague esta sonda e escreva o gate da lei nova — uma sonda que mede um defeito curado \
          defende-o"
+    );
+    // ⭐ E a metade que o `na_fonte` sozinho não diz: o ponto que a caneta escreveu no documento
+    // vivo **não está lá**. *Sem ela, uma fonte que por acaso tivesse `com_o_ponto` nós leria como
+    // «sobreviveu».*
+    assert_ne!(
+        depois, com_o_ponto,
+        "o ponto escrito so' no documento vivo sobreviveu ao quadro"
     );
 }
 

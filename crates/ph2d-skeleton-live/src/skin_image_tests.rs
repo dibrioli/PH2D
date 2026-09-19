@@ -153,7 +153,7 @@ fn binding_an_image_to_a_still_skeleton_moves_nothing() {
         .spawn((Transform::IDENTITY, sprite(4.0, 2.0, 0.0, 0.0)))
         .id();
     assert!(
-        crate::skin_live::bind_image(
+        crate::skin_image_bind::bind_image(
             &mut sim,
             e,
             &tinta(40, 20, 4, 4),
@@ -195,7 +195,7 @@ fn turning_the_bone_carries_the_image() {
         .spawn((Transform::IDENTITY, sprite(4.0, 2.0, 0.0, 0.0)))
         .id();
     let raiz = Entity::from_bits(osso);
-    assert!(crate::skin_live::bind_image(
+    assert!(crate::skin_image_bind::bind_image(
         &mut sim,
         e,
         &tinta(40, 20, 4, 4),
@@ -277,7 +277,7 @@ fn at_rest_each_pixel_of_a_bound_image_is_read_where_the_quad_reads_it() {
             ))
             .id();
         assert!(
-            crate::skin_live::bind_image(
+            crate::skin_image_bind::bind_image(
                 &mut sim,
                 e,
                 &tinta(40, 20, 4, 4),
@@ -351,7 +351,7 @@ fn only_the_base_instance_of_the_sprites_own_quad_gets_the_mesh() {
             .world_mut()
             .spawn((Transform::IDENTITY, sprite(4.0, 2.0, 0.0, 0.0)))
             .id();
-        assert!(crate::skin_live::bind_image(
+        assert!(crate::skin_image_bind::bind_image(
             &mut sim,
             e,
             &tinta(40, 20, 4, 4),
@@ -450,7 +450,7 @@ fn pecas_desenhadas(n: usize) -> Vec<usize> {
     let mut instancias = Vec::new();
     for _ in 0..n {
         let e = sim.world_mut().spawn((Transform::IDENTITY, s)).id();
-        assert!(crate::skin_live::bind_image(
+        assert!(crate::skin_image_bind::bind_image(
             &mut sim,
             e,
             &tinta(40, 20, 2, 4),
@@ -547,7 +547,7 @@ fn o_quadro_pergunta_sempre_ao_memo_da_assadura() {
     let osso = crate::bone::create(&mut sim, None, [-2.0, 0.0], [2.0, 0.0]).expect("osso");
     let s = sprite(4.0, 2.0, 0.0, 0.0);
     let e = sim.world_mut().spawn((Transform::IDENTITY, s)).id();
-    assert!(crate::skin_live::bind_image(
+    assert!(crate::skin_image_bind::bind_image(
         &mut sim,
         e,
         &tinta(40, 20, 2, 4),

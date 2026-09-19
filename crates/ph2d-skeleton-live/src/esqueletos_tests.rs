@@ -112,7 +112,7 @@ fn palco_das_tres_peles() -> (SimWorld, Entity, Entity, Entity) {
         ))
         .id();
     assert!(
-        crate::skin_live::bind_image(
+        crate::skin_image_bind::bind_image(
             &mut sim,
             img,
             &arte,

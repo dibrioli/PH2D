@@ -78,7 +78,7 @@ fn cena_dobrada(
         ))
         .id();
     assert!(
-        ph2d_skeleton_live::skin_live::bind_image(
+        ph2d_skeleton_live::skin_image_bind::bind_image(
             &mut sim,
             e,
             &super::branco(super::LARGURA_PX, altura_px),

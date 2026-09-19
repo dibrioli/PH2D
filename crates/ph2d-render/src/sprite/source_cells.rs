@@ -6,7 +6,7 @@
 //! A conta já existia **duas vezes** e as duas viviam na shell: o 9-slice (`sub_rect_source_px`,
 //! que mede as bordas na imagem que o artista vê) e a emissão (`region_subrect` seguido de
 //! [`super::sprite_sheet_subrect`]). O **terceiro** leitor chegou em 2026-09-17 e é de outra crate
-//! — quem PRENDE uma imagem ao esqueleto ([`ph2d_skeleton_live::skin_live::bind_image`]) tem de
+//! — quem PRENDE uma imagem ao esqueleto ([`ph2d_skeleton_live::skin_image_bind::bind_image`]) tem de
 //! traçar a malha sobre **a mesma** célula, senão ela é traçada sobre a folha inteira.
 //!
 //! ⚠️⚠️ **E o defeito que isso dava era MUDO** (medido 2026-09-17, sonda `sonda_as_tres_formas`):

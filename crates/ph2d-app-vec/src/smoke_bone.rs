@@ -250,7 +250,7 @@ pub fn bind(
             .as_ref()
             .and_then(|a| a.image_rgba8())
             .is_some_and(|(w, h, cow)| {
-                ph2d_skeleton_live::skin_live::bind_image(
+                ph2d_skeleton_live::skin_image_bind::bind_image(
                     sim,
                     e,
                     &cow,
@@ -338,6 +338,16 @@ pub fn bind(
         // ⚠️ **A ordem é a da CADEIA, e não a da [`ossos_desde`]** — ela ordena por `to_bits`, que no
         // bevy é a criação INVERTIDA, e a lista saía «Bone 3, Bone 2, Bone 1». *Uma lista que conta
         // ao contrário lê-se como um defeito, e o dono não tem como saber que não é.*
+        // ⚠️ **A contagem é LIDA da forma presa, nunca escrita à mão** — ela é função do esqueleto
+        // (o osso mais curto a dividir por três), logo mudar a cena muda o número. *O roteiro dizia
+        // «os oito nós» e a subdivisão do bind matou a frase no mesmo dia em que ela foi escrita.*
+        let nos = pecas
+            .first()
+            .and_then(|(pid, _)| map.get(pid))
+            .and_then(|b| ph2d_ecs::Entity::try_from_bits(*b))
+            .and_then(|e| sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e))
+            .and_then(|sk| ph2d_skeleton_live::skinned_mesh::le(&sk.source))
+            .map_or(0, |g| g.path.verts.len());
         let lista = cadeia_em_ordem(sim, raiz)
             .iter()
             .map(|e| nome(*e))
@@ -359,11 +369,10 @@ pub fn bind(
              arraste o CORPO de «{ponta_da_barra}» (o ultimo osso da barra) para dobrar a ponta \
              dela -- EM REPOUSO o peso nao move nada, seja ele qual for; (2) escolha a linha \
              «{ponta_da_barra}» na Hierarquia e carregue «Weight» no painel Bones; (3) arraste POR \
-             CIMA DA BARRA, no MEIO dela, longe das duas pontas. ⭐ A barra MUDA DE FORMA ali \
-             (medido: 0,141983 contra 0,000000 da lei de ontem). Ate' 19/09 o pincel RECUSAVA \
-             aquele sitio -- os oito nos da barra estao todos nas duas pontas, e a mancha era \
-             ancorada no no' mais perto. ⚠️ Os oito pontos coloridos NAO mudam: eles mostram onde o \
-             peso e' GUARDADO, e o que muda entre eles e' a FORMA."
+             CIMA DA BARRA. ⭐ A barra tem agora {nos} PONTOS coloridos ao longo dela -- ela nasceu \
+             com OITO, os oito nas duas pontas, e o Bind poe os que faltam. Cada ponto muda de cor \
+             onde o pincel passa (do AZUL, que nao manda nada, ao VERMELHO, que manda sozinho), e a \
+             barra MUDA DE FORMA ali."
         );
         eprintln!(
             "[vec-bone-smoke] ⭐ A OUTRA SAIDA, se quiser um no' de verdade ali: pegue na CANETA e \

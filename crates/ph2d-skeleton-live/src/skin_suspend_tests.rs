@@ -24,7 +24,7 @@ fn a_sprite_suspensa_nao_recebe_malha_e_a_vizinha_recebe() {
     let faz = || sprite(4.0, 2.0, 0.0, 0.0);
     let nasce = |sim: &mut SimWorld| {
         let e = sim.world_mut().spawn((Transform::IDENTITY, faz())).id();
-        assert!(crate::skin_live::bind_image(
+        assert!(crate::skin_image_bind::bind_image(
             sim,
             e,
             &tinta(40, 20, 4, 4),
@@ -88,7 +88,7 @@ fn tres_presas() -> (SimWorld, [Entity; 3]) {
             .world_mut()
             .spawn((Transform::IDENTITY, sprite(4.0, 2.0, 0.0, 0.0)))
             .id();
-        assert!(crate::skin_live::bind_image(
+        assert!(crate::skin_image_bind::bind_image(
             &mut sim,
             e,
             &tinta(40, 20, 4, 4),

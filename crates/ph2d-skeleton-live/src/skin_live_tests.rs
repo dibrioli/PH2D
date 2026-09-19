@@ -8,13 +8,13 @@
 use super::*;
 // ⭐ UMA definição: os dois auxiliares vivem no `test_support` da crate, porque o gate da
 // sequência do smoke (na shell) também os usa.
-use crate::test_support::{pior_desvio, quadro};
+use crate::test_support::{pior_desvio, pior_desvio_do_desenho, quadro};
 use ph2d_ecs::{ChildOf, Name, RootOrder, Transform};
 use ph2d_vec_scene::{ShapeKind, VecPath, cook};
 
 /// Uma cena com UMA forma (um rectângulo deitado de `(0,0)` a `(40,10)`) e um esqueleto de dois
 /// ossos ao longo dela. Devolve `(sim, scene, map, id, [osso_raiz, osso_ponta])`.
-fn palco() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
+pub(crate) fn palco() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
     let mut sim = SimWorld::default();
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();
@@ -26,7 +26,7 @@ fn palco() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
 }
 
 /// Um osso em `pos` (local do pai), comprimento `len`, força 1.
-fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Entity>) -> Entity {
+pub(crate) fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Entity>) -> Entity {
     let e = sim
         .world_mut()
         .spawn((
@@ -50,7 +50,7 @@ fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Ent
 }
 
 /// Gira um osso, em graus.
-fn gira(sim: &mut SimWorld, e: Entity, graus: f32) {
+pub(crate) fn gira(sim: &mut SimWorld, e: Entity, graus: f32) {
     sim.world_mut()
         .get_mut::<Transform>(e)
         .expect("Transform")
@@ -66,10 +66,22 @@ fn binding_a_shape_moves_nothing() {
     let antes = scene.paths()[0].clone();
     assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
     let depois = quadro(&sim, &mut scene, id);
-    let pior = pior_desvio(&antes, &depois);
+    // ⚠️⚠️ **A régua é a do DESENHO e não a dos VÉRTICES, e a troca foi forçada pela subdivisão do
+    // bind** (2026-09-19): prender passou a acrescentar pontos de controlo de propósito, e a
+    // [`pior_desvio`] — que emparelha vértice com vértice — leu **`37,5`** sobre uma forma que não
+    // se mexeu um pixel. *A promessa desta função sempre foi sobre o que o artista VÊ.*
+    let pior = pior_desvio_do_desenho(&antes, &depois);
     assert!(
         pior < 1e-9,
         "prender moveu a forma em {pior} - o `rest` nao esta' a ser o composto `S-1 . B`"
+    );
+    // ⭐ E a subdivisão ACONTECEU — sem isto esta régua nova ficaria verde sobre um bind que
+    // deixou de subdividir, que é o report do dono de volta.
+    assert!(
+        depois.verts.len() > antes.verts.len(),
+        "o bind nao subdividiu ({} -> {} vertices)",
+        antes.verts.len(),
+        depois.verts.len()
     );
 }
 
@@ -175,47 +187,22 @@ fn releasing_gives_back_the_drawing_and_expanding_keeps_the_pose() {
             .expect("o path")
             .clone();
         let alvo = if volta { &autorada } else { &posada };
+        // ⚠️ **A régua é a do DESENHO**: desde a subdivisão do bind, *Release* devolve a forma
+        // **subdividida** — o mesmo desenho com mais pontos de controlo. *A promessa é «devolve o
+        // que o artista desenhou», e um desenho não é uma lista de vértices.*
         assert!(
-            pior_desvio(alvo, &ficou) < 1e-9,
+            pior_desvio_do_desenho(alvo, &ficou) < 1e-9,
             "{keep:?} ficou com a geometria errada"
         );
         // E a pele foi-se: o recook seguinte não pode voltar a deformar.
         let depois = quadro(&sim, &mut scene, id);
         assert!(
-            pior_desvio(&ficou, &depois) < 1e-9,
+            pior_desvio_do_desenho(&ficou, &depois) < 1e-9,
             "{keep:?} deixou pele viva"
         );
     }
 }
 
-/// ⚠️ **UM SEGUNDO ESQUELETO NÃO É APANHADO POR ENGANO.** Com um osso apontado, o Bind leva a árvore
-/// DELE; sem nenhum, leva tudo (a leitura certa de *"há um esqueleto só"*, que é o caso comum).
-#[test]
-fn a_second_skeleton_is_only_bound_when_it_is_the_one_pointed_at() {
-    let (mut sim, _scene, _map, _id, ossos) = palco();
-    let outro = osso(&mut sim, "Other", [200.0, 0.0], 10.0, None);
-    // ⚠️ **Comparado como CONJUNTO**: a ORDEM dentro de uma pele não tem sentido (os pesos
-    // normalizam-se), só precisa de ser determinística — e ordenar por `to_bits` é ordenar por id
-    // de ALOCAÇÃO, que numa fixtura não é o que se quer afirmar. O que importa é *quem* entra.
-    let conjunto = |v: Vec<Entity>| {
-        let mut s: Vec<u64> = v.into_iter().map(|e| e.to_bits()).collect();
-        s.sort_unstable();
-        s
-    };
-    assert_eq!(
-        conjunto(skeleton_of(&sim, Some(ossos[1]))),
-        conjunto(vec![ossos[0], ossos[1]])
-    );
-    assert_eq!(
-        conjunto(skeleton_of(&sim, Some(outro))),
-        conjunto(vec![outro])
-    );
-    assert_eq!(
-        conjunto(skeleton_of(&sim, None)),
-        conjunto(vec![ossos[0], ossos[1], outro]),
-        "sem semente, o esqueleto e' a cena"
-    );
-}
 
 /// ⚠️ **A ORDEM dos ossos numa pele é um RÓTULO, não uma lei** — permutá-la devolve o mesmo desenho.
 ///
@@ -268,31 +255,6 @@ fn the_order_of_the_bones_in_a_skin_does_not_change_the_drawing() {
     );
 }
 
-/// ⭐⭐⭐ **PRENDER À CENA INTEIRA DÁ O MESMO DESENHO QUE PRENDER AO ESQUELETO CERTO** — e é isto
-/// que autoriza o `Bind` sem cerimónia (o botão prende a tudo quando o artista não apontou um osso).
-///
-/// ⚠️ **A propriedade é do SUPORTE FINITO, não da bondade da implementação:** um osso longe está
-/// fora do raio de todo ponto da forma ⇒ peso `0` ⇒ a normalização devolve exactamente os mesmos
-/// números; e um ponto órfão prende-se ao mais PRÓXIMO, que é do esqueleto certo. ⛔ Com a lei
-/// global (`1/d²`) isto seria FALSO, e o segundo esqueleto arrastaria a forma um pouco.
-#[test]
-fn binding_to_the_whole_scene_draws_the_same_as_binding_to_the_right_skeleton() {
-    let desenho = |semente: bool| {
-        let (mut sim, mut scene, map, id, ossos) = palco();
-        // Um segundo esqueleto, LONGE — o que o `Bind` sem semente também apanharia.
-        let outro = osso(&mut sim, "Far", [400.0, 0.0], 30.0, None);
-        osso(&mut sim, "Far2", [30.0, 0.0], 30.0, Some(outro));
-        let raiz = semente.then_some(ossos[0]);
-        assert_eq!(bind(&mut sim, &scene, &map, &[id], raiz), 1);
-        gira(&mut sim, ossos[1], 50.0);
-        quadro(&sim, &mut scene, id)
-    };
-    let pior = pior_desvio(&desenho(true), &desenho(false));
-    assert!(
-        pior < 1e-12,
-        "o esqueleto LONGE mudou o desenho em {pior} - o suporte deixou de ser finito"
-    );
-}
 
 /// **Os ossos que o overlay desenha saem da POSE, não do que foi escrito.** Um osso filho herda a
 /// pose do pai — se este gate ficar vermelho, o artista vê o osso num sítio e a forma dobra noutro.

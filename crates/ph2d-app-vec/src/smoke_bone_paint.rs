@@ -425,7 +425,7 @@ fn um_canvas(
         .as_ref()
         .and_then(|a| a.image_rgba8())
         .is_some_and(|(w, h, cow)| {
-            ph2d_skeleton_live::skin_live::bind_image(
+            ph2d_skeleton_live::skin_image_bind::bind_image(
                 sim,
                 e,
                 &cow,

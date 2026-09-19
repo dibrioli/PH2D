@@ -394,6 +394,85 @@ Mutação **12 de 12** a sangrar.
 ⏳ **ABERTO:** o espelho não tem gesto de canvas (só o painel) · e a arte presa não é espelhada com
 os ossos — o ramo novo nasce sem pele, e prendê-la é o gesto que já existe (*Bind*).
 
+### F32 — ⭐⭐⭐ **A SUBDIVISÃO NASCE NO BIND: os pontos ficam à vista** (ordem do dono, 2026-09-19: *«sem saber onde os pontos estão não fica legal. Melhor criar a subdivisão visível logo na associação com os ossos»*)
+
+É a lei que a **2.ª mídia já tinha** — uma imagem presa ganha no bind uma malha graduada pelas
+articulações — agora também para uma forma vectorial. A barra da cena passa de **8** nós (os oito
+nas duas pontas) para **34** ao longo dela.
+
+⭐⭐ **O passo é DERIVADO e o `3` não foi escolhido.** Ele é o **osso mais curto a dividir por
+[`DIVISOES_POR_OSSO`]**, e esse valor é o menor em que a lei dos **pontos de controlo** passa a
+concordar com a lei da **CURVA** (a imagem verdadeira da pele) dentro da
+[`ph2d_vec_skin::curva::TOLERANCIA`] que a casa já usa:
+
+| ossos | osso | `K=1` | `K=2` | **`K=3`** |
+|---|---|---|---|---|
+| 2 | `3,200` | — | `0,0606` | **`0,0000`** |
+| 3 | `2,133` | `0,2100` | `0,0496` | **`0,0000`** |
+| 4 | `1,600` | `0,0699` | `0,0000` | **`0,0000`** |
+| 6 | `1,067` | `0,0567` | `0,0000` | **`0,0000`** |
+
+⇒ `K = 2` **falha** com dois e três ossos; `K = 3` é suficiente nas duas poses medidas (a ponta
+girada `0,8 rad` e a barra inteira enrolada). ⚠️ *A escala fina de um campo de pesos é o comprimento
+de um OSSO* — é por isso que o passo se mede contra ele e não contra o tamanho da forma.
+
+⭐⭐⭐ **E o produto da wave é FIDELIDADE, não só pontos à vista.** A verdade é a mesma forma com o
+passo `48×` mais fino:
+
+| a barra, na pose em S da cena | nós | erro contra a verdade |
+|---|---|---|
+| GROSSA (o caminho de antes) | `8` | **`0,3767`** |
+| do PRODUTO (`osso / 3`) | `34` | **`0,0142`** |
+
+⇒ `38 %` da espessura da barra contra `1,4 %` — **`26×`**. ⚠️⚠️ **Quem achou isto foi uma
+FOTOGRAFIA e não um gate:** ao refotografar a cena do smoke, a barra apareceu **dobrada** onde antes
+estava quase recta, e a primeira leitura possível era *«a wave estragou a cena»*. *Ela estava a
+passar a seguir os ossos.*
+
+⭐⭐ **De graça: o desenho ficou mais BARATO.** O refit da lei da curva só corre onde a lei ingénua se
+afasta, e com a forma subdividida ele deixa de correr — o recook da barra passou de **`732 µs`** (8
+nós) para **`58 µs`** (34 nós) em `debug`.
+
+⛔ **O tecto é o RELÓGIO DO RECOOK**, medido em `--release`: `4 094` vértices custam `3,65 %` de um
+quadro e um décimo de quadro compra **~11 100**. ⚠️ **Medi-lo em `debug` daria um tecto `11×` mais
+baixo** — o §0.0 outra vez. `VERTICES_MAX = 4096`, generoso de propósito: o que ele impede é o caso
+degenerado (um osso minúsculo sobre uma forma enorme), e a barra da cena sai com `34`.
+
+⛔⛔ **A QUINA VIVA é protegida, e o guarda mede a CAUSA e não a consequência.** O recuo de uma quina
+é clampado a *metade da menor corda vizinha*, logo partir o segmento ao lado dela encolhe-o (medido:
+`2,055e-2` sem guarda). A 1.ª redacção comparava o DESENHO inteiro antes e depois de cada corte e
+**pendurou a suíte** — hoje compara o **recuo**, que é `O(1)`. ⛔ Escrever a condição à mão (*«não
+cortes ao lado de um vértice com raio»*) recusaria todo corte num rectângulo arredondado.
+⏳ **ABERTO e declarado:** uma forma com **EFEITOS** não é subdividida — a saída de um efeito é
+função do contorno inteiro e esta wave não a mediu.
+
+⛔⛔⛔ **A wave derrubou ONZE gates, e cada um é uma premissa que morreu — nenhum era uma barra
+afrouxada:**
+- **A régua dos VÉRTICES** (`pior_desvio`) emparelha vértice com vértice e leu **`37,5`** sobre uma
+  forma que não se mexeu um pixel. ⇒ irmã nova `pior_desvio_do_desenho`, e os três gates cuja
+  pergunta é sobre o DESENHO trocaram de régua. *É a lição da F30 um nível acima.*
+- **O suporte finito** (`binding_to_the_whole_scene…`) afirmava *«peso 0 ⇒ os mesmos números»* e
+  media-o pelo desenho a `1e-12`. Verdade sobre os ossos LONGE (medido: **exactamente `0`**), falsa
+  sobre os PERTO — o domínio do solver é construído a partir dos anéis **e dos ossos**, logo um osso
+  a `400` unidades muda a TRIANGULAÇÃO. Contrafactual: `0,000e0` sem subdivisão, `1,289e-2` com. ⇒ o
+  gate passa a afirmar a **LEI** em vez do proxy.
+- **A F28** (o ponto novo não faz o desenho saltar) mede um mundo GROSSEIRO que o produto já não
+  produz ⇒ os gates dela pedem-no pelo parâmetro (`bind_com(.., false)`), que é o caminho de antes de
+  19/09 **e o de um ficheiro gravado antes dele**. ⭐ E a dissolução está medida: o salto sem
+  compensação vai de **`18,89 %`** (o número exacto que a F28 curava) para **`0,000000 %`**.
+- **O indicador** afirmava que o osso do MEIO *«não possui nada nesta arte»* — e é isso que tornava
+  o meu passo de smoke errado. Hoje possui, e o gate guarda o **contraste** com a barra grossa.
+- **A F31** (a mancha pousa entre os nós) tem como sujeito a barra grossa: com a subdivisão o nó mais
+  perto do meio passa de `3,04` para `0,50` contra um pincel de `0,40`. ⇒ `const GROSSA: bool =
+  false`, *senão aqueles gates ficariam verdes por vácuo*.
+
+⚠️ **A lei viaja como PARÂMETRO** (`bind_com`), nunca numa variável de ambiente — a lição do
+`recook_com`: uma porta global lida dentro da lei é um canal entre testes.
+
+⏳ **ABERTO:** o indicador mostra os pontos, e a **mancha** pintada entre dois deles continua sem
+representação na tela (ver a F31) · uma forma com efeitos · e `Release` devolve a forma
+**subdividida** (o mesmo desenho, mais pontos de controlo), que é consequência declarada.
+
 ### F31 — ⭐⭐⭐ **O PINCEL DE PESO ALCANÇA O MEIO DE UMA ARESTA** (report do dono, 2026-09-19: *«o que vc mandou fazer não funcionou»*)
 
 ⛔⛔⛔ **A F30 shipou uma LEI SEM GESTO, e o report tinha DUAS causas — a minha e a do produto.**

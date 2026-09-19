@@ -115,7 +115,7 @@ fn medir(
     let s = sprite(4.0, 2.0, 0.0, 0.0);
     let e = sim.world_mut().spawn((Transform::IDENTITY, s, grid)).id();
     let (cw, ch) = (40u32, 20u32);
-    assert!(crate::skin_live::bind_image(
+    assert!(crate::skin_image_bind::bind_image(
         &mut sim,
         e,
         &folha(cells, cw, ch),
@@ -182,7 +182,7 @@ fn malha_do_bind(
     let raiz = crate::bone::create(&mut sim, None, [-2.0, 0.0], [2.0, 0.0]).expect("osso");
     let s = sprite(4.0, 2.0, 0.0, 0.0);
     let e = sim.world_mut().spawn((Transform::IDENTITY, s, grid)).id();
-    assert!(crate::skin_live::bind_image(
+    assert!(crate::skin_image_bind::bind_image(
         &mut sim,
         e,
         rgba,
@@ -405,7 +405,7 @@ fn malhas_em_repouso(tamanho: [f32; 2], bordas: [f32; 4], nove: bool) -> Vec<Spr
     let raiz = crate::bone::create(&mut sim, None, [-2.0, 0.0], [2.0, 0.0]).expect("osso");
     let s = sprite(tamanho[0], tamanho[1], 0.0, 0.0);
     let e = sim.world_mut().spawn((Transform::IDENTITY, s)).id();
-    assert!(crate::skin_live::bind_image(
+    assert!(crate::skin_image_bind::bind_image(
         &mut sim,
         e,
         &folha(1, 40, 20),
@@ -499,7 +499,7 @@ fn cada_pedaco_desenha_dentro_do_quad_dele() {
     let mut sim = SimWorld::default();
     let raiz = crate::bone::create(&mut sim, None, [-2.0, 0.0], [2.0, 0.0]).expect("osso");
     let e = sim.world_mut().spawn((Transform::IDENTITY, s)).id();
-    assert!(crate::skin_live::bind_image(
+    assert!(crate::skin_image_bind::bind_image(
         &mut sim,
         e,
         &folha(1, 40, 20),
@@ -560,7 +560,7 @@ fn a_fileira_sem_tinta_nao_desenha() {
     let mut sim = SimWorld::default();
     let raiz = crate::bone::create(&mut sim, None, [-2.0, 0.0], [2.0, 0.0]).expect("osso");
     let e = sim.world_mut().spawn((Transform::IDENTITY, s)).id();
-    assert!(crate::skin_live::bind_image(
+    assert!(crate::skin_image_bind::bind_image(
         &mut sim,
         e,
         &folha(1, 40, 20),

@@ -321,7 +321,7 @@ fn rig_com_pele_de(px: [u32; 2]) -> (SimWorld, ph2d_ecs::PresentWorld, u64, u64)
     // ⚠️ **Prende pela PORTA do produto** (`bind_image`), e não com um `SkinBind` escrito à mão: é
     // ela que guarda a malha e as matrizes de repouso, e um bind fabricado mediria outra coisa.
     assert!(
-        ph2d_skeleton_live::skin_live::bind_image(
+        ph2d_skeleton_live::skin_image_bind::bind_image(
             &mut sim,
             arte,
             &vec![255u8; (px[0] * px[1] * 4) as usize],

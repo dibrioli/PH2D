@@ -45,6 +45,17 @@ fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Ent
 
 /// Um rectângulo deitado com um braço de dois ossos por cima — a fixtura das outras suítes desta
 /// crate, e ela tem tabela de pesos porque a forma é FECHADA.
+///
+/// ⛔⛔ **Ela prende SEM a subdivisão do bind, e isso é a lei desta suíte inteira** (2026-09-19). A
+/// F28 responde *«o que acontece quando um ponto NOVO entra numa forma GROSSEIRA?»*, e desde a
+/// ordem do dono (*«criar a subdivisão visível logo na associação com os ossos»*) o produto já não
+/// produz formas grosseiras — ele subdivide no `Bind`. ⇒ o sujeito destes gates alcança-se pelo
+/// parâmetro ([`crate::skin_live::bind_com`]), que é **o caminho de antes de 19/09 e o de um
+/// ficheiro GRAVADO antes dele**.
+///
+/// ⚠️ *Com o bind de hoje estes gates ficariam VERDES por vácuo* — não há salto para compensar
+/// quando a forma já tem pontos que cheguem, e é isso que a irmã
+/// [`a_subdivisao_do_bind_dissolve_o_salto`] mede.
 fn palco() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
     let mut sim = SimWorld::default();
     let mut cena = VecScene::new();
@@ -54,7 +65,7 @@ fn palco() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
     let raiz = osso(&mut sim, "Arm", [0.0, 5.0], 20.0, None);
     let ponta = osso(&mut sim, "Forearm", [20.0, 0.0], 20.0, Some(raiz));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    let n = crate::skin_live::bind(&mut sim, &cena, &mapa, &[id], Some(raiz));
+    let n = crate::skin_live::bind_com(&mut sim, &cena, &mapa, &[id], Some(raiz), false);
     assert_eq!(n, 1, "o palco tem de prender");
     (sim, cena, mapa, id, [raiz, ponta])
 }
@@ -83,7 +94,7 @@ fn palco_desenhado(pedacos: usize) -> (SimWorld, VecScene, VecEntityMap, VecPath
     let raiz = osso(&mut sim, "Arm", [0.0, 5.0], 20.0, None);
     let ponta = osso(&mut sim, "Forearm", [20.0, 0.0], 20.0, Some(raiz));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    let n = crate::skin_live::bind(&mut sim, &cena, &mapa, &[id], Some(raiz));
+    let n = crate::skin_live::bind_com(&mut sim, &cena, &mapa, &[id], Some(raiz), false);
     assert_eq!(n, 1, "o palco desenhado tem de prender");
     (sim, cena, mapa, id, [raiz, ponta])
 }
@@ -578,5 +589,75 @@ fn com_a_lei_da_curva_o_ponto_novo_nao_move_nada() {
         "com a lei da curva acrescentar um ponto moveu o desenho {:.4} % da peca — ou a compensacao \
          da F28 voltou a correr (ela ESTRAGA aqui), ou a lei da curva nao esta' ligada",
         salto / diagonal * 100.0
+    );
+}
+
+/// ⭐⭐⭐ **A SUBDIVISÃO DO BIND DISSOLVE O SALTO — a compensação desta suíte deixou de ter sujeito
+/// no caminho de OMISSÃO** (ordem do dono, 2026-09-19).
+///
+/// ⚠️ **É a segunda vez que esta lei é dissolvida por baixo, e por isso ela é MEDIDA e não
+/// suposta:** a F30 já lhe tinha tirado o sujeito no desenho (a arte passou a ser a imagem
+/// verdadeira da curva), e agora a subdivisão tira-lho na GEOMETRIA (a forma já tem pontos que
+/// cheguem). ⛔ *A compensação não é apagada:* ela continua a ser o que segura um ficheiro GRAVADO
+/// antes de 19/09 e o caminho `bind_com(.., false)`, que é o sujeito de todos os outros gates deste
+/// ficheiro.
+///
+/// A régua é o salto do desenho ao ganhar um ponto, em % da diagonal da peça — a mesma das irmãs.
+#[test]
+fn a_subdivisao_do_bind_dissolve_o_salto() {
+    let salto_com = |subdividir: bool| {
+        let mut sim = SimWorld::default();
+        let mut cena = VecScene::new();
+        let mut mapa = VecEntityMap::new();
+        let id = cena.push_path(cook(ShapeKind::Rectangle, [0.0, 0.0], [40.0, 10.0], &[]));
+        ph2d_vec_entities::entities::sync(&mut sim, &mut cena, &mut mapa);
+        let raiz = osso(&mut sim, "Arm", [0.0, 5.0], 20.0, None);
+        let ponta = osso(&mut sim, "Forearm", [20.0, 0.0], 20.0, Some(raiz));
+        ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+        assert_eq!(
+            crate::skin_live::bind_com(&mut sim, &cena, &mapa, &[id], Some(raiz), subdividir),
+            1
+        );
+        sim.world_mut()
+            .get_mut::<Transform>(ponta)
+            .expect("pose")
+            .rotation = 0.8;
+        // ⛔⛔ **A LEI DA CURVA FICA DESLIGADA, e é o que torna esta medição legível.** A F30 já
+        // tinha dissolvido este salto — *o desenho deixou de ser a curva dos pontos de controlo* —,
+        // logo com ela ligada os dois lados leem `0,000002 %` e o gate não distingue nada.
+        // *Para medir a segunda dissolução é preciso desligar a primeira.*
+        crate::skin_live::recook_com(&sim, &mut cena, LEI_INGENUA);
+        let antes = cena.path(id).expect("caminho").clone();
+        // ⛔ **SEM COMPENSAÇÃO** — o corte de repouso cru, que é o caminho de ANTES da F28. É a
+        // única forma de ver o salto que ela existe para curar: com a compensação ligada os dois
+        // lados leem zero, e o gate não distingue nada.
+        {
+            let e = Entity::from_bits(*mapa.get(&id).expect("entidade"));
+            let skin = sim.world().get::<SkinBind>(e).expect("presa").clone();
+            let mut f = crate::skinned_mesh::le(&skin.source).expect("le");
+            let (_, bytes) =
+                insere_na_fonte(&mut f, 0, 0.5, None, &[], PASSAGENS).expect("o corte de repouso");
+            sim.world_mut()
+                .get_mut::<SkinBind>(e)
+                .expect("presa")
+                .source = bytes;
+        }
+        crate::skin_live::recook_com(&sim, &mut cena, LEI_INGENUA);
+        let depois = cena.path(id).expect("caminho").clone();
+        crate::test_support::pior_desvio_do_desenho(&antes, &depois) / 41.23 * 100.0
+    };
+    let grosso = salto_com(false);
+    let subdividido = salto_com(true);
+    eprintln!(
+        "[ponto-novo] salto pela lei dos pontos de controlo: forma grossa={grosso:.6} % · \
+         subdividida pelo bind={subdividido:.6} %"
+    );
+    assert!(
+        grosso > 1e-3,
+        "a forma GROSSA deixou de saltar ({grosso} %) — sem isso a linha de baixo nao afirma nada"
+    );
+    assert!(
+        subdividido < grosso / 10.0,
+        "a subdivisao do bind nao dissolveu o salto ({subdividido} % contra {grosso} %)"
     );
 }

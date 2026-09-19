@@ -58,7 +58,7 @@ fn braco() -> (SimWorld, Entity, Entity, SkinnedMesh) {
         .spawn((Transform::IDENTITY, sprite(4.0, 2.0, 0.0, 0.0)))
         .id();
     let raiz = Entity::from_bits(osso);
-    assert!(crate::skin_live::bind_image(
+    assert!(crate::skin_image_bind::bind_image(
         &mut sim,
         e,
         &tinta(40, 20, 4, 4),

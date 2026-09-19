@@ -5,7 +5,7 @@
 //! smoke deste módulo dão a cada imagem a corrente DELA, logo *a capacidade que o artista precisa
 //! nunca foi exercida por nenhuma delas*.
 //!
-//! ⚠️ **A dúvida é legítima e não retórica:** o [`super::super::skin_live::bind_image`] recebe um
+//! ⚠️ **A dúvida é legítima e não retórica:** o [`super::super::skin_image_bind::bind_image`] recebe um
 //! osso SEMENTE e prende à árvore dele, o que sugere que partilhar sai de graça — e *«sai de graça
 //! por construção»* foi exactamente a frase que a medição desmentiu duas vezes em 2026-09-18 (a
 //! nota da dobra e o enquadramento da cena). ⇒ mede-se.
@@ -68,7 +68,7 @@ fn duas_no_mesmo_rig(graus: f32) -> (Presa, Presa) {
     for (k, y) in [meia, -meia].into_iter().enumerate() {
         let s = sprite(celula[0], celula[1], 0.0, y as f32);
         let e = sim.world_mut().spawn((Transform::IDENTITY, s)).id();
-        let ok = crate::skin_live::bind_image(
+        let ok = crate::skin_image_bind::bind_image(
             &mut sim,
             e,
             &arte,
@@ -237,7 +237,7 @@ fn sem_osso_escolhido_a_imagem_prende_se_a_todos_os_esqueletos() {
     let s = sprite(celula[0], celula[1], 0.0, 0.0);
     let e = sim.world_mut().spawn((Transform::IDENTITY, s)).id();
     assert!(
-        crate::skin_live::bind_image(
+        crate::skin_image_bind::bind_image(
             &mut sim,
             e,
             &arte,

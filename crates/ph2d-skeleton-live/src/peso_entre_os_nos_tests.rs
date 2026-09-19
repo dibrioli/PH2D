@@ -22,12 +22,21 @@
 //! cima de um vértice**, que é o caso em que as duas leis concordam. *Uma fixtura que aponta sempre
 //! para um nó não testa o que acontece entre eles.*
 
-use crate::barra_da_cena_tests_support::{PPM, barra_da_cena, forma, raio_de_fabrica};
+use crate::barra_da_cena_tests_support::{PPM, barra_da_cena_com, forma, raio_de_fabrica};
 use crate::peso_a_mao::{Pincelada, pinta, pontos_de_peso};
 use ph2d_ecs::Transform;
 
 /// O MEIO da barra da cena — o sítio do report.
 const MEIO: [f64; 2] = [-5.0, 2.5];
+
+/// ⛔⛔ **O sujeito desta suíte é a barra GROSSA — a de oito nós**, que é a forma sobre a qual o
+/// dono reportou em 2026-09-19 e o que um ficheiro gravado antes daquele dia traz.
+///
+/// ⚠️ **A subdivisão do bind, da mesma data, tira o fenómeno da forma de OMISSÃO** (o nó mais perto
+/// do meio da barra passa de `3,04` para `0,50`, contra um pincel de `0,40`) — e é isso que torna
+/// esta constante obrigatória: *sem ela estes gates ficariam verdes por vácuo, e a lei da âncora
+/// deixaria de ter quem a defenda no dia em que alguém tocasse nela.*
+const GROSSA: bool = false;
 
 /// ⭐⭐⭐ **PINTAR NO MEIO DA BARRA É ACEITE, E A MANCHA POUSA ENTRE OS NÓS.**
 ///
@@ -39,7 +48,7 @@ const MEIO: [f64; 2] = [-5.0, 2.5];
 /// raio ⇒ RED no irmão `um_clique_do_outro_lado_da_tela_continua_recusado`.)
 #[test]
 fn pintar_no_meio_da_barra_e_aceite_e_a_mancha_pousa_entre_os_nos() {
-    let (mut sim, _scene, map, id, ossos) = barra_da_cena();
+    let (mut sim, _scene, map, id, ossos) = barra_da_cena_com(GROSSA);
     let alvo = forma(&map, id);
     let raio = raio_de_fabrica();
 
@@ -94,7 +103,7 @@ fn pintar_no_meio_da_barra_e_aceite_e_a_mancha_pousa_entre_os_nos() {
 /// de um recook.*
 #[test]
 fn um_arrasto_pelo_meio_da_barra_move_a_arte() {
-    let (mut sim, mut scene, map, id, ossos) = barra_da_cena();
+    let (mut sim, mut scene, map, id, ossos) = barra_da_cena_com(GROSSA);
     let alvo = forma(&map, id);
     let raio = raio_de_fabrica();
 
@@ -175,7 +184,7 @@ fn um_arrasto_pelo_meio_da_barra_move_a_arte() {
 /// mancha no contorno mais próximo, longe e sem o artista o pedir.
 #[test]
 fn um_clique_do_outro_lado_da_tela_continua_recusado() {
-    let (mut sim, _scene, map, id, ossos) = barra_da_cena();
+    let (mut sim, _scene, map, id, ossos) = barra_da_cena_com(GROSSA);
     let alvo = forma(&map, id);
     let r = pinta(
         &mut sim,
@@ -197,7 +206,7 @@ fn um_clique_do_outro_lado_da_tela_continua_recusado() {
 /// do alcance do contorno), senão a primeira passaria por acidente.
 #[test]
 fn o_miolo_da_barra_conta_como_arte() {
-    let (mut sim, _scene, map, id, ossos) = barra_da_cena();
+    let (mut sim, _scene, map, id, ossos) = barra_da_cena_com(GROSSA);
     let alvo = forma(&map, id);
     let raio = raio_de_fabrica();
     let r = pinta(&mut sim, alvo, ossos[1], PPM, MEIO, raio, 0.15);

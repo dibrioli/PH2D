@@ -108,7 +108,7 @@ fn braco_desenhado(qual: u8, graus: f32) -> Vec<(SpriteMesh, [f32; 4])> {
             frame: 1,
         });
     }
-    assert!(crate::skin_live::bind_image(
+    assert!(crate::skin_image_bind::bind_image(
         &mut sim,
         e,
         &arte,

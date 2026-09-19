@@ -136,7 +136,7 @@ fn the_bar_that_teaches_order_crosses_the_painted_arm_without_hiding_it() {
 #[test]
 fn o_roteiro_ensina_a_acrescentar_um_ponto_onde_falta_controlo() {
     let texto = include_str!("smoke_bone.rs");
-    for agulha in ["CANETA", "SOBREVIVE", "Weight", "BARRA LARANJA obedece"] {
+    for agulha in ["CANETA", "SOBREVIVE", "Weight", "BARRA LARANJA obedece", "{nos} PONTOS"] {
         assert!(
             texto.contains(agulha),
             "o roteiro deixou de dizer «{agulha}» — sem ele o artista fica com a barra e nenhuma \
@@ -231,4 +231,31 @@ fn a_lista_de_ossos_da_barra_conta_do_primeiro_para_o_ultimo() {
         "as duas ordens coincidiram — ou o bevy mudou a numeracao, ou esta porta deixou de ser \
          necessaria e a frase pode voltar a sair do conjunto"
     );
+}
+
+/// ⭐⭐⭐ **O ROTEIRO CONTA OS PONTOS DA BARRA, NUNCA OS AFIRMA.**
+///
+/// ⛔⛔ **A frase «os oito nós da barra» morreu no mesmo dia em que foi escrita** (2026-09-19): o
+/// dono mandou *«criar a subdivisão visível logo na associação com os ossos»*, e desde então a
+/// contagem é função do ESQUELETO — o osso mais curto a dividir por três. *Um roteiro que afirma um
+/// número que a cena deriva envelhece na wave seguinte.*
+#[test]
+fn o_roteiro_nao_afirma_uma_contagem_de_nos() {
+    let texto = include_str!("smoke_bone.rs");
+    let linha = texto
+        .split("PINCEL DE PESO NA BARRA")
+        .nth(1)
+        .expect("a licao do pincel na barra");
+    let cabeca = &linha[..linha.len().min(900)];
+    assert!(
+        cabeca.contains("{nos} PONTOS"),
+        "a licao do pincel deixou de CONTAR os pontos: {cabeca:?}"
+    );
+    for morta in ["oito nos da barra", "oito pontos coloridos"] {
+        assert!(
+            !texto.contains(morta),
+            "o roteiro voltou a AFIRMAR «{morta}» — a contagem e' derivada do esqueleto desde que a \
+             subdivisao do bind existe"
+        );
+    }
 }

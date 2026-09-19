@@ -163,7 +163,7 @@ fn um_campo_linear_devolve_none_em_vez_de_uma_copia() {
 /// # ⚠️ O que ele dizia até 2026-09-17, e porque deixou de ser verdade
 ///
 /// Ele chamava-se `o_bind_da_imagem_chama_o_assador` e afirmava o contrário do que afirma agora: a
-/// W1b assava DENTRO do [`crate::skin_live::bind_image`], substituindo a malha guardada. A W2b
+/// W1b assava DENTRO do [`crate::skin_image_bind::bind_image`], substituindo a malha guardada. A W2b
 /// mediu o preço de PRODUTO disso — o `Fast` deixava de ser barato, a escolha `Fast`/`Smooth` do
 /// painel colapsava, e a densidade ficava congelada no ficheiro — e mudou a malha assada para um
 /// **memo por bind** ([`crate::skin_bake_cache`]), onde ela é **derivada**.

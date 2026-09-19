@@ -29,7 +29,7 @@ fn cena_cheia(n: usize, graus: f32) -> (SimWorld, PresentWorld, usize) {
     let mut guardadas = 0;
     for _ in 0..n {
         let e = sim.world_mut().spawn((Transform::IDENTITY, s)).id();
-        assert!(crate::skin_live::bind_image(
+        assert!(crate::skin_image_bind::bind_image(
             &mut sim,
             e,
             &tinta,

@@ -11,7 +11,7 @@
 //! ⚠️ **Todos nasceram de um report do dono** (2026-09-19): *«nada fica vermelho e nada fica azul»*
 //! e *«os pesos não são aplicados apenas nos nós, mas também nos handles»*.
 
-use crate::barra_da_cena_tests_support::{PPM, barra_da_cena, forma, raio_de_fabrica};
+use crate::barra_da_cena_tests_support::{PPM, barra_da_cena, barra_da_cena_com, forma, raio_de_fabrica};
 use ph2d_ecs::Transform;
 
 /// A distância entre dois pontos.
@@ -195,11 +195,28 @@ fn com_o_osso_certo_a_tela_tem_as_duas_cores() {
              19/09 a` letra"
         );
     }
+    // ⭐⭐⭐ **E O OSSO DO MEIO TAMBÉM, desde a subdivisão do bind** (ordem do dono, 2026-09-19:
+    // *«sem saber onde os pontos estão não fica legal»*). ⛔⛔ **A redacção anterior afirmava o
+    // CONTRÁRIO** — *«o osso do meio de uma cadeia de três sobre oito nós não possui nada, logo ali
+    // uma cor só é a resposta CERTA»* — e era verdade enquanto a barra tinha os oito nós nas duas
+    // pontas. *A premissa morreu no dia em que o dono mandou pôr pontos ali.*
     let meio = crate::peso_a_mao::pontos_do_indicador(&sim, PPM, Some(ossos[1]));
+    let quentes = meio.iter().filter(|(_, w)| *w > 0.5).count();
     assert!(
-        !meio.is_empty() && meio.iter().all(|(_, w)| *w <= 0.5),
-        "o osso do MEIO passou a possuir alguma coisa nesta arte — a lei mudou, e o passo do smoke \
-         que o nomeava deixou de estar errado pelo motivo que o handoff regista"
+        quentes > 0,
+        "Bone 2: o osso do MEIO nao possui um unico ponto da barra — ou a subdivisao do bind parou, \
+         ou ela deixou de pousar pontos onde este osso manda"
+    );
+
+    // ⭐⭐ **E o CONTRASTE, que é o que torna a linha de cima legível:** no mundo de antes — a barra
+    // GROSSA, que um ficheiro gravado antes de 19/09 traz — ele continua a não possuir nada, e é
+    // por isso que o meu passo de smoke daquele dia mandou clicar no osso errado.
+    let (velha, _s, _m, _i, ossos_velhos) = barra_da_cena_com(false);
+    let antes = crate::peso_a_mao::pontos_do_indicador(&velha, PPM, Some(ossos_velhos[1]));
+    assert!(
+        !antes.is_empty() && antes.iter().all(|(_, w)| *w <= 0.5),
+        "na barra GROSSA o osso do meio passou a possuir alguma coisa — o contraste desapareceu e a \
+         asserção de cima deixa de dizer o que mudou"
     );
 }
 

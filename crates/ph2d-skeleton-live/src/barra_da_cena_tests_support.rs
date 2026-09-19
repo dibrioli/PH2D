@@ -48,6 +48,18 @@ pub(crate) fn forma(map: &VecEntityMap, id: VecPathId) -> Entity {
 /// dobra-se sobre si mesma e todo o peso colapsa no primeiro osso — foi o que a 1.ª redacção destas
 /// sondas mediu, e lia-se exactamente como um defeito do produto.
 pub(crate) fn barra_da_cena() -> (SimWorld, VecScene, VecEntityMap, VecPathId, Vec<Entity>) {
+    barra_da_cena_com(true)
+}
+
+/// ⭐⭐ **A mesma barra com a SUBDIVISÃO DO BIND como parâmetro.**
+///
+/// `subdividir = false` é o mundo de **antes de 2026-09-19** — oito nós, os oito nas duas pontas —
+/// e é o sujeito de tudo o que o dono reportou naquele dia. ⚠️ Ele continua alcançável no produto
+/// (um ficheiro GRAVADO antes daquela wave traz a forma assim), e é por isso que os gates daquelas
+/// leis o pedem por nome em vez de o perderem.
+pub(crate) fn barra_da_cena_com(
+    subdividir: bool,
+) -> (SimWorld, VecScene, VecEntityMap, VecPathId, Vec<Entity>) {
     let mut sim = SimWorld::default();
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();
@@ -66,7 +78,7 @@ pub(crate) fn barra_da_cena() -> (SimWorld, VecScene, VecEntityMap, VecPathId, V
         pai = Some(e);
         ids.push(e);
     }
-    crate::skin_live::bind(&mut sim, &scene, &map, &[id], None);
+    crate::skin_live::bind_com(&mut sim, &scene, &map, &[id], None, subdividir);
     // ⛔⛔ **A FORMA CARREGA UM `Sprite`, e sem ele esta fixtura não contém o fenómeno** — no app
     // toda arte vectorial tem um, e a 1.ª redacção da porta escolhia o ramo da mídia por
     // `tem Sprite?`: ali o `SkinnedMesh` não parseia, a porta respondia «não achei» e a tela ficava

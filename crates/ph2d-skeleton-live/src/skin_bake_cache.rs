@@ -7,7 +7,7 @@
 //! onde o campo de pesos curva ([`crate::skin_bake`]). Faltava decidir onde o resultado mora, e a
 //! diferença entre as duas casas é de **PRODUTO**, não de relógio:
 //!
-//! - **No DOCUMENTO** (a 1.ª redacção da W1b, dentro do [`crate::skin_live::bind_image`]): a malha
+//! - **No DOCUMENTO** (a 1.ª redacção da W1b, dentro do [`crate::skin_image_bind::bind_image`]): a malha
 //!   assada SUBSTITUI a do bind nos bytes guardados. ⛔ Três consequências que nenhum número
 //!   desculpa — o `Fast` deixa de ser barato (ele passa a desenhar a malha fina, `5,76×` maior na
 //!   arte do dono), a escolha `Fast`/`Smooth` do painel **COLAPSA** (as duas desenham exactamente a

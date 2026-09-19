@@ -428,7 +428,7 @@ fn uma(
         .as_ref()
         .and_then(|a| a.image_rgba8())
         .is_some_and(|(w, h, cow)| {
-            ph2d_skeleton_live::skin_live::bind_image(
+            ph2d_skeleton_live::skin_image_bind::bind_image(
                 sim,
                 e,
                 &cow,
@@ -491,7 +491,7 @@ mod tests {
             .find("\n    prepara(sim, e);")
             .expect("a cena deixou de ter o passo que configura a sprite antes de prender");
         let bind = FONTE
-            .find("skin_live::bind_image(")
+            .find("skin_image_bind::bind_image(")
             .expect("a cena deixou de prender");
         assert!(
             prepara < bind,

@@ -102,6 +102,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.motion_graph.backdrop.title_row" => "Title",
         "panel.motion_graph.backdrop.color_row" => "Color",
         // ph2d-migrar-texto:end
+        // ⭐⭐⭐ **O AVISO DE VISIBILIDADE** (ordem do dono, 2026-09-19: *«coloque um alerta de que
+        // se não forem usados com duplicator e um objeto a ser copiado, são invisíveis»*), pintado
+        // no cartão de toda fonte de posições. ⚠️ FORA dos marcadores: uma chave nova escreve-se à
+        // mão, e esta não veio de migração nenhuma.
+        //
+        // ⚠️ **Ela NOMEIA o nó que resolve o problema** — *«um Duplicator»*, que é o que o artista
+        // escreve na paleta —, porque uma frase que só diz «isto não aparece» manda-o adivinhar a
+        // cura. Curta de propósito: ela mora numa fileira de `190 px`.
+        "panel.motion_graph.card.needs_a_duplicator" => "Needs a Duplicator + a shape",
         _ => return None,
     })
 }

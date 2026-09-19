@@ -131,10 +131,28 @@ pub(crate) fn param_band_top(n: &GraphNodeView) -> f32 {
     HEADER_H + card_rows(n) * ROW_H
 }
 
-/// O topo do READOUT, em espaço de grafo — abaixo dos params. ⚠️ **Uma porta**: o pintor
-/// leria a mesma soma à mão e ficaria uma linha atrás no dia em que a faixa mudasse.
+/// ⭐⭐⭐ **O topo da NOTA DE VISIBILIDADE, em espaço de grafo** — `None` num nó que não é fonte
+/// de posições, que é a esmagadora maioria.
+///
+/// A frase que ela carrega é a ordem do dono de 2026-09-19 (*«coloque um alerta de que se não
+/// forem usados com duplicator e um objeto a ser copiado, são invisíveis»*), e ela vive
+/// **abaixo dos params e ACIMA do readout**: o readout é o que este quadro produziu — um
+/// instrumento vivo, que muda a cada tique — e a nota é um facto sobre o TIPO do nó, que nunca
+/// muda. *O que é permanente fica por cima do que pisca.*
+pub(crate) fn nota_top(n: &GraphNodeView) -> Option<f32> {
+    n.so_posicoes
+        .then(|| param_band_top(n) + card_param_rows(n) * ROW_H)
+}
+
+/// Quantas fileiras a nota ocupa: uma, ou nenhuma.
+fn nota_rows(n: &GraphNodeView) -> f32 {
+    if n.so_posicoes { 1.0 } else { 0.0 }
+}
+
+/// O topo do READOUT, em espaço de grafo — abaixo dos params e da nota. ⚠️ **Uma porta**: o
+/// pintor leria a mesma soma à mão e ficaria uma linha atrás no dia em que a faixa mudasse.
 pub(crate) fn readout_top(n: &GraphNodeView) -> f32 {
-    param_band_top(n) + card_param_rows(n) * ROW_H
+    param_band_top(n) + card_param_rows(n) * ROW_H + nota_rows(n) * ROW_H
 }
 
 /// Recuo da FAIXA em relação à borda do cartão — o mesmo dos dois lados, para a row ler como

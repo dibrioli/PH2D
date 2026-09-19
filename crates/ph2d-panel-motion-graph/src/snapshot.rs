@@ -161,6 +161,17 @@ pub struct GraphNodeView {
     /// animating, it means the upstream node is cooking"*. A constant branch is wired, alive,
     /// and simply still — and it draws still.
     pub hot: bool,
+    /// ⭐⭐⭐ **ESTE NÓ SÓ ENTREGA POSIÇÕES** — sem um `motion.duplicator` e um objecto a copiar,
+    /// nada do que ele faz vira pixel, e o cartão DIZ-LHO (ordem do dono, 2026-09-19).
+    ///
+    /// ⚠️ **É uma BANDEIRA e não um texto**, e isso é o HR-15: a frase que o artista lê sai do
+    /// `ph2d-i18n` no sítio onde é pintada. Um `&'static str` aqui poria a face do artista dentro
+    /// de um registo de motor, onde nenhuma tradução alcança.
+    ///
+    /// ⚠️ **É um facto sobre o TIPO do nó**, derivado do manifesto
+    /// (`NodeRegistry::so_posicoes`) — nunca um diagnóstico sobre a ligação DESTE grafo. A rota
+    /// calculada foi medida e recusada: ela acende em todo grafo de posições que existe.
+    pub so_posicoes: bool,
     /// This node is a **sink** (`motion.output`). The graph is PULLED from the sinks, so this
     /// is where "does anything consume me?" gets answered from (F3, [`crate::flow::live_set`]).
     pub is_sink: bool,

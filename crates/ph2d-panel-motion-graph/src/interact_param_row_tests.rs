@@ -39,6 +39,7 @@ fn card(params: Vec<CardParam>) -> GraphViewSnapshot {
             readout: None,
             count: None,
             hot: false,
+            so_posicoes: false,
             is_sink: false,
             preview: None,
             bypassed: false,

@@ -19,10 +19,6 @@ use ph2d_nodegraph::gpu::{
 use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
-/// ⭐ **COMO O DISPOSITIVO COZE ESTE NÓ** — os canais laterais do GPU (kernel, grelha, redução,
-/// LUT, uniform derivado…): o que um nó escreve e o que o sequenciador lê. Módulo irmão pelo TETO
-/// DE LOC, cortado por RESPONSABILIDADE como o `requirements` (ciclo 7, doc 112).
-mod gpu_channels;
 /// ⭐ **O QUE UM NÓ DECLARA QUE NÃO DISPENSA** — as portas e os params de texto sem os quais ele
 /// fica inerte. Módulo irmão por TETO DE LOC (HR-18, 700 para `crates/`), e o corte é por
 /// RESPONSABILIDADE: o `lib.rs` guarda o REGISTO (a struct e o que se escreve nela) e este
@@ -30,6 +26,14 @@ mod gpu_channels;
 ///
 /// Os campos ficam no `lib.rs` porque são o estado do registry; o que se mudou foram os quatro
 /// acessores que os servem.
+/// ⭐⭐⭐ **A CLASSIFICAÇÃO DAS FONTES DE POSIÇÕES** — módulo irmão por TETO DE LOC (HR-18, 700
+/// para `crates/`), e o corte é por RESPONSABILIDADE: aqui mora *que nós só entregam posições*,
+/// que é uma pergunta sobre a FORMA dos manifestos e não mais um canal de side-metadata.
+mod fontes_de_posicoes;
+/// ⭐ **COMO O DISPOSITIVO COZE ESTE NÓ** — os canais laterais do GPU (kernel, grelha, redução,
+/// LUT, uniform derivado…): o que um nó escreve e o que o sequenciador lê. Módulo irmão pelo TETO
+/// DE LOC, cortado por RESPONSABILIDADE como o `requirements` (ciclo 7, doc 112).
+mod gpu_channels;
 mod requirements;
 mod ui;
 
@@ -185,6 +189,11 @@ pub struct NodeRegistry {
     /// partition, so an object graph with such a suffix recuses to the CPU
     /// render. Opt-in and default-empty, like `live_vector_sources`.
     object_sources: std::collections::BTreeSet<NodeTypeId>,
+    /// ⭐⭐⭐ **OS QUE SÓ ENTREGAM POSIÇÕES** — ver [`Self::register_so_posicoes`].
+    ///
+    /// ⚠️ **DERIVADO, nunca escrito à mão:** quem o preenche é o
+    /// `ph2d_node_registry_init::register_all_nodes`, a partir do MANIFESTO.
+    so_posicoes: std::collections::BTreeSet<NodeTypeId>,
     /// doc 115 W4 — node types that READ the collider a stream DECLARES
     /// (`ph2d_contact::colisores`: `ph2d_collider` · `ph2d_collider_box` ·
     /// `ph2d_collider_offset`).

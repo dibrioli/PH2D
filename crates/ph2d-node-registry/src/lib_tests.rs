@@ -198,3 +198,85 @@ fn registry_is_a_resolver_the_cook_can_use() {
         other => panic!("expected scalar column, got {other:?}"),
     }
 }
+
+// ── A CLASSIFICAÇÃO DAS FONTES DE POSIÇÕES (ordem do dono, 2026-09-19) ───────────────
+
+const POS: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+
+static FONTE_MAN: NodeManifest = NodeManifest {
+    id: NodeTypeId::of("reg.fonte"),
+    name: "reg.fonte",
+    inputs: &[],
+    outputs: &[PortSpec {
+        name: "out",
+        ty: POS,
+    }],
+    effect: Effect::Pure,
+    clock: Clock::Frame,
+    params: &[],
+    lowerings: &[LoweringKind::Cpu],
+};
+
+/// Uma fonte de POSIÇÕES: emite `Instances`/`Vec2` e não recebe instâncias.
+struct Fonte;
+impl NodeOp for Fonte {
+    fn manifest(&self) -> &'static NodeManifest {
+        &FONTE_MAN
+    }
+    fn eval(&self, ctx: &mut EvalCtx<'_>) {
+        ctx.emit(Stream::new(1).with("P", Column::Vec2(vec![[0.0, 0.0]])));
+    }
+}
+
+/// ⭐⭐⭐ **A ORDEM É LOAD-BEARING: [`NodeRegistry::marca_as_fontes_de_posicoes`] tem de correr
+/// DEPOIS de todo nó se registar.**
+///
+/// A 3.ª cláusula da regra lê bandeiras ([`NodeRegistry::is_object_source`] ·
+/// [`NodeRegistry::is_live_vector_source`]) que o `register()` de cada nó põe. Corrida cedo — ou
+/// de dentro de um `register` —, aquelas bandeiras ainda estão vazias e **as origens de aparência
+/// entram no conjunto**, que é a mentira que a cláusula existe para impedir.
+///
+/// ⚠️ **O gate CONSTRÓI as duas ordens em vez de ler o ficheiro**, e é por isso que ele afirma a
+/// propriedade e não o texto. A metade (a) é o CONTROLO: sem ela, a (b) ficaria verde sobre uma
+/// classificação que nunca marca ninguém.
+///
+/// ⚠️⚠️ **E ela expõe que a passagem é ADITIVA:** correr cedo não é só «não marcar», é marcar
+/// ERRADO e ficar assim — nada nesta função remove uma marca. *É por isso que a ordem não é uma
+/// preferência de estilo.*
+///
+/// **Mutação que deve sangrar:** mover a chamada no `register_all_nodes` para antes da região
+/// gerada.
+#[test]
+fn a_classificacao_das_fontes_corre_depois_de_todos_se_registarem() {
+    // (a) CONTROLO — sem bandeira de origem, uma fonte de posições É marcada.
+    let mut sem = NodeRegistry::new();
+    sem.register(Box::new(Fonte)).unwrap();
+    sem.marca_as_fontes_de_posicoes();
+    assert!(
+        sem.so_posicoes(FONTE_MAN.id),
+        "uma fonte de posicoes sem bandeira de origem tem de ser marcada -- sem esta metade a \
+         seguinte ficaria verde sobre uma classificacao que nao marca ninguem"
+    );
+
+    // (b) A ordem do PRODUTO — a bandeira primeiro, a classificação depois.
+    let mut depois = NodeRegistry::new();
+    depois.register(Box::new(Fonte)).unwrap();
+    depois.register_live_vector_source(FONTE_MAN.id);
+    depois.marca_as_fontes_de_posicoes();
+    assert!(
+        !depois.so_posicoes(FONTE_MAN.id),
+        "declarada origem de aparencia ANTES da classificacao, ela fica de fora"
+    );
+
+    // (c) A ordem ERRADA, e o que ela custa: a marca fica, porque a passagem e' ADITIVA.
+    let mut cedo = NodeRegistry::new();
+    cedo.register(Box::new(Fonte)).unwrap();
+    cedo.marca_as_fontes_de_posicoes();
+    cedo.register_live_vector_source(FONTE_MAN.id);
+    cedo.marca_as_fontes_de_posicoes();
+    assert!(
+        cedo.so_posicoes(FONTE_MAN.id),
+        "classificada CEDO a marca errada FICA -- nada nesta funcao a remove, e e' isso que \
+         torna a ordem load-bearing em vez de uma preferencia"
+    );
+}

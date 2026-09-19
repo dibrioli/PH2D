@@ -53,3 +53,7 @@ pub fn a_arte_desenha(motion: &MotionState, so_com_forma: bool) -> bool {
         .iter()
         .any(|(_, s)| ph2d_eval_motion::tem_aparencia(s))
 }
+
+#[cfg(test)]
+#[path = "lei_da_aparencia_tests.rs"]
+mod tests;

@@ -452,6 +452,7 @@ fn card_view(
         )),
         count: head.and_then(|v| v.count),
         hot: inside.iter().any(|n| by_id(*n).is_some_and(|v| v.hot)),
+        so_posicoes: false,
         is_sink: inside.iter().any(|n| by_id(*n).is_some_and(|v| v.is_sink)),
         preview: head.and_then(|v| v.preview.clone()),
         // **A group draws muted iff it is bypassed AS A UNIT** — the H verb / the right-click

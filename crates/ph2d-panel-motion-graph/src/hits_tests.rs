@@ -37,6 +37,7 @@ fn node(id: u32, x: f32, y: f32) -> GraphNodeView {
         readout: None,
         count: None,
         hot: false,
+        so_posicoes: false,
         is_sink: false,
         preview: None,
         bypassed: false,

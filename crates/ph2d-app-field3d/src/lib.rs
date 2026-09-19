@@ -142,6 +142,10 @@ pub const FAMILY: AppFamily = AppFamily {
 };
 
 /// A porta dos gates desta crate que medem que o QUADRO da shell chama a família.
+/// ⭐⭐⭐ **O que é código de TESTE deriva-se, nunca se adivinha pelo nome** — ver
+/// [`censo_de_ficheiros`].
+#[cfg(test)]
+mod censo_de_ficheiros;
 #[cfg(test)]
 mod shell_frame_tests;
 

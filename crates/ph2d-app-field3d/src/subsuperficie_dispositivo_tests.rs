@@ -120,7 +120,7 @@ fn a_borda_mole_e_inalcancavel_quando_o_dispositivo_pinta() {
     );
     let preview = include_str!("preview.rs");
     assert!(
-        preview.contains("antialias && plate_parked && cpu_occlusion_enabled()"),
+        preview.contains("assente && plate_parked && cpu_occlusion_enabled()"),
         "o `refines_occlusion` mudou de lei — o `!p.refinar` do ramo pintado pode ter deixado de \
          ser o valor de fábrica, e a tabela deste módulo com ele"
     );

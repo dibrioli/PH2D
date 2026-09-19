@@ -77,20 +77,25 @@ mod gpu_parity {
 
 #[cfg(test)]
 mod gpu_coarse_law {
-    /// ⭐⭐⭐ **O DISPOSITIVO OBEDECE À BANDEIRA DA W73** — *grosso a mexer, nítido ao assentar*.
+    /// ⭐⭐⭐ **A BANDEIRA DA BORDA CHEGA AO SEGUNDO DESPACHO** — desligá-la re-amostra `0` pixels.
     ///
-    /// # ⛔⛔ Porque este gate nasce com o quadro de MOVIMENTO
+    /// # ⛔⛔⛔ A PREMISSA DESTE GATE MORREU em 2026-09-19, e ele fica pelo que sobra
     ///
-    /// Até 2026-09-15 o dispositivo só tomava o quadro **assente**, e essa cerca era a causa do
-    /// report do dono (*«apagar o AO ao rotacionar a tela»*): o sombreado de contacto só existe
-    /// neste caminho. Tirar a cerca sem mais **punha o quadro de movimento a pagar o segundo
-    /// despacho** — a borda re-amostrada —, que é exactamente o que a lei manda não pagar e o que
-    /// a CPU já saltava com o mesmo `antialias`.
+    /// Ele chamava-se `sem_anti_serrilhado_o_dispositivo_nao_reamostra_borda_nenhuma` e o doc dele
+    /// afirmava que **a lei da W73 manda o quadro de movimento não pagar o segundo despacho**.
+    /// A `W7c` mediu esse pagamento no caminho do pintor, a `1920×1080`: **`1,03×`–`1,09×`** do
+    /// quadro de movimento (`+0,18` a `+2,66 ms`), contra os `1,30×`–`1,40×` que a tabela de CPU do
+    /// [`ph2d_field_render::trace_cancellable`] media a `640×360` — e sem ele a silhueta que a mão
+    /// arrasta não tem **um único** pixel de cobertura parcial, que é o que o dono lê como a peça a
+    /// *«ferver»* (`docs/Render3d/12` §12). ⇒ **a segunda passagem saiu da bandeira** e corre em
+    /// todo quadro; quem a desliga é a [`crate::gpu_frame::Sonda::bordas`], que não é produto.
     ///
-    /// ⚠️ *Duas metades de uma lei, uma em cada motor, é a forma como ela morre num deles.*
+    /// ⚠️ *O que este gate continua a afirmar é a FIAÇÃO, não a lei:* a bandeira do
+    /// [`crate::gpu_frame::march`] sempre significou só o segundo despacho, e ela tem de lá chegar
+    /// — senão a porta de bissecção de um report não bissecta nada.
     #[test]
     #[ignore = "precisa de GPU"]
-    fn sem_anti_serrilhado_o_dispositivo_nao_reamostra_borda_nenhuma() {
+    fn a_bandeira_da_borda_chega_ao_segundo_despacho() {
         let doc = crate::smoke::scene(1);
         let reg = ph2d_field_eval::hybrid::Registry::new();
         let cam = ph2d_field_render::Orbit::default();
@@ -100,8 +105,8 @@ mod gpu_coarse_law {
             return;
         };
 
-        let bordas = |antialias: bool| {
-            crate::gpu_frame::march(t, &doc, &reg, &cam, &luz, None, 192, 108, antialias)
+        let bordas = |re_amostra: bool| {
+            crate::gpu_frame::march(t, &doc, &reg, &cam, &luz, None, 192, 108, re_amostra)
                 .map(|(g, _)| g.edges.len())
         };
         let nitido = bordas(true).expect("o dispositivo tem de marchar a peça limpa");
@@ -114,7 +119,7 @@ mod gpu_coarse_law {
         );
         assert_eq!(
             grosso, 0,
-            "sem anti-serrilhado o dispositivo ainda re-amostrou {grosso} bordas — o quadro de              MOVIMENTO está a pagar o segundo despacho"
+            "com a bandeira em baixo o dispositivo ainda re-amostrou {grosso} bordas — a porta de              bissecção da `W7c` não alcança o segundo despacho"
         );
     }
 }

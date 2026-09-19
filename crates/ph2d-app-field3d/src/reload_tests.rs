@@ -269,11 +269,15 @@ fn measure_the_cost_of_coming_back() {
 #[test]
 fn only_one_place_turns_a_path_into_a_sculpture() {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let de_teste = crate::censo_de_ficheiros::ficheiros_de_teste(&dir);
     let mut hits: Vec<String> = Vec::new();
     let mut vistos = 0usize;
     for entry in std::fs::read_dir(&dir).expect("lê o diretório").flatten() {
         let name = entry.file_name().to_string_lossy().to_string();
-        if !name.ends_with(".rs") || name.ends_with("_tests.rs") {
+        // ⚠️ **A classificação é DERIVADA, nunca o sufixo do nome** — ver
+        // [`crate::censo_de_ficheiros`]: uma sonda compilada só sob `#[cfg(test)]` sem o sufixo
+        // `_tests.rs` era lida como PRODUTO, e este censo acusava-a.
+        if !name.ends_with(".rs") || de_teste.contains(&name) {
             continue;
         }
         let Ok(src) = std::fs::read_to_string(entry.path()) else {

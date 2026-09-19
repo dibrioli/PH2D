@@ -3354,8 +3354,14 @@ A cerca sai; o que a substitui **não é uma cerca**, é a lei da W73 a viajar c
 `antialias` chega ao `MarchSetup` e o dispositivo **salta o segundo despacho** (a borda
 re-amostrada) quando ele é falso — a mesma lei que a CPU já seguia. *Duas metades de uma lei, uma em
 cada motor, é a forma como ela morre num deles.* Gate:
-`sem_anti_serrilhado_o_dispositivo_nao_reamostra_borda_nenhuma`, com o **controlo primeiro** (sem
-ele, `0 == 0` passaria com o passe inteiro partido).
+`a_bandeira_da_borda_chega_ao_segundo_despacho`, com o **controlo primeiro** (sem ele, `0 == 0`
+passaria com o passe inteiro partido).
+
+> ⛔⛔ **CORRECÇÃO de 2026-09-19 (`W7c`):** o parágrafo acima descreve o programa até àquele dia. A
+> segunda passagem **saiu da bandeira** e corre em todo quadro — ela custa `1,03×`–`1,09×` do quadro
+> de movimento no caminho do pintor, contra os `1,30×`–`1,40×` medidos na CPU a `640×360` que a
+> tinham posto fora dele ([`12` §12](12_o_acabamento.md)). O gate mudou de nome com a premissa: o
+> que ele afirma hoje é a **fiação** da porta de bissecção, não a lei.
 
 | | antes | agora |
 |---|---:|---:|

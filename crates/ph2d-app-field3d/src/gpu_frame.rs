@@ -85,21 +85,17 @@ pub fn march(
     ground: Option<ph2d_field_render::Ground>,
     w: u32,
     h: u32,
-    antialias: bool,
+    bordas: bool,
 ) -> Option<(ph2d_field_render::Gbuffer, ph2d_field_render::Shadows)> {
     let cabem = lamps_that_fit(tracer, w, h);
-    let (campo, fita, setup) = pedido(
-        doc,
-        reg,
-        cam,
-        lamps,
-        ground,
-        cabem,
-        Sonda::default(),
-        w,
-        h,
-        antialias,
-    )?;
+    // ⚠️ **A bandeira do [`march`] sempre significou SÓ a segunda passagem** — ele corre a marcha e
+    // mais nada, logo o ricochete e o campo do chão nunca lhe chegaram. Desde a `W7c` ela viaja
+    // pela porta que hoje a governa, e o nome do argumento passou a dizer o que ele faz.
+    let sonda = Sonda {
+        bordas,
+        ..Sonda::default()
+    };
+    let (campo, fita, setup) = pedido(doc, reg, cam, lamps, ground, cabem, sonda, w, h)?;
     let screen = ph2d_field_render::Screen::new(w, h, cam.half_extent);
     let dev = tracer
         .lock()
@@ -133,7 +129,7 @@ pub fn paint(
     ground: Option<ph2d_field_render::Ground>,
     w: u32,
     h: u32,
-    antialias: bool,
+    assente: bool,
 ) -> Option<ph2d_field_gpu::trace::Pintado> {
     paint_com(
         tracer,
@@ -147,7 +143,7 @@ pub fn paint(
         ground,
         w,
         h,
-        antialias,
+        assente,
         Sonda::default(),
     )
 }
@@ -169,14 +165,32 @@ pub struct Sonda {
     /// dele se mede no MESMO processo, intercalado (ver a nota do módulo: entre duas corridas desta
     /// máquina o mesmo passe já deu `11,36` e `5,50 ms`).
     pub chao_recebe_cor: bool,
+    /// `false` = a passagem do RICOCHETE não corre — a mesma porta, para o outro passageiro da
+    /// bandeira do quadro assente.
+    ///
+    /// ⚠️ **Ela existe porque a bandeira levava TRÊS coisas** (a borda re-amostrada, o ricochete e
+    /// o campo do chão) e uma medição que as some atribui o preço ao passageiro errado. Foi com as
+    /// duas desligadas que a `W7c` mediu a segunda passagem da silhueta **sozinha**.
+    pub ricochete: bool,
+    /// `false` = a silhueta **não** é re-amostrada — a porta de BISSECÇÃO da `W7c`.
+    ///
+    /// ⭐⭐⭐ **Ela deixou de ser uma decisão do quadro em 2026-09-19** (`docs/Render3d/12` §12):
+    /// medida no caminho do pintor, a `1920×1080`, a segunda passagem custa `1,03×`–`1,09×` do
+    /// quadro de movimento — contra os `1,30×`–`1,40×` da tabela de CPU que a tinha posto fora
+    /// dele. ⇒ *todo quadro a re-amostra*, e o que sobra aqui é a porta que a desliga para a voltar
+    /// a medir ou para bissectar um report.
+    pub bordas: bool,
 }
 
 impl Default for Sonda {
-    /// O caminho do produto: escalonada, e o chão recebe a cor da peça.
+    /// O caminho do produto: escalonada, o chão recebe a cor da peça, o ricochete corre — e a
+    /// silhueta é re-amostrada em **todo** quadro.
     fn default() -> Self {
         Self {
             escalonar: true,
             chao_recebe_cor: true,
+            ricochete: true,
+            bordas: crate::preview::re_amostra_a_silhueta(),
         }
     }
 }
@@ -200,7 +214,11 @@ pub fn paint_com(
     ground: Option<ph2d_field_render::Ground>,
     w: u32,
     h: u32,
-    antialias: bool,
+    // ⭐⭐⭐ **A BANDEIRA DA W73 chama-se pelo que ela ainda decide** (`W7c`, 2026-09-19): o
+    // ricochete e a cor que a peça devolve ao chão — os passageiros de `+284 ms` na cena `5`. ⛔ A
+    // segunda passagem da silhueta SAIU daqui: ela custa `+0,18`–`+2,66 ms` e corre em todo quadro.
+    // *Um nome que descreve o passageiro mais barato de quatro é como o mais caro se esconde.*
+    assente: bool,
     sonda: Sonda,
 ) -> Option<ph2d_field_gpu::trace::Pintado> {
     let mundos: Vec<[f32; 3]> = points.iter().map(|l| l.world).collect();
@@ -214,9 +232,7 @@ pub fn paint_com(
         return None;
     }
     let cabem = lamps_that_fit(tracer, w, h);
-    let (campo, fita, setup) = pedido(
-        doc, reg, cam, &mundos, ground, cabem, sonda, w, h, antialias,
-    )?;
+    let (campo, fita, setup) = pedido(doc, reg, cam, &mundos, ground, cabem, sonda, w, h)?;
     // ⚠️ **As duas listas nascem do MESMO `points`**, e é por isso que a ordem não pode divergir:
     // a posição da lâmpada `l` viaja no `MarchSetup` e a radiância dela aqui.
     let mut lamp_radiance = [[0.0f32; 3]; ph2d_field_gpu::trace::MAX_LAMPS];
@@ -237,10 +253,10 @@ pub fn paint_com(
     // ⭐⭐⭐ **A COR QUE A PEÇA DEVOLVE AO CHÃO** (`docs/Render3d/09`) — assada aqui e ENVIADA, com a
     // medição que o decidiu no [`ph2d_field_gpu::paint::PaintSetup::ground_bounce`].
     //
-    // ⚠️ **Ela viaja na MESMA bandeira que a sombra e o ricochete** (`antialias`, a lei «grosso a
+    // ⚠️ **Ela viaja na MESMA bandeira que a sombra e o ricochete** (`assente`, a lei «grosso a
     // mexer, nítido ao assentar» da W73): sem chão ou no quadro de MOVIMENTO o campo é VAZIO, a
     // consulta devolve `[0,0,0]` e o pintor soma zero — o quadro fica **byte-idêntico** ao de hoje.
-    let campo_do_chao = match (ground, antialias && sonda.chao_recebe_cor) {
+    let campo_do_chao = match (ground, assente && sonda.chao_recebe_cor) {
         (Some(chao), true) => ph2d_field_render::ground_bounce::bake_ground_bounce(
             doc,
             reg,
@@ -267,16 +283,19 @@ pub fn paint_com(
         // o conjunto (`docs/Render3d/08`), logo partilham a contagem. ⚠️ Ele é lido do sítio que o
         // declara, e não transcrito: duas cópias divergiriam no dia em que uma subisse.
         //
-        // ⭐⭐⭐ **E ele viaja na bandeira que JÁ EXISTE** (`antialias`, a lei da W73: *grosso a
-        // mexer, nítido ao assentar*), que é o QUARTO passageiro dela — a seguir ao contorno fino,
-        // ao anti-serrilhado e à sombra directa. *Uma segunda pergunta para o mesmo facto podia
-        // divergir dela.*
+        // ⭐⭐⭐ **E ele viaja na bandeira que JÁ EXISTE** (`assente`, a lei da W73: *grosso a
+        // mexer, nítido ao assentar*) — a seguir ao contorno engrossado e à sombra directa. *Uma
+        // segunda pergunta para o mesmo facto podia divergir dela.*
+        //
+        // ⛔ **E o anti-serrilhado deixou de ser passageiro dela** (`W7c`): ele custa
+        // `+0,18`–`+2,66 ms` e este custa `+284 ms` na cena `5` — *a bandeira juntava passageiros
+        // com preços a duas ordens de grandeza de distância, e é assim que o barato fica invisível.*
         //
         // ⛔⛔ **Sem isto o ricochete corria no quadro de MOVIMENTO**, que é exactamente a
         // regressão que o dono já reprovou uma vez (*«mover os objetos ficou muito lento»*). Com
         // `0` a passagem não compila nem despacha, o canal fica vazio, e o quadro que a mão arrasta
         // é **byte-idêntico** ao de hoje.
-        ao_rays: if antialias {
+        ao_rays: if assente && sonda.ricochete {
             ph2d_field_render::OCCLUSION_PASSES
         } else {
             0
@@ -392,7 +411,6 @@ fn pedido(
     sonda: Sonda,
     w: u32,
     h: u32,
-    antialias: bool,
 ) -> Option<(
     ph2d_field_eval::device::DeviceField,
     ph2d_field_eval::wgsl::TapeWgsl,
@@ -438,7 +456,10 @@ fn pedido(
         eye_distance: cam.eye_distance().unwrap_or(0.0),
         hit_eps: sharp.hit,
         normal_eps: sharp.normal,
-        antialias,
+        // ⭐⭐⭐ **A SEGUNDA PASSAGEM DA SILHUETA CORRE EM TODO QUADRO** (`W7c`, 2026-09-19) — ela
+        // saiu da bandeira do quadro assente e passou a ser propriedade do caminho, com o preço
+        // medido no doc da [`Sonda::bordas`]. *Quem a quiser desligar passa pela sonda.*
+        antialias: sonda.bordas,
         step: passo,
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         budget: ((ph2d_field_render::MAX_STEPS as f32) * shrink.max(1.0)

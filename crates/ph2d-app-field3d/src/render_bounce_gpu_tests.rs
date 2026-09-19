@@ -279,7 +279,7 @@ fn mede_o_que_o_ricochete_custa_no_dispositivo() {
 /// ⭐⭐⭐ **O QUADRO DE MOVIMENTO NÃO PAGA O RICOCHETE** — e é a metade que protege o report que o
 /// dono já fez uma vez (*«mover os objetos ficou muito lento»*).
 ///
-/// Com a bandeira do quadro assente em baixo (`antialias = false`) a passagem do ricochete não é
+/// Com a bandeira do quadro assente em baixo (`assente = false`) a passagem do ricochete não é
 /// compilada nem despachada, o canal fica vazio, e a imagem é a que a CPU pinta **com o canal
 /// vazio** — ou seja, a de sempre.
 ///
@@ -315,10 +315,27 @@ fn o_quadro_de_movimento_nao_paga_o_ricochete() {
     let mundos: Vec<[f32; 3]> = luz.iter().map(|l| l.world).collect();
     let olhar = ph2d_view_transform::Look::default();
 
-    // ⚠️ **`false` nos DOIS lados** — é a bandeira do quadro de movimento, e ela também desliga a
-    // re-amostragem da borda: comparar um lado com ela e outro sem mediria o anti-serrilhado.
-    let (g, sh) = crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, None, W, H, false)
-        .expect("a marcha do dispositivo");
+    // ⛔⛔⛔ **A PREMISSA DESTA LINHA MORREU em 2026-09-19 (`W7c`), e o gate reprovou por `191`
+    // níveis.** Ela dizia *«`false` nos DOIS lados — é a bandeira do quadro de movimento, e ela
+    // também desliga a re-amostragem da borda»*, e isso deixou de ser verdade: as duas bandeiras
+    // separaram-se (`docs/Render3d/12` §12). O `march` continua a governar a **borda** e o `paint` a
+    // governar o **ricochete** — logo o lado da CPU tem de re-amostrar, senão esta comparação volta
+    // a medir o anti-serrilhado, que é exactamente o que a linha antiga existia para impedir.
+    //
+    // ⭐ *A linha errada e a certa dizem a MESMA coisa — «os dois lados no mesmo regime» —, e o que
+    // mudou por baixo foi qual argumento exprime esse regime.*
+    let (g, sh) = crate::gpu_frame::march(
+        t,
+        &doc,
+        &reg,
+        &cam,
+        &mundos,
+        None,
+        W,
+        H,
+        crate::preview::re_amostra_a_silhueta(),
+    )
+    .expect("a marcha do dispositivo");
     let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
     let cpu = ph2d_field_render::shade_render(
         &g,

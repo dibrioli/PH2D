@@ -55,6 +55,14 @@
 //!
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
+/// ⭐⭐⭐ A borda que ferve, medida — ver [`borda_sondas`].
+#[cfg(test)]
+#[path = "borda_sondas.rs"]
+mod borda_sondas;
+/// ⭐⭐⭐ A borda que ferve, afirmada — ver [`borda_tests`].
+#[cfg(test)]
+#[path = "borda_tests.rs"]
+mod borda_tests;
 /// ⭐⭐⭐ As sondas que comparam os dois motores — ver [`device_probes`].
 #[cfg(test)]
 #[path = "device_probes.rs"]
@@ -334,12 +342,55 @@ pub const MOVING_NORMAL_ERR_DEG: f32 = 1.0;
 /// `the_export_never_goes_through_the_preview_coarsening`.
 pub const SETTLED_NORMAL_ERR_DEG: f32 = 0.5;
 
+/// ⭐⭐⭐ **A SILHUETA É RE-AMOSTRADA EM TODO QUADRO** (`W7c`, 2026-09-19).
+///
+/// # ⛔⛔⛔ Ela era o quarto passageiro da bandeira da W73, e saiu por MEDIÇÃO
+///
+/// O report do dono era *«a peça ferve na borda enquanto orbito»*. Medido no caminho do produto a
+/// `1920×1080` (`borda_sondas::a_regua_do_fervilhar`), o quadro que a mão arrasta não tem **um
+/// único** pixel de cobertura parcial na silhueta — ela é uma escada binária —, e uma rotação de
+/// `0,0005 rad` faz um pixel saltar **`212`–`222` de `255`**. Com a segunda passagem ligada, `28`–
+/// `39 %` da banda leva cobertura parcial e o pior salto cai para `128`–`137`.
+///
+/// **O preço, medido no pintor** (`borda_sondas::quanto_custa_a_borda_no_pintor`, mínimo de 5
+/// intercalado, duas corridas a concordar):
+///
+/// | cena | hoje | +borda | delta | razão |
+/// |---|---:|---:|---:|---:|
+/// | `0` | `11,14` | `11,52` | `+0,38` | `1,03×` |
+/// | `5` | `29,82` | `32,48` | `+2,66` | `1,09×` |
+/// | `11` | `16,91` | `18,47` | `+1,56` | `1,09×` |
+/// | `33` | `6,08` | `6,26` | `+0,18` | `1,03×` |
+/// | `36` | `4,58` | `4,83` | `+0,25` | `1,05×` |
+///
+/// ⚠️ **A tabela que a tinha posto fora do quadro de movimento dizia `1,30×`–`1,40×`** e foi lida
+/// **na CPU, a `640×360`, antes de o quadro inteiro ir para a placa**
+/// ([`ph2d_field_render::trace_cancellable`]). *Quem move o número que tornava algo inalcançável
+/// tem de reconferir a nota* (`CLAUDE.md` §0.0).
+///
+/// ⭐ **E o que a tirou da bandeira foi a COMPANHIA, não o preço dela:** os outros passageiros
+/// custam `+284 ms` na cena `5` (o ricochete e o campo do chão). *Uma bandeira que junta passageiros
+/// com preços a duas ordens de grandeza de distância é como o barato fica invisível.*
+///
+/// ⚠️ Quem a desliga **num teste** é a [`crate::gpu_frame::Sonda::bordas`], que não é caminho de
+/// produto. Quem a desliga **no app** é `PH2D_FIELD_BORDA=0`, e ela existe pela mesma razão que a
+/// `PH2D_FIELD_TAPE_CACHE=0`: *um report de «piorou» não diz QUAL mudança o causou, e duas corridas
+/// dizem.* ⭐ Aqui ela tem um segundo uso, que é o smoke: com `=0` a fervura **volta**, e é assim
+/// que o dono vê o antes e o depois sem ter de acreditar numa tabela.
+#[must_use]
+pub fn re_amostra_a_silhueta() -> bool {
+    static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *LIGADO.get_or_init(|| std::env::var("PH2D_FIELD_BORDA").as_deref() != Ok("0"))
+}
+
 /// ⭐⭐⭐ **Este quadro assente vai REFINAR a oclusão?** (`docs/Render3d/05` §30)
 ///
 /// Duas condições, e a segunda quase me escapou:
 ///
-/// 1. **o quadro é o ASSENTE** (`antialias`, a bandeira da W73) — a mesma que já governa o contorno
-///    fino e a sombra directa;
+/// 1. **o quadro é o ASSENTE** (`assente`, a bandeira da W73) — a mesma que já governa o contorno
+///    engrossado, a sombra directa e o ricochete. ⚠️ **Ela chamava-se `antialias` e o
+///    anti-serrilhado saiu dela** em 2026-09-19 (`W7c`): a silhueta é re-amostrada em todo quadro,
+///    e o nome passou a dizer o que a bandeira ainda decide;
 /// 2. **o prato está PARADO** (`manual`).
 ///
 /// # ⛔⛔ Porque a segunda não é opcional
@@ -354,8 +405,8 @@ pub const SETTLED_NORMAL_ERR_DEG: f32 = 0.5;
 /// da letra. Tocar no canvas pára o prato (a lei do [`crate::smoke::Viewport::manual`]) e o
 /// refinamento passa a correr, que é exactamente quando o artista está a olhar para a peça.
 #[must_use]
-pub fn refines_occlusion(antialias: bool, plate_parked: bool) -> bool {
-    antialias && plate_parked && cpu_occlusion_enabled()
+pub fn refines_occlusion(assente: bool, plate_parked: bool) -> bool {
+    assente && plate_parked && cpu_occlusion_enabled()
 }
 
 /// ⛔⛔⛔ **O REFINAMENTO DE CPU NASCE DESLIGADO — por veredito do dono e por medição.**

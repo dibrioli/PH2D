@@ -25,10 +25,17 @@ pub(crate) struct Pedido {
     pub cam: ph2d_field_render::Orbit,
     pub tw: u32,
     pub th: u32,
-    /// ⭐ **A bandeira da W73** — *grosso a mexer, nítido ao assentar*. Ela governa o contorno, o
-    /// anti-serrilhado, a sombra e o despacho de borda do dispositivo; **uma** pergunta, quatro
-    /// passageiros.
-    pub antialias: bool,
+    /// ⭐ **A bandeira da W73** — *grosso a mexer, nítido ao assentar*.
+    ///
+    /// ⚠️⚠️ **Ela levava QUATRO passageiros e leva TRÊS desde a `W7c`** (2026-09-19,
+    /// `docs/Render3d/12` §12): o contorno engrossado, a sombra directa da CPU e o ricochete com o
+    /// campo do chão. ⛔ **O anti-serrilhado SAIU** — medido no caminho do pintor ele custa
+    /// `1,03×`–`1,09×` do quadro de movimento, contra os `1,30×`–`1,40×` da tabela de CPU que o
+    /// tinha posto fora dele, e a silhueta sem ele não tem **um único** pixel de cobertura parcial.
+    ///
+    /// *O nome mudou com o conteúdo: chamar-lhe `antialias` era descrever a bandeira pelo
+    /// passageiro mais barato dos quatro.*
+    pub assente: bool,
     pub shading: crate::shading::Shading,
     pub look: ph2d_view_transform::Look,
     /// ⭐⭐⭐ **A CAMADA DE ESTILO da cena** (`docs/Render3d/03`, a `W8`) — os botões da direcção de
@@ -116,7 +123,7 @@ pub(crate) fn traca(p: &Pedido) {
                 p.ground,
                 p.tw,
                 p.th,
-                p.antialias,
+                p.assente,
             )
         })
     } else {
@@ -157,7 +164,10 @@ pub(crate) fn traca(p: &Pedido) {
                 p.ground,
                 p.tw,
                 p.th,
-                p.antialias,
+                // ⭐⭐⭐ **EM TODO QUADRO** (`W7c`) — a bandeira do [`crate::gpu_frame::march`]
+                // sempre significou só a segunda passagem, e desde 19/09 ela não é uma decisão do
+                // quadro. A lei e a medição vivem na porta, e não neste `true`.
+                crate::preview::re_amostra_a_silhueta(),
             )
         })
     } else {
@@ -175,7 +185,11 @@ pub(crate) fn traca(p: &Pedido) {
                 p.tw,
                 p.th,
                 &p.flag,
-                p.antialias,
+                // ⭐⭐⭐ **E o motor de REFERÊNCIA re-amostra pela mesma razão** — duas metades de
+                // uma lei, uma em cada motor, é a forma como ela morre num deles. ⚠️ Aqui ela custa
+                // o que a tabela do [`ph2d_field_render::trace_cancellable`] diz (`1,30×`–`1,40×`),
+                // e é esse o preço de correr no caminho de recuo em vez de na placa.
+                crate::preview::re_amostra_a_silhueta(),
                 p.usa_cache.then_some(&*p.tapes),
             ) else {
                 return;
@@ -241,14 +255,14 @@ pub(crate) fn traca(p: &Pedido) {
             // de movimento fica **byte-idêntico** ao de hoje e o preço corre onde já
             // corriam `28,6 ms`, **noutra thread**, com a janela na mesma a 60 Hz.
             //
-            // ⚠️ **O `p.antialias` É a bandeira** (`= !coarse`, linha 413) — lido aqui, e não
-            // uma segunda pergunta ao mesmo facto.
+            // ⚠️ **O `p.assente` É a bandeira** (`= !coarse`) — lido aqui, e não uma segunda
+            // pergunta ao mesmo facto.
             // ⭐ **A sombra e a oclusão vêm do dispositivo quando ele traçou** — elas
             // saíram da MESMA marcha, e refazê-las aqui seria pagar duas vezes pela mesma
             // resposta.
             let mut sombras = match sombras_do_gpu {
                 Some(sh) => Some(sh),
-                None => p.antialias.then(|| {
+                None => p.assente.then(|| {
                     ph2d_field_render::shadow_pass_on(&p.doc, &p.reg, &p.cam, &g, &mundos, p.ground)
                 }),
             };
@@ -259,8 +273,8 @@ pub(crate) fn traca(p: &Pedido) {
             // a resposta dele é função de `(x, z)` e não da câmera* — e por isso ele é barato:
             // `32² × 128 = 131 072` raios, **`1,6 %`** dos que a grelha de sondas da peça já paga.
             //
-            // ⚠️ **Ele viaja na MESMA bandeira que a sombra** (`p.antialias`, a lei «grosso a mexer,
-            // nítido ao assentar» da W73, agora com o quarto passageiro): o quadro de MOVIMENTO
+            // ⚠️ **Ele viaja na MESMA bandeira que a sombra** (`p.assente`, a lei «grosso a mexer,
+            // nítido ao assentar» da W73): o quadro de MOVIMENTO
             // fica **byte-idêntico** ao de hoje, porque sem campo a consulta devolve `[0,0,0]` e o
             // pintor soma zero.
             if let (Some(sh), Some(chao)) = (sombras.as_mut(), p.ground) {

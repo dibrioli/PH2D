@@ -510,6 +510,7 @@ fn one_flag_answers_both_cuts_of_the_moving_frame() {
 #[test]
 fn the_export_never_goes_through_the_preview_coarsening() {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let de_teste = crate::censo_de_ficheiros::ficheiros_de_teste(&dir);
     let mut chamadores: Vec<String> = Vec::new();
     for entry in std::fs::read_dir(&dir).expect("o diretório do shell existe") {
         let path = entry.expect("entrada").path();
@@ -522,7 +523,10 @@ fn the_export_never_goes_through_the_preview_coarsening() {
             .unwrap_or_default()
             .to_string();
         // Os testes deste módulo chamam-no de propósito — eles são o juiz da lei, não um caminho.
-        if nome.ends_with("_tests.rs") || nome == "preview.rs" {
+        // ⚠️ **A classificação é DERIVADA, nunca o sufixo do nome** — ver
+        // [`crate::censo_de_ficheiros`]: uma sonda compilada só sob `#[cfg(test)]` sem o sufixo
+        // `_tests.rs` era lida como PRODUTO, e este censo acusava-a.
+        if de_teste.contains(&nome) || nome == "preview.rs" {
             continue;
         }
         let src = std::fs::read_to_string(&path).expect("o arquivo lê-se");

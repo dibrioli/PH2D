@@ -135,7 +135,7 @@ O artista vê **um nó** com a foto que o dono mandou. Quem quiser mais, abre o 
   painel `42/42` limpo do repositório.
 - **Régua:** um `.mtlx` do Blender abre aqui e devolve os mesmos pixels que o `MaterialXView`.
 
-## W7 — O pós ⏳ **PLANO ESCRITO (19/09)** → [`12`](12_o_acabamento.md)
+## W7 — O pós ⏳ **`a`+`b`+`c` FECHADAS (19/09)**, `d` fora por proposta → [`12`](12_o_acabamento.md)
 
 Bloom sobre HDR verdadeiro · profundidade de campo · anti-aliasing temporal.
 
@@ -144,6 +144,13 @@ colhida: o limiar é **duro** e a cadeia é um **mip chain** cujo raio dobra por
 ([`12` §3](12_o_acabamento.md)). ⛔⛔ **A primeira peça não é um efeito, é um BUFFER:** os dois
 motores fecham o quadro **pixel a pixel** e nada guarda o HDR que o brilho precisa de ler.
 ⚠️ A profundidade de campo está proposta **FORA por omissão** — decisão do dono.
+
+⭐⭐⭐ **O que fechou:** o brilho existe e corre no **dispositivo** ([`12` §11](12_o_acabamento.md)) e
+a borda **deixou de ferver** ([`12` §12](12_o_acabamento.md)) — esta última sem uma lei nova: a
+segunda passagem da silhueta já existia nos dois motores e estava desligada no quadro de movimento
+por uma tabela de CPU medida a `640×360`, antes de o quadro inteiro ir para a placa. No dispositivo
+ela custa `1,03×`–`1,09×`, e sem ela a silhueta que a mão arrasta não tem **um único** pixel de
+cobertura parcial. ⇒ **só a `W7d` (DOF) fica**, e ela está proposta FORA.
 
 ## W8 — ⭐ A camada de ESTILO ✅ **FECHADA (19/09, ordem do dono: *«8 e depois do smoke o 7»*)**
 
@@ -186,7 +193,8 @@ report em que aprovou o smoke do chão colorido, e a ordem é o que decide a pos
 - **A régua, e ela já tem forma:** `1920×1080`, **mínimo de N**, A/B **intercalado no MESMO
   processo**, com o `/proc/loadavg` impresso ao lado de cada leitura (⛔ nenhuma leitura acima de
   `load ~5` vale — `CLAUDE.md` §5.0). As duas populações são **separadas e não se somam**: o quadro
-  de **MOVIMENTO** (orçamento `16,7 ms`, e onde a bandeira `antialias` desliga quase tudo) e o
+  de **MOVIMENTO** (orçamento `16,7 ms`, e onde a bandeira `assente` desliga quase tudo — ⚠️ ela
+  chamava-se `antialias` e o anti-serrilhado **saiu** dela em 19/09, [`12` §12](12_o_acabamento.md)) e o
   quadro **ASSENTE** (onde mora o preço destas cinco waves).
 - **O que já está NOMEADO com preço, e é a matéria-prima da wave:**
 

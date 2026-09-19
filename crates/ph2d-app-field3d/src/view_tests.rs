@@ -207,6 +207,7 @@ fn nothing_can_empty_the_viewport_list() {
     const AUTORIZADOS: [(&str, &str); 1] = [("viewports.rs", "smoke.vps = novos;")];
     let mut achados: Vec<String> = Vec::new();
     let mut vistos = 0usize;
+    let de_teste = crate::censo_de_ficheiros::ficheiros_de_teste(&dir);
     for entry in std::fs::read_dir(&dir).expect("src existe") {
         let path = entry.expect("entrada").path();
         let nome = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -214,7 +215,10 @@ fn nothing_can_empty_the_viewport_list() {
         // deste gate apanhou a lista de verbos que ele define, que é o modo de falha clássico de um
         // censo por texto. E a fronteira certa não é *«este ficheiro»*: é *«código que corre no
         // app»*, porque a invariante é sobre ele.
-        if !nome.ends_with(".rs") || nome.ends_with("_tests.rs") {
+        // ⚠️ **A classificação é DERIVADA, nunca o sufixo do nome** — ver
+        // [`crate::censo_de_ficheiros`]: uma sonda compilada só sob `#[cfg(test)]` sem o sufixo
+        // `_tests.rs` era lida como PRODUTO, e este censo acusava-a.
+        if !nome.ends_with(".rs") || de_teste.contains(nome) {
             continue;
         }
         vistos += 1;

@@ -426,9 +426,13 @@ fn viewport_pass(
         // (2026-08-26) — a mesma lei que já baixava os pixels, aplicada onde o custo estava: o
         // traçado paga `0,22 ms` por **aresta do contorno**, e esse custo é **cego aos pixels**.
         // Ver [`crate::preview::coarse_doc`].
-        // ⭐ E os dois cortes do quadro de movimento saem da MESMA bandeira (W73): o contorno
-        // grosso e o anti-serrilhado desligado são a mesma lei — *grosso a mexer, nítido ao
-        // assentar* —, e uma segunda pergunta para o mesmo facto podia divergir dela.
+        // ⭐ E os cortes do quadro de movimento saem da MESMA bandeira (W73) — *grosso a mexer,
+        // nítido ao assentar* —, e uma segunda pergunta para o mesmo facto podia divergir dela.
+        // ⛔⛔ **O ANTI-SERRILHADO SAIU DESTA LISTA em 2026-09-19** (`W7c`, `docs/Render3d/12` §12):
+        // medido no caminho do pintor ele custa `1,03×`–`1,09×` do quadro de movimento, e sem ele a
+        // silhueta que a mão arrasta não tem **um único** pixel de cobertura parcial — que é o que o
+        // dono lê como a peça a *«ferver»*. *O que o tirou da bandeira foi a companhia, não o preço
+        // dele: os outros passageiros custam até `+284 ms` na cena `5`.*
         // ⭐⭐⭐ **Os DOIS quadros engrossam o contorno** (W85) — com orçamentos de erro
         // diferentes, e não com leis diferentes. O que ship até à W84 era «engrossa a mexer,
         // autoral ao parar»; medido, o autoral acima de `0,5°` de erro de normal compra
@@ -436,7 +440,7 @@ fn viewport_pass(
         // O documento REAL, antes de o contorno engrossar — é dele que o chão se lê.
         let real = doc;
         let doc = crate::preview::coarse_doc(doc, coarse).unwrap_or_else(|| doc.clone());
-        let antialias = !coarse;
+        let assente = !coarse;
         // ⭐⭐⭐ **LIMITADO, e não ilimitado** (`docs/Render3d/05` §30). Desde que um trabalho manda
         // `32` quadros em vez de um, uma fila sem tecto guarda `32 × 8,3 MB = 265 MB` a
         // `1920×1080` sempre que ninguém a esvazie (a janela minimizada, por exemplo).
@@ -467,7 +471,7 @@ fn viewport_pass(
         let bloom = smoke.bloom;
         // ⭐⭐⭐ **O refinamento da oclusão só corre com o prato PARADO** — ver
         // [`crate::preview::refines_occlusion`], que é onde a razão está escrita.
-        let refinar = crate::preview::refines_occlusion(antialias, smoke.vps[i].manual);
+        let refinar = crate::preview::refines_occlusion(assente, smoke.vps[i].manual);
         // ⭐⭐⭐ **A TABELA DE MATERIAIS atravessa a fronteira como `Arc`** — o que viaja é o
         // ponteiro, como a cache de fitas e o registo de esculturas.
         let materials = smoke.materials.clone();
@@ -487,8 +491,8 @@ fn viewport_pass(
         // *«só o assente»* saiu, e ela era a causa directa do report do dono: *«e apagar o AO ao
         // rotacionar a tela»*. O sombreado de contacto só existe no caminho do dispositivo, logo
         // enquanto a cerca existiu ele **desaparecia** a cada gesto e voltava ao largar.
-        // ⭐ E a lei da W73 sobrevive: o `antialias` viaja com o pedido e o dispositivo **salta o
-        // segundo despacho** quando ele é falso — *grosso a mexer, nítido ao assentar*.
+        // ⭐ E a lei da W73 sobrevive: o `assente` viaja com o pedido e o dispositivo **salta o
+        // ricochete** quando ele é falso — *grosso a mexer, nítido ao assentar*.
         let gpu = crate::gpu_frame::shared();
         // ⭐⭐⭐ **O PEDIDO, montado aqui e respondido noutra thread** — ver
         // [`super::thread::Pedido`]: tudo o que ele leva foi COPIADO do módulo antes de
@@ -499,7 +503,7 @@ fn viewport_pass(
             cam,
             tw,
             th,
-            antialias,
+            assente,
             shading,
             look,
             style,

@@ -204,12 +204,15 @@ cadeia de mip, o limiar duro e os pesos por nível. Botões no painel, na secç�
 ⚠️ **E o número de níveis é DERIVADO da resolução**, não fixo em `7`: a `512` só cinco cabem
 (§3.4). *Um nível cujo borrão é maior que o quadro mede a moldura.*
 
-### `W7c` — O ANTI-SERRILHADO ao mexer
+### `W7c` — O ANTI-SERRILHADO ao mexer ✅ **FECHADA (19/09)** → [§12](#12--a-borda-deixa-de-ferver-w7c-a-segunda-passagem-sai-da-bandeira)
 
-O que o dono vê é a peça a «ferver» na borda enquanto orbita. ⏳ A forma ainda não está medida — a
-escolha é entre acumular quadros (temporal) e amostrar melhor a borda no próprio marchador, e a
-segunda é mais barata aqui porque **a borda deste renderer é analítica** (o `edges.rs` já sabe onde
-ela está). *Medir antes de escolher.*
+O que o dono vê é a peça a «ferver» na borda enquanto orbita.
+
+⭐⭐⭐ **A medição respondeu antes da escolha, e a resposta não era nenhuma das duas propostas:** a
+borda re-amostrada **já existia nos dois motores** e estava desligada no quadro de movimento por uma
+tabela de CPU de `640×360`. Medida no dispositivo e no caminho do pintor, ela custa `1,03×`–`1,09×`
+— ⇒ *não havia uma lei nova para escrever, havia uma nota para reconferir* (`CLAUDE.md` §0.0).
+⛔ Nem a acumulação temporal nem uma amostragem nova do marchador chegaram a ser precisas.
 
 ### `W7d` — A PROFUNDIDADE DE CAMPO
 
@@ -427,6 +430,234 @@ sintaxe só apareceria quando o artista ligasse o Bloom — `ph2d-field-gpu/test
 parsa e valida os dois textos com o `naga`, sem placa nenhuma. *Os gates de paridade são
 `#[ignore]`, logo o CI nunca os corre.*
 
+## §12 — ⭐⭐⭐ A BORDA DEIXA DE FERVER (`W7c`): a segunda passagem sai da bandeira
+
+> Report do dono, 2026-09-19: *«a peça ferve na borda enquanto orbito»*.
+
+### §12.1 — A régua do fenómeno, ANTES de escolher a forma
+
+O §5 desta wave deixou a `W7c` com a forma por decidir — *«a escolha é entre acumular quadros
+(temporal) e amostrar melhor a borda no próprio marchador … medir antes de escolher»*. A primeira
+coisa que se construiu foi a **régua**, e não a cura ([`borda_sondas::a_regua_do_fervilhar`],
+`1920×1080`, no caminho do pintor):
+
+| coluna | o que mede |
+|---|---|
+| `banda` | os pixels cuja vizinhança `3×3` atravessa a fronteira da peça |
+| `parcial` | que fracção dela leva cobertura **entre** `0` e `255` |
+| `pior` | o maior salto de um pixel quando a câmara roda `0,0005 rad` (**sub-pixel**) |
+
+| cena | quadro | `parcial` | `pior` |
+|---|---|---:|---:|
+| `0` | mexia | **`0,0 %`** | `213,8` |
+| `0` | assente | `28,3 %` | `137,0` |
+| `11` | mexia | **`0,0 %`** | `211,7` |
+| `11` | assente | `28,3 %` | `127,7` |
+| `33` | mexia | **`0,0 %`** | `212,8` |
+| `33` | assente | `28,7 %` | `128,6` |
+| `36` | mexia | **`0,0 %`** | `221,7` |
+| `36` | assente | `38,9 %` | `137,0` |
+| `5` | mexia | **`0,0 %`** | `0,7` |
+| `5` | assente | `27,7 %` | `24,9` |
+
+⭐⭐⭐ **A silhueta que a mão arrasta não tinha UM ÚNICO pixel de cobertura parcial** — ela era uma
+escada binária, e uma rotação de meio milésimo de radiano fazia um pixel saltar `212`–`222` de
+`255`. *É essa a assinatura da fervura: o pixel não escurece um pouco, ele apaga-se.*
+
+⚠️⚠️ **A cena `5` está na tabela e diz o contrário das outras — e é por isso que ela fica.**
+A coluna `parcial` conta a mesma história (`0,0 %` → `27,7 %`), mas o salto é `0,7` de `255`, e a
+causa é **geométrica e não um limite da régua**: a `5` é o TORNO — uma superfície de revolução em
+torno de `Y` — e o passo desta régua é uma rotação em **yaw**, que é exactamente o eixo dela. *A
+silhueta de um sólido de revolução é invariante à rotação em torno do próprio eixo*, logo aqui não
+há fervura NENHUMA para medir — e o `24,9` da linha de baixo é o sombreado a mudar (a lâmpada da
+sonda é posta em relação à câmara e roda com ela), não a cobertura.
+
+⭐ *Uma tabela que só mostra as cenas em que a régua fala é uma tabela escolhida* — a `5` fica
+porque uma linha que **não** mede o fenómeno, com a razão escrita, é o que separa uma medição de um
+argumento.
+
+⚠️ **O `d` é sub-pixel de propósito.** Com a câmara a rodar meio grau por quadro toda a banda é
+outra e a diferença entre as duas leis desaparece na aritmética; é no regime em que a silhueta se
+desloca uma **fracção** de pixel que uma imagem honesta muda pouco e uma escada dura vira pixels
+inteiros.
+
+⚠️⚠️ **E as três colunas do salto, nunca só o máximo:** a primeira redacção contava *«quantos pixels
+saltam mais de `64`»* e a barra caía exactamente em cima do degrau de cobertura do padrão de quatro
+amostras (`1/4` de `255`), logo ela lia ruído. *Um máximo é UM pixel e cai no ponto de maior
+contraste da imagem; a média é o resumo honesto.*
+
+### §12.2 — ⛔⛔ O OUTRO passageiro da mesma lei está INERTE, e isso mudou a wave
+
+A régua leu `mexe` ≡ `assente` **ao bit em todas as colunas** assim que a segunda passagem entrou —
+o que só pode ser verdade se o contorno **engrossado** do quadro de movimento não estiver a mudar
+nada. Medido ([`borda_sondas::o_contorno_grosso_muda_alguma_coisa`]): o
+[`preview::coarse_doc`](../../crates/ph2d-app-field3d/src/preview.rs) **não morde em NENHUMA** das
+`23` cenas vivas do smoke.
+
+O mecanismo está escrito no próprio ficheiro desde 2026-09-16: a decimação devolve uma **polilinha**
+e os perfis das cenas são feitos de **arcos**; um arco já tem a normal exacta, logo
+`thin.prim_count() < profile.prim_count()` é falso e o documento volta intacto. ⇒ *as duas metades
+da lei «grosso a mexer» — o contorno e o anti-serrilhado — e só uma delas alguma vez mordeu.*
+
+⚠️ **Não é código morto e não foi curado:** um perfil vindo de um DESENHO do artista (a `W53`) pode
+ser uma polilinha com muitos segmentos, e ali a decimação ganha. O que está medido é que **nenhuma
+cena do smoke** o alcança — e é isso que torna a igualdade do §12.4 possível.
+
+### §12.3 — ⛔⛔⛔ O PREÇO: a nota que a tinha posto fora do quadro morreu com o dispositivo
+
+A tabela que governa a decisão vive no [`ph2d_field_render::trace_cancellable`] e diz
+`1,30×`–`1,40×` do quadro. Ela foi lida **na CPU, a `640×360`, antes de o quadro inteiro ir para a
+placa**. *Quem move o número que tornava algo inalcançável tem de reconferir a nota*
+(`CLAUDE.md` §0.0) — e foi essa mesma lei que atravessou o brilho para o dispositivo na §11.
+
+Medida outra vez, no **caminho do pintor** e a `1920×1080`
+([`borda_sondas::quanto_custa_a_borda_no_pintor`], mínimo de `5` **intercalado no mesmo processo**,
+duas corridas a concordar, `ociosa 83 %`):
+
+| cena | `hoje` | `+borda` | delta | razão | `assente` |
+|---|---:|---:|---:|---:|---:|
+| `0` | `11,14` | `11,52` | `+0,38` | `1,03×` | `22,31` |
+| `5` | `29,82` | `32,48` | `+2,66` | `1,09×` | **`316,95`** |
+| `11` | `16,91` | `18,47` | `+1,56` | `1,09×` | `35,14` |
+| `33` | `6,08` | `6,26` | `+0,18` | `1,03×` | `12,30` |
+| `36` | `4,58` | `4,83` | `+0,25` | `1,05×` | `10,98` |
+
+⭐⭐⭐ **E o que a tirou da bandeira foi a COMPANHIA, não o preço dela.** A coluna `assente` é a mesma
+bandeira com os outros passageiros ligados: na cena `5` ela custa **`+284 ms`**. *Uma bandeira que
+junta passageiros com preços a duas ordens de grandeza de distância é exactamente como o barato fica
+invisível* — quatro coisas atrás de uma palavra, e a palavra era o nome da mais barata.
+
+⚠️ **A metade da medição que a carga da máquina NÃO alcança** é a ocupação: a passagem re-amostra
+**`0,23 %`–`0,59 %`** dos pixels (`4 832`–`12 186` de `2 073 600`). *É ela que diz, sem relógio
+nenhum, que não há hipótese de o preço ser grande* — e ela é a mesma numa máquina a `load 50` e
+numa parada.
+
+⛔ **Medir pelo [`gpu_frame::march`] não decide isto:** ali o G-buffer inteiro (`49,8 MB`) atravessa
+o barramento e a diferença afoga-se no ruído (`0,93×`–`1,03×`, com `±6 ms` de dispersão). O caminho
+do produto é o pintor, onde só a imagem volta (`8,3 MB`).
+
+### §12.4 — A cura: ela deixa de ser uma DECISÃO do quadro
+
+A segunda passagem sai da bandeira e passa a ser propriedade do caminho:
+
+- [`preview::re_amostra_a_silhueta()`](../../crates/ph2d-app-field3d/src/preview.rs) é a **porta**,
+  com a tabela ao lado, e tem **três leitores** — o pintor (pela `Sonda::default`), o recuo pelo
+  `march` e o recuo pela CPU. ⚠️ *Uma lei escrita em três sítios viaja para os dois de que alguém se
+  lembrou*: o censo `os_tres_caminhos_de_um_quadro_leem_a_mesma_porta` reprova quando um deles
+  escreve o `true` à mão.
+- [`gpu_frame::Sonda::bordas`](../../crates/ph2d-app-field3d/src/gpu_frame.rs) é a porta de
+  **bissecção** e de re-medição — a mesma forma do `chao_recebe_cor`, e **não é caminho de produto**.
+- A bandeira **muda de nome** (`antialias` → `assente`) nos sítios onde ainda decide alguma coisa: o
+  contorno engrossado, a sombra directa da CPU, o ricochete e o campo do chão. *Um nome que descreve
+  a bandeira pelo passageiro que já não viaja nela é o defeito seguinte à espera.*
+
+⭐⭐ **O que o dono lê na tela:** o quadro que a mão arrasta passa a ter a **mesma silhueta** do
+quadro de parar — e não parecida: o canal de cobertura é **igual ao byte**, com gate
+(`a_borda_que_a_mao_arrasta_e_a_de_parar`), e as duas imagens continuam a diferir na COR, que é o
+que prova que o gate não está a comparar dois quadros idênticos.
+
+### §12.5 — ⚠️ O que esta wave NÃO faz
+
+- ⛔ **Ela não afina o padrão de amostragem.** As quatro amostras do `ROOK` dão **cinco** níveis de
+  cobertura, logo um degrau vale `64/255` e o pior salto medido cai de `~215` para `~130` — não para
+  perto de zero. *O alvo desta wave é o quadro de movimento deixar de ser PIOR que o parado*, e essa
+  igualdade está gateada; subir o número de amostras é outra wave, e teria de pagar o preço nos dois
+  quadros.
+- ⛔ **Ela não é adaptativa, de propósito.** Ligar a passagem só quando o quadro «cabe no orçamento»
+  faria a silhueta alternar entre as duas leis conforme o relógio — *uma fervura nova, construída
+  para curar a antiga*.
+- ⚠️ **Duas cenas já estavam fora do orçamento antes desta wave** (a `5` a `29,8 ms` e a `11` a
+  `16,9`, contra `16,7`), e continuam. *O que as põe lá é a marcha, não esta passagem* — é matéria
+  da `W9`, que o dono pôs ao fim da fila.
+
+### §12.6 — O smoke (para o dono), e porque ele são DUAS corridas
+
+⛔⛔ **Uma cura que apaga o defeito não se pode demonstrar sozinha:** depois desta wave o dono abre o
+app e a borda está boa — e uma borda boa é indistinguível de uma borda que nunca esteve má. ⇒ o
+smoke é um **A/B**, e a porta que o permite é a `PH2D_FIELD_BORDA=0`, que é a mesma porta de
+bissecção que um report futuro de *«piorou»* vai precisar.
+
+1. `cd <worktree> && env PH2D_FIELD_SMOKE=36 cargo run -p ph2d-host-desktop --profile smoke` —
+   arrastar com o botão esquerdo para rodar a peça, a olhar para o **contorno** das bolas.
+2. a mesma coisa com `PH2D_FIELD_BORDA=0` à frente — a serrilha volta, e é ela que fervia.
+
+**Deu errado se:** a borda estiver igual nas duas corridas (a porta não chega ao produto) · a peça
+ficar visivelmente mais lenta a rodar (o preço medido é `+0,18`–`+2,66 ms`, e a `36` é `+0,25`) · a
+borda mudar de aspecto **ao largar** o rato (a igualdade do §12.4 partiu-se).
+
+⚠️ **Não há cena nova, e isso é a decisão certa:** a fervura existe em **toda** cena com silhueta, e
+a `36` é aquela em que o dono acabou de reportar o defeito. *Uma cena inventada para demonstrar um
+defeito que a cena dele já contém é uma fixtura a mais para manter.*
+
+### §12.7 — ⛔⛔ O que o portão apanhou, e uma delas é um defeito de INSTRUMENTO
+
+**(a) Um censo classificava código de teste pelo NOME do ficheiro, e acusou a sonda desta wave.**
+O `the_export_never_goes_through_the_preview_coarsening` reprovou com a mensagem *«o `Resolution` do
+artista deixa de ter efeito observável»* sobre um produto **correcto**: a sonda
+[`borda_sondas`](../../crates/ph2d-app-field3d/src/borda_sondas.rs) é compilada só sob
+`#[cfg(test)]` e não acaba em `_tests.rs`, logo foi lida como PRODUTO.
+
+⚠️ **Eram TRÊS censos com o mesmo furo** no mesmo directório (`preview_tests`, `view_tests`,
+`reload_tests`) — e o comentário de um deles **já escrevia a fronteira certa**, à letra: *«a
+fronteira certa não é "este ficheiro": é "código que corre no app"»*, com a linha seguinte a
+implementar a errada. ⛔ E [`device_probes`](../../crates/ph2d-app-field3d/src/device_probes.rs)
+vivia no mesmo buraco desde que existe — ele só nunca tinha chamado nada que um censo procurasse.
+
+⇒ [`censo_de_ficheiros::ficheiros_de_teste`](../../crates/ph2d-app-field3d/src/censo_de_ficheiros.rs):
+*o que um ficheiro de teste declara por `#[path]` é código de teste*, transitivamente — a mesma cura
+que a `line/sculpt3d` pagou em 15/09 (`CLAUDE.md` §5). Uma porta, **três** leitores, e controlo
+próprio nos DOIS sentidos: excluir a MAIS deixa os três censos *verdes a medir nada*, que é a
+direcção muda.
+
+**(b) O arnês da prova de mutação mentiu DUAS vezes, e as duas estão escritas no `CLAUDE.md`.**
+`-- --ignored` corre **só** os ignorados, logo o censo textual (que não é `#[ignore]`) casou **zero**
+testes e leu-se como *sobreviveu*; e com duas corridas a disputar a placa o `cargo` saiu sem nunca
+chegar a correr. ⭐ **As duas foram apanhadas porque o arnês conta o `running N tests`** — sem esse
+controlo sobre o próprio filtro, o relatório teria dito *«3 de 5 sobreviveram»* sobre gates que
+sangram. Com a placa livre e `--include-ignored`: **5 de 5**.
+
+**(c) Uma flake de carga NOVA para promover à lista do `CLAUDE.md` §5.0:**
+`materials::tests::dragging_a_colour_compiles_no_tape_at_all` (`ph2d-app-field3d`) — um **contador**
+de fitas compiladas atrás de estado partilhado, que é a espécie que aquela lista já nomeia. Reprovou
+uma vez a `load 52` (*«compilou 1 fita»* contra `0`), passa **3 de 3 sozinho** e a suíte inteira
+fechou **verde duas corridas seguidas** com a máquina mais calma. ⚠️ *O conjunto de reprovadas mudou
+entre corridas da mesma árvore*, que é a assinatura.
+
+**(d) ⛔⛔ UMA SONDA DO CONJUNTO `#[ignore]` NÃO CABE NO PRAZO DA PORTA DE RECURSOS, e por isso a
+corrida de fecho a SALTA — com o número ao lado.** O
+`preview::device_probes::mede_o_preco_de_uma_aresta_de_perfil` varre perfis até `768` arestas;
+medido nesta jornada, ele ultrapassa **`25 min` sozinho** e comeu duas corridas inteiras do conjunto
+(`1800 s` e depois `> 2400 s`) sem chegar ao fim. ⚠️ O doc dele **já avisava** que o ponto de `1024`
+tinha pendurado o driver por mais de meia hora; o que esta jornada acrescenta é que **o ponto de
+`768` já torna o conjunto inteiro incorrível**.
+
+⇒ o fecho corre `cargo test … -- --ignored --skip mede_o_preco_de_uma_aresta_de_perfil`. ⭐ *É uma
+SONDA e não um gate* — ela imprime uma tabela e não afirma nada —, logo saltá-la não tira
+verificação nenhuma; o que ela tira é uma tabela que ninguém pediu nesta wave. ⚠️ **E isto não é
+uma isenção silenciosa:** quem quiser o número dela corre-a à parte, com o prazo levantado.
+⛔ *Uma sonda que PODE pendurar a placa gasta a máquina de quem a corre e não avisa* — a frase é do
+próprio doc dela, e vale também para o relógio.
+
+**(e) ⭐⭐⭐ UM SEGUNDO GATE TINHA A PREMISSA MORTA, e ele reprovou por `191` níveis — a reprovar é
+que ele estava a funcionar.** O `render_bounce_gpu_tests::o_quadro_de_movimento_nao_paga_o_ricochete`
+compara a imagem do dispositivo com a que a CPU pinta **sem** ricochete, e conduzia os dois lados com
+`false`. O comentário dele dizia, à letra: *«`false` nos DOIS lados — é a bandeira do quadro de
+movimento, e ela **também desliga a re-amostragem da borda**: comparar um lado com ela e outro sem
+mediria o anti-serrilhado»*. ⇒ depois desta wave o `march` governa a **borda** e o `paint` governa o
+**ricochete**, logo o mesmo `false` pôs os dois lados em regimes diferentes e a comparação passou a
+medir exactamente o que aquele comentário existia para impedir.
+
+⭐ *A linha errada e a linha certa dizem a MESMA coisa* — «os dois lados no mesmo regime» —, e o que
+mudou por baixo foi **qual argumento exprime esse regime**. Com o lado da CPU a ler a porta
+([`preview::re_amostra_a_silhueta`](../../crates/ph2d-app-field3d/src/preview.rs)) o desvio vai de
+`191` para **`0` níveis**: os dois motores pintam o quadro de movimento **byte a byte igual**, que é
+melhor do que a barra de `2` que aquele gate sempre teve.
+
+⚠️ **E nenhum dos gates NOVOS desta wave o podia ter apanhado**: eles medem o dispositivo contra si
+próprio (a cobertura parcial, a igualdade de alfa entre os dois quadros). *Quem apanhou foi um gate
+de PARIDADE entre motores, escrito por outra wave* — e é por isso que o fecho corre o conjunto
+inteiro e não só os testes da wave.
+
 ## ⛔ Recusas MEDIDAS
 
 | o que foi recusado | porquê, com o número |
@@ -444,3 +675,8 @@ parsa e valida os dois textos com o `naga`, sem placa nenhuma. *Os gates de pari
 | o `if c > 0.0` à volta da cobertura | a ida e volta `byte → f32 → byte` é exacta nos **256** valores ⇒ guarda provadamente morta (§10.2) |
 | `soma` dos canais como cobertura | over-cobre um halo tingido: `[0,4 · 0,3 · 0,3]` sairia **opaco** e taparia a grelha; `max` é a MENOR cobertura válida (§10.3) |
 | a profundidade de campo LIGADA por omissão | num modelador ela esconde a peça que se está a modelar — proposta, decisão do dono (§5) |
+| ligar o anti-serrilhado do movimento só quando o quadro «cabe» | a silhueta alternaria entre as duas leis conforme o relógio — *uma fervura nova, construída para curar a antiga* (§12.5) |
+| medir o preço da segunda passagem pelo `gpu_frame::march` | ali o G-buffer (`49,8 MB`) atravessa o barramento e a diferença afoga-se: `0,93×`–`1,03×` com `±6 ms` de dispersão (§12.3) |
+| contar «quantos pixels saltam mais de `64`» como régua da fervura | a barra cai em cima do degrau de cobertura do padrão de 4 amostras (`1/4` de `255`) e lê ruído (§12.1) |
+| subir o número de amostras do `ROOK` nesta wave | o alvo medido é o quadro de movimento deixar de ser PIOR que o parado, e isso já está gateado ao byte; mais amostras pagam-se nos DOIS quadros (§12.5) |
+| curar o contorno engrossado inerte | ele não morde em nenhuma das `23` cenas porque os perfis são ARCOS — curá-lo seria tornar o quadro de movimento mais grosseiro, a direcção oposta a esta wave (§12.2) |

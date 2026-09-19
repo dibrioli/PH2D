@@ -1,0 +1,336 @@
+//! Os gates do passe do brilho, **pelo caminho do produto** ([`crate::shade_render`]).
+
+use crate::{Gbuffer, Lighting, Orbit, Presentation, Surfaces, shade_render};
+use ph2d_material::{Environment, OpenPbr};
+
+struct Ceu([f32; 3]);
+
+impl Environment for Ceu {
+    fn radiance(&self, _dir: [f32; 3], _alpha: f32) -> [f32; 3] {
+        self.0
+    }
+    fn irradiance(&self, _n: [f32; 3]) -> [f32; 3] {
+        self.0
+    }
+}
+
+const FUNDO: [u8; 4] = [0, 0, 0, 255];
+const LADO: u32 = 96;
+
+/// Um disco aceso ao centro de um quadro escuro — a fixtura que **contém o fenómeno**.
+///
+/// ⚠️ **Um quadro sem nada aceso não testa o brilho**, e um todo aceso não tem onde mostrar o halo:
+/// é preciso a fronteira entre os dois.
+fn disco() -> Gbuffer {
+    let n = (LADO * LADO) as usize;
+    let mut hit = vec![false; n];
+    let (c, r) = (f64::from(LADO) / 2.0, f64::from(LADO) / 6.0);
+    for y in 0..LADO {
+        for x in 0..LADO {
+            let (dx, dy) = (f64::from(x) - c, f64::from(y) - c);
+            if dx.mul_add(dx, dy * dy) <= r * r {
+                hit[(y * LADO + x) as usize] = true;
+            }
+        }
+    }
+    Gbuffer {
+        width: LADO,
+        height: LADO,
+        hit,
+        normal: vec![[0.0, 0.0, 1.0]; n],
+        point: vec![[0.0; 3]; n],
+        curvature: Vec::new(),
+        curvature_style: Vec::new(),
+        edges: Vec::new(),
+    }
+}
+
+fn pinta(pres: &Presentation) -> Vec<u8> {
+    let g = disco();
+    let ceu = Ceu([0.0; 3]);
+    // ⭐ Uma peça que EMITE — é o que põe a luz acima do limiar sem depender de lâmpada nenhuma.
+    let so = [OpenPbr {
+        base_color: [0.0; 3],
+        emission_luminance: 40.0,
+        emission_color: [1.0, 0.9, 0.7],
+        ..OpenPbr::default()
+    }
+    .prepare()];
+    shade_render(
+        &g,
+        &Orbit::default(),
+        &Surfaces {
+            all: &so,
+            owners: None,
+        },
+        &Lighting {
+            lamps: &[],
+            points: &[],
+            sky: &ceu,
+            shadows: None,
+        },
+        pres,
+        FUNDO,
+    )
+}
+
+fn com(bloom: ph2d_bloom::Bloom) -> Presentation {
+    Presentation {
+        bloom,
+        ..Presentation::of(ph2d_view_transform::Look::default())
+    }
+}
+
+/// ⭐⭐⭐ **A OMISSÃO É A IMAGEM DE SEMPRE, AO BIT** — a metade que protege tudo o que já shipou.
+#[test]
+fn a_omissao_e_a_imagem_de_sempre_ao_bit() {
+    let base = pinta(&Presentation::of(ph2d_view_transform::Look::default()));
+    let com_campo = pinta(&com(ph2d_bloom::Bloom::default()));
+    assert_eq!(base, com_campo, "o brilho desligado mudou a imagem");
+}
+
+/// ⭐⭐⭐ **O OLHAR MANDA O PRETO EM PRETO** — a propriedade de que o [`super::soma_halo`] depende,
+/// gateada **onde ela vive** e não onde é consumida.
+///
+/// ⛔ Ela nasceu de uma prova de mutação: aquele passe subtraía `look([0,0,0])` do halo *«porque o
+/// olhar tem um desvio para o preto»*, e a mutação que apagava a subtracção **sobreviveu**. Medido,
+/// `look([0,0,0])` é `[0,0,0]` ao bit — a subtracção era morta e saiu.
+///
+/// ⚠️ **A régua varre o espaço INTEIRO do olhar, não o de omissão:** as duas transformações × uma
+/// escada de exposições que inclui os extremos e o que não é número. *Um gate escrito só sobre o
+/// `Look::default()` afirmaria sobre uma célula de uma tabela e leria-se como afirmando sobre ela
+/// toda* — e é a tabela toda que este passe assume.
+#[test]
+fn o_olhar_manda_o_preto_em_preto() {
+    use ph2d_view_transform::{Look, ViewTransform};
+    let mut celulas = 0usize;
+    for view in ViewTransform::ALL {
+        for stops in [
+            -32.0,
+            -8.0,
+            -1.0,
+            0.0,
+            1.0,
+            8.0,
+            32.0,
+            f32::NAN,
+            f32::INFINITY,
+        ] {
+            let z = Look {
+                exposure_stops: stops,
+                view,
+            }
+            .apply([0.0; 3]);
+            assert_eq!(
+                z.map(f32::to_bits),
+                [0u32; 3],
+                "look({view:?}, {stops} stops) levou o preto a {z:?} — o passe do brilho \
+                 ([`super::soma_halo`]) soma `look(halo)` CRU e conta com isto"
+            );
+            celulas += 1;
+        }
+    }
+    assert!(
+        celulas >= 18,
+        "piso de população: a varredura leu só {celulas} células do olhar"
+    );
+}
+
+/// ⭐⭐ **O INTERRUPTOR DO QUADRO É A LEI DA CRATE, e não uma segunda resposta** — ida-e-volta sobre
+/// um corpus que tem os dois lados.
+///
+/// ⛔ Ele nasceu de uma mutação SOBREVIVENTE: cravar `Presentation::blooms()` em `true` não muda um
+/// byte, porque o [`ph2d_bloom::halo`] tem a **própria** guarda e devolve um halo mudo ⇒ *as duas
+/// guardas são redundantes na IMAGEM e não no RELÓGIO*, e o que a de fora compra — o buffer de cena
+/// não nascer — é um custo, que um gate de bytes não vê.
+///
+/// ⚠️ *A cura não é medir o relógio* (seria mais um membro da família de flakes sob fan-out): é
+/// medir que a porta **delega**, que é a afirmação que o doc dela faz.
+#[test]
+fn o_interruptor_do_quadro_e_a_lei_da_crate() {
+    let corpus = [
+        ("omissão", ph2d_bloom::Bloom::default()),
+        (
+            "ligado",
+            ph2d_bloom::Bloom {
+                enabled: true,
+                ..ph2d_bloom::Bloom::default()
+            },
+        ),
+        (
+            "ligado e mudo",
+            ph2d_bloom::Bloom {
+                enabled: true,
+                intensity: 0.0,
+                ..ph2d_bloom::Bloom::default()
+            },
+        ),
+        (
+            "ligado, forte e sem níveis",
+            ph2d_bloom::Bloom {
+                enabled: true,
+                levels: [0.0; ph2d_bloom::Bloom::LEVELS],
+                ..ph2d_bloom::Bloom::default()
+            },
+        ),
+    ];
+    let (mut sim, mut nao) = (0usize, 0usize);
+    for (rot, b) in corpus {
+        let esperado = b.contributes();
+        assert_eq!(
+            com(b).blooms(),
+            esperado,
+            "{rot}: a porta do quadro discordou da lei da crate"
+        );
+        if esperado { sim += 1 } else { nao += 1 }
+    }
+    // ⚠️ Sem os DOIS lados, cravar a porta numa constante passava: um corpus só de «não contribui»
+    // aprova um `false` cravado, e um só de «contribui» aprova um `true`.
+    assert!(
+        sim >= 1 && nao >= 2,
+        "o corpus tem de conter os dois lados — leu {sim} a contribuir e {nao} a não contribuir"
+    );
+}
+
+/// ⭐⭐⭐ **O HALO PASSA PELO OLHAR** — a lei que o cabeçalho do [`super`] afirma, agora com régua.
+///
+/// ⚠️⚠️ **Ela só é OBSERVÁVEL sob [`ph2d_view_transform::ViewTransform::Neutral`], e isso é um facto
+/// sobre o olhar e não sobre o brilho:** o `Standard` corta cada canal em `1`, logo abaixo do branco
+/// ele é a identidade e acima dele o byte satura de qualquer maneira ⇒ *com o olhar de omissão,
+/// aplicá-lo ao halo ou não dá o MESMO ficheiro*. Um gate escrito na omissão leria verde sobre um
+/// passe que soma o halo cru, que é precisamente a composição que o `docs/Render3d/10` §11.3 recusou
+/// por medição.
+#[test]
+fn o_halo_passa_pelo_olhar() {
+    let olhar = ph2d_view_transform::Look {
+        exposure_stops: 0.0,
+        view: ph2d_view_transform::ViewTransform::Neutral,
+    };
+    let pres = Presentation {
+        bloom: ph2d_bloom::Bloom::default(),
+        ..Presentation::of(olhar)
+    };
+    let base = pinta(&pres);
+
+    // Um halo FORTE, onde as duas leis se separam: o olhar comprime, o cru não.
+    let forte = vec![[3.0f32; 3]; (LADO * LADO) as usize];
+    let (mut pelo_olhar, mut cru) = (base.clone(), base.clone());
+    crate::brilho::soma_halo(&mut pelo_olhar, &forte, &pres);
+    let (pixeis, _) = cru.as_chunks_mut::<4>();
+    for (px, h) in pixeis.iter_mut().zip(&forte) {
+        for (canal, &acrescimo) in px.iter_mut().zip(h) {
+            let b = ph2d_color::srgb::srgb_to_linear_byte(*canal);
+            *canal = ph2d_color::srgb::linear_to_srgb_byte(b + acrescimo);
+        }
+    }
+    let diferentes = pelo_olhar
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(cru.as_chunks::<4>().0.iter())
+        .filter(|(a, b)| a[..3] != b[..3])
+        .count();
+    assert!(
+        diferentes > 1000,
+        "sob o olhar Neutral um halo de 3,0 tem de sair COMPRIMIDO e não cru — \
+         só {diferentes} píxeis separam as duas leis"
+    );
+    // ⚠️ E o sentido importa: comprimir dá MENOS luz que somar cru, nunca mais.
+    assert!(
+        pelo_olhar
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(cru.as_chunks::<4>().0.iter())
+            .all(|(a, b)| a[0] <= b[0] && a[1] <= b[1] && a[2] <= b[2]),
+        "o olhar comprime: nenhum canal pode sair mais claro do que a soma crua"
+    );
+}
+
+/// ⭐⭐ **UM HALO NULO É A IDENTIDADE AO BIT** — o caso nulo, que um gate de «com o brilho ligado a
+/// imagem muda» nunca vê.
+#[test]
+fn um_halo_nulo_e_a_identidade_ao_bit() {
+    let pres = com(ph2d_bloom::Bloom::default());
+    let base = pinta(&pres);
+    let mut mexido = base.clone();
+    let nulo = vec![[0.0f32; 3]; (LADO * LADO) as usize];
+    crate::brilho::soma_halo(&mut mexido, &nulo, &pres);
+    assert_eq!(base, mexido, "um halo de zeros mudou bytes");
+}
+
+/// ⭐⭐⭐ **O BRILHO ACENDE FORA DA PEÇA** — a lei do produto, e o CONTROLO ao lado.
+///
+/// O controlo é o mesmo quadro com o brilho desligado: sem ele, um gate que só olhasse para o
+/// resultado não distinguiria *«o halo acendeu»* de *«a peça já era grande»*.
+#[test]
+fn o_brilho_acende_fora_da_peca() {
+    let sem = pinta(&com(ph2d_bloom::Bloom::default()));
+    let com_brilho = pinta(&com(ph2d_bloom::Bloom {
+        enabled: true,
+        ..ph2d_bloom::Bloom::default()
+    }));
+
+    let g = disco();
+    let (mut acesos, mut dentro) = (0usize, 0usize);
+    for i in 0..(LADO * LADO) as usize {
+        let (a, b) = (sem[i * 4], com_brilho[i * 4]);
+        if g.hit[i] {
+            dentro += usize::from(b >= a);
+        } else if b > a {
+            acesos += 1;
+        }
+        assert!(b >= a, "o brilho ESCURECEU o pixel {i} ({a} → {b})");
+    }
+    assert!(
+        acesos > 200,
+        "o halo mal chegou ao fundo: só {acesos} píxeis acenderam"
+    );
+    assert!(dentro > 0, "a peça também tem de receber o halo");
+}
+
+/// ⛔ **O QUE NÃO PASSA DO LIMIAR NÃO BRILHA** — e o quadro fica AO BIT, **com o CONTROLO ao lado**.
+///
+/// ⚠️ A régua é a **imagem inteira**: um limiar que gateasse *quase* deixaria um halo fraco, e uma
+/// barra em «quase zero» aceitá-lo-ia. *O corte é duro, e o gate mede-o como duro.*
+///
+/// ⛔⛔ **A metade de baixo é o que torna a de cima uma afirmação.** A 1.ª redacção tinha só o
+/// limiar alto, e *quase tudo naquele caminho devolve preto*: a guarda do corte, a higiene do olhar
+/// que come um canal negativo, e o `d <= 0` da soma. ⇒ um quadro byte-idêntico é compatível com o
+/// limiar a funcionar E com metade do passe morto. **O controlo prova que a fixtura CONTÉM o
+/// fenómeno** — com o limiar abaixo do pico da cena, a mesma bateria tem de mover píxeis.
+#[test]
+fn o_que_nao_passa_do_limiar_nao_brilha() {
+    let sem = pinta(&com(ph2d_bloom::Bloom::default()));
+
+    let alto = pinta(&com(ph2d_bloom::Bloom {
+        enabled: true,
+        threshold: 1.0e6,
+        knee: 0.0,
+        ..ph2d_bloom::Bloom::default()
+    }));
+    assert_eq!(
+        sem, alto,
+        "com o limiar acima de toda a luz da cena a imagem tem de ficar ao bit"
+    );
+
+    // ⭐ O CONTROLO: o MESMO caminho, com o limiar debaixo do pico da peça acesa.
+    let baixo = pinta(&com(ph2d_bloom::Bloom {
+        enabled: true,
+        threshold: 0.1,
+        knee: 0.0,
+        ..ph2d_bloom::Bloom::default()
+    }));
+    let movidos = sem
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(baixo.as_chunks::<4>().0.iter())
+        .filter(|(a, b)| a[..3] != b[..3])
+        .count();
+    assert!(
+        movidos > 200,
+        "controlo: com o limiar EM BAIXO a cena tem de acender — só {movidos} píxeis mudaram, \
+         logo a metade de cima deste gate não estava a afirmar nada"
+    );
+}

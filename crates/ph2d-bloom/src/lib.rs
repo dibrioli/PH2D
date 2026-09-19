@@ -163,12 +163,39 @@ pub fn bright(rgb: [f32; 3], b: &Bloom) -> [f32; 3] {
 /// ⚠️ **Devolve cedo quando não há o que somar** — ver [`Bloom::contributes`] —, e é isso que faz o
 /// caminho de omissão custar **zero**.
 pub fn apply(hdr: &mut [[f32; 3]], w: usize, h: usize, b: &Bloom) {
-    if !b.contributes() || w == 0 || h == 0 || hdr.len() < w * h {
+    let add = halo(hdr, w, h, b);
+    if add.is_empty() {
         return;
+    }
+    for (px, a) in hdr[..w * h].iter_mut().zip(add) {
+        for c in 0..3 {
+            px[c] += a[c];
+        }
+    }
+}
+
+/// ⭐⭐⭐ **O HALO SOZINHO** — o que o brilho ACRESCENTA, sem o somar.
+///
+/// # ⚠️ Porque a porta devolve o halo em vez de só o somar
+///
+/// Quem compõe pode não ter o quadro em cena-linear para somar: no modelador o **FUNDO** é uma cor
+/// que o artista dá em BYTES e que nunca passou pelo olhar, logo não há como o converter de volta.
+/// ⛔ E tratar peça e fundo por regras diferentes está **refutado por medição** neste módulo
+/// (`docs/Render3d/10` §11.3): *um `if` por pixel desenha a fronteira entre os dois ramos*, e a
+/// cura que o fez pintou um fio serrilhado na silhueta.
+///
+/// ⇒ o halo sai daqui em **cena-linear** — lido do HDR, que é o que o torna honesto — e quem compõe
+/// aplica-lhe o olhar e soma-o **com a mesma regra em todo pixel**.
+///
+/// Devolve **vazio** quando não há o que somar, e é isso que faz a omissão custar zero.
+#[must_use]
+pub fn halo(hdr: &[[f32; 3]], w: usize, h: usize, b: &Bloom) -> Vec<[f32; 3]> {
+    if !b.contributes() || w == 0 || h == 0 || hdr.len() < w * h {
+        return Vec::new();
     }
     let n = levels_that_fit(w, h);
     if n == 0 {
-        return;
+        return Vec::new();
     }
 
     // (1) o corte, na resolução cheia.
@@ -201,12 +228,13 @@ pub fn apply(hdr: &mut [[f32; 3]], w: usize, h: usize, b: &Bloom) {
         acumula_ampliado(&mut halo, w, h, buf, *bw, *bh, peso);
     }
 
-    // (4) de volta à imagem.
-    for (px, add) in hdr[..w * h].iter_mut().zip(halo) {
-        for c in 0..3 {
-            px[c] += add[c] * b.intensity;
+    // (4) a intensidade é do halo, não da soma — quem compõe recebe-o pronto.
+    for px in &mut halo {
+        for canal in px {
+            *canal *= b.intensity;
         }
     }
+    halo
 }
 
 /// ⭐⭐ **O TENTO `(1,2,1)` separável, na resolução do nível.**

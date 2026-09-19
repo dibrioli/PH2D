@@ -272,7 +272,7 @@ pub(crate) fn view_direction(cam: &Orbit, screen: &Screen, x: usize, y: usize) -
 }
 
 /// A luz que a superfície devolve pela direcção `v`, já com o olhar — em linear de ECRÃ.
-fn radiance(
+pub(crate) fn radiance_scene(
     surface: &Surface,
     light: &Lighting<'_>,
     pres: &Presentation,
@@ -383,7 +383,11 @@ fn radiance(
     //
     // ⚠️ **Com o estilo de fábrica isto é a identidade AO BIT** e a imagem é a de antes, byte a
     // byte — por construção e com gate (ver o [`ph2d_style`]).
-    let cena = pres.style.apply(
+    // ⭐⭐ **E AQUI a função parte-se em duas leituras da MESMA lei** (a `W7`): o que sai daqui é
+    // **cena-linear** — a luz antes do olhar —, que é o que o BRILHO tem de ler
+    // (`docs/Render3d/12` §2). ⛔ Lê-lo depois do olhar é o que o `01` §2 chama de *«sem o `1`, o
+    // bloom mente»*: o tonemapper comprime justamente o que havia para colher.
+    pres.style.apply(
         add(rgb, surface.emission(n, v)),
         ph2d_style::Point {
             // ⚠️ **`|N·V|`**, e o valor absoluto não é defensivo: numa silhueta o produto passa por
@@ -391,8 +395,20 @@ fn radiance(
             facing: (n[0] * v[0] + n[1] * v[1] + n[2] * v[2]).abs(),
             curvature: pres.styled_curvature(k_estilo),
         },
-    );
-    pres.look.apply(cena)
+    )
+}
+
+/// A luz que este pixel manda ao olho, **depois do olhar** — o que o byte lê.
+///
+/// ⚠️ **Ela DELEGA na irmã** e não repete uma linha: escrita duas vezes, a cena e o ecrã divergiam
+/// no dia em que alguém tocasse numa só. *Uma lei escrita em dois sítios ainda não é uma lei.*
+fn radiance(
+    surface: &Surface,
+    light: &Lighting<'_>,
+    pres: &Presentation,
+    geom: PixelGeom,
+) -> [f32; 3] {
+    pres.look.apply(radiance_scene(surface, light, pres, geom))
 }
 
 /// Colore o G-buffer com um material sob uma luz e devolve RGBA8 **pré-multiplicado**.
@@ -531,6 +547,15 @@ pub fn shade_render(
         }
         write(&mut out[i * 4..i * 4 + 4], acc);
     }
+
+    // ⭐⭐⭐ **O BRILHO, por último** (`docs/Render3d/12`, a `W7`) — ele lê o quadro em CENA-linear e
+    // soma o halo por cima do que já está pintado. ⚠️ **Só corre se o artista o tiver ligado**
+    // ([`Presentation::blooms`]), e é isso que faz o caminho de omissão custar zero.
+    if pres.blooms() {
+        let cena = crate::brilho::campo_de_cena(g, cam, surfaces, light, pres);
+        let halo = ph2d_bloom::halo(&cena, w, h, &pres.bloom);
+        crate::brilho::soma_halo(&mut out, &halo, pres);
+    }
     out
 }
 
@@ -598,27 +623,50 @@ pub fn boundary_world(half_extent: f32, lado_px: u32) -> f32 {
 /// sombreamento, e as duas funções passaram a levar oito argumentos. *Quatro grandezas que viajam
 /// sempre juntas são uma coisa só.*
 #[derive(Clone, Copy)]
-struct PixelGeom {
+pub(crate) struct PixelGeom {
     /// **Qual pixel** — a chave do canal de sombra. ⚠️ Uma borda usa o do CENTRO dela, que é a
     /// mesma aproximação que a direcção de vista e o material já fazem ali.
-    i: usize,
+    pub(crate) i: usize,
     /// Onde a superfície está, no MUNDO.
-    p: [f32; 3],
+    pub(crate) p: [f32; 3],
     /// A normal, em espaço de VISTA.
-    n: [f32; 3],
+    pub(crate) n: [f32; 3],
     /// A direcção para o observador, em espaço de VISTA.
-    v: [f32; 3],
+    pub(crate) v: [f32; 3],
     /// ⭐⭐⭐ **A CURVATURA deste ponto** (`|H|`) — `0` quando ninguém a pediu, e `0` é a leitura
     /// certa de *«não sei»* (ver [`crate::Gbuffer::curvature`]).
-    k: f32,
+    pub(crate) k: f32,
     /// ⭐⭐⭐ **A CURVATURA À ESCALA DO ARTISTA** — com SINAL, e é esta que o estilo lê.
     ///
     /// ⚠️ **Campo NOMEADO e não derivado do `k`**, de propósito: as duas são medidas a distâncias
     /// diferentes (ver [`crate::Gbuffer::curvature_style`]), e um `k_estilo: k` escrito num
     /// chamador por conveniência seria a borda dura de volta, sem uma linha de lei ter mudado.
     /// *Esquecê-lo é erro de compilação nos dois sítios que constroem esta struct.*
-    k_estilo: f32,
-    basis: ViewBasis,
+    pub(crate) k_estilo: f32,
+    pub(crate) basis: ViewBasis,
+}
+
+/// ⭐⭐ **A mesma mistura, em CENA-linear** — o que o HDR do brilho guarda.
+///
+/// ⛔⛔ **Ela NÃO é a irmã com o olhar por cima, e a diferença é DECLARADA:** o olhar não é linear,
+/// logo `look(mix(a, b)) ≠ mix(look(a), look(b))`. O BYTE continua a sair da irmã (⇒ a imagem de
+/// hoje fica **ao bit**) e o HDR sai desta; as duas só discordam na faixa de fronteira entre dois
+/// materiais — a população que o [`BOUNDARY_PIXELS`] descreve —, e o halo é um sinal largo e macio,
+/// onde essa diferença não é observável.
+pub(crate) fn mixed_radiance_scene(
+    surfaces: &Surfaces<'_>,
+    geom: PixelGeom,
+    pixel_world: f32,
+    light: &Lighting<'_>,
+    pres: &Presentation,
+) -> [f32; 3] {
+    let (a, b, t) = surfaces.mix_of(geom.p, pixel_world);
+    let ca = radiance_scene(a, light, pres, geom);
+    if t <= 0.0 {
+        return ca;
+    }
+    let cb = radiance_scene(b, light, pres, geom);
+    [0, 1, 2].map(|i| ca[i] + (cb[i] - ca[i]) * t)
 }
 
 fn mixed_radiance(

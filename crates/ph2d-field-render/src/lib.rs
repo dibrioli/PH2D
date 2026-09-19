@@ -114,6 +114,7 @@ mod apresentacao;
 /// duas metades do mesmo integral do hemisfério.
 pub mod banda;
 pub mod bounce;
+mod brilho;
 mod camera;
 /// ⭐⭐⭐ **A curvatura da superfície** — a grandeza que a subsuperfície MACIÇA lê, e que esta casa
 /// tira do CAMPO em vez de derivadas de ecrã (`docs/Render3d/10`).

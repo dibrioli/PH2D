@@ -266,21 +266,48 @@ pub fn arma_tudo() {
     insp::set_current_inspector_properties(Some(InspectorPropertiesInfo {
         entity_bits: BITS,
         root_bits: RAIZ,
-        rows: vec![VariantAxis {
-            name: "size".to_string(),
-            options: vec![
-                VariantChoice {
-                    master: RAIZ,
-                    label: "tall".to_string(),
-                    current: true,
-                },
-                VariantChoice {
-                    master: RAIZ + 1,
-                    label: "short".to_string(),
-                    current: false,
-                },
-            ],
-        }],
+        rows: vec![
+            VariantAxis {
+                name: "size".to_string(),
+                options: vec![
+                    VariantChoice {
+                        master: RAIZ,
+                        label: "tall".to_string(),
+                        current: true,
+                    },
+                    VariantChoice {
+                        master: RAIZ + 1,
+                        label: "short".to_string(),
+                        current: false,
+                    },
+                ],
+            },
+            // ⭐⭐⭐ **UM EIXO QUE QUEBRA** — ele existe porque a cura do refluxo dos
+            //    chips **nao era exercitada por fixtura nenhuma**: com dois rotulos curtos
+            //    (`tall` / `short`) a fileira cabe em qualquer largura, e a mutacao que apagava a
+            //    2.ª fileira SOBREVIVEU. *Um corpus que nunca faz a fileira quebrar nao testa a
+            //    quebra* — a mesma lei do corpus no ponto NEUTRO de um knob.
+            VariantAxis {
+                name: "material".to_string(),
+                options: vec![
+                    VariantChoice {
+                        master: RAIZ + 2,
+                        label: "brushed steel".to_string(),
+                        current: true,
+                    },
+                    VariantChoice {
+                        master: RAIZ + 3,
+                        label: "oxidised copper".to_string(),
+                        current: false,
+                    },
+                    VariantChoice {
+                        master: RAIZ + 4,
+                        label: "matte plastic".to_string(),
+                        current: false,
+                    },
+                ],
+            },
+        ],
         beyond: 0,
         source_name: Some("Hero (tall)".to_string()),
     }));

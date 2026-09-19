@@ -236,11 +236,49 @@ impl MockPanelHost {
         painel: &mut ph2d_editor_core::panel::ErasedPanel,
         viewport: Rect,
     ) -> Vec<Medido> {
+        self.medindo_a_pintura_do_registo_com_bandas(
+            painel,
+            viewport,
+            ph2d_editor_core::screens::layout::ChromeBands::DEFAULT,
+        )
+    }
+
+    /// ⭐⭐⭐ **O MESMO, COM A LARGURA DAS COLUNAS POR MEDIDA.**
+    ///
+    /// ⛔⛔ **Ele existe porque a varredura de elisoes mediu, durante toda a vida dela,
+    /// UMA largura de coluna — a de fabrica.** As tres viewports que ela varre mudam
+    /// ONDE a coluna fica e nunca QUANTO ela mede: a largura vem do token
+    /// (`ChromeBands::DEFAULT`), nao da janela. Medido em 2026-09-19, os cinco cortes conhecidos
+    /// dela dao **exactamente** o mesmo numero a `1280`, `1366` e `1920`.
+    ///
+    /// ⚠️⚠️ **E a largura de fabrica nao e a que o artista tem.** O `~/.ph2d/layout.txt`
+    /// do dono guarda uma largura **por espaco de trabalho**, e em 2026-09-19 a coluna da ESQUERDA
+    /// estava no **minimo** (`220`) em cinco dos seis, contra os `308` do token —
+    /// `88 px` que nenhuma regua desta casa tinha olhado. *Um gate calibrado na largura de OMISSAO
+    /// e cego a que o artista TEM*, e a cura e medir a ESCADA.
+    ///
+    /// ⛔ **A escada sai da LEI e nunca do ficheiro do dono:** ele vive fora do
+    /// repositorio e nao existe noutra maquina, logo um gate que o lesse mediria coisas diferentes
+    /// em cada sitio. Os degraus sao o `PANEL_MIN_W_PX` (o piso ate onde a borda encolhe) e o token
+    /// de fabrica — e o ficheiro dele serve para dizer QUAL degrau importa, nunca para
+    /// ser o degrau.
+    pub fn medindo_a_pintura_do_registo_com_bandas(
+        &mut self,
+        painel: &mut ph2d_editor_core::panel::ErasedPanel,
+        viewport: Rect,
+        bandas: ph2d_editor_core::screens::layout::ChromeBands,
+    ) -> Vec<Medido> {
         let id = painel.manifest.id;
         let slot = painel.manifest.default_slot;
         self.set_panel_visible(id, true);
         self.hit_index.clear_for_frame();
-        let layout = HeroLayout::for_viewport(viewport);
+        let layout = ph2d_editor_core::screens::layout::HeroLayout::for_viewport_bands(
+            viewport,
+            false,
+            bandas,
+            ph2d_editor_core::screens::layout::CenterSplit::None,
+            ph2d_editor_core::screens::layout::DockSides::BOTH,
+        );
         let mut scene = VectorScene::new();
         let mut text_system = TextSystem::without_system_fonts();
         elisao::medindo(|| {

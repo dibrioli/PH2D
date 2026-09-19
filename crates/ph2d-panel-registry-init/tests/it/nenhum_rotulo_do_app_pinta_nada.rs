@@ -97,10 +97,55 @@ use ph2d_i18n::pseudo;
 use ph2d_text::TextSystem;
 use ph2d_ui_testkit::MockPanelHost;
 
-/// ⚠️ **Três, e não uma:** a largura do encaixe sai do viewport, e um rótulo que cabe a `1920`
-/// pode não caber a `1280`. ⛔ Elas **não** cobrem a coluna que o artista aperta à mão (isso vive
-/// no `~/.ph2d/layout.txt`, fora do repo) — essa metade é do gate de coluna de cada painel.
-const VIEWPORTS: &[(f32, f32)] = &[(1366.0, 1024.0), (1920.0, 1080.0), (1280.0, 800.0)];
+/// ⭐⭐⭐ **A ESCADA: cada degrau e um par (janela, largura das colunas).**
+///
+/// ⛔⛔ **A redaccao anterior desta constante estava ERRADA sobre o que media, e a frase
+/// dela dizia-o:** *"a largura do encaixe sai do viewport, e um rotulo que cabe a 1920 pode nao
+/// caber a 1280"*. ⛔ Medido em 2026-09-19, os cinco cortes conhecidos da varredura dao
+/// **exactamente o mesmo numero** nas tres janelas — a largura de uma coluna docada vem do
+/// TOKEN (`ChromeBands::DEFAULT`: `308` a esquerda, `304` a direita) e a janela so decide ONDE ela
+/// fica. As tres janelas compram a largura do encaixe do FUNDO (o timeline, que e o que sobra
+/// entre as colunas) e nada mais.
+///
+/// ⚠️⚠️ **E a largura de fabrica nao e a que o artista tem.** A mesma constante dizia que a
+/// coluna apertada a mao *"vive no `~/.ph2d/layout.txt`, fora do repo"* e mandava essa metade para
+/// "o gate de coluna de cada painel" — que nao existe para 24 painéis. Lido o ficheiro do
+/// dono nesse dia, a coluna da ESQUERDA estava no **minimo (`220`)** em **cinco dos seis** espacos
+/// de trabalho, contra os `308` do token: `88 px` que nenhuma regua desta casa olhou.
+///
+/// ⛔ **O degrau nao SAI do ficheiro dele** — ele vive fora do repositorio e nao
+/// existe noutra maquina, logo um gate que o lesse mediria coisas diferentes em cada sitio. O
+/// degrau estreito e o `PANEL_MIN_W_PX`, que e a LEI (o piso ate onde a borda encolhe, com o
+/// `DOCK_W_MIN` a le-lo); o ficheiro do dono serve para dizer QUAL degrau importa.
+///
+/// ⚠️ **Uma janela so no degrau estreito, de proposito:** medido acima, a janela nao muda a
+/// largura de uma coluna, logo tres janelas la seriam a mesma medicao tres vezes.
+const ESCADA: &[(&str, f32, f32, f32)] = &[
+    // (nome, largura da janela, altura, largura das DUAS colunas; `0` = as de fabrica)
+    ("1366", 1366.0, 1024.0, 0.0),
+    ("1920", 1920.0, 1080.0, 0.0),
+    ("1280", 1280.0, 800.0, 0.0),
+    // ⭐⭐ O degrau em que o dono de facto trabalha.
+    (
+        "colunas no minimo",
+        1366.0,
+        1024.0,
+        ph2d_tokens::PANEL_MIN_W_PX,
+    ),
+];
+
+/// As bandas de um degrau: `0` quer dizer *as de fabrica*.
+fn bandas(col_w: f32) -> ph2d_editor_core::screens::layout::ChromeBands {
+    let base = ph2d_editor_core::screens::layout::ChromeBands::DEFAULT;
+    if col_w <= 0.0 {
+        return base;
+    }
+    ph2d_editor_core::screens::layout::ChromeBands {
+        left_dock_w: col_w,
+        right_dock_w: col_w,
+        ..base
+    }
+}
 
 /// ⛔ **Piso de população.** *Sem ele, uma varredura que deixasse de pintar leria zero cortes e
 /// passaria por aprovação* — a forma exacta que este repo já pagou com o censo por prefixo de nome.
@@ -396,6 +441,128 @@ const FORA_POR_DECISAO_DO_DONO: &[(&str, &str, &str)] = &[
     ),
 ];
 
+/// ⭐⭐⭐ **O NOME DO DEGRAU ESTREITO** — o unico que nao esta na largura de fabrica.
+pub(crate) const DEGRAU_ESTREITO: &str = "colunas no minimo";
+
+/// ⛔⛔⛔ **A DIVIDA DO DEGRAU ESTREITO, POR PAINEL E POR CONTAGEM.**
+///
+/// ⛔⛔ **`129` cortes que esta varredura nunca tinha visto, na largura em que o dono de facto
+/// trabalha.** Ate 2026-09-19 ela media UMA largura de coluna — a de fabrica (`308` a
+/// esquerda, `304` a direita) — e ficava verde sobre todos eles. Lido o
+/// `~/.ph2d/layout.txt` desse dia, a coluna da ESQUERDA do dono estava no **minimo (`220`)** em
+/// cinco dos seis espacos de trabalho.
+///
+/// # ⭐⭐⭐ O MECANISMO, e ele e UM SO para `80` dos `129`
+///
+/// A linha de propriedade tem duas ordens do dono que se cruzam:
+/// 1. *"Label acima do campo numerico! Muito ruim!"* (2026-09-14) — o nome fica ao LADO;
+/// 2. *"nao permita que a caixa seja redimencionada para menor que isso"* (2026-05-24) — a
+///    caixa tem piso de [`NUMBER_INPUT_MIN_W_PX`] (`72`).
+///
+/// A porta ([`property_label_col_w_for`]) ja faz tudo o que pode: a coluna MEDE os nomes da seccao
+/// (`Seccao::medida`, e 32 sitios ja a usam) e EMPRESTA para alem da metade. O que a prende e o
+/// **tecto**, que e a ordem 2: `coluna <= util - vao - 72`. A `220` de coluna isso da
+/// **`90 px` para o nome**, e o Inspector tem dezenas de rotulos entre `100` e `190`.
+///
+/// ⚠️⚠️ **Nao ha cura de codigo dentro das duas ordens**, e as tres saidas estao medidas:
+/// encurtar o rotulo (o que o dono escolheu em 2026-09-19 para duas caixas) · mostrar o nome
+/// inteiro num BALAO ao passar o rato (o que esta casa ja fez pela legenda do L-System, quando a
+/// coluna tinha `~35` caracteres e o texto `~100`) · deixar o nome subir para cima do
+/// controlo so quando nao cabe (a ordem 1 proibe-o hoje). **E decisao do dono.**
+///
+/// # ⚠️ Porque uma CONTAGEM por painel, e nao uma linha por corte
+///
+/// ⛔ Uma lista de `129` linhas, cada uma com o numero e o mecanismo, seria prosa que
+/// ninguem le — e o mecanismo e **partilhado**: a lei desta casa e curar por MECANISMO e
+/// nunca por `N` remendos. A catraca tem as duas metades:
+/// - nenhum painel corta MAIS do que o numero dele;
+/// - nenhum painel corta MENOS (senao o numero ja nao descreve nada e tem de DESCER).
+///
+/// ⚠️ **O que ela NAO apanha, declarado:** um painel que troque um corte por outro fica com
+/// a mesma contagem. A metade que o apanharia e uma linha por texto, que e o que esta nota acabou
+/// de recusar — *a catraca conta a POPULACAO, e quem julga um corte novo e a mensagem de
+/// falha, que imprime a lista inteira.*
+///
+/// ⚠️ `motion_params` esta aqui com `5` e **fora de escopo** por decisao do dono (ver
+/// [`FORA_POR_DECISAO_DO_DONO`]): o numero fica para a catraca nao mentir sobre a populacao.
+const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
+    ("inspector", 80),
+    ("motion_params", 16),
+    ("audio_mixer", 6),
+    ("sculpt3d", 6),
+    ("hierarchy", 5),
+    ("tokens", 5),
+    ("vector", 3),
+    ("color_equalization", 2),
+    ("tags", 2),
+    ("audio_editor", 1),
+    ("authored", 1),
+    ("model3d", 1),
+    ("widget_lab", 1),
+];
+
+/// ⭐⭐⭐ **A DIVIDA DO DEGRAU ESTREITO SO ENCOLHE** — as duas metades.
+#[test]
+fn a_divida_do_degrau_estreito_so_encolhe() {
+    let mut por_painel: std::collections::BTreeMap<&str, std::collections::BTreeSet<String>> =
+        std::collections::BTreeMap::new();
+    for a in varre()
+        .iter()
+        .filter(|a| a.degrau == DEGRAU_ESTREITO)
+        .filter(|a| !a.m.coube() && !a.m.nada())
+    {
+        por_painel
+            .entry(a.painel)
+            .or_default()
+            .insert(a.m.texto.clone());
+    }
+    let declarado: std::collections::BTreeMap<&str, usize> =
+        CORTES_NO_DEGRAU_ESTREITO.iter().copied().collect();
+    // ⭐ A metade que sobe: um painel que passe a cortar mais.
+    let piorou: Vec<String> = por_painel
+        .iter()
+        .filter(|(id, cortes)| cortes.len() > declarado.get(*id).copied().unwrap_or(0))
+        .map(|(id, cortes)| {
+            let mut nomes: Vec<&str> = cortes.iter().map(String::as_str).collect();
+            nomes.sort_unstable();
+            format!(
+                "{id}: {} cortes (declarado {}) — {:?}",
+                cortes.len(),
+                declarado.get(id).copied().unwrap_or(0),
+                nomes
+            )
+        })
+        .collect();
+    assert!(
+        piorou.is_empty(),
+        "na largura em que o dono trabalha estes paineis passaram a cortar MAIS:\n  {}",
+        piorou.join("\n  ")
+    );
+    // ⭐ A metade justa: um numero que ja nao descreve nada DESCE.
+    let obsoletos: Vec<String> = declarado
+        .iter()
+        .filter(|(id, n)| {
+            por_painel
+                .get(*id)
+                .map_or(0, std::collections::BTreeSet::len)
+                < **n
+        })
+        .map(|(id, n)| {
+            format!(
+                "{id}: declarado {n}, mede {}",
+                por_painel
+                    .get(id)
+                    .map_or(0, std::collections::BTreeSet::len)
+            )
+        })
+        .collect();
+    assert!(
+        obsoletos.is_empty(),
+        "estes numeros ja nao descrevem o que o painel corta — BAIXE-OS:\n  {}",
+        obsoletos.join("\n  ")
+    );
+}
+
 /// ⭐ **Os painéis que ESTA build liga** — lidos do registo, e não do que a pintura produziu.
 fn paineis_do_registo() -> std::collections::BTreeSet<&'static str> {
     let _ = ph2d_panel_registry_init::register_all_panels();
@@ -407,7 +574,8 @@ fn paineis_do_registo() -> std::collections::BTreeSet<&'static str> {
 /// Uma medição, com o painel que a fez e o viewport em que ela aconteceu.
 struct Achado {
     painel: &'static str,
-    viewport_w: f32,
+    /// O degrau da [`ESCADA`] em que esta medição aconteceu.
+    degrau: &'static str,
     /// ⭐ **A passagem com o documento na mão** ([`super::o_inspector_armado`]) — hoje só o
     /// Inspector a tem. ⚠️ Ela **não** muda o `painel`, de propósito: o censo de obsolescência
     /// filtra a dívida pelos painéis do REGISTO, e um nome inventado (`"inspector (armado)"`)
@@ -421,7 +589,7 @@ impl Achado {
     /// O sítio, como uma mensagem de falha o nomeia.
     fn onde(&self) -> String {
         let estado = if self.armado { " (armado)" } else { " (vazio)" };
-        format!("{}{estado} @ {:.0}px", self.painel, self.viewport_w)
+        format!("{}{estado} @ {}", self.painel, self.degrau)
     }
 }
 
@@ -437,23 +605,24 @@ fn varre() -> Vec<Achado> {
     //    elidível não aparece na lista, e um piso sobre os achados leria menos do que a
     //    população real — acusando uma build correcta.
     let mut visitados = 0usize;
-    for &(w, h) in VIEWPORTS {
+    for &(degrau, w, h, col_w) in ESCADA {
         let viewport = Rect {
             x: 0.0,
             y: 0.0,
             w,
             h,
         };
+        let bandas = bandas(col_w);
         ph2d_editor_core::panel::with_registry(|reg| {
             visitados = reg.panels().len();
             for painel in reg.panels_mut() {
                 let id = painel.manifest.id;
                 let mut host = MockPanelHost::new();
                 painel.populate(host.store_mut());
-                for m in host.medindo_a_pintura_do_registo(painel, viewport) {
+                for m in host.medindo_a_pintura_do_registo_com_bandas(painel, viewport, bandas) {
                     tudo.push(Achado {
                         painel: id,
-                        viewport_w: w,
+                        degrau,
                         armado: false,
                         m,
                     });
@@ -474,10 +643,11 @@ fn varre() -> Vec<Achado> {
                     let mut host = MockPanelHost::new();
                     (arm.arma)(host.store_mut());
                     painel.populate(host.store_mut());
-                    for m in host.medindo_a_pintura_do_registo(painel, viewport) {
+                    for m in host.medindo_a_pintura_do_registo_com_bandas(painel, viewport, bandas)
+                    {
                         tudo.push(Achado {
                             painel: id,
-                            viewport_w: w,
+                            degrau,
                             armado: true,
                             m,
                         });
@@ -515,10 +685,11 @@ fn nenhum_rotulo_do_app_pinta_nada() {
         .filter(|a| a.m.nada())
         .map(|a| {
             format!(
-                "{}: {:?} não cabe em {:.1} px — nem a reticência",
+                "{}: {:?} não cabe em {:.1} px — nem a reticência em {}",
                 a.onde(),
                 a.m.texto,
-                a.m.largura
+                a.m.largura,
+                a.m.onde
             )
         })
         .collect();
@@ -544,19 +715,46 @@ fn nenhum_rotulo_do_app_pinta_nada() {
 #[test]
 fn nenhum_rotulo_pintaria_nada_na_proxima_lingua() {
     let mut ts = TextSystem::without_system_fonts();
+    // ⛔⛔⛔ **UM SIMBOLO DE UNIDADE NAO SE TRADUZ, logo tambem nao se deforma.**
+    //
+    // Medido em 2026-09-19 pela escada: o sufixo `s` (segundos) dentro de uma caixa de numero de
+    // `9,5 px` era acusado porque `[s]` nao cabe. ⚠️ Mas `s`, `px`, `deg` e `rad` sao
+    // simbolos **SI/tipograficos** escritos a mao em [`Unit::suffix`] — eles nunca passam
+    // pela tabela de idiomas, logo nao existe lingua em que cresçam. *Deformar um texto que a
+    // tabela nao produz e medir uma lingua que nao existe* — a mesma familia do `"3"` que a
+    // 1.ª redaccao deste gate acusou, um nivel acima (aquela cerca era «tem LETRAS» e esta e «e uma
+    // UNIDADE»).
+    //
+    // ⭐ **A lista e DERIVADA do enum** (`Unit::ALL`), nunca escrita aqui: uma unidade nova
+    // entra sozinha, e o piso de populacao apanha o dia em que o `ALL` deixar de casar.
+    let unidades: std::collections::BTreeSet<&'static str> = ph2d_editor_core::widget::Unit::ALL
+        .iter()
+        .map(|u| u.suffix().trim())
+        .filter(|s| !s.is_empty())
+        .collect();
+    assert!(
+        unidades.len() >= 8,
+        "o extractor leu {} simbolos de unidade (piso 8) — o `Unit::ALL` mudou de forma, e uma \
+         lista vazia poe este gate a acusar toda unidade do app",
+        unidades.len()
+    );
     let mut mudos = Vec::new();
     for a in varre() {
         if !a.m.texto.chars().any(char::is_alphabetic) {
+            continue;
+        }
+        if unidades.contains(a.m.texto.trim()) {
             continue;
         }
         let deformado = pseudo::deforma(&a.m.texto);
         let cabe = ts.prefix_width_weighted(&deformado, a.m.fonte, a.m.peso) <= a.m.largura;
         if !cabe && largura_da_reticencia(&mut ts, a.m.fonte, a.m.peso) > a.m.largura {
             mudos.push(format!(
-                "{}: {:?} vira {deformado:?} e some — a caixa tem {:.1} px",
+                "{}: {:?} vira {deformado:?} e some — a caixa tem {:.1} px em {}",
                 a.onde(),
                 a.m.texto,
-                a.m.largura
+                a.m.largura,
+                a.m.onde
             ));
         }
     }
@@ -573,6 +771,11 @@ fn nenhum_corte_novo_entra_sem_ser_nomeado() {
     let novos: Vec<String> = varre()
         .iter()
         .filter(|a| !a.m.coube() && !a.m.nada())
+        // ⛔ **O degrau ESTREITO tem catraca propria, por CONTAGEM**
+        // ([`a_divida_do_degrau_estreito_so_encolhe`]) — os `111` cortes dele partilham
+        // **um** mecanismo, e uma linha de prosa por cada um seria a lista que ninguem le. Aqui
+        // ficam os cortes na largura de FABRICA, que sao poucos e cada um com a causa dele.
+        .filter(|a| a.degrau != DEGRAU_ESTREITO)
         .filter(|a| !CORTADOS_HOJE.contains(&(a.painel, a.m.texto.as_str())))
         // ⭐ E a dívida que o PONTO CEGO escondia — por PAINEL e por TEXTO, como a irmã de cima:
         //    o mesmo rótulo pode caber num painel e não caber noutro.
@@ -638,11 +841,11 @@ fn nenhum_painel_e_medido_vazio_sem_o_declarar() {
     //    `5` sem ter enchido nada. *Um piso aplicado a uma soma de corridas é um piso dividido
     //    pelo número de corridas.* ⇒ contamos `(painel, viewport, armado)` e ficamos com o MELHOR
     //    quadro que aquele painel consegue mostrar.
-    let mut por_quadro: std::collections::BTreeMap<(&str, i32, bool), usize> =
+    let mut por_quadro: std::collections::BTreeMap<(&str, &str, bool), usize> =
         std::collections::BTreeMap::new();
     for a in &tudo {
         *por_quadro
-            .entry((a.painel, a.viewport_w as i32, a.armado))
+            .entry((a.painel, a.degrau, a.armado))
             .or_insert(0) += 1;
     }
     let mut por_painel: std::collections::BTreeMap<&str, usize> = paineis_do_registo()

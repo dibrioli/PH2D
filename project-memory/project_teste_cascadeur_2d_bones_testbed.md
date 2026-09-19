@@ -145,3 +145,45 @@ está de facto no chão. ⚠️ `pulo`/`mortal`/`soco` não marcam nenhuma e por
 ⚠️⚠️ **O PISO DE POPULAÇÃO foi metade do portão da colocação**: sem a marca há ZERO chaves marcadas,
 o laço varre nada e a distância lê 0,00 cm — verde sobre 50 cm de erro. Quem o apanhou foi a prova de
 mutação. Instrumento: `medir_aterrissagem.js` (o controlo de pés juntos corre na mesma passagem).
+
+## 18/09 (2.ª) — O GELO: deslize e tranco são as DUAS PONTAS DO MESMO PAU
+
+Report do dono, horas depois de aprovar a cura acima: *«desliza como no gelo. o que eu desejava era
+apenas que os trancos e pulos não acontecessem. **Pelo menos um pé deveria ficar fixo.** Não acha?
+Estude no cascadeur.»*
+
+⛔⛔ **Ele tem razão e o portão da rampa estava VERDE sobre o defeito** — ele media só o TRANCO.
+Escada: deslize **0,0** / tranco **44,1 cm**. Rampa: deslize **41,3** / tranco **4,8**. Pessoa real
+(46 apoios, 6 capturas, medida com o MESMO código): **5,2** (mediana) / **8,0**. ⇒ *uma régua que
+mede uma ponta do pau APROVA o defeito da outra ponta*, e as duas passam a viver no mesmo bloco
+(`medir_deslize.js`). Depois da cura: **8,9 / 3,6**.
+
+⭐ **O ORÁCULO respondeu as duas metades, e nenhuma por leitura de fonte:** (a) a documentação
+pública do Cascadeur receita, contra deslize de pé, pôr a interpolação em `Fixed` e **colar a mesma
+posição em todos os quadros** do trecho — a posição de um apoio é CONSTANTE, nunca interpolada; (b)
+na caminhada embutida dele (`Dracorex_walk_cycle.casc`, corrida por `rodar_no_cascadeur.sh pisada`)
+**41 dos 41 quadros têm pelo menos um pé pousado**, e o pé muda de sítio pelo AR (voo = 44 % do
+ciclo, sobe 0,114 do comprimento do passo). ⛔ Só **2 das 19 amostras** dele têm animação; as outras
+são rigs de 1 quadro.
+
+⚠️⚠️ **A sonda do oráculo mentiu DUAS vezes antes de dizer a verdade:** escolheu o eixo «para cima»
+como o de **maior extensão** e leu o COMPRIMENTO do dinossauro em vez da altura (caminhada deitada);
+e definiu o chão como o ponto mais baixo da cena, que ali é a **CAUDA** (respondeu «2 pontos tocam o
+chão» e os dois eram da cauda). ⭐ O discriminador certo do eixo vertical é o **CHÃO**: só ele tem os
+dados todos de um lado do zero.
+
+**A lei:** *um apoio NÃO ANDA — ele SAI DO CHÃO para mudar de sítio, e dois pés nunca o fazem ao
+mesmo tempo.* Um sítio só (`janelaDoPasso`/`noPasso`/`repartirPassos`), **dois consumidores**
+(`plantarPes` entre chaves · `fixarApoios` no pino) — ⛔ os dois são precisos: só no pino a cena volta
+a ter um quadro com os dois pés no ar; só no `plantarPes` a física do mortal reprova.
+
+⚠️ **A CERCA é geométrica e sai do RIG:** um contacto não pode andar mais que o próprio pé (17,1 cm)
+sem o pé sair do chão. ⛔⛔ Com a cerca na mediana da captura (5,2 cm) o `mortal` ganha dois saltinhos
+a 0,2 s de uma decolagem e **TRÊS portões da física reprovam** — e ao medir isso apanhou-se o que
+aquelas chaves fazem: o tornozelo FICA e a **PONTA é arrastada 14,7 cm** para trás (elas rodam o pé à
+volta do tornozelo). ⚠️ **Margem de 2,4 cm (14,7 de 17,1)**, escrita no portão.
+
+⚠️ O PISO da subida (`√2 · TOL_APOIO`) é o único número que não vem de fora: vem do **recurso desta
+casa** — abaixo de `TOL_APOIO` o motor ainda chama o pé de «apoiado» —, e `√2` é a altura em que o pé
+fica FORA da faixa de contacto durante metade do passo. Sem ele o pé anda 22 cm sem sair da faixa.
+Detalhe: `auditoria/ACHADOS.md` B29.

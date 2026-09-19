@@ -479,4 +479,35 @@
 /// contrário, que é o que recusa em voz alta.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — é a **décima primeira** vez.
-pub(crate) const PROJECT_SCHEMA: u32 = 150;
+/// # 150 -> 151 — o TWEEN (suplente #22, `line/components`)
+///
+/// **UM** componente registado novo: `ph2d::ecs::Tweens`. Mesmo mecanismo dos degraus `123`,
+/// `125`, `126`, `127`, `130`, `131`, `132` e `150`.
+///
+/// ⭐⭐⭐ **E ele existe apesar de a composição JÁ fazer um fade** — que é o contrário do que as
+/// duas medições anteriores desta linha devolveram, e é o que torna esta honesta. A sonda
+/// `mede_o_que_a_composicao_ja_da_ao_tween` correu o melhor concorrente que a casa tem (um
+/// `SequencePlayer` sobre um container autorado com uma curva de `Opacity`) e ele desvanece
+/// **exactamente**: `1,0000 · 0,7500 · 0,5000 · 0,2500 · 0,0000`.
+///
+/// ⇒ o buraco tem TRÊS nomes, e só o primeiro é conforto:
+/// * o **preço de autoria** (um container com nome, duas keys, um `Timer`, um `SequencePlayer` e
+///   um arranque, contra um componente e um dropdown);
+/// * ⭐⭐ a **CÓPIA** — uma ligação de timeline é AUTORADA e nomeia **uma** entidade (medido: o
+///   autorado desvanece a `0,5000` e uma cópia ao lado fica a `1,0000`), e esta linha acabou de
+///   shipar a fábrica (#11), os projécteis (#14) e as partículas (#18), que produzem exactamente
+///   objectos nascidos durante a corrida;
+/// * ⛔ a **COR**, que não tem canal nenhum em lado nenhum: o `PropKind` tem `13` canais e **ZERO**
+///   de cor, logo o *flash de dano* que o levantamento pede era **inexprimível**.
+///
+/// ⛔⛔ **Não há um segundo componente para o estado vivo, e a ausência é a decisão:** o tween é
+/// uma **função pura** do relógio do `Timers` (o tween `i` corre no timer `i`, a mesma lei do
+/// índice que liga o `Timers` ao `TimerRuntime`). Ele não guarda nada ⇒ **rebobinar já funciona**
+/// sem uma linha nova no `rewind_runtime` e sem uma entrada nova no censo dele. *O precedente é o
+/// emissor de partículas do degrau `147`, que mediu o mesmo para si próprio.*
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v150 não
+/// tem o componente, logo lê-se inteiro por este binário.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima segunda** vez.
+pub(crate) const PROJECT_SCHEMA: u32 = 151;

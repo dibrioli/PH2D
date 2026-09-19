@@ -1,0 +1,456 @@
+# A HISTÓRIA da TRIPLA de schema, até ao degrau `v119`
+
+> **Arquivada verbatim em 2026-09-19**, a partir de
+> [`shells/desktop/src/project_schema_tests.rs`](../../shells/desktop/src/project_schema_tests.rs).
+
+## ⚠️ Porque ela saiu de lá, e porque a fronteira é ESTA
+
+Aquele ficheiro é **um** gate — um `assert_eq!` sobre a tripla `PROJECT × FLIP × VEC_SCENE` — e o
+corpo dele é a NARRATIVA de cada degrau, um parágrafo por wave. Ele ganha um parágrafo por wave e
+**nunca perde um**, logo o tecto de LOC dele não mede autor nenhum: mede o **TAMANHO DA HISTÓRIA**.
+Em 2026-09-19 ele bateu `603` contra `600`, e ⛔ a cura é CORTE, nunca uma entrada nova no
+`FILE_OVERAGE_OK`.
+
+⭐ É a mesma operação que a **ESCADA** do `PROJECT_SCHEMA` já pagou QUATRO vezes (`v82`, `v83`,
+`v99`, `v112`), e a lei do `CLAUDE.md` §5.0 diz onde a fronteira fica: *abaixo dela estão rodadas
+fechadas; acima está o que alguém a contar o próximo degrau precisa de ver.*
+
+⇒ a fronteira é o degrau **`119`**, o último anterior ao `128` — o valor em que a `line/components`
+nasceu, e o primeiro parágrafo que o gate vivo ainda mostra.
+
+## ⛔⛔ E ela vai para `docs/`, não para um ficheiro irmão da shell
+
+A 1.ª tentativa criou um `project_schema_history_tests.rs` ao lado do gate, e a catraca
+`the_shell_only_shrinks` **reprovou**: `197 000` linhas contra o tecto de `196 990`. *Mover
+narrativa de um ficheiro da shell para outro ficheiro da shell não é um corte — é uma mudança de
+endereço*, e o cabeçalho novo ainda acrescentou linhas.
+
+⚠️ E o §5.0 já o escrevia: **a história vai verbatim para `docs/archive/`**. Aqui ela não é sequer
+código — são `419` linhas de comentário dentro de uma macro —, logo tirá-la da unidade de
+compilação não custa uma afirmação: o que se afirma continua a ser afirmado por **um**
+`assert_eq!`, no gate vivo.
+
+⚠️ **Nenhum parágrafo foi reescrito** — a acentuação irregular das waves antigas fica como estava:
+uma história editada deixa de ser o registo do que se decidiu no dia.
+
+---
+
+FLIP 8→9 + PROJECT 30→31: o `FlipStroke` ganhou `tip`+`dot_spacing` (o pincel
+pontilhado, 03 §8) — campos no MEIO do struct, layout posicional muda.
+⚠️ A `line/FLIP` escreveu `30` aqui; a `line/physics` reivindicou o MESMO 30 na
+mesma janela (âncora body-local do joint), então o valor certo é 31 — e ele não
+estava em nenhum dos dois lados. O número se CONTA, não se escolhe.
+PROJECT 31→32: `PhysicsJoint` ganhou `motor_mode`+`motor_target` (W-J6 —
+o servo, e o motor no Slider/Rope). Campos APENDADOS, o mesmo padrão do
+v30; `FLIP`/`VEC_SCENE` não se movem porque nada fora da física mudou.
+PROJECT 32→33: `PhysicsJoint` ganhou `break_enabled`+`break_force`+
+`break_torque` (W-J7 — o joint que rompe sob carga). Três campos
+apendados, mesmo padrão.
+PROJECT 33→34: `PhysicsJoint` ganhou `active`+`collide_connected`
+(W-J8 — a higiene do par). Dois campos apendados; o Swap A↔B da mesma
+wave não move schema nenhum, porque só reescreve campos existentes.
+FLIP 9→10 + PROJECT 34→35: a `FlipLayer` ganhou `depth` (a paralaxe multiplano,
+ADR-0114 §Decisão 3) — campo apendado, mas postcard é posicional ⇒ v9 lê errado.
+⚠️ A `line/FLIP` escreveu 32 aqui e a `line/physics` reivindicou o MESMO 32 (o
+servo do W-J6) — a 2ª colisão entre estas duas linhas, depois do 30 de 25/07.
+O valor certo se CONTA a partir do main do dia, e não está em nenhum dos lados.
+FLIP 10→11 + PROJECT 35→36: o `FlipStroke` ganhou `self_overlap` (auto-sobreposição
+com acúmulo, 03 §8) — campo no MEIO do struct (após `dot_spacing`), layout posicional
+muda ⇒ v10 lê os campos seguintes deslocados.
+FLIP 11→12 + PROJECT 36→37: o `FlipStroke` ganhou `airbrush` (falloff físico
+Beer-Lambert por dab esférico, 03 §8) — campo no MEIO do struct (após `self_overlap`),
+mesmo raciocínio posicional.
+PROJECT 37→38: o `ph2d_ecs::FxOp` ganhou `blend` (a LEI DE MISTURA por degrau da pilha
+de FX raster, plano 24 W6) — campo APENDADO ao componente `VecFilter`, e postcard é
+posicional ⇒ um save v37 leria `blend` além do fim de cada degrau. ⚠️ `FLIP` e
+`VEC_SCENE` NÃO se movem: a lei é do componente ECS, não da `VecScene`.
+PROJECT 38→39: `JointKind` ganhou a variante `Rod` (W-Rod). Apender variante não
+move índice; o bump é para o build ANTIGO recusar em vez de ler o discriminante 5
+como lixo bem-formado. FLIP/VEC_SCENE ficam.
+PROJECT 39→40: `JointKind` ganhou a variante `Wheel` (W-Wheel — o cubo que gira E
+cavalga uma suspensão). Mesmo raciocínio, um degrau adiante.
+PROJECT 40→41: o `PhysicsJoint` ganhou `wheel_a`/`wheel_b`/`ratio` (W-Pulley — a
+corda por duas roldanas). ⚠️ Aqui o bump NÃO é cortesia como nos dois acima: são
+CAMPOS apendados a um struct que o postcard codifica POSICIONALMENTE, então um
+blob v40 tem o comprimento errado e todo joint de todo projeto salvo decodificaria
+como outra coisa. A variante `Pulley` viaja junto e seria só cortesia sozinha.
+PROJECT 41→42: os MESMOS três campos SAÍRAM (W-Pulley W1). Uma roldana virou
+ENTIDADE (`PulleyWheel`), e um componente novo não custaria bump nenhum — o que
+custa é a REMOÇÃO: postcard é posicional, então um blob v41 tem três campos a
+mais e todo joint salvo leria os seguintes deslocados. Bump por remover, pelo
+mesmo motivo que se bumpa por apendar.
+PROJECT 42→43: a `PulleyWheel` ganhou `motor_speed` (W-Pulley W2 — a roldana
+dirigida, o guincho). Componente NOVO não custaria bump; APENDAR campo a um
+que já existe custa, porque postcard é posicional e um blob v42 tem um `f32`
+a menos — o load leria lixo bem-formado em vez de recusar.
+PROJECT 43→44: a `PulleyWheel` ganhou `break_enabled`+`break_force` (W2 —
+o eixo que cede). Dois campos apendados, mesmo raciocínio posicional.
+PROJECT 44→45: a `PulleyWheel` ganhou `body`+`local`+`mounted` (W-Pulley W3 — a
+roldana montada num corpo que se move, e com ela a vantagem mecânica). Três
+campos apendados, mesmo raciocínio posicional; o par `local`/`mounted` é o do
+W-AnchorFollow, para o eixo não deslizar pelo bloco quando o bloco se move.
+PROJECT 45→46: a `PulleyWheel` ganhou `radius_out` (W-Pulley W4 — o tambor
+DIFERENCIAL: uma roldana com dois raios, e a vantagem mecânica contínua que
+cai do quociente deles). Um campo apendado, mesmo raciocínio posicional.
+PROJECT 46→47: o `PhysicsJoint` ganhou `soft` (W-SoftWeld — a solda que cede;
+um bool apendado, e a dureza reusa a `stiffness`/`damping` da mola).
+PROJECT 47→48 + FLIP 12→13: o `Cap` ganhou a variante `Square` (a 3ª ponta do
+padrão — o traço estendido por meia-espessura e cortado reto). Apender variante
+NÃO move os índices de `Round`/`Flat`, então todo arquivo já salvo segue legível;
+o bump é pelo caminho INVERSO (um arquivo novo aberto por um leitor velho leria
+`Square` como lixo), o mesmo raciocínio do `JointKind::Weld`.
+⚠️ A `line/FLIP` escreveu **47** e a `line/physics` reivindicou o MESMO 47 na
+mesma janela — a TERCEIRA colisão entre estas duas linhas (30 em 25/07, 32/33/34
+em 27/07). E aqui ela quase passou MUDA: o `project.rs` não conflitou, porque os
+dois lados escreveram o mesmo literal e o git não tem opinião sobre o que o número
+SIGNIFICA — o bump da FLIP teria evaporado com a suíte verde. O valor se CONTA a
+partir do `main` do dia; ele não estava em nenhum dos dois lados.
+PROJECT 48→49 (vector, W6.2 — as guias e a régua): o `ProjectState` ganhou
+`guides`, a lista de linhas de referência que o artista arrasta da régua. Campo
+apendado ao `ProjectState`, que viaja DENTRO do `ProjectFile` — o mesmo raciocínio
+posicional do `flip`. ⚠️ O 49 é PROVISÓRIO: ele se CONTA contra o `main` do dia da
+integração, não se escolhe, e esta linha o escreveu contra o `main` de 2026-08-01.
+PROJECT 49→50 + VEC_SCENE 13→14 (vector, W6.4 — o ALINHAMENTO do traço): o
+`StrokeSpec` ganhou `align` (Centre/Inner/Outer). Campo APENDADO, e o bump é
+obrigatório nos DOIS sentidos — o postcard **não sinaliza ausência**, então um save
+v13 lido por v14 chega ao fim dos bytes no campo novo (`Hit the end of buffer`,
+MEDIDO numa sonda em 2026-08-01) e um v14 lido por v13 traz um byte a mais.
+⚠️ E isto corrigiu uma afirmação FALSA que vivia no `stroke_style.rs`: o
+doc-comment do `marker_start` dizia que *"o postcard é posicional, então um save
+anterior a este campo segue legível"* — as duas metades não se seguem. Posicional é
+justamente o que IMPEDE a leitura; o `#[serde(default)]` serve a formatos
+auto-descritivos, e quem protege o arquivo é este número.
+⚠️ O 50 é PROVISÓRIO pela mesma razão do 49 acima.
+PROJECT 50→51: o `ProjectFile` ganhou `tokens` — a tabela de COR autorada pelo artista
+(plano UI/UX W6, degrau 1). Campo APENDADO ao arquivo, e postcard é posicional ⇒ um
+save v50 chega ao fim dos bytes onde o campo novo começa. ⚠️ `FLIP` e `VEC_SCENE` NÃO
+se movem: a tabela é do ARQUIVO, não da cena — ela vive fora do `ProjectState` pelo
+mesmo motivo que `physics`/`motion`/`timeline` (um Ctrl+Z do canvas não rebobina a
+cara do editor). O 51 é PROVISÓRIO pela mesma razão dos dois acima.
+PROJECT 51→52 (3D, W8.3 — o DOCUMENTO da escultura): o `ProjectFile` ganhou
+`sculpt`, um blob que carrega a própria versão (`SCULPT_DOC_VERSION`) — o
+precedente EXATO do `timeline`. Campo apendado ao `ProjectFile`, e o postcard é
+posicional ⇒ o bump é obrigatório. ⚠️ Ele bumpa **UMA vez, agora**: daqui em
+diante o módulo 3D pode evoluir muitas waves sem tocar este número, porque a
+versão vive DENTRO do blob (é por isso que o `TimelineDoc` foi de v9 a v17 com
+este schema quieto). E o campo é `Vec<u8>` **incondicional**, sem `cfg`: um
+campo condicional daria DUAS formas de arquivo sob UM número de schema, e é o
+que torna um build sem a feature um **passa-adiante** em vez de um triturador.
+⚠️ O 52 é PROVISÓRIO pela mesma razão do 49/50/51 acima: ele se CONTA contra o
+`main` do dia da integração.
+PROJECT 52→53: o `ProjectFile` ganhou `baked_forms` (ADR-0150 W8.7 — os canais que
+uma malha doou a um sprite: `base`, `form` e o RIG). Campo apendado ao ARQUIVO, e
+postcard é posicional ⇒ o leitor v52 chega ao fim dos bytes. ⚠️ `FLIP`/`VEC_SCENE`
+não se movem: os canais são campo de sprite, e nem sequer entraram no blob `sculpt`
+— o parser dele é `cfg(feature = "sculpt3d")`, e um objeto assado tem de ser legível
+SEM o módulo 3D no build (é o que a *rota A* do `docs/3D/02.2` promete).
+PROJECT 53→54: `PhysicsJoint` ganhou `custom` (W-JointCustom — a configuração de
+eixos autorada de um `JointKind::Custom`). UM campo apendado, o mesmo padrão dos
+v32/v33/v34, e o postcard é posicional ⇒ um save v53 lido por v54 chega ao fim dos
+bytes no campo novo. ⚠️ A linha escreveu **51** aqui, contra o `main` em que ela
+nasceu (50); o `main` do dia da integração dizia **53** — a tabela de cor do vector
+e os dois degraus do 3D entraram no meio ⇒ o valor CONTADO é 54, e ele não estava
+em nenhum dos dois lados do conflito
+([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+PROJECT 54→55: `PlatformPlayer` ganhou `corner_reach` e
+`lift_momentum` (W10 — a correção de quina e a memória do referencial
+da plataforma). Dois campos apendados ao componente, e o postcard é
+posicional ⇒ um save v54 lido por v55 chega ao fim dos bytes neles.
+⚠️ A linha escreveu 52; o valor CONTADO é 55 — ela trouxe DOIS degraus
+(o `custom` do W-JointCustom e este), e o handoff dela contou UM só.
+PROJECT 55→56: o `ProjectState` ganhou `ui_states`, a tabela de estados de UI
+(plano UI/UX W7). Campo apendado ao estado que viaja DENTRO do `ProjectFile` — o
+mesmo raciocínio posicional do `guides` (v49), e o mesmo motivo de morar ali: o
+`ProjectState` é a unidade do UNDO, e gravar um estado tem de desfazer.
+⚠️ Nenhum gate VÊ um campo apendado — nenhuma constante se move —, então este
+degrau existe porque foi escrito à mão. Quem apende, bumpa, no MESMO commit.
+PROJECT 56→57: um token de cor autorado passa a valer uma cor **ou o nome de outro
+token** (o ALIAS, plano UI/UX W4b), então o `SavedToken` troca o campo `rgba: [u8; 4]`
+pelo enum `SavedValue`. A FORMA do registro mudou ⇒ o postcard, que é posicional, leria
+um arquivo v56 com o layout errado; o número transforma isso num erro de VERSÃO.
+⚠️ Um enum e não um `rgba` com um `alias` ao lado: os dois seriam mutuamente exclusivos
+e nada no formato o diria — a representação apaga o estado que ninguém especificou.
+PROJECT 57→58: a ESCALA (`spacing.*`, `radius.*`, `stroke.*`) passa a ser autorável
+(plano UI/UX W4c.1), e o valor autorado viaja na MESMA lista `tokens` — o `SavedValue`
+ganha a variante `Number(f32)`, e a CHAVE (`"spacing.md"`) é quem diz de que família a
+entrada é. ⚠️ **Uma lista só, e não um campo `num_tokens` ao lado**: o que o arquivo
+guarda é *"que tokens o artista autorou"*, e duas listas para isso seriam duas respostas
+à mesma pergunta que o import/export DTCG (W4c.5) teria de juntar de novo. Isso só é
+seguro porque as duas famílias são provavelmente disjuntas nas chaves — há gate a
+afirmá-lo (`no_key_is_claimed_by_both_families`).
+⚠️ Aqui o bump é o **caminho INVERSO**, e é a única razão: apender variante NÃO move
+`Literal`(0) nem `Alias`(1), então todo arquivo já salvo continua a ler — mas um build
+ANTIGO a ler um arquivo novo bateria num índice de variante que ele não tem, e o número
+transforma isso num erro de VERSÃO em vez de num postcard a falhar longe da causa. É o
+mesmo raciocínio do `JointKind::Weld` (v28) e do `Cap::Square` (v48).
+⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: a tabela é do ARQUIVO, não da cena.
+PROJECT 58→59: um token numérico passa a poder valer uma FÓRMULA (W4c.3), e o
+`SavedValue` ganha `Formula(String)` — variante APENDADA, então `Literal`(0)/`Alias`(1)/
+`Number`(2) não se movem e todo arquivo salvo continua a ler; o bump é pelo caminho
+INVERSO, o mesmo raciocínio do v58 acima e do `JointKind::Weld` (v28).
+⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: a tabela é do ARQUIVO, não da cena.
+PROJECT 59→60: os tokens de ESCALA chegam ao DOCUMENTO (W4c.4) — o `ph2d_ecs::BoundProp`
+ganha `StrokeWidth`(2), `LayoutGapMain`(3) e `LayoutGapCross`(4), então a espessura de um
+traço e o vão de um auto layout podem SEGUIR um token numérico. Variantes APENDADAS:
+`Fill`(0) e `StrokeColor`(1) não se movem e todo binding salvo continua a ler; o bump é
+pelo caminho INVERSO, o mesmo raciocínio do v58/v59 acima.
+⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: o binding é uma tabela LATERAL no ECS, e nenhum campo
+foi apendado a `Paint`, a `StrokeSpec` ou a `VecShape` — que é a decisão inteira do
+`vec_bindings` e a razão de o `VEC_SCENE_SCHEMA` ficar quieto numa feature de estilo.
+⚠️ O 60 é PROVISÓRIO pela mesma razão de todos os acima — ele se CONTA contra o `main`
+do dia da integração ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+PROJECT 60→61: o texto ganha uma CAIXA (W2a) — o `ph2d_ecs::VecTextParams` ganha
+`wrap_width: Option<f64>`, a largura a que ele reflui.
+⚠️ **Este bump é de outra CLASSE que os cinco acima, e é a diferença que importa:**
+v57..v60 apendaram VARIANTES (o índice 0 não se move ⇒ o arquivo velho continua a ler,
+e o número serve só ao caminho inverso). Aqui é um CAMPO num componente existente, e o
+blob é postcard POSICIONAL ⇒ **todo arquivo já salvo bate no fim dos bytes**. O bump
+não é cortesia com o build antigo: é o que transforma lixo bem-formado num erro.
+⚠️ Um componente NOVO teria custado zero (`VecStrokeProfile`/ADR-0148 é o precedente
+desta própria linha) e foi recusado com motivo — a largura é um número de layout ao
+lado do `align`/`tracking`, e um segundo componente partiria a porta `layout_of_params`
+em duas. O `project.rs` guarda o argumento inteiro.
+⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: o texto é um COMPONENTE do ECS, e a `VecScene` só
+guarda a geometria já cozida — nenhum campo foi apendado a `VecPath` nem a `VecShape`.
+⚠️ O 61 é PROVISÓRIO pela mesma razão de todos os acima.
+
+PROJECT 61→62: a MOLA como OPÇÃO (W7m) — o `ph2d_ui_state::HostStates` ganha
+`spring: Option<Spring>`, a alternativa ao par *duração + curva*.
+⚠️ **Mesma classe do v61** (campo apendado a struct serializado ⇒ postcard posicional ⇒
+quebra dura), e um `#[serde(default)]` **não salva**: o postcard não sinaliza ausência.
+⚠️ **O easing fica INTACTO** — `duration_s` e `easing` continuam onde estavam, e um
+hospedeiro sem mola percorre o mesmo caminho byte a byte. É por isso que a mola é uma
+`Option` e não uma substituição.
+⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: os estados de UI viajam no `ProjectFile` ao lado da
+cena, não dentro dela.
+⚠️ O 62 é PROVISÓRIO pela mesma razão de todos os acima.
+
+PROJECT 62→63: o `BakedFormDocument` ganhou `form_occ` (3D, W10.7 — a oclusão de
+forma de um objeto assado). UM campo apendado, postcard posicional ⇒ um save anterior
+lido por este chega ao fim dos bytes nele. ⚠️ Ela viaja em vez de ser assada no
+`base` porque um re-bake REUSA o `base`, e pré-multiplicá-la ali a comporia a cada
+gesto. ⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: o documento assado viaja no
+`ProjectFile` ao lado da cena, não dentro dela.
+⚠️ **A linha escreveu 56; o valor CONTADO é 63** — a `line/Vector` trouxe os SETE
+degraus v56..v62 na mesma janela de integração, e o número se CONTA, não se escolhe
+([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+PROJECT 63→64: `PlatformPlayer` ganhou `wall_slide_speed`,
+`wall_jump_height`, `wall_jump_push` e `wall_reach` (W13 — AS PAREDES:
+escorregar por uma e pular dela). Quatro campos apendados ao
+componente, e o postcard é posicional ⇒ um save v63 lido por v64 chega
+ao fim dos bytes no primeiro deles.
+PROJECT 64→65: `PlatformPlayer` ganhou `dash_speed`, `dash_time` e
+`dash_cooldown` (W14 — O ARRANQUE). Três campos apendados, mesmo
+raciocínio posicional.
+PROJECT 65→66: `PlatformPlayer` ganhou `crouch_height` e
+`crouch_speed` (W15 — O AGACHAR). Dois campos apendados; e note o que
+ESTE degrau nao traz — nenhuma forma de collider muda, porque agachar
+aqui e' uma perna mais CURTA e nao um corpo menor.
+PROJECT 66→67: campo de ARQUIVO novo, `player_tape` (W17 — a CORRIDA
+sobrevive ao arquivo). Nao e' um campo de componente: e' a gravacao do
+dedo do jogador, tique a tique, que o bake da W16 replaya. Fora do
+`ProjectState` pelo motivo de `motion`/`timeline`/`physics` — aquele e'
+a unidade do undo GLOBAL.
+PROJECT 67→68: `PlatformPlayer` ganhou `wall_grab_stamina` (W23 — O
+AGARRAR-SE). Um campo apendado; ⚠️ e o botao novo (`PlayerInput::grab`)
+NAO move o formato da fita — ela guarda os botoes num BITMASK, e um bit
+livre nao muda um byte do postcard.
+PROJECT 70→71: `PlatformPlayer` ganhou `swim_speed`,
+`swim_acceleration` e `swim_enter` (W-Swim — NADAR). Tres campos
+apendados num degrau so', porque sao UMA capacidade. ⚠️ A FITA nao se
+move: o eixo vertical do nado sai dos botoes que ja' viajam no bitmask.
+PROJECT 71→72: `PlatformPlayer` ganhou `corner_samples`,
+`corner_lookahead`, `wall_samples` e `wall_spread` (W-Probes2 — OS
+SENSORES FICAM EDITAVEIS). Quatro campos apendados num degrau so',
+porque sao UM assunto: a geometria das amostras dos sensores, que era
+`const` e passa a ser autorada. ⚠️ Os defaults sao as consts de sempre,
+entao todo player ja' salvo fica byte-identico.
+PROJECT 73→74: `PlatformPlayer` ganhou `air_jumps` + `air_jump_height`
+(W-MultiJump — O PULO MULTIPLO), no MEIO do struct. ⚠️ A contagem
+nasce em 0 (capacidade DESLIGADA), entao nenhum player ja' salvo muda
+de comportamento — o degrau e' so' o layout.
+PROJECT 74→75: `PlatformPlayer` ganhou `ledge_grab` + `ledge_speed`
+(W-Ledge — A BEIRADA), apendados ao FIM. ⚠️ O alcance nasce em 0
+(capacidade DESLIGADA), entao o degrau e' so' o layout — e o sensor
+novo nem sequer e' castado num player ja' salvo.
+⚠️ **PROVISÓRIO:** o valor se CONTA contra o `main` do dia da
+integração — três linhas já colidiram neste número por o terem
+escolhido, e a última vez o certo não estava em nenhum dos dois lados.
+PROJECT 78→79: `PlatformPlayer` ganhou `brake_scale` (W-Brake — FREAR
+NAO E' ACELERAR), apendado ao FIM. ⚠️ Nasce em `1`, onde a lei reduz
+LITERALMENTE — o degrau e' so' o layout, e nenhum player ja' salvo
+muda de comportamento.
+PROJECT 80→81: `PlatformPlayer` ganhou `platform_lift` (W-Leave — O
+QUE A PLATAFORMA DA AO PULO), apendado ao FIM. ⚠️ Nasce em `Full`,
+onde a lei devolve o `rel_up` VERBATIM — o degrau e' so' o layout, e
+nenhum player ja' salvo muda de comportamento.
+PROJECT 81→82: `PlatformPlayer` ganhou `walk_off_ledges` e
+`crouch_walk_off_ledges` (W-Brink — A TRAVA DE BEIRADA), apendados ao
+FIM. ⚠️ Nascem em `true`, onde a lei devolve o alvo VERBATIM e o
+sensor nem casta — o degrau e' so' o layout, e nenhum player ja' salvo
+muda de comportamento.
+PROJECT 82→83: `HostStates` ganhou `on_signal` — a tabela SINAL → PAPEL
+(`ph2d_ui_state::SignalBinding`), o item 4 do estudo dos conteineres. Um
+campo apendado ao mesmo struct que ja' recebeu a `spring` no v62, e pelo
+mesmo raciocinio posicional. ⚠️ E o que ele NAO e': uma tabela global
+`nome -> acoes`. Dentro do `HostStates` a forma apagada leva as ligacoes
+dela pelo `retain_hosts` que ja' corre por frame — sem uma linha a mais.
+PROJECT 83→84: `LayoutDir` ganhou `Grid` (variante APENDADA — os tres
+discriminantes velhos nao se movem) e `VecLayout` ganhou `columns`, o
+item 5 do estudo dos conteineres. ⚠️ Quem obriga o bump e' o CAMPO, nao a
+variante: o postcard e' posicional, entao um leitor velho leria os bytes
+do `columns` como o comeco do que vem a seguir. A contagem mora no
+struct e nao dentro da variante, para o numero sobreviver a uma troca de
+direcao — ir a `Row` e voltar devolve a grade intacta.
+PROJECT 84→85: o `ProjectFile` ganhou `sprite_pixels` (o documento do
+`ph2d-sprite-sheet`). Campo APENDADO ⇒ bump posicional de sempre. ⚠️ Nem
+o `FlipDoc` nem a `VecScene` mudam de forma aqui — os outros dois numeros
+ficam onde estao, e este degrau so' toca o primeiro. ⚠️ O blob carrega a
+PROPRIA versao (`SHEET_DOC_VERSION`), como o `TimelineDoc` e o `sculpt`:
+as regioes do hand-packed entram no MESMO documento sem outro bump.
+PROJECT 85→86: a FORMA do componente `SliceNine` mudou — perdeu o campo
+`stretch_value` e o `SliceDrawMode` perdeu a variante `Tiled`. ⚠️ Ele e'
+name-keyed na tabela de componentes, mas o BLOB dele e' posicional: um
+projeto de ontem tem a mesma chave com o layout velho, e sem o degrau o
+leitor novo le o `bool` do `fill_center` onde estavam os quatro bytes do
+`stretch_value`. ⚠️ E' UM bump para as tres mudancas do mesmo dia no mesmo
+componente — o que o numero separa e' o formato de ontem do de hoje.
+⚠️ Registar um componente NOVO nao pede degrau (aditivo numa tabela por
+nome); mudar a forma de uma chave que ja' existe, pede.
+PROJECT 86→87: o `VecFrame` perdeu o campo `clip` (virou MARCADOR) e o recorte
+mudou-se para o componente proprio `VecClipContent`, que qualquer forma FECHADA
+pode carregar. ⚠️ E' o caso INVERSO ao do v84: la' um campo apendado fazia o
+leitor velho ler bytes a mais, aqui um campo REMOVIDO faz o leitor novo ler o
+`bool` do clip como o comeco do componente seguinte — e nem o tamanho bate.
+⚠️ A `VecScene` NAO mudou de forma (o recorte e' fato de ENTIDADE, nao de
+caminho), entao os dois numeros ao lado ficam onde estavam.
+⚠️ Nasceu como 84→85 na `line/Vector`; RECONTADO para 86→87 na integracao de
+2026-08-22 porque a `line/Sprite` (85, 86) entrou antes.
+PROJECT 87→88: o `ObjectPose` (estados de UI) ganhou `filters` — a pilha de FX
+raster daquele estado. Irmao exacto do `width`: os dois sao canais que vivem em
+COMPONENTES e nao no `VecPath`, entao a pose tem de os carregar por si.
+⚠️ A `VecScene` de novo NAO mudou (um filtro e' fato de ENTIDADE), entao os dois
+numeros ao lado ficam. (Nasceu como 85→86 na linha; recontado na integracao.)
+PROJECT 88→89: o componente novo `VecBoolOp` — o verbo com que UMA forma dobra sobre
+o resultado das anteriores, dentro de uma booleana viva. ⚠️ Aqui quem obriga o bump
+NAO e' um campo, e' o REGISTRO (64 → 65): um componente fora do
+`register_ecs_components` e' descartado em silencio pelo snapshot, e o Ctrl+Z
+devolveria a receita achatada no `op` do grupo — sem nada em falta na tela a
+denunciar. ⚠️ A `VecScene` de novo NAO mudou (o verbo e' fato de ENTIDADE, nao de
+caminho), entao os dois numeros ao lado ficam onde estavam.
+⚠️ Nasceu como 86→87 na `line/Vector`; RECONTADO para 88→89 na integracao de
+2026-08-22 (a `line/Sprite` ocupou 85 e 86 antes).
+PROJECT 92→93: a `AnimationTag` ganhou `signal_on_finish`+`signal_on_loop` (§8.10 — os
+sinais da §11). Campos apendados, layout posicional muda. ⚠️ O `FlipDoc` e a `VecScene`
+NAO mudaram — a tag e' do `ph2d-ecs`, entao os dois numeros ao lado ficam onde estavam.
+PROJECT 93→94: a `AnimationTag` ganhou `per_frame_ms` (§8.12 — a duracao por-quadro
+que o importador de `.ase` passou a produzir). Campo apendado, layout posicional muda.
+PROJECT 94→95: o `ObjectPose` (estados de UI) ganhou DOIS campos — `bool_op` (o verbo
+proprio daquela forma) e `bool_group_op` (a operacao do grupo booleano acima dela).
+Postcard e' posicional: um leitor velho leria os bytes de `bool_op` como o comeco do
+`ObjectPose` seguinte. ⚠️ Nasceu como 89→90 na `line/Vector`; RECONTADO para 94→95 na
+integracao de 2026-08-23 (a `line/Sprite` ocupou 90..94 antes — o mesmo precedente do
+86→87 acima). A `VecScene` NAO mudou (verbo e grupo sao fatos de ENTIDADE).
+PROJECT 95→96: a IDENTIDADE do objeto (ADR-0164 F1). O `WorldSnapshot` passou de
+v1 a v2 (linha chaveada e ordenada por `StableId`; o `parent` deixou de ser indice)
+e o `ProjectFile` ganhou o `stable_id_counter`. ⚠️ O `FlipDoc` e a `VecScene` NAO
+mudaram — a identidade e' fato de ENTIDADE, entao os dois numeros ao lado ficam
+onde estavam. ⭐ E' o PRIMEIRO degrau que nao recusa o passado: um v95 migra
+(`crate::project_migrate`), e a auditoria de 21/08 registava zero migracoes no repo.
+
+PROJECT 96→97: o `ProjectFile` ganhou `input_map` apendado ao fim -- as accoes
+nomeadas do projecto. Campo apendado, layout posicional muda. A `VecScene` e o `FlipDoc`
+NAO mudaram (o mapa e' do PROJECTO, nao de uma entidade nem de um quadro).
+⚠️⚠️ Este degrau nasceu `96` na `line/Vector` e foi RECONTADO para `97` na integracao
+de 2026-08-24: as DUAS linhas da jornada apendaram um campo e as duas escreveram o
+mesmo literal `96`. O valor certo nao estava em nenhum dos dois lados -- CONTA-SE.
+⛔ E a ORDEM dos dois campos e' o formato: `stable_id_counter` antes, `input_map`
+depois. Troca-los nao da' erro; da' dois campos a ler os bytes um do outro.
+PROJECT 97→98 (plano 32 W11c): o `ObjectPose` do `ph2d-ui-state` ganhou `morph_shape`
+-- *em que forma o conjunto de Morph States esta' nesta pose*. As poses viajam DENTRO do
+`ProjectFile` (o `StateSets`), entao um campo novo nelas move o esquema do projecto.
+A `VecScene` e o `FlipDoc` NAO mudaram (a forma e' estado de um COMPONENTE, e o
+`VecMorphMachine` viaja como blob chaveado por nome).
+⛔ SEM degrau de migracao, por decisao do Enio (26/08: *"nao ha' projetos salvos"*). Um
+v97 e' RECUSADO em voz alta -- que e' o ponto do bump: postcard e' posicional, entao sem
+ele o ficheiro antigo seria lido ERRADO em silencio.
+
+PROJECT 98→99: o CORTE DA SPRITE (ADR-0164 F1 passo 6). ⚠️ **A `VecScene` e o `FlipDoc`
+nao mudaram, e o `ProjectFile` tambem nao** — os dois numeros ao lado ficam onde
+estavam, e a forma do ficheiro e' a mesma. O que mudou foram os BYTES dentro do
+`ComponentBlob` da `Sprite` (20 campos -> 13). ⛔ Esta tripla NAO podia ver esse degrau:
+ela mede a forma dos documentos, e o blob e' um `Vec<u8>` opaco para ela. O gate que o
+ve' e' `crate::project_migrate_sprite`.
+PROJECT 99→100 (ADR-0164 F5.3): o `ObjectInstance` ganhou os ORFAOS -- um segundo campo
+(`orphans: BTreeMap<OverrideKey, Vec<u8>>`) dentro de um componente REGISTADO. ⚠️ **A
+`VecScene`, o `FlipDoc` e o `ProjectFile` NAO mudaram** (os dois numeros ao lado ficam
+onde estavam): o que mudou foram os BYTES dentro de um `ComponentBlob`, que para esta
+tripla e' um `Vec<u8>` opaco. E' o mesmo cego do degrau 98→99, e a razao de ele estar
+escrito aqui e' que a proxima pessoa vai olhar para esta tripla primeiro.
+⛔ SEM degrau de migracao, por decisao do Enio (26/08).
+PROJECT 100→101 + VEC_SCENE 14→15: o TEXTURE PATTERN (plano 33 W3). O `Paint` ganhou a 5ª
+variante (`Pattern`), entao a forma da `VecScene` MUDOU -- e desta vez a tripla VE^ o
+degrau, ao contrario do 99 e do 100, que vivia dentro de um `ComponentBlob` opaco.
+PROJECT 101→102 + VEC_SCENE 15→16: o PADRAO NO TRACO (plano 35, wave A). O `StrokeSpec`
+trocou `color: Rgba8` por `paint: StrokePaint` -- um campo que MUDOU DE TIPO no meio da
+estrutura, e por isso o degrau mais destrutivo desta escada: os bytes de um v101 nao
+desaparecem, passam a significar outra coisa. ⛔ *Ler torto sem erro nenhum.*
+PROJECT 102→103 + VEC_SCENE 16→17: o PINCEL DE CONTORNO (plano 36, W1). O `StrokePaint`
+ganhou `Brush(Box<BrushStroke>)` -- variante APENDADA, do lado aditivo da regra, e
+exactamente o degrau barato que a nota do 102 previu ao desenhar a tinta como enum.
+PROJECT 106→107: o PREENCHIMENTO do balde (plano 40). ⚠️ A tripla NAO ve^ este degrau —
+um componente viaja num `ComponentBlob` opaco, chaveado por nome (o caso do 99 e do 100).
+PROJECT 107→108: as ANCORAS do preenchimento (plano 40 §11). O `VecBucketFill` ganhou um
+campo APENDADO, e a tripla continua a nao ver -- pela mesma razao do 107.
+PROJECT 108→109: a JUNTA entre as copias de uma repeticao (pedido do Enio, 2026-08-30).
+A `ph2d_field::Unary::Array` e a `::Radial` ganharam um `Joint { chamfer, fillet }`.
+⚠️ **Os DOIS numeros ao lado ficam onde estavam, e este e' o mesmo cego do 99 e do 100**:
+a pilha de modificadores viaja dentro do `ComponentBlob` do `ph2d_field_ecs::FieldMods`,
+que para esta tripla e' um `Vec<u8>` opaco. Quem defende os bytes de la' e' o
+`ph2d_field::tests::the_shape_of_a_saved_modifier_stack_is_pinned` -- construido no mesmo
+commit, porque os degraus v11/v12/v13 do `FIELD_DOC_VERSION` passaram os goldens a VERDE.
+⛔ SEM degrau de migracao, por decisao do Enio (26/08).
+PROJECT 109→110: o CHANFRO em toda forma com aresta (pedido do Enio, 2026-08-30). As 21
+primitivas com `round` ganharam um `chamfer`. ⚠️ Mesmo cego dos degraus 99/100/104: a
+`Primitive` viaja dentro do `ComponentBlob` do `FieldNode`, que para esta tripla e' opaco.
+Quem a defende sao os dois goldens de forma da `ph2d-field` (151→159 e 86→90).
+⛔ SEM degrau de migracao, por decisao do Enio (26/08).
+PROJECT 110→111: o EIXO de cada modificador com direccao (pedido do Enio, 2026-08-31).
+A `Unary::Array`, `::Taper`, `::Radial`, `::Twist` e `::Bend` ganharam um `axis: Axis`.
+⚠️ Mesmo cego dos degraus 99/100/104/105: a pilha viaja dentro do `ComponentBlob` do
+`FieldMods`, que para esta tripla e' opaco. Quem a defende e' o
+`the_shape_of_a_saved_modifier_stack_is_pinned` da `ph2d-field` (77→82, um byte por
+modificador). ⛔ SEM degrau de migracao, por decisao do Enio (26/08).
+PROJECT 114→115: o PLANO do espelho (report do Enio, 2026-09-04). As tres variantes de
+espelho da `Unary` ganharam um `offset: f32`, e o `FIELD_DOC_VERSION` subiu 16→17.
+⚠️ Mesmo cego dos degraus 99/100/104/105/111: a pilha viaja dentro do `ComponentBlob` do
+`FieldMods`, opaco para esta tripla. Quem a defende e' o
+`the_shape_of_a_saved_modifier_stack_is_pinned` (82→94, quatro bytes por espelho).
+⛔⛔ E este NAO e' aditivo: as tres eram variantes de UNIDADE e passaram a ter carga.
+⛔ SEM degrau de migracao, por decisao do Enio (26/08).
+PROJECT 111→112: a TAXONOMIA da biblioteca de assets (plano 07, A3). O `ProjectFile`
+ganhou `catalogs: Vec<u8>` -- blob auto-versionado, campo APENDADO, do lado aditivo da
+regra. O `FlipDoc` e a `VecScene` nao se mexeram, entao so' o 1.º numero sobe.
+PROJECT 112→113: a BIBLIOTECA muda-se para dentro do undo (Enio, 30/08). A taxonomia
+SAIU do `ProjectFile` e entrou no `ProjectState`, com as lapides ao lado. ⛔ NAO e'
+aditivo: um campo saiu do meio de uma estrutura e outro entrou no meio da outra, entao
+os bytes de um v104 passam a significar outra coisa -- postcard le' torto e cala-se.
+PROJECT 113→114: a UNIDADE DE ANGULO (`line/UIUX`). As `SavedSettings` ganharam
+`display_angle: u8` -- campo APENDADO ao fim ⇒ quebra dura, o mecanismo do degrau v80.
+⚠️ **Esta tripla NAO ve^ o degrau** (os dois numeros ao lado ficam onde estavam): ela
+mede a forma do `FlipDoc` e da `VecScene`, e o que mudou foi o `ProjectFile`. E' o mesmo
+cego dos degraus 99 e 100, e esta escrito aqui porque a proxima pessoa olha para a
+tripla primeiro.
+PROJECT 114→115 + VEC_SCENE 18→19: o `VecPath` ganhou `opacity` + `blend` (a opacidade
+e o modo de mistura do OBJECTO, estudo 42 item 2). Dois campos apendados ⇒ layout
+posicional muda. ⭐ Este é um dos degraus que a tripla de facto VÊ.
+PROJECT 115→116 + VEC_SCENE 19→20: o `VecPath` ganhou `paints` — a PILHA DE APARENCIA
+(N preenchimentos e N contornos, estudo 42 item 4). Um `Vec` apendado ⇒ layout
+posicional muda, e a tripla VE^ o degrau (mudou a forma da `VecScene`). ⭐ Vazio custa
+1 byte de comprimento zero, entao uma cena que nunca lhe toque desenha igual.
+PROJECT 118→119: o `ObjectInstance.orphans` passou a guardar o NOME da peca que
+morreu ao lado dos bytes (`OrphanOverride`, F5 criterio 3) -- campo novo DENTRO do
+valor de um mapa ⇒ o postcard desalinha a cadeia inteira e le^ torto sem avisar.
+⚠️ **A tripla NAO ve^ este degrau** (os dois numeros ao lado ficam onde estavam): os
+bytes mudaram dentro de um `ComponentBlob`, que para ela e' opaco. E' a QUARTA vez
+(99, 100, 114 e este) -- ver a escada.

@@ -5537,6 +5537,7 @@ dependencies = [
  "ph2d-stroke-width",
  "ph2d-symmetry",
  "ph2d-tags",
+ "ph2d-tween",
  "ph2d-warp-style",
  "postcard",
  "serde",

@@ -132,6 +132,25 @@ const FACTORY_FIELDS: &[FieldDesc] = &[
     f(12, "component.field.factory_fields.12", K::Seed),
 ];
 
+/// **Os campos de UM tween** (suplente #22) — como o `Timers`, o componente é uma LISTA e isto
+/// descreve UM elemento dela.
+///
+/// ⛔ **Não há campo de DURAÇÃO**, e é a mesma decisão medida que a fábrica declara logo abaixo: o
+/// tempo vem do `Timers`, que o `requires` puxa quando o artista acrescenta o tween. Um `duration`
+/// aqui seria um **segundo relógio** para a mesma lei.
+///
+/// ⚠️ **`From` e `To` são `Vec4` porque a ARIDADE é do canal** (`ph2d_tween::Canal::aridade`): o
+/// painel pinta um campo ou quatro, e o descritor descreve o que o modelo guarda. ⛔ Dois pares de
+/// campos — um escalar e um de cor — seriam duas respostas a *«de onde para onde?»*.
+const TWEEN_FIELDS: &[FieldDesc] = &[
+    f(1, "Channel", K::Enum),
+    f(2, "From", K::Vec4),
+    f(3, "To", K::Vec4),
+    f(4, "Curve", K::Enum),
+    f(5, "Ease", K::Enum),
+    f(6, "When Done", K::Enum),
+];
+
 /// ⭐⭐⭐ **Uma REGRA da vigia** — como o `Timers`, o componente é uma LISTA e isto descreve a LINHA.
 ///
 /// ⚠️ **`Counter` é o NOME do contador e não o deste objecto** — a vigia pode viver num objecto
@@ -277,5 +296,23 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         TIMER_FIELDS,
+    ),
+    // ⚠️ **DEPOIS do `Timers`, e isso NÃO é estilo:** a lista é procurada por busca binária, e fora
+    // de ordem o descritor devolve `None` para um tipo que existe — *um descritor que não é
+    // encontrado lê-se exactamente como um que não existe*.
+    //
+    // ⚠️ **`O::ANY`, pela MESMA razão do `Timers`:** um tween de POSE serve a um objecto vazio que
+    // seja o pai de um grupo, e restringi-lo a `DRAWABLE` tiraria isso a quem o usa como pivô.
+    //
+    // ⭐ **`requires` os `Timers`**, como o `SequencePlayer` e a `Factory`: sem relógio ele não é
+    // meia feature, é uma feature **INERTE** — e a casa tem como o dizer na paleta em vez de deixar
+    // o artista descobrir.
+    D::authored_requiring(
+        "ph2d::ecs::Tweens",
+        "Tween",
+        C::Logic,
+        O::ANY,
+        TWEEN_FIELDS,
+        &["ph2d::ecs::Timers"],
     ),
 ];

@@ -120,6 +120,8 @@ pub mod timer;
 pub mod transform;
 pub mod transform_inverse;
 pub mod transform_versioned;
+/// ⭐ **O TWEEN** (suplente #22) — «esta propriedade vai de A a B», no relógio do `Timer`.
+pub mod tween;
 
 pub use crate::transform_inverse::{
     parent_world_transform, parent_world_transform_into, parent_world_transform_with,
@@ -228,6 +230,7 @@ pub use transform::{
 pub use transform_versioned::{
     TransformV1, TransformVersioned, load_transform, migrate_v1_to_v2, save_transform,
 };
+pub use tween::{Escrita, TWEENS_MAX, Tweens};
 pub use vec_path_ref::VecPathRef;
 pub use vec_shape::{MAX_SHAPE_VALUES, VecShape, VecTextParams};
 

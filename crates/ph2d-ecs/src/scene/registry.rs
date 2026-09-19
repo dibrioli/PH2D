@@ -583,6 +583,15 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // isso que faz o replay reproduzir o mesmo instante de disparo -- e e por isso que ele passa
     // pelo ledger do `preview_drive` em vez de virar um passo de undo por quadro.
     reg.register_default::<crate::Timers>("ph2d::ecs::Timers");
+    // ⭐⭐⭐ **O TWEEN** (suplente #22, 2026-09-19) — «esta propriedade vai de A a B». Ele é CONFIG
+    // inteira; sem o registo o artista autora o canal, os dois extremos e a curva, grava, reabre, e
+    // o objecto volta PARADO: nada some da tela e nada dá erro.
+    //
+    // ⛔⛔ **Não há runtime para registar, e a ausência é a decisão desta wave:** o tween é uma
+    // FUNÇÃO PURA do relógio do `Timers`, logo não guarda nada — e é por isso que rebobinar já
+    // funciona sem uma linha nova no `rewind_runtime`. *O precedente é o emissor de partículas
+    // (#18), que mediu o mesmo para si próprio.*
+    reg.register_default::<crate::Tweens>("ph2d::ecs::Tweens");
     // ⭐⭐⭐ **A tabela nome → acção** (TOP-20 #5) — irmã do `Timers` na família LÓGICA, e o
     // consumidor que faltava aos sinais. ⚠️ Ela é CONFIG inteira: o que ela guarda é o que o
     // artista escreveu, e o efeito de uma acção vive no componente que ela toca.

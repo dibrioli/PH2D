@@ -3961,3 +3961,111 @@ do arnês, que é o controlo sobre o próprio filtro.
   em corridas de carga muito diferente. *As razões entre linhas da MESMA corrida
   valem; os absolutos de grandeza pequena pedem máquina calma, e é por isso que
   a linha «sem pente» é a única deste handoff com a discordância nomeada.*
+
+---
+
+## §92 — ⭐⭐⭐⭐ A GEODÉSICA: o carimbo deixa de atravessar uma parede fina — e a MARCHA que a wave construiu foi RECUSADA
+
+> **Ordem do dono:** «1» (entre a geodésica e o carimbo de deslocamento vectorial),
+> depois **«construa»**. Commits `c57e30d34` · `b98be1984` · `bfcf98577`.
+>
+> ⭐ **A história inteira — figuras, tabelas, as duas recusas e as oito armadilhas —
+> vive em [`docs/3D/geodesica/README.md`](../geodesica/README.md).** Esta secção é o
+> que o INTEGRADOR precisa: o que mudou, o que pode partir na fusão, e a prova.
+
+### §92.1 — O que mudou no produto (uma constante e um `retain`)
+
+A máscara de alcance do carimbo ([`dab_alcance.rs`](../../../crates/ph2d-sculpt3d/src/dab_alcance.rs))
+ganha **`RAZAO_MAXIMA = 3,5`**: um vértice fica na pegada se a distância **pela
+superfície** não passar `3,5 ×` a distância **pelo ar**. O `ALCANCE_TECTO`
+continua em `2,00` — ⛔ **ele não saiu, ganhou companhia.**
+
+| | antes | agora |
+|---|---|---|
+| em frente do pincel, onde a peça deslizava | `99 %` do que a frente andou | **`0 %`** |
+| do carimbo inteiro, o que cai nas costas | `42,6 %` | **`16,7 %`** |
+| peso do carimbo que a máscara corta | `9,86 %` | **`34,82 %`** |
+| ⭐ CONTROLO — vértices da FRENTE que a cura tira | — | **`0`** |
+| ⭐ preço | — | **zero** (é o mesmo passeio por arestas de sempre) |
+
+⭐⭐⭐ **A grandeza que separa é a RAZÃO e nunca uma distância:** as costas de uma
+barbatana leem `11,0` e a orla de uma cratera aprovada lê `~1,55` — **uma ordem de
+grandeza** à MESMA distância absoluta. É por isso que baixar o `ALCANCE_TECTO` de
+`2,00` para `1,50` foi **construído, medido e RECUSADO**: ele come a ORLA da pegada
+(onde a queda já é ~zero) antes de chegar ao defeito, e a orla **alimenta o ajuste
+de plano** do `Scene Project` — placar de oráculo `13 → 5`.
+
+### §92.2 — ⛔⛔⛔⛔ E a MARCHA geodésica foi construída, medida e RECUSADA
+
+A wave portou Kimmel–Sethian para a `ph2d-mesh` ([`geodesica.rs`](../../../crates/ph2d-mesh/src/geodesica.rs)),
+com oráculo **exacto** (numa chapa a geodésica **é** a euclidiana) e razão
+`medido/exacto` de `1,05`–`1,09` contra `1,41` do passeio por arestas. **E não se
+paga:** `0,00 pp` de diferença em toda peça aprovada, corta **menos** do defeito
+(`31,9 %` contra `38,9 %`) e custa `7,49 ms` de um tecto de `8` a `523 k` vértices.
+
+⇒ ela **FICA atrás da feature `test-support`**, porque é o **instrumento** da
+recusa (a sonda `a_razao_precisa_da_marcha_ou_o_passeio_chega` é quem a corre).
+⛔ **Para quem funde: ela NÃO tem consumidor de produto, e o `cfg` é o que impede
+que apareça um por distracção.**
+
+### §92.3 — A cena `=50`, e a fixtura que estava fora da banda
+
+`PH2D_SCULPT3D_SMOKE=50` abre uma **barbatana** (`2,0` de lado, `0,06` de
+espessura) com roteiro de 6 passos e o CONTROLO no passo (5).
+
+⛔⛔⛔ **O gate dela ficou VERDE com a lei apagada.** A lei antiga corta quando
+`2d + t > 2,00 × R` e a nova quando `(2d + t)/t > 3,5` ⇒ **só há banda nova entre
+`d = 0,10` e `d = 0,35`**, e tanto o gate como o roteiro carimbavam a `d = 0,50`,
+onde a lei ANTIGA já cortava. Curado: o carimbo mudou-se para `d = 0,20`, o gate
+ganhou a metade que **afirma que a fixtura está dentro da banda**, e o roteiro
+mudou com ele. ⚠️ *Ele mandava o dono carimbar exactamente onde não havia nada de
+novo para ver.*
+
+### §92.4 — ⚠️ O que a fusão pode partir
+
+| grandeza | valor | nota |
+|---|---|---|
+| `PROJECT_SCHEMA` · `FIELD_DOC_VERSION` · `VEC_SCENE_SCHEMA` · `FLIP_SCHEMA` | **intactos** | zero contador partilhado |
+| registos do `ph2d-ecs` e os dois espelhos | **intactos** | |
+| contratos congelados (§6) | **intactos** | zero ADR |
+| `scenes::CENAS` (`ph2d-app-sculpt3d`) | `49` → **`50`** | ⚠️ **é local da família**, não soma entre linhas; mas **conte-o no `match`** se outra linha também acrescentar cena |
+| `ph2d-mesh` | `mod geodesica` **novo**, atrás de `test-support` | ponto de extensão aditivo |
+| `ph2d-pose::pesos::atravessa` | `pub(crate)` → **`pub`** | só para o gate de concordância |
+
+⭐ **A duplicação com a `ph2d-pose` é deliberada e tem gate:** a `ph2d_mesh::atravessa`
+não chama a `ph2d_pose::atravessa` porque aquela crate declara **zero dependências**
+(ela não sabe o que é uma `Mesh`) — o precedente do `vetor.rs` da `ph2d-boundary`.
+O que a torna honesta é `as_duas_marchas_concordam`: `20 000` triângulos mais `7`
+degenerados, **igualdade AO BIT**.
+
+### §92.5 — A prova
+
+* `scripts/nextest-impacted.sh` — **16 471 / 16 471** (`load 10,7`; zero flakes nesta corrida)
+* `scripts/censos-da-arvore-combinada.sh` — **90 / 90**, controlo do filtro `8 de 8`
+* `cargo clippy --all-targets -- -D warnings` — **zero**
+* `bash docs/3D/geodesica/mutacao_2026-09-19.sh` — **15 de 15 sangram**
+* as **10** vassouras clean-room sobre a família: **29 achados, IDÊNTICOS ao
+  merge-base** (`3090cac3f`) ficheiro a ficheiro ⇒ **zero novos**, e **nenhum dos
+  acusados é desta wave**. ⚠️ A reconciliação e a triagem continuam a ser do **R**.
+
+### §92.6 — ⏳ O que fica ABERTO, com o mecanismo
+
+**`17 %` do carimbo ainda cai nas costas**, na orla junto à beira: aqueles pontos
+estão a `1,1`–`2,0 × R` **pela superfície** — um pincel honesto de alcance `R`
+cortá-los-ia — e a razão deles é baixa (`~1,4`) porque estão deslocados **DE LADO**,
+logo o ar também é grande.
+
+⭐ **A causa de não se poder apertar está diagnosticada e é a da §92.1:** a máscara
+trima a **PEGADA**, e a pegada alimenta o **AJUSTE DE PLANO**. ⇒ a cura é separar as
+duas perguntas — *quem se MOVE* (a máscara) de *qual é a superfície local* (o
+ajuste) —, que é **wave própria** e toca em como a pegada flui para a normal de área.
+
+⚠️ **Promoção pedida à lista de flakes do §5.0 do `CLAUDE.md`:**
+`the_recommendation_does_not_walk_the_whole_mesh` (`ph2d-sculpt3d`) — reprovou
+numa corrida de `16 468` a `load 41` e passa **3 de 3 sozinho a `load 59`**, que
+é carga MAIOR do que aquela em que reprovou ⇒ *o discriminador é o FAN-OUT, não o
+relógio*; zero linhas do diff naquele caminho.
+⚠️ **A corrida de fecho desta wave saiu `16 471 / 16 471` verde**, logo a
+assinatura que o §5.0 pede (*o conjunto de reprovadas muda entre corridas do
+mesmo binário*) está completa: ela reprovou numa e não na seguinte, sem uma linha
+de código no meio.

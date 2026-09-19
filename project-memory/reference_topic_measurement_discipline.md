@@ -1114,3 +1114,27 @@ régua (lá, com a metade que aperta: numa grade perfeita o balde do MEIO tem de
 qualquer malha com um terço a 45° passaria). E quando a coluna saturar, a wave seguinte não é
 afiná-la — é achar a grandeza que ainda discrimina.
 Ver [[reference_topic_mutation_proofs]] e [[reference_topic_gate_discipline]].
+
+## ⛔⛔⛔ Uma CENA que demonstra uma cura tem de carimbar no regime que SÓ a cura nova alcança (2026-09-19)
+A `line/sculpt3d` shipou a lei da RAZÃO (`superfície/ar > 3,5`) que impede o carimbo de atravessar
+uma parede fina, e a cena de smoke dela mandava o dono carimbar *«a meio caminho entre o centro e a
+beira»*. Medido: a lei ANTIGA (um tecto absoluto `2,00 × R`) **já cortava ali** — a cena
+demonstrava uma cura que existia antes da wave, e o gate que a defendia ficava **VERDE com a
+constante nova apagada**. **Why:** duas leis que curam o mesmo defeito sobrepõem-se num intervalo,
+e uma fixtura escolhida por conveniência cai quase sempre na sobreposição; ali a régua mede o
+produto certo pela razão errada, e a mutação é a única testemunha. **How to apply:** antes de
+escrever a cena, **varra o parâmetro livre e imprima, por posição, qual das leis corta** — a banda
+que só a nova alcança é onde o roteiro e o gate moram; depois escreva no gate a asserção de que a
+fixtura está **dentro** dela, senão ela volta a derivar em silêncio na wave seguinte.
+Ver [[reference_topic_gate_discipline]] e [[reference_topic_fixture_discipline]].
+
+## ⛔⛔ Um censo TEXTUAL sobre um despacho tem de casar a forma que DECIDE, nunca os símbolos que ela nomeia (2026-09-19)
+O mesmo dia, o mesmo gate: a metade que provava *«a cena usa a peça certa»* lia o ficheiro do
+selector por `include_str!` e procurava os dois **nomes** (`parede_fina_scene()` e `barbatana()`).
+A mutação que prefixa `false &&` ao braço deixa **os dois presentes** — o despacho morto e o gate
+verde. **Why:** um `include_str!` é o tecto honesto quando a rota não é injectável, mas a agulha
+decide o que ele afirma: nomes provam **existência**, e o que se quer provar é **alcançabilidade**.
+**How to apply:** faça a agulha ser o **braço inteiro**, com a indentação e as chavetas, para que
+qualquer guarda acrescentada à frente a quebre; e escreva a mutação `false &&` na prova, porque é
+ela — e não «apagar a linha» — que separa as duas afirmações.
+Ver [[reference_topic_mutation_proofs]].

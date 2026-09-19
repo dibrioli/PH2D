@@ -309,3 +309,90 @@ duplo integrador; o afundamento é a SAÍDA, não uma entrada.
 aplicado à RAIZ e não ao PESO · a travagem medida da POSE que já desce · a altura lida do quadro que
 a lei acabara de baixar) e **três linhas que nenhuma mutação matava**, duas delas apagadas com a
 medição escrita. Detalhe: `ACHADOS` B35.
+
+
+## 19/09 (5.ª) — «um salto anómalo nos keys 49 e 50»: eu tinha o número e shipei-o como PREÇO
+
+Report do dono sobre a opção do peso no modo *forçado*. O perfil era um **PULSO QUADRADO** (`q48 0,0
+· q49 −54,5 · q50 −53,1 · q51 0,0`): dois teletransportes por passo, com o corpo a andar 55,9 cm num
+quadro onde ele anda 1,4.
+
+⛔⛔⛔ **A suíte imprimia esse número em toda corrida, como linha MEDIDA, e eu escrevi-o como o PREÇO
+da opção.** *Documentar um defeito numa linha medida não o transforma num preço aceitável* — a
+distinção que eu não fiz é entre ANDAR 54 cm e SALTAR 54 cm entre dois quadros.
+
+⛔⛔ **E a causa foram as DUAS linhas que eu tinha apagado por «inertes»**: o apoio a saltar o pé que
+está a dar o passo (sem ele a base salta de larga para estreita a meio da janela) e a rampa. Eu medi
+a SOMA e o PIOR do desequilíbrio, iguais ao cêntimo — *uma soma e um extremo não veem um degrau no
+meio*.
+
+⭐⭐⭐ **A cura não tem um número escolhido: o corpo nunca anda mais depressa do que ele já anda nesta
+animação** (a velocidade própria máxima da raiz, 8,2 cm/quadro), limitada em duas passagens.
+⚠️ E ela mede-se UMA VEZ na animação como chega — dentro do laço ela CRESCIA (8,2 → 10,3 → 13,2 →
+14,5), cada janela a ganhar licença porque a anterior já tinha andado.
+
+Resultado: desequilíbrio somado 135,3 → **60,9** (pior 44,7 → 30,6) com o corpo a ganhar **1,18×** a
+própria velocidade (era 6,6×). Barra no vale medido: 1,18 · 1,37 sem a rampa · 6,6 sem a taxa.
+
+⛔⛔⛔ E uma mutação — *«a opção deixa de ser opção»* — ficou **invisível a todos os portões** uma
+volta inteira, porque a lei da física move 0,2 cm. O portão da inércia ganhou a **terceira metade**:
+*ligar tem de mudar alguma coisa*. Detalhe: `ACHADOS` B36.
+
+
+## 19/09 (6.ª) — o botão que escolhe QUAL simulação é o resultado
+
+Pedido do dono. No topo de *Física automática*: **Resultado final: a NOSSA física / a física do
+CASCADEUR**. O resultado passa de **45,68 cm** de distância da simulação dele para **0** (é a dele ao
+bit) e o *Exportar animação* vai junto. O laranja passa a ser sempre **A OUTRA** física; os apoios e
+o «no ar» seguem o resultado; e o painel de baixo diz, na 1.ª linha, que descreve a nossa.
+
+⛔⛔⛔ **A FOTO apanhou o que o número não via:** com a dele escolhida o número dizia `0 cm` e o ecrã
+mostrava o boneco **tingido de laranja**, porque o laranja era desenhado depois. *Um número certo com
+a ordem de desenho errada lê-se, no ecrã, como um botão partido.* ⇒ o RESULTADO fica sempre por cima.
+
+⛔⛔ **E a régua desse portão media no sítio onde o defeito não pode aparecer:** ela escolhia a
+articulação onde as duas físicas mais se AFASTAM — e ali o laranja nem está. A mutação da ordem
+sobreviveu com o portão a ler «28 contra 0». O sítio é onde elas se **CRUZAM**, o discriminador é o
+**AZUL** (sólido B = 243 · tingido B = 151), e o ponto é o **meio do osso** (a junta da cabeça cai
+fora do desenho). Medido: 81 limpos / 0 tingidos · 0 / 81 com a ordem invertida.
+
+⚠️ Este portão só pode viver no teste de RATO: a `teste.js` corre fora do navegador e o
+`cascadeur_resultados.js` não existe naquele mundo. Detalhe: `ACHADOS` B37.
+
+## 2026-09-19 — os DOIS AJUSTES da física do Cascadeur (report: «superiores em tudo, EXCETO…»)
+
+Ordem do dono: *«As simulações Cascadeur parecem superiores em tudo, exceto na fixação dos pés e na
+mola das mãos. Coloque opções de ajustes para cascadeur»*. As duas afirmações foram **medidas antes
+de se escrever código** (`node sonda_ajustes_do_cascadeur.js`) e as duas são verdade.
+
+**O que existe agora** (as duas caixas só são alcançáveis quando a física dele é o resultado final, e
+nascem DESLIGADAS — desligadas, a animação dele chega byte a byte):
+
+* `Motor.prenderOsPesDele(rig, poses, opts)` — a nossa lei de apoio corrida por cima da saída dele.
+  ⚠️ **As chaves NÃO se passam**: sobre a animação dele não existe «o quadro em que manda a pose do
+  artista». Passá-las corta a deriva só para metade e faz o tranco **crescer**.
+* `Motor.tirarAMolaDasMaos(rig, poses, antes, quanto)` — mistura entre a animação autorada e a dele,
+  **só nos ossos `mao_*`**, com cursor de dose. A mão é uma folha ⇒ nada mais no boneco se mexe
+  (`0,0000 cm`, com portão).
+
+**Os números que decidem** (deriva/tranco piores, em cm, régua de 5 mm, exemplos do menu):
+`16,2 / 6,5` como ele fez → `0,3 / 0,3` com o ajuste. Punho do `mortal`: `1188°` → `0°` (a nossa
+física põe `238°`; a animação autorada põe **`0°`**, porque o artista nunca anima o punho — é o único
+osso onde 100% do que existe é física).
+
+⛔ **A lição que custou a wave está em [[a-laws-two-fences-must-be-measured-in-the-same-ruler]]**: a
+1.ª entrega tinha a cerca do contacto emprestada do motor (3 cm) e a barra da velocidade medida nessa
+cerca (1,39 cm/quadro) — internamente consistente e **sem curar nada** (a aterrissagem ficava nos
+16,2 cm). A célula certa é `0,5 cm · 2,20 cm/quadro`, e a grade está em
+`node sonda_ajustes_do_cascadeur.js --grade`.
+
+**Portões:** 6 em `teste.js` (196 verificações no total) sobre fixtura construída — ⚠️ eles **não
+lêem** o `cascadeur_resultados.js`, que é gerado, senão ficariam verdes a medir nada quando ele
+faltasse; 7 em `gesto_ajustes_dele.js`, que corre o app a sério com a animação dele e com o rato a
+carregar nas caixas, mais 4 provas de mutação; 7 casos novos no `prova_mutacao.js`.
+
+⚠️ **E a cerca da velocidade não pôde ser gateada no teste de gesto**, o que é outra medição: o único
+caso do corpus em que ela morde é a captura `amostra_16_07`, e ela **não é alcançável no navegador** —
+as amostras carregam DEPOIS do ficheiro que monta `Exemplos.LISTA`. ⇒ ela é gateada na fixtura
+construída da `teste.js`, e o gesto gateia o que o dono vê (`6 exemplos do menu · 4 melhoram · 0
+pioram`).

@@ -52,6 +52,7 @@
 - ⭐ [**Campo IMPLÍCITO (SDF) e réguas de FORMA** — a família inteira (14): união coplanar incha · `max` cru = aresta viva · o semiespaço INFINITO ganha o `min` dentro da peça · o gate no REPRESENTANTE](reference_topic_implicit_field_laws.md)
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO — a variável da varredura é parte da correcção (16,3 % → 0,0000 %)](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
 - ⛔⛔⛔ [Todos os portões mediam o OBJECTIVO da lei e nenhum o PREÇO (50,3 cm num quadro com 5 portões verdes) — e a cerca que cura o preço matava a feature](feedback_every_ruler_measured_the_goal_and_none_measured_the_cost.md)
+- ⛔⛔⛔ [Uma lei com DUAS cercas só está medida quando a CÉLULA é medida — cada metade sozinha parece certa (3,0·1,39 não cura nada; 3,0·2,20 estraga as capturas; 0,5·2,20 cura tudo)](feedback_a_laws_two_fences_must_be_measured_in_the_same_ruler.md)
 - ⛔⛔ [O painel À FRENTE não é propriedade do código — vem de `~/.ph2d/layout.txt`, fora do repo (e outra árvore a correr reescreve-o); um `bump` de z no quadro do arranque fica por baixo do que o `reconcile_z` acrescenta](feedback_the_front_panel_is_not_a_property_of_the_code.md)
 - 📚 [Comunicação & decisão: mais 50 lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
 

@@ -31,6 +31,23 @@ sentado atrás dos próprios pés** — *uma feature pior do que não existir*
 dizia: os dois estavam bons cada um na sua coluna. ⇒ a opção ganhou um **selector com as duas leis**
 e a decisão foi para quem vê.
 
+⛔⛔⛔ **E o epílogo, que é a lição maior: eu TINHA o número e shipei o defeito na mesma.** A régua
+do preço foi escrita, entrou na suíte como linha MEDIDA — *«o corpo anda 54,5 cm num quadro»* — e eu
+tratei-a como o **preço** da opção. O dono viu-a como o que era: *«um salto anómalo nos keys 49 e
+50»*. *Documentar um defeito numa linha medida não o transforma num preço aceitável*, e a distinção
+que eu não fiz é entre **andar** 54 cm e **saltar** 54 cm entre dois quadros.
+
+⛔⛔ **E as duas linhas que eu tinha apagado por «inertes» eram exactamente a cura.** Eu media a SOMA
+e o PIOR do desequilíbrio — iguais ao cêntimo com e sem elas — e o que elas guardavam era a **FORMA**
+(um pulso quadrado: `0 · −54 · −53 · 0`). *Uma soma e um extremo não veem um degrau no meio; a régua
+que vê é o perfil quadro a quadro.*
+
+⛔⛔ **E a terceira forma, no mesmo dia: uma régua pode medir com todo o rigor NO SÍTIO ONDE O
+DEFEITO NÃO PODE APARECER.** O portão da ordem de desenho escolhia a articulação onde os dois
+bonecos mais se AFASTAM — e ali o de cima nem está, logo a ordem é irrelevante: a mutação que a
+inverte sobreviveu com o portão a ler «28 contra 0». O sítio certo era onde eles se **CRUZAM**.
+*Antes de escrever a barra, pergunte em que ponto do domínio o defeito é sequer observável.*
+
 **How to apply:**
 1. Ao fechar uma wave, escreva UMA régua que meça a grandeza que a lei **não** nomeia, comparando o
    resultado consigo próprio com e sem ela. É barata e é onde o defeito mudo vive.
@@ -38,7 +55,12 @@ e a decisão foi para quem vê.
    resposta for «quase nada», a cerca é um **instrumento** (que explica o preço) e não um limite.
 3. E o número que a cerca produz é muitas vezes o achado: aqui ele disse que o desequilíbrio não vem
    da falta da lei — vem de o motor levantar **o pé em que o peso está**, que é outra decisão.
-4. ⭐ **Fotografe a cena antes de decidir entre duas leis.** Aqui as duas colunas de números eram
+4. ⛔ **Uma linha MEDIDA documenta um preço, nunca autoriza um defeito.** Antes de escrever um
+   número como preço, pergunte se ele descreve um MOVIMENTO ou uma DESCONTINUIDADE — e se for a
+   segunda, é defeito, por maior que seja a nota ao lado.
+5. ⛔ **Antes de apagar uma linha por «inerte», meça a FORMA e não só os totais.** Uma soma e um
+   extremo são cegos a um degrau no meio do intervalo.
+6. ⭐ **Fotografe a cena antes de decidir entre duas leis.** Aqui as duas colunas de números eram
    boas — a da cerca no movimento, a sem cerca no equilíbrio — e só a imagem mostrou que uma delas
    não fazia nada e a outra partia a pose. Quando as duas se defendem por medição, o formato certo
    é **oferecer as duas** com o preço de cada uma escrito, não escolher em silêncio.

@@ -1221,3 +1221,86 @@ uma variável de ambiente numa sonda para ser uma **porta**: o experimento que d
 é o que um gate tem de poder repetir.
 
 **4 mutações, 4 sangram.**
+
+## §22 — ⛔⛔ «A chapa ainda influencia o SSS da esfera. Por que isso? Não faz sentido.»
+
+Report do dono, 2026-09-18, a seguir ao da linha dura. **São TRÊS caminhos, e só um é o que ele vê.**
+
+| caminho | legítimo? | medido |
+|---|---|---|
+| **(A) a SOMBRA** que a chapa lança | ⭐ **sim** | é o que se vê |
+| **(B) o PASSO DA CURVATURA** sai da bola do DOCUMENTO | ⛔ não | `2,54×` no `ε` · **`1` byte** na imagem |
+| **(C) o RAIO DO BORRÃO** é o MÁXIMO da cena | ⛔ não | `18×` no raio · **dormente** na `=33` |
+
+### §22.1 — ⭐⭐⭐ (A) faz sentido, e é a resposta à pergunta
+
+O termo de subsuperfície é *a luz que entrou PERTO e saiu aqui*. Se a chapa impede a luz de entrar
+perto, **sai menos** — logo uma sombra sobre uma peça translúcida **tem** de a escurecer. ⚠️ É
+exactamente por isso que a cura da §12 **borra** a visibilidade que aquela closure lê, em vez de a
+remover: tirá-la seria fazer a peça ignorar a sombra, que é o defeito oposto.
+
+⭐ **E a medição isola-o:** com a sombra **desligada**, a chapa move a esfera **`1` byte de `255`**
+sobre `18 315` píxeis. *Tudo o resto que a chapa faz à esfera é invisível.*
+
+### §22.2 — ⛔ (B) O passo da curvatura de uma peça sai da bola do DOCUMENTO
+
+A [`eps_para`] diz de si mesma, por escrito, que `escala` é *«o tamanho da PEÇA (o raio da bola que
+a envolve)»* — e quem a chama passa `bounding_ball(doc)`, que é a **cena**. ⇒ pôr uma chapa ao lado
+leva o `ε` da esfera de `0,00269` a `0,00683` (**`2,54×`**), e a curvatura é o que o caminho maciço
+da subsuperfície lê.
+
+⛔ **Não curado**, e o motivo é o preço: um `ε` por peça muda toda imagem que já ship e move a
+paridade com o dispositivo, que deriva o dele da mesma bola. ⇒ **decisão do dono.**
+
+⚠️⚠️ **E o tecto do gate (`1` byte) é sobre ESTA FIXTURA, não sobre o defeito** — medido: tornar o
+`eps_para` quadrático na escala **não** move aquele byte, porque a curvatura de uma **esfera** é
+robusta ao passo. *Numa peça com detalhe fino um `ε` `2,54×` mais grosso apagaria feição.*
+
+### §22.3 — ⛔⛔ (C) O raio do borrão é o MÁXIMO da cena, e a razão declarada estava ERRADA
+
+O código declarava que era *«uma diferença que só se vê onde as duas peças se tocam»*. **Não é** — o
+raio é a **largura** com que toda borda de sombra da imagem é amaciada, e a sombra que uma peça
+lança **sobre outra** é precisamente onde o raio da primeira aparece. ⇒ *uma divergência declarada
+com o mecanismo errado é pior que uma não declarada: ela convence quem a lê a não a medir.*
+
+⭐ **Medido:** uma esfera de raio `0,05` ao lado de uma chapa de `0,90` desenha a borda dela com
+`0,90` — **`18×`**. ⭐⭐ **E ele DORME na `=33` porque a lâmina está OPACA:** o que a mantém fora do
+máximo é o **PESO** da subsuperfície, não o raio dela (ela tem um número no slider).
+
+### §22.4 — ⭐⭐⭐ «SSRadius tira a linha dura» — e o botão faz o CONTRÁRIO no dispositivo
+
+| `Subsurface Radius` | DISPOSITIVO | REFERÊNCIA |
+|---|---|---|
+| `0,05` | `6,14` | `1,43` |
+| `0,30` | `7,35` | `1,14` |
+| `0,76` | `8,92` | `1,00` |
+| `1,00` | **`9,21`** | **`1,00`** |
+
+⛔⛔ **No dispositivo, SUBIR o raio piora a linha (`+50 %`)** — lá não há borrão nenhum, e o botão só
+muda o **perfil** de Burley: ele escala o degrau em vez de o alisar. *Baixá-lo reduz a quebra um
+terço, que é provavelmente o que o dono viu — e não a cura.*
+
+⭐ **Na referência a linha já não existe em NENHUMA posição do botão** (`1,00` chapado): ali a cura
+não depende do knob, que é como uma lei deve ser.
+
+### §22.5 — ⛔ E a sonda pisou um ESTOURO que ninguém procurava
+
+`blur_por_canal` percorre o **gbuffer** enquanto indexa o **canal**: com uma lâmpada que o passe não
+escreveu, `index out of bounds: the len is 0 but the index is 9983`. ⭐ Hoje um canal que não cobre o
+gbuffer devolve **vazio**, e o `soft_at` cai na visibilidade **dura** — que é exactamente *«esta
+lâmpada não tem borda mole»*.
+
+⚠️ *Um porte que estoira sobre uma entrada vazia é uma armadilha para o SEGUNDO chamador* — o
+primeiro só não a pisou porque percorre as lâmpadas que existem.
+
+### §22.6 — ⚠️ E DUAS mutações sobreviveram, cada uma a nomear uma fixtura vazia
+
+- **A vizinha «opaca» tinha raio ZERO** ⇒ tirar o filtro de `reads_curvature` era invisível. *Uma
+  fixtura cujo valor «mau» é zero não testa o filtro que o deita fora.* ⭐ E ao curá-la apareceu o
+  que aquele filtro compra **sozinho**: não é o número (a `scatter_distance` tem a mesma guarda lá
+  dentro) — é o **`Some` contra o `None`**, que é o que faz um quadro sem subsuperfície não pagar
+  nada.
+- **O tecto de (B) não tinha a metade da ENTRADA** ⇒ um `eps_para` que ignorasse a escala passaria
+  trivialmente, com o gate a afirmar que não há vazamento nenhum.
+
+**5 mutações, 5 sangram.**

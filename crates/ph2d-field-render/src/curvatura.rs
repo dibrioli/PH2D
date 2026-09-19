@@ -87,6 +87,16 @@ const OFFSETS: [[f32; 3]; 4] = [
 /// ⚠️ `escala` é o tamanho da PEÇA (o raio da bola que a envolve), e **não** o da vista: a curvatura
 /// é uma propriedade da peça, e um passo que seguisse o zoom daria duas curvaturas para o mesmo
 /// ponto — exactamente o defeito de ecrã que este módulo existe para não ter.
+///
+/// ⛔⛔ **E hoje quem a chama passa a bola do DOCUMENTO, não a da peça** — medido 2026-09-18 a
+/// pedido do dono: pôr uma chapa ao lado de uma esfera leva o `ε` dela de `0,00269` a `0,00683`
+/// (**`2,54×`**). ⇒ *a curvatura de uma peça depende de quem está ao lado dela*, que é um vazamento
+/// entre peças e contradiz a frase acima.
+///
+/// ⭐ **Medido, ele vale `1` byte de `255`** sobre `18 315` píxeis (com a sombra desligada, que é o
+/// que o isola dos outros caminhos) ⇒ real e invisível. Um `ε` por peça muda toda imagem que já
+/// ship e move a paridade com o dispositivo, que deriva o dele da mesma bola — **decisão do dono**.
+/// Tecto da dívida: `a_chapa_move_a_curvatura_da_esfera_e_isso_nao_passa_de_um_byte`.
 #[must_use]
 pub fn eps_para(escala: f32) -> f32 {
     const FRACCAO: f32 = 0.0064;

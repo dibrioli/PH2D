@@ -54,8 +54,21 @@ pub const MAX_RAIO_PX: f32 = 48.0;
 ///
 /// `raio_px` é o raio por canal, em píxeis de ecrã. Um raio `<= 0` num canal deixa-o **igual ao
 /// duro**, ao bit.
+///
+/// ⛔⛔ **Um canal que não cobre o gbuffer devolve VAZIO, e nunca entra em pânico.** Ele foi
+/// escrito a supor que `vis` tem um valor por pixel, e as duas passagens percorrem o **gbuffer**
+/// enquanto indexam o **canal** — com um `vis` vazio (uma lâmpada que não existe) isso é um
+/// `index out of bounds`, e foi assim que ele estoirou numa sonda de 18/09.
+///
+/// ⭐ O vazio é a resposta CERTA e não um remendo: o [`crate::Shadows::soft_at`] cai na
+/// visibilidade **dura** quando não há canal mole, que é exactamente *«esta lâmpada não tem borda
+/// mole»*. ⚠️ *Um porte que estoira sobre uma entrada vazia é uma armadilha para o segundo
+/// chamador* — e o primeiro só não a pisou porque percorre as lâmpadas que existem.
 #[must_use]
 pub fn blur_por_canal(g: &Gbuffer, vis: &[f32], raio_px: [f32; 3]) -> Vec<[f32; 3]> {
+    if vis.len() != g.hit.len() {
+        return Vec::new();
+    }
     let n = vis.len();
     let mut out = vec![[0.0f32; 3]; n];
     for (k, &r) in raio_px.iter().enumerate() {
@@ -189,6 +202,42 @@ mod tests {
             "sem quina o degrau ficou em {:.4}/{:.4} — a média não está a fazer nada",
             out[N / 2 - 1][0],
             out[N / 2][0]
+        );
+    }
+
+    /// ⭐⭐⭐ **UM CANAL QUE NÃO COBRE O GBUFFER DEVOLVE VAZIO — e nunca entra em pânico.**
+    ///
+    /// ⛔⛔ **Ele estoirava**, e foi uma sonda de 2026-09-18 que o pisou:
+    /// `index out of bounds: the len is 0 but the index is 9983`. As duas passagens percorrem o
+    /// **gbuffer** enquanto indexam o **canal**, e com um `vis` vazio — uma lâmpada que o passe de
+    /// sombra não escreveu — o índice sai da faixa.
+    ///
+    /// ⭐ **O vazio é a resposta CERTA:** o [`crate::Shadows::soft_at`] cai na visibilidade DURA
+    /// quando não há canal mole, que é exactamente *«esta lâmpada não tem borda mole»*.
+    ///
+    /// ⚠️ **O primeiro chamador só não o pisou porque percorre as lâmpadas que EXISTEM** — *um
+    /// porte que estoira sobre uma entrada vazia é uma armadilha para o segundo chamador*, e o
+    /// segundo chegou onze dias depois.
+    #[test]
+    fn um_canal_que_nao_cobre_o_gbuffer_devolve_vazio_em_vez_de_estoirar() {
+        const N: usize = 16;
+        let g = tira_com_quina(N);
+        // (1) O caso que estoirava: nenhuma lâmpada, logo nenhum canal.
+        assert!(
+            blur_por_canal(&g, &[], [8.0; 3]).is_empty(),
+            "um canal VAZIO devolveu alguma coisa — ou estoirou"
+        );
+        // (2) ⚠️ E um canal CURTO conta como o mesmo defeito: ele indexaria igual.
+        assert!(
+            blur_por_canal(&g, &[1.0; N - 1], [8.0; 3]).is_empty(),
+            "um canal mais curto que o gbuffer passou — é o mesmo índice fora da faixa"
+        );
+        // (3) ⭐ O CONTROLO: o canal do tamanho certo continua a ser borrado, senão esta guarda
+        // teria apagado a passagem inteira e as duas metades acima passariam por vácuo.
+        assert_eq!(
+            blur_por_canal(&g, &[1.0; N], [8.0; 3]).len(),
+            N,
+            "o canal do tamanho certo deixou de ser borrado — a guarda comeu o caminho bom"
         );
     }
 

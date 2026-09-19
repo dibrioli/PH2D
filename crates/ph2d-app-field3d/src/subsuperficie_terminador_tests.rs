@@ -130,7 +130,9 @@ fn quadro(
         && let Some(espalha) = crate::materials::maior_espalhamento(&surfaces)
     {
         let raio = ph2d_field_render::sss_shadow::raio_em_pixeis(cam, h, espalha);
-        let canais = (0..1)
+        // ⚠️ **As lâmpadas que EXISTEM**, e não `0..1`: com a sombra desligada não há canal
+        // nenhum, e um `0..1` pedia o canal de uma lâmpada que o passe não escreveu.
+        let canais = (0..sh.lamps())
             .map(|l| ph2d_field_render::sss_shadow::blur_por_canal(&g, sh.lamp_channel(l), raio))
             .collect();
         sh.set_soft(canais);
@@ -612,6 +614,11 @@ fn a_regua_da_banda_le_quase_zero_num_gradiente_sem_degrau() {
 /// ⏱️ **AS SONDAS** — as quatro réguas que decompõem o report, todas `#[ignore]`. Irmão de
 /// assunto, cortado daqui pelo tecto de LOC: *um ficheiro onde uma sonda e uma lei se leem
 /// iguais é onde uma lei passa a `#[ignore]` sem ninguém dar por isso.*
+/// ⭐⭐⭐ **POR ONDE UMA PEÇA ALCANÇA OUTRA** — os três caminhos pelos quais a chapa chega à
+/// esfera, dois deles vazamentos medidos e não curados (report do dono, 18/09).
+#[path = "subsuperficie_alcance_tests.rs"]
+mod alcance;
+
 #[path = "subsuperficie_sondas_tests.rs"]
 mod sondas;
 

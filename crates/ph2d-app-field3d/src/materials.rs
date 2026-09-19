@@ -401,9 +401,22 @@ mod base_specular_tests;
 /// ⚠️ **`None` quando nenhum material é translúcido**, e é isso que faz o quadro sem subsuperfície
 /// não pagar nada e sair byte a byte o de sempre. Ver [`ph2d_field_render::sss_shadow`].
 ///
-/// ⚠️ É o MÁXIMO sobre os materiais e não um por peça: a média é uma passagem sobre a imagem
-/// inteira, e uma por material custaria `n` passagens para uma diferença que só se vê onde as duas
-/// peças se tocam. *A divergência é declarada e o preço dela é conhecido.*
+/// ⛔⛔ **É o MÁXIMO sobre os materiais e não um por peça — e isso é um VAZAMENTO entre peças**,
+/// medido em 2026-09-18 a pedido do dono (*«a chapa ainda influencia o SSS da esfera»*): uma esfera
+/// de raio `0,05` ao lado de uma chapa de `0,90` desenha a borda dela com `0,90` — **`18×`**.
+///
+/// ⚠️⚠️ **A razão que aqui esteve escrita estava ERRADA no ponto que decide.** Ela dizia que era
+/// *«uma diferença que só se vê onde as duas peças se tocam»*, e não é: este número é a **LARGURA**
+/// com que toda borda de sombra da imagem é amaciada, e a sombra que uma peça lança **sobre outra**
+/// é precisamente onde o raio da primeira aparece. *Uma divergência declarada com o mecanismo
+/// errado é pior que uma não declarada — ela convence quem a lê a não a medir.*
+///
+/// ⭐ **Ele está DORMENTE enquanto a vizinha for opaca** (um material sem subsuperfície devolve `0`
+/// e não entra no máximo), que é por que a cena `=33` não o mostra. Gate:
+/// `a_chapa_escolhe_o_raio_do_borrao_da_esfera_e_so_dorme_por_ela_ser_opaca`.
+///
+/// ⏳ **Curá-lo custa `n` passagens de borrão (uma por material) e é decisão do dono** — a média é
+/// uma passagem sobre a imagem inteira.
 #[must_use]
 pub fn maior_espalhamento(surfaces: &ph2d_field_render::Surfaces<'_>) -> Option<[f32; 3]> {
     let mut maior = [0.0f32; 3];

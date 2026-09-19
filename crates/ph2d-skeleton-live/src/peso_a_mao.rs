@@ -26,6 +26,7 @@
 //! pergunta de que mídia é o ponto, e o sintoma seria o indicador a pintar um peso que a arte não
 //! tem.
 
+use crate::ancora_da_mancha::{contorno, d2, d2_segmento, dentro};
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_skeleton::Xform;
 use ph2d_skeleton_ecs::{CorreccaoDePeso, SkinBind};
@@ -189,63 +190,19 @@ fn posados(sim: &SimWorld, alvo: Entity, ppm: f32) -> Vec<[f64; 2]> {
         .collect()
 }
 
-/// **O contorno POSADO de uma forma, achatado em segmentos.**
+/// ⭐⭐ **O CONTORNO DA ARTE COMO O ARTISTA A VÊ** — posado, em mundo, achatado em segmentos.
 ///
-/// ⚠️ **As triplas são `(âncora, alça de entrada, alça de saída)`** — ver [`repousos`] —, logo o
-/// troço entre o vértice `k` e o `k+1` é a cúbica `(a_k, out_k, in_{k+1}, a_{k+1})`.
-///
-/// ⛔ **Achatada à mão e não pela `kurbo`:** esta crate é uma folha e não depende de geometria
-/// vectorial. `SEGMENTOS` é grosseiro de propósito — o consumidor é um teste de ponto, não um
-/// rasterizador.
-fn contorno_posado(pts: &[[f64; 2]]) -> Vec<[f64; 2]> {
-    const SEGMENTOS: usize = 8;
-    let n = pts.len() / 3;
-    if n < 2 {
-        return Vec::new();
+/// ⚠️ **Ela existe para quem precisa de apontar PARA a arte e não para um nó dela** — hoje os gates
+/// do arrasto, que sem isto pintariam numa coordenada de repouso enquanto a peça já se mexeu (foi
+/// o que a 1.ª redacção deles fez, e a 3.ª pincelada caía no vazio). ⛔ Vazia numa imagem: ali a
+/// arte é uma malha de triângulos e não tem contorno de bézier nenhum.
+#[must_use]
+pub fn contorno_da_arte(sim: &SimWorld, alvo: Entity, ppm: f32) -> Vec<[f64; 2]> {
+    if e_caminho(sim, alvo) {
+        contorno(&posados(sim, alvo, ppm))
+    } else {
+        Vec::new()
     }
-    let mut out = Vec::with_capacity(n * SEGMENTOS);
-    for k in 0..n {
-        let (a, o) = (pts[3 * k], pts[3 * k + 2]);
-        let j = (k + 1) % n;
-        let (i, b) = (pts[3 * j + 1], pts[3 * j]);
-        for s in 0..SEGMENTOS {
-            let t = s as f64 / SEGMENTOS as f64;
-            let u = 1.0 - t;
-            let (w0, w1, w2, w3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
-            out.push([
-                w0 * a[0] + w1 * o[0] + w2 * i[0] + w3 * b[0],
-                w0 * a[1] + w1 * o[1] + w2 * i[1] + w3 * b[1],
-            ]);
-        }
-    }
-    out
-}
-
-/// **O ponto está dentro do polígono?** — regra do número de voltas por cruzamentos (par/ímpar).
-fn dentro(poli: &[[f64; 2]], q: [f64; 2]) -> bool {
-    let mut dentro = false;
-    let n = poli.len();
-    for i in 0..n {
-        let (a, b) = (poli[i], poli[(i + 1) % n]);
-        if (a[1] > q[1]) != (b[1] > q[1]) {
-            let t = (q[1] - a[1]) / (b[1] - a[1]);
-            if q[0] < a[0] + t * (b[0] - a[0]) {
-                dentro = !dentro;
-            }
-        }
-    }
-    dentro
-}
-
-/// A distância ao segmento `ab` — o que cobre um caminho ABERTO, que não tem interior.
-fn d2_segmento(a: [f64; 2], b: [f64; 2], q: [f64; 2]) -> f64 {
-    let (vx, vy) = (b[0] - a[0], b[1] - a[1]);
-    let l2 = vx * vx + vy * vy;
-    if l2 <= f64::EPSILON {
-        return d2(a, q);
-    }
-    let t = (((q[0] - a[0]) * vx + (q[1] - a[1]) * vy) / l2).clamp(0.0, 1.0);
-    d2([a[0] + t * vx, a[1] + t * vy], q)
 }
 
 /// ⭐⭐⭐ **QUE ARTE PRESA ESTÁ SOB O CURSOR** — a pergunta do pen-down do pincel de peso.
@@ -288,7 +245,7 @@ pub fn pele_sob_o_cursor(
         // ⚠️ E a porta certa já existia neste ficheiro (a [`e_caminho`], escrita para o indicador):
         // *duas respostas à mesma pergunta divergem, e estas divergiram em duas horas*.
         let (contem, d) = if e_caminho(sim, e) {
-            let poli = contorno_posado(&pts);
+            let poli = contorno(&pts);
             if poli.is_empty() {
                 (
                     false,
@@ -530,9 +487,42 @@ pub fn ponto_sob_o_cursor(
         })
 }
 
-fn d2(a: [f64; 2], b: [f64; 2]) -> f64 {
-    let (dx, dy) = (a[0] - b[0], a[1] - b[1]);
-    dy.mul_add(dy, dx * dx)
+
+/// ⭐⭐⭐ **ONDE ESTA PINCELADA POUSA** — e a resposta é de MÍDIA, não uma só.
+///
+/// Num **CAMINHO** é o ponto do CONTORNO sob o dedo ([`crate::ancora_da_mancha`]); numa **IMAGEM**
+/// é o vértice da malha mais perto. ⚠️ **A diferença é DECLARADA e tem mecanismo:** numa malha a
+/// deformação entre dois vértices é a interpolação linear deles — não há «entre» a que se possa
+/// pousar —, e os vértices são densos, logo o vizinho mais perto *é* o dedo a menos de meia aresta.
+/// Num caminho os nós são poucos e longe (a barra do smoke tem oito, os oito nas duas pontas), e
+/// desde a F30 a arte ENTRE eles obedece ao peso. ⛔ *Uma lei só para as duas mídias teria de
+/// escolher entre recusar o meio de uma barra e mover um mapa que já foi aprovado em smoke.*
+///
+/// ⛔ **O dedo tem de cair DENTRO do pincel** — sem isso um clique do outro lado da tela ancorava a
+/// mancha na arte mais próxima, longe e sem o artista o pedir. ⭐ **No caminho, estar DENTRO da
+/// forma também conta:** a barra do smoke tem meia unidade de meia-altura contra um pincel de
+/// `0,40`, logo arrastar pelo MIOLO dela seria recusado por uma régua que só olhasse o contorno —
+/// e é pelo miolo que o artista arrasta.
+fn onde_pousa(
+    sim: &SimWorld,
+    alvo: Entity,
+    osso: Entity,
+    ppm: f32,
+    mundo: [f64; 2],
+    raio_mundo: f64,
+) -> Option<crate::ancora_da_mancha::Ancora> {
+    if e_caminho(sim, alvo) {
+        let posados = posados(sim, alvo, ppm);
+        let a = crate::ancora_da_mancha::no_contorno(&repousos(sim, alvo, ppm), &posados, mundo)?;
+        let perto = d2(a.mundo, mundo) <= raio_mundo * raio_mundo;
+        let poli = crate::ancora_da_mancha::contorno(&posados);
+        return (perto || dentro(&poli, mundo)).then_some(a);
+    }
+    let p = ponto_sob_o_cursor(sim, alvo, osso, ppm, mundo)?;
+    (d2(p.mundo, mundo) <= raio_mundo * raio_mundo).then_some(crate::ancora_da_mancha::Ancora {
+        repouso: p.repouso,
+        mundo: p.mundo,
+    })
 }
 
 /// ⭐⭐⭐ **PINTA UMA MANCHA** — o gesto inteiro, numa porta.
@@ -571,14 +561,9 @@ pub fn pinta(
     if !(escala.is_finite() && escala > 0.0) {
         return Pincelada::ForaDaArte;
     }
-    let Some(ponto) = ponto_sob_o_cursor(sim, alvo, osso, ppm, mundo) else {
+    let Some(ponto) = onde_pousa(sim, alvo, osso, ppm, mundo, raio_mundo) else {
         return Pincelada::ForaDaArte;
     };
-    // ⛔ **O dedo tem de cair DENTRO do pincel.** Sem esta linha um clique do outro lado da tela
-    // ancorava a mancha no ponto de arte mais próximo — longe, e sem o artista o pedir.
-    if d2(ponto.mundo, mundo) > raio_mundo * raio_mundo {
-        return Pincelada::ForaDaArte;
-    }
     let raio = raio_mundo / escala;
     let mut skin = sim
         .world()

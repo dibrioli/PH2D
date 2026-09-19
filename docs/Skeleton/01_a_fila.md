@@ -394,6 +394,78 @@ Mutação **12 de 12** a sangrar.
 ⏳ **ABERTO:** o espelho não tem gesto de canvas (só o painel) · e a arte presa não é espelhada com
 os ossos — o ramo novo nasce sem pele, e prendê-la é o gesto que já existe (*Bind*).
 
+### F31 — ⭐⭐⭐ **O PINCEL DE PESO ALCANÇA O MEIO DE UMA ARESTA** (report do dono, 2026-09-19: *«o que vc mandou fazer não funcionou»*)
+
+⛔⛔⛔ **A F30 shipou uma LEI SEM GESTO, e o report tinha DUAS causas — a minha e a do produto.**
+
+**(a) A minha.** O smoke que mandei mandava escolher **«Bone 14»** e pintar na **barra laranja**. A
+cena tem **dois** esqueletos de três ossos — a barra vectorial (`Bone 1..3`) e o braço **PINTADO**
+(`Bone 13..15`) — e o `Bone 14` é o do MEIO do segundo. *Seguir o passo à letra não podia funcionar.*
+O dono disse-o melhor do que qualquer sonda: *«Bone 14 está ligado à imagem e não ao vetor. Bones 1,
+2 e 3 estão ligados na barra laranja.»* ⇒ o roteiro passa a NOMEAR quem governa a barra, **derivado
+do mundo** (os nomes são o índice da entidade: acrescentar uma peça à cena renumera tudo o que vem
+depois), e a listar a cadeia **em ordem** — a [`esqueletos::ossos_desde`] ordena por `to_bits`, que
+no bevy é a criação INVERTIDA, e a 1.ª frase saía *«Bone 3, Bone 2, Bone 1»*.
+
+**(b) A do produto, e é a que importa.** O gate da F30 constrói a
+[`CorreccaoDePeso`](../../crates/ph2d-skeleton-ecs/src/skin_bind.rs) **à mão**, com `centro` no meio
+de uma aresta — e **nada no repo perguntava se o PINCEL consegue produzir esse centro**. Ele não
+conseguia: a mancha era ancorada no **NÓ mais perto** e o gesto recusava (`ForaDaArte`) quando o
+dedo estava mais longe do que o raio do pincel.
+
+| o dedo, na barra do smoke | nó mais perto | raio de fábrica | veredito |
+|---|---|---|---|
+| no MEIO da barra | **`3,041`** | `0,40` | **`ForaDaArte`** |
+| idem, com o raio a `400 px` | `3,041` | `4,00` | `Pintada`, **com o centro na QUINA** `(−8,0 · 2,0)` |
+
+⇒ *é o terceiro elo do `CLAUDE.md` §5.0 outra vez — o censo prova que a PORTA faz efeito, a costura
+prova que o clique chega ao BARRAMENTO, e nada juntava as duas pontas.* ⚠️ **Os gates que existiam
+não podiam apanhá-lo:** eles pintam **em cima de um vértice**, que é o caso em que as duas leis
+concordam. *Uma fixtura que aponta sempre para um nó não testa o que acontece entre eles.*
+
+⭐⭐ **A lei que fica** ([`ancora_da_mancha`](../../crates/ph2d-skeleton-live/src/ancora_da_mancha.rs)):
+a mancha pousa no **ponto do CONTORNO** sob o dedo, e o repouso dele sai do **MESMO parâmetro** da
+curva. ⚠️ O achatamento é o mesmo nos dois lados, e é isso que torna a tradução honesta — *dois
+achatamentos diferentes dariam um repouso plausível e errado*. ⭐ E **estar DENTRO da forma conta**:
+a barra tem meia unidade de meia-altura contra um pincel de `0,40`, logo uma régua que só olhasse o
+contorno recusaria exactamente a linha por onde o artista arrasta.
+
+⚠️ **A diferença entre as mídias é DECLARADA:** numa IMAGEM continua a ser o vértice da malha mais
+perto — ali a deformação entre dois vértices é a interpolação linear deles, não há «entre» a que
+pousar, e os vértices são densos. *Uma lei só para as duas teria de escolher entre recusar o meio de
+uma barra e mover um mapa que o dono já aprovou em smoke.*
+
+**Medido, de ponta a ponta pela porta do produto** (a barra da cena, dobrada `0,8` rad na ponta, seis
+pinceladas com o raio e a magnitude de FÁBRICA ao longo do meio dela):
+
+| | |
+|---|---|
+| a arte move-se, pela lei da curva | **`0,141983`** |
+| as MESMAS manchas, pela lei dos pontos de controlo | **`0,000000`** |
+
+⭐ O controlo é o A/B das duas leis sobre as mesmas manchas — *é a metade que prova que quem move a
+arte é a F30 e não o recook a mexer-se sozinho*.
+
+⛔⛔ **DUAS premissas morreram e foram reescritas com a morte à vista no diff:** *«a mancha é
+ancorada no NÓ»* (hoje: **sobre a ARTE** — a cerca que o report original pedia fica, e mais forte,
+porque uma alça de quina vive FORA da curva) e *«o meio da aresta não é um ponto que o desenho
+tem»*.
+
+⚠️ E uma mutação SOBREVIVEU: prender a fracção da projecção a `[0,1]`. Sem isso o cursor projecta-se
+**para lá do fim** da corda e essa distância ganha da verdadeira — a mancha pousaria **fora da
+peça**. *Um `clamp` não é defensivo: é a diferença entre projectar numa CORDA e projectar na RECTA
+que a contém.*
+
+Mutação **8 de 8** a sangrar. Zero schema, zero registo novo.
+
+⏳ **ABERTO e NOMEADO: o INDICADOR ainda mostra só os NÓS.** A barra tem oito pontos coloridos e a
+mancha entre eles não move nenhum deles (ela está a `3` unidades de qualquer um, com raio `0,40`)
+⇒ *o artista vê a arte dobrar e as cores paradas*. A cura é a mesma lei da F30 — o peso ao longo da
+curva é `lerp(ra, rb, t)` mais as manchas —, e ela vive **dentro** da
+[`curva::SegmentoDaPele::ponto`](../../crates/ph2d-vec-skin/src/curva.rs): expô-la como porta com
+dois consumidores (o refit e o olho) é a wave. ⛔ **Não a reescreva no indicador** — uma segunda
+resposta à mesma pergunta divergiria, e o sintoma seria o olho a pintar um peso que a arte não tem.
+
 ### F30 — ⭐⭐⭐ **A ARTE SEGUE O PESO ENTRE OS NÓS** (ordem do dono, 2026-09-19, *«construa e veremos se fica bom»*)
 
 **MEDIDA antes de escrita uma linha de produto**

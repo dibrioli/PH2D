@@ -116,37 +116,111 @@ fn the_bar_that_teaches_order_crosses_the_painted_arm_without_hiding_it() {
     }
 }
 
-/// ⭐⭐⭐ **O ROTEIRO ENSINA A CURA ONDE A LIMITAÇÃO APARECE** — a 1.ª saída da F26, que o dono
-/// escolheu em 2026-09-19 (*«primeiro 1 e depois o 2»*).
+/// ⭐⭐⭐ **O ROTEIRO DIZ QUE OSSOS GOVERNAM A BARRA, E ENSINA A CURA ONDE ELA APARECE.**
 ///
-/// A barra laranja tem **oito** nós, todos nas duas pontas, e é ali que o artista descobre que o
-/// pincel de peso não tem onde pegar. ⚠️ *Um aviso que nomeia um limite e não diz o que fazer com
-/// ele é meia lição* — e o passo que faltava é o mais barato de todos: **pegar na caneta e pôr um
-/// ponto onde se quer controlo**.
+/// ⛔⛔⛔ **A metade dos ossos nasceu do report do dono de 2026-09-19** — *«Bone 14 está ligado à
+/// imagem e não ao vetor. Bones 1, 2 e 3 estão ligados na barra laranja. O que vc mandou fazer não
+/// funcionou»*. A cena tem **dois** esqueletos de três ossos (um na barra vectorial, outro no braço
+/// pintado) e o roteiro nomeava um osso do segundo ao lado de uma lição sobre a primeira: *seguir o
+/// roteiro à letra não podia funcionar*.
 ///
-/// ⛔⛔ **As três metades são três regressões diferentes:** o roteiro pode deixar de nomear a
-/// ferramenta (o artista não sabe com que mão fazer); pode deixar de dizer que o ponto **sobrevive**
-/// (e aí ele reproduz o defeito de 19/09 sem saber que foi curado); e pode deixar de o ligar ao
-/// pincel (que é o gesto que a wave existe para destravar).
+/// ⚠️ **A redacção anterior prendia a lição ao aviso «na BARRA laranja o mesmo pincel mostra 8
+/// pontos e mais nada», e essa premissa MORREU no mesmo dia:** desde a cura do pincel a mancha
+/// pousa no CONTORNO, logo o meio da barra deixou de ser um sítio onde não há o que pintar — ele
+/// passou a ser o sítio que a F30 existe para servir.
+///
+/// ⛔⛔ **As três metades são três regressões diferentes:** o roteiro pode deixar de dizer que
+/// ossos tocam a barra (e o artista escolhe um do braço pintado, como eu fiz); pode deixar de
+/// nomear a ferramenta da outra saída (e ele não sabe com que mão fazer); e pode deixar de ligar a
+/// lição ao pincel, que é o gesto que a wave existe para destravar.
 #[test]
 fn o_roteiro_ensina_a_acrescentar_um_ponto_onde_falta_controlo() {
     let texto = include_str!("smoke_bone.rs");
-    for agulha in ["CANETA", "SOBREVIVE", "Weight"] {
+    for agulha in ["CANETA", "SOBREVIVE", "Weight", "BARRA LARANJA obedece"] {
         assert!(
             texto.contains(agulha),
-            "o roteiro deixou de dizer «{agulha}» — sem ele o artista fica com a barra de oito nos \
-             e nenhuma saida, que e' exactamente o estado que a F26 devolveu ao dono"
+            "o roteiro deixou de dizer «{agulha}» — sem ele o artista fica com a barra e nenhuma \
+             saida, que e' exactamente o estado que o dono reportou"
         );
     }
-    // ⛔ E a lição vive JUNTO do aviso que a motiva, não solta no fim: quem lê o aviso da barra tem
-    // de encontrar a cura na mesma frase. *Duas linhas separadas por vinte lêem-se como dois
-    // assuntos.*
-    let aviso = texto.find("BARRA laranja").expect("o aviso da barra");
-    let cura = texto.find("CANETA").expect("a cura");
+    // ⛔ E a lição vive JUNTO da linha que nomeia os ossos da barra, não solta no fim: quem lê
+    // *quem governa a barra* tem de encontrar ali *o que fazer com ela*. ⚠️ A régua é a distância
+    // entre as duas — *duas linhas separadas por vinte lêem-se como dois assuntos*.
+    let quem = texto.find("BARRA LARANJA obedece").expect("quem governa a barra");
+    let pincel = texto.find("PINCEL DE PESO NA BARRA").expect("a licao do pincel");
+    let caneta = texto.find("A OUTRA SAIDA").expect("a outra saida");
     assert!(
-        cura > aviso && cura - aviso < 400,
-        "a cura da barra de oito nos ficou longe do aviso que a motiva ({} bytes) — o artista le^ o \
-         limite e nao encontra a saida",
-        cura.saturating_sub(aviso)
+        pincel > quem && pincel - quem < 800,
+        "a licao do pincel ficou a {} bytes de quem governa a barra",
+        pincel.saturating_sub(quem)
+    );
+    assert!(
+        caneta > pincel && caneta - pincel < 800,
+        "a outra saida ficou a {} bytes da licao do pincel",
+        caneta.saturating_sub(pincel)
+    );
+}
+
+/// ⭐⭐⭐ **OS DOIS ESQUELETOS DA CENA NÃO PARTILHAM UM ÚNICO OSSO** — o facto que o report do dono
+/// expôs, e que nenhum gate afirmava.
+///
+/// ⚠️ **Ele mede a CENA, não o texto:** o roteiro pode nomear os ossos certos e a cena mudar por
+/// baixo dele. A barra vectorial e o braço pintado têm cadeias próprias, e é por isso que escolher
+/// um osso de uma e pintar na outra **não faz nada e está certo**.
+#[test]
+fn a_barra_e_o_braco_pintado_tem_esqueletos_separados() {
+    let mut sim = ph2d_ecs::SimWorld::default();
+    let barra = super::cadeia(
+        &mut sim,
+        ph2d_skeleton_demo::ARM_A,
+        ph2d_skeleton_demo::ARM_B,
+        ph2d_skeleton_demo::ARM_BONES,
+    )
+    .expect("a cadeia da barra monta");
+    let pintado = super::cadeia(&mut sim, [3.6, 2.5], [7.4, 2.5], 3).expect("a do braco pintado");
+    let da_barra = ph2d_skeleton_live::esqueletos::ossos_desde(&sim, barra);
+    let do_braco = ph2d_skeleton_live::esqueletos::ossos_desde(&sim, pintado);
+    assert_eq!(da_barra.len(), 3, "a barra deixou de ter tres ossos");
+    assert_eq!(do_braco.len(), 3, "o braco pintado deixou de ter tres ossos");
+    assert!(
+        da_barra.iter().all(|e| !do_braco.contains(e)),
+        "os dois esqueletos partilham um osso — a licao «escolher um osso do braco pintado e \
+         pintar na barra nao faz nada» deixou de ser verdade"
+    );
+}
+
+/// ⭐⭐ **A LISTA DE OSSOS DA BARRA CONTA DO PRIMEIRO PARA O ÚLTIMO.**
+///
+/// ⛔ A 1.ª redacção usava a [`ph2d_skeleton_live::esqueletos::ossos_desde`], que ordena por
+/// `to_bits` — no bevy, a criação **invertida** —, e a frase saía *«Bone 3, Bone 2, Bone 1»*.
+/// *Uma lista que conta ao contrário lê-se como um defeito, e o dono não tem como saber que não é.*
+///
+/// ⚠️ **O CONTROLO é a 2.ª asserção:** sem ela, uma cadeia cujos nomes já viessem ordenados por
+/// acaso deixaria este gate verde sobre a lei errada.
+#[test]
+fn a_lista_de_ossos_da_barra_conta_do_primeiro_para_o_ultimo() {
+    let mut sim = ph2d_ecs::SimWorld::default();
+    let raiz = super::cadeia(
+        &mut sim,
+        ph2d_skeleton_demo::ARM_A,
+        ph2d_skeleton_demo::ARM_B,
+        ph2d_skeleton_demo::ARM_BONES,
+    )
+    .expect("a cadeia monta");
+    let ordem = super::cadeia_em_ordem(&sim, raiz);
+    assert_eq!(ordem.len(), 3, "a cadeia da barra deixou de ter tres ossos");
+    assert_eq!(ordem[0], raiz, "a lista nao comeca na raiz");
+    assert_eq!(
+        ordem[2],
+        super::ponta_da_cadeia(&sim, raiz),
+        "a lista nao acaba na ponta"
+    );
+    // ⭐ O CONTROLO: o conjunto que a casa usa como RÉGUA vem noutra ordem, e é por isso que esta
+    // porta existe.
+    let conjunto = ph2d_skeleton_live::esqueletos::ossos_desde(&sim, raiz);
+    assert_ne!(
+        conjunto, ordem,
+        "as duas ordens coincidiram — ou o bevy mudou a numeracao, ou esta porta deixou de ser \
+         necessaria e a frase pode voltar a sair do conjunto"
     );
 }

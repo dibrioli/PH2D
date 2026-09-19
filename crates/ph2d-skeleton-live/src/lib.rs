@@ -29,6 +29,13 @@
 //! [HOWTO §1.2]: ../../../docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
 
 /// ⭐ A CURVATURA de um osso, viva — irmão do `skin_live` pelo tecto de LOC, cortado por assunto.
+mod ancora_da_mancha;
+#[cfg(test)]
+#[path = "barra_da_cena_tests_support.rs"]
+mod barra_da_cena_tests_support;
+#[cfg(test)]
+#[path = "peso_entre_os_nos_tests.rs"]
+mod peso_entre_os_nos_tests;
 pub mod bend_live;
 pub mod bone;
 /// ⭐⭐⭐ **ESPELHAR um ramo** — construir o lado esquerdo a partir do direito.

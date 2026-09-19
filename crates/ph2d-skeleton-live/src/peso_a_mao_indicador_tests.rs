@@ -11,45 +11,12 @@
 //! ⚠️ **Todos nasceram de um report do dono** (2026-09-19): *«nada fica vermelho e nada fica azul»*
 //! e *«os pesos não são aplicados apenas nos nós, mas também nos handles»*.
 
-use super::*;
-use ph2d_ecs::{ChildOf, Name, RootOrder, Transform};
-use ph2d_vec_entities::entities::VecEntityMap;
-use ph2d_vec_scene::{ShapeKind, VecPathId, VecScene, cook};
-
-/// A `pixels_per_meter` das fixturas — ver o irmão.
-const PPM: f32 = 100.0;
+use crate::barra_da_cena_tests_support::{PPM, barra_da_cena, forma, raio_de_fabrica};
+use ph2d_ecs::Transform;
 
 /// A distância entre dois pontos.
 fn dist(a: [f64; 2], b: [f64; 2]) -> f64 {
     ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)).sqrt()
-}
-
-/// Um osso, com a pose LOCAL — ver [`barra_da_cena`].
-fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Entity>) -> Entity {
-    let e = sim
-        .world_mut()
-        .spawn((
-            Transform {
-                translation: ph2d_core::Vec2::new(pos[0], pos[1]),
-                ..Transform::IDENTITY
-            },
-            Name::new(nome),
-            RootOrder(0),
-            ph2d_skeleton_ecs::Bone {
-                length: len,
-                strength: 1.0,
-                ..Default::default()
-            },
-        ))
-        .id();
-    if let Some(p) = pai {
-        sim.world_mut().entity_mut(e).insert(ChildOf(p));
-    }
-    e
-}
-
-fn forma(map: &VecEntityMap, id: VecPathId) -> Entity {
-    Entity::from_bits(*map.get(&id).expect("a forma tem entidade"))
 }
 
 /// ⭐⭐⭐ **A ESCALA DA BARRA DA CENA — a tabela de que o raio de fábrica do pincel foi derivado.**
@@ -67,25 +34,10 @@ fn forma(map: &VecEntityMap, id: VecPathId) -> Entity {
 /// envelhece* — e esta reprova no dia em que a arte da cena mudar de escala.
 #[test]
 fn a_escala_da_barra_e_a_que_a_tabela_do_raio_cita() {
-    let mut sim = SimWorld::default();
-    let mut scene = VecScene::new();
-    let mut map = VecEntityMap::new();
-    let id = scene.push_path(cook(ShapeKind::RoundRect, [-8.5, 2.0], [-1.5, 3.0], &[0.5]));
-    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
-    // ⚠️ A cadeia real e' feita de poses LOCAIS: so' a raiz esta' no mundo, e cada filho nasce na
-    // ponta do pai. Com absolutas ela dobra-se sobre si mesma e os pesos colapsam no primeiro osso
-    // — foi o que a 1.a redaccao desta sonda mediu, e lia-se como um defeito do produto.
-    let passo = (-1.8f64 - -8.2) / 3.0;
-    let mut pai = None;
-    for k in 0..3 {
-        let pos = if k == 0 {
-            [-8.2, 2.5]
-        } else {
-            [passo as f32, 0.0]
-        };
-        pai = Some(osso(&mut sim, &format!("Bone {}", k + 1), pos, passo, pai));
-    }
-    crate::skin_live::bind(&mut sim, &scene, &map, &[id], None);
+    // ⚠️ **A fixtura é a PARTILHADA** ([`crate::barra_da_cena_tests_support`]): esta sonda tinha
+    // uma cópia dela escrita à mão, e *uma fixtura escrita duas vezes diverge no primeiro ajuste* —
+    // aqui a tabela do raio passaria a descrever uma arte que a cena já não tem.
+    let (sim, _scene, map, id, _ossos) = barra_da_cena();
     let pts = crate::peso_a_mao::repousos(&sim, forma(&map, id), PPM);
     let mut d: Vec<[f64; 2]> = Vec::new();
     for q in &pts {
@@ -127,48 +79,7 @@ fn a_escala_da_barra_e_a_que_a_tabela_do_raio_cita() {
     );
 }
 
-/// **A barra da cena, com a cadeia de 3 ossos** — a fixtura dos gates do report de 2026-09-19.
-///
-/// ⚠️ **É a peça REAL** (o `RoundRect` do braço de `PH2D_VEC_BONE_SMOKE=1`) e a cadeia é feita de
-/// poses LOCAIS: só a raiz está no mundo, e cada filho nasce na ponta do pai. ⛔ Com absolutas ela
-/// dobra-se sobre si mesma e todo o peso colapsa no primeiro osso — foi o que a 1.ª redacção destas
-/// sondas mediu, e lia-se exactamente como um defeito do produto.
-fn barra_da_cena() -> (SimWorld, VecScene, VecEntityMap, VecPathId, Vec<Entity>) {
-    let mut sim = SimWorld::default();
-    let mut scene = VecScene::new();
-    let mut map = VecEntityMap::new();
-    let id = scene.push_path(cook(ShapeKind::RoundRect, [-8.5, 2.0], [-1.5, 3.0], &[0.5]));
-    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
-    let passo = (-1.8f64 - -8.2) / 3.0;
-    let mut pai = None;
-    let mut ids = Vec::new();
-    for k in 0..3 {
-        let pos = if k == 0 {
-            [-8.2, 2.5]
-        } else {
-            [passo as f32, 0.0]
-        };
-        let e = osso(&mut sim, &format!("Bone {}", k + 1), pos, passo, pai);
-        pai = Some(e);
-        ids.push(e);
-    }
-    crate::skin_live::bind(&mut sim, &scene, &map, &[id], None);
-    // ⛔⛔ **A FORMA CARREGA UM `Sprite`, e sem ele esta fixtura não contém o fenómeno** — no app
-    // toda arte vectorial tem um, e a 1.ª redacção da porta escolhia o ramo da mídia por
-    // `tem Sprite?`: ali o `SkinnedMesh` não parseia, a porta respondia «não achei» e a tela ficava
-    // sem pontos. *Só a FOTOGRAFIA o mostrou — a fixtura de unidade não tinha `Sprite` e estava
-    // verde sobre o defeito.*
-    let alvo = forma(&map, id);
-    sim.world_mut()
-        .entity_mut(alvo)
-        .insert(ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]));
-    (sim, scene, map, id, ids)
-}
 
-/// O raio do pincel de fábrica, em unidades de MUNDO a esta `ppm`.
-fn raio_de_fabrica() -> f64 {
-    40.0 / f64::from(PPM)
-}
 
 /// ⭐⭐⭐ **A ARTE SOB O CURSOR É A QUE O CONTÉM — e não a que tem um VÉRTICE perto.**
 ///
@@ -377,10 +288,19 @@ fn um_dab_chega_inteiro_as_duas_alcas_do_no() {
          deixou de afirmar o que o report de 19/09 pediu"
     );
 
-    // ⭐⭐⭐ **A 4.ª metade: a mancha é ANCORADA no NÓ, mesmo com o dedo mais perto de uma alça.**
-    // ⛔ «pesos em alças» tinha TRÊS sítios, e este é o que ninguém tinha visto: o
-    // [`crate::peso_a_mao::ponto_sob_o_cursor`] escolhia entre TODOS os pontos, logo o centro de uma
-    // correcção podia cair numa alça — um sítio cujo peso já ninguém lê.
+    // ⭐⭐⭐ **A 4.ª metade: a mancha pousa SOBRE A ARTE, nunca numa alça.**
+    //
+    // ⛔⛔ **A redacção anterior dizia *«ancorada no NÓ»* e essa premissa MORREU em 2026-09-19**,
+    // com a cura do report do dono (*«o que vc mandou fazer não funcionou»*): ancorar no nó mais
+    // perto deixava a lei da F30 — a arte a seguir o peso ENTRE os nós — **inexprimível por gesto
+    // nenhum** (medido na barra do smoke: o meio dela fica a `3,041` do nó mais perto, contra um
+    // pincel de `0,40`, e o veredito era `ForaDaArte`). Hoje a mancha pousa no ponto do CONTORNO
+    // sob o dedo ([`crate::ancora_da_mancha`]).
+    //
+    // ⭐ **A cerca que o report original pedia fica, e mais forte:** *«nunca numa alça»* era um
+    // caso particular de *«num sítio que a arte não tem»* — uma alça de quina vive **fora** da
+    // curva, e estar SOBRE a curva exclui-a por construção. ⚠️ A 2.ª asserção é o CONTROLO disso:
+    // sem ela, uma fixtura cuja alça caísse em cima do contorno tornaria a 1.ª trivial.
     let alca = repousos[i * 3 + 1];
     let no = repousos[i * 3];
     let rumo = [(alca[0] - no[0]) * 0.8, (alca[1] - no[1]) * 0.8];
@@ -399,13 +319,34 @@ fn um_dab_chega_inteiro_as_duas_alcas_do_no() {
         .correcoes
         .clone();
     assert!(depois.len() >= antes, "a pincelada perdeu manchas");
-    let dist = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).hypot(a[1] - b[1]);
+    let contorno = crate::ancora_da_mancha::contorno(&repousos);
+    let ao_contorno = |p: [f64; 2]| {
+        (0..contorno.len())
+            .map(|k| {
+                crate::ancora_da_mancha::d2_segmento(
+                    contorno[k],
+                    contorno[(k + 1) % contorno.len()],
+                    p,
+                )
+            })
+            .fold(f64::INFINITY, f64::min)
+            .sqrt()
+    };
+    for c in &depois {
+        let fora = ao_contorno(c.centro);
+        assert!(
+            fora < 1e-9,
+            "uma mancha pousou a {fora} do contorno — o centro da correccao caiu num sitio que a \
+             arte nao tem, e a correccao passa a corrigir o vazio"
+        );
+    }
+    // ⭐ O CONTROLO: a alça desta fixtura vive FORA da curva (medido: `0,0734`), logo a asserção
+    // acima exclui-a de facto.
+    let alca_fora = ao_contorno(alca);
     assert!(
-        depois
-            .iter()
-            .all(|c| dist(c.centro, no) < dist(c.centro, alca) + 1e-12),
-        "uma mancha foi ancorada mais perto de uma ALCA do que do NO' — o centro da correccao caiu \
-         num sitio cujo peso ja' ninguem le^"
+        alca_fora > 1e-3,
+        "a alca desta fixtura esta' a {alca_fora} do contorno — ela cabe na curva, e a asserção de \
+         cima deixou de excluir o caso que o report de 19/09 nomeou"
     );
 }
 

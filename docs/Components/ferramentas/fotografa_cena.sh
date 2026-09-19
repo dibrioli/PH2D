@@ -136,14 +136,19 @@ if [ -s "$SAIDA" ]; then
   #    cabeçalho. ⇒ imprime-se do 1.º acerto até à linha antes do acerto SEGUINTE, com tecto.
   awk '/[Ss]moke\]/ { n++ } n >= 1 && n <= 2 && linhas < 24 { print; linhas++ }' "$TMP/app.log" \
     || true
-  # ⭐ **E o log INTEIRO por pedido** (`FOTO_LOG=<ficheiro>`): a janela do `awk` acima mostra do 1.º
-  # anúncio ao 2.º, logo **todo diagnóstico posterior é invisível** — e este roteiro é lido por quem
-  # está a caçar um defeito. *Foi essa janela que escondeu a auto-conferência do HUD, e é a 3.ª vez
-  # que ela custa uma volta.* ⛔ Ela FICA como está: encher o terminal com centenas de linhas é o
-  # defeito oposto, e o dono lê este resumo.
-  if [ -n "${FOTO_LOG:-}" ]; then
-    cp "$TMP/app.log" "$FOTO_LOG" && echo "log: $FOTO_LOG"
-  fi
+  # ⭐⭐⭐ **E o log INTEIRO fica SEMPRE ao lado da foto** — nunca por pedido.
+  #
+  # ⚠️⚠️ **As duas linhas desta rodada curaram a MESMA janela de três linhas, cada uma à sua
+  # maneira, e a integração de 20/09 ficou com o melhor das duas:** o resumo do `awk` acima é da
+  # `line/components` (encher o terminal com centenas de linhas é o defeito OPOSTO, e o dono lê
+  # este resumo), e *escrever o log ao lado da foto* é da `line/Vector` — ⭐ ela é estritamente
+  # melhor que o `FOTO_LOG=<ficheiro>` que aqui estava: **um opt-in só serve quem já sabe que
+  # precisa dele**, e quem está a caçar um defeito descobre isso depois de a foto já ter saído.
+  #
+  # ⚠️ E o ficheiro leva o log **inteiro**, não só o que casa `smoke]`: uma RECUSA do app não traz
+  # essa etiqueta, e é exactamente ela que explica uma foto vazia.
+  cp "$TMP/app.log" "${FOTO_LOG:-${SAIDA%.png}.log}" 2>/dev/null \
+    && echo "roteiro: ${FOTO_LOG:-${SAIDA%.png}.log}"
 else
   echo "sem foto — log do app:" >&2
   tail -20 "$TMP/app.log" >&2 || true

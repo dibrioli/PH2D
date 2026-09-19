@@ -314,25 +314,54 @@ pub fn bind(
                  por cima para empurrar o peso para cima; para TIRAR, carregue «Subtract» na \
                  fileira «Direction» e arraste outra vez."
             );
-            // ⭐⭐⭐ **E A CURA DA LIMITAÇÃO ENSINA-SE ONDE ELA APARECE** (1.ª saída da F26, ordem
-            // do dono de 2026-09-19). *Um aviso que nomeia um limite e não diz o que fazer com ele
-            // é meia lição* — e a peça com oito nós é exactamente onde o artista descobre que
-            // precisa de mais.
-            eprintln!(
-                "[vec-bone-smoke] ⚠️ na BARRA laranja o mesmo pincel mostra 8 pontos e mais nada — \
-                 um caminho so' tem peso nos NOS dele, e os dela estao nas duas pontas. ⭐ DUAS \
-                 SAIDAS, e o dono escolheu as duas: (1) pegue na CANETA e carregue em cima da linha \
-                 da barra onde quer controlo — o anel VERDE com uma cruz acende quando o clique poe \
-                 um ponto ali, e o ponto novo SOBREVIVE ao quadro ja' com peso; (2) desde 19/09 \
-                 pintar peso ENTRE dois nos JA' MOVE a arte, porque o desenho deixou de ser a curva \
-                 dos pontos de controlo e passou a ser a imagem verdadeira dela. Antes disso, uma \
-                 mancha no meio de uma aresta movia exactamente ZERO."
-            );
         }
     }
     let mut presas = 0;
     for (id, raiz) in pecas.iter().take(2) {
         presas += ph2d_skeleton_live::skin_live::bind(sim, scene, map, &[*id], *raiz);
+    }
+    // ⭐⭐⭐ **A BARRA LARANJA DIZ QUE OSSOS A GOVERNAM** — e a lição da cura dela mora AQUI, onde
+    // ela é presa, e não no bloco da imagem.
+    //
+    // ⛔⛔⛔ **Isto é o report do dono de 2026-09-19 à letra** (*«Bone 14 está ligado à imagem e
+    // não ao vetor. Bones 1, 2 e 3 estão ligados na barra laranja. O que vc mandou fazer não
+    // funcionou»*): a cena tem DOIS esqueletos de três ossos — um na barra vectorial, outro no
+    // braço PINTADO — e o roteiro nomeava um osso do segundo ao lado de uma lição sobre a
+    // primeira. ⚠️ *Os nomes são o índice da entidade, logo nenhum deles se pode escrever à mão:
+    // acrescentar uma peça à cena renumera tudo o que vem depois.*
+    if let Some((_, Some(raiz))) = pecas.first().copied() {
+        let nome = |e: ph2d_ecs::Entity| {
+            sim.world()
+                .get::<ph2d_ecs::Name>(e)
+                .map_or_else(|| "<sem nome>".to_string(), |n| n.as_str().to_string())
+        };
+        // ⚠️ **A ordem é a da CADEIA, e não a da [`ossos_desde`]** — ela ordena por `to_bits`, que no
+        // bevy é a criação INVERTIDA, e a lista saía «Bone 3, Bone 2, Bone 1». *Uma lista que conta
+        // ao contrário lê-se como um defeito, e o dono não tem como saber que não é.*
+        let lista = cadeia_em_ordem(sim, raiz)
+            .iter()
+            .map(|e| nome(*e))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let meio = osso_do_meio(sim, raiz).map_or_else(|| nome(raiz), nome);
+        eprintln!(
+            "[vec-bone-smoke] a BARRA LARANJA obedece a «{lista}» — e mais nenhum osso da cena lhe \
+             toca. ⚠️ O braco PINTADO tem um esqueleto SEPARADO: escolher um osso dele e pintar na \
+             barra nao faz nada, e esta' certo."
+        );
+        eprintln!(
+            "[vec-bone-smoke] PINCEL DE PESO NA BARRA: escolha «{meio}» (o osso do MEIO dela), \
+             carregue «Weight» no painel Bones e arraste POR CIMA DA BARRA, longe das duas pontas. \
+             ⭐ Desde 19/09 a barra MUDA DE FORMA ali: o desenho deixou de ser a curva dos pontos \
+             de controlo e passou a ser a imagem verdadeira dela. Antes disso o pincel RECUSAVA \
+             aquele sitio — os oito nos da barra estao todos nas duas pontas, e a mancha era \
+             ancorada no no' mais perto."
+        );
+        eprintln!(
+            "[vec-bone-smoke] ⭐ A OUTRA SAIDA, se quiser um no' de verdade ali: pegue na CANETA e \
+             carregue em cima da linha da barra — o anel VERDE com uma cruz acende quando o clique \
+             poe um ponto, e o ponto novo SOBREVIVE ao quadro ja' com peso."
+        );
     }
     // ⭐⭐⭐ **O TENTÁCULO ABRE JÁ CURVADO** (report do Enio, 2026-09-06: *"nenhuma forma pode
     // ser deformada"*). A medição mostrou o motor intacto — o que faltava era **ver** que ele
@@ -565,6 +594,23 @@ fn arm_pixels() -> Vec<u8> {
         }
     }
     px
+}
+
+/// **A cadeia do primeiro osso ao último**, descendo pelo 1.º filho que é osso.
+///
+/// ⛔ Ela existe porque a [`ph2d_skeleton_live::esqueletos::ossos_desde`] devolve o CONJUNTO
+/// ordenado por `to_bits` — bom para uma régua, errado para uma FRASE.
+fn cadeia_em_ordem(sim: &ph2d_ecs::SimWorld, raiz: ph2d_ecs::Entity) -> Vec<ph2d_ecs::Entity> {
+    let mut out = vec![raiz];
+    let mut e = raiz;
+    while let Some(f) = sim.world().get::<ph2d_ecs::Children>(e).and_then(|c| {
+        c.iter()
+            .find(|c| sim.world().get::<ph2d_skeleton_ecs::Bone>(**c).is_some())
+    }) {
+        e = *f;
+        out.push(e);
+    }
+    out
 }
 
 /// ⭐⭐ **O OSSO DO MEIO DE UMA CADEIA** — o que o roteiro do pincel de peso manda escolher.

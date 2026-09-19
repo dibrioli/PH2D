@@ -624,6 +624,11 @@ fn o_roteiro_da_cena_nomeia_a_caixa_da_grade() {
 #[path = "scenes_pente_sondas_tests.rs"]
 mod sondas;
 
+/// ⭐⭐⭐⭐ A sonda que decide o VALOR DE FÁBRICA do pente (decisão do dono,
+/// 2026-09-19: *«ligar o pente de topologia»*). Ver [`pente_fabrica`].
+#[path = "scenes_pente_fabrica_tests.rs"]
+mod pente_fabrica;
+
 /// Os DESENHADORES desta cena — irmão das [`sondas`], cortado por tecto de LOC.
 #[path = "scenes_pente_desenhos_tests.rs"]
 mod desenhos;

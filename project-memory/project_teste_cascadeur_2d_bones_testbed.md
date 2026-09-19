@@ -187,3 +187,29 @@ volta do tornozelo). ⚠️ **Margem de 2,4 cm (14,7 de 17,1)**, escrita no port
 casa** — abaixo de `TOL_APOIO` o motor ainda chama o pé de «apoiado» —, e `√2` é a altura em que o pé
 fica FORA da faixa de contacto durante metade do passo. Sem ele o pé anda 22 cm sem sair da faixa.
 Detalhe: `auditoria/ACHADOS.md` B29.
+
+## 18/09 (3.ª) — «os pés ainda deslizam»: a régua que aprovou o defeito era a CERCA DO MOTOR
+
+⛔⛔⛔ **A barra da lei do passo estava CONTAMINADA.** Ela dizia «uma pessoa deriva 5,2 cm num apoio»,
+e esses 5,2 saíam de contar como apoiado todo ponto a menos de **3 cm** do chão — que é a janela em
+que o MOTOR decide prender um pé, não «o pé está no chão». Medida a **5 mm** sobre as mesmas seis
+capturas: **0,92 cm** de mediana, 3,2 no percentil 90. *A régua media a janela de decisão do motor e
+chamava-lhe o chão.* ⚠️ E ela estava em três sítios, um deles **dentro do portão**, que por isso ficou
+verde sobre um pé a arrastar 8,9 cm.
+
+⭐⭐ **Apertar a cerca revelou que a FÍSICA DESFAZIA O PASSO, por duas vias:** o IMPULSO desce o corpo
+e a trava do chão gasta exatamente a folga do pé no ar (o pé ia a 0,00 e escorregava 5,4 cm no
+`pulo`); e a AUGMENTAÇÃO do `det` declarava contacto nesses quadros, fundindo a faixa do apoio POR
+CIMA do passo (no `mortal` a âncora do quadro de DECOLAGEM saltava de −1,24 para 14,64 cm).
+
+⭐ **A cura é arquitetura:** o passo é planeado UMA vez onde as chaves são conhecidas (`plantarPes`),
+GRAVADO nas poses e REIMPOSTO pelo pino — o alvo é do MUNDO. O pino **deixou de planear passos**.
+
+⚠️⚠️ **E a marca teve de ser levada à mão TRÊS vezes — a lição já estava escrita no ficheiro**, para
+as chaves: *«uma propriedade que atravessa uma transformação tem de ser levada à mão»*. Sintomas
+diferentes por travessia: sem a do atraso dos braços, o atraso passava a mexer as **PERNAS 16,2°**.
+
+Deslize: `aterrar_aberto` **8,9 → 3,9 cm** (e os 3,9 são o CHOQUE da aterrissagem), `pulo`/`mortal`/
+`soco` **0,0**. ⏳ ABERTO: falta **deslocar o peso** antes de levantar o pé — a cerca «um pé só anda se
+o corpo puder ficar sobre o outro» foi construída, medida, e **recusa o passo que o dono quer** (para
+fechar 55 cm de passada o peso está a 41,4 cm do pé que fica). Decisão do dono. Detalhe: `ACHADOS` B30.

@@ -1099,3 +1099,18 @@ quando um passe decide em lote, a cerca pergunta-se **depois** e com todos os de
 se ela vetar, tem de vetar um grupo coerente (ali, o triângulo inteiro — escolher um culpado entre
 dois pediria um desempate por índice, que faria a saída depender da numeração da malha).
 Ver [[reference_topic_mutation_proofs]] e [[reference_topic_gate_discipline]].
+
+## ⛔⛔⛔⛔ Uma FRACÇÃO sem o TECTO medido lê-se como «há muito por ganhar» (2026-09-21)
+A `line/sculpt3d` optimizou durante três waves uma régua que devolve *«que fracção das arestas
+segue a grade»*, lendo `64 %` como *«dois terços, e há um terço por apanhar»*. Medido o **tecto**
+numa grade **perfeita** — coisa que ninguém tinha feito —, ele é **`66,7 %`**: uma grade quadrada
+triangulada tem três famílias de aresta e um terço são **DIAGONAIS**, que moram no balde mais
+afastado **por construção**. ⇒ o produto estava a **`96,4 %` do tecto** e a coluna não distinguia
+mais nada. **Why:** uma percentagem parece auto-explicativa e não é — `100 %` só é o tecto se o
+denominador puder chegar lá, e aqui o próprio artefacto (triangular uma grade) põe um terço no
+lado errado. **How to apply:** antes de gastar uma wave a subir uma fracção, **construa a saída
+PERFEITA e corra a régua sobre ela**; se o tecto não for `100 %`, escreva-o num gate ao lado da
+régua (lá, com a metade que aperta: numa grade perfeita o balde do MEIO tem de estar VAZIO, senão
+qualquer malha com um terço a 45° passaria). E quando a coluna saturar, a wave seguinte não é
+afiná-la — é achar a grandeza que ainda discrimina.
+Ver [[reference_topic_mutation_proofs]] e [[reference_topic_gate_discipline]].

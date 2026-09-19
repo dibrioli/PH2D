@@ -104,6 +104,10 @@ mod sampling;
 pub(crate) mod script;
 /// ⭐⭐⭐ A secção SEQUENCE (TOP-20 #19) — a cutscene de um objecto. Ver o cabeçalho.
 pub(crate) mod sequence;
+/// ⭐⭐⭐ **O ABANÃO DA CÂMERA** (suplente #25) — *como* ela treme; ver o cabeçalho.
+pub(crate) mod shake;
+/// ⭐⭐⭐ **O EMISSOR DE ABANÃO** (suplente #25) — *ao ouvir o quê*; ver o cabeçalho.
+pub(crate) mod shake_emitter;
 /// **§5 9-Slice** — a seção que a spec declarou em 2026-05 e que nasceu em 2026-08-21.
 pub(crate) mod slice_grid;
 pub(crate) mod slice_nine;

@@ -96,6 +96,60 @@ impl crate::App {
         self.playhead.play();
     }
 
+    /// ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — `PH2D_SHAKE_SMOKE=1`. Prólogo do quadro, uma vez.
+    ///
+    /// ⚠️⚠️ **Ele faz TRÊS coisas que a cena não pode fazer, e sem qualquer uma delas o smoke
+    /// ensina o contrário do que diz:**
+    ///
+    /// 1. ⭐⭐⭐ **TOMA a vista da câmera do jogo.** O abanão é um offset do `CameraRuntime`, que só
+    ///    chega ao ecrã com a pré-visualização ligada — sem isto a cena monta tudo certo e **nada
+    ///    treme**, e o dono lê *«o abanão não funciona»* sobre um motor que funciona. ⛔ É a mesma
+    ///    linha que a `=2` da fábrica já paga, e pela mesma família de razão.
+    /// 2. **Cria a acção `boom` e liga-a ao `Q`.** Nenhuma das sete do `with_player_defaults` é
+    ///    explodir, e a lei do gatilho cala uma acção que o mapa não conhece.
+    /// 3. **Põe o relógio a andar.** O `dt` do abanão é o do passo fixo: com a corrida parada ele
+    ///    **congela**, de propósito.
+    pub(crate) fn shake_smoke(&mut self) {
+        if self.components.smokes.shake {
+            self.components.smokes.shake_raise =
+                self.levanta_o_inspector(self.components.smokes.shake_raise);
+            return;
+        }
+        if std::env::var_os("PH2D_SHAKE_SMOKE").is_none() {
+            return;
+        }
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        let montada = ph2d_app_components::shake_smoke::montar(cx.sim.world_mut(), 1);
+        self.components.smokes.shake = true;
+        self.components.smokes.shake_raise = crate::components_scenes::LEVANTA_O_INSPECTOR;
+        // ⭐⭐⭐ Ver o ponto 1 do doc — sem isto a wave inteira é invisível.
+        self.game_camera_preview = true;
+        self.timeline.flags.simulate_physics = true;
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            // ⚠️ **A acção nasce AQUI e não na cena** — o mapa vive no `HeroScreen`, que é do
+            // editor. ⭐ O `create` devolve a que já existe se o nome repetir.
+            let id = hero
+                .input_map
+                .create(ph2d_app_components::shake_smoke::ACCAO);
+            if let Some(a) = hero.input_map.get_mut(id) {
+                a.bindings.push(ph2d_input::Binding::Key(ph2d_input::Key(
+                    ph2d_app_components::shake_smoke::TECLA,
+                )));
+            }
+            hero.panel_visibility.insert("inspector", true);
+            // ⚠️ **A RÉGUA DO TRANSPORTE abre junto** — o passo (6) manda parar a corrida, e uma
+            // instrução sobre o transporte num ecrã sem ele devolve *«que régua?»*.
+            hero.panel_visibility.insert("timeline", true);
+            // ⛔ **A BOMBA nasce ESCOLHIDA** — o roteiro manda ver a secção *Shake Emitter*.
+            hero.gizmo.selection = Some(montada.escolhido);
+            hero.gizmo.extra_selection.clear();
+        }
+        self.playhead.rewind();
+        self.playhead.play();
+    }
+
     /// ⭐⭐⭐ **O GOLPE** (suplente #24, 19/09) — `PH2D_DANO_SMOKE=1`. Prólogo do quadro, uma vez.
     ///
     /// ⚠️ **Ele é o do gatilho mais o relógio a andar**, e as duas metades são obrigatórias: a

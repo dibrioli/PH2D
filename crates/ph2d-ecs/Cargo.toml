@@ -29,6 +29,11 @@ ph2d-tween = { path = "../ph2d-tween" }
 # argumento da linha acima: e' uma FOLHA (so' serde), o `Fit` dela e' campo do `UiCanvas` e
 # portanto viaja no documento, e a mesma lei corre no editor e no runtime do jogo.
 ph2d-hud = { path = "../ph2d-hud" }
+# ⭐ A lei do ABANÃO da vista (suplente #25). Mesmo argumento das duas linhas acima e da
+# `ph2d-tween`: ela é uma FOLHA (**zero** dependências, nem `libm`), os cinco números dela são
+# campos do `CameraShake` e portanto viajam no documento, e a faixa do expoente que o painel pinta
+# tem de ser alcançável a partir do componente — `CameraShake::lei()` é a porta ÚNICA.
+ph2d-shake = { path = "../ph2d-shake" }
 bevy_ecs = "0.19"
 # ADR-0072 §2.1: o `NamedAnchor` guarda a lista inline (4 âncoras cobrem ~99% dos sprites) e o
 # `AnchorData::Dict` guarda os pares ordenados inline (8). ⚠️ NÃO é dependência nova no projeto —

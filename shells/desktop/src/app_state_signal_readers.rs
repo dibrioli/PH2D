@@ -38,12 +38,17 @@ pub(crate) struct SignalReaders {
     /// ⭐ O cursor da **FÁBRICA** (TOP-20 #11) — ela escuta o mesmo sinal que a tabela de acções, e
     /// por isso precisa do seu: com um cursor partilhado, quem lesse primeiro apagava o outro.
     pub(crate) factory: ph2d_runtime::SignalReader,
+    /// ⭐ O cursor do **ABANÃO DA VISTA** (suplente #25) — o que levanta trauma na câmera.
+    ///
+    /// ⚠️ **Ele é lido na `fase_game_camera`, que corre ANTES desta fase** — e é isso que dá
+    /// latência ZERO a um contacto da física. A janela de graça de um quadro do outbox faz o resto.
+    pub(crate) shake: ph2d_runtime::SignalReader,
     /// O cursor da máquina de estados de UI.
     pub(crate) ui: ph2d_runtime::SignalReader,
 }
 
 impl SignalReaders {
-    /// Os oito cursores no arranque. ⚠️ O de diagnóstico só nasce com a env var.
+    /// Os nove cursores no arranque. ⚠️ O de diagnóstico só nasce com a env var.
     pub(crate) fn new() -> Self {
         Self {
             toast: ph2d_runtime::SignalReader::new(),
@@ -53,6 +58,7 @@ impl SignalReaders {
             script: ph2d_runtime::SignalReader::new(),
             particles: ph2d_runtime::SignalReader::new(),
             factory: ph2d_runtime::SignalReader::new(),
+            shake: ph2d_runtime::SignalReader::new(),
             ui: ph2d_runtime::SignalReader::new(),
         }
     }

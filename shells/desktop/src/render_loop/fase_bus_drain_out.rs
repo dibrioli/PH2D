@@ -477,6 +477,13 @@ pub(in crate::render_loop) struct DrainOut {
         u64,
         ph2d_editor_core::action_trigger_edits::ActionTriggerFieldEdit,
     )>,
+    /// ⭐⭐⭐ As edições das DUAS secções do ABANÃO (suplente #25).
+    pub(in crate::render_loop) shake_edits:
+        Vec<(u64, ph2d_editor_core::shake_edits::ShakeFieldEdit)>,
+    /// Idem, as do emissor — ⚠️ **duas listas e não uma**: elas aplicam-se a componentes
+    /// diferentes, e um enum só faria o dreno perguntar «em qual?» a cada edição.
+    pub(in crate::render_loop) shake_emitter_edits:
+        Vec<(u64, ph2d_editor_core::shake_edits::EmitterFieldEdit)>,
     // ⭐ A secção TAGS (TOP-20 #9) — ver o dreno dela no `fase_inspector_commits`.
     pub(in crate::render_loop) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     // ⭐⭐⭐ O painel TAGS (TOP-20 #9, W4) — gestos sobre a ÁRVORE, que não é do mundo. Ver o

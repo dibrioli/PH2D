@@ -108,7 +108,6 @@ mod anchor_overlay;
 use ph2d_app_components::signal_actions_bridge as signal_actions;
 mod audio_2d;
 /// ⭐⭐⭐ **A CÂMERA DE JOGO** (TOP-20 #7) — a costura entre a lei pura e a vista da shell.
-mod camera_2d;
 /// O anel de um objeto VAZIO selecionado — ver o módulo.
 mod empty_object_overlay;
 /// ⭐ A secção TIMERS (TOP-20 #2, W3) — o snapshot e o commit dela.
@@ -142,7 +141,9 @@ mod tags_panel;
 // anel de objecto vazio (`group_gizmo_view_tests`) continua a acender a receita pela porta de
 // VERDADE, hoje escrita `ph2d_app_components::master_editing::mark`.
 pub(crate) use audio_2d::AudioSceneReport;
-pub(crate) use camera_2d::CameraSceneReport;
+// ⭐⭐ **A fase da câmera SAIU para a crate da família em 19/09** (catraca `the_shell_only_shrinks`)
+// — o relatório dela continua a ser lido aqui pela `fase_game_camera`.
+pub(crate) use ph2d_app_components::camera_2d::CameraSceneReport;
 /// ⭐⭐⭐ **A ponte do cérebro autorável** (TOP-20 #15) — ver o cabeçalho dela.
 mod state_machine_tick;
 /// ⚠️ A MESMA porta do passe, alcançável dos gates de outro módulo (a cadeia de visibilidade do

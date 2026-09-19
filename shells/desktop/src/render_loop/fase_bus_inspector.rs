@@ -227,6 +227,10 @@ impl crate::App {
                 ComponentEdit::Sequence(e) => pd.sequence_edits.push((entity_bits, e)),
                 ComponentEdit::CounterWatch(e) => pd.counter_watch_edits.push((entity_bits, e)),
                 ComponentEdit::ActionTrigger(e) => pd.action_trigger_edits.push((entity_bits, e)),
+                ComponentEdit::Shake(e) => pd.shake_edits.push((entity_bits, e)),
+                ComponentEdit::ShakeEmitter(e) => {
+                    pd.shake_emitter_edits.push((entity_bits, e));
+                }
                 ComponentEdit::Tags(e) => pd.tags_edits.push((entity_bits, e)),
             },
             // ⭐⭐⭐ **O painel TAGS** (TOP-20 #9, W4). ⛔ **Sem `entity_bits`, e é isso que o

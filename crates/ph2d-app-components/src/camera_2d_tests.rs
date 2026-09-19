@@ -14,6 +14,10 @@ use super::update;
 
 const ASPECT: f32 = 16.0 / 9.0;
 const DT: f64 = 1.0 / 60.0;
+/// ⚠️ **O abanão de uma vista que não treme** (suplente #25). Estes gates medem a LEI DA CÂMERA, e
+/// pô-lo aqui por nome é o que faz cada um deles dizer, na assinatura, que não está a medir o
+/// abanão — *um `[0.0, 0.0]` cru em quinze chamadas leria-se como ruído de argumento*.
+const SEM_ABANAO: [f32; 2] = [0.0, 0.0];
 
 fn mundo() -> SimWorld {
     SimWorld::default()
@@ -60,7 +64,7 @@ fn mover(sim: &mut SimWorld, e: ph2d_ecs::Entity, p: [f32; 2]) {
 #[test]
 fn a_scene_with_no_camera_leaves_the_view_to_the_editor() {
     let mut sim = mundo();
-    let (vista, r) = update(&mut sim, ASPECT, 1, DT);
+    let (vista, r) = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO);
     assert!(
         vista.is_none(),
         "sem camera a vista tem de ficar com o editor"
@@ -75,7 +79,7 @@ fn a_scene_with_no_camera_leaves_the_view_to_the_editor() {
 fn a_camera_without_follow_frames_its_own_pose() {
     let mut sim = mundo();
     camera(&mut sim, "Cam", [3.0, -2.0], GameCamera::default());
-    let (vista, r) = update(&mut sim, ASPECT, 1, DT).clone();
+    let (vista, r) = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO).clone();
     let v = vista.expect("uma camera activa tem de dar vista");
     assert_eq!(v.center, [3.0, -2.0]);
     assert_eq!(r.cameras, 1);
@@ -97,7 +101,7 @@ fn the_first_frame_settles_instead_of_travelling() {
         target: "Heroi".into(),
         ..CameraFollow::default()
     });
-    let (vista, r) = update(&mut sim, ASPECT, 1, DT);
+    let (vista, r) = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO);
     assert!(r.target_found, "o alvo chama-se `Heroi` e existe");
     assert_eq!(
         vista.unwrap().center,
@@ -119,10 +123,10 @@ fn once_settled_it_damps_towards_the_target() {
         ..CameraFollow::default()
     });
     // Quadro 1: assenta em (0,0).
-    let _ = update(&mut sim, ASPECT, 1, DT);
+    let _ = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO);
     // O herói salta para 300; um tique tem de dar `300 · 5/60 = 25`.
     mover(&mut sim, heroi, [300.0, 0.0]);
-    let (vista, _) = update(&mut sim, ASPECT, 1, DT);
+    let (vista, _) = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO);
     let c = vista.unwrap().center;
     assert!(
         (c[0] - 25.0).abs() < 1e-3,
@@ -145,7 +149,7 @@ fn a_target_that_does_not_exist_is_reported_not_swallowed() {
         target: "NaoExiste".into(),
         ..CameraFollow::default()
     });
-    let (vista, r) = update(&mut sim, ASPECT, 1, DT);
+    let (vista, r) = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO);
     assert!(r.following, "ela TEM follow");
     assert!(
         !r.target_found,
@@ -183,9 +187,9 @@ fn the_limits_hold_the_window_and_the_report_says_so() {
         min: [-100.0, -100.0],
         max: [100.0, 100.0],
     });
-    let _ = update(&mut sim, ASPECT, 1, DT);
+    let _ = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO);
     mover(&mut sim, heroi, [1000.0, 0.0]);
-    let (vista, r) = update(&mut sim, ASPECT, 1, DT);
+    let (vista, r) = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO);
     // meia-largura = 5 · (16/9) = 8,888…  ⇒  o centro pára em 100 − 8,888… = 91,111…
     let esperado = 100.0 - 5.0 * ASPECT;
     let c = vista.unwrap().center;
@@ -218,7 +222,7 @@ fn the_bridge_uses_the_camera_that_commands() {
             ..GameCamera::default()
         },
     );
-    let (vista, r) = update(&mut sim, ASPECT, 1, DT);
+    let (vista, r) = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO);
     assert_eq!(r.cameras, 2);
     assert_eq!(vista.unwrap().center[0], 9.0, "a de maior prioridade manda");
 }
@@ -252,7 +256,7 @@ fn the_offset_frames_the_view_without_feeding_back() {
     let mut ultimo = [0.0_f32, 0.0];
     for _ in 0..240 {
         mover(&mut sim, heroi, [0.0, 0.0]);
-        let (v, _) = update(&mut sim, ASPECT, 1, DT);
+        let (v, _) = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO);
         ultimo = v.unwrap().center;
     }
     assert!(
@@ -268,7 +272,7 @@ fn the_offset_frames_the_view_without_feeding_back() {
 fn a_frame_with_no_fixed_tick_still_gives_the_camera_a_life() {
     let mut sim = mundo();
     camera(&mut sim, "Cam", [4.0, 4.0], GameCamera::default());
-    let (vista, _) = update(&mut sim, ASPECT, 0, DT);
+    let (vista, _) = update(&mut sim, ASPECT, 0, DT, SEM_ABANAO);
     assert_eq!(
         vista
             .expect("mesmo com ticks=0 a camera activa da' vista")
@@ -328,7 +332,7 @@ fn the_lookahead_never_leads_by_more_than_its_own_definition() {
     for &t in &padrao {
         x += VEL * t as f32 * DT as f32;
         mover(&mut sim, heroi, [x, 0.0]);
-        let _ = update(&mut sim, ASPECT, t, DT);
+        let _ = update(&mut sim, ASPECT, t, DT, SEM_ABANAO);
         let ancora = sim
             .world()
             .get::<ph2d_ecs::CameraRuntime>(cam_e)
@@ -380,7 +384,7 @@ fn stopping_does_not_collapse_the_aim_in_one_frame() {
     for _ in 0..120 {
         x += VEL * DT as f32;
         mover(&mut sim, heroi, [x, 0.0]);
-        let _ = update(&mut sim, ASPECT, 1, DT);
+        let _ = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO);
     }
     let lead = |sim: &SimWorld| {
         sim.world()
@@ -398,7 +402,7 @@ fn stopping_does_not_collapse_the_aim_in_one_frame() {
     let passo_da_lei = (DT as f32) / L;
     let mut anterior = montada;
     for n in 0..12 {
-        let _ = update(&mut sim, ASPECT, 1, DT);
+        let _ = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO);
         let agora = lead(&sim);
         let queda = (anterior - agora) / montada;
         assert!(
@@ -469,7 +473,7 @@ fn in_steady_state_the_lead_is_exactly_velocity_times_lookahead() {
         let t = padrao[i % padrao.len()];
         x += VEL * t as f32 * DT as f32;
         mover(&mut sim, heroi, [x, 0.0]);
-        let _ = update(&mut sim, ASPECT, t, DT);
+        let _ = update(&mut sim, ASPECT, t, DT, SEM_ABANAO);
     }
     let rt = sim.world().get::<ph2d_ecs::CameraRuntime>(cam_e).unwrap();
     let v = rt.velocity[0];
@@ -486,5 +490,106 @@ fn in_steady_state_the_lead_is_exactly_velocity_times_lookahead() {
         (dianteira - VEL * L).abs() < VEL * L * 0.01,
         "a dianteira leu {dianteira:.4} m e a antecipacao de {L} s a {VEL} m/s vale {:.4}",
         VEL * L
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ O ABANÃO DA VISTA (suplente #25) — ele CHEGA ao consumidor?
+//
+// ⚠️ Esta é a pergunta que o `CLAUDE.md` §5.0 nomeia sobre si mesmo: *nenhum instrumento do repo
+// pergunta se o VALOR chega a um consumidor*. Os gates da ponte medem o trauma e o offset; estes
+// medem o único sítio onde isso vira PIXEL.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **O offset do abanão CHEGA à vista** — a mesma cena, duas chamadas, e a única diferença é
+/// o argumento. ⛔ Sem este gate, apagar a soma no `CameraView` deixaria a suíte inteira verde: os
+/// doze gates da ponte entram pelo canal de DENTRO dela, que fica abaixo desta costura.
+#[test]
+fn o_abanao_chega_ao_centro_da_vista() {
+    let mut sim = mundo();
+    camera(&mut sim, "Cam", [7.0, -3.0], GameCamera::default());
+    let parado = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO)
+        .0
+        .unwrap()
+        .center;
+    let tremido = update(&mut sim, ASPECT, 1, DT, [0.25, -0.5])
+        .0
+        .unwrap()
+        .center;
+    assert_eq!(parado, [7.0, -3.0]);
+    assert_eq!(
+        tremido,
+        [7.25, -3.5],
+        "o offset tem de SOMAR ao centro, e exactamente"
+    );
+}
+
+/// ⭐⭐ **E ele SOMA ao `offset` autorado da câmera, sem o substituir** — os dois são deslocamentos
+/// da vista e nenhum é dono do campo.
+#[test]
+fn o_abanao_soma_ao_offset_autorado_em_vez_de_o_substituir() {
+    let mut sim = mundo();
+    camera(
+        &mut sim,
+        "Cam",
+        [0.0, 0.0],
+        GameCamera {
+            offset: [2.0, 0.0],
+            ..GameCamera::default()
+        },
+    );
+    let c = update(&mut sim, ASPECT, 1, DT, [0.5, 0.0])
+        .0
+        .unwrap()
+        .center;
+    assert_eq!(c, [2.5, 0.0]);
+}
+
+/// ⭐⭐⭐ **O abanão entra DEPOIS dos limites, e é uma decisão DECLARADA** (o corpo do `update`
+/// escreve-a): antes deles a cerca COMERIA o abanão exactamente na borda do nível, e o artista leria
+/// *«o abanão parou de funcionar aqui»*.
+///
+/// ⚠️ **A régua tem de conter o fenómeno:** a câmera é levada CONTRA a cerca primeiro (o relatório
+/// tem de dizer `limited`), senão o gate mede uma câmera livre e passa por vácuo.
+#[test]
+fn na_borda_do_nivel_a_vista_ainda_treme() {
+    let mut sim = mundo();
+    let heroi = objecto(&mut sim, "Heroi", [0.0, 0.0]);
+    camera(
+        &mut sim,
+        "Cam",
+        [0.0, 0.0],
+        GameCamera {
+            height_world: 10.0,
+            ..GameCamera::default()
+        },
+    );
+    let cam_e = ph2d_ecs::active_camera_of(sim.world_mut()).unwrap();
+    sim.world_mut().entity_mut(cam_e).insert(CameraFollow {
+        target: "Heroi".into(),
+        damping: [0.0, 0.0],
+        ..CameraFollow::default()
+    });
+    sim.world_mut().entity_mut(cam_e).insert(CameraLimits {
+        min: [-100.0, -100.0],
+        max: [100.0, 100.0],
+    });
+    let _ = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO);
+    mover(&mut sim, heroi, [1000.0, 0.0]);
+
+    let (parada, r) = update(&mut sim, ASPECT, 1, DT, SEM_ABANAO);
+    assert!(
+        r.limited,
+        "o arranjo tem de CONTER o fenomeno: a cerca tem de morder"
+    );
+    let na_cerca = parada.unwrap().center[0];
+
+    let tremida = update(&mut sim, ASPECT, 1, DT, [0.75, 0.0])
+        .0
+        .unwrap()
+        .center[0];
+    assert!(
+        (tremida - (na_cerca + 0.75)).abs() < 1e-4,
+        "presa na cerca a vista ainda tem de tremer: {na_cerca} -> {tremida}"
     );
 }

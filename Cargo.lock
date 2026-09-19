@@ -4900,6 +4900,7 @@ dependencies = [
  "ph2d-render",
  "ph2d-runtime",
  "ph2d-script",
+ "ph2d-shake",
  "ph2d-skeleton-ecs",
  "ph2d-tags",
  "ph2d-text",
@@ -5537,6 +5538,7 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-morph-machine",
  "ph2d-render",
+ "ph2d-shake",
  "ph2d-stroke-width",
  "ph2d-symmetry",
  "ph2d-tags",
@@ -6044,6 +6046,7 @@ dependencies = [
  "ph2d-script",
  "ph2d-sculpt3d",
  "ph2d-sdf",
+ "ph2d-shake",
  "ph2d-skeleton",
  "ph2d-skeleton-demo",
  "ph2d-skeleton-ecs",
@@ -7971,6 +7974,7 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-label-census",
  "ph2d-label-fold",
+ "ph2d-shake",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-registry",
@@ -8534,6 +8538,10 @@ dependencies = [
  "ph2d-mesh",
  "rayon",
 ]
+
+[[package]]
+name = "ph2d-shake"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-skeleton"

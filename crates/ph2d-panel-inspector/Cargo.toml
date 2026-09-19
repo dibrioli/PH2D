@@ -15,6 +15,12 @@ authors.workspace = true
 # seria a segunda lista, e divergiria no dia do nono canal.
 ph2d-tween = { path = "../ph2d-tween" }
 ph2d-anim = { path = "../ph2d-anim" }
+# ⭐ A lei do ABANÃO (suplente #25) — a secção lê a FAIXA do expoente (`EXPOENTE_MIN`/`MAX`) para
+# saber quantos chips pintar e qual acender. ⛔ Escrever `1..=3` aqui seria a segunda declaração de
+# uma faixa que a lei já tem, e as duas divergiriam no dia em que o dono mandasse subir o tecto.
+# ⚠️ É uma FOLHA (zero dependências), como a `ph2d-tween` acima — a parede do ADR-0029 é contra a
+# `ph2d-ecs`, e esta crate não a atravessa.
+ph2d-shake = { path = "../ph2d-shake" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # ADR-0166 / plano F0: a §7 Ordering é a seção PILOTO — os rótulos das linhas dela vêm do
 # descritor, não de literais no pintor. ⚠️ Ligá-la revelou que as duas fontes já discordavam

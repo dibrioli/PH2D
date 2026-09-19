@@ -52,11 +52,34 @@ impl crate::App {
         //
         // ⚠️ **Ele não escreve componente registado nenhum** — o `CameraRuntime` não é gravável —,
         // logo não passa pelo `preview_drive`.
-        let (vista_da_cena, camera_report) = camera_2d::update(
+        // ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — *isto explodiu, e a câmera tremeu.*
+        //
+        // ⚠️⚠️ **Aqui, IMEDIATAMENTE antes do passe da câmera, e as duas metades são load-bearing:**
+        // a vista DESTE quadro tem de mostrar o trauma DESTE quadro (corrida depois, o abanão
+        // chegaria sempre um quadro atrasado), e correr **depois dos relógios** dá **latência ZERO
+        // ao contacto da física**, que é o caso de *«isto explodiu»*.
+        //
+        // ⚠️ Um sinal publicado pela TABELA de acções chega no quadro seguinte, e isso não é um
+        // furo: é a janela de graça de um quadro que o outbox dá a **todo** consumidor.
+        //
+        // ⛔ **Ele não escreve componente registado nenhum** (o `CameraShakeRuntime` não é
+        // gravável), logo não passa pelo `preview_drive` — a mesma linha que a câmera já tem.
+        // ⚠️ **O `dt` é o do PASSO FIXO vezes os tiques deste quadro, e nunca o relógio de parede:**
+        // com a corrida em pausa (`ticks == 0`) o abanão **congela**, que é o que a `Factory` e o
+        // `Lifetime` já fazem — e é o que torna um replay reprodutível.
+        let passo = self.fixed_step.fixed_dt() * f64::from(report.ticks);
+        let abanao = ph2d_app_components::shake_bridge::drive_camera_shake(
             sim,
-            camera_2d::aspect_of(surface.size()),
+            &self.signals,
+            &mut self.signal_readers.shake,
+            passo as f32,
+        );
+        let (vista_da_cena, camera_report) = ph2d_app_components::camera_2d::update(
+            sim,
+            ph2d_app_components::camera_2d::aspect_of(surface.size()),
             report.ticks,
             self.fixed_step.fixed_dt(),
+            abanao.offset,
         );
         // ⭐⭐ **A vista só é TOMADA com a pré-visualização ligada.** Sem isto, toda cena que tenha
         // uma câmera roubaria o pan e o zoom do artista no primeiro quadro — e a `GameCamera` é um
@@ -75,7 +98,7 @@ impl crate::App {
                 v.center,
                 ph2d_ecs::camera_2d::half_extent(
                     v.height_world,
-                    camera_2d::aspect_of(surface.size()),
+                    ph2d_app_components::camera_2d::aspect_of(surface.size()),
                 ),
             )
         });

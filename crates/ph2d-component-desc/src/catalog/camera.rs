@@ -63,6 +63,30 @@ const LIMITS_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.limits_fields.1", K::Vec2),
 ];
 
+/// ⭐⭐⭐ **COMO esta câmera treme** (suplente #25) — os cinco números da lei do abanão.
+///
+/// ⚠️ **«Punch» e não «Exponent»:** o artista escolhe o CARÁCTER do abanão, e a potência a que o
+/// trauma é elevado é como a lei o exprime, não como ele o pensa.
+const SHAKE_FIELDS: &[FieldDesc] = &[
+    f(0, "Amplitude", K::Scalar),
+    f(1, "Frequency", K::Scalar),
+    f(2, "Decay", K::Scalar),
+    f(3, "Punch", K::Int),
+    // ⭐ `Seed` e nao `Int`: ela nao tem valor CERTO, so tem de ser DIFERENTE.
+    f(4, "Seed", K::Seed),
+];
+
+/// ⭐⭐⭐ **Uma FONTE de abanão** (suplente #25) — como a vigia e o gatilho, o componente é uma LISTA
+/// e isto descreve a LINHA.
+const SHAKE_SOURCE_FIELDS: &[FieldDesc] = &[
+    // ⚠️ **Vazio = calada** — a lei da vigia, do gatilho e da §11.
+    f(0, "On", K::Text),
+    f(1, "From", K::Enum),
+    f(2, "Strength", K::Scalar),
+    f(3, "Full Within", K::Scalar),
+    f(4, "Nothing Beyond", K::Scalar),
+];
+
 /// Os descritores da família.
 pub const DESCS: &[ComponentDesc] = &[
     // ⚠️ **`O::ANY` nos três, e é a decisão**: uma câmera é quase sempre um objecto VAZIO — o ponto
@@ -82,11 +106,39 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         LIMITS_FIELDS,
     ),
+    // ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — *como* esta câmera treme.
+    //
+    // ⚠️⚠️ **Entre o `CameraLimits` e a `GameCamera`, e isso NÃO é estilo — o GATE apanhou-me:** a
+    // família é procurada por busca BINÁRIA, e fora de ordem o descritor devolve `None` para um tipo
+    // que existe. *Um descritor que não é encontrado lê-se exactamente como um que não existe*, e a
+    // 1.ª redacção pôs este bloco no topo do ficheiro.
+    //
+    // ⛔ **Ele NÃO requer a `GameCamera`, e a ausência é a decisão:** um abanão numa entidade sem
+    // câmera é inerte e o painel DI-LO (*«This is not the camera in command»*), enquanto exigi-lo
+    // impediria o artista de o preparar antes de anexar a câmera.
+    D::authored(
+        "ph2d::ecs::CameraShake",
+        "Camera Shake",
+        C::Camera,
+        O::ANY,
+        SHAKE_FIELDS,
+    ),
     D::authored(
         "ph2d::ecs::GameCamera",
         "component.game_camera.name",
         C::Camera,
         O::ANY,
         CAMERA_FIELDS,
+    ),
+    // ⭐⭐⭐ **QUEM EXPLODE** (suplente #25) — e ele mora na família da CÂMERA apesar de nunca viver
+    // numa: *o assunto é o abanão*, e pô-lo na família LÓGICA separaria as duas metades de uma lei
+    // que só se lê inteira. ⚠️ `O::ANY` pela razão das irmãs: quem explode é tantas vezes um objecto
+    // VAZIO quanto uma sprite.
+    D::authored(
+        "ph2d::ecs::ShakeEmitter",
+        "Shake Emitter",
+        C::Camera,
+        O::ANY,
+        SHAKE_SOURCE_FIELDS,
     ),
 ];

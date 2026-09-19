@@ -666,15 +666,8 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // ⚠️ **Um MARCADOR ainda tem de se registar**: a presença É o valor, e sem ele um Ctrl+Z ou um
     // reabrir devolveriam a cena SEM orelhas — que é a única maneira de tudo ficar mudo de uma vez.
     reg.register_default::<crate::AudioListener2D>("ph2d::ecs::AudioListener2D");
-    // ⭐⭐⭐ **A CÂMERA DE JOGO** (TOP-20 #7). Os TRÊS são CONFIG e gravam-se; o centro que ela
-    // ocupa agora é o `CameraRuntime`, que **não deriva `Serialize` e por isso não cabe aqui** —
-    // a cerca é do TIPO, como no `TimerRuntime`. ⛔ Registá-lo faria cada quadro com clique, numa
-    // cena a seguir o jogador, virar um passo de undo.
-    reg.register_default::<crate::GameCamera>("ph2d::ecs::GameCamera");
-    // ⚠️ **Separado da câmera de propósito**: um objecto pode ter câmera sem seguir ninguém (a
-    // fixa de uma sala), e é a ausência do componente que o diz — não um campo `enabled` a mais.
-    reg.register_default::<crate::CameraFollow>("ph2d::ecs::CameraFollow");
-    reg.register_default::<crate::CameraLimits>("ph2d::ecs::CameraLimits");
+    // ⭐⭐ **A família da CÂMERA mora no irmão** — ver o cabeçalho do [`super::registry_camera`].
+    super::registry_camera::register_camera(reg);
     // O RECORTE, que deixou de ser um campo da moldura para valer em qualquer forma FECHADA
     // (2026-08-21). Sem o registro, o modo de falha é o mesmo da moldura e igualmente enganoso:
     // um Ctrl+Z devolveria a forma inteira, com todos os filhos no lugar, e o recorte

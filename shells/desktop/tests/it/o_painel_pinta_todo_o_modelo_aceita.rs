@@ -128,3 +128,65 @@ fn o_sinal_do_chip_e_o_da_comparacao_que_ele_escolhe() {
         );
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ O ABANÃO DA VISTA (suplente #25) — as três leis que atravessam as crates.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// **Mutação que deve sangrar:** mudar o `SHAKE_EMITTERS_MAX` ou encurtar a tabela de ids.
+#[test]
+fn o_emissor_nao_aceita_mais_fontes_do_que_a_seccao_pinta() {
+    assert_eq!(
+        ids::INSP_EMITTER_ROW.len(),
+        ph2d_ecs::SHAKE_EMITTERS_MAX,
+        "uma fonte que o modelo aceita e o painel nao pinta e' estado inalcancavel por gesto nenhum"
+    );
+}
+
+/// ⭐⭐⭐ **Os chips do EXPOENTE cobrem a FAIXA DA LEI, e nem um a mais.**
+///
+/// ⚠️ **As duas metades:** um chip a menos é um expoente que o artista nunca escolhe; um a mais é um
+/// chip que manda um valor que a lei **coage em silêncio** — e o artista vê o chip aceso e o barro
+/// a fazer outra coisa.
+///
+/// **Mutação que deve sangrar:** mexer no `EXPOENTE_MIN`/`EXPOENTE_MAX` ou no array.
+#[test]
+fn os_chips_do_expoente_cobrem_a_faixa_da_lei() {
+    let faixa = usize::from(ph2d_shake::EXPOENTE_MAX - ph2d_shake::EXPOENTE_MIN) + 1;
+    assert_eq!(ids::INSP_SHAKE_EXPOENTE.len(), faixa);
+    // ⚠️ **A cerca do `0` NÃO vive aqui, e a razão é um LINT:** um `assert!` sobre duas constantes
+    // é dobrado pelo compilador antes de correr (`clippy::assertions_on_constants`). Ela é um
+    // `const _: () = assert!(…)` na própria `ph2d-shake` ⇒ **erro de compilação**, que é mais forte
+    // que um gate.
+}
+
+/// ⭐⭐⭐ **O chip da CERCA cobre o enum e respeita a ORDEM dele.**
+///
+/// ⛔⛔ **Este gate existe porque o painel NÃO conhece a `ph2d-ecs`** (ADR-0029): o
+/// `sections::shake_emitter::chave_da_cerca` tem a sua própria escada de chaves, e a shell é a
+/// única crate que vê as duas. ⚠️ **Reordenar o enum reescreve o sentido de toda fonte já gravada**
+/// — ele é `append-only` e a posição dele viaja no ficheiro.
+///
+/// **Mutação que deve sangrar:** trocar os dois braços do `chave_da_cerca` · acrescentar uma
+/// variante ao `SignalFrom` sem um chip · reordenar o `ALL`.
+#[test]
+fn o_chip_da_cerca_cobre_o_enum_e_respeita_a_ordem_dele() {
+    assert_eq!(
+        ids::INSP_EMITTER_DE.len(),
+        ph2d_ecs::SignalFrom::ALL.len(),
+        "uma cerca sem chip e' uma cerca que o artista nunca escolhe"
+    );
+    for (i, cerca) in ph2d_ecs::SignalFrom::ALL.iter().enumerate() {
+        let tag = u8::try_from(i).unwrap();
+        assert_eq!(cerca.tag(), tag, "a POSICAO no `ALL` e' a tag");
+        // ⭐ E o rótulo que o painel pinta é o que o motor chama àquela posição.
+        let chave = ph2d_panel_inspector::chave_da_cerca_do_abanao(tag);
+        assert_eq!(
+            ph2d_i18n::tr(chave),
+            cerca.label(),
+            "o chip da posicao {i} diz «{}» e o motor chama-lhe «{}»",
+            ph2d_i18n::tr(chave),
+            cerca.label()
+        );
+    }
+}

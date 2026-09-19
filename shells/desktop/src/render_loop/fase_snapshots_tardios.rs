@@ -95,6 +95,16 @@ pub(super) fn publica(
     // *«existe uma acção com este nome?»* está no **Input Map**, que não é o mundo. ⚠️ Sem ela,
     // uma linha com `fier` em vez de `fire` lê-se exactamente como uma que funciona — e o silêncio
     // dela é DUPLO, porque a lei do motor também cala uma acção que o mapa não conhece.
+    // ⭐⭐⭐ **O ABANÃO** (suplente #25) — as duas cabem aqui pela MESMA razão das irmãs, e a do
+    // EMISSOR é a mais forte de todas: a coluna *«existe uma câmera que treme?»* é uma varredura do
+    // MUNDO sobre **outro objecto**. ⚠️ Sem ela, um emissor perfeitamente ligado numa cena sem
+    // `CameraShake` lê-se exactamente como um partido — e a causa está onde o artista não olha.
+    ph2d_panel_inspector::set_current_inspector_shake(escolhido.and_then(|b| {
+        ph2d_app_components::shake_inspector::build_info_camera(sim, b, a_correr, quantos)
+    }));
+    ph2d_panel_inspector::set_current_inspector_emitter(escolhido.and_then(|b| {
+        ph2d_app_components::shake_inspector::build_info_emitter(sim, b, a_correr, quantos)
+    }));
     ph2d_panel_inspector::set_current_inspector_action_trigger(escolhido.and_then(|b| {
         ph2d_app_components::action_trigger_inspector::build_info(sim, b, a_correr, quantos, &|n| {
             ph2d_app_components::trigger_bridge::no_mapa(mapa, n)

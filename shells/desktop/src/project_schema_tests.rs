@@ -192,7 +192,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // componente novo no registo (`PathFollow`), e ⛔ **nenhum runtime ao lado dele** nem
         // geometria dentro dele: o que viaja é o NOME da forma desenhada.
         // ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA QUARTA vez, e pela razão de sempre.
-        (153, 13, 22),
+        // ⭐ **PROJECT 153→154** (2026-09-19): O ABANÃO DA VISTA (suplente #25) — **DOIS**
+        // componentes novos no registo (`CameraShake` na câmera, `ShakeEmitter` em quem explode), e
+        // ⛔ **um TERCEIRO tipo que NÃO se regista**: o `CameraShakeRuntime` guarda o trauma vivo,
+        // não deriva `Serialize` (a cerca é o TIPO) e a entrada dele é no `rewind_runtime`.
+        // ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA QUINTA vez, e pela razão de sempre.
+        (154, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -37,6 +37,9 @@ ph2d-gpu = { path = "../../crates/ph2d-gpu" }
 # GPU/M5 Fase 1 (ADR-0126): GPU-resident node cook (PH2D_GPU_COOK=1).
 ph2d-gpu-cook = { path = "../../crates/ph2d-gpu-cook" }
 ph2d-ecs = { path = "../../crates/ph2d-ecs" }
+# ⭐ A lei do ABANÃO (suplente #25) — a shell soma o offset dela ao centro da vista, e é a única
+# crate que vê a FAIXA do expoente (`ph2d-shake`) e os chips do painel ao mesmo tempo.
+ph2d-shake = { path = "../../crates/ph2d-shake" }
 # A saida de SINAIS (ADR-0143 + ADR-0075). Crate-folha, sem uma unica dependencia:
 # a timeline e a fisica publicam nela, e cada consumidor le com o proprio cursor.
 # A shell e' o lugar onde as duas fontes se encontram -- e isso ja estava escrito

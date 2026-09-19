@@ -238,6 +238,7 @@ pub(crate) fn paint_optional_sections(
     action_selected: &mut usize,
     watch_selected: &mut usize,
     trigger_selected: &mut usize,
+    emitter_selected: &mut usize,
     tween_selected: &mut usize,
     // ⚠️ **Duas selecções e não uma** — as listas de estados e de setas são independentes.
     sm_state_selected: &mut usize,
@@ -425,6 +426,7 @@ pub(crate) fn paint_optional_sections(
             crate::paint_optional_top20::Selecoes {
                 watch: *watch_selected,
                 trigger: *trigger_selected,
+                emitter: *emitter_selected,
                 tween: *tween_selected,
                 sm_state: *sm_state_selected,
                 sm_trans: *sm_trans_selected,

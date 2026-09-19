@@ -97,7 +97,10 @@ mod tests {
         //   ECS (TOP-20 #9). Quem integrar conta o DELTA, nunca o literal.
         // ⚠️ **2026-09-19: `100` -> `101`, delta +1** -- o `PathFollow` (suplente #23), registado no
         //   ECS. Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 101);
+        // ⚠️ **2026-09-19: `101` -> `103`, delta +2** -- o `CameraShake` e o `ShakeEmitter`
+        //   (suplente #25), registados no ECS. ⛔ **DOIS, e o `CameraShakeRuntime` nao conta**: a
+        //   cerca dele e' o TIPO. Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 103);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

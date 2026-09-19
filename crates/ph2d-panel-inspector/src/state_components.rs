@@ -150,6 +150,16 @@ thread_local! {
             Option<ph2d_editor_core::action_trigger_edits::InspectorActionTriggerInfo>,
         > = const { std::cell::RefCell::new(None) };
 
+    /// ⭐ O snapshot do ABANÃO DA CÂMERA (suplente #25) — a shell escreve-o todo o quadro.
+    static CURRENT_INSPECTOR_SHAKE:
+        std::cell::RefCell<Option<ph2d_editor_core::shake_edits::InspectorShakeInfo>> =
+        const { std::cell::RefCell::new(None) };
+
+    /// ⭐ O snapshot do EMISSOR DE ABANÃO (suplente #25) — a shell escreve-o todo o quadro.
+    static CURRENT_INSPECTOR_EMITTER:
+        std::cell::RefCell<Option<ph2d_editor_core::shake_edits::InspectorEmitterInfo>> =
+        const { std::cell::RefCell::new(None) };
+
     // ⭐⭐⭐ **E AS TREZE IRMÃS MAIS VELHAS, que estavam no [`crate::state`]** — o corte é o MESMO
     // que a vigia do contador fez acima, e pela mesma razão: o `state.rs` voltou a passar o tecto
     // de 600 LOC (chegou a `607` ao ganhar o RAIO), e a linha já estava desenhada pelo nome deste
@@ -253,6 +263,30 @@ pub fn set_current_inspector_action_trigger(
 pub(crate) fn current_inspector_action_trigger()
 -> Option<ph2d_editor_core::action_trigger_edits::InspectorActionTriggerInfo> {
     CURRENT_INSPECTOR_ACTION_TRIGGER.with(|c| c.borrow().clone())
+}
+
+/// ⭐ O snapshot do ABANÃO DA CÂMERA (suplente #25) — a shell escreve-o todo o quadro.
+pub fn set_current_inspector_shake(
+    info: Option<ph2d_editor_core::shake_edits::InspectorShakeInfo>,
+) {
+    CURRENT_INSPECTOR_SHAKE.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_shake() -> Option<ph2d_editor_core::shake_edits::InspectorShakeInfo>
+{
+    CURRENT_INSPECTOR_SHAKE.with(|c| c.borrow().clone())
+}
+
+/// ⭐ O snapshot do EMISSOR DE ABANÃO (suplente #25) — a shell escreve-o todo o quadro.
+pub fn set_current_inspector_emitter(
+    info: Option<ph2d_editor_core::shake_edits::InspectorEmitterInfo>,
+) {
+    CURRENT_INSPECTOR_EMITTER.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_emitter()
+-> Option<ph2d_editor_core::shake_edits::InspectorEmitterInfo> {
+    CURRENT_INSPECTOR_EMITTER.with(|c| c.borrow().clone())
 }
 
 /// ⭐ O snapshot do EMISSOR DE PARTÍCULAS (TOP-20 #18) — a shell escreve-o todo o quadro.

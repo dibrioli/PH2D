@@ -36,6 +36,8 @@ pub(super) fn aplicar(
         u64,
         ph2d_editor_core::action_trigger_edits::ActionTriggerFieldEdit,
     )],
+    abanao: &[(u64, ph2d_editor_core::shake_edits::ShakeFieldEdit)],
+    emissor: &[(u64, ph2d_editor_core::shake_edits::EmitterFieldEdit)],
     topdown: &[(u64, ph2d_editor_core::topdown_edits::TopDownFieldEdit)],
     projectile: &[(u64, ph2d_editor_core::projectile_edits::ProjectileFieldEdit)],
     ray: &[(u64, ph2d_editor_core::ray_edits::RayFieldEdit)],
@@ -62,4 +64,6 @@ pub(super) fn aplicar(
         | ph2d_app_components::sequence_inspector::apply_all(sim, sequence)
         | ph2d_app_components::counter_watch_inspector::apply_all(sim, watch)
         | ph2d_app_components::action_trigger_inspector::apply_all(sim, gatilho)
+        | ph2d_app_components::shake_inspector::apply_shake(sim, abanao)
+        | ph2d_app_components::shake_inspector::apply_emitter(sim, emissor)
 }

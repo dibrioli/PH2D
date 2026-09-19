@@ -196,7 +196,13 @@ fn register_ecs_components_populates_registry() {
     // ⚠️ **2026-09-19: `99` -> `100`, delta +1** -- o `PathFollow` (suplente #23): o objecto que
     //   anda sobre a curva desenhada. ⛔ **UM só**, e a ausência de um runtime ao lado dele é a
     //   lei da wave (ele é função pura do relógio do `Timers`). Quem integrar conta o DELTA.
-    assert_eq!(reg.len(), 100);
+    // ⚠️ **2026-09-19: `100` -> `102`, delta +2** -- o `CameraShake` e o `ShakeEmitter` (suplente
+    //   #25): *isto explodiu, e a vista tremeu*. ⛔ **DOIS componentes e um degrau só de schema**,
+    //   porque o `CameraShakeRuntime` NAO se regista -- a cerca e' o TIPO (sem `Serialize`), e a
+    //   entrada dele e' no `rewind_runtime`. Quem integrar conta o DELTA, nunca o literal.
+    assert_eq!(reg.len(), 102);
+    assert!(reg.get_by_name("ph2d::ecs::CameraShake").is_some());
+    assert!(reg.get_by_name("ph2d::ecs::ShakeEmitter").is_some());
     assert!(reg.get_by_name("ph2d::ecs::PathFollow").is_some());
     assert!(reg.get_by_name("ph2d::ecs::Tags").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SignalOnAction").is_some());

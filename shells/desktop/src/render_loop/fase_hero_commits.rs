@@ -89,6 +89,8 @@ impl crate::App {
                 sequence_edits: take(&mut pd.sequence_edits),
                 counter_watch_edits: take(&mut pd.counter_watch_edits),
                 action_trigger_edits: take(&mut pd.action_trigger_edits),
+                shake_edits: take(&mut pd.shake_edits),
+                shake_emitter_edits: take(&mut pd.shake_emitter_edits),
                 tags_edits: take(&mut pd.tags_edits),
                 tag_tree_edits: take(&mut pd.tag_tree_edits),
                 inspector_queue_dirty: take(&mut pd.inspector_queue_dirty),

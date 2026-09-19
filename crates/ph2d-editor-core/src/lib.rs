@@ -150,6 +150,8 @@ pub mod ray_edits;
 /// ⭐⭐⭐ **O vocabulário do SCRIPT DO ARTISTA** (TOP-20 #16) — o sexto degrau da mesma migração.
 pub mod script_edits;
 pub mod sequence_edits;
+/// ⭐⭐⭐ **O vocabulário do ABANÃO DA VISTA** (suplente #25) — as DUAS secções; ver o cabeçalho.
+pub mod shake_edits;
 /// ⭐⭐⭐ **O vocabulário do CÉREBRO** (TOP-20 #15) — o quinto degrau da migração que tira a
 /// aresta `action_bus → screens` da catraca do DAG. Ver o cabeçalho.
 pub mod statemachine_edits;

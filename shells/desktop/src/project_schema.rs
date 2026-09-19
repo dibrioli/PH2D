@@ -559,4 +559,32 @@
 /// tem o componente, logo lê-se inteiro por este binário.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — é a **décima quarta** vez.
-pub(crate) const PROJECT_SCHEMA: u32 = 153;
+/// # 153 -> 154 — o ABANÃO DA VISTA (suplente #25, `line/components`)
+///
+/// **DOIS** componentes registados novos: `ph2d::ecs::CameraShake` (na câmera: *como* ela treme) e
+/// `ph2d::ecs::ShakeEmitter` (em quem explode: *ao ouvir o quê*, e com que alcance). Mesmo
+/// mecanismo dos degraus `123`, `128`, `152` e `153` — o conjunto de tipos registados muda, e o
+/// postcard é posicional.
+///
+/// ⭐⭐⭐ **A razão de ele existir está MEDIDA** (a sonda `mede_o_que_a_composicao_ja_da_ao_abanao`,
+/// na crate de FAMÍLIA porque é a única que vê os três lados): o concorrente mais forte — **um
+/// tween de pose sobre a própria câmera**, que esta mesma linha shipou dois suplentes antes —
+/// **escreveu** (`Transform.x = 2,0000`) e o **centro da vista ficou em `[0,0]`**. *A vista vem do
+/// `CameraRuntime`, que não é um `Transform`: nenhum dos oito canais a alcança.* E dos `9` verbos
+/// da tabela de acções, nenhum é da câmera.
+///
+/// ⛔⛔ **DOIS componentes e um degrau só, porque o TERCEIRO tipo não se regista:** o
+/// `CameraShakeRuntime` (trauma + relógio) não deriva `Serialize`, logo a linha do registo nem
+/// compila — o precedente do `TimerRuntime`. Registá-lo poria **cada quadro de um abanão** dentro
+/// do ficheiro e um passo na pilha de `Ctrl+Z`. ⚠️ **A entrada dele é no `rewind_runtime`**, que é
+/// a outra metade da mesma lei: sem ela, rebobinar a meio de uma explosão deixaria a vista a acabar
+/// de tremer o abanão da corrida anterior.
+///
+/// ⛔ **E a DISTÂNCIA não viaja aqui:** o emissor guarda dois raios, e quem mede a distância é a
+/// ponte — a posição do mundo não é config de ninguém.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v153 não
+/// tem os componentes, logo lê-se inteiro por este binário.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima quinta** vez.
+pub(crate) const PROJECT_SCHEMA: u32 = 154;

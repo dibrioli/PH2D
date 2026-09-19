@@ -460,6 +460,58 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.tween.multiple_selected_tween_edits_apply" => {
             "Editing the primary selection only."
         }
+        // ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — duas secções, dois objectos.
+        //
+        // ⚠️ **As unidades NÃO vão no texto** — elas são o chip do campo (`Unit::Meters`), e há
+        // gate (`no_row_label_carries_its_own_unit`) a prová-lo.
+        "panel.inspector.shake.camera_shake" => "Camera Shake",
+        "panel.inspector.shake.amplitude" => "Amplitude",
+        "panel.inspector.shake.frequency" => "Frequency",
+        "panel.inspector.shake.decay" => "Decay",
+        // ⚠️ **«Punch» e não «Exponent»** — o artista escolhe o CARÁCTER do abanão, e a potência a
+        // que o trauma é elevado é como a lei o exprime, não como ele o pensa.
+        "panel.inspector.shake.punch" => "Punch",
+        "panel.inspector.shake.seed" => "Seed",
+        // ⭐ A DURAÇÃO é derivada: `decay` é o número que a lei come e não o que o artista pensa.
+        "panel.inspector.shake.one_full_shake_lasts_n_s" => "One full shake lasts {s} s.",
+        "panel.inspector.shake.shaking_trauma_n" => "Shaking — trauma {n}.",
+        "panel.inspector.shake.this_is_not_the_camera_in_command" => {
+            "This is not the camera in command — raise its priority to see it shake."
+        }
+        "panel.inspector.shake.it_shakes_while_the_clock_plays" => {
+            "It shakes while the clock plays."
+        }
+        "panel.inspector.shake.editing_the_primary_selection_only" => {
+            "Editing the primary selection only."
+        }
+        // ⭐⭐⭐ **O EMISSOR** — e o aviso mais valioso dele aponta para OUTRO objecto.
+        "panel.inspector.emitter.shake_emitter" => "Shake Emitter",
+        "panel.inspector.emitter.title_count" => "Shake Emitter ({n})",
+        "panel.inspector.emitter.title_count_broken" => "Shake Emitter ({n}, {broken} swapped)",
+        "panel.inspector.emitter.plus_add_source" => "+ Add Source",
+        "panel.inspector.emitter.x_remove_source" => "x Remove Source",
+        "panel.inspector.emitter.signal_name_empty_mute" => "Signal name (empty = mute)…",
+        "panel.inspector.emitter.unnamed" => "(unnamed)",
+        "panel.inspector.emitter.mute" => "mute",
+        "panel.inspector.emitter.from" => "From",
+        "panel.inspector.emitter.from_anyone" => "Anyone",
+        "panel.inspector.emitter.from_myself" => "Myself",
+        "panel.inspector.emitter.strength" => "Strength",
+        "panel.inspector.emitter.full_within" => "Full Within",
+        "panel.inspector.emitter.nothing_beyond" => "Nothing Beyond",
+        "panel.inspector.emitter.no_sources_yet" => "No shake sources yet.",
+        "panel.inspector.emitter.the_outer_radius_is_not_beyond_the_inner" => {
+            "Nothing Beyond is not beyond Full Within — the falloff is a hard cut."
+        }
+        "panel.inspector.emitter.there_is_no_camera_that_shakes" => {
+            "There is no camera that shakes — add Camera Shake to the game camera."
+        }
+        "panel.inspector.emitter.it_shakes_while_the_clock_plays" => {
+            "It shakes while the clock plays."
+        }
+        "panel.inspector.emitter.editing_the_primary_selection_only" => {
+            "Editing the primary selection only."
+        }
         // ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — o objecto que anda sobre a curva que o
         // artista desenhou.
         "panel.inspector.path_follow.path_follow" => "Path Follow",

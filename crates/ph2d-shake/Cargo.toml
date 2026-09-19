@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-shake"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ **ZERO dependências, e isso é o desenho** — como a irmã `ph2d-sweep` e como as leis de
+# clean-room da escultura (`ph2d-cloth`, `ph2d-pose`, `ph2d-boundary`).
+#
+# Esta folha é o ABANÃO e mais nada: um trauma que decai, um ruído de VALOR e uma atenuação por
+# distância. ⚠️ **Não há um transcendental aqui, e isso não é sorte — é a cerca (HR-5):** o ruído
+# interpola com `3t² − 2t³` e a atenuação com o mesmo polinómio, logo a resposta é **a mesma em
+# toda máquina** sem o pin de `libm` que as leis de física declaram. *Uma folha que não precisa de
+# `libm` não o declara.*
+
+[lints]
+workspace = true

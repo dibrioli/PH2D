@@ -700,6 +700,20 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
     // RESPONSABILIDADE e não por tamanho: a família MOVIMENTO já estava **declarada por escrito** na
     // tabela `LIVE_SECTIONS` (*«a 24.ª — TOP-DOWN PLAYER, a primeira da família MOVIMENTO»*).
     // ⚠️ **A isenção é MEDIDA**: zero ocorrências de `NodeId`, `hit_index.` ou `register(`.
+    // ⭐ **Nasceu em 2026-09-19 do corte que as DUAS secções do ABANÃO impuseram ao
+    // `paint_optional_top20`** (`632` de `600`) — a OITAVA vez que este ficheiro regista a mesma
+    // forma. ⚠️ **A isenção é MEDIDA**: zero ocorrências de `NodeId`, `hit_index.` ou `register(`.
+    // ⭐ **Nasceu em 2026-09-19 do MESMO corte** (`632` de `600`), e é a metade de que a irmã não é:
+    // ele guarda os INSTANTÂNEOS do quadro numa struct, e ela pinta as molduras.
+    // ⚠️ **A isenção é MEDIDA**: zero ocorrências de `NodeId`, `hit_index.` ou `register(`.
+    (
+        "ph2d-panel-inspector/src/paint_optional_top20_infos.rs",
+        "os INSTANTANEOS das seccoes da cauda numa struct — ele nao pinta e nao regista um unico id: 0 ocorrencias de NodeId / hit_index. / register(",
+    ),
+    (
+        "ph2d-panel-inspector/src/paint_optional_shake.rs",
+        "as DUAS MOLDURAS do abanao (a da camera e a de quem explode, que nunca aparecem juntas na tela); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
+    ),
     (
         "ph2d-panel-inspector/src/paint_optional_movers.rs",
         "as TRES MOLDURAS da familia MOVIMENTO (mover de vista de cima, projectil, seguidor de caminho); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",

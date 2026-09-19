@@ -1,3 +1,15 @@
+//! ⭐⭐⭐ **A CÂMERA DE JOGO — a lei do enquadramento** (TOP-20 #7), portada do Godot 4.7.2 (MIT).
+//!
+//! ⚠️⚠️ **Ela SAIU da `shells/desktop` em 2026-09-19, e a mudança foi imposta pela catraca**
+//! `the_shell_only_shrinks`: o suplente #25 pôs a shell `278` linhas acima do tecto, e a cura que o
+//! `CLAUDE.md` §2 prescreve para isso é **MOVER para a crate da família — nunca subir o número**.
+//!
+//! ⭐ **E o candidato era este por MEDIÇÃO e não por tamanho:** esta fase nunca tocou na `App` — ela
+//! recebe um `&mut SimWorld` e devolve o que a vista devia ser. *O que sai são os CORPOS; o que
+//! decide a ordem do quadro fica* (a lei da Fase C da física). O que ficou na shell é a
+//! `fase_game_camera`, que é composição: ela lê a superfície, escolhe se toma a vista e imprime o
+//! relatório.
+//!
 //! ⭐⭐⭐ **A PONTE DA CÂMERA DE JOGO** — onde a cena passa a mandar no enquadramento (TOP-20 #7, W2).
 //!
 //! # A fronteira, e porque ela é exactamente esta
@@ -33,29 +45,29 @@ use ph2d_ecs::{
 
 /// O que a câmera de cena quer que a vista seja.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct CameraView {
-    pub(crate) center: [f32; 2],
-    pub(crate) height_world: f32,
-    pub(crate) cull_mask: u32,
+pub struct CameraView {
+    pub center: [f32; 2],
+    pub height_world: f32,
+    pub cull_mask: u32,
 }
 
 /// O que o quadro fez com a câmera — o que o smoke imprime.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) struct CameraSceneReport {
+pub struct CameraSceneReport {
     /// Quantas câmeras a cena tem. ⚠️ **`0` é informação**: a vista fica sendo a do editor.
-    pub(crate) cameras: usize,
+    pub cameras: usize,
     /// A câmera que manda tem `CameraFollow`?
-    pub(crate) following: bool,
+    pub following: bool,
     /// ⭐ **O alvo do `follow` foi ENCONTRADO?** ⚠️ `false` com `following` verdadeiro é o report
     /// que o dono lê como *«a câmera não segue nada»* — um nome escrito com erro, ou um objecto que
     /// um `Ctrl+Z` levou. Sem esta coluna os dois casos leem-se como *«a câmera está parada»*.
-    pub(crate) target_found: bool,
+    pub target_found: bool,
     /// O nome que o `follow` procura, quando há um.
-    pub(crate) target_name: String,
+    pub target_name: String,
     /// Onde a câmera activa ficou.
-    pub(crate) center: [f32; 2],
+    pub center: [f32; 2],
     /// A cerca mordeu neste quadro? ⚠️ Só é `true` quando ela de facto MOVEU o centro.
-    pub(crate) limited: bool,
+    pub limited: bool,
 }
 
 /// **Toda câmera tem um estado vivo, e ele nasce onde a câmera está.**
@@ -96,7 +108,7 @@ fn ensure_runtime(world: &mut World) {
 /// precisão é nula na faixa de um ecrã (`u32` até 2²⁴ é exacto em `f32`).
 #[allow(clippy::cast_precision_loss)]
 #[must_use]
-pub(crate) fn aspect_of(size: ph2d_host::WindowSize) -> f32 {
+pub fn aspect_of(size: ph2d_host::WindowSize) -> f32 {
     size.width.max(1) as f32 / size.height.max(1) as f32
 }
 
@@ -124,11 +136,17 @@ fn follow_target(world: &mut World, name: &str) -> Option<Entity> {
 /// câmera activa — e nesse caso o editor fica com o enquadramento dele, que é o de hoje.
 ///
 /// `aspect` é `largura/altura` da janela; `ticks` e `fixed_dt` são os do passo fixo.
-pub(crate) fn update(
+///
+/// ⭐ **`abanao` é o offset do suplente #25**, já calculado pela ponte que corre uma linha antes
+/// desta. ⚠️ **Ele é um PARÂMETRO e não uma leitura de componente aqui de dentro, de propósito:**
+/// assim esquecê-lo é **erro de compilação**, e a ordem *«a ponte antes da vista»* deixa de ser
+/// uma nota que alguém tem de se lembrar de honrar. Vista sem abanão ⇒ `[0.0, 0.0]`.
+pub fn update(
     sim: &mut SimWorld,
     aspect: f32,
     ticks: u32,
     fixed_dt: f64,
+    abanao: [f32; 2],
 ) -> (Option<CameraView>, CameraSceneReport) {
     let world = sim.world_mut();
     ensure_runtime(world);
@@ -236,7 +254,16 @@ pub(crate) fn update(
     let vista = CameraView {
         // ⚠️ **O `offset` entra na VISTA e não no estado vivo** — senão ele realimentaria a zona
         // morta e a câmera afastar-se-ia do alvo um pouco mais a cada quadro.
-        center: [rt.center[0] + cam.offset[0], rt.center[1] + cam.offset[1]],
+        //
+        // ⭐⭐⭐ **E o ABANÃO (suplente #25) é o SEGUNDO somando no mesmo sítio, pela MESMA razão** —
+        // que já estava escrita aqui antes de ele existir. ⚠️ **Depois dos LIMITES, e é uma decisão
+        // declarada:** antes deles a cerca COMERIA o abanão na borda do nível, e o que o artista
+        // veria é *«o abanão parou de funcionar aqui»*. Ele pode mostrar um fio de fora do nível
+        // durante os ~300 ms de um estrondo, que é o que toda engine faz.
+        center: [
+            rt.center[0] + cam.offset[0] + abanao[0],
+            rt.center[1] + cam.offset[1] + abanao[1],
+        ],
         height_world: cam.height_world.clamp(
             ph2d_ecs::CAMERA_MIN_HEIGHT_WORLD,
             ph2d_ecs::CAMERA_MAX_HEIGHT_WORLD,

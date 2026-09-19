@@ -25,6 +25,8 @@ mod event_anchor;
 mod event_anim;
 mod event_audio;
 mod event_camera;
+/// ⭐ Os três cliques de COR da sprite — irmão do `event` por CAP de LOC.
+mod event_color_tint;
 mod event_counter_watch;
 mod event_factory;
 /// ⭐ O registo dos widgets da secção PARTICLES — irmão por CAP de ficheiro.
@@ -45,6 +47,8 @@ mod event_ray;
 /// ⭐ O despacho da secção SCRIPT — irmão do `event` por CAP de função.
 mod event_script;
 mod event_sequence;
+/// ⭐ O despacho das DUAS secções do ABANÃO (suplente #25).
+mod event_shake;
 mod event_slice;
 mod event_sprite_geometry;
 mod event_sprite_value;
@@ -71,8 +75,12 @@ mod paint_head;
 mod paint_optional;
 mod paint_optional_factory;
 mod paint_optional_movers;
+/// ⭐ As molduras das DUAS secções do ABANÃO (suplente #25).
+mod paint_optional_shake;
 /// ⭐⭐ A CAUDA da cadeia de secções — as quatro da fila do TOP-20; irmã pelo tecto de FUNÇÃO.
 mod paint_optional_top20;
+/// ⭐ Os INSTANTÂNEOS das secções da cauda — irmão por CAP de LOC; ver o cabeçalho.
+mod paint_optional_top20_infos;
 mod paint_optional_top20_tail;
 mod popovers;
 mod populate;
@@ -99,6 +107,8 @@ mod populate_ray;
 /// ⭐ O registo dos widgets da secção SCRIPT — irmão por CAP de ficheiro.
 mod populate_script;
 mod populate_sequence;
+/// ⭐ O registo dos widgets das DUAS secções do ABANÃO (suplente #25).
+mod populate_shake;
 /// ⭐ O registo dos widgets da secção STATE MACHINE — irmão por CAP de ficheiro.
 mod populate_statemachine;
 /// ⭐ O registo dos widgets da secção TAGS — irmão por CAP de ficheiro.
@@ -132,6 +142,8 @@ mod sync_ray;
 /// ⭐ A semente da secção SCRIPT — irmã do `sync_sections` por CAP de ficheiro.
 mod sync_script;
 mod sync_sections;
+/// ⭐ A semente dos campos das DUAS secções do ABANÃO (suplente #25).
+mod sync_shake;
 /// Os dois sliders-com-chip da sprite (Opacidade + Emissive) — irmão do `sync`, que estava no tecto.
 mod sync_sprite_value;
 /// ⭐ A semente da secção STATE MACHINE — irmã do `sync_sections` por CAP de ficheiro.
@@ -149,6 +161,9 @@ pub use sections::bake_label;
 pub use sections::counter_watch::{opcoes_de_comparacao, simbolo_da_comparacao};
 pub use sections::paste_label;
 pub use sections::rig_button_label;
+/// ⭐ **A CHAVE de cada cerca do ABANÃO** (suplente #25) — exportada para um gate da shell poder
+/// afirmar que ela concorda com o `SignalFrom::label()` do motor, que esta crate não vê (ADR-0029).
+pub use sections::shake_emitter::chave_da_cerca as chave_da_cerca_do_abanao;
 /// **Quantas rows numéricas a §14 Platform Player pinta.**
 ///
 /// ⚠️ **A contagem vive no CÓDIGO, nunca num comentário** — este cluster já teve «dezanove
@@ -230,9 +245,10 @@ pub use state::{probe_current_instance, probe_current_properties, texture_slot_p
 pub use state_components::{
     set_current_inspector_action, set_current_inspector_action_trigger,
     set_current_inspector_audio, set_current_inspector_camera, set_current_inspector_counter_watch,
-    set_current_inspector_factory, set_current_inspector_hud, set_current_inspector_particles,
-    set_current_inspector_path_follow, set_current_inspector_projectile, set_current_inspector_ray,
-    set_current_inspector_script, set_current_inspector_sequence,
+    set_current_inspector_emitter, set_current_inspector_factory, set_current_inspector_hud,
+    set_current_inspector_particles, set_current_inspector_path_follow,
+    set_current_inspector_projectile, set_current_inspector_ray, set_current_inspector_script,
+    set_current_inspector_sequence, set_current_inspector_shake,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
     set_current_inspector_tween,
 };

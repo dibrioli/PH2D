@@ -307,7 +307,7 @@ fn late(
             sim.world_mut(),
             b,
             selected_count,
-            crate::render_loop::camera_2d::aspect_of(window_size),
+            ph2d_app_components::camera_2d::aspect_of(window_size),
             game_camera_preview,
         )
     });

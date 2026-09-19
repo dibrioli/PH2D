@@ -55,4 +55,11 @@ pub enum ComponentEdit {
     Tween(crate::tween_edits::TweenFieldEdit),
     /// **PATH FOLLOW** (o suplente #23) — «anda sobre a curva que eu desenhei».
     PathFollow(crate::path_follow_edits::PathFollowFieldEdit),
+    /// **CAMERA SHAKE** (o suplente #25) — *como* esta câmera treme.
+    Shake(crate::shake_edits::ShakeFieldEdit),
+    /// **SHAKE EMITTER** (o suplente #25) — *ao ouvir o quê* este objecto abana a vista.
+    ///
+    /// ⚠️ **Separada da irmã de propósito**: elas moram em objectos diferentes, e fundi-las num
+    /// enum só faria o dreno ter de perguntar «em qual?» a cada edição.
+    ShakeEmitter(crate::shake_edits::EmitterFieldEdit),
 }

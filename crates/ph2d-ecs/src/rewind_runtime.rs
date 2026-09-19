@@ -139,5 +139,16 @@ pub fn rewind_runtime_state(world: &mut World) -> usize {
         }
     }
 
+    // ── O ABANÃO ─────────────────────────────────────────────────────────────
+    // ⚠️ **Aqui o `Default` É a resposta certa**, ao contrário da irmã logo acima: o vivo do abanão
+    // não deriva nada da pose nem da config — trauma zero e relógio zero é literalmente *«esta
+    // câmera não está a tremer»*. ⛔ Sem esta entrada, rebobinar a meio de uma explosão deixaria a
+    // vista a acabar de tremer o abanão da corrida ANTERIOR, com o relógio no zero.
+    let mut q = world.query::<&mut crate::CameraShakeRuntime>();
+    for mut rt in q.iter_mut(world) {
+        *rt = crate::CameraShakeRuntime::default();
+        n += 1;
+    }
+
     n
 }

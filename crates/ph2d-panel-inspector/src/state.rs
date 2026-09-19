@@ -83,6 +83,13 @@ pub struct InspectorState {
     pub last_watch_row: Option<usize>,
     /// GATILHO — qual linha da lista está aberta. **Estado do painel**, como as irmãs.
     pub trigger_selected: usize,
+    /// SHAKE EMITTER — qual fonte da lista está aberta. **Estado do painel**, como as irmãs
+    /// (suplente #25).
+    pub emitter_selected: usize,
+    /// Irmão do [`Self::last_trigger_row`], e pela MESMA razão medida.
+    pub last_emitter_row: Option<usize>,
+    /// CAMERA SHAKE — a assinatura do último instantâneo semeado (suplente #25).
+    pub last_shake_sig: Option<u64>,
     /// Qual tween está aberto — estado do PAINEL, como o do gatilho (suplente #22).
     ///
     /// ⚠️ **Não vai ao barramento**: um `Tweens` não tem «o tween actual» — os N correm todos ao

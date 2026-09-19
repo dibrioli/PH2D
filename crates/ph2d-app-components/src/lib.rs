@@ -79,6 +79,8 @@ pub mod asset_index_build;
 // composição»*, e é o que o [`signal_actions_bridge::apply`] faz: ele pede `Som::Toca` a um fecho,
 // e quem responde é a shell, dona dos dois lados. *A aresta foi tentada e o portão apanhou-a.*
 pub mod audio_2d_smoke;
+/// ⭐⭐⭐ **A PONTE DA CÂMERA DE JOGO** (TOP-20 #7) — saiu da shell em 19/09; ver o cabeçalho.
+pub mod camera_2d;
 pub mod camera_2d_smoke;
 pub mod component_attach;
 pub mod component_palette;
@@ -149,6 +151,12 @@ pub mod script_inspector;
 pub mod script_smoke;
 /// ⭐⭐⭐ **O instantâneo da CUTSCENE** (TOP-20 #19) — ver o cabeçalho.
 pub mod sequence_inspector;
+/// ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — o sinal vira trauma; ver o cabeçalho.
+pub mod shake_bridge;
+/// ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — o instantâneo e o dreno do Inspector.
+pub mod shake_inspector;
+/// ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — a cena do dono; ver o cabeçalho.
+pub mod shake_smoke;
 pub mod signal_action_smoke;
 /// ⭐⭐⭐ **A PONTE da tabela nome→acção** (TOP-20 #5) — onde um sinal deixa de ser um toast e vira
 /// jogo. ⚠️ Desceu da shell em 2026-09-19: ela era a **única** das oito pontes desta família que
@@ -237,6 +245,9 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         // marcados com limite e colheita. ⚠️ O `max_level` é **contado** no `match` do `montar`.
         r("PH2D_FACTORY_SMOKE", factory_smoke::CENAS),
         r("PH2D_TAGS_SMOKE", tags_smoke::CENAS),
+        // ⭐⭐⭐ O ABANÃO DA VISTA (suplente #25): `=1` o pátio onde a mesma bomba abana mais de
+        // perto. ⚠️ O `max_level` é **contado** no corpo do `montar`.
+        r("PH2D_SHAKE_SMOKE", shake_smoke::CENAS),
         r("PH2D_TIMER_SMOKE", 1),
         // ⭐⭐⭐ O mover de VISTA DE CIMA (TOP-20 #13): `=1` o corredor · `=2` a isometria com o
         // controlo ao lado. ⚠️ O `max_level` é **contado** no `match` do `montar`.

@@ -82,6 +82,10 @@ pub(crate) struct LiveSnapshots {
     pub tween_info: Option<ph2d_editor_core::tween_edits::InspectorTweenInfo>,
     /// ⭐⭐⭐ O SEGUIDOR DE CAMINHO (suplente #23) — o objecto que anda sobre a curva desenhada.
     pub path_follow_info: Option<ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo>,
+    /// ⭐⭐⭐ O ABANÃO DA CÂMERA (suplente #25) — *como* esta câmera treme.
+    pub shake_info: Option<ph2d_editor_core::shake_edits::InspectorShakeInfo>,
+    /// ⭐⭐⭐ O EMISSOR DE ABANÃO (suplente #25) — *ao ouvir o quê* este objecto abana a vista.
+    pub emitter_info: Option<ph2d_editor_core::shake_edits::InspectorEmitterInfo>,
     pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
     pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -133,6 +137,8 @@ impl LiveSnapshots {
         let trigger_info = crate::state_components::current_inspector_action_trigger();
         let tween_info = crate::state_components::current_inspector_tween();
         let path_follow_info = crate::state_components::current_inspector_path_follow();
+        let shake_info = crate::state_components::current_inspector_shake();
+        let emitter_info = crate::state_components::current_inspector_emitter();
         let tags_info = crate::state::current_inspector_tags();
         let any_section = any_live_section([
             transform_info.is_some(),
@@ -163,6 +169,8 @@ impl LiveSnapshots {
             trigger_info.is_some(),
             tween_info.is_some(),
             path_follow_info.is_some(),
+            shake_info.is_some(),
+            emitter_info.is_some(),
             tags_info.is_some(),
         ]);
         Self {
@@ -191,6 +199,8 @@ impl LiveSnapshots {
             trigger_info,
             tween_info,
             path_follow_info,
+            shake_info,
+            emitter_info,
             tags_info,
             blend_info,
             physics_info,

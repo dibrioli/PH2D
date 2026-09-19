@@ -25,6 +25,9 @@ mod inspector_camera;
 pub use inspector_action_trigger::*;
 mod inspector_counter_watch;
 pub use inspector_counter_watch::*;
+/// ⭐ Os ids das DUAS secções do ABANÃO (suplente #25) — ver o cabeçalho.
+mod inspector_shake;
+pub use inspector_shake::*;
 mod inspector_factory;
 /// ⭐ Os ids da secção SCRIPT (TOP-20 #16) — ver o cabeçalho.
 mod inspector_hud;

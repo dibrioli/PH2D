@@ -51,6 +51,10 @@ pub const INSP_LIVE_RAY_SECTION: NodeId = hash_node_id("insp_live_ray_section");
 pub const INSP_LIVE_TWEEN_SECTION: NodeId = hash_node_id("insp_live_tween_section");
 /// O cabeçalho dobrável da secção PATH FOLLOW — «anda sobre a curva desenhada» (suplente #23).
 pub const INSP_LIVE_PATHFOLLOW_SECTION: NodeId = hash_node_id("insp_live_pathfollow_section");
+/// O cabeçalho dobrável da secção CAMERA SHAKE — *como* esta câmera treme (suplente #25).
+pub const INSP_LIVE_SHAKE_SECTION: NodeId = hash_node_id("insp_live_shake_section");
+/// O cabeçalho dobrável da secção SHAKE EMITTER — *ao ouvir o quê* este objecto abana a vista.
+pub const INSP_LIVE_EMITTER_SECTION: NodeId = hash_node_id("insp_live_emitter_section");
 /// A secção LIFECYCLE — o cabeçalho colapsável (TOP-20 #12, W3).
 pub const INSP_LIVE_LIFECYCLE_SECTION: NodeId = hash_node_id("insp_live_lifecycle_section");
 /// ⛔⛔ **Os PONTOS DE COR das três secções novas, e eles nasceram de um DEFEITO MEDIDO.**
@@ -90,6 +94,10 @@ pub const INSP_LIVE_TRIGGER_COLOR: NodeId = hash_node_id("insp_live_trigger_colo
 pub const INSP_LIVE_TWEEN_COLOR: NodeId = hash_node_id("insp_live_tween_color");
 /// O ponto de cor da secção PATH FOLLOW (suplente #23).
 pub const INSP_LIVE_PATHFOLLOW_COLOR: NodeId = hash_node_id("insp_live_pathfollow_color");
+/// O ponto de cor da secção CAMERA SHAKE (suplente #25).
+pub const INSP_LIVE_SHAKE_COLOR: NodeId = hash_node_id("insp_live_shake_color");
+/// O ponto de cor da secção SHAKE EMITTER (suplente #25).
+pub const INSP_LIVE_EMITTER_COLOR: NodeId = hash_node_id("insp_live_emitter_color");
 /// O ponto de cor da secção RAY SENSOR.
 pub const INSP_LIVE_RAY_COLOR: NodeId = hash_node_id("insp_live_ray_color");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.

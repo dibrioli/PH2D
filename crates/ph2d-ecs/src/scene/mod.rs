@@ -9,6 +9,8 @@ pub mod commands;
 /// não uma segunda porta: ele reaproveita as linhas que o `world_to_snapshot` produziria.
 pub mod incremental;
 pub mod registry;
+/// ⭐ O registo da família da CÂMERA — irmão por CAP de LOC; ver o cabeçalho.
+mod registry_camera;
 pub mod save;
 pub mod save_v1;
 pub mod snapshot;

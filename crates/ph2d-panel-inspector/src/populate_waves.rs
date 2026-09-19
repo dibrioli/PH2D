@@ -31,6 +31,7 @@ pub(crate) fn populate_das_waves(store: &mut WidgetStore) {
     super::populate_sequence::populate_sequence(store);
     super::populate_counter_watch::populate_counter_watch(store);
     super::populate_action_trigger::populate_action_trigger(store);
+    super::populate_shake::populate_shake(store);
     super::populate_script::populate_script(store);
     super::populate_topdown::populate_topdown(store);
 }

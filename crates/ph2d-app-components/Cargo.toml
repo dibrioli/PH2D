@@ -59,6 +59,10 @@ ph2d-topdown = { path = "../ph2d-topdown" }
 # ⭐ A lei do TWEEN (suplente #22) — a ponte traduz o relógio do `Timer` no `Relogio` que ela lê,
 # e usa o `Canal` para escolher o campo E a entrada do ledger.
 ph2d-tween = { path = "../ph2d-tween" }
+# ⭐ A lei do ABANÃO (suplente #25) — a ponte traduz um sinal em TRAUMA (`atenuacao` + `acumula`),
+# corre o decaimento e pede à lei o deslocamento da vista. ⚠️ A conversão config → `Lei` NÃO mora
+# aqui: ela é o `CameraShake::lei()`, a porta única (uma segunda cópia divergiria no 6.º número).
+ph2d-shake = { path = "../ph2d-shake" }
 # ⚠️ **As curvas, pelo ALL delas** — o instantâneo traduz uma `Easing` na POSIÇÃO do chip, e o
 # dreno faz a volta. Uma tabela de tags aqui seria a segunda lista.
 ph2d-anim = { path = "../ph2d-anim" }

@@ -161,6 +161,10 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) tween: bool,
     /// Quantos quadros ainda trazem o Inspector à frente na cena do tween — ver `ray_raise`.
     pub(crate) tween_raise: u8,
+    /// ⭐ O ABANÃO DA VISTA (suplente #25) — `PH2D_SHAKE_SMOKE=1`.
+    pub(crate) shake: bool,
+    /// Quantos quadros ainda trazem o Inspector à frente na cena do abanão — ver `trigger_raise`.
+    pub(crate) shake_raise: u8,
     /// ⭐ O SEGUIDOR DE CAMINHO (suplente #23) — `PH2D_PATHFOLLOW_SMOKE=1`.
     pub(crate) path_follow: bool,
     /// Quantos quadros ainda trazem o Inspector à frente na cena do seguidor — ver `ray_raise`.

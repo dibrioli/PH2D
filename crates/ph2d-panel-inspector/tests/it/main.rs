@@ -44,6 +44,7 @@ mod seam_player;
 mod seam_precision;
 mod seam_properties;
 mod seam_render_source;
+mod seam_shake;
 mod seam_texture_slot;
 mod seam_tween;
 mod seam_wheel;

@@ -462,6 +462,47 @@ mod numeros;
 
 pub(crate) use numeros::{ALTERNANCIAS, LADO_DA_CELULA, RONDAS_DA_GRELHA};
 
+#[cfg(test)]
+thread_local! {
+    pub(crate) static RONDAS_DO_TESTE: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    pub(crate) static ALTERNANCIAS_DO_TESTE: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+    pub(crate) static RAIO_DO_TESTE: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
+}
+
+fn rondas_da_grelha() -> usize {
+    #[cfg(test)]
+    {
+        let n = RONDAS_DO_TESTE.with(std::cell::Cell::get);
+        if n > 0 {
+            return n;
+        }
+    }
+    RONDAS_DA_GRELHA
+}
+
+fn raio_do_pente() -> f32 {
+    #[cfg(test)]
+    {
+        let r = RAIO_DO_TESTE.with(std::cell::Cell::get);
+        if r > 0.0 {
+            return r;
+        }
+    }
+    1.0
+}
+
+fn alternancias() -> usize {
+    #[cfg(test)]
+    {
+        let n = ALTERNANCIAS_DO_TESTE.with(std::cell::Cell::get);
+        if n > 0 {
+            return n;
+        }
+    }
+    ALTERNANCIAS
+}
+
 pub(crate) fn passe_nos_motores(
     mesh: &mut ph2d_mesh::Mesh,
     verbo: ph2d_sculpt3d::Verb,
@@ -494,12 +535,16 @@ pub(crate) fn passe_nos_motores(
         // de valência re-liga e **nunca move um vértice**. Alternar é o que a
         // remalhagem isotrópica faz, e é o que dá à segunda passagem da
         // retícula um grafo melhor do que o que a primeira encontrou.
-        let por_vez = (RONDAS_DA_GRELHA / ALTERNANCIAS).max(1);
-        for _ in 0..ALTERNANCIAS {
+        // ⚠️ **As duas variáveis são lidas por PORTA** para a sonda que as
+        // varre poder mexer nelas sem recompilar: em produção elas devolvem as
+        // constantes medidas, ao bit.
+        let (rondas, alternancias) = (rondas_da_grelha(), alternancias());
+        let por_vez = (rondas / alternancias).max(1);
+        for _ in 0..alternancias {
             if ph2d_quadflow::regiao::arruma_na_grelha_com(
                 mesh,
                 centre,
-                radius,
+                radius * raio_do_pente(),
                 p.direccao,
                 &queda,
                 por_vez,
@@ -510,7 +555,7 @@ pub(crate) fn passe_nos_motores(
                 mesh.refresh_region(&andaram, region);
                 arrumou = true;
             }
-            if ph2d_mesh::relaxa_valencia_em(mesh, centre, radius, region) > 0 {
+            if ph2d_mesh::relaxa_valencia_em(mesh, centre, radius * raio_do_pente(), region) > 0 {
                 arrumou = true;
             }
         }

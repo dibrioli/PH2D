@@ -533,3 +533,6 @@ fn a_vista_da_grade_nao_pisca() {
         "a vista pisca {pct:.2} % ao sacudir 1 % (medido 0,86; a regra solta 1,09 e a gulosa 1,30)"
     );
 }
+
+#[path = "scenes_pente_relogio_tests.rs"]
+mod relogio;

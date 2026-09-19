@@ -93,6 +93,35 @@ pub(crate) const RONDAS_DA_GRELHA: usize = 4;
 /// REVERTIDO:** `4 braços 93,01 → 92,38`, `fil50 38,8 → 27,5`, grade
 /// `65,44 → 65,25`. *No fim não a segue mais nada; dentro da alternância a
 /// retícula ainda trabalha sobre o grafo que a troca acabou de arrumar.*
+///
+/// # ⛔⛔⛔ A CAÇA AO RELÓGIO: cinco tentativas, UMA sobrevivente
+///
+/// Report do dono (21/09): *«algoritmo mais lento que o modo padrão. tem que
+/// otimizar»* — e ele tem razão: medido pela porta do produto na peça grande, o
+/// passe de topologia custa **`0,104 ms` sem pente e `7,692` com**.
+///
+/// **O perfil**, por alternância (pegada `626`): `mancha 0,330` · `orientação
+/// 0,553` · **`posição 2,797`** · `relax 1,442`.
+///
+/// | tentativa | resultado |
+/// |---|---|
+/// | **pentear a cada `N` dabs** | ⛔ `fil50` `38,8 → 18,8` só a saltar UM — *a qualidade vem da ACUMULAÇÃO, e saltar dabs é fazer menos trabalho, não o mesmo trabalho mais barato* |
+/// | **içar as 16 quinas** do miolo do campo (16 avaliações onde bastam 4+4) | ⛔ **`1 %`** — o compilador já o fazia |
+/// | **conjunto activo** nas varreduras (saltar quem não mudou) | ⛔ **`0 %`** — a semente do campo é a POSIÇÃO do vértice, logo a 1.ª varredura move toda a gente |
+/// | **encolher a pegada** do pente (`0,9` · `0,8` · `0,7` do raio) | ⛔ a qualidade cai **proporcionalmente** (`−29 %` de relógio por `−4,9` pontos) |
+/// | **semear o relax nos MOVIDOS** | ⛔ `−5 %` a `−11 %` por `1,2` pontos — a retícula move quase toda a pegada |
+/// | ⭐ **`ALTERNANCIAS` `2 → 1`** | **`−26 %`** (`212 → 158 ms` no traço), por `0,7` pontos de regularidade e `fil90 70,8 → 68,5` |
+///
+/// ⏳ **E o que daria um MÚLTIPLO está nomeado e é wave própria: carregar o
+/// campo de posição ENTRE dabs.** Hoje ele é re-derivado do zero em cada dab
+/// (a semente é a posição do vértice), e é por isso que o conjunto activo deu
+/// zero; com ele guardado por-vértice a convergência seria de `~1` varredura em
+/// vez de `4`. ⭐ A maquinaria existe — o `SculptStroke` já carrega dados
+/// por-vértice através do `grow_with`/`shrink_with`.
+///
+/// ⚠️ **A troca do `2 → 1` NÃO foi tomada por mim:** ela desfaz parte do que o
+/// dono aprovou (*«melhorou»*, na configuração `4`/`2`), e escolher entre a
+/// qualidade que ele viu e a velocidade de que se queixou **é decisão dele**.
 pub(crate) const ALTERNANCIAS: usize = 2;
 
 /// O lado da célula, em aresta média da pegada.

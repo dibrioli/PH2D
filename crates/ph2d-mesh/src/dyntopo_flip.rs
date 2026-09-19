@@ -316,6 +316,18 @@ pub fn alinha_arestas(
 /// seguir o TRAÇO e foi medida a estragar o relevo; esta troca-a para o vértice
 /// ter seis vizinhos, que é o operador clássico de remalhagem isotrópica e não
 /// tem direcção preferida nenhuma.
+///
+/// # ⛔⛔ RECUSA MEDIDA: semeá-la só nos vértices MOVIDOS (21/09)
+///
+/// Ela varre a bola inteira do dab para fazer **`~20` trocas** sobre `~1 550`
+/// faces, e a ideia óbvia é semeá-la nas faces que a retícula acabou de mexer.
+/// **Construída e medida:** `−5 %` a `−11 %` de relógio por **`1,2` pontos** de
+/// cruzamentos regulares.
+///
+/// ⭐ *A razão é que a retícula move QUASE TODA a pegada* — o pedido dela é
+/// pequeno (`0,04` de célula a meio do traço) mas **não é zero** —, logo a lista
+/// de movidos é quase a pegada e a sementeira não estreita nada. O que se perde
+/// são as trocas que o colapso e o refino tornaram possíveis fora dela.
 #[must_use]
 pub fn relaxa_valencia_em(
     mesh: &mut Mesh,

@@ -183,6 +183,153 @@ fn diag_a_escada_do_knob() {
     }
 }
 
+/// ⭐⭐⭐⭐ **SONDA — ONDE vai o tempo do pente, fase a fase.**
+///
+/// Report do dono (21/09): *«algoritmo mais lento que o modo padrão. tem que
+/// otimizar»*. ⛔ **Medir antes de optimizar:** o passe tem cinco peças e o
+/// tecto de `4,6 ms` não diz qual delas o come.
+///
+/// ⚠️ Em `--release`, o **mínimo de cinco** — numa workstation partilhada a
+/// média mede a carga dos vizinhos e o mínimo mede a lei.
+#[test]
+#[ignore = "sonda: imprime o perfil, nao afirma nada"]
+fn diag_onde_vai_o_tempo_do_pente() {
+    use std::time::Instant;
+    let raio = raio_do_app();
+    for k in [0usize, 1, 2] {
+        let mut malha = peca_uma_vez();
+        malha.triangulate();
+        for _ in 0..k {
+            malha = ph2d_mesh::subdivide(&malha);
+            malha.triangulate();
+        }
+        let centro = [0.0, 0.0, 1.0];
+        let direccao = [raio * 0.15, 0.0, 0.0];
+
+        let mut ids = Vec::new();
+        {
+            let mut faces = Vec::new();
+            malha.octree().faces_in_sphere(centro, raio, &mut faces);
+            let r2 = raio * raio;
+            let p = malha.positions();
+            let todas = malha.faces();
+            for &f in &faces {
+                for &v in todas[f as usize].verts() {
+                    let q = p[v as usize];
+                    let d = [q[0] - centro[0], q[1] - centro[1], q[2] - centro[2]];
+                    if d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])) <= r2 {
+                        ids.push(v);
+                    }
+                }
+            }
+            ids.sort_unstable();
+            ids.dedup();
+        }
+        let passo = ph2d_quadflow::regiao::passo_da_pegada(&malha, &ids) * LADO_DA_CELULA;
+
+        let mede = |f: &mut dyn FnMut()| -> f64 {
+            let mut melhor = f64::INFINITY;
+            for _ in 0..5 {
+                let t = Instant::now();
+                f();
+                melhor = melhor.min(t.elapsed().as_secs_f64() * 1000.0);
+            }
+            melhor
+        };
+
+        let mut m = None;
+        let t_mancha = mede(&mut || {
+            m = Some(ph2d_quadflow::regiao::mancha(&malha, &ids));
+        });
+        let m = m.expect("a mancha");
+        let mut dirs = Vec::new();
+        let t_orient = mede(&mut || {
+            dirs = ph2d_quadflow::regiao::orientacao_semeada(&m, direccao, RONDAS_DA_GRELHA);
+        });
+        let t_pos = mede(&mut || {
+            let _ = ph2d_quadflow::regiao::posicao_da_mancha(&m, &dirs, passo, RONDAS_DA_GRELHA);
+        });
+        let t_relax = mede(&mut || {
+            let mut m2 = malha.clone();
+            let mut sc = ph2d_mesh::RegionScratch::default();
+            let _ = ph2d_mesh::relaxa_valencia_em(&mut m2, centro, raio, &mut sc);
+        });
+        println!(
+            "{:>8} verts, pegada {:>4}: mancha {t_mancha:6.3}  orient {t_orient:6.3}  \
+             pos {t_pos:6.3}  relax {t_relax:6.3}  (ms, por ALTERNANCIA)",
+            malha.vert_count(),
+            m.len()
+        );
+    }
+}
+
+/// ⭐⭐⭐⭐ **SONDA — o que o DONO sente: um dab com e sem o pente.**
+///
+/// Report (21/09): *«algoritmo mais lento que o modo padrão. tem que
+/// otimizar»*. Esta é a comparação que ele faz — **o mesmo traço, o mesmo
+/// pincel, o interruptor do pente ligado e desligado** — e não uma fase medida
+/// à parte.
+#[test]
+#[ignore = "sonda: imprime o custo do dab, nao afirma nada"]
+fn diag_o_custo_do_dab_com_pente() {
+    use std::time::Instant;
+    let (raio, alvo) = (raio_do_app(), alvo_do_refino());
+    for k in [0usize, 1, 2] {
+        let mut base = peca_uma_vez();
+        base.triangulate();
+        for _ in 0..k {
+            base = ph2d_mesh::subdivide(&base);
+            base.triangulate();
+        }
+        print!("{:>8} verts:", base.vert_count());
+        for (nome, knob) in [("sem pente", 0.0f32), ("com pente", 1.0)] {
+            let mut melhor = f64::INFINITY;
+            for _ in 0..5 {
+                let mut malha = base.clone();
+                let mut stroke = SculptStroke::default();
+                stroke.begin(&malha);
+                let brush = Brush {
+                    verb: Verb::Draw,
+                    radius: raio,
+                    strength: 0.25,
+                    pente: knob,
+                    ..Brush::default()
+                };
+                let mut births = Vec::new();
+                let mut remap = ph2d_mesh::Remap::default();
+                let mut region = ph2d_mesh::RegionScratch::default();
+                let centro = [0.0, 0.0, 1.0];
+                let t = Instant::now();
+                let _ = crate::dyntopo::passe_nos_motores(
+                    &mut malha,
+                    brush.verb,
+                    alvo,
+                    centro,
+                    raio,
+                    crate::dyntopo::Rascunho {
+                        remap: &mut remap,
+                        births: &mut births,
+                        region: &mut region,
+                    },
+                    (knob > 0.0).then_some(crate::dyntopo::Pente {
+                        direccao: [raio * 0.15, 0.0, 0.0],
+                        forca: knob,
+                        queda: brush.falloff,
+                    }),
+                );
+                melhor = melhor.min(t.elapsed().as_secs_f64() * 1000.0);
+                // ⚠️ O `dab` em si fica FORA da medição de propósito: ele é o
+                // mesmo nos dois lados, e o que o report compara é o passe de
+                // topologia, que é onde o pente vive. (E chamá-lo aqui pedia o
+                // `grow_with` depois do refino, que é fiação de produto.)
+                let _ = &stroke;
+            }
+            print!("  {nome} {melhor:6.3} ms");
+        }
+        println!();
+    }
+}
+
 fn linha_da_grelha(
     m: &ph2d_mesh::Mesh,
     c: &[[f32; 3]],

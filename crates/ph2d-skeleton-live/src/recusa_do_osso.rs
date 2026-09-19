@@ -42,6 +42,16 @@ pub enum RecusaDoOsso {
     NadaAPrender,
     /// O *Release* não tem sujeito: nada escolhido que esteja preso.
     NadaASoltar,
+    /// A escolha da LEI de pele não tem sujeito: nada escolhido que tenha pele (2026-09-19).
+    ///
+    /// ⚠️ **Ela não é a [`Self::NadaASoltar`] com outro nome**, e a diferença é o que o artista lê:
+    /// ali a saída é *soltar*, aqui é *escolher por que lei isto se deforma*. ⛔ Reaproveitar a
+    /// irmã diria *«nada a soltar»* a quem carregou noutro botão — a espécie de mentira que esta
+    /// porta existe para não ter.
+    ///
+    /// ⚠️ **E ela NÃO cobre *«já estava nessa lei»***: escrever a lei que já lá está não é um
+    /// acontecimento, e queixar-se disso é o ruído que o artista aprende a ignorar.
+    NadaAQuemMudarALei,
 }
 
 impl RecusaDoOsso {
@@ -56,6 +66,7 @@ impl RecusaDoOsso {
             Self::VariosEsqueletos { .. } => "skeleton.recusa.varios_esqueletos",
             Self::NadaAPrender => "skeleton.recusa.nada_a_prender",
             Self::NadaASoltar => "skeleton.recusa.nada_a_soltar",
+            Self::NadaAQuemMudarALei => "skeleton.recusa.nada_a_quem_mudar_a_lei",
         }
     }
 
@@ -67,7 +78,7 @@ impl RecusaDoOsso {
     pub fn quantos(self) -> Option<usize> {
         match self {
             Self::VariosEsqueletos { quantos } => Some(quantos),
-            Self::NadaAPrender | Self::NadaASoltar => None,
+            Self::NadaAPrender | Self::NadaASoltar | Self::NadaAQuemMudarALei => None,
         }
     }
 
@@ -75,10 +86,11 @@ impl RecusaDoOsso {
     ///
     /// ⚠️ Escrita à mão e **guardada por um gate de exaustividade** (o `match` do [`Self::chave`]),
     /// porque um `enum` com dados não se enumera sozinho.
-    pub const TODAS: [Self; 3] = [
+    pub const TODAS: [Self; 4] = [
         Self::VariosEsqueletos { quantos: 2 },
         Self::NadaAPrender,
         Self::NadaASoltar,
+        Self::NadaAQuemMudarALei,
     ];
 }
 

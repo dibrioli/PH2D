@@ -55,6 +55,7 @@ fn publica_tudo() {
 
 fn limpa() {
     state::set_current_bone_ik_auto_side(None);
+    state::set_current_skin_law_envelope(false);
     // ⚠️ O envelope repõe-se a `true` (o default conservador): sem isto o teste que o desliga
     // contamina todos os seguintes, e eles ficam verdes sobre um painel sem aquele campo.
     state::set_current_envelope_manda(true);
@@ -842,4 +843,57 @@ fn the_envelope_is_painted_only_where_it_still_rules() {
     );
     limpa();
     state::set_current_envelope_manda(true);
+}
+
+/// ⭐⭐⭐ **A FILEIRA `Deform By` EXISTE, SEGUE A SELECÇÃO E O CLIQUE CHEGA AO BARRAMENTO** — a
+/// escolha que o dono mandou construir (2026-09-19: *«construa. por desenho»*).
+///
+/// ⛔⛔ **O clique é REAL (down+up sobre o rectângulo pintado) e não um `WidgetEvent::Click`
+/// sintético**, pela razão que esta família pagou SETE vezes: um chip pintado, hit-indexado e
+/// **morto sob o dedo** dá exactamente o mesmo report que um chip nunca pintado, e só o gesto real
+/// os separa — o sintético prova a allowlist e **pula a focabilidade no store**.
+///
+/// ⚠️ **As QUATRO metades são quatro defeitos:** sem a (a) a fileira aparece num painel sem sujeito
+/// (um selector sem pele, que é a classe de controlo morto do `CLAUDE.md` §5.0); sem a (b) ela não
+/// alcança uma IMAGEM (o report de 2026-09-18, que já custou os dois botões de saída); sem a (c) o
+/// chip não diz em que lei o desenho está; sem a (d) ele acende e **nada muda**.
+#[test]
+fn a_fileira_da_lei_de_pele_existe_segue_a_seleccao_e_o_clique_chega() {
+    limpa();
+    let pintado = |id| {
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+            .is_some()
+    };
+
+    // (a) SEM pele escolhida não há sujeito, e a fileira não existe.
+    state::set_current_skinned(state::Skinned::default());
+    assert!(
+        !pintado(ids::VECTOR_BONE_SKIN_LAW_AUTO),
+        "a fileira `Deform By` apareceu sem nada preso escolhido: sem pele nao ha' lei de pele, e \
+         um selector sem sujeito e' a classe de controlo morto que o CLAUDE.md §5.0 nomeia"
+    );
+
+    // (b) Com uma IMAGEM presa ela existe — a pergunta é a mesma para as duas mídias.
+    state::set_current_skinned(state::Skinned {
+        vector: false,
+        imagem: true,
+    });
+    assert!(
+        pintado(ids::VECTOR_BONE_SKIN_LAW_AUTO) && pintado(ids::VECTOR_BONE_SKIN_LAW_ENVELOPE),
+        "a fileira `Deform By` nao alcanca uma IMAGEM presa — e' o report de 2026-09-18 outra vez, \
+         que ja' custou os dois botoes de saida"
+    );
+
+    // (c) E o clique REAL chega ao barramento, nos DOIS sentidos.
+    for id in ids::VECTOR_BONE_SKIN_LAW_IDS {
+        let acoes = clica(id, "chip da lei de pele");
+        assert!(
+            !acoes.is_empty(),
+            "o chip da lei de pele esta' MORTO sob o dedo: ele acende e o desenho nao muda, que e' \
+             o defeito que esta familia ja' pagou sete vezes"
+        );
+    }
+    limpa();
 }

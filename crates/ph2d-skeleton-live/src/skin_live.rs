@@ -335,11 +335,17 @@ pub fn recook(sim: &SimWorld, scene: &mut VecScene) {
         };
         // ⛔ Uma tabela que não fecha com o caminho cai na lei derivada em vez de ser lida
         // deslocada — pesos plausíveis sobre os pontos errados dão arte errada sem um erro.
-        let pesos: &[f64] = if guardado.valida() {
+        //
+        // ⭐⭐⭐ **E a ESCOLHA DO ARTISTA passa pela mesma porta** (`SkinBind::pesos_do_quadro`, a
+        // wave de 2026-09-19): com `SkinLaw::Envelope` ela devolve vazio e este desenho cai na lei
+        // euclidiana, onde o alcance de cada osso manda. ⚠️ A tabela guardada **não** é tocada —
+        // voltar ao `Auto` volta a lê-la no quadro seguinte, sem re-resolver nada.
+        let fecha: &[f64] = if guardado.valida() {
             &guardado.pesos
         } else {
             &[]
         };
+        let pesos = skin.pesos_do_quadro(fecha);
         let mut src = guardado.path.clone();
         ph2d_vec_skin::aplica_com(&pele, &mut src, pesos);
         if let Some(p) = scene.path_mut(id) {

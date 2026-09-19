@@ -295,4 +295,24 @@
 /// ⛔ **O `WeaponRuntime` não se regista** (a cerca é o TIPO): ele entra no `rewind_runtime`, porque
 /// *rebobinar é RENASCER* e uma arma renasce **pronta a disparar**. ⛔ **Sem degrau de migração**
 /// (decisão do Enio, 26/08). ⚠️ **A tripla NÃO vê este degrau** — a **décima sexta** vez.
-pub(crate) const PROJECT_SCHEMA: u32 = 155;
+/// # `155 → 156` — a PELE ganha a LEI, e ela é do DESENHO (ordem do dono, 2026-09-19)
+///
+/// O `ph2d_skeleton_ecs::SkinBind` ganhou um campo `law: SkinLaw` (`Auto` | `Envelope`): por que
+/// lei **este desenho** se deforma. Até aqui não se escolhia — o app decidia pelo DESENHO (uma
+/// forma com interior ia para o padrão-ouro e o alcance de cada osso ficava inerte; um traço aberto
+/// caía na lei euclidiana), e *qual lei deforma o personagem é uma decisão de RIG escondida numa
+/// decisão de DESENHO*.
+///
+/// ⚠️ **Campo novo numa struct que já se grava** ⇒ é a regra dos degraus 109/110: os bytes de todo
+/// `SkinBind` gravado mudam, e o postcard é posicional. Um ficheiro anterior é **recusado em voz
+/// alta**, que é o que este degrau compra.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08.
+///
+/// ⭐ **A aparência de um rig já autorado não muda:** `SkinLaw::Auto` é o `#[default]` e é o que o
+/// `SkinBind::new` escreve, e no `Auto` a porta `pesos_do_quadro` devolve a tabela guardada **ao
+/// bit** — gate `a_escolha_do_artista_poe_uma_forma_fechada_na_lei_do_envelope`, metade (1).
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — a SÉTIMA vez (99, 100, 114, 119, 129, 144 e este): o
+/// `SkinBind` viaja no `WorldSnapshot` e não no `FlipDoc` nem na `VecScene`.
+pub(crate) const PROJECT_SCHEMA: u32 = 156;

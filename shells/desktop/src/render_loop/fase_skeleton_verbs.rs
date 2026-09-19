@@ -8,6 +8,7 @@ pub(super) struct SkeletonVerbsIntents {
     pub(super) pending_bone_bind: bool,
     pub(super) pending_bone_release: Option<crate::skeleton_live::Keep>,
     pub(super) pending_bone_knob: Option<(ph2d_app_skeleton::knobs::BoneKnob, f64)>,
+    pub(super) pending_skin_law: Option<ph2d_skeleton_ecs::SkinLaw>,
     pub(super) osso_selecionado: Option<u64>,
     pub(super) selecao_bits: Vec<u64>,
 }
@@ -36,6 +37,65 @@ fn avisa(
     toasts.push(ph2d_editor_core::Toast::warning(texto));
 }
 
+/// ⭐⭐⭐ **A LEI DE PELE DE CADA DESENHO ESCOLHIDO** (ordem do dono, 2026-09-19: *«construa. por
+/// desenho»*).
+///
+/// ⚠️ **Ela corre com o *Bind* e o *Release*, e não com os números do osso:** o sujeito é a
+/// SELECÇÃO de formas, e é por isso que os dois ids vivem na `VECTOR_BONE_ON_SELECTION`. ⛔ Drená-la
+/// no bloco do osso em foco faria o chip exigir um osso aceso — e o artista veria-o acender sem nada
+/// mudar.
+///
+/// ⚠️ **O encadeamento dos dois selectores vem da PORTA da família**, a mesma que o espelho do
+/// painel usa para acender o chip. *Duas respostas à mesma pergunta divergem no primeiro ajuste.*
+///
+/// ⚠️⚠️ **O SUJEITO e a MUDANÇA são duas perguntas, e confundi-las dá o ruído que esta casa já
+/// nomeou.** *«Nada escolhido que tenha pele»* é uma recusa e merece a tela; *«já estava nessa
+/// lei»* é o caso normal de quem carrega duas vezes, e queixar-se disso é o aviso que o artista
+/// aprende a ignorar — exactamente quando ele passar a ser verdade.
+///
+/// ⚠️ **Função LIVRE e não um método**, pela razão de sempre neste ficheiro: o `gfx` já está
+/// emprestado mutável, e um `&mut self` não compila. Os campos que ela recebe são disjuntos dele.
+fn aplica_a_lei_de_pele(
+    lei: Option<ph2d_skeleton_ecs::SkinLaw>,
+    sim: &mut SimWorld,
+    toasts: &mut ph2d_editor_core::ToastQueue,
+    vec_state: &ph2d_app_vec::state::VecState,
+    selecao_bits: &[u64],
+) {
+    let Some(lei) = lei else {
+        return;
+    };
+    let caminhos: Vec<u64> = vec_state
+        .pen
+        .selected_paths()
+        .iter()
+        .filter_map(|id| vec_state.entities.get(id).copied())
+        .collect();
+    let alvos = ph2d_app_skeleton::skin_law::escolhidas(
+        sim,
+        caminhos.iter().copied(),
+        selecao_bits.iter().copied(),
+    );
+    if alvos.is_empty() {
+        avisa(
+            toasts,
+            ph2d_skeleton_live::recusa_do_osso::RecusaDoOsso::NadaAQuemMudarALei,
+        );
+        return;
+    }
+    let n = ph2d_app_skeleton::skin_law::escreve(sim, caminhos, selecao_bits.iter().copied(), lei);
+    let chave = match lei {
+        ph2d_skeleton_ecs::SkinLaw::Auto => "panel.vector.bone.skin_law.auto",
+        ph2d_skeleton_ecs::SkinLaw::Envelope => "panel.vector.bone.skin_law.envelope",
+    };
+    eprintln!(
+        "[ph2d-vec] osso: {n} de {} desenho(s) passaram a deformar-se por «{}» (os outros ja' \
+         estavam)",
+        alvos.len(),
+        ph2d_i18n::tr(chave)
+    );
+}
+
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_skeleton_verbs(&mut self, intents: SkeletonVerbsIntents) -> Option<usize> {
@@ -53,9 +113,17 @@ impl crate::App {
             pending_bone_bind,
             pending_bone_release,
             pending_bone_knob,
+            pending_skin_law,
             osso_selecionado,
             selecao_bits,
         } = intents;
+        // ⭐⭐⭐ **POR QUE LEI CADA DESENHO ESCOLHIDO SE DEFORMA** — a lei mora no irmão.
+        //
+        // ⛔ **Corte por RESPONSABILIDADE, imposto pelo tecto de 200 LOC** (`217`): prender, soltar
+        // e escrever os números do osso são os VERBOS da seção; escolher por que lei um desenho se
+        // deforma é outro assunto, e ele tem as duas metades (o sujeito e a recusa) que só juntas
+        // fazem sentido. ⛔ **Nunca uma entrada nova no `FN_OVERAGE_OK`.**
+        aplica_a_lei_de_pele(pending_skin_law, sim, toasts, &self.vec, &selecao_bits);
         // ⭐⭐⭐ **O ESQUELETO** (estudo 42 item 5): os três verbos da seção, aplicados aqui como
         // os do envelope — o dreno acima só CAPTURA, e quem mexe no mundo é este bloco.
         // ⚠️ **Bloco ROTULADO e não um `return`:** a recusa é do BIND, e um retorno cedo levaria

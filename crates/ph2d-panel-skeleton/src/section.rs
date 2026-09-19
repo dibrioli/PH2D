@@ -121,6 +121,7 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
             y = r.action_button(ids::VECTOR_BONE_EXPAND, tr("panel.vector.bone.expand"), y);
         }
         y = r.action_button(ids::VECTOR_BONE_RELEASE, tr("panel.vector.bone.release"), y);
+        y = skin_law_row(r, y);
     }
     // ⛔⛔⛔ **A FILEIRA `Deform` SAIU** (ordem do dono, 2026-09-17: *«Pode apagar a secção
     // deform»*), e o que a matou foi uma MEDIÇÃO.
@@ -266,6 +267,48 @@ fn ik_rows(r: &mut RowCtx, y: f32) -> f32 {
         *slot = (ids::VECTOR_BONE_BEND_IDS[i], rotulos[i], i == lado);
     }
     r.segmented(tr("panel.vector.bone.ik.bend"), &lados, y)
+}
+
+/// ⭐⭐⭐⭐ **POR QUE LEI ESTE DESENHO SE DEFORMA** — a escolha que o dono mandou construir
+/// (2026-09-19: *«como se escolhe se os envelopes vão ou não influenciar?»* ⇒ *«construa. por
+/// desenho»*).
+///
+/// ⛔⛔⛔ **Antes disto NÃO SE ESCOLHIA, e a régua mediu-o:** uma forma com interior (ou uma imagem
+/// que resolve) ia para o padrão-ouro e o alcance ficava **inerte** (amplitude `0,000000` numa faixa
+/// de `80 ×`); um traço ABERTO caía na lei euclidiana, onde o alcance manda. *Qual lei deforma o
+/// personagem é uma decisão de RIG, e ela estava escondida dentro de uma decisão de DESENHO.*
+///
+/// ⚠️ **O SUJEITO É A SELECÇÃO DE FORMAS, não o osso em foco** — é isso que faz dela uma escolha
+/// *por desenho*, e é por isso que os dois ids vivem em
+/// [`ph2d_tool_vector::ids::VECTOR_BONE_ON_SELECTION`]. ⇒ ela é pintada com o *Release*, ao lado
+/// das outras duas coisas que agem sobre o que está escolhido, e **só quando há algo preso**:
+/// *sem pele não há lei de pele, e um selector sem sujeito é a classe de controlo morto que o
+/// `CLAUDE.md` §5.0 nomeia.*
+///
+/// ⚠️ **E ela é pintada para as DUAS mídias**, ao contrário do *Expand*: a pergunta é a mesma para
+/// uma forma e para uma imagem, e a lei que a responde é uma só
+/// (`ph2d_skeleton_ecs::SkinBind::pesos_do_quadro`).
+fn skin_law_row(r: &mut RowCtx, y: f32) -> f32 {
+    // ⚠️ A MESMA lei de alinhamento por índice das duas fileiras de chips abaixo, e o mesmo
+    // `assert!` de `const`: uma lei nova sem um id ao lado **não compila**.
+    const _: () = assert!(
+        ids::VECTOR_BONE_SKIN_LAW_IDS.len() == 2,
+        "uma lei de pele nova precisa de um id ao lado dela"
+    );
+    let envelope = state::skin_law_envelope();
+    let leis: [(NodeId, &str, bool); 2] = [
+        (
+            ids::VECTOR_BONE_SKIN_LAW_AUTO,
+            tr("panel.vector.bone.skin_law.auto"),
+            !envelope,
+        ),
+        (
+            ids::VECTOR_BONE_SKIN_LAW_ENVELOPE,
+            tr("panel.vector.bone.skin_law.envelope"),
+            envelope,
+        ),
+    ];
+    r.segmented(tr("panel.vector.bone.skin_law"), &leis, y)
 }
 
 /// ⭐⭐⭐⭐ **DE ONDE VÊM AS DUAS ALÇAS DE CURVATURA** — o *Handle Type* do *Bendy Bone*.

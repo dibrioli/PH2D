@@ -140,6 +140,7 @@ impl crate::App {
             pending_bone_bind: take(&mut pd.pending_bone_bind),
             pending_bone_release: take(&mut pd.pending_bone_release),
             pending_bone_knob: take(&mut pd.pending_bone_knob),
+            pending_skin_law: take(&mut pd.pending_skin_law),
             osso_selecionado: pd.osso_selecionado,
             selecao_bits: take(&mut pd.selecao_bits),
         })?;

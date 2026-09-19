@@ -23,6 +23,14 @@ fn toda_a_seccao() -> Vec<ph2d_a11y::NodeId> {
     v.extend(ids::VECTOR_BONE_FIELDS);
     v.extend(ids::VECTOR_BONE_BEND_IDS);
     v.extend(ids::VECTOR_BONE_SMART_CLIP_IDS);
+    // ⛔⛔ **TRÊS tabelas da seção faltavam a esta população, e o `needs_focused_bone` já as lia.**
+    // A ausência era MUDA nos dois gates deste ficheiro: a cobertura media uma seção mais pequena
+    // do que a real, e a lista de excepções passou a acusar um FANTASMA no dia em que um controlo
+    // de selecção nasceu numa delas (a fileira `Deform By`, 2026-09-19). *Um censo cuja população
+    // é escrita à mão mede o que alguém se lembrou de escrever.*
+    v.extend(ids::VECTOR_BONE_HANDLES_IDS);
+    v.extend(ids::VECTOR_BONE_TIP_IDS);
+    v.extend(ids::VECTOR_BONE_SKIN_LAW_IDS);
     v
 }
 

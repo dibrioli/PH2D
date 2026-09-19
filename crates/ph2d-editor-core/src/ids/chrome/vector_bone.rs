@@ -142,6 +142,21 @@ pub const VECTOR_BONE_HANDLES_AUTO: NodeId = hash_node_id("vector.bone.handles.a
 pub const VECTOR_BONE_HANDLES_IDS: [NodeId; 2] =
     [VECTOR_BONE_HANDLES_AUTHORED, VECTOR_BONE_HANDLES_AUTO];
 
+/// ⭐⭐⭐ **Skin Law: Auto** — este desenho deforma-se pelo PADRÃO-OURO, e o alcance não entra.
+///
+/// ⚠️ **É o nascimento**, e por isso é o primeiro da tabela: a posição na
+/// [`VECTOR_BONE_SKIN_LAW_IDS`] É a variante do `ph2d_skeleton_ecs::SkinLaw`.
+pub const VECTOR_BONE_SKIN_LAW_AUTO: NodeId = hash_node_id("vector.bone.skin_law.auto");
+
+/// ⭐⭐⭐ **Skin Law: Envelope** — este desenho deforma-se POR ALCANCE, e o `Strength` de cada osso
+/// volta a mandar (ordem do dono, 2026-09-19: *«construa. por desenho»*).
+pub const VECTOR_BONE_SKIN_LAW_ENVELOPE: NodeId = hash_node_id("vector.bone.skin_law.envelope");
+
+/// Os dois segmentos, **índice-alinhados** com o `ph2d_skeleton_ecs::SkinLaw` — a mesma lei de
+/// alinhamento da [`VECTOR_BONE_BEND_IDS`], e pela mesma razão.
+pub const VECTOR_BONE_SKIN_LAW_IDS: [NodeId; 2] =
+    [VECTOR_BONE_SKIN_LAW_AUTO, VECTOR_BONE_SKIN_LAW_ENVELOPE];
+
 /// ⭐ **Quantas linhas o selector de PONTA alcança** — duas fixas (a corrente e «ninguém») mais um
 /// filho-osso por linha.
 ///
@@ -314,8 +329,17 @@ pub const VECTOR_BONE_FIELDS: [NodeId; 14] = [
 /// ⚠️ Eles são a **excepção declarada** de [`needs_focused_bone`]: o *Bind* prende as formas
 /// escolhidas ao esqueleto, e o par *Keep Pose* / *Release* solta-as. Nenhum dos três pergunta qual
 /// osso está aceso.
-pub const VECTOR_BONE_ON_SELECTION: [NodeId; 3] =
-    [VECTOR_BONE_BIND, VECTOR_BONE_EXPAND, VECTOR_BONE_RELEASE];
+/// ⚠️ **Eram TRÊS e são CINCO desde 2026-09-19**: a escolha da lei de pele é **por DESENHO** (ordem
+/// do dono), logo o sujeito dela é a selecção de formas — exactamente como o *Bind* e o *Release*.
+/// ⛔ Deixá-la fora daqui faria a shell exigir um osso em foco para a aplicar, e o artista veria o
+/// chip acender e nada mudar quando só tivesse o desenho escolhido.
+pub const VECTOR_BONE_ON_SELECTION: [NodeId; 5] = [
+    VECTOR_BONE_BIND,
+    VECTOR_BONE_EXPAND,
+    VECTOR_BONE_RELEASE,
+    VECTOR_BONE_SKIN_LAW_AUTO,
+    VECTOR_BONE_SKIN_LAW_ENVELOPE,
+];
 
 /// ⭐⭐⭐ **O SUJEITO DESTE CONTROLO É O OSSO EM FOCO?** — a pergunta que decide se o dreno tem com
 /// que trabalhar, e se o silêncio dele precisa de ser explicado.
@@ -340,4 +364,5 @@ pub fn needs_focused_bone(id: NodeId) -> bool {
         || VECTOR_BONE_HANDLES_IDS.contains(&id)
         || VECTOR_BONE_SMART_CLIP_IDS.contains(&id)
         || VECTOR_BONE_TIP_IDS.contains(&id)
+        || VECTOR_BONE_SKIN_LAW_IDS.contains(&id)
 }

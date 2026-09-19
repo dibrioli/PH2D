@@ -326,6 +326,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bone.handles" => "Curve Handles",
         "panel.vector.bone.handles.authored" => "Manual",
         "panel.vector.bone.handles.auto" => "From Chain",
+        // ⭐⭐⭐ A escolha da LEI de pele, por DESENHO (ordem do dono, 2026-09-19).
+        // ⚠️ O rótulo diz o que a lei FAZ e não o nome dela: «Automatic» não diria a um artista que
+        // ali o alcance de cada osso deixa de contar, que é a coisa que ele precisa de saber.
+        "panel.vector.bone.skin_law" => "Deform By",
+        "panel.vector.bone.skin_law.auto" => "Artwork",
+        "panel.vector.bone.skin_law.envelope" => "Bone Reach",
         // ⭐⭐⭐ **QUEM MANDA NA PONTA da curva** — o *custom handle* do Blender (ordem do dono,
         // 2026-09-16). Só tem sujeito com as alças em `From Chain`.
         "panel.vector.bone.tip" => "Curve Tip",

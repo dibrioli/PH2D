@@ -65,6 +65,12 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in ids::VECTOR_BONE_HANDLES_IDS {
         button(store, id);
     }
+    // ⭐ Por que LEI cada desenho se deforma — pela mesma tabela, e pela mesma razão. ⛔ Sem esta
+    // linha o chip nasce pintado, hit-indexado e **morto sob o dedo**, que é o defeito que esta
+    // família já pagou sete vezes e que só um gesto REAL separa de um chip nunca pintado.
+    for id in ids::VECTOR_BONE_SKIN_LAW_IDS {
+        button(store, id);
+    }
     // ⚠️ **`Dropdown` no store, botão na tela**: é o `InteractiveState::Dropdown` que faz o dispatch
     // genérico alternar o `open` (e fechar o dos outros). Registá-lo como `Button` faria o clique
     // acender e **nunca abrir lista nenhuma**.
@@ -106,6 +112,7 @@ fn meu(id: ph2d_a11y::NodeId) -> bool {
         || ids::VECTOR_BONE_SMART_CLIP_IDS.contains(&id)
         || crate::ids::VECTOR_BONE_ACTION_IDS.contains(&id)
         || ids::VECTOR_BONE_TIP_IDS.contains(&id)
+        || ids::VECTOR_BONE_SKIN_LAW_IDS.contains(&id)
         || id == crate::ids::VECTOR_BONE_SMART_CLIP
         || id == crate::ids::VECTOR_BONE_TIP
 }

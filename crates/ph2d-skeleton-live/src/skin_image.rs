@@ -603,8 +603,18 @@ pub fn attach_skin_meshes(
         let Some(pele) = crate::skin_live::skin_of(sim, e) else {
             continue;
         };
-        let Some(malha) = posed_sprite_mesh(mesh, p2l, &pele, &pesos, inst.anchor, inst.size)
-        else {
+        // ⭐⭐⭐ **A ESCOLHA DO ARTISTA passa pela MESMA porta que a forma vectorial**
+        // (`SkinBind::pesos_do_quadro`, a wave de 2026-09-19): com `SkinLaw::Envelope` ela devolve
+        // vazio e esta imagem cai na lei euclidiana, onde o alcance de cada osso manda.
+        //
+        // ⚠️⚠️ **Ela entra AQUI e não lá em cima**, e o sítio é medido: o recorte do 9-slice
+        // (`submesh_in_rect`) precisa da tabela CHEIA para saber quantos ossos ela cobre — apagá-la
+        // antes daria `ossos = 0` e o pedaço sairia sem pele nenhuma, que é outra coisa.
+        let Some(skin) = sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e) else {
+            continue;
+        };
+        let pesos = skin.pesos_do_quadro(&pesos);
+        let Some(malha) = posed_sprite_mesh(mesh, p2l, &pele, pesos, inst.anchor, inst.size) else {
             continue;
         };
         // ⚠️ **O diagnóstico da família** (`PH2D_BONE_LOG=1`): sem ele um report de *«facetou»* não

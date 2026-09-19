@@ -68,6 +68,16 @@ fn caiu_na_lei_derivada(mundo: &ph2d_ecs::World, e: ph2d_ecs::Entity) -> bool {
     let Some(skin) = mundo.get::<ph2d_skeleton_ecs::SkinBind>(e) else {
         return false;
     };
+    // ⭐⭐⭐ **A ESCOLHA DO ARTISTA decide PRIMEIRO, e pela MESMA porta que o quadro lê**
+    // (`SkinBind::pesos_do_quadro`, a wave de 2026-09-19). ⚠️ Sem esta linha, escolher *«por
+    // alcance»* numa forma preenchida deformaria pelo envelope **sem mancha e sem alça** — o
+    // artista ganharia o efeito e perderia o controlo dele, que é pior do que não ter a escolha.
+    //
+    // ⛔ Ela pergunta à porta com uma tabela NÃO-VAZIA de propósito: o que se mede aqui é a
+    // ESCOLHA, e uma tabela vazia responderia «derivada» por outro motivo, escondendo-a.
+    if skin.pesos_do_quadro(&[1.0]).is_empty() {
+        return true;
+    }
     if crate::skin_image::is_skinned_image(mundo, e) {
         return match postcard::from_bytes::<crate::skinned_mesh::SkinnedMesh>(&skin.source) {
             // ⛔ `ossos() == 0` e não `pesos.is_empty()`: a tabela que **não fecha** com a malha é

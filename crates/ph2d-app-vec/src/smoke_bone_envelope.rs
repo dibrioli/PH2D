@@ -146,6 +146,13 @@ pub struct Prologo {
     pub timeline_fechada: bool,
     /// Pedir o *Frame All* — ⚠️ **depois** de a fechar.
     pub enquadrar: bool,
+    /// ⭐⭐⭐ **Abrir o painel de ossos** — a FOTO de 2026-09-19 obrigou-o.
+    ///
+    /// ⛔⛔ O passo (3) do roteiro manda ler a fileira `Deform By` *«no painel Bones»*, e ele
+    /// **nasce fechado** (`DEFAULT_VISIBLE = false`): ele só se abre sozinho quando um OSSO é
+    /// escolhido, e ali o artista está a escolher um DESENHO. ⇒ *um passo que nomeia uma linha de
+    /// painel afirma que ela está lá, e o dono aprova o smoke com o passo impossível dentro.*
+    pub painel_do_osso: bool,
 }
 
 /// A lei do [`Prologo`], **por NÍVEL**. ⚠️ **Pura aqui e efeito na shell**, como o molde da família
@@ -164,6 +171,7 @@ pub const fn prologo_do_nivel(n: u32) -> Prologo {
     Prologo {
         timeline_fechada: n == 2,
         enquadrar: n == 2,
+        painel_do_osso: n == 2,
     }
 }
 
@@ -300,6 +308,10 @@ pub(crate) fn bind(scene: &mut VecScene, sim: &mut SimWorld, st: &mut crate::sta
 }
 
 /// O roteiro.
+///
+/// ⚠️ **Ele nomeia o que se vê NA TELA** (`Deform By`, `Bone Reach`, os nomes das três fileiras) —
+/// *um passo que manda clicar numa linha de painel AFIRMA que ela está lá*, e o dono aprova o smoke
+/// com o passo impossível dentro.
 fn anuncia(presas: usize) {
     if presas < NOMES.len() {
         eprintln!(
@@ -313,15 +325,19 @@ fn anuncia(presas: usize) {
          [vec-bone-smoke] 1) Olhe as DUAS cordas cor de laranja («{}» em cima e «{}» no meio): e' o \
          MESMO desenho com o MESMO esqueleto, e elas acabam em sitios DIFERENTES. Essa diferenca e' \
          o envelope — e ela vale {ALCANCE_FORTE:.0}x o alcance de fabrica\n\
-         [vec-bone-smoke] 2) Na Hierarquia clique no osso do MEIO da corda de cima: no canvas aparece \
-         uma MANCHA a' volta dele (ate' onde ele alcanca) com uma ALCA na borda. Arraste essa alca \
-         para FORA: a corda muda de forma enquanto arrasta\n\
-         [vec-bone-smoke] 3) Faca o mesmo na «{}» (a barra AZUL, em baixo): ali NAO ha' mancha e nao \
-         ha' alca nenhuma — e o painel Bones nao mostra o campo «Strength»\n\
-         [vec-bone-smoke] ⇒ e' essa a regra: o alcance so' manda num desenho ABERTO (um traco). Numa \
-         forma PREENCHIDA — e em toda imagem — o app usa uma lei melhor, que nao pergunta pelo \
-         alcance, e por isso o controlo sai da tela em vez de ficar la' a nao fazer nada\n\
-         [vec-bone-smoke] Se arrastar a alca da corda de cima e NADA mudar, PARE e diga",
+         [vec-bone-smoke] 2) Na Hierarquia clique no osso do MEIO da corda de cima: no canvas \
+         aparece uma MANCHA a' volta dele (ate' onde ele alcanca) com uma ALCA na borda. Arraste \
+         essa alca para FORA: a corda muda de forma enquanto arrasta\n\
+         [vec-bone-smoke] 3) Agora a ESCOLHA: na Hierarquia clique na «{}» (a peca AZUL, em baixo). \
+         No painel Bones aparece a fileira «Deform By» com dois botoes — ela esta' em «Artwork», e \
+         por isso a peca azul nao tem mancha nenhuma\n\
+         [vec-bone-smoke] 4) Carregue em «Bone Reach»: a peca azul MUDA DE FORMA na hora, e o osso \
+         do meio dela ganha a mancha e a alca. Arraste a alca — ela obedece como as cordas\n\
+         [vec-bone-smoke] 5) Carregue em «Artwork» outra vez: ela volta EXACTAMENTE ao que era, \
+         sem esperar nada. A conta boa ficou guardada desde que voce^ prendeu\n\
+         [vec-bone-smoke] ⇒ e' essa a escolha, e ela e' POR DESENHO: cada peca tem a sua, e mexer \
+         numa nao mexe nas outras\n\
+         [vec-bone-smoke] Se carregar em «Bone Reach» e a peca azul nao mudar, PARE e diga",
         NOMES[0], NOMES[1], NOMES[2]
     );
 }
@@ -370,7 +386,7 @@ mod tests {
     fn o_prologo_fecha_a_timeline_e_enquadra() {
         let p = prologo_do_nivel(2);
         assert!(
-            p.timeline_fechada && p.enquadrar,
+            p.timeline_fechada && p.enquadrar && p.painel_do_osso,
             "o prologo desta cena deixou de fazer as duas coisas: {p:?} — com a timeline aberta o \
              Frame All corta sempre, e sem ele o bloco abre descentrado"
         );
@@ -379,7 +395,7 @@ mod tests {
         // a timeline e reenquadrá-la-ia por baixo da mesa.
         let um = prologo_do_nivel(1);
         assert!(
-            !um.timeline_fechada && !um.enquadrar,
+            !um.timeline_fechada && !um.enquadrar && !um.painel_do_osso,
             "o prologo passou a armar a cena =1, que o dono ja' aprovou sem ele: {um:?}"
         );
     }

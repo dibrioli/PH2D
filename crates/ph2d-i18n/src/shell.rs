@@ -146,6 +146,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "skeleton.recusa.nada_a_soltar" => {
             "Nothing to release: select the shape or the image that is bound to the skeleton."
         }
+        "skeleton.recusa.nada_a_quem_mudar_a_lei" => {
+            "Nothing to change: select a shape or an image that is bound to the skeleton, then \
+             choose how it deforms."
+        }
         "shell.label_live.label" => "{base} Label",
         "shell.label_live.path" => "Path {host}",
         "shell.fase_bone_smart_and_knobs.this_bone_is_driven_by" => {

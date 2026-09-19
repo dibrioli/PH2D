@@ -56,7 +56,7 @@ fn a_recusa_do_bind_nao_cancela_os_outros_verbos() {
     );
 }
 
-/// ⭐⭐⭐ **E AS TRÊS RECUSAS DO OSSO CHEGAM À TELA, por UMA porta** (2026-09-18).
+/// ⭐⭐⭐ **E TODA RECUSA DO OSSO CHEGA À TELA, por UMA porta** (2026-09-18).
 ///
 /// ⛔⛔ *Uma recusa que só o terminal vê é um botão mudo* — as três viveram assim, e o dono aprovou
 /// dois smokes em que foi preciso dizer-lhe *«olhe na janela preta»*. A superfície **não é nova**: a
@@ -76,10 +76,23 @@ fn as_recusas_do_osso_chegam_a_tela_por_uma_porta() {
         // ⚠️ A agulha conta `avisa(` e **não** `avisa(toasts,`: o `cargo fmt` parte as chamadas
         // longas em várias linhas, e a 1.ª redacção contou `1` de `3` sobre produto CERTO. *Um
         // literal lê-se do ficheiro já formatado* — a segunda vez que esta jornada o paga.
-        FASE.matches("                avisa(").count(),
-        3,
-        "as TRES recusas do osso nao passam todas pela porta do aviso — a que faltar so' existe \
-         no terminal, que e' onde elas estavam antes desta wave"
+        //
+        // ⛔⛔ **E a 2.ª redacção prendia a INDENTAÇÃO (`"                avisa("`, dezasseis
+        // espaços), que é uma propriedade do ANINHAMENTO e não da lei.** Ela reprovou no dia em que
+        // um tecto de LOC obrigou a cortar um dos blocos para uma função livre — *sobre produto
+        // CERTO*, e a cura barata (mudar o número de espaços) só adiaria o mesmo até ao corte
+        // seguinte. ⇒ conta-se `avisa(` em todo o ficheiro e **subtrai-se a definição**, que é o
+        // único `fn avisa(` que existe.
+        FASE.matches("avisa(").count() - FASE.matches("fn avisa(").count(),
+        // ⛔⛔ **A população é DERIVADA, e a 1.ª redacção tinha-a escrita à mão (`3`).** Ela reprovou
+        // no dia em que a quarta recusa nasceu (`NadaAQuemMudarALei`, 2026-09-19) — e isso é o gate
+        // a funcionar, mas a cura barata seria subir o número, que é exactamente como uma catraca
+        // vira LICENÇA. ⇒ o oráculo é a `RecusaDoOsso::TODAS`, a mesma população do censo da chave:
+        // *uma recusa nova fica vermelha até alguém lhe dar voz na tela.*
+        ph2d_skeleton_live::recusa_do_osso::RecusaDoOsso::TODAS.len(),
+        "as {} recusas do osso nao passam todas pela porta do aviso — a que faltar so' existe \
+         no terminal, que e' onde elas estavam antes desta wave",
+        ph2d_skeleton_live::recusa_do_osso::RecusaDoOsso::TODAS.len()
     );
     assert!(
         FASE.contains("ph2d_i18n::tr_with(r.chave()") && FASE.contains("ph2d_i18n::tr(r.chave())"),

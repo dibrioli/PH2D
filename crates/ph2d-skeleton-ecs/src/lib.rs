@@ -47,6 +47,12 @@ use ph2d_ecs::scene::ComponentRegistry;
 /// divergem no primeiro campo que alguém acrescentar a uma delas.
 use ph2d_skeleton::bend::{Bend, BoneSpec, Handles};
 
+// ⭐ **A pele e a LEI dela vivem no irmão** — corte por responsabilidade imposto pelo tecto de LOC
+// (ver o cabeçalho de [`skin_bind`]). ⚠️ O endereço público **não muda**: quem escrevia
+// `ph2d_skeleton_ecs::SkinBind` continua a escrevê-lo, que é a mesma lei do `bend_live`.
+mod skin_bind;
+pub use skin_bind::{SkinBind, SkinLaw};
+
 /// ⭐ **Os dois tipos que um campo público do [`Bone`] nomeia, re-exportados daqui.**
 ///
 /// ⚠️ **Não é conveniência — era uma lacuna:** quem vê `bone.handles` e `bone.curve` não
@@ -508,42 +514,6 @@ pub struct Tendon {
     /// distância mede) e a matriz da pose (`S⁻¹ ∘ B ∘ rest⁻¹`). ⚠️ E é por ele ser o composto
     /// `coisa⁻¹ ∘ osso` que a pose de repouso é a **identidade** sem uma guarda escrita à mão.
     pub rest: [f64; 6],
-}
-
-/// **A PELE DE UMA COISA** — a que ossos ela responde, e o que ela era antes de responder.
-///
-/// ⚠️ **O nome do TIPO é `SkinBind` e o rótulo que o artista lê é "Skin"** — o tipo diz o que se
-/// GUARDA (o bind: a fonte mais as matrizes de repouso), e o rótulo diz o que a coisa É. O par
-/// vive no catálogo do `ph2d-component-desc`, que é onde os dois nomes se encontram.
-///
-/// ⛔ **Não é um container**, ao contrário do `ph2d_ecs::VecEnvelope`, e a diferença é medida:
-/// aquele precisa de um container porque a **gaiola não tem outra casa** (não é entidade). Aqui o
-/// esqueleto já são entidades, então não há nada de partilhado à procura de dono — e uma forma
-/// presa fica exactamente onde o artista a pôs na Hierarquia.
-#[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct SkinBind {
-    /// Os bytes postcard da fonte **autorada**, em coordenadas locais da coisa no bind.
-    ///
-    /// Sem ela a fonte morria no 1.º quadro — o recook sobrescreve a geometria da cena com a
-    /// deformada, e é o bug *"funciona e depois esquece"* que o ADR-0121 §3 documentou.
-    ///
-    /// ⚠️ **Bytes opacos, de propósito:** é o que permite a este componente servir um `VecPath`
-    /// hoje e uma malha raster amanhã sem uma variante nova nem um schema por mídia.
-    pub source: Vec<u8>,
-    /// Os ossos, na ordem em que foram ligados. Um cuja entidade desapareceu é **saltado** no
-    /// recook e os outros renormalizam-se sozinhos — apagar um osso não pode apagar a forma.
-    pub tendons: Vec<Tendon>,
-}
-
-impl SimComponent for SkinBind {}
-
-impl SkinBind {
-    /// Uma pele nova. `tendons` vazio é legal e significa *"presa a nada"* — o recook deixa a coisa
-    /// em paz, que é a leitura certa de um esqueleto inteiro apagado.
-    #[must_use]
-    pub fn new(source: Vec<u8>, tendons: Vec<Tendon>) -> Self {
-        Self { source, tendons }
-    }
 }
 
 /// Regista os componentes que a `ph2d-skeleton-ecs` possui. A shell chama isto uma vez no arranque,

@@ -55,6 +55,7 @@ diz onde ler o mecanismo:
 | **F10** | ✅ **O AutoKey com a corrente de ossos** (decisão do dono, 2026-09-16) | ✅ **JÁ ESTAVA FEITO — a nota envelheceu, e auditá-la contra o CÓDIGO custou dez minutos** (2026-09-18). O passe grava **a corrente INTEIRA que a mão moveu** (não só o osso seleccionado) desde 2026-09-14, e também **o ALVO de uma restrição de IK** — porque com uma restrição viva a rotação dos ossos é DERIVADA e o que o artista autora é a âncora. ⚠️ Quem filtra é o **DIFF**: um osso cuja pose é a da curva não cunha nada. Seis gates em [`autokey_bone_tests.rs`](../../shells/desktop/src/render_loop/autokey_bone_tests.rs), entre eles `autokey_records_every_bone_the_hand_moved_not_only_the_selected_one`, `dragging_the_ik_anchor_records_the_anchor` e o controlo `a_bone_the_hand_holds_but_did_not_move_keys_nothing`. ⛔ **O que FALTAVA não era a lei, era o SMOKE:** nenhuma cena do app armava o AutoKey, logo o dono nunca lhe chegou ⇒ cena **`PH2D_VEC_BONE_MEDIA_SMOKE=3`** |
 | **F11** | ✅ **Imagens em 9 fatias e folhas de quadros DEFORMAM com os ossos** (ordem do dono, 2026-09-17) | ✅ **FECHADO** — ver F11 abaixo |
 | **F21** | ✅ **A cena dedicada do ENVELOPE** (*«melhor montar uma cena específica para me mostrar isso»*, 2026-09-18) | ✅ **FECHADA em 2026-09-19 — e ela REFUTOU a lei da F20**: o envelope é inerte em toda forma FECHADA (amplitude `0,000000` numa faixa de `80 ×`), porque uma forma fechada também usa o padrão-ouro desde 15/09. A lei passou a perguntar ao **BIND** e não à mídia. Cena **`PH2D_VEC_BONE_SMOKE=2`** — ver F21 abaixo |
+| **F22** | ⭐⭐⭐ **A ESCOLHA da lei de pele, POR DESENHO** (ordem do dono, 2026-09-19: *«construa. por desenho»*) | ✅ **FECHADA no mesmo dia** — fileira **`Deform By`** (`Artwork` \| `Bone Reach`) no painel Bones, por DESENHO e para as duas mídias. ⭐ A escolha diz se o quadro **LÊ** a tabela do padrão-ouro, nunca se a calcula ⇒ a volta é **exacta ao bit** e não re-resolve nada. `PROJECT_SCHEMA` **+1** — ver F22 abaixo |
 
 ---
 
@@ -167,6 +168,66 @@ fan-out (3 de 3 verde sozinho a `load 18,36`, zero linhas do diff naquela crate)
 ⏳ **ABERTO, e é decisão do dono:** com o envelope inerte em toda arte preenchida, o `Strength`
 serve **um** caso — um traço aberto preso a ossos (uma corda, um cabelo, um cabo). *Manter o
 controlo escondido por osso é o que shipa; tirá-lo do produto é a outra saída, e é dele.*
+
+### F22 — ⭐⭐⭐ **A ESCOLHA: por que lei CADA DESENHO se deforma** (ordem do dono, 2026-09-19)
+
+Ele perguntou, depois de aprovar a cena da F21: *«como se usa os dois modos? como se escolhe se os
+envelopes vão ou não influenciar?»* — e a resposta honesta era **não se escolhe**.
+
+⛔⛔⛔ **O app decidia, e decidia pelo DESENHO:** uma forma com interior (ou uma imagem que resolve)
+ia para o padrão-ouro e o alcance ficava inerte; um traço ABERTO caía na lei euclidiana. *Qual lei
+deforma o personagem é uma decisão de RIG, e ela estava escondida dentro de uma decisão de DESENHO.*
+⚠️ Não havia interruptor nenhum — varrido: o único candidato (`PH2D_SKIN_WEIGHTS=linear`) troca como
+os pesos guardados são **interpolados** ao refinar, não qual lei os **produz**.
+
+⭐⭐ **E a capacidade já existia inteira** — medido ANTES de escrever uma linha: com a tabela de pesos
+apagada, uma forma FECHADA corre na lei do envelope e move **exactamente** o mesmo que o traço
+aberto (`6,4368` contra `6,4368` sobre a mesma curva; um rectângulo move `6,9835`). *O que faltava
+não era motor, era o botão.* ⇒ ordem dele: **«construa. por desenho»**.
+
+⭐⭐⭐ **A decisão de desenho que é a wave inteira: a escolha diz se o quadro LÊ a tabela, nunca se
+ele a CALCULA.** O padrão-ouro custa dezenas de milissegundos a resolver e fica guardado no bind; se
+a escolha mandasse no cálculo, voltar atrás obrigaria a re-resolver e o artista veria a ferramenta
+engasgar ao alternar. Assim ela é **viva** — troca-se no quadro seguinte, nos dois sentidos, e a
+volta é **exacta ao bit** porque a tabela nunca é tocada.
+
+⇒ `SkinBind::law: SkinLaw` (`Auto` | `Envelope`) e **uma porta** (`SkinBind::pesos_do_quadro`) com
+**TRÊS leitores**: o recook de uma forma, o desenho de uma imagem presa, e a pergunta *«o envelope
+manda neste osso?»* que acende a mancha e a alça. ⛔ Escrita em três sítios, a mancha apareceria onde
+o alcance não governa nada — que é, à letra, o report de 2026-09-18.
+
+⚠️ **`PROJECT_SCHEMA` +1 — conte o DELTA** (`144 → 145`). Campo novo numa struct já gravada ⇒ regra
+dos degraus 109/110; ⚠️ **a tripla NÃO vê este degrau** (a SÉTIMA vez). ⛔ Os três registos de
+componente **não se mexem**: não há tipo novo.
+
+**Na tela:** a fileira **`Deform By`** (`Artwork` | `Bone Reach`), ao lado do *Release* — ⚠️ pintada
+para as **duas mídias** (ao contrário do *Expand*) e **só quando há algo preso escolhido**: *sem pele
+não há lei de pele, e um selector sem sujeito é a classe de controlo morto do §5.0*.
+
+⛔⛔⛔ **E a FOTO apanhou DOIS defeitos que os gates não podiam ver.** (1) O painel **Bones nasce
+fechado** e só se abre sozinho quando um OSSO é escolhido — e o passo do roteiro manda escolher um
+**DESENHO**: *um passo que nomeia uma linha de painel afirma que ela está lá, e o dono aprova o smoke
+com o passo impossível dentro* ⇒ a cena passou a abri-lo no prólogo, **antes** do *Frame All* (ele é
+uma coluna lateral, e abri-lo depois mudaria a área que o enquadramento mediu).
+
+⭐⭐⭐ **(2) E o segundo era a LENTE DO PAINEL mais ESTREITA que o sujeito — a MESMA forma do report de
+2026-09-18, e o defeito era MUDO.** Clicar numa linha da **Hierarquia** escreve na selecção do
+**GIZMO** (`hero.gizmo.replace_selection`), nunca na lista de caminhos do pen — e o `Skinned` do
+painel lia `vector` só do pen e `imagem` só do gizmo. ⇒ uma **forma vectorial** escolhida na
+Hierarquia lia `{vector: false, imagem: false}`, e o *Expand*, o *Release* **e** a fileira nova **nem
+chegavam a ser pintados**. *O artista não vê um botão morto: vê a ausência de um botão.* ⇒ as duas
+metades passam pela porta da família (`skin_law::escolhidas`), a mesma que o dreno do chip usa.
+
+⚠️ **A recusa é PRÓPRIA e não a do vizinho:** `RecusaDoOsso::NadaAQuemMudarALei` (a quarta) — ⛔
+reaproveitar a `NadaASoltar` diria *«nada a soltar»* a quem carregou noutro botão. ⚠️ E ela **não**
+cobre *«já estava nessa lei»*: escrever a lei que já lá está não é um acontecimento, e queixar-se
+disso é o ruído que o artista aprende a ignorar.
+
+Cena **`PH2D_VEC_BONE_SMOKE=2`**, passos (3) a (5). Mutação **8 de 8** a sangrar.
+
+⏳ **ABERTO:** a escolha não tem gesto de canvas (só o painel) · e com N desenhos escolhidos em leis
+diferentes o chip acende por `any` — a escolha está **declarada** no doc da porta, e mostrar a
+divergência é mais honesto do que mostrar a maioria, mas ela é decisão de produto.
 
 ### F19 — ✅ **O CHIP `Auto` DIZ QUE LADO DERIVA** (report do dono, 2026-09-18)
 

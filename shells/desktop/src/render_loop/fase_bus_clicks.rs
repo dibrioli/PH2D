@@ -87,6 +87,17 @@ impl crate::App {
             // é a porta da família, no dreno, contra a lista do MESMO quadro. Resolver aqui
             // obrigaria a re-derivar a lista num segundo sítio.
             pd.pending_bone_tip = Some(i);
+        } else if let Some(i) = ph2d_editor_core::ids::VECTOR_BONE_SKIN_LAW_IDS
+            .iter()
+            .position(|x| x == id)
+        {
+            // ⭐⭐⭐ **POR QUE LEI CADA DESENHO SE DEFORMA** — a posição na tabela É a variante, a
+            // mesma lei das duas fileiras acima (e um `match` à mão aqui seria a sétima lista
+            // escrita à mão desta seção).
+            pd.pending_skin_law = match i {
+                0 => Some(ph2d_skeleton_ecs::SkinLaw::Auto),
+                _ => Some(ph2d_skeleton_ecs::SkinLaw::Envelope),
+            };
         } else if *id == ph2d_editor_core::ids::VECTOR_BONE_EXPAND {
             // Solta e fica com a pose de AGORA (o Expand do envelope).
             pd.pending_bone_release = Some(crate::skeleton_live::Keep::Deformed);

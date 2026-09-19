@@ -51,7 +51,7 @@ pub use state::{
     Skinned, SmartBoneView, TipView, set_current_bone, set_current_bone_actions,
     set_current_bone_handles, set_current_bone_ik, set_current_bone_ik_auto_side,
     set_current_bone_limit, set_current_bone_smart, set_current_bone_tip, set_current_bone_tool,
-    set_current_envelope_manda, set_current_skinned,
+    set_current_envelope_manda, set_current_skin_law_envelope, set_current_skinned,
 };
 
 use ph2d_a11y::NodeId;

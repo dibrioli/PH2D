@@ -88,6 +88,28 @@ impl crate::App {
                                     false,
                                 );
                             }
+                            // ⭐ O painel de ossos, ANTES do enquadramento: ele é uma coluna
+                            // lateral, e abri-lo depois mudaria a área que o `Frame All` mediu.
+                            if pro.painel_do_osso {
+                                <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
+                                    hero,
+                                    <ph2d_panel_skeleton::SkeletonPanel as ph2d_editor_core::panel::Panel>::ID,
+                                    true,
+                                );
+                                // ⛔⛔ **ABRIR NÃO É PÔR À FRENTE, e a FOTO é que o disse.** O painel
+                                // de ossos partilha a coluna com o do vector, e a aba escolhida de
+                                // um encaixe é **o ocupante mais ao topo da ordem z** — abri-lo
+                                // deixava-o ATRÁS, e o passo (3) do roteiro mandava ler uma fileira
+                                // numa aba que o artista não vê.
+                                //
+                                // ⚠️ **O `bump` corre DEPOIS do `reconcile_z` deste quadro** (ele
+                                // corre no início), logo ele fica mesmo no topo — e no quadro
+                                // seguinte a poda mantém-no, porque ele já está na lista. *É a
+                                // armadilha que a foto do emissor de partículas pagou.*
+                                hero.store.bump_panel_z(
+                                    <ph2d_panel_skeleton::SkeletonPanel as ph2d_editor_core::panel::Panel>::NODE_ID,
+                                );
+                            }
                             if pro.enquadrar {
                                 hero.bus.push(
                                     ph2d_editor_core::action_bus::EditorAction::SetViewFocus {

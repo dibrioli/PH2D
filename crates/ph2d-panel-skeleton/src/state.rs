@@ -15,6 +15,12 @@ thread_local! {
     /// (Keep Pose / Release) são oferecidas — *um botão que só sabe recusar é pior que um ausente*.
     static CURRENT_IK_AUTO_SIDE: Cell<Option<usize>> = const { Cell::new(None) };
     static CURRENT_ENVELOPE_MANDA: Cell<bool> = const { Cell::new(true) };
+    /// ⭐ **A selecção deforma-se POR ALCANCE?** — a escolha que a fileira `Deform By` mostra.
+    ///
+    /// ⚠️ **Um `bool` e não o enum**, pela lei deste ficheiro: *o painel não vê o `ph2d-ecs`*, e o
+    /// que atravessa são números. ⛔ E ele é `false` no nascimento porque `SkinLaw::Auto` é o
+    /// `#[default]` da lei — *duas respostas ao mesmo nascimento divergem no dia em que uma mudar.*
+    static CURRENT_SKIN_LAW_ENVELOPE: Cell<bool> = const { Cell::new(false) };
     static CURRENT_SKINNED: Cell<Skinned> = const { Cell::new(Skinned { vector: false, imagem: false }) };
     /// O OSSO em foco existe? Sem ele, `Length`/`Strength` não têm sujeito.
     static CURRENT_HAS_BONE: Cell<bool> = const { Cell::new(false) };
@@ -79,6 +85,19 @@ impl Skinned {
 ///
 /// ⚠️ **O default é `true`, e a escolha é conservadora:** antes de a shell publicar o que quer que
 /// seja, o campo fica **à vista**. *Esconder um controlo vivo é pior do que mostrar um inerte.*
+/// A selecção deforma-se POR ALCANCE? Publicado pela shell, todo quadro.
+///
+/// ⚠️ **Com várias formas escolhidas, a shell publica `true` se ALGUMA delas estiver por alcance** —
+/// e essa escolha é declarada: um chip que só acendesse com unanimidade deixaria o artista sem
+/// saber que metade da selecção está noutra lei.
+pub fn set_current_skin_law_envelope(v: bool) {
+    CURRENT_SKIN_LAW_ENVELOPE.with(|c| c.set(v));
+}
+
+pub(crate) fn skin_law_envelope() -> bool {
+    CURRENT_SKIN_LAW_ENVELOPE.with(Cell::get)
+}
+
 pub fn set_current_envelope_manda(v: bool) {
     CURRENT_ENVELOPE_MANDA.with(|c| c.set(v));
 }

@@ -219,6 +219,11 @@ pub(in crate::render_loop) struct DrainOut {
     pub(in crate::render_loop) pending_ik_bend: Option<ph2d_skeleton::BendSide>,
     /// ⭐ De onde vêm as duas alças de CURVATURA do osso em foco (F8, 2026-09-16).
     pub(in crate::render_loop) pending_bone_handles: Option<ph2d_skeleton::bend::Handles>,
+    /// ⭐ Por que LEI os desenhos escolhidos se deformam (ordem do dono, 2026-09-19).
+    ///
+    /// ⚠️ **O sujeito é a SELECÇÃO e não o osso em foco**, e é por isso que ele é drenado com o
+    /// *Bind* e o *Release* (`fase_skeleton_verbs`) e não com os números do osso.
+    pub(in crate::render_loop) pending_skin_law: Option<ph2d_skeleton_ecs::SkinLaw>,
     /// A LINHA escolhida no selector de ponta da curva — o índice na lista publicada neste quadro.
     pub(in crate::render_loop) pending_bone_tip: Option<usize>,
     pub(in crate::render_loop) pending_ik_knob: Option<(IkKnob, f64)>,

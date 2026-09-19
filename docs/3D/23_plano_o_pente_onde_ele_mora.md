@@ -1,10 +1,21 @@
 # O PENTE ONDE ELE MORA — o plano, com o preço MEDIDO
 
-> **Estado:** plano, **nada implementado**. Escrito 2026-09-18, no fim da
-> jornada que o diagnosticou. O mecanismo e as recusas estão no
-> [handoff §73–§78](handoffs/HANDOFF_INTEGRACAO_line_sculpt3d_2026-09-17.md).
-> ⛔ **Leia o §78 antes de pegar nisto** — ele tem as cinco famílias medidas e
-> refutadas, e sem elas o primeiro impulso é reconstruir uma delas.
+> **Estado: ✅ IMPLEMENTADO em 2026-09-18, e a implementação REFUTOU o plano
+> numa premissa e ACRESCENTOU uma terceira metade.** O que se ship está no
+> [handoff §79](handoffs/HANDOFF_INTEGRACAO_line_sculpt3d_2026-09-17.md); este
+> documento fica como o **diário do plano**, com a correcção abaixo.
+>
+> ⛔⛔ **A premissa que caiu:** o plano dizia que a H1 + H2 bastavam. Medido,
+> elas chegam a `ΔQ +0,028`–`+0,064` na bola da cena de smoke — *abaixo da barra
+> de `+0,0465` em dois dos quatro rumos, e a `30°` inalcançável com `k` nenhum*.
+> ⭐ **O que carrega o alinhamento é a TROCA DE DIAGONAL**, que não estava neste
+> plano: ela muda a direcção de uma aresta **a contagem constante**, logo não
+> paga densidade nem afina triângulo — e leva a bola a `+0,10`–`+0,24` nos quatro
+> rumos, contra os `+0,074` da lei que ela substituiu.
+>
+> ⛔ **Leia o §79.3 antes de pegar em qualquer coisa daqui** — ele tem SEIS
+> hipóteses construídas, medidas e refutadas nesta implementação, três delas
+> escritas *neste* documento como se fossem o caminho.
 
 ## §1 — A frase
 

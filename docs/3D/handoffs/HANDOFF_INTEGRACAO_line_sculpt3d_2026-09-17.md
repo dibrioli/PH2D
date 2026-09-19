@@ -2300,3 +2300,106 @@ saber que o traço rodou.
 ⚠️ **O produto continua INTACTO.** Nenhuma das duas metades shipou: a lei nova
 sozinha troca um gate verde por um vermelho, e o alinhamento que o justificaria
 ainda não existe.
+
+## §79 — ⭐⭐⭐⭐ O PENTE TEM **TRÊS** METADES, e a que carrega o alinhamento é a que ninguém tinha proposto
+
+> Ordem do dono: **«ataque»** — o plano
+> [23](../23_plano_o_pente_onde_ele_mora.md) (H1 + H2), 2026-09-18.
+
+### §79.1 A frase, em três linhas
+
+1. **O DESLOCAMENTO** é uma relaxação **ISOTRÓPICA** — cada vértice anda para o
+   centróide do anel dele, no plano tangente. Ela **não lê a direcção do traço**.
+2. **O CAMPO DE TAMANHO** do passe de topologia é enviesado por `cos 4α`: mais
+   fino sobre os eixos da grade, mais grosso na diagonal.
+3. ⭐⭐⭐ **A TROCA DE DIAGONAL** (*flip*) enviesada pela mesma função — e é ela
+   que carrega o alinhamento.
+
+⛔⛔ **E nenhuma das três basta:** a (1) sozinha lê `Q = +0,0000` contra a barra
+`+0,0465`; a (1)+(2) chega a `+0,028`–`+0,064` na bola da cena e **não alcança a
+barra** a `30°` com `k` nenhum; com a (3) o `ΔQ` da bola vai a **`+0,10`–`+0,24`
+nos quatro rumos**, contra os `+0,074` da lei que ela substituiu.
+
+### §79.2 A H1 está MEDIDA e é uma vitória limpa
+
+| | `x_man_x01` | `x_man_x04` |
+|---|---|---|
+| encaixe duro em 4 eixos (a lei até 17/09) | `0,583` | `0,557` |
+| **o centróide do anel** | **`0,971`** | **`0,974`** |
+
+⭐⭐ E as **26** células `p100` do placar do oráculo **melhoraram, nenhuma
+regrediu** — `x_man_x08` `5,374e-2 → 2,595e-2`, a banda `6,2e-2 → 4,58e-2`, a
+rotação a `67,5°` `6,146e-2 → 3,647e-2`. A catraca foi **apertada às 52
+medições**, e ela disparou sozinha na metade *«melhorou muito»*, que é para o que
+ela existe.
+
+⚠️ **O plano dizia `0,9830` e eu meço `0,971`.** Não persegui o dígito: aquele
+número saiu do AJUSTE do E (uma lei com parâmetros livres), e este sai de uma lei
+com **zero** parâmetros livres.
+
+### §79.3 ⛔⛔⛔ O que foi construído, MEDIDO e REFUTADO nesta jornada
+
+| hipótese | medida | veredito |
+|---|---|---|
+| **partir a diagonal para a apagar** | `Q −0,0599`, malha a DOBRAR (`6 059 → 13 279`) | ⛔ *um corte preserva a direcção da aresta e faz DUAS dela* |
+| refino e colapso com sinais **OPOSTOS** | a varredura põe os dois a concordar no mesmo sinal | ⛔ há **uma** função |
+| campo **cru** (sem normalizar) | `Q 0,064`–`0,084`, triângulos de **`0,19°`–`0,39°`** | ⛔ sem normal utilizável |
+| campo neutro em **DENSIDADE** | `Q 0,070`–`0,084`, triângulos de **`0,32°`–`2,10°`** | ⛔ idem |
+| colapso normalizado como o refino | pior triângulo `4,56° → **1,96°**` | ⛔ ele passava a fundir arestas mais longas |
+| flip com cerca **MONÓTONA** (`novo ≥ velho`) | `+0,0179 → +0,0208` num rumo e **piora** noutro | ⛔ quase inerte |
+
+### §79.4 ⭐⭐⭐ As DUAS descobertas de mecanismo
+
+**(a) O corte multiplica a direcção que ele parte.** Partir uma aresta devolve
+**duas** arestas com a direcção dela — logo a grade cresce partindo **sobre** os
+eixos, e partir diagonais faz mais diagonais. *A minha primeira hipótese tinha o
+sinal exactamente ao contrário, e foi a medição que o disse.*
+
+**(b) O flip não respeitava o BOTÃO, e a causa é estrutural.** O critério é uma
+COMPARAÇÃO entre duas preferências, e a preferência é `k · cos 4α`: o `k` escala
+os dois lados e **cancela-se**. ⇒ a `6 %` do curso ele trocava quase tanto como
+no tecto, e o pior triângulo da chapa lia **`0,24°`** *com o `Q` alto*. ⭐ A cura
+não é uma cerca nova — é o limiar ser comparado contra a preferência **já
+escalada**, o que faz o ganho exigido valer `GANHO/k` e **crescer** quando o botão
+desce, até passar de `2`, que é o alcance inteiro da função. *O passe desliga-se
+sozinho no curso baixo, sem um segundo número a dizer onde.*
+
+### §79.5 As três constantes, e as três são o MEIO de janelas medidas
+
+| constante | valor | janela | a coluna que a fecha de cada lado |
+|---|---|---|---|
+| `VIES_DA_GRADE` | `0,75` | `[0,55 … 0,80]` | `Q` abaixo / ângulo a cair |
+| `CHAO_DO_ALINHAMENTO` | `24°` | `[20° … 28°]` | lascas / `Q` abaixo da barra |
+| `GANHO_DO_ALINHAMENTO` | `0,20` | — | é ele que faz o botão ser monótono |
+
+⚠️ **A coluna do ângulo pesa mais que a do `Q`, de propósito:** uma lasca é um
+defeito que o artista VÊ, e uma grade um pouco mais fraca não é.
+
+### §79.6 ⭐⭐ Um defeito de PRODUTO e três de ARNÊS, todos apanhados por controlos
+
+- ⛔ **Produto:** com direcção nula (o **primeiro carimbo de todo traço**) o campo
+  devolvia `base/(1−k)` — a malha **`1,82×` mais grossa**. *A inércia da espec
+  §4.3 não é «não enviesar»: é não fazer NADA.*
+- ⚠️ A sonda da varredura ignorava a força no ramo livre ⇒ as células «colapso
+  NU» e «colapso ENVIESADO» liam **o mesmo número**, e a varredura dizia que
+  aquela metade não tinha efeito nenhum.
+- ⚠️ A mesma sonda não honrava a regra do primeiro carimbo ⇒ lia `Q 0,0598` onde
+  o produto lê `0,0435`, e **escolhia a constante da lei com essa leitura**.
+- ⚠️ Um `re.sub` de varredura não casou a âncora e **duas corridas leram o mesmo
+  número** — o `assert` do script apanhou-o. *Sem ele eu teria concluído que o
+  chão do flip não tinha efeito.*
+
+### §79.7 O que fica ABERTO
+
+- ⏳ **O excesso de `~26 %` fora do eixo** (`|nós|/|ele| = 0,74`): o alvo move
+  mais, em direcções que a relaxação isotrópica não prevê, e **isso não é
+  alinhamento** (o `ΔQ` dele é zero). O erro da paridade ainda **dobra** fora do
+  eixo (`1,41e-2` a `0°` contra `4,06e-2` a `45°`), com o controlo ao lado: com o
+  pente desligado as quatro rotações leem `1,6e-4`.
+- ⏳ **A barra `+0,0465` é usada como ABSOLUTA na chapa e como DELTA na bola.**
+  As duas leituras passam hoje; qual delas a barra do oráculo de facto autoriza é
+  pergunta por responder.
+- ⏳ **O flip é uma DIVERGÊNCIA DECLARADA:** a espec §3.1 mede que o alvo não
+  troca uma única diagonal — com o operador de topologia **parado**. Esta lei é
+  NOSSA e está declarada como tal.
+- ⏳ **O TACTO** do pente novo é do dono, e o smoke é a `=49`.

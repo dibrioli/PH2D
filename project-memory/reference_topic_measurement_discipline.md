@@ -515,3 +515,26 @@ carrega: um leitor tem de saber TODAS as formas do que lê, e «todas» inclui a
 
 ⚠️ **E `… | tail -30 && echo ok` lê o estado do `tail`**: ele imprimiu «check ok» sobre **quatro
 `E0609`**. Quem os apanhou foi o clippy, três comandos depois.
+
+---
+
+## ⛔⛔ Uma MÉDIA não é um MÁXIMO — a fileira cabia e a peça mais larga saía cortada
+
+**Medido 2026-09-19** (`line/UIUX`, o grupo segmentado do Inspector). O grupo tinha **duas leis para
+uma disposição**: a que decide **quantas** peças cabem numa fileira media cada rótulo
+(`segmented_row_counts`), e a que **pintava** repartia a fileira em `n` partes **iguais**
+(`segment_rects`).
+
+⇒ com larguras desiguais, `rect_w / n` pode ser **menor do que UMA peça precisa mesmo quando a SOMA
+delas cabe de sobra**. `Inherit · Fwd · Rev · PP · PP Rev` recebia `34,4 px` cada e pintava `Inh…` e
+`PP…`, com a coluna a ter espaço.
+
+- ⭐ **A cura é a porta que já existia**: `block_cells_of` (larguras dadas) shipou em 07/09 e este
+  pintor chamava a irmã que divide por `n`. *Uma porta geral que ninguém chama é uma lei escrita e
+  não aplicada.*
+- ⭐⭐ **O gate obrigatório é o DEGENERADO:** com rótulos de larguras iguais a lei nova tem de
+  devolver a divisão igual **ao pixel** — senão a cura move todo grupo do app cujas palavras já
+  eram do mesmo tamanho, e o diff passa a ser ilegível.
+- ⚠️ E a mesma forma apareceu **duas vezes mais no mesmo dia**, na vertical: o cartão de instância
+  **media** com um `layout(...).height()` (que quebra) e **pintava** com `paint_text` (que elide) —
+  *o espaço da segunda linha já estava reservado e a linha nunca era pintada*.

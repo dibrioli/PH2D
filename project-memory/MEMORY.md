@@ -96,6 +96,7 @@
 - ⛔ [`touch` não mede uma edição; `--timings` dobra sob contenção](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)
 - ⭐ [**Como uma RÉGUA mente** — a família (72)](reference_topic_measurement_discipline.md)
 - ⛔⛔ [Sujeito NOVO ⇒ toda régua e toda nota sobre o antigo têm de ser reconferidas (o «cima» humanoide deitou o dinossauro; a tira tinha «1,80 m» escrito dentro)](feedback_when_the_subject_changes_every_ruler_and_note_about_the_old_one_must_be_rechecked.md)
+- ⛔⛔ [Cegueira DECLARADA num cabeçalho continua cegueira — levantá-la custou uma FIXTURA e devolveu 8 rótulos MUDOS](feedback_a_declared_blind_spot_is_still_a_blind_spot.md)
 - ⛔⛔ [Régua cuja POPULAÇÃO é uma lista de crates à mão fica verde sobre tudo o que não está nela — 203 nomes de motor, 115 sem ponte](feedback_a_ruler_whose_population_is_a_hand_written_crate_list_hides_the_next_frontier.md)
 - ⛔⛔ [Migrar um rótulo para chave tem DUAS metades; deixar o PINTOR no acessório inglês fica verde em todos os censos](feedback_migrating_a_label_to_a_key_has_two_halves_and_only_one_had_a_gate.md)
 - ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)

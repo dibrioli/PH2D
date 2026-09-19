@@ -2544,6 +2544,50 @@ sendo **opostos** — o 1.º é o sangramento mais forte que há.
 
 **Prova de mutação: 15 de 15 sangram** (8 na W1, 7 na W2).
 
+### §32.4-bis — ⭐⭐⭐ A ORDEM SEGUINTE: *«tamanho absoluto […] e precisam responder aos grafos»*
+
+> **Report, 2026-09-19, a seguir:** *«Neste caso os gizmos devem ter tamanho absoluto (não relativo
+> ao zoom) e precisam responder aos grafos (como o scale do oscilador). OU seja, eles não aparecem
+> em runtime mas no canvas simulam qualquer grafo normalmente.»*
+
+⭐ **A lei 1 já estava de pé e ficou ESCRITA NO TIPO:** todo glifo é construído em coordenadas de
+TELA e traçado com `Affine::IDENTITY`, e a porta que o dimensiona — `glifo_px(base, escala)` —
+**não tem `camera` na assinatura**. ⚠️ O que SEGUE o zoom é a **GEOMETRIA** (onde as juntas estão,
+quão comprido é um osso, por onde a corda passa): são factos de MUNDO, e têm de seguir.
+
+⭐⭐⭐ **A lei 2 é a wave:** o `Grupo` passa a carregar as colunas do grafo — `size` como
+**MULTIPLICADOR dos pixels** do glifo (nunca uma medida de mundo) e `rot` como a **agulha da
+direcção**. As duas leis não brigam, e a composição é a resposta: *o multiplicador é do GRAFO e o
+pixel é da TELA*.
+
+⛔ **Três decisões declaradas, cada uma com o mecanismo:**
+
+| decisão | porquê |
+|---|---|
+| a **agulha** só existe se a corrente TRAZ `rot` | `None` e `Some(vec![0; n])` não são a mesma coisa: uma agulha a apontar para a direita em toda a nuvem seria **ruído** sobre um grafo que nunca falou de direcção |
+| o **osso** lê `size` e **não** lê `rot` | numa cadeia o ângulo de cada junta é o que **PÔS** as posições onde estão (a cinemática já correu); aplicá-lo ao losango contaria a rotação **duas vezes** |
+| o **`tint`** não entra | o gizmo é chrome, e uma corrente com alfa `0` **apagaria** o gizmo ⇒ o artista leria *«o nó parou»*, que é o defeito que esta wave existe para não ter |
+
+⭐⭐ **E o ponto deixou de ser uma CRUZ:** uma cruz rodada `90°` é a MESMA cruz, logo um oscilador a
+girar de `0` a `360` ler-se-ia como **saltos de um quarto de volta**. Hoje é um anel com agulha, e
+há gate a exigir que `90°` **não** dê a mesma imagem que `0°`.
+
+⛔⛔ **E O PISO DO GLIFO FOI REESCRITO POR UM GATE VERMELHO.** A 1.ª redacção usava o `OUTLINE_PX`
+(`1,5 px`): com `size = 0,5` o anel do ponto pede `1,0 px` e o piso devolvia `1,5` ⇒ **o gizmo
+deixava de responder ao grafo exactamente na faixa que o artista usa.** *Um piso de legibilidade que
+morde no regime normal não protege a legibilidade: revoga a lei.* Hoje o piso é a **tolerância de
+achatamento da curva** (`0,1 px`) — o limite **mecânico**, abaixo do qual o caminho sai degenerado
+—, e acima dela não é preciso piso nenhum: *quem garante a visibilidade é a ESPESSURA do traço, não
+o raio*.
+
+⭐ **A régua das duas leis é a mesma PORTA** (`caminhos`), chamada com **dois** `to_screen`: o
+`draw` e os gates. ⚠️ O gate da lei 1 leva o **CONTROLO** dentro — com dois pontos, a DISTÂNCIA
+entre eles tem de **dobrar** quando o zoom dobra, senão um `caminhos` que ignorasse o `to_screen`
+por inteiro passaria.
+
+**Gates: 13 · mutação: 4 de 4 sangram** (o glifo deixa de responder · a agulha aparece sem a coluna
+· uma escala `Vec2` deixa de chegar · a rotação deixa de chegar).
+
 ### §32.5 — ⏳ O que FICA, e a ordem
 
 1. **As cenas migram** — cada sink de posições ganha `source.shape → motion.duplicator`. ⭐ Isto é

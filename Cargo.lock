@@ -8066,6 +8066,7 @@ version = "0.0.0"
 dependencies = [
  "bumpalo",
  "ph2d-editor-core",
+ "ph2d-field",
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-label-census",

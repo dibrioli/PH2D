@@ -610,23 +610,11 @@ fn nenhum_corte_novo_entra_sem_ser_nomeado() {
 ///
 /// ⚠️ Três deles foram ARMADOS ([`super::paineis_armados::TABELA`]). Os que ficam aqui pedem um
 /// mundo que o arnês não constrói, e cada linha diz **qual**.
-const PAINEIS_MEDIDOS_VAZIOS: &[(&str, &str)] = &[
-    (
-        "model3d",
-        "pinta a arvore de um documento de campo implicito (`FieldDoc`), que e' COZIDO da \
-         hierarquia da cena a cada quadro; sem mundo ECS ele nao tem uma peca para listar.",
-    ),
-    (
-        "motion_graph",
-        "pinta um GRAFO de nos vivo (`ph2d-nodegraph`), com o cartao e os pinos derivados do \
+const PAINEIS_MEDIDOS_VAZIOS: &[(&str, &str)] = &[(
+    "motion_graph",
+    "pinta um GRAFO de nos vivo (`ph2d-nodegraph`), com o cartao e os pinos derivados do \
          manifesto de cada no; o arnes nao monta um grafo.",
-    ),
-    (
-        "sculpt3d",
-        "o painel da escultura pinta o que a `AppGfx.sculpt3d` publica, e essa cena segura uma \
-         surface de wgpu — o arnes corre sem dispositivo, logo sem peca.",
-    ),
-];
+)];
 
 /// ⛔ O piso POR PAINEL. ⚠️ **Ele sai da medição, não do gosto:** o painel mais magro que a
 /// varredura de facto enche é o do esqueleto, com `7` rótulos; os que ela não enche medem `0`,

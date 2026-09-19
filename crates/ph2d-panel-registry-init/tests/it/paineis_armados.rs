@@ -64,6 +64,21 @@ pub const TABELA: &[Armacao] = &[
         arma: |_| super::o_motion_armado::arma(),
         desarma: super::o_motion_armado::desarma,
     },
+    // ⭐⭐ **O painel do MODELADOR 3D** — ele estava declarado como «precisa de um mundo ECS para
+    //    cozer o `FieldDoc`», e precisa de um SNAPSHOT: ver [`super::o_model3d_armado`].
+    Armacao {
+        painel: "model3d",
+        arma: |_| super::o_model3d_armado::arma(),
+        desarma: super::o_model3d_armado::desarma,
+    },
+    // ⭐⭐ **O painel da ESCULTURA** — ele estava declarado como «a cena segura uma surface de
+    //    wgpu», o que é verdade sobre quem PUBLICA e falso sobre o que atravessa: ver
+    //    [`super::o_sculpt3d_armado`].
+    Armacao {
+        painel: "sculpt3d",
+        arma: |_| super::o_sculpt3d_armado::arma(),
+        desarma: super::o_sculpt3d_armado::desarma,
+    },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────

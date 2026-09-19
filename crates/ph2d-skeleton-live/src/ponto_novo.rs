@@ -71,13 +71,41 @@ pub fn insere_ponto(
     seg: usize,
     t: f64,
 ) -> Option<usize> {
+    insere_ponto_com(
+        sim,
+        map,
+        id,
+        seg,
+        t,
+        ph2d_vec_skin::curva::lei_da_curva_activa(),
+    )
+}
+
+/// ⭐⭐ **[`insere_ponto`] com a LEI EXPLÍCITA** — a irmã do [`crate::skin_live::recook_com`], e pela
+/// mesma razão: a lei viaja como parâmetro, nunca num estado global que um gate teria de mexer.
+pub fn insere_ponto_com(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    id: VecPathId,
+    seg: usize,
+    t: f64,
+    curva: bool,
+) -> Option<usize> {
     let e = Entity::from_bits(*map.get(&id)?);
     let skin = sim.world().get::<SkinBind>(e)?.clone();
     let mut fonte = crate::skinned_mesh::le(&skin.source)?;
     // ⭐⭐⭐ **A PELE DE AGORA entra na conta, e é ela que faz o desenho não saltar.** Ver
     // [`insere_na_fonte`]. ⛔ `None` (pele que não resolve) cai no corte de repouso de sempre, que
     // é a resposta certa quando não há deformação nenhuma para preservar.
-    let pele = crate::skin_live::resolve(sim, &skin, e, &crate::skin_live::bone_index(sim));
+    // ⛔⛔⛔ **COM A LEI DA CURVA LIGADA NÃO HÁ NADA A COMPENSAR — e compensar ESTRAGA.** A
+    // compensação abaixo existe para o desenho não saltar quando ele é a Bézier dos pontos de
+    // controlo deformados; com a F30 o desenho é a **imagem verdadeira** da fonte, logo partir a
+    // fonte **não o move** (medido `0,0000 %`) e mover os pontos de controlo move-o (medido
+    // `11,11 %` da peça). ⇒ `None` aqui salta a compensação inteira, e a decisão sai da **mesma
+    // porta** que o `recook` lê.
+    let pele = (!curva)
+        .then(|| crate::skin_live::resolve(sim, &skin, e, &crate::skin_live::bone_index(sim)))
+        .flatten();
     let correcoes = skin.correcoes_resolvidas();
     let (ni, bytes) = insere_na_fonte(&mut fonte, seg, t, pele.as_ref(), &correcoes, PASSAGENS)?;
     sim.world_mut().get_mut::<SkinBind>(e)?.source = bytes;

@@ -167,6 +167,12 @@ fn warp_point(warp: &impl Warp, p: [f64; 2]) -> Point {
     Point::new(q[0], q[1])
 }
 
+/// ⭐⭐ **PORTA, e ela tem DOIS consumidores desde 2026-09-19** — este motor e a
+/// [`ph2d_vec_skin::curva`], que fita a pele do esqueleto ao longo da curva. ⛔ Ela não sabe o que é
+/// um [`Warp`]: é encanamento de `BezPath → VecVertex`, e duplicá-lo do outro lado poria a convenção
+/// `(⅓, ⅔)` da elevação de recta em dois sítios — que é exactamente o que o parágrafo abaixo diz que
+/// não pode acontecer.
+///
 /// Extrai as cúbicas de um `BezPath` fitado. O `fit_to_bezpath` emite `MoveTo` + `CurveTo`s; uma
 /// `LineTo` aparece quando o trecho é reto o bastante (o `try_fit_line` interno do kurbo) — e nós a
 /// **elevamos a cúbica na convenção (⅓, ⅔)**, jamais para `(P0,P0,P3,P3)`.
@@ -174,7 +180,7 @@ fn warp_point(warp: &impl Warp, p: [f64; 2]) -> Point {
 /// Isso não é gosto: a `ph2d-vec-boolean::to_bez` **testa** a forma degenerada para emitir `line_to`,
 /// e o `corner_live::sub_cubic` já pagou o preço de a de Casteljau envenenar essa convenção
 /// (BUGS #9). A forma (⅓, ⅔) é afim em `t` e não mente para ninguém.
-fn push_cubics(path: &BezPath, pts: &mut Vec<[Point; 3]>) {
+pub fn push_cubics(path: &BezPath, pts: &mut Vec<[Point; 3]>) {
     let mut cur = Point::ZERO;
     for el in path.elements() {
         match *el {
@@ -205,11 +211,16 @@ fn quad_to_cubic(p0: Point, p1: Point, p2: Point) -> (Point, Point) {
     (p0 + (p1 - p0) * (2.0 / 3.0), p2 + (p1 - p2) * (2.0 / 3.0))
 }
 
+/// ⭐⭐ **PORTA, irmã da [`push_cubics`] e com os mesmos DOIS consumidores.** Ela decide duas coisas
+/// que um segundo remontador reinventaria mal: um join derivado do fit é `Corner` (marcar `Smooth`
+/// afirmaria colinearidade que o fit não garante) e o raio de quina morre (ele foi COZIDO na
+/// deformação, e um sobrevivente re-arredondaria o já arredondado).
+///
 /// Remonta os vértices a partir das cúbicas acumuladas.
 ///
 /// Num contorno **fechado**, a última cúbica termina na âncora inicial: o `in_handle` dela pertence
 /// ao vértice 0, e emitir um vértice a mais duplicaria a âncora de partida.
-fn rebuild(pts: &[[Point; 3]], start: Point, closed: bool) -> Vec<VecVertex> {
+pub fn rebuild(pts: &[[Point; 3]], start: Point, closed: bool) -> Vec<VecVertex> {
     let mut out: Vec<VecVertex> = Vec::with_capacity(pts.len() + 1);
     let mut anchor = start;
     let mut pending_in: Option<Point> = None;

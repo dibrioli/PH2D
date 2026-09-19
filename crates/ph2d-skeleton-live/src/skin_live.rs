@@ -281,6 +281,17 @@ pub fn skin_of_in(
 /// **Um quadro de pele.** Corre depois do `vec_entities::sync` (as entidades existem) e ao lado do
 /// `envelope_live::recook`.
 pub fn recook(sim: &SimWorld, scene: &mut VecScene) {
+    recook_com(sim, scene, ph2d_vec_skin::curva::lei_da_curva_activa());
+}
+
+/// ⭐⭐ **[`recook`] com a LEI EXPLÍCITA** — a porta que os gates das duas leis chamam.
+///
+/// ⛔⛔ **Ela existe porque um estado global posto para o teste é um CANAL ENTRE TESTES.** A 1.ª
+/// redacção da F30 pôs um átomo com uma porta `forcar_lei`, e o doc dela dizia *«o nextest corre um
+/// processo por teste»* — verdade para o `nextest`, **falsa** para o `cargo test`, que corre os
+/// testes em THREADS do mesmo processo. A suíte reprovava em conjunto e passava sozinha, que é a
+/// assinatura mais cara que há. ⇒ a lei é **parâmetro**, e quem lê o ambiente é o [`recook`].
+pub fn recook_com(sim: &SimWorld, scene: &mut VecScene, curva: bool) {
     let alvos: Vec<(Entity, SkinBind, VecPathId)> = sim
         .world()
         .iter_entities()
@@ -339,7 +350,27 @@ pub fn recook(sim: &SimWorld, scene: &mut VecScene) {
         let mut src = guardado.path.clone();
         // ⭐⭐⭐ **E AS CORRECÇÕES À MÃO** — a porta é a mesma das duas mídias
         // (`SkinBind::correcoes_resolvidas`), e com a lista vazia isto é byte-idêntico ao que era.
-        ph2d_vec_skin::aplica_corrigido(&pele, &mut src, pesos, &skin.correcoes_resolvidas());
+        //
+        // ⭐⭐⭐⭐ **A ARTE SEGUE O PESO ENTRE OS NÓS** (F30, 2026-09-19). A pele é um mapa **não-afim**,
+        // e deformar os pontos de controlo acerta nos nós e **no interior nunca** — o cabeçalho da
+        // [`ph2d_vec_envelope`] escreve-o há meses, e são as duas queixas do dono desta jornada:
+        // *«pintar peso entre os vértices não faz nada»* (medido: `0,000000` contra `0,836850`) e
+        // *«o ponto criado deforma a malha»*.
+        //
+        // ⚠️ **`PH2D_SKIN_CURVE=0` volta ao caminho dos pontos de controlo** — ele fica vivo, e é
+        // por onde se bissecta um report. ⛔ A leitura é UMA vez por quadro e não por forma: um
+        // `var_os` por pele seria uma syscall no laço do desenho.
+        if curva {
+            ph2d_vec_skin::curva::aplica_pela_curva(
+                &pele,
+                &mut src,
+                pesos,
+                &skin.correcoes_resolvidas(),
+                ph2d_vec_skin::curva::TOLERANCIA,
+            );
+        } else {
+            ph2d_vec_skin::aplica_corrigido(&pele, &mut src, pesos, &skin.correcoes_resolvidas());
+        }
         if let Some(p) = scene.path_mut(id) {
             p.replace_cooked(src);
         }

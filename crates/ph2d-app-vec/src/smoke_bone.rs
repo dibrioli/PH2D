@@ -320,11 +320,13 @@ pub fn bind(
             // precisa de mais.
             eprintln!(
                 "[vec-bone-smoke] ⚠️ na BARRA laranja o mesmo pincel mostra 8 pontos e mais nada — \
-                 um caminho so' tem peso nos NOS dele, e os dela estao nas duas pontas. ⭐ A CURA: \
-                 pegue na CANETA, carregue em cima da linha da barra onde quer controlo (nasce um \
-                 ponto), volte ao «Weight» e pinte ali — desde 19/09 o ponto novo SOBREVIVE ao \
-                 quadro e ja' nasce com peso, misturado dos dois vizinhos. Ate' esse dia ele \
-                 aparecia sob o dedo e desaparecia sozinho."
+                 um caminho so' tem peso nos NOS dele, e os dela estao nas duas pontas. ⭐ DUAS \
+                 SAIDAS, e o dono escolheu as duas: (1) pegue na CANETA e carregue em cima da linha \
+                 da barra onde quer controlo — o anel VERDE com uma cruz acende quando o clique poe \
+                 um ponto ali, e o ponto novo SOBREVIVE ao quadro ja' com peso; (2) desde 19/09 \
+                 pintar peso ENTRE dois nos JA' MOVE a arte, porque o desenho deixou de ser a curva \
+                 dos pontos de controlo e passou a ser a imagem verdadeira dela. Antes disso, uma \
+                 mancha no meio de uma aresta movia exactamente ZERO."
             );
         }
     }

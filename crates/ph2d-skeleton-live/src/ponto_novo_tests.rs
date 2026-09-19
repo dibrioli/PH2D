@@ -5,6 +5,21 @@ use ph2d_ecs::{ChildOf, Name, RootOrder, Transform};
 use ph2d_skeleton_ecs::Bone;
 use ph2d_vec_scene::{ShapeKind, VecScene, cook};
 
+/// ⛔⛔⛔ **A F30 MATOU A PREMISSA DOS GATES DA COMPENSAÇÃO, e eles medem-na EXPLICITAMENTE desde
+/// então.** Com a lei da curva ligada — o caminho de OMISSÃO — o desenho é a **imagem verdadeira** da
+/// fonte, logo partir a fonte não o move (`0,0000 %`) e compensar **estraga** (`11,11 %` da peça).
+/// ⇒ a compensação é da lei dos pontos de controlo, e é lá que ela se mede: estes gates chamam as
+/// portas com a lei explícita (`recook_com` / `insere_ponto_com`).
+///
+/// ⚠️⚠️ **Ela chegou a ser um ESTADO GLOBAL com uma porta `forcar_lei` (que já não existe), e isso era um canal entre
+/// testes:** o doc dela dizia *«o nextest corre um processo por teste»* — verdade para o `nextest`,
+/// **falsa** para o `cargo test`, que corre os testes em THREADS do mesmo processo. A suíte
+/// reprovava em conjunto e passava sozinha, que é a assinatura mais cara que há.
+const LEI_INGENUA: bool = false;
+
+/// ⭐ A lei de OMISSÃO — a que o artista corre. Ver [`ph2d_vec_skin::curva`].
+const LEI_DA_CURVA: bool = true;
+
 fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Entity>) -> Entity {
     let e = sim
         .world_mut()
@@ -97,7 +112,7 @@ fn o_ponto_novo_sobrevive_ao_quadro() {
     let antes = ancoras(&cena, id).len();
 
     assert!(
-        insere_ponto(&mut sim, &mapa, id, 0, 0.5).is_some(),
+        insere_ponto_com(&mut sim, &mapa, id, 0, 0.5, LEI_INGENUA).is_some(),
         "a porta recusou uma forma que ESTA' presa"
     );
 
@@ -106,7 +121,7 @@ fn o_ponto_novo_sobrevive_ao_quadro() {
         antes + 1,
         "a FONTE nao ganhou o ponto — o quadro seguinte deita-o fora"
     );
-    crate::skin_live::recook(&sim, &mut cena);
+    crate::skin_live::recook_com(&sim, &mut cena, LEI_INGENUA);
     assert_eq!(
         ancoras(&cena, id).len(),
         antes + 1,
@@ -124,7 +139,7 @@ fn uma_forma_solta_nao_e_desta_porta() {
     let id = cena.push_path(cook(ShapeKind::Rectangle, [0.0, 0.0], [40.0, 10.0], &[]));
     ph2d_vec_entities::entities::sync(&mut sim, &mut cena, &mut mapa);
     assert_eq!(
-        insere_ponto(&mut sim, &mapa, id, 0, 0.5),
+        insere_ponto_com(&mut sim, &mapa, id, 0, 0.5, LEI_INGENUA),
         None,
         "a porta aceitou uma forma sem pele"
     );
@@ -143,7 +158,7 @@ fn a_tabela_cresce_e_a_linha_nova_e_a_mistura_dos_vizinhos() {
     assert!(ossos >= 2, "o palco tem de ter tabela, senao nao mede nada");
     let n_velho = velha.path.verts_all().count();
 
-    let ni = insere_ponto(&mut sim, &mapa, id, 0, 0.5).expect("insere");
+    let ni = insere_ponto_com(&mut sim, &mapa, id, 0, 0.5, LEI_INGENUA).expect("insere");
     let nova = fonte(&sim, &mapa, id);
 
     assert!(nova.valida(), "a tabela deixou de fechar com o caminho");
@@ -191,14 +206,14 @@ fn o_ponto_novo_quase_nao_move_a_forma() {
         .get_mut::<Transform>(ponta)
         .expect("Transform")
         .rotation = 0.8;
-    crate::skin_live::recook(&sim, &mut cena);
+    crate::skin_live::recook_com(&sim, &mut cena, LEI_INGENUA);
     let antes = ancoras(&cena, id);
 
     assert!(
-        insere_ponto(&mut sim, &mapa, id, 0, 0.5).is_some(),
+        insere_ponto_com(&mut sim, &mapa, id, 0, 0.5, LEI_INGENUA).is_some(),
         "a porta recusou uma forma que ESTA' presa"
     );
-    crate::skin_live::recook(&sim, &mut cena);
+    crate::skin_live::recook_com(&sim, &mut cena, LEI_INGENUA);
     let depois = ancoras(&cena, id);
     assert_eq!(depois.len(), antes.len() + 1);
 
@@ -293,11 +308,11 @@ fn o_desenho_nao_salta_ao_ganhar_um_ponto() {
             .get_mut::<Transform>(ponta)
             .expect("Transform")
             .rotation = rotacao;
-        crate::skin_live::recook(&sim, &mut cena);
+        crate::skin_live::recook_com(&sim, &mut cena, LEI_INGENUA);
         let antes = polilinha(&cena, id);
         assert!(antes.len() > 8, "a fixtura tem de ter curva para medir");
         if compensa {
-            assert!(insere_ponto(&mut sim, &mapa, id, seg, 0.5).is_some());
+            assert!(insere_ponto_com(&mut sim, &mapa, id, seg, 0.5, LEI_INGENUA).is_some());
         } else {
             // ⛔ O caminho de ANTES, à mão: a fonte parte-se sem a pele, logo sem compensação.
             let e = Entity::from_bits(*mapa.get(&id).expect("entidade"));
@@ -310,7 +325,7 @@ fn o_desenho_nao_salta_ao_ganhar_um_ponto() {
                 .expect("presa")
                 .source = bytes;
         }
-        crate::skin_live::recook(&sim, &mut cena);
+        crate::skin_live::recook_com(&sim, &mut cena, LEI_INGENUA);
         polilinha(&cena, id)
             .iter()
             .map(|p| ph2d_skeleton::dist2_to_polyline(*p, &antes).sqrt())
@@ -394,11 +409,11 @@ fn o_desenho_nao_salta_em_nenhuma_profundidade() {
             let n = fonte(&sim, &mapa, id).path.verts_all().count();
             for seg in (0..n).rev() {
                 if seg < cortes_da_aresta(&sim, &mapa, id) {
-                    let _ = insere_ponto(&mut sim, &mapa, id, seg, 0.5);
+                    let _ = insere_ponto_com(&mut sim, &mapa, id, seg, 0.5, LEI_INGENUA);
                 }
             }
         }
-        crate::skin_live::recook(&sim, &mut cena);
+        crate::skin_live::recook_com(&sim, &mut cena, LEI_INGENUA);
         polilinha(&cena, id)
     };
     let degraus: Vec<Vec<[f64; 2]>> = (0..4).map(construir).collect();
@@ -478,7 +493,7 @@ fn a_segunda_passagem_e_exigida_por_uma_mancha() {
                 raio: 25.0,
                 delta: 0.35,
             });
-        crate::skin_live::recook(&sim, &mut cena);
+        crate::skin_live::recook_com(&sim, &mut cena, LEI_INGENUA);
         let antes = polilinha(&cena, id);
         // ⭐⭐ **A MESMA PORTA nos dois lados, e só a PASSAGEM muda.** A 1.ª redacção escrevia o
         // braço de «uma passagem» à mão e esquecia-se de crescer a tabela de pesos — o que ela media
@@ -495,7 +510,7 @@ fn a_segunda_passagem_e_exigida_por_uma_mancha() {
             .get_mut::<SkinBind>(e)
             .expect("presa")
             .source = bytes;
-        crate::skin_live::recook(&sim, &mut cena);
+        crate::skin_live::recook_com(&sim, &mut cena, LEI_INGENUA);
         polilinha(&cena, id)
             .iter()
             .map(|p| ph2d_skeleton::dist2_to_polyline(*p, &antes).sqrt())
@@ -513,5 +528,55 @@ fn a_segunda_passagem_e_exigida_por_uma_mancha() {
         duas < uma * 0.05,
         "a segunda passagem so' baixou o salto de {uma} para {duas} — ou ela nao esta' a correr, ou \\
          a lei precisa de mais do que duas"
+    );
+}
+
+/// ⭐⭐⭐ **COM A LEI DA CURVA, ACRESCENTAR UM PONTO NÃO MOVE NADA — e sem compensação nenhuma.**
+///
+/// ⛔⛔⛔ **É a F30 a DISSOLVER a F28.** A compensação existe porque o desenho era a Bézier dos pontos
+/// de controlo deformados, e um corte no repouso não comuta com essa lei. Com o desenho a ser a
+/// **imagem verdadeira** da fonte, partir a fonte não o move **por construção**: a curva é a mesma,
+/// só está escrita com mais pedaços.
+///
+/// ⚠️⚠️ **E compensar aqui ESTRAGA**, que é a segunda metade deste gate: a compensação move os
+/// pontos de controlo da FONTE para acertar uma curva que já não é a desenhada — medido `11,11 %` da
+/// peça, contra `0,00 %` sem ela. *Uma cura fica errada no dia em que o defeito que ela curava deixa
+/// de existir*, e é por isso que a decisão sai da mesma porta que o `recook` lê.
+#[test]
+fn com_a_lei_da_curva_o_ponto_novo_nao_move_nada() {
+    let (mut sim, mut cena, mapa, id, [_, ponta]) = palco();
+    sim.world_mut()
+        .get_mut::<Transform>(ponta)
+        .expect("Transform")
+        .rotation = 0.8;
+    crate::skin_live::recook_com(&sim, &mut cena, LEI_DA_CURVA);
+    let antes = polilinha(&cena, id);
+    assert!(antes.len() > 8, "a fixtura tem de ter curva para medir");
+
+    assert!(insere_ponto_com(&mut sim, &mapa, id, 0, 0.5, LEI_DA_CURVA).is_some());
+    crate::skin_live::recook_com(&sim, &mut cena, LEI_DA_CURVA);
+    let depois = polilinha(&cena, id);
+    let salto = depois
+        .iter()
+        .map(|p| ph2d_skeleton::dist2_to_polyline(*p, &antes).sqrt())
+        .fold(0.0_f64, f64::max);
+
+    // ⭐ **A FONTE ganhou o ponto** — senão este zero seria o de um gesto que não aconteceu.
+    let n = fonte(&sim, &mapa, id).path.verts_all().count();
+
+    let diagonal = 40.0_f64.hypot(10.0);
+    eprintln!(
+        "[ponto-novo] com a LEI DA CURVA: salto = {:.6} % da peca · a fonte tem {n} nos",
+        salto / diagonal * 100.0
+    );
+    assert_eq!(
+        n, 5,
+        "a fonte NAO ganhou o ponto: o zero abaixo seria vacuo"
+    );
+    assert!(
+        salto / diagonal < 1e-4,
+        "com a lei da curva acrescentar um ponto moveu o desenho {:.4} % da peca — ou a compensacao \
+         da F28 voltou a correr (ela ESTRAGA aqui), ou a lei da curva nao esta' ligada",
+        salto / diagonal * 100.0
     );
 }

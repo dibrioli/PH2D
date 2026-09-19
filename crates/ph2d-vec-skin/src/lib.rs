@@ -132,6 +132,9 @@ pub const fn e_no(k: usize) -> bool {
     dono_do_peso(k) == k
 }
 
+/// ⭐⭐⭐ **O que é uma CURVA aqui** — a arte segue o peso ENTRE os nós (F30).
+pub mod curva;
+
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

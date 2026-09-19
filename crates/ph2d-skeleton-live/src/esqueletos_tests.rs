@@ -220,8 +220,13 @@ fn o_predicado_concorda_com_o_que_a_deformacao_faz() {
         "o alcance MOVEU uma forma fechada em {fechada:.6}: entao esconder o envelope nela apaga \
          um controlo VIVO, e a lei acima esta' errada"
     );
+    // ⚠️ **A barra desceu de `1,0` para `0,5`, e a razão é a F30** (2026-09-19): o quadro deixou de
+    // desenhar a Bézier dos pontos de controlo e passou a desenhar a **imagem verdadeira** da curva,
+    // logo os números desta excursão mudaram — medido `0,789` onde a barra pedia `1,0`. ⛔ *A LEI
+    // não mudou* (o alcance move um caminho aberto e não move um fechado), e é ela que este gate
+    // defende; o `1,0` era um número redondo calibrado sob a lei antiga.
     assert!(
-        aberta > 1.0,
+        aberta > 0.5,
         "o alcance nao move um caminho ABERTO (d {aberta:.6}): entao ele e' inerte em toda parte e \
          o controlo devia sair do painel, nao ser escondido por osso"
     );

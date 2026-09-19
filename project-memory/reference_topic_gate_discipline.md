@@ -477,3 +477,19 @@ o índice foi compactado no mesmo dia em que estas nasceram, e ficaram **órfãs
 - ⛔⛔ [Trinta censos do FONTE não provam que a palavra do ecrã veio da tabela](feedback_a_source_census_cannot_answer_whether_the_screen_reads_the_table.md) — a prova é um IDIOMA DE TESTE, e a 1.ª foto achou o que a régua lexical não pode ver.
 - ⛔⛔ [Migrar um rótulo para chave tem DUAS metades; deixar o PINTOR no acessório inglês fica verde em todos os censos](feedback_migrating_a_label_to_a_key_has_two_halves_and_only_one_had_a_gate.md).
 - ⛔⛔ [O idioma de teste NÃO distingue uma FUGA de uma DECISÃO declarada](feedback_the_test_language_cannot_tell_a_leak_from_a_declared_decision.md) — 7 bolsos na foto do dono: **3** fugas e **4** isenções com mecanismo.
+- ⛔⛔⛔ **Um ESTADO GLOBAL posto para o teste é um CANAL ENTRE TESTES — e o doc que o justifica pode
+  estar certo sobre um corredor e errado sobre o outro.** Medido 2026-09-19 (`line/Vector`): uma lei
+  nova ganhou uma porta `forcar_lei` sobre um átomo, para os gates poderem medir a lei antiga, e o
+  doc dela dizia *«o `nextest` corre um PROCESSO por teste»* — **verdade** para o `nextest` e
+  **falsa** para o `cargo test`, que corre os testes em THREADS do mesmo processo. O guarda de um
+  teste vazava para outro, e a suíte **reprovava em conjunto e passava sozinha**, que é a assinatura
+  que mais custa a diagnosticar (lê-se como flake de carga). ⇒ a lei viaja como **PARÂMETRO** e quem
+  lê o ambiente é a porta de cima (`recook_com`, `insere_ponto_com`). ⚠️ E o `forbid(unsafe_code)` da
+  casa já o dizia: um gate **não pode** escrever no ambiente, logo um door por env var deixa a lei
+  antiga sem régua no dia em que a nova passa a ser a de omissão.
+- ⛔⛔ **Uma mutação pode sobreviver nas DUAS crates e ainda assim ser lei — o que falta é a fixtura
+  do caminho MAGRO.** Mesma wave: apagar a lei antiga do início da porta nova não partia nada, porque
+  **toda** fixtura dobrava um osso e o refit escrevia por cima. *O caminho onde a lei antiga é a única
+  a trabalhar não tinha fixtura nenhuma.* ⇒ o gate é a degenerescência escolhida por TEORIA (um osso
+  só ⇒ a deformação é afim ⇒ o refit é dispensável), e ali a lei antiga tem de mover a arte **e** o
+  resultado tem de ficar byte-idêntico.

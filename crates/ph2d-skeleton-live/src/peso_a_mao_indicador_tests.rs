@@ -458,36 +458,89 @@ fn o_instantaneo_do_hit_test_e_a_geometria_desenhada() {
         .find(|p| p.id == id)
         .expect("o caminho da cena");
     let x = crate::skin_live::world_of(&sim, alvo);
-    let mundo: Vec<[f64; 2]> = desenhado
-        .verts_all()
-        .flat_map(|v| [v.anchor, v.in_handle, v.out_handle])
-        .map(|q| x.apply(q))
-        .collect();
     let visto = crate::peso_a_mao::posados(&sim, alvo, PPM);
+    // ⛔⛔⛔ **A PREMISSA DESTE GATE MUDOU COM A F30, e a lei que ele defende não.** Ele dizia *«um
+    // ponto do instantâneo por ponto DESENHADO»* — e com a lei da curva o desenho tem **mais** nós
+    // que a fonte (`24` contra `36`, medido), porque a imagem de uma cúbica por um mapa não-afim
+    // precisa de mais pedaços. ⚠️ *E ter menos pontos é a resposta CERTA:* o peso vive nos nós da
+    // FONTE, e é só neles que o artista pode pousar uma mancha — um ponto do indicador onde não há
+    // peso para corrigir seria um controlo morto. ⇒ a régua passa a ser a que a lei sempre foi:
+    // **o instantâneo tem um ponto por ponto da FONTE, e cada âncora dele cai SOBRE o desenho**.
+    let repousos_n = crate::peso_a_mao::repousos(&sim, alvo, PPM).len();
     assert_eq!(
         visto.len(),
-        mundo.len(),
-        "o instantaneo do hit-test deixou de ter um ponto por ponto desenhado"
+        repousos_n,
+        "o instantaneo do hit-test deixou de ter um ponto por ponto da FONTE"
     );
-    // ⭐ O CONTROLO: a pose TEM de mover a arte, senao comparar duas identidades nao afirma nada.
-    let repousos = crate::peso_a_mao::repousos(&sim, alvo, PPM);
-    let andou = repousos
+    // ⭐ **O CONTROLO: a pose TEM de mover a arte**, senão comparar duas identidades passa sempre.
+    //
+    // ⚠️ **Ele compara o REPOUSO com o INSTANTÂNEO, e não com o desenho** (F30): os dois têm um
+    // ponto por ponto da FONTE, enquanto o desenho tem mais — *emparelhar por índice duas listas de
+    // tamanhos diferentes compara coisas que não são a mesma*. ⛔ E ele tinha sido **perdido** na
+    // 1.ª reescrita deste gate: um gate sem controlo positivo mede o nada e fica verde.
+    let andou = crate::peso_a_mao::repousos(&sim, alvo, PPM)
         .iter()
-        .zip(&mundo)
-        .map(|(a, b)| (x.apply(*a)[0] - b[0]).hypot(x.apply(*a)[1] - b[1]))
+        .zip(&visto)
+        .map(|(a, b)| {
+            let p = x.apply(*a);
+            (p[0] - b[0]).hypot(p[1] - b[1])
+        })
         .fold(0.0_f64, f64::max);
     assert!(
         andou > 0.05,
         "a fixtura nao move a arte ({andou:.4}) — comparar duas identidades passa sempre"
     );
+    // ⭐ **Cada ÂNCORA do instantâneo cai sobre a curva desenhada.** ⚠️ Só as âncoras: uma alça de
+    // Bézier vive FORA da curva por definição, e exigir que ela caia lá acusaria toda tangente.
+    let curva = polilinha_mundo(desenhado, x);
     let pior = visto
         .iter()
-        .zip(&mundo)
-        .map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]))
+        .enumerate()
+        .filter(|(k, _)| crate::peso_a_mao::dono_do_peso(true, *k) == *k)
+        .map(|(_, a)| ph2d_skeleton::dist2_to_polyline(*a, &curva).sqrt())
         .fold(0.0_f64, f64::max);
     assert!(
-        pior < 1e-9,
-        "o hit-test ve^ a arte {pior:.6} fora de onde ela e' desenhada — o dedo toca num sitio e o \
+        pior < 1e-6,
+        "o hit-test ve^ uma ancora {pior:.6} fora da curva desenhada — o dedo toca num sitio e o \
          desenho esta' noutro"
     );
+}
+
+/// A curva desenhada, amostrada em MUNDO — o que o olho vê.
+fn polilinha_mundo(p: &ph2d_vec_scene::VecPath, x: ph2d_vec_scene::Xform) -> Vec<[f64; 2]> {
+    const N: usize = 64;
+    let cozido = p.cooked();
+    let mut out = Vec::new();
+    for c in 0..cozido.contour_count() {
+        let Some((verts, fechado)) = cozido.contour(c) else {
+            continue;
+        };
+        let n = verts.len();
+        let ultimo = if fechado { n } else { n.saturating_sub(1) };
+        for i in 0..ultimo {
+            let (a, b) = (&verts[i], &verts[(i + 1) % n]);
+            for k in 0..=N {
+                let t = k as f64 / N as f64;
+                let u = 1.0 - t;
+                let (w0, w1, w2, w3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+                out.push(x.apply([
+                    w0.mul_add(
+                        a.anchor[0],
+                        w1.mul_add(
+                            a.out_handle[0],
+                            w2.mul_add(b.in_handle[0], w3 * b.anchor[0]),
+                        ),
+                    ),
+                    w0.mul_add(
+                        a.anchor[1],
+                        w1.mul_add(
+                            a.out_handle[1],
+                            w2.mul_add(b.in_handle[1], w3 * b.anchor[1]),
+                        ),
+                    ),
+                ]));
+            }
+        }
+    }
+    out
 }

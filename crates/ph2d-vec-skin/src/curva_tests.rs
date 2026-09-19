@@ -1,0 +1,283 @@
+//! Os gates do [`super`] — a arte segue o peso ENTRE os nós, e os nós não se mexem.
+
+use super::*;
+use ph2d_skeleton::{SkinBone, Xform};
+use ph2d_vec_scene::{ShapeKind, cook};
+
+/// Um osso deitado no `+X`, de `(x0,0)` a `(x0+len,0)`, rodado de `rot` na pose.
+///
+/// ⛔⛔ **O `tendon` é POSTO à mão, e a omissão dele apagava o fenómeno.** A
+/// [`ph2d_skeleton::SkinBone::new`] nasce com `tendon: 0` em **todos** — e com os dois ossos no
+/// mesmo tendão a mancha soma o MESMO a ambos, que a normalização a seguir **cancela**: a 1.ª
+/// redacção deste ficheiro media `0,000000` sobre uma lei correcta. *Uma correcção que vale para
+/// todos não corrige nada.*
+fn osso(x0: f64, len: f64, rot: f64, tendon: u32) -> SkinBone {
+    let (c, s) = (rot.cos(), rot.sin());
+    let mut b = SkinBone::new(
+        Xform([1.0, 0.0, 0.0, 1.0, x0, 0.0]),
+        len,
+        1.0,
+        Xform([c, s, -s, c, x0, 0.0]),
+        Xform::IDENTITY,
+    )
+    .expect("repouso nao-singular");
+    b.tendon = tendon;
+    b
+}
+
+/// A pele do palco: dois ossos ao longo de um rectângulo de `40 × 10`, o segundo dobrado.
+fn pele(rot: f64) -> Skin {
+    Skin::new(vec![osso(0.0, 20.0, 0.0, 0), osso(20.0, 20.0, rot, 1)]).expect("2 ossos")
+}
+
+fn forma() -> VecPath {
+    cook(ShapeKind::Rectangle, [0.0, 0.0], [40.0, 10.0], &[])
+}
+
+/// A tabela do padrão-ouro para os quatro nós do rectângulo: o 1.º osso manda na esquerda, o 2.º na
+/// direita. Três linhas por vértice (âncora · entrada · saída), como a do bind.
+fn tabela() -> Vec<f64> {
+    // nós: (0,0) · (40,0) · (40,10) · (0,10)
+    let por_no = [[1.0, 0.0], [0.0, 1.0], [0.0, 1.0], [1.0, 0.0]];
+    let mut out = Vec::new();
+    for linha in por_no {
+        for _ in 0..3 {
+            out.extend_from_slice(&linha);
+        }
+    }
+    out
+}
+
+/// A curva desenhada, amostrada densamente — o que o olho vê.
+fn polilinha(p: &VecPath) -> Vec<[f64; 2]> {
+    const N: usize = 200;
+    let cozido = p.cooked();
+    let mut out = Vec::new();
+    for c in 0..cozido.contour_count() {
+        let Some((verts, fechado)) = cozido.contour(c) else {
+            continue;
+        };
+        let n = verts.len();
+        let ultimo = if fechado { n } else { n.saturating_sub(1) };
+        for i in 0..ultimo {
+            let (a, b) = (&verts[i], &verts[(i + 1) % n]);
+            for k in 0..N {
+                let t = k as f64 / N as f64;
+                let u = 1.0 - t;
+                let (w0, w1, w2, w3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+                out.push([
+                    w0.mul_add(
+                        a.anchor[0],
+                        w1.mul_add(
+                            a.out_handle[0],
+                            w2.mul_add(b.in_handle[0], w3 * b.anchor[0]),
+                        ),
+                    ),
+                    w0.mul_add(
+                        a.anchor[1],
+                        w1.mul_add(
+                            a.out_handle[1],
+                            w2.mul_add(b.in_handle[1], w3 * b.anchor[1]),
+                        ),
+                    ),
+                ]);
+            }
+        }
+    }
+    out
+}
+
+fn desvio(a: &[[f64; 2]], b: &[[f64; 2]]) -> f64 {
+    b.iter()
+        .map(|p| ph2d_skeleton::dist2_to_polyline(*p, a).sqrt())
+        .fold(0.0_f64, f64::max)
+}
+
+/// ⭐⭐⭐ **PINTAR PESO ENTRE DOIS NÓS MOVE A ARTE** — a lei da wave, com o CONTROLO dentro.
+///
+/// ⛔⛔ **O controlo é o caminho de HOJE** (os pontos de controlo, [`crate::aplica_corrigido`]): ali
+/// a mesma mancha, no mesmo sítio, move a arte **zero**. *Sem ele este gate não distingue a lei nova
+/// de uma fixtura que já se mexia sozinha* — e é aquele zero que é o report do dono.
+#[test]
+fn pintar_peso_entre_dois_nos_move_a_arte() {
+    let k = pele(0.8);
+    let t = tabela();
+    // A mancha no MEIO da aresta de baixo, entre os nós `(0,0)` e `(40,0)`.
+    let mancha = Correccao {
+        tendon: 0,
+        centro: [20.0, 0.0],
+        raio: 14.0,
+        delta: 0.6,
+    };
+
+    // (a) HOJE — os pontos de controlo.
+    let (mut sem_hoje, mut com_hoje) = (forma(), forma());
+    crate::aplica_corrigido(&k, &mut sem_hoje, &t, &[]);
+    crate::aplica_corrigido(&k, &mut com_hoje, &t, &[mancha]);
+    let hoje = desvio(&polilinha(&sem_hoje), &polilinha(&com_hoje));
+
+    // (b) PELA CURVA.
+    let (mut sem, mut com) = (forma(), forma());
+    aplica_pela_curva(&k, &mut sem, &t, &[], TOLERANCIA);
+    aplica_pela_curva(&k, &mut com, &t, &[mancha], TOLERANCIA);
+    let curva = desvio(&polilinha(&sem), &polilinha(&com));
+
+    eprintln!("[curva] a mancha entre dois nos move: hoje={hoje:.6} · pela curva={curva:.6}");
+    assert!(
+        hoje < 1e-9,
+        "o caminho dos PONTOS DE CONTROLO passou a sentir a mancha ({hoje}) — ou a fixtura mudou, \
+         ou alguem ja' curou isto noutro sitio, e este gate deixou de medir o que diz"
+    );
+    assert!(
+        curva > 0.1,
+        "pela curva a mancha moveu so' {curva} — a lei nova nao esta' a ler o peso entre os nos, e \
+         o report do dono («pintar peso entre os vertices nao faz nada») volta inteiro"
+    );
+}
+
+/// ⭐⭐⭐ **OS NÓS NÃO SE MEXEM — a lei nova concorda com a de hoje EXACTAMENTE nas âncoras.**
+///
+/// ⚠️ É o que faz esta wave ser segura: em `t = 0` e `t = 1` a mistura é a linha do próprio nó, logo
+/// a âncora deformada é a **mesma** dos dois lados. *Se ela se mexesse, todo rig já autorado
+/// mudaria de forma no dia em que isto shipasse.*
+#[test]
+fn os_nos_nao_se_mexem() {
+    let k = pele(0.8);
+    let t = tabela();
+    let (mut hoje, mut curva) = (forma(), forma());
+    crate::aplica_corrigido(&k, &mut hoje, &t, &[]);
+    aplica_pela_curva(&k, &mut curva, &t, &[], TOLERANCIA);
+
+    let ancoras: Vec<[f64; 2]> = hoje.verts_all().map(|v| v.anchor).collect();
+    let novas: Vec<[f64; 2]> = curva.verts_all().map(|v| v.anchor).collect();
+    assert!(
+        novas.len() >= ancoras.len(),
+        "a lei nova perdeu nos: {} contra {}",
+        novas.len(),
+        ancoras.len()
+    );
+    // ⛔ Cada âncora AUTORADA tem de estar entre as novas, ao bit da fita: o fit só ACRESCENTA.
+    let mut pior = 0.0_f64;
+    for a in &ancoras {
+        let d = novas
+            .iter()
+            .map(|b| (a[0] - b[0]).hypot(a[1] - b[1]))
+            .fold(f64::INFINITY, f64::min);
+        pior = pior.max(d);
+    }
+    eprintln!(
+        "[curva] nos: {} autorados -> {} desenhados · pior desvio de ancora = {pior:.9}",
+        ancoras.len(),
+        novas.len()
+    );
+    assert!(
+        pior < 1e-9,
+        "uma ancora AUTORADA mexeu-se {pior} — a lei nova discorda da de hoje no no', e todo rig \
+         ja' feito muda de forma"
+    );
+}
+
+/// ⭐⭐⭐ **EM REPOUSO O DESENHO NÃO SE MEXE, e não por promessa.**
+///
+/// Com a pose à identidade a pele é a identidade, logo `t ↦ C(t)` e o fit devolve a própria curva.
+/// ⚠️ **O desvio é medido contra a FONTE**, não contra o caminho de hoje: é a fonte que o artista
+/// desenhou.
+#[test]
+fn em_repouso_o_desenho_nao_se_mexe() {
+    let k = pele(0.0);
+    let mut out = forma();
+    aplica_pela_curva(&k, &mut out, &tabela(), &[], TOLERANCIA);
+    let d = desvio(&polilinha(&forma()), &polilinha(&out));
+    eprintln!("[curva] em repouso o desvio e' {d:.12}");
+    assert!(
+        d < 1e-9,
+        "em REPOUSO a lei nova mexeu o desenho em {d} — ali ela tem de ser a identidade"
+    );
+}
+
+/// ⭐⭐ **O PREÇO, medido e impresso** — o `recook` corre uma vez por quadro, por forma presa.
+///
+/// ⚠️ Ele **imprime** e julga só o tecto grosseiro: o relógio desta máquina não vale nada sob carga,
+/// e o número que interessa ao produto é o de `--release` numa máquina calma. *Um gate de relógio
+/// apertado aqui seria mais um membro da família de flakes de fan-out.*
+#[test]
+fn o_preco_da_curva_esta_medido() {
+    let k = pele(0.8);
+    let t = tabela();
+    let mut relogio = std::time::Duration::MAX;
+    let mut nos = 0;
+    for _ in 0..5 {
+        let mut out = forma();
+        let t0 = std::time::Instant::now();
+        aplica_pela_curva(&k, &mut out, &t, &[], TOLERANCIA);
+        relogio = relogio.min(t0.elapsed());
+        nos = out.verts_all().count();
+    }
+    eprintln!(
+        "[curva] preco: {:.3} ms por forma · {} nos de {} (tolerancia {TOLERANCIA})",
+        relogio.as_secs_f64() * 1e3,
+        nos,
+        forma().verts_all().count()
+    );
+    assert!(
+        relogio.as_secs_f64() < 0.1,
+        "uma forma de quatro nos custou {:.1} ms — acima de 100 ms nem o debug explica, e o \
+         `recook` corre por quadro",
+        relogio.as_secs_f64() * 1e3
+    );
+}
+
+/// ⭐⭐⭐ **ONDE O MAPA É AFIM A ARTE AINDA SE MOVE — e o desenho fica BYTE-IDÊNTICO ao de sempre.**
+///
+/// ⛔⛔ **Ele nasceu de uma MUTAÇÃO SOBREVIVENTE:** apagar o `aplica_corrigido` do início da porta
+/// passava a suíte inteira, **nas duas crates**. A razão é que todas as fixturas de então dobravam
+/// um osso, logo **todo** contorno precisava de refit e o fit escrevia por cima — *o caminho onde a
+/// lei de hoje é a única a trabalhar não tinha fixtura nenhuma*.
+///
+/// ⭐ A fixtura é **UM** osso: com um só, o peso é o mesmo em toda parte, a deformação é um AFIM, e
+/// um afim **comuta** com a avaliação de Bézier. ⇒ o refit é dispensável ali *por teoria*, e a
+/// porta tem de o dispensar **e ainda assim mover a arte**.
+///
+/// ⚠️ **As duas metades são dois defeitos:** não mover (a lei de hoje deixou de correr) e mover
+/// diferente (o refit correu onde não devia, e reescreveu a representação — que é o defeito de
+/// `13,33` que o `binding_a_shape_moves_nothing` apanhou).
+#[test]
+fn onde_o_mapa_e_afim_a_arte_move_se_e_o_desenho_e_identico() {
+    let um = Skin::new(vec![osso(0.0, 40.0, 0.5, 0)]).expect("1 osso");
+    let (mut hoje, mut curva) = (forma(), forma());
+    crate::aplica_corrigido(&um, &mut hoje, &[], &[]);
+    aplica_pela_curva(&um, &mut curva, &[], &[], TOLERANCIA);
+
+    // ⭐ O CONTROLO: a pose TEM de mover a arte, senão as duas metades abaixo são vazias.
+    let andou = desvio(&polilinha(&forma()), &polilinha(&hoje));
+    assert!(
+        andou > 1.0,
+        "a fixtura nao move a arte ({andou}) — um osso sem pose faz este gate passar por vacuo"
+    );
+
+    let verts_hoje: Vec<VecVertex> = hoje.verts_all().copied().collect();
+    let verts_curva: Vec<VecVertex> = curva.verts_all().copied().collect();
+    assert_eq!(
+        verts_curva.len(),
+        verts_hoje.len(),
+        "o refit correu sobre um mapa AFIM: ele reescreveu a representacao onde a lei de hoje ja' \
+         esta' CERTA, e isso muda o `kind` e o raio de quina de todo vertice"
+    );
+    let pior = verts_hoje
+        .iter()
+        .zip(&verts_curva)
+        .flat_map(|(a, b)| {
+            [
+                (a.anchor, b.anchor),
+                (a.in_handle, b.in_handle),
+                (a.out_handle, b.out_handle),
+            ]
+        })
+        .map(|(p, q)| (p[0] - q[0]).hypot(p[1] - q[1]))
+        .fold(0.0_f64, f64::max);
+    assert!(
+        pior < 1e-12,
+        "sob um mapa AFIM as duas leis divergiram {pior} — ou a lei de hoje deixou de correr, ou o \
+         refit correu onde ele nao muda a curva e so' muda os pontos de controlo"
+    );
+}

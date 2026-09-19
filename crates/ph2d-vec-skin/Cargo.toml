@@ -22,13 +22,13 @@ ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 ph2d-poly2d = { path = "../ph2d-poly2d" }
 ph2d-skin-weights = { path = "../ph2d-skin-weights" }
 
+# ⭐⭐⭐ **A CURVA deformada** (F30, 2026-09-19): a pele é um mapa **não-afim**, e só transformações
+# afins comutam com a avaliação de Bézier — deformar os pontos de controlo acerta nos nós e **no
+# interior nunca**. A `ph2d-vec-envelope` já resolveu essa metade (o refit adaptativo e a remontagem
+# do contorno) e o `kurbo` é o fitter. ⚠️ **Ela entrou como DEV-dependency enquanto a rota estava a
+# ser medida** (`sonda_da_pele_como_warp`) e passou a produção quando a medição decidiu.
+ph2d-vec-envelope = { path = "../ph2d-vec-envelope" }
+kurbo = "0.13"
+
 [lints]
 workspace = true
-
-# ⚠️ **DEV-dependency, e é uma SONDA que a pede** (2026-09-19): a `ph2d-vec-envelope` sabe deformar
-# geometria Bézier por um mapa **não-afim** — que é exactamente o que a pele é —, e a sonda
-# `sonda_da_pele_como_warp` mede se essa rota resolve *«pintar peso ENTRE os nós»* e quanto custa.
-# ⛔ Enquanto for dev, o produto não muda: *uma dependência de produto escreve-se quando a decisão
-# está tomada, não enquanto ela está a ser medida.*
-[dev-dependencies]
-ph2d-vec-envelope = { path = "../ph2d-vec-envelope" }

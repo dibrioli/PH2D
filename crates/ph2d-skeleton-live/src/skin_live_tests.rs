@@ -640,8 +640,15 @@ fn a_tabela_de_pesos_do_caminho_chega_ao_desenho() {
     assert!(!g.pesos.is_empty(), "a fixtura tem de ter tabela");
     let pele = skin_of(&sim, e).expect("a pele resolve");
     let (mut com, mut sem) = (g.path.clone(), g.path.clone());
-    ph2d_vec_skin::aplica_com(&pele, &mut com, &g.pesos);
-    ph2d_vec_skin::aplica_com(&pele, &mut sem, &[]);
+    // ⚠️⚠️ **A expectativa constrói-se com a MESMA lei que o quadro corre** (F30, 2026-09-19). Ela
+    // usava a `aplica_com` — a lei dos pontos de controlo — e o quadro passou a desenhar a **imagem
+    // verdadeira** da curva: o gate acusou `2,3e1` de desvio sobre produto correcto. *Uma régua que
+    // compara o produto com uma lei que ele já não corre mede a mudança da lei, não o produto.*
+    // ⛔ O que este gate afirma continua a ser o mesmo: **a tabela GUARDADA é que chega ao desenho**,
+    // e não a derivada.
+    let tol = ph2d_vec_skin::curva::TOLERANCIA;
+    ph2d_vec_skin::curva::aplica_pela_curva(&pele, &mut com, &g.pesos, &[], tol);
+    ph2d_vec_skin::curva::aplica_pela_curva(&pele, &mut sem, &[], &[], tol);
 
     let segue_guardada = pior_desvio(&desenhado, &com);
     let segue_derivada = pior_desvio(&desenhado, &sem);

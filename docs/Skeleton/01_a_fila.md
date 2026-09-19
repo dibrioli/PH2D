@@ -56,7 +56,7 @@ diz onde ler o mecanismo:
 | **F11** | ✅ **Imagens em 9 fatias e folhas de quadros DEFORMAM com os ossos** (ordem do dono, 2026-09-17) | ✅ **FECHADO** — ver F11 abaixo |
 | **F21** | ✅ **A cena dedicada do ENVELOPE** (*«melhor montar uma cena específica para me mostrar isso»*, 2026-09-18) | ✅ **FECHADA em 2026-09-19 — e ela REFUTOU a lei da F20**: o envelope é inerte em toda forma FECHADA (amplitude `0,000000` numa faixa de `80 ×`), porque uma forma fechada também usa o padrão-ouro desde 15/09. A lei passou a perguntar ao **BIND** e não à mídia. Cena **`PH2D_VEC_BONE_SMOKE=2`** — ver F21 abaixo |
 | **F22** | ⭐⭐⭐ **A ESCOLHA da lei de pele, POR DESENHO** (ordem do dono, 2026-09-19: *«construa. por desenho»*) | ✅ **FECHADA no mesmo dia** — fileira **`Deform By`** (`Artwork` \| `Bone Reach`) no painel Bones, por DESENHO e para as duas mídias. ⭐ A escolha diz se o quadro **LÊ** a tabela do padrão-ouro, nunca se a calcula ⇒ a volta é **exacta ao bit** e não re-resolve nada. `PROJECT_SCHEMA` **+1** — ver F22 abaixo |
-| **F30** | ⏳ **A arte segue o peso ENTRE os nós** (a 2.ª saída da F26) | ⏳ **MEDIDA, e a medição mudou o desenho: a MALHA não é precisa para a geometria.** A `ph2d-vec-envelope` já deforma Bézier por um mapa não-afim, e o cabeçalho dela descreve o defeito que a pele tem hoje. Sonda: peso entre dois nós move a arte `0,000000 → 0,242375`, o fit converge, `0,163 ms` em release — ver F30 abaixo |
+| **F30** | ⭐⭐⭐ **A arte segue o peso ENTRE os nós** (a 2.ª saída da F26) | ✅ **CONSTRUÍDA, e a MALHA não foi precisa.** A `ph2d-vec-envelope` já deforma Bézier por um mapa não-afim, e o cabeçalho dela descreve o defeito que a pele tem hoje. Sonda: peso entre dois nós move a arte `0,000000 → 0,242375`, o fit converge, `0,163 ms` em release. ⭐⭐⭐ E ela **dissolveu a compensação da F28** — ver F30 abaixo |
 | **F29** | ⏳ **Os DOIS modos de atribuir peso** (ordem do dono, 2026-09-19) | ⏳ **ABERTO, na fila.** *Absoluto* (o valor entra e o resto reparte-se pelos outros ossos na proporção deles; Add/Subtract inactivos) e *Cumulativo* (o de hoje). ⚠️ **Não é UI: a correcção é uma mancha que SOMA**, e uma absoluta não é um campo somável — ver F29 abaixo |
 | **F28** | ⭐⭐⭐ **UM PONTO NOVO NUMA FORMA PRESA** (a 1.ª das duas saídas da F26, escolhida pelo dono: *«primeiro 1 e depois o 2»*) | ✅ **FECHADA**, e o smoke dela REPROVOU a 1.ª versão. O ponto sobrevive ao quadro, já nasce com peso, **o desenho não salta** (`18,89 % → 0,000000 %`) e a caneta MOSTRA onde o clique poria o nó. ⛔⛔ Duas conclusões minhas caíram: *«custo zero de arquitectura»* (medido: o ponto evaporava-se) e *«o salto é refinamento»* (o dono recusou — ver F28-b) |
 | **F27** | ⭐⭐⭐ **O CENSO DOS VERBOS DO OSSO** (o aberto que a F16 deixou por escrito) | ✅ **FECHADO no mesmo dia — ZERO verbos mortos.** Os catorze botões chegam a um efeito, medidos pela captura que o undo tira. ⛔⛔ E uma **mutação sobreviveu**: apagado o corpo do braço do *Add Smart Bone* na fase do quadro, **23 testes da shell ficaram verdes** — o terceiro elo do §5.0 não tinha instrumento nenhum. Zero schema, zero registo — ver F27 abaixo |
@@ -394,7 +394,7 @@ Mutação **12 de 12** a sangrar.
 ⏳ **ABERTO:** o espelho não tem gesto de canvas (só o painel) · e a arte presa não é espelhada com
 os ossos — o ramo novo nasce sem pele, e prendê-la é o gesto que já existe (*Bind*).
 
-### F30 — ⏳ **A 2.ª SAÍDA: a arte segue o peso ENTRE os nós** (ordem do dono, 2026-09-19, *«siga para o (2)»*)
+### F30 — ⭐⭐⭐ **A ARTE SEGUE O PESO ENTRE OS NÓS** (ordem do dono, 2026-09-19, *«construa e veremos se fica bom»*)
 
 **MEDIDA antes de escrita uma linha de produto**
 ([`sonda_da_pele_como_warp`](../../crates/ph2d-vec-skin/src/sonda_da_pele_como_warp_tests.rs)), e a
@@ -443,6 +443,60 @@ o sítio exacto da pergunta do dono):
    (`4 → 16`). Ninguém os edita (a fonte é que se edita), mas o ***Expand*** assa a geometria de agora
    no desenho — ali o artista fica com a forma refitada. *É o único sítio onde o número sai do
    quadro e entra no documento.*
+
+
+---
+
+#### ✅ CONSTRUÍDA no mesmo dia, e ela DISSOLVEU a F28
+
+A lei vive em [`ph2d_vec_skin::curva`](../../crates/ph2d-vec-skin/src/curva.rs) e é o caminho de
+**OMISSÃO** (`PH2D_SKIN_CURVE=0` bissecta). Num segmento de `a` para `b`, o peso do ponto `C(t)` é a
+**mistura** das linhas dos dois nós — `lerp(ra, rb, t)`, com as manchas somadas **no ponto** —, a
+curva é amostrada e **refitada** (`kurbo::fit_to_bezpath`), e a remontagem do contorno é a **porta**
+que a [`ph2d_vec_envelope`] já tinha (⛔ duplicá-la poria a convenção `(⅓, ⅔)` da elevação de recta
+em dois sítios).
+
+| o quê | medido |
+|---|---|
+| mancha ENTRE dois nós move a arte | **`0,000000` → `0,836850`** |
+| os NÓS mexem-se? | **`0,000000000`** — em `t = 0` e `t = 1` a mistura é a linha do próprio nó |
+| em REPOUSO | **`0`** ao bit |
+| custo | `0,877 ms` em debug · `0,163 ms` em `--release` |
+| nós do desenho | `4` na fonte ⇒ `6` desenhados |
+
+⛔⛔⛔ **E o REFIT só corre onde o mapa NÃO é afim — isto não é optimização, é a cura de um defeito
+medido.** A 1.ª redacção refitava **sempre**, e o gate `binding_a_shape_moves_nothing` acusou
+`13,333…` = **`40/3`** em REPOUSO: a elevação `(⅓, ⅔)` de uma recta desenha a **mesma** curva com
+outros pontos de controlo. *O desenho estava certo e a representação é que mudava*, e **oito** gates
+da casa mediam a representação. ⇒ a lei de hoje corre **sempre e primeiro** (ela preserva o `kind` e
+o `corner_radius`, que um refit não pode preservar), e só os contornos que se afastam mais do que a
+tolerância são refitados.
+
+⭐⭐⭐ **E a F30 DISSOLVEU a compensação da F28.** Com o desenho a ser a imagem verdadeira da fonte,
+partir a fonte **não o move** (`0,000002 %`) — e compensar **estraga** (`11,11 %` da peça). ⇒ a
+compensação passa a ser da lei dos pontos de controlo, e a decisão sai da mesma porta que o `recook`
+lê. *Uma cura fica errada no dia em que o defeito que ela curava deixa de existir.*
+
+⚠️⚠️ **E a lei viaja como PARÂMETRO, nunca num estado global.** A 1.ª redacção pôs um átomo com uma
+porta `forcar_lei` para os gates medirem o outro lado, e o doc dela dizia *«o nextest corre um
+processo por teste»* — verdade para o `nextest`, **falsa** para o `cargo test`, que corre os testes
+em THREADS do mesmo processo. A suíte **reprovava em conjunto e passava sozinha**, que é a assinatura
+mais cara que há. ⇒ `recook_com` / `insere_ponto_com`, e quem lê o ambiente é a porta de cima.
+
+⚠️ **Cinco gates da casa tiveram a premissa mudada, e a morte de cada uma está no diff:** o
+instantâneo do hit-test tinha *«um ponto por ponto DESENHADO»* e passa a ter **um por ponto da
+FONTE** (⭐ e ter menos é a resposta certa: o peso vive nos nós, e um ponto do indicador onde não há
+peso para corrigir seria um controlo morto) · a expectativa da tabela guardada constrói-se com a
+**mesma** lei que o quadro corre · e a barra da excursão do envelope desceu de `1,0` para `0,5`, com
+o número medido ao lado.
+
+⛔ **E uma MUTAÇÃO SOBREVIVEU duas vezes, nas duas crates:** apagar a lei de hoje do início da porta
+não partia nada, porque **toda** fixtura dobrava um osso e o refit escrevia por cima — *o caminho
+onde a lei de hoje é a única a trabalhar não tinha fixtura nenhuma*. ⇒ o gate novo é **UM** osso,
+onde a deformação é afim por teoria: ali a arte tem de se mover **e** o desenho tem de ficar
+byte-idêntico ao de sempre.
+
+Mutação **7 de 7** a sangrar; `nextest-impacted` **15 686** verdes.
 
 ### F29 — ⏳ **ABERTO: os DOIS modos de atribuir peso** (ordem do dono, 2026-09-19, *«coloque na fila»*)
 

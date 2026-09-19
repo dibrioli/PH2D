@@ -24,23 +24,91 @@ fn sem_o_componente_nao_ha_seccao() {
     assert!(build_tween_info(&w, e, 1).is_none());
 }
 
-/// ⭐⭐ **As duas colunas que NÃO vêm do componente** — *há relógio neste índice?* e *há sprite?*
+/// ⭐⭐ **As duas colunas que NÃO vêm do componente** — *qual é a duração do relógio deste índice?* e
+/// *há sprite?*
 ///
-/// ⚠️ **O CONTROLO é metade do gate:** sem o caso com timer a mais, um `tem_relogio` cravado em
-/// `false` passaria; sem o caso com sprite, um cravado em `true` passaria.
+/// ⚠️ **O CONTROLO é metade do gate:** sem o caso com timer a mais, um `duracao_us` cravado em
+/// `None` passaria; sem o caso com sprite, um cravado em `true` passaria.
 #[test]
 fn o_instantaneo_le_a_cena_e_nao_so_o_componente() {
     // Dois tweens, UM timer ⇒ o segundo não tem relógio.
     let (w, e) = mundo(2, 1, true);
     let i = build_tween_info(&w, e, 1).unwrap();
     assert_eq!(i.rows.len(), 2);
-    assert!(i.rows[0].tem_relogio, "o primeiro TEM relogio");
-    assert!(!i.rows[1].tem_relogio, "o segundo NAO tem");
+    assert!(i.rows[0].duracao_us.is_some(), "o primeiro TEM relogio");
+    assert!(i.rows[1].duracao_us.is_none(), "o segundo NAO tem");
     assert!(i.tem_sprite);
 
     let (w, e) = mundo(1, 1, false);
     let i = build_tween_info(&w, e, 1).unwrap();
     assert!(!i.tem_sprite, "sem sprite, a coluna tem de o dizer");
+}
+
+/// ⭐⭐⭐ **A DURAÇÃO que o painel mostra é a do relógio do MESMO ÍNDICE** — a resposta à pergunta do
+/// dono no smoke de 2026-09-19: *«onde selecciono o tempo?»*.
+///
+/// ⚠️ **A fixtura tem DOIS de cada, com durações DIFERENTES**, e é isso que a torna um teste de
+/// índice: *uma fixtura com um elemento não pode testar um índice* — `get(i)` e `first()` devolvem
+/// exactamente a mesma coisa, que é a lição que a prova de mutação desta wave já pagou.
+///
+/// **Mutações que devem sangrar:** ler `first()` em vez de `get(i)` · devolver `None` sempre.
+#[test]
+fn a_duracao_que_o_painel_mostra_e_a_do_relogio_do_mesmo_indice() {
+    let mut w = World::new();
+    let e = w
+        .spawn((
+            Tweens(vec![Tween::default(), Tween::default()]),
+            Timers(vec![
+                Timer {
+                    duration_us: 400_000,
+                    ..Timer::default()
+                },
+                Timer {
+                    duration_us: 1_200_000,
+                    ..Timer::default()
+                },
+            ]),
+        ))
+        .id()
+        .to_bits();
+    let i = build_tween_info(&w, e, 1).unwrap();
+    assert_eq!(i.rows[0].duracao_us, Some(400_000));
+    assert_eq!(i.rows[1].duracao_us, Some(1_200_000));
+}
+
+/// ⭐⭐ **Um relógio a ZERO é uma queixa PRÓPRIA** — ele existe, e nunca dispara.
+///
+/// ⚠️ **As duas curas ficam em sítios diferentes** (anexar um timer · escrever a duração), e é por
+/// isso que não podem partilhar a frase. *Dizer «não há relógio» a quem tem um relógio a zero
+/// manda-o anexar um segundo, e aí ele fica com dois tweens e um deles mudo.*
+#[test]
+fn um_relogio_a_zero_queixa_se_de_si_mesmo_e_nao_de_ausencia() {
+    let mut w = World::new();
+    let e = w
+        .spawn((
+            Tweens(vec![Tween::default()]),
+            Timers(vec![Timer {
+                duration_us: 0,
+                ..Timer::default()
+            }]),
+            Sprite::atlas(0, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0]),
+        ))
+        .id()
+        .to_bits();
+    let i = build_tween_info(&w, e, 1).unwrap();
+    assert_eq!(i.rows[0].duracao_us, Some(0));
+    assert_eq!(
+        i.rows[0].queixa(i.tem_sprite),
+        Some(ph2d_editor_core::tween_edits::TweenQueixa::RelogioSemDuracao)
+    );
+    // ⛔ O CONTROLO: com duração, a queixa do relógio CALA-SE — senão isto passaria por vacuidade
+    // sobre um painel que se queixa sempre.
+    let (w, e) = mundo(1, 1, true);
+    let i = build_tween_info(&w, e, 1).unwrap();
+    assert_ne!(
+        i.rows[0].queixa(i.tem_sprite),
+        Some(ph2d_editor_core::tween_edits::TweenQueixa::RelogioSemDuracao)
+    );
 }
 
 /// **O `+` respeita o tecto — e a cerca é da PORTA, não do painel.**

@@ -22,8 +22,16 @@ pub struct InspectorTweenRow {
     pub modo: u8,
     /// A tag do [`ph2d_tween::AoAcabar`].
     pub ao_acabar: u8,
-    /// ⭐ **Existe um timer neste índice?** — o relógio do tween. Vem da CENA, não de um campo.
-    pub tem_relogio: bool,
+    /// ⭐⭐⭐ **A DURAÇÃO do relógio deste índice, em µs** — `None` quando não há relógio nenhum.
+    ///
+    /// ⚠️ **Vem da CENA e não do componente**, e é a coluna que responde à pergunta que o dono fez
+    /// no smoke de 2026-09-19: *«onde selecciono o tempo?»*. Um tween é uma função **pura** do
+    /// relógio, logo ele não tem duração — a duração é do `Timers[i]` do mesmo índice.
+    ///
+    /// ⛔ **Guardar o número e não só o `bool` é o que torna o painel capaz de o DIZER.** Com um
+    /// `tem_relogio` a secção sabia que o relógio existe e não sabia dizer quanto ele dura, e o
+    /// artista tinha de o adivinhar noutra secção.
+    pub duracao_us: Option<u64>,
 }
 
 /// O que o Inspector mostra da secção TWEEN.
@@ -51,6 +59,14 @@ pub enum TweenQueixa {
     /// ⛔ **Não há timer neste índice** — o tween não tem relógio, logo não corre. É a queixa mais
     /// específica porque é a única em que **nada** acontece, nem sequer um quadro.
     SemRelogio,
+    /// ⛔ **Há relógio e ele nunca dispara** — `duration_us == 0`, e o
+    /// [`ph2d_ecs::Timer::progress`] devolve `0,0` por lei (*um timer que nunca dispara não está
+    /// cheio, está parado*) ⇒ o tween fica pregado no `de` para sempre.
+    ///
+    /// ⚠️ **É irmã da [`Self::SemRelogio`] e não a mesma queixa:** ali falta o relógio e aqui falta
+    /// um NÚMERO nele — e as duas curas são em sítios diferentes (anexar um timer · escrever a
+    /// duração). *Dizer «não há relógio» a quem tem um relógio a zero manda-o anexar um segundo.*
+    RelogioSemDuracao,
     /// ⛔ O objecto não tem `Sprite`, e este canal escreve num campo dele.
     SemSprite,
     /// **`de` e `para` são iguais** nas componentes que o canal lê ⇒ ele corre e não move nada.
@@ -66,8 +82,11 @@ impl InspectorTweenRow {
     #[must_use]
     pub fn queixa(&self, tem_sprite: bool) -> Option<TweenQueixa> {
         let canal = ph2d_tween::Canal::from_tag(self.canal);
-        if !self.tem_relogio {
+        let Some(duracao_us) = self.duracao_us else {
             return Some(TweenQueixa::SemRelogio);
+        };
+        if duracao_us == 0 {
+            return Some(TweenQueixa::RelogioSemDuracao);
         }
         if !canal.e_da_pose() && !tem_sprite {
             return Some(TweenQueixa::SemSprite);
@@ -127,7 +146,7 @@ mod tests {
             familia: 0,
             modo: 0,
             ao_acabar: ph2d_tween::AoAcabar::Hold.tag(),
-            tem_relogio: true,
+            duracao_us: Some(400_000),
         }
     }
 
@@ -136,16 +155,29 @@ mod tests {
     /// ⚠️ Sem relógio o tween **não corre**, logo dizer-lhe *«ele não move nada»* seria mandá-lo
     /// resolver a metade errada — a lei da recusa dos pincéis, palavra por palavra.
     ///
-    /// **Mutações que devem sangrar:** trocar dois braços de ordem · devolver `None` sem relógio.
+    /// **Mutações que devem sangrar:** trocar dois braços de ordem · devolver `None` sem relógio ·
+    /// ler o relógio a zero como se não houvesse relógio nenhum.
     #[test]
     fn a_queixa_vai_da_mais_especifica_para_a_mais_geral() {
         assert_eq!(linha().queixa(true), None, "um tween sao nao se queixa");
 
         // ⛔ Com TRÊS queixas verdadeiras ao mesmo tempo sai a mais ESPECÍFICA.
         let mut sem_relogio = linha();
-        sem_relogio.tem_relogio = false;
+        sem_relogio.duracao_us = None;
         sem_relogio.para = sem_relogio.de;
         assert_eq!(sem_relogio.queixa(false), Some(TweenQueixa::SemRelogio));
+
+        // ⛔⛔ **Um relógio a ZERO não é a mesma queixa que relógio nenhum** — as duas curas ficam
+        // em sítios diferentes (anexar um timer · escrever a duração), e *dizer «não há relógio» a
+        // quem tem um manda-o anexar um segundo*.
+        let mut parado = linha();
+        parado.duracao_us = Some(0);
+        parado.para = parado.de;
+        assert_eq!(
+            parado.queixa(false),
+            Some(TweenQueixa::RelogioSemDuracao),
+            "com TRES queixas verdadeiras sai a do relogio sem duracao"
+        );
 
         let mut sem_sprite = linha();
         sem_sprite.para = sem_sprite.de;

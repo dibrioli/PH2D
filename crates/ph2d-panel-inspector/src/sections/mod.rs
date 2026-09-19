@@ -116,6 +116,8 @@ pub(crate) mod topdown;
 mod transform;
 /// ⭐ **A secção TWEEN** (suplente #22) — irmã da `timers`, e com o molde dela.
 pub(crate) mod tween;
+/// ⚠️ O EDITOR de um tween — separado da MOLDURA dele pelo tecto de LOC do painel.
+mod tween_editor;
 // ⚠️ O DESENHO de uma linha do Transform — separado da orquestração delas pelo tecto de LOC.
 mod visibility;
 mod wheel;

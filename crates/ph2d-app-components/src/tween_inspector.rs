@@ -28,8 +28,10 @@ pub fn build_tween_info(
 ) -> Option<InspectorTweenInfo> {
     let e = Entity::from_bits(entity_bits);
     let tweens = world.get::<Tweens>(e)?;
-    // ⚠️ **Quantos timers ele TEM** — a coluna que não vem do componente, e que a queixa lê.
-    let relogios = world.get::<Timers>(e).map_or(0, |t| t.0.len());
+    // ⭐⭐⭐ **A DURAÇÃO de cada relógio** — a coluna que não vem do componente, e que responde à
+    // pergunta do dono no smoke de 19/09: *«onde selecciono o tempo?»*. ⚠️ Ela é lida por ÍNDICE,
+    // que é a lei do módulo: o tween `i` corre no timer `i`.
+    let relogios = world.get::<Timers>(e);
     let tem_sprite = world.get::<Sprite>(e).is_some();
     Some(InspectorTweenInfo {
         entity_bits,
@@ -44,7 +46,10 @@ pub fn build_tween_info(
                 familia: familia_tag(t.easing.family),
                 modo: modo_tag(t.easing.mode),
                 ao_acabar: t.ao_acabar.tag(),
-                tem_relogio: i < relogios,
+                duracao_us: relogios
+                    .as_ref()
+                    .and_then(|ts| ts.0.get(i))
+                    .map(|t| t.duration_us),
             })
             .collect(),
         tem_sprite,

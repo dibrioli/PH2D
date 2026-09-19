@@ -363,7 +363,9 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
                  (2) o quarto usa DOIS tweens em DOIS relogios de periodos diferentes — e' por isso \
                  que ele espreme e estica fora de fase\n\
                  (3) role o painel da direita ate' ao FIM (o «Aparece» ja' esta' escolhido): a \
-                 seccao TWEEN e' a ultima, e tem a lista; escolha a linha e veja o canal, o de/para e a curva\n\
+                 seccao TWEEN e' a ultima, e tem a lista; escolha a linha e veja o canal, o de/para \
+                 e a curva — e a linha «Duration … set in Timer N, above» diz QUANTO tempo ele leva \
+                 e ONDE se muda, porque o tempo e' do RELOGIO e nao do tween\n\
                  (4) na seccao TIMER do mesmo objecto DESLIGUE o `Repeat`: o desvanecer acontece \
                  UMA vez e FICA. Faca o mesmo no «Pisca» e ele acende uma vez e a ARTE VOLTA — e' a \
                  diferenca entre `Hold` e `Rewind`, e ela nao se ve^ num laco\n\

@@ -431,10 +431,19 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.tween.ease" => "Ease",
         "panel.inspector.tween.when_done" => "When Done",
         "panel.inspector.tween.preset" => "Preset",
-        // ⚠️ **As quatro QUEIXAS, e as duas primeiras dizem que ele nem CORRE** — dizer «ele não
+        // ⭐⭐⭐ **A DURAÇÃO — a linha que responde «onde selecciono o tempo?»** (report do dono,
+        // 19/09). Ela NOMEIA o relógio pelo número do slot, porque com dois tweens o artista tem de
+        // saber a qual dos timers ir.
+        "panel.inspector.tween.duration_lives_in_timer" => {
+            "Duration {s} s — set in Timer {n}, above."
+        }
+        // ⚠️ **As CINCO QUEIXAS, e as três primeiras dizem que ele nem CORRE** — dizer «ele não
         // move nada» a quem não tem relógio é mandá-lo resolver a metade errada.
         "panel.inspector.tween.no_timer_at_this_slot" => {
             "No timer at this slot — this tween has no clock, so it never runs."
+        }
+        "panel.inspector.tween.the_timer_here_has_no_duration" => {
+            "Timer {n} has no duration — it never fires."
         }
         "panel.inspector.tween.this_object_has_no_sprite" => {
             "This object has no sprite, so this channel writes nowhere."

@@ -118,3 +118,23 @@ dobrado (`9 px` de raio + `4` de braço) e tapava **65 %** da peça que ele exis
 painel escreve `set_graph_param_scrub(Some((nó, nome)))` todo quadro e quem quiser lê — o mesmo
 idioma da selecção (ADR-0075). E publica-se o **NOME** do param, não a `row`: a linha é uma
 coordenada do pintor, e resolvê-la do outro lado seria a segunda cópia do `band_at`.
+- ⛔⛔⛔ **DUAS FILEIRAS PODEM SER O MESMO CONTROLO, e nenhuma família de gates deste repo o
+  pergunta.** Medido 2026-09-19 (`line/3DModeling`, report do dono: *«se modifico qualquer cor em
+  style, todas mudam ao mesmo tempo»*). O selector de cor da casa é **UM** e flutua; um painel entra
+  nele **registando o `NodeId` da amostra**. O id era cunhado `(entidade, campo)` por um `match`
+  cujo braço final dizia, por escrito, *«uma amostra sobre um param sem índice não existe hoje; `0`
+  é a resposta estável»* — **verdade no dia em que foi escrita** e falsa quando chegou uma família
+  cujo sujeito **não é uma entidade** (o estilo é da CENA e a fileira carrega `entity = 0` como
+  sentinela). As cinco cores caíam no braço final e recebiam
+  `hash("model3d.color.swatch.0.0")` ⇒ com o selector aberto numa, **as cinco** liam
+  *«aberto em mim»* e **as cinco** pediam a escrita. ⚠️⚠️ **Os gates existentes mediam a LEI e o
+  DRENO, e o defeito vive ENTRE os dois** — na IDENTIDADE com que a fileira é pintada; o gate de
+  costura alimenta o dreno com a âncora já certa, logo entra **abaixo** da rotura.
+  ⛔ **E a segunda metade estava na outra ponta:** a lista que fecha um selector órfão derivava o id
+  por um **segundo `match`**, que só conhecia uma das três famílias — *duas respostas à mesma
+  pergunta («qual é o id desta amostra?»), e elas já divergiam para outra família há uma wave*.
+  ⇒ **uma PORTA com dois leitores**, espaço de nomes **próprio** para a família sem entidade (senão
+  a não-colisão depende do acidente de `Entity::to_bits()` nunca valer `0`), e o braço final devolve
+  **`None`** — a fileira cai para o controlo normal, *visível e diferente*, que se lê como uma falta.
+  ⭐ A régua que faltava: **os ids das fileiras de cor que o produto publica são todos DISTINTOS**,
+  com piso de população, mais um censo DERIVADO de que o id é cunhado **num sítio só**.

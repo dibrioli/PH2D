@@ -1194,6 +1194,26 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ficavam de lado (a câmera de omissão é uma três-quartos: as posições passam a ser DERIVADAS do
   olho), a barra saía do ecrã, e ⛔ **fotografar com o `$HOME` do dono fotografa a BANCADA dele**
   (`~/.ph2d/layout.txt`), não a cena.
+  ⛔⛔⛔ **E o SMOKE reprovou-a — *«se modifico qualquer cor em style, todas mudam ao mesmo tempo»*
+  (19/09): CINCO fileiras, UM controlo** ([`11` §9](docs/Render3d/11_a_camada_de_estilo.md)). O
+  selector de cor da casa é **UM** e flutua, e um painel entra nele **registando o `NodeId` da
+  amostra** — o id era cunhado `(entidade, campo)` por um `match` cujo braço final dizia, por
+  escrito, *«uma amostra sobre um param sem índice não existe hoje; `0` é a resposta estável»*.
+  ⭐ **Era verdade no dia em que foi escrita** e ficou falsa quando chegaram cinco cores cujo
+  `entity` é `0` **por desenho** (o estilo é da CENA) ⇒ as cinco partilhavam
+  `hash("model3d.color.swatch.0.0")`, as cinco liam *«aberto em mim»* e as cinco pediam a escrita.
+  ⚠️⚠️ **Os seis gates da wave mediam a LEI e o DRENO, e o defeito vive ENTRE os dois** — na
+  IDENTIDADE com que a fileira é pintada; o gate de costura alimenta o dreno com a âncora **já
+  certa**, logo entra **abaixo** da rotura. *Nenhum instrumento perguntava se duas fileiras são o
+  **MESMO** controlo.* ⛔ **E a segunda metade estava na outra ponta:** a lista que fecha um selector
+  órfão derivava o id por um **segundo `match`** que só conhecia `Param::Material` — *duas respostas
+  à mesma pergunta*, e elas **já divergiam para a LUZ** desde a wave dela (um selector aberto sobre
+  a cor de uma lâmpada nunca era fechado). ⇒ **uma PORTA com dois leitores** (`swatch_id`), espaço de
+  nomes **próprio** para a família sem entidade (senão a não-colisão depende do acidente de
+  `Entity::to_bits()` nunca valer `0`) e `None` no braço final, que faz a fileira cair para o
+  controlo normal — *visível e diferente lê-se como uma falta*. Mutação **4 de 4**, com controlo.
+  ⚠️ O arnês mentiu **duas** vezes antes: um filtro que casou **zero** testes imprimiu `ok`, e o
+  parser contava `running N tests` quando com UM teste o libtest escreve `running 1 test`.
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

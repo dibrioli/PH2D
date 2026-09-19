@@ -165,6 +165,75 @@ foto apanhou três coisas que a suíte não vê — as covas viradas de lado, a 
 armadilha de fotografar com o `$HOME` do dono (que fotografa a **bancada** dele e não a cena). Ver o
 doc-comment da `cena_35`.
 
+## §9 — ⛔⛔⛔ O smoke reprovou: **cinco cores, UM controlo**
+
+Report do dono (2026-09-19): *«se modifico qualquer cor em style, todas mudam ao mesmo tempo»*.
+Reproduzido no caminho do produto, com o gate a dizer o par:
+
+```text
+panel.model3d.style.rim_color  e  panel.model3d.style.convex
+sao o MESMO controlo (id 2905579657539185078)
+```
+
+### O mecanismo
+
+O selector de cor da casa é **UM** e flutua sobre o canvas; um painel entra nele **registando o
+`NodeId` da amostra**, e lê de volta `picker_target() == Some(id)`. Esse id era derivado **dentro**
+do `paint_swatch` por um `match` cujo braço final dizia, por escrito:
+
+> *«uma amostra sobre um param sem índice não existe hoje; `0` é a resposta estável»*
+
+⭐ **Era verdade no dia em que foi escrita.** Ficou falsa quando esta wave trouxe **cinco** fileiras
+de cor cujo `entity` é `0` **por desenho** — o estilo é da CENA e não de entidade nenhuma (§7). As
+cinco caíam no braço final, recebiam `campo = 0` e partilhavam
+`hash("model3d.color.swatch.0.0")` ⇒ com o selector aberto numa delas, **as cinco** liam *«aberto em
+mim»*, **as cinco** comparavam a cor escolhida com a sua e **as cinco** pediam a edição.
+
+### ⚠️⚠️ Porque os seis gates desta wave ficaram VERDES
+
+Eles medem a **LEI** (`with_colour`, a arrumação, os tectos) e o **DRENO**
+(`apply_intents_for_test`, com a âncora **já certa**). O defeito vive **ENTRE os dois** — na
+IDENTIDADE com que a fileira é pintada —, logo o gate de costura entra **abaixo** da rotura. É o
+ponto cego que o `CLAUDE.md` §5.0 nomeia sobre si mesmo, aqui noutra forma:
+
+> *nenhum instrumento perguntava se duas fileiras são o **MESMO** controlo.*
+
+### ⛔ E a segunda metade estava na outra ponta
+
+A lista que fecha um selector órfão (`close_a_stranded_picker`) derivava o id por um **SEGUNDO
+`match`**, que só conhecia `Param::Material`. Duas respostas à mesma pergunta — *«qual é o id desta
+amostra?»* — e elas **já divergiam para a LUZ** desde a wave dela: um selector aberto sobre a cor de
+uma lâmpada **nunca era fechado**, e ficava a flutuar sobre uma amostra que ninguém pinta — que é
+exactamente o controlo morto que aquela função existe para impedir.
+
+### A cura: uma porta, dois leitores
+
+`ph2d_panel_model3d::swatch_id(&ParamRow) -> Option<NodeId>`:
+
+| família | id | porquê |
+|---|---|---|
+| `Material(k)` · `Light(k)` | `model3d_color_swatch(entity, k)` | **inalterado** ⇒ as amostras que já shipavam mantêm o id ao bit |
+| `Style(slot)` | `model3d_style_swatch(slot)` | espaço de nomes **próprio**: o sujeito é a cena. ⛔ Sem ele a não-colisão dependeria do acidente de `Entity::to_bits()` nunca valer `0` |
+| qualquer outra | `None` | a fileira cai para o controlo normal — *visível e diferente lê-se como uma falta; um id partilhado em silêncio foi o que este report custou* |
+
+⭐ De graça, a lista do selector órfão passa a conhecer **a luz e o estilo**.
+
+### As quatro réguas novas
+
+| gate | o que ele prende |
+|---|---|
+| `cada_cor_do_estilo_tem_uma_amostra_so_sua` | as cinco cores publicadas pelo **produto** dão cinco ids distintos, com piso de população |
+| `a_amostra_do_estilo_nao_colide_com_a_de_um_objecto` | nos dois sentidos |
+| `o_id_de_uma_amostra_e_derivado_num_sitio_so` | censo **derivado** sobre os ficheiros de produção: um terceiro leitor a cunhar o próprio id reprova com o endereço |
+| `uma_familia_sem_id_devolve_none` | com **controlo positivo** — senão uma porta que devolvesse `None` a tudo passaria, apagando as amostras que funcionam |
+
+Prova de mutação **4 de 4**, com o controlo (trocar a ordem de duas famílias equivalentes) a **não**
+sangrar.
+
+⚠️ **E o arnês mentiu duas vezes antes de dizer a verdade**, as duas formas já escritas nesta casa:
+um filtro que casou **zero** testes imprimiu `ok` (lê-se como *«sobreviveu»*), e o parser contava
+`running N tests` quando com **um** teste o libtest escreve `running 1 test`, no **singular**.
+
 ## ⛔ Recusas MEDIDAS
 
 | o que foi recusado | porquê, com o número |
@@ -174,3 +243,5 @@ doc-comment da `cena_35`.
 | afrouxar a barra da paridade para os `13` bytes | a divergência é da CURVATURA e é pré-existente; a tinta mede-se onde não amplifica |
 | o estilo no MATCAP | ele é a luz do OLHO; tingi-lo faria o artista medir a peça através de uma mentira |
 | um `shade_render_com_estilo` ao lado do outro | é a segunda porta pela qual o defeito do §24 volta |
+| pendurar a amostra do estilo no `model3d_color_swatch(entity, slot)` | a não-colisão passaria a depender do acidente de `Entity::to_bits()` nunca valer `0` (§9) |
+| um braço final que devolva um id «estável» a toda família nova | **é o defeito do §9 escrito outra vez**: `None` cai no controlo normal, que se lê como uma falta |

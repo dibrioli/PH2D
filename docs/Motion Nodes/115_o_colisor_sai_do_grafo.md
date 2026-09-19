@@ -2588,6 +2588,64 @@ por inteiro passaria.
 **Gates: 13 · mutação: 4 de 4 sangram** (o glifo deixa de responder · a agulha aparece sem a coluna
 · uma escala `Vec2` deixa de chegar · a rotação deixa de chegar).
 
+### §32.4-ter — ⛔⛔⛔ E O DONO REPROVOU AS TRÊS COISAS: *«piorou os desenhos […] continuam relativos ao zoom […] não são animados em scale»*
+
+> **Report, 2026-09-19:** *«vc piorou os desenhos dos gzimos que estavam bons, eles continuam
+> relativos ao zoom, e não são animados em scale (grade do segundo exemplo)»*.
+
+⭐⭐⭐ **Os três relatos têm UMA causa, e ela é a unidade:** a §32.4-bis leu a coluna `size` como um
+**multiplicador directo de um pixel escolhido**, com a identidade `1`. Mas `size` é autorado em
+**unidades de MUNDO** — a `=120` usa `0,10`–`0,16` (`CORDA_PECA`, `CAMPO_PECA`, `OSSO_PECA`,
+`PELE_PECA`) — logo o glifo saía a **10 %–16 %** do símbolo:
+
+| o que o dono viu | o que estava a acontecer |
+|---|---|
+| *«piorou os desenhos»* | um anel de raio `0,26 px` por baixo de um traço de `1,5 px` é um **borrão** |
+| *«não são animados em scale»* | a variação de `0,26` para `0,30 px` é invisível **debaixo do próprio traço** |
+| *«continuam relativos ao zoom»* | sem glifo legível, o que muda à vista é só o **espalhamento** — que é geometria, e essa **tem** de seguir o zoom |
+
+⚠️⚠️ **E o meu passo de smoke estava errado por cima disso:** eu apontei a `=117` *de memória*. A
+sonda [`o_que_cada_cena_anima`] — corrida **depois** — mostra que ali só **2 dos 4** sinks animam
+escala. *O passo devia ter saído da sonda, não da memória.*
+
+⭐⭐⭐ **A CURA é trocar a âncora por uma DERIVADA: a `pegada_px`** — *«o tamanho que esta peça teria
+na tela com o zoom de FÁBRICA»*:
+
+```
+pegada = size × (altura da área / Camera2d::default().height_world)
+```
+
+- **absoluta**: o denominador é a altura de referência da câmara, **nunca a de agora** ⇒ o zoom do
+  artista não entra;
+- **responde ao grafo**: é proporcional ao `size` que o grafo escreve;
+- **apropriada à cena por construção**: uma peça autorada para se ver bem no arranque tem um glifo
+  que se vê bem — ⛔ e isso **sem uma constante de corpus**, que era a alternativa que eu ia medir.
+
+Com a `=120` (`size = 0,13`) e um canvas de `900 px`: `0,13 × 90 = 11,7 px` de pegada, contra os
+`0,26 px` de antes — **45×**.
+
+⛔ **E a CRUZ VOLTOU**, por veredito: a troca por um anel tinha o argumento certo (*«uma cruz rodada
+`90°` é a MESMA cruz»*) e a conclusão errada — **quem mostra a rotação é a AGULHA**, e a cruz é o
+que diz *«aqui está um elemento»*.
+
+**Mutação: 5 de 5 sangram, mais um CONTROLO inerte que sobrevive.** ⚠️ Duas delas nasceram de
+sobreviventes:
+
+- **`R4` — a cruz volta a ser um anel: SOBREVIVEU.** *A CAIXA não separa as duas* — uma cruz de
+  braço `b` e um anel de raio `b` têm a mesma caixa, e todos os gates de tamanho ficavam verdes. O
+  que as separa é o que elas **são**: a cruz é feita de **rectas** e **atravessa** o centro. ⚠️ E a
+  1.ª redacção desse gate procurava um **EXTREMO** no centro e reprovou sobre a cruz certa: os
+  extremos dela são as PONTAS dos braços.
+- **`R5` — o osso deixa de ser limitado pelo próprio comprimento: SOBREVIVEU**, porque todos os
+  outros gates medem PONTOS.
+
+⚠️ **E uma FIXTURA minha reprovou primeiro, com a lição:** a coluna de escala tinha **uma** entrada
+para **dois** pontos, e o 2.º caía na identidade (`size = 1`) — uma pegada **sete vezes** maior.
+*A régua mediria o glifo do vizinho em vez da distância.*
+
+⚠️ **Dois `assert` de script dispararam** sobre strings que o `cargo fmt` tinha reflowado (uma
+assinatura colapsada numa linha) — que é exactamente para isso que eles existem.
+
 ### §32.5 — ⏳ O que FICA, e a ordem
 
 1. **As cenas migram** — cada sink de posições ganha `source.shape → motion.duplicator`. ⭐ Isto é

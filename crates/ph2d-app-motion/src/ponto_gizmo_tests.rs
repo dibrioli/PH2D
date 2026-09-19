@@ -264,6 +264,9 @@ fn mede_o_custo_do_gizmo_de_pontos() {
 use ph2d_vector::{Point, Shape};
 
 /// Um `to_screen` de brincar com um zoom `z`: o MUNDO escala, a tela é a mesma.
+/// A altura da área da cena nas medições — um canvas de 900 px, que é a ordem de grandeza do app.
+const ALTURA: f64 = 900.0;
+
 fn olho(z: f64) -> impl Fn([f32; 2]) -> Point {
     move |w| Point::new(f64::from(w[0]) * z + 600.0, f64::from(w[1]) * z + 400.0)
 }
@@ -285,9 +288,13 @@ fn um_ponto(rot: Option<f32>, escala: Option<f32>) -> PontoGizmoView {
 
 /// A caixa do que foi traçado — a régua das duas leis.
 fn caixa(v: &PontoGizmoView, z: f64) -> ph2d_vector::Rect {
-    let (_, tracos) = crate::ponto_gizmo_overlay::caminhos(v, &olho(z));
+    let (_, tracos) = crate::ponto_gizmo_overlay::caminhos(v, &olho(z), ALTURA);
     tracos.bounding_box()
 }
+
+/// ⭐ **A ESCALA DE UMA CENA REAL.** A `=120` autora `0,10`–`0,16`; a 1.ª redacção do gizmo passava
+/// nos gates com `1` e **colapsava aqui** — por isso todo gate desta família mede com este número.
+const REAL: f32 = 0.13;
 
 /// ⭐⭐⭐ **LEI 1: O GLIFO NÃO MUDA COM O ZOOM.**
 ///
@@ -297,8 +304,8 @@ fn caixa(v: &PontoGizmoView, z: f64) -> ph2d_vector::Rect {
 /// não aconteceu*.
 #[test]
 fn o_glifo_tem_tamanho_absoluto_e_a_geometria_segue_o_zoom() {
-    // (a) UM ponto: a caixa é o glifo, e ela não pode mudar.
-    let v = um_ponto(None, None);
+    // (a) UM ponto com a escala de uma cena real: a caixa é o glifo, e não pode mudar.
+    let v = um_ponto(None, Some(REAL));
     let (a, b) = (caixa(&v, 1.0), caixa(&v, 8.0));
     assert!(
         (a.width() - b.width()).abs() < 1e-9 && (a.height() - b.height()).abs() < 1e-9,
@@ -306,8 +313,12 @@ fn o_glifo_tem_tamanho_absoluto_e_a_geometria_segue_o_zoom() {
     );
 
     // (b) O CONTROLO: dois pontos, e a geometria TEM de seguir o zoom.
-    let mut dois = um_ponto(None, None);
+    let mut dois = um_ponto(None, Some(REAL));
     dois.grupos[0].pontos.push([10.0, 0.0]);
+    // ⚠️ **A coluna tem de ter uma entrada POR PONTO.** Com uma só, o 2.º cai na identidade
+    // (`size = 1`), que é uma pegada SETE vezes maior — e a régua mediria o glifo do vizinho em
+    // vez da distância. *Foi assim que esta metade reprovou da 1.ª vez.*
+    dois.grupos[0].escala = Some(vec![REAL, REAL]);
     dois.grupos[0].total = 2;
     let (l1, l8) = (caixa(&dois, 1.0).width(), caixa(&dois, 8.0).width());
     // As larguras são `10·z + glifo`; a diferença das duas mede o mundo, sem o glifo.
@@ -322,22 +333,29 @@ fn o_glifo_tem_tamanho_absoluto_e_a_geometria_segue_o_zoom() {
 /// ⭐⭐⭐ **LEI 2: O GLIFO RESPONDE AO GRAFO** — o `scale` do oscilador, à letra.
 #[test]
 fn a_coluna_de_escala_engorda_o_glifo() {
-    let nu = caixa(&um_ponto(None, None), 1.0).width();
-    let gordo = caixa(&um_ponto(None, Some(3.0)), 1.0).width();
-    let magro = caixa(&um_ponto(None, Some(0.5)), 1.0).width();
+    let base = caixa(&um_ponto(None, Some(REAL)), 1.0).width();
+    let gordo = caixa(&um_ponto(None, Some(REAL * 3.0)), 1.0).width();
+    let magro = caixa(&um_ponto(None, Some(REAL * 0.5)), 1.0).width();
     assert!(
-        (gordo / nu - 3.0).abs() < 1e-6,
-        "escala 3 tem de dar 3x: {nu} → {gordo}"
+        (gordo / base - 3.0).abs() < 1e-6,
+        "o triplo da escala tem de dar o triplo: {base} → {gordo}"
     );
     assert!(
-        (magro / nu - 0.5).abs() < 1e-6,
-        "escala 0,5 tem de dar metade: {nu} → {magro}"
+        (magro / base - 0.5).abs() < 1e-6,
+        "metade da escala tem de dar metade: {base} → {magro}"
     );
     // ⚠️ E é INDEPENDENTE do zoom: a mesma razão a 8x.
-    let gordo8 = caixa(&um_ponto(None, Some(3.0)), 8.0).width();
+    let gordo8 = caixa(&um_ponto(None, Some(REAL * 3.0)), 8.0).width();
     assert!(
         (gordo8 - gordo).abs() < 1e-9,
         "a escala do grafo nao e' do zoom"
+    );
+    // ⛔⛔ **E A MAGNITUDE, que é o que o dono reprovou em 19/09.** Com a escala de uma cena real o
+    // glifo tem de ser VISÍVEL; a 1.ª redacção entregava `0,26 px`, um borrão por baixo do próprio
+    // traço. *Uma razão certa sobre uma magnitude invisível passa em todo gate de razão.*
+    assert!(
+        base >= 4.0,
+        "um glifo de {base:.2} px sobre a escala de uma cena real e' um ponto de tinta"
     );
 }
 
@@ -345,15 +363,14 @@ fn a_coluna_de_escala_engorda_o_glifo() {
 /// interior. Sem ele, um `size = 0` apagaria o gizmo e o artista leria *«o nó parou»*.
 #[test]
 fn uma_escala_minuscula_nao_apaga_o_gizmo() {
-    let quase_zero = caixa(&um_ponto(None, Some(0.001)), 1.0).width();
+    let quase_zero = caixa(&um_ponto(None, Some(1e-6)), 1.0).width();
     assert!(
         quase_zero > 0.0,
         "um glifo de largura zero e' um gizmo que desapareceu"
     );
     // ⚠️ E uma coluna ENVENENADA também não o apaga.
     let nan = caixa(&um_ponto(None, Some(f32::NAN)), 1.0).width();
-    let nu = caixa(&um_ponto(None, None), 1.0).width();
-    assert!((nan - nu).abs() < 1e-9, "NaN cai no glifo nu");
+    assert!(nan > 0.0, "NaN nao pode apagar o gizmo");
 }
 
 /// ⭐⭐ **A AGULHA SÓ EXISTE SE O GRAFO DER DIRECÇÃO, e ela GIRA.**
@@ -363,21 +380,21 @@ fn uma_escala_minuscula_nao_apaga_o_gizmo() {
 /// nunca falou de direcção.*
 #[test]
 fn a_agulha_da_direccao_so_existe_quando_o_grafo_a_da() {
-    let sem = caixa(&um_ponto(None, None), 1.0);
-    let com = caixa(&um_ponto(Some(0.0), None), 1.0);
+    let sem = caixa(&um_ponto(None, Some(REAL)), 1.0);
+    let com = caixa(&um_ponto(Some(0.0), Some(REAL)), 1.0);
     assert!(
         com.width() > sem.width() + 1.0,
         "com `rot` tem de aparecer a agulha: {sem:?} → {com:?}"
     );
     // A `0°` ela aponta para a DIREITA (`x` cresce), a `180°` para a esquerda.
-    let direita = caixa(&um_ponto(Some(0.0), None), 1.0);
-    let esquerda = caixa(&um_ponto(Some(180.0), None), 1.0);
+    let direita = caixa(&um_ponto(Some(0.0), Some(REAL)), 1.0);
+    let esquerda = caixa(&um_ponto(Some(180.0), Some(REAL)), 1.0);
     assert!(
         direita.x1 > esquerda.x1 && esquerda.x0 < direita.x0,
         "a agulha tem de GIRAR: {direita:?} contra {esquerda:?}"
     );
     // ⚠️ E `90°` nao e' a mesma imagem que `0°` — a armadilha da CRUZ, que roda em si mesma.
-    let noventa = caixa(&um_ponto(Some(90.0), None), 1.0);
+    let noventa = caixa(&um_ponto(Some(90.0), Some(REAL)), 1.0);
     assert!(
         (noventa.width() - direita.width()).abs() > 1.0,
         "um glifo que roda em si mesmo nao mostra rotacao nenhuma"
@@ -401,5 +418,89 @@ fn o_retrato_carrega_as_colunas_do_grafo() {
         super::rotacoes(&nuvem(3), 3),
         None,
         "sem coluna, sem agulha"
+    );
+}
+
+/// ⛔⛔⛔ **A MARCA DE UM PONTO É UMA CRUZ, e isto é um VEREDITO DO DONO** (2026-09-19: *«vc piorou
+/// os desenhos dos gizmos que estavam bons»*).
+///
+/// A 1.ª tentativa trocou a cruz por um anel com o argumento de que *«uma cruz rodada `90°` é a
+/// MESMA cruz»* — verdadeiro, e a conclusão era errada: **quem mostra a rotação é a AGULHA**.
+///
+/// ⚠️⚠️ **A CAIXA NÃO SEPARA AS DUAS**: uma cruz de braço `b` e um anel de raio `b` têm a mesma
+/// caixa, e foi por isso que a mutação `R4` **SOBREVIVEU** a todos os gates de tamanho. O que as
+/// separa é o que elas SÃO: uma cruz é feita de RECTAS e **passa pelo centro**; um anel é feito de
+/// CURVAS e tem um buraco no meio.
+#[test]
+fn a_marca_de_um_ponto_e_uma_cruz_e_nao_um_anel() {
+    use ph2d_vector::PathEl;
+    let v = um_ponto(None, Some(REAL));
+    let (_, tracos) = crate::ponto_gizmo_overlay::caminhos(&v, &olho(1.0), ALTURA);
+    let els: Vec<PathEl> = tracos.elements().to_vec();
+    assert!(!els.is_empty(), "a fixtura tem de desenhar alguma coisa");
+    assert!(
+        !els.iter()
+            .any(|e| matches!(e, PathEl::CurveTo(..) | PathEl::QuadTo(..))),
+        "uma cruz nao tem curvas — isto e' um anel: {els:?}"
+    );
+    // O centro, onde o `olho(1.0)` põe a origem.
+    //
+    // ⚠️ **ATRAVESSA, e não «acaba em»** — a 1.ª redacção desta metade procurava um EXTREMO no
+    // centro e reprovou sobre a cruz certa: os quatro extremos dela são as PONTAS dos braços.
+    // *Um segmento que passa pelo centro é o que um anel nunca tem.*
+    let c = olho(1.0)([0.0, 0.0]);
+    let mut de = None;
+    let mut atravessa = false;
+    for e in &els {
+        match e {
+            PathEl::MoveTo(p) => de = Some(*p),
+            PathEl::LineTo(p) => {
+                if let Some(a) = de {
+                    let (lo_x, hi_x) = (a.x.min(p.x), a.x.max(p.x));
+                    let (lo_y, hi_y) = (a.y.min(p.y), a.y.max(p.y));
+                    if (lo_x - 1e-9..=hi_x + 1e-9).contains(&c.x)
+                        && (lo_y - 1e-9..=hi_y + 1e-9).contains(&c.y)
+                    {
+                        atravessa = true;
+                    }
+                }
+                de = Some(*p);
+            }
+            _ => de = None,
+        }
+    }
+    assert!(
+        atravessa,
+        "a cruz tem de ATRAVESSAR o centro; um anel deixa-o vazio: {els:?}"
+    );
+}
+
+/// ⛔ **UM OSSO NUNCA É MAIS GORDO DO QUE O PRÓPRIO COMPRIMENTO** — sem esta cerca uma peça grande
+/// numa cadeia curta desenha um losango mais largo do que longo, que já não se lê como osso.
+///
+/// ⚠️ Foi uma **mutação sobrevivente** (`R5`) que a pediu: apagar o limite não partia nada, porque
+/// todos os outros gates medem PONTOS, onde ele não existe.
+#[test]
+fn um_osso_nunca_e_mais_gordo_do_que_o_proprio_comprimento() {
+    let comp = 20.0_f64; // px, com `olho(1.0)`
+    let v = PontoGizmoView {
+        grupos: vec![Grupo {
+            node: ph2d_nodegraph::graph::NodeId(0),
+            feicao: Feicao::Osso,
+            pontos: vec![[0.0, 0.0], [comp as f32, 0.0]],
+            segmentos: vec![[0, 1]],
+            rot: None,
+            // ⚠️ Uma peça ENORME: sem o limite, a meia-largura pedia `225 px` sobre um osso de 20.
+            escala: Some(vec![5.0, 5.0]),
+            total: 2,
+        }],
+    };
+    let (cheios, _) = crate::ponto_gizmo_overlay::caminhos(&v, &olho(1.0), ALTURA);
+    let caixa = cheios.bounding_box();
+    assert!(!cheios.is_empty(), "a fixtura tem de desenhar o osso");
+    assert!(
+        caixa.height() <= comp + 1e-6,
+        "um osso de {comp} px saiu com {:.1} px de gordura",
+        caixa.height()
     );
 }

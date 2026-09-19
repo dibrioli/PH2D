@@ -9,7 +9,7 @@
 //! |---|---|
 //! | **Osso** | a silhueta de armadura: larga na junta que manda, afilada para a ponta, com um anel na junta |
 //! | **Corda** | a polilinha dos consecutivos, com uma marca em cada nó |
-//! | **Ponto** | um anel pequeno e — **se o grafo der direcção** — a agulha que a mostra |
+//! | **Ponto** | uma CRUZ e — **se o grafo der direcção** — a agulha que a mostra |
 //!
 //! ⚠️ **O osso é um LOSANGO afilado e não uma linha**, e é isso que faz uma cadeia ler-se como um
 //! esqueleto em vez de um arame: a direcção é visível sem se seguir a ordem dos pontos.
@@ -20,19 +20,21 @@
 //! > (como o scale do oscilador). Ou seja, eles não aparecem em runtime mas no canvas simulam
 //! > qualquer grafo normalmente.»*
 //!
+//! ⭐⭐⭐ **AS DUAS SÃO UMA CONTA SÓ, e ela é a [`pegada_px`]:** *o tamanho que esta peça teria na
+//! tela com o zoom de FÁBRICA*. Ela é proporcional ao `size` que o grafo escreve (lei 2) e divide
+//! pela altura de referência da câmara e **nunca** pela de agora (lei 1).
+//!
 //! **1. TAMANHO ABSOLUTO.** Todo glifo é construído já em coordenadas de TELA e traçado com
-//! `Affine::IDENTITY` — as constantes abaixo são pixels, e `stroke` **multiplica** a espessura pelo
-//! transform (a lei do cabeçalho do `warp_overlay`). ⚠️ **O que SEGUE o zoom é a GEOMETRIA** — onde
-//! as juntas estão, quão comprido é um osso, por onde a corda passa —, e isso é obrigatório: elas
-//! são factos de MUNDO. *O que não segue é a espessura do símbolo que as marca.*
+//! `Affine::IDENTITY` — `stroke` **multiplica** a espessura pelo transform (a lei do cabeçalho do
+//! `warp_overlay`). ⚠️ **O que SEGUE o zoom é a GEOMETRIA** — onde as juntas estão, quão comprido é
+//! um osso, por onde a corda passa —, e isso é obrigatório: elas são factos de MUNDO.
 //!
-//! **2. O GLIFO RESPONDE AO GRAFO.** A coluna `size` entra como **MULTIPLICADOR dos pixels**
-//! (nunca como medida de mundo) e a `rot` como a **agulha da direcção** — é isso que faz o `Scale`
-//! de um `motion.oscillator` PULSAR e o `Rotation` GIRAR num canvas sem forma nenhuma ligada.
+//! **2. O GLIFO RESPONDE AO GRAFO.** O `size` dá a pegada e a `rot` dá a **agulha da direcção** —
+//! é isso que faz o `Scale` de um `motion.oscillator` PULSAR e o `Rotation` GIRAR num canvas sem
+//! forma nenhuma ligada.
 //!
-//! ⚠️⚠️ **As duas leis não brigam, e a composição é que é a resposta:** o multiplicador é do
-//! GRAFO e o pixel é da TELA, logo aproximar a câmara não engorda o símbolo e um oscilador engorda-o
-//! — que é exactamente o pedido.
+//! ⛔⛔ **E a 1.ª tentativa falhou nas TRÊS coisas ao mesmo tempo por ler o `size` como um
+//! multiplicador de um pixel escolhido** — ver [`pegada_px`], que tem os números.
 //!
 //! ⛔ **A agulha só é desenhada quando a corrente TRAZ a coluna `rot`** — uma agulha a apontar para
 //! a direita em toda a nuvem seria ruído sobre um grafo que nunca falou de direcção.
@@ -47,22 +49,27 @@ use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Shape, Stroke, VectorScene};
 
-/// Meia-largura do osso na junta que manda, em pixels de tela (com `size = 1`).
-const OSSO_PX: f64 = 4.0;
-/// O raio do anel de uma junta.
-const JUNTA_PX: f64 = 2.5;
-/// O raio do anel de um ponto solto.
-const PONTO_PX: f64 = 2.0;
-/// O comprimento da agulha que mostra a direcção de um ponto.
-const AGULHA_PX: f64 = 7.0;
 /// A tolerância com que um círculo vira curvas.
 const CIRCULO_TOL_PX: f64 = 0.1;
+
+/// **Que fracção da pegada da peça o corpo do osso ocupa.** Um osso mais gordo do que isto deixa
+/// de se ler como armadura e vira um losango.
+const OSSO_DA_PECA: f64 = 0.5;
+/// **E ele nunca é mais gordo do que esta fracção do PRÓPRIO comprimento** — senão uma cadeia de
+/// juntas juntas (o caso normal de uma corda em repouso) fica coberta de manchas.
+const OSSO_DO_COMPRIMENTO: f64 = 0.35;
+/// O raio do anel de uma junta, em fracção da pegada.
+const JUNTA_DA_PECA: f64 = 0.30;
+/// Metade do braço da cruz de um ponto solto, em fracção da pegada.
+const CRUZ_DA_PECA: f64 = 0.5;
+/// O comprimento da agulha da direcção, em fracção da pegada.
+const AGULHA_DA_PECA: f64 = 1.0;
 
 /// ⚠️ **Um osso curto demais desenha-se como uma JUNTA e mais nada.** Sem esta cerca, o losango de
 /// um segmento de comprimento ~0 fica com as duas pontas do lado errado da largura e pinta uma
 /// gravata — uma cadeia com juntas coincidentes (o caso normal de uma corda em repouso) ficaria
 /// coberta de borrões.
-const OSSO_MIN_PX: f64 = OSSO_PX * 2.0;
+const OSSO_MIN_PX: f64 = 8.0;
 
 /// **O PISO do glifo, e ele nomeia o recurso: a TOLERÂNCIA com que uma curva é achatada.**
 ///
@@ -78,18 +85,36 @@ const OSSO_MIN_PX: f64 = OSSO_PX * 2.0;
 /// não protege a legibilidade: revoga a lei.*
 const GLIFO_MIN_PX: f64 = CIRCULO_TOL_PX;
 
-/// O glifo de `base` pixels **escalado pelo grafo**, com o piso de legibilidade.
+/// ⭐⭐⭐ **A PEGADA DA PEÇA, em pixels — a âncora das duas leis, e ela é DERIVADA.**
 ///
-/// ⚠️ **Sem `camera` na assinatura, e isso é a lei 1 escrita no tipo:** esta função não tem como
-/// depender do zoom. Um gate mede-o na mesma (dois `to_screen` diferentes dão o mesmo glifo), mas
-/// quem lê o código vê primeiro a assinatura.
+/// É *«o tamanho que esta peça teria na tela com o zoom de fábrica»*:
+/// `size × (altura da área / altura de referência da câmara)`.
+///
+/// ⛔⛔ **A 1.ª redacção usava o `size` como multiplicador DIRECTO de um pixel escolhido, e os
+/// três relatos do dono de 2026-09-19 são essa escolha:** as cenas autoram `size` em **unidades de
+/// MUNDO** — a `=120` usa `0,10`–`0,16` —, logo o glifo saía a **10 %–16 %** do símbolo e colapsava
+/// num ponto de tinta do tamanho do próprio traço. Daí *«piorou os desenhos»*, daí *«não são
+/// animados em scale»* (uma variação de `0,26` para `0,30 px` por baixo de um traço de `1,5` é
+/// invisível), e daí a leitura de que *«continuam relativos ao zoom»*: sem glifo legível, o que
+/// muda à vista é só o espalhamento — que é geometria, e essa **tem** de seguir o zoom.
+///
+/// ⚠️ **A ALTURA DE REFERÊNCIA é a da câmara de fábrica, LIDA dela** (`Camera2d::default()`), nunca
+/// um literal: ela é o que faz uma peça autorada para se ver bem no arranque ter um glifo que se vê
+/// bem. E **é a câmara de FÁBRICA e não a de agora** — é isso, e só isso, que mantém a lei 1: o
+/// zoom do artista não entra nesta conta.
 #[must_use]
-pub(crate) fn glifo_px(base: f64, escala: f32) -> f64 {
+pub(crate) fn pegada_px(escala: f32, altura_da_area: f64) -> f64 {
     let s = f64::from(escala);
     if !s.is_finite() {
-        return base; // uma coluna envenenada não apaga o gizmo
+        return 0.0;
     }
-    (base * s.abs()).max(GLIFO_MIN_PX)
+    s.abs() * (altura_da_area / f64::from(Camera2d::default().height_world))
+}
+
+/// O glifo que ocupa `fracao` da pegada, com o piso de legibilidade.
+#[must_use]
+pub(crate) fn glifo_px(fracao: f64, pegada: f64) -> f64 {
+    (fracao * pegada).max(GLIFO_MIN_PX)
 }
 
 /// **Desenha o gizmo publicado.** No-op sem grupos.
@@ -100,12 +125,16 @@ pub fn draw(
     full_window: WindowSize,
     vector_scene: &mut VectorScene,
 ) {
-    // ⚠️ A janela da CENA, pela porta única — ver `warp_gizmo::scene_window`.
-    let to_screen =
-        camera.world_to_screen_affine(super::warp_gizmo::scene_window(center_split, full_window));
-    let (cheios, tracos) = caminhos(v, &|w: [f32; 2]| {
-        to_screen * Point::new(f64::from(w[0]), f64::from(w[1]))
-    });
+    // ⚠️ A janela da CENA, pela porta única — ver `warp_gizmo::scene_window`. Ela é lida UMA vez
+    // e serve as duas coisas: o `to_screen` (onde) e a altura (quão grande é a pegada). Duas
+    // leituras seriam duas respostas à mesma pergunta.
+    let area = super::warp_gizmo::scene_window(center_split, full_window);
+    let to_screen = camera.world_to_screen_affine(area);
+    let (cheios, tracos) = caminhos(
+        v,
+        &|w: [f32; 2]| to_screen * Point::new(f64::from(w[0]), f64::from(w[1])),
+        f64::from(area.height),
+    );
     if cheios.is_empty() && tracos.is_empty() {
         return;
     }
@@ -142,14 +171,19 @@ pub fn draw(
 ///
 /// ⚠️ **Dois caminhos e não um por grupo:** o Vello encoda um caminho de uma vez, e uma cena com
 /// treze ilhas (a `=110`) pagaria treze codificações por feição.
-pub(crate) fn caminhos(v: &PontoGizmoView, pt: &dyn Fn([f32; 2]) -> Point) -> (BezPath, BezPath) {
+pub(crate) fn caminhos(
+    v: &PontoGizmoView,
+    pt: &dyn Fn([f32; 2]) -> Point,
+    altura_da_area: f64,
+) -> (BezPath, BezPath) {
     let mut cheios = BezPath::new();
     let mut tracos = BezPath::new();
     for g in &v.grupos {
+        let peg = |i: usize| pegada_px(g.escala_em(i), altura_da_area);
         match g.feicao {
-            Feicao::Osso => desenha_ossos(g, pt, &mut cheios, &mut tracos),
-            Feicao::Corda => desenha_corda(g, pt, &mut tracos),
-            Feicao::Ponto => desenha_pontos(g, pt, &mut tracos),
+            Feicao::Osso => desenha_ossos(g, pt, &peg, &mut cheios, &mut tracos),
+            Feicao::Corda => desenha_corda(g, pt, &peg, &mut tracos),
+            Feicao::Ponto => desenha_pontos(g, pt, &peg, &mut tracos),
         }
     }
     (cheios, tracos)
@@ -163,6 +197,7 @@ pub(crate) fn caminhos(v: &PontoGizmoView, pt: &dyn Fn([f32; 2]) -> Point) -> (B
 fn desenha_ossos(
     g: &Grupo,
     pt: &dyn Fn([f32; 2]) -> Point,
+    peg: &dyn Fn(usize) -> f64,
     cheios: &mut BezPath,
     tracos: &mut BezPath,
 ) {
@@ -173,8 +208,10 @@ fn desenha_ossos(
         if comp < OSSO_MIN_PX {
             continue; // ver `OSSO_MIN_PX`
         }
-        // A meia-largura é a do FILHO: é o elemento que este osso representa.
-        let meia = glifo_px(OSSO_PX, g.escala_em(*para));
+        // A meia-largura é a do FILHO: é o elemento que este osso representa. ⚠️ E é limitada
+        // pelo PRÓPRIO comprimento — uma peça grande numa cadeia curta desenharia um losango mais
+        // largo do que longo, que já não é um osso.
+        let meia = glifo_px(OSSO_DA_PECA, peg(*para)).min(comp * OSSO_DO_COMPRIMENTO);
         let (nx, ny) = (-dy / comp * meia, dx / comp * meia);
         // O ombro fica a um quinto do caminho: é onde a armadura do referencial o põe, e é o
         // que dá a direcção sem engordar a cadeia inteira.
@@ -186,12 +223,17 @@ fn desenha_ossos(
         cheios.close_path();
     }
     for (i, p) in g.pontos.iter().enumerate() {
-        anel(tracos, pt(*p), glifo_px(JUNTA_PX, g.escala_em(i)));
+        anel(tracos, pt(*p), glifo_px(JUNTA_DA_PECA, peg(i)));
     }
 }
 
 /// A polilinha dos consecutivos, com uma marca em cada nó.
-fn desenha_corda(g: &Grupo, pt: &dyn Fn([f32; 2]) -> Point, tracos: &mut BezPath) {
+fn desenha_corda(
+    g: &Grupo,
+    pt: &dyn Fn([f32; 2]) -> Point,
+    peg: &dyn Fn(usize) -> f64,
+    tracos: &mut BezPath,
+) {
     let mut aberto = false;
     for [de, para] in &g.segmentos {
         if !aberto {
@@ -201,25 +243,39 @@ fn desenha_corda(g: &Grupo, pt: &dyn Fn([f32; 2]) -> Point, tracos: &mut BezPath
         tracos.line_to(pt(g.pontos[*para]));
     }
     for (i, p) in g.pontos.iter().enumerate() {
-        anel(tracos, pt(*p), glifo_px(JUNTA_PX * 0.7, g.escala_em(i)));
+        anel(tracos, pt(*p), glifo_px(JUNTA_DA_PECA * 0.7, peg(i)));
     }
 }
 
-/// Um anel em cada posição e — **se o grafo der direcção** — a agulha que a mostra.
+/// **Uma CRUZ em cada posição** e — se o grafo der direcção — a agulha que a mostra.
 ///
-/// ⚠️ **Um anel e não uma cruz:** uma cruz rodada `90°` é a MESMA cruz, logo um oscilador a girar
-/// de `0` a `360` leria-se como saltos de um quarto de volta. Um anel com agulha tem uma direcção
-/// só, e ela roda de verdade.
-fn desenha_pontos(g: &Grupo, pt: &dyn Fn([f32; 2]) -> Point, tracos: &mut BezPath) {
+/// ⛔⛔ **A cruz VOLTOU por veredito do dono** (2026-09-19: *«vc piorou os desenhos dos gizmos que
+/// estavam bons»*): a 1.ª tentativa trocou-a por um anel, com o argumento de que *«uma cruz rodada
+/// `90°` é a MESMA cruz»* — o argumento é verdadeiro e a conclusão era errada, porque **quem mostra
+/// a rotação é a AGULHA e não a marca**. A cruz é o que diz *«aqui está um elemento»*, e é ela que
+/// ele reconhece.
+///
+/// ⚠️ **A cruz não gira**: ela é chrome e mantém-se alinhada aos eixos; girá-la faria a marca
+/// piscar de quarto em quarto de volta sem dizer nada que a agulha não diga melhor.
+fn desenha_pontos(
+    g: &Grupo,
+    pt: &dyn Fn([f32; 2]) -> Point,
+    peg: &dyn Fn(usize) -> f64,
+    tracos: &mut BezPath,
+) {
     for (i, p) in g.pontos.iter().enumerate() {
         let c = pt(*p);
-        let esc = g.escala_em(i);
-        anel(tracos, c, glifo_px(PONTO_PX, esc));
+        let pegada = peg(i);
+        let braco = glifo_px(CRUZ_DA_PECA, pegada);
+        tracos.move_to(Point::new(c.x - braco, c.y));
+        tracos.line_to(Point::new(c.x + braco, c.y));
+        tracos.move_to(Point::new(c.x, c.y - braco));
+        tracos.line_to(Point::new(c.x, c.y + braco));
         if let Some(graus) = g.rot_em(i) {
             // ⚠️ A coluna é em GRAUS — a unidade de ângulo autorada desta casa (a mesma conversão
             // que o lowering faz, e no mesmo sítio: a borda onde a base é construída).
             let (sin, cos) = f64::from(graus).to_radians().sin_cos();
-            let r = glifo_px(AGULHA_PX, esc);
+            let r = glifo_px(AGULHA_DA_PECA, pegada);
             // ⚠️ O `y` da TELA cresce para baixo; o sinal aqui é o mesmo que a base do lowering
             // escreve (`[cos, sin, -sin, cos]`), senão a agulha giraria ao contrário da arte.
             tracos.move_to(c);

@@ -650,3 +650,152 @@ fn colunas_que_chegam_ao_sink() {
     }
     eprintln!();
 }
+
+/// ⭐⭐⭐ **O QUE O GRAFO DE FACTO ANIMA, por cena** — a sonda que o report do dono de 2026-09-19
+/// obriga a correr: *«não são animados em scale (grade do segundo exemplo)»*.
+///
+/// ⚠️ **Ela mede o STREAM ao longo do TEMPO**, que é a única maneira de responder: uma coluna
+/// `size` que EXISTE e não muda é um grafo que não anima escala, e um gizmo que a lê fica parado
+/// **com razão**. *Eu apontei o dono para a `=117` de memória; esta sonda é o que eu devia ter
+/// corrido antes de escrever o passo.*
+///
+/// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture o_que_cada_cena_anima`
+#[test]
+#[ignore = "sonda, nao um gate"]
+fn o_que_cada_cena_anima() {
+    let alvo: [u32; 10] = [111, 112, 113, 116, 117, 118, 119, 120, 121, 122];
+    eprintln!("\n=== O QUE CADA CENA ANIMA (12 tiques a 60 Hz) ===\n");
+    eprintln!("  cena · sink │ linhas │ size?  varia? │ rot?   varia? │ P varia?");
+    for level in alvo {
+        let mut state = MotionState::new();
+        let sinks =
+            crate::motion_demo_legend::monta(&level.to_string(), &mut state.doc, &state.registry).0;
+        for (k, &sink) in sinks.iter().enumerate() {
+            let mut fotos: Vec<(Vec<f32>, Vec<f32>, Vec<f32>)> = Vec::new();
+            let mut existe = (false, false);
+            for t in 0..12 {
+                let seg = f64::from(t) / 60.0;
+                let Ok(out) = state
+                    .pump
+                    .cook
+                    .cook(&state.doc.graph, &state.registry, sink, seg)
+                else {
+                    break;
+                };
+                let s = out[0].as_stream();
+                let esc = crate::ponto_gizmo::escalas(s, s.count());
+                let rot = crate::ponto_gizmo::rotacoes(s, s.count());
+                existe = (existe.0 || esc.is_some(), existe.1 || rot.is_some());
+                let p = match s.get("P") {
+                    Some(ph2d_nodegraph::attr::Column::Vec2(v)) => {
+                        v.iter().flat_map(|q| [q[0], q[1]]).collect()
+                    }
+                    _ => Vec::new(),
+                };
+                fotos.push((esc.unwrap_or_default(), rot.unwrap_or_default(), p));
+                let _ = state
+                    .pump
+                    .cook
+                    .advance_tick(&state.doc.graph, &state.registry, seg);
+            }
+            if fotos.is_empty() {
+                continue;
+            }
+            /// Uma fotografia do stream num tique: `(escala, rotação, posições)`.
+            type Foto = (Vec<f32>, Vec<f32>, Vec<f32>);
+            let varia = |f: &dyn Fn(&Foto) -> Vec<f32>| {
+                let a = f(&fotos[0]);
+                fotos.iter().any(|x| f(x) != a)
+            };
+            let (ve, vr, vp) = (
+                varia(&|x| x.0.clone()),
+                varia(&|x| x.1.clone()),
+                varia(&|x| x.2.clone()),
+            );
+            let sim = |b: bool| if b { "SIM" } else { " -  " };
+            eprintln!(
+                "  ={level:<3} · {k:<2} │ {:>6} │ {:<5} {:<6} │ {:<5} {:<6} │ {}",
+                fotos[0].2.len() / 2,
+                sim(existe.0),
+                sim(ve),
+                sim(existe.1),
+                sim(vr),
+                sim(vp)
+            );
+        }
+    }
+    eprintln!();
+}
+
+/// ⛔⛔⛔ **QUE NÚMEROS O `size` DE FACTO TEM NAS CENAS** — a sonda que explica os TRÊS relatos do
+/// dono de 2026-09-19 de uma vez (*«piorou os desenhos»* · *«continuam relativos ao zoom»* ·
+/// *«não são animados em scale»*).
+///
+/// A 1.ª redacção do gizmo leu a coluna `size` como um multiplicador **directo** do glifo, com a
+/// identidade `1`. Esta sonda mede o que as cenas REAIS autoram.
+///
+/// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture que_numeros_o_size_tem`
+#[test]
+#[ignore = "sonda, nao um gate"]
+fn que_numeros_o_size_tem() {
+    let mut todos: Vec<f32> = Vec::new();
+    let mut por_cena: Vec<(u32, usize, f32, f32)> = Vec::new();
+    for level in 1..=MAX_DEMO_LEVEL {
+        let mut state = MotionState::new();
+        let sinks =
+            crate::motion_demo_legend::monta(&level.to_string(), &mut state.doc, &state.registry).0;
+        for (k, &sink) in sinks.iter().enumerate() {
+            let Ok(out) = state
+                .pump
+                .cook
+                .cook(&state.doc.graph, &state.registry, sink, 0.0)
+            else {
+                continue;
+            };
+            let s = out[0].as_stream();
+            let Some(esc) = crate::ponto_gizmo::escalas(s, s.count()) else {
+                continue;
+            };
+            if esc.is_empty() {
+                continue;
+            }
+            let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
+            for &e in &esc {
+                if e.is_finite() {
+                    lo = lo.min(e);
+                    hi = hi.max(e);
+                    todos.push(e);
+                }
+            }
+            if lo.is_finite() {
+                por_cena.push((level, k, lo, hi));
+            }
+        }
+    }
+    todos.sort_by(f32::total_cmp);
+    let p = |q: f64| todos[((todos.len() - 1) as f64 * q) as usize];
+    eprintln!(
+        "\n=== QUE NUMEROS O `size` TEM · {} valores ===\n",
+        todos.len()
+    );
+    eprintln!(
+        "  min {:.4} · p10 {:.4} · p25 {:.4} · MEDIANA {:.4} · p75 {:.4} · p90 {:.4} · max {:.4}",
+        todos[0],
+        p(0.10),
+        p(0.25),
+        p(0.50),
+        p(0.75),
+        p(0.90),
+        todos[todos.len() - 1]
+    );
+    eprintln!(
+        "\n  ⇒ com o glifo = base x size, a MEDIANA da' {:.1} % do glifo nu.",
+        p(0.50) * 100.0
+    );
+    eprintln!("\n  as 12 cenas com o size mais PEQUENO:\n");
+    por_cena.sort_by(|a, b| a.2.total_cmp(&b.2));
+    for (l, k, lo, hi) in por_cena.iter().take(12) {
+        eprintln!("  ={l:<3} · sink {k:<2} │ min {lo:.4} · max {hi:.4}");
+    }
+    eprintln!();
+}

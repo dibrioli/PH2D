@@ -152,7 +152,7 @@ fn posicoes(s: &Stream) -> Vec<[f32; 2]> {
 /// *o gizmo mostra o que o grafo fez, e não o que o desenhador dele achou bonito*.
 ///
 /// ⚠️ **Uma coluna `Vec2` colapsa na MÉDIA dos eixos** — ver [`Grupo::escala`] para a razão.
-fn escalas(s: &Stream, n: usize) -> Option<Vec<f32>> {
+pub(crate) fn escalas(s: &Stream, n: usize) -> Option<Vec<f32>> {
     match s.get("size") {
         Some(Column::Scalar(v)) => Some(v.iter().take(n).copied().collect()),
         Some(Column::Vec2(v)) => Some(v.iter().take(n).map(|e| (e[0] + e[1]) * 0.5).collect()),
@@ -161,7 +161,7 @@ fn escalas(s: &Stream, n: usize) -> Option<Vec<f32>> {
 }
 
 /// **A ROTAÇÃO de cada elemento, em graus** — `None` quando a corrente não a traz.
-fn rotacoes(s: &Stream, n: usize) -> Option<Vec<f32>> {
+pub(crate) fn rotacoes(s: &Stream, n: usize) -> Option<Vec<f32>> {
     match s.get("rot") {
         Some(Column::Scalar(v)) => Some(v.iter().take(n).copied().collect()),
         _ => None,

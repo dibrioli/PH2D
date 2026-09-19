@@ -1867,3 +1867,49 @@ medidas** do laço saíram para o [`cercas.rs`](../../crates/ph2d-contact/src/ce
 tabelas delas, e os quatro `let` do relatório viraram uma porta (`numeros_da_separacao`). ⚠️ E um
 `assert!` de duas CONSTANTES que eu escrevera na §18 era **dobrado pelo compilador e nunca corria** —
 hoje é `const _: () = assert!(…)`, que é erro de compilação.
+
+---
+
+## §25 — A cena do dono está `30×` acima da capacidade, e o readout diz-lhe isso
+
+Linha do perfilador de 2026-09-18, com os quatro números:
+
+```
+MOTION media 18.61ms pico 23.35ms · 1000 pecas x 68 varreduras x 156 vizinhos, 1 separacao(oes)/quadro
+```
+
+⭐ **A `1` separação por quadro** confirma a §21 do lado do produto, e **`156` vizinhos por peça** é
+o número que faltava a todas as medições anteriores: são `1000 × 156 = 156 000` candidatos por
+varredura e **`10,6 M` avaliações de par por quadro**, a **`1,75 ns` cada**. *O motor está rápido; o
+trabalho é que é enorme.*
+
+### §25.1 — ⚠️ As varreduras ali COMPRAM separação — o knob é honesto
+
+Uma pilha com `156` vizinhos está muito acima da capacidade (discos de raio `R` com os centros a
+menos de `R`), e a pergunta obrigatória antes de optimizar o motor era: *aquelas `68` varreduras
+mudam o que se vê, ou é tecto gasto para nada?* Medido
+([`custo_probe_repouso::numa_pilha_comprimida_as_varreduras_compram_alguma_coisa`], pares com
+penetração visível):
+
+| vizinhos | antes | v=8 | v=32 | v=64 | v=256 |
+|---|---|---|---|---|---|
+| 12 | 2 872 | 2 848 | 2 815 | 2 761 | 2 515 |
+| 73 | 13 691 | 11 973 | 9 578 | **7 402** | 4 365 |
+| **132** | 24 105 | 20 900 | 15 436 | **11 458** | 4 854 |
+
+⇒ **a `132` vizinhos, `64` varreduras resolvem `52 %` das sobreposições e `256` resolvem `80 %`.**
+*O tecto alto não é desperdício naquela cena* — é a única coisa que a abre. ⛔ **E é por isso que o
+«aceita e mente» continua recusado:** cortar o orçamento ali entregaria visivelmente menos.
+
+### §25.2 — O que sobra, e de que tamanho
+
+| lever | medido | estado |
+|---|---|---|
+| **o `fork/join` por varredura** | o mesmo trabalho em `4`–`5` núcleos de 32, com `5×` o CPU da série | ⏳ **o maior que sobra**, e é desta crate |
+| a geometria do par calculada DUAS vezes | `41 %` de uma varredura ⇒ `~21 %` | ⏳ desta crate |
+| a colisão não existe na rota da PLACA | o caminho rápido e a colisão são mutuamente exclusivos | ⏳ kernel, espec própria |
+| o desenho | `0,85 ms` de GPU e `0,04` de encode a mil formas | ✅ **ilibado por medição** |
+
+⚠️ **E o produto tem um lever que não é de engenharia nenhuma:** a cena está `30×` acima da
+capacidade. Menos objectos, objectos menores ou mais espaço entre eles custam **zero** e mudam a
+coluna dos vizinhos — que é a que multiplica tudo o resto.

@@ -167,3 +167,68 @@ fn parar_quando_nada_mais_se_ve() {
     eprintln!("\n  ⚠️ A aresta de uma peça é `1,0`: o desvio lê-se em FRACÇÃO da peça.");
     eprintln!("  load: {}\n", carga());
 }
+
+/// ⭐⭐⭐ **NUMA PILHA COMPRIMIDA, AS VARREDURAS COMPRAM ALGUMA COISA?** — a pergunta que o readout
+/// do dono levantou (2026-09-18: `1000 pecas x 68 varreduras x 156 vizinhos`).
+///
+/// ⚠️ Com `156` candidatos por peça a cena está **muito** acima da capacidade: o passe empurra e não
+/// há para onde ir. ⇒ antes de optimizar o motor, a pergunta é se aquelas varreduras mudam o que se
+/// VÊ — *um tecto gasto que não compra nada é o knob mais caro do app*.
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn numa_pilha_comprimida_as_varreduras_compram_alguma_coisa() {
+    const N: usize = 1000;
+    const RAIO: f32 = 100.0;
+    eprintln!("\n  ═══ O QUE AS VARREDURAS COMPRAM, POR DENSIDADE ═══\n");
+    eprintln!(
+        "  {:<8} │ {:>9} │ {:>8} │ {:>8} │ {:>8} │ {:>8} │ {:>8} │ {:>9}",
+        "passo", "vizinhos", "antes", "v=8", "v=32", "v=64", "v=256", "relógio v=64"
+    );
+    eprintln!("  ---------|-----------|----------|----------|----------|----------|----------|-----------");
+    for passo_r in [1.8f32, 1.2, 0.7, 0.5] {
+        let (p0, c, w) = super::atribuicao::campo_de_discos(N, RAIO, passo_r);
+        let inv: Vec<f32> = (0..N)
+            .map(|i| c[i].map_or(0.0, |x| x.inv_inercia(w[i])))
+            .collect();
+        let pecas = Pecas::novas(&c, &w, &inv);
+        #[expect(clippy::cast_precision_loss, reason = "uma contagem de cena")]
+        let vizinhos = crate::candidatos(&c, &p0, &w) as f32 / N as f32;
+        // A régua é a PENETRAÇÃO VISÍVEL, em fracção do raio — o que o artista vê.
+        let sobrepostos = |p: &[[f32; 2]]| {
+            let mut k = 0usize;
+            for i in 0..N {
+                for j in (i + 1)..N {
+                    if let (Some(a), Some(b)) = (c[i].as_ref(), c[j].as_ref())
+                        && contato(a, p[i], b, p[j], false)
+                            .is_some_and(|t| t.penetracao > 0.02 * RAIO)
+                    {
+                        k += 1;
+                    }
+                }
+            }
+            k
+        };
+        let mut col = [0usize; 4];
+        let mut ms = 0.0f64;
+        for (i, v) in [8usize, 32, 64, 256].into_iter().enumerate() {
+            let mut p = p0.clone();
+            let mut g = vec![0.0; N];
+            let agora = Instant::now();
+            separate(&mut p, &mut Saida { giro: &mut g }, &pecas, v);
+            if v == 64 {
+                ms = agora.elapsed().as_secs_f64() * 1e3;
+            }
+            col[i] = sobrepostos(&p);
+        }
+        eprintln!(
+            "  {passo_r:<8.1} │ {vizinhos:>9.0} │ {:>8} │ {:>8} │ {:>8} │ {:>8} │ {:>8} │ {ms:>6.1} ms",
+            sobrepostos(&p0),
+            col[0],
+            col[1],
+            col[2],
+            col[3]
+        );
+    }
+    eprintln!("\n  ⚠️ A coluna é PARES com penetração visível (> 2% do raio) — o que o artista vê.");
+    eprintln!("  load: {}\n", carga());
+}

@@ -14,6 +14,8 @@
 //! [`dispatch`]: PhysicsBridge::dispatch
 
 pub mod anchors;
+/// Como uma ponte NASCE e RENASCE — ver o cabecalho dele.
+mod birth;
 pub mod bodies;
 pub mod contacts;
 /// ⭐⭐⭐ **A PORTA ÚNICA dos controladores** — os dois laços que andam o relógio chamam-na, e um
@@ -404,6 +406,10 @@ pub struct PhysicsBridge {
     /// `rebuild_from_rest`, e não o dispatch. *É a família que o smoke do #14 expôs por report:
     /// três mapas de controlador foram esquecidos ali, um de cada vez.*
     ray_hits: BTreeMap<Entity, RayHit>,
+    /// ⭐ **A LINHA que cada raio olhou, em mundo** (suplente #21, W5) — o que o canvas desenha,
+    /// publicado por quem LANÇOU o raio e nunca re-derivado do lado do desenho (`bridge::ray_sensors`
+    /// tem o porquê, e é o mesmo do `player_probes` uma dúzia de campos acima).
+    ray_marks: Vec<player_view::ProbeMark>,
     /// Os raios que PASSARAM A ver alguém neste dispatch — `(quem olha, quem foi visto)`.
     ray_enters: Vec<(Entity, Entity)>,
     /// E os que DEIXARAM de ver — o espelho do campo acima, enchido pelo MESMO diff.
@@ -580,108 +586,4 @@ pub struct PhysicsBridge {
     /// `contact_events`, e pela mesma razão: um evento é uma borda, e um
     /// dispatch pode dever vários tiques.
     player_events: Vec<(Entity, ph2d_platformer::PlayerEvent)>,
-}
-
-impl Default for PhysicsBridge {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl PhysicsBridge {
-    pub fn new() -> Self {
-        Self {
-            world: PhysicsWorld::new(),
-            player_probes: Vec::new(),
-            player_views: BTreeMap::new(),
-            player_events: Vec::new(),
-            player_probe_anchors: Vec::new(),
-            bodies: BTreeMap::new(),
-            last_stepped: 0,
-            query: None,
-            joints: BTreeMap::new(),
-            ik: None,
-            fk: None,
-            joint_query: None,
-            part_query: None,
-            surface_query: None,
-            no_cling_query: None,
-            surfaces: surfaces::Surfaces::default(),
-            parts: std::collections::BTreeMap::new(),
-            part_seen: Vec::new(),
-            wheel_query: None,
-            seen: Vec::new(),
-            names: BTreeMap::new(),
-            joints_seen: Vec::new(),
-            joints_to_spawn: Vec::new(),
-            joints_to_remove: Vec::new(),
-            joints_to_retune: Vec::new(),
-            joints_to_seed: Vec::new(),
-            wheels_to_seed: Vec::new(),
-            pulleys_to_install: Vec::new(),
-            pulley_wheels_to_install: Vec::new(),
-            rope_wheels: Vec::new(),
-            wheel_entities: Vec::new(),
-            wheel_wraps: Vec::new(),
-            wheel_spin: Vec::new(),
-            wheel_spin_by_entity: std::collections::BTreeMap::new(),
-            route_scratch: Vec::new(),
-            pulley_records: Vec::new(),
-            joints_to_sync: Vec::new(),
-            kin_start: Vec::new(),
-            chain: Vec::new(),
-            readback_order: Vec::new(),
-            to_spawn: Vec::new(),
-            to_remove: Vec::new(),
-            to_settle: Vec::new(),
-            settings: PhysicsSettings::default(),
-            ring: PhysicsCheckpointRing::new(),
-            steps_taken: 0,
-            triggers: BTreeMap::new(),
-            ray_hits: BTreeMap::new(),
-            ray_enters: Vec::new(),
-            ray_exits: Vec::new(),
-            trigger_since: BTreeMap::new(),
-            trigger_events: Vec::new(),
-            trigger_exits: Vec::new(),
-            triggers_continuous: true,
-            contacts: Vec::new(),
-            contact_since: BTreeMap::new(),
-            contact_events: Vec::new(),
-            joint_breaks: Vec::new(),
-            joint_peaks: BTreeMap::new(),
-            pulley_peaks: BTreeMap::new(),
-            flashes: Vec::new(),
-            contacts_continuous: true,
-            player_input: BTreeMap::new(),
-            player_launch: BTreeMap::new(),
-            state_ring: BTreeMap::new(),
-            player_state: BTreeMap::new(),
-            topdown_state: BTreeMap::new(),
-            projectile_state: BTreeMap::new(),
-            projectile_done: Vec::new(),
-            player_drop: BTreeMap::new(),
-        }
-    }
-
-    /// Throw away the derived world. Call on project load / undo restore —
-    /// entity bits are recycled there, so the handle map dangles. The world
-    /// is rebuilt from components on the next [`dispatch`](Self::dispatch)
-    /// (runtime-truth: the components are the truth, the world is derived).
-    pub fn rebuild(&mut self) {
-        self.world = PhysicsWorld::new();
-        // A fresh world starts from the ENGINE defaults, not this document's
-        // settings — re-push them or a project load quietly reverts every knob.
-        self.settings.apply_to(&mut self.world);
-        self.bodies.clear();
-        self.joints.clear();
-        self.last_stepped = 0;
-        self.query = None; // re-bind to the (possibly fresh) world
-        self.joint_query = None;
-        self.wheel_query = None;
-        self.ring.clear(); // cached states belong to the document being left
-        // Entity bits are recycled here, so a held input would start driving
-        // SOMEONE ELSE — the same trap that made joint anchors travel by NAME.
-        self.clear_player_input();
-    }
 }

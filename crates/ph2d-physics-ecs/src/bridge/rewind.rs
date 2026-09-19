@@ -192,6 +192,11 @@ impl PhysicsBridge {
         // com o raio a «já ver» o que via no fim da primeira, logo a entrada **não** volta a soar —
         // uma porta que abriu ao ver o herói fica calada para sempre depois do primeiro Reset.
         self.ray_hits.clear();
+        // ⭐ **E a LINHA DESENHADA junto** (W5): ela descreve o último tique da corrida que acabou de
+        // deixar de existir, e o replay abaixo **não casta** — sem esta linha o canvas ficaria a
+        // desenhar os raios onde os corpos ESTAVAM, que é a única coisa pior do que não desenhar
+        // nada. O quadro seguinte re-deriva (a corrida pelo laço da frente, a pausa pelo `settle`).
+        self.ray_marks.clear();
         // ⚠️ **As POLIAS saem do mundo velho ANTES de ele morrer** (W-Weston), e isso
         // é uma correção de bug, não arrumação. A tabela de polias vive DENTRO do
         // `PhysicsWorld`, então `PhysicsWorld::new()` a apagava — e o laço de replay

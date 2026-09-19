@@ -105,9 +105,36 @@ fazer o que o artista espera, *da mais específica para a mais geral*, com dois 
 | ✅ **W1** | o componente + a lei (uma fase que lança um raio por sensor e diz o que ele viu) | gates de unidade sobre ordem · métrica · direcção |
 | ✅ **W2** | os sinais de entrar e sair, com a cerca de tag | o diff de um tique, e o CONTROLO (sem tag, cala-se) |
 | ✅ **W3** | rebobinar RENASCE — o mapa do bridge entra no `rebuild_from_rest` | ⚠️ a família que o smoke do #14 expôs por report |
-| ⏳ **W4** | a secção do Inspector **+ o registo + o degrau de schema + o catálogo** (§3.1) | gate de costura (clique REAL) |
-| **W5** | o desenho no canvas | o gate que mede a LINHA, não a contagem |
-| **W6** | a cena `PH2D_RAY_SMOKE=1` + o roteiro | ⚠️ e o censo de teclas de 19/09 já o vigia |
+| ✅ **W4** | a secção do Inspector **+ o registo + o degrau de schema + o catálogo** (§3.1) | gate de costura (clique REAL) |
+| ✅ **W5** | o desenho no canvas | o gate que mede a LINHA, não a contagem |
+| ⏳ **W6** | a cena `PH2D_RAY_SMOKE=1` + o roteiro | ⚠️ e o censo de teclas de 19/09 já o vigia |
+
+### §4.1 — ⭐⭐⭐ O que a W5 MEDIU antes de escrever um pintor (§5.0)
+
+A pergunta era *«como se desenha um raio?»*, e a resposta **já existia**: o
+[`ProbeShape::Ray`](../../crates/ph2d-physics-ecs/src/bridge/player_view.rs) tem os cinco números
+certos (origem · rumo · alcance · acerto · pele) e o pintor dos sensores do personagem
+(`ph2d_app_physics::overlay::probes::probe_marks`) já desenha **a linha, a ponta do alcance e o tique
+do acerto** — *exactamente* o que a §2 desta página pedia. **Faltava um [`ProbeKind`].**
+
+⇒ a wave é **publicar, não pintar**, e o que ela de facto acrescentou foi:
+
+| o quê | porquê |
+|---|---|
+| `ProbeKind::Sensor` | ⛔ um segundo pintor seria a segunda resposta a *como se desenha um raio* |
+| `ray_marks`, publicado **dentro do laço que lança** | derivá-lo do lado do desenho seria a segunda resposta a *onde este raio nasce* |
+| a direcção **normalizada** na marca | ⚠️ **correcção medida:** `dir = (1,1)` com `reach = 3` casta 3 m e desenhava **4,243** |
+| `preview_ray_marks` no `hold` | o toggle *Physics* nasce desmarcado ⇒ sem isto o componente é **invisível** no caminho de omissão |
+| `discard_ray_history` no `hold` | ⛔ **correcção da W2**: as arestas eram limpas no topo do `dispatch`, e o `hold` é chamado **em vez** dele ⇒ a entrada ficava de pé e o sinal soava **em todo quadro** |
+| `ray_marks.clear()` no `rebuild_from_rest` | o laço de replay não casta ⇒ o canvas desenharia os raios onde os corpos **estavam** |
+
+⚠️ **As duas listas ficam SEPARADAS na ponte e compõem-se na SHELL** — quem enche uma é o
+`player_marks` e a outra o `ray_sensors`, logo fundi-las poria dois escritores numa lista só.
+
+⚠️ **E o `bridge.rs` foi CORTADO por responsabilidade** (`692 → 590`): o `new`/`rebuild` mudaram-se
+para o irmão `bridge/birth.rs`. Ele estava a **8 linhas** do tecto de 700, e um tecto por-ficheiro é
+a única grandeza deste repo que **soma entre linhas sem ninguém a contar** — deixá-lo assim era
+entregar a catraca vermelha ao integrador.
 
 ## §5 — ⛔ Recusas e riscos NOMEADOS antes da primeira linha
 

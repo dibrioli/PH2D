@@ -48,6 +48,14 @@ fn the_marks_come_from_the_bridge() {
         "`probes` tem de sair de `physics.player_probe_marks()` — qualquer outra fonte é uma \
          SEGUNDA resposta a *onde este sensor olha*:\n{body}"
     );
+    // ⭐ **E os raios AUTORADOS pela MESMA porta** (suplente #21, W5). Eles vivem noutra lista da
+    // ponte — dois escritores, duas listas — e são COMPOSTOS aqui; entregar só a do player compila,
+    // apaga do canvas todo `RaySensor` da cena, e deixa os gates de unidade dos dois lados VERDES.
+    assert!(
+        body.contains("ray_marks"),
+        "`probes` tem de compor `physics.ray_marks()` — sem isso o desenho do `RaySensor` some e \
+         nada o diz:\n{body}"
+    );
 }
 
 /// **E ela é ENTREGUE ao `draw`** — sem isto, o passe de sensores recebe uma

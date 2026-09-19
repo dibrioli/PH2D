@@ -172,5 +172,18 @@ impl PhysicsBridge {
         // a geometria segue o corpo e todo estado sai `Idle`, porque a lei não
         // correu. O `settle` acima já pôs o corpo rapier onde o artista o largou.
         self.preview_player_probes(sim);
+        // ⭐⭐⭐ **E o RAIO AUTORADO (suplente #21) é as DUAS frases de uma vez.**
+        //
+        // ⛔ **A história MORRE** — a terceira metade da frase que as duas linhas acima escrevem
+        // para o contacto e para o gatilho, e é uma **correcção**: as arestas do raio são limpas no
+        // topo do `dispatch`, e este caminho é chamado *em vez* dele, logo desarmar o Physics no
+        // quadro em que um raio acabou de ver alguém deixava a entrada de pé e o dreno do shell
+        // re-emitia o sinal **em todo quadro, para sempre**.
+        self.discard_ray_history();
+        // ⭐ **E a GEOMETRIA re-deriva**, pela razão que o parágrafo acima acabou de dar: o alcance
+        // é uma propriedade do corpo e o gesto de o afinar é encostá-lo na parede **sem relógio**.
+        // Sem esta linha um `RaySensor` seria invisível no caminho de OMISSÃO do app — o toggle
+        // Physics nasce desmarcado.
+        self.preview_ray_marks(sim);
     }
 }

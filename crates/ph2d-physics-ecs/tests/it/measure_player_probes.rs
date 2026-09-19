@@ -112,6 +112,13 @@ fn measure_how_often_each_sensor_is_actually_cast() {
                 ProbeKind::Side => 3,
                 ProbeKind::Headroom => 4,
                 ProbeKind::Ledge => 5,
+                // ⚠️ **Um raio AUTORADO (suplente #21) não vive nesta lista** — ele tem a dele
+                // (`ray_marks`), e as duas têm escritores diferentes. Um aqui seria a prova de que
+                // alguém as fundiu, e o `unreachable!` é o que torna essa separação uma ASSERÇÃO em
+                // vez de uma suposição.
+                ProbeKind::Sensor => {
+                    unreachable!("o censo do PLAYER nao pode conter um raio autorado")
+                }
             };
             let s = match m.state {
                 ProbeState::Idle => 0,

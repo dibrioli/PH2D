@@ -169,6 +169,7 @@ mod pulley_mount;
 mod pulley_radius_authoring;
 mod pulley_route_floor;
 mod pulley_wheel_snap;
+mod ray_gizmo;
 mod ray_sensor;
 mod readback_order;
 mod resting_pose;

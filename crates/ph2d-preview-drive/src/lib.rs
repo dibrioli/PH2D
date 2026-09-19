@@ -517,12 +517,13 @@ impl PreviewDrive {
 
     /// Nada sob condução? Então a captura não paga nada — nem uma varredura.
     ///
-    /// ⚠️ `cfg(any(test, feature = "test-support"))` — a feature porque os gates que a lêem vivem
-    /// na SHELL (um `cfg(test)` é falso numa dependência), e gateada porque no produto quem responde
-    /// a esta pergunta é a própria
-    /// [`Self::substitute_authored`], que sai cedo. Deixá-la `pub(crate)` sem chamador daria um
-    /// aviso do clippy — e um método que só os gates usam é exactamente o que o aviso nomeia.
-    #[cfg(any(test, feature = "test-support"))]
+    /// ⚠️⚠️ **Ela já viveu atrás de `cfg(any(test, feature = "test-support"))`, e a razão escrita
+    /// então — *«um método que só os gates usam é o que o aviso do clippy nomeia»* — valia para um
+    /// `pub(crate)` e NÃO vale para um `pub` de biblioteca**, que é superfície pública e nunca conta
+    /// como morto. ⛔ E a partir do momento em que a irmã [`Self::len`] passou a ser pública sem
+    /// condição, a cerca inverteu-se: o `len_without_is_empty` reprova uma build de PRODUTO por ela
+    /// **não** existir lá. *Uma isenção escrita contra um aviso passa a produzir outro no dia em que
+    /// o vizinho muda de visibilidade* — e só o `-D warnings` do portão de fecho o vê.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.memo.is_empty()

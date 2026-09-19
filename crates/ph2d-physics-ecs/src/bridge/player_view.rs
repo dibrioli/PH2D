@@ -50,6 +50,23 @@
 //! que ele não é, e o artista afinaria o `crouch_height` contra um desenho que
 //! mente sobre o que o produto mede — daí [`ProbeShape::Sweep`] existir ao lado
 //! de [`ProbeShape::Ray`].
+//!
+//! # ⭐⭐⭐ E este vocabulário é da PONTE, não do player (suplente #21, W5)
+//!
+//! O ficheiro chama-se `player_view` porque o player foi o primeiro a precisar dele, e a W5 do
+//! `RaySensor` mediu o que faltava para desenhar um raio **autorado**: o [`ProbeShape::Ray`] tem os
+//! cinco números certos e o pintor (`ph2d_app_physics::overlay::probes::probe_marks`) já desenha a
+//! linha, a ponta e o tique do acerto — *exactamente* «uma linha no canvas com o ponto de impacto».
+//! **Só faltava um [`ProbeKind`].**
+//!
+//! ⛔ **Escrever um segundo pintor seria a segunda resposta a *como se desenha um raio*** — a lei
+//! que o `scaled_shape` e a `zone_force_world_at` já impuseram ao contorno e à seta, e que este
+//! próprio módulo escreve três parágrafos acima. ⇒ [`ProbeKind::Sensor`], e nem uma linha no
+//! pintor.
+//!
+//! ⚠️ **As duas listas ficam SEPARADAS**, e isso não é arrumação: quem enche a do player é o
+//! `player_marks` e quem enche a do raio é o `ray_sensors`, logo fundi-las poria **dois
+//! escritores** numa lista só. Quem as compõe para desenhar é a SHELL, que é o que a shell é.
 
 use ph2d_ecs::Entity;
 use ph2d_platformer::MAX_CORNER_SAMPLES;
@@ -69,6 +86,15 @@ pub enum ProbeKind {
     Headroom,
     /// A beirada: um raio para baixo, `grab` acima da cabeça e à frente dela.
     Ledge,
+    /// ⭐ **Um [`RaySensor`](crate::RaySensor) AUTORADO** (suplente #21) — o primeiro membro que o
+    /// artista põe com a mão, e não uma parte da anatomia de um personagem.
+    ///
+    /// ⚠️ **Ele nunca fica [`ProbeState::Idle`] com o solver a andar:** ao contrário dos cinco
+    /// irmãos, que só são lançados nos tiques em que a lei pode agir, este é lançado **por tique,
+    /// incondicionalmente**. O `Idle` dele quer dizer outra coisa, e só uma —
+    /// [`PhysicsBridge::preview_ray_marks`](crate::PhysicsBridge::preview_ray_marks): *o solver
+    /// está desarmado, logo eu sei para onde olho e não sei o que vejo.*
+    Sensor,
 }
 
 /// **O que o sensor respondeu** — e *"não foi perguntado"* é uma resposta.

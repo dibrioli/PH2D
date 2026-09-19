@@ -89,7 +89,11 @@ impl crate::App {
         // W-Probes: o que os sensores do player olharam no ULTIMO tique, do
         // UNICO dono do fato (a ponte). Ate isto, nada na tela dizia onde a
         // perna, o flanco, a quina ou o teto do agachar procuram.
-        let probes = physics.player_probe_marks().to_vec();
+        // ⭐ E os RAIOS AUTORADOS (suplente #21, W5) na MESMA lista, porque o pintor é UM só: um
+        // `ProbeShape::Ray` já desenha a linha, a ponta do alcance e o tique do acerto, e um segundo
+        // pintor seria a segunda resposta a *como se desenha um raio*. As duas listas ficam
+        // separadas na PONTE (dois escritores) e juntam-se AQUI, que é o que a shell é.
+        let probes = [physics.player_probe_marks(), physics.ray_marks()].concat();
         ph2d_app_physics::overlay::outline::draw(
             self.show_colliders,
             velocity_at_rest,

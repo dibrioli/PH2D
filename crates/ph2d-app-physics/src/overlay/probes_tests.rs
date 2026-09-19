@@ -290,6 +290,42 @@ fn the_crouch_sweep_is_the_body_drawn_where_it_wants_to_stand() {
     );
 }
 
+/// ⭐⭐⭐ **Um raio AUTORADO chega a PIXEL, e mede o ALCANCE INTEIRO** (suplente #21, W5).
+///
+/// ⚠️ **Este gate existe porque a publicação e o desenho são duas perguntas.** A ponte tem os gates
+/// dela (`ph2d-physics-ecs`, `tests/it/ray_gizmo.rs`) e afirmam que a MARCA descreve o raio lançado;
+/// o que só aqui é observável é que ela **vira uma linha** — um `ProbeKind` que o pintor não
+/// soubesse desenhar deixaria os dois lados verdes e o canvas vazio.
+///
+/// ⛔ **E ela nasce na ORIGEM, sem pele.** O sensor do personagem desconta o `skin` porque o cast
+/// dele parte do CENTRO do corpo (o `exclude_body` precisa disso) e 20 dos 35 px caíam sob o
+/// contorno; aqui a origem é **autorada** — encolher o desenho esconderia o número que o artista
+/// está a mexer, e o gate mede o comprimento inteiro.
+#[test]
+fn um_raio_autorado_desenha_o_alcance_inteiro() {
+    let sim = no_world();
+    let reach = 2.0_f32;
+    let m = ProbeMark::ray(ProbeKind::Sensor, [0.0, 0.0], [1.0, 0.0], reach, None, 0.0);
+    let drawn = probe_marks(true, &[m], &sim, &camera(), window());
+    assert_eq!(drawn.len(), 1, "um sensor de raio vira UMA linha");
+    let p = points(&drawn[0].0);
+
+    let cam = camera();
+    let want0 = cam.world_to_screen([0.0, 0.0], window());
+    assert!(
+        (p[0].0 - f64::from(want0.0)).abs() < 0.5,
+        "a linha nasce na origem AUTORADA: {:?} != {want0:?}",
+        p[0]
+    );
+    // A camera do harness e' 100 px/m — o mesmo numero que os irmaos deste ficheiro usam.
+    let drawn_px = (p[1].0 - p[0].0).abs();
+    let want_px = f64::from(reach) * 100.0;
+    assert!(
+        (drawn_px - want_px).abs() < 0.5,
+        "o desenho mede o alcance INTEIRO: {drawn_px:.1} != {want_px:.1} px"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // SONDAS (`--ignored`) — o que o artista de facto VE, em px de tela.
 // ---------------------------------------------------------------------------

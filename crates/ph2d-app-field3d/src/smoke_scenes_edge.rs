@@ -288,25 +288,37 @@ pub fn cena_35() -> Result<FieldDoc, ph2d_field::FieldError> {
         "[field-smoke] cena 35 — O ESTILO: os botoes para MENTIR DE PROPOSITO por cima da fisica."
     );
     println!(
-        "[field-smoke]            (1) MODEL · no painel do topo, Shading · Render — a seccao STYLE \
-         aparece no FIM do painel da direita. No Matcap ela nao existe, e isso e' de proposito."
+        "[field-smoke]            (1) MODEL · no canto superior direito carregue no separador \
+         Model · no painel do topo, Shading · Render — a seccao STYLE aparece no FIM do painel da \
+         direita. No Matcap ela nao existe, e isso e' de proposito."
     );
     println!(
         "[field-smoke]            (2) suba Rim Strength ate' ~1,5: a peca ganha um FIO de luz na \
-         beirada e DESCOLA do fundo. Rim Width aperta ou alarga esse fio."
+         beirada e DESCOLA do fundo. Rim Falloff aperta ou alarga esse fio."
     );
     println!(
         "[field-smoke]            (3) Cavity Tint para um AZUL escuro: so' o fundo das crateras \
-         muda. Edge Tint para um LARANJA: so' as quinas mudam. Curvature Sharpness decide quanta \
-         curvatura ja' conta como tinta cheia."
+         muda. Edge Tint para um LARANJA: so' as quinas mudam."
+    );
+    println!(
+        "[field-smoke]            (3b) a BORDA DURA e' o Curvature Softness: suba-o e a passagem \
+         entre a tinta e a peca alarga; desca-o e ela volta a ser um corte seco. Edge Sharpness e \
+         Cavity Sharpness decidem, cada um por sua conta, quanta curvatura ja' conta como tinta \
+         cheia numa quina e no fundo de uma cratera."
     );
     println!(
         "[field-smoke]            (4) Shadow Tint azul + Highlight Tint quente: a imagem inteira \
          ganha a grade de cor de um filme. Zone Pivot escolhe onde e' a fronteira."
     );
     println!(
-        "[field-smoke]            (5) como saber que falhou: se mexer num destes e a peca NAO mudar \
-         nada, o botao nao chegou. E se a seccao STYLE nao aparecer no Render, PARE."
+        "[field-smoke]            (5) uma fileira APAGADA nao e' um defeito: ela diz porque e' que \
+         nao faz nada agora (por exemplo Zone Pivot, enquanto as duas tintas de zona forem a mesma \
+         cor). Faca o que a frase manda e ela acende."
+    );
+    println!(
+        "[field-smoke]            (6) como saber que falhou: se mexer num controlo ACESO e a peca \
+         NAO mudar nada, o botao nao chegou. Se a seccao STYLE nao aparecer no Render, PARE. E se \
+         mexer numa cor e OUTRA cor mudar junto, PARE."
     );
     // ⚠️ **A arrumação dos painéis vive FORA do repositório** (`~/.ph2d/layout.txt`) — uma janela
     // flutuante deixada aberta noutra sessão aparece por cima da peça, e o dono leria isso como

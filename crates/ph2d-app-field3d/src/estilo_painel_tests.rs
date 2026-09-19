@@ -395,3 +395,95 @@ fn uma_fileira_inerte_diz_porque_esta_apagada() {
         }
     }
 }
+
+/// ⭐⭐⭐ **O ROTEIRO DA CENA NOMEIA CONTROLOS QUE EXISTEM** — a lei que esta jornada pagou.
+///
+/// # ⛔⛔⛔ Porque ele nasceu: a FOTO, e não a suíte
+///
+/// A wave de 2026-09-19 renomeou `Rim Width` para **`Rim Falloff`** (o nome estava ao contrário:
+/// subir «Width» ESTREITAVA) e partiu `Curvature Sharpness` em **`Edge Sharpness`** e
+/// **`Cavity Sharpness`**. O roteiro da `=35` continuou a mandar o dono carregar nos **três nomes
+/// antigos**, e a suíte inteira fechou verde: *um `println!` não é compilado contra nada*.
+///
+/// ⚠️ **Quem o apanhou foi a fotografia da cena** (`fotografa_cena.sh`), que imprime o roteiro ao
+/// lado da imagem — a mesma régua que o `#16` e o `#18` do TOP-20 já tinham pago. ⇒ *um passo que
+/// nomeia um controlo AFIRMA que ele está na tela, e o dono aprova o smoke com o passo impossível
+/// dentro.*
+///
+/// # ⭐⭐ A régua é DERIVADA, e a lista de excepções é NOMEADA
+///
+/// Os rótulos legítimos saem da **mesma tabela que pinta as fileiras** ([`LINHAS`]) — nunca de uma
+/// segunda lista, que divergiria no dia seguinte. O que o roteiro pode dizer além deles é uma lista
+/// **explícita** de palavras que não são controlos desta secção (o modo, o pill, o nome da secção).
+///
+/// ⚠️ **O piso de população é obrigatório:** sem ele, um extractor partido colhe zero candidatos e
+/// o gate fica verde a medir nada — a falha muda que o `CLAUDE.md` §5.0 nomeia.
+#[test]
+fn o_roteiro_da_cena_nomeia_controlos_que_existem() {
+    let fonte = include_str!("smoke_scenes_edge.rs");
+    let i = fonte
+        .find("cena 35 — O ESTILO")
+        .expect("o roteiro da =35 mudou de sítio");
+    let j = fonte[i..]
+        .find("pub fn cena_35")
+        .map_or(fonte.len(), |k| i + k);
+    // ⚠️ A janela é do `println!` do roteiro até ao corpo da cena — o doc-comment acima dela fala
+    // do mecanismo e cita nomes antigos de propósito (a história é o que ele existe para guardar).
+    let roteiro = &fonte[i..j.max(i)];
+    let roteiro = if roteiro.len() < 200 {
+        &fonte[i..]
+    } else {
+        roteiro
+    };
+
+    let vivos: std::collections::BTreeSet<String> = LINHAS
+        .iter()
+        .map(|l| ph2d_i18n::tr(l.key).to_string())
+        .collect();
+    assert!(
+        vivos.len() >= 10,
+        "a tabela encolheu: {} rótulos",
+        vivos.len()
+    );
+
+    // ⛔ **As palavras do roteiro que NÃO são controlos desta secção**, uma a uma e com o porquê.
+    const FORA: &[&str] = &[
+        "Shading", // o modo de sombreamento, não um controlo da secção
+        "Render",  // idem
+        "Matcap",  // idem
+        "Model",   // o separador do painel, no canto superior direito
+    ];
+
+    // Candidatos: corridas de `Palavra Palavra` em **Maiúscula Inicial** — a forma com que TODO
+    // rótulo desta secção é escrito, e que a ênfase em CAIXA ALTA do roteiro não tem.
+    // ⚠️ Derivado do texto, nunca uma lista escrita à mão.
+    let mut candidatos: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    let palavras: Vec<&str> = roteiro.split_whitespace().collect();
+    let maiuscula = |w: &str| {
+        let mut c = w.chars();
+        c.next().is_some_and(char::is_uppercase)
+            && c.clone().all(char::is_lowercase)
+            && w.chars().all(char::is_alphabetic)
+            && w.len() > 2
+    };
+    for par in palavras.windows(2) {
+        if maiuscula(par[0]) && maiuscula(par[1]) {
+            candidatos.insert(format!("{} {}", par[0], par[1]));
+        }
+    }
+    assert!(
+        candidatos.len() >= 6,
+        "o extractor colheu {} candidatos — ele partiu-se e o gate mediria o nada",
+        candidatos.len()
+    );
+
+    let orfaos: Vec<&String> = candidatos
+        .iter()
+        .filter(|c| !vivos.contains(*c))
+        .filter(|c| !c.split_whitespace().any(|w| FORA.contains(&w)))
+        .collect();
+    assert!(
+        orfaos.is_empty(),
+        "o roteiro manda carregar em controlos que a secção não tem: {orfaos:?}\n  vivos: {vivos:?}"
+    );
+}

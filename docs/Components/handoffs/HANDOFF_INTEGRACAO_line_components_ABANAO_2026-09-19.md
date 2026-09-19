@@ -179,3 +179,96 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_SHA
 Provas: `bash scripts/ph2d-run.sh bash docs/Components/ferramentas/mutacao_shake_2026-09-19.sh`
 → **19 de 19 sangram**.
 Portão: `bash scripts/ph2d-run.sh bash scripts/nextest-impacted.sh` → **15 377 verdes**.
+
+---
+
+## §11 — ⛔⛔⛔ O SMOKE do dono devolveu DOIS defeitos, e o segundo saiu da minha família
+
+> *«vc esqueceu de colocar física no jogador. quando eu coloquei a física travou, não consigo dar
+> play»* — 2026-09-19.
+
+### §11.1 — O herói não tinha CORPO, e a seta movia `0,0000 m`
+
+A ponte do mover ([`drive_topdown`](../../../crates/ph2d-physics-ecs/src/bridge/topdown.rs)) varre
+`self.bodies` — **quem não tem corpo nunca entra no laço**. A cena dava ao herói o `TopDownPlayer` e
+mais nada, logo o **passo (2) do roteiro era impossível**. Medido pela ponte real: `60` tiques com a
+seta segurada ⇒ `dx = 0`, `dy = 0`, de um orçamento de `6,0000 m`.
+
+⚠️⚠️ **As TRÊS cenas irmãs que carregam este componente dão-lhe as três peças** (`topdown_smoke` ·
+`trigger_smoke` · `dano_smoke`, as três com `RigidBody { Kinematic }` + `Collider { Ball }`); esta
+dava uma. *Não é uma lei que faltava — é uma linha que eu não copiei.*
+
+⛔⛔ **E nenhum dos DOZE gates da cena o via, com forma:** eles perguntam *«a entidade tem o
+COMPONENTE?»* — o `a_camera_segue_o_heroi_que_o_dono_conduz` pergunta exactamente isso — e o
+consumidor pergunta *«a entidade tem um CORPO?»*. **A lente do gate é mais larga que a do
+consumidor**, que é a família nomeada no `CLAUDE.md` §5.0. ⇒ o gate novo mede o **BARRO**:
+`o_heroi_anda_quando_o_dono_carrega_na_seta` conduz a cena montada pela ponte REAL e lê o
+`Transform`, com as duas metades (*ele anda* · *e não CAI*).
+
+### §11.2 — «travou» é a gravidade, e o número está medido
+
+Com um corpo **`Dynamic`** debaixo do mover: a pose passa a ser do SOLVER
+([`bridge::pose_owner`](../../../crates/ph2d-physics-ecs/src/bridge/pose_owner.rs)), o mover fica
+**inerte**, e a gravidade leva o objecto — medido nesta cena, **`y = −492 m` ao fim de dez
+segundos**, com a câmera a segui-lo. O pátio cobre `y ∈ [−12, 12]` ⇒ **ao fim de ~1,6 s não há um
+poste no ecrã**, e nada do que o dono carregue traz a cena de volta. *É isso que ele leu como
+«travou, não consigo dar play»* — e não um bloqueio: o app está a desenhar um fundo vazio.
+
+⚠️ O Inspector **já dizia o porquê em vermelho** (`the body must be kinematic — a dynamic body
+belongs to the solver`), e ele nunca o viu: o roteiro manda escolher a **BOMBA**.
+
+### §11.3 — ⭐⭐⭐ E a cura da 2.ª metade é de PRODUTO, na família da física
+
+O gesto que ele fez está **certo**, e o caminho de OMISSÃO da paleta entregava um componente que não
+funciona: o `RigidBody::default()` é `Dynamic`, e os dois movers **requerem** `RigidBody` no
+catálogo ⇒ escolher *Top-Down Player* na paleta anexa o corpo em cascata, dinâmico.
+
+⇒ semente [`seed_kinematic_controller_body`](../../../crates/ph2d-app-physics/src/physics_seed.rs):
+**um corpo debaixo de um controlador cinemático nasce `Kinematic`**.
+
+- ⭐ **A porta é `ph2d_physics_ecs::controlador_cinematico`** — a lista que o `pose_owner` já
+  consultava, **aberta** porque a semente faz a mesma pergunta. *Escrita duas vezes divergiria no dia
+  do quarto controlador, e o modo de falha é o caro:* a lista do seed a dizer *«este não é um deles»*
+  sobre um componente que a ponte trata como sendo.
+- ⛔ **O `PlatformPlayer` NÃO entra**, e a ausência é medida: ele funciona nos dois corpos (a perna
+  de MOLA em `Dynamic` — o valor de fábrica do `PlayerMode` — e a de POUSO em `Kinematic`), logo
+  responder «sim» por ele escolheria por um artista que tem duas leis legítimas.
+- ⚠️ **TRÊS nomes na tabela porque há DUAS ordens de chegada**, e a segunda não é opcional: a cascata
+  corre **antes** do `attach_one` do dependente (é o que deixa o seed do `PlatformPlayer` medir o
+  collider), logo no instante em que o corpo nasce a entidade ainda **não** tem o controlador — uma
+  semente só no `RigidBody` leria `false`. *As duas entradas são a MESMA função: uma lei, uma porta,
+  três nomes.*
+- ⚠️ **Conservadora e idempotente:** só morde no ponto **neutro**, logo nunca rebaixa um `Static`
+  autorado.
+
+**4 gates** em [`component_seed_seam_tests`](../../../shells/desktop/src/component_seed_seam_tests.rs),
+e **dois deles são CONTROLO** — um corpo num objecto comum continua `Dynamic`, e um autorado fica
+intocado. *Sem eles a cura leria como «todo corpo nasce cinemático», que é outro produto.*
+
+### §11.4 — ⚠️ PARA QUEM FUNDE: esta cura sai da `line/components`
+
+| ficheiro | crate | o que muda |
+|---|---|---|
+| `bridge/pose_owner.rs` · `lib.rs` | **`ph2d-physics-ecs`** (foundational) | a lista vira **porta pública** `controlador_cinematico`; o `pose_owner` passa a lê-la. **Zero** mudança de comportamento. |
+| `physics_seed.rs` | **`ph2d-app-physics`** (outra família) | função nova + **três** entradas apendadas na `COMPONENT_SEEDS`. |
+| `component_seed_seam_tests.rs` | shell | `+4` gates (`+120` linhas — a catraca tem `594` de folga). |
+
+⛔ **Zero contadores partilhados, zero contrato, zero ADR, zero porta nova no `AppHost`.**
+⚠️ **Mudança de comportamento observável e declarada:** anexar *Physics Body* / *Top-Down Player* /
+*Projectile Motion* passa a entregar um corpo **cinemático**. O censo
+`attaching_is_inert_for_everything_that_does_not_seed` passa a isentar mais três nomes — é o que a
+tabela `SEEDS` significa, e o piso de população (`>= 20`) mantém-no honesto.
+
+### §11.5 — ⚠️ E o arnês de mutação do #25 apontava para um ficheiro que se mudou
+
+O `VISTA=` do [`mutacao_shake_2026-09-19.sh`](../ferramentas/mutacao_shake_2026-09-19.sh) apontava
+para `shells/desktop/src/render_loop/camera_2d.rs`, que **deixou de existir na mesma jornada** (a §7
+mandou a fase da câmera para a crate da família). ⭐ Aqui a falha é **barulhenta** — o `muta` aborta
+na âncora e a prova conta como FALHA —, que é a sorte da história: *a forma cara é a que fica verde.*
+
+**Prova de mutação: 9 de 9 sangram**
+([`mutacao_corpo_do_jogador_2026-09-19.sh`](../ferramentas/mutacao_corpo_do_jogador_2026-09-19.sh)).
+⚠️ A 9.ª **sobreviveu** primeiro: o filtro `pose_owner` corre `5` testes e **nenhum continha o
+projéctil** — reapontada para o gate da ponte dele, que é o que prova que a porta tem dois leitores.
+
+Portão: **15 383 testes verdes**, clippy `-D warnings` a zero nas quatro crates, `fmt` limpo.

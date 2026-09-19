@@ -16,6 +16,7 @@ mod measure_restore;
 mod measure_spawn_and_death;
 mod measure_tag_scan;
 mod mede_o_que_a_composicao_ja_da_ao_cerebro;
+mod mede_o_que_a_composicao_ja_da_ao_golpe;
 mod named_anchor_caps;
 mod nesting_sorts_as_a_block;
 mod no_untracked_writes_in_the_sim_crates;

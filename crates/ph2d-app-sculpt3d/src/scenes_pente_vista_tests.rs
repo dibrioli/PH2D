@@ -150,14 +150,14 @@ fn a_grade_tem_os_quatro_bracos() {
 
     let (sem, fil_sem) = medir(0.0);
     let (com, fil_com) = medir(1.0);
-    // ⚠️⚠️ **As DUAS barras mudaram quando a regra de ESCONDER mudou**, e a
-    // razão é que esta régua mede a **VISTA**: com o emparelhamento
-    // (`wire::diagonais`) a mesma malha lê `96,1 %` onde lia `93,0`, e o
-    // controlo lê `66,9` onde lia `48,3`. *A malha não mexeu um bit — mudou o
-    // que a vista consegue mostrar dela.*
+    // ⚠️⚠️ **Estas barras são da REGRA DE ESCONDER que shipa**, e mudam com ela:
+    // com o emparelhamento solto (medido e REVERTIDO — ver
+    // `ph2d_mesh_render::wire`) a mesma malha lê `96,1 %` e o controlo `66,9`.
+    // *A malha não mexe um bit entre as duas; muda o que a vista mostra dela —
+    // e o dono não viu diferença nenhuma.*
     assert!(
-        sem < 80.0,
-        "o CONTROLO devia ser uma sopa e le {sem:.2} % de cruzamentos regulares (medido 66,9)"
+        sem < 60.0,
+        "o CONTROLO devia ser uma sopa e le {sem:.2} % de cruzamentos regulares (medido 48,3)"
     );
     // ⭐⭐⭐⭐ **A FILEIRA — a coluna que o dono julga, e que até aqui não tinha
     // gate NENHUM.** Ela é o comprimento mediano das linhas contínuas, em
@@ -187,8 +187,8 @@ fn a_grade_tem_os_quatro_bracos() {
     // trocas pendentes contra `19` numa malha por pentear ⇒ *a grandeza nem
     // sequer discrimina*.
     assert!(
-        com > 94.0,
-        "a grade devia ter os quatro braços e le {com:.2} % (medido 96,1; sem a troca de ligação, 93,4)"
+        com > 91.0,
+        "a grade devia ter os quatro braços e le {com:.2} % (medido 93,0; sem a troca de ligação, 89,4)"
     );
 }
 
@@ -529,7 +529,7 @@ fn a_vista_da_grade_nao_pisca() {
         "a vista não reagiu à malha ({pct:.2} %) — ela está a ignorar a geometria?"
     );
     assert!(
-        pct < 1.2,
-        "a vista pisca {pct:.2} % ao sacudir 1 % (medido 1,09; o guloso sem cerca 1,30)"
+        pct < 1.0,
+        "a vista pisca {pct:.2} % ao sacudir 1 % (medido 0,86; a regra solta 1,09 e a gulosa 1,30)"
     );
 }

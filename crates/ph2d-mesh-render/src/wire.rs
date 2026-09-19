@@ -140,38 +140,42 @@ pub fn bracos_na_vista_da_grade(mesh: &Mesh) -> Vec<u32> {
 /// os dois triângulos, portanto é um **emparelhamento**, com a restrição de que
 /// cada triângulo entra num par só.
 ///
-/// # ⛔⛔ A regra anterior era uma preferência MÚTUA, e ela perdia metade
+/// # A regra: a aresta é a mais longa dos DOIS triângulos
 ///
-/// Ela escondia uma aresta *iff ela fosse a mais longa dos **DOIS** triângulos*.
-/// Isso é um casamento por acordo mútuo, e numa célula **enviesada** ele não
-/// acontece: ali a malha partiu o quadrado pela diagonal **CURTA** — que é a
-/// escolha CERTA, porque partir pela longa daria triângulos de `25°`–`25°`–`130°`
-/// — e a diagonal curta não é a mais longa de ninguém, logo ninguém a escondia.
+/// É um casamento por **acordo mútuo** — e com ele **o emparelhamento nunca
+/// morde**, porque um triângulo tem no máximo UMA aresta que é a sua mais
+/// longa. Ele fica de pé para a cerca ser afirmável (ver
+/// `cada_triangulo_perde_no_maximo_uma_aresta`), e porque uma regra futura mais
+/// solta cai aqui sem reescrever nada.
 ///
-/// **Medido** (fracção de cruzamentos com os quatro braços, quatro rumos):
-/// dos `7 %` que a vista não fechava, **`182` tinham a malha com valência `6`,
-/// ou seja PERFEITA** — quem falhava era a vista. E a margem não era fina: a
-/// candidata perdia por `15 %` na mediana, com só `6,5 %` a menos de `3 %` de
-/// fechar. *A malha estava certa; a régua de esconder é que não a sabia ler.*
+/// # ⛔⛔⛔ A REGRA AMBICIOSA foi construída, MEDIDA e REVERTIDA (21/09)
 ///
-/// # As três regras, medidas
+/// Numa célula **enviesada** o acordo mútuo não acontece: ali a malha partiu o
+/// quadrado pela diagonal **CURTA** — que é a escolha **CERTA**, porque partir
+/// pela longa daria triângulos de `25°`–`25°`–`130°` — e a diagonal curta não é
+/// a mais longa de ninguém, logo ninguém a esconde. Medido, dos `7 %` de
+/// cruzamentos que a vista não fechava, **`182` tinham a malha com valência
+/// `6`, ou seja PERFEITA**.
+///
+/// Relaxar a cerca para *«a mais longa de pelo menos UM»* cura-os:
 ///
 /// | regra | com pente | **sem pente** (o controlo) | cintilação |
 /// |---|---|---|---|
-/// | mútua (a anterior) | `93,01 %` | **`48,29 %`** | `0,86 %` |
-/// | **esta** (par, com plausibilidade) | **`96,10 %`** | `66,86 %` | `1,09 %` |
-/// | guloso puro (sem a cerca) | `96,18 %` | `72,00 %` | `1,30 %` |
+/// | **mútua** (esta) | **`93,4 %`** | **`48,3 %`** | **`0,86 %`** |
+/// | pelo menos um | `96,10 %` | `66,9 %` | `1,09 %` |
+/// | guloso sem cerca | `96,18 %` | `72,0 %` | `1,30 %` |
 ///
-/// ⭐ **A CERCA — *«só é candidata quem é a mais longa de PELO MENOS UM dos dois
-/// triângulos»* — é o que separa esta do guloso puro:** ela compra a mesma
-/// regularidade (`96,10` contra `96,18`) e mantém o **contraste** com a malha
-/// por pentear (`66,9` contra `72,0`) e menos cintilação.
+/// ⛔⛔ **E o DONO não viu diferença nenhuma** (*«não melhorou em relação ao
+/// teste anterior»*), o que as duas imagens confirmam: recortadas lado a lado
+/// elas são **indistinguíveis**. ⇒ *`3` pontos percentuais espalhados por
+/// ~`4 800` células ficam abaixo do limiar do olho*, e a mudança pagava por
+/// isso `+27 %` de cintilação e **`19` pontos de contraste** com a malha por
+/// pentear.
 ///
-/// ⚠️⚠️ **E o contraste é uma coluna do produto, não uma vaidade:** a vista
-/// existe para o artista ver ONDE a grade dele está. Uma regra que emparelha
-/// tudo mostra quadrados também onde não há grade nenhuma, e a diferença que ele
-/// procura fica mais fraca. *A que shipa é a mais ambiciosa que ainda deixa os
-/// dois lados distinguíveis.*
+/// ⚠️⚠️ **O contraste é coluna de produto:** a vista existe para o artista ver
+/// **ONDE** a grade dele está, e uma regra que emparelha tudo mostra quadrados
+/// também onde não há grade. *Uma melhoria que ele não vê não paga uma
+/// degradação que ele pode ver.*
 ///
 /// ⚠️ **A ordem é por comprimento DECRESCENTE**, e ela é load-bearing **na
 /// coluna da CINTILAÇÃO, não na da regularidade** — medido: crescente lê
@@ -223,8 +227,9 @@ fn diagonais(mesh: &Mesh) -> std::collections::BTreeSet<(u32, u32)> {
     let mut ordem: Vec<((u32, u32), usize, usize, f64)> = cand
         .into_iter()
         .filter_map(|(k, (tris, l, maiores))| {
-            // A cerca da plausibilidade, e a da silhueta.
-            (tris.len() == 2 && maiores >= 1).then(|| (k, tris[0], tris[1], l))
+            // ⛔⛔⛔ **`== 2` e não `>= 1`, e isso é uma RECUSA MEDIDA.** Ver a
+            // secção «A regra ambiciosa» no cabeçalho.
+            (tris.len() == 2 && maiores == 2).then(|| (k, tris[0], tris[1], l))
         })
         .collect();
     ordem.sort_by(|a, b| b.3.total_cmp(&a.3).then(a.0.cmp(&b.0)));

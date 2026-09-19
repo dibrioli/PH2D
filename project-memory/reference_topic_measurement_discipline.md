@@ -538,3 +538,35 @@ delas cabe de sobra**. `Inherit · Fwd · Rev · PP · PP Rev` recebia `34,4 px`
 - ⚠️ E a mesma forma apareceu **duas vezes mais no mesmo dia**, na vertical: o cartão de instância
   **media** com um `layout(...).height()` (que quebra) e **pintava** com `paint_text` (que elide) —
   *o espaço da segunda linha já estava reservado e a linha nunca era pintada*.
+
+---
+
+## ⛔⛔⛔ Um PISO sobre a SOMA não pergunta por ninguém
+
+**Medido 2026-09-19** (`line/UIUX`). A varredura de elisões deste repo afirma *«nenhum rótulo deste
+app pinta nada»* sobre **todo painel do registo**, e tinha um piso de população — `2 800` rótulos —
+para não ficar verde a medir nada. Contados os rótulos **por painel**:
+
+| painel | rótulos medidos |
+|---|---:|
+| `model3d` · `motion_graph` · `motion_params` · `sculpt3d` · `inspector` | **0** |
+| `tags` | 2 · `hierarchy` 3 · `skeleton` 7 |
+
+⇒ **oito painéis invisíveis**, com o gate verde. O piso estava na grandeza certa (população) e na
+**unidade errada** (a soma).
+
+- ⭐ **Um painel medido vazio não está aprovado: está NÃO MEDIDO** — e as duas coisas leem-se
+  exactamente igual num relatório verde.
+- ⛔⛔ **E a 1.ª cura repetiu a doença um nível abaixo:** o censo novo somava os **três viewports**,
+  logo um painel de `3` rótulos lia `9` e saltava um piso de `5` sem ter enchido nada. *Um piso
+  aplicado a uma soma de corridas é um piso dividido pelo número de corridas.* Apanhado por
+  mutação sobrevivente.
+- ⭐ **O número do piso sai do VALE entre as duas populações**, nunca do gosto: o painel mais magro
+  que a varredura de facto enche mede `7`; os que ela não enche medem `0`, `2` ou `3`.
+- ⚠️ **E quem não pode ser enchido declara-se com o MUNDO que falta** (um grafo de nós, um
+  documento de campo, um dispositivo de GPU) — com a metade justa que manda apagar a declaração no
+  dia em que ele passe a encher-se.
+
+**Irmã:** a mesma jornada mostrou que *o `desarma` de uma fixtura era uma promessa num doc-comment*
+— apagá-lo não acordava gate nenhum. A régua honesta é: **pintar VAZIO, armar, desarmar, pintar
+VAZIO — e as duas leituras do vazio têm de ser a mesma.**

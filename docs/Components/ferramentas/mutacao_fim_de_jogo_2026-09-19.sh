@@ -107,29 +107,11 @@ bloco "ponte: o pedido nasce ligado" ph2d-app-components \
   "    let mut report = ActionReport { recomecar: true, ..Default::default() };"
 
 echo
-echo "════ O LEDGER (ph2d-preview-drive) ════"
-
-# 6) A devolucao ESVAZIA e nao escreve — as luzes ficam apagadas depois do recomeco.
-bloco "ledger: esvazia sem devolver ao autorado" ph2d-host-desktop \
-  um_recomeco_devolve_ao_autorado "$LEDGER" 1 \
-  "                e.authored.write(sim, entity);" \
-  "                let _ = e;" \
-  "--bins"
-
-# 7) A devolucao ESCREVE e nao esvazia — a captura seguinte grava como documento o que acabou de
-#    ser devolvido.
-bloco "ledger: devolve sem esvaziar o memo" ph2d-host-desktop \
-  um_recomeco_devolve_ao_autorado "$LEDGER" 1 \
-  "        for ((bits, _), e) in std::mem::take(&mut self.memo) {" \
-  "        for ((bits, _), e) in self.memo.clone() {" \
-  "--bins"
-
-echo
 echo "════ A CENA (ph2d-app-components) ════"
 
 # 8) As luzes perdem a `Visibility` — o `Hide` fica INERTE e nenhuma luz se apaga.
 bloco "cena: as luzes sem Visibility" ph2d-app-components \
-  o_jogo_perde_se_e_recomeca "$CENA" 1 \
+  o_jogo_joga_se_recomeca_e_as_luzes_voltam "$CENA" 1 \
   "            Visibility::default()," \
   ""
 
@@ -145,6 +127,20 @@ bloco "cena: o heroi sem corpo" ph2d-app-components \
   "            RigidBody {
                 kind: BodyKind::Kinematic,
             }," \
+  ""
+
+# 14) As tres linhas que ACENDEM as luzes desaparecem — e' o report do dono a' letra: o recomeco
+#     corre e fica INVISIVEL.
+bloco "cena: as luzes nao voltam a acender" ph2d-app-components \
+  o_jogo_joga_se_recomeca_e_as_luzes_voltam "$CENA" 1 \
+  "                linha(RECOMECA, &format!(\"{LUZ}1\"), SignalVerb::Show, \"\")," \
+  ""
+
+# 15) E o CONTROLO de meio caminho: sem o `Hide` as luzes nunca se apagam, e o gate tem de dizer
+#     que a cena nao chegou a perder — nao que o recomeco funcionou.
+bloco "cena: as luzes nunca se apagam" ph2d-app-components \
+  o_jogo_joga_se_recomeca_e_as_luzes_voltam "$CENA" 1 \
+  "                linha(\"luz1\", &format!(\"{LUZ}1\"), SignalVerb::Hide, \"\")," \
   ""
 
 echo

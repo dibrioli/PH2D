@@ -154,14 +154,23 @@ fn servir_o_recomeco(
         return;
     }
     playhead.rewind();
-    let mut repostos = renascer_a_corrida(sim, script, particles, drive);
-    // ⭐⭐⭐ **A QUINTA METADE, e ela é SÓ do recomeço** (ver o doc da porta acima): tudo o que um
-    // VERBO escreveu volta ao autorado. Sem ela, três luzes de vida apagadas por `Hide` ficavam
-    // apagadas — *«as vidas voltaram a três e o painel ficou às escuras»*, um recomeço pela metade.
+    let repostos = renascer_a_corrida(sim, script, particles, drive);
+    // ⛔⛔⛔ **A «QUINTA METADE» FOI CONSTRUÍDA, MEDIDA E RETIRADA** (report do dono, 19/09).
     //
-    // ⛔ Ela não entra na porta porque o outro chamador dela corre em TODO quadro com o relógio
-    // parado no zero, e ali quem conduz pode ser o scrub da timeline.
-    repostos += drive.release_all_to_authored(sim);
+    // Ela devolvia ao autorado **tudo** o que estivesse a ser conduzido, para curar *«as vidas
+    // voltaram a três e as luzes ficaram às escuras»*. Duas medições derrubaram-na:
+    //
+    // 1. ⛔ **Ela não cura o caso que a motivou.** O que um verbo escreve é pré-visualização, e o
+    //    `settle` de cada quadro esquece quem não foi declarado ⇒ um `Hide` sobrevive **dois
+    //    quadros** e depois é DOCUMENTO. Um recomeço cinco segundos depois já não tem o que
+    //    devolver. *Nem ele nem o `Rewind` desfazem um facto do documento — só o `Ctrl+Z`.*
+    // 2. ⛔⛔ **E ela LUTAVA contra o artista.** As linhas `Show` que a tabela corre no MESMO sinal
+    //    já tinham escrito, e o «autorado» que o ledger guardava por baixo delas era o **apagado**
+    //    ⇒ a devolução **desfazia o `Show`**. *Uma porta que devolve «o que estava antes» não sabe
+    //    distinguir o que a corrida escreveu do que o artista acabou de mandar escrever.*
+    //
+    // ⭐ E o que ela ia comprar já estava pago: a POSE de um corpo volta sozinha, porque a ponte da
+    // física rebobina quando o tique recua (`rewind_to` → `rebuild_from_rest`).
     if falar {
         eprintln!("[recomecar] a corrida voltou ao inicio ({repostos} estado(s) reposto(s))");
     }

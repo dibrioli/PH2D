@@ -493,39 +493,26 @@ impl PreviewDrive {
         true
     }
 
-    /// ⭐⭐⭐ **TUDO O QUE A CORRIDA ESCREVEU VOLTA AO AUTORADO** — e é isto que faz um recomeço ser
-    /// um recomeço.
-    ///
-    /// # ⛔⛔ Porque ela existe (o FIM DE JOGO, 2026-09-19)
-    ///
-    /// O [`ph2d_ecs::SignalVerb::RestartRun`] rebobina o relógio e faz renascer o estado vivo — os
-    /// relógios, as contas, as sementes, os emissores. ⚠️ **Mas o que um VERBO escreveu no mundo
-    /// não é estado vivo: é pré-visualização**, e ela fica exactamente onde a corrida a deixou.
-    /// Medido no desenho: três luzes de vida apagadas por `Hide` continuam **apagadas** depois do
-    /// recomeço, e o dono vê *«as vidas voltaram a três e o painel de luzes ficou às escuras»* —
-    /// um recomeço pela metade, que é pior que nenhum.
-    ///
-    /// ⇒ a definição de recomeçar é **esta**: *tudo o que a corrida escreveu volta ao valor que o
-    /// artista autorou.* É a mesma frase do [`Self::release_to_authored`], que esta porta aplica a
-    /// toda a gente em vez de a uma condução.
-    ///
-    /// ⚠️ **Ela ESVAZIA o memo, e é obrigatório:** deixar as entradas lá faria o `settle` do fim do
-    /// quadro ver conduções que já não existem, e a captura seguinte registaria como documento um
-    /// valor que acabou de ser devolvido.
-    ///
-    /// Devolve quantas conduções foram devolvidas.
-    pub fn release_all_to_authored(&mut self, sim: &mut SimWorld) -> usize {
-        let n = self.memo.len();
-        // ⚠️ **Drenar e escrever, e não iterar a escrever**: a escrita toca no mundo e o memo é
-        // deste tipo — separar as duas metades é o que mantém o empréstimo simples e o que torna o
-        // esvaziamento uma consequência e não um passo que alguém possa esquecer.
-        for ((bits, _), e) in std::mem::take(&mut self.memo) {
-            if let Some(entity) = ph2d_ecs::Entity::try_from_bits(bits) {
-                e.authored.write(sim, entity);
-            }
-        }
-        n
-    }
+    // ⛔⛔⛔ **RECUSA MEDIDA (2026-09-19): `release_all_to_authored` foi CONSTRUÍDA E RETIRADA.**
+    //
+    // Ela devolvia ao autorado **tudo** o que estivesse no memo, para o `SignalVerb::RestartRun`
+    // curar *«as vidas voltaram a três e as luzes ficaram às escuras»*. Duas medições derrubaram-na,
+    // e as duas valem para quem a quiser reconstruir:
+    //
+    // 1. ⛔ **Ela não cura o caso que a motivou.** O [`PreviewDrive::settle`] abaixo esquece quem
+    //    não foi declarado neste quadro ⇒ uma escrita de UM TIRO (um `Hide`, um `Show`) sobrevive
+    //    **dois quadros** e depois é DOCUMENTO — que é precisamente a lei que faz uma corrida
+    //    colapsar em um passo de `Ctrl+Z`. *Um recomeço cinco segundos depois já não tem o que
+    //    devolver.*
+    // 2. ⛔⛔ **E ela LUTA contra o artista.** As linhas que a tabela corre no MESMO sinal já
+    //    escreveram, e o «autorado» que o memo guarda por baixo delas é o valor de ANTES ⇒ a
+    //    devolução desfaz o que o artista acabou de mandar fazer. *Uma porta que devolve «o que
+    //    estava antes» não sabe distinguir o que a corrida escreveu do que o artista acabou de
+    //    mandar escrever.*
+    //
+    // ⭐ O que ela ia comprar — a POSE de um corpo voltar ao princípio — já estava pago: a ponte da
+    // física rebobina quando o tique recua. E a cura do caso real é a que o modelo prescreve:
+    // **o que a corrida escreve, a corrida desfaz** (o verbo oposto, no mesmo sinal).
 
     /// **Esquece quem deixou de ser conduzido.** Uma vez por quadro, no topo do
     /// `post_frame_undo` — antes da captura, para que a fotografia deste quadro já veja o vivo de

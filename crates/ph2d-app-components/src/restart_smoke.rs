@@ -254,6 +254,25 @@ fn cena_um(world: &mut World) -> Entity {
                 linha(MORRI, "", SignalVerb::StartTimer, RELOGIO),
                 // ⭐⭐⭐ **O VERBO DESTA WAVE** — e ele não tem alvo: o sujeito é a CORRIDA.
                 linha(RECOMECA, "", SignalVerb::RestartRun, ""),
+                // ⭐⭐⭐ **E AS LUZES VOLTAM A ACENDER — pela tabela, e não pelo motor.**
+                //
+                // ⛔⛔ **É o report do dono (19/09: *«não recomeça e as luzes não voltam nem com
+                // Rewind»*), e a causa NÃO era o verbo:** ele corre (medido, duas vezes a `5,5 s`
+                // uma da outra, com o relógio a voltar a `0,0000`). O que não voltava eram as
+                // luzes — e sem elas o recomeço é **invisível**.
+                //
+                // ⚠️⚠️ **A lei que o explica está no `ph2d-preview-drive`:** o que um verbo escreve
+                // é pré-visualização, e o `settle` de cada quadro esquece quem não foi declarado ⇒
+                // **um `Hide` sobrevive dois quadros e depois é DOCUMENTO**. É a mesma lei que faz
+                // uma corrida colapsar em UM passo de `Ctrl+Z`, e é ela que torna a devolução ao
+                // autorado inútil cinco segundos depois. *Nem o recomeço nem o `Rewind` desfazem um
+                // facto do documento — só o `Ctrl+Z`.*
+                //
+                // ⇒ a cura é a que o modelo prescreve e o artista escreve: **o que a corrida
+                // escreve, a corrida desfaz**. Três linhas, o verbo oposto, o mesmo sinal.
+                linha(RECOMECA, &format!("{LUZ}1"), SignalVerb::Show, ""),
+                linha(RECOMECA, &format!("{LUZ}2"), SignalVerb::Show, ""),
+                linha(RECOMECA, &format!("{LUZ}3"), SignalVerb::Show, ""),
             ]),
         ))
         .id()
@@ -272,7 +291,7 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
          (3) o que tem de acontecer no recomeco: o heroi volta ao sitio de onde partiu, as TRES \
          luzes acendem, e o painel da direita mostra as vidas de volta a {VIDAS_INICIAIS}\n\
          (4) o heroi ja' esta' escolhido: role o painel da direita ate' `Signal Actions` — o jogo \
-         inteiro sao SEIS linhas, e a ultima diz `Restart Run`\n\
+         inteiro sao NOVE linhas, e a do meio diz `Restart Run`\n\
          (5) na mesma seccao, repare que a linha do `Restart Run` NAO pergunta a quem: o sujeito \
          dela e' a corrida, nao um objecto\n\
          (6) role ate' `Counter Watch`: e' a regra que liga o contador ao fim. A linha `Now` mostra \

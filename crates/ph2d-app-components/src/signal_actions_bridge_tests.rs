@@ -9,7 +9,7 @@ use ph2d_ecs::{
 };
 use ph2d_preview_drive::PreviewDrive;
 
-use super::{ActionReport, Som, apply, lido};
+use super::{Som, apply, lido};
 
 /// O som INJECTADO destes gates — um fecho que nunca toca nada. Ver o irmão das LEIS.
 fn mudo() -> impl FnMut(&mut SimWorld, Som, Entity) -> bool {

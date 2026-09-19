@@ -688,3 +688,33 @@ estava escrita noutro sítio do repo, por quem tinha feito a mesma pergunta ante
 
 ⛔ A cura durável é o gate com **controlo positivo** (o próprio ESPAÇO, que TEM de ser reclamado) e
 um **controlo de alcance** (uma letra sabidamente tomada), senão a varredura mede o nada.
+
+---
+
+## ⛔⛔⛔ Uma sonda que não CONSTRÓI mede o programa anterior — e ela não fica calada, ela CONFIRMA
+
+*(2026-09-19, `line/components`, o smoke do golpe — custou duas fotos e um diagnóstico falso.)*
+
+O `docs/Components/ferramentas/fotografa_cena.sh` abre o app numa tela virtual e fotografa a janela.
+Ele **recusa** quando o binário não existe — e **não constrói**. Curada a cena, as duas fotos
+seguintes mostraram o defeito **já curado**, e a segunda, com `PH2D_SIGNAL_LOG=1`, **reproduziu-o no
+log à letra**: duas linhas de contacto, os alvos a matarem-se.
+
+⚠️ **O que torna esta forma cara é a assinatura:** uma sonda partida costuma ficar em silêncio ou
+devolver lixo, e isso lê-se como *«a sonda está partida»*. Esta devolve uma imagem impecável e um log
+coerente — do programa **de ontem**. *Ela concorda com a hipótese que se está a tentar refutar*, e a
+concordância lê-se como confirmação.
+
+⇒ **três regras:**
+
+1. **Toda sonda que corre um ARTEFACTO CONSTRUÍDO declara a relação dele com o fonte.** A régua é o
+   próprio ficheiro mais novo (`find … -newer "$BIN" -print -quit`), nunca um relógio: comparar dois
+   mtimes não tem calibração para envelhecer.
+2. **A recusa é ALTA, não um aviso** — o modo de falha que ela substitui é **mudo por construção**, e
+   quem corre a sonda já está a caçar um defeito.
+3. **A mensagem NOMEIA o ficheiro** que está à frente, senão a pessoa duvida da régua em vez do
+   binário.
+
+⭐ **Controlo nos dois sentidos**, e ele é barato: com um `.rs` tocado a sonda tem de RECUSAR (ela
+nomeia-o), e a seguir a um build tem de correr até ao fim. *Sem a metade negativa, uma recusa que
+dispara sempre lê-se como a sonda a estar partida — e alguém apaga-a.*

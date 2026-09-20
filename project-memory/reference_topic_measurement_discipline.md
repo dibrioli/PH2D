@@ -913,3 +913,20 @@ porque a barra dele era a constante errada. *Uma barra medida ao olho é um gate
 de quem o escreveu.* **How to apply:** meça as quatro distâncias na FOTO (a régua do topo dá a
 escala), tome o mínimo por eixo, e some a transbordância da própria peça (uma marca transborda meia
 pegada; uma forma pendurada transborda o comprimento inteiro para um lado).
+
+## ⛔⛔⛔ Três réguas verdes sobre uma cena, e nenhuma perguntava ONDE A PEÇA ACABA (2026-09-19)
+
+A cena `=125` tinha gates a medir a CURVA (o ângulo de mundo anda junta a junta), a SIMULAÇÃO (as
+posições mexem-se, não só as peças) e a SEPARAÇÃO das três colunas. As três ficam **verdes** com
+cada osso desenhado **uma junta à frente** — um erro de `24 %` de um osso, que o dono viu na
+primeira foto. ⇒ nenhuma delas media o PONTO FINAL da peça: mediam o ângulo, o movimento e o
+enquadramento.
+
+**Why:** uma peça carimbada tem DOIS extremos e as réguas fáceis só olham para o de onde ela nasce
+(a posição do elemento, que é o que a cena autora). O segundo extremo é `P + comprimento·direcção`,
+e é ele que diz se uma cadeia **ladrilha**. É a mesma família do `edge_max` global cego ao quad de
+`0,02 × 0,30` e do `χ` cego à almofada: *contar QUANTOS, ou medir um ÂNGULO, nunca vê ONDE.*
+**How to apply:** numa cadeia (ossos, corda, tracejado, texto num caminho) a régua **anda** o
+comprimento a partir do quadro que o produto entrega e exige aterrar no elemento seguinte — com a
+**segunda metade obrigatória**: a mesma conta sobre a entrada crua tem de FALHAR, senão um nó que
+devolvesse a entrada intacta passa por vacuidade. Ver [[feedback_a_ruler_that_counts_how_many_never_sees_which]].

@@ -59,6 +59,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.hud.fit" => "Fit",
         "panel.inspector.hud.fit_keep" => "Keep",
         "panel.inspector.hud.fit_stretch" => "Stretch",
+        "panel.inspector.hud.fit_expand" => "Expand",
         "panel.inspector.hud.source" => "Source",
         "panel.inspector.hud.source_authored" => "Authored",
         "panel.inspector.hud.source_counter" => "Counter",

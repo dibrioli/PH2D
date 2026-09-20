@@ -417,7 +417,15 @@ impl crate::App {
                 UiCanvas {
                     ref_w: REF_W,
                     ref_h: REF_H,
-                    fit: Fit::Keep,
+                    // ⭐⭐⭐ **`Expand` e não `Keep`, e a diferença é a wave das âncoras:** com
+                    // `Keep` a caixa efectiva É a de referência (o oráculo, bloco L4) e um filho
+                    // preso ao canto pára na **área segura**, a uma banda da borda. Com `Expand`
+                    // ela cresce no eixo curto e ele alcança a borda REAL.
+                    //
+                    // ⚠️ A cena abre no que a wave existe para mostrar, e o **CONTROLO** é o
+                    // próprio selector: o passo (5) do roteiro manda trocar para `Keep` no
+                    // Inspector e alargar outra vez.
+                    fit: Fit::Expand,
                 },
                 Name::new("HUD"),
             ))
@@ -536,9 +544,11 @@ impl crate::App {
             "[hud-smoke] o mundo ROLA e o HUD NAO: setas movem o heroi · o relogio soma 1 ponto a \
              cada 2 s · o botao +10 soma dez · a contagem desce sozinha. O rotulo dos pontos abre \
              ESCOLHIDO, e a seccao HUD do Inspector mostra a fonte dele.\n\
-             [hud-smoke] ⭐ E AGORA ARRASTE A BORDA DA JANELA para a alargar: a contagem (em \
-             baixo a' ESQUERDA) e os pontos (em baixo a' DIREITA) seguem as bordas REAIS. Antes \
-             desta wave eles ficavam a uma banda delas, parados no meio."
+             [hud-smoke] ⭐ ARRASTE A BORDA DA JANELA para a alargar: a contagem (em baixo a' \
+             ESQUERDA) e os pontos (em baixo a' DIREITA) seguem as bordas REAIS.\n\
+             [hud-smoke] ⭐ E O CONTROLO e' o proprio selector: na seccao HUD do Inspector troque \
+             `Fit` de `Expand` para `Keep` e alargue outra vez — agora eles param na AREA SEGURA, \
+             a uma banda da borda. Os dois modos existem de proposito, e e' o que o alvo faz."
         );
     }
 }

@@ -73,6 +73,51 @@ func l2_escala() -> void:
 			_p("aspect=%-11s ref=%-11s escala=(%.6f, %.6f) desloc=(%.6f, %.6f)   [j/ref=(%.4f, %.4f)]"
 				% [nome, str(r), t.x.x, t.y.y, t.origin.x, t.origin.y, esperado_x, esperado_y])
 
+# ----------------------------------------- L4: onde um filho ANCORADO aterra
+# A pergunta que o L2 nao responde: com `keep` e com `expand`, um Control preso ao canto
+# INFERIOR-DIREITO aterra no canto da caixa de REFERENCIA ou no canto REAL da janela?
+#
+# ⚠️ E' isto que decide se o nosso `effective_box` deve crescer no `Keep` (como esta' hoje) ou so'
+# no `Expand`. As entradas sao NOSSAS: a janela que o headless da', e as nossas referencias.
+func l4_ancora() -> void:
+	_p("\n### L4 — ONDE UM FILHO ANCORADO AO CANTO ATERRA")
+	var w := get_root()
+	var janela: Vector2i = w.size
+	_p("janela = %s" % str(janela))
+
+	var alvo := ColorRect.new()
+	alvo.name = "AncoradoBaixoDireita"
+	w.add_child(alvo)
+	# preso ao canto inferior-direito, 40x20, encostado
+	alvo.anchor_left = 1.0
+	alvo.anchor_top = 1.0
+	alvo.anchor_right = 1.0
+	alvo.anchor_bottom = 1.0
+	alvo.offset_left = -40.0
+	alvo.offset_top = -20.0
+	alvo.offset_right = 0.0
+	alvo.offset_bottom = 0.0
+
+	var aspectos := {
+		"keep": Window.CONTENT_SCALE_ASPECT_KEEP,
+		"expand": Window.CONTENT_SCALE_ASPECT_EXPAND,
+	}
+	# ref com aspecto MENOR que a janela (deixa banda em x) e MAIOR (banda em y)
+	var refs := [Vector2i(640, 360), Vector2i(1280, 360), Vector2i(320, 480)]
+	for nome in aspectos:
+		w.content_scale_aspect = aspectos[nome]
+		for r in refs:
+			w.content_scale_size = r
+			# ⚠️ O `content_scale_size` muda o tamanho LOGICO do root; o Control ancorado
+			# recalcula-se a partir dele. O `get_global_rect` ja' o devolve nesse espaco.
+			var rect := alvo.get_global_rect()
+			var t: Transform2D = w.get_final_transform()
+			# o canto do filho, levado a PIXEIS de janela pela transformacao final
+			var canto := t * rect.end
+			_p("aspect=%-7s ref=%-11s  rect_fim=(%.2f, %.2f)  ->  ecra=(%.2f, %.2f)   janela=(%d, %d)"
+				% [nome, str(r), rect.end.x, rect.end.y, canto.x, canto.y, janela.x, janela.y])
+	alvo.queue_free()
+
 # ------------------------------------------------------------- L3: o clique
 func _mv(pos: Vector2) -> void:
 	var e := InputEventMouseMotion.new()
@@ -112,6 +157,7 @@ func _process(_d: float) -> bool:
 			cam.make_current()
 			l1_imunidade()
 			l2_escala()
+			l4_ancora()
 			# ⚠️ o L2 deixou a referencia no ultimo caso; sem este neutro o clique entra
 			# transformado e mede outro programa.
 			get_root().content_scale_size = get_root().size

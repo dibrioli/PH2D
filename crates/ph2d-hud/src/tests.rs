@@ -257,7 +257,7 @@ fn vista(hw: f32, hh: f32) -> View {
 /// **Mutação que deve sangrar:** somar um epsilon a `hx`.
 #[test]
 fn no_aspecto_da_caixa_a_efectiva_e_a_de_referencia_ao_bit() {
-    let c = canvas16x9(Fit::Keep);
+    let c = canvas16x9(Fit::Expand);
     // 16:9 exacto, em três tamanhos — a escala muda, a caixa LOCAL não.
     for (hw, hh) in [(16.0, 9.0), (32.0, 18.0), (8.0, 4.5)] {
         assert_eq!(
@@ -277,7 +277,7 @@ fn no_aspecto_da_caixa_a_efectiva_e_a_de_referencia_ao_bit() {
 /// **Mutação que deve sangrar:** tirar a divisão pela escala.
 #[test]
 fn a_banda_atravessa_a_escala_para_virar_local() {
-    let c = canvas16x9(Fit::Keep);
+    let c = canvas16x9(Fit::Expand);
     for (hw, hh) in [(21.0, 9.0), (16.0, 12.0), (40.0, 9.0), (5.0, 9.0)] {
         let v = vista(hw, hh);
         let b = bands(&c, v);
@@ -300,7 +300,7 @@ fn a_banda_atravessa_a_escala_para_virar_local() {
 /// **Mutação que deve sangrar:** usar `ref_w / 2.0` em vez da efectiva.
 #[test]
 fn o_canto_da_efectiva_pousa_na_borda_da_vista() {
-    for fit in [Fit::Keep, Fit::Stretch] {
+    for fit in [Fit::Expand, Fit::Stretch] {
         let c = canvas16x9(fit);
         for (hw, hh) in [(21.0, 9.0), (16.0, 12.0), (16.0, 9.0), (40.0, 4.0)] {
             let v = vista(hw, hh);
@@ -341,9 +341,105 @@ fn com_stretch_a_efectiva_e_a_de_referencia() {
 /// `NaN` desenha-se como o objecto a desaparecer — o modo de falha mais caro de diagnosticar.
 #[test]
 fn uma_vista_degenerada_nao_devolve_infinito() {
-    let c = canvas16x9(Fit::Keep);
+    let c = canvas16x9(Fit::Expand);
     for (hw, hh) in [(0.0, 0.0), (0.0, 9.0), (16.0, 0.0)] {
         let e = effective_box(&c, vista(hw, hh));
         assert!(e.iter().all(|v| v.is_finite()), "{hw}x{hh} devolveu {e:?}");
     }
+}
+
+/// ⛔⛔⛔ **O `Keep` CONFINA — a caixa efectiva dele é a de REFERÊNCIA, em toda janela.**
+///
+/// ⚠️⚠️ **Este gate nasceu de um defeito que shipou:** a 1.ª redacção do `effective_box` crescia a
+/// caixa no `Keep`, e isso fazia o `Keep` comportar-se como o **`expand`** do alvo — uma
+/// divergência **silenciosa** que retirava a capacidade de confinar o HUD à área segura.
+///
+/// O oráculo (Godot 4.7.2 MIT, bloco L4, janela `720×450`) é quem decide, e não por pouco: com
+/// `keep` um filho preso ao canto lê a caixa `(640, 360)` — **a referência** — e o canto dele
+/// aterra a `22 px` da borda; com `expand` ele lê `(640, 400)` e aterra **na** borda.
+///
+/// **Mutação que deve sangrar:** tirar a guarda `if canvas.fit != Fit::Expand`.
+#[test]
+fn o_keep_confina_e_a_efectiva_dele_e_a_de_referencia() {
+    let c = canvas16x9(Fit::Keep);
+    for (hw, hh) in [(21.0, 9.0), (16.0, 12.0), (16.0, 9.0), (40.0, 4.0)] {
+        assert_eq!(
+            effective_box(&c, vista(hw, hh)),
+            [-16.0, -9.0, 16.0, 9.0],
+            "o `Keep` cresceu a caixa em {hw}x{hh} — ele passa a ser o `expand` do alvo, e o HUD \
+             deixa de poder ficar na area segura"
+        );
+    }
+}
+
+/// ⭐⭐ **A POSE do `Expand` é a do `Keep`, AO BIT** — a diferença entre os dois é só até onde uma
+/// âncora pode ir.
+///
+/// ⚠️ Sem esta metade, alguém «consertaria» o `Expand` mexendo na escala, e a imagem do que está
+/// dentro da caixa de referência mudaria — que é exactamente o que o alvo NÃO faz.
+#[test]
+fn a_pose_do_expand_e_a_do_keep_ao_bit() {
+    let k = canvas16x9(Fit::Keep);
+    let e = canvas16x9(Fit::Expand);
+    for (hw, hh) in [(21.0, 9.0), (16.0, 12.0), (16.0, 9.0), (40.0, 4.0)] {
+        let v = vista(hw, hh);
+        assert_eq!(place(&k, v), place(&e, v), "{hw}x{hh}: as poses divergiram");
+    }
+}
+
+/// Uma linha da tabela do oráculo: `(ref_w, ref_h, fit, meia-janela, a caixa que ele devolveu)`.
+///
+/// ⚠️ Um `type` porque o clippy recusa a tupla escrita à mão (*«very complex type»*) — e a forma é
+/// o ponto: são cinco colunas, e o dia em que faltar uma o gate deixa de compilar.
+type Caso = (f32, f32, Fit, [f32; 2], [f32; 2]);
+
+/// ⭐⭐⭐ **A tabela do ORÁCULO, verbatim** (bloco L4, janela `720×450`).
+///
+/// ⚠️ A régua é a caixa que o filho ancorado LÊ, em unidades locais — que é o `rect_fim` que o alvo
+/// imprime. Os números estão aqui **verbatim** de propósito: é o que torna a tabela conferível
+/// contra a saída da sonda sem ninguém a reformatar de cabeça.
+#[test]
+fn a_caixa_efectiva_bate_o_oraculo_ao_numero() {
+    // (ref_w, ref_h, fit, meia-janela, a caixa que o alvo devolveu)
+    let casos: [Caso; 6] = [
+        (640.0, 360.0, Fit::Keep, [360.0, 225.0], [640.0, 360.0]),
+        (1280.0, 360.0, Fit::Keep, [360.0, 225.0], [1280.0, 360.0]),
+        (320.0, 480.0, Fit::Keep, [360.0, 225.0], [320.0, 480.0]),
+        (640.0, 360.0, Fit::Expand, [360.0, 225.0], [640.0, 400.0]),
+        (1280.0, 360.0, Fit::Expand, [360.0, 225.0], [1280.0, 800.0]),
+        (320.0, 480.0, Fit::Expand, [360.0, 225.0], [768.0, 480.0]),
+    ];
+    for (rw, rh, fit, half, esperado) in casos {
+        let c = Canvas::new(rw, rh, fit).expect("canvas");
+        let e = effective_box(&c, vista(half[0], half[1]));
+        // a caixa é centrada ⇒ a LARGURA é `2 × hx`
+        let (w, h) = (e[2] * 2.0, e[3] * 2.0);
+        assert!(
+            (w - esperado[0]).abs() < 0.01 && (h - esperado[1]).abs() < 0.01,
+            "{fit:?} ref {rw}x{rh}: demos ({w}, {h}) e o alvo deu ({}, {})",
+            esperado[0],
+            esperado[1]
+        );
+    }
+}
+
+/// ⭐ **Todo modo é alcançável pelo selector, tem rótulo, e o índice é uma involução.**
+///
+/// ⚠️ A metade que importa é a CONTAGEM: um modo novo fora do `ALL` existe, tem lei, tem gates — e
+/// o artista não lhe chega.
+#[test]
+fn todo_modo_e_alcancavel_e_o_indice_volta() {
+    assert_eq!(Fit::ALL.len(), 3);
+    for f in Fit::ALL {
+        assert!(!f.label().is_empty());
+        assert_eq!(Fit::from_index(f.index()), f, "o indice de {f:?} nao volta");
+    }
+    assert_eq!(Fit::default(), Fit::Keep);
+    // ⛔ Dois modos com o mesmo rótulo dariam duas linhas indistinguíveis no menu.
+    let mut rotulos: Vec<&str> = Fit::ALL.iter().map(|f| f.label()).collect();
+    rotulos.sort_unstable();
+    rotulos.dedup();
+    assert_eq!(rotulos.len(), 3, "dois modos partilham rotulo");
+    // ⚠️ Fora de alcance cai no de fábrica, e não em pânico.
+    assert_eq!(Fit::from_index(99), Fit::Keep);
 }

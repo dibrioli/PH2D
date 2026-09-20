@@ -105,3 +105,21 @@ fn as_duas_pecas_de_baixo_prendem_se_a_cantos_opostos() {
          empilham-se uma sobre a outra"
     );
 }
+
+/// ⛔⛔ **A cena abre em `Expand`, e sem isso ela não demonstra nada.**
+///
+/// ⚠️ Desde a correcção do oráculo (bloco L4) só o `Expand` cresce a caixa efectiva: com `Keep` os
+/// dois cantos ficam na área segura e **arrastar a borda da janela não move um pixel**. O roteiro
+/// manda arrastar ⇒ *uma cena que abre no modo errado ensina o CONTRÁRIO do que diz*, que é a
+/// espécie que o `CLAUDE.md` §5.0 chama de pior que uma cena ausente.
+///
+/// **Mutação que deve sangrar:** `fit: Fit::Keep` na cena.
+#[test]
+fn a_cena_do_hud_abre_em_expand() {
+    let src = include_str!("../../src/hud_smoke.rs");
+    assert!(
+        src.contains("fit: Fit::Expand,"),
+        "a cena do HUD deixou de abrir em `Expand` — arrastar a borda nao move nada, e o roteiro \
+         manda arrastar"
+    );
+}

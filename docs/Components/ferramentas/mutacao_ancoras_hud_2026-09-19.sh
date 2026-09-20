@@ -83,6 +83,32 @@ bloco "a guarda da escala ZERO sai" ph2d-hud uma_vista_degenerada \
   'if escala > 0.0 { banda / escala } else { 0.0 }' \
   'banda / escala'
 
+# ⛔⛔ A guarda que separa o `Keep` do `Expand` — sem ela o `Keep` vira o `expand` do alvo, que e'
+# o defeito que shipou por uma hora em 19/09.
+bloco "o KEEP deixa de confinar" ph2d-hud o_keep_confina \
+  "$LEI" 1 \
+  '    if canvas.fit != Fit::Expand {' \
+  '    if false {'
+
+# O modo novo sai do selector ⇒ ele existe, tem lei, tem gates, e o artista nao lhe chega.
+#
+# ⚠️ A 1.ª redacção apontava ao gate de IDA-E-VOLTA da `ph2d-app-components` e **sobreviveu**: com
+# `ALL = [Keep, Stretch, Stretch]` o `index()` devolve a posição do PRIMEIRO igual, logo a volta
+# fecha para as três entradas. *Um `ALL` com duplicado passa toda régua de ida-e-volta* — quem o
+# apanha é o `dedup` dos rótulos, e é esse o gate que esta mutação tem de correr.
+bloco "o EXPAND sai do selector" ph2d-hud todo_modo_e_alcancavel \
+  "$LEI" 1 \
+  '    pub const ALL: [Self; 3] = [Self::Keep, Self::Stretch, Self::Expand];' \
+  '    pub const ALL: [Self; 3] = [Self::Keep, Self::Stretch, Self::Stretch];'
+
+# A pose do Expand deixa de ser a do Keep ⇒ a imagem dentro da caixa muda, que o alvo nao faz.
+# ⚠️ As quebras de linha têm de ser REAIS (`$'…'`): num `'…'` do bash o `\n` chega ao python como
+# dois caracteres, a âncora casa ZERO vezes, e o arnês aborta — que foi o que fez na 1.ª corrida.
+bloco "a pose do EXPAND diverge do KEEP" ph2d-hud a_pose_do_expand_e_a_do_keep \
+  "$LEI" 1 \
+  $'        Fit::Expand => {\n            let s = fx.min(fy);\n            [s, s]\n        }' \
+  '        Fit::Expand => [fx, fy],'
+
 echo "=== A PONTE: a moldura que o canvas oferece ==="
 
 bloco "a escala da moldura vira 1" ph2d-host-desktop com_a_raiz_a_escalar \

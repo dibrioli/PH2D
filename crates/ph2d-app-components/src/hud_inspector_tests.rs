@@ -133,3 +133,71 @@ fn cada_campo_volta_ao_componente_certo() {
     assert!(i.disabled);
     assert!((i.ref_h - 9.0).abs() <= f32::EPSILON);
 }
+
+/// ⭐⭐⭐ **O selector do `Fit` oferece TODOS os modos da lei** — um por um, e na mesma ordem.
+///
+/// ⚠️⚠️ **Sem isto, um modo novo existe, tem lei, tem gates — e o artista não lhe chega.** É o
+/// defeito que o `Density` da escultura e o verbo `Destroy` do FIM DE JOGO pagaram, cada um por um
+/// array escrito à mão ao lado de uma tabela.
+///
+/// ⚠️ A régua é a IDA-E-VOLTA pelo índice do painel, e não uma contagem: contar `3 == 3` ficaria
+/// verde com a ordem trocada, e o artista escolheria `Stretch` e receberia `Expand`.
+///
+/// **Mutação que deve sangrar:** tirar a última entrada do `Fit::ALL`.
+#[test]
+fn o_selector_do_fit_oferece_todos_os_modos() {
+    use ph2d_ecs::{Fit, UiCanvas};
+    let mut sim = SimWorld::default();
+    let e = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::default(), UiCanvas::default()))
+        .id();
+    let bits = e.to_bits();
+
+    let tree = TagTree::default();
+    for esperado in Fit::ALL {
+        // o artista escolhe o índice que o painel mostra…
+        apply(
+            &mut sim,
+            bits,
+            &E::Fit(u8::try_from(esperado.index()).expect("cabe")),
+        );
+        // …e o documento fica com o modo que ele leu.
+        assert_eq!(
+            sim.world().get::<UiCanvas>(e).expect("canvas").fit,
+            esperado,
+            "escolher o indice de {esperado:?} deu outro modo"
+        );
+        // e o instantâneo devolve o MESMO índice, senão a linha abre no modo errado.
+        let i = build_info(&mut sim, &tree, bits, false).expect("info");
+        assert_eq!(
+            usize::from(i.fit),
+            esperado.index(),
+            "o painel abriria {esperado:?} noutra linha"
+        );
+    }
+}
+
+/// ⛔ **E o número de opções PINTADAS é o número de modos da lei.**
+///
+/// ⚠️ Metade que o gate de cima não dá: ele prova que cada modo VIAJA, e este que nenhum fica de
+/// fora do menu. A lente é o texto do pintor, porque a lista dele é literal.
+#[test]
+fn o_menu_do_fit_tem_uma_linha_por_modo() {
+    let src = include_str!("../../ph2d-panel-inspector/src/sections/hud_corpo.rs");
+    // ⚠️⚠️ **A agulha é montada por pedaços de propósito:** escrita inteira, ela LÊ-SE COMO UMA
+    // CHAVE e o censo do HR-15 acusa este ficheiro de usar um `tr` que não existe na tabela — foi
+    // exactamente o que ele fez na 1.ª corrida. *Um gate que procura chaves não pode conter uma.*
+    let prefixo = concat!("panel.inspector.", "hud.fit_");
+    let i = src
+        .find(&format!("{prefixo}keep"))
+        .expect("o menu do Fit mudou de forma");
+    let bloco = &src[i..src.len().min(i + 300)];
+    let n = bloco.matches(prefixo).count();
+    assert_eq!(
+        n,
+        ph2d_ecs::Fit::ALL.len(),
+        "o menu pinta {n} opcoes e a lei tem {} modos",
+        ph2d_ecs::Fit::ALL.len()
+    );
+}

@@ -72,12 +72,15 @@ pub fn build_info(
         .world()
         .get::<CounterRuntime>(e)
         .map_or_else(|| counter.as_ref().map_or(0, |c| c.start), |r| r.value);
+    let c_fit = canvas.map_or(0, |c| c.fit.index());
     Some(InspectorHudInfo {
         entity_bits: bits,
         has_canvas: canvas.is_some(),
         ref_w: canvas.map_or(0.0, |c| c.ref_w),
         ref_h: canvas.map_or(0.0, |c| c.ref_h),
-        fit: canvas.map_or(0, |c| u8::from(c.fit == ph2d_ecs::Fit::Stretch)),
+        // ⭐ **DERIVADO do `Fit::ALL`**, e não um `u8::from(… == Stretch)` escrito à mão: com o
+        // mapa à mão, o `Expand` existiria com lei e gates e o artista não lhe chegava.
+        fit: u8::try_from(c_fit).unwrap_or(0),
         tem_camera,
         has_label: label.is_some(),
         source: label.as_ref().map_or(0, |l| indice_da_fonte(&l.source)),
@@ -174,11 +177,9 @@ pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
             let Some(mut c) = sim.world_mut().get_mut::<UiCanvas>(e) else {
                 return false;
             };
-            c.fit = if *i == 1 {
-                ph2d_ecs::Fit::Stretch
-            } else {
-                ph2d_ecs::Fit::Keep
-            };
+            // ⭐ A volta do mesmo índice — ver o `Fit::from_index`, que cai no de fábrica fora
+            // de alcance em vez de entrar em pânico sobre um ficheiro estragado.
+            c.fit = ph2d_ecs::Fit::from_index(usize::from(*i));
             true
         }
         E::Source(i) => {

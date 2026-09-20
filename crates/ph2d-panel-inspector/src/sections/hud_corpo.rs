@@ -56,9 +56,13 @@ fn bloco_raiz(
             cur_y,
             tr("panel.inspector.hud.fit"),
             &crate::ids::INSP_HUD_FIT,
+            // ⚠️ A ORDEM é a do `ph2d_hud::Fit::ALL`, e o gate
+            // `o_selector_do_fit_oferece_todos_os_modos` prende-as uma à outra: um modo novo na
+            // lei sem entrada aqui existe, tem gates, e o artista **não lhe chega**.
             &[
                 tr("panel.inspector.hud.fit_keep"),
                 tr("panel.inspector.hud.fit_stretch"),
+                tr("panel.inspector.hud.fit_expand"),
             ],
             usize::from(i.fit),
         );

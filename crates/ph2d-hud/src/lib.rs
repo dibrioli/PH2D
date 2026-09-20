@@ -46,6 +46,48 @@ pub enum Fit {
     Keep,
     /// Um factor **por eixo** — a caixa preenche a vista e a forma distorce. É o `ignore` do alvo.
     Stretch,
+    /// Uniforme como o [`Fit::Keep`] — **e a caixa CRESCE no eixo curto**, de modo que um filho
+    /// ancorado alcance as bordas REAIS da vista em vez de parar na banda do letterbox. É o
+    /// `expand` do alvo.
+    ///
+    /// ⚠️ **A imagem do que está DENTRO da caixa de referência é a mesma do `Keep`** (a escala e a
+    /// translação são idênticas — há gate). O que muda é só até onde uma ÂNCORA pode ir.
+    ///
+    /// ⚠️ **Append-only:** a posição é a tag do postcard, logo ele entra no FIM.
+    Expand,
+}
+
+impl Fit {
+    /// Todos, na ordem em que o selector os mostra — que é a ordem da tag.
+    ///
+    /// ⚠️ **A lista é a FONTE**, e o índice do painel deriva dela. A 1.ª redacção do Inspector
+    /// mapeava `0`/`1` **à mão** (`u8::from(fit == Stretch)`), e um modo novo teria existido, com
+    /// lei e gates, **sem o artista lhe chegar** — o defeito que o `Density` da escultura e o verbo
+    /// do FIM DE JOGO pagaram, cada um por um array escrito à mão.
+    pub const ALL: [Self; 3] = [Self::Keep, Self::Stretch, Self::Expand];
+
+    /// O rótulo que o artista lê. Inglês (HR-15).
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Keep => "Keep",
+            Self::Stretch => "Stretch",
+            Self::Expand => "Expand",
+        }
+    }
+
+    /// O índice deste modo no selector.
+    #[must_use]
+    pub fn index(self) -> usize {
+        Self::ALL.iter().position(|f| *f == self).unwrap_or(0)
+    }
+
+    /// O modo de um índice do selector. ⚠️ Fora de alcance cai no de fábrica — um ficheiro
+    /// estragado não escolhe um modo que ninguém autorou.
+    #[must_use]
+    pub fn from_index(i: usize) -> Self {
+        Self::ALL.get(i).copied().unwrap_or_default()
+    }
 }
 
 /// **A caixa em que o artista desenhou o HUD**, em unidades de mundo, CENTRADA na entidade.
@@ -124,6 +166,12 @@ pub fn place(canvas: &Canvas, view: View) -> Placement {
             [s, s]
         }
         Fit::Stretch => [fx, fy],
+        // ⭐ **A POSE do `Expand` é a do `Keep`, ao bit** — o que ele muda é só até onde uma
+        // ÂNCORA pode ir (a caixa efectiva), e não como a caixa é desenhada. Há gate.
+        Fit::Expand => {
+            let s = fx.min(fy);
+            [s, s]
+        }
     };
     Placement {
         scale,
@@ -190,6 +238,29 @@ pub fn effective_box(canvas: &Canvas, view: View) -> [f32; 4] {
     // ⚠️ A escala nunca é zero: o `Canvas::new` recusa uma referência não-positiva, e a vista vem
     // de uma câmera com meia-extensão positiva. A guarda existe para o caso degenerado não dar
     // `inf` em silêncio — um `NaN` aqui viajaria até à pose de todo filho ancorado.
+    // ⛔⛔ **SÓ o `Expand` cresce, e o oráculo é quem o diz** (bloco L4, medido 2026-09-19 com a
+    // janela `720×450` do headless):
+    //
+    // | aspecto | ref | a caixa que o filho ancorado lê | o canto dele no ecrã |
+    // |---|---|---|---|
+    // | `keep` | `640×360` | `(640, 360)` — **a referência** | `(720, 428)`, a `22 px` da borda |
+    // | `keep` | `1280×360` | `(1280, 360)` | `(720, 326)`, a `124` |
+    // | `expand` | `640×360` | **`(640, 400)`** | `(720, 450)` — **a borda** |
+    // | `expand` | `1280×360` | `(1280, 800)` | `(720, 450)` |
+    // | `expand` | `320×480` | `(768, 480)` | `(720, 450)` |
+    //
+    // ⚠️⚠️ A 1.ª redacção desta porta crescia no `Keep`, e isso fazia o `Keep` comportar-se como o
+    // `expand` do alvo — uma divergência **silenciosa** que retirava a capacidade de confinar o HUD
+    // à área segura. *O modo que o artista escolhe tem de significar o que o alvo diz que
+    // significa.*
+    if canvas.fit != Fit::Expand {
+        return [
+            -canvas.ref_w / 2.0,
+            -canvas.ref_h / 2.0,
+            canvas.ref_w / 2.0,
+            canvas.ref_h / 2.0,
+        ];
+    }
     let local = |banda: f32, escala: f32| if escala > 0.0 { banda / escala } else { 0.0 };
     let hx = canvas.ref_w / 2.0 + local(b[0], p.scale[0]);
     let hy = canvas.ref_h / 2.0 + local(b[1], p.scale[1]);

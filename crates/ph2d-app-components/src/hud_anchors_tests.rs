@@ -44,7 +44,10 @@ fn cena(n: usize, com_moldura: bool) -> (SimWorld, VecEntityMap, Vec<Entity>, Op
             UiCanvas {
                 ref_w: 32.0,
                 ref_h: 18.0,
-                fit: Fit::Keep,
+                // ⚠️ **`Expand` e não `Keep`:** desde a correcção do oráculo (bloco L4) só o
+                // `Expand` cresce a caixa — com `Keep` estes gates mediriam um delta de `0,0` e
+                // ficariam verdes a afirmar nada.
+                fit: Fit::Expand,
             },
         ))
         .id();

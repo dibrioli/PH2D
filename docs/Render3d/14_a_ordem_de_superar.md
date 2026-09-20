@@ -116,21 +116,57 @@ correcta que a deles, porque a fonte não é uma aproximação.*
 
 ---
 
-## §5 — ⛔ A decisão que é do DONO, e que muda a ordem das fases
+## §5 — ⭐⭐⭐ A DECISÃO DO DONO, dada em 2026-09-20 — e ela REFUTA a pergunta que esta secção fazia
 
-A ordem *«superar»* tem duas leituras, e elas pedem obras diferentes. **Não decido isto:**
+Esta secção perguntava se o jogo devia «passar a 3D». **A pergunta estava mal posta, e o dono
+respondeu-a com a arquitectura inteira:**
 
-| leitura | o que significa | o que custa |
+> *«A game engine é 2d no sentido de que os games produzidos nela não terão a terceira dimensão do
+> ESPAÇO … Contudo os objetos dentro do canvas 2d podem ser imagens mas também podem ser objetos 3d
+> reais com iluminação 3d real e animação 3d real, contudo projetada no canvas 2d do ponto de vista
+> FUNCIONAL. … posso ter um catavento animado em 3d mas seu collider é 2d e ele interage como objeto
+> 2d. … teremos a simplicidade do 2d com o melhor da aparência 3d. Se o usuário quiser usar o 3d
+> para transformar tudo em imagem 2d também será possível.»*
+
+⇒ **o jogo ser 2D não é uma limitação a remover: é o DESENHO.** A jogabilidade, a física e o colisor
+ficam 2D (é o que os torna simples e determinísticos); o que sobe a 3D é a **APARÊNCIA**.
+
+⛔⛔ **E a minha conclusão do §2 — *«falta ao jogo um caminho 3D»* — era o erro que daí vinha.** O
+`RenderInstance` ser `[f32; 2]` **está certo**: a posição do objeto no mundo do jogo é mesmo 2D. O
+que falta não é uma dimensão no jogo; é **a aparência do objecto poder vir de uma malha**.
+
+⭐⭐⭐ **E isto já tem documento de arquitectura ACEITE, de 2026-07-30**, que cita o pedido original
+do dono à letra: [`docs/3D/02-Arquitetura/02.2-Sprite-com-malha-filha.md`](../3D/02-Arquitetura/02.2-Sprite-com-malha-filha.md)
+— *«o objeto será uma sprite que tem como filho uma malha 3D que emprestará à sprite o seu shader
+avançado»*. Ele define o modelo (uma hierarquia só), o G-buffer intermédio e **as duas rotas**:
+
+| rota | quando | custo |
 |---|---|---|
-| **(A)** o **modo Render do modelador** deve bater os cinco em qualidade e ser utilizável em movimento | afinar e amortizar o que existe | as fases `F1`–`F2` abaixo |
-| **(B)** o **PH2D deve poder FAZER um jogo** como o BfN | o jogo passa a ter um caminho 3D com PBR | `F1`–`F2` **e** `F3`–`F5` |
+| **A — ASSADO** (o padrão) | a pose da malha não muda em runtime | o de um sprite normal-mapeado; **roda em telemóvel** |
+| **B — AO VIVO** (opt-in) | a forma **gira, deforma** ou muda de geometria | um passe de geometria por objecto vivo |
 
-⚠️ **A frase original do dono diz *«game engine»*, e o TOP-20 de componentes que outra linha
-constrói é de JOGO** — o que aponta para **(B)**. Mas o jogo é 2D hoje, e passá-lo a 3D é uma
-decisão de PRODUTO, não de engenharia.
+*O catavento do dono é a rota B.* E a frase *«se o usuário quiser transformar tudo em imagem 2D»* é
+a rota A.
 
-⭐ **As fases `F1` e `F2` servem as DUAS leituras**, e é por isso que começam já: nenhuma linha
-delas é desperdiçada seja qual for a resposta.
+### O que está CONSTRUÍDO, medido hoje contra o código
+
+| peça | estado |
+|---|---|
+| **Rota A** — malha assada em canais do sprite, **RE-ILUMINÁVEL** | ✅ [`baked_form`](../../crates/ph2d-form-donation/src/baked_form.rs): guarda `base` + `form = [nx,ny,nz,peso]` + `rig` |
+| `BakedForm` como componente do ECS, no catálogo | ✅ [`ph2d-ecs/src/baked_form.rs`](../../crates/ph2d-ecs/src/baked_form.rs) — `ObjectKind::Sculpt3D` |
+| A luz 3D a acender um sprite, **dentro do motor 2D** | ✅ `ImpastoLightPass` em [`ph2d-render`](../../crates/ph2d-render/src/impasto_light.rs) |
+| Hierarquia ECS pai/filho | ✅ ADR-0110 |
+| **Componente `Mesh3D` / `MeshShading`** | ⛔ **não existe** (medido: zero ocorrências no `ph2d-ecs`) |
+| **Rota B — a malha filha a rasterizar por quadro** | ⛔ **não existe** |
+| **Animação 3D** do objecto | ⛔ o esqueleto que existe é 2D |
+| O G-buffer completo do `02.2` (`normal·depth·AO·cavity·material`) | ⚠️ hoje só **normal + peso** |
+| A lei que acende o sprite | ⚠️ é um **modelo de TINTA**, não PBR — medido em [`impasto_light.wgsl`](../../crates/ph2d-render/src/shaders/impasto_light.wgsl): difuso envolvido + especular por LUT, **sem GGX e sem conservação de energia** |
+
+⭐⭐⭐ **E é aqui que se SUPERA, com a frase do próprio `02.2`:** a rota B é *«o efeito que nenhum
+sprite normal-mapeado comum consegue»*. Unity, Godot e Unreal fazem 2D com **normal maps fixos** —
+gira-se o sprite e a luz não acompanha, porque o mapa é uma fotografia da forma. **O nosso é
+re-derivado da forma verdadeira, por quadro.** Nenhum deles entrega isso, e a razão é a mesma do §4:
+eles não têm a forma em tempo de execução, e nós temos.
 
 ---
 
@@ -169,14 +205,42 @@ O que a `W9` deixou nomeado, agora com a causa identificada no §3.
   `transmission_*` (vidro), `fuzz_*` (tecido), `thin_film_*` (iridescência), a anisotropia e
   `geometry_opacity`.
 
-### `F3`–`F5` — só se a resposta ao §5 for **(B)**
+### `F3` — ⭐⭐⭐ A ROTA B: o objecto 3D **ao vivo** dentro do canvas 2D
 
-3. **O jogo ganha um caminho 3D.** Um `RenderInstance` com pose 3D, e o
-   [`ph2d-mesh-render`](../../crates/ph2d-mesh-render/) — que **já rasteriza triângulos com wgpu** —
-   a servir a cena de jogo.
-4. **Esse caminho inclui as leis do §1.** É aqui que se vê que não era preciso reescrever: o
-   `mesh.wgsl` deixa de fazer matcap e passa a incluir o `ph2d_material::wgsl`.
-5. **Sombras e animação esqueletal** na cena de jogo.
+*É o catavento.* O `02.2` já a desenhou; falta construí-la.
+
+1. **Os componentes `Mesh3D` + `MeshShading`**, filhos de um `Sprite` na mesma hierarquia — logo
+   herdam selecção, nome, undo, save e os gestos de linha **de graça** (ADR-0110).
+2. **O passe que rasteriza a malha filha para o G-buffer**, do tamanho do rectângulo do sprite, com
+   **dirty flag**: só re-rasteriza se a pose, a malha ou a câmera mudarem. O
+   [`ph2d-mesh-render`](../../crates/ph2d-mesh-render/) já rasteriza triângulos com `wgpu`, e o
+   render para textura fora de ecrã já existe (`game_rt`).
+3. ⚠️ **A malha NUNCA é desenhada na tela** — quem aparece é o sprite. É o que mantém a composição,
+   a ordem de profundidade e o colisor 2D intactos.
+
+- **Régua:** girar um objecto e a luz acompanhar — *o que um normal map fixo não consegue*. E o
+  colisor continua 2D, com o mesmo hash determinístico da física.
+- **Pergunta em aberto do `02.2`, a medir e não a opinar:** quantos objectos em rota B cabem no
+  orçamento, e a que fracção da resolução do sprite o G-buffer pode viver.
+
+### `F4` — A lei que acende o sprite passa a ser a BOA
+
+Hoje quem acende um `BakedForm` é o `ImpastoLightPass` — **um modelo de tinta**, feito para o
+Painter, sem GGX e sem energia conservada. O modelador, ao lado, tem o OpenPBR inteiro.
+
+⇒ **É aqui que o §1 se paga:** as leis são crates-folha com gémeo em WGSL, logo o passe do sprite
+passa a incluir `ph2d_material::wgsl` — e ganha, de uma vez, material a sério, a subsuperfície (a
+folha com o sol atrás, que é *a assinatura do alvo*), a camada de estilo e a gestão de cor.
+
+⛔ **Sem reescrever nada**: o `ImpastoLightPass` fica, porque é a lei certa para a TINTA do Painter.
+O que muda é o sprite com forma passar a ter um passe próprio.
+
+### `F5` — Animação 3D do objecto
+
+O catavento **gira**. Hoje o esqueleto desta casa é 2D
+([`ph2d-skeleton`](../../crates/ph2d-skeleton/)). Uma malha filha animada precisa de pose 3D por
+quadro — e ela é exactamente o que faz a rota B valer a pena, porque é quando o normal map fixo
+falha.
 
 ---
 

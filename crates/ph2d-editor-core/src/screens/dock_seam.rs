@@ -157,12 +157,21 @@ impl ChromeBands {
     /// ficava gravado era `220` — **exactamente o caso do report**. *Uma lei que julga o pedido
     /// enquanto o consumidor guarda o pedido CLAMPADO julga um número que ninguém grava.*
     ///
-    /// ⚠️ O piso é o **token**, que é a mesma fonte do [`crate::interaction::WidgetStore`] — ele
-    /// declara `DOCK_W_MIN = ph2d_tokens::PANEL_MIN_W_PX`. ⛔ Não são dois pisos: é o mesmo
-    /// número lido do mesmo sítio, e há gate a exigi-lo (`o_piso_desta_lei_e_o_piso_do_store`).
+    /// ⚠️⚠️ **O piso é o do STORE e já não é o token do painel — a premissa mudou em
+    /// 2026-09-20.** Ele era `ph2d_tokens::PANEL_MIN_W_PX`, e com isso *arrastar a borda numa
+    /// janela estreita não fazia nada*: ali a largura de FÁBRICA já é o mínimo, logo o gesto
+    /// pedia um número que o piso devolvia ao ponto de partida (report do dono, *«permita que
+    /// manualmente o usuário consiga estreitar o painel»*). Hoje o piso de uma ESCOLHA é mais
+    /// baixo que o de FÁBRICA, e a medição inteira vive no doc do
+    /// [`crate::interaction::WidgetStore::DOCK_W_MIN`].
+    ///
+    /// ⛔ **Continuam a não ser dois pisos:** é o mesmo número lido do mesmo sítio — este ficheiro
+    /// lê-o do store —, e há gate a exigi-lo (`o_piso_desta_lei_e_o_piso_do_store`). ⭐ A direcção
+    /// `screens → interaction` é a que DESCE no DAG da fundação (há sentinela a exigi-la), logo
+    /// esta leitura custa **zero** à catraca `interaction → screens`, que é a dívida.
     #[must_use]
     pub fn escolha_de_um_arrasto(side: DockSide, w: f32, janela_w: f32) -> Option<f32> {
-        let w = w.max(ph2d_tokens::PANEL_MIN_W_PX);
+        let w = w.max(crate::interaction::WidgetStore::DOCK_W_MIN);
         // ⚠️ `>=` e não `>`: exactamente meio pixel ainda é o mesmo pixel pedido.
         ((w - Self::default_dock_w(side, janela_w)).abs() >= 0.5).then_some(w)
     }

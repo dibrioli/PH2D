@@ -203,3 +203,214 @@ fn o_arrasto_da_borda_passa_pela_porta_que_conhece_a_janela() {
          decisão saiu da porta e volta a ser invisível"
     );
 }
+
+/// Pinta quatro quadros numa janela de `w` px e devolve o `HeroScreen` com o layout publicado.
+///
+/// ⚠️ Irmã da [`colunas_pintadas_em`], e pelas mesmas duas razões: quatro quadros porque o
+/// `DockSides::from_published` lê o ANTERIOR, e a visibilidade semeada do manifesto porque o
+/// `HeroScreen::new` nasce sem painel nenhum aberto.
+fn hero_pintado_em(w: f32) -> HeroScreen {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut h = HeroScreen::new(ph2d_editor_core::NodeId(1));
+    ph2d_editor_core::panel::with_registry_ref(|reg| {
+        for q in reg.panels() {
+            h.panel_visibility
+                .insert(q.manifest.id, q.manifest.default_visible);
+        }
+    });
+    let mut scene = ph2d_vector::VectorScene::new();
+    let mut text = TextSystem::without_system_fonts();
+    let vp = Rect {
+        x: 0.0,
+        y: 0.0,
+        w,
+        h: 1052.0,
+    };
+    for _ in 0..4 {
+        paint_hero_screen(&mut h, vp, &mut scene, &mut text);
+    }
+    h
+}
+
+/// ⛔⛔⛔ **O REPORT DE 2026-09-20 REPRODUZIDO: numa janela estreita, arrastar a borda era INERTE.**
+///
+/// > *«não funciona. pare de tentar. permita que manualmente o usuário consiga estreitar o
+/// > painel.»* — Enio, 2026-09-20.
+///
+/// # A causa, medida
+///
+/// Numa janela estreita a lei da fracção **já entrega o mínimo**, e até esse dia o piso da
+/// ESCRITA era o mesmo número ⇒ o gesto pedia `157` e o store devolvia `220`. *Um gesto que
+/// existe, arma, segue o dedo e não muda um pixel lê-se como um gesto partido* — e nenhum gate
+/// desta linha o via, porque todos mediam a largura de FÁBRICA.
+///
+/// # ⚠️ Ele percorre a CORRENTE do arrasto, não a fórmula
+///
+/// As quatro portas que o `App::dock_seam_move` encadeia: onde a costura está
+/// ([`HeroLayout::dock_seam`]), que largura o `x` pede ([`HeroLayout::dock_width_for`]), se isso é
+/// uma escolha ([`ChromeBands::escolha_de_um_arrasto`]) e o que fica gravado
+/// (`WidgetStore::set_dock_width`). ⛔ O elo que falta — a shell chamar isto — é o
+/// [`o_arrasto_da_borda_passa_pela_porta_que_conhece_a_janela`], que o lê por texto: o `App` pede
+/// uma janela de verdade e não é alcançável daqui.
+#[test]
+fn numa_janela_estreita_o_arrasto_ainda_estreita_a_coluna() {
+    use ph2d_editor_core::interaction::WidgetStore;
+
+    // ⭐ A janela do report: aqui a lei da fracção já está no piso dela nos dois lados.
+    const ESTREITA: f32 = 640.0;
+    let mut h = hero_pintado_em(ESTREITA);
+    let layout = h.last_layout.expect("o arnês não publicou layout nenhum");
+
+    for side in [DockSide::Left, DockSide::Right] {
+        let antes = h.store.dock_width(side, ESTREITA);
+        // ⭐ O CONTROLO da fixtura: sem isto o gate podia estar a medir uma janela em que a lei
+        //   ainda tem folga, e aí o arrasto já funcionava ANTES da cura — ela não conteria o
+        //   fenómeno, que é como uma fixtura aprova o defeito que existe para apanhar.
+        assert!(
+            (antes - ph2d_tokens::PANEL_MIN_W_PX).abs() < 0.5,
+            "{side:?}: a fixtura não contém o report — a `{ESTREITA}` a coluna mede {antes} e o \
+             report acontece com ela NO piso de fábrica ({})",
+            ph2d_tokens::PANEL_MIN_W_PX
+        );
+
+        let seam = layout.dock_seam(side);
+        assert!(
+            seam.w > 0.0,
+            "{side:?}: não há costura para agarrar — o gesto nem chega a armar"
+        );
+        let px = seam.x + seam.w * 0.5;
+        // Arrastar 60 px para DENTRO: à esquerda o `x` diminui, à direita aumenta.
+        let alvo = match side {
+            DockSide::Left => px - 60.0,
+            DockSide::Right => px + 60.0,
+        };
+        let pedido = layout.dock_width_for(side, alvo);
+        let escolha = ChromeBands::escolha_de_um_arrasto(side, pedido, layout.viewport.w);
+        h.store.set_dock_width(side, escolha);
+        let depois = h.store.dock_width(side, ESTREITA);
+
+        assert!(
+            depois < antes - 1.0,
+            "{side:?}: a coluna mediu {antes} antes e {depois} depois de um arrasto de 60 px — a \
+             borda é INERTE, que é o report de 2026-09-20 à letra"
+        );
+        // ⚠️ E aterra ONDE O DEDO PEDIU, não no piso — a 1.ª redacção deste gate exigia o piso e
+        //    reprovou sobre a cura a funcionar (`220 → 157`, que é exactamente o gesto). *Um
+        //    arrasto de 60 px pede 60 px; o piso só entra quando o pedido passa por baixo dele.*
+        assert!(
+            pedido > WidgetStore::DOCK_W_MIN,
+            "{side:?}: o arrasto desta fixtura ({pedido}) já pede por baixo do piso ({}) — então \
+             ela mede o clamp e não o gesto",
+            WidgetStore::DOCK_W_MIN
+        );
+        assert!(
+            (depois - pedido).abs() < 0.5,
+            "{side:?}: o dedo pediu {pedido} e ficou gravado {depois} — entre a lei e o store há \
+             um número a mudar de valor"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O PISO DIZ DE QUE RECURSO É: ele é EXACTAMENTE a largura que o corpo precisa.**
+///
+/// ⛔⛔ **Abaixo do piso esta régua não consegue medir, e a razão é o próprio piso:** a única
+/// porta que escreve a largura de uma coluna clampa nele, logo pedir `83` devolve `84`. *Uma
+/// régua que quer ver o outro lado de uma cerca teria de derrubar a cerca* — e foi isso que a
+/// 1.ª redacção deste gate tentou, reprovando com *«a coluna não chegou a 83»*.
+///
+/// ⇒ ela afirma a metade que se pode medir de DENTRO: **no piso, nada do corpo sai da coluna.**
+/// Um piso mais apertado que o recurso reprova aqui (medido: a `60` saem dois controlos).
+///
+/// # ⛔⛔⛔ E a outra metade — *«o piso não está SOLTO»* — NÃO é gateável, com o mecanismo
+///
+/// Ela ficou registada como **mutação NOMEADA** (um piso de `120` sobrevive a esta suíte), e a
+/// razão não é falta de vontade: **três** réguas foram construídas e as três medem o piso em vez
+/// do recurso.
+///
+/// 1. *«alguma coisa toca a borda»* — quase toda fileira de painel é **ELÁSTICA** e enche a
+///    coluna seja qual for a largura ⇒ verdadeira em todo número que se escreva ali.
+/// 2. *«o controlo fixo mais largo»*, com o 2.º quadro em `piso + folga` — os dois quadros
+///    **movem-se com a constante medida**, e um piso de `120` lê `118`. *Uma barra derivada da
+///    constante que ela mede não pode medi-la.*
+/// 3. A mesma, com a âncora **fixa** no `PANEL_MIN_W_PX` — os controlos de largura fixa do
+///    cabeçalho são **alinhados à DIREITA**, logo o canto direito deles acompanha a coluna e
+///    `(x − col.x) + w` volta a ler `piso − 2` em qualquer piso.
+///
+/// ⚠️ **O que falta para a fechar é uma porta que escreva uma largura ABAIXO do piso** — e a
+/// única que existe é a que o piso guarda. *Uma régua que quer ver o outro lado de uma cerca
+/// teria de derrubar a cerca*, e um `set` sem clamp só para teste seria a segunda porta pela
+/// qual o defeito de 2026-09-20 voltava.
+///
+/// ⇒ o joelho (`84`) foi medido **uma vez**, baixando o piso à mão e varrendo pixel a pixel; a
+/// tabela vive no doc do [`WidgetStore::DOCK_W_MIN`] e é a proveniência do número.
+///
+/// ⚠️ **A régua é o transbordo do CORPO e nunca o absoluto**, e isso foi medido: há um controlo
+/// de `36 × 36` px que já sai da coluna **`7 px` na largura de fábrica de `220`**, e a posição
+/// dele nem é monótona na largura (`x` lê `191` a `220`, `50` a `84` e `90` a `90`). *Uma régua
+/// de transbordo absoluto neste app mede esse widget e não o piso* — ele fica NOMEADO e não é
+/// desta wave, porque a essa largura o produto de hoje shipa igual. É por isso que o filtro
+/// abaixo corta cromo de largura inteira e o que vive acima da coluna.
+///
+/// ⛔ E o piso **não** é o da faixa de abas: o `tab_plan` ainda entrega uma aba a `32 px`. O que
+/// falha primeiro é o CORPO, e é dele que o número fala.
+#[test]
+fn o_piso_de_uma_escolha_e_onde_o_corpo_do_painel_ainda_cabe() {
+    use ph2d_editor_core::interaction::WidgetStore;
+
+    let janela = 1920.0f32;
+    let piso = WidgetStore::DOCK_W_MIN;
+    let mut h = hero_pintado_em(janela);
+    h.store.set_dock_width(DockSide::Left, Some(piso));
+    // ⚠️ Repintar: a largura só chega ao layout no quadro seguinte.
+    let mut scene = ph2d_vector::VectorScene::new();
+    let mut text = TextSystem::without_system_fonts();
+    let vp = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: janela,
+        h: 1052.0,
+    };
+    for _ in 0..4 {
+        paint_hero_screen(&mut h, vp, &mut scene, &mut text);
+    }
+    let layout = h.last_layout.expect("sem layout");
+    let (col, _) = layout.side_columns();
+
+    // ⭐ O CONTROLO: a coluna tem de ter CHEGADO ao piso, senão tudo o que se segue mede outra
+    //   largura. Foi esta linha que apanhou a primeira medição desta wave a correr contra um
+    //   clamp que eu tinha restaurado — as quatro leituras liam `220` e pareciam um planalto.
+    assert!(
+        (col.w - piso).abs() < 0.5,
+        "a coluna não chegou ao piso (pedi {piso}, mede {}) — esta régua mede o clamp",
+        col.w
+    );
+
+    let borda = col.x + col.w;
+    let (mut fora, mut pior) = (0usize, 0.0f32);
+    for (_, r) in h.hit_index.iter_registrations() {
+        // Só o que NASCE na faixa de `x` da coluna…
+        if r.x < col.x - 0.5 || r.x > borda + 0.5 {
+            continue;
+        }
+        // …⛔ e não é cromo de largura INTEIRA (a barra de menu, o canvas), que nasce em `x = 0`
+        //    e atravessa o ecrã. Sem este corte a régua lê `1 700 px` de transbordo.
+        if r.w > col.w * 2.0 + 8.0 {
+            continue;
+        }
+        // …⛔ nem vive ACIMA da coluna (a barra de menu tem itens dentro da faixa de `x` dela).
+        if r.y < col.y {
+            continue;
+        }
+        if r.x + r.w > borda + 0.5 {
+            fora += 1;
+            pior = pior.max(r.x + r.w - borda);
+        }
+    }
+
+    assert_eq!(
+        fora, 0,
+        "no piso ({piso}) o corpo de um painel já sai da coluna (pior {pior:.1} px) — o número \
+         deixou de descrever o recurso de que ele fala, e a cura é SUBI-LO com a medição ao \
+         lado, nunca deixá-lo mentir"
+    );
+}

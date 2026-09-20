@@ -240,11 +240,19 @@ fn um_arrasto_que_aterra_na_largura_de_fabrica_nao_grava_excepcao() {
          gate mede outra coisa"
     );
 
-    // O gesto do report: arrastar a borda para lá do mínimo, onde nada se mexe no ecrã.
+    // ⚠️⚠️ **A FIXTURA deste gate mudou em 2026-09-20, e a premissa velha está aqui de
+    //    propósito.** Ela dizia *«arrastar a borda PARA LÁ DO MÍNIMO, onde nada se mexe no
+    //    ecrã»*, e pedia `80` — naquele dia o piso da escrita era o mesmo `220` da fábrica, logo
+    //    aquele pedido aterrava **na largura de fábrica** e o gesto era de facto mudo.
+    //
+    //    ⭐ Hoje o piso de uma ESCOLHA é mais baixo (ordem do dono: *«permita que manualmente o
+    //    usuário consiga estreitar o painel»*), logo pedir `80` **move a coluna** e é uma escolha
+    //    a sério. ⇒ o gesto mudo passou a ser outro: aterrar EXACTAMENTE na largura de fábrica.
+    //    *Um gate cuja fixtura deixou de conter o fenómeno não afirma nada.*
     let mut store = WidgetStore::default();
     store.set_dock_width(
         DS::Right,
-        ChromeBands::escolha_de_um_arrasto(DS::Right, 80.0, ESTREITA),
+        ChromeBands::escolha_de_um_arrasto(DS::Right, fabrica, ESTREITA),
     );
     assert_eq!(
         store.dock_width_choice(DS::Right),
@@ -261,6 +269,27 @@ fn um_arrasto_que_aterra_na_largura_de_fabrica_nao_grava_excepcao() {
         (got - lei).abs() < f32::EPSILON,
         "depois do arrasto a coluna lê {got} numa janela de {larga:.0} px e a lei diz {lei} — ela \
          ficou presa, que é exactamente o report «não diminuiu os paineis»"
+    );
+
+    // ⭐⭐ E a metade NOVA, que é a cura do 4.º report: por BAIXO do mínimo de fábrica o gesto
+    //    deixou de ser mudo — ele leva a coluna ao piso de uma escolha, e isso É uma escolha.
+    //
+    // ⚠️ **Store PRÓPRIO, e no FIM.** A 1.ª redacção pô-la a meio e a seguir ela reprovou a
+    //    asserção de cima com `84` contra `304`: aquela lê o MESMO store, e gravar uma escolha
+    //    nele apaga o *«sem escolha»* que ela existe para medir. *Duas metades de um gate que
+    //    partilham estado medem a segunda duas vezes e a primeira nenhuma.*
+    let mut store_do_piso = WidgetStore::default();
+    store_do_piso.set_dock_width(
+        DS::Right,
+        ChromeBands::escolha_de_um_arrasto(DS::Right, 80.0, ESTREITA),
+    );
+    assert_eq!(
+        store_do_piso.dock_width_choice(DS::Right),
+        Some(WidgetStore::DOCK_W_MIN),
+        "numa janela estreita, arrastar a borda para dentro tem de gravar o piso de uma escolha \
+         ({}) — se isto voltar a `None`, a borda é outra vez INERTE ali e o report de 2026-09-20 \
+         está de volta",
+        WidgetStore::DOCK_W_MIN
     );
 }
 
@@ -296,17 +325,53 @@ fn e_um_arrasto_para_outra_largura_continua_a_ser_uma_escolha() {
 /// ⚠️ **O piso da lei do arrasto é o MESMO do store** — não são dois pisos.
 ///
 /// ⛔ A [`ChromeBands::escolha_de_um_arrasto`] tem de clampar como o
-/// [`WidgetStore::set_dock_width`] clampa, senão ela julga um número que ninguém grava. Os dois
-/// leem `ph2d_tokens::PANEL_MIN_W_PX` — e se um dia divergirem, o defeito é **mudo**: volta a
-/// gravar-se a largura de fábrica como escolha.
+/// [`WidgetStore::set_dock_width`] clampa, senão ela julga um número que ninguém grava — e se um
+/// dia divergirem, o defeito é **mudo**: volta a gravar-se a largura de fábrica como escolha.
+///
+/// # ⚠️⚠️ A PREMISSA deste gate MORREU em 2026-09-20, e a metade nova é a razão dele existir
+///
+/// Ele dizia *«os dois leem `ph2d_tokens::PANEL_MIN_W_PX`»*, e isso era a metade fácil: enquanto
+/// os dois pisos fossem **o mesmo token**, eles não podiam divergir. Hoje o piso de uma ESCOLHA é
+/// mais baixo que o de FÁBRICA de propósito (ordem do dono: *«permita que manualmente o usuário
+/// consiga estreitar o painel»*), logo há um número novo no mundo — e a lei que o defende passa a
+/// ter de ser afirmada em vez de herdada.
+///
+/// ⭐ **A 2.ª metade é o report:** se o piso da escolha subir até ao de fábrica, o gesto volta a
+/// ser INERTE em toda janela estreita — que é exactamente o defeito de 2026-09-20 — e **nenhum
+/// teste de valor o veria**, porque o número gravado continuaria a ser um número legítimo.
 #[test]
 fn o_piso_desta_lei_e_o_piso_do_store() {
     use ph2d_editor_core::interaction::WidgetStore;
+    use ph2d_editor_core::screens::layout::DockSide as DS;
+    // ⭐ Um pedido ABAIXO do piso, numa janela em que a fábrica já entrega o mínimo: o que a lei
+    //   devolve tem de ser exactamente o que o store grava — medido pelas duas portas.
+    const ESTREITA: f32 = 640.0;
+    let pedido = 10.0_f32;
+    let pela_lei = ChromeBands::escolha_de_um_arrasto(DS::Left, pedido, ESTREITA);
+    let mut store = WidgetStore::default();
+    store.set_dock_width(DS::Left, pela_lei);
+    assert_eq!(
+        store.dock_width_choice(DS::Left),
+        pela_lei,
+        "a lei do arrasto entregou {pela_lei:?} e o store guardou {:?} — ela está a julgar um \
+         número que ninguém grava, e o defeito é MUDO",
+        store.dock_width_choice(DS::Left)
+    );
+    assert_eq!(
+        pela_lei,
+        Some(WidgetStore::DOCK_W_MIN),
+        "um pedido abaixo do piso tem de aterrar NO piso"
+    );
+    // ⭐⭐ E a metade que morreu e renasceu ao contrário — *o piso de uma ESCOLHA é estritamente
+    //    mais baixo que o de FÁBRICA* — vive hoje como **cerca de compilação** ao lado da própria
+    //    constante (`dock_width_ops.rs`), e não aqui: o clippy recusou-a como asserção
+    //    (*«this assertion has a constant value»*), que é a mesma recusa que já pôs lá as duas do
+    //    degrau de fechar. *Um teste que o clippy chama de constante queria ser uma cerca.*
+    // ⛔ E o de FÁBRICA não desceu com ele — ninguém pediu para o app NASCER ilegível.
+    let fabrica = ChromeBands::default_dock_w(DS::Left, ESTREITA);
     assert!(
-        (WidgetStore::DOCK_W_MIN - ph2d_tokens::PANEL_MIN_W_PX).abs() < f32::EPSILON,
-        "o piso do store ({}) deixou de ser o token ({}) — a lei do arrasto passa a julgar um \
-         número que o store não guarda, e o defeito é mudo",
-        WidgetStore::DOCK_W_MIN,
-        ph2d_tokens::PANEL_MIN_W_PX
+        fabrica >= ph2d_tokens::PANEL_MIN_W_PX,
+        "a largura de FÁBRICA desceu abaixo do mínimo do painel ({fabrica}) — o piso que baixou é \
+         o de uma ESCOLHA, e confundir os dois entrega uma coluna ilegível a quem nunca arrastou"
     );
 }

@@ -365,6 +365,20 @@ daqui: *uma medição de superfície de colisão vale para o dia em que foi tira
 > DONO:** a largura arrastada é guardada em **píxeis absolutos**, logo num tablet que roda os
 > `371,72 px` dele são `32,8 %` deitado e `50,0 %` em pé; curá-lo ou exige um tecto que ninguém
 > mediu, ou muda o que «arrastar a borda» significa **e** o formato do `layout.txt`.
+> ⛔⛔⛔ **E o 4.º report fechou a metade MANUAL, que estava morta: numa janela estreita arrastar
+> a borda não fazia NADA** (*«pare de tentar. permita que manualmente o usuário consiga estreitar
+> o painel»*) — ali a lei já entrega o mínimo e o piso da ESCRITA era o mesmo número, logo o gesto
+> pedia `157` e o store devolvia `220`. ⭐ **Passam a ser DOIS pisos:** o de FÁBRICA fica em
+> `PANEL_MIN_W_PX` (ninguém pediu para o app *nascer* ilegível) e o de uma ESCOLHA desce para
+> **`84`**, que é MEDIDO — a largura em que o corpo de um painel ainda cabe na coluna (a `83` sai
+> o primeiro controlo), e descer de `220` para lá acrescenta **`1,0 px`** de transbordo no pior
+> dos **19** painéis docáveis. ⚠️ O caminho de omissão é **byte-idêntico** (o `base` nunca desce
+> dos `220`), e a lei do arrasto passou a ler o piso do store porque `screens → interaction` é a
+> direcção que DESCE no DAG ⇒ **zero** na catraca que é dívida. ⛔⛔ **NOMEADO e não curado:** um
+> controlo de `36 × 36` px transborda a coluna `7 px` **já na largura de fábrica**, e a posição
+> dele não é monótona — foi ele que dominou as três primeiras versões da régua desta wave. ⛔ E
+> *«o piso não está solto»* fica **mutação NOMEADA**: as três réguas construídas medem o piso e
+> não o recurso, porque a única porta que escreve uma largura é a que o piso guarda.
 
 
 ## §9-bis — ⭐⭐⭐ A SEGUNDA WAVE: a largura de fábrica de uma coluna é uma FRACÇÃO da janela
@@ -687,6 +701,122 @@ pé. As duas saídas têm preço e nenhuma é derivável de uma medição desta 
 
 ---
 
+## §9-quinquies — ⛔⛔⛔ O 4.º REPORT: *«pare de tentar. permita que manualmente o usuário consiga estreitar o painel»*
+
+> *«não funciona. pare de tentar. permita que manualmente o usuário consiga estreitar o painel.»*
+> — Enio, 2026-09-20, logo a seguir ao smoke que ele **aprovou** na §9-quater.
+
+⚠️ **As duas frases não se contradizem, e ler isso mal era o risco desta wave.** O que ele aprovou
+foi a coluna a seguir a JANELA (o log dele mede-a de `1 920` a `647`); o que ele reprovou foi o
+passo (3) do roteiro — **arrastar a borda de propósito**. A ordem é: pára de trabalhar na lei
+automática, e dá-me o controlo manual.
+
+### A causa, MEDIDA antes de uma linha de cura
+
+O log dele acaba em `647 px`. Ali a lei da fracção **já entrega o mínimo** nos dois lados, e até
+esse dia o piso da ESCRITA era o mesmo número ⇒ o gesto pedia `157` e o store devolvia `220`.
+Reproduzido pela rota real (pintar quatro quadros, achar a costura, arrastar `60 px`):
+
+| janela | coluna | arrastar para estreitar |
+|---:|---:|---|
+| `1 920` | `308,0` | `308,0 → 245,0` ✅ |
+| `1 024` | `230,9` | `230,9 → 220,0` (pára no piso) |
+| `640` | `220,0` | **`220,0 → 220,0`** ⛔ **inerte** |
+
+⭐ *Um gesto que existe, arma, segue o dedo e não muda um pixel lê-se como um gesto partido* — e é
+a mesma forma que o arrasto fantasma da §9-ter pagou do outro lado. **Nenhum gate desta linha o
+via**, porque os cinco mediam a largura de FÁBRICA e este é o caminho da ESCOLHA.
+
+### ⭐⭐⭐ A LEI: o piso de FÁBRICA protege quem não escolheu; um arrasto É uma escolha
+
+São **dois** pisos, de propósito:
+
+- a largura de FÁBRICA (`ChromeBands::default_dock_w`) continua a parar em `PANEL_MIN_W_PX`
+  (`220`) — ninguém pediu para o app **nascer** com uma coluna ilegível;
+- a largura que o artista **arrasta** (`WidgetStore::DOCK_W_MIN`) pára em **`84`**, porque ele
+  pediu.
+
+⚠️ **O caminho de omissão é byte-idêntico:** o `dock_width` clampa `stored.unwrap_or(base)` e o
+`base` nunca desce dos `220` por construção ⇒ *uma arrumação sem escolha nenhuma lê exactamente o
+mesmo número de ontem*. ⭐ E a lei do arrasto passou a ler o piso **do store** em vez do token: a
+direcção `screens → interaction` é a que DESCE no DAG da fundação (há sentinela a exigi-la), logo
+custa **zero** à catraca `interaction → screens`, que é a dívida — a mesma catraca que na §9-ter
+tinha apontado para onde a porta devia estar.
+
+### ⚠️ O `84` é medido, e diz de que recurso é
+
+Ele é a largura em que o **corpo de um painel docado** ainda cabe na coluna. Varrido pixel a pixel
+pela rota real (baixando o piso à mão e lendo o índice de toque):
+
+| coluna | controlos do corpo que saem dela |
+|---:|---:|
+| `86` · `85` · **`84`** | `0` |
+| `83` | `1` (excesso `1,0 px`) |
+| `80` | `2` |
+| `64` | `3` |
+
+⭐ **E a varredura correu com CADA um dos 19 painéis docáveis à frente, não só os de fábrica:**
+descer de `220` para `84` acrescenta no máximo **`1,0 px`** de transbordo, e num só painel
+(`physics`). Os outros dezoito acrescentam **zero**.
+
+⛔ **O piso NÃO é o da faixa de abas, e ela foi medida:** o `tab_plan` ainda entrega uma aba a
+`32 px` e só desiste a `24`. Parar aí entregaria uma coluna cujo corpo pinta por cima da área de
+desenho — *o piso é do CORPO, que é o que falha primeiro*.
+
+### ⛔⛔ PRÉ-EXISTENTE e NOMEADO, não curado aqui
+
+Há um controlo de **`36 × 36` px** que transborda a coluna **`7,0 px` já na largura de fábrica de
+`220`**, e a posição dele **não é monótona** na largura (`x` lê `191` a `220`, `50` a `84` e `90` a
+`90`). Ele não é um problema de piso — a essa largura o produto de hoje shipa igual — e foi ele que
+dominou as três primeiras versões da minha régua. ⇒ *uma régua de transbordo ABSOLUTO neste app
+mede esse widget; a que decide é o **acréscimo** contra a largura de fábrica.*
+
+### ⛔⛔⛔ A metade que NÃO é gateável, com o mecanismo
+
+*«O piso não está SOLTO»* ficou como **mutação NOMEADA** (um piso de `120` sobrevive à suíte), e
+não por falta de vontade: **três** réguas foram construídas e as três medem o piso em vez do
+recurso.
+
+1. *«alguma coisa toca a borda»* — quase toda fileira de painel é **elástica** e enche a coluna em
+   qualquer largura ⇒ verdadeira em todo número que se escreva ali.
+2. *«o controlo fixo mais largo»*, com o 2.º quadro em `piso + folga` — os dois quadros **movem-se
+   com a constante medida** e um piso de `120` lê `118`. *Uma barra derivada da constante que ela
+   mede não pode medi-la.*
+3. A mesma, com a âncora FIXA no `PANEL_MIN_W_PX` — os controlos de largura fixa do cabeçalho são
+   **alinhados à DIREITA**, logo o canto direito deles acompanha a coluna e a conta volta a ler
+   `piso − 2`.
+
+⚠️ **O que a fecharia é uma porta que escreva uma largura ABAIXO do piso**, e a única que existe é
+a que o piso guarda. *Uma régua que quer ver o outro lado de uma cerca teria de derrubar a cerca*,
+e um `set` sem clamp só para teste seria a segunda porta pela qual o defeito da §9-ter voltava.
+
+### Os gates
+
+| gate | o que afirma |
+|---|---|
+| `numa_janela_estreita_o_arrasto_ainda_estreita_a_coluna` (novo) | o report reproduzido: a `640 px`, com as duas colunas NO piso de fábrica, um arrasto de `60 px` estreita — e aterra **onde o dedo pediu**, não no piso |
+| `o_piso_de_uma_escolha_e_onde_o_corpo_do_painel_ainda_cabe` (novo) | no piso, **nada** do corpo sai da coluna |
+| `o_piso_desta_lei_e_o_piso_do_store` (**premissa morta**, reescrito) | a lei e o store clampam no MESMO número — e ele já não é o token, logo passa a ser afirmado em vez de herdado |
+| `um_arrasto_que_aterra_na_largura_de_fabrica_nao_grava_excepcao` (**fixtura morta**, reescrito) | o gesto mudo passou a ser *aterrar exactamente na fábrica*; a metade nova mede que por baixo dela o gesto **já não é mudo** |
+| `reopening_restores_the_width_the_column_had_before_the_drag` (fixtura **derivada**) | o literal `100` deixou de estar do outro lado da cerca; hoje o pedido sai do próprio piso |
+| cerca de compilação em `dock_width_ops.rs` | o piso de uma ESCOLHA `<` o de FÁBRICA — o clippy recusou-a como asserção de teste, e tinha razão |
+
+**Mutação: 5 sangram + 1 NOMEADA.** ⚠️ Duas reprovações foram **minhas** e ficam registadas: a 1.ª
+redacção do gate do report exigia que o arrasto aterrasse no PISO (e ele aterra onde o dedo pediu —
+`220 → 157` —, que é a cura a funcionar), e a metade nova do gate do arrasto fantasma foi escrita
+**a meio** da função, partilhando o store com a asserção de cima: ela apagava o *«sem escolha»* que
+aquela existe para medir. *Duas metades de um gate que partilham estado medem a segunda duas vezes
+e a primeira nenhuma.*
+
+### ⏳ O que este report NÃO pediu, e fica
+
+O dono disse **«pare de tentar»** sobre a lei automática ⇒ a largura de FÁBRICA não se mexeu. Numa
+janela de `473 px` as duas colunas continuam a nascer com `220` cada (`93 %` do ecrã) e o que muda
+é ele poder agora levá-las a `84` cada (`36 %`). *Descer o piso de FÁBRICA é outra decisão, e é
+dele.*
+
+---
+
 ## §10 — O portão do fecho
 
 | passo | resultado |
@@ -717,6 +847,35 @@ linhas de produto). ⭐ **A 2.ª tem**, e o roteiro é de uma linha: *estreitar 
 as duas colunas encolherem com ela, em vez de comerem uma fatia cada vez maior*. Acima de `1366 px`
 de largura nada muda — que é a metade que o gate `acima_da_referencia_a_lei_nao_toca_em_nada`
 defende.
+
+---
+
+### §10-bis — O portão da 3.ª volta (o piso de uma escolha)
+
+| passo | resultado |
+|---|---|
+| `scripts/nextest-impacted.sh` | **`15 485 / 15 485`** · `53,8 s` · zero flakes |
+| `cargo test -p ph2d-panel-registry-init` (com as quatro features) | verde |
+| `cargo clippy -p ph2d-editor-core -p ph2d-host-desktop --all-targets -- -D warnings` | **zero** |
+| `cargo fmt --check` | limpo |
+| `git merge-base HEAD main` | **no-op**: `merge-base == main == 395da6a55` |
+| `scripts/censos-da-arvore-combinada.sh` | **`127 / 127`** · *«controlo do filtro: 12 de 12 censos correram ✓»* |
+| prova de mutação | **4 sangram + 2 CERCA + 1 NOMEADA**, de 7 |
+
+⭐⭐ **Duas mutações deixaram de poder sangrar porque passaram a ser ERRO DE COMPILAÇÃO**, e isso é
+mais forte: reverter o piso da escolha para o de fábrica devolve `error[E0080]` com a frase do
+report lá dentro. ⚠️ **O arnês teve de aprender a lê-lo** — a 1.ª corrida classificou-as como
+*«não compila ⇒ abortado»*, que é a regra certa **para toda outra mutação** e a errada para uma
+cerca; hoje ele exige o `E0080` **e** a mensagem dela, senão um erro de sintaxe qualquer contava
+como lei defendida.
+
+⭐ **E foi preciso uma mutação que PASSA a cerca** (`piso = PANEL_MIN_W_PX − 0,5`) para provar que
+o gate do report continua vivo: sem ela, a cerca tornava-o impossível de matar, e *um gate que
+nada consegue reprovar deixou de afirmar*.
+
+⚠️ **Duas reprovações de ÁRVORE, as duas premissas mortas de gates que esta linha escreveu ontem**
+(o arrasto fantasma e a involução da coluna) — reescritas, com a morte à vista no diff, e a segunda
+com a fixtura **derivada do piso** para a próxima descida não a partir outra vez.
 
 ---
 

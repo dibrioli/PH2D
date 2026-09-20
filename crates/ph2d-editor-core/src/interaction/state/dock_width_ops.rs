@@ -31,8 +31,10 @@ impl WidgetStore {
             DockSide::Right => self.dock_w_right,
         };
         let base = ChromeBands::default_dock_w(side, janela_w);
-        // ⚠️ **O piso é o do PAINEL** — ver [`Self::set_dock_width`]. Ele foi o do FECHO entre
-        //    2026-09-08 e 2026-09-09, enquanto o arrasto podia fechar a coluna.
+        // ⚠️ **O piso é o de uma ESCOLHA** ([`Self::DOCK_W_MIN`]), e ele é mais BAIXO que o de
+        //    fábrica desde 2026-09-20 — ver o doc dela. ⭐ Aqui isso é inerte no caminho de
+        //    omissão: o `base` nunca desce do mínimo do painel, logo quem nunca arrastou lê
+        //    exactamente o mesmo número de antes.
         crate::math::safe_clamp(stored.unwrap_or(base), Self::DOCK_W_MIN, Self::DOCK_W_MAX)
     }
 
@@ -52,7 +54,13 @@ impl WidgetStore {
 
     /// Escreve a largura de uma coluna, já clampada.
     ///
-    /// ⭐⭐⭐ **O PISO É O MÍNIMO DO PAINEL ([`Self::DOCK_W_MIN`]) — a borda encolhe até ali e PARA.**
+    /// ⭐⭐⭐ **O PISO É O DE UMA ESCOLHA ([`Self::DOCK_W_MIN`]) — a borda encolhe até ali e PARA.**
+    ///
+    /// ⚠️⚠️ **Ele DEIXOU de ser o mínimo do painel em 2026-09-20** (ordem do dono: *«permita que
+    /// manualmente o usuário consiga estreitar o painel»*). O parágrafo abaixo continua a
+    /// descrever por que ele voltou ao mínimo do painel em 2026-09-09 — e essa premissa era
+    /// **verdade sobre o que o piso protege e falsa sobre quem o pede**: o mínimo do painel é a
+    /// largura em que o app deve NASCER, não o tecto do que o artista pode pedir.
     ///
     /// > *«Vamos retirar a opção de colapsar arrastando. Deixa o colapsar apenas no menu da barra
     /// > superior.»* — Enio, 2026-09-09.
@@ -85,11 +93,73 @@ impl WidgetStore {
         }
     }
 
-    /// ⚠️ **O mínimo é o do painel** (`PANEL_MIN_W_PX`, 220) — abaixo dele o cabeçalho e uma linha
-    /// deixam de caber juntos. O máximo é medido pelo mesmo critério do `clamp_panel_rect`: 70 % de
-    /// uma janela de referência, para uma coluna nunca comer a área de desenho inteira.
-    /// O mínimo de uma coluna **aberta**.
-    pub const DOCK_W_MIN: f32 = ph2d_tokens::PANEL_MIN_W_PX;
+    /// ⭐⭐⭐ **O PISO DE UMA ESCOLHA — e ele NÃO é o piso de fábrica.**
+    ///
+    /// > *«não funciona. pare de tentar. permita que manualmente o usuário consiga estreitar o
+    /// > painel.»* — Enio, 2026-09-20.
+    ///
+    /// # ⛔⛔ O report reproduzido, com o número
+    ///
+    /// Ele estava numa janela de `647 px` (o fim do log de `PH2D_DOCK_LOG` que ele colou). Ali a
+    /// lei da fracção já entrega o mínimo nos dois lados, logo as duas colunas mediam `220` e
+    /// **ocupavam `440` de `647`** — e arrastar a borda **não fazia absolutamente nada**, porque
+    /// o piso da escrita era o mesmo `220`. Medido pela rota do produto:
+    ///
+    /// | janela | coluna | arrastar `60 px` para estreitar |
+    /// |---:|---:|---|
+    /// | `1 920` | `308,0` | `308,0 → 245,0` ✅ |
+    /// | `1 024` | `230,9` | `230,9 → 220,0` (pára no piso) |
+    /// | `640` | `220,0` | **`220,0 → 220,0`** ⛔ inerte |
+    ///
+    /// *Um gesto que existe, arma, segue o dedo e não muda um pixel lê-se como um gesto partido* —
+    /// e é o mesmo modo de falha que o arrasto fantasma de 2026-09-20 (o `set_dock_width`
+    /// `Option`) já tinha pago do outro lado.
+    ///
+    /// # ⭐⭐⭐ A LEI: o piso de FÁBRICA protege quem não escolheu; um arrasto É uma escolha
+    ///
+    /// São **dois** pisos de propósito, e a diferença é quem os produz:
+    ///
+    /// - a largura de FÁBRICA ([`crate::screens::layout::ChromeBands::default_dock_w`]) continua
+    ///   a parar em [`ph2d_tokens::PANEL_MIN_W_PX`] (`220`) — ninguém pediu para o app **nascer**
+    ///   com uma coluna ilegível;
+    /// - a largura que o artista **arrasta** pára aqui, mais abaixo, porque ele pediu.
+    ///
+    /// ⚠️ **Isto não muda nada no caminho de omissão:** `dock_width` clampa
+    /// `stored.unwrap_or(base)`, e o `base` nunca desce dos `220` por construção ⇒ **uma
+    /// arrumação sem escolha nenhuma lê exactamente o mesmo número de ontem.**
+    ///
+    /// # ⚠️ O NÚMERO é medido, e diz de que recurso é
+    ///
+    /// `84` é a largura em que o **corpo de um painel docado** ainda cabe na coluna: o controlo de
+    /// largura fixa mais largo que ele pinta mede `80`, e o recuo do painel é `4`. Varrido pixel a
+    /// pixel pela rota real (pintar quatro quadros e ler o índice de toque):
+    ///
+    /// | coluna | controlos que saem dela |
+    /// |---:|---:|
+    /// | `86` · `85` · **`84`** | `0` |
+    /// | `83` | `1` (excesso `1,0 px`) |
+    /// | `80` | `2` |
+    /// | `64` | `3` |
+    ///
+    /// ⭐ **E a varredura correu com CADA um dos 19 painéis docáveis à frente, não só os de
+    /// fábrica:** descer de `220` para `84` acrescenta no máximo **`1,0 px`** de transbordo, e num
+    /// só painel (`physics`). Os outros dezoito acrescentam **zero**.
+    ///
+    /// ⛔⛔ **PRÉ-EXISTENTE e NOMEADO, não curado aqui:** há um controlo de `36 × 36` px que
+    /// transborda a coluna **`7,0 px` já na largura de fábrica de `220`** — ele não é um problema
+    /// de piso (a essa largura o produto de hoje shipa igual) e a posição dele não é monótona na
+    /// largura da coluna (`x` lê `191` a `220`, `50` a `84` e `90` a `90`). *Uma régua de
+    /// transbordo ABSOLUTO neste app mede esse widget; a que decide aqui é o **acréscimo** contra
+    /// a largura de fábrica.*
+    ///
+    /// ⛔ **O piso NÃO é o da faixa de abas, e ela foi medida:** o `tab_plan` ainda entrega uma aba
+    /// a `32 px` e só desiste a `24` (o glifo, `TAB_BAR_H = 22`, mais o respiro de `8`). Parar aí
+    /// entregaria uma coluna cujo corpo pinta por cima da área de desenho — *o piso é do CORPO,
+    /// que é o que falha primeiro.*
+    ///
+    /// O máximo é medido pelo mesmo critério do `clamp_panel_rect`: 70 % de uma janela de
+    /// referência, para uma coluna nunca comer a área de desenho inteira.
+    pub const DOCK_W_MIN: f32 = 84.0; // LITERAL-PX-OK: piso MEDIDO de uma coluna que o artista arrastou
 
     /// ⛔⛔ **DORMENTE desde 2026-09-09 — ela já não tem consumidor no produto.**
     ///
@@ -129,6 +199,18 @@ impl WidgetStore {
 // value»*. Ele tinha razão, e a recusa aponta para cima: uma propriedade que o compilador consegue
 // decidir não devia esperar por uma corrida de testes. *Um teste que o clippy chama de constante é
 // um teste que queria ser uma cerca.*
+// ⭐⭐⭐ **E a lei de 2026-09-20 é a terceira, pela mesma razão.**
+//
+// ⚠️ Ela nasceu como asserção no `o_piso_desta_lei_e_o_piso_do_store` e o clippy recusou-a
+// (*«this assertion has a constant value»*) — a mesma recusa que pôs as duas de baixo aqui, e ela
+// aponta para cima outra vez. *Um teste que o clippy chama de constante é um teste que queria ser
+// uma cerca.*
+const _: () = assert!(
+    WidgetStore::DOCK_W_MIN < ph2d_tokens::PANEL_MIN_W_PX,
+    "o piso de uma ESCOLHA subiu ate' ao de FABRICA: numa janela estreita a lei ja' entrega o \
+     minimo, logo arrastar a borda deixa de mudar um pixel -- e' o report de 2026-09-20 de volta"
+);
+
 const _: () = assert!(
     WidgetStore::DOCK_W_COLLAPSE < WidgetStore::DOCK_W_MIN,
     "o degrau de fechar tem de estar ABAIXO do minimo, senao arrastar ate' ao fim fecha por acidente"

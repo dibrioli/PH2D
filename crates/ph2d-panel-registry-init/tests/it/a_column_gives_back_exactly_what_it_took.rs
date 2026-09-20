@@ -295,7 +295,17 @@ fn reopening_restores_the_width_the_column_had_before_the_drag() {
     //    abaixo do mínimo só existia para o fecho se ver acontecer. O que este gate mede não
     //    mudou — o arrasto deixa o PISO gravado, logo ler o store no instante do fecho devolveria
     //    o piso e não os 420 do artista.
-    h.store.set_dock_width(DockSide::Right, Some(100.0));
+    //
+    // ⛔⛔ **E em 2026-09-20 o piso DESCEU** (ordem do dono: *«permita que manualmente o usuário
+    //    consiga estreitar o painel»*) ⇒ o literal `100` que aqui estava deixou de ser *«por
+    //    baixo do piso»* e passou a ser uma largura legítima, e este gate reprovou com
+    //    `Some(100)` contra `Some(84)`. *Uma fixtura escrita com um literal do outro lado de uma
+    //    cerca move-se com a cerca* ⇒ o pedido passa a ser DERIVADO do piso, e a próxima descida
+    //    não parte este gate outra vez.
+    h.store.set_dock_width(
+        DockSide::Right,
+        Some(ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN - 10.0),
+    );
     assert_eq!(
         h.store.dock_width_choice(DockSide::Right),
         Some(ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN)

@@ -65,6 +65,7 @@ mod paint_layer_list;
 mod paint_line; // o card Line (Style: Solid) — plano 38 §1
 mod paint_mask;
 mod paint_mask_row;
+mod paint_pigment; // a fileira `Pigment`: uma lei, uma porta, os três meios que a sentem
 mod paint_ramp_widget;
 mod paint_rows;
 mod paint_rows_relief;

@@ -46,6 +46,9 @@ mod thread_probe; // W3/W4 do plano 38: o custo por evento que os tetos do Sketc
 #[path = "measure_penup_cost.rs"]
 mod measure_penup_cost; // o que custa FECHAR um traço — a irmã do `measure_pendown_cost`
 
+#[path = "diag_pigmento_por_meio.rs"]
+mod diag_pigmento_por_meio; // em que MEIOS a lei do pigmento chega ao barro (a fronteira da oferta)
+
 #[path = "look_watercolor_arc.rs"]
 mod look_watercolor_arc; // o arco palido na concavidade: o oraculo e o RENDER, nao um escalar
 #[path = "measure_impasto_cost.rs"]

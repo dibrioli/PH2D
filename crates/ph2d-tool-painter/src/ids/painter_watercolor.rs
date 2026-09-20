@@ -47,6 +47,15 @@ pub const PAINTER_WATERCOLOR_GRANULATION: NodeId =
 
 /// **Pigment** — the merged subtractive-mixing slider (`0..1`, `0` = off; replaces the old Pigment
 /// toggle + Mix pair). `SetValue` → `set_brush_pigment_mixing` (flips the `pigment` gate + sets the amount).
+///
+/// ⚠️⚠️ **O nome deste id diz `watercolor` e o controlo JÁ NÃO É DA AGUADA** (ordem do dono,
+/// 2026-09-20: *«ligue o digital»*). Ele é pintado hoje em **três** meios — no cartão *Water* da
+/// aquarela e no cartão *Mixing* do Digital e do Impasto —, e quem decide onde é a
+/// `PaintMedia::offers_pigment_mixing`. ⛔ **O id fica com o nome antigo de propósito:** ele é
+/// `hash_node_id` de uma STRING, logo renomeá-lo muda o `NodeId`, e um `NodeId` é o que a
+/// arrumação guardada do artista e todo `register`/`route` deste painel já usam — *o preço de um
+/// nome mais honesto seria uma chave que não casa com nada*. A herança está escrita aqui e na
+/// `PAINTER_WATERCOLOR_FIELDS`, que continua a ser a lista que o `is_param_field` varre.
 pub const PAINTER_WATERCOLOR_MIX: NodeId = hash_node_id("painter_brush.watercolor_mix");
 
 /// **Body** — wash interior density (`0..1`, render-path). `SetValue` → `set_brush_fill`.

@@ -93,7 +93,8 @@ pub(crate) fn paint_appearance_sections(
     if !brush.is_inpaint {
         y = sep(ctx.scene, theme, x, content_w, y);
         y = paint_media_row(ctx, theme, x, content_w, y, brush);
-        y = match PaintMedia::from_u8(brush.media) {
+        let media = PaintMedia::from_u8(brush.media);
+        y = match media {
             PaintMedia::Digital => y,
             PaintMedia::Watercolor => crate::paint_watercolor::paint_watercolor_section(
                 ctx, theme, x, content_w, y, brush,
@@ -105,6 +106,22 @@ pub(crate) fn paint_appearance_sections(
                 crate::paint_wetpaint::paint_wetpaint_section(ctx, theme, x, content_w, y, brush)
             }
         };
+
+        // ── O cartão **Mixing** (a fileira `Pigment`) — para os meios que SENTEM a mistura
+        //    subtractiva e não têm um cartão onde ela caiba.
+        //
+        //    ⭐⭐ Ele nasceu da ordem do dono de 2026-09-20 (*«ligue o digital»*), que tirou a cerca
+        //    `watercolor &&` do `effective_pigment_mix`. A pergunta *«que meios a sentem?»* tem UMA
+        //    resposta — `PaintMedia::offers_pigment_mixing`, cuja lista é MEDIDA — e a aguada é
+        //    subtraída aqui porque ela já hospeda a fileira no cartão *Water*, ao lado do Rewet e do
+        //    Smudge, que é onde o artista a aprendeu.
+        //
+        //    ⚠️ **Subtrair a aguada é o que impede o MESMO id de ser pintado duas vezes no mesmo
+        //    quadro** — e um id repetido não é um controlo a mais, é um hit-rect a tapar o outro. ──
+        if media.offers_pigment_mixing() && media != PaintMedia::Watercolor {
+            y = sep(ctx.scene, theme, x, content_w, y);
+            y = crate::paint_pigment::paint_mixing_section(ctx, theme, x, content_w, y, &brush);
+        }
     }
 
     // ── Section 6: Randomize Color (collapsible; activates on amount > 0). Hidden in Smear/Blur/Clone,

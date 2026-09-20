@@ -330,20 +330,22 @@ pub struct BrushSpec {
     /// valleys (a non-linear gate, vs the linear [`Self::grain_depth`] multiply). `0` = the historical
     /// linear multiply (byte-identical). Pairs with a canvas-anchored Grain (`Tiled` + `Grain` kind).
     pub granulation: f32,
-    /// **Pigment** build-up toggle: when on, dab colour composites subtractively so wet-on-wet layers
-    /// mix like real paint (blue+yellow → green) instead of the plain `Mix` blend. Default `false`.
-    /// Only read when [`Self::watercolor`] is on.
+    /// **Pigment** build-up toggle: when on, dab colour composites subtractively so layers mix like
+    /// real paint (blue+yellow → green) instead of the plain `Mix` blend. Default `false`.
     ///
-    /// ⛔ **A lei é RYB (Gossett & Chen 2004), NÃO Kubelka–Munk** — esta linha dizia «Kubelka–Munk» e
-    /// era falsa: quem implementa é [`crate::blend::ryb_mix`], e o [`Self::effective_pigment_mix`]
-    /// (o irmão que a UI lê) sempre disse RYB. ⚠️ **O K–M existe e é de OUTRA casa** — a
-    /// `ph2d_wet_paint::colorops::ColorMix::Km`, o meio Wet Paint —, e as duas **não** dão a mesma
-    /// tinta: medido a 50/50, `azul + amarelo` dá `77,154,45` em RYB e `38,86,38` em K–M; `amarelo +
-    /// vermelho` dá `141,84,28` contra `227,38,28`. *Uma nota que troca o nome do modelo faz alguém
-    /// comparar duas tintas diferentes julgando que são a mesma.*
+    /// ⭐⭐ **NÃO é mais um controlo da aguada** (ordem do dono, 2026-09-20: *«ligue o digital»*): a
+    /// cerca `watercolor &&` saiu do [`Self::effective_pigment_mix`], e a lei vale para todo meio
+    /// que componha um dab por [`crate::blend::blend_over_pigment`] — **Digital · Watercolor ·
+    /// Impasto**, medido. ⛔ O **Wet Paint** não a lê: o depósito dele é do solver de fluido.
+    ///
+    /// ⚠️ **A lei é Kubelka–Munk de constante única** ([`ph2d_pigment::mix_unit`]) desde
+    /// 2026-09-20. ⛔ Ela **era RYB** (Gossett & Chen 2004) e esta nota já esteve errada no sentido
+    /// contrário — dizia «Kubelka–Munk» sobre uma implementação RYB. As duas não dão a mesma tinta
+    /// (medido a 50/50: `azul + amarelo` dá `77,154,45` em RYB e `38,86,38` em K–M), e o que a troca
+    /// compra é os **três meios misturarem igual**, que foi o pedido.
     pub pigment: bool,
     /// **Pigment mix** amount, `0..1`: how much the subtractive path is applied vs the plain blend.
-    /// Only read when [`Self::watercolor`] and [`Self::pigment`] are on.
+    /// Only read when [`Self::pigment`] is on — em qualquer meio (ver a nota dele).
     pub pigment_mix: f32,
     /// **Fill** density of the wash, `0..1` (wet_edges `fillDensity`): the optical density contributed by
     /// the flat interior of the stroke (before the edge term). Low = a translucent glaze, high = a

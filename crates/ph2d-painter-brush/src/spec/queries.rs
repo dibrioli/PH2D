@@ -78,13 +78,30 @@ impl BrushSpec {
         }
     }
 
-    /// Effective **Pigment mix** `[0, 1]` (how much the dab composites subtractively — RYB, Gossett &
-    /// Chen 2004 — vs the plain blend; [`crate::blend::blend_over_pigment`]). Zero unless BOTH the
-    /// Watercolor section and the Pigment toggle are on, so a normal brush blends exactly as before
-    /// (byte-identical). Non-zero ⇒ wet-on-wet mixes like real paint (blue + yellow → green).
+    /// Effective **Pigment mix** `[0, 1]` (how much the dab composites subtractively — Kubelka–Munk,
+    /// [`ph2d_pigment::mix_unit`] — vs the plain blend; [`crate::blend::blend_over_pigment`]). Zero
+    /// unless the Pigment knob is on, so a brush that never touched it blends exactly as before
+    /// (byte-identical). Non-zero ⇒ a dab over paint mixes like real paint (blue + yellow → green).
+    ///
+    /// ⭐⭐ **A cerca `self.watercolor &&` SAIU por ordem do dono (2026-09-20: *«ligue o digital»*),
+    /// e o que ela escondia não era uma lei — era um MEIO.** A pergunta que este predicado responde
+    /// é *«como é que a cor deste dab encontra a tinta que já lá está?»*, e **todo meio que componha
+    /// um dab pela porta [`crate::blend::blend_over_pigment`] a faz**. Amarrá-la à aguada tornava a
+    /// lei inalcançável no Digital, que é o meio de omissão do app.
+    ///
+    /// ⚠️ **O ALCANCE foi MEDIDO antes de a cerca sair**, e não é «os quatro meios» —
+    /// `diag_pigmento_por_meio` (em `ph2d-tool-painter`) pinta azul sobre amarelo a meia força em
+    /// cada meio e compara o pixel com o knob a `0` e a `1`. Quem lê: **Digital** e **Impasto**
+    /// (a mesma porta de composite) e a **Watercolor** (pela cadeia óptica dela). Quem NÃO lê: o
+    /// **Wet Paint**, cujo depósito é do solver de fluido e que tem o K–M próprio dele.
+    ///
+    /// ⛔ **É por isso que o painel oferece a fileira nesses três e só nesses** — um knob que o motor
+    /// lê e o painel esconde é um INALCANÇÁVEL, e um que o painel pinta e o motor não lê é um MORTO;
+    /// a porta que decide isso é a `PaintMedia::offers_pigment_mixing` (em `ph2d-tool-painter`, que
+    /// é onde os meios vivem — esta crate não os conhece), lida pelo painel.
     #[must_use]
     pub fn effective_pigment_mix(&self) -> f32 {
-        if self.watercolor && self.pigment {
+        if self.pigment {
             self.pigment_mix.clamp(0.0, 1.0)
         } else {
             0.0

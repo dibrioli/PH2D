@@ -66,15 +66,17 @@ fn the_predicate_refuses_exactly_the_laws_the_kernel_does_not_carry() {
         "um blend que não é o Mix são outras 23 leis"
     );
 
+    // ⚠️ O `watercolor: true` SAIU desta fixtura em 2026-09-20 e a saída dele é o teste: até esse
+    //    dia o `effective_pigment_mix` gateava no meio, logo sem ele a fixtura lia `0` e o caso
+    //    passava **pelo motivo errado** — *ela media a aguada, não o pigmento*.
     let pigment = BrushSpec {
-        watercolor: true,
         pigment: true,
         pigment_mix: 0.5,
         ..BrushSpec::default()
     };
     assert!(
         !eligible(&pigment),
-        "o crossfade RYB do pigmento é outra lei, e ela lê o alfa do destino"
+        "o crossfade Kubelka–Munk do pigmento é outra lei, e ela lê o alfa do destino"
     );
 
     let mut body = BrushSpec {

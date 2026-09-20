@@ -168,6 +168,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.brush.watercolor_basic" => "Watercolor Basic",
         "panel.painter_layers.brush.digital_basic" => "Digital Basic",
         "panel.painter_layers.brush.paint_mode" => "Paint Mode",
+        "panel.painter_layers.brush.mixing" => "Mixing",
         "panel.painter_layers.brush.layers" => "Layers",
         "panel.painter_layers.brush.deform" => "Deform",
         "panel.painter_layers.brush.sculpt" => "Sculpt",

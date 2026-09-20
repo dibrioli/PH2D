@@ -67,7 +67,11 @@ pub type DeviceStamp = Box<dyn Fn(&DeviceStampJob<'_>) -> Option<Vec<u8>> + Send
 /// - **`blend` tem de ser `Mix`.** Os outros 23 modos são 23 leis (`blend_rgb`), e traduzir todas
 ///   seria a segunda resposta que esta crate existe para não ter. O kernel transcreve UMA.
 /// - **`pigment_mix` tem de ser zero.** Acima disso o `blend_over_pigment` faz um crossfade para uma
-///   mistura RYB subtrativa — outra lei inteira, e ela lê o alfa do destino por texel.
+///   mistura **Kubelka–Munk** subtractiva (`ph2d_pigment::mix_unit`) — outra lei inteira, com uma
+///   transferência sRGB tabelada por canal, e ela lê o alfa do destino por texel.
+///   ⚠️ **Desde 2026-09-20 esta cláusula morde no DIGITAL** (ordem do dono, *«ligue o digital»*): a
+///   lei deixou de ser gateada pela aguada, logo **ligar o `Pigment` desliga o carimbo do device** e
+///   o traço volta à rota em banda. Não é um defeito — é o preço, e ele está medido no handoff.
 /// - **Smooth Edges tem de estar desligado.** O AA do filme amostra a cadeia de silhueta NOVE vezes
 ///   por texel contra uma base deformada; ele não é um valor tabelável, é um passe.
 ///

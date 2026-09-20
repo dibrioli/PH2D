@@ -379,13 +379,6 @@ fn paint_water_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    // The **Pigment** slider is the merged old Pigment-toggle + Mix pair: it shows the mixing amount when
-    // the gate is on, else `0` (off); `set_brush_pigment_mixing` flips the gate + remembers the amount.
-    let pigment_amt = if brush.pigment {
-        brush.pigment_mix
-    } else {
-        0.0
-    };
     let (ix, iw, mut ry, next_y) = card_frame(
         ctx,
         theme,
@@ -423,19 +416,10 @@ fn paint_water_card(
         number_field::FINE_STEP,
         2,
     );
-    let _ = card_row(
-        ctx,
-        theme,
-        ix,
-        iw,
-        ry,
-        "panel.painter_layers.watercolor.pigment",
-        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_MIX,
-        pigment_amt,
-        0.0,
-        1.0,
-        number_field::FINE_STEP,
-        2,
-    );
+    // ⭐ A terceira fileira sai de [`crate::paint_pigment`] desde 2026-09-20: a mistura subtractiva
+    //   deixou de ser da aguada (ordem do dono, *«ligue o digital»*) e passou a ter **dois**
+    //   hospedeiros — este cartão e o cartão `Mixing` dos meios sem cartão de água. O valor que ela
+    //   mostra é DERIVADO, e derivá-lo aqui seria a segunda resposta à mesma pergunta.
+    let _ = crate::paint_pigment::paint_pigment_row(ctx, theme, ix, iw, ry, brush);
     next_y
 }

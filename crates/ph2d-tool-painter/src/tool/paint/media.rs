@@ -91,6 +91,44 @@ impl PaintMedia {
         }
     }
 
+    /// **Este meio SENTE a mistura subtractiva de pigmento?** — a porta que decide onde o painel
+    /// pinta a fileira `Pigment`, e a única resposta a essa pergunta.
+    ///
+    /// ⭐⭐ Ela existe porque a ordem do dono de 2026-09-20 (*«ligue o digital»*) tirou a cerca
+    /// `watercolor &&` do [`ph2d_painter_brush::BrushSpec::effective_pigment_mix`]: a lei deixou de
+    /// ser da aguada e passou a valer para todo meio que componha um dab pela porta
+    /// [`ph2d_painter_brush::blend::blend_over_pigment`]. ⚠️ **Sem esta porta, o alcance da LEI e o
+    /// alcance do BOTÃO deixam de ser a mesma lista** — e as duas maneiras de eles discordarem têm
+    /// curas OPOSTAS (o knob vivo que o painel esconde é um INALCANÇÁVEL; o que o painel pinta e o
+    /// motor ignora é um MORTO).
+    ///
+    /// ⚠️⚠️ **A lista é MEDIDA e não raciocinada** — `diag_pigmento_por_meio` pinta azul sobre
+    /// amarelo a MEIA FORÇA em cada meio e compara o pixel da sobreposição com o knob a `0` e a `1`
+    /// (2026-09-20, `|Δ|max` por canal):
+    ///
+    /// | meio | sem | com | `|Δ|` |
+    /// |---|---|---|---|
+    /// | `Digital` | `197,203,203` | `55,111,202` | **142** |
+    /// | `Watercolor` | `178,198,247` | `182,194,243` | **4** |
+    /// | `Impasto` | `197,203,203` | `55,111,202` | **142** |
+    /// | `WetPaint` | `42,76,203` | `42,76,203` | **0** |
+    ///
+    /// ⛔ **O Wet Paint responde `false` e não é um esquecimento:** o depósito dele é do solver de
+    /// fluido, que **tem o Kubelka–Munk próprio** (`ph2d_wet_paint::ColorMix::Km`) e o seu próprio
+    /// slider de pigmento por dab — oferecer esta fileira ali seria um segundo controlo sobre a
+    /// mesma pergunta, e ele seria inerte.
+    ///
+    /// ⚠️ **A meia força é o que faz a medição existir:** com cobertura cheia (`a = 1`) o
+    /// `blend_over_pigment` devolve a cor de cima seja qual for a lei, e a tabela lê `0` nas quatro
+    /// linhas — *uma fixtura sem o que misturar não mede mistura nenhuma*.
+    #[must_use]
+    pub fn offers_pigment_mixing(self) -> bool {
+        match self {
+            PaintMedia::Digital | PaintMedia::Watercolor | PaintMedia::Impasto => true,
+            PaintMedia::WetPaint => false,
+        }
+    }
+
     /// Can this medium work in `mode` — is the tool in the artist's hand one this medium paints with?
     ///
     /// `Digital` answers `false` everywhere on purpose: it is the *absence* of a medium, so it never

@@ -541,7 +541,7 @@ fn every_widget_file_wires_a11y() {
                 //    ficheiro, logo aqui basta reconhecê-la.
                 let delega_pela_porta = PORTAS_DE_CRATE_VERIFICADAS
                     .iter()
-                    .any(|(porta, dono, _)| *dono == crate_name && content.contains(porta));
+                    .any(|(porta, dono, _, _)| *dono == crate_name && content.contains(porta));
                 if !has_direct_a11y && !delegates_to_widgets && !delega_pela_porta {
                     violations.push(key);
                 }
@@ -575,12 +575,24 @@ fn every_widget_file_wires_a11y() {
 /// conter um dos [`WIDGET_DELEGATE_MARKERS`]. *Uma lista de dívida sem censo de obsolescência é
 /// uma licença*, e esta responde por si.
 ///
-/// `(nome da porta, crate dona, ficheiro que a define)`.
-const PORTAS_DE_CRATE_VERIFICADAS: &[(&str, &str, &str)] = &[
+/// ⚠️⚠️ **E uma porta pode delegar noutra porta da MESMA crate — a cadeia.** A verificação exigia
+/// que o ficheiro da porta contivesse um primitivo, o que é verdade do caso que a criou
+/// (`fileira_de_param`) e **falso por acidente** de qualquer crate cujas peças se empilhem: o
+/// `card_row` da `ph2d-panel-painter-layers` delega no `number_field::chip`, que é quem chama o
+/// `paint_number_input_with_buffer`. *Exigir um salto só não é uma regra, é o formato do primeiro
+/// caso* — e a cura barata seria isentar o consumidor, que é como uma catraca vira licença.
+///
+/// ⛔ O 4.º campo é o **salto seguinte** (vazio = a porta tem de conter o primitivo ela própria).
+/// Ele não afrouxa nada: a cadeia continua a ter de ACABAR num primitivo, e cada elo é um ficheiro
+/// que tem de existir e de definir a função que diz definir.
+///
+/// `(nome da porta, crate dona, ficheiro que a define, ficheiro do salto seguinte)`.
+const PORTAS_DE_CRATE_VERIFICADAS: &[(&str, &str, &str, &str)] = &[
     (
         "fileira_de_param",
         "ph2d-panel-audio-editor",
         "src/fileira_de_param.rs",
+        "",
     ),
     // ⭐ 2026-09-22: as quatro linhas de cor do painel de vetor deixaram de montar a fileira à mão
     //    e passaram a chamar esta porta, que delega na `property_row::paint_color_row` da casa.
@@ -591,6 +603,7 @@ const PORTAS_DE_CRATE_VERIFICADAS: &[(&str, &str, &str)] = &[
         "colour_swatch_row",
         "ph2d-panel-vector",
         "src/paint_rows.rs",
+        "",
     ),
     // ⭐ 2026-09-23: as QUATRO cores do Painter (Pincel · Papel · a luz e a cera da Impasto)
     //    deixaram de se desenhar à mão — duas com um `fill_rounded_rect`, duas com um
@@ -603,8 +616,16 @@ const PORTAS_DE_CRATE_VERIFICADAS: &[(&str, &str, &str)] = &[
         "color_row",
         "ph2d-panel-painter-layers",
         "src/paint_brush_rows.rs",
+        "",
     ),
-];
+    // O `card_row` é a fileira `rótulo · caixa de número` de TODO cartão deste painel (6 ficheiros
+    // a chamam). Ele delega no `number_field::chip`, e esse no `paint_number_input_with_buffer`.
+    (
+        "card_row",
+        "ph2d-panel-painter-layers",
+        "src/card.rs",
+        "src/number_field.rs",
+    ),];
 
 /// ⭐⭐ **E toda porta desta lista delega MESMO num primitivo.**
 ///
@@ -621,7 +642,7 @@ fn toda_porta_de_crate_delega_mesmo_num_primitivo() {
         "a lista esvaziou-se — apague-a e o braço que a lê, senão ela fica a mentir sobre uma \
          forma que já não existe"
     );
-    for (porta, dono, ficheiro) in PORTAS_DE_CRATE_VERIFICADAS {
+    for (porta, dono, ficheiro, salto) in PORTAS_DE_CRATE_VERIFICADAS {
         let caminho = crates_root.join(dono).join(ficheiro);
         let fonte = std::fs::read_to_string(&caminho).unwrap_or_else(|_| {
             panic!("a porta `{porta}` diz viver em {dono}/{ficheiro} e esse ficheiro nao existe")
@@ -630,9 +651,30 @@ fn toda_porta_de_crate_delega_mesmo_num_primitivo() {
             fonte.contains(&format!("fn {porta}")),
             "{dono}/{ficheiro} ja nao define `{porta}`"
         );
+        // A cadeia: sem salto, o primitivo tem de estar AQUI; com salto, no ficheiro seguinte — que
+        // tem de existir e de ser referido por este, senão a porta aponta para um vizinho que ela
+        // não chama.
+        let (onde, fim) = if salto.is_empty() {
+            (format!("{dono}/{ficheiro}"), fonte.clone())
+        } else {
+            let alvo = std::path::Path::new(salto)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .expect("o salto é um caminho de ficheiro .rs");
+            assert!(
+                fonte.contains(alvo),
+                "a porta `{porta}` ({dono}/{ficheiro}) diz saltar para `{salto}` e nao o menciona \
+                 — a cadeia esta escrita nesta lista e nao no codigo"
+            );
+            let caminho = crates_root.join(dono).join(salto);
+            let fonte = std::fs::read_to_string(&caminho).unwrap_or_else(|_| {
+                panic!("o salto de `{porta}` diz ser {dono}/{salto} e esse ficheiro nao existe")
+            });
+            (format!("{dono}/{salto}"), fonte)
+        };
         assert!(
-            WIDGET_DELEGATE_MARKERS.iter().any(|m| fonte.contains(m)),
-            "a porta `{porta}` ({dono}/{ficheiro}) ja NAO delega em primitivo nenhum — os \
+            WIDGET_DELEGATE_MARKERS.iter().any(|m| fim.contains(m)),
+            "a cadeia da porta `{porta}` acaba em {onde} e ali NAO ha primitivo nenhum — os \
              consumidores dela estao a ser dados por fiados sobre uma promessa que morreu"
         );
     }

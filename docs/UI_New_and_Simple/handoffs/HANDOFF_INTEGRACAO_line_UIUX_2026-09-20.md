@@ -11,14 +11,21 @@
 
 | | |
 |---|---|
-| branch | `line/UIUX` |
-| HEAD | **`0580e872a`** — ⚠️ os **2 últimos** são este próprio handoff, zero bytes de produto |
+| branch a fundir | **`line/UIUX`** — ⛔ **funda a REFERÊNCIA, nunca um SHA deste documento** |
 | merge-base com `main` | **`76bd6de02`** — ⭐ a linha **JÁ ESTÁ REBASEADA** sobre o `main` de hoje |
-| commits | **86** |
-| ficheiros | **779** · 31259 insertions(+), 5046 deletions(-) |
+| HEAD · commits · ficheiros | ⚠️ **CONTE**: `git rev-parse --short line/UIUX` · `git rev-list --count main..line/UIUX` · `git diff --name-only main..line/UIUX \| wc -l` |
+| ordem de grandeza (para reconhecer a árvore certa) | ~**87** commits · ~**779** ficheiros · `+31 k` / `−5 k` |
 | crates novas | **nenhuma** |
 | ADR novo | **nenhum** ⇒ fora de toda disputa de número |
 | contrato congelado (§6) | **intocado** nos dois ficheiros |
+
+⛔⛔ **Porque o HEAD NÃO está escrito aqui:** os últimos commits desta linha são **este documento**,
+e cada vez que ele se corrige invalida o SHA que acabou de citar. A 1.ª redacção pinou `7f60e93f7`,
+a 2.ª `0580e872a`, e as duas estavam erradas no instante em que foram gravadas. *A fonte de cada
+número é o repositório, nunca a nota* (`CLAUDE.md` §5.0) — e o §1.5.9 item 3 avisa que **uma tabela
+colada não sabe que envelheceu**: isso vale primeiro para a tabela de identidade de quem o cita.
+⭐ Os últimos commits **não têm um byte de produto** (handoff + memória), logo a árvore a fundir é a
+mesma com ou sem eles.
 
 ⚠️ **O rebase foi feito hoje e conflitou em `project-memory/` apenas** — os 19 commits que o `main`
 ganhou desde o fork são todos da `line/cascadeur` e todos de memória. As quatro resoluções são

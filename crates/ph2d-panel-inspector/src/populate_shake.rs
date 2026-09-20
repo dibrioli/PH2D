@@ -43,6 +43,7 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 7] = [
 
 pub(crate) fn populate_shake(store: &mut WidgetStore) {
     // ⚠️ **Os chips são BOTÕES** — sem registo eles pintam e morrem sob o dedo.
+    register_button_ids(store, &ids::INSP_SHAKE_PERFIL);
     register_button_ids(store, &ids::INSP_SHAKE_EXPOENTE);
     register_button_ids(store, &ids::INSP_EMITTER_DE);
     register_button_ids(store, &ids::INSP_EMITTER_ROW);

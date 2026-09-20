@@ -370,3 +370,37 @@ fn a_porta_do_teclado_alcanca_o_heroi_da_cena() {
     // ⛔ **E só ele** — a bomba e a câmera não são conduzidas pelo dedo.
     assert_eq!(alcancados.len(), 1, "quem mais lê o teclado nesta cena?");
 }
+
+/// ⭐⭐⭐ **O roteiro nomeia chips que EXISTEM, e os nomes saem da tabela que o painel pinta.**
+///
+/// ⚠️ **As duas metades, e nenhuma basta:** o texto tem de CONTER os três nomes (senão o passo (4)
+/// fala de um botão que ninguém encontra) **e** eles têm de vir resolvidos do i18n (uma chave por
+/// traduzir aparece como `shake.perfil.recoil` no ecrã do dono, e um gate que só procurasse a
+/// palavra «Recoil» num literal ficaria verde sobre isso).
+///
+/// **Mutações que devem sangrar:** trocar `nome_do_perfil` por um literal · apagar uma entrada da
+/// tabela de i18n · tirar um perfil do roteiro.
+#[test]
+fn o_roteiro_nomeia_os_tres_perfis_pela_tabela_do_painel() {
+    let texto = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shake_smoke.rs"))
+        .expect("o roteiro vive neste ficheiro");
+    assert!(
+        texto.contains("{recuo}") && texto.contains("{impacto}") && texto.contains("{explosao}"),
+        "o passo (4) tem de nomear os TRE^S perfis, e por interpolacao"
+    );
+    for p in ph2d_shake::Perfil::ALL {
+        let nome = ph2d_i18n::tr(p.label_key());
+        assert_ne!(
+            nome,
+            p.label_key(),
+            "{p:?}: a chave {} nao esta' na tabela de i18n — o dono le^-la-ia crua",
+            p.label_key()
+        );
+        assert!(
+            nome.chars().next().is_some_and(char::is_uppercase),
+            "{p:?}: «{nome}» nao e' um ro'tulo que o artista le^"
+        );
+    }
+    let rotulo = ph2d_i18n::tr("panel.inspector.shake.preset");
+    assert_ne!(rotulo, "panel.inspector.shake.preset", "a fileira tem nome");
+}

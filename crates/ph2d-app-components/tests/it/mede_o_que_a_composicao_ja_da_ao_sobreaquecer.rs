@@ -73,7 +73,10 @@ fn mede_o_que_a_composicao_ja_da_ao_sobreaquecer() {
         secas += t.secas.len();
     }
     println!("A) dez pedidos num cano de 5:");
-    println!("   calor que sobra: {}  ·  cliques secos: {secas}", calor(&sim, e));
+    println!(
+        "   calor que sobra: {}  ·  cliques secos: {secas}",
+        calor(&sim, e)
+    );
     println!(
         "   => {}\n",
         if calor(&sim, e) == 0 && secas == 5 {

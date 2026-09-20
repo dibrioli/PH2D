@@ -206,10 +206,24 @@ fn cena_um(world: &mut World) -> Entity {
     bomba
 }
 
+/// ⚠️⚠️ **Os nomes dos três perfis que o roteiro imprime saem da MESMA porta que o painel pinta**
+/// (`Perfil::label_key` → `tr`), e nunca de um literal: *um passo que manda carregar num chip
+/// AFIRMA que ele está na tela com aquele nome*, e um literal aqui envelhece no dia em que alguém
+/// renomear a chave — com o dono a aprovar o smoke com o passo impossível dentro. Há gate.
+fn nome_do_perfil(p: ph2d_shake::Perfil) -> &'static str {
+    ph2d_i18n::tr(p.label_key())
+}
+
 /// **Monta a cena que `nivel` pede, e devolve QUAL montou.**
 pub fn montar(world: &mut World, _nivel: u32) -> Montada {
     let escolhido = cena_um(world);
     ph2d_ecs::assign_missing_stable_ids(world);
+    let preset = ph2d_i18n::tr("panel.inspector.shake.preset");
+    let (recuo, impacto, explosao) = (
+        nome_do_perfil(ph2d_shake::Perfil::Recuo),
+        nome_do_perfil(ph2d_shake::Perfil::Impacto),
+        nome_do_perfil(ph2d_shake::Perfil::Explosao),
+    );
     println!(
         "[shake-smoke] cena=1  accao=«{ACCAO}» (tecla {TECLA_NOME})  sinal=«{SINAL}»\n\
          (1) carregue no {TECLA_NOME}: a vista TREME — os postes saltam, e o quadrado VERMELHO e' \
@@ -220,8 +234,12 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
          (3) role o painel da direita ate' ao fim (a «Bomba» ja' esta' escolhida): a seccao \
          SHAKE EMITTER e' onde ela grita. \
          suba o «Nothing Beyond» de 18 para 40 e repita o passo (2) — agora ele chega de longe\n\
-         (4) na Hierarchy escolha a «Camera»: a seccao CAMERA SHAKE e' o COMO. Suba a «Amplitude» \
-         e baixe o «Decay» para 0,5; carregue no {TECLA_NOME} e veja um abanao grande e longo\n\
+         (4) na Hierarchy escolha a «Camera»: a seccao CAMERA SHAKE e' o COMO, e a fileira \
+         «{preset}» no TOPO dela e' UM clique — carregue em «{explosao}» e depois no \
+         {TECLA_NOME}: o abanao fica grande e longo. «{recuo}» faz o contrario (curto e pequeno, \
+         o coice de uma arma) e «{impacto}» devolve o de fabrica\n\
+         (4-bis) repare que NENHUM chip fica aceso e que os quatro numeros abaixo MUDARAM: um \
+         perfil e' acucar e nao um modo. Suba a «Amplitude» a dedo e o abanao obedece na mesma\n\
          (5) ainda na CAMERA SHAKE, o «Punch» de 1 a 3 muda o CARACTER: a 1 a cauda fica a pairar, \
          a 3 o abanao morre depressa\n\
          (6) na barra de CIMA carregue em `Pause`: o {TECLA_NOME} deixa de abanar e volta a ser do \

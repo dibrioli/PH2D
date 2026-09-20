@@ -236,3 +236,85 @@ fn a_tag_da_cerca_faz_a_volta_inteira() {
         assert_eq!(SignalFrom::from_tag(lido), *esperado);
     }
 }
+
+/// ⭐⭐⭐ **O perfil do MEIO é o valor de fábrica, AO BIT** — e isso não é decoração: é o que prova
+/// que o degrau central não foi inventado para encher a escada.
+///
+/// ⚠️ **A régua são os CINCO campos e não os quatro que ele escreve:** a semente entra aqui de
+/// propósito, porque o que se afirma é *«a câmera não mudou»*, e não *«os quatro campos ficaram
+/// iguais»* — a segunda frase é verdadeira por construção num perfil que não lhe toca.
+#[test]
+fn o_perfil_do_meio_e_a_fabrica_ao_bit() {
+    let (mut sim, cam, _) = cena();
+    let b = cam.to_bits();
+    let antes = sim.world().get::<CameraShake>(cam).unwrap().clone();
+    assert_eq!(antes, CameraShake::default(), "a cena abre na fabrica");
+    apply_shake(
+        &mut sim,
+        &[(b, SE::Perfil(ph2d_shake::Perfil::Impacto.tag()))],
+    );
+    assert_eq!(
+        *sim.world().get::<CameraShake>(cam).unwrap(),
+        antes,
+        "carregar em Impact numa camera de fabrica tem de ser um no-op"
+    );
+}
+
+/// ⛔⛔ **Um perfil NUNCA toca na semente**, e a ausência é a lei (ver o cabeçalho do
+/// `ph2d_shake::perfil`): ela é IDENTIDADE e não sensação.
+///
+/// ⚠️ **A fixtura afasta a semente do valor de fábrica de propósito** — com ela no default, um
+/// perfil que a escrevesse passaria neste gate em silêncio, que é a armadilha do ponto NEUTRO.
+///
+/// ⭐ E a segunda metade é o CONTROLO: os outros quatro campos **têm** de se mexer, senão este
+/// gate ficaria verde sobre um `apply` que não faz nada.
+#[test]
+fn um_perfil_nunca_toca_na_semente() {
+    for p in ph2d_shake::Perfil::ALL {
+        let (mut sim, cam, _) = cena();
+        let b = cam.to_bits();
+        const OUTRA: u64 = 0xDEAD_BEEF;
+        sim.world_mut().get_mut::<CameraShake>(cam).unwrap().semente = OUTRA;
+        // Afasta os quatro dos valores de QUALQUER perfil, para o controlo ser observável.
+        {
+            let mut c = sim.world_mut().get_mut::<CameraShake>(cam).unwrap();
+            c.amplitude = 7.0;
+            c.frequencia = 3.0;
+            c.decaimento = 5.0;
+            c.expoente = ph2d_shake::EXPOENTE_MAX;
+        }
+        apply_shake(&mut sim, &[(b, SE::Perfil(p.tag()))]);
+        let c = sim.world().get::<CameraShake>(cam).unwrap();
+        assert_eq!(c.semente, OUTRA, "{p:?} escreveu na semente");
+        let n = p.numeros();
+        assert_eq!(
+            (c.amplitude, c.frequencia, c.decaimento),
+            (n.amplitude, n.frequencia, n.decaimento),
+            "{p:?}: o controlo — os quatro campos TE^M de se mexer"
+        );
+    }
+}
+
+/// ⭐⭐ **A escada é uma fracção da VISTA, e ela lê-se da câmera** — nunca de um literal.
+///
+/// ⚠️ Foi a medir isto que se descobriu que a doc do `CameraShake::default` citava `11,25` m como
+/// «a altura da vista de fábrica» quando o [`GameCamera::default`] declara `10,0`: *um número numa
+/// tabela de prosa não vinha de componente nenhum*, e a tabela foi corrigida no mesmo commit.
+#[test]
+fn a_escada_e_uma_fraccao_da_vista() {
+    let vista = GameCamera::default().height_world;
+    let esperado = [
+        (ph2d_shake::Perfil::Recuo, 0.005),
+        (ph2d_shake::Perfil::Impacto, 0.025),
+        (ph2d_shake::Perfil::Explosao, 0.100),
+    ];
+    for (p, fraccao) in esperado {
+        let lido = p.numeros().amplitude / vista;
+        assert!(
+            (lido - fraccao).abs() < 1e-4,
+            "{p:?}: o pico e' {:.1} % da vista e a tabela diz {:.1} %",
+            lido * 100.0,
+            fraccao * 100.0
+        );
+    }
+}

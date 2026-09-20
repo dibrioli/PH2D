@@ -454,6 +454,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ **As unidades NÃO vão no texto** — elas são o chip do campo (`Unit::Meters`), e há
         // gate (`no_row_label_carries_its_own_unit`) a prová-lo.
         "panel.inspector.shake.camera_shake" => "Camera Shake",
+        // ⭐ Os PERFIS de um clique. ⚠️ Eles pintam-se ANTES dos números, porque os reescrevem.
+        "panel.inspector.shake.preset" => "Preset",
         "panel.inspector.shake.amplitude" => "Amplitude",
         "panel.inspector.shake.frequency" => "Frequency",
         "panel.inspector.shake.decay" => "Decay",

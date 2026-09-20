@@ -133,6 +133,35 @@ fn edicao_emissor(acoes: Vec<EditorAction>, id: ph2d_a11y::NodeId) -> EmitterFie
         .unwrap_or_else(|| panic!("o controlo {id:?} nao produziu edicao de EMISSOR nenhuma"))
 }
 
+/// ⭐⭐⭐ **Todo chip de PERFIL chega ao barramento com a POSIÇÃO dele, e o array cobre o `ALL`.**
+///
+/// ⚠️ **As duas metades, e a segunda é a que falta mais vezes:** um perfil sem chip existe, tem lei
+/// e tem gates — *e o artista não lhe chega* (a forma exacta que o `Density` da escultura e o
+/// `Destroy` da tabela de acções pagaram, os dois com `left: N, right: N-1`).
+///
+/// **Mutações que devem sangrar:** tirar o array do `populate` · tirar o braço do despacho · mandar
+/// sempre a mesma tag · encurtar o array.
+#[test]
+fn todo_chip_de_perfil_chega_ao_barramento_e_cobre_o_catalogo() {
+    assert!(
+        !ids::INSP_SHAKE_PERFIL.is_empty(),
+        "piso de populacao: um array vazio satisfaz o laco em silencio"
+    );
+    for (i, &id) in ids::INSP_SHAKE_PERFIL.iter().enumerate() {
+        let tag = u8::try_from(i).unwrap();
+        assert_eq!(
+            edicao_camera(clica(id, false), id),
+            ShakeFieldEdit::Perfil(tag),
+            "o chip {i} tem de mandar a tag {tag}"
+        );
+    }
+    assert_eq!(
+        ids::INSP_SHAKE_PERFIL.len(),
+        ph2d_shake::Perfil::ALL.len(),
+        "um perfil sem chip e' inalcancavel pelo artista"
+    );
+}
+
 /// ⭐⭐⭐ **Todo chip do EXPOENTE chega ao barramento com o valor da LEI, e não com o índice.**
 ///
 /// **Mutações que devem sangrar:** tirar o array do `populate` · tirar o braço do despacho · mandar

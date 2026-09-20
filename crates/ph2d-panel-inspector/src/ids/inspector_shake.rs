@@ -22,6 +22,17 @@ pub const INSP_SHAKE_DECAIMENTO: NodeId = hash_node_id("insp_shake_decaimento");
 /// A semente do ruído.
 pub const INSP_SHAKE_SEMENTE: NodeId = hash_node_id("insp_shake_semente");
 
+/// ⭐⭐⭐ **Os TRÊS perfis de um clique** — *Recoil* · *Impact* · *Explosion*.
+///
+/// ⚠️ O comprimento é o do `ph2d_shake::Perfil::ALL`, com gate: *um perfil sem chip existe, tem
+/// lei, tem gates — e o artista não lhe chega* (o `Density` da escultura e o `Destroy` da tabela
+/// de acções já pagaram esta forma).
+pub const INSP_SHAKE_PERFIL: [NodeId; 3] = [
+    hash_node_id("insp_shake_perfil_0"),
+    hash_node_id("insp_shake_perfil_1"),
+    hash_node_id("insp_shake_perfil_2"),
+];
+
 /// **Os chips do EXPOENTE.**
 ///
 /// ⚠️⚠️ **Aqui o índice NÃO é a tag de um enum — ele é `expoente − 1`**, porque a faixa da lei

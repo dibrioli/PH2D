@@ -23,6 +23,15 @@ use ph2d_editor_core::shake_edits::InspectorShakeInfo;
 use ph2d_editor_core::widget::{SectionFold, Unit};
 use ph2d_i18n::{tr, tr_with};
 
+/// Os rótulos dos chips dos PERFIS. ⭐ **O motor publica a CHAVE e quem pinta é que a resolve** —
+/// a lei da fronteira dos motores; um motor que devolvesse a palavra seria uma 2.ª tabela de texto.
+fn rotulos_dos_perfis() -> Vec<&'static str> {
+    ph2d_shake::Perfil::ALL
+        .iter()
+        .map(|p| tr(p.label_key()))
+        .collect()
+}
+
 /// Os rótulos dos chips do expoente. ⚠️ **Eles não vêm de um `ALL` de enum** — aqui a escolha é um
 /// NÚMERO (`1`, `2`, `3`), e inventar um enum para três inteiros seria a segunda representação de
 /// uma faixa que a lei já declara ([`ph2d_shake::EXPOENTE_MIN`]/[`ph2d_shake::EXPOENTE_MAX`]).
@@ -57,7 +66,27 @@ fn corpo(
             tr("panel.inspector.shake.punch"),
         ],
     );
-    let mut cur_y = y;
+    // ⭐⭐⭐ **Os PERFIS primeiro** — eles reescrevem os quatro números que vêm a seguir, e é isso
+    // que os põe em cima: *um botão que muda os campos abaixo dele lê-se; um que os muda acima,
+    // não* (a mesma ordem que o `tween_editor` já paga, com a mesma frase).
+    let perfis = rotulos_dos_perfis();
+    let mut cur_y = grupo(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        tr("panel.inspector.shake.preset"),
+        &crate::ids::INSP_SHAKE_PERFIL,
+        &perfis,
+        // ⚠️ **NENHUM fica aceso, e é a decisão:** um perfil não é um MODO — depois do clique ele
+        // desaparece e sobram os quatro números. Acender um prometeria um estado que o componente
+        // não guarda, e ele mentiria no instante em que o artista afinasse a amplitude.
+        usize::MAX,
+    );
     for (id, label, step, unidade) in [
         (
             crate::ids::INSP_SHAKE_AMPLITUDE,

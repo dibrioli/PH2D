@@ -26,6 +26,16 @@ pub enum ShakeFieldEdit {
     /// A semente do ruído. ⚠️ `u64` porque é o que o *splitmix* come — o painel edita-a como um
     /// número comum e a shell não converte nada.
     Semente(u64),
+    /// ⭐⭐⭐ **Um PERFIL de um clique** — a POSIÇÃO no `ph2d_shake::Perfil::ALL`.
+    ///
+    /// ⚠️ **APENDADA**, como manda a lei das variantes desta casa. ⚠️ E viaja como `u8` e não como
+    /// o enum do motor, pela mesma cerca de dependência do `Edge` do gatilho: o painel não conhece
+    /// a `ph2d-shake` como fonte de tipos que atravessam a fronteira.
+    ///
+    /// ⛔ **Ela escreve QUATRO campos e nunca a semente** — ver o cabeçalho do `ph2d_shake::perfil`:
+    /// a semente é IDENTIDADE, e dois objectos que receberam o mesmo clique não podem passar a
+    /// tremer em uníssono.
+    Perfil(u8),
 }
 
 /// Uma edição de um campo da secção **SHAKE EMITTER** (em quem explode).

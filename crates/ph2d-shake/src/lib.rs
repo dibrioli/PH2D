@@ -193,6 +193,9 @@ pub fn deslocamento(lei: &Lei, trauma: f32, t: f32) -> [f32; 2] {
     ]
 }
 
+pub mod perfil;
+pub use perfil::{Numeros, Perfil};
+
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;

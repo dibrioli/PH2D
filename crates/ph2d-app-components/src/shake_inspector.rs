@@ -106,6 +106,19 @@ pub fn apply_shake(sim: &mut SimWorld, edits: &[(u64, SE)]) -> bool {
                 c.expoente = (*n).clamp(ph2d_shake::EXPOENTE_MIN, ph2d_shake::EXPOENTE_MAX); // CLAMP-OK: a faixa é da lei
             }
             SE::Semente(v) => c.semente = *v,
+            // ⭐⭐⭐ **O PERFIL escreve QUATRO campos e larga a SEMENTE**, e a ausência é a lei (ver
+            // o cabeçalho do `ph2d_shake::perfil`): ela é IDENTIDADE e não sensação, e escrevê-la
+            // faria duas câmeras que receberam o mesmo clique tremer em UNÍSSONO.
+            SE::Perfil(t) => {
+                let n = ph2d_shake::Perfil::from_tag(*t).numeros();
+                c.amplitude = n.amplitude;
+                c.frequencia = n.frequencia;
+                c.decaimento = n.decaimento;
+                // ⚠️ Pela mesma porta do braço acima: a faixa é propriedade da lei, não do painel.
+                c.expoente = n
+                    .expoente
+                    .clamp(ph2d_shake::EXPOENTE_MIN, ph2d_shake::EXPOENTE_MAX); // CLAMP-OK: a faixa é da lei
+            }
         }
         mudou = true;
     }

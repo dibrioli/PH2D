@@ -82,7 +82,10 @@ impl Default for CameraShake {
     ///
     /// | campo | valor | porquê |
     /// |---|---|---|
-    /// | `amplitude` | `0,25` m | ~`2 %` da altura da vista de fábrica (`11,25` m): visível e sem enjoar |
+    /// | `amplitude` | `0,25` m | `2,5 %` da altura da vista de fábrica (`10,0` m, o
+    ///   [`crate::GameCamera::default`]): visível e sem enjoar. ⚠️ **Esta linha dizia `11,25` m e
+    ///   `~2 %`, e o número não vinha de componente nenhum** — corrigido em 2026-09-20, ao medi-lo
+    ///   para a escada dos perfis ([`ph2d_shake::Perfil`]) |
     /// | `frequencia` | `20` Hz | acima do que um olho segue e abaixo do que um ecrã a 60 Hz amostra mal (⚠️ a `30` já há dois quadros por período) |
     /// | `decaimento` | `2,0` | meio segundo de abanão cheio |
     /// | `expoente` | `2` | o que a referência ship (`bevy_trauma_shake`) |

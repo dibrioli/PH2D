@@ -22,6 +22,17 @@ pub(crate) fn apply_shake_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
     };
     let bits = info.entity_bits;
 
+    // ⭐⭐⭐ **Os PERFIS — antes do expoente**, porque um clique num deles reescreve o que os outros
+    // chips mostram. ⚠️ Aqui a posição **É** a tag (ao contrário do expoente, logo abaixo).
+    if let WidgetEvent::Click(id) = ev
+        && let Some(i) = crate::ids::INSP_SHAKE_PERFIL.iter().position(|&o| o == id)
+        && let Ok(n) = u8::try_from(i)
+    {
+        push_shake(host, bits, SE::Perfil(n));
+        demote(host, id);
+        return true;
+    }
+
     // ⚠️⚠️ **`i + EXPOENTE_MIN` e NUNCA `i`** — a faixa da lei começa em `1`, e mandar o índice cru
     // entregaria um `0`, que é o valor que ela recusa **por apagar o trauma**. Há gate na shell a
     // prender a ida e a volta.

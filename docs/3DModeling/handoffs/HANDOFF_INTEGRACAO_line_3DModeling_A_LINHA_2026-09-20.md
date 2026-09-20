@@ -33,8 +33,8 @@
 | ramo | `line/3DModeling` |
 | **já rebaseado sobre `main`** | ✅ `git rebase main` corrido em 2026-09-20 — ver a §6 |
 | merge-base do rebase | `76bd6de02` (o `main` local desse momento) |
-| commits | **88** · ⛔ **conte-os, não os leia daqui:** `git log --oneline main..HEAD \| wc -l` |
-| ficheiros | **230** · `git diff --name-only main...HEAD \| wc -l` |
+| commits | **90** · ⛔ **conte-os, não os leia daqui:** `git log --oneline main..HEAD \| wc -l` |
+| ficheiros | **231** · `git diff --name-only main...HEAD \| wc -l` |
 | ⚠️ o `main` pode ter andado | *se andou, o §3 diz exactamente o que reconferir — e é UMA coisa* |
 
 ---
@@ -307,6 +307,15 @@ antes de a dar por verde**.
 4. *«um vigia `until ! pgrep -f <padrão>` avisa quando o processo acaba»* — **falso**: o shell do
    próprio laço tem o padrão no `cmdline`, logo o `pgrep` **auto-apanha-se** e a condição nunca fica
    falsa. O vigia expirou sem eventos e o `pgrep -c` lia `1` sobre **zero** binários vivos.
+5. ⛔⛔ *«este vermelho é uma flake de carga, como os outros gates de relógio»* — **falso, e eu
+   escrevi-o antes de o medir**. `3` de `3` em máquina ociosa, e o número da cena `30` é
+   **invariante** entre `68 %`, `2 %` e `14 %` de CPU ociosa. *A família das flakes existe e é real,
+   e é exactamente por isso que ela é a explicação mais fácil de alcançar sem medir.*
+6. ⛔⛔⛔ *«a minha medição da regressão vale»* — **falsa a primeira**: eu tinha partilhado o
+   `CARGO_TARGET_DIR` com a worktree do `main` e li **`6,5×`** onde o target limpo dá **`1,4×`** na
+   mesma cena. **Reportei ao dono um alarme que era meu**, e corrigi-o com o número limpo dos dois
+   lados. *Uma medição feita sobre artefactos trocados não é conservadora nem optimista — é ruído
+   com cara de número.*
 
 ---
 

@@ -488,6 +488,77 @@ fn audit_the_stamp_duplicator_population() {
     eprintln!("  cenas do duplicador: {cenas_dup:?}\n");
 }
 
+/// ⭐⭐⭐ **A ENTRADA DE UM MULTIPLICADOR TRAZ `Index` E `Count`?** — a medição que decide o
+/// DESENHO da W1 (doc 116 §5.1).
+///
+/// ⛔⛔ **A lei da CPU do `motion.clone` RENUMERA**: `Index += cópia · n` e `Count = total`. Num
+/// kernel `SourceRows` as colunas que o corpo não escreve chegam por um **gather** do template —
+/// uma CÓPIA —, logo renumerar obriga o kernel a escrevê-las. É por isso que o `motion.kaleidoscope`
+/// **recua** (`applicable`) quando a renumeração dele está ligada, com a razão escrita no kernel.
+///
+/// ⚠️ **E escrever uma coluna que a entrada não traz CUNHA-A** — uma coluna a mais viaja, é
+/// serializada e muda o que um nó a jusante vê (a lei que o próprio `clone_stream` documenta) ⇒ a
+/// pergunta *«ela está lá?»* decide entre três desenhos: escrever sempre · recuar sempre · ou
+/// `ReadWriteExisting`, que escreve só quando a coluna existe.
+///
+/// *A resposta não é adivinhável do manifesto: `Index`/`Count` são escritas por quem gera, e nem
+/// toda cadeia passa por um gerador que as escreve.*
+#[test]
+#[ignore = "sonda de auditoria (ciclo 10), nao gate"]
+fn audit_the_stamp_index_and_count_reach_the_multipliers() {
+    eprintln!("\n=== a entrada de cada multiplicador traz `Index`/`Count`? ===\n");
+    eprintln!("  cena | no'               | porta |    n | Index | Count");
+    eprintln!("  -----|-------------------|-------|------|-------|------");
+    let (mut com, mut sem) = (0usize, 0usize);
+    for level in 1..=crate::motion_state::demo_router::MAX_DEMO_LEVEL {
+        let mut m = crate::motion_state::MotionState::new();
+        let _ = crate::motion_demo_legend::monta(&level.to_string(), &mut m.doc, &m.registry);
+        let alvos: Vec<(NodeId, String)> = m
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == "motion.clone" || n.type_name == "motion.duplicator")
+            .map(|n| (n.id, n.type_name.clone()))
+            .collect();
+        if alvos.is_empty() {
+            continue;
+        }
+        crate::motion_shape_gen::publish(&mut m, 0.0);
+        for (id, tipo) in alvos {
+            // ⚠️ **A entrada é a de quem ALIMENTA a porta**, e não a saída do nó: é sobre ela que
+            // o gather de um `SourceRows` copia.
+            let fontes: Vec<(u16, NodeId)> = m
+                .doc
+                .graph
+                .edges()
+                .iter()
+                .filter(|e| e.to.0 == id)
+                .map(|e| (e.to.1, e.from.0))
+                .collect();
+            for (porta, de) in fontes {
+                let Ok(o) = m.pump.cook.cook(&m.doc.graph, &m.registry, de, 0.0) else {
+                    continue;
+                };
+                let s = o[0].as_stream();
+                let (i, c) = (s.get("Index").is_some(), s.get("Count").is_some());
+                if i && c {
+                    com += 1;
+                } else {
+                    sem += 1;
+                }
+                eprintln!(
+                    "  {level:>4} | {tipo:<17} | {porta:>5} | {:>4} | {:>5} | {:>5}",
+                    s.count(),
+                    if i { "sim" } else { "NAO" },
+                    if c { "sim" } else { "NAO" },
+                );
+            }
+        }
+    }
+    eprintln!("\n  portas COM as duas: {com} · portas sem pelo menos uma: {sem}\n");
+}
+
 /// ⭐⭐⭐ **OS `len` DE UMA CADEIA SÃO UNIFORMES?** — a medição que decide a cura do report
 /// *«porque a corda afina no final?»* (dono, 2026-09-20).
 ///

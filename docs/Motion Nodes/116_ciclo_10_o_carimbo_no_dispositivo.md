@@ -179,7 +179,7 @@ Antes de desenhar um verbo novo, medido contra a API que existe:
 |---|---|---|
 | a contagem `ns · np` **no hospedeiro** | ✅ **sim** | `CountLawCtx::inputs` dá *«a contagem de cada porta, em ordem de porta»* — uma lei pode perguntar quão LARGAS são as entradas dela |
 | herdar **toda** coluna de UMA porta numa linha calculada | ✅ **sim** | `StreamOp::SourceRows` — o kernel escreve `cp_rows` e o sequenciador colhe o resto |
-| ler uma coluna de OUTRA porta **noutro índice** | ⛔ **não** | uma `ColumnBinding` lê a coluna *no mesmo elemento*; o índice é do elemento, não do binding |
+| ler uma coluna de OUTRA porta **noutro índice** | ⛔ ~~não~~ **SIM** | ⚠️ **REFUTADO em 2026-09-20 — ver §5.3.** O `ColumnAccess::SourceRead` lê a porta template num índice que o corpo calcula, e o `motion.kaleidoscope` já o faz (`i % src_n`) |
 
 ⇒ **a W1 parte-se em duas, e a fronteira está medida:**
 
@@ -226,6 +226,62 @@ e eles existem no produto.
 ⏳ **Por medir, e é o que decide a W2:** dos `36` cartões, quantos têm uma `source.shape` na porta
 `0` (a cerca do vector VIVO, que é a 2.ª das três do §2) contra um objecto com textura. A sonda de
 hoje conta os dois nós por cena, não o par.
+
+### §5.3 — ⭐⭐⭐ O DESENHO DA W1 ESTÁ FECHADO, e falta UMA peça nomeada
+
+Antes de escrever o kernel, a maquinaria foi **lida** e a §5.1 saiu com uma linha refutada e três
+peças achadas. *Metade desta wave era um molde que já ship.*
+
+**1. O molde EXISTE, e é o `motion.kaleidoscope`.** Ele já é um kernel `SourceRows` que **muda a
+contagem** (`segments · n`), é *slice-major* (saída `i` é a fatia `i / n`, linha fonte `i % n`), lê
+a fonte nesse índice e escreve um `P` transformado; o sequenciador faz o gather de todas as outras
+colunas em `cp_rows`. ⇒ **o `motion.clone` é a mesma forma com uma translação no lugar da rotação**
+— `copy = i / n`, `row = i % n`, `P[i] = P_src[row] + rank(copy)·(dx, dy)`.
+
+⛔⛔ **E é isto que refuta a linha da §5.1**: o `ColumnAccess::SourceRead` lê a porta template num
+índice que o CORPO calcula, e a length-decouple dele é o que torna a leitura presente. ⇒ **o
+`motion.duplicator` também é exprimível** — `shape_row = i / np` na porta `0` e `point_row = i % np`
+na `1`, dois `SourceRead` em portas diferentes —, e a única maquinaria que a §5.1 dava por
+inexistente já shipa há um ciclo.
+
+**2. O `k` não se recalcula em WGSL — ele vem por `DerivedUniform`.** A contagem de cópias passa
+pelo `copies_within_budget` (o clamp de orçamento do §6.3), e o `DerivedUniform` deriva um param
+**no host, com o mesmo `CountLawCtx` da lei de contagem** ⇒ a lei e o kernel leem **o mesmo
+número**, calculado uma vez em Rust. *Isso mata a classe inteira de divergências que um `clamp`
+reescrito em WGSL traria* — e é onde o kaleidoscope ainda re-deriva o dele (`k_seg`).
+
+**3. A renumeração é a peça que falta, e a medição diz porquê.** A lei da CPU renumera
+(`Index += cópia · n`, `Count = total`) **só quando a coluna existe** — é um braço de `match`. Num
+kernel `SourceRows` o que o corpo não escreve chega por GATHER (uma cópia), logo renumerar obriga a
+escrever; e escrever uma coluna ausente **cunha-a**, que muda a forma do stream. Medido nas cenas,
+porta a porta de todo multiplicador:
+
+| | portas |
+|---|---|
+| trazem `Index` **e** `Count` | **`40`** |
+| não trazem pelo menos uma | **`38`** |
+
+⇒ *nem «escrever sempre» (cunha em 38) nem «recuar sempre» (perde tudo)*. O verbo que exprime o
+braço do `match` **já existe** — `ColumnAccess::ReadWriteExisting`, *«escreve só quando a entrada
+carrega a coluna»* — e ele lê no índice `i`.
+
+⛔ **A peça em falta é a CRUZA das duas:** ler no índice da FONTE (`i % n`) **e** escrever só se
+presente. Hoje há `SourceRead` (lê na fonte, nunca escreve) e `ReadWriteExisting` (escreve
+condicionalmente, lê em `i`), e nenhuma faz as duas. É **uma variante append-only** no
+`ColumnAccess` (`ph2d-nodegraph`, side-metadata do ADR-0136 — ⛔ **não** o contrato congelado do
+§6.2) mais o braço dela no `writes()` e no codegen.
+
+⚠️ **E é isso, e não o kernel, que era a incógnita desta wave.** O kaleidoscope contornou-a
+**recuando** (`applicable: Some(|p| p(REINDEX) < 0.5)`), o que ali é aceitável porque a renumeração
+dele é um knob opcional; no `motion.clone` ela é **incondicional**, logo o mesmo contorno recusaria
+o nó sempre.
+
+**4. As recusas declaradas da 1.ª wave**, com a população ao lado (§5.2): o **leque de relógios**
+(`time_offset ≠ 0`, `1` cartão) é COZIMENTO e não kernel — ele re-cozinha a entrada em N instantes;
+o modo **`Radial`** (`1` cartão) carrega trig por cópia, e o kaleidoscope já tem a seno parabólica
+portada, logo é uma **variante** e não um bloqueio; o **taper** (`3` cartões) é o único que *cunha*
+`size`/`rot` quando o knob está ligado e a coluna falta — o mesmo problema do ponto 3, no mesmo
+verbo novo.
 
 ---
 

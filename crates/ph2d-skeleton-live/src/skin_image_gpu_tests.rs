@@ -47,6 +47,51 @@ fn pele_a(rad: f64) -> Skin {
     Skin::new(vec![bone(0.0, Xform::IDENTITY, 0), bone(0.2, girado, 1)]).expect("a pele nasce")
 }
 
+/// ⭐⭐⭐ **TRÊS ossos, e todo vértice governado pelos TRÊS** — a fixtura que discrimina o peso do
+/// PAR no centro de rotação.
+///
+/// ⛔⛔ **Ela nasceu de uma mutação SOBREVIVENTE:** com DOIS ossos há **um** par só, logo
+/// `Σ wᵢwⱼ·junta / Σ wᵢwⱼ` devolve a junta **seja qual for o peso** — trocar `wᵢ·wⱼ` por `1`
+/// deixava o portão VERDE. *Uma fixtura com um par não testa a PONDERAÇÃO dos pares.*
+///
+/// ⚠️ **Os pesos são três gaussianas largas**, e não tendas: com tendas o vértice do meio lê
+/// `(0, 1, 0)` e volta a haver zero pares. *O que esta fixtura tem de garantir é que TODO vértice
+/// tem três pesos positivos.*
+fn pele_tres() -> Skin {
+    let bone = |x: f64, rad: f64, tendon: u32| {
+        let (c, s) = (rad.cos(), rad.sin());
+        SkinBone {
+            rest_a: [x, 0.0],
+            rest_b: [x + 0.2, 0.0],
+            radius: 0.25,
+            pose: Xform([c, s, -s, c, x - (c * x), -(s * x)]),
+            sub: (0, 1),
+            tendon,
+        }
+    };
+    Skin::new(vec![
+        bone(0.0, 0.0, 0),
+        bone(0.2, 0.35, 1),
+        bone(0.4, -0.5, 2),
+    ])
+    .expect("a corrente de tres nasce")
+}
+
+/// A tabela do padrão-ouro para a [`pele_tres`]: três gaussianas normalizadas por linha.
+fn tabela_tres() -> Vec<f64> {
+    let mut t = Vec::new();
+    for p in malha().rest {
+        let u = (p[0] / 40.0).clamp(0.0, 1.0);
+        let w: Vec<f64> = [0.0, 0.5, 1.0]
+            .iter()
+            .map(|c| (-(((u - c) / 0.7).powi(2))).exp())
+            .collect();
+        let soma: f64 = w.iter().sum();
+        t.extend(w.iter().map(|x| x / soma));
+    }
+    t
+}
+
 /// O mapa `pixel da imagem → local da sprite`, com a arte a ocupar `0,4 × 0,1` m.
 fn p2l() -> Xform {
     Xform([0.01, 0.0, 0.0, -0.01, -0.2, 0.05])
@@ -76,7 +121,13 @@ fn tabela() -> Vec<f64> {
 /// por construção (as poses seriam a identidade), e o gate mediria o nada.
 #[test]
 fn a_placa_e_a_cpu_posam_cada_vertice_no_mesmo_sitio() {
-    let (pele, pesos, p2l) = (pele(), tabela(), p2l());
+    posam_no_mesmo_sitio(&pele(), &tabela());
+    // ⛔ A de TRÊS ossos é obrigatória: ver o doc da [`pele_tres`].
+    posam_no_mesmo_sitio(&pele_tres(), &tabela_tres());
+}
+
+fn posam_no_mesmo_sitio(pele: &Skin, pesos: &[f64]) {
+    let (pele, pesos, p2l) = (pele.clone(), pesos.to_vec(), p2l());
     let cpu = crate::skin_image::posed_sprite_mesh_corrigida(
         malha(),
         p2l,
@@ -293,4 +344,40 @@ fn as_duas_midias_vivas_chegam_pela_porta_corrigida() {
              porta, e a arte passa a desenhar sem as manchas do artista num deles"
         );
     }
+}
+
+/// ⭐⭐⭐ **UMA TABELA DE JUNTAS TRUNCADA É RECUSADA** — e a recusa é a resposta certa.
+///
+/// ⛔⛔ **Este gate nasceu de uma mutação SOBREVIVENTE:** apagar a cerca do
+/// [`ph2d_render::SpriteMeshSkin::valida`] não partia nada, porque as fixturas constroem sempre a
+/// tabela inteira. E o defeito que ela deixa passar é o PIOR da família: sem a tabela, o `centro`
+/// devolve `None` e a lei cai na mistura **LINEAR** — *a lei ANTIGA, em silêncio, com a arte a
+/// desenhar por um mapa e o ponteiro a apontar por outro*.
+///
+/// ⚠️ **As duas metades:** a pele completa é ACEITE (senão este gate passa por vácuo) e a truncada
+/// é RECUSADA. ⭐ E a recusa tem consequência visível: quem a recebe desenha a malha em REPOUSO, que
+/// é uma arte parada — *um defeito que se vê é melhor que uma lei errada que se lê como certa*.
+#[test]
+fn uma_tabela_de_juntas_truncada_e_recusada() {
+    let m = sprite_mesh_para_a_placa(malha(), p2l(), &pele(), &tabela(), ANCHOR, SIZE, &[])
+        .expect("a pele nasce");
+    let n = m.local.len();
+    let cheia = m.skin.clone().expect("pele");
+    assert!(
+        cheia.valida(n),
+        "a pele COMPLETA foi recusada — este gate passaria por vacuo"
+    );
+    let mut curta = cheia.clone();
+    curta.juntas.pop();
+    assert!(
+        !curta.valida(n),
+        "uma tabela de juntas INCOMPLETA passou a cerca — o centro de rotacao cai para `None` e a \
+         lei degenera na mistura LINEAR, que e' a lei ANTIGA, em silencio"
+    );
+    let mut sem_angulo = cheia;
+    sem_angulo.angulos.pop();
+    assert!(
+        !sem_angulo.valida(n),
+        "uma lista de angulos INCOMPLETA passou a cerca — o `θ̄` sairia do angulo do vizinho"
+    );
 }

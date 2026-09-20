@@ -8,6 +8,8 @@
 //! alguém medir que os dois dão o mesmo*.
 
 use super::{SkinAfimGpu, conjuga_para_o_quad, conjuga_ponto_para_o_quad};
+use crate::sprite_mesh::{MeshFrame, SpriteMesh};
+use crate::sprite_mesh_skin::SpriteMeshSkin;
 
 const ANCHOR: [f32; 2] = [0.25, -0.4];
 const SIZE: [f32; 2] = [3.0, 1.5];
@@ -121,4 +123,74 @@ fn o_shader_cruza_as_razoes_e_a_struct_tem_o_tamanho_do_registo() {
          desenha a arte com os numeros do vizinho"
     );
     assert_eq!(size_of::<SkinAfimGpu>() % 16, 0);
+}
+
+/// ⭐⭐⭐ **O QUE A COSTURA ESCREVE EM CADA REGISTO** — o gate que fecha a fiação do payload sem
+/// pedir um adaptador.
+///
+/// ⛔⛔ **Ele existe porque o gate de PIXEL é `#[ignore]`, logo o CI nunca o corre.** Sem esta
+/// metade, trocar as duas razões ou perder a base da tabela de juntas passava por todo portão que
+/// corre sem placa — *e o sintoma seria a arte a torcer para o lado errado, num sítio onde nada
+/// estoura*.
+///
+/// ⚠️ **A DUAS malhas de propósito:** com uma só, a `base` dos afins e a das juntas são ambas `0` e
+/// um `base = 0` cravado passaria. *Uma concatenação com um elemento não testa a concatenação.*
+#[test]
+fn a_costura_escreve_a_base_o_indice_local_e_as_duas_razoes() {
+    let (anchor, size) = ([0.25_f32, -0.4], [3.0_f32, 1.5]);
+    // Duas malhas, com contagens de osso DIFERENTES — senão a base da segunda seria adivinhável.
+    let malhas = [quadrado(2, anchor, size), quadrado(3, anchor, size)];
+    let mut f = MeshFrame::default();
+    for m in &malhas {
+        assert!(f.push(m, anchor, size) > 0, "a malha nao entrou no quadro");
+    }
+    assert_eq!(f.afins.len(), 2 + 3, "a concatenacao dos afins");
+    assert_eq!(f.juntas.len(), 2 * 2 + 3 * 3, "a concatenacao das juntas");
+
+    let esperado = [(0_usize, 2_u32, 0_u32), (2, 3, 4)];
+    for (malha, (base, n, base_j)) in malhas.iter().zip(esperado) {
+        let ossos = malha.skin.as_ref().expect("pele").afins.len();
+        for k in 0..ossos {
+            let r = f.afins[base + k];
+            assert_eq!(
+                r.info,
+                [u32::try_from(k).expect("k cabe"), n, base_j, 0],
+                "o registo do osso {k} da malha de {n} ossos perdeu o indice LOCAL, a contagem ou \
+                 a base da tabela de juntas"
+            );
+            // ⚠️ `sx/sy` na PRIMEIRA e `sy/sx` na segunda — trocá-las torce a arte ao contrário.
+            assert!(
+                (r.razao[0] - size[0] / size[1]).abs() < 1e-6
+                    && (r.razao[1] - size[1] / size[0]).abs() < 1e-6,
+                "as razoes do osso {k} saem {:?}, e o shader le' a primeira na linha do `y`",
+                r.razao
+            );
+        }
+    }
+}
+
+/// Um quadrado de dois triângulos com uma pele de `n` ossos — a fixtura do gate acima.
+fn quadrado(n: usize, anchor: [f32; 2], size: [f32; 2]) -> SpriteMesh {
+    let local: Vec<[f32; 2]> = [[-0.5_f32, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+        .into_iter()
+        .map(|c| [anchor[0] + c[0] * size[0], anchor[1] + c[1] * size[1]])
+        .collect();
+    let uv = local
+        .iter()
+        .map(|p| SpriteMesh::uv_at(*p, anchor, size).expect("size nao nulo"))
+        .collect();
+    let mut pesos = [0.0_f32; crate::sprite_mesh_skin::OSSOS_POR_VERTICE];
+    pesos[0] = 1.0;
+    SpriteMesh {
+        local,
+        uv,
+        tris: vec![[0, 1, 2], [0, 2, 3]],
+        skin: Some(SpriteMeshSkin {
+            pesos: vec![pesos; 4],
+            ossos: vec![[0; crate::sprite_mesh_skin::OSSOS_POR_VERTICE]; 4],
+            afins: vec![[1.0, 0.0, 0.0, 1.0, 0.0, 0.0]; n],
+            juntas: vec![[0.0, 0.0]; n * n],
+            angulos: vec![[1.0, 0.0]; n],
+        }),
+    }
 }

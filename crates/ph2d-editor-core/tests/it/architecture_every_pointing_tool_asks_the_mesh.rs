@@ -298,9 +298,15 @@ fn the_protection_tint_rides_the_sprite_pass_with_the_art_mesh() {
     assert!(
         src.contains("fn tint_instances(")
             && src.contains("ph2d_render::drawn_instance_of(present, gpu.entity_bits)")
-            && src.contains("out.push(inst, malha)"),
+            && src.contains("out.push(inst, malha"),
         "{GPU} deixou de emitir a tinta como instância do passe de sprites COM a malha da arte."
     );
+    // ⚠️⚠️ **A agulha acima perde o parêntese de propósito, e é a SEXTA vez que este gate paga a
+    // mesma forma.** Ela pedia `out.push(inst, malha)` e ficou VERMELHA em 2026-09-20, quando a
+    // porta passou a devolver um `Cow` e a chamada virou `out.push(inst, malha.as_deref())` — sem
+    // uma linha de comportamento mudar. *Uma agulha tem de nomear a LEI («a tinta vai com a MALHA
+    // da arte»), nunca a GRAFIA de um argumento nem a VISIBILIDADE de uma função.*
+    // ⛔ E ela continua a reprovar no caso que interessa: quem passar `None` no lugar da malha.
     // ⚠️ **O `sub_order` é o que a põe POR CIMA** — a chave de ordenação desempata por
     // `texture_id`, e o da ranhura da tinta tanto pode ser maior como menor que o da arte.
     assert!(

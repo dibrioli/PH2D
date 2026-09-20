@@ -425,9 +425,26 @@ fn o_que_um_quadro_custa_com_a_malha_assada() {
 /// cópias inteiras** (a malha assada e a tabela de pesos) antes de deformar um único vértice — e
 /// uma cópia não é lei nenhuma, é o preço de uma assinatura.
 ///
-/// ⇒ esta sonda parte o relógio em três: **CÓPIA** · **DEFORMAÇÃO** · **o resto** (varredura do
-/// mundo, consulta do memo, montagem). *Um número que não se sabe de que é feito não decide
-/// arquitectura nenhuma.*
+/// ⇒ esta sonda parte o relógio em três: **CÓPIA** · **a LEI por vértice** · **o resto**. *Um número
+/// que não se sabe de que é feito não decide arquitectura nenhuma.*
+///
+/// ⛔⛔ **E desde que a placa posa (F9 W2, 2026-09-20) a terceira linha é um SUCEDÂNEO e pode sair
+/// NEGATIVA — de propósito.** A linha da LEI chama a [`posed_sprite_mesh_corrigida`] **à mão**, que
+/// é a REFERÊNCIA e já não o caminho do produto: com a porta aberta o `attach_skin_meshes` não posa
+/// vértice nenhum, logo *«todo menos a lei»* subtrai um trabalho que o todo não fez.
+/// ⚠️ **A linha que decide é a primeira**, e ela lê-se com a porta nos dois estados.
+///
+/// **Medido em 2026-09-20** (arte do dono, `--release`, 8 imagens, `load 5,24`):
+///
+/// | `PH2D_SKIN_GPU` | `attach_skin_meshes` | % de um quadro |
+/// |---|---:|---:|
+/// | `1` (omissão — a placa posa) | **`2,077 ms`** | **`12,5 %`** |
+/// | `0` (a CPU posa) | `5,939 ms` | `35,6 %` |
+///
+/// ⇒ **`2,86 ×`**, e o que sobra dos `12,5 %` **não é deformação**: é a tabela de pesos a ser
+/// derivada por vértice a cada construção de malha. ⏳ *Ela é uma grandeza do BIND* (a quota sai da
+/// posição de REPOUSO), logo o memo do payload é o que a tira do quadro — dívida NOMEADA, e o
+/// número acima é a medida dela.
 ///
 /// `cargo test -p ph2d-app-vec --lib --profile smoke -- --ignored --nocapture de_que_e_feito`
 #[test]
@@ -555,8 +572,8 @@ fn de_que_e_feito_o_quadro_da_pele() {
     for (nome, ms) in [
         ("TODO (attach_skin_meshes)", t_min),
         ("  so' a COPIA (2 clones)", c_min),
-        ("  so' a DEFORMACAO (+1 clone)", d_min),
-        ("  o RESTO (todo - deformacao)", t_min - d_min),
+        ("  a LEI por vertice na CPU", d_min),
+        ("  o TODO menos a LEI", t_min - d_min),
     ] {
         println!(
             "  {nome:>26} | {ms:>8.3} | {:>6.1} %",

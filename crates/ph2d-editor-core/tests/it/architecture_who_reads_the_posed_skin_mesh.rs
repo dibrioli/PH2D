@@ -39,7 +39,7 @@ const PORTAS: [&str; 4] = [
 ///
 /// Estes não são costuras: são o motor. Eles mudam **com** a F9, por construção, e é por isso que
 /// ficam fora da população de leitores (um censo que os contasse mediria o próprio produtor).
-const MOTOR: [&str; 7] = [
+const MOTOR: [&str; 10] = [
     "crates/ph2d-render/src/lib.rs",              // re-exporta as portas
     "crates/ph2d-render/src/picking.rs",          // as três portas vivem aqui
     "crates/ph2d-render/src/sprite_mesh.rs",      // o componente
@@ -47,11 +47,24 @@ const MOTOR: [&str; 7] = [
     "crates/ph2d-render/src/sprite_mesh_warp.rs", // a deformação
     "crates/ph2d-render/src/sprite_mesh_warp_probe.rs", // a sonda dela
     "crates/ph2d-skeleton-live/src/skin_image.rs", // `attach_skin_meshes`: o produtor
+    // ⭐⭐ **Os três da F9 W2 (2026-09-20)** — eles não são costuras que PRECISAM de resposta
+    // quando a placa posar: eles **SÃO** a placa a posar. *Uma pergunta e a resposta dela lêem-se
+    // iguais num censo que só procura quem toca na porta.*
+    "crates/ph2d-render/src/sprite_mesh_skin.rs", // o payload + a lei na CPU (a REFERÊNCIA)
+    "crates/ph2d-render/src/sprite_mesh_skin_gpu.rs", // os quatro buffers e a conjugação
+    "crates/ph2d-skeleton-live/src/skin_image_gpu.rs", // o produtor do payload
 ];
 
 /// ⭐⭐⭐ **AS COSTURAS, e a resposta que cada uma precisa quando a GPU posar.**
 ///
-/// ⚠️ **As respostas são de DUAS espécies, e a distinção é o que torna a W3 orçável:**
+/// ⛔⛔ **A PREMISSA DESTA TABELA MUDOU EM 2026-09-20, e a mudança fica à vista:** a «W3» aconteceu
+/// (F9 W2, `f53d48138`) — **a placa posa**, e o `SpriteMesh` que vive no mundo traz o REPOUSO.
+/// ⇒ o que esta lista mede deixou de ser *«o que cada costura vai precisar quando isso acontecer»*
+/// e passou a ser **quem paga o `SpriteMesh::posado` por PERGUNTA**. ⭐ *O custo não desapareceu:
+/// deixou de ser pago por QUADRO para ser pago por PERGUNTA* — e as `10` linhas abaixo são
+/// exactamente a população que o paga.
+///
+/// ⚠️ **As respostas continuam a ser de DUAS espécies, e a distinção continua a decidir o preço:**
 /// - **UM PONTO** — quem só precisa de saber onde está *um* sítio (o ponteiro, o anel, a caixa).
 ///   Esses resolvem-se na CPU **com a mesma lei**, sobre um vértice ou um triângulo, e **não**
 ///   precisam da malha inteira: o custo é `O(1)`, não `O(vértices)`.

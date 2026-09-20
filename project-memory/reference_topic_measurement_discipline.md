@@ -829,3 +829,45 @@ gate: *uma fixtura montada à mão fica abaixo da lei que se está a medir.*
   que o peso depende da POSIÇÃO punha o ponto no cume da bolha, onde o `clamp(0,1)` satura — ali o
   peso volta a ser constante, e a mutação que reduzia as passagens a uma **sobrevivia**. *Uma fixtura
   no extremo de uma lei com corte mede o corte, não a lei.*
+
+## ⛔⛔⛔ Uma DÍVIDA NOMEADA por um gate não é lida por quem desenha a wave seguinte (2026-09-20)
+
+**O caso.** A F9 (a pele deformada no *vertex shader*) foi desenhada a partir do cabeçalho de um
+módulo de 2026-09-17 que dizia *«a lei da pele é `Σ ŵᵢ·(Mᵢ·p)` — uma mistura LINEAR de afins»*.
+**Dois dias depois** a CPU deixou de a usar: o `Skin::blend` passou a rodar em torno da JUNTA para
+curar o entalhe do cotovelo, e a linear ficou como `blend_linear`, o CONTROLO.
+
+**A dívida ESTAVA escrita, e num gate**, com o endereço e o mecanismo:
+
+> ⛔⛔⛔ **A LEI DA PLACA É A MISTURA LINEAR, E O PRODUTO JÁ NÃO A USA** (2026-09-19). … este gate
+> deixou de poder afirmar PARIDADE e passa a afirmar o que é verdade … ele reprova no dia em que
+> alguém ligar o caminho da placa a pensar que ele está pronto.
+
+Eu li o **cabeçalho** (a descrição da lei) e não o **gate** (a medição sobre ela). O shader saiu com
+a lei antiga e o portão de paridade leu **`2,315e-3 m`**.
+
+⭐ **A lei que fica: antes de PORTAR uma lei, meça-a no produto de HOJE — nunca leia o cabeçalho que
+a descreve.** Um cabeçalho descreve o que era verdade quando alguém o escreveu; um gate descreve o
+que é verdade agora, e é por isso que ele reprova.
+
+⚠️ **E o que salvou foi o portão de paridade ser contra o PRODUTO** (`Skin::blend` pela porta real)
+e não contra a minha própria leitura da lei. *Uma paridade medida contra a lei ERRADA teria shipado
+o defeito com um gate verde por cima.*
+
+⭐⭐ **Duas curas estruturais que ficaram:**
+- **o payload do dispositivo é DERIVADO da crate que implementa a lei** (`Skin::tabela_de_juntas`,
+  `Skin::angulos_das_poses`), porque o `junta` é privado de propósito — um produtor que o
+  reimplementasse seria a segunda resposta a *«por onde estes dois ossos se encontram»*;
+- **o gémeo ÓRFÃO foi APAGADO** (o payload de 17/09 tinha **zero** consumidores de produto e a lei
+  antiga lá dentro). *Um órfão com a lei errada é pior que código morto: ele é a lei errada
+  disponível para o próximo agente ligar.*
+
+## ⛔⛔ Uma fixtura de DOIS ossos não testa a PONDERAÇÃO dos pares (2026-09-20)
+
+A lei do centro de rotação é `c = Σᵢ<ⱼ wᵢwⱼ·junta(i,j) / Σᵢ<ⱼ wᵢwⱼ`. Com **dois** ossos há **um** par
+só ⇒ `c` devolve aquela junta **seja qual for o peso**, e a mutação que troca `wᵢ·wⱼ` por `1`
+**SOBREVIVE**. A cura é uma fixtura de **três**, com todo vértice governado pelos três (gaussianas
+largas, ⛔ nunca tendas — na tenda o vértice do meio lê `(0,1,0)` e volta a haver zero pares).
+
+⭐ **A forma geral:** *uma grandeza somada sobre PARES precisa de pelo menos TRÊS membros para a
+ponderação ser observável* — a mesma família do corpus no ponto neutro de um knob, um nível acima.

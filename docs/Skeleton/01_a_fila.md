@@ -51,13 +51,13 @@ diz onde ler o mecanismo:
 | F6 | **A segunda mídia** (raster/Flip) | ✅ **FECHADA para o RASTER** (2026-09-09) — ver F6 abaixo. ⛔ A nota antiga dizia *«bloqueado: precisa de uma malha sobre a imagem, que não existe»*: estava certa sobre o facto e errada sobre o preço — **duas das quatro peças já existiam**, e o doc de uma delas dizia-o por escrito. O **Flip** continua por fazer |
 | **F8** | ✅ **BENDY BONES (B-Bones) — FECHADO em 2026-09-15**, da lei ao painel ([handoff](handoffs/HANDOFF_O_OSSO_QUE_DOBRA_2026-09-15.md)) | Um osso ganha `segments` + duas alças e **arqueia**: ele parte-se em `N` sub-ossos ao longo de uma Bézier, o desenho e o dedo seguem a curva, e o painel oferece os dois controlos. ⭐⭐⭐ **A LEI DA PELE NÃO MUDOU UMA LINHA** — o `Skin` já misturava `N` poses RÍGIDAS por peso, que é exactamente o que um B-Bone é; o que mudou foi **quem produz**, e era **um** sítio (`resolve_with`). ⛔⛔ **E esta célula dizia que o B-Bone «ataca na ORIGEM» a queixa das *«arestas retas ao dobrar»* — REFUTADO** pela recusa medida um bloco abaixo (subdividir com a população de amostras constante **piora**: `2,61 % → 4,94 %` a `24` sub-ossos): *o B-Bone é uma feature de AUTORIA — um rabo em S, um membro flexível —, não a cura da dobra.* ⭐⭐ **O ponto neutro é exacto POR CONSTRUÇÃO** (a fábrica colapsa num osso só quando a curva é recta, e mesmo sem colapsar o frame seria a identidade ao bit) ⇒ todo rig já autorado desenha-se e deforma-se **ao bit** como antes. ⚠️ `PROJECT_SCHEMA` **+1** — conte o DELTA. **Tecto MEDIDO: `MAX_SEGMENTS = 32`** (`17,9 %` de um quadro com um osso curvo sobre 20 000 pontos; a `64` um par come o quadro) — a tabela vive no doc da const. ✅ **OS TRÊS ABERTOS FECHARAM EM 2026-09-16.** **(1)** O esticão deixou de VARIAR ao longo do osso — os nós saem agora da **CORDA** e não do parâmetro (`12,63 % → 0,000 %` com as alças a `0,2 L`; `82,01 % → 0,000 %` a `0,6 L`; `1 051,95 % → 0,000 %` com as alças cruzadas no eixo). ⛔⛔ **E a cura publicada — equalizar o ARCO — NÃO chegava**, o que só a varredura da densidade disse: ela deixa um piso que **não desce com a tabela** (`1,22 %` a `0,6 L`, igual de `16` a `32` amostras), porque *arcos iguais dão cordas desiguais* e a grandeza que o artista vê é a corda. ⚠️ **E a objecção registada na recusa era verdadeira e não mordia** (*«um somatório de cordas não devolve `L` ao bit»*): o somatório **nunca corre** no ponto neutro — *uma recusa que nomeia um custo tem de dizer em que CAMINHO ele é pago*. **(2)** As alças **pegam-se no canvas** (duas alças de Bézier, com as hastes até à raiz e à ponta) — ⛔ e a armadilha foi que no ponto NEUTRO a alça está **em cima do eixo**, logo a competição por proximidade de sempre torná-la-ia inalcançável no único estado em que todo osso nasce: ela é a única que ignora o corpo, e paga um raio apertado cujo recurso é o comprimento que sobra para o verbo de girar. **(3)** As **tangentes dos vizinhos** existem (`Curve Handles: Manual | From Chain`), e o ponto neutro é **exacto** porque elas saem da transformação RELATIVA e não de uma volta pelo mundo. ⚠️ `PROJECT_SCHEMA` **+1** — conte o DELTA. Cena **`PH2D_VEC_BONE_SMOKE=1`**. |
 | F7 | **O painel próprio do módulo** | ✅ **FECHADO** (2026-09-09, por escolha do dono) — ver F3-m abaixo. A nota antiga: ⏸️ **a condição CAIU e a medição era falsa por ~3×** — ela dizia *«adiado até F3–F5 lhe darem conteúdo (hoje são 3 botões e 5 campos)»*, e as três estão ✅ nesta mesma tabela enquanto a secção tem **10 verbos** e **9 campos** (`VECTOR_BONE_VERBS`/`_FIELDS`, comprimento verificado pelo compilador), mais uma fileira segmentada e dois selectores. ⇒ decisão do dono, não mais um adiamento medido |
-| **F9** | ⏸️ **A PELE DEFORMADA NA GPU** (pedido do dono, 2026-09-16) | ⏸️ **PARADA em 2026-09-17, com o gatilho escrito** — a premissa dela (*«o `Smooth` a alisar em qualquer cena»*) foi **refutada por medição** e o botão foi apagado por ordem do dono; o que sobrava é um ganho de RELÓGIO (`~11 %` de um quadro a 8 imagens) e **zero pixels**. Ver F9 abaixo |
+| **F9** | ✅ **A PELE DEFORMADA NA GPU** (pedido do dono, 2026-09-16) | ✅ **FECHADA 2026-09-20** (`f53d48138`), por ordem do dono (*«implemente se esse é o padrão ouro»*) — e o padrão-ouro foi **MEDIDO** antes de uma linha ser escrita. `attach_skin_meshes` **`35,6 % → 12,5 %`** de um quadro a 8 imagens (`2,86×`), com o gate de PIXEL a ler **`0 px`** de diferença entre a placa e a CPU. ⛔⛔ **A lei que sobe é a da JUNTA, não a linear** — a 1.ª redacção implementou a antiga e o portão leu `2,315e-3 m`. Ver F9 abaixo
 | **F10** | ✅ **O AutoKey com a corrente de ossos** (decisão do dono, 2026-09-16) | ✅ **JÁ ESTAVA FEITO — a nota envelheceu, e auditá-la contra o CÓDIGO custou dez minutos** (2026-09-18). O passe grava **a corrente INTEIRA que a mão moveu** (não só o osso seleccionado) desde 2026-09-14, e também **o ALVO de uma restrição de IK** — porque com uma restrição viva a rotação dos ossos é DERIVADA e o que o artista autora é a âncora. ⚠️ Quem filtra é o **DIFF**: um osso cuja pose é a da curva não cunha nada. Seis gates em [`autokey_bone_tests.rs`](../../shells/desktop/src/render_loop/autokey_bone_tests.rs), entre eles `autokey_records_every_bone_the_hand_moved_not_only_the_selected_one`, `dragging_the_ik_anchor_records_the_anchor` e o controlo `a_bone_the_hand_holds_but_did_not_move_keys_nothing`. ⛔ **O que FALTAVA não era a lei, era o SMOKE:** nenhuma cena do app armava o AutoKey, logo o dono nunca lhe chegou ⇒ cena **`PH2D_VEC_BONE_MEDIA_SMOKE=3`** |
 | **F11** | ✅ **Imagens em 9 fatias e folhas de quadros DEFORMAM com os ossos** (ordem do dono, 2026-09-17) | ✅ **FECHADO** — ver F11 abaixo |
 | **F21** | ✅ **A cena dedicada do ENVELOPE** (*«melhor montar uma cena específica para me mostrar isso»*, 2026-09-18) | ✅ **FECHADA em 2026-09-19 — e ela REFUTOU a lei da F20**: o envelope é inerte em toda forma FECHADA (amplitude `0,000000` numa faixa de `80 ×`), porque uma forma fechada também usa o padrão-ouro desde 15/09. A lei passou a perguntar ao **BIND** e não à mídia. Cena **`PH2D_VEC_BONE_SMOKE=2`** — ver F21 abaixo |
 | **F22** | ⭐⭐⭐ **A ESCOLHA da lei de pele, POR DESENHO** (ordem do dono, 2026-09-19: *«construa. por desenho»*) | ✅ **FECHADA no mesmo dia** — fileira **`Deform By`** (`Artwork` \| `Bone Reach`) no painel Bones, por DESENHO e para as duas mídias. ⭐ A escolha diz se o quadro **LÊ** a tabela do padrão-ouro, nunca se a calcula ⇒ a volta é **exacta ao bit** e não re-resolve nada. `PROJECT_SCHEMA` **+1** — ver F22 abaixo |
 | **F30** | ⭐⭐⭐ **A arte segue o peso ENTRE os nós** (a 2.ª saída da F26) | ✅ **CONSTRUÍDA, e a MALHA não foi precisa.** A `ph2d-vec-envelope` já deforma Bézier por um mapa não-afim, e o cabeçalho dela descreve o defeito que a pele tem hoje. Sonda: peso entre dois nós move a arte `0,000000 → 0,242375`, o fit converge, `0,163 ms` em release. ⭐⭐⭐ E ela **dissolveu a compensação da F28** — ver F30 abaixo |
-| **F29** | ⏳ **Os DOIS modos de atribuir peso** (ordem do dono, 2026-09-19) | ⏳ **ABERTO, na fila.** *Absoluto* (o valor entra e o resto reparte-se pelos outros ossos na proporção deles; Add/Subtract inactivos) e *Cumulativo* (o de hoje). ⚠️ **Não é UI: a correcção é uma mancha que SOMA**, e uma absoluta não é um campo somável — ver F29 abaixo |
+| **F29** | ✅ **Os DOIS modos de atribuir peso** (ordem do dono, 2026-09-19) | ✅ **FECHADO 2026-09-20** (`0029f2fc8`). *Cumulativo* (omissão) e *Absoluto* no painel, `PROJECT_SCHEMA` **+1**. ⭐ A cura é um enum que CARREGA o número (`Especie::Soma(f64)` / `Alvo(f64)`), logo o compilador obriga todo leitor a dizer qual lê; a aplicação SEQUENCIAL faz *«a última manda»* cair de graça. ⚠️ **O caso degenerado é ordem do dono:** com os outros a zero o osso fica com **100 %** seja qual for o valor — e ele só é observável em `v = 0`, achado por uma mutação SOBREVIVENTE
 | **F28** | ⭐⭐⭐ **UM PONTO NOVO NUMA FORMA PRESA** (a 1.ª das duas saídas da F26, escolhida pelo dono: *«primeiro 1 e depois o 2»*) | ✅ **FECHADA**, e o smoke dela REPROVOU a 1.ª versão. O ponto sobrevive ao quadro, já nasce com peso, **o desenho não salta** (`18,89 % → 0,000000 %`) e a caneta MOSTRA onde o clique poria o nó. ⛔⛔ Duas conclusões minhas caíram: *«custo zero de arquitectura»* (medido: o ponto evaporava-se) e *«o salto é refinamento»* (o dono recusou — ver F28-b) |
 | **F27** | ⭐⭐⭐ **O CENSO DOS VERBOS DO OSSO** (o aberto que a F16 deixou por escrito) | ✅ **FECHADO no mesmo dia — ZERO verbos mortos.** Os catorze botões chegam a um efeito, medidos pela captura que o undo tira. ⛔⛔ E uma **mutação sobreviveu**: apagado o corpo do braço do *Add Smart Bone* na fase do quadro, **23 testes da shell ficaram verdes** — o terceiro elo do §5.0 não tinha instrumento nenhum. Zero schema, zero registo — ver F27 abaixo |
 | **F26** | ⭐⭐⭐ **CORRIGIR UM PESO À MÃO** (auditoria, 2026-09-19) | ✅ **FECHADA no mesmo dia** — o 3.º verbo do osso (**`Weight`**) pinta a influência sobre a arte presa, com os pesos **à vista** por baixo do pincel. A correcção é uma **MANCHA no espaço** (nunca uma tabela por vértice) e é ancorada no **REPOUSO** do ponto que o dedo aponta. `PROJECT_SCHEMA` **+1** — ver F26 abaixo |
@@ -890,7 +890,36 @@ byte-idêntico ao de sempre.
 
 Mutação **7 de 7** a sangrar; `nextest-impacted` **15 686** verdes.
 
-### F29 — ⏳ **ABERTO: os DOIS modos de atribuir peso** (ordem do dono, 2026-09-19, *«coloque na fila»*)
+### F29 — ✅ **FECHADO (2026-09-20): os DOIS modos de atribuir peso** (ordem do dono, 2026-09-19, *«coloque na fila»*)
+
+> ✅ **FECHADO em `0029f2fc8`**, 36 ficheiros, 22 gates, **17 de 17 mutações a sangrar**.
+> `PROJECT_SCHEMA` **+1** (⚠️ conte o DELTA) — e o degrau é obrigatório porque o campo foi
+> **TROCADO**, não apendado: um ficheiro do schema anterior lido por este binário leria o primeiro
+> byte do `f64` como o discriminante da espécie, **em silêncio**.
+>
+> ⭐⭐ **A cura é um enum que CARREGA o número** (`Especie::Soma(f64)` · `Especie::Alvo(f64)`): um
+> campo cujo significado depende de um modo guardado ao lado é um defeito à espera, e assim o
+> compilador obriga **todo** leitor a dizer qual dos dois está a ler.
+>
+> ⭐⭐⭐ **E *«a última manda»* cai de GRAÇA da aplicação SEQUENCIAL:** fixar é idempotente, logo no
+> centro da última `Alvo` (onde o *bump* vale `1`) o que fica é o valor dela. ⛔ Sem escrituração
+> nenhuma — *a ORDEM DA LISTA passa a ser a lei*, e re-pintar uma absoluta sobe-a para o fim.
+>
+> ⚠️ **DUAS mutações SOBREVIVERAM primeiro, e as duas eram réguas minhas a medir no sítio errado:**
+> a regra do dono para o caso degenerado só é observável em **`v = 0`** (com `Σoutros = 0` a
+> renormalização final devolve `1` para qualquer valor positivo, logo a faixa inteira menos o zero
+> não a distingue), e a normalização que precede uma `Alvo` é **invisível NO CENTRO** (ali o pino é
+> total e a escala re-normaliza os outros seja qual for a soma deles) — o discriminador é ler
+> **FORA** do centro.
+>
+> ⚠️ **E um gate meu reprovou por aritmética minha, não por lei:** no centro de `B`, o *bump* de `A`
+> vale `0,5625` e não `1`, logo `A` mistura em vez de fixar. *Ler «a última manda» no centro de
+> quem deve perder é medir a mistura, não a precedência.*
+>
+> ⛔ **O `lerp` com o *bump*, nunca uma multiplicação:** `valor · bump` daria peso **ZERO** na borda
+> da mancha (um buraco); `lerp(actual, valor, bump)` volta à lei automática com derivada zero.
+
+### F29 (o pedido original)
 
 *«Precisamos de 2 modos de atribuir peso aos pontos.»*
 
@@ -1929,7 +1958,87 @@ commit `02462ca8f` (o enquadramento que nunca cabia · a arte ao contrário · a
 
 ---
 
-### F9 — ⏸️ **PARADA POR DECISÃO (2026-09-17): a pele deformada na GPU** (pedido do dono, 2026-09-16)
+### F9 — ✅ **FECHADA (2026-09-20): a pele deforma-se NO DISPOSITIVO** (pedido do dono, 2026-09-16)
+
+> ✅ **FECHADA em `f53d48138`**, por ordem do dono de 2026-09-20: ***«O caminho da placa gráfica:
+> implemente se esse é o padrão ouro»***. ⭐ **A condição dele era um SE, e ele foi respondido por
+> MEDIÇÃO antes de uma linha ser escrita** — o que vem a seguir é o que a medição disse.
+>
+> ⛔⛔⛔ **O GATILHO DA REABERTURA DISPAROU SOZINHO, e o número que a parou estava ERRADO por
+> `4,5×`.** A nota de 2026-09-17 lia `1,824 ms` / `10,9 %` a 8 imagens e concluía *«não se gasta uma
+> wave a comprar 11 % de um quadro que hoje sobra»*. Medido outra vez, com a decomposição:
+>
+> | | ms | % de um quadro |
+> |---|---:|---:|
+> | `attach_skin_meshes` INTEIRO, 8 imagens | `5,980` | **`35,9 %`** |
+> | só a CÓPIA (dois clones por instância) | `0,033` | `0,2 %` |
+> | só a LEI por vértice | `5,774` | **`34,6 %`** |
+>
+> ⇒ **`96 %` do custo é a lei a correr POR VÉRTICE**, e ele é **exactamente linear nas imagens**
+> (`1,012` · `4,064` · `8,164` ms) ⇒ `16` imagens são `72 %` e `23` são o quadro **inteiro**, sem
+> nada mais desenhado. ⚠️ **A minha hipótese era a CÓPIA e a medição derrubou-a** — *uma sonda que
+> não parte o relógio acusa o suspeito errado*. E o dispositivo desenha `100 352` triângulos em
+> `0,73 ms`. *§0.0 à letra: o caminho mais lento a definir o tecto do mais rápido.*
+>
+> ⭐⭐⭐ **O RESULTADO, medido nos dois estados da porta** (arte do dono, `--release`, `load 5,24`):
+>
+> | `PH2D_SKIN_GPU` | `attach_skin_meshes` | % de um quadro |
+> |---|---:|---:|
+> | `1` (omissão — a placa posa) | **`2,077 ms`** | **`12,5 %`** |
+> | `0` (a CPU posa) | `5,939 ms` | `35,6 %` |
+>
+> ⭐ E o gate de PIXEL sobre um adaptador real lê **`0 px`** de diferença entre a placa e a CPU, de
+> `1150` pintados, com o controlo (a mesma malha **sem** posar) a `1250 px`.
+>
+> ⛔⛔⛔ **A LEI NÃO É UMA MISTURA LINEAR, E O PORTÃO DE PARIDADE APANHOU-O ANTES DE SHIPAR.** O
+> desenho nasceu de um cabeçalho de 2026-09-17 que a descrevia assim. Em **2026-09-19** a CPU deixou
+> de a usar: o [`Skin::blend`] passou a **rodar em torno da JUNTA** para curar o entalhe do cotovelo
+> (`p' = R(θ̄)·(p − c) + Σ wᵢMᵢ(c)`, com `θ̄` a média em CÍRCULO), e a linear ficou como
+> [`Skin::blend_linear`], o CONTROLO. A 1.ª redacção do shader implementou a **antiga** e o gate leu
+> **`2,315e-3 m`**.
+>
+> ⚠️⚠️ **A dívida estava NOMEADA no repo** — o `skin_gpu_tests` tinha um gate a AFIRMAR que as duas
+> leis diferem, escrito no dia em que a CPU mudou — **e eu não a li antes de desenhar**. *Uma
+> paridade medida contra a lei ERRADA teria shipado o defeito com um gate verde por cima.*
+>
+> ⭐⭐ **O payload é DERIVADO da crate que implementa a lei:** `Skin::tabela_de_juntas` e
+> `Skin::angulos_das_poses` são portas novas, porque o `junta` é privado **de propósito** e um
+> produtor que o reimplementasse seria a segunda resposta a *«por onde estes dois ossos se
+> encontram»*.
+>
+> ⚠️ **A conjugação para o espaço do quad passou a ter DUAS metades:** o AFIM (que já existia) e o
+> **PONTO** (a junta é um SÍTIO, logo a translação entra — conjugá-la como direcção punha o centro
+> de rotação no sítio errado em toda sprite cuja âncora não fosse a origem, *e só nessas*). ⛔ E a
+> rotação `R(θ̄)` **não pode** chegar conjugada, porque o `θ̄` só nasce da mistura dos ângulos, já
+> dentro do shader ⇒ ele reconstrói `S⁻¹RS` à mão com as duas razões do `size`, com gate a provar
+> que a reconstrução é a mesma conjugação.
+>
+> ⭐⭐ **E o GÉMEO ÓRFÃO foi APAGADO:** o `skin_gpu` de 2026-09-17 (payload + lei de referência)
+> tinha **ZERO consumidores de produto** e a lei ANTIGA lá dentro. Manter os dois seria deixar uma
+> lei errada viva onde o próximo agente a pode ligar. ⭐ As duas propriedades dele que sobrevivem
+> passaram a medir-se contra o payload VIVO, e a primeira ficou **MAIS FORTE** (a tabela de JUNTAS
+> entra nela) — *uma propriedade que se herda tem de cobrir o que foi acrescentado depois dela.*
+>
+> ⚠️ **Três armadilhas de ferramenta, todas já escritas neste repo e todas pagas outra vez:**
+> `meta` é palavra **RESERVADA** em WGSL (quem o apanhou foi o gate que compila o shader) · um
+> `--exact it::sprite_mesh_gpu::…` casou **ZERO** testes e imprimiu `ok` (o prefixo do binário não
+> entra no nome) · e o guarda de recursos recusa um heredoc cujo corpo contenha `cargo test`.
+>
+> **Mutação: 13 de 13 sangram**, e **DUAS sobreviveram primeiro**, as duas réguas minhas: a fixtura
+> de **DOIS** ossos tem **um** par só, logo `Σ wᵢwⱼ·junta / Σ wᵢwⱼ` devolve a junta seja qual for o
+> peso (⇒ fixtura de **TRÊS**, com todo vértice governado pelos três); e a cerca do `valida` sobre a
+> tabela de juntas não partia nada, embora o defeito que ela deixa passar seja o pior da família —
+> *sem a tabela o centro cai para `None` e a lei degenera na LINEAR, em silêncio*.
+>
+> ⏳ **O que sobra, com o número ao lado:** os `12,5 %` **não são deformação** — são a tabela de
+> pesos a ser derivada por vértice a cada construção de malha. ⭐ Ela é uma grandeza do **BIND** (a
+> quota sai da posição de REPOUSO), logo o **memo do payload** é o que a tira do quadro. ⏳ E a
+> truncagem a `K = 4` passou a tocar o **CENTRO** e não só os pesos: num vértice com `≤ 4` ossos —
+> a arte do dono, `3` tendões — é a mesma soma ao bit; acima disso é aproximação **declarada**.
+>
+> ---
+>
+> ### O registo de 2026-09-17, que a medição acima reabriu
 
 > ⛔⛔⛔ **LEIA ISTO ANTES DE TUDO O QUE VEM ABAIXO (2026-09-17): A PREMISSA DESTA FILA ESTÁ
 > REFUTADA POR MEDIÇÃO.** Report do dono, depois de a porta abrir: ***«Como eu já havia dito muitas

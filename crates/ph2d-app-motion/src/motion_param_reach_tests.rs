@@ -198,7 +198,7 @@ fn nenhum_nome_do_catalogo_e_cortado_numa_capsula() {
         let nome = m
             .registry
             .ui_manifest(man.id)
-            .map_or(man.name, |u| u.display_name);
+            .map_or(man.name, |u| ph2d_i18n::tr(u.display_key));
         vistos += 1;
         if !ph2d_panel_motion_graph::nome_cabe_na_capsula(&mut ts, nome) {
             nao_cabem.push(nome);
@@ -242,7 +242,7 @@ fn mede_o_corpo_maximo_da_capsula() {
         .map(|man| {
             m.registry
                 .ui_manifest(man.id)
-                .map_or(man.name, |u| u.display_name)
+                .map_or(man.name, |u| ph2d_i18n::tr(u.display_key))
         })
         .collect();
     eprintln!("  tipos medidos: {}", nomes.len());

@@ -56,14 +56,17 @@ pub const TABELA: &[Armacao] = &[
         arma: |_| arma_as_tags(),
         desarma: desarma_as_tags,
     },
-    // ⭐⭐ **O painel de params do Motion** — ele estava declarado como «precisa de um GRAFO», e
-    //    precisa de um SNAPSHOT, que são dados. Os rótulos dele são **derivados** das `828`
-    //    entradas do catálogo de params: ver [`super::o_motion_armado`].
-    Armacao {
-        painel: "motion_params",
-        arma: |_| super::o_motion_armado::arma(),
-        desarma: super::o_motion_armado::desarma,
-    },
+    // ⛔⛔ **O painel de params do Motion SAIU do app** (`line/motion-value`, ordem do dono de
+    //    2026-09-17: os params vivem NO CARTÃO). A armação dele vivia aqui e mediu as `828`
+    //    entradas do catálogo de params por largura — ⚠️ e essa medição **perdeu a superfície**,
+    //    porque ela pintava ATRAVÉS do painel (`set_current_params` era a porta `thread_local`
+    //    dele). *Não é dívida de tradução: é uma régua sem sujeito.*
+    //
+    //    ⭐ **O consumidor NOVO já existe e já é medido em parte:** o cartão do grafo expõe
+    //    `ph2d_panel_motion_graph::nome_cabe_na_capsula`, e a
+    //    `ph2d_app_motion::motion_param_reach_tests` usa-a sobre os nomes de TIPO. ⏳ O que fica
+    //    ABERTO é a mesma medição sobre os `828` rótulos de PARAM no cartão — ela pede uma fixtura
+    //    que monte um cartão, que é desenho e não integração.
     // ⭐⭐ **O painel do MODELADOR 3D** — ele estava declarado como «precisa de um mundo ECS para
     //    cozer o `FieldDoc`», e precisa de um SNAPSHOT: ver [`super::o_model3d_armado`].
     Armacao {

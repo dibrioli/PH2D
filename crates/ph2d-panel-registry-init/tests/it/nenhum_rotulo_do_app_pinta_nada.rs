@@ -61,9 +61,16 @@
 //!
 //! Ele estava na lista dos medidos vazios com a justificação *«precisa de um grafo»* — e isso era
 //! **uma ausência afirmada sem olhar a API**: o painel lê um `ParamsSnapshot` publicado numa porta
-//! `thread_local`, e um snapshot são DADOS, não um motor. A fixtura ([`super::o_motion_armado`])
-//! arma uma fileira de **cada uma das 13 espécies**, com os rótulos **derivados** das `828`
-//! entradas `node.*.param.*` do catálogo (`444` distintas), ordenadas pelo que PINTAM.
+//! `thread_local`, e um snapshot são DADOS, não um motor. A fixtura armava uma fileira de **cada
+//! uma das 13 espécies**, com os rótulos **derivados** das `828` entradas `node.*.param.*` do
+//! catálogo (`444` distintas), ordenadas pelo que PINTAM.
+//!
+//! ⛔⛔ **E em 2026-09-20 ela SAIU, porque o painel saiu** (`line/motion-value`, ordem do dono de
+//! 17/09: os params vivem no CARTÃO). ⚠️ *A medição perdeu a SUPERFÍCIE, não o sujeito* — ela
+//! pintava através do painel, e o `set_current_params` era a porta dele. O que fica registado é a
+//! forma do achado, que vale para o próximo painel declarado vazio; ⏳ e a dívida é medir os mesmos
+//! `828` rótulos no CARTÃO, cuja porta (`ph2d_panel_motion_graph::nome_cabe_na_capsula`) já existe
+//! e já é usada sobre os nomes de TIPO pela `ph2d_app_motion::motion_param_reach_tests`.
 //!
 //! | a 1.ª corrida com o Motion armado | |
 //! |---|---:|
@@ -132,6 +139,14 @@ const ESCADA: &[(&str, f32, f32, f32)] = &[
         1024.0,
         ph2d_tokens::PANEL_MIN_W_PX,
     ),
+    // ⛔⛔ **As `14` entradas do `motion_params` saíram em 2026-09-20 — e NÃO por serem curadas:**
+    //    o painel de params do Motion saiu do app (`line/motion-value`, ordem do dono de 17/09),
+    //    logo elas deixaram de descrever coisa nenhuma. ⭐ Quem as apanhou foi o **censo de
+    //    obsolescência** desta catraca (*«declarado 16, mede 0»*), que é exactamente o que ele
+    //    existe para fazer — *uma lista de dívida sem censo vira licença.*
+    //    ⏳ Os `6` cortes de coluna de nome e o chip de `24 px` para `RGB` eram do PRODUTO, e o
+    //    cartão herda-os se pintar as mesmas fileiras: a medição no cartão está na dívida NOMEADA
+    //    do [`super::paineis_armados`].
 ];
 
 /// As bandas de um degrau: `0` quer dizer *as de fabrica*.
@@ -184,7 +199,12 @@ const PISO_DE_MEDICOES: usize = 12_000;
 /// ⛔ E o piso de PAINÉIS: uma varredura que registasse zero painéis passaria os quatro gates.
 /// ⚠️ Ele é **28** — a população da árvore inteira — pela razão da irmã acima: com `24` a corrida
 /// `-p` respondia sobre um app a que faltam três painéis, e respondia VERDE.
-const PISO_DE_PAINEIS: usize = 28;
+/// ⛔⛔ **Desceu de `28` para `27` na integração de 2026-09-20, e NÃO é a catraca a ceder:** o
+/// painel de params do Motion **saiu do app** (`line/motion-value`, ordem do dono de 17/09 — os
+/// params passaram a viver no cartão). *A população encolheu; o piso descreve-a.* ⚠️ Um piso que
+/// ficasse em `28` reprovaria para sempre sobre produto correcto, e subi-lo de volta só é honesto
+/// no dia em que um painel NOVO entrar no `default` do registo.
+const PISO_DE_PAINEIS: usize = 27;
 
 /// ⭐⭐ **A DÍVIDA NOMEADA — o que sai cortado HOJE, em inglês.** Ela só **encolhe**: uma linha
 /// daqui sai quando alguém curar o rótulo, e o censo de obsolescência **reprova** se ela ficar a
@@ -400,8 +420,8 @@ const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
 const FORA_POR_DECISAO_DO_DONO: &[(&str, &str, &str)] = &[
     // ⭐⭐⭐ **`16` cortes na primeira corrida, num painel que nenhuma régua de largura tinha
     //    medido** — a declaração que o deixava de fora (*«precisa de um grafo»*) era uma ausência
-    //    afirmada sem olhar a API: ele lê um SNAPSHOT, que são dados. Ver
-    //    [`super::o_motion_armado`], cujos rótulos são DERIVADOS das `828` entradas do catálogo.
+    //    afirmada sem olhar a API: ele lê um SNAPSHOT, que são dados. Os rótulos eram DERIVADOS
+    //    das `828` entradas do catálogo. ⛔ A fixtura saiu em 2026-09-20 com o próprio painel.
     //
     // ⛔⛔ **Eles são TRÊS famílias e nenhuma se cura uma linha de cada vez:**
     //
@@ -427,36 +447,6 @@ const FORA_POR_DECISAO_DO_DONO: &[(&str, &str, &str)] = &[
     // ⇒ a wave seguinte é a das DUAS portas que ficam; cada linha aqui traz o número de hoje.
     //
     // (a) a coluna do NOME
-    (
-        "motion_params",
-        "Restitution Randomness",
-        "coluna de nome · 70,0 px",
-    ),
-    (
-        "motion_params",
-        "Sides / Points / Teeth",
-        "coluna de nome · 70,0 px",
-    ),
-    (
-        "motion_params",
-        "Skip Unused Inputs",
-        "coluna de nome · 70,0 px",
-    ),
-    (
-        "motion_params",
-        "Use Selected Path",
-        "coluna de nome · 70,0 px",
-    ),
-    (
-        "motion_params",
-        "Effects Reach Leaves",
-        "coluna de nome · 79,0 px",
-    ),
-    (
-        "motion_params",
-        "Seed Per Element",
-        "coluna de nome · 82,0 px",
-    ),
     // ✅ **(b) as QUATRO opções de selector SAÍRAM no mesmo dia** — a grelha delas era o
     //    `block_cells` sobre uma contagem fixa de `4` por fileira, e passou a medir as PALAVRAS
     //    nas duas dimensões (`wrapped_cells_for`). ⚠️⚠️ **A 1.ª tentativa curou só a LARGURA e
@@ -466,25 +456,11 @@ const FORA_POR_DECISAO_DO_DONO: &[(&str, &str, &str)] = &[
     //    coluna, não disposição). ⇒ a quebra também tem de sair das palavras.
     // ⛔ **O pior da lista, e e' do PRODUTO:** o chip do espaco de cor do editor de gradiente tem
     //    `24 px` para TRES letras.
-    ("motion_params", "RGB", "chip do espaco de cor · 24,0 px"),
     // ⚠️ Os tres nomes de canal sao PLAUSIVEIS e nao derivados (um canal e' uma coluna do stream,
     //    que o artista cria) — mas a CAIXA de `44 px` e' a do produto, e nenhuma palavra de oito
     //    letras cabe nela.
-    ("motion_params", "Position", "chip de canal · 44,0 px"),
-    ("motion_params", "Velocity", "chip de canal · 44,0 px"),
-    ("motion_params", "Lifetime", "chip de canal · 44,0 px"),
     // (c) a QUEIXA de uma fórmula — uma FRASE cortada a meio, e a cura óbvia está PROIBIDA
-    (
-        "motion_params",
-        "Unknown function `noize` \u{2014} did you mean `noise`?",
-        "frase de queixa · 176,0 px · quebrar esta' PROIBIDO por lei medida (ver abaixo)",
-    ),
     // Nome de uma forma que o artista desenhou, num chip de fonte.
-    (
-        "motion_params",
-        "Background Parallax Layer",
-        "chip de fonte · 106,0 px · nome do artista",
-    ),
 ];
 
 /// ⭐⭐⭐ **O NOME DO DEGRAU ESTREITO** — o unico que nao esta na largura de fabrica.
@@ -562,7 +538,6 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    explicacao do artista — o que muda e ele deixar de comer o NOME. Quem conta essa
     //    diferenca e a [`LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO`], e e por isso que sao duas.
     ("inspector", 103),
-    ("motion_params", 16),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),
@@ -612,7 +587,6 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    um unico nome novo. Os `63` que ficam sao nomes compostos, e encurtar um deles e trocar
     //    o nome — decisao de vocabulario, que e do dono.
     ("inspector", 86),
-    ("motion_params", 15),
     ("audio_mixer", 5),
     ("sculpt3d", 6),
     ("hierarchy", 5),

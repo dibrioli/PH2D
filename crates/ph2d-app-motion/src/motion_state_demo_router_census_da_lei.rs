@@ -427,7 +427,7 @@ fn o_que_o_cartao_do_grid_pinta() {
             .param_groups(tid)
             .iter()
             .find(|g| g.param == p.name)
-            .map_or("—", |g| g.group);
+            .map_or("—", |g| ph2d_i18n::tr(g.group_key));
         eprintln!(
             "  {i} │ {:<14} │ {:<15} │ {grupo}",
             p.name,

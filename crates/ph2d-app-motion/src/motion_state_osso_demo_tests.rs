@@ -208,10 +208,12 @@ fn o_roteiro_nomeia_o_que_a_cena_tem() {
     // ⭐⭐ **E o cartão dos OSSOS pelo nome REGISTADO** — a cena monta um `rig.bones` e o roteiro
     // manda-o apagar para ver o defeito; um passo que nomeia um cartão AFIRMA que ele está na tela
     // com aquele nome. *Derivado, senão um rename deixa o roteiro a mandar procurar o que não há.*
-    let ossos = reg
+    let ossos = ph2d_i18n::tr(
+        reg
         .ui_manifest(ph2d_node_rig_bones::MANIFEST.id)
         .expect("o `rig.bones` tem cartao")
-        .display_name;
+            .display_key,
+    );
     assert!(
         texto.contains(ossos),
         "o roteiro fala do no' dos ossos, entao tem de o chamar de {ossos:?}"

@@ -718,3 +718,50 @@ concordância lê-se como confirmação.
 ⭐ **Controlo nos dois sentidos**, e ele é barato: com um `.rs` tocado a sonda tem de RECUSAR (ela
 nomeia-o), e a seguir a um build tem de correr até ao fim. *Sem a metade negativa, uma recusa que
 dispara sempre lê-se como a sonda a estar partida — e alguém apaga-a.*
+
+---
+
+## ⛔⛔⛔ Um gate que mede a REGRA nunca vê a POSIÇÃO (HUD, 2026-09-20)
+
+Report do dono: *«em expand, a depender da altura e largura da janela, a pontuação e o rótulo da
+ronda podem ir para seu próprio lado ou para o lado oposto e até se cruzar. Os demais modos OK.»*
+
+O gate existia e chamava-se `as_duas_pecas_de_baixo_prendem_se_a_cantos_opostos`. Ele lia as
+fracções de âncora das duas peças e afirmava que os **cantos eram opostos** — e **eram**. O que
+nenhuma régua perguntava era **onde a peça está desenhada**: a pontuação prendia-se à aresta DIREITA
+e era autorada em `x = −7`; a contagem prendia-se à ESQUERDA e estava em `+8`.
+
+⭐ **O «os demais modos OK» é o diagnóstico inteiro:** no modo em que a caixa efectiva É a de
+referência o delta sai `0,0` por subtracção de iguais e **nada se move**, logo o defeito é invisível;
+no modo que cresce a caixa cada peça anda para a **sua** borda e a certa altura elas atravessam-se
+(medido: a `16:9` lêem `−3,50`/`+4,00`; a `2,67` de aspecto **cruzam-se**; a `4,00` estão
+`+6,50`/`−6,00`).
+
+**Três coisas que ficam:**
+
+1. **Uma propriedade com duas metades gateia-se CRUZANDO-AS**, nunca uma de cada vez. Aqui: *que
+   canto cada peça usa para nascer* × *a quem a cena dá cada regra* — e a segunda lê-se da tupla que
+   liga peça↔entidade, não do nome da variável.
+2. ⭐⭐ **A cura não é mover o literal: é tornar o erro INEXPRIMÍVEL.** O sinal da posição passou a
+   ser DERIVADO da fracção da regra ⇒ uma peça autorada do lado oposto à âncora dela deixa de existir
+   como estado.
+3. ⚠️ **Uma lei verificada nas DUAS PONTAS ainda pode ser contrariada no MEIO.** Com o tipo coerente
+   e a cena a chamar com os argumentos certos, trocar os dois `insert` dentro da porta passava por
+   tudo — foi preciso um gate sobre a própria porta.
+
+⭐ **E a régua nova traz o CONTROLO que prova conter o fenómeno:** com a autoria **espelhada** (a de
+antes da cura) as duas TROCAM de ordem ao longo do varrimento. *Sem essa metade, a régua seria verde
+sobre uma cena que se cruza — que é exactamente a história.*
+
+## ⛔⛔ Um contador que SATURA não é um estado terminal (mesmo dia, mesmo smoke)
+
+Report do dono, na mesma mensagem: *«infinitos logs. melhor tirar.»*
+
+A cauda de uma cena corria *«no quadro em que a subida do painel chega a `0`»* — e a função que a
+decrementa devolve `0` **para sempre** a partir daí ⇒ ela corria em **todos** os quadros seguintes,
+a `60 Hz`, com uma linha de diagnóstico cada.
+
+⇒ **a escada passou a ser uma função PURA com um ponto fixo**, e a cauda corre na **TRANSIÇÃO** para
+ele, nunca no estado. ⚠️ A lei tinha de ser pura porque *um gate que precisa de janela, GPU e
+superfície para medir dois números está no sítio errado* — e o gate afirma o ponto fixo com o
+controlo (*a escada de facto ANDA*) primeiro, senão uma escada que devolvesse sempre o fim passaria.

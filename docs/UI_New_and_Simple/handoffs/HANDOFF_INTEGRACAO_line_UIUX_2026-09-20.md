@@ -12,10 +12,10 @@
 | | |
 |---|---|
 | branch | `line/UIUX` |
-| HEAD | `7f60e93f7` |
+| HEAD | **`0580e872a`** — ⚠️ os **2 últimos** são este próprio handoff, zero bytes de produto |
 | merge-base com `main` | **`76bd6de02`** — ⭐ a linha **JÁ ESTÁ REBASEADA** sobre o `main` de hoje |
-| commits | **84** |
-| ficheiros | **777** · `+30 965` / `−5 045` |
+| commits | **86** |
+| ficheiros | **779** · 31259 insertions(+), 5046 deletions(-) |
 | crates novas | **nenhuma** |
 | ADR novo | **nenhum** ⇒ fora de toda disputa de número |
 | contrato congelado (§6) | **intocado** nos dois ficheiros |

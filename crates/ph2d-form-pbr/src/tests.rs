@@ -252,3 +252,157 @@ fn diag_onde_nasce_o_nan() {
     println!("  normal virada  -> {virada:?}");
     println!("  normal frente  -> {frente:?}");
 }
+
+/// ⏱️ **QUANTO CUSTA ACENDER UM SPRITE INTEIRO NA CPU** — a medição que decide se o passe de
+/// dispositivo é obrigatório ou optimização (§0.0: medir antes de limitar).
+///
+/// ⚠️ **Corre em `--release`**, e a razão está medida noutras linhas desta casa: em `debug` a mesma
+/// lei lê `~20×` mais lento, e um tecto tirado dali seria um tecto sobre outro programa.
+///
+/// ```text
+/// bash scripts/ph2d-run.sh cargo test -p ph2d-form-pbr --release \
+///     custa_acender_um_sprite -- --ignored --nocapture
+/// ```
+///
+/// A barra que interessa: a promessa escrita no `relight_stale` é que mover a lâmpada seja um
+/// **gesto contínuo** — `16,7 ms` por quadro. Um custo acima disso num tamanho que o artista usa
+/// diz que o dispositivo não é optimização, é a condição de a feature existir.
+///
+/// # ⭐⭐⭐ O que ele MEDIU (2026-09-20, `load 3,3`, `--release`, 32 núcleos)
+///
+/// ```text
+///  lado    texels      ms   ms/Mtexel   par ms  ganho
+///   256     65536     7,2      110,1      0,8    8,7x
+///   512    262144    28,5      108,6      2,5   11,3x
+///  1024   1048576   111,0      105,9      9,8   11,4x
+///  2048   4194304   443,5      105,7     39,2   11,3x
+///
+///  a 1024², em paralelo, por numero de lampadas:
+///   1 lampada    11,1 ms     3 lampadas   25,3 ms
+///   2 lampadas   18,3 ms     4 lampadas   34,1 ms
+/// ```
+///
+/// ⭐⭐⭐ **O VEREDITO: o passe de dispositivo NÃO é optimização — é a condição de a re-acendida
+/// continuar a ser um gesto contínuo.** A `1024²` a CPU paralela atravessa o orçamento de um quadro
+/// **à SEGUNDA lâmpada**, e o rig permite quatro; a `2048²` ela estoura com uma só.
+///
+/// ⚠️⚠️ **E a medição em PARALELO é que torna esse veredito honesto.** Com o número de UM núcleo
+/// (`111 ms` a `1024²`, `6,6×` um quadro) eu teria escrito a mesma conclusão **pela razão errada**,
+/// e o §0.0 chama a isso deixar o caminho lento definir o produto. A margem real não é `6,6×`: são
+/// **duas lâmpadas**, e é um número que outra pessoa pode mudar — quem puser esta lei numa máquina
+/// com mais núcleos, ou quem a cozinhar por tiles, **tem de reconferir esta nota**.
+///
+/// ⇒ a CPU fica como o que ela é em toda esta casa: o caminho de **REFERÊNCIA**, que só precisa de
+/// computar a mesma resposta.
+#[test]
+#[ignore = "diagnostico: mede relogio, corre a' mao em --release"]
+fn diag_quanto_custa_acender_um_sprite() {
+    let s = superficie();
+    let l = lampada_de_frente();
+    println!("  lado    texels      ms   ms/Mtexel   par ms  ganho");
+    for lado in [256u32, 512, 1024, 2048] {
+        let n = (lado * lado) as usize;
+        // Uma peça plausível: normais espalhadas, cobertura cheia no miolo.
+        let texeis: Vec<Texel> = (0..n)
+            .map(|i| {
+                let a = (i % 997) as f32 / 997.0 - 0.5;
+                let b = (i % 991) as f32 / 991.0 - 0.5;
+                Texel {
+                    normal: [a, b, 1.0 - (a * a + b * b)],
+                    albedo: [0.5, 0.45, 0.4],
+                    cobertura: if i % 8 == 0 { 0.0 } else { 1.0 },
+                    oclusao: 0.8,
+                }
+            })
+            .collect();
+
+        let t0 = std::time::Instant::now();
+        let mut soma = 0.0f64;
+        for t in &texeis {
+            // O `soma` existe para o optimizador não poder deitar o laço fora — um bench cujo
+            // resultado ninguém lê mede a eliminação de código morto.
+            soma += f64::from(acende_texel(&s, t, &[l], [0.1; 3])[0]);
+        }
+        let ms = t0.elapsed().as_secs_f64() * 1e3;
+
+        // ⚠️ **E o MESMO em paralelo** — sem isto o veredito sairia do caminho de UM núcleo, que é
+        // exactamente o «deixar o fallback definir o produto» do §0.0, com o sinal trocado: eu
+        // declararia o dispositivo obrigatório sem ter medido a CPU que a máquina tem.
+        // ⛔ `std::thread::scope` e não `rayon`: isto é uma MEDIÇÃO, e uma dependência de
+        // threading numa folha é uma costura que se decide com o número na mão, não antes dele.
+        let nucleos = std::thread::available_parallelism().map_or(1, |n| n.get());
+        let t1 = std::time::Instant::now();
+        let par: f64 = std::thread::scope(|sc| {
+            let fatias: Vec<_> = texeis
+                .chunks((n / nucleos).max(1))
+                .map(|f| {
+                    sc.spawn(|| {
+                        f.iter()
+                            .map(|t| f64::from(acende_texel(&s, t, &[l], [0.1; 3])[0]))
+                            .sum::<f64>()
+                    })
+                })
+                .collect();
+            fatias.into_iter().map(|h| h.join().unwrap()).sum()
+        });
+        let ms_par = t1.elapsed().as_secs_f64() * 1e3;
+        // ⚠️ **O acumulador é `f64` dos DOIS lados, e o controlo reprovou sobre produto certo
+        // até o ser:** somar `4,19 M` valores em `f32` em SÉRIE perde resolução (a soma chega a
+        // `8,2e5`, onde um `f32` tem `~0,06` de passo), e as `32` somas parciais do lado paralelo
+        // são MAIS exactas. *Uma soma em série de milhões de `f32` não é a referência de nada.*
+        assert!(
+            (par - soma).abs() < soma.abs() * 1e-9,
+            "controlo: as duas leis visitaram os mesmos texels ({par} contra {soma})"
+        );
+
+        println!(
+            "  {lado:>4}  {n:>8}  {ms:>6.1}  {:>9.1}  {ms_par:>7.1}  {:>5.1}x",
+            ms / (n as f64 / 1e6),
+            ms / ms_par,
+        );
+    }
+
+    // ⚠️ **E a segunda metade da conta é o NÚMERO DE LÂMPADAS** — o termo directo é o que corre por
+    // lâmpada, e o rig permite mais de uma. Medir só com uma responderia à pergunta mais fácil.
+    println!("\n  a 1024², em paralelo, por numero de lampadas:");
+    let n = 1024usize * 1024;
+    let texeis: Vec<Texel> = (0..n)
+        .map(|i| {
+            let a = (i % 997) as f32 / 997.0 - 0.5;
+            Texel {
+                normal: [a, a, 1.0 - a * a],
+                albedo: [0.5, 0.45, 0.4],
+                cobertura: 1.0,
+                oclusao: 0.8,
+            }
+        })
+        .collect();
+    let nucleos = std::thread::available_parallelism().map_or(1, |n| n.get());
+    for k in 1..=4usize {
+        let lampadas: Vec<Lampada> = (0..k)
+            .map(|i| Lampada {
+                para_a_luz: normaliza([i as f32 * 0.3 - 0.4, 0.2, 1.0]).unwrap(),
+                radiancia: [1.0, 1.0, 1.0],
+            })
+            .collect();
+        let t = std::time::Instant::now();
+        std::thread::scope(|sc| {
+            let fatias: Vec<_> = texeis
+                .chunks((n / nucleos).max(1))
+                .map(|f| {
+                    let lampadas = &lampadas;
+                    sc.spawn(move || {
+                        f.iter()
+                            .map(|t| f64::from(acende_texel(&s, t, lampadas, [0.1; 3])[0]))
+                            .sum::<f64>()
+                    })
+                })
+                .collect();
+            let _: f64 = fatias.into_iter().map(|h| h.join().unwrap()).sum();
+        });
+        println!(
+            "  {k} lampada(s): {:>6.1} ms",
+            t.elapsed().as_secs_f64() * 1e3
+        );
+    }
+}

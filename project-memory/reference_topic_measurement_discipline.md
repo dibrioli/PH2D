@@ -1140,3 +1140,37 @@ ela — e não «apagar a linha» — que separa as duas afirmações.
 Ver [[reference_topic_mutation_proofs]].
 
 - ⚠️⚠️ **Uma varredura que separa «id escrito no fonte» de «id derivado» tem de conhecer TODAS as formas de declaração** (medido 2026-09-21): nesta casa são TRÊS — `hash_node_id("<lit>")`, `hash_node_id_runtime("<lit>")` (um literal é um literal, seja quem for a hashear) e **`NodeId(<n>)` cru**, que é como o `grid-snap` declara os dele. ⛔ A que faltar erra sempre no sentido que SUBESTIMA: os ids dela caem no balde dos derivados, colapsam com os vizinhos, e o painel lê-se mais barato do que é — sem a terceira o `grid-snap` lia `10` comandos distintos em vez de `20`. ⭐ A cura não é lembrar-se das três: é o CONTROLO que reprova quando aparece uma quarta (quem tem instância derivada está numa lista NOMEADA, com a fábrica escrita ao lado, metade de obsolescência e piso de população). ⚠️ E a fábrica pode viver noutra crate — a 1.ª redacção do controlo exigia-a na crate do painel e o `wet_tuning` desmentiu-a.
+
+## ⛔⛔⛔ Uma sonda que constrói o alvo NOVO a cada medição mede o quadro FRIO — e o produto reaproveita o dele (2026-09-20)
+A escada do encode do carimbo fazia `VectorScene::new()` por medição; a shell faz
+`vector_scene.reset()` a cada quadro, e o `reset` do Vello limpa os fluxos **mantendo a
+capacidade**. ⇒ a sonda pagava o crescimento dos buffers em toda leitura e o produto em regime não
+paga nenhum: a `10⁶` cópias a diferença é `93,7` (frio) contra `56,2 ms` (quente). **Why:** um
+alocador não é uma lei do domínio, e um número que o inclui descreve o 1.º quadro depois de um
+arranque — não o que o artista vê. **How to apply:** antes de cronometrar, pergunte **o que o
+produto reaproveita entre chamadas** e aqueça o mesmo; e deixe a coluna FRIA ao lado, porque é o
+contraste que prova que o aquecimento não é cosmético.
+Ver [[feedback_a_probe_that_measures_a_surrogate_measures_another_program]].
+
+## ⛔⛔ Três relógios no MESMO binário de teste medem-se uns aos outros (2026-09-20)
+O `libtest` corre os testes de um binário em PARALELO por omissão. Medido: a mesma célula
+(`102 400` cópias pela mesma rota) leu `9,79`, `11,89` e `23,39 ms` nas três sondas da MESMA
+corrida — `2,4×` que não é lei nenhuma. **Why:** uma sonda de relógio é um consumidor de CPU, e
+duas em paralelo são a carga uma da outra; o `loadavg` nem chega a subir o suficiente para o
+denunciar. **How to apply:** serialize-as por um `Mutex` que cada uma toma na PRIMEIRA linha —
+⛔ nunca por uma instrução `--test-threads=1` no cabeçalho, que é a ferramenta que ninguém invoca;
+e use `unwrap_or_else(PoisonError::into_inner)`, para que uma sonda em pânico não cale as irmãs.
+Ver [[reference_topic_gate_discipline]].
+
+## ⛔⛔⛔ Uma fixtura que escolhe por RÓTULO morre calada no dia em que os rótulos viram chaves de i18n (2026-09-20)
+O construtor de cena de uma auditoria escolhia a forma procurando `"Star"` nas opções do nó, com um
+`if let Some(k)` a seguir. Quando a fronteira dos motores fechou (o mesmo dia), os `KIND_LABELS`
+passaram a ser `"node.opts.node_motion_shape.kind_labels.7"` ⇒ a procura devolveu `None` e **toda a
+auditoria mediu um círculo julgando medir uma estrela**. **Why:** a migração para i18n é uma
+propriedade do PRODUTO e atravessa todas as linhas; toda busca por rótulo humano num teste é uma
+dívida que ela cobra de uma vez, e o `if let Some` transforma a cobrança em silêncio. **How to
+apply:** derive o índice do **enum público** (aqui `ALL_KINDS`, alinhado por gate ao `KIND_LABELS`),
+**falhe alto** quando não resolver, e **imprima a grandeza da fixtura ao lado do número** — foi uma
+contagem de segmentos (`4` onde a estrela tem `12`) que denunciou este caso, e nenhuma outra coluna
+o teria feito.
+Ver [[reference_topic_fixture_discipline]] e [[reference_topic_gate_discipline]].

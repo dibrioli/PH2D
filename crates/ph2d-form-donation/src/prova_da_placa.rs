@@ -39,6 +39,19 @@ fn placa() -> Option<GpuContext> {
 /// ⚠️ **As quatro cores são a régua**, não decoração: o defeito que esta wave curou só é visível
 /// num albedo COM MATIZ — num cinzento as duas composições dão a mesma razão entre canais, e uma
 /// peça cinzenta aprovaria as duas leis. A quarta bola é **cinzenta**, e é o controlo.
+///
+/// # ⛔⛔⛔ E a bola AZUL tem uma FRESTA, porque sem ela a paridade não media a OCLUSÃO
+///
+/// Esta fixtura escrevia `occ = 1` em todo o lado, e a consequência foi medida **duas vezes**: a
+/// mutação que crava a leitura da textura de oclusão a `1.0` no shader **SOBREVIVEU** à paridade no
+/// pixel, com `pior = 0`. Da 1.ª vez a causa era a LEI (o ambiente era zero, logo o canal era
+/// multiplicado por zero); curada a lei, ela sobreviveu **outra vez** — e aí a causa era a FIXTURA.
+/// *Uma paridade só afirma sobre os canais que a peça faz VARIAR.*
+///
+/// ⚠️ **A fresta vive só na bola AZUL, e isso é deliberado:** a bola CINZENTA é o alvo do
+/// `miolo_cinzento`, que é a régua da calibração do `OLHAR_DA_FORMA` — escurecê-la moveria o número
+/// que ela existe para escolher, *e uma régua que muda com a fixtura que mede deixa de ser uma
+/// régua*.
 fn peca() -> BakedForm {
     let n = (LADO * LADO) as usize;
     let (mut base, mut form, mut occ) = (vec![0u8; n * 4], vec![0f32; n * 4], vec![1f32; n]);
@@ -81,12 +94,18 @@ fn peca() -> BakedForm {
                 form[i * 4 + 1] = (dy / q) as f32;
                 form[i * 4 + 2] = (z / q) as f32;
                 form[i * 4 + 3] = 1.0;
+                // ⭐⭐⭐ **A FRESTA, e SÓ na bola AZUL** — ver o doc da [`peca`].
+                if (qx, qy) == (0, 1) {
+                    let t = (dy / (r * 0.35)).abs();
+                    if t < 1.0 {
+                        occ[i] = 0.25 + 0.75 * (t * t) as f32;
+                    }
+                }
             } else {
                 // ⚠️ Fora da silhueta o neutro é `[0,0,1]` com cobertura ZERO — um zero em todo o
                 // lado seria uma superfície virada de lado, que é outra coisa.
                 form[i * 4 + 2] = 1.0;
             }
-            occ[i] = 1.0;
         }
     }
     BakedForm {

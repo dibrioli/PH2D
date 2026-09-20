@@ -70,9 +70,13 @@ pub struct Lampada {
 /// **O que um texel traz** — o que a forma doou, num ponto.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Texel {
-    /// A normal doada pela malha, em espaço de vista. ⚠️ Pode vir **não normalizada** do
-    /// `baked_form` (ela viaja quantizada em `rgba8`), e [`acende_texel`] normaliza-a — ver lá
-    /// porque isso não é defensivo.
+    /// A normal doada pela malha, **em espaço de CANVAS** (`y` cresce para BAIXO — o mesmo em que o
+    /// rig é autorado). ⚠️ Pode vir **não normalizada** do `baked_form` (ela viaja quantizada em
+    /// `rgba8`), e [`acende_texel`] normaliza-a — ver lá porque isso não é defensivo.
+    ///
+    /// ⛔ **Esta linha dizia «espaço de vista» e estava errada**, com duas fixturas sintéticas a
+    /// segui-la: quem escreve o canal é o `canvas_normal` do `ph2d-mesh-render`, cuja última linha
+    /// é `vec3(n.x, -n.y, n.z)`. O referencial decide **de que lado o céu está**.
     pub normal: [f32; 3],
     /// O albedo — os pixels **antes** da luz.
     pub albedo: Rgb,
@@ -85,6 +89,77 @@ pub struct Texel {
 
 /// A vista de um canvas 2D. Ver o cabeçalho do módulo.
 pub const VISTA: [f32; 3] = [0.0, 0.0, 1.0];
+
+/// ⭐⭐⭐ **O CÉU, na forma que esta lei lê: uma RAMPA LINEAR na altura da TELA.**
+///
+/// `E(n) = base + inclinação · (−n.y)` — a irradiância normalizada (`E/π`, *a luz que uma difusa
+/// branca devolveria*), na direcção da normal, com a normal no referencial do [`Texel::normal`]
+/// (CANVAS, `y` para BAIXO ⇒ o topo da tela é `−y`).
+///
+/// # ⚠️ Porque é uma RAMPA e não um fecho nem o `Environment` inteiro
+///
+/// **Uma rampa porque é isso que o céu desta casa É**: a irradiância de um ambiente linear na altura
+/// vale `c + (2/3)·k·(n·cima)`, e o `2/3` é o `Â₁` da convolução zonal com o lóbulo cosseno
+/// (Ramamoorthi & Hanrahan 2001). *Um ambiente linear não tem termo de grau 2*, logo dois `Rgb`
+/// **são** a resposta exacta — não uma amostragem dela. Guardá-la como DADOS é o que a deixa viajar
+/// para o dispositivo sem uma segunda redacção da fórmula.
+///
+/// ⛔ **E não é o [`ph2d_material::Environment`]** porque aquele trait tem uma segunda metade
+/// (`radiance`, a espelhada pré-filtrada) que só as closures INDIRECTAS do OpenPBR leem — e esta lei
+/// **não as chama**: o ambiente dela é lambertiano e declarado como nosso (ver [`acende_texel`]).
+/// *Uma porta que exige uma resposta que nada consome fabrica código morto no chamador.*
+///
+/// ⏳ No dia em que a indirecta do OpenPBR entrar (a coluna **B3** do plano), as duas metades chegam
+/// juntas — e a ranhura do ambiente no gémeo em WGSL já exige as duas, que é onde a assimetria se vê.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Ceu {
+    /// A irradiância na horizontal (`n·cima = 0`).
+    pub base: Rgb,
+    /// Quanto ela sobe do horizonte para o topo da TELA.
+    pub inclinacao: Rgb,
+}
+
+impl Ceu {
+    /// **O céu que não existe** — a lei sem ambiente nenhum.
+    ///
+    /// ⚠️ Ele é uma CONSTANTE com nome e não um `Ceu { base: [0.0; 3], … }` escrito em cada gate: *o
+    /// valor de fábrica da ausência tem de ser o mesmo em todos os sítios que a afirmam*, e é ele
+    /// que torna «byte-idêntico ao que se ship antes do céu» uma frase verificável.
+    pub const PRETO: Self = Self {
+        base: [0.0; 3],
+        inclinacao: [0.0; 3],
+    };
+
+    /// Um céu **sem direcção** — o mesmo em toda normal.
+    ///
+    /// ⚠️ Ele existe para os gates da composição, que medem *onde o ambiente entra na conta* e não
+    /// de que lado ele vem. ⛔ O produto **não** o usa: um ambiente sem direcção deixa duas faces
+    /// na sombra — uma a olhar para cima e outra para baixo — exactamente iguais, e ali a peça fica
+    /// sem leitura de forma nenhuma.
+    #[must_use]
+    pub const fn chapado(c: Rgb) -> Self {
+        Self {
+            base: c,
+            inclinacao: [0.0; 3],
+        }
+    }
+
+    /// A irradiância normalizada na direcção de `n`. Ver o doc do tipo.
+    ///
+    /// ⚠️ **`mul_add` e não `a + b * c`**, e é para a paridade: o gémeo em WGSL pede `fma`, que tem
+    /// **um** arredondamento. Escrito solto, a igualdade ao bit passaria a depender de o compilador
+    /// do WGSL contrair a multiplicação-soma — e esta casa já mediu uma placa a contraí-la onde o
+    /// fonte não o pedia.
+    #[must_use]
+    pub fn irradiancia(&self, n: Rgb) -> Rgb {
+        let up = -n[1];
+        [
+            self.inclinacao[0].mul_add(up, self.base[0]),
+            self.inclinacao[1].mul_add(up, self.base[1]),
+            self.inclinacao[2].mul_add(up, self.base[2]),
+        ]
+    }
+}
 
 /// ⭐⭐⭐ **A LEI, num texel.** Ver o cabeçalho do módulo.
 ///
@@ -105,7 +180,7 @@ pub fn acende_texel(
     s: &Surface,
     t: &Texel,
     lampadas: &[Lampada],
-    ambiente: Rgb,
+    ceu: Ceu,
     olhar: ph2d_view_transform::Look,
 ) -> Rgb {
     let n = normaliza(t.normal);
@@ -157,10 +232,14 @@ pub fn acende_texel(
     // objecto parecer sujo em vez de ocluído — e nenhuma das cinco referências o faz.
     //
     // ⏳ **E este termo é DECLARADAMENTE nosso, não a lei:** a indirecta do OpenPBR é a
-    // [`Surface::indirect`], e ela pede um CÉU — que é do consumidor (é o que preenche o
-    // `ENV_SLOT`). Enquanto ele não existir, o ambiente é um termo lambertiano chapado, pesado pela
-    // oclusão de forma. *Trocá-lo pela lei é a coluna B3 do plano, e é uma feature — não uma
-    // correcção.*
+    // [`Surface::indirect`], que soma um lóbulo difuso de Oren-Nayar mais um especular pré-filtrado.
+    // Aqui o ambiente entra **lambertiano** — `albedo × E(n)` —, que é exactamente a mesma dobra que
+    // a lei da TINTA e o barro VIVO fazem do outro lado do documento. *Trocá-lo pela lei é a coluna
+    // B3 do plano, e é uma feature — não uma correcção.*
+    //
+    // ⭐⭐⭐ **O `E(n)` vem do [`Ceu`], e é isso que faz a sombra ter DIRECÇÃO.** Com o
+    // [`Ceu::PRETO`] esta linha é `luz + 0`, byte a byte o que se shipava antes dele existir.
+    let ambiente = ceu.irradiancia(n);
     let aceso = [
         luz[0] + t.albedo[0] * ambiente[0] * t.oclusao,
         luz[1] + t.albedo[1] * ambiente[1] * t.oclusao,

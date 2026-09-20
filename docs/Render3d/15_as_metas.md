@@ -205,19 +205,51 @@ ela separa as duas causas pelo mecanismo:
 **Prova de mutação: 4 de 4** — a exposição que não chega (`pior 223`), a cobertura cravada a `1`
 (`46`), a truncagem (a população), e a oclusão, que é a quarta e está **NOMEADA** logo abaixo.
 
-### ⛔⛔⛔ ABERTO, e é do dono: a OCLUSÃO DE FORMA não chega a esta lei
+### ✅ FECHADO em 2026-09-20: a OCLUSÃO chega ao pixel, e o que faltava era o CÉU
 
-A mutação que apaga a leitura da textura de oclusão **sobreviveu, com `pior = 0`** — e não é a
-fixtura que não contém o fenómeno, **é a lei**: a `acende_texel` aplica a oclusão a um termo só
-(`albedo × ambiente × oclusão`) e o ambiente desta lei é **zero por desenho** (o rig é
-`KEY + 3 × FILL`, as lâmpadas de preenchimento *são* o ambiente dele) ⇒ *o canal é multiplicado por
-zero antes de chegar a um pixel*.
+A redacção anterior desta secção dizia *«ABERTO, e é do dono»* e a cura *«não é inventar aqui um
+termo que nenhuma referência declara — é decisão de produto»*. ⛔ **Estava errada, e a razão escrita
+ao lado dela também:** ela afirmava que *«o rig é `KEY + 3 × FILL` e as lâmpadas de preenchimento
+SÃO o ambiente dele»* — e as três de preenchimento nascem **`on: false`**.
 
-⚠️ **O objecto assado GUARDA a cavidade × os dois AOs, a lei da TINTA lê-a, e esta não.** Parte do
-*«a sombra mais funda da direita»* que o §8 mostra pode ser isto, ao contrário. ⛔ A cura **não** é
-inventar aqui um termo que nenhuma referência declara — é decisão de produto, e o gate
-`a_oclusao_de_forma_e_inerte_enquanto_o_ambiente_for_zero` afirma a inércia **com o controlo ao
-lado**, para a premissa morrer à vista no dia em que esta lei ganhar ambiente.
+**Medido** com a configuração de fábrica (uma lâmpada acesa de quatro), sobre uma bola com fresta:
+
+| | antes | agora |
+|---|---|---|
+| texels **PRETOS ao bit** | `8 243` de `32 928` — **`25,03 %`** | **`0`** (`0,000 %`) |
+| luminância média na SOMBRA | `0,000` | `48,54` |
+| na FRESTA (`occ < 0,5`) | `165,49` | **`122,03`** |
+
+⇒ *a cavidade × os dois AOs que o objecto assado guarda desde que existe passam a ser lidos, e isso
+não custou uma linha de lei nova: custou o céu.*
+
+**E a lei da casa já nomeava este defeito antes de ele acontecer**, no doc do `ph2d_light::AMBIENT`:
+*«os dois consumidores (tinta e forma) têm de dobrar a razão do MESMO jeito, senão a mesma lâmpada
+deixaria a escultura mais escura na sombra que a pintura ao lado dela, e ninguém saberia dizer por
+quê»*.
+
+#### ⛔⛔ A 1.ª tradução foi um ERRO DE CATEGORIA — `AMBIENT` não é uma radiância
+
+Pôr o `env_ambient` como irradiância absoluta **satura a peça**: com a exposição calibrada sem céu, a
+média do miolo cinzento salta de `186` para `255`. O `AMBIENT` declara-se, à letra, como *«o que uma
+face totalmente virada PARA LONGE da luz ainda devolve»* — uma **fracção da resposta plana**.
+
+⭐ **A tradução certa é DERIVADA e não tem constante escolhida:** a resposta plana do rig é
+`Σ max(l·z, 0) · tint`, e o piso do modelo RELATIVO entra como termo ADITIVO por `f = A/(1 − A)` — a
+forma fechada que faz `sombra/plano` voltar a valer exactamente `A`. Gate
+`a_sombra_vale_ambient_do_plano`, medido no **horizonte** da rampa (ela redistribui à volta dele: uma
+face virada para baixo lê `0,255`).
+
+⭐⭐ **E isso responde à objecção que a redacção antiga levantava** (*«o artista veria a peça a não
+escurecer por mais que apagasse lâmpadas»*): com o céu derivado do rig, **apagar as lâmpadas apaga o
+céu**. O estúdio é o rig.
+
+⚠️ **A exposição teve de ser re-tirada:** `OLHAR_DA_FORMA` passa de `3,00` para **`2,10`** stops
+(escada no doc dele). *Quem move o número que tornava outro correcto tem de reconferir a nota.*
+
+⛔ **E a fixtura sintética desta crate acendia POR BAIXO** — ela escrevia o `y` da normal em espaço de
+VISTA e o canal é escrito em CANVAS pelo `canvas_normal`. A paridade nunca o podia ver (os dois
+motores leem os MESMOS planos), e só passou a importar quando o ambiente ganhou direcção.
 
 ### ⏳ O que fica, com o preço medido
 
@@ -225,7 +257,7 @@ lado**, para a premissa morrer à vista no dia em que esta lei ganhar ambiente.
 |---|---|---|
 | 1 | **não re-enviar a forma quando só o rig mudou** | é onde o tempo está: o canal **não depende do rig** (é o que torna arrastar a lâmpada barato) e sobe na mesma a cada quadro. A diferença entre `1,74` e `2,08 ms` diz que a lei custa `~0,3 ms`; o resto é transporte |
 | 2 | a **escolha por objecto** (`PROJECT_SCHEMA`) | gateada no veredito do dono sobre o §8 |
-| 3 | a **oclusão** acima | decisão de produto |
+| 3 | ~~a **oclusão**~~ | ✅ **FECHADA** acima — a cura era o céu, não uma decisão de produto |
 
 ⚠️ **E o endereço do passe não é o que esta secção escreveu.** Ela mandava-o para a `ph2d-render`,
 *«~600 linhas, a medida do passe irmão»* — medido, as duas metades estão erradas pela mesma razão: o

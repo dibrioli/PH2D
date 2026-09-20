@@ -71,14 +71,14 @@ pub fn do_ambiente() -> Lei {
     *UMA_VEZ.get_or_init(|| Lei::do_texto(std::env::var(ENV).ok().as_deref()))
 }
 
-/// ⭐⭐⭐ **O OLHAR com que a lei nova chega ao ecrã** — `3,00` stops, MEDIDO contra o lado aprovado.
+/// ⭐⭐⭐ **O OLHAR com que a lei nova chega ao ecrã** — `2,10` stops, MEDIDO contra o lado aprovado.
 ///
 /// # Porque ele não pode ser a identidade
 ///
 /// Esta lei devolve **radiância** e a de sempre é **relativa** (ela divide pelo que uma superfície
 /// plana do mesmo material devolveria, e é por isso que tinta plana sai byte-idêntica nela) ⇒ as
 /// duas **não estão na mesma escala**. Escrita com a identidade, a lei nova sai visivelmente mais
-/// escura: medido na placa sobre a mesma peça, média `59` contra `105`.
+/// escura.
 ///
 /// ⛔⛔ **E isso lê-se como «a feature estragou o objecto», não como «fisicamente correcto».** Um
 /// dono a quem se pede um veredito sobre a APARÊNCIA e que recebe uma peça duas vezes mais escura
@@ -86,20 +86,35 @@ pub fn do_ambiente() -> Lei {
 ///
 /// # O número, e de onde ele vem
 ///
-/// Da sonda [`super::baked_form::prova_da_placa`], sobre a bola CINZENTA (o controlo, onde as duas
-/// leis concordam na matiz e o que resta é só o NÍVEL), média do miolo contra a da lei de sempre:
+/// Da sonda `prova_da_placa::diag_a_escada_do_olhar_com_ceu`, sobre a bola CINZENTA (o controlo,
+/// onde as duas leis concordam na matiz e o que resta é só o NÍVEL), média do miolo contra a da lei
+/// de sempre (`186,1`):
 ///
 /// ```text
 ///   stops   media do miolo cinzento   contra a tinta (186,1)
-///    2,00                   116,8            -69,4
-///    2,75                   171,9            -14,3
-///    3,00                   185,7             -0,5     ←
-///    3,10                   190,4             +4,3
-///    4,00                   218,6            +32,4
+///    1,50                   132,8            -53,3
+///    1,90                   169,8            -16,3
+///    2,05                   183,2             -2,9
+///    2,10                   187,4             +1,3     ←
+///    2,15                   191,4             +5,3
+///    2,50                   214,6            +28,5
+///    3,00                   235,9            +49,8
 /// ```
 ///
 /// ⚠️ **A escada passa do candidato de propósito:** um mínimo na BORDA de uma varredura não é um
 /// mínimo, é o fim da lista.
+///
+/// # ⛔ Ele DESCEU de `3,00` para `2,10`, e a razão é o CÉU
+///
+/// O `3,00` foi calibrado quando o ambiente desta lei era **zero** — e nesse dia isso era o produto.
+/// Com o céu derivado do rig ([`super::baked_form::ceu_do_rig`]) a peça recebe mais luz, e com o
+/// número antigo ela **satura**: a mesma sonda lê `235,9` a `3,00` e `254,0` a `4,00`. *Quem move o
+/// número que tornava outro correcto tem de reconferir a nota* (§0.0).
+///
+/// ⚠️ **A sonda mudou-se para a CPU** e deixou de viver dentro do teste de placa: o que se mede é o
+/// NÍVEL que a lei entrega, e isso é a régua — não precisa de adapter. ⭐ O alvo `186,1` sobrevive à
+/// correcção de sinal do `y` da fixtura, porque numa bola simétrica a média sobre a peça inteira não
+/// muda ao virar a luz ao contrário.
 ///
 /// # ⚠️ O que este número NÃO é
 ///
@@ -108,7 +123,7 @@ pub fn do_ambiente() -> Lei {
 /// «certa»: a exposição é uma escolha do artista, e o dia em que ela for um controlo este valor
 /// passa a ser o ponto de partida dele — não uma constante escondida.
 pub const OLHAR_DA_FORMA: ph2d_view_transform::Look = ph2d_view_transform::Look {
-    exposure_stops: 3.0,
+    exposure_stops: 2.1,
     view: ph2d_view_transform::ViewTransform::Standard,
 };
 
@@ -164,14 +179,21 @@ mod tests {
     /// escura está a julgar a exposição, não a lei. Ver o doc do [`super::OLHAR_DA_FORMA`] para a
     /// escada que escolheu o número.
     ///
-    /// ⚠️ A barra é **larga de propósito** (`≥ 2` stops): o valor exacto é do rig e do material de
-    /// omissão, e apertá-la aqui faria este gate reprovar no dia em que alguém mudasse o rig —
-    /// medindo a CENA em vez da decisão. *O que se afirma é que a identidade está descartada.*
+    /// ⚠️ A barra é **larga de propósito** (`≥ 1` stop, ou seja *o dobro*): o valor exacto é do rig e
+    /// do material de omissão, e apertá-la aqui faria este gate reprovar no dia em que alguém mudasse
+    /// o rig — medindo a CENA em vez da decisão. *O que se afirma é que a identidade está
+    /// descartada.*
+    ///
+    /// ⛔ **Ela DESCEU de `≥ 2` para `≥ 1` e isso não é afrouxar:** enquanto o ambiente desta lei foi
+    /// zero, o número medido era `3,00` e a barra tinha uma folga de `1`; com o céu ele desceu para
+    /// `2,10`, e uma barra a `2` passaria a estar a `5 %` do valor — *uma barra colada ao número que
+    /// ela mede reprova na primeira mexida no rig, sobre produto correcto*. O número real vive no doc
+    /// do [`super::OLHAR_DA_FORMA`], com a escada ao lado.
     #[test]
     fn o_olhar_da_lei_nova_nao_e_a_identidade() {
         let o = super::OLHAR_DA_FORMA;
         assert!(
-            o.exposure_stops >= 2.0,
+            o.exposure_stops >= 1.0,
             "a lei nova é ABSOLUTA e sem exposição sai escura demais ({} stops)",
             o.exposure_stops
         );

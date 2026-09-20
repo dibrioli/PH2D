@@ -35,7 +35,7 @@
 
 pub use ph2d_view_transform::{Look, ViewTransform};
 
-use super::{Lampada, Rgb, Surface, Texel, acende_texel};
+use super::{Lampada, Surface, Texel, acende_texel};
 
 /// Os três planos que o objecto assado guarda, emprestados.
 pub struct Planos<'a> {
@@ -99,11 +99,11 @@ pub fn acende_imagem(
     s: &Surface,
     p: &Planos,
     lampadas: &[Lampada],
-    ambiente: Rgb,
+    ceu: super::Ceu,
     olhar: Look,
 ) -> Result<Vec<u8>, String> {
     let faixas = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
-    acende_imagem_com(s, p, lampadas, ambiente, olhar, faixas)
+    acende_imagem_com(s, p, lampadas, ceu, olhar, faixas)
 }
 
 /// O mesmo, com o número de faixas **dito** em vez de lido da máquina.
@@ -118,7 +118,7 @@ pub fn acende_imagem_com(
     s: &Surface,
     p: &Planos,
     lampadas: &[Lampada],
-    ambiente: Rgb,
+    ceu: super::Ceu,
     olhar: Look,
     faixas: usize,
 ) -> Result<Vec<u8>, String> {
@@ -132,7 +132,7 @@ pub fn acende_imagem_com(
     let passo = n.div_ceil(faixas.max(1));
     std::thread::scope(|sc| {
         for (k, fatia) in out.chunks_mut(passo * 4).enumerate() {
-            sc.spawn(move || acende_faixa(s, p, lampadas, ambiente, olhar, k * passo, fatia));
+            sc.spawn(move || acende_faixa(s, p, lampadas, ceu, olhar, k * passo, fatia));
         }
     });
     Ok(out)
@@ -149,7 +149,7 @@ fn acende_faixa(
     s: &Surface,
     p: &Planos,
     lampadas: &[Lampada],
-    ambiente: Rgb,
+    ceu: super::Ceu,
     olhar: Look,
     i0: usize,
     fatia: &mut [u8],
@@ -172,7 +172,7 @@ fn acende_faixa(
             cobertura: p.form[(i0 + j) * 4 + 3],
             oclusao: p.form_occ[i0 + j],
         };
-        let c = acende_texel(s, &t, lampadas, ambiente, olhar);
+        let c = acende_texel(s, &t, lampadas, ceu, olhar);
         for k in 0..3 {
             // ⚠️ `clamp` ANTES do `as u8`: um `as` satura, mas um `NaN` vira `0` em silêncio — e é
             // a cerca do meio-vector degenerado que garante que ele não chega aqui. Esta é a

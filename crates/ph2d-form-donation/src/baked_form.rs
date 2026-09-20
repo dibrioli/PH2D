@@ -231,7 +231,7 @@ fn acende_pela_forma(
         &crate::lei_da_luz::material_da_forma(),
         &planos,
         &lampadas,
-        AMBIENTE_DA_FORMA,
+        ceu_do_rig(&lampadas),
         crate::lei_da_luz::OLHAR_DA_FORMA,
     )?;
     renderer
@@ -257,20 +257,69 @@ pub fn pixels_pela_forma_na_cpu(bake: &BakedForm, rig: &LightRig) -> Result<Vec<
         &crate::lei_da_luz::material_da_forma(),
         &planos_de(bake),
         &lampadas_do_rig(rig)?,
-        AMBIENTE_DA_FORMA,
+        ceu_do_rig(&lampadas_do_rig(rig)?),
         crate::lei_da_luz::OLHAR_DA_FORMA,
     )
 }
 
-/// ⛔ **O AMBIENTE desta lei é ZERO, e não é uma omissão.**
+/// ⭐⭐⭐ **O CÉU DESTA LEI SAI DO RIG, e a razão de ele não ser uma constante é a MEDIÇÃO.**
 ///
-/// O rig desta casa é `KEY + 3 × FILL`, ou seja **as lâmpadas de preenchimento são o ambiente dele**.
-/// Um termo constante somado por baixo seria uma segunda luz que nenhum controlo alcança — e o
-/// artista veria a peça a não escurecer por mais que apagasse lâmpadas.
+/// # ⛔⛔ A redacção anterior era `[0,0,0]` e a razão escrita ao lado estava ERRADA
 ///
-/// ⚠️ Ele é uma CONSTANTE com nome e não um `[0.0; 3]` escrito nos dois sítios, porque os dois
-/// caminhos têm de somar o mesmo nada.
-const AMBIENTE_DA_FORMA: ph2d_form_pbr::Rgb = [0.0; 3];
+/// Ela dizia: *«o rig desta casa é `KEY + 3 × FILL`, ou seja as lâmpadas de preenchimento são o
+/// ambiente dele»*. **Medido:** as três de preenchimento nascem `on: false`
+/// ([`ph2d_light::Light::FILL`]), logo na configuração de fábrica há **UMA** lâmpada acesa e mais
+/// nada — e com o ambiente a zero **`25,03 %` da peça saía PRETA ao bit**, com a sombra a ler
+/// luminância média `0,000`. A lei da casa nomeia este defeito **antes de ele acontecer**, no doc do
+/// [`ph2d_light::AMBIENT`]: *«os dois consumidores (tinta e forma) têm de dobrar a razão do MESMO
+/// jeito, senão a mesma lâmpada deixaria a escultura mais escura na sombra que a pintura ao lado
+/// dela»*.
+///
+/// # ⛔⛔⛔ E a 2.ª redacção era um ERRO DE CATEGORIA — `AMBIENT` não é uma radiância
+///
+/// Ela punha `env_ambient` como irradiância absoluta. Mas o [`ph2d_light::AMBIENT`] declara-se, à
+/// letra, como *«o que uma face totalmente virada PARA LONGE da luz ainda devolve»* — ou seja uma
+/// **fracção da resposta PLANA**, não uma quantidade de luz. Usada como absoluta, ela saturava a
+/// peça: com a exposição calibrada sem céu, a média do miolo cinzento saltou de `186` para **`255`**
+/// (a tabela inteira está no `diag_a_escada_do_olhar_com_ceu`).
+///
+/// # ⭐ A tradução certa é DERIVADA, e não tem uma constante escolhida
+///
+/// A resposta plana que o rig entrega a uma difusa é `Σ max(l·z, 0) · tint` (a irradiância das
+/// lâmpadas), e a normalizada é essa sobre `π` — a mesma unidade que o [`ph2d_form_pbr::Ceu`] pede.
+/// O piso do modelo RELATIVO entra como termo ADITIVO por `f = A/(1 − A)`, que é a **conversão em
+/// forma fechada** entre *«a sombra é `A` do plano»* (uma interpolação) e *«o ambiente SOMA-SE ao
+/// directo»* (a nossa lei): com ela, `sombra/plano` volta a valer exactamente `A`, e há gate.
+///
+/// ⭐⭐ **E isto responde à objecção que a 1.ª redacção levantava:** *«o artista veria a peça a não
+/// escurecer por mais que apagasse lâmpadas»*. Com o céu derivado do rig, apagar as lâmpadas apaga
+/// o céu — o estúdio é o rig, e não um mundo por trás dele. É a mesma escolha que o barro vivo e a
+/// tinta já fazem, e é por isso que ela não é *«menos física»*: aqui o ambiente **é** um instrumento
+/// de estúdio.
+///
+/// ⚠️ A CHROMA multiplica a do rig pela do céu, como no barro vivo: o [`ph2d_light::ENV_BASE`] tem
+/// luminância exactamente `1`, logo ele **redistribui** e não expõe — a média sobre todas as normais
+/// continua a ser o piso.
+#[must_use]
+pub(crate) fn ceu_do_rig(lampadas: &[ph2d_form_pbr::Lampada]) -> ph2d_form_pbr::Ceu {
+    /// O piso RELATIVO convertido para um termo ADITIVO — ver o doc acima. ⛔ Não é escolhido: é
+    /// `A/(1 − A)`, a única solução de `f/(1 + f) = A`.
+    const F: f32 = ph2d_light::AMBIENT / (1.0 - ph2d_light::AMBIENT);
+
+    let mut plano = [0.0f32; 3];
+    for l in lampadas {
+        // ⚠️ A normal PLANA é a [`ph2d_form_pbr::VISTA`], logo `n·l` é a componente `z` da lâmpada.
+        let ndl = l.para_a_luz[2].max(0.0);
+        for (p, r) in plano.iter_mut().zip(l.radiancia) {
+            *p += ndl * r;
+        }
+    }
+    let k = [0, 1, 2].map(|i| F * plano[i] / std::f32::consts::PI);
+    ph2d_form_pbr::Ceu {
+        base: [0, 1, 2].map(|i| k[i] * ph2d_light::ENV_BASE[i]),
+        inclinacao: [0, 1, 2].map(|i| k[i] * ph2d_light::ENV_SLOPE[i]),
+    }
+}
 
 /// As lâmpadas do rig, no vocabulário que a óptica pede.
 ///

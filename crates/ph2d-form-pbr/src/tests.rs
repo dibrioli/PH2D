@@ -34,13 +34,25 @@ fn fora_da_silhueta_o_albedo_sai_ao_bit() {
     let s = superficie();
     let mut t = texel([0.0, 0.0, 1.0]);
     t.cobertura = 0.0;
-    let fora = acende_texel(&s, &t, &[lampada_de_frente()], [0.2; 3], Look::default());
+    let fora = acende_texel(
+        &s,
+        &t,
+        &[lampada_de_frente()],
+        Ceu::chapado([0.2; 3]),
+        Look::default(),
+    );
     assert_eq!(fora, t.albedo, "a cobertura 0 tem de devolver o albedo CRU");
 
     // ⭐ **O CONTROLO**: com cobertura cheia, a MESMA entrada tem de mover o pixel — senão este
     // gate ficaria verde sobre uma lei que não acende nada.
     t.cobertura = 1.0;
-    let dentro = acende_texel(&s, &t, &[lampada_de_frente()], [0.2; 3], Look::default());
+    let dentro = acende_texel(
+        &s,
+        &t,
+        &[lampada_de_frente()],
+        Ceu::chapado([0.2; 3]),
+        Look::default(),
+    );
     assert_ne!(
         dentro, t.albedo,
         "controlo: com cobertura 1 a luz TEM de mudar o pixel"
@@ -56,14 +68,14 @@ fn uma_normal_curta_acende_como_a_normalizada() {
         &s,
         &texel([0.0, 0.0, 1.0]),
         &[lampada_de_frente()],
-        [0.0; 3],
+        Ceu::chapado([0.0; 3]),
         Look::default(),
     );
     let curta = acende_texel(
         &s,
         &texel([0.0, 0.0, 0.97]),
         &[lampada_de_frente()],
-        [0.0; 3],
+        Ceu::chapado([0.0; 3]),
         Look::default(),
     );
     for c in 0..3 {
@@ -87,7 +99,7 @@ fn uma_normal_curta_acende_como_a_normalizada() {
         &s,
         &texel([1.0, 0.0, 0.0]),
         &[lampada_de_frente()],
-        [0.0; 3],
+        Ceu::chapado([0.0; 3]),
         Look::default(),
     );
     assert!(
@@ -105,7 +117,13 @@ fn uma_normal_degenerada_devolve_o_albedo_e_nao_preto() {
     let s = superficie();
     let t = texel([0.0, 0.0, 0.0]);
     assert_eq!(
-        acende_texel(&s, &t, &[lampada_de_frente()], [0.2; 3], Look::default()),
+        acende_texel(
+            &s,
+            &t,
+            &[lampada_de_frente()],
+            Ceu::chapado([0.2; 3]),
+            Look::default()
+        ),
         t.albedo
     );
 }
@@ -125,14 +143,14 @@ fn a_oclusao_nao_toca_a_luz_directa() {
         &s,
         &aberto,
         &[lampada_de_frente()],
-        [0.0; 3],
+        Ceu::chapado([0.0; 3]),
         Look::default(),
     );
     let f = acende_texel(
         &s,
         &fechado,
         &[lampada_de_frente()],
-        [0.0; 3],
+        Ceu::chapado([0.0; 3]),
         Look::default(),
     );
     assert_eq!(a, f, "sem ambiente, a oclusão não tem o que pesar");
@@ -143,14 +161,14 @@ fn a_oclusao_nao_toca_a_luz_directa() {
         &s,
         &aberto,
         &[lampada_de_frente()],
-        [0.5; 3],
+        Ceu::chapado([0.5; 3]),
         Look::default(),
     );
     let f2 = acende_texel(
         &s,
         &fechado,
         &[lampada_de_frente()],
-        [0.5; 3],
+        Ceu::chapado([0.5; 3]),
         Look::default(),
     );
     assert!(
@@ -182,7 +200,7 @@ fn a_optica_e_a_da_crate_da_lei_ao_bit() {
         radiancia: [0.9, 0.8, 0.7],
     };
 
-    let nosso = acende_texel(&s, &t, &[l], [0.0; 3], Look::default());
+    let nosso = acende_texel(&s, &t, &[l], Ceu::chapado([0.0; 3]), Look::default());
 
     let n = normaliza(t.normal).unwrap();
     let esperado = s
@@ -228,8 +246,14 @@ fn as_lampadas_somam() {
         para_a_luz: [0.0, 0.0, 1.0],
         radiancia: [0.2, 0.2, 0.2],
     };
-    let uma = acende_texel(&s, &t, &[fraca], [0.0; 3], Look::default());
-    let duas = acende_texel(&s, &t, &[fraca, fraca], [0.0; 3], Look::default());
+    let uma = acende_texel(&s, &t, &[fraca], Ceu::chapado([0.0; 3]), Look::default());
+    let duas = acende_texel(
+        &s,
+        &t,
+        &[fraca, fraca],
+        Ceu::chapado([0.0; 3]),
+        Look::default(),
+    );
     for c in 0..3 {
         assert!(
             duas[c] < 1.0,
@@ -250,8 +274,14 @@ fn as_lampadas_somam() {
         para_a_luz: [0.0, 0.0, 1.0],
         radiancia: [1.0; 3],
     };
-    let a = acende_texel(&s, &t, &[forte], [0.0; 3], Look::default());
-    let b = acende_texel(&s, &t, &[forte, forte], [0.0; 3], Look::default());
+    let a = acende_texel(&s, &t, &[forte], Ceu::chapado([0.0; 3]), Look::default());
+    let b = acende_texel(
+        &s,
+        &t,
+        &[forte, forte],
+        Ceu::chapado([0.0; 3]),
+        Look::default(),
+    );
     assert!(
         b[0] < a[0] * 2.0 - 1e-3,
         "controlo: acima do branco a vista TEM de cortar ({} contra {})",
@@ -289,8 +319,14 @@ fn uma_lampada_por_tras_nao_envenena_a_soma() {
         radiancia: [1.0, 1.0, 1.0],
     };
 
-    let so_a_boa = acende_texel(&s, &t, &[boa], [0.0; 3], Look::default());
-    let com_a_ma = acende_texel(&s, &t, &[boa, tras], [0.0; 3], Look::default());
+    let so_a_boa = acende_texel(&s, &t, &[boa], Ceu::chapado([0.0; 3]), Look::default());
+    let com_a_ma = acende_texel(
+        &s,
+        &t,
+        &[boa, tras],
+        Ceu::chapado([0.0; 3]),
+        Look::default(),
+    );
 
     // **A metade que a mutação mata:** a lâmpada boa tem de sobreviver à vizinha degenerada.
     assert_eq!(
@@ -315,7 +351,13 @@ fn uma_lampada_por_tras_nao_envenena_a_soma() {
         para_a_luz: normaliza([0.001, 0.0, -1.0]).unwrap(),
         radiancia: [1.0, 1.0, 1.0],
     };
-    let com_a_quase = acende_texel(&s, &t, &[boa, quase], [0.0; 3], Look::default());
+    let com_a_quase = acende_texel(
+        &s,
+        &t,
+        &[boa, quase],
+        Ceu::chapado([0.0; 3]),
+        Look::default(),
+    );
     for (c, &v) in com_a_quase.iter().enumerate() {
         assert!(
             !v.is_nan(),
@@ -421,7 +463,8 @@ fn diag_quanto_custa_acender_um_sprite() {
         for t in &texeis {
             // O `soma` existe para o optimizador não poder deitar o laço fora — um bench cujo
             // resultado ninguém lê mede a eliminação de código morto.
-            soma += f64::from(acende_texel(&s, t, &[l], [0.1; 3], Look::default())[0]);
+            soma +=
+                f64::from(acende_texel(&s, t, &[l], Ceu::chapado([0.1; 3]), Look::default())[0]);
         }
         let ms = t0.elapsed().as_secs_f64() * 1e3;
 
@@ -439,7 +482,15 @@ fn diag_quanto_custa_acender_um_sprite() {
                     sc.spawn(|| {
                         f.iter()
                             .map(|t| {
-                                f64::from(acende_texel(&s, t, &[l], [0.1; 3], Look::default())[0])
+                                f64::from(
+                                    acende_texel(
+                                        &s,
+                                        t,
+                                        &[l],
+                                        Ceu::chapado([0.1; 3]),
+                                        Look::default(),
+                                    )[0],
+                                )
                             })
                             .sum::<f64>()
                     })
@@ -497,7 +548,13 @@ fn diag_quanto_custa_acender_um_sprite() {
                         f.iter()
                             .map(|t| {
                                 f64::from(
-                                    acende_texel(&s, t, lampadas, [0.1; 3], Look::default())[0],
+                                    acende_texel(
+                                        &s,
+                                        t,
+                                        lampadas,
+                                        Ceu::chapado([0.1; 3]),
+                                        Look::default(),
+                                    )[0],
                                 )
                             })
                             .sum::<f64>()

@@ -148,7 +148,8 @@ fn diag_quanto_a_lei_nova_deixa_preto() {
         "  a LEI da casa: a sombra vale `AMBIENT` = {:.2} do plano — nunca zero.",
         ph2d_light::AMBIENT
     );
-    println!("  a lei da TINTA e o barro VIVO dobram-na assim; esta dobra-a a ZERO.");
+    println!("  ANTES do ceu: PRETOS 8 243 (25,03 %), sombra 0,000, fresta 165,49.");
+    println!("  ⇒ a fresta escurecer e' a OCLUSAO a chegar ao pixel pela 1.a vez.");
     println!();
 }
 

@@ -132,7 +132,6 @@ fn forma_acende_texel(
     cobertura: f32,
     oclusao: f32,
     lampadas: Lampadas,
-    ambiente: vec3<f32>,
     // ⭐ O OLHAR, nos dois números que o `vt_to_display` pede — ver a `ph2d_view_transform`.
     stops: f32,
     vista: u32,
@@ -161,7 +160,17 @@ fn forma_acende_texel(
 
     // ⚠️ A oclusão pesa SÓ o ambiente, e o ambiente é um termo nosso e não a indirecta da lei —
     // ver o doc da `acende_texel`.
-    let cena = luz + albedo * ambiente * oclusao;
+    //
+    // ⭐⭐⭐ **O `env_irradiance` e' a RANHURA DO AMBIENTE que a fonte da `ph2d-material` ja'
+    // declara** (o `ENV_SLOT`), e quem a preenche e' o consumidor.
+    //
+    // ⛔ A marca NAO se escreve aqui como literal, nem num comentario: ela vive numa fonte que e'
+    // COMPOSTA com esta, e o gate `as_duas_marcas_da_montagem_existem` afirma que depois da
+    // substituicao nenhuma sobra. *Uma marca num comentario le-se igual a uma ranhura por
+    // preencher* — foi ele que apanhou esta linha na 1.a redaccao dela. Enquanto ela levou zeros este termo era inerte e a peca saia
+    // PRETA em toda face virada para longe da unica lampada acesa de fabrica. ⛔ Um `ambiente`
+    // passado por argumento nao podia ter DIRECCAO: o ceu e' o topo da TELA, e isso e' funcao de `n`.
+    let cena = luz + albedo * env_irradiance(n) * oclusao;
 
     // ⭐⭐⭐ A VISTA, ANTES da mistura da cobertura — a mesma ordem da CPU, e pela mesma razão:
     // fora da silhueta o byte tem de sair INTACTO, e ali esta lei devolve o albedo cru (os pixels

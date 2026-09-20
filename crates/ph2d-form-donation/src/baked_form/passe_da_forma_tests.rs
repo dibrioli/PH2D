@@ -64,25 +64,84 @@ fn as_duas_ranhuras_sao_preenchidas() {
     );
 }
 
-/// ⛔⛔ **ESTA LEI NÃO TEM INDIRECTA, e as duas metades dizem-no.**
+/// ⛔⛔ **A LEI CHAMA UMA DAS DUAS METADES DA RANHURA — a IRRADIÂNCIA, nunca a ESPELHADA.**
 ///
-/// O rig desta casa é `KEY + 3 × FILL` — as lâmpadas de preenchimento **são** o ambiente dele —, e
-/// o caminho de referência soma ambiente `[0, 0, 0]` pelo mesmo motivo. Os stubs a zero são a
-/// declaração disso, e não uma omissão.
+/// # A premissa que morreu
 ///
-/// ⚠️ **A metade que a torna honesta é a SEGUNDA:** sem ela, alguém que trocasse os stubs por um
-/// céu de verdade passaria neste gate enquanto o produto começava a somar uma segunda luz que
-/// nenhum controlo alcança. O que se afirma é que **o laço nunca as chama**.
+/// Este gate chamava-se `a_lei_da_forma_nao_chama_o_ambiente` e afirmava `!SOURCE.contains("env_")`,
+/// com a razão escrita ao lado: *«o rig desta casa é `KEY + 3 × FILL` e as lâmpadas de preenchimento
+/// SÃO o ambiente dele»*. ⛔ **Medido, as três de preenchimento nascem APAGADAS** ⇒ na configuração
+/// de fábrica havia uma lâmpada e nenhum ambiente, e `25,03 %` da peça saía PRETA ao bit. O laço
+/// passou a chamar o `env_irradiance`, e o que este gate afirma inverteu-se.
+///
+/// # ⚠️ As três metades, e cada uma impede um defeito diferente
+///
+/// 1. o laço **CHAMA** a irradiância — sem isto o ambiente volta a ser inerte, em silêncio;
+/// 2. o laço **NÃO CHAMA** a espelhada — ela é a indirecta do OpenPBR (coluna **B3**) e o stub dela
+///    devolve zero, logo somá-la hoje seria somar nada com o custo de a chamar; *e no dia em que ela
+///    deixar de ser um stub, chamá-la sem querer acrescenta uma segunda luz que ninguém autorou*;
+/// 3. o stub da espelhada **continua a devolver zero** — é o que torna a 2.ª metade uma escolha e
+///    não um acidente.
 #[test]
-fn a_lei_da_forma_nao_chama_o_ambiente() {
+fn a_lei_da_forma_chama_a_irradiancia_e_nao_a_espelhada() {
     assert!(
-        SEM_INDIRECTA.contains("return vec3<f32>(0.0)"),
-        "os dois stubs do ambiente têm de devolver zero"
+        gemeo::SOURCE.contains("env_irradiance(n)"),
+        "o laço da forma TEM de ler o céu pela ranhura do ambiente"
     );
     assert!(
-        !gemeo::SOURCE.contains("env_"),
-        "o laço da forma não pode chamar o ambiente: ele soma o termo próprio, e o rig desta \
-         casa já É o ambiente dele"
+        !gemeo::SOURCE.contains("env_radiance"),
+        "o laço da forma não pode chamar a espelhada pré-filtrada: ela é a indirecta do OpenPBR, \
+         e hoje o stub dela devolve zero"
+    );
+    assert!(
+        CEU_NA_RANHURA.contains("fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> { return vec3<f32>(0.0); }"),
+        "o stub da espelhada tem de devolver zero"
+    );
+}
+
+/// ⭐⭐ **O CÉU DO SHADER LÊ A MESMA RAMPA QUE O GÉMEO EM RUST.**
+///
+/// ⛔ **Os números NÃO estão aqui, e essa é a decisão:** eles são derivados do RIG
+/// ([`super::super::ceu_do_rig`]) e viajam no uniform, logo não existe uma segunda cópia deles. O
+/// que é escrito duas vezes é a FÓRMULA — e o que este gate afirma é que as duas redacções dela
+/// pedem a **mesma** operação.
+///
+/// ⚠️ **O `fma` é EXPLÍCITO nos dois lados**, e é para a paridade: o [`ph2d_form_pbr::Ceu`] usa
+/// `mul_add`, que tem UM arredondamento. Escrito solto (`base + inclinação * up`), a igualdade ao
+/// bit passaria a depender de o compilador do WGSL contrair a multiplicação-soma — e esta casa já
+/// mediu uma placa a contraí-la onde o fonte não o pedia.
+///
+/// ⚠️ **E o sinal do `y` está nas DUAS redacções**: o céu é o topo da TELA e o referencial é CANVAS.
+/// *Um sinal trocado aqui acende a peça por baixo, e a paridade não o veria — os dois motores
+/// estariam de acordo na mesma peça errada.*
+#[test]
+fn o_ceu_do_shader_le_a_mesma_rampa_que_o_gemeo_em_rust() {
+    assert!(
+        CEU_NA_RANHURA.contains("fma(ceu_inclinacao, vec3<f32>(-n.y), ceu_base)"),
+        "a rampa em WGSL tem de pedir o `fma` sobre `-n.y`, como o `mul_add` do gémeo"
+    );
+    assert!(
+        CEU_NA_RANHURA
+            .contains("fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> { return vec3<f32>(0.0); }"),
+        "o stub da espelhada tem de devolver ZERO — nada nesta lei o chama"
+    );
+    // **O CONTROLO da régua**: uma agulha que não está lá tem de falhar, senão um `contains` sobre
+    // um ficheiro reescrito passaria por vácuo.
+    assert!(
+        !CEU_NA_RANHURA.contains("fma(ceu_inclinacao, vec3<f32>(n.y)"),
+        "controlo: a régua tem de poder dizer NÃO ao sinal trocado"
+    );
+    // E o gémeo em Rust faz a MESMA conta, medida: a rampa sobe para o topo da TELA (`-y`).
+    let c = ph2d_form_pbr::Ceu {
+        base: [1.0; 3],
+        inclinacao: [2.0; 3],
+    };
+    assert_eq!(c.irradiancia([0.0, -1.0, 0.0])[0], 3.0, "topo da tela");
+    assert_eq!(c.irradiancia([0.0, 1.0, 0.0])[0], -1.0, "fundo da tela");
+    assert_eq!(
+        c.irradiancia([0.0, 0.0, 1.0])[0],
+        1.0,
+        "o horizonte é a base"
     );
 }
 
@@ -113,7 +172,14 @@ fn o_tecto_de_lampadas_e_o_do_rig_e_chega_ao_shader() {
 #[test]
 fn o_uniform_tem_a_forma_que_o_wgsl_le() {
     // A ordem declarada no `struct Globais` do ENTRADA — lida do próprio texto, nunca de memória.
-    let campos = ["material: Mat", "ambiente_stops", "vista", "lampadas"];
+    let campos = [
+        "material: Mat",
+        "olhar",
+        "ceu_base",
+        "ceu_inclinacao",
+        "vista",
+        "lampadas",
+    ];
     let mut cursor = 0usize;
     for c in campos {
         let at = ENTRADA[cursor..].find(c).unwrap_or_else(|| {
@@ -125,8 +191,8 @@ fn o_uniform_tem_a_forma_que_o_wgsl_le() {
     assert_eq!(gemeo::PACKED, 48, "o `Mat` são doze vec4");
     assert_eq!(
         Globais::FLOATS,
-        48 + 4 + 4 + 4 + MAX_LAMPADAS * gemeo::LAMPADA_FLOATS,
-        "o uniform mede o material, o ambiente, a vista e as lâmpadas — e mais nada"
+        48 + 4 + 4 + 4 + 4 + 4 + MAX_LAMPADAS * gemeo::LAMPADA_FLOATS,
+        "o uniform mede o material, o olhar, o céu, a vista e as lâmpadas — e mais nada"
     );
     // ⚠️ O `n` das lâmpadas vive a `16` bytes do princípio do `Lampadas`, e não colado ao array:
     // um `vec3<f32>` num array alinha a 16, logo os três slots a seguir ao `n` são PADDING. Sem
@@ -146,7 +212,7 @@ fn um_rig_maior_que_o_uniform_recusa() {
     };
     let muitas = vec![l; MAX_LAMPADAS + 1];
     let s = ph2d_form_pbr::OpenPbr::default().prepare();
-    let Err(e) = Globais::novo(&s, &muitas, [0.0; 3], Look::default()) else {
+    let Err(e) = Globais::novo(&s, &muitas, Ceu::PRETO, Look::default()) else {
         panic!("um rig maior que o uniform tem de recusar");
     };
     assert!(
@@ -154,7 +220,7 @@ fn um_rig_maior_que_o_uniform_recusa() {
         "a queixa diz o número que chegou: {e}"
     );
     // CONTROLO: o rig de hoje cabe.
-    assert!(Globais::novo(&s, &muitas[..MAX_LAMPADAS], [0.0; 3], Look::default()).is_ok());
+    assert!(Globais::novo(&s, &muitas[..MAX_LAMPADAS], Ceu::PRETO, Look::default()).is_ok());
 }
 
 /// ⭐⭐ **O `n` e a VISTA viajam pelos BITS, e voltam.**
@@ -173,16 +239,16 @@ fn a_contagem_e_a_vista_viajam_pelos_bits() {
         exposure_stops: 3.0,
         view: ph2d_view_transform::ViewTransform::Neutral,
     };
-    let g = Globais::novo(&s, &[l, l], [0.0; 3], olhar).expect("duas lâmpadas cabem");
+    let g = Globais::novo(&s, &[l, l], Ceu::PRETO, olhar).expect("duas lâmpadas cabem");
     let i = gemeo::PACKED;
     assert!(
         (g.dados[i + 3] - 3.0).abs() < 1e-6,
         "os stops são um f32 normal"
     );
     assert_eq!(
-        g.dados[i + 4].to_bits(),
+        g.dados[i + 12].to_bits(),
         ph2d_view_transform::wgsl::view_code(ph2d_view_transform::ViewTransform::Neutral),
         "o código da vista viaja pelos bits"
     );
-    assert_eq!(g.dados[i + 8].to_bits(), 2, "a contagem viaja pelos bits");
+    assert_eq!(g.dados[i + 16].to_bits(), 2, "a contagem viaja pelos bits");
 }

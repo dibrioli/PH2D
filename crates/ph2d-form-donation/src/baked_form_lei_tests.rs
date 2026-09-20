@@ -73,25 +73,27 @@ fn a_lei_nova_nao_toca_no_passe_da_tinta() {
     );
 }
 
-/// ⛔⛔⛔ **A OCLUSÃO DE FORMA É INERTE NESTA LEI — e quem o descobriu foi uma mutação SOBREVIVENTE.**
+/// ⭐⭐⭐ **A OCLUSÃO DE FORMA CHEGA AO PIXEL — e este gate é o IRMÃO INVERTIDO do que aqui estava.**
 ///
-/// A mutação que apaga a leitura da textura de oclusão no [`super::passe_da_forma`] (`occ = 1.0`)
-/// **sobreviveu** à paridade no pixel, com `pior = 0` bytes. ⚠️ **E não é a fixtura que não contém o
-/// fenómeno: é a LEI.** A [`ph2d_form_pbr::acende_texel`] aplica a oclusão a **um** termo —
-/// `albedo × ambiente × oclusão` — e o ambiente desta lei é **zero por desenho** (o rig desta casa é
-/// `KEY + 3 × FILL`, ver o [`super::AMBIENTE_DA_FORMA`]) ⇒ *o canal é multiplicado por zero antes de
-/// chegar a um pixel.*
+/// # A premissa que morreu, e onde ela estava escrita
 ///
-/// ⏳ **ABERTO, e é do dono:** o objecto assado GUARDA a cavidade × os dois AOs (`form_occ`), a lei
-/// da TINTA lê-a, e esta **não**. Parte do *«a sombra mais funda»* que o smoke das duas leis
-/// mostrou pode ser isto — e a cura não é inventar aqui um termo que nenhuma referência declara
-/// (`docs/Render3d/15` §7).
+/// O gate anterior chamava-se `a_oclusao_de_forma_e_inerte_enquanto_o_ambiente_for_zero` e acabava
+/// com esta frase: *«no dia em que esta lei ganhar ambiente, a metade de cima reprova e a premissa
+/// morre à vista no diff»*. **O dia é este.** As duas metades continuam as mesmas e trocaram de
+/// papel: o que era a afirmação passou a ser o CONTROLO.
 ///
-/// ⚠️ **As DUAS metades:** a de cima afirma a inércia (o que a mutação mede) e a de baixo é o
-/// CONTROLO que impede o gate de ser vácuo — com um ambiente **não** nulo o canal move pixels. ⇒ no
-/// dia em que esta lei ganhar ambiente, a metade de cima reprova e a premissa morre à vista no diff.
+/// ⚠️ **A inércia nunca foi da oclusão — era do AMBIENTE.** A [`ph2d_form_pbr::acende_texel`] aplica
+/// a oclusão a **um** termo (`albedo × E(n) × oclusão`), e enquanto `E(n)` foi `[0,0,0]` o canal era
+/// multiplicado por zero antes de chegar a um pixel; foi por isso que a mutação que apaga a leitura
+/// da textura de oclusão no [`super::passe_da_forma`] **sobreviveu** à paridade com `pior = 0`
+/// bytes. ⇒ *a cavidade × os dois AOs que o objecto assado guarda desde que existe passam a ser
+/// lidos, e isso não custou uma linha de lei nova: custou o céu.*
+///
+/// ⚠️ **E a oclusão continua a NÃO tocar a luz directa**, que é a lei do
+/// `a_oclusao_nao_toca_a_luz_directa` na folha da óptica — uma lâmpada que o artista apontou chega
+/// onde ele a apontou.
 #[test]
-fn a_oclusao_de_forma_e_inerte_enquanto_o_ambiente_for_zero() {
+fn a_oclusao_de_forma_chega_ao_pixel() {
     let lado = 16u32;
     let n = (lado * lado) as usize;
     let base = vec![200u8; n * 4];
@@ -108,7 +110,7 @@ fn a_oclusao_de_forma_e_inerte_enquanto_o_ambiente_for_zero() {
     let material = crate::lei_da_luz::material_da_forma();
     let rig = ph2d_light::LightRig::default();
     let lampadas = super::lampadas_do_rig(&rig).expect("o rig de fábrica tem lâmpada acesa");
-    let acende = |occ: &[f32], ambiente| {
+    let acende = |occ: &[f32], ceu: ph2d_form_pbr::Ceu| {
         ph2d_form_pbr::imagem::acende_imagem(
             &material,
             &ph2d_form_pbr::imagem::Planos {
@@ -118,22 +120,116 @@ fn a_oclusao_de_forma_e_inerte_enquanto_o_ambiente_for_zero() {
                 form_occ: occ,
             },
             &lampadas,
-            ambiente,
+            ceu,
             crate::lei_da_luz::OLHAR_DA_FORMA,
         )
         .expect("acende")
     };
 
-    assert_eq!(
-        acende(&cheia, super::AMBIENTE_DA_FORMA),
-        acende(&variada, super::AMBIENTE_DA_FORMA),
-        "com o ambiente a ZERO a oclusão de forma não pode mover um único byte"
-    );
-    // **O CONTROLO**: com ambiente, ela move — senão este gate ficaria verde sobre um canal que
-    // ninguém liga a nada.
     assert_ne!(
-        acende(&cheia, [0.5; 3]),
-        acende(&variada, [0.5; 3]),
-        "controlo: com ambiente a oclusão TEM de mover pixels, senão a inércia acima é vácuo"
+        acende(&cheia, super::ceu_do_rig(&lampadas)),
+        acende(&variada, super::ceu_do_rig(&lampadas)),
+        "com o céu da casa a oclusão de forma TEM de mover pixels"
+    );
+    // **O CONTROLO, e ele é a premissa que morreu**: sem céu ela continua inerte — a oclusão pesa o
+    // AMBIENTE e mais nada, logo um ambiente nulo torna o canal invisível. Sem esta metade alguém
+    // leria a de cima como *«a oclusão passou a pesar a directa»*, que é outra lei e seria errada.
+    assert_eq!(
+        acende(&cheia, ph2d_form_pbr::Ceu::PRETO),
+        acende(&variada, ph2d_form_pbr::Ceu::PRETO),
+        "controlo: sem céu a oclusão não pode mover um único byte — ela pesa SÓ o ambiente"
+    );
+}
+
+/// ⭐⭐⭐ **A SOMBRA VALE `AMBIENT` DO PLANO — a lei da casa, agora exacta nesta lei também.**
+///
+/// # O que se afirma, e porque ele é o gate desta wave
+///
+/// O doc do [`ph2d_light::AMBIENT`] declara-o como *«o que uma face totalmente virada PARA LONGE da
+/// luz ainda devolve»* — uma fracção da resposta PLANA — e diz, por escrito, que *«os dois
+/// consumidores (tinta e forma) têm de dobrar a razão do MESMO jeito»*. A lei da forma é ABSOLUTA e
+/// a de sempre é RELATIVA, logo a frase não se cumpre copiando o número: cumpre-se pela
+/// **conversão** que o [`super::ceu_do_rig`] faz (`f = A/(1 − A)`), e é ela que este gate mede.
+///
+/// ⚠️ **O material é o [`ph2d_form_pbr::Surface::matte`]**, e não o de omissão: a conversão é exacta
+/// para o lóbulo DIFUSO, e o especular do OpenPBR soma um termo que o modelo relativo não tem. *Uma
+/// barra tirada com o material de omissão mediria o destaque, não a lei.*
+///
+/// ⚠️ **A régua é o ACESO e não o pixel**, e a razão é o `Look`: a exposição e a curva de vista são
+/// não-lineares, logo a razão entre dois pixels não é a razão entre duas radiâncias. Este gate corre
+/// com a [`ph2d_view_transform::Look::default`] (a identidade) de propósito.
+#[test]
+fn a_sombra_vale_ambient_do_plano() {
+    let rig = ph2d_light::LightRig::default();
+    let lampadas = super::lampadas_do_rig(&rig).expect("o rig de fábrica tem lâmpada acesa");
+    let ceu = super::ceu_do_rig(&lampadas);
+    let s = ph2d_form_pbr::OpenPbr::default().prepare().matte();
+
+    let acende = |n: [f32; 3]| {
+        ph2d_form_pbr::acende_texel(
+            &s,
+            &ph2d_form_pbr::Texel {
+                normal: n,
+                albedo: [1.0; 3],
+                cobertura: 1.0,
+                oclusao: 1.0,
+            },
+            &lampadas,
+            ceu,
+            ph2d_view_transform::Look::default(),
+        )
+    };
+
+    // O PLANO: a normal da vista. A face virada PARA LONGE: `N·L < 0`, ainda a olhar o observador.
+    //
+    // ⛔⛔ **A `y` da face escura tem de ser ZERO, e isso NÃO é escolher a fixtura que passa.** A
+    // rampa do céu vale `ENV_BASE` no horizonte e **redistribui** à volta dele — uma face virada
+    // para BAIXO recebe menos céu (medido: `0,730` do horizonte, e a razão lê `0,255`) e uma virada
+    // para cima recebe mais. *A conversão `f = A/(1 − A)` é exacta sobre o horizonte; o que a rampa
+    // faz a partir dali é precisamente o que ela existe para fazer* — e a metade de baixo mede-o.
+    let l = lampadas[0].para_a_luz;
+    let plano = acende([0.0, 0.0, 1.0]);
+    let longe = acende([0.8, 0.0, 0.6]);
+    assert!(
+        l[0] * 0.8 + l[2] * 0.6 < 0.0,
+        "controlo: a face escura tem mesmo de estar virada para longe da lâmpada"
+    );
+
+    let razao = f64::from(longe[1]) / f64::from(plano[1]);
+    let alvo = f64::from(ph2d_light::AMBIENT);
+    assert!(
+        (razao - alvo).abs() < 0.01,
+        "a sombra tem de valer `AMBIENT` ({alvo:.3}) do plano; leu {razao:.3}"
+    );
+
+    // **A RAMPA REDISTRIBUI** — e sem esta metade um céu chapado passaria na de cima.
+    let cima = f64::from(acende([0.0, -0.8, 0.6])[1]) / f64::from(plano[1]);
+    let baixo = f64::from(acende([0.0, 0.8, 0.6])[1]) / f64::from(plano[1]);
+    assert!(
+        cima > razao && razao > baixo,
+        "o céu é o topo da TELA: virada para cima {cima:.3} > horizonte {razao:.3} > baixo {baixo:.3}"
+    );
+
+    // **O CONTROLO**: sem céu a face virada para longe devolve ZERO — que é o defeito que esta wave
+    // curou, e sem esta metade alguém leria a de cima como uma propriedade que já existia.
+    let sem_ceu = ph2d_form_pbr::acende_texel(
+        &s,
+        &ph2d_form_pbr::Texel {
+            normal: [0.8, 0.0, 0.6],
+            albedo: [1.0; 3],
+            cobertura: 1.0,
+            oclusao: 1.0,
+        },
+        &lampadas,
+        ph2d_form_pbr::Ceu::PRETO,
+        ph2d_view_transform::Look::default(),
+    );
+    // ⚠️ **`< 1e-6` e não `== 0`**: a óptica prende o `N·L` num `EPS` em vez de o deixar chegar a
+    // zero, logo uma face virada para longe devolve `3,2e-9` e não o zero exacto. *Escrito com
+    // `assert_eq!` este controlo reprovava sobre produto correcto* — e reprovou, que é o gate a
+    // funcionar. A barra está `300×` acima do medido e `10 000×` abaixo do que o céu entrega.
+    assert!(
+        sem_ceu.iter().all(|c| *c < 1e-6),
+        "controlo: sem céu a sombra é PRETA; leu {sem_ceu:?}"
     );
 }

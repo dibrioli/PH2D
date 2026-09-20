@@ -210,8 +210,14 @@ fn so_a_forma(bake: &BakedForm, olhar: Look) -> Vec<u8> {
             radiancia: l.tint,
         })
         .collect();
-    ph2d_form_pbr::imagem::acende_imagem(&material, &planos, &lampadas, [0.0; 3], olhar)
-        .expect("acende")
+    ph2d_form_pbr::imagem::acende_imagem(
+        &material,
+        &planos,
+        &lampadas,
+        ceu_do_rig(&lampadas),
+        olhar,
+    )
+    .expect("acende")
 }
 
 fn escreve_ppm(dir: &str, nome: &str, px: &[u8]) {
@@ -513,7 +519,7 @@ fn diag_quanto_a_placa_custa() {
                         &material,
                         &planos,
                         lampadas,
-                        [0.0; 3],
+                        ceu_do_rig(lampadas),
                         crate::lei_da_luz::OLHAR_DA_FORMA,
                     )
                     .expect("acende");
@@ -525,6 +531,37 @@ fn diag_quanto_a_placa_custa() {
                 100.0 * melhor / 16.7
             );
         }
+    }
+    println!();
+}
+
+/// ⭐⭐⭐ **A ESCADA DO OLHAR, RE-TIRADA COM O CÉU** — o número do
+/// [`crate::lei_da_luz::OLHAR_DA_FORMA`] foi calibrado com o ambiente a ZERO e envelheceu no dia em
+/// que ele deixou de o ser.
+///
+/// ⚠️ **Ela é CPU pura, ao contrário da escada original**, que vivia dentro do teste de placa: o que
+/// se mede é o NÍVEL que a lei da forma entrega, e isso é a régua — não precisa de adapter. O alvo
+/// (`186,1`, a média do miolo da bola CINZENTA pela lei da TINTA) é o número que aquela corrida
+/// gravou, e ⭐ ele sobrevive à correcção de sinal do `y`: numa bola simétrica a média sobre a peça
+/// inteira não muda ao virar a luz ao contrário.
+#[test]
+#[ignore = "sonda: imprime uma tabela, nao afirma"]
+fn diag_a_escada_do_olhar_com_ceu() {
+    /// A média do miolo cinzento pela lei da TINTA, medida na placa em 2026-09-20.
+    const ALVO: f64 = 186.1;
+    let bake = peca();
+    println!();
+    println!("  stops   media do miolo cinzento   contra a tinta ({ALVO:.1})");
+    for stops in [0.0f32, 1.50, 1.90, 2.00, 2.05, 2.10, 2.15, 2.20, 2.50, 3.00] {
+        let olhar = Look {
+            exposure_stops: stops,
+            view: ViewTransform::Standard,
+        };
+        let m = miolo_cinzento(&so_a_forma(&bake, olhar), &bake.form);
+        println!(
+            "   {stops:.2}                   {m:7.1}          {:+7.1}",
+            m - ALVO
+        );
     }
     println!();
 }

@@ -48,11 +48,21 @@
 //!    `forma_acende_texel`, que chama as três de cima;
 //! 4. o [`ENTRADA`] deste ficheiro.
 //!
-//! ⛔⛔ **As duas funções do ambiente são stubs a ZERO, e isso é a lei e não uma omissão.** O rig
-//! desta casa é `KEY + 3 × FILL` — *as lâmpadas de preenchimento **são** o ambiente dele* —, e o
-//! caminho de referência soma ambiente `[0, 0, 0]` pelo mesmo motivo (ver o doc da
-//! [`super::acende_pela_forma`]). A [`forma_acende_texel`] **não chama** nenhuma delas; elas existem
-//! porque a fonte da lei traz a ranhura e sem ela não parsa. Há gate a afirmar as duas metades.
+//! ⭐⭐⭐ **A ranhura `{ENV}` leva o CÉU DA CASA, e ele é GERADO — nunca transcrito.**
+//!
+//! A [`ceu_em_wgsl`] escreve as três constantes lendo-as da [`ph2d_light`], com `format!` ⇒ *não
+//! existe uma segunda cópia dos números*. O que é escrito duas vezes é a FÓRMULA (uma vez em Rust,
+//! no `env_ambient`; uma vez aqui), e quem as prende é a paridade no PIXEL — que passou a ter algo
+//! a dizer sobre ela no dia em que o ambiente deixou de ser zero.
+//!
+//! ⛔ **Só UMA das duas funções da ranhura faz alguma coisa.** A [`forma_acende_texel`] chama o
+//! `env_irradiance` (o termo lambertiano de ambiente) e **não** chama o `env_radiance` (a espelhada
+//! pré-filtrada, que só as closures INDIRECTAS do OpenPBR leem — a coluna **B3** do plano). O stub
+//! fica porque a fonte da lei traz a ranhura e sem ela não parsa. Há gate a afirmar as duas metades.
+//!
+//! ⚠️ **A redacção anterior punha as DUAS a zero** com o argumento de que *«o rig é `KEY + 3 × FILL`
+//! e as lâmpadas de preenchimento são o ambiente dele»* — e as três de preenchimento nascem
+//! **apagadas**: com uma lâmpada acesa e ambiente nulo, `25,03 %` da peça saía PRETA ao bit.
 //!
 //! # ⚠️ A quantização é EXPLÍCITA
 //!
@@ -61,7 +71,7 @@
 //! arredonda ele próprio, que é a política que o passe irmão já declara por escrito.
 
 use ph2d_form_pbr::wgsl as gemeo;
-use ph2d_form_pbr::{Lampada, Rgb, Surface, imagem::Planos};
+use ph2d_form_pbr::{Ceu, Lampada, Surface, imagem::Planos};
 use ph2d_gpu::GpuContext;
 use ph2d_view_transform::Look;
 
@@ -81,8 +91,17 @@ pub const MAX_LAMPADAS: usize = ph2d_light::MAX_LIGHTS;
 const ENTRADA: &str = r#"
 struct Globais {
     material: Mat,
-    // rgb = o ambiente; a = os stops de exposição do olhar.
-    ambiente_stops: vec4<f32>,
+    // ⚠️ `rgb` = RESERVA DECLARADA (era o ambiente, que hoje vive na ranhura do ambiente e é função da
+    // normal); `a` = os stops de exposição do olhar. *Uma posição sem dono e sem régua é onde o
+    // campo seguinte aterra por engano* — o `Globais::novo` deixa-a a ZERO, e há gate.
+    olhar: vec4<f32>,
+    // ⭐ O CÉU (`ph2d_form_pbr::Ceu`), em `rgb`: a base da rampa e a inclinação dela.
+    //
+    // ⚠️ Ele viaja como DADOS e não como constantes geradas: a rampa é derivada do RIG (ver o
+    // `ceu_do_rig`), logo ela muda quando o artista mexe numa lâmpada — e uma constante no shader
+    // pediria uma recompilação por gesto.
+    ceu_base: vec4<f32>,
+    ceu_inclinacao: vec4<f32>,
     // x = o código da vista (`ph2d_view_transform::wgsl::view_code`).
     vista: vec4<u32>,
     lampadas: Lampadas,
@@ -106,6 +125,11 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let f = textureLoad(form_tex, p, 0);
     let occ = textureLoad(occ_tex, p, 0).r;
 
+    // ⚠️ **O céu entra pelos `var<private>` ANTES da chamada** — ver o `CEU_NA_RANHURA` para
+    // porque ele não pode ler o `g` directamente.
+    ceu_base = g.ceu_base.rgb;
+    ceu_inclinacao = g.ceu_inclinacao.rgb;
+
     let c = forma_acende_texel(
         g.material,
         f.xyz,
@@ -113,8 +137,7 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
         f.w,
         occ,
         g.lampadas,
-        g.ambiente_stops.rgb,
-        g.ambiente_stops.a,
+        g.olhar.a,
         g.vista.x,
     );
 
@@ -126,13 +149,38 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 "#;
 
-/// ⛔⛔ **As duas funções que a ranhura `{ENV}` pede, a ZERO.** Ver o cabeçalho do módulo.
-const SEM_INDIRECTA: &str = r#"
-// Esta lei não tem indirecta: o rig é `KEY + 3 x FILL` e as lampadas de preenchimento SAO o
-// ambiente dele. A `forma_acende_texel` nao chama nenhuma destas — elas existem so' porque a fonte
-// da lei traz a ranhura, e sem ela nao parsa.
+/// ⭐⭐⭐ **O CÉU DA CASA, em WGSL — as duas funções que a ranhura `{ENV}` pede.**
+///
+/// ⚠️ **As três constantes são GERADAS da [`ph2d_light`] e nunca transcritas**, que é o que impede a
+/// segunda cópia de um número. O `{:?}` de um `f32` é a representação mais curta que faz round-trip,
+/// e é um literal válido de WGSL.
+///
+/// ⚠️ **O `fma` é EXPLÍCITO e isso é para a paridade**: a [`ph2d_light::env_ambient`] escreve
+/// `ENV_SLOPE[i].mul_add(up, ENV_BASE[i])`, que é uma multiplicação-soma com **um** arredondamento.
+/// Escrito como `base - slope * n.y`, o WGSL fica livre de contrair ou não — e esta casa já mediu
+/// uma placa a contrair `a*b + c` num `fma` onde o fonte não o pedia. *Pedir o `fma` nos dois lados
+/// é a única forma de a igualdade não depender do compilador.*
+///
+/// ⛔ O `env_radiance` fica a ZERO **de propósito**: nada nesta lei o chama. Ver o cabeçalho.
+const CEU_NA_RANHURA: &str = r#"
+// ⛔ A espelhada pre'-filtrada: nada nesta lei a chama (a indirecta do OpenPBR e' a coluna B3),
+// e por isso o stub dela devolve ZERO. Ela existe porque a fonte da lei traz a ranhura.
 fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> { return vec3<f32>(0.0); }
-fn env_irradiance(n: vec3<f32>) -> vec3<f32> { return vec3<f32>(0.0); }
+
+// **O CEU** — a rampa linear na altura da TELA (`ph2d_form_pbr::Ceu`).
+//
+// ⛔⛔ Os dois valores chegam por `var<private>` e NAO por uma leitura do `g`, e a razao e' a ORDEM
+// da composicao: esta ranhura e' preenchida DENTRO da fonte da lei, que vem antes do `ENTRADA` —
+// logo o `struct Globais` ainda nao existe aqui. Quem os escreve e' o `cs_main`, no topo.
+var<private> ceu_base: vec3<f32>;
+var<private> ceu_inclinacao: vec3<f32>;
+
+// ⚠️ O ceu e' o topo da TELA, e neste referencial (CANVAS) o topo e' `-y`.
+// ⚠️ **`fma` EXPLICITO** — o gemeo em Rust usa `mul_add`, que tem UM arredondamento; escrito solto,
+// a igualdade ao bit passaria a depender de o compilador do WGSL contrair a multiplicacao-soma.
+fn env_irradiance(n: vec3<f32>) -> vec3<f32> {
+    return fma(ceu_inclinacao, vec3<f32>(-n.y), ceu_base);
+}
 "#;
 
 /// ⭐⭐ **O corpo do shader, composto** — e uma função pública porque o gate o quer **sem placa**.
@@ -145,7 +193,7 @@ pub fn fonte() -> String {
     format!(
         "{}\n{}\n{}\n{}",
         ph2d_view_transform::wgsl::SOURCE,
-        gemeo::SOURCE_DA_LEI.replace(gemeo::ENV_SLOT, SEM_INDIRECTA),
+        gemeo::SOURCE_DA_LEI.replace(gemeo::ENV_SLOT, CEU_NA_RANHURA),
         gemeo::SOURCE.replace(gemeo::CAP_SLOT, &format!("{MAX_LAMPADAS}u")),
         ENTRADA,
     )
@@ -162,13 +210,13 @@ struct Globais {
 }
 
 impl Globais {
-    /// `Mat` + `ambiente_stops` + `vista` + `Lampadas { n, _pad×3, l[MAX] }`.
-    const FLOATS: usize = gemeo::PACKED + 4 + 4 + 4 + MAX_LAMPADAS * gemeo::LAMPADA_FLOATS;
+    /// `Mat` + `olhar` + `ceu_base` + `ceu_inclinacao` + `vista` + `Lampadas { n, _pad×3, l[MAX] }`.
+    const FLOATS: usize = gemeo::PACKED + 4 + 4 + 4 + 4 + 4 + MAX_LAMPADAS * gemeo::LAMPADA_FLOATS;
 
     fn novo(
         material: &Surface,
         lampadas: &[Lampada],
-        ambiente: Rgb,
+        ceu: Ceu,
         olhar: Look,
     ) -> Result<Self, String> {
         if lampadas.len() > MAX_LAMPADAS {
@@ -178,20 +226,21 @@ impl Globais {
             ));
         }
         let mut d = vec![0.0f32; Self::FLOATS];
-        // ⚠️ `EnvLobe::IGNORED` e não um número: os dois `shrink` só são lidos por um céu
-        // direccional, e esta lei não tem nenhum (ver [`SEM_INDIRECTA`]).
+        // ⚠️ `EnvLobe::IGNORED` e não um número: os dois `shrink` só são lidos pelo `env_radiance`
+        // (a espelhada pré-filtrada), e esta lei não o chama — ver `CEU_NA_RANHURA`.
         d[..gemeo::PACKED].copy_from_slice(&gemeo::pack(material, gemeo::EnvLobe::IGNORED));
         let i = gemeo::PACKED;
-        d[i] = ambiente[0];
-        d[i + 1] = ambiente[1];
-        d[i + 2] = ambiente[2];
+        // ⚠️ `d[i..i+3]` fica a ZERO: é a RESERVA declarada do `olhar` — ver o `struct Globais`.
         d[i + 3] = olhar.exposure_stops;
+        // ⭐ O CÉU, no `rgb` de dois `vec4` — o `a` de cada um é reserva declarada, pelo mesmo motivo.
+        d[i + 4..i + 7].copy_from_slice(&ceu.base);
+        d[i + 8..i + 11].copy_from_slice(&ceu.inclinacao);
         // ⚠️ O código da vista viaja como `u32` e é escrito aqui pelos bits: o `f32` do vector é só
         // o transporte, e o WGSL lê o slot como `vec4<u32>`.
-        d[i + 4] = f32::from_bits(ph2d_view_transform::wgsl::view_code(olhar.view));
+        d[i + 12] = f32::from_bits(ph2d_view_transform::wgsl::view_code(olhar.view));
         // O `n` das lâmpadas, no primeiro slot do `Lampadas` — os três a seguir são o padding que o
         // alinhamento de 16 bytes do array exige (ver [`gemeo::LAMPADA_FLOATS`]).
-        let j = i + 8;
+        let j = i + 16;
         d[j] = f32::from_bits(u32::try_from(lampadas.len()).unwrap_or(0));
         let empacotadas = gemeo::pack_lampadas(lampadas);
         d[j + 4..j + 4 + empacotadas.len()].copy_from_slice(&empacotadas);
@@ -330,11 +379,11 @@ impl PasseDaForma {
         material: &Surface,
         planos: &Planos,
         lampadas: &[Lampada],
-        ambiente: Rgb,
+        ceu: Ceu,
         olhar: Look,
     ) -> Result<&wgpu::Texture, String> {
         planos.confere()?;
-        let globais = Globais::novo(material, lampadas, ambiente, olhar)?;
+        let globais = Globais::novo(material, lampadas, ceu, olhar)?;
         let (w, h) = planos.size;
         self.garante_alvo(gpu, w, h);
         let alvo = self.alvo.as_ref().expect("acabou de ser garantido");

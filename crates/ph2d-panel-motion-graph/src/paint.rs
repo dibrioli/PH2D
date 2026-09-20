@@ -63,6 +63,12 @@ use paint_overlays::draw_canvas_overlays;
 /// **COMO SE DESENHA UM CARTÃO** — irmão cortado quando a ÁRVORE COMBINADA passou o teto.
 #[path = "paint_card.rs"]
 mod paint_card;
+
+/// **A CÁPSULA** — o desenho de um nó abaixo do limiar do texto (ordem do dono, 2026-09-19).
+/// Irmão do [`paint_card`] por RESPONSABILIDADE: aquele desenha o que se LÊ de perto, este o que
+/// se RECONHECE de longe.
+#[path = "paint_capsula.rs"]
+mod paint_capsula;
 use paint_card::draw_card;
 
 /// **COMO SE DESENHA UM PINO** — irmão cortado no tecto de LOC (600) e por RESPONSABILIDADE:

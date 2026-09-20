@@ -176,6 +176,13 @@ fn has_preview_slot(n: &GraphNodeView) -> bool {
 }
 
 pub(crate) fn preview_frame_rect(n: &GraphNodeView, view: &View, pos: PreviewPos) -> Option<Rect> {
+    // ⛔ **Nada disto existe numa CÁPSULA** (ordem do dono, 2026-09-19): ela esconde tudo o que
+    // não é o nome e os pinos. ⚠️ A guarda vive AQUI e não no pintor porque esta função é a porta
+    // que o desenho **e** o hit-test partilham — *um alvo registado onde nada é desenhado é um
+    // clique que morre num controlo invisível*.
+    if detalhe(view) == Detalhe::Capsula {
+        return None;
+    }
     // The frame's EXISTENCE is the node's declared TYPE, never this frame's content (doc 86 B1):
     // a preview-capable node keeps its moldura even on a tick where the stateless emitter emitted
     // nothing (`n.preview == None`). The empty content then paints an empty box, not a vanished one.
@@ -209,6 +216,13 @@ pub(crate) const INERT_BADGE_W: f32 = 16.0; // LITERAL-PX-OK: inert-warning badg
 /// discipline). Centred on the top-left corner, half poking out, half over the header
 /// corner (before the title's left inset), the classic alert-pip placement.
 pub(crate) fn inert_badge_rect(n: &GraphNodeView, view: &View) -> Option<Rect> {
+    // ⛔ **Nada disto existe numa CÁPSULA** (ordem do dono, 2026-09-19): ela esconde tudo o que
+    // não é o nome e os pinos. ⚠️ A guarda vive AQUI e não no pintor porque esta função é a porta
+    // que o desenho **e** o hit-test partilham — *um alvo registado onde nada é desenhado é um
+    // clique que morre num controlo invisível*.
+    if detalhe(view) == Detalhe::Capsula {
+        return None;
+    }
     if !n.inert {
         return None;
     }
@@ -224,6 +238,13 @@ pub(crate) fn inert_badge_rect(n: &GraphNodeView, view: &View) -> Option<Rect> {
 }
 
 pub(crate) fn preview_toggle_rect(n: &GraphNodeView, view: &View) -> Option<Rect> {
+    // ⛔ **Nada disto existe numa CÁPSULA** (ordem do dono, 2026-09-19): ela esconde tudo o que
+    // não é o nome e os pinos. ⚠️ A guarda vive AQUI e não no pintor porque esta função é a porta
+    // que o desenho **e** o hit-test partilham — *um alvo registado onde nada é desenhado é um
+    // clique que morre num controlo invisível*.
+    if detalhe(view) == Detalhe::Capsula {
+        return None;
+    }
     // Same stable slot as the frame (doc 86 B1): the position toggle belongs to a preview-CAPABLE
     // node, so it never blinks out on an empty tick — the frame it repositions is always there.
     if !has_preview_slot(n) {
@@ -244,7 +265,21 @@ pub(crate) fn preview_toggle_rect(n: &GraphNodeView, view: &View) -> Option<Rect
 /// row index).
 pub(crate) fn socket_center(n: &GraphNodeView, view: &View, output: bool, i: usize) -> (f32, f32) {
     let edge_x = if output { n.x + CARD_W } else { n.x };
-    let y = n.y + HEADER_H + i as f32 * ROW_H + ROW_H * 0.5;
+    #[expect(clippy::cast_precision_loss, reason = "indice de porta cabe num f32")]
+    let y = match detalhe(view) {
+        Detalhe::Completo => n.y + HEADER_H + i as f32 * ROW_H + ROW_H * 0.5,
+        // ⭐ **Na cápsula os pinos CENTRAM-SE nela**, mantendo o passo de `ROW_H` — ver
+        // [`capsula_h`], que é dimensionada exactamente para eles caberem.
+        Detalhe::Capsula => {
+            let k = if output {
+                n.outputs.len()
+            } else {
+                n.inputs.len()
+            }
+            .max(1) as f32;
+            n.y + capsula_h(n) * 0.5 + (i as f32 - (k - 1.0) * 0.5) * ROW_H
+        }
+    };
     view.pt(edge_x, y)
 }
 
@@ -318,7 +353,7 @@ pub(crate) fn band_rect(anchor: (f32, f32), cur: (f32, f32)) -> Rect {
 /// A card's rect on screen — the same geometry `paint` draws and `hits` registers.
 pub(crate) fn card_rect(n: &GraphNodeView, view: &View) -> Rect {
     let (sx, sy) = view.pt(n.x, n.y);
-    Rect::new(sx, sy, CARD_W * view.zoom, card_h(n) * view.zoom)
+    Rect::new(sx, sy, CARD_W * view.zoom, card_h_at(n, view) * view.zoom)
 }
 
 /// Every node the rubber band **touches** — its card INTERSECTS the band. Touch,

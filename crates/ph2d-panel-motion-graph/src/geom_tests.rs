@@ -418,8 +418,14 @@ fn the_readout_sits_below_the_param_band() {
 ///
 /// ⛔ A primeira versão escondia a row inteira abaixo do limiar e o smoke do Enio devolveu
 /// *«tudo em branco»*: a cena abre a `zoom ≈ 0,5`, a faixa ficava reservada (a altura não segue
-/// o zoom) e nada era desenhado nela. O texto some (`11 px × zoom ≥ 9 px` ⇒ `zoom ≥ 0,818`);
-/// a barra e o nível, não.
+/// o zoom) e nada era desenhado nela. O texto some (`11 px × zoom ≥ 7,2 px` ⇒ `zoom ≥ 0,655`
+/// desde 2026-09-19); a barra e o nível, não.
+///
+/// ⭐⭐ **E O PISO DESCEU 20 % por ordem do dono** (2026-09-19: *«permita que até que o zoom
+/// reduza os nós em 20 % a mais que agora, as fonts e números dos nós ainda permaneçam
+/// visíveis»*). ⚠️ A régua abaixo mede a ORDEM e não o número: ela exige que o texto sobreviva
+/// exactamente até `0,8 ×` o zoom em que ele morria — *um gate escrito sobre `0,655` afirmaria o
+/// literal, e o pedido era uma FRACÇÃO.*
 ///
 /// FALSIFICADO por `param_text_is_drawn` devolver sempre `true` (o rótulo vira uma mancha
 /// cinzenta e paga-se o texto num grafo afastado) ou sempre `false` (nenhum número se lê).
@@ -432,15 +438,61 @@ fn only_the_text_of_a_param_row_follows_the_zoom() {
         };
         param_text_is_drawn(&View::new(Rect::new(0.0, 0.0, 800.0, 600.0), vs))
     };
+    // O limiar de ANTES da ordem do dono, e o de hoje — 20 % abaixo dele.
+    const ANTES: f32 = 9.0 / 11.0;
+    const HOJE: f32 = ANTES * 0.8;
     assert!(
         !at(0.25),
         "afastado, o rotulo e' uma mancha — nao se escreve"
     );
     assert!(!at(0.5), "o zoom com que a cena de smoke abre");
-    assert!(!at(0.8), "logo abaixo do limiar (0,818) ainda nao");
+    assert!(
+        at(ANTES),
+        "no limiar ANTIGO o texto ja' se lia, e continua a ler-se"
+    );
+    assert!(
+        at(HOJE * 1.001),
+        "e le-se ate' 20 % abaixo dele — a ordem do dono, medida como FRACCAO"
+    );
+    assert!(
+        !at(HOJE * 0.999),
+        "abaixo disso, nao: a folga e' de 20 %, nao «para sempre»"
+    );
     assert!(at(0.83), "logo acima, sim");
     assert!(at(1.0));
     assert!(at(2.5));
+}
+
+/// ⭐⭐⭐ **LER DE LONGE É GRÁTIS; AGARRAR DE LONGE CUSTA O GESTO QUE ESTÁ POR BAIXO.**
+///
+/// ⛔⛔ **As duas perguntas DIVERGIRAM em 2026-09-19**, e o doc do `param_row_is_grabbable` previa
+/// o dia por escrito (*«se um dia as duas divergirem, elas separam-se aqui, com a medição ao
+/// lado»*). O gatilho foi a ordem do dono de baixar o piso do TEXTO em 20 %: ela fala de LER, e
+/// agarrar é outra pergunta.
+///
+/// ⚠️ **O preço de as manter juntas é um gesto que esta linha construiu:** o corpo de um cartão é
+/// o que se ARRASTA para trocar dois nós ou enfiar um num fio, e cada row agarrável rouba-lhe uma
+/// faixa. A `14,4 px` uma fileira já não é um alvo — é uma armadilha entre o artista e o arrasto
+/// do cartão.
+#[test]
+fn uma_row_deixa_de_se_agarrar_antes_de_o_texto_sumir() {
+    let em = |z: f32| {
+        let vs = ViewState {
+            zoom: z,
+            ..ViewState::default()
+        };
+        let v = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), vs);
+        (param_text_is_drawn(&v), param_row_is_grabbable(&v))
+    };
+    const ANTES: f32 = 9.0 / 11.0;
+    const HOJE: f32 = ANTES * 0.8;
+    assert_eq!(em(1.0), (true, true), "de perto, as duas coisas");
+    assert_eq!(
+        em((ANTES + HOJE) * 0.5),
+        (true, false),
+        "entre os dois limiares: LE-SE e nao se agarra — a faixa que a divergencia abriu"
+    );
+    assert_eq!(em(HOJE * 0.999), (false, false), "e mais longe, nenhuma");
 }
 
 /// ⭐⭐ **A FAIXA INTERCALA CABEÇALHOS E ROWS, e é UMA coordenada** — o pintor, o hit-test e o

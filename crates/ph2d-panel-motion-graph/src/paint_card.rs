@@ -23,9 +23,23 @@ pub(super) fn draw_card(
 ) -> Rect {
     let (sx, sy) = view.pt(n.x, n.y);
     let w = geom::CARD_W * view.zoom;
-    let h = card_h(n) * view.zoom;
+    let h = geom::card_h_at(n, view) * view.zoom;
     let r = CARD_RADIUS * view.zoom;
     let body = Rect::new(sx, sy, w, h);
+
+    // ⭐⭐⭐ **A CÁPSULA** (ordem do dono, 2026-09-19) — abaixo do limiar do texto o nó deixa de ser
+    // um cartão e passa a ser uma pastilha da cor do grupo, com o nome a enchê-la. Ver
+    // [`crate::paint_capsula`] para o desenho e para o que ele deixa de fora.
+    //
+    // ⚠️ **A saída é AQUI, antes de tudo o resto**, e não um `if` por peça lá dentro: o que a
+    // cápsula esconde são os params, o readout, o selo de papel, os nomes das portas, o badge e a
+    // moldura da pré-visualização — *nove ramos que teriam de concordar, e o primeiro que alguém
+    // esquecesse desenharia fora da pastilha.*
+    if geom::detalhe(view) == geom::Detalhe::Capsula
+        && n.kind != crate::snapshot::NodeViewKind::Subgraph
+    {
+        return super::paint_capsula::draw_capsula(ctx, state, n, view, theme, body);
+    }
 
     // **A collapsed subgraph draws as a STACK** (doc 57): two cards peeking out from
     // behind the front one. It is the universal idiom for "there is more than one

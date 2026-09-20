@@ -105,12 +105,27 @@ fn painted(k: usize, z: f32) -> (u32, u32) {
     out
 }
 
-/// **A BARRA CHEGA A PIXEL EM QUALQUER ZOOM** — inclusive no `0,5` com que a cena de smoke
-/// abre, que é onde o ecrã ficou em branco. FALSIFICADO por voltar a saltar a row inteira
-/// abaixo do limiar: os segmentos a `0,5` empatam com os de um cartão sem params.
+/// **A BARRA CHEGA A PIXEL ENQUANTO HOUVER FAIXA** — e desde 2026-09-19 deixa de haver faixa
+/// abaixo do limiar, porque ali o nó é uma **CÁPSULA**.
+///
+/// ⛔⛔ **A PREMISSA DESTE GATE MORREU, e a morte está no diff.** Ele nasceu do smoke de
+/// 2026-09-05 (*«tudo em branco»*): a faixa ficava RESERVADA abaixo do limiar e nada era desenhado
+/// nela, e a cura foi *«a barra pinta-se sempre; só o TEXTO passa pelo LOD»* — logo o gate exigia
+/// mais geometria a `zoom 0,5`. A ordem do dono de 2026-09-19 (*«o desenho tradicional dos nós se
+/// modifica para uma simples cápsula … os parâmetros de ajustes são escondidos»*) apagou o regime
+/// inteiro em que aquela lei vivia: hoje **não existe zoom em que o cartão seja completo e o texto
+/// dele não se leia**, porque os dois limiares são o mesmo por construção
+/// ([`crate::geom::detalhe`]).
+///
+/// ⚠️ **E o defeito que ele guardava não pode voltar por outra porta:** a cápsula não reserva a
+/// faixa (ela é mais baixa que o cartão), logo *«espaço pago e informação ausente»* deixou de ser
+/// exprimível — o que se vê a `0,5` é uma pastilha com o NOME.
+///
+/// FALSIFICADO por a faixa voltar a ser desenhada na cápsula (os params passariam a mudar a
+/// geometria a `0,5`) ou por ela deixar de ser desenhada acima do limiar.
 #[test]
-fn the_bar_of_a_param_row_reaches_pixel_at_every_zoom() {
-    for z in [0.5_f32, 1.0, 2.0] {
+fn the_bar_of_a_param_row_reaches_pixel_while_there_is_a_band() {
+    for z in [1.0_f32, 2.0] {
         let (_, sem) = painted(0, z);
         let (_, com) = painted(4, z);
         assert!(
@@ -118,6 +133,13 @@ fn the_bar_of_a_param_row_reaches_pixel_at_every_zoom() {
             "zoom {z}: 4 params tem de emitir MAIS geometria que nenhum ({com} contra {sem})"
         );
     }
+    // ⭐ E abaixo do limiar os params não mudam NADA — o nó é uma cápsula.
+    let (_, sem) = painted(0, 0.5);
+    let (_, com) = painted(4, 0.5);
+    assert_eq!(
+        com, sem,
+        "a 0,5 o no' e' uma CAPSULA: os params dele nao chegam a pixel nenhum"
+    );
 }
 
 /// **O TEXTO SEGUE O ZOOM** — glifos a mais quando se lê, nenhum quando não se lê.

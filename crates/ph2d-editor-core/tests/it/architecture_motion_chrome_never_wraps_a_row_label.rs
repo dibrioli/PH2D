@@ -114,7 +114,10 @@ const WRAPPING_DOORS: &[&str] = &["paint_text", "paint_text_title", "paint_text_
 /// perguntar *«alguém trocou um rótulo de volta ou apagou-o?»* — aqui a resposta é a terceira, e
 /// é por ela ser rara que a metade de baixo existe: *uma catraca que só sobe não distingue uma
 /// população que encolheu de um instrumento que cegou*.
-const ELIDED_TODAY: usize = 16;
+/// ⭐ **`16 → 17` em 2026-09-19:** a CÁPSULA (o desenho de um nó abaixo do limiar do texto, ordem
+/// do dono) escreve o nome do nó com a mesma porta que corta — e tem de o cortar, porque um nome
+/// que transborde uma pastilha de `190` unidades sai por cima do pino de saída.
+const ELIDED_TODAY: usize = 17;
 
 fn crates_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))

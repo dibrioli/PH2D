@@ -4973,3 +4973,110 @@ janela I não leu nenhum achado.
   referência declara**;
 * a cor **não viaja no `.ph2dproj`** — ela vive na `Mesh` e o canal novo ainda não
   foi conferido contra o que o ficheiro de projecto guarda.
+
+## §101 — ⭐⭐⭐⭐ A COR SOBREVIVE A TODA LUZ, e a luz ganha o modo PLANO
+
+> **Report do dono (20/09):** *«acho que esse material matcap atrapalha a cor.
+> nada pode ser pintado. Precisamos como no blender modos de shaders além do
+> matcap para pintar»*. ⭐ **As duas metades são defeitos diferentes**, e a
+> primeira é de uma linha.
+
+### §101.1 — (A) O defeito estava no ÚLTIMO passo, e nenhum gate o via
+
+O ramo do matcap devolvia a imagem dele e **nunca tocava no `vcolor`** — com o
+matcap **ligado de fábrica** (`DEFAULT_LIGHTING`), a tinta existia no canal,
+viajava até ao device e era **descartada no fim**.
+
+⚠️⚠️ **Nenhum dos 77 gates de GPU desta crate o podia ver, porque nenhum desenha
+uma peça PINTADA:** eles renderizam barro cru, onde o canal é `1` em toda parte.
+*Uma suíte que nunca arma o canal não pode ver o canal a ser deitado fora.*
+
+⇒ `lit * in.vcolor`, que é a **mesma lei do caminho do rig** (`CLAY * in.vcolor`)
+e não uma segunda regra: um matcap é **luz + material**, e a cor por vértice é o
+**ALBEDO** que essa luz ilumina. ⭐ Com `vcolor = 1` a saída é `lit` **ao bit** —
+esta wave não tem golden a re-gravar, e há gate a afirmá-lo.
+
+### §101.2 — (B) A luz tem TRÊS modos, e o eixo da cor ficou ortogonal
+
+`Shade::matcap: Option<u8>` → `Shade::lighting: Lighting { Flat, Rig, Matcap(i) }`:
+
+| modo | o que é | para que serve |
+|---|---|---|
+| `Flat` | sem luz: o albedo cru | **julgar a cor** — com sombreado, a mesma tinta lê-se mais escura onde a luz é escura |
+| `Rig` | as lâmpadas do documento | o `None` de ontem |
+| `Matcap(i)` | a luz do olho | o `Some(i)` de ontem |
+
+⛔ **Um `bool flat` ao lado do `Option` seriam DOIS CAMPOS QUE PRECISAM
+CONCORDAR** — o defeito que o doc do próprio uniform já condenava por escrito —
+e admitiria o estado sem sentido *«plano E matcap 3»*.
+
+⚠️ **E os três são o MESMO eixo:** cada um responde *«de onde vem a luz?»*. É a
+separação que o Blender faz entre *Lighting* e *Color*; o eixo da COR desta casa
+é a cor por vértice, e a cura (A) é o que a faz sobreviver aos três — *não foi
+preciso um selector de cor novo*.
+
+⚠️ **A escada do uniform é `0 = plano · 1 = rig · 2 + i = matcap`**, e o `0`
+mudar de significado é **deliberado**: quem esquecer um sítio na conversão produz
+uma peça **sem luz**, que se vê na primeira olhada. *Um valor esquecido que é
+silencioso é um defeito que ninguém conserta.* Ela está escrita **duas vezes**
+(Rust e WGSL, porque um uniform não partilha constantes) com gate a prender as
+duas por `include_str!`.
+
+### §101.3 — ⛔⛔⛔ E o ARNÊS DE GPU desta crate media OUTRO DEVICE
+
+Ao escrever o gate de pixels, **dezasseis** gates ficaram vermelhos de uma vez:
+
+```
+Validation Error … the number of vertex buffers 9 exceeds the limit 8
+```
+
+**QUATRO cópias** do `device()` pediam `wgpu::Limits::default()` — o **piso do
+WebGPU** — enquanto o produto pede ao `ph2d-gpu` os limites do **adaptador**.
+Enquanto os dois pipelines coincidiram, as quatro concordaram **por acaso**; no
+dia em que o `mesh.wgsl` passou a ter **nove** buffers por vértice (o canal de
+cor, §99), o piso parou de construir o pipeline.
+
+⇒ porta única [`tests/it/device_de_teste.rs`](../../../crates/ph2d-mesh-render/tests/it/device_de_teste.rs),
+com as duas metades: *o produto continua a subir o limite* (censo, corre **sem**
+adaptador) e *o device desta porta cabe os nove buffers* (comportamento,
+`#[ignore]`).
+
+⚠️ **A régua de um gate de device é o DEVICE QUE O PRODUTO PEDE** — a quarta vez
+que esta linha paga a mesma família noutra camada (o arnês que não abria o traço,
+o que não chamava o pen-down, o que montava o estado à mão).
+
+⛔ **E isto é um vermelho da wave ANTERIOR que só apareceu agora:** o §99 correu
+`cargo test -p ph2d-mesh-render` e **não** correu a suíte `--ignored`. O §5 desta
+casa escreve-o: *«gates de GPU são `#[ignore]` — skip gracioso não é verde»*.
+
+### §101.4 — ⛔⛔ E o gate dessa porta nasceu TRIVIALMENTE VERDADEIRO
+
+Ele lia o **próprio ficheiro** por `include_str!` à procura de uma agulha que
+está escrita nele **como literal** ⇒ a mutação que apagava o pedido de limites
+**SOBREVIVEU**. *Um censo textual que se lê a si mesmo encontra sempre o que
+procura.* ⇒ a agulha passa a ser **montada em runtime**, que é a mesma razão pela
+qual a vassoura da parede clean-room guarda as entradas em **base64**.
+
+### §101.5 — A ponte, as premissas mortas e a prova
+
+⭐⭐ **A ponte entre os dois tipos de «com que luz»** (o do painel e o do device)
+tem gate de **IDA-E-VOLTA nos dois sentidos**: o painel não conhece o
+renderizador — e não vai passar a conhecê-lo, porque é UI e aquela crate arrasta
+o `wgpu` —, logo o conceito está escrito duas vezes **de propósito**. ⚠️ Sem a
+volta, uma ponte que colapsasse dois modos do painel num só passaria na ida e
+deixaria **um chip morto**.
+
+⚠️ **Três gates tiveram a premissa MORTA** e foram reescritos com a morte à vista
+no diff: a contagem de chips (`MATCAPS.len() + 1` → `+ 2`), o significado do `0`
+no uniform, e o **nome** do gate que prometia a contagem antiga. Tecto de LOC do
+painel curado por **CORTE** (`state_luz.rs`), nunca por isenção.
+
+**Prova:** `nextest-impacted` **16 530/16 530** · a suíte de GPU desta crate
+**75/75** com adaptador (ela nunca tinha sido corrida inteira depois do 9.º
+buffer) · censos da árvore COMBINADA **90/90** · clippy `-D warnings` **zero** ·
+mutação **10 de 10 a sangrar** · vassouras com os **mesmos** achados do HEAD,
+**zero** novos.
+
+⏳ **ABERTO:** o eixo da COR do Blender tem mais modos que nós não temos (*Single*
+· *Random* · *Object*) e nenhum foi pedido; e o `Flat` **não** entra no bake nem
+na doação de forma — ele é vista, como o resto desta fileira.

@@ -73,13 +73,18 @@ pub struct CorreccaoDePeso {
     pub centro: [f64; 2],
     /// O raio da mancha, nas mesmas unidades.
     pub raio: f64,
-    /// Quanto somar ao peso deste osso no CENTRO. **Negativo TIRA**, e o sinal é a direcção.
+    /// ⭐⭐⭐ **O QUE ELA FAZ, com o número dentro** — [`ph2d_skeleton::Especie`]: `Soma` é o modo
+    /// CUMULATIVO (o de sempre) e `Alvo` o ABSOLUTO (ordem do dono, 2026-09-19).
     ///
-    /// ⛔ **O resto desta frase dizia *«não há um segundo modo «apagar» a lembrar»* e foi revogado
-    /// pelo dono** em 2026-09-19 — ele quis os botões *Add*/*Subtract*. ⚠️ A revogação é da TELA: o
-    /// campo continua a ser um número com sinal, e o mecanismo está no doc da
-    /// [`ph2d_skeleton::Correccao::delta`].
-    pub delta: f64,
+    /// ⚠️ **É o tipo da LEI e não um espelho local**, pela razão que o `Cargo.toml` desta crate já
+    /// escreve para o [`ph2d_skeleton::reach::BendSide`]: *duas definições do mesmo conceito
+    /// divergem em silêncio*, e a conversão no meio seria a segunda porta.
+    ///
+    /// ⛔ **Duas premissas morreram aqui, e a segunda mudou os BYTES:** o campo era um `delta: f64`
+    /// com *«não há um segundo modo a lembrar»*; os botões *Add*/*Subtract* revogaram a **tela**
+    /// (2026-09-19, sem mexer no dado) e os dois modos de atribuir peso revogaram a **lei** — é
+    /// este degrau de `PROJECT_SCHEMA`.
+    pub especie: ph2d_skeleton::Especie,
 }
 
 /// **A PELE DE UMA COISA** — a que ossos ela responde, e o que ela era antes de responder.
@@ -167,7 +172,7 @@ impl SkinBind {
                     tendon: u32::try_from(j).ok()?,
                     centro: c.centro,
                     raio: c.raio,
-                    delta: c.delta,
+                    especie: c.especie,
                 })
             })
             .collect()

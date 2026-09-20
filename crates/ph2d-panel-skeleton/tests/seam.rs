@@ -712,6 +712,99 @@ fn os_dois_botoes_da_direccao_do_peso_respondem_ao_dedo() {
     state::set_current_bone_tool(None);
 }
 
+/// ⭐⭐⭐ **A FILEIRA DO MODO TEM UM SEGMENTO POR MODO** (F29) — a mesma lei da irmã acima, e pelo
+/// mesmo motivo medido: o painel acende por ÍNDICE, e uma lista noutra ordem acende o segmento
+/// errado **em silêncio**.
+#[test]
+fn a_fileira_do_modo_do_peso_tem_um_segmento_por_modo() {
+    use ph2d_tool_vector::WeightMode;
+    assert_eq!(
+        ph2d_panel_skeleton::ids::VECTOR_BONE_WEIGHT_MODE_IDS.len(),
+        WeightMode::ALL.len(),
+        "a fileira do painel e a tabela do vocabulario tem tamanhos diferentes"
+    );
+    assert_eq!(
+        ph2d_panel_skeleton::ids::VECTOR_BONE_WEIGHT_MODE_IDS[WeightMode::Cumulative.indice()],
+        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_CUMUL,
+        "a posicao do Cumulative na fileira carrega outro id"
+    );
+    assert_eq!(
+        ph2d_panel_skeleton::ids::VECTOR_BONE_WEIGHT_MODE_IDS[WeightMode::Absolute.indice()],
+        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ABS,
+        "a posicao do Absolute na fileira carrega outro id"
+    );
+}
+
+/// ⭐⭐⭐ **OS DOIS BOTÕES DO MODO RESPONDEM AO DEDO** (F29).
+///
+/// ⛔⛔ **A OITAVA vez que esta casa escreve este gate, e a razão não mudou:** um chip pintado,
+/// hit-indexado e ausente do `populate` fica **morto sob o dedo** — e *um controlo nunca pintado e
+/// um morto sob o dedo dão o MESMO report*. Um `WidgetEvent::Click` sintético passa com o chip
+/// morto; o `clica` faz *down* + *up* sobre o rectângulo que o painel de facto pintou.
+#[test]
+fn os_dois_botoes_do_modo_do_peso_respondem_ao_dedo() {
+    publica_tudo();
+    modo_osso(2);
+    for (id, nome) in [
+        (
+            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_CUMUL,
+            "Cumulative",
+        ),
+        (ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ABS, "Absolute"),
+    ] {
+        let acoes = clica(id, nome);
+        assert!(
+            acoes.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if *c == id
+            )),
+            "o botao {nome} nao chegou a' ferramenta"
+        );
+    }
+    limpa();
+    state::set_current_bone_tool(None);
+}
+
+/// ⭐⭐⭐ **NO MODO ABSOLUTO A DIRECÇÃO NÃO CHEGA A SER PINTADA** — ordem do dono: *«neste modo os
+/// botões Add e Subtract ficam inactivos»*, e aqui *inactivo* é **ausente**.
+///
+/// ⚠️⚠️ **O oráculo é o PIXEL e não a função que decide:** o gate irmão da crate
+/// (`a_fileira_da_direccao_some_no_modo_absoluto`) mede a lei, e este mede que ela chega à tela —
+/// *o terceiro elo do §5.0, que é sempre o que falta*.
+///
+/// ⛔ **As duas metades, porque as curas são opostas:** a fileira do MODO continua pintada ali
+/// (senão o artista não consegue voltar), e a da direcção volta no modo cumulativo (senão ele
+/// perde o lado).
+#[test]
+fn no_modo_absoluto_a_direccao_nao_e_pintada() {
+    publica_tudo();
+    modo_osso(2);
+    let pintado = |modo: usize, id: ph2d_a11y::NodeId| {
+        state::set_current_bone_weight(0.4, 0.15, 0, modo);
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+            .is_some()
+    };
+    let abs = ph2d_tool_vector::WeightMode::Absolute.indice();
+    let cum = ph2d_tool_vector::WeightMode::Cumulative.indice();
+    assert!(
+        !pintado(abs, ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ADD),
+        "no modo ABSOLUTO o botao Add continua na tela — ele nao tem sujeito ali"
+    );
+    assert!(
+        pintado(cum, ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ADD),
+        "no modo CUMULATIVO o botao Add sumiu — o artista perdeu o lado"
+    );
+    assert!(
+        pintado(abs, ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_CUMUL),
+        "a fileira do MODO sumiu no absoluto — o artista nao consegue voltar"
+    );
+    state::set_current_bone_weight(0.0, 0.0, 0, 0);
+    limpa();
+    state::set_current_bone_tool(None);
+}
+
 /// ⭐⭐ **O SEGMENTO ACESO SEGUE O QUE A SHELL PUBLICA** — e os dois botões seguem o VERBO.
 ///
 /// ⚠️ **As duas metades, porque as curas são opostas:** pintados nos outros verbos eles seriam

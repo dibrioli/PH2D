@@ -121,6 +121,13 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in crate::ids::VECTOR_BONE_WEIGHT_DIR_IDS {
         button(store, id);
     }
+    // ⭐⭐⭐ **E os DOIS segmentos do MODO** (F29) — pela mesma tabela e pela mesma razão. ⚠️ Eles
+    // são registados SEMPRE, mesmo quando a fileira da direcção ao lado é escondida: o `populate`
+    // corre uma vez e o `paint` decide por quadro, e um registo condicional seria a oitava
+    // ocorrência da lição acima com outra roupa.
+    for id in crate::ids::VECTOR_BONE_WEIGHT_MODE_IDS {
+        button(store, id);
+    }
 }
 
 /// **Este id é deste painel?** — a mesma lista que o `populate` regista e que o `paint` pinta.
@@ -138,6 +145,7 @@ fn meu(id: ph2d_a11y::NodeId) -> bool {
         || id == ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS
         || id == ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT
         || crate::ids::VECTOR_BONE_WEIGHT_DIR_IDS.contains(&id)
+        || crate::ids::VECTOR_BONE_WEIGHT_MODE_IDS.contains(&id)
 }
 
 pub(crate) fn apply_event(

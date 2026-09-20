@@ -58,7 +58,7 @@ fn a_correccao_sobe_o_peso_do_osso_que_ela_nomeia() {
         tendon: 0,
         centro: p,
         raio: 0.5,
-        delta: 0.5,
+        especie: Especie::Soma(0.5),
     }];
     for guardados in [None, Some(&[0.5, 0.5][..])] {
         let base = pesos(&pele, p, guardados, &[]);
@@ -95,7 +95,7 @@ fn um_delta_negativo_tira_peso() {
             tendon: 0,
             centro: p,
             raio: 0.5,
-            delta: -0.5,
+            especie: Especie::Soma(-0.5),
         }],
     );
     assert!(
@@ -119,7 +119,7 @@ fn fora_da_mancha_nada_muda_e_a_borda_nao_estala() {
         tendon: 0,
         centro: [1.0, 0.0],
         raio: 0.4,
-        delta: 0.5,
+        especie: Especie::Soma(0.5),
     }];
     // (a) FORA: byte-idêntico.
     let fora = [1.0, 0.9];
@@ -161,7 +161,7 @@ fn tirar_todo_o_peso_deixa_o_ponto_intacto() {
             tendon: t,
             centro: p,
             raio: 2.0,
-            delta: -1.0,
+            especie: Especie::Soma(-1.0),
         })
         .collect();
     let w = pesos(&pele, p, None, &cs);
@@ -190,26 +190,26 @@ fn uma_mancha_degenerada_e_saltada() {
             tendon: 0,
             centro: p,
             raio: 0.0,
-            delta: 0.5,
+            especie: Especie::Soma(0.5),
         },
         Correccao {
             tendon: 0,
             centro: p,
             raio: -1.0,
-            delta: 0.5,
+            especie: Especie::Soma(0.5),
         },
         Correccao {
             tendon: 0,
             centro: p,
             raio: 0.5,
-            delta: f64::NAN,
+            especie: Especie::Soma(f64::NAN),
         },
         // ⚠️ Um tendão que não existe na pele: o osso foi apagado depois de o artista corrigir.
         Correccao {
             tendon: 99,
             centro: p,
             raio: 0.5,
-            delta: 0.5,
+            especie: Especie::Soma(0.5),
         },
     ] {
         assert_eq!(

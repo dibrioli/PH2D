@@ -314,6 +314,18 @@ pub fn bind(
                  por cima para empurrar o peso para cima; para TIRAR, carregue «Subtract» na \
                  fileira «Direction» e arraste outra vez."
             );
+            // ⭐⭐⭐ **OS DOIS MODOS TÊM DE SER DITOS** (F29): a fileira *Weight Mode* é a primeira
+            // coisa que o artista vê na secção, e ela **muda o que o número ao lado significa**.
+            // ⚠️ *Um smoke que não nomeia um controlo novo entrega uma feature que ninguém acha* —
+            // e o dono aprova o smoke sem nunca ter tocado nela.
+            eprintln!(
+                "[vec-bone-smoke] DOIS MODOS DE PESO, na fileira «Weight Mode» do mesmo painel: \
+                 «Cumulative» e' o de sempre (cada arrasto EMPURRA o peso mais um pouco, e os dois \
+                 botoes «Add»/«Subtract» dizem para que lado). «Absolute» POE o valor: ponha \
+                 «Target Weight» em 1,00 e arraste — os pontos por onde passar ficam VERMELHOS de \
+                 uma vez, e o que sobra reparte-se pelos outros ossos. Nesse modo a fileira \
+                 «Direction» SOME, porque nao ha' lado nenhum a escolher."
+            );
         }
     }
     let mut presas = 0;

@@ -392,83 +392,6 @@ impl Skin {
         self.blend(p, w)
     }
 
-    /// ⭐⭐⭐ **A CORRECÇÃO À MÃO** — o artista soma (ou tira) peso a um osso, num sítio.
-    ///
-    /// # ⚠️ Porque ela é uma MANCHA no espaço e não uma tabela por vértice
-    ///
-    /// *Uma tabela indexada por ordem de varredura é o vector paralelo que o
-    /// `VecVertex::corner_radius` proíbe por escrito*: dezenas de operações inserem, apagam,
-    /// invertem e soldam vértices, e cada uma teria de se lembrar de mexer nela. Uma mancha é
-    /// **ancorada na geometria** — ela diz *«aqui»*, e continua a dizer «aqui» depois de o artista
-    /// mexer no desenho.
-    ///
-    /// # ⚠️ O bump é o MESMO da lei euclidiana
-    ///
-    /// `(1 − x²)²` com `x = d/raio`: `1` no centro, **`0` E derivada `0`** na borda. ⛔ Uma queda
-    /// linear deixaria uma aresta visível no sítio exacto onde o artista pintou — o estalo que a
-    /// continuidade C¹ da casa existe para não ter.
-    ///
-    /// # ⚠️ O sujeito é o TENDÃO e não o sub-osso
-    ///
-    /// O artista corrige *o osso que ele desenhou*; um osso que dobra tem `N` poses, e a correcção
-    /// reparte-se por elas pela **mesma** lei que já reparte o peso ([`bend::share`]). ⛔ Corrigir
-    /// um sub-osso seria expor ao artista uma divisão que ele não fez.
-    ///
-    /// ⚠️ **Renormaliza no fim, e só se alguma mancha alcançou o ponto** — senão isto não seria um
-    /// no-op sobre a lei que já normalizou.
-    fn corrige(&self, p: [f64; 2], w: &mut [f64], correcoes: &[Correccao]) {
-        if correcoes.is_empty() {
-            return;
-        }
-        let mut mexeu = false;
-        for c in correcoes {
-            if c.raio <= 0.0 || !c.delta.is_finite() {
-                continue;
-            }
-            let d2 = (p[0] - c.centro[0]).powi(2) + (p[1] - c.centro[1]).powi(2);
-            let x2 = d2 / (c.raio * c.raio);
-            if x2 >= 1.0 {
-                continue;
-            }
-            let t = 1.0 - x2;
-            let bump = t * t;
-            for (i, b) in self.bones.iter().enumerate() {
-                if b.tendon != c.tendon {
-                    continue;
-                }
-                w[i] = (c.delta * bump)
-                    .mul_add(self.quota(b, p), w[i])
-                    .clamp(0.0, 1.0);
-                mexeu = true;
-            }
-        }
-        if !mexeu {
-            return;
-        }
-        let soma: f64 = w.iter().sum();
-        // ⛔ **Soma zero deixa `w` como está** — o artista tirou tudo, e a mistura devolve o ponto
-        // INTACTO (a lei do [`Skin::blend`]). ⚠️ Dividir por zero daria `NaN` em toda a arte.
-        if soma > 0.0 {
-            for v in w.iter_mut() {
-                *v /= soma;
-            }
-        }
-    }
-
-    /// A fracção deste sub-osso no osso autorado a que ele pertence — `1.0` ao bit num osso recto.
-    ///
-    /// ⚠️ **Uma função e não três cópias:** a mesma conta vive no [`Skin::weights_at`], no
-    /// [`Skin::weights_from`] e agora na correcção, e três cópias divergiriam no dia em que a
-    /// repartição mudasse — com o sintoma a ser um osso curvo a corrigir-se de outra maneira do
-    /// que se pesa.
-    fn quota(&self, b: &SkinBone, p: [f64; 2]) -> f64 {
-        if b.sub.1 <= 1 {
-            return 1.0;
-        }
-        let (u, _) = project_to_segment(p, b.rest_a, b.rest_b);
-        bend::share(b.sub.0, b.sub.1, u)
-    }
-
     /// A mistura `Σ ŵ_j · (M_j · p)` — a única aritmética que move um ponto, seja de onde vierem
     /// os pesos.
     ///
@@ -522,36 +445,6 @@ impl Skin {
             *p = self.point(*p, &mut w);
         }
     }
-}
-
-/// ⭐⭐⭐ **UMA CORRECÇÃO DE PESO FEITA À MÃO** — uma mancha no espaço que soma (ou tira) peso a um
-/// osso, onde a conta automática errou.
-///
-/// ⚠️ Ver [`Skin::corrige`] para o mecanismo, o bump e a razão de ela ser uma MANCHA e não uma
-/// tabela por vértice.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Correccao {
-    /// ⭐ **O TENDÃO** — o índice do osso **que o artista desenhou** na lista que o chamador
-    /// resolveu, o mesmo espaço do [`SkinBone::tendon`].
-    ///
-    /// ⚠️ **E não o sub-osso:** o artista corrige o osso que ele vê, e a repartição por sub-ossos
-    /// de um osso que dobra é feita pela lei, não por ele.
-    pub tendon: u32,
-    /// O centro da mancha, **no espaço da coisa deformada** (o mesmo dos eixos de repouso) — logo
-    /// ela fica onde o artista a pôs, mesmo que ele mexa no desenho depois.
-    pub centro: [f64; 2],
-    /// O raio, nas unidades da coisa deformada. `<= 0` ⇒ a mancha não alcança nada.
-    pub raio: f64,
-    /// Quanto somar ao peso deste osso no CENTRO da mancha. Negativo TIRA — **o sinal é a
-    /// direcção**, e a lei nunca pergunta por um modo.
-    ///
-    /// ⛔⛔ **A frase que estava aqui — *«não há um segundo modo «apagar» a lembrar»* — era sobre a
-    /// TELA e foi REVOGADA pelo dono** (2026-09-19: *«no lugar de valores negativos em Brush
-    /// Strength prefiro botões Add e Subtract»*). ⚠️ *O que ele revogou foi a superfície, não o
-    /// dado:* a força é uma MAGNITUDE no painel e a direcção sai de dois botões, e é o
-    /// `WeightDirection::delta` que volta a juntar as duas num sinal antes de chegar aqui. **Este
-    /// campo não mudou um bit.**
-    pub delta: f64,
 }
 
 /// Distância AO QUADRADO de `p` ao segmento `a..b` (a raiz nunca é precisa: a lei compara com
@@ -608,6 +501,11 @@ mod bend_tests;
 /// por responsabilidade: *que poses existem* e *como elas se misturam* são duas perguntas, e a
 /// segunda não muda uma linha por a primeira passar a dar `N` respostas.
 /// ⭐⭐⭐ **O CENTRO DE ROTAÇÃO** — a cura do entalhe do cotovelo.
+/// ⭐⭐⭐ **A CORRECÇÃO DE PESO À MÃO** — irmão pelo tecto de 700 LOC, com o corte por
+/// RESPONSABILIDADE. Os dois tipos são re-exportados daqui, então quem consome não percebe o corte.
+mod correccao;
+pub use correccao::{Correccao, Especie};
+
 pub mod centro;
 pub mod fold;
 /// ⭐ Os gates e a sonda da régua da dobra.
@@ -655,3 +553,9 @@ mod tests;
 #[cfg(test)]
 #[path = "correccao_tests.rs"]
 mod correccao_tests;
+
+/// ⭐ Os gates do modo ABSOLUTO — irmãos dos de cima por ASSUNTO e não por tecto: aqueles medem a
+/// mancha que SOMA, estes a que FIXA.
+#[cfg(test)]
+#[path = "correccao_alvo_tests.rs"]
+mod correccao_alvo_tests;

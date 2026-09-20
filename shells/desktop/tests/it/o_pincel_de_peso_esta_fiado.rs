@@ -136,25 +136,38 @@ fn o_raio_do_pincel_chega_a_lei_convertido_a_mundo() {
     );
 }
 
-/// ⭐⭐⭐ **O SINAL DA PINCELADA SAI DA PORTA DA DIRECÇÃO** (ordem do dono, 2026-09-19: *«no lugar
-/// de valores negativos em Brush Strength prefiro botões Add e Subtract»*).
+/// ⭐⭐⭐ **A ESPÉCIE DA MANCHA SAI DE UMA PORTA, e o despacho não decide nada** (F29, ordem do dono
+/// de 2026-09-19: *«precisamos de 2 modos de atribuir peso aos pontos»*).
 ///
-/// ⛔⛔ **A composição *«magnitude × direcção»* é a LEI que aquela ordem criou**, e escrita como um
-/// `if` dentro deste despacho ela ficaria num sítio onde teste nenhum lhe chega — que é exactamente
-/// como a escolha do alvo do pincel viveu até 19/09, e foi preciso um report do dono para a
-/// descobrir. ⇒ ela vive na [`ph2d_tool_vector::WeightDirection::delta`], com gate próprio.
+/// ⛔⛔ **A PREMISSA DESTE GATE MORREU e ele foi reescrito com a morte à vista no diff.** Ele
+/// chamava-se `o_sinal_da_pincelada_sai_da_porta_da_direccao` e media `.delta(` no despacho — a
+/// porta de 2026-09-19, quando a composição era *«magnitude × direcção»*. Com os dois modos ela
+/// passou a ser *«modo × magnitude × direcção»* e mudou de dono
+/// ([`ph2d_tool_vector::WeightMode::especie`], que **chama** a antiga). *Um gate que continuasse a
+/// procurar o `.delta(` aqui ficaria verde no dia em que alguém escrevesse o `match` do modo neste
+/// laço de input — que é exactamente o que ele existe para impedir.*
 ///
-/// ⚠️ **As duas metades:** a porta é chamada **e** o sinal não voltou a ser escrito aqui. Sem a
-/// segunda, alguém que ponha um `if soma { q } else { -q }` ao lado da chamada deixa o gate verde.
+/// ⚠️ **A razão não mudou:** escrita como um `if` dentro do despacho, a lei ficaria num sítio onde
+/// teste nenhum lhe chega — que é como a escolha do alvo do pincel viveu até 19/09, e foi preciso
+/// um report do dono para a descobrir.
+///
+/// ⚠️ **As três metades:** a porta é chamada · o despacho não nomeia nenhuma das duas espécies
+/// (senão alguém escolhe aqui) · e o sinal não voltou a ser escrito à mão.
 #[test]
-fn o_sinal_da_pincelada_sai_da_porta_da_direccao() {
+fn a_especie_da_mancha_sai_da_porta_do_modo() {
     let src = code_only(&DISPATCH);
-    let n = src.matches("weight_direction").count();
     assert!(
-        n >= 1 && src.contains(".delta("),
-        "o despacho deixou de compor a magnitude com a DIRECCAO pela porta ({n} mencao(oes) de \
-         `weight_direction`) — o sinal voltou a viver num laco de input"
+        src.contains("weight_mode") && src.contains(".especie("),
+        "o despacho deixou de compor a especie da mancha pela porta — a lei dos dois modos voltou \
+         a viver num laco de input"
     );
+    for nome in ["Especie::Soma", "Especie::Alvo"] {
+        assert!(
+            !src.contains(nome),
+            "o despacho nomeia `{nome}` — ele passou a ESCOLHER a especie, e a porta existe \
+             precisamente para essa escolha ser medivel"
+        );
+    }
     assert!(
         !src.contains("-quanto") && !src.contains("- quanto"),
         "o sinal voltou a ser escrito NO DESPACHO, ao lado da porta que existe para o guardar"

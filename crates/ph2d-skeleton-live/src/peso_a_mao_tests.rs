@@ -116,7 +116,15 @@ fn a_mancha_e_ancorada_no_repouso_e_nao_no_cursor() {
         afastou > 5.0,
         "a fixtura nao dobra: o ponto posado esta' a {afastou} do repouso, e o gate nao mede nada"
     );
-    let r = crate::peso_a_mao::pinta(&mut sim, alvo, ossos[1], PPM, posado, 4.0, 0.5);
+    let r = crate::peso_a_mao::pinta(
+        &mut sim,
+        alvo,
+        ossos[1],
+        PPM,
+        posado,
+        4.0,
+        ph2d_skeleton::Especie::Soma(0.5),
+    );
     assert!(
         matches!(r, crate::peso_a_mao::Pincelada::Pintada { .. }),
         "{r:?}"
@@ -146,7 +154,15 @@ fn pintar_muda_o_peso_naquele_ponto_e_so_ali() {
     let antes_perto = peso_em(&sim, alvo, ossos[0], perto);
     let antes_longe = peso_em(&sim, alvo, ossos[0], longe);
 
-    let r = crate::peso_a_mao::pinta(&mut sim, alvo, ossos[0], PPM, perto, 4.0, 0.8);
+    let r = crate::peso_a_mao::pinta(
+        &mut sim,
+        alvo,
+        ossos[0],
+        PPM,
+        perto,
+        4.0,
+        ph2d_skeleton::Especie::Soma(0.8),
+    );
     assert!(
         matches!(r, crate::peso_a_mao::Pincelada::Pintada { .. }),
         "{r:?}"
@@ -177,9 +193,25 @@ fn uma_segunda_pincelada_no_mesmo_sitio_funde_e_empurra_mais() {
     let (mut sim, _scene, map, id, ossos) = palco();
     let alvo = forma(&map, id);
     let p = [40.0, 0.0];
-    crate::peso_a_mao::pinta(&mut sim, alvo, ossos[0], PPM, p, 4.0, 0.2);
+    crate::peso_a_mao::pinta(
+        &mut sim,
+        alvo,
+        ossos[0],
+        PPM,
+        p,
+        4.0,
+        ph2d_skeleton::Especie::Soma(0.2),
+    );
     let um = manchas(&sim, alvo);
-    crate::peso_a_mao::pinta(&mut sim, alvo, ossos[0], PPM, p, 4.0, 0.2);
+    crate::peso_a_mao::pinta(
+        &mut sim,
+        alvo,
+        ossos[0],
+        PPM,
+        p,
+        4.0,
+        ph2d_skeleton::Especie::Soma(0.2),
+    );
     let dois = manchas(&sim, alvo);
     assert_eq!(
         dois.len(),
@@ -187,20 +219,28 @@ fn uma_segunda_pincelada_no_mesmo_sitio_funde_e_empurra_mais() {
         "a 2.a pincelada no mesmo sitio criou outra mancha"
     );
     assert!(
-        dois[0].delta > um[0].delta + 0.1,
+        soma_de(&dois[0]) > soma_de(&um[0]) + 0.1,
         "o delta nao somou: {} -> {}",
-        um[0].delta,
-        dois[0].delta
+        soma_de(&um[0]),
+        soma_de(&dois[0])
     );
     // ⚠️ E ele **satura**: o peso vive em `0..1`, logo guardar `+5` mentiria sobre quanto falta
     // para desfazer.
     for _ in 0..20 {
-        crate::peso_a_mao::pinta(&mut sim, alvo, ossos[0], PPM, p, 4.0, 0.5);
+        crate::peso_a_mao::pinta(
+            &mut sim,
+            alvo,
+            ossos[0],
+            PPM,
+            p,
+            4.0,
+            ph2d_skeleton::Especie::Soma(0.5),
+        );
     }
     assert!(
-        (manchas(&sim, alvo)[0].delta - 1.0).abs() < 1e-12,
+        (soma_de(&manchas(&sim, alvo)[0]) - 1.0).abs() < 1e-12,
         "o delta nao saturou em 1: {}",
-        manchas(&sim, alvo)[0].delta
+        soma_de(&manchas(&sim, alvo)[0])
     );
 }
 
@@ -235,8 +275,24 @@ fn a_fusao_junta_manchas_de_pontos_vizinhos() {
     // ⚠️ `3 × d` ⇒ a janela de fusão (`FUSAO × raio`) vale `1,5 × d` e cobre o par — e o `d` é
     // MEDIDO na fixtura, não escolhido.
     let raio = 3.0 * d;
-    crate::peso_a_mao::pinta(&mut sim, alvo, ossos[0], PPM, a, raio, 0.2);
-    crate::peso_a_mao::pinta(&mut sim, alvo, ossos[0], PPM, b, raio, 0.2);
+    crate::peso_a_mao::pinta(
+        &mut sim,
+        alvo,
+        ossos[0],
+        PPM,
+        a,
+        raio,
+        ph2d_skeleton::Especie::Soma(0.2),
+    );
+    crate::peso_a_mao::pinta(
+        &mut sim,
+        alvo,
+        ossos[0],
+        PPM,
+        b,
+        raio,
+        ph2d_skeleton::Especie::Soma(0.2),
+    );
     let n = manchas(&sim, alvo).len();
     assert_eq!(
         n,
@@ -261,7 +317,15 @@ fn as_tres_recusas_dizem_qual_entrada_falta() {
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let e_solta = forma(&map, solta);
     assert_eq!(
-        crate::peso_a_mao::pinta(&mut sim, e_solta, ossos[0], PPM, [85.0, 5.0], 4.0, 0.5),
+        crate::peso_a_mao::pinta(
+            &mut sim,
+            e_solta,
+            ossos[0],
+            PPM,
+            [85.0, 5.0],
+            4.0,
+            ph2d_skeleton::Especie::Soma(0.5)
+        ),
         Pincelada::SemPele
     );
 
@@ -269,13 +333,29 @@ fn as_tres_recusas_dizem_qual_entrada_falta() {
     let estranho = osso(&mut sim, "Alheio", [200.0, 0.0], 5.0, None);
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     assert_eq!(
-        crate::peso_a_mao::pinta(&mut sim, alvo, estranho, PPM, [40.0, 0.0], 4.0, 0.5),
+        crate::peso_a_mao::pinta(
+            &mut sim,
+            alvo,
+            estranho,
+            PPM,
+            [40.0, 0.0],
+            4.0,
+            ph2d_skeleton::Especie::Soma(0.5)
+        ),
         Pincelada::OssoDeFora
     );
 
     // (c) FORA DA ARTE — o dedo longe de todo ponto da pele.
     assert_eq!(
-        crate::peso_a_mao::pinta(&mut sim, alvo, ossos[0], PPM, [999.0, 999.0], 4.0, 0.5),
+        crate::peso_a_mao::pinta(
+            &mut sim,
+            alvo,
+            ossos[0],
+            PPM,
+            [999.0, 999.0],
+            4.0,
+            ph2d_skeleton::Especie::Soma(0.5)
+        ),
         Pincelada::ForaDaArte
     );
 }
@@ -301,7 +381,15 @@ fn o_raio_e_convertido_pela_escala_da_coisa() {
     }
     drop(scene);
     let ponta = ponto_de(&sim, alvo, ossos[1], [40.0, 0.0]).mundo;
-    let r = crate::peso_a_mao::pinta(&mut sim, alvo, ossos[1], PPM, ponta, 4.0, 0.5);
+    let r = crate::peso_a_mao::pinta(
+        &mut sim,
+        alvo,
+        ossos[1],
+        PPM,
+        ponta,
+        4.0,
+        ph2d_skeleton::Especie::Soma(0.5),
+    );
     assert!(
         matches!(r, crate::peso_a_mao::Pincelada::Pintada { .. }),
         "{r:?}"
@@ -333,7 +421,15 @@ fn pintar_por_toda_a_arte_nunca_passa_do_tecto() {
     for kx in 0..40 {
         for ky in 0..40 {
             let p = [f64::from(kx), f64::from(ky)];
-            crate::peso_a_mao::pinta(&mut sim, alvo, ossos[0], PPM, p, 1.5, 0.2);
+            crate::peso_a_mao::pinta(
+                &mut sim,
+                alvo,
+                ossos[0],
+                PPM,
+                p,
+                1.5,
+                ph2d_skeleton::Especie::Soma(0.2),
+            );
         }
     }
     let n = manchas(&sim, alvo).len();
@@ -368,7 +464,13 @@ fn o_tecto_segura_e_quem_cede_e_a_mancha_mais_antiga() {
     for k in 0..(MANCHAS_MAX + 72) {
         let x = f64::from(u32::try_from(k).unwrap_or(0));
         // ⚠️ Cada centro a `100` do vizinho ⇒ **nenhuma** funde, e o que se mede é só o tecto.
-        crate::peso_a_mao::funde(&mut lista, bone, [x * 100.0, 0.0], 1.0, 0.1);
+        crate::peso_a_mao::funde(
+            &mut lista,
+            bone,
+            [x * 100.0, 0.0],
+            1.0,
+            ph2d_skeleton::Especie::Soma(0.1),
+        );
     }
     assert!(
         lista.len() <= MANCHAS_MAX,
@@ -400,7 +502,15 @@ fn o_olho_le_o_peso_ja_corrigido() {
     let alvo = forma(&map, id);
     let p = [40.0, 0.0];
     let antes = peso_visto(&sim, alvo, ossos[0], p);
-    crate::peso_a_mao::pinta(&mut sim, alvo, ossos[0], PPM, p, 4.0, 0.8);
+    crate::peso_a_mao::pinta(
+        &mut sim,
+        alvo,
+        ossos[0],
+        PPM,
+        p,
+        4.0,
+        ph2d_skeleton::Especie::Soma(0.8),
+    );
     let depois = peso_visto(&sim, alvo, ossos[0], p);
     assert!(
         depois - antes > 0.05,
@@ -438,7 +548,7 @@ fn o_tecto_de_manchas_custa_uma_razao_e_nao_uma_ordem_de_grandeza() {
             bone,
             centro: [20.0 + 15.0 * a.cos(), 20.0 + 15.0 * a.sin()],
             raio: 3.0,
-            delta: 0.05,
+            especie: ph2d_skeleton::Especie::Soma(0.05),
         });
     }
     let n = skin.correcoes.len();
@@ -569,6 +679,20 @@ fn manchas(sim: &SimWorld, alvo: Entity) -> Vec<ph2d_skeleton_ecs::CorreccaoDePe
         .get::<ph2d_skeleton_ecs::SkinBind>(alvo)
         .map(|s| s.correcoes.clone())
         .unwrap_or_default()
+}
+
+/// **O valor CUMULATIVO de uma mancha** — e ele EXIGE a espécie certa.
+///
+/// ⚠️ **Ela recusa uma `Alvo` em vez de devolver zero** (F29): um `0.0` silencioso faria uma régua
+/// de acumulação ler *«não somou»* sobre uma mancha que nem é dessa espécie, e a mensagem apontaria
+/// para a lei da soma em vez de para a fixtura.
+fn soma_de(c: &ph2d_skeleton_ecs::CorreccaoDePeso) -> f64 {
+    match c.especie {
+        ph2d_skeleton::Especie::Soma(v) => v,
+        ph2d_skeleton::Especie::Alvo(v) => {
+            panic!("esta regua mede o modo CUMULATIVO e a mancha e' absoluta (alvo {v})")
+        }
+    }
 }
 
 fn dist(a: [f64; 2], b: [f64; 2]) -> f64 {

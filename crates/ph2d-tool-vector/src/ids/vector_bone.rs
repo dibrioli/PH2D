@@ -36,3 +36,11 @@ pub const VECTOR_BONE_WEIGHT_ADD: NodeId = hash_node_id("vector.bone.weight.add"
 
 /// ⭐⭐⭐ **Subtract** — a pincelada TIRA peso. Ver [`crate::params::WeightDirection`].
 pub const VECTOR_BONE_WEIGHT_SUB: NodeId = hash_node_id("vector.bone.weight.subtract");
+
+/// ⭐⭐⭐ **Cumulative** — cada pincelada SOMA (ou tira) o *Brush Strength*. Ver
+/// [`crate::params::WeightMode`].
+pub const VECTOR_BONE_WEIGHT_CUMUL: NodeId = hash_node_id("vector.bone.weight.mode.cumulative");
+
+/// ⭐⭐⭐ **Absolute** — a pincelada PÕE o *Brush Strength* no osso e reparte o resto pelos outros.
+/// Ver [`crate::params::WeightMode`].
+pub const VECTOR_BONE_WEIGHT_ABS: NodeId = hash_node_id("vector.bone.weight.mode.absolute");

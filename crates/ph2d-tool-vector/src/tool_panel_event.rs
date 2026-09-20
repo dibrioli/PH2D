@@ -136,6 +136,15 @@ impl VectorTool {
             PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_WEIGHT_SUB => {
                 self.weight_direction = crate::params::WeightDirection::Subtract;
             }
+            // ⭐⭐⭐ **COMO A PINCELADA ATRIBUI O PESO** (ordem do dono, 2026-09-19) — a mesma regra
+            // dos dois chips acima: escolher um modo NÃO arma o verbo, porque a secção só é pintada
+            // com ele já na mão.
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_WEIGHT_CUMUL => {
+                self.weight_mode = crate::params::WeightMode::Cumulative;
+            }
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_WEIGHT_ABS => {
+                self.weight_mode = crate::params::WeightMode::Absolute;
+            }
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_PENCIL => {
                 self.mode = DrawMode::Pencil;
             }

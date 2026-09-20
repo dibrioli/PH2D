@@ -66,7 +66,15 @@ fn pintar_no_meio_da_barra_e_aceite_e_a_mancha_pousa_entre_os_nos() {
          deixou de conter o fenomeno do report, e as asserções abaixo passam a ser triviais"
     );
 
-    let r = pinta(&mut sim, alvo, ossos[1], PPM, MEIO, raio, 0.15);
+    let r = pinta(
+        &mut sim,
+        alvo,
+        ossos[1],
+        PPM,
+        MEIO,
+        raio,
+        ph2d_skeleton::Especie::Soma(0.15),
+    );
     assert!(
         matches!(r, Pincelada::Pintada { .. }),
         "o pincel recusou o meio da barra ({r:?}) — e' o report de 19/09 inteiro: a lei da curva \
@@ -152,7 +160,15 @@ fn um_arrasto_pelo_meio_da_barra_move_a_arte() {
     // O arrasto do dono: seis pinceladas ao longo do contorno.
     let passo = (contorno.len() / 8).max(1);
     for (i, q) in contorno.iter().step_by(passo).take(6).enumerate() {
-        let r = pinta(&mut sim, alvo, ossos[2], PPM, *q, raio, 0.15);
+        let r = pinta(
+            &mut sim,
+            alvo,
+            ossos[2],
+            PPM,
+            *q,
+            raio,
+            ph2d_skeleton::Especie::Soma(0.15),
+        );
         assert!(
             matches!(r, Pincelada::Pintada { .. }),
             "a pincelada {i} em {q:?} foi recusada: {r:?}"
@@ -182,7 +198,7 @@ fn um_clique_do_outro_lado_da_tela_continua_recusado() {
         PPM,
         [MEIO[0], MEIO[1] + 40.0],
         raio_de_fabrica(),
-        0.15,
+        ph2d_skeleton::Especie::Soma(0.15),
     );
     assert_eq!(
         r,
@@ -202,7 +218,15 @@ fn o_miolo_da_barra_conta_como_arte() {
     let (mut sim, _scene, map, id, ossos) = barra_da_cena_com(GROSSA);
     let alvo = forma(&map, id);
     let raio = raio_de_fabrica();
-    let r = pinta(&mut sim, alvo, ossos[1], PPM, MEIO, raio, 0.15);
+    let r = pinta(
+        &mut sim,
+        alvo,
+        ossos[1],
+        PPM,
+        MEIO,
+        raio,
+        ph2d_skeleton::Especie::Soma(0.15),
+    );
     assert!(matches!(r, Pincelada::Pintada { .. }), "{r:?}");
     let c = sim
         .world()

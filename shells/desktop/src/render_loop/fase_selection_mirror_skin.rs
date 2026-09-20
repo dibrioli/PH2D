@@ -109,17 +109,18 @@ impl crate::App {
         ph2d_panel_skeleton::set_current_bone_tool(
             ferramenta_osso.then(|| self.vec.draw_config.bone_action.indice()),
         );
-        // ⭐ E o PINCEL DE PESO — raio, magnitude e a DIRECÇÃO —, publicado SEMPRE, porque o
-        // sujeito dele é a ferramenta: é a secção que decide se o pinta, e ela só o faz com o verbo
-        // armado.
+        // ⭐ E o PINCEL DE PESO — raio, magnitude, a DIRECÇÃO e o MODO —, publicado SEMPRE, porque
+        // o sujeito dele é a ferramenta: é a secção que decide se o pinta, e ela só o faz com o
+        // verbo armado.
         //
-        // ⚠️ **A direcção viaja como ÍNDICE** (`WeightDirection::indice`), pela mesma razão do
-        // verbo do osso na linha acima: é o que mantém o painel sem depender do enum da ferramenta
-        // para o valor, e quem alinha as duas listas é a POSIÇÃO.
+        // ⚠️ **Os dois viajam como ÍNDICE** (`WeightDirection::indice` · `WeightMode::indice`),
+        // pela mesma razão do verbo do osso na linha acima: é o que mantém o painel sem depender do
+        // enum da ferramenta para o valor, e quem alinha as duas listas é a POSIÇÃO.
         ph2d_panel_skeleton::set_current_bone_weight(
             self.vec.draw_config.weight_radius,
             self.vec.draw_config.weight_amount,
             self.vec.draw_config.weight_direction.indice(),
+            self.vec.draw_config.weight_mode.indice(),
         );
     }
 }

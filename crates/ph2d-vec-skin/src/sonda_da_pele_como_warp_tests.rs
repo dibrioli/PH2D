@@ -148,7 +148,7 @@ fn a_pele_como_warp_responde_as_tres_perguntas() {
         tendon: 0,
         centro: [20.0, 0.0],
         raio: 14.0,
-        delta: 0.6,
+        especie: ph2d_skeleton::Especie::Soma(0.6),
     };
 
     // (a) HOJE: os pontos de controlo, com e sem a mancha.

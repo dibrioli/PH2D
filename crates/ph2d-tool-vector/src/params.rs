@@ -124,7 +124,7 @@ pub use pencil::*;
 mod mode;
 pub use mode::{
     BoneAction, DrawMode, MarqueeShape, WEIGHT_AMOUNT_DEFAULT, WEIGHT_RADIUS_DEFAULT,
-    WEIGHT_RADIUS_MIN, WeightDirection,
+    WEIGHT_RADIUS_MIN, WeightDirection, WeightMode,
 };
 
 /// UI-facing vertex type for the docked panel's Vertex section (mirror of
@@ -409,6 +409,12 @@ pub struct VectorDrawConfig {
     /// dele: *uma pergunta, um controlo*. Quem a compõe com a magnitude é a porta
     /// [`WeightDirection::delta`], e não o laço de input.
     pub weight_direction: WeightDirection,
+    /// ⭐⭐⭐ **COMO ela atribui o peso** ([`WeightMode`], ordem do dono de 2026-09-19).
+    ///
+    /// ⚠️ **Ele decide o que o [`Self::weight_amount`] SIGNIFICA** — *quanto empurrar* no modo
+    /// cumulativo, *que valor pôr* no absoluto —, e é por isso que o painel o pinta **acima** dos
+    /// dois números: ler o modo depois de já ter arrastado é tarde.
+    pub weight_mode: WeightMode,
     /// **A estabilização autorada do lápis** (0 = ponteiro cru). Viaja no config porque quem a
     /// aplica é o `input_dispatch` da shell, por movimento de ponteiro — e ali a única alça para o
     /// tool é este espelho publicado a cada frame; alcançar o tool por downcast num handler de move
@@ -444,6 +450,7 @@ impl Default for VectorDrawConfig {
             weight_radius: WEIGHT_RADIUS_DEFAULT,
             weight_amount: WEIGHT_AMOUNT_DEFAULT,
             weight_direction: WeightDirection::default(),
+            weight_mode: WeightMode::default(),
             shape: ShapeKind::Rectangle,
             values: ShapeKind::Rectangle.defaults(),
             pencil_stabilizer: PENCIL_STABILIZER_DEFAULT,

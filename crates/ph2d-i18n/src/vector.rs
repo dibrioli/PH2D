@@ -326,6 +326,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bone.weight.direction" => "Direction",
         "panel.vector.bone.weight.add" => "Add",
         "panel.vector.bone.weight.subtract" => "Subtract",
+        // ⭐⭐⭐ **COMO a pincelada atribui o peso** (F29, ordem do dono de 2026-09-19).
+        "panel.vector.bone.weight.mode" => "Weight Mode",
+        "panel.vector.bone.weight.mode.cumulative" => "Cumulative",
+        "panel.vector.bone.weight.mode.absolute" => "Absolute",
+        // ⚠️ **O rótulo do MESMO campo no modo absoluto** — ali o número não é *quanto empurrar*,
+        // é *que valor pôr*. ⛔ Um rótulo fixo seria um controlo a mentir sobre metade do curso, e
+        // um segundo campo seriam duas superfícies sobre um valor.
+        "panel.vector.bone.weight.target" => "Target Weight",
         "panel.vector.bone.bind" => "Bind to Skeleton",
         "panel.vector.bone.expand" => "Keep Pose",
         "panel.vector.bone.release" => "Release",

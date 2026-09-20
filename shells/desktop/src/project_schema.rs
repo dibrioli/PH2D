@@ -355,4 +355,27 @@
 /// `VecVertex::corner_radius` proíbe por escrito.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — a NONA vez (99, 100, 114, 119, 129, 144, 145, 146 e este).
-pub(crate) const PROJECT_SCHEMA: u32 = 158;
+/// # `158 → 159` — as manchas de peso ganham ESPÉCIE (F29, ordem do dono de 2026-09-19)
+///
+/// A `ph2d_skeleton_ecs::CorreccaoDePeso` trocou o campo `delta: f64` por
+/// `especie: ph2d_skeleton::Especie` — `Soma(v)` é o modo CUMULATIVO (a lei de sempre) e `Alvo(v)`
+/// o ABSOLUTO (*«o valor é posto imediatamente no osso, e o que sobra reparte-se pelos outros»*).
+///
+/// ⛔⛔ **Não é a regra dos degraus 109/110 — é PIOR, e por isso o degrau é obrigatório:** aqueles
+/// acrescentam um campo no fim e o postcard posicional lê os anteriores certos; aqui o campo foi
+/// **TROCADO por um de outra forma** (um `f64` de 8 bytes por um enum com discriminante). Um
+/// ficheiro do v147 lido por este binário não desalinha só a partir dali — ele lê o primeiro byte
+/// do `f64` como o **discriminante da espécie** e o resto como o número. Sem o degrau isso seria
+/// **silencioso**; com ele, o load recusa em voz alta.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — e aqui ela é mais fácil de
+/// defender do que de costume: não há como adivinhar que espécie o artista queria, porque a
+/// espécie **não existia** quando aqueles bytes foram escritos.
+///
+/// ⭐ **A aparência de um rig já autorado não muda com a FEATURE:** o pincel nasce em
+/// `WeightMode::Cumulative`, logo toda mancha nova é uma `Soma` e a lei corre pelo caminho de
+/// sempre — gate `sem_correccao_as_duas_leis_ficam_ao_bit` e o irmão que mede a lista só-`Soma`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA vez (99, 100, 114, 119, 129, 144, 145, 146, 147 e
+/// este).
+pub(crate) const PROJECT_SCHEMA: u32 = 159;

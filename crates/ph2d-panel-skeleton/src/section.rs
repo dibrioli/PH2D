@@ -78,6 +78,55 @@ pub(crate) fn segmentos_da_direccao(lado: usize) -> [(NodeId, &'static str, bool
     ]
 }
 
+/// ⭐⭐⭐ **OS DOIS SEGMENTOS DO MODO DE ATRIBUIR PESO** — `(id, chave do rótulo, aceso)`, irmã da
+/// [`segmentos_da_direccao`] e pela MESMA razão: *uma lei que só existe dentro de uma chamada de
+/// pintura não tem como ser medida*, e o par id↔rótulo viaja junto para que trocar a ordem de uma
+/// lista não deixe um botão a fazer o contrário do que diz.
+pub(crate) fn segmentos_do_modo(modo: usize) -> [(NodeId, &'static str, bool); 2] {
+    [
+        (
+            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_CUMUL,
+            "panel.vector.bone.weight.mode.cumulative",
+            aceso(Some(modo), 0),
+        ),
+        (
+            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ABS,
+            "panel.vector.bone.weight.mode.absolute",
+            aceso(Some(modo), 1),
+        ),
+    ]
+}
+
+/// ⭐⭐⭐ **A FILEIRA DA DIRECÇÃO É PINTADA?** — não, no modo absoluto (ordem do dono, 2026-09-19:
+/// *«neste modo os botões Add e Subtract ficam inactivos»*).
+///
+/// ⚠️ **É uma função e não uma comparação no meio da pintura, e pela mesma razão da [`aceso`]:**
+/// *uma lei que só existe dentro de uma chamada de pintura não tem como ser medida*.
+///
+/// ⚠️ ***Inactivo* aqui é AUSENTE e não cinzento** — a lei da casa (*esconde-se o que se pode; diz-se
+/// a razão onde uma cerca de produto proíbe esconder*), e nada proíbe: a fileira chama-se
+/// *Direction*, e num pincel absoluto não há direcção nenhuma para nomear.
+pub(crate) fn pinta_a_direccao(modo: usize) -> bool {
+    modo != ph2d_tool_vector::WeightMode::Absolute.indice()
+}
+
+/// ⭐⭐⭐ **A CHAVE DO RÓTULO DO NÚMERO, PELO MODO** — *Strength* no cumulativo, *Weight* no absoluto.
+///
+/// ⚠️⚠️ **O mesmo controlo, dois significados, e é a ordem do dono que o exige** (*«o valor de
+/// *Brush Strength* é posto imediatamente no osso»*): no modo cumulativo o número é *quanto
+/// empurrar*, no absoluto é *que valor pôr*. ⛔ Dois campos seriam duas superfícies sobre um valor
+/// — a armadilha que os três chips do `Detail` da escultura pagaram —, e um rótulo fixo seria um
+/// controlo que mente sobre metade do curso.
+///
+/// ⭐ **É uma função e não um `if` dentro da pintura** porque é isto que um gate consegue observar.
+pub(crate) fn rotulo_do_numero(modo: usize) -> &'static str {
+    if modo == ph2d_tool_vector::WeightMode::Absolute.indice() {
+        "panel.vector.bone.weight.target"
+    } else {
+        "panel.vector.bone.weight.amount"
+    }
+}
+
 pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
     // ⭐⭐⭐ **REVELAR-AO-FOCAR** (report do dono, 2026-09-08: *«selecionar o bone nem sempre
     // abre a secção de skeleton»*). ⚠️ **O pedido consome-se AQUI, antes da porta**: se o corpo
@@ -154,24 +203,41 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
     // decide o que o `Strength` significa, e ler isso depois de já ter arrastado é tarde. ⭐ E os
     // dois números ficam JUNTOS, que é o que eles são.
     if armado == Some(2) {
-        let (_, _, lado) = state::bone_weight();
+        let (_, _, lado, modo) = state::bone_weight();
+        // ⭐⭐⭐ **O MODO VEM PRIMEIRO, e é a mesma razão da fileira dos verbos acima:** ele decide o
+        // que os outros controlos SIGNIFICAM — no cumulativo o número é *quanto empurrar* e a
+        // direcção escolhe o sinal; no absoluto ele é *que valor pôr* e a direcção não tem sujeito.
+        let acesos = segmentos_do_modo(modo);
+        let modos: [(NodeId, &str, bool); 2] =
+            std::array::from_fn(|i| (acesos[i].0, tr(acesos[i].1), acesos[i].2));
+        y = r.segmented(tr("panel.vector.bone.weight.mode"), &modos, y);
         // ⚠️ **A fileira é DERIVADA** ([`segmentos_da_direccao`]) — um `lado == 0` escrito aqui
         // seria a terceira resposta a *«qual segmento acende»*, ao lado da [`aceso`] que a fileira
         // dos verbos já usa. ⛔ E o RÓTULO vem de lá emparelhado com o id, nunca de uma segunda
         // lista ao lado: *duas listas na mesma ordem trocam-se uma sem a outra, e o sintoma é um
         // botão que faz o contrário do que diz.*
-        let acesos = segmentos_da_direccao(lado);
-        let direccoes: [(NodeId, &str, bool); 2] =
-            std::array::from_fn(|i| (acesos[i].0, tr(acesos[i].1), acesos[i].2));
-        y = r.segmented(tr("panel.vector.bone.weight.direction"), &direccoes, y);
+        //
+        // ⛔⛔ **E ela SOME no modo absoluto** (ordem do dono, 2026-09-19: *«neste modo os botões
+        // Add e Subtract ficam inactivos»*). ⚠️ *Inactivo* aqui é **ausente** e não cinzento, que é
+        // a lei da casa — *esconde-se o que se pode; diz-se a razão onde uma cerca de produto
+        // proíbe esconder* (o `Density` da escultura é o precedente) —, e nada proíbe: a fileira
+        // chama-se *Direction* e num pincel absoluto não há direcção nenhuma para nomear.
+        if pinta_a_direccao(modo) {
+            let acesos = segmentos_da_direccao(lado);
+            let direccoes: [(NodeId, &str, bool); 2] =
+                std::array::from_fn(|i| (acesos[i].0, tr(acesos[i].1), acesos[i].2));
+            y = r.segmented(tr("panel.vector.bone.weight.direction"), &direccoes, y);
+        }
         y = r.labeled_number_field(
             tr("panel.vector.bone.weight.radius"),
             ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS,
             LENGTH_STEP,
             y,
         );
+        // ⚠️ **O RÓTULO segue o MODO** — ver [`rotulo_do_numero`]. O id é o MESMO: é um número só, e
+        // dois campos seriam duas superfícies sobre um valor.
         y = r.labeled_number_field(
-            tr("panel.vector.bone.weight.amount"),
+            tr(rotulo_do_numero(modo)),
             ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT,
             STRENGTH_STEP,
             y,
@@ -527,3 +593,8 @@ mod tests {
 #[cfg(test)]
 #[path = "section_rotulo_tests.rs"]
 mod rotulo_do_auto_tests;
+
+/// ⭐ Os gates dos DOIS MODOS do pincel de peso (F29) — irmãos por assunto.
+#[cfg(test)]
+#[path = "section_modo_do_peso_tests.rs"]
+mod modo_do_peso_tests;

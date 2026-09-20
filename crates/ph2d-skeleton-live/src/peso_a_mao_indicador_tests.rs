@@ -260,7 +260,15 @@ fn um_dab_chega_inteiro_as_duas_alcas_do_no() {
          as duas leis concordam por acidente",
         alvo_no.peso
     );
-    let r = crate::peso_a_mao::pinta(&mut sim, alvo, quem, PPM, alvo_no.mundo, raio, 1.0);
+    let r = crate::peso_a_mao::pinta(
+        &mut sim,
+        alvo,
+        quem,
+        PPM,
+        alvo_no.mundo,
+        raio,
+        ph2d_skeleton::Especie::Soma(1.0),
+    );
     assert!(
         matches!(r, crate::peso_a_mao::Pincelada::Pintada { .. }),
         "a pincelada foi recusada ({r:?}) — sem mancha este gate nao mede nada"
@@ -328,7 +336,15 @@ fn um_dab_chega_inteiro_as_duas_alcas_do_no() {
     );
     let dedo = crate::skin_live::world_of(&sim, alvo).apply([no[0] + rumo[0], no[1] + rumo[1]]);
     let antes = skin.correcoes.len();
-    crate::peso_a_mao::pinta(&mut sim, alvo, quem, PPM, dedo, raio, 0.3);
+    crate::peso_a_mao::pinta(
+        &mut sim,
+        alvo,
+        quem,
+        PPM,
+        dedo,
+        raio,
+        ph2d_skeleton::Especie::Soma(0.3),
+    );
     let depois = sim
         .world()
         .get::<ph2d_skeleton_ecs::SkinBind>(alvo)
@@ -402,7 +418,7 @@ fn o_instantaneo_do_hit_test_e_a_geometria_desenhada() {
         PPM,
         no.mundo,
         raio_de_fabrica(),
-        1.0,
+        ph2d_skeleton::Especie::Soma(1.0),
     );
     assert!(
         matches!(r, crate::peso_a_mao::Pincelada::Pintada { .. }),

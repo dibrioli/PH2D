@@ -89,6 +89,10 @@ pub const MANCHAS_MAX: usize = 128;
 /// ⚠️ **E a fusão é o que faz insistir no mesmo sítio EMPURRAR MAIS** — sem ela, a segunda passagem
 /// sobre o mesmo ponto escreveria uma mancha idêntica ao lado e o efeito somaria na mesma, mas o
 /// custo cresceria sem fim.
+///
+/// ⚠️ **Ela vale por ESPÉCIE** (F29): uma mancha absoluta não se funde numa cumulativa nem o
+/// contrário — elas respondem perguntas diferentes, e fundi-las perderia a que o artista acabou de
+/// escolher.
 pub const FUSAO: f64 = 0.5;
 
 /// O afim local→mundo da coisa, e o factor de escala UNIFORME dele.
@@ -539,7 +543,7 @@ pub fn pinta(
     ppm: f32,
     mundo: [f64; 2],
     raio_mundo: f64,
-    delta: f64,
+    especie: ph2d_skeleton::Especie,
 ) -> Pincelada {
     if sim.world().get::<SkinBind>(alvo).is_none() {
         return Pincelada::SemPele;
@@ -569,37 +573,74 @@ pub fn pinta(
         .get::<SkinBind>(alvo)
         .expect("a pele foi lida acima")
         .clone();
-    funde(&mut skin.correcoes, id, ponto.repouso, raio, delta);
+    funde(&mut skin.correcoes, id, ponto.repouso, raio, especie);
     let manchas = skin.correcoes.len();
     sim.world_mut().entity_mut(alvo).insert(skin);
     Pincelada::Pintada { manchas }
 }
 
 /// A lei da fusão e do tecto — ver [`FUSAO`] e [`MANCHAS_MAX`].
+///
+/// # ⭐⭐⭐ Uma mancha ABSOLUTA que se funde vai para o FIM da lista (F29, 2026-09-20)
+///
+/// A lei aplica as manchas **por ordem** e fixar é idempotente, logo *«a última manda»* (ordem do
+/// dono) só é verdade se a última **pintada** for a última **da lista**. ⛔ Sem isto, voltar a
+/// pintar uma mancha antiga actualizava o valor dela e deixava-a **antes** de uma vizinha mais nova,
+/// que continuava a puxar o ponto — o artista carregava e via menos do que pediu.
+///
+/// ⚠️ **E só para a `Alvo`, de propósito.** Entre `Soma`s a ordem é quase irrelevante (elas somam
+/// num acumulador; só o `clamp` a torna observável), e mexer nela mudaria bits da lei que o dono já
+/// aprovou em smoke **sem comprar nada**. ⛔ Fica NOMEADO o canto que isso deixa: uma `Soma` pintada
+/// **antes** de uma `Alvo` e re-tocada depois continua a ser absorvida pela fixação, porque não
+/// sobe na lista. *É a única composição em que a ordem não segue a mão.*
 fn funde(
     lista: &mut Vec<CorreccaoDePeso>,
     bone: ph2d_ecs::StableId,
     centro: [f64; 2],
     raio: f64,
-    delta: f64,
+    especie: ph2d_skeleton::Especie,
 ) {
     let perto = FUSAO * raio;
-    if let Some(c) = lista
-        .iter_mut()
-        .find(|c| c.bone == bone && d2(c.centro, centro) <= perto * perto)
-    {
-        // ⚠️ **O `delta` SOMA e satura em ±1**: o peso vive em `0..1`, logo empurrar duas vezes
-        // para lá do topo não pode guardar um número que a lei depois corta — ele mentiria sobre
-        // quanto falta para desfazer.
-        c.delta = (c.delta + delta).clamp(-1.0, 1.0);
-        c.raio = raio;
+    // ⚠️ **A busca exige a MESMA espécie** — ver [`FUSAO`].
+    // ⚠️ **O discriminante e não um `match` escrito à mão** — uma espécie nova entra sem uma
+    // segunda tabela a lembrar.
+    let mesma = std::mem::discriminant(&especie);
+    let igual = lista.iter().position(|c| {
+        c.bone == bone
+            && std::mem::discriminant(&c.especie) == mesma
+            && d2(c.centro, centro) <= perto * perto
+    });
+    if let Some(i) = igual {
+        match (&mut lista[i].especie, especie) {
+            // ⚠️ **O `delta` SOMA e satura em ±1**: o peso vive em `0..1`, logo empurrar duas vezes
+            // para lá do topo não pode guardar um número que a lei depois corta — ele mentiria
+            // sobre quanto falta para desfazer.
+            (ph2d_skeleton::Especie::Soma(guardado), ph2d_skeleton::Especie::Soma(novo)) => {
+                *guardado = (*guardado + novo).clamp(-1.0, 1.0);
+            }
+            // ⭐ **Uma absoluta SUBSTITUI**: ela diz *«o peso aqui é este»*, e insistir no mesmo
+            // sítio com o mesmo valor não pode empurrar mais — é o que «absoluto» quer dizer.
+            (
+                guardado @ ph2d_skeleton::Especie::Alvo(_),
+                novo @ ph2d_skeleton::Especie::Alvo(_),
+            ) => {
+                *guardado = novo;
+            }
+            // Inalcançável: o discriminante já filtrou os pares mistos.
+            _ => {}
+        }
+        lista[i].raio = raio;
+        if matches!(especie, ph2d_skeleton::Especie::Alvo(_)) {
+            let c = lista.remove(i);
+            lista.push(c);
+        }
         return;
     }
     lista.push(CorreccaoDePeso {
         bone,
         centro,
         raio,
-        delta,
+        especie,
     });
     if lista.len() > MANCHAS_MAX {
         // A mais ANTIGA do mesmo osso cede o lugar — ver [`MANCHAS_MAX`].
@@ -620,3 +661,9 @@ mod peso_a_mao_tests;
 #[cfg(test)]
 #[path = "peso_a_mao_indicador_tests.rs"]
 mod peso_a_mao_indicador_tests;
+
+/// ⭐ Os gates dos DOIS MODOS (F29) — irmãos dos de cima por ASSUNTO: aqueles medem o GESTO, estes
+/// o que a ESPÉCIE da mancha muda.
+#[cfg(test)]
+#[path = "peso_a_mao_modos_tests.rs"]
+mod peso_a_mao_modos_tests;

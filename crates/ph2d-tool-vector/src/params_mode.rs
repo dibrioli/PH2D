@@ -126,6 +126,61 @@ impl WeightDirection {
     }
 }
 
+/// ⭐⭐⭐ **COMO A PINCELADA ATRIBUI O PESO** — ordem do dono, 2026-09-19: *«precisamos de 2 modos de
+/// atribuir peso aos pontos»*.
+///
+/// ⚠️⚠️ **A diferença NÃO é de UI — é do modelo de dados**, e está na
+/// [`ph2d_skeleton::Especie`]: uma mancha cumulativa SOMA (duas sobrepostas acumulam-se por
+/// construção) e uma absoluta FIXA (duas sobrepostas não se somam — vence a última pintada). É por
+/// isso que este enum não é uma lente do painel: ele escolhe **que espécie de mancha nasce**.
+///
+/// ⛔ **No modo absoluto a [`WeightDirection`] fica sem sujeito** — *«para que lado»* não tem
+/// resposta quando o gesto põe um valor —, e o painel ESCONDE-a. É a lei da casa (*esconde-se o que
+/// se pode; diz-se a razão onde uma cerca de produto proíbe esconder*), e aqui nada proíbe.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum WeightMode {
+    /// **CUMULATIVO** — cada pincelada soma (ou tira) o *Brush Strength* ao peso do osso em foco.
+    ///
+    /// É o valor de fábrica: é a lei que já existia, a que o dono aprovou em smoke, e a que um
+    /// artista espera de um pincel sem ter escolhido nada.
+    #[default]
+    Cumulative,
+    /// **ABSOLUTO** — o *Brush Strength* é posto **imediatamente** no osso em foco, e o que sobra
+    /// (`1 − v`) reparte-se pelos outros ossos daquele ponto mantendo a proporção entre eles.
+    Absolute,
+}
+
+impl WeightMode {
+    /// Os dois, na ordem em que o segmento os mostra. ⛔ Fonte única da iteração.
+    pub const ALL: [WeightMode; 2] = [WeightMode::Cumulative, WeightMode::Absolute];
+
+    /// ⭐⭐ **O ÍNDICE deste modo em [`Self::ALL`]** — a porta que o segmento do painel acende.
+    ///
+    /// ⚠️ Derivado da lista, pela mesma razão do [`WeightDirection::indice`].
+    #[must_use]
+    pub fn indice(self) -> usize {
+        Self::ALL.iter().position(|m| *m == self).unwrap_or(0)
+    }
+
+    /// ⭐⭐⭐ **A MANCHA QUE ESTA PINCELADA ESCREVE** — a porta que junta o modo, a magnitude e a
+    /// direcção numa [`ph2d_skeleton::Especie`].
+    ///
+    /// ⚠️⚠️ **Ela é UMA e vive aqui, ao lado da [`WeightDirection::delta`] que substitui** — pela
+    /// mesma razão escrita lá: *uma lei que só existe num laço de input é uma lei que ninguém pode
+    /// contradizer*. ⛔ No modo absoluto a `direccao` é **ignorada**, e isso é a lei e não um
+    /// esquecimento: o painel esconde os dois botões exactamente porque eles não têm sujeito aqui.
+    ///
+    /// ⚠️ **A magnitude entra em valor ABSOLUTO nos dois modos** — ela é *quanto*/*quanto vale*, e
+    /// o `Alvo` é coagido a `0..1` pela própria lei ([`ph2d_skeleton::Skin::fixa`]).
+    #[must_use]
+    pub fn especie(self, magnitude: f64, direccao: WeightDirection) -> ph2d_skeleton::Especie {
+        match self {
+            Self::Cumulative => ph2d_skeleton::Especie::Soma(direccao.delta(magnitude)),
+            Self::Absolute => ph2d_skeleton::Especie::Alvo(magnitude.abs()),
+        }
+    }
+}
+
 /// ⭐ **O RAIO de fábrica do pincel de peso, em PÍXEIS DE ECRÃ.**
 ///
 /// ⛔⛔⛔ **Ele era `20.0` em unidades de MUNDO, e o report do dono mediu o que isso vale**
@@ -486,6 +541,87 @@ mod direccao_do_peso_tests {
     #[test]
     fn de_fabrica_a_pincelada_soma() {
         assert_eq!(WeightDirection::default(), WeightDirection::Add);
+    }
+}
+
+#[cfg(test)]
+mod modo_do_peso_tests {
+    use super::{WeightDirection, WeightMode};
+    use ph2d_skeleton::Especie;
+
+    /// ⭐⭐⭐ **O MODO ESCOLHE A ESPÉCIE DA MANCHA** — a porta que junta as três respostas do painel
+    /// (modo · magnitude · direcção) numa só coisa (F29, ordem do dono de 2026-09-19).
+    ///
+    /// ⚠️ **As duas metades dizem coisas diferentes:** no cumulativo a direcção **manda no sinal**
+    /// (é a lei que a wave anterior trouxe); no absoluto ela é **ignorada**, e isso é a lei e não um
+    /// esquecimento — *«para que lado»* não tem resposta quando o gesto põe um valor. É por isso que
+    /// o painel esconde os dois botões ali.
+    #[test]
+    fn o_modo_escolhe_a_especie_da_mancha() {
+        assert_eq!(
+            WeightMode::Cumulative.especie(0.15, WeightDirection::Add),
+            Especie::Soma(0.15),
+            "o modo cumulativo deixou de produzir uma mancha que SOMA"
+        );
+        assert_eq!(
+            WeightMode::Cumulative.especie(0.15, WeightDirection::Subtract),
+            Especie::Soma(-0.15),
+            "no modo cumulativo a direccao deixou de mandar no sinal"
+        );
+        for lado in WeightDirection::ALL {
+            assert_eq!(
+                WeightMode::Absolute.especie(0.6, lado),
+                Especie::Alvo(0.6),
+                "{lado:?}: a direccao chegou ao modo ABSOLUTO, onde ela nao tem sujeito"
+            );
+        }
+    }
+
+    /// ⚠️ **A magnitude entra em ABSOLUTO nos dois modos** — ela é *quanto*/*quanto vale*, e um
+    /// número negativo escrito à mão na caixa não pode deixar o pincel inerte nem pedir um peso
+    /// negativo. *É a mesma cerca que a [`WeightDirection::delta`] já declara, e ela vale para a
+    /// espécie nova pela mesma razão.*
+    #[test]
+    fn uma_magnitude_negativa_entra_em_absoluto_nos_dois_modos() {
+        assert_eq!(
+            WeightMode::Absolute.especie(-0.6, WeightDirection::Add),
+            Especie::Alvo(0.6),
+            "um alvo negativo deixou de ser lido em valor absoluto"
+        );
+        assert_eq!(
+            WeightMode::Cumulative.especie(-0.15, WeightDirection::Add),
+            Especie::Soma(0.15),
+            "o modo cumulativo deixou de ler a magnitude em absoluto"
+        );
+    }
+
+    /// ⭐⭐ **O ÍNDICE SAI DA LISTA, e a lista tem a população do enum** — a mesma lei (e o mesmo
+    /// defeito medido) do [`WeightDirection::indice`].
+    #[test]
+    fn o_indice_do_modo_sai_da_lista() {
+        for (i, modo) in WeightMode::ALL.iter().enumerate() {
+            assert_eq!(modo.indice(), i, "{modo:?} acende o segmento errado");
+        }
+        let mut vistos = 0usize;
+        for modo in WeightMode::ALL {
+            vistos += match modo {
+                WeightMode::Cumulative | WeightMode::Absolute => 1,
+            };
+        }
+        assert_eq!(
+            vistos,
+            WeightMode::ALL.len(),
+            "a lista e o enum deixaram de contar a mesma populacao"
+        );
+    }
+
+    /// ⭐ **DE FÁBRICA ELE É CUMULATIVO** — é a lei que já existia e a que o dono aprovou em smoke.
+    ///
+    /// ⚠️ **Isto é o que mantém um rig já autorado com a mesma aparência:** toda mancha nova nasce
+    /// `Soma`, logo a lei corre pelo caminho de sempre até o artista escolher o outro modo.
+    #[test]
+    fn de_fabrica_o_modo_e_cumulativo() {
+        assert_eq!(WeightMode::default(), WeightMode::Cumulative);
     }
 }
 

@@ -273,3 +273,44 @@ fn o_roteiro_nao_afirma_uma_contagem_de_nos() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O ROTEIRO SÓ NOMEIA RÓTULOS QUE O PAINEL DE FACTO PINTA** (F29).
+///
+/// ⚠️⚠️ **Um passo que manda carregar numa linha AFIRMA que ela está lá** — e *o dono aprova o
+/// smoke com o passo impossível dentro*. É a lição que a família da escultura pagou quando um
+/// roteiro mandou subir um controlo que vivia num nível do painel que a cena não abre.
+///
+/// ⚠️ **A régua é a tabela de TEXTO e não uma lista escrita à mão:** cada nome citado tem de ser o
+/// que a [`ph2d_i18n::tr`] devolve para a chave que o painel usa. ⛔ Mudar o rótulo no catálogo e
+/// esquecer o roteiro reprova aqui, que é o dia certo.
+#[test]
+fn o_roteiro_do_pincel_nomeia_rotulos_que_existem() {
+    let texto = include_str!("smoke_bone.rs");
+    let bloco = texto
+        .split("DOIS MODOS DE PESO")
+        .nth(1)
+        .expect("a licao dos dois modos do pincel de peso");
+    let bloco = &bloco[..bloco.len().min(1200)];
+    for chave in [
+        "panel.vector.bone.weight.mode",
+        "panel.vector.bone.weight.mode.cumulative",
+        "panel.vector.bone.weight.mode.absolute",
+        "panel.vector.bone.weight.target",
+        "panel.vector.bone.weight.direction",
+    ] {
+        let rotulo = ph2d_i18n::tr(chave);
+        assert_ne!(rotulo, chave, "a chave `{chave}` nao tem texto no catalogo");
+        assert!(
+            bloco.contains(rotulo),
+            "o roteiro dos dois modos nao nomeia «{rotulo}» (a chave `{chave}`) — ou ele deixou de \
+             ensinar o controlo, ou o rotulo mudou no catalogo e o passo ficou impossivel"
+        );
+    }
+    // ⛔ E a metade NEGATIVA: ele não pode nomear um rótulo que não existe.
+    for inventado in ["Weight Target", "Absolute Mode", "Replace"] {
+        assert!(
+            !bloco.contains(inventado),
+            "o roteiro nomeia «{inventado}», que nao e' rotulo nenhum deste painel"
+        );
+    }
+}

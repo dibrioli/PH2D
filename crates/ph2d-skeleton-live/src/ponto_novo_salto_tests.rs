@@ -314,7 +314,7 @@ fn a_segunda_passagem_e_exigida_por_uma_mancha() {
                 // basta. *Uma mancha saturada não é uma mancha, é um planalto.*
                 centro: [10.0, 0.0],
                 raio: 25.0,
-                delta: 0.35,
+                especie: ph2d_skeleton::Especie::Soma(0.35),
             });
         crate::skin_live::recook_com(&sim, &mut cena, LEI_INGENUA);
         let antes = polilinha(&cena, id);

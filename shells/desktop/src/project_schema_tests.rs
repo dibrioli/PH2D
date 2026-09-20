@@ -214,7 +214,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // peso que o artista pinta a` mao. Campo novo numa struct ja' gravada ⇒ a regra dos degraus
         // 109/110. ⚠️ **A tripla NÃO vê este degrau** (a NONA vez): o `SkinBind` viaja no
         // `WorldSnapshot`.
-        (158, 13, 22),
+        // ⚠️ **PROJECT 147→148** (2026-09-20): a `CorreccaoDePeso` trocou o `delta: f64` por uma
+        // `especie: Especie` — os DOIS modos de atribuir peso (ordem do dono). ⛔ **NÃO é um campo
+        // novo, é um campo TROCADO**, logo os bytes de toda mancha gravada mudam de FORMA e não só
+        // de posição. ⚠️ **A tripla NÃO vê este degrau** (a DÉCIMA vez): o `SkinBind` viaja no
+        // `WorldSnapshot`.
+        (159, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

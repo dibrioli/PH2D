@@ -147,6 +147,9 @@ pub struct VectorTool {
     weight_amount: f64,
     /// **Para que lado ela empurra** — ver [`crate::params::WeightDirection`].
     weight_direction: crate::params::WeightDirection,
+    /// ⭐⭐⭐ **COMO ela atribui o peso** — ver [`crate::params::WeightMode`]. Ele decide o que a
+    /// [`Self::weight_amount`] significa, e no modo absoluto a direcção acima não tem sujeito.
+    weight_mode: crate::params::WeightMode,
     /// **O estilo da SIMETRIA de desenho** (plano 25 W6.3) — que espelho, quantas cópias, funde
     /// ou não. O LUGAR da linha não está aqui: ele pertence ao desenho e viaja no componente dele
     /// (`ph2d_ecs::VecSymmetry`). Um centro guardado na ferramenta seria um campo que nunca se lê.
@@ -232,6 +235,7 @@ impl Default for VectorTool {
             weight_radius: crate::params::WEIGHT_RADIUS_DEFAULT,
             weight_amount: crate::params::WEIGHT_AMOUNT_DEFAULT,
             weight_direction: crate::params::WeightDirection::default(),
+            weight_mode: crate::params::WeightMode::default(),
             symmetry: ph2d_symmetry::SymmetryStyle::default(),
             marquee: crate::params::MarqueeShape::default(),
             mode: DrawMode::Select,
@@ -509,6 +513,7 @@ impl VectorTool {
             weight_radius: self.weight_radius,
             weight_amount: self.weight_amount,
             weight_direction: self.weight_direction,
+            weight_mode: self.weight_mode,
             symmetry: self.symmetry,
             marquee: self.marquee,
         }

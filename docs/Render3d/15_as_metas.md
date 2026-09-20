@@ -118,3 +118,56 @@ já o trata.
 
 ⚠️ **E a régua de cada meta vive num GATE**, não nesta página: *uma barra escrita em prosa não
 reprova ninguém.*
+
+---
+
+## §7 — O ESTADO da 1.ª obra, e a medição que corrigiu o preço dela
+
+> Esta secção é escrita **depois** de a obra começar, e existe porque a §5 estimou o preço e a
+> medição o desmentiu. *Uma ordem de ataque que não se corrige com o que se mediu é um plano sobre
+> outro projecto.*
+
+### ✅ Feito e provado
+
+A lei vive na folha [`ph2d-form-pbr`](../../crates/ph2d-form-pbr/) — o **laço por texel** que acende
+a forma doada com o OpenPBR, com **UMA** dependência de produção (`ph2d-material`, o port do
+OpenPBR) e **zero** linhas de óptica próprias, nem no Rust nem no gémeo em WGSL. `13` gates, cada um
+com o controlo ao lado; prova de mutação **12 de 12 a sangrar**.
+
+⭐ **O que ela achou, e nenhuma das três era procurada:**
+
+| achado | mecanismo |
+|---|---|
+| **a lâmpada anti-paralela à vista devolvia `NaN`** | `v + to_light` é o vector nulo. No modelador tem **medida nula** (a vista varia por pixel); num canvas 2D a `VISTA` é constante ⇒ é uma configuração que o artista **escreve**, e pinta a peça inteira |
+| **`ptr<storage, …>` não é WGSL do núcleo** | a `naga` recusa-o (`InvalidArgumentPointerSpace`) ⇒ as lâmpadas entram por VALOR, e o tecto delas entra por **MARCA** (`{MAX_LAMPADAS}`), porque quem o sabe é o rig e esta crate não depende dele |
+| **o meu doc de montagem era falso** | ele dizia que bastava concatenar as duas fontes; a da lei traz um `{ENV}` por preencher ⇒ a concatenação crua **não parsa** |
+
+### ⛔ E a §5 subestimou o preço: o passe de dispositivo é OBRIGATÓRIO
+
+A §5 escreveu *«é ligar leis que existem a dados que existem»*. Medido (`load 3,3`, `--release`,
+32 núcleos, a sonda `diag_quanto_custa_acender_um_sprite`), acender **na CPU em paralelo** um sprite
+de `1024²` custa `11,1 ms` com **uma** lâmpada e `34,1 ms` com **quatro** — e o orçamento de um
+quadro é `16,7 ms`.
+
+⇒ **a CPU paralela atravessa o orçamento à SEGUNDA lâmpada**, e a `2048²` estoura com uma só. O
+passe de dispositivo não é aceleração: é a condição de a re-acendida continuar a ser o **gesto
+contínuo** que o `relight_stale` promete por escrito.
+
+⚠️⚠️ **E foi a coluna PARALELA que tornou esse veredito honesto.** Com o número de um núcleo
+(`111 ms`, `6,6×` um quadro) a conclusão seria a mesma **pela razão errada** — o §0.0 ao contrário,
+o caminho lento a definir o produto. A margem real não é `6,6×`, são **duas lâmpadas**, e é um
+número que outra pessoa pode mudar (mais núcleos, ou cozer por tiles): *quem o mover reconfere esta
+nota.*
+
+### ⏳ A seguir, com o preço medido
+
+| # | obra | preço |
+|---|---|---|
+| 1 | **o passe** (`ph2d-render`, ao lado do `ImpastoLightPass`) | ~`600` linhas, a medida do passe irmão |
+| 2 | a **escolha por objecto** no `baked_form::light()` | o `BakedForm` ganha por onde acende |
+| 3 | a **paridade CPU↔device** do LAÇO | ⭐ a da ÓPTICA **já está paga** (`ph2d_field_gpu::material_parity`) — o que falta medir são as ~8 linhas do laço |
+
+⛔ **O kill-criterion da §6 fica com a leitura que a construção fixou:** *«byte-idêntica no ponto
+neutro»* quer dizer **um objecto que NÃO optou** pela lei nova — o caminho da tinta tem de ficar
+intacto ao bit. Não há ponto onde as duas leis coincidam, e nem podia haver: mudar a aparência é a
+razão de a obra existir.

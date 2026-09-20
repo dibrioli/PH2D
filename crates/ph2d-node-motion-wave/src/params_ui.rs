@@ -14,7 +14,7 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, Pa
 pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "rows",
-        label: "Rows",
+        label: "node.motion.wave.param.rows",
         min: 2.0,
         max: 64.0,
         step: 1.0,
@@ -22,7 +22,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "cols",
-        label: "Cols",
+        label: "node.motion.wave.param.cols",
         min: 2.0,
         max: 64.0,
         step: 1.0,
@@ -30,7 +30,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "spacing",
-        label: "Spacing",
+        label: "node.motion.wave.param.spacing",
         min: 0.1,
         max: 4.0,
         step: 0.05,
@@ -38,7 +38,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "speed",
-        label: "Speed",
+        label: "node.motion.wave.param.speed",
         min: 0.0,
         max: CFL_MAX,
         step: 0.01,
@@ -46,7 +46,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "damping",
-        label: "Damping",
+        label: "node.motion.wave.param.damping",
         min: 0.0,
         max: 0.3,
         step: 0.005,
@@ -58,7 +58,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // artista que ligue o fio e não veja nada tem o knob mesmo ali para o dizer.
     ParamUiHint {
         param: "inject_gain",
-        label: "Source Strength",
+        label: "node.motion.wave.param.inject_gain",
         min: 0.0,
         max: 2.0,
         step: 0.01,
@@ -66,7 +66,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "edges",
-        label: "Edges",
+        label: "node.motion.wave.param.edges",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -79,7 +79,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // aprendeu «Size» num nó não o re-aprende aqui.
     ParamUiHint {
         param: "height_channel",
-        label: "Height Drives",
+        label: "node.motion.wave.param.height_channel",
         min: 0.0,
         max: 2.0,
         step: 1.0,
@@ -89,7 +89,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "center_x",
-        label: "Center X",
+        label: "node.motion.wave.param.center_x",
         min: -20.0,
         max: 20.0,
         step: 0.1,
@@ -97,7 +97,7 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "center_y",
-        label: "Center Y",
+        label: "node.motion.wave.param.center_y",
         min: -20.0,
         max: 20.0,
         step: 0.1,

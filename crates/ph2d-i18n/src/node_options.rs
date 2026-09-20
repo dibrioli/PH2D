@@ -445,6 +445,8 @@ pub(crate) const ENTRADAS: &[(&str, &str)] = &[
     ("node.opts.node_motion_shape.kind_labels.40", "Iso Cube"),
     ("node.opts.node_motion_shape.kind_labels.41", "Iso Cone"),
     ("node.opts.node_motion_shape.kind_labels.42", "Iso Pyramid"),
+    ("node.opts.node_motion_shape.kind_labels.43", "Bone"),
+    ("node.opts.node_motion_shape.kind_labels.44", "Rope Segment"),
     ("node.opts.node_motion_shape.kind_labels.5", "Star"),
     ("node.opts.node_motion_shape.kind_labels.6", "Heart"),
     ("node.opts.node_motion_shape.kind_labels.7", "Gear"),

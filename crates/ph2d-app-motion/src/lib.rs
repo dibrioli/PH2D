@@ -56,6 +56,9 @@ mod motion_camera_source_tests;
 /// A auditoria do grupo do ciclo 4 (os CAMPOS) — `#[cfg(test)]`, não entra no bin.
 #[cfg(test)]
 pub mod motion_campos_probe;
+/// A auditoria do CARIMBO no dispositivo (ciclo 10, passo 2 — doc 116) — `#[cfg(test)]`.
+#[cfg(test)]
+pub mod motion_carimbo_probe;
 /// A outra metade dele — **o PREÇO** (relógio, contagem, dispositivo). Irmão pelo tecto de
 /// LOC, cortado por responsabilidade: o que um nó DECLARA fica ali, o que ele CUSTA aqui.
 #[cfg(test)]

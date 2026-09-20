@@ -112,11 +112,25 @@ inventada. Contagens do registry em 2026-09-05.
 | **6** ✅ ([doc 110](110_ciclo_6_valor_e_pulso.md)) | VALOR & PULSO — o cérebro | a família `value.*` e `pulse.*` (**35**) | «Um número que manda em tudo» |
 | **7** ✅ ([doc 112](112_ciclo_7_aparencia.md)) | APARÊNCIA (Fx) | `tint` · `color_ramp` · `color_array` · `trail` · `strobe` · `glow` · `drop_shadow` · `rgb_split` · `sub_uv` · `slit_scan` | «A cor e o rasto» |
 | **8** ✅ ([doc 113](113_ciclo_8_fontes_e_dados.md)) | FONTES & DADOS | `source.shape` · `source.object` · `source.text` · `source.table` · `source.lsystem` · `motion.emitter` · **`source.camera`** (nasceu no ciclo) | «De onde vêm as coisas» — cena `=119`, [tutorial 8](tutoriais/08_de_onde_vem_as_coisas.pdf) |
-| 9 ⏳ ([doc 114](114_ciclo_9_rig_e_corpos_moles.md)) | RIG & CORPOS MOLES | `rig.*` (**6**) · `soft_body` · `verlet_rope` · `wave` · `boids` — **10**, contados | «Coisas que se seguram» |
-| **10** | ⚡ **O CARIMBO NO DISPOSITIVO** — `source.shape` + `motion.duplicator` | (optimização, não um grupo novo) | «Um milhão de cópias» |
+| **9** ✅ ([doc 114](114_ciclo_9_rig_e_corpos_moles.md)) | RIG & CORPOS MOLES | `rig.*` (**6**) · `soft_body` · `verlet_rope` · `wave` · `boids` — **10**, contados | «Coisas que se seguram» — cena `=120`, [tutorial 09](tutoriais/09_coisas_que_se_seguram.pdf) |
+| 10 ⏳ ([doc 116](116_ciclo_10_o_carimbo_no_dispositivo.md)) | ⚡ **O CARIMBO NO DISPOSITIVO** — `source.shape` + `motion.duplicator` | (optimização, não um grupo novo) | ⛔ **não tem tutorial** (doc 116 §1) |
 | **11** | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o módulo inteiro, cena a cena | (varredura) | — |
 | **12** | ⚡ **OS TETOS CONFORTÁVEIS** — quantos objectos o sistema aguenta, com número | (decisão do Enio, com a tabela) | — |
 
+> ⚠️ **Estado em 2026-09-20.** O ciclo **9** FECHOU — o dono correu a cena `=120`, seguiu o
+> [tutorial 09](tutoriais/09_coisas_que_se_seguram.pdf) e aprovou (*«smoke OK»*); os **oito** pedidos
+> que ele devolveu pelo caminho estão no [doc 114 §15](114_ciclo_9_rig_e_corpos_moles.md), com a
+> leitura de conjunto: **nenhum dos oito foi apanhado por um gate, e cinco não podiam ser** (três
+> medem o que a cadeia PRODUZ e a queixa era sobre onde ela é DESENHADA; um é de unidade e outro de
+> escala, os dois dentro de números que os gates lêem e aprovam; e o oitavo é um ciclo de DOIS
+> quadros, que uma régua de um quadro não vê). ⇒ o ciclo aberto passa a ser o **10**
+> ([doc 116](116_ciclo_10_o_carimbo_no_dispositivo.md)), com os passos 1 e 2 fechados no mesmo dia.
+> ⭐⭐⭐ **E a auditoria dele CORRIGE a frase desta fila:** o §5.1 abaixo nomeia **um** nó (*«uma
+> contagem derivada no planeador»*) e a cadeia do report tem **TRÊS** cercas em três camadas — o
+> carimbo, a **fonte** (a `source.shape` sozinha já é fronteira de CPU, medido) e a recusa da ponte.
+> ⇒ curar só a contagem **não** põe a cadeia do report na placa; quem ela cura sozinha é o
+> `motion.clone`, que é o caso puro.
+>
 > ⚠️ **Estado em 2026-09-17 (reabertura da linha).** A linha foi integrada e reaberta sobre o `main`
 > novo; o ciclo **9 (RIG & CORPOS MOLES) ABRIU** ([doc 114](114_ciclo_9_rig_e_corpos_moles.md)), com
 > os passos **1** e **2** fechados. O grupo são **DEZ** nós **contados** pelo censo da paleta — e eles
@@ -262,6 +276,14 @@ desbloqueia nenhuma das duas — o que ali falta é a forma chegar ao dispositiv
 vez; os ciclos 2+ só pagam o grupo deles. ⚠️ **A ordem dos 2..9 pode mudar** por decisão do Enio;
 a do 1 não, porque o resto assenta nela.
 
+> ✅ **FECHADO em 2026-09-17** — a crate `ph2d-panel-motion-params` foi APAGADA (`7 551` linhas em 35
+> ficheiros, `66` testes), com o `ParamRow` a mudar de casa antes: [doc 114 §13](114_ciclo_9_rig_e_corpos_moles.md).
+> ⛔ **E o achado que vale mais que a remoção está lá:** ela levou o **CONSUMIDOR** de três tectos
+> medidos (`MAX_PARAM_ROWS`, `MAX_ENUM_OPTIONS`, `INSPECTOR_MAX_H`), que ficaram com **zero** leitores
+> de produto e gates verdes a afirmá-los. *O texto abaixo é o pedido como ele foi escrito, e fica
+> aqui porque a estimativa dele errou na direcção que interessa: ele dizia «~85 linhas a mover» e
+> foram `592`.*
+>
 > ⛔⛔ **PEDIDO DO DONO, ABERTO E FORA DA FILA (2026-09-17): RETIRAR o painel lateral de params.**
 > Ele está **desligado e não apagado** desde o ciclo 1, e o dono disse no smoke *«não temos mais o
 > painel da direita. estamos retirando ele»*. ⚠️ **Não é «apagar 7 558 linhas»: são `85` que têm de

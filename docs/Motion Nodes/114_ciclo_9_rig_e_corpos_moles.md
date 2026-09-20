@@ -3,11 +3,12 @@
 > **Protocolo:** [doc 103](103_dinamica_dos_ciclos.md) — sete passos, nesta ordem, e **o tutorial É o
 > smoke**. Este doc é o do ciclo: cada passo escreve a secção dele aqui.
 >
-> **Estado (2026-09-17):** passos **1** (grupo), **2** (auditoria), **5** (a medição, §7) e **6**
-> (a cena `=120` + o tutorial, §10) FECHADOS. Do passo 3/4 fecharam as waves
-> **W0 · W1′ · W2 · W4 · W4-bis**; ⛔ a **W1 foi REFUTADA por medição** (§3.1) e a wave da força de
-> constraint **dissolveu** na coluna que já existia (§7-W2). ⏳ **Falta o passo 7 — o smoke do
-> DONO**, que não é da linha: ela fecha, entrega o handoff e espera (§0.7).
+> **Estado (2026-09-20): ✅ O CICLO FECHOU — os SETE passos.** O dono correu a cena `=120` com o
+> tutorial 09 e aprovou (*«smoke OK»*); o passo 7 e os **oito** pedidos que ele devolveu pelo
+> caminho — sete reports e uma ordem de varredura — estão na **§15**. Do passo 3/4 fecharam as waves **W0 · W1′ · W2 · W4 · W4-bis**;
+> ⛔ a **W1 foi REFUTADA por medição** (§3.1) e a wave da força de constraint **dissolveu** na
+> coluna que já existia (§7-W2). ⇒ o ciclo aberto passa a ser o **10**
+> ([doc 116](116_ciclo_10_o_carimbo_no_dispositivo.md)).
 
 ---
 
@@ -1156,3 +1157,60 @@ agora.
 
 ⚠️ **Nada disto está construído.** Quem abrir esta wave começa por medir o que a composição já
 exprime (§5.0), como a §12 fez — foi isso que mostrou que faltava um LEITOR e não um motor.
+
+---
+
+## §15 — ✅ W7: O SMOKE DO DONO (passo 7), e os OITO pedidos que ele devolveu
+
+> **Ordem do dono, 2026-09-20:** *«smoke OK. Volte ao plano de implementação»* ⇒ **o ciclo 9
+> FECHA**, com os sete passos, e o ciclo aberto passa a ser o **10**
+> ([doc 103 §5](103_dinamica_dos_ciclos.md) · [doc 116](116_ciclo_10_o_carimbo_no_dispositivo.md)).
+
+O passo 7 não foi uma corrida: foram **oito** pedidos — sete reports e uma ordem de varredura —, e
+o que esta secção guarda não é a lista (ela está nos commits, com o mecanismo). É a **leitura de
+conjunto**, porque ela é sobre o instrumento e não sobre o rig.
+
+| # | o que ele escreveu | o que era | commit |
+|---|---|---|---|
+| 1–4 | *«a linha do Shape cruza os nós»* · *«nós estão se interpenetrando»* · *«se há 2 níveis, os níveis se alinham no centro»* · *«a arrumação deve considerar o tamanho vertical do nó»* | **uma** ausência com quatro caras: a lei em camadas espaçava por **duas constantes** e ordenava sem olhar a PORTA em que cada fio aterra | `8df5cc76d` |
+| 5 | *«neste caso o preview deveria ser colocado para cima»* | o retrato saía sempre para baixo, e a recusa escrita no `extensao_de` temia um preço que **não se paga** (reserva-se UM lado) | `ecf3e917a` |
+| 6 | *«a rot não acontece e o centro da rot não é a base do segmento»* | o `rig.bones::derive_frame` devolvia **RADIANOS** numa casa cujo `rot` é em **GRAUS** | `404c29575` |
+| 7 | *«veja se erro similar acontece em outros locais do módulo»* (ordem) | a unidade está limpa nos treze sítios; o que a varredura achou foi **outra família com o mesmo sintoma** — o comprimento DESENHADO de uma peça é um número da FORMA e o verdadeiro é a coluna `len`, e nada os liga | `5d4fbb90a` |
+| 8 | *«pisca do lado direito quando escondemos o inspector e aumentamos muito a área do grafo de nós»* | a régua da ocupação das colunas fechava um **ciclo de dois quadros** consigo mesma | `abdef008c` |
+
+### §15.1 — ⛔⛔⛔ A leitura de conjunto: **nenhum dos oito foi apanhado por um gate, e cinco não podiam ser**
+
+Os catorze gates da cena `=120` estavam verdes em todos os oito. Não por serem fracos — por
+medirem **outra grandeza**:
+
+- **três são de DISPOSIÇÃO** (1–5): eles medem `P`, `rot` e `size`, e a arrumação não muda nenhum
+  dos três. *Um gate que lê o que uma cadeia PRODUZ é cego a onde ela é DESENHADA.*
+- **o 6 é de UNIDADE** e o **7 é de ESCALA**: os dois vivem dentro de números que os gates lêem e
+  aprovam — `rot` estava certo como número e errado como ângulo, `size` estava certo como forma e
+  errado como comprimento. *Uma régua sem unidade aprova o dobro e a metade.*
+- **o 8 é um CICLO ENTRE QUADROS**, e este é o mais duro: os gates que existiam alimentam a porta
+  com rects escolhidos à mão e medem **um** quadro. *Uma régua de um quadro só não pode ver um
+  ciclo de dois* ([memória](../../project-memory/feedback_a_ruler_that_reads_what_the_layout_produced_oscillates.md)).
+
+⭐⭐ **E o que os achou aos oito foi a MESMA coisa: o dono a correr o tutorial do princípio ao
+fim.** É a lei do doc 103 §1 — *o tutorial É o smoke* — a pagar-se: cinco destes oito só existem
+porque um passo do PDF manda fazer uma coisa que nenhum teste faz (arrastar uma divisória, esconder
+um painel, arrumar um grafo, ler uma corda de perto).
+
+### §15.2 — ⏳ O que fica ABERTO do ciclo 9
+
+Nada disto bloqueia o ciclo 10; está aqui para não se perder.
+
+- ⭐ **A peça VESTIR o osso** — hoje o comprimento desenhado de uma peça de rig sai da FORMA e o
+  verdadeiro é a coluna `len`, e nada os liga (`5d4fbb90a` mediu a quebra: `0,47×` a `2,25×`
+  conforme o knob). Derivar o `size` por elemento a partir do `len` faria a corda ler-se como uma
+  corda em qualquer `Count` — **ao preço de o `size` deixar de ser o que o artista escreveu na
+  forma**. É **decisão do dono**, com a tabela em `5d4fbb90a`.
+- ⏳ **O `Shape: Rope Segment` não tem um único consumidor** (§10 e o commit `71b14b423`): ele é uma
+  forma ORIENTADA e a `motion.verlet_rope` não publica `rot`. Quem o quiser precisa de um nó que
+  escreva o ângulo da direcção **ao vizinho seguinte** — o `rig.bones` exige `parent`/`len`/`rot` e
+  o `motion.look_at` aponta a um ALVO.
+- ⏳ **A auto-colisão NATIVA na corda** (§11.3) e os dois tectos por medir do `motion.wave` e do
+  `motion.boids` ([doc 91](91_os_tetos_que_ninguem_mediu.md)).
+- ⏳ **A ALÇA no canvas** (P0 da folha 16) fica fora da lista por ser **UI e não param** — um gesto
+  de canvas novo neste módulo compete com a selecção, e a decisão é de produto (§5).

@@ -1508,3 +1508,111 @@ fn watercolor_canvas_wet_view_exposes_moisture() {
     t.dry_session_now();
     assert!(t.canvas_wet_view().is_none(), "secou → None");
 }
+
+/// **#18-bis (report do dono 2026-09-20, com foto):** *"trocar a cor do pincel também criou
+/// pixelamento da borda"*. A COR era o ÚLTIMO param por-dono lido DISCRETO (Bug #8 lição #4): o
+/// `st.color` sai do mapa de posse por NEAREST, logo dois traços de cores diferentes na mesma
+/// sessão molhada imprimiam um degrau de UM pixel na junção — e com Ragged Edge ele serrilha.
+///
+/// ⚠️ **A fixtura só CONTÉM o fenómeno com o mixer armado** (`wet_charge < 1`, os knobs que o dono
+/// apontou na foto): sobre papel virgem o `prio = pickup × load` é ZERO, o buffer de cor depositada
+/// não é escrito, e a cor passa a vir INTEIRA do dono. Com o mixer desligado o depósito escreve uma
+/// rampa que MASCARA o degrau — é por isso que o gate afirma o alfa do depósito ser `0` antes de
+/// medir seja o que for: *uma fixtura que deixa de conter o fenómeno não afirma nada*.
+///
+/// ⚠️ **A régua é NORMALIZADA pelo contraste e a barra sai da MESMA imagem.** Um `max |Δ|` cru lê a
+/// borda sobre papel (um degrau legítimo contra o branco) como sempre pior que a junção; o que
+/// separa um degrau duro de uma rampa é a *fracção do salto total que cabe num pixel*. E a barra é
+/// a borda que a AA de silhueta já entrega no mesmo traço — não um número escolhido.
+#[test]
+fn watercolor_color_change_junction_is_soft() {
+    // (fracção na junção, fracção na borda sobre papel, swing total da junção, alfa do depósito)
+    let medir = |troca: bool| -> (f32, f32, f32, u8) {
+        let size = 192u32;
+        let mut t = white_canvas(size, 12.0);
+        let azul = [0.10, 0.35, 0.90];
+        let mut b = BrushSpec {
+            radius_px: 12.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: azul,
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.203,
+            depth: 1.2,
+            opacity: 0.4,
+            edge_gain: 0.463,
+            edge_spread: 12.0,
+            warp: 6.0, // Ragged Edge: é ele que faz o degrau LER como serrilha
+            granulation: 0.0,
+            smooth_edges: true,
+            wet_charge: 0.326, // mixer ARMADO — sem isto a fixtura não contém o fenómeno
+            wet_rewet: 0.272,
+            wet_smudge: 0.468,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        t.paint.brush_by_mode.fill(b);
+        let stroke_v = |t: &mut PainterTool, x: f32| {
+            assert!(t.on_canvas_pointer(cp([x, 40.0], PointerPhase::Down)));
+            let mut y = 40.0f32;
+            while y < 150.0 {
+                y += 2.0;
+                t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp([x, 150.0], PointerPhase::Up));
+        };
+        stroke_v(&mut t, 80.0);
+        b.color = if troca { [0.35, 0.85, 0.20] } else { azul };
+        t.paint.brush = b;
+        t.paint.brush_by_mode.fill(b);
+        stroke_v(&mut t, 100.0);
+
+        let yy = 96u32;
+        let ch = |x: u32, c: usize| f32::from(px(&t, size, x, yy)[c]);
+        let swing = |lo: u32, hi: u32| {
+            (0..3)
+                .map(|c| (ch(hi, c) - ch(lo, c)).abs())
+                .fold(0.0f32, f32::max)
+        };
+        let salto = |lo: u32, hi: u32| {
+            (lo..hi).fold(0.0f32, |m, x| {
+                m.max(
+                    (0..3)
+                        .map(|c| (ch(x + 1, c) - ch(x, c)).abs())
+                        .fold(0.0f32, f32::max),
+                )
+            })
+        };
+        let frac = |lo: u32, hi: u32| salto(lo, hi) / swing(lo, hi).max(1.0);
+        (
+            frac(84, 96),
+            frac(104, 114),
+            swing(84, 96),
+            t.paint.stroke_color[(yy as usize * size as usize + 96) * 4 + 3],
+        )
+    };
+
+    let (j_troca, borda, swing_troca, alfa) = medir(true);
+    let (_, _, swing_igual, _) = medir(false);
+    // 1. A fixtura CONTÉM o fenómeno: o depósito não escreveu, logo a cor vem do mapa de posse.
+    assert_eq!(
+        alfa, 0,
+        "com o mixer armado sobre papel virgem o depósito tem de escrever alfa ZERO — se ele passar \
+         a escrever, esta fixtura deixou de conter o fenómeno e o gate não afirma nada"
+    );
+    // 2. E há de facto uma troca de cor para medir (senão a fracção é a razão de dois ruídos).
+    assert!(
+        swing_troca >= 40.0 && swing_igual <= swing_troca / 3.0,
+        "a junção COLORIDA tem de balançar muito mais que a de cor igual \
+         (trocada {swing_troca}, igual {swing_igual})"
+    );
+    // 3. A CURA, com a barra da própria imagem: a junção não pode ser mais DURA que a borda de
+    //    silhueta que a AA já entrega ali ao lado. Antes do campo de cor: 0,99 contra 0,58.
+    assert!(
+        j_troca <= borda,
+        "a junção entre duas cores é um DEGRAU de um pixel ({j_troca:.2} do salto total num só \
+         pixel) contra a borda sobre papel no mesmo traço ({borda:.2}) — a cor do dono não está \
+         a ser suavizada na fronteira de posse"
+    );
+}

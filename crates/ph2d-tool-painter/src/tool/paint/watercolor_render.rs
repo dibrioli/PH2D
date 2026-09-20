@@ -21,6 +21,7 @@
 //! integer-hash value noise in [`super::watercolor_field`]; no transcendental runs in the hot loop.
 
 mod diag; // o envelope de diagnóstico do composite (LOC split)
+mod pigment; // a COR do pigmento por pixel (LOC split, por assunto)
 mod window;
 
 use super::watercolor_field::*;
@@ -484,49 +485,18 @@ impl PainterTool {
                     density += rw_px.pool;
                     let od = density * st_depth;
 
-                    // Pigment colour: depositado vs brush por lerp PROPORCIONAL (`ca8/255`, a
-                    // fração de pigmento do depósito). A janela fixa `COL_LO..COL_HI` (take 6)
-                    // cruzava em ~1px na borda do footprint = a LINHA DURA da junção (take 10,
-                    // sonda [maps]); depositado == raw (mixer-off) ⇒ byte-idêntico.
-                    let mut pig = st.color;
-                    if has_color {
-                        let ca8 = color_buf[ci + 3];
-                        if ca8 == u8::MAX {
-                            pig = [color_buf[ci], color_buf[ci + 1], color_buf[ci + 2]];
-                        } else if ca8 > 0 {
-                            let w = f32::from(ca8) / 255.0;
-                            for c in 0..3 {
-                                pig[c] = (f32::from(st.color[c])
-                                    + (f32::from(color_buf[ci + c]) - f32::from(st.color[c])) * w
-                                    + 0.5) as u8;
-                            }
-                        }
-                    }
-                    // Wet-on-wet DISSOLVE: the lifted paint's colour (diffused through the wet region)
-                    // tints the wash's pigment — the old colour bleeds into and beyond its own footprint.
-                    // SUBTRACTIVE mix (absorbance-space geometric mean, via the ln/exp LUTs): paints mix
-                    // like pigments, not light — the linear sRGB lerp desaturated the blend toward the
-                    // paper's cream ("pálida e amarelada sem Pigment", Enio 2026-07-06). Pigment ON still
-                    // adds its full RYB pass on top, unchanged.
-                    if dissolve > 0.0 {
-                        for c in 0..3 {
-                            let a = -lut.lnl[pig[c] as usize];
-                            let bi = (bleed[c] + 0.5).clamp(0.0, 255.0) as usize;
-                            let b = -lut.lnl[bi];
-                            let mag = a + (b - a) * dissolve;
-                            pig[c] = lut.l2s_byte(lut.exp_mag(mag));
-                        }
-                    }
-                    // Backrun CONCENTRATION (EDGE-2): the ring's pigment is the pushed paint
-                    // CONCENTRATED — Beer–Lambert saturates at the pigment colour, so density
-                    // alone can never render darker than the wash the pigment came from; the
-                    // "severely darkened edge" needs a darker floor (absorbance × ring).
-                    if backrun > 0.0 {
-                        for p in &mut pig {
-                            let a = -lut.lnl[*p as usize] * (1.0 + BACKRUN_CONC * backrun);
-                            *p = lut.l2s_byte(lut.exp_mag(a));
-                        }
-                    }
+                    // A COR do pigmento (dono suavizado → depósito → água) vive no irmão
+                    // [`pigment`]: aqui o laço responde QUANTA densidade há, ali DE QUE COR ela é.
+                    let pig = pigment::pigmento_do_pixel(
+                        style_field
+                            .as_ref()
+                            .map_or(st.color, |sf| sf.sample_color(sx, sy, st.color)),
+                        has_color.then_some((color_buf.as_slice(), ci)),
+                        dissolve,
+                        bleed,
+                        backrun,
+                        lut,
+                    );
 
                     // Effective base in linear light: the layer's own pixels composited over the REAL
                     // ground (the backdrop under the active layer — so a transparent layer attenuates

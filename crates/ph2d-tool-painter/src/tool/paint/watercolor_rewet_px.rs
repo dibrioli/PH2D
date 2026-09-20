@@ -168,6 +168,9 @@ pub(super) struct StyleField {
     edge_gain: Vec<f32>,
     opacity: Vec<f32>,
     warp: Vec<f32>,
+    /// A COR do dono, o último param por-dono que era lido DISCRETO (report do dono 2026-09-20:
+    /// *"trocar a cor do pincel também criou pixelamento da borda"*). Ver [`COLOR_FIELD_BLUR_PX`].
+    color: [Vec<f32>; 3],
     mask: Vec<f32>,
     rw: usize,
     rh: usize,
@@ -175,6 +178,10 @@ pub(super) struct StyleField {
 
 /// Do any two OWNED strokes (the table) differ in a continuous param? If not, the discrete resolution is
 /// already seamless — skip the field (byte-identical). The current stroke IS the last table entry.
+///
+/// ⚠️ **A COR entra aqui, e sem isso a cura dela é INALCANÇÁVEL:** trocar SÓ a cor entre dois traços
+/// da mesma sessão deixava este predicado `false` ⇒ campo nenhum ⇒ o caminho discreto, que é
+/// exactamente o defeito. Um param novo que não seja acrescentado aqui nasce com a cura morta.
 pub(super) fn params_differ(table: &[WetStrokeStyle]) -> bool {
     let d = |a: &WetStrokeStyle, b: &WetStrokeStyle| {
         a.fill != b.fill
@@ -182,6 +189,7 @@ pub(super) fn params_differ(table: &[WetStrokeStyle]) -> bool {
             || a.edge_gain != b.edge_gain
             || a.opacity != b.opacity
             || a.warp != b.warp
+            || a.color != b.color
     };
     table
         .first()
@@ -201,6 +209,7 @@ pub(super) fn build_style_field(
     let mut edge_gain = vec![0.0f32; n];
     let mut opacity = vec![0.0f32; n];
     let mut warp = vec![0.0f32; n];
+    let mut color = [vec![0.0f32; n], vec![0.0f32; n], vec![0.0f32; n]];
     let mut mask = vec![0.0f32; n];
     for wy in 0..rh {
         let gy = ry0 + wy;
@@ -219,16 +228,25 @@ pub(super) fn build_style_field(
             edge_gain[i] = s.edge_gain;
             opacity[i] = s.opacity;
             warp[i] = s.warp;
+            for (plane, &c) in color.iter_mut().zip(s.color.iter()) {
+                plane[i] = f32::from(c);
+            }
             mask[i] = 1.0;
         }
     }
     let r = WET_FIELD_BLUR_PX;
+    let [c0, c1, c2] = color;
     StyleField {
         fill: box_blur(&fill, rw, rh, r),
         depth: box_blur(&depth, rw, rh, r),
         edge_gain: box_blur(&edge_gain, rw, rh, r),
         opacity: box_blur(&opacity, rw, rh, r),
         warp: box_blur(&warp, rw, rh, r),
+        color: [
+            box_blur(&c0, rw, rh, r),
+            box_blur(&c1, rw, rh, r),
+            box_blur(&c2, rw, rh, r),
+        ],
         mask: box_blur(&mask, rw, rh, r),
         rw,
         rh,
@@ -256,6 +274,37 @@ impl StyleField {
         } else {
             fb
         }
+    }
+
+    /// A COR do dono SUAVIZADA na junção, no MESMO ponto amostrado que o `st` discreto. `fb` (a cor
+    /// discreta) cobre a falta de massa — e é ela que mantém o caminho de UM dono byte-idêntico.
+    ///
+    /// ⚠️ **A média é em bytes sRGB, e isso é o lado APROVADO e não uma escolha de espaço:** é
+    /// exactamente a aritmética com que `accumulate_wet_color` já mistura as duas cores na junção
+    /// quando o mixer está desligado (`(sc·a + dc·da·(1−a))/na`, alfa recta em bytes). Misturar em
+    /// absorbância seria uma lei NOVA na junção, e as duas metades da mesma fronteira passariam a
+    /// discordar conforme o Charge.
+    ///
+    /// ⛔ **E o raio é o MESMO dos outros cinco params — uma tentativa de lhe dar um próprio foi
+    /// construída, MEDIDA e RETIRADA.** A justificação que eu lhe tinha escrito (*«a `8` a junção de
+    /// dois traços de 24 px fica com 16 px de degradê e as duas cores deixam de ser duas»*) é FALSA:
+    /// varrido `2 · 4 · 8` sobre a fixtura do report, os miolos dos dois traços saem **byte-idênticos**
+    /// nos três e a junção mede `0,21 · 0,21 · 0,26` contra a barra de `0,58`. *Um raio próprio pedia
+    /// uma segunda MASSA* (normalizar uma cor borrada a `r` pela máscara de `8` clareia a orla, onde
+    /// as duas discordam) — dois campos e uma constante a mais para comprar `0,05`, e a `#18` já
+    /// escolhera este raio contra o vão do guarda de não-contacto, que a cor herda de graça.
+    #[inline]
+    pub(super) fn sample_color(&self, sx: f32, sy: f32, fb: [u8; 3]) -> [u8; 3] {
+        let m = sample_bilinear(&self.mask, self.rw, self.rh, sx, sy);
+        if m <= 1e-4 {
+            return fb;
+        }
+        let mut out = fb;
+        for (o, plane) in out.iter_mut().zip(self.color.iter()) {
+            let v = sample_bilinear(plane, self.rw, self.rh, sx, sy) / m;
+            *o = (v + 0.5).clamp(0.0, 255.0) as u8;
+        }
+        out
     }
 
     /// Smoothed Warp AMPLITUDE at the PRE-warp window-local `(lx, ly)` (the displacement needs the amp

@@ -4736,3 +4736,240 @@ a âncora a virar assunto próprio em `puxao_ancora_tests.rs`), nunca por isenç
 Zero contador partilhado, zero contrato, zero ADR; o roteiro da `=14` passo (13)
 ganhou a alínea (c) e a nova forma de saber que deu errado (*o espigão PARAR de
 crescer enquanto se arrasta*).
+
+## §99 — ⭐⭐⭐⭐ O CANAL DE COR CHEGA AO BARRO, e o `Paint` é um porte T0
+
+> **Ordem do dono (19/09):** *«smoke OK. Vamos implementar o pincel de pintura,
+> de Blur e Smear para pintura»* + *«permita que o dynamic topology funciona
+> para os 3 pinceis»*.
+
+### §99.1 — A triagem parou no PRIMEIRO degrau, e isso decidiu a wave
+
+A licença foi lida no **artefacto instalado** (`~/Documentos/Recursos/SculptGL/LICENSE`:
+MIT, © 2019 Stéphane Ginier) e a escada da SKILL responde **T0 — porte fiel, sem
+parede, sem espec, só manter a atribuição**. O `Paint.js` existe lá; um `Blur` e
+um `Smear` de cor **não** (a pasta de ferramentas dele tem catorze ficheiros e
+nenhum é destes) ⇒ *a triagem partiu a ordem do dono em duas obras com
+proveniências diferentes*, e é isso que o §100 regista.
+
+### §99.2 — E a lei dele já vivia nesta casa
+
+O `fallOff` da referência é `(1 − d/r)^(2(1−dureza)) × intensidade × máscara ×
+alpha`, que é **exactamente** o `w` que o `dab_core` calcula para todo verbo de
+carimbo. O que o porte acrescenta é **para onde esse peso vai**: em vez de mover
+o vértice, ele mistura a cor do pincel na cor dele. ⇒ o verbo **não traz modelo
+novo**, e a narrativa inteira vive hoje no [`stroke_apply`](../../../crates/ph2d-sculpt3d/src/stroke_apply.rs),
+que é onde a lei corre.
+
+### §99.3 — O substrato, que era o grosso
+
+* a `Mesh` já tinha `colors`/`DEFAULT_COLOR` e o import/export já os levava — o
+  canal estava **OCO**: sem escritor, sem leitor, e o renderer não o desenhava;
+* o traço passa a **congelar a COR** no pen-down, a interpolar a do recém-nascido
+  no refino e a renumerá-la no colapso — os QUATRO sítios que o canal da máscara
+  já declarava;
+* o device ganha o **9.º buffer por vértice** + atributo + varying, e o fragment
+  MULTIPLICA o barro pela cor. Com `DEFAULT_COLOR` branco isto é `CLAY` **ao
+  bit**: quem não pintou desenha como sempre desenhou.
+
+⛔⛔ **E o 9.º passa do piso do WebGPU:** `max_vertex_buffers` de omissão é `8` e
+o pipeline já estava nos `8`. Medido nesta máquina (`vulkaninfo`), a RTX 5060 Ti
+**e** a iGPU RADV advertem `maxVertexInputBindings = 32` ⇒ o limite sobe ao
+máximo do adaptador, que é o **quarto** membro de uma família que o `ph2d-gpu` já
+tem. O caminho para um adaptador que pare em `8` fica **nomeado** no comentário.
+
+⛔⛔ **E esta crate não tinha gate de shader nenhum:** o `cargo check` não olha
+para WGSL e todos os gates que olham precisam de adapter (`#[ignore]`, logo o CI
+nunca os corre) — um erro de shader só aparecia no primeiro quadro de quem
+abrisse a cena 3D. ⇒ `naga` como dev-dependency + **dois** gates: o parse/validação
+e a **COSTURA** (toda `@location` que o `vs_main` pede tem buffer no pipeline),
+que o parse sozinho não vê porque valida o shader **isolado**.
+⚠️ A 1.ª redacção da costura lia só `f32_attr(` e acusou o pipeline de não dar a
+posição nem a normal, que usam o irmão `vec3_attr(` — *uma extracção que conhece
+metade das formas acusa produto correcto*.
+
+### §99.4 — A QUARTA lei de acumulação, e ela é a composição EXACTA
+
+O `Paint.js` escreve a cor **VIVA** a cada dab (`c ← c(1−w) + cor·w`); com
+`c_k = lerp(base, cor, a_k)` aquilo é `a_{k+1} = a_k + w(1 − a_k)`. ⇒ acumular
+assim (`GripLaw::tint`) e interpolar do `base` **congelado** dá a mesma cor **e**
+mantém a lei do envelope (*o resultado é facto do CAMINHO*).
+⛔ Somar e saturar — o `additive` da máscara — **não** serve: com o `w` de fábrica
+(`0,75`) a soma chega a `1` em **dois** dabs e o *over* leva **quatro** para
+passar de `0,99`.
+
+### §99.5 — Três coisas que um censo apanhou, e uma que eu inventei
+
+* ⛔ **Um controlo que eu INVENTEI:** pus `accumulate` no perfil do `Paint` e o
+  `o_accumulate_nao_e_oferecido_a_quem_nao_o_sente` acusou — o `Paint.js` não tem
+  interruptor nenhum de acumular. *A composição dos dabs deste pincel é a LEI
+  dele.* O verbo passou ao `Grip::Paint` e o interruptor desapareceu da tela
+  sozinho.
+* ⛔⛔ **TRÊS censos acusaram produto correcto** com a frase *«o dab não fez nada
+  em canal nenhum»* — cada um com a sua cópia de `if paints_mask() { máscara }
+  else { posições }`. O doc do `paints_mask` **previa isto por escrito** desde a
+  wave da máscara ⇒ porta [`canal_de_teste`](../../../crates/ph2d-sculpt3d/src/canal_de_teste.rs)
+  + `Verb::escreve_um_canal`, que é a pergunta que o motor de facto faz.
+* ⭐ E o censo dos knobs, assim que acordou o verbo, achou um knob **morto real**:
+  a curva do pincel, que o `Paint` não lê (ele tem a dele).
+
+### §99.6 — A ordem sobre a topologia dinâmica CONTRADIZ o argumento da máscara
+
+Aquele argumento está escrito na mesma tabela: *«um gesto que não escreve posição
+não tem porque mudar a topologia»*. Os verbos de pintura **também** não escrevem
+posição e mesmo assim têm de adensar, porque **a cor por vértice é uma IMAGEM e a
+resolução dela É a da malha**. ⇒ o discriminador nunca foi *«escreve posição?»*:
+é ***«este canal carrega um DESENHO?»***, e a máscara (uma SELECÇÃO) fica do
+outro lado — como **CONTROLO dentro do gate**.
+⚠️ O valor coincide com o de fábrica, logo um braço no `match` seria uma linha que
+a mutação não mata: *a decisão vai onde pode ser AFIRMADA*.
+
+### §99.7 — E a catraca da dobra do painel subiu `+23 px`, por ordem do dono
+
+Três pincéis novos pedem três chips, a grelha de verbos é adaptativa à **largura**
+dos rótulos, o 36.º rebentou a linha, e uma fileira a mais na secção *Tool*
+empurra **todos** os pincéis. ⚠️ O preço é real: o encaixe mede `880` e o pior
+destes já estava em `1 107`. *Registar uma subida não é curá-la; é impedir que a
+seguinte passe calada.*
+
+## §100 — ⭐⭐⭐⭐ O BLUR E O SMEAR DE COR, o undo do canal, a pista de cor e a `=51`
+
+### §100.1 — A proveniência é dita ANTES da lei
+
+Estes dois **não são porte de nada** (§99.1). São **composição** de leis que esta
+casa já possui, noutro canal:
+
+* o **Blur** é a média do anel — a relaxação laplaciana que o `Smooth` faz com
+  POSIÇÕES desde que este módulo existe;
+* o **Smear** é a lei de transporte do `SmearMultires` (medida contra o oráculo
+  DELE, §23) com a geometria em que a cor vive: `g = max(0, −(d̂·ê))`, **só o
+  montante contribui** — e é esse sinal que separa *transportar* de *borrar*.
+
+⚠️ **DIVERGÊNCIA DECLARADA:** não há lado aprovado a comparar. Se um dia o dono
+quiser paridade, isso é obra de ORÁCULO (correr o programa sem interface sobre
+uma malha NOSSA e gravar as cores), não afinação destas constantes — *porque não
+há constante nenhuma para afinar*.
+
+### §100.2 — O buffer é DUPLO, e o ponto neutro é no-op AO BIT
+
+As duas leis leem a cor dos VIZINHOS e escrevem a do vértice: escrever no plano
+em que se lê faz metade da pegada ler o valor novo ⇒ **Gauss-Seidel** cuja saída
+depende da ORDEM da pegada (o defeito que o §24 desta linha já pagou). Todos os
+alvos são calculados **antes** de qualquer escrita.
+
+⛔⛔ **E a divisão não é estilo:** numa peça de cor uniforme `soma` e `n` são a
+MESMA sequência de somas, logo `soma/n` é exactamente `1`, enquanto
+`soma × (1/n)` **erra um ulp**. *Um pincel que muda a peça onde não há nada a
+mudar é um passo de undo, um upload de GPU e um ficheiro diferente por nada.*
+⚠️ Quem o apanhou foi o **CONTROLO vermelho**, e ele só o viu depois de passar a
+correr um **TRAÇO**: com um dab só o esfregão é inerte **por outro motivo** (o
+caminho de um traço de um dab é nulo) — *um controlo que não percorre o mesmo
+caminho da metade positiva afirma sobre código que não corre*. A metade do Blur
+**não é observável nesta fixtura** e fica escrita ao lado da lei.
+
+### §100.3 — A régua do transporte foi CONFUNDIDA com o enquadramento
+
+A 1.ª redacção comparava dois TRAÇOS (um para cada lado) e a mutação `|cos|`
+**SOBREVIVEU**: um traço tem dois dabs, e os dois dabs de uma ida caem noutro
+sítio que os da volta ⇒ a régua media a POSIÇÃO dos carimbos. A que decide é o
+**ALVO** (`transporte_da_cor` chamado nos dois sentidos sobre o mesmo vértice),
+com a magnitude medida **entre os dois sentidos** e não contra a cor do próprio
+vértice — *quão longe o alvo vai depende de que lado da fronteira o vértice caiu;
+quanto os dois sentidos discordam é a lei*. A metade de produto (a tinta
+atravessa a fronteira) fica ao lado, e **não discrimina**.
+
+⛔⛔ **E uma segunda mutação sobrevivente nomeou metade da lei:** tirar a cerca
+`g <= 0` deixa os vizinhos a JUSANTE entrar com peso **negativo** — uma
+EXTRAPOLAÇÃO, com a cor a sair da faixa da vizinhança e o denominador a poder
+encolher para zero. A assimetria sozinha não o vê ⇒ o gate passou a exigir que o
+alvo seja uma **MISTURA** (dentro do intervalo da vizinhança).
+
+### §100.4 — O `Ctrl+Z` desfaz a tinta: um TERCEIRO canal, nunca um segundo caso
+
+A entrada de traço ganha `colors: Option<Vec<[f32;3]>>` ao lado de `masks`, e os
+canais desfazem-se **cada um por si** — a pergunta *«qual dos três foi?»* não
+existe. A pergunta do registo é um **FATO sobre a JANELA**
+(`color_window_changed`) e não uma inferência sobre o VERBO, pela lição que a
+máscara já pagou: com o `Paint` na mão um gesto de FILTRO escreve POSIÇÕES.
+⭐ A janela já existia — o `begin` fotografa a cor por vértice tocado desde o
+§99 —, faltava **alguém pedi-la** (`SculptStroke::base_colors`).
+⚠️ O gizmo de transformação escreve `None` nos dois canais **por LEI**, e o
+compilador obriga-o a dizê-lo.
+
+### §100.5 — A pista de cor, e a dívida declarada
+
+Três pistas `Color R/G/B`, nível **Basic**, oferecidas só ao verbo que
+**DEPOSITA** a cor do pincel (`Verb::deposita_a_cor_do_pincel`, derivada das duas
+portas que já existiam) — os dois que leem o anel puxam a cor da vizinhança e não
+olham para o campo, logo oferecer-lhas seriam três knobs mortos.
+⛔ **Três pistas e não um selector rico, e a dívida é DECLARADA:** os editores de
+cor desta casa (`ph2d-param-editors`) pedem uma janela flutuante sobre o painel,
+substrato que este painel não tem. *Sem elas o pincel depositava para sempre a
+cor de fábrica da referência — um pincel de pintura com uma cor só.*
+
+### §100.6 — A cena `=51`, e porque ela abre com o passe DESLIGADO
+
+A cor mora nos VÉRTICES ⇒ **a resolução da tinta é a da malha**, e o degrau entre
+a marca serrilhada e a marca limpa (depois do `P`) **é** a lição da ordem do
+dono. Uma cena que já abrisse adensada mostraria o resultado **sem a
+comparação**. Ela abre com o pincel já na mão (o `Paint` é o 36.º chip de 38) e
+com `13 682` vértices — muito abaixo do default do módulo, porque a §24 registou
+uma cena que **fabricava** a peça pesada e fazia o dono reportar a ferramenta
+como lenta.
+
+### §100.7 — O que o censo dos knobs e o teclado obrigaram
+
+* ⛔⛔ **O censo acusou os dois de mortos com toda a razão sobre a FIXTURA:** a
+  peça dele é branca, e a média de branco é branco. A semente de cor atravessa
+  agora a fronteira da crate pela feature `test-support`, **do tamanho do que
+  atravessa** (uma função) — *um `#[cfg(test)]` é invisível do outro lado*.
+* ⭐ A **curva inerte** passou a ser DERIVADA (`escreve_um_canal`) em vez de uma
+  lista de dois: os dois verbos novos leem a mesma curva de canal e chegaram no
+  mesmo dia. *Uma enumeração de uma família é uma lista que a próxima família
+  nasce sem.*
+* ⛔ **Nenhum dos dois tem perfil de referência**, e o caminho disso é o oposto do
+  óbvio: a lista negra do `RefMode::S` **não** diz *«o SculptGL não tem»* — ela
+  **ENCAMINHA para o `B`**, e só faz sentido para uma ferramenta que o `B`
+  TENHA. Encaminhá-los punha-os a NASCER no `B` sem perfil lá, com o peso a cair
+  no slider cru **enquanto o gate exigia o quadrado**, reprovando sobre produto
+  correcto. Ficam com o `Cloth`/`Pose`/`Boundary`/`Density`/`BoxTrim`: força
+  LINEAR, **nomeada** no censo — e são os **únicos da lista cujo `weight` o dab
+  de facto LÊ**, o que faz da razão deles uma afirmação e não uma isenção.
+* ⚠️ Os três entram no `CHIP_ONLY` do teclado com a razão escrita: a aritmética
+  das letras vale aqui também, mas a razão principal é outra — *os oito da fila
+  do `L` são gestos de FORMA que se alternam a esculpir, e estes escrevem COR*. A
+  fila continua em **DEZ**.
+
+### §100.8 — Os cortes, a prova e o que fica ABERTO
+
+**Cinco tectos de LOC curados por CORTE**, nenhum por isenção: a tabela do pincel
+para `rows_brush.rs`, os gates dos canais para `undo_canais_tests.rs`, a lista
+dos mortos para `censo_dos_knobs_mortos.rs`, e **duas narrativas** mudadas para o
+módulo onde a lei CORRE (o `Connected Only` → `dab_alcance`; a fotografia das
+normais → `stroke_normal_do_gesto`). *A narrativa mora onde alguém a procura.*
+
+**Prova:** `nextest-impacted` **16 525/16 525** · censos da árvore COMBINADA
+**90/90** · clippy `-D warnings` **zero** · mutação **11 a sangrar + 1 NOMEADA**.
+
+⚠️ **Candidata à lista de flakes do §5.0:**
+`the_segment_lookup_is_a_binary_search_not_a_scan` (`ph2d-timeline`) reprovou no
+meio do fan-out de 16 525 e passa **3 de 3 sozinha a `load 40,72`**, com **zero
+linhas** do diff naquela crate. É gate de RAZÃO.
+
+⚠️ **Vassouras:** **uma** linha nova acusada, e ela é o **NOME de uma função**
+desta wave (`undo_canais_tests.rs:109`); a irmã dela — idêntica palavra por
+palavra menos o nome do canal — está **LIMPA**, logo o que casa é o nome do
+canal. Todas as outras são **idênticas ao HEAD**. ⛔ **A triagem é do R**, e a
+janela I não leu nenhum achado.
+
+⏳ **ABERTO:**
+
+* o **selector rico de cor** (§100.5), que é substrato de painel;
+* o **caminho de GPU** dos dois que leem o anel: a lei corre na CPU como todo dab
+  deste módulo, e o custo por dab **não foi varrido** contra o orçamento de `8 ms`
+  numa peça grande;
+* o `Accumulate` **não é oferecido** a nenhum dos três, e nos dois do anel a razão
+  é a mesma do esfregão de deslocamento (§23): a lei que ele instalaria **nenhuma
+  referência declara**;
+* a cor **não viaja no `.ph2dproj`** — ela vive na `Mesh` e o canal novo ainda não
+  foi conferido contra o que o ficheiro de projecto guarda.

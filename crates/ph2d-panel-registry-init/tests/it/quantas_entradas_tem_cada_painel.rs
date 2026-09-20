@@ -424,3 +424,80 @@ fn a_cegueira_do_painel_do_centro_esta_nomeada() {
         tabela(&linhas),
     );
 }
+
+/// ⭐⭐⭐ **ONDE CAI CADA SECÇÃO DO PAINEL DA ESCULTURA** — a sonda que dimensiona a wave do `G`.
+///
+/// ⛔⛔ **Ela existe porque a `line/sculpt3d` já mediu esta tabela e eu não posso usar o número
+/// dela.** O `scenes_pente.rs` daquela crate tem os `y` de cada secção contra a [`DOBRA`], medidos
+/// **na app a correr**; este censo mede num arnês. *Misturar dois instrumentos numa conta é a
+/// forma exacta de fabricar uma medição* — e a diferença entre os dois é a resposta à pergunta
+/// *«quanto é que esta wave devolve?»*, que é o que decide se ela vale a pena.
+///
+/// ⚠️ Ela **não reprova**: é uma sonda. Quem a lê é quem for fazer a triagem.
+#[test]
+fn diag_onde_caem_as_seccoes_da_escultura() {
+    use ph2d_panel_sculpt3d::ids as sid;
+
+    // ⭐ As sete secções, pelo nome que o artista vê. ⛔ A ordem aqui é a da TABELA e não a do
+    //   ecrã — é exactamente isso que a sonda vai desmentir, e a `line/sculpt3d` já pagou essa
+    //   leitura uma vez (*«a ordem da tela lê-se do `y`, nunca da tabela `SECTIONS`»*).
+    let seccoes: [(&str, NodeId); 7] = [
+        ("Tool", sid::SCULPT3D_SEC_TOOL),
+        ("Brush", sid::SCULPT3D_SEC_BRUSH),
+        ("Symmetry", sid::SCULPT3D_SEC_SYMMETRY),
+        ("Topology", sid::SCULPT3D_SEC_TOPOLOGY),
+        ("Shading", sid::SCULPT3D_SEC_SHADING),
+        ("Scene", sid::SCULPT3D_SEC_SCENE),
+        ("Bake", sid::SCULPT3D_SEC_BAKE),
+    ];
+
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "sculpt3d")
+            .expect("o painel da escultura tem de estar no registo");
+        let arm = super::paineis_armados::TABELA
+            .iter()
+            .find(|a| a.painel == "sculpt3d")
+            .expect("a escultura tem armação");
+
+        let mut host = MockPanelHost::new();
+        (arm.arma)(host.store_mut());
+        painel.populate(host.store_mut());
+        let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        let pintados = host.registos_da_ultima_pintura();
+        (arm.desarma)();
+
+        let mut linhas: Vec<(f32, &str)> = seccoes
+            .iter()
+            .filter_map(|(nome, id)| {
+                pintados
+                    .iter()
+                    .find(|(pid, _)| pid == id)
+                    .map(|(_, r)| (r.y, *nome))
+            })
+            .collect();
+        linhas.sort_by(|a, b| a.0.total_cmp(&b.0));
+
+        let fundo = conta(host.store(), &pintados).altura;
+        println!("\n  === o painel da ESCULTURA, por secção (dobra = {DOBRA:.0} px) ===");
+        let mut anterior: Option<(f32, &str)> = None;
+        for (y, nome) in &linhas {
+            if let Some((ya, na)) = anterior {
+                println!("      {na:<12} ocupa {:>6.0} px", y - ya);
+            }
+            println!(
+                "  {:>6.0}  {nome:<12} {}",
+                y,
+                if *y > DOBRA { "⛔ fora do ecrã" } else { "visível" }
+            );
+            anterior = Some((*y, nome));
+        }
+        if let Some((ya, na)) = anterior {
+            println!("      {na:<12} ocupa {:>6.0} px", fundo - ya);
+        }
+        println!("  {fundo:>6.0}  (fim do conteúdo)\n");
+    });
+}

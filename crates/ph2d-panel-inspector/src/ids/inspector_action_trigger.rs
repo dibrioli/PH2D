@@ -32,6 +32,11 @@ pub const INSP_TRIGGER_SIGNAL: NodeId = hash_node_id("insp_trigger_signal");
 /// ⚠️ A máquina é a do chip da vigia: as opções são BOTÕES ([`INSP_TRIGGER_EDGE_OPT`]) e o chip
 /// guarda só o `open`; o rect do popover viaja por uma ranhura até ao passe diferido, para ele se
 /// pintar **por cima** de tudo.
+/// ⭐⭐⭐ **CRIAR a acção que falta**, ali mesmo. ⚠️ Ele só é PINTADO quando a fileira já diz que a
+/// acção não existe — *um botão que oferece criar uma acção que já existe é ruído*, e o gate
+/// afirma as duas metades.
+pub const INSP_TRIGGER_CREATE_ACTION: NodeId = hash_node_id("insp_trigger_create_action");
+
 pub const INSP_TRIGGER_EDGE_PICK: NodeId = hash_node_id("insp_trigger_edge_pick");
 
 /// As três opções da aresta — premir, largar, segurar.

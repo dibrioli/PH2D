@@ -221,6 +221,7 @@ mod fase_connector_and_shape_params;
 mod fase_contour_verbs;
 /// Fase do quadro: o converter em curvas.
 mod fase_convert_to_curves;
+mod fase_criar_accao_do_mapa;
 /// Fase do quadro: os restos do dreno.
 mod fase_drain_leftovers;
 /// Fase do quadro: a sincronizacao das entidades e as formas vivas.

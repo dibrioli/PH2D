@@ -372,6 +372,24 @@ pub enum EditorAction {
         entity_bits: u64,
     },
 
+    /// ⭐⭐⭐ **CRIAR uma acção do Input Map a partir do sítio onde ela FALTA** (suplente #24).
+    ///
+    /// ⛔⛔ **Ela NÃO é uma `ComponentEdit`, e a diferença é de dono:** o que nasce é uma linha do
+    /// [`crate::screens::hero::HeroScreen::input_map`], que é estado do EDITOR e não do mundo — não
+    /// entra no `Ctrl+Z` do documento nem no ficheiro de cena pela mesma porta.
+    ///
+    /// ⚠️ **A secção do gatilho já sabia DIZER que a acção não existe** (`NoMapa::Desconhecida`) e a
+    /// cura vivia noutra janela (*Settings ▸ Input Map…*). *Uma queixa que nomeia a cura e não a
+    /// alcança é meia queixa* — e o artista que a lê tem de descobrir sozinho onde fica a outra
+    /// janela.
+    ///
+    /// ⚠️ O nome vem **cru** do campo; quem o apara é quem o cria, e um nome vazio nunca chega aqui
+    /// (a fileira só oferece o botão quando há um nome que o mapa não conhece).
+    CreateInputAction {
+        /// O nome que a fileira do gatilho mostra.
+        name: String,
+    },
+
     /// ⭐ **Limpar as excepções SEM ALVO de uma instância** (ADR-0164 / F5.3).
     ///
     /// `root_bits` é a RAIZ da instância — o `ObjectInstance` mora lá, e uma peça não sabe

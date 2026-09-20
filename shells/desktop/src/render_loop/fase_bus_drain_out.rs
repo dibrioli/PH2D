@@ -518,6 +518,11 @@ pub(in crate::render_loop) struct DrainOut {
     pub(in crate::render_loop) action_edits: Vec<(u64, ph2d_editor_core::ActionFieldEdit)>,
     // ⭐ O `+` do Inspector (F3): quem pediu a paleta neste quadro.
     pub(in crate::render_loop) add_component_for: Option<u64>,
+    // ⭐⭐ **Acções do Input Map que a fileira do GATILHO mandou criar** (suplente #24).
+    //
+    // ⚠️ **Um `Vec` e não um `Option`:** o painel tem N fileiras e o artista pode carregar em duas
+    // no mesmo quadro — *um `Option` guardaria a última e comeria a primeira em silêncio*.
+    pub(in crate::render_loop) create_input_actions: Vec<String>,
     // ⭐ A troca de variante pedida neste quadro: `(raiz da instância, StableId do mestre)`.
     pub(in crate::render_loop) swap_variant: Option<(u64, u64)>,
     // O `StableId` da peça acrescentada que o cartão mandou aplicar.

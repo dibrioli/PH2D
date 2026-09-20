@@ -109,6 +109,7 @@ impl crate::App {
             joint_pivot_commit,
         );
         self.fase_component_palette(pd.add_component_for);
+        self.fase_criar_accao_do_mapa(take(&mut pd.create_input_actions));
         self.fase_sprite_precision_emissive(fase_sprite_precision_emissive::SpriteRowIntents {
             remove_from_sheet_row: take(&mut pd.remove_from_sheet_row),
             precision_request: take(&mut pd.precision_request),

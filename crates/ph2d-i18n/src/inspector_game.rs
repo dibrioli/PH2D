@@ -393,6 +393,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️⚠️ **A frase mais valiosa das quatro:** a lei CALA uma acção que o mapa não conhece
         // (senão um `Release` sobre ela dispararia em todo quadro), e sem esta linha o artista lê
         // esse silêncio como «o gatilho não funciona».
+        // ⭐ A CURA ao lado da queixa — o botao so' aparece no estado `Desconhecida`.
+        "panel.inspector.trigger.create_this_action" => "Create this action",
         "panel.inspector.trigger.there_is_no_action_called" => {
             "There is no action called \u{201c}{name}\u{201d} \u{2014} add it in Settings \u{203a} Input Map."
         }

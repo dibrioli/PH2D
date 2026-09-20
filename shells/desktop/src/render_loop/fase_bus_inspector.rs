@@ -246,6 +246,13 @@ impl crate::App {
             EditorAction::InspectorAddComponentRequested { entity_bits } => {
                 pd.add_component_for = Some(entity_bits);
             }
+            // ⭐⭐⭐ **A CURA ao lado da QUEIXA** (suplente #24): a fileira do gatilho diz que a acção
+            // não existe, e o botão dela cria-a — *uma queixa que nomeia a cura e não a alcança é
+            // meia queixa*. ⛔ Ela NÃO é uma `ComponentEdit`: o que nasce é uma linha do Input Map,
+            // que é estado do EDITOR.
+            EditorAction::CreateInputAction { name } => {
+                pd.create_input_actions.push(name);
+            }
             other => return Some(other),
         }
         None

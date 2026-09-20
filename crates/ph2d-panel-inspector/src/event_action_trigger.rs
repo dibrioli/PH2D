@@ -38,6 +38,20 @@ pub(crate) fn apply_action_trigger_event(
             demote(host, id);
             return true;
         }
+        // ⭐⭐⭐ **CRIAR a acção que falta** — e ela NÃO passa pelo `push` das edições de componente:
+        // o que nasce é uma linha do Input Map, que é estado do EDITOR. ⚠️ O nome vem da FILEIRA
+        // aberta e não do store: *ler o store faz o primeiro clique depois de trocar de objecto
+        // mandar o nome do objecto anterior* (a lei que o cabeçalho deste ficheiro já escreve).
+        if id == crate::ids::INSP_TRIGGER_CREATE_ACTION
+            && let Some(row) = info.rows.get(panel.trigger_selected)
+            && !row.action.trim().is_empty()
+        {
+            host.bus_mut().push(EditorAction::CreateInputAction {
+                name: row.action.trim().to_owned(),
+            });
+            demote(host, id);
+            return true;
+        }
         if id == crate::ids::INSP_TRIGGER_ADD {
             push(host, bits, E::Add);
             // ⚠️ **Abre o que acabou de nascer** — senão o `+` parece não ter feito nada.

@@ -9,6 +9,7 @@
 #[path = "../sculpt_source/mod.rs"]
 mod sculpt_source;
 
+mod a_accao_pedida_pela_fileira_nasce_no_mapa;
 mod a_baked_object_outlives_the_3d_module;
 mod a_coluna_pintada_encolhe_com_a_janela;
 mod a_fabrica_nasce_antes_de_a_morte_drenar;

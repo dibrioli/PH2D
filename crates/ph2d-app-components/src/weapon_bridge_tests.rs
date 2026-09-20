@@ -207,11 +207,11 @@ fn a_recarga_tira_do_deposito_e_a_ponte_escreve_nele() {
     // arranca a recarga automática. *Um arnês que pára no pente vazio mede uma arma que nunca
     // recarrega*, e foi assim que os três gates desta secção nasceram vermelhos.
     for _ in 0..4 {
-        frame(&mut sim, true, DT, &["fire"]);
+        let _ = frame(&mut sim, true, DT, &["fire"]);
     }
     assert_eq!(municao(&sim, arma), 0, "o pente esvaziou");
     for _ in 0..12 {
-        frame(&mut sim, true, DT, &[]);
+        let _ = frame(&mut sim, true, DT, &[]);
     }
     assert_eq!(municao(&sim, arma), 2, "a recarga leva o que HAVIA, nao 3");
     assert_eq!(
@@ -236,10 +236,10 @@ fn um_deposito_ambiguo_e_recusado_e_a_arma_fica_infinita() {
         }
         aponta_ao_deposito(&mut sim, arma, "box");
         for _ in 0..4 {
-            frame(&mut sim, true, DT, &["fire"]);
+            let _ = frame(&mut sim, true, DT, &["fire"]);
         }
         for _ in 0..12 {
-            frame(&mut sim, true, DT, &[]);
+            let _ = frame(&mut sim, true, DT, &[]);
         }
         assert_eq!(
             municao(&sim, arma),
@@ -272,10 +272,10 @@ fn um_deposito_por_estrear_ja_vale_o_start() {
         .id();
     aponta_ao_deposito(&mut sim, arma, "box");
     for _ in 0..4 {
-        frame(&mut sim, true, DT, &["fire"]);
+        let _ = frame(&mut sim, true, DT, &["fire"]);
     }
     for _ in 0..12 {
-        frame(&mut sim, true, DT, &[]);
+        let _ = frame(&mut sim, true, DT, &[]);
     }
     assert_eq!(
         municao(&sim, arma),

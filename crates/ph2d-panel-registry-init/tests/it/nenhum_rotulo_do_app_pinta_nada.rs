@@ -636,7 +636,11 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    com balão, atribuídos por A/B ficheiro a ficheiro: o NOME DO CORPO em que a roldana monta
     //    (`Pivot` na fixtura — ao lado de DOIS ícones sobram `28 px`) e a VELOCIDADE ao vivo do
     //    jogador (`1.00, 0.00 m/s`). ⚠️ A junta não custa nenhum (A/B: com ela revertida, `85`).
-    ("inspector", 85),
+    // ⬆️ `85 → 87` na integração de 2026-09-25 (rodada 03): a `line/components` trouxe
+    //    `"Keep on Restart"` e `"Only This Object"` (as duas secções do CONTADOR), que a linha
+    //    mediu a cortar contra `103`. *Duas catracas que somam entre linhas contam-se na árvore
+    //    COMBINADA* — o valor é o medido pelo portão dela, não a soma escrita à mão.
+    ("inspector", 87),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),
@@ -722,7 +726,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬇️ `81 → 75` em 2026-09-23, pela mesma passagem pela porta da escolha — ver a irmã acima.
     // ⬆️ `75 → 79` em 2026-09-23, pela coluna ÚNICA do painel (ordem do dono) — ver a irmã acima.
     // ⬆️ `79 → 81` em 2026-09-23, os mesmos dois VALORES da irmã acima (`83 → 85`).
-    ("inspector", 81),
+    // ⬆️ `81 → 83` na integração de 2026-09-25, pelos mesmos dois rótulos do contador — ver a irmã acima.
+    ("inspector", 83),
     ("audio_mixer", 5),
     ("sculpt3d", 6),
     ("hierarchy", 5),

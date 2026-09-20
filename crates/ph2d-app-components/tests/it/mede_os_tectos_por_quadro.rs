@@ -84,15 +84,13 @@ fn cena_de_armas(n: u32) -> SimWorld {
 /// Uma câmera que treme, mais `n` fontes que gritam o MESMO sinal.
 fn cena_de_abanao(n: u32) -> SimWorld {
     let mut sim = SimWorld::new();
-    sim.world_mut()
-        .spawn((
-            Name::new("Camera"),
-            StableId(1),
-            Transform::IDENTITY,
-            GameCamera::default(),
-            CameraShake::default(),
-        ))
-        .id();
+    sim.world_mut().spawn((
+        Name::new("Camera"),
+        StableId(1),
+        Transform::IDENTITY,
+        GameCamera::default(),
+        CameraShake::default(),
+    ));
     for i in 0..n {
         sim.world_mut().spawn((
             Name::new("Bomba"),

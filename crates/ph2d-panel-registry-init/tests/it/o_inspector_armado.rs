@@ -974,6 +974,9 @@ fn arma_o_top20() {
         on_fire: "shot".to_string(),
         on_empty: "click".to_string(),
         on_reloaded: "ready".to_string(),
+        // ⭐ A RESERVA: o depósito de onde a recarga tira, e o que ele tem AGORA.
+        reserve_counter: "Ammo Box".to_string(),
+        reserva: Some(24),
         municao: Some(7),
         pente: 12,
         recarregando: false,

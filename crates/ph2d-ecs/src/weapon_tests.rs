@@ -378,7 +378,7 @@ fn a_transferencia_conserva() {
                 let mut st = born();
                 let mut mun = pente_com_deposito(tem, cheio, reserva);
                 let antes = (mun.tem, mun.reserva);
-                avanca(&cfg, &mut st, mun, DT, false, true);
+                let _ = avanca(&cfg, &mut st, mun, DT, false, true);
                 let t = espera(&cfg, &mut st, &mut mun, 6);
                 if !t.recarregou {
                     assert_eq!(reserva, 0, "so' um deposito VAZIO impede a recarga");
@@ -422,13 +422,13 @@ fn sem_deposito_a_lei_e_a_de_sempre() {
         let (mut a, mut b) = (born(), born());
         let t_infinita = {
             let mut m = pente(tem, 4);
-            avanca(&cfg, &mut a, m, DT, true, false);
+            let _ = avanca(&cfg, &mut a, m, DT, true, false);
             espera(&cfg, &mut a, &mut m, 5)
         };
         // Um depósito com MAIS do que o pente leva tem de dar o mesmo pente.
         let t_farto = {
             let mut m = pente_com_deposito(tem, 4, 1_000);
-            avanca(&cfg, &mut b, m, DT, true, false);
+            let _ = avanca(&cfg, &mut b, m, DT, true, false);
             espera(&cfg, &mut b, &mut m, 5)
         };
         assert_eq!(

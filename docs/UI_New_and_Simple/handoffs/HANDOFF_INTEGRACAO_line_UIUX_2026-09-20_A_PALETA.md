@@ -438,6 +438,74 @@ dos dois lados.*
 
 ---
 
+## §9-ter — ⛔⛔⛔ O SMOKE DA §9-bis foi REPROVADO — *«não funcionou»* — e a lei estava CERTA
+
+### O que falhou foi o ROTEIRO, e o facto que faltava estava no disco dele
+
+```
+~/.ph2d/layout.txt   (active=nodes)
+[animation]    dock_w_left=220        dock_w_right=220
+[drawing_2d]   dock_w_left=252.83984  dock_w_right=348.1914
+[flip]         dock_w_left=252.83984  dock_w_right=296.89063
+[modeling_3d]  dock_w_left=220        dock_w_right=371.72266
+[nodes]        dock_w_left=220        dock_w_right=220
+[vector]       dock_w_left=220        dock_w_right=371.72266
+```
+
+**As SEIS bancadas têm largura gravada**, e a corrente é: `install_saved` corre **antes do primeiro
+quadro** e chama `set_dock_width` ⇒ o store fica com `Some(w)` ⇒ `dock_width` lê
+`stored.unwrap_or(base)` ⇒ **a base nunca é consultada**. ⚠️ E na bancada ACTIVA dele (`nodes`) as
+duas colunas estão **no mínimo do painel**, onde nada as pode mexer.
+
+⭐ **A lei protege quem ela tem de proteger:** o `layout.txt` é **por máquina** (`$HOME/.ph2d/`),
+logo um tablet acabado de configurar não tem escolha nenhuma e recebe a fracção. *O defeito é o
+roteiro mandar procurar o efeito onde ele não podia estar* — a mesma espécie que o §5.0 chama de
+**pior que uma cena ausente**.
+
+### ⛔⛔ A cura óbvia foi construída inteira, medida e REVERTIDA
+
+*«A fracção é um tecto sobre QUALQUER largura, não só a de fábrica»* — escrita com porta
+(`dock_w_ceiling` sem `min(1,0)`), clamp do gesto no `HeroLayout::dock_width_for`, a escolha
+guardada intacta para voltar ao alargar, gate de três metades e **4 de 4 mutações a sangrar**.
+
+**E um gate PRÉ-EXISTENTE reprovou-a:**
+
+> `the_dock_border_resizes_the_column::the_width_grows_with_x_on_the_left_and_shrinks_on_the_right`
+> — *«a coluna da esquerda tem de CRESCER 40 (308 contra 348)»*
+
+⇒ **na janela de REFERÊNCIA a coluna de fábrica já ESTÁ no tecto**, logo o artista deixava de poder
+**alargar** uma coluna a `1366 px` — para sempre, e hoje ele pode ir até `720`. *Uma cura que
+retira um gesto que ninguém pediu é pior do que o defeito que ela cura.*
+
+⛔ **E nenhum número derivado resolve os dois lados.** O único tecto relativo já medido nesta casa
+é o `viewport.w * 0.7` do `clamp_panel_rect`, e ele **nunca morde** a maior escolha do dono
+(`371,72` passa a `1 930`, `1 366`, `1 133` **e** `744`). *Preservar o arrasto na referência e
+apertar a escolha excluem-se com os números que existem; escolher um terceiro é o palpite do §0.0.*
+
+⚠️⚠️ **E a 1.ª ronda de mutação já tinha avisado, noutro sítio:** o `M7` (o tecto deixa de ABRIR no
+ecrã largo) **sobreviveu** porque a minha fixtura usava `300` na coluna esquerda, que está **abaixo**
+do token daquele lado (`308`) — *os números REAIS do dono estão ACIMA do token e a minha fixtura
+estava abaixo: ela não continha o fenómeno*. Trocada pelo `371,722_66` dele, ela sangrou.
+
+### ⏳ ABERTO, com o número — DECISÃO DO DONO
+
+Uma escolha é gravada em **pixels absolutos** e não sobrevive a uma mudança de forma da janela: no
+iPad mini, `371,72 px` são **`32,8 %`** deitado (`1 133`) e **`50,0 %`** em pé (`744`). As duas
+saídas têm preço: um tecto pede um número que ninguém mediu; guardar a escolha como **fracção** muda
+o que arrastar uma borda significa **e** o formato do ficheiro de arrumação.
+
+### ⭐ O smoke que a §9-bis devia ter tido
+
+O caminho da arrumação é `$HOME/.ph2d/layout.txt`, lido por `std::env::var("HOME")` ⇒ um `HOME`
+descartável dá um perfil novo **sem tocar no dele**:
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX \
+  && env HOME=/tmp/ph2d-smoke-novo cargo run -p ph2d-host-desktop --profile smoke
+```
+
+---
+
 ## §10 — O portão do fecho
 
 | passo | resultado |

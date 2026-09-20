@@ -328,5 +328,14 @@ orçamento:
 semanas** sobre a linha que o `medicoes/06 §1` já escrevia. *Um gate que reconstrói a banda em vez
 de ler a LEI mede a fórmula e não o produto* — a segunda vez no mesmo ficheiro.
 
+⛔⛔⛔ **E o smoke devolveu «não funcionou» — a lei está certa e NÃO CHEGA à bancada do dono.**
+O `~/.ph2d/layout.txt` é **por máquina** e o dele tem uma largura gravada nas **seis** bancadas,
+logo a porta lê a escolha e nunca a base. ⭐ Num aparelho acabado de configurar — que é o alvo —
+ela arma; o que falhou foi o **roteiro**, que mandava procurar o efeito onde ele não podia estar.
+⛔ Estender o tecto à ESCOLHA foi construído e **REFUTADO** por um gate pré-existente (na janela de
+referência a coluna de fábrica já está no tecto ⇒ o artista deixaria de poder alargá-la), e a
+escolha em pixels absolutos fica **ABERTA com o número** no
+[`medicoes/06 §1`](../medicoes/06_o_orcamento_de_ecra_em_tablet.md).
+
 ⚠️ **Toda proposta de UI nova passa a nomear o que custa em ALTURA e em LARGURA, nos três alvos.**
 O gate que o exige é `the_chrome_never_eats_more_of_a_tablet_than_this`.

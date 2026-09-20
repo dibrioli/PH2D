@@ -43,8 +43,54 @@ tornaria o app pior exactamente onde ele é usado todos os dias.* ⇒ acima da r
 inerte, com gate a exigi-lo.
 
 ⚠️ **Ela não toca na largura que o ARTISTA arrastou** — apertar uma escolha explícita é o *«aceita
-e mente»* do §0.0. ⏳ Fica declarado: uma escolha gravada num ecrã largo continua a valer o que vale
-num estreito.
+e mente»* do §0.0.
+
+⛔⛔⛔ **E o SMOKE de 2026-09-20 mostrou o que essa frase custa: «não funcionou».** A lei está
+certa e **não chega à bancada do dono**, por um facto que eu devia ter medido antes de escrever o
+roteiro: o `~/.ph2d/layout.txt` dele tem `dock_w_left`/`dock_w_right` gravados nas **seis**
+bancadas (`220` a `371,72`), o `layout_persist::install_saved` instala-os por `set_dock_width`
+antes do primeiro quadro, e a porta lê `stored.unwrap_or(base)` ⇒ *a base nunca é consultada*.
+⚠️ Na bancada activa dele (`nodes`) as duas colunas estão **no mínimo do painel**, onde nem a lei
+nem coisa nenhuma as pode mexer.
+
+⭐ **A lei protege exactamente quem ela tem de proteger:** o `layout.txt` é **por máquina**, logo um
+iPad acabado de configurar não tem escolha nenhuma gravada e recebe a fracção — que é a coluna
+`depois` da tabela acima. *O que falhou foi o roteiro do smoke, não a lei.*
+
+### ⛔⛔ E estender o tecto à ESCOLHA foi construído, medido e REFUTADO no mesmo dia
+
+A cura óbvia — *a fracção é um tecto sobre qualquer largura, não só a de fábrica* — foi escrita
+inteira (uma porta `dock_w_ceiling` sem `min(1,0)`, o clamp do gesto no `HeroLayout::dock_width_for`
+e a escolha guardada intacta para voltar ao alargar) e **um gate PRÉ-EXISTENTE reprovou-a**:
+
+> `the_width_grows_with_x_on_the_left_and_shrinks_on_the_right` — *«a coluna da esquerda tem de
+> CRESCER 40 (308 contra 348)»*
+
+⇒ **na janela de REFERÊNCIA a coluna de fábrica já ESTÁ no tecto**, logo o artista deixaria de poder
+**alargar** uma coluna — em `1366 px`, para sempre, e hoje ele pode ir até `720`. *Uma cura que
+retira um gesto que ninguém pediu é pior do que o defeito que ela cura.*
+
+⛔ E **não há número derivado que resolva os dois lados**: o único tecto relativo já medido nesta
+casa é o `viewport.w * 0.7` do [`clamp_panel_rect`](../../../crates/ph2d-editor-core/src/widget/panel_chrome.rs),
+e ele **nunca morde** a maior escolha gravada pelo dono —
+
+| janela | `70 %` | a escolha de `371,72` fica |
+|---:|---:|---:|
+| `1 930` | `1 351` | `371,72` |
+| `1 366` | `956` | `371,72` |
+| `1 133` (mini, deitado) | `793` | `371,72` |
+| `744` (mini, em pé) | `521` | `371,72` |
+
+*Preservar o arrasto na referência e apertar a escolha são objectivos que se excluem com os números
+que existem*; escolher um terceiro seria o palpite que o §0.0 proíbe.
+
+### ⏳ ABERTO, com o número, e é DECISÃO DO DONO
+
+Uma escolha é gravada em **pixels absolutos**, logo ela não sobrevive a uma mudança de forma da
+janela: no iPad mini, `371,72 px` são **`32,8 %`** da janela deitado (`1 133`) e **`50,0 %`** em pé
+(`744`) — *a mesma decisão custa metade do ecrã quando o aparelho roda*. As duas saídas têm preço:
+um tecto pede um número que ninguém mediu, e guardar a escolha como **fracção** muda o que
+arrastar uma borda significa e o formato do ficheiro de arrumação.
 
 ---
 

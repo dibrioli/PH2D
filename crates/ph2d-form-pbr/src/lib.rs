@@ -110,6 +110,13 @@ pub const VISTA: [f32; 3] = [0.0, 0.0, 1.0];
 /// INDIRECTAS leem — e esta lei não as chama»*, e acabava com *«no dia em que a indirecta do OpenPBR
 /// entrar (a coluna B3), as duas metades chegam juntas»*. Chegaram.
 ///
+/// ⚠️⚠️ **E «coluna B3» é um nome ERRADO que estes ficheiros carregam, corrigido em
+/// `docs/Render3d/15` §7:** a B3 da tabela das metas é a luz indirecta do **MODELADOR** (as sondas,
+/// e o que lhes falta é sobreviver ao movimento da câmera), e ela **continua aberta**. O que entrou
+/// aqui é a metade da **1.ª obra** que faltava — *o ambiente do SPRITE deixou de ser um termo nosso
+/// e passou a ser a lei*. O nome fica nos comentários porque foi assim que a dívida foi registada;
+/// *a tabela que decide é a do doc, não a memória de quem escreveu a abreviatura*.
+///
 /// ⭐⭐ **E as DUAS metades saem dos MESMOS dois `Rgb`, sem um dado novo** — é a mesma álgebra da
 /// rampa, lida duas vezes:
 ///

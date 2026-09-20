@@ -251,10 +251,99 @@ céu**. O estúdio é o rig.
 VISTA e o canal é escrito em CANVAS pelo `canvas_normal`. A paridade nunca o podia ver (os dois
 motores leem os MESMOS planos), e só passou a importar quando o ambiente ganhou direcção.
 
+### ✅ FECHADO em 2026-09-20: a INDIRECTA DO OpenPBR — e o ambiente passou a saber QUE MATERIAL ele ilumina
+
+⚠️⚠️ **Primeiro, uma correcção de NOME que o código desta linha carregava:** o doc do
+[`ph2d_form_pbr::Ceu`] chamava a esta obra *«a coluna B3 do plano»*. ⛔ **Ela não é a B3 da §2** —
+aquela é a luz indirecta do MODELADOR (as sondas, e o que lhes falta é sobreviver ao movimento da
+câmera), e **continua aberta**. O que fechou aqui é a metade da **1.ª obra** que faltava: o ambiente
+do SPRITE deixou de ser um termo nosso e passou a ser a lei.
+
+#### ⛔⛔ O defeito não era a QUANTIDADE, era a CLOSURE
+
+A linha que saiu era `albedo × E(n) × oclusão` — só a metade **difusa** do céu. Medido
+(`diag_o_que_a_indirecta_muda_no_pixel`), sobre o mesmo albedo e o mesmo céu:
+
+| material | ambiente ONTEM | ambiente HOJE |
+|---|---|---|
+| barro (o de fábrica) | `[0,3070 0,3177 0,3505]` | `[0,3146 0,3274 0,3636]` |
+| metal polido | **`[0,3070 0,3177 0,3505]`** — *o mesmo, AO BIT* | `[0,3751 0,4000 0,4550]` |
+
+⇒ *um barro e um metal recebiam a mesma resposta, porque `albedo × E(n)` é um lóbulo **difuso** e no
+OpenPBR um metal não tem nenhum.* **O ambiente não sabia que material estava a iluminar.**
+
+⚠️ **E a minha 1.ª redacção do gate afirmava outra coisa, que era FALSA** (*«um metal sem lâmpada
+saía `[0,0,0]` ao bit»*): escrita a partir do modelo do que uma lei **correcta** faz, e não do que o
+código de ontem **fazia**. A sonda refutou-a, e os quatro sítios que a repetiam foram corrigidos —
+*uma afirmação dramática derivada do modelo em vez da medição é um palpite com cara de número.*
+
+#### ⭐⭐ As DUAS metades do céu saem dos MESMOS dois `Rgb`
+
+```text
+irradiance(n)     = base + inclinação · up(n)                  (o lóbulo COSSENO)
+radiance(dir, α)  = base + 1,5 · inclinação · c(α) · up(dir)    (o lóbulo GGX)
+```
+
+O `1,5` desfaz o `Â₁ = 2/3` que a inclinação carrega (ela é a inclinação da IRRADIÂNCIA) e o `c(α)`
+é o coeficiente de grau `1` do núcleo do pré-filtro. ⭐ *Um ambiente linear não tem termo de grau 2,
+logo isto é a resposta **EXACTA** às duas perguntas e não uma amostragem de nenhuma delas* — e é por
+isso que a feature inteira custou **zero dados novos**.
+
+⭐⭐ **E o `c(α)` já existia, na crate errada:** ele vivia no `ph2d-app-field3d` enquanto o
+`ph2d_material::wgsl::EnvLobe` o nomeava, campo a campo, sem o dar. Com o segundo consumidor isso
+deixou de ser dívida e passou a ser a lei escrita em dois sítios ⇒ `ph2d_material::lobe_shrink` +
+`EnvLobe::of`. ⚠️ **A recusa que o segurava lá continua de pé e era sobre OUTRA coisa:** *«avaliar
+na direcção média só é exacto porque ESTE céu é linear»* — verdade, e é a **aplicação**, que ficou
+com o céu; o que viajou foi o **número**.
+
+#### O que isso vale no pixel, por material
+
+| material | Δ média | Δ p99 | Δ máx | texels ≠ |
+|---|---|---|---|---|
+| barro (o de FÁBRICA) | `1,88` | `14` | `30` | `67,5 %` |
+| dieléctrico polido | `2,25` | `19` | `49` | `68,6 %` |
+| **metal polido** | **`11,72`** | `27` | `57` | **`95,0 %`** |
+
+⇒ *num barro difuso a metade que chegou é o realce de Fresnel na borda; num metal ela é a imagem
+inteira.*
+
+#### ⚠️ A exposição NÃO se mexeu, e isso é uma medição
+
+A metade espelhada soma energia — o miolo cinzento sobe **`+0,4` byte** a `2,10` stops —, e isso é
+**um décimo** do degrau da escada (`2,05 → 2,10` vale `4,2` bytes). O `2,10` continua a ser o
+candidato mais perto do alvo da tinta (`+1,7` contra `−2,5` do vizinho de baixo).
+*A reconferência pode devolver o mesmo número; o que não pode é não acontecer.*
+
+#### ⛔ A divergência DECLARADA, e o que ela custa
+
+A oclusão pesa o termo **inteiro**, difusa e espelhada. O Filament e o Frostbite derivam uma
+*specular occlusion* separada (Lagarde), função de `AO`, `α` e `N·V`, porque um AO de hemisfério não
+descreve o cone estreito de um espelho. **Não a temos**, e o efeito é uma fresta espelhar um pouco
+mais do que devia — *acrescentá-la é uma lei com oráculo próprio, e escrevê-la aqui de cabeça seria
+inventar o que nenhuma referência desta casa mediu.*
+
+#### A paridade, depois da obra
+
+`262 143` de `262 144` bytes idênticos (**`100,000 %`**), pior **`1`** byte, **um único**. Pela
+tabela do próprio gate isso é a classe da contracção `fma` no backend — *um desvio de um byte
+SISTEMÁTICO é defeito de lei; um esporádico é representação*. Antes desta obra o pior era `0`.
+
+⚠️⚠️ **E a lição do marcador foi paga pela TERCEIRA vez, na própria frase que a escrevia:** o nome
+de uma função da ranhura e a marca da montagem, escritos num **COMENTÁRIO**, leem-se exactamente
+como uma chamada e como uma ranhura por preencher. Os dois gates apanharam-no, um de cada vez.
+
+**Prova de mutação: 14 de 14 a sangrar** — a lei em Rust (o lambertiano de volta · a espelhada a
+zero · o `1,5` · o sinal do `up` · o encolhimento ignorado · o no-op do céu preto · a oclusão na
+directa), o coeficiente (o limite removível · a porta a trocar `main` por `coat`), o gémeo contra a
+PLACA (o lambertiano em WGSL · a espelhada a zero · o `EnvLobe::IGNORED` · o `1,5`) e a lei da casa
+da sombra.
+
 ### ⏳ O que fica, com o preço medido
 
 | # | obra | preço |
 |---|---|---|
+| 0 | **o destaque SATURA** (`~99 %` do topo `3 %`, nas DUAS leis) | a exposição é calibrada no MIOLO e quem traz o destaque de volta é a **vista**, não ela. A régua já existe (a coluna `a 255` do §8); falta a wave |
+| 0-bis | a **oclusão especular** (Lagarde) | divergência DECLARADA: a oclusão pesa o termo inteiro. Ela é uma lei com oráculo próprio |
 | 1 | **não re-enviar a forma quando só o rig mudou** | é onde o tempo está: o canal **não depende do rig** (é o que torna arrastar a lâmpada barato) e sobe na mesma a cada quadro. A diferença entre `1,74` e `2,08 ms` diz que a lei custa `~0,3 ms`; o resto é transporte |
 | 2 | a **escolha por objecto** (`PROJECT_SCHEMA`) | gateada no veredito do dono sobre o §8 |
 | 3 | ~~a **oclusão**~~ | ✅ **FECHADA** acima — a cura era o céu, não uma decisão de produto |
@@ -284,14 +373,33 @@ fisicamente correcto.
 E a diferença é MEDIDA, não uma impressão — a razão `R/B` no destaque (o topo `3 %` mais brilhante
 de cada bola):
 
-| bola | a lei de sempre | a lei nova |
-|---|---|---|
-| vermelha | `2,686` | **`1,485`** |
-| azul | `0,372` | **`0,673`** |
-| **cinzenta (controlo)** | `1,000` | `1,000` |
+| bola | a lei de sempre | a lei nova | a `255` (de sempre / nova) |
+|---|---|---|---|
+| vermelha | `2,686` | **`1,956`** | `100,0 %` / `98,9 %` |
+| verde | `1,000` | `0,971` | `100,0 %` / `98,9 %` |
+| azul | `0,365` | **`0,493`** | `95,6 %` / `100,0 %` |
+| **cinzenta (controlo)** | `1,000` | `1,000` | `100,0 %` / `100,0 %` |
 
-⭐ O `1,485` é, ao terceiro decimal, o número que a sonda de CPU previu (`1,50`) **antes de haver
-placa** — e a bola cinzenta lê `1,000` nas duas, que é o controlo que dá direito às outras linhas.
+⭐ A bola cinzenta lê `1,000` nas duas, que é o controlo que dá direito às outras linhas, e a
+**direcção** é a da obra: a lei nova está **mais perto de `1`** nas duas bolas com matiz.
+
+⚠️⚠️ **E a tabela foi RE-TIRADA em 2026-09-20 porque estava DUAS waves atrasada.** A redacção
+anterior dizia `1,485` / `0,673` e acrescentava que o `1,485` era *«o número que a sonda de CPU
+previu (`1,50`) antes de haver placa»* — ele foi medido **antes de a lei ter céu**, e a sonda nunca
+foi re-corrida nem quando o céu entrou nem quando a indirecta entrou. *Um número verdadeiro no dia
+em que foi escrito não é uma medição do produto de hoje.*
+
+⛔⛔ **E a coluna nova é a que torna esta tabela legível: o destaque SATURA nas duas leis.** `~99 %`
+dos texels do destaque têm pelo menos um canal em `255`, e *uma razão entre dois números cortados
+não mede só a lei que os produziu — ela mede também o corte*. ⇒ a tabela continua a **discriminar**
+(a lei nova é mais branca nas duas bolas com matiz, e a cinzenta é o controlo), e ⛔ a **magnitude**
+dela não é a razão da óptica.
+
+⏳ **E isso nomeia uma coisa que fica ABERTA:** a exposição é calibrada no **MIOLO** (`186,1` contra
+a lei da tinta) e o **destaque estoura** — nas duas leis. Um pipeline fisicamente correcto tem o
+destaque acima do branco por construção, e quem o traz de volta é a **vista** (a curva do
+`ph2d-view-transform`), não a exposição. *Medir isto é uma wave própria, e a régua dela é esta
+coluna.*
 
 ⚠️⚠️ **E a «sombra mais funda da direita» tinha CAUSA, não era uma escolha de produto** (medido em
 2026-09-20, §7): esta lei somava ambiente **ZERO**, e com o rig de fábrica — que tem **uma** lâmpada
@@ -311,5 +419,7 @@ Selected Sprite`**. ⚠️ **Sem a variável, tudo fica exactamente como está h
 desligada, e um projecto gravado abre com a aparência com que foi gravado.
 
 ⭐ **O que mudou desde a 1.ª corrida dele:** a sombra deixou de ser preta (ela vale agora `AMBIENT`
-da resposta plana, como na lei de sempre) e as **frestas** da peça passaram a escurecer — a cavidade
-e os dois AOs que o objecto assado guarda desde que existe chegam ao pixel pela primeira vez.
+da resposta plana, como na lei de sempre), as **frestas** da peça passaram a escurecer — a cavidade
+e os dois AOs que o objecto assado guarda desde que existe chegam ao pixel pela primeira vez — e o
+céu passou a **ESPELHAR-SE** na peça, com Fresnel: um realce na borda que antes não existia, e que
+num material brilhante é a imagem inteira.

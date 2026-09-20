@@ -185,6 +185,30 @@ fn razao_no_destaque(px: &[u8], forma: &[f32], qx: u32, qy: u32) -> f64 {
     (r / n as f64) / (b / n as f64).max(1e-9)
 }
 
+/// ⚠️⚠️ **A COLUNA QUE FALTAVA À TABELA DO `R/B`: quantos por cento do destaque estão a SATURAR.**
+///
+/// Sem ela a tabela é interpretável ao contrário. Um destaque que bate no `255` num canal e não no
+/// outro empurra a razão **para longe de `1`**, e isso lê-se exactamente como *«esta lei tinge mais
+/// o destaque»* — que é o oposto do que está a acontecer. *Uma razão entre dois números cortados
+/// não mede a lei que os produziu.*
+fn saturados_no_destaque(px: &[u8], forma: &[f32], qx: u32, qy: u32) -> f64 {
+    const TOPO: f64 = 0.03;
+    let mut dentro: Vec<(f64, bool)> = Vec::new();
+    for y in (qy * LADO / 2)..((qy + 1) * LADO / 2) {
+        for x in (qx * LADO / 2)..((qx + 1) * LADO / 2) {
+            let i = (y * LADO + x) as usize;
+            if forma[i * 4 + 3] > 0.5 {
+                let c = &px[i * 4..i * 4 + 3];
+                let soma = f64::from(c[0]) + f64::from(c[1]) + f64::from(c[2]);
+                dentro.push((soma, c.contains(&255)));
+            }
+        }
+    }
+    dentro.sort_by(|a, b| b.0.total_cmp(&a.0));
+    let n = ((dentro.len() as f64 * TOPO) as usize).max(1);
+    100.0 * dentro[..n].iter().filter(|s| s.1).count() as f64 / n as f64
+}
+
 /// A média do canal verde no MIOLO da bola cinzenta — o nível, sem a matiz.
 ///
 /// ⚠️ **O miolo e não a bola inteira:** a borda de uma esfera tem `N·L → 0` e a média dela mede a
@@ -290,7 +314,9 @@ fn as_duas_leis_sobre_a_mesma_forma() {
         saida.push((nome, px));
     }
 
-    println!("\n  quadrante            R/B no destaque: TINTA   FORMA");
+    println!(
+        "\n  quadrante            R/B no destaque: TINTA   FORMA   |  a 255 (%): TINTA  FORMA"
+    );
     for (rotulo, qx, qy) in [
         ("vermelho", 0u32, 0u32),
         ("verde", 1, 0),
@@ -298,9 +324,11 @@ fn as_duas_leis_sobre_a_mesma_forma() {
         ("cinzento (controlo)", 1, 1),
     ] {
         println!(
-            "  {rotulo:<20} {:>8.3}          {:>8.3}",
+            "  {rotulo:<20} {:>8.3}          {:>8.3}   |         {:>6.1} {:>6.1}",
             razao_no_destaque(&saida[0].1, &bake.form, qx, qy),
             razao_no_destaque(&saida[1].1, &bake.form, qx, qy),
+            saturados_no_destaque(&saida[0].1, &bake.form, qx, qy),
+            saturados_no_destaque(&saida[1].1, &bake.form, qx, qy),
         );
     }
 

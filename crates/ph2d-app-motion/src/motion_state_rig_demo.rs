@@ -56,12 +56,36 @@ use ph2d_nodegraph::graph::{Edge, NodeId, Pos};
 
 /// A que distância do centro cada metade vive — o mesmo `2,9` da `=118` e da `=119`.
 const COL_X: f32 = 2.9;
-/// A distância vertical entre fileiras. ⚠️ A câmara abre com **10** unidades de altura, e três
-/// fileiras mais as fichas têm de caber nela **sem zoom** — senão o primeiro passo do smoke é
-/// procurar a cena.
-const ROW_GAP: f32 = 3.2;
-/// A que altura acima do centro do pano pousa a ficha.
-const FICHA_Y: f32 = 1.5;
+/// A distância vertical entre fileiras.
+///
+/// ⛔⛔⛔ **A premissa que aqui estava — *«a câmara abre com 10 unidades de altura»* — nunca foi
+/// medida contra a superfície REAL, e estava errada por `0,47`.** O chrome desta cena não desenha
+/// na janela: desenha numa **BANDA** entre a barra do topo e a timeline, e é a banda que decide o
+/// enquadramento. Fotografada a cena (`fotografa_cena.sh`, janela `1930×1040`, arrumação de
+/// fábrica) e lida a escala pelas próprias fichas (`3,2` de mundo = `178 px` ⇒ `55,6 px/unidade`),
+/// a banda mostra **`8,665`** unidades e está centrada em **`−0,93`** — *ela não é centrada na
+/// origem*. Com `ROW_GAP = 3,2` a cena media `9,133` centrada em `+0,13`: a fileira de CIMA saía
+/// pelo topo e **as duas fichas dela eram invisíveis**.
+///
+/// ⚠️ *«Três fileiras mais as fichas têm de caber sem zoom — senão o primeiro passo do smoke é
+/// procurar a cena»* continua a ser a lei; o que estava errado era o número contra o qual ela foi
+/// verificada. ⭐ Os números de hoje são derivados da banda medida: altura `2·g + f + 1,233` (o
+/// `1,233` é o quanto a manga desce abaixo do ponto em que é pousada, **medido**), e a folga que
+/// sobra é `~0,24` de cada lado.
+const ROW_GAP: f32 = 2.9;
+/// A que altura acima do centro do pano pousa a ficha. ⚠️ Ela desceu com o `ROW_GAP` e pela mesma
+/// medição — e o que a impede de descer mais é a fileira DE BAIXO: a ficha dela tem de ficar acima
+/// do topo da manga (folga medida `0,86`).
+const FICHA_Y: f32 = 1.15;
+/// **O DESLOCAMENTO DA CENA INTEIRA**, para o centro dela cair no centro da BANDA.
+///
+/// ⭐ Encolher não chega: a banda está centrada em `−0,93` e a cena, pela forma como as três
+/// fileiras se dispõem, centra-se perto da origem. ⛔ **E isto não se cura pela `FICHA_Y`** — a
+/// conta pede `f = −0,62`, ou seja a ficha **por baixo** da fileira que ela nomeia.
+///
+/// ⚠️ Ele entra numa porta só ([`fileira_y`]), que é por onde os seis panos **e** as seis fichas
+/// passam: escrito nos dois sítios, um deles ficaria para trás no dia seguinte.
+const CENA_Y: f32 = -0.9;
 
 // ── A CORDA ────────────────────────────────────────────────────────────────────────────────
 /// Pontos da corda. ⚠️ **Não é um tecto — é o tamanho de uma corda que alguém faz**, e a §7 mediu
@@ -70,7 +94,18 @@ const FICHA_Y: f32 = 1.5;
 const CORDA_PONTOS: f32 = 20.0;
 /// O comprimento em unidades de mundo — a corda pendurada tem de caber no pano.
 const CORDA_COMPRIMENTO: f32 = 1.9;
-const CORDA_PECA: f32 = 0.13;
+/// O semi-eixo de uma CONTA da corda — **derivado do espaçamento, não escolhido**.
+///
+/// ⛔⛔ **Ele valia `0,13` enquanto uma posição se desenhava como uma marca, e a forma mudou a
+/// unidade:** a receita do `source.shape` corta a peça de uma caixa de largura `2 × size`, logo o
+/// mesmo número passou a pintar um disco de `0,26` sobre um espaçamento de
+/// `CORDA_COMPRIMENTO / (CORDA_PONTOS − 1) = 0,1` — **`2,6×` de sobreposição**, e a foto mostrava
+/// uma BARRA BRANCA CONTÍNUA onde a legenda promete vinte pontos presos uns aos outros.
+///
+/// ⭐ Com `0,05` o disco mede exactamente o vão: as contas encostam em repouso, **separam-se onde
+/// a corda estica e apertam onde ela encolhe** — que é a coisa que este pano existe para mostrar.
+/// ⚠️ *Nenhum gate desta cena via isto: eles leem `P` e `size`, e os dois estavam certos.*
+const CORDA_PECA: f32 = 0.05;
 /// A porta `state` da corda. ⚠️ **Contada no manifesto** (`anchor_x` · `anchor_y` · `state`),
 /// nunca adivinhada: um índice errado liga o laço a um ANCORADOURO e a corda voa.
 const CORDA_PORTA_ESTADO: u16 = 2;
@@ -90,7 +125,7 @@ const CAMPO_PORTA_ESTADO: u16 = 1;
 
 // ── O ESQUELETO ────────────────────────────────────────────────────────────────────────────
 /// Juntas da corrente: a raiz mais **quatro** ossos.
-const OSSOS_JUNTAS: f32 = 5.0;
+pub(crate) const OSSOS_JUNTAS: f32 = 5.0;
 /// O comprimento de cada osso. ⚠️ Ele decide o ALCANCE do solver de duas juntas — `2 × 0,45` —, e
 /// o alvo da direita é posto DENTRO desse alcance de propósito: um alvo inalcançável faz o braço
 /// esticar-se e parar, que é a lei certa a parecer um defeito.
@@ -100,7 +135,19 @@ const OSSO_RAIZ: f32 = 90.0;
 /// Quanto cada junta dobra, em graus, no pano do FK. A rampa multiplica-o, logo a dobra CRESCE ao
 /// longo da cadeia — é isso que mostra que o ângulo é **por junta**.
 const FK_DOBRA: f32 = 40.0;
-const OSSO_PECA: f32 = 0.16;
+/// O semi-eixo da peça de OSSO, e ele é **derivado e não escolhido**.
+///
+/// ⛔⛔ A receita do `source.shape` corta toda forma de uma caixa de **largura `2 × size`**, logo
+/// a peça mede `2 × OSSO_PECA` de comprimento. Com `OSSO_LEN / 2` ela vai **exactamente** de uma
+/// junta à seguinte: a cadeia ladrilha. Com o vão inteiro cada osso mediria o DOBRO do vão e a
+/// corrente saía como uma massa contínua em que não se distingue peça nenhuma — o defeito que a
+/// foto da cena irmã `=125` já pagou.
+const OSSO_PECA: f32 = OSSO_LEN / 2.0;
+/// ⭐⭐ **A ESBELTEZA do osso, DERIVADA da própria silhueta:** o `aspect` multiplica o semi-eixo
+/// `y`, logo a altura é `2 × aspect × size` e o comprimento é `2 × size` ⇒ **`1/3` é, à letra,
+/// «três vezes mais comprido do que largo»**. ⛔ Sem ele o valor de fábrica (`1`) faz da peça um
+/// QUADRADO, e a fileira do meio mostra blocos onde devia mostrar ossos.
+const OSSO_ESBELTEZA: f32 = 1.0 / 3.0;
 
 // ── O ALVO DO IK ───────────────────────────────────────────────────────────────────────────
 /// A altura do alvo acima da raiz, e o quanto ele varre para cada lado.
@@ -200,11 +247,48 @@ fn laco_de_estado(doc: &mut MotionDoc, n: NodeId, porta: u16) -> Option<()> {
         .ok()
 }
 
-/// `escala → move(centro) → output`, o final comum dos seis panos. ⚠️ **Ele é o mesmo em toda a
-/// cena de propósito:** o que muda de pano para pano é só o que SEGURA, que é a lição.
+/// **A FORMA que um pano veste** — o que o [`pousa`] carimba em cada posição da corrente.
+///
+/// ⛔⛔⛔ **Ela não é enfeite: sem ela o pano não existe.** Desde 2026-09-19 (ordem do dono, que
+/// retirou os gizmos dos nós que só passam posições) vale a lei
+/// [`ph2d_eval_motion::tem_aparencia`] — *uma corrente que não veio de uma forma não vira pixel* —,
+/// e ela ship LIGADA (só `PH2D_MOTION_SO_COM_FORMA=0` a desliga). Esta cena é de 17/09 e os seis
+/// panos dela acabavam num `motion.output` sem forma nenhuma pelo caminho.
+#[derive(Clone, Copy)]
+struct Veste {
+    /// O índice da forma no catálogo do `source.shape`.
+    ///
+    /// ⚠️ **Resolvido pelo NOME e nunca escrito como literal** ([`super::sim_demo::indice_de`]):
+    /// a lista de formas é *append-only* e já foi a `45`, logo um número aqui passa a apontar
+    /// para outra forma no dia em que alguém insira uma — **em silêncio**, porque um índice
+    /// válido desenha sempre alguma coisa.
+    kind: f32,
+    /// O multiplicador do semi-eixo Y. `1` é uma peça tão alta quanto longa.
+    aspect: f32,
+}
+
+impl Veste {
+    const fn redonda(kind: f32) -> Self {
+        Self { kind, aspect: 1.0 }
+    }
+}
+
+/// `escala → move(centro) → FORMA carimbada → output`, o final comum dos seis panos.
+/// ⚠️ **Ele é o mesmo em toda a cena de propósito:** o que muda de pano para pano é só o que
+/// SEGURA — e, desde a lei da aparência, a peça com que ele se veste.
+///
+/// ⭐⭐ **O `motion.scale` continua a ser quem decide o tamanho da peça**, e é o `point_scale = 1`
+/// que o faz chegar ao carimbo: o valor de fábrica do duplicador é `0` — *«a forma vence e a
+/// escala do ponto é deitada fora»* —, e com ele os seis `_PECA` desta cena não teriam consumidor.
+/// *É a ordem que o [doc 115 §32.5](../../docs/Motion%20Nodes/115_o_colisor_sai_do_grafo.md)
+/// prescreve, à letra.*
+///
+/// ⚠️ A forma entra na porta `0` e os pontos na `1` — a ordem do manifesto do duplicador, e as
+/// **duas são obrigatórias** (ADR-0155): sem uma delas o nó não tem o que copiar.
 fn pousa(
     doc: &mut MotionDoc,
     de: NodeId,
+    veste: Veste,
     tamanho: f32,
     centro: [f32; 2],
     y: f32,
@@ -214,10 +298,19 @@ fn pousa(
     let mv = no(doc, "motion.move", 420.0, y);
     doc.graph.set_param(mv, "dx", centro[0]);
     doc.graph.set_param(mv, "dy", centro[1]);
-    let o = no(doc, "motion.output", 600.0, y);
+    let forma = no(doc, "source.shape", 420.0, y + 150.0);
+    doc.graph
+        .set_param(forma, ph2d_node_motion_shape::param::KIND, veste.kind);
+    doc.graph
+        .set_param(forma, ph2d_node_motion_shape::param::ASPECT, veste.aspect);
+    let dup = no(doc, "motion.duplicator", 560.0, y);
+    doc.graph.set_param(dup, "point_scale", 1.0);
+    let o = no(doc, "motion.output", 700.0, y);
     liga(doc, de, (s, 0))?;
     liga(doc, s, (mv, 0))?;
-    liga(doc, mv, (o, 0))?;
+    liga(doc, forma, (dup, 0))?;
+    liga(doc, mv, (dup, 1))?;
+    liga(doc, dup, (o, 0))?;
     Some(o)
 }
 
@@ -280,6 +373,27 @@ fn caneta_da_banda(doc: &mut MotionDoc, fonte: NodeId, coluna: &str, y: f32) -> 
     Some(d)
 }
 
+/// **OS OSSOS de uma corrente resolvida** — o nó que tem de existir entre um solver e a peça.
+///
+/// ⛔⛔⛔ **Carimbar a `Shape: Bone` na corrente do solver desenha-a UMA JUNTA À FRENTE.** A lei
+/// do `fk::resolve` é `P[i] = P[pai] + len[i] · (cos wrot[i], sin wrot[i])`, logo o `len`/`rot`
+/// que o elemento `i` carrega são os do osso que **CHEGA** a ele e o `P[i]` dele é a **PONTA**
+/// desse osso: *um elemento é uma JUNTA, e o osso que ele carrega vive ATRÁS dele*. Sem este nó
+/// a cadeia não ladrilha — cada peça sai pelo lado de fora do arco e a última fica pendurada
+/// para lá da corrente (medido no cabeçalho do [`ph2d_node_rig_bones`], com a tabela).
+///
+/// ⚠️ **Ele vem DEPOIS do solver**, sempre: ele lê a corrente **resolvida**, e pô-lo antes da
+/// pose entregaria os ossos da pose anterior.
+///
+/// ⚠️ A corrente tem `OSSOS_JUNTAS` juntas e sai com `OSSOS_JUNTAS − 1` ossos — **a raiz é a
+/// única junta sem osso a chegar**, e emitir um osso por junta obrigaria sempre uma peça a
+/// mentir.
+fn ossos_de(doc: &mut MotionDoc, solver: NodeId, y: f32) -> Option<NodeId> {
+    let b = no(doc, "rig.bones", 300.0, y);
+    liga(doc, solver, (b, 0))?;
+    Some(b)
+}
+
 /// A corrente de juntas — a fonte das três cadeias de rig desta cena.
 fn esqueleto(doc: &mut MotionDoc, y: f32) -> NodeId {
     let e = no(doc, "rig.skeleton", -400.0, y);
@@ -338,12 +452,17 @@ fn pele(doc: &mut MotionDoc, envelope: bool, y: f32) -> Option<NodeId> {
     Some(p)
 }
 
+/// Onde a fileira `k` vive, **já deslocada** para o centro da banda ([`CENA_Y`]).
+///
+/// ⚠️ **Os seis panos e as seis fichas passam TODOS por aqui**, e é isso que torna o deslocamento
+/// uma lei e não dois números que têm de concordar.
 fn fileira_y(k: usize) -> f32 {
-    match k {
-        0 => ROW_GAP,
-        1 => 0.0,
-        _ => -ROW_GAP,
-    }
+    CENA_Y
+        + match k {
+            0 => ROW_GAP,
+            1 => 0.0,
+            _ => -ROW_GAP,
+        }
 }
 
 fn grafo_y(k: usize, lado: usize) -> f32 {
@@ -355,6 +474,37 @@ fn grafo_y(k: usize, lado: usize) -> f32 {
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     let mut sinks = Vec::new();
 
+    // ── AS TRÊS VESTES, resolvidas pelo NOME uma vez só ────────────────────────────────
+    //
+    // ⛔⛔ **A corda leva um CÍRCULO e não o `Shape: Rope Segment`, e a razão é MEDIDA:** o
+    // `motion.verlet_rope` publica `P`, `rope_prev` e `sim_t` — e **nenhuma coluna `rot`**. O
+    // segmento de corda é uma forma ORIENTADA (um cordão com um nó em cada ponta, cortado de `a`
+    // a `b`), logo sem ângulo os vinte sairiam todos deitados na horizontal: uma corda pendurada
+    // desenhada como uma pilha de traços. *É a espécie que o `CLAUDE.md` §5.0 chama de pior que
+    // uma cena ausente.* ⭐ O círculo é a conta honesta — uma corda de Verlet É uma fila de
+    // partículas —, e não precisa de direcção nenhuma para o ser.
+    //
+    // ⏳ E fica NOMEADO: o `Shape: Rope Segment` entrou no catálogo em 2026-09-19 e **não tem um
+    // único consumidor no repo**. Quem o quiser usar precisa de um nó que escreva `rot` a partir
+    // da direcção ao vizinho — o `rig.bones` não serve (exige `parent`/`len`/`rot`, que é uma
+    // corrente de rig) e o `motion.look_at` também não (ele aponta a um ALVO, não ao seguinte).
+    let circulo = Veste::redonda(super::sim_demo::indice_de(
+        reg,
+        "source.shape",
+        "kind",
+        "Circle",
+    )?);
+    let quadrado = Veste::redonda(super::sim_demo::indice_de(
+        reg,
+        "source.shape",
+        "kind",
+        "Square",
+    )?);
+    let osso = Veste {
+        kind: super::sim_demo::indice_de(reg, "source.shape", "kind", "Bone")?,
+        aspect: OSSO_ESBELTEZA,
+    };
+
     // ── CIMA: O QUE SE SEGURA SOZINHO — a corda · o campo ───────────────────────────────
     {
         let y = grafo_y(0, 0);
@@ -364,7 +514,14 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         doc.graph.set_label(c, "Verlet Rope: a corda");
         laco_de_estado(doc, c, CORDA_PORTA_ESTADO)?;
         // ⚠️ A corda PENDURA-SE, logo o pano dela sobe: centrada, metade dela sairia por baixo.
-        sinks.push(pousa(doc, c, CORDA_PECA, [-COL_X, fileira_y(0) + 0.9], y)?);
+        sinks.push(pousa(
+            doc,
+            c,
+            circulo,
+            CORDA_PECA,
+            [-COL_X, fileira_y(0) + 0.9],
+            y,
+        )?);
     }
     {
         let y = grafo_y(0, 1);
@@ -379,7 +536,14 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         doc.graph.set_param(lfo, "period", CAMPO_PULSO);
         doc.graph.set_param(lfo, "amplitude", 1.0);
         liga(doc, lfo, (w, 0))?;
-        sinks.push(pousa(doc, w, CAMPO_PECA, [COL_X, fileira_y(0)], y)?);
+        sinks.push(pousa(
+            doc,
+            w,
+            circulo,
+            CAMPO_PECA,
+            [COL_X, fileira_y(0)],
+            y,
+        )?);
     }
 
     // ── MEIO: QUEM SEGURA — os pais decidem · a mão vai ao alvo ─────────────────────────
@@ -394,7 +558,15 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         let f = no(doc, "rig.fk", 120.0, y);
         doc.graph.set_label(f, "FK: os pais decidem");
         liga(doc, dobra, (f, 0))?;
-        sinks.push(pousa(doc, f, OSSO_PECA, [-COL_X, fileira_y(1) - 0.9], y)?);
+        let b = ossos_de(doc, f, y)?;
+        sinks.push(pousa(
+            doc,
+            b,
+            osso,
+            OSSO_PECA,
+            [-COL_X, fileira_y(1) - 0.9],
+            y,
+        )?);
     }
     {
         let y = grafo_y(1, 1);
@@ -428,7 +600,15 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         doc.graph.set_label(ik, "IK: a mao vai ao alvo");
         liga(doc, forca, (ik, 0))?;
         liga(doc, osc, (ik, 1))?;
-        sinks.push(pousa(doc, ik, OSSO_PECA, [COL_X, fileira_y(1) - 0.9], y)?);
+        let b = ossos_de(doc, ik, y)?;
+        sinks.push(pousa(
+            doc,
+            b,
+            osso,
+            OSSO_PECA,
+            [COL_X, fileira_y(1) - 0.9],
+            y,
+        )?);
     }
 
     // ── BAIXO: A PELE — todos por igual · cada osso o seu quinhão ───────────────────────
@@ -436,7 +616,16 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         let y = grafo_y(2, lado);
         let x = if lado == 0 { -COL_X } else { COL_X };
         let p = pele(doc, lado == 1, y)?;
-        sinks.push(pousa(doc, p, PELE_PECA, [x, fileira_y(2) - 0.9], y)?);
+        // ⚠️ A pele veste QUADRADOS e não círculos: uma manga é feita de retalhos, e são eles que
+        // fazem a deformação ler-se como tecido em vez de uma nuvem de pontos.
+        sinks.push(pousa(
+            doc,
+            p,
+            quadrado,
+            PELE_PECA,
+            [x, fileira_y(2) - 0.9],
+            y,
+        )?);
     }
 
     doc.graph.validate(reg).ok()?;

@@ -117,6 +117,15 @@ segundos.</p>
       avise, e diga qual.</div></li>
 </ol>
 
+<div class="note"><b>Cada pano veste uma forma, e isso é uma regra nova do programa.</b> Uma
+corrente de <b>posições</b> — que é tudo o que estes cartões produzem — já não vira pixel sozinha:
+ela é uma lista de <em>onde</em>, e alguém tem de dizer <em>o quê</em>. Por isso cada um dos seis
+panos acaba em dois cartões que você vai ver em todos eles: um <code>Shape</code>, que é a peça, e
+um <code>Duplicator</code>, que a carimba em cada posição. É a <b>mesma</b> dupla que o tutorial 1
+usou para pôr um milhão de cópias na tela — aqui ela aparece seis vezes porque há seis correntes.
+<br><br>Onde isto se nota: a fileira do <b>meio</b> veste <b>ossos</b> e não marcas, e é por isso
+que dá para ver <em>para que lado</em> cada peça da corrente aponta.</div>
+
 <h2>2 · Em cima: o que se segura sozinho</h2>
 
 <p>À <b>esquerda</b> está uma <b>corda</b>. Ninguém lhe desenhou a forma: cada ponto está preso ao
@@ -159,8 +168,9 @@ tamanho antigo e <b>6 %</b> a 512×512. O irmão dele, o corpo mole, já permiti
 
 <h2>3 · No meio: quem segura</h2>
 
-<p>Os dois panos têm a <b>mesma</b> corrente de cinco juntas. O que muda é <b>quem escreve o
-quê</b>, e as duas maneiras estão certas:</p>
+<p>Os dois panos têm a <b>mesma</b> corrente de cinco juntas — e desenham <b>quatro ossos</b>, que
+é o que uma corrente de cinco juntas tem: a primeira junta é a raiz, e nenhum osso chega a ela. O
+que muda entre os dois é <b>quem escreve o quê</b>, e as duas maneiras estão certas:</p>
 
 <table>
   <tr><th></th><th>eu digo…</th><th>o programa acha…</th></tr>
@@ -171,12 +181,12 @@ quê</b>, e as duas maneiras estão certas:</p>
 </table>
 
 <div class="figs two">
-  <figure class="fig"><img src="../fig/rig_fk.svg" alt="cinco marcas ligadas numa curva que se enrola">
+  <figure class="fig"><img src="../fig/rig_fk.svg" alt="quatro pecas ligadas numa curva que se enrola">
     <b>FK</b>
-    <figcaption>cada junta dobra o seu tanto — a corrente enrola</figcaption></figure>
-  <figure class="fig"><img src="../fig/rig_ik.svg" alt="cinco marcas ligadas a esticarem-se para cima e para a direita">
+    <figcaption><strong>4</strong> ossos — cada junta dobra o seu tanto, e a corrente enrola</figcaption></figure>
+  <figure class="fig"><img src="../fig/rig_ik.svg" alt="quatro pecas ligadas a esticarem-se para cima e para a direita">
     <b>IK 2-Bone</b>
-    <figcaption>a ponta está no alvo; os ângulos foram achados</figcaption></figure>
+    <figcaption><strong>4</strong> ossos — a ponta está no alvo; os ângulos foram achados</figcaption></figure>
 </div>
 
 <ol class="steps" start="5" style="counter-reset:s 4">
@@ -315,7 +325,10 @@ por cento.</div>
       devolver a pose de repouso.</li>
   <li>Os dois panos de <b>baixo</b> iguais → o quinhão por osso não chega à pele. É a novidade
       deste ciclo; se falhar, é aqui.</li>
-  <li>Algum pano <b>vazio</b> → a fonte dele não entregou nada. Avise, e diga qual.</li>
+  <li>A fileira do <b>meio</b> mostra <b>blocos</b> em vez de ossos, ou os ossos apontam ao
+      contrário → a peça está lá e a orientação dela não; avise.</li>
+  <li>Algum pano <b>vazio</b> → ou a fonte dele não entregou nada, ou o <code>Shape</code> daquele
+      pano não chegou ao <code>Duplicator</code> (secção 1). Avise, e diga qual dos seis.</li>
 </ul>
 
 <footer>PH2D · Motion Nodes · tutorial 9 de uma série · cena

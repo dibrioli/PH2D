@@ -49,14 +49,37 @@ const PELE_QUINHAO: usize = 5;
 const PELE_COLS: usize = 3;
 const PELE_ROWS: usize = 7;
 
+/// Quantos OSSOS uma corrente de `OSSOS_JUNTAS` juntas publica — **derivado, não escrito**.
+///
+/// ⭐ Uma corrente de `n` juntas tem `n − 1` ossos, porque **a raiz é a única junta sem osso a
+/// chegar a ela** (a lei do [`ph2d_node_rig_bones`]). Desde 2026-09-21 os dois panos do meio
+/// passam por um `rig.bones` antes de vestirem a `Shape: Bone`, logo as figuras deles contam
+/// PEÇAS e não juntas.
+///
+/// ⚠️ **A asserção que este número substitui dizia `5` e reprovou no dia da migração** — e foi
+/// ela que a apanhou, o que é exactamente o trabalho dela: *um gerador de figuras que não conta
+/// as peças escreve um SVG em branco e o PDF lê-se como produto partido*.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "cinco juntas, contadas da cena"
+)]
+const OSSOS_DA_CORRENTE: usize = crate::motion_state::rig_demo::OSSOS_JUNTAS as usize - 1;
+
 /// Coze a cena `=120` em regime e devolve o stream de cada pano.
 ///
-/// ⚠️ **Sem membranas, ao contrário do ciclo 8:** as seis cadeias fabricam tudo a partir de
-/// params, logo não há nada a publicar antes de cozer — e a ausência é uma propriedade do grupo,
-/// não um esquecimento (*um esqueleto não vem de fora*).
+/// ⚠️ **Sem membranas, ao contrário do ciclo 8:** as seis cadeias fabricam a CORRENTE a partir de
+/// params, logo não há dados de fora a publicar — e a ausência é uma propriedade do grupo, não um
+/// esquecimento (*um esqueleto não vem de fora*).
+///
+/// ⛔⛔ **Mas há uma coisa a publicar, e esta função esteve sem ela:** desde 2026-09-21 cada pano
+/// veste uma forma (`source.shape` → `motion.duplicator`), e a geometria de uma forma é gerada no
+/// QUADRO, nunca no cozimento. Sem o `publish` os seis panos cozem **VAZIOS** e as seis figuras
+/// saem em branco — *e nenhum gate desta linha olha para uma figura*, que é a frase que o commit
+/// das figuras já escrevia por outro motivo.
 fn colher() -> Vec<Stream> {
     let mut m = MotionState::new();
     let (sinks, _) = crate::motion_demo_legend::monta("120", &mut m.doc, &m.registry);
+    crate::motion_shape_gen::publish(&mut m, 0.0);
     let mut t = 0.0f64;
     for _ in 0..TIQUES_DE_REGIME {
         for s in &sinks {
@@ -228,8 +251,16 @@ fn write_the_rig_figures() {
     // ⛔ As asserções ANTES de escrever: uma figura vazia lê-se, no PDF, como produto partido.
     assert_eq!(p[CORDA].count(), 20, "a corda tem vinte pontos");
     assert_eq!(p[CAMPO].count(), 121, "o campo e' 11x11");
-    assert_eq!(p[FK].count(), 5, "a corrente tem cinco juntas");
-    assert_eq!(p[IK].count(), 5, "a corrente do IK tem as mesmas cinco");
+    assert_eq!(
+        p[FK].count(),
+        OSSOS_DA_CORRENTE,
+        "o pano do FK entrega OSSOS (uma corrente de n juntas tem n-1)"
+    );
+    assert_eq!(
+        p[IK].count(),
+        OSSOS_DA_CORRENTE,
+        "o pano do IK entrega os mesmos ossos"
+    );
     assert_eq!(
         p[PELE_IGUAL].count(),
         PELE_COLS * PELE_ROWS,

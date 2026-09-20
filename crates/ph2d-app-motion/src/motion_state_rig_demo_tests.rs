@@ -5,9 +5,16 @@
 //! e as que se medem por PARES têm o controlo dentro do próprio gate, porque *«mexeu»* não separa
 //! a lei de um grafo diferente.
 //!
-//! ⚠️ **Esta cena não tem membranas** (ao contrário da `=119`): as seis cadeias fabricam tudo a
-//! partir de params, logo não há nada a publicar antes de cozer. *A ausência é uma propriedade do
-//! grupo — um esqueleto não vem de fora.*
+//! ⚠️ **Esta cena não tem membranas** (ao contrário da `=119`): as seis cadeias fabricam a
+//! CORRENTE a partir de params, logo não há dados de fora a publicar. *A ausência é uma
+//! propriedade do grupo — um esqueleto não vem de fora.*
+//!
+//! ⛔⛔ **E a frase que aqui estava — *«logo não há nada a publicar antes de cozer»* — MORREU em
+//! 2026-09-21**, quando a cena passou a vestir cada pano com uma forma. Ela era verdade sobre as
+//! MEMBRANAS e foi lida como verdade sobre o `publish` inteiro: a geometria de um `source.shape` é
+//! gerada no QUADRO (`motion_shape_gen`), não no cozimento, logo **todo** arnês desta cena tem de
+//! a publicar. *Uma ausência afirmada sobre uma categoria (dados de fora) passa a mentir no dia em
+//! que uma segunda categoria (geometria de forma) entra pela mesma porta.*
 
 use super::*;
 use crate::motion_state::MotionState;
@@ -40,6 +47,21 @@ const DT: f64 = 1.0 / 60.0;
 /// ⭐ Com a banda no lugar da rampa o par mede `0,63` de mundo (`5,7` peças), logo a barra tem
 /// folga de `2×` e o que ela proíbe é a REGRESSÃO ao invisível.
 const VISIVEL: f32 = 0.3;
+
+/// **A BANDA que o app de facto desenha**, em unidades de mundo — MEDIDA numa fotografia.
+///
+/// ⚠️⚠️ **Ela não é a janela.** Com a ferramenta Motion na mão o chrome da cena desenha num
+/// sub-rectângulo entre a barra do topo e a timeline. Lida numa foto de `1930×1040` com a
+/// arrumação de fábrica, a escala sai das PRÓPRIAS fichas da cena (duas fichas separadas por
+/// `ROW_GAP` de mundo ocupavam `178 px` ⇒ `55,6 px/unidade`) e a banda ocupava `482 px`.
+///
+/// ⛔ **E ela não é centrada na origem** — o que fez a fileira de cima sair pelo topo enquanto
+/// sobrava espaço em baixo.
+const BANDA_ALTURA: f32 = 8.665;
+const BANDA_CENTRO: f32 = -0.927;
+/// ⚠️ **Pequena de propósito:** os dois números acima vêm de UMA janela, e uma maior dá mais
+/// banda — logo eles são conservadores. O que este gate proíbe é a regressão ao invisível.
+const MARGEM_DA_BANDA: f32 = 0.15;
 
 /// O primeiro nó de um dado tipo no grafo.
 ///
@@ -80,6 +102,14 @@ fn corre(k: usize, tiques: usize, mexe: impl FnOnce(&mut Graph)) -> Stream {
     let mut m = MotionState::new();
     let sinks = build(&mut m.doc, &m.registry).expect("a cena monta");
     mexe(&mut m.doc.graph);
+    // ⛔⛔ **Sem esta linha o `source.shape` coze VAZIO, e com ele todos os seis panos.** A
+    // geometria de uma forma é gerada no QUADRO (`motion_shape_gen`), não no cozimento — logo um
+    // arnês headless que salte o passo mede um grafo em que a porta `shape` do duplicador não
+    // entrega nada. ⚠️ *O modo de falha é o pior possível: nenhum erro, contagem zero, e os gates
+    // que leem `P` acusam a FONTE de não ter entregado nada.* É a armadilha 2 do
+    // [doc 115 §32.1](../../docs/Motion%20Nodes/115_o_colisor_sai_do_grafo.md), e o padrão já
+    // vive em cinco sítios desta crate.
+    crate::motion_shape_gen::publish(&mut m, 0.0);
     let sink = sinks[k];
     let mut t = 0.0f64;
     for _ in 0..tiques {
@@ -158,6 +188,9 @@ fn maior_desvio(a: &[[f32; 2]], b: &[[f32; 2]]) -> f32 {
 fn a_cena_monta_seis_panos_e_nenhum_vem_vazio() {
     let mut m = MotionState::new();
     let sinks = build(&mut m.doc, &m.registry).expect("a cena monta");
+    // ⚠️ A mesma linha do [`corre`], pela mesma razão: sem ela o `source.shape` de cada pano coze
+    // vazio e os seis leem `0` peças — e a mensagem deste gate acusaria a FONTE de cada cadeia.
+    crate::motion_shape_gen::publish(&mut m, 0.0);
     assert_eq!(sinks.len(), 6, "a cena tem seis panos");
     for (k, &sink) in sinks.iter().enumerate() {
         let s = m
@@ -337,5 +370,219 @@ fn o_passo_do_tecto_entrega_meio_milhao_de_celulas() {
         n, esperado,
         "o artista escreveu {LADO}x{LADO} e recebeu {n} celulas — o passo 4 do anuncio ensinaria \
          um tecto que nao e' o que o nó tem"
+    );
+}
+
+/// ⭐⭐⭐ **CADA PANO CHEGA A PIXEL** — a pergunta que os oito gates acima NÃO fazem.
+///
+/// ⛔⛔⛔ **Esta cena esteve a desenhar NADA durante uma jornada inteira, com a suíte VERDE.**
+/// Em 2026-09-19 o dono mandou retirar os gizmos dos nós que só passam posições, e a lei que
+/// ficou no lugar deles ([`ph2d_eval_motion::tem_aparencia`], ligada por omissão desde então)
+/// diz que *uma corrente que não veio de uma forma não vira pixel*. A cena é de 17/09: as seis
+/// cadeias acabavam num `motion.output` sem uma única forma no caminho.
+///
+/// ⚠️⚠️ **Os outros oito gates leem `P`, e `P` continuava perfeito** — a corda balançava, o IK
+/// seguia o alvo, o quinhão separava as duas peles. *Eles medem o que a cena CALCULA; nenhum
+/// perguntava se ela se VÊ*, que é a única coisa que o dono pode julgar. É a forma exacta que o
+/// `CLAUDE.md` §5.0 chama de *«o consumidor que PROJECTA o valor fora»*, um andar acima: aqui o
+/// consumidor é o renderer, e o que ele descarta é o pano inteiro.
+///
+/// FALSIFICADO por tirar o `source.shape`/`motion.duplicator` de um pano só — o `k` da mensagem
+/// nomeia qual.
+#[test]
+fn cada_pano_veste_uma_forma_e_por_isso_desenha() {
+    for (k, nome) in [
+        (CORDA, "a corda"),
+        (CAMPO, "o campo"),
+        (FK, "o FK"),
+        (IK, "o IK"),
+        (PELE_IGUAL, "a pele igual"),
+        (PELE_QUINHAO, "a pele com quinhao"),
+    ] {
+        let s = corre(k, 1, |_| {});
+        assert!(
+            ph2d_eval_motion::tem_aparencia(&s),
+            "o pano {k} ({nome}) nao tem aparencia: o renderer descarta-o inteiro"
+        );
+    }
+}
+
+/// ⭐ **A CADEIA DO PANO DA CORDA, ETAPA A ETAPA** — o gate que diz ONDE, quando o irmão diz QUE.
+///
+/// ⚠️ **Ele nasceu como uma sonda que IMPRIMIA e passava sempre**, e ficou assim tempo suficiente
+/// para encontrar o defeito de arnês que a migração desta cena pagou (o `source.shape` a cozer
+/// `0`). *Uma tabela impressa que ninguém lê é a forma que este repo já pagou meia dúzia de
+/// vezes*, então ela afirma: cada etapa entrega a contagem que a lei manda, e o `source.shape`
+/// entrega **uma** forma — se ele entregar zero, o duplicador não tem o que copiar e os SEIS panos
+/// da cena ficam vazios de uma só vez.
+///
+/// FALSIFICADO por qualquer etapa devolver zero (ou o `publish` sair do [`corre`]).
+#[test]
+fn a_cadeia_de_um_pano_entrega_em_cada_etapa() {
+    let mut m = MotionState::new();
+    let _ = build(&mut m.doc, &m.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    #[expect(clippy::cast_possible_truncation, reason = "vinte pontos de corda")]
+    let esperado = CORDA_PONTOS as usize;
+    for (tipo, quantos) in [
+        ("motion.verlet_rope", esperado),
+        ("motion.scale", esperado),
+        ("motion.move", esperado),
+        // ⚠️ UMA forma: ela é o molde, e o duplicador é quem a multiplica pelos pontos.
+        ("source.shape", 1),
+        ("motion.duplicator", esperado),
+        ("motion.output", esperado),
+    ] {
+        let n = primeiro(&m.doc.graph, tipo);
+        let r = m
+            .pump
+            .cook
+            .cook(&m.doc.graph, &m.registry, n, 0.0)
+            .unwrap_or_else(|e| panic!("o `{tipo}` nao coze: {e:?}"));
+        assert_eq!(
+            pontos(r[0].as_stream()).len(),
+            quantos,
+            "o `{tipo}` devia entregar {quantos} — se for ZERO, e' aqui que a cadeia se perde"
+        );
+    }
+}
+
+/// ⭐⭐ **A FILEIRA DO MEIO ENTREGA OSSOS, E NÃO JUNTAS.**
+///
+/// ⛔⛔ **Sem o `rig.bones` a `Shape: Bone` desenha-se UMA JUNTA À FRENTE.** A lei do `fk::resolve`
+/// é `P[i] = P[pai] + len[i]·(cos wrot[i], sin wrot[i])`: o `len`/`rot` que o elemento `i` carrega
+/// são os do osso que **CHEGA** a ele, e o `P[i]` dele é a **PONTA** desse osso ⇒ carimbar a forma
+/// na junta põe cada peça pelo lado de fora do arco, com a última pendurada para lá da corrente
+/// (medido no cabeçalho do [`ph2d_node_rig_bones`], com a tabela).
+///
+/// ⚠️ **E isso é INVISÍVEL a todos os outros gates desta cena:** eles comparam os dois panos do
+/// meio um com o outro, e sem o nó os DOIS ficam errados da mesma maneira. A régua que o separa é
+/// a CONTAGEM — uma corrente de `n` juntas tem `n − 1` ossos, porque a raiz é a única junta sem
+/// osso a chegar a ela.
+///
+/// FALSIFICADO por tirar o `ossos_de` de qualquer um dos dois panos.
+#[test]
+fn os_dois_panos_do_meio_entregam_ossos_e_nao_juntas() {
+    #[expect(clippy::cast_possible_truncation, reason = "cinco juntas")]
+    let juntas = OSSOS_JUNTAS as usize;
+    for (k, nome) in [(FK, "o FK"), (IK, "o IK")] {
+        let n = pontos(&corre(k, 1, |_| {})).len();
+        assert_eq!(
+            n,
+            juntas - 1,
+            "{nome} entregou {n} pecas: uma corrente de {juntas} juntas tem {} OSSOS, e sem o \
+             `rig.bones` a forma cai uma junta a' frente",
+            juntas - 1
+        );
+    }
+}
+
+/// ⭐⭐⭐ **A CENA CABE NA BANDA QUE O APP DESENHA** — o gate que a FOTO escreveu.
+///
+/// ⛔⛔⛔ **Ela não cabia, e nenhum dos gates acima o podia ver:** os catorze medem o que a cena
+/// CALCULA (posições, tamanhos, diferenças entre panos) e a pergunta aqui é *o dono vê isto?*.
+/// Fotografada (`docs/Components/ferramentas/fotografa_cena.sh`, `1930×1040`, arrumação de
+/// fábrica), a fileira de CIMA saía pelo topo e **as duas fichas dela eram invisíveis** — o passo
+/// 2 do tutorial fala de dois panos que o artista não consegue nomear.
+///
+/// ⚠️⚠️ **A banda NÃO é a janela e NÃO é centrada na origem.** Com a ferramenta Motion na mão o
+/// chrome desenha num sub-rectângulo entre a barra do topo e a timeline; lida a escala pelas
+/// PRÓPRIAS fichas da cena (`ROW_GAP` de mundo contra os píxeis que as separam), ela mostra
+/// [`BANDA_ALTURA`] unidades centradas em [`BANDA_CENTRO`]. *Uma cena enquadrada contra a janela
+/// é uma cena enquadrada contra uma superfície em que ela não é desenhada.*
+///
+/// ⚠️ **Os dois números são de UMA fotografia e dizem-no de si mesmos.** Eles são conservadores
+/// por construção (uma janela maior dá mais banda), e a margem exigida é deliberadamente pequena:
+/// o que este gate proíbe é a REGRESSÃO ao invisível, não uma disposição em particular.
+///
+/// FALSIFICADO por repor o `ROW_GAP` em `3,2`, ou por apagar o [`CENA_Y`].
+#[test]
+fn a_cena_cabe_na_banda_que_o_app_desenha() {
+    let (lo, hi) = extensao_da_cena();
+    let (banda_lo, banda_hi) = (
+        BANDA_CENTRO - BANDA_ALTURA / 2.0,
+        BANDA_CENTRO + BANDA_ALTURA / 2.0,
+    );
+    assert!(
+        hi <= banda_hi - MARGEM_DA_BANDA,
+        "a cena sai pelo TOPO: {hi:+.3} contra {:+.3} (a ficha da fileira de cima fica invisivel)",
+        banda_hi - MARGEM_DA_BANDA
+    );
+    assert!(
+        lo >= banda_lo + MARGEM_DA_BANDA,
+        "a cena sai por BAIXO: {lo:+.3} contra {:+.3}",
+        banda_lo + MARGEM_DA_BANDA
+    );
+    // ⭐ **O CONTROLO:** sem ele um `ROW_GAP` minúsculo passaria — e a cena seria ilegível por
+    // outro motivo. *Um gate que só proíbe «grande demais» aprova «pequeno demais».*
+    assert!(
+        hi - lo > BANDA_ALTURA * 0.7,
+        "a cena encolheu demais ({:.3} de {BANDA_ALTURA:.3}): tres fileiras num canto nao se leem",
+        hi - lo
+    );
+}
+
+/// A extensão vertical de tudo o que a cena desenha — os seis panos (com a meia-peça de cada um)
+/// e as seis fichas.
+///
+/// ⚠️ **A meia-peça entra na conta**: uma posição não é um ponto na tela, é o centro de uma forma
+/// que abrange `2 × size` — e foi exactamente essa diferença que pôs a fileira de cima fora.
+fn extensao_da_cena() -> (f32, f32) {
+    let mut m = MotionState::new();
+    let sinks = build(&mut m.doc, &m.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    let mut t = 0.0f64;
+    for _ in 0..TIQUES {
+        for s in &sinks {
+            let _ = m.pump.cook.cook(&m.doc.graph, &m.registry, *s, t);
+        }
+        let _ = m.pump.cook.advance_tick(&m.doc.graph, &m.registry, t);
+        t += DT;
+    }
+    let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
+    for s in &sinks {
+        let st = m
+            .pump
+            .cook
+            .cook(&m.doc.graph, &m.registry, *s, t)
+            .expect("coze")[0]
+            .as_stream()
+            .clone();
+        let meia = match st.get("size") {
+            Some(Column::Vec2(v)) => v.iter().map(|q| q[1].abs()).fold(0.0f32, f32::max),
+            _ => 0.0,
+        };
+        for q in pontos(&st) {
+            lo = lo.min(q[1] - meia);
+            hi = hi.max(q[1] + meia);
+        }
+    }
+    for c in captions() {
+        lo = lo.min(c.world[1]);
+        hi = hi.max(c.world[1]);
+    }
+    (lo, hi)
+}
+
+/// **A SONDA do enquadramento** — para quem tiver de mexer nos números.
+///
+/// ⚠️ **Ela lê a MESMA [`extensao_da_cena`] que o gate.** Escrita por si própria, seria uma
+/// segunda resposta à mesma pergunta — e a que o humano lê não seria a que o portão mede.
+#[test]
+#[ignore = "sonda de enquadramento"]
+fn diag_a_extensao_da_cena() {
+    let (lo, hi) = extensao_da_cena();
+    for c in captions() {
+        println!("ficha : y {:+.3}  {}", c.world[1], c.text);
+    }
+    println!(
+        "CENA  : y {lo:+.3} .. {hi:+.3}   altura {:.3}   centro {:+.3}",
+        hi - lo,
+        (lo + hi) / 2.0
+    );
+    println!(
+        "BANDA : y {:+.3} .. {:+.3}   altura {BANDA_ALTURA:.3}   centro {BANDA_CENTRO:+.3}",
+        BANDA_CENTRO - BANDA_ALTURA / 2.0,
+        BANDA_CENTRO + BANDA_ALTURA / 2.0
     );
 }

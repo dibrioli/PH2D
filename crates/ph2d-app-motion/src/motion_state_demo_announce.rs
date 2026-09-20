@@ -316,6 +316,11 @@ pub(super) fn rig() {
   1. Carregue em PLAY. A fileira de CIMA mexe-se sozinha (a corda balanca, o campo
      ondula) e a do MEIO tambem (o alvo varre de um lado ao outro). A de BAIXO fica
      PARADA de proposito: uma pele nao tem tempo, ela segue os ossos.
+     (i) Cada um dos seis panos acaba em DOIS cartoes iguais: um `Shape`, que e' a peca,
+         e um `Duplicator`, que a carimba em cada posicao. Uma corrente de POSICOES ja'
+         nao vira pixel sozinha -- ela diz ONDE, e a forma diz O QUE. E' por isso que a
+         fileira do MEIO veste OSSOS e nao marcas, e da' para ver para que lado cada
+         peca da corrente aponta.
   2. Fileira de CIMA -- O QUE SE SEGURA SOZINHO. A ESQUERDA e' uma CORDA pendurada: cada
      ponto puxa o vizinho, e ninguem lhe disse a forma. A DIREITA e' um CAMPO visto DE
      CIMA: cada celula empurra as quatro vizinhas, e o que voce ve' sao ANEIS a crescer
@@ -329,8 +334,10 @@ pub(super) fn rig() {
      e `0.004` em `Spacing`. O pano enche-se de meio milhao de celulas e a onda continua
      a correr sem o app engasgar.
      (i) Ate' hoje este campo parava em 60 de cada lado. O numero novo foi MEDIDO.
-  6. Fileira do MEIO -- QUEM SEGURA. Os dois panos tem a MESMA corrente de ossos, e
-     resolvem-na ao contrario um do outro:
+  6. Fileira do MEIO -- QUEM SEGURA. Os dois panos tem a MESMA corrente de cinco juntas
+     -- e desenham QUATRO ossos, que e' o que uma corrente de cinco juntas tem: a
+     primeira e' a raiz, e nenhum osso chega a ela. Os dois resolvem-na ao contrario um
+     do outro:
        ESQUERDA (FK) -- eu digo o ANGULO de cada junta, e a corrente vai parar onde for.
        DIREITA  (IK) -- eu digo ONDE A MAO TEM DE ESTAR, e o app acha os angulos.
      O ponto que varre a direita e' o ALVO. Repare que a mao nunca o larga.
@@ -354,8 +361,10 @@ pub(super) fn rig() {
 
   DEU ERRADO se: a corda nao balancar ao dar PLAY; se o campo ficar uma grelha parada;
   se os dois panos do MEIO ficarem iguais (o alvo nao chegou ao solver); se os dois de
-  BAIXO ficarem iguais (o quinhao por osso nao chegou a' pele); ou se algum pano estiver
-  VAZIO -- um pano vazio quer dizer que a fonte dele nao entregou nada."
+  BAIXO ficarem iguais (o quinhao por osso nao chegou a' pele); se a fileira do MEIO
+  mostrar BLOCOS em vez de ossos (a peca esta' la' e a esbelteza dela nao); ou se algum
+  pano estiver VAZIO -- ou a fonte dele nao entregou nada, ou o `Shape` daquele pano nao
+  chegou ao `Duplicator`. Diga QUAL dos seis."
     );
 }
 

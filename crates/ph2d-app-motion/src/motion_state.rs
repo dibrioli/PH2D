@@ -122,8 +122,13 @@ mod pivot_demo;
 /// ⭐⭐⭐ **COISAS QUE SE SEGURAM** — a cena de smoke do **ciclo 9** (rig e corpos moles, doc 114
 /// §10). ⚠️ Ela é a primeira cena de CICLO cuja família inteira coze na CPU, e isso é propriedade
 /// medida (§2 do doc), não defeito: nove dos dez nós do grupo não têm kernel.
+/// ⚠️ **`pub(crate)` por UMA razão medida:** o gerador das figuras do tutorial
+/// (`motion_bridge::ciclos_mods::rig_figures`) afirma quantas peças cada pano entrega, e esse
+/// número é **derivado** da contagem de juntas que esta cena declara. Privado, ele teria de ser
+/// uma SEGUNDA cópia — e uma segunda cópia de um número que a cena pode mudar é como um gerador
+/// de figuras passa a escrever SVGs em branco em silêncio.
 #[path = "motion_state_rig_demo.rs"]
-mod rig_demo;
+pub(crate) mod rig_demo;
 /// **DEIXAR A FÍSICA DECIDIR** — a cena de smoke do ciclo 5 (a simulação); ver o cabeçalho dela.
 #[path = "motion_state_sim_demo.rs"]
 mod sim_demo;

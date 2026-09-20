@@ -88,12 +88,24 @@ pub fn draw_weights(
 /// pousados em cima dele. A `0,85` dos pontos a arte desaparecia debaixo de uma chapa de cor.
 const WEIGHT_MESH_ALPHA: f32 = 0.30;
 
+/// A opacidade da ARESTA — quase opaca, e por isso ela é a leitura fiel da cor.
+///
+/// ⚠️ Ver a nota dentro do [`draw_weight_mesh`]: a `30 %` do preenchimento a cor é misturada com o
+/// que está por baixo; a aresta não.
+const WEIGHT_MESH_EDGE_ALPHA: f32 = 0.85;
+
 /// A espessura da aresta do retículo, em píxeis de ecrã.
 ///
 /// ⚠️ **Em ECRÃ e não em mundo** — é a gramática desta crate inteira: *o vértice sobe pelo afim, a
 /// espessura não*. Com a espessura em mundo, afastar o zoom colaria as arestas numa mancha sólida,
 /// que é precisamente o contrário do que um retículo mostra.
-const WEIGHT_MESH_EDGE_PX: f64 = 0.6; // LITERAL-PX-OK: espessura de ecrã
+///
+/// ⛔⛔ **`0,6` não se via, e o número que o diz é o VÃO da malha na tela** (foto da cena do dono,
+/// 2026-09-20): `498` vértices sobre `7 × 1` unidades dão um lado de `~0,118`, que a `100` px por
+/// unidade é **`~12` px**. Uma aresta de `0,6` px a `25 %` de opacidade sobre um vão de `12` px é
+/// invisível — *a foto mostrava o campo e não mostrava a GRELHA, que é metade do que o report
+/// pede*. ⚠️ E ela não pode fechar o vão: a `3` px as arestas tocam-se e o retículo vira chapa.
+const WEIGHT_MESH_EDGE_PX: f64 = 1.0; // LITERAL-PX-OK: vão medido de ~12 px, tabela acima
 
 /// ⭐⭐⭐ **O RETÍCULO À VISTA** — a malha do domínio que o bind guardou, pintada pelo peso.
 ///
@@ -128,8 +140,6 @@ pub fn draw_weight_mesh(
         return;
     }
     let rampa = Rampa::nova();
-    let borda = ColorToken::Border.resolve(theme);
-    let borda = VelloColor::from_rgba8(borda.r, borda.g, borda.b, borda.a).multiply_alpha(0.25);
     // ⚠️ **UM caminho para o passe inteiro** — um por triângulo seriam `~900` alocações por quadro
     // na arte medida do smoke, para desenhar três segmentos de cada vez.
     let mut caminho = ph2d_vector::BezPath::new();
@@ -143,17 +153,26 @@ pub fn draw_weight_mesh(
         caminho.line_to(p[1]);
         caminho.line_to(p[2]);
         caminho.close_path();
+        // ⚠️⚠️ **A MESMA COR nas duas, e é uma decisão:** a foto de 2026-09-20 mostrou a aresta
+        // num token neutro e o preenchimento na rampa — *duas tintas para o mesmo número*, e o
+        // olho lê a grelha como uma coisa e o campo como outra. Hoje a aresta é a rampa opaca e o
+        // preenchimento é a mesma rampa esbatida: **uma leitura, duas intensidades**.
+        //
+        // ⛔ E a aresta ser a OPACA é o que a torna honesta: a `30 %` a cor do preenchimento é
+        // misturada com o que está por baixo, logo o mesmo peso lê-se diferente sobre a arte e
+        // sobre o fundo — na foto, mauve sobre cinzento e azulado sobre o tentáculo verde.
+        let c = rampa.cor(w);
         target.inner_mut().fill(
             Fill::NonZero,
             Affine::IDENTITY,
-            &Brush::Solid(rampa.cor(w).multiply_alpha(WEIGHT_MESH_ALPHA)),
+            &Brush::Solid(c.multiply_alpha(WEIGHT_MESH_ALPHA)),
             None,
             &caminho,
         );
         target.inner_mut().stroke(
             &Stroke::new(WEIGHT_MESH_EDGE_PX),
             Affine::IDENTITY,
-            &Brush::Solid(borda),
+            &Brush::Solid(c.multiply_alpha(WEIGHT_MESH_EDGE_ALPHA)),
             None,
             &caminho,
         );

@@ -246,3 +246,51 @@ fn a_cor_do_triangulo_e_a_media_dos_tres_cantos() {
         "um índice fora da tabela tem de recusar o triângulo"
     );
 }
+
+/// As cores distintas que o retículo encoda — o oráculo é o `draw_data` da cena.
+fn cores(verts: &[[f64; 2]], pesos: &[f64], tris: &[[u32; 3]]) -> std::collections::BTreeSet<u32> {
+    let mut cena = ph2d_vector::VectorScene::new();
+    super::draw_weight_mesh(
+        verts,
+        pesos,
+        tris,
+        ph2d_vector::Affine::IDENTITY,
+        Theme::Forge,
+        &mut cena,
+    );
+    cena.inner().encoding().draw_data.iter().copied().collect()
+}
+
+/// ⭐⭐⭐ **A ARESTA É A MESMA RAMPA DO PREENCHIMENTO** — uma leitura, duas intensidades.
+///
+/// ⛔⛔ **O defeito que ele impede tem foto** (2026-09-20): a 1.ª redacção pintava a aresta com um
+/// token NEUTRO e o preenchimento com a rampa — *duas tintas para o mesmo número*, e o olho lê a
+/// grelha como uma coisa e o campo como outra.
+///
+/// ⚠️ **A régua é a CONTAGEM de cores distintas, porque é ela que separa as duas leis:** com a
+/// rampa nas duas, dois triângulos de pesos diferentes dão **quatro** cores (um par por
+/// triângulo); com a aresta neutra dão **três** (dois preenchimentos e uma aresta partilhada).
+///
+/// ⚠️ **E o CONTROLO vem primeiro:** dois triângulos do MESMO peso têm de dar **duas** — sem ele,
+/// um `draw_data` que guardasse uma cor por caminho passaria a contar quatro sempre e o gate
+/// afirmaria nada.
+#[test]
+fn a_aresta_do_reticulo_e_a_mesma_rampa_do_preenchimento() {
+    let v = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
+    let t = [[0, 1, 2], [0, 2, 3]];
+
+    let iguais = cores(&v, &[0.5; 4], &t);
+    assert_eq!(
+        iguais.len(),
+        2,
+        "dois triângulos do mesmo peso têm de dar UM par de cores: {iguais:?}"
+    );
+    // O 2.º triângulo (`0,2,3`) tem média `(0 + 1 + 1)/3`; o 1.º (`0,1,2`) tem `(0 + 0 + 1)/3`.
+    let distintos = cores(&v, &[0.0, 0.0, 1.0, 1.0], &t);
+    assert_eq!(
+        distintos.len(),
+        4,
+        "dois pesos diferentes têm de dar DOIS pares — com a aresta numa tinta neutra isto lê 3: \
+         {distintos:?}"
+    );
+}

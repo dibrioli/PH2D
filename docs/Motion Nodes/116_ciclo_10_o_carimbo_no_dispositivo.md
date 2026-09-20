@@ -566,6 +566,47 @@ fica `forma(fronteira) → carimbo(fronteira) → …` e **não sobra etapa nenh
 a W2 sozinha tira a recusa e não põe nada na placa. *As duas são necessárias e a ORDEM entre elas
 inverteu-se.*
 
+### §5.7 — ⛔⛔⛔ E A W2 TAMBÉM NÃO ATERRA NAS CENAS DO PRODUTO: o pior cartão desenha `190` linhas
+
+A §4.3 é uma **função**, não um veredito: ela diz quanto custam `N` cópias e **não** diz qual é o
+`N` que existe. Cozidas as onze cenas com carimbo pela porta do produto (o `pump`, três tiques —
+`audit_the_stamp_live_vector_population`):
+
+| cena | linhas vectoriais | geometrias | encode previsto |
+|---:|---:|---:|---:|
+| `=62` | `14` | `1` | `0,001 ms` |
+| `=98` | `64` | `1` | `0,006 ms` |
+| `=110` | `73` | `4` | `0,006 ms` |
+| `=114` | `50` | `1` | `0,004 ms` |
+| `=115` | `36` | `2` | `0,003 ms` |
+| **`=120`** | **`190`** | `4` | **`0,017 ms`** |
+| `=121` · `=122` · `=123` · `=124` · `=125` | `24` · `32` · `16` · `40` · `22` | `1` | `≤ 0,004 ms` |
+
+⛔⛔⛔ **A pior cena do produto inteiro desenha `190` linhas e custa `0,1 %` de um quadro.** O
+critério que o ADR-0154 escreve para o *bake fallback* é **`100 k+` instâncias estáticas de uma
+forma só**, e o produto está **`540×`** abaixo dele. ⇒ *a W2 nunca dispararia em cena nenhuma que
+hoje ship.*
+
+⭐⭐⭐ **E é isto que nomeia a população verdadeira deste ciclo: ela não está nas cenas — está nos
+DOCUMENTOS DO DONO.** Os dois reports são sobre grafos que ele montou (*«1000 × 1000 no grid»* =
+`10⁶`; a estrela a `102 400`), e a escada do §4.3 diz exactamente o que isso custa (`92,5 ms` e
+`8,45 ms` **só de encode**). As cenas de demonstração nunca foram lentas.
+
+⚠️⚠️ **Três medições seguidas disseram a mesma coisa por eixos diferentes, e é essa a lição da
+jornada:** a §5.2 mediu a população do NÓ (`2` contra `34`), a §5.6 a da CADEIA (`36/36` recusados
+uma camada acima) e esta a do DESENHO (`190` contra `100 000`). *De cada vez eu tinha uma wave
+escolhida por um argumento de mecanismo, e de cada vez a contagem mudou-a.*
+
+⛔ **Consequência prática que não é opcional:** enquanto não existir uma cena **na população do
+report**, nem o dono vê a cura nem um gate a mede — as onze que existem não contêm o fenómeno, e
+uma delas a ficar `0,017 ms` mais rápida é ruído. *Uma cena que não contém o fenómeno não aprova
+nem reprova a cura dele* (a mesma lei que a `=50` da escultura pagou, e a `=45` antes dela).
+
+⇒ **DECISÃO DO DONO, com os números ao lado:** as duas waves que sobram (W2 e W1(b)) curam os
+documentos DELE e não as cenas que ship, e o primeiro passo delas é uma **cena nova na população do
+report** (`320 × 320` = `102 400` carimbos de uma estrela) — que é, ela própria, a reprodução do que
+ele fotografou.
+
 ---
 
 ## §6 — CERCAS que este ciclo herda (lidas, não lembradas)

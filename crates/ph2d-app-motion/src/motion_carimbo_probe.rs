@@ -488,6 +488,85 @@ fn audit_the_stamp_duplicator_population() {
     eprintln!("  cenas do duplicador: {cenas_dup:?}\n");
 }
 
+/// ⭐⭐⭐ **QUANTAS LINHAS VECTORIAIS AS CENAS DO PRODUTO DE FACTO DESENHAM** — a medição que decide
+/// se a W2 é um entregável ou a TERCEIRA bancada seguida.
+///
+/// ⚠️ **A escada do §4.3 é uma FUNÇÃO, não um veredito.** Ela diz quanto custam `N` cópias; o que
+/// ela **não** diz é qual é o `N` das cenas que existem. O report do dono é `1000 × 1000`, mas um
+/// cartão do produto pode ser de dezenas — e a `0,056 µs` por cópia, dezenas custam **nada**.
+///
+/// ⛔ *Duas waves seguidas foram reordenadas por eu ter lido a população do NÓ e não a da CENA
+/// (§5.2 e §5.6). Esta pergunta é a mesma, um eixo acima: a população do DESENHO.*
+///
+/// Cozinha cada cena com carimbo pela porta do produto (o `pump`, três tiques) e conta as linhas
+/// **vectoriais** — que são exactamente as que pagam o encode do §4.3.
+#[test]
+#[ignore = "sonda de auditoria (ciclo 10), nao gate"]
+fn audit_the_stamp_live_vector_population() {
+    let uv = [0.0, 0.0, 1.0, 1.0];
+    let tam = [1.0, 1.0];
+    eprintln!("\n  ═══ LINHAS VECTORIAIS POR CENA DO PRODUTO (ciclo 10, W2) ═══\n");
+    eprintln!("     cena |   vector |     quad | geometrias | encode previsto");
+    eprintln!("  --------|----------|----------|------------|----------------");
+    let (mut pior, mut cena_pior, mut acima_de_10k) = (0usize, 0u32, 0usize);
+    for level in 1..=crate::motion_state::demo_router::MAX_DEMO_LEVEL {
+        let mut m = crate::motion_state::MotionState::new();
+        let _ = crate::motion_demo_legend::monta(&level.to_string(), &mut m.doc, &m.registry);
+        if !m
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .any(|n| n.type_name == "motion.duplicator")
+        {
+            continue;
+        }
+        let saidas: Vec<_> = m
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == "motion.output")
+            .map(|n| n.id)
+            .collect();
+        if saidas.is_empty() {
+            eprintln!("  {level:>7} |  (a cena nao tem `motion.output`)");
+            continue;
+        }
+        for t in 0..3u64 {
+            let ph = f64::from(u32::try_from(t).unwrap_or(0)) / 60.0;
+            crate::motion_shape_gen::publish(&mut m, ph);
+            m.pump.mark_dirty();
+            let _ = m
+                .pump
+                .pump(&m.doc.graph, &m.registry, &saidas, t, ph, uv, tam);
+        }
+        let n = m.pump.vector_instances.len();
+        let distintas: std::collections::BTreeSet<u32> = m
+            .pump
+            .vector_instances
+            .iter()
+            .map(|vi| vi.geometry_id)
+            .collect();
+        // O µs/cópia do §4.3, no regime plano.
+        #[expect(clippy::cast_precision_loss, reason = "uma contagem de cena")]
+        let previsto = n as f64 * 0.088e-3;
+        if n > pior {
+            pior = n;
+            cena_pior = level;
+        }
+        acima_de_10k += usize::from(n >= 10_000);
+        eprintln!(
+            "  {level:>7} | {n:>8} | {:>8} | {:>10} | {previsto:>10.3} ms",
+            m.pump.instances.len(),
+            distintas.len()
+        );
+    }
+    eprintln!("\n  pior cena: `={cena_pior}` com {pior} linhas vectoriais");
+    eprintln!("  cenas com >= 10 000 linhas vectoriais: {acima_de_10k}");
+    eprintln!("\n  ⚠️ `encode previsto` = linhas x 0,088 us (o regime PLANO do §4.3).\n");
+}
+
 /// ⭐⭐⭐ **DE QUE LADO VEM A FORMA** — o ⏳ que a §5.2 do doc 116 deixou por medir, e o que decide
 /// se a W1(b) é um ENTREGÁVEL ou mais uma bancada.
 ///

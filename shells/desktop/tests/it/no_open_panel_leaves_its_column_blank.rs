@@ -106,7 +106,7 @@ fn publishes_alone_at(p: &P, width: Option<f32>) -> bool {
         }
     });
     if let (Some(w), Some(side)) = (width, p.slot.dock_side()) {
-        h.store.set_dock_width(side, w);
+        h.store.set_dock_width(side, Some(w));
     }
     let mut scene = ph2d_vector::VectorScene::new();
     let mut text = TextSystem::without_system_fonts();

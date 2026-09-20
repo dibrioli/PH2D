@@ -282,7 +282,7 @@ fn closing_takes_every_tenant_not_only_the_one_with_a_published_rect() {
 #[test]
 fn reopening_restores_the_width_the_column_had_before_the_drag() {
     let mut h = settled(&["inspector"]);
-    h.store.set_dock_width(DockSide::Right, 420.0);
+    h.store.set_dock_width(DockSide::Right, Some(420.0));
     paint(&mut h, 3);
 
     let at_start = h.store.dock_width_choice(DockSide::Right);
@@ -295,7 +295,7 @@ fn reopening_restores_the_width_the_column_had_before_the_drag() {
     //    abaixo do mínimo só existia para o fecho se ver acontecer. O que este gate mede não
     //    mudou — o arrasto deixa o PISO gravado, logo ler o store no instante do fecho devolveria
     //    o piso e não os 420 do artista.
-    h.store.set_dock_width(DockSide::Right, 100.0);
+    h.store.set_dock_width(DockSide::Right, Some(100.0));
     assert_eq!(
         h.store.dock_width_choice(DockSide::Right),
         Some(ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN)
@@ -465,7 +465,7 @@ fn the_border_follows_the_finger_down_to_the_minimum_and_stops() {
     use ph2d_editor_core::interaction::WidgetStore;
 
     let mut h = settled(&["inspector", "audio_mixer", "audio_editor"]);
-    h.store.set_dock_width(DockSide::Right, 304.0);
+    h.store.set_dock_width(DockSide::Right, Some(304.0));
     paint(&mut h, 3);
     let seam = h.last_layout.expect("layout").dock_seam(DockSide::Right);
     assert!(seam.w > 0.0, "sem costura não há gesto para medir");
@@ -476,7 +476,7 @@ fn the_border_follows_the_finger_down_to_the_minimum_and_stops() {
     for _ in 0..60 {
         let l = h.last_layout.expect("layout");
         let want = l.dock_width_for(DockSide::Right, x);
-        h.store.set_dock_width(DockSide::Right, want);
+        h.store.set_dock_width(DockSide::Right, Some(want));
         paint(&mut h, 2);
         let got = h.last_layout.expect("layout").inspector.w;
         if want <= WidgetStore::DOCK_W_MIN {
@@ -664,7 +664,7 @@ fn fechar_pelo_menu_nao_inventa_uma_largura_escolhida() {
     //   deitasse a largura fora passaria o teste de cima por vacuidade.
     let side = DockSide::Left;
     let mut h = settled(&declaring(&settled(&[]), side));
-    h.store.set_dock_width(side, 420.0);
+    h.store.set_dock_width(side, Some(420.0));
     let escolhida = h.store.dock_width_choice(side);
     assert!(escolhida.is_some(), "o controlo positivo não armou");
     assert!(chrome::dispatch_all(

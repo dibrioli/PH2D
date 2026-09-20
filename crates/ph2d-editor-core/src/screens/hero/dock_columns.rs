@@ -155,7 +155,7 @@ pub fn open(hero: &mut HeroScreen, side: DockSide) -> bool {
     // ⚠️ `None` deixa a coluna no default, e é o correcto: repor um número que ninguém escolheu
     // transformá-lo-ia numa escolha, e a persistência grava exactamente as escolhas.
     if let Some(w) = width_choice {
-        hero.store.set_dock_width(side, w);
+        hero.store.set_dock_width(side, Some(w));
     }
     true
 }

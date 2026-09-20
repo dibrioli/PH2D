@@ -117,6 +117,57 @@ impl ChromeBands {
     }
 }
 
+impl ChromeBands {
+    /// ⭐⭐⭐ **O QUE UM ARRASTO GRAVA — `None` quando ele aterra na largura de FÁBRICA.**
+    ///
+    /// # O defeito que ela cura, lido no readout do perfil do dono (2026-09-20)
+    ///
+    /// ```text
+    /// [dock] janela=473  esq=220.0 (escolha -)  dir=220.0 (escolha 220)
+    /// ```
+    ///
+    /// A `473 px` a lei **já** entrega o mínimo do painel nas duas colunas. Tocar na borda da
+    /// direita ali gravava `220` **como escolha** ⇒ ⛔ *um gesto que não mudou um pixel no ecrã
+    /// tirou aquela coluna da lei da fracção para sempre*, com `dock_w_right=220` no ficheiro de
+    /// arrumação e sem outra saída além do *Reset Panel Layout*.
+    ///
+    /// # ⚠️ Não é desenho novo: é a lei que a casa JÁ declara, no caminho que a violava
+    ///
+    /// O doc da [`crate::interaction::WidgetStore::dock_width_choice`] diz, desde que existe:
+    /// *«persistir o valor de `dock_width` escreveria o default como se fosse uma escolha — e no
+    /// dia em que o default mudasse, toda arrumação gravada continuaria a prender a coluna no
+    /// número velho»*. ⭐ **O default mudou** (passou a seguir a janela nesse mesmo dia), e o
+    /// arrasto era exactamente quem o gravava como escolha.
+    ///
+    /// # ⛔ E ela mora AQUI e não no store, por duas razões
+    ///
+    /// Os números da decisão são os desta struct, e o `WidgetStore` é estado **autorado** que não
+    /// conhece a janela (ver o doc do [`crate::interaction::WidgetStore::dock_width`]). ⚠️ A
+    /// tentativa de a pôr lá fez a catraca do DAG `interaction → screens` subir de `18` para
+    /// `20`, e a lei desta casa é **curar por movimento, nunca subir o número** — *a catraca
+    /// apontou para onde a porta devia estar*.
+    ///
+    /// ⚠️ **A tolerância é MEIA UNIDADE porque o gesto é em PIXELS:** duas larguras que
+    /// arredondam ao mesmo pixel são o mesmo pedido, e abaixo disso o artista não consegue pedir
+    /// outra coisa. ⛔ Não é folga de conforto — é a resolução do que o dedo exprime.
+    /// ⛔⛔ **E a comparação é DEPOIS do piso, não antes — o gate reprovou a 1.ª redacção.**
+    ///
+    /// Ela media a largura **CRUA** do gesto, e o store clampa ao escrever: arrastar a borda para
+    /// lá do mínimo numa janela estreita dava `|80 − 220| = 140` ⇒ *«é uma escolha»*, e o que
+    /// ficava gravado era `220` — **exactamente o caso do report**. *Uma lei que julga o pedido
+    /// enquanto o consumidor guarda o pedido CLAMPADO julga um número que ninguém grava.*
+    ///
+    /// ⚠️ O piso é o **token**, que é a mesma fonte do [`crate::interaction::WidgetStore`] — ele
+    /// declara `DOCK_W_MIN = ph2d_tokens::PANEL_MIN_W_PX`. ⛔ Não são dois pisos: é o mesmo
+    /// número lido do mesmo sítio, e há gate a exigi-lo (`o_piso_desta_lei_e_o_piso_do_store`).
+    #[must_use]
+    pub fn escolha_de_um_arrasto(side: DockSide, w: f32, janela_w: f32) -> Option<f32> {
+        let w = w.max(ph2d_tokens::PANEL_MIN_W_PX);
+        // ⚠️ `>=` e não `>`: exactamente meio pixel ainda é o mesmo pixel pedido.
+        ((w - Self::default_dock_w(side, janela_w)).abs() >= 0.5).then_some(w)
+    }
+}
+
 /// **A faixa de agarre que redimensiona uma coluna** — a borda INTERIOR dela.
 ///
 /// ⭐ Enio, 2026-08-30: *«os painéis devem ser redimensionáveis para esquerda e para direita e com

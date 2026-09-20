@@ -69,11 +69,19 @@ impl WidgetStore {
     ///
     /// ⚠️ **Um só piso, e é o mesmo na leitura e na escrita** — dois pisos diferentes eram o que
     /// deixava uma largura de GESTO chegar ao disco.
-    pub fn set_dock_width(&mut self, side: crate::screens::layout::DockSide, w: f32) {
-        let w = crate::math::safe_clamp(w, Self::DOCK_W_MIN, Self::DOCK_W_MAX);
+    ///
+    /// ⭐⭐⭐ **`None` APAGA a excepção, e é isso que faz «sem escolha» ser exprimível por quem
+    /// escreve.** Antes de 2026-09-20 esta porta só sabia gravar, e o caminho do ARRASTO usava-a
+    /// para escrever a largura de FÁBRICA como se fosse uma decisão do artista — o defeito do
+    /// report *«não diminuiu os paineis»*, com `dock_w_right=220` no ficheiro de arrumação depois
+    /// de um gesto que não mexeu um pixel. ⚠️ Quem DECIDE é a
+    /// [`ChromeBands::escolha_de_um_arrasto`], porque a decisão precisa da largura da JANELA e
+    /// este store é estado AUTORADO, que não a conhece.
+    pub fn set_dock_width(&mut self, side: crate::screens::layout::DockSide, w: Option<f32>) {
+        let w = w.map(|w| crate::math::safe_clamp(w, Self::DOCK_W_MIN, Self::DOCK_W_MAX));
         match side {
-            crate::screens::layout::DockSide::Left => self.dock_w_left = Some(w),
-            crate::screens::layout::DockSide::Right => self.dock_w_right = Some(w),
+            crate::screens::layout::DockSide::Left => self.dock_w_left = w,
+            crate::screens::layout::DockSide::Right => self.dock_w_right = w,
         }
     }
 

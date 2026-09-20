@@ -170,7 +170,7 @@ fn e_a_escolha_do_artista_atravessa_intacta() {
     let mut store = WidgetStore::default();
     // ⚠️ Um número que a lei mudaria se ela lhe tocasse: no mini a fábrica encolhe para `~255`.
     let escolhido = 300.0;
-    store.set_dock_width(DS::Left, escolhido);
+    store.set_dock_width(DS::Left, Some(escolhido));
     let (_, mini) = TABLETS[2];
     let got = store.dock_width(DS::Left, mini);
     assert!(
@@ -205,4 +205,108 @@ fn e_o_quadro_entrega_a_largura_da_janela() {
              viva e o produto volta ao absoluto, com todos os outros gates deste ficheiro verdes"
         );
     }
+}
+
+/// ⛔⛔⛔ **UM ARRASTO QUE NÃO MUDA NADA NÃO PODE TIRAR A COLUNA DA LEI** — o 3.º report do dono.
+///
+/// # O defeito, lido no readout do perfil DELE
+///
+/// ```text
+/// [dock] janela=473  esq=220.0 (escolha -)  dir=220.0 (escolha 220)
+/// ```
+///
+/// A `473 px` a lei **já** entrega o mínimo do painel nas duas colunas. Tocar na borda da direita
+/// ali gravava `220` **como escolha**, e a partir daí aquela coluna deixava de seguir a janela em
+/// toda largura — com `dock_w_right=220` no ficheiro de arrumação. ⚠️ *Um gesto que não move um
+/// pixel no ecrã não pode ter uma consequência permanente e invisível.*
+///
+/// ⭐ A lei já estava escrita no doc do [`WidgetStore::dock_width_choice`] (*«persistir o valor de
+/// `dock_width` escreveria o default como se fosse uma escolha»*) — o que faltava era o caminho do
+/// ARRASTO obedecer-lhe, e ele só passou a poder obedecer quando o default deixou de ser uma
+/// constante e passou a seguir a janela.
+#[test]
+fn um_arrasto_que_aterra_na_largura_de_fabrica_nao_grava_excepcao() {
+    use ph2d_editor_core::interaction::WidgetStore;
+    use ph2d_editor_core::screens::layout::DockSide as DS;
+
+    // A janela do report, ao pixel.
+    const ESTREITA: f32 = 473.0;
+    let fabrica = ChromeBands::default_dock_w(DS::Right, ESTREITA);
+    let min = ph2d_tokens::PANEL_MIN_W_PX;
+    assert!(
+        (fabrica - min).abs() < f32::EPSILON,
+        "a fixtura não contém o fenómeno: a {ESTREITA:.0} px a fábrica devia já estar no mínimo \
+         do painel ({min}) e devolveu {fabrica} — sem isso o arrasto não aterra na fábrica e este \
+         gate mede outra coisa"
+    );
+
+    // O gesto do report: arrastar a borda para lá do mínimo, onde nada se mexe no ecrã.
+    let mut store = WidgetStore::default();
+    store.set_dock_width(
+        DS::Right,
+        ChromeBands::escolha_de_um_arrasto(DS::Right, 80.0, ESTREITA),
+    );
+    assert_eq!(
+        store.dock_width_choice(DS::Right),
+        None,
+        "o arrasto gravou uma ESCOLHA numa largura que a lei já dava — a coluna sai da lei da \
+         fracção para sempre, e o artista não viu nada acontecer"
+    );
+
+    // ⭐ E a consequência que o dono relatou: numa janela larga ela volta a seguir a lei.
+    let larga = 1920.0f32;
+    let got = store.dock_width(DS::Right, larga);
+    let lei = ChromeBands::default_dock_w(DS::Right, larga);
+    assert!(
+        (got - lei).abs() < f32::EPSILON,
+        "depois do arrasto a coluna lê {got} numa janela de {larga:.0} px e a lei diz {lei} — ela \
+         ficou presa, que é exactamente o report «não diminuiu os paineis»"
+    );
+}
+
+/// ⭐ **E o CONTROLO: um arrasto para OUTRA largura continua a ser uma escolha.**
+///
+/// ⛔ Sem ele, um `set_dock_width_from_drag` que nunca gravasse nada passaria a metade acima — e
+/// o artista perdia a capacidade de escolher a largura de uma coluna, que é o gesto que a wave
+/// anterior já foi obrigada a devolver uma vez.
+#[test]
+fn e_um_arrasto_para_outra_largura_continua_a_ser_uma_escolha() {
+    use ph2d_editor_core::interaction::WidgetStore;
+    use ph2d_editor_core::screens::layout::DockSide as DS;
+    const LARGA: f32 = 1920.0;
+    let mut store = WidgetStore::default();
+    let pedido = 420.0f32;
+    let fabrica = ChromeBands::default_dock_w(DS::Right, LARGA);
+    assert!(
+        (pedido - fabrica).abs() > 1.0,
+        "a fixtura não discrimina: {pedido} é a própria largura de fábrica ({fabrica})"
+    );
+    store.set_dock_width(
+        DS::Right,
+        ChromeBands::escolha_de_um_arrasto(DS::Right, pedido, LARGA),
+    );
+    assert_eq!(
+        store.dock_width_choice(DS::Right),
+        Some(pedido),
+        "o arrasto para uma largura diferente da de fábrica TEM de ficar gravado — senão a borda \
+         deixou de servir para escolher a largura de uma coluna"
+    );
+}
+
+/// ⚠️ **O piso da lei do arrasto é o MESMO do store** — não são dois pisos.
+///
+/// ⛔ A [`ChromeBands::escolha_de_um_arrasto`] tem de clampar como o
+/// [`WidgetStore::set_dock_width`] clampa, senão ela julga um número que ninguém grava. Os dois
+/// leem `ph2d_tokens::PANEL_MIN_W_PX` — e se um dia divergirem, o defeito é **mudo**: volta a
+/// gravar-se a largura de fábrica como escolha.
+#[test]
+fn o_piso_desta_lei_e_o_piso_do_store() {
+    use ph2d_editor_core::interaction::WidgetStore;
+    assert!(
+        (WidgetStore::DOCK_W_MIN - ph2d_tokens::PANEL_MIN_W_PX).abs() < f32::EPSILON,
+        "o piso do store ({}) deixou de ser o token ({}) — a lei do arrasto passa a julgar um \
+         número que o store não guarda, e o defeito é mudo",
+        WidgetStore::DOCK_W_MIN,
+        ph2d_tokens::PANEL_MIN_W_PX
+    );
 }

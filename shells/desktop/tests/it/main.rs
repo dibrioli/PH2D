@@ -10,6 +10,7 @@
 mod sculpt_source;
 
 mod a_baked_object_outlives_the_3d_module;
+mod a_coluna_pintada_encolhe_com_a_janela;
 mod a_fabrica_nasce_antes_de_a_morte_drenar;
 mod a_frames_handle_resizes_it_and_does_not_scale_it;
 mod a_layout_never_commands_a_panel_a_bridge_owns;
@@ -66,7 +67,6 @@ mod joint_draw_gesture;
 mod measure_painter_bridge_phases;
 mod motion_gpu_kernel_budgets;
 mod moving_a_piece_of_a_copy_goes_through_the_recipe_door;
-mod a_coluna_pintada_encolhe_com_a_janela;
 mod no_open_panel_leaves_its_column_blank;
 mod no_two_object_smoke_modes_claim_the_same_number;
 mod no_two_sculpt3d_scenes_claim_the_same_level;

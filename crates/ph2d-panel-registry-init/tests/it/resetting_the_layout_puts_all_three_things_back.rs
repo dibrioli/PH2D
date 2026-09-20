@@ -28,7 +28,7 @@ fn arranged() -> HeroScreen {
         .set_panel_slot(node_of("audio_mixer"), Slot::LeftTop);
     h.panel_visibility.insert("audio_mixer", true);
     h.panel_visibility.insert("inspector", false);
-    h.store.set_dock_width(DockSide::Left, 260.0);
+    h.store.set_dock_width(DockSide::Left, Some(260.0));
     h
 }
 

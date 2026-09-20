@@ -446,10 +446,10 @@ pub fn install(hero: &mut ph2d_editor_core::HeroScreen, l: &Layout) {
         hero.panel_visibility.insert(id, visible);
     }
     if let Some(w) = l.dock_w_left {
-        hero.store.set_dock_width(DockSide::Left, w);
+        hero.store.set_dock_width(DockSide::Left, Some(w));
     }
     if let Some(w) = l.dock_w_right {
-        hero.store.set_dock_width(DockSide::Right, w);
+        hero.store.set_dock_width(DockSide::Right, Some(w));
     }
     if let Some(h) = l.dock_h_bottom {
         hero.store.set_dock_bottom_h(h);

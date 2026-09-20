@@ -512,6 +512,55 @@ tem*. Hoje ela acha o literal e olha para TRÁS numa janela de 40 caracteres, qu
 layout-independente. Mutação **2 de 2** (a palavra que identifica a coluna · a linha a sair do
 `eprintln!`).
 
+### ⛔⛔⛔ E o readout apanhou o DEFEITO REAL: um arrasto que não muda nada tira a coluna da lei
+
+A linha que o dono colou, com perfil NOVO:
+
+```
+[dock] janela=473  esq=220.0 (escolha -)  dir=220.0 (escolha 220)
+```
+
+A `473 px` a lei **já** entrega o mínimo do painel nas duas colunas. A esquerda está de fábrica; a
+direita tem `escolha 220` — **o próprio número que a lei dava**. E o ficheiro do perfil
+descartável confirmava-o no disco (`[drawing_2d] dock_w_right=220`), que é porque ele só era novo
+na 1.ª corrida.
+
+⇒ **tocar na borda de uma coluna com a janela apertada gravava a largura de FÁBRICA como se fosse
+uma decisão do artista**, e a partir daí aquela coluna deixava de seguir a janela em toda largura,
+sem outra saída além do *Reset Panel Layout*. *Um gesto que não move um pixel não pode ter uma
+consequência permanente e invisível.*
+
+⭐ **Não é desenho novo:** o doc do `dock_width_choice` já dizia *«persistir o valor de
+`dock_width` escreveria o default como se fosse uma escolha»*. O default **mudou** nesse mesmo dia
+(passou a seguir a janela) e o arrasto era quem o gravava como escolha.
+
+**A cura, em três peças:**
+
+| onde | o quê |
+|---|---|
+| `ChromeBands::escolha_de_um_arrasto` | a LEI: `None` quando o gesto aterra na largura de fábrica |
+| `WidgetStore::set_dock_width` | passa a aceitar `Option<f32>` — `None` **apaga** a excepção |
+| `dock_resize::dock_seam_move` | escreve a resposta da lei, nunca um `Some` montado ali |
+
+⛔⛔ **A porta nasceu no sítio errado e foi a CATRACA DO DAG que a mudou:** posta no store, a
+aresta `interaction → screens` subiu de `18` para `20` e a catraca reprovou — *a lei desta casa é
+curar por movimento, nunca subir o número*, e ela apontou para onde a porta devia estar (os
+números da decisão são os da `ChromeBands`, e o store é estado autorado que não conhece a janela).
+⭐ E a mudança do setor para `Option<f32>` custa **zero** referências novas.
+
+⛔⛔ **E o gate reprovou a 1.ª redacção da lei:** ela comparava a largura **CRUA** do gesto, e o
+store clampa ao escrever — arrastar para lá do mínimo dava `|80 − 220| = 140` ⇒ *«é uma escolha»*,
+e o que ficava gravado era `220`, **exactamente o caso do report**. *Uma lei que julga o pedido
+enquanto o consumidor guarda o pedido CLAMPADO julga um número que ninguém grava.* ⇒ o piso entra
+na lei, e um gate exige que ele seja o **mesmo token** que o store lê.
+
+⚠️ **E o gate de costura irmão NÃO servia:** o `the_border_gesture_reaches_the_panel` procura
+`set_dock_width` no `dock_seam_move`, e o nome da porta nova **contém-no** ⇒ ele ficava verde com
+a regressão inteira dentro. *Uma agulha que é PREFIXO da cura não distingue a cura do defeito.*
+
+Mutação **5 de 5** (a lei julga o cru · toda largura vira escolha · nenhuma vira · a shell volta à
+porta crua · o piso do store deixa de ser o token).
+
 ### ⏳ ABERTO, com o número — DECISÃO DO DONO
 
 Uma escolha é gravada em **pixels absolutos** e não sobrevive a uma mudança de forma da janela: no

@@ -107,8 +107,10 @@ fn a_coluna_pintada_encolhe_com_a_janela() {
             "janela {w:.0}: a coluna pintada ({e}, {d}) NÃO encolheu contra ({e_ref}, {d_ref}) — \
              é o report «não diminuiu os painéis», e nenhum gate da lei o via"
         );
-        for (nome, side, got) in [("esquerda", DockSide::Left, e), ("direita", DockSide::Right, d)]
-        {
+        for (nome, side, got) in [
+            ("esquerda", DockSide::Left, e),
+            ("direita", DockSide::Right, d),
+        ] {
             let lei = ChromeBands::default_dock_w(side, w);
             assert!(
                 (got - lei).abs() < 0.5,
@@ -173,5 +175,31 @@ fn o_readout_das_colunas_diz_de_onde_vem_cada_largura() {
         "a linha do readout não sai de um `eprintln!` (os 40 caracteres antes dela são {antes:?}) \
          — ela perde a isenção de terminal do HR-15 sem tirar o literal do binário, e o censo de \
          texto da shell reprova-a"
+    );
+}
+
+/// ⛔⛔ **O ARRASTO PASSA PELA PORTA DO ARRASTO** — e nenhum gate media isto.
+///
+/// O gate de costura irmão (`the_border_gesture_reaches_the_panel`) procura `set_dock_width` no
+/// `dock_seam_move`, e **`set_dock_width_from_drag` contém esse nome** ⇒ ele fica verde com a
+/// regressão inteira dentro. *Uma agulha que é PREFIXO da cura não distingue a cura do defeito.*
+///
+/// A cura vive no sítio que conhece a JANELA (o `HeroLayout`), logo a metade que a defende tem de
+/// ser lida no CHAMADOR — e a agulha é o **braço inteiro**, nunca o nome da função.
+#[test]
+fn o_arrasto_da_borda_passa_pela_porta_que_conhece_a_janela() {
+    const RESIZE: &str = include_str!("../../src/dock_resize.rs");
+    assert!(
+        RESIZE.contains("ChromeBands::escolha_de_um_arrasto("),
+        "o arrasto deixou de passar pela porta que conhece a janela — sem ela um gesto que aterra \
+         na largura de FÁBRICA volta a gravá-la como ESCOLHA, e a coluna sai da lei da fracção \
+         para sempre (o report de 2026-09-20, com `dock_w_right=220` no ficheiro de arrumação)"
+    );
+    // ⭐ E o CONTROLO: o que o arrasto escreve tem de ser a resposta DELA, nunca um `Some(w)`
+    //   montado aqui — senão a decisão volta a ser tomada no sítio que não é a lei.
+    assert!(
+        RESIZE.contains("set_dock_width(drag.side, escolha)"),
+        "o arrasto deixou de escrever a resposta da lei — se ele monta o `Some` sozinho, a \
+         decisão saiu da porta e volta a ser invisível"
     );
 }

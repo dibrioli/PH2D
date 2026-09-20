@@ -108,8 +108,20 @@ impl crate::App {
             return false;
         };
         let w = layout.dock_width_for(drag.side, x);
+        // ⭐⭐⭐ **A porta do ARRASTO, e não a porta crua** — um gesto que aterra na largura de
+        //    fábrica APAGA a excepção em vez de a gravar. Ver o doc dela: com a janela estreita a
+        //    lei já entrega o mínimo, e gravar esse mesmo número como «escolha» tirava a coluna
+        //    da lei da fracção para sempre, sem mudar um pixel no ecrã.
+        //
+        // ⚠️ É por isto que a largura da JANELA atravessa aqui: ela é um facto do quadro, e o
+        //    `HeroLayout` é quem a carrega.
+        let escolha = ph2d_editor_core::screens::layout::ChromeBands::escolha_de_um_arrasto(
+            drag.side,
+            w,
+            layout.viewport.w,
+        );
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.store.set_dock_width(drag.side, w);
+            hero.store.set_dock_width(drag.side, escolha);
         }
         true
     }

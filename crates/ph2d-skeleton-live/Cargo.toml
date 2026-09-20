@@ -35,7 +35,10 @@ ph2d-render = { path = "../ph2d-render" }
 # ⚠️ A lei de deformação da pele. (O `ph2d-asset` saiu com a cache de imagens do Vello, e a
 # `ph2d-vector` com o orçamento derivado do buffer dele — a W4 derivou-o do TEMPO do quadro, que esta
 # crate mede sozinha: a malha desenha-se com a textura da própria sprite.)
-ph2d-vec-skin = { path = "../ph2d-vec-skin" }
+# ⚠️⚠️ **A FEATURE não viaja com o código** (a mesma nota da `ph2d-poly2d` acima): o
+# `CampoDoDominio` viaja DENTRO do `SkinnedPath`, logo é esta crate — a que GRAVA — que tem
+# de ligar o `serde` dele.
+ph2d-vec-skin = { path = "../ph2d-vec-skin", features = ["serde"] }
 # ⭐⭐⭐ **O PADRÃO-OURO dos pesos de pele** (Bounded Biharmonic Weights, SIGGRAPH 2011), resolvido
 # uma vez ao PRENDER. ⚠️ Ele é uma folha que só depende da `ph2d-poly2d` — não há ciclo por aqui.
 ph2d-skin-weights = { path = "../ph2d-skin-weights" }

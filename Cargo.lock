@@ -9321,6 +9321,7 @@ dependencies = [
  "ph2d-skin-weights",
  "ph2d-vec-envelope",
  "ph2d-vec-scene",
+ "serde",
 ]
 
 [[package]]

@@ -118,6 +118,10 @@ pub mod test_support {
                 &[],
             ),
             pesos: Vec::new(),
+            // ⛔ Sem campo, pela MESMA razão da tabela vazia: um caminho aberto não tem interior,
+            // logo não há domínio sobre que resolver. *A fixtura tem de ficar exactamente onde a
+            // lei do bind a deixaria.*
+            campo: None,
         };
         ph2d_skeleton_ecs::SkinBind::new(
             crate::skinned_mesh::grava(&guardado).expect("a pele codifica"),

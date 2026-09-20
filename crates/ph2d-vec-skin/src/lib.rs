@@ -162,3 +162,8 @@ mod tests;
 #[cfg(test)]
 #[path = "sonda_da_pele_como_warp_tests.rs"]
 mod sonda_da_pele_como_warp_tests;
+
+/// ⭐ **Os gates do CAMPO do domínio**, num irmão — ver o cabeçalho dele.
+#[cfg(test)]
+#[path = "campo_tests.rs"]
+mod campo_tests;

@@ -116,6 +116,32 @@ pub struct SkinnedPath {
     /// tendão `j`. ⭐ Vazio ⇒ a lei derivada (um caminho ABERTO não tem interior, logo não tem
     /// domínio, logo não tem pesos — e isso é uma resposta, não um erro).
     pub pesos: Vec<f64>,
+    /// ⭐⭐⭐ **O CAMPO DO DOMÍNIO — a malha do bind, que até 2026-09-20 era deitada fora.**
+    ///
+    /// Com ele a lei da curva lê a linha de **qualquer ponto** do interior, em vez de traçar uma
+    /// recta entre as linhas dos dois nós; a tabela [`Self::pesos`] continua a ser o que a lei dos
+    /// NÓS lê, e as duas concordam ao bit nas âncoras **porque ela é amostrada deste campo**.
+    ///
+    /// ⭐ **`None` é legal e é o que um bind ANTERIOR a esta wave carrega** — ali a lei da curva
+    /// volta à mistura, que é exactamente o que ela fazia. ⛔ *Nenhuma migração:* re-prender a forma
+    /// preenche-o, e até lá o desenho é o de sempre.
+    pub campo: Option<ph2d_vec_skin::pesos::CampoDoDominio>,
+}
+
+/// ⭐⭐ **A FORMA ANTERIOR do registo, para a [`le`] não perder os pesos de um bind já gravado.**
+///
+/// ⛔⛔ **O postcard é POSICIONAL e não auto-descritivo:** apendar um campo faz os bytes antigos
+/// acabarem cedo, o `from_bytes` devolve `Err` e a [`le`] devolveria `None` — que quem chama lê
+/// como *«esta fonte não se lê»* e resolve pela **lei derivada**. ⇒ toda forma já presa perderia a
+/// tabela do padrão-ouro **em silêncio**, e o desenho mudava sem ninguém ter tocado nela.
+///
+/// ⚠️ **A ordem das tentativas é load-bearing:** o novo PRIMEIRO. Bytes novos lidos como antigos
+/// deixariam cauda por consumir, e bytes antigos lidos como novos **falham a meio de um campo** —
+/// só a ordem *novo → antigo* recusa exactamente o que tem de recusar.
+#[derive(serde::Deserialize)]
+struct SkinnedPathV1 {
+    path: ph2d_vec_scene::VecPath,
+    pesos: Vec<f64>,
 }
 
 impl SkinnedPath {
@@ -164,7 +190,17 @@ impl SkinnedPath {
 /// que os sete já tomavam cada um por si.
 #[must_use]
 pub fn le(bytes: &[u8]) -> Option<SkinnedPath> {
-    postcard::from_bytes::<SkinnedPath>(bytes).ok()
+    if let Ok(g) = postcard::from_bytes::<SkinnedPath>(bytes) {
+        return Some(g);
+    }
+    // ⭐ A forma ANTERIOR — ver [`SkinnedPathV1`]. Um bind gravado antes de 2026-09-20 não tem
+    // campo, e a lei da curva volta à mistura das linhas dos nós, que é o que ele já desenhava.
+    let v1 = postcard::from_bytes::<SkinnedPathV1>(bytes).ok()?;
+    Some(SkinnedPath {
+        path: v1.path,
+        pesos: v1.pesos,
+        campo: None,
+    })
 }
 
 /// ⭐⭐ **O sentido inverso da [`le`].** `None` quando a serialização falha — e aí quem chama **não

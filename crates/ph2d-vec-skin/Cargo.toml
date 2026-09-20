@@ -30,5 +30,17 @@ ph2d-skin-weights = { path = "../ph2d-skin-weights" }
 ph2d-vec-envelope = { path = "../ph2d-vec-envelope" }
 kurbo = "0.13"
 
+# ⚠️ **Só quem GUARDA o campo do domínio liga isto** — o mesmo idioma (e a mesma frase) do
+# `Cargo.toml` da `ph2d-poly2d`, de que esta feature é o reencaminhamento. A lei em si não
+# serializa nada.
+serde = { version = "1", features = ["derive"], optional = true }
+
+[features]
+# ⚠️⚠️ **A FEATURE NÃO VIAJA COM O CÓDIGO** (HOWTO §2.4): quem precisar de gravar um
+# [`pesos::CampoDoDominio`] tem de a declarar na crate DELE — numa que não a declare, o
+# `postcard::to_allocvec` deixa de compilar, e essa falha é a metade boa. ⛔ A irmã perigosa é o
+# `#[cfg(feature)]` que fica falso em silêncio e deixa o campo de fora do ficheiro.
+serde = ["dep:serde", "ph2d-poly2d/serde"]
+
 [lints]
 workspace = true

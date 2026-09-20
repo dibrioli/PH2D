@@ -71,6 +71,31 @@ pub fn lei_da_curva_activa() -> bool {
     std::env::var("PH2D_SKIN_CURVE").as_deref() != Ok("0")
 }
 
+/// ⭐⭐⭐ **O CAMPO DO DOMÍNIO ESTÁ LIGADO?** — a porta de bissecção da wave de 2026-09-20.
+///
+/// Com ela a `0`, a lei da curva volta a misturar as linhas dos dois nós em linha recta, mesmo num
+/// bind que guardou o campo. ⚠️ **Ela não apaga o campo do ficheiro** — ele fica lá, e voltar a
+/// ligar não re-resolve nada.
+///
+/// ⚠️ **Lida no SÍTIO DE CHAMADA, uma vez por quadro**, pela mesma razão escrita na irmã acima: um
+/// `var_os` por forma seria uma syscall dentro do laço do desenho, e um estado global posto para o
+/// teste é um canal entre testes.
+///
+/// # O que ela bissecta, medido
+///
+/// | caso (rectângulo `40 × 10`, dois ossos) | desvio do desenho | da peça |
+/// |---|---:|---:|
+/// | como o artista desenha (`4` nós) · dobra `0,8` | `5,175` | `12,9 %` |
+/// | **como o bind entrega** (`20` nós) · dobra `0,8` | `3,480` | **`8,7 %`** |
+/// | como o bind entrega · dobra `1,5` · com peso pintado | `4,682` | **`11,7 %`** |
+///
+/// ⚠️ **O erro de PESO que a causa é `0,0329`** depois de o bind subdividir (`0,3752` antes) — *um
+/// erro pequeno no peso amplifica no desenho, porque ele é multiplicado pela rotação da junta*.
+#[must_use]
+pub fn lei_do_campo_activa() -> bool {
+    std::env::var("PH2D_SKIN_CAMPO").as_deref() != Ok("0")
+}
+
 /// Um segmento da arte visto **através** da pele — a curva paramétrica `t ↦ blend(C(t), w(t))`.
 ///
 /// Ela nunca é materializada: o fitter amostra-a.
@@ -84,12 +109,37 @@ struct SegmentoDaPele<'a> {
     correcoes: &'a [Correccao],
     /// A mistura: rígida (o produto) ou linear (o controlo dos gates).
     rigido: bool,
+    /// ⭐⭐⭐ **O CAMPO DO DOMÍNIO, quando o bind o guardou** — ver [`Self::pesos`].
+    campo: Option<&'a crate::pesos::CampoDoDominio>,
 }
 
 impl SegmentoDaPele<'_> {
     /// Os pesos do ponto `p`, com a linha do nó misturada em `t`.
+    ///
+    /// # ⭐⭐⭐ Quando o bind guardou o CAMPO, a mistura não é usada (2026-09-20)
+    ///
+    /// A mistura `lerp(ra, rb, t)` é uma **recta entre dois nós**, e o campo verdadeiro atravessa
+    /// uma junta num **«S»** — medido num rectângulo de `40 × 10`, a recta erra até **`0,3709`**
+    /// numa aresta que cruza a junta e **`0,0000`** nas que não cruzam ([`crate::pesos::CampoDoDominio`]
+    /// tem a tabela). Com o campo vivo, a linha deste ponto **lê-se do domínio** e o erro vai a zero
+    /// por construção: ele é o mesmo padrão-ouro de que a tabela dos nós foi amostrada.
+    ///
+    /// ⭐⭐ **Nos NÓS as duas leis coincidem AO BIT, e não por sorte:** a linha guardada do nó `k`
+    /// *é* este campo amostrado na âncora dele, pela mesma [`crate::pesos::amostra_achatada`] com o
+    /// mesmo ponto. ⇒ *ligar o campo não move um nó.*
+    ///
+    /// ⚠️ **Fora da malha o campo devolve `None` e a mistura VOLTA** — ⛔ nunca zeros. Uma alça vive
+    /// fora da forma por definição (ela é uma tangente), e ali a resposta de sempre é a certa.
+    ///
+    /// ⚠️ **As correcções à mão entram por baixo das duas**, no mesmo sítio: elas são uma mancha no
+    /// ESPAÇO e já eram somadas no ponto — o que esta wave muda é a BASE sobre que elas pousam.
     fn pesos(&self, p: [f64; 2], t: f64) -> Vec<f64> {
         let mut w = self.pele.scratch();
+        if let Some(linha) = self.campo.and_then(|c| c.linha(p)) {
+            self.pele
+                .weights_corrected(p, Some(&linha), &mut w, self.correcoes);
+            return w;
+        }
         match (self.ra, self.rb) {
             // ⭐ A MISTURA das duas linhas no mesmo `t` — a lei da F28 para o nó novo, aplicada
             // agora a **todo** ponto da curva. Em `t = 0` e `t = 1` ela é a linha do nó, ao bit.
@@ -238,7 +288,7 @@ fn versor(v: Vec2) -> Vec2 {
 /// ⚠️ O parâmetro `tolerancia` **saiu**: não há o que tolerar quando não há decisão. Quem governa a
 /// fidelidade é [`AMOSTRAS`].
 pub fn aplica_pela_curva(pele: &Skin, path: &mut VecPath, pesos: &[f64], correcoes: &[Correccao]) {
-    aplica_pela_curva_com(pele, path, pesos, correcoes, true);
+    aplica_pela_curva_com(pele, path, pesos, correcoes, true, None);
 }
 
 /// **A lei da curva com a mistura como PARÂMETRO** — ver [`crate::aplica_corrigido_com`].
@@ -248,6 +298,7 @@ pub fn aplica_pela_curva_com(
     pesos: &[f64],
     correcoes: &[Correccao],
     rigido: bool,
+    campo: Option<&crate::pesos::CampoDoDominio>,
 ) {
     let fonte = path.clone();
     crate::aplica_corrigido_com(pele, path, pesos, correcoes, rigido);
@@ -273,6 +324,7 @@ pub fn aplica_pela_curva_com(
                 rb: linha(pesos, ossos, base + (k + 1) % n),
                 correcoes,
                 rigido,
+                campo,
             };
             let Some((alvo, _)) = path.contour_mut(c) else {
                 continue;

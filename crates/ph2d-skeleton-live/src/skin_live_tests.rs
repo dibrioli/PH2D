@@ -243,12 +243,19 @@ fn the_order_of_the_bones_in_a_skin_does_not_change_the_drawing() {
         && g.ossos() > 0
     {
         let n = g.ossos();
-        let revertidos: Vec<f64> = g
-            .pesos
-            .chunks_exact(n)
-            .flat_map(|c| c.iter().rev().copied().collect::<Vec<_>>())
-            .collect();
-        g.pesos = revertidos;
+        let reverte = |v: &[f64]| -> Vec<f64> {
+            v.chunks_exact(n)
+                .flat_map(|c| c.iter().rev().copied().collect::<Vec<_>>())
+                .collect()
+        };
+        g.pesos = reverte(&g.pesos);
+        // ⚠️⚠️ **E a TERCEIRA metade, desde 2026-09-20:** o campo do domínio é uma terceira lista
+        // indexada pelo tendão (`pesos[v * ossos + j]`), e reverter só as duas de cima produz
+        // exactamente os *dados incoerentes* que o doc deste gate já descreve — medido, `34,67` de
+        // desvio a acusar um defeito que não existe.
+        if let Some(c) = g.campo.as_mut() {
+            c.pesos = reverte(&c.pesos);
+        }
         skin.source = postcard::to_allocvec(&g).expect("serializa");
     }
     sim.world_mut().entity_mut(e).insert(skin);
@@ -555,7 +562,10 @@ fn um_caminho_aberto_fica_na_lei_derivada() {
 /// (`40 × 30` contra `40 × 10`): a aresta de cima fica a `25` do eixo, para lá do raio de `20` do
 /// *bump* — que é onde a lei antiga degenera numa partição dura e as duas mais se afastam.
 /// *Uma fixtura que não produz o fenómeno mede outro programa.*
-fn palco_com_vertices_na_junta() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
+/// ⚠️ `pub(super)` desde 2026-09-20: o gate do FIO vive num irmão (tecto de LOC), e ele precisa
+/// do MESMO palco — *uma segunda fixtura seria uma segunda resposta à pergunta «que cena é esta».*
+pub(super) fn palco_com_vertices_na_junta()
+-> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
     let mut sim = SimWorld::default();
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();
@@ -613,8 +623,18 @@ fn a_tabela_de_pesos_do_caminho_chega_ao_desenho() {
     // ⛔ O que este gate afirma continua a ser o mesmo: **a tabela GUARDADA é que chega ao desenho**,
     // e não a derivada.
 
-    ph2d_vec_skin::curva::aplica_pela_curva(&pele, &mut com, &g.pesos, &[]);
-    ph2d_vec_skin::curva::aplica_pela_curva(&pele, &mut sem, &[], &[]);
+    // ⚠️⚠️ **E o CAMPO entra aqui pela mesma razão, um ano de waves depois:** o quadro passou a
+    // consultar o campo do domínio (2026-09-20), e uma expectativa construída sem ele mede outra
+    // vez *a mudança da lei e não o produto* — medido, `8,59e-1` sobre produto correcto.
+    ph2d_vec_skin::curva::aplica_pela_curva_com(
+        &pele,
+        &mut com,
+        &g.pesos,
+        &[],
+        true,
+        g.campo.as_ref(),
+    );
+    ph2d_vec_skin::curva::aplica_pela_curva_com(&pele, &mut sem, &[], &[], true, None);
 
     let segue_guardada = pior_desvio(&desenhado, &com);
     let segue_derivada = pior_desvio(&desenhado, &sem);

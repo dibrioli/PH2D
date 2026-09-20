@@ -145,7 +145,7 @@ fn dobrar_ja_nao_encolhe_a_barra() {
             .get_mut::<Transform>(ossos[2])
             .expect("pose")
             .rotation = r;
-        crate::skin_live::recook_com_mistura(&sim, &mut scene, true, rigido);
+        crate::skin_live::recook_com_mistura(&sim, &mut scene, true, rigido, true);
         let c = contorno(scene.paths().iter().find(|p| p.id == id).expect("b"));
         (area(&c) / repouso * 100.0, pescoco(&c))
     };

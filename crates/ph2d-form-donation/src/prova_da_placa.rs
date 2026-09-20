@@ -62,11 +62,23 @@ fn peca() -> BakedForm {
             base[i * 4..i * 4 + 3].copy_from_slice(&cor);
             base[i * 4 + 3] = 255;
             if d2 < r * r {
-                // A normal de uma esfera, em espaço de vista.
+                // A normal de uma esfera, no espaço em que o canal da FORMA vive.
+                //
+                // ⛔⛔ **CANVAS, `y` para BAIXO — e esta linha dizia «espaço de vista» e escrevia
+                // `-dy`.** Quem escreve este canal no produto é o `canvas_normal` do
+                // `ph2d-mesh-render`, cuja última linha é `vec3(n.x, -n.y, n.z)` com o comentário
+                // *«sem esta negação a mesma lâmpada acende a pintura por cima e a escultura por
+                // baixo»* — ou seja o plano assado JÁ vem virado, e a fixtura voltava a virá-lo.
+                //
+                // ⚠️ **A paridade nunca o podia ver**: os dois motores leem os MESMOS planos, logo
+                // `100,000 %` é verdade sobre uma peça acesa ao contrário. Quem o vê é o
+                // [`crate::ceu_sondas::a_peca_sintetica_acende_por_cima`], e ele só passou a ser
+                // preciso quando o ambiente ganhou DIRECÇÃO — até aí a luz vinha só das lâmpadas e
+                // uma bola simétrica acesa de baixo mede o mesmo nível que uma acesa de cima.
                 let z = (r * r - d2).sqrt();
                 let q = (d2 + z * z).sqrt();
                 form[i * 4] = (dx / q) as f32;
-                form[i * 4 + 1] = (-dy / q) as f32;
+                form[i * 4 + 1] = (dy / q) as f32;
                 form[i * 4 + 2] = (z / q) as f32;
                 form[i * 4 + 3] = 1.0;
             } else {
@@ -86,6 +98,29 @@ fn peca() -> BakedForm {
         rig: LightRig::default(),
         lit_with: None,
     }
+}
+
+/// ⛔⛔ **A PEÇA DAS QUATRO BOLAS ACENDE POR CIMA** — o irmão do
+/// [`crate::ceu_sondas::a_peca_sintetica_acende_por_cima`], sobre a fixtura DESTE ficheiro.
+///
+/// ⚠️ Ele existe porque a correcção de sinal foi feita em **duas** fixturas e *uma lei escrita em
+/// dois sítios ainda não é uma lei*: sem este gate, alguém que reescrevesse a `peca` a partir do
+/// comentário antigo (*«espaço de vista»*) devolvia o defeito sem nada acusar — a paridade da placa
+/// continua a ler `100,000 %` com a peça acesa ao contrário.
+///
+/// ⭐ Ele é CPU pura: **não é `#[ignore]`** e corre no CI, ao contrário de tudo o resto deste módulo.
+#[test]
+fn a_peca_das_quatro_bolas_acende_por_cima() {
+    let rig = LightRig::default();
+    // ⚠️ **Por QUADRANTE**: cada bola vive no meio do seu, logo a metade de cima de uma bola
+    // é o quarto de cima do quadrante dela.
+    let (cima, baixo) =
+        crate::ceu_sondas::metades_da_bola(&peca(), &rig, |y| y % (LADO / 2) < LADO / 4);
+    assert!(
+        cima > baixo * 1.2,
+        "com a lampada superior-esquerda a metade de CIMA tem de ser a mais clara: \
+         cima {cima:.2} contra baixo {baixo:.2}"
+    );
 }
 
 /// A razão `R/B` **no DESTAQUE** de um quadrante — o `TOPO` por cento mais brilhante, só onde há

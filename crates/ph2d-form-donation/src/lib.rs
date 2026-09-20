@@ -28,3 +28,8 @@
 pub mod baked_form;
 pub mod donated_form;
 pub mod lei_da_luz;
+
+/// A sonda do CEU da forma — ver o cabecalho dela.
+#[cfg(test)]
+#[path = "ceu_da_forma_sondas.rs"]
+mod ceu_sondas;

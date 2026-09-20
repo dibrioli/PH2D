@@ -388,7 +388,6 @@ fn paint_strips(
             col_x,
             row.top,
             row.col_w,
-            row.mute_h(),
             row.ms_linhas,
             scene,
             text_system,
@@ -406,7 +405,6 @@ fn paint_strip(
     col_x: f32,
     top: f32,
     col_w: f32,
-    mute_h: f32,
     ms_linhas: usize,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -502,9 +500,34 @@ fn paint_strip(
     // sub-bus splits the row into M | S (the mixer-console convention).
     match strip.solo_id {
         None => {
+            // ⛔⛔⛔ **O `Mute` do Master ocupa UMA fileira, alinhado com os `M` dos vizinhos.**
+            //
+            // ⚠️ A 1.ª redaccao do refluxo dava-lhe a altura das DUAS (`mute_h`), para os PES
+            // das tiras ficarem alinhados. Report do dono no smoke de 2026-09-19, com foto:
+            // *«apenas um pequeno desalinho do Mute do master na vertical»* — *o olho lê o
+            // TOPO de uma fileira de botoes, nao o fundo dela*, e um botao do dobro da altura ao
+            // lado de quatro pares le-se torto mesmo com o rodape certo.
+            //
+            // ⭐ O vao por baixo dele e a AUSENCIA do solo, que e a verdade: o Master nao o
+            // tem. E o rodape das tiras continua a sair do [`StripRow::mute_h`], logo a seccao
+            // debaixo comeca no mesmo `y` para todas.
+            //
+            // ⚠️⚠️ **E o ROTULO encurta com a coluna:** na foto ele lia-se `…`, porque `Mute`
+            // nao cabe em `col_w` quando a coluna esta no piso. *Um botao que diz «…» nao diz o que
+            // faz* — a mesma familia dos dois que sairam VAZIOS, um degrau menos severa. A
+            // pergunta e medida com a largura que o botao de facto tem, e no vao largo nada muda.
+            let cabe_por_extenso =
+                ph2d_editor_core::paint::rect_for_label(text_system.prefix_width(
+                    tr("panel.audio_mixer.strip.mute"),
+                    ph2d_editor_core::widget::panel_chrome::segmented_label_font(),
+                )) <= col_w;
             paint_toggle(
-                Rect::new(col_x, y, col_w, mute_h),
-                tr("panel.audio_mixer.strip.mute"),
+                Rect::new(col_x, y, col_w, MUTE_H),
+                if cabe_por_extenso {
+                    tr("panel.audio_mixer.strip.mute")
+                } else {
+                    tr("panel.audio_mixer.strip.mute_short")
+                },
                 strip.muted,
                 ColorToken::Danger,
                 strip.mute_id,

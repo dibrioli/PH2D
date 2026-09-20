@@ -488,7 +488,9 @@ pub(crate) const DEGRAU_ESTREITO: &str = "colunas no minimo";
 const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     ("inspector", 80),
     ("motion_params", 16),
-    ("audio_mixer", 6),
+    // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
+    //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
+    ("audio_mixer", 5),
     ("sculpt3d", 6),
     ("hierarchy", 5),
     ("tokens", 5),

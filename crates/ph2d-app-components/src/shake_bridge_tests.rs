@@ -243,7 +243,10 @@ fn rebobinar_apaga_o_trauma_e_o_relogio() {
         "o arranjo tem de conter o fenómeno: {vivo:?}"
     );
 
-    let tocados = ph2d_ecs::rewind_runtime::rewind_runtime_state(sim.world_mut());
+    let tocados = ph2d_ecs::rewind_runtime::rewind_runtime_state(
+        sim.world_mut(),
+        ph2d_ecs::rewind_runtime::Renascimento::Rebobinar,
+    );
     assert!(tocados > 0);
     let depois = *sim.world().get::<CameraShakeRuntime>(cam).unwrap();
     assert_eq!(depois, CameraShakeRuntime::default(), "{depois:?}");

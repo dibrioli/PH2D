@@ -224,7 +224,14 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // frase que o degrau 143 deixou: aquela lista fechou contra a FATIA construida, nao contra
         // o modelo, que tem 41 entradas. ⚠️ **A tripla NAO ve^ este degrau** — bytes dentro de um
         // `ComponentBlob`, como os quatro anteriores do mesmo componente.
-        (160, 13, 22),
+        // ⭐ **PROJECT 160→161** (2026-09-20): o CONTADOR que ATRAVESSA um recomeço — ⛔ **ZERO
+        // componentes novos**, logo os três contadores do registo NÃO se mexem: é um CAMPO novo no
+        // `Counter` (`keep_on_restart`), que já viajava. ⭐⭐ E ele é o primeiro sítio da casa onde
+        // as DUAS travessias do zero discordam — até aqui o *Rewind* do transporte e o
+        // `SignalVerb::RestartRun` eram a mesma função sem parâmetro.
+        // ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA SÉTIMA vez, e pela razão de sempre: o
+        // `Counter` viaja num `ComponentBlob`, que para ela é opaco.
+        (161, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

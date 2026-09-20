@@ -65,6 +65,7 @@ fn arena(n: u64) -> (World, TagTree) {
             Counter {
                 name: "vida".to_string(),
                 start: 3,
+                keep_on_restart: false,
             },
             CounterRuntime { value: 3 },
         ));

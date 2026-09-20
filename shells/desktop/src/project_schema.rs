@@ -405,4 +405,25 @@
 /// GEOMETRIA, e uma cor que atravessa nao muda uma distancia.
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v144 e' recusado em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 160;
+/// # `160 → 161` — o CONTADOR que ATRAVESSA um recomeco (*«outra vida, mesma pontuacao»*)
+///
+/// O `ph2d_ecs::Counter` ganhou `keep_on_restart: bool` **apendado no fim**. Mesmo mecanismo dos
+/// degraus `109`/`110`: o postcard e' POSICIONAL, logo um blob v160 tem dois campos onde este
+/// binario pede tres — e um `bool` a ser lido de bytes que acabaram nao desalinha so' a partir
+/// dali, ele **falha a desserializar** o componente inteiro.
+///
+/// ⭐⭐⭐ **A grandeza e' NOVA e nao existia em forma nenhuma:** ate' aqui as duas travessias do
+/// zero — o *Rewind* do transporte e o `SignalVerb::RestartRun` — eram **a mesma funcao sem
+/// parametro**, e nada na casa as distinguia. O campo e' o primeiro sitio onde elas discordam, e
+/// por isso o motivo passou a entrar na **assinatura** da
+/// `ph2d_ecs::rewind_runtime::rewind_runtime_state` (`Renascimento`), onde esquece^-lo e' erro de
+/// compilacao.
+///
+/// ⚠️ **O valor de fabrica e' `false` = o comportamento de sempre**, logo toda cena ja' gravada se
+/// comporta exactamente como antes depois de migrada.
+///
+/// ⚠️ **A tripla NAO ve^ este degrau** — o `Counter` viaja dentro de um `ComponentBlob`, como os
+/// cinco anteriores do material.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v160 e' recusado em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 161;

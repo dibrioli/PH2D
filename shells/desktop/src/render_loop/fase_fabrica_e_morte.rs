@@ -61,9 +61,10 @@ fn renascer_a_corrida(
     script: &mut Option<ph2d_script::ScriptHost>,
     particles: &mut ph2d_app_components::particles_bridge::ParticlesState,
     drive: &mut ph2d_preview_drive::PreviewDrive,
+    motivo: ph2d_ecs::rewind_runtime::Renascimento,
 ) -> usize {
     let varridas = ph2d_app_components::factory_bridge::sweep_spawned(sim);
-    let mut repostos = ph2d_ecs::rewind_runtime::rewind_runtime_state(sim.world_mut());
+    let mut repostos = ph2d_ecs::rewind_runtime::rewind_runtime_state(sim.world_mut(), motivo);
     // ⭐ **Os SCRIPTS do artista renascem com eles** (TOP-20 #16): a VM não mora no mundo, então a
     // porta da família `Logic` não os alcança — a irmã dela é a da ponte, que também devolve a pose
     // que a corrida escreveu.
@@ -154,7 +155,17 @@ fn servir_o_recomeco(
         return;
     }
     playhead.rewind();
-    let repostos = renascer_a_corrida(sim, script, particles, drive);
+    // ⭐⭐ **`Recomecar` e não `Rebobinar`, e a diferença é UMA grandeza:** aqui o relógio volta ao
+    // zero e a corrida **continua a jogar**, logo é o único motivo em que um contador marcado
+    // sobrevive (*«outra vida, mesma pontuação»*). O invariante do transporte, lá em baixo, passa
+    // o outro.
+    let repostos = renascer_a_corrida(
+        sim,
+        script,
+        particles,
+        drive,
+        ph2d_ecs::rewind_runtime::Renascimento::Recomecar,
+    );
     // ⛔⛔⛔ **A «QUINTA METADE» FOI CONSTRUÍDA, MEDIDA E RETIRADA** (report do dono, 19/09).
     //
     // Ela devolvia ao autorado **tudo** o que estivesse a ser conduzido, para curar *«as vidas
@@ -320,7 +331,16 @@ impl crate::App {
             // ⚠️ **Aqui, dentro do MESMO invariante**, e não num gancho próprio: o transporte tem
             // mais de um caminho até ao zero (o botão, o arrasto da régua, o reset do documento),
             // e um gancho em cada um é a lista que envelhece.
-            let repostos = renascer_a_corrida(sim, script, particles, &mut self.preview_drive);
+            // ⭐⭐ **`Rebobinar`: aqui o destino é o DOCUMENTO e NADA o atravessa** — nem um
+            // contador marcado com `keep_on_restart`. Passar `Recomecar` aqui faria a régua
+            // arrastada até ao princípio mostrar a pontuação da corrida anterior.
+            let repostos = renascer_a_corrida(
+                sim,
+                script,
+                particles,
+                &mut self.preview_drive,
+                ph2d_ecs::rewind_runtime::Renascimento::Rebobinar,
+            );
             if self.signal_readers.logging() && repostos > 0 {
                 eprintln!("[rebobinar] {repostos} estado(s) vivo(s) reposto(s)");
             }

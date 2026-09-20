@@ -193,7 +193,10 @@ fn rebobinar_re_arma_a_aresta() {
             }]),
         ))
         .id();
-    crate::rewind_runtime::rewind_runtime_state(&mut world);
+    crate::rewind_runtime::rewind_runtime_state(
+        &mut world,
+        crate::rewind_runtime::Renascimento::Rebobinar,
+    );
     let rt = world.get::<CounterWatchRuntime>(e).expect("o slot");
     assert_eq!(
         rt.0.len(),

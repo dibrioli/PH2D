@@ -80,6 +80,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "That source is not in the scene \u{2014} the authored text is shown."
         }
         "panel.inspector.hud.counter_now" => "Now: {v}",
+        "panel.inspector.hud.counter_keep" => "Keep on Restart",
+        "panel.inspector.hud.counter_keep_note" => {
+            "Restart keeps this value \u{2014} Rewind still resets it."
+        }
         "panel.inspector.hud.button_disabled" => "This button refuses the click.",
         "panel.inspector.hud.no_signal" => "No name \u{2014} this button publishes nothing.",
         "panel.inspector.particles.amount" => "Amount",

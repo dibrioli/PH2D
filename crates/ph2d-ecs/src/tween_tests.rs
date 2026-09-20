@@ -121,7 +121,10 @@ fn rebobinar_ja_funciona_porque_o_tween_nao_guarda_nada() {
         "controlo: ele estava a escrever"
     );
 
-    crate::rewind_runtime::rewind_runtime_state(&mut w);
+    crate::rewind_runtime::rewind_runtime_state(
+        &mut w,
+        crate::rewind_runtime::Renascimento::Rebobinar,
+    );
     // O timer de fabrica tem `autostart`, logo renasce A CORRER e no zero.
     let escritas = a_escrever(&mut w);
     assert!(

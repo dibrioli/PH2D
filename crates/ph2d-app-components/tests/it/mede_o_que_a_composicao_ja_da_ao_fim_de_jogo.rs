@@ -68,6 +68,7 @@ fn mede_o_que_a_composicao_ja_da_ao_fim_de_jogo() {
             Counter {
                 name: "vidas".to_owned(),
                 start: 3,
+                keep_on_restart: false,
             },
             CounterRuntime { value: 0 },
             SignalActions(

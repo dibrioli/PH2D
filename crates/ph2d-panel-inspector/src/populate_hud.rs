@@ -19,6 +19,13 @@ pub(crate) fn populate_hud(store: &mut WidgetStore) {
             value: CheckboxValue::Unchecked,
         },
     );
+    store.register(
+        crate::ids::INSP_HUD_COUNTER_KEEP,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Unchecked,
+        },
+    );
     for id in crate::ids::INSP_HUD_TEXT {
         store.register(
             id,

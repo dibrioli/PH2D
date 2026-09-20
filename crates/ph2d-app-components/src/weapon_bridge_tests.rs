@@ -25,6 +25,7 @@ fn arma_com_pente(sim: &mut SimWorld, id: u64, n: i64, cadencia: u64) -> Entity 
             Counter {
                 name: "ammo".to_owned(),
                 start: n,
+                keep_on_restart: false,
             },
             CounterRuntime { value: n },
         ))
@@ -141,6 +142,7 @@ fn um_pente_noutra_entidade_nao_trava_a_arma() {
         Counter {
             name: "ammo".to_owned(),
             start: 0,
+            keep_on_restart: false,
         },
         CounterRuntime { value: 0 },
     ));

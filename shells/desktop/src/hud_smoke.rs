@@ -356,6 +356,7 @@ impl crate::App {
             Counter {
                 name: CONTADOR.to_owned(),
                 start: 0,
+                keep_on_restart: false,
             },
             CounterRuntime { value: 0 },
             SignalActions(vec![

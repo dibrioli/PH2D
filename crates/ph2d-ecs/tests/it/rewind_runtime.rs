@@ -51,7 +51,10 @@ fn um_timer_corrido_volta_ao_principio_ao_rebobinar() {
         "a corrida tem de deixar marca: {depois:?}"
     );
 
-    let tocados = ph2d_ecs::rewind_runtime::rewind_runtime_state(&mut w);
+    let tocados = ph2d_ecs::rewind_runtime::rewind_runtime_state(
+        &mut w,
+        ph2d_ecs::rewind_runtime::Renascimento::Rebobinar,
+    );
     assert!(
         tocados >= 1,
         "a porta tem de ter tocado no relogio: {tocados}"
@@ -79,7 +82,10 @@ fn rebobinar_renasce_o_autostart_e_nao_o_deixa_parado() {
             rt.0[0].elapsed_us = 900_000;
             rt.0[0].running = false;
         }
-        ph2d_ecs::rewind_runtime::rewind_runtime_state(&mut w);
+        ph2d_ecs::rewind_runtime::rewind_runtime_state(
+            &mut w,
+            ph2d_ecs::rewind_runtime::Renascimento::Rebobinar,
+        );
         let agora = estado(&w, e);
         assert_eq!(agora.elapsed_us, 0, "o progresso volta ao zero");
         assert_eq!(
@@ -99,7 +105,10 @@ fn a_vida_tambem_passa_pela_porta() {
             elapsed_us: 7_000_000,
         })
         .id();
-    ph2d_ecs::rewind_runtime::rewind_runtime_state(&mut w);
+    ph2d_ecs::rewind_runtime::rewind_runtime_state(
+        &mut w,
+        ph2d_ecs::rewind_runtime::Renascimento::Rebobinar,
+    );
     assert_eq!(
         w.get::<LifetimeRuntime>(e).expect("a vida").elapsed_us,
         0,
@@ -178,7 +187,10 @@ fn uma_fabrica_gasta_volta_ao_principio_ao_rebobinar() {
             cursor: 7,
         })
         .id();
-    ph2d_ecs::rewind_runtime::rewind_runtime_state(&mut w);
+    ph2d_ecs::rewind_runtime::rewind_runtime_state(
+        &mut w,
+        ph2d_ecs::rewind_runtime::Renascimento::Rebobinar,
+    );
     let rt = *w.get::<ph2d_ecs::FactoryRuntime>(e).expect("a fabrica");
     assert_eq!(rt, ph2d_ecs::FactoryRuntime::default());
     assert_eq!(
@@ -209,11 +221,124 @@ fn a_camera_e_apagada_para_renascer_da_pose_autorada() {
             settled: true,
         })
         .id();
-    ph2d_ecs::rewind_runtime::rewind_runtime_state(&mut w);
+    ph2d_ecs::rewind_runtime::rewind_runtime_state(
+        &mut w,
+        ph2d_ecs::rewind_runtime::Renascimento::Rebobinar,
+    );
     assert!(
         w.get::<ph2d_ecs::CameraRuntime>(e).is_none(),
         "o vivo da camera SAI, para a porta que sabe a pose autorada o recriar — um `Default` \
          poria a camera na origem, e um `center` mantido faria a corrida seguinte comecar onde a \
          anterior acabou"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ O CONTADOR QUE ATRAVESSA UM RECOMEÇO (2026-09-20)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Um mundo com **dois** contadores: um teimoso e um comum. Devolve `(mundo, teimoso, comum)`.
+///
+/// ⚠️ **Os dois ficam em `7`**, longe do `start` de cada um — senão «não foi reposto» e «foi
+/// reposto para um valor que por acaso é o de agora» leem-se igual.
+fn cena_dos_contadores() -> (World, ph2d_ecs::Entity, ph2d_ecs::Entity) {
+    let mut w = World::new();
+    let teimoso = w
+        .spawn((
+            ph2d_ecs::Counter {
+                name: "pontos".into(),
+                start: 0,
+                keep_on_restart: true,
+            },
+            ph2d_ecs::CounterRuntime { value: 7 },
+        ))
+        .id();
+    let comum = w
+        .spawn((
+            ph2d_ecs::Counter {
+                name: "vidas".into(),
+                start: 3,
+                keep_on_restart: false,
+            },
+            ph2d_ecs::CounterRuntime { value: 7 },
+        ))
+        .id();
+    (w, teimoso, comum)
+}
+
+fn valor(w: &World, e: ph2d_ecs::Entity) -> i64 {
+    w.get::<ph2d_ecs::CounterRuntime>(e).expect("o vivo").value
+}
+
+/// ⭐⭐⭐ **«Outra vida, mesma pontuação»** — num RECOMEÇO o contador marcado fica onde está, e o
+/// vizinho sem a marca volta ao `start`.
+///
+/// ⚠️ **O vizinho é o CONTROLO e não um extra:** sem ele, um `rewind_runtime_state` que não
+/// tocasse em contador NENHUM passaria este gate.
+///
+/// **Mutação que deve sangrar:** apagar o `continue` da cerca (o teimoso volta a `0`).
+#[test]
+fn num_recomeco_o_contador_marcado_atravessa_e_o_vizinho_nao() {
+    let (mut w, teimoso, comum) = cena_dos_contadores();
+    ph2d_ecs::rewind_runtime::rewind_runtime_state(
+        &mut w,
+        ph2d_ecs::rewind_runtime::Renascimento::Recomecar,
+    );
+    assert_eq!(
+        valor(&w, teimoso),
+        7,
+        "o contador marcado ATRAVESSA um recomeco"
+    );
+    assert_eq!(
+        valor(&w, comum),
+        3,
+        "CONTROLO: o vizinho sem a marca volta ao start"
+    );
+}
+
+/// ⭐⭐⭐ **E ele NÃO atravessa um REBOBINAR** — as duas travessias do zero são coisas diferentes,
+/// e esta é a única grandeza da casa que as distingue.
+///
+/// ⚠️ Sem este gate, alguém leria a cerca como *«este contador nunca mais volta ao início»* e o
+/// botão *Rewind* do transporte deixaria de devolver o documento.
+///
+/// **Mutação que deve sangrar:** tirar o `motivo ==` da cerca (o teimoso fica em `7`).
+#[test]
+fn num_rebobinar_ate_o_contador_marcado_volta_ao_start() {
+    let (mut w, teimoso, comum) = cena_dos_contadores();
+    ph2d_ecs::rewind_runtime::rewind_runtime_state(
+        &mut w,
+        ph2d_ecs::rewind_runtime::Renascimento::Rebobinar,
+    );
+    assert_eq!(
+        valor(&w, teimoso),
+        0,
+        "um rebobinar volta ao DOCUMENTO, marca ou nao"
+    );
+    assert_eq!(valor(&w, comum), 3, "CONTROLO: e o vizinho tambem");
+}
+
+/// ⚠️ **O que a porta CONTA são os que ela tocou** — um contador que atravessa não entra na conta.
+///
+/// Ela é o número que o diagnóstico do rebobinar imprime, e *um recomeço que diz ter reposto o que
+/// deliberadamente não repôs é um relatório que mente*.
+///
+/// **Mutação que deve sangrar:** pôr o `n += 1` antes do `continue`.
+#[test]
+fn a_conta_da_porta_nao_inclui_quem_atravessou() {
+    let (mut w, ..) = cena_dos_contadores();
+    let no_recomeco = ph2d_ecs::rewind_runtime::rewind_runtime_state(
+        &mut w,
+        ph2d_ecs::rewind_runtime::Renascimento::Recomecar,
+    );
+    let (mut w2, ..) = cena_dos_contadores();
+    let no_rebobinar = ph2d_ecs::rewind_runtime::rewind_runtime_state(
+        &mut w2,
+        ph2d_ecs::rewind_runtime::Renascimento::Rebobinar,
+    );
+    assert_eq!(
+        no_rebobinar,
+        no_recomeco + 1,
+        "o rebobinar toca EXACTAMENTE um contador a mais: {no_rebobinar} contra {no_recomeco}"
     );
 }

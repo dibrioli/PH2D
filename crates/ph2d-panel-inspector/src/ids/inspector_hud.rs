@@ -55,3 +55,6 @@ pub const INSP_HUD_SOURCE: [NodeId; 4] = [
 
 /// A caixa **Disabled** do botão.
 pub const INSP_HUD_DISABLED: NodeId = hash_node_id("insp_hud_disabled");
+
+/// A caixa **Keep on restart** do contador — *«outra vida, mesma pontuação»*.
+pub const INSP_HUD_COUNTER_KEEP: NodeId = hash_node_id("insp_hud_counter_keep");

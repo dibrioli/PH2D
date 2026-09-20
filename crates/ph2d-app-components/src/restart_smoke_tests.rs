@@ -323,7 +323,10 @@ fn o_jogo_joga_se_recomeca_e_as_luzes_voltam() {
                     // já era documento) ⇒ a devolução **desfazia o `Show`** e a luz ficava às
                     // escuras. *Uma porta que devolve «o que estava antes» não sabe distinguir o
                     // que a corrida escreveu do que o artista acabou de mandar escrever.*
-                    ph2d_ecs::rewind_runtime::rewind_runtime_state(sim.world_mut());
+                    ph2d_ecs::rewind_runtime::rewind_runtime_state(
+                        sim.world_mut(),
+                        ph2d_ecs::rewind_runtime::Renascimento::Recomecar,
+                    );
                     recomecou = true;
                 }
             }

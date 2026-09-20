@@ -30,9 +30,16 @@ pub(crate) fn apply_hud_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
     }
 
     if let WidgetEvent::Toggled(id) = ev {
-        if id != crate::ids::INSP_HUD_DISABLED {
+        // ⚠️ **As DUAS caixas desta secção, e elas são de componentes diferentes** — a `Disabled` é
+        // do `UiButton` e a `Keep on restart` é do `Counter`. Um `match` com um braço só engoliria
+        // o clique da segunda em silêncio, que é o defeito que esta crate já pagou sete vezes.
+        let edit = if id == crate::ids::INSP_HUD_DISABLED {
+            E::Disabled
+        } else if id == crate::ids::INSP_HUD_COUNTER_KEEP {
+            E::CounterKeep
+        } else {
             return false;
-        }
+        };
         let on = matches!(
             host.store().get(id),
             Some(InteractiveState::Checkbox {
@@ -40,7 +47,7 @@ pub(crate) fn apply_hud_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
                 ..
             })
         );
-        push(host, bits, E::Disabled(on));
+        push(host, bits, edit(on));
         return true;
     }
 

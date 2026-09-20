@@ -67,6 +67,8 @@ pub enum HudFieldEdit {
     Source(u8),
     /// O botão recusa o clique?
     Disabled(bool),
+    /// ⭐ **Este contador atravessa um recomeço?** (`Counter::keep_on_restart`)
+    CounterKeep(bool),
 }
 
 /// **O que o painel mostra do HUD** — o instantâneo que a shell publica por quadro.
@@ -121,6 +123,8 @@ pub struct InspectorHudInfo {
     pub counter_name: String,
     /// Com que valor começa.
     pub counter_start: f32,
+    /// ⭐ **Atravessa um recomeço?** — *«outra vida, mesma pontuação»*.
+    pub counter_keep: bool,
     /// ⭐ O valor de AGORA — leitura, nunca edição: ele é vivo e não é documento.
     pub counter_value: i64,
 }

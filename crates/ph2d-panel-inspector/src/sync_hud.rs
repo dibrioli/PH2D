@@ -39,14 +39,17 @@ pub(crate) fn sync(
         inspector_state.last_hud_sig = None;
         return;
     };
-    if let Some(InteractiveState::Checkbox { value, .. }) =
-        host.store_mut().get_mut(crate::ids::INSP_HUD_DISABLED)
-    {
-        *value = if info.disabled {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        };
+    for (id, ligada) in [
+        (crate::ids::INSP_HUD_DISABLED, info.disabled),
+        (crate::ids::INSP_HUD_COUNTER_KEEP, info.counter_keep),
+    ] {
+        if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
+            *value = if ligada {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            };
+        }
     }
     let sig = assinatura(&info);
     if !entity_changed && inspector_state.last_hud_sig == Some(sig) {

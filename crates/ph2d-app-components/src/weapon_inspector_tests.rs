@@ -22,6 +22,7 @@ fn arma(sim: &mut SimWorld, pente: Option<(&str, i64)>) -> Entity {
             Counter {
                 name: nome.to_owned(),
                 start: n,
+                keep_on_restart: false,
             },
             CounterRuntime { value: n },
         ));
@@ -62,6 +63,7 @@ fn um_pente_noutra_entidade_e_acusado() {
         Counter {
             name: "ammo".to_owned(),
             start: 9,
+            keep_on_restart: false,
         },
         CounterRuntime { value: 9 },
     ));

@@ -101,6 +101,7 @@ pub fn build_info(
             .as_ref()
             .map(|l| nome_da_fonte(&l.source).to_owned())
             .unwrap_or_default(),
+        counter_keep: counter.as_ref().is_some_and(|c| c.keep_on_restart),
         prefix: label.as_ref().map(|l| l.prefix.clone()).unwrap_or_default(),
         suffix: label.as_ref().map(|l| l.suffix.clone()).unwrap_or_default(),
         vivo,
@@ -208,6 +209,13 @@ pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
                 return false;
             };
             b.disabled = *on;
+            true
+        }
+        E::CounterKeep(on) => {
+            let Some(mut c) = sim.world_mut().get_mut::<Counter>(e) else {
+                return false;
+            };
+            c.keep_on_restart = *on;
             true
         }
     }

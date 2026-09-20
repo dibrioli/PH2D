@@ -146,6 +146,19 @@ pub struct Counter {
     pub name: String,
     /// O valor com que ele começa **e com que renasce** ao rebobinar.
     pub start: i64,
+    /// ⭐⭐⭐ **Este contador ATRAVESSA um recomeço** — *«outra vida, mesma pontuação»*.
+    ///
+    /// Desligado (o de fábrica, e o comportamento de sempre) ele volta ao [`Self::start`] em toda
+    /// travessia do zero. Ligado, um [`crate::SignalVerb::RestartRun`] deixa-o como está.
+    ///
+    /// ⚠️⚠️ **E ele NÃO sobrevive ao REBOBINAR, com o mecanismo:** as duas travessias do zero são
+    /// coisas diferentes e esta é a única grandeza da casa que as distingue. O *Rewind* do
+    /// transporte volta ao **documento** — ali um contador teimoso seria estado vivo a contaminar
+    /// o estado autorado, e o artista que arrasta a régua até ao princípio veria a pontuação da
+    /// corrida anterior. O recomeço, esse, acontece **dentro** de uma corrida que continua a
+    /// jogar. ⇒ quem decide é o motivo ([`crate::rewind_runtime::Renascimento`]), e ele entra na
+    /// **assinatura** da porta para que esquecê-lo seja erro de compilação.
+    pub keep_on_restart: bool,
 }
 
 impl SimComponent for Counter {}

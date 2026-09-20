@@ -167,7 +167,10 @@ fn mede_o_que_a_composicao_ja_da_ao_abanao() {
         r.center = [9.0, 9.0];
         r.settled = true;
     }
-    let tocados = ph2d_ecs::rewind_runtime::rewind_runtime_state(sim.world_mut());
+    let tocados = ph2d_ecs::rewind_runtime::rewind_runtime_state(
+        sim.world_mut(),
+        ph2d_ecs::rewind_runtime::Renascimento::Rebobinar,
+    );
     let sobrou = sim.world().get::<CameraRuntime>(camera).is_some();
     eprintln!("(E) REBOBINAR É RENASCER");
     eprintln!("    componentes tocados ........... {tocados}");

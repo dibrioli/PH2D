@@ -24,6 +24,7 @@ fn cheio() -> InspectorHudInfo {
         has_counter: true,
         counter_name: "pontos".into(),
         counter_start: 0.0,
+        counter_keep: false,
         counter_value: 9,
     }
 }

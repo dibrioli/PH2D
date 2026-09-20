@@ -39,6 +39,27 @@ use crate::{
     WeaponRuntime, World,
 };
 
+/// ⭐⭐⭐ **PORQUE é que o vivo está a renascer** — e a distinção existe porque há **duas**
+/// travessias do zero, com respostas diferentes numa grandeza.
+///
+/// Ela entra na **assinatura** da [`rewind_runtime_state`] de propósito: um parâmetro por omissão
+/// deixaria o chamador novo herdar a resposta de outro, que é exactamente o defeito que esta porta
+/// existe para não ter. *Esquecer o motivo é erro de compilação.*
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Renascimento {
+    /// **O transporte voltou ao início** — o botão *Rewind*, um scrub da régua até zero.
+    ///
+    /// Aqui o destino é o **DOCUMENTO**: tudo volta ao que o ficheiro diz, sem excepção. ⛔ É por
+    /// isso que o [`Counter::keep_on_restart`] **não** é honrado neste motivo — um contador que
+    /// sobrevivesse a um rewind seria estado de uma corrida a contaminar o estado autorado.
+    Rebobinar,
+    /// **Um verbo pediu outra corrida** ([`crate::SignalVerb::RestartRun`]).
+    ///
+    /// Aqui o relógio continua a andar e o destino é *«outra vez»*, não *«como estava gravado»* —
+    /// e é o único motivo em que o artista escolhe o que ATRAVESSA.
+    Recomecar,
+}
+
 /// **Repõe o estado vivo de toda a gente, como no tique 0.** Devolve **quantos componentes** foram
 /// tocados — o número que um diagnóstico imprime e que um gate lê.
 ///
@@ -55,10 +76,10 @@ use crate::{
 /// | [`FactoryRuntime`] | `Default` | ⭐ **`rng: 0` quer dizer «por semear»** ⇒ a corrida seguinte **repete** a primeira |
 /// | [`StateMachineRuntime`] | [`crate::state_machine::born`] | volta ao estado **inicial**, e `started = false` fá-lo anunciar a entrada outra vez |
 /// | [`CameraRuntime`] | ⭐⭐ **APAGAR o componente** | o `ensure_runtime` da shell recria-o **da pose autorada**; um `Default` poria a câmera na ORIGEM |
-/// | [`CounterRuntime`] | ⭐ o **`start` da config** | a primeira espécie que LÊ a config: um `Default` poria todos a zero e apagaria as três vidas que o artista autorou |
+/// | [`CounterRuntime`] | ⭐ o **`start` da config** | a primeira espécie que LÊ a config: um `Default` poria todos a zero e apagaria as três vidas que o artista autorou. ⭐⭐ **E a única que lê o MOTIVO**: com [`Counter::keep_on_restart`] ele atravessa um recomeço e **não** um rebobinar |
 /// | [`CounterWatchRuntime`] | [`crate::counter_watch::born`] por slot | ⭐⭐ `held = false` **re-arma a aresta**: sem isso a 2.ª corrida nunca voltaria a anunciar a morte, porque a condição já estava satisfeita quando a 1.ª acabou |
 /// | [`WeaponRuntime`] | [`crate::weapon::born`] | ⭐ «pronta a disparar»; ⛔ o PENTE **não** é reposto aqui — ele é um [`Counter`], e a linha acima já o enche |
-pub fn rewind_runtime_state(world: &mut World) -> usize {
+pub fn rewind_runtime_state(world: &mut World, motivo: Renascimento) -> usize {
     let mut n = 0;
 
     // ── Os RELÓGIOS ──────────────────────────────────────────────────────────
@@ -101,8 +122,16 @@ pub fn rewind_runtime_state(world: &mut World) -> usize {
     // ── Os CONTADORES ────────────────────────────────────────────────────────
     // ⭐ **Nascer aqui é o `start` da CONFIG** — a primeira espécie desta porta que não é uma
     // constante. Sem isto a 2.ª corrida começaria com os pontos da primeira.
+    //
+    // ⭐⭐⭐ **E é a ÚNICA espécie desta tabela que lê o MOTIVO** (`keep_on_restart`, 2026-09-20):
+    // *«outra vida, mesma pontuação»*. ⚠️ A cerca é o motivo e não um `if` no campo — num
+    // `Rebobinar` o destino é o DOCUMENTO e nada o atravessa, e escrever as duas travessias iguais
+    // faria a régua arrastada até ao princípio mostrar a pontuação da corrida anterior.
     let mut q = world.query::<(&Counter, &mut CounterRuntime)>();
     for (cfg, mut rt) in q.iter_mut(world) {
+        if motivo == Renascimento::Recomecar && cfg.keep_on_restart {
+            continue;
+        }
         rt.value = cfg.start;
         n += 1;
     }

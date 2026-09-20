@@ -222,6 +222,7 @@ fn cena_um(world: &mut World) -> Entity {
         Counter {
             name: PENTE.to_owned(),
             start: PENTE_N,
+            keep_on_restart: false,
         },
         CounterRuntime { value: PENTE_N },
     ));
@@ -272,6 +273,7 @@ fn cena_um(world: &mut World) -> Entity {
         Counter {
             name: CARTUCHAS.to_owned(),
             start: CARTUCHAS_N,
+            keep_on_restart: false,
         },
         CounterRuntime { value: CARTUCHAS_N },
     ));

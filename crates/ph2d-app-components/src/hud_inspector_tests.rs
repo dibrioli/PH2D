@@ -31,6 +31,7 @@ fn cena() -> (SimWorld, u64) {
         Counter {
             name: "pontos".into(),
             start: 0,
+            keep_on_restart: false,
         },
         CounterRuntime { value: 12 },
     ));
@@ -306,4 +307,57 @@ fn um_filho_de_um_objecto_comum_nao_nomeia_raiz_nenhuma() {
         .id();
     let i = build_info(&mut sim, &TagTree::default(), filho.to_bits(), false).expect("info");
     assert_eq!(i.canvas_parent, None);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ A CAIXA «Keep on Restart» — a IDA e a VOLTA (2026-09-20)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐ **A edição chega ao componente, e o instantâneo lê-a de volta.**
+///
+/// ⚠️ **As duas metades, e nenhuma basta:** sem a IDA a caixa é decoração; sem a VOLTA ela
+/// desmarca-se sozinha no quadro seguinte (o painel semeia do instantâneo a cada quadro), que é
+/// o defeito que se lê como *«a caixa não fica marcada»*.
+///
+/// **Mutação que deve sangrar:** o braço `CounterKeep` a cravar `false`; ou o `build_info` a
+/// devolver `counter_keep: false`.
+#[test]
+fn a_caixa_do_recomeco_faz_a_ida_e_a_volta() {
+    let mut sim = SimWorld::default();
+    let e = sim
+        .world_mut()
+        .spawn(Counter {
+            name: "pontos".into(),
+            start: 0,
+            keep_on_restart: false,
+        })
+        .id();
+    let tree = TagTree::default();
+
+    // CONTROLO: ele nasce desligado dos dois lados.
+    let antes = build_info(&mut sim, &tree, e.to_bits(), false).expect("info");
+    assert!(!antes.counter_keep, "CONTROLO: nasce desligado");
+
+    assert!(
+        apply(&mut sim, e.to_bits(), &E::CounterKeep(true)),
+        "a edicao tem de ser aceite"
+    );
+    assert!(
+        sim.world()
+            .get::<Counter>(e)
+            .expect("o contador")
+            .keep_on_restart,
+        "IDA: a edicao tem de chegar ao componente"
+    );
+    let depois = build_info(&mut sim, &tree, e.to_bits(), false).expect("info");
+    assert!(depois.counter_keep, "VOLTA: o instantaneo tem de a ler");
+
+    // E desmarcar volta atras — senão a caixa é um interruptor de um sentido só.
+    assert!(apply(&mut sim, e.to_bits(), &E::CounterKeep(false)));
+    assert!(
+        !sim.world()
+            .get::<Counter>(e)
+            .expect("o contador")
+            .keep_on_restart
+    );
 }

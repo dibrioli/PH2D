@@ -228,6 +228,7 @@ fn mede_o_que_a_composicao_ja_da_a_arma() {
             Counter {
                 name: "ammo".to_owned(),
                 start: PENTE,
+                keep_on_restart: false,
             },
             CounterRuntime { value: PENTE },
             Factory {

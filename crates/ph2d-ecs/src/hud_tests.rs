@@ -44,6 +44,7 @@ fn rebobinar_devolve_o_contador_ao_start_e_nao_a_zero() {
             Counter {
                 name: "vidas".into(),
                 start: 3,
+                keep_on_restart: false,
             },
             CounterRuntime { value: 0 },
         ))
@@ -53,11 +54,15 @@ fn rebobinar_devolve_o_contador_ao_start_e_nao_a_zero() {
             Counter {
                 name: "pontos".into(),
                 start: 0,
+                keep_on_restart: false,
             },
             CounterRuntime { value: 42 },
         ))
         .id();
-    let n = crate::rewind_runtime::rewind_runtime_state(&mut w);
+    let n = crate::rewind_runtime::rewind_runtime_state(
+        &mut w,
+        crate::rewind_runtime::Renascimento::Rebobinar,
+    );
     assert!(n >= 2, "os dois contadores foram tocados");
     assert_eq!(
         w.get::<CounterRuntime>(tres_vidas).expect("vivo").value,
@@ -105,6 +110,7 @@ fn dois_contadores_com_o_mesmo_nome_somam() {
             Counter {
                 name: "pontos".into(),
                 start: 0,
+                keep_on_restart: false,
             },
             CounterRuntime { value: v },
         ));
@@ -114,6 +120,7 @@ fn dois_contadores_com_o_mesmo_nome_somam() {
         Counter {
             name: "vidas".into(),
             start: 0,
+            keep_on_restart: false,
         },
         CounterRuntime { value: 100 },
     ));
@@ -154,6 +161,7 @@ fn um_contador_que_nao_existe_devolve_nada_e_nao_zero() {
         Counter {
             name: "pontos".into(),
             start: 0,
+            keep_on_restart: false,
         },
         CounterRuntime { value: 5 },
     ));
@@ -198,6 +206,7 @@ fn o_authored_nao_deriva_nada() {
         Counter {
             name: "pontos".into(),
             start: 0,
+            keep_on_restart: false,
         },
         CounterRuntime { value: 9 },
     ));
@@ -215,6 +224,7 @@ fn o_texto_e_o_prefixo_mais_o_numero_mais_o_sufixo() {
         Counter {
             name: "pontos".into(),
             start: 0,
+            keep_on_restart: false,
         },
         CounterRuntime { value: 12 },
     ));
@@ -279,6 +289,7 @@ fn o_sinal_chega_ao_contador_pelo_nome_e_so_com_identidade() {
                 Counter {
                     name: "pontos".into(),
                     start: 0,
+                    keep_on_restart: false,
                 },
                 CounterRuntime { value: 0 },
                 crate::Name::new("Placar"),

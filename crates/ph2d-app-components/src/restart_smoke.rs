@@ -220,6 +220,7 @@ fn cena_um(world: &mut World) -> Entity {
             Counter {
                 name: VIDAS.to_owned(),
                 start: VIDAS_INICIAIS,
+                keep_on_restart: false,
             },
             CounterRuntime {
                 value: VIDAS_INICIAIS,

@@ -6,6 +6,7 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+mod a_caixa_do_contador_esta_viva;
 mod a_field_is_never_narrower_than_its_owner_declared;
 mod a_lista_de_tags_cabe_no_popover;
 mod a_long_popover_scrolls;

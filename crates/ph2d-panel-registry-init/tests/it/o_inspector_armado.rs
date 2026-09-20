@@ -893,6 +893,7 @@ fn arma_o_top20() {
         has_counter: true,
         counter_name: "Score".to_string(),
         counter_start: 0.0,
+        counter_keep: false,
         counter_value: 42,
     }));
     insp::set_current_inspector_path_follow(Some(InspectorPathFollowInfo {

@@ -24,6 +24,7 @@ fn contador(sim: &mut SimWorld, nome: &str, valor: i64) -> ph2d_ecs::Entity {
             Counter {
                 name: nome.into(),
                 start: valor,
+                keep_on_restart: false,
             },
             CounterRuntime { value: valor },
         ))

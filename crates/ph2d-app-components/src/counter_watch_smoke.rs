@@ -167,6 +167,7 @@ pub fn montar(world: &mut bevy_ecs::world::World) -> (ph2d_ecs::Entity, ph2d_ecs
             Counter {
                 name: HEROI.into(),
                 start: VIDAS,
+                keep_on_restart: false,
             },
             CounterRuntime { value: VIDAS },
             relogio("golpe_heroi"),
@@ -214,6 +215,7 @@ pub fn montar(world: &mut bevy_ecs::world::World) -> (ph2d_ecs::Entity, ph2d_ecs
             Counter {
                 name: CONTROLO.into(),
                 start: VIDAS,
+                keep_on_restart: false,
             },
             CounterRuntime { value: VIDAS },
             relogio("golpe_controlo"),

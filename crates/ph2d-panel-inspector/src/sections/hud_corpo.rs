@@ -325,6 +325,38 @@ fn bloco_contador(
             cur_y,
             N::CounterStart,
         );
+        // ⭐⭐ **A caixa que faz o contador ATRAVESSAR um recomeço** — *«outra vida, mesma
+        // pontuação»*. ⚠️ Ela fica **colada ao `Start`** de propósito: os dois respondem à mesma
+        // pergunta (*com que valor este contador fica quando a corrida volta ao princípio?*), e
+        // separá-los faria o artista ler o `Start` como a resposta inteira.
+        cur_y = check_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            crate::ids::INSP_HUD_COUNTER_KEEP,
+            tr("panel.inspector.hud.counter_keep"),
+            i.counter_keep,
+        );
+        // ⚠️ **E o que ele NÃO faz, dito onde se lê a caixa:** um rebobinar do transporte repõe-no
+        // à mesma. *Sem esta linha, «atravessa um recomeço» lê-se como «nunca mais volta ao
+        // início», e o artista conclui que a caixa está partida ao carregar em Rewind.*
+        if i.counter_keep {
+            cur_y = warn(
+                scene,
+                text_system,
+                theme,
+                x,
+                w,
+                cur_y,
+                tr("panel.inspector.hud.counter_keep_note"),
+                ColorToken::Text3,
+            );
+        }
         // ⭐ O valor VIVO — leitura, nunca edição: ele não é documento.
         let linha = ph2d_i18n::tr_with(
             "panel.inspector.hud.counter_now",

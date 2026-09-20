@@ -86,6 +86,9 @@ impl crate::App {
             motion,
             &mut self.playhead,
             self.fixed_step.fixed_dt(),
+            // ⭐ O relógio de PAREDE — o que anda com a cena pausada, e o único em que o eco de
+            // uma largada no grafo pode viver (o playhead pára com o Play).
+            self.fixed_step.wall_seconds(),
             self.last_pointer,
             toasts,
             surface.gpu(),

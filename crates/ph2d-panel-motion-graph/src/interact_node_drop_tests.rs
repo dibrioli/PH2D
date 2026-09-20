@@ -304,3 +304,91 @@ fn o_arrasto_real_pede_o_splice_dentro_do_parenteses_do_undo() {
         "o splice vem DENTRO do parenteses: {saiu:?}"
     );
 }
+
+/// ⭐⭐⭐ **O ALVO ACENDE ANTES DE O ARTISTA LARGAR** — ordem do dono (2026-09-19): *«nós e linhas
+/// podem ganhar um destaque de cor ou outro indicativo de que estão sobrepostos prestes a trocar
+/// ou encaixar»*.
+///
+/// ⚠️ **As duas metades:** ele acende no ARRASTO (não só no largar) e **apaga-se** ao largar —
+/// *um realce que sobrevive ao gesto é um estado que o artista não sabe desligar*.
+#[test]
+fn o_alvo_acende_no_arrasto_e_apaga_ao_largar() {
+    use super::super::{GesturePhase, GraphHitKind, apply_gesture};
+    use crate::interact::tests::gesture;
+    use crate::snapshot::drain_intents;
+
+    let snap = cena(
+        vec![
+            no(1, 0.0, 0.0, NodeViewKind::Node),
+            no(2, 400.0, 0.0, NodeViewKind::Node),
+        ],
+        Vec::new(),
+    );
+    let _ = drain_intents();
+    let mut st = MotionGraphPanelState::default();
+    let alvo = centro(&snap, 2);
+    let pega = GraphHitKind::Node { node: 1 };
+
+    apply_gesture(
+        &mut st,
+        gesture(pega, GesturePhase::Begin, 20.0, 20.0),
+        RECT,
+        RECT,
+        &snap,
+    );
+    assert_eq!(st.largada_viva, None, "ao pegar ainda nao ha' alvo nenhum");
+    apply_gesture(
+        &mut st,
+        gesture(pega, GesturePhase::Update, alvo.0, alvo.1),
+        RECT,
+        RECT,
+        &snap,
+    );
+    assert_eq!(
+        st.largada_viva,
+        Some(Largada::Troca(2)),
+        "durante o arrasto o alvo esta' aceso"
+    );
+    apply_gesture(
+        &mut st,
+        gesture(pega, GesturePhase::End, alvo.0, alvo.1),
+        RECT,
+        RECT,
+        &snap,
+    );
+    assert_eq!(st.largada_viva, None, "e ao largar ele apaga-se");
+    let _ = drain_intents();
+}
+
+/// ⛔⛔ **OS PINTORES CHAMAM A LEI DO REALCE** — a segunda metade, e ela é um censo TEXTUAL de
+/// propósito.
+///
+/// ⚠️⚠️ **A primeira redacção media a coisa errada e a prova de mutação disse-o:** ela varria os
+/// pintores à procura do nome do CAMPO (`largada_viva`), e desligar a pintura com um `if false
+/// &&` deixava-a **verde** — o nome continua lá. *Um censo de texto afirma que alguém escreveu a
+/// palavra, nunca que o desenho acontece.*
+///
+/// ⇒ a DECISÃO mudou-se para [`crate::realce`], onde um gate a mede por VALOR, e o que
+/// sobra aqui é a única pergunta que só texto responde: **o pintor ainda a chama?** *Uma lei que
+/// ninguém chama não desenha; e as duas metades juntas são o mais perto de um pixel que este
+/// painel consegue hoje.*
+#[test]
+fn os_pintores_chamam_a_lei_do_realce() {
+    for (ficheiro, texto, porta) in [
+        (
+            "paint_card.rs",
+            include_str!("paint_card.rs"),
+            "realce::realce_do_cartao(",
+        ),
+        (
+            "paint_wires.rs",
+            include_str!("paint_wires.rs"),
+            "realce::realce_do_fio(",
+        ),
+    ] {
+        assert!(
+            texto.contains(porta),
+            "o {ficheiro} deixou de chamar a lei do realce ({porta})"
+        );
+    }
+}

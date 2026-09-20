@@ -28,7 +28,14 @@ pub use drop_targets::{
 pub(crate) use menu::menu_rows;
 // The compatible-type filter for smart-connect: a loose end dropped in empty space opens the
 // palette showing only the node types that output can feed (`interact_drop`).
-pub(crate) use menu::menu_catalog;
+pub(crate) use menu::{menu_catalog, menu_catalog_back};
+
+/// **O ECO de uma largada** — irmão cortado no tecto de LOC do painel (600) e por
+/// RESPONSABILIDADE: este ficheiro é o RETRATO que a shell publica todo quadro, aquele é um
+/// canal lateral com vida própria (nasce de uma acção e morre sozinho).
+#[path = "snapshot_piscada.rs"]
+mod piscada;
+pub use piscada::{Piscada, current_graph_flash, set_graph_flash};
 
 /// One socket on a node card. **Colour ← [`Domain`], shape ← [`Dim`]** (plan §2.4) —
 /// two orthogonal readouts: the hue says which data family, the glyph ([`socket_glyph`])
@@ -334,6 +341,11 @@ pub struct NodeChoice {
     /// panel must not have to ask the shell a question the manifest already
     /// answers.
     pub inputs: &'static [ph2d_nodegraph::node::PortSpec],
+    /// ⭐⭐ **As portas de SAÍDA do tipo** — o espelho dos [`Self::inputs`], e ele existe pela
+    /// mesma razão: a paleta aberta por um fio puxado de uma ENTRADA (ordem do dono, 2026-09-19)
+    /// tem de mostrar *«quem pode ALIMENTAR isto»*, e essa pergunta lê-se nas saídas. *O painel
+    /// não pode ter de perguntar à shell uma coisa que o manifesto já responde.*
+    pub outputs: &'static [ph2d_nodegraph::node::PortSpec],
 }
 
 /// Two choices are the same choice when they name the same node TYPE — the

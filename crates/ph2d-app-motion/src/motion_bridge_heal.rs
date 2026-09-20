@@ -38,6 +38,7 @@ pub(super) fn is_constructive(i: &GraphIntent) -> bool {
             | GraphIntent::SpliceNode { .. }
             | GraphIntent::SpliceReroute { .. }
             | GraphIntent::SmartConnect { .. }
+            | GraphIntent::SmartConnectBack { .. }
             | GraphIntent::Paste
             | GraphIntent::DuplicateSelection { .. }
     )

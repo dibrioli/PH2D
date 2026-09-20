@@ -63,6 +63,7 @@ pub(super) fn resolve_loose_output_drop(
         .collect();
     let spawn = view.graph(x, y);
     push_intent(GraphIntent::OpenLibrary {
+        connect_to: None,
         x: spawn.0,
         y: spawn.1,
         connect_from: Some((from_node, from_port)),

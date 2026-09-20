@@ -78,7 +78,7 @@ use paint_socket::{highlight_socket, paint_socket_glyph, port_out_domain};
 use paint_stamp::{draw_preview, draw_preview_toggle};
 pub(crate) use paint_wire::{
     WireEmphasis, detached_edge, draw_wire, draw_wire_ghost, draws_wire_ghost, wire_endpoints,
-    wire_hit_polyline, wires_crossed,
+    wire_hit_polyline, wire_polyline, wires_crossed,
 };
 use paint_wires::{WirePass, draw_wires};
 
@@ -168,6 +168,9 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // fold moves nothing — so a view zoomed in on the card would open the group
     // showing a corner of it, or nothing at all. Blender and Houdini both re-frame
     // on the way in; so does this.
+    // ⭐ **O eco da última largada**, lido UMA vez por quadro — a shell já o entrega resolvido
+    // em intensidade, porque o único relógio que o painel recebe no retrato é o PLAYHEAD.
+    state.piscada_viva = crate::snapshot::current_graph_flash();
     state.sync_level(snap.level);
     // Fit on first sight (then the user owns pan/zoom; F re-fits). A MANUAL fit with
     // a selection frames it, not the whole graph (`fit_selection`); every auto-fit

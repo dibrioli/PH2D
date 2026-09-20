@@ -369,6 +369,74 @@ pub(super) fn smart_connect(
     motion.pump.mark_dirty();
 }
 
+/// ⭐⭐⭐ **SMART-CONNECT PARA TRÁS** — o espelho do [`smart_connect`], ordem do dono
+/// (2026-09-19): *«puxar um fio de um slot de entrada (à esquerda do nó) ainda não chama o modal
+/// de nós compatíveis»*. O nó escolhido nasce e a SAÍDA dele vai para a entrada de onde o fio foi
+/// puxado — um passo de undo com o `add`.
+///
+/// ⚠️ **A porta de saída é a PRIMEIRA que serve, e não há «principal» deste lado:** o
+/// [`ph2d_node_registry::NodeRegistry::primary_input`] nomeia uma ENTRADA, e uma saída não tem a
+/// ambiguidade que o motivou (duas saídas do mesmo tipo no mesmo nó são o mesmo fluxo com dois
+/// nomes, nunca dois papéis). *Inventar uma precedência aqui seria uma lei sem defeito que a
+/// justifique.*
+///
+/// ⚠️ Como a irmã, quando nenhuma saída serve o nó fica **acrescentado e por ligar**, com o
+/// toast a dizer porquê — *um pick que não faz nada nenhum é pior do que um nó solto*.
+pub(super) fn smart_connect_back(
+    motion: &mut MotionState,
+    toasts: &mut ToastQueue,
+    to_node: u32,
+    to_port: u16,
+    to_type: &str,
+    x: f32,
+    y: f32,
+) {
+    use ph2d_nodegraph::cook::OpResolver;
+
+    let pre = motion.doc.clone();
+    let source = motion.doc.graph.add_node(to_type.to_string());
+    motion.doc.graph.set_pos(source, Pos { x, y });
+    super::reconcile(motion, &pre.graph);
+
+    // O tipo que a ENTRADA pede → a primeira saída do nó novo que o fala.
+    let in_ty = motion
+        .doc
+        .graph
+        .node(NodeId(to_node))
+        .and_then(|n| motion.registry.resolve(n.type_id()))
+        .and_then(|op| op.manifest().inputs.get(to_port as usize))
+        .map(|p| p.ty);
+    let port = in_ty.and_then(|ty| {
+        motion
+            .doc
+            .graph
+            .node(source)
+            .and_then(|n| motion.registry.resolve(n.type_id()))
+            .and_then(|op| op.manifest().outputs.iter().position(|o| o.ty == ty))
+    });
+    if let Some(port) = port {
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "um indice de porta e' u16 em todo o contrato"
+        )]
+        let edge = Edge {
+            from: (source, port as u16),
+            to: (NodeId(to_node), to_port),
+            delayed: false,
+        };
+        let mut trial = motion.doc.graph.clone();
+        if trial.connect(edge).is_ok() && trial.validate(&motion.registry).is_ok() {
+            motion.doc.graph = trial;
+        } else {
+            toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+                "app.motion.motion_bridge_edit.that_wire_cannot_land_there_the_node_was_added_u",
+            )));
+        }
+    }
+    motion.history.push_undo(pre);
+    motion.pump.mark_dirty();
+}
+
 /// The probe's presentation of a [`super::readout::Reading`] — a label and a raw
 /// number, where the readout row wants a formatted string. The DECISION they
 /// share lives in `reading_of`; only this differs.

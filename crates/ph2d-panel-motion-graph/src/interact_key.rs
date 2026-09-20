@@ -117,6 +117,7 @@ pub(super) fn apply_key(
             let center = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
             let spawn = View::new(rect, state.view).graph(center.0, center.1);
             push_intent(GraphIntent::OpenLibrary {
+                connect_to: None,
                 x: spawn.0,
                 y: spawn.1,
                 connect_from: None,

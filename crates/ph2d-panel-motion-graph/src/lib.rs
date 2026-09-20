@@ -26,6 +26,12 @@ mod interact;
 mod measure_card_cost;
 mod paint;
 mod paint_chrome;
+/// **A LEI do realce de uma largada** — ver o cabeçalho do módulo.
+///
+/// ⚠️ **Ele NÃO se chama `paint_*` de propósito:** o censo de a11y (HR-12) varre todo ficheiro
+/// `paint_*` de um painel à procura de fiação de acessibilidade, e esta é uma DECISÃO pura (que
+/// força acende) sem um pixel dentro. *O nome de um ficheiro é a primeira coisa que um censo lê.*
+mod realce;
 mod split;
 /// O id de hit de um chip da barra, para o gate de costura que mede a pintura.
 pub use paint_chrome::chrome_hit_id_for_tests;
@@ -50,13 +56,13 @@ pub use backdrop::{MIN_H as BACKDROP_MIN_H, MIN_W as BACKDROP_MIN_W};
 pub use snapshot::{
     CardChoices, CardParam, CardSection, ChoiceTarget, Crumb, GraphBackdropView, GraphEdgeView,
     GraphIntent, GraphNodeView, GraphViewSnapshot, HiddenPorts, NodeChoice, NodeViewKind,
-    PROBE_SAMPLES, PortChoice, PortView, PreviewThumb, ProbeView, RenameTarget, RowText,
-    SUBGRAPH_VIEW_TAG, card_hidden_ports, current_graph_backdrop_selection,
+    PROBE_SAMPLES, Piscada, PortChoice, PortView, PreviewThumb, ProbeView, RenameTarget, RowText,
+    SUBGRAPH_VIEW_TAG, card_hidden_ports, current_graph_backdrop_selection, current_graph_flash,
     current_graph_param_scrub, current_graph_selection, drain_intents, is_subgraph_view,
     library_pick, pending_graph_selection, push_intent, request_graph_selection, set_card_choices,
     set_card_hidden_ports, set_card_texts, set_current_motion_graph, set_current_node_catalog,
-    set_graph_backdrop_selection, set_graph_param_scrub, set_graph_selection, set_node_help,
-    snapshot_from,
+    set_graph_backdrop_selection, set_graph_flash, set_graph_param_scrub, set_graph_selection,
+    set_node_help, snapshot_from,
 };
 pub use state::MotionGraphPanelState;
 

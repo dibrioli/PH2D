@@ -260,12 +260,14 @@ pub(super) fn apply_graph_intents(
                 x,
                 y,
                 connect_from,
+                connect_to,
                 splice,
                 compatible,
             } => {
                 motion.open_library = Some(crate::motion_state::LibraryOpen {
                     spawn: (x, y),
                     connect_from,
+                    connect_to,
                     splice,
                     compatible,
                 });
@@ -446,6 +448,19 @@ pub(super) fn apply_graph_intents(
                     && let Some((t, tp)) = subgraph::resolve_port(motion, to_node, to_port, true)
                 {
                     rewire::splice_existing_into_wire(motion, toasts, node, t.0, tp);
+                }
+            }
+            // ⭐⭐ O espelho do acima: a ENTRADA é que está solta, e o nó escolhido nasce a
+            // alimentá-la (ordem do dono, 2026-09-19).
+            GraphIntent::SmartConnectBack {
+                to_node,
+                to_port,
+                to_type,
+                x,
+                y,
+            } => {
+                if let Some((t, tp)) = subgraph::resolve_port(motion, to_node, to_port, true) {
+                    edit::smart_connect_back(motion, toasts, t.0, tp, to_type, x, y);
                 }
             }
             GraphIntent::SetProbe { node } => {

@@ -447,6 +447,27 @@ pub(super) fn swap_in_chain(
     }
     super::reconcile(motion, &pre.graph);
     motion.pump.mark_dirty();
+    // ⭐ **O eco**: os dois nós e os fios que os ligam agora — ver `MotionState::piscada`.
+    let fios = fios_de(motion, &[a, b]);
+    motion.piscada = Some(crate::motion_state::PiscadaPendente {
+        nos: vec![a.0, b.0],
+        fios,
+        inicio: motion.ui_now,
+    });
+}
+
+/// Os fios (pela ponta de chegada) que TOCAM algum destes nós — o conjunto que um eco de largada
+/// acende ao lado das cartas. ⚠️ Lido DEPOIS da edição, de propósito: o que pisca é a fiação
+/// NOVA, que é o que o artista precisa de ler.
+fn fios_de(motion: &MotionState, nos: &[NodeId]) -> Vec<(u32, u16)> {
+    motion
+        .doc
+        .graph
+        .edges()
+        .iter()
+        .filter(|e| !e.delayed && (nos.contains(&e.from.0) || nos.contains(&e.to.0)))
+        .map(|e| (e.to.0.0, e.to.1))
+        .collect()
 }
 
 /// ⭐⭐⭐ **ENFIAR UM NÓ QUE JÁ EXISTE NUM FIO** — ordem do dono (2026-09-19): *«Se arrastar num nó
@@ -542,6 +563,12 @@ pub(super) fn splice_existing_into_wire(
     motion.doc.graph = trial;
     super::reconcile(motion, &pre.graph);
     motion.pump.mark_dirty();
+    let fios = fios_de(motion, &[node]);
+    motion.piscada = Some(crate::motion_state::PiscadaPendente {
+        nos: vec![node.0],
+        fios,
+        inicio: motion.ui_now,
+    });
 }
 
 #[cfg(test)]

@@ -71,6 +71,22 @@ pub(crate) fn draw_wires(
                 .is_none_or(|f| crate::flow::edge_in_influence(f, e.from_node, e.to_node));
         let emphasis = WireEmphasis::of(is_hovered, is_selected);
         draw_wire(ctx, p.snap, e, p.view, p.theme, emphasis, bright);
+        // ⭐⭐⭐ **O REALCE DE UMA LARGADA, por CIMA** — a promessa (enquanto a mão paira) e o
+        // eco (a desvanecer) são o MESMO traço com forças diferentes; a decisão vive em
+        // [`crate::realce`]. Desenhado como um traço a mais e não dentro do [`draw_wire`]:
+        // ele é ADITIVO e temporário, e enfiá-lo na função que decide a cor de toda a vida de um
+        // fio misturaria um estado com um acontecimento.
+        if let Some(forca) = crate::realce::realce_do_fio(p.state, (e.to_node, e.to_port))
+            && let Some((p0, p3)) = crate::paint::wire_endpoints(p.snap, e, p.view)
+        {
+            ph2d_editor_core::paint::stroke_polyline(
+                ctx.scene,
+                &crate::paint::wire_polyline(p0, p3, p.view.zoom),
+                crate::paint::WIRE_W_HOVER * p.view.zoom,
+                ph2d_editor_core::paint::resolve(ph2d_tokens::ColorToken::Success, p.theme)
+                    .multiply_alpha(forca),
+            );
+        }
         push_wire_hits(hits, p.snap, e, p.view, p.rect);
     }
 }

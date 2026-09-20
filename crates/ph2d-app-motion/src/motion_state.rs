@@ -402,6 +402,12 @@ pub struct MotionState {
     /// family where a missed CPU-only consumer would otherwise show a stray advisory.
     /// ON by default; a session preference (not serialized — runtime UX, like `gpu_live`).
     pub node_help_enabled: bool,
+    /// ⭐ **O relógio de PAREDE do editor, em segundos** — o `FixedStep::wall_seconds` da shell,
+    /// copiado a cada `dispatch`. ⚠️ **Não é o playhead:** ele continua a andar com a cena
+    /// pausada, que é exactamente o que um eco de gesto precisa.
+    pub ui_now: f32,
+    /// ⭐⭐⭐ **O eco da última largada** — ver [`PiscadaPendente`].
+    pub piscada: Option<PiscadaPendente>,
 }
 
 /// **What opened the Add-Node palette** — the spawn point plus the wire context of the gesture, so the
@@ -413,12 +419,21 @@ pub struct LibraryOpen {
     pub spawn: (f32, f32),
     /// The output socket a wire was dragged FROM and dropped on empty canvas (smart-connect).
     pub connect_from: Option<(u32, u16)>,
+    /// ⭐ A ENTRADA de onde um fio foi puxado PARA TRÁS e largado no vazio — o espelho do
+    /// [`Self::connect_from`] (ordem do dono, 2026-09-19).
+    pub connect_to: Option<(u32, u16)>,
     /// The wire (target `(to_node, to_port)`) an R-press landed ON (splice into it).
     pub splice: Option<(u32, u16)>,
     /// For smart-connect, the node types that output can feed — the palette shows only these. Empty
     /// for the unfiltered cases (whole catalog). Only read at open time (never at pick time).
     pub compatible: Vec<&'static str>,
 }
+
+/// **O ECO de uma largada, antes de virar intensidade** — irmão pelo cap de 700 LOC (HR-18) e
+/// pelo mesmo corte por assunto do `quadro` abaixo.
+#[path = "motion_state_piscada.rs"]
+mod piscada;
+pub use piscada::PiscadaPendente;
 
 /// **O que o QUADRO lê e publica** (o sinal disparado, a forma seleccionada) — irmão pelo cap
 /// de 600 LOC (HR-18), pelo mesmo corte por assunto do `clip` abaixo.
@@ -538,6 +553,8 @@ impl MotionState {
             table_cache: crate::motion_table_gen::TableCache::default(),
             // ADR-0155: the node-help system is ON by default; the toolbar chip toggles it.
             node_help_enabled: true,
+            ui_now: 0.0,
+            piscada: None,
         }
     }
 

@@ -272,3 +272,139 @@ fn o_heal_de_um_duplicador_apagado_faz_a_ponte_pela_principal() {
         "a ponte e' pelos POINTS (a porta principal), nunca pela shape"
     );
 }
+
+/// ⭐⭐⭐ **O GESTO INTEIRO É *UM* PASSO DE UNDO — E O REDO DEVOLVE-O** — ordem do dono
+/// (2026-09-19): *«Undo/redo implementado para essas ações.»*
+///
+/// ⚠️ **A régua entra pela ROTA e não pela operação:** ela empurra as intenções que o painel de
+/// facto empurra (`BeginDrag` · `MoveNodes` · `SwapInChain` · `EndDrag`) e mede a PILHA. *Chamar
+/// `swap_in_chain` à mão não afirma nada sobre o parênteses do arrasto, que é onde o número de
+/// Ctrl+Z é decidido.*
+///
+/// As três metades: a acção acontece · **UM** `Ctrl+Z` devolve a fiação E as posições · o redo
+/// volta a aplicá-la.
+#[test]
+fn o_gesto_inteiro_e_um_passo_de_undo_e_o_redo_devolve() {
+    use ph2d_nodegraph::graph::Pos;
+    use ph2d_panel_motion_graph::{GraphIntent, push_intent};
+
+    let mut motion = MotionState::new();
+    let ids = cadeia(
+        &mut motion,
+        &[
+            "motion.grid",
+            "motion.move",
+            "motion.scale",
+            "motion.output",
+        ],
+    );
+    let (grid, mv, sc) = (ids[0], ids[1], ids[2]);
+    motion.doc.graph.set_pos(mv, Pos { x: 100.0, y: 0.0 });
+    motion.doc.graph.set_pos(sc, Pos { x: 300.0, y: 0.0 });
+    let _ = ph2d_panel_motion_graph::drain_intents();
+
+    // O arrasto REAL, como o painel o empurra: o `scale` sobre o `move`.
+    push_intent(GraphIntent::BeginDrag);
+    push_intent(GraphIntent::MoveNodes {
+        nodes: vec![sc.0],
+        dx: -200.0,
+        dy: 0.0,
+    });
+    push_intent(GraphIntent::SwapInChain {
+        a: sc.0,
+        b: mv.0,
+        back_dx: -200.0,
+        back_dy: 0.0,
+    });
+    push_intent(GraphIntent::EndDrag);
+    let aplica = |motion: &mut MotionState| {
+        super::super::apply_graph_intents(
+            motion,
+            &mut ph2d_core::Playhead::default(),
+            &mut ToastQueue::default(),
+            &mut ph2d_editor_core::screens::layout::CenterSplit::None,
+        );
+    };
+    aplica(&mut motion);
+
+    assert_eq!(fonte(&motion, sc), Some(grid), "a troca aconteceu");
+    assert_eq!(
+        motion.doc.graph.pos(sc),
+        Some(Pos { x: 100.0, y: 0.0 }),
+        "e as cartas trocaram"
+    );
+
+    // ⭐ UM passo, e ele devolve as DUAS coisas.
+    motion.doc = motion.history.undo(&motion.doc).expect("um passo de undo");
+    assert_eq!(fonte(&motion, mv), Some(grid), "a fiacao voltou");
+    assert_eq!(
+        motion.doc.graph.pos(sc),
+        Some(Pos { x: 300.0, y: 0.0 }),
+        "e as posicoes tambem"
+    );
+    assert!(
+        !motion.history.can_undo(),
+        "o gesto inteiro e' UM passo: mover e trocar nao podem pedir dois Ctrl+Z"
+    );
+
+    // ⭐ E o redo devolve a troca.
+    motion.doc = motion.history.redo(&motion.doc).expect("o redo existe");
+    assert_eq!(fonte(&motion, sc), Some(grid), "o redo repoe a troca");
+    assert_eq!(motion.doc.graph.pos(sc), Some(Pos { x: 100.0, y: 0.0 }));
+}
+
+/// ⭐⭐ **O ECO NASCE DA ACÇÃO, E MORRE SOZINHO** — *«Após a troca o conjunto linha e nó piscam e
+/// se acentam»*.
+///
+/// ⚠️ **As três metades:** ele acende com os nós E os fios certos · a intensidade DESCE com o
+/// relógio de PAREDE (não com o playhead — a cena pode estar pausada) · e ele **apaga-se**.
+/// ⛔ Sem a última, o canal fica com o último valor publicado para sempre, que é o modo de falha
+/// que todo canal lateral deste painel tem de evitar.
+#[test]
+fn o_eco_da_largada_nasce_da_accao_e_morre_sozinho() {
+    let mut motion = MotionState::new();
+    let ids = cadeia(
+        &mut motion,
+        &[
+            "motion.grid",
+            "motion.move",
+            "motion.scale",
+            "motion.output",
+        ],
+    );
+    let (mv, sc) = (ids[1], ids[2]);
+    motion.ui_now = 10.0;
+    let mut toasts = ToastQueue::default();
+    swap_in_chain(&mut motion, &mut toasts, sc.0, mv.0, 0.0, 0.0);
+
+    let crate::motion_state::PiscadaPendente { nos, fios, inicio } =
+        motion.piscada.clone().expect("a troca acende o eco");
+    assert_eq!(inicio, 10.0, "o eco parte do relogio de PAREDE da shell");
+    assert!(
+        nos.contains(&sc.0) && nos.contains(&mv.0),
+        "os DOIS nos da troca piscam: {nos:?}"
+    );
+    assert!(
+        !fios.is_empty(),
+        "e os fios NOVOS deles tambem — senao so' metade do «conjunto linha e no» pisca"
+    );
+
+    // A intensidade desce, e no fim o eco morre.
+    let t_de = |motion: &mut MotionState, agora: f32| {
+        motion.ui_now = agora;
+        super::super::publicar_piscada(motion);
+        ph2d_panel_motion_graph::current_graph_flash().map(|p| p.t)
+    };
+    let cedo = t_de(&mut motion, 10.05).expect("logo a seguir ele esta' aceso");
+    let tarde = t_de(&mut motion, 10.25).expect("a meio ainda esta'");
+    assert!(
+        cedo > tarde,
+        "a intensidade tem de DESCER: {cedo} depois {tarde}"
+    );
+    assert_eq!(
+        t_de(&mut motion, 99.0),
+        None,
+        "e no fim ele APAGA-SE — um canal lateral que fica aceso e' o defeito que ele evita"
+    );
+    assert!(motion.piscada.is_none(), "e o pendente sai do estado");
+}

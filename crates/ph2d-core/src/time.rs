@@ -58,6 +58,28 @@ impl FixedStep {
         self.tick_count
     }
 
+    /// ⭐⭐ **O RELÓGIO DE PAREDE deste laço, em segundos** — os tiques já consumidos vezes o passo.
+    ///
+    /// ⚠️ **Ele NÃO é o playhead**, e é essa a razão de existir: o playhead pára quando o artista
+    /// pausa, e há coisas na interface — o eco de um gesto, um realce que desvanece — que têm de
+    /// continuar a andar com a cena parada. *Um eco de gesto preso ao relógio da cena fica aceso
+    /// para sempre no primeiro pause.*
+    ///
+    /// ⚠️ E ele **não é uma contagem de quadros**: ele conta os tiques que o tempo de PAREDE
+    /// pagou (`advance(wall_dt)`), logo um quadro lento vale por vários — a mesma lei que o
+    /// `UiMotion::advance` já declara (*«nunca uma contagem de quadros»*). Sob sobrecarga ele
+    /// atrasa em vez de correr à frente, porque o tecto de sub-passos descarta a dívida.
+    #[must_use]
+    pub fn wall_seconds(&self) -> f64 {
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "2^53 tiques a 60 Hz sao ~4,7 milhoes de anos"
+        )]
+        {
+            self.tick_count as f64 * self.fixed_dt
+        }
+    }
+
     /// Wall-time elapsed since last call. Returns the number of fixed
     /// ticks the caller should run (capped at `max_substeps`) plus an
     /// `alpha` in [0, 1) for render-side interpolation between the

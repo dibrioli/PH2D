@@ -197,6 +197,33 @@ pub(super) fn apply_socket_in(
                             to_node,
                             to_port,
                         });
+                    } else {
+                        // ⭐⭐⭐ **Largado no VAZIO: a paleta dos que podem ALIMENTAR esta entrada**
+                        // — ordem do dono (2026-09-19): *«puxar um fio de um slot de entrada (à
+                        // esquerda do nó) ainda não chama o modal de nós compatíveis. Faça isso
+                        // possível.»*
+                        //
+                        // ⛔⛔ **A recusa que estava escrita aqui tinha a premissa errada**, e ficou
+                        // por medir durante toda a vida dela: *«uma largada para trás teria de
+                        // adivinhar o que a alimenta, que é um menu da biblioteca INTEIRA — o
+                        // add-menu que o artista já tem»*. Não é a biblioteca inteira: é a MESMA
+                        // filtragem por tipo do gesto para a frente, lida do outro lado do fio
+                        // (`menu_catalog_back`). *Uma recusa por «seria tudo» tem de contar o tudo
+                        // primeiro.*
+                        let compatible: Vec<&'static str> =
+                            crate::snapshot::menu_catalog_back(snap, Some((to_node, to_port)))
+                                .into_iter()
+                                .map(|c| c.type_name)
+                                .collect();
+                        let spawn = view.graph(g.x, g.y);
+                        push_intent(GraphIntent::OpenLibrary {
+                            x: spawn.0,
+                            y: spawn.1,
+                            connect_from: None,
+                            connect_to: Some((to_node, to_port)),
+                            splice: None,
+                            compatible,
+                        });
                     }
                 }
                 _ => {}

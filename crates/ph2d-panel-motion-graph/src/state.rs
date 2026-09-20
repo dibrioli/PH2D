@@ -238,6 +238,18 @@ pub struct MotionGraphPanelState {
     /// bundle of edges at once. Left-clicking a wire used to be inert; this is the universal
     /// click-then-Delete idiom the alt-click Disconnect had no visible affordance for.
     pub(crate) selected_wires: BTreeSet<(u32, u16)>,
+    /// ⭐⭐⭐ **O que uma largada faria SE o artista soltasse agora** — o realce que o dono pediu
+    /// (2026-09-19: *«nós e linhas podem ganhar um destaque de cor ou outro indicativo de que
+    /// estão sobrepostos prestes a trocar ou encaixar»*).
+    ///
+    /// ⚠️ **É resolvido pela MESMA função que decide no largar** (`interact::node_drop::largada`),
+    /// e guardado aqui só para o pintor o poder ler. *Um realce derivado de uma segunda leitura
+    /// parecida promete uma coisa e entrega outra.*
+    pub(crate) largada_viva: Option<crate::interact::node_drop::Largada>,
+    /// ⭐⭐⭐ **O ECO da última largada** — lido do canal da shell no início de cada pintura (a
+    /// shell já o entrega em INTENSIDADE, ver `ph2d_panel_motion_graph::Piscada`). ⚠️ Vive no
+    /// estado só para o pintor não ter de tocar no `thread_local` uma vez por carta.
+    pub(crate) piscada_viva: Option<crate::snapshot::Piscada>,
     pub(crate) interaction: Interaction,
     /// ⭐⭐⭐ **O EDITOR RICO ABERTO** (curva, e a seguir gradiente e paleta) — a janela
     /// flutuante que o cartão abre para os controlos que não cabem numa fileira de `22 px`.

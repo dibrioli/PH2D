@@ -290,6 +290,7 @@ pub(super) fn open_on_right_press(
         // generalisation of the double-click reroute (doc 45) to any type the artist chooses.
         GraphHitKind::Wire { edge } => {
             push_intent(GraphIntent::OpenLibrary {
+                connect_to: None,
                 x: spawn.0,
                 y: spawn.1,
                 connect_from: None,
@@ -328,6 +329,7 @@ pub(super) fn open_on_right_press(
         // Canvas / socket: the plain node library in the full-screen palette.
         _ => {
             push_intent(GraphIntent::OpenLibrary {
+                connect_to: None,
                 x: spawn.0,
                 y: spawn.1,
                 connect_from: None,

@@ -208,12 +208,14 @@ fn a_wire_dropped_in_space_offers_only_what_can_take_it() {
             display: "Takes",
             category: NodeUiCategory::Utility,
             inputs: &TAKES,
+            outputs: &[],
         },
         crate::snapshot::NodeChoice {
             type_name: "motion.refuses",
             display: "Refuses",
             category: NodeUiCategory::Utility,
             inputs: &REFUSES,
+            outputs: &[],
         },
     ]);
 
@@ -240,6 +242,7 @@ fn a_wire_dropped_in_space_offers_only_what_can_take_it() {
             x: 500.0,
             y: 400.0,
             connect_from: Some((1, 0)),
+            connect_to: None,
             splice: None,
             compatible: vec!["motion.takes"],
         }],
@@ -524,4 +527,72 @@ fn a_right_press_on_a_wire_arms_a_splice_onto_it() {
         ),
         "the palette opens in splice mode, remembering the wire: {intents:?}"
     );
+}
+
+/// ⭐⭐⭐ **UMA ENTRADA SOLTA LARGADA NO VAZIO ABRE A PALETA DOS QUE PODEM ALIMENTÁ-LA** — ordem do
+/// dono (2026-09-19): *«puxar um fio de um slot de entrada (à esquerda do nó) ainda não chama o
+/// modal de nós compatíveis. Faça isso possível.»*
+///
+/// ⛔⛔ **A recusa que isto desfaz estava escrita no `interact_socket` e a premissa dela era
+/// falsa:** *«teria de adivinhar o que a alimenta, que é um menu da biblioteca INTEIRA»*. A
+/// segunda metade deste gate mede exactamente isso — a lista vem **FILTRADA**, e um tipo cuja
+/// saída não fala o tipo da entrada não aparece nela.
+#[test]
+fn uma_entrada_solta_abre_a_paleta_dos_que_a_alimentam() {
+    use ph2d_nodegraph::node::PortSpec;
+    use ph2d_nodegraph::port::PortType;
+
+    static ALIMENTA: [PortSpec; 1] = [PortSpec {
+        name: "out",
+        ty: PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame),
+    }];
+    static NAO: [PortSpec; 1] = [PortSpec {
+        name: "out",
+        ty: PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame),
+    }];
+    crate::snapshot::set_current_node_catalog(vec![
+        crate::snapshot::NodeChoice {
+            type_name: "motion.alimenta",
+            display: "Alimenta",
+            category: NodeUiCategory::Utility,
+            inputs: &[],
+            outputs: &ALIMENTA,
+        },
+        crate::snapshot::NodeChoice {
+            type_name: "motion.nao",
+            display: "Nao",
+            category: NodeUiCategory::Utility,
+            inputs: &[],
+            outputs: &NAO,
+        },
+    ]);
+
+    let mut state = MotionGraphPanelState::default();
+    let snap = two_node_snapshot(); // a entrada 0 do nó 2 é `Instances/Scalar/Frame`
+    let _ = drain_intents();
+    let pega = GraphHitKind::SocketIn { node: 2, port: 0 };
+    // Puxa para trás e larga LONGE de qualquer pino e de qualquer carta.
+    for (fase, x, y) in [
+        (GesturePhase::Begin, 200.0, 37.0),
+        (GesturePhase::Update, 120.0, 300.0),
+        (GesturePhase::End, 120.0, 300.0),
+    ] {
+        apply_gesture(&mut state, gesture(pega, fase, x, y), RECT, CENTER, &snap);
+    }
+    match drain_intents().as_slice() {
+        [
+            GraphIntent::OpenLibrary {
+                connect_to: Some((2, 0)),
+                connect_from: None,
+                splice: None,
+                compatible,
+                ..
+            },
+        ] => assert_eq!(
+            compatible,
+            &vec!["motion.alimenta"],
+            "a lista vem FILTRADA: quem nao fala o tipo da entrada nao aparece"
+        ),
+        outros => panic!("a largada tem de abrir a paleta da entrada: {outros:?}"),
+    }
 }

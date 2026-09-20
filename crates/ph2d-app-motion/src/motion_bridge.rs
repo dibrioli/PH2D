@@ -209,6 +209,10 @@ pub fn dispatch(
     motion: &mut MotionState,
     playhead: &mut ph2d_core::Playhead,
     fixed_dt: f64,
+    // ⭐ **O relógio de PAREDE do editor** (`FixedStep::wall_seconds`) — o que anda com a cena
+    // pausada. ⚠️ Ele NÃO substitui o `fixed_dt` nem o playhead: é a terceira grandeza, e a
+    // única em que um eco de gesto pode viver.
+    ui_now: f64,
     cursor: (f32, f32),
     toasts: &mut ToastQueue,
     gpu: &ph2d_gpu::GpuContext,
@@ -217,6 +221,13 @@ pub fn dispatch(
         .active()
         .is_some_and(|t| t.id() == ToolId::new("motion"));
 
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "segundos de UI cabem num f32"
+    )]
+    {
+        motion.ui_now = ui_now as f32;
+    }
     surfaces::open_and_close(hero, playhead, motion_active, cursor);
     // ── Apply the panel's edits, then publish the fresh view (M1.E10) ──────
     // The panel pushed `GraphIntent`s during last frame's paint; apply them to
@@ -309,6 +320,15 @@ pub fn dispatch(
             snap.now = cook_time as f32;
             snap
         }));
+        // ⭐⭐⭐ **O ECO da última largada, já resolvido em INTENSIDADE** — ordem do dono
+        // (2026-09-19): *«Após a troca o conjunto linha e nó piscam e se acentam.»*
+        //
+        // ⚠️ **A conta é feita AQUI e não no painel, e isso é a lei:** o relógio que o painel
+        // recebe no retrato é o PLAYHEAD (as riscas a marchar leem-no de propósito), e um eco
+        // preso a ele ficaria aceso para sempre no primeiro pause. *Quem tem relógio de parede é
+        // a shell.*
+        publicar_piscada(motion);
+
         // Stash this frame's tap so the PARAMS panel reads a GPU frame through the
         // SAME door the readouts above just did — one tap, two consumers. `None` on
         // a CPU frame (the memo serves) and one frame behind, matching the memo.
@@ -519,6 +539,40 @@ use remove::output_nodes;
 mod pick_selection_tests;
 #[cfg(feature = "panel-motion-graph")]
 use remove::{apply_delete_selection, apply_disconnect};
+
+/// ⭐⭐⭐ **O ECO DE UMA LARGADA, EM INTENSIDADE** — *«Após a troca o conjunto linha e nó piscam e
+/// se acentam»* (ordem do dono, 2026-09-19).
+///
+/// ⚠️ **A DURAÇÃO é o que o olho lê como «piscou e assentou»**, e não um número redondo: abaixo de
+/// ~`0,15 s` um realce lê-se como um artefacto de desenho e acima de ~`0,5 s` ele deixa de ser um
+/// eco e passa a ser um estado que o artista espera poder desligar.
+///
+/// ⚠️ **A curva é `t²`** — ela cai depressa no princípio e *assenta* no fim, que é a segunda
+/// metade do pedido. Uma rampa linear apaga-se a meio caminho e lê-se como um corte.
+///
+/// ⛔ E ela APAGA o eco quando acaba: um canal que fica com o último valor publicado para sempre é
+/// o defeito que o [`ph2d_panel_motion_graph::set_graph_flash`] existe para não ter.
+const PISCADA_S: f32 = 0.35;
+
+fn publicar_piscada(motion: &mut MotionState) {
+    let Some(crate::motion_state::PiscadaPendente { nos, fios, inicio }) = motion.piscada.clone()
+    else {
+        ph2d_panel_motion_graph::set_graph_flash(None);
+        return;
+    };
+    let decorrido = (motion.ui_now - inicio).max(0.0);
+    if decorrido >= PISCADA_S {
+        motion.piscada = None;
+        ph2d_panel_motion_graph::set_graph_flash(None);
+        return;
+    }
+    let resta = 1.0 - decorrido / PISCADA_S;
+    ph2d_panel_motion_graph::set_graph_flash(Some(ph2d_panel_motion_graph::Piscada {
+        nos,
+        fios,
+        t: resta * resta,
+    }));
+}
 
 /// **Publish the drawn shapes into the cook** (doc 65) — called by the render loop right before the
 /// Motion bridge, because that is where the vector document, the world and the entity map are all

@@ -413,6 +413,7 @@ fn right_click_background_opens_the_palette() {
             x: 120.0, // identity view → graph == screen
             y: 90.0,
             connect_from: None,
+            connect_to: None,
             splice: None,
             compatible: Vec::new(),
         }],

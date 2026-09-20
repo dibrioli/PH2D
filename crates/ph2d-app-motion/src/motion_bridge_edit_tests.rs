@@ -401,3 +401,32 @@ fn o_fio_da_paleta_aterra_na_porta_principal() {
         "um tipo sem porta principal declarada aterra na 0, como sempre"
     );
 }
+
+/// ⭐⭐ **O NÓ ESCOLHIDO NASCE A ALIMENTAR A ENTRADA** — o espelho de
+/// [`smart_connect_adds_and_wires_in_one_undo_step`], ordem do dono (2026-09-19).
+///
+/// ⚠️ **As duas metades:** o nó entra no grafo **e** a saída dele chega à entrada de onde o fio foi
+/// puxado. *Um `add` que não liga é o gesto a falhar em silêncio, que é o que havia.*
+#[test]
+fn o_no_escolhido_nasce_a_alimentar_a_entrada() {
+    let mut motion = MotionState::new();
+    motion.doc.graph = Graph::new();
+    let mv = motion.doc.graph.add_node("motion.move");
+    let mut toasts = ToastQueue::default();
+
+    edit::smart_connect_back(&mut motion, &mut toasts, mv.0, 0, "motion.grid", 10.0, 20.0);
+
+    let g = &motion.doc.graph;
+    let grid = g
+        .nodes()
+        .iter()
+        .find(|n| n.type_name == "motion.grid")
+        .expect("o no' escolhido entrou no grafo")
+        .id;
+    assert!(
+        g.edges()
+            .iter()
+            .any(|e| e.from.0 == grid && e.to == (mv, 0) && !e.delayed),
+        "e a SAIDA dele chega a' entrada de onde o fio foi puxado"
+    );
+}

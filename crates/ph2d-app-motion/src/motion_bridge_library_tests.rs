@@ -120,6 +120,7 @@ fn open_library_intent_stashes_the_spawn_and_wire_context() {
         x: 12.0,
         y: 34.0,
         connect_from: Some((7, 1)),
+        connect_to: None,
         splice: None,
         compatible: vec!["motion.grid"],
     });
@@ -135,6 +136,7 @@ fn open_library_intent_stashes_the_spawn_and_wire_context() {
         Some(LibraryOpen {
             spawn: (12.0, 34.0),
             connect_from: Some((7, 1)),
+            connect_to: None,
             splice: None,
             compatible: vec!["motion.grid"],
         }),

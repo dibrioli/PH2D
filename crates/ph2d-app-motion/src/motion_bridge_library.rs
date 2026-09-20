@@ -40,6 +40,7 @@ pub(super) fn route_palette_pick(hero: &mut HeroScreen, motion: &mut MotionState
         let open = motion.library_open.take().unwrap_or_default();
         ph2d_panel_motion_graph::push_intent(ph2d_panel_motion_graph::library_pick(
             open.connect_from,
+            open.connect_to,
             open.splice,
             type_name,
             open.spawn,
@@ -89,6 +90,8 @@ pub(super) fn build_catalog(
                 // Straight off the manifest (`&'static`), so the panel can filter
                 // the smart-connect menu by what each type can actually take.
                 inputs: m.inputs,
+                // O espelho, para a paleta aberta de uma ENTRADA — ver o campo.
+                outputs: m.outputs,
             }
         })
         .collect();

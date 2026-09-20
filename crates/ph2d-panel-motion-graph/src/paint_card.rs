@@ -75,6 +75,22 @@ pub(super) fn draw_card(
             resolve(ColorToken::Accent, theme),
         );
     }
+    // ⭐⭐⭐ **O REALCE DE UMA LARGADA** — o alvo que vai trocar de lugar (enquanto a mão paira) e
+    // o eco de depois (a desvanecer), pela MESMA porta e com a mesma cor: a decisão vive em
+    // [`crate::realce`], porque um `if` aqui só se deixa gatear por texto (medido).
+    if let Some(forca) = crate::realce::realce_do_cartao(state, n.id) {
+        ph2d_editor_core::paint::stroke_frame(
+            ctx.scene,
+            body,
+            r,
+            theme,
+            ph2d_tokens::visuals::Feel::Selected,
+            // ⚠️ Mais grosso do que o anel de selecção (`Thick`, 2 px): enquanto o gesto está
+            // vivo, o que o artista precisa de ler é o ALVO.
+            ph2d_tokens::StrokeToken::Heavy.px(),
+            resolve(ColorToken::Success, theme).multiply_alpha(forca),
+        );
+    }
 
     // ⭐⭐⭐ **O SELO DE PAPEL** — o que este nó É no grafo (fonte · decisão · junção ·
     // terminal · I/O), desenhado no cabeçalho. Ver [`role_glyph`].

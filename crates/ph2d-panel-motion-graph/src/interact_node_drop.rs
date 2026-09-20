@@ -25,7 +25,7 @@ use crate::snapshot::{GraphIntent, GraphViewSnapshot, NodeViewKind};
 
 /// O que a largada de um nó quer dizer. `None` (a ausência) é a largada de sempre: mover.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Largada {
+pub(crate) enum Largada {
     /// Sobre outro nó — os dois trocam de lugar na cadeia.
     Troca(u32),
     /// Sobre um fio, nomeado pela ponta de CHEGADA (uma entrada recebe uma fonte só).
@@ -33,7 +33,7 @@ pub(super) enum Largada {
 }
 
 /// Ver o cabeçalho do módulo. `cursor` é em píxeis de ecrã, como todo o resto deste painel.
-pub(super) fn largada(
+pub(crate) fn largada(
     snap: &GraphViewSnapshot,
     view: &View,
     arrastado: u32,

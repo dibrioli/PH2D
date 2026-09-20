@@ -147,6 +147,10 @@ pub enum GraphIntent {
         x: f32,
         y: f32,
         connect_from: Option<(u32, u16)>,
+        /// ⭐ **A ENTRADA de onde um fio foi puxado PARA TRÁS e largado no vazio** (ordem do dono,
+        /// 2026-09-19). O espelho do [`Self::connect_from`]: ali o gesto sabe o que o fio vai
+        /// ALIMENTAR, aqui sabe o que o fio quer ser alimentado POR.
+        connect_to: Option<(u32, u16)>,
         splice: Option<(u32, u16)>,
         compatible: Vec<&'static str>,
     },
@@ -280,6 +284,16 @@ pub enum GraphIntent {
         to_node: u32,
         to_port: u16,
     },
+    /// ⭐⭐ **Smart-connect PARA TRÁS**: acrescenta um nó de `to_type` e liga a saída dele à
+    /// entrada de onde o fio foi puxado — o espelho do [`Self::SmartConnect`], num passo de undo
+    /// só com o `add`. Ordem do dono (2026-09-19).
+    SmartConnectBack {
+        to_node: u32,
+        to_port: u16,
+        to_type: &'static str,
+        x: f32,
+        y: f32,
+    },
     /// Point the probe at a node (or clear it). The shell samples that node's
     /// output every tick and publishes the readout + the ring of recent samples
     /// back on the snapshot. UI-only: it never edits the document, so no undo step.
@@ -385,14 +399,18 @@ pub enum GraphIntent {
 
 /// The intent a **palette pick** produces, given the wire context the gesture opened the palette
 /// with ([`GraphIntent::OpenLibrary`]): a loose end WIRES the new node ([`GraphIntent::SmartConnect`]),
-/// a wire under the R-press INSERTS it into that wire ([`GraphIntent::SpliceNode`]), and neither just
-/// ADDS it ([`GraphIntent::AddNode`]). The shell's pick router is the ONE door — a click and an Enter
-/// on the full-screen palette both land here, so the rule cannot fork between them, and a fourth
-/// context (should one appear) is decided here once. `connect_from` and `splice` are mutually
-/// exclusive; `connect_from` wins if both are somehow set.
+/// uma ENTRADA solta manda o nó nascer a ALIMENTÁ-LA ([`GraphIntent::SmartConnectBack`], ordem do
+/// dono de 2026-09-19), a wire under the R-press INSERTS it into that wire
+/// ([`GraphIntent::SpliceNode`]), and neither just ADDS it ([`GraphIntent::AddNode`]).
+///
+/// ⭐ **O router é a UMA porta** — um clique e um Enter na paleta aterram os dois aqui, logo a
+/// regra não pode bifurcar entre eles, e o QUARTO contexto (que era previsto por escrito: *«a
+/// fourth context, should one appear, is decided here once»*) decidiu-se mesmo aqui. Os três
+/// contextos são mutuamente exclusivos; a ordem de precedência é a da escada.
 #[must_use]
 pub fn library_pick(
     connect_from: Option<(u32, u16)>,
+    connect_to: Option<(u32, u16)>,
     splice: Option<(u32, u16)>,
     to_type: &'static str,
     (x, y): (f32, f32),
@@ -401,6 +419,14 @@ pub fn library_pick(
         GraphIntent::SmartConnect {
             from_node,
             from_port,
+            to_type,
+            x,
+            y,
+        }
+    } else if let Some((to_node, to_port)) = connect_to {
+        GraphIntent::SmartConnectBack {
+            to_node,
+            to_port,
             to_type,
             x,
             y,
@@ -430,19 +456,23 @@ mod library_pick_tests {
     /// function (the shell's pick router), so the rule cannot fork between them. Mutation — dropping the
     /// `splice` branch so a wire-context pick falls back to a
     /// plain `AddNode` (a node dumped beside the wire instead of inserted into it) — sangra on
-    /// the third case; and `connect_from` winning over `splice` is the documented precedence.
+    /// the third case; and `connect_from` winning over the others is the documented precedence.
+    ///
+    /// ⭐ **O QUARTO contexto chegou em 2026-09-19** (ordem do dono: *«puxar um fio de um slot de
+    /// entrada […] ainda não chama o modal de nós compatíveis»*) e foi decidido aqui, uma vez —
+    /// que é o que o doc-comment desta função prometia por escrito antes de ele existir.
     #[test]
     fn the_wire_context_decides_the_pick() {
         assert!(
             matches!(
-                library_pick(None, None, "motion.noise", (1.0, 2.0)),
+                library_pick(None, None, None, "motion.noise", (1.0, 2.0)),
                 GraphIntent::AddNode { type_name: "motion.noise", x, y } if x == 1.0 && y == 2.0
             ),
             "no context: a plain add"
         );
         assert!(
             matches!(
-                library_pick(Some((7, 1)), None, "motion.noise", (0.0, 0.0)),
+                library_pick(Some((7, 1)), None, None, "motion.noise", (0.0, 0.0)),
                 GraphIntent::SmartConnect {
                     from_node: 7,
                     from_port: 1,
@@ -454,17 +484,24 @@ mod library_pick_tests {
         );
         assert!(
             matches!(
-                library_pick(None, Some((5, 0)), "force.wind", (3.0, 4.0)),
+                library_pick(None, Some((4, 2)), None, "motion.grid", (5.0, 6.0)),
+                GraphIntent::SmartConnectBack { to_node: 4, to_port: 2, to_type: "motion.grid", x, y } if x == 5.0 && y == 6.0
+            ),
+            "uma ENTRADA solta: o no' nasce a aliment'a-la"
+        );
+        assert!(
+            matches!(
+                library_pick(None, None, Some((5, 0)), "force.wind", (3.0, 4.0)),
                 GraphIntent::SpliceNode { to_node: 5, to_port: 0, to_type: "force.wind", x, y } if x == 3.0 && y == 4.0
             ),
             "a wire under the press: splice into it"
         );
         assert!(
             matches!(
-                library_pick(Some((7, 1)), Some((5, 0)), "x", (0.0, 0.0)),
+                library_pick(Some((7, 1)), Some((4, 2)), Some((5, 0)), "x", (0.0, 0.0)),
                 GraphIntent::SmartConnect { .. }
             ),
-            "connect_from wins when both are somehow set"
+            "connect_from wins when all are somehow set"
         );
     }
 }

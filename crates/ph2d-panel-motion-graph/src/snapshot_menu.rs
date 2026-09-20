@@ -133,6 +133,43 @@ pub(crate) fn menu_catalog(snap: &GraphViewSnapshot, from: Option<(u32, u16)>) -
         .collect()
 }
 
+/// ⭐⭐⭐ **As entradas da biblioteca que podem ALIMENTAR uma entrada solta** — o espelho de
+/// [`menu_catalog`], ordem do dono (2026-09-19): *«puxar um fio de um slot de entrada (à esquerda
+/// do nó) ainda não chama o modal de nós compatíveis. Faça isso possível.»*
+///
+/// ⛔⛔ **A recusa que isto desfaz estava escrita, e a premissa dela era falsa:** o
+/// `interact_socket` dizia que uma largada para trás *«teria de adivinhar o que a alimenta, que é
+/// um menu da biblioteca INTEIRA»*. Não é — é exactamente a mesma filtragem por tipo, lida do
+/// outro lado do fio. *Uma recusa por «seria a biblioteca toda» tem de contar a biblioteca toda
+/// primeiro.*
+pub(crate) fn menu_catalog_back(
+    snap: &GraphViewSnapshot,
+    to: Option<(u32, u16)>,
+) -> Vec<NodeChoice> {
+    let all = current_catalog();
+    let Some((to_node, to_port)) = to else {
+        return all;
+    };
+    let Some(inp) = snap
+        .nodes
+        .iter()
+        .find(|n| n.id == to_node)
+        .and_then(|n| n.inputs.get(to_port as usize))
+    else {
+        return all;
+    };
+    all.into_iter()
+        .filter(|c| c.outputs.iter().any(|o| feeds(&o.ty, inp)))
+        .collect()
+}
+
+/// Whether an OUTPUT port of a candidate could feed this input — a MESMA regra do [`accepts`],
+/// lida do outro lado. ⚠️ Escrita como função própria porque os dois argumentos têm tipos
+/// diferentes (`PortType` contra `PortView`) e não por a lei ser outra: ela é a mesma tripla.
+fn feeds(output: &ph2d_nodegraph::port::PortType, inp: &PortView) -> bool {
+    output.domain == inp.domain && output.dim == inp.dim && output.clock == inp.clock
+}
+
 /// Whether an input port could take the dragged output (the panel-side rule:
 /// domain + dim + clock — `connects_directly` minus the membrane).
 fn accepts(input: &ph2d_nodegraph::port::PortType, out: &PortView) -> bool {

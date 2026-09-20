@@ -39,7 +39,7 @@ mod drop_gesture;
 /// este ficheiro decide *que gesto é este*, aquele responde *o que quer dizer largar uma CARTA
 /// aqui* (ordem do dono, 2026-09-19).
 #[path = "interact_node_drop.rs"]
-mod node_drop;
+pub(crate) mod node_drop;
 
 #[path = "interact_menu.rs"]
 mod menu;
@@ -442,6 +442,7 @@ fn apply_node(
         GesturePhase::Begin => {
             state.selected_backdrop = None; // one subject at a time (see the state docs)
             state.selected_wires.clear();
+            state.largada_viva = None;
             select_on_press(state, node, g.mods.shift);
             state.interaction = Interaction::DragNodes {
                 nodes: state.selected.iter().copied().collect(),
@@ -452,6 +453,9 @@ fn apply_node(
         }
         GesturePhase::Update => {
             let zoom = state.view.zoom;
+            // ⭐ **Quem está a ser arrastado sozinho** — só esse tem largada, e o desenho precisa de
+            // o saber ANTES do largar (ver abaixo).
+            let mut sozinho = None;
             if let Interaction::DragNodes {
                 nodes,
                 last,
@@ -476,7 +480,20 @@ fn apply_node(
                         dy,
                     });
                 }
+                if let [um] = nodes.as_slice() {
+                    sozinho = Some(*um);
+                }
             }
+            // ⭐⭐⭐ **O ALVO ACENDE ANTES DE O ARTISTA LARGAR** — ordem do dono (2026-09-19):
+            // *«nós e linhas podem ganhar um destaque de cor ou outro indicativo de que estão
+            // sobrepostos prestes a trocar ou encaixar»*.
+            //
+            // ⚠️ **É a MESMA função que decide no largar** ([`node_drop::largada`]), chamada aqui —
+            // e nunca uma segunda leitura parecida. *Um realce que discorde do que o largar faz
+            // é pior do que nenhum: ele promete uma coisa e entrega outra.*
+            state.largada_viva = sozinho.and_then(|um| {
+                node_drop::largada(snap, &View::new(rect, state.view), um, (g.x, g.y))
+            });
         }
         GesturePhase::End => {
             if let Interaction::DragNodes {
@@ -500,6 +517,7 @@ fn apply_node(
                 }
                 push_intent(GraphIntent::EndDrag);
             }
+            state.largada_viva = None;
         }
         // **Double-click a collapsed card → go inside it** (doc 57). On an ordinary
         // node it is inert, and falls through to the same idle reset as a Click.

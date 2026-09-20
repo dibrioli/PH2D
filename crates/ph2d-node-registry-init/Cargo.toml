@@ -105,6 +105,7 @@ ph2d-node-pulse-on-change = { path = "../ph2d-node-pulse-on-change" }
 ph2d-node-pulse-sample-hold = { path = "../ph2d-node-pulse-sample-hold" }
 ph2d-node-pulse-signal = { path = "../ph2d-node-pulse-signal" }
 ph2d-node-pulse-threshold = { path = "../ph2d-node-pulse-threshold" }
+ph2d-node-rig-bones = { path = "../ph2d-node-rig-bones" }
 ph2d-node-rig-fabrik = { path = "../ph2d-node-rig-fabrik" }
 ph2d-node-rig-fk = { path = "../ph2d-node-rig-fk" }
 ph2d-node-rig-ik-2bone = { path = "../ph2d-node-rig-ik-2bone" }

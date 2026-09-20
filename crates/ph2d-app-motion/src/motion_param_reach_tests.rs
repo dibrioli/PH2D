@@ -116,6 +116,13 @@ fn probe_unconferred_nodes() {
 /// vira licença* (`CLAUDE.md` §5.0).
 const SEM_LINHA_DE_CONFERENCIA: &[(&str, &str)] = &[
     ("audio.bands", "07_tempo_estilisticos"),
+    // ⚠️⚠️ **Nasceu em 2026-09-19, dez dias depois da folha 16** — o caso que o
+    // doc-comment acima nomeia pelo nome (*«ou nasceram depois da folha da família deles»*). A
+    // lista subiu de `9` para `10` e isso **não é uma folga**: a dívida por nó não afrouxou, a
+    // POPULAÇÃO do catálogo é que cresceu. ⛔ E conferi-lo aqui e agora seria pior: uma linha de
+    // conferência responde *«o que é que ELE não tem contra a referência?»*, e a resposta exige
+    // CORRER o Spine/Rive/Blender (§0.9), não lembrá-los.
+    ("rig.bones", "16_rig"),
     ("motion.bezier_warp", "04_deformers"),
     ("motion.proximity", "08_stream_utilidade"),
     ("motion.randomize", "05_transform"),

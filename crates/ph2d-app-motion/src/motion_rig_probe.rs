@@ -241,9 +241,17 @@ fn cadeia_no_dispositivo(no: &str) -> bool {
 fn the_rig_group_route_only_improves() {
     /// Os que levam a cadeia para a CPU, cada um com a razão — doc 114 §2.
     ///
-    /// ⚠️ Esta lista nasce com **nove** de dez, que é o estado medido em 2026-09-17 e a razão de
-    /// ser deste ciclo. Ela só encolhe.
+    /// ⚠️ Esta lista nasceu com **nove** de dez, que é o estado medido em 2026-09-17 e a razão de
+    /// ser deste ciclo. Ela só encolhe **por nó**.
+    ///
+    /// ⚠️⚠️ **E em 2026-09-19 ela ganhou uma linha, o que NÃO é uma folga:** o `rig.bones` é um nó
+    /// NOVO da família, e a família inteira não tem kernel — a dívida por nó não afrouxou, a
+    /// POPULAÇÃO é que cresceu. *É a mesma leitura que um piso de censo obriga: o número mexe-se
+    /// quando a população muda por baixo dele, e quem o lê tem de saber qual dos dois mudou.*
+    /// ⛔ Uma linha nova aqui só é honesta com a razão a nomear uma classe que já existe; um nó
+    /// com razão PRÓPRIA é dívida nova e pede o seu próprio degrau no doc 114 §2.
     const NA_CPU: &[(&str, &str)] = &[
+        ("rig.bones", "a familia `rig.*` inteira nao tem kernel"),
         ("motion.soft_body", "sem kernel — a W4 do doc 114 §5"),
         ("motion.verlet_rope", "sem kernel — a W4 do doc 114 §5"),
         ("motion.wave", "sem kernel — a W4 do doc 114 §5"),

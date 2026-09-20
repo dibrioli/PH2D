@@ -190,7 +190,14 @@ fn a_do_meio_e_uma_simulacao_que_move_as_posicoes() {
 /// `a_cabeca_do_osso_cai_sobre_a_posicao`; o que está aqui é só a existência dos nomes.*
 #[test]
 fn o_roteiro_nomeia_o_que_a_cena_tem() {
-    let texto = include_str!("motion_state_osso_demo.rs");
+    // ⛔⛔ **O sujeito é o ROTEIRO, não o ficheiro** — a 1.ª redação varria o `include_str!`
+    // inteiro, e aí *«o roteiro nomeia o `Skeleton`»* era satisfeito pela string `"rig.skeleton"`
+    // do código que monta a cena. *Um gate que lê o ficheiro inteiro afirma sobre o autor, nunca
+    // sobre o que o dono vê.* O corte é a função que imprime.
+    let ficheiro = include_str!("motion_state_osso_demo.rs");
+    let texto = &ficheiro[ficheiro
+        .find("pub(super) fn announce")
+        .expect("o roteiro vive numa funcao chamada `announce`")..];
     for nome in ["ESQUERDA", "MEIO", "DIREITA", "Skeleton", "Duplicator"] {
         let achou = texto.contains(nome) || texto.to_lowercase().contains(&nome.to_lowercase());
         assert!(achou, "o roteiro tem de nomear {nome:?}");
@@ -198,6 +205,17 @@ fn o_roteiro_nomeia_o_que_a_cena_tem() {
 
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registram");
+    // ⭐⭐ **E o cartão dos OSSOS pelo nome REGISTADO** — a cena monta um `rig.bones` e o roteiro
+    // manda-o apagar para ver o defeito; um passo que nomeia um cartão AFIRMA que ele está na tela
+    // com aquele nome. *Derivado, senão um rename deixa o roteiro a mandar procurar o que não há.*
+    let ossos = reg
+        .ui_manifest(ph2d_node_rig_bones::MANIFEST.id)
+        .expect("o `rig.bones` tem cartao")
+        .display_name;
+    assert!(
+        texto.contains(ossos),
+        "o roteiro fala do no' dos ossos, entao tem de o chamar de {ossos:?}"
+    );
     let hints = reg
         .param_ui(ph2d_node_motion_shape::MANIFEST.id)
         .expect("o cartao do `source.shape` tem hints");
@@ -219,4 +237,106 @@ fn o_roteiro_nomeia_o_que_a_cena_tem() {
              tela ({l:?})"
         );
     }
+}
+
+/// ⭐⭐⭐ **A CADEIA LADRILHA: cada osso vai de uma junta à SEGUINTE — e sem o `rig.bones` não
+/// vai.**
+///
+/// Report do dono (2026-09-19): *«Funciona como desejado se coloque pivot offset x em -2 mas o
+/// pivot fica na ponta dos ossos. […] o mais correto seria se tivesse o mesmo resultado colocando
+/// na base do osso»*.
+///
+/// ⛔⛔ **Nenhuma régua desta cena media isto.** As que existiam medem a CURVA (o `rot` anda),
+/// a SIMULAÇÃO (as posições mexem-se) e a SEPARAÇÃO das colunas — e as três ficam verdes com cada
+/// peça desenhada uma junta à frente, porque nenhuma delas pergunta *onde é que a peça ACABA*.
+///
+/// A régua anda o comprimento do osso a partir do quadro que o `rig.bones` devolve e exige
+/// aterrar na junta seguinte. ⛔ **A segunda metade é o discriminador:** a MESMA conta sobre a
+/// corrente crua (o que a cena fazia até hoje) erra — medido, `24 %` de um osso a `CURVA` graus
+/// por junta. *Sem ela, um `rig.bones` que devolvesse a entrada intacta passava na primeira.*
+///
+/// ⚠️ **A folga é a do trig da casa, não um epsilon escolhido:** o `fk::resolve` anda ao longo de
+/// um `cos`/`sin` PARABÓLICO (HR-5, ~0,09 % fora do verdadeiro) normalizado, e esta régua usa o
+/// trig real ⇒ o desvio esperado é da ordem de `OSSO × 1e-3`.
+#[test]
+fn a_cadeia_de_ossos_ladrilha() {
+    let (doc, reg, _sinks) = cena();
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+    cook.advance_tick(&doc.graph, &reg, 0.0).expect("avanca");
+
+    let dos_tipo = |t: &str| -> Vec<NodeId> {
+        doc.graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == t)
+            .map(|n| n.id)
+            .collect()
+    };
+    let escalar = |n: NodeId, nome: &str, cook: &mut ph2d_nodegraph::cook::Cook| -> Vec<f32> {
+        let o = cook.cook(&doc.graph, &reg, n, 0.0).expect("coze");
+        match o[0].as_stream().get(nome) {
+            Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+            _ => panic!("sem a coluna `{nome}`"),
+        }
+    };
+    let pos = |n: NodeId, cook: &mut ph2d_nodegraph::cook::Cook| -> Vec<[f32; 2]> {
+        let o = cook.cook(&doc.graph, &reg, n, 0.0).expect("coze");
+        match o[0].as_stream().get("P") {
+            Some(ph2d_nodegraph::attr::Column::Vec2(v)) => v.clone(),
+            _ => panic!("sem P"),
+        }
+    };
+    let anda = |p: [f32; 2], len: f32, graus: f32| {
+        let r = graus.to_radians();
+        [p[0] + len * r.cos(), p[1] + len * r.sin()]
+    };
+
+    let cabecas = dos_tipo("motion.move");
+    let ossudos = dos_tipo("rig.bones");
+    assert_eq!(
+        ossudos.len(),
+        2,
+        "as DUAS colunas vestidas levam o no' dos ossos"
+    );
+
+    // A coluna da ESQUERDA (a curva), que é onde a orientação se lê.
+    let juntas = pos(cabecas[0], &mut cook);
+    let cabeca = pos(ossudos[0], &mut cook);
+    let rot = escalar(ossudos[0], "rot", &mut cook);
+    let len = escalar(ossudos[0], "len", &mut cook);
+    assert_eq!(
+        cabeca.len(),
+        juntas.len() - 1,
+        "uma corrente de {} juntas veste {} ossos",
+        juntas.len(),
+        juntas.len() - 1
+    );
+    let folga = 3e-3 * OSSO;
+    for k in 0..cabeca.len() {
+        assert!(
+            (cabeca[k][0] - juntas[k][0]).abs() < folga
+                && (cabeca[k][1] - juntas[k][1]).abs() < folga,
+            "o osso {k} pende da junta {k}: {:?} contra {:?}",
+            cabeca[k],
+            juntas[k]
+        );
+        let ponta = anda(cabeca[k], len[k], rot[k]);
+        assert!(
+            (ponta[0] - juntas[k + 1][0]).abs() < folga
+                && (ponta[1] - juntas[k + 1][1]).abs() < folga,
+            "o osso {k} acaba na junta {}: {ponta:?} contra {:?}",
+            k + 1,
+            juntas[k + 1]
+        );
+    }
+
+    // ⛔ O CONTROLO — a conta da cena ANTES desta cura: a forma pendurada na JUNTA, virada pelo
+    // `rot` DELA. Ela erra, e é por isso que o dono precisava de `Pivot Offset X = -2`.
+    let rot_cru = escalar(cabecas[0], "rot", &mut cook);
+    let ponta_crua = anda(juntas[1], OSSO, rot_cru[1]);
+    let erro = (ponta_crua[0] - juntas[2][0]).hypot(ponta_crua[1] - juntas[2][1]);
+    assert!(
+        erro > 0.2 * OSSO,
+        "o controlo tem de FALHAR: sem o `rig.bones` a peca erra {erro} de um osso de {OSSO}"
+    );
 }

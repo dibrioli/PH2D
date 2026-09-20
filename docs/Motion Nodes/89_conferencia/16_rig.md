@@ -6,6 +6,14 @@
 > de trabalho, e o ciclo vive no [doc 114](../114_ciclo_9_rig_e_corpos_moles.md).
 > *Uma nota de deferimento não sabe que foi revogada — quem a lê a seguir é que tem de datar as duas.*
 
+> ⚠️ **A família tem SETE nós desde 2026-09-19, e esta folha confere SEIS.** O
+> **`rig.bones`** — *«os OSSOS de uma corrente»*, que devolve por osso a CABEÇA dele em vez da
+> junta — nasceu de um report do dono sobre a `Shape:Bone` numa cadeia, dez dias depois desta
+> folha, e está na **dívida declarada** (`SEM_LINHA_DE_CONFERENCIA`, com esta folha como
+> endereço). ⛔ Ele **não tem linha na §1 de propósito**: a régua desta folha é *«o que lhe falta
+> contra a referência»*, e nas três referências citadas um osso **é** a primitiva (cabeça + cauda),
+> logo a pergunta tem de ser feita a correr os alvos e não de memória.
+
 **Data:** 2026-08-09 · **Agente:** família 16 do [plano 89](../89_plano_conferencia_dos_nos.md) · **Nós:** `rig.skeleton` · `rig.fk` · `rig.ik_2bone` · `rig.fabrik` · `rig.rubber_hose` · `rig.skin_deformer`
 **Referências:** Rive (o runtime MIT que é a referência declarada do módulo vetorial) · Spine (Esoteric Software) · Blender · Battle Axe RubberHose / DUIK · [`referencia_pesquisa_cavalry.md`](../referencia_pesquisa_cavalry.md)
 **Params hoje:** **9 params em 6 nós** (4 · 0 · 2 · 1 · 1 · 1). Para comparação: **o IK do Spine sozinho tem 6 propriedades + 3 referências de osso**, e o Rive põe **`Strength` em cada um dos seus 7 tipos de constraint**.

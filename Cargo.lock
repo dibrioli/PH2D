@@ -5000,7 +5000,6 @@ name = "ph2d-app-motion"
 version = "0.0.0"
 dependencies = [
  "bytemuck",
- "ph2d-a11y",
  "ph2d-anim",
  "ph2d-app-host",
  "ph2d-asset",
@@ -5045,6 +5044,7 @@ dependencies = [
  "ph2d-node-pulse-signal",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
+ "ph2d-node-rig-bones",
  "ph2d-node-source-camera",
  "ph2d-node-source-lsystem",
  "ph2d-node-source-object",
@@ -7331,6 +7331,7 @@ dependencies = [
  "ph2d-node-pulse-signal",
  "ph2d-node-pulse-threshold",
  "ph2d-node-registry",
+ "ph2d-node-rig-bones",
  "ph2d-node-rig-fabrik",
  "ph2d-node-rig-fk",
  "ph2d-node-rig-ik-2bone",
@@ -7375,6 +7376,14 @@ dependencies = [
  "ph2d-node-value-unary",
  "ph2d-node-value-wave",
  "ph2d-node-value-wrap",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-rig-bones"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
 

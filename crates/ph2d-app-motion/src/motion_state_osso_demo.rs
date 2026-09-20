@@ -189,6 +189,28 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
             }
             corpo = fk;
         }
+        // ⭐⭐⭐ **OS OSSOS, e não as JUNTAS** — report do dono (2026-09-19): *«assim
+        // skeleton:bend coloca a base de um osso na ponta do outro. Contudo o mais correto seria se
+        // tivesse o mesmo resultado colocando na base do osso»*.
+        //
+        // ⛔⛔ **Sem este nó a cadeia NÃO ladrilha, e a cena mentia por 24% de um osso.** O
+        // elemento que uma corrente `rig.*` publica é uma **JUNTA**, e o `len`/`rot` que ele carrega
+        // são os do osso que **CHEGA** a ele ⇒ carimbar a forma na junta desenha-a uma junta à
+        // frente (medido no cabeçalho do [`ph2d_node_rig_bones`], com a tabela). O `rig.bones` dá o
+        // quadro do próprio osso — a CABEÇA dele, que é o ponto em torno do qual ele roda —, e aí o
+        // pivô natural da `Shape:Bone` cai exactamente onde o dono o quer.
+        //
+        // ⚠️ **Ele vem DEPOIS do `rig.fk`**: ele lê a corrente **resolvida**, e pô-lo antes da
+        // pose entregaria os ossos da pose anterior. ⭐ E a coluna da DIREITA não o leva de
+        // propósito — ela é o controlo, e o que ela mostra são as JUNTAS.
+        let ossos = no(g, "rig.bones", 340.0, y);
+        g.connect(Edge {
+            from: (corpo, 0),
+            to: (ossos, 0),
+            delayed: false,
+        })
+        .ok()?;
+        corpo = ossos;
         let forma = no(g, "source.shape", 0.0, y + 120.0);
         g.set_param(forma, ph2d_node_motion_shape::param::KIND, osso);
         g.set_param(forma, ph2d_node_motion_shape::param::SIZE, TAMANHO);
@@ -238,7 +260,12 @@ pub(super) fn announce() {
          \n\
          (1) Olhe a do MEIO, que fica no centro do ecra: cada osso e' GROSSO na junta em que\n    \
          esta' pendurado e AFIA para a junta seguinte — como um osso de esqueleto, grosso no\n    \
-         ombro e fino no cotovelo. A ponta grossa marca o ponto em que ele GIRA.\n\
+         ombro e fino no cotovelo. A ponta grossa marca o ponto em que ele GIRA, e a fina\n    \
+         ENCOSTA na junta seguinte: a cadeia fecha, sem folga e sem sobreposicao.\n\
+         (1b) Quem faz isso e' o cartao `Bones`, entre o `Skeleton` e o `Duplicator`. O Skeleton\n    \
+         entrega JUNTAS (as cruzinhas da direita); o `Bones` entrega os OSSOS entre elas, cada um\n    \
+         ja' pousado na junta de que ele pende. Sem ele, cada peca sai desenhada uma junta a'\n    \
+         frente. Experimente: apague o `Bones` e ligue o esqueleto direto ao `Duplicator`.\n\
          (2) Carregue em PLAY: a onda PERCORRE essa cadeia, da raiz para a ponta, e cada\n    \
          osso vira com ela. As POSICOES mexem-se, nao so' as pecas.\n\
          (3) Pause. Clique no cartao `Shape` dessa coluna e arraste `Pivot Offset X`. Enquanto\n    \
@@ -251,9 +278,10 @@ pub(super) fn announce() {
          (4) Afaste a vista e olhe a da ESQUERDA (a cadeia enrolada) e a da DIREITA (as\n    \
          cruzinhas, que sao as mesmas posicoes sem forma nenhuma).\n\
          \n\
-         DEU ERRADO se: a parte GROSSA de um osso ficar do lado para onde a cadeia VAI; se\n    \
+         DEU ERRADO se: a parte GROSSA de um osso ficar do lado para onde a cadeia VAI; se a\n    \
+         ponta fina de um osso NAO encostar na junta seguinte (folga ou sobreposicao); se\n    \
          com o PLAY a do meio ficar PARADA; se ela rodar as pecas sem mexer as posicoes; ou\n    \
-         se arrastar o `Pivot X` nao mudar o ponto em torno do qual cada osso roda.\n"
+         se arrastar o `Pivot Offset X` nao mudar o ponto em torno do qual cada osso roda.\n"
     );
 }
 

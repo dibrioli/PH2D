@@ -25,7 +25,6 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # ⭐ O `NodeId` de acessibilidade, para os ids das amostras de cor das rows de param — o
 # vocabulário que sobreviveu à saída do painel lateral (doc 114 §13).
-ph2d-a11y = { path = "../ph2d-a11y" }
 # O texto da biblioteca de nós e dos fundos do grafo (HR-15).
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-eval-motion = { path = "../ph2d-eval-motion" }
@@ -119,6 +118,9 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
+# ⚠️ Só para o gate do roteiro da cena `=125`, que deriva o nome do cartão dos OSSOS do
+# registo em vez de o escrever à mão. O produto alcança o nó pelo `ph2d-node-registry-init`.
+ph2d-node-rig-bones = { path = "../ph2d-node-rig-bones" }
 
 [lints]
 workspace = true

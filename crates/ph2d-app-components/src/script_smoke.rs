@@ -57,6 +57,9 @@ ph2d.property("amplitude", 1.0, { min = 0, max = 4 })  -- quanto sobe (metros)
 ph2d.property("speed", 2.0, { min = 0, max = 10 })     -- quão depressa
 ph2d.property("active", true)                          -- desligado = fica parado
 ph2d.property("top_signal", "")                        -- o grito, a cada topo (vazio = calado)
+-- ⭐ A LISTA: o painel pinta um CHIP em vez de um campo livre, e um valor que não esteja aqui
+--    não chega a este script — ele é NOMEADO no painel em vez de cair no ramo errado calado.
+ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })
 
 function init(self)
   self.base_y = ph2d.get(self.id, "y")
@@ -67,7 +70,15 @@ end
 function update(self, dt)
   if not self.active then return end
   self.t = self.t + dt
-  local s = math.sin(self.t * self.speed)
+  -- ⭐ A FORMA da onda sai da lista: o chip do painel escolhe qual destas corre.
+  local s
+  if self.wave == "square" then
+    s = math.sin(self.t * self.speed) >= 0 and 1 or -1
+  elseif self.wave == "still" then
+    s = 0
+  else
+    s = math.sin(self.t * self.speed)
+  end
   ph2d.set(self.id, "y", self.base_y + s * self.amplitude)
   local up = s > 0.98
   if up and not self.was_up and self.top_signal ~= "" then
@@ -192,7 +203,11 @@ pub fn montar(world: &mut World, _nivel: u32, dir: &Path) -> std::io::Result<Mon
          «Bob» segue o ficheiro, «Bob (tall)» sobe o dobro, «Bob (fast)» e' rapido e acende a \
          lampada a cada topo. Carregue num boneco e veja a seccao Script do painel; abra o \
          ficheiro, mude o default da amplitude, grave — o «Bob» e o «Bob (fast)» mudam, o \
-         «Bob (tall)» fica com a dele"
+         «Bob (tall)» fica com a dele.\n\
+         ⭐ E a fileira «wave» e' um CHIP e nao um campo: o script declarou uma LISTA \
+         (`sine · square · still`). Escolha `square` e o boneco passa a saltar entre dois \
+         niveis; `still` para-o. ⚠️ Deu errado se ela vier como campo de escrever, ou se \
+         escolher uma opcao nao mudar o movimento"
     );
     Ok(Montada {
         nivel: 1,

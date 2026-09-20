@@ -224,3 +224,43 @@ fn mudar_o_default_no_ficheiro_muda_quem_nao_tem_aquele_numero_proprio() {
         Some(&ScriptValue::Number(TALL_AMPLITUDE))
     );
 }
+
+/// ⭐⭐⭐ **O `.luau` da cena DECLARA a lista, e o roteiro promete o chip que ela produz.**
+///
+/// ⚠️⚠️ *Um passo que nomeia um controlo AFIRMA que ele está lá* — e aqui o controlo não vem de
+/// uma tabela do painel: ele vem do FICHEIRO que esta cena escreve. Um `options` mal escrito no
+/// `.luau` faz a declaração ser **RECUSADA** (a lei da lista malformada), a fileira nasce como
+/// campo livre, e o roteiro fica a prometer um chip que não existe.
+///
+/// ⭐ **A régua é a LEI e não um `contains`**: o texto é lido pelo parser do produto, e o que se
+/// afirma é que a declaração PASSA e traz as opções. Um gate textual ficaria verde sobre um
+/// `options` que o `check_decl` recusa.
+///
+/// **Mutações que devem sangrar:** tirar o `options` do `.luau` · pôr o default fora da lista ·
+/// tirar a frase do roteiro.
+#[test]
+fn o_ficheiro_da_cena_declara_a_lista_que_o_roteiro_promete() {
+    let h = ph2d_script::ScriptHost::new().expect("a VM da casa arranca");
+    let m = ph2d_script::module::load_module(h.runtime().lua(), "bob.luau", super::BOB_LUAU)
+        .expect("o ficheiro da cena CARREGA — um erro aqui e' a cena partida, nao o gate");
+    let d = m
+        .decls
+        .iter()
+        .find(|d| d.name == "wave")
+        .expect("o ficheiro da cena declara a propriedade `wave`");
+    assert!(
+        d.hint.options.len() >= 2,
+        "ela tem de trazer uma LISTA — sem opcoes a fileira nasce campo LIVRE e o roteiro mente"
+    );
+    // ⚠️ **A metade do «o ficheiro inteiro e' aceite» e' o `expect` acima**: uma lista malformada
+    // faz o `load_module` devolver `Err`, e a fileira cairia para campo livre sem nada acusar.
+
+    // ⭐ A metade do ROTEIRO: cada opção que ele nomeia tem de estar na lista que o script declara.
+    let roteiro = include_str!("script_smoke.rs");
+    for o in &d.hint.options {
+        assert!(
+            roteiro.contains(o.as_str()),
+            "o roteiro nao nomeia a opcao «{o}» que o script oferece"
+        );
+    }
+}

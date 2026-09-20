@@ -253,10 +253,22 @@ LOC** são propriedades da SOMA, nenhuma linha as vê sozinha, e **o CI não os 
 | `#[ignore]` novos que sejam GATES (o CI nunca os corre) | `70` linhas, **todas** declaradas *sonda/medição/gerador*; os `6` «nus» são o texto `#[ignore]` **dentro de doc-comments** |
 | dívida silenciosa (`TODO`/`FIXME`/`unimplemented!`) | `27` acertos, **todos falsos positivos** — é a palavra portuguesa *«TODO(S)»*. ⚠️ *Quem repetir esta lente neste repo tem de a escrever em inglês com fronteira de palavra, senão ela mede a língua* |
 
-### §7.2 O binário do smoke
+### §7.2 O binário do smoke — **compilado, com a prova**
 
-*(preenchido no commit seguinte a este — item 9 da DIRETRIZ §1.5.9 manda compilá-lo DEPOIS do
-último commit de código e DEPOIS de reclamar o `incremental/`)*
+```
+$ rm -rf "$(git rev-parse --show-toplevel)"/target/*/incremental      # item 7, ANTES
+    54G target/debug/incremental + 6,6G target/smoke/incremental reclamados  (target: 47G)
+
+$ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
+    Finished `smoke` profile [optimized] target(s) in 49.14s
+
+$ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke   # a PROVA
+    Finished `smoke` profile [optimized] target(s) in 0.50s
+    linhas "Compiling": 0
+```
+
+`target/smoke/ph2d-host-desktop` · `84 569 496` bytes. ⚠️ **É a MESMA linha de comando do §8**, na
+árvore desta worktree — *o dono não espera build*.
 
 ---
 

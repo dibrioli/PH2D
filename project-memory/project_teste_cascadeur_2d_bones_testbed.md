@@ -613,3 +613,28 @@ Os seis achados curados, cada um com portão + mutação, e um SÉTIMO que a re-
   dois pontos na janela em duas linhas gémeas e só uma viajou ⇒ porta `alcaNaJanela`.
 - Instrumento: uma cópia de ensaio da árvore por symlinks corre a suíte da pasta REAL se o
   `rodar_testes.js` também for symlink (o Node resolve o módulo principal) — leva-se como FICHEIRO.
+
+### 2026-09-20 (9.ª volta) — COPIAR/COLAR A POSE INTEIRA + COLAR ESPELHADA, para todos os esqueletos (B47)
+Pedido do dono: *«copiar e colar a pose (não a posição do corpo inteiro mas a pose local …). E colar pose
+espelhada (esq direita) como faz o blender»*. Lei no motor (`copiarPose`/`espelharAngulos`/`folgaDoChao`/
+`colarPose` + `rig.par`/`rig.semPar`), três botões no rodapé + `Ctrl+C`/`Ctrl+V`/`Ctrl+Shift+V`. Suíte
+**245** · mutações **124** (10 novas, cada uma morre nos DOIS rigs) · `gesto_copiar_pose.js` (8 portões, 9 mutações).
+- **«Pose local» = ângulos + o giro da raiz; fica o `x` do destino.** O giro entra pela volta MAIS PERTO
+  da do destino (ele ACUMULA e a interpolação não dá a volta: cru, desenrolava até 720° depois do mortal).
+  ⛔ Preço dito: colada a meio de um mortal a pose traz a orientação de origem (cura: a alça de girar).
+- ⛔⛔ **O `y` não pode ser «o do destino», MEDIDO antes de escrito:** 1 748 colagens ingénuas sobre destino
+  apoiado ⇒ afunda até **61 cm**, flutua até **81 cm**. Lei do CONTACTO (a mesma de «movimento levado para
+  outro corpo preserva a altura do pé»): destino apoiado ⇒ o ponto mais baixo do CORPO INTEIRO (`rig.piso`)
+  fica à mesma altura; no ar ⇒ `y` ao bit, e só sobe para não atravessar o chão. O aviso diz quanto.
+- ⛔⛔⛔ **O ESPELHO TROCA OS DESVIOS DO REPOUSO, NUNCA OS ÂNGULOS CRUS.** As ancas da pessoa são ossos
+  FIXOS de comprimento ~0 (1e-5 m): a direcção de repouso delas é RUÍDO da extracção (150,52° contra
+  145,62°, com a coxa a compensar). A troca crua tirava um osso fixo **4,9°** do repouso, calada, e a
+  geometria ficava CERTA — só a régua «osso fixo não sai do repouso» a vê. ⭐ *Um osso de comprimento
+  zero tem um ângulo que não significa nada; toda operação entre lados passa pelo desvio do repouso.*
+  Vale para o PH2D no dia em que o esqueleto de lá ganhar colar espelhado.
+- O par sai dos DADOS (`lado` + nome), não de uma lista por rig; osso com lado e SEM par fica como está
+  e é nomeado (rig sintético com uma arma numa mão). Pose de outro esqueleto é recusada em voz alta.
+- ⚠️ Dois pisos de população calibrados na pessoa (402 poses) reprovaram o dinossauro (24) sobre produto
+  certo ⇒ pisos POR POSE. ⚠️ O Ctrl+C com TEXTO seleccionado é do navegador (o dono copia números do
+  painel para os relatos) — portão com as duas metades.
+- ABERTO (dono): preservar a folga do destino (1,8 cm em pontas de pés) vs. zerá-la · colar SEM o giro.

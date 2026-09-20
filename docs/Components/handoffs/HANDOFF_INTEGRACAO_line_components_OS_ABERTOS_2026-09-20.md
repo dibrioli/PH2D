@@ -6,7 +6,7 @@
 > daqui. não vamos trabalhar com ele. siga»*). ⚠️ **O §6 dele continua vivo e não foi reescrito
 > aqui** — a lição do rebase (as memórias órfãs, as contagens de família paradas) é dele.
 
-**12 commits** · `103` ficheiros · merge-base `395da6a55`.
+**17 commits** · `127` ficheiros · merge-base `395da6a55`.
 ⭐ **O `main` NÃO andou** desde o merge-base ⇒ *a árvore combinada É esta*, e os censos da soma
 foram corridos sobre ela (127/127).
 
@@ -56,6 +56,8 @@ gravados): um blob anterior é **recusado em voz alta** em vez de lido errado em
 | 10 | **a fileira do gatilho CRIA a acção** | a cura ao lado da queixa (ver §3) |
 | 11 | **a vista do HUD** | ⛔ **decisão AFIRMADA**, zero linhas de produto (ver §4) |
 | 12 | **o portão batched** | os três vermelhos que o laço interno é cego a (ver §5) |
+| 13 | **o roteiro do gatilho** | ele NOMEIA o botão novo, com a metade que diz onde ele NÃO aparece |
+| 14 | **o ENUM de um script** | uma propriedade de texto com LISTA vira CHIP, e o valor de fora **não chega ao script** (ver §5-bis) |
 
 ---
 
@@ -148,6 +150,41 @@ chegam pelo `shells/desktop`). ⇒ *`cargo nextest run --workspace -E 'test(…)
 
 ---
 
+## §5-bis — O ENUM, e o que a medição do §5.0 decidiu
+
+A lista aberta pedia **três** tipos (`Vector2`, `Color`, enum). A sonda
+([`mede_o_que_a_composicao_ja_da_aos_tipos`](../../../crates/ph2d-script/tests/it/mede_o_que_a_composicao_ja_da_aos_tipos.rs))
+correu antes da 1.ª linha e **reescreveu o âmbito**: os três já têm a CAPACIDADE pela composição, e
+só um tem defeito de **CORRECÇÃO**.
+
+| tipo | pela composição | o que falta |
+|---|---|---|
+| `Vector2` | 2 declarações → 2 fileiras | **afordância** (uma fileira em vez de duas) |
+| `Color` | 4 declarações → 4 fileiras | **afordância** (uma amostra em vez de quatro campos) |
+| **enum** | 1 declaração de texto | ⛔ **CORRECÇÃO**: o objecto guarda `"fst"`, o painel mostra `"fst"`, **não é órfão** — ele CHEGA ao script, que compara com `"fast"` e cai no ramo errado **em silêncio** |
+
+⇒ a wave é o **enum**, e os outros dois ficam com o preço nomeado (afordância, wave própria).
+
+⭐⭐ **Ele NÃO é uma variante nova do `ScriptValue`** — é um `Text` com a lista na PISTA. O
+`PropHint` é declaração e não viaja no ficheiro ⇒ **`PROJECT_SCHEMA` intocado**, e o valor continua
+a ser o texto que o script compara.
+
+**A lei:** um valor fora da lista **não se aplica nem se converte** — o objecto lê o default, e o
+gravado fica **intacto e NOMEADO** (`OrphanWhy::NotAnOption`). É a mesma lei do `WrongKind` uma casa
+abaixo, e ⛔ encostá-lo à opção mais parecida é o *«aceita e mente»*.
+
+⚠️ **O `wants` do painel virou ENUM de três estados** (`PorqueOrfao`) e não um `Option` com um
+`bool` ao lado: *dois campos que têm de concordar divergem*, e o terceiro estado nasceu assim.
+
+⛔⛔ **E o gate de costura apanhou um defeito antes de ele shipar:** o braço do clique estava
+escrito **DEPOIS** do bloco de `Click`, cujo `else` faz `return false` ⇒ ele era **código morto**
+para todo clique. É o *«dreno de um braço só»* do §5.0, e ele compila, pinta e regista sem que nada
+acuse. ⛔ E a LINHA do popover vem de **quem REGISTA as opções**, nunca do `open` do chip: o
+despacho fecha o dropdown no `pointer_down`, logo ali ele já é `false` — a 1.ª redacção lia o store
+e o gate reprovou-a.
+
+---
+
 ## §6 — O que uma leitura rápida do diff entende ao CONTRÁRIO
 
 1. **O `+3` do `PROJECT_SCHEMA` não é de uma wave só** — são três, e nenhum tem degrau de migração
@@ -175,7 +212,7 @@ chegam pelo `shells/desktop`). ⇒ *`cargo nextest run --workspace -E 'test(…)
 |---|---|
 | **o `.luau` não viaja no projecto** | ⛔ **Mesma fronteira DECLARADA do áudio, e não é do script:** medido, o `AudioSource2D` também **nomeia um ficheiro e também não embute**, e o doc do `LuauScript` já escreve que *«a cura das duas é a mesma: pôr o tipo no índice de assets»*. Um embed só para o script seria **a segunda resposta à mesma pergunta**. ⇒ wave do índice de assets, não desta linha. |
 | **`SignalFrom::Tagged`** | ⛔ Sem consumidor, e a metade que importa está COBERTA: para a origem que toda cena tem — o TOQUE — a composição **já** o exprime pelo `SignalTagFilter`, que é do **produtor** (a `=dano` usa-o). Para as outras origens nenhuma cena pede. |
-| **`Vector2` / `Color` / enum nas propriedades de script** | Wave própria: o `ScriptValue` tem **três** variantes e acrescentar é **append-only** (⇒ sem degrau de schema), mas ela pede a ponte do Luau a aceitar tabela como default, a inferência de tipo, as fileiras do Inspector, as edições e os gates. |
+| **`Vector2` e `Color` nas propriedades de script** | ⭐ **O ENUM FECHOU** (§5-bis). Estes dois ficam, e o preço está MEDIDO: os dois já se exprimem pela composição e o que falta é **afordância** (uma fileira em vez de duas; uma amostra em vez de quatro campos) — nenhum tem defeito de correcção, ao contrário do enum. Acrescentar as variantes é **append-only** (⇒ sem degrau de schema); o custo é a ponte do Luau a aceitar uma tabela como default, com a desambiguação a ser **explícita** (um `{1,0,0}` não diz se é posição ou cor, e adivinhar pelo comprimento é um palpite). |
 | **script e física no MESMO corpo** | Fronteira declarada no handoff do #16. |
 | **HUD atrás dos painéis no EDITOR** | ⭐ **Deixou de ser um item de defeito** — é consequência de uma decisão, hoje afirmada por gate (§4). O que sobra é a **área segura** no editor, que é decisão de produto. |
 | **abanão ANGULAR** | ⛔ Recusa medida: a `CameraView` tem **três** campos e nenhum é um ângulo. |
@@ -186,11 +223,16 @@ chegam pelo `shells/desktop`). ⇒ *`cargo nextest run --workspace -E 'test(…)
 
 ## §8 — Prova de fecho
 
-- `bash scripts/nextest-impacted.sh` → **17 675 / 17 675**
+- `bash scripts/nextest-impacted.sh` → **17 684 / 17 684** — ⚠️ com **duas** corridas a acusarem
+  **UM** membro NOMEADO da família de flakes de fan-out cada, e **membros DIFERENTES entre elas**
+  (`the_cost_of_a_player_is_linear_in_their_number` · `the_cost_of_depth_is_linear_not_explosive`),
+  os dois `3 de 3` verdes sozinhos a `load 28`–`46` e com **zero linhas de diff** nas crates deles.
+  ⭐ *O conjunto de reprovadas MUDAR entre corridas é a assinatura mais forte da família.*
 - `bash scripts/censos-da-arvore-combinada.sh` → **127 / 127** (controlo do filtro: 12 de 12 censos correram)
 - `cargo clippy --workspace --all-targets -- -D warnings` → **zero**
 - `cargo fmt --all` → limpo
-- provas de mutação desta reabertura: **7 de 7** (wave 10) + **2 de 2** (wave 11), todas a sangrar
+- provas de mutação desta reabertura: **7 de 7** (wave 10) + **2 de 2** (wave 11) + **2 de 2**
+  (wave 13) + **12 de 12** (wave 14), todas a sangrar
   — ⚠️ com o arnês a abortar alto **duas** vezes (uma âncora que casava `2×`; uma mutação
   **NO-OP para o gate**, porque um sufixo deixa a agulha do `contains` intacta e isso lê-se
   exactamente como sobreviver).

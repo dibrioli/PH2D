@@ -455,3 +455,135 @@ cima.*
   pequenas ele tem mais a ganhar do que tinha com treze. Não medido.
 - ⏳ **A dilatação da costura não existe** (o vão do mip está reservado e ninguém o pinta) —
   é o que impede um fio de fundo de aparecer na borda de uma ilha ao afastar a câmara.
+
+---
+
+## §10 — ⭐⭐⭐ W3: O ESPAÇO — e a régua que eu publicava media o INVÓLUCRO
+
+> **Ordem do dono (2026-09-20), depois de aprovar o smoke da W2:** *«smoke ok mas com
+> espaço pouco otimizado»*.
+
+### §10.1 — ⛔⛔⛔ Passo zero: o `aproveitamento` era `67,7 %` e a tinta era `18,7 %`
+
+A W1 e a W2 publicaram uma coluna chamada `aproveitamento`, e ela conta **a fracção do
+quadrado que as CAIXAS das ilhas ocupam**. O que o artista vê é outra coisa — **a tinta**
+—, e as duas estão a um factor de `3,6×` uma da outra:
+
+| `sculpt_antes` | tinta / quadrado | caixas / quadrado | tinta DENTRO da caixa |
+|---|---|---|---|
+| CRUA | **`18,7 %`** | `67,7 %` | `27,6 %` |
+| F1 | **`26,0 %`** | `67,7 %` | `38,5 %` |
+
+⇒ *uma régua que mede o invólucro não mede o que está lá dentro*, e era o invólucro que o
+relatório publicava. O campo [`Relatorio::aproveitamento`] passa a ser **a tinta**, e o
+invólucro fica com o nome que diz o que ele é (`caixas_no_quadrado`).
+
+⭐⭐ **E a decomposição decidiu o que construir:** `56`–`60 %` do desperdício está **DENTRO
+das caixas**. *Nenhum empacotador de rectângulos lhe toca* — uma ilha esguia e curva num
+rectângulo é um rectângulo quase vazio, por melhor que os rectângulos se arrumem entre si.
+⇒ a wave não é «um empacotador melhor», é **arrumar a FORMA**.
+
+### §10.2 — As três peças, e o que cada uma comprou
+
+| | `sculpt_antes` CRUA | `sculpt_antes` F1 |
+|---|---|---|
+| W2 (prateleiras sobre caixas) | `18,7 %` | `26,0 %` |
+| **+ orientar** pela caixa mínima | `22,2 %` | `34,1 %` |
+| **+ arrumar pela máscara** | `29,2 %` | `34,0 %` |
+| **+ bissectar o lado** | `29,6 %` | `38,7 %` |
+| **+ pagar a folga UMA vez** (o que shipa) | **`31,8 %`** | **`41,0 %`** |
+
+**`1,70×`** e **`1,58×`** a tinta da W2, com `0,00 %` de texel pintado duas vezes em todas
+as corridas.
+
+1. **ORIENTAR** ([`orienta`](../../crates/ph2d-uv-atlas/src/orienta.rs)) — a caixa de área
+   mínima de um convexo tem sempre um lado **colinear com uma aresta do casco**, logo o
+   mínimo acha-se **exactamente** e não por varredura de ângulos. ⭐ É um movimento
+   **rígido**: tudo o que o corte provou sobre a peça continua verdade por construção, e
+   há gate a medir que rodar não muda uma distância.
+2. **ARRUMAR PELA MÁSCARA** ([`empacota`](../../crates/ph2d-uv-atlas/src/empacota.rs)) — a
+   peça vira uma silhueta de células e entra onde ela não bate na ocupação, o mais em
+   baixo e à esquerda. ⛔⛔ **A rasterização é CONSERVADORA — uma célula que o triângulo
+   TOCA fica marcada** —, e é só isso que faz a garantia valer em `[0,1]²` e não apenas na
+   grelha: a cobertura real é um subconjunto das células marcadas.
+3. **BISSECTAR** — a fase que cresce o quadrado anda `8 %` de cada vez, logo pára até
+   `8 %` acima do necessário, **e o lado entra na conta ao quadrado: são `16 %` de área**.
+   Cinco passos de bissecção entre o último que não coube e o primeiro que coube fecham a
+   folga a menos de `0,3 %`.
+4. ⭐⭐ **PAGAR A FOLGA UMA VEZ.** A 1.ª redacção engordava **as duas** máscaras de `g`
+   células, logo entre duas peças ficavam `2g` — e a cadeia de mips pede `g`. *A folga
+   estava a ser cobrada a dobrar, e a constante `VAO_EM_TEXELS` dizia uma coisa enquanto o
+   atlas entregava o dobro.* A cura é assimétrica e é exacta: **quem PERGUNTA é a máscara
+   com auréola, quem MARCA é o corpo** — a auréola de A evita o corpo de B e o corpo de A
+   evita a auréola de B, ⇒ a separação é exactamente `g` nos dois sentidos, por
+   construção.
+
+### §10.3 — ⛔ Duas premissas que morreram, e as duas ficam à vista
+
+1. **`Relatorio::aproveitamento` contava CAIXAS.** Ver a §10.1 — o campo mudou de
+   significado e o antigo ficou, com o nome certo.
+2. ⛔⛔ **«As caixas das ilhas são disjuntas» deixou de ser verdade, DE PROPÓSITO.** O gate
+   `as_ilhas_nao_se_sobrepoem_no_atlas` media exactamente isso, e com o empacotador por
+   máscara **duas caixas cruzam-se** — é daí que vem a tinta que a wave ganhou. *Manter a
+   régua das caixas seria proibir a cura.* A lei que fica é mais forte e é a que interessa:
+   **nenhum texel do atlas é escrito por duas peças diferentes**, que é a classe
+   `ilhas-diferentes` da régua da W2, e ela lê `0` em todas as corridas.
+
+### §10.4 — ⭐ O CONTROLO que torna a coluna nova confiável
+
+A tinta é medida por **dois caminhos que não se conhecem**: a soma das **ÁREAS** dos
+triângulos (dentro da crate) e a contagem de **TEXELS** pintados (na sonda, a `1024²`).
+Elas leem `31,8 %` e `31,8 %`. *Se discordassem, uma das duas estaria a medir outro atlas.*
+
+### §10.5 — A resolução da grelha é MEDIDA, e o joelho é nítido
+
+| células por lado | tinta/quadrado (CRUA) | relógio | tinta (F1) | relógio |
+|---|---|---|---|---|
+| `128` | `19,9 %` | `121 ms` | `31,8 %` | `22 ms` |
+| **`256`** | **`29,6 %`** | `151 ms` | **`38,7 %`** | `46 ms` |
+| `512` | `30,2 %` | `287 ms` | `39,7 %` | `125 ms` |
+
+⭐ `128 → 256` compra **`9,7` pontos**; `256 → 512` compra **`0,6`** por **`1,9×`** o
+relógio. ⛔ E a grelha grossa perde por dois caminhos, não um: a forma fica pixelizada
+**e** a folga obrigatória de uma célula à volta de cada peça passa a valer mais do que a
+peça. *Com `129` peças, uma célula de folga em cada uma é o preço de existirem tantas.*
+
+### §10.6 — ⛔⛔⛔ A prova de mutação apagou DUAS coisas que eu tinha escrito
+
+**(a) O teste de colisão do empacotador era inalcançável, e há PROVA e não só medição.**
+A 1.ª redacção tinha um `bate()` que verificava a máscara contra a ocupação, e a mutação
+que o apagava **sobreviveu**. A causa não é uma fixtura fraca: `topo[c]` é a **marca de
+água** da coluna `c`, logo *toda célula acima dela está vazia por construção*; e a fórmula
+do sítio garante `y ≥ topo[x+c] − piso[c]` em toda coluna, ou seja a célula mais baixa da
+peça cai **em cima ou acima** da marca. ⇒ *o teste nunca podia disparar*.
+
+⭐ **E eu tentei torná-lo necessário ANTES de o apagar**, que é o que separa apagar de
+desistir: deixei as peças pequenas procurarem `24` células **abaixo** do céu, para entrarem
+debaixo de uma saliência. Medido: **`0,0` pontos** (`29,6 %` e `38,7 %`, iguais ao dígito)
+por `+4 %` de relógio. ⇒ as duas coisas saíram, com o número ao lado.
+
+**(b) Duas réguas minhas não continham o fenómeno.** O controlo da rasterização olhava uma
+célula **fora da caixa** do triângulo, que a varredura nunca visita — um `toca` que
+devolvesse `true` a tudo passava; hoje a fixtura é uma hipotenusa cuja **caixa cobre a
+grelha inteira** e cujo corpo não. E o valor de fábrica das duas curas não era gateado, o
+que deixava a mutação que as desliga passar em silêncio: *todos os outros gates passam as
+opções à mão*.
+
+**(c) E uma peça que colapsa num PONTO não tinha fixtura.** A rasterização visita
+`floor(min)..ceil(max)`, que numa peça de extensão zero é **vazio** ⇒ máscara sem uma
+célula ⇒ o empacotador recusa-a e o atlas INTEIRO cai para a rede das prateleiras. A cerca
+existia e nenhuma fixtura a tocava; hoje há uma carta colapsada de propósito.
+
+### §10.7 — ⏳ O que fica ABERTO, com o mecanismo
+
+- ⏳ **`tinta DENTRO da caixa` não se mexeu** (`32,8 %` na CRUA): ela é uma propriedade das
+  FORMAS e não da arrumação. Quem a quiser mover tem de entregar ilhas menos esguias — e
+  isso é a montante, no desdobramento.
+- ⏳ **A folga custa uma célula POR PEÇA, e agora UMA e não duas.** Com `129` peças a
+  `256` células ela continua a ser a segunda maior parcela do desperdício depois da forma.
+  *Menos peças compram-na de volta duas vezes: menos folgas e ilhas mais gordas* ⇒ é o
+  mesmo item que a §9.6 já nomeia.
+- ⏳ **O empacotador não experimenta rodar a peça `90°`** na hora de a colocar. A
+  orientação escolhe a caixa mínima, que fixa qual lado é o comprido; um segundo candidato
+  por peça é barato e não foi medido.
+- ⏳ **A dilatação da costura continua por pintar** — o vão está reservado e ninguém o usa.

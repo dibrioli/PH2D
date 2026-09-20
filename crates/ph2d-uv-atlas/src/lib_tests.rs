@@ -236,29 +236,29 @@ fn todo_uv_cai_dentro_do_quadrado_unitario() {
     }
 }
 
-/// ⭐⭐⭐ **DUAS ILHAS NÃO SE SOBREPÕEM** — se se sobrepusessem, dois sítios da peça
-/// leriam o mesmo texel e o artista pintaria os dois de uma vez.
+/// ⭐⭐⭐ **Duas peças nunca partilham um PONTO do atlas.**
 ///
-/// ⚠️ A régua é a caixa de cada ilha no atlas, reconstruída **do `uv` que saiu**, nunca
-/// das caixas internas: *medir a arrumação pela variável que a produziu não a mede*.
+/// ⛔⛔ **A PREMISSA DESTE GATE MORREU na W3, e a morte fica à vista no diff:** ele
+/// afirmava que as **CAIXAS** das ilhas eram disjuntas, o que era verdade enquanto o
+/// empacotador arrumava rectângulos. O de máscara arruma **FORMAS**, e duas caixas
+/// PODEM cruzar-se de propósito — é disso que vêm os `18,7 % → 22,2 %` de tinta que a
+/// §10 mede. *Manter a régua das caixas seria proibir exactamente a cura.*
+///
+/// A lei que fica é a que interessa e é mais forte: nenhum texel do atlas é escrito por
+/// duas peças diferentes — a classe [`sobreposicao::Classe::IlhasDiferentes`], que é o
+/// CONTROLO daquela régua.
 #[test]
 fn as_ilhas_nao_se_sobrepoem_no_atlas() {
-    let (_, a) = corrida(1, false);
+    let (mesh, a) = corrida(1, false);
     assert_eq!(a.relatorio.ilhas, 2, "a fixtura tem de conter o fenomeno");
-    let (lo, hi) = caixas(&a);
-    for i in 0..a.relatorio.ilhas {
-        for j in (i + 1)..a.relatorio.ilhas {
-            let separadas = hi[i][0] <= lo[j][0]
-                || hi[j][0] <= lo[i][0]
-                || hi[i][1] <= lo[j][1]
-                || hi[j][1] <= lo[i][1];
-            assert!(
-                separadas,
-                "ilhas {i} e {j} sobrepoem-se: {:?}..{:?} contra {:?}..{:?}",
-                lo[i], hi[i], lo[j], hi[j]
-            );
-        }
-    }
+    let s = super::sobreposicao::medir(&mesh, &a);
+    let i = super::sobreposicao::Classe::IlhasDiferentes.indice();
+    assert_eq!(
+        s.pares_por_classe[i], 0,
+        "duas pecas partilham area: {:?}",
+        s.pares
+    );
+    assert!(s.triangulos_com_area > 0, "e a fixtura tem area");
 }
 
 /// A caixa de cada ilha, lida do `uv` entregue.

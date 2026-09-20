@@ -333,7 +333,13 @@ fn corrida(rotulo: &str, mesh: &Mesh, alvo: f32, marca: &str) {
     // ⭐⭐⭐ **O ATLAS DE VERDADE** — as ilhas juntas, assentes e arrumadas em `[0,1]²`.
     // Tudo acima é a matéria-prima; isto é o que uma textura recebe.
     let relogio = std::time::Instant::now();
-    let atl = ph2d_uv_atlas::build(mesh, &cut, &map, &jumps);
+    // ⭐ A bissecção da orientação vive AQUI, na sonda, e não dentro da crate: uma env
+    // lida na biblioteca alcançaria todo chamador e faria um gate medir a máquina.
+    let opcoes = ph2d_uv_atlas::Opcoes {
+        orientar: std::env::var("PH2D_ATLAS_ORIENTA").as_deref() != Ok("0"),
+        ..ph2d_uv_atlas::Opcoes::default()
+    };
+    let atl = ph2d_uv_atlas::build_com(mesh, &cut, &map, &jumps, opcoes);
     let ms_atlas = relogio.elapsed().as_secs_f64() * 1000.0;
     let r = atl.relatorio;
     println!(
@@ -367,6 +373,26 @@ fn corrida(rotulo: &str, mesh: &Mesh, alvo: f32, marca: &str) {
         } else {
             100.0 * as_f64(dobrados) / as_f64(cobertos)
         }
+    );
+    // ⛔⛔⛔ **A COLUNA QUE O OLHO LÊ, e que o `aproveitamento` NÃO era.**
+    //
+    // Até a W3 o relatório publicava `caixas / quadrado` — a fracção do quadrado que as
+    // CAIXAS ocupam — e ela lia `67,7 %` numa peça em que a tinta ocupava `18,7 %`. *Uma
+    // régua que mede o invólucro não mede o que está lá dentro.*
+    //
+    // ⭐ E as duas contas da TINTA vêm por caminhos diferentes de propósito: a do
+    // relatório é a soma das ÁREAS dos triângulos e esta é a contagem de TEXELS pintados.
+    // *Se elas discordassem, uma das duas estaria a medir outro atlas.*
+    let tinta_texel = as_f64(cobertos) / (1024.0 * 1024.0);
+    println!(
+        "   espaco   TINTA/quadrado {:.1}% (por texel {:.1}%) | caixas/quadrado {:.1}% | \
+         tinta DENTRO da caixa {:.1}% => {:.0}% do desperdicio e' DENTRO das caixas",
+        100.0 * f64::from(r.aproveitamento),
+        100.0 * tinta_texel,
+        100.0 * f64::from(r.caixas_no_quadrado),
+        100.0 * f64::from(r.aproveitamento / r.caixas_no_quadrado.max(1.0e-12)),
+        100.0 * f64::from(r.caixas_no_quadrado - r.aproveitamento)
+            / f64::from(1.0 - r.aproveitamento).max(1.0e-12)
     );
     // ⭐⭐⭐ **A ATRIBUIÇÃO** — a linha de cima diz QUANTO e esta diz DE QUEM. Sem ela a
     // wave do corte começaria por adivinhar o mecanismo.
@@ -412,7 +438,11 @@ fn corrida(rotulo: &str, mesh: &Mesh, alvo: f32, marca: &str) {
             &cut,
             &map,
             &jumps,
-            ph2d_uv_atlas::Opcoes { cortar: false },
+            ph2d_uv_atlas::Opcoes {
+                cortar: false,
+                orientar: false,
+                ..ph2d_uv_atlas::Opcoes::default()
+            },
         );
         desenha(
             &cru,

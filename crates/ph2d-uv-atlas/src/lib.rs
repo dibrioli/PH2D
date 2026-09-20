@@ -26,6 +26,8 @@
 //! *Sem as duas, «as ilhas ficaram bem» é uma afirmação sobre uma imagem que ninguém viu.*
 
 pub mod corte;
+pub mod empacota;
+pub mod orienta;
 pub mod sobreposicao;
 pub mod topo;
 
@@ -92,8 +94,16 @@ pub struct Relatorio {
     pub peca_p50: usize,
     /// O maior.
     pub peca_max: usize,
-    /// A fracção do quadrado que as caixas das ilhas ocupam.
+    /// ⭐⭐⭐ **A fracção do quadrado que tem TINTA.**
+    ///
+    /// ⛔⛔ **A PREMISSA DESTE CAMPO MORREU na W3, e a morte fica à vista:** até aqui ele
+    /// contava a fracção que as **CAIXAS** ocupavam, e lia `67,7 %` numa peça em que a
+    /// tinta ocupava **`18,7 %`**. *Uma régua que mede o invólucro não mede o que está lá
+    /// dentro, e era esta a coluna que o relatório publicava.* A do invólucro continua,
+    /// com o nome que diz o que ela é: [`Self::caixas_no_quadrado`].
     pub aproveitamento: f32,
+    /// A fracção do quadrado que as CAIXAS das peças ocupam. Ver [`Self::aproveitamento`].
+    pub caixas_no_quadrado: f32,
     /// ⛔ Cantos da malha que não receberam `(u, v)`.
     ///
     /// ⚠️ **É o piso de população desta crate:** sem ele um atlas vazio lê-se como um
@@ -198,6 +208,10 @@ fn cola(map: &GridMap, seam: &ph2d_gridmap::Seam) -> Option<([f32; 2], f32)> {
 pub struct Opcoes {
     /// Partir cada ilha até ela deixar de se pintar duas vezes — ver [`corte`].
     pub cortar: bool,
+    /// Rodar cada peça até a caixa dela ser a mínima — ver [`orienta`].
+    pub orientar: bool,
+    /// Arrumar pela FORMA de cada peça e não pela caixa dela — ver [`empacota`].
+    pub empacotar_por_mascara: bool,
 }
 
 impl Default for Opcoes {
@@ -207,7 +221,11 @@ impl Default for Opcoes {
     /// atlas que se pinta duas vezes e que a régua da [`sobreposicao`] acusa. *Uma
     /// omissão que entrega um resultado sabidamente errado não é conservadora.*
     fn default() -> Self {
-        Self { cortar: true }
+        Self {
+            cortar: true,
+            orientar: true,
+            empacotar_por_mascara: true,
+        }
     }
 }
 
@@ -401,13 +419,37 @@ pub fn build_com(
     rel.peca_p50 = ct.tamanho_p50;
     rel.peca_max = ct.tamanho_max;
 
-    // ── 6. A caixa de cada PEÇA, no plano dela.
+    // ── 6. ⭐ ORIENTAR cada peça, e só depois a caixa dela.
+    //
+    // ⚠️ É um movimento RÍGIDO aplicado ao plano já cortado: ele não pode criar uma
+    // sobreposição que o corte tirou, e é por isso que ele vem DEPOIS. *Rodar antes de
+    // cortar mudaria a partição sem mudar nada do que importa.*
+    if opcoes.orientar {
+        orienta_as_pecas(mesh, &base, &mut plano, &ct.peca_da_face, rel.ilhas);
+    }
+
     let (lo, hi) = caixas(mesh, &base, &plano, &ct.peca_da_face, rel.ilhas);
 
     // ── 7. Arrumar.
-    let (pos, lado, area) = arruma(&lo, &hi);
-    rel.aproveitamento = if lado > 0.0 {
-        area / (lado * lado)
+    //
+    // ⭐ Primeiro pela FORMA (ver [`empacota`]); ⚠️ e o das PRATELEIRAS fica como rede —
+    // *um empacotador que devolve «não coube» não resolveu nada*, e a rede corre no dia em
+    // que uma peça não caiba num quadrado ao fim de `40` crescimentos.
+    let tinta = tinta_do_plano(mesh, &base, &plano, &ct.peca_da_face);
+    let (pos, lado, caixas) = if opcoes.empacotar_por_mascara {
+        empacota_por_mascara(mesh, &base, &plano, &ct.peca_da_face, &lo, &hi, tinta)
+            .unwrap_or_else(|| arruma(&lo, &hi))
+    } else {
+        arruma(&lo, &hi)
+    };
+    let quadrado = lado * lado;
+    rel.aproveitamento = if quadrado > 0.0 {
+        tinta / quadrado
+    } else {
+        0.0
+    };
+    rel.caixas_no_quadrado = if quadrado > 0.0 {
+        caixas / quadrado
     } else {
         0.0
     };
@@ -488,6 +530,182 @@ fn holonomia(cut: &CutMesh, map: &GridMap, jumps: &[Option<i32>], off: &[Option<
         }
     }
     maior
+}
+
+/// ⚠️ **A resolução da grelha de arrumação, em células por lado — MEDIDA, e o joelho é
+/// nítido.**
+///
+/// | células | tinta/quadrado (CRUA) | relógio | tinta (F1) | relógio |
+/// |---|---|---|---|---|
+/// | `128` | `19,9 %` | `121 ms` | `31,8 %` | `22 ms` |
+/// | **`256`** | **`29,6 %`** | `151 ms` | **`38,7 %`** | `46 ms` |
+/// | `512` | `30,2 %` | `287 ms` | `39,7 %` | `125 ms` |
+///
+/// ⭐ `128 → 256` compra **`9,7` pontos**; `256 → 512` compra **`0,6`** por **`1,9×`** o
+/// relógio. ⛔ O recurso tem nome: o empacotador custa `O(peças × lado × máscara)`, e a
+/// grelha grossa perde de outra maneira — *uma peça mais fina que uma célula deixa de ter
+/// forma nenhuma, e a folga de uma célula à volta dela passa a valer mais que ela*.
+const CELULAS_DA_ARRUMACAO: usize = 256;
+
+/// Quantas vezes a bissecção do lado do quadrado corre. Ver [`empacota_por_mascara`].
+const PASSOS_DA_BISSECCAO: usize = 5;
+
+/// A área somada dos triângulos, no plano — a TINTA.
+fn tinta_do_plano(mesh: &Mesh, base: &[u32], plano: &[[f32; 2]], peca_da_face: &[u32]) -> f32 {
+    let mut soma = 0.0f64;
+    for (f, face) in mesh.faces().iter().enumerate() {
+        if peca_da_face[f] == u32::MAX {
+            continue;
+        }
+        let (n, b) = (face.verts().len(), base[f] as usize);
+        for k in 1..n.saturating_sub(1) {
+            let (a, c, d) = (plano[b], plano[b + k], plano[b + k + 1]);
+            let (ux, uy) = (f64::from(c[0] - a[0]), f64::from(c[1] - a[1]));
+            let (vx, vy) = (f64::from(d[0] - a[0]), f64::from(d[1] - a[1]));
+            soma += (ux.mul_add(vy, -(uy * vx)) * 0.5).abs();
+        }
+    }
+    #[allow(clippy::cast_possible_truncation)]
+    {
+        soma as f32
+    }
+}
+
+/// ⭐⭐⭐ **Arruma pela FORMA.** Ver [`empacota`]. Devolve o mesmo que [`arruma`].
+///
+/// ⚠️ **O lado do quadrado acha-se em duas fases, e a segunda não é acabamento:** a
+/// primeira cresce `8 %` de cada vez até caber, logo ela pára até `8 %` acima do
+/// necessário — e o lado entra na conta ao QUADRADO, o que são `16 %` de área.
+/// A segunda **bissecta** entre o último que não coube e o primeiro que coube.
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn empacota_por_mascara(
+    mesh: &Mesh,
+    base: &[u32],
+    plano: &[[f32; 2]],
+    peca_da_face: &[u32],
+    lo: &[[f32; 2]],
+    hi: &[[f32; 2]],
+    tinta: f32,
+) -> Option<(Vec<[f32; 2]>, f32, f32)> {
+    let n = lo.len();
+    let medida = |i: usize| {
+        if lo[i][0] <= hi[i][0] {
+            (hi[i][0] - lo[i][0], hi[i][1] - lo[i][1])
+        } else {
+            (0.0, 0.0)
+        }
+    };
+    let caixas: f32 = (0..n).map(|i| medida(i).0 * medida(i).1).sum();
+    let fraccao = VAO_EM_TEXELS / TEXTURA_DE_REFERENCIA;
+
+    let tenta = |lado: f32| -> Option<Vec<[f32; 2]>> {
+        let celula = lado / CELULAS_DA_ARRUMACAO as f32;
+        if celula <= 0.0 || !celula.is_finite() {
+            return None;
+        }
+        let folga = ((lado * fraccao) / celula).ceil().max(1.0) as usize;
+        let mut masc: Vec<empacota::Mascara> = (0..n)
+            .map(|i| {
+                let (w, h) = medida(i);
+                let larg = ((w / celula).ceil() as usize + 1).max(1);
+                let alt = ((h / celula).ceil() as usize + 1).max(1);
+                empacota::Mascara {
+                    larg,
+                    alt,
+                    celulas: vec![false; larg * alt],
+                }
+            })
+            .collect();
+        for (f, face) in mesh.faces().iter().enumerate() {
+            let pi = peca_da_face[f];
+            if pi == u32::MAX {
+                continue;
+            }
+            let (pi, b, k) = (pi as usize, base[f] as usize, face.verts().len());
+            let o = lo[pi];
+            let p = |c: usize| [plano[c][0] - o[0], plano[c][1] - o[1]];
+            for j in 1..k.saturating_sub(1) {
+                empacota::marca_triangulo(&mut masc[pi], [p(b), p(b + j), p(b + j + 1)], celula);
+            }
+        }
+        // ⛔ **O piso de população:** uma peça sem uma célula marcada é RECUSADA pelo
+        // empacotador (ele não sabe arrumar o que não ocupa nada). Ela existe — uma lasca
+        // mais fina que uma célula — e a resposta é marcar-lhe UMA célula.
+        for m in &mut masc {
+            if m.ocupadas() == 0 {
+                m.celulas[0] = true;
+            }
+        }
+        let cel = empacota::arruma(&masc, CELULAS_DA_ARRUMACAO, folga)?;
+        Some(
+            cel.iter()
+                .map(|&(cx, cy)| [cx as f32 * celula, cy as f32 * celula])
+                .collect(),
+        )
+    };
+
+    // Fase 1: crescer até caber. O piso é o quadrado CHEIO, que é impossível por
+    // construção (há folga de costura), logo ele serve de limite inferior da bissecção.
+    let mut baixo = tinta.sqrt().max(1.0e-6);
+    let mut lado = baixo;
+    let mut melhor = None;
+    for _ in 0..40 {
+        if let Some(pos) = tenta(lado) {
+            melhor = Some((lado, pos));
+            break;
+        }
+        baixo = lado;
+        lado *= 1.08;
+    }
+    let (mut alto, mut pos) = melhor?;
+    // Fase 2: bissectar. ⚠️ `PASSOS_DA_BISSECCAO` é um tecto de RELÓGIO — cada passo é
+    // uma arrumação inteira —, e `5` fecha a folga de `8 %` a menos de `0,3 %`.
+    for _ in 0..PASSOS_DA_BISSECCAO {
+        let meio = 0.5 * (baixo + alto);
+        if let Some(p) = tenta(meio) {
+            alto = meio;
+            pos = p;
+        } else {
+            baixo = meio;
+        }
+    }
+    Some((pos, alto, caixas))
+}
+
+/// Roda cada peça para o eixo da caixa mínima dela, no sítio.
+fn orienta_as_pecas(
+    mesh: &Mesh,
+    base: &[u32],
+    plano: &mut [[f32; 2]],
+    peca_da_face: &[u32],
+    pecas: usize,
+) {
+    let mut nuvem: Vec<Vec<[f32; 2]>> = vec![Vec::new(); pecas];
+    for (f, face) in mesh.faces().iter().enumerate() {
+        let pi = peca_da_face[f];
+        if pi == u32::MAX {
+            continue;
+        }
+        let b = base[f] as usize;
+        for k in 0..face.verts().len() {
+            nuvem[pi as usize].push(plano[b + k]);
+        }
+    }
+    let eixos: Vec<[f32; 2]> = nuvem
+        .iter()
+        .map(|n| orienta::eixo_da_caixa_minima(n))
+        .collect();
+    for (f, face) in mesh.faces().iter().enumerate() {
+        let pi = peca_da_face[f];
+        if pi == u32::MAX {
+            continue;
+        }
+        let e = eixos[pi as usize];
+        let b = base[f] as usize;
+        for k in 0..face.verts().len() {
+            plano[b + k] = orienta::roda(plano[b + k], e);
+        }
+    }
 }
 
 /// A caixa de cada peça no plano da ilha dela.
@@ -590,3 +808,11 @@ mod corte_tests;
 #[cfg(test)]
 #[path = "topo_tests.rs"]
 mod topo_tests;
+
+#[cfg(test)]
+#[path = "orienta_tests.rs"]
+mod orienta_tests;
+
+#[cfg(test)]
+#[path = "empacota_tests.rs"]
+mod empacota_tests;

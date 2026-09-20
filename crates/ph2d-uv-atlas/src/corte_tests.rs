@@ -255,7 +255,17 @@ fn cada_peca_e_um_pedaco_ligado_e_nao_um_punhado_de_faces() {
 #[test]
 fn a_ilha_que_se_dobrava_deixa_de_pintar_duas_vezes_pelo_caminho_do_produto() {
     let (mesh, cut, map, jumps) = super::lib_tests::fita_com(0, false, true);
-    let cru = super::build_com(&mesh, &cut, &map, &jumps, super::Opcoes { cortar: false });
+    let cru = super::build_com(
+        &mesh,
+        &cut,
+        &map,
+        &jumps,
+        super::Opcoes {
+            cortar: false,
+            orientar: false,
+            ..super::Opcoes::default()
+        },
+    );
     let antes = medir(&mesh, &cru);
     use super::sobreposicao::Classe;
     // ⭐ A fixtura contém as DUAS classes que o corte enfrenta, e a atribuição

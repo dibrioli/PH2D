@@ -5,7 +5,7 @@
 > existir para uma cadeia com CARIMBO continuar no dispositivo.*
 >
 > **Estado (2026-09-20):** passos **1** (o item, §1) e **2** (a auditoria, §2–§4) FECHADOS. O plano
-> está na §5. ⏳ Uma coluna de relógio (§4.3) espera máquina calma.
+> está na §5.
 
 ---
 
@@ -142,13 +142,41 @@ Da [`ph2d-node-motion-duplicator`](../../crates/ph2d-node-motion-duplicator/src/
 **duas** portas em vez de uma e com as linhas a virem de uma divisão em vez de uma coluna escrita
 por um kernel.
 
-### §4.3 — ⏳ O RELÓGIO (a escada do encode) espera máquina calma
+### §4.3 — ✅ O RELÓGIO: a escada do encode, tirada com a máquina CALMA
 
-A sonda `audit_the_stamp_encode_cost` existe e mede o que `N` cópias da mesma estrela custam a
-encodar pela **porta do produto** (`draw_shared_instances`). ⛔ Ela **é** um relógio, e nesta
-jornada a máquina não desceu de `load 10` — a tabela entra aqui quando puder ser tirada abaixo de
-`load ~5` (`CLAUDE.md` §5.0). O que já se sabe, do report de 14/09 (doc 110 §7): a cena das estrelas
-lia **`39,80 ms` de `cpu-encode`** com `4,49` de cozimento, ou seja **`~35 ms` fora do cook**.
+A sonda `audit_the_stamp_encode_cost` mede o que `N` cópias da mesma estrela custam a encodar pela
+**porta do produto** (`draw_shared_instances`, `--release`, mínimo de três por linha). Ela **é** um
+relógio, logo a tabela só vale com o `loadavg` ao lado (`CLAUDE.md` §5.0) — **duas** corridas
+independentes, as duas abaixo do limiar:
+
+| cópias | encode (`load 4,31`) | encode (`load 3,57`) | % de um quadro | por cópia |
+|---:|---:|---:|---:|---:|
+| `1 000` | `0,11 ms` | `0,06 ms` | `~0,5 %` | *(ruído)* |
+| `10 000` | `0,56 ms` | `0,56 ms` | `3 %` | `0,056 µs` |
+| **`102 400`** | **`8,45 ms`** | **`9,01 ms`** | **`51`–`54 %`** | `0,083`–`0,088 µs` |
+| `1 000 000` | `92,53 ms` | `94,63 ms` | `555`–`568 %` | `0,093`–`0,095 µs` |
+
+⭐⭐⭐ **A leitura que decide a W2 é a coluna da DIREITA: o custo por cópia é PLANO.** `0,056` a
+`0,095 µs` sobre um intervalo de `1000×` ⇒ o encode é **linear em `N`**, sem joelho e sem patamar.
+*É exactamente o modelo que a [ADR-0154](../architecture/decisions/0154-motion-shapes-are-live-gpu-vector-not-baked-tiles.md)
+declara por escrito* (*«custo de ENCODE linear no nº de formas × complexidade da forma»*) — e é a
+razão pela qual **nenhuma quantidade de cozimento no dispositivo o cura**: ele não está no cook.
+
+⇒ **o tecto de contagem de uma forma VIVA é medido, e nomeia o recurso** (o encode de CPU, por
+quadro): a um quarto de um quadro de 60 fps cabem **`~47 000`** cópias, e um quadro inteiro são
+**`~190 000`**. Na população do report (`102 400`) o encode sozinho come **metade** do quadro.
+
+⚠️ **E isto NÃO desmente o `39,80 ms` do report de 14/09** (doc 110 §7): aquele número é o
+`cpu-encode` da CENA INTEIRA, e este é o **piso de UMA forma** encodada num `VectorScene` novo.
+*Um piso e um total não se comparam; o que o piso diz é que metade daquele quadro já estava gasta
+antes de o resto da cena ser encodado.*
+
+⛔⛔ **E a W2 tem uma peça que a §5.6 não podia ver, achada a ler o código da ponte:** a marca de
+vector vivo é **por TIPO de nó** (`NodeRegistry::register_live_vector_source`, um conjunto de
+`NodeTypeId`), e a recusa pergunta *«este grafo contém um nó DESSE TIPO?»*. ⇒ um *bake fallback* não
+pode «desligar a marca»: a pergunta da ponte tem de passar de **tipo** para **documento** (*«este
+tique desenha geometria viva?»*). *Uma cura que assa a forma e deixa a pergunta onde está entrega
+uma cena assada que continua a recusar.*
 
 ---
 
@@ -157,15 +185,21 @@ lia **`39,80 ms` de `cpu-encode`** com `4,49` de cozimento, ou seja **`~35 ms` f
 | wave | o que é | porquê nesta ordem |
 |---|---|---|
 | **W0** ✅ | A **auditoria** (§2–§4), com as três sondas versionadas | A frase da fila nomeava **um** nó e a cadeia tem **três** cercas (§2) |
-| **W1** | **A CONTAGEM:** um verbo estrutural para o produto cartesiano (`motion.duplicator` + `motion.clone`), **mais** a partição por textura a sobreviver a ele (§2.1) | É a metade que a [auditoria 98](98_auditoria_de_performance_2026-09-01.md) mede em `50,9×`, e o `motion.clone` é o caso **puro** dela — mede-se sem forma nenhuma no caminho. ⚠️ **A §5.2 mediu a população e ela reordena a wave por dentro:** o `clone` é a BANCADA (`2` cartões no produto) e o `duplicator` é o ENTREGÁVEL (`34`) — as duas metades fecham juntas |
-| **W2** | **A FORMA DESENHÁVEL:** o *bake fallback* do ADR-0154 Fase 3, **se** a escada do §4.3 o justificar | Sem ela a cadeia do report continua 🔴 pela cerca 2 e 3, mesmo com a W1 fechada |
+| **W1(a)** ✅ | **A CONTAGEM** no `motion.clone` — o verbo estrutural, os uniformes derivados e a paridade (§5.5) | É a metade que a [auditoria 98](98_auditoria_de_performance_2026-09-01.md) mede em `50,9×`, e o `clone` é o caso **puro** dela — mede-se sem forma nenhuma no caminho |
+| **W1(b)** ⏸️ | O mesmo verbo no `motion.duplicator`, **mais** a partição por textura a sobreviver a ele (§2.1) | ⛔⛔ **A §5.2 disse *«é o ENTREGÁVEL (34), e as duas metades fecham juntas»* e a §5.6 REFUTOU-O com o número que ela encomendou:** `36` de `36` cartões trazem um vector VIVO, logo a ponte recusa-os uma camada acima e o kernel move **zero**. *Ela volta a ser obrigatória no dia em que a W2 aterrar* |
+| **W2** ⭐ **a SEGUINTE** | **A FORMA DESENHÁVEL:** o *bake fallback* do ADR-0154 Fase 3 — a escada do §4.3 **justifica-o** (`51`–`54 %` de um quadro só de encode a `102 400`, e linear) | Sem ela a cadeia do report continua 🔴 pela cerca 2 e 3 — e a §5.6 mede que ela gateia **`36` de `36`** cartões do carimbo, logo a W1(b) é inerte antes dela |
 | **W3** | A **MEDIÇÃO** do ciclo (passo 5) — a mesma bancada, depois das curas | §0.0 |
 | **W4** | O **smoke do dono** (passo 7) | **Enio** |
 
-⛔ **A ORDEM É W1 ANTES DE W2, e a razão é medida:** a W1 é a única que se pode provar **sem** tocar
-no desenho (o `motion.clone` fecha a cadeia inteira na placa sem uma forma no caminho), e a W2 é uma
-**troca de produto** (nitidez contra contagem) que o ADR-0154 condiciona a uma medição que a W1 não
-precisa de esperar.
+⛔ **A ORDEM ERA W1 ANTES DE W2, e a razão era medida:** a W1 é a única que se pode provar **sem**
+tocar no desenho (o `motion.clone` fecha a cadeia inteira na placa sem uma forma no caminho), e a W2
+é uma **troca de produto** (nitidez contra contagem) que o ADR-0154 condiciona a uma medição que a
+W1 não precisava de esperar.
+
+⚠️⚠️ **Isso continua VERDADE para a W1(a) e ficou FALSO para a W1(b)**, e as duas medições que o
+viraram estão feitas: a §5.6 (`36/36` recusados pela ponte antes de planear) e a §4.3 (a escada do
+encode, que era exactamente a medição a que o ADR condicionava a W2 — e ela justifica-a). ⇒ a ordem
+que fica é **W1(a) → W2 → W1(b)**, e nenhuma das três saiu de uma preferência.
 
 ⚠️ **E nenhuma das duas é «tornar o duplicador mais rápido na CPU»** — o §5.1 da fila já o escreve,
 e a tabela do §2 diz porquê: o que se perde não são os milissegundos do nó, é o **dispositivo

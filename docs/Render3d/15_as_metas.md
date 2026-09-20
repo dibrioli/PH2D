@@ -293,8 +293,11 @@ de cada bola):
 ⭐ O `1,485` é, ao terceiro decimal, o número que a sonda de CPU previu (`1,50`) **antes de haver
 placa** — e a bola cinzenta lê `1,000` nas duas, que é o controlo que dá direito às outras linhas.
 
-⚠️ **O que a imagem NÃO decide** é se a sombra mais funda da direita é o que se quer: a lei de
-sempre levanta os pretos e esta não. Isso é produto, e é do dono.
+⚠️⚠️ **E a «sombra mais funda da direita» tinha CAUSA, não era uma escolha de produto** (medido em
+2026-09-20, §7): esta lei somava ambiente **ZERO**, e com o rig de fábrica — que tem **uma** lâmpada
+acesa de quatro — `25,03 %` da peça saía **preta ao bit**. Hoje ela dobra o mesmo céu que a lei de
+sempre e o barro vivo dobram, derivado do rig, e os pretos são `0,000 %`. *A imagem daquele dia
+comparava uma lei sem ambiente com uma que o tem.*
 
 ### Como o ver no app
 
@@ -306,3 +309,7 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling && \
 Depois: pôr uma imagem no canvas, escolhê-la, esculpir uma peça, e carregar em **`Light the
 Selected Sprite`**. ⚠️ **Sem a variável, tudo fica exactamente como está hoje** — a lei nova shipa
 desligada, e um projecto gravado abre com a aparência com que foi gravado.
+
+⭐ **O que mudou desde a 1.ª corrida dele:** a sombra deixou de ser preta (ela vale agora `AMBIENT`
+da resposta plana, como na lei de sempre) e as **frestas** da peça passaram a escurecer — a cavidade
+e os dois AOs que o objecto assado guarda desde que existe chegam ao pixel pela primeira vez.

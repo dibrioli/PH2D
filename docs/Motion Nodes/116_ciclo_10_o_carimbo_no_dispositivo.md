@@ -271,10 +271,16 @@ tocar no desenho (o `motion.clone` fecha a cadeia inteira na placa sem uma forma
 é uma **troca de produto** (nitidez contra contagem) que o ADR-0154 condiciona a uma medição que a
 W1 não precisava de esperar.
 
-⚠️⚠️ **Isso continua VERDADE para a W1(a) e ficou FALSO para a W1(b)**, e as duas medições que o
-viraram estão feitas: a §5.6 (`36/36` recusados pela ponte antes de planear) e a §4.3 (a escada do
-encode, que era exactamente a medição a que o ADR condicionava a W2 — e ela justifica-a). ⇒ a ordem
-que fica é **W1(a) → W2 → W1(b)**, e nenhuma das três saiu de uma preferência.
+⚠️⚠️ **Isso continua VERDADE para a W1(a) e ficou FALSO para a W1(b)** (a §5.6: `36/36` recusados
+pela ponte antes de planear). ⛔⛔ **E a frase que aqui estava — *«a §4.3 justifica a W2»* — MORREU
+no dia seguinte ao em que foi escrita**, por duas razões independentes: o dono recusou a troca
+(*«manter a nitidez»*) e a mesma §4.3, re-medida, tirou-lhe o motivo (`44 % → ~20 %` do quadro **sem
+assar nada**). *Quem move o número que tornava uma wave necessária tem de reconferir a nota que a
+declarava necessária* (`CLAUDE.md` §0.0).
+
+⇒ a ordem que fica é **W1(a) ✅ → W3 → W4**, e a W1(b) deixa de esperar pela W2: o que a destrava é
+a **pergunta da PONTE** (a marca de vector vivo passar de *tipo* para *documento*), que é uma
+decisão de desenho e não uma wave de bake.
 
 ⚠️ **E nenhuma das duas é «tornar o duplicador mais rápido na CPU»** — o §5.1 da fila já o escreve,
 e a tabela do §2 diz porquê: o que se perde não são os milissegundos do nó, é o **dispositivo

@@ -5,6 +5,7 @@
 //! o congelamento das 160k estrelas.
 
 use ph2d_vec_scene::VecPath;
+use ph2d_vector::scene_prepared::PreparedFill;
 use ph2d_vector::{Affine, Brush, Color, VectorScene};
 
 use crate::{PathTess, build_contours, draw_path_with, fill_rule, path_tess};
@@ -24,7 +25,7 @@ pub fn draw_shape_instance(
     target: &mut VectorScene,
 ) {
     let tess = tessellate_shape_instance(path);
-    draw_shape_instance_tessellated(path, &tess, transform, tint, target);
+    draw_shape_instance_tessellated(path, &tess, None, transform, tint, target);
 }
 
 /// A [`PathTess`] de uma instância de Motion — a metade CARA de [`draw_shape_instance`], separada
@@ -72,6 +73,7 @@ pub(crate) fn tessellate_shape_instance(path: &VecPath) -> PathTess {
 pub(crate) fn draw_shape_instance_tessellated(
     path: &VecPath,
     tess: &PathTess,
+    prep: Option<&PreparedFill>,
     transform: Affine,
     tint: [f32; 4],
     target: &mut VectorScene,
@@ -88,14 +90,22 @@ pub(crate) fn draw_shape_instance_tessellated(
         // de uma camada é indexada pelo id da FORMA — a mesma lei do ladrilho e do pincel.
         draw_path_with(path, tess, transform, target, crate::Derived::NONE);
     } else {
-        let fill_bp = tess
-            .fill_bp
-            .as_ref()
-            .expect("primitivo => fill_bp construido");
         let brush = Brush::Solid(Color::new(tint));
-        target
-            .inner_mut()
-            .fill(fill_rule(path), transform, &brush, None, fill_bp);
+        if let Some(prep) = prep {
+            // ⭐ O caminho já está encodado: esta cópia paga a pose, o estilo e a tinta, e o
+            // caminho é um `extend_from_slice`. **Byte-idêntico** ao ramo de baixo — a prova é o
+            // `o_carimbo_preparado_escreve_os_mesmos_bytes` da `ph2d-vector`, que compara os seis
+            // fluxos do Vello e os dois contadores.
+            target.fill_prepared(prep, transform, &brush);
+        } else {
+            let fill_bp = tess
+                .fill_bp
+                .as_ref()
+                .expect("primitivo => fill_bp construido");
+            target
+                .inner_mut()
+                .fill(fill_rule(path), transform, &brush, None, fill_bp);
+        }
         // ⚠️ **O traço vem DEPOIS, e não em vez do preenchimento** (medido 2026-08-21). Um
         // primitivo com `stroke_width > 0` ia pela rota do DOCUMENTO, que só preenche quando
         // `path.fill.is_some()` — e um primitivo tem `fill: None` de propósito, porque a cor
@@ -123,16 +133,55 @@ pub fn draw_shared_instances<'p>(
     resolve: impl Fn(u32) -> Option<&'p VecPath>,
     target: &mut VectorScene,
 ) {
-    let mut cache: std::collections::BTreeMap<u32, PathTess> = std::collections::BTreeMap::new();
+    let mut cache: std::collections::BTreeMap<u32, (PathTess, Option<PreparedFill>)> =
+        std::collections::BTreeMap::new();
     for (handle, transform, tint) in instances {
         let Some(path) = resolve(handle) else {
             continue; // handle sem geometria (um cook adiantado) desenha nada
         };
-        let tess = cache
-            .entry(handle)
-            .or_insert_with(|| tessellate_shape_instance(path));
-        draw_shape_instance_tessellated(path, tess, transform, tint, target);
+        let (tess, prep) = cache.entry(handle).or_insert_with(|| {
+            let tess = tessellate_shape_instance(path);
+            let prep = prepare_primitive(path, &tess);
+            (tess, prep)
+        });
+        draw_shape_instance_tessellated(path, tess, prep.as_ref(), transform, tint, target);
     }
+}
+
+/// **A forma de um PRIMITIVO, encodada uma vez** — `None` para tudo o resto.
+///
+/// ⭐⭐ O que decide é a mesma pergunta que o [`draw_shape_instance_tessellated`] faz: um
+/// vetor-DOCUMENTO (`path.fill.is_some()`) honra a tinta autorada dele e pode levar gradiente,
+/// padrão ou dilatação — nada disso é *«uma cor por cópia»*, e por isso ele fica no ramo de sempre.
+/// Um PRIMITIVO é uma silhueta preenchida com o `tint` da instância, que é exactamente a forma que
+/// esta porta serve.
+///
+/// ⚠️ **O traço NÃO entra aqui** e continua pela porta única dele: a economia é do preenchimento,
+/// que é o que `N` cópias repetem. *Um traço por cópia é raro no carimbo, e assá-lo obrigaria a
+/// preparar também a expansão da caneta — outra wave, e sem medição que a peça.*
+fn prepare_primitive(path: &VecPath, tess: &PathTess) -> Option<PreparedFill> {
+    if path.fill.is_some() || !carimbo_preparado() {
+        return None;
+    }
+    tess.fill_bp
+        .as_ref()
+        .map(|bp| PreparedFill::new(bp, fill_rule(path)))
+}
+
+/// **A porta de bissecção do carimbo preparado** — `PH2D_CARIMBO_PREPARADO=0` devolve o caminho
+/// antigo (um `Scene::fill` por cópia).
+///
+/// ⚠️ **Lida UMA vez, e só aqui.** A lei desta casa é que *um gate que lê o ambiente mede a
+/// máquina* — por isso o gate da igualdade em bytes
+/// (`ph2d-vector`, `o_carimbo_preparado_escreve_os_mesmos_bytes`) entra pela porta
+/// [`ph2d_vector::VectorScene::fill_prepared`] **directamente** e não passa por aqui: ele afirma a
+/// LEI, e esta variável só escolhe a ROTA.
+///
+/// ⭐ Ela existe porque as duas rotas são **byte-idênticas**: sem isso não haveria nada para
+/// bissectar — haveria dois produtos.
+fn carimbo_preparado() -> bool {
+    static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *LIGADO.get_or_init(|| std::env::var("PH2D_CARIMBO_PREPARADO").as_deref() != Ok("0"))
 }
 
 #[cfg(test)]

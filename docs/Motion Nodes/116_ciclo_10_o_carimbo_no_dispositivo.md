@@ -142,34 +142,75 @@ Da [`ph2d-node-motion-duplicator`](../../crates/ph2d-node-motion-duplicator/src/
 **duas** portas em vez de uma e com as linhas a virem de uma divisão em vez de uma coluna escrita
 por um kernel.
 
-### §4.3 — ✅ O RELÓGIO: a escada do encode, tirada com a máquina CALMA
+### §4.3 — ✅ O RELÓGIO: a escada do encode — e a CURA, que custa ZERO nitidez
 
-A sonda `audit_the_stamp_encode_cost` mede o que `N` cópias da mesma estrela custam a encodar pela
-**porta do produto** (`draw_shared_instances`, `--release`, mínimo de três por linha). Ela **é** um
-relógio, logo a tabela só vale com o `loadavg` ao lado (`CLAUDE.md` §5.0) — **duas** corridas
-independentes, as duas abaixo do limiar:
+⛔⛔ **A 1.ª redacção desta secção media OUTRO PROGRAMA, e o número dela está corrigido em baixo.**
+A sonda construía uma `VectorScene::new()` por medição; a shell **reaproveita** a cena de um quadro
+para o seguinte (`fase_frame_open.rs`: `vector_scene.reset()`) e o `reset` do Vello limpa os fluxos
+**mantendo a capacidade** ⇒ um quadro em regime **não paga o crescimento dos buffers**, e a sonda
+pagava-o em toda leitura. *É a mesma família do sucedâneo que a `line/components` registou — «uma
+sonda que mede um sucedâneo para sempre mede outro programa» —, e ela mordeu aqui.* A `10⁶` cópias
+a diferença é de `93,7` (frio) para `56,2 ms` (quente); a `102 400` é de `10,0` para `5,66`.
 
-| cópias | encode (`load 4,31`) | encode (`load 3,57`) | % de um quadro | por cópia |
+⚠️ **E as três sondas de relógio deste ficheiro mediam-se UMAS ÀS OUTRAS**: o `libtest` corre os
+testes de um binário em paralelo, e a mesma célula leu `9,79`, `11,89` e `23,39 ms` nas três da
+MESMA corrida (`2,4×` que não é lei nenhuma). Hoje há uma **fatia** (`Mutex`) que cada sonda toma —
+⛔ a cura não podia ser pedir `--test-threads=1` no cabeçalho, que é a nota que o `CLAUDE.md` §2
+mede a morrer.
+
+#### A cura: **a forma é encodada UMA vez e CARIMBADA `N` vezes**
+
+⭐⭐⭐ **A ordem do dono (2026-09-20) foi «manter a nitidez e ir procurar uma cura que não a custe»**,
+depois de RECUSAR assar a forma numa imagem acima de um tecto. Ela existe, e é exacta.
+
+⭐ **A lei que a torna possível:** no Vello a pose de uma forma **não entra no caminho** — o
+`Scene::fill` escreve a transformação num fluxo, o estilo noutro, o caminho em mais dois e o pincel
+noutros dois. ⇒ *os bytes do caminho são os mesmos para todas as cópias*, e o que muda por cópia é
+a **pose** e a **cor**. A porta nova
+([`ph2d_vector::scene_prepared`](../../crates/ph2d-vector/src/scene_prepared.rs)) guarda os bytes do
+caminho e reproduz o `Scene::fill` passo a passo — `encode_transform` · `encode_fill_style` · o
+caminho · `encode_brush` —, só que o terceiro passo é um `extend_from_slice` em vez de um percurso
+elemento a elemento.
+
+⭐⭐ **A prova não é esse parágrafo: é o gate.** `o_carimbo_preparado_escreve_os_MESMOS_bytes`
+encoda `N` cópias pelas duas rotas — **com uma tinta diferente em cada cópia** — e compara os
+**seis** fluxos do Vello mais os dois contadores, em três formas e nas duas regras de
+preenchimento. *Um desvio de um byte num fluxo do Vello não devolve erro nenhum: devolve outro
+desenho, e num quadro de `102 400` cópias ninguém o vê a olho.* **7 de 7 mutações sangram.**
+
+⇒ **nitidez: ZERO de custo.** Não há bake, não há tecto, não há resolução: é o MESMO vector, com os
+MESMOS bytes, encodado mais depressa.
+
+| cópias | `fill` por cópia (o de antes) | carimbo PREPARADO | % de um quadro | razão |
 |---:|---:|---:|---:|---:|
-| `1 000` | `0,11 ms` | `0,06 ms` | `~0,5 %` | *(ruído)* |
-| `10 000` | `0,56 ms` | `0,56 ms` | `3 %` | `0,056 µs` |
-| **`102 400`** | **`8,45 ms`** | **`9,01 ms`** | **`51`–`54 %`** | `0,083`–`0,088 µs` |
-| `1 000 000` | `92,53 ms` | `94,63 ms` | `555`–`568 %` | `0,093`–`0,095 µs` |
+| `1 000` | `0,05 ms` | `0,02`–`0,03 ms` | `~0 %` | `~2×` |
+| `10 000` | `0,55 ms` | `0,17 ms` | `1 %` | `3,2×` |
+| **`102 400`** | **`5,66 ms`** | **`1,76 ms`** | **`34 % → 11 %`** | **`3,2×`** |
+| `1 000 000` | `56,2 ms` | `17,4 ms` | `337 % → 104 %` | `3,2×` |
 
-⭐⭐⭐ **A leitura que decide a W2 é a coluna da DIREITA: o custo por cópia é PLANO.** `0,056` a
-`0,095 µs` sobre um intervalo de `1000×` ⇒ o encode é **linear em `N`**, sem joelho e sem patamar.
-*É exactamente o modelo que a [ADR-0154](../architecture/decisions/0154-motion-shapes-are-live-gpu-vector-not-baked-tiles.md)
-declara por escrito* (*«custo de ENCODE linear no nº de formas × complexidade da forma»*) — e é a
-razão pela qual **nenhuma quantidade de cozimento no dispositivo o cura**: ele não está no cook.
+*(`--release`, quadro QUENTE, mínimo de três por linha, duas corridas independentes com `73`–`85 %`
+de CPU ociosa; `PH2D_CARIMBO_PREPARADO=0` devolve a coluna da esquerda — as duas rotas são
+byte-idênticas, logo a diferença entre as colunas é **só** relógio.)*
 
-⇒ **o tecto de contagem de uma forma VIVA é medido, e nomeia o recurso** (o encode de CPU, por
-quadro): a um quarto de um quadro de 60 fps cabem **`~47 000`** cópias, e um quadro inteiro são
-**`~190 000`**. Na população do report (`102 400`) o encode sozinho come **metade** do quadro.
+⭐⭐⭐ **O custo por cópia é PLANO e passou de `0,055` para `0,017 µs`** sobre um intervalo de
+`1000×` ⇒ o encode continua **linear em `N`**, como a
+[ADR-0154](../architecture/decisions/0154-motion-shapes-are-live-gpu-vector-not-baked-tiles.md)
+declara — o que mudou foi a constante. ⇒ **o tecto de contagem de uma forma VIVA subiu `3,2×`**: a
+um quarto de um quadro de 60 fps cabiam `~76 000` cópias e cabem **`~245 000`**; num quadro inteiro
+cabiam `~303 000` e cabem **`~980 000`**.
 
-⚠️ **E isto NÃO desmente o `39,80 ms` do report de 14/09** (doc 110 §7): aquele número é o
-`cpu-encode` da CENA INTEIRA, e este é o **piso de UMA forma** encodada num `VectorScene` novo.
-*Um piso e um total não se comparam; o que o piso diz é que metade daquele quadro já estava gasta
-antes de o resto da cena ser encodado.*
+⛔⛔ **RECUSA MEDIDA — o `Scene::append` de um fragmento NÃO é a cura.** Foi a 1.ª candidata (ela
+lia `4,1×` contra a rota de então, e foi ela que abriu a investigação). Contra o carimbo preparado
+ela lê `1,10×` a `102 400` e **PERDE** a `10⁶` (`26,7` contra `18,3 ms`) — e um fragmento carrega o
+`brush` **ASSADO**, logo só serve cópias da MESMA cor. *Duas razões independentes, e qualquer uma
+chega.* A sonda `audit_the_stamp_encode_routes` fica, para a recusa ser uma medição e não uma
+opinião.
+
+⚠️ **E o que NENHUMA destas colunas mede é a PLACA.** A lei já estava escrita no
+`motion_custo_do_quadro_probe`: *se o encode for barato, o que sobra é a placa, e o que a governa
+não é o número de formas — é quantos PIXEIS elas cobrem*. A `102 400` cópias minúsculas o encode
+era metade do orçamento e passou a um nono; quem quiser o degrau seguinte mede a rasterização, não
+o encode.
 
 ⛔⛔ **E a W2 tem uma peça que a §5.6 não podia ver, achada a ler o código da ponte:** a marca de
 vector vivo é **por TIPO de nó** (`NodeRegistry::register_live_vector_source`, um conjunto de
@@ -187,7 +228,7 @@ uma cena assada que continua a recusar.*
 | **W0** ✅ | A **auditoria** (§2–§4), com as três sondas versionadas | A frase da fila nomeava **um** nó e a cadeia tem **três** cercas (§2) |
 | **W1(a)** ✅ | **A CONTAGEM** no `motion.clone` — o verbo estrutural, os uniformes derivados e a paridade (§5.5) | É a metade que a [auditoria 98](98_auditoria_de_performance_2026-09-01.md) mede em `50,9×`, e o `clone` é o caso **puro** dela — mede-se sem forma nenhuma no caminho |
 | **W1(b)** ⏸️ | O mesmo verbo no `motion.duplicator`, **mais** a partição por textura a sobreviver a ele (§2.1) | ⛔⛔ **A §5.2 disse *«é o ENTREGÁVEL (34), e as duas metades fecham juntas»* e a §5.6 REFUTOU-O com o número que ela encomendou:** `36` de `36` cartões trazem um vector VIVO, logo a ponte recusa-os uma camada acima e o kernel move **zero**. *Ela volta a ser obrigatória no dia em que a W2 aterrar* |
-| **W2** ⭐ **a SEGUINTE** | **A FORMA DESENHÁVEL:** o *bake fallback* do ADR-0154 Fase 3 — a escada do §4.3 **justifica-o** (`51`–`54 %` de um quadro só de encode a `102 400`, e linear) | Sem ela a cadeia do report continua 🔴 pela cerca 2 e 3 — e a §5.6 mede que ela gateia **`36` de `36`** cartões do carimbo, logo a W1(b) é inerte antes dela |
+| **W2** ⛔ **RETIRADA** | **A FORMA DESENHÁVEL:** o *bake fallback* do ADR-0154 Fase 3. ⛔ O dono **RECUSOU-O** em 2026-09-20 (*«manter a nitidez»*), e a §4.3 tirou-lhe o motivo: o encode a `102 400` passou de `34 %` de um quadro para **`11 %`** sem assar nada e com os bytes idênticos | O que a justificava era o relógio, e ele mudou. ⇒ o que fica é a **cerca** que ela ia atravessar, e essa é uma pergunta de PONTE (de *tipo* para *documento*), não de bake |
 | **W3** | A **MEDIÇÃO** do ciclo (passo 5) — a mesma bancada, depois das curas | §0.0 |
 | **W4** | O **smoke do dono** (passo 7) | **Enio** |
 
@@ -589,8 +630,9 @@ hoje ship.*
 
 ⭐⭐⭐ **E é isto que nomeia a população verdadeira deste ciclo: ela não está nas cenas — está nos
 DOCUMENTOS DO DONO.** Os dois reports são sobre grafos que ele montou (*«1000 × 1000 no grid»* =
-`10⁶`; a estrela a `102 400`), e a escada do §4.3 diz exactamente o que isso custa (`92,5 ms` e
-`8,45 ms` **só de encode**). As cenas de demonstração nunca foram lentas.
+`10⁶`; a estrela a `102 400`), e a escada do §4.3 diz exactamente o que isso custa — hoje `17,4` e
+**`1,76 ms`** de encode, contra os `56,2` e `5,66` de antes do carimbo preparado. As cenas de
+demonstração nunca foram lentas.
 
 ⚠️⚠️ **Três medições seguidas disseram a mesma coisa por eixos diferentes, e é essa a lição da
 jornada:** a §5.2 mediu a população do NÓ (`2` contra `34`), a §5.6 a da CADEIA (`36/36` recusados

@@ -15,11 +15,30 @@
 //! família do sucedâneo que a `line/components` registou (*«uma sonda que mede um sucedâneo para
 //! sempre mede outro programa»*), e ela mordeu aqui — a escada de 2026-09-20 saiu **fria**.
 //!
+//! ⭐⭐ **A escada corre-se DUAS vezes, e é assim que ela bissecta** — o carimbo preparado
+//! (`ph2d_vector::VectorScene::fill_prepared`) é o caminho de omissão desde 2026-09-20, e
+//! `PH2D_CARIMBO_PREPARADO=0` devolve o de antes (um `Scene::fill` por cópia). As duas rotas são
+//! **byte-idênticas** (gate `o_carimbo_preparado_escreve_os_mesmos_bytes`, na `ph2d-vector`), logo
+//! a diferença entre as duas colunas é **só** relógio.
+//!
 //! À mão, em RELEASE e com a máquina calma:
 //!
 //! ```text
 //! cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture audit_the_stamp_encode
+//! env PH2D_CARIMBO_PREPARADO=0 cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture audit_the_stamp_encode_cost
 //! ```
+//!
+//! ## A tabela de 2026-09-20 (`--release`, quadro QUENTE, `73`–`85 %` de CPU ociosa)
+//!
+//! | cópias | `fill` por cópia | carimbo PREPARADO | razão |
+//! |---:|---:|---:|---:|
+//! | `1 000` | `0,05 ms` | `0,02`–`0,03 ms` | `~2×` |
+//! | `10 000` | `0,55 ms` | `0,17 ms` | `3,2×` |
+//! | **`102 400`** | **`5,66 ms`** (`34 %` de um quadro) | **`1,76 ms`** (`11 %`) | **`3,2×`** |
+//! | `1 000 000` | `56,2 ms` | `17,4 ms` | `3,2×` |
+//!
+//! ⇒ por cópia, `0,055 µs` → **`0,017 µs`**, PLANO sobre um intervalo de `1000×`. A um quarto de um
+//! quadro de 60 fps cabiam `~76 000` cópias e cabem **`~245 000`**.
 
 /// ⛔⛔ **A FATIA — as sondas deste ficheiro NÃO podem correr ao mesmo tempo.**
 ///
@@ -115,8 +134,11 @@ fn melhor_frio(rep: u32, mut encoda: impl FnMut(&mut ph2d_vector::VectorScene)) 
     melhor
 }
 
-/// A rota de HOJE: `N` chamadas a `Scene::fill`, pela porta de lote do produto.
-fn rota_fill(caminho: &ph2d_vec_scene::VecPath, n: usize, cena: &mut ph2d_vector::VectorScene) {
+/// **A porta de lote do PRODUTO** — e o que ela faz por dentro segue a bissecção: com
+/// `PH2D_CARIMBO_PREPARADO=0` é um `Scene::fill` por cópia (o de antes de 2026-09-20), sem ela é o
+/// carimbo preparado. *É de propósito que esta função não escolhe: uma sonda que contorne a porta
+/// do produto mede outro programa.*
+fn rota_produto(caminho: &ph2d_vec_scene::VecPath, n: usize, cena: &mut ph2d_vector::VectorScene) {
     ph2d_vec_render::draw_shared_instances(
         (0..n).map(|i| (1u32, pose(i), [1.0, 1.0, 1.0, 1.0])),
         |_| Some(caminho),
@@ -162,8 +184,8 @@ fn audit_the_stamp_encode_cost() {
     eprintln!("     cópias |  FRIO (cena nova) |  QUENTE (o produto) |  % quadro |  por cópia");
     eprintln!("  ----------|-------------------|---------------------|-----------|-----------");
     for n in [1_000usize, 10_000, 102_400, 1_000_000] {
-        let frio = melhor_frio(3, |c| rota_fill(&caminho, n, c));
-        let quente = melhor_quente(3, |c| rota_fill(&caminho, n, c));
+        let frio = melhor_frio(3, |c| rota_produto(&caminho, n, c));
+        let quente = melhor_quente(3, |c| rota_produto(&caminho, n, c));
         #[expect(clippy::cast_precision_loss, reason = "uma contagem de cena")]
         let por = quente * 1e3 / n as f64;
         eprintln!(
@@ -178,10 +200,14 @@ fn audit_the_stamp_encode_cost() {
 /// (*«manter a nitidez e ir procurar uma cura que não a custe»*), depois de RECUSAR assar a forma
 /// numa imagem acima de um tecto.
 ///
-/// ⚠️ **Isto mede o TECTO do prémio, não a cura.** Um fragmento carrega o `brush` ASSADO, logo esta
-/// rota, tal como está aqui, só serve cópias da MESMA cor — a pergunta da tinta vem depois, e só
-/// vale a pena fazê-la se esta coluna ganhar. *Medir o tecto antes de desenhar a cura é o que
-/// impede uma wave inteira sobre um ganho que não existe.*
+/// ⛔⛔ **RECUSA MEDIDA (2026-09-20): o fragmento do Vello NÃO é a cura.** Ele foi a 1.ª candidata
+/// e mediu-se contra a rota de então (um `Scene::fill` por cópia) a `4,1×` — o que abriu a
+/// investigação. Contra o carimbo **preparado** que dela saiu, ele lê `1,10×` a `102 400` e
+/// **PERDE** a `10⁶` (`26,7` contra `18,3 ms`) — e, pior, um fragmento carrega o `brush` **ASSADO**,
+/// logo ele só serve cópias da MESMA cor. *Duas razões independentes, e qualquer uma delas chega.*
+///
+/// ⭐ **A sonda FICA**, porque é ela que torna a recusa uma medição e não uma opinião: quem voltar a
+/// propor o `Scene::append` corre-a e vê o número.
 ///
 /// ⚠️ **E o que nenhuma das duas colunas mede é a PLACA.** O
 /// [`crate::motion_custo_do_quadro_probe`] já escreve a lei: *se o encode for barato, o que sobra é
@@ -192,13 +218,13 @@ fn audit_the_stamp_encode_routes() {
     let _fatia = fatia();
     let caminho = estrela(5.0);
     eprintln!(
-        "\n  ═══ `fill` POR CÓPIA contra `append` DE UM FRAGMENTO — quadro QUENTE (load {}) ═══\n",
+        "\n  ═══ A PORTA DO PRODUTO contra o `append` DE UM FRAGMENTO — QUENTE (load {}) ═══\n",
         carga()
     );
-    eprintln!("     cópias |      fill |    append |  por cópia |  razão");
+    eprintln!("     cópias |  produto |    append |  por cópia |  razão");
     eprintln!("  ----------|-----------|-----------|------------|-------");
     for n in [10_000usize, 102_400, 1_000_000] {
-        let a = melhor_quente(3, |c| rota_fill(&caminho, n, c));
+        let a = melhor_quente(3, |c| rota_produto(&caminho, n, c));
         let b = melhor_quente(3, |c| rota_append(&caminho, n, c));
         #[expect(clippy::cast_precision_loss, reason = "uma contagem de cena")]
         let por = b * 1e3 / n as f64;
@@ -242,7 +268,7 @@ fn audit_the_stamp_encode_split() {
     for pontas in [3.0f64, 5.0, 10.0, 20.0] {
         let caminho = estrela(pontas);
         let segs = segmentos(&caminho);
-        let a = melhor_quente(3, |c| rota_fill(&caminho, N, c));
+        let a = melhor_quente(3, |c| rota_produto(&caminho, N, c));
         let b = melhor_quente(3, |c| rota_append(&caminho, N, c));
         #[expect(clippy::cast_precision_loss, reason = "uma contagem de cena")]
         let (pa, pb) = (a * 1e3 / N as f64, b * 1e3 / N as f64);

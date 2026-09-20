@@ -21,6 +21,8 @@
 //! Linebender package.
 
 pub mod scene;
+/// A porta do carimbo — uma forma encodada UMA vez, carimbada `N` vezes.
+pub mod scene_prepared;
 pub mod vector_network;
 
 #[cfg(test)]

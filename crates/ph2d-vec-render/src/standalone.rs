@@ -30,7 +30,14 @@ use super::*;
 /// PARECE (um caminho) é a regra; o crispo desta mesma forma passa por aqui.*
 pub fn draw_path_standalone(path: &VecPath, transform: Affine, target: &mut VectorScene) {
     let tess = instance::tessellate_shape_instance(path);
-    instance::draw_shape_instance_tessellated(path, &tess, transform, [1.0, 1.0, 1.0, 1.0], target);
+    instance::draw_shape_instance_tessellated(
+        path,
+        &tess,
+        None,
+        transform,
+        [1.0, 1.0, 1.0, 1.0],
+        target,
+    );
 }
 
 /// O transbordo do traço sobre a caixa do fill — extraído junto com [`path_bounds_under`].

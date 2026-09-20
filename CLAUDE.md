@@ -1347,6 +1347,25 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   o `FILE_OVERAGE_OK` está **vazio**) e o `trace.rs` fica com **uma** linha de margem, nomeada no
   §25.7. ⚠️ **E o relógio desta wave NÃO foi medido** — ela entra na tabela da `W9`. Mutação
   **6 de 6**.
+  ⛔⛔⛔ **E A LINHA FECHOU COM UM GATE VERMELHO, por ORDEM DO DONO** (20/09, *«2»*: fundir com a
+  dívida nomeada e tratá-la na `W9`): o `com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento`
+  lê **`10` de `22`** cenas nítidas em movimento contra **`15` de `18`** no `main`. ⚠️ Ele é
+  `#[ignore]` ⇒ **o CI não o corre e o `ship.sh` também não** — só aparece a quem corra a bateria de
+  GPU, e foi o **fecho** que o apanhou. ⭐⭐ **O achado é UMA cena e a assinatura é a INVARIÂNCIA À
+  CARGA:** a `=30` custa `96`–`98 ms` a `68 %`, `2 %` e `14 %` de CPU ociosa (contra `13,45` no main,
+  e ainda por cima com o divisor em `3` — **um nono dos píxeis**), com a peça **idêntica** dos dois
+  lados ao pormenor (`308 instr` · `190,9 passos/acerto`) ⇒ *o que ficou caro é o DESENHO*. ⛔ **Cinco
+  suspeitos ELIMINADOS** (sondas · curvatura · subsuperfície · borda mole · brilho — todos atrás de
+  guardas que os valores de fábrica não abrem), e a hipótese que fica tem **contradição à vista**: a
+  cena `28`, com o DOBRO dos passos por acerto, **melhorou**. ⚠️⚠️ **E o gate reprova por DUAS contas
+  somadas** — a cena **e** o denominador ter subido de `18` para `22` com as cenas novas das waves;
+  *acrescentar uma cena cara a um gate que mede uma FRACÇÃO baixa-a sem que nada tenha regredido*.
+  ⛔⛔ **E DOIS erros de MÉTODO foram pagos a medir isto, os dois registados:** partilhar o
+  `CARGO_TARGET_DIR` entre worktrees **troca os `.rlib`** e a 1.ª leitura deu **`6,5×` onde o limpo
+  dá `1,4×`** (eu reportei um alarme que era meu); e este gate é tão sensível à carga que a MESMA
+  árvore deu `10`, `9` e `6` — *meça a ociosidade real, o `loadavg` mente a decair*.
+  [Handoff §10](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_A_LINHA_2026-09-20.md) ·
+  [plano `W9`](docs/Render3d/03_o_plano.md)
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

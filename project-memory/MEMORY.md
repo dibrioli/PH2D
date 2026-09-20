@@ -72,6 +72,7 @@
 - [CI corre 26 de 313 membros](project_ci_runs_26_of_313_workspace_members.md) · [`field-eval` custa 55 min da suíte em DEBUG](reference_one_field_eval_test_costs_55_minutes_of_the_debug_suite.md)
 - ⛔ [`--bins` NÃO alcança `tests/`](feedback_a_bins_run_never_reaches_the_gates_that_live_in_tests.md) · [e o `cargo-check-narrow.sh` é cego aos `tests/it/`](feedback_the_inner_loop_check_script_is_blind_to_its_own_integration_tests.md)
 - ⛔ [um `tail` é uma JANELA, não um veredito](feedback_a_tail_is_a_window_not_a_verdict.md)
+- ⛔⛔⛔ [Partilhar `CARGO_TARGET_DIR` entre worktrees TROCA os `.rlib` — o erro acusa o código, e a medição que se fez antes de perceber vale ZERO (li `6,5×` onde era `1,4×`)](feedback_sharing_a_target_dir_between_worktrees_corrupts_the_build.md)
 - ⛔⛔ [Vigia `until ! pgrep -f <padrão>` NUNCA termina (auto-apanha-se) e o `pkill` mata o próprio shell — espere pelo **PID**](feedback_a_pgrep_watcher_catches_its_own_shell.md)
 - [Flakes de carga: o discriminador é o FAN-OUT, não o relógio](reference_flip_fit_cache_ratio_is_a_load_flake.md)
 - [CI corre 26 de 313 membros — «suíte verde» ≠ «CI verde»](project_ci_runs_26_of_313_workspace_members.md)

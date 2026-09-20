@@ -215,6 +215,32 @@ report em que aprovou o smoke do chão colorido, e a ordem é o que decide a pos
   gateada no dia em que houver duas.
 - **Smoke:** a mesma cena, o mesmo gesto, com o número do quadro à vista antes e depois.
 
+### ⛔⛔⛔ A `W9` COMEÇA COM UM VERMELHO JÁ MEDIDO — e ele é a primeira coisa a resolver
+
+**Ordem do dono, 2026-09-20:** a `line/3DModeling` fechou com o
+`preview::device_tests::com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento` **VERMELHO**, e
+ele mandou **fundir com a dívida nomeada e tratá-la aqui** (*«2»*).
+
+| | `main` | a linha |
+|---|---|---|
+| cenas nítidas em movimento | `15` de `18` | **`10` de `22`** |
+| cena `30` | `13,45 ms` (divisor `1`) | **`96`–`98 ms`** (divisor `3`) |
+
+⭐ **A cena `30` é o achado e a assinatura é a INVARIÂNCIA À CARGA** (`96`–`98 ms` a `68 %`, `2 %` e
+`14 %` de CPU ociosa) — custo real, não contenção. A peça é a mesma dos dois lados ao pormenor
+(`308 instr` · `190,9 passos/acerto`) ⇒ *o que ficou caro é o DESENHO*.
+
+⛔ **CINCO suspeitos já estão ELIMINADOS** (as sondas, a curvatura, a subsuperfície, a borda mole e
+o brilho — todos atrás de guardas que os valores de fábrica não abrem), e a hipótese que fica tem
+uma **contradição à vista**: se fosse o tamanho do shader a baixar a ocupação, a cena `28` (com o
+DOBRO dos passos por acerto) devia sofrer mais — e ela **melhorou**.
+
+⚠️⚠️ **E o gate reprova por DUAS contas somadas:** a cena `30` **e** o denominador ter crescido de
+`18` para `22` com as cenas novas das waves. *Separe-as antes de perseguir a primeira.*
+
+⇒ Tudo, com o método de medição que evita os dois erros que esta medição já pagou:
+[`HANDOFF …_A_LINHA_2026-09-20` §10](../3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_A_LINHA_2026-09-20.md).
+
 ## W10 — ✅ O GÉMEO DO AMACIAMENTO NO DISPOSITIVO — **FECHADA em 2026-09-19**
 
 > Ele adiou-a de manhã (*«coloque a possibilidade de melhoramento na fila mais no fim»*) e **trouxe-a

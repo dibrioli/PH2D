@@ -8,6 +8,21 @@
 >
 > ⛔ **O smoke foi APROVADO pelo dono** (a W10, 2026-09-20). Integrar e shipar continuam a ser
 > ordem explícita dele (`CLAUDE.md` §0.7).
+>
+> ---
+>
+> # ⛔⛔⛔ LEIA ISTO ANTES DE FUNDIR: esta linha traz UM GATE VERMELHO, por ORDEM DO DONO
+>
+> **`preview::device_tests::com_o_dispositivo_a_maioria_das_cenas_e_nitida_em_movimento`
+> REPROVA** (`10` de `22` cenas nítidas contra `15` de `18` no `main`). Ele é `#[ignore]`, logo
+> **o CI não o corre** e o `ship.sh` também não — ele só aparece a quem corra a bateria de GPU.
+>
+> ⭐ **NÃO é flake e NÃO é o gate:** medido `3` de `3` em máquina ociosa, e a asserção dele não foi
+> tocada por esta linha. A §10 tem a medição inteira, dos dois lados, com target limpo.
+>
+> ⭐⭐ **DECISÃO DO DONO, 2026-09-20, com o número na mesa:** *«2»* — **fundir com a dívida nomeada
+> e tratá-la na [`W9`](../../Render3d/03_o_plano.md)**, que é a wave de performance que ele próprio
+> pôs no fim da fila. ⇒ *o integrador funde isto sabendo, e não pára nele.*
 
 ---
 
@@ -199,7 +214,7 @@ Tudo abaixo **na árvore já rebaseada**.
 | gates de GPU da `W10` | ✅ `as_duas_colunas_da_banda_leem_o_mesmo` (`1,00` / `1,00`) · `a_borda_mole_da_sombra_e_a_mesma_nos_dois_motores` (`100,000 %`, pior byte `1`) · `o_gemeo_da_borda_mole_esta_ligado_no_dispositivo` · `o_material_do_dispositivo_e_o_da_cpu` |
 | prova de mutação da `W10` | ✅ **6 de 6** sangram, com controlo verde |
 | `nextest-impacted.sh` (BASE=main) | ✅ **15 118 testes, 15 118 passados, zero falhas** (108,6 s; 12 061 saltados) |
-| bateria `--ignored` de GPU do `ph2d-app-field3d` | ver §6.2 |
+| bateria `--ignored` de GPU do `ph2d-app-field3d` (só os GATES) | ⚠️ **`91` passados · `1` falhado** — o falhado é o da §10, e é o único |
 
 ### 6.1 — ⚠️ A flake de carga que esta linha encontrou (e NÃO é dela)
 
@@ -211,11 +226,33 @@ sozinho, com o `/proc/loadavg` impresso ao lado.
 
 ### 6.2 — ⏳ O que ainda não tem veredito quando este doc foi escrito
 
-- **A bateria `--ignored` de GPU do `ph2d-app-field3d`** (130 gates, um de cada vez): a primeira
-  tentativa deu `55` verdes / `0` vermelhos e foi **morta pelo prazo**, e ⚠️⚠️ **o comando ainda
-  saiu com código `0`** — a secção do pacote simplesmente não tem linha `test result:`. *Silêncio a
-  ler-se como sucesso.* ⇒ **quem integrar corre-a na árvore fundida**, com `PH2D_PRAZO ≥ 3600` e a
-  saída CRUA para ficheiro (sem `grep | head`, que bufferiza e esconde o progresso).
+### ⛔⛔ A bateria `--ignored` desta crate NÃO cabe numa hora, e a razão está MEDIDA
+
+**`125` ignorados, e `42` deles são SONDAS** (`mede_*` · `sonda_*` · `audita_*` · `measure_*`) —
+impressoras de tabela que não afirmam nada. Os **`83`** restantes são os gates.
+
+⛔ **Uma única sonda come a hora:** a `preview::device_probes::mede_o_preco_de_uma_aresta_de_perfil`
+varre **nove** pontos até `768` arestas, e o custo cresce super-linearmente. Duas corridas da
+bateria completa morreram no prazo exactamente nela (`55` verdes, `0` vermelhos, as duas).
+
+⚠️⚠️ **E ela NÃO está pendurada — está a trabalhar**, o que é a conclusão oposta à que o sintoma
+sugere. Medido pelo método que o próprio `ph2d-run.sh` prescreve (ler `utime+stime` de
+`/proc/<pid>/stat` **duas** vezes): `465 → 2 759 → 4 852 → 7 489` tiques, com a GPU a **`92 %`** e a
+tabela a sair linha a linha. *O doc-comment dela já regista um pendura REAL a `1 024` arestas em
+2026-09-15 — e é por isso que o topo é `768`; o que se vê agora é custo, não aquele defeito.*
+
+⇒ **A receita para quem integrar** (e para toda linha deste módulo):
+
+```bash
+PH2D_GPU=1 PH2D_PRAZO=3000 bash scripts/ph2d-run.sh \
+  cargo test --release -p ph2d-app-field3d --no-fail-fast -- --ignored --test-threads=1 \
+  --skip mede_ --skip sonda_ --skip audita_ --skip quanto_custa
+```
+
+⛔⛔ **E a primeira tentativa saiu com código `0` tendo sido morta pelo prazo** — a secção do
+pacote simplesmente não tem linha `test result:`. *Silêncio a ler-se como sucesso.* ⇒ escreva a
+saída CRUA para ficheiro (sem `grep | head`, que bufferiza) e **confirme a linha `test result:`
+antes de a dar por verde**.
 
 ---
 
@@ -247,7 +284,8 @@ sozinho, com o `/proc/loadavg` impresso ao lado.
 
 | item | de quem |
 |---|---|
-| **o relógio das waves `W7`/`W8`/`W10` NÃO foi medido** — elas entram na tabela da `W9` | da `W9` (o dono pô-la ao fim da fila) |
+| ⛔⛔ **o quadro de MOVIMENTO regrediu — a cena `30` custa `7,2×`, e o gate reprova** | **da `W9`, por ordem do dono (2026-09-20)** — a §10 tem a medição, os cinco suspeitos ELIMINADOS e a contradição que sobra |
+| **o relógio das waves `W7`/`W8`/`W10` NÃO foi medido** — elas entram na mesma tabela | da `W9` |
 | `W6` — a autoria MaterialX (nós no editor) | fila do módulo |
 | `W7d` — profundidade de campo | **proposto FORA pelo dono** |
 | o `G-20` do pincel de plano (digitável `≥ 5 000`) | decisão do dono |
@@ -269,3 +307,65 @@ sozinho, com o `/proc/loadavg` impresso ao lado.
 4. *«um vigia `until ! pgrep -f <padrão>` avisa quando o processo acaba»* — **falso**: o shell do
    próprio laço tem o padrão no `cmdline`, logo o `pgrep` **auto-apanha-se** e a condição nunca fica
    falsa. O vigia expirou sem eventos e o `pgrep -c` lia `1` sobre **zero** binários vivos.
+
+---
+
+## §10 — ⛔⛔⛔ A DÍVIDA NOMEADA: o quadro de movimento regrediu, e a cena `30` é o achado
+
+> **Decisão do dono, 2026-09-20, tomada com esta medição na mesa:** *«2»* — **fundir com a dívida
+> nomeada e tratá-la na [`W9`](../../Render3d/03_o_plano.md).** Esta secção existe para que a
+> `W9` comece com o trabalho já feito e não o refaça.
+
+### §10.1 — O que está MEDIDO, dos dois lados, com target limpo
+
+| | `main` (`76bd6de02`) | esta linha |
+|---|---|---|
+| CPU ociosa na corrida | `87 %` | `68 %` · `2 %` · `14 %` (três corridas) |
+| **cenas nítidas em movimento** | **`15` de `18`** ✅ | **`10` de `22`** ❌ (e `9`, `6` sob contenção) |
+| **cena `30`** | **`13,45 ms`**, divisor `D=1` | **`96,70` · `95,87` · `97,94 ms`**, divisor `D=3` |
+
+⭐⭐⭐ **A cena `30` é o achado, e a assinatura dela é que ela NÃO DEPENDE DA CARGA:** `96`–`98 ms`
+em três máquinas muito diferentes (`68 %`, `2 %` e `14 %` ociosa). *Um número invariante à carga é
+custo real; um que balança com ela é contenção.* ⇒ **`7,2×`**, e ainda por cima a desenhar com o
+divisor em `3` — **um nono dos píxeis**.
+
+⚠️ **A peça é a MESMA dos dois lados**, e o log prova-o linha a linha: `308 instr` · `16 transc` ·
+`12 sqrt` · `21 vivos` · `190,9 passos/acerto`, idênticos. ⇒ *o que ficou caro é o DESENHO, não a
+geometria nem a marcha.*
+
+⚠️ **As outras cenas andam entre `0,8×` e `2×`** com as cargas diferentes — e **duas melhoraram**
+(a `28` de `76,32` para `65,38`; a `29` de `19,74` para `14,95`). Não são o defeito.
+
+⚠️⚠️ **E o gate reprova por DUAS coisas somadas, não uma:** a cena `30`, **e** o denominador ter
+crescido de `18` para `22`. As cenas novas das waves (`32`, `33`, `35`, `36`) entraram no censo e
+são pesadas — *acrescentar uma cena cara a um gate que mede uma FRACÇÃO baixa a fracção sem que
+nada tenha regredido*. ⛔ A `W9` tem de separar as duas contas antes de perseguir a primeira.
+
+### §10.2 — O que já foi ELIMINADO (para a `W9` não o refazer)
+
+| suspeito | porque NÃO é |
+|---|---|
+| as **sondas de irradiância** da `W5` | `p_assa` só existe com `ao_rays > 0`, e o quadro de movimento passa `ao_rays = 0` (`gpu_frame.rs:317`, `if assente && …`) |
+| a **curvatura** | o estêncil está atrás de `if (mat_le)` e `if (pintor.modo2.z != 0u)`; com `OpenPbr::default()` e `Style::default()` nenhum abre |
+| a **subsuperfície** | `mx_direct_sss` sai pelo braço curto com `subsurface_weight = 0` |
+| a **borda mole** | sem material translúcido o `paint_com` passa `mole = None`, e o passo do buffer nem cresce |
+| o **brilho** | `Bloom::default()` está desligado |
+
+⇒ **a hipótese que fica por medir** é o **tamanho do shader**: todas as leis novas entraram no
+MESMO passe, e um shader com mais registos baixa a ocupação. Isso bateria com a cena `30` ser a
+vítima (`190,9 passos/acerto` — é das que mais latência de memória tem para esconder) — ⛔ **mas
+não explica a `28`**, que tem `410,2` passos e **melhorou**. *A `W9` começa por aqui, e com esta
+contradição à vista.*
+
+### §10.3 — ⚠️ Como MEDIR isto sem repetir os meus erros
+
+1. ⛔⛔ **Worktree de medição leva target PRÓPRIO.** Partilhar o `CARGO_TARGET_DIR` entre duas
+   worktrees do mesmo repo **troca os `.rlib`** — e o erro que sai acusa o *código* (`no method
+   named at_curvature found for &Surface`), não o artefacto. ⚠️ **A primeira leitura que fiz desta
+   regressão, com o target contaminado, deu `6,5×` onde o limpo dá `1,4×` na mesma cena** — eu
+   reportei um alarme que era meu.
+2. ⚠️ **Este gate é sensível à carga e o doc-comment dele já o diz.** A MESMA árvore deu `10`, `9`
+   e `6` conforme a máquina estava a `68 %`, `2 %` e `14 %` ociosa. ⇒ **meça a ociosidade real
+   (`vmstat`), nunca o `loadavg`**, que mente a decair.
+3. ⭐ **O discriminador é a INVARIÂNCIA:** uma cena cujo número não se mexe entre cargas é custo;
+   uma que balança é contenção. Foi só isso que separou a `30` do resto.

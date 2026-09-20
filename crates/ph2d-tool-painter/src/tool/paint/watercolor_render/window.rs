@@ -114,6 +114,19 @@ impl PainterTool {
         } else {
             core_any
         };
+        // O campo da reserva (doc 41) lê vizinhança: com o mapa VIVO e Rewet, o raio dele passa do
+        // Bleed e entra no alcance. Sem mixer o mapa não existe ⇒ a janela é a de sempre, ao byte.
+        let reach = if self.paint.stroke_deplete.len() == n {
+            let cur = super::super::watercolor_reserve::reserve_radius(
+                self.paint.brush.radius_px,
+                core_r,
+                spread,
+                wet,
+            );
+            reach.max(self.paint.wet_styles.reserve_reach(cur))
+        } else {
+            reach
+        };
         let pad = reach + warp_any.ceil() as usize + 2;
         let x0 = (dirty.x as usize).saturating_sub(pad);
         let y0 = (dirty.y as usize).saturating_sub(pad);

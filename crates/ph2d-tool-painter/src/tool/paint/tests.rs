@@ -125,6 +125,7 @@ mod texture_and_tiling;
 mod watercolor_look;
 mod watercolor_parity;
 mod watercolor_seams;
+mod watercolor_selfseam; // a costura do retorno sobre o PROPRIO traco (doc 40): a regua e os gates
 mod watercolor_session;
 mod watercolor_water;
 

@@ -474,6 +474,12 @@ pub(crate) struct PaintState {
     /// AFTER the rim derives from intact coverage — head keeps the watercolor anatomy, the tail
     /// fades rim + body toward plain water. Empty ⇒ factor 1 (byte-identical default).
     pub(super) stroke_deplete: Vec<u8>,
+    /// A **proximidade** do dab mais próximo (`255` no centro, `1` na beira, `0` = a lavagem nunca
+    /// tocou aqui) — irmã do `stroke_deplete`, dimensionada e limpa com ele. Desde 2026-09-20 o
+    /// `stroke_deplete` guarda o NÍVEL da reserva (sem a rampa da beira); o peso da disputa entre
+    /// dabs e o afilamento da beira derivam desta grandeza por tabela
+    /// ([`super::watercolor_reserve`], doc 41).
+    pub(super) stroke_deplete_prox: Vec<u8>,
     /// EDGE-1 (doc 12): canvas-wide MOISTURE map (`w*h`) surviving pen-up — dries on the heartbeat
     /// (~8.5 s, DiVerdi/Adobe; Curtis wet-area mask); the bake pours the HARDENED coverage
     /// (max-blend). While wet, watercolor strokes CONTINUE one **wet session**
@@ -578,6 +584,10 @@ pub(crate) struct PaintState {
     /// (`smear_dab` on the forked [`Self::watercolor_base`]) before the wash composites over it — the
     /// physical "borrar" that moves already-painted paint (Enio 2026-07-06), not just a colour tint.
     pub(super) wet_smear_pos: Option<[f32; 2]>,
+    /// A cadeia do Smudge sobre os NÍVEIS do traço vivo ([`super::watercolor_reserve::smear_level`]):
+    /// o centro do último dab ORIGINAL (nunca uma cópia de Tiling). Irmã da de cima, e separada de
+    /// propósito — a de cima avança por LOTE depois do depósito; esta avança por DAB dentro dele.
+    pub(super) wet_level_smear_pos: Option<[f32; 2]>,
     /// **Watercolor render-path** per-frame dirty rect — the union footprint of the dabs accumulated
     /// since the last optical composite (wet_edges `fMin..fMax`/`resetFrame`). The live
     /// [`Self::apply_watercolor`] recomposites ONLY this (padded by the influence radius), so the

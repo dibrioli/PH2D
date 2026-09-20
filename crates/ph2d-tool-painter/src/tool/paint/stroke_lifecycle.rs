@@ -87,6 +87,7 @@ impl PainterTool {
             self.paint.stroke_color.clear();
             self.paint.stroke_density.clear();
             self.paint.stroke_deplete.clear();
+            self.paint.stroke_deplete_prox.clear();
             self.paint.wet_styles.clear();
             self.paint.stroke_water = Vec::new();
             self.paint.wet_cum_dirty = None;
@@ -95,6 +96,7 @@ impl PainterTool {
         // THIS-stroke footprint restarts every stroke (even continuing a wet session): only what THIS
         // stroke paints re-wets the moisture map, so earlier washes keep their own drying clocks (#4).
         self.paint.wet_stroke_dirty = None;
+        self.paint.wet_level_smear_pos = None;
         self.paint.wet_smear_pos = None; // the Wet Mix true-smear chain restarts with the stroke
         self.reset_wet_mix(); // the mixer reservoir starts fresh (no pickup) each stroke
         // Watercolor render-path: freeze the pre-stroke canvas as the optical base (shared `Arc`, so O(1);

@@ -6,7 +6,7 @@
 use super::PaintMode;
 use super::ramp_lut::RampLutOwner;
 use crate::tool::PainterTool;
-use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab, StrokeMethod};
+use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab};
 
 impl PainterTool {
     /// Whether the active stroke method lets the shell coalesce a burst of raw pointer Moves into ONE
@@ -123,12 +123,7 @@ impl PainterTool {
             // per-pixel in `apply_watercolor`, not here. Smear keeps the raw (UNtiled) dab CHAIN so the
             // dab-to-dab drag stays continuous, and applies the Tiling wrap INTERNALLY (per-dab offsets +
             // toroidal lift, `smear_wet_base`) — so an edge-crossing smear also drags the opposite edge.
-            if self.paint.brush.wet_smudge > 0.0
-                && !matches!(
-                    self.paint.brush.stroke_method,
-                    StrokeMethod::DragDot | StrokeMethod::Anchored | StrokeMethod::Line
-                )
-            {
+            if self.wet_smudge_live() {
                 self.smear_wet_base(dabs);
             }
             self.accumulate_wet_color(wet_dabs);

@@ -98,6 +98,8 @@ mod watercolor_mixer;
 mod watercolor_noise;
 /// Watercolor edge darkening (#1): per-stroke coverage + the pen-up blur-difference "fringe" pass.
 mod watercolor_render;
+/// A reserva de pigmento (MIX-1) como NIVEL disputado pelo perfil do dab + campo lido macio (doc 41).
+mod watercolor_reserve;
 /// Watercolor per-pixel rewet terms (lift/dissolve/pool/backrun); split from `watercolor_render`.
 mod watercolor_rewet_px;
 /// O ARO vira a QUINA: a distância à fronteira que limita o unsharp do `edge` (doc 36).

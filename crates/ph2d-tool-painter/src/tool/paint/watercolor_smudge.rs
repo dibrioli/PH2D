@@ -9,6 +9,18 @@
 use super::*;
 
 impl PainterTool {
+    /// **Uma porta** para *«o Smudge arrasta neste traço?»* — lida pelo arrasto da BASE
+    /// (`stamp_route`) e pelo dos NÍVEIS do traço vivo (`accumulate_wet_coverage`). Só os métodos
+    /// cumulativos: os previews que re-carimbam (Drag Dot/Anchored/Line) re-arrastariam a cada quadro.
+    pub(super) fn wet_smudge_live(&self) -> bool {
+        self.paint.brush.wet_smudge > 0.0
+            && !self.paint.wet_shape_active // o preview de figura re-carimba tudo a cada quadro
+            && !matches!(
+                self.paint.brush.stroke_method,
+                StrokeMethod::DragDot | StrokeMethod::Anchored | StrokeMethod::Line
+            )
+    }
+
     /// Drag the base's paint along the dab chain: each dab lifts the base under the PREVIOUS dab
     /// centre and stamps it at its own, weight `wet_smudge × coverage` through the brush falloff.
     /// Blank paper smears nothing (canonical: a smudge brush without paint under it barely paints).

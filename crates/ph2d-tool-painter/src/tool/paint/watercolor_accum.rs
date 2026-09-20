@@ -112,13 +112,6 @@ pub(super) struct WetShapeStamp {
 /// it becomes tip DENSITY instead (`stroke_density` → the composite's fill term).
 const TIP_WET_LO: f32 = 0.03;
 const TIP_WET_HI: f32 = 0.20;
-/// MIX-1: the pigment-reserve splat's taper shell — the outer fraction of the dab radius over which
-/// the splatted value ramps to 0 (`dn ∈ [1−RAMP, 1]`). Keeps the per-pixel depletion map free of
-/// binary 255/0 steps at disc boundaries, which the composite's warped nearest-sample rendered as
-/// hard pixelated seams where a wash crosses old paint (Enio smoke 2026-07-08). Matches the scale
-/// of the coverage feather's own taper; interior pixels take the full value from nearer dabs.
-const DEPL_RIM_RAMP: f32 = 0.15;
-
 impl WetShapeStamp {
     /// The dab-local stamp sample at normalised distance `dn`: `(wet, density)`.
     /// - Shape inactive ⇒ `(falloff, 1)` — the plain manual disc.
@@ -276,6 +269,15 @@ impl PainterTool {
         }
         self.paint.stroke_coverage.iter_mut().for_each(|c| *c = 0);
         self.paint.stroke_density.iter_mut().for_each(|c| *c = 0);
+        // A reserva recomeça com a cobertura: o campo dela lê VIZINHANÇA, logo um nível velho fora
+        // da figura de agora (invisível enquanto era só multiplicado por cobertura zero) passaria a
+        // difundir para dentro dela. A cadeia do Smudge dos níveis recomeça pelo mesmo motivo.
+        self.paint.stroke_deplete.iter_mut().for_each(|c| *c = 0);
+        self.paint
+            .stroke_deplete_prox
+            .iter_mut()
+            .for_each(|c| *c = 0);
+        self.paint.wet_level_smear_pos = None;
     }
 
     /// Zero the per-stroke deposited-colour buffer (retain capacity); twin of [`Self::clear_wet_coverage`].
@@ -364,6 +366,13 @@ impl PainterTool {
         let depletion = self.wet_mix_depletion(dabs);
         if depletion.is_some() && self.paint.stroke_deplete.len() != fw * fh {
             self.paint.stroke_deplete = vec![0u8; fw * fh];
+            // A proximidade nasce e morre com o nível; o backfill é o mesmo (nível e peso cheios).
+            self.paint.stroke_deplete_prox = self
+                .paint
+                .stroke_coverage
+                .iter()
+                .map(|&c| if c > 0 { 255 } else { 0 })
+                .collect();
             // EDGE-1 wet session: the union buffers may already hold PRIOR strokes of this wet
             // session (painted mixer-off ⇒ full reserve, no map). Backfill their footprint with
             // 255, or the union re-bake would multiply their density by 0 — the pools vanished.
@@ -379,6 +388,14 @@ impl PainterTool {
             }
         }
         let map_live = depletion.is_some() || !self.paint.stroke_deplete.is_empty();
+        // Smudge sobre o traço VIVO: arrasta os níveis por DAB, antes do depósito desse dab.
+        let level_smear = (map_live && self.wet_smudge_live()).then(|| {
+            let spec = self.paint.brush;
+            (spec, spec.wet_smudge.clamp(0.0, 1.0) * WASH_DEPOSIT_PEAK)
+        });
+        let mut smear_from = self.paint.wet_level_smear_pos;
+        let (mut lifted, mut group_origin) = (Vec::new(), [0.0f32; 2]);
+        let tiling = self.paint.tiling;
         // EDGE-1 per-stroke style: the OWNER map — recency, the LAST stroke to touch a pixel
         // styles it (matching the colour buffer's source-over). Sized with the session's first
         // watercolor stroke; `0` = unowned (composite falls back to the current brush).
@@ -390,6 +407,7 @@ impl PainterTool {
         let cov = &mut self.paint.stroke_coverage;
         let dens_buf = &mut self.paint.stroke_density;
         let depl_buf = &mut self.paint.stroke_deplete;
+        let prox_buf = &mut self.paint.stroke_deplete_prox;
         let own_buf = &mut self.paint.wet_styles.owner;
         let water_buf = &mut self.paint.stroke_water;
         for (di, d) in dabs.iter().enumerate() {
@@ -399,14 +417,39 @@ impl PainterTool {
             let rng = rng.enter(&groups, di);
             let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut *rng, canvas));
             let r = d.radius_px;
-            // The dab's pigment reserve (fresh + carry), max-blended over its whole footprint —
-            // re-inking a faded trail restores it (a fresh head dab wins over a depleted tail's).
-            // Splatted with a RAMP over the dab's outer rim shell (below): a binary 255/0 step at
-            // the disc boundary, nearest-sampled at the composite's WARPED coords, read as hard
-            // pixelated seams where the wash crosses old paint (Enio smoke 2026-07-08); the ramp
-            // matches the coverage's own taper, and stroke-interior pixels take the full value
-            // from a nearer dab via the max-blend. While the session map is LIVE, a mixer-OFF
-            // stroke still splats FULL reserve (its paint must not read the 0-initialised map).
+            // Smudge sobre os NÍVEIS: a cadeia anda por dab ORIGINAL, e as cópias de Tiling (que
+            // vêm a seguir ao original, no mesmo grupo) arrastam com o MESMO passo, deslocado.
+            let grouped = groups.len() == dabs.len(); // o preview de figura não agrupa (lista velha)
+            if !grouped || di == 0 || groups[di] != groups[di - 1] {
+                group_origin = d.center;
+            }
+            if let (Some((spec, amount)), Some(prev)) = (level_smear.as_ref(), smear_from) {
+                let off = [d.center[0] - group_origin[0], d.center[1] - group_origin[1]];
+                let spec = ph2d_painter_brush::BrushSpec {
+                    radius_px: r,
+                    ..*spec
+                };
+                super::watercolor_reserve::smear_level(
+                    depl_buf,
+                    prox_buf,
+                    (fw, fh),
+                    ([prev[0] + off[0], prev[1] + off[1]], d.center),
+                    r,
+                    |t| spec.falloff_weight(t) * amount,
+                    tiling,
+                    &mut lifted,
+                );
+            }
+            if !grouped || groups.get(di + 1) != Some(&groups[di]) {
+                smear_from = Some(group_origin);
+            }
+            // The dab's pigment reserve (fresh + carry) — re-inking a faded trail restores it (a
+            // fresh head dab wins over a depleted tail's). Desde 2026-09-20 o dab DISPUTA o nível
+            // com o peso do que deposita ([`super::watercolor_reserve::splat_level`], doc 41): a
+            // rampa de 15 % que vivia DENTRO do `max` comprimia-se num degrau de poucos px onde
+            // uma perna pálida cobre a beira de uma escura, e o composite lia-o pixelado. While the
+            // session map is LIVE, a mixer-OFF stroke still splats FULL reserve (its paint must
+            // not read the 0-initialised map).
             let depl_v =
                 map_live.then(|| depletion.as_ref().map_or(1.0, |v| v[di].clamp(0.0, 1.0)));
             let peak = WASH_DEPOSIT_PEAK; // NUNCA `d.coverage` — a Strength não alcança a lavagem
@@ -482,17 +525,17 @@ impl PainterTool {
                             own_buf[idx] = o;
                         }
                     }
-                    // Pigment reserve (MIX-1): max-blend wherever the dab touches, tapered over the
-                    // outer rim shell so the map never steps 255→0 at a disc boundary (see above).
+                    // Pigment reserve (MIX-1): a disputa do nível wherever the dab touches (see above).
                     if let Some(dv) = depl_v
                         && peak > 0.0
                         && wgt > 0.0
                     {
-                        let ramp = ((1.0 - dn) / DEPL_RIM_RAMP).min(1.0);
-                        let dvb = (dv * ramp * 255.0) as u8;
-                        if dvb > depl_buf[idx] {
-                            depl_buf[idx] = dvb;
-                        }
+                        super::watercolor_reserve::splat_level(
+                            &mut depl_buf[idx],
+                            &mut prox_buf[idx],
+                            dn,
+                            dv,
+                        );
                     }
                     // Style owner (recency overwrite — see the map's sizing above). A water-only
                     // dab deposits no pigment and must not steal the style of the wash beneath.
@@ -505,6 +548,7 @@ impl PainterTool {
                 }
             }
         }
+        self.paint.wet_level_smear_pos = smear_from;
     }
 
     /// Splat each dab's colour into the per-stroke colour buffer, **source-over** (recent dab wins on

@@ -31,6 +31,10 @@ pub(in crate::tool::paint) struct WetStrokeStyle {
     pub(in crate::tool::paint) spread_thin: f32,
     pub(in crate::tool::paint) core_r: u16,
     pub(in crate::tool::paint) spread_px: u16,
+    /// Raio do alisamento do campo de RESERVA deste dono ([`super::super::watercolor_reserve`]):
+    /// capturado como o resto da geometria, senão um traço seguinte com outro pincel (ou outro
+    /// Rewet) re-renderizava as costuras de um wash já assado dentro da janela dele.
+    pub(in crate::tool::paint) reserve_r: u16,
     /// Per-owner SUBSTRATE (doc 14 #13, smoke 2026-07-10): the Paper slot + its Depth + the "Same as
     /// Paper" flag + the Grain slot. A baked wash keeps ITS paper/grain — changing the substrate for
     /// the next stroke must NOT re-texture the pool below (the "aplica a tudo" + rectangles bug). The
@@ -95,12 +99,14 @@ impl WetStrokeStyle {
         forced_wet: f32,
     ) -> Self {
         let spread_px = spec.edge_spread.round().clamp(0.0, 48.0) as usize;
+        let core_r = spread_px.min(((spec.radius_px * 0.5).round() as usize).max(1));
+        let wet = spec.wet_rewet.max(forced_wet).clamp(0.0, 1.0);
         Self {
             fill: spec.fill.clamp(0.0, 1.0) * wash_flow(spec),
             depth: spec.depth.max(0.0),
             opacity: spec.opacity.clamp(0.0, 1.0),
             edge_gain: spec.edge_gain.max(0.0) * wash_flow(spec),
-            wet: spec.wet_rewet.max(forced_wet).clamp(0.0, 1.0),
+            wet,
             granulation: spec.granulation.clamp(0.0, 1.0),
             warp: spec.warp.max(0.0),
             pigment_mix: spec.effective_pigment_mix(),
@@ -111,8 +117,14 @@ impl WetStrokeStyle {
             ],
             spread_thin: (1.0 + (spread_px as f32 - SPREAD_THIN_REF).max(0.0) / SPREAD_THIN_REF)
                 .min(SPREAD_THIN_MAX),
-            core_r: spread_px.min(((spec.radius_px * 0.5).round() as usize).max(1)) as u16,
+            core_r: core_r as u16,
             spread_px: spread_px as u16,
+            reserve_r: super::super::watercolor_reserve::reserve_radius(
+                spec.radius_px,
+                core_r,
+                spread_px,
+                wet,
+            ),
             paper: spec.paper,
             paper_depth: spec.paper_depth.clamp(0.0, 1.0),
             granulation_use_paper: spec.granulation_use_paper,
@@ -171,6 +183,12 @@ impl WetSessionStyles {
                     cm.max(s.core_r as usize),
                 )
             })
+    }
+
+    /// O maior raio do campo da RESERVA entre os donos (semeado com o do pincel vivo): com Rewet ele
+    /// passa do Bleed, e a janela do composite tem de o cobrir ([`super::super::watercolor_reserve`]).
+    pub(in crate::tool::paint) fn reserve_reach(&self, cur: u16) -> usize {
+        self.table.iter().fold(cur, |m, s| m.max(s.reserve_r)) as usize
     }
 
     pub(in crate::tool::paint) fn clear(&mut self) {

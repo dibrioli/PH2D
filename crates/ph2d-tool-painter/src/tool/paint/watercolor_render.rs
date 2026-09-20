@@ -192,11 +192,6 @@ impl PainterTool {
         // Empty (every non-textured path) ⇒ density ≡ 1 → byte-identical.
         let has_dens = self.paint.stroke_density.len() == n;
         let dens_buf = &self.paint.stroke_density;
-        // Wet Mix pigment reserve (MIX-1): scales the whole BRUSH density term (fill + edge) AFTER
-        // the rim is derived from the intact coverage — Charge depletion fades the pigment while the
-        // water footprint (and so the edge anatomy) stays whole. Empty ⇒ factor ≡ 1 → byte-identical.
-        let has_depl = self.paint.stroke_deplete.len() == n;
-        let depl_buf = &self.paint.stroke_deplete;
         // EDGE-1 per-stroke style: owner map + table ([`WetSessionStyles`]); `cur_style` mirrors
         // the clamped globals above, so unowned pixels and style-less composites resolve to the
         // EXACT same values as before (bit-identical single-style path).
@@ -216,6 +211,7 @@ impl PainterTool {
             spread_thin,
             core_r: core_r as u16,
             spread_px: spread as u16,
+            reserve_r: watercolor_reserve::reserve_radius(brush.radius_px, core_r, spread, wet),
             paper: paper_tex,
             paper_depth,
             granulation_use_paper: brush.granulation_use_paper,
@@ -243,6 +239,9 @@ impl PainterTool {
         let style_field = (has_style && style_owner.len() == n && params_differ(style_table))
             .then(|| build_style_field(style_owner, style_table, fw, (rx0, ry0), (rw, rh)));
 
+        // Wet Mix pigment reserve (MIX-1, [`watercolor_reserve`]): scales the BRUSH density term
+        // AFTER the rim derives from the intact coverage. Mixer never on ⇒ `None` ⇒ byte-identical.
+        let reserve = self.reserve_fields((fw, n, (rx0, ry0), (rw, rh)), &cur_style);
         let color_buf = &self.paint.stroke_color;
         // Substrate memoisation (perf, byte-identical): `paper_h` is canvas-anchored, so compute
         // once per canvas pixel ([`paper_h_px`], the loop's exact former expression) and reuse
@@ -456,8 +455,8 @@ impl PainterTool {
                     // together over the intact water footprint — the depleted tail dries toward
                     // plain water. Applied BEFORE the rewet-pool term: pigment dissolved off the
                     // CANVAS is not the brush's reserve and must not fade with it.
-                    if has_depl {
-                        density *= f32::from(depl_buf[wgy * fw + wgx]) / 255.0;
+                    if let Some(rf) = reserve.as_ref() {
+                        density *= rf.sample(st.reserve_r, sx, sy);
                     }
                     // Wet-on-wet lift / dissolve / pool / backrun ring — [`rewet_px`] (sibling,
                     // LOC split), verbatim math. `pool` is the density ADDITION from bloom + ring.

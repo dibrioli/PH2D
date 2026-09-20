@@ -277,7 +277,32 @@ Medido nos três tablets ([`medicoes/06`](../medicoes/06_o_orcamento_de_ecra_em_
 | degrau | estado |
 |---|---|
 | **`F` — cabeçalho por área** | ✅ **RESOLVIDO na entrega 33, sem faixa nova**: o inquilino é um **pulldown** no fim da fila de ferramentas, cuja face é a leitura do estado. A faixa (entrega 30, revertida na 31) custava `28 px` permanentes; esta custa `0`. ⛔ **UM** chip e não nove — com os nove crus a fila vai a **2 linhas até no iPad 12,9"** (medido por mutação) |
-| **`G` — esvaziar os painéis** | ⭐⭐⭐ **o `3D Model` FECHOU** (entregas 33 + 35): perdeu **17 das 74** entradas — as vistas e a câmera no 1.º pulldown (*View*), os verbos do gizmo e o referencial nos chips **`MOVE`/`ROT`/`SCALE`/`SPACE` que já existiam** (⛔ eles estavam **mortos**, não ausentes — Enio, 01/09), e a exportação no menu global **File**. ⚠️ O `add.*` (20 na tabela da D2) **já estava fechado** pela paleta de formas da W100 — a tabela é que não sabia. ⏳ Sobram as **operações booleanas** e as **acções**, sem destino decidido; o `verb`/`kind` **ficam no painel** (são propriedade do objecto, pelo critério da própria D2). ⛔⛔ **Nenhum outro painel foi censado, e a razão é um INSTRUMENTO que falta, não desleixo** (medido 2026-09-10): o censo classifica as **entradas declaradas** de um painel, e `19` de `26` não declaram **nenhuma** — os rótulos deles são literais dentro do pintor. Entre os cegos estão `hierarchy`, `inspector`, `painter_layers` e `motion_graph`, que o artista tem abertos o dia inteiro. ⇒ **este degrau e o buraco do HR-15 são o MESMO item**, e a ordem de cura dos literais passa a ser «o mais aberto primeiro» — [`medicoes/07 §3-bis`](../medicoes/07_o_buraco_do_hr15_o_texto_PINTADO.md). O `66 de 74` é do `3D Model`. Recolher as duas colunas dá `89–92 %` |
+| **`G` — esvaziar os painéis** | ⭐⭐⭐ **o `3D Model` FECHOU** (entregas 33 + 35): perdeu **17 das 74** entradas — as vistas e a câmera no 1.º pulldown (*View*), os verbos do gizmo e o referencial nos chips **`MOVE`/`ROT`/`SCALE`/`SPACE` que já existiam** (⛔ eles estavam **mortos**, não ausentes — Enio, 01/09), e a exportação no menu global **File**. ⚠️ O `add.*` (20 na tabela da D2) **já estava fechado** pela paleta de formas da W100 — a tabela é que não sabia. ⏳ Sobram as **operações booleanas** e as **acções**, sem destino decidido; o `verb`/`kind` **ficam no painel** (são propriedade do objecto, pelo critério da própria D2). ~~⛔⛔ **Nenhum outro painel foi censado, e a razão é um INSTRUMENTO que falta**~~ — ⭐⭐⭐ **ESSA TRAVA CAIU em 2026-09-20.** Ela dizia que o censo classificava as **entradas declaradas** e que `19` de `26` painéis não declaravam nenhuma. As duas metades foram curadas por waves desta linha: os literais foram à tabela (o HR-15 a zero, 20/09) e o censo passou a ler o **SUBSTRATO** e não a declaração — [`quantas_entradas_tem_cada_painel`](../../../crates/ph2d-panel-registry-init/tests/it/quantas_entradas_tem_cada_painel.rs) percorre o `WidgetStore::focus_order` e pergunta a ESPÉCIE de cada id, logo mede **todo** painel que pinte. ⇒ **os `28` estão censados**, e a fila deixou de ser um palpite:
+
+```text
+  painel        comandos  valores  cromo  órfãos  total   altura   fora-da-dobra
+  inspector          314      313     13      67    707   14 987     +1 603 %
+  tokens             110       21      0      86    217    2 866       +226 %
+  sculpt3d           102       28      0       0    130    2 097       +138 %
+  physics             60       24      0       0     84    1 293        +47 %
+  vector              45       18      0       9     72    1 349        +53 %
+```
+
+⚠️ **A coluna que ordena é a dos COMANDOS e nunca a da ALTURA:** o `inspector` é grande **por
+direito** (é um painel de propriedades) e a altura dele é a do estado com as `28` secções armadas,
+que nenhum objecto real tem. *Um censo que só medisse tamanho poria-o no topo e mandaria a wave para
+o sítio errado.*
+
+⚠️ **E há uma segunda régua, que diz o que cortar dentro de um painel:**
+[`o_que_o_artista_nao_alcanca`](../../../crates/ph2d-panel-registry-init/tests/it/o_que_o_artista_nao_alcanca.rs)
+nomeia, fileira a fileira, o que fica abaixo da dobra — *uma régua que agrega diz que há dívida; só
+uma que NOMEIA diz o que fazer com ela.*
+
+⛔ **E o `sculpt3d` está FECHADO por decisão do dono (2026-09-20): «fica como está»**, com as três
+saídas e o preço de cada uma medidos — ver o §7.1 do
+[handoff da paleta](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-20_A_PALETA.md).
+
+O `66 de 74` é do `3D Model`. Recolher as duas colunas dá `89–92 %` |
 | ✅ **um gesto de RECOLHER** | ⛔⛔ **DECIDIDO pelo dono em 2026-09-09, e a decisão foi CONTRA:** *«Vamos retirar a opção de colapsar arrastando. Deixa o colapsar apenas no menu da barra superior»* — depois de o gesto existir (arrastar a borda para dentro) e de ele **prender o app por um minuto** ao ser combinado com o menu. A w49 removeu-o e unificou o piso da largura. ⇒ recolher é, por ordem, **dois itens de menu** — e esta linha não se reabre sem ele. Ver [`medicoes/09 §4`](../medicoes/09_o_penhasco_com_todos_os_paineis_abertos.md) |
 | ✅ **a fila de ferramentas** | **CURADA na entrega 32, pela cura que esta linha já escolhia:** a faixa é **sempre uma linha** e o que não cabe vive atrás do `⋯` (`tool_bar::bar_split`). Medido: `+3,2` pontos de área no iPad 11 e `+3,3` no mini, e a coluna «com pincel» deixou de ser o pior caso. ⚠️ **Foi o TECTO de obsolescência do gate que obrigou a actualizar os números** (`40,8 → 44,0` disparou-o) — [`the_chrome_never_eats_more_of_a_tablet_than_this`](../../../crates/ph2d-editor-core/tests/it/the_chrome_never_eats_more_of_a_tablet_than_this.rs) |
 

@@ -109,6 +109,22 @@ impl EnvLobe {
         main: 0.0,
         coat: 0.0,
     };
+
+    /// ⭐⭐ **A composição que os consumidores escreviam à mão** — [`alphas`] e depois
+    /// [`crate::lobe_shrink`] em cada metade.
+    ///
+    /// ⚠️ Ela existe porque o doc dos dois campos acima **nomeia a função por escrito** e a crate não
+    /// a dava: com um consumidor isso era dívida, com dois é a lei escrita em dois sítios. Há gate a
+    /// afirmar que esta porta é exactamente aquela composição, com o controlo de que os dois `α` se
+    /// separam na fixtura.
+    #[must_use]
+    pub fn of(s: &Surface) -> Self {
+        let (main, coat) = alphas(s);
+        Self {
+            main: crate::lobe_shrink(main),
+            coat: crate::lobe_shrink(coat),
+        }
+    }
 }
 
 /// O `α` que o [`EnvLobe`] tem de resolver — a reflexão principal e o verniz, já cortados como as

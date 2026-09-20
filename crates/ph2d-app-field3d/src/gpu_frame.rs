@@ -403,13 +403,12 @@ pub fn tests_lampada(cam: &ph2d_field_render::Orbit) -> ph2d_field_render::Point
 pub fn packed(all: &[ph2d_material::Surface]) -> Vec<f32> {
     let mut v = Vec::with_capacity(all.len() * ph2d_material::wgsl::PACKED);
     for s in all {
-        let (main, coat) = ph2d_material::wgsl::alphas(s);
+        // ⭐ A composição vive na porta da crate que a nomeia (`EnvLobe::of`), desde 2026-09-20 —
+        // antes disto ela estava escrita aqui **e** na lei da forma, que é a mesma lei em dois
+        // sítios.
         v.extend_from_slice(&ph2d_material::wgsl::pack(
             s,
-            ph2d_material::wgsl::EnvLobe {
-                main: crate::render_light::lobe_shrink(main),
-                coat: crate::render_light::lobe_shrink(coat),
-            },
+            ph2d_material::wgsl::EnvLobe::of(s),
         ));
     }
     v

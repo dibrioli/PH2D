@@ -11,51 +11,6 @@
 
 use super::*;
 
-/// O factor de encolhimento do lóbulo, por quadratura — o ORÁCULO da lei que a sonda abaixo mede.
-///
-/// # ⭐⭐⭐ Porque UM escalar chega, e é exacto
-///
-/// O céu de estúdio é **linear na altura**: `L(ω) = A + B·ω.y`. A média de uma função linear sobre
-/// qualquer distribuição é a função avaliada na **direcção MÉDIA** dela — e a distribuição do
-/// pré-filtro GGX é simétrica em torno da direcção espelhada `R`. ⇒ a componente perpendicular
-/// cancela-se e sobra `E[ω] = c(α)·R`, com `c ≤ 1`.
-///
-/// ⇒ `média(A + B·ω.y) = A + B·c(α)·R.y`. **O erro é um factor no termo da altura, e mais nada.**
-///
-/// ⚠️ **É a convolução em harmónicos esféricos, não uma heurística:** uma função de grau 1 convolvida
-/// com um núcleo simétrico é a mesma função de grau 1, escalada pelo coeficiente de grau 1 do núcleo.
-/// O `c(α)` **é** esse coeficiente.
-///
-/// # A distribuição
-///
-/// É a do *split-sum* (Karis), que é a que o `mx_environment_prefilter` assume: `N = V = R`, amostras
-/// `h` do GGX, `L = 2(N·h)h − N`, peso `N·L`, e as amostras com `N·L ≤ 0` **descartadas** — é isso
-/// que faz `c` deixar de ser trivial quando o lóbulo passa do hemisfério.
-///
-/// ⇒ `c(α) = Σ (N·L)² / Σ (N·L)`.
-fn lobe_shrink_by_quadrature(alpha: f32) -> f32 {
-    let a2 = f64::from(alpha).powi(2);
-    let (mut num, mut den) = (0.0f64, 0.0f64);
-    const N: usize = 1 << 16;
-    for i in 0..N {
-        // ⚠️ Quadratura do ponto médio sobre `ξ`, não um sorteio: uma sonda que é o ORÁCULO de um
-        // gate não pode ter ruído de Monte Carlo maior do que a barra que ela vai justificar.
-        let xi = (i as f64 + 0.5) / N as f64;
-        // Amostragem de importância do GGX: `cos²θ_h = (1 − ξ) / (1 + (α² − 1)ξ)`.
-        let cos2 = (1.0 - xi) / (1.0 + (a2 - 1.0) * xi);
-        let ndl = 2.0 * cos2 - 1.0;
-        if ndl <= 0.0 {
-            continue;
-        }
-        num += ndl * ndl;
-        den += ndl;
-    }
-    if den <= 0.0 {
-        return 1.0;
-    }
-    (num / den) as f32
-}
-
 /// ⏱️ **SONDA — o erro do céu na direcção ESPELHADA, e o factor que o cura.**
 ///
 /// O §8 do `docs/Render3d/05` leva esta desde 13/09, com a nota de que *«ela torna-se visível no dia
@@ -74,7 +29,7 @@ fn measure_the_mirrored_direction_error_of_the_sky() {
     };
     println!("  α  ·  c(α)  ·   R.y  ·  espelhada  ·  verdade  ·  erro");
     for alpha in [0.05f32, 0.09, 0.25, 0.5, 0.75, 1.0] {
-        let c = lobe_shrink_by_quadrature(alpha);
+        let c = ph2d_material::lobe_shrink(alpha);
         for up in [1.0f32, 0.0, -1.0] {
             // A verdade: o céu na direcção MÉDIA do lóbulo.
             let verdade = ceu_cru(c * up);
@@ -89,64 +44,6 @@ fn measure_the_mirrored_direction_error_of_the_sky() {
                 erro * 100.0
             );
         }
-    }
-}
-
-/// ⭐⭐⭐ **A FORMA FECHADA CONCORDA COM A QUADRATURA** — o oráculo da lei do lóbulo.
-///
-/// # ⚠️ A barra sai do VÃO entre duas populações, e não de um número escolhido
-///
-/// A quadratura é do **ponto médio** sobre `2¹⁶` intervalos (não um sorteio), logo ela própria não
-/// tem ruído a esconder o desvio da forma fechada. O que sobra é a aritmética `f32` da porta e o
-/// degrau do integrador — e o gate exige `2e-4`, que é onde as duas se separam com folga.
-///
-/// ⚠️ **E a vizinhança de `α = 1` é varrida DE PROPÓSITO**: é ali que o numerador e o denominador vão
-/// os dois a zero como `k³` e o cancelamento come a precisão. Sem esses pontos, o gate ficaria verde
-/// sobre a única região onde a forma fechada não se pode usar crua.
-///
-/// **Mutação que deve sangrar:** apagar o ramo do limite (`|k| < 1e-3 → 2/3`).
-#[test]
-fn the_closed_form_of_the_lobe_agrees_with_the_quadrature() {
-    let mut pior = 0.0f32;
-    let mut onde = 0.0f32;
-    // ⚠️ O varrimento inclui `0`, `1` e a vizinhança fina de `1` — os três casos de fronteira.
-    let mut alphas: Vec<f32> = (0..=100).map(|i| i as f32 / 100.0).collect();
-    alphas.extend([0.999, 0.9995, 0.9999, 1.0, 0.001, 0.0005]);
-    for alpha in alphas {
-        let nosso = super::lobe_shrink(alpha);
-        let oraculo = lobe_shrink_by_quadrature(alpha);
-        let d = (nosso - oraculo).abs();
-        if d > pior {
-            pior = d;
-            onde = alpha;
-        }
-    }
-    assert!(
-        pior < 2.0e-4,
-        "a forma fechada afasta-se da quadratura em {pior:.2e} (pior em α = {onde}) — a barra é 2e-4"
-    );
-    // ⭐ **Os dois controlos que não são coincidência**, afirmados: o lóbulo que colapsa na
-    // espelhada, e o hemisfério cosseno.
-    assert!(
-        (super::lobe_shrink(0.0) - 1.0).abs() < 1.0e-6,
-        "α = 0 tem de devolver a própria direcção espelhada"
-    );
-    assert!(
-        (super::lobe_shrink(1.0) - 2.0 / 3.0).abs() < 1.0e-6,
-        "α = 1 é o hemisfério cosseno, e o coeficiente dele é 2/3 — o mesmo que o `ENV_SLOPE` da \
-         `ph2d-light` já carrega"
-    );
-    // ⛔ **E é MONÓTONO**: um lóbulo mais largo nunca encolhe menos. Sem isto, uma forma fechada com
-    // um sinal trocado num ramo passaria no desvio médio e daria um céu que clareia com a rugosidade.
-    let mut anterior = 1.0f32;
-    for i in 0..=100 {
-        let c = super::lobe_shrink(i as f32 / 100.0);
-        assert!(
-            c <= anterior + 1.0e-6,
-            "o encolhimento subiu em α = {} ({anterior} → {c})",
-            i as f32 / 100.0
-        );
-        anterior = c;
     }
 }
 
@@ -190,7 +87,8 @@ fn the_sky_honours_the_lobe_width_it_is_handed() {
     );
     // ⭐ **E o quanto é o que a lei promete**, não um valor qualquer.
     let esperado = [0, 1, 2].map(|i| {
-        a * (ph2d_light::ENV_BASE[i] + 1.5 * ph2d_light::ENV_SLOPE[i] * super::lobe_shrink(1.0))
+        a * (ph2d_light::ENV_BASE[i]
+            + 1.5 * ph2d_light::ENV_SLOPE[i] * ph2d_material::lobe_shrink(1.0))
     });
     for i in 0..3 {
         assert!(

@@ -72,7 +72,7 @@
 //!
 //! O [`ph2d_material::Environment`] pede a radiância **já pré-filtrada** para um lóbulo GGX de
 //! rugosidade `α`. Para a rampa isso tem forma fechada e exacta (o
-//! [`crate::render_light::lobe_shrink`]); para uma calote, não tem.
+//! [`ph2d_material::lobe_shrink`]); para uma calote, não tem.
 //!
 //! ⛔⛔ **E a forma fechada mais óbvia foi CONSTRUÍDA, MEDIDA e DEITADA FORA:** uma gaussiana
 //! esférica convolvida com outra fecha em álgebra (o produto de duas SG é uma SG), e o `λ` do núcleo
@@ -391,7 +391,7 @@ impl Studio<'_> {
         // ⭐ **A MESMA associação da lei que ela substitui** — `up` primeiro, depois
         // `RAW * ENV_SLOPE[i] * up`. Trocar a ordem das multiplicações move o resultado UM ULP, e é
         // isso que separa «o céu de ontem» de «quase o céu de ontem» (há gate ao bit).
-        let up = crate::render_light::lobe_shrink(alpha) * dir[1];
+        let up = ph2d_material::lobe_shrink(alpha) * dir[1];
         // ⚠️ **O eixo da caixa é `+y`**, logo `cos ψ` é a própria componente `y` da direcção.
         let base = self
             .softbox

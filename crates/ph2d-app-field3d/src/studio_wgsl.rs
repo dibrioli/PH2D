@@ -5,7 +5,7 @@
 //! dispositivo seria uma segunda resposta à mesma pergunta — que diverge no dia em que alguém mexer
 //! numa delas. ⇒ `49 × 513 + 513` floats (`101 KB`) sobem uma vez e ficam.
 //!
-//! ⚠️ **O `lobe_shrink` NÃO vem aqui** — ele é `f64` e é constante por material, logo viaja no
+//! ⚠️ **O [`ph2d_material::lobe_shrink`] NÃO vem aqui** — ele é `f64` e é constante por material, logo viaja no
 //! material (ver o `ENV_SLOT`). *Uma lei que precisa de `f64` e não varia por pixel é uma constante.*
 
 /// Quantos `f32` o [`constants`] escreve.

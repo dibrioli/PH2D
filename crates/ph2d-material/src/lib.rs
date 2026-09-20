@@ -48,7 +48,10 @@
 
 mod bsdf;
 mod indirect;
+mod prefilter;
 mod subsurface;
+
+pub use prefilter::lobe_shrink;
 
 use bsdf::{Bsdf, V3};
 

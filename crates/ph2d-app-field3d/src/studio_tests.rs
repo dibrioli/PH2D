@@ -216,7 +216,7 @@ fn with_no_box_the_sky_is_the_one_it_replaces() {
 /// A lei da rampa **como ela estava escrita** antes desta wave — a referência do gate acima.
 fn antigo(dir: [f32; 3], alpha: f32) -> [f32; 3] {
     const RAW: f32 = 1.5;
-    let up = crate::render_light::lobe_shrink(alpha) * dir[1];
+    let up = ph2d_material::lobe_shrink(alpha) * dir[1];
     [0, 1, 2].map(|i| {
         ph2d_light::AMBIENT * (ph2d_light::ENV_BASE[i] + RAW * ph2d_light::ENV_SLOPE[i] * up)
     })

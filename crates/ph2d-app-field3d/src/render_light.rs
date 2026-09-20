@@ -37,71 +37,19 @@
 //! `roughness 1` são `p95 = 23` e `max = 33` bytes. *Quem move o número que tornava algo inalcançável
 //! tem de reconferir a nota* (`CLAUDE.md` §0.0).
 //!
-//! ⇒ ver [`lobe_shrink`], e a §16 do `docs/Render3d/05`.
+//! ⇒ ver [`ph2d_material::lobe_shrink`], e a §16 do `docs/Render3d/05`.
 
 use ph2d_field_render::Lamp;
 
-/// ⭐⭐⭐ **O ENCOLHIMENTO DO LÓBULO** — `E[ω]·R` sob a distribuição do pré-filtro GGX.
-///
-/// # Porque UM escalar cura, e cura EXACTAMENTE
-///
-/// Este céu é **linear na altura** (`L(ω) = A + B·ω.y`), e a média de uma função linear sobre uma
-/// distribuição é a função avaliada na **direcção média** dela. A distribuição do pré-filtro é
-/// simétrica em torno da espelhada `R`, logo a componente perpendicular cancela e sobra
-/// `E[ω] = c(α)·R`. ⇒ `média(A + B·ω.y) = A + B·c(α)·R.y`.
-///
-/// ⚠️ **É a convolução em harmónicos esféricos, e não uma heurística:** uma função de grau `1`
-/// convolvida com um núcleo simétrico é a mesma função de grau `1` escalada pelo coeficiente de grau
-/// `1` do núcleo — e `c(α)` **é** esse coeficiente.
-///
-/// ⛔⛔ **A cura mora AQUI, e não na `ph2d-material`**, e a razão não é a de sempre (*«ela é o port
-/// fiel do GLSL»*, que também vale): *«avaliar na direcção média»* só é **exacto** porque **este** céu
-/// é linear. Sobre um céu com feições a lei é outra, e escrevê-la lá seria prometer, a quem trouxer o
-/// céu seguinte, uma exactidão que ela não tem.
-///
-/// # A forma fechada, e de onde ela sai
-///
-/// Com `N = V = R` (a suposição do *split-sum*, que é a que o `mx_environment_prefilter` faz), as
-/// amostras são `L = 2(N·h)h − N` com `h` do GGX, pesadas por `N·L` e descartadas em `N·L ≤ 0`:
-///
-/// ```text
-/// c(α) = Σ (N·L)² / Σ (N·L)
-/// ```
-///
-/// Integrando em `ξ` com `cos²θ_h = (1−ξ)/(1+(a−1)ξ)` e `a = α²`, com `k = a−1`, `m = a+1` e
-/// `L = ln(2a/m)`:
-///
-/// ```text
-/// c = [ k(3a+1) − 4am·L ] / { k · [ 2a·L − 2a + m ] }
-/// ```
-///
-/// ⭐ **Dois controlos que não são coincidência:** `c(0) = 1` (o lóbulo colapsa na espelhada) e
-/// `c(1) = 2/3` — que é **exactamente** o `(2/3)·k` do lóbulo cosseno que o [`ph2d_light::ENV_SLOPE`]
-/// já carrega, e que este ficheiro desfaz com o `RAW` logo abaixo. *A rugosidade máxima do GGX é o
-/// hemisfério cosseno, e as duas metades da casa chegam ao mesmo número por caminhos diferentes.*
-///
-/// ⚠️ **A vizinhança de `a = 1` é singularidade REMOVÍVEL**, e numericamente instável: o numerador e o
-/// denominador vão os dois a zero como `k³`, logo o cancelamento come a precisão. Abaixo de
-/// `|k| = 1e-3` devolve-se o limite (`2/3`) — o desvio ali é `< 1e-4`, contra um efeito que se mede
-/// em dezenas de bytes. Há gate contra a quadratura, nos dois lados da costura.
-#[must_use]
-pub fn lobe_shrink(alpha: f32) -> f32 {
-    let a = f64::from(alpha.clamp(0.0, 1.0)).powi(2);
-    if a <= 0.0 {
-        return 1.0;
-    }
-    let k = a - 1.0;
-    if k.abs() < 1.0e-3 {
-        return 2.0 / 3.0;
-    }
-    let m = a + 1.0;
-    let l = (2.0 * a / m).ln();
-    let den = k * (2.0 * a * l - 2.0 * a + m);
-    if den == 0.0 {
-        return 1.0;
-    }
-    ((k * (3.0 * a + 1.0) - 4.0 * a * m * l) / den) as f32
-}
+// ⛔⛔ **O `lobe_shrink` MUDOU-SE para a [`ph2d_material::lobe_shrink`] em 2026-09-20**, e a recusa
+// que o segurava aqui continua de pé porque era sobre OUTRA coisa: ela dizia que *«avaliar na
+// direcção média só é exacto porque ESTE céu é linear»* — verdade, e é a APLICAÇÃO, que ficou onde
+// estava (no [`crate::studio::Studio::radiance`]). O que viajou é o **coeficiente**, que é o grau `1`
+// do núcleo do pré-filtro GGX e não sabe que céu vai convolver.
+//
+// ⚠️ O gatilho foi o §0.0: o doc do `ph2d_material::wgsl::EnvLobe` **nomeia a função por escrito** e
+// a crate não a dava; com o segundo consumidor (a lei da FORMA, `ph2d-form-pbr`) isso passou de
+// dívida a lei escrita em dois sítios.
 
 /// **O céu de estúdio**, em espaço de vista.
 ///

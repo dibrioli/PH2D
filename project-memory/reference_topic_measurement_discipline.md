@@ -1088,7 +1088,7 @@ comparação POSICIONAL é válida só enquanto as duas populações forem a mes
 mudança de população que se está a medir. **How to apply:** junte sempre **por chave** (`join`),
 e o sinal de que se errou é barato — **nomes repetidos** na saída.
 
-## ⛔⛔⛔ Uma cerca que veta um SUBCONJUNTO de um passo SIMULTÂNEO pode criar o que ela impede (2026-09-21)
+## ⛔⛔⛔ Uma cerca que veta um SUBCONJUNTO de um passo SIMULTÂNEO pode criar o que ela impede (2026-09-20)
 Num passe Jacobi (todos decidem contra a entrada, só depois se escreve) cujos alvos são
 **mutuamente consistentes** — no caso, nós da MESMA grade —, vetar alguns movimentos deixa a malha
 **meio-movida**: uma configuração que **nem a entrada nem o alvo têm**. Medido: a cerca por-vértice
@@ -1100,7 +1100,7 @@ se ela vetar, tem de vetar um grupo coerente (ali, o triângulo inteiro — esco
 dois pediria um desempate por índice, que faria a saída depender da numeração da malha).
 Ver [[reference_topic_mutation_proofs]] e [[reference_topic_gate_discipline]].
 
-## ⛔⛔⛔⛔ Uma FRACÇÃO sem o TECTO medido lê-se como «há muito por ganhar» (2026-09-21)
+## ⛔⛔⛔⛔ Uma FRACÇÃO sem o TECTO medido lê-se como «há muito por ganhar» (2026-09-20)
 A `line/sculpt3d` optimizou durante três waves uma régua que devolve *«que fracção das arestas
 segue a grade»*, lendo `64 %` como *«dois terços, e há um terço por apanhar»*. Medido o **tecto**
 numa grade **perfeita** — coisa que ninguém tinha feito —, ele é **`66,7 %`**: uma grade quadrada

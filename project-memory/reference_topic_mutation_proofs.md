@@ -125,7 +125,7 @@ padrão é `running ([0-9]+) tests?`; e ⭐ esta falha é do lado **SEGURO** —
 vez de se ler como sobrevivência, que é como todo controlo de arnês devia falhar. Ver
 [[reference_topic_measurement_discipline]].
 
-## ⭐⭐⭐⭐ Uma mutação SOBREVIVENTE às vezes diz que a EXPLICAÇÃO está trocada, não que falta um gate (2026-09-21)
+## ⭐⭐⭐⭐ Uma mutação SOBREVIVENTE às vezes diz que a EXPLICAÇÃO está trocada, não que falta um gate (2026-09-20)
 A `line/sculpt3d` construiu uma cerca de forma nova para destravar um knob que o portão do produto
 recusava, mediu `9 → 0` lascas e ia shipar a história *«a cerca nova é mais esperta e destrava»*. A
 prova de mutação incluía *«a cerca desaparece do caminho do produto»* — e ela **ficou VERDE**, o que

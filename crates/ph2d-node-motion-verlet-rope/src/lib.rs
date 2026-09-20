@@ -521,7 +521,7 @@ fn simulate(anchor: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stre
         seed(anchor, p)
     };
 
-    // ⭐⭐⭐ **A CORDA DIZ QUE É UMA CORRENTE** (ordem do dono, 2026-09-21: *«os segmentos devem
+    // ⭐⭐⭐ **A CORDA DIZ QUE É UMA CORRENTE** (ordem do dono, 2026-09-20: *«os segmentos devem
     // ser conectados como ossos senão a corda não parecerá um único objeto»*).
     //
     // Um `parent` é o contrato da família `rig.*` — *«um índice finito, não negativo e que aponta

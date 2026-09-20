@@ -1,6 +1,6 @@
 //! SONDA — a coluna da direita VAZIA contra a banda do grafo que cresce para dentro dela.
 //!
-//! Report do dono (2026-09-21): *«pisca do lado direito quando escondemos o inspector e
+//! Report do dono (2026-09-20): *«pisca do lado direito quando escondemos o inspector e
 //! aumentamos muito a área do grafo de nós»*.
 
 use ph2d_editor_core::screens::layout::{CenterSplit, ChromeBands, DockSides, HeroLayout};

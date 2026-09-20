@@ -14,7 +14,7 @@ use super::super::rig_demo::tests::{CORDA, DT, FK, TIQUES, pontos, primeiro};
 use super::build;
 use crate::motion_state::MotionState;
 
-/// ⭐⭐⭐ **A CORDA LÊ-SE COMO UM CORDÃO E NÃO COMO UM ROSÁRIO** — ordem do dono (2026-09-21):
+/// ⭐⭐⭐ **A CORDA LÊ-SE COMO UM CORDÃO E NÃO COMO UM ROSÁRIO** — ordem do dono (2026-09-20):
 /// *«o exemplo 1 (Rope) deve ser feito com Rope Segment e os segmentos devem ser conectados como
 /// ossos senão a corda não parecerá um único objeto»*.
 ///
@@ -99,7 +99,7 @@ fn os_segmentos_da_corda_apontam_ao_seguinte() {
 }
 
 /// ⭐⭐⭐ **A CORDA DESENHADA: cada peça RODA, e roda em volta da BASE** — os dois relatos do dono
-/// de 2026-09-21 (*«a rot não acontece e o centro da rot não é a base do segmento»*), medidos na
+/// de 2026-09-20 (*«a rot não acontece e o centro da rot não é a base do segmento»*), medidos na
 /// INSTÂNCIA que o desenho recebe e não na coluna que o nó escreve.
 ///
 /// ⛔⛔⛔ **O gate irmão estava VERDE enquanto o dono fotografava a corda por rodar**, e a razão é
@@ -120,7 +120,7 @@ fn os_segmentos_da_corda_apontam_ao_seguinte() {
 ///    primeira coluna dela é para onde o `+x` local vai no mundo;
 /// 3. **ela CHEGA à junta seguinte** — o comprimento DESENHADO (`2 × size`) contra o vão, ver
 ///    [`TOLERANCIA_DO_VAO`]. ⛔⛔ **Esta metade FALTAVA e o nome do gate prometia-a** (escrita a
-///    2026-09-21, na varredura que o dono pediu depois do smoke da unidade): o comprimento de uma
+///    2026-09-20, na varredura que o dono pediu depois do smoke da unidade): o comprimento de uma
 ///    peça de rig é um número da FORMA e o comprimento verdadeiro é a coluna `len` da corrente —
 ///    e **nada os liga**. Aqui eles batem porque o `CORDA_PECA` é derivado do vão; um `Count`
 ///    diferente no painel desenha `0,47×` ou `1,85×` do vão, que é a foto do rosário outra vez;
@@ -227,7 +227,7 @@ fn cada_peca_da_corda_e_desenhada_da_junta_ate_a_seguinte() {
 /// **`9×` mais apertados** que o defeito que este gate existe para apanhar (`0,47×` e `1,85×`).
 const TOLERANCIA_DO_VAO: f32 = 0.05;
 
-/// ⭐⭐⭐ **A PEÇA CONTRA O VÃO** — a sonda que nomeia o que a varredura de 2026-09-21 achou
+/// ⭐⭐⭐ **A PEÇA CONTRA O VÃO** — a sonda que nomeia o que a varredura de 2026-09-20 achou
 /// (ordem do dono, depois do smoke da unidade: *«veja se erro similar acontece em outros locais
 /// do módulo»*).
 ///

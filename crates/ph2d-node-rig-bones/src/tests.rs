@@ -194,7 +194,7 @@ fn as_outras_colunas_viajam_pelo_filho() {
 }
 
 // ---------------------------------------------------------------------------
-// O QUADRO DE UM OSSO — a lei de 2026-09-21 (ordem do dono sobre a corda).
+// O QUADRO DE UM OSSO — a lei de 2026-09-20 (ordem do dono sobre a corda).
 // ---------------------------------------------------------------------------
 
 /// Uma corrente CRUA: só posições e `parent`, como uma corda de Verlet as publica.

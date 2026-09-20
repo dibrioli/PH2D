@@ -10,7 +10,7 @@
 //! propriedade do grupo — um esqueleto não vem de fora.*
 //!
 //! ⛔⛔ **E a frase que aqui estava — *«logo não há nada a publicar antes de cozer»* — MORREU em
-//! 2026-09-21**, quando a cena passou a vestir cada pano com uma forma. Ela era verdade sobre as
+//! 2026-09-20**, quando a cena passou a vestir cada pano com uma forma. Ela era verdade sobre as
 //! MEMBRANAS e foi lida como verdade sobre o `publish` inteiro: a geometria de um `source.shape` é
 //! gerada no QUADRO (`motion_shape_gen`), não no cozimento, logo **todo** arnês desta cena tem de
 //! a publicar. *Uma ausência afirmada sobre uma categoria (dados de fora) passa a mentir no dia em
@@ -424,7 +424,7 @@ fn a_cadeia_de_um_pano_entrega_em_cada_etapa() {
     crate::motion_shape_gen::publish(&mut m, 0.0);
     #[expect(clippy::cast_possible_truncation, reason = "vinte pontos de corda")]
     let pontos_da_corda = CORDA_PONTOS as usize;
-    // ⚠️⚠️ **A PREMISSA MUDOU em 2026-09-21 e a mudança está aqui à vista:** este gate dizia
+    // ⚠️⚠️ **A PREMISSA MUDOU em 2026-09-20 e a mudança está aqui à vista:** este gate dizia
     // `esperado` em todas as etapas, e a etapa do `motion.scale` passou a ler **`n − 1`**. Não é
     // uma barra afrouxada — é a corda a vestir-se de SEGMENTOS: o `rig.bones` entra entre ela e o
     // carimbo, e *uma corrente de `n` juntas tem `n − 1` ossos* (a raiz é a única junta sem osso a

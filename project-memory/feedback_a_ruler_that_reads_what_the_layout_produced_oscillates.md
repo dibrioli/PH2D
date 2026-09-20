@@ -9,7 +9,7 @@ O `DockSides::from_published` decidia *«esta coluna está ocupada?»* cruzando 
 painéis publicaram no quadro ANTERIOR — a cura certa para *«não há lista de nomes»*. Com a coluna
 vazia, a área de desenho cresce para dentro dela (que é o que ela existe para permitir), o painel
 da área passa a publicar um rect que a cobre, e no quadro seguinte a régua lê **ocupada**. Período
-dois, a 60 Hz: uma faixa da largura do Inspector a piscar (report do dono, 2026-09-21).
+dois, a 60 Hz: uma faixa da largura do Inspector a piscar (report do dono, 2026-09-20).
 
 > *a área cresce porque a coluna está livre; a coluna lê-se ocupada porque a área cresceu.*
 

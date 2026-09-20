@@ -106,7 +106,7 @@ const CORDA_COMPRIMENTO: f32 = 1.9;
 /// a corda estica e apertam onde ela encolhe** — que é a coisa que este pano existe para mostrar.
 /// ⚠️ *Nenhum gate desta cena via isto: eles leem `P` e `size`, e os dois estavam certos.*
 ///
-/// ⛔⛔⛔ **E ele era um LITERAL com esta doc a chamar-lhe «derivado»** (2026-09-21): mexer nos
+/// ⛔⛔⛔ **E ele era um LITERAL com esta doc a chamar-lhe «derivado»** (2026-09-20): mexer nos
 /// dois números acima deixava a peça para trás **em silêncio** (tabela no `diag_a_peca_contra_o_
 /// vao`). Escrito como a divisão que a doc já descrevia, é **byte-idêntico** (`0x3d4ccccd`).
 const CORDA_PECA: f32 = CORDA_COMPRIMENTO / (CORDA_PONTOS - 1.0) / 2.0;
@@ -480,7 +480,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
     // ── AS TRÊS VESTES, resolvidas pelo NOME uma vez só ────────────────────────────────
     //
-    // ⭐⭐⭐ **A corda leva o `Shape: Rope Segment` desde 2026-09-21** (ordem do dono), e o que
+    // ⭐⭐⭐ **A corda leva o `Shape: Rope Segment` desde 2026-09-20** (ordem do dono), e o que
     // estava aqui escrito era uma recusa MEDIDA que morreu por o substrato ter mudado — fica com
     // a morte à vista, porque ela diz exactamente qual era a peça em falta:
     //
@@ -527,7 +527,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         doc.graph.set_param(c, "length", CORDA_COMPRIMENTO);
         doc.graph.set_label(c, "Verlet Rope: a corda");
         laco_de_estado(doc, c, CORDA_PORTA_ESTADO)?;
-        // ⭐⭐⭐ **A corda veste-se de SEGMENTOS, ligados como ossos** (ordem do dono, 2026-09-21:
+        // ⭐⭐⭐ **A corda veste-se de SEGMENTOS, ligados como ossos** (ordem do dono, 2026-09-20:
         // *«os segmentos devem ser conectados como ossos senão a corda não parecerá um único
         // objeto»*). Carimbar uma conta em cada ponto desenha um ROSÁRIO: vinte marcas soltas que
         // se lêem como vinte coisas. O que faz delas UMA coisa é cada peça ir de um ponto ao

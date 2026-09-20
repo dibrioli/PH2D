@@ -139,7 +139,7 @@ pub fn bones(input: &Stream) -> Stream {
         "P",
         Column::Vec2(ossos.iter().map(|&(_, j)| pos[j]).collect()),
     );
-    // ⭐⭐⭐ **O QUADRO DO OSSO, quando a corrente não o traz** (ordem do dono, 2026-09-21).
+    // ⭐⭐⭐ **O QUADRO DO OSSO, quando a corrente não o traz** (ordem do dono, 2026-09-20).
     //
     // Uma corrente RESOLVIDA carrega o `rot` e o `len` que o `fk::resolve` usou — e a lei dele é
     // `P[i] = P[pai] + len[i] · (cos rot[i], sin rot[i])`, logo o segmento `P[i] − P[pai]` **É**
@@ -198,7 +198,7 @@ fn derive_frame(out: &mut Stream, input: &Stream, ossos: &[(usize, usize)], pos:
                         // `0`, que é o valor que uma peça de comprimento nulo desenha na mesma.
                         //
                         // ⛔⛔⛔ **E O RESULTADO VAI EM GRAUS, que é a unidade de ÂNGULO desta
-                        // casa** — report do dono (2026-09-21, foto): *«a rot não acontece»*.
+                        // casa** — report do dono (2026-09-20, foto): *«a rot não acontece»*.
                         // A 1.ª redacção desta lei devolvia o `atan2` CRU, e o desenho lê o `rot`
                         // em graus e converte na borda (`ph2d_eval_motion::lower`: *«the `rot`
                         // column is in **degrees** — the app's authored-angle unit … radians live

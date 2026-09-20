@@ -1,4 +1,4 @@
-//! ⭐⭐⭐ **A COLUNA VAZIA NÃO PISCA** — report do dono de 2026-09-21: *«pisca do lado direito
+//! ⭐⭐⭐ **A COLUNA VAZIA NÃO PISCA** — report do dono de 2026-09-20: *«pisca do lado direito
 //! quando escondemos o inspector e aumentamos muito a área do grafo de nós»*.
 //!
 //! ⛔⛔ **A régua da ocupação fechava um CICLO consigo mesma:** com a coluna da direita vazia a

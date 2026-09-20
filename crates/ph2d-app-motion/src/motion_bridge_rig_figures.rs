@@ -52,7 +52,7 @@ const PELE_ROWS: usize = 7;
 /// Quantos OSSOS uma corrente de `OSSOS_JUNTAS` juntas publica — **derivado, não escrito**.
 ///
 /// ⭐ Uma corrente de `n` juntas tem `n − 1` ossos, porque **a raiz é a única junta sem osso a
-/// chegar a ela** (a lei do [`ph2d_node_rig_bones`]). Desde 2026-09-21 os dois panos do meio
+/// chegar a ela** (a lei do [`ph2d_node_rig_bones`]). Desde 2026-09-20 os dois panos do meio
 /// passam por um `rig.bones` antes de vestirem a `Shape: Bone`, logo as figuras deles contam
 /// PEÇAS e não juntas.
 ///
@@ -71,7 +71,7 @@ const OSSOS_DA_CORRENTE: usize = crate::motion_state::rig_demo::OSSOS_JUNTAS as 
 /// params, logo não há dados de fora a publicar — e a ausência é uma propriedade do grupo, não um
 /// esquecimento (*um esqueleto não vem de fora*).
 ///
-/// ⛔⛔ **Mas há uma coisa a publicar, e esta função esteve sem ela:** desde 2026-09-21 cada pano
+/// ⛔⛔ **Mas há uma coisa a publicar, e esta função esteve sem ela:** desde 2026-09-20 cada pano
 /// veste uma forma (`source.shape` → `motion.duplicator`), e a geometria de uma forma é gerada no
 /// QUADRO, nunca no cozimento. Sem o `publish` os seis panos cozem **VAZIOS** e as seis figuras
 /// saem em branco — *e nenhum gate desta linha olha para uma figura*, que é a frase que o commit

@@ -74,7 +74,7 @@ const COLUMN_TAKEN_FRAC: f32 = 0.5; // LITERAL-PX-OK: fracção de área, não u
 /// **E quanto do PAINEL a coluna tem de ser.** A segunda metade da pergunta, e sem ela a primeira
 /// fecha um CICLO.
 ///
-/// ⛔⛔⛔ **Report do dono (2026-09-21): *«pisca do lado direito quando escondemos o inspector e
+/// ⛔⛔⛔ **Report do dono (2026-09-20): *«pisca do lado direito quando escondemos o inspector e
 /// aumentamos muito a área do grafo de nós»*.** Com a coluna da direita vazia a área de desenho
 /// cresce para dentro dela (que é o que este módulo existe para permitir) — e o painel que vive na
 /// área passa a **publicar um rect que cobre a coluna**. No quadro seguinte a régua de cima lia

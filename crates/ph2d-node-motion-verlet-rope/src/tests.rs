@@ -480,7 +480,7 @@ fn a_point_pinned_in_flight_stops_instead_of_coasting() {
 
 /// ⭐⭐⭐ **A CORDA DECLARA A CORRENTE DELA** — `parent[i] = i − 1`, e o primeiro ponto é raiz.
 ///
-/// Ordem do dono (2026-09-21): *«os segmentos devem ser conectados como ossos senão a corda não
+/// Ordem do dono (2026-09-20): *«os segmentos devem ser conectados como ossos senão a corda não
 /// parecerá um único objeto»*. A peça em falta não era um motor: era esta coluna. Com ela o
 /// `rig.bones` dá a cada segmento o quadro dele e a corda passa a desenhar-se como um CORDÃO em
 /// vez de um rosário de contas.

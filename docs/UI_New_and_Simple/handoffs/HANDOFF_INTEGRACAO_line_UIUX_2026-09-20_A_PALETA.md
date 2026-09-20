@@ -336,6 +336,38 @@ daqui: *uma medição de superfície de colisão vale para o dia em que foi tira
 > Flow` que este §5 publica **ficou obsoleta por esta linha** (`−253 px` em todas as fileiras): o §5
 > do handoff diz os **dois** sítios vivos e o comando que os reescreve.
 
-## §10 — O portão
+## §10 — O portão do fecho
 
-*(preenchido no fecho — ver o commit de fecho desta linha)*
+| passo | resultado |
+|---|---|
+| `scripts/nextest-impacted.sh` | **`15 470 / 15 470`** · `13 225` saltados · `44,4 s` · **zero flakes** |
+| `cargo test -p ph2d-panel-registry-init` (âmbito do app: `--features panel-painter-layers,panel-flip,panel-flip-frames,panel-wet-tuning`) | **`104 / 104`** |
+| `cargo clippy --all-targets -- -D warnings` (as três crates tocadas) | **zero** |
+| `git rebase main` | **no-op**: `merge-base == main == 395da6a55` |
+| `scripts/censos-da-arvore-combinada.sh` | **`127 / 127`** · *«controlo do filtro: 12 de 12 censos correram ✓»* |
+| `scripts/collision-surface.sh` | §2 — zero contador partilhado, zero contrato, zero ADR, zero pacote externo, nenhum tecto de LOC |
+| sobreposição de ficheiros com as outras linhas vivas | **ZERO** contra a `line/sculpt3d` (medido, §5) |
+
+⚠️ **A corrida de `-p` sem as quatro features reprova 12 testes, e isso é o instrumento a funcionar**
+— ver o §8.5. Quem re-correr o portão desta crate corre-a **com** elas.
+
+| `rm -rf target/*/incremental` (item 7) | **`56 G → 27 G`** · o binário do smoke (`86,9 MB`) sobrevive |
+| binário do smoke deixado QUENTE | `0,55 s` / **`0,23 s`** na 2.ª build |
+
+⭐ **E a 1.ª build já foi `0,55 s`**, o que é a prova de que **nada de produto mudou** desde o smoke
+que o dono aprovou: os commits a seguir a ele tocam `tests/` e `docs/` e mais nada.
+
+⚠️ **Nada de novo para o dono smokar:** as quatro coisas que ele vê já foram smokadas e aprovadas
+por ele nesta jornada (*«smoke OK»*); os commits a seguir a isso são **uma régua, um handoff e uma
+decisão dele** — zero linhas de produto. O binário fica quente na mesma.
+
+---
+
+## §11 — O que esta linha recomenda a quem a integrar
+
+1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com
+   a saída dele as **duas** tabelas vivas do §5 (o `CLAUDE.md` §5 e o doc-comment do
+   `scenes_pente.rs`). ⛔ A do handoff `…_sculpt3d_2026-09-17.md` §94 **fica como está**.
+2. **Promover nada à lista de flakes do §5.0** — esta rodada não produziu nenhuma (`15 470` verdes
+   à primeira).
+3. A linha do §5 está no §9, pronta a colar.

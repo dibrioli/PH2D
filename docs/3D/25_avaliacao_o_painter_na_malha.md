@@ -233,9 +233,10 @@ nova no Painter**, porque a textura **é** a imagem que ele já sabe pintar.
 
 O artista pinta no ecrã e o resultado é projectado de volta.
 
-⛔ **Não evita nada:** ele **também** precisa da textura e das UVs para ter onde
-gravar. Ele é uma *forma de entrada* sobre (A), não uma alternativa — e o
-`donated_form` mostra que a metade screen-space do fio já existe.
+⛔⛔ **ESTE PARÁGRAFO ESTAVA ERRADO PELA METADE, e a §11 é a correcção.** Ele
+dizia *«não evita nada: ele também precisa da textura e das UVs para ter onde
+gravar»* — **certo sobre o DESTINO e falso sobre a VIZINHANÇA**, que é o que de
+facto limita 7 dos 13 modos (§5). Ver a §11.
 
 ### (C) Ficar no canal por-vértice e enriquecê-lo
 
@@ -295,3 +296,121 @@ referência tem, e teria de ser medida antes de prometida.
   `blender -b -P` está medida na tabela do arsenal), e correr o oráculo é acto de
   uma janela **E**, nunca desta.
 * Não olhou o fonte de alvo nenhum.
+
+---
+
+## §11 — ⭐⭐⭐⭐ «Ter de trabalhar com UV é necessário?» (pergunta do dono, 2026-09-20)
+
+> *«ter que trabalhar com UV é necessário? Já há tecnologia suficiente para o
+> usuário nem pensar em UV?»*
+
+A pergunta obrigou a re-medir, e ela **derruba parte do §7(B)**.
+
+### A resposta tem duas metades, e elas são diferentes
+
+| a pergunta | resposta |
+|---|---|
+| **o ARTISTA tem de pensar em UV?** | ⭐ **NÃO — e isso é a norma da indústria há uma década.** Ninguém num Substance Painter ou num 3D-Coat desdobra à mão |
+| **o SISTEMA precisa de UV?** | **não obrigatoriamente** — há três vias, e uma delas tem porta **aberta e instalada** |
+
+⚠️ **E a W1 do §8 estava exposta ao contrário:** eu escrevi *«um botão Unwrap»*,
+e um botão com esse nome **é** fazer o artista pensar em UV. O desdobramento não
+tem de ser um gesto: ele acontece **quando a peça ganha uma textura**, e o UV é
+um detalhe que ninguém vê — exactamente como ninguém vê o octree.
+
+### ⛔⛔ O erro do §7(B): «UV ou não UV» é a pergunta errada
+
+A grandeza que decide não é a existência do UV — **é onde a vizinhança é
+correcta**, porque é isso que os 7 modos de vizinhança leem:
+
+| onde o traço acontece | o vizinho de um pixel é o vizinho na superfície? |
+|---|---|
+| atlas UV | ⚠️ **dentro da ilha sim, na costura não** |
+| **Ptex** (uma textura por face) | ⛔ **dentro da face sim** — *mais* fronteiras, não menos |
+| cor por-vértice | ⚠️ é o anel da malha, e o Painter não sabe lê-lo |
+| ⭐ **o ECRÃ** | ⭐⭐⭐ **SEMPRE. É uma imagem verdadeira.** |
+
+⇒ **a via que dá ao Painter o poder TOTAL é pintar no ECRÃ e gravar o resultado
+onde quer que seja.** Durante o traço, o Smear, o Blur, o liquify, o PatchMatch
+e a simulação de fluido correm sobre uma imagem 2D **perfeita** — que é
+literalmente o caso para que foram escritos.
+
+E aí o **destino deixa de precisar de suportar vizinhança nenhuma**: ele só
+guarda *«que cor/altura/cobertura/material há neste ponto da superfície»*.
+
+### ⭐⭐ E a metade CARA desta via já está construída, medida e com cache
+
+`MeshRenderer::form_plane` rasteriza a malha **no tamanho do canvas do Painter**,
+com a câmera do escultor, e o `FormStamp` decide quando re-rasterizar — *«uma
+forma parada custa zero»*. A tabela de custo já está no repo (`measure_a_donation`,
+RTX, release):
+
+| canvas | uma rasterização | lidos |
+|---|---|---|
+| 512² | 1,54 ms | 4 MB |
+| **1024²** | **5,94 ms** | 16 MB |
+| 2048² | 27,72 ms | 64 MB |
+| 4096² | 123,49 ms | 256 MB |
+
+⛔ **O que falta nesse G-buffer é UM plano:** ele devolve `[nx, ny, nz, cobertura]`
+e a oclusão, e **não** a posição em mundo nem `(face, baricêntricas)`. Sem isso
+não há como projectar de volta. ⭐ É o passe que já corre, com um alvo a mais —
+o SSAO dele já usa profundidade internamente.
+
+### As três vias para o DESTINO, sem o artista ver UV em nenhuma
+
+| via | o artista vê UV? | resolução da tinta | licença do estado da arte |
+|---|---|---|---|
+| **atlas automático** | ⭐ não (nasce com a textura) | a da textura (`2048²` = **42,7×** as amostras do default do módulo) | — (o `ph2d-gridmap` é nosso) |
+| **Ptex** — uma textura por face | ⭐ não (não há UV nenhum) | por face, adaptativa | ⭐⭐ **BSD-3-Clause, da Disney, e `ptex 2.5.4` está INSTALADO nesta máquina** (`/usr/include/Ptexture.h`, `/usr/lib/libPtex.so`) |
+| **por-vértice** (o de hoje) | ⭐ não | a da malha — e o número mede-se: o default do módulo equivale a uma textura de **`313²`**; só depois de `K` duas vezes (`1,57 M` vértices) ele chega a `1254²` | — |
+
+⚠️⚠️ **A triagem parou na primeira porta ABERTA (§0.9), e ela estava instalada
+sem ninguém saber.** O Ptex é a tecnologia de produção para *«nem pensar em
+UV»*, é **BSD-3**, e está nesta máquina com headers e `.so` ⇒ **lê-se, porta-se e
+liga-se, com atribuição** — sem parede, sem clean-room, sem subagentes.
+⛔ Ele **não** consta do arsenal (`docs/_ComoInvestigarApps/01`), e a razão é a
+lição do MyPaint: *a porta sem interface pode ser a BIBLIOTECA e não o binário*.
+
+### ⛔ O que o Ptex NÃO resolve, e é preciso dizê-lo
+
+Ele elimina o UV e as ilhas — **e não elimina a fronteira**: passa a haver uma por
+face. O que ele traz é a **adjacência explícita** para a atravessar. Ou seja:
+
+* como **DESTINO** de uma projecção de ecrã: ⭐ excelente, e sem costuras visíveis;
+* como **SUPERFÍCIE onde o Painter pinta directamente**: ⛔ pior que o atlas — os
+  7 modos de vizinhança passariam a cruzar uma fronteira a cada punhado de
+  texels.
+
+⇒ *o Ptex é uma resposta para onde GRAVAR, nunca para onde PINTAR.*
+
+### A recomendação, corrigida
+
+**A §8 fica de pé na ordem e muda no conteúdo da W1 e da W3:**
+
+| wave | antes (§8) | agora |
+|---|---|---|
+| **W1** | *«um botão Unwrap»* | ⛔ **sem botão**: a peça ganha a parametrização **quando ganha a textura**, e o artista nunca lê a palavra UV |
+| **W2** | a textura + o shader | igual — ⭐ e é aqui que se escolhe o destino (atlas · Ptex · por-vértice), com a §9 medida primeiro |
+| **W3** | cursor → `(u,v)` → `CanvasPointer` | ⭐⭐ **cursor → o ECRÃ**: o Painter pinta na imagem que já é rasterizada da malha, e o resultado é projectado ao largar. **Os 13 modos ficam perfeitos durante o traço** |
+
+⚠️ **O preço honesto da projecção**, e ele é real:
+
+1. **só se pinta o que se vê** — o que está de costas fica por pintar até rodar;
+2. **dois traços de ângulos diferentes encontram-se no destino**, e é *ali* que a
+   costura (do atlas) ou a fronteira (do Ptex) aparece — mas **entre** traços, não
+   **dentro** de um;
+3. o G-buffer precisa do plano de posição (acima);
+4. ⛔ **e a projecção de um dab é `N` texels**: fazê-la por raio custa `0,436 µs`
+   cada (medido na wave do `Scene Project`) ⇒ um dab de `100 px` de raio seriam
+   `~13,7 ms`. *Por isso ela tem de sair do G-buffer, não de raios* — e isso
+   ainda não foi medido.
+
+### O que esta secção acrescenta ao §9 (o que falta MEDIR)
+
+| pergunta | como se mede |
+|---|---|
+| o plano de posição custa quanto no `form_plane`? | acrescentar o alvo e re-correr o `measure_a_donation` |
+| a projecção de um dab, a partir do G-buffer, custa quanto? | não existe ainda; mede-se com o plano acima |
+| o Ptex serve de destino a **quatro** canais (cor · altura · cobertura · material)? | ele é multi-canal por desenho; ⭐ confirma-se **correndo-o**, que é legal (BSD) |
+| quantos texels por face o Ptex pede para igualar `2048²` numa peça típica? | contar faces × resolução por face |

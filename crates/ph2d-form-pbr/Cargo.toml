@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-form-pbr"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ UMA dependência de produção, e ela é a LEI: a `ph2d-material` é o port Apache-2.0 do OpenPBR, e
+# esta crate não reimplementa uma linha dela — ela é o LAÇO POR TEXEL que a chama. Uma segunda
+# redacção da óptica aqui seria a divergência que a `ph2d-material` existe para impedir.
+#
+# ⛔ **Sem `ph2d-light`, de propósito.** As lâmpadas entram como DADOS ([`Lampada`]), e quem as
+# resolve é o chamador — que já tem o rig. Depender dela arrastaria a `ph2d-painter-brush` para
+# dentro de uma lei que não sabe o que é um pincel, e a folha deixaria de o ser.
+[dependencies]
+ph2d-material = { path = "../ph2d-material" }
+
+[lints]
+workspace = true

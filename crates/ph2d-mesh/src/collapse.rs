@@ -692,3 +692,9 @@ fn lock_around(mesh: &Mesh, locked: &mut [bool], keep: u32, gone: u32) {
 #[cfg(test)]
 #[path = "collapse_tests.rs"]
 mod tests;
+
+/// **OS CANAIS por-vértice sobrevivem ao colapso** — o assunto que faltava a
+/// este ficheiro até 2026-09-20; ver o cabeçalho de [`cor_tests`].
+#[cfg(test)]
+#[path = "collapse_cor_tests.rs"]
+mod cor_tests;

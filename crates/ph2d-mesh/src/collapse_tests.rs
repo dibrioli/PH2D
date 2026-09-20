@@ -7,11 +7,15 @@
 use super::*;
 use crate::{Face, Mesh, dyntopo, shapes};
 
-fn scratch() -> RegionScratch {
+// ⚠️ **Os três abaixo são `pub(super)` para o irmão [`super::cor_tests`] os
+// ler** — a fixtura de um colapso de verdade é a MESMA nos dois assuntos, e
+// uma segunda cópia dela divergiria no dia em que uma das duas mudasse de
+// esfera. *Partir um ficheiro de teste não deve partir a fixtura.*
+pub(super) fn scratch() -> RegionScratch {
     RegionScratch::default()
 }
 
-fn tri_sphere(rings: usize, segs: usize) -> Mesh {
+pub(super) fn tri_sphere(rings: usize, segs: usize) -> Mesh {
     let mut m = shapes::uv_sphere(rings, segs, 1.0);
     m.triangulate();
     m
@@ -19,7 +23,7 @@ fn tri_sphere(rings: usize, segs: usize) -> Mesh {
 
 /// O comprimento médio de aresta — a régua com que as fixtures escolhem um
 /// limiar que de fato dispara.
-fn mean_edge(m: &Mesh) -> f32 {
+pub(super) fn mean_edge(m: &Mesh) -> f32 {
     let pos = m.positions();
     let mut sum = 0.0f32;
     let mut n = 0usize;

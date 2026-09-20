@@ -74,7 +74,7 @@
 use ph2d_mesh::{DEFAULT_COLOR, Mesh, shapes::uv_sphere};
 use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
 
-use super::{Rascunho, passe_nos_motores};
+use crate::dyntopo::{Rascunho, passe_nos_motores};
 
 /// A cor da fixtura — longe do PRETO (o sintoma) e longe do
 /// [`DEFAULT_COLOR`] (o outro suspeito), para que o valor do desvio os separe.

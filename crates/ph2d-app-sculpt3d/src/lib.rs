@@ -268,6 +268,16 @@ mod space;
 /// motivo dos outros; ele saiu da [`donation`] quando o isolamento tornou *quem
 /// mora em cada slot* uma pergunta com resposta não-óbvia.
 mod dyntopo;
+/// ⭐⭐⭐⭐ **A RÉGUA DAS MANCHAS PRETAS** — o report de 20/09, e a régua que
+/// separa *«a cor parte na CPU»* de *«a cor parte a caminho do device»*.
+///
+/// ⚠️ **Irmã do [`dyntopo`] e não filha**, por duas razões que apontam ao mesmo
+/// lado: ela é o assunto de um REPORT (não um detalhe do passe), e o tecto de
+/// LOC daquele ficheiro estava a `695` — *um módulo de teste cresce, e pendurá-lo
+/// no pai faz a prosa do pai pagar por ele*.
+#[cfg(test)]
+#[path = "manchas_pretas_tests.rs"]
+mod manchas_pretas;
 mod slots;
 
 /// **O OBJETO MISTO (O2)** — a forma acende um SPRITE da cena, e continua

@@ -306,12 +306,16 @@ fn the_new_vertices_carry_colour_and_mask() {
         };
     }
     let before = m.vert_count();
+    // ⚠️ **Os NASCIMENTOS são guardados**, e não por arrumação: é deles que sai
+    // o valor esperado da cor — ver a asserção lá em baixo.
+    let antes: Vec<[f32; 3]> = m.colors().expect("a semente pintou").to_vec();
+    let mut births = Vec::new();
     refine_in_sphere(
         &mut m,
         [0.0, 0.0, 1.0],
         0.6,
         edge_target(0.6, 1.0),
-        &mut Vec::new(),
+        &mut births,
         &mut scratch(),
     );
     assert!(m.vert_count() > before);
@@ -322,8 +326,60 @@ fn the_new_vertices_carry_colour_and_mask() {
         masks[before..].iter().all(|&v| (v - 0.25).abs() < 1e-5),
         "o meio de dois 0,25 é 0,25 — um vértice novo em zero apagaria a máscara ali"
     );
+    // ⛔⛔ **ESTE GATE PROMETIA A COR NO NOME E MEDIA-A PELO COMPRIMENTO** — até
+    // 2026-09-20 as duas linhas abaixo eram `assert_eq!(colors.len(),
+    // m.vert_count())` e mais nada, enquanto a máscara ao lado tinha asserção de
+    // VALOR. Um refino que fizesse todo vértice novo nascer PRETO deixava-o
+    // verde, e a nota do roteador do módulo leu o NOME dele e deu o refino por
+    // ilibado — que é como o report das manchas pretas foi procurado no sítio
+    // errado. *Um gate cujo nome promete duas metades e cujo corpo mede uma é
+    // lido pelo nome.*
+    //
+    // ⚠️ **E a FIXTURA tinha de mudar junto:** o campo de cor era um xadrez por
+    // índice PAR, que não tem valor esperado em ponto nenhum — *ela estava
+    // construída de um jeito que torna a asserção de valor impossível de
+    // escrever*. Hoje o valor esperado sai da LEI (o ponto médio de uma aresta
+    // herda a média dos pais) lida dos próprios [`Birth`], que é exacto seja
+    // qual for o campo.
     let colors = m.colors().expect("a cor também");
-    assert_eq!(colors.len(), m.vert_count());
+    assert_eq!(colors.len(), m.vert_count(), "e ela mede a malha nova");
+    assert!(
+        !births.is_empty(),
+        "piso de população: sem nascimentos a asserção abaixo não afirma nada"
+    );
+    // ⚠️⚠️ **A LEI COMPÕE-SE POR GERAÇÕES, e a 1.ª redacção desta régua não o
+    // sabia** — ela leu os pais na tabela de ANTES e estourou (`len 86, índice
+    // 102`): o refino é iterativo, logo um vértice nascido nesta mesma corrida
+    // pode ser PAI do seguinte. *É a lei da CADEIA que o colapso já cobra na
+    // renumeração, do outro lado do passe*, e afirmá-la assim torna a régua mais
+    // forte: ela prova a herança **através** das gerações, não só na primeira.
+    let mut esperadas = antes.clone();
+    for b in &births {
+        let (ca, cb) = (esperadas[b.a as usize], esperadas[b.b as usize]);
+        let esperado = [
+            0.5 * (ca[0] + cb[0]),
+            0.5 * (ca[1] + cb[1]),
+            0.5 * (ca[2] + cb[2]),
+        ];
+        let vi = b.vert as usize;
+        if esperadas.len() <= vi {
+            esperadas.resize(vi + 1, [0.0; 3]);
+        }
+        esperadas[vi] = esperado;
+        let lido = colors[vi];
+        let pior = (0..3)
+            .map(|k| (lido[k] - esperado[k]).abs())
+            .fold(0.0f32, f32::max);
+        assert!(
+            pior <= 1e-6 && !lido.iter().any(|x| x.is_nan()),
+            "o vértice {} nasceu com {lido:?} e a média dos pais {} e {} é \
+             {esperado:?} — um vértice novo que não herda a cor salpica a \
+             pintura, e um NaN aqui contamina a FACE inteira no device",
+            b.vert,
+            b.a,
+            b.b
+        );
+    }
 }
 
 /// Um `i` par para a fixture de cor — só precisa ser determinístico.

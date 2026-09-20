@@ -49,42 +49,46 @@ fn a_cena_da_pintura_abre_com_o_pincel_de_pintura() {
 /// dono aprova o smoke com o passo impossível dentro — foi o que aconteceu com o
 /// `Auto-Smooth` da `=41`, que é `Pro` num painel que nasce `Basic`.
 ///
-/// ⚠️ **As três pistas de cor só existem com o pincel de pintura em mãos**, e é
-/// por isso que a régua as pergunta com ele armado: perguntá-las com o pincel de
-/// fábrica leria *«não existem»* sobre um painel correcto.
+/// ⚠️ **A CAIXA DE COR só existe com o pincel de pintura em mãos**, e é por isso
+/// que a régua a pergunta com ele armado: perguntá-la com o pincel de fábrica
+/// leria *«não existe»* sobre um painel correcto.
+///
+/// # ⚠️ A premissa do NÍVEL morreu aqui, e a morte está à vista no diff
+///
+/// A redacção anterior varria as **três pistas** `Color R`/`G`/`B` e afirmava
+/// que elas eram `Basic` — *«o roteiro manda escolher a cor no nível de fábrica
+/// e a pista não é pintada ali»*. Em 2026-09-20 as três saíram, por ordem do
+/// dono (*«troque os sliders de cor pelo seletor de Cor (caixa de cor)»*), e a
+/// amostra que as substitui **não é uma `Row`**: ela não tem `level`, logo não
+/// há nível em que ela desapareça. ⇒ a pergunta do nível deixou de existir, e o
+/// que fica no lugar dela é a asserção que a torna verdadeira — *o pintor não
+/// consulta o `ui_level`* —, lida do ficheiro para que ela não possa voltar em
+/// silêncio.
 #[test]
-fn o_roteiro_nomeia_as_pistas_de_cor_que_o_painel_pinta() {
-    use ph2d_panel_sculpt3d::rows::rows;
-    use ph2d_panel_sculpt3d::state::{Sculpt3dUi, UiLevel};
-
-    let mut ui = Sculpt3dUi {
-        ui_level: UiLevel::Basic,
-        ..Sculpt3dUi::default()
-    };
-    ui.brush.verb = Verb::Paint;
-    for label in [
-        "panel.sculpt3d.color_r",
-        "panel.sculpt3d.color_g",
-        "panel.sculpt3d.color_b",
-    ] {
-        let row = rows()
-            .find(|r| r.label == label)
-            .unwrap_or_else(|| panic!("o roteiro nomeia `{label}` e a tabela não o tem"));
-        assert!(
-            row.visible(&ui),
-            "o roteiro manda escolher a cor no nível de fábrica e `{label}` não é \
-             pintada ali — o passo (1) é impossível"
-        );
-    }
-    // ⛔ **O CONTROLO, e sem ele o gate passa com três pistas pintadas SEMPRE:**
-    // com um pincel que não deposita a cor do pincel, elas têm de sumir.
-    ui.brush.verb = Verb::Blur;
+fn o_roteiro_nomeia_a_caixa_de_cor_que_o_painel_pinta() {
+    // (a) Com o verbo que a cena arma, a caixa É pintada.
     assert!(
-        !rows()
-            .filter(|r| r.label.starts_with("panel.sculpt3d.color_"))
-            .any(|r| r.visible(&ui)),
-        "as pistas de cor são pintadas com o `Blur` em mãos, que NÃO as lê — \
-         três knobs mortos, a espécie que o dono reporta como «não vejo efeito»"
+        Verb::Paint.deposita_a_cor_do_pincel(),
+        "o verbo desta cena deixou de depositar a cor do pincel: a caixa não é \
+         desenhada e o passo (1) do roteiro é impossível"
+    );
+    // ⛔ **O CONTROLO, e sem ele o gate passa com a caixa pintada SEMPRE:** um
+    // pincel que puxa a cor da vizinhança não a lê, e oferecê-la seria o knob
+    // morto que o dono reporta como «não vejo efeito».
+    assert!(
+        !Verb::Blur.deposita_a_cor_do_pincel(),
+        "o `Blur` passou a declarar que deposita a cor do pincel — ele puxa-a do \
+         ANEL, e a caixa ali seria um controlo morto"
+    );
+    // (b) E ela não tem cerca de NÍVEL, que é o que faz o passo (1) ser possível
+    // em qualquer profundidade do painel. ⚠️ Lido do PINTOR: uma afirmação sobre
+    // uma ausência tem de ser feita contra o ficheiro que a produz.
+    const PINTOR: &str = include_str!("../../ph2d-panel-sculpt3d/src/paint/brush_cor.rs");
+    assert!(
+        !PINTOR.contains("ui_level"),
+        "o pintor da caixa de cor passou a consultar o nível do painel — o passo \
+         (1) do roteiro deixou de ser possível no nível em que o painel ABRE, e \
+         esta cena manda escolher a cor antes de qualquer outra coisa"
     );
 }
 
@@ -131,8 +135,9 @@ fn a_peca_da_cena_e_densa_e_muito_mais_leve_que_o_default() {
 /// da `=41`.
 ///
 /// ⚠️⚠️ **E o gate irmão não o podia ver:** o
-/// [`o_roteiro_nomeia_as_pistas_de_cor_que_o_painel_pinta`] olha a TABELA de
-/// rows, e a fileira da luz é pintada à mão pelo `body.rs`, **fora** dela.
+/// [`o_roteiro_nomeia_a_caixa_de_cor_que_o_painel_pinta`] pergunta a UM
+/// controlo se ele é oferecido, e a fileira da luz é pintada à mão pelo
+/// `body.rs`, fora de toda tabela.
 /// *Um censo sobre UMA das populações lê-se, num relatório, como um censo sobre
 /// todas* — e é por isso que este colhe as quatro.
 #[test]
@@ -210,10 +215,20 @@ fn todo_nome_entre_crases_do_roteiro_existe_na_tela() {
     //     tabela de rows NÃO contém (a fileira da luz e os chips dela vivem
     //     aqui). ⚠️ Lido por `include_str!` de propósito: se o ficheiro mudar de
     //     sítio isto deixa de COMPILAR, em vez de ficar verde a medir menos.
+    //     ⚠️⚠️ **E são DOIS pintores, não um — a 2.ª fonte nasceu em 20/09 e
+    //     este gate ACUSOU a ausência dela.** A caixa de cor é pintada pelo
+    //     `brush_cor.rs` e **não é uma `Row`**, logo a população (a) não a tem;
+    //     com só o `body.rs` aqui, o passo (1) do roteiro (*«a fileira
+    //     `Color`»*) lia-se como um nome que nada na tela usa. *Um censo sobre
+    //     UMA das populações lê-se, num relatório, como um censo sobre todas* —
+    //     a frase que este ficheiro já escrevia, cobrada a quem a escreveu.
     const PINTOR: &str = include_str!("../../ph2d-panel-sculpt3d/src/paint/body.rs");
-    for pedaco in PINTOR.split("tr(\"").skip(1) {
-        if let Some(chave) = pedaco.split('"').next() {
-            na_tela.push(tr(chave).to_string());
+    const PINTOR_COR: &str = include_str!("../../ph2d-panel-sculpt3d/src/paint/brush_cor.rs");
+    for fonte in [PINTOR, PINTOR_COR] {
+        for pedaco in fonte.split("tr(\"").skip(1) {
+            if let Some(chave) = pedaco.split('"').next() {
+                na_tela.push(tr(chave).to_string());
+            }
         }
     }
     // (d) as teclas.

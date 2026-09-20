@@ -110,9 +110,10 @@ pub(crate) fn announce() {
         "[sculpt3d] =51 PINTAR A PECA -- a tinta, o esbater e o esfregar\n\
          [sculpt3d]    O pincel de PINTURA ja' esta' na sua mao.\n\
          [sculpt3d]\n\
-         [sculpt3d]    (1) Abra o painel (tecla CRASE, acima do TAB) e escolha uma cor\n\
-         [sculpt3d]        forte nas tres pistas `Color R` / `Color G` / `Color B` --\n\
-         [sculpt3d]        por exemplo R=1, G=0, B=0 para vermelho.\n\
+         [sculpt3d]    (1) Abra o painel (tecla CRASE, acima do TAB) e carregue na\n\
+         [sculpt3d]        CAIXA DE COR da fileira `Color` -- abre o seletor de cor.\n\
+         [sculpt3d]        Escolha uma cor forte (vermelho, por exemplo) e carregue\n\
+         [sculpt3d]        FORA dele para o fechar. A caixa fica com a cor escolhida.\n\
          [sculpt3d]    (2) Arraste sobre a peca.\n\
          [sculpt3d]        -> A peca ganha a cor onde voce passou. A forca da pista\n\
          [sculpt3d]           `Strength` diz quanto de cor cada passagem deposita.\n\

@@ -141,6 +141,13 @@ mod heal;
 #[path = "motion_bridge_fold.rs"]
 mod fold;
 
+/// ⭐ **Quanto mede cada cartão** — o canal da geometria do painel até à arrumação automática.
+/// Vive aqui dentro porque lê o `fold` (os pinos derivados de um cartão de grupo), e depende do
+/// painel, logo segue a mesma feature.
+#[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_medida.rs"]
+pub mod medida;
+
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_subgraph.rs"]
 mod subgraph;

@@ -477,3 +477,34 @@ fn a_point_pinned_in_flight_stops_instead_of_coasting() {
         held[1][1]
     );
 }
+
+/// ⭐⭐⭐ **A CORDA DECLARA A CORRENTE DELA** — `parent[i] = i − 1`, e o primeiro ponto é raiz.
+///
+/// Ordem do dono (2026-09-21): *«os segmentos devem ser conectados como ossos senão a corda não
+/// parecerá um único objeto»*. A peça em falta não era um motor: era esta coluna. Com ela o
+/// `rig.bones` dá a cada segmento o quadro dele e a corda passa a desenhar-se como um CORDÃO em
+/// vez de um rosário de contas.
+///
+/// ⚠️ **O predicado que a lê é o do `fk::resolve`** — *«um índice finito, não negativo e que
+/// aponta para TRÁS é um pai»* —, logo o `-1` do primeiro é o que o declara raiz. FALSIFICADO por
+/// apagar a coluna (o `rig.bones` passa a ser a identidade e a corda volta ao rosário) ou por
+/// escrever `i` em vez de `i − 1` (um pai que não aponta para trás não é pai, e a corrente inteira
+/// vira `n` raízes ⇒ ZERO ossos).
+#[test]
+fn a_corda_declara_a_corrente_dela() {
+    let p = params(6, 1.0, 9.8, false);
+    let out = simulate([0.0, 0.0], &Stream::new(0), 0.0, &p);
+    let Some(Column::Scalar(parent)) = out.get("parent") else {
+        panic!("a corda tem de publicar a corrente dela");
+    };
+    assert_eq!(parent.len(), 6);
+    assert!(parent[0] < 0.0, "o primeiro ponto e' raiz: {parent:?}");
+    for i in 1..6 {
+        #[expect(clippy::cast_precision_loss, reason = "seis pontos")]
+        let esperado = (i - 1) as f32;
+        assert!(
+            (parent[i] - esperado).abs() < f32::EPSILON,
+            "a peca {i} esta presa a {esperado}: {parent:?}"
+        );
+    }
+}

@@ -532,7 +532,7 @@ pub(super) fn apply_graph_intents(
             // cannot use (the same rule as `SetBackdropColor` above).
             GraphIntent::ArrangeLayout => {
                 let pre = motion.doc.clone();
-                ph2d_motion_doc::layout::arrange(&mut motion.doc);
+                crate::motion_arrumar::arrumar(motion);
                 if motion.doc != pre {
                     motion.history.push_undo(pre);
                 }

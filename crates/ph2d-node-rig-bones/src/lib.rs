@@ -139,6 +139,20 @@ pub fn bones(input: &Stream) -> Stream {
         "P",
         Column::Vec2(ossos.iter().map(|&(_, j)| pos[j]).collect()),
     );
+    // ⭐⭐⭐ **O QUADRO DO OSSO, quando a corrente não o traz** (ordem do dono, 2026-09-21).
+    //
+    // Uma corrente RESOLVIDA carrega o `rot` e o `len` que o `fk::resolve` usou — e a lei dele é
+    // `P[i] = P[pai] + len[i] · (cos rot[i], sin rot[i])`, logo o segmento `P[i] − P[pai]` **É**
+    // esse quadro, ao arredondamento. Uma corrente que nunca passou por um solver — uma CORDA,
+    // que declara `parent` porque a peça `i` está presa à `i − 1` — não traz nem um nem outro, e
+    // sem eles toda peça carimbada sai sem rodar: *uma corda desenhada como um rosário de contas
+    // em vez de um cordão*, que é o report do dono à letra.
+    //
+    // ⚠️⚠️ **DERIVA-SE só o que FALTA, e a razão não é timidez:** num rig o número já existe e
+    // foi o solver que o calculou; re-derivá-lo por `atan2` trocaria um valor exacto por um com
+    // erro de vírgula flutuante em toda a família, para não mudar resposta nenhuma. *Onde a
+    // corrente responde, a resposta dela ganha.*
+    derive_frame(&mut out, input, &ossos, &pos);
     // Ver a decisão (3) do cabeçalho.
     #[expect(
         clippy::cast_precision_loss,
@@ -158,6 +172,50 @@ pub fn bones(input: &Stream) -> Stream {
         out.set(COUNT, Column::Scalar(vec![m as f32; m]));
     }
     out
+}
+
+/// O ângulo de MUNDO de cada osso, na convenção do [`fk::resolve`] da família.
+const ROT: &str = "rot";
+/// O comprimento de cada osso, na mesma convenção.
+const LEN: &str = "len";
+
+/// **O quadro que a corrente não trouxe** — ver a chamada, que é onde a lei está escrita.
+///
+/// ⚠️ **As duas metades são independentes de propósito:** uma corrente pode trazer o comprimento
+/// e não o ângulo (ou o contrário), e escrever as duas em bloco faria a presença de uma decidir
+/// pela outra.
+fn derive_frame(out: &mut Stream, input: &Stream, ossos: &[(usize, usize)], pos: &[[f32; 2]]) {
+    let delta = |&(i, j): &(usize, usize)| [pos[i][0] - pos[j][0], pos[i][1] - pos[j][1]];
+    if input.get(ROT).is_none() {
+        out.set(
+            ROT,
+            Column::Scalar(
+                ossos
+                    .iter()
+                    .map(|b| {
+                        let d = delta(b);
+                        // ⚠️ Duas juntas no MESMO ponto não têm direcção; `atan2(0, 0)` devolve
+                        // `0`, que é o valor que uma peça de comprimento nulo desenha na mesma.
+                        d[1].atan2(d[0])
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+        );
+    }
+    if input.get(LEN).is_none() {
+        out.set(
+            LEN,
+            Column::Scalar(
+                ossos
+                    .iter()
+                    .map(|b| {
+                        let d = delta(b);
+                        d[0].hypot(d[1])
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+        );
+    }
 }
 
 /// As posições do stream (ausentes → a origem), do tamanho declarado.

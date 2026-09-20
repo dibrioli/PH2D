@@ -476,18 +476,19 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
     // ── AS TRÊS VESTES, resolvidas pelo NOME uma vez só ────────────────────────────────
     //
-    // ⛔⛔ **A corda leva um CÍRCULO e não o `Shape: Rope Segment`, e a razão é MEDIDA:** o
-    // `motion.verlet_rope` publica `P`, `rope_prev` e `sim_t` — e **nenhuma coluna `rot`**. O
-    // segmento de corda é uma forma ORIENTADA (um cordão com um nó em cada ponta, cortado de `a`
-    // a `b`), logo sem ângulo os vinte sairiam todos deitados na horizontal: uma corda pendurada
-    // desenhada como uma pilha de traços. *É a espécie que o `CLAUDE.md` §5.0 chama de pior que
-    // uma cena ausente.* ⭐ O círculo é a conta honesta — uma corda de Verlet É uma fila de
-    // partículas —, e não precisa de direcção nenhuma para o ser.
+    // ⭐⭐⭐ **A corda leva o `Shape: Rope Segment` desde 2026-09-21** (ordem do dono), e o que
+    // estava aqui escrito era uma recusa MEDIDA que morreu por o substrato ter mudado — fica com
+    // a morte à vista, porque ela diz exactamente qual era a peça em falta:
     //
-    // ⏳ E fica NOMEADO: o `Shape: Rope Segment` entrou no catálogo em 2026-09-19 e **não tem um
-    // único consumidor no repo**. Quem o quiser usar precisa de um nó que escreva `rot` a partir
-    // da direcção ao vizinho — o `rig.bones` não serve (exige `parent`/`len`/`rot`, que é uma
-    // corrente de rig) e o `motion.look_at` também não (ele aponta a um ALVO, não ao seguinte).
+    // > *«a corda leva um CÍRCULO: o `motion.verlet_rope` publica `P`, `rope_prev` e `sim_t` — e
+    // > nenhuma coluna `rot`. Quem quiser o segmento de corda precisa de um nó que escreva `rot` a
+    // > partir da direcção ao vizinho — o `rig.bones` não serve (exige `parent`/`len`/`rot`).»*
+    //
+    // ⚠️ **A premissa estava certa e a conclusão não:** o `rig.bones` exigia `parent` e *colhia* o
+    // `rot`, e as duas metades eram curáveis onde a verdade já vivia — a corda **é** uma corrente
+    // (`parent[i] = i − 1` é a restrição que o solver impõe) e o quadro de um osso **é** o
+    // segmento entre as duas juntas que ele liga. Nenhum nó novo, duas leis escritas onde já eram
+    // verdade. *Uma recusa medida responde a UMA pergunta, e esta respondia à de ontem* (§0.0).
     let circulo = Veste::redonda(super::sim_demo::indice_de(
         reg,
         "source.shape",
@@ -504,6 +505,15 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         kind: super::sim_demo::indice_de(reg, "source.shape", "kind", "Bone")?,
         aspect: OSSO_ESBELTEZA,
     };
+    // ⚠️ **O cordão fica com `aspect = 1` de propósito:** a esbelteza dele é da PRÓPRIA forma (o
+    // cordão mede `0,3` da altura e o nó `0,2` do comprimento — os defaults do símbolo), e
+    // apertar a caixa por cima disso afinaria o fio até ele desaparecer no zoom do pano.
+    let cordao = Veste::redonda(super::sim_demo::indice_de(
+        reg,
+        "source.shape",
+        "kind",
+        "Rope Segment",
+    )?);
 
     // ── CIMA: O QUE SE SEGURA SOZINHO — a corda · o campo ───────────────────────────────
     {
@@ -513,11 +523,27 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         doc.graph.set_param(c, "length", CORDA_COMPRIMENTO);
         doc.graph.set_label(c, "Verlet Rope: a corda");
         laco_de_estado(doc, c, CORDA_PORTA_ESTADO)?;
+        // ⭐⭐⭐ **A corda veste-se de SEGMENTOS, ligados como ossos** (ordem do dono, 2026-09-21:
+        // *«os segmentos devem ser conectados como ossos senão a corda não parecerá um único
+        // objeto»*). Carimbar uma conta em cada ponto desenha um ROSÁRIO: vinte marcas soltas que
+        // se lêem como vinte coisas. O que faz delas UMA coisa é cada peça ir de um ponto ao
+        // seguinte — e isso é, à letra, o que um OSSO é.
+        //
+        // ⭐ **E não foi preciso um motor novo:** a corda passou a declarar a corrente dela
+        // (`parent[i] = i − 1`, que é a restrição que o solver já impõe) e o `rig.bones` a derivar
+        // o quadro de cada osso quando a corrente não o traz. *Os dois eram factos que o produto
+        // já tinha e não dizia.*
+        //
+        // ⚠️ **O `CORDA_PECA` não muda de número e muda de PAPEL:** ele era o semi-eixo de uma
+        // conta e é agora o do segmento — e ele já valia metade do vão, logo a peça, cortada de
+        // `[0, 2s]` como todo símbolo de rig, vai **exactamente** de um ponto ao seguinte. A
+        // cadeia ladrilha e a corda lê-se como um cordão com um nó em cada junta.
+        let ossos = ossos_de(doc, c, y)?;
         // ⚠️ A corda PENDURA-SE, logo o pano dela sobe: centrada, metade dela sairia por baixo.
         sinks.push(pousa(
             doc,
-            c,
-            circulo,
+            ossos,
+            cordao,
             CORDA_PECA,
             [-COL_X, fileira_y(0) + 0.9],
             y,
@@ -648,6 +674,11 @@ pub(super) fn captions() -> Vec<Caption> {
     ]
 }
 
+/// Os gates da ARRUMAÇÃO AUTOMÁTICA sobre esta cena — irmãos dos de cima por responsabilidade
+/// (e pelo tecto de LOC); ver o cabeçalho deles.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_state_rig_demo_arrumacao_tests.rs"]
+mod arrumacao_tests;
 #[cfg(test)]
 #[path = "motion_state_rig_demo_tests.rs"]
 mod tests;

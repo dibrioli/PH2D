@@ -192,3 +192,89 @@ fn as_outras_colunas_viajam_pelo_filho() {
     let cru = corrente(4, 0.6, 30.0, 0.0).with("falloff", Column::Scalar(vec![9.0, 1.0, 2.0, 3.0]));
     assert_eq!(escalar(&bones(&cru), "falloff"), vec![1.0, 2.0, 3.0]);
 }
+
+// ---------------------------------------------------------------------------
+// O QUADRO DE UM OSSO — a lei de 2026-09-21 (ordem do dono sobre a corda).
+// ---------------------------------------------------------------------------
+
+/// Uma corrente CRUA: só posições e `parent`, como uma corda de Verlet as publica.
+/// ⚠️ Nem `rot` nem `len` — é essa ausência que a lei nova responde.
+fn corrente_crua(pos: &[[f32; 2]]) -> Stream {
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "indice de pai num f32, como a familia"
+    )]
+    let parent: Vec<f32> = (0..pos.len())
+        .map(|i| if i == 0 { -1.0 } else { (i - 1) as f32 })
+        .collect();
+    Stream::new(pos.len())
+        .with("P", Column::Vec2(pos.to_vec()))
+        .with("parent", Column::Scalar(parent))
+}
+
+/// ⭐⭐⭐ **O QUADRO DE UM OSSO SAI DO SEGMENTO, quando a corrente não o traz.**
+///
+/// Uma corda publica posições e a corrente delas, e mais nada. Sem esta lei cada peça carimbada
+/// saía **sem rodar** — vinte traços deitados na horizontal onde o dono pediu um cordão. A régua
+/// é exacta: uma cotovelada de `(1,0)` seguida de `(0,1)` dá `0°` e `90°`, com comprimento `1`.
+///
+/// FALSIFICADO por apagar o `derive_frame` (não há coluna `rot` nenhuma na saída).
+#[test]
+fn o_quadro_de_um_osso_sai_do_segmento_quando_a_corrente_nao_o_traz() {
+    let s = bones(&corrente_crua(&[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]));
+    assert_eq!(s.count(), 2, "tres juntas dao dois ossos");
+    let rot = escalar(&s, "rot");
+    assert!(
+        (rot[0] - 0.0).abs() < 1e-6,
+        "o primeiro aponta para +x: {rot:?}"
+    );
+    assert!(
+        (rot[1] - std::f32::consts::FRAC_PI_2).abs() < 1e-6,
+        "o segundo aponta para +y: {rot:?}"
+    );
+    let len = escalar(&s, "len");
+    assert!(
+        len.iter().all(|l| (l - 1.0).abs() < 1e-6),
+        "cada osso mede o proprio segmento: {len:?}"
+    );
+}
+
+/// ⛔⛔ **O CONTROLO, e é ele que justifica a lei ser CONDICIONAL:** numa corrente RESOLVIDA o
+/// `rot` e o `len` já existem, foram calculados pelo solver, e a saída fica com **os números
+/// dele** — não com um `atan2` que diria quase o mesmo com erro de vírgula flutuante.
+///
+/// ⚠️ A régua é a IGUALDADE AO BIT com o que a corrente trazia: *«quase igual» é exactamente o que
+/// se estaria a introduzir na família toda se a lei fosse incondicional.*
+///
+/// FALSIFICADO por derivar sempre (os valores passam a diferir do `wrot` do solver).
+#[test]
+fn uma_corrente_resolvida_mantem_o_quadro_que_o_solver_calculou() {
+    let cru = corrente(4, 0.6, 30.0, 0.0);
+    let antes = escalar(&cru, "rot");
+    let s = bones(&cru);
+    let depois = escalar(&s, "rot");
+    // O `colhe` re-amostra pelo FILHO de cada osso, que são os elementos `1..n`.
+    assert_eq!(
+        depois,
+        antes[1..].to_vec(),
+        "o angulo do solver viaja ao bit, e nao um atan2 parecido"
+    );
+}
+
+/// ⚠️ **As duas metades são independentes:** uma corrente que traz o comprimento e não o ângulo
+/// fica com o comprimento dela e com o ângulo derivado. FALSIFICADO por escrever as duas em bloco
+/// (o `len` pregado seria substituído).
+#[test]
+fn cada_metade_do_quadro_decide_por_si() {
+    let cru = corrente_crua(&[[0.0, 0.0], [3.0, 0.0]]).with("len", Column::Scalar(vec![7.0, 7.0]));
+    let s = bones(&cru);
+    assert_eq!(
+        escalar(&s, "len"),
+        vec![7.0],
+        "o comprimento pregado sobrevive"
+    );
+    assert!(
+        escalar(&s, "rot")[0].abs() < 1e-6,
+        "e o angulo em falta e' derivado na mesma"
+    );
+}

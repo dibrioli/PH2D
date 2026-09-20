@@ -144,8 +144,75 @@ const PREVIEW_TOGGLE_PAD: f32 = 6.0; // LITERAL-PX-OK: toggle inset from the hea
 /// card that is drawn taller than it is clickable has a dead strip along its bottom edge,
 /// and a card clickable past its own border steals from the canvas behind it.
 pub(crate) fn card_h(n: &GraphNodeView) -> f32 {
-    let readout = if n.readout.is_some() { ROW_H } else { 0.0 };
-    readout_top(n) + readout + PAD_BOTTOM
+    card_h_de(card_rows(n), card_param_rows(n), n.readout.is_some())
+}
+
+/// Ver [`card_h`] — a MESMA soma, a partir das PEÇAS, para quem mede um cartão que ainda não é
+/// uma [`GraphNodeView`] (a arrumação automática, [`extensao_de`]). ⛔ A irmã acima delega nesta:
+/// *duas somas para a mesma altura divergem no dia em que a faixa ganhar uma fileira.*
+pub(crate) fn card_h_de(fileiras_de_pino: f32, fileiras_de_param: f32, tem_readout: bool) -> f32 {
+    let readout = if tem_readout { ROW_H } else { 0.0 };
+    HEADER_H + fileiras_de_pino * ROW_H + fileiras_de_param * ROW_H + readout + PAD_BOTTOM
+}
+
+/// ⭐⭐⭐ **QUANTO ESPAÇO ESTE CARTÃO OCUPA — a porta que a ARRUMAÇÃO AUTOMÁTICA lê.**
+///
+/// A disposição em camadas ([`ph2d_nodegraph::layout`]) espaçava por duas constantes, e desde
+/// 2026-09-20 nenhuma das duas descreve um cartão: a **largura** de uma pastilha segue o NOME
+/// ([`geom_card::largura_da_capsula`]) e a **altura** de um cartão aberto segue a contagem de
+/// fileiras mais a moldura da pré-visualização. O dono reportou as duas — *«nós estão se
+/// interpenetrando»* e *«a arrumação deve considerar o tamanho vertical do nó»*.
+///
+/// ⚠️⚠️ **O que ela devolve é a UNIÃO dos dois regimes, e tem de ser:** a arrumação escreve UMA
+/// posição e o zoom escolhe o desenho depois. Larga como a pastilha (que cresce para os dois
+/// lados, logo o `left` é negativo), alta como o cartão aberto.
+///
+/// ⚠️ **A moldura da pré-visualização é reservada EM BAIXO**, que é o lado de omissão
+/// ([`PreviewPos`]): com ela na conta, o retrato de um nó nunca aterra sobre o cartão da fileira
+/// seguinte — que é a outra metade daquele report (*«o preview deve ser posicionado na melhor
+/// posição para não ficar entre nós»*). ⛔ Virá-la para cima é um gesto do artista e não uma
+/// posição que esta função escolha: reservar os DOIS lados custaria `256` unidades por nó com
+/// retrato, em toda cena, para um lado que quase nunca é usado.
+#[must_use]
+pub fn extensao_desenhada(n: &GraphNodeView) -> ph2d_nodegraph::layout::Extent {
+    extensao_de(
+        &n.display_name,
+        card_rows(n),
+        card_param_rows(n),
+        n.readout.is_some(),
+        has_preview_slot(n),
+    )
+}
+
+/// Ver [`extensao_desenhada`] — a MESMA aritmética, a partir das PEÇAS.
+///
+/// ⚠️ **Ela existe porque quem arruma mede duas espécies de cartão e só uma é uma
+/// [`GraphNodeView`]:** um cartão de GRUPO colapsado é derivado pela shell (o título do
+/// subgrafo, os pinos que atravessam a fronteira) e não passa por este retrato. ⛔ E não são
+/// duas respostas: a irmã acima delega nesta.
+#[must_use]
+pub fn extensao_de(
+    nome: &str,
+    fileiras_de_pino: f32,
+    fileiras_de_param: f32,
+    tem_readout: bool,
+    tem_retrato: bool,
+) -> ph2d_nodegraph::layout::Extent {
+    let largura = largura_da_capsula_do_nome(nome);
+    // A pastilha cresce a partir do CENTRO do cartão — ver `geom_card::card_x_w_at`.
+    let sobra = (largura - CARD_W) * 0.5;
+    let corpo = card_h_de(fileiras_de_pino, fileiras_de_param, tem_readout).max(CAPSULA_H);
+    let abaixo = if tem_retrato {
+        corpo + PREVIEW_GAP + PREVIEW_FRAME_H
+    } else {
+        corpo
+    };
+    ph2d_nodegraph::layout::Extent {
+        left: -sobra,
+        right: CARD_W + sobra,
+        top: 0.0,
+        bottom: abaixo,
+    }
 }
 
 /// The preview moldura's rect in SCREEN space — its own frame ABOVE or BELOW the card, or

@@ -395,6 +395,8 @@ pub mod emitter_smoke;
 pub mod glow_dirt_smoke;
 pub mod gradient_smoke;
 pub mod lens_smoke;
+/// ⭐ A porta única de ARRUMAR o documento, com cada cartão medido — ver o módulo.
+mod motion_arrumar;
 pub mod osc_ruler_smoke;
 pub mod smoke_layout;
 pub mod splice_smoke;

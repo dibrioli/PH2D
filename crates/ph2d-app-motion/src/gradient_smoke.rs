@@ -75,7 +75,7 @@ pub fn gradient_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
         return;
     }
     let (sink, hero) = row(&mut cx.motion.doc.graph);
-    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &[hero]);
+    crate::smoke_layout::arrange_and_mark(cx.motion, &[hero]);
     cx.motion.sinks.push(sink);
     let _ = cx
         .tools

@@ -106,7 +106,7 @@ pub fn lens_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
         return;
     }
     let (sinks, lenses, _) = scene(&mut cx.motion.doc.graph);
-    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &lenses);
+    crate::smoke_layout::arrange_and_mark(cx.motion, &lenses);
     for s in sinks {
         cx.motion.sinks.push(s);
     }

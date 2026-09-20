@@ -86,7 +86,7 @@ fn arranging_lays_the_graph_out_in_one_undo_step() {
 #[test]
 fn arranging_an_already_tidy_graph_pushes_no_undo_step() {
     let (mut m, _a) = stale_chain();
-    ph2d_motion_doc::layout::arrange(&mut m.doc); // tidy it directly — no history
+    crate::motion_arrumar::arrumar(&mut m); // tidy it directly — no history
     assert!(
         !m.history.can_undo(),
         "the fixture starts with a clean history"

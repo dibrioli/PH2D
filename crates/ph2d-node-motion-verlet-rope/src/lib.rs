@@ -237,93 +237,10 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// The value coordinate for element 0 (the anchor): **unconnected (empty) → 0.0**;
-/// otherwise the first element (broadcast).
-fn value_head(vals: &[f32]) -> f32 {
-    vals.first().copied().unwrap_or(0.0)
-}
-
-fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
-    match s.get(name) {
-        Some(Column::Scalar(v)) => v.clone(),
-        _ => Vec::new(),
-    }
-}
-
-fn vec2_col(s: &Stream, name: &str) -> Vec<[f32; 2]> {
-    match s.get(name) {
-        Some(Column::Vec2(v)) => v.clone(),
-        _ => Vec::new(),
-    }
-}
-
-/// The transient `accel` the state carries, at exactly `n` — **absent is zeros**.
-///
-/// ## What this one column buys
-///
-/// A `force.*` node wired into this rope's `state` chain (`rope.out --pre-->
-/// force.wind --> rope.state`) accumulates world-units/s² here, and reading it
-/// hands the rope the WHOLE force family at once: gravity with a DIRECTION,
-/// wind, curl, an attractor, a vortex, drag. None of that is a kernel this crate
-/// has to grow — it is one column, read once (doc 89 §2.1).
-///
-/// ⚠️ **Consumed, never emitted.** The emitted stream carries `P`/`rope_prev`/
-/// `sim_t` and nothing else, so every tick starts from zero acceleration — the
-/// same discipline `motion.integrate` states in its own docs. A rope that
-/// forwarded `accel` would integrate last tick's wind forever.
-///
-/// ⚠️ **Zeros are the IDENTITY, so a rope no force reaches is byte-identical to
-/// the one that shipped**: `x + 0.0 * dt²` is `x`. That is a property of the
-/// arithmetic, not a fast path to keep in step with a slow one.
-/// A massa inversa por ponto, alargada a `n` e tornada segura — o espelho exacto
-/// do leitor do `motion.collide`: **ausente lê como livre (`1`)**, e um peso
-/// negativo ou não-finito de um documento editado à mão lê como **pinado (`0`)**
-/// em vez de INVERTER a correção.
-///
-/// ## O que esta coluna compra, e por que é a MESMA porta do `accel`
-///
-/// Um `motion.pin_constraint` na cadeia de estado desta corda
-/// (`rope.out --pre--> pin --> rope.state`) prega um ÍNDICE ARBITRÁRIO — a
-/// capacidade que a folha 03 pedia (linha 51) e que o doc do pino declarava
-/// inalcançável (*"um pino a montante não tem fio por onde os alcançar"*). O fio
-/// é a cadeia de estado, e ela já era o fio pelo qual o `accel` entra.
-///
-/// ⚠️ **Consumida, nunca emitida** — a mesma disciplina do `accel`, e aqui a razão
-/// é MEDÍVEL: o `motion.pin_constraint` MULTIPLICA no que já está no stream, então
-/// uma corda que reemitisse `inv_mass` faria um pino parcial de `0,5` decair
-/// `0,5 → 0,25 → 0,125` a cada tique — o *produto sobre a lista* que este módulo
-/// já pagou noutro lugar. Emitida uma vez por tique pelo pino, lida uma vez.
-fn inv_mass_col(s: &Stream, n: usize) -> Vec<f32> {
-    match s.get(INV_MASS_COL) {
-        Some(Column::Scalar(v)) if v.len() == n => v
-            .iter()
-            .map(|w| if w.is_finite() { w.max(0.0) } else { 0.0 })
-            .collect(),
-        _ => vec![1.0; n],
-    }
-}
-
-/// A fração da correção que cabe a cada ponta de uma restrição — a fórmula PBD
-/// `w_i / (w_i + w_j)`, a MESMA que o `motion.collide` usa no seu empurrão.
-///
-/// ⚠️ **Ela REDUZ LITERALMENTE à tabela de quatro braços que shipava** quando os
-/// pesos são `{0, 1}`: `0/1 = 0`, `1/1 = 1` e `1/2 = 0,5` são todos EXACTOS em
-/// IEEE-754, e o par degenerado `(0, 0)` cai no guard. É por isso que uma corda
-/// que nenhum pino alcança é byte-idêntica — por ARITMÉTICA, não por promessa.
-fn share(wa: f32, wb: f32) -> (f32, f32) {
-    let sum = wa + wb;
-    if sum <= 0.0 {
-        return (0.0, 0.0);
-    }
-    (wa / sum, wb / sum)
-}
-
-fn accel_col(s: &Stream, n: usize) -> Vec<[f32; 2]> {
-    match s.get("accel") {
-        Some(Column::Vec2(v)) if v.len() == n => v.clone(),
-        _ => vec![[0.0, 0.0]; n],
-    }
-}
+/// ⭐ **Os leitores de coluna** — irmãos por responsabilidade; ver o cabeçalho deles.
+#[path = "colunas.rs"]
+mod colunas;
+use colunas::{accel_col, inv_mass_col, scalar_col, share, value_head, vec2_col};
 
 /// The simulation parameters resolved at eval (all arithmetic-ready).
 struct Params {
@@ -604,9 +521,31 @@ fn simulate(anchor: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stre
         seed(anchor, p)
     };
 
+    // ⭐⭐⭐ **A CORDA DIZ QUE É UMA CORRENTE** (ordem do dono, 2026-09-21: *«os segmentos devem
+    // ser conectados como ossos senão a corda não parecerá um único objeto»*).
+    //
+    // Um `parent` é o contrato da família `rig.*` — *«um índice finito, não negativo e que aponta
+    // para TRÁS é um pai»* (`fk::resolve`, copiado à letra no `rig.bones`) — e numa corda ele é um
+    // FACTO: a peça `i` está presa à `i − 1`, que é exactamente a restrição que o solver impõe. O
+    // primeiro ponto não tem quem o segure e declara-se raiz.
+    //
+    // ⭐ **Com ela a corda compõe com a família toda de graça**: o `rig.bones` passa a poder dar a
+    // cada segmento o quadro dele (é isso que faz uma `Shape: Rope Segment` ler como um cordão e
+    // não como um rosário de contas), e a pele e o solver passam a aceitá-la sem uma linha nova.
+    //
+    // ⚠️ **Ela é ADITIVA e não muda um bit do que já existia:** quem não pergunta por `parent`
+    // (o `motion.duplicator`, o `motion.scale`, todo o caminho de posições) não a vê.
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "o indice do pai viaja num f32, como em toda a familia rig"
+    )]
+    let parent: Vec<f32> = (0..pos.len())
+        .map(|i| if i == 0 { -1.0 } else { (i - 1) as f32 })
+        .collect();
     Stream::new(pos.len())
         .with("P", Column::Vec2(pos))
         .with("rope_prev", Column::Vec2(prev))
+        .with("parent", Column::Scalar(parent))
         .with("sim_t", Column::Scalar(vec![playhead; p.count]))
 }
 

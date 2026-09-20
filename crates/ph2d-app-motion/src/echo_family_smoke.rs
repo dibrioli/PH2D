@@ -127,7 +127,7 @@ pub fn echo_family_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
         return;
     }
     let (sinks, trails) = scene(&mut cx.motion.doc.graph);
-    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &trails);
+    crate::smoke_layout::arrange_and_mark(cx.motion, &trails);
     for s in sinks {
         cx.motion.sinks.push(s);
     }

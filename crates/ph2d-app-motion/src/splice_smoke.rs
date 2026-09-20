@@ -115,7 +115,7 @@ pub fn splice_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
     }
     let sink = chain(&mut cx.motion.doc.graph);
     // Arruma o layout (sem marcar nó nenhum — o gesto é sobre um FIO, não um nó).
-    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &[]);
+    crate::smoke_layout::arrange_and_mark(cx.motion, &[]);
     cx.motion.sinks.push(sink);
     let _ = cx
         .tools

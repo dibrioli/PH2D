@@ -14,7 +14,7 @@
 //! group as one inline card) and stamps `>> EVALUATE <<` on the node under
 //! evaluation, so the reviewer knows where to look without counting cards.
 
-use ph2d_motion_doc::MotionDoc;
+use crate::motion_state::MotionState;
 use ph2d_nodegraph::graph::NodeId;
 
 /// The label stamped on the node to evaluate. ASCII only (the tofu gate) and
@@ -23,10 +23,14 @@ const MARK: &str = ">> EVALUATE <<";
 
 /// Lay the whole document out (the subgraph-aware layered arrange), then mark
 /// each hero with the evaluate label. A reference row contributes no hero.
-pub(crate) fn arrange_and_mark(doc: &mut MotionDoc, heroes: &[NodeId]) {
-    ph2d_motion_doc::layout::arrange(doc);
+pub(crate) fn arrange_and_mark(motion: &mut MotionState, heroes: &[NodeId]) {
+    // ⭐ **A MESMA porta que a tecla de arrumar do painel usa** — ver
+    // [`crate::motion_arrumar`]. Até 2026-09-20 esta chamada era a arrumação CRUA, logo as cenas
+    // de smoke arrumavam-se com o cartão histórico enquanto o app media o verdadeiro: *duas
+    // chamadas à mesma lei, e a da direita a envelhecer calada*.
+    crate::motion_arrumar::arrumar(motion);
     for &h in heroes {
-        doc.graph.set_label(h, MARK);
+        motion.doc.graph.set_label(h, MARK);
     }
 }
 
@@ -40,24 +44,25 @@ mod tests {
     /// and `ph2d-motion-doc::layout`.)
     #[test]
     fn it_arranges_and_marks_only_the_hero() {
-        let mut doc = MotionDoc::new();
-        let a = doc.graph.add_node("motion.grid");
-        let b = doc.graph.add_node("motion.output");
-        doc.graph
+        let mut m = MotionState::new();
+        let a = m.doc.graph.add_node("motion.grid");
+        let b = m.doc.graph.add_node("motion.output");
+        m.doc
+            .graph
             .connect(Edge {
                 from: (a, 0),
                 to: (b, 0),
                 delayed: false,
             })
             .expect("edge");
-        doc.graph.set_pos(a, Pos { x: 999.0, y: 999.0 });
+        m.doc.graph.set_pos(a, Pos { x: 999.0, y: 999.0 });
 
-        arrange_and_mark(&mut doc, &[b]);
+        arrange_and_mark(&mut m, &[b]);
 
-        assert_eq!(doc.graph.label(b), Some(MARK), "the hero is marked");
-        assert_ne!(doc.graph.label(a), Some(MARK), "a non-hero is not marked");
+        assert_eq!(m.doc.graph.label(b), Some(MARK), "the hero is marked");
+        assert_ne!(m.doc.graph.label(a), Some(MARK), "a non-hero is not marked");
         assert!(
-            doc.graph.pos(a).expect("pos").x < 100.0,
+            m.doc.graph.pos(a).expect("pos").x < 100.0,
             "the graph was arranged"
         );
     }

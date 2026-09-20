@@ -121,7 +121,7 @@ pub fn value_mix_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
         sinks.push(sink);
         heroes.extend(hero);
     }
-    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
+    crate::smoke_layout::arrange_and_mark(cx.motion, &heroes);
     cx.motion.sinks.extend(sinks);
     let _ = cx
         .tools

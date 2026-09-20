@@ -70,7 +70,7 @@ pub fn units_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
         return;
     }
     let (sink, heroes) = chain(&mut cx.motion.doc.graph);
-    crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
+    crate::smoke_layout::arrange_and_mark(cx.motion, &heroes);
     cx.motion.sinks.push(sink);
     let _ = cx
         .tools

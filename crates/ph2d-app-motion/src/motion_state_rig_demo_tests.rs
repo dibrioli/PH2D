@@ -423,15 +423,23 @@ fn a_cadeia_de_um_pano_entrega_em_cada_etapa() {
     let _ = build(&mut m.doc, &m.registry).expect("a cena monta");
     crate::motion_shape_gen::publish(&mut m, 0.0);
     #[expect(clippy::cast_possible_truncation, reason = "vinte pontos de corda")]
-    let esperado = CORDA_PONTOS as usize;
+    let pontos_da_corda = CORDA_PONTOS as usize;
+    // ⚠️⚠️ **A PREMISSA MUDOU em 2026-09-21 e a mudança está aqui à vista:** este gate dizia
+    // `esperado` em todas as etapas, e a etapa do `motion.scale` passou a ler **`n − 1`**. Não é
+    // uma barra afrouxada — é a corda a vestir-se de SEGMENTOS: o `rig.bones` entra entre ela e o
+    // carimbo, e *uma corrente de `n` juntas tem `n − 1` ossos* (a raiz é a única junta sem osso a
+    // chegar), exactamente como nas duas fileiras do meio. ⭐ Ler `20` depois do `rig.bones` seria
+    // o defeito, não o contrário.
+    let segmentos = pontos_da_corda - 1;
     for (tipo, quantos) in [
-        ("motion.verlet_rope", esperado),
-        ("motion.scale", esperado),
-        ("motion.move", esperado),
+        ("motion.verlet_rope", pontos_da_corda),
+        ("rig.bones", segmentos),
+        ("motion.scale", segmentos),
+        ("motion.move", segmentos),
         // ⚠️ UMA forma: ela é o molde, e o duplicador é quem a multiplica pelos pontos.
         ("source.shape", 1),
-        ("motion.duplicator", esperado),
-        ("motion.output", esperado),
+        ("motion.duplicator", segmentos),
+        ("motion.output", segmentos),
     ] {
         let n = primeiro(&m.doc.graph, tipo);
         let r = m
@@ -585,4 +593,88 @@ fn diag_a_extensao_da_cena() {
         BANDA_CENTRO - BANDA_ALTURA / 2.0,
         BANDA_CENTRO + BANDA_ALTURA / 2.0
     );
+}
+
+/// ⭐⭐⭐ **A CORDA LÊ-SE COMO UM CORDÃO E NÃO COMO UM ROSÁRIO** — ordem do dono (2026-09-21):
+/// *«o exemplo 1 (Rope) deve ser feito com Rope Segment e os segmentos devem ser conectados como
+/// ossos senão a corda não parecerá um único objeto»*.
+///
+/// A régua é a que torna as duas coisas diferentes: cada peça carimbada tem de **ir de um ponto
+/// da corda ao seguinte** — pousada no ponto `i` e virada para o ponto `i+1`. Uma conta não tem
+/// direcção nenhuma, e é por isso que vinte contas se leem como vinte coisas.
+///
+/// ⚠️ **Ela mede a cena EM REGIME** (a corda nasce recta e uma corda recta não separa uma lei da
+/// outra: todos os ângulos seriam iguais). Com `TIQUES` de queda a corda está curvada, e é aí que
+/// um ângulo por segmento diz alguma coisa.
+///
+/// FALSIFICADO por qualquer elo da corrente: a corda deixar de publicar `parent`, o `rig.bones`
+/// deixar de derivar o quadro, ou o pano voltar a carimbar directamente sobre a corda.
+#[test]
+fn os_segmentos_da_corda_apontam_ao_seguinte() {
+    let mut m = MotionState::new();
+    let sinks = build(&mut m.doc, &m.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+
+    let corda = primeiro(&m.doc.graph, "motion.verlet_rope");
+    let ossos = primeiro(&m.doc.graph, "rig.bones");
+    // ⚠️ **O laço é o do [`corre`], e as duas linhas dele são obrigatórias:** cozer o SINK (que é
+    // quem puxa a cadeia inteira) e `advance_tick` (que é quem entrega o estado ao tique
+    // seguinte). Sem a segunda a corda fica no repouso e a banda de ângulos lê `0,0000` — foi o
+    // CONTROLO deste gate que o apanhou.
+    let sink = sinks[CORDA];
+    let mut t = 0.0f64;
+    for _ in 0..TIQUES {
+        let _ = m.pump.cook.cook(&m.doc.graph, &m.registry, sink, t);
+        let _ = m.pump.cook.advance_tick(&m.doc.graph, &m.registry, t);
+        t += DT;
+    }
+    let juntas = pontos(
+        m.pump
+            .cook
+            .cook(&m.doc.graph, &m.registry, corda, t)
+            .expect("a corda coze")[0]
+            .as_stream(),
+    );
+    let saida = m
+        .pump
+        .cook
+        .cook(&m.doc.graph, &m.registry, ossos, t)
+        .expect("os ossos cozem");
+    let s = saida[0].as_stream();
+    let cabecas = pontos(s);
+    let Some(ph2d_nodegraph::attr::Column::Scalar(rot)) = s.get("rot") else {
+        panic!("cada segmento tem de carregar o angulo dele");
+    };
+
+    assert_eq!(
+        cabecas.len(),
+        juntas.len() - 1,
+        "uma corda de n pontos da n-1 segmentos"
+    );
+    // A corda TEM de estar curvada, senão a régua abaixo passaria sobre uma lei errada.
+    let banda =
+        rot.iter().fold(f32::MIN, |a, &b| a.max(b)) - rot.iter().fold(f32::MAX, |a, &b| a.min(b));
+    assert!(
+        banda > 0.1,
+        "a corda esta curvada, logo os angulos diferem (banda {banda:.4})"
+    );
+
+    for i in 0..cabecas.len() {
+        let d = [
+            juntas[i + 1][0] - juntas[i][0],
+            juntas[i + 1][1] - juntas[i][1],
+        ];
+        assert!(
+            (cabecas[i][0] - juntas[i][0]).abs() < 1e-5
+                && (cabecas[i][1] - juntas[i][1]).abs() < 1e-5,
+            "o segmento {i} e' pousado na junta {i}"
+        );
+        let esperado = d[1].atan2(d[0]);
+        assert!(
+            (rot[i] - esperado).abs() < 1e-4,
+            "o segmento {i} aponta a junta {}: {:.4} contra {esperado:.4}",
+            i + 1,
+            rot[i]
+        );
+    }
 }

@@ -203,8 +203,17 @@ const AVANCO_POR_CHAR: f32 = 1.06; // LITERAL-PX-OK: pior GLIFO medido (W, 1,006
 /// catálogo, uma estimativa generosa entregaria *«Simulation Zone»* numa pastilha de `321`
 /// unidades onde o texto mede `232`.
 pub(crate) fn largura_da_capsula(n: &GraphNodeView) -> f32 {
-    let texto = crate::capsula_larguras::largura_medida(&n.display_name)
-        .unwrap_or_else(|| estimativa_da_largura(&n.display_name));
+    largura_da_capsula_do_nome(&n.display_name)
+}
+
+/// Ver [`largura_da_capsula`] — a MESMA lei, a partir do nome sozinho.
+///
+/// ⚠️ **Ela existe porque a ARRUMAÇÃO automática mede cartões que ainda não são uma
+/// `GraphNodeView`** — um cartão de GRUPO colapsado, cujo nome é o título do subgrafo. ⛔ Ela
+/// não é uma segunda resposta: a irmã acima delega nesta, logo há uma aritmética só.
+pub(crate) fn largura_da_capsula_do_nome(nome: &str) -> f32 {
+    let texto = crate::capsula_larguras::largura_medida(nome)
+        .unwrap_or_else(|| estimativa_da_largura(nome));
     CARD_W.max(texto + 2.0 * MARGEM_X_DA_CAPSULA)
 }
 

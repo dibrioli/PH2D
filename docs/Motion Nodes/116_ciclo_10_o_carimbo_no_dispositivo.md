@@ -206,32 +206,45 @@ ela lê `1,10×` a `102 400` e **PERDE** a `10⁶` (`26,7` contra `18,3 ms`) —
 chega.* A sonda `audit_the_stamp_encode_routes` fica, para a recusa ser uma medição e não uma
 opinião.
 
-#### E o mesmo quadro pelas PORTAS DO PRODUTO — o encode era `85 %` do custo de CPU
+#### E o mesmo quadro pelas PORTAS DO PRODUTO — o encode era `86 %` do custo de CPU
 
 ⭐⭐⭐ **A escada mede o encode SOZINHO; esta mede o quadro do report** (`audit_the_stamp_frame_split`:
-a cadeia `grade 320×320 + source.shape + motion.duplicator`, cozida pelo `pump` e desenhada pelo
-`motion_shape_gen::encode`, `90 %` de CPU ociosa, mínimo de três por coluna):
+a cadeia `grade 320×320 + source.shape(Star) + motion.duplicator`, cozida pelo `pump` e desenhada
+pelo `motion_shape_gen::encode`; `12` segmentos por cópia, mínimo de três por coluna, as duas rotas
+corridas de seguida):
 
-| rota | cozer | desenho | CPU do quadro |
-|---|---:|---:|---:|
-| `fill` por cópia | `0,54`–`0,74 ms` | **`3,75 ms`** | `27 %` |
-| carimbo PREPARADO | `0,57`–`0,59 ms` | **`1,68 ms`** | **`13 %`** |
+| rota | cozer | desenho | (pose) | CPU do quadro |
+|---|---:|---:|---:|---:|
+| `fill` por cópia | `0,94`–`1,04 ms` | **`6,37 ms`** | `0,13 ms` | `44 %` |
+| carimbo PREPARADO | `0,64`–`1,36 ms` | **`2,25 ms`** | `0,18 ms` | **`17`–`22 %`** |
 
-⇒ **o quadro passa a metade**, e a cura caiu exactamente na metade que manda. ⚠️ O `cozer` **não**
-se mexe entre as duas rotas, e é isso que prova que a diferença é lei e não máquina — *a única
-leitura que o contradisse foi a 1.ª corrida depois de trocar a variável, com as caches frias, e o
-mínimo de repetições deita-a fora*.
+⇒ **o quadro passa a menos de metade**, e a cura caiu exactamente na metade que manda. ⚠️ O `cozer`
+**não** muda entre as duas rotas (é o mesmo cozimento), e é isso que prova que a diferença é lei e
+não máquina.
 
-⏳ **O degrau seguinte fica NOMEADO com o número:** a escada pura lê `3,2×` de ganho e a porta do
-produto lê `2,2×` para as mesmas `102 400` cópias. A diferença é o que o `encode` faz **por
-instância além do encode** — compor a pose (`instance_pose`: base · tamanho · âncora · câmera) e
-percorrer os `VectorInstance`. *Hoje isso é ~`40 %` do desenho, e é onde a próxima medição começa.*
+⛔⛔⛔ **E esta secção só existe com estes números porque uma FIXTURA mentia: toda esta auditoria
+mediu um CÍRCULO julgando medir uma estrela.** O `monta` escolhia o `kind` procurando o **rótulo**
+`"Star"` na lista de opções do nó — e os `KIND_LABELS` da `source.shape` passaram a ser **chaves de
+i18n** (`"node.opts.node_motion_shape.kind_labels.7"`) quando a fronteira dos motores fechou, no
+mesmo dia. A procura devolvia `None` e o `if let Some(k)` caía **calado** na forma de omissão.
+⭐ **Quem o denunciou foi a contagem de SEGMENTOS que esta sonda passou a imprimir** (`4` — que é um
+círculo — onde uma estrela de cinco pontas tem `12`). ⇒ o índice passa a derivar do **próprio enum**
+(`ALL_KINDS`, alinhado ao `KIND_LABELS` por gate na crate do nó) e a função **falha alto**; o
+`indice_do_quadrado` do `motion_custo_do_quadro_probe` tinha o mesmo defeito e foi curado com ela.
+*Um censo que classifica por string tem de provar que a string existe* — e uma tabela sem a
+contagem da fixtura ao lado não deixa ninguém ver que ela mudou.
+
+⛔⛔ **E uma hipótese MINHA caiu aqui, medida:** eu escrevera que o que sobra do desenho é o
+`instance_pose` (compor base · tamanho · âncora · câmera por instância) e que ele valia ~`40 %`. A
+coluna `(pose)` mede-o isolado, pela porta do produto: **`0,13`–`0,19 ms`**, ou seja **`~7 %`**.
+*O resto é o encode propriamente dito, e a porta do produto já está no chão da escada* ⇒ **não há
+degrau seguinte do lado do CPU**; o que sobra é a RASTERIZAÇÃO.
 
 ⚠️ **E o que NENHUMA destas colunas mede é a PLACA.** A lei já estava escrita no
 `motion_custo_do_quadro_probe`: *se o encode for barato, o que sobra é a placa, e o que a governa
 não é o número de formas — é quantos PIXEIS elas cobrem*. A `102 400` cópias minúsculas o encode
-era metade do orçamento e passou a um nono; quem quiser o degrau seguinte mede a rasterização, não
-o encode.
+era `44 %` do orçamento de um quadro e passou a `~20 %`; quem quiser o degrau seguinte mede a
+rasterização, não o encode.
 
 ⛔⛔ **E a W2 tem uma peça que a §5.6 não podia ver, achada a ler o código da ponte:** a marca de
 vector vivo é **por TIPO de nó** (`NodeRegistry::register_live_vector_source`, um conjunto de

@@ -128,6 +128,18 @@ pub(crate) fn draw_shape_instance_tessellated(
 /// ([[feedback_two_doors_to_the_same_question_diverge]]). O cache é POR FRAME — o handle é estável
 /// enquanto o conteúdo não muda, mas re-tesselar um punhado de geometrias distintas por frame é
 /// grátis, e um cache por-frame não guarda um `BezPath` velho de um handle reciclado.
+///
+/// ⭐⭐⭐ **E desde 2026-09-20 um PRIMITIVO também paga UM encode em vez de `N`** — a forma é
+/// encodada uma vez ([`PreparedFill`]) e cada cópia carimba-a, pagando só a pose, o estilo e a
+/// tinta. Medido pela porta do produto na cadeia do report (`102 400` cópias de uma estrela):
+/// `5,66 → 1,76 ms` de encode (`3,2×`), e o quadro inteiro de `27 %` para `13 %` de um quadro de
+/// 60 fps. ⛔ **Sem custo de nitidez, e não por promessa:** as duas rotas escrevem os MESMOS bytes,
+/// e são três gates independentes a dizê-lo — o desta crate
+/// (`a_shared_batch_draws_exactly_what_n_single_draws_do`, que compara o LOTE preparado contra as
+/// `N` chamadas únicas NÃO preparadas), o `o_carimbo_preparado_escreve_os_mesmos_bytes` da
+/// `ph2d-vector` (os seis fluxos, com tinta diferente por cópia) e o
+/// `o_lote_carimba_a_forma_preparada_uma_vez_por_geometria`, que mede a CONTA — *a economia é
+/// invisível a toda régua de valor, logo só a contagem a pode gatear*.
 pub fn draw_shared_instances<'p>(
     instances: impl IntoIterator<Item = (u32, Affine, [f32; 4])>,
     resolve: impl Fn(u32) -> Option<&'p VecPath>,

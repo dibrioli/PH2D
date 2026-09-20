@@ -20,14 +20,17 @@ use crate::motion_state::MotionState;
 /// ⚠️ **Não é um literal:** um índice de enum é uma posição numa lista que outra pessoa pode
 /// reordenar — a lei que a `sim_demo::indice_de` já escreve para as cenas. Aqui ela é repetida em
 /// miniatura porque aquela é privada da família das cenas, e uma sonda não é uma cena.
-fn indice_do_quadrado(reg: &ph2d_node_registry::NodeRegistry) -> Option<f32> {
-    use ph2d_node_registry::ParamWidget;
-    let tid = ph2d_nodegraph::node::NodeTypeId::of("source.shape");
-    let hint = reg.param_ui(tid)?.iter().find(|h| h.param == "kind")?;
-    let ParamWidget::Enum { labels } = hint.widget else {
-        return None;
-    };
-    let i = labels.iter().position(|l| *l == "Square")?;
+///
+/// ⛔⛔ **E ela procurava pelo RÓTULO `"Square"`, que deixou de existir em 2026-09-20**: os
+/// `KIND_LABELS` passaram a ser chaves de i18n quando a fronteira dos motores fechou, logo a
+/// procura devolvia `None` e o chamador caía **calado** na forma de omissão. ⇒ hoje o índice deriva
+/// do PRÓPRIO enum (`ALL_KINDS`, alinhado ao `KIND_LABELS` por gate na crate do nó) e a função
+/// **falha alto**. *Um censo que classifica por string tem de provar que a string existe.*
+fn indice_do_quadrado(_reg: &ph2d_node_registry::NodeRegistry) -> Option<f32> {
+    let i = ph2d_node_motion_shape::ALL_KINDS
+        .iter()
+        .position(|k| *k == ph2d_node_motion_shape::ShapeKind::Square)
+        .expect("`Square` tem de estar no `ALL_KINDS`");
     #[expect(
         clippy::cast_precision_loss,
         reason = "um indice de enum, sempre pequeno"

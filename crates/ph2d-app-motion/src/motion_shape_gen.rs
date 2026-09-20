@@ -628,7 +628,7 @@ fn draw_quad(
 /// consumido pelo `draw_shared_instances`, e medi-la de fora exigiria uma cena Vello e um
 /// raster. *Uma lei que só se pode medir renderizando não é medida.* O gate do pivô chama
 /// esta função — o `encode` chama a MESMA, não há segunda cópia da conta.
-fn instance_pose(inst: &VectorInstance, cam: Affine) -> Affine {
+pub(crate) fn instance_pose(inst: &VectorInstance, cam: Affine) -> Affine {
     {
         {
             let [b0, b1, b2, b3] = inst.basis;

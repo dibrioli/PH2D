@@ -31,21 +31,30 @@ use ph2d_nodegraph::graph::{Edge, NodeId};
 
 /// O índice de um `kind` da `source.shape`, LIDO do registo pelo rótulo.
 ///
-/// ⚠️ **Não é um literal:** um índice de enum é uma posição numa lista que outra pessoa pode
-/// reordenar — a mesma lei que o [`crate::motion_custo_do_quadro_probe`] já paga.
-fn indice_da_forma(reg: &ph2d_node_registry::NodeRegistry, rotulo: &str) -> Option<f32> {
-    use ph2d_node_registry::ParamWidget;
-    let tid = ph2d_nodegraph::node::NodeTypeId::of("source.shape");
-    let hint = reg.param_ui(tid)?.iter().find(|h| h.param == "kind")?;
-    let ParamWidget::Enum { labels } = hint.widget else {
-        return None;
-    };
-    let i = labels.iter().position(|l| *l == rotulo)?;
+/// ⛔⛔ **Ela lia o índice pelo RÓTULO e isso deixou de funcionar em 2026-09-20, em silêncio.** Os
+/// `KIND_LABELS` da `source.shape` passaram a ser **chaves de i18n**
+/// (`"node.opts.node_motion_shape.kind_labels.7"`) quando a fronteira dos motores fechou, logo a
+/// procura por `"Star"` devolvia `None` — e o `monta` tinha um `if let Some(k)` que caía **calado**
+/// na forma de omissão. ⇒ *toda esta auditoria mediu um CÍRCULO julgando medir uma estrela*, e o
+/// número que denunciou foi a contagem de segmentos da sonda do quadro (`4`, que é um círculo, e
+/// não os `10` de uma estrela de cinco pontas).
+///
+/// ⭐ A cura não é traduzir a chave: é **não passar por rótulo nenhum**. O `ALL_KINDS` é público e
+/// está alinhado ao `KIND_LABELS` **por gate** na crate do nó, logo o índice deriva do PRÓPRIO
+/// enum. E ela passa a **falhar alto**: *um censo que classifica por string tem de provar que a
+/// string existe*, e a versão anterior não provava.
+fn indice_da_forma(forma: ph2d_node_motion_shape::ShapeKind) -> f32 {
+    let i = ph2d_node_motion_shape::ALL_KINDS
+        .iter()
+        .position(|k| *k == forma)
+        .unwrap_or_else(|| panic!("a forma {forma:?} tem de estar no `ALL_KINDS`"));
     #[expect(
         clippy::cast_precision_loss,
         reason = "um indice de enum, sempre pequeno"
     )]
-    Some(i as f32)
+    {
+        i as f32
+    }
 }
 
 /// ⚠️ Falha ALTO: uma aresta recusada em silêncio faz a sonda medir um grafo DESLIGADO — o
@@ -67,17 +76,14 @@ fn liga(m: &mut crate::motion_state::MotionState, de: NodeId, dp: u16, para: Nod
 /// (onde tudo dói) nem um punhado (onde nada dói).
 pub(crate) fn monta(qual: &str) -> (crate::motion_state::MotionState, NodeId) {
     let mut m = crate::motion_state::MotionState::new();
-    let estrela = indice_da_forma(&m.registry, "Star");
+    let estrela = indice_da_forma(ph2d_node_motion_shape::ShapeKind::Star);
     let grade = m.doc.graph.add_node("motion.grid");
     m.doc.graph.set_param(grade, "rows", 320.0);
     m.doc.graph.set_param(grade, "cols", 320.0);
     let saida = m.doc.graph.add_node("motion.output");
     let forma_com = |m: &mut crate::motion_state::MotionState| {
         let f = m.doc.graph.add_node("source.shape");
-        // ⚠️ O `kind` vem do REGISTO — sem ele a forma emite a primitiva de omissão.
-        if let Some(k) = estrela {
-            m.doc.graph.set_param(f, "kind", k);
-        }
+        m.doc.graph.set_param(f, "kind", estrela);
         f
     };
     match qual {

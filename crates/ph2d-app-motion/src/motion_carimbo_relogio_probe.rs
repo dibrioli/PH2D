@@ -40,24 +40,23 @@
 //! ⇒ por cópia, `0,055 µs` → **`0,017 µs`**, PLANO sobre um intervalo de `1000×`. A um quarto de um
 //! quadro de 60 fps cabiam `~76 000` cópias e cabem **`~245 000`**.
 //!
-//! ## E o mesmo quadro, pelas PORTAS DO PRODUTO (`audit_the_stamp_frame_split`, `90 %` ocioso)
+//! ## E o mesmo quadro pelas PORTAS DO PRODUTO (`audit_the_stamp_frame_split`)
 //!
-//! | rota | cozer | desenho | CPU do quadro |
-//! |---|---:|---:|---:|
-//! | `fill` por cópia | `0,54`–`0,74 ms` | **`3,75 ms`** | `27 %` |
-//! | carimbo PREPARADO | `0,57`–`0,59 ms` | **`1,68 ms`** | **`13 %`** |
+//! | rota | cozer | desenho | (pose) | CPU do quadro |
+//! |---|---:|---:|---:|---:|
+//! | `fill` por cópia | `0,94`–`1,04 ms` | **`6,37 ms`** | `0,13 ms` | `44 %` |
+//! | carimbo PREPARADO | `0,64`–`1,36 ms` | **`2,25 ms`** | `0,18 ms` | **`17`–`22 %`** |
 //!
-//! ⭐ **O encode era `85 %` do custo de CPU deste quadro** — a cura caiu exactamente na metade que
-//! manda, e o quadro passa a metade. ⚠️ O `cozer` **não** se mexe entre as duas rotas, e é isso que
-//! prova que a diferença é a lei e não a máquina (a única leitura que o contradisse foi a 1.ª
-//! corrida depois de trocar a variável, com as caches frias — *o mínimo de repetições é o que a
-//! deita fora*).
+//! ⭐ **O encode era `86 %` do custo de CPU deste quadro** — a cura caiu exactamente na metade que
+//! manda. ⚠️ O `cozer` **não** muda entre as rotas (é o mesmo cozimento), e é isso que prova que a
+//! diferença é a lei e não a máquina.
 //!
-//! ⏳ **E o degrau seguinte fica NOMEADO com o número:** a escada pura lê `1,76 ms` e a porta do
-//! produto lê `1,68`–`2,14` para as mesmas `102 400` cópias, mas com `3,2×` contra `2,2×` de ganho
-//! — a diferença é o que o `motion_shape_gen::encode` faz **por instância além do encode**: compor
-//! a pose (`instance_pose`: base · tamanho · âncora · câmera) e percorrer os `VectorInstance`.
-//! *Hoje isso é ~`40 %` do desenho, e é onde a próxima medição tem de começar.*
+//! ⛔⛔ **E uma hipótese MINHA caiu aqui, medida:** eu escrevera que o que sobra é o
+//! `instance_pose` (compor base · tamanho · âncora · câmera por instância) e que ele valia ~`40 %`
+//! do desenho. A coluna `(pose)` mede-o isolado, pela porta do produto: **`0,13`–`0,19 ms`**, ou
+//! seja **`~7 %`**. *O resto é o encode propriamente dito, e a porta do produto já está no chão da
+//! escada* (`2,25` aqui com `12` segmentos contra `1,76` na escada com `10`) ⇒ **não há degrau
+//! seguinte do lado do CPU**; o que sobra é a RASTERIZAÇÃO, que nenhuma destas sondas mede.
 
 /// ⛔⛔ **A FATIA — as sondas deste ficheiro NÃO podem correr ao mesmo tempo.**
 ///
@@ -375,6 +374,14 @@ fn audit_the_stamp_frame_split() {
 
     let insts = &m.pump.vector_instances;
     let store = &m.shape_store;
+    // ⚠️ **A forma desta cadeia NÃO é a da escada** (a `estrela(5,0)` daquela tem `10` segmentos), e
+    // é por isso que a razão entre as duas rotas difere entre as duas tabelas: pela rota antiga o
+    // custo segue os SEGMENTOS, pela preparada ele é quase todo o fixo por cópia. *Comparar a
+    // escada com esta sem a contagem ao lado lê-se como um ganho que encolheu.*
+    let segs_da_forma = insts
+        .first()
+        .and_then(|i| store.get(i.geometry_id))
+        .map_or(0, segmentos);
     let desenho = melhor_quente(3, |cena| {
         let mut sem_arte = |_: u32, _: [f32; 4]| None;
         crate::motion_shape_gen::encode(
@@ -386,14 +393,29 @@ fn audit_the_stamp_frame_split() {
         );
     });
 
+    // ⭐ A terceira coluna é o degrau SEGUINTE, isolado: percorrer os `VectorInstance` e compor a
+    // pose de cada um — o que o `encode` faz ALÉM de encodar. Ela mede-se pela MESMA porta que o
+    // produto usa (`instance_pose`), nunca por uma segunda cópia da conta.
+    let mut pose_so = f64::INFINITY;
+    for _ in 0..3 {
+        let inicio = std::time::Instant::now();
+        let mut acc = 0.0f64;
+        for inst in insts {
+            let m = crate::motion_shape_gen::instance_pose(inst, ph2d_vector::Affine::IDENTITY);
+            acc += m.as_coeffs()[4];
+        }
+        std::hint::black_box(acc);
+        pose_so = pose_so.min(inicio.elapsed().as_secs_f64() * 1e3);
+    }
+
     eprintln!(
-        "\n  ═══ O QUADRO DO CARIMBO, PEDAÇO A PEDAÇO (load {}) ═══\n",
+        "\n  ═══ O QUADRO DO CARIMBO, PEDAÇO A PEDAÇO ({segs_da_forma} segmentos, load {}) ═══\n",
         carga()
     );
-    eprintln!("  linhas vectoriais |     cozer |   desenho |  soma |  % de um quadro");
-    eprintln!("  ------------------|-----------|-----------|-------|----------------");
+    eprintln!("  linhas vectoriais |     cozer |   desenho |  (pose) |  soma |  % de um quadro");
+    eprintln!("  ------------------|-----------|-----------|---------|-------|----------------");
     eprintln!(
-        "  {linhas:>17} | {cozer:>6.2} ms | {desenho:>6.2} ms | {:>2.0}% | {:>14.0}%",
+        "  {linhas:>17} | {cozer:>6.2} ms | {desenho:>6.2} ms | {pose_so:>4.2} ms | {:>2.0}% | {:>14.0}%",
         desenho / (cozer + desenho) * 100.0,
         (cozer + desenho) / 16.67 * 100.0
     );

@@ -156,7 +156,7 @@ fn duas_imagens_no_mesmo_rig_dobram_as_duas() {
         f32::from(braco_px().0[1] as u16) / PPM,
     ];
     let (parada_a, parada_b) = duas_no_mesmo_rig(0.0);
-    let ((a, anc_a, ossos_a), (b, anc_b, ossos_b)) = duas_no_mesmo_rig(25.0);
+    let ((a, ancora_a, ossos_a), (b, ancora_b, ossos_b)) = duas_no_mesmo_rig(25.0);
 
     // ⭐ A METADE QUE MEDE A PARTILHA: as duas prendem à corrente que foi NOMEADA (3 ossos), e não
     // ao esqueleto inteiro da cena (3 + 3 da isca).
@@ -172,19 +172,19 @@ fn duas_imagens_no_mesmo_rig_dobram_as_duas() {
     );
 
     // O CONTROLO: com a corrente parada nenhuma das duas se afasta do repouso.
-    for ((m, anc, _), quem) in [(&parada_a, "cima"), (&parada_b, "baixo")] {
+    for ((m, ancora, _), quem) in [(&parada_a, "cima"), (&parada_b, "baixo")] {
         let m = m.as_ref().expect("controlo: sem pele");
-        let e = excursao(m, *anc, tamanho);
+        let e = excursao(m, *ancora, tamanho);
         assert!(
             e < 1e-3,
             "controlo: com a corrente PARADA a imagem de {quem} ja' esta' deslocada {e:.6} m — \
              a malha nasceu torta e o gate de baixo mediria o nada"
         );
     }
-    for ((m, anc), quem) in
-        [(&a, anc_a, "cima"), (&b, anc_b, "baixo")].map(|(m, anc, quem)| ((m, anc), quem))
+    for ((m, ancora), quem) in [(&a, ancora_a, "cima"), (&b, ancora_b, "baixo")]
+        .map(|(m, ancora, quem)| ((m, ancora), quem))
     {
-        let e = excursao(m, anc, tamanho);
+        let e = excursao(m, ancora, tamanho);
         assert!(
             e > 0.05,
             "a imagem de {quem} mexeu-se so' {e:.6} m com a corrente dobrada 25° por junta — ela \
@@ -193,7 +193,10 @@ fn duas_imagens_no_mesmo_rig_dobram_as_duas() {
     }
     // ⚠️ E elas não são a MESMA malha: estão em alturas diferentes, logo os pesos diferem e a
     // excursão também. *Sem isto, um bind que copiasse a primeira para a segunda passaria.*
-    let (ea, eb) = (excursao(&a, anc_a, tamanho), excursao(&b, anc_b, tamanho));
+    let (ea, eb) = (
+        excursao(&a, ancora_a, tamanho),
+        excursao(&b, ancora_b, tamanho),
+    );
     assert!(
         (ea - eb).abs() > 1e-6,
         "as duas mexeram-se EXACTAMENTE o mesmo ({ea:.9} m) — elas estao em alturas diferentes, \

@@ -147,10 +147,7 @@ fn a_lei_e_continua_no_peso() {
         ant = q;
     }
     let total = {
-        let (a, b) = (
-            k.blend(p, &[1.0, 0.0]),
-            k.blend(p, &[0.0, 1.0]),
-        );
+        let (a, b) = (k.blend(p, &[1.0, 0.0]), k.blend(p, &[0.0, 1.0]));
         (a[0] - b[0]).hypot(a[1] - b[1])
     };
     #[expect(clippy::cast_precision_loss, reason = "N")]
@@ -168,7 +165,14 @@ fn cadeia3(j1: f64, j2: f64, fim: f64, r1: f64, r2: f64) -> Skin {
     let rot = |t: f64, o: [f64; 2]| {
         let (c, s) = (t.cos(), t.sin());
         // roda em torno da ORIGEM do mundo, para a junta de facto andar
-        Xform([c, s, -s, c, c.mul_add(o[0], -(s * o[1])), s.mul_add(o[0], c * o[1])])
+        Xform([
+            c,
+            s,
+            -s,
+            c,
+            c.mul_add(o[0], -(s * o[1])),
+            s.mul_add(o[0], c * o[1]),
+        ])
     };
     Skin::new(vec![
         SkinBone::new(
@@ -221,7 +225,10 @@ fn o_par_pesa_pelo_produto_dos_pesos() {
     let produto = p13.mul_add(3.5, p12.mul_add(2.0, p23 * 5.0)) / (p12 + p23 + p13);
     let (s12, s23, s13) = (0.80_f64 + 0.15, 0.15_f64 + 0.05, 0.80_f64 + 0.05);
     let soma = s13.mul_add(3.5, s12.mul_add(2.0, s23 * 5.0)) / (s12 + s23 + s13);
-    eprintln!("[centro] x do centro = {:.4} · produto prevê {produto:.4} · soma preveria {soma:.4}", c[0]);
+    eprintln!(
+        "[centro] x do centro = {:.4} · produto prevê {produto:.4} · soma preveria {soma:.4}",
+        c[0]
+    );
     assert!(
         (c[0] - produto).abs() < 1e-9,
         "o centro saiu {:.6} e o produto prevê {produto:.6}",

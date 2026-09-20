@@ -596,6 +596,11 @@ pub fn project_to_segment(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> (f64, f64) {
     (t, dx * dx + dy * dy)
 }
 
+pub mod bend;
+/// ⭐ Os gates do osso que dobra.
+#[cfg(test)]
+#[path = "bend_tests.rs"]
+mod bend_tests;
 /// ⭐ **A régua da DOBRA** — quanto da arte a pele vira do avesso. Crate-irmã do [`Skin`] por
 /// responsabilidade: *onde um ponto vai parar* e *o mapa continua a ser injectivo* são duas
 /// perguntas, e a segunda nunca tinha instrumento.
@@ -604,11 +609,6 @@ pub fn project_to_segment(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> (f64, f64) {
 /// segunda não muda uma linha por a primeira passar a dar `N` respostas.
 /// ⭐⭐⭐ **O CENTRO DE ROTAÇÃO** — a cura do entalhe do cotovelo.
 pub mod centro;
-pub mod bend;
-/// ⭐ Os gates do osso que dobra.
-#[cfg(test)]
-#[path = "bend_tests.rs"]
-mod bend_tests;
 pub mod fold;
 /// ⭐ Os gates e a sonda da régua da dobra.
 #[cfg(test)]

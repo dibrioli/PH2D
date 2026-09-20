@@ -9,11 +9,11 @@
 //! continuem byte a byte iguais (HOWTO §1.2/§1.4 — a reescrita uniforme é o que evita um mapa de
 //! excepções).
 
-pub(crate) use ph2d_skeleton_live::skin_live::*;
 /// ⚠️ **O `bind_image` mudou de ficheiro em 2026-09-19** (o `skin_live` passou o tecto de LOC com a
 /// subdivisão do bind, e o corte foi por mídia). Ele continua a ser alcançado por este nome, que é
 /// o que mantém os ficheiros da shell byte a byte iguais — a mesma razão deste módulo existir.
 pub(crate) use ph2d_skeleton_live::skin_image_bind::bind_image;
+pub(crate) use ph2d_skeleton_live::skin_live::*;
 
 #[cfg(test)]
 #[path = "skeleton_live_tests.rs"]

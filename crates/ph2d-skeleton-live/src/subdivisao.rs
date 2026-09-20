@@ -145,10 +145,7 @@ fn recuos_do_segmento(path: &VecPath, seg: usize) -> (f64, f64) {
         return (0.0, 0.0);
     };
     let n = v.len();
-    (
-        recuo(v, fechado, local),
-        recuo(v, fechado, (local + 1) % n),
-    )
+    (recuo(v, fechado, local), recuo(v, fechado, (local + 1) % n))
 }
 
 /// Os mesmos dois recuos DEPOIS do corte — o fim do segmento andou um índice.
@@ -160,10 +157,7 @@ fn recuos_depois_do_corte(path: &VecPath, seg: usize) -> (f64, f64) {
         return (0.0, 0.0);
     };
     let n = v.len();
-    (
-        recuo(v, fechado, local),
-        recuo(v, fechado, (local + 2) % n),
-    )
+    (recuo(v, fechado, local), recuo(v, fechado, (local + 2) % n))
 }
 
 /// ⭐⭐⭐ **SUBDIVIDE UMA FORMA ATÉ NENHUM SEGMENTO PASSAR DE `alvo`.** Devolve quantos cortes fez.

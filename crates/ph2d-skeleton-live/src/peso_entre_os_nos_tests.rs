@@ -184,7 +184,11 @@ fn um_clique_do_outro_lado_da_tela_continua_recusado() {
         raio_de_fabrica(),
         0.15,
     );
-    assert_eq!(r, Pincelada::ForaDaArte, "o pincel aceitou um clique no vazio");
+    assert_eq!(
+        r,
+        Pincelada::ForaDaArte,
+        "o pincel aceitou um clique no vazio"
+    );
 }
 
 /// ⭐⭐ **ARRASTAR PELO MIOLO DA BARRA CONTA COMO ESTAR NA ARTE.**
@@ -279,11 +283,17 @@ fn achatada(scene: &ph2d_vec_scene::VecScene) -> Vec<[f64; 2]> {
                 out.push([
                     w3.mul_add(
                         b.anchor[0],
-                        w2.mul_add(b.in_handle[0], w1.mul_add(a.out_handle[0], w0 * a.anchor[0])),
+                        w2.mul_add(
+                            b.in_handle[0],
+                            w1.mul_add(a.out_handle[0], w0 * a.anchor[0]),
+                        ),
                     ),
                     w3.mul_add(
                         b.anchor[1],
-                        w2.mul_add(b.in_handle[1], w1.mul_add(a.out_handle[1], w0 * a.anchor[1])),
+                        w2.mul_add(
+                            b.in_handle[1],
+                            w1.mul_add(a.out_handle[1], w0 * a.anchor[1]),
+                        ),
                     ),
                 ]);
             }

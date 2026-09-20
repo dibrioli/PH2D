@@ -487,7 +487,6 @@ pub fn ponto_sob_o_cursor(
         })
 }
 
-
 /// ⭐⭐⭐ **ONDE ESTA PINCELADA POUSA** — e a resposta é de MÍDIA, não uma só.
 ///
 /// Num **CAMINHO** é o ponto do CONTORNO sob o dedo ([`crate::ancora_da_mancha`]); numa **IMAGEM**

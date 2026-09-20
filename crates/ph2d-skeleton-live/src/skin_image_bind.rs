@@ -104,4 +104,3 @@ pub fn bind_image(
         .insert(SkinBind::new(bytes, tendoes));
     true
 }
-

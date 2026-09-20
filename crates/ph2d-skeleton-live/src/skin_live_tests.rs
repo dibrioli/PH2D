@@ -26,7 +26,13 @@ pub(crate) fn palco() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 
 }
 
 /// Um osso em `pos` (local do pai), comprimento `len`, força 1.
-pub(crate) fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Entity>) -> Entity {
+pub(crate) fn osso(
+    sim: &mut SimWorld,
+    nome: &str,
+    pos: [f32; 2],
+    len: f64,
+    pai: Option<Entity>,
+) -> Entity {
     let e = sim
         .world_mut()
         .spawn((
@@ -203,7 +209,6 @@ fn releasing_gives_back_the_drawing_and_expanding_keeps_the_pose() {
     }
 }
 
-
 /// ⚠️ **A ORDEM dos ossos numa pele é um RÓTULO, não uma lei** — permutá-la devolve o mesmo desenho.
 ///
 /// É este gate que autoriza `skeleton_of` a ordenar por `to_bits`: se a ordem decidisse alguma
@@ -254,7 +259,6 @@ fn the_order_of_the_bones_in_a_skin_does_not_change_the_drawing() {
         "permutar os ossos moveu a forma em {pior} - a ordem esta' a decidir algo"
     );
 }
-
 
 /// **Os ossos que o overlay desenha saem da POSE, não do que foi escrito.** Um osso filho herda a
 /// pose do pai — se este gate ficar vermelho, o artista vê o osso num sítio e a forma dobra noutro.
@@ -608,7 +612,7 @@ fn a_tabela_de_pesos_do_caminho_chega_ao_desenho() {
     // compara o produto com uma lei que ele já não corre mede a mudança da lei, não o produto.*
     // ⛔ O que este gate afirma continua a ser o mesmo: **a tabela GUARDADA é que chega ao desenho**,
     // e não a derivada.
-    
+
     ph2d_vec_skin::curva::aplica_pela_curva(&pele, &mut com, &g.pesos, &[]);
     ph2d_vec_skin::curva::aplica_pela_curva(&pele, &mut sem, &[], &[]);
 

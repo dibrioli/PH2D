@@ -111,6 +111,10 @@ fn a_ancora_escolhe_a_aresta_mais_perto() {
     ] {
         let a: Ancora = no_contorno(&r, &r, dedo).expect("contorno");
         let erro = (a.repouso[0] - esperado[0]).hypot(a.repouso[1] - esperado[1]);
-        assert!(erro < 1e-9, "dedo {dedo:?}: esperava {qual} e leu {:?}", a.repouso);
+        assert!(
+            erro < 1e-9,
+            "dedo {dedo:?}: esperava {qual} e leu {:?}",
+            a.repouso
+        );
     }
 }

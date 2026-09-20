@@ -2,8 +2,8 @@
 //! o corte é por RESPONSABILIDADE: ali mede-se o que uma pele FAZ ao desenho; aqui, **quem** ela
 //! apanha quando o artista carrega no botão sem apontar.
 
-use super::*;
 use super::tests::{gira, osso, palco};
+use super::*;
 use crate::test_support::{pior_desvio_do_desenho, quadro};
 
 /// ⚠️ **UM SEGUNDO ESQUELETO NÃO É APANHADO POR ENGANO.** Com um osso apontado, o Bind leva a árvore
@@ -79,7 +79,10 @@ fn binding_to_the_whole_scene_draws_the_same_as_binding_to_the_right_skeleton() 
                 sim.world()
                     .iter_entities()
                     .find(|er| er.get::<ph2d_ecs::StableId>().is_some_and(|s| *s == t.bone))
-                    .and_then(|er| er.get::<ph2d_ecs::Name>().map(|n| n.as_str().starts_with("Far")))
+                    .and_then(|er| {
+                        er.get::<ph2d_ecs::Name>()
+                            .map(|n| n.as_str().starts_with("Far"))
+                    })
                     .unwrap_or(false)
             })
             .map(|(i, _)| i)

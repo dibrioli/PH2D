@@ -11,7 +11,9 @@
 //! ⚠️ **Todos nasceram de um report do dono** (2026-09-19): *«nada fica vermelho e nada fica azul»*
 //! e *«os pesos não são aplicados apenas nos nós, mas também nos handles»*.
 
-use crate::barra_da_cena_tests_support::{PPM, barra_da_cena, barra_da_cena_com, forma, raio_de_fabrica};
+use crate::barra_da_cena_tests_support::{
+    PPM, barra_da_cena, barra_da_cena_com, forma, raio_de_fabrica,
+};
 use ph2d_ecs::Transform;
 
 /// A distância entre dois pontos.
@@ -78,8 +80,6 @@ fn a_escala_da_barra_e_a_que_a_tabela_do_raio_cita() {
          px): era assim que o `20.0` em unidades de MUNDO agarrava todos os pontos de uma vez"
     );
 }
-
-
 
 /// ⭐⭐⭐ **A ARTE SOB O CURSOR É A QUE O CONTÉM — e não a que tem um VÉRTICE perto.**
 ///

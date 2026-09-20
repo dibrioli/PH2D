@@ -17,7 +17,9 @@ fn contorno(p: &ph2d_vec_scene::VecPath) -> Vec<[f64; 2]> {
     let c = p.cooked();
     let mut out = Vec::new();
     for k in 0..c.contour_count() {
-        let Some((v, fechado)) = c.contour(k) else { continue };
+        let Some((v, fechado)) = c.contour(k) else {
+            continue;
+        };
         let n = v.len();
         let ultimo = if fechado { n } else { n - 1 };
         for i in 0..ultimo {
@@ -25,10 +27,16 @@ fn contorno(p: &ph2d_vec_scene::VecPath) -> Vec<[f64; 2]> {
             for j in 0..24 {
                 let t = f64::from(j) / 24.0;
                 let u = 1.0 - t;
-                let (w0, w1, w2, w3) = (u*u*u, 3.0*u*u*t, 3.0*u*t*t, t*t*t);
+                let (w0, w1, w2, w3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
                 out.push([
-                    w0*a.anchor[0] + w1*a.out_handle[0] + w2*b.in_handle[0] + w3*b.anchor[0],
-                    w0*a.anchor[1] + w1*a.out_handle[1] + w2*b.in_handle[1] + w3*b.anchor[1],
+                    w0 * a.anchor[0]
+                        + w1 * a.out_handle[0]
+                        + w2 * b.in_handle[0]
+                        + w3 * b.anchor[0],
+                    w0 * a.anchor[1]
+                        + w1 * a.out_handle[1]
+                        + w2 * b.in_handle[1]
+                        + w3 * b.anchor[1],
                 ]);
             }
         }
@@ -37,13 +45,20 @@ fn contorno(p: &ph2d_vec_scene::VecPath) -> Vec<[f64; 2]> {
     // amostras no mesmo sitio, e elas fabricam cruzamentos e pescocos que nao existem.
     let mut limpo: Vec<[f64; 2]> = Vec::with_capacity(out.len());
     for q in out {
-        if limpo.last().is_none_or(|p: &[f64; 2]| (p[0] - q[0]).hypot(p[1] - q[1]) > 1e-9) {
+        if limpo
+            .last()
+            .is_none_or(|p: &[f64; 2]| (p[0] - q[0]).hypot(p[1] - q[1]) > 1e-9)
+        {
             limpo.push(q);
         }
     }
     while limpo.len() > 1 {
         let (a, b) = (limpo[0], *limpo.last().expect("nao vazio"));
-        if (a[0] - b[0]).hypot(a[1] - b[1]) <= 1e-9 { limpo.pop(); } else { break; }
+        if (a[0] - b[0]).hypot(a[1] - b[1]) <= 1e-9 {
+            limpo.pop();
+        } else {
+            break;
+        }
     }
     limpo
 }
@@ -51,13 +66,14 @@ fn contorno(p: &ph2d_vec_scene::VecPath) -> Vec<[f64; 2]> {
 /// A area com sinal (positiva = anti-horario).
 fn area(p: &[[f64; 2]]) -> f64 {
     let n = p.len();
-    (0..n).map(|i| {
-        let (a, b) = (p[i], p[(i + 1) % n]);
-        a[0] * b[1] - b[0] * a[1]
-    }).sum::<f64>() * 0.5
+    (0..n)
+        .map(|i| {
+            let (a, b) = (p[i], p[(i + 1) % n]);
+            a[0] * b[1] - b[0] * a[1]
+        })
+        .sum::<f64>()
+        * 0.5
 }
-
-
 
 /// O PESCOCO: dois pontos do contorno perto no ESPACO e longe ao longo da CURVA.
 /// Em repouso ele e' a espessura da barra; um entalhe aperta-o.
@@ -66,9 +82,9 @@ fn pescoco(p: &[[f64; 2]]) -> f64 {
     // separacao por COMPRIMENTO DE ARCO, nao por indice
     let mut arco = vec![0.0_f64];
     for i in 1..n {
-        arco.push(arco[i-1] + (p[i][0]-p[i-1][0]).hypot(p[i][1]-p[i-1][1]));
+        arco.push(arco[i - 1] + (p[i][0] - p[i - 1][0]).hypot(p[i][1] - p[i - 1][1]));
     }
-    let total = arco[n-1] + (p[0][0]-p[n-1][0]).hypot(p[0][1]-p[n-1][1]);
+    let total = arco[n - 1] + (p[0][0] - p[n - 1][0]).hypot(p[0][1] - p[n - 1][1]);
     let minimo = total * 0.12;
     let _ = minimo;
     let sep = 1usize;
@@ -77,9 +93,13 @@ fn pescoco(p: &[[f64; 2]]) -> f64 {
     for i in 0..n {
         for j in (i + 1)..n {
             let ao_longo = (arco[j] - arco[i]).min(total - (arco[j] - arco[i]));
-            if ao_longo < minimo { continue; }
+            if ao_longo < minimo {
+                continue;
+            }
             let d = (p[i][0] - p[j][0]).hypot(p[i][1] - p[j][1]);
-            if d < m { m = d; }
+            if d < m {
+                m = d;
+            }
         }
     }
     m
@@ -111,7 +131,10 @@ fn dobrar_ja_nao_encolhe_a_barra() {
     drop(sim0);
     let medir = |graus: f64, rigido: bool| {
         let (mut sim, mut scene, _map, id, ossos) = barra_da_cena();
-        #[expect(clippy::cast_possible_truncation, reason = "o angulo do gate, um punhado")]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "o angulo do gate, um punhado"
+        )]
         let r = graus.to_radians() as f32;
         // dobra as DUAS juntas para o mesmo lado — o cotovelo do report
         sim.world_mut()

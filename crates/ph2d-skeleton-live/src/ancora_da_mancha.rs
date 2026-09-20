@@ -111,7 +111,10 @@ fn fraccao(a: [f64; 2], b: [f64; 2], q: [f64; 2]) -> f64 {
 /// A distância ao segmento `ab` — o que cobre um caminho ABERTO, que não tem interior.
 pub(crate) fn d2_segmento(a: [f64; 2], b: [f64; 2], q: [f64; 2]) -> f64 {
     let t = fraccao(a, b, q);
-    d2([t.mul_add(b[0] - a[0], a[0]), t.mul_add(b[1] - a[1], a[1])], q)
+    d2(
+        [t.mul_add(b[0] - a[0], a[0]), t.mul_add(b[1] - a[1], a[1])],
+        q,
+    )
 }
 
 /// **Onde a mancha pousa** — o ponto do contorno, nas duas poses.

@@ -14,7 +14,13 @@ use ph2d_vec_scene::{ShapeKind, VecPathId, VecScene, cook};
 pub(crate) const PPM: f32 = 100.0;
 
 /// Um osso, com a pose LOCAL — ver [`barra_da_cena`].
-pub(crate) fn osso(sim: &mut SimWorld, nome: &str, pos: [f32; 2], len: f64, pai: Option<Entity>) -> Entity {
+pub(crate) fn osso(
+    sim: &mut SimWorld,
+    nome: &str,
+    pos: [f32; 2],
+    len: f64,
+    pai: Option<Entity>,
+) -> Entity {
     let e = sim
         .world_mut()
         .spawn((

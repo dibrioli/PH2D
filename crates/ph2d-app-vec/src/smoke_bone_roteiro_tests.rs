@@ -136,7 +136,13 @@ fn the_bar_that_teaches_order_crosses_the_painted_arm_without_hiding_it() {
 #[test]
 fn o_roteiro_ensina_a_acrescentar_um_ponto_onde_falta_controlo() {
     let texto = include_str!("smoke_bone.rs");
-    for agulha in ["CANETA", "SOBREVIVE", "Weight", "BARRA LARANJA obedece", "{nos} PONTOS"] {
+    for agulha in [
+        "CANETA",
+        "SOBREVIVE",
+        "Weight",
+        "BARRA LARANJA obedece",
+        "{nos} PONTOS",
+    ] {
         assert!(
             texto.contains(agulha),
             "o roteiro deixou de dizer «{agulha}» — sem ele o artista fica com a barra e nenhuma \
@@ -146,8 +152,12 @@ fn o_roteiro_ensina_a_acrescentar_um_ponto_onde_falta_controlo() {
     // ⛔ E a lição vive JUNTO da linha que nomeia os ossos da barra, não solta no fim: quem lê
     // *quem governa a barra* tem de encontrar ali *o que fazer com ela*. ⚠️ A régua é a distância
     // entre as duas — *duas linhas separadas por vinte lêem-se como dois assuntos*.
-    let quem = texto.find("BARRA LARANJA obedece").expect("quem governa a barra");
-    let pincel = texto.find("PINCEL DE PESO NA BARRA").expect("a licao do pincel");
+    let quem = texto
+        .find("BARRA LARANJA obedece")
+        .expect("quem governa a barra");
+    let pincel = texto
+        .find("PINCEL DE PESO NA BARRA")
+        .expect("a licao do pincel");
     let caneta = texto.find("A OUTRA SAIDA").expect("a outra saida");
     // ⚠️⚠️ **A régua é o VÃO entre as lições, e não a distância entre os princípios delas** — a 1.ª
     // redacção media `inicio → inicio` e reprovou no dia em que a lição do meio **cresceu**, sobre
@@ -189,7 +199,11 @@ fn a_barra_e_o_braco_pintado_tem_esqueletos_separados() {
     let da_barra = ph2d_skeleton_live::esqueletos::ossos_desde(&sim, barra);
     let do_braco = ph2d_skeleton_live::esqueletos::ossos_desde(&sim, pintado);
     assert_eq!(da_barra.len(), 3, "a barra deixou de ter tres ossos");
-    assert_eq!(do_braco.len(), 3, "o braco pintado deixou de ter tres ossos");
+    assert_eq!(
+        do_braco.len(),
+        3,
+        "o braco pintado deixou de ter tres ossos"
+    );
     assert!(
         da_barra.iter().all(|e| !do_braco.contains(e)),
         "os dois esqueletos partilham um osso — a licao «escolher um osso do braco pintado e \

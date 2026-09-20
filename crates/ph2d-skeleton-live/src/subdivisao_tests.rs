@@ -3,7 +3,6 @@
 
 use super::{DIVISOES_POR_OSSO, VERTICES_MAX, alvo_dos_eixos, comprimento, subdivide};
 
-
 /// ⭐⭐ **A RÉGUA DESTES GATES — e ela é do GATE, não da lei.**
 ///
 /// A lei guarda-se pela CAUSA (o recuo da quina, `O(1)`); estes gates medem a CONSEQUÊNCIA (o
@@ -18,7 +17,9 @@ fn densa(p: &VecPath) -> Vec<[f64; 2]> {
     let cozido = p.cooked();
     let mut out = Vec::new();
     for c in 0..cozido.contour_count() {
-        let Some((v, fechado)) = cozido.contour(c) else { continue };
+        let Some((v, fechado)) = cozido.contour(c) else {
+            continue;
+        };
         let n = v.len();
         let ultimo = if fechado { n } else { n.saturating_sub(1) };
         for i in 0..ultimo {
@@ -29,8 +30,14 @@ fn densa(p: &VecPath) -> Vec<[f64; 2]> {
                 let u = 1.0 - t;
                 let (w0, w1, w2, w3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
                 out.push([
-                    w0 * a.anchor[0] + w1 * a.out_handle[0] + w2 * b.in_handle[0] + w3 * b.anchor[0],
-                    w0 * a.anchor[1] + w1 * a.out_handle[1] + w2 * b.in_handle[1] + w3 * b.anchor[1],
+                    w0 * a.anchor[0]
+                        + w1 * a.out_handle[0]
+                        + w2 * b.in_handle[0]
+                        + w3 * b.anchor[0],
+                    w0 * a.anchor[1]
+                        + w1 * a.out_handle[1]
+                        + w2 * b.in_handle[1]
+                        + w3 * b.anchor[1],
                 ]);
             }
         }
@@ -54,13 +61,22 @@ fn afastamento(a: &[[f64; 2]], b: &[[f64; 2]]) -> f64 {
     let d2 = |p: [f64; 2], q: [f64; 2], r: [f64; 2]| {
         let (vx, vy) = (r[0] - q[0], r[1] - q[1]);
         let l2 = vx * vx + vy * vy;
-        let t = if l2 <= f64::EPSILON { 0.0 } else { (((p[0] - q[0]) * vx + (p[1] - q[1]) * vy) / l2).clamp(0.0, 1.0) };
+        let t = if l2 <= f64::EPSILON {
+            0.0
+        } else {
+            (((p[0] - q[0]) * vx + (p[1] - q[1]) * vy) / l2).clamp(0.0, 1.0)
+        };
         let (x, y) = (q[0] + t * vx - p[0], q[1] + t * vy - p[1]);
         x * x + y * y
     };
     a.iter()
         .step_by(salto)
-        .map(|p| (0..b.len()).map(|i| d2(*p, b[i], b[(i + 1) % b.len()])).fold(f64::INFINITY, f64::min).sqrt())
+        .map(|p| {
+            (0..b.len())
+                .map(|i| d2(*p, b[i], b[(i + 1) % b.len()]))
+                .fold(f64::INFINITY, f64::min)
+                .sqrt()
+        })
         .fold(0.0, f64::max)
 }
 

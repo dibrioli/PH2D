@@ -175,9 +175,8 @@ fn a_lei_da_placa_reproduz_a_lei_do_produto() {
     for (v, &q) in m.rest.iter().enumerate() {
         let linha = &pt[v * 4..(v + 1) * 4];
         let obtido = placa[v];
-        let d = |alvo: [f64; 2]| {
-            (f64::from(obtido[0]) - alvo[0]).hypot(f64::from(obtido[1]) - alvo[1])
-        };
+        let d =
+            |alvo: [f64; 2]| (f64::from(obtido[0]) - alvo[0]).hypot(f64::from(obtido[1]) - alvo[1]);
         // a lei LINEAR, ponto a ponto — o que o shader implementa
         p.weights_from(q, linha, &mut w);
         pior_linear = pior_linear.max(d(p.blend_linear(q, &w)));

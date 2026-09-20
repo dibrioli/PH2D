@@ -41,7 +41,7 @@ fn o_auto_nomeia_o_lado_que_deriva_e_so_quando_ele_existe() {
     }
     assert!(
         !nu.contains('(') && !nu.is_empty(),
-        "o rotulo nu ganhou um parentesis: le-se «{nu}»"
+        "o rotulo nu ganhou um `(`: le-se «{nu}»"
     );
 }
 

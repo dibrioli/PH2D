@@ -23,9 +23,32 @@
 //! pintam o mesmo pixel»* — e o próprio comentário previu o dia: *«até ao dia em que alguém ler este
 //! canal para outra coisa»*.
 //!
-//! ⇒ **esse dia é a passagem da BORDA**, que sombreia com as normais das SUB-AMOSTRAS: uma que
-//! esteja de frente para a luz recebe `1,0` de um canal que nunca foi traçado. *A sub-amostra é
-//! iluminada sem teste de sombra nenhum.*
+//! ⛔⛔⛔ **E ESSA HIPÓTESE FOI CONSTRUÍDA, MEDIDA e REFUTADA — duas vezes, por dois instrumentos
+//! diferentes.** A cura (traçar também os pixels de borda) leva a visibilidade de `1,000` a
+//! **`0,670`**, isto é, o canal deixa de mentir — e **o pixel não muda de cor um byte**, porque
+//! naquele ponto `N·L ≤ 0` e a lâmpada já não contribuía. *Era exactamente o que o comentário
+//! original dizia, e eu li a ressalva dele como um defeito.* E o `uma_esfera_nao_se_tapa_a_si_propria`
+//! reprova a cura com o argumento que fecha o assunto: aquele canal significa **«tapado por OUTRA
+//! coisa»**, e uma esfera convexa não se tapa a si própria — pô-lo a reportar auto-orientação é
+//! mudar o que ele quer dizer.
+//!
+//! # ⭐⭐⭐ O que a banda É, então
+//!
+//! Decomposto no pixel `(206, 355)` a `960×540`, com e sem chão:
+//!
+//! | linha | a peça compõe | a normal |
+//! |---|---:|---|
+//! | `y−1` (interior) | `36,5` | `[-0,456 -0,468 +0,757]` |
+//! | `y+0` (a banda) | **`67`** | `[-0,532 -0,645 +0,548]` |
+//!
+//! ⇒ **a superfície é mesmo quase o dobro mais clara na última fileira**, e o resto do que se vê
+//! (`59,4` composto) é o cinzento do canvas a passar pela transparência que sobra (`α = 229`), com a
+//! sombra do chão por trás. Sem chão o mesmo pixel dá a mesma cor de peça (`58,7`).
+//!
+//! ⚠️ A normal vira para BAIXO e a peça CLAREIA ⇒ o que a acende é a metade de baixo do ambiente do
+//! estúdio, e **nada a tapa**: a oclusão do céu da peça não inclui o CHÃO que está logo ali
+//! (`céu visto 1,000` a um pixel de uma sombra de contacto que lê `0,477`). *É esse o «rim sem rim»:
+//! a peça é iluminada por baixo por um céu que o chão devia estar a bloquear.*
 
 use super::device_tests::{LH, LW, contexto};
 use super::rebordo_sondas::{cena_com_materiais, pico_da_silhueta};
@@ -168,6 +191,49 @@ fn o_traco_claro_contra_uma_verdade_de_terreno() {
         }
     }
     println!("\n  {}", contexto());
+    // ⛔⛔⛔ **E O MOTOR QUE O DONO VÊ É A PLACA.** Esta sonda nasceu só com a CPU, e as duas não
+    // correm a mesma configuração: o traçado do dispositivo calcula a **oclusão do céu da peça**
+    // (`trace_to_cpu` → `set_ambient`) e a sombra **por sub-amostra**, e este caminho de CPU não faz
+    // nem uma coisa nem outra. *Curar o motor que o dono não vê é o erro mais caro desta família.*
+    let disp = crate::gpu_frame::shared().and_then(|t| {
+        crate::gpu_frame::paint_com(
+            t,
+            &doc,
+            &reg,
+            &cam,
+            &[lampada],
+            &surfaces,
+            &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
+            [0, 0, 0, 0],
+            chao,
+            BASE_W,
+            BASE_H,
+            true,
+            crate::gpu_frame::Sonda::default(),
+        )
+        .map(|p| p.rgba)
+    });
+    // ⭐⭐⭐ **A MESMA COLUNA SEM CHÃO** — o «`+0,0` sem chão» da sonda irmã é um MÁXIMO GLOBAL, e
+    // sem chão o arredor é o cinzento do canvas (`110`), que é mais claro que a banda: ela deixa de
+    // ser um máximo LOCAL sem deixar de existir. *Uma régua de extremo não responde «existe aqui?».*
+    let sem_chao = {
+        let g2 = ph2d_field_render::trace(&doc, &reg, &cam, BASE_W, BASE_H);
+        let sh2 = ph2d_field_render::shadow_pass_on(&doc, &reg, &cam, &g2, &[onde], None);
+        let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
+        ph2d_field_render::shade_render(
+            &g2,
+            &cam,
+            &surfaces,
+            &ph2d_field_render::Lighting {
+                lamps: &sem_ecra,
+                points: &[lampada],
+                sky: &crate::render_light::StudioSky,
+                shadows: Some(&sh2),
+            },
+            &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
+            [0, 0, 0, 0],
+        )
+    };
     let composto = |px: &[u8], i: usize| -> f32 {
         let a = f32::from(px[i * 4 + 3]) / 255.0;
         let c = [0, 1, 2].map(|k| f32::from(px[i * 4 + k]) + 110.0 * (1.0 - a));
@@ -213,6 +279,24 @@ fn o_traco_claro_contra_uma_verdade_de_terreno() {
             n[2],
             n[0].hypot(n[1]).hypot(n[2]),
         );
+        println!(
+            "         SEM CHÃO    {:6.1} (α{:>3}) · [{:>3} {:>3} {:>3}]",
+            composto(&sem_chao, j),
+            sem_chao[j * 4 + 3],
+            sem_chao[j * 4],
+            sem_chao[j * 4 + 1],
+            sem_chao[j * 4 + 2]
+        );
+        if let Some(d) = disp.as_ref() {
+            println!(
+                "         DISPOSITIVO {:6.1} (α{:>3}) · [{:>3} {:>3} {:>3}]",
+                composto(d, j),
+                d[j * 4 + 3],
+                d[j * 4],
+                d[j * 4 + 1],
+                d[j * 4 + 2]
+            );
+        }
         if let Some((a, b, t)) = dono {
             println!(
                 "         dono {a} · rival {b} · peso {t:.3} · céu visto {:.3} · lâmpada vista {:.3}",

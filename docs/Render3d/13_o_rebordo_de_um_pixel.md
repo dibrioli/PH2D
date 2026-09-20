@@ -251,9 +251,35 @@ já anula a contribuição»* — e com a ressalva que previu o dia: *«até ao 
 canal para outra coisa»*. **Esse dia é a passagem da BORDA**, que sombreia com as normais das
 SUB-AMOSTRAS: uma que esteja de frente para a luz recebe `1,0` de um canal que nunca foi traçado.
 
-⏳ A cura tem forma (*o passe da sombra traça também os pixels de borda, mesmo com o centro de
-costas*) e tem preço (mais raios de sombra) **nos dois motores** — é wave própria, e o gate da
-esfera que defende o filtro de hoje diz porque ele não se apaga em geral.
+⛔⛔⛔ **E essa cura foi CONSTRUÍDA, MEDIDA e REFUTADA no mesmo dia, por dois instrumentos.**
+Traçar também os pixels de borda leva a visibilidade de `1,000` a **`0,670`** — o canal deixa de
+mentir — e **o pixel não muda de cor um byte**, porque ali `N·L ≤ 0` e a lâmpada já não contribuía.
+*Era exactamente o que o comentário original dizia, e eu li a ressalva dele como um defeito.* E o
+`uma_esfera_nao_se_tapa_a_si_propria` reprova-a com o argumento que fecha o assunto: aquele canal
+significa **«tapado por OUTRA coisa»**, e uma esfera convexa não se tapa a si própria.
+
+### §8.5 — ⭐⭐⭐ O que a banda É (e é outra coisa)
+
+Decomposto no pixel `(206, 355)` a `960×540`:
+
+| linha | a peça compõe | a normal |
+|---|---:|---|
+| `y−1` (interior) | `36,5` | `[-0,456 -0,468 +0,757]` |
+| `y+0` (a banda) | **`67`** | `[-0,532 -0,645 +0,548]` |
+
+⇒ **a superfície é mesmo quase o dobro mais clara na última fileira**; o resto do que se vê (`59,4`
+composto) é o cinzento do canvas a passar pela transparência que sobra (`α = 229`). Sem chão o mesmo
+pixel dá a mesma cor de peça (`58,7`), logo o chão não a cria — ele só a torna **visível**, por pôr
+uma sombra escura do outro lado.
+
+⚠️⚠️ **A normal vira para BAIXO e a peça CLAREIA** ⇒ quem a acende é a metade de baixo do ambiente do
+estúdio, e **nada a tapa**: a oclusão do céu da peça não inclui o CHÃO que está logo ali — `céu visto
+1,000` a um pixel de uma sombra de contacto que lê `0,477`. *É esse o «rim sem rim»: a peça é
+iluminada por baixo por um céu que o chão devia estar a bloquear.*
+
+⏳ A cura é dar ao céu da peça um oclusor a mais — o plano do chão — e ela é wave própria, **nos dois
+motores**. ⛔ Não é o passe da sombra (refutado acima) nem a amostragem (a verdade `4×` reproduz a
+banda).
 
 ## ⛔ Recusas MEDIDAS
 

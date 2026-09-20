@@ -81,16 +81,39 @@ pub fn lei_da_curva_activa() -> bool {
 /// `var_os` por forma seria uma syscall dentro do laço do desenho, e um estado global posto para o
 /// teste é um canal entre testes.
 ///
-/// # O que ela bissecta, medido
+/// # ⛔⛔⛔ O que ela bissecta, RE-MEDIDO — a tabela que aqui esteve estava ERRADA
 ///
-/// | caso (rectângulo `40 × 10`, dois ossos) | desvio do desenho | da peça |
-/// |---|---:|---:|
-/// | como o artista desenha (`4` nós) · dobra `0,8` | `5,175` | `12,9 %` |
-/// | **como o bind entrega** (`20` nós) · dobra `0,8` | `3,480` | **`8,7 %`** |
-/// | como o bind entrega · dobra `1,5` · com peso pintado | `4,682` | **`11,7 %`** |
+/// A tabela publicada nesta função até 2026-09-20 dizia **`8,7 %`** na linha do meio, e ela saiu de
+/// uma fixtura **DEGENERADA**: a `campo_tests::pele` constrói os dois ossos por
+/// [`ph2d_skeleton::SkinBone::new`], que crava `tendon: 0` («o neutro honesto de um osso SOZINHO»),
+/// logo os **dois** ossos lêem a **mesma coluna** do campo e `5` dos `20` nós ficam com `w = 0` —
+/// eles não se movem, e a diferença que a sonda lia era esse colapso, não a lei.
 ///
-/// ⚠️ **O erro de PESO que a causa é `0,0329`** depois de o bind subdividir (`0,3752` antes) — *um
-/// erro pequeno no peso amplifica no desenho, porque ele é multiplicado pela rotação da junta*.
+/// Re-medido pela [`super::campo_tests::diag_a_tabela_honesta_das_tres_linhas`], que corre as três
+/// linhas com a fixtura corrigida (`pele_com_tendoes`, a única diferença) e mede **a CURVA** e não
+/// os pontos de controlo:
+///
+/// | caso (rectângulo `40 × 10`, dois ossos) | fixtura degenerada | **honesta** | da peça |
+/// |---|---:|---:|---:|
+/// | como o artista desenha (`4` nós) · dobra `0,8` | `5,268` | `2,431` | `6,08 %` |
+/// | **como o bind entrega** (`20` nós) · dobra `0,8` | `5,780` | **`0,128`** | **`0,32 %`** |
+/// | como o bind entrega · dobra `1,5` · com peso pintado | `10,756` | `0,210` | `0,53 %` |
+///
+/// ⇒ **`8,7 %` era honestamente `0,32 %`, vinte e sete vezes menor.**
+///
+/// ⛔⛔ **E os números antigos não reproduzem em fixtura NENHUMA** (`5,175` contra `5,268`/`2,431`):
+/// eles foram escritos de uma corrida que já não existe. *Uma tabela copiada à mão para um
+/// doc-comment deixa de ter quem a contradiga; esta é derivada, e a sonda imprime as duas colunas
+/// lado a lado exactamente para não voltar a ser.*
+///
+/// ⚠️⚠️ **A grandeza também estava errada:** os números velhos mediam ALÇAS, e **ligar o campo não
+/// move uma única ÂNCORA** — `0,000` nas seis células da sonda. Uma alça que anda `δ` move a curva
+/// no máximo `4/9 · δ`, logo medir alças **majora** o que o artista vê; medir âncoras dá zero.
+/// *O desenho mede-se no DESENHO.*
+///
+/// ⚠️ **O erro de PESO é `0,0329`** depois de o bind subdividir (`0,3752` antes) — e a linha do
+/// meio diz o resto: *a subdivisão do bind já põe nós onde o campo teria dito o mesmo*, e o que
+/// sobra para o campo corrigir vale um terço de um por cento da peça.
 #[must_use]
 pub fn lei_do_campo_activa() -> bool {
     std::env::var("PH2D_SKIN_CAMPO").as_deref() != Ok("0")

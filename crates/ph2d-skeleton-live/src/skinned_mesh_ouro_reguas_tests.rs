@@ -393,6 +393,47 @@ impl BPalco {
                 .rotation = graus.to_radians();
         }
     }
+    /// ⭐⭐⭐ **A DOBRA EM S — os dois ossos para lados OPOSTOS, que é a pose da cena do dono.**
+    ///
+    /// A [`BPalco::dobra`] põe os dois no MESMO sentido e dá um **C**; a cena do dono autora
+    /// `ARM_SHOULDER_BEND = −0,45` e `ARM_ELBOW_BEND = +0,45`, que é um **S**. Ela existe para a
+    /// fixtura ser a POSE que o dono fotografou.
+    ///
+    /// ⛔⛔ **E NÃO é ela que faz o canto — eu escrevi que era e a mutação desmentiu-me.** Medido
+    /// (`diag_b_as_duas_escolhas_que_a_mutacao_nao_mata`), a pior quina a `90°` lê **`155,3°` no S
+    /// e `158,7°` no C**: a mesma coisa. *O que me fez ler o 1.º desenho como liso não foi a pose
+    /// — foi o ZOOM: o canto é local e a uma vista da peça inteira ele passa por uma dobra normal.*
+    pub(super) fn dobra_em_s(&mut self, graus: f32) {
+        use ph2d_ecs::Transform;
+        for (k, o) in self.ossos.iter().enumerate().skip(1) {
+            let sinal = if k % 2 == 1 { -1.0 } else { 1.0 };
+            self.sim
+                .world_mut()
+                .get_mut::<Transform>(*o)
+                .expect("Transform")
+                .rotation = (sinal * graus).to_radians();
+        }
+    }
+
+    /// ⭐⭐⭐ **REPARTE A DOBRA POR SUB-OSSOS** — o *bendy bone* que o painel chama «Curve Handles».
+    ///
+    /// `segments` põe cada osso a dobrar em `n` pedaços e [`ph2d_skeleton::bend::Handles::Auto`]
+    /// tira as alças das tangentes dos VIZINHOS ⇒ a corrente inteira vira uma curva lisa em vez de
+    /// uma cadeia de segmentos rígidos. ⚠️ **Com `segments = 1` a saída é a de sempre, ao bit.**
+    pub(super) fn reparte(&mut self, segments: u8) {
+        use ph2d_skeleton_ecs::{Bone, BoneHandles};
+        for o in &self.ossos {
+            if let Some(mut b) = self.sim.world_mut().get_mut::<Bone>(*o) {
+                b.segments = segments;
+                b.handles = if segments > 1 {
+                    BoneHandles::Auto
+                } else {
+                    BoneHandles::Authored
+                };
+            }
+        }
+    }
+
     pub(super) fn pele(&self) -> ph2d_skeleton::Skin {
         crate::skin_live::skin_of(&self.sim, self.alvo).expect("pele resolvida")
     }

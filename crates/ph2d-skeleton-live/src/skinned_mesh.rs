@@ -244,3 +244,9 @@ mod lei_tests;
 #[cfg(test)]
 #[path = "skinned_mesh_lei_tamanho_tests.rs"]
 mod lei_tamanho_tests;
+
+/// ⭐⭐⭐ **A REGULARIDADE DO CONTORNO** — o vector contra a IMAGEM, na grandeza que o report de
+/// 2026-09-20 apontou: *«deixa tudo irregular»*. ⚠️ Nenhuma régua anterior a via.
+#[cfg(test)]
+#[path = "skinned_mesh_regularidade_tests.rs"]
+mod regularidade_tests;

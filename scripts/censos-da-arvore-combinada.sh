@@ -54,10 +54,18 @@ fi
 #   `ph2d-panel-authored` corria **zero** testes, e o 2.º censo do `ph2d-editor-core` também não
 #   (aquele pacote parecia coberto porque a catraca da shell dele corria).
 #   ⇒ **o controlo por MÓDULO no fim deste ficheiro é quem impede a 3.ª ocorrência**, e é derivado.
+# ⭐⭐ **Os dois ultimos sao censos com nome em PORTUGUES**, e ficavam de FORA: eles existem no
+#   fonte desde antes deste script, e o verde media menos do que dizia. Quem os apanhou foi o
+#   CONTROLO DE COBERTURA no fim deste ficheiro, ao fechar a line/UIUX em 2026-09-20.
+#   ⚠️ A familia de um censo e' o NOME DO MODULO, e um nome noutra lingua nao casa com prefixo
+#   ingles nenhum — a mesma lei do `feedback_a_nextest_filter_matches_the_module_not_the_function`,
+#   uma volta acima: la eram os dois censos cujo modulo tinha outro nome, aqui e' outra lingua.
 FILTRO='test(every_word) + test(every_named_exemption) + test(every_key_of_this_family_exists) '\
 '+ test(the_shell_only_shrinks) + test(file_loc_caps) + test(every_shell_key_exists) '\
 '+ test(the_program_writes_no_word_into_this_panel) '\
-'+ test(no_label_of_this_crate_is_written_in_the_painter)'
+'+ test(no_label_of_this_crate_is_written_in_the_painter) '\
+'+ test(cada_palavra_desta_crate_vem_da_tabela) '\
+'+ test(cada_palavra_deste_no_vem_da_tabela)'
 
 # ⛔⛔ **`--workspace` NÃO serve, e o modo de falha é mudo-ish:** o `cargo test --no-run --workspace`
 #     constrói TODOS os alvos de teste do repo e o linker é MORTO pelo tecto de RAM do

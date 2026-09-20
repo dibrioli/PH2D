@@ -125,6 +125,31 @@ fn chips(sufixo: &str) -> Vec<ModeChip> {
         .collect()
 }
 
+/// ⭐⭐⭐ **O rótulo do modo de sombreado que a BARRA pinta — o mais largo da família.**
+///
+/// ⛔⛔ **A 1.ª redacção escrevia `"panel.model3d.shading.solid"` à mão, e essa chave NUNCA
+/// EXISTIU** (o produto emite `matcap` ou `render`, em `ph2d-app-field3d/src/shading.rs`). Era
+/// pior do que um rótulo curto: a fixtura media a largura de uma palavra que o painel **não
+/// consegue pintar**, logo a promessa dela — *os rótulos da fixtura são os mais largos do
+/// catálogo* — era vácua exactamente aqui.
+///
+/// ⚠️⚠️ **E nenhum portão desta linha o via:** a chave é USADA numa crate
+/// (`ph2d-panel-registry-init`) e DECLARADA noutra (`ph2d-i18n`), e quem cruza as duas é o censo
+/// do painel — que vive numa terceira. Quem o apanhou foi o
+/// `scripts/censos-da-arvore-combinada.sh` ao fechar a linha; ⇒ *uma chave inventada num teste
+/// pinta o identificador cru e passa por toda a suíte da crate que a escreveu.*
+///
+/// ⇒ hoje é **DERIVADA** da mesma família que os chips, e uma chave nova entra sozinha.
+fn rotulo_da_barra() -> &'static str {
+    let v = familia("panel.model3d.shading.");
+    assert!(
+        !v.is_empty(),
+        "a familia `panel.model3d.shading.*` leu ZERO chaves — a barra ficaria sem rotulo e zero \
+         le^-se como aprovacao"
+    );
+    derramar(v[0].0.clone())
+}
+
 /// A fileira de CRIAR — a família `add.*` **menos** as formas. Ver o cabeçalho.
 fn chips_de_criar() -> Vec<ModeChip> {
     let formas = formas();
@@ -283,7 +308,7 @@ pub fn arma() {
         shadings: chips("shading"),
         looks: chips("look"),
         exposures: chips("exposure"),
-        shading_label: "panel.model3d.shading.solid",
+        shading_label: rotulo_da_barra(),
     });
 }
 

@@ -23,7 +23,7 @@ const VIEWPORT: Rect = Rect {
     h: 2400.0,
 };
 
-/// ⭐ Uma arma que **NÃO** é o `WeaponFire::default()` em nenhum dos oito campos — é isso que faz o
+/// ⭐ Uma arma que **NÃO** é o `WeaponFire::default()` em nenhum dos nove campos — é isso que faz o
 /// gate da semente discriminar: *um corpus no NEUTRO de um knob não testa esse knob*.
 fn arma() -> InspectorWeaponInfo {
     InspectorWeaponInfo {
@@ -36,6 +36,10 @@ fn arma() -> InspectorWeaponInfo {
         on_fire: "tiro".into(),
         on_empty: "seco".into(),
         on_reloaded: "cheio".into(),
+        reserve_counter: "caixa".into(),
+        // ⚠️ **Um depósito ALCANÇÁVEL na fixtura** — com `None` a secção pintaria a queixa
+        // `DepositoAusente` em vez das fileiras, e os gates mediriam outra tela.
+        reserva: Some(9),
         municao: Some(4),
         pente: 6,
         recarregando: false,
@@ -56,14 +60,15 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64); 2] = [
     (ids::INSP_WEAPON_RELOAD_MS, 800.0),
 ];
 
-/// Os seis nomes, com o texto que a fixtura tem.
-const NOMES: [(ph2d_a11y::NodeId, &str); 6] = [
+/// Os SETE nomes, com o texto que a fixtura tem.
+const NOMES: [(ph2d_a11y::NodeId, &str); 7] = [
     (ids::INSP_WEAPON_ON_SIGNAL, "fire"),
     (ids::INSP_WEAPON_ON_FIRE, "tiro"),
     (ids::INSP_WEAPON_AMMO, "ammo"),
     (ids::INSP_WEAPON_RELOAD_ON, "recarrega"),
     (ids::INSP_WEAPON_ON_EMPTY, "seco"),
     (ids::INSP_WEAPON_ON_RELOADED, "cheio"),
+    (ids::INSP_WEAPON_RESERVE, "caixa"),
 ];
 
 /// ⭐⭐ **TODO campo da secção é pintado com área clicável.**
@@ -193,6 +198,65 @@ fn sem_o_componente_a_seccao_nao_e_pintada() {
         assert!(
             !rects.iter().any(|(n, _)| *n == id),
             "o campo {id:?} foi pintado num objecto SEM arma"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O que se ESCREVE num campo chega ao BARRAMENTO, e com a variante DELE.**
+///
+/// ⛔⛔ **Este gate faltava à secção inteira, e uma mutação sobrevivente mostrou-o:** apagar um
+/// braço do `match` do despacho deixava tudo verde — o irmão acima prova que o clique dá FOCO, que
+/// é uma pergunta sobre o `populate`, e nunca que a escrita **chega a um consumidor**.
+///
+/// ⚠️ **E ele afirma a variante e não só «chegou alguma coisa»:** com `if`s em vez de um `match`, o
+/// terceiro campo acaba a escrever no primeiro (a lição dos três campos de texto da tabela de
+/// acções), e um gate que contasse edições passaria com os textos trocados.
+///
+/// **Mutações que devem sangrar:** tirar qualquer braço do `match` do `event_weapon` · mandar
+/// sempre a mesma variante · tirar um id do `populate_weapon`.
+#[test]
+fn escrever_num_campo_chega_ao_barramento_com_a_variante_dele() {
+    use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::weapon_edits::WeaponFieldEdit as E;
+
+    const ESCRITO: &str = "escrito-pelo-gate";
+    let esperado = |id: ph2d_a11y::NodeId| -> E {
+        let t = ESCRITO.to_owned();
+        match id {
+            i if i == ids::INSP_WEAPON_ON_SIGNAL => E::OnSignal(t),
+            i if i == ids::INSP_WEAPON_ON_FIRE => E::OnFire(t),
+            i if i == ids::INSP_WEAPON_AMMO => E::AmmoCounter(t),
+            i if i == ids::INSP_WEAPON_RELOAD_ON => E::ReloadOn(t),
+            i if i == ids::INSP_WEAPON_ON_EMPTY => E::OnEmpty(t),
+            i if i == ids::INSP_WEAPON_ON_RELOADED => E::OnReloaded(t),
+            i if i == ids::INSP_WEAPON_RESERVE => E::ReserveCounter(t),
+            _ => panic!("{id:?} nao esta' na tabela de NOMES deste gate"),
+        }
+    };
+    assert_eq!(NOMES.len(), 7, "piso de populacao: os SETE nomes da seccao");
+    for (id, _) in NOMES {
+        let (mut h, mut st) = host(arma());
+        let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+        h.set_text(id, ESCRITO);
+        let _ = h.apply_panel_event::<InspectorPanel>(&mut st, WidgetEvent::TextChanged(id));
+        let edits: Vec<_> = h
+            .drained_actions()
+            .into_iter()
+            .filter_map(|a| match a {
+                EditorAction::InspectorComponentEdit {
+                    edit: ComponentEdit::Weapon(e),
+                    ..
+                } => Some(e),
+                _ => None,
+            })
+            .collect();
+        set_current_inspector_weapon(None);
+        assert_eq!(
+            edits,
+            vec![esperado(id)],
+            "escrever em {id:?} tem de produzir UMA edicao, e a variante dele — falta o braco no \
+             `match` do despacho, e nenhum outro gate desta seccao o ve^"
         );
     }
 }

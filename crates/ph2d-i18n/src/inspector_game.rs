@@ -551,6 +551,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.weapon.signal_it_publishes_on_each_shot_u" => {
             "signal it publishes on each shot\u{2026}"
         }
+        "panel.inspector.weapon.counter_that_is_the_depot_u" => "counter that is the depot\u{2026}",
         "panel.inspector.weapon.counter_that_is_the_magazine_u" => {
             "counter that is the magazine\u{2026}"
         }
@@ -570,8 +571,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.weapon.the_magazine_is_not_here" => {
             "The magazine is not here \u{2014} add a Counter with that name to this object."
         }
+        // ⭐⭐ O DEPO'SITO. ⚠️ A 1.ª frase nomeia as DUAS causas de `None` porque as curas sao
+        // diferentes — criar o contador, ou dar-lhe um nome que so' UM objecto carrega.
+        "panel.inspector.weapon.the_depot_is_not_reachable" => {
+            "No single counter has that name \u{2014} create one, or give it a name only one object carries."
+        }
         "panel.inspector.weapon.it_is_dry_for_good" => {
             "It is dry for good \u{2014} give it a reload time, or more rounds."
+        }
+        "panel.inspector.weapon.the_depot_is_empty" => {
+            "The depot is empty \u{2014} it has fired everything it had."
         }
         // ⭐ A LEITURA VIVA — quantas balas ela tem AGORA.
         "panel.inspector.weapon.x_of_y_rounds" => "{have} of {full} rounds",

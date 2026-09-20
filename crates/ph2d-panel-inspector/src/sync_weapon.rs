@@ -80,6 +80,10 @@ pub(crate) fn sync(
             crate::ids::INSP_WEAPON_ON_RELOADED,
             info.on_reloaded.as_str(),
         ),
+        (
+            crate::ids::INSP_WEAPON_RESERVE,
+            info.reserve_counter.as_str(),
+        ),
     ] {
         crate::sync_text_field::escreve_texto(host, focus, id, t);
     }

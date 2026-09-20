@@ -22,13 +22,28 @@ const INFINITA: Municao = Municao {
     tem: 0,
     cheio: 0,
     existe: false,
+    reserva: 0,
+    reserva_existe: false,
 };
 
+/// ⚠️ **Reserva INFINITA**, que é o valor de toda cena gravada antes de 2026-09-20 — o corpus
+/// inteiro desta bancada mede a lei SEM depósito, e é isso que prova que ela não mudou.
 fn pente(tem: i64, cheio: i64) -> Municao {
     Municao {
         tem,
         cheio,
         existe: true,
+        reserva: 0,
+        reserva_existe: false,
+    }
+}
+
+/// O mesmo pente, com um DEPÓSITO de `reserva` balas.
+fn pente_com_deposito(tem: i64, cheio: i64, reserva: i64) -> Municao {
+    Municao {
+        reserva,
+        reserva_existe: true,
+        ..pente(tem, cheio)
     }
 }
 
@@ -290,4 +305,136 @@ fn a_ordem_do_tique_e_a_lei() {
         },
         "recarregar um pente cheio é inerte"
     );
+}
+
+// ── O DEPÓSITO (`reserve_counter`) ────────────────────────────────────────────────────────────
+
+/// Uma arma com pente e recarga, sem cadência.
+fn com_recarga(reload_ms: u64) -> WeaponFire {
+    WeaponFire {
+        on_signal: "fogo".into(),
+        ammo_counter: "pente".into(),
+        reload_ms,
+        ..WeaponFire::default()
+    }
+}
+
+/// Anda `n` tiques sem tocar em nada, e devolve os factos ACUMULADOS.
+///
+/// ⚠️⚠️ **Acumulados e não «o último»** — a 1.ª redacção devolvia o último `Tiro` e os gates
+/// reprovaram sobre produto CERTO: o `recarregou` é um ACONTECIMENTO, vale num tique só, e ler a
+/// última leitura de um acontecimento é lê-lo como se nunca tivesse existido. *A mesma distinção
+/// facto/evento que o `projectiles_finished` do #14 pagou.*
+fn espera(cfg: &WeaponFire, st: &mut WeaponRuntime, mun: &mut Municao, n: u32) -> Tiro {
+    let mut acc = Tiro {
+        municao: mun.tem,
+        reserva: mun.reserva,
+        ..Tiro::default()
+    };
+    for _ in 0..n {
+        let t = avanca(cfg, st, *mun, DT, false, false);
+        mun.tem = t.municao;
+        mun.reserva = t.reserva;
+        acc.municao = t.municao;
+        acc.reserva = t.reserva;
+        acc.recarregou |= t.recarregou;
+        acc.disparou |= t.disparou;
+        acc.seca |= t.seca;
+        acc.comecou_a_recarregar |= t.comecou_a_recarregar;
+    }
+    acc
+}
+
+/// ⭐⭐⭐ **A recarga leva SÓ o que há no depósito** — a feature inteira num número.
+///
+/// **Mutações que devem sangrar:** `falta.min(ha)` → `falta` · não descontar da reserva.
+#[test]
+fn a_recarga_leva_so_o_que_ha_no_deposito() {
+    let cfg = com_recarga(100);
+    let mut st = born();
+    let mut mun = pente_com_deposito(0, 5, 2);
+    // O gatilho no pente vazio arranca a recarga automática.
+    let t = avanca(&cfg, &mut st, mun, DT, true, false);
+    assert!(t.seca && t.comecou_a_recarregar, "a seca arranca a recarga");
+    let t = espera(&cfg, &mut st, &mut mun, 10);
+    assert!(t.recarregou, "a recarga acabou");
+    assert_eq!(
+        t.municao, 2,
+        "o pente leva o que HAVIA, nao os 5 do `start`"
+    );
+    assert_eq!(t.reserva, 0, "e o deposito fica vazio");
+}
+
+/// ⭐⭐ **A transferência CONSERVA:** o que o pente sobe é exactamente o que o depósito desce.
+///
+/// ⚠️ **Uma varredura e não uma amostra** — um caso só não distingue *«levou o que falta»* de
+/// *«levou o que havia»* quando os dois números por acaso coincidem.
+#[test]
+fn a_transferencia_conserva() {
+    for cheio in [1_i64, 5, 9] {
+        for tem in 0..cheio {
+            for reserva in [0_i64, 1, 3, 100] {
+                let cfg = com_recarga(50);
+                let mut st = born();
+                let mut mun = pente_com_deposito(tem, cheio, reserva);
+                let antes = (mun.tem, mun.reserva);
+                avanca(&cfg, &mut st, mun, DT, false, true);
+                let t = espera(&cfg, &mut st, &mut mun, 6);
+                if !t.recarregou {
+                    assert_eq!(reserva, 0, "so' um deposito VAZIO impede a recarga");
+                    continue;
+                }
+                let sobe = t.municao - antes.0;
+                let desce = antes.1 - t.reserva;
+                assert_eq!(sobe, desce, "cheio={cheio} tem={tem} reserva={reserva}");
+                assert!(t.reserva >= 0, "um deposito nunca fica NEGATIVO");
+                assert!(t.municao <= cheio, "o pente nunca passa do `start`");
+            }
+        }
+    }
+}
+
+/// ⚠️ **Com o depósito vazio a recarga NÃO arranca** — e o clique seco continua a soar, que é o
+/// report certo: *clique, clique, clique* **é** ficar sem munição.
+#[test]
+fn com_o_deposito_vazio_a_recarga_nao_arranca() {
+    let cfg = com_recarga(100);
+    let mut st = born();
+    let t = avanca(&cfg, &mut st, pente_com_deposito(0, 5, 0), DT, true, false);
+    assert!(t.seca, "o clique seco continua a soar");
+    assert!(
+        !t.comecou_a_recarregar,
+        "e ela NAO fica presa num prazo inutil"
+    );
+    // E um pedido EXPLÍCITO também não a arranca.
+    let t = avanca(&cfg, &mut st, pente_com_deposito(0, 5, 0), DT, false, true);
+    assert!(!t.comecou_a_recarregar);
+}
+
+/// ⭐⭐⭐ **O CONTROLO: sem depósito a lei é a de SEMPRE, campo a campo.**
+///
+/// ⚠️ Sem esta metade, tudo acima ficaria verde sobre uma lei que tivesse mudado o caminho de
+/// omissão — e o caminho de omissão é o de **toda cena já gravada**.
+#[test]
+fn sem_deposito_a_lei_e_a_de_sempre() {
+    let cfg = com_recarga(50);
+    for tem in 0..4_i64 {
+        let (mut a, mut b) = (born(), born());
+        let t_infinita = {
+            let mut m = pente(tem, 4);
+            avanca(&cfg, &mut a, m, DT, true, false);
+            espera(&cfg, &mut a, &mut m, 5)
+        };
+        // Um depósito com MAIS do que o pente leva tem de dar o mesmo pente.
+        let t_farto = {
+            let mut m = pente_com_deposito(tem, 4, 1_000);
+            avanca(&cfg, &mut b, m, DT, true, false);
+            espera(&cfg, &mut b, &mut m, 5)
+        };
+        assert_eq!(
+            (t_infinita.municao, t_infinita.recarregou, t_infinita.seca),
+            (t_farto.municao, t_farto.recarregou, t_farto.seca),
+            "tem={tem}: um deposito FARTO tem de ser indistinguivel de nao ter deposito"
+        );
+    }
 }

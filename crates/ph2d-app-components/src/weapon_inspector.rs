@@ -51,6 +51,20 @@ pub fn build_info(
         on_fire: w.on_fire.clone(),
         on_empty: w.on_empty.clone(),
         on_reloaded: w.on_reloaded.clone(),
+        reserve_counter: w.reserve_counter.clone(),
+        // ⚠️⚠️ **A MESMA lente da ponte, e ela é OUTRA:** o pente é lido NESTE objecto e o depósito
+        // é um contador nomeado em qualquer sítio da cena — *uma entidade tem um `Counter`*. ⛔ E a
+        // pergunta é `dono_unico`, não `soma`: **ler dois depósitos como um** mostraria ao artista
+        // um número que a arma não vai gastar.
+        reserva: ph2d_ecs::counter::dono_unico(sim.world(), w.reserve_counter.trim()).and_then(
+            |d| {
+                ph2d_ecs::counter::soma(
+                    sim.world(),
+                    w.reserve_counter.trim(),
+                    ph2d_ecs::counter::Ambito::Objecto(d),
+                )
+            },
+        ),
         municao,
         pente: pente.map_or(0, |c| c.start),
         recarregando: sim
@@ -88,6 +102,7 @@ fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
         E::OnFire(v) => poe!(on_fire, v),
         E::OnEmpty(v) => poe!(on_empty, v),
         E::OnReloaded(v) => poe!(on_reloaded, v),
+        E::ReserveCounter(v) => poe!(reserve_counter, v),
     }
 }
 

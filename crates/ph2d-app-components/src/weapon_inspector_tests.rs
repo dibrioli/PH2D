@@ -106,9 +106,9 @@ fn cada_edicao_escreve_o_seu_campo_e_o_igual_nao_conta() {
     assert_eq!(w.on_fire, "shot");
 }
 
-/// **As oito edições chegam ao componente** — a metade que prova que nenhuma variante é decorativa.
+/// **As nove edições chegam ao componente** — a metade que prova que nenhuma variante é decorativa.
 #[test]
-fn as_oito_edicoes_chegam() {
+fn as_nove_edicoes_chegam() {
     let mut sim = SimWorld::new();
     let e = arma(&mut sim, Some(("ammo", 6)));
     let b = e.to_bits();
@@ -121,6 +121,7 @@ fn as_oito_edicoes_chegam() {
         E::OnFire("d".to_owned()),
         E::OnEmpty("e".to_owned()),
         E::OnReloaded("f".to_owned()),
+        E::ReserveCounter("g".to_owned()),
     ];
     for edit in &todas {
         assert!(
@@ -144,8 +145,9 @@ fn as_oito_edicoes_chegam() {
             on_fire: "d".to_owned(),
             on_empty: "e".to_owned(),
             on_reloaded: "f".to_owned(),
+            reserve_counter: "g".to_owned(),
         },
-        "os OITO campos, e nenhum ficou por escrever"
+        "os NOVE campos, e nenhum ficou por escrever"
     );
 }
 

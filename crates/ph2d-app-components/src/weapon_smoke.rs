@@ -60,6 +60,17 @@ pub const CARTUCHAS: &str = "shells";
 pub const PENTE_N: i64 = 6;
 /// Quantas cartuchas a caçadeira leva.
 pub const CARTUCHAS_N: i64 = 2;
+
+/// ⭐⭐⭐ **O DEPÓSITO da caçadeira** — o contador de que a recarga TIRA.
+///
+/// ⚠️ **Ele vive numa CAIXA e não na arma**, e não por gosto: uma entidade tem **um** `Counter` e o
+/// pente já o ocupa. ⭐ De graça, isso torna-o um objecto da cena que o dono vê na Hierarquia e
+/// cujo número desce à frente dele.
+pub const RESERVA: &str = "shell box";
+
+/// ⚠️ **`6` são TRÊS recargas** de um pente de [`CARTUCHAS_N`], que é o mínimo que mostra uma
+/// escada: com uma o dono não distingue *«acabou»* de *«nunca funcionou»*.
+pub const RESERVA_N: i64 = 6;
 /// A cadência da arma da esquerda, em ms — quatro tiros por segundo.
 pub const CADENCIA_MS: u64 = 250;
 /// Quanto ela demora a recarregar.
@@ -96,6 +107,14 @@ const CACADEIRA_RGBA: [f32; 4] = [0.95, 0.55, 0.20, 1.0];
 const BALA_RGBA: [f32; 4] = [0.98, 0.82, 0.25, 1.0];
 const BALA_CTRL_RGBA: [f32; 4] = [0.70, 0.72, 0.75, 1.0];
 const CHUMBO_RGBA: [f32; 4] = [0.99, 0.72, 0.42, 1.0];
+/// A caixa de munições. ⚠️ **A COR da caçadeira, mais escura** — é isso que diz a quem olha que
+/// eles são o mesmo assunto, sem uma linha de texto.
+const CAIXA_RGBA: [f32; 4] = [0.62, 0.36, 0.13, 1.0];
+/// Onde a caixa fica. ⚠️ **MEDIDO contra a banda** (`|x| + meia-largura <= 6,2`): `5,7 + 0,35`
+/// dá `6,05`, e é o gate `cada_peca_cabe_na_banda_visivel` que o afirma. ⛔ E ela fica FORA do
+/// leque da caçadeira (que a `4` m de alcance abre até `x ≈ 5,03`), senão o chumbo dela ricochetava
+/// no próprio depósito.
+const CAIXA_XY: [f32; 2] = [5.7, TORRETA_Y];
 
 /// **A receita que esta fábrica ainda vai apontar** — o marcador de MONTAGEM da irmã do `#11`.
 ///
@@ -217,6 +236,8 @@ fn cena_um(world: &mut World) -> Entity {
             on_fire: TIRO.to_owned(),
             on_empty: String::new(),
             on_reloaded: String::new(),
+            // ⚠️ **Sem depósito: reserva INFINITA**, que é o comportamento que o dono aprovou.
+            reserve_counter: String::new(),
         },
         // ⭐⭐ **O PENTE é um contador**, e é isso que o põe no Inspector e no HUD de graça.
         Counter {
@@ -269,6 +290,11 @@ fn cena_um(world: &mut World) -> Entity {
             on_fire: CHUMBO.to_owned(),
             on_empty: String::new(),
             on_reloaded: String::new(),
+            // ⭐⭐⭐ **A caçadeira é a única com DEPÓSITO, e a escolha é medida:** as outras duas
+            // foram aprovadas pelo dono com reserva infinita, e a lição delas é o RITMO. Aqui a
+            // lição já é *«poucos tiros, devagar»* — é a única coluna em que um depósito que ACABA
+            // se lê, e as outras ficam byte-idênticas a servir de CONTROLO.
+            reserve_counter: RESERVA.to_owned(),
         },
         Counter {
             name: CARTUCHAS.to_owned(),
@@ -276,6 +302,23 @@ fn cena_um(world: &mut World) -> Entity {
             keep_on_restart: false,
         },
         CounterRuntime { value: CARTUCHAS_N },
+    ));
+
+    // ⭐⭐⭐ **A CAIXA DE MUNIÇÕES** — o depósito é um objecto da CENA, não um campo escondido.
+    //
+    // ⚠️ **Sem `Sprite` ela seria um número invisível**: o dono precisa de a poder escolher no
+    // canvas para ver o `Counter` dela descer, e a lei do #15 já o pagou (*uma cena certa como
+    // DADOS e impossível como GESTO*).
+    world.spawn((
+        Name::new("Shell Box"),
+        Sprite::atlas(WHITE_TILE_KEY, [0.7, 0.7], CAIXA_RGBA),
+        Transform::from_translation(Vec2::new(CAIXA_XY[0], CAIXA_XY[1])),
+        Counter {
+            name: RESERVA.to_owned(),
+            start: RESERVA_N,
+            keep_on_restart: false,
+        },
+        CounterRuntime { value: RESERVA_N },
     ));
 
     arma
@@ -310,6 +353,9 @@ pub struct Montada {
 pub fn montar(world: &mut World, _nivel: u32) -> Montada {
     let escolhido = cena_um(world);
     resolver_receitas(world);
+    // ⚠️ **CONTADO e não escrito à mão:** quantas recargas o depósito paga sai dos dois números
+    // que a cena declara — *um literal aqui envelhece no dia em que um deles mudar*.
+    let recargas = RESERVA_N / CARTUCHAS_N;
     println!(
         "[weapon-smoke] cena=1  tecla={TECLA_NOME}  accao=«{ACCAO}»  pentes: {PENTE}={PENTE_N} · \
          {CARTUCHAS}={CARTUCHAS_N}\n\
@@ -320,13 +366,18 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
          MANGUEIRA de balas: e' o que a composicao de hoje da'\n\
          (4) a LARANJA da direita cospe {CHUMBOS} chumbos num LEQUE, tem so' {CARTUCHAS_N} \
          cartuchas e demora mais a recarregar\n\
+         (4-bis) e SO' ELA tem DEPO'SITO: a CAIXA castanha ao lado dela tem {RESERVA_N} cartuchas, \
+         e cada recarga tira de la'. Escolha a «Shell Box» no canvas e veja o numero descer no \
+         Inspector; ao fim de {recargas} recargas ela fica seca PARA SEMPRE — as outras duas nao, \
+         porque nao tem deposito nenhum\n\
          (5) a «Arma» ja' esta' escolhida: role o painel da direita ate' a' seccao WEAPON e veja a \
          linha «{PENTE_N} of {PENTE_N} rounds» descer enquanto voce segura a tecla, e dizer \
          «Reloading…» quando o pente acaba\n\
          (6) na barra de CIMA carregue em `Pause`: nenhuma das tres dispara, e o {TECLA_NOME} volta \
          a ser do editor. `Play` devolve-o\n\
          (7) deu errado se: a azul cuspir tao depressa como a cinzenta · nunca ficar sem municao · \
-         os {CHUMBOS} chumbos sairem todos no mesmo rumo · ou alguma coisa sair com o relogio PARADO"
+         os {CHUMBOS} chumbos sairem todos no mesmo rumo · a caixa castanha nao descer · a LARANJA \
+         continuar a disparar com a caixa a zero · ou alguma coisa sair com o relogio PARADO"
     );
     Montada {
         nivel: 1,

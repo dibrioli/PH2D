@@ -29,3 +29,6 @@ pub const INSP_WEAPON_ON_FIRE: NodeId = hash_node_id("insp_weapon_on_fire");
 pub const INSP_WEAPON_ON_EMPTY: NodeId = hash_node_id("insp_weapon_on_empty");
 /// Publicado quando o pente fica cheio.
 pub const INSP_WEAPON_ON_RELOADED: NodeId = hash_node_id("insp_weapon_on_reloaded");
+
+/// ⭐ O nome do contador que é o DEPÓSITO. **Vazio = reserva infinita.**
+pub const INSP_WEAPON_RESERVE: NodeId = hash_node_id("insp_weapon_reserve");

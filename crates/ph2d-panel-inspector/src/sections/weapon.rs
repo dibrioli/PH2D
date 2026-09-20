@@ -42,7 +42,9 @@ const fn chave_da_queixa(q: WeaponQueixa) -> &'static str {
         WeaponQueixa::SemGatilho => "panel.inspector.weapon.this_weapon_has_no_trigger",
         WeaponQueixa::SemSaida => "panel.inspector.weapon.the_shot_goes_nowhere",
         WeaponQueixa::PenteAusente => "panel.inspector.weapon.the_magazine_is_not_here",
+        WeaponQueixa::DepositoAusente => "panel.inspector.weapon.the_depot_is_not_reachable",
         WeaponQueixa::SecaParaSempre => "panel.inspector.weapon.it_is_dry_for_good",
+        WeaponQueixa::DepositoVazio => "panel.inspector.weapon.the_depot_is_empty",
     }
 }
 
@@ -204,7 +206,7 @@ fn corpo(
             seccao,
         );
     }
-    // ⚠️ **Os SEIS nomes, e vazio = calado** — a regra do `SignalOnHit`, palavra por palavra.
+    // ⚠️ **Os SETE nomes, e vazio = calado** — a regra do `SignalOnHit`, palavra por palavra.
     for (id, rotulo, dica) in [
         (
             crate::ids::INSP_WEAPON_ON_SIGNAL,
@@ -235,6 +237,12 @@ fn corpo(
             crate::ids::INSP_WEAPON_ON_RELOADED,
             tr("panel.inspector.weapon.on_reloaded_label"),
             tr("panel.inspector.weapon.signal_when_the_magazine_is_full_u"),
+        ),
+        // ⭐⭐ **O DEPÓSITO, colado ao pente** — eles são a mesma pergunta em dois degraus, e
+        // separá-los por três sinais faria o artista ler o segundo como sendo de outro assunto.
+        (
+            crate::ids::INSP_WEAPON_RESERVE,
+            tr("panel.inspector.weapon.counter_that_is_the_depot_u"),
         ),
     ] {
         cur_y = nome_row(

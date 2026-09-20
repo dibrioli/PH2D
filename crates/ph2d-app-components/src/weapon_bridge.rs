@@ -121,12 +121,36 @@ pub fn frame(sim: &mut SimWorld, playing: bool, dt_us: u64, fired: &[&str]) -> W
                     tem,
                     cheio: c.start,
                     existe: true,
+                    // ⚠️ O depósito é resolvido a seguir, num passo próprio — aqui ainda é
+                    // «infinito», que é o que um `reserve_counter` vazio produz.
+                    ..Municao::default()
                 },
                 // ⚠️ O contador que o artista nomeou não está NESTA entidade: a arma fica com
                 // munição infinita em vez de ficar inerte — a lei do alvo que não existe, da
                 // tabela de acções. O painel é quem o diz.
                 _ => Municao::default(),
             }
+        };
+
+        // 2-bis. ⭐⭐⭐ **O DEPÓSITO** — um contador NOMEADO em qualquer sítio da cena, e não neste
+        // objecto: uma entidade tem **um** `Counter` e o pente já o ocupa.
+        //
+        // ⛔⛔ **Um nome que dois objectos carregam é RECUSADO** (`dono_unico` devolve `None`) e a
+        // arma cai em reserva infinita — *somar dez depósitos é exacto, tirar cinco a dez não é*.
+        // O painel é quem separa este silêncio do de um campo vazio.
+        let deposito = cfg.reserve_counter.trim();
+        let dono_reserva = (!deposito.is_empty())
+            .then(|| counter::dono_unico(sim.world(), deposito))
+            .flatten();
+        let mun = match dono_reserva {
+            // ⚠️ **Pela MESMA porta do pente** (`Ambito::Objecto` sobre o dono), que é o que faz
+            // um depósito no 1.º quadro da cena já valer o `start` que o artista escreveu.
+            Some(d) => Municao {
+                reserva: counter::soma(sim.world(), deposito, Ambito::Objecto(d)).unwrap_or(0),
+                reserva_existe: true,
+                ..mun
+            },
+            None => mun,
         };
 
         let pediu_tiro =
@@ -148,6 +172,24 @@ pub fn frame(sim: &mut SimWorld, playing: bool, dt_us: u64, fired: &[&str]) -> W
             && let Some(mut rt) = sim.world_mut().get_mut::<CounterRuntime>(e)
         {
             rt.value = t.municao;
+        }
+
+        // 3-bis. O DEPÓSITO, se ele existe e mudou.
+        //
+        // ⚠️ **Ele pode ainda não ter `CounterRuntime`** — o `dono_unico` não o exige, de propósito
+        // (um depósito no 1.º quadro já tem dono). ⇒ escreve-se o componente, como o
+        // `add_to_counter` da tabela de acções já faz. *Duas leituras diferentes do «por estrear»
+        // dariam uma arma que come a primeira recarga.*
+        if mun.reserva_existe
+            && t.reserva != mun.reserva
+            && let Some(d) = dono_reserva
+            && let Ok(mut ent) = sim.world_mut().get_entity_mut(d)
+        {
+            if let Some(mut rt) = ent.get_mut::<CounterRuntime>() {
+                rt.value = t.reserva;
+            } else {
+                ent.insert(CounterRuntime { value: t.reserva });
+            }
         }
 
         // 4. Os factos. ⚠️ Um sinal vazio fica CALADO — a lei da casa.

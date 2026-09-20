@@ -68,6 +68,16 @@ pub struct InspectorWeaponInfo {
     pub on_empty: String,
     /// O pente cheio.
     pub on_reloaded: String,
+    /// ⭐ O nome do contador que é o DEPÓSITO. **Vazio = reserva infinita.**
+    pub reserve_counter: String,
+    /// ⭐ Quantas balas há no depósito, ou `None` se ele não for alcançável.
+    ///
+    /// ⚠️⚠️ **`None` tem DUAS causas e o painel separa-as** — o nome está vazio (reserva
+    /// infinita, o caso normal) ou o nome é AMBÍGUO/ausente (dois objectos com o mesmo
+    /// contador, e a arma cai em infinita sem que nada na tela o diga). *As curas são
+    /// diferentes, logo os dois silêncios não podem ler-se igual* — a lei que o gatilho do
+    /// #24 já paga entre `Desconhecida` e `SemTecla`.
+    pub reserva: Option<i64>,
     /// ⭐ **Quantas balas ela tem AGORA**, e `None` quando a munição é infinita. Vem do
     /// `CounterRuntime` desta entidade, nunca de um campo.
     pub municao: Option<i64>,
@@ -97,8 +107,20 @@ impl InspectorWeaponInfo {
         if !self.ammo_counter.trim().is_empty() && self.municao.is_none() {
             return Some(WeaponQueixa::PenteAusente);
         }
+        // ⚠️ **Irmã do `PenteAusente`, e no mesmo degrau:** o artista nomeou um contador e ele não
+        // é alcançável. ⛔ E aqui a causa pode ser AMBIGUIDADE (dois objectos com o mesmo nome),
+        // que é a única maneira de o pedido dele ser recusado *por ter sido bem escrito duas vezes*.
+        if !self.reserve_counter.trim().is_empty() && self.reserva.is_none() {
+            return Some(WeaponQueixa::DepositoAusente);
+        }
         if self.municao == Some(0) && self.reload_ms == 0 {
             return Some(WeaponQueixa::SecaParaSempre);
+        }
+        // ⚠️ **A MAIS GERAL, e a única que descreve uma corrida e não uma configuração:** o pente
+        // está vazio E o depósito também. ⛔ Ela exige as DUAS metades — um depósito a zero com o
+        // pente cheio é uma arma com a última carga, que é um estado normal e não uma queixa.
+        if self.reserva == Some(0) && self.municao == Some(0) {
+            return Some(WeaponQueixa::DepositoVazio);
         }
         None
     }
@@ -116,8 +138,14 @@ pub enum WeaponQueixa {
     SemSaida,
     /// ⛔ O pente que ela nomeia **não está nesta entidade**, logo a munição é infinita em silêncio.
     PenteAusente,
-    /// O pente está a zero e não há recarga — a única das quatro que pode ser o que o artista quer.
+    /// ⛔ O DEPÓSITO que ela nomeia não tem dono ÚNICO na cena — ou não existe, ou **dois** objectos
+    /// carregam o mesmo contador. Nos dois casos a reserva volta a ser infinita, em silêncio.
+    DepositoAusente,
+    /// O pente está a zero e não há recarga — a única que pode ser o que o artista quer.
     SecaParaSempre,
+    /// ⭐ O pente **e** o depósito estão os dois a zero: ela acabou. A mais geral das cinco, e a
+    /// única que descreve uma CORRIDA e não uma configuração.
+    DepositoVazio,
 }
 
 /// Uma edição de um campo da secção WEAPON.
@@ -132,6 +160,8 @@ pub enum WeaponFieldEdit {
     OnFire(String),
     OnEmpty(String),
     OnReloaded(String),
+    /// ⭐ O nome do contador que é o DEPÓSITO.
+    ReserveCounter(String),
 }
 
 #[cfg(test)]
@@ -149,6 +179,9 @@ mod tests {
             on_fire: "shot".into(),
             on_empty: "click".into(),
             on_reloaded: "ready".into(),
+            // ⚠️ Reserva INFINITA na fixtura base, que é o valor de toda cena já gravada.
+            reserve_counter: String::new(),
+            reserva: None,
             municao: Some(6),
             pente: 6,
             recarregando: false,
@@ -173,11 +206,12 @@ mod tests {
             WeaponFieldEdit::OnFire(String::new()),
             WeaponFieldEdit::OnEmpty(String::new()),
             WeaponFieldEdit::OnReloaded(String::new()),
+            WeaponFieldEdit::ReserveCounter(String::new()),
         ];
         assert_eq!(
             variantes.len(),
-            8,
-            "o `WeaponFire` tem OITO campos — se um nasceu, ele precisa de uma variante aqui e de \
+            9,
+            "o `WeaponFire` tem NOVE campos — se um nasceu, ele precisa de uma variante aqui e de \
              uma row no painel"
         );
     }
@@ -232,6 +266,37 @@ mod tests {
             None,
             "quem nao nomeia pente quer municao infinita, e isso nao e' um defeito"
         );
+
+        // ⭐⭐ **O DEPÓSITO ausente** — o nome está lá e ninguém o carrega (ou dois carregam-no).
+        let mut sem_deposito = base();
+        sem_deposito.reserve_counter = "caixa".into();
+        sem_deposito.reserva = None;
+        assert_eq!(
+            sem_deposito.queixa(),
+            Some(WeaponQueixa::DepositoAusente),
+            "um nome de deposito sem dono UNICO da' reserva infinita em silencio"
+        );
+
+        // ⭐ **O CONTROLO dele, e é o mesmo da terceira:** não nomear depósito é reserva infinita
+        // AUTORADA — o caso de toda cena gravada antes de 2026-09-20.
+        let mut sem_nome = base();
+        sem_nome.reserve_counter = String::new();
+        sem_nome.reserva = None;
+        assert_eq!(sem_nome.queixa(), None);
+
+        // ⭐⭐ **O DEPÓSITO vazio** — e ⚠️ ele exige as DUAS metades.
+        let mut acabou = base();
+        acabou.reserve_counter = "caixa".into();
+        acabou.reserva = Some(0);
+        acabou.municao = Some(0);
+        assert_eq!(acabou.queixa(), Some(WeaponQueixa::DepositoVazio));
+
+        // ⚠️ **O CONTROLO da quinta:** depósito a zero com o pente CHEIO é a última carga, que é um
+        // estado normal e não uma queixa. *Sem esta linha, uma arma acabada de recarregar gritaria.*
+        let mut ultima_carga = base();
+        ultima_carga.reserve_counter = "caixa".into();
+        ultima_carga.reserva = Some(0);
+        assert_eq!(ultima_carga.queixa(), None);
 
         let mut seca = base();
         seca.municao = Some(0);

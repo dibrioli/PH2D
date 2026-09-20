@@ -21,6 +21,7 @@ fn arma_com_pente(sim: &mut SimWorld, id: u64, n: i64, cadencia: u64) -> Entity 
                 on_fire: "shot".to_owned(),
                 on_empty: "click".to_owned(),
                 on_reloaded: "ready".to_owned(),
+                reserve_counter: String::new(),
             },
             Counter {
                 name: "ammo".to_owned(),
@@ -164,4 +165,122 @@ fn os_sinais_vazios_ficam_calados() {
     ));
     let t = frame(&mut sim, true, DT, &["fire"]);
     assert_eq!(t, WeaponTick::default(), "ela dispara e não diz nada");
+}
+
+// ── O DEPÓSITO (`reserve_counter`) ────────────────────────────────────────────────────────────
+
+/// Põe uma caixa com `n` balas chamada `nome`, numa entidade PRÓPRIA.
+fn caixa(sim: &mut SimWorld, nome: &str, n: i64) -> Entity {
+    sim.world_mut()
+        .spawn((
+            Name::new("Caixa"),
+            Counter {
+                name: nome.to_owned(),
+                start: n,
+                keep_on_restart: false,
+            },
+            CounterRuntime { value: n },
+        ))
+        .id()
+}
+
+/// Liga a arma a um depósito.
+fn aponta_ao_deposito(sim: &mut SimWorld, arma: Entity, nome: &str) {
+    sim.world_mut()
+        .get_mut::<WeaponFire>(arma)
+        .unwrap()
+        .reserve_counter = nome.to_owned();
+}
+
+/// ⭐⭐⭐ **A recarga TIRA do depósito, e a ponte escreve nele** — a metade que a lei pura não pode
+/// afirmar: ela devolve dois números e quem os põe nos dois donos é isto.
+///
+/// **Mutações que devem sangrar:** não escrever o depósito · escrevê-lo na arma · ler a soma da
+/// cena em vez do dono.
+#[test]
+fn a_recarga_tira_do_deposito_e_a_ponte_escreve_nele() {
+    let mut sim = SimWorld::new();
+    let arma = arma_com_pente(&mut sim, 1, 3, 0);
+    let cx = caixa(&mut sim, "box", 2);
+    aponta_ao_deposito(&mut sim, arma, "box");
+    // ⚠️ **QUATRO puxões e não três:** as três gastam o pente e é o QUARTO — o clique SECO — que
+    // arranca a recarga automática. *Um arnês que pára no pente vazio mede uma arma que nunca
+    // recarrega*, e foi assim que os três gates desta secção nasceram vermelhos.
+    for _ in 0..4 {
+        frame(&mut sim, true, DT, &["fire"]);
+    }
+    assert_eq!(municao(&sim, arma), 0, "o pente esvaziou");
+    for _ in 0..12 {
+        frame(&mut sim, true, DT, &[]);
+    }
+    assert_eq!(municao(&sim, arma), 2, "a recarga leva o que HAVIA, nao 3");
+    assert_eq!(
+        municao(&sim, cx),
+        0,
+        "e a ponte escreve no DONO do deposito"
+    );
+}
+
+/// ⛔⛔ **Um nome que DOIS objectos carregam é RECUSADO** — a arma cai em reserva infinita, e o
+/// painel é quem o diz.
+///
+/// ⚠️ **O CONTROLO é o mesmo mundo com UMA caixa:** sem ele este gate ficaria verde sobre uma
+/// ponte que nunca lê depósito nenhum.
+#[test]
+fn um_deposito_ambiguo_e_recusado_e_a_arma_fica_infinita() {
+    for (n_caixas, esperado) in [(1_usize, 2_i64), (2, 3)] {
+        let mut sim = SimWorld::new();
+        let arma = arma_com_pente(&mut sim, 1, 3, 0);
+        for _ in 0..n_caixas {
+            caixa(&mut sim, "box", 2);
+        }
+        aponta_ao_deposito(&mut sim, arma, "box");
+        for _ in 0..4 {
+            frame(&mut sim, true, DT, &["fire"]);
+        }
+        for _ in 0..12 {
+            frame(&mut sim, true, DT, &[]);
+        }
+        assert_eq!(
+            municao(&sim, arma),
+            esperado,
+            "com {n_caixas} caixa(s) o pente tinha de ficar em {esperado} \
+             (uma => leva as 2 que ha'; duas => AMBIGUO, reserva infinita, enche os 3)"
+        );
+    }
+}
+
+/// ⭐ **Um depósito por ESTREAR já vale o `start`** — e a ponte cria-lhe o vivo.
+///
+/// ⚠️ Sem isto, uma caixa acabada de pôr na cena daria **reserva zero** no primeiro quadro e a arma
+/// ficaria seca para sempre — *duas leituras diferentes do «por estrear» dariam uma arma que come
+/// a primeira recarga*.
+#[test]
+fn um_deposito_por_estrear_ja_vale_o_start() {
+    let mut sim = SimWorld::new();
+    let arma = arma_com_pente(&mut sim, 1, 3, 0);
+    let cx = sim
+        .world_mut()
+        .spawn((
+            Name::new("Caixa crua"),
+            Counter {
+                name: "box".to_owned(),
+                start: 5,
+                keep_on_restart: false,
+            },
+        ))
+        .id();
+    aponta_ao_deposito(&mut sim, arma, "box");
+    for _ in 0..4 {
+        frame(&mut sim, true, DT, &["fire"]);
+    }
+    for _ in 0..12 {
+        frame(&mut sim, true, DT, &[]);
+    }
+    assert_eq!(
+        municao(&sim, arma),
+        3,
+        "o pente encheu do deposito por estrear"
+    );
+    assert_eq!(municao(&sim, cx), 2, "e o vivo dele NASCEU com o resto");
 }

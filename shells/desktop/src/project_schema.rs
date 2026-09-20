@@ -446,4 +446,26 @@
 /// ⚠️ **A tripla NAO ve^ este degrau** — o `CounterWatch` viaja num `ComponentBlob`.
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v161 e' recusado em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 162;
+/// # `162 → 163` — a MUNIÇÃO DE RESERVA: a arma ganha um DEPÓSITO
+///
+/// O `ph2d_ecs::WeaponFire` ganhou `reserve_counter: String` **apendado no fim**, e o postcard e'
+/// POSICIONAL: um blob v162 tem oito campos onde este binario pede nove.
+///
+/// ⭐⭐⭐ **A grandeza e' NOVA e foi MEDIDA antes da 1.ª linha** (a sonda
+/// `mede_o_que_a_composicao_ja_da_a_reserva`): ate' aqui a recarga repunha o pente ao `start` sem
+/// tirar de sitio nenhum — **275 balas em 10 s de um deposito que nao existe**. E a composicao nao
+/// a exprimia: o `AddToCounter` soma um DELTA FIXO e a `CounterWatch` fala num limiar; nenhum dos
+/// dois sabe *«tirar o que FALTA, ate' ao que HA'»*, que e' a lei inteira de uma reserva.
+///
+/// ⚠️ **O valor de fabrica e' VAZIO = reserva INFINITA**, logo toda cena ja' gravada se comporta
+/// exactamente como antes depois de migrada (ha' gate: um deposito FARTO e' indistinguivel de nao
+/// ter deposito).
+///
+/// ⚠️⚠️ **O deposito NAO vive na arma**, e nao por gosto: uma entidade tem **um** `Counter` e o
+/// pente ja' o ocupa ⇒ ele e' um contador NOMEADO em qualquer sitio da cena, resolvido pela porta
+/// nova `counter::dono_unico`. ⛔ **Um nome que DOIS objectos carregam e' recusado** — somar dez
+/// depositos e' exacto, *tirar cinco a dez nao e'*, e escolher um por ordem de varredura faria a
+/// bala sair de um sitio que o artista nao escolheu.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v162 e' recusado em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 163;

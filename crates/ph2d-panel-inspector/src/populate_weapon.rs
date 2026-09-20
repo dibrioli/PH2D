@@ -43,6 +43,7 @@ pub(crate) fn populate_weapon(store: &mut WidgetStore) {
         ids::INSP_WEAPON_ON_FIRE,
         ids::INSP_WEAPON_ON_EMPTY,
         ids::INSP_WEAPON_ON_RELOADED,
+        ids::INSP_WEAPON_RESERVE,
     ] {
         store.register(
             id,

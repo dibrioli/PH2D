@@ -35,6 +35,7 @@ fn cano(sim: &mut SimWorld, arrefece_ms: u64) -> ph2d_ecs::Entity {
                 on_fire: "saiu".into(),
                 on_empty: "sobreaqueceu".into(),
                 on_reloaded: String::new(),
+                reserve_counter: String::new(),
             },
             weapon_born(),
             Counter {

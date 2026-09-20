@@ -31,6 +31,7 @@ pub(crate) fn apply_weapon_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
             crate::ids::INSP_WEAPON_ON_FIRE => WeaponFieldEdit::OnFire(nome),
             crate::ids::INSP_WEAPON_ON_EMPTY => WeaponFieldEdit::OnEmpty(nome),
             crate::ids::INSP_WEAPON_ON_RELOADED => WeaponFieldEdit::OnReloaded(nome),
+            crate::ids::INSP_WEAPON_RESERVE => WeaponFieldEdit::ReserveCounter(nome),
             _ => return false,
         };
         push(host, bits, edit);

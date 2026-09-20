@@ -80,6 +80,17 @@ pub struct WeaponFire {
     pub reload_ms: u64,
     /// Um sinal que manda recarregar ANTES de esvaziar. Vazio = só a automática.
     pub reload_on: String,
+    /// ⭐⭐⭐ **O nome do [`crate::Counter`] que é o DEPÓSITO.** **Vazio = reserva INFINITA**, que é o
+    /// comportamento de sempre e o de toda cena já gravada.
+    ///
+    /// ⚠️⚠️ **Ele NÃO vive nesta entidade, ao contrário do pente** — e não por gosto: uma entidade
+    /// tem **um** `Counter`, e o pente já o ocupa. ⇒ o depósito é um contador NOMEADO em qualquer
+    /// sítio da cena, e é isso que o põe no HUD, no Inspector e no `Add to Counter` de graça.
+    ///
+    /// ⛔ **Um nome que DOIS objectos carregam é recusado** (ver [`crate::counter::dono_unico`]):
+    /// somar dez depósitos é exacto, *tirar cinco a dez não é*, e escolher um por ordem de
+    /// varredura faria a bala sair de um sítio que o artista não escolheu.
+    pub reserve_counter: String,
     /// O sinal publicado quando ela DISPARA — **o fio para a [`crate::Factory`]**. Vazio = calada.
     ///
     /// ⛔ **A arma não tem `master`**, e a ausência é a lei: instanciar já tem um motor, e um
@@ -126,6 +137,12 @@ pub struct Municao {
     /// Existe um contador com aquele nome? ⚠️ **`false` é munição INFINITA**, e é o que um
     /// `ammo_counter` vazio produz; ⛔ não é «zero balas».
     pub existe: bool,
+    /// ⭐ Quantas balas há no DEPÓSITO. Só faz sentido com [`Self::reserva_existe`].
+    pub reserva: i64,
+    /// Existe um depósito com dono ÚNICO? ⚠️ **`false` é reserva INFINITA** — o de sempre —, e é o
+    /// que um `reserve_counter` vazio **e também** um nome ambíguo produzem. ⛔ Não é «zero
+    /// balas», e é o painel que separa os dois silêncios.
+    pub reserva_existe: bool,
 }
 
 /// **O que um tique da arma produziu.**
@@ -146,6 +163,11 @@ pub struct Tiro {
     ///
     /// ⚠️ Só faz sentido com [`Municao::existe`]; com munição infinita a ponte não escreve nada.
     pub municao: i64,
+    /// ⭐ Quantas balas o DEPÓSITO deve ter depois deste tique.
+    ///
+    /// ⚠️ Só faz sentido com [`Municao::reserva_existe`]. ⛔ E ele desce **exactamente** o que o
+    /// pente subiu: *a transferência conserva*, e há gate.
+    pub reserva: i64,
 }
 
 /// Converte milissegundos autorados em microssegundos, com o teto do painel.
@@ -182,8 +204,25 @@ pub fn avanca(
 ) -> Tiro {
     let mut out = Tiro {
         municao: mun.tem,
+        reserva: mun.reserva,
         ..Tiro::default()
     };
+    // ⭐⭐⭐ **A lei INTEIRA da reserva é esta função**, e ela é o MÍNIMO entre o que falta e o que
+    // há — a conta que nenhum verbo da tabela de acções sabe fazer (medido antes da 1.ª linha:
+    // o `AddToCounter` soma um delta FIXO, e um `-5` com `2` no depósito deixava-o negativo).
+    //
+    // ⚠️ **Com reserva infinita ela devolve o que falta, e a saída fica byte-idêntica à de antes
+    // desta wave** — que é a razão de o campo novo nascer vazio.
+    let tirar = |falta: i64, ha: i64| {
+        if mun.reserva_existe {
+            falta.min(ha.max(0))
+        } else {
+            falta
+        }
+    };
+    // ⚠️ **«Há de onde tirar?» é uma pergunta SÓ do depósito** — com ele infinito a resposta é
+    // sempre sim, e ⛔ ela **não** olha o pente: quem decide se falta é o `precisa`, abaixo.
+    let ha_de_onde = !mun.reserva_existe || out.reserva > 0;
 
     // (1) o relógio anda.
     st.cooldown_left_us = st.cooldown_left_us.saturating_sub(dt_us);
@@ -193,14 +232,18 @@ pub fn avanca(
         if st.reload_left_us == 0 {
             st.reloading = false;
             out.recarregou = true;
-            out.municao = mun.cheio;
+            // ⚠️ **PARCIAL, e é essa a feature:** com `2` no depósito e `5` de pente o artista
+            // recebe `2` e o depósito fica a `0`. ⛔ Repor ao `cheio` aqui era o depósito infinito.
+            let leva = tirar(mun.cheio - out.municao, out.reserva);
+            out.municao += leva;
+            out.reserva -= if mun.reserva_existe { leva } else { 0 };
         }
     }
 
     // (3) o pedido explícito. ⚠️ `out.municao` e não `mun.tem`: uma recarga que acabou AGORA já
     // encheu, e pedir outra em cima dela seria um no-op ruidoso.
     let precisa = mun.existe && out.municao < mun.cheio;
-    if pediu_recarga && !st.reloading && cfg.reload_ms > 0 && precisa {
+    if pediu_recarga && !st.reloading && cfg.reload_ms > 0 && precisa && ha_de_onde {
         st.reloading = true;
         st.reload_left_us = us(cfg.reload_ms);
         out.comecou_a_recarregar = true;
@@ -216,7 +259,11 @@ pub fn avanca(
             }
         } else {
             out.seca = true;
-            if cfg.reload_ms > 0 && mun.cheio > 0 {
+            // ⚠️ **Com o depósito vazio a recarga automática NÃO arranca** — senão a arma ficava
+            // presa num prazo que não dá bala nenhuma, e o artista via *«ela recarrega e continua
+            // seca»*. O clique seco continua a soar, que é o report certo: *clique, clique,
+            // clique* **é** ficar sem munição. O painel diz qual dos dois silêncios é.
+            if cfg.reload_ms > 0 && mun.cheio > 0 && ha_de_onde {
                 st.reloading = true;
                 st.reload_left_us = us(cfg.reload_ms);
                 out.comecou_a_recarregar = true;

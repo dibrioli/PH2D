@@ -97,6 +97,47 @@ pub fn soma(world: &World, nome: &str, ambito: Ambito) -> Option<i64> {
     achou.then_some(total)
 }
 
+/// ⭐⭐⭐ **O ÚNICO dono deste nome, ou ninguém.**
+///
+/// A [`soma`] responde *«quanto vale?»*, que é a pergunta de um PLACAR. Esta responde *«a quem é
+/// que eu escrevo?»*, que é a pergunta de quem **TIRA** de um depósito — a munição de reserva de
+/// uma arma, e o primeiro consumidor que a fez existir.
+///
+/// # ⛔⛔ Porque é que ela recusa quando há DOIS, em vez de escolher um
+///
+/// Somar dez contadores com o mesmo nome é uma resposta exacta; **tirar cinco a dez contadores com
+/// o mesmo nome não é** — e escolher um por ordem de varredura faria a bala sair de um sítio que o
+/// artista não escolheu, sem nada na tela a dizê-lo. *Uma ambiguidade que se resolve em silêncio é
+/// um defeito com cara de feature* ⇒ ela devolve `None`, e quem chama DIZ porquê (o painel da arma
+/// separa os dois silêncios, como o do gatilho separa os dele).
+///
+/// ⚠️ **A ordem de varredura NÃO entra na resposta**, e é isso que a torna determinista sem um
+/// `StableId`: com um dono a resposta é ele, com dois ou mais é `None`. ⛔ Sem esta propriedade a
+/// mesma cena daria armas diferentes em máquinas diferentes.
+///
+/// ⚠️ Ao contrário da [`soma`], ela **não exige** `CounterRuntime`: um depósito no primeiro quadro
+/// da cena já tem dono, e o valor dele é o `start` da config (a mesma divergência declarada que o
+/// braço de [`Ambito::Objecto`] carrega).
+#[must_use]
+pub fn dono_unico(world: &World, nome: &str) -> Option<Entity> {
+    let alvo = nome.trim();
+    if alvo.is_empty() {
+        return None;
+    }
+    let mut q = world.try_query::<(Entity, &Counter)>()?;
+    let mut dono = None;
+    for (e, cfg) in q.iter(world) {
+        if cfg.name.trim() != alvo {
+            continue;
+        }
+        if dono.is_some() {
+            return None;
+        }
+        dono = Some(e);
+    }
+    dono
+}
+
 #[cfg(test)]
 #[path = "counter_tests.rs"]
 mod tests;

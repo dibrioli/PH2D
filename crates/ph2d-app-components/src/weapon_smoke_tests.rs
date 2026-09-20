@@ -330,3 +330,83 @@ fn a_arma_nasce_escolhida() {
     );
     let _ = CACADEIRA_RGBA;
 }
+
+// ── O DEPÓSITO da caçadeira ───────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **A caçadeira é a ÚNICA com depósito, e ele tem dono ÚNICO.**
+///
+/// ⚠️ **As duas metades, e a segunda é o CONTROLO:** sem ela o gate ficaria verde numa cena onde
+/// todas as três tivessem depósito — e as outras duas foram aprovadas pelo dono com reserva
+/// infinita, logo mudá-las seria re-escrever um smoke que ele já julgou.
+///
+/// **Mutações que devem sangrar:** tirar o `reserve_counter` da caçadeira · pô-lo também na arma ·
+/// pôr a caixa numa entidade que já tenha um `Counter` com esse nome.
+#[test]
+fn so_a_cacadeira_tem_deposito_e_ele_tem_dono_unico() {
+    let (sim, _) = montada();
+    for (nome, tem) in [
+        ("Arma", false),
+        ("Sem arma (controlo)", false),
+        ("Cacadeira", true),
+    ] {
+        let e = por_nome(&sim, nome);
+        let Some(w) = sim.world().get::<ph2d_ecs::WeaponFire>(e) else {
+            assert!(!tem, "«{nome}» nem arma tem");
+            continue;
+        };
+        assert_eq!(
+            !w.reserve_counter.trim().is_empty(),
+            tem,
+            "«{nome}»: deposito «{}» quando se esperava tem={tem}",
+            w.reserve_counter
+        );
+    }
+    // ⛔ **O dono ÚNICO, pela porta do produto** — com dois objectos a carregar o mesmo contador a
+    // arma cairia em reserva infinita **em silêncio**, e a cena ensinaria o contrário do que diz.
+    let dono = ph2d_ecs::counter::dono_unico(sim.world(), super::RESERVA)
+        .expect("o deposito da cena tem de ter dono UNICO");
+    assert_eq!(
+        sim.world().get::<ph2d_ecs::Counter>(dono).map(|c| c.start),
+        Some(super::RESERVA_N),
+        "e ele comeca com as {} cartuchas que o roteiro promete",
+        super::RESERVA_N
+    );
+}
+
+/// ⭐ **A CAIXA cabe na banda, e fica FORA do leque da caçadeira.**
+///
+/// ⚠️ **Gate próprio e não mais um nome no laço das torretas:** aquelas estão rodadas `90°` e a
+/// meia-altura delas é metade da LARGURA do sprite — *uma caixa sem rotação medida com a conta
+/// delas leria a caixa errada*.
+#[test]
+fn a_caixa_cabe_na_banda_e_fora_do_leque() {
+    let (sim, _) = montada();
+    let e = por_nome(&sim, "Shell Box");
+    let t = sim.world().get::<Transform>(e).expect("pose");
+    let sp = sim
+        .world()
+        .get::<ph2d_render::Sprite>(e)
+        .expect("sem Sprite ela era um numero invisivel");
+    let (mx, my) = (sp.size[0] * 0.5, sp.size[1] * 0.5);
+    let (x, y) = (t.translation.x, t.translation.y);
+    assert!(
+        x.abs() + mx <= BANDA_LADO,
+        "a caixa ocupa ate' x = {}, e a banda acaba em {BANDA_LADO}",
+        x.abs() + mx
+    );
+    assert!(
+        y - my >= -BANDA_ABAIXO && y + my <= BANDA_ACIMA,
+        "a caixa ocupa y de {} a {}",
+        y - my,
+        y + my
+    );
+    // ⛔ **Fora do leque:** a `ALCANCE` metros, meio leque de `LEQUE_GRAUS/2` abre até este `x`.
+    let meio = (super::LEQUE_GRAUS * 0.5).to_radians();
+    let alcance_lateral = super::COLUNA_X[2] + super::ALCANCE * meio.sin();
+    assert!(
+        x - mx > alcance_lateral,
+        "a caixa comeca em x = {} e o chumbo chega a {alcance_lateral} — ela ricochetava no \
+         proprio deposito",
+        x - mx
+    );
+}

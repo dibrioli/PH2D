@@ -9,7 +9,7 @@
 //! módulos de teste seria acoplamento por conveniência.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --release --bins sculpt3d::filter::cloth_tests -- --ignored --nocapture
+//! cargo test -p ph2d-app-sculpt3d --release --lib sculpt3d::filter::cloth_tests -- --ignored --nocapture
 //! ```
 
 use ph2d_mesh::shapes::uv_sphere;

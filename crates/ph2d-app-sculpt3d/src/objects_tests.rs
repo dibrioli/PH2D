@@ -7,7 +7,7 @@
 //! essas quatro coisas — cada uma tinha a sua suíte, e nenhuma delas se encontrava com as outras.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins sculpt3d::objects::tests
+//! cargo test -p ph2d-app-sculpt3d --lib sculpt3d::objects::tests
 //! ```
 
 use ph2d_mesh_render::Camera3d;

@@ -14,7 +14,7 @@
 //! ```text
 //! \
 //!   env PH2D_PIECE=/caminho/peca.obj PH2D_DETAIL=0.85 \
-//!   cargo test -p ph2d-host-desktop --release --bins \
+//!   cargo test -p ph2d-app-sculpt3d --release --lib \
 //!   does_the_field_wake_up_at_a_thin_tip -- --ignored --nocapture
 //! ```
 

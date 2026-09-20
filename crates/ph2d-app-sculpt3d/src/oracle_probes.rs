@@ -144,7 +144,7 @@ fn relief_of(mesh: &ph2d_mesh::Mesh, dirs: &dyn Fn(usize) -> [f32; 3]) -> (f32, 
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   my_field_against_the_oracle -- --ignored --nocapture
 /// ```
 #[test]
@@ -225,7 +225,7 @@ fn my_field_against_the_oracle() {
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   which_alignment_weight_matches_the_oracle_field -- --ignored --nocapture
 /// ```
 #[test]

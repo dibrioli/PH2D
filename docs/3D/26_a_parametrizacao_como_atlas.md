@@ -19,7 +19,17 @@
 
 Três peças do próprio dono (as fixturas de `ph2d-quadfill/tests/fixtures/pontas/`) e uma
 esfera de controlo, cada uma medida **duas vezes**: na malha CRUA que o artista esculpiu
-e na remalhada pelo F1, que é o que o botão de retopologia faz.
+e na remalhada pelo **F1**, que é o passo com que a cadeia do botão COMEÇA.
+
+> ⛔⛔⛔ **CORRECÇÃO (report do dono, 2026-09-20 — *«ficou assim. com uma retopologia
+> ruim»*): o `F1` NÃO é a malha que o botão entrega, e a sonda rotulava-o *«como o botão
+> faz»*.** Ele é o remalhador **isotrópico de triângulos** — a malha de TRABALHO que a
+> cadeia mastiga antes de parametrizar —, e o que o artista leva é a saída da
+> **EXTRACÇÃO**, uma malha de QUADS. ⚠️ E as duas diferenças somam-se: o alvo do `F1` aqui
+> é o `ALPHA` da cadeia e o do botão sai do **SLIDER**, e o botão corre **duas ou três**
+> tentativas que uma medição escolhe. *O doc do `photo_button` desta casa já escrevia a
+> lei — «duas ordens diferentes com o mesmo nome dão dois números, e o que o artista vê é
+> o da que ele carrega» — e o rótulo desta sonda pô-la a mentir.* ⇒ **§13**.
 
 | peça | entrada | V | patches | **ILHAS** | dobras | corte sentido | aprov. na caixa | escala |
 |---|---|---|---|---|---|---|---|---|
@@ -880,3 +890,80 @@ com o relevo a entrar só no brilho.
 * **A placa paga `+19 %` a `+57 %` de vértices** (`(u, v)` é por CANTO e um buffer de
   vértices é por VÉRTICE) — o número que decide se o canal cabe na `Mesh` como está ou se
   a malha de desenho é uma segunda malha. É a primeira pergunta da wave que veste a peça.
+
+---
+
+## §13 — ⛔⛔⛔ O `F1` NÃO é o que o botão entrega (report do dono, 2026-09-20)
+
+> *«ficou assim. com uma retopologia ruim»* — com a foto da peça CURADA pela W5.
+
+### §13.1 — A correcção, e ela é minha
+
+A sonda rotulava a segunda coluna **`F1 (remalhada, como o botao faz)`** desde a W0. Ela é a
+[`ph2d_quadchain::phase_zero`] — o remalhador **isotrópico de TRIÂNGULOS**, a malha de TRABALHO que
+a cadeia mastiga antes de parametrizar. O que o artista leva é a saída da **EXTRACÇÃO**, uma malha
+de **QUADS**. ⚠️ E as duas diferenças somam-se: o alvo do `F1` aqui sai do `ALPHA` da cadeia e o do
+botão sai do **SLIDER**, e o botão corre **duas ou três** tentativas que uma medição escolhe.
+
+⛔ **A lei já estava escrita nesta casa**, no cabeçalho do [`photo_button`](../../crates/ph2d-app-sculpt3d/src/photo_button.rs):
+*«duas ordens diferentes com o mesmo nome dão dois números, e o que o artista vê é o da que ele
+carrega.»* O rótulo desta sonda pô-la a mentir.
+
+### §13.2 — ⛔ E a minha primeira hipótese caiu na medição
+
+Escrevi que o botão daria uma malha muito mais fina e que a foto era de uma peça `13×` mais grossa.
+**Falso.** Corrido o botão a sério (`_base_sculpt`, `Detail 0,5`, recentrada pela porta do
+importador):
+
+| | V | F |
+|---|---|---|
+| `phase_zero` (o que a foto mostrava) | `1 520` | `3 036` triângulos = `1 518` quads |
+| **o BOTÃO** | `1 427` | **`1 425` quads** |
+
+⇒ **a mesma densidade.** O que muda é a **espécie** (quads contra triângulos) e a qualidade da
+ligação — e é isso que o olho dele leu como *«retopologia ruim»*: os espinhos do `phase_zero` são
+triângulos compridos e finos, sem grade nenhuma.
+
+### §13.3 — O atlas sobre a malha que o botão ENTREGA
+
+| | espalhamento | ENTRE | DENTRO | tinta | `cruza` |
+|---|---|---|---|---|---|
+| saída do botão | `0,37×..1,18×` | `0,55×..1,09×` | `0,71×..1,21×` | `37,3 %` | `0` |
+
+⚠️ **A igualação bate no tecto ali** (`0,74×..3,00×`), logo o resíduo é o mesmo que o §12.8 nomeia —
+e a peça é a mesma que já o tinha pior.
+
+### §13.4 — ⭐⭐⭐ E o achado: essa malha JÁ TEM uma parametrização, e ela é o dobro mais uniforme
+
+A saída do botão vem da extracção das **isolinhas inteiras** de um mapa de grade: cada quad dela
+**é uma célula da grade**. Medido o lado de cada quad (`1 425` quads, percentis pesados pela área):
+
+| | densidade implícita, relativa à mediana |
+|---|---|
+| **levar a grade da retopologia** | **`0,76×..1,34×`** |
+| re-parametrizar (o que a sonda faz) | `0,37×..1,18×` |
+
+⇒ **mais do dobro de uniformidade, e de graça** — sem a segunda corrida da cadeia (`3,2 s` nesta
+peça) e sem um segundo conjunto de costuras.
+
+⛔ **O dado existe e é DEITADO FORA na fronteira:** a `ph2d_quadextract::extract` devolve
+`(Mesh, ExtractReport)`, e os nós que ela emite são achados **em pontos inteiros da grade** — ela
+sabe o `(u, v)` de cada vértice que cria, porque é ela que os põe lá.
+
+⚠️ **O que a medição acima afirma e o que não afirma:** ela mede a ÁREA de cada quad, que é um
+**proxy** da densidade que aquela grade daria. Confirmar o número exige carregar a `(u, v)` para
+fora da extracção — que é precisamente a wave que este achado abre.
+
+### §13.5 — ⛔⛔ E as sondas deste módulo mandavam correr o pacote ERRADO, em 47 sítios
+
+A porta escrita no doc de cada sonda (`-p ph2d-host-desktop --bins`) ficou para trás quando a
+família saiu da shell na W2 de 11/09. Eu segui uma delas nesta wave, esperei **`2 m 48 s`** por uma
+build e li **`running 0 tests … ok`** como se fosse um resultado.
+
+⇒ **47** endereços curados em **23** ficheiros, mais o censo **derivado**
+[`sondas_apontam_a_porta_certa_tests`](../../crates/ph2d-app-sculpt3d/src/sondas_apontam_a_porta_certa_tests.rs)
+(varre os ficheiros, nunca uma lista; piso de população; controlo positivo).
+
+⏳ **ABERTO e nomeado:** o censo verifica o **PACOTE** e não o **FILTRO** — vários dos 47 citam
+caminhos de módulo da era da shell (`sculpt3d::entities::tests`), e um filtro que não casa nada tem
+exactamente o mesmo modo de falha.

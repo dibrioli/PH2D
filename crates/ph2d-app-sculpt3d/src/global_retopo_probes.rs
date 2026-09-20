@@ -30,7 +30,7 @@ use super::global_retopo::open_edges;
 ///
 /// ```text
 /// cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   the_two_engines_on_the_same_piece_without_a_device -- --ignored --nocapture
 /// ```
 #[test]
@@ -199,7 +199,7 @@ fn the_two_engines_on_the_same_piece_without_a_device() {
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   whose_fold_is_it_the_construction_or_the_projection -- --ignored --nocapture
 /// ```
 #[test]

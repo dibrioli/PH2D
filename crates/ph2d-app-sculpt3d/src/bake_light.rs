@@ -34,7 +34,7 @@
 //! `w = 1.0` — o peso é **binário**, e não há antialiasing nenhum. O doc foi corrigido.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --release --bins sculpt3d::bake::light_measure -- --ignored --nocapture
+//! cargo test -p ph2d-app-sculpt3d --release --lib sculpt3d::bake::light_measure -- --ignored --nocapture
 //! ```
 
 use ph2d_gpu::GpuContext;

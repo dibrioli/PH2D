@@ -6,7 +6,7 @@
 //! `filter_tests`/`transform_tests`, com `gpu_or_skip!`.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins sculpt3d::navball
+//! cargo test -p ph2d-app-sculpt3d --lib sculpt3d::navball
 //! ```
 
 use super::{aim_of, named_view};

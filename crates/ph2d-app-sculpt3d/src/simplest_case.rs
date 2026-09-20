@@ -40,7 +40,7 @@ fn measure(mesh: &Mesh) -> Shown {
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   at_the_same_density_as_the_oracle -- --ignored --nocapture
 /// ```
 #[test]

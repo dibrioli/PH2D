@@ -12,7 +12,7 @@
 //! escreve **fora** da árvore da engine.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --release --bins dump_the_quad_remesh_corpus -- --ignored --nocapture
+//! cargo test -p ph2d-app-sculpt3d --release --lib dump_the_quad_remesh_corpus -- --ignored --nocapture
 //! ```
 
 use std::path::Path;

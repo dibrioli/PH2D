@@ -192,6 +192,12 @@ mod caminho_no_mundo_tests;
 #[path = "named_gates_census_tests.rs"]
 mod named_gates_census_tests;
 
+/// ⭐⭐ **Toda sonda aponta a crate onde ela vive** — o censo que teria apanhado os 36
+/// endereços que ficaram para trás quando a família saiu da shell.
+#[cfg(test)]
+#[path = "sondas_apontam_a_porta_certa_tests.rs"]
+mod sondas_apontam_a_porta_certa_tests;
+
 /// ⭐⭐ **Toda cena que escreve um roteiro tem quem o imprima** — o censo que teria apanhado a `=42`.
 #[cfg(test)]
 #[path = "scenes_announce_census_tests.rs"]

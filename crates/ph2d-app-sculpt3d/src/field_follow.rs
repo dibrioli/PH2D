@@ -164,7 +164,7 @@ fn deviation(
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   does_the_output_follow_the_field -- --ignored --nocapture
 /// ```
 #[test]
@@ -281,7 +281,7 @@ fn does_the_output_follow_the_field() {
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   what_does_the_chain_do_to_a_plain_sphere -- --ignored --nocapture
 /// ```
 #[test]

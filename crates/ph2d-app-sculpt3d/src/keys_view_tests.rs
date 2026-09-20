@@ -12,7 +12,7 @@
 //! claims da mesma tecla e um `return` a montante.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins sculpt3d_keys_view
+//! cargo test -p ph2d-app-sculpt3d --lib sculpt3d_keys_view
 //! ```
 
 /// ⭐⭐⭐ **DUAS TECLAS QUE PODEM CASAR O MESMO EVENTO: A SEGUNDA É MORTA.**

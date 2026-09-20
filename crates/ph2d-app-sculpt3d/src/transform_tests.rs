@@ -31,7 +31,7 @@
 //! pen-down: **1,000× em 30°, 90°, 180° e 360°**.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --release --bins sculpt3d::transform::tests -- --ignored --nocapture
+//! cargo test -p ph2d-app-sculpt3d --release --lib sculpt3d::transform::tests -- --ignored --nocapture
 //! ```
 
 use ph2d_mesh::shapes::uv_sphere;

@@ -5,7 +5,7 @@
 //! forma guardada como IMAGEM?* — e ela só tem resposta honesta assando as duas e comparando bytes.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --release --bins sculpt3d::bake::light::form_bytes -- --ignored --nocapture
+//! cargo test -p ph2d-app-sculpt3d --release --lib sculpt3d::bake::light::form_bytes -- --ignored --nocapture
 //! ```
 
 use super::*;

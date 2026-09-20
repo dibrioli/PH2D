@@ -5,7 +5,7 @@
 //! separada do braço que a aplica.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins sculpt3d::entities::tests
+//! cargo test -p ph2d-app-sculpt3d --lib sculpt3d::entities::tests
 //! ```
 
 use super::{SculptEntityMap, SculptRowsSeen, plan};

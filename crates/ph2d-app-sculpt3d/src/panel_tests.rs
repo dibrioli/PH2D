@@ -4,7 +4,7 @@
 //! `set_alpha_image` é método da CENA, e uma cena exige um device ⇒ `#[ignore]` + `gpu_or_skip!`.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --release --bins sculpt3d::panel::tests -- --ignored --nocapture
+//! cargo test -p ph2d-app-sculpt3d --release --lib sculpt3d::panel::tests -- --ignored --nocapture
 //! ```
 
 use ph2d_mesh::shapes::uv_sphere;

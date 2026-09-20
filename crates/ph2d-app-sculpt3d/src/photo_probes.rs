@@ -139,13 +139,13 @@ use rulers::{
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   the_ear_does_not_ship_an_edge_across_the_piece -- --ignored --nocapture
 /// ```
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   the_ear_does_not_ship_an_edge_across_the_piece -- --ignored --nocapture
 /// ```
 #[test]

@@ -19,7 +19,7 @@
 //!    produto faz sem trocar o que se afirma sobre ele.*
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --release --bins sculpt3d::history::global_retopo -- --ignored --nocapture
+//! cargo test -p ph2d-app-sculpt3d --release --lib sculpt3d::history::global_retopo -- --ignored --nocapture
 //! ```
 
 use super::super::Sculpt3dScene;

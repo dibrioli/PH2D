@@ -74,7 +74,7 @@ fn pct(sorted: &[f32], p: f32) -> f32 {
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   what_shape_are_the_oracles_quads -- --ignored --nocapture
 /// ```
 #[test]
@@ -129,7 +129,7 @@ fn what_shape_are_the_oracles_quads() {
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   what_shape_are_our_quads -- --ignored --nocapture
 /// ```
 #[test]

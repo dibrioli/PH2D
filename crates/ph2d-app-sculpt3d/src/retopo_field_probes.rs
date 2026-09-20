@@ -28,7 +28,7 @@
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   does_the_ear_survive_the_chain -- --ignored --nocapture
 /// ```
 #[test]
@@ -131,7 +131,7 @@ fn does_the_ear_survive_the_chain() {
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   how_much_alignment_can_the_field_take -- --ignored --nocapture
 /// ```
 #[test]
@@ -250,7 +250,7 @@ fn how_much_alignment_can_the_field_take() {
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   does_the_continuation_save_the_alignment_term -- --ignored --nocapture
 /// ```
 #[test]

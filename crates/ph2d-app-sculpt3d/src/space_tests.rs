@@ -6,7 +6,7 @@
 //! câmera, um viewport e uma pose.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins sculpt3d::space::tests
+//! cargo test -p ph2d-app-sculpt3d --lib sculpt3d::space::tests
 //! ```
 
 use super::*;
@@ -121,7 +121,7 @@ fn a_scaled_piece_wears_the_same_stamp_on_screen() {
 /// o `armed_brush` chama.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins sculpt3d::space::tests::measure_what_the_zoom_does_to_the_brush \
+/// cargo test -p ph2d-app-sculpt3d --lib sculpt3d::space::tests::measure_what_the_zoom_does_to_the_brush \
 ///   -- --ignored --nocapture
 /// ```
 ///

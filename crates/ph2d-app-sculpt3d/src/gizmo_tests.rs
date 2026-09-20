@@ -4,7 +4,7 @@
 //! de janela.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins sculpt3d::gizmo
+//! cargo test -p ph2d-app-sculpt3d --lib sculpt3d::gizmo
 //! ```
 
 use ph2d_editor_core::zones::Rect;

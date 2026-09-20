@@ -28,7 +28,7 @@
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   what_do_the_photos_measure -- --ignored --nocapture
 /// ```
 #[test]

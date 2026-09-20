@@ -4,7 +4,7 @@
 //! **não** de janela: tudo o que afirmam é geometria de câmera e de rectângulo.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins sculpt3d::viewports
+//! cargo test -p ph2d-app-sculpt3d --lib sculpt3d::viewports
 //! ```
 
 use ph2d_editor_core::zones::Rect;

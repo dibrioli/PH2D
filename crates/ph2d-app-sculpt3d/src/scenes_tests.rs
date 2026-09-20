@@ -194,7 +194,7 @@ fn the_transform_scene_has_a_soft_band_to_judge() {
 /// ele tem em mãos.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --release --bins does_repeating_the_remesh -- --ignored --nocapture
+/// cargo test -p ph2d-app-sculpt3d --release --lib does_repeating_the_remesh -- --ignored --nocapture
 /// ```
 ///
 /// ⚠️ **Esta sonda existe porque a minha varredura anterior mediu a malha
@@ -236,7 +236,7 @@ fn does_repeating_the_remesh_collapse_the_piece() {
 /// **O vazamento é LOTERIA de alinhamento, ou estrutural ao remesh-de-remesh?**
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --release --bins how_often_a_remeshed_mesh -- --ignored --nocapture
+/// cargo test -p ph2d-app-sculpt3d --release --lib how_often_a_remeshed_mesh -- --ignored --nocapture
 /// ```
 ///
 /// As duas respostas pedem curas OPOSTAS. Se poucas resoluções vazam, o campo

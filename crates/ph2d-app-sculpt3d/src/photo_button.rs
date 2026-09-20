@@ -27,7 +27,7 @@ use super::{census, holes, islands, local as local_shape, relief_density, spiked
 /// ```text
 /// \
 ///   env PH2D_PIECE=/caminho/peca.obj PH2D_DETAIL=0.5 \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   the_artists_piece_through_the_button -- --ignored --nocapture
 /// ```
 #[test]
@@ -384,7 +384,7 @@ fn tabela_das_pontas(tag: &str, entrada: &ph2d_mesh::Mesh, saida: &ph2d_mesh::Me
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   does_phase_zero_keep_the_topology -- --ignored --nocapture
 /// ```
 #[test]
@@ -448,7 +448,7 @@ fn does_phase_zero_keep_the_topology() {
 ///
 /// ```text
 ///   PH2D_MESHES=/a.obj,/b.obj \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   the_local_ruler_across_files -- --ignored --nocapture
 /// ```
 #[test]

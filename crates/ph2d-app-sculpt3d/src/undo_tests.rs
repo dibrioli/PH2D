@@ -18,7 +18,7 @@
 //! devolve `0 passed`, que **não é verde: é nada rodou**.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --release --bins sculpt3d::history::undo::tests -- --ignored --nocapture
+//! cargo test -p ph2d-app-sculpt3d --release --lib sculpt3d::history::undo::tests -- --ignored --nocapture
 //! ```
 
 use ph2d_mesh::shapes::uv_sphere;

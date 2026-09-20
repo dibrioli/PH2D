@@ -7,7 +7,7 @@
 //! ponto, uma normal e um raio.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins sculpt3d::cursor::tests
+//! cargo test -p ph2d-app-sculpt3d --lib sculpt3d::cursor::tests
 //! ```
 
 use super::*;
@@ -63,7 +63,7 @@ fn extent(path: &ph2d_vector::BezPath, cam: &Camera3d, at: [f32; 3]) -> (f32, f3
 /// **QUANTO O CÍRCULO DE TELA SUPERESTIMA** — a medição que decidiu a wave.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins \
+/// cargo test -p ph2d-app-sculpt3d --lib \
 ///   sculpt3d::cursor::tests::measure_what_the_screen_ring_overstates -- --ignored --nocapture
 /// ```
 ///

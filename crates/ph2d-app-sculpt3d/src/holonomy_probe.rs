@@ -28,7 +28,7 @@ const BENCH: &str = "/home/enio/Documentos/Projetos/ph2d-quadbench/ref";
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   how_many_patches_are_uncombable -- --ignored --nocapture
 /// ```
 #[test]

@@ -130,7 +130,7 @@ fn euler(hist: &BTreeMap<usize, usize>, corners: usize) -> Option<(usize, i64)> 
 /// ⭐⭐⭐ **QUANTOS DOS PATCHES DELE SÃO QUADRILÁTEROS, E QUANTOS DOS NOSSOS.**
 ///
 /// ```text
-///   cargo test -p ph2d-host-desktop --release --bin ph2d-host-desktop \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   how_many_sides_do_the_patches_have -- --ignored --nocapture
 /// ```
 #[test]

@@ -581,6 +581,24 @@ fn main() {
 
     // ⭐⭐⭐ **A PERGUNTA QUE DECIDE A ARQUITECTURA:** a mesma medição nas duas entradas.
     corrida("CRUA (a malha do artista)", &crua, alvo, "crua");
+    // ⛔⛔⛔ **O RÓTULO DESTA LINHA DIZIA «como o botao faz» E ERA FALSO** (report do dono,
+    // 2026-09-20: *«ficou assim. com uma retopologia ruim»*). A [`ph2d_quadchain::phase_zero`]
+    // é o remalhador ISOTRÓPICO de triângulos — a malha de TRABALHO que a cadeia mastiga
+    // antes de parametrizar —, e o que o botão entrega é a saída da EXTRACÇÃO, uma malha de
+    // QUADS. ⚠️ E as duas diferenças somam-se: o alvo daqui é o `ALPHA` da cadeia e o do
+    // botão sai do SLIDER, e o botão corre **duas ou três** tentativas que uma medição
+    // escolhe. *O doc do [`photo_button`] desta casa já escrevia esta lei — «duas ordens
+    // diferentes com o mesmo nome dão dois números, e o que o artista vê é o da que ele
+    // carrega» — e eu pu-la a mentir num rótulo.*
+    //
+    // ⭐ A malha do BOTÃO mede-se por este mesmo caminho, e sem uma linha nova: a sonda do
+    // produto escreve-a (`PH2D_DUMP=<ficheiro>` em `the_artists_piece_through_the_button`) e
+    // ela entra aqui como a peça de entrada.
     let f1 = ph2d_quadchain::phase_zero(&crua, alvo);
-    corrida("F1 (remalhada, como o botao faz)", &f1, alvo, "f1");
+    corrida(
+        "F1 (a malha de TRABALHO da cadeia — NAO e' o que o botao entrega)",
+        &f1,
+        alvo,
+        "f1",
+    );
 }

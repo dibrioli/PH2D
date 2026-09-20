@@ -31,7 +31,7 @@
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   how_fine_can_the_global_chain_go -- --ignored --nocapture
 /// ```
 #[test]
@@ -138,7 +138,7 @@ fn how_fine_can_the_global_chain_go() {
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   what_does_proving_the_optimum_cost -- --ignored --nocapture
 /// ```
 #[test]
@@ -222,7 +222,7 @@ fn what_does_proving_the_optimum_cost() {
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   how_many_quads_fit_without_growing_the_patch_map -- --ignored --nocapture
 /// ```
 #[test]
@@ -305,7 +305,7 @@ fn how_many_quads_fit_without_growing_the_patch_map() {
 ///
 /// ```text
 /// \
-///   cargo test -p ph2d-host-desktop --release --bins \
+///   cargo test -p ph2d-app-sculpt3d --release --lib \
 ///   does_follow_curvature_reach_the_global_chain -- --ignored --nocapture
 /// ```
 #[test]

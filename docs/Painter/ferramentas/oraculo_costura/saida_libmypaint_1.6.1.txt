@@ -1,0 +1,35 @@
+# FIXTURA DE ORACULO — a costura do retorno sobre o proprio traco
+# alvo ......: libmypaint 1.6.1-2.1 (pacman -Qi libmypaint => Licencas: ISC — porta ABERTA, §0.9)
+# porta .....: a BIBLIOTECA, ligada por `costura.c` (sem interface; o `mypaint` app e' GPL e nao foi tocado)
+# entrada ...: NOSSA — traco em U, R = 32 px, pernas a 1,2 R, 1200 passos, dt 1/240,
+#              pressao = (1 - s/span)^2 (a lei de deplecao do MIX-1), span = 1,02 x o comprimento
+# armadilhas : tiles ZERADOS antes de pintar · canal em escala 65535 = 1,0 (arsenal §2-bis)
+# gerado ....: 2026-09-20 · `gcc -O2 -o costura costura.c $(pkg-config --cflags --libs libmypaint) -lm`
+#              `for h in 0.20 0.50 0.80 0.95; do ./costura - $h; done`
+# o que mede : largura 10-90 % (px e em raios) da borda EXTERNA esquerda, da COSTURA interna
+#              (perna de ida escura -> perna de volta palida) e da borda externa direita, em 3 linhas.
+# LEITURA ...: num motor de dab MACIO e ADITIVO a costura interna tem a largura da borda externa
+#              (razao ~1,00 nas linhas `meio`, onde os dois niveis existem). ⚠️ Nas linhas `topo` a
+#              perna de volta ja' esta' a ~0, logo ali a «costura» E' a borda da perna de ida sobre
+#              quase-branco — iguais por construcao; a linha que discrimina e' a `meio`. As `fundo`
+#              tem contraste minimo (0,05-0,09) e sao ruidosas.
+
+## hardness=0.20
+topo  y=123  escuro=0.286 claro=0.001 | borda_ext_esq= 20.35px (0.636R)  COSTURA= 20.28px (0.634R)  borda_ext_dir= 19.00px (0.594R)
+meio  y=255  escuro=0.160 claro=0.014 | borda_ext_esq= 20.59px (0.644R)  COSTURA= 17.69px (0.553R)  borda_ext_dir= 20.07px (0.627R)
+fundo y=387  escuro=0.085 claro=0.038 | borda_ext_esq= 20.42px (0.638R)  COSTURA=  6.91px (0.216R)  borda_ext_dir= 20.24px (0.632R)
+
+## hardness=0.50
+topo  y=123  escuro=0.400 claro=0.002 | borda_ext_esq= 17.81px (0.557R)  COSTURA= 17.81px (0.557R)  borda_ext_dir= 19.86px (0.621R)
+meio  y=255  escuro=0.236 claro=0.023 | borda_ext_esq= 19.53px (0.610R)  COSTURA= 19.68px (0.615R)  borda_ext_dir= 19.99px (0.625R)
+fundo y=387  escuro=0.131 claro=0.068 | borda_ext_esq= 20.00px (0.625R)  COSTURA= 21.88px (0.684R)  borda_ext_dir= 19.29px (0.603R)
+
+## hardness=0.80
+topo  y=123  escuro=0.437 claro=0.002 | borda_ext_esq=  8.47px (0.265R)  COSTURA=  8.47px (0.265R)  borda_ext_dir= 15.14px (0.473R)
+meio  y=255  escuro=0.291 claro=0.031 | borda_ext_esq= 15.80px (0.494R)  COSTURA= 15.12px (0.472R)  borda_ext_dir= 17.43px (0.545R)
+fundo y=387  escuro=0.170 claro=0.081 | borda_ext_esq= 15.44px (0.482R)  COSTURA=  9.95px (0.311R)  borda_ext_dir= 16.21px (0.507R)
+
+## hardness=0.95
+topo  y=123  escuro=0.458 claro=0.003 | borda_ext_esq=  6.40px (0.200R)  COSTURA=  6.40px (0.200R)  borda_ext_dir= 12.00px (0.375R)
+meio  y=255  escuro=0.304 claro=0.033 | borda_ext_esq= 13.82px (0.432R)  COSTURA= 13.26px (0.414R)  borda_ext_dir= 15.27px (0.477R)
+fundo y=387  escuro=0.180 claro=0.097 | borda_ext_esq= 12.71px (0.397R)  COSTURA=  8.59px (0.268R)  borda_ext_dir= 26.07px (0.815R)

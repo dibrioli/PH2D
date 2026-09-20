@@ -163,6 +163,9 @@ fn splice_into_wire(
         return;
     }
     motion.doc.graph = trial;
+    // ⭐ **A MESMA lei do splice de um nó que já existe** — ver [`abre_espaco`]. Esta rota cria o
+    // nó no ponto do gesto, e um fio entre dois cartões colados aperta-a exactamente igual.
+    abre_espaco(motion, edge.from.0, node, edge.to.0);
     super::reconcile(motion, &pre.graph);
     motion.history.push_undo(pre);
     motion.pump.mark_dirty(); // a spliced node is IN the graph — the graph changed
@@ -456,6 +459,13 @@ pub(super) fn swap_in_chain(
     });
 }
 
+/// **ABRIR ESPAÇO para um nó que entrou num fio** — irmão cortado no tecto de LOC (700) e por
+/// RESPONSABILIDADE: este ficheiro responde *quem liga a quem*, aquele *onde as cartas ficam*.
+/// Crescem por razões diferentes.
+#[path = "motion_bridge_espaco.rs"]
+mod espaco;
+use espaco::abre_espaco;
+
 /// Os fios (pela ponta de chegada) que TOCAM algum destes nós — o conjunto que um eco de largada
 /// acende ao lado das cartas. ⚠️ Lido DEPOIS da edição, de propósito: o que pisca é a fiação
 /// NOVA, que é o que o artista precisa de ler.
@@ -561,6 +571,8 @@ pub(super) fn splice_existing_into_wire(
         return;
     }
     motion.doc.graph = trial;
+    // ⭐ **E abre-se espaço se ele ficou apertado** — ver [`abre_espaco`].
+    abre_espaco(motion, edge.from.0, node, edge.to.0);
     super::reconcile(motion, &pre.graph);
     motion.pump.mark_dirty();
     let fios = fios_de(motion, &[node]);

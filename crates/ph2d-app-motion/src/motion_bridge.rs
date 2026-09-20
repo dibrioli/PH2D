@@ -540,20 +540,52 @@ mod pick_selection_tests;
 #[cfg(feature = "panel-motion-graph")]
 use remove::{apply_delete_selection, apply_disconnect};
 
-/// ⭐⭐⭐ **O ECO DE UMA LARGADA, EM INTENSIDADE** — *«Após a troca o conjunto linha e nó piscam e
-/// se acentam»* (ordem do dono, 2026-09-19).
+/// **Quantas vezes o eco PISCA** — ordem do dono (2026-09-19, depois do smoke): *«faça ambos
+/// piscarem mais vezes depois da troca»*.
 ///
-/// ⚠️ **A DURAÇÃO é o que o olho lê como «piscou e assentou»**, e não um número redondo: abaixo de
-/// ~`0,15 s` um realce lê-se como um artefacto de desenho e acima de ~`0,5 s` ele deixa de ser um
-/// eco e passa a ser um estado que o artista espera poder desligar.
-///
-/// ⚠️ **A curva é `t²`** — ela cai depressa no princípio e *assenta* no fim, que é a segunda
-/// metade do pedido. Uma rampa linear apaga-se a meio caminho e lê-se como um corte.
-///
-/// ⛔ E ela APAGA o eco quando acaba: um canal que fica com o último valor publicado para sempre é
-/// o defeito que o [`ph2d_panel_motion_graph::set_graph_flash`] existe para não ter.
-const PISCADA_S: f32 = 0.35;
+/// ⚠️ **TRÊS, e o número tem um recurso do lado de lá:** a 1.ª redacção desta lei dava UMA
+/// passagem (um desvanecer só) e o dono leu-a como pouca. Duas leem-se como uma hesitação; acima
+/// de quatro o eco passa de *confirmação* a *aviso*, e um aviso que aparece a cada arrasto é ruído
+/// que o artista aprende a ignorar.
+pub(super) const PISCADAS: u32 = 3;
 
+/// **Quanto dura UMA piscadela.** ⚠️ Não é escolhido por gosto: abaixo de ~`0,12 s` o par
+/// aceso/apagado cai dentro da janela em que o olho funde os dois e lê um cintilar em vez de uma
+/// piscadela; e é o produto `PISCADAS × isto` que tem de caber no tempo em que a mão ainda está
+/// parada depois de largar.
+pub(super) const PERIODO_S: f32 = 0.2;
+
+/// ⭐⭐⭐ **O ECO DE UMA LARGADA, EM INTENSIDADE** — *«Após a troca o conjunto linha e nó piscam e
+/// se acentam»* (2026-09-19), *«faça ambos piscarem mais vezes»* (o mesmo dia, depois do smoke).
+///
+/// ⚠️⚠️ **A DURAÇÃO é DERIVADA e não escolhida:** ela é `PISCADAS × PERIODO_S`. A primeira
+/// redacção cravava `0,35 s` com a nota *«acima de ~0,5 s deixa de ser um eco»* — e essa nota
+/// media a duração de um FADE, não a de uma sequência de piscadelas. *Quando o número de
+/// piscadelas passa a ser a lei, a duração deixa de poder ser um número ao lado dela.*
+pub(super) const PISCADA_S: f32 = PISCADAS as f32 * PERIODO_S;
+
+/// **A intensidade do eco em `decorrido` segundos** — pura, para ser medida sem uma shell.
+///
+/// Duas coisas multiplicadas, e cada uma responde metade do pedido:
+/// - o **PULSO** (uma onda triangular de período [`PERIODO_S`]) é o *«piscam»*;
+/// - o **ENVELOPE** (`(1 − p)²`) é o *«e se acentam»* — cada passagem chega menos alto que a
+///   anterior, e a última morre em zero.
+///
+/// ⛔ **Triângulo e não seno, e não é preguiça:** um seno aqui seria um transcendental num caminho
+/// que corre todo quadro, e a casa já escreve a lei de que uma rampa linear serve onde a forma
+/// exacta não é observável — *o olho lê o RITMO das passagens, não a curvatura de cada uma*.
+pub(super) fn intensidade_do_eco(decorrido: f32) -> f32 {
+    let p = (decorrido / PISCADA_S).clamp(0.0, 1.0);
+    let fase = (decorrido / PERIODO_S).fract();
+    // A onda triangular: sobe de 0 a 1 na primeira metade e volta a 0 na segunda.
+    let pulso = 1.0 - (2.0 * fase - 1.0).abs();
+    let envelope = (1.0 - p) * (1.0 - p);
+    pulso * envelope
+}
+
+/// Ver [`intensidade_do_eco`]. ⛔ E ela APAGA o eco quando acaba: um canal que fica com o último
+/// valor publicado para sempre é o defeito que o [`ph2d_panel_motion_graph::set_graph_flash`]
+/// existe para não ter.
 fn publicar_piscada(motion: &mut MotionState) {
     let Some(crate::motion_state::PiscadaPendente { nos, fios, inicio }) = motion.piscada.clone()
     else {
@@ -566,11 +598,10 @@ fn publicar_piscada(motion: &mut MotionState) {
         ph2d_panel_motion_graph::set_graph_flash(None);
         return;
     }
-    let resta = 1.0 - decorrido / PISCADA_S;
     ph2d_panel_motion_graph::set_graph_flash(Some(ph2d_panel_motion_graph::Piscada {
         nos,
         fios,
-        t: resta * resta,
+        t: intensidade_do_eco(decorrido),
     }));
 }
 

@@ -389,17 +389,20 @@ fn o_eco_da_largada_nasce_da_accao_e_morre_sozinho() {
         "e os fios NOVOS deles tambem — senao so' metade do «conjunto linha e no» pisca"
     );
 
-    // A intensidade desce, e no fim o eco morre.
+    // ⚠️ **As leituras são nos PICOS**, e não em dois instantes quaisquer: desde que o eco PISCA,
+    // duas amostras arbitrárias podem cair em fases diferentes da onda e comparar o pulso em vez
+    // do envelope. *Uma régua que amostra uma onda em pontos escolhidos à mão mede a fase.*
     let t_de = |motion: &mut MotionState, agora: f32| {
         motion.ui_now = agora;
         super::super::publicar_piscada(motion);
         ph2d_panel_motion_graph::current_graph_flash().map(|p| p.t)
     };
-    let cedo = t_de(&mut motion, 10.05).expect("logo a seguir ele esta' aceso");
-    let tarde = t_de(&mut motion, 10.25).expect("a meio ainda esta'");
+    let meio = super::super::PERIODO_S * 0.5;
+    let primeiro = t_de(&mut motion, 10.0 + meio).expect("o 1.o pico");
+    let ultimo = t_de(&mut motion, 10.0 + super::super::PISCADA_S - meio).expect("o ultimo pico");
     assert!(
-        cedo > tarde,
-        "a intensidade tem de DESCER: {cedo} depois {tarde}"
+        primeiro > ultimo,
+        "o envelope tem de DESCER de pico a pico: {primeiro} depois {ultimo}"
     );
     assert_eq!(
         t_de(&mut motion, 99.0),
@@ -407,4 +410,165 @@ fn o_eco_da_largada_nasce_da_accao_e_morre_sozinho() {
         "e no fim ele APAGA-SE — um canal lateral que fica aceso e' o defeito que ele evita"
     );
     assert!(motion.piscada.is_none(), "e o pendente sai do estado");
+}
+
+/// ⭐⭐⭐ **O ECO PISCA TRÊS VEZES E ASSENTA** — ordem do dono (2026-09-19, depois do smoke): *«faça
+/// ambos piscarem mais vezes depois da troca»*.
+///
+/// ⚠️ **A régua conta os PICOS pela forma da curva**, varrendo-a fino — e não pelos instantes em
+/// que a lei os põe. *Um gate que amostra nos picos que ele próprio calculou não afirma que eles
+/// existem: afirma que a aritmética dele é a mesma da lei.*
+///
+/// As três metades: **quantas** passagens · o envelope a **descer** de pico a pico · e o eco a
+/// chegar a ZERO no fim (o *«se acentam»*, que uma onda sem envelope não dá).
+#[test]
+fn o_eco_pisca_tres_vezes_e_assenta() {
+    use super::super::{PISCADA_S, PISCADAS, intensidade_do_eco};
+
+    const AMOSTRAS: usize = 2000;
+    let v: Vec<f32> = (0..=AMOSTRAS)
+        .map(|i| {
+            #[expect(clippy::cast_precision_loss, reason = "2000 amostras cabem num f32")]
+            let t = PISCADA_S * (i as f32 / AMOSTRAS as f32);
+            intensidade_do_eco(t)
+        })
+        .collect();
+
+    let picos: Vec<f32> = v
+        .windows(3)
+        .filter(|w| w[1] > w[0] && w[1] >= w[2])
+        .map(|w| w[1])
+        .collect();
+    assert_eq!(
+        picos.len(),
+        PISCADAS as usize,
+        "o eco tem de piscar {PISCADAS} vezes: {} picos",
+        picos.len()
+    );
+    assert!(
+        picos.windows(2).all(|p| p[1] < p[0]),
+        "e cada passagem chega MENOS alto que a anterior: {picos:?}"
+    );
+    assert!(
+        v.last().is_some_and(|&x| x < 1e-3),
+        "e no fim ele assenta em ZERO — sem isto sao piscadelas, nunca um eco"
+    );
+    // ⛔ O CONTROLO: sem o pulso a curva teria UM pico só. Sem esta metade, uma lei que
+    // devolvesse o envelope nu passaria nas outras duas.
+    assert!(
+        picos.len() > 1,
+        "o controlo: um envelope sem pulso tem um pico so'"
+    );
+}
+
+/// ⭐⭐⭐ **UM VÃO APERTADO ABRE-SE, E UM VÃO FOLGADO NÃO SE MEXE** — ordem do dono (2026-09-19,
+/// depois do smoke): *«se o espaço onde o nó entrou for muito apertado, crie espaço»*.
+///
+/// ⚠️ **As três metades:** o `v` e a JUSANTE dele afastam-se o bastante para três cartas caberem ·
+/// o nó entra na coluna do MEIO (senão o vão abre e a sobreposição fica) · e com espaço a sobrar
+/// **nada se mexe** — *uma arrumação que corre sempre tira o desenho das mãos do artista*.
+#[test]
+fn um_vao_apertado_abre_se_e_um_folgado_fica_quieto() {
+    use ph2d_nodegraph::graph::Pos;
+    use ph2d_nodegraph::layout::DX;
+
+    // `u → v → w`, com o `solto` a ser enfiado no fio `u → v`.
+    let cena = |vao: f32| {
+        let mut motion = MotionState::new();
+        let mut g = Graph::new();
+        let u = g.add_node("motion.grid");
+        let v = g.add_node("motion.move");
+        let w = g.add_node("motion.output");
+        let solto = g.add_node("motion.scale");
+        for (a, b) in [(u, v), (v, w)] {
+            g.connect(Edge {
+                from: (a, 0),
+                to: (b, 0),
+                delayed: false,
+            })
+            .expect("a cadeia liga");
+        }
+        g.set_pos(u, Pos { x: 0.0, y: 0.0 });
+        g.set_pos(v, Pos { x: vao, y: 0.0 });
+        g.set_pos(
+            w,
+            Pos {
+                x: vao + 300.0,
+                y: 0.0,
+            },
+        );
+        g.set_pos(solto, Pos { x: 20.0, y: 400.0 });
+        motion.doc.graph = g;
+        (motion, u, v, w, solto)
+    };
+
+    // (A) APERTADO: o vão mede menos do que as três cartas precisam.
+    let (mut motion, u, v, w, solto) = cena(DX);
+    let antes_w = motion.doc.graph.pos(w).expect("w");
+    let mut toasts = ToastQueue::default();
+    splice_existing_into_wire(&mut motion, &mut toasts, solto.0, v.0, 0);
+    let (pu, pv, pn) = (
+        motion.doc.graph.pos(u).expect("u"),
+        motion.doc.graph.pos(v).expect("v"),
+        motion.doc.graph.pos(solto).expect("no'"),
+    );
+    assert!(
+        pv.x - pu.x >= 2.0 * DX,
+        "o vao tem de abrir para DOIS passos de coluna: {}",
+        pv.x - pu.x
+    );
+    assert_eq!(pn.x, pu.x + DX, "e o no' entra na coluna do MEIO");
+    assert_eq!(pn.y, 400.0, "mantendo o `y` que a mao escolheu");
+    assert!(
+        motion.doc.graph.pos(w).expect("w").x > antes_w.x,
+        "e a JUSANTE anda com ele — senao o `v` empurrado sobrepoe-se a quem ele alimenta"
+    );
+
+    // (B) FOLGADO: já cabe, logo nada se mexe.
+    let (mut motion, _u, v, w, solto) = cena(3.0 * DX);
+    let antes: Vec<_> = [v, w, solto]
+        .map(|n| motion.doc.graph.pos(n).expect("pos"))
+        .to_vec();
+    splice_existing_into_wire(&mut motion, &mut toasts, solto.0, v.0, 0);
+    let depois: Vec<_> = [v, w, solto]
+        .map(|n| motion.doc.graph.pos(n).expect("pos"))
+        .to_vec();
+    assert_eq!(
+        antes, depois,
+        "com espaco a sobrar, o desenho do artista fica como ele o deixou"
+    );
+}
+
+/// ⭐⭐ **E A MESMA LEI VALE PARA O SPLICE DA PALETA** — a rota que CRIA o nó no fio (o `R` sobre
+/// uma ligação, ou a paleta aberta por ela). *Um vão apertado aperta igual, venha o nó de onde
+/// vier* — e é isso que faz de [`super::espaco::abre_espaco`] uma porta com dois chamadores em vez
+/// de uma cura num deles.
+#[test]
+fn o_splice_da_paleta_abre_o_mesmo_espaco() {
+    use ph2d_nodegraph::graph::Pos;
+    use ph2d_nodegraph::layout::DX;
+
+    let mut motion = MotionState::new();
+    let mut g = Graph::new();
+    let u = g.add_node("motion.grid");
+    let v = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (u, 0),
+        to: (v, 0),
+        delayed: false,
+    })
+    .expect("o fio");
+    g.set_pos(u, Pos { x: 0.0, y: 0.0 });
+    g.set_pos(v, Pos { x: DX, y: 0.0 });
+    motion.doc.graph = g;
+
+    let mut toasts = ToastQueue::default();
+    splice_node(&mut motion, &mut toasts, v.0, 0, "motion.move", 30.0, 10.0);
+
+    let pv = motion.doc.graph.pos(v).expect("v");
+    assert!(
+        pv.x >= 2.0 * DX,
+        "o vao tem de abrir tambem por esta porta: {}",
+        pv.x
+    );
 }

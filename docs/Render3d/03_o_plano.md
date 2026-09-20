@@ -206,6 +206,15 @@ report em que aprovou o smoke do chão colorido, e a ordem é o que decide a pos
 
   ⭐ **As duas primeiras linhas são a MESMA cura** — *o que não depende da câmera reassa-se uma vez
   por cena e luz, não uma vez por quadro* —, e é isso que faz orbitar uma peça deixar de pagar.
+
+  ⭐⭐⭐ **E o primeiro acto da wave já foi pago, com o resultado a SIMPLIFICAR a cura** (2026-09-20):
+  medido, o campo do chão é **byte-idêntico** sob `8` azimutes **e** sob `4×` de zoom, contra
+  `100,000 %` de desvio ao trocar a LUZ (o controlo). ⇒ *a chave não leva a câmera de todo* — nem a
+  orientação nem a tolerância de acerto que esta linha e a [`09` §6](09_a_cor_que_a_peca_devolve_ao_chao.md)
+  davam como a dependência restante —, e a cache é **exacta** em vez de aproximada.
+  ⚠️ **Ela é uma medição de VALOR e não de relógio**, e é por isso que correu com a máquina ocupada:
+  contenção não move bytes. *A coluna do relógio desta wave continua por tirar, e essa precisa da
+  máquina calma.*
 - ⚠️ **O tecto de cada número tem de NOMEAR O RECURSO** (`CLAUDE.md` §0.0): `GROUND_BOUNCE_SPAN`
   (`6` raios) e `GROUND_BOUNCE_FADE` (`0,25`) são os dois desta família ainda **sem tabela por
   baixo**, e quem lhes tocar mede-os como os outros dois foram medidos ([`09` §5](09_a_cor_que_a_peca_devolve_ao_chao.md)).

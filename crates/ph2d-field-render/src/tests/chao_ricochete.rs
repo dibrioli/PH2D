@@ -872,3 +872,129 @@ fn sonda_a_grelha_do_campo_do_chao() {
         );
     }
 }
+
+/// ⏱️⭐⭐⭐⭐ **A PREMISSA DA CURA DA `W9`, MEDIDA: o campo do chão depende da CÂMERA?**
+///
+/// A [`W9`](../../../../docs/Render3d/03_o_plano.md) propõe cachear este campo *«por cena-e-luz»*,
+/// e a frase que a justifica é **«o campo não depende da câmera»** — escrita na
+/// [`09` §6](../../../../docs/Render3d/09_a_cor_que_a_peca_devolve_ao_chao.md), que lhe põe o preço
+/// (`+4,98 ms` por quadro assente) e diz que a dependência é *«só a tolerância de acerto»*.
+///
+/// ⛔⛔ **Lido o código, a frase não pode estar inteiramente certa:** o
+/// [`crate::bounce::radiancia_devolvida`] recebe a `ViewBasis`, que é a ORIENTAÇÃO da câmera, e a
+/// resposta de um BSDF ao longo de uma direcção de vista tem um lóbulo especular. ⇒ *antes de
+/// construir a cache, meça-se de quanto ela mentiria.*
+///
+/// ⚠️ **Esta sonda é de VALOR e não de relógio**, e é por isso que ela corre com a máquina ocupada:
+/// o que ela lê são bytes do campo, e contenção não os move. *A coluna do relógio da `W9` é outra
+/// medição, e essa precisa da máquina.*
+///
+/// # O que ela imprime
+///
+/// O campo assado em oito azimutes, contra o do azimute `0`:
+///
+/// * **`|Δ| máx`** — o pior desvio absoluto de uma célula (o campo é radiância, sem tecto);
+/// * **`|Δ|/máx`** — o mesmo em fracção do maior valor do campo, que é a régua que diz se um pixel
+///   o veria;
+/// * o **CONTROLO**, que é o que dá direito às outras linhas: trocar a **LUZ** tem de mover o campo
+///   muito mais do que orbitar. *Uma sonda de invariância sem um eixo que MOVE mede a si própria.*
+#[test]
+#[ignore = "sonda de diagnóstico: mede a premissa da cache da W9"]
+fn sonda_o_campo_do_chao_depende_da_camera() {
+    let doc = bola();
+    let reg = Registry::new();
+    let mats = [vermelha().prepare()];
+    let surfaces = Surfaces {
+        all: &mats,
+        owners: None,
+    };
+    let lado = 256usize;
+    let assa = |cam: &Orbit, lampada: crate::PointLamp| {
+        crate::ground_bounce::bake_ground_bounce(
+            &doc,
+            &reg,
+            cam,
+            CHAO,
+            &surfaces,
+            &[lampada],
+            crate::ground_bounce::GROUND_BOUNCE_GRID,
+            crate::ground_bounce::GROUND_BOUNCE_DIRS,
+            lado,
+        )
+    };
+    // ⚠️ O enquadramento é o da fixtura (o mesmo alvo e a mesma distância), e só o AZIMUTE muda —
+    // senão isto mediria o zoom, que é a outra metade da dependência e a que a `09` já nomeia.
+    let camara_em = |azimute: f32| Orbit {
+        rotation: Orbit::from_yaw_pitch(azimute, 0.5).rotation,
+        ..camara()
+    };
+    let desvio = |a: &crate::ground_bounce::GroundBounce,
+                  b: &crate::ground_bounce::GroundBounce| {
+        let mut pior = 0.0f32;
+        let mut maior = 0.0f32;
+        for (x, y) in a.value.iter().zip(b.value.iter()) {
+            for k in 0..3 {
+                pior = pior.max((x[k] - y[k]).abs());
+                maior = maior.max(x[k].abs()).max(y[k].abs());
+            }
+        }
+        (pior, maior)
+    };
+
+    let base = assa(&camara_em(0.0), LAMPADA);
+    println!("\n  == o campo do chão contra o azimute 0 ==");
+    println!("  azimute ·      |Δ| máx ·  |Δ|/máx ·  veredito");
+    let mut pior_orbita = 0.0f32;
+    for k in 1..8 {
+        #[allow(clippy::cast_precision_loss)]
+        let a = core::f32::consts::TAU * k as f32 / 8.0;
+        let (pior, maior) = desvio(&base, &assa(&camara_em(a), LAMPADA));
+        let frac = if maior > 0.0 { pior / maior } else { 0.0 };
+        pior_orbita = pior_orbita.max(frac);
+        println!(
+            "  {:>7.0}° · {pior:>12.6} · {:>7.3} % · {}",
+            a.to_degrees(),
+            100.0 * frac,
+            if frac < 0.01 {
+                "invisível"
+            } else {
+                "⛔ VISÍVEL"
+            }
+        );
+    }
+
+    // ⚠️ **A OUTRA METADE DA CHAVE: o ZOOM.** A `09` §6 diz que a dependência da câmera é *«só a
+    // tolerância de acerto»*, e ela sai do `half_extent` (`Sharpness::for_frame`) — logo orbitar e
+    // aproximar são perguntas DIFERENTES, e uma cache que só exclua a orientação estaria a
+    // adivinhar a segunda.
+    println!("\n  half_extent ·      |Δ| máx ·  |Δ|/máx");
+    let mut pior_zoom = 0.0f32;
+    for he in [0.8f32, 1.6, 3.2] {
+        let cam = Orbit {
+            half_extent: he,
+            ..camara_em(0.0)
+        };
+        let (pior, maior) = desvio(&base, &assa(&cam, LAMPADA));
+        let frac = if maior > 0.0 { pior / maior } else { 0.0 };
+        pior_zoom = pior_zoom.max(frac);
+        println!("  {he:>11.2} · {pior:>12.6} · {:>7.3} %", 100.0 * frac);
+    }
+
+    // ⭐ **O CONTROLO** — trocar a LUZ tem de mover o campo, senão a invariância acima é vácuo.
+    let outra = crate::PointLamp {
+        world: [-LAMPADA.world[0], LAMPADA.world[1], -LAMPADA.world[2]],
+        ..LAMPADA
+    };
+    let (pior, maior) = desvio(&base, &assa(&camara_em(0.0), outra));
+    let frac_luz = if maior > 0.0 { pior / maior } else { 0.0 };
+    println!(
+        "\n  CONTROLO (a luz do outro lado) · {pior:>12.6} · {:>7.3} %",
+        100.0 * frac_luz
+    );
+    println!(
+        "\n  ⇒ orbitar move {:.3} %, aproximar move {:.3} %, e trocar a luz move {:.3} %\n",
+        100.0 * pior_orbita,
+        100.0 * pior_zoom,
+        100.0 * frac_luz,
+    );
+}

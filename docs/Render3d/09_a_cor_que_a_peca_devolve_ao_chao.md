@@ -127,7 +127,23 @@ da W73, agora com o quarto passageiro): o quadro de MOVIMENTO fica **byte-idênt
 
 1. **a cache por cena-e-luz** — o campo **não depende da câmera**, logo orbitar podia reutilizá-lo
    inteiro; é a mesma cura que o [`08` §14.6](08_a_luz_indirecta.md) já nomeia para as sondas, e aqui
-   é mais barata (o campo tem `32² × 3` floats e a dependência da câmera é só a tolerância de acerto);
+   é mais barata (o campo tem `32² × 3` floats).
+
+   ⭐⭐⭐ **E a premissa deixou de ser uma afirmação: está MEDIDA, e é mais forte do que esta linha
+   dizia** (2026-09-20, sonda `sonda_o_campo_do_chao_depende_da_camera`). Ela dizia *«a dependência
+   da câmera é só a tolerância de acerto»* — e a tolerância também não a move:
+
+   | eixo | `|Δ|` máximo de uma célula | em fracção do campo |
+   |---|---:|---:|
+   | **orbitar** (8 azimutes) | `0,000000` | `0,000 %` |
+   | **aproximar** (`half_extent` `0,8` · `1,6` · `3,2`) | `0,000000` | `0,000 %` |
+   | **CONTROLO: a luz do outro lado** | `0,016357` | `100,000 %` |
+
+   ⇒ *a chave da cache não leva a câmera de todo*, e a cura é **exacta** em vez de aproximada.
+   ⚠️ **O CONTROLO é o que dá direito às outras duas linhas** — sem um eixo que MOVE o campo, uma
+   sonda de invariância mede a si própria. ⛔ E a leitura do código sugeria o contrário: a
+   `radiancia_devolvida` recebe a `ViewBasis`, que é a orientação, e a resposta de um BSDF ao longo
+   da vista tem lóbulo especular — *ler a assinatura de uma função não diz se o valor dela se mexe.*
 2. **o kernel próprio no dispositivo** — `~0,04 ms` na placa contra os `5` da CPU. ⛔ Ele **não** foi
    feito de propósito: assar na CPU e enviar compra **UMA lei em vez de duas** — não há kernel de
    assadura em WGSL para divergir do da CPU, logo não há paridade de ASSADURA para falhar, só a da

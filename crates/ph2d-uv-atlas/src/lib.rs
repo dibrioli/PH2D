@@ -116,6 +116,14 @@ pub struct Relatorio {
     pub orfaos: usize,
     /// Cantos que receberam.
     pub cantos: usize,
+    /// ⭐ `[menor, maior]` factor que [`arrumacao::iguala_a_densidade`] teve de aplicar —
+    /// o TAMANHO do espalhamento de resolução que ela acabou de curar.
+    ///
+    /// ⚠️ **`[0, 0]` é «NÃO MEDIDO» e `[1, 1]` é «já estava tudo no alvo», e eles são
+    /// bytes diferentes de propósito** — a porta desligada deixa o `Default`, e um zero
+    /// de *não medido* com a cara de um de *perfeito* é o defeito que esta linha já pagou
+    /// duas vezes (a valência do quad remesh, e a holonomia sem colagem da W4).
+    pub escala_das_pecas: [f32; 2],
 }
 
 /// ⭐ O atlas: um `(u, v)` por CANTO da malha.
@@ -239,6 +247,9 @@ pub struct Opcoes {
     /// são cortes de verdade (§3), ela continua gateada, e o meio-termo — *colar só onde
     /// isso não obriga um corte* — é a wave seguinte e precisa dela.
     pub colar: bool,
+    /// ⭐⭐⭐ **Igualar os texels por unidade de superfície entre as peças** — ver
+    /// [`arrumacao::iguala_a_densidade`].
+    pub densidade_igual: bool,
 }
 
 impl Default for Opcoes {
@@ -253,6 +264,7 @@ impl Default for Opcoes {
             orientar: true,
             empacotar_por_mascara: true,
             colar: false,
+            densidade_igual: true,
         }
     }
 }
@@ -456,6 +468,17 @@ pub fn build_com(
         arrumacao::orienta_as_pecas(mesh, &base, &mut plano, &ct.peca_da_face, rel.ilhas);
     }
 
+    // ── 6-bis. ⭐⭐⭐ IGUALAR A DENSIDADE. Ver [`arrumacao::iguala_a_densidade`].
+    //
+    // ⚠️ **Depois de orientar e ANTES das caixas**, e as duas metades são necessárias: a
+    // escala muda o tamanho de cada peça, logo uma caixa medida antes dela descreveria
+    // outra peça; e ela é uma SEMELHANÇA, logo a rotação de área mínima que a precede
+    // continua a ser a de área mínima.
+    if opcoes.densidade_igual {
+        rel.escala_das_pecas =
+            arrumacao::iguala_a_densidade(mesh, &base, &mut plano, &ct.peca_da_face, rel.ilhas);
+    }
+
     let (lo, hi) = arrumacao::caixas(mesh, &base, &plano, &ct.peca_da_face, rel.ilhas);
 
     // ── 7. Arrumar.
@@ -598,3 +621,7 @@ mod orienta_tests;
 #[cfg(test)]
 #[path = "empacota_tests.rs"]
 mod empacota_tests;
+
+#[cfg(test)]
+#[path = "arrumacao_tests.rs"]
+mod arrumacao_tests;

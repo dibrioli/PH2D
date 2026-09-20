@@ -271,3 +271,166 @@ pub fn por_prateleiras(lo: &[[f32; 2]], hi: &[[f32; 2]]) -> (Vec<[f32; 2]>, f32,
     }
     (pos, lado, area)
 }
+
+/// ⚠️⚠️ **O tecto do factor de igualação — VARRIDO, e o recurso é a ARRUMAÇÃO.**
+///
+/// Uma peça pode vir do parametrizador `20×` mais grossa do que devia, e ela é quase
+/// sempre uma **lasca**: esticá-la até ao alvo multiplica a área dela por `400` e obriga
+/// o quadrado inteiro a crescer. ⇒ o tecto não protege a lei, protege a TINTA.
+///
+/// Varrido pela porta do produto sobre a peça do dono (`sculpt_antes`), com a coluna que
+/// decide a ser o **pior sítio em texels por unidade de mundo** (`p05 × p50`, a `2048²`)
+/// — *é o sítio mais borrado que o artista encontra, e é ele que se lê como «o pincel
+/// mudou de tamanho»*:
+///
+/// | tecto | `F1` tinta | `F1` pior | `F1` ENTRE | `CRUA` tinta | `CRUA` pior |
+/// |---|---|---|---|---|---|
+/// | desligado | `47,9 %` | `164` | `0,58×` | `42,6 %` | `254` |
+/// | `1,5` | `48,5 %` | `217` | `0,89×` | `40,3 %` | `262` |
+/// | `2,0` | `47,9 %` | `235` | `0,89×` | `40,5 %` | `263` |
+/// | **`3,0`** | **`47,0 %`** | **`249`** | **`0,95×`** | **`40,5 %`** | **`263`** |
+/// | `6,0` | `45,4 %` | `257` | `0,97×` | `40,5 %` | `263` |
+/// | sem tecto | `41,6 %` | `252` | `0,97×` | `40,5 %` | `263` |
+///
+/// ⛔⛔ **A linha de baixo é DOMINADA, e é ela que faz o tecto existir:** sem tecto o pior
+/// sítio fica **PIOR** que a `6,0` (`252` contra `257`) e paga `3,8` pontos de tinta a
+/// mais — *esticar a lasca coarsa a peça inteira, incluindo o sítio que a lei estava a
+/// tentar salvar*. Um tecto aqui não é conforto: é a única configuração em que mais lei
+/// não deixa de comprar nada e passa a custar.
+///
+/// ⭐ `1,0 → 1,5` é **de graça** na malha que o botão produz (`+0,6` pontos de tinta) e
+/// compra `+32 %` de pior sítio. O `3,0` leva `95 %` da cura entre peças e `97 %` do
+/// melhor pior sítio; `6,0` compra os `3 %` que faltam por **o dobro** do preço.
+///
+/// ⚠️ **A malha CRUA mal discrimina** — dali para cima todas as linhas leem igual —, e é
+/// por isso que a coluna que manda é a do `F1`: *é nela que o produto pinta*.
+pub(crate) const TECTO_DA_IGUALACAO: f32 = 3.0;
+
+/// A área de um triângulo no MUNDO.
+fn area_no_mundo(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> f64 {
+    let u = [
+        f64::from(b[0] - a[0]),
+        f64::from(b[1] - a[1]),
+        f64::from(b[2] - a[2]),
+    ];
+    let v = [
+        f64::from(c[0] - a[0]),
+        f64::from(c[1] - a[1]),
+        f64::from(c[2] - a[2]),
+    ];
+    let n = [
+        u[1].mul_add(v[2], -(u[2] * v[1])),
+        u[2].mul_add(v[0], -(u[0] * v[2])),
+        u[0].mul_add(v[1], -(u[1] * v[0])),
+    ];
+    0.5 * n[0].mul_add(n[0], n[1].mul_add(n[1], n[2] * n[2])).sqrt()
+}
+
+/// ⭐⭐⭐ **IGUALA A DENSIDADE: cada peça passa a receber os mesmos texels por unidade de
+/// SUPERFÍCIE.**
+///
+/// ⛔⛔ **O defeito que ela cura não tinha régua nenhuma até 2026-09-20.** O atlas era
+/// medido por `tinta / quadrado`, por sobreposição e pelo vão — três colunas que dizem
+/// quanto do quadrado é usado e nenhuma que diga se ele é usado **por igual**. Medido na
+/// malha que o botão produz (`sculpt_antes` F1), `5 %` da superfície recebia **menos de
+/// metade** dos texels da mediana: o artista pinta com o mesmo pincel e a marca sai
+/// nítida num sítio e borrada noutro.
+///
+/// ⚠️ **A arrumação está ILIBADA e mesmo assim a cura mora aqui.** O empacotador só
+/// TRANSLADA e a orientação só RODA — nenhum dos dois escala —, logo o espalhamento é
+/// todo do parametrizador (o G3), que resolve cada carta contra o mesmo passo alvo e
+/// acerta em cada uma com um factor diferente. *A montante seria um termo novo na
+/// energia; aqui é um escalar por peça, e uma semelhança não pode desfazer o que o corte
+/// garantiu.*
+///
+/// ⭐⭐ **O alvo PRESERVA a tinta total, exactamente — ENQUANTO o tecto não morder:**
+/// com `d* = √(Σ_uv / Σ_mundo)`, a área nova de cada peça é `d*² × mundo_i` e a soma
+/// delas é `d*² × Σ_mundo = Σ_uv`. *Qualquer diferença que a coluna da tinta mostre a
+/// seguir é da ARRUMAÇÃO a lidar com formas de outro tamanho, nunca desta conta.*
+///
+/// ⚠️ **E a cláusula não é um detalhe: o [`TECTO_DA_IGUALACAO`] quebra-a de propósito.**
+/// Uma peça travada no tecto fica com menos área do que o alvo lhe daria, logo a soma
+/// encolhe — e é exactamente por isso que ele existe. *As duas metades têm gate, e a que
+/// mede a preservação corre num regime onde o tecto NÃO morde: medir a promessa no
+/// regime que a viola seria escrevê-la ao contrário.*
+///
+/// ⚠️⚠️ **A escala é em torno da ORIGEM do plano, e o ponto é INOBSERVÁVEL** — a
+/// arrumação refaz as caixas a seguir e coloca cada peça pelo canto dela, logo onde a
+/// peça está antes de ser arrumada não chega a ninguém. ⭐ A 1.ª redacção escalava em
+/// torno do canto (`lo + (q − lo)·f`) e pagava **duas** coisas por isso: uma passagem a
+/// mais para achar o canto, e uma cerca para o factor exactamente `1` — porque aquela
+/// forma **não** devolve `q` ao bit. *Uma linha que a mutação não consegue matar é um
+/// comentário com sintaxe de código*, e `q · 1,0` é `q` por definição.
+///
+/// Devolve `[menor factor, maior factor]` — o TAMANHO do defeito que ela acabou de curar.
+pub fn iguala_a_densidade(
+    mesh: &Mesh,
+    base: &[u32],
+    plano: &mut [[f32; 2]],
+    peca_da_face: &[u32],
+    pecas: usize,
+) -> [f32; 2] {
+    let pos = mesh.positions();
+    let mut uv = vec![0.0f64; pecas];
+    let mut mundo = vec![0.0f64; pecas];
+    for (f, face) in mesh.faces().iter().enumerate() {
+        let pi = peca_da_face[f];
+        if pi == u32::MAX {
+            continue;
+        }
+        let (pi, b, vs) = (pi as usize, base[f] as usize, face.verts());
+        for k in 1..vs.len().saturating_sub(1) {
+            let (a, c, d) = (plano[b], plano[b + k], plano[b + k + 1]);
+            let (ux, uy) = (f64::from(c[0] - a[0]), f64::from(c[1] - a[1]));
+            let (vx, vy) = (f64::from(d[0] - a[0]), f64::from(d[1] - a[1]));
+            uv[pi] += (ux.mul_add(vy, -(uy * vx)) * 0.5).abs();
+            mundo[pi] += area_no_mundo(
+                pos[vs[0] as usize],
+                pos[vs[k] as usize],
+                pos[vs[k + 1] as usize],
+            );
+        }
+    }
+    let (su, sm): (f64, f64) = (uv.iter().sum(), mundo.iter().sum());
+    if su <= 0.0 || sm <= 0.0 {
+        return [1.0, 1.0];
+    }
+    let alvo = (su / sm).sqrt();
+    let mut faixa = [f32::MAX, f32::MIN];
+    #[allow(clippy::cast_possible_truncation)]
+    let factor: Vec<f32> = (0..pecas)
+        .map(|i| {
+            // ⛔ **Uma peça sem área não tem cerca PRÓPRIA, e isso foi medido:** a
+            // 1.ª redacção tinha um `if uv <= 0 || mundo <= 0` aqui, e a mutação que o
+            // apagava **SOBREVIVEU** — os três casos degenerados (`0/x`, `x/0`, `0/0`)
+            // saem `+∞`, `0` e `NaN`, e a cerca de baixo apanha os três. *Uma linha que
+            // a mutação não consegue matar é um comentário com sintaxe de código.*
+            let f = ((alvo / (uv[i] / mundo[i]).sqrt()) as f32)
+                .clamp(1.0 / TECTO_DA_IGUALACAO, TECTO_DA_IGUALACAO);
+            if f.is_finite() && f > 0.0 {
+                faixa[0] = faixa[0].min(f);
+                faixa[1] = faixa[1].max(f);
+                f
+            } else {
+                1.0
+            }
+        })
+        .collect();
+    for (f, face) in mesh.faces().iter().enumerate() {
+        let pi = peca_da_face[f];
+        if pi == u32::MAX {
+            continue;
+        }
+        let (pi, b) = (pi as usize, base[f] as usize);
+        let e = factor[pi];
+        for k in 0..face.verts().len() {
+            let q = &mut plano[b + k];
+            q[0] *= e;
+            q[1] *= e;
+        }
+    }
+    if faixa[0] > faixa[1] {
+        return [1.0, 1.0];
+    }
+    faixa
+}

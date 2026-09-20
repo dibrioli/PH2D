@@ -719,3 +719,164 @@ continuidade onde ela é de graça e nunca criaria o que o corte teria de partir
 ⚠️ **Não é uma dominação garantida, e é por isso que não entra sem medição:** juntar duas
 cartas dá uma ilha maior, que arruma pior — o ganho em costura pode não pagar a perda em
 tinta. *As duas colunas têm de ser lidas juntas, como nesta secção.*
+
+---
+
+## §12 — ⭐⭐⭐ W5: A RESOLUÇÃO — três colunas sobre o QUADRADO e nenhuma sobre a PEÇA
+
+### §12.1 — ⛔⛔⛔ Passo zero: a régua que faltava
+
+Até aqui este doc media o atlas por **três** colunas: quanto do quadrado tem tinta
+(§10), quanta dela é pintada duas vezes (§9) e que vão fica entre ilhas (§11.5). As três
+dizem *quanto* do quadrado é usado. **Nenhuma diz se ele é usado POR IGUAL.**
+
+A grandeza que falta é a **densidade de texels**: `√(área em uv / área no mundo)`, que a
+`N` texels por lado é `N ×` texels por unidade de superfície. Medida pela sonda, com os
+percentis pesados pela **área da SUPERFÍCIE** (⚠️ e não por contagem de triângulos — *o
+que o artista vê é quanta PEÇA está borrada, e uma ponta adensada tem ali mil triângulos
+minúsculos que uma mediana por contagem deixaria mandar*):
+
+| peça | entrada | espalhamento `p05..p95` |
+|---|---|---|
+| `sculpt_antes` | CRUA | `0,78×..1,17×` |
+| `sculpt_antes` | **F1** | **`0,46×..1,12×`** |
+| `_base_sculpt` | CRUA | `0,62×..1,22×` |
+| `_base_sculpt` | **F1** | **`0,13×..1,17×`** |
+
+⛔ **Na malha que o botão produz, `5 %` da superfície recebia `13 %` dos texels da
+mediana** — `7,7×` mais borrada. O artista pinta com o mesmo pincel e a marca sai nítida
+num sítio e um borrão noutro; ele lê isso como *«o pincel mudou de tamanho»*, não como
+*«o atlas tem um defeito»*.
+
+### §12.2 — A ATRIBUIÇÃO, e a arrumação fica ILIBADA
+
+A mesma régua, partida em duas: a mediana de cada peça contra a mediana global
+(**ENTRE**) e cada triângulo contra a mediana da própria peça (**DENTRO**).
+
+| peça | ENTRE | DENTRO |
+|---|---|---|
+| `sculpt_antes` F1 | `0,58×..1,08×` | `0,79×..1,12×` |
+| `_base_sculpt` F1 | `0,13×..1,14×` | `0,78×..1,22×` |
+
+⭐ **A maior metade é ENTRE peças** — e o empacotador só **TRANSLADA**, a orientação só
+**RODA**: nenhum dos dois escala. ⇒ *o espalhamento é todo do parametrizador (o G3), que
+resolve cada carta contra o mesmo passo alvo e acerta em cada uma com um factor
+diferente.*
+
+⚠️ **E mesmo assim a cura mora AQUI.** A montante seria um termo novo na energia de um
+solver que já custa `19 s`; aqui é **um escalar por peça**, e uma semelhança não pode
+desfazer nada do que o corte garantiu (há gate: `cruza` fica em `0,000 %` nas seis
+corridas do corpus).
+
+### §12.3 — A cura: igualar a densidade antes de arrumar
+
+[`arrumacao::iguala_a_densidade`](../../crates/ph2d-uv-atlas/src/arrumacao.rs) corre
+**depois de orientar e antes das caixas**, e as duas metades são necessárias: a escala
+muda o tamanho de cada peça (logo uma caixa medida antes descreveria outra peça) e ela é
+uma semelhança (logo a rotação de área mínima continua a ser a de área mínima).
+
+⭐⭐ **O alvo preserva a tinta total, exactamente:** com `d* = √(Σ_uv / Σ_mundo)`, a área
+nova de cada peça é `d*² × mundo_i` e a soma é `d*² × Σ_mundo = Σ_uv`. *Qualquer
+diferença que a coluna da tinta mostre a seguir é da ARRUMAÇÃO a lidar com formas de
+outro tamanho, nunca desta conta.*
+
+### §12.4 — ⚠️⚠️ O TECTO, varrido nas DUAS peças — e o «sem tecto» é DOMINADO
+
+Uma peça pode vir `26×` mais grossa do que devia, e ela é quase sempre uma **lasca**:
+esticá-la até ao alvo multiplica a área dela por `680` e obriga o quadrado inteiro a
+crescer. A coluna que decide é o **pior sítio em texels por unidade de mundo**
+(`p05 × p50`, a `2048²`) — *é o sítio mais borrado que o artista encontra*.
+
+| tecto | `sculpt_antes` F1 tinta | pior | `_base_sculpt` F1 tinta | pior |
+|---|---|---|---|---|
+| desligado | `47,9 %` | `164` | `46,1 %` | `46` |
+| `1,5` | `48,5 %` | `217` | — | — |
+| `2,0` | `47,9 %` | `235` | `43,0 %` | `93` |
+| **`3,0`** | **`47,0 %`** | **`249`** | **`41,6 %`** | **`130`** |
+| `6,0` | `45,4 %` | `257` | `26,9 %` | `159` |
+| sem tecto | `41,6 %` | **`252`** | `24,2 %` | `174` |
+
+⛔⛔ **A última linha da primeira peça é DOMINADA, e é ela que faz o tecto existir:** sem
+tecto o pior sítio fica **PIOR** que a `6,0` (`252` contra `257`) e paga `3,8` pontos de
+tinta a mais — *esticar a lasca coarsa a peça inteira, incluindo o sítio que a lei estava
+a tentar salvar*.
+
+⭐⭐⭐ **E as duas peças escolhem o MESMO número pelo mesmo critério, tendo defeitos de
+tamanhos muito diferentes:** o penhasco da tinta está entre `3` e `6` (`47,0 → 45,4` numa,
+**`41,6 → 26,9`** na outra). Ganho de pior sítio por ponto de tinta na `_base_sculpt`:
+`+47/3,1` · `+37/1,4` · **`+29/14,7`** · `+15/2,7`. *A varredura foi feita numa peça e
+CONFIRMADA na outra — sem a segunda, o número estaria ajustado à primeira.*
+
+### §12.5 — A tabela final, no corpus (tecto `3,0`, o que shipa)
+
+| peça | entrada | espalhamento | ENTRE | tinta | `cruza` |
+|---|---|---|---|---|---|
+| `sculpt_antes` | CRUA | `0,84×..1,15×` | `0,97×..1,03×` | `40,5 %` | `0` |
+| `sculpt_antes` | F1 | `0,72×..1,12×` | `0,95×..1,03×` | `47,0 %` | `0` |
+| `_base_sculpt` | CRUA | `0,70×..1,21×` | `0,95×..1,04×` | `33,4 %` | `0` |
+| `_base_sculpt` | F1 | `0,40×..1,17×` | `0,40×..1,03×` | `41,6 %` | `0` |
+| `esfera:24` | CRUA | `0,88×..1,17×` | `0,95×..1,01×` | `48,5 %` | `0` |
+| `esfera:24` | F1 | `0,41×..1,24×` | `0,66×..1,04×` | `35,2 %` | `0` |
+
+⭐ O pior sítio da peça do dono vai de `164` para `249` texels por unidade de mundo
+(`+52 %`) por `0,9` pontos de tinta.
+
+### §12.6 — ⛔⛔⛔ E a IMAGEM do atlas é estruturalmente incapaz de mostrar isto
+
+O desenho do quadrado é pesado pela área em `(u, v)`; o que o artista sente é pesado pela
+área da **SUPERFÍCIE** — e esta cura existe precisamente para mudar a relação entre as
+duas. Medido pixel a pixel sobre o par com/sem igualação:
+
+| | desvio médio à cor neutra | píxeis fortemente coloridos |
+|---|---|---|
+| sem igualar | `12,2` | `3,72 %` |
+| com | `11,4` | **`6,10 %`** |
+
+⇒ **a fracção colorida PIORA** — uma peça grossa ocupa pouco quadrado, a cura fá-la
+crescer, e o que ela ainda tenha de errado passa a cobrir nove vezes mais píxeis. *A
+imagem não mente sobre a lei: ela mede a grandeza errada.* ⇒ a sonda ganhou
+[`desenha_na_peca`], que pinta a mesma rampa **na escultura**, numa vista de três quartos
+com o relevo a entrar só no brilho.
+
+### §12.7 — ⛔ O que a construção ensinou, e não estava previsto
+
+* ⭐⭐ **A escala em torno do canto da peça é INOBSERVÁVEL.** A 1.ª redacção fazia
+  `lo + (q − lo)·f` e pagava duas coisas: uma passagem a mais para achar o canto e uma
+  cerca para o factor exactamente `1` (porque aquela forma **não** devolve `q` ao bit). A
+  arrumação refaz as caixas a seguir, logo onde a peça está antes de ser arrumada não
+  chega a ninguém — e `q · 1,0` é `q` por definição. *Uma linha que a mutação não
+  consegue matar é um comentário com sintaxe de código.*
+* ⛔ **A cerca da peça sem área era NEUTRALIZADA por outra**, e a mutação disse-o: os três
+  casos degenerados (`0/x`, `x/0`, `0/0`) saem `+∞`, `0` e `NaN`, e a cerca do
+  `is_finite()` apanha os três. Saiu.
+* ⛔⛔ **A promessa «a tinta total é preservada exactamente» ganhou uma CLÁUSULA:** o tecto
+  quebra-a de propósito, e é isso que ele compra. As duas metades têm gate, e a que mede a
+  preservação corre num regime onde o tecto **não** morde — *medir a promessa no regime
+  que a viola seria escrevê-la ao contrário*.
+* ⚠️ **A 1.ª fixtura do gate de produto media o TECTO e não a igualação** (o esticão dela
+  pedia `3,76×`), e ele reprovou sobre uma lei certa.
+* ⭐ **O gate da lei não basta:** com os gates a chamarem `iguala_a_densidade` directamente,
+  **três** mutações sobrevivem sem sangrar uma linha — a porta a nascer desligada, a
+  chamada a sair do pipeline, e o tecto a descer a `1`. *Um gate que chama a função em vez
+  de percorrer a rota afirma que a lei existe, nunca que o produto a corre.*
+
+**10 de 10 mutações sangram.**
+
+### §12.8 — ⏳ O que fica ABERTO, com o mecanismo
+
+* **O resíduo tem endereço:** na `_base_sculpt` F1 o `ENTRE` fica em `0,40×` depois da
+  cura — são as peças que pediam mais do que o tecto dá. Curá-las aqui custa metade da
+  tinta (§12.4); a cura barata é **a montante**, no factor de escala por carta do G3, que
+  é exactamente para onde a atribuição do §12.2 aponta.
+* ⭐⭐ **E o resíduo tem FORMA: são as PONTAS.** Nas duas peças do dono o desenho na
+  superfície mostra os espinhos a azul vivo antes da cura e malhados depois — o corpo
+  fica cinzento nos dois. ⚠️ **Isto é lido de uma imagem e não medido**, logo é uma pista
+  com endereço e não um número: quem a for medir tem o instrumento pronto
+  ([`ph2d_quadfill::tip_rows`], uma linha por ápice, da wave da graduação da ponta). ⭐ E o
+  endereço é o MESMO que aquela wave já percorreu — *a carta de um espinho é a que o
+  parametrizador resolve pior, e foi isso que custou seis reports ao dono em 2026-08/09*.
+* **O `DENTRO` não se mexe, por construção** (`0,71×..1,22×` na `_base_sculpt`), e é a
+  outra metade do mesmo endereço: dentro de uma carta a variação é da energia do G3.
+* **A placa paga `+19 %` a `+57 %` de vértices** (`(u, v)` é por CANTO e um buffer de
+  vértices é por VÉRTICE) — o número que decide se o canal cabe na `Mesh` como está ou se
+  a malha de desenho é uma segunda malha. É a primeira pergunta da wave que veste a peça.

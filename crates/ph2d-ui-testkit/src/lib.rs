@@ -173,6 +173,30 @@ impl MockPanelHost {
         &self.store
     }
 
+    /// ⭐⭐⭐ **O QUE A ÚLTIMA PINTURA REGISTOU** — a mesma lista que o [`Self::paint`] devolve,
+    /// para quem pintou por outra porta.
+    ///
+    /// ⛔⛔ **Ela existe porque REGISTAR e PINTAR são grandezas diferentes, e a diferença é
+    /// grande.** O `populate` de um painel semeia tudo o que ele *poderia* mostrar — todos os
+    /// modos, todas as secções condicionais; o `paint` desenha o subconjunto do estado actual.
+    /// Medido em 2026-09-20 ao escrever o censo do degrau `G`: o painel `3D Model` **regista
+    /// `912`** entradas e a triagem da `D2` contou **`74`**, que é o que o artista vê. *Um censo
+    /// que lesse o `WidgetStore::len` mediria o catálogo e chamar-lhe-ia ecrã* — e foi o controlo
+    /// positivo daquele censo que o apanhou, não uma leitura minha.
+    ///
+    /// ⚠️ **É `&self` e não devolve o índice:** quem precisa de despachar um gesto usa o
+    /// [`Self::dispatch_pointer_event`], que lê o mesmo índice pelo dispatcher REAL. Esta porta
+    /// responde a uma pergunta só — *o que é que ficou no ecrã?* — e as irmãs que pintam já a
+    /// deixam preenchida ([`Self::medindo_a_pintura_do_registo_com_bandas`] limpa-a no início).
+    ///
+    /// ⚠️ Um id aqui **pode não estar no store**: registar no índice de acerto e registar um
+    /// estado são dois gestos, e um id pintado sem estado é o *órfão* do `CLAUDE.md` §5.0. Quem
+    /// cruzar as duas listas conta-o à parte — ⛔ tratá-lo como um controlo morto tem a cura
+    /// oposta.
+    pub fn registos_da_ultima_pintura(&self) -> Vec<(NodeId, Rect)> {
+        self.hit_index.iter_registrations().collect()
+    }
+
     /// Drain everything the panel pushed onto the action bus so far. The
     /// shell does the same each frame; tests inspect the result to assert
     /// the panel actually emitted the right [`EditorAction`].

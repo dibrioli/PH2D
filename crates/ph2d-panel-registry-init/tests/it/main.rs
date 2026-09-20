@@ -17,6 +17,7 @@ mod o_inspector_armado;
 mod o_model3d_armado;
 mod o_sculpt3d_armado;
 mod paineis_armados;
+mod quantas_entradas_tem_cada_painel;
 mod resetting_the_layout_puts_all_three_things_back;
 mod scrub_range_census;
 mod staleness;

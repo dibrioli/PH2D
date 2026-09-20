@@ -102,6 +102,37 @@ fn the_return_leg_picks_up_the_pigment_it_crosses() {
     );
 }
 
+/// **O knob é um MOSTRADOR, não um interruptor — e é este gate que dá régua à lei.**
+///
+/// ⛔⛔ Ele nasceu de uma mutação SOBREVIVENTE: *«o knob é ignorado»* (`gain = 1`) passava nos
+/// outros três gates, porque o knob é guardado em **três** sítios — a alocação do plano do arco, o
+/// atalho `gain > 0` e o multiplicador `* gain` — e cada um sozinho já entrega o comportamento
+/// certo a `0`. ⚠️ *Três guardas corretas tornam-se, juntas, uma lei que nenhuma mutação de um
+/// sítio consegue matar*, e a saída não é apagar guardas (as três ganham o lugar: `33,6 MB` de
+/// memória, o laço de taps por dab, e a lei) — é medir a lei onde ela é **contínua**.
+///
+/// ⭐ A meio curso a recolha tem de ficar ESTRITAMENTE entre os dois extremos. Um `* gain` trocado
+/// por `* 1.0` colapsa `0,5` em cima de `1,0` e reprova aqui.
+#[test]
+fn the_knob_is_a_dial_not_a_switch() {
+    let bare = SeamKnobs::default();
+    let u = UStroke::new(32.0);
+    let g = |p: f32| {
+        let t = paint_u(u, SeamKnobs { pickup: p, ..bare });
+        let y = ((u.y0 + u.y1) * 0.5) as u32;
+        f32::from(px(&t, u.size, u.xb as u32, y)[1])
+    };
+    let (off, half, full) = (g(0.0), g(0.5), g(1.0));
+    assert!(
+        half < off - 1.0,
+        "meio curso não recolheu nada: {half} contra {off} desligado"
+    );
+    assert!(
+        half > full + 1.0,
+        "meio curso colapsou no topo: {half} contra {full} cheio"
+    );
+}
+
 /// **Não-substituto: com o knob em `0` o traço é BYTE-IDÊNTICO ao de antes da feature.**
 ///
 /// ⚠️ Este é o gate que a ordem do dono pede por escrito (*«opção extra e não substituto»*), e ele
@@ -130,4 +161,28 @@ fn with_the_knob_at_zero_nothing_moves() {
         worst_byte(&a, &on) > 2,
         "a fixtura não contém o fenómeno: pickup 1 não mudou nada"
     );
+}
+
+#[test]
+#[ignore = "sonda: o perfil de G atravessado no U, por posicao do knob"]
+fn diag_o_perfil_do_pickup() {
+    let bare = SeamKnobs::default();
+    let u = UStroke::new(32.0);
+    let y = ((u.y0 + u.y1) * 0.5) as u32;
+    for p in [0.0f32, 0.5, 1.0] {
+        let t = paint_u(u, SeamKnobs { pickup: p, ..bare });
+        let row: Vec<i32> = (160..=280)
+            .step_by(8)
+            .map(|x| i32::from(px(&t, u.size, x, y)[1]))
+            .collect();
+        eprintln!("[perfil] pickup {p:.1}  x160..280: {row:?}");
+        // E a LEI por baixo: o NIVEL da reserva no plano vivo, na mesma linha.
+        let live = super::watercolor_selfseam::paint_u_live(u, SeamKnobs { pickup: p, ..bare });
+        let w = u.size as usize;
+        let lvl: Vec<i32> = (160..=280)
+            .step_by(8)
+            .map(|x| i32::from(live.paint.stroke_deplete[y as usize * w + x as usize]))
+            .collect();
+        eprintln!("[nivel]  pickup {p:.1}  x160..280: {lvl:?}");
+    }
 }

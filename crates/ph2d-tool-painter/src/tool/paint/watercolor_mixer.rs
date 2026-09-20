@@ -246,16 +246,19 @@ impl PainterTool {
                     now: arc_stamp(travel),
                     min_age: ((PICKUP_AGE_DIAMETERS * 2.0 * d.radius_px) / ARC_UNIT_PX).max(1.0)
                         as u16,
-                    gain,
                 };
                 live_reserve(&l, fw, fh, d.center, d.radius_px)
             });
-            out.push((
-                deplete_fresh(travel, d.radius_px, charge)
-                    .max(carry)
-                    .max(live),
-                travel,
-            ));
+            // ⭐⭐ O knob INTERPOLA, nunca disputa — e a diferença é o que o torna um mostrador.
+            // Escrito como `base.max(live * gain)` (a 1.ª redacção, o idioma `fresco ∨ carry` da
+            // casa) ele vira um DEGRAU: a recolha só morde quando `live·gain` passa o fresco, e
+            // abaixo disso ela morre ao primeiro dab, porque o próprio dab dilui o nível que o
+            // seguinte vai amostrar. MEDIDO no nível da perna de volta: `67 → 69 → 137` para
+            // `0 / 0,5 / 1` — `0,5` do curso comprava `3 %` do efeito. Interpolando, o meio curso
+            // é o meio do efeito, e os dois extremos ficam onde estavam (`gain = 0` ⇒ `base`, ao
+            // bit; `gain = 1` ⇒ o mesmo `max` de antes, porque só se interpola para CIMA).
+            let base = deplete_fresh(travel, d.radius_px, charge).max(carry);
+            out.push((base + gain * (live - base).max(0.0), travel));
         }
         Some(out)
     }
@@ -332,8 +335,6 @@ pub(super) struct LivePickup<'a> {
     pub now: u16,
     /// A idade mínima, já em unidades de arco.
     pub min_age: u16,
-    /// O knob `wet_self_pickup`.
-    pub gain: f32,
 }
 
 impl LivePickup<'_> {
@@ -349,7 +350,7 @@ impl LivePickup<'_> {
         if a == 0 || self.now.saturating_sub(a) < self.min_age {
             return (0.0, None);
         }
-        let pig = (f32::from(self.cov[i]) / 255.0) * (f32::from(self.lvl[i]) / 255.0) * self.gain;
+        let pig = (f32::from(self.cov[i]) / 255.0) * (f32::from(self.lvl[i]) / 255.0);
         if pig <= 0.0 {
             return (0.0, None);
         }

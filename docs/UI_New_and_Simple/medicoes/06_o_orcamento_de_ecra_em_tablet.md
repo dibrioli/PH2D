@@ -84,6 +84,38 @@ e ele **nunca morde** a maior escolha gravada pelo dono —
 *Preservar o arrasto na referência e apertar a escolha são objectivos que se excluem com os números
 que existem*; escolher um terceiro seria o palpite que o §0.0 proíbe.
 
+### ⚠️⚠️ A FAIXA em que a coluna se mexe — o número que faltava a todo roteiro
+
+| | |
+|---|---|
+| a coluna só se MEXE entre | **`976` e `1 366` px de janela** |
+| a janela ABRE em | **`1 024 px`** (`init.rs`: `with_inner_size(1024, 768)`) |
+
+Acima de `1 366` a lei é inerte **de propósito**; abaixo de `976` o mínimo do painel prende-a
+(`220 × 1366 / 308 = 976` à esquerda, `989` à direita). ⇒ **num perfil novo o app abre já quase no
+chão**, e um roteiro que mande *estreitar* aponta para a direcção onde não há nada para ver — o
+gesto que mostra a lei ali é **ALARGAR**. *Duas reprovações de smoke seguidas foram do roteiro e
+não da lei, e as duas teriam sido evitadas por esta tabela.*
+
+### ⭐⭐ E o gate que faltava mede o PIXEL, não a lei
+
+Ela tinha três gates — a lei, a porta do store e o **TEXTO** do `frame_layout` — e *nenhum
+percorria a rota até ao rectângulo que a coluna OCUPA*. O
+[`a_coluna_pintada_encolhe_com_a_janela`](../../../shells/desktop/tests/it/a_coluna_pintada_encolhe_com_a_janela.rs)
+pinta quatro quadros pela rota real em sete larguras:
+
+| janela | esquerda | direita |
+|---:|---:|---:|
+| `1 930` · `1 600` · `1 366` | `308,0` | `304,0` |
+| `1 194` | `269,2` | `265,7` |
+| `1 133` | `255,5` | `252,1` |
+| `1 024` | `230,9` | `227,9` |
+| `900` | `220,0` | `220,0` |
+
+⚠️ **O CONTROLO vem primeiro:** a 1.ª corrida do arnês leu `0,0` em tudo (o `HeroScreen::new` nasce
+sem painel visível), e sem a semente do manifesto todas as desigualdades de *«encolheu»* passariam
+**por vácuo**. Mutação **2 de 2**.
+
 ### ⏳ ABERTO, com o número, e é DECISÃO DO DONO
 
 Uma escolha é gravada em **pixels absolutos**, logo ela não sobrevive a uma mudança de forma da

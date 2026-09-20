@@ -494,15 +494,49 @@ iPad mini, `371,72 px` são **`32,8 %`** deitado (`1 133`) e **`50,0 %`** em pé
 saídas têm preço: um tecto pede um número que ninguém mediu; guardar a escolha como **fracção** muda
 o que arrastar uma borda significa **e** o formato do ficheiro de arrumação.
 
-### ⭐ O smoke que a §9-bis devia ter tido
+### ⛔⛔⛔ E o 2.º smoke TAMBÉM foi reprovado — *«não diminuiu os paineis»* — e outra vez o ROTEIRO
 
-O caminho da arrumação é `$HOME/.ph2d/layout.txt`, lido por `std::env::var("HOME")` ⇒ um `HOME`
-descartável dá um perfil novo **sem tocar no dele**:
+O perfil descartável funciona (`layout_persist::layout_file` lê `std::env::var_os("HOME")`), e a
+lei chega ao pixel. O que faltava era **um número que nenhum documento tinha**:
+
+| | |
+|---|---|
+| a coluna só se MEXE entre | **`976` e `1 366` px de janela** |
+| a janela ABRE em | **`1 024 px`** (`init.rs`: `with_inner_size(1024, 768)`) |
+
+Acima de `1 366` a lei é inerte **de propósito** (ela é um TECTO); abaixo de `976` o **mínimo do
+painel** prende-a (`220 × 1366 / 308 = 976` à esquerda, `989` à direita). ⇒ **num perfil novo o app
+abre já quase no chão**, e o meu roteiro mandava **ESTREITAR** — *a direcção onde não há nada para
+ver*. É a espécie que o §5.0 chama de **pior que uma cena ausente**, pela segunda vez no mesmo dia.
+
+⇒ o gesto que mostra a lei a partir de um perfil novo é **ALARGAR**:
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX \
   && env HOME=/tmp/ph2d-smoke-novo cargo run -p ph2d-host-desktop --profile smoke
 ```
+
+…e depois **maximizar** a janela: as duas colunas crescem `231 → 308` e `228 → 304` e **param**.
+
+### ⭐⭐ E o gate que faltava mede o PIXEL, não a lei
+
+A lei tinha **três** gates — a lei, a porta do store e o **TEXTO** do `frame_layout` — e *nenhum
+percorria a rota até ao rectângulo que a coluna OCUPA*. O
+[`a_coluna_pintada_encolhe_com_a_janela`](../../../shells/desktop/tests/it/a_coluna_pintada_encolhe_com_a_janela.rs)
+pinta quatro quadros pela rota real em sete larguras e afirma a tabela:
+
+| janela | esquerda | direita |
+|---:|---:|---:|
+| `1 930` · `1 600` · `1 366` | `308,0` | `304,0` |
+| `1 194` | `269,2` | `265,7` |
+| `1 133` | `255,5` | `252,1` |
+| `1 024` | `230,9` | `227,9` |
+| `900` | `220,0` | `220,0` |
+
+⚠️ **O CONTROLO vem primeiro e não é decoração:** a 1.ª corrida do arnês leu **`0,0` em tudo** — o
+`HeroScreen::new` nasce sem painel nenhum visível, e sem a semente do manifesto todas as
+desigualdades de *«encolheu»* passariam **por vácuo**. Mutação **2 de 2** (cravar `1366.0` no
+quadro · a lei inteira inerte).
 
 ---
 

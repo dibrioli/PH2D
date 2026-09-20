@@ -9,24 +9,77 @@
 
 ---
 
+## §0 — A ORDEM, e o estado em que a linha é entregue
+
+> **Ordem do dono, 2026-09-20, verbatim:** *«smoke OK. Depois faremos ajustes finos. Antes de seguir
+> vamos integrar ao main.»*
+
+✅ **A linha está FECHADA e o smoke está APROVADO** — as duas metades (as curas do contorno, e a
+pele no dispositivo contra a mesma arte com `PH2D_SKIN_GPU=0`). ⇒ **integrar é a ordem**, e o
+*«ajustes finos»* é a wave SEGUINTE, que o dono adiou por escrito (§11).
+
+⭐ **Ela é a ÚNICA a integrar nesta rodada** — `git worktree list` mostra outras worktrees vivas
+(`line/UIUX`, `line/components`, `line/3DModeling`, `line/motion-value`, `line/sculpt3d`), e **o dono
+não mandou nenhuma delas**. ⛔ *Não as traga por iniciativa própria:* uma rodada de várias linhas é
+outra operação (a §3c do `/pd-integracao`), com outra ordem de fusão e outro custo.
+
+⚠️⚠️ **O que NESTE documento é referência e não evidência:** a tabela do §2 foi corrida com o `main`
+em `76bd6de02`. Se outra linha entrar antes desta, **ela morre** — o `/pd-integracao` item 0 manda
+re-correr o script, e é isso que vale. *A coluna `base:` é o MERGE-BASE, não o `main` de agora.*
+
+### ⛔⛔ §0.1 — O BLOQUEIO que o `--ff-only` vai encontrar, medido
+
+A árvore **PRIMÁRIA** (`/home/enio/Documentos/Projetos/PH2D`, onde o `main` está em check-out) tem
+**cinco ficheiros de `project-memory/` por commitar** — `2` modificados e `3` por rastrear —, e
+**um deles é tocado por esta linha**:
+
+| ficheiro | na primária (por commitar) | nesta linha |
+|---|---:|---:|
+| `reference_topic_measurement_discipline.md` | **`+64`** | **`+86`** ⇒ ⛔ **colide** |
+| `feedback_a_pastable_bash_loop_never_iterates_under_zsh.md` | `+18` | intocado |
+| os 3 `??` (`a_rename_probe…`, `a_shell_glob_error…`, `an_order_with_two_halves…`) | novos | intocados |
+
+⇒ `git merge --ff-only line/Vector` **RECUSA** com *«Your local changes to the following files would
+be overwritten by merge»*. ⚠️ **Não é conflito de merge, é a árvore de trabalho** — e re-correr o
+comando não o cura.
+
+⛔⛔ **Esses cinco ficheiros NÃO são desta linha e NÃO são do integrador:** eles são de **outra
+sessão** (a do Cascadeur, pelas datas e pelos nomes). ⇒ **pergunte ao Enio** antes de lhes tocar.
+⛔ **E NUNCA `git stash` nu** — a pilha é partilhada entre todas as worktrees e outra sessão pode
+apanhá-la; se for mesmo preciso pôr de lado, um commit WIP na primária é a forma segura, ou
+`git stash push -u -m "<etiqueta única>"` com o sha capturado e `apply` (nunca `pop`).
+
+⭐ **A saída mais barata costuma ser a outra sessão commitar as memórias dela** — elas são `.md` de
+`project-memory/`, não têm gate nenhum a correr sobre elas, e depois disto a fusão passa a ser um
+`--ff-only` limpo ou, no pior caso, um conflito de LISTA (o que a 1.ª rodada desta linha já resolveu
+ficando com **os dois lados**, o do `main` primeiro).
+
+---
+
 ## §1 — Identidade
 
 | | |
 |---|---|
 | branch | `line/Vector` |
 | HEAD | **o commit deste handoff** — o tip de `line/Vector` (⚠️ um documento não pode nomear o próprio sha; `git rev-parse --short line/Vector` responde) |
-| merge-base com `main` | `6d2d9db6f` — **igual ao tip do `main`**: o rebase já foi feito (§1.5.2 item 3) |
-| commits | **75** (os `73` medidos pelo script do §2 + a F9 e este) |
-| superfície | **286** ficheiros de código e doc, mais este handoff |
+| merge-base com `main` | `76bd6de02` — **igual ao tip do `main`** ⇒ `--ff-only` passa sem rebase nenhum |
+| commits | **76** à frente do `main`, **zero** atrás (`git rev-list --count HEAD..main` = `0`) |
+| superfície | **287** ficheiros de código e doc |
 
 ⚠️ **A linha é LONGA e isso é anti-padrão declarado** (DIRETRIZ §1.5.2 item 5: *«peça integração a
 cada 1–2 jornadas»*). Ela acumulou porque o dono foi encadeando reports e waves sobre o mesmo
 módulo, e só hoje mandou integrar.
 
-⭐ **O rebase já está feito e é limpo.** Os únicos conflitos foram em **quatro ficheiros de
-`project-memory/`** onde as duas árvores acrescentaram à **mesma lista** (o `main` trouxe as memórias
-da sessão do Cascadeur); a resolução foi ficar com **os dois lados**, o do `main` primeiro.
-⛔ **Zero conflitos em código.**
+⭐ **O rebase está feito e é limpo, e foi feito DUAS vezes.** Na primeira, os únicos conflitos foram
+em **quatro ficheiros de `project-memory/`** onde as duas árvores acrescentaram à **mesma lista** (o
+`main` trouxe as memórias da sessão do Cascadeur); a resolução foi ficar com **os dois lados**, o do
+`main` primeiro. ⛔ **Zero conflitos em código, nas duas.**
+
+⚠️⚠️ **A SEGUNDA existiu porque a nota da primeira ENVELHECEU dentro deste documento.** Ele dizia
+*«merge-base `6d2d9db6f` — igual ao tip do `main`»*, e ao entregar a linha o `main` já estava em
+`76bd6de02` (mais um commit de memória) ⇒ `--ff-only` teria **recusado**. *Uma linha de identidade
+num handoff é uma MEDIÇÃO com prazo de validade, e o prazo é «até alguém empurrar para o `main`».*
+⇒ **o integrador confirma-a com `git rev-list --count HEAD..main`, que tem de dar `0`.**
 
 ⚠️⚠️ **DUAS waves entraram DEPOIS do rebase, por ordem do dono de 2026-09-20** (*«decidir o que
 fazer quando um ponto tem um osso só … O caminho da placa gráfica: implemente se esse é o padrão
@@ -41,7 +94,7 @@ contra o merge-base, e a §2 abaixo é a corrida NOVA do script.
 ```
 
 SUPERFÍCIE DE COLISÃO — line/Vector contra main
-  merge-base 6d2d9db6f   ·   73 commit(s)   ·   286 arquivo(s)
+  merge-base 76bd6de02   ·   76 commit(s)   ·   287 arquivo(s)
 ───────────────────────────────────────────────────────────────────────────────
 ▸ SCHEMAS — ⚠️ o valor se CONTA contra o main do dia; confira nos TRÊS sítios
   ⚠ PROJECT_SCHEMA                        148   (base: 144)
@@ -88,20 +141,27 @@ actualiza a coluna `base:` (ela é o merge-base). ⇒ leia o valor no ficheiro
 
 | contador | base | linha | **delta** |
 |---|---|---|---|
-| `PROJECT_SCHEMA` | `144` | `147` | **`+3`** |
-| a tripla do gate | `(144, 13, 22)` | `(147, 13, 22)` | **só o 1.º número** |
+| `PROJECT_SCHEMA` | `144` | `148` | **`+4`** |
+| a tripla do gate | `(144, 13, 22)` | `(148, 13, 22)` | **só o 1.º número** |
 | `VEC_SCENE_SCHEMA` | `22` | `22` | **0** |
 | registo `ph2d-ecs` · os dois espelhos | `91 · 92 · 92` | idem | **0** |
 
-⭐ **Os três degraus, em ordem, e o que cada um carrega:**
+⭐ **Os QUATRO degraus, em ordem, e o que cada um carrega** (`git log main..HEAD -- shells/desktop/src/project_schema.rs` é quem os lista):
 
-1. `70c71b4e7` — **a ESCOLHA da lei de deformação, por desenho** (`SkinBind` ganhou `law: SkinLaw`);
-2. `897e62677` — **o *Look At*** (um osso aponta para um alvo);
-3. `77a3b7cd2` — **as correcções de peso à mão** (`SkinBind` ganhou `correcoes`).
+1. `cfffefc35` — **a ESCOLHA da lei de deformação, por desenho** (`SkinBind` ganhou `law: SkinLaw`);
+2. `e1f151a58` — **o *Look At*** (um osso aponta para um alvo);
+3. `d6262868b` — **as correcções de peso à mão** (`SkinBind` ganhou `correcoes`);
+4. `9f573b741` — **a ESPÉCIE da correcção** (F29): o `delta: f64` da `CorreccaoDePeso` virou
+   `especie: Especie` (`Soma(f64)` / `Alvo(f64)`).
 
-⛔ **Os três são do MESMO componente (`SkinBind`) e o postcard é POSICIONAL.** Se renumerar, renumere
-**a escada, a tripla e o degrau de migração** — os três sítios do `CLAUDE.md` §5.0 —, e
-`python3 scripts/schema-recount.py` é quem os conta (com `assert` em cada passo).
+⛔⛔ **Os quatro são do MESMO componente (`SkinBind`) e o postcard é POSICIONAL** — e o 4.º é o mais
+perigoso dos quatro, porque o campo foi **TROCADO e não apendado**: um ficheiro do `v147` lido por
+este binário leria **o primeiro byte do `f64` como o discriminante da espécie**, em silêncio. *Um
+degrau apendado tolera um erro de contagem; este não.*
+
+⇒ se renumerar, renumere **a escada, a tripla e o degrau de migração** — os três sítios do
+`CLAUDE.md` §5.0 —, e `python3 scripts/schema-recount.py` é quem os conta (com `assert` em cada
+passo; ⚠️ a âncora da escada e a da tripla **não** são iguais, e a tripla CONTÉM o número).
 
 ⭐ **Nota que poupa tempo:** o `VEC_SCENE_SCHEMA` **não se mexe** apesar de a pele ter mudado três
 vezes de forma — tudo o que a pele guarda viaja nos **bytes opacos** do `SkinBind::source`, que é do
@@ -389,9 +449,10 @@ cada um é uma lei:
 | `the_pen_down_is_still_a_canvas_copy…` | **flake de CARGA** — ver §12-bis |
 
 ```
-git rebase main                        → 70/70 · conflitos SÓ em 4 .md de project-memory (listas)
-scripts/nextest-impacted.sh            → 16 654 tests run: 16 654 passed        (PÓS-F9, 2.ª corrida)
-scripts/censos-da-arvore-combinada.sh  → 90 passed · 8 de 8 censos correram     (PÓS-F9)
+git rebase main (1.ª, base 6d2d9db6f)  → 70/70 · conflitos SÓ em 4 .md de project-memory (listas)
+git rebase main (2.ª, base 76bd6de02)  → 76/76 · ZERO conflitos · HEAD..main = 0  (ver §1)
+scripts/nextest-impacted.sh            → 16 654 tests run: 16 654 passed   (PÓS-F9 e PÓS-rebase 2)
+scripts/censos-da-arvore-combinada.sh  → 90 passed · 8 de 8 censos correram (PÓS-F9 e PÓS-rebase 2)
 cargo clippy --workspace --all-targets --all-features -- -D warnings → zero
 cargo fmt --all -- --check             → 0 diffs
 typos                                  → 0

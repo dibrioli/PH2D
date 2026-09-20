@@ -342,6 +342,31 @@ pub(super) fn b_quina(k: f64, h: f64) -> f64 {
     2.0 * (k * h * 0.5).min(1.0).asin().to_degrees()
 }
 
+/// **A CURVATURA COM SINAL**, sobre a mesma janela física da [`b_menger`] — irmã dela, e a única
+/// diferença é não tomar o módulo.
+///
+/// ⚠️ **O sinal é o que a torna útil aqui:** a magnitude diz *quanto* a linha curva e o report do
+/// dono é sobre *para que LADO* — uma aresta que devia ser um arco só e vai para um lado, volta
+/// para o outro, e outra vez.
+pub(super) fn b_menger_com_sinal(poli: &[[f64; 2]], h: f64) -> Vec<f64> {
+    let cum = b_cum(poli);
+    let n = poli.len();
+    (0..n)
+        .map(|i| {
+            let s = cum[i];
+            let (a, b, c) = (b_em(poli, &cum, s - h), poli[i], b_em(poli, &cum, s + h));
+            let ab = (a[0] - b[0]).hypot(a[1] - b[1]);
+            let bc = (b[0] - c[0]).hypot(b[1] - c[1]);
+            let ca = (c[0] - a[0]).hypot(c[1] - a[1]);
+            if ab <= 0.0 || bc <= 0.0 || ca <= 0.0 {
+                return 0.0;
+            }
+            let cruz = (b[0] - a[0]).mul_add(c[1] - a[1], -((c[0] - a[0]) * (b[1] - a[1])));
+            2.0 * cruz / (ab * bc * ca)
+        })
+        .collect()
+}
+
 /// As amostras cujo REPOUSO está no troço RECTO da barra (`y = 2` ou `y = 3`) — ⛔ a tampa da
 /// cápsula lê `κ = 2` por construção e afogaria o sinal.
 pub(super) fn b_rectas(rest: &[[f64; 2]]) -> Vec<usize> {

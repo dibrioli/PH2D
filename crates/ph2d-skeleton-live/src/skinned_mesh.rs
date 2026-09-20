@@ -250,3 +250,11 @@ mod lei_tamanho_tests;
 #[cfg(test)]
 #[path = "skinned_mesh_regularidade_tests.rs"]
 mod regularidade_tests;
+
+/// ⭐⭐⭐ **AS ONDULAÇÕES** — a aresta que devia ser um arco e vai para os dois lados
+/// (*«várias curvas ao longo do caminho»*, report de 2026-09-20). ⚠️ Irmão do
+/// [`regularidade_tests`], e a separação é a dos dois defeitos: **um canto e uma onda não são a
+/// mesma coisa, e não têm a mesma cura.**
+#[cfg(test)]
+#[path = "skinned_mesh_ondulacao_tests.rs"]
+mod ondulacao_tests;

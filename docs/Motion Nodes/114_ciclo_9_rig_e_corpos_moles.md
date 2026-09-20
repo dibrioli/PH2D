@@ -1259,9 +1259,12 @@ barra passa a medir só uma divisão e uma multiplicação por dois.
 
 O `size` deixa de ser o que o artista escreveu na forma — e o que ele escreve passa a ser uma
 **RAZÃO**: o `amount` do `motion.scale` multiplica a base que a lei dá (`1` = justo · `0,9` =
-folga · `0,5` = contas soltas). ⇒ **a espessura da corda passa a seguir o `Count`**: a `40` a peça
-mede `0,05393` contra `0,10252` a `20`, **`1,90×` mais fina**. Antes era um número fixo, e era
-por isso que a corda se lia como um rosário fora do `Count` em que foi afinada.
+folga · `0,5` = contas soltas).
+
+⛔⛔⛔ **E o resto desta secção dizia, como «preço aceite», EXACTAMENTE o defeito que o dono
+reportou uma hora depois** — *«a espessura da corda passa a seguir o `Count`: a `40` a peça mede
+`1,90×` mais fina»*. A §16.5 é a correcção, e a frase fica aqui porque *um preço que eu declarei
+aceite sem o ter posto à frente de quem paga não era um preço: era um defeito com um nome bonito*.
 
 ### §16.4 — ⛔ A cena `=125` tinha uma SEGUNDA CÓPIA da lei
 
@@ -1275,11 +1278,82 @@ a MESMA (`2 × size = OSSO`, gateado), e é isso que torna a troca honesta.
 passa por um `source.shape` coze `n = 0` headless»*): a cena irmã já tinha achado a porta, e ela é
 **uma linha** — o `motion_shape_gen::publish`. Com ela o que a peça DESENHA é medível ali.
 
-### §16.5 — Provas
+### §16.5 — ⛔⛔⛔ *«Porque a corda afina no final?»* — o comprimento é do OSSO, a espessura é da CADEIA
+
+Report do dono, 2026-09-20, uma hora depois do smoke da §16. Medido na `=120`, do 1.º segmento
+ao último, em regime:
+
+| `Count` | 1.º vão | último vão | último/1.º | pior par VIZINHO |
+|---|---|---|---|---|
+| `20` | `0,10252` | `0,10000` | `0,975×` | `0,998×` |
+| `40` | `0,05393` | `0,04872` | `0,903×` | `0,996×` |
+| `80` | `0,03334` | `0,02405` | **`0,721×`** | `0,994×` |
+
+⭐ **O mecanismo:** numa corda pendurada o segmento de cima suporta o peso de todos os de baixo,
+logo estica mais — e com a escala **uniforme** a ESPESSURA esticava com ele. Quantos mais
+segmentos, maior o gradiente; e ele é **suave** (o pior par vizinho é `0,994×`), que é porque se
+lê como *«a corda afina»* e não como um defeito pontual. ⚠️ E o passo 3 do smoke que eu lhe dei
+mandava arrastar exactamente esse knob.
+
+⇒ **o comprimento é do osso; a espessura é da CADEIA.** Um vão é facto do solver e muda por
+quadro; *a espessura de uma corda não muda quando ela estica* — a mesma lei que o Painter desta
+casa pagou seis vezes.
+
+**Porque é o MÍNIMO e não a mediana**, medido sobre 280 tiques de corda a balançar:
+
+| estatística | mín | máx | oscilação |
+|---|---|---|---|
+| mediana | `0,10066` | `0,10217` | `1,502 %` |
+| média | `0,10063` | `0,10192` | `1,283 %` |
+| **mínimo** | `0,10000` | `0,10000` | **`0,000 %`** |
+
+⭐⭐ **E ele não ganha por pouco — ganha por MECANISMO:** num solver de distância um segmento
+estica sob tensão e não comprime abaixo do repouso, logo o mínimo **É** o comprimento de repouso,
+ao bit.
+
+⭐⭐⭐ **E as duas ordens do dono não colidem no produto, medido:** das **cinco** cadeias de
+`rig.bones` das cenas, **quatro** têm `len` exactamente uniforme (`max/min = 1,000×`) — ali o
+mínimo é o `len` e a saída é **byte-idêntica** à que ele aprovou. A única não-uniforme é a corda.
+⏳ **Fronteira declarada:** numa cadeia de ossos AUTORADOS com comprimentos diferentes as duas
+ordens pedem coisas opostas e esta lei dá a todos a espessura do mais curto — **decisão do dono**,
+e o caso não existe hoje para a forçar.
+
+⛔⛔ **E a sonda que mediu isto não via a cura:** ela imprimia só `size.x` (o COMPRIMENTO, que
+**deve** seguir o vão), logo com a lei curada a tabela dela saiu **idêntica** e a leitura ingénua
+era *«a cura não fez nada»*. *Uma régua que lê um eixo não vê o outro.* Com a coluna da espessura:
+`1,000×` nas **vinte** células da varredura (`Count` `10`–`80` × `1`–`120` tiques).
+
+### §16.6 — ⭐ E a performance da corda, medida (*«avalie performance de rope»*)
+
+Pela porta do QUADRO (`pump`, nunca `cook` — o memo é chaveado pelo tique), em `--release`,
+`load 4,46`:
+
+| `count` | peças | solver | pano inteiro | % de 16,67 ms | ns/peça |
+|---|---|---|---|---|---|
+| `20` | `19` | `0,020` | `0,024` | `0,1 %` | `1 265` |
+| `320` | `319` | `0,102` | `0,116` | `0,7 %` | `364` |
+| `1 280` | `1 279` | `0,355` | `0,396` | `2,4 %` | `310` |
+| `5 120` | `5 119` | `1,371` | `1,526` | `9,2 %` | `298` |
+| `20 480` | `20 479` | `5,446` | `6,442` | **`38,6 %`** | `315` |
+
+⭐⭐ **Duas leituras, e as duas são o contrário do resto do módulo:** o custo é **LINEAR**
+(`~300 ns/peça`, plano sobre `64×`) e **`85 %` dele é o SOLVER**, não o carimbo. *A corda é o único
+pano desta cena em que o `motion.duplicator` não domina* — e a razão é estrutural: ali é **uma**
+forma × `n` pontos, logo não há produto cartesiano a explodir. ⇒ **a corda não é um problema de
+performance**, e o tecto dela (`20 480` segmentos em `38,6 %` de um quadro) está `1 000×` acima do
+valor de fábrica.
+
+### §16.7 — Provas
 
 `veste` na crate do nó (com o controlo da nuvem) · `a_peca_veste_o_osso_em_todo_o_curso_dos_knobs`
 na `=120` (as sete células + os dois eixos + o controlo do pano do CAMPO, que não passa por
-`rig.bones` e lê `3,9×`) · `a_peca_desta_cena_veste_o_osso` na `=125`.
-**Mutação: 6 de 6 sangram**, com os dois controlos verdes — e as duas últimas são a FIAÇÃO
-(*a lei não existe* · *a lei existe e não CHEGA*, porque o valor de fábrica do duplicador deita a
-escala do ponto fora).
+`rig.bones` e lê `3,9×`) · `a_peca_desta_cena_veste_o_osso` na `=125` · **`a_corda_nao_afina_no_final`**, que é o único que
+mede a lei da espessura onde ela se distingue da anterior (o `len` a variar).
+**Mutação: 9 de 9 sangram**, com os TRÊS controlos verdes — e elas cobrem as três camadas: a LEI
+(o meio do comprimento · o mínimo a virar máximo · a espessura a voltar ao osso · o comprimento a
+congelar com ela), a FIAÇÃO (*a lei não existe* · *a lei existe e não CHEGA*, porque o valor de
+fábrica do duplicador deita a escala do ponto fora) e a inércia.
+
+⚠️ **E a fixtura da crate tem `len` VARIADO de propósito:** numa cadeia uniforme — que é o que
+**quatro das cinco** do produto têm — as duas leis dão o mesmo par, e um gate escrito ali passaria
+verde sobre qualquer uma. *Uma fixtura que não contém o fenómeno não distingue a lei da anterior.*

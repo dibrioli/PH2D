@@ -298,35 +298,70 @@ fn cada_metade_do_quadro_decide_por_si() {
 /// ⭐⭐⭐ **A PEÇA VESTE O OSSO** — ordem do dono (2026-09-20: *«DEVE SIM»*), e a lei está no doc
 /// do [`veste`], com a tabela do defeito que ela cura.
 ///
-/// ⚠️ **As DUAS metades medem coisas diferentes e as duas são obrigatórias:**
+/// ⚠️ **As DUAS metades medem EIXOS diferentes, e são leis diferentes:**
 ///
-/// 1. o `size` de cada osso é **metade** do `len` dele (o ½ é o contrato da receita do
+/// 1. o **comprimento** de cada osso é metade do `len` DELE (o ½ é o contrato da receita do
 ///    `source.shape`: toda forma é cortada de uma caixa de largura `2 × size`);
-/// 2. ele é o **MESMO nos dois eixos** — a peça ESCALA, e uma escala é um par. Sem esta, escrever
-///    só o comprimento passaria a primeira e deixaria a espessura na identidade.
+/// 2. a **espessura** é metade do MENOR `len` da cadeia — a mesma para todos.
+///
+/// ⛔⛔⛔ **A METADE 2 DIZIA O CONTRÁRIO ATÉ 2026-09-20, e a premissa dela está morta à vista no
+/// diff.** Ela exigia *«o MESMO nos dois eixos — a peça ESCALA, e uma escala é um par»*, e o
+/// report do dono no mesmo dia derrubou-a: *«porque a corda afina no final?»*. Numa corda o `len`
+/// é um facto do SOLVER (o segmento de cima suporta o peso dos de baixo e estica), e com a escala
+/// uniforme a espessura esticava com ele — `0,721×` do topo à ponta a `Count = 80`. *O comprimento
+/// é do osso; a espessura é da cadeia.* O mecanismo e as duas tabelas estão no doc do [`veste`].
+///
+/// ⚠️⚠️ **E a fixtura tem `len` VARIADO de propósito:** numa cadeia uniforme — que é o que as
+/// outras fixturas desta crate e **quatro das cinco cadeias do produto** têm — as duas leis dão o
+/// MESMO par, e um gate escrito ali passaria verde sobre qualquer uma das duas. *Uma fixtura que
+/// não contém o fenómeno não distingue a lei da lei anterior.*
 ///
 /// ⛔ **E o CONTROLO é a nuvem:** num stream que não é um rig o nó é a identidade, logo ele **não
 /// pode inventar um `size`** — *uma lei que alcança quem não é osso muda o desenho de um
 /// `motion.grid` em silêncio*.
 #[test]
 fn a_peca_veste_o_osso() {
-    const LEN: f32 = 0.6;
-    let saida = bones(&corrente(6, LEN, 30.0, 0.0));
+    // Três ossos de `1,0`, `0,5` e `1,5` — o menor é `0,5`, e nenhum dos outros lhe é igual.
+    let saida = bones(&corrente_crua(&[
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [1.5, 0.0],
+        [3.0, 0.0],
+    ]));
     let Some(Column::Vec2(size)) = saida.get("size") else {
         panic!("a lista de ossos traz a coluna `size`")
     };
     let len = escalar(&saida, "len");
     assert_eq!(size.len(), saida.count(), "um `size` por osso");
+    let menor = len.iter().copied().fold(f32::INFINITY, f32::min);
+    assert!(
+        (menor - 0.5).abs() < 1e-6 && len.iter().any(|l| (l - menor).abs() > 0.4),
+        "a fixtura CONTEM o fenomeno: lens {len:?}, menor {menor:.6}"
+    );
     for (i, (s, l)) in size.iter().zip(&len).enumerate() {
         assert!(
             (s[0] - l * 0.5).abs() < 1e-6,
-            "o osso {i} veste `len/2`: {:.6} contra {:.6}",
+            "o comprimento do osso {i} e' o `len` DELE: {:.6} contra {:.6}",
             s[0],
             l * 0.5
         );
         assert!(
-            (s[0] - s[1]).abs() < 1e-6,
-            "o osso {i} escala nos DOIS eixos: [{:.6}, {:.6}]",
+            (s[1] - menor * 0.5).abs() < 1e-6,
+            "a espessura do osso {i} e' a da CADEIA: {:.6} contra {:.6}",
+            s[1],
+            menor * 0.5
+        );
+    }
+    // ⭐ E o CONTROLO da degenerescência: com `len` uniforme as duas leis coincidem ao bit, que é
+    // o que faz a saída das quatro cadeias uniformes do produto ser byte-idêntica à aprovada.
+    let uniforme = bones(&corrente(6, 0.6, 30.0, 0.0));
+    let Some(Column::Vec2(su)) = uniforme.get("size") else {
+        panic!("a cadeia uniforme tambem veste")
+    };
+    for (i, s) in su.iter().enumerate() {
+        assert!(
+            (s[0] - s[1]).abs() < 1e-6 && (s[0] - 0.3).abs() < 1e-6,
+            "numa cadeia uniforme o osso {i} degenera na escala uniforme: [{:.6}, {:.6}]",
             s[0],
             s[1]
         );

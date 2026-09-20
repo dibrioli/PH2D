@@ -487,3 +487,78 @@ fn audit_the_stamp_duplicator_population() {
     eprintln!("  com `point_scale > 0` .......... {com_escala}\n");
     eprintln!("  cenas do duplicador: {cenas_dup:?}\n");
 }
+
+/// ⭐⭐⭐ **OS `len` DE UMA CADEIA SÃO UNIFORMES?** — a medição que decide a cura do report
+/// *«porque a corda afina no final?»* (dono, 2026-09-20).
+///
+/// ⛔⛔ **As duas ordens dele colidem exactamente aqui.** *«A peça ajusta-se ao tamanho do osso»*
+/// diz que a peça segue o `len`; *«a corda não deve afinar»* diz que a ESPESSURA não deve.
+/// Numa cadeia de `len` UNIFORMES as duas dizem o mesmo e não há escolha a fazer; numa de `len`
+/// variados elas pedem coisas opostas.
+///
+/// ⇒ esta sonda conta, em cada `rig.bones` de cada cena, a dispersão dos `len` que ele entrega.
+/// *Uma decisão de produto tomada sem saber se o caso que a força existe é um palpite.*
+#[test]
+#[ignore = "sonda de auditoria (report da corda), nao gate"]
+fn audit_the_bone_lengths_are_uniform() {
+    eprintln!("\n=== dispersao dos `len` em cada cadeia de ossos do produto ===\n");
+    eprintln!("  cena | cartao |    n |      min |      max |  max/min | mediana");
+    eprintln!("  -----|--------|------|----------|----------|----------|--------");
+    let mut variadas = 0usize;
+    for level in 1..=crate::motion_state::demo_router::MAX_DEMO_LEVEL {
+        let mut m = crate::motion_state::MotionState::new();
+        let (sinks, _) =
+            crate::motion_demo_legend::monta(&level.to_string(), &mut m.doc, &m.registry);
+        let ossos: Vec<NodeId> = m
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == "rig.bones")
+            .map(|n| n.id)
+            .collect();
+        if ossos.is_empty() {
+            continue;
+        }
+        crate::motion_shape_gen::publish(&mut m, 0.0);
+        // ⚠️ **Em REGIME, não no tique zero:** uma corda nasce recta e no tique `0` os `len` dela
+        // são todos o repouso — *a fixtura do instante zero não contém o fenómeno*.
+        let mut t = 0.0f64;
+        for _ in 0..40 {
+            for s in &sinks {
+                let _ = m.pump.cook.cook(&m.doc.graph, &m.registry, *s, t);
+            }
+            let _ = m.pump.cook.advance_tick(&m.doc.graph, &m.registry, t);
+            t += 1.0 / 60.0;
+        }
+        for (k, id) in ossos.iter().enumerate() {
+            let Ok(o) = m.pump.cook.cook(&m.doc.graph, &m.registry, *id, t) else {
+                continue;
+            };
+            let Some(ph2d_nodegraph::attr::Column::Scalar(len)) = o[0].as_stream().get("len")
+            else {
+                continue;
+            };
+            if len.is_empty() {
+                continue;
+            }
+            let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
+            for v in len {
+                lo = lo.min(*v);
+                hi = hi.max(*v);
+            }
+            let mut ord = len.clone();
+            ord.sort_by(f32::total_cmp);
+            let med = ord[ord.len() / 2];
+            let razao = hi / lo.max(f32::MIN_POSITIVE);
+            if razao > 1.01 {
+                variadas += 1;
+            }
+            eprintln!(
+                "  {level:>4} | {k:>6} | {:>4} | {lo:>8.5} | {hi:>8.5} | {razao:>7.3}x | {med:>7.5}",
+                len.len()
+            );
+        }
+    }
+    eprintln!("\n  cadeias com `len` NAO uniforme (max/min > 1,01): {variadas}\n");
+}

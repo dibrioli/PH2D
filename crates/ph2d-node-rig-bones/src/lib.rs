@@ -276,10 +276,56 @@ fn derive_frame(out: &mut Stream, input: &Stream, ossos: &[(usize, usize)], pos:
 /// com peças **`0,667` de altura sobre `0,45` de comprimento** — a peça a caber em comprimento e a
 /// virar um bloco na espessura.
 ///
-/// ⚠️ **TROCA NOMEADA, com o número:** a espessura passa a seguir o comprimento, logo uma corda a
-/// `Count = 40` desenha-se **`1,9×` mais fina** que a `Count = 20` (`0,0539` contra `0,1025` de
-/// vão). Manter a espessura ao variar o comprimento é outra lei — e ela precisa de um segundo
-/// número que esta corrente **não carrega**.
+/// ## ⛔⛔⛔ A ESPESSURA NÃO É O `len` DESTE OSSO, e a premissa que dizia que sim MORREU
+///
+/// A 1.ª redacção escrevia `size = [len/2, len/2]` — escala **uniforme** — e deixava aqui uma
+/// troca nomeada: *«a espessura passa a seguir o comprimento … manter a espessura é outra lei, e
+/// ela precisa de um segundo número que esta corrente NÃO carrega»*. ⚠️ **As duas metades dessa
+/// frase estavam erradas**, e quem as derrubou foi o report do dono no mesmo dia: *«porque a corda
+/// afina no final?»*.
+///
+/// Medido na cena `=120`, do 1.º segmento ao último:
+///
+/// | `Count` | 1.º vão | último vão | último/1.º | pior par VIZINHO |
+/// |---|---|---|---|---|
+/// | `20` | `0,10252` | `0,10000` | `0,975×` | `0,998×` |
+/// | `40` | `0,05393` | `0,04872` | `0,903×` | `0,996×` |
+/// | `80` | `0,03334` | `0,02405` | **`0,721×`** | `0,994×` |
+///
+/// ⭐ **O mecanismo:** numa corda pendurada o segmento de cima suporta o peso de todos os de
+/// baixo, logo estica mais — e com a escala uniforme a ESPESSURA esticava com ele. Quantos mais
+/// segmentos, maior o gradiente. ⚠️ E ele é **suave** (o pior par vizinho é `0,994×`), que é
+/// porque se lê como *«a corda afina»* e não como um defeito pontual.
+///
+/// ⇒ **o comprimento é do osso; a espessura é da CADEIA.** Um vão é um facto do solver e muda
+/// por quadro; a espessura de uma corda não muda quando ela estica — a mesma lei que o Painter
+/// desta casa pagou seis vezes (*o traço é facto do CAMINHO, nunca de quão fino o motor amostrou*).
+///
+/// ## Porque é o MÍNIMO, e não a mediana
+///
+/// O «segundo número» existe e é uma estatística dos `len` que a corrente já traz. ⚠️ **A escolha
+/// foi medida e não escolhida** — a dispersão TEMPORAL de cada candidata, sobre 280 tiques de uma
+/// corda a balançar:
+///
+/// | estatística | mín | máx | oscilação |
+/// |---|---|---|---|
+/// | mediana | `0,10066` | `0,10217` | `1,502 %` |
+/// | média | `0,10063` | `0,10192` | `1,283 %` |
+/// | **mínimo** | `0,10000` | `0,10000` | **`0,000 %`** |
+///
+/// ⭐⭐ **E o mínimo não ganha por pouco — ele ganha por MECANISMO:** num solver de distância um
+/// segmento **estica** sob tensão e não comprime abaixo do repouso, logo o mínimo **É** o
+/// comprimento de repouso, ao bit. *Uma estatística que empata com um número que o solver nunca
+/// cruza não é uma média feliz: é o número.*
+///
+/// ⭐⭐⭐ **E as duas ordens do dono não colidem no produto, medido:** das **cinco** cadeias de
+/// `rig.bones` das cenas, **quatro** têm `len` exactamente uniforme (`max/min = 1,000×`) — ali o
+/// mínimo **é** o `len` e a saída é **byte-idêntica** ao que ele aprovou. A única não-uniforme é a
+/// corda, que é precisamente aquela em que ele diz que não deve afinar.
+///
+/// ⏳ **FRONTEIRA DECLARADA:** numa cadeia de ossos AUTORADOS com comprimentos diferentes — que
+/// hoje não existe no produto — as duas ordens pedem coisas opostas, e esta lei dá a **todos** a
+/// espessura do osso mais curto. *É decisão do dono, e o caso não existe para a forçar.*
 ///
 /// ## Ela ESCREVE, e o caminho de volta é o `motion.scale`
 ///
@@ -296,7 +342,12 @@ fn veste(out: &mut Stream) {
     let Some(Column::Scalar(len)) = out.get(LEN) else {
         return;
     };
-    let s: Vec<[f32; 2]> = len.iter().map(|&l| [l * 0.5, l * 0.5]).collect();
+    // ⚠️ **`fold` com `f32::min` e não `min_by`:** um `NaN` num `len` viria de uma pose degenerada
+    // a montante, e `f32::min` devolve o OUTRO lado — a espessura sobrevive a um elemento doente
+    // em vez de contaminar a cadeia inteira.
+    let repouso = len.iter().copied().fold(f32::INFINITY, f32::min);
+    let espessura = if repouso.is_finite() { repouso } else { 0.0 } * 0.5;
+    let s: Vec<[f32; 2]> = len.iter().map(|&l| [l * 0.5, espessura]).collect();
     out.set(SIZE, Column::Vec2(s));
 }
 

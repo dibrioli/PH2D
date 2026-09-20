@@ -410,11 +410,13 @@ fn a_peca_desta_cena_veste_o_osso() {
             "a coluna {i} desenha um OSSO: {desenhado:.6} contra {OSSO:.6} ({:.2}x)",
             desenhado / OSSO
         );
-        // ⭐ A escala é um PAR: sem esta metade, escrever só o comprimento passava a primeira e
-        // deixava a espessura na identidade (o `aspect` da forma multiplicaria `1` e não `len/2`).
+        // ⭐ **A DEGENERESCÊNCIA, e é ela que prova que esta cena não se mexeu:** os ossos desta
+        // cadeia têm `len` todos iguais, logo o menor É o `len` e a espessura (que desde o report
+        // *«porque a corda afina no final?»* é a da CADEIA e não a do osso) coincide ao bit com o
+        // comprimento. ⚠️ A lei a sério mede-se onde o `len` varia — na corda da cena irmã.
         assert!(
             (sx - sy).abs() / sx < 1e-5,
-            "a coluna {i} escala nos DOIS eixos: size = [{sx:.6}, {sy:.6}]"
+            "numa cadeia UNIFORME a coluna {i} degenera na escala uniforme: [{sx:.6}, {sy:.6}]"
         );
     }
 }

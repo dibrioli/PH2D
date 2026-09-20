@@ -14,6 +14,11 @@ use super::super::rig_demo::tests::{CAMPO, CORDA, DT, FK, TIQUES, pontos, primei
 use super::build;
 use crate::motion_state::MotionState;
 
+/// As SONDAS desta cena — ver o cabeçalho do irmão. ⚠️ Elas vivem noutro ficheiro por
+/// RESPONSABILIDADE (o tecto de LOC impôs o corte): aqui afirma-se, ali mede-se.
+#[path = "motion_state_rig_demo_corda_sondas.rs"]
+mod sondas;
+
 /// ⭐⭐⭐ **A CORDA LÊ-SE COMO UM CORDÃO E NÃO COMO UM ROSÁRIO** — ordem do dono (2026-09-20):
 /// *«o exemplo 1 (Rope) deve ser feito com Rope Segment e os segmentos devem ser conectados como
 /// ossos senão a corda não parecerá um único objeto»*.
@@ -281,14 +286,16 @@ fn a_peca_veste_o_osso_em_todo_o_curso_dos_knobs() {
     //
     // ⚠️ A barra é a RAZÃO e não um número: o que se afirma é que os dois são grandezas
     // diferentes, e `1,5×` separa-os com folga (medido: `3,9×`).
-    // ⭐⭐ **E a peça veste-o nos DOIS eixos** — sem esta metade, escrever só o comprimento
-    // passaria as sete células acima e deixaria a espessura na identidade (`1`), que na fileira
-    // dos ossos é uma peça de `0,667` de altura sobre `0,45` de comprimento. *A afirmação é que a
-    // peça ESCALA, e uma escala é um par.*
+    // ⭐⭐ **E a peça veste-o nos DOIS eixos NUMA CADEIA UNIFORME** — a fileira dos ossos tem
+    // `len` todos iguais, logo o menor É o `len`, e as duas leis (a de hoje e a de ontem)
+    // coincidem ao bit. ⚠️ **Esta metade deixou de afirmar a LEI e passou a afirmar a
+    // DEGENERESCÊNCIA dela:** é ela que prova que o desenho que o dono aprovou não se mexeu. A
+    // lei a sério — a espessura ser da CADEIA e não do osso — é o
+    // [`a_corda_nao_afina_no_final`], que a mede onde o `len` varia.
     let (sx, sy) = mede_os_dois_eixos_do_osso();
     assert!(
         (sx - sy).abs() / sx < TOLERANCIA_DO_VAO,
-        "a peca escala nos DOIS eixos: size = [{sx:.6}, {sy:.6}]"
+        "numa cadeia UNIFORME as duas leis coincidem: size = [{sx:.6}, {sy:.6}]"
     );
     let desenhado = mede_a_peca_do_campo();
     let vao_da_grelha = super::CAMPO_VAO;
@@ -300,56 +307,72 @@ fn a_peca_veste_o_osso_em_todo_o_curso_dos_knobs() {
     );
 }
 
-/// ⭐⭐⭐ **A PEÇA CONTRA O VÃO** — a sonda que nomeia o que a varredura de 2026-09-20 achou
-/// (ordem do dono, depois do smoke da unidade: *«veja se erro similar acontece em outros locais
-/// do módulo»*).
+/// ⭐⭐⭐ **A CORDA NÃO AFINA NO FINAL** — report do dono (2026-09-20), e o gate que a lei nova
+/// precisa de ter onde ela se distingue da anterior.
 ///
-/// ⛔⛔⛔ **O comprimento DESENHADO de uma peça de rig é um número da FORMA; o comprimento
-/// VERDADEIRO é a coluna `len` da corrente — e o `len` não tem UM consumidor de desenho em toda a
-/// casa.** Ele é escrito pelo `rig.bones` e pelo `source.lsystem`, e lido só pelo `fk::resolve`
-/// (que reconstrói `P` com ele) e pelo próprio `rig.bones` (que pergunta se ele já lá está). Quem
-/// decide o tamanho na tela é a coluna `size`, que vem da forma.
+/// ⛔⛔ **A régua é a ESPESSURA (`size.y`), e a sonda que a mediu primeiro não a tinha:** ela
+/// imprimia só o COMPRIMENTO (`size.x`), que **deve** seguir o vão — é isso que faz a peça ir de
+/// uma junta à seguinte. Com a cura no sítio a tabela dela saiu **idêntica**, e a leitura ingénua
+/// era *«a cura não fez nada»*. *Uma régua que lê um eixo não vê o outro.*
 ///
-/// ⚠️ **Nas duas cenas isto bate porque o número foi DERIVADO à mão** (`CORDA_PECA` do vão da
-/// corda, `OSSO_PECA` do `OSSO_LEN`), e é por isso que nenhum gate o via: eles leem `P`, `rot` e
-/// `size`, e os três estão certos. O que nenhum lê é a RELAÇÃO entre `size` e o vão.
+/// ⚠️ **As DUAS metades, e a segunda é o CONTROLO:**
 ///
-/// Medido (pela porta do produto, com a `TIQUES` de queda na corda):
+/// 1. a espessura é a MESMA do 1.º segmento ao último, em todo o curso do `Count`;
+/// 2. o **comprimento** continua a seguir o vão, e a `Count = 80` ele varia `0,72×` — *sem esta,
+///    uma lei que congelasse os DOIS eixos passaria a primeira e devolveria o rosário que a wave
+///    da peça justa existiu para curar*.
 ///
-/// | knob do painel | vão | desenhado | razão | o que se vê |
-/// |---|---|---|---|---|
-/// | `Count = 10`   | `0,21201` | `0,10000` | **`0,47×`** | um rosário, com buracos entre as contas |
-/// | `Count = 20`   | `0,10252` | `0,10000` | `0,98×` | o cordão que o dono aprovou |
-/// | `Count = 30`   | `0,06944` | `0,10000` | `1,44×` | as peças montam umas nas outras |
-/// | `Count = 40`   | `0,05393` | `0,10000` | **`1,85×`** | uma barra contínua |
-/// | `Length = 0,2` | `0,20000` | `0,45000` | **`2,25×`** | o mesmo, na fileira dos ossos |
-/// | `Length = 0,45`| `0,45000` | `0,45000` | `1,00×` | a cadeia que ladrilha |
-/// | `Length = 0,9` | `0,90000` | `0,45000` | **`0,50×`** | ossos soltos, um vão de cada dois vazio |
-///
-/// ⏳ **DECISÃO DO DONO** (as duas saídas, com o preço): (a) ficar como está — o artista escreve o
-/// tamanho da peça a condizer com a corrente, e o painel não o ajuda; (b) uma peça de rig VESTIR o
-/// osso dela (o `size` por elemento sai do `len`), que é o que faz a corda ler-se como um cordão
-/// **em qualquer `Count`** e custa o `size` deixar de ser o que o artista escreveu na forma.
+/// FALSIFICADO por devolver a escala uniforme ao [`ph2d_node_rig_bones::veste`] (a 1.ª metade lê
+/// `0,72×`), ou por congelar também o comprimento (a 2.ª cai).
 #[test]
-#[ignore = "sonda de medicao, nao gate"]
-fn diag_a_peca_contra_o_vao() {
-    eprintln!("\n=== a peca DESENHADA contra o vao que ela atravessa ===");
-    for count in [10.0f32, 20.0, 30.0, 40.0] {
-        let (vao, desenhado, n) = mede_a_corda(Some(count));
-        eprintln!(
-            "  Count={count:>5}  pecas={n:>3}  vao={vao:.5}  desenhado={desenhado:.5}  \
-             razao={:.2}x",
-            desenhado / vao
+fn a_corda_nao_afina_no_final() {
+    for count in [20.0f32, 40.0, 80.0] {
+        let (compr, espess, n) = mede_as_pontas_da_corda(count);
+        assert!(n >= 10, "Count={count}: a corda desenha {n} pecas");
+        assert!(
+            (espess - 1.0).abs() < 1e-5,
+            "Count={count}: a ESPESSURA e' a mesma de ponta a ponta ({espess:.4}x)"
         );
+        if count >= 80.0 {
+            assert!(
+                compr < 0.85,
+                "Count={count}: o COMPRIMENTO continua a seguir o vao ({compr:.4}x) — uma lei que \
+                 congelasse os dois eixos devolvia o rosario"
+            );
+        }
     }
-    for length in [0.2f32, 0.45, 0.9] {
-        let (vao, desenhado, n) = mede_o_osso(length);
-        eprintln!(
-            "  Length={length:>4}  pecas={n:>3}  vao={vao:.5}  desenhado={desenhado:.5}  \
-             razao={:.2}x",
-            desenhado / vao
-        );
+}
+
+/// `(razão do comprimento, razão da espessura, nº de peças)` do 1.º segmento ao último, em regime.
+fn mede_as_pontas_da_corda(count: f32) -> (f32, f32, usize) {
+    let mut m = MotionState::new();
+    let sinks = build(&mut m.doc, &m.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    let corda = primeiro(&m.doc.graph, "motion.verlet_rope");
+    m.doc.graph.set_param(corda, "count", count);
+    let sink = sinks[CORDA];
+    let mut t = 0.0f64;
+    for _ in 0..TIQUES {
+        let _ = m.pump.cook.cook(&m.doc.graph, &m.registry, sink, t);
+        let _ = m.pump.cook.advance_tick(&m.doc.graph, &m.registry, t);
+        t += DT;
     }
+    let saida = m
+        .pump
+        .cook
+        .cook(&m.doc.graph, &m.registry, sink, t)
+        .expect("o sink coze");
+    let mut pecas = Vec::new();
+    ph2d_eval_motion::lower_to_vector_instances_onto(
+        saida[0].as_stream(),
+        ph2d_render::SinkStyle::PLAIN,
+        &mut pecas,
+    );
+    let (p, u) = (
+        *pecas.first().expect("ha' pecas"),
+        *pecas.last().expect("ha' pecas"),
+    );
+    (u.size[0] / p.size[0], u.size[1] / p.size[1], pecas.len())
 }
 
 /// O vão do 1.º segmento da corda e o comprimento que o desenho lhe dá, depois de `TIQUES`.

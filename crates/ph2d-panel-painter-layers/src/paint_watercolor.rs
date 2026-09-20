@@ -357,6 +357,20 @@ fn paint_brush_card(
         number_field::FINE_STEP,
         2,
     );
+    let _ = card_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        tr("panel.painter_layers.watercolor.self_pickup"),
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SELF_PICKUP,
+        brush.wet_self_pickup,
+        0.0,
+        1.0,
+        number_field::FINE_STEP,
+        2,
+    );
     next_y
 }
 

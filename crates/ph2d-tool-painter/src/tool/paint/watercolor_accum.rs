@@ -388,6 +388,14 @@ impl PainterTool {
             }
         }
         let map_live = depletion.is_some() || !self.paint.stroke_deplete.is_empty();
+        // Self Pickup (doc 40 §S2-C): o plano do ARCO custa 2 bytes/texel (33,6 MB a 4096²), logo
+        // so' existe com o knob ligado — quem nao o usa nao paga a memoria.
+        let want_arc = map_live && self.paint.brush.wet_self_pickup > 0.0;
+        if want_arc && self.paint.stroke_arc.len() != fw * fh {
+            self.paint.stroke_arc = vec![0u16; fw * fh];
+        } else if !want_arc && !self.paint.stroke_arc.is_empty() {
+            self.paint.stroke_arc = Vec::new();
+        }
         // Smudge sobre o traço VIVO: arrasta os níveis por DAB, antes do depósito desse dab.
         let level_smear = (map_live && self.wet_smudge_live()).then(|| {
             let spec = self.paint.brush;
@@ -408,6 +416,7 @@ impl PainterTool {
         let dens_buf = &mut self.paint.stroke_density;
         let depl_buf = &mut self.paint.stroke_deplete;
         let prox_buf = &mut self.paint.stroke_deplete_prox;
+        let arc_buf = &mut self.paint.stroke_arc;
         let own_buf = &mut self.paint.wet_styles.owner;
         let water_buf = &mut self.paint.stroke_water;
         for (di, d) in dabs.iter().enumerate() {
@@ -451,7 +460,15 @@ impl PainterTool {
             // session map is LIVE, a mixer-OFF stroke still splats FULL reserve (its paint must
             // not read the 0-initialised map).
             let depl_v =
-                map_live.then(|| depletion.as_ref().map_or(1.0, |v| v[di].clamp(0.0, 1.0)));
+                map_live.then(|| depletion.as_ref().map_or(1.0, |v| v[di].0.clamp(0.0, 1.0)));
+            // O carimbo de arco deste dab (`0` = o plano nao existe ⇒ nada a escrever).
+            let arc_v = if arc_buf.is_empty() {
+                0
+            } else {
+                depletion
+                    .as_ref()
+                    .map_or(0, |t| super::watercolor_mixer::arc_stamp(t[di].1))
+            };
             let peak = WASH_DEPOSIT_PEAK; // NUNCA `d.coverage` — a Strength não alcança a lavagem
             // Water-only dabs (peak 0, Dilution high) still walk the disc to pour the soak.
             if r <= 0.0 || (peak <= 0.0 && water <= 0.0) {
@@ -500,6 +517,12 @@ impl PainterTool {
                     let v = (peak * keep * wgt * 255.0) as u8;
                     if v > cov[idx] {
                         cov[idx] = v;
+                    }
+                    // Self Pickup: o arco da PRIMEIRA cobertura. ⛔ `== 0` e' a lei inteira — a
+                    // ultima cobertura seria sobrescrita pela cabeca da propria volta e leria
+                    // idade ~0 em quase tudo (doc 40 §S2-C).
+                    if arc_v != 0 && v > 0 && arc_buf[idx] == 0 {
+                        arc_buf[idx] = arc_v;
                     }
                     // Tip density (textured tip only): max-blend, matching the coverage's "one pass"
                     // union — the composite multiplies it into the interior fill.

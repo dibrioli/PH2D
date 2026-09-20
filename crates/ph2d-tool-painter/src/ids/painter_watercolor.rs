@@ -80,6 +80,11 @@ pub const PAINTER_WATERCOLOR_DILUTION: NodeId = hash_node_id("painter_brush.wate
 /// **Pull** — Wet Mix colour-carry `0..1` (smudge length). `SetValue` → `set_brush_wet_pull`.
 pub const PAINTER_WATERCOLOR_PULL: NodeId = hash_node_id("painter_brush.watercolor_pull");
 
+/// **Self Pickup** — o pincel gasto recolhe a tinta do PROPRIO traco `0..1` (doc 40 §S2-C).
+/// `0` = so' a base congelada, ao bit. `SetValue` -> `set_brush_wet_self_pickup`.
+pub const PAINTER_WATERCOLOR_SELF_PICKUP: NodeId =
+    hash_node_id("painter_brush.watercolor_self_pickup");
+
 // ── Wetness / canvas controls (session-level, NOT brush; the paper's moisture, doc 13 #9-#11) ──
 /// **Drying Time** — seconds for the wet paper to fully dry (`2..60 s`; the wet-session fusion
 /// window). CANVAS-level (not per-brush): `SetValue` → `set_dry_time_s`. Shown in the Wetness card.

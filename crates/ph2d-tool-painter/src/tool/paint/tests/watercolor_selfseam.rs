@@ -62,6 +62,8 @@ pub(super) struct SeamKnobs {
     pub rewet: f32,
     pub smudge: f32,
     pub granulation: f32,
+    /// **Self Pickup** (doc 40 §S2-C, o "item 4"): `0` = a recolha le' so' a base congelada.
+    pub pickup: f32,
     /// `false` tira o papel do preset: o dente dele é textura de ~10 px com inclinação própria, e a
     /// raios grandes (onde a costura curada é SUAVE) era ele que a régua media, não a costura.
     pub paper: bool,
@@ -77,6 +79,7 @@ impl Default for SeamKnobs {
             rewet: 0.0,
             smudge: 0.0,
             granulation: 0.0,
+            pickup: 0.0,
             paper: false,
             scrub: false,
         }
@@ -111,6 +114,7 @@ pub(super) fn paint_u_live(u: UStroke, k: SeamKnobs) -> PainterTool {
     t.paint.brush.wet_rewet = k.rewet;
     t.paint.brush.wet_smudge = k.smudge;
     t.paint.brush.granulation = k.granulation;
+    t.paint.brush.wet_self_pickup = k.pickup;
     if !k.paper {
         t.paint.brush.paper = ph2d_painter_brush::TextureSettings::default();
     }

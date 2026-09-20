@@ -84,6 +84,17 @@ impl crate::App {
             // lê-se como *«a sonda não está a correr»*.
             ph2d_app_motion::warp_overlay::diag("nao ha' retrato publicado (`view()` = None)");
         }
+        // ⭐⭐ **O ALVO DO PIVÔ** — por cima da arte pela MESMA razão do contorno do colisor: ele
+        // aponta um ponto SOBRE a peça, e por baixo dela não aponta nada.
+        if let Some(v) = ph2d_app_motion::pivot_gizmo::view() {
+            ph2d_app_motion::pivot_gizmo_overlay::draw(
+                &v,
+                camera,
+                hero.view.center_split,
+                surface.size(),
+                vector_scene,
+            );
+        }
         if let Some(v) = ph2d_app_motion::collider_gizmo::view() {
             ph2d_app_motion::collider_gizmo_overlay::draw(
                 &v,

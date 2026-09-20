@@ -55,6 +55,7 @@ pub(super) fn apply_param_row(
             state.interaction = Interaction::ScrubParam {
                 node,
                 row,
+                param: p.hint.param,
                 start_value: p.value,
                 start_x: g.x,
             };
@@ -65,6 +66,7 @@ pub(super) fn apply_param_row(
                 row: r0,
                 start_value,
                 start_x,
+                ..
             } = state.interaction
             else {
                 return;

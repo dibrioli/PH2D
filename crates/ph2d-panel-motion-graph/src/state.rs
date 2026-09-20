@@ -63,6 +63,12 @@ pub(crate) enum Interaction {
     ScrubParam {
         node: u32,
         row: u16,
+        /// ⭐ **O NOME do param, capturado na PRESSÃO.** Ele existe para o arrasto ser
+        /// PUBLICÁVEL (`snapshot::set_graph_param_scrub`): um gizmo de canvas que queira acender
+        /// enquanto a mão mexe num knob precisa de saber em QUAL, e resolver a `row` de fora
+        /// obrigaria a segunda cópia do `band_at` — *a coordenada `row` é do pintor e do
+        /// hit-test; o nome é do domínio.*
+        param: &'static str,
         start_value: f32,
         start_x: f32,
     },

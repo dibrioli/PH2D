@@ -70,6 +70,14 @@ impl crate::App {
             // as peças, ou se vê o gizmo.
             ph2d_eval_motion::so_com_forma_por_ordem(),
         ));
+        // ⭐⭐ **O gizmo do PIVÔ da forma** (ordem do dono, 2026-09-19: *«permita visualizar o
+        // ponto do pivot ao arrastar os parâmetros de pivot»*) — a mesma janela e a mesma
+        // modalidade. Ele acende só enquanto a mão arrasta o knob, e o que desenha é o `P` de
+        // cada peça: *o pivô de uma instância É a posição dela.*
+        ph2d_app_motion::pivot_gizmo::publish(ph2d_app_motion::pivot_gizmo::resolve(
+            motion,
+            motion_tool_active,
+        ));
         // **O gizmo do COLISOR da forma** (doc 109 §5) — a mesma modalidade.
         ph2d_app_motion::collider_gizmo::publish(ph2d_app_motion::collider_gizmo::resolve_at(
             motion,

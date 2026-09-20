@@ -184,6 +184,11 @@ pub mod motion_path_overlay;
 pub mod motion_shape_gen;
 pub mod motion_table_gen;
 pub mod motion_text_gen;
+/// ⭐⭐ O gizmo do PIVÔ da forma (ordem do dono, 2026-09-19) — o alvo que acende enquanto a mão
+/// arrasta o `Pivot X`/`Pivot Y` no cartão.
+pub mod pivot_gizmo;
+/// O DESENHO desse gizmo.
+pub mod pivot_gizmo_overlay;
 /// O gizmo de canvas dos deformadores de quadrilátero (Corner Pin + Bezier Warp).
 pub mod warp_gizmo;
 /// As FIXTURAS do gizmo de warp — montadas e **não marchadas**; ver o cabeçalho delas.

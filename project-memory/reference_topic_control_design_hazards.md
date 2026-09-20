@@ -92,3 +92,29 @@ dono lê. **How to apply:** quando uma wave inverte, espelha ou desloca alguma c
 na lista de sítios a corrigir **ao lado do código** — e o que É gateável ali é o NOME dos controlos:
 derive-o do rótulo REGISTADO (`reg.param_ui(MANIFEST.id)`), para que renomear a linha do cartão parta
 o teste em vez de deixar o roteiro a mandar procurar uma coisa que já não existe.
+
+## ⭐⭐⭐ O gizmo que aponta um ponto desenha-se no ponto que o PRODUTO já calcula (2026-09-19)
+
+Ordem do dono: *«permita visualizar o ponto do pivot ao arrastar os parâmetros de pivot»*. A
+tentação era calcular *«onde é que o pivô caiu»* a partir do param — e isso daria um indicador que
+continua CERTO no dia em que o produto deixar de estar.
+
+⭐ **A pose de uma instância é `P + basis·(anchor + q·size)`, logo o ponto local `q = (0,0)` aterra
+exactamente em `P`, em qualquer ângulo e em qualquer tamanho** — e o pivô É, por definição, o ponto
+local que a receita leva à origem. ⇒ o alvo desenha-se no `P` de cada linha do sink, **sem uma
+segunda cópia da aritmética**. Se ele e a forma discordarem, um dos dois está a mentir; e o que se
+vê a arrastar é a FORMA a deslizar por baixo de um alvo **parado**, que é precisamente a lei.
+
+**How to apply:** antes de escrever a conta de um indicador, pergunte que grandeza do produto já É
+a resposta. *Um gizmo que recalcula o que desenha é um segundo produto a envelhecer sozinho* —
+irmão de [[feedback_a_key_and_a_text_of_the_same_type_is_a_defect_waiting]].
+
+⚠️ **E o tamanho dele mede-se numa FOTO, não escolhe-se:** a 1.ª redacção usou o canto do warp
+dobrado (`9 px` de raio + `4` de braço) e tapava **65 %** da peça que ele existe para apontar; a
+`6 + 3` tapa `45 %` e continua maior que a alça do colisor, que é o que se sabe legível nesta casa.
+*Um gizmo que aponta um ponto e esconde o que está nele responde metade da pergunta.*
+
+⚠️ **A fronteira painel→canvas atravessa-se por um CANAL PUBLICADO, nunca por uma chamada:** o
+painel escreve `set_graph_param_scrub(Some((nó, nome)))` todo quadro e quem quiser lê — o mesmo
+idioma da selecção (ADR-0075). E publica-se o **NOME** do param, não a `row`: a linha é uma
+coordenada do pintor, e resolvê-la do outro lado seria a segunda cópia do `band_at`.

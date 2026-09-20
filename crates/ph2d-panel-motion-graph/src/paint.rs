@@ -193,6 +193,13 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // small Vec, only while the tool is up.
     crate::snapshot::set_graph_selection(state.selected.iter().copied().collect());
     crate::snapshot::set_graph_backdrop_selection(state.selected_backdrop);
+    // ⭐ **E o param em ARRASTO** — o canal que faz um gizmo de canvas acender enquanto a mão
+    // mexe num knob do cartão (ver `snapshot::set_graph_param_scrub`). Publicado AQUI, logo a
+    // seguir ao `interact::process`, para ser o estado DESTE quadro e não o do anterior.
+    crate::snapshot::set_graph_param_scrub(match state.interaction {
+        crate::state::Interaction::ScrubParam { node, param, .. } => Some((node, param)),
+        _ => None,
+    });
 
     let view = View::new(rect, state.view);
 

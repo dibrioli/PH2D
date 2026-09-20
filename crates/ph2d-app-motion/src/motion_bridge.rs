@@ -353,6 +353,10 @@ pub fn dispatch(
             motion,
             ph2d_eval_motion::so_com_forma_por_ordem(),
         ))
+        // ⭐ E o gizmo do PIVÔ (ordem do dono, 2026-09-19): a saída da forma cujo `Pivot X`/`Y`
+        // está a ser arrastado AGORA — uma tomada, e só durante o gesto. ⚠️ Ele não pede o sink
+        // porque o irmão acima já pede TODOS.
+        .chain(super::pivot_gizmo::taps_for(motion))
     {
         if !taps.contains(&n) {
             taps.push(n);

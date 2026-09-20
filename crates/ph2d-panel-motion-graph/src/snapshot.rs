@@ -342,6 +342,8 @@ thread_local! {
     static INTENTS: RefCell<Vec<GraphIntent>> = const { RefCell::new(Vec::new()) };
     static CATALOG: RefCell<Vec<NodeChoice>> = const { RefCell::new(Vec::new()) };
     static SELECTION: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
+    /// **O param que a mão está a ARRASTAR agora** — `(nó, nome)`.
+    static PARAM_SCRUB: RefCell<Option<(u32, &'static str)>> = const { RefCell::new(None) };
     static BACKDROP_SELECTION: RefCell<Option<u32>> = const { RefCell::new(None) };
     static SELECTION_REQUEST: RefCell<Option<Vec<u32>>> = const { RefCell::new(None) };
     /// **The node-help system on/off** (ADR-0155): a shell→panel scalar the toolbar
@@ -463,6 +465,25 @@ pub fn set_graph_selection(selection: Vec<u32>) {
 /// selected or the Motion tool is inactive.
 pub fn current_graph_selection() -> Vec<u32> {
     SELECTION.with(|c| c.borrow().clone())
+}
+
+/// ⭐⭐ **Publica qual param está a ser ARRASTADO** — `(nó, nome)`, ou `None` fora do gesto.
+///
+/// Ordem do dono (2026-09-19): *«permita visualizar o ponto do pivot ao arrastar os parâmetros de
+/// pivot»*. Um gizmo de CANVAS que acende enquanto a mão mexe num knob do CARTÃO precisa de
+/// atravessar a fronteira painel→shell, e este é o mesmo canal da selecção — escrito todo quadro,
+/// lido por quem quiser, sem ninguém chamar ninguém (ADR-0075).
+///
+/// ⚠️ **É o NOME e não a `row`**: a linha é uma coordenada do pintor, e resolvê-la do outro lado
+/// seria a segunda cópia do `band_at`.
+pub fn set_graph_param_scrub(v: Option<(u32, &'static str)>) {
+    PARAM_SCRUB.with(|c| *c.borrow_mut() = v);
+}
+
+/// Lê o param em arrasto (shell). `None` quando a mão não está num knob.
+#[must_use]
+pub fn current_graph_param_scrub() -> Option<(u32, &'static str)> {
+    PARAM_SCRUB.with(|c| *c.borrow())
 }
 
 /// Hand the panel a NEW selection (shell bridge → panel). The one channel that

@@ -25,6 +25,8 @@ SIM="crates/ph2d-vec-scene/src/symbols_rig.rs"
 GEN="crates/ph2d-app-motion/src/motion_shape_gen.rs"
 PAR="crates/ph2d-node-motion-shape/src/param.rs"
 HIN="crates/ph2d-node-motion-shape/src/hints.rs"
+GIZ="crates/ph2d-app-motion/src/pivot_gizmo.rs"
+FAS="shells/desktop/src/render_loop/fase_motion_gizmos.rs"
 
 TMP="$(mktemp -d)"
 FALHAS=0
@@ -63,6 +65,32 @@ prova() { # nome pacote filtro
   else
     echo "  ✅ sangrou (de $corridos teste(s) corridos)"
   fi
+}
+
+prova_it() { # nome pacote filtro
+  TOTAL=$((TOTAL+1))
+  echo "── $1"
+  local out rc corridos
+  out=$(cargo test -p "$2" --test it -- "$3" 2>&1); rc=$?
+  corridos=$(printf '%s' "$out" | grep -oE 'running [0-9]+ tests?' | grep -oE '[0-9]+' \
+             | awk '{s+=$1} END {print s+0}')
+  if [ "$corridos" -lt 1 ]; then
+    echo "  ⛔ FILTRO VAZIO — '$3' nao casou teste nenhum (ou nao compilou):"
+    printf '%s\n' "$out" | grep -E '^error' | head -3
+    FALHAS=$((FALHAS+1)); return
+  fi
+  if [ "$rc" = 0 ]; then
+    echo "  ⛔⛔ SOBREVIVEU — os $corridos teste(s) de '$3' passaram sobre o produto MUTADO"
+    FALHAS=$((FALHAS+1))
+  else
+    echo "  ✅ sangrou (de $corridos teste(s) corridos)"
+  fi
+}
+
+bloco_it() { # nome pacote filtro ficheiro vezes antigo novo
+  guarda "$4"
+  if muta "$4" "$5" "$6" "$7"; then prova_it "$1" "$2" "$3"; else FALHAS=$((FALHAS+1)); fi
+  restaura "$4"
 }
 
 bloco() { # nome pacote filtro ficheiro vezes antigo novo
@@ -155,6 +183,31 @@ bloco "o rotulo do cartao muda e o roteiro fica a mentir" ph2d-app-motion o_rote
   '        label: "Pivot X",' \
   '        label: "Anchor X",'
 
+# 12. A UNIDADE: `1` tem de ser a ARESTA (o `Size` e' o SEMI-eixo), e nao a extensao inteira.
+bloco "a unidade do pivot volta a extensao cheia" ph2d-app-motion o_pivot_desloca \
+  "$GEN" 1 \
+  "let desloca = |f: f32, lo: f64, hi: f64| f64::from(f) * (hi - lo) * 0.5;" \
+  "let desloca = |f: f32, lo: f64, hi: f64| f64::from(f) * (hi - lo);"
+
+echo
+echo "== O ALVO: o gizmo que o dono pediu =="
+
+# 13. O filtro por geometria: sem ele o alvo pousa em peças de OUTRA forma.
+bloco "o alvo aceita pecas de qualquer forma" ph2d-app-motion o_alvo_cai_na_posicao \
+  "$GIZ" 1 \
+  "        .filter(|&i| quais[i] == alvo)" \
+  "        .filter(|&i| quais[i] == quais[i])"
+
+# 14. A FIACAO: um motor com a lei certa e a shell a nao o ligar le-se como um motor sem a lei.
+#     ⚠️ Este gate vive em `tests/it/` da shell — um `--lib` ali casa ZERO testes.
+bloco_it "a shell deixa de publicar o retrato do pivot" ph2d-host-desktop the_pivot_gizmo_is_wired \
+  "$FAS" 1 \
+  "        ph2d_app_motion::pivot_gizmo::publish(ph2d_app_motion::pivot_gizmo::resolve(
+            motion,
+            motion_tool_active,
+        ));" \
+  ""
+
 echo
 if [ "$FALHAS" = 0 ]; then
   echo "✅ $TOTAL de $TOTAL mutacoes sangraram."
@@ -165,7 +218,7 @@ fi
 # `git diff --quiet` e acusou «a arvore ficou suja» sobre um restauro perfeito: a linha estava por
 # commitar, logo o `HEAD` difere por construção. *Um arnês que verifica o próprio restauro contra o
 # `HEAD` mede se a LINHA está commitada, não se ele repôs o que mutou.*
-for f in "$SIM" "$GEN" "$PAR" "$HIN"; do
+for f in "$SIM" "$GEN" "$PAR" "$HIN" "$GIZ" "$FAS"; do
   cmp -s "$f" "$TMP/$(basename "$f").orig" || {
     echo "⛔⛔ $f NAO foi restaurado — reponha de $TMP a mao."; exit 1; }
 done

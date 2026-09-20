@@ -300,3 +300,56 @@ fn o_gizmo_do_colisor_le_o_cozido_deste_quadro() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O gizmo do PIVÔ está ligado, e nas DUAS ordens que ele precisa** — ordem do dono
+/// (2026-09-19): *«permita visualizar o ponto do pivot ao arrastar os parâmetros de pivot»*.
+///
+/// ⚠️⚠️ **Um motor com a lei certa e a shell a não o ligar lê-se como um motor sem a lei**, e esta
+/// casa já pagou isso quatro vezes. Aqui há DUAS costuras, e cada uma com a sua ordem:
+///
+/// 1. o **retrato** sai das TOMADAS ⇒ tem de ser resolvido DEPOIS do cook (senão mostra o pivô do
+///    quadro anterior — o defeito que criou a `fase_motion_gizmos`);
+/// 2. o **desenho** aponta um ponto SOBRE a peça ⇒ tem de vir DEPOIS da arte, senão o alvo fica
+///    por baixo do que ele existe para apontar.
+#[test]
+fn the_pivot_gizmo_is_wired_and_in_both_orders() {
+    let quadro = crate::frame_text::render_frame()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        quadro.contains(
+            "ph2d_app_motion::pivot_gizmo::publish(ph2d_app_motion::pivot_gizmo::resolve( motion, motion_tool_active,"
+        ),
+        "o retrato do pivô tem de ser publicado com a modalidade da tool Motion"
+    );
+    assert!(
+        quadro.contains("pivot_gizmo::view()") && quadro.contains("pivot_gizmo_overlay::draw("),
+        "e desenhado a partir do retrato publicado"
+    );
+    // ── As duas ORDENS, medidas por posição no texto do quadro.
+    let em = |needle: &str| {
+        quadro
+            .find(needle)
+            .unwrap_or_else(|| panic!("o quadro tem de conter {needle:?}"))
+    };
+    let cook = em("motion_bridge::dispatch(");
+    let resolve = em("pivot_gizmo::resolve(");
+    let desenho = em("pivot_gizmo_overlay::draw(");
+    assert!(
+        cook < resolve,
+        "o retrato do pivô tem de ser resolvido DEPOIS do cook ({cook} contra {resolve})"
+    );
+    assert!(
+        resolve < desenho,
+        "e desenhado depois de resolvido ({resolve} contra {desenho})"
+    );
+    // ⛔ E depois da ARTE: o alvo aponta um ponto sobre a peça. A âncora é a mesma que o gate do
+    // colisor usa para a mesma pergunta — o desenho do contorno dele.
+    let arte = em("collider_gizmo_overlay::draw(");
+    assert!(
+        arte.abs_diff(desenho) < 2_000,
+        "o alvo desenha-se ao lado do contorno do colisor, na mesma fase de overlays \
+         ({arte} contra {desenho})"
+    );
+}

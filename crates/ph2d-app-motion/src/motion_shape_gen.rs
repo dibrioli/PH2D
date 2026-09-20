@@ -322,7 +322,15 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
     // ⚠️ **E deslocar a CAIXA desloca a forma, não a deforma:** o `fit` do catálogo reescala toda
     // silhueta para a caixa que recebe, e uma translação preserva a extensão ⇒ os mesmos bits,
     // noutro sítio. É isso que faz `0` ser no-op BYTE-IDÊNTICO.
-    let desloca = |f: f32, lo: f64, hi: f64| f64::from(f) * (hi - lo);
+    // ⚠️⚠️ **A unidade é o SEMI-eixo — o `Size` que o cartão mostra —, e não a extensão inteira**
+    // (ordem do dono, 2026-09-19: *«o pivot deve ser relativo ao tamanho da shape»*). O `size`
+    // deste nó é, por declaração, *«radius for round kinds, half-extent for boxes»*: **`1` é a
+    // ARESTA**, `0` é o pivô natural, e `2` põe-no uma forma inteira para fora.
+    //
+    // ⛔ A 1.ª redacção usava a extensão CHEIA, e aí a aresta caía em `0,5` — com a faixa do
+    // slider em `±1`, os dois extremos dele não correspondiam a nada que se veja na forma.
+    // *Uma faixa cujos extremos não nomeiam nada é uma faixa que o artista lê como arbitrária.*
+    let desloca = |f: f32, lo: f64, hi: f64| f64::from(f) * (hi - lo) * 0.5;
     let (dx, dy) = (
         desloca(p.pivot[0], a[0], b[0]),
         desloca(p.pivot[1], a[1], b[1]),

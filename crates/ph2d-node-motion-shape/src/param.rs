@@ -89,10 +89,20 @@ pub const DASH_GAP: &str = "dash_gap";
 /// ⭐⭐⭐ **O DESLOCAMENTO DO PIVÔ** — ordem do dono (2026-09-19): *«crie no nó Shape o offset do
 /// Pivot»*, dita depois de duas rondas em que a lei do osso vivia escondida dentro da receita.
 ///
-/// **É o ponto da forma que aterra na POSIÇÃO, e portanto aquele em torno do qual ela GIRA.** A
-/// unidade é a FRACÇÃO da extensão da própria forma, e o sinal é o do resto da casa
-/// (`ph2d_render::SinkStyle::pivot`): **`+0,5` empurra a forma toda para a direita, ou seja põe o
-/// pivô na aresta ESQUERDA dela**. `0` é o pivô natural da espécie, e é no-op byte-idêntico.
+/// **É o ponto da forma que aterra na POSIÇÃO, e portanto aquele em torno do qual ela GIRA.**
+///
+/// ⚠️⚠️ **A unidade é o [`SIZE`] daquele eixo** — ordem do dono (2026-09-19: *«o pivot deve ser
+/// relativo ao tamanho da shape»*) —, e o `size` deste nó é por declaração o SEMI-eixo (*«radius
+/// for round kinds, half-extent for boxes»*). Logo **`1` é a ARESTA** e `2` põe o pivô uma forma
+/// inteira para fora dela, que é o que um braço a girar em torno de um cubo distante pede. O sinal
+/// é o do resto da casa (`ph2d_render::SinkStyle::pivot`): **`+` empurra a forma toda para a
+/// direita, ou seja leva o pivô para a aresta ESQUERDA dela**.
+///
+/// ⭐ **E ele é RELATIVO de facto, não por promessa:** a fracção multiplica a extensão da caixa de
+/// corte, que é cozida em raio 1 e escalada pela coluna `size` da instância ⇒ a mesma posição do
+/// knob dá o mesmo ponto da forma em qualquer tamanho (gate `o_pivot_e_relativo_ao_size`).
+///
+/// `0` é o pivô natural da espécie, e é no-op byte-idêntico.
 ///
 /// ⚠️⚠️ **`0` NÃO quer dizer «o centro» — quer dizer «onde esta forma se pendura por natureza»**,
 /// que para quase todo o catálogo é o centro e para os símbolos de RIG é a cabeça (o osso e o

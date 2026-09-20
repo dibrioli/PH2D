@@ -7,14 +7,12 @@
 //! por motivos diferentes: este arquivo cresce quando o pipeline ganha um
 //! estado, o outro quando a cena ganha um objeto.
 
-use super::{CameraRaw, MeshRenderer};
+use super::MeshRenderer;
 use grupo::GrupoDoQuadro;
 
 /// ⭐ **O grupo 0** — ver o cabeçalho do irmão.
 #[path = "pipeline_build_grupo.rs"]
 mod grupo;
-use crate::lighting::RigRaw;
-use crate::shade::ShadeRaw;
 
 impl MeshRenderer {
     #[must_use]

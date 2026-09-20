@@ -15,8 +15,12 @@
 //! por comodidade: um uniform cuja frequência fosse outra pagaria um `set_bind_group` a mais por
 //! objecto.
 
-use super::CameraRaw;
+// ⚠️ **A CASA do tipo, e não o `use` do PAI.** Um `use super::CameraRaw` resolve-se pelo IMPORT
+// dele, logo o pai ficaria com um import que só este ficheiro usa — e quem arrumasse os imports do
+// pai partiria este, em silêncio. Foi exactamente o que aconteceu no sentido inverso quando este
+// corte nasceu: o `RigRaw` e o `ShadeRaw` VIAJARAM para cá e as linhas ficaram lá, órfãs.
 use crate::lighting::RigRaw;
+use crate::pipeline::CameraRaw;
 use crate::shade::ShadeRaw;
 
 /// O que o [`super::super::MeshRenderer::new`] precisa de guardar do grupo 0.

@@ -93,6 +93,14 @@ pub(crate) fn card_rows(n: &GraphNodeView) -> f32 {
 mod card;
 pub(crate) use card::*;
 
+/// ⭐⭐⭐ **DE QUE LADO FICA O RETRATO** — irmão por RESPONSABILIDADE (e o tecto de LOC de 600 dos
+/// painéis obrigou ao corte): aqui em cima fica *quanto* um cartão ocupa, ali *para que lado* a
+/// moldura dele sai. A lei tem dois leitores — quem pinta e quem ARRUMA — e é por isso que ela
+/// não é uma decisão guardada.
+#[path = "geom_retrato.rs"]
+mod retrato;
+pub use retrato::*;
+
 // Breadcrumb metrics (doc 57) — logical == screen (chrome, never scaled by zoom).
 pub(crate) const CRUMB_H: f32 = 20.0; // LITERAL-PX-OK: breadcrumb chip height
 pub(crate) const CRUMB_PAD_X: f32 = 8.0; // LITERAL-PX-OK: breadcrumb chip x-padding
@@ -167,20 +175,25 @@ pub(crate) fn card_h_de(fileiras_de_pino: f32, fileiras_de_param: f32, tem_reado
 /// posição e o zoom escolhe o desenho depois. Larga como a pastilha (que cresce para os dois
 /// lados, logo o `left` é negativo), alta como o cartão aberto.
 ///
-/// ⚠️ **A moldura da pré-visualização é reservada EM BAIXO**, que é o lado de omissão
-/// ([`PreviewPos`]): com ela na conta, o retrato de um nó nunca aterra sobre o cartão da fileira
-/// seguinte — que é a outra metade daquele report (*«o preview deve ser posicionado na melhor
-/// posição para não ficar entre nós»*). ⛔ Virá-la para cima é um gesto do artista e não uma
-/// posição que esta função escolha: reservar os DOIS lados custaria `256` unidades por nó com
-/// retrato, em toda cena, para um lado que quase nunca é usado.
+/// ⚠️⚠️ **A moldura da pré-visualização é reservada DO LADO EM QUE ELA FICA, e quem escolhe é
+/// a lei ([`retratos_em_cima`]), nunca esta função.** ⛔ **A redacção anterior recusava-o por
+/// escrito** — *«virá-la para cima é um gesto do artista e não uma posição que esta função
+/// escolha: reservar os DOIS lados custaria 256 unidades por nó com retrato»* — e o dono
+/// desempatou no smoke seguinte (*«neste caso o preview deveria ser colocado para cima»*). O
+/// preço que aquela nota temia **não se paga**: reserva-se **um** lado, o que a lei escolheu, e
+/// um cartão no topo de uma coluna deixa de abrir um corredor de `128` unidades por baixo de si.
 #[must_use]
-pub fn extensao_desenhada(n: &GraphNodeView) -> ph2d_nodegraph::layout::Extent {
+pub fn extensao_desenhada(
+    n: &GraphNodeView,
+    retrato_em_cima: bool,
+) -> ph2d_nodegraph::layout::Extent {
     extensao_de(
         &n.display_name,
         card_rows(n),
         card_param_rows(n),
         n.readout.is_some(),
         has_preview_slot(n),
+        retrato_em_cima,
     )
 }
 
@@ -197,20 +210,24 @@ pub fn extensao_de(
     fileiras_de_param: f32,
     tem_readout: bool,
     tem_retrato: bool,
+    retrato_em_cima: bool,
 ) -> ph2d_nodegraph::layout::Extent {
     let largura = largura_da_capsula_do_nome(nome);
     // A pastilha cresce a partir do CENTRO do cartão — ver `geom_card::card_x_w_at`.
     let sobra = (largura - CARD_W) * 0.5;
     let corpo = card_h_de(fileiras_de_pino, fileiras_de_param, tem_readout).max(CAPSULA_H);
-    let abaixo = if tem_retrato {
-        corpo + PREVIEW_GAP + PREVIEW_FRAME_H
-    } else {
-        corpo
+    // ⚠️ A moldura sai do corpo pelo lado em que é desenhada — a MESMA aritmética de
+    // [`preview_frame_rect`], que é quem a pinta: um gap e depois a moldura.
+    let moldura = PREVIEW_GAP + PREVIEW_FRAME_H;
+    let (acima, abaixo) = match (tem_retrato, retrato_em_cima) {
+        (true, true) => (-moldura, corpo),
+        (true, false) => (0.0, corpo + moldura),
+        (false, _) => (0.0, corpo),
     };
     ph2d_nodegraph::layout::Extent {
         left: -sobra,
         right: CARD_W + sobra,
-        top: 0.0,
+        top: acima,
         bottom: abaixo,
     }
 }

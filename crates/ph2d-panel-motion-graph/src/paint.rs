@@ -38,6 +38,8 @@ mod paint_port_label;
 #[cfg(test)]
 #[path = "paint_card_params_tests.rs"]
 mod paint_card_params_tests;
+#[path = "paint_cards.rs"]
+mod paint_cards;
 /// A ESPÉCIE e o PAPEL: a cor de um socket e o selo do cabeçalho — irmão cortado no teto de
 /// LOC, por responsabilidade (ver o cabeçalho dele).
 #[path = "paint_role.rs"]
@@ -89,10 +91,7 @@ pub(crate) use paint_wire::{
 use paint_wires::{WirePass, draw_wires};
 
 use crate::geom::{self, View, card_h, socket_center};
-use crate::hits::{
-    bg_hit_id, push_backdrop_hits, push_card_hit, push_inert_badge_hit, push_param_row_hits,
-    push_preview_toggle_hit, push_socket_hits, register_hits, register_hot_tip,
-};
+use crate::hits::{bg_hit_id, push_backdrop_hits, register_hits, register_hot_tip};
 use crate::snapshot::{
     GraphNodeView, GraphViewSnapshot, PortView, SocketGlyph, current_snapshot, socket_glyph,
 };
@@ -263,7 +262,6 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // you click empty space would punish the most common gesture there is).
     let focus =
         (!state.selected.is_empty()).then(|| crate::flow::influence_set(&snap, &state.selected));
-    let veiled = |id: u32| !live.contains(&id) || focus.as_ref().is_some_and(|f| !f.contains(&id));
     draw_wires(
         WirePass {
             state,
@@ -279,34 +277,19 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         ctx,
         &mut hits,
     );
-    // Cards, collecting body hits as we draw them. A card whose rect does not touch the panel is
-    // SKIPPED entirely: the clip layer already hides it, but Vello still has to bound and bin
-    // every path inside it — panning a big graph would pay for cards nobody can see. (Its hit
-    // rects are clipped away by `hits` anyway, so what is invisible stays unclickable.)
-    let on_screen: Vec<&GraphNodeView> = snap
-        .nodes
-        .iter()
-        .filter(|n| touches(geom::card_rect(n, &view), rect))
-        .collect();
-    for n in &on_screen {
-        // A GHOST is always veiled: it is not part of this level, and the veil is the
-        // whole message (doc 57). It never counts as "inert" or "out of the influence"
-        // — those are readings about the graph, and a ghost is a reading about the
-        // BOUNDARY.
-        let dim = n.kind == crate::snapshot::NodeViewKind::Ghost || veiled(n.id);
-        // `draw_card` also draws this node's ⚠ inert badge (ADR-0155) on its corner.
-        let body = draw_card(ctx, state, n, &view, theme, dim);
-        push_card_hit(&mut hits, n, body, rect);
-        // ⚠️ **Depois do corpo, para lhes GANHAR o gesto** — ver `push_param_row_hits`.
-        push_param_row_hits(&mut hits, n, &view, rect);
-    }
-    // Sockets + the header toggle + the inert badge last, so all three beat the card body
-    // under them (doc 86; ADR-0155).
-    for n in &on_screen {
-        push_socket_hits(&mut hits, n, &view, rect);
-        push_preview_toggle_hit(&mut hits, n, &view, rect);
-        push_inert_badge_hit(&mut hits, n, &view, rect);
-    }
+    paint_cards::draw_cards(
+        paint_cards::CardPass {
+            state,
+            snap: &snap,
+            view: &view,
+            theme,
+            rect,
+            live: &live,
+            focus: &focus,
+        },
+        ctx,
+        &mut hits,
+    );
     draw_canvas_overlays(ctx, state, &snap, &view, theme, rect);
     ctx.scene.pop_layer();
 

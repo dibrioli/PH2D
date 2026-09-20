@@ -17,13 +17,25 @@
 //! as telas do documento (a raiz e o interior de cada grupo) e um nó é medido no máximo uma vez.
 //! O empréstimo obriga-o de qualquer maneira — o retrato precisa de `&MotionState` e a arrumação
 //! escreve em `&mut doc`.
+//!
+//! ⭐⭐ **E desde o 4.º report do dono (*«neste caso o preview deveria ser colocado para cima»*)
+//! ela também decide DE QUE LADO sai a moldura de cada retrato** — pela mesma lei que o painel
+//! pinta ([`ph2d_panel_motion_graph::retratos_em_cima`]), lida sobre as posições em que os
+//! cartões estão AGORA. É por isso que [`arrumar`] arruma **duas vezes**: o 1.º passe entrega as
+//! colunas e o 2.º reserva o espaço do lado em que a moldura vai ficar.
 
 use crate::motion_state::MotionState;
 use ph2d_motion_doc::layout::{Carta, Medida};
 use ph2d_nodegraph::layout::Extent;
-use std::collections::BTreeMap;
+use ph2d_panel_motion_graph::{CaixaDoCartao, caixa_de, caixa_desenhada, retratos_em_cima};
+use std::collections::{BTreeMap, BTreeSet};
 
 /// O que cada cartão deste documento MEDE, já resolvido.
+///
+/// ⚠️ **A igualdade é o critério de paragem de [`arrumar`]** — ver lá porquê; `Extent` é feito de
+/// `f32` e a comparação é exacta de propósito: os dois lados saem da MESMA aritmética sobre as
+/// MESMAS peças, logo ou são o mesmo bit ou alguma coisa mudou.
+#[derive(PartialEq)]
 pub struct Medidas {
     por_no: BTreeMap<u32, Extent>,
     por_grupo: BTreeMap<u32, Extent>,
@@ -43,12 +55,49 @@ impl Medida for Medidas {
 /// ⭐⭐ **Arrumar o documento inteiro** — a porta ÚNICA, e a razão de ela existir é que houve
 /// dois chamadores desde o primeiro dia (a tecla do painel e as cenas de smoke) e o segundo
 /// herdava, calado, a medida que o primeiro esquecesse.
+///
+/// ⭐⭐⭐ **Ela arruma até ao PONTO FIXO, e a razão é uma realimentação estreita:** a lei do lado
+/// do retrato ([`ph2d_panel_motion_graph::retratos_em_cima`]) lê onde os cartões ESTÃO, e onde
+/// eles estão depende do lado que ela escolheu (a moldura é reservada de um lado só). ⇒ a
+/// paragem é a pergunta certa — *«a disposição que saiu pede exactamente os lados com que foi
+/// construída?»* — e não uma contagem de passes escrita à mão.
+///
+/// ⛔ **DUAS passagens NÃO chegam, e isso foi MEDIDO e não inferido:** na cena que o dono
+/// fotografou (`41` cartões, seis painéis) a 1.ª passagem parte da disposição AUTORADA, a 2.ª já
+/// vê as colunas e a 3.ª ainda mexe um bit; a 4.ª não mexe nenhum. *Uma nota que dissesse «duas»
+/// deixava um retrato desenhado do lado que ninguém reservou.*
+///
+/// ⚠️ **O tecto existe porque a terminação NÃO está provada** — e um tecto sem recurso nomeado é
+/// um palpite, logo aqui vai o que ele de facto é: um travão contra uma oscilação que nenhuma
+/// cena desta casa produz (a medida é `3`). Se alguma vez ele for alcançado, a disposição
+/// continua válida — nenhum cartão se sobrepõe a outro — e o único preço é uma moldura desenhada
+/// do lado que não foi reservado, que é exactamente o estado de antes desta wave.
+const TECTO_DOS_PASSES: usize = 8;
+
+/// Arruma a raiz e o interior de cada grupo, com cada cartão medido — ver [`TECTO_DOS_PASSES`]
+/// para a paragem.
 pub fn arrumar(motion: &mut MotionState) {
-    let medidas = medir(motion);
-    ph2d_motion_doc::layout::arrange(&mut motion.doc, &medidas);
+    let mut usadas: Option<Medidas> = None;
+    for _ in 0..TECTO_DOS_PASSES {
+        let medidas = medir(motion);
+        // O ponto fixo: o que saiu da última arrumação pede os MESMOS lados com que ela foi
+        // feita. Arrumar outra vez com extensões iguais devolveria as mesmas posições.
+        if usadas.as_ref() == Some(&medidas) {
+            return;
+        }
+        ph2d_motion_doc::layout::arrange(&mut motion.doc, &medidas);
+        usadas = Some(medidas);
+    }
 }
 
-/// Mede cada nó do grafo e cada cartão de grupo.
+/// As PEÇAS de um cartão de grupo — lidas uma vez, porque a caixa e a extensão precisam das
+/// mesmas e *duas leituras da mesma coisa divergem no dia em que uma delas mudar*.
+struct Grupo {
+    nome: String,
+    fileiras: f32,
+}
+
+/// Mede cada nó do grafo e cada cartão de grupo, **com o retrato já do lado em que ele fica**.
 pub fn medir(motion: &MotionState) -> Medidas {
     // O MESMO retrato que o painel pinta — o nome resolvido pelo registo e pela i18n, e os
     // pinos declarados pelo manifesto (mais um por param CONDUZIDO, que desenha socket).
@@ -63,41 +112,112 @@ pub fn medir(motion: &MotionState) -> Medidas {
         &mut snap,
     );
 
-    let por_no = snap
-        .nodes
-        .iter()
-        .map(|n| (n.id, ph2d_panel_motion_graph::extensao_desenhada(n)))
-        .collect();
-
     // ⚠️ **Um cartão de GRUPO não passa por aquele retrato** — ele é derivado pela shell (o
     // título do subgrafo, os pinos que atravessam a fronteira, e o «N nós» que ele mostra em vez
-    // de um readout de cozimento). ⇒ ele entra pela porta das PEÇAS, que é a mesma aritmética.
-    let por_grupo = motion
+    // de um readout de cozimento). ⇒ ele entra pelas portas das PEÇAS, que são a mesma
+    // aritmética.
+    let grupos: BTreeMap<u32, Grupo> = motion
         .doc
         .subgraphs
         .iter()
         .map(|s| {
             let portas = super::fold::card_ports(motion, s.id);
-            let nome = if s.title.is_empty() {
-                super::fold::DEFAULT_TITLE.tr().to_string()
-            } else {
-                s.title.clone()
-            };
             #[expect(
                 clippy::cast_precision_loss,
                 reason = "a contagem de pinos de um cartao cabe num f32"
             )]
             let fileiras = portas.inputs.len().max(portas.outputs.len()).max(1) as f32;
+            let nome = if s.title.is_empty() {
+                super::fold::DEFAULT_TITLE.tr().to_string()
+            } else {
+                s.title.clone()
+            };
+            (s.id, Grupo { nome, fileiras })
+        })
+        .collect();
+
+    let (em_cima_no, em_cima_grupo) = lados_dos_retratos(motion, &snap, &grupos);
+
+    let por_no = snap
+        .nodes
+        .iter()
+        .map(|n| {
             (
-                s.id,
+                n.id,
+                ph2d_panel_motion_graph::extensao_desenhada(n, em_cima_no.contains(&n.id)),
+            )
+        })
+        .collect();
+
+    let por_grupo = grupos
+        .iter()
+        .map(|(&sid, g)| {
+            (
+                sid,
                 ph2d_panel_motion_graph::extensao_de(
-                    &nome, fileiras, 0.0, true, /* o «N nós» */
+                    &g.nome,
+                    g.fileiras,
+                    0.0,
+                    true, /* o «N nós» */
                     true, /* ⚠️ o retrato de um cartão é o do que sai dele, e reservá-lo é o
                           lado CONSERVADOR: sobra espaço, nunca falta. */
+                    em_cima_grupo.contains(&sid),
                 ),
             )
         })
         .collect();
 
     Medidas { por_no, por_grupo }
+}
+
+/// ⭐⭐⭐ **De que lado sai a moldura de cada retrato** — a LEI do painel, corrida **por TELA**.
+///
+/// ⚠️⚠️ **Por tela, e isso é a metade que interessa:** a pergunta é *«há um cartão no corredor
+/// para onde este retrato ia?»*, e um nó que vive dentro de um grupo não está no corredor de
+/// ninguém na raiz — ele está escondido atrás do cartão do grupo. Medir tudo junto poria dois
+/// cartões de telas diferentes a decidir um pelo outro.
+fn lados_dos_retratos(
+    motion: &MotionState,
+    snap: &ph2d_panel_motion_graph::GraphViewSnapshot,
+    grupos: &BTreeMap<u32, Grupo>,
+) -> (BTreeSet<u32>, BTreeSet<u32>) {
+    /// Quem é a caixa: um nó do grafo ou um cartão de grupo.
+    enum Chave {
+        No(u32),
+        Grupo(u32),
+    }
+
+    let mut por_tela: BTreeMap<Option<u32>, Vec<(Chave, CaixaDoCartao)>> = BTreeMap::new();
+    for n in &snap.nodes {
+        let tela = motion
+            .doc
+            .members
+            .get(&ph2d_nodegraph::graph::NodeId(n.id))
+            .copied();
+        por_tela
+            .entry(tela)
+            .or_default()
+            .push((Chave::No(n.id), caixa_desenhada(n)));
+    }
+    for s in &motion.doc.subgraphs {
+        let Some(g) = grupos.get(&s.id) else { continue };
+        por_tela.entry(s.parent).or_default().push((
+            Chave::Grupo(s.id),
+            caixa_de(s.x, s.y, g.fileiras, 0.0, true, true),
+        ));
+    }
+
+    let (mut nos, mut cartoes) = (BTreeSet::new(), BTreeSet::new());
+    for cartas in por_tela.values() {
+        let caixas: Vec<CaixaDoCartao> = cartas.iter().map(|(_, c)| *c).collect();
+        for ((chave, _), em_cima) in cartas.iter().zip(retratos_em_cima(&caixas)) {
+            if em_cima {
+                match chave {
+                    Chave::No(id) => nos.insert(*id),
+                    Chave::Grupo(sid) => cartoes.insert(*sid),
+                };
+            }
+        }
+    }
+    (nos, cartoes)
 }

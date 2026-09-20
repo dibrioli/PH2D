@@ -465,16 +465,22 @@ fn right_press_over_a_node_opens_menu_and_release_keeps_it() {
 fn a_click_on_the_preview_toggle_flips_the_position() {
     use crate::state::PreviewPos;
     let mut st = MotionGraphPanelState::default();
-    assert_eq!(st.preview_position(5), PreviewPos::Below, "starts Below");
+    let snap = two_node_snapshot();
+    let lei = crate::geom::retratos_em_cima_por_id(&snap.nodes);
+    assert_eq!(
+        st.preview_position(5, &lei),
+        PreviewPos::Below,
+        "starts Below"
+    );
     let g = gesture(
         GraphHitKind::PreviewToggle { node: 5 },
         GesturePhase::Click,
         10.0,
         10.0,
     );
-    apply_gesture(&mut st, g, RECT, CENTER, &two_node_snapshot());
+    apply_gesture(&mut st, g, RECT, CENTER, &snap);
     assert_eq!(
-        st.preview_position(5),
+        st.preview_position(5, &lei),
         PreviewPos::Above,
         "the click moved it up"
     );

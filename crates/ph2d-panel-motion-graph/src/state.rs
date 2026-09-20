@@ -337,22 +337,43 @@ impl MotionGraphPanelState {
         self.fit_selection = !self.selected.is_empty();
     }
 
-    /// Where node `id`'s preview frame sits — the stored value, or `Below` for a
-    /// node nobody has flipped. The paint reads it to place the moldura and the
-    /// header toggle's indicator; the same one door the flip below writes.
-    pub(crate) fn preview_position(&self, id: u32) -> PreviewPos {
-        self.preview_pos.get(&id).copied().unwrap_or_default()
+    /// Where node `id`'s preview frame sits — **a escolha do artista se ele fez uma, e senão o
+    /// lado que a DISPOSIÇÃO escolhe** ([`crate::geom::retratos_em_cima`], cujo resultado desta
+    /// tela chega aqui em `em_cima`). A pintura lê-a para pousar a moldura e para acender o
+    /// indicador do botão do cabeçalho; é a mesma porta que a virada abaixo escreve.
+    ///
+    /// ⛔⛔ **O `unwrap_or_default` MORREU, e a morte é a wave inteira:** até 2026-09-20 a
+    /// omissão era `Below` para toda gente, e o dono fotografou o cartão do topo de uma coluna
+    /// com a moldura no corredor por baixo dele. Hoje a omissão é uma LEI, e o mapa guarda só as
+    /// viradas que uma MÃO fez.
+    pub(crate) fn preview_position(&self, id: u32, em_cima: &BTreeSet<u32>) -> PreviewPos {
+        self.preview_pos
+            .get(&id)
+            .copied()
+            .unwrap_or(if em_cima.contains(&id) {
+                PreviewPos::Above
+            } else {
+                PreviewPos::Below
+            })
     }
 
     /// Flip node `id`'s preview between Above and Below (the header toggle). Stores
     /// the value explicitly (not "remove to reset"), so a flip is a plain toggle
     /// whatever the current state.
-    pub(crate) fn toggle_preview_position(&mut self, id: u32) {
-        let e = self.preview_pos.entry(id).or_default();
-        *e = match e {
-            PreviewPos::Below => PreviewPos::Above,
-            PreviewPos::Above => PreviewPos::Below,
-        };
+    ///
+    /// ⚠️⚠️ **Ele vira a partir do que está NA TELA e não a partir de `Below`** — com a omissão
+    /// a ser uma lei, um `entry().or_default()` faria o PRIMEIRO clique sobre um cartão que a
+    /// lei já pôs em cima ser um **no-op visual**: ele escreveria `Below`, viraria para `Above`,
+    /// e nada se mexia. *Um botão cujo primeiro toque não faz nada lê-se como um botão morto.*
+    pub(crate) fn toggle_preview_position(&mut self, id: u32, em_cima: &BTreeSet<u32>) {
+        let visto = self.preview_position(id, em_cima);
+        self.preview_pos.insert(
+            id,
+            match visto {
+                PreviewPos::Below => PreviewPos::Above,
+                PreviewPos::Above => PreviewPos::Below,
+            },
+        );
     }
 }
 
@@ -360,26 +381,56 @@ impl MotionGraphPanelState {
 mod tests {
     use super::*;
 
-    /// **The preview default is Below, and the header toggle flips it** (doc 86).
-    /// A node nobody touched reads `Below`; toggling walks Below→Above→Below, and
-    /// two nodes are independent. FALSIFIED by a toggle that always sets the same
-    /// value (the preview would never come back down), or a default of `Above`.
+    /// **A omissão é o que a DISPOSIÇÃO escolhe, e o botão do cabeçalho vira a partir dela**
+    /// (doc 86 + o report do dono de 2026-09-20).
+    ///
+    /// ⛔ **A premissa antiga deste gate MORREU e está aqui para se ver:** ele dizia *«the
+    /// preview default is Below»* e media `preview_position(7) == Below` sobre um mapa vazio.
+    /// Hoje um mapa vazio não responde `Below` — responde o que a lei diz sobre AQUELA tela —, e
+    /// é isso que as duas metades abaixo separam: um cartão que a lei deixa em baixo e um que
+    /// ela põe em cima.
+    ///
+    /// ⚠️⚠️ **A segunda metade é a que vale, e ela nasceu de um defeito:** com um
+    /// `entry().or_default()` o PRIMEIRO clique sobre um cartão que a lei já pôs em cima
+    /// escrevia `Below` e virava para `Above` — *nada se mexia na tela*, e o artista lia um
+    /// botão morto. FALSIFICADO por uma virada que parta de `Below` em vez de partir do que está
+    /// na tela.
     #[test]
     fn toggling_flips_the_preview_position() {
         let mut st = MotionGraphPanelState::default();
+        let ninguem = BTreeSet::new();
+        let sete_em_cima = BTreeSet::from([7]);
+
         assert_eq!(
-            st.preview_position(7),
+            st.preview_position(7, &ninguem),
             PreviewPos::Below,
-            "default is Below"
+            "sem virada e sem lei, em baixo"
         );
-        st.toggle_preview_position(7);
-        assert_eq!(st.preview_position(7), PreviewPos::Above);
-        st.toggle_preview_position(7);
-        assert_eq!(st.preview_position(7), PreviewPos::Below, "and back down");
+        st.toggle_preview_position(7, &ninguem);
+        assert_eq!(st.preview_position(7, &ninguem), PreviewPos::Above);
+        st.toggle_preview_position(7, &ninguem);
         assert_eq!(
-            st.preview_position(9),
+            st.preview_position(7, &ninguem),
+            PreviewPos::Below,
+            "and back down"
+        );
+        assert_eq!(
+            st.preview_position(9, &ninguem),
             PreviewPos::Below,
             "an untouched node is unaffected"
+        );
+
+        let mut st = MotionGraphPanelState::default();
+        assert_eq!(
+            st.preview_position(7, &sete_em_cima),
+            PreviewPos::Above,
+            "sem virada, a omissão é a LEI"
+        );
+        st.toggle_preview_position(7, &sete_em_cima);
+        assert_eq!(
+            st.preview_position(7, &sete_em_cima),
+            PreviewPos::Below,
+            "o PRIMEIRO clique tem de mover a moldura, e a lei perde para a mão"
         );
     }
 

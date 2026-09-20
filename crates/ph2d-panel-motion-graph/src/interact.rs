@@ -256,7 +256,12 @@ fn apply_gesture(
         }
         // The header preview toggle (doc 86): a Click moves the stamp above↔below — panel-local view state, not a doc edit (so no `GraphIntent`, no undo step).
         GraphHitKind::PreviewToggle { node } if g.phase == GesturePhase::Click => {
-            state.toggle_preview_position(node as u32)
+            // ⚠️ A lei entra aqui pela mesma porta por que entra na pintura: virar um retrato é
+            // virar o que está NA TELA, e o que está na tela pode ser a escolha da disposição.
+            state.toggle_preview_position(
+                node as u32,
+                &crate::geom::retratos_em_cima_por_id(&snap.nodes),
+            )
         }
         // The ⚠ inert badge (ADR-0155): a Click ASKS the shell to fix this node — the panel only
         // knows it is flagged (it has the snapshot, not the graph). The shell fixes it (an

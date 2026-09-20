@@ -13,6 +13,7 @@
 
 use super::build;
 use crate::motion_state::MotionState;
+use ph2d_motion_doc::layout::Medida as _;
 use ph2d_nodegraph::graph::NodeId;
 
 // ---------------------------------------------------------------------------
@@ -123,4 +124,107 @@ fn a_forma_e_arrumada_ao_lado_do_duplicador_e_acima_do_fio() {
             pm.y
         );
     }
+}
+
+/// ⭐⭐⭐ **O RETRATO DE QUEM ESTÁ NO TOPO DE UMA COLUNA SAI POR CIMA** — o report do dono de
+/// 2026-09-20 (*«neste caso o preview deveria ser colocado para cima»*), medido na cena que ele
+/// fotografou e pela porta do PRODUTO.
+///
+/// Em cada um dos seis painéis a `source.shape` alimenta a porta `0` do duplicador dela e tem o
+/// `motion.move` do painel logo por baixo, na MESMA coluna: ali o lado de baixo é o corredor
+/// entre duas fileiras — que é o que a foto mostra — e o de cima é espaço aberto.
+///
+/// ⚠️⚠️ **A segunda metade é o CONTROLO e vale metade do gate:** o cartão de baixo **mantém** a
+/// moldura em baixo. Sem ela, uma lei que respondesse *«em cima»* a toda gente passava a primeira
+/// asserção — e punha a moldura do `motion.move` exactamente no corredor de que ela tirou a da
+/// forma. FALSIFICADO por devolver `Retrato em baixo` a toda gente (a 1.ª cai) ou a toda gente
+/// (a 2.ª cai).
+#[test]
+fn o_retrato_de_quem_tem_alguem_por_baixo_sai_por_cima() {
+    let mut m = MotionState::new();
+    let _ = build(&mut m.doc, &m.registry).expect("a cena monta");
+    crate::motion_arrumar::arrumar(&mut m);
+    let medidas = crate::motion_bridge::medida::medir(&m);
+    let topo = |n: NodeId| medidas.extensao(ph2d_motion_doc::layout::Carta::No(n)).top;
+
+    let dups: Vec<NodeId> = m
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .filter(|n| n.type_name == "motion.duplicator")
+        .map(|n| n.id)
+        .collect();
+    assert_eq!(dups.len(), 6, "os seis panos da cena");
+
+    for dup in dups {
+        let de = |porta: u16| -> NodeId {
+            m.doc
+                .graph
+                .edges()
+                .iter()
+                .find(|e| e.to == (dup, porta))
+                .unwrap_or_else(|| panic!("o duplicador {dup:?} tem a porta {porta} ligada"))
+                .from
+                .0
+        };
+        let (forma, fio) = (de(0), de(1));
+        let (pf, pm) = (
+            m.doc.graph.pos(forma).expect("forma"),
+            m.doc.graph.pos(fio).expect("fio"),
+        );
+        assert!(
+            (pf.x - pm.x).abs() < 0.5 && pf.y < pm.y,
+            "a premissa deste gate: a forma esta na coluna do fio e por cima dele"
+        );
+        assert!(
+            topo(forma) < 0.0,
+            "a forma tem alguem por baixo na coluna dela, logo o retrato sobe (topo {})",
+            topo(forma)
+        );
+        assert!(
+            topo(fio).abs() < f32::EPSILON,
+            "o cartao de baixo nao tem para onde subir e mantem a moldura em baixo (topo {})",
+            topo(fio)
+        );
+    }
+}
+
+/// ⭐⭐ **ARRUMAR OUTRA VEZ NÃO MEXE UM BIT** — a lei do lado do retrato lê onde os cartões estão
+/// e move-os, logo ela realimenta-se; [`crate::motion_bridge::medida::arrumar`] pára quando a
+/// disposição que saiu pede exactamente os lados com que foi construída.
+///
+/// ⛔ **Este gate é o que impede o tecto de passes de virar um palpite:** ele afirma que o ponto
+/// fixo é ALCANÇADO nesta cena, e não que ele existe sempre. FALSIFICADO por baixar o tecto a `2`
+/// (a cena do dono precisa de `3`) — que foi exactamente a redacção que esta wave teve primeiro.
+#[test]
+fn arrumar_uma_segunda_vez_nao_mexe_um_bit() {
+    let mut m = MotionState::new();
+    let _ = build(&mut m.doc, &m.registry).expect("a cena monta");
+    crate::motion_arrumar::arrumar(&mut m);
+
+    let antes: Vec<(u32, f32, f32)> = m
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .map(|n| {
+            let p = m.doc.graph.pos(n.id).expect("pos");
+            (n.id.0, p.x, p.y)
+        })
+        .collect();
+    assert!(antes.len() > 30, "a cena tem cartoes que cheguem");
+
+    crate::motion_arrumar::arrumar(&mut m);
+    let depois: Vec<(u32, f32, f32)> = m
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .map(|n| {
+            let p = m.doc.graph.pos(n.id).expect("pos");
+            (n.id.0, p.x, p.y)
+        })
+        .collect();
+    assert_eq!(antes, depois, "a arrumacao chegou a um ponto fixo");
 }

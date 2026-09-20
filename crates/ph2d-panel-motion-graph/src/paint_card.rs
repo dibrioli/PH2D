@@ -11,6 +11,7 @@
 //! nunca a lista de tolerância.
 
 use super::*;
+use crate::state::PreviewPos;
 
 /// Draw one node card; returns its screen-space body rect (for hit registration).
 pub(super) fn draw_card(
@@ -20,6 +21,10 @@ pub(super) fn draw_card(
     view: &View,
     theme: Theme,
     veiled: bool,
+    // ⚠️ **O lado do retrato chega DECIDIDO** e não é perguntado aqui: a lei
+    // (`crate::geom::retratos_em_cima`) responde sobre a TELA inteira e este pintor vê um cartão
+    // de cada vez — perguntá-la por cartão seria `O(cartões²)` por CARTÃO.
+    lado_do_retrato: PreviewPos,
 ) -> Rect {
     // ⚠️ **O rect vem da GEOMETRIA** (`card_rect`), e não de `CARD_W`: desde 2026-09-20 uma
     // cápsula é tão larga quanto o nome dela, e o pintor tem de desenhar exactamente o rect que o
@@ -161,7 +166,7 @@ pub(super) fn draw_card(
         );
     }
 
-    let pos = state.preview_position(n.id);
+    let pos = lado_do_retrato;
     draw_preview(ctx, n, view, theme, pos);
     draw_preview_toggle(ctx, n, view, theme, pos);
 

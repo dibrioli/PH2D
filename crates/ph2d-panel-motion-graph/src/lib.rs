@@ -57,7 +57,9 @@ pub use backdrop::{MIN_H as BACKDROP_MIN_H, MIN_W as BACKDROP_MIN_W};
 /// ⭐ **A única porta pela qual a arrumação automática sabe quanto um cartão MEDE** — ver
 /// [`geom::extensao_desenhada`]. Ela vive aqui porque é aqui que o cartão é desenhado: quem
 /// arruma está duas camadas acima e não tem medidor de texto nenhum.
-pub use geom::{extensao_de, extensao_desenhada};
+pub use geom::{
+    CaixaDoCartao, caixa_de, caixa_desenhada, extensao_de, extensao_desenhada, retratos_em_cima,
+};
 /// ⭐ A porta que o censo do catálogo pergunta — ver `paint_capsula::nome_cabe_na_capsula`.
 pub use paint::paint_capsula::nome_cabe_na_capsula;
 pub use snapshot::{

@@ -689,7 +689,27 @@ ela armava a colagem por conta própria e **ignorava o valor de fábrica**. No d
 ele mudou, a sonda continuou a medir o programa antigo e imprimiu a tabela de antes.
 *Uma porta de bissecção que não cai no default mede outro programa que o produto.*
 
-### §11.5 — ⏳ O meio-termo, que fica ABERTO com o mecanismo
+### §11.5 — ⭐⭐⭐ O VÃO que a constante promete está LÁ, e agora está medido
+
+[`VAO_EM_TEXELS`] diz `8` a `2048²` desde a W1, e **ninguém tinha verificado que eles lá
+estão**: o empacotador garante uma célula de `256`, e que isso dê `8` texels era
+aritmética que ninguém correu sobre um atlas de verdade.
+
+| peça | entrada | vão mínimo medido |
+|---|---|---|
+| `sculpt_antes` | CRUA / F1 | `8` / `8` texels |
+| `_base_sculpt` | CRUA / F1 | `8` / `8` |
+| `esfera:24` | CRUA / F1 | `9` / `8` |
+
+⭐ **Exacto e justo** — `8`, não `16`: é a confirmação, do outro lado, de que a correcção
+da §10.2 (pagar a folga uma vez) aterrou.
+
+⚠️ **A régua é a rasterização CONSERVADORA do próprio empacotador** — nenhuma segunda
+cópia da geometria — e a travessia é de **OITO vizinhos**, não quatro: a distância de
+Chebyshev fica `≤` à euclidiana, logo o número é um limite **inferior** do vão verdadeiro.
+*Uma régua que sobrestima um vão aprova um atlas que sangra.*
+
+### §11.6 — ⏳ O meio-termo, que fica ABERTO com o mecanismo
 
 Nem colar tudo nem nada: **colar duas cartas só quando a união delas continua injectiva**.
 ⭐ A maquinaria existe — é a fusão do [`corte`](../../crates/ph2d-uv-atlas/src/corte.rs),

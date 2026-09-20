@@ -336,3 +336,101 @@ fn sem_colagem_o_relatorio_nao_inventa_uma_holonomia() {
         com.relatorio.holonomia_max
     );
 }
+
+/// ⭐⭐⭐ **O VÃO que a constante promete está LÁ, medido em células.**
+///
+/// [`super::VAO_EM_TEXELS`] diz `8` a `2048²`. Até esta wave ninguém o tinha verificado
+/// no atlas: o empacotador garante uma célula de `256`, e que isso dê `8` texels era
+/// aritmética que ninguém correu. *Uma constante que promete um número e um atlas que
+/// ninguém mediu são duas coisas diferentes* — nas peças do dono ele mede `8` em seis das
+/// sete corridas e `9` na outra.
+///
+/// ⚠️ **A régua é a rasterização CONSERVADORA do próprio empacotador** (nenhuma segunda
+/// cópia da geometria), e a travessia é de **oito vizinhos**: a distância de Chebyshev
+/// fica `≤` à euclidiana, logo o número é um limite INFERIOR do vão verdadeiro. *Uma
+/// régua que sobrestima um vão aprova um atlas que sangra.*
+#[test]
+fn o_vao_entre_duas_ilhas_e_o_que_a_constante_promete() {
+    const N: usize = 512;
+    let (mesh, cut, map, jumps) = super::lib_tests::fita_com(0, false, true);
+    let a = super::build(&mesh, &cut, &map, &jumps);
+    assert!(a.relatorio.ilhas >= 2, "a fixtura tem de ter duas ilhas");
+
+    let mut dono = vec![u32::MAX; N * N];
+    for t in super::topo::triangulos(&mesh) {
+        let ilha = a.ilha[t[0] as usize];
+        if ilha == u32::MAX {
+            continue;
+        }
+        let mut m = Mascara {
+            larg: N,
+            alt: N,
+            celulas: vec![false; N * N],
+        };
+        marca_triangulo(
+            &mut m,
+            [
+                a.uv[t[0] as usize],
+                a.uv[t[1] as usize],
+                a.uv[t[2] as usize],
+            ],
+            1.0 / N as f32,
+        );
+        for (i, &c) in m.celulas.iter().enumerate() {
+            if c && dono[i] == u32::MAX {
+                dono[i] = ilha;
+            }
+        }
+    }
+    let pintadas = dono.iter().filter(|&&d| d != u32::MAX).count();
+    assert!(
+        pintadas > N * N / 50,
+        "piso de populacao: {pintadas} celulas"
+    );
+
+    // Travessia em largura a partir de TODAS as células pintadas, oito vizinhos.
+    let mut dist = vec![u16::MAX; N * N];
+    let mut fila: std::collections::VecDeque<usize> = std::collections::VecDeque::new();
+    for (i, &d) in dono.iter().enumerate() {
+        if d != u32::MAX {
+            dist[i] = 0;
+            fila.push_back(i);
+        }
+    }
+    let mut menor = usize::MAX;
+    while let Some(c) = fila.pop_front() {
+        if usize::from(dist[c]) > 32 {
+            break;
+        }
+        let (cx, cy) = (c % N, c / N);
+        for dy in -1i64..=1 {
+            for dx in -1i64..=1 {
+                let (nx, ny) = (cx as i64 + dx, cy as i64 + dy);
+                if nx < 0 || ny < 0 || nx >= N as i64 || ny >= N as i64 {
+                    continue;
+                }
+                let n = ny as usize * N + nx as usize;
+                if dono[n] == u32::MAX {
+                    dono[n] = dono[c];
+                    dist[n] = dist[c] + 1;
+                    fila.push_back(n);
+                } else if dono[n] != dono[c] {
+                    menor = menor.min(usize::from(dist[n]) + usize::from(dist[c]));
+                }
+            }
+        }
+    }
+    assert_ne!(
+        menor,
+        usize::MAX,
+        "as duas ilhas tem de se ver uma a' outra"
+    );
+    // O vão pedido, nesta resolução: `VAO_EM_TEXELS` é contado a `TEXTURA_DE_REFERENCIA`.
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let pedido = (super::VAO_EM_TEXELS * N as f32 / super::TEXTURA_DE_REFERENCIA).floor() as usize;
+    assert!(pedido >= 2, "a fixtura tem de exigir mais de uma celula");
+    assert!(
+        menor >= pedido,
+        "o vao mede {menor} celulas de {N} e a constante pede {pedido}"
+    );
+}

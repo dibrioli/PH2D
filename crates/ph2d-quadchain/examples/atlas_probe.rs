@@ -453,6 +453,19 @@ fn corrida(rotulo: &str, mesh: &Mesh, alvo: f32, marca: &str) {
         );
     }
     println!();
+    // ⭐⭐⭐ **O VÃO que a constante PROMETE, medido em texels.**
+    //
+    // ⛔ `VAO_EM_TEXELS` diz `8` a `2048²`, e até aqui ninguém tinha verificado que eles
+    // lá estão: o empacotador garante UMA célula de `256`, e que isso dê `8` texels é
+    // aritmética que ninguém correu sobre o atlas de verdade. *Uma constante que promete
+    // um número e um atlas que ninguém mediu são duas coisas diferentes.*
+    if let Some((vao, a, b)) = vao_entre_ilhas(&atl, mesh, 2048) {
+        println!(
+            "   vao      o menor vao entre duas ilhas mede {vao} texels de 2048^2 \
+             (a constante pede {:.0}) — entre a {a} e a {b}",
+            ph2d_uv_atlas::VAO_EM_TEXELS
+        );
+    }
     // ⭐ O PIOR par que sobra, com a área e a classe. ⚠️ Sem esta linha um `1` na coluna
     // de uma classe lê-se igual a um `1000`: *uma contagem sem magnitude não diz se o que
     // sobrou cabe num texel ou numa peça*.
@@ -716,4 +729,74 @@ fn fronteira_das_pecas(atlas: &ph2d_uv_atlas::Atlas, mesh: &Mesh) -> f64 {
         soma += d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
     }
     soma
+}
+
+/// ⭐⭐⭐ **O menor vão entre duas ilhas, em texels.**
+///
+/// Uma travessia em largura a partir de TODOS os texels pintados, de oito vizinhos: onde
+/// duas frentes de ilhas diferentes se encontram, a soma das distâncias delas é o vão.
+///
+/// ⚠️ **Oito vizinhos e não quatro, e isso é o que a torna honesta para um gate:** a
+/// distância de Chebyshev é `≤` à euclidiana, logo o número que sai daqui é um limite
+/// INFERIOR do vão verdadeiro. *Com quatro vizinhos ela seria Manhattan, que está acima —
+/// e uma régua que sobrestima um vão aprova um atlas que sangra.*
+fn vao_entre_ilhas(
+    atlas: &ph2d_uv_atlas::Atlas,
+    mesh: &Mesh,
+    lado: usize,
+) -> Option<(usize, u32, u32)> {
+    let mut dono = vec![u32::MAX; lado * lado];
+    for t in ph2d_uv_atlas::topo::triangulos(mesh) {
+        let ilha = atlas.ilha[t[0] as usize];
+        if ilha == u32::MAX {
+            continue;
+        }
+        let z = [
+            atlas.uv[t[0] as usize],
+            atlas.uv[t[1] as usize],
+            atlas.uv[t[2] as usize],
+        ];
+        varre(lado, z, &mut |i| {
+            if dono[i] == u32::MAX {
+                dono[i] = ilha;
+            }
+        });
+    }
+    let mut dist = vec![u16::MAX; lado * lado];
+    let mut fila: std::collections::VecDeque<usize> = std::collections::VecDeque::new();
+    for (i, &d) in dono.iter().enumerate() {
+        if d != u32::MAX {
+            dist[i] = 0;
+            fila.push_back(i);
+        }
+    }
+    let mut melhor: Option<(usize, u32, u32)> = None;
+    while let Some(c) = fila.pop_front() {
+        let (cx, cy) = (c % lado, c / lado);
+        // ⭐ O tecto: um vão maior que o dobro do pedido não interessa a ninguém, e sem
+        // ele a travessia varre o quadrado inteiro.
+        if usize::from(dist[c]) > 2 * (ph2d_uv_atlas::VAO_EM_TEXELS as usize) {
+            break;
+        }
+        for dy in -1i64..=1 {
+            for dx in -1i64..=1 {
+                let (nx, ny) = (cx as i64 + dx, cy as i64 + dy);
+                if nx < 0 || ny < 0 || nx >= lado as i64 || ny >= lado as i64 {
+                    continue;
+                }
+                let n = ny as usize * lado + nx as usize;
+                if dono[n] == u32::MAX {
+                    dono[n] = dono[c];
+                    dist[n] = dist[c] + 1;
+                    fila.push_back(n);
+                } else if dono[n] != dono[c] {
+                    let sep = usize::from(dist[n]) + usize::from(dist[c]);
+                    if melhor.is_none_or(|(m, _, _)| sep < m) {
+                        melhor = Some((sep, dono[c].min(dono[n]), dono[c].max(dono[n])));
+                    }
+                }
+            }
+        }
+    }
+    melhor
 }

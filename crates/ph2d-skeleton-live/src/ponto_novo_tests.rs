@@ -70,6 +70,24 @@ fn palco() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
     (sim, cena, mapa, id, [raiz, ponta])
 }
 
+/// ⭐ **O MESMO palco como o PRODUTO o prende** — com a subdivisão do bind.
+///
+/// ⚠️ Ele existe porque duas leis desta suíte deixaram de valer no mundo grosso e passaram a valer
+/// aqui: *a fidelidade de uma forma presa é propriedade da GEOMETRIA, e a subdivisão é quem a dá.*
+fn palco_do_produto() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
+    let mut sim = SimWorld::default();
+    let mut cena = VecScene::new();
+    let mut mapa = VecEntityMap::new();
+    let id = cena.push_path(cook(ShapeKind::Rectangle, [0.0, 0.0], [40.0, 10.0], &[]));
+    ph2d_vec_entities::entities::sync(&mut sim, &mut cena, &mut mapa);
+    let raiz = osso(&mut sim, "Arm", [0.0, 5.0], 20.0, None);
+    let ponta = osso(&mut sim, "Forearm", [20.0, 0.0], 20.0, Some(raiz));
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let n = crate::skin_live::bind(&mut sim, &cena, &mapa, &[id], Some(raiz));
+    assert_eq!(n, 1, "o palco do produto tem de prender");
+    (sim, cena, mapa, id, [raiz, ponta])
+}
+
 /// O mesmo palco, mas com a aresta de baixo **DESENHADA** com `pedacos` pedaços antes do bind — o
 /// que um artista faz quando quer controlo ali.
 ///
@@ -555,7 +573,7 @@ fn a_segunda_passagem_e_exigida_por_uma_mancha() {
 /// de existir*, e é por isso que a decisão sai da mesma porta que o `recook` lê.
 #[test]
 fn com_a_lei_da_curva_o_ponto_novo_nao_move_nada() {
-    let (mut sim, mut cena, mapa, id, [_, ponta]) = palco();
+    let (mut sim, mut cena, mapa, id, [_, ponta]) = palco_do_produto();
     sim.world_mut()
         .get_mut::<Transform>(ponta)
         .expect("Transform")
@@ -580,14 +598,24 @@ fn com_a_lei_da_curva_o_ponto_novo_nao_move_nada() {
         "[ponto-novo] com a LEI DA CURVA: salto = {:.6} % da peca · a fonte tem {n} nos",
         salto / diagonal * 100.0
     );
+    // ⛔⛔ **A contagem já não é `5`, e a premissa morreu duas vezes no mesmo dia:** a subdivisão do
+    // bind põe os nós que os ossos pedem, e a fixtura passou a ser a do PRODUTO. O que se afirma é
+    // o que importa — *a fonte ganhou UM ponto* —, e não um literal.
+    let sem_o_ponto = {
+        let (s2, _c, m2, i2, _) = palco_do_produto();
+        fonte(&s2, &m2, i2).path.verts_all().count()
+    };
     assert_eq!(
-        n, 5,
+        n,
+        sem_o_ponto + 1,
         "a fonte NAO ganhou o ponto: o zero abaixo seria vacuo"
     );
     assert!(
         salto / diagonal < 1e-4,
         "com a lei da curva acrescentar um ponto moveu o desenho {:.4} % da peca — ou a compensacao \
-         da F28 voltou a correr (ela ESTRAGA aqui), ou a lei da curva nao esta' ligada",
+         da F28 voltou a correr (ela ESTRAGA aqui), ou o bind deixou de subdividir. ⚠️ Na forma \
+         GROSSA isto vale 1,40 %: a correccao das alcas nao segue uma feicao mais fina do que um \
+         segmento, e a cura daquele mundo e' a subdivisao",
         salto / diagonal * 100.0
     );
 }

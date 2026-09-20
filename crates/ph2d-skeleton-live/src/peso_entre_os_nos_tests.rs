@@ -98,58 +98,60 @@ fn pintar_no_meio_da_barra_e_aceite_e_a_mancha_pousa_entre_os_nos() {
 
 /// ⭐⭐⭐ **E A ARTE MEXE-SE** — o elo que fecha a corrente, pelo recook do produto.
 ///
-/// ⚠️ **O CONTROLO é o primeiro arrasto:** a mesma mão, o mesmo raio, sobre a barra **em repouso**,
-/// não pode mover nada — *uma régua que só visse o segundo número não distinguiria a lei do ruído
-/// de um recook.*
+/// ⛔⛔⛔ **Ele mede a barra do PRODUTO, e a troca é de 2026-09-19 (2.ª ordem do dono).** A
+/// redacção anterior media a barra GROSSA e o controlo era a lei dos pontos de controlo a ler
+/// `0,000000` — *a F30 em pessoa*. Duas coisas mataram essa premissa no mesmo dia:
+///
+/// 1. **A subdivisão do bind** — na barra do produto o ponto do contorno **mais longe** de um nó
+///    está a `0,3378`, contra um pincel de fábrica de `0,40`. ⇒ *«entre os nós» deixou de existir
+///    como sítio onde o dedo pode cair*, e é por isso que os dois lados passam a ler o mesmo
+///    número.
+/// 2. **A correcção das alças** substituiu o refit ([`ph2d_vec_skin::curva`]), e ela não segue uma
+///    feição mais fina do que um segmento — numa barra de oito nós uma mancha de raio `0,4` no meio
+///    de uma aresta de `6` move **zero**. ⚠️ *Ali nenhuma das duas leis chega perto da verdade*
+///    (medido: `0,71` e `0,85` de erro sobre uma barra de espessura `1`), e a cura daquele mundo é
+///    a subdivisão, não a lei.
+///
+/// ⇒ o que se afirma é o que o artista tem: **na forma que o `Bind` produz, arrastar o pincel move
+/// a arte**. O sujeito da F31 (a mancha a pousar entre dois nós) fica nos irmãos, que pedem a barra
+/// grossa pelo nome.
 #[test]
 fn um_arrasto_pelo_meio_da_barra_move_a_arte() {
-    let (mut sim, mut scene, map, id, ossos) = barra_da_cena_com(GROSSA);
+    let (mut sim, mut scene, map, id, ossos) = barra_da_cena_com(!GROSSA);
     let alvo = forma(&map, id);
     let raio = raio_de_fabrica();
 
-    // ⚠️ **A barra DOBRADA PELA PONTA, e o osso pintado é o da PONTA** — sem pose não há
-    // deformação que o peso possa repartir, e sem ser o osso que se move o gesto pede mais peso a
-    // quem já manda ali. *Uma fixtura que pinta o osso dominante mede o clamp, não a lei.*
     sim.world_mut()
         .get_mut::<Transform>(ossos[2])
         .expect("o osso tem pose")
         .rotation += 0.8;
     crate::skin_live::recook(&sim, &mut scene);
     let antes = arte(&scene);
-    // ⚠️ **A fotografia da lei de ontem tem de ser tirada com a lei de ONTEM** — a 1.ª redacção
-    // comparava «a curva SEM manchas» com «os pontos de controlo COM manchas» e lia `1,16`, que é
-    // a diferença entre as DUAS LEIS numa barra dobrada e não o efeito do gesto. *Um A/B com o
-    // «antes» de um lado e o «depois» do outro mede a troca de lei.*
-    let mut ontem = scene.clone();
-    crate::skin_live::recook_com(&sim, &mut ontem, false);
-    let antes_ontem = arte(&ontem);
 
-    // ⚠️⚠️ **O arrasto segue a arte POSADA, e não uma coordenada de repouso** — com a barra
-    // dobrada o meio dela já não está onde estava, e a 1.ª redacção deste gate pintava no vazio a
-    // partir da 3.ª pincelada. *Um arrasto escrito em números fixos mede outro programa assim que a
-    // peça se mexe.*
+    // ⭐ **O CONTROLO que explica a troca:** na barra do produto não há ponto do contorno fora do
+    // alcance do pincel. *Sem esta linha, a mudança de fixtura leria-se como um gate afrouxado.*
     let contorno = crate::peso_a_mao::contorno_da_arte(&sim, alvo, PPM);
     let nos: Vec<[f64; 2]> = pontos_de_peso(&sim, alvo, ossos[2], PPM)
         .iter()
         .map(|p| p.mundo)
         .collect();
-    let longe_dos_nos: Vec<[f64; 2]> = contorno
+    let mais_longe = contorno
         .iter()
-        .copied()
-        .filter(|q| {
+        .map(|q| {
             nos.iter()
                 .map(|p| (p[0] - q[0]).hypot(p[1] - q[1]))
                 .fold(f64::INFINITY, f64::min)
-                > raio * 4.0
         })
-        .collect();
+        .fold(0.0_f64, f64::max);
     assert!(
-        longe_dos_nos.len() >= 6,
-        "so' {} amostras do contorno estao longe de todo no' — a fixtura deixou de ter «entre os \
-         nos» onde arrastar",
-        longe_dos_nos.len()
+        mais_longe < raio,
+        "o ponto do contorno mais longe de um no' esta' a {mais_longe} com um pincel de {raio} — a \
+         subdivisao do bind deixou de cobrir a forma, e «entre os nos» voltou a existir"
     );
-    for (i, q) in longe_dos_nos.iter().take(6).enumerate() {
+
+    // O arrasto do dono: seis pinceladas ao longo do contorno.
+    let passo = (contorno.len() / 8).max(1);
+    for (i, q) in contorno.iter().step_by(passo).take(6).enumerate() {
         let r = pinta(&mut sim, alvo, ossos[2], PPM, *q, raio, 0.15);
         assert!(
             matches!(r, Pincelada::Pintada { .. }),
@@ -158,23 +160,10 @@ fn um_arrasto_pelo_meio_da_barra_move_a_arte() {
     }
     crate::skin_live::recook(&sim, &mut scene);
     let moveu = desvio(&antes, &arte(&scene));
-
-    // ⭐⭐⭐ **O CONTROLO É A LEI DE ONTEM, sobre AS MESMAS MANCHAS** — a lei dos pontos de
-    // controlo não sente uma mancha que não alcança nó nenhum. *É a metade que prova que quem move
-    // a arte é a lei da curva (F30) e não o recook a mexer-se sozinho.*
-    crate::skin_live::recook_com(&sim, &mut ontem, false);
-    let sem_curva = desvio(&antes_ontem, &arte(&ontem));
-
-    eprintln!(
-        "[peso-entre-os-nos] o arrasto pelo meio da barra moveu a arte: {moveu:.6}          (pela lei dos pontos de controlo: {sem_curva:.6})"
-    );
+    eprintln!("[peso-entre-os-nos] o arrasto pela barra do produto moveu a arte: {moveu:.6}");
     assert!(
         moveu > 0.1,
         "o arrasto moveu a arte {moveu} — o gesto chega a` lei e a lei nao chega ao desenho"
-    );
-    assert!(
-        sem_curva < moveu * 0.25,
-        "a lei dos pontos de controlo moveu {sem_curva} contra {moveu} da curva — ou a fixtura          deixou de pintar ENTRE os nos, ou alguem curou isto noutro sitio e este controlo deixou          de discriminar as duas leis"
     );
 }
 

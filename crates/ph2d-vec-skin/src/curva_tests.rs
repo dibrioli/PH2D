@@ -118,8 +118,8 @@ fn pintar_peso_entre_dois_nos_move_a_arte() {
 
     // (b) PELA CURVA.
     let (mut sem, mut com) = (forma(), forma());
-    aplica_pela_curva(&k, &mut sem, &t, &[], TOLERANCIA);
-    aplica_pela_curva(&k, &mut com, &t, &[mancha], TOLERANCIA);
+    aplica_pela_curva(&k, &mut sem, &t, &[]);
+    aplica_pela_curva(&k, &mut com, &t, &[mancha]);
     let curva = desvio(&polilinha(&sem), &polilinha(&com));
 
     eprintln!("[curva] a mancha entre dois nos move: hoje={hoje:.6} · pela curva={curva:.6}");
@@ -146,7 +146,7 @@ fn os_nos_nao_se_mexem() {
     let t = tabela();
     let (mut hoje, mut curva) = (forma(), forma());
     crate::aplica_corrigido(&k, &mut hoje, &t, &[]);
-    aplica_pela_curva(&k, &mut curva, &t, &[], TOLERANCIA);
+    aplica_pela_curva(&k, &mut curva, &t, &[]);
 
     let ancoras: Vec<[f64; 2]> = hoje.verts_all().map(|v| v.anchor).collect();
     let novas: Vec<[f64; 2]> = curva.verts_all().map(|v| v.anchor).collect();
@@ -186,7 +186,7 @@ fn os_nos_nao_se_mexem() {
 fn em_repouso_o_desenho_nao_se_mexe() {
     let k = pele(0.0);
     let mut out = forma();
-    aplica_pela_curva(&k, &mut out, &tabela(), &[], TOLERANCIA);
+    aplica_pela_curva(&k, &mut out, &tabela(), &[]);
     let d = desvio(&polilinha(&forma()), &polilinha(&out));
     eprintln!("[curva] em repouso o desvio e' {d:.12}");
     assert!(
@@ -209,12 +209,12 @@ fn o_preco_da_curva_esta_medido() {
     for _ in 0..5 {
         let mut out = forma();
         let t0 = std::time::Instant::now();
-        aplica_pela_curva(&k, &mut out, &t, &[], TOLERANCIA);
+        aplica_pela_curva(&k, &mut out, &t, &[]);
         relogio = relogio.min(t0.elapsed());
         nos = out.verts_all().count();
     }
     eprintln!(
-        "[curva] preco: {:.3} ms por forma · {} nos de {} (tolerancia {TOLERANCIA})",
+        "[curva] preco: {:.3} ms por forma · {} nos de {} ({AMOSTRAS} amostras por segmento)",
         relogio.as_secs_f64() * 1e3,
         nos,
         forma().verts_all().count()
@@ -246,7 +246,7 @@ fn onde_o_mapa_e_afim_a_arte_move_se_e_o_desenho_e_identico() {
     let um = Skin::new(vec![osso(0.0, 40.0, 0.5, 0)]).expect("1 osso");
     let (mut hoje, mut curva) = (forma(), forma());
     crate::aplica_corrigido(&um, &mut hoje, &[], &[]);
-    aplica_pela_curva(&um, &mut curva, &[], &[], TOLERANCIA);
+    aplica_pela_curva(&um, &mut curva, &[], &[]);
 
     // ⭐ O CONTROLO: a pose TEM de mover a arte, senão as duas metades abaixo são vazias.
     let andou = desvio(&polilinha(&forma()), &polilinha(&hoje));
@@ -279,5 +279,175 @@ fn onde_o_mapa_e_afim_a_arte_move_se_e_o_desenho_e_identico() {
         pior < 1e-12,
         "sob um mapa AFIM as duas leis divergiram {pior} — ou a lei de hoje deixou de correr, ou o \
          refit correu onde ele nao muda a curva e so' muda os pontos de controlo"
+    );
+}
+
+/// ⭐⭐⭐ **A DEFORMAÇÃO É CONTÍNUA — nenhum ângulo faz o desenho saltar.**
+///
+/// ⛔⛔⛔ **Este gate é o report do dono de 2026-09-19, com duas fotos:** *«em determinado momento
+/// da deformação as alças sofrem uma mudança e o path muda repentinamente, como se o handle
+/// mudasse de tipo»*.
+///
+/// A lei anterior perguntava *«o desvio passa da tolerância?»* e, se sim, refazia o contorno inteiro
+/// com a `kurbo::fit_to_bezpath`. **Um booleano sobre uma grandeza contínua é um degrau** — e
+/// medido numa dobra a passos de `0,01 rad` ele não deu um salto: deu **CHATTER**. A decisão
+/// oscilava entre quadros vizinhos a partir de `1,44 rad` (`false → true → false → true` em
+/// `1,44 · 1,45 · 1,56 · 1,79 · 1,96 · 2,06 · 2,10 · 2,12 …`), e cada oscilação valia `0,038`–`0,050`
+/// numa peça de espessura `10` — *uma piscadela por quadro enquanto o artista arrasta*.
+///
+/// ⚠️ **A régua é o passo MÁXIMO contra o passo MEDIANO**, e tem de ser: o desenho move-se a cada
+/// grau, logo um tecto absoluto mediria a velocidade do gesto. *O que um salto é: um passo que não
+/// se parece com os vizinhos.*
+///
+/// ⭐ **O CONTROLO vem primeiro** — a varredura tem de ATRAVESSAR o regime difícil (onde a lei
+/// ingénua se afasta muito), senão um gate verde não diz nada.
+#[test]
+fn a_deformacao_e_continua() {
+    const PASSOS: usize = 250;
+    let mut amostras: Vec<Vec<[f64; 2]>> = Vec::new();
+    let mut pior_ingenuo = 0.0_f64;
+    for k in 0..=PASSOS {
+        let rot = k as f64 * 0.01;
+        let k_pele = pele(rot);
+        let t = tabela();
+        let mut curva = forma();
+        aplica_pela_curva(&k_pele, &mut curva, &t, &[]);
+        let mut ingenua = forma();
+        crate::aplica_corrigido(&k_pele, &mut ingenua, &t, &[]);
+        pior_ingenuo = pior_ingenuo.max(desvio(&polilinha(&curva), &polilinha(&ingenua)));
+        amostras.push(polilinha(&curva));
+    }
+    // ⭐ O CONTROLO: sem passar pelo regime em que as duas leis discordam, este gate é vácuo — era
+    // ali que o interruptor antigo piscava.
+    assert!(
+        pior_ingenuo > 0.05,
+        "a varredura nao atravessa o regime dificil (a lei ingenua afasta-se so' {pior_ingenuo}) — \
+         o gate ficaria verde sobre a lei antiga tambem"
+    );
+
+    let passos: Vec<f64> = amostras
+        .windows(2)
+        .map(|w| desvio(&w[0], &w[1]))
+        .collect();
+    let mut ord = passos.clone();
+    ord.sort_by(f64::total_cmp);
+    let mediana = ord[ord.len() / 2];
+    let (i, pior) = passos
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1.total_cmp(b.1))
+        .expect("ha' passos");
+    eprintln!(
+        "[curva] continuidade: passo mediano {mediana:.6} · pior {pior:.6} em rot {:.2} => {:.2}x",
+        i as f64 * 0.01,
+        pior / mediana
+    );
+    assert!(
+        *pior < mediana * 3.0,
+        "o desenho saltou em rot {:.2}: o passo valeu {pior} contra uma mediana de {mediana} \
+         ({:.1}x) — e' o report do dono de 19/09",
+        i as f64 * 0.01,
+        pior / mediana
+    );
+}
+
+/// ⭐⭐ **EM REPOUSO AS ALÇAS FICAM BYTE-IDÊNTICAS** — a propriedade que a correcção da DIFERENÇA dá
+/// e que o refit não podia dar.
+///
+/// ⛔ Era este o defeito que obrigava o limiar a existir: a 1.ª redacção da lei da curva refitava
+/// sempre, e o `binding_a_shape_moves_nothing` acusava `40/3` em repouso — a elevação `(⅓, ⅔)` de
+/// uma recta, que desenha a MESMA curva com outros pontos de controlo. Aqui o segundo membro do
+/// sistema é **exactamente zero**, logo a correcção é zero.
+#[test]
+fn em_repouso_as_alcas_ficam_byte_identicas() {
+    let k = pele(0.0);
+    let t = tabela();
+    let mut curva = forma();
+    aplica_pela_curva(&k, &mut curva, &t, &[]);
+    let mut ingenua = forma();
+    crate::aplica_corrigido(&k, &mut ingenua, &t, &[]);
+    for (a, b) in curva.verts.iter().zip(&ingenua.verts) {
+        assert_eq!(a.out_handle, b.out_handle, "uma alca de saida mexeu-se");
+        assert_eq!(a.in_handle, b.in_handle, "uma alca de entrada mexeu-se");
+        assert_eq!(a.anchor, b.anchor, "um no' mexeu-se");
+    }
+}
+
+/// ⭐⭐ **O NÚMERO DE AMOSTRAS ESTÁ MEDIDO** — e o que ele compra satura.
+///
+/// A régua é o erro contra a verdade (a mesma lei com `64` amostras), na dobra mais forte da
+/// varredura de continuidade.
+#[test]
+fn o_numero_de_amostras_esta_medido() {
+    let k = pele(1.2);
+    let t = tabela();
+    let mut verdade = forma();
+    aplica_pela_curva(&k, &mut verdade, &t, &[]);
+    // ⚠️ A verdade aqui é a POSIÇÃO do fitter com muitas amostras; como a `AMOSTRAS` é uma const,
+    // o que este gate pode afirmar é o resultado dela **contra a lei ingénua** e contra si mesma.
+    let mut ingenua = forma();
+    crate::aplica_corrigido(&k, &mut ingenua, &t, &[]);
+    let ganho = desvio(&polilinha(&verdade), &polilinha(&ingenua));
+    eprintln!("[curva] com {AMOSTRAS} amostras a correccao vale {ganho:.6}");
+    assert!(
+        ganho > 0.05,
+        "a correccao das alcas deixou de mover a arte ({ganho}) — ou a lei parou, ou a fixtura \
+         deixou de dobrar"
+    );
+}
+
+/// ⭐⭐⭐ **AS ALÇAS CORRIGIDAS SEGUEM A CURVA VERDADEIRA** — a qualidade do ajuste, e não só o facto
+/// de a arte se mexer.
+///
+/// ⛔⛔ **TRÊS mutações sobreviveram antes deste gate existir**: o determinante do sistema `2×2`
+/// trocado por `a₁₁·a₂₂` (que ignora o acoplamento), a solução DESACOPLADA (`b₁/a₁₁`, `b₂/a₂₂`) e a
+/// alça de ENTRADA deixada por corrigir. Nenhuma delas partia os gates que havia — *«a arte
+/// mexe-se»* e *«é contínua»* continuam verdadeiros com um ajuste mau. ⇒ o que faltava era medir
+/// **quanto** a cúbica corrigida se aproxima do mapa verdadeiro.
+///
+/// ⚠️ A régua é o erro MÁXIMO ao longo do segmento, e o controlo é o mesmo erro **antes** da
+/// correcção: sem ele, um segmento quase recto daria um número pequeno por si só.
+#[test]
+fn as_alcas_corrigidas_seguem_a_curva_verdadeira() {
+    let k = pele(1.2);
+    let t = tabela();
+    let fonte = forma();
+    let mut ingenua = forma();
+    crate::aplica_corrigido(&k, &mut ingenua, &t, &[]);
+    let mut curva = forma();
+    aplica_pela_curva(&k, &mut curva, &t, &[]);
+
+    let n = fonte.verts.len();
+    let (mut antes, mut depois) = (0.0_f64, 0.0_f64);
+    for seg in 0..n {
+        let s = super::SegmentoDaPele {
+            src: super::cubica(&fonte.verts, seg, n),
+            pele: &k,
+            ra: super::linha(&t, 2, seg),
+            rb: super::linha(&t, 2, (seg + 1) % n),
+            correcoes: &[],
+        };
+        let (ja, agora) = (
+            super::cubica(&ingenua.verts, seg, n),
+            super::cubica(&curva.verts, seg, n),
+        );
+        for i in 1..64 {
+            let u = f64::from(i) / 64.0;
+            let verdade = s.ponto(u);
+            antes = antes.max((verdade - ja.eval(u)).hypot());
+            depois = depois.max((verdade - agora.eval(u)).hypot());
+        }
+    }
+    eprintln!("[curva] erro contra a verdade: ingenua {antes:.6} · corrigida {depois:.6}");
+    // ⭐ O CONTROLO: a fixtura tem de ter um erro a corrigir.
+    assert!(
+        antes > 1.0,
+        "a lei ingenua ja' segue a verdade ({antes}) — a fixtura nao contem o fenomeno"
+    );
+    assert!(
+        depois < antes / 4.0,
+        "a correccao das alcas melhorou so' {:.2}x ({antes} -> {depois}) — o ajuste nao e' o de \
+         minimos quadrados que o doc descreve",
+        antes / depois
     );
 }

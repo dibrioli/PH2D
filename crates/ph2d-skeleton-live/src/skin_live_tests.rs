@@ -608,9 +608,9 @@ fn a_tabela_de_pesos_do_caminho_chega_ao_desenho() {
     // compara o produto com uma lei que ele já não corre mede a mudança da lei, não o produto.*
     // ⛔ O que este gate afirma continua a ser o mesmo: **a tabela GUARDADA é que chega ao desenho**,
     // e não a derivada.
-    let tol = ph2d_vec_skin::curva::TOLERANCIA;
-    ph2d_vec_skin::curva::aplica_pela_curva(&pele, &mut com, &g.pesos, &[], tol);
-    ph2d_vec_skin::curva::aplica_pela_curva(&pele, &mut sem, &[], &[], tol);
+    
+    ph2d_vec_skin::curva::aplica_pela_curva(&pele, &mut com, &g.pesos, &[]);
+    ph2d_vec_skin::curva::aplica_pela_curva(&pele, &mut sem, &[], &[]);
 
     let segue_guardada = pior_desvio(&desenhado, &com);
     let segue_derivada = pior_desvio(&desenhado, &sem);

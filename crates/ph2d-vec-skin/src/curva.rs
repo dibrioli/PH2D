@@ -43,16 +43,10 @@
 //! `[0,1]`, com `h = 1e-6` ⇒ erro `~1e-12` relativo). *Ela é consistente com o `map` por
 //! construção, que é o que o contrato de facto exige.* A sonda mediu que o fit converge.
 
-use kurbo::{BezPath, CubicBez, CurveFitSample, ParamCurve, ParamCurveFit, Point, Vec2};
+use kurbo::{CubicBez, ParamCurve, Point, Vec2};
 use ph2d_skeleton::{Correccao, Skin};
 use ph2d_vec_scene::{VecPath, VecVertex};
 
-/// ⭐ **A tolerância do refit**, em unidades do desenho (distância de Fréchet).
-///
-/// ⚠️ **Ela é o único knob desta lei, e o número é MEDIDO:** a `0,05` a sonda fita um rectângulo de
-/// `40 × 10` em `0,163 ms` (`--release`) e devolve `16` nós de `4`. ⛔ Mais apertado paga relógio
-/// **e** nós; mais largo devolve a curva errada, que é o defeito que este módulo cura.
-pub const TOLERANCIA: f64 = 0.05;
 
 /// ⭐⭐⭐ **A LEI DA CURVA ESTÁ LIGADA?** — a porta única da F30, e ela tem **dois** leitores que não
 /// se conhecem: o `recook` do quadro e o gesto que acrescenta um ponto
@@ -116,66 +110,44 @@ impl SegmentoDaPele<'_> {
         Point::new(q[0], q[1])
     }
 
-    /// A derivada, por diferença central em `t` — ver o cabeçalho do módulo.
-    fn derivada(&self, t: f64) -> Vec2 {
-        const H: f64 = 1e-6;
-        let (a, b) = ((t - H).max(0.0), (t + H).min(1.0));
-        let (pa, pb) = (self.ponto(a), self.ponto(b));
-        (pb - pa) / (b - a)
-    }
 }
 
-impl ParamCurveFit for SegmentoDaPele<'_> {
-    fn sample_pt_tangent(&self, t: f64, _sign: f64) -> CurveFitSample {
-        CurveFitSample {
-            p: self.ponto(t),
-            tangent: self.derivada(t),
-        }
-    }
 
-    fn sample_pt_deriv(&self, t: f64) -> (Point, Vec2) {
-        (self.ponto(t), self.derivada(t))
-    }
-
-    /// ⛔ **Nenhuma cúspide, e é uma afirmação sobre a PELE, não uma omissão.** Uma cúspide em
-    /// `W(C(t))` nasce onde a jacobiana do mapa é singular — isto é, onde a pele **dobra sobre si
-    /// mesma**. Isso acontece (uma junta a mais de `180°`), e ali a resposta certa **não** é
-    /// aproximar melhor: um bico bem fitado continua a ser uma dobra. ⚠️ A doc do kurbo mede o custo
-    /// de a perder — *«mais subdivisão, generally not a disaster»*.
-    fn break_cusp(&self, _range: core::ops::Range<f64>) -> Option<f64> {
-        None
-    }
-}
-
-/// ⭐⭐⭐ **DEFORMA O CAMINHO PELA CURVA** — a porta desta lei.
+/// ⭐⭐⭐ **A ARTE SEGUE O PESO ENTRE OS NÓS — corrigindo as ALÇAS, e sem limiar nenhum.**
 ///
-/// `pesos` é a tabela guardada no bind (por ponto de controlo, três linhas por vértice; **vazia** ⇒
-/// a lei derivada). `correcoes` são as manchas pintadas à mão, já no espaço da lei.
+/// A lei de hoje ([`crate::aplica_corrigido`]) corre **sempre e primeiro**: ela acerta nos NÓS por
+/// construção (ali o peso é o do próprio ponto) e erra no INTERIOR de cada segmento, porque a pele
+/// é um mapa **não-afim**. O que falta é exactamente o que as duas alças de uma cúbica governam ⇒
+/// esta função ajusta-as, por mínimos quadrados, contra a curva verdadeira.
 ///
-/// ⚠️ **Ela SUBSTITUI a geometria do caminho**, e o número de nós do desenho **cresce** — é o preço
-/// declarado: a imagem de uma cúbica por um mapa não-afim não é uma cúbica, e representá-la exige
-/// mais pedaços. *A FONTE não muda; o artista continua a editar os nós que desenhou.*
-pub fn aplica_pela_curva(
-    pele: &Skin,
-    path: &mut VecPath,
-    pesos: &[f64],
-    correcoes: &[Correccao],
-    tolerancia: f64,
-) {
-    // ⭐⭐⭐ **A LEI DE HOJE CORRE SEMPRE, e primeiro.** Ela preserva o `kind` e o `corner_radius` de
-    // cada vértice, que o refit **não** pode preservar (um join derivado de um fit não é autoria, e
-    // o raio foi cozido na deformação). ⇒ onde o mapa é afim sobre o segmento — em REPOUSO, e em
-    // toda aresta cujos dois nós têm o mesmo peso e que nenhuma mancha toca — a saída é
-    // **byte-idêntica** à de sempre, e nada a jusante dá por isto.
-    //
-    // ⛔⛔ **Isto não é optimização: é a cura de um defeito medido.** A 1.ª redacção refitava
-    // **sempre**, e o gate `binding_a_shape_moves_nothing` acusou `13,333…` = `40/3` em REPOUSO —
-    // a elevação `(⅓, ⅔)` de uma recta, que desenha a MESMA curva com outros pontos de controlo.
-    // *O desenho estava certo e a representação é que mudava*, e oito gates da casa mediam a
-    // representação.
+/// # ⛔⛔⛔ Porque ela substituiu o REFIT (report do dono, 2026-09-19, com duas fotos)
+///
+/// *«Em determinado momento da deformação as alças sofrem uma mudança e o path muda repentinamente,
+/// como se o handle mudasse de tipo.»*
+///
+/// A redacção anterior perguntava *«o desvio passa da tolerância?»* e, se sim, **refazia o contorno
+/// inteiro** com a `kurbo::fit_to_bezpath`. Um booleano sobre uma grandeza contínua é um **degrau**,
+/// e medido numa dobra a passos de `0,01 rad` ele não dá um salto: dá **CHATTER** — a decisão
+/// oscila entre quadros vizinhos a partir de `1,44 rad`, e cada oscilação troca a representação de
+/// **todos** os contornos (nós, alças e contagem). *O artista arrasta a âncora e a forma pisca.*
+///
+/// ⭐⭐ **A lei nova não tem decisão nenhuma para tomar**, e é isso que a torna contínua:
+///
+/// - **a correcção é da DIFERENÇA, e não da curva** — o que se ajusta é `verdade(t) − ingénuo(t)`.
+///   Onde o mapa é afim sobre o segmento (em repouso, e em toda aresta cujos dois nós têm o mesmo
+///   peso e que nenhuma mancha toca) essa diferença é **exactamente zero**, o segundo membro do
+///   sistema é zero e as alças ficam **byte-idênticas**. ⇒ o defeito que obrigou o limiar a existir
+///   — `binding_a_shape_moves_nothing` a acusar `40/3` em repouso, a elevação `(⅓, ⅔)` de uma recta
+///   — **não pode acontecer aqui**;
+/// - **os NÓS não se mexem**: eles já estão certos, e são as extremidades fixas do ajuste;
+/// - **o `kind` e o `corner_radius` sobrevivem**, porque nenhum vértice nasce nem morre;
+/// - e o resultado é **linear** na diferença amostrada, logo contínuo na pose.
+///
+/// ⚠️ O parâmetro `tolerancia` **saiu**: não há o que tolerar quando não há decisão. Quem governa a
+/// fidelidade é [`AMOSTRAS`].
+pub fn aplica_pela_curva(pele: &Skin, path: &mut VecPath, pesos: &[f64], correcoes: &[Correccao]) {
     let fonte = path.clone();
     crate::aplica_corrigido(pele, path, pesos, correcoes);
-
     let ossos = if pesos.is_empty() {
         0
     } else {
@@ -187,117 +159,96 @@ pub fn aplica_pela_curva(
             continue;
         };
         let n = verts.len();
-        // ⭐ **A pergunta é sobre o RESULTADO de hoje**, não sobre os pesos: *o que a lei ingénua
-        // desenhou afasta-se do mapa verdadeiro mais do que a tolerância?* É a mesma grandeza que o
-        // fitter usa, logo a decisão e o remédio falam a mesma língua.
-        let ingenuo = path.contour(c).map(|(v, _)| v.to_vec()).unwrap_or_default();
-        if precisa_de_fit(
-            pele, verts, &ingenuo, fechado, pesos, ossos, base, correcoes, tolerancia,
-        ) && let Some(novos) = contorno(
-            pele, verts, fechado, pesos, ossos, base, correcoes, tolerancia,
-        ) && let Some((alvo, _)) = path.contour_mut(c)
-        {
-            *alvo = novos;
+        let segs = if fechado { n } else { n.saturating_sub(1) };
+        for k in 0..segs {
+            let s = SegmentoDaPele {
+                src: cubica(verts, k, n),
+                pele,
+                ra: linha(pesos, ossos, base + k),
+                rb: linha(pesos, ossos, base + (k + 1) % n),
+                correcoes,
+            };
+            let Some((alvo, _)) = path.contour_mut(c) else {
+                continue;
+            };
+            if alvo.len() != n {
+                continue;
+            }
+            // ⚠️ A cúbica INGÉNUA lê-se **antes** de as alças serem escritas — e as duas que este
+            // segmento escreve são exactamente as duas que ele lê. *Cada alça pertence a um
+            // segmento só, logo não há ordem que as faça interferir.*
+            let ja = cubica(alvo, k, n);
+            let (d1, d2) = correccao_das_alcas(&s, &ja);
+            let j = (k + 1) % n;
+            alvo[k].out_handle = [alvo[k].out_handle[0] + d1.x, alvo[k].out_handle[1] + d1.y];
+            alvo[j].in_handle = [alvo[j].in_handle[0] + d2.x, alvo[j].in_handle[1] + d2.y];
         }
         base += n;
     }
 }
 
-/// ⭐⭐ **A lei ingénua afasta-se do mapa verdadeiro mais do que `tolerancia`?**
+/// Quantas amostras interiores por segmento alimentam o ajuste das alças.
 ///
-/// ⚠️ **As amostras são INTERIORES**, e é o que torna a pergunta honesta: nos extremos as duas leis
-/// concordam **por construção** (ali a mistura é a linha do próprio nó), logo amostrar `t = 0` ou
-/// `t = 1` mediria zero sempre.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "todos os argumentos são a MESMA coisa: o contorno e a tabela que o descreve"
-)]
-fn precisa_de_fit(
-    pele: &Skin,
-    verts: &[VecVertex],
-    ingenuo: &[VecVertex],
-    fechado: bool,
-    pesos: &[f64],
-    ossos: usize,
-    base: usize,
-    correcoes: &[Correccao],
-    tolerancia: f64,
-) -> bool {
-    /// Quantos pontos interiores por segmento. ⚠️ **Três e não um:** um só (o meio) é cego a um
-    /// desvio que se anula ali por simetria, que é exactamente o que um osso a dobrar produz.
-    const AMOSTRAS: usize = 3;
-    let n = verts.len();
-    if ingenuo.len() != n {
-        return true;
+/// ⚠️ **Duas bastariam para fechar o sistema** (são duas incógnitas); mais amostras repartem o erro
+/// em vez de o zerar em dois pontos e deixar a curva fugir entre eles.
+///
+/// ⛔ **A REGRA DO PONTO MÉDIO — `(i + ½)/N` — é uma escolha, não uma lei**, e está medido: a
+/// mutação que a troca por `i/N` **sobrevive**, porque a amostra em `t = 0` tem `B₁ = B₂ = 0` e não
+/// entra no sistema. *Fica escrito para ninguém procurar o gate que a defende.*
+pub const AMOSTRAS: usize = 8;
+
+/// A cerca da [`AMOSTRAS`], em TEMPO DE COMPILAÇÃO e ao lado do que guarda.
+///
+/// ⚠️ São **duas** incógnitas (as duas alças): com menos de duas amostras o sistema não fecha, e o
+/// determinante seria zero. ⭐ Como é uma const, quem a editar para um valor mudo **não compila** —
+/// um `assert!` de teste sobre uma constante é dobrado pelo compilador antes de correr, e o clippy
+/// di-lo em voz alta.
+const _: () = assert!(AMOSTRAS >= 2);
+
+/// ⭐⭐⭐ **O AJUSTE DAS DUAS ALÇAS** — mínimos quadrados com as pontas PRESAS.
+///
+/// Uma cúbica é **linear nos pontos de controlo**: `C(t) = B₀P₀ + B₁P₁ + B₂P₂ + B₃P₃`. Com `P₀` e
+/// `P₃` fixos (os nós, que já estão certos), mover só as alças dá `ΔC(t) = B₁ΔP₁ + B₂ΔP₂`, e o
+/// `ΔP` que melhor segue a diferença medida sai de um sistema `2×2` cuja matriz **só depende dos
+/// `t`** — logo é constante, e a solução é **linear** na diferença. *É daí que vem a continuidade.*
+///
+fn correccao_das_alcas(s: &SegmentoDaPele<'_>, ja: &CubicBez) -> (Vec2, Vec2) {
+    let (mut a11, mut a12, mut a22) = (0.0_f64, 0.0_f64, 0.0_f64);
+    let (mut b1, mut b2) = (Vec2::ZERO, Vec2::ZERO);
+    for i in 0..AMOSTRAS {
+        #[expect(clippy::cast_precision_loss, reason = "i < AMOSTRAS, um punhado")]
+        let t = (i as f64 + 0.5) / AMOSTRAS as f64;
+        let u = 1.0 - t;
+        let (w1, w2) = (3.0 * u * u * t, 3.0 * u * t * t);
+        let d = s.ponto(t) - ja.eval(t);
+        a11 = w1.mul_add(w1, a11);
+        a12 = w1.mul_add(w2, a12);
+        a22 = w2.mul_add(w2, a22);
+        b1 += d * w1;
+        b2 += d * w2;
     }
-    let segs = if fechado { n } else { n.saturating_sub(1) };
-    for k in 0..segs {
-        let s = SegmentoDaPele {
-            src: cubica(verts, k, n),
-            pele,
-            ra: linha(pesos, ossos, base + k),
-            rb: linha(pesos, ossos, base + (k + 1) % n),
-            correcoes,
-        };
-        let ja = cubica(ingenuo, k, n);
-        for j in 1..=AMOSTRAS {
-            let t = f64::from(u32::try_from(j).unwrap_or(1)) / (AMOSTRAS as f64 + 1.0);
-            if (s.ponto(t) - ja.eval(t)).hypot() > tolerancia {
-                return true;
-            }
-        }
-    }
-    false
+    // ⛔⛔ **O determinante NÃO precisa de guarda, e isso foi medido:** a matriz depende **só dos
+    // `t`**, logo ela é a MESMA em todo segmento de toda forma — uma constante. A 1.ª redacção
+    // tinha um `if det.abs() < 1e-12 { return None }` e a mutação que o apagava **sobreviveu**,
+    // porque aquele ramo é inalcançável. *Uma linha que a mutação não consegue matar não é lei, é
+    // comentário com sintaxe de código.*
+    let det = a12.mul_add(-a12, a11 * a22);
+    let (d1, d2) = (
+        (b1 * a22 - b2 * a12) / det,
+        (b2 * a11 - b1 * a12) / det,
+    );
+    // ⛔⛔ **E não há cerca de `NaN` aqui, também por medição.** A tentação é guardar contra uma
+    // diferença não-finita — mas tudo o que chegasse assim já teria passado pela
+    // [`crate::aplica_corrigido`], que corre **antes** e escreve o `NaN` no desenho sem nos
+    // perguntar nada: *uma cerca a jusante do sítio onde o estrago acontece protege o quê?* Medido:
+    // com uma mancha de centro `NaN` a forma desaparece **com ou sem** a cerca, e a mutação que a
+    // apagava sobrevivia. ⇒ ela sai, e quem a quiser tem de a pôr onde o `NaN` entra.
+    (d1, d2)
 }
 
 /// A linha de pesos do nó `k` (índice PLANO, na tabela guardada), ou `None` quando não há tabela.
 fn linha(pesos: &[f64], ossos: usize, k: usize) -> Option<&[f64]> {
     (ossos > 0).then(|| pesos.get(k * 3 * ossos..k * 3 * ossos + ossos))?
-}
-
-/// Deforma **um** contorno. `None` quando ele não tem segmento nenhum.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "todos os argumentos são a MESMA coisa: o contorno e a tabela que o descreve"
-)]
-fn contorno(
-    pele: &Skin,
-    verts: &[VecVertex],
-    fechado: bool,
-    pesos: &[f64],
-    ossos: usize,
-    base: usize,
-    correcoes: &[Correccao],
-    tolerancia: f64,
-) -> Option<Vec<VecVertex>> {
-    let n = verts.len();
-    let segs = if fechado { n } else { n.checked_sub(1)? };
-    if segs == 0 {
-        return None;
-    }
-    let mut pts: Vec<[Point; 3]> = Vec::new();
-    let inicio = {
-        let s = SegmentoDaPele {
-            src: cubica(verts, 0, n),
-            pele,
-            ra: linha(pesos, ossos, base),
-            rb: linha(pesos, ossos, base + (1 % n)),
-            correcoes,
-        };
-        s.ponto(0.0)
-    };
-    for k in 0..segs {
-        let s = SegmentoDaPele {
-            src: cubica(verts, k, n),
-            pele,
-            ra: linha(pesos, ossos, base + k),
-            rb: linha(pesos, ossos, base + (k + 1) % n),
-            correcoes,
-        };
-        let fitado: BezPath = kurbo::fit_to_bezpath(&s, tolerancia);
-        ph2d_vec_envelope::push_cubics(&fitado, &mut pts);
-    }
-    Some(ph2d_vec_envelope::rebuild(&pts, inicio, fechado))
 }
 
 /// O segmento `k` como cúbica do kurbo. Fechado: o último liga de volta ao primeiro.

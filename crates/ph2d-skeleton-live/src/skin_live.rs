@@ -366,7 +366,6 @@ pub fn recook_com(sim: &SimWorld, scene: &mut VecScene, curva: bool) {
                 &mut src,
                 pesos,
                 &skin.correcoes_resolvidas(),
-                ph2d_vec_skin::curva::TOLERANCIA,
             );
         } else {
             ph2d_vec_skin::aplica_corrigido(&pele, &mut src, pesos, &skin.correcoes_resolvidas());

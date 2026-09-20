@@ -394,6 +394,80 @@ Mutação **12 de 12** a sangrar.
 ⏳ **ABERTO:** o espelho não tem gesto de canvas (só o painel) · e a arte presa não é espelhada com
 os ossos — o ramo novo nasce sem pele, e prendê-la é o gesto que já existe (*Bind*).
 
+### F33 — ⭐⭐⭐ **A DEFORMAÇÃO DEIXA DE SALTAR: o refit sai, entra a correcção das ALÇAS** (report do dono, 2026-09-19, com duas fotos)
+
+*«Em determinado momento da deformação as alças sofrem uma mudança e o path muda repentinamente,
+como se o handle mudasse de tipo. Tanto a curvatura interna como a externa foram repentinamente
+modificadas.»*
+
+⛔⛔⛔ **A causa era um BOOLEANO sobre uma grandeza contínua.** A F30 perguntava *«o desvio passa da
+tolerância?»* e, se sim, **refazia o contorno inteiro** com a `kurbo::fit_to_bezpath`. Medido numa
+dobra a passos de `0,01 rad`, ele não dá um salto: dá **CHATTER** — a decisão oscila entre quadros
+**vizinhos** a partir de `1,44 rad` (`1,44 · 1,45 · 1,56 · 1,79 · 1,96 · 2,06 · 2,10 · 2,12 · 2,15 …`),
+e cada oscilação vale **`0,038`–`0,050`** numa peça de espessura `1`. *O artista arrasta a âncora e a
+forma pisca.* ⚠️ E como a decisão é por CONTORNO, uma oscilação troca a representação de **todos** os
+segmentos — nós, alças e contagem —, que é a *«mudança de tipo de handle»* que ele viu.
+
+⭐⭐ **A lei nova não tem decisão nenhuma para tomar.** A lei de hoje acerta nos NÓS por construção e
+erra no INTERIOR de cada segmento — e o interior de uma cúbica é exactamente o que as suas duas
+alças governam. ⇒ elas são ajustadas por **mínimos quadrados** contra a curva verdadeira, com as
+pontas presas. A matriz do sistema `2×2` **só depende dos `t`**, logo é constante, e a solução é
+**linear** na diferença amostrada: *é daí que vem a continuidade.*
+
+⭐⭐⭐ **E o ajuste é da DIFERENÇA, não da curva** — `verdade(t) − ingénuo(t)`. Onde o mapa é afim
+sobre o segmento (em repouso, e em toda aresta cujos dois nós têm o mesmo peso e que nenhuma mancha
+toca) essa diferença é **exactamente zero**, o segundo membro é zero e as alças ficam
+**byte-idênticas**. ⇒ o defeito que obrigou o limiar a existir — `binding_a_shape_moves_nothing` a
+acusar `40/3` em repouso, a elevação `(⅓, ⅔)` de uma recta — **não pode acontecer aqui**. Os nós não
+se mexem, o `kind` e o `corner_radius` sobrevivem, e nenhum vértice nasce ou morre.
+
+| | antes (refit) | agora (alças) |
+|---|---|---|
+| pior passo contra o passo mediano, varrendo `0`..`2,5 rad` | **chatter** de `0,038`–`0,050` | **`1,00×`** |
+| erro contra a curva verdadeira, numa dobra de `1,2 rad` | — | `11,29` → **`1,04`** (`10,9×`) |
+| preço por forma (`--release`) | `0,163 ms` | **`0,001 ms`** (`163×`) |
+
+⛔⛔ **A troca tem um PREÇO, e ele está medido:** o ajuste de duas alças **não segue uma feição mais
+fina do que um segmento**. Numa barra de oito nós, uma mancha de raio `0,4` no meio de uma aresta de
+`6` move **zero** (o refit movia `0,84`). ⚠️ *Mas ali nenhuma das duas leis chega perto da verdade* —
+erro `0,71` com a correcção e `0,85` sem ela, numa barra de espessura `1` — e a cura daquele mundo é
+a **subdivisão** (F32), não a lei.
+
+⭐⭐⭐ **E na forma que o `Bind` produz a correcção não compra nada, medido:**
+
+| a barra, na pose em S, contra a verdade | com a correcção | sem ela |
+|---|---|---|
+| GROSSA (`8` nós) | `0,7105` | `0,8535` |
+| **do PRODUTO (`34` nós)** | **`0,0310`** | **`0,0302`** |
+
+⇒ *quem faz o trabalho é a subdivisão; a correcção das alças é a rede para uma fonte grosseira* — um
+ficheiro gravado antes de 19/09, ou o caminho `bind_com(.., false)`. Ela fica por isso, e porque é
+contínua e custa `0,001 ms`.
+
+⭐⭐ **E a F30 fechou-se por outro caminho: «entre os nós» deixou de existir.** Na barra do produto o
+ponto do contorno **mais longe** de um nó está a **`0,3378`**, contra um pincel de fábrica de `0,40`
+⇒ o dedo alcança sempre um nó, e as duas leis passam a dar o **mesmo** número (`0,416233`).
+
+⛔ **Dois gates mudaram de mundo**, com a razão escrita: `um_arrasto_pelo_meio_da_barra_move_a_arte`
+e `com_a_lei_da_curva_o_ponto_novo_nao_move_nada` passam a medir a barra do PRODUTO (`0,416233` e
+`0,000000 %`); os irmãos que medem a ÂNCORA da mancha continuam a pedir a barra grossa pelo nome.
+
+⚠️ **O parâmetro `tolerancia` SAIU** de `aplica_pela_curva` — não há o que tolerar quando não há
+decisão —, e com ele o `ParamCurveFit`, o `fit_to_bezpath` e a `TOLERANCIA`.
+
+⛔⛔ **DUAS linhas saíram por não serem lei, e as duas foram achadas por mutações SOBREVIVENTES:** o
+guarda do determinante (a matriz é **constante**, logo aquele ramo é inalcançável) e uma cerca de
+`NaN` (tudo o que chegasse assim já teria passado pela lei ingénua, que corre **antes** e escreve o
+`NaN` no desenho — *uma cerca a jusante do estrago protege o quê?*). ⚠️ E a regra do ponto médio
+`(i+½)/N` fica **declarada como escolha e não como lei**: a mutação para `i/N` sobrevive, porque a
+amostra em `t = 0` tem `B₁ = B₂ = 0` e não entra no sistema.
+
+⚠️ **E o gate que faltava era o da QUALIDADE do ajuste:** três mutações (o determinante, a solução
+desacoplada, a alça de entrada por corrigir) sobreviveram a *«a arte mexe-se»* e a *«é contínua»* —
+um ajuste mau satisfaz as duas. ⇒ `as_alcas_corrigidas_seguem_a_curva_verdadeira`.
+
+Mutação **7 de 7** a sangrar (mais 3 declaradas como não-lei).
+
 ### F32 — ⭐⭐⭐ **A SUBDIVISÃO NASCE NO BIND: os pontos ficam à vista** (ordem do dono, 2026-09-19: *«sem saber onde os pontos estão não fica legal. Melhor criar a subdivisão visível logo na associação com os ossos»*)
 
 É a lei que a **2.ª mídia já tinha** — uma imagem presa ganha no bind uma malha graduada pelas

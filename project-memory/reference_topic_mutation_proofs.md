@@ -85,3 +85,30 @@ e escrever-lhe torna a suíte mais um membro da família de flakes de fan-out.
 - ⛔⛔ [Guarda de ramo inalcançável e cerca a jusante do estrago: as duas mutações sobrevivem, e a cura é APAGAR](feedback_a_line_the_mutation_cannot_kill_is_not_law.md)
 - ⛔⛔ **Um arnês que verifica o próprio RESTAURO contra o `HEAD` mede se a LINHA está commitada** (2026-09-19): o `git diff --quiet -- <ficheiros>` no fim do script gritou *«A ARVORE FICOU SUJA»* sobre um restauro perfeito — a linha tinha trabalho por commitar, logo o `HEAD` difere **por construção**. ⇒ compare-se com o BACKUP (`cmp -s "$f" "$TMP/$(basename "$f").orig"`), que é a única coisa que o arnês de facto prometeu repor.
 - ⛔ **Um CONTROLO que não percorre o mesmo `match` da metade positiva não prova a selectividade dela** (mesma wave): o gate «só os símbolos de rig se penduram» usava a `Circle` como controlo, e ela é uma das OITO formas tratadas **por nome**, com braço próprio que nunca chega ao braço mutado ⇒ trocar o `_ => box_` por `_ => rig_box` **sobreviveu**. A 2.ª forma do controlo (`Cross`) passa pela rota genérica e mata-a. *Um controlo ilibar a normalização e um controlo ilibar o despacho são duas afirmações diferentes.*
+
+---
+
+## Um arnês de mutação mente de TRÊS maneiras, e as três leem-se como «sobreviveu» (2026-09-20)
+
+Numa wave só, o mesmo arnês deu **cinco** falsos sobreviventes sobre produto correcto:
+
+1. **A mutação não ENTROU.** Os blocos de `python3` que a aplicavam foram gerados por outro
+   `python3`, e um `\n` dentro de uma string foi expandido cedo demais ⇒ `SyntaxError`, o ficheiro
+   ficou **intacto**, e o teste passou (como devia). *Uma mutação que não aplica é indistinguível
+   de uma que sobrevive.*
+2. **A cerca é do COMPILADOR.** Uma lei guardada por `const _: () = assert!(…)` reprova antes de
+   qualquer teste correr, e um arnês que só sabe ler `cargo test` conta isso como «zero testes».
+3. **A AGULHA envelheceu com a ferramenta.** A busca pela mensagem do rustc procurava
+   `evaluation of constant value failed` e o rustc de hoje escreve `evaluation panicked:
+   assertion failed: <a nossa expressão>`.
+
+**Why:** um arnês de mutação é um instrumento como outro qualquer, e o modo de falha dele é
+**silencioso e a favor** — ele imprime o veredito que o autor quer ver. As três formas partilham a
+causa: *nada no arnês verifica o PRÓPRIO arnês.*
+
+**How to apply:** o arnês precisa de três controlos, um por forma —
+`cmp -s` do ficheiro contra o backup (**recusa se não mudou**) · um caminho para leis cuja cerca é
+o compilador · e uma agulha que seja **texto NOSSO** (a expressão da asserção), nunca a prosa de
+uma ferramenta. ⚠️ E some-se a isto o controlo que esta casa já tinha: **contar quantos testes de
+facto correram**, porque um filtro que casa zero imprime `ok`. Ver
+[[feedback_a_mutation_proof_needs_a_control_on_its_own_filter]].

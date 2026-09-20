@@ -158,19 +158,25 @@ fn forma_acende_texel(
         }
     }
 
-    // ⚠️ A oclusão pesa SÓ o ambiente, e o ambiente é um termo nosso e não a indirecta da lei —
-    // ver o doc da `acende_texel`.
+    // ⭐⭐⭐ **A INDIRECTA DO OpenPBR** (a coluna B3, 2026-09-20) — ver o doc da `acende_texel`.
     //
-    // ⭐⭐⭐ **O `env_irradiance` e' a RANHURA DO AMBIENTE que a fonte da `ph2d-material` ja'
-    // declara** (o `ENV_SLOT`), e quem a preenche e' o consumidor.
+    // ⛔⛔ A redaccao anterior somava `albedo x <a metade difusa da ranhura> x oclusao` (o nome
+    // dela NAO se escreve aqui: ha' gate a varrer este texto, e uma agulha num comentario le-se
+    // igual a uma chamada a sério, e a MARCA da montagem tem a mesma doenca: escrever o nome dela
+    // nesta linha reprova o `as_duas_ranhuras_sao_preenchidas`, que foi como esta frase nasceu),
+    // com um comentario a
+    // dizer que *«o ambiente e' um termo NOSSO e nao a indirecta da lei»*. Hoje e' a lei: o
+    // `mx_indirect` le' as DUAS metades da ranhura — a irradiancia (Oren-Nayar) e a espelhada
+    // pre'-filtrada. ⛔ Com a de ontem um barro e um metal polido recebiam o MESMO ambiente, ao
+    // bit: `albedo * E(n)` e' um lobulo DIFUSO, e um metal nao tem nenhum.
     //
-    // ⛔ A marca NAO se escreve aqui como literal, nem num comentario: ela vive numa fonte que e'
-    // COMPOSTA com esta, e o gate `as_duas_marcas_da_montagem_existem` afirma que depois da
-    // substituicao nenhuma sobra. *Uma marca num comentario le-se igual a uma ranhura por
-    // preencher* — foi ele que apanhou esta linha na 1.a redaccao dela. Enquanto ela levou zeros este termo era inerte e a peca saia
-    // PRETA em toda face virada para longe da unica lampada acesa de fabrica. ⛔ Um `ambiente`
-    // passado por argumento nao podia ter DIRECCAO: o ceu e' o topo da TELA, e isso e' funcao de `n`.
-    let cena = luz + albedo * env_irradiance(n) * oclusao;
+    // ⚠️ **O `mt` e nao o `m`**: o albedo do texel ja' entrou pelo `mx_at_base_color`, e multiplicar
+    // por ele outra vez aqui seria o mesmo defeito que a directa pagou (um plastico vermelho com
+    // destaque vermelho).
+    //
+    // ⚠️ A oclusao pesa o termo INTEIRO, difusa e espelhada — a divergencia declarada contra a
+    // *specular occlusion* do Filament esta' escrita no doc da `acende_texel`.
+    let cena = luz + mx_indirect(mt, n, FORMA_VISTA) * oclusao;
 
     // ⭐⭐⭐ A VISTA, ANTES da mistura da cobertura — a mesma ordem da CPU, e pela mesma razão:
     // fora da silhueta o byte tem de sair INTACTO, e ali esta lei devolve o albedo cru (os pixels

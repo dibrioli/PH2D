@@ -104,13 +104,24 @@ pub const VISTA: [f32; 3] = [0.0, 0.0, 1.0];
 /// **são** a resposta exacta — não uma amostragem dela. Guardá-la como DADOS é o que a deixa viajar
 /// para o dispositivo sem uma segunda redacção da fórmula.
 ///
-/// ⛔ **E não é o [`ph2d_material::Environment`]** porque aquele trait tem uma segunda metade
-/// (`radiance`, a espelhada pré-filtrada) que só as closures INDIRECTAS do OpenPBR leem — e esta lei
-/// **não as chama**: o ambiente dela é lambertiano e declarado como nosso (ver [`acende_texel`]).
-/// *Uma porta que exige uma resposta que nada consome fabrica código morto no chamador.*
+/// ⭐⭐⭐ **E ELE *É* O [`ph2d_material::Environment`] desde 2026-09-20 — a premissa da redacção
+/// anterior MORREU, e o dia que ela previa foi este.** Ela dizia: *«não é o `Environment` porque
+/// aquele trait tem uma segunda metade (`radiance`, a espelhada pré-filtrada) que só as closures
+/// INDIRECTAS leem — e esta lei não as chama»*, e acabava com *«no dia em que a indirecta do OpenPBR
+/// entrar (a coluna B3), as duas metades chegam juntas»*. Chegaram.
 ///
-/// ⏳ No dia em que a indirecta do OpenPBR entrar (a coluna **B3** do plano), as duas metades chegam
-/// juntas — e a ranhura do ambiente no gémeo em WGSL já exige as duas, que é onde a assimetria se vê.
+/// ⭐⭐ **E as DUAS metades saem dos MESMOS dois `Rgb`, sem um dado novo** — é a mesma álgebra da
+/// rampa, lida duas vezes:
+///
+/// ```text
+/// irradiance(n)        = base + inclinação · up(n)                    (o lóbulo COSSENO)
+/// radiance(dir, α)     = base + 1,5 · inclinação · c(α) · up(dir)     (o lóbulo GGX)
+/// ```
+///
+/// O `1,5` desfaz o `Â₁ = 2/3` que o [`Ceu::inclinacao`] carrega (a irradiância já vem convolvida
+/// com o cosseno) e o `c(α)` é a [`ph2d_material::lobe_shrink`] — o coeficiente de grau `1` do
+/// núcleo do pré-filtro GGX. *Um ambiente linear não tem termo de grau 2, logo isto é a resposta
+/// EXACTA às duas perguntas e não uma amostragem de nenhuma delas.*
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Ceu {
     /// A irradiância na horizontal (`n·cima = 0`).
@@ -158,6 +169,50 @@ impl Ceu {
             self.inclinacao[1].mul_add(up, self.base[1]),
             self.inclinacao[2].mul_add(up, self.base[2]),
         ]
+    }
+
+    /// ⭐⭐⭐ **A RADIÂNCIA pré-filtrada** — o céu que a espelhada vê, para um lóbulo já encolhido.
+    ///
+    /// ⚠️ **Ela recebe o ENCOLHIMENTO e não o `α`**, e a razão é o gémeo: no dispositivo o `c(α)`
+    /// viaja **pronto** dentro do material empacotado ([`ph2d_material::wgsl::EnvLobe`]), porque ele
+    /// é constante por MATERIAL e correr um logaritmo por pixel seria pôr a mesma conta a dar o
+    /// mesmo número um milhão de vezes. ⇒ a porta que os dois motores partilham fala a língua do
+    /// mais apertado dos dois; quem tem um `α` na mão passa por [`ph2d_material::Environment`], que
+    /// é o adaptador logo abaixo.
+    ///
+    /// ⚠️ **`1,5` é `1/(2/3)`, não um ganho**: o [`Ceu::inclinacao`] é a inclinação da
+    /// IRRADIÂNCIA, que já traz o `Â₁` do lóbulo cosseno lá dentro; a radiância quer a rampa crua.
+    ///
+    /// ⚠️ **A associação é a do gémeo, e não é livre**: `(1,5 · inclinação)` primeiro, e só depois o
+    /// `fma` com o `up` — escrita solta, a igualdade ao bit passaria a depender de o compilador do
+    /// WGSL contrair a multiplicação-soma.
+    #[must_use]
+    pub fn radiancia(&self, dir: Rgb, shrink: f32) -> Rgb {
+        /// O `Â₁` do lóbulo cosseno, desfeito. Ver o doc.
+        const CRU: f32 = 1.5;
+        let up = shrink * -dir[1];
+        [
+            (CRU * self.inclinacao[0]).mul_add(up, self.base[0]),
+            (CRU * self.inclinacao[1]).mul_add(up, self.base[1]),
+            (CRU * self.inclinacao[2]).mul_add(up, self.base[2]),
+        ]
+    }
+}
+
+/// ⭐⭐⭐ **O céu desta lei É um [`ph2d_material::Environment`]** — e é isso que deixa a
+/// [`ph2d_material::Surface::indirect`] entrar sem uma linha de óptica escrita aqui.
+///
+/// ⚠️ **O `α → c(α)` mora AQUI e não na [`Ceu::radiancia`]**, porque é a costura entre duas
+/// convenções: o trait fala em rugosidade (é o que uma closure tem na mão) e o gémeo fala em
+/// encolhimento (é o que cabe num uniform). *Pôr o logaritmo do lado da porta partilhada poria a CPU
+/// a correr uma conta que o dispositivo não corre, e a paridade teria de a desfazer.*
+impl ph2d_material::Environment for Ceu {
+    fn radiance(&self, dir: Rgb, alpha: f32) -> Rgb {
+        self.radiancia(dir, ph2d_material::lobe_shrink(alpha))
+    }
+
+    fn irradiance(&self, n: Rgb) -> Rgb {
+        self.irradiancia(n)
     }
 }
 
@@ -231,19 +286,38 @@ pub fn acende_texel(
     // tem de chegar onde ele a apontou; escurecer a directa com oclusão de forma é o que faz um
     // objecto parecer sujo em vez de ocluído — e nenhuma das cinco referências o faz.
     //
-    // ⏳ **E este termo é DECLARADAMENTE nosso, não a lei:** a indirecta do OpenPBR é a
-    // [`Surface::indirect`], que soma um lóbulo difuso de Oren-Nayar mais um especular pré-filtrado.
-    // Aqui o ambiente entra **lambertiano** — `albedo × E(n)` —, que é exactamente a mesma dobra que
-    // a lei da TINTA e o barro VIVO fazem do outro lado do documento. *Trocá-lo pela lei é a coluna
-    // B3 do plano, e é uma feature — não uma correcção.*
+    // ⭐⭐⭐ **E O AMBIENTE É A LEI desde 2026-09-20 — a coluna B3 do plano.** A redacção anterior
+    // desta linha era `albedo × E(n)` e declarava-se, por escrito, *«DECLARADAMENTE nosso, não a
+    // lei … trocá-lo pela lei é a coluna B3, e é uma feature»*. Trocado.
     //
-    // ⭐⭐⭐ **O `E(n)` vem do [`Ceu`], e é isso que faz a sombra ter DIRECÇÃO.** Com o
-    // [`Ceu::PRETO`] esta linha é `luz + 0`, byte a byte o que se shipava antes dele existir.
-    let ambiente = ceu.irradiancia(n);
+    // ⚠️ **O que ela compra não é «mais preciso»: é uma METADE QUE NÃO EXISTIA.** O lambertiano
+    // respondia só *quanta luz o céu entrega a uma DIFUSA*; a [`Surface::indirect`] responde também
+    // *o que o céu REFLECTE* — o especular pré-filtrado, com Fresnel e a forma do GGX.
+    //
+    // ⛔⛔ **E o defeito de ontem não era a quantidade, era a CLOSURE.** Medido: sobre o mesmo
+    // albedo e o mesmo céu, um barro e um metal polido recebiam o **MESMO** ambiente, ao bit —
+    // porque `albedo × E(n)` é um lóbulo difuso, e no OpenPBR um metal não tem nenhum. *O ambiente
+    // não sabia que material estava a iluminar.*
+    //
+    // ⚠️ **Zero linhas de óptica, outra vez:** o `[`Ceu`]` passou a ser um
+    // [`ph2d_material::Environment`] e a composição inteira (Oren-Nayar + espelhada + verniz +
+    // conservação de energia) é a do port. ⛔ O albedo do texel **não** volta a multiplicar nada
+    // aqui: ele já entrou pelo `at_base_color`, que é a mesma lição que a directa pagou em cima.
+    //
+    // ⚠️ **A oclusão pesa o termo INTEIRO**, difusa e espelhada. ⛔ **Divergência DECLARADA:** o
+    // Filament e o Frostbite derivam uma *specular occlusion* separada (Lagarde), função de `AO`,
+    // `α` e `N·V`, porque um AO de hemisfério não descreve o cone estreito de um espelho. Não a
+    // temos, e o efeito é uma fresta espelhar um pouco mais do que devia — *acrescentá-la é uma lei
+    // com oráculo próprio, e escrevê-la aqui de cabeça seria inventar o que nenhuma referência desta
+    // casa mediu.*
+    //
+    // ⭐⭐⭐ **Com o [`Ceu::PRETO`] esta linha continua a ser `luz + 0` ao bit**: as duas metades do
+    // céu devolvem zero e toda closure indirecta multiplica a resposta do ambiente.
+    let indirecta = s.indirect(n, VISTA, &ceu);
     let aceso = [
-        luz[0] + t.albedo[0] * ambiente[0] * t.oclusao,
-        luz[1] + t.albedo[1] * ambiente[1] * t.oclusao,
-        luz[2] + t.albedo[2] * ambiente[2] * t.oclusao,
+        luz[0] + indirecta[0] * t.oclusao,
+        luz[1] + indirecta[1] * t.oclusao,
+        luz[2] + indirecta[2] * t.oclusao,
     ];
 
     // ⭐⭐⭐ **A VISTA entra AQUI — no ACESO, e ANTES da mistura da cobertura.**

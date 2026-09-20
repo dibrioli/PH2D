@@ -92,14 +92,23 @@ pub fn do_ambiente() -> Lei {
 ///
 /// ```text
 ///   stops   media do miolo cinzento   contra a tinta (186,1)
-///    1,50                   132,8            -53,3
-///    1,90                   169,8            -16,3
-///    2,05                   183,2             -2,9
-///    2,10                   187,4             +1,3     ←
-///    2,15                   191,4             +5,3
-///    2,50                   214,6            +28,5
-///    3,00                   235,9            +49,8
+///    1,50                   133,3            -52,8
+///    1,90                   170,3            -15,8
+///    2,05                   183,6             -2,5
+///    2,10                   187,8             +1,7     ←
+///    2,15                   191,7             +5,6
+///    2,50                   214,8            +28,7
+///    3,00                   235,8            +49,7
 /// ```
+///
+/// ⭐⭐ **A tabela foi RE-TIRADA quando a indirecta do OpenPBR entrou (a coluna B3, 2026-09-20) e o
+/// número NÃO se mexeu.** A metade espelhada do céu soma energia — o miolo sobe `+0,4` byte em
+/// `2,10` —, e isso é **um décimo** do degrau da escada (`2,05 → 2,10` vale `4,2` bytes). O `2,10`
+/// continua a ser o candidato mais perto do alvo (`+1,7` contra `−2,5` do vizinho de baixo).
+///
+/// ⚠️ **Isto é uma medição e não uma ausência de medição:** *quem move o número que tornava outro
+/// correcto tem de reconferir a nota*, e a reconferência pode devolver o mesmo número — o que não
+/// pode é não acontecer.
 ///
 /// ⚠️ **A escada passa do candidato de propósito:** um mínimo na BORDA de uma varredura não é um
 /// mínimo, é o fim da lista.

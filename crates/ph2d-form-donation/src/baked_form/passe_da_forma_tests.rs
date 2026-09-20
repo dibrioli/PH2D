@@ -64,38 +64,62 @@ fn as_duas_ranhuras_sao_preenchidas() {
     );
 }
 
-/// ⛔⛔ **A LEI CHAMA UMA DAS DUAS METADES DA RANHURA — a IRRADIÂNCIA, nunca a ESPELHADA.**
+/// ⭐⭐⭐ **A LEI CHAMA AS DUAS METADES DA RANHURA — e a segunda chegou em 2026-09-20.**
 ///
-/// # A premissa que morreu
+/// # As DUAS premissas que já morreram neste gate
 ///
-/// Este gate chamava-se `a_lei_da_forma_nao_chama_o_ambiente` e afirmava `!SOURCE.contains("env_")`,
-/// com a razão escrita ao lado: *«o rig desta casa é `KEY + 3 × FILL` e as lâmpadas de preenchimento
-/// SÃO o ambiente dele»*. ⛔ **Medido, as três de preenchimento nascem APAGADAS** ⇒ na configuração
-/// de fábrica havia uma lâmpada e nenhum ambiente, e `25,03 %` da peça saía PRETA ao bit. O laço
-/// passou a chamar o `env_irradiance`, e o que este gate afirma inverteu-se.
+/// 1. Ele chamou-se `a_lei_da_forma_nao_chama_o_ambiente` e afirmava `!SOURCE.contains("env_")`,
+///    porque *«o rig desta casa é `KEY + 3 × FILL` e as lâmpadas de preenchimento SÃO o ambiente
+///    dele»*. ⛔ As três de preenchimento nascem **APAGADAS** ⇒ `25,03 %` da peça saía PRETA.
+/// 2. Ele passou então a afirmar `!SOURCE.contains("env_radiance")`, porque *«ela é a indirecta do
+///    OpenPBR (coluna B3) e o stub dela devolve zero»*. ⛔ **A coluna B3 entrou**: a lei chama a
+///    [`ph2d_material::Surface::indirect`], e as duas metades do céu são lidas.
+///
+/// ⭐ *Um gate cuja premissa morreu DUAS vezes em três dias é a melhor prova de que ela tinha de
+/// estar escrita num gate e não num comentário.*
 ///
 /// # ⚠️ As três metades, e cada uma impede um defeito diferente
 ///
-/// 1. o laço **CHAMA** a irradiância — sem isto o ambiente volta a ser inerte, em silêncio;
-/// 2. o laço **NÃO CHAMA** a espelhada — ela é a indirecta do OpenPBR (coluna **B3**) e o stub dela
-///    devolve zero, logo somá-la hoje seria somar nada com o custo de a chamar; *e no dia em que ela
-///    deixar de ser um stub, chamá-la sem querer acrescenta uma segunda luz que ninguém autorou*;
-/// 3. o stub da espelhada **continua a devolver zero** — é o que torna a 2.ª metade uma escolha e
-///    não um acidente.
+/// 1. o laço **CHAMA** a irradiância — sem isto o ambiente difuso volta a ser inerte, em silêncio;
+/// 2. o laço **CHAMA** a espelhada — sem isto o ambiente volta a ser um lóbulo difuso para TODO
+///    material, que é o defeito que a coluna B3 curou (um barro e um metal liam o mesmo, ao bit);
+/// 3. a ranhura **preenche as duas** e nenhuma delas é um `return vec3<f32>(0.0)` — *uma metade
+///    ligada a um stub lê-se, de fora, igual a uma metade ligada à lei.*
 #[test]
-fn a_lei_da_forma_chama_a_irradiancia_e_nao_a_espelhada() {
+fn a_lei_da_forma_chama_as_duas_metades_da_ranhura() {
+    // ⭐⭐⭐ **E QUEM LÊ A RANHURA É A LEI, não o laço** — a mudança mais funda desta wave, e ela
+    // vê-se aqui: o laço deixou de escrever `albedo * env_irradiance(n)` (uma linha de óptica NOSSA)
+    // e passou a chamar o `mx_indirect`, que lê as duas metades por dentro do port.
     assert!(
-        gemeo::SOURCE.contains("env_irradiance(n)"),
-        "o laço da forma TEM de ler o céu pela ranhura do ambiente"
+        gemeo::SOURCE.contains("mx_indirect(mt, n, FORMA_VISTA)"),
+        "o laço tem de compor a indirecta pela lei, sobre o material com o albedo do texel"
     );
     assert!(
-        !gemeo::SOURCE.contains("env_radiance"),
-        "o laço da forma não pode chamar a espelhada pré-filtrada: ela é a indirecta do OpenPBR, \
-         e hoje o stub dela devolve zero"
+        !gemeo::SOURCE.contains("env_irradiance") && !gemeo::SOURCE.contains("env_radiance"),
+        "o laço não pode ler a ranhura do ambiente directamente: isso é uma segunda redacção da \
+         óptica, e a razão de esta crate existir é não ter nenhuma"
     );
+    for metade in ["env_irradiance(", "env_radiance("] {
+        assert!(
+            gemeo::SOURCE_DA_LEI.contains(metade),
+            "a LEI tem de ler a metade `{metade}` da ranhura"
+        );
+    }
+    for metade in ["fn env_irradiance(", "fn env_radiance("] {
+        assert!(
+            CEU_NA_RANHURA.contains(metade),
+            "a ranhura tem de preencher o `{metade}`"
+        );
+    }
     assert!(
-        CEU_NA_RANHURA.contains("fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> { return vec3<f32>(0.0); }"),
-        "o stub da espelhada tem de devolver zero"
+        !CEU_NA_RANHURA.contains("return vec3<f32>(0.0);"),
+        "nenhuma das duas metades do céu pode ser um stub que devolve zero"
+    );
+    // **O CONTROLO da régua**: ela tem de saber dizer NÃO, senão os `contains` acima passariam
+    // sobre qualquer texto.
+    assert!(
+        !CEU_NA_RANHURA.contains("fn env_transmission("),
+        "controlo: a régua tem de poder dizer NÃO a uma metade que não existe"
     );
 }
 
@@ -120,10 +144,20 @@ fn o_ceu_do_shader_le_a_mesma_rampa_que_o_gemeo_em_rust() {
         CEU_NA_RANHURA.contains("fma(ceu_inclinacao, vec3<f32>(-n.y), ceu_base)"),
         "a rampa em WGSL tem de pedir o `fma` sobre `-n.y`, como o `mul_add` do gémeo"
     );
+    // ⭐⭐ **E a ESPELHADA pede a mesma conta que a [`ph2d_form_pbr::Ceu::radiancia`]** — o
+    // `1.5 * inc` PRIMEIRO (é `1/Â₁`, não um ganho) e só depois o `fma`, com o `shrink` a entrar no
+    // `up`. ⛔ Escrita noutra associação, a igualdade ao bit deixaria de ser exigível.
     assert!(
-        CEU_NA_RANHURA
-            .contains("fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> { return vec3<f32>(0.0); }"),
-        "o stub da espelhada tem de devolver ZERO — nada nesta lei o chama"
+        CEU_NA_RANHURA.contains("let up = shrink * -dir.y;")
+            && CEU_NA_RANHURA.contains("fma(1.5 * ceu_inclinacao, vec3<f32>(up), ceu_base)"),
+        "a espelhada em WGSL tem de pedir o `fma` sobre `1.5 * inclinação` e o `up` encolhido"
+    );
+    // ⛔ **E ela tem de ler o `shrink` e NÃO o `alpha`** — o encolhimento viaja pronto no material,
+    // e um `lobe_shrink` corrido por pixel seria a mesma conta a dar o mesmo número um milhão de
+    // vezes.
+    assert!(
+        !CEU_NA_RANHURA.contains("lobe_shrink"),
+        "o gémeo não pode recalcular o encolhimento do lóbulo por pixel"
     );
     // **O CONTROLO da régua**: uma agulha que não está lá tem de falhar, senão um `contains` sobre
     // um ficheiro reescrito passaria por vácuo.

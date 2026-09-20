@@ -637,3 +637,180 @@ fn diag_o_albedo_multiplicado_contra_o_albedo_como_base_color() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O AMBIENTE PASSOU A SABER QUE MATERIAL ELE ILUMINA** — o gate da coluna B3.
+///
+/// # ⛔⛔ A 1.ª redacção deste gate afirmava outra coisa, e ela era FALSA
+///
+/// Ela dizia *«um metal sem lâmpada saía `[0,0,0]` ao bit»* — escrita a partir do modelo do que uma
+/// lei **correcta** faz, e não do que o código de ontem **fazia**. Medido
+/// (`diag_o_que_a_indirecta_muda_no_pixel`), o defeito era outro e é pior: a lei de ontem somava
+/// `albedo × E(n) × oclusão` e, sobre o mesmo albedo e o mesmo céu, **um barro e um metal polido
+/// recebiam o mesmo ambiente AO BIT** (`[0,3069589, 0,3176986, 0,35053548]` os dois).
+///
+/// ⇒ *ela não errava a QUANTIDADE, errava a CLOSURE*: dava a todo material um lóbulo **difuso**,
+/// incluindo a um metal, que no OpenPBR não tem nenhum. Hoje cada um recebe o que de facto reflecte
+/// (metal `[0,375, 0,400, 0,455]`, barro `[0,315, 0,327, 0,364]`).
+///
+/// ⚠️ **Sem lâmpada NENHUMA de propósito:** com uma acesa, a directa domina e a metade que este gate
+/// existe para medir esconde-se atrás dela. *Uma régua que mede a soma de dois termos não vê qual
+/// deles é zero.*
+///
+/// ⭐ **E o CONTROLO é o `Ceu::PRETO`**: ali os dois voltam a ser exactamente `[0, 0, 0]`, o que
+/// prova que tudo o que as duas primeiras metades mediram veio do CÉU e não do albedo.
+///
+/// **Mutações que devem sangrar:** `env_radiance → 0` · trocar a `indirect` pelo `albedo × E(n)`.
+#[test]
+fn o_ambiente_passou_a_saber_que_material_ele_ilumina() {
+    let barro = OpenPbr::default().prepare();
+    let metal = OpenPbr {
+        base_metalness: 1.0,
+        specular_roughness: 0.15,
+        ..Default::default()
+    }
+    .prepare();
+    // A rampa da casa, na ordem de grandeza com que o rig de fábrica a entrega.
+    let ceu = Ceu {
+        base: [0.204, 0.216, 0.245],
+        inclinacao: [0.065, 0.083, 0.112],
+    };
+    // ⚠️ CANVAS, `y` para BAIXO ⇒ `−y` é o topo da TELA.
+    let cima = texel([0.0, -0.6, 0.8]);
+    let baixo = texel([0.0, 0.6, 0.8]);
+
+    let a = acende_texel(&barro, &cima, &[], ceu, Look::default());
+    let b = acende_texel(&metal, &cima, &[], ceu, Look::default());
+    assert!(
+        (0..3).any(|i| (a[i] - b[i]).abs() > 0.01),
+        "o mesmo céu sobre o mesmo albedo tem de dar respostas DIFERENTES a um barro e a um metal \
+         ({a:?} contra {b:?}) — com a lei de ontem elas eram iguais ao bit"
+    );
+
+    // ⛔ **E ele tem de ter DIRECÇÃO** — sem isto um `env_radiance` chapado passaria.
+    let metal_baixo = acende_texel(&metal, &baixo, &[], ceu, Look::default());
+    assert!(
+        b[1] > metal_baixo[1] * 1.05,
+        "a espelhada virada ao topo da tela tem de ler um céu mais claro ({b:?} contra \
+         {metal_baixo:?})"
+    );
+
+    // ⭐ **O CONTROLO**: sem céu, tudo isto é zero — logo o que as duas metades acima mediram é o CÉU.
+    for s in [&barro, &metal] {
+        for t in [&cima, &baixo] {
+            assert_eq!(
+                acende_texel(s, t, &[], Ceu::PRETO, Look::default()),
+                [0.0; 3],
+                "controlo: sem céu e sem lâmpada a lei não pode devolver nada"
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **A RADIÂNCIA LÊ O CÉU NA DIRECÇÃO MÉDIA DO LÓBULO**, e as duas metades do céu encontram-se
+/// em `α = 1`.
+///
+/// # ⭐ A terceira asserção é a que prova que os dois `Rgb` chegam para as DUAS perguntas
+///
+/// A rugosidade máxima do GGX **é** o hemisfério cosseno, logo em `α = 1` a espelhada pré-filtrada e
+/// a irradiância normalizada são a **mesma função**. Se elas discordassem ali, o `1,5` seria um ganho
+/// escolhido em vez de `1/Â₁`.
+///
+/// ⚠️ **Não é ao BIT, e a razão é aritmética:** `2/3` não é representável em `f32`, logo
+/// `(1,5·inc)·(2/3·up)` e `inc·up` diferem no último bit. A barra é relativa e o vão para a
+/// alternativa mais próxima (não desfazer o `Â₁` de todo) é de `50 %`.
+///
+/// **Mutações que devem sangrar:** `CRU = 1.0` · ignorar o `shrink` · trocar o sinal do `up`.
+#[test]
+fn a_radiancia_le_o_ceu_na_direccao_media_do_lobulo() {
+    let ceu = Ceu {
+        base: [0.204, 0.216, 0.245],
+        inclinacao: [0.065, 0.083, 0.112],
+    };
+    let topo = [0.0, -1.0, 0.0];
+    let equador = [0.0, 0.0, 1.0];
+
+    let liso = ceu.radiancia(topo, ph2d_material::lobe_shrink(0.0));
+    let rugoso = ceu.radiancia(topo, ph2d_material::lobe_shrink(1.0));
+    assert!(
+        rugoso[1] < liso[1],
+        "um lóbulo largo apontado ao topo tem de ler um céu MAIS ESCURO do que um espelho \
+         ({rugoso:?} contra {liso:?})"
+    );
+    // ⭐ E o quanto é o que a lei promete, não um valor qualquer: o espelho lê a rampa CRUA.
+    for (i, l) in liso.iter().enumerate() {
+        assert!(
+            (l - (ceu.base[i] + 1.5 * ceu.inclinacao[i])).abs() < 1.0e-7,
+            "o canal {i} do espelho não é a rampa crua no topo"
+        );
+    }
+
+    // ⛔ **No equador o encolhimento é invisível** — `c · 0 = 0`. Sem isto, a metade de cima passaria
+    // sobre uma `radiancia` que ignorasse a direcção.
+    assert_eq!(
+        ceu.radiancia(equador, ph2d_material::lobe_shrink(0.0)),
+        ceu.radiancia(equador, ph2d_material::lobe_shrink(1.0)),
+        "no equador a largura do lóbulo não pode mudar a rampa"
+    );
+
+    // ⭐⭐ **AS DUAS METADES ENCONTRAM-SE EM `α = 1`.**
+    for d in [topo, [0.0, 1.0, 0.0], [0.0, -0.5, 0.866], equador] {
+        let r = ceu.radiancia(d, ph2d_material::lobe_shrink(1.0));
+        let e = ceu.irradiancia(d);
+        for i in 0..3 {
+            assert!(
+                (r[i] - e[i]).abs() <= 1.0e-6 * e[i].abs().max(1.0e-6),
+                "em α = 1 a espelhada e a irradiância têm de ser a mesma função ({r:?} contra \
+                 {e:?}, direcção {d:?})"
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **COM O `Ceu::PRETO` A INDIRECTA NÃO MUDA UM BIT** — a promessa que deixou de ser óbvia.
+///
+/// ⚠️ Antes da coluna B3 este gate era trivial (`albedo × 0 × occ` é zero à vista). Hoje o termo é a
+/// composição inteira do OpenPBR — Oren-Nayar, espelhada pré-filtrada, verniz e conservação de
+/// energia —, e *«ela devolve zero»* passou a ser uma propriedade da ÁLGEBRA (toda closure indirecta
+/// multiplica a resposta do ambiente) em vez de uma evidência.
+///
+/// ⭐ **O CONTROLO é o piso de população**: com um céu a sério a mesma peça TEM de mudar — senão
+/// isto ficaria verde sobre uma lei que nunca soma ambiente nenhum.
+#[test]
+fn com_o_ceu_preto_a_lei_e_a_de_antes_do_ceu_ao_bit() {
+    let s = superficie();
+    let l = lampada_de_frente();
+    let ceu = Ceu {
+        base: [0.204, 0.216, 0.245],
+        inclinacao: [0.065, 0.083, 0.112],
+    };
+    let mut mexeram = 0;
+    for n in [
+        [0.0, 0.0, 1.0],
+        [0.0, -0.6, 0.8],
+        [0.0, 0.6, 0.8],
+        [0.8, 0.0, 0.6],
+    ] {
+        let mut t = texel(n);
+        t.oclusao = 0.4;
+        let preto = acende_texel(&s, &t, &[l], Ceu::PRETO, Look::default());
+        // A lei sem ambiente nenhum, composta à mão a partir da directa — a única linha que a lei
+        // corria antes do céu existir.
+        let esperado = s.at_base_color(t.albedo).direct(
+            normaliza(n).expect("a fixtura tem direcção"),
+            VISTA,
+            l.para_a_luz,
+            l.radiancia,
+        );
+        assert_eq!(
+            preto, esperado,
+            "com o céu preto a lei tem de ser a directa, ao bit (n = {n:?})"
+        );
+        if acende_texel(&s, &t, &[l], ceu, Look::default()) != preto {
+            mexeram += 1;
+        }
+    }
+    assert_eq!(
+        mexeram, 4,
+        "controlo: com um céu a sério a lei TEM de mexer nos quatro texels"
+    );
+}

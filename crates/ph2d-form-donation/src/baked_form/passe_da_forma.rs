@@ -161,12 +161,9 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
 /// uma placa a contrair `a*b + c` num `fma` onde o fonte não o pedia. *Pedir o `fma` nos dois lados
 /// é a única forma de a igualdade não depender do compilador.*
 ///
-/// ⛔ O `env_radiance` fica a ZERO **de propósito**: nada nesta lei o chama. Ver o cabeçalho.
+/// ⭐⭐⭐ **O `env_radiance` DEIXOU DE SER ZERO em 2026-09-20 (a coluna B3)** — e a redacção anterior
+/// desta linha dizia *«ele fica a ZERO de propósito: nada nesta lei o chama»*. Chama.
 const CEU_NA_RANHURA: &str = r#"
-// ⛔ A espelhada pre'-filtrada: nada nesta lei a chama (a indirecta do OpenPBR e' a coluna B3),
-// e por isso o stub dela devolve ZERO. Ela existe porque a fonte da lei traz a ranhura.
-fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> { return vec3<f32>(0.0); }
-
 // **O CEU** — a rampa linear na altura da TELA (`ph2d_form_pbr::Ceu`).
 //
 // ⛔⛔ Os dois valores chegam por `var<private>` e NAO por uma leitura do `g`, e a razao e' a ORDEM
@@ -180,6 +177,21 @@ var<private> ceu_inclinacao: vec3<f32>;
 // a igualdade ao bit passaria a depender de o compilador do WGSL contrair a multiplicacao-soma.
 fn env_irradiance(n: vec3<f32>) -> vec3<f32> {
     return fma(ceu_inclinacao, vec3<f32>(-n.y), ceu_base);
+}
+
+// ⭐⭐⭐ **A ESPELHADA PRE'-FILTRADA** — o gemeo da `ph2d_form_pbr::Ceu::radiancia`.
+//
+// ⚠️ **O `alpha` NAO e' lido e o `shrink` e'**: o encolhimento do lobulo e' constante por MATERIAL e
+// viaja PRONTO dentro do `Mat` empacotado. Correr aqui o logaritmo que o produz seria por a mesma
+// conta a dar o mesmo numero um milhao de vezes. ⛔ O NOME da funcao que o calcula nao se escreve
+// neste texto: ha' gate a varre'-lo, e uma agulha num comentario le-se igual a uma chamada.
+//
+// ⚠️ **`1.5` e' `1/(2/3)`**: o `ceu_inclinacao` e' a inclinacao da IRRADIANCIA, que ja' traz o `A1`
+// do lobulo cosseno la' dentro; a radiancia quer a rampa crua. ⚠️ E a ASSOCIACAO e' a do gemeo em
+// Rust — o `1.5 * inc` primeiro, e so' depois o `fma`.
+fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {
+    let up = shrink * -dir.y;
+    return fma(1.5 * ceu_inclinacao, vec3<f32>(up), ceu_base);
 }
 "#;
 
@@ -226,9 +238,11 @@ impl Globais {
             ));
         }
         let mut d = vec![0.0f32; Self::FLOATS];
-        // ⚠️ `EnvLobe::IGNORED` e não um número: os dois `shrink` só são lidos pelo `env_radiance`
-        // (a espelhada pré-filtrada), e esta lei não o chama — ver `CEU_NA_RANHURA`.
-        d[..gemeo::PACKED].copy_from_slice(&gemeo::pack(material, gemeo::EnvLobe::IGNORED));
+        // ⭐⭐ **O encolhimento do lóbulo viaja PRONTO** (a coluna B3): os dois `shrink` são lidos
+        // pelo `env_radiance`, e a porta que os compõe é a da crate que os nomeia. ⛔ A redacção
+        // anterior passava `EnvLobe::IGNORED` *«porque esta lei não chama o `env_radiance`»* — hoje
+        // chama, e um `IGNORED` deixaria a espelhada colada ao equador em todo material.
+        d[..gemeo::PACKED].copy_from_slice(&gemeo::pack(material, gemeo::EnvLobe::of(material)));
         let i = gemeo::PACKED;
         // ⚠️ `d[i..i+3]` fica a ZERO: é a RESERVA declarada do `olhar` — ver o `struct Globais`.
         d[i + 3] = olhar.exposure_stops;

@@ -252,3 +252,149 @@ fn a_peca_sintetica_acende_por_cima() {
          cima {c2:.2} contra baixo {b2:.2}"
     );
 }
+
+/// ⏱️ **SONDA — O QUE A INDIRECTA DO OpenPBR MUDA NO PIXEL, por material.**
+///
+/// A coluna **B3** trocou `albedo × E(n) × oclusão` (só a metade DIFUSA do céu) pela
+/// [`ph2d_material::Surface::indirect`], que soma também a **espelhada pré-filtrada**. Esta sonda
+/// mede o que isso vale, e a resposta **depende do material** — que é exactamente a razão de ela
+/// varrer três.
+///
+/// ⚠️ **A lei de ONTEM é composta à mão aqui, e declara-se como tal**: ela é `luz + albedo × E(n) ×
+/// occ`, a linha que a [`ph2d_form_pbr::acende_texel`] tinha antes de 2026-09-20. *Guardá-la num
+/// `#[cfg(test)]` é o que torna «quanto é que isto mudou» uma pergunta respondível amanhã.*
+///
+/// ```text
+/// bash scripts/ph2d-run.sh cargo test -p ph2d-form-donation --release \
+///   diag_o_que_a_indirecta_muda -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medição: imprime uma tabela, não afirma nada"]
+fn diag_o_que_a_indirecta_muda_no_pixel() {
+    use ph2d_form_pbr::{Lampada, OpenPbr, Surface, Texel, VISTA};
+
+    let bake = bola_com_fresta();
+    let rig = LightRig::default();
+    let lampadas = crate::baked_form::lampadas_do_rig(&rig).expect("o rig de fábrica resolve");
+    let ceu = crate::baked_form::ceu_do_rig(&lampadas);
+    let olhar = crate::lei_da_luz::OLHAR_DA_FORMA;
+
+    // ⚠️ **A LEI DE ONTEM**, linha a linha — o ambiente lambertiano e mais nada.
+    let de_ontem = |s: &Surface, t: &Texel, ls: &[Lampada]| -> [f32; 3] {
+        let q: f32 = t.normal.iter().map(|c| c * c).sum();
+        if q < 1e-12 {
+            return t.albedo;
+        }
+        let inv = 1.0 / q.sqrt();
+        let n = [t.normal[0] * inv, t.normal[1] * inv, t.normal[2] * inv];
+        let s = s.at_base_color(t.albedo);
+        let mut luz = [0.0f32; 3];
+        for l in ls {
+            let h: f32 = (0..3).map(|i| (VISTA[i] + l.para_a_luz[i]).powi(2)).sum();
+            if h < 1e-12 {
+                continue;
+            }
+            let r = s.direct(n, VISTA, l.para_a_luz, l.radiancia);
+            for i in 0..3 {
+                luz[i] += r[i];
+            }
+        }
+        let e = ceu.irradiancia(n);
+        let aceso = olhar.apply([0, 1, 2].map(|i| luz[i] + t.albedo[i] * e[i] * t.oclusao));
+        let c = t.cobertura.clamp(0.0, 1.0);
+        [0, 1, 2].map(|i| t.albedo[i] * (1.0 - c) + aceso[i] * c)
+    };
+
+    println!(
+        "\n  o céu: base {:?}  inclinação {:?}",
+        ceu.base, ceu.inclinacao
+    );
+    println!(
+        "  {:<22} {:>8} {:>8} {:>8} {:>10}",
+        "material", "Δ média", "Δ p99", "Δ máx", "texels ≠"
+    );
+    for (nome, m) in [
+        ("barro (o de FÁBRICA)", OpenPbr::default()),
+        (
+            "dieléctrico polido",
+            OpenPbr {
+                specular_roughness: 0.15,
+                ..Default::default()
+            },
+        ),
+        (
+            "metal polido",
+            OpenPbr {
+                base_metalness: 1.0,
+                specular_roughness: 0.15,
+                ..Default::default()
+            },
+        ),
+    ] {
+        let s = m.prepare();
+        let (w, h) = bake.size;
+        let mut deltas: Vec<u16> = Vec::new();
+        let mut n_dif = 0usize;
+        for i in 0..(w * h) as usize {
+            if bake.form[i * 4 + 3] <= 0.0 {
+                continue;
+            }
+            let t = Texel {
+                normal: [bake.form[i * 4], bake.form[i * 4 + 1], bake.form[i * 4 + 2]],
+                albedo: [0, 1, 2].map(|k| f32::from(bake.base[i * 4 + k]) / 255.0),
+                cobertura: bake.form[i * 4 + 3],
+                oclusao: bake.form_occ[i],
+            };
+            let byte = |c: [f32; 3]| c.map(|x| (x.clamp(0.0, 1.0) * 255.0 + 0.5) as i32);
+            let novo = byte(ph2d_form_pbr::acende_texel(&s, &t, &lampadas, ceu, olhar));
+            let velho = byte(de_ontem(&s, &t, &lampadas));
+            let d = (0..3)
+                .map(|k| (novo[k] - velho[k]).abs())
+                .max()
+                .unwrap_or(0);
+            if d > 0 {
+                n_dif += 1;
+            }
+            deltas.push(u16::try_from(d).unwrap_or(u16::MAX));
+        }
+        deltas.sort_unstable();
+        let media = f64::from(deltas.iter().map(|d| u32::from(*d)).sum::<u32>())
+            / deltas.len().max(1) as f64;
+        let p99 = deltas[deltas.len() * 99 / 100];
+        let max = deltas.last().copied().unwrap_or(0);
+        println!(
+            "  {nome:<22} {media:>8.2} {p99:>8} {max:>8} {:>9.1} %",
+            100.0 * n_dif as f64 / deltas.len().max(1) as f64
+        );
+    }
+    // ⭐⭐⭐ **O CASO SEM LÂMPADA NENHUMA** — ali o ambiente é a imagem inteira, e é onde as duas
+    // leis não se parecem nada.
+    println!("\n  SEM LÂMPADA NENHUMA — só o céu (normal virada ao topo da TELA):");
+    let t = Texel {
+        normal: [0.0, -0.6, 0.8],
+        albedo: [0.742, 0.702, 0.659],
+        cobertura: 1.0,
+        oclusao: 1.0,
+    };
+    for (nome, m) in [
+        ("barro (o de FÁBRICA)", OpenPbr::default()),
+        (
+            "metal polido",
+            OpenPbr {
+                base_metalness: 1.0,
+                specular_roughness: 0.15,
+                ..Default::default()
+            },
+        ),
+    ] {
+        let s = m.prepare();
+        let novo = ph2d_form_pbr::acende_texel(&s, &t, &[], ceu, olhar);
+        let velho = de_ontem(&s, &t, &[]);
+        println!("  {nome:<22} ontem {velho:?}\n  {:<22} hoje  {novo:?}", "");
+    }
+    println!(
+        "\n  ⇒ a metade que chegou e' a ESPELHADA. ⛔ E a lei de ontem NAO desenhava um metal\n    \
+         PRETO: ela dava a TODO material o mesmo ambiente LAMBERTIANO — inclusive a um metal, que\n    \
+         no OpenPBR nao tem lobulo difuso NENHUM. *Ela nao errava a quantidade; errava a CLOSURE.*"
+    );
+}

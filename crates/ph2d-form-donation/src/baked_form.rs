@@ -329,7 +329,7 @@ pub(crate) fn ceu_do_rig(lampadas: &[ph2d_form_pbr::Lampada]) -> ph2d_form_pbr::
 /// # Errors
 /// Rig todo apagado: **não há acendida a fazer**, e deixar os pixels como estão é a resposta honesta
 /// — o sprite fica com a última luz que teve.
-fn lampadas_do_rig(rig: &LightRig) -> Result<Vec<ph2d_form_pbr::Lampada>, String> {
+pub(crate) fn lampadas_do_rig(rig: &LightRig) -> Result<Vec<ph2d_form_pbr::Lampada>, String> {
     let Some(resolved) = ph2d_light::resolve(rig) else {
         return Err("todas as lampadas estao apagadas".into());
     };

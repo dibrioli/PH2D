@@ -221,3 +221,39 @@ fn anchoring_frames(scene: &VecScene, sim: &SimWorld, map: &VecEntityMap) -> Vec
 #[cfg(test)]
 #[path = "layout_live_anchors_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "layout_live_anchors_canvas_tests.rs"]
+mod canvas_tests;
+
+/// ⭐⭐⭐ **O CANVAS DO HUD ancora como uma moldura** (TOP-20 #20) — e a lei do filho é a **mesma**:
+/// [`LayoutLive::anchor_kid`], sem uma linha nova.
+///
+/// ⚠️ **A SELECÇÃO mora na crate da família** ([`ph2d_app_components::hud_anchors::ancorados`]):
+/// *«quem ancora quem, e contra que rectângulo»* responde-se com o mundo e o mapa, sem cena e sem
+/// device, logo com gates baratos. O que fica aqui é publicar a pose — a maquinaria que o passe das
+/// molduras já tem.
+///
+/// ⭐ **O neutro é EXACTO**: no aspecto da própria caixa não há banda, a efectiva É a de referência,
+/// e o `anchor_kid` sai no `is_identity` **sem pagar a cópia da geometria**.
+impl LayoutLive {
+    /// Todos os canvas de HUD que ancoram alguém. A ordem entre este passe e o das molduras não
+    /// importa: as populações são **disjuntas por construção** (um filho tem UM pai, e ele ou tem
+    /// `VecFrame` ou tem `UiCanvas`).
+    pub(super) fn anchor_canvases(
+        &mut self,
+        scene: &VecScene,
+        sim: &SimWorld,
+        map: &VecEntityMap,
+        xforms: &VecXforms,
+        live: &mut LiveGeometry,
+    ) {
+        for a in ph2d_app_components::hud_anchors::ancorados(sim, map, self.vista) {
+            let m = Measured {
+                now: a.now,
+                scale: a.scale,
+            };
+            self.anchor_kid(scene, sim, xforms, live, a.kid, m);
+        }
+    }
+}

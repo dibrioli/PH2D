@@ -350,10 +350,6 @@ mod preview_drive_tests;
 #[cfg(test)]
 #[path = "morph_arrow_seam_tests.rs"]
 mod morph_arrow_seam_tests;
-/// **A sonda da §4.3 do plano da UI viva** — o cursor pode ser PRESO nesta máquina? Só de teste:
-/// ela abre janela e precisa de uma mão mexendo o rato, então nunca entra num build de produto.
-#[cfg(test)]
-mod probe_cursor_grab;
 /// **A largura VIVA** — o cozimento do `VecStrokeProfile` (ADR-0148), irmão do `offset_live`.
 pub(crate) use ph2d_app_vec::profile_live;
 /// A cena de smoke da **largura viva** (`PH2D_BUILD_SMOKE=41`) — irmã de `build_smoke`, teto de LOC.

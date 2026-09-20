@@ -8,7 +8,7 @@
 // ninguém ter de a reformatar de cabeça. O clippy quer `2.25`; nós queremos `2.250_000`.
 #![allow(clippy::excessive_precision, reason = "a tabela é verbatim do oráculo")]
 
-use super::{Canvas, Fit, View, bands, place};
+use super::{Canvas, Fit, View, bands, effective_box, place};
 
 /// A vista que reproduz a janela do oráculo.
 fn vista_do_oraculo() -> View {
@@ -229,4 +229,121 @@ fn um_botao_dispara_ao_largar_e_so_se_os_dois_toques_forem_dentro() {
     // dedo nunca pousou.
     let (mem, _) = clique(Gesto::Baixo, Some(7), None);
     assert_eq!(mem, None);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A CAIXA EFECTIVA — a grandeza que a âncora precisava e não tinha
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A referência de fábrica desta casa.
+fn canvas16x9(fit: Fit) -> Canvas {
+    Canvas::new(32.0, 18.0, fit).expect("canvas")
+}
+
+fn vista(hw: f32, hh: f32) -> View {
+    View {
+        center: [0.0, 0.0],
+        half: [hw, hh],
+    }
+}
+
+/// ⭐⭐ **O NEUTRO é EXACTO** — no aspecto da própria caixa, a efectiva **É** a de referência, ao
+/// bit.
+///
+/// ⚠️ É esta metade que torna a porta barata: com ela, um filho ancorado desenha **byte-idêntico**
+/// ao que desenhava antes de a porta existir. Sem ela, toda cena de HUD já autorada mudaria de
+/// imagem no dia em que isto shipasse.
+///
+/// **Mutação que deve sangrar:** somar um epsilon a `hx`.
+#[test]
+fn no_aspecto_da_caixa_a_efectiva_e_a_de_referencia_ao_bit() {
+    let c = canvas16x9(Fit::Keep);
+    // 16:9 exacto, em três tamanhos — a escala muda, a caixa LOCAL não.
+    for (hw, hh) in [(16.0, 9.0), (32.0, 18.0), (8.0, 4.5)] {
+        assert_eq!(
+            effective_box(&c, vista(hw, hh)),
+            [-16.0, -9.0, 16.0, 9.0],
+            "a efectiva mexeu-se num aspecto SEM banda ({hw}x{hh})"
+        );
+    }
+}
+
+/// ⭐ **A banda entra em unidades LOCAIS** — e a prova é que a caixa cresce do valor que o
+/// `bands` devolve, dividido pela escala da raiz.
+///
+/// ⚠️ A asserção é uma IDENTIDADE entre as duas portas e não um número escrito à mão: um número
+/// pinaria a aritmética; a identidade afirma que as duas respondem sobre a mesma banda.
+///
+/// **Mutação que deve sangrar:** tirar a divisão pela escala.
+#[test]
+fn a_banda_atravessa_a_escala_para_virar_local() {
+    let c = canvas16x9(Fit::Keep);
+    for (hw, hh) in [(21.0, 9.0), (16.0, 12.0), (40.0, 9.0), (5.0, 9.0)] {
+        let v = vista(hw, hh);
+        let b = bands(&c, v);
+        let p = place(&c, v);
+        let e = effective_box(&c, v);
+        let esperado_hx = 16.0 + b[0] / p.scale[0];
+        let esperado_hy = 9.0 + b[1] / p.scale[1];
+        assert!(
+            (e[2] - esperado_hx).abs() < 1.0e-5 && (e[3] - esperado_hy).abs() < 1.0e-5,
+            "{hw}x{hh}: efectiva {e:?} nao e' a de referencia mais a banda local"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **A caixa efectiva CHEGA à borda real da vista** — que é a frase inteira desta porta.
+///
+/// ⚠️ A régua é o canto levado ao MUNDO pela pose da raiz, comparado com a meia-extensão da vista:
+/// é o que o artista vê, e não a aritmética interna.
+///
+/// **Mutação que deve sangrar:** usar `ref_w / 2.0` em vez da efectiva.
+#[test]
+fn o_canto_da_efectiva_pousa_na_borda_da_vista() {
+    for fit in [Fit::Keep, Fit::Stretch] {
+        let c = canvas16x9(fit);
+        for (hw, hh) in [(21.0, 9.0), (16.0, 12.0), (16.0, 9.0), (40.0, 4.0)] {
+            let v = vista(hw, hh);
+            let p = place(&c, v);
+            let e = effective_box(&c, v);
+            let canto_x = e[2] * p.scale[0] + p.translate[0];
+            let canto_y = e[3] * p.scale[1] + p.translate[1];
+            assert!(
+                (canto_x - v.half[0]).abs() < 1.0e-4 && (canto_y - v.half[1]).abs() < 1.0e-4,
+                "{fit:?} {hw}x{hh}: o canto pousou em ({canto_x}, {canto_y}) e a borda e' {:?}",
+                v.half
+            );
+        }
+    }
+}
+
+/// ⛔ **Com `Stretch` ela é a de referência ao bit** — e isso é a LEI, não um caso por cobrir: ali
+/// a caixa já preenche a vista nos dois eixos, logo não há banda nenhuma para crescer.
+///
+/// ⚠️ Metade NEGATIVA: sem ela, uma implementação que crescesse a caixa nos dois modos passaria o
+/// gate de cima (o canto continuaria a pousar na borda) e daria ao `Stretch` **o dobro** do
+/// alcance que ele tem.
+#[test]
+fn com_stretch_a_efectiva_e_a_de_referencia() {
+    let c = canvas16x9(Fit::Stretch);
+    for (hw, hh) in [(21.0, 9.0), (16.0, 12.0), (16.0, 9.0)] {
+        assert_eq!(
+            effective_box(&c, vista(hw, hh)),
+            [-16.0, -9.0, 16.0, 9.0],
+            "o Stretch cresceu a caixa, e ali nao ha' banda"
+        );
+    }
+}
+
+/// ⛔ **Uma vista degenerada não devolve `inf` nem `NaN`.**
+///
+/// ⚠️ Um `NaN` aqui não fica aqui: ele viaja até à pose de **todo** filho ancorado, e uma pose
+/// `NaN` desenha-se como o objecto a desaparecer — o modo de falha mais caro de diagnosticar.
+#[test]
+fn uma_vista_degenerada_nao_devolve_infinito() {
+    let c = canvas16x9(Fit::Keep);
+    for (hw, hh) in [(0.0, 0.0), (0.0, 9.0), (16.0, 0.0)] {
+        let e = effective_box(&c, vista(hw, hh));
+        assert!(e.iter().all(|v| v.is_finite()), "{hw}x{hh} devolveu {e:?}");
+    }
 }

@@ -145,6 +145,57 @@ pub fn bands(canvas: &Canvas, view: View) -> [f32; 2] {
     ]
 }
 
+/// **A CAIXA EFECTIVA do canvas neste quadro, em unidades LOCAIS dele** — a de referência,
+/// crescida pela banda que sobra de cada lado.
+///
+/// `[x0, y0, x1, y1]`, Y-up e **centrada na origem**, que é o idioma da caixa de referência.
+///
+/// # ⭐⭐ Porque ela existe: a âncora estava INERTE, e não por ligar
+///
+/// O [handoff do #20](../../../docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_HUD_2026-09-17.md)
+/// §7 escreve *«as quatro âncoras do `VecAnchors` não estão ligadas ao canvas»* — e a sonda do §5.0
+/// corrige a redacção: **elas estão ligadas e são inertes.** O `VecAnchors::delta_local` responde
+/// *«a moldura mudou de tamanho?»*, e a caixa do canvas é **a mesma em toda janela** — o que muda é
+/// a ESCALA da raiz. ⇒ *a régua media uma grandeza que não se mexe*, e o delta era `0,0` por
+/// subtracção de iguais.
+///
+/// Esta porta dá-lhe a grandeza que **de facto** muda. Medido (ref `32 × 18`, `Fit::Keep`):
+///
+/// | vista | banda | caixa efectiva em `x` | `dmax` de um filho preso à direita |
+/// |---|---|---|---|
+/// | `16:9` | `0,0` | `[−16, 16]` | **`0,000`** |
+/// | `21:9` | `5,0` | `[−21, 21]` | `5,000` |
+/// | `4:3` | `0,0` (em `y`: `3,0`) | `[−16, 16]` | `0,000` (em `y`: `3,000`) |
+///
+/// ⭐ **O neutro é EXACTO**: no aspecto da própria caixa a banda é zero, a efectiva **É** a de
+/// referência, e o delta sai `0,0` por subtracção de iguais ⇒ o que se desenha é **byte-idêntico**
+/// ao de antes desta porta.
+///
+/// # ⛔⛔ E ela DISSOLVE a recusa declarada do `Fit::Expand`
+///
+/// O cabeçalho desta crate recusa o `expand` porque *«fazer os filhos chegarem à borda exigiria
+/// redimensionar a moldura por quadro, que é escrever no DOCUMENTO»*. ⚠️ **A premissa caiu:** a
+/// caixa efectiva é **derivada por quadro**, exactamente como a pose da raiz, e não toca no
+/// documento. *Quem move o número que tornava algo inalcançável tem de reconferir a nota*
+/// (`CLAUDE.md` §0.0) — e é esta porta que o move.
+///
+/// ⚠️ **Com `Fit::Stretch` ela devolve a caixa de referência ao bit**, e isso é a lei e não um
+/// caso por cobrir: ali não há banda nenhuma — a caixa já preenche a vista nos dois eixos.
+#[must_use]
+pub fn effective_box(canvas: &Canvas, view: View) -> [f32; 4] {
+    let p = place(canvas, view);
+    let b = bands(canvas, view);
+    // A banda é de MUNDO; a caixa é LOCAL ⇒ ela atravessa a escala da raiz.
+    //
+    // ⚠️ A escala nunca é zero: o `Canvas::new` recusa uma referência não-positiva, e a vista vem
+    // de uma câmera com meia-extensão positiva. A guarda existe para o caso degenerado não dar
+    // `inf` em silêncio — um `NaN` aqui viajaria até à pose de todo filho ancorado.
+    let local = |banda: f32, escala: f32| if escala > 0.0 { banda / escala } else { 0.0 };
+    let hx = canvas.ref_w / 2.0 + local(b[0], p.scale[0]);
+    let hy = canvas.ref_h / 2.0 + local(b[1], p.scale[1]);
+    [-hx, -hy, hx, hy]
+}
+
 /// **O que um rótulo do HUD mostra**, antes de virar texto.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Valor {

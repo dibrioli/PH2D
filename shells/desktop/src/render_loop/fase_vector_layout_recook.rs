@@ -38,6 +38,14 @@ impl crate::App {
         //
         // E ele TRANSFORMA o mapa (não o estende) pelo motivo do `bool_live`: é um componente
         // do PAI, então convive com o offset vivo de cada filho.
+        // ⭐⭐⭐ **A vista da câmera do JOGO chega aqui para as âncoras do HUD** (TOP-20 #20).
+        //
+        // ⚠️⚠️ **Ela é o valor que a `fase_hud` JÁ usou** para conduzir a raiz do canvas, e não uma
+        // segunda leitura da câmera — a lei está escrita no `fase_frame_open` (*«a segunda resposta
+        // divergiria no dia em que uma delas mudasse»*). A `fase_hud` corre dentro da
+        // `fase_frame_simulation`, logo **antes** desta, e o gate
+        // `o_hud_conduz_a_raiz_antes_de_as_ancoras_a_lerem` prende essa ordem.
+        self.layout_live.vista = self.components.hud.vista;
         self.layout_live.recook(
             vec_scene,
             sim,

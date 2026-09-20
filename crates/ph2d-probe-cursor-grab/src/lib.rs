@@ -58,10 +58,10 @@ use winit::window::{CursorGrabMode, Window, WindowId};
 
 /// Quanto tempo cada fase dura. Curto o bastante para a sonda não prender a sessão, longo o
 /// bastante para uma mão chegar à janela e mexer.
-const PHASE: Duration = Duration::from_secs(4);
+pub const PHASE: Duration = Duration::from_secs(4);
 
 /// O que uma tentativa de prender devolveu.
-fn grab_verdict(w: &Window, mode: CursorGrabMode) -> String {
+pub fn grab_verdict(w: &Window, mode: CursorGrabMode) -> String {
     match w.set_cursor_grab(mode) {
         Ok(()) => "Ok".to_string(),
         Err(e) => format!("ERRO: {e}"),
@@ -69,12 +69,12 @@ fn grab_verdict(w: &Window, mode: CursorGrabMode) -> String {
 }
 
 #[derive(Default)]
-struct Counts {
+pub struct Counts {
     cursor_moved: u32,
     raw_motion: u32,
 }
 
-enum Phase {
+pub enum Phase {
     /// O CONTROLE: sem prender. Se nem aqui houver `CursorMoved`, ninguém mexeu o rato.
     Free,
     /// Preso: é aqui que a pergunta que decide (B) é feita.
@@ -82,7 +82,7 @@ enum Phase {
     Done,
 }
 
-struct Probe {
+pub struct Probe {
     window: Option<Window>,
     phase: Phase,
     started: Instant,
@@ -93,8 +93,16 @@ struct Probe {
     hide_verdict: String,
 }
 
+impl Default for Probe {
+    /// ⚠️ O clippy pede-o porque o [`Probe::new`] não tem argumentos — e aqui o `Default` é mesmo
+    /// o estado inicial da sonda, logo os dois são a MESMA coisa e um delega no outro.
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Probe {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             window: None,
             phase: Phase::Free,
@@ -107,7 +115,7 @@ impl Probe {
         }
     }
 
-    fn counts(&mut self) -> &mut Counts {
+    pub fn counts(&mut self) -> &mut Counts {
         match self.phase {
             Phase::Free => &mut self.free,
             Phase::Locked => &mut self.locked,
@@ -116,7 +124,7 @@ impl Probe {
     }
 
     /// A leitura, e ela é uma ESCADA — cada degrau só faz sentido se o de cima passou.
-    fn report(&self) {
+    pub fn report(&self) {
         eprintln!("\n=== SONDA DO CURSOR PRESO (plano UI viva §4.3) ===");
         eprintln!(
             "sessao   : XDG_SESSION_TYPE={:?}  WAYLAND_DISPLAY={:?}",
@@ -262,7 +270,7 @@ impl ApplicationHandler for Probe {
 /// ⚠️ **E é por isso que ela é Linux-only:** em macOS a mesma recusa existe e **não** tem escape —
 /// lá a resposta vem da FONTE do winit (`Confined` ⛔), que a tabela do topo já traz.
 #[cfg(target_os = "linux")]
-fn build_event_loop() -> Option<EventLoop<()>> {
+pub fn build_event_loop() -> Option<EventLoop<()>> {
     use winit::platform::wayland::EventLoopBuilderExtWayland;
     use winit::platform::x11::EventLoopBuilderExtX11;
     let mut builder = EventLoop::builder();

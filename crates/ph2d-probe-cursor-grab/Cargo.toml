@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-probe-cursor-grab"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# ⭐ **A SONDA da §4.3 do plano da UI viva, fora da shell.**
+#
+# ⚠️ Ela saiu de `shells/desktop/src/` em 2026-09-19, quando a catraca `the_shell_only_shrinks`
+# reprovou sobre a wave das âncoras do HUD. O candidato veio de uma MEDIÇÃO e não do tamanho: ela é
+# um **leaf puro** (só `std` e `winit`) e **nada a chamava** — o único sítio que a nomeava era o
+# `mod` do `main.rs`. ⇒ o que sai da shell é peso morto, e o que fica é a prosa medida e o gate
+# dela, agora numa crate que os pode compilar sozinhos.
+#
+# ⛔ A pergunta que ela responde é do plano da UI (a linha `UIUX`), e a decisão sobre o que fazer
+# com a resposta continua a ser de lá. Isto é uma MUDANÇA DE ENDEREÇO, não de dono.
+
+[dependencies]
+# ⚠️ A versão é a MESMA que a shell declara (`shells/desktop/Cargo.toml`): não há
+# `[workspace.dependencies]` para o `winit` neste repo, logo o número escreve-se aqui.
+winit = "0.30"
+
+[lints]
+workspace = true

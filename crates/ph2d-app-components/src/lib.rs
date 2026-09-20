@@ -97,8 +97,10 @@ pub mod factory_bridge;
 /// ⭐⭐⭐ **A FÁBRICA e o CICLO DE VIDA** (TOP-20 #11 e #12) — as duas cenas do dono.
 pub mod factory_smoke;
 /// ⭐ TOP-20 #16 — a ponte dos scripts do artista (o quadro, o ledger e o rebobinar).
+pub mod hud_anchors;
 pub mod hud_bridge;
 pub mod hud_inspector;
+pub mod hud_smoke_anchors;
 pub mod instance_added;
 pub mod instance_added_smoke;
 pub mod instance_apply_deep;

@@ -77,6 +77,39 @@ pub fn drive_canvases(sim: &mut SimWorld, vista: Option<View>, drive: &mut Previ
     n
 }
 
+/// ⭐⭐⭐ **A MOLDURA que um canvas de HUD oferece às âncoras** — a caixa efectiva em unidades
+/// LOCAIS dele, e a escala que leva essas unidades ao mundo.
+///
+/// Um valor só porque as duas nunca fazem sentido separadas — é a mesma razão que o `Measured` do
+/// passe das âncoras escreve para o par dele.
+///
+/// # ⛔⛔ Porque isto existe: a âncora estava INERTE, e não por ligar
+///
+/// O [handoff do #20](../../../docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_HUD_2026-09-17.md)
+/// §7 escreve *«as quatro âncoras do `VecAnchors` não estão LIGADAS ao canvas»*, e a sonda do §5.0
+/// corrige a redacção: **elas estão ligadas e são inertes.** O `delta_local` pergunta *«a moldura
+/// mudou de tamanho?»* e a caixa de um canvas é a MESMA em toda janela — o que muda é a ESCALA da
+/// raiz ⇒ o delta saía `0,0` por subtracção de iguais. *A régua media uma grandeza que não se
+/// mexe.*
+///
+/// ⚠️ **A escala é a que CONDUZIU a raiz** ([`place`]), e não uma segunda medição: é a mesma porta
+/// que o [`drive_canvases`] usou para escrever o `Transform` **neste quadro**.
+#[must_use]
+pub fn anchor_frame_of(cfg: UiCanvas, vista: View) -> Option<([f64; 4], [f64; 2])> {
+    let caixa = Canvas::new(cfg.ref_w, cfg.ref_h, cfg.fit)?;
+    let e = ph2d_hud::effective_box(&caixa, vista);
+    let p = place(&caixa, vista);
+    Some((
+        [
+            f64::from(e[0]),
+            f64::from(e[1]),
+            f64::from(e[2]),
+            f64::from(e[3]),
+        ],
+        [f64::from(p.scale[0]), f64::from(p.scale[1])],
+    ))
+}
+
 #[cfg(test)]
 #[path = "hud_bridge_tests.rs"]
 mod tests;

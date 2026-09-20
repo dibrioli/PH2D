@@ -144,6 +144,12 @@ pub(crate) struct LayoutLive {
     /// ⚠️ Os dois saem do MESMO `x`, uma linha um do outro: é isso que impede a pose publicada de
     /// divergir da geometria assada.
     poses: std::collections::BTreeMap<VecPathId, Xform>,
+    /// ⭐ **A vista da câmera do JOGO**, para as âncoras de um canvas de HUD (TOP-20 #20).
+    ///
+    /// ⚠️ Ela é **posta pela shell** antes do `recook`, e o valor é o que a `fase_hud` já usou
+    /// para conduzir a raiz — nunca uma segunda leitura da câmera. `None` = sem câmera de jogo ⇒
+    /// nenhum canvas ancora, que é a mesma lei que a raiz obedece.
+    pub(crate) vista: Option<ph2d_app_components::hud_bridge::View>,
     /// Quantos filhos ANCORADOS o último passe moveu (o braço do W3).
     anchored: usize,
     /// **Quanto o conteúdo passa da moldura**, por moldura que flui — MEDIDO por este passe, em
@@ -258,6 +264,10 @@ impl LayoutLive {
         // discrimina é só o tamanho MEDIDO do nó, e é exactamente isso que o gate
         // `the_anchor_does_not_feed_back_into_the_flows_measurement` afirma.
         self.anchor_all(scene, sim, map, xforms, live);
+        // ⭐⭐⭐ **E os canvas de HUD ancoram pela MESMA lei** — ver `anchor_canvases`. A ordem
+        // entre os dois não importa: as populações são disjuntas por construção (um filho tem UM
+        // pai, e ele ou tem `VecFrame` ou tem `UiCanvas`).
+        self.anchor_canvases(scene, sim, map, xforms, live);
     }
 
     /// Uma moldura (e tudo o que flui dentro dela).

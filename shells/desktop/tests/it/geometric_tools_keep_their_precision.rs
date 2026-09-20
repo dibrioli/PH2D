@@ -167,11 +167,17 @@ fn both_doors_are_real_and_distinct() {
 /// lado nenhum e fica **verde a medir nada** — a lei que o irmão acima já escreve para as duas
 /// portas. Aqui a referência é ao SÍMBOLO, logo uma renomeação deixa de **compilar**, e quem a
 /// consertar tem a const à vista três linhas acima.
+///
+/// ⚠️ Os três `type` existem porque o clippy recusa a assinatura escrita à mão (*«very complex
+/// type»*) — e a assinatura é o ponto: um `let _ = f;` provaria que o NOME existe, e isto prova
+/// que a FORMA dele não mudou por baixo dos cinco chamadores.
+type Blit = fn(&[u16], u32, u32, [u32; 4], u32, u32, u32, u32) -> Option<Vec<u16>>;
+type Replicate = fn(&[u16], u32, u32, u32, u32) -> Option<Vec<u16>>;
+type ApplyAlpha = fn(&[u16], &[u8]) -> Option<Vec<u16>>;
+
 #[test]
 fn the_precision_door_is_real() {
-    let _: fn(&[u16], u32, u32, [u32; 4], u32, u32, u32, u32) -> Option<Vec<u16>> =
-        ph2d_sprite_precision::blit_rgba16;
-    let _: fn(&[u16], u32, u32, u32, u32) -> Option<Vec<u16>> =
-        ph2d_sprite_precision::replicate_rgba16;
-    let _: fn(&[u16], &[u8]) -> Option<Vec<u16>> = ph2d_sprite_precision::apply_alpha8_to_rgba16;
+    let _: Blit = ph2d_sprite_precision::blit_rgba16;
+    let _: Replicate = ph2d_sprite_precision::replicate_rgba16;
+    let _: ApplyAlpha = ph2d_sprite_precision::apply_alpha8_to_rgba16;
 }

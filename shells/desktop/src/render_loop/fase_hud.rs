@@ -26,6 +26,10 @@ impl crate::App {
             .map(|(center, half)| ph2d_app_components::hud_bridge::View { center, half });
         let n =
             ph2d_app_components::hud_bridge::drive_canvases(sim, vista, &mut self.preview_drive);
+        // ⭐⭐⭐ **A vista viaja daqui para as ÂNCORAS**, que correm bem mais abaixo, no produtor de
+        // `LiveGeometry`. ⚠️ Ela é GUARDADA e não re-lida: ver o ⚠️⚠️ do campo, e a lei da linha
+        // de cima desta fase (*«uma segunda leitura da câmera seria a segunda resposta»*).
+        self.components.hud.vista = vista;
         // ⭐ **O diagnóstico é a única forma de ver um rectângulo** — ele não deixa rasto na tela.
         // `PH2D_HUD_LOG=1` imprime a vista e a pose conduzida, uma vez por mudança.
         if n > 0 && std::env::var_os("PH2D_HUD_LOG").is_some() {

@@ -86,6 +86,18 @@ pub(crate) struct HudShell {
     /// A última vista já impressa pelo `PH2D_HUD_LOG` — para a linha sair **uma vez por mudança**
     /// em vez de sessenta vezes por segundo.
     pub(crate) log: Option<String>,
+    /// ⭐⭐⭐ **A VISTA da câmera do jogo, como a `fase_hud` a resolveu neste quadro** — o que as
+    /// ÂNCORAS do HUD precisam de ler, um punhado de fases mais abaixo.
+    ///
+    /// ⚠️⚠️ **Ela é GUARDADA e não re-lida**, e a razão está escrita no `fase_frame_open`: *«uma
+    /// segunda leitura da câmera seria a segunda resposta a "qual é a vista?", e as duas
+    /// divergiriam no dia em que uma delas mudasse»*. A `fase_hud` corre **antes** do produtor de
+    /// `LiveGeometry` (é o que torna isto possível), e o que viaja é o valor que ela já usou para
+    /// conduzir a raiz — nunca uma segunda medição.
+    ///
+    /// ⚠️ `None` = não há câmera de jogo ⇒ nada é conduzido e nada é ancorado, que é a mesma lei
+    /// que a raiz já obedece.
+    pub(crate) vista: Option<ph2d_app_components::hud_bridge::View>,
 }
 
 /// ⭐⭐ **Os latches das cenas de smoke da família das INSTÂNCIAS** — um por roteador.

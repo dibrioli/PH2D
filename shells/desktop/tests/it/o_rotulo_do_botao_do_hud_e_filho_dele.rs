@@ -61,3 +61,47 @@ fn o_rotulo_do_botao_do_hud_e_filho_do_botao() {
          duas vezes o mesmo deslocamento"
     );
 }
+
+/// ⭐⭐⭐ **As duas peças de baixo PRENDEM-SE aos cantos OPOSTOS** — o item que o handoff do #20
+/// deixou aberto (*«as âncoras não estão ligadas ao canvas»*).
+///
+/// ⚠️ A régua é o TEXTO da cena, e o que ela afirma é a coisa que um artista vê: **os dois cantos
+/// são opostos em `x`**. Um gate que só contasse *«há duas âncoras»* ficaria verde com as duas
+/// presas ao MESMO canto — e as duas peças empilhavam-se uma em cima da outra ao alargar a janela.
+///
+/// **Mutação que deve sangrar:** pôr `min: [0.0, 0.0]` nas duas.
+#[test]
+fn as_duas_pecas_de_baixo_prendem_se_a_cantos_opostos() {
+    // ⚠️ **A fonte é a CRATE DA FAMÍLIA, e o endereço já se mudou uma vez:** a regra vivia em
+    // `shells/desktop/src/hud_smoke_anchors.rs` e saiu para a crate em 2026-09-19, quando a
+    // catraca da shell a mandou para casa. *Uma agulha que nomeia um endereço falha ALTO no dia da
+    // mudança, que é a espécie barata.*
+    let src = include_str!("../../../../crates/ph2d-app-components/src/hud_smoke_anchors.rs");
+    let resta = src
+        .find("world.entity_mut(contagem).insert(VecAnchors {")
+        .expect("a contagem deixou de se prender ao canto");
+    let pontos = src
+        .find("world.entity_mut(pontos).insert(VecAnchors {")
+        .expect("os pontos deixaram de se prender ao canto");
+
+    // A fracção em `x` de cada um, lida do bloco que começa em cada `find`.
+    let x_de = |i: usize| -> f64 {
+        // ⚠️ A fatia SATURA: o ficheiro é curto, e `i + 200` passava do fim dele — a 1.ª
+        // redacção rebentava no `slice index out of range` em vez de medir.
+        let bloco = &src[i..src.len().min(i + 200)];
+        let m = bloco.find("min: [").expect("a regra tem um `min`");
+        bloco[m + 6..]
+            .split(',')
+            .next()
+            .expect("a fraccao em x")
+            .trim()
+            .parse()
+            .expect("um numero")
+    };
+    let (a, b) = (x_de(resta), x_de(pontos));
+    assert!(
+        (a - b).abs() > 0.5,
+        "as duas pecas prendem-se ao MESMO lado em x ({a} e {b}) — ao alargar a janela elas \
+         empilham-se uma sobre a outra"
+    );
+}

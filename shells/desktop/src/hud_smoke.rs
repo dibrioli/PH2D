@@ -51,8 +51,7 @@ use ph2d_app_vec::text_edit::VecTextEdit;
 
 /// A caixa em que o HUD é desenhado, em unidades de mundo. ⚠️ **`16:9` e centrada**, como o
 /// `UiCanvas::default()`: é a caixa que o `Fit::Keep` mapeia sobre a vista da câmera.
-const REF_W: f32 = 32.0; // LITERAL-PX-OK: metros
-const REF_H: f32 = 18.0; // LITERAL-PX-OK: metros
+use ph2d_app_components::hud_smoke_anchors::{REF_H, REF_W};
 
 /// O tamanho do glyph, em unidades da caixa de referência.
 const TXT: f64 = 1.1; // LITERAL-PX-OK: metros
@@ -435,6 +434,7 @@ impl crate::App {
                 Transform::from_translation(ph2d_core::Vec2::new(p[0], p[1])),
             ));
         }
+        ph2d_app_components::hud_smoke_anchors::prende_os_cantos(world, e_resta, e_pontos);
         // ⛔⛔ **O rótulo é filho do BOTÃO, e isso é a FIAÇÃO e não arrumação** — a
         // auto-conferência mediu-o: o dedo no centro do `+10` devolve o caminho do TEXTO, porque o
         // hit-test de objecto entrega a forma mais ao topo que contém o ponto. É a subida da cadeia
@@ -535,7 +535,10 @@ impl crate::App {
         eprintln!(
             "[hud-smoke] o mundo ROLA e o HUD NAO: setas movem o heroi · o relogio soma 1 ponto a \
              cada 2 s · o botao +10 soma dez · a contagem desce sozinha. O rotulo dos pontos abre \
-             ESCOLHIDO, e a seccao HUD do Inspector mostra a fonte dele."
+             ESCOLHIDO, e a seccao HUD do Inspector mostra a fonte dele.\n\
+             [hud-smoke] ⭐ E AGORA ARRASTE A BORDA DA JANELA para a alargar: a contagem (em \
+             baixo a' ESQUERDA) e os pontos (em baixo a' DIREITA) seguem as bordas REAIS. Antes \
+             desta wave eles ficavam a uma banda delas, parados no meio."
         );
     }
 }

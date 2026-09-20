@@ -151,6 +151,14 @@ pub fn cena_33() -> Result<FieldDoc, ph2d_field::FieldError> {
         "[field-smoke]            (4) escolha a ESFERA, suba `Subsurface`, deixe `Thin Walled` em \
          `Solid` e baixe `Subsurface Radius` — a luz contorna a quina em vez de parar nela."
     );
+    // ⭐⭐⭐ **O passo da `W10`** (`docs/Render3d/10` §25): a borda mole da sombra passou a correr no
+    // MODO NORMAL, e antes dela o artista via ali uma linha DURA — o report de 18/09.
+    // ⚠️ Ele não nomeia controlo nenhum de propósito: é o que se OLHA, e o gate
+    // `o_roteiro_da_cena_nomeia_controlos_que_existem` mede os nomes que um passo promete.
+    println!(
+        "[field-smoke]            (5) olhe a BORDA da sombra que a LAMINA lanca sobre a ESFERA: \
+         ela e' MOLE e avermelhada, nunca uma linha dura."
+    );
     let lamina = leaf(
         Primitive::Box {
             half: [0.45, 0.42, 0.015],

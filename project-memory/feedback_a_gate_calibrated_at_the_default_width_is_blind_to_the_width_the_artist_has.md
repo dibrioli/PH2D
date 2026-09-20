@@ -72,3 +72,38 @@ serve para dizer **QUAL degrau importa** (e disse: a coluna esquerda do dono est
 um gate mede uma superfície que o utilizador redimensiona, a pergunta não é «qual a largura certa?»,
 é «esta régua varre uma ESCADA?»* — e o degrau que falta é sempre o estreito, porque é o único em
 que alguém está.
+
+---
+
+## ⭐⭐⭐ E o 3.º acto (2026-09-19): **renomear um rótulo custa as CITAÇÕES dele**
+
+Medida a escada, o dono escolheu duas das três curas: *«encurtar · balão ao passar o rato»*.
+Implementar «encurtar» à mão parecia o caminho óbvio. Não é, e o número di-lo:
+
+| encurtar 4 rótulos onde a SECÇÃO já diz a palavra que sai | |
+|---|---:|
+| rótulos que deixaram de ser cortados | **2** de 80 |
+| citações do nome antigo deixadas na prosa do repo | **54** |
+| — delas no roteador (`CLAUDE.md` §5), que uma linha não pode editar | **3** |
+
+⇒ **revertido.** Um rótulo de UI é um endereço: doc-comments, cabeçalhos de gate e o roteador
+citam-no pelo TEXTO. Renomeá-lo sem os actualizar fabrica a nota que envelhece — e três delas
+ficavam permanentemente erradas, porque o §5 só se edita na integração.
+
+⭐⭐ **O que funcionou foi a forma MECÂNICA da mesma ordem:** *um nome perde a EXPLICAÇÃO antes
+de perder LETRAS* — `"Acceleration (0 = instant)"` sai **`"Acceleration"`** em vez de
+`"Acceleration…"`. **18** rótulos, **zero** chaves novas, **zero** prosa a envelhecer, e a
+explicação continua legível no balão.
+
+⚠⚠ **E as duas grandezas têm de ser CONTADAS à parte:** um rótulo que sai `"Acceleration"` e um
+que sai `"Acceleration…"` são os dois um CORTE (o artista continua sem a explicação), e só o
+segundo lhe come o NOME — que é o que ele fotografa. Uma catraca só esconderia a cura ou
+mentiria sobre ela; são duas.
+
+**How to apply:** antes de encurtar um rótulo à mão, `git grep` o texto dele — se ele for citado
+em prosa, o renome custa essas linhas mais as que você não pode editar. Procure primeiro a forma
+**mecânica** da mesma ordem (uma lei sobre a FORMA do texto, num pintor só), que não tem
+citações. E quando o renome for mesmo preciso, ele é do DONO: o nome é vocabulário do produto.
+
+Vizinhos: [[feedback-a-doc-that-states-the-law-the-code-does-not-implement-reads-as-audited]] ·
+[[feedback-a-wave-that-changes-a-surface-invalidates-the-designs-that-sat-on-it]]

@@ -416,3 +416,26 @@ mutação nova.
 - **Isentar o par `(ficheiro, tipo)` cegou o pintor**, porque a SONDA e o PINTOR vivem no mesmo
   ficheiro sobre o mesmo tipo. ⇒ a granularidade é a **LINHA**: o ficheiro só é isento se TODA linha
   com o acessório casar com um trecho declarado.
+
+---
+
+## ⛔⛔ Um gate BINÁRIO («ou A ou B») fica vermelho sobre código MELHOR quando nasce um C
+
+Medido 2026-09-19 (`hr12_widgets_a11y`, PH2D). O gate aceitava um ficheiro de painel de **duas**
+maneiras: ele próprio fia a acessibilidade, **ou** chama um primitivo canónico da casa. Uma wave
+da véspera pôs as cinco secções de um painel a chamar **uma porta da própria crate** — que
+delega no primitivo — e **três ficheiros que estavam verdes ficaram vermelhos sobre código
+melhor do que o de antes**.
+
+⚠ **A tentação é a lista de tolerância** (o gate até a oferece por escrito). ⛔ Uma tolerância
+aqui é permanente e cega: ela diz *«confie neste ficheiro»* e nunca reconfere.
+
+⭐⭐⭐ **A cura é ensinar a TERCEIRA forma, com a entrada VERIFICADA:** uma lista
+`(porta, crate dona, ficheiro)` mais um teste irmão que exige que o ficheiro exista, defina a
+função e **contenha ele próprio um marcador canónico**. *Uma entrada verificada e uma isenção
+leem-se igual numa lista; o que as separa é esse teste* — e com ela o gate fica mais forte do que
+era, porque passa a saber que a porta delega mesmo.
+
+⚠ **E o vermelho já vinha do commit anterior**, invisível a ele: o gate vive na crate de
+fundação e a wave correu a crate do painel. *Um fecho que só corre as crates que a linha EDITOU
+é cego aos gates que vivem noutra* — quinta ocorrência registada neste repo.

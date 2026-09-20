@@ -96,21 +96,50 @@ bloco 'o no nunca vira capsula' ph2d-panel-motion-graph a_capsula_substitui_o_ca
   "    let _ = view;
     Detalhe::Completo"
 
-bloco 'a capsula tem altura fixa' ph2d-panel-motion-graph a_capsula_tem_a_altura \
+# ⛔⛔ **A 1.a CAPSULA FOI REPROVADA PELO DONO** (*«tamanhos irregulares … fonts irregulares»*): a
+#    altura seguia a contagem de pinos, e o nome era dimensionado a partir dela. A mutacao agora e'
+#    o contrario — a altura a VOLTAR a seguir os pinos.
+bloco 'a altura volta a seguir os pinos' ph2d-panel-motion-graph todas_as_capsulas_tem_a_mesma \
   "$GC" 1 \
-  "    HEADER_H.max(pinos * ROW_H)" \
-  "    let _ = pinos;
-    HEADER_H"
+  "pub(crate) fn capsula_h(_n: &GraphNodeView) -> f32 {
+    CAPSULA_H
+}" \
+  "pub(crate) fn capsula_h(n: &GraphNodeView) -> f32 {
+    #[expect(clippy::cast_precision_loss, reason = \"contagem\")]
+    let k = n.inputs.len().max(n.outputs.len()) as f32;
+    CAPSULA_H.max(k * ROW_H)
+}"
+
+bloco 'a capsula volta a ser FINA' ph2d-panel-motion-graph todas_as_capsulas_tem_a_mesma \
+  "$GC" 1 \
+  "pub(crate) const CAPSULA_H: f32 = 2.0 * ROW_H + MARGEM_DO_PINO;" \
+  "pub(crate) const CAPSULA_H: f32 = HEADER_H;"
+
+bloco 'o passo nunca aperta (os 5 pinos saem da pastilha)' ph2d-panel-motion-graph o_passo_aperta \
+  "$GC" 1 \
+  "    ROW_H.min((CAPSULA_H - MARGEM_DO_PINO) / vaos)" \
+  "    let _ = vaos;
+    ROW_H"
 
 bloco 'os pinos nao se centram na capsula' ph2d-panel-motion-graph os_pinos_centram_se \
   "$GE" 1 \
-  "            n.y + capsula_h(n) * 0.5 + (i as f32 - (k - 1.0) * 0.5) * ROW_H" \
-  "            n.y + HEADER_H + i as f32 * ROW_H + ROW_H * 0.5"
+  "            n.y + capsula_h(n) * 0.5 + (i as f32 - (k as f32 - 1.0) * 0.5) * passo" \
+  "            n.y + HEADER_H + i as f32 * passo + passo * 0.5"
 
-bloco 'os pinos voltam a encolher' ph2d-panel-motion-graph os_pinos_param_de_encolher \
+bloco 'os pinos voltam ao raio do CARTAO' ph2d-panel-motion-graph os_pinos_da_capsula_sao_grandes \
   "$GC" 1 \
-  "    raio_base * view.zoom.max(ZOOM_DA_CAPSULA)" \
-  "    raio_base * view.zoom"
+  "    let r = super::SOCKET_HIT_R.min(pela_pastilha);" \
+  "    let r = 5.0_f32.min(pela_pastilha);"
+
+bloco 'os pinos deixam de respeitar o vizinho' ph2d-panel-motion-graph os_pinos_da_capsula_sao_grandes \
+  "$GC" 1 \
+  "    r.min(0.45 * passo_do_pino(k) * view.zoom)" \
+  "    r"
+
+bloco 'os pinos deixam de respeitar a pastilha' ph2d-panel-motion-graph os_pinos_da_capsula_sao_grandes \
+  "$GC" 1 \
+  "    let pela_pastilha = 0.28 * CAPSULA_H * view.zoom;" \
+  "    let pela_pastilha = f32::INFINITY;"
 
 bloco 'o toggle e o badge sobrevivem a capsula' ph2d-panel-motion-graph numa_capsula_nao_ha_toggle \
   "$GE" 3 \
@@ -133,10 +162,18 @@ bloco 'o pintor deixa de desviar para a capsula' ph2d-panel-motion-graph the_bar
 echo
 echo "== (3) O NOME, BEM MAIOR =="
 
-bloco 'o nome da capsula volta ao tamanho do titulo' ph2d-panel-motion-graph o_nome_da_capsula_e_maior \
+# ⛔ A fonte a ENCOLHER nem chega a correr um teste: o `const _: () = assert!(CAPSULA_FONTE > 1.3 *
+#    TITLE_SIZE)` nao COMPILA. A mutacao que fica e' a que o dono de facto apanhou: a estimativa de
+#    avanco a ficar CURTA, que devolve as reticencias.
+bloco 'a estimativa de avanco fica curta (voltam as reticencias)' ph2d-app-motion nenhum_nome_do_catalogo \
   "$CA" 1 \
-  "const NOME_DA_CAPSULA: f32 = 0.62;" \
-  "const NOME_DA_CAPSULA: f32 = 0.3;"
+  "const AVANCO_POR_CHAR: f32 = 0.58;" \
+  "const AVANCO_POR_CHAR: f32 = 0.30;"
+
+bloco 'o nome deixa de ser CENTRADO' ph2d-panel-motion-graph o_nome_fica_no_centro \
+  "$CA" 1 \
+  "    body.x + (body.w - largura_do_texto) * 0.5" \
+  "    body.x"
 
 echo
 if [ "$FALHAS" = 0 ]; then

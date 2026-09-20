@@ -174,3 +174,43 @@ fn every_node_has_a_conference_row_or_is_named_in_the_debt() {
          deixou de existir) -- apague-as: {obsoletos:?}"
     );
 }
+
+/// ⭐⭐⭐ **NENHUM NOME DO CATÁLOGO É CORTADO NUMA CÁPSULA** — ordem do dono (2026-09-19): *«fonts
+/// de tamanho único bem alinhadas no centro da cápsula e sem 3 pontos (…)»*.
+///
+/// ⛔⛔ **A cápsula não corta o nome porque a FONTE foi dimensionada para o pior nome caber** — e
+/// essa derivação repousa numa ESTIMATIVA de avanço por caractere. Este censo é o que a torna uma
+/// propriedade CONFERIDA: ele mede **cada um dos tipos registados** com o medidor REAL (o mesmo
+/// que o corte com reticências consulta), do lado onde o catálogo vive.
+///
+/// ⚠️ **Um censo de CONTAGEM não serviria:** dezasseis `M` medem `261` unidades e dezasseis letras
+/// de um nome real medem `136` — *ele aprovaria um nome que o pintor cortaria*.
+///
+/// ⚠️ **E o piso de população é obrigatório:** um registo vazio faria este gate varrer zero nomes
+/// e passar por vácuo.
+#[test]
+fn nenhum_nome_do_catalogo_e_cortado_numa_capsula() {
+    let m = crate::motion_state::MotionState::new();
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut vistos = 0usize;
+    let mut nao_cabem: Vec<&'static str> = Vec::new();
+    for man in m.registry.manifests() {
+        let nome = m
+            .registry
+            .ui_manifest(man.id)
+            .map_or(man.name, |u| u.display_name);
+        vistos += 1;
+        if !ph2d_panel_motion_graph::nome_cabe_na_capsula(&mut ts, nome) {
+            nao_cabem.push(nome);
+        }
+    }
+    assert!(
+        vistos >= 130,
+        "so' {vistos} tipos no registo — este censo esta' a varrer o vazio"
+    );
+    assert!(
+        nao_cabem.is_empty(),
+        "estes nomes sairiam CORTADOS numa capsula: {nao_cabem:?} — baixe o `CAPSULA_FONTE` do \
+         painel (e re-meca a razao contra o titulo do cartao) ou encurte o nome"
+    );
+}

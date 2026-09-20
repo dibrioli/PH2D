@@ -36,6 +36,10 @@ ph2d-host = { path = "../ph2d-host" }
 # axes (Domain/Dim/Clock) that drive socket color/shape, wire color, and the
 # live connect-compatibility preview.
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+# ⚠️ Para CENTRAR o nome na cápsula com a medida REAL do texto
+# (`TextSystem::prefix_width_weighted`) — uma estimativa de avanço médio poria o nome
+# visivelmente fora do centro numa pastilha que existe para ser lida de longe.
+ph2d-text = { path = "../ph2d-text" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 
 [dev-dependencies]

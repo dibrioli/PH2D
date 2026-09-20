@@ -5062,6 +5062,7 @@ dependencies = [
  "ph2d-render",
  "ph2d-system-fonts",
  "ph2d-table",
+ "ph2d-text",
  "ph2d-thumbnail",
  "ph2d-timeline",
  "ph2d-tokens",
@@ -8026,6 +8027,7 @@ dependencies = [
  "ph2d-node-registry",
  "ph2d-nodegraph",
  "ph2d-param-editors",
+ "ph2d-text",
  "ph2d-tokens",
  "ph2d-ui-testkit",
 ]

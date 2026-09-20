@@ -68,7 +68,7 @@ mod paint_card;
 /// Irmão do [`paint_card`] por RESPONSABILIDADE: aquele desenha o que se LÊ de perto, este o que
 /// se RECONHECE de longe.
 #[path = "paint_capsula.rs"]
-mod paint_capsula;
+pub(crate) mod paint_capsula;
 use paint_card::draw_card;
 
 /// **COMO SE DESENHA UM PINO** — irmão cortado no tecto de LOC (600) e por RESPONSABILIDADE:

@@ -93,7 +93,7 @@ const _: () = assert!(MIN_READABLE_PX < PISO_ANTIGO_PX);
 /// vê o zoom): a faixa fica reservada sempre. Um cartão que encolhesse ao afastar faria os
 /// hit-rects saltarem debaixo do dedo a meio de um pinch.
 pub(crate) fn param_text_is_drawn(view: &View) -> bool {
-    PARAM_LABEL_SIZE * view.zoom >= MIN_READABLE_PX
+    view.zoom >= ZOOM_DA_CAPSULA
 }
 
 /// ⭐⭐⭐ **O DETALHE COM QUE UM CARTÃO SE DESENHA** — ordem do dono (2026-09-19): *«se depois
@@ -126,23 +126,55 @@ pub(crate) fn detalhe(view: &View) -> Detalhe {
     }
 }
 
-/// **A ALTURA de uma cápsula** — o que os sockets dela precisam, com o piso do cabeçalho.
+/// ⭐⭐⭐ **A ALTURA de uma cápsula — UMA, para todas.**
 ///
-/// ⚠️⚠️ **Ela não é uma constante, e a razão é geométrica:** uma cápsula de altura fixa com três
-/// entradas teria de as amontoar, e a `SOCKET_HIT_R` é fixa em píxeis de ECRÃ — três alvos de
-/// `9 px` a `4 px` de distância um do outro são um só alvo. Mantendo o passo de [`ROW_H`], o
-/// espaçamento dos pinos é **o mesmo** do cartão completo, e o que encolhe é só o que não tem
-/// pino: o readout, a faixa de params, o selo.
+/// ⛔⛔ **A 1.ª redacção fazia-a seguir a contagem de pinos do nó, e o dono reprovou-a**
+/// (2026-09-19): *«as cápsulas ficaram pequenas e finas, com tamanhos irregulares e fonts
+/// irregulares»*. As duas queixas eram a MESMA causa: com a altura a variar (`26`, `44`, `66`
+/// unidades) variava a pastilha **e** o nome, que era dimensionado a partir dela. *Uma grandeza
+/// que alimenta duas leituras produz duas irregularidades, e o artista lê-as como duas queixas.*
 ///
-/// ⭐ Para a esmagadora maioria dos nós (uma entrada, uma saída) ela é o próprio [`HEADER_H`] —
-/// `190 × 26`, que é a pastilha que o dono desenhou por palavras.
-pub(crate) fn capsula_h(n: &GraphNodeView) -> f32 {
+/// ⚠️⚠️ **O número é MEDIDO no catálogo** (sonda de 2026-09-19 sobre os **136** tipos
+/// registados), e não escolhido: com o passo do cartão ([`ROW_H`]), `3 × ROW_H` cobre
+/// **94,9 %** dos nós sem apertar pino nenhum —
+///
+/// | `max(entradas, saídas)` | nós | acumulado |
+/// |---:|---:|---:|
+/// | 1 | 76 | 55,9 % |
+/// | 2 | 37 | 83,1 % |
+/// | 3 | 16 | **94,9 %** |
+/// | 4 | 5 | 98,5 % |
+/// | 5 | 2 | 100 % |
+///
+/// ⛔ Os `5,1 %` com quatro ou cinco pinos **apertam o passo** em vez de esticar a pastilha (ver
+/// [`passo_do_pino`]): *a uniformidade era o pedido, e uma excepção para dois nós em 136 seria a
+/// irregularidade de volta.*
+///
+/// ⭐ **A fórmula é a conta de três pinos:** dois vãos de [`ROW_H`] mais a [`MARGEM_DO_PINO`] —
+/// `2,5 × ROW_H = 55` unidades, **2,1×** o `HEADER_H` que o dono viu e chamou de *«fina»*.
+pub(crate) const CAPSULA_H: f32 = 2.0 * ROW_H + MARGEM_DO_PINO;
+
+/// Ver [`CAPSULA_H`] — uma função para os chamadores não terem de saber que ela é constante.
+pub(crate) fn capsula_h(_n: &GraphNodeView) -> f32 {
+    CAPSULA_H
+}
+
+/// A folga TOTAL acima do primeiro pino e abaixo do último — meia de cada lado. ⚠️ Não é gosto:
+/// um pino colado à borda de uma forma de cantos totalmente arredondados fica **meio fora** dela.
+const MARGEM_DO_PINO: f32 = 0.5 * ROW_H;
+
+/// **O passo entre dois pinos de uma cápsula.** É o do cartão ([`ROW_H`]) enquanto eles couberem,
+/// e aperta-se para os `5,1 %` de nós que não cabem — ver a tabela em [`CAPSULA_H`].
+pub(crate) fn passo_do_pino(k: usize) -> f32 {
+    if k < 2 {
+        return ROW_H;
+    }
     #[expect(
         clippy::cast_precision_loss,
         reason = "contagem de portas cabe num f32"
     )]
-    let pinos = n.inputs.len().max(n.outputs.len()) as f32;
-    HEADER_H.max(pinos * ROW_H)
+    let vaos = (k - 1) as f32;
+    ROW_H.min((CAPSULA_H - MARGEM_DO_PINO) / vaos)
 }
 
 /// **A altura de um cartão NESTE zoom** — a porta única do [`Detalhe`] para a geometria.
@@ -161,19 +193,26 @@ pub(crate) fn card_h_at(n: &GraphNodeView, view: &View) -> f32 {
     }
 }
 
-/// ⭐⭐ **O RAIO COM QUE UM PINO É DESENHADO** — *«os slots de conexão ficam maiores»* (ordem do
-/// dono, 2026-09-19).
+/// ⭐⭐⭐ **O RAIO COM QUE UM PINO É DESENHADO NUMA CÁPSULA** — *«quero slots de conexão grandes e
+/// bem visíveis»* (ordem do dono, 2026-09-19).
 ///
-/// ⚠️⚠️ **O número é DERIVADO e não escolhido: o pino PARA de encolher no limiar da cápsula.**
-/// Ele é desenhado com o raio que tinha em [`ZOOM_DA_CAPSULA`], logo a `zoom 0,3` sai `2,2×`
-/// maior do que sairia. *A alternativa — um multiplicador — daria um pino que volta a encolher ao
-/// afastar mais, e isso é precisamente o que esta ordem existe para curar.*
+/// ⭐⭐ **O ponto de partida é o ALVO, e isso é a coisa mais honesta que este desenho pode fazer:**
+/// a [`super::SOCKET_HIT_R`] é fixa em píxeis de ECRÃ desde sempre (*«o dot desenhado encolhe com
+/// o zoom, mas o alvo não»*) — desenhar o pino com o raio do alvo faz o desenho **deixar de
+/// mentir** sobre onde se pode clicar.
 ///
-/// ⭐ **E ele passa a dizer a verdade sobre o ALVO:** a [`super::SOCKET_HIT_R`] é fixa em píxeis de
-/// ECRÃ desde sempre (*«o dot desenhado encolhe com o zoom, mas o alvo não»*) — o desenho é que
-/// mentia sobre ela.
-pub(crate) fn raio_do_pino(view: &View, raio_base: f32) -> f32 {
-    raio_base * view.zoom.max(ZOOM_DA_CAPSULA)
+/// Duas cercas, e cada uma nomeia o que a limita:
+/// - **a pastilha** (`0,28 × altura`): um pino cujo diâmetro passe de metade da cápsula deixa de
+///   ser um pino e passa a ser a cápsula;
+/// - **o vizinho** (`0,45 × passo`, só com dois ou mais do mesmo lado): dois círculos a `0,5 × d`
+///   de distância tocam-se, e dois pinos que se tocam leem-se como um.
+pub(crate) fn raio_do_pino_na_capsula(view: &View, k: usize) -> f32 {
+    let pela_pastilha = 0.28 * CAPSULA_H * view.zoom; // LITERAL-PX-OK: fracção da altura da pastilha
+    let r = super::SOCKET_HIT_R.min(pela_pastilha);
+    if k < 2 {
+        return r;
+    }
+    r.min(0.45 * passo_do_pino(k) * view.zoom) // LITERAL-PX-OK: fracção do passo entre pinos
 }
 
 /// **UMA ROW SÓ SE AGARRA QUANDO SE PODE MIRAR** — e é o MESMO limiar do texto, de propósito.

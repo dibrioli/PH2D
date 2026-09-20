@@ -3,9 +3,7 @@
 //! com que raio são desenhados) e a LEI (quando ela substitui o cartão), as duas por VALOR. O
 //! censo de que o pintor a chama vive ao lado, por `include_str!`.
 
-use crate::geom::{
-    self, CARD_W, Detalhe, HEADER_H, ROW_H, View, ZOOM_DA_CAPSULA, capsula_h, raio_do_pino,
-};
+use crate::geom::{self, CARD_W, Detalhe, ROW_H, View, ZOOM_DA_CAPSULA, capsula_h};
 use crate::snapshot::{GraphNodeView, NodeViewKind, PortView};
 use crate::state::ViewState;
 use ph2d_editor_core::zones::Rect;
@@ -78,34 +76,53 @@ fn a_capsula_substitui_o_cartao_abaixo_do_limiar_do_texto() {
     assert_eq!(geom::detalhe(&vista(0.3)), Detalhe::Capsula);
 }
 
-/// ⭐⭐ **A CÁPSULA É MAIS BAIXA QUE O CARTÃO, E TEM A ALTURA DOS PINOS DELA.**
+/// ⭐⭐⭐ **TODAS AS CÁPSULAS TÊM A MESMA ALTURA** — *«quero cápsulas grossas grandes e robustas»*
+/// e *«tamanhos irregulares»* (ordem do dono, 2026-09-19, a reprovar a 1.ª redacção).
 ///
-/// ⚠️ **Ela não é uma constante, e a razão é geométrica:** com três entradas, uma altura fixa
-/// amontoaria os pinos — e a `SOCKET_HIT_R` é fixa em píxeis de ECRÃ, logo três alvos de `9 px` a
-/// `4 px` de distância são um alvo só. Mantendo o passo de `ROW_H`, o espaçamento é **o mesmo** do
-/// cartão completo.
+/// ⛔⛔ **A 1.ª redacção fazia a altura seguir a contagem de pinos**, e daí vinham DUAS das quatro
+/// queixas dele: a pastilha variava **e** o nome, que era dimensionado a partir dela. *Uma
+/// grandeza a alimentar duas leituras produz duas irregularidades.*
+///
+/// ⚠️ **E ela é GROSSA:** `3 × ROW_H` contra os `HEADER_H` de antes — `2,54×`.
 #[test]
-fn a_capsula_tem_a_altura_dos_pinos_dela() {
-    let um = no(1, 1);
-    assert_eq!(
-        capsula_h(&um),
-        HEADER_H,
-        "o caso esmagadoramente comum e' a pastilha do cabecalho"
+fn todas_as_capsulas_tem_a_mesma_altura_e_ela_e_grossa() {
+    let alturas = [no(1, 1), no(3, 1), no(1, 5), no(2, 4)].map(|n| capsula_h(&n));
+    assert!(
+        alturas.windows(2).all(|a| (a[0] - a[1]).abs() < 1e-6),
+        "a altura nao pode seguir a contagem de pinos: {alturas:?}"
     );
     assert!(
-        capsula_h(&um) < geom::card_h(&um),
-        "e ela e' mais baixa que o cartao completo — senao nao e' uma capsula"
+        capsula_h(&no(1, 1)) > geom::HEADER_H * 2.0,
+        "«grossa» e' contra o cabecalho de 26 unidades, que foi o que o dono viu"
     );
-    assert_eq!(capsula_h(&no(3, 1)), 3.0 * ROW_H, "tres pinos, tres passos");
-    assert_eq!(
-        capsula_h(&no(1, 4)),
-        4.0 * ROW_H,
-        "e o lado que manda e' o que tem MAIS pinos"
+    assert!(
+        capsula_h(&no(1, 1)) < geom::card_h(&no(1, 1)),
+        "e ainda assim mais baixa que o cartao completo — senao nao e' uma capsula"
     );
-
     // E a altura que a geometria publica segue o detalhe.
+    let um = no(1, 1);
     assert_eq!(geom::card_h_at(&um, &vista(1.0)), geom::card_h(&um));
     assert_eq!(geom::card_h_at(&um, &vista(0.3)), capsula_h(&um));
+}
+
+/// ⭐⭐ **E O PASSO DOS PINOS APERTA-SE NOS 5,1 % QUE NÃO CABEM** — a outra metade da
+/// uniformidade: em vez de esticar a pastilha para dois nós em 136, eles encostam-se.
+#[test]
+fn o_passo_aperta_se_so_nos_nos_que_nao_cabem() {
+    assert_eq!(geom::passo_do_pino(1), ROW_H, "um pino: o passo do cartao");
+    assert_eq!(
+        geom::passo_do_pino(3),
+        ROW_H,
+        "tres cabem com o passo inteiro"
+    );
+    assert!(
+        geom::passo_do_pino(5) < ROW_H,
+        "cinco nao cabem, logo apertam"
+    );
+    assert!(
+        4.0 * geom::passo_do_pino(5) < geom::CAPSULA_H,
+        "e apertados, eles CABEM na pastilha com folga para as bordas redondas"
+    );
 }
 
 /// ⭐⭐ **OS PINOS CENTRAM-SE NA CÁPSULA E MANTÊM O PASSO.**
@@ -120,8 +137,8 @@ fn os_pinos_centram_se_na_capsula_e_mantem_o_passo() {
 
     let (a, b) = (y(false, 0), y(false, 1));
     assert!(
-        (b - a - ROW_H * v.zoom).abs() < 1e-3,
-        "o passo entre pinos e' o mesmo `ROW_H` do cartao: {}",
+        (b - a - geom::passo_do_pino(2) * v.zoom).abs() < 1e-3,
+        "o passo entre pinos e' o que a lei declara: {}",
         (b - a) / v.zoom
     );
     let meio = v.pt(0.0, capsula_h(&n) * 0.5).1;
@@ -135,28 +152,43 @@ fn os_pinos_centram_se_na_capsula_e_mantem_o_passo() {
     assert!(geom::socket_center(&n, &v, true, 0).0 > geom::socket_center(&n, &v, false, 0).0);
 }
 
-/// ⭐⭐⭐ **OS PINOS PARAM DE ENCOLHER** — *«os slots de conexão ficam maiores»*.
+/// ⭐⭐⭐ **OS PINOS SÃO GRANDES E BEM VISÍVEIS** — *«quero slots de conexão grandes e bem
+/// visíveis»* (ordem do dono, 2026-09-19, depois de reprovar a 1.ª cápsula).
 ///
-/// ⚠️ A régua é a RAZÃO contra o que eles sairiam sem a lei, e não um número: *um gate escrito
-/// sobre `3,3 px` afirmaria o raio base e o zoom, nunca a lei.*
+/// ⚠️ A régua é a RAZÃO contra o pino do CARTÃO no mesmo zoom, e não um número em píxeis: *um gate
+/// escrito sobre `9 px` afirmaria a constante, nunca a lei.* E as duas cercas — a pastilha e o
+/// vizinho — têm metade cada, porque cada uma nomeia uma coisa diferente que pode apagar o pino.
 #[test]
-fn os_pinos_param_de_encolher_na_capsula() {
-    const BASE: f32 = 5.0;
-    let sem_lei = |z: f32| BASE * z;
+fn os_pinos_da_capsula_sao_grandes_e_bem_visiveis() {
+    const DO_CARTAO: f32 = 5.0; // `paint::SOCKET_R`
+    // ⚠️ No LIMIAR — que é onde o artista o encontra ao afastar, e o único zoom em que as duas
+    //    cercas ainda não mordem.
+    let z = ZOOM_DA_CAPSULA;
+    let um = geom::raio_do_pino_na_capsula(&vista(z), 1);
     assert!(
-        (raio_do_pino(&vista(1.0), BASE) - sem_lei(1.0)).abs() < 1e-6,
-        "acima do limiar nada muda — o cartao de perto e' byte a byte o de sempre"
-    );
-    let z = 0.3;
-    let r = raio_do_pino(&vista(z), BASE);
-    assert!(
-        r > sem_lei(z) * 2.0,
-        "a `zoom {z}` o pino sai mais do DOBRO do que sairia: {r} contra {}",
-        sem_lei(z)
+        um > DO_CARTAO * z * 2.0,
+        "com um pino so', ele sai mais do DOBRO do que o cartao desenharia: {um}"
     );
     assert!(
-        (r - BASE * ZOOM_DA_CAPSULA).abs() < 1e-6,
-        "e o que ele congela e' o raio do LIMIAR, nao um multiplicador"
+        (um - geom::SOCKET_HIT_R).abs() < 1e-6,
+        "e o que ele toma e' o raio do ALVO — o desenho deixa de mentir sobre onde se clica"
+    );
+    // ⛔ A cerca da PASTILHA: bem longe, o pino não pode ser maior que a cápsula.
+    let longe = geom::raio_do_pino_na_capsula(&vista(0.15), 1);
+    assert!(
+        longe < geom::SOCKET_HIT_R && longe * 2.0 < geom::CAPSULA_H * 0.15,
+        "a cerca da pastilha: um pino maior que metade dela deixa de ser um pino ({longe})"
+    );
+    // ⛔ A cerca do VIZINHO: com muitos pinos do mesmo lado eles não se tocam.
+    let quatro = geom::raio_do_pino_na_capsula(&vista(z), 4);
+    assert!(
+        quatro * 2.0 < geom::passo_do_pino(4) * z,
+        "dois pinos que se tocam leem-se como um ({quatro} contra o passo {})",
+        geom::passo_do_pino(4) * z
+    );
+    assert!(
+        quatro < um,
+        "e mais pinos · pino mais pequeno, nunca o contrario"
     );
 }
 
@@ -206,27 +238,60 @@ fn o_pintor_do_cartao_desvia_para_a_capsula() {
     assert!(i_desvio < i_corpo, "o desvio tem de ser a SAIDA CEDO");
 }
 
-/// ⚠️ **O nome da cápsula é MAIOR do que o título do cartão seria** — *«os nomes dos nós ficam bem
-/// maiores nas cápsulas»*. A régua compara as duas leis no MESMO zoom, que é a única comparação
-/// que a ordem admite.
+/// ⭐⭐⭐ **O NOME TEM UM TAMANHO SÓ, É MAIOR QUE O TÍTULO DO CARTÃO, E NUNCA É CORTADO** — as três
+/// metades do pedido do dono (*«fonts de tamanho único … e sem 3 pontos (…)»*).
+///
+/// ⚠️⚠️ **A terceira é a que exige um MEDIDOR REAL:** a fonte é derivada de uma ESTIMATIVA de
+/// avanço médio, e a única forma de saber se ela é generosa o bastante é medir o pior nome do
+/// catálogo com o mesmo medidor que o pintor usa. *Uma estimativa que ninguém confere é o
+/// reticências de volta.*
 #[test]
-fn o_nome_da_capsula_e_maior_que_o_titulo_seria() {
-    let capsula = include_str!("paint_capsula.rs");
-    // A fracção que a cápsula usa, lida do ficheiro — derivada, não escrita duas vezes.
-    const TITULO_DO_CARTAO: f32 = 13.0;
-    let n = no(1, 1);
-    // No limiar: `HEADER_H × 0,62` contra `13`, os dois vezes o mesmo zoom ⇒ a razão é a dos
-    // coeficientes.
-    let da_capsula = capsula_h(&n) * 0.62;
+fn o_nome_tem_um_tamanho_so_e_nunca_e_cortado() {
+    use crate::paint::paint_capsula::CAPSULA_FONTE;
+
+    // ⚠️ **As duas primeiras metades vivem no COMPILADOR**, e é por isso que não estão aqui: o
+    // `CAPSULA_FONTE` é uma constante (logo TAMANHO ÚNICO por construção) e o `const _: () =
+    // assert!(CAPSULA_FONTE > 1.3 * TITLE_SIZE)` ao lado dela recusa um corpo que não seja «bem
+    // maior». *O clippy recusa um `assert!` de teste sobre duas constantes — ele é dobrado antes
+    // de correr —, e uma cerca que o compilador impõe é mais forte que um gate.*
+    //
+    // O que SOBRA para medir é a única metade que uma constante não decide: SEM RETICÊNCIAS — o
+    // pior nome do catálogo, com o medidor que o pintor consulta.
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let disponivel = CARD_W - 2.0 * 12.0;
+    for nome in [
+        "Fibonacci Spiral",
+        "Simulation Zone",
+        "Four Point Warp",
+        "Reroute (Value)",
+        "MMMMMMMMMMMMMMMM",
+    ] {
+        let w = ts.prefix_width_weighted(nome, CAPSULA_FONTE, ph2d_text::FontWeight::SEMI_BOLD);
+        eprintln!("  {nome:<18} {w:>8.1} de {disponivel:.1}");
+    }
+    let pior = "Fibonacci Spiral";
+    let largura = ts.prefix_width_weighted(pior, CAPSULA_FONTE, ph2d_text::FontWeight::SEMI_BOLD);
     assert!(
-        da_capsula > TITULO_DO_CARTAO,
-        "o nome da capsula ({da_capsula}) tem de ser maior que o titulo do cartao \
-         ({TITULO_DO_CARTAO}) — a ordem do dono diz «bem maiores»"
-    );
-    assert!(
-        capsula.contains("NOME_DA_CAPSULA: f32 = 0.62"),
-        "a fraccao mudou: re-meca a razao acima em vez de a deixar a mentir"
+        largura <= disponivel,
+        "a estimativa de avanco nao e' generosa: «{pior}» mede {largura} e so' ha' {disponivel} \
+         — re-derive o `AVANCO_POR_CHAR`"
     );
     // E a cápsula tem sempre a largura do cartão — só a ALTURA muda.
     assert!((CARD_W - 190.0).abs() < 1e-6);
+}
+
+/// ⭐⭐ **O NOME FICA NO CENTRO DA PASTILHA** — *«bem alinhadas no centro da cápsula»* (ordem do
+/// dono, 2026-09-19). ⚠️ Medido no NÚMERO e não por um censo de texto: *um censo de texto
+/// sobrevive a um `if false &&`, e esta linha já o pagou duas vezes.*
+#[test]
+fn o_nome_fica_no_centro_da_pastilha() {
+    use crate::paint::paint_capsula::x_do_nome;
+    let body = Rect::new(100.0, 50.0, 190.0, 55.0);
+    for w in [10.0_f32, 80.0, 166.0] {
+        let x = x_do_nome(w, body);
+        assert!(
+            ((x + w * 0.5) - (body.x + body.w * 0.5)).abs() < 1e-4,
+            "o meio do texto tem de cair no meio da pastilha (largura {w})"
+        );
+    }
 }

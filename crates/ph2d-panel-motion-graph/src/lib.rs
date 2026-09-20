@@ -53,6 +53,8 @@ mod state;
 /// minimum the panel drew and hit-tested, instead of a second number that could
 /// drift from it.
 pub use backdrop::{MIN_H as BACKDROP_MIN_H, MIN_W as BACKDROP_MIN_W};
+/// ⭐ A porta que o censo do catálogo pergunta — ver `paint_capsula::nome_cabe_na_capsula`.
+pub use paint::paint_capsula::nome_cabe_na_capsula;
 pub use snapshot::{
     CardChoices, CardParam, CardSection, ChoiceTarget, Crumb, GraphBackdropView, GraphEdgeView,
     GraphIntent, GraphNodeView, GraphViewSnapshot, HiddenPorts, NodeChoice, NodeViewKind,

@@ -276,8 +276,9 @@ pub(crate) fn socket_center(n: &GraphNodeView, view: &View, output: bool, i: usi
             } else {
                 n.inputs.len()
             }
-            .max(1) as f32;
-            n.y + capsula_h(n) * 0.5 + (i as f32 - (k - 1.0) * 0.5) * ROW_H
+            .max(1);
+            let passo = passo_do_pino(k);
+            n.y + capsula_h(n) * 0.5 + (i as f32 - (k as f32 - 1.0) * 0.5) * passo
         }
     };
     view.pt(edge_x, y)

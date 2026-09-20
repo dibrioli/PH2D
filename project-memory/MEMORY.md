@@ -107,6 +107,7 @@
 - [Física do impasto/sculpt (10)](reference_topic_impasto_physics.md)
 - ⭐ [**Como uma RÉGUA mente** — a família (161)](reference_topic_measurement_discipline.md)
 - ⛔⛔⛔ [Uma régua enviesada manda a wave seguinte para onde ela própria está errada](feedback_a_biased_ruler_sends_work_to_where_it_is_itself_wrong.md)
+- ⛔⛔ [Régua de layout alimentada pelo que o layout PRODUZIU oscila em DOIS quadros — e nenhuma régua de um quadro o vê](feedback_a_ruler_that_reads_what_the_layout_produced_oscillates.md)
 - ⛔ [Régua de vazamento cuja máscara usa o predicado DO PRODUTO lê 0,00 % sobre o defeito](feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak.md)
 - ⛔⛔ [Sweep da parede VERDE sobre espec que TRADUZIA o alvo](feedback_a_sweep_in_one_language_does_not_prove_filtering_in_another.md)
 - ⛔ [viés em NDC não é constante no mundo: 3e-3 = 30 % da distância do olho](feedback_a_depth_bias_constant_in_ndc_is_not_constant_in_the_world.md)

@@ -362,12 +362,21 @@ impl Brush {
     /// `Float32Array` guarda uma vez. Computá-la em `f32` acumularia uma
     /// segunda arredondada e a paridade sairia do piso do formato.
     ///
-    /// ⚠️ **`t` chega JÁ normalizado pelo raio** e não é clampado aqui: o
-    /// original clampa (`if dist > 1 dist = 1`) e a nota do
-    /// [`crate::ref_kernels`] mede que esse ramo é **inalcançável** — quem monta
-    /// a pegada só admite `d² < r²`. A guarda contra `t > 1` mora onde o
-    /// consumo mora, e duplicá-la aqui seria a segunda resposta à mesma
-    /// pergunta.
+    /// ⛔⛔ **ESTA NOTA DIZIA QUE O CLAMP ERA DESNECESSÁRIO, E AS DUAS METADES
+    /// DELA ERAM FALSAS** — a redacção anterior afirmava que o ramo `t > 1` é
+    /// *«inalcançável, quem monta a pegada só admite `d² < r²`»* e que *«a
+    /// guarda mora onde o consumo mora»*. Medido no produto em 2026-09-20:
+    /// o `t` vale **`1,0005` a `1,0108`**, e o consumo
+    /// ([`crate::SculptStroke`]) não tem guarda nenhuma — ela vivia dentro de
+    /// UMA das três curvas de peso, a [`crate::Falloff::weight`], e esta
+    /// nasceu sem ela.
+    ///
+    /// ⇒ hoje as duas leem a mesma porta, [`crate::fora_da_pegada`], onde o
+    /// mecanismo está escrito: a pegada sai das posições **VIVAS** e o peso do
+    /// envelope sai da **CONGELADA**, e a topologia dinâmica move uma sem mexer
+    /// na outra. *A premissa estava certa sobre a REFERÊNCIA e falsa sobre a
+    /// nossa consulta, e ninguém a reconferiu quando o dyntopo passou a mover
+    /// vértices debaixo de um traço.*
     #[must_use]
     pub fn mask_weight(&self, t: f32) -> f32 {
         self.channel_weight(t, self.mask_hardness)
@@ -380,8 +389,21 @@ impl Brush {
     /// (`Masking.js:66-69` e `Paint.js:124-127` escrevem `softness = 2(1−h)` e
     /// `pow(1−d, softness)`), e é por isso que ela é UMA função: duas cópias da
     /// potência divergiriam no dia em que alguém corrigisse uma delas.
+    ///
+    /// ⛔⛔⛔ **FORA DA PEGADA ELA DEVOLVE ZERO, e essa linha é a cura do report
+    /// das manchas pretas** (20/09). Sem ela, `t > 1` faz a base ser negativa e
+    /// `powf` com o expoente de fábrica (`2·(1 − 0,75) = 0,5`, uma raiz
+    /// quadrada) devolve **`NaN`** — que não pinta um pixel errado, **contamina
+    /// a interpolação da FACE inteira**. Ver [`crate::fora_da_pegada`] para o
+    /// mecanismo e para a premissa que ela derrubou.
+    ///
+    /// ⚠️ **Dentro da pegada não muda um bit:** para `t ∈ [0, 1)` o caminho é o
+    /// de sempre, e em `t = 1` exacto as duas leis já concordavam (`0^s = 0`).
     #[must_use]
     pub fn channel_weight(&self, t: f32, hardness: f32) -> f32 {
+        if crate::fora_da_pegada(t) {
+            return 0.0;
+        }
         let softness = 2.0 * (1.0 - f64::from(hardness));
         (1.0 - f64::from(t)).powf(softness) as f32
     }

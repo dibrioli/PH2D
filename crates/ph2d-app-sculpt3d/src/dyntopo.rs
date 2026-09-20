@@ -403,6 +403,11 @@ mod tests;
 #[cfg(test)]
 #[path = "gancho_report_tests.rs"]
 mod gancho_report;
+/// ⭐⭐⭐⭐ **A RÉGUA DAS MANCHAS PRETAS** — o report de 20/09, e a régua que
+/// separa *«a cor parte na CPU»* de *«a cor parte a caminho do device»*.
+#[cfg(test)]
+#[path = "manchas_pretas_tests.rs"]
+mod manchas_pretas;
 /// ⭐ **A ÂNCORA do «puxar pela normal»** — o 2.º report do mesmo dia, e um
 /// assunto próprio: ali mede-se a MÁSCARA, aqui o ponto em que a puxada prende.
 #[cfg(test)]

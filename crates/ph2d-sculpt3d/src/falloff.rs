@@ -209,7 +209,80 @@ impl Falloff {
         Self::Dome,
         Self::Dome4,
     ];
+}
 
+/// ⭐⭐⭐⭐ **ESTE `t` CAI FORA DA PEGADA?** — a porta que as DUAS famílias de
+/// curva de peso leem, e que até 2026-09-20 existia só dentro de uma delas.
+///
+/// # ⛔⛔ O defeito que ela cura, e porque ele não era um `t` fora de faixa
+///
+/// Report do dono (20/09, com foto): pintar com a **topologia dinâmica armada**
+/// deixa **faces INTEIRAS a preto, de aresta dura**, nos três verbos que
+/// escrevem cor. A causa mede-se em forma fechada:
+///
+/// * a curva de um CANAL é `(1 − t)^{2(1 − hardness)}`
+///   ([`crate::Brush::channel_weight`], o porte de `Masking.js:66-69`);
+/// * de fábrica `paint_hardness = 0,75`, logo o expoente é **`0,5`** — uma raiz
+///   quadrada;
+/// * com `t > 1` a base é **negativa**, e `powf` de base negativa com expoente
+///   não-inteiro é **`NaN`** por IEEE-754.
+///
+/// ⭐ E um `NaN` no canal não é um pixel errado: ele **contamina a interpolação
+/// da FACE inteira**, que é exactamente *uma mancha de aresta dura*. O
+/// doc de [`crate::Falloff::weight`] já escrevia o mecanismo — *«sem isso ele
+/// escorre pelas fórmulas e sai como peso `NaN` num vértice, que é como uma
+/// malha inteira vira `NaN`»* — e a guarda que ele descreve vivia **só ali**.
+/// *Uma lei escrita num sítio ainda não é uma lei; só uma PORTA é.*
+///
+/// # ⚠️ Porque `t > 1` é ALCANÇÁVEL, e a nota que dizia o contrário
+///
+/// O doc de [`crate::Brush::mask_weight`] afirmava que o ramo do clamp era
+/// **inalcançável** — *«quem monta a pegada só admite `d² < r²`»* — e que *«a
+/// guarda contra `t > 1` mora onde o consumo mora»*. **As duas são falsas, e a
+/// medição derruba-as:** o consumo ([`crate::SculptStroke`]) não tem guarda
+/// nenhuma, e o `t` medido no produto vale **`1,0005` a `1,0108`**.
+///
+/// ⭐⭐⭐ O mecanismo é que **a pegada e o peso não saem da mesma posição**, e o
+/// `stroke_dab_core` escreve-o em meia frase: a consulta `verts_in_sphere` usa
+/// as posições **VIVAS**, e no envelope (`from_live = false`, que é a lei do
+/// [`crate::Verb::Paint`]) o peso sai da posição **CONGELADA** no pen-down. As
+/// duas concordam enquanto nada mexer na malha — e a topologia dinâmica mexe:
+/// um colapso pousa o sobrevivente no ponto médio (`positions[keep] = m.at`) e
+/// **não toca no `base_pos`**. ⇒ um vértice cuja posição viva entrou na esfera e
+/// cuja congelada ficou de fora chega às curvas com `t` ligeiramente acima de
+/// `1`. *Não é um erro de arredondamento: é a distância entre duas posições do
+/// mesmo vértice.*
+///
+/// ⚠️ **É por isso que o defeito só aparece com o passe armado**, e é por isso
+/// que ele começa no primeiro carimbo com colapso — medido, o `NaN` nasce no
+/// dab em que `cut` é `true` pela primeira vez. ⛔ **A hipótese alternativa foi
+/// construída e REFUTADA:** um traço com `auto_smooth` a `1,0` e **sem** passe
+/// deixa a posição viva `0,0959` longe da congelada — `21 %` do raio — e produz
+/// **zero** `NaN`, porque quem se move não é quem a pegada admite. *A deriva
+/// sozinha não basta; é preciso que a malha ganhe ou perca vértices.*
+///
+/// # ⭐⭐⭐ A REFERÊNCIA SEMPRE TEVE ESTA GUARDA — fomos nós que a deixámos cair
+///
+/// O porte fiel do `Masking.js` vive nesta crate ([`crate::ref_mask::mask`]) e
+/// escreve-a à letra: `if dist > 1.0 { dist = 1.0; }` **antes** do `powf`. Ela
+/// perdeu-se quando a fórmula foi reescrita como uma curva de `t`, com a nota
+/// que declarava o ramo inalcançável a ocupar o lugar dela. ⇒ *esta cura não é
+/// uma divergência do alvo: é o regresso ao que ele faz.*
+///
+/// ⚠️ **DIVERGÊNCIA DECLARADA, e é de um ramo que o alvo nunca executa.** Ele
+/// clampa a DISTÂNCIA e nós clampamos o PESO, e as duas leis só discordam num
+/// ponto: com `hardness = 1` exacto o expoente é `0`, e `0⁰` vale **`1`** em
+/// IEEE-754 — o original devolveria peso **cheio** a um vértice fora do pincel,
+/// e nós devolvemos **zero**. Fica a nossa, porque *um vértice fora da pegada
+/// não é do dab*, e porque ali o alvo não tem lado aprovado: a consulta dele é
+/// `d² < r²` estrita, logo `dist > 1` é inalcançável **no programa dele**.
+#[must_use]
+#[inline]
+pub fn fora_da_pegada(t: f32) -> bool {
+    !t.is_finite() || t >= 1.0
+}
+
+impl Falloff {
     /// O peso a uma distância normalizada `t`. **Porta única** — todo verbo, a
     /// simetria e o cursor perguntam a esta função.
     ///
@@ -220,7 +293,13 @@ impl Falloff {
         // O NaN é peneirado explicitamente: sem isso ele escorre pelas fórmulas
         // e sai como peso NaN num vértice, que é como uma malha inteira vira
         // `NaN` a partir de um dab com raio zero em algum lugar.
-        if !t.is_finite() || t >= 1.0 {
+        //
+        // ⚠️ **A pergunta saiu daqui para a [`fora_da_pegada`] em 2026-09-20**, e
+        // não por arrumação: a curva de um CANAL precisava exactamente desta
+        // linha e nasceu sem ela — ver o doc da porta. *Um ramo que se esqueça
+        // dela fica visível por AUSÊNCIA de chamada; duas cópias divergem outra
+        // vez em silêncio.*
+        if fora_da_pegada(t) {
             return 0.0;
         }
         let t = t.max(0.0);
@@ -307,3 +386,9 @@ impl Falloff {
 #[cfg(test)]
 #[path = "falloff_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐⭐ **A PORTA DO DOMÍNIO**, medida nas duas famílias de curva — ver
+/// [`fora_da_pegada`].
+#[cfg(test)]
+#[path = "fora_da_pegada_tests.rs"]
+mod fora_da_pegada_tests;

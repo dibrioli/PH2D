@@ -205,7 +205,7 @@ pub use cloth_force_falloff::ClothForceFalloff;
 pub use cloth_mode::{ClothArea, ClothMode};
 pub use coat::{COAT_HEAD, coat_step};
 pub use curva_inerte::CurvaInerte;
-pub use falloff::Falloff;
+pub use falloff::{Falloff, fora_da_pegada};
 pub use filter_law::FilterLaw;
 pub use grip::{Amount, Grip, GripLaw};
 pub use kelvinlet::KELVINLET_REACH;

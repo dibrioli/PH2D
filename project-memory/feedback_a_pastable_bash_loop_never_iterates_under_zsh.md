@@ -58,3 +58,21 @@ mesma causa tinha dado `git diff A B -- $L` vazio e «as listas são iguais».
 de «igual».* Verificação = **ficheiro `bash`** com arrays, `pipefail` com `|| true` onde o vazio é legítimo,
 e **um controlo positivo** (dois patches sabidamente diferentes TÊM de dar assinaturas diferentes) —
 foi só com o controlo que a régua achou os 2 de 130.
+
+## ⛔⛔ 4.ª RECORRÊNCIA — 2026-09-18, e o mecanismo é OUTRO: o `nomatch` que ABORTA (fim de dia)
+
+⚠️⚠️ **A ferramenta `Bash` do Claude Code nesta máquina corre `zsh`, não bash** — `$BASH_VERSION`
+vem **vazio**. As três recorrências acima falavam do *shell interativo*; um agente que lê «bash» no
+nome da ferramenta assume bash e escreve bash.
+
+**E o modo de falha desta vez é o oposto do word splitting:** o zsh tem `nomatch` LIGADO por
+omissão, logo um glob **sem correspondência** não se expande para si mesmo (como em bash) — ele
+**aborta o comando inteiro** com `(eval):9: no matches found`. Um laço de reconhecimento sobre
+`Worktrees/*/target/*/` morreu na **primeira** worktree (uma pasta de arquivo sem `target/`), e a
+saída parcial lê-se como *«só há uma worktree»*. ⇒ *um glob vazio em bash é benigno e em zsh é
+fatal, e a diferença aparece só quando a pasta de exemplo não casa.*
+
+⇒ **Regra operacional, mais forte que «use arrays»:** todo bloco com laço, glob ou array vai para um
+**ficheiro com `#!/usr/bin/env bash`** e corre-se `bash ficheiro.sh`. É a cura que a
+`DIRETIVA_FIM_DE_DIA.md` §1 já prescreve por escrito («um script com shebang está a salvo; o bloco
+colável não»), e ela vale para a ferramenta tanto quanto para o terminal.

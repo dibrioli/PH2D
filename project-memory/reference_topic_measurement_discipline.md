@@ -358,3 +358,67 @@ A 1.ª amostragem de um arco usou `θ = 4·atan(bulge)` com o sinal de uma conve
 anti-horário») — e leu `0,065` de discordância sobre uma decomposição correcta. Com `|bulge| < 1` o
 arco é o **menor**, logo a diferença dos ângulos das pontas dobrada para `(−π, π]` **é** ele, sem
 convenção nenhuma pelo meio. *Uma convenção decorada é uma premissa que não falha alto.*
+
+## ⛔⛔⛔ Uma lei de CUSTO medida numa fixtura pequena descreve a fixtura, não o motor (2026-09-18)
+
+O tecto das varreduras do colisor foi medido contra o recurso que a wave discutia — o **comprimento
+da cadeia**, `n = 16` — e o custo saiu escrito como *«`0,2 µs` por peça-varredura»*, uma lei
+**LINEAR em `n`**. O dono pôs o mesmo cursor no topo numa cena de `motion.boids` e foi a **7 FPS**.
+Reproduzido: `500` peças custam `157,9 ms`, e o custo **por peça** ainda triplica de `16` para `500`
+(`0,094 → 0,308 µs`).
+
+⇒ *a fixtura que responde «quantas varreduras?» quase nunca é a que responde «quanto custa?»* — a
+primeira quer o caso difícil e pequeno, a segunda quer a POPULAÇÃO do artista. E o nó que ele usou
+nasce com `count = 48` precisamente para ele o subir.
+
+⚠️ **A régua da atribuição chegou antes de qualquer cura** e mudou o que havia a fazer: `49 %` do
+relógio de uma varredura era **achar os pares**, com `5,2` vizinhos por peça — *a escrituração
+custava tanto como a lei que ela serve*. Sem essa tabela eu teria optimizado a lei.
+
+⚠️⚠️ **E a sonda da 1.ª medição travava a ROTAÇÃO** (`inv_inercia = 0`), onde a nuvem assenta e o
+atalho do ponto fixo dispara: ela lia `13×` de ganho onde a verdade, com a inércia do produto, é
+`4,4×`. *Uma fixtura que trava um grau de liberdade mede outro programa.*
+
+## ⛔⛔ Trabalho DUPLICADO é invisível a toda régua de VALOR — a régua é a CONTA (2026-09-18)
+
+O gizmo do colisor pedia o próprio sink como tomada, e a rota da tomada re-corria o passe de
+separação: **duas passagens por quadro**, só com o gizmo ligado. O cozimento repetido bate no memo;
+o passe do fim **não é memoizado**.
+
+⇒ as duas passagens entregam a **mesma corrente, ao bit** — logo nenhum gate de igualdade, de bits
+ou de pixel podia vê-las. *O que sobra para observar é quantas vezes a porta correu*, e a cura é um
+contador `#[cfg(test)]` na porta.
+
+⚠️ **E ele tem de ser POR THREAD:** a 1.ª redacção era um `AtomicUsize` global e o gate **reprovou na
+suíte enquanto passava sozinho** — os testes correm em paralelo e havia mais de um a exercitar a
+mesma porta. *Um censo que partilha estado com os vizinhos mede os vizinhos.*
+
+## ⛔⛔⛔ Um quadro LENTO corre N tiques de simulação, e um ACABAMENTO pago por tique multiplica-se (2026-09-18)
+
+Medi o custo de UM cozimento e o produto corria **oito** por quadro. A shell tem um passo fixo: um
+quadro que estoura o orçamento deixa o relógio para trás e o seguinte **recupera os tiques em
+falta**, cada um a encher o buffer de instâncias que o seguinte **sobrescreve** — *só o último chega
+ao ecrã*. O acabamento de desenho (a separação de contactos) corria em todos.
+
+⇒ medido na cena do dono: `8 tiques × 8 separações = 245 ms` (4 FPS) contra `8 tiques × 1 separação
+= 31 ms` (32 FPS). **E o preço REALIMENTA:** o quadro fica mais lento por estar atrasado, o que o
+atrasa mais.
+
+⚠️ **A pergunta que faltava na minha sonda:** *quantas vezes o produto corre isto por QUADRO?* — e
+ela não se responde medindo a função, só percorrendo o laço de quem a chama.
+
+⚠️⚠️ **E a economia é INVISÍVEL a toda régua de valor:** as duas rotas entregam o mesmo desenho ao
+bit, porque o trabalho extra ia ser sobrescrito. *Nenhum gate de igualdade, de bits ou de pixel a
+vê* — o que sobra para observar é a **CONTA**, e a cura é um readout no produto (`separacoes()`).
+
+## ⛔⛔ A DENSIDADE da fixtura decide se uma paragem por convergência arma (2026-09-18)
+
+A minha tabela dizia `3,5 ms` a 250 peças e o dono media `333 ms` a **189**. A foto tinha a causa à
+vista: os discos dele **tocam-se** (o `motion.boids` puxa-os para dentro enquanto a separação os
+empurra para fora) e a minha fixtura era um campo **espalhado**.
+
+⇒ *uma pilha sob compressão permanente nunca assenta*, logo toda paragem por convergência —
+inclusive uma medida e honesta — **não arma ali**, e a cena paga o tecto inteiro. A varredura da
+densidade é parte da medição, não um detalhe da fixtura: a `passo = 2,0` (a tocar) a mesma nuvem
+pára em `328` varreduras e custa `9,8 ms`; a `1,8`, gasta as `1024` e custa `39,3`.
+

@@ -157,6 +157,7 @@ pub use pose_previa::Osso as PoseOsso;
 /// que são o `l-mode` da família que agarra. Ver [`kelvinlet`].
 pub mod kelvinlet;
 pub mod mask_ops;
+mod peso_do_ponto;
 mod preview;
 /// **OS KERNELS DA REFERÊNCIA** — o porte 1:1 do SculptGL, `f64` na aritmética
 /// e `f32` no armazenamento, gateado bit a bit contra o JS EXECUTANDO
@@ -170,6 +171,10 @@ mod ref_mode;
 mod ref_profiles;
 mod spacing;
 mod stroke;
+pub mod tinta_fina;
+#[cfg(test)]
+#[path = "tinta_fina_tests.rs"]
+mod tinta_fina_tests;
 mod transform;
 
 /// ⭐⭐⭐ **A porta que os censos usam para perguntar «este dab mudou alguma

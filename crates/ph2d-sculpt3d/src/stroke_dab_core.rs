@@ -432,20 +432,10 @@ impl SculptStroke {
                     // seguem lendo UM número** — é isso que faz uma forma nova
                     // não pedir um segundo falloff. O `Disc` devolve `dist ·
                     // inv_r` e portão `1`, ou seja o mundo que já shipa, ao bit.
-                    let (raw, gate) = footprint.at(from, dist, inv_r);
-                    let t = brush.shaped_distance(raw);
-                    // ⚠️ **Cada CANAL traz a dureza dele, e a curva é UMA** —
-                    // ver [`Brush::channel_weight`]. A geometria segue a curva
-                    // que o artista escolheu no pincel; um canal segue a do
-                    // `s-mode`, que é a lei portada.
-                    let c = if brush.verb.paints_mask() {
-                        brush.mask_weight(t)
-                    } else if brush.verb.paints_color() {
-                        brush.paint_weight(t)
-                    } else {
-                        brush.falloff.weight(t)
-                    };
-                    c * gate
+                    // ⭐ **A PORTA**, e o dab por-AMOSTRA da tinta fina lê a
+                    // mesma — ver [`crate::peso_do_ponto`]. A extracção foi
+                    // verbatim; o que estava aqui eram estas linhas.
+                    crate::peso_do_ponto::curva_do_ponto(brush, &footprint, from, dist, inv_r)
                 };
                 // ⚠️ **O FRONT-FACE entra no FATOR, e é aqui que ele pertence** —
                 // o motor de escultura da referência faz `factors[i] *= max(dot, 0)`, e o
@@ -498,19 +488,17 @@ impl SculptStroke {
                     }
                     crate::FrontFace::Ignored | crate::FrontFace::Continuous => 1.0,
                 };
-                let fall = curve * brush.alpha_weight(base, &alpha_frame) * facing;
-                // ⚠️ **O `w` fica VERBATIM — mesma ordem, mesmos bits.** A forma
-                // "natural" seria derivar um do outro (`w = shape * intensity`), e
-                // ela **re-associa** o produto de `(falloff × intensity) × keep`
-                // para `(falloff × keep) × intensity`: medido, **30,4% dos triplos
-                // divergem**, até ~1 ulp. Em `keep == 1.0` EXATO — o caso comum,
-                // porque `DEFAULT_MASK` é 0 — a divergência é ZERO, mas o preço de
-                // não arriscar os doze verbos é **uma multiplicação**.
-                let w = fall * intensity * keep;
-                // A metade SEM intensidade: é ela que o Crease eleva, porque no
-                // original o expoente cai sobre `curva × máscara × alpha` e a
-                // intensidade entra depois, linear nos dois termos.
-                let shape = fall * keep;
+                // ⭐ **A ORDEM do produto mora na PORTA** — ver
+                // [`crate::peso_do_ponto::peso_e_forma`], que o dab por-AMOSTRA
+                // da tinta fina também lê. A extracção foi verbatim: `w` e
+                // `shape` saem com os mesmos bits e na mesma ordem.
+                let (w, shape) = crate::peso_do_ponto::peso_e_forma(
+                    curve,
+                    brush.alpha_weight(base, &alpha_frame),
+                    facing,
+                    intensity,
+                    keep,
+                );
                 // ⚠️ **O `flat` MORREU aqui (2026-08-13), e não por higiene:** ele
                 // era *"o `w` sem a curva"*, e existia porque a curva atenuava um
                 // campo que já traz o próprio perfil. Com a curva virando a
@@ -638,7 +626,27 @@ impl SculptStroke {
             self.last_paints_mask = brush.verb.escreve_um_canal();
             if brush.verb.escreve_um_canal() {
                 if brush.verb.paints_color() {
-                    self.apply_color(mesh, brush, dab);
+                    // ⭐⭐⭐⭐ **O DESVIO DA TINTA FINA, e é o ÚNICO** — ver
+                    // [`crate::tinta_fina`]. Com o plano armado a cor deixa de
+                    // ser escrita por vértice e passa a ser escrita por
+                    // AMOSTRA; sem ele, nem um bit muda.
+                    //
+                    // ⚠️ **O contexto é passado e não reconstruído:** os quatro
+                    // valores saem do preâmbulo desta mesma chamada, e
+                    // recalculá-los lá dentro seria a segunda resposta à mesma
+                    // pergunta — o defeito que a porta do peso acabou de curar
+                    // uma linha acima.
+                    if self.tinta_fina.is_some() {
+                        let ctx = crate::tinta_fina::ContextoDoDab {
+                            footprint: &footprint,
+                            alpha_frame: &alpha_frame,
+                            inv_r,
+                            intensity,
+                        };
+                        self.apply_color_fino(&*mesh, brush, dab, &ctx);
+                    } else {
+                        self.apply_color(mesh, brush, dab);
+                    }
                 } else {
                     self.apply_mask(mesh, brush);
                 }

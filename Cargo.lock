@@ -8570,6 +8570,7 @@ dependencies = [
  "ph2d-cloth",
  "ph2d-i18n",
  "ph2d-mesh",
+ "ph2d-mesh-colors",
  "ph2d-painter-brush",
  "ph2d-pose",
  "ph2d-rake",

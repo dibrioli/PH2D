@@ -445,6 +445,11 @@ pub struct SculptStroke {
     /// consome inteira. Aqui ele é medido no pré-passe e relido no gather, e é
     /// isso que o torna um buffer em vez de uma expressão.
     sharp_d: Vec<[f32; 3]>,
+    /// ⭐⭐⭐⭐ **A TINTA FINA, emprestada ao traço no pen-down** — `None` é o
+    /// nível zero, e aí **nada muda**: a cor continua a ser escrita por
+    /// vértice, ao bit. Porque é um empréstimo e não uma cópia (e o que isso
+    /// compra): [`crate::tinta_fina::TintaDoTraco`].
+    pub tinta_fina: Option<crate::tinta_fina::TintaDoTraco>,
 }
 
 /// ⭐ **O CICLO DE VIDA do traço** — `begin`, o que ele esquece, e as portas da

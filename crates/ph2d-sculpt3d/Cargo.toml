@@ -31,6 +31,7 @@ rayon = "1"
 # uma folha sem dependências, e isto não põe nada de UI no caminho do barro.
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-mesh = { path = "../ph2d-mesh" }
+ph2d-mesh-colors = { path = "../ph2d-mesh-colors" }
 
 # ⚠️ O ROTOR, e só ele. A conversão azimute→vetor do EIXO do alpha direcional
 # passa por `texture::rotate_by_degrees`, que ACUMULA uma rotação de 1° — uma

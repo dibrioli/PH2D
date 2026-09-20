@@ -33,11 +33,11 @@ mod ancora_da_mancha;
 #[cfg(test)]
 #[path = "barra_da_cena_tests_support.rs"]
 mod barra_da_cena_tests_support;
-#[cfg(test)]
-#[path = "peso_entre_os_nos_tests.rs"]
-mod peso_entre_os_nos_tests;
 pub mod bend_live;
 pub mod bone;
+#[cfg(test)]
+#[path = "entalhe_tests.rs"]
+mod entalhe_tests;
 /// ⭐⭐⭐ **ESPELHAR um ramo** — construir o lado esquerdo a partir do direito.
 pub mod espelho;
 pub mod esqueletos;
@@ -47,6 +47,9 @@ mod esqueletos_tests_support;
 pub mod goal;
 /// ⭐⭐⭐ **O PESO À MÃO** — o gesto e o olho da correcção que o artista pinta.
 pub mod peso_a_mao;
+#[cfg(test)]
+#[path = "peso_entre_os_nos_tests.rs"]
+mod peso_entre_os_nos_tests;
 /// ⭐⭐⭐ **A POSE DE REPOUSO** — voltar ao repouso, e o que o *Reset Transform* quer dizer num osso.
 /// ⭐⭐⭐ Um ponto NOVO numa forma presa — ele entra na fonte guardada e sobrevive ao quadro.
 pub mod ponto_novo;
@@ -65,9 +68,6 @@ pub mod skin_refine;
 pub mod skinned_mesh;
 /// ⭐⭐⭐ **A SUBDIVISÃO DO BIND** — os pontos nascem visíveis quando a forma é presa.
 pub mod subdivisao;
-#[cfg(test)]
-#[path = "entalhe_tests.rs"]
-mod entalhe_tests;
 
 /// ⚠️ **Os auxiliares que ATRAVESSAM a fronteira, e nada mais** (HOWTO §2.5).
 ///
@@ -164,7 +164,9 @@ pub mod test_support {
             for i in 0..ultimo {
                 let (a, b) = (&v[i], &v[(i + 1) % n]);
                 let d = |p: [f64; 2], q: [f64; 2]| (p[0] - q[0]).hypot(p[1] - q[1]);
-                let poli = d(a.anchor, a.out_handle) + d(a.out_handle, b.in_handle) + d(b.in_handle, b.anchor);
+                let poli = d(a.anchor, a.out_handle)
+                    + d(a.out_handle, b.in_handle)
+                    + d(b.in_handle, b.anchor);
                 #[expect(
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss,
@@ -177,8 +179,20 @@ pub mod test_support {
                     let u = 1.0 - t;
                     let (w0, w1, w2, w3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
                     out.push([
-                        w3.mul_add(b.anchor[0], w2.mul_add(b.in_handle[0], w1.mul_add(a.out_handle[0], w0 * a.anchor[0]))),
-                        w3.mul_add(b.anchor[1], w2.mul_add(b.in_handle[1], w1.mul_add(a.out_handle[1], w0 * a.anchor[1]))),
+                        w3.mul_add(
+                            b.anchor[0],
+                            w2.mul_add(
+                                b.in_handle[0],
+                                w1.mul_add(a.out_handle[0], w0 * a.anchor[0]),
+                            ),
+                        ),
+                        w3.mul_add(
+                            b.anchor[1],
+                            w2.mul_add(
+                                b.in_handle[1],
+                                w1.mul_add(a.out_handle[1], w0 * a.anchor[1]),
+                            ),
+                        ),
                     ]);
                 }
             }
@@ -248,3 +262,7 @@ mod sonda_do_envelope_no_vector_tests;
 #[cfg(test)]
 #[path = "sonda_do_reset_na_hierarquia_tests.rs"]
 mod sonda_do_reset_na_hierarquia_tests;
+
+#[cfg(test)]
+#[path = "alcas_tests.rs"]
+mod alcas_tests;

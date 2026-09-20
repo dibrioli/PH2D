@@ -367,3 +367,8 @@ fn linha_do_ponto_novo(
 #[cfg(test)]
 #[path = "ponto_novo_tests.rs"]
 mod tests;
+
+/// ⭐ **Os gates do SALTO do desenho**, num irmão — ver o cabeçalho dele.
+#[cfg(test)]
+#[path = "ponto_novo_salto_tests.rs"]
+mod salto_tests;

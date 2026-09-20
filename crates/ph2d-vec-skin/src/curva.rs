@@ -47,7 +47,6 @@ use kurbo::{CubicBez, ParamCurve, Point, Vec2};
 use ph2d_skeleton::{Correccao, Skin};
 use ph2d_vec_scene::{VecPath, VecVertex};
 
-
 /// ⭐⭐⭐ **A LEI DA CURVA ESTÁ LIGADA?** — a porta única da F30, e ela tem **dois** leitores que não
 /// se conhecem: o `recook` do quadro e o gesto que acrescenta um ponto
 /// ([`ph2d_skeleton_live::ponto_novo`]).
@@ -88,10 +87,8 @@ struct SegmentoDaPele<'a> {
 }
 
 impl SegmentoDaPele<'_> {
-    /// A imagem de `C(t)`.
-    fn ponto(&self, t: f64) -> Point {
-        let c = self.src.eval(t);
-        let p = [c.x, c.y];
+    /// Os pesos do ponto `p`, com a linha do nó misturada em `t`.
+    fn pesos(&self, p: [f64; 2], t: f64) -> Vec<f64> {
         let mut w = self.pele.scratch();
         match (self.ra, self.rb) {
             // ⭐ A MISTURA das duas linhas no mesmo `t` — a lei da F28 para o nó novo, aplicada
@@ -108,16 +105,92 @@ impl SegmentoDaPele<'_> {
             // ⛔ Sem tabela a lei é a DERIVADA, e ela já é função da posição — não há o que misturar.
             _ => self.pele.weights_corrected(p, None, &mut w, self.correcoes),
         }
+        w
+    }
+
+    /// A mistura de `p` por uma linha de pesos **já resolvida**.
+    ///
+    /// ⚠️ **Ela é AFIM em `p` para `w` fixo** — `R(θ̄)·(p − c) + Σ wᵢMᵢ(c)`, onde `c` e `θ̄` só
+    /// dependem de `w` ([`ph2d_skeleton::centro`]). É essa propriedade que a [`Self::direccao`]
+    /// usa para extrair a parte LINEAR do afim de um nó por duas avaliações.
+    fn mistura(&self, p: [f64; 2], w: &[f64]) -> Point {
         let q = if self.rigido {
-            self.pele.blend(p, &w)
+            self.pele.blend(p, w)
         } else {
-            self.pele.blend_linear(p, &w)
+            self.pele.blend_linear(p, w)
         };
         Point::new(q[0], q[1])
     }
 
+    /// A imagem de `C(t)`.
+    fn ponto(&self, t: f64) -> Point {
+        let c = self.src.eval(t);
+        let p = [c.x, c.y];
+        let w = self.pesos(p, t);
+        self.mistura(p, &w)
+    }
+
+    /// ⭐⭐⭐ **A DIRECÇÃO EM QUE A ARTE SAI DO NÓ DE PARTIDA** (`fim = false`) **ou CHEGA AO DE
+    /// CHEGADA** (`fim = true`) — o **eixo** daquela alça, e a peça que faz a colinearidade ser
+    /// exacta em vez de aproximada.
+    ///
+    /// Ela é `R_k · û`, onde `û` é a direcção da alça na FONTE e `R_k` é a parte linear do afim
+    /// **daquele nó** — a mesma que a lei ingénua aplica às três metades do vértice. ⇒ as duas
+    /// alças que se encontram no nó `k` são mapeadas pela **MESMA** `R_k` a partir de duas
+    /// direcções que a fonte já tinha colineares ⇒ *continuam colineares, ao bit, e o `kind` do
+    /// vértice deixa de ser uma promessa.*
+    ///
+    /// ⛔⛔ **A 1.ª redacção tirava-a da cúbica JÁ deformada (`ja.p₁ − ja.p₀`) e isso não serve:**
+    /// aquele vector mistura DOIS nós (`B(p₁) − A(p₀)` quando a alça é degenerada), logo os dois
+    /// extremos de uma aresta recta recebiam a **mesma recta** e o segmento não conseguia arquear.
+    /// *O que faz uma recta arquear é exactamente as duas pontas serem rodadas por afins
+    /// DIFERENTES.*
+    ///
+    /// ⛔⛔ **E uma ALÇA DEGENERADA devolve ZERO de propósito — ela não é um caso a remendar.**
+    /// Uma alça em cima da âncora (a arte que a caneta desenha sem arrastar) não carrega tangente
+    /// nenhuma, e o nó onde ela chega é um **CANTO**: ali não há continuidade para conciliar, e o
+    /// ajuste livre é a resposta mais fiel. ⚠️ A 1.ª redacção inventava-lhe uma direcção por
+    /// cascata (`C''`, depois a corda) e **nenhum gate conseguia matar essa linha** — nos nós em
+    /// que ela era lida, a outra metade do nó tinha comprimento zero e a
+    /// [`reconcilia`] saltava-os na mesma. *Uma linha que a mutação não consegue matar não é lei.*
+    fn direccao(&self, fim: bool) -> Vec2 {
+        let u = if fim {
+            self.src.p2 - self.src.p3
+        } else {
+            self.src.p1 - self.src.p0
+        };
+        if u.hypot() <= 0.0 {
+            return Vec2::ZERO;
+        }
+        let (t, c) = if fim {
+            (1.0, self.src.p3)
+        } else {
+            (0.0, self.src.p0)
+        };
+        let p = [c.x, c.y];
+        let w = self.pesos(p, t);
+        versor(self.mistura([p[0] + u.x, p[1] + u.y], &w) - self.mistura(p, &w))
+    }
 }
 
+/// O versor de `v`, ou o vector NULO quando `v` não tem direcção.
+///
+/// ⚠️ **`Vec2::normalize` de um vector nulo devolve `NaN`**, e um `NaN` numa alça apaga a forma.
+///
+/// ⛔⛔ **A cerca NÃO TEM GATE, e isso está MEDIDO — fica declarada.** Para o `NaN` chegar ao
+/// desenho é preciso que a parte linear do afim de um nó seja singular **na direcção daquela
+/// alça** *e* que a correcção livre reviva a alça. Nas duas fixturas construídas para o provocar —
+/// a pele inteira colapsada, e um eixo colapsado com o tendão posto à mão — a alça colapsa junto e
+/// a [`reconcilia`] salta o nó **antes** de olhar para o eixo, logo a mutação que troca isto por
+/// `v / n` **sobrevive**.
+///
+/// ⚠️ *Uma linha que a mutação não mata não é lei* — e esta fica na mesma, porque o modo de falha
+/// dela é a forma do artista **DESAPARECER**. O gate que faltaria precisa de uma pose singular
+/// numa direcção e de uma correcção não-nula na mesma alça; quem o construir apaga esta nota.
+fn versor(v: Vec2) -> Vec2 {
+    let n = v.hypot();
+    if n > 0.0 { v / n } else { Vec2::ZERO }
+}
 
 /// ⭐⭐⭐ **A ARTE SEGUE O PESO ENTRE OS NÓS — corrigindo as ALÇAS, e sem limiar nenhum.**
 ///
@@ -149,6 +222,19 @@ impl SegmentoDaPele<'_> {
 /// - **o `kind` e o `corner_radius` sobrevivem**, porque nenhum vértice nasce nem morre;
 /// - e o resultado é **linear** na diferença amostrada, logo contínuo na pose.
 ///
+/// ⛔⛔⛔ **A TERCEIRA daquelas linhas era VERDADE SOBRE O CAMPO E MENTIRA SOBRE O DESENHO, e o
+/// dono reportou-o no dia seguinte** (*«muitas irregularidades … mau tratamento das alças dos
+/// handles»*). O `kind` sobrevivia como BYTE e a **geometria deixava de o honrar**: com as duas
+/// alças de um nó corrigidas por sistemas independentes elas paravam de ser colineares, e o nó que
+/// o artista desenhou LISO virava uma QUINA de `28,62°` a `120°`. *Um campo que sobrevive e uma
+/// propriedade que se mantém são coisas diferentes, e só a segunda é o desenho.*
+///
+/// ⇒ desde 2026-09-19 corre um **quarto passe**, a [`reconcilia`]: as duas alças de cada nó voltam
+/// a rodar JUNTAS, e a colinearidade passa a ser exacta. Medido na barra da cena — quebra
+/// `0,000°` em todas as dobras, e o desvio à curva verdadeira **melhora** ao mesmo tempo
+/// (`0,03371 → 0,01900` a `90°`, contra `0,03371` da lei ingénua), porque conciliar a tangente não
+/// tira graus de liberdade ao ajuste: **redistribui-os**.
+///
 /// ⚠️ O parâmetro `tolerancia` **saiu**: não há o que tolerar quando não há decisão. Quem governa a
 /// fidelidade é [`AMOSTRAS`].
 pub fn aplica_pela_curva(pele: &Skin, path: &mut VecPath, pesos: &[f64], correcoes: &[Correccao]) {
@@ -177,6 +263,8 @@ pub fn aplica_pela_curva_com(
         };
         let n = verts.len();
         let segs = if fechado { n } else { n.saturating_sub(1) };
+        // ⭐ O EIXO de cada alça — `(entrada, saída)` por nó. Ver [`reconcilia`].
+        let mut eixo = vec![(Vec2::ZERO, Vec2::ZERO); n];
         for k in 0..segs {
             let s = SegmentoDaPele {
                 src: cubica(verts, k, n),
@@ -200,8 +288,124 @@ pub fn aplica_pela_curva_com(
             let j = (k + 1) % n;
             alvo[k].out_handle = [alvo[k].out_handle[0] + d1.x, alvo[k].out_handle[1] + d1.y];
             alvo[j].in_handle = [alvo[j].in_handle[0] + d2.x, alvo[j].in_handle[1] + d2.y];
+            eixo[k].1 = s.direccao(false);
+            eixo[j].0 = s.direccao(true);
         }
+        reconcilia(path, c, &eixo, fechado);
         base += n;
+    }
+}
+
+/// ⭐⭐⭐ **A TANGENTE DE UM NÓ VOLTA A SER UMA SÓ** — o passe que cura o report do dono.
+///
+/// # ⛔⛔⛔ O defeito, medido na barra da cena (2026-09-19)
+///
+/// *«Ainda temos muitas irregularidades na deformação de vetores. Certamente um mau tratamento das
+/// alças dos handles.»*
+///
+/// A [`correccao_das_alcas`] resolve **cada segmento sozinho**, e as duas alças que se encontram num
+/// nó saem de dois sistemas que não se conhecem ⇒ deixam de ser colineares, e o nó que o artista
+/// desenhou LISO vira uma QUINA:
+///
+/// | dobra | quebra da tangente nos nós, p50 | máx |
+/// |---|---|---|
+/// | `30°` | `2,58°` | `5,86°` |
+/// | `60°` | `5,08°` | `13,00°` |
+/// | `90°` | `7,30°` | `20,92°` |
+/// | `120°` | `9,05°` | `28,62°` |
+///
+/// ⚠️ **O controlo é o que nomeia a causa:** a lei INGÉNUA ([`crate::aplica_corrigido`]) mede
+/// `0,000°` em **todas** aquelas dobras, porque as três metades de um vértice passam pelo MESMO
+/// afim e *um afim preserva colinearidade*. ⇒ *a quebra não vinha da pele: vinha do ajuste.*
+///
+/// # ⭐⭐ A lei: as duas alças de um nó RODAM JUNTAS
+///
+/// Cada alça já tem um **eixo** — a direcção que o afim daquele nó dá à tangente da fonte
+/// ([`SegmentoDaPele::direccao`]). O ajuste livre afastou-a do eixo por um ângulo; este passe faz as
+/// duas metades concordarem num ângulo só (a média pesada pelo COMPRIMENTO de cada alça, porque é o
+/// braço mais longo que manda no desenho) e roda cada uma para lá. ⇒ *o ângulo entre as duas fica
+/// exactamente o que o afim do nó lhe deu* — um nó liso continua liso, um canto mantém o canto.
+///
+/// ⛔⛔ **Por que RODAR e não reescrever a alça a partir do eixo:** `|h|·versor(h)` **não** é `h` em
+/// vírgula flutuante, e em repouso o ajuste é zero ⇒ reescrever devolveria uma forma a mexer-se ao
+/// último bit num quadro em que nada se moveu. Uma rotação de `0` é a identidade **ao bit**
+/// (`cos 0 = 1`, `sin 0 = 0`), e é isso que mantém a
+/// [`tests::em_repouso_as_alcas_ficam_byte_identicas`].
+///
+/// ⛔⛔ **Uma alça sem EIXO fica fora da média E fora da rotação** — a alça que a fonte tem em cima
+/// da âncora (toda arte que a caneta desenha sem arrastar) não carrega tangente, e o nó onde ela
+/// chega é um **CANTO**: ali não há continuidade para conciliar, e o ajuste livre é a resposta mais
+/// fiel. ⚠️ **São DUAS cercas e nenhuma é zelo**, com um gate cada: deixá-la entrar na média
+/// envenena o ângulo comum com um `atan2(0, 0)` e roda a **outra** metade do nó para um sítio que
+/// ninguém pediu ([`tests::num_no_misto_a_metade_sem_eixo_nao_entra_na_media`]); deixá-la ser
+/// escrita roda-a para um ângulo que ela não tem. Numa forma só de arestas rectas o passe é, por
+/// isso, **inerte** ([`tests::numa_forma_de_arestas_rectas_o_passe_nao_toca_em_nada`]).
+///
+/// ⚠️ **A cerca `soma.1 <= 0.0` NÃO tem gate e fica declarada**: para a divisão importar era
+/// preciso um nó em que alguma metade tenha eixo e **comprimento zero ao mesmo tempo**, e o
+/// comprimento de uma alça com eixo é `‖R·û‖` mais a correcção livre — zero só por cancelamento
+/// exacto. *Uma linha que a mutação não mata não é lei; esta fica porque o que ela evita é um
+/// `0/0` a chegar ao `sin_cos`.*
+fn reconcilia(path: &mut VecPath, c: usize, eixo: &[(Vec2, Vec2)], fechado: bool) {
+    let Some((alvo, _)) = path.contour_mut(c) else {
+        return;
+    };
+    if alvo.len() != eixo.len() {
+        return;
+    }
+    let n = alvo.len();
+    for k in 0..n {
+        // ⚠️ Num caminho ABERTO as pontas têm uma alça só, e ali não há nada a conciliar.
+        if !fechado && (k == 0 || k == n - 1) {
+            continue;
+        }
+        let a = Point::new(alvo[k].anchor[0], alvo[k].anchor[1]);
+        let hs = [
+            Point::new(alvo[k].in_handle[0], alvo[k].in_handle[1]) - a,
+            Point::new(alvo[k].out_handle[0], alvo[k].out_handle[1]) - a,
+        ];
+        let es = [eixo[k].0, eixo[k].1];
+        // O desvio de cada metade ao eixo dela, e o comprimento com que ela pesa.
+        let mut soma = (0.0_f64, 0.0_f64);
+        let mut desvio = [0.0_f64; 2];
+        for i in 0..2 {
+            // ⛔⛔ **SEM EIXO não há o que conciliar** — uma alça em cima da âncora na FONTE não
+            // carrega tangente, e o nó onde ela chega é um CANTO. ⚠️ **E não há segunda metade a
+            // guardar o comprimento**, porque ela seria morta: uma alça de comprimento zero entra
+            // na média com peso zero e sai da rotação como zero (rodar o vector nulo dá o vector
+            // nulo). *Uma linha que a mutação não mata não é lei.*
+            if es[i].hypot() <= 0.0 {
+                continue;
+            }
+            let l = hs[i].hypot();
+            desvio[i] = (hs[i].atan2() - es[i].atan2()).rem_euclid(std::f64::consts::TAU);
+            if desvio[i] > std::f64::consts::PI {
+                desvio[i] -= std::f64::consts::TAU;
+            }
+            soma = (desvio[i].mul_add(l, soma.0), soma.1 + l);
+        }
+        if soma.1 <= 0.0 {
+            continue;
+        }
+        let comum = soma.0 / soma.1;
+        for i in 0..2 {
+            if es[i].hypot() <= 0.0 {
+                continue;
+            }
+            // ⭐ A rotação é a DIFERENÇA para o ângulo comum — em repouso ela é `0`, e `cos 0 = 1`
+            // com `sin 0 = 0` devolve a alça **ao bit**.
+            let (si, co) = (comum - desvio[i]).sin_cos();
+            let g = Vec2::new(
+                si.mul_add(-hs[i].y, co * hs[i].x),
+                si.mul_add(hs[i].x, co * hs[i].y),
+            );
+            let q = [a.x + g.x, a.y + g.y];
+            if i == 0 {
+                alvo[k].in_handle = q;
+            } else {
+                alvo[k].out_handle = q;
+            }
+        }
     }
 }
 
@@ -230,6 +434,21 @@ const _: () = assert!(AMOSTRAS >= 2);
 /// `ΔP` que melhor segue a diferença medida sai de um sistema `2×2` cuja matriz **só depende dos
 /// `t`** — logo é constante, e a solução é **linear** na diferença. *É daí que vem a continuidade.*
 ///
+/// ⛔⛔ **O determinante NÃO precisa de guarda, e isso foi medido:** a matriz depende **só dos
+/// `t`**, logo ela é a MESMA em todo segmento de toda forma — uma constante. A 1.ª redacção tinha
+/// um `if det.abs() < 1e-12 { return None }` e a mutação que o apagava **sobreviveu**, porque
+/// aquele ramo é inalcançável. *Uma linha que a mutação não consegue matar não é lei, é comentário
+/// com sintaxe de código.*
+///
+/// ⛔⛔ **E não há cerca de `NaN` aqui, também por medição.** A tentação é guardar contra uma
+/// diferença não-finita — mas tudo o que chegasse assim já teria passado pela
+/// [`crate::aplica_corrigido`], que corre **antes** e escreve o `NaN` no desenho sem nos perguntar
+/// nada: *uma cerca a jusante do sítio onde o estrago acontece protege o quê?*
+///
+/// ⚠️⚠️ **ELA SOZINHA PARTE A TANGENTE DOS NÓS, e é por isso que a [`reconcilia`] corre a seguir.**
+/// Cada segmento resolve o seu sistema **sozinho**, logo as duas alças que se encontram num nó saem
+/// de dois ajustes que não se conhecem. *Lida isolada, esta função está certa e o desenho fica
+/// errado* — ver o report e a tabela em [`reconcilia`].
 fn correccao_das_alcas(s: &SegmentoDaPele<'_>, ja: &CubicBez) -> (Vec2, Vec2) {
     let (mut a11, mut a12, mut a22) = (0.0_f64, 0.0_f64, 0.0_f64);
     let (mut b1, mut b2) = (Vec2::ZERO, Vec2::ZERO);
@@ -245,23 +464,8 @@ fn correccao_das_alcas(s: &SegmentoDaPele<'_>, ja: &CubicBez) -> (Vec2, Vec2) {
         b1 += d * w1;
         b2 += d * w2;
     }
-    // ⛔⛔ **O determinante NÃO precisa de guarda, e isso foi medido:** a matriz depende **só dos
-    // `t`**, logo ela é a MESMA em todo segmento de toda forma — uma constante. A 1.ª redacção
-    // tinha um `if det.abs() < 1e-12 { return None }` e a mutação que o apagava **sobreviveu**,
-    // porque aquele ramo é inalcançável. *Uma linha que a mutação não consegue matar não é lei, é
-    // comentário com sintaxe de código.*
     let det = a12.mul_add(-a12, a11 * a22);
-    let (d1, d2) = (
-        (b1 * a22 - b2 * a12) / det,
-        (b2 * a11 - b1 * a12) / det,
-    );
-    // ⛔⛔ **E não há cerca de `NaN` aqui, também por medição.** A tentação é guardar contra uma
-    // diferença não-finita — mas tudo o que chegasse assim já teria passado pela
-    // [`crate::aplica_corrigido`], que corre **antes** e escreve o `NaN` no desenho sem nos
-    // perguntar nada: *uma cerca a jusante do sítio onde o estrago acontece protege o quê?* Medido:
-    // com uma mancha de centro `NaN` a forma desaparece **com ou sem** a cerca, e a mutação que a
-    // apagava sobrevivia. ⇒ ela sai, e quem a quiser tem de a pôr onde o `NaN` entra.
-    (d1, d2)
+    ((b1 * a22 - b2 * a12) / det, (b2 * a11 - b1 * a12) / det)
 }
 
 /// A linha de pesos do nó `k` (índice PLANO, na tabela guardada), ou `None` quando não há tabela.
@@ -283,3 +487,8 @@ fn cubica(verts: &[VecVertex], k: usize, n: usize) -> CubicBez {
 #[cfg(test)]
 #[path = "curva_tests.rs"]
 mod tests;
+
+/// ⭐ **Os gates da CONCILIAÇÃO das alças**, num irmão — ver o cabeçalho dele.
+#[cfg(test)]
+#[path = "curva_alcas_tests.rs"]
+mod alcas_tests;

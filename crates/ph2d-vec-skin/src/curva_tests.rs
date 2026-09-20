@@ -26,11 +26,11 @@ fn osso(x0: f64, len: f64, rot: f64, tendon: u32) -> SkinBone {
 }
 
 /// A pele do palco: dois ossos ao longo de um rectângulo de `40 × 10`, o segundo dobrado.
-fn pele(rot: f64) -> Skin {
+pub(super) fn pele(rot: f64) -> Skin {
     Skin::new(vec![osso(0.0, 20.0, 0.0, 0), osso(20.0, 20.0, rot, 1)]).expect("2 ossos")
 }
 
-fn forma() -> VecPath {
+pub(super) fn forma() -> VecPath {
     cook(ShapeKind::Rectangle, [0.0, 0.0], [40.0, 10.0], &[])
 }
 
@@ -325,10 +325,7 @@ fn a_deformacao_e_continua() {
          o gate ficaria verde sobre a lei antiga tambem"
     );
 
-    let passos: Vec<f64> = amostras
-        .windows(2)
-        .map(|w| desvio(&w[0], &w[1]))
-        .collect();
+    let passos: Vec<f64> = amostras.windows(2).map(|w| desvio(&w[0], &w[1])).collect();
     let mut ord = passos.clone();
     ord.sort_by(f64::total_cmp);
     let mediana = ord[ord.len() / 2];
@@ -412,9 +409,9 @@ fn as_alcas_corrigidas_seguem_a_curva_verdadeira() {
     let k = pele(1.2);
     let t = tabela();
     let fonte = forma();
-    let mut ingenua = forma();
+    let mut ingenua = fonte.clone();
     crate::aplica_corrigido(&k, &mut ingenua, &t, &[]);
-    let mut curva = forma();
+    let mut curva = fonte.clone();
     aplica_pela_curva(&k, &mut curva, &t, &[]);
 
     let n = fonte.verts.len();

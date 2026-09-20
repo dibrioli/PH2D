@@ -455,14 +455,31 @@ fn desenha(atlas: &ph2d_uv_atlas::Atlas, mesh: &Mesh, caminho: &str, lado: usize
     };
     // ⭐ O leque vem da PORTA — ver [`ph2d_uv_atlas::topo::triangulos`]. Esta sonda
     // escrevia-o duas vezes (aqui e no contador) e as duas concordavam por acaso.
-    for t in ph2d_uv_atlas::topo::triangulos(mesh) {
-        let c = cor(atlas.ilha[t[0] as usize]);
+    let tris = ph2d_uv_atlas::topo::triangulos(mesh);
+    let mut n = vec![0u16; lado * lado];
+    for t in &tris {
         let z = [
             atlas.uv[t[0] as usize],
             atlas.uv[t[1] as usize],
             atlas.uv[t[2] as usize],
         ];
-        preenche(&mut px, lado, z, c);
+        preenche(&mut px, lado, z, cor(atlas.ilha[t[0] as usize]));
+        conta(&mut n, lado, z);
+    }
+    // ⛔⛔⛔ **O QUE FOI PINTADO DUAS VEZES SAI A BRANCO, e sem isto a imagem MENTE.**
+    //
+    // A 1.ª redacção desta sonda desenhava uma cor por ilha e mais nada — e uma ilha que
+    // se pinta duas vezes desenha a MESMA cor por cima de si mesma, logo o defeito é
+    // **invisível**: a peça do dono saía um bloco vermelho impecável com `34 %` da área
+    // pintada em duplicado. *Uma imagem de smoke que não contém o fenómeno ensina que
+    // não há fenómeno nenhum.*
+    //
+    // ⭐ E ela é o MESMO percurso que a linha `dobra` conta (o [`varre`]), logo a imagem e
+    // o número são o mesmo facto — não duas medições que podem discordar.
+    for (i, &c) in n.iter().enumerate() {
+        if c > 1 {
+            px[i] = [255, 255, 255];
+        }
     }
     let mut out = format!("P6\n{lado} {lado}\n255\n").into_bytes();
     for p in &px {

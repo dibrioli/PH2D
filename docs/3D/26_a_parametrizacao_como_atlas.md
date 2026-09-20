@@ -423,7 +423,14 @@ cima.*
 5. ⭐ **A tolerância do elo virou PORTA** (`topo::TOLERANCIA_DO_ELO`): ela tinha três
    chamadores a escrever `1e-2` cada um, e *três respostas à mesma pergunta divergem no dia
    em que alguém afina uma*.
-6. ⚠️ **O `Opcoes { cortar: false }` é uma PORTA e não uma variável de ambiente** — uma env
+6. ⛔⛔⛔ **A IMAGEM DO SMOKE NÃO CONTINHA O FENÓMENO, e eu só o vi ao olhar para ela.**
+   A sonda desenhava **uma cor por ilha e mais nada** — e uma ilha que se pinta duas vezes
+   desenha a MESMA cor por cima de si mesma: a peça do dono saía um bloco vermelho
+   impecável com `34 %` da área em duplicado. *Comparar essa imagem com a do depois ensina
+   que a segunda tem mais cores, não que a primeira está partida.* ⇒ o que é pintado mais
+   de uma vez sai a **BRANCO**, pelo MESMO percurso que a linha `dobra` conta — logo a
+   imagem e o número são o mesmo facto, e não duas medições que podem discordar.
+7. ⚠️ **O `Opcoes { cortar: false }` é uma PORTA e não uma variável de ambiente** — uma env
    lida dentro da crate alcançaria todo chamador e faria um gate medir a máquina em vez da
    lei. A sonda é o único sítio que a passa, e é ela que desenha o lado sem corte, que é o
    CONTROLO da wave.

@@ -145,8 +145,44 @@ pub fn build_input<'a>(
     }
 }
 
-/// Sobe `pixels` como uma textura `rgba8unorm` — a fonte que o passe acende.
+/// Sobe `pixels` como uma textura `rgba8unorm` — a **fonte que o passe acende**.
+///
+/// ⚠️ Ela é para ser LIDA por um shader, e é isso que as usages dizem. Quem precisa de a COPIAR
+/// para outro sítio pede a [`upload_rgba_copiavel`] — ver lá porque a diferença não é cosmética.
 pub fn upload_rgba(gpu: &GpuContext, size: (u32, u32), pixels: &[u8]) -> wgpu::Texture {
+    sobe(gpu, size, pixels, wgpu::TextureUsages::empty())
+}
+
+/// ⛔⛔ **A irmã que pode ser COPIADA** — e ela existe porque a falta dela derrubava o app.
+///
+/// # O defeito, medido na placa
+///
+/// A [`upload_rgba`] nasce com `TEXTURE_BINDING | COPY_DST`, que é o que uma fonte de shader
+/// precisa. Um caminho que suba pixels **já acesos** e os queira levar para o slot do sprite usa-a
+/// como ORIGEM de um `copy_texture_to_texture`, e o wgpu recusa isso — **como panic**, não como
+/// erro devolvido:
+///
+/// ```text
+/// Usage flags TextureUsages(COPY_DST | TEXTURE_BINDING) of Texture with 'sculpt3d bake src'
+/// label do not contain required usage flags TextureUsages(COPY_SRC)
+/// ```
+///
+/// ⚠️⚠️ **E nada sem placa o via:** o `cargo check` estava verde, os gates da fiação estavam verdes
+/// e a varredura impactada leu **3 196/3 196** — a feature morria no PRIMEIRO uso. *Uma usage em
+/// falta não é um erro de tipos: é um contrato que só o dispositivo confere.*
+///
+/// ⚠️ A usage entra por PARÂMETRO de uma porta só, e não por uma segunda cópia do descritor: duas
+/// redacções do mesmo `create_texture` divergiriam no dia em que o formato mudasse.
+pub fn upload_rgba_copiavel(gpu: &GpuContext, size: (u32, u32), pixels: &[u8]) -> wgpu::Texture {
+    sobe(gpu, size, pixels, wgpu::TextureUsages::COPY_SRC)
+}
+
+fn sobe(
+    gpu: &GpuContext,
+    size: (u32, u32),
+    pixels: &[u8],
+    extra: wgpu::TextureUsages,
+) -> wgpu::Texture {
     let (w, h) = size;
     let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("sculpt3d bake src"),
@@ -159,7 +195,7 @@ pub fn upload_rgba(gpu: &GpuContext, size: (u32, u32), pixels: &[u8]) -> wgpu::T
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8Unorm,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | extra,
         view_formats: &[],
     });
     gpu.queue.write_texture(

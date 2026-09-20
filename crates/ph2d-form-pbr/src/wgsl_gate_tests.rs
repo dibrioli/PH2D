@@ -29,7 +29,8 @@ const CAP_DO_RIG: &str = "4u";
 /// Monta a fonte como um consumidor a montaria. Ver o cabeçalho do módulo.
 fn fonte_composta() -> String {
     format!(
-        "{}\n{}",
+        "{}\n{}\n{}",
+        ph2d_view_transform::wgsl::SOURCE,
         ph2d_material::wgsl::SOURCE.replace(ph2d_material::wgsl::ENV_SLOT, ENV_MAGRO),
         SOURCE.replace(CAP_SLOT, CAP_DO_RIG),
     )

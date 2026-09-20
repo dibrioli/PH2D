@@ -18,6 +18,9 @@ authors.workspace = true
 # dentro de uma lei que não sabe o que é um pincel, e a folha deixaria de o ser.
 [dependencies]
 ph2d-material = { path = "../ph2d-material" }
+# ⭐ A segunda, e ela é a lei de «cena linear → ecrã»: esta lei é ABSOLUTA, logo sem a vista
+# ela chega ao ecrã como radiância crua — o objecto sai escuro. Folha sem dependências.
+ph2d-view-transform = { path = "../ph2d-view-transform" }
 
 # ⛔⛔ **naga (o MESMO major do wgpu 29) — porque um WGSL que ninguem compila e' PROSA.**
 # O `cargo check` nao olha para uma `&str`, e todo gate que olha para um shader neste repo precisa

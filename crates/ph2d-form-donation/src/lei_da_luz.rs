@@ -71,6 +71,47 @@ pub fn do_ambiente() -> Lei {
     *UMA_VEZ.get_or_init(|| Lei::do_texto(std::env::var(ENV).ok().as_deref()))
 }
 
+/// ⭐⭐⭐ **O OLHAR com que a lei nova chega ao ecrã** — `3,00` stops, MEDIDO contra o lado aprovado.
+///
+/// # Porque ele não pode ser a identidade
+///
+/// Esta lei devolve **radiância** e a de sempre é **relativa** (ela divide pelo que uma superfície
+/// plana do mesmo material devolveria, e é por isso que tinta plana sai byte-idêntica nela) ⇒ as
+/// duas **não estão na mesma escala**. Escrita com a identidade, a lei nova sai visivelmente mais
+/// escura: medido na placa sobre a mesma peça, média `59` contra `105`.
+///
+/// ⛔⛔ **E isso lê-se como «a feature estragou o objecto», não como «fisicamente correcto».** Um
+/// dono a quem se pede um veredito sobre a APARÊNCIA e que recebe uma peça duas vezes mais escura
+/// está a julgar a exposição, não a lei.
+///
+/// # O número, e de onde ele vem
+///
+/// Da sonda [`super::baked_form::prova_da_placa`], sobre a bola CINZENTA (o controlo, onde as duas
+/// leis concordam na matiz e o que resta é só o NÍVEL), média do miolo contra a da lei de sempre:
+///
+/// ```text
+///   stops   media do miolo cinzento   contra a tinta (186,1)
+///    2,00                   116,8            -69,4
+///    2,75                   171,9            -14,3
+///    3,00                   185,7             -0,5     ←
+///    3,10                   190,4             +4,3
+///    4,00                   218,6            +32,4
+/// ```
+///
+/// ⚠️ **A escada passa do candidato de propósito:** um mínimo na BORDA de uma varredura não é um
+/// mínimo, é o fim da lista.
+///
+/// # ⚠️ O que este número NÃO é
+///
+/// Ele é calibrado com o **rig de omissão** e o **OpenPBR de omissão**, e iguala o NÍVEL para que a
+/// comparação entre as duas leis seja sobre a LEI e não sobre o brilho. ⛔ Ele não é uma exposição
+/// «certa»: a exposição é uma escolha do artista, e o dia em que ela for um controlo este valor
+/// passa a ser o ponto de partida dele — não uma constante escondida.
+pub const OLHAR_DA_FORMA: ph2d_view_transform::Look = ph2d_view_transform::Look {
+    exposure_stops: 3.0,
+    view: ph2d_view_transform::ViewTransform::Standard,
+};
+
 #[cfg(test)]
 mod tests {
     use super::{ENV, Lei};
@@ -94,6 +135,29 @@ mod tests {
         // **O CONTROLO**: o `"1"` LIGA — senão este gate ficaria verde sobre uma porta que nunca
         // devolve a lei nova, e a feature seria inalcançável com todos os gates verdes.
         assert_eq!(Lei::do_texto(Some("1")), Lei::Forma);
+    }
+
+    /// ⛔⛔ **O OLHAR DA LEI NOVA NÃO É A IDENTIDADE, e isso é uma MEDIÇÃO e não um gosto.**
+    ///
+    /// Com `0` stops a lei nova sai a metade do nível da de sempre (média `59` contra `105`), e um
+    /// dono a quem se pede um veredito sobre a APARÊNCIA e que recebe uma peça duas vezes mais
+    /// escura está a julgar a exposição, não a lei. Ver o doc do [`super::OLHAR_DA_FORMA`] para a
+    /// escada que escolheu o número.
+    ///
+    /// ⚠️ A barra é **larga de propósito** (`≥ 2` stops): o valor exacto é do rig e do material de
+    /// omissão, e apertá-la aqui faria este gate reprovar no dia em que alguém mudasse o rig —
+    /// medindo a CENA em vez da decisão. *O que se afirma é que a identidade está descartada.*
+    #[test]
+    fn o_olhar_da_lei_nova_nao_e_a_identidade() {
+        let o = super::OLHAR_DA_FORMA;
+        assert!(
+            o.exposure_stops >= 2.0,
+            "a lei nova é ABSOLUTA e sem exposição sai escura demais ({} stops)",
+            o.exposure_stops
+        );
+        // **O CONTROLO**: a vista continua a de sempre — a exposição resolve o NÍVEL, e trocar a
+        // vista é outra decisão, que ninguém tomou.
+        assert_eq!(o.view, ph2d_view_transform::ViewTransform::Standard);
     }
 
     /// ⚠️ **O nome da variável é o que o roteiro do smoke escreve** — e um renome silencioso

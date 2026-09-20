@@ -5813,6 +5813,7 @@ dependencies = [
  "ph2d-light",
  "ph2d-painter-brush",
  "ph2d-render",
+ "ph2d-view-transform",
  "postcard",
  "wgpu",
 ]
@@ -5823,6 +5824,7 @@ version = "0.0.0"
 dependencies = [
  "naga",
  "ph2d-material",
+ "ph2d-view-transform",
 ]
 
 [[package]]

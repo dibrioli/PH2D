@@ -101,7 +101,13 @@ pub const VISTA: [f32; 3] = [0.0, 0.0, 1.0];
 /// preto escureceria a borda da silhueta a cada re-acendida, que é exactamente o defeito que o
 /// `baked_form` guarda `base` para impedir (*«re-acender a partir do que já está aceso compõe»*).
 #[must_use]
-pub fn acende_texel(s: &Surface, t: &Texel, lampadas: &[Lampada], ambiente: Rgb) -> Rgb {
+pub fn acende_texel(
+    s: &Surface,
+    t: &Texel,
+    lampadas: &[Lampada],
+    ambiente: Rgb,
+    olhar: ph2d_view_transform::Look,
+) -> Rgb {
     let n = normaliza(t.normal);
     // ⚠️ Uma normal degenerada (o texel fora da silhueta, onde a forma não escreveu nada) devolve o
     // albedo **cru**. ⛔ Devolver preto pintaria um halo no contorno de toda peça assada.
@@ -160,6 +166,19 @@ pub fn acende_texel(s: &Surface, t: &Texel, lampadas: &[Lampada], ambiente: Rgb)
         luz[1] + t.albedo[1] * ambiente[1] * t.oclusao,
         luz[2] + t.albedo[2] * ambiente[2] * t.oclusao,
     ];
+
+    // ⭐⭐⭐ **A VISTA entra AQUI — no ACESO, e ANTES da mistura da cobertura.**
+    //
+    // ⛔⛔ A 1.ª redacção aplicava-a ao resultado JÁ misturado, no corredor, com o argumento de que
+    // a lei da luz devolve radiância e o ecrã é outra pergunta. O argumento está certo e o SÍTIO
+    // estava errado: fora da silhueta esta lei devolve o albedo CRU — que são os pixels 2D do
+    // sprite —, e uma exposição aplicada por cima mudava a ARTE que a forma não tocou. *A promessa
+    // do no-op só é verdade para a identidade, e uma promessa que só vale no valor de fábrica não
+    // é uma promessa.*
+    //
+    // ⚠️ Com o [`Look::default`] (0 stops, `Standard`) ela é a identidade para toda luz dentro do
+    // branco ⇒ o caminho de omissão fica byte-idêntico, e há gate.
+    let aceso = olhar.apply(aceso);
 
     let c = t.cobertura.clamp(0.0, 1.0);
     let n_c = 1.0 - c;

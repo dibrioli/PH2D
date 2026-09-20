@@ -57,7 +57,9 @@ use ph2d_render::{ImpastoLightPass, SpriteRenderer};
 /// passe EXIGE (relevo, cobertura, material, lâmpadas, a entrada).
 pub mod planes;
 
-use planes::{BakePlanes, build_input, neutral_planes, resolved_lamps, upload_rgba};
+use planes::{
+    BakePlanes, build_input, neutral_planes, resolved_lamps, upload_rgba, upload_rgba_copiavel,
+};
 
 /// Quantos `u32` o carimbo do rig ocupa: a contagem, mais nove floats por lâmpada
 /// (`dir` + `half` + `tint`).
@@ -212,9 +214,17 @@ fn acende_pela_forma(
     // ⚠️ Pela re-exportação da folha da lei e não por uma seta própria à `ph2d-material`:
     // uma segunda aresta para a óptica seria um segundo sítio por onde a versão dela entra.
     let material = ph2d_form_pbr::OpenPbr::default().prepare();
-    let pixels = ph2d_form_pbr::imagem::acende_imagem(&material, &planos, &lampadas, [0.0; 3])?;
+    let pixels = ph2d_form_pbr::imagem::acende_imagem(
+        &material,
+        &planos,
+        &lampadas,
+        [0.0; 3],
+        crate::lei_da_luz::OLHAR_DA_FORMA,
+    )?;
 
-    let out = upload_rgba(gpu, bake.size, &pixels);
+    // ⚠️ **`upload_rgba_copiavel` e não a irmã**: estes pixels já estão ACESOS e vão ser COPIADOS
+    // para o slot do sprite — sem o `COPY_SRC` o wgpu derruba o app com um panic. Ver o doc dela.
+    let out = upload_rgba_copiavel(gpu, bake.size, &pixels);
     renderer
         .copy_texture_into_individual(bake.texture_id, &out, w, h)
         .map_err(|e| format!("nao consegui copiar para o slot do sprite: {e}"))
@@ -392,6 +402,14 @@ pub fn form_from_rgba8(bytes: &[u8]) -> Vec<f32> {
 fn quantise(v: f32) -> u8 {
     (v.clamp(0.0, 1.0) * 255.0 + 0.5).floor() as u8
 }
+
+#[cfg(test)]
+#[path = "baked_form_lei_tests.rs"]
+mod lei_tests;
+
+#[cfg(test)]
+#[path = "prova_da_placa.rs"]
+mod prova_da_placa;
 
 #[cfg(test)]
 mod tests {
@@ -596,7 +614,3 @@ mod probe {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "baked_form_lei_tests.rs"]
-mod lei_tests;

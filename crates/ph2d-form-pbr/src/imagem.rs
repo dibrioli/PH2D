@@ -13,6 +13,18 @@
 //! ⚠️ E o inverso também: ele é **rápido o suficiente para o dono JULGAR a aparência** a uma
 //! lâmpada, que é a pergunta que vem antes de qualquer optimização.
 //!
+//! # ⛔⛔ A LUZ DESTA LEI É ABSOLUTA, e sem a VISTA ela chega ao ecrã crua
+//!
+//! O passe da TINTA é **relativo** — ele divide pelo que uma superfície plana do mesmo material
+//! devolveria, e é por isso que tinta plana sai byte-idêntica nele. Esta lei devolve **radiância**,
+//! e escrevê-la direito em bytes dá um objecto visivelmente mais escuro: medido na placa sobre a
+//! mesma peça, média `59` contra `105` da tinta. *Não é um defeito da lei — é a metade que faltava.*
+//!
+//! ⇒ ela sai pela [`Look`] da [`ph2d_view_transform`], que é a lei desta casa para *cena linear →
+//! ecrã*, e não por uma exposição escrita aqui. ⚠️ O [`Look::default`] é a **identidade** (`0`
+//! stops, `Standard`), logo quem não pedir vista nenhuma recebe a radiância crua — e é isso que
+//! torna a exposição uma ESCOLHA visível em vez de uma constante escondida.
+//!
 //! # ⚠️ O albedo é lido LINEAR, e a escolha é de CONSISTÊNCIA e não de física
 //!
 //! O passe da tinta sobe o mesmo `base` como **`Rgba8Unorm`** (nunca `…Srgb`), logo ele já trata
@@ -20,6 +32,8 @@
 //! o que os MESMOS bytes significam, e a diferença apareceria como *"o PBR está mais escuro"* —
 //! um defeito de ponte lido como um defeito de lei. *Se esta convenção estiver errada, ela está
 //! errada nas duas, e é uma pergunta sobre o `base` — não sobre o OpenPBR.*
+
+pub use ph2d_view_transform::{Look, ViewTransform};
 
 use super::{Lampada, Rgb, Surface, Texel, acende_texel};
 
@@ -78,9 +92,10 @@ pub fn acende_imagem(
     p: &Planos,
     lampadas: &[Lampada],
     ambiente: Rgb,
+    olhar: Look,
 ) -> Result<Vec<u8>, String> {
     let faixas = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
-    acende_imagem_com(s, p, lampadas, ambiente, faixas)
+    acende_imagem_com(s, p, lampadas, ambiente, olhar, faixas)
 }
 
 /// O mesmo, com o número de faixas **dito** em vez de lido da máquina.
@@ -96,6 +111,7 @@ pub fn acende_imagem_com(
     p: &Planos,
     lampadas: &[Lampada],
     ambiente: Rgb,
+    olhar: Look,
     faixas: usize,
 ) -> Result<Vec<u8>, String> {
     let n = p.confere()?;
@@ -108,7 +124,7 @@ pub fn acende_imagem_com(
     let passo = n.div_ceil(faixas.max(1));
     std::thread::scope(|sc| {
         for (k, fatia) in out.chunks_mut(passo * 4).enumerate() {
-            sc.spawn(move || acende_faixa(s, p, lampadas, ambiente, k * passo, fatia));
+            sc.spawn(move || acende_faixa(s, p, lampadas, ambiente, olhar, k * passo, fatia));
         }
     });
     Ok(out)
@@ -126,6 +142,7 @@ fn acende_faixa(
     p: &Planos,
     lampadas: &[Lampada],
     ambiente: Rgb,
+    olhar: Look,
     i0: usize,
     fatia: &mut [u8],
 ) {
@@ -147,7 +164,7 @@ fn acende_faixa(
             cobertura: p.form[(i0 + j) * 4 + 3],
             oclusao: p.form_occ[i0 + j],
         };
-        let c = acende_texel(s, &t, lampadas, ambiente);
+        let c = acende_texel(s, &t, lampadas, ambiente, olhar);
         for k in 0..3 {
             // ⚠️ `clamp` ANTES do `as u8`: um `as` satura, mas um `NaN` vira `0` em silêncio — e é
             // a cerca do meio-vector degenerado que garante que ele não chega aqui. Esta é a

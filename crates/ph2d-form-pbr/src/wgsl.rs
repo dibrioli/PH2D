@@ -16,13 +16,15 @@
 //!
 //! ```ignore
 //! let fonte = format!(
-//!     "{}\n{}",
+//!     "{}\n{}\n{}",
+//!     ph2d_view_transform::wgsl::SOURCE,
 //!     ph2d_material::wgsl::SOURCE.replace(ph2d_material::wgsl::ENV_SLOT, o_ambiente_do_consumidor),
 //!     ph2d_form_pbr::wgsl::SOURCE.replace(ph2d_form_pbr::wgsl::CAP_SLOT, "4u"),
 //! );
 //! ```
 //!
-//! ⚠️ **Por esta ordem**: o nosso laço chama `mx_direct`, que vem de lá.
+//! ⚠️ **Por esta ordem**: o nosso laço chama o `mx_direct` da lei e o `vt_to_display` da vista, e
+//! os dois vêm de fora — *este ficheiro não tem uma linha de óptica nem uma linha de vista.*
 //!
 //! # ⏳ O que os gates desta crate NÃO afirmam, e é dívida NOMEADA
 //!
@@ -118,6 +120,9 @@ fn forma_acende_texel(
     oclusao: f32,
     lampadas: Lampadas,
     ambiente: vec3<f32>,
+    // ⭐ O OLHAR, nos dois números que o `vt_to_display` pede — ver a `ph2d_view_transform`.
+    stops: f32,
+    vista: u32,
 ) -> vec3<f32> {
     let q = dot(normal, normal);
     // ⛔ Fora da silhueta devolve o albedo CRU, nunca preto — ver o doc da `acende_texel`.
@@ -143,7 +148,12 @@ fn forma_acende_texel(
 
     // ⚠️ A oclusão pesa SÓ o ambiente, e o ambiente é um termo nosso e não a indirecta da lei —
     // ver o doc da `acende_texel`.
-    let aceso = luz + albedo * ambiente * oclusao;
+    let cena = luz + albedo * ambiente * oclusao;
+
+    // ⭐⭐⭐ A VISTA, ANTES da mistura da cobertura — a mesma ordem da CPU, e pela mesma razão:
+    // fora da silhueta o byte tem de sair INTACTO, e ali esta lei devolve o albedo cru (os pixels
+    // 2D do sprite). O `vt_to_display` é o gémeo da `ph2d_view_transform::to_display`.
+    let aceso = vt_to_display(cena, stops, vista);
 
     let c = clamp(cobertura, 0.0, 1.0);
     return albedo + (aceso - albedo) * c;

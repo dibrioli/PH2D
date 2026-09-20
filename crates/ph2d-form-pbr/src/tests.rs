@@ -2,6 +2,7 @@
 //! acontecer não prova que ele não aconteceu.
 
 use super::*;
+use ph2d_view_transform::Look;
 
 fn superficie() -> Surface {
     OpenPbr::default().prepare()
@@ -33,13 +34,13 @@ fn fora_da_silhueta_o_albedo_sai_ao_bit() {
     let s = superficie();
     let mut t = texel([0.0, 0.0, 1.0]);
     t.cobertura = 0.0;
-    let fora = acende_texel(&s, &t, &[lampada_de_frente()], [0.2; 3]);
+    let fora = acende_texel(&s, &t, &[lampada_de_frente()], [0.2; 3], Look::default());
     assert_eq!(fora, t.albedo, "a cobertura 0 tem de devolver o albedo CRU");
 
     // ⭐ **O CONTROLO**: com cobertura cheia, a MESMA entrada tem de mover o pixel — senão este
     // gate ficaria verde sobre uma lei que não acende nada.
     t.cobertura = 1.0;
-    let dentro = acende_texel(&s, &t, &[lampada_de_frente()], [0.2; 3]);
+    let dentro = acende_texel(&s, &t, &[lampada_de_frente()], [0.2; 3], Look::default());
     assert_ne!(
         dentro, t.albedo,
         "controlo: com cobertura 1 a luz TEM de mudar o pixel"
@@ -56,12 +57,14 @@ fn uma_normal_curta_acende_como_a_normalizada() {
         &texel([0.0, 0.0, 1.0]),
         &[lampada_de_frente()],
         [0.0; 3],
+        Look::default(),
     );
     let curta = acende_texel(
         &s,
         &texel([0.0, 0.0, 0.97]),
         &[lampada_de_frente()],
         [0.0; 3],
+        Look::default(),
     );
     for c in 0..3 {
         assert!(
@@ -85,6 +88,7 @@ fn uma_normal_curta_acende_como_a_normalizada() {
         &texel([1.0, 0.0, 0.0]),
         &[lampada_de_frente()],
         [0.0; 3],
+        Look::default(),
     );
     assert!(
         (lado[0] - cheia[0]).abs() > 1e-3,
@@ -101,7 +105,7 @@ fn uma_normal_degenerada_devolve_o_albedo_e_nao_preto() {
     let s = superficie();
     let t = texel([0.0, 0.0, 0.0]);
     assert_eq!(
-        acende_texel(&s, &t, &[lampada_de_frente()], [0.2; 3]),
+        acende_texel(&s, &t, &[lampada_de_frente()], [0.2; 3], Look::default()),
         t.albedo
     );
 }
@@ -117,14 +121,38 @@ fn a_oclusao_nao_toca_a_luz_directa() {
     fechado.oclusao = 0.0;
 
     // Sem ambiente, a oclusão não pode mudar um bit.
-    let a = acende_texel(&s, &aberto, &[lampada_de_frente()], [0.0; 3]);
-    let f = acende_texel(&s, &fechado, &[lampada_de_frente()], [0.0; 3]);
+    let a = acende_texel(
+        &s,
+        &aberto,
+        &[lampada_de_frente()],
+        [0.0; 3],
+        Look::default(),
+    );
+    let f = acende_texel(
+        &s,
+        &fechado,
+        &[lampada_de_frente()],
+        [0.0; 3],
+        Look::default(),
+    );
     assert_eq!(a, f, "sem ambiente, a oclusão não tem o que pesar");
 
     // ⭐ **O CONTROLO**: COM ambiente, ela tem de morder — senão o gate acima ficaria verde sobre
     // uma oclusão que não faz nada em lado nenhum.
-    let a2 = acende_texel(&s, &aberto, &[lampada_de_frente()], [0.5; 3]);
-    let f2 = acende_texel(&s, &fechado, &[lampada_de_frente()], [0.5; 3]);
+    let a2 = acende_texel(
+        &s,
+        &aberto,
+        &[lampada_de_frente()],
+        [0.5; 3],
+        Look::default(),
+    );
+    let f2 = acende_texel(
+        &s,
+        &fechado,
+        &[lampada_de_frente()],
+        [0.5; 3],
+        Look::default(),
+    );
     assert!(
         a2[0] > f2[0] + 1e-4,
         "controlo: com ambiente, o ocluído ({}) tem de ser mais escuro que o aberto ({})",
@@ -154,7 +182,7 @@ fn a_optica_e_a_da_crate_da_lei_ao_bit() {
         radiancia: [0.9, 0.8, 0.7],
     };
 
-    let nosso = acende_texel(&s, &t, &[l], [0.0; 3]);
+    let nosso = acende_texel(&s, &t, &[l], [0.0; 3], Look::default());
 
     let n = normaliza(t.normal).unwrap();
     let esperado = s
@@ -180,71 +208,117 @@ fn a_optica_e_a_da_crate_da_lei_ao_bit() {
 ///
 /// # ⚠️ Porque a barra é a igualdade AO BIT, e não um epsilon
 ///
-/// Com cobertura cheia e sem ambiente o resultado é `albedo × Σluz`, logo duas lâmpadas iguais dão
-/// **exactamente** o dobro: dobrar um `f32` não perde um bit, e multiplicar pelo mesmo albedo
-/// depois também não. *Um epsilon aqui esconderia uma lei que soma quase certo.*
+/// Com cobertura cheia e sem ambiente o resultado é `Σ direct`, logo duas lâmpadas iguais dão
+/// **exactamente** o dobro: dobrar um `f32` não perde um bit. *Um epsilon aqui esconderia uma lei
+/// que soma quase certo.*
 ///
-/// ⛔⛔ **A 1.ª redacção previa `albedo + (uma − albedo) × 2` e reprovou sobre produto CERTO**
-/// (`0,637` contra `0,137`): ela reconstruía o valor pela fórmula da MISTURA, que com `cobertura =
-/// 1` não corre. *Uma previsão escrita com a aritmética de outro ramo mede esse outro ramo.*
+/// ⛔⛔ **A PREMISSA MORREU UMA VEZ E RENASCEU MAIS ESTREITA.** A 1.ª redacção usava a lâmpada de
+/// frente com radiância `1` e reprovou no dia em que a lei ganhou a VISTA: a soma dava `1,0909` e o
+/// `ViewTransform::Standard` corta em `1` ⇒ `duas != uma × 2`. *A linearidade é da RADIÂNCIA, e
+/// acima do branco quem manda é a vista* — que é precisamente o trabalho dela.
+///
+/// ⇒ o gate mede a soma **abaixo do branco** (com a radiância a um quinto), e a 2.ª metade afirma a
+/// outra ponta: **acima dele a vista CORTA**, e é isso que impede alguém de ler a barra apertada da
+/// 1.ª metade como *«a lei é linear em todo o lado»*.
 #[test]
 fn as_lampadas_somam() {
     let s = superficie();
     let t = texel([0.0, 0.0, 1.0]);
-    let l = lampada_de_frente();
-    let uma = acende_texel(&s, &t, &[l], [0.0; 3]);
-    let duas = acende_texel(&s, &t, &[l, l], [0.0; 3]);
+    let fraca = Lampada {
+        para_a_luz: [0.0, 0.0, 1.0],
+        radiancia: [0.2, 0.2, 0.2],
+    };
+    let uma = acende_texel(&s, &t, &[fraca], [0.0; 3], Look::default());
+    let duas = acende_texel(&s, &t, &[fraca, fraca], [0.0; 3], Look::default());
     for c in 0..3 {
+        assert!(
+            duas[c] < 1.0,
+            "premissa: as duas têm de caber abaixo do branco"
+        );
         assert_eq!(
             duas[c],
             uma[c] * 2.0,
-            "canal {c}: duas lâmpadas têm de dar o dobro de uma, ao bit"
+            "canal {c}: abaixo do branco, duas lâmpadas dão o dobro de uma, ao bit"
         );
     }
 
     // ⭐ **O CONTROLO**: uma lâmpada sozinha tem de mover o pixel, senão o dobro de zero passaria.
     assert_ne!(uma, t.albedo, "controlo: uma lâmpada tem de acender");
+
+    // ⭐⭐ **A OUTRA PONTA**: acima do branco a VISTA corta, e a soma deixa de ser observável.
+    let forte = Lampada {
+        para_a_luz: [0.0, 0.0, 1.0],
+        radiancia: [1.0; 3],
+    };
+    let a = acende_texel(&s, &t, &[forte], [0.0; 3], Look::default());
+    let b = acende_texel(&s, &t, &[forte, forte], [0.0; 3], Look::default());
+    assert!(
+        b[0] < a[0] * 2.0 - 1e-3,
+        "controlo: acima do branco a vista TEM de cortar ({} contra {})",
+        b[0],
+        a[0] * 2.0
+    );
 }
 
-/// ⭐⭐⭐ **A LÂMPADA ANTI-PARALELA À VISTA NÃO DEVOLVE `NaN`** — o achado desta crate.
+/// ⭐⭐⭐ **A LÂMPADA ANTI-PARALELA À VISTA NÃO ENVENENA A SOMA** — o achado desta crate.
 ///
 /// Sem a cerca do [`meio_vector_degenera`] a lei do OpenPBR devolve `[NaN, NaN, NaN]` aqui, porque
 /// o meio-vector `v + to_light` é o vector nulo. ⚠️ **No modelador isto tem medida nula** (a vista
-/// é a do raio e varia por pixel); **num canvas 2D a [`VISTA`] é constante**, logo esta é uma
-/// configuração que o artista escreve, e ela pinta a peça INTEIRA de `NaN`.
+/// é a do raio e varia por pixel); **num canvas 2D a [`VISTA`] é constante**, logo é uma
+/// configuração que o artista escreve, e ela vale para a peça INTEIRA.
 ///
-/// ⚠️ **A régua é o `is_nan` e NÃO só a magnitude:** `NaN` falha toda comparação, logo um gate
-/// escrito só com `<=` fica **verde sobre `NaN`** — foi assim que a 1.ª redacção deste teste o
-/// apanhou por acidente, com a mensagem a dizer *«a luz de trás acendeu (NaN > 0.5)»*.
+/// # ⛔⛔ Porque a régua NÃO pode ser `is_nan` sobre uma lâmpada sozinha
+///
+/// **A VISTA é uma REDE que esconde este defeito.** O `to_display` da [`ph2d_view_transform`]
+/// sanitiza (*«luz sem sentido → luz nenhuma»*), logo um `NaN` que lhe chegue sai **preto** — e com
+/// uma lâmpada degenerada sozinha e sem ambiente, preto é também o que a cerca produz. ⇒ a mutação
+/// que apaga a cerca **SOBREVIVIA**, e o gate ficava verde sobre o defeito.
+///
+/// *A 1.ª redacção deste gate media exactamente isso, e só a prova de mutação o disse — depois de a
+/// vista entrar. Uma régua escrita antes de a rede existir não sabe que passou a medir a rede.*
+///
+/// ⇒ a régua é a **CONTAMINAÇÃO**: uma lâmpada boa AO LADO da degenerada. Com a cerca, a boa
+/// acende; sem ela, o `NaN` envenena a soma inteira e a peça fica preta.
 #[test]
-fn uma_lampada_por_tras_nao_acende() {
+fn uma_lampada_por_tras_nao_envenena_a_soma() {
     let s = superficie();
     let t = texel([0.0, 0.0, 1.0]);
+    let boa = lampada_de_frente();
     let tras = Lampada {
         para_a_luz: [0.0, 0.0, -1.0],
         radiancia: [1.0, 1.0, 1.0],
     };
-    let r = acende_texel(&s, &t, &[tras], [0.0; 3]);
-    for (c, (&aceso, &cru)) in r.iter().zip(&t.albedo).enumerate() {
-        assert!(
-            !aceso.is_nan(),
-            "canal {c}: a lâmpada anti-paralela à vista devolveu NaN"
-        );
-        assert!(
-            aceso <= cru + 1e-6,
-            "canal {c}: a luz de trás acendeu ({aceso} > {cru})"
-        );
+
+    let so_a_boa = acende_texel(&s, &t, &[boa], [0.0; 3], Look::default());
+    let com_a_ma = acende_texel(&s, &t, &[boa, tras], [0.0; 3], Look::default());
+
+    // **A metade que a mutação mata:** a lâmpada boa tem de sobreviver à vizinha degenerada.
+    assert_eq!(
+        com_a_ma, so_a_boa,
+        "a lâmpada anti-paralela tem de ser SALTADA, não somada — ela envenenou a soma"
+    );
+    for (c, &v) in com_a_ma.iter().enumerate() {
+        assert!(!v.is_nan(), "canal {c}: saiu NaN");
     }
 
-    // ⭐ **O CONTROLO**: a `1e-3` de distância do caso degenerado a lei já responde (e responde
-    // ~zero), logo a cerca não está a engolir um regime inteiro — ela corta um ponto.
+    // ⭐ **O CONTROLO da fixtura:** a lâmpada boa de facto acende — senão o `assert_eq` acima seria
+    // entre dois pretos, e passaria com a cerca apagada.
+    assert!(
+        so_a_boa[0] > 0.05,
+        "controlo: a lâmpada boa tem de acender ({})",
+        so_a_boa[0]
+    );
+
+    // ⭐ **E a 2.ª ponta:** a `1e-3` do caso degenerado a lei já responde, logo a cerca corta um
+    // PONTO e não um regime.
     let quase = Lampada {
         para_a_luz: normaliza([0.001, 0.0, -1.0]).unwrap(),
         radiancia: [1.0, 1.0, 1.0],
     };
-    for (c, &aceso) in acende_texel(&s, &t, &[quase], [0.0; 3]).iter().enumerate() {
+    let com_a_quase = acende_texel(&s, &t, &[boa, quase], [0.0; 3], Look::default());
+    for (c, &v) in com_a_quase.iter().enumerate() {
         assert!(
-            !aceso.is_nan(),
+            !v.is_nan(),
             "controlo: a quase-anti-paralela não pode dar NaN (canal {c})"
         );
     }
@@ -347,7 +421,7 @@ fn diag_quanto_custa_acender_um_sprite() {
         for t in &texeis {
             // O `soma` existe para o optimizador não poder deitar o laço fora — um bench cujo
             // resultado ninguém lê mede a eliminação de código morto.
-            soma += f64::from(acende_texel(&s, t, &[l], [0.1; 3])[0]);
+            soma += f64::from(acende_texel(&s, t, &[l], [0.1; 3], Look::default())[0]);
         }
         let ms = t0.elapsed().as_secs_f64() * 1e3;
 
@@ -364,7 +438,9 @@ fn diag_quanto_custa_acender_um_sprite() {
                 .map(|f| {
                     sc.spawn(|| {
                         f.iter()
-                            .map(|t| f64::from(acende_texel(&s, t, &[l], [0.1; 3])[0]))
+                            .map(|t| {
+                                f64::from(acende_texel(&s, t, &[l], [0.1; 3], Look::default())[0])
+                            })
                             .sum::<f64>()
                     })
                 })
@@ -419,7 +495,11 @@ fn diag_quanto_custa_acender_um_sprite() {
                     let lampadas = &lampadas;
                     sc.spawn(move || {
                         f.iter()
-                            .map(|t| f64::from(acende_texel(&s, t, lampadas, [0.1; 3])[0]))
+                            .map(|t| {
+                                f64::from(
+                                    acende_texel(&s, t, lampadas, [0.1; 3], Look::default())[0],
+                                )
+                            })
                             .sum::<f64>()
                     })
                 })

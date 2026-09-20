@@ -21,6 +21,8 @@ authors.workspace = true
 # para uma crate OPCIONAL, «ficar na shell» deixou de ser suficiente — o tipo `RigStamp` é
 # campo de uma struct da família, e um tipo atravessa ou não atravessa.
 [dependencies]
+# ⛔ Folha → folha, e ela traz a LEI e o CORREDOR — nunca uma segunda redacção deles aqui.
+ph2d-form-pbr      = { path = "../ph2d-form-pbr" }
 ph2d-gpu           = { path = "../ph2d-gpu" }
 ph2d-light         = { path = "../ph2d-light" }
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }

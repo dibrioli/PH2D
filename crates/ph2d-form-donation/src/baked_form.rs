@@ -136,6 +136,98 @@ pub fn light(
     rig: &LightRig,
     bake: &BakedForm,
 ) -> Result<(), String> {
+    acende_com(
+        crate::lei_da_luz::do_ambiente(),
+        gpu,
+        renderer,
+        pass,
+        rig,
+        bake,
+    )
+}
+
+/// **O mesmo, com a LEI dita** em vez de lida do ambiente.
+///
+/// ⚠️ Ela existe para o gate, e a razão é uma lei desta casa: *um gate que lê o ambiente mede a
+/// máquina*. Com a lei como PARÂMETRO, «as duas acendem» e «a de sempre não mudou um bit» são
+/// propriedades que se afirmam.
+///
+/// # Errors
+/// Ver [`light`].
+pub fn acende_com(
+    lei: crate::lei_da_luz::Lei,
+    gpu: &GpuContext,
+    renderer: &mut SpriteRenderer,
+    pass: &mut Option<ImpastoLightPass>,
+    rig: &LightRig,
+    bake: &BakedForm,
+) -> Result<(), String> {
+    match lei {
+        crate::lei_da_luz::Lei::Tinta => acende_pela_tinta(gpu, renderer, pass, rig, bake),
+        crate::lei_da_luz::Lei::Forma => acende_pela_forma(gpu, renderer, rig, bake),
+    }
+}
+
+/// ⭐⭐⭐ **O OpenPBR sobre os canais do objecto assado** — o caminho de REFERÊNCIA (CPU).
+///
+/// ⚠️ **O AMBIENTE é ZERO, e não é uma omissão:** o rig desta casa é `KEY + 3 × FILL`, ou seja as
+/// lâmpadas de preenchimento **são** o ambiente dele. Um termo constante somado por baixo seria uma
+/// segunda luz que nenhum controlo alcança — e o artista veria a peça a não escurecer por mais que
+/// apagasse lâmpadas.
+///
+/// ⏳ **O MATERIAL é o OpenPBR de omissão, e isso está declarado:** um material por objecto é a
+/// coluna B1 do plano (`docs/Render3d/15`). Hoje o que varia por texel é a COR, que entra como
+/// `base_color` — ver [`ph2d_material::Surface::at_base_color`].
+///
+/// ⚠️ **A cauda é a MESMA do passe da tinta** (`upload_rgba` + `copy_texture_into_individual`): uma
+/// segunda maneira de pôr pixels no slot do sprite divergiria no dia em que a primeira mudasse.
+fn acende_pela_forma(
+    gpu: &GpuContext,
+    renderer: &mut SpriteRenderer,
+    rig: &LightRig,
+    bake: &BakedForm,
+) -> Result<(), String> {
+    let (w, h) = bake.size;
+    let Some(resolved) = ph2d_light::resolve(rig) else {
+        return Err("todas as lampadas estao apagadas".into());
+    };
+    let lampadas: Vec<ph2d_form_pbr::Lampada> = resolved
+        .lamps()
+        .iter()
+        // ⚠️ `dir` é **da superfície PARA a luz** e `tint` é a cor já PESADA pela intensidade — é
+        // o vocabulário do rig traduzido para o que a óptica pede, e é por isso que a conversão
+        // mora aqui e não na folha da lei.
+        .map(|l| ph2d_form_pbr::Lampada {
+            para_a_luz: l.dir,
+            radiancia: l.tint,
+        })
+        .collect();
+
+    let planos = ph2d_form_pbr::imagem::Planos {
+        size: bake.size,
+        base: &bake.base,
+        form: &bake.form,
+        form_occ: &bake.form_occ,
+    };
+    // ⚠️ Pela re-exportação da folha da lei e não por uma seta própria à `ph2d-material`:
+    // uma segunda aresta para a óptica seria um segundo sítio por onde a versão dela entra.
+    let material = ph2d_form_pbr::OpenPbr::default().prepare();
+    let pixels = ph2d_form_pbr::imagem::acende_imagem(&material, &planos, &lampadas, [0.0; 3])?;
+
+    let out = upload_rgba(gpu, bake.size, &pixels);
+    renderer
+        .copy_texture_into_individual(bake.texture_id, &out, w, h)
+        .map_err(|e| format!("nao consegui copiar para o slot do sprite: {e}"))
+}
+
+/// O passe da TINTA — a lei de sempre, e o valor de fábrica. Ver [`light`].
+fn acende_pela_tinta(
+    gpu: &GpuContext,
+    renderer: &mut SpriteRenderer,
+    pass: &mut Option<ImpastoLightPass>,
+    rig: &LightRig,
+    bake: &BakedForm,
+) -> Result<(), String> {
     let (w, h) = bake.size;
     let Some(resolved) = ph2d_light::resolve(rig) else {
         // ⚠️ Rig todo apagado: **não há acendida a fazer**, e o passe recusaria um rig vazio
@@ -504,3 +596,7 @@ mod probe {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "baked_form_lei_tests.rs"]
+mod lei_tests;

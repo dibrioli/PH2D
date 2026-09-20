@@ -8,10 +8,13 @@
 > altos, consigo resolvê-la."* — e as duas encomendas: **(1)** a borda ficar menos dura mesmo com Rewet e
 > Smudge em 0; **(2)** Rewet e Smudge funcionarem sobre a borda lavada pelo próprio traço.
 >
-> ⚠️ **ESTADO: ANÁLISE. Zero linha de código tocada, por ordem** (*"não mude o código de nada"* — seis
-> linhas acabavam de entrar no `main` e a CI ainda ia correr). Este arquivo nasceu **sem commit** na árvore
-> primária e **fora do `00_INDEX.md`** (que é rastreado): quem abrir a linha que implementa o commita e
-> acrescenta a linha no índice.
+> ⚠️ **ESTADO: ANÁLISE — e a cura EXISTE desde o mesmo dia: [doc 41](41_a_reserva_e_um_nivel_disputado.md)**
+> (`line/PainterWatercolor`). Este arquivo foi escrito com zero linha de código tocada, por ordem (*"não
+> mude o código de nada"* — seis linhas acabavam de entrar no `main` e a CI ainda ia correr), e fica como
+> está: é o registo do que se sabia ANTES de medir. ⛔ **Duas coisas daqui foram corrigidas pela medição
+> e estão no doc 41, não aqui:** a barra *«costura não mais dura que a borda externa»* é só um PISO (a
+> nossa borda externa é nítida de propósito — o aro da aquarela), e a S2-A (*o Rewet alarga o raio em
+> pixels do Bleed*) não se via num pincel grande.
 >
 > ⚠️ **Tudo aqui saiu de LER o código, não de correr o produto.** A aritmética do §2.3 é derivada das leis
 > escritas no fonte — ela não é medição. O §8 lista o que ficou por medir, e o §7 diz qual é o instrumento.

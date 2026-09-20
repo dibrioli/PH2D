@@ -131,6 +131,10 @@ pub const SCULPT3D_FRONT_FACES: NodeId = hash_node_id("sculpt3d.front_faces");
 /// Cena **`=39`**.
 pub const SCULPT3D_SURFACE_ONLY: NodeId = hash_node_id("sculpt3d.surface_only");
 
+/// ⭐ **PUXAR PELA NORMAL** — a caixa do [`ph2d_sculpt3d::Brush::puxa_pela_normal`]
+/// (ordem do dono, 2026-09-19), oferecida aos dois verbos que têm puxão.
+pub const SCULPT3D_PUXA_PELA_NORMAL: NodeId = hash_node_id("sculpt3d.puxa_pela_normal");
+
 /// A malha de arestas desenhada por cima da forma.
 pub const SCULPT3D_WIREFRAME: NodeId = hash_node_id("sculpt3d.wireframe");
 

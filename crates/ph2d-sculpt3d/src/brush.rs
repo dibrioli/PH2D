@@ -495,6 +495,11 @@ pub struct Brush {
     /// uma **fixtura pode PREGÁ-LO** para continuar a reproduzir a geometria em
     /// que foi calibrada — que é o que a [`shells/desktop`] faz com a orelha.
     pub surface_only: bool,
+    /// ⭐⭐⭐ **O PUXÃO VAI PELA NORMAL** (ordem do dono, 19/09) — o gesto passa
+    /// a dizer só *quanto*. ⛔ Divergência DECLARADA, com as três escolhas
+    /// medidas em [`crate::SculptStroke::direccao_do_puxao`] e a população em
+    /// [`Self::oferece_puxar_pela_normal`]. `false` é o neutro, byte-idêntico.
+    pub puxa_pela_normal: bool,
     /// **O ALISAMENTO QUE CORRE DEPOIS DE CADA DAB**, em `[0, 1]` — o
     /// factor de AUTO-ALISAMENTO da referência, e **`0` é o neutro**.
     ///

@@ -269,6 +269,9 @@ pub struct SculptStroke {
     /// ⭐⭐⭐ **A MEMÓRIA DO PLANO, uma por passe de simetria** — ver [`crate::plano_memoria`]. Nasce
     /// no primeiro dab do traço (o inerte) e esquece-se com ele.
     plano_memorias: Vec<crate::plano_memoria::MemoriaDoPlano>,
+    /// ⭐⭐ **A NORMAL DO PUXÃO, uma por passe de simetria** — congelada no
+    /// pen-down; o porquê vive em [`Self::direccao_do_puxao`].
+    normal_do_puxao: Vec<Option<[f32; 3]>>,
     /// Qual passe de simetria está a correr — o índice da [`Self::plano_memorias`].
     passe_simetria: usize,
     /// ⭐⭐ **O CAMPO DE DESLOCAMENTO DO ESFREGÃO, por SLOT** — ver
@@ -664,6 +667,12 @@ mod cloth_artefatos_tests;
 #[cfg(test)]
 #[path = "stroke_growth_tests.rs"]
 mod growth_tests;
+
+/// ⭐⭐⭐⭐ **Os gates da opção «puxar pela normal»** (ordem do dono, 19/09) —
+/// ver [`puxao_normal`].
+#[cfg(test)]
+#[path = "stroke_puxao_normal_tests.rs"]
+mod puxao_normal;
 
 /// ⛔⛔⛔ **A sonda do report de 19/09** (*«algumas vezes correto, algumas vezes
 /// bugado»*) — ela lê o contador que a máscara mantém sob `cfg(test)`, e por

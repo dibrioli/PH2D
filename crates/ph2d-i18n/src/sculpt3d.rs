@@ -33,6 +33,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.section.bake" => "Bake to Sprite",
         "panel.sculpt3d.radius" => "Radius",
         "panel.sculpt3d.surface_only" => "Connected Only",
+        "panel.sculpt3d.puxa_pela_normal" => "Pull Along Normal",
         "panel.sculpt3d.strength" => "Strength",
         "panel.sculpt3d.falloff" => "Falloff",
         // ⭐⭐⭐ **A RAZÃO À VISTA** — a fileira da curva é a única que o painel do

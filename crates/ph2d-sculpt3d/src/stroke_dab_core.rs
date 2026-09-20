@@ -152,6 +152,37 @@ impl SculptStroke {
         } else {
             None
         };
+        // ⭐⭐⭐⭐ **A OPÇÃO DO DONO: a direcção do puxão é a NORMAL DA
+        // SUPERFÍCIE** — ver [`Brush::puxa_pela_normal`], e a porta que congela
+        // a direcção é [`Self::direccao_do_puxao`].
+        //
+        // ⚠️ **Ela troca o DAB, e não cada braço do alvo.** Os dois verbos que
+        // a oferecem leem o `dab.pull` em QUATRO sítios (com campo elástico e
+        // sem, cada um), e o espelho da simetria lê-o outra vez — reescrever a
+        // direcção em cada um deles seria a mesma lei em cinco cópias, e a que
+        // alguém esquecesse ficava a puxar para o lado antigo em silêncio.
+        //
+        // ⚠️ **O comprimento é preservado e o sentido é para FORA** (a tabela
+        // do campo diz porquê), e com puxão nulo isto é **no-op ao bit**: um
+        // vector nulo normalizado não existe, então o dab passa intacto.
+        let dab_pela_normal;
+        let dab = if brush.puxa_pela_normal && brush.oferece_puxar_pela_normal() {
+            let l =
+                (dab.pull[0] * dab.pull[0] + dab.pull[1] * dab.pull[1] + dab.pull[2] * dab.pull[2])
+                    .sqrt();
+            if l > 0.0 && l.is_finite() {
+                let n = self.direccao_do_puxao(mesh, brush, dab, plane.normal);
+                dab_pela_normal = crate::Dab {
+                    pull: [n[0] * l, n[1] * l, n[2] * l],
+                    ..*dab
+                };
+                &dab_pela_normal
+            } else {
+                dab
+            }
+        } else {
+            dab
+        };
         // ⚠️ **A preparação do HC, irmã do `fit_plane` e do `alpha_frame`:** uma
         // vez por dab, antes de qualquer escrita, porque as duas linhas da lei
         // dele só leem o estado de ANTES do dab. No-op para os outros vinte e um

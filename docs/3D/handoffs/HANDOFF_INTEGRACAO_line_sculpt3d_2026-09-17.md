@@ -4493,3 +4493,114 @@ sonda antes do vizinho, o atributo dele passou a cobrir o meu bloco e o
 `-D warnings` (dois erros de item não usado), não por um teste. *Inserir uma
 declaração entre um atributo e o item dele é mudo no `cargo check` e barulhento
 no `--all-targets`.*
+
+---
+
+## §97 — ⭐⭐⭐⭐ «PUXAR PELA NORMAL»: o gesto passa a dizer só QUANTO
+
+**Ordem do dono (2026-09-19):** *«pincéis com Snake Hook e Grab ainda não têm a
+opção de usar a normal da superfície para dar a direção da puxada. Implemente
+essa opção.»*
+
+Ligada a caixa **`Pull Along Normal`** (painel, logo abaixo do `Connected
+Only`), a direcção do puxão deixa de ser o arrasto e passa a ser a **normal da
+superfície congelada no pen-down**; o arrasto diz só o comprimento. *O artista
+tira um espigão a direito sem orbitar a peça até a normal apontar ao ecrã.*
+
+### §97.1 — ⛔ Ela é NOSSA: divergência declarada, com as três escolhas medidas
+
+Nenhuma das duas referências desta casa a oferece nestes verbos ⇒ **não há lado
+aprovado a copiar**. O que existe é a medição:
+
+| escolha | porquê, medido |
+|---|---|
+| a normal é a do **gesto** ([`stroke_normal_do_gesto`]) e não a do estimador de plano | ela lê a superfície **sob o miolo** e tem os dois baldes ⇒ não colapsa numa parede fina, que é onde um espigão é mais usado |
+| ela **CONGELA** no pen-down, uma por passe de simetria | lida viva, cada dab puxaria pela normal que o dab anterior acabou de virar e o espigão **enrola**; o gate mede o ângulo entre o 1.º e o 8.º incremento (`< 1°`) |
+| o comprimento é `‖puxão‖`, sempre para **FORA** | a componente do arrasto ao longo da normal é **ZERO** exactamente no caso que o dono descreve (a normal a apontar ao artista) ⇒ a lei «óbvia» entregaria um controlo inerte onde ele é mais pedido |
+
+⭐ **E ela fecha uma dívida NOMEADA de 2026-09-13:** o cabeçalho do
+`stroke_normal_do_gesto` diz que os dois baldes (frente/verso) eram
+**inobserváveis** porque o único consumidor era a componente tangencial, que é
+quadrática em `n`. *Este é o primeiro consumidor que lê a DIRECÇÃO* — trocar os
+baldes põe o espigão a crescer para dentro da peça.
+
+### §97.2 — ⛔⛔ A porta parou no GRIP, e a MEDIÇÃO corrigiu-a
+
+A 1.ª redacção derivou a população do grip (`Hold | Hook`) e o painel passou a
+oferecer a caixa a **SEIS** verbos. Correndo o mesmo gesto com e sem a opção
+(`diag_quem_sente_a_opcao`):
+
+| verbo | `Δz` sem | `Δz` com | veredito |
+|---|---|---|---|
+| `Move` | `0,000` | `0,150` | ✅ sente |
+| `SnakeHook` | `0,000` | `0,297` | ✅ sente |
+| `Pose` · `Boundary` | — | — | ⛔ `0,000` — resolvem a **própria região** e nunca leem o `dab.pull` |
+| `Thumb` | `0,000` | `0,00006` | ⛔ ruído |
+| `Nudge` | `0,027` | `0,0006` | ⛔⛔ a opção **DESLIGAVA** o pincel |
+
+⇒ os dois últimos **subtraem** a normal do puxão (`Δ − n·(n·Δ)`), logo pô-lo ao
+longo dela deixa **zero** — porta nova [`Verb::subtrai_a_normal_do_puxao`], na
+casa das famílias de leitura.
+
+⚠️⚠️ **Quem apanhou isto primeiro não fui eu: foi a CATRACA DA DOBRA do painel**
+(`os_controlos_proprios_de_um_pincel_cabem_no_encaixe`), que reprovou com
+*«Boundary: o último controlo próprio desceu para `1111`, e a catraca registou
+`1083`»*. *Uma fileira nova no bloco partilhado custa `+28 px` a **todos** os
+pincéis* — e a catraca transformou um preço de disposição num diagnóstico de
+**lei**.
+
+### §97.3 — Os gates
+
+* `com_a_opcao_ligada_o_barro_vai_pela_normal_e_nao_pelo_arrasto` — com o
+  CONTROLO (desligada, o barro segue o `+x`) e a metade do **comprimento**, que
+  é o que impede a lei de ser *«puxa pela normal com outra força»*;
+* `desligada_ela_nao_muda_um_bit` — o neutro, nos dois verbos;
+* `a_direccao_congela_no_pen_down_e_o_espigao_sai_a_direito`;
+* `a_opcao_e_oferecida_exactamente_a_quem_a_sente` — **a régua é o BARRO**, verbo
+  a verbo: `oferecem == sentem`, com a barra em `1e-3` (o polegar move `6e-5`,
+  que é ruído de projecção e não um efeito);
+* `o_passo_do_puxao_pela_normal_nomeia_uma_caixa_que_existe` — o passo **(13)**
+  da `=14` nomeia o rótulo que o painel pinta, a caixa é oferecida aos dois
+  verbos e **não** ao carimbo.
+
+**Mutação `5 de 5`**: o fio · a direcção não congelar · o comprimento virar
+projecção · a porta voltar a parar no grip · o painel deixar de despachar.
+
+⚠️ **Tectos de LOC: TRÊS ficheiros vermelhos, os três curados por CORTE** —
+`brush.rs` (`726 → 700`, a tabela das escolhas mudou-se para a casa da lei),
+`brush_verb_predicados.rs` (`715 → 697`, o predicado novo foi para
+`brush_verb_familias.rs`, que é o sítio dele) e `stroke.rs` (`705 → 699`).
+⛔ Nenhuma entrada nova no `FILE_OVERAGE_OK`.
+
+### §97.4 — ⏳ ABERTO: o sentido para DENTRO é decisão do dono
+
+Os dois verbos **não honram o `Ctrl`** hoje, e ele já ordenou que um gesto novo
+se arme por **botão no painel** e não por modificador (§31). As duas saídas são
+uma segunda caixa (*Push In*) ou pôr estes verbos a honrar o modificador — e o
+preço de uma fileira nova está medido acima (`+28 px` a todos os pincéis, e o
+`BRUSH` já ocupa `657` dos `880` do encaixe).
+
+### §97.5 — ⚠️⚠️ NOMEADO E NÃO RESOLVIDO: um `SIGSEGV` no `cargo test` desta crate
+
+Durante esta wave, `cargo test -p ph2d-app-sculpt3d --lib` morreu com **`signal:
+11`** — **5 vezes nas primeiras 9 corridas**, com a máquina quente (logo a
+seguir ao portão de `16 480` testes), e **0 vezes nas 15 seguintes**, incluindo
+`4` com `--test-threads=32`. A árvore de ANTES leu `0` de `11`.
+
+O que está medido, e o que não está:
+
+* ⭐ **`cargo nextest` (um processo por teste) lê `229/229` verde, 3 de 3**, e
+  `--test-threads=1` também ⇒ **o portão da linha não o vê**;
+* ⛔ a pista do adaptador de GPU está **fechada**: os `71` testes de placa desta
+  crate são todos `#[ignore]`, logo nenhum device é criado;
+* ⛔ a pista da pilha está **fechada**: `RUST_MIN_STACK=32M` crasha na mesma;
+* ⚠️ a bissecção do meu diff apontou o lado do PAINEL (com ele revertido, `0` de
+  `3`), mas as corridas seguintes do mesmo diff deram `0` de `15` ⇒ *a primeira
+  bissecção correu no regime quente e a segunda não, logo ela não separa nada*;
+* ⚠️ o crate proíbe `unsafe` por atributo (`#![forbid(unsafe_code)]`).
+
+⇒ **Fica como achado ABERTO e nomeado, com o instrumento para o próximo:** numa
+corrida que morra, a lista de testes que o `cargo test` já imprimiu diz quem
+**não** chegou ao fim — é por aí que se nomeia a vítima. *Um `SIGSEGV` não se
+enterra num rodapé, e afirmar que ele é meu ou que é pré-existente seria, hoje,
+escolher entre duas medições que não discriminam.*

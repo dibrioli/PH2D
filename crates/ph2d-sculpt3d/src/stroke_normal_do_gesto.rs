@@ -144,3 +144,58 @@ pub fn tangencial(delta: [f32; 3], n: [f32; 3]) -> [f32; 3] {
         delta[2] - n[2] * dot,
     ]
 }
+
+impl SculptStroke {
+    /// ⭐⭐⭐⭐ **A DIRECÇÃO DO PUXÃO QUANDO O ARTISTA LIGA O
+    /// [`Brush::puxa_pela_normal`]** — a normal do gesto, **congelada no
+    /// pen-down** e guardada uma por passe de simetria.
+    ///
+    /// ⚠️ **Ela é o primeiro consumidor desta normal que lê a DIRECÇÃO**, e
+    /// isso fecha uma dívida que o cabeçalho deste ficheiro escreve desde
+    /// 2026-09-13: os dois baldes (frente/verso) eram inobserváveis porque o
+    /// único consumidor era a componente **tangencial**, que é quadrática em
+    /// `n` e cega ao sinal. *Aqui o sinal é a ferramenta inteira: trocá-los põe
+    /// o espigão a crescer para DENTRO da peça.*
+    ///
+    /// # ⛔ Ela é NOSSA, e isso é uma divergência DECLARADA
+    ///
+    /// Nenhuma das duas referências desta casa oferece isto nestes verbos (o
+    /// corpus de paridade deles não tem uma única fixtura com a coluna), logo
+    /// **não há lado aprovado a copiar** — o que existe é a medição das três
+    /// escolhas abaixo, e elas ficam escritas porque a próxima pessoa vai
+    /// perguntar porquê.
+    ///
+    /// | escolha | porquê, medido |
+    /// |---|---|
+    /// | a normal é a do **gesto** ([`crate::stroke_normal_do_gesto`]) e não a do estimador de plano | ela lê a superfície **sob o miolo** e tem os dois baldes, logo não colapsa numa parede fina — que é onde um espigão é mais usado |
+    /// | ela **CONGELA** no pen-down, uma por passe de simetria | lida viva, cada dab puxaria ao longo da normal que o dab anterior acabou de virar, e o espigão **enrola**; congelada ele sai a direito, e o traço volta a ser facto do gesto e não da taxa de eventos |
+    /// | o comprimento é `‖puxão‖`, sempre para FORA | a componente do arrasto ao longo da normal é **zero** exactamente no caso que o dono descreve (a normal a apontar ao artista), logo ela entregaria um controlo inerte onde ele é mais pedido |
+    ///
+    /// ⚠️ **O sentido para DENTRO fica em aberto e é decisão do dono** — os dois
+    /// verbos não honram o `Ctrl` hoje ([`crate::Verb::honours_invert`]), e ele
+    /// já ordenou que um gesto novo se arme por **botão no painel** e não por
+    /// modificador.
+    ///
+    ///
+    /// ⚠️ **O `None` do [`Self::normal_do_gesto`] cai na normal do plano do
+    /// carimbo**, que existe sempre — a mesma queda que os dois gestos
+    /// tangenciais já fazem.
+    pub(super) fn direccao_do_puxao(
+        &mut self,
+        mesh: &Mesh,
+        brush: &Brush,
+        dab: &Dab,
+        do_plano: [f32; 3],
+    ) -> [f32; 3] {
+        let passe = self.passe_simetria;
+        if self.normal_do_puxao.len() <= passe {
+            self.normal_do_puxao.resize(passe + 1, None);
+        }
+        if let Some(n) = self.normal_do_puxao[passe] {
+            return n;
+        }
+        let n = self.normal_do_gesto(mesh, brush, dab).unwrap_or(do_plano);
+        self.normal_do_puxao[passe] = Some(n);
+        n
+    }
+}

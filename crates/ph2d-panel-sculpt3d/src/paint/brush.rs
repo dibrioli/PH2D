@@ -296,6 +296,26 @@ fn paint_per_verb_switches(
     } else {
         y
     };
+    // ⭐⭐ **PUXAR PELA NORMAL** — ordem do dono (2026-09-19): *«pincéis com
+    // Snake Hook e Grab ainda não têm a opção de usar a normal da superfície
+    // para dar a direção da puxada»*.
+    //
+    // ⚠️ **A pergunta é ao MOTOR e ela é DERIVADA DO GRIP**
+    // ([`Brush::oferece_puxar_pela_normal`]) — uma lista de verbos aqui nasceria
+    // incompleta no dia em que um verbo novo tivesse puxão.
+    let y = if snap.ui.brush.oferece_puxar_pela_normal() {
+        toggle(
+            ctx,
+            crate::ids::SCULPT3D_PUXA_PELA_NORMAL,
+            tr("panel.sculpt3d.puxa_pela_normal"),
+            snap.ui.brush.puxa_pela_normal,
+            x,
+            w,
+            y,
+        ) + Spacing::Sm.px()
+    } else {
+        y
+    };
     // **A LÂMINA LÊ A SUPERFÍCIE**, e só onde há lâmina. ⚠️ A pergunta é ao
     // VERBO, a mesma que o motor faz antes de amostrar os dois lados — uma lista
     // paralela aqui seria um interruptor que aparece noutra ferramenta e não

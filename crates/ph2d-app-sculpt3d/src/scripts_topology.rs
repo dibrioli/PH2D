@@ -165,7 +165,21 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]           multiresolucao montada, ou a malha ja' estar no ponto que o\n\
              [sculpt3d]           slider pede.\n\
              [sculpt3d]        (A borda de uma peca aberta ele nao afina -- e' uma escolha
-             [sculpt3d]         nossa, para o contorno nao mudar de forma sozinho.)"
+             [sculpt3d]         nossa, para o contorno nao mudar de forma sozinho.)\n\
+             [sculpt3d]   (13) PUXAR PELA NORMAL -- a opcao nova (pedido seu, 19/09). Com o\n\
+             [sculpt3d]        `Grab` ou o `Snake Hook` na mao, o painel mostra a caixa\n\
+             [sculpt3d]        `Pull Along Normal` logo abaixo do `Connected Only`.\n\
+             [sculpt3d]        a) DESMARCADA (como sempre foi): arraste de lado. O barro vai\n\
+             [sculpt3d]           PARA O LADO, seguindo a sua mao.\n\
+             [sculpt3d]        b) MARQUE-A e arraste de lado outra vez, a mesma distancia. Agora\n\
+             [sculpt3d]           o barro sai PARA FORA da peca, a direito -- a direcao e' a da\n\
+             [sculpt3d]           superficie onde voce pousou, e o arrasto so' diz QUANTO.\n\
+             [sculpt3d]        ⭐ Ela so' aparece nesses dois pinceis, e a razao esta' medida:\n\
+             [sculpt3d]           nos outros o puxao ou nao existe ou e' tangencial (pol-lo na\n\
+             [sculpt3d]           normal deixaria zero).\n\
+             [sculpt3d]        -> COMO SABER QUE DEU ERRADO: se com a caixa marcada o espigao\n\
+             [sculpt3d]           sair TORTO ou for ENROLANDO conforme voce arrasta. A direcao\n\
+             [sculpt3d]           congela quando voce encosta a caneta, e nao muda ate' largar."
         );
     }
 
@@ -227,3 +241,8 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
         );
     }
 }
+
+/// **Os gates dos roteiros deste módulo** — ver [`tests`].
+#[cfg(test)]
+#[path = "scripts_topology_tests.rs"]
+mod tests;

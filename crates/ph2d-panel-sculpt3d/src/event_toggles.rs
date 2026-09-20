@@ -33,7 +33,7 @@ pub(crate) type Toggle = (NodeId, fn(&Sculpt3dUi) -> bool, fn(&mut Sculpt3dUi));
 /// `Brush::offers_front_faces`, `ClothArea::offers_pin`), nunca a uma lista de
 /// nomes aqui — o pintor faz a mesma pergunta para decidir se desenha a caixa, e
 /// duas cópias divergiriam num interruptor que aparece e não muda um vértice.
-pub(crate) const TOGGLES: [Toggle; 18] = [
+pub(crate) const TOGGLES: [Toggle; 19] = [
     (
         crate::ids::SCULPT3D_ACCUMULATE,
         |u| u.brush.verb.accumulates(),
@@ -53,6 +53,14 @@ pub(crate) const TOGGLES: [Toggle; 18] = [
         crate::ids::SCULPT3D_SURFACE_ONLY,
         |u| u.brush.offers_surface_only(),
         |u| u.brush.surface_only = !u.brush.surface_only,
+    ),
+    // ⭐⭐ **A DIRECÇÃO DO PUXÃO** — ordem do dono (2026-09-19). A lei é
+    // perguntada ao MOTOR, e ela é derivada do GRIP: quem tem puxão para
+    // redireccionar são o Grab e o Snake Hook.
+    (
+        crate::ids::SCULPT3D_PUXA_PELA_NORMAL,
+        |u| u.brush.oferece_puxar_pela_normal(),
+        |u| u.brush.puxa_pela_normal = !u.brush.puxa_pela_normal,
     ),
     // ⚠️ **PROCURAR TAMBÉM PARA TRÁS** — a caixa existe porque sem ela um alvo
     // do lado errado deixa o pincel **inerte**, e isso é a resposta certa e não

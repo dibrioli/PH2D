@@ -217,6 +217,38 @@ impl Brush {
         self.verb != crate::Verb::Cloth
     }
 
+    /// **Este verbo oferece o [`Brush::puxa_pela_normal`]?** — a porta única,
+    /// **derivada do GRIP** e não de uma lista de nomes.
+    ///
+    /// A pergunta é *«o gesto deste verbo É uma direcção de puxão?»*, e quem a
+    /// responde é a tabela do [`crate::Grip`]: o [`crate::Grip::Hold`] (o Grab)
+    /// e o [`crate::Grip::Hook`] (o Snake Hook) leem o `dab.pull` como um vector
+    /// de mundo e escrevem o barro ao longo dele. ⛔ Os outros grips não têm
+    /// puxão nenhum para redireccionar — o carimbo escreve ao longo da normal
+    /// **por lei**, a torção gira, a simulação conduz um solver.
+    ///
+    /// ⚠️ **Derivar em vez de listar é o que faz um verbo NOVO com um destes
+    /// dois grips nascer com a opção** — uma lista de nomes nasceria incompleta
+    /// no dia seguinte, que é a forma que esta casa já pagou meia dúzia de vezes.
+    #[must_use]
+    pub fn oferece_puxar_pela_normal(&self) -> bool {
+        matches!(self.verb.grip(), crate::Grip::Hold | crate::Grip::Hook)
+            // ⛔⛔ **E as duas exclusões são MEDIDAS, não uma opinião** — a 1.ª
+            // redacção parava no grip e o painel oferecia a caixa a SEIS verbos.
+            // Correndo o mesmo gesto com e sem a opção
+            // (`diag_quem_sente_a_opcao`): `Move` move `0,150` · `SnakeHook`
+            // `0,297` · **`Pose` e `Boundary` `0,000`** (resolvem a própria
+            // região e nunca leem o `dab.pull`) · **`Thumb` `6e-5` e `Nudge`
+            // `−0,027`** (subtraem a normal do puxão, logo pô-lo ao longo dela
+            // deixa zero — a opção *desligava* o empurrão).
+            //
+            // ⚠️ E a catraca da dobra do painel apanhou isto antes de eu medir:
+            // uma fileira nova no bloco partilhado custa `+28 px` a **todos** os
+            // pincéis, e o `Boundary` desceu de `1083` para `1111`.
+            && !self.verb.resolve_a_propria_regiao()
+            && !self.verb.subtrai_a_normal_do_puxao()
+    }
+
     /// **O PINCEL DO SEGUNDO PASSE**, ou `None` quando ele não corre — a porta
     /// única do [`Brush::auto_smooth`].
     ///

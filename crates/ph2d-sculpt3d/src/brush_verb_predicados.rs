@@ -432,7 +432,6 @@ impl Verb {
     pub fn resolve_a_propria_regiao(self) -> bool {
         matches!(self, Self::Cloth | Self::Pose | Self::Boundary)
     }
-
     /// **Este verbo NÃO TEM LEI POR-VÉRTICE?** — a porta que tira a densidade
     /// do `dab_core`.
     ///

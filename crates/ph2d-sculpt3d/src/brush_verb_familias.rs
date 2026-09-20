@@ -100,4 +100,21 @@ impl Verb {
             Self::Smooth | Self::Sharpen | Self::SurfaceSmooth | Self::SmearMultires
         )
     }
+
+    /// **Este verbo SUBTRAI a normal do puxão?** — os dois gestos TANGENCIAIS
+    /// ([`crate::stroke_normal_do_gesto`]), cujo alvo é `Δ − n·(n·Δ)`.
+    ///
+    /// ⚠️ **Ela existe porque uma porta de PRODUTO precisou dela, e a medição é
+    /// que a nomeou:** a opção [`crate::Brush::puxa_pela_normal`] é
+    /// estruturalmente **inerte** nestes dois — pôr o puxão ao longo de `n` e
+    /// depois subtrair a componente ao longo de `n` deixa **zero**. Medido no
+    /// barro: o polegar move `6e-5` e o empurrão *perde* `0,027` (a opção
+    /// desligava-o).
+    ///
+    /// ⛔ O [`Self::DrawSharp`] lê a mesma normal e **não** entra aqui: ele é um
+    /// carimbo, não tem puxão — e é o `grip` que o separa.
+    #[must_use]
+    pub const fn subtrai_a_normal_do_puxao(self) -> bool {
+        matches!(self, Self::Thumb | Self::Nudge)
+    }
 }

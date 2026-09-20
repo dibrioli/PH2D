@@ -187,6 +187,9 @@ impl Default for Brush {
             // que compara com o que o verbo que sai declara.
             front_faces_only: Verb::Draw.default_front_faces_only(),
             surface_only: true,
+            // ⭐ **O neutro é `false`**: ligado, ele troca a direcção de um
+            // gesto que o artista já conhece (ver [`Brush::puxa_pela_normal`]).
+            puxa_pela_normal: false,
             // O default do Blender, e o neutro deste passe — ver o campo.
             auto_smooth: 0.0,
             // ⚠️ **DELEGA, e não repete a palavra `Tri`:** a família que shipa

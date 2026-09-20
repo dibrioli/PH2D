@@ -336,15 +336,119 @@ daqui: *uma medição de superfície de colisão vale para o dia em que foi tira
 > Flow` que este §5 publica **ficou obsoleta por esta linha** (`−253 px` em todas as fileiras): o §5
 > do handoff diz os **dois** sítios vivos e o comando que os reescreve.
 
+## §9-bis — ⭐⭐⭐ A SEGUNDA WAVE: a largura de fábrica de uma coluna é uma FRACÇÃO da janela
+
+> Ordem do dono, 2026-09-20, sobre a fila do §7.3: **«item 2»**.
+
+### O defeito, medido
+
+As duas colunas eram `308 + 304 = 612 px` **absolutos**, autorados contra a janela que o
+`tokens.json` declara ([`HERO_VIEWPORT_W`], `1366`):
+
+| alvo | largura | as duas colunas |
+|---|---:|---:|
+| iPad 12,9" | `1366` | `44,8 %` — a decisão, tal como foi tomada |
+| iPad 11" | `1194` | `51,3 %` |
+| iPad mini | `1133` | **`54,0 %`** |
+
+### A lei, e porque ela não tem número novo
+
+[`ChromeBands::default_dock_w`](../../../crates/ph2d-editor-core/src/screens/dock_seam.rs):
+*a largura de **fábrica** de uma coluna nunca ocupa mais fracção da janela do que ocupa na
+referência*. A fracção é `HIERARCHY_W / HERO_VIEWPORT_W` — **dois tokens que já existiam**, um a
+dividir pela janela para que foi autorado. ⛔ *Não há número novo nesta lei: há a decisão que já
+estava tomada, aplicada onde ela ainda não chegava.*
+
+⛔⛔ **É um TECTO e nunca uma ESCALA, com o número ao lado:** escalar nos dois sentidos poria as
+colunas em `1930 × 308/1366 = 435 px` cada na janela do dono — **`870`** contra `612`. *A cura
+tornaria o app pior exactamente onde ele é usado todos os dias.* ⇒ acima da referência ela é
+**inerte ao bit**, e há gate a exigi-lo.
+
+⚠️ **Ela não toca na largura que o ARTISTA arrastou** (o `dock_width_choice`) — apertar uma escolha
+explícita é o *«aceita e mente»* do §0.0. ⏳ O preço fica declarado: uma escolha gravada num ecrã
+largo continua a valer o que vale num estreito.
+
+### ⭐ Sem ramo nenhum, e as três propriedades saem da aritmética
+
+`let escala = (janela_w / HERO_VIEWPORT_W).min(1.0);`
+
+* `1366.0 / 1366.0` é **exactamente** `1.0` em IEEE ⇒ inerte acima da referência, ao bit;
+* `f32::min` devolve o **outro** operando com `NaN` ⇒ uma janela sem largura recebe o token. *Toda
+  guarda escrita com `<` ou `>` é cega ao `NaN`, e aqui não há guarda a ser cega* — a lei é a mesma
+  que a `line/sculpt3d` registou no §30 dela;
+* uma janela degenerada recebe o mínimo do painel, que é a única largura que ele sabe desenhar.
+
+⚠️ A 1.ª redacção era `!(janela_w < HERO_VIEWPORT_W)` e **o clippy apanhou-a**
+(`neg_cmp_op_on_partial_ord`). A forma sem ramo é melhor por três razões e não por uma.
+
+### O que ela compra, medido pelo gate do orçamento
+
+| alvo | área de desenho antes | depois |
+|---|---:|---:|
+| iPad 12,9" | `50,6 %` | `50,6 %` — a referência, intocada |
+| iPad 11" | `44,0 %` | **`49,6 %`** (`+5,6`) |
+| iPad mini | `40,9 %` | **`48,9 %`** (`+8,0`) |
+
+⭐ **Quem mandou subir a catraca foi a METADE DA OBSOLESCÊNCIA dela**, na primeira corrida depois da
+lei — não eu.
+
+### ⛔⛔ E o gate do orçamento era CEGO ao defeito
+
+Ele construía as bandas a partir da const `ChromeBands::DEFAULT`, logo media `612 px` **em qualquer
+janela** e ficou **verde três semanas** sobre a linha que o [`medicoes/06 §1`](../medicoes/06_o_orcamento_de_ecra_em_tablet.md)
+já escrevia. *Um gate que reconstrói a banda em vez de ler a LEI mede a fórmula e não o produto* —
+⚠️ **a segunda vez no mesmo ficheiro**: a nota do `tool_bar_lines`, três parágrafos abaixo, regista
+a primeira.
+
+⚠️⚠️ **E o `50,6` do 12,9" não é desta wave:** o piso desceu `0,2` pontos em 2026-09-07 e a TABELA
+do gate ficou para trás — ela dizia `50,8` sobre um produto que media `50,6` havia duas semanas.
+*Quando um ficheiro imprime duas medidas da mesma grandeza e elas discordam, isso É o achado.*
+
+### O gate novo tem SEIS metades, e TRÊS medem a ROTA
+
+Porque esta jornada já pagou **duas** vezes por gates abaixo da rotura (o da paleta entrou pelo
+chrome; este entrava pela const):
+
+| metade | o que reprova |
+|---|---|
+| a fracção é a mesma nos três alvos | a lei |
+| o CONTROLO: sem a lei, o mini pagaria mais | que a fixtura contém o fenómeno |
+| acima da referência não toca em nada | que a cura não piora o ecrã grande |
+| pára no mínimo do painel (+ o controlo de que ele não morde nos três) | que a fracção medida é a da LEI e não a do clamp |
+| **a porta do store lê a lei** | o 1.º elo do fio |
+| **a escolha do artista atravessa intacta** (+ controlo) | que a lei não aperta uma decisão dele |
+| **o quadro entrega `viewport.w`** | o 2.º elo — ⚠️ a agulha é o **braço inteiro**, porque procurar `dock_width` sozinho ficaria verde com `dock_width(side, 1366.0)` escrito à mão, *que é exactamente a regressão* |
+
+### Mutação: **5 de 5 sangram**
+
+| # | mutação | resultado |
+|---|---|---|
+| M1 | o tecto some (a lei vira escala) | sangra, isola (`6 passed; 1 failed`) |
+| M2 | o mínimo do painel some | sangra, isola |
+| M3 | a lei inteira inerte | sangra **DUAS** sobre a suíte toda — a fracção **e** o orçamento ⇒ *os dois instrumentos veem a lei* |
+| M4 | a porta do produto ignora a janela | sangra, isola |
+| M5 | o quadro crava a largura | sangra, isola |
+
+### Os três docs que esta wave reescreveu
+
+`spec/01 §6` (o segundo eixo, que aquela secção não respondia) · `spec/02 §8` · `medicoes/06 §1 e §2`.
+⭐ **O `spec/01 §6` não foi contrariado — foi COMPLETADO:** ele recusa a largura **crescer** com o
+dedo, e esta lei impede-a de crescer com um ecrã pequeno. *As duas metades dizem a mesma coisa lida
+dos dois lados.*
+
+---
+
 ## §10 — O portão do fecho
 
 | passo | resultado |
 |---|---|
-| `scripts/nextest-impacted.sh` | **`15 470 / 15 470`** · `13 225` saltados · `44,4 s` · **zero flakes** |
+| `scripts/nextest-impacted.sh` (1.ª volta, só testes e docs) | **`15 470 / 15 470`** · `44,4 s` · **zero flakes** |
+| `scripts/nextest-impacted.sh` (2.ª volta, **depois da lei FOUNDATIONAL**) | **`15 477 / 15 477`** · `13 225` saltados · `51,2 s` · **zero flakes** |
+| `ph2d-editor-core --test it` | **`502 / 502`** |
 | `cargo test -p ph2d-panel-registry-init` (âmbito do app: `--features panel-painter-layers,panel-flip,panel-flip-frames,panel-wet-tuning`) | **`104 / 104`** |
 | `cargo clippy --all-targets -- -D warnings` (as três crates tocadas) | **zero** |
 | `git rebase main` | **no-op**: `merge-base == main == 395da6a55` |
-| `scripts/censos-da-arvore-combinada.sh` | **`127 / 127`** · *«controlo do filtro: 12 de 12 censos correram ✓»* |
+| `scripts/censos-da-arvore-combinada.sh` (as **duas** voltas) | **`127 / 127`** · *«controlo do filtro: 12 de 12 censos correram ✓»* |
 | `scripts/collision-surface.sh` | §2 — zero contador partilhado, zero contrato, zero ADR, zero pacote externo, nenhum tecto de LOC |
 | sobreposição de ficheiros com as outras linhas vivas | **ZERO** contra a `line/sculpt3d` (medido, §5) |
 
@@ -352,14 +456,18 @@ daqui: *uma medição de superfície de colisão vale para o dia em que foi tira
 — ver o §8.5. Quem re-correr o portão desta crate corre-a **com** elas.
 
 | `rm -rf target/*/incremental` (item 7) | **`56 G → 27 G`** · o binário do smoke (`86,9 MB`) sobrevive |
-| binário do smoke deixado QUENTE | `0,55 s` / **`0,23 s`** na 2.ª build |
+| binário do smoke, 1.ª volta | `0,55 s` / **`0,23 s`** — *nada de produto tinha mudado* |
+| binário do smoke, 2.ª volta (a lei foundational) | `30,98 s` / **`0,26 s`** — a shell recompilou, e é isso que diz que o produto mudou |
 
-⭐ **E a 1.ª build já foi `0,55 s`**, o que é a prova de que **nada de produto mudou** desde o smoke
-que o dono aprovou: os commits a seguir a ele tocam `tests/` e `docs/` e mais nada.
+⭐ **O relógio da 1.ª build é um instrumento e não um detalhe:** `0,55 s` na 1.ª volta prova que
+nada de produto tinha mudado desde o smoke aprovado; `30,98 s` na 2.ª prova o contrário. *Uma linha
+que diz «mudei a fundação» e recompila em meio segundo está a mentir sobre uma das duas coisas.*
 
-⚠️ **Nada de novo para o dono smokar:** as quatro coisas que ele vê já foram smokadas e aprovadas
-por ele nesta jornada (*«smoke OK»*); os commits a seguir a isso são **uma régua, um handoff e uma
-decisão dele** — zero linhas de produto. O binário fica quente na mesma.
+⚠️ **A 1.ª volta não tinha nada para o dono smokar** (régua, handoff e uma decisão dele — zero
+linhas de produto). ⭐ **A 2.ª tem**, e o roteiro é de uma linha: *estreitar a janela do app e ver
+as duas colunas encolherem com ela, em vez de comerem uma fatia cada vez maior*. Acima de `1366 px`
+de largura nada muda — que é a metade que o gate `acima_da_referencia_a_lei_nao_toca_em_nada`
+defende.
 
 ---
 

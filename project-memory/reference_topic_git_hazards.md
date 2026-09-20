@@ -43,3 +43,4 @@ E ponha um guarda sobre o ficheiro gerado — `grep -q '\`' "$gerado" && exit`. 
 ⚠️ Da mesma corrida: um `target/smoke/ph2d-host-desktop` **órfão de 46 minutos** estava a segurar a
 placa (a armadilha do `CLAUDE.md` §2 — um binário reparenta-se ao `systemd --user` e sobrevive a
 quem o lançou). *Depois de uma fotografia, confira `pgrep -f ph2d-host-desktop`.*
+- ⛔⛔ [`git mv` de um ficheiro com edições por encenar grava o blob de HEAD no destino](feedback_git_mv_stages_the_index_blob_not_the_worktree.md) — o commit tem sucesso e a árvore dele **NÃO COMPILA** (sinal: `M <destino>` depois do commit).

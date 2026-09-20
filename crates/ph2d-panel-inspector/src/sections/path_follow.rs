@@ -215,7 +215,7 @@ fn corpo(
     );
     let familias: Vec<&str> = ph2d_anim::EasingFamily::ALL
         .iter()
-        .map(|f| f.label())
+        .map(|f| ph2d_i18n::tr(f.label_key()))
         .collect();
     cur_y = grupo(
         scene,
@@ -233,7 +233,7 @@ fn corpo(
     );
     let modos: Vec<&str> = ph2d_anim::EasingMode::ALL
         .iter()
-        .map(|m| m.label())
+        .map(|m| ph2d_i18n::tr(m.label_key()))
         .collect();
     cur_y = grupo(
         scene,

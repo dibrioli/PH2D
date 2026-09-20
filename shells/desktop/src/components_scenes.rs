@@ -172,7 +172,7 @@ impl crate::App {
             hero.panel_visibility.insert("inspector", true);
             hero.gizmo.selection = Some(sujeito);
             hero.gizmo.extra_selection.clear();
-            self.components_smokes.tags_raise = 3;
+            self.components.smokes.tags_raise = 3;
         }
         // ⭐⭐⭐ **A `=2` é de FÍSICA, e sem isto ela demonstra um mundo CONGELADO.**
         //
@@ -212,10 +212,10 @@ impl crate::App {
     /// conteúdo real daquele objecto — um número escrito aqui seria a segunda resposta à mesma
     /// pergunta, e envelhecia na primeira secção nova.
     fn tags_smoke_traz_o_inspector(&mut self) {
-        if self.components_smokes.tags_raise == 0 {
+        if self.components.smokes.tags_raise == 0 {
             return;
         }
-        self.components_smokes.tags_raise -= 1;
+        self.components.smokes.tags_raise -= 1;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             let insp = ph2d_editor_core::ids::INSP_PANEL;
             hero.store.bump_panel_z(insp);

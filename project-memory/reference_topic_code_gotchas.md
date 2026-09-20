@@ -66,3 +66,4 @@ metadata:
   texto, e leia os nomes antigos como PADRÕES de `match` (que a régua lexical isenta).
   (`line/UIUX`, 2026-09-16, formato `v2` com alias `v1`.)
 - [[feedback_a_collection_ordered_by_distance_is_not_ordered_by_adjacency]] — `windows(2)` sobre uma lista ordenada por DISTÂNCIA desenhou cordas através da peça (45 de 47 pares não eram vizinhos), com contagem, pesos e fecho todos verdes
+- ⛔⛔⛔ [Um par ida/volta `w = t+c` / `orçamento = w−c` NÃO fecha em `f32`](feedback_an_inverse_law_in_f32_does_not_close_by_algebra.md) — `2,65 %` a `96 %` do domínio, e um défice de **1 ULP** corta a palavra; a inversa confere-se contra a LEI (`next_up`), varrendo em vez de amostrar seis pontos.

@@ -543,6 +543,15 @@ fn arma_o_top20() {
             verb_tag: 1,
             arg: "open".to_string(),
             uses_arg: true,
+            // ⭐ Os TRÊS campos do suplente #24, que a `line/components` acrescentou no mesmo dia
+            //    em que esta fixtura nasceu. ⚠️ Eles são postos ACESOS de propósito: esta fixtura
+            //    existe para a varredura de elisões MEDIR os rótulos, e um controlo desligado não
+            //    é pintado — *uma fixtura que não acende um controlo mede zero sobre ele*.
+            uses_target: true,
+            // `1` = `ActionTargetMode::Tag`, o modo COERENTE com o `target_tag` que esta linha já
+            // declarava: com `Name` o `target_tag` nunca é lido e a fixtura contradizia-se.
+            target_mode: 1,
+            from_tag: 0,
             target_tag: Some(1),
             target_tag_path: "Enemy/Flying".to_string(),
         }],
@@ -610,6 +619,9 @@ fn arma_o_top20() {
             recipe_found: true,
             on_signal: "fire".to_string(),
             spawn_where: InspectorSpawnWhere::Tagged,
+            // ⭐ Campo novo da `line/components` (a MIRA da fábrica), ACESO pela mesma razão que os
+            //    três do irmão acima: esta fixtura existe para os rótulos serem MEDIDOS.
+            aim_from_spawner: true,
             area: [2.0, 2.0],
             tag: "Spawn/Left".to_string(),
             pick_random: true,

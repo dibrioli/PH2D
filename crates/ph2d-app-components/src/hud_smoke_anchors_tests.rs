@@ -112,8 +112,18 @@ fn o_controlo_a_autoria_espelhada_de_facto_se_cruza() {
     let mut ordens = Vec::new();
     for (hw, hh) in ASPECTOS {
         // ESPELHADA: a contagem (presa à esquerda) autorada à direita, e vice-versa.
-        let contagem = aterra_em(Canto::Esquerda, f64::from(Canto::Direita.local()[0]), hw, hh);
-        let pontos = aterra_em(Canto::Direita, f64::from(Canto::Esquerda.local()[0]), hw, hh);
+        let contagem = aterra_em(
+            Canto::Esquerda,
+            f64::from(Canto::Direita.local()[0]),
+            hw,
+            hh,
+        );
+        let pontos = aterra_em(
+            Canto::Direita,
+            f64::from(Canto::Esquerda.local()[0]),
+            hw,
+            hh,
+        );
         ordens.push(pontos > contagem);
     }
     assert!(

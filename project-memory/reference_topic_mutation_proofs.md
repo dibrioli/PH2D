@@ -68,3 +68,4 @@ e escrever-lhe torna a suíte mais um membro da família de flakes de fan-out.
 
 ⇒ **o instrumento tem de ser TEXTUAL** (quem CHAMA o acessório), e o teste vácuo foi **apagado**:
 *um teste vácuo é pior do que nenhum — ele lê-se como cobertura.*
+- ⛔⛔ [Restaurar com `git checkout` numa árvore SUJA apaga a FATIA, não a mutação](feedback_a_mutation_restore_by_git_checkout_deletes_the_wave.md) — 3 ficheiros perdidos; quem o disse foi o controlo do filtro.

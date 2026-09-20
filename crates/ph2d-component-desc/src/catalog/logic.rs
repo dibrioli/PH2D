@@ -103,7 +103,6 @@ const ACTION_FIELDS: &[FieldDesc] = &[
 /// que este componente EXIGE. Um `Duration` aqui seria um segundo relógio (plano 16 §1-bis).
 const SEQUENCE_FIELDS: &[FieldDesc] = &[f(1, "Container", K::Text)];
 
-
 const LIFETIME_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.lifetime_fields.1", K::Scalar),
     f(2, "component.field.lifetime_fields.2", K::Text),

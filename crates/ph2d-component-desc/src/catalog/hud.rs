@@ -19,10 +19,10 @@ use crate::{
     ObjectKinds as O, Propagation,
 };
 
-const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
+const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
     FieldDesc {
         field_id,
-        name,
+        label_key,
         kind,
         policy: Propagation::Propagate,
         is_ref: None,
@@ -33,19 +33,25 @@ const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
 ///
 /// ⚠️ **`Start` e não «Value»:** o que se grava é com que valor ele COMEÇA (e com que valor
 /// renasce ao rebobinar); o valor de agora é vivo.
-const COUNTER_FIELDS: &[FieldDesc] = &[f(1, "Name", K::Text), f(2, "Start", K::Int)];
+const COUNTER_FIELDS: &[FieldDesc] = &[
+    f(1, "component.field.counter_fields.1", K::Text),
+    f(2, "component.field.counter_fields.2", K::Int),
+];
 
 /// O botão que publica um sinal.
-const BUTTON_FIELDS: &[FieldDesc] = &[f(1, "Signal", K::Text), f(2, "Disabled", K::Toggle)];
+const BUTTON_FIELDS: &[FieldDesc] = &[
+    f(1, "component.field.button_fields.1", K::Text),
+    f(2, "component.field.button_fields.2", K::Toggle),
+];
 
 /// A raiz do HUD.
 ///
 /// ⚠️ **Não há campo para a POSE**: ela é conduzida a cada quadro (`Driver::CanvasPose`) e o que o
 /// artista autorasse ali seria apagado no primeiro quadro com câmera de jogo.
 const CANVAS_FIELDS: &[FieldDesc] = &[
-    f(1, "Reference Width", K::Scalar),
-    f(2, "Reference Height", K::Scalar),
-    f(3, "Fit", K::Enum),
+    f(1, "component.field.canvas_fields.1", K::Scalar),
+    f(2, "component.field.canvas_fields.2", K::Scalar),
+    f(3, "component.field.canvas_fields.3", K::Enum),
 ];
 
 /// O rótulo cujo número o jogo muda.
@@ -53,31 +59,31 @@ const CANVAS_FIELDS: &[FieldDesc] = &[
 /// ⚠️ **`Source Name` é UM campo para três fontes** (o contador, o relógio ou a etiqueta): qual
 /// delas é o `Source` que diz. Três campos — um por fonte — deixariam dois sempre mortos.
 const LABEL_FIELDS: &[FieldDesc] = &[
-    f(1, "Source", K::Enum),
-    f(2, "Source Name", K::Text),
-    f(3, "Prefix", K::Text),
-    f(4, "Suffix", K::Text),
+    f(1, "component.field.label_fields.1", K::Enum),
+    f(2, "component.field.label_fields.2", K::Text),
+    f(3, "component.field.label_fields.3", K::Text),
+    f(4, "component.field.label_fields.4", K::Text),
 ];
 
 /// Os quatro, por ordem de `canonical_name`.
 pub const DESCS: &[ComponentDesc] = &[
     D::authored(
         "ph2d::ecs::Counter",
-        "Counter",
+        "component.counter.name",
         C::Logic,
         O::ANY,
         COUNTER_FIELDS,
     ),
     D::authored(
         "ph2d::ecs::UiButton",
-        "Button",
+        "component.ui_button.name",
         C::Logic,
         O::ANY,
         BUTTON_FIELDS,
     ),
     D::authored(
         "ph2d::ecs::UiCanvas",
-        "HUD Canvas",
+        "component.ui_canvas.name",
         C::Logic,
         O::ANY,
         CANVAS_FIELDS,
@@ -87,7 +93,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // inexprimível um número que vive no MUNDO* — a barra de vida sobre a cabeça de um inimigo.
     D::authored(
         "ph2d::ecs::UiLabel",
-        "Label",
+        "component.ui_label.name",
         C::Logic,
         O::ANY,
         LABEL_FIELDS,

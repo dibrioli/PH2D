@@ -343,7 +343,12 @@ fn f_o_motor_de_curvas_existe_e_quem_o_ve() {
         let e = Easing::new(f, EasingMode::Out);
         println!(
             "  {:<8} Out: u=0,25 → {:.4}   u=0,50 → {:.4}   u=0,75 → {:.4}   determinista: {}",
-            f.label(),
+            // ⚠️ `{:?}` e não a chave: a `line/UIUX` trocou `label()` por `label_key()`, que
+            //    devolve `anim.easing.family.linear` — 28 caracteres numa coluna de 8. Esta é uma
+            //    SONDA que imprime uma tabela, e o nome do variante é o que ela quer dizer.
+            //    ⛔ Acrescentar a `ph2d-i18n` a esta crate por causa de um `println!` seria pagar
+            //    uma aresta de dependência por uma linha de diagnóstico.
+            format!("{f:?}"),
             e.eval(0.25),
             e.eval(0.50),
             e.eval(0.75),

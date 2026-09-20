@@ -1,0 +1,31 @@
+[package]
+name = "ph2d-mesh-colors"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# A TINTA DEIXA DE SER DOS VÉRTICES — clean-room de dois papers públicos:
+#   Yuksel, Keyser, House, *Mesh Colors*, ACM TOG 29(2), 2010;
+#   Yuksel, *Mesh Color Textures*, HPG 2017.
+# A pesquisa que escolheu esta família, a triagem de licença e a medição estão
+# em `docs/3D/27_o_estado_da_arte_de_onde_a_tinta_mora.md`.
+#
+# ZERO dependências, de propósito — a mesma disciplina da `ph2d-cloth`, da
+# `ph2d-pose`, da `ph2d-boundary` e da `ph2d-shake`: ela não sabe o que é uma
+# `Mesh`, um pincel, uma câmera ou um `wgpu::Device`. O que ela recebe são
+# FACES (uma fatia de índices por face) e o que ela devolve são ÍNDICES DE
+# AMOSTRA e pesos.
+#
+# ⛔ E ela não depende da `ph2d-mesh` apesar de falar de faces: a `ph2d-mesh`
+# depende de `serde`, de `rayon` e da octree, e o ponto de uma crate-folha é
+# que o gate dela corre sem nada disso.
+
+[lib]
+
+[dependencies]
+
+[lints]
+workspace = true

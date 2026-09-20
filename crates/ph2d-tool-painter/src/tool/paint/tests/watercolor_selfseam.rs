@@ -189,6 +189,9 @@ pub(super) struct RowSeam {
     pub contrast: f32,
 }
 
+/// A folga de `a_single_pass_keeps_the_look_it_had`, em bytes do canal G (medida — ver o gate).
+const SINGLE_PASS_SLACK: i32 = 16; // medido: 11 (a casca da beira, bilinear contra vizinho-mais-proximo)
+
 /// O chão da régua: um degrau perfeito alisado por 5 e derivado num vão de 4 lê isto.
 pub(super) const RULER_FLOOR_PX: f32 = 5.0;
 
@@ -508,10 +511,60 @@ fn the_level_planes_do_not_depend_on_how_the_dabs_are_batched() {
 /// muda é ONDE o ruído de `±1` dos vizinhos aterra. ⛔ A `r = 96` esta fixtura NÃO serve de régua:
 /// lê `Δ90`–`Δ160` em ~12 mil bytes nas duas leis **e a Charge 1** — achado pré-existente, nomeado
 /// no handoff, fora desta wave.
+/// **SONDA — a escada do raio, e o defeito PRÉ-EXISTENTE que ela achou.**
+///
+/// Varre o `stale` (incremental contra cheio) por raio de pincel em TRÊS colunas: molhado · seco ·
+/// **seco com a LEI ANTIGA**. A terceira é o CONTROLO que DATA o defeito — sem ela um pico desta
+/// escada lê-se como dívida desta wave, e não é.
+///
+/// Medido em 2026-09-20, máquina calma:
+///
+/// | `r` | molhado | seco | LEI ANTIGA, seco |
+/// |---|---|---|---|
+/// | 88  | 161 | 94 | **94** |
+/// | 96  | 139 | 93 | **90** |
+/// | 120 | 2   | 2  | **2** |
+///
+/// ⛔ Os picos a `88` e `96` **não são desta wave**: aparecem a SECO — onde o campo da reserva mal
+/// participa, porque o `reach` é o `core_any` e o raio do campo é `~9` — e a lei antiga lê o mesmo
+/// número. É o **raio de invalidação** que os dois `watercolor_app_params_incremental_*` já
+/// declaram `#[ignore]`, e cuja nota diz por escrito que `pad += 2·raio` **não** é a cura.
+/// ⚠️ É por isso que o gate irmão mede a `120`: *uma barra posta num raio onde outro defeito já
+/// vive não afirma nada sobre este*.
+#[test]
+#[ignore = "sonda: a escada do raio — escolhe onde a janela deixa de cobrir o campo, e data o pico pré-existente"]
+fn diag_a_escada_do_raio_da_janela() {
+    let stale = |r: f32, k: SeamKnobs| -> i32 {
+        let mut t = paint_u_live(UStroke::new(r), k);
+        let incremental: Vec<u8> = t.canvas_rgba.to_vec();
+        t.paint.wet_frame_dirty = t.paint.wet_cum_dirty;
+        t.apply_watercolor(false);
+        incremental
+            .iter()
+            .zip(t.canvas_rgba.iter())
+            .map(|(a, b)| (i32::from(*a) - i32::from(*b)).abs())
+            .max()
+            .unwrap()
+    };
+    let wet = SeamKnobs {
+        rewet: 1.0,
+        ..SeamKnobs::default()
+    };
+    let seco = SeamKnobs::default();
+    for r in [88.0f32, 96.0, 120.0] {
+        eprintln!(
+            "[escada] r={r} molhado={} seco={} LEI-ANTIGA-seco={}",
+            stale(r, wet),
+            stale(r, seco),
+            with_the_old_law(|| stale(r, seco))
+        );
+    }
+}
+
 #[test]
 fn the_reserve_field_keeps_incremental_equal_to_full() {
-    let stale = |k: SeamKnobs| -> i32 {
-        let mut t = paint_u_live(UStroke::new(32.0), k);
+    let stale = |r: f32, k: SeamKnobs| -> i32 {
+        let mut t = paint_u_live(UStroke::new(r), k);
         let incremental: Vec<u8> = t.canvas_rgba.to_vec();
         t.paint.wet_frame_dirty = t.paint.wet_cum_dirty;
         t.apply_watercolor(false);
@@ -523,17 +576,64 @@ fn the_reserve_field_keeps_incremental_equal_to_full() {
             .unwrap()
     };
     let bare = SeamKnobs::default();
+    let (dry, wet) = (stale(32.0, bare), SeamKnobs { rewet: 1.0, ..bare });
+    assert!(dry <= 1, "pixel stale na fixtura nua: Δ{dry}");
+    let wet32 = stale(32.0, wet);
+    assert!(wet32 <= 2, "Rewet 1 deixou pixel stale: Δ{wet32}");
+    // ⛔⛔ **ESTE GATE NÃO TESTEMUNHA O `reserve_reach` DA JANELA, e a 1.ª redacção dizia que sim.**
+    // Ela trazia escrito *«sem o `reserve_reach` no alcance dela, é aqui que o pixel fica velho»* e
+    // uma prova de mutação refutou-a: apagar aquele termo deixa ESTE gate **verde**, a `r = 80` e a
+    // `r = 120`. Medido: a janela reserva `pad = reach + ceil(warp) + 2` e o campo é construído na
+    // janela de LEITURA e amostrado na região de SAÍDA, logo a margem real é o `pad`. Sem o termo o
+    // `pad` vale `14 + 6 + 2 = 22` contra um campo que pede `R = 20` (`r = 80`) e `R = 30`
+    // (`r = 120`) — ou seja, **no segundo a margem É deficiente e a imagem final ainda concorda a
+    // dois níveis**: o erro do campo mora a `22 px` de qualquer dab daquele quadro, onde a lavagem
+    // já não pesa, e o quadro seguinte reescreve por cima.
+    // ⇒ quem afirma aquela metade são [`super::super::watercolor_reserve::tests::
+    // a_caixa_truncada_le_outro_campo`] (a premissa: margem abaixo de `R` muda o campo) e
+    // [`a_janela_do_composite_reserva_o_raio_do_campo`] (a fiação). O que ESTE gate afirma é o que
+    // o nome diz: incremental ≡ cheio, e o `r = 120` está aqui como o Rewet mais largo que a
+    // fixtura suporta, não como testemunha da janela.
+    // ⛔ E a escada do raio NÃO é monótona por uma razão que não é desta wave — a `r = 88` e `96`
+    // esta mesma medição lê `93`–`94` **a seco e com a LEI ANTIGA**: a sonda irmã
+    // [`diag_a_escada_do_raio_da_janela`] tem a tabela e o controlo que o datam.
+    let wet120 = stale(120.0, wet);
     assert!(
-        stale(bare) <= 1,
-        "pixel stale na fixtura nua: Δ{}",
-        stale(bare)
+        wet120 <= 2,
+        "r=120: Rewet largo deixou pixel stale: Δ{wet120}"
     );
-    let wet = SeamKnobs { rewet: 1.0, ..bare };
+    eprintln!("[incremental≡full] nu Δ{dry} · Rewet r=32 Δ{wet32} · Rewet r=120 Δ{wet120}");
+}
+
+/// **Uma passada só fica com a cara que tinha.** A disputa cancela (o mesmo dab ganha em cima e em
+/// baixo) e o afilamento da beira é o de sempre, logo a nova lei e a antiga desenham o mesmo traço
+/// recto — é a anatomia da borda externa que o dono aprovou. A folga é a da leitura bilinear contra
+/// a de vizinho-mais-próximo na casca de 15 % do raio, medida.
+#[test]
+fn a_single_pass_keeps_the_look_it_had() {
+    let straight = || {
+        let u = UStroke::new(32.0);
+        let line = UStroke {
+            y1: 91.0,
+            xb: u.xa + 260.0,
+            ..u
+        };
+        let mut t = paint_u_live(line, SeamKnobs::default());
+        t.on_canvas_pointer(cp([line.xb, 91.0], PointerPhase::Up));
+        t
+    };
+    let (new, old) = (straight(), with_the_old_law(straight));
+    let (mut worst, mut painted) = (0, 0usize);
+    for (a, b) in new.canvas_rgba.chunks(4).zip(old.canvas_rgba.chunks(4)) {
+        painted += usize::from(a[1] < 250);
+        worst = worst.max((i32::from(a[1]) - i32::from(b[1])).abs());
+    }
+    assert!(painted > 10_000, "piso de população: {painted} px pintados");
     assert!(
-        stale(wet) <= 2,
-        "Rewet 1 deixou pixel stale: Δ{}",
-        stale(wet)
+        worst <= SINGLE_PASS_SLACK,
+        "uma passada só mudou de cara: Δ{worst}"
     );
+    eprintln!("[uma passada] pior byte nova x antiga: Δ{worst} em {painted} px");
 }
 
 /// **Sonda** — de quem é a dependência do polling, e quanto o Smudge mexe fora da faixa esfregada.
@@ -624,7 +724,7 @@ fn measure_who_owns_the_stale_pixel() {
         )
     };
     eprintln!("\n=== INCREMENTAL x FULL no U (pior byte, n.o de bytes > 1) ===");
-    for r in [32.0f32, 96.0] {
+    for r in [32.0f32, 48.0, 64.0, 80.0, 96.0] {
         let u = UStroke::new(r);
         for (label, k) in [
             ("nu (sem papel, sem gran)", SeamKnobs::default()),

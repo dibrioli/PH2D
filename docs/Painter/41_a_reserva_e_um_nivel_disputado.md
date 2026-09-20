@@ -110,26 +110,80 @@ vizinhança* — e é por isso que o Rewet entra pelo raio, com a janela a saber
 
 ## §7 — Gates e provas de mutação
 
-Lei nua (`watercolor_reserve_tests.rs`): uma passada lê o próprio `v` · a regra do `max` fica no miolo · a
-pálida cede ao longo do feather da escura (**com o controlo da lei antiga dentro**) · nunca atravessa papel
-seco (com o controlo «tapada a coluna, difunde») · função do mapa e não da janela (AO BIT) · idempotente e
-ausente sem mixer · a cauda a seco É o feather · o Rewet difunde à escala do pincel · leitura bilinear.
+Lei nua (`watercolor_reserve_tests.rs`): uma passada lê o próprio `v` · **o afilamento da beira afila na casca
+de `RESERVE_RIM_RAMP`, é monótono e morre na beira** (com o controlo de que a casca não começa cedo) · a regra
+do `max` fica no miolo · a pálida cede ao longo do feather da escura (**com o controlo da lei antiga dentro**)
+· nunca atravessa papel seco (com o controlo «tapada a coluna, difunde») · função do mapa e não da janela (AO
+BIT) · **e o complemento: uma margem ABAIXO de `R` lê outro campo** (com a margem larga como controlo) ·
+**a janela do composite consulta o raio do campo** (gate de TEXTO) · idempotente e ausente sem mixer · a cauda
+a seco É o feather · o Rewet difunde à escala do pincel · leitura bilinear.
 
 Produto (`tests/watercolor_selfseam.rs`): a costura tem a escala do pincel (controlo = lei antiga) · o Rewet
 alarga-a em todo raio · o Smudge alcança o traço vivo (controlo: fora do esfregão a régua lê o mesmo) · os
-planos não dependem do corte dos lotes · incremental ≡ full com o mixer ligado (e a `r = 80`, onde o Rewet
-difunde o triplo do Bleed) · uma passada só fica com a cara que tinha.
+planos não dependem do corte dos lotes · incremental ≡ full com o mixer ligado · uma passada só fica com a
+cara que tinha.
 
-Provas de mutação: ver o handoff da linha (a tabela sai do arnês `mutar.py`, com controlo sobre o próprio
-arnês antes e depois).
+⛔⛔ **E uma correcção que a prova de mutação impôs a este doc.** A redacção anterior desta secção dizia que o
+`incremental ≡ full` testemunhava o `reserve_reach` da janela — *«e a `r = 80`, onde o Rewet difunde o triplo
+do Bleed»*. **É falso, e a mutação mediu-o:** apagar aquele termo deixa esse gate verde a `r = 80` **e** a
+`r = 120`. A conta certa é `pad = reach + ceil(warp) + 2`, aplicada **duas vezes**, e o que o campo pede é
+`R`; sem o termo o `pad` vale `22` contra `R = 20` (`r = 80`) e `R = 30` (`r = 120`) — ou seja, **no segundo
+a margem é mesmo deficiente e a imagem ainda concorda a dois níveis**, porque o erro do campo mora a `22 px`
+de qualquer dab daquele quadro e o quadro seguinte reescreve por cima. ⇒ aquela metade partiu-se em **duas**:
+a PREMISSA (`a_caixa_truncada_le_outro_campo`, medida — pior `|Δ|` no campo `0,000094` com margem `38 ≥ R`,
+`0,028832` com `18`, `0,138007` com `8`) e a FIAÇÃO (gate de TEXTO). *Um gate cujo nome promete o que a régua
+dele não alcança é a forma canónica do verde que não afirma nada.*
+
+**Provas de mutação — `8` de `8` sangram**, com CONTROLO do arnês antes e depois (`18` verdes, `0` vermelhos
+nas duas pontas):
+
+| mutação | o que ela apaga | sangra em |
+|---|---|---|
+| M1 | a leitura bilinear → vizinho-mais-próximo | `the_field_is_read_bilinear_not_nearest` · `…incremental_equal_to_full` |
+| M2 | a caixa respeitar o troço (atravessa papel seco) | **7** gates, entre eles `a_caixa_truncada_le_outro_campo` |
+| M3 | a disputa (volta ao `max` cru) | **5** gates, entre eles `a_pale_pass_over_a_dark_edge_yields_along_the_dark_feather` |
+| M4 | o afilamento da beira | `the_rim_tapers_over_the_outer_shell_and_dies_at_the_edge` |
+| M5 | o Smudge arrastar os níveis | `smudge_reaches_the_seam_of_the_live_stroke` |
+| M6 | a janela reservar o raio do campo | `a_janela_do_composite_reserva_o_raio_do_campo` |
+| M7 | o Rewet difundir | `rewet_diffuses_at_the_scale_of_the_brush` · `rewet_widens_the_return_seam_at_every_brush_size` |
+| M8 | a cadeia do Smudge sobreviver ao lote | `the_level_planes_do_not_depend_on_how_the_dabs_are_batched` |
+
+⛔⛔ **E a 1.ª ronda deu `5` de `8`. As três que faltaram eram defeito do AUTOR, não do produto, e cada uma
+nomeou uma coisa que vale para a próxima wave:**
+
+1. **M2 lia «NÃO COMPILA» e na verdade PENDURAVA.** A agulha apagava o único `x += 1` do ramo seco, e o
+   varredor de troços passou a girar para sempre ⇒ nunca houve linha `test result:`, e o arnês leu a ausência
+   dela como *«não compilou»*. ⚠️ *Uma mutação que não TERMINA e uma que não compila são o mesmo silêncio para
+   quem faz o parse da saída.* A agulha passou a ser a cerca do troço (`.max(lo)`), que termina e devolve a
+   soma de outro troço — e sangra em sete.
+2. **M4 sobrevivia porque o afilamento da beira NÃO TINHA RÉGUA.** Os quatro gates que liam o campo amostram
+   onde `prox = 255` — ali `T = 1` **por construção** — ou afirmam sobre o plano do NÍVEL. ⚠️ *Quatro gates
+   sobre o mesmo objecto podem ter todos o mesmo ponto cego, e a contagem deles lê-se como cobertura.*
+3. **M6 sobrevivia porque o gate PROMETIA no comentário o que a régua dele não alcança** (a correcção está
+   acima). ⇒ a metade partiu-se em premissa + fiação.
+
+⚠️ *E a 2.ª ronda não bastou: com a M2 e a M4 curadas, a M6 continuou a sobreviver mesmo depois de eu mudar
+o raio da fixtura — o que provou que o problema não era o número, era o gate estar a afirmar outra coisa.*
 
 ## §8 — Aberto
 
 - ⏳ **Item 4** (re-captar a própria tinta) — decisão do dono (§4).
-- ⏳ **ACHADO PRÉ-EXISTENTE, fora desta wave:** no U desta régua o composite incremental e o full divergem
-  `Δ124`–`Δ204` em milhares de bytes a `r = 48` e `r = 96` — **nas duas leis e a Charge 1**, logo não é
-  deste campo (a `r = 32/64/80` lê `Δ1`–`Δ2`). Reprodução: a sonda `measure_who_owns_the_stale_pixel`.
-  Parente provável dos dois `watercolor_app_params_incremental_*` que seguem `#[ignore]` (CLAUDE.md §5).
+- ⏳ **ACHADO PRÉ-EXISTENTE, fora desta wave, agora com CONTROLO:** no U desta régua o composite incremental
+  e o full divergem em raios isolados — **e a lei ANTIGA lê o mesmo número**, que é o que o data. Varrido por
+  [`diag_a_escada_do_raio_da_janela`]: `r = 88` lê `161` molhado · `94` seco · **`94` com a lei antiga**;
+  `r = 96` lê `139` · `93` · **`90`**; `r = 120` lê `2` · `2` · **`2`**. ⚠️ Ele aparece **a seco**, onde o
+  campo da reserva mal participa (o `reach` é o `core_any` e o raio do campo é `~9`) ⇒ não é deste campo, e a
+  escada não é monótona. Parente dos dois `watercolor_app_params_incremental_*` que seguem `#[ignore]`
+  (CLAUDE.md §5), cuja nota já diz que `pad += 2·raio` **não** é a cura.
+  ⚠️ *É por isso que o gate irmão mede a `120`: uma barra posta num raio onde outro defeito já vive não
+  afirma nada sobre este.*
 - ⏳ O custo por quadro do campo com Rewet alto e pincel grande (a janela cresce `R` para cada lado) —
-  ver o handoff.
+  ver o handoff. ⚠️ **Não medido ainda**: esta máquina esteve a `load 38`–`45` a jornada inteira, e a lei do
+  §5.0 (*nenhuma leitura de relógio vale acima de `load ~5`*) proíbe a tabela.
+- ⚠️ **PROMOÇÃO PEDIDA à família de flakes de fan-out (CLAUDE.md §5.0)** — a linha pede, o integrador escreve:
+  `the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`
+  (`ph2d-tool-painter`, `tool::paint::tests::measure_input_cost`). Assinatura completa: único ✗ de `1 257`
+  numa corrida da suíte da crate · **zero** linhas do diff desta linha naquele caminho (`git diff --stat`
+  devolve vazio) · **3 de 3 verde sozinho a `load 45,37`**, que é MAIS carga do que aquela em que reprovou.
+  ⇒ *o discriminador é o FAN-OUT e não o relógio*, como a nota da família já regista.
 - ⏳ Sob **Tiling**, o arrasto dos níveis levanta toroidal como o da base; não tem gate próprio.

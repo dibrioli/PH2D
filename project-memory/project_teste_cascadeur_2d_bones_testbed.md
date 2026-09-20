@@ -543,3 +543,38 @@ de relógio.
   *a diferença não é dado, é ferramenta.* A porta existe (`get_tools_manager()` → 38 ferramentas,
   uma é `AutoPosingTool`) e falta-lhe um manípulo de `csc.view.Scene` que a corrida sem janela não
   deu. **Nomeado, não fechado.**
+
+### 2026-09-19 (7.ª volta) — AUDITORIA do dinossauro (B45): duas lentes, oito achados, NADA consertado
+
+Pedido do dono («auditoria investigando o dinossauro»). Protocolo `/pd-auditoria` (correção + costura),
+cada achado com mecanismo · reprodução · o portão que faltava · porque o portão existente estava verde.
+Está inteiro em `auditoria/ACHADOS.md` B45; commit `3ffff4f`. O que fica para decidir é do dono.
+
+- ⛔⛔⛔ **A1 — o «tronco a 47°» da B44 TEM OSSO: o `dorso` corre com a lei de OMISSÃO** (±180°,
+  rigidez 0,05 — a de uma perna) porque falta nas tabelas do gerador; na caminhada deles ele anda
+  1,2°. Varredura de 432 arrastos: pior tronco **118°, 90° no dorso**; 164 acima dos 8° deles. A lei
+  da bacia (`PELVE_K`) mede-se pequena (7,4 → 6,5°) — não é ela. Lição em
+  [[feedback_an_omitted_table_entry_is_the_default_law_not_no_law]].
+- ⛔⛔ **A2 — 60 kg da coluna no osso ANTERIOR ao que os contém** (`Spine1_Rigid` a t = 0,50 do tórax,
+  pendurado no dorso com `cm = 1,33`; `Spine2_Rigid` idem no tórax, `cm = 1,36`): o Cascadeur nomeia o
+  corpo pelo joint onde o segmento COMEÇA e a tabela `OSSOS` nomeia o osso pelo joint onde ACABA. Na
+  Cascy todos os `cm` estão em [0, 1]. Verde por cima: o portão da massa mede uma SOMA.
+- ⛔⛔⛔ **A3 — «Parado» abre com `travados = []`** (os 14 humanos abrem com os dois pés presos): puxar a
+  cabeça arrasta os dois pés 34 cm pelo chão, puxar um pé arrasta o outro 30 cm (o defeito de 13/09 de
+  volta), a caixa «Equilíbrio» não muda um bit e a barra do apoio nunca aparece. ⚠️ **E as sondas da
+  B44 (864 arrastos) corriam com os pés PRESOS** — mediram outro programa que o exemplo abre
+  ([[feedback_a_probe_that_arms_a_module_by_env_var_measures_another_program_than_the_pill]]).
+- ⛔⛔ **A4 — «Joelho» e «Tornozelo» trocam de lei**: o modo do meio do membro sai da ESTRUTURA e a
+  perna de pássaro tem o `meio` no tornozelo ⇒ «Tornozelo» → `dobra`, «Joelho» → nenhum modo.
+  Decisão de produto.
+- ⛔⛔ **A5 — o painel fala da pessoa com o dinossauro aberto**: as notas dos ajustes citam «os 9
+  exemplos do menu» e «no mortal»; escolher a física dele diz «Simulada: Pose automática…» (um exemplo
+  humano — o `pose_rede` entra antes do filtro `ang.length !== rig.n`, e `quaisTemCascadeur()` não
+  filtra por esqueleto nem por `!diagnostico`).
+- ⚠️ **A6 — a cerca do chão é das JUNTAS e o desenho é de CÁPSULAS** (ponta do pé 7,2 cm abaixo da
+  linha em repouso; joelho 15,7 cm ao agachar com os pés soltos) — declarado na B43, mas o smoke
+  entregue dizia «nada passa da linha».
+- menores: `PELVE_K` muda de significado (raiz = tronco) mas pesa pouco; o «67 cm» da mão na B42 não
+  sai de régua nenhuma (49,4 / 65,3 / 40,5).
+- ✅ limpo: os dois artefactos gerados saem byte a byte; a cerca do chão da B44 aguenta em ~1 900
+  arrastos.

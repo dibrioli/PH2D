@@ -17,10 +17,10 @@
 | | |
 |---|---|
 | ramo | `line/PainterWatercolor` |
-| HEAD | `e53602984` |
+| HEAD | ver `git log -1` (o §12 acrescentou commits depois de este quadro ser escrito) |
 | base (merge-base = ponta do `main`) | `395da6a55` |
-| commits | **5** |
-| ficheiros | **21** (`+2 612` / `−38`) |
+| commits | **10** (5 da costura + 5 do item 4, §12) |
+| ficheiros | **31** |
 | `shells/desktop` | **0 linhas** — a linha não toca na shell |
 | crates novas | **nenhuma** |
 | pacotes externos novos | **nenhum** (`Cargo.lock` intocado) |

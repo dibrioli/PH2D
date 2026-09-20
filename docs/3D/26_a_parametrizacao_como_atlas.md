@@ -587,3 +587,115 @@ existia e nenhuma fixtura a tocava; hoje há uma carta colapsada de propósito.
   orientação escolhe a caixa mínima, que fixa qual lado é o comprido; um segundo candidato
   por peça é barato e não foi medido.
 - ⏳ **A dilatação da costura continua por pintar** — o vão está reservado e ninguém o usa.
+
+---
+
+## §11 — ⭐⭐⭐ A FORMA das ilhas: a atribuição diz que o corte está ILIBADO
+
+> **Ordem do dono (2026-09-20):** *«siga»*, depois do smoke do espaço.
+
+A §10 deixou a coluna que não se mexeu: **`tinta DENTRO da caixa`**, `32,8 %` na malha crua
+— ou seja, uma ilha ocupa um terço do rectângulo que a envolve. Antes de construir
+qualquer cura a montante, a pergunta é **quem** a deixa assim: a parametrização, ou o meu
+corte?
+
+A régua é a mesma coluna, lida **dos dois lados**:
+
+| peça | ANTES do corte | DEPOIS |
+|---|---|---|
+| `sculpt_antes` CRUA | `36,6 %` em `4` ilhas | `32,8 %` em `129` peças |
+| `sculpt_antes` F1 | `45,1 %` em `10` ilhas | `45,7 %` em `88` peças |
+
+⇒ **o corte está ilibado.** Ele custa `3,8` pontos numa peça e **ganha** `0,6` na outra:
+as ilhas **já saem esguias da parametrização**, e retalhá-las não as torna pior de forma
+apreciável. *Sem esta leitura eu teria gasto a wave seguinte a tornar o corte mais
+esperto, que responde por um erro de arredondamento.*
+
+⛔ **E isto muda o endereço da cura:** ela é a montante, no que produz as ilhas.
+
+### §11.1 — ⭐⭐⭐⭐ A COLAGEM perde nos DOIS eixos, e o valor de fábrica muda
+
+A montante das ilhas está uma decisão que a W1 tomou sem a medir: **colar as cartas** onde
+a costura não roda. Ela junta `88` cartas em `4` ilhas — o menor número de costuras
+possível — e era a base da §3 deste doc.
+
+⚠️ **Medida com a porta [`Opcoes::colar`], ela perde nos dois eixos que interessam:**
+
+| `sculpt_antes` | a colar (W1–W3) | **sem colar** |
+|---|---|---|
+| CRUA · tinta / quadrado | `31,8 %` | **`42,6 %`** |
+| CRUA · costura que o pintor sente | `156,5` (`37,8×`) | **`129,3`** (`31,2×`) |
+| CRUA · peças | `129` | `134` |
+| CRUA · recusas do corte | `369` | `65` |
+| CRUA · resíduo de cruzamento | `40` pares | **`0`** |
+| F1 · tinta / quadrado | `41,0 %` | **`47,9 %`** |
+| F1 · costura | `85,8` (`20,9×`) | `87,4` (`21,3×`) |
+
+⭐⭐⭐ **O mecanismo: a continuidade que a colagem compra nas fronteiras que junta, o corte
+paga-a de volta com JUROS noutro sítio.** Uma ilha colada enrola-se pela peça e dobra-se
+sobre si mesma; o corte tem de a retalhar em `129` peças **por linhas que ele escolhe**, e
+essas linhas somam mais comprimento do que as fronteiras de carta que a colagem tinha
+poupado. Sem colar são `134` peças — praticamente as mesmas — cortadas pelas fronteiras
+que a parametrização já desenhou.
+
+⇒ ⛔ **`colar` shipa DESLIGADA**, e o gate `as_curas_do_espaco_shipam_ligadas` afirma-o com
+o sinal ao contrário das outras três.
+
+### §11.2 — ⛔⛔ A §3 deste doc fica CORRIGIDA, e a metade dela que se mantém
+
+A §3 diz *«um patch não é uma ilha — são `4` a `13`, não `88` a `116`»*, e usou isso para
+encolher o empacotador planeado. **A metade sobre a SUPERFÍCIE continua verdade**: uma
+costura com salto `0 (mod 4)` não é um corte, e as componentes ligadas são mesmo `4` a
+`13`. ⛔ **A metade sobre o ATLAS está errada:** a unidade certa para arrumar é a **CARTA**,
+e transformar aquele facto topológico em ilhas de atlas custa um terço da textura.
+
+*Um facto sobre a superfície não é, por si, uma decisão sobre o atlas* — e entre os dois
+havia uma inferência que ninguém tinha medido.
+
+### §11.3 — A tabela final, nas três peças do dono
+
+Com `colar` desligada, `cortar`, `orientar` e `empacotar_por_mascara` ligadas:
+
+| peça | entrada | cartas → peças | **tinta / quadrado** | costura | cruzamento |
+|---|---|---|---|---|---|
+| `sculpt_antes` | CRUA | `88` → `134` | **`42,6 %`** | `31,2×` | `0` triângulos |
+| `sculpt_antes` | F1 | `67` → `106` | **`47,9 %`** | `21,3×` | `0` |
+| `_base_sculpt` | CRUA | `99` → `242` | **`35,0 %`** | `36,3×` | `0` |
+| `_base_sculpt` | F1 | `55` → `115` | **`46,1 %`** | `21,0×` | `0` |
+| `sculpt_Depois` | CRUA | `285` → `468` | **`40,3 %`** | `47,7×` | `0` |
+| `sculpt_Depois` | F1 | `58` → `98` | **`40,8 %`** | `21,4×` | `0` |
+| `esfera:24` | CRUA | `11` → `14` | **`47,0 %`** | `8,1×` | `0` |
+| `esfera:24` | F1 | `16` → `172` | **`38,5 %`** | `22,8×` | `0` |
+
+⭐⭐ **E a coluna `cruza` lê `0` triângulos TOCADOS em todas as oito corridas** — não é
+só a área que desce a zero: *não sobra um único par de triângulos que se cruze*, nem o
+resíduo sub-texel de `dobra` que a W2 deixava. Sem colagem, as cartas que a
+parametrização entrega já são injectivas, e o corte quase não tem o que fazer.
+
+### §11.4 — ⛔⛔ E uma régua ficou a afirmar o que não mediu
+
+Com a colagem desligada, a coluna do **rasgo** passou a imprimir `4,03e1` numa esfera —
+ela percorre as costuras de salto `0` e mede a distância entre os dois lados **usando
+deslocamentos que ninguém calculou**. Isso lê-se como *«o assentamento falhou»* quando a
+verdade é *«não houve assentamento»*.
+
+⇒ ela devolve `0` quando não se colou, e **o que a separa de um `0` de «assentou
+perfeito» é a contagem de coladas ao lado**, que lê `0` também. *Um zero de «não medido»
+e um de «perfeito» são o mesmo byte, e o que os separa é o piso de população.*
+
+⚠️ **E a sonda tinha o mesmo defeito, um nível acima:** a porta de bissecção estava
+escrita `env(...) != Ok("0")`, que com a variável por definir devolve **`true`** — logo
+ela armava a colagem por conta própria e **ignorava o valor de fábrica**. No dia em que
+ele mudou, a sonda continuou a medir o programa antigo e imprimiu a tabela de antes.
+*Uma porta de bissecção que não cai no default mede outro programa que o produto.*
+
+### §11.5 — ⏳ O meio-termo, que fica ABERTO com o mecanismo
+
+Nem colar tudo nem nada: **colar duas cartas só quando a união delas continua injectiva**.
+⭐ A maquinaria existe — é a fusão do [`corte`](../../crates/ph2d-uv-atlas/src/corte.rs),
+aplicada às CARTAS antes do assentamento em vez de às peças depois dele. Ela compraria a
+continuidade onde ela é de graça e nunca criaria o que o corte teria de partir.
+
+⚠️ **Não é uma dominação garantida, e é por isso que não entra sem medição:** juntar duas
+cartas dá uma ilha maior, que arruma pior — o ganho em costura pode não pagar a perda em
+tinta. *As duas colunas têm de ser lidas juntas, como nesta secção.*

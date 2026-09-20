@@ -333,24 +333,46 @@ fn corrida(rotulo: &str, mesh: &Mesh, alvo: f32, marca: &str) {
     // ⭐⭐⭐ **O ATLAS DE VERDADE** — as ilhas juntas, assentes e arrumadas em `[0,1]²`.
     // Tudo acima é a matéria-prima; isto é o que uma textura recebe.
     let relogio = std::time::Instant::now();
-    // ⭐ A bissecção da orientação vive AQUI, na sonda, e não dentro da crate: uma env
-    // lida na biblioteca alcançaria todo chamador e faria um gate medir a máquina.
+    // ⭐ A bissecção vive AQUI, na sonda, e não dentro da crate: uma env lida na
+    // biblioteca alcançaria todo chamador e faria um gate medir a máquina.
+    //
+    // ⛔⛔ **E ela cai no valor de FÁBRICA quando ninguém pede.** A 1.ª redacção escrevia
+    // `env(...) != Ok("0")`, que com a variável por definir devolve **`true`** — logo a
+    // sonda armava a colagem por conta própria e **ignorava o valor de fábrica**. No dia
+    // em que ele mudou, a sonda continuou a medir o programa antigo e a tabela saiu com
+    // os números de antes. *Uma porta de bissecção que não lê o default mede outro
+    // programa que o produto.*
+    let fabrica = ph2d_uv_atlas::Opcoes::default();
+    let porta = |chave: &str, padrao: bool| match std::env::var(chave).as_deref() {
+        Ok("0") => false,
+        Ok(_) => true,
+        Err(_) => padrao,
+    };
     let opcoes = ph2d_uv_atlas::Opcoes {
-        orientar: std::env::var("PH2D_ATLAS_ORIENTA").as_deref() != Ok("0"),
-        ..ph2d_uv_atlas::Opcoes::default()
+        orientar: porta("PH2D_ATLAS_ORIENTA", fabrica.orientar),
+        colar: porta("PH2D_ATLAS_COLA", fabrica.colar),
+        ..fabrica
     };
     let atl = ph2d_uv_atlas::build_com(mesh, &cut, &map, &jumps, opcoes);
     let ms_atlas = relogio.elapsed().as_secs_f64() * 1000.0;
     let r = atl.relatorio;
     println!(
-        "   ATLAS    {} ilhas | {} cantos, {} orfaos | {} cortes que o atlas obrigou (rasgo {:.2e}) | \
-         cola_max {:.2e} | aproveitamento {:.1}% | {ms_atlas:.1} ms",
+        "   ATLAS    {} ilhas | {} cantos, {} orfaos | {} cortes que o atlas obrigou ({}) | \
+         aproveitamento {:.1}% | {ms_atlas:.1} ms",
         r.ilhas,
         r.cantos,
         r.orfaos,
         r.ciclos,
-        r.holonomia_max,
-        r.cola_max,
+        // ⛔ Sem colagem estas duas colunas NAO FORAM MEDIDAS, e imprimi-las como `0,00`
+        // lê-se como «assentou perfeito». O piso de população é a contagem de coladas.
+        if r.coladas == 0 {
+            "rasgo e cola: sem colagem, nao medidos".to_string()
+        } else {
+            format!(
+                "rasgo {:.2e} | cola_max {:.2e}",
+                r.holonomia_max, r.cola_max
+            )
+        },
         100.0 * f64::from(r.aproveitamento)
     );
     println!(
@@ -384,15 +406,30 @@ fn corrida(rotulo: &str, mesh: &Mesh, alvo: f32, marca: &str) {
     // relatório é a soma das ÁREAS dos triângulos e esta é a contagem de TEXELS pintados.
     // *Se elas discordassem, uma das duas estaria a medir outro atlas.*
     let tinta_texel = as_f64(cobertos) / (1024.0 * 1024.0);
+    // ⛔⛔ **A coluna «% do desperdício DENTRO das caixas» SAIU, e a premissa dela morreu
+    // na W3.** Ela dividia por `1 − tinta` supondo que as caixas ocupam uma fracção do
+    // quadrado; com o empacotador por máscara **elas sobrepõem-se de propósito** e
+    // `caixas/quadrado` passou a ler `107,2 %` numa peça, o que fazia a derivada imprimir
+    // `110 %`. *Uma razão cuja premissa é «as partes não se cruzam» deixa de ser uma
+    // fracção no dia em que elas se cruzam* — e o número que ela queria dar continua à
+    // vista, que é a `tinta DENTRO da caixa`.
     println!(
         "   espaco   TINTA/quadrado {:.1}% (por texel {:.1}%) | caixas/quadrado {:.1}% | \
-         tinta DENTRO da caixa {:.1}% => {:.0}% do desperdicio e' DENTRO das caixas",
+         tinta DENTRO da caixa {:.1}%",
         100.0 * f64::from(r.aproveitamento),
         100.0 * tinta_texel,
         100.0 * f64::from(r.caixas_no_quadrado),
-        100.0 * f64::from(r.aproveitamento / r.caixas_no_quadrado.max(1.0e-12)),
-        100.0 * f64::from(r.caixas_no_quadrado - r.aproveitamento)
-            / f64::from(1.0 - r.aproveitamento).max(1.0e-12)
+        100.0 * f64::from(r.aproveitamento / r.caixas_no_quadrado.max(1.0e-12))
+    );
+    // ⭐⭐⭐ **O CONTRAPESO da tinta: a COSTURA que o atlas obriga, medida no MUNDO.**
+    //
+    // Toda fronteira entre duas peças é um sítio onde uma pincelada que a atravessa pode
+    // mostrar um fio. ⛔ Sem esta coluna, «não colar dá mais tinta» é meia medição — *a
+    // outra metade é quanto isso custa ao pintor*.
+    println!(
+        "   costura  as pecas fazem {:.3} de fronteira = {:.2}x sqrt(area) da peca",
+        fronteira_das_pecas(&atl, mesh),
+        fronteira_das_pecas(&atl, mesh) / area.sqrt().max(1.0e-12)
     );
     // ⭐⭐⭐ **A ATRIBUIÇÃO** — a linha de cima diz QUANTO e esta diz DE QUEM. Sem ela a
     // wave do corte começaria por adivinhar o mecanismo.
@@ -429,21 +466,39 @@ fn corrida(rotulo: &str, mesh: &Mesh, alvo: f32, marca: &str) {
             pior.b
         );
     }
+    // ⭐ O atlas SEM corte, pela mesma porta — é o CONTROLO das waves 2 e 3: sem ele «o
+    // corte melhorou» é uma afirmação sobre uma imagem que ninguém pôs ao lado da outra.
+    let cru = ph2d_uv_atlas::build_com(
+        mesh,
+        &cut,
+        &map,
+        &jumps,
+        ph2d_uv_atlas::Opcoes {
+            cortar: false,
+            orientar: false,
+            ..ph2d_uv_atlas::Opcoes::default()
+        },
+    );
+    // ⭐⭐⭐ **A ATRIBUIÇÃO DA FORMA: quem deixa as ilhas esguias?**
+    //
+    // A coluna `tinta DENTRO da caixa` é uma propriedade das FORMAS e não da arrumação.
+    // Lida nos dois lados ela responde à pergunta que decide a wave seguinte: *se a
+    // parametrização já entrega ilhas esguias, a cura é a montante; se elas só ficam
+    // esguias DEPOIS do corte, a cura é o corte.* ⛔ Sem as duas leituras, «as ilhas são
+    // esguias» é uma observação sem culpado.
+    let dentro = |r: &ph2d_uv_atlas::Relatorio| {
+        100.0 * f64::from(r.aproveitamento / r.caixas_no_quadrado.max(1.0e-12))
+    };
+    println!(
+        "   forma    tinta DENTRO da caixa: {:.1}% em {} ilhas ANTES do corte contra {:.1}% \
+         em {} pecas DEPOIS",
+        dentro(&cru.relatorio),
+        cru.relatorio.ilhas,
+        dentro(&r),
+        r.ilhas
+    );
     if let Ok(dir) = std::env::var("PH2D_ATLAS_DUMP") {
         desenha(&atl, mesh, &format!("{dir}/atlas_{marca}.ppm"), 1024);
-        // ⭐ O lado SEM corte, pela mesma porta — é o CONTROLO da wave: sem ele «o corte
-        // melhorou» é uma afirmação sobre uma imagem que ninguém pôs ao lado da outra.
-        let cru = ph2d_uv_atlas::build_com(
-            mesh,
-            &cut,
-            &map,
-            &jumps,
-            ph2d_uv_atlas::Opcoes {
-                cortar: false,
-                orientar: false,
-                ..ph2d_uv_atlas::Opcoes::default()
-            },
-        );
         desenha(
             &cru,
             mesh,
@@ -616,4 +671,49 @@ fn main() {
     corrida("CRUA (a malha do artista)", &crua, alvo, "crua");
     let f1 = ph2d_quadchain::phase_zero(&crua, alvo);
     corrida("F1 (remalhada, como o botao faz)", &f1, alvo, "f1");
+}
+
+/// ⭐⭐⭐ **A fronteira somada das peças, em unidades de MUNDO.**
+///
+/// Uma aresta da malha conta quando os dois lados dela caem em peças diferentes — ou
+/// quando ela é bordo da peça. ⚠️ **É medida na MALHA e não no atlas**, e é por isso que
+/// ela é comparável entre duas arrumações: *o que o pintor sente é o comprimento do corte
+/// na escultura, não no quadrado*.
+fn fronteira_das_pecas(atlas: &ph2d_uv_atlas::Atlas, mesh: &Mesh) -> f64 {
+    let (base, _) = ph2d_uv_atlas::bases_dos_cantos(mesh);
+    let pos = mesh.positions();
+    let mut por_aresta: std::collections::BTreeMap<(u32, u32), Vec<u32>> =
+        std::collections::BTreeMap::new();
+    for (f, face) in mesh.faces().iter().enumerate() {
+        let v = face.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            por_aresta
+                .entry((a.min(b), a.max(b)))
+                .or_default()
+                .push(u32::try_from(f).unwrap_or(0));
+        }
+    }
+    let peca = |f: u32| {
+        atlas
+            .ilha
+            .get(base[f as usize] as usize)
+            .copied()
+            .unwrap_or(u32::MAX)
+    };
+    let mut soma = 0.0;
+    for ((a, b), faces) in &por_aresta {
+        let fronteira = faces.len() != 2 || peca(faces[0]) != peca(faces[1]);
+        if !fronteira {
+            continue;
+        }
+        let (p, q) = (pos[*a as usize], pos[*b as usize]);
+        let d = [
+            f64::from(p[0] - q[0]),
+            f64::from(p[1] - q[1]),
+            f64::from(p[2] - q[2]),
+        ];
+        soma += d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+    }
+    soma
 }

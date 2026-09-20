@@ -143,9 +143,29 @@ pub(crate) fn fita_com(
     (mesh, cut, map, jumps)
 }
 
+/// ⛔⛔ **Uma porta só para os gates da COLAGEM.** Ver [`corrida`].
+pub(crate) fn colado(mesh: &Mesh, cut: &CutMesh, map: &GridMap, jumps: &[Option<i32>]) -> Atlas {
+    super::build_com(
+        mesh,
+        cut,
+        map,
+        jumps,
+        super::Opcoes {
+            colar: true,
+            ..super::Opcoes::default()
+        },
+    )
+}
+
+/// ⛔⛔ **Esta corrida PEDE a colagem, e desde a W3 isso é explícito.**
+///
+/// O valor de fábrica passou a ser **não colar** — medido: colar custa `31,8 %` de tinta
+/// contra `42,6 %` e `156,5` de costura contra `129,3` na malha do dono (doc 26 §11). A
+/// LEI da colagem não mudou uma vírgula, e os gates dela têm de a armar: *um gate que
+/// mede a colagem pelo caminho de omissão passou a medir a ausência dela.*
 fn corrida(salto: i32, anel: bool) -> (Mesh, Atlas) {
     let (mesh, cut, map, jumps) = fita(salto, anel);
-    let atlas = build(&mesh, &cut, &map, &jumps);
+    let atlas = colado(&mesh, &cut, &map, &jumps);
     (mesh, atlas)
 }
 
@@ -322,7 +342,7 @@ fn cada_ilha_declarada_tem_cantos_seus() {
 fn uma_costura_colada_nao_e_rasgada_pelo_atlas() {
     for (salto, rasga) in [(0, false), (1, true)] {
         let (mesh, cut, map, jumps) = fita(salto, false);
-        let a = build(&mesh, &cut, &map, &jumps);
+        let a = colado(&mesh, &cut, &map, &jumps);
         let (base, _) = bases_dos_cantos(&mesh);
         // Por vértice global, os `(u, v)` que ele recebeu em todos os cantos.
         let mut vistos: Vec<Vec<[f32; 2]>> = vec![Vec::new(); mesh.positions().len()];
@@ -376,7 +396,7 @@ fn uma_costura_colada_nao_e_rasgada_pelo_atlas() {
 #[test]
 fn num_anel_o_rasgo_e_um_so_e_vale_a_holonomia() {
     let (mesh, cut, map, jumps) = fita(0, true);
-    let a = build(&mesh, &cut, &map, &jumps);
+    let a = colado(&mesh, &cut, &map, &jumps);
     let (base, _) = bases_dos_cantos(&mesh);
     let mut vistos: Vec<Vec<[f32; 2]>> = vec![Vec::new(); mesh.positions().len()];
     for (f, face) in mesh.faces().iter().enumerate() {
@@ -426,7 +446,7 @@ fn uma_costura_torta_e_acusada_em_vez_de_colada_em_silencio() {
     let (mesh, cut, mut map, jumps) = fita(0, false);
     // O vértice global `4` é o local `1` do patch 1 — move-se meia célula.
     map.uv[1][1][1] += 0.5;
-    let a = build(&mesh, &cut, &map, &jumps);
+    let a = colado(&mesh, &cut, &map, &jumps);
     assert!(
         a.relatorio.cola_max > 0.2,
         "uma costura torta tem de aparecer no relatorio: {}",

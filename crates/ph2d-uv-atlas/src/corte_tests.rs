@@ -263,6 +263,7 @@ fn a_ilha_que_se_dobrava_deixa_de_pintar_duas_vezes_pelo_caminho_do_produto() {
         super::Opcoes {
             cortar: false,
             orientar: false,
+            colar: true,
             ..super::Opcoes::default()
         },
     );
@@ -282,7 +283,9 @@ fn a_ilha_que_se_dobrava_deixa_de_pintar_duas_vezes_pelo_caminho_do_produto() {
     assert_eq!(antes.pares_por_classe[Classe::IlhasDiferentes.indice()], 0);
     assert_eq!(cru.relatorio.ilhas, 1, "sem corte a ilha e' uma so'");
 
-    let a = super::build(&mesh, &cut, &map, &jumps);
+    // ⚠️ A colagem é PEDIDA: o fenómeno desta fixtura é uma ILHA colada que se dobra, e
+    // desde a W3 o valor de fábrica é não colar (doc 26 §11).
+    let a = super::lib_tests::colado(&mesh, &cut, &map, &jumps);
     let dep = medir(&mesh, &a);
     assert_eq!(a.relatorio.ilhas_antes_do_corte, 1);
     assert_eq!(a.relatorio.ilhas, 2, "a ilha dobrada parte-se em duas");
@@ -296,7 +299,7 @@ fn a_ilha_que_se_dobrava_deixa_de_pintar_duas_vezes_pelo_caminho_do_produto() {
     }
     // ⭐ O CONTROLO: a MESMA fita sem a dobra não é cortada.
     let (m2, c2, p2, j2) = super::lib_tests::fita_com(0, false, false);
-    let b = super::build(&m2, &c2, &p2, &j2);
+    let b = super::lib_tests::colado(&m2, &c2, &p2, &j2);
     assert_eq!(
         (b.relatorio.ilhas_antes_do_corte, b.relatorio.ilhas),
         (1, 1)

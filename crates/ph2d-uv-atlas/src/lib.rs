@@ -76,6 +76,10 @@ pub struct Relatorio {
     pub ciclos: usize,
     /// ⛔⛔ **O RASGO na pior dessas costuras**, em células de grade. É a distância a que
     /// os dois lados de um ciclo ficam um do outro depois de a árvore os assentar.
+    ///
+    /// ⚠️ **Com [`Opcoes::colar`] desligada ele é `0` porque NÃO FOI MEDIDO**, e quem o
+    /// separa de um `0` de «assentou perfeito» é a [`Self::coladas`] ao lado, que lê `0`
+    /// também. *Um zero de «não medido» e um de «perfeito» são o mesmo byte.*
     pub holonomia_max: f32,
     /// ⭐⭐⭐ **Ilhas ANTES do corte** — as componentes ligadas das costuras coladas.
     ///
@@ -213,6 +217,28 @@ pub struct Opcoes {
     pub orientar: bool,
     /// Arrumar pela FORMA de cada peça e não pela caixa dela — ver [`empacota`].
     pub empacotar_por_mascara: bool,
+    /// ⛔⛔⛔ **Juntar as cartas em ilhas onde a costura não roda — e ela shipa
+    /// DESLIGADA, por medição.**
+    ///
+    /// | `sculpt_antes` CRUA | a colar | sem colar |
+    /// |---|---|---|
+    /// | tinta / quadrado | `31,8 %` | **`42,6 %`** |
+    /// | costura que o pintor sente | `156,5` | **`129,3`** |
+    /// | recusas do corte | `369` | `65` |
+    /// | resíduo de cruzamento | `40` pares | **`0`** |
+    ///
+    /// ⇒ **colar perde nos DOIS eixos na malha do artista.** O mecanismo: ela junta `88`
+    /// cartas em `4` ilhas que se enrolam pela peça, e o corte volta a retalhá-las em
+    /// `129` peças — *a continuidade que a colagem compra nas fronteiras que junta, o
+    /// corte paga-a de volta com juros noutro sítio*.
+    ///
+    /// ⚠️ Na malha remalhada é `41,0 → 47,9 %` de tinta por `+1,8 %` de costura, ou seja
+    /// ganha num eixo e empata no outro.
+    ///
+    /// ⛔ **A porta FICA**, e não é decoração: a lei da colagem é o que diz quais costuras
+    /// são cortes de verdade (§3), ela continua gateada, e o meio-termo — *colar só onde
+    /// isso não obriga um corte* — é a wave seguinte e precisa dela.
+    pub colar: bool,
 }
 
 impl Default for Opcoes {
@@ -226,6 +252,7 @@ impl Default for Opcoes {
             cortar: true,
             orientar: true,
             empacotar_por_mascara: true,
+            colar: false,
         }
     }
 }
@@ -268,7 +295,7 @@ pub fn build_com(
     // Por costura colada: `(patch_a, patch_b, translação)`.
     let mut colas: Vec<(usize, usize, [f32; 2])> = Vec::new();
     for (s, seam) in cut.seams.iter().enumerate() {
-        let colada = matches!(jumps.get(s), Some(Some(j)) if j.rem_euclid(4) == 0);
+        let colada = opcoes.colar && matches!(jumps.get(s), Some(Some(j)) if j.rem_euclid(4) == 0);
         if !colada {
             rel.rodadas += 1;
             continue;
@@ -320,7 +347,7 @@ pub fn build_com(
             }
         }
     }
-    rel.holonomia_max = holonomia(cut, map, jumps, &off);
+    rel.holonomia_max = holonomia(cut, map, jumps, &off, opcoes.colar);
 
     // Um patch que nenhuma cola alcançou é uma ilha só dele.
     for o in &mut off {
@@ -502,7 +529,22 @@ pub fn build_com(
 /// régua errava do mesmo lado. *Um espelho não acusa.* Hoje pergunta-se a coisa que
 /// interessa: com as cartas postas no plano da ilha, os dois lados de uma costura
 /// colada caem no MESMO ponto?
-fn holonomia(cut: &CutMesh, map: &GridMap, jumps: &[Option<i32>], off: &[Option<[f32; 2]>]) -> f32 {
+fn holonomia(
+    cut: &CutMesh,
+    map: &GridMap,
+    jumps: &[Option<i32>],
+    off: &[Option<[f32; 2]>],
+    colou: bool,
+) -> f32 {
+    // ⛔⛔ **Sem colagem não há holonomia para medir, e devolver a distância CRUA entre
+    // os dois lados seria pior que devolver nada:** ela lia `4,03e1` numa esfera, o que se
+    // lê como *«o assentamento falhou»* quando a verdade é *«não houve assentamento»*.
+    // ⚠️ O `0` que sai daqui só é honesto porque [`Relatorio::coladas`] o acompanha e lê
+    // `0` também — *um zero de «não medido» e um de «perfeito» são o mesmo byte, e o que
+    // os separa é o piso de população ao lado*.
+    if !colou {
+        return 0.0;
+    }
     let mut maior = 0.0f32;
     for (s, seam) in cut.seams.iter().enumerate() {
         if !matches!(jumps.get(s), Some(Some(j)) if j.rem_euclid(4) == 0) {

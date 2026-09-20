@@ -221,6 +221,11 @@ fn as_curas_do_espaco_shipam_ligadas() {
         o.empacotar_por_mascara,
         "sem a mascara arruma-se o involucro"
     );
+    // ⛔⛔ **E a COLAGEM shipa DESLIGADA, pela mesma régua e com o sinal ao contrário.**
+    // Medido na malha do dono: colar dá `31,8 %` de tinta contra `42,6 %` e `156,5` de
+    // costura contra `129,3` — *ela perde nos dois eixos* (doc 26 §11). A lei fica, a
+    // porta fica, o valor de fábrica é não colar.
+    assert!(!o.colar, "colar perde tinta E costura na malha do artista");
 }
 
 /// ⛔⛔ **Uma peça que colapsa num PONTO não derruba o empacotador por máscara.**
@@ -293,5 +298,41 @@ fn as_maiores_primeiro_e_isso_decide_entre_caber_e_nao_caber() {
     assert!(
         arruma(&invertida, 4, 0).is_some(),
         "ela reordena e continua a caber"
+    );
+}
+
+/// ⛔⛔ **Sem colagem, o relatório NÃO afirma uma holonomia.**
+///
+/// A [`super::Relatorio::holonomia_max`] mede o rasgo que sobra ao fechar um ciclo de
+/// costuras COLADAS. Sem colagem não há ciclo nenhum, e a 1.ª redacção devolvia a
+/// distância CRUA entre os dois lados — `4,03e1` numa esfera, que se lê como *«o
+/// assentamento falhou»* quando a verdade é *«não houve assentamento»*.
+///
+/// ⚠️ O `0` só é honesto porque a [`super::Relatorio::coladas`] o acompanha e lê `0`
+/// também: *um zero de «não medido» e um de «perfeito» são o mesmo byte, e o que os
+/// separa é o piso de população ao lado.*
+#[test]
+fn sem_colagem_o_relatorio_nao_inventa_uma_holonomia() {
+    let (mesh, cut, map, jumps) = super::lib_tests::fita(0, true);
+    let sem = super::build(&mesh, &cut, &map, &jumps);
+    assert_eq!(
+        (sem.relatorio.coladas, sem.relatorio.ciclos),
+        (0, 0),
+        "sem colagem nao ha' costura colada nem ciclo"
+    );
+    assert!(
+        sem.relatorio.holonomia_max == 0.0 && sem.relatorio.cola_max == 0.0,
+        "e nenhuma das duas colunas afirma um numero: {} / {}",
+        sem.relatorio.holonomia_max,
+        sem.relatorio.cola_max
+    );
+    // ⭐ O CONTROLO: a MESMA fixtura colada tem holonomia de verdade, e a população
+    // di-lo. Sem esta metade, um `build` que nunca medisse nada passaria.
+    let com = super::lib_tests::colado(&mesh, &cut, &map, &jumps);
+    assert!(com.relatorio.coladas >= 3 && com.relatorio.ciclos >= 1);
+    assert!(
+        com.relatorio.holonomia_max > 1.0,
+        "o anel colado tem de acusar rasgo: {}",
+        com.relatorio.holonomia_max
     );
 }

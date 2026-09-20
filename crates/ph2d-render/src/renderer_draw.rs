@@ -225,6 +225,16 @@ impl SpriteRenderer {
             .upload(&self.gpu, self.scratch.as_slice());
         self.mesh_buffer
             .upload(&self.gpu, self.mesh_frame.vertices.as_slice());
+        // ⭐⭐⭐ **A PELE sobe ao lado dos vértices** (F9 W2) — os quatro buffers são paralelos ao de
+        // vértices, e subi-los noutro sítio abriria a janela em que eles descrevem outro quadro.
+        self.skin_buffers.upload(
+            &self.gpu,
+            &self.pipeline.skin_bgl,
+            &self.mesh_frame.pesos,
+            &self.mesh_frame.ossos,
+            &self.mesh_frame.afins,
+            &self.mesh_frame.juntas,
+        );
 
         // W3 §8: does this frame contain any ClipChildren group or Mask2D /
         // MaskInteraction role? The common case (neither) takes the exact
@@ -319,6 +329,9 @@ impl SpriteRenderer {
             }
             if count > 0 {
                 pass.set_bind_group(0, &self.frame_bind_group, &[]);
+                // ⚠️ **O grupo da PELE é ligado UMA vez por passe**, e não por chamada: ele não
+                // muda dentro de um passe, e o `SEM_PELE` é quem decide por vértice.
+                pass.set_bind_group(2, self.skin_buffers.grupo_ligado(), &[]);
                 pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
                 pass.set_vertex_buffer(1, self.instance_buffer.buffer().slice(..));
                 // §10: bind the per-run blend pipeline. Runs are keyed by
@@ -366,6 +379,9 @@ impl SpriteRenderer {
                 && !has_mask
             {
                 pass.set_bind_group(0, &self.frame_bind_group, &[]);
+                // ⚠️ **O grupo da PELE é ligado UMA vez por passe**, e não por chamada: ele não
+                // muda dentro de um passe, e o `SEM_PELE` é quem decide por vértice.
+                pass.set_bind_group(2, self.skin_buffers.grupo_ligado(), &[]);
                 pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
                 pass.set_vertex_buffer(1, buffer.slice(..));
                 pass.set_pipeline(self.pipeline.blend_pipeline(0));
@@ -397,6 +413,7 @@ impl SpriteRenderer {
                 stencil,
                 &self.pipeline,
                 &self.frame_bind_group,
+                self.skin_buffers.grupo_ligado(),
                 &self.quad_buffer,
                 self.instance_buffer.buffer(),
                 (self.mesh_buffer.buffer(), &self.mesh_frame.ranges),
@@ -416,6 +433,7 @@ impl SpriteRenderer {
                 stencil,
                 &self.pipeline,
                 &self.frame_bind_group,
+                self.skin_buffers.grupo_ligado(),
                 &self.quad_buffer,
                 self.instance_buffer.buffer(),
                 (self.mesh_buffer.buffer(), &self.mesh_frame.ranges),

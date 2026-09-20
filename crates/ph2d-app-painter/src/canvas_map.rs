@@ -53,7 +53,11 @@ use ph2d_render::Camera2d;
 use ph2d_vector::{Affine, Point};
 
 /// Ver o cabeçalho do módulo.
-#[derive(Clone, Copy)]
+///
+/// ⚠️ **Deixou de ser `Copy` na F9 W2** (a pele passou a ser posada pela PLACA): a
+/// [`ph2d_render::DrawnMesh`] que ele guarda pode **possuir** a malha posada em vez de a
+/// emprestar, e um `Copy` sobre isso esconderia uma cópia inteira da malha num `=`.
+#[derive(Clone)]
 pub struct CanvasMap<'a> {
     /// A lei do QUAD DE REPOUSO: imagem-px → ecrã (tamanho · escala · rotação · âncora · câmera).
     afim: Affine,
@@ -238,8 +242,9 @@ impl<'a> CanvasMap<'a> {
         let t = Affine::translate((dx, dy));
         Self {
             afim: t * self.afim,
-            malha: self.malha.map(|(m, mundo)| (m, t * mundo)),
-            ..*self
+            malha: self.malha.clone().map(|(m, mundo)| (m, t * mundo)),
+            iw: self.iw,
+            ih: self.ih,
         }
     }
 

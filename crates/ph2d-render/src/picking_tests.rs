@@ -338,6 +338,7 @@ fn posed_arm() -> crate::SpriteMesh {
         local: vec![[3.0, 0.0], [5.0, 0.0], [3.0, 2.0]],
         uv: vec![[0.0, 1.0], [1.0, 1.0], [0.0, 0.0]],
         tris: vec![[0, 1, 2]],
+        skin: None,
     }
 }
 
@@ -536,6 +537,7 @@ fn the_canvas_port_reports_the_local_deformation_and_it_is_dimensionless() {
             local: vec![[3.0, 0.0], [4.0, 0.0], [3.0, 2.0]],
             uv: vec![[0.0, 1.0], [1.0, 1.0], [0.0, 0.0]],
             tris: vec![[0, 1, 2]],
+            skin: None,
         },
     );
     let crate::MeshUv::Use { warp, .. } =
@@ -585,6 +587,7 @@ fn the_published_deformation_makes_the_brush_round_on_screen() {
         ],
         uv: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
         tris: vec![[0, 1, 2]],
+        skin: None,
     };
     let centro = [
         (mesh.local[0][0] + mesh.local[1][0] + mesh.local[2][0]) / 3.0,

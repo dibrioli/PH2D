@@ -18,6 +18,124 @@ var atlas_tex: texture_2d<f32>;
 @group(1) @binding(1)
 var atlas_sampler: sampler;
 
+// ⭐⭐⭐ **A PELE (F9 W2)** — o que faz a PLACA posar o que a CPU posava vértice a vértice, todo
+// quadro. Medido na arte do dono: a CPU custava `35,9 %` de um quadro a 8 imagens presas
+// (`--release`), e o dispositivo desenha `100 352` triângulos em `0,73 ms` (`4,4 %`).
+//
+// `skin_w[i]` / `skin_b[i]` são PARALELOS ao buffer de vértices das MALHAS e indexados pelo
+// `@builtin(vertex_index)`, que numa chamada NÃO-INDEXADA é o índice absoluto nesse buffer.
+// `skin_b[i].x == SEM_PELE` quer dizer *«este vértice não é posado»* — e é isso que torna o caminho
+// de toda malha que não é uma pele byte-idêntico POR CONSTRUÇÃO, em vez de multiplicar por uma
+// identidade (`y · 0` deixa de ser `0` num `y` infinito).
+//
+// ⚠️ **Os afins chegam já conjugados para o espaço do QUAD** pelo lado da CPU — o payload guarda-os
+// em LOCAL→LOCAL, porque o mesmo bind serve nove instâncias num 9-slice e cada uma tem o seu quad.
+struct SkinAfim {
+    lin: vec4<f32>,
+    tra: vec2<f32>,
+    // `(cos θ, sin θ)` da pose CRUA deste osso — o `atan2` do afim conjugado dava outro ângulo.
+    ang: vec2<f32>,
+    // `(índice local, ossos da malha, base da tabela de juntas, 0)`.
+    info: vec4<u32>,
+    // `(sx/sy, sy/sx, 0, 0)` da instância: conjugar uma ROTAÇÃO por um `size` não-uniforme não dá
+    // uma rotação, e o `θ̄` só existe depois de o shader misturar os ângulos.
+    razao: vec4<f32>,
+};
+@group(2) @binding(0)
+var<storage, read> skin_w: array<vec4<f32>>;
+@group(2) @binding(1)
+var<storage, read> skin_b: array<vec4<u32>>;
+@group(2) @binding(2)
+var<storage, read> skin_a: array<SkinAfim>;
+@group(2) @binding(3)
+var<storage, read> skin_j: array<vec2<f32>>;
+
+const SEM_PELE: u32 = 0xFFFFFFFFu;
+
+fn aplica_afim(a: SkinAfim, p: vec2<f32>) -> vec2<f32> {
+    return vec2<f32>(
+        a.lin.x * p.x + a.lin.z * p.y + a.tra.x,
+        a.lin.y * p.x + a.lin.w * p.y + a.tra.y,
+    );
+}
+
+// A mistura LINEAR `Σ ŵ_i · (A_i · p)` — o CONTROLO, e o que as três degenerescências devolvem.
+// ⛔ Soma zero devolve o ponto INTACTO e nunca a origem — a lei do `Skin::blend`.
+fn mistura_linear(w: vec4<f32>, b: vec4<u32>, p: vec2<f32>) -> vec2<f32> {
+    var out = vec2<f32>(0.0, 0.0);
+    var soma = 0.0;
+    for (var k = 0u; k < 4u; k = k + 1u) {
+        let wk = w[k];
+        if (wk == 0.0) { continue; }
+        out = out + wk * aplica_afim(skin_a[b[k]], p);
+        soma = soma + wk;
+    }
+    if (soma == 0.0) { return p; }
+    return out;
+}
+
+// ⭐⭐⭐ **A LEI, no dispositivo** — `p' = R(θ̄)·(p − c) + Σ ŵ_i·(A_i·c)`, a MESMA que a
+// `ph2d_render::SpriteMeshSkin::posa` corre na CPU para as dez costuras. *Dois motores, uma lei*,
+// com gate de paridade entre eles (o molde é o do Flip).
+//
+// ⛔⛔ Ela NÃO é uma mistura linear de afins. A mistura linear é a lei ANTIGA, que o
+// `ph2d_skeleton::Skin::blend_linear` guarda como controlo — a CPU passou a rodar em torno da
+// JUNTA em 2026-09-19 para curar o entalhe do cotovelo, e a primeira redacção deste shader
+// implementou a antiga: o gate de paridade leu `2,315e-3 m`.
+//
+// ⚠️ Tudo aqui vive no espaço do QUAD. Os afins e as juntas chegam conjugados pela CPU; a rotação
+// `R(θ̄)` não pode, porque `θ̄` só nasce da mistura dos ângulos — daí `S⁻¹RS`, feito à mão com as
+// duas razões do `size`.
+fn posa_pela_pele(vi: u32, qp: vec2<f32>) -> vec2<f32> {
+    let b = skin_b[vi];
+    if (b.x == SEM_PELE) { return qp; }
+    let w = skin_w[vi];
+    let a0 = skin_a[b.x];
+    let n = a0.info.y;
+    let jb = a0.info.z;
+
+    // O CENTRO: a junta de cada PAR, pesada por `w_i·w_j`. Sem par não há junta ⇒ a lei é rígida e
+    // o centro é irrelevante (o `Skin::centro_de_rotacao` devolve `None` no mesmo sítio).
+    var num = vec2<f32>(0.0, 0.0);
+    var den = 0.0;
+    for (var i = 0u; i < 4u; i = i + 1u) {
+        if (w[i] <= 0.0) { continue; }
+        let li = skin_a[b[i]].info.x;
+        for (var j = i + 1u; j < 4u; j = j + 1u) {
+            if (w[j] <= 0.0) { continue; }
+            let q = w[i] * w[j];
+            num = num + q * skin_j[jb + li * n + skin_a[b[j]].info.x];
+            den = den + q;
+        }
+    }
+    if (den <= 0.0) { return mistura_linear(w, b, qp); }
+    let c = num / den;
+
+    // O ÂNGULO: média em CÍRCULO, nunca `Σ w·θ` — os ângulos vêm de um `atan2` e saltam em meia
+    // volta. ⛔ A degenerescência dela (duas poses a `180°` com pesos iguais) cai na linear.
+    var sx = 0.0;
+    var sy = 0.0;
+    var soma = 0.0;
+    for (var k = 0u; k < 4u; k = k + 1u) {
+        if (w[k] == 0.0) { continue; }
+        let a = skin_a[b[k]];
+        sx = sx + w[k] * a.ang.x;
+        sy = sy + w[k] * a.ang.y;
+        soma = soma + w[k];
+    }
+    if (soma == 0.0 || (sx == 0.0 && sy == 0.0)) { return mistura_linear(w, b, qp); }
+    let nrm = sqrt(sx * sx + sy * sy);
+    let co = sx / nrm;
+    let si = sy / nrm;
+
+    let base = mistura_linear(w, b, c);
+    let d = qp - c;
+    return vec2<f32>(
+        co * d.x - si * a0.razao.y * d.y + base.x,
+        si * a0.razao.x * d.x + co * d.y + base.y,
+    );
+}
+
 struct VertexInput {
     @location(0) quad_pos: vec2<f32>,  // unit quad corner in [-0.5, 0.5]
     @location(1) quad_uv:  vec2<f32>,  // [0, 1]; (0,0)=top-left, (1,1)=bottom-right
@@ -105,13 +223,17 @@ fn wrap_uv(t: vec2<f32>, mode: u32) -> vec2<f32> {
 }
 
 @vertex
-fn vs_main(v: VertexInput, i: InstanceInput) -> VertexOutput {
+fn vs_main(@builtin(vertex_index) vi: u32, v: VertexInput, i: InstanceInput) -> VertexOutput {
     // Local-space sprite corner (the quad is centered on its own
     // geometry, then shifted by `anchor` so the quad center sits at
     // `anchor` relative to the pivot `world_pos`). `size` and `anchor`
     // are LOCAL now — the full world linear transform (rotation + scale
     // + skew) lives in `basis`. anchor [0,0] = strictly-centered (legacy).
-    let local = i.anchor + vec2<f32>(v.quad_pos.x * i.size.x, v.quad_pos.y * i.size.y);
+    // ⭐⭐⭐ **A PELE entra AQUI, antes de o quad virar local** — o `quad_pos` que chega é o de
+    // REPOUSO e o que sai é o POSADO. ⚠️ A UV **não** é tocada: a tinta está pintada na forma de
+    // repouso, e é isso que faz a imagem viajar COM a malha em vez de deslizar sobre ela.
+    let qp = posa_pela_pele(vi, v.quad_pos);
+    let local = i.anchor + vec2<f32>(qp.x * i.size.x, qp.y * i.size.y);
     // Apply the 2x2 world basis: col0 = basis.xy, col1 = basis.zw.
     // A sheared (non-orthogonal) basis maps the axis-aligned local quad
     // to the correct parallelogram — true skew, not a rotated rectangle.
@@ -249,10 +371,14 @@ struct StencilMarkOutput {
 };
 
 @vertex
-fn vs_stencil_mark(v: VertexInput, i: MarkInstanceInput) -> StencilMarkOutput {
+fn vs_stencil_mark(@builtin(vertex_index) vi: u32, v: VertexInput, i: MarkInstanceInput) -> StencilMarkOutput {
     // Position EXACTLY like vs_main so the silhouette covers the same
     // pixels the parent would draw (anchor + size + 2x2 basis).
-    let local = i.anchor + vec2<f32>(v.quad_pos.x * i.size.x, v.quad_pos.y * i.size.y);
+    // ⭐⭐⭐ **A PELE entra AQUI, antes de o quad virar local** — o `quad_pos` que chega é o de
+    // REPOUSO e o que sai é o POSADO. ⚠️ A UV **não** é tocada: a tinta está pintada na forma de
+    // repouso, e é isso que faz a imagem viajar COM a malha em vez de deslizar sobre ela.
+    let qp = posa_pela_pele(vi, v.quad_pos);
+    let local = i.anchor + vec2<f32>(qp.x * i.size.x, qp.y * i.size.y);
     let mapped = vec2<f32>(
         local.x * i.basis.x + local.y * i.basis.z,
         local.x * i.basis.y + local.y * i.basis.w,

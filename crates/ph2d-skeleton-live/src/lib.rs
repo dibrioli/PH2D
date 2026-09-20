@@ -59,10 +59,12 @@ pub mod recusa_do_osso;
 pub mod skin_bake;
 pub mod skin_bake_cache;
 pub mod skin_budget;
-pub mod skin_gpu;
 pub mod skin_image;
 /// ⭐ **PRENDER uma IMAGEM** — irmão do `skin_live` pelo tecto de LOC, cortado por assunto.
 pub mod skin_image_bind;
+/// ⭐⭐⭐ **A malha no formato que a PLACA posa** (F9 W2) — irmão do [`skin_image`] por
+/// responsabilidade e pelo tecto de LOC. Ver o cabeçalho dele.
+pub mod skin_image_gpu;
 pub mod skin_live;
 pub mod skin_refine;
 pub mod skinned_mesh;

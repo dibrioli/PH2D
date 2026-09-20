@@ -280,6 +280,7 @@ fn a_sprite_drawn_as_a_mesh_is_boxed_by_what_it_draws() {
         local: vec![[-1.0, -1.0], [1.5, -1.0], [1.5, 2.5], [-1.0, 1.0]],
         uv: vec![[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
         tris: vec![[0, 1, 2], [0, 2, 3]],
+        skin: None,
     };
     for sheet_open in [false, true] {
         let (c, h) = gizmo_box(&s.0, Some(s.1), PPM, sheet_open, false, Some(&malha));
@@ -298,6 +299,7 @@ fn a_sprite_drawn_as_a_mesh_is_boxed_by_what_it_draws() {
         local: Vec::new(),
         uv: Vec::new(),
         tris: Vec::new(),
+        skin: None,
     };
     assert_eq!(
         gizmo_box(&s.0, Some(s.1), PPM, false, false, Some(&vazia)),

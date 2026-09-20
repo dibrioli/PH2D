@@ -100,6 +100,48 @@ fn junta(x: &SkinBone, y: &SkinBone) -> [f64; 2] {
 }
 
 impl Skin {
+    /// ⭐⭐⭐ **A TABELA DAS JUNTAS, `n × n` em ordem de linha** — `t[i·n + j]` é a
+    /// [`junta`] do par `(i, j)`, no espaço LOCAL da pele.
+    ///
+    /// ⚠️ **Ela existe para o payload do DISPOSITIVO** ([`ph2d_render::SpriteMeshSkin`]): a lei do
+    /// [`Skin::blend`] precisa da junta de cada par de ossos que manda num vértice, e um shader não
+    /// pode chamar a [`junta`]. ⛔ **O produtor do payload NÃO a reimplementa** — ele pede-a aqui,
+    /// que é o que impede a segunda resposta à pergunta *«por onde estes dois se encontram?»*.
+    ///
+    /// ⚠️ **É simétrica por construção** (a [`junta`] não distingue a ordem), e a diagonal é a ponta
+    /// partilhada de um osso consigo mesmo — nunca lida, porque o laço do centro só vê `j > i`.
+    ///
+    /// ⚠️ **Custo `O(n²)` e ela é do BIND**, não do quadro: os eixos de repouso não mudam com a
+    /// pose. *Quem a recalcular por quadro paga um quadrado por nada.*
+    #[must_use]
+    pub fn tabela_de_juntas(&self) -> Vec<[f64; 2]> {
+        let n = self.bones.len();
+        let mut t = vec![[0.0_f64; 2]; n * n];
+        for (i, a) in self.bones.iter().enumerate() {
+            for (j, b) in self.bones.iter().enumerate() {
+                t[i * n + j] = junta(a, b);
+            }
+        }
+        t
+    }
+
+    /// ⭐⭐ **O `(cos θ, sin θ)` de cada osso**, com `θ` o [`SkinBone::angulo_da_pose`].
+    ///
+    /// ⚠️ **O par sai daqui já resolvido, e não do afim:** o shader precisa do ângulo da parte
+    /// linear CRUA, e o afim que ele recebe está **conjugado** para o espaço do quad — o `atan2`
+    /// dele daria outro ângulo. ⛔ *Uma grandeza que se lê antes da conjugação não se re-deriva
+    /// depois dela.*
+    #[must_use]
+    pub fn angulos_das_poses(&self) -> Vec<[f64; 2]> {
+        self.bones
+            .iter()
+            .map(|b| {
+                let t = b.angulo_da_pose();
+                [t.cos(), t.sin()]
+            })
+            .collect()
+    }
+
     /// ⭐⭐⭐ **O CENTRO EM TORNO DO QUAL UM PONTO COM ESTES PESOS RODA.**
     ///
     /// `None` quando **um só** osso manda (não há par, logo não há junta) — e ali o centro é

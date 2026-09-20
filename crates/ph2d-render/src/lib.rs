@@ -80,6 +80,10 @@ pub mod sprite;
 mod sprite_collect;
 mod sprite_mesh;
 mod sprite_mesh_fit;
+/// ⭐⭐⭐ **A PELE de uma malha** — o que a PLACA lê para posar (F9 W2). Ver o cabeçalho dele.
+pub mod sprite_mesh_skin;
+/// ⭐ Os três buffers da PELE do lado do dispositivo — ver o cabeçalho.
+mod sprite_mesh_skin_gpu;
 mod sprite_mesh_warp;
 pub use sprite_mesh_warp::MeshWarp;
 /// Sprite Inspector v2 — W0 frozen (schema v3 baseline). The W1
@@ -148,6 +152,7 @@ pub use screen_pick::{compose_screen_bytes, read_texel, screen_color, world_sour
 pub use sprite::{GpuTexRun, QuadVertex, RenderInstance, SourceCells, Sprite, SpriteSource};
 pub use sprite_collect::sort_render_order;
 pub use sprite_mesh::{LiftedInstances, SpriteMesh};
+pub use sprite_mesh_skin::{OSSOS_POR_VERTICE, SEM_PELE, SpriteMeshSkin};
 pub use world_rt::WorldRt;
 // The wrapper enum + the canonical load path (`load_sprite` +
 // `LoadError`, ADR-0070-amendment-2 §4) are re-exported at crate root —

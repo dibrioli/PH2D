@@ -57,6 +57,7 @@ fn braco_posado(present: &mut PresentWorld, alvo: Entity) {
         local: vec![[3.0, 0.0], [5.0, 0.0], [3.0, 2.0]],
         uv: vec![[0.0, 1.0], [1.0, 1.0], [0.0, 0.0]],
         tris: vec![[0, 1, 2]],
+        skin: None,
     });
 }
 
@@ -157,6 +158,7 @@ fn arte_dobrada(present: &mut PresentWorld, alvo: Entity) {
             [1.0, 1.0],
         ],
         tris: vec![[0, 1, 4], [0, 4, 3], [1, 2, 5], [1, 5, 4]],
+        skin: None,
     });
 }
 
@@ -275,10 +277,12 @@ fn malha_de_pele(present: &mut PresentWorld, alvo: Entity, n: usize) {
             tris.push([idx(i, j), idx(i + 1, j + 1), idx(i, j + 1)]);
         }
     }
-    present
-        .world_mut()
-        .entity_mut(e)
-        .insert(SpriteMesh { local, uv, tris });
+    present.world_mut().entity_mut(e).insert(SpriteMesh {
+        local,
+        uv,
+        tris,
+        skin: None,
+    });
 }
 
 /// ⭐ **O PREÇO DE UMA GRELHA SUBDIVIDIDA** — a medição que autoriza o tecto de pedaços.

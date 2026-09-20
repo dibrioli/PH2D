@@ -275,7 +275,9 @@ fn tint_instances(
     inst.premultiplied = 1.0;
     inst.uv_xform = ph2d_render::RenderInstance::IDENTITY_UV_XFORM;
     inst.sub_order = inst.sub_order.saturating_add(1);
-    out.push(inst, malha);
+    // ⚠️ A prévia desenha a arte DEFORMADA, logo ela precisa da malha POSADA — e o `push` quer uma
+    // cópia dela para o buffer do quadro.
+    out.push(inst, malha.as_deref());
 }
 
 /// O anel do pincel por cima da prévia (Vello, dica de UI) — a forma sai da

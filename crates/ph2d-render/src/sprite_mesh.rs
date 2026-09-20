@@ -55,6 +55,15 @@ pub struct SpriteMesh {
     pub local: Vec<[f32; 2]>,
     pub uv: Vec<[f32; 2]>,
     pub tris: Vec<[u32; 3]>,
+    /// ⭐⭐⭐ **A PELE, quando a PLACA é que posa** ([`SpriteMeshSkin`], F9 W2).
+    ///
+    /// ⚠️⚠️ **Ela muda o que o [`Self::local`] SIGNIFICA, e é a coisa mais importante deste
+    /// componente:** com `None` ele traz as posições **POSADAS** (o caminho de sempre, e o de toda
+    /// malha que não é uma pele); com `Some`, o **REPOUSO** — quem pousa é o shader, e quem
+    /// responde na CPU é o [`Self::posado`]. ⛔ Um leitor que espere posições posadas e receba
+    /// repouso não falha: ele desenha o anel onde a arte **não** está. É por isso que a pergunta
+    /// tem uma porta só.
+    pub skin: Option<crate::sprite_mesh_skin::SpriteMeshSkin>,
 }
 
 /// ⚠️ **`Clone` à mão por causa do `clone_from`:** o derivado recria os três `Vec` a cada cópia, e o
@@ -65,6 +74,7 @@ impl Clone for SpriteMesh {
             local: self.local.clone(),
             uv: self.uv.clone(),
             tris: self.tris.clone(),
+            skin: self.skin.clone(),
         }
     }
 
@@ -72,10 +82,42 @@ impl Clone for SpriteMesh {
         self.local.clone_from(&source.local);
         self.uv.clone_from(&source.uv);
         self.tris.clone_from(&source.tris);
+        self.skin.clone_from(&source.skin);
     }
 }
 
 impl SpriteMesh {
+    /// ⭐⭐⭐ **ESTA MALHA, COM AS POSIÇÕES ONDE A ARTE DE FACTO ESTÁ** — a porta ÚNICA das dez
+    /// costuras (F9 W3).
+    ///
+    /// ⛔⛔ **Sem pele ela devolve `self` EMPRESTADO — zero cópia e zero aritmética**, que é o que
+    /// mantém o caminho de toda malha que não é uma pele byte-idêntico *por construção*. Com pele
+    /// ela posa pela [`SpriteMeshSkin::posa`], que é a **mesma** lei que o shader corre.
+    ///
+    /// ⚠️ **O custo mudou de sítio, e é esse o ponto da wave:** antes a CPU posava **todo quadro,
+    /// para desenhar**; agora posa **só quando alguém pergunta** — o ponteiro sobre a arte, a caixa
+    /// do gizmo, os fantasmas do onion. Num quadro em que ninguém pergunta, ela não corre.
+    ///
+    /// ⚠️ **A malha devolvida não tem pele** (`skin: None`): ela JÁ está posada, e deixar lá a
+    /// tabela convidaria alguém a posá-la duas vezes.
+    #[must_use]
+    pub fn posado(&self) -> std::borrow::Cow<'_, Self> {
+        let Some(skin) = self.skin.as_ref().filter(|s| s.valida(self.local.len())) else {
+            return std::borrow::Cow::Borrowed(self);
+        };
+        std::borrow::Cow::Owned(Self {
+            local: self
+                .local
+                .iter()
+                .enumerate()
+                .map(|(v, &p)| skin.posa(v, p))
+                .collect(),
+            uv: self.uv.clone(),
+            tris: self.tris.clone(),
+            skin: None,
+        })
+    }
+
     /// ⭐ **A UV de um vértice que, EM REPOUSO, está no ponto local `local`** — a do QUAD naquele ponto.
     ///
     /// É a inversa da lei do shader (`local = anchor + quad_pos · size`) com `uv = (qx + ½, ½ − qy)`,
@@ -109,7 +151,21 @@ impl SpriteMesh {
 /// ⚠️ **Uma pergunta, dois consumidores:** o [`MeshFrame::push`] (o desenho) e o `crate::picking`
 /// (quem aponta). Uma malha que o picking lesse e o passe recusasse seria apontável onde não se vê.
 #[must_use]
-pub(crate) fn drawn_mesh(mesh: Option<&SpriteMesh>, size: [f32; 2]) -> Option<&SpriteMesh> {
+pub(crate) fn drawn_mesh(
+    mesh: Option<&SpriteMesh>,
+    size: [f32; 2],
+) -> Option<std::borrow::Cow<'_, SpriteMesh>> {
+    desenhavel(mesh, size).map(SpriteMesh::posado)
+}
+
+/// ⭐⭐⭐ **A MESMA pergunta, SEM posar** — o que o desenho precisa e o picking não.
+///
+/// ⚠️⚠️ **A separação nasceu com a F9 W2 e ela é a coisa que impede a wave de se pagar a si mesma:**
+/// o [`MeshFrame::push`] só quer saber *«isto é desenhável?»* e entrega o REPOUSO à placa. Se ele
+/// passasse pelo [`drawn_mesh`], a CPU posaria a malha inteira **por quadro** para deitar fora o
+/// resultado — exactamente o custo que esta wave existe para remover.
+#[must_use]
+pub(crate) fn desenhavel(mesh: Option<&SpriteMesh>, size: [f32; 2]) -> Option<&SpriteMesh> {
     let m = mesh?;
     let quad_ok = quad_pos([0.0, 0.0], [0.0, 0.0], size).is_some();
     (quad_ok && m.local.len() == m.uv.len() && m.triangles().next().is_some()).then_some(m)
@@ -387,18 +443,36 @@ pub(crate) struct MeshFrame {
     pub(crate) ranges: Vec<(u32, u32)>,
     /// Scratch dos vértices de UMA malha antes da costura (reutilizado entre malhas).
     work: Vec<QuadVertex>,
+    /// ⭐⭐⭐ **A PELE, PARALELA ao [`Self::vertices`]** (F9 W2) — o vértice `j` da tira lê
+    /// `pesos[j]`/`ossos[j]`, que é o que o `@builtin(vertex_index)` dá de graça numa chamada
+    /// não-indexada. ⛔ Um `@location` novo era inexprimível: os `0..15` do dispositivo estão cheios.
+    pub(crate) pesos: Vec<[f32; crate::sprite_mesh_skin::OSSOS_POR_VERTICE]>,
+    pub(crate) ossos: Vec<[u32; crate::sprite_mesh_skin::OSSOS_POR_VERTICE]>,
+    /// Os afins de TODAS as malhas deste quadro, concatenados e **já conjugados para o quad** de
+    /// cada instância — ver [`conjuga_para_o_quad`].
+    pub(crate) afins: Vec<crate::sprite_mesh_skin_gpu::SkinAfimGpu>,
+    /// As tabelas `n × n` de juntas de TODAS as malhas deste quadro, concatenadas e **já
+    /// conjugadas para o quad** de cada instância — ver [`conjuga_ponto_para_o_quad`].
+    ///
+    /// ⚠️ **Cada registo de osso diz onde a tabela DELE começa** (`info.z`), porque a concatenação
+    /// não é uniforme: duas malhas do quadro podem ter contagens de osso diferentes.
+    pub(crate) juntas: Vec<[f32; 2]>,
 }
 
 impl MeshFrame {
     pub(crate) fn clear(&mut self) {
         self.vertices.clear();
         self.ranges.clear();
+        self.pesos.clear();
+        self.ossos.clear();
+        self.afins.clear();
+        self.juntas.clear();
     }
 
     /// Acumula `malha` convertida para o quad desta instância e devolve a marca (`1..`), ou `0`
     /// se ela não puder ser desenhada.
     pub(crate) fn push(&mut self, malha: &SpriteMesh, anchor: [f32; 2], size: [f32; 2]) -> u32 {
-        if drawn_mesh(Some(malha), size).is_none() {
+        if desenhavel(Some(malha), size).is_none() {
             return 0;
         }
         self.work.clear();
@@ -409,16 +483,34 @@ impl MeshFrame {
             self.work.push(QuadVertex { pos, uv: *uv });
         }
         let antes = self.vertices.len();
+        let antes_pele = (
+            self.pesos.len(),
+            self.ossos.len(),
+            self.afins.len(),
+            self.juntas.len(),
+        );
         let Some(intervalo) = stitch(&mut self.vertices, &self.work, &malha.tris) else {
             self.vertices.truncate(antes);
             return 0;
         };
+        // ⭐⭐⭐ **A PELE percorre a MESMA costura** ([`caminho_da_tira`]) — não um segundo laço.
+        self.costura_da_pele(malha, anchor, size);
+        debug_assert_eq!(
+            self.pesos.len(),
+            self.vertices.len(),
+            "a tabela da pele deixou de ser PARALELA ao buffer de vertices — o peso do vertice j \
+             passaria a outro, e isso nao estoura: desenha a arte torcida no sitio errado"
+        );
         let marca = self.ranges.len() + 1;
         let cabe = u32::try_from(marca)
             .ok()
             .filter(|m| *m <= RenderInstance::MESH_MASK >> RenderInstance::MESH_SHIFT);
         let Some(marca) = cabe else {
             self.vertices.truncate(antes);
+            self.pesos.truncate(antes_pele.0);
+            self.ossos.truncate(antes_pele.1);
+            self.afins.truncate(antes_pele.2);
+            self.juntas.truncate(antes_pele.3);
             return 0;
         };
         self.ranges.push(intervalo);
@@ -453,25 +545,43 @@ pub(crate) fn stitch(
 ) -> Option<(u32, u32)> {
     let start = out.len();
     let mut algum = false;
-    for t in tris {
-        let (Some(&a), Some(&b), Some(&c)) = (
-            verts.get(t[0] as usize),
-            verts.get(t[1] as usize),
-            verts.get(t[2] as usize),
-        ) else {
-            continue;
-        };
-        if algum && let Some(&ultimo) = out.last() {
-            out.push(ultimo);
-            out.push(a);
-        }
-        out.extend_from_slice(&[a, b, c]);
+    caminho_da_tira(tris, verts.len(), |v| {
+        out.push(verts[v]);
         algum = true;
-    }
+    });
     if !algum {
         return None;
     }
     Some((u32::try_from(start).ok()?, u32::try_from(out.len()).ok()?))
+}
+
+/// ⭐⭐⭐ **A SEQUÊNCIA DE ÍNDICES DE ORIGEM QUE A TIRA PERCORRE** — a lei da costura, num sítio só.
+///
+/// ⚠️⚠️ **Ela existe porque a costura passou a ter DOIS consumidores** (F9 W2): os vértices e a
+/// tabela da PELE, que é um vector paralelo ao buffer deles. ⛔ Escrever a caminhada duas vezes
+/// poria o peso do vértice `j` no vértice `j+2` no dia em que alguém mexesse num dos dois laços —
+/// e isso não estoura: desenha a arte a torcer-se no sítio errado. *Uma lei escrita em dois sítios
+/// ainda não é uma lei.*
+///
+/// Para cada triângulo depois do primeiro emite `(último, a)` e depois `a b c`: as quatro janelas
+/// de 3 que atravessam a ligação têm dois vértices iguais (área zero, nenhum fragmento).
+/// Triângulos com índices fora de `n` são **saltados**.
+pub(crate) fn caminho_da_tira(tris: &[[u32; 3]], n: usize, mut emite: impl FnMut(usize)) {
+    let mut ultimo: Option<usize> = None;
+    for t in tris {
+        let [a, b, c] = [t[0] as usize, t[1] as usize, t[2] as usize];
+        if a >= n || b >= n || c >= n {
+            continue;
+        }
+        if let Some(u) = ultimo {
+            emite(u);
+            emite(a);
+        }
+        emite(a);
+        emite(b);
+        emite(c);
+        ultimo = Some(c);
+    }
 }
 
 /// Limpa a marca de malha de uma instância — o que toda instância que NÃO veio da recolha precisa.

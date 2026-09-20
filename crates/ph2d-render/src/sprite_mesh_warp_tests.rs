@@ -30,7 +30,12 @@ fn leque(n: usize, theta: f32, r0: f32) -> SpriteMesh {
             tris.push([idx(i, j), idx(i + 1, j + 1), idx(i, j + 1)]);
         }
     }
-    SpriteMesh { local, uv, tris }
+    SpriteMesh {
+        local,
+        uv,
+        tris,
+        skin: None,
+    }
 }
 
 /// O ponto POSADO da UV de repouso `p`, pela malha (o que o rasterizador desenha ali).
@@ -225,6 +230,7 @@ fn samples_off_the_mesh_answer_by_the_facet_they_left() {
         local: vec![[3.0, 0.0], [4.0, 0.0], [3.0, 2.0]],
         uv: vec![[0.0, 1.0], [1.0, 1.0], [0.0, 0.0]],
         tris: vec![[0, 1, 2]],
+        skin: None,
     };
     let facete = warp_of(&mesh, [0, 1, 2], SIZE).expect("o afim do triangulo");
     for r in [0.01_f32, 0.2, 5.0] {

@@ -176,7 +176,11 @@ pub(super) fn sprite_view(
     let p = gt.translation();
     // A caixa (folha aberta · malha desenhada · quad) vive na `sheet_lattice::gizmo_box`, onde tem
     // gate — aqui só se aplicam a escala e a rotação.
-    let malha = ph2d_render::drawn_instance_of(present.world(), bits).and_then(|(_, m)| m);
+    // ⚠️ **A malha vem POSADA pela porta** ([`SpriteMesh::posado`], F9 W2) e pode ser OWNED: com a
+    // placa a posar, o componente traz o REPOUSO, e uma caixa de gizmo tirada dele envolveria a arte
+    // onde ela **não** está.
+    let posada = ph2d_render::drawn_instance_of(present.world(), bits).and_then(|(_, m)| m);
+    let malha = posada.as_deref();
     let (eff_anchor, half) = ph2d_sprite_screen::sheet_lattice::gizmo_box(
         sprite,
         sim.world().get::<ph2d_ecs::SpriteGrid>(sim_entity).copied(),

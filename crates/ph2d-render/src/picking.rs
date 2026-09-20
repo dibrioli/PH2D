@@ -119,7 +119,7 @@ fn world_aabb_half_extents(basis: [f32; 4], half_w: f32, half_h: f32) -> (f32, f
 /// Does the LOCAL point (relative to the pivot) land on what this instance draws?
 fn covers_local(ri: &RenderInstance, mesh: Option<&SpriteMesh>, local: (f32, f32)) -> bool {
     if let Some(m) = crate::sprite_mesh::drawn_mesh(mesh, ri.size) {
-        return crate::sprite_mesh::covers(m, [local.0, local.1]);
+        return crate::sprite_mesh::covers(&m, [local.0, local.1]);
     }
     // The quad center sits at `anchor` in the local frame — `world_pos` is the pivot, not
     // necessarily the center — so the bbox spans `[anchor - half, anchor + half]`. anchor [0,0]
@@ -137,7 +137,7 @@ fn drawn_world_bbox(pos: [f32; 2], ri: &RenderInstance, mesh: Option<&SpriteMesh
             max: [f32::NEG_INFINITY; 2],
         };
         for t in m.triangles() {
-            for p in crate::sprite_mesh::corners(m, t) {
+            for p in crate::sprite_mesh::corners(&m, t) {
                 let (wx, wy) = basis_apply(ri.basis, p[0], p[1]);
                 let w = [pos[0] + wx, pos[1] + wy];
                 b.min = [b.min[0].min(w[0]), b.min[1].min(w[1])];
@@ -426,7 +426,7 @@ fn uv_query(
             return None;
         }
         let malha = crate::sprite_mesh::drawn_mesh(mesh, ri.size);
-        if let Some(m) = malha
+        if let Some(m) = malha.as_deref()
             && let Some(uv) = crate::sprite_mesh::uv_under(m, [local_dx, local_dy])
         {
             let warp =
@@ -515,9 +515,12 @@ pub fn scene_sprites_bbox_world(present: &mut World) -> Option<WorldBbox> {
 /// é o preço que a `Smooth` paga, e o consumidor de hoje (o editor de curva) pergunta por dezenas
 /// de pontos enquanto uma curva está a ser editada. Se um consumidor de MILHARES aparecer, a cura é
 /// um índice por UV construído aqui — e não uma segunda cópia desta álgebra.
-#[derive(Clone, Copy)]
+/// ⚠️ **Deixou de ser `Copy` na F9 W2**, e a razão é a lei da wave: com a placa a posar, a malha
+/// que este mapa entrega pode ser **construída na hora** ([`SpriteMesh::posado`]) em vez de
+/// emprestada. *Um `Copy` sobre uma `Cow` esconderia uma cópia inteira da malha num `=`.*
+#[derive(Clone)]
 pub struct DrawnMesh<'a> {
-    mesh: &'a SpriteMesh,
+    mesh: std::borrow::Cow<'a, SpriteMesh>,
     basis: [f32; 4],
     pos: [f32; 2],
 }
@@ -528,7 +531,7 @@ impl DrawnMesh<'_> {
     /// [`MeshUv::Quad`] do outro lado.
     #[must_use]
     pub fn world_at_uv(&self, uv: [f32; 2]) -> Option<[f32; 2]> {
-        let l = crate::sprite_mesh::local_at_uv(self.mesh, uv)?;
+        let l = crate::sprite_mesh::local_at_uv(&self.mesh, uv)?;
         let (dx, dy) = basis_apply(self.basis, l[0], l[1]);
         Some([self.pos[0] + dx, self.pos[1] + dy])
     }
@@ -542,7 +545,7 @@ impl DrawnMesh<'_> {
     pub fn uv_at_world(&self, world: [f32; 2]) -> Option<[f32; 2]> {
         let (lx, ly) =
             world_delta_to_local(self.basis, world[0] - self.pos[0], world[1] - self.pos[1])?;
-        crate::sprite_mesh::uv_under(self.mesh, [lx, ly])
+        crate::sprite_mesh::uv_under(&self.mesh, [lx, ly])
     }
 }
 
@@ -562,7 +565,7 @@ impl DrawnMesh<'_> {
 pub fn drawn_instance_of(
     present: &World,
     sim_entity_bits: u64,
-) -> Option<(&RenderInstance, Option<&SpriteMesh>)> {
+) -> Option<(&RenderInstance, Option<std::borrow::Cow<'_, SpriteMesh>>)> {
     for e in present.iter_entities() {
         let Some(sim_ref) = e.get::<SimRef>() else {
             continue;

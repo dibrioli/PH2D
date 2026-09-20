@@ -412,3 +412,161 @@ fn o_que_um_quadro_custa_com_a_malha_assada() {
     }
     println!();
 }
+
+/// ⏱️⏱️⏱️ **ONDE ESTÃO OS `8,16 ms` — a decomposição que decide se a placa é a ÚNICA cura.**
+///
+/// ⛔⛔ **A nota que PAROU a F9 em 2026-09-17 dizia `1,824 ms` (`10,9 %` de um quadro) a 8 imagens,
+/// e a irmã acima lê `8,16 ms` (`49,0 %`) a `load 4,58`** — `4,5 ×`. *«Não se gasta uma wave a
+/// comprar 11 % de um quadro que hoje sobra»* era uma afirmação sobre um número, e o número
+/// mudou; §0.0: *quem move o número que tornava algo inalcançável tem de reconferir a nota*.
+///
+/// ⚠️ **E antes de mover a deformação para a placa há uma pergunta mais barata que NINGUÉM fez:**
+/// de que é feito aquele tempo. O [`attach_skin_meshes`] faz, por instância e por quadro, **duas
+/// cópias inteiras** (a malha assada e a tabela de pesos) antes de deformar um único vértice — e
+/// uma cópia não é lei nenhuma, é o preço de uma assinatura.
+///
+/// ⇒ esta sonda parte o relógio em três: **CÓPIA** · **DEFORMAÇÃO** · **o resto** (varredura do
+/// mundo, consulta do memo, montagem). *Um número que não se sabe de que é feito não decide
+/// arquitectura nenhuma.*
+///
+/// `cargo test -p ph2d-app-vec --lib --profile smoke -- --ignored --nocapture de_que_e_feito`
+#[test]
+#[ignore = "MEDICAO, nao gate"]
+fn de_que_e_feito_o_quadro_da_pele() {
+    use ph2d_ecs::{PresentWorld, SimRef, Transform};
+    use ph2d_render::{Sprite, SpriteMesh};
+    use ph2d_skeleton_live::skin_image::{attach_skin_meshes, posed_sprite_mesh_corrigida};
+    use std::time::Instant;
+
+    const QUADRO_MS: f64 = 16.667;
+    const RONDAS: usize = 30;
+    const IMGS: usize = 8;
+
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!(
+        "\n  carga: {}",
+        carga
+            .split_whitespace()
+            .take(3)
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
+
+    let (mut sim, e0) = cena(super::super::super::ALTURA_PX, None);
+    let bind = sim
+        .world()
+        .get::<ph2d_skeleton_ecs::SkinBind>(e0)
+        .expect("pele do bind")
+        .clone();
+    let sprite = *sim.world().get::<Sprite>(e0).expect("sprite da arte");
+    let mut artes = vec![e0];
+    for _ in 1..IMGS {
+        let e = sim.world_mut().spawn((Transform::IDENTITY, sprite)).id();
+        sim.world_mut().entity_mut(e).insert(bind.clone());
+        artes.push(e);
+    }
+    let mut present = PresentWorld::new();
+    let instancias: Vec<_> = artes
+        .iter()
+        .map(|&e| {
+            present
+                .world_mut()
+                .spawn((SimRef(e), instancia_da_sonda(&sprite)))
+                .id()
+        })
+        .collect();
+    // Uma passagem a MORNO: a assadura é paga uma vez por bind e tem coluna própria na irmã.
+    attach_skin_meshes(&sim, &mut present, PPM, &[]);
+
+    // (1) O TODO — a porta do produto, exactamente como a irmã a mede.
+    let mut todo = Vec::with_capacity(RONDAS);
+    for _ in 0..RONDAS {
+        for p in &instancias {
+            present.world_mut().entity_mut(*p).remove::<SpriteMesh>();
+        }
+        let t = Instant::now();
+        attach_skin_meshes(&sim, &mut present, PPM, &[]);
+        todo.push(t.elapsed().as_secs_f64() * 1e3);
+    }
+
+    // As peças de UMA imagem, pelas mesmas portas que o produto usa.
+    let assada = ph2d_skeleton_live::skin_bake_cache::assada_da_arte(
+        &sim,
+        e0,
+        &ph2d_skeleton_live::skin_image::skinned_mesh_of(&sim, e0).expect("malha"),
+    )
+    .unwrap_or_else(|| ph2d_skeleton_live::skin_image::skinned_mesh_of(&sim, e0).expect("malha"));
+    let inst = *present
+        .world()
+        .get::<ph2d_render::RenderInstance>(instancias[0])
+        .expect("instancia");
+    let rect = [
+        0.0,
+        0.0,
+        f64::from(assada.mesh.size[0]),
+        f64::from(assada.mesh.size[1]),
+    ];
+    let p2l = ph2d_skeleton_live::skin_image::rect_to_quad(&sprite, rect, inst.anchor, inst.size)
+        .expect("o mapa da arte");
+    let pele = ph2d_skeleton_live::skin_live::skin_of(&sim, e0).expect("pele resolvida");
+    let correcoes = bind.correcoes_resolvidas();
+
+    // (2) SÓ A CÓPIA — as duas que a assinatura do `posed_sprite_mesh_corrigida` obriga.
+    let mut copia = Vec::with_capacity(RONDAS);
+    for _ in 0..RONDAS {
+        let t = Instant::now();
+        for _ in 0..IMGS {
+            let m = assada.mesh.clone();
+            let w = assada.pesos.clone();
+            std::hint::black_box((&m, &w));
+        }
+        copia.push(t.elapsed().as_secs_f64() * 1e3);
+    }
+
+    // (3) SÓ A DEFORMAÇÃO — a lei por vértice, sem a varredura e sem o memo.
+    let mut deforma = Vec::with_capacity(RONDAS);
+    for _ in 0..RONDAS {
+        let t = Instant::now();
+        for _ in 0..IMGS {
+            let saiu = posed_sprite_mesh_corrigida(
+                assada.mesh.clone(),
+                p2l,
+                &pele,
+                &assada.pesos,
+                inst.anchor,
+                inst.size,
+                &correcoes,
+            );
+            std::hint::black_box(&saiu);
+        }
+        deforma.push(t.elapsed().as_secs_f64() * 1e3);
+    }
+
+    let (t_min, _) = melhor_ms(todo);
+    let (c_min, _) = melhor_ms(copia);
+    let (d_min, _) = melhor_ms(deforma);
+    let vertices = assada.mesh.rest.len();
+    println!(
+        "  {IMGS} imagens · {vertices} vertices cada · {} pecas cada",
+        assada.mesh.tris.len()
+    );
+    println!("  {:>26} | {:>8} | {:>8}", "", "ms", "% quadro");
+    println!("  ---------------------------+----------+---------");
+    for (nome, ms) in [
+        ("TODO (attach_skin_meshes)", t_min),
+        ("  so' a COPIA (2 clones)", c_min),
+        ("  so' a DEFORMACAO (+1 clone)", d_min),
+        ("  o RESTO (todo - deformacao)", t_min - d_min),
+    ] {
+        println!(
+            "  {nome:>26} | {ms:>8.3} | {:>6.1} %",
+            ms / QUADRO_MS * 100.0
+        );
+    }
+    println!(
+        "\n  por vertice: TODO {:.1} ns · DEFORMACAO {:.1} ns · COPIA {:.1} ns\n",
+        t_min * 1e6 / (vertices * IMGS) as f64,
+        d_min * 1e6 / (vertices * IMGS) as f64,
+        c_min * 1e6 / (vertices * IMGS) as f64,
+    );
+}

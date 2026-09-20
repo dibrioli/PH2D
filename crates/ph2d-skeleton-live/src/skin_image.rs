@@ -414,6 +414,7 @@ pub fn posed_sprite_mesh_corrigida(
         local: posed.into_iter().map(f32_de).collect(),
         uv,
         tris: mesh.tris,
+        skin: None,
     })
 }
 
@@ -631,15 +632,19 @@ pub fn attach_skin_meshes(
         let pesos = skin.pesos_do_quadro(&pesos);
         // ⭐⭐⭐ **E AS CORRECÇÕES À MÃO** — a porta é a mesma das duas mídias.
         let correcoes = skin.correcoes_resolvidas();
-        let Some(malha) = posed_sprite_mesh_corrigida(
-            mesh,
-            p2l,
-            &pele,
-            pesos,
-            inst.anchor,
-            inst.size,
-            &correcoes,
-        ) else {
+        // ⭐⭐⭐ **QUEM POSA: a PLACA, por omissão** (F9 W2, 2026-09-20). Os dois caminhos entregam
+        // um `SpriteMesh`; a diferença é se o `local` traz o POSADO (a CPU, a referência) ou o
+        // REPOUSO mais a tabela que o `vs_main` lê. ⚠️ `PH2D_SKIN_GPU=0` bissecta.
+        //
+        // ⛔ **A escolha é uma PORTA e não um `if` escrito aqui** — ela tem gate próprio, e a lei
+        // que a decide (a medição do §0.0) mora no cabeçalho do [`crate::skin_image_gpu`].
+        let construtor = if crate::skin_image_gpu::a_placa_posa() {
+            crate::skin_image_gpu::sprite_mesh_para_a_placa
+        } else {
+            posed_sprite_mesh_corrigida
+        };
+        let Some(malha) = construtor(mesh, p2l, &pele, pesos, inst.anchor, inst.size, &correcoes)
+        else {
             continue;
         };
         // ⚠️ **O diagnóstico da família** (`PH2D_BONE_LOG=1`): sem ele um report de *«facetou»* não

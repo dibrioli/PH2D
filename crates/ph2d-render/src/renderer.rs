@@ -107,6 +107,8 @@ pub struct SpriteRenderer {
     applied_subrect: Option<[f32; 4]>,
     /// ⭐ As malhas da chamada de render em curso (`crate::sprite_mesh`) — preenchidas pela recolha.
     mesh_frame: crate::sprite_mesh::MeshFrame,
+    /// ⭐⭐⭐ **Os três buffers da PELE** (F9 W2) — ver [`crate::sprite_mesh_skin_gpu`].
+    skin_buffers: crate::sprite_mesh_skin_gpu::SkinBuffers,
     /// O buffer de vértices dessas malhas, o gémeo do `instance_buffer`.
     mesh_buffer: crate::sprite_mesh::MeshVertexBuffer,
 }
@@ -179,6 +181,7 @@ impl SpriteRenderer {
         // changes go through `set_filter_mode` which drives both.
         let individual = IndividualTextureStore::new(&gpu);
         let mesh_buffer = crate::sprite_mesh::MeshVertexBuffer::new(&gpu);
+        let skin_buffers = crate::sprite_mesh_skin_gpu::SkinBuffers::new(&gpu, &pipeline.skin_bgl);
 
         Self {
             gpu,
@@ -202,6 +205,7 @@ impl SpriteRenderer {
             clip_stencil: None,
             applied_subrect: None,
             mesh_frame: crate::sprite_mesh::MeshFrame::default(),
+            skin_buffers,
             mesh_buffer,
         }
     }

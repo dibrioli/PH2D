@@ -114,7 +114,18 @@ fn duas_no_mesmo_rig(graus: f32) -> (Presa, Presa) {
         .into_iter()
         .zip(presas.iter().map(|(_, s, _, _)| s.anchor))
         .zip(contagens)
-        .map(|((p, a), n)| (present.world().get::<SpriteMesh>(p).cloned(), a, n));
+        // ⭐ **POSADA pela porta** ([`SpriteMesh::posado`], F9 W2) — com a placa a posar o
+        // componente traz o REPOUSO, e uma régua de excursão sobre ele mediria a arte parada.
+        .map(|((p, a), n)| {
+            (
+                present
+                    .world()
+                    .get::<SpriteMesh>(p)
+                    .map(|m| m.posado().into_owned()),
+                a,
+                n,
+            )
+        });
     (
         out.next().expect("a de cima"),
         out.next().expect("a de baixo"),

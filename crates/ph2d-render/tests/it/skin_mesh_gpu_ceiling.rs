@@ -126,7 +126,12 @@ fn grelha(n: usize) -> SpriteMesh {
             tris.push([b, d, c]);
         }
     }
-    SpriteMesh { local, uv, tris }
+    SpriteMesh {
+        local,
+        uv,
+        tris,
+        skin: None,
+    }
 }
 
 /// ⏱️ **O TECTO, medido no passe real.**

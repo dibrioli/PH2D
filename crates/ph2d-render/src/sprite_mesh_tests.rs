@@ -117,6 +117,7 @@ fn quadrado() -> SpriteMesh {
         local: vec![[-0.5, -1.0], [1.5, -1.0], [1.5, 1.0], [-0.5, 1.0]],
         uv: vec![[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
         tris: vec![[0, 1, 2], [0, 2, 3]],
+        skin: None,
     }
 }
 
@@ -217,6 +218,7 @@ fn triangulo(local: Vec<[f32; 2]>) -> SpriteMesh {
         local,
         uv: vec![[0.0, 1.0], [1.0, 1.0], [0.0, 0.0]],
         tris: vec![[0, 1, 2]],
+        skin: None,
     }
 }
 

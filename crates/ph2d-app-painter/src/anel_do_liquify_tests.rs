@@ -39,6 +39,7 @@ fn malha_dobrada() -> SpriteMesh {
         local: Vec::new(),
         uv: Vec::new(),
         tris: Vec::new(),
+        skin: None,
     };
     for j in 0..=rows {
         for i in 0..=cols {

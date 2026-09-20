@@ -154,6 +154,8 @@ pub struct SpritePipeline {
     /// (MaskInteraction `VisibleOutside` responders).
     pub test_outside_pipeline: wgpu::RenderPipeline,
     pub frame_bgl: wgpu::BindGroupLayout,
+    /// ⭐ O layout do grupo da PELE — ver a construção dele.
+    pub skin_bgl: wgpu::BindGroupLayout,
     pub material_bgl: wgpu::BindGroupLayout,
 }
 
@@ -212,11 +214,35 @@ impl SpritePipeline {
                 ],
             });
 
+        // ⭐⭐⭐ **O GRUPO DA PELE (F9 W2)** — três *storage buffers* que o `vs_main` e o
+        // `vs_stencil_mark` lêem para POSAR um vértice de malha.
+        //
+        // ⚠️ **Ele entra no layout de TODAS as pipelines de sprite de propósito**, e não numa
+        // pipeline «de pele» à parte: as malhas desenham-se pela MESMA pipeline que o quad (é a
+        // razão de existir do `sprite_mesh`, escrita no cabeçalho dele), e uma família paralela
+        // duplicaria as dez variantes de mistura mais as de marca. ⇒ o grupo é ligado UMA vez por
+        // passe, e o `SEM_PELE` é quem decide por vértice.
+        let skin_bgl = gpu
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ph2d-render skin bgl"),
+                entries: &std::array::from_fn::<_, 4, _>(|i| wgpu::BindGroupLayoutEntry {
+                    binding: i as u32,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }),
+            });
+
         let layout = gpu
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("ph2d-render sprite layout"),
-                bind_group_layouts: &[Some(&frame_bgl), Some(&material_bgl)],
+                bind_group_layouts: &[Some(&frame_bgl), Some(&material_bgl), Some(&skin_bgl)],
                 immediate_size: 0,
             });
 
@@ -442,6 +468,7 @@ impl SpritePipeline {
             test_pipeline,
             test_outside_pipeline,
             frame_bgl,
+            skin_bgl,
             material_bgl,
         }
     }

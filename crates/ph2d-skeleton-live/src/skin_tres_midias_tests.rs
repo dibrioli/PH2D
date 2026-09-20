@@ -143,13 +143,19 @@ fn braco_desenhado(qual: u8, graus: f32) -> Vec<(SpriteMesh, [f32; 4])> {
         ));
     }
     attach_skin_meshes(&sim, &mut present, PPM, &[]);
+    // ⭐⭐⭐ **A malha sai POSADA pela porta** ([`SpriteMesh::posado`], F9 W2).
+    //
+    // ⛔⛔ **Ler o componente CRU deixou de ser o mesmo desde que a placa posa**: com a pele ele
+    // traz o REPOUSO, e toda régua de DEFORMAÇÃO construída sobre ele passaria a medir uma arte
+    // parada. ⚠️ Foi assim que esta fixtura reprovou **alto** dois gates (a dobra e o rig
+    // partilhado) no dia da wave — *a quebra que o censo das costuras previa, e ela falhou alto
+    // porque estes gates de facto medem o fenómeno*.
     ps.iter()
         .filter_map(|(p, f)| {
             present
                 .world()
                 .get::<SpriteMesh>(*p)
-                .cloned()
-                .map(|m| (m, *f))
+                .map(|m| (m.posado().into_owned(), *f))
         })
         .collect()
 }

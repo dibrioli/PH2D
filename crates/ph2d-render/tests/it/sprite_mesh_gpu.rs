@@ -372,3 +372,115 @@ fn a_translucent_image_in_a_fine_mesh_at_rest_has_no_seams() {
          composicao dupla"
     );
 }
+
+/// A pele de DUAS peles sobre `m`: o osso `0` parado e o `1` rodado de `rad` em torno de `junta`,
+/// com o peso a subir linearmente em `x`. ⇒ o `θ̄` varia por vértice e a arte TORCE.
+///
+/// ⚠️ **O `junta` entra na tabela `n × n` em ordem de linha** — com `2` ossos ela tem `4` entradas e
+/// só a `(0,1)` é lida; escrevê-la inteira é o que impede um índice trocado de passar por acaso.
+fn com_pele(m: &mut SpriteMesh, rad: f32, junta: [f32; 2]) {
+    let (co, si) = (rad.cos(), rad.sin());
+    let (jx, jy) = (junta[0], junta[1]);
+    let rodado = [
+        co,
+        si,
+        -si,
+        co,
+        jx - (co * jx - si * jy),
+        jy - (si * jx + co * jy),
+    ];
+    let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
+    for p in &m.local {
+        lo = lo.min(p[0]);
+        hi = hi.max(p[0]);
+    }
+    let (pesos, ossos) = m
+        .local
+        .iter()
+        .map(|p| {
+            let u = ((p[0] - lo) / (hi - lo)).clamp(0.0, 1.0);
+            ([1.0 - u, u, 0.0, 0.0], [0_u32, 1, 0, 0])
+        })
+        .collect::<(Vec<_>, Vec<_>)>();
+    m.skin = Some(ph2d_render::SpriteMeshSkin {
+        pesos,
+        ossos,
+        afins: vec![[1.0, 0.0, 0.0, 1.0, 0.0, 0.0], rodado],
+        juntas: vec![junta; 4],
+        angulos: vec![[1.0, 0.0], [co, si]],
+    });
+}
+
+/// ⭐⭐⭐ **A PLACA DESENHA O QUE A CPU POSA** — o gate que É a metade do dispositivo da F9 W2.
+///
+/// Duas imagens do MESMO sujeito: a malha de REPOUSO com a pele (quem posa é o `vs_main`) e a malha
+/// **já posada** pela [`ph2d_render::SpriteMeshSkin::posa`] sem pele nenhuma. *Dois motores, uma
+/// lei* — e aqui a régua é o PIXEL, não a aritmética.
+///
+/// ⛔⛔ **A lei NÃO é uma mistura linear de afins** e a primeira redacção deste caminho implementou
+/// a antiga: o portão de paridade do payload leu `2,315e-3 m`. A lei do produto roda em torno da
+/// JUNTA desde 2026-09-19 (`ph2d_skeleton::centro`), e este gate é o que a prende ao dispositivo.
+///
+/// ⚠️⚠️ **O `size` é NÃO-QUADRADO de propósito, e há asserção a exigi-lo:** conjugar uma rotação
+/// por um `size` com `sx = sy` devolve a própria rotação, logo os dois factores `sx/sy` e `sy/sx`
+/// do shader ficariam **inertes** e um erro neles passaria — *um corpus no ponto neutro de um knob
+/// não testa esse knob*. A `anchor` também não é a origem, pela mesma razão: ela é o que a
+/// conjugação do PONTO (a junta) usa.
+///
+/// ⚠️ **A barra é a BORDA e não zero:** as duas geometrias diferem por ULPs, e um pixel de borda
+/// muda de cobertura com isso. O que se afirma é que a discordância vive num fio de pixels —
+/// medida contra o CONTROLO, que é a mesma malha **sem** posar.
+#[test]
+#[ignore = "gate de GPU: precisa de adaptador"]
+fn a_placa_desenha_o_que_a_cpu_posa() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("sem GPU headless — gate saltado");
+        return;
+    };
+    let atlas = TextureAtlas::new(&gpu, 256);
+    let mut r = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 16);
+    let tex = r
+        .acquire_individual(8, 8, &textura(8, 255))
+        .expect("textura");
+    let mut inst = instancia(tex);
+    // ⚠️ Ver o doc: quadrado tornaria as duas razões do shader INERTES.
+    inst.size = [3.0, 1.5];
+    assert!(
+        (inst.size[0] - inst.size[1]).abs() > 0.1 && inst.anchor != [0.0, 0.0],
+        "a fixtura deixou de exercitar a conjugacao (size {:?}, anchor {:?})",
+        inst.size,
+        inst.anchor
+    );
+
+    let repouso = grelha(&inst, 16, 16);
+    let mut com = repouso.clone();
+    com_pele(&mut com, 0.6, inst.anchor);
+    let posada = SpriteMesh {
+        local: com.posado().local.clone(),
+        uv: com.uv.clone(),
+        tris: com.tris.clone(),
+        skin: None,
+    };
+
+    let placa = desenha(&gpu, &mut r, inst, Some(com));
+    let cpu = desenha(&gpu, &mut r, inst, Some(posada));
+    let parado = desenha(&gpu, &mut r, inst, Some(repouso));
+
+    let pintados = pintou(&cpu);
+    assert!(pintados > 400, "a sprite mal pintou ({pintados} px)");
+    let (dif, pior) = diferenca(&placa, &cpu);
+    let (controlo, _) = diferenca(&parado, &cpu);
+    println!(
+        "  pintados {pintados} · placa×cpu {dif} px (pior canal {pior}) · controlo {controlo} px"
+    );
+    // ⛔ O CONTROLO primeiro: sem dobra a fixtura não afirma nada.
+    assert!(
+        controlo > pintados / 4,
+        "a fixtura nao DOBRA: a malha parada difere da posada em so' {controlo} px de {pintados}"
+    );
+    assert!(
+        dif * 8 < controlo,
+        "a placa e a CPU discordam em {dif} px contra {controlo} do controlo — a lei do shader nao \
+         e' a lei da CPU, e a arte desenha num sitio enquanto o ponteiro aponta noutro"
+    );
+}

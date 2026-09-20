@@ -68,3 +68,47 @@ fn as_ancoras_nao_fazem_uma_segunda_leitura_da_camera() {
         "o passe deixou de ler a vista guardada"
     );
 }
+
+/// ⛔⛔⛔ **A vista do HUD é o ECRÃ DO JOGADOR, nunca a banda do chrome — e isto é uma DECISÃO.**
+///
+/// # ⚠️⚠️ Este gate existe para tornar a cura ERRADA barulhenta
+///
+/// O item *«no EDITOR um HUD colado às bordas cai atrás dos painéis»* lê-se como um defeito com uma
+/// cura óbvia: alimentar a fase com a **banda** entre os painéis (a `scene_window`, que existe e é
+/// a lei de todo mapeamento ecrã↔mundo do chrome desde 2026-09-17). ⛔ **Ela está errada**, e o
+/// `todo_aponte_passa_pela_janela_da_cena` já declara porquê na partição
+/// `A_JANELA_E_O_ASSUNTO`: *a câmera do JOGO mede o ecrã do jogador, não a banda do chrome*.
+///
+/// ⭐ **O que o artista vê no editor é onde a peça vai estar PARA QUEM JOGA.** Um HUD enquadrado
+/// pela banda ficaria bonito no editor e **mentiria sobre o jogo**: a peça colada ao canto sairia
+/// para dentro do ecrã do jogador, e o defeito só apareceria em quem jogasse. *Entre mostrar a
+/// verdade parcialmente tapada e mostrar uma mentira inteira, esta casa mostra a verdade* — e a
+/// área segura no editor é **decisão de produto**, não a troca da régua.
+///
+/// **Mutações que devem sangrar:** trocar o `camera_rect` da fase pela `scene_window` · fazer a
+/// fase calcular a própria meia-janela em vez de receber a que a câmera devolveu.
+#[test]
+fn a_vista_do_hud_vem_da_camera_do_jogo_e_nao_da_banda_do_chrome() {
+    let fase = include_str!("../../src/render_loop/fase_hud.rs");
+    for proibido in ["scene_window", "surface.size()", "aspect_of"] {
+        assert!(
+            !fase.contains(proibido),
+            "a `fase_hud` passou a medir `{proibido}`: ela deixaria de enquadrar o ecra' do \
+             JOGADOR e o HUD mentiria sobre o jogo — a area segura no editor e' DECISAO de \
+             produto, nunca a troca desta regua"
+        );
+    }
+    assert!(
+        fase.contains("camera_rect"),
+        "a fase deixou de receber o rectangulo da camera — ela nao tem outra fonte legitima"
+    );
+
+    // ⚠️ **A metade que prova que a partição ainda abriga isto** — uma entrada que já não descreve
+    // nada é a catraca a virar licença, e a régua larga apanharia a câmera como falso positivo.
+    let camera = include_str!("../../src/render_loop/fase_game_camera.rs");
+    assert!(
+        camera.contains("aspect_of(surface.size())"),
+        "a camera do JOGO deixou de medir a janela — se isso foi deliberado, a entrada da \
+         particao `A_JANELA_E_O_ASSUNTO` ficou obsoleta e a premissa DESTE gate morreu com ela"
+    );
+}

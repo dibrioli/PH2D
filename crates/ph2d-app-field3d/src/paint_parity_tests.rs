@@ -217,6 +217,32 @@ pub(crate) fn dois_caminhos_vestidos(
             W.min(H) as usize,
         ));
     }
+    // ⭐⭐⭐ **E A BORDA MOLE entra na referência pela MESMA porta** (`docs/Render3d/10` §12): desde
+    // 2026-09-19 o pintor do dispositivo corre as duas passagens separáveis dela, logo o que este
+    // gate compara é a LEI e não duas assaduras diferentes.
+    //
+    // ⛔⛔ **Sem esta linha a paridade da subsuperfície era CEGA ao canal, e o plano da `W10`
+    // nomeava-o:** a única fixtura translúcida daqui é uma bola SOZINHA, e uma bola sozinha não é
+    // tapada por nada ⇒ a visibilidade é constante, o borrão de uma constante é ela própria, e as
+    // duas colunas concordavam sobre uma passagem que não fazia nada. *Construir o gémeo contra uma
+    // régua que não o vê repetiria, um nível acima, o defeito que a wave existe para curar.*
+    //
+    // ⚠️ **Sem material translúcido não se assa nada**, e o `soft_at` devolve a visibilidade DURA ⇒
+    // o quadro é byte a byte o de sempre. É a mesma cerca da curvatura, logo acima.
+    {
+        let canais: Vec<Vec<[f32; 3]>> = (0..luz.len())
+            .map(|l| {
+                ph2d_field_render::sss_shadow::blur_por_material(
+                    &g,
+                    sh.lamp_channel(l),
+                    surfaces,
+                    &cam,
+                    H,
+                )
+            })
+            .collect();
+        sh.set_soft(canais);
+    }
     let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
     let cpu = ph2d_field_render::shade_render(
         &g,

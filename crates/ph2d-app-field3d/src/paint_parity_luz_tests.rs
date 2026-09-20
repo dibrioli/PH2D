@@ -424,3 +424,131 @@ fn a_luz_que_atravessa_a_peca_e_a_mesma_nos_dois_motores() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A BORDA MOLE DA SOMBRA É A MESMA NOS DOIS MOTORES** — a `W10`, o gémeo que faltava
+/// (`docs/Render3d/10` §12 e §24).
+///
+/// # ⛔⛔ Porque ele precisou de uma fixtura NOVA, e a antiga não servia
+///
+/// A única fixtura translúcida deste ficheiro é uma **bola SOZINHA**, e uma bola sozinha não é
+/// tapada por nada: o canal de visibilidade é **constante**, o borrão de uma constante é ela
+/// própria, e as duas colunas concordavam sobre uma passagem que **não fazia nada**. *É o buraco de
+/// régua que o plano da `W10` nomeia por escrito, e construir o gémeo contra ele repetiria, um nível
+/// acima, o defeito que esta wave existe para curar.*
+///
+/// ⇒ a cena é a do REPORT (`=33`): a lâmina lança sombra sobre o jade, e é a borda dela que o dono
+/// fotografou como *«uma linha dura»*.
+///
+/// # As duas metades
+///
+/// **(a)** O canal mole é DIFERENTE do duro — sem isto o gate compara dois motores sobre uma
+/// passagem inerte. A régua é a do próprio canal, na CPU, antes de qualquer pintura.
+/// **(b)** E as duas imagens concordam, com a barra de sempre deste ficheiro.
+#[test]
+#[ignore = "precisa de GPU"]
+fn a_borda_mole_da_sombra_e_a_mesma_nos_dois_motores() {
+    if crate::gpu_frame::shared().is_none() {
+        println!("sem adaptador — saltado");
+        return;
+    }
+    let doc = crate::smoke::scenes::edge::cena_33().expect("a cena do report");
+    let cam = ph2d_field_render::Orbit::default();
+    let (onde, luz_do_rig) = crate::lights::opening_light(&cam);
+    let luz = [ph2d_field_render::PointLamp {
+        world: onde,
+        radiance_at_one: crate::lights::radiance_at_one(luz_do_rig),
+    }];
+    // O jade do report — `Subsurface` no máximo, `Thin Walled: Solid`.
+    let jade = ph2d_material::OpenPbr {
+        subsurface_weight: 1.0,
+        geometry_thin_walled: false,
+        subsurface_color: [0.75, 0.35, 0.35],
+        base_color: [0.75, 0.35, 0.35],
+        ..ph2d_material::OpenPbr::default()
+    };
+    let mats = [jade.prepare()];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &mats,
+        owners: None,
+    };
+
+    // ⭐ **(a) A FIXTURA CONTÉM O FENÓMENO** — o canal mole afasta-se do duro. Medido na CPU, pela
+    // mesma porta que o produto usa, e ANTES de qualquer pintura: *se ele não se afastar, o gate
+    // abaixo compara dois motores sobre uma passagem que não fez nada.*
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let (g, sh) = crate::gpu_frame::march(
+        crate::gpu_frame::shared().expect("a placa"),
+        &doc,
+        &reg,
+        &cam,
+        &[onde],
+        None,
+        W,
+        H,
+        true,
+    )
+    .expect("a marcha toma a cena do report");
+    let dura = sh.lamp_channel(0).to_vec();
+    let mole = ph2d_field_render::sss_shadow::blur_por_material(&g, &dura, &surfaces, &cam, H);
+    assert!(
+        !mole.is_empty(),
+        "o canal mole saiu VAZIO — o material da fixtura deixou de ser translúcido"
+    );
+    let afastados = dura
+        .iter()
+        .zip(&mole)
+        .filter(|(d, m)| (**d - m[0]).abs() > 0.01)
+        .count();
+    assert!(
+        afastados > 500,
+        "o canal mole afasta-se do duro em só {afastados} píxeis — a fixtura não tem sombra sobre \
+         o material translúcido, e a comparação abaixo não afirmaria nada"
+    );
+
+    // ⭐ **(b) E OS DOIS MOTORES CONCORDAM.**
+    let (cpu, gpu, bordas) =
+        dois_caminhos_com(&surfaces, &doc, &luz, None).expect("o dispositivo toma a cena");
+    assert!(
+        bordas > 50,
+        "só {bordas} bordas — a silhueta ficou por exercitar"
+    );
+    let mut hist = [0usize; 256];
+    let mut pior = (0u8, 0usize, 0usize);
+    for (i, (a, b)) in cpu.iter().zip(gpu.iter()).enumerate() {
+        let d = a.abs_diff(*b);
+        hist[d as usize] += 1;
+        if d > pior.0 {
+            pior = (d, i / 4 % W as usize, i / 4 / W as usize);
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let total = hist.iter().sum::<usize>() as f64;
+    #[allow(clippy::cast_precision_loss)]
+    let fraccao = hist[..2].iter().sum::<usize>() as f64 / total;
+    println!(
+        "  borda mole · {afastados} píxeis com o canal afastado · ≤1 nível em {:.3} % · pior {} em \
+         ({}, {})",
+        fraccao * 100.0,
+        pior.0,
+        pior.1,
+        pior.2
+    );
+    assert!(
+        fraccao >= 0.995,
+        "só {:.3} % dos canais estão a ≤1 nível — a borda mole divergiu entre os motores",
+        fraccao * 100.0
+    );
+    // ⛔⛔⛔ **E O PIOR BYTE, porque a FRACÇÃO quase não viu o defeito.** Medido em 2026-09-19 com
+    // o dispositivo a NÃO pedir o canal (a mutação `M5`): a fracção lê `99,579 %` — **`0,079` acima
+    // da barra**, logo este gate ficava VERDE — e o pior byte lê **`12`** contra o `1` da árvore que
+    // ship. *Uma fracção sobre uma imagem onde o fenómeno ocupa 10 % dos píxeis afoga-o na média;
+    // o extremo não.* A barra sai desse vale e não de um número escolhido.
+    assert!(
+        pior.0 <= 4,
+        "o pior byte é {} em ({}, {}) — a fracção passou e o extremo não: o canal mole deixou de \
+         chegar ao pixel num dos motores",
+        pior.0,
+        pior.1,
+        pior.2
+    );
+}

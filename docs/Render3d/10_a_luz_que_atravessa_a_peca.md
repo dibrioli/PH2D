@@ -430,9 +430,9 @@ inteiro) · **o jade continua a TER sombra** (sem isto, `vis = 1` em todo o lado
   do alcance da quina e leem o mesmo com a guarda apagada. *Uma régua colada ao fenómeno, não ao
   extremo.* **4 de 4 sangram** hoje.
 
-### §12.5 — ⏳ O que FALTA, e é declarado
+### §12.5 — ✅ O que FALTAVA, e é declarado — **PAGO em 2026-09-19, ver a §25**
 
-⛔⛔ **O DISPOSITIVO ainda não tem o gémeo.** Ele calcula a visibilidade **dentro** da pintura, por
+⛔⛔ **O DISPOSITIVO ainda não tinha o gémeo.** Ele calcula a visibilidade **dentro** da pintura, por
 pixel, logo dar-lhe a borda mole pede uma passagem que a escreva num buffer, duas de borrão separável
 e a leitura — o mesmo desenho que o ricochete lá já tem. ⇒ **hoje a cura vê-se no caminho de
 REFERÊNCIA** (`PH2D_FIELD_GPU=0`), e as paridades CPU↔dispositivo continuam verdes porque nenhuma
@@ -1435,7 +1435,7 @@ concordam, e a metade em que discordam não entra.
   *o gate afirmava «há ALGUM return pelo caminho» e o nome dele promete «ESTE ramo devolve»*.
 - [`sonda_o_dispositivo_a_correr_contra_a_referencia`] — a medição na placa, com a **mesma régua**
   das outras colunas (`regua_da_banda`, extraída como porta única).
-- ✅ **DECIDIDO pelo dono em 2026-09-19:** *«por enquanto vamos deixar como está; coloque a
+- ✅ **DECIDIDO pelo dono em 2026-09-19, e CONSTRUÍDO no mesmo dia (§25) quando ele o trouxe para a frente:** *«por enquanto vamos deixar como está; coloque a
   possibilidade de melhoramento na fila de implementação mais no fim da fila.»* ⇒ o gémeo do
   amaciamento no dispositivo é a **[`W10`](03_o_plano.md)**, **depois** da `W9`.
   ⚠️ **A consequência está declarada:** a `W9` mede **o que ship**, logo a tabela de preço dela
@@ -1447,3 +1447,162 @@ concordam, e a metade em que discordam não entra.
   ⚠️ **E a `W10` fecha primeiro DOIS buracos de régua** (§24.4): a paridade de materiais nunca
   testou subsuperfície, e a única que a testa usa uma esfera sozinha cujo lado de CPU não assa o
   canal mole.
+
+---
+
+## §25 — ✅ A `W10` FECHOU: o dispositivo assa o canal mole ele próprio (2026-09-19)
+
+> Ordem do dono, trazida para a frente da fila que ele próprio tinha adiado em 19/09:
+> **«A sombra mole no modo normal»**.
+
+### §25.1 — ⭐⭐⭐ O veredito, na régua que a `W10` tinha encomendado
+
+O critério de fecho estava escrito no [`03` W10](03_o_plano.md) antes de a wave começar — *«a wave
+fecha quando as duas colunas lerem o mesmo»* — e é este:
+
+| régua (`subsuperficie_dispositivo_tests.rs`) | antes | depois |
+|---|---:|---:|
+| quebra na banda do terminador · **DISPOSITIVO** · com a chapa | `9,20` | **`1,00`** |
+| a mesma · **REFERÊNCIA** | `1,00` | `1,00` |
+| contraste da banda · dispositivo / referência | `61,1` / `61,1` | `61,1` / `61,1` |
+
+⭐ E a paridade que **não existia** existe: [`a_borda_mole_da_sombra_e_a_mesma_nos_dois_motores`]
+(cena `=33`, a do jade com a chapa) lê **`100,000 %`** dos píxeis a `≤ 1` nível, pior byte `1`, com
+`2 043` píxeis em que o canal mole **difere do duro** — *a segunda metade é o que impede o gate de
+passar sobre dois motores que ambos ignoram o canal*.
+
+### §25.2 — ⭐⭐ A forma: o dispositivo NÃO volta pela CPU
+
+A rota escolhida é a primeira da tabela do plano, e as **duas** fronteiras que ele nomeava foram
+abertas no sítio onde já viviam:
+
+1. **O buffer de luz ganhou um bloco RGB por lâmpada.** O passo era `1 + n_lâmpadas + 6`; hoje é
+   `1 + n_lâmpadas + 6 + mole · 6 · n_lâmpadas` — **seis** e não três, porque o borrão é separável e
+   a passagem horizontal escreve num rascunho que a vertical lê. ⚠️ As três funções de endereço
+   (`passo_da_luz` · `base_do_mole_tmp` · `base_do_mole`) vivem **juntas** no `trace_wgsl`, e a do
+   destino final é derivada da do rascunho — *dois cálculos de endereço para o mesmo bloco divergem
+   no dia em que alguém acrescentar um canal*.
+2. **O `mx_direct_sss` do WGSL é o gémeo do [`Surface::direct_sss`] da CPU**, e usa exactamente o
+   mesmo argumento algébrico: a composição do OpenPBR é **linear no peso da subsuperfície**, logo
+   compor com e sem ele e ficar com a diferença dá a parcela dela através da pilha inteira.
+   ⭐ Com as duas radiâncias iguais ele sai pelo braço curto e é o `mx_direct` **ao bit** — é isso
+   que mantém byte-idêntico todo material sem subsuperfície e toda cena sem raio distinto.
+
+⚠️ **O `return` que a §24.1 nomeia CONTINUA LÁ e está certo:** a cura não foi voltar pelo caminho de
+CPU (que traria o G-buffer pelo barramento). O gate estrutural
+[`a_borda_mole_e_inalcancavel_quando_o_dispositivo_pinta`] era, por desenho próprio, o que tinha de
+reprovar neste dia — ele foi **substituído** por [`o_gemeo_da_borda_mole_esta_ligado_no_dispositivo`],
+que afirma os **quatro** elos da rota nova (as duas entradas existem · as duas são despachadas · o
+pintor lê o canal e chama o gémeo · as duas decisões de `mole` nascem da MESMA origem).
+
+### §25.3 — ⛔ A fronteira declarada: dois raios distintos e o dispositivo RECUSA o quadro
+
+O canal é **por lâmpada e por canal de cor** — é disso que vem a borda avermelhada —, mas o buffer
+tem **um** raio para a cena inteira. ⇒ com **dois ou mais** espalhamentos distintos na cena
+(`sss_shadow::espalhamentos_distintos`), o `paint_com` devolve `None` e o quadro cai para a CPU, que
+tem a lei inteira. *Nenhuma imagem errada em lado nenhum, e o caminho lento não define o produto —
+ele só computa a mesma resposta* (§0.0). ⏳ Subir isto é um raio por material no buffer, e é wave
+própria.
+
+### §25.4 — ⭐⭐ E a wave fechou primeiro os DOIS buracos de régua da §24.4
+
+Os dois estavam escritos naquela secção como condição de entrada, e os dois foram fechados **antes**
+de a primeira linha de produto ser escrita:
+
+- **A paridade de materiais nunca testou subsuperfície.** Hoje a bancada
+  ([`material_parity`](../../crates/ph2d-field-gpu/src/material_parity.rs)) tem a **jade (maciço)** e
+  a **folha (fina)** entre os oito materiais, uma `Answer::direct_sss` entre as respostas comparadas,
+  e uma curvatura de arnês (`CURVATURA_DO_ARNES`) que o lado de CPU lê pelo `at_curvature` — sem ela
+  o caminho maciço degenera e a coluna mede outra lei. Pior desvio: `9,941e-6` (jade) e `1,641e-6`
+  (folha), barra `1e-4`.
+- **A única régua que testava o canal usava uma esfera cujo lado de CPU não o assava.** Hoje o arnês
+  de paridade de pintura assa-o (`sss_shadow::blur_por_material` + `sh.set_soft(…)`) antes de
+  comparar — *um lado que não contém o fenómeno não pode acusar o outro de o perder*.
+
+### §25.5 — ⚠️ E a §12.5 e a §24.5 deste documento ficam com a dívida PAGA
+
+A frase *«o dispositivo ainda não tem o gémeo»* da §12.5 e a decisão de adiamento da §24.5 estão
+**superadas por esta secção**, e ficam escritas onde estavam porque a §21.3 já mostrou o que custa
+uma dívida que é nota em vez de número: *o dono pagou-a com um report*.
+
+### §25.6 — ⛔⛔⛔ E A PROVA DE MUTAÇÃO DERRUBOU O MEU PRÓPRIO GATE: a fracção passava por `0,079`
+
+A 1.ª redacção do [`a_borda_mole_da_sombra_e_a_mesma_nos_dois_motores`] tinha **duas** metades, e eu
+escrevi-as convencido de que a segunda era a cura da armadilha do §24 — *(a)* o canal mole afasta-se
+do duro em `> 500` píxeis (medido `2 043`) e *(b)* os dois motores concordam a `≥ 99,5 %` dentro de
+`1` nível. **A mutação que faz o quadro nunca pedir o canal ao dispositivo passou-lhe à frente.**
+
+| com o dispositivo a NÃO pedir o canal (`paint_com` devolve `None`) | leitura | veredito |
+|---|---:|---|
+| fracção `≤ 1` nível (barra `99,5 %`) | **`99,579 %`** | **VERDE** — `0,079` acima da barra |
+| pior byte | **`12`** (contra `1` na árvore que ship) | reprovaria, se alguém o medisse |
+| quebra na banda do terminador, dispositivo | **`9,20`** (referência `1,00`) | reprova, e é a foto do dono |
+
+⭐⭐⭐ **A leitura é dupla e as duas metades são novas:**
+
+1. **A metade *(a)* prova que o canal se move no BUFFER, não que ele chega ao PIXEL.** Eu tinha-a
+   escrito como o controlo positivo do sujeito, e ela mede o sujeito errado — *uma régua colada ao
+   intermediário e não ao produto*.
+2. ⛔⛔ **Uma FRACÇÃO sobre a imagem inteira afoga um fenómeno que ocupa `10 %` dela.** `2 043` de
+   `20 736` píxeis com o canal afastado, e a média engole-os. *O extremo não engole*: o pior byte
+   separa `1` de `12`.
+
+⇒ **duas curas, e nenhuma basta sozinha:**
+
+- o gate da paridade ganha a **barra do pior byte** (`≤ 4`, num vale entre `1` e `12`);
+- e a condição de fecho que o [`03` W10](03_o_plano.md) escreveu — *«a wave fecha quando as duas
+  colunas lerem o mesmo»* — **deixa de ser uma TABELA IMPRESSA**. Ela vivia numa sonda declarada
+  `«não afirma»`, e é a régua **desenhada para a feição** (a segunda diferença da luminância na
+  banda do terminador), que separa `1,00` de `9,20` com um vale de `9×`. Hoje é
+  [`as_duas_colunas_da_banda_leem_o_mesmo`], com o **controlo do contraste primeiro** (sem banda a
+  régua não tem sujeito e as duas colunas leriam `1,00` sobre uma imagem chata).
+
+⚠️⚠️ **É a MESMA forma que a `W8` pagou seis dias antes** (`11` §11: *«três gates de paridade eram
+IMPRESSORAS com o veredito escrito no nome»*) — aqui a impressora era a sonda que a própria `W10`
+encomendara como critério de fecho. *Uma tabela que passa não é lida por ninguém.*
+
+⭐ E a sonda **fica**, porque a tabela de quatro células continua a ser o que se lê ao diagnosticar:
+ela e o gate passaram a ler a **mesma porta** ([`colunas_da_banda`]) — *uma lei, dois leitores*.
+
+### §25.7 — ⚠️ O tecto de LOC, curado por CORTE, e o que ficou com UMA linha de margem
+
+A wave levou o [`paint_wgsl_sondas.rs`](../../crates/ph2d-field-gpu/src/paint_wgsl_sondas.rs) de
+`675` para **`760`** linhas, contra o tecto de `700`. ⛔ **Curado por corte por responsabilidade e
+nunca por uma entrada no `FILE_OVERAGE_OK`** (que está **vazia** — todas as entradas dele foram
+aposentadas): o borrão da sombra saiu para o irmão
+[`paint_wgsl_mole.rs`](../../crates/ph2d-field-gpu/src/paint_wgsl_mole.rs) (`690` + `92`), e o corpo
+do pintor passa a ser **três** fragmentos concatenados.
+
+⭐ **A prova de que o corte é byte-neutro é a própria paridade:** ela lê `100,000 %` com o pior byte
+a `1`, antes e depois — *um corte de texto que mudasse o shader mudava esse número*. E o gate
+estrutural ganhou a metade **(0)**: as três metades são de facto concatenadas — *um fragmento
+declarado que o `format!` não junta compila, passa em todo gate de texto, e não chega ao shader*.
+
+⚠️ **E fica NOMEADO o que esta wave consumiu:** o
+[`trace.rs`](../../crates/ph2d-field-gpu/src/trace.rs) foi de `682` para **`699`** — **uma** linha
+de margem. O recurso é o tecto de `700`, e o corte por responsabilidade que ali cabe é o bloco de
+canalização dos *bind groups* (`Saida` · `Pintado` · `uniforme` · `armazem` · `bgl_marcha`, ~`68`
+linhas com `24` consumidores na crate). *Quem lhe acrescentar uma linha paga esse corte, e é assim
+que a catraca deve funcionar — mas não é um trap silencioso: está escrito aqui.*
+
+### §25.8 — ⭐ A prova de mutação, célula a célula (6 de 6 sangram)
+
+Com o controlo verde na árvore que ship — `as duas colunas 1,00 / 1,00`, paridade `100,000 %`, pior
+byte `1`, `2 043` píxeis com o canal afastado:
+
+| mutação | paridade | banda | estrutural | materiais |
+|---|:--:|:--:|:--:|:--:|
+| **M1** a passagem VERTICAL do borrão não é despachada | 🩸 | — | 🩸 | — |
+| **M2** o pintor volta ao `mx_direct` (ignora o canal) | 🩸 | 🩸 | 🩸 | — |
+| **M3** o passo do buffer esquece o bloco do canal | 🩸 | — | — | — |
+| **M4** o `mx_direct_sss` devolve a pilha CHEIA com a radiância dura | 🩸 | 🩸 | — | 🩸 |
+| **M5** o quadro nunca pede o canal ao dispositivo | 🩸 | 🩸 | — | — |
+| **M6** o fragmento do borrão existe e NÃO é concatenado | 🩸 | 🩸 | 🩸 | — |
+
+⚠️ **As colunas vazias não são buracos, e duas delas têm mecanismo:** a régua da banda não vê a
+**M1** porque o terminador daquela cena corre quase na horizontal e a primeira passagem sozinha já o
+suaviza; e não vê a **M3** porque um passo errado faz o pintor ler slots vizinhos, que continuam a
+ser um canal **suave** — quem a apanha é a paridade, que compara com a CPU e não com um ideal.
+
+⛔ **Antes das duas curas da §25.6, a mesma bateria lia `M2`, `M5` e `M6` a SOBREVIVER à paridade** —
+é essa a diferença que o pior byte e a régua da banda compraram.

@@ -27,7 +27,30 @@ pub struct Answer {
     pub indirect: [f32; 3],
     /// `Surface::emission`.
     pub emission: [f32; 3],
+    /// ⭐⭐⭐ **`Surface::direct_sss` — a luz directa com a radiância da SUBSUPERFÍCIE à parte.**
+    ///
+    /// Ela é a lei que a borda mole da sombra lê ([`ph2d_field_render::sss_shadow`]), e até
+    /// 2026-09-19 **não existia no dispositivo**: o `mx_direct` do WGSL recebia UMA radiância onde a
+    /// CPU recebe duas. *Uma fronteira, não uma afinação.*
+    pub direct_sss: [f32; 3],
 }
+
+/// ⭐⭐ **A radiância que a SUBSUPERFÍCIE lê no arnês** — três canais DIFERENTES entre si e
+/// diferentes de `1`.
+///
+/// ⚠️ **Os três têm de diferir:** a borda mole é por canal (é o que a faz avermelhada), e um `sss`
+/// cinzento deixaria a régua cega ao canal trocado. E nenhum pode valer `1`, senão o braço curto
+/// (`sss == radiance`) sai antes de compor a segunda vez e o gate mede o `mx_direct` outra vez.
+pub const SSS_DO_ARNES: [f32; 3] = [0.25, 0.60, 0.90];
+
+/// ⭐⭐ **A curvatura que o arnês prega no material** — `1/R` de uma bola de raio `1`.
+///
+/// ⛔ **Ela NÃO pode ficar em zero**, que é o que o [`ph2d_material::wgsl::pack`] escreve: a
+/// curvatura é do PIXEL e não do material, e com ela a zero o caminho MACIÇO da subsuperfície corre
+/// no piso do GLSL (*um raio de `100`, que é «plano»*) — a régua passaria sobre um regime que a peça
+/// do report nunca tem. ⚠️ Para todo material sem subsuperfície ela é **byte-idêntica** a não estar
+/// lá (ninguém a lê), e é isso que deixa os seis materiais de sempre intactos.
+pub const CURVATURA_DO_ARNES: f32 = 1.0;
 
 /// ⭐ **O CÉU DO ARNÊS — analítico, e o MESMO dos dois lados.**
 ///
@@ -80,9 +103,13 @@ fn avalia(@builtin(global_invocation_id) g: vec3<u32>) {
     let n = a.n.xyz;
     let v = a.v.xyz;
     let l = a.l.xyz;
-    saida[i * 3u + 0u] = vec4<f32>(mx_direct(mat, n, v, l, vec3<f32>(1.0)), 0.0);
-    saida[i * 3u + 1u] = vec4<f32>(mx_indirect(mat, n, v), 0.0);
-    saida[i * 3u + 2u] = vec4<f32>(mx_emission(mat, n, v), 0.0);
+    saida[i * 4u + 0u] = vec4<f32>(mx_direct(mat, n, v, l, vec3<f32>(1.0)), 0.0);
+    saida[i * 4u + 1u] = vec4<f32>(mx_indirect(mat, n, v), 0.0);
+    saida[i * 4u + 2u] = vec4<f32>(mx_emission(mat, n, v), 0.0);
+    saida[i * 4u + 3u] = vec4<f32>(
+        mx_direct_sss(mat, n, v, l, vec3<f32>(1.0), vec3<f32>({SSS_R}, {SSS_G}, {SSS_B})),
+        0.0
+    );
 }
 "#;
 
@@ -93,8 +120,12 @@ pub fn on_device(surface: &ph2d_material::Surface, samples: &[Sample]) -> Option
     let t = crate::trace::Tracer::new()?;
     let (device, queue) = t.parts();
     let fonte = format!(
-        "{}\n{HARNESS}",
-        ph2d_material::wgsl::SOURCE.replace(ph2d_material::wgsl::ENV_SLOT, SKY)
+        "{}\n{}",
+        ph2d_material::wgsl::SOURCE.replace(ph2d_material::wgsl::ENV_SLOT, SKY),
+        HARNESS
+            .replace("{SSS_R}", &SSS_DO_ARNES[0].to_string())
+            .replace("{SSS_G}", &SSS_DO_ARNES[1].to_string())
+            .replace("{SSS_B}", &SSS_DO_ARNES[2].to_string())
     );
     let modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("material"),
@@ -109,7 +140,9 @@ pub fn on_device(surface: &ph2d_material::Surface, samples: &[Sample]) -> Option
         cache: None,
     });
 
-    let empacotado = ph2d_material::wgsl::pack(surface, ph2d_material::wgsl::EnvLobe::IGNORED);
+    let mut empacotado = ph2d_material::wgsl::pack(surface, ph2d_material::wgsl::EnvLobe::IGNORED);
+    // ⭐ A CURVATURA é do PIXEL e o `pack` deixa-a a zero de propósito — ver [`CURVATURA_DO_ARNES`].
+    empacotado[ph2d_material::wgsl::PACKED - 1] = CURVATURA_DO_ARNES;
     let mut u = Vec::with_capacity(empacotado.len() * 4);
     for f in empacotado {
         u.extend_from_slice(&f.to_le_bytes());
@@ -134,7 +167,7 @@ pub fn on_device(surface: &ph2d_material::Surface, samples: &[Sample]) -> Option
         contents: &inb,
         usage: wgpu::BufferUsages::STORAGE,
     });
-    let bytes = (samples.len() * 3 * 16) as u64;
+    let bytes = (samples.len() * 4 * 16) as u64;
     let saida = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("saida"),
         size: bytes.max(16),
@@ -185,11 +218,12 @@ pub fn on_device(surface: &ph2d_material::Surface, samples: &[Sample]) -> Option
     let quads = dados.as_chunks::<16>().0;
     let out = (0..samples.len())
         .map(|i| {
-            let ler = |k: usize| [0, 1, 2].map(|c| f4(&quads[i * 3 + k], c * 4));
+            let ler = |k: usize| [0, 1, 2].map(|c| f4(&quads[i * 4 + k], c * 4));
             Answer {
                 direct: ler(0),
                 indirect: ler(1),
                 emission: ler(2),
+                direct_sss: ler(3),
             }
         })
         .collect();
@@ -201,12 +235,16 @@ pub fn on_device(surface: &ph2d_material::Surface, samples: &[Sample]) -> Option
 #[must_use]
 pub fn on_cpu(surface: &ph2d_material::Surface, samples: &[Sample]) -> Vec<Answer> {
     let sky = HarnessSky;
+    // ⭐ A MESMA curvatura que o [`on_device`] prega no material empacotado — ver
+    // [`CURVATURA_DO_ARNES`]. Para um material sem subsuperfície isto é byte-idêntico.
+    let surface = &surface.at_curvature(CURVATURA_DO_ARNES);
     samples
         .iter()
         .map(|s| Answer {
             direct: surface.direct(s.n, s.v, s.l, [1.0; 3]),
             indirect: surface.indirect(s.n, s.v, &sky),
             emission: surface.emission(s.n, s.v),
+            direct_sss: surface.direct_sss(s.n, s.v, s.l, [1.0; 3], SSS_DO_ARNES),
         })
         .collect()
 }

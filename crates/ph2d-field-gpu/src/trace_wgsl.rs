@@ -16,12 +16,18 @@ pub(crate) const COMUM: &str = r"
 struct Setup {
     w: u32, h: u32, budget: u32, ao_rays: u32,
     // ⭐ `chao`: `1` quando o quadro tem CHÃO (`docs/Render3d/07`), e a altura dele é o `chao_y`.
-    n_lamps: u32, chao: u32, _p1: u32, _p2: u32,
+    // ⭐⭐⭐ `mole`: `1` quando este quadro tem o canal da BORDA MOLE (`docs/Render3d/10` §12) — o
+    // raio dele, por canal e em PÍXEIS, vive no `mole_raio`. `0` é o passo de sempre, ao bit.
+    n_lamps: u32, chao: u32, mole: u32, _p2: u32,
     half_extent: f32, half_px: f32, ortho_start: f32, eye_distance: f32,
     hit_eps: f32, normal_eps: f32, step: f32, t_max: f32,
     ball_radius: f32, ao_reach: f32, edge_cos: f32, chao_y: f32,
     alvo: vec3<f32>, right: vec3<f32>, up: vec3<f32>, fwd: vec3<f32>,
     ball_center: vec3<f32>,
+    // ⭐⭐⭐ **O RAIO DA BORDA MOLE, por canal e em PÍXEIS** — o `sss_shadow::raio_em_pixeis` da CPU.
+    // ⚠️ Ele é por CANAL porque a distância de espalhamento é por canal, e é isso que faz a borda
+    // ficar avermelhada num jade: o vermelho viaja mais e entra mais fundo na sombra.
+    mole_raio: vec3<f32>,
     // ⭐⭐⭐ **AS LÂMPADAS, e não uma** — `xyz` é a posição no MUNDO. Ver `MAX_LAMPS`.
     lamps: array<vec4<f32>, {MAX_LAMPS}>,
 };
@@ -53,7 +59,21 @@ struct Setup {
 /// `ph2d_field_render::BOUNCE_BLUR_PASSES`: a lei mede **duas** passagens de `3×3`, e o pintor só
 /// consegue fazer uma delas ao ler (a outra tem de ser um despacho, com destino próprio — escrever
 /// no mesmo sítio de onde os vizinhos estão a ler é uma corrida).
-fn passo_da_luz() -> u32 { return 1u + s.n_lamps + 6u; }
+/// ⭐⭐⭐ **E a BORDA MOLE ocupa SEIS por lâmpada quando existe** (`docs/Render3d/10` §12): três do
+/// intermediário da passagem HORIZONTAL e três do resultado, que é o que o pintor lê.
+///
+/// ⛔ Os dois não podem ser o mesmo sítio: a segunda passagem lê os vizinhos do que a primeira
+/// escreveu, e escrever onde eles estão a ler é uma corrida — a mesma razão que os slots do
+/// ricochete liso já pagam, um bloco acima.
+///
+/// ⚠️ **Com `mole = 0` o passo é o de sempre, ao bit**, e nenhuma cena de hoje paga um byte.
+fn passo_da_luz() -> u32 { return 1u + s.n_lamps + 6u + s.mole * 6u * s.n_lamps; }
+
+/// Onde começam os TRÊS do intermediário da lâmpada `l` — o que a `borra_mole_h` escreve.
+fn base_do_mole_tmp(i: u32, l: u32) -> u32 { return i * passo_da_luz() + 7u + s.n_lamps + l * 3u; }
+
+/// Onde começam os TRÊS da borda mole da lâmpada `l` — o que a `borra_mole_v` escreve e o pintor lê.
+fn base_do_mole(i: u32, l: u32) -> u32 { return base_do_mole_tmp(i, s.n_lamps) + l * 3u; }
 
 /// Onde começam os três `f32` do ricochete CRU deste pixel — o que a `pinta_ricochete` escreve.
 fn base_do_ricochete(i: u32) -> u32 { return i * passo_da_luz() + 1u + s.n_lamps; }

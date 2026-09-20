@@ -67,6 +67,14 @@ pub struct PaintSetup<'a> {
     /// ⚠️ **Ele vem do chamador e não do uniforme** porque quem decide COMPILAR um pipeline é o
     /// Rust, e o uniforme só é lido dentro do shader.
     pub ao_rays: u32,
+    /// ⭐⭐⭐ **Este quadro tem BORDA MOLE?** (`docs/Render3d/10` §12) — o gémeo do
+    /// [`crate::trace::MarchSetup::mole`], do lado de quem COMPILA.
+    ///
+    /// ⚠️ **Ele vem do chamador e não do uniforme**, pela mesma razão que o `ao_rays`: quem decide
+    /// compilar e despachar um pipeline é o Rust, e o uniforme só é lido dentro do shader. ⛔ Os dois
+    /// têm de concordar — um `true` aqui com o `mole` do `MarchSetup` a `None` despacha duas
+    /// passagens sobre slots que o buffer não tem.
+    pub mole: bool,
     /// A exposição, em paragens.
     pub stops: f32,
     /// A vista, no código do [`ph2d_view_transform::wgsl::view_code`].
@@ -183,6 +191,7 @@ fn dono_mix(p: vec3<f32>, width: f32) -> Dono { return Dono(0u, 0u, 0.0); }
 
 /// ⭐ **O corpo do shader vive no irmão** ([`super::paint_wgsl`]) — ver o cabeçalho dele.
 use crate::paint_wgsl::PINTOR;
+use crate::paint_wgsl_mole::PINTOR_MOLE;
 use crate::paint_wgsl_sondas::PINTOR_SONDAS;
 
 /// ⭐⭐⭐ **O texto do pintor, composto** — as quatro leis mais o corpo.
@@ -197,9 +206,12 @@ pub(crate) fn fonte(
     let dono = lei_do_dono.map_or(DONO_DE_UMA_FOLHA, |l| l.source.as_str());
     let material = ph2d_material::wgsl::SOURCE
         .replace(ph2d_material::wgsl::ENV_SLOT, &ambiente(pintor.env_source));
-    // ⚠️ **As duas metades são UM shader** — o corte é o tecto de LOC, e a concatenação é onde
-    // ele deixa de se ver. Ver o cabeçalho do [`crate::paint_wgsl`].
-    let corpo = format!("{PINTOR}{PINTOR_SONDAS}")
+    // ⚠️ **As TRÊS metades são UM shader** — o corte é o tecto de LOC, e a concatenação é onde ele
+    // deixa de se ver. Ver o cabeçalho do [`crate::paint_wgsl`] e o do [`crate::paint_wgsl_mole`].
+    // ⛔ Eram duas até 2026-09-19; a `W10` trouxe a terceira, e há gate a exigir que ela seja
+    // JUNTA (`o_gemeo_da_borda_mole_esta_ligado_no_dispositivo`): *um fragmento declarado que o
+    // `format!` não junta compila e não chega ao shader.*
+    let corpo = format!("{PINTOR}{PINTOR_SONDAS}{PINTOR_MOLE}")
         .replace(
             "{BLUR_COS}",
             &formata(ph2d_field_render::OCCLUSION_BLUR_COS),
@@ -271,7 +283,12 @@ pub(crate) fn fonte(
         .replace("{MAX_LAMPS}", &crate::trace::MAX_LAMPS.to_string())
         .replace("{LUMA_R}", &formata(ph2d_field_render::GROUND_LUMA[0]))
         .replace("{LUMA_G}", &formata(ph2d_field_render::GROUND_LUMA[1]))
-        .replace("{LUMA_B}", &formata(ph2d_field_render::GROUND_LUMA[2]));
+        .replace("{LUMA_B}", &formata(ph2d_field_render::GROUND_LUMA[2]))
+        // ⭐ O MESMO tecto de raio que a CPU clampa — `ph2d_field_render::sss_shadow::MAX_RAIO_PX`.
+        .replace(
+            "{MAX_RAIO_MOLE}",
+            &formata(ph2d_field_render::sss_shadow::MAX_RAIO_PX),
+        );
     // ⚠️⚠️ **As LEIS da marcha entram aqui desde o ricochete** (`docs/Render3d/08` §12): ele marcha
     // a partir da superfície, logo o passe que PINTA precisa do campo, da marcha e da
     // visibilidade. ⛔ **E só as leis** — os dois kernels da marcha ficam de fora, senão este
@@ -403,6 +420,19 @@ pub(crate) fn pinta(
         cache
             .entry_with_layout(device, &fonte, fita, "borra_ricochete", Some(&layout))
             .clone()
+    });
+    // ⭐⭐⭐ **AS DUAS PASSAGENS DA BORDA MOLE** (`docs/Render3d/10` §12) — separáveis, logo DUAS.
+    // ⛔ A segunda lê os vizinhos do que a primeira escreveu: escrever no mesmo sítio de onde eles
+    // estão a ler é uma corrida, e é por isso que os slots do intermediário existem.
+    let p_mole = pintor.mole.then(|| {
+        (
+            cache
+                .entry_with_layout(device, &fonte, fita, "borra_mole_h", Some(&layout))
+                .clone(),
+            cache
+                .entry_with_layout(device, &fonte, fita, "borra_mole_v", Some(&layout))
+                .clone(),
+        )
     });
     let p_bordas = (bordas > 0).then(|| {
         cache
@@ -570,6 +600,21 @@ pub(crate) fn pinta(
         cp.set_bind_group(0, &bg0, &[]);
         cp.set_bind_group(1, &bg1, &[]);
         cp.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
+    }
+    // ⭐⭐⭐ **A BORDA MOLE, antes da pintura e em DUAS passagens** — a horizontal escreve o
+    // intermediário e a vertical o canal que o pintor lê. ⚠️ A ordem é a lei, e é a mesma do borrão
+    // do ricochete acima: cada passagem precisa da anterior escrita em TODO o quadro.
+    if let Some((h_pass, v_pass)) = &p_mole {
+        for p in [h_pass, v_pass] {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: None,
+                timestamp_writes: None,
+            });
+            cp.set_pipeline(p);
+            cp.set_bind_group(0, &bg0, &[]);
+            cp.set_bind_group(1, &bg1, &[]);
+            cp.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
+        }
     }
     {
         let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {

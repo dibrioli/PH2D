@@ -82,11 +82,41 @@ fn materiais() -> Vec<(&'static str, ph2d_material::OpenPbr)> {
                 ..d()
             },
         ),
+        // ⛔⛔⛔ **OS DOIS DA SUBSUPERFÍCIE, e até 2026-09-19 esta lista NÃO OS TINHA.**
+        //
+        // Os seis de cima partem todos de `OpenPbr::default()`, que tem `subsurface_weight = 0` ⇒
+        // **a paridade de materiais nunca tinha corrido uma linha do caminho da subsuperfície**, e
+        // o gémeo da borda mole ia ser construído contra uma régua que não o vê. *É a mesma lei do
+        // Fujii, um bloco acima: um corpus no ponto NEUTRO de um knob não testa esse knob.*
+        //
+        // ⚠️ **São DOIS porque são DOIS caminhos** e não um grau: o maciço integra o perfil de
+        // Burley sobre a curvatura, a parede fina nega a normal e é lambertiana do lado de lá.
+        (
+            "jade (maciço)",
+            ph2d_material::OpenPbr {
+                subsurface_weight: 1.0,
+                geometry_thin_walled: false,
+                subsurface_color: [0.75, 0.35, 0.35],
+                base_color: [0.75, 0.35, 0.35],
+                subsurface_radius: 0.4,
+                ..d()
+            },
+        ),
+        (
+            "folha (fina)",
+            ph2d_material::OpenPbr {
+                subsurface_weight: 1.0,
+                geometry_thin_walled: true,
+                subsurface_color: [0.35, 0.75, 0.2],
+                base_color: [0.2, 0.5, 0.1],
+                ..d()
+            },
+        ),
     ]
 }
 
-/// ⭐⭐⭐ **O MATERIAL DO DISPOSITIVO É O DA CPU** — as três respostas, sobre `720` direcções e
-/// `6` materiais.
+/// ⭐⭐⭐ **O MATERIAL DO DISPOSITIVO É O DA CPU** — as QUATRO respostas, sobre `720` direcções e
+/// `8` materiais.
 ///
 /// # A barra, e de que recurso ela é
 ///
@@ -149,12 +179,20 @@ fn o_material_do_dispositivo_e_o_da_cpu() {
         let mut pior = 0.0f64;
         let mut onde = 0usize;
         for (i, (a, b)) in cpu.iter().zip(&gpu).enumerate() {
+            // ⭐ **As QUATRO respostas**, e a quarta é a que a borda mole lê.
             for (x, y) in a
                 .direct
                 .iter()
                 .chain(&a.indirect)
                 .chain(&a.emission)
-                .zip(b.direct.iter().chain(&b.indirect).chain(&b.emission))
+                .chain(&a.direct_sss)
+                .zip(
+                    b.direct
+                        .iter()
+                        .chain(&b.indirect)
+                        .chain(&b.emission)
+                        .chain(&b.direct_sss),
+                )
             {
                 let rel = f64::from((x - y).abs()) / f64::from(x.abs().max(*y).max(1e-3));
                 if rel > pior {

@@ -31,8 +31,26 @@
 //! | `pelo_dispositivo` | `Shading::Render` + lâmpadas + a peça ser suportada |
 //! | `!p.refinar` | ⭐ **verdadeiro**: o [`crate::preview::refines_occlusion`] exige o `PH2D_FIELD_AO`, que nasce DESLIGADO |
 //!
-//! ⚠️⚠️ *É por isso que a cura que eu entreguei não mudou nada para ele:* ela é real, é gateada ao
-//! bit, e está **fora do caminho que o artista corre**.
+//! ⚠️⚠️ *Era por isso que a cura que eu entreguei não mudava nada para ele:* ela era real, era
+//! gateada ao bit, e estava **fora do caminho que o artista corre**.
+//!
+//! # ⭐⭐⭐ E EM 2026-09-19 A DÍVIDA FOI PAGA — a `W10`
+//!
+//! O `return` daquele ramo **continua lá e está certo**: a cura não foi voltar pelo caminho da CPU
+//! (que traria o G-buffer pelo barramento, o que a `traca` evita de propósito) — foi o **dispositivo
+//! passar a assar o canal ele próprio**, em duas passagens separáveis, com o gémeo do
+//! `Surface::direct_sss` escrito em WGSL.
+//!
+//! | régua | antes | depois |
+//! |---|---:|---:|
+//! | quebra na banda, DISPOSITIVO, com a chapa | `9,20` | **`1,00`** |
+//! | a mesma, REFERÊNCIA | `1,00` | `1,00` |
+//! | paridade dos dois motores sobre a cena do report | *não existia* | **`100,000 %`**, pior byte `1` |
+//!
+//! ⛔ **E os DOIS gates deste ficheiro tinham a premissa morta**, cada um à sua maneira: o
+//! estrutural dizia por escrito que a cura dele era ser apagado, e o de medição prometia o
+//! *«dispositivo»* no nome e comparava a CPU consigo mesma. Os dois foram reescritos, com a morte
+//! visível no diff.
 
 use super::{Quadro, arranjo_do_dono, quadro, regua_da_banda, so_a_bola};
 
@@ -47,87 +65,86 @@ fn jade() -> ph2d_material::OpenPbr {
     }
 }
 
-/// ⭐⭐⭐ **A BORDA MOLE É INALCANÇÁVEL QUANDO O DISPOSITIVO PINTA — e isso é o report do dono.**
+/// ⭐⭐⭐ **O GÉMEO DA BORDA MOLE ESTÁ LIGADO NO DISPOSITIVO** — a `W10`, fechada em 2026-09-19.
 ///
-/// # A lei que este gate afirma
+/// # ⛔⛔ Aqui viveu o gate OPOSTO, e a cura dele era apagá-lo
 ///
-/// No [`crate::smoke_draw_thread::traca`] o ramo que o dispositivo PINTA devolve (`return`) **antes**
-/// da única chamada ao [`ph2d_field_render::sss_shadow::blur_por_material`]. ⇒ no caminho de
-/// omissão do produto a sombra que um material translúcido lê é a **DURA**, e a chapa desenha na
-/// esfera a linha que o dono fotografou.
+/// Até esta wave este ficheiro declarava, por escrito, que *«a borda mole é INALCANÇÁVEL quando o
+/// dispositivo pinta»*: o ramo que a placa pinta devolve (`return`) **antes** da única chamada ao
+/// [`ph2d_field_render::sss_shadow::blur_por_material`], logo no caminho de omissão a closure de
+/// subsuperfície lia a visibilidade DURA e a chapa desenhava no jade a linha que o dono fotografou.
 ///
-/// # ⚠️ Porque ele é TEXTUAL e não uma medição
+/// ⭐ **Aquele gate dizia de si mesmo que a cura era apagá-lo** (*«quando o dispositivo souber
+/// entregar a visibilidade mole, esta linha sai»*), e é isso que este commit faz. ⚠️ **O `return`
+/// continua lá e está CERTO:** a cura não foi voltar pelo caminho da CPU — foi o dispositivo passar
+/// a assar o canal ele próprio, em duas passagens separáveis.
 ///
-/// Medir isto a valer pede uma placa, e um gate de placa é `#[ignore]` — *que é um gate que o CI
-/// nunca corre*. A medição existe, e vive na [`sonda_o_dispositivo_a_correr_contra_a_referencia`],
-/// logo abaixo; esta é a metade que corre **sempre** e que reprova no dia em que o gémeo chegar.
+/// # O que este gate afirma no lugar dele
 ///
-/// ⛔ **Ele é o TECTO de uma dívida declarada, e a cura dele é apagá-lo:** quando o dispositivo
-/// souber entregar a visibilidade mole, esta linha sai — e com ela a nota da §12.
+/// Que os **quatro elos** do gémeo existem. ⚠️ Ele é TEXTUAL porque medir isto a valer pede uma
+/// placa, e um gate de placa é `#[ignore]` — *que é um gate que o CI nunca corre*. A medição existe
+/// e é a [`super::super::paint_parity_luz_tests::a_borda_mole_da_sombra_e_a_mesma_nos_dois_motores`],
+/// que lê `100,000 %` com `2 043` píxeis de canal afastado.
 #[test]
-fn a_borda_mole_e_inalcancavel_quando_o_dispositivo_pinta() {
-    let fonte = include_str!("smoke_draw_thread.rs");
-
-    // (1) ⭐ O CONTROLO da própria régua: as duas âncoras existem e a do borrão é ÚNICA. Sem esta
-    // metade, um ficheiro que perdesse a chamada leria «o return vem antes» por VÁCUO.
-    let borroes = fonte.matches("sss_shadow::blur_por_material(").count();
-    assert_eq!(
-        borroes, 1,
-        "o `blur_por_material` é chamado {borroes} vezes na thread de traçado — este gate mede a \
-         ORDEM contra UMA chamada, e com duas ele deixa de saber de qual fala"
+fn o_gemeo_da_borda_mole_esta_ligado_no_dispositivo() {
+    // ⚠️⚠️ **O corpo do pintor são TRÊS ficheiros desde 2026-09-19** (o tecto de LOC pediu a
+    // fronteira, `docs/Render3d/10` §25) — e este gate lê a SOMA, porque é a soma que a placa
+    // compila. ⛔ Ler só um deles fazia o gate ficar verde sobre um fragmento que ninguém junta.
+    let corpo = concat!(
+        include_str!("../../ph2d-field-gpu/src/paint_wgsl_sondas.rs"),
+        include_str!("../../ph2d-field-gpu/src/paint_wgsl_mole.rs"),
     );
-    let ramo = fonte
-        .find("if let Some(pintura) = pintado {")
-        .expect("o ramo que o dispositivo pinta — se ele mudou de forma, releia a `traca`");
-    let borrao = fonte
-        .find("sss_shadow::blur_por_material(")
-        .expect("a chamada do borrão");
+    let despacho = include_str!("../../ph2d-field-gpu/src/paint.rs");
 
-    // (2) ⛔⛔ A DÍVIDA: o ramo pintado devolve ANTES de o borrão poder correr.
-    //
-    // ⚠️⚠️ **A 1.ª redacção procurava o `return;` seguinte em TODO o resto do ficheiro, e uma
-    // mutação SOBREVIVEU:** apagado o `return` deste ramo, ela achava o do `else { return; }` do
-    // traçado de CPU (linha `155`), que também vem antes do borrão — *o gate afirmava «há ALGUM
-    // return pelo caminho» e o nome dele promete «ESTE ramo devolve»*. A busca é agora limitada ao
-    // CORPO do ramo, que fecha no primeiro `}` ao nível da função.
-    let fecho = fonte[ramo..]
-        .find("\n    }\n")
-        .map(|d| ramo + d)
-        .expect("o ramo pintado fecha — se ele mudou de indentação, releia a `traca`");
-    let corpo = &fonte[ramo..fecho];
+    // (0) ⛔⛔ **E as TRÊS metades são de facto CONCATENADAS.** *Um fragmento declarado que o
+    // `format!` não junta compila, passa em todo gate de texto, e não chega ao shader.*
     assert!(
-        corpo.contains("return;"),
-        "o ramo que o dispositivo PINTA já não devolve — ele passa a cair no caminho de CPU, e com \
-         isso o borrão da §12 volta a correr (se o gémeo chegou, esta linha sai e a nota da §12 com \
-         ela; se foi por acidente, o quadro passou a ser desenhado DUAS vezes)"
-    );
-    assert!(
-        fecho < borrao,
-        "o ramo pintado deixou de vir ANTES do borrão da §12 (fecha em {fecho}, borrão em \
-         {borrao}) — alguém mudou a ordem da `traca`, e a tabela do cabeçalho deste módulo deixou \
-         de descrever o produto"
+        despacho.contains("{PINTOR}{PINTOR_SONDAS}{PINTOR_MOLE}"),
+        "o corpo do pintor deixou de juntar as três metades — o fragmento da borda mole existe e \
+         não entra no shader"
     );
 
-    // (3) ⭐⭐⭐ E QUE ISSO É O CAMINHO DE OMISSÃO, e não um modo que ninguém usa: o ramo pintado
-    // exige `!p.refinar`, e o refinamento nasce DESLIGADO.
-    //
-    // ⚠️ Sem esta metade o gate afirmaria uma dívida que talvez ninguém alcance — e *uma dívida
-    // que o artista não atinge e uma que ele atinge todos os dias leem-se igual numa tabela*.
+    // (1) ⭐ As DUAS passagens existem — separáveis, logo duas.
+    for entrada in ["fn borra_mole_h(", "fn borra_mole_v("] {
+        assert!(
+            corpo.contains(entrada),
+            "o corpo do pintor não declara `{entrada}` — o gémeo da §12 não está escrito"
+        );
+    }
+
+    // (2) ⛔⛔ E as DUAS são DESPACHADAS. *Um ponto de entrada que ninguém despacha compila,
+    // fica verde em todo gate de texto, e não pinta um pixel* — é a lei do §24 deste módulo.
+    for entrada in ["\"borra_mole_h\"", "\"borra_mole_v\""] {
+        assert!(
+            despacho.contains(entrada),
+            "o {entrada} não é compilado pelo passe que pinta"
+        );
+    }
     assert!(
-        fonte.contains("let pintado = if pelo_dispositivo && !p.refinar {"),
-        "a condição do ramo pintado mudou — releia-a antes de acreditar na tabela do cabeçalho \
-         deste módulo"
+        despacho.contains("for p in [h_pass, v_pass] {"),
+        "as duas passagens deixaram de ser despachadas em sequência — a segunda lê os vizinhos do \
+         que a primeira escreveu, e sem as duas o canal fica a meio"
     );
-    let preview = include_str!("preview.rs");
+
+    // (3) ⭐⭐⭐ E o PINTOR lê o canal — que é o elo que faz a lei chegar ao pixel.
     assert!(
-        preview.contains("assente && plate_parked && cpu_occlusion_enabled()"),
-        "o `refines_occlusion` mudou de lei — o `!p.refinar` do ramo pintado pode ter deixado de \
-         ser o valor de fábrica, e a tabela deste módulo com ele"
+        corpo.contains("mx_direct_sss(m, n, v, to_light, chega, chega_mole)"),
+        "o laço das lâmpadas do pintor deixou de passar a radiância da subsuperfície à parte — ele \
+         voltou ao `mx_direct` de UMA radiância, e a borda mole deixou de chegar ao ecrã"
     );
     assert!(
-        preview.contains(r#"std::env::var("PH2D_FIELD_AO").is_ok_and(|v| v != "0")"#),
-        "o refinamento de CPU deixou de nascer desligado — então `p.refinar` já não é `false` por \
-         omissão, e o ramo pintado já não é o caminho que o artista corre"
+        corpo.contains("let bm = base_do_mole(i, l);"),
+        "o pintor deixou de LER o canal mole — ele calcula-o e deita-o fora"
+    );
+
+    // (4) ⚠️ E as duas metades da decisão concordam: quem dimensiona o buffer e quem compila os
+    // pipelines leem a MESMA origem. *Um `true` num lado com `None` no outro despacha duas
+    // passagens sobre slots que o buffer não tem.*
+    let ponte = include_str!("gpu_frame.rs");
+    assert!(
+        ponte.contains("mole: setup.mole.is_some(),"),
+        "o `PaintSetup::mole` deixou de ser derivado do `MarchSetup::mole` — as duas metades da \
+         decisão podem divergir"
     );
 }
 
@@ -142,6 +159,117 @@ fn a_borda_mole_e_inalcancavel_quando_o_dispositivo_pinta() {
 /// - no dispositivo e na referência;
 /// - com a chapa e sem ela — que é o experimento do dono.
 ///
+/// ⭐⭐⭐ **AS DUAS COLUNAS DA BANDA, para UMA cena** — a do dispositivo e a da referência, com a
+/// MESMA régua, a MESMA luz e a MESMA câmera. Devolve `((dispositivo, contraste), (referência,
+/// contraste))`.
+///
+/// ⚠️⚠️ **Ela existe porque a condição de fecho da [`W10`](../../../docs/Render3d/03_o_plano.md)
+/// estava escrita como uma TABELA IMPRESSA** — *«a wave fecha quando as duas colunas lerem o
+/// mesmo»* — e uma tabela que passa não é lida por ninguém. ⇒ a sonda imprime-a e o
+/// [`as_duas_colunas_da_banda_leem_o_mesmo`] afirma-a: *uma lei, dois leitores*.
+fn colunas_da_banda(
+    t: &crate::gpu_frame::SharedTracer,
+    doc: &ph2d_field::FieldDoc,
+    cam: &ph2d_field_render::Orbit,
+    onde: [f32; 3],
+    luz: ph2d_field_ecs::FieldLight,
+    chao: Option<ph2d_field_render::Ground>,
+) -> Option<((f32, f32), (f32, f32))> {
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let m = jade();
+    let mats = [m.prepare()];
+    let surfaces = ph2d_field_render::Surfaces {
+        all: &mats,
+        owners: None,
+    };
+    let pontos = [ph2d_field_render::PointLamp {
+        world: onde,
+        radiance_at_one: crate::lights::radiance_at_one(luz),
+    }];
+    let mundos = [onde];
+
+    // ⭐ O G-buffer do MESMO dispositivo dá a máscara (quem é a esfera) e as normais que a régua lê.
+    // A imagem vem do pintor do dispositivo, que é o que o produto entrega.
+    let (g, _sh) =
+        crate::gpu_frame::march(t, doc, &reg, cam, &mundos, chao, super::W, super::H, true)?;
+    let pintura = crate::gpu_frame::paint(
+        t,
+        doc,
+        &reg,
+        cam,
+        &pontos,
+        &surfaces,
+        &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
+        [0, 0, 0, 0],
+        chao,
+        super::W,
+        super::H,
+        true,
+    )?;
+    let dispositivo = regua_da_banda(&g, &pintura.rgba, onde, cam);
+
+    // A referência, com a MESMA régua e a mesma cena.
+    let (g2, _, px2) = quadro(&Quadro {
+        doc,
+        m,
+        cam,
+        onde,
+        luz,
+        com_sombra: true,
+        chao,
+        sem_ceu: false,
+        mole: true,
+    });
+    Some((dispositivo, regua_da_banda(&g2, &px2, onde, cam)))
+}
+
+/// ⭐⭐⭐ **A CONDIÇÃO DE FECHO DA `W10`, AFIRMADA** — as duas colunas lêem o mesmo.
+///
+/// Na cena do report (o jade com a chapa) a régua da banda lê, na árvore que ship, **`1,00` no
+/// dispositivo contra `1,00` na referência**. Antes desta wave o dispositivo lia **`9,20`**, que é a
+/// linha dura que o dono fotografou.
+///
+/// ⚠️⚠️ **A barra sai de um VALE MEDIDO, e ele é enorme:** `1,00` de um lado, `9,20` do outro — a
+/// mesma cena, o mesmo commit, só o canal mole a chegar ou não ao pintor. ⇒ `≤ 2,0`, que é o dobro
+/// do lado bom e menos de um quarto do mau.
+///
+/// ⛔⛔ **E este gate existe porque a PARIDADE não chegava:** com o dispositivo a NÃO pedir o canal,
+/// o [`super::super::paint_parity_luz_tests::a_borda_mole_da_sombra_e_a_mesma_nos_dois_motores`] lia
+/// `99,579 %` contra a barra de `99,5` — *passava*. A fracção afoga na média um fenómeno que ocupa
+/// `10 %` dos píxeis; a régua da BANDA foi desenhada para o ver.
+#[test]
+#[ignore = "precisa de GPU"]
+fn as_duas_colunas_da_banda_leem_o_mesmo() {
+    let Some(t) = crate::gpu_frame::shared() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let (com_placa, cam, onde, luz, chao) = arranjo_do_dono();
+    let ((disp, c_disp), (refe, c_refe)) = colunas_da_banda(t, &com_placa, &cam, onde, luz, chao)
+        .expect("a placa toma a cena do dono");
+    println!(
+        "  banda · dispositivo {disp:.2} (contraste {c_disp:.1}) · referência {refe:.2} (contraste {c_refe:.1})"
+    );
+
+    // ⚠️ **O CONTROLO vem primeiro:** sem contraste na banda a régua não tem sujeito, e as duas
+    // colunas leriam `1,00` sobre uma imagem chata. *Uma régua que não vê o fenómeno acontecer não
+    // prova que ele não aconteceu.*
+    assert!(
+        c_disp > 20.0 && c_refe > 20.0,
+        "contraste {c_disp:.1}/{c_refe:.1} — a banda do terminador não tem sujeito nesta corrida"
+    );
+    assert!(
+        disp <= 2.0,
+        "a quebra na banda do DISPOSITIVO é {disp:.2} contra {refe:.2} da referência — o canal mole \
+         não está a chegar ao pintor, e o artista vê a linha DURA que o report de 18/09 fotografou"
+    );
+    assert!(
+        (disp - refe).abs() <= 1.0,
+        "as duas colunas discordam ({disp:.2} contra {refe:.2}) — a condição de fecho da `W10` é \
+         elas lerem o mesmo"
+    );
+}
+
 /// ⭐ *Se a coluna do dispositivo cair quando a chapa sai, e a da referência não, então a linha é a
 /// borda DURA da sombra da chapa, e a §12 é a cura que não a alcança.*
 #[test]
@@ -153,88 +281,26 @@ fn sonda_o_dispositivo_a_correr_contra_a_referencia() {
     };
     let (com_placa, cam, onde, luz, chao) = arranjo_do_dono();
     let sem_placa = so_a_bola();
-    let reg = ph2d_field_eval::hybrid::Registry::new();
-    let m = jade();
-    let mats = [m.prepare()];
-    let surfaces = ph2d_field_render::Surfaces {
-        all: &mats,
-        owners: None,
-    };
-    // ⚠️ **A MESMA luz que a coluna de CPU usa** — o `quadro` deste módulo monta exactamente esta
-    // `PointLamp`. Duas luzes diferentes fariam as colunas medir duas cenas.
-    let pontos = [ph2d_field_render::PointLamp {
-        world: onde,
-        radiance_at_one: crate::lights::radiance_at_one(luz),
-    }];
-    let mundos = [onde];
 
     println!("\n  ── O DISPOSITIVO A CORRER, CONTRA A REFERÊNCIA ──");
     println!("    cena          ·  caminho      ·  quebra na banda  ·  contraste");
 
     for (nome, doc) in [("com a chapa", &com_placa), ("só a bola  ", &sem_placa)] {
-        // ⭐ O G-buffer do MESMO dispositivo dá a máscara (quem é a esfera) e as normais que a
-        // régua lê. A imagem vem do pintor do dispositivo, que é o que o produto entrega.
-        let Some((g, sh)) =
-            crate::gpu_frame::march(t, doc, &reg, &cam, &mundos, chao, super::W, super::H, true)
+        // ⭐ **A MESMA porta que o gate afirma** — [`colunas_da_banda`]. *Uma sonda que monta o
+        // arranjo à mão ao lado de um gate que monta outro mede dois programas.*
+        let Some(((disp, c_disp), (refe, c_refe))) =
+            colunas_da_banda(t, doc, &cam, onde, luz, chao)
         else {
-            println!("    {nome}  ·  DISPOSITIVO  ·  a marcha recusou a peça");
+            println!("    {nome}  ·  DISPOSITIVO  ·  a placa recusou a peça");
             continue;
         };
-        let Some(pintura) = crate::gpu_frame::paint(
-            t,
-            doc,
-            &reg,
-            &cam,
-            &pontos,
-            &surfaces,
-            &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
-            [0, 0, 0, 0],
-            chao,
-            super::W,
-            super::H,
-            true,
-        ) else {
-            println!("    {nome}  ·  DISPOSITIVO  ·  o pintor recusou a peça");
-            continue;
-        };
-        let (quebra, contraste) = regua_da_banda(&g, &pintura.rgba, onde, &cam);
-        println!("    {nome}   ·  DISPOSITIVO  ·  {quebra:>14.2}  ·  {contraste:>9.1}");
-
-        // ⚠️⚠️ **ESTA LINHA MEDE A OUTRA PORTA, e dizê-lo aqui impede a leitura errada.**
-        //
-        // O [`crate::gpu_frame::march`] **devolve** o canal duro por lâmpada, do tamanho do
-        // G-buffer — logo o borrão da §12 correria sobre ele. ⛔ **Mas o caminho que o dono corre
-        // não chama o `march`:** ele chama o [`crate::gpu_frame::paint`], que calcula a
-        // visibilidade **dentro** do sombreamento e devolve uma IMAGEM. ⇒ *a cura não é «falta a
-        // chamada»* — ou o gémeo do borrão é escrito em WGSL, ou o quadro volta pelo `march` e
-        // paga o G-buffer no barramento (o que a `traca` evita de propósito).
-        println!(
-            "                   ·  (pela OUTRA porta — o `march` — o dispositivo devolve {} \
-             lâmpada(s), canal de {} contra {} píxeis do G-buffer)",
-            sh.lamps(),
-            sh.lamp_channel(0).len(),
-            g.hit.len()
-        );
-
-        // A referência, com a MESMA régua e a mesma cena.
-        let (g2, _, px2) = quadro(&Quadro {
-            doc,
-            m,
-            cam: &cam,
-            onde,
-            luz,
-            com_sombra: true,
-            chao,
-            sem_ceu: false,
-            mole: true,
-        });
-        let (q2, c2) = regua_da_banda(&g2, &px2, onde, &cam);
-        println!("    {nome}   ·  REFERÊNCIA   ·  {q2:>14.2}  ·  {c2:>9.1}");
+        println!("    {nome}   ·  DISPOSITIVO  ·  {disp:>14.2}  ·  {c_disp:>9.1}");
+        println!("    {nome}   ·  REFERÊNCIA   ·  {refe:>14.2}  ·  {c_refe:>9.1}");
     }
     println!(
-        "\n    ⭐ Se a quebra do DISPOSITIVO cair ao tirar a chapa e a da REFERÊNCIA já for baixa\n\
-         \x20     nas duas, a linha dura é a borda da sombra da chapa — e a cura da §12 existe,\n\
-         \x20     está gateada, e o caminho que o dono corre devolve antes de a chamar."
+        "\n    ⭐ As duas colunas lêem o mesmo desde a `W10` (2026-09-19), e isso é AFIRMADO pelo\n\
+         \x20     `as_duas_colunas_da_banda_leem_o_mesmo`. ⛔ Antes dela o dispositivo lia `9,20`\n\
+         \x20     com a chapa e `1,00` sem ela — a linha dura era a borda da sombra da chapa."
     );
 }
 
@@ -279,18 +345,34 @@ fn sonda_o_dispositivo_a_correr_contra_a_referencia() {
 /// do produto a [`crate::smoke_draw_thread::traca`] **devolve** no ramo que o dispositivo pinta,
 /// **antes** de o borrão da §12 poder correr. ⇒ a cura não está *«por escrever no dispositivo»*:
 /// ela **existe, está gateada ao bit, e está fora do caminho que o artista corre**.
+/// ⭐⭐⭐ **O CANAL MOLE MUDA A BORDA E NÃO MUDA A FORÇA DA SOMBRA** — o controlo da LEI.
+///
+/// # ⛔⛔ Ele chamava-se `o_dispositivo_ainda_desenha_a_borda_dura_e_a_referencia_nao`, e o nome MENTIA
+///
+/// As duas colunas que ele compara saem do [`super::Quadro::mole`], que pinta **na CPU** com o canal
+/// ligado e desligado — um SUCEDÂNEO, como o cabeçalho deste módulo já dizia. ⇒ ele nunca correu o
+/// dispositivo, e quando o gémeo chegou (2026-09-19) ele continuou VERDE sobre uma frase que passou
+/// a ser falsa. *Um gate que mede um sucedâneo e promete o produto no nome fica verde no dia em que
+/// a dívida é paga.*
+///
+/// ⭐ O que ele de facto mede é bom e fica: **o canal mole muda a BORDA (`≥ 3×`) e não muda a FORÇA
+/// da sombra (`≤ 5 %`)** — que é a resposta ao dono: *«a luz é a mesma; o que muda é só a borda»*.
+/// Quem corre o dispositivo é a
+/// [`super::super::paint_parity_luz_tests::a_borda_mole_da_sombra_e_a_mesma_nos_dois_motores`].
 #[test]
-fn o_dispositivo_ainda_desenha_a_borda_dura_e_a_referencia_nao() {
+fn o_canal_mole_muda_a_borda_e_nao_a_forca_da_sombra() {
     let (doc, cam, onde, luz, chao) = arranjo_do_dono();
     let jade = jade();
     let (dura, contraste_duro) = super::quebra_na_banda(&doc, jade, &cam, onde, luz, chao, false);
     let (mole, contraste_mole) = super::quebra_na_banda(&doc, jade, &cam, onde, luz, chao, true);
 
-    // (1) ⛔ A DÍVIDA AINDA EXISTE — medido `9,21` contra `1,00`, e a barra é `3×` para não medir
-    // ruído. *Se isto reprovar, o gémeo chegou: apague a dívida da §12 e este gate com ela.*
+    // (1) ⭐ O canal MUDA a borda — medido `9,21` contra `1,00`, e a barra é `3×` para não medir
+    // ruído. ⚠️ **As duas colunas são a CPU**, com o canal desligado e ligado: é o efeito da LEI, e
+    // não uma comparação entre motores.
     assert!(
         dura >= mole * 3.0,
-        "os dois caminhos passaram a desenhar a mesma borda (dispositivo {dura:.2} contra          referência {mole:.2}) — se o gémeo do dispositivo foi escrito, esta é a linha que sai, e          com ela a dívida declarada em `docs/Render3d/10` §12"
+        "o canal mole deixou de mudar a borda (duro {dura:.2} contra mole {mole:.2}) — a lei da \
+         §12 ficou inerte, e com ela a cura que o dono aprovou em 18/09"
     );
     // (2) ⭐⭐⭐ A METADE QUE RESPONDE AO DONO: a LUZ é a mesma. O contraste através da banda mede a
     // FORÇA da sombra, e ele não se mexe — o que muda é só a borda dela.

@@ -1320,6 +1320,33 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   cada um esteja na **mesma tabela que pinta as fileiras**. ⚠️ A 1.ª redacção aceitava CAIXA ALTA e
   acusou a minha própria ênfase — *a cura barata era uma lista de excepções, que é como uma lista
   dessas cresce até não medir nada*.
+  ⭐⭐⭐ **E A SOMBRA DE BORDA MOLE CHEGOU AO MODO NORMAL** (19/09, ordem do dono que a tinha adiado
+  de manhã e a trouxe para a frente à tarde — [`10` §25](docs/Render3d/10_a_luz_que_atravessa_a_peca.md)):
+  o **dispositivo** assa o canal ele próprio, em duas passagens separáveis, com o gémeo do
+  `Surface::direct_sss` escrito em WGSL — a quebra na banda do terminador **na placa** vai de
+  **`9,20` para `1,00`**, que é o número da referência. ⭐⭐ **As duas fronteiras que o plano nomeava
+  abriram-se onde já viviam:** o buffer de luz ganhou um bloco RGB **por lâmpada**
+  (`1 + n + 6 + mole·6·n` — seis e não três, porque o borrão é separável), e o `mx_direct_sss` compõe
+  **com e sem** o peso da subsuperfície e fica com a diferença — a composição do OpenPBR é **linear**
+  nesse peso, logo isso é **exactamente** a parcela dela através da pilha, e com as duas radiâncias
+  iguais ele é o `mx_direct` **ao bit**. ⛔⛔⛔ **E A PROVA DE MUTAÇÃO DERRUBOU O GATE QUE EU TINHA
+  ESCRITO:** com o dispositivo a não pedir o canal, a paridade lia **`99,579 %` contra a barra de
+  `99,5`** — *passava por `0,079`* — com o pior byte a **`12`** contra `1`. ⇒ *paridade é uma
+  RELAÇÃO (dois motores que ignoram a mesma feature concordam a 100 %), uma FRACÇÃO afoga um
+  fenómeno que ocupa `10 %` da imagem, e uma metade que mede o canal no BUFFER não prova que ele
+  chega ao PIXEL*. Duas curas: a barra do **pior byte** (`≤ 4`, num vale entre `1` e `12`) e a
+  condição de fecho que o plano escreveu — *«as duas colunas lerem o mesmo»* — **a deixar de ser uma
+  TABELA IMPRESSA** (`as_duas_colunas_da_banda_leem_o_mesmo`, com o controlo do contraste primeiro);
+  ⚠️ a impressora era a **sonda que a própria wave encomendara** como critério de fecho, a **mesma
+  forma** que a `W8` pagou seis dias antes. ⭐ E a wave fechou primeiro os **dois buracos de régua**
+  que o §24.4 nomeava (a paridade de materiais nunca testara subsuperfície — hoje tem jade e folha,
+  `9,9e-6` e `1,6e-6` contra `1e-4`; e o arnês de pintura não assava o canal do lado da CPU).
+  ⛔ **Fronteira DECLARADA:** com **dois ou mais** raios de espalhamento distintos na cena o
+  dispositivo **recusa o quadro** e a CPU pinta — *nenhuma imagem errada, e o caminho lento não
+  define o produto*. ⚠️ Tecto de LOC curado por **CORTE** (o borrão saiu para `paint_wgsl_mole.rs`;
+  o `FILE_OVERAGE_OK` está **vazio**) e o `trace.rs` fica com **uma** linha de margem, nomeada no
+  §25.7. ⚠️ **E o relógio desta wave NÃO foi medido** — ela entra na tabela da `W9`. Mutação
+  **6 de 6**.
   **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
   arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
   do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas

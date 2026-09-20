@@ -164,6 +164,7 @@ fn main() {
         // Sem chão: estas sondas medem a peça, e o chão é outra pergunta.
         ground: None,
         edge_cos: ph2d_field_render::EDGE_COS,
+        mole: None,
         step: passo,
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         budget: ((ph2d_field_render::MAX_STEPS as f32) * shrink.max(1.0)

@@ -110,6 +110,7 @@ pub mod paint;
 mod paint_uniforme;
 pub mod paint_wgsl;
 /// ⭐ **A segunda metade do shader do pintor** — o hemisfério que ele integra.
+mod paint_wgsl_mole;
 mod paint_wgsl_sondas;
 pub mod parity;
 pub mod probe;

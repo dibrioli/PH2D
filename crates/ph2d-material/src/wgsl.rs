@@ -598,6 +598,34 @@ fn mx_direct(m: Mat, n: vec3<f32>, v: vec3<f32>, to_light: vec3<f32>, radiance: 
     return radiance * mx_compose(m, n, v, to_light, true);
 }
 
+// ⭐⭐⭐ **A MESMA lei com DUAS radiancias: a subsuperficie le a sua** — o gemeo do
+// `ph2d_material::Surface::direct_sss`, linha a linha.
+//
+// A luz que uma peca translucida devolve NAO entrou por este ponto: ela entrou a' volta dele e
+// espalhou-se por baixo da superficie. ⇒ a visibilidade que esta closure le e' a da VIZINHANCA, e e'
+// isso que faz a borda de uma sombra num jade ser MOLE enquanto a do especular ao lado continua dura.
+//
+// ⭐⭐ **A separacao e' EXACTA e nao uma aproximacao:** tudo o que esta' a jusante da mistura da
+// subsuperficie e' LINEAR na resposta dela (o `mix`, o `add` e o `layer`, cujo throughput nao depende
+// da radiancia) ⇒ compor COM e SEM o peso de subsuperficie e ficar com a diferenca da' exactamente a
+// parcela dela atraves de toda a pilha. *Nao e' preciso partir o `mx_compose` em dois.*
+//
+// ⚠️ **Com as duas radiancias iguais ele e' o `mx_direct`, AO BIT** — o braco curto sai antes de
+// compor a segunda vez, e ele e' o caminho de todo material sem subsuperficie, que assim nao paga
+// nada.
+fn mx_direct_sss(
+    m: Mat, n: vec3<f32>, v: vec3<f32>, to_light: vec3<f32>, radiance: vec3<f32>, sss: vec3<f32>
+) -> vec3<f32> {
+    let cheio = mx_compose(m, n, v, to_light, true);
+    if (all(sss == radiance) || m.ss_color_weight.a <= 0.0) { return radiance * cheio; }
+    // ⚠️ SO' o peso muda: tudo o que o `prepare` ja' derivou (o indice modulado, os `alpha`, a cor da
+    // subsuperficie, os factores de parede fina) fica, exactamente como do lado da CPU.
+    var sem_ss = m;
+    sem_ss.ss_color_weight.a = 0.0;
+    let sem = mx_compose(sem_ss, n, v, to_light, true);
+    return radiance * sem + sss * (cheio - sem);
+}
+
 /// A radiância que o CÉU devolve — `Surface::indirect`.
 fn mx_indirect(m: Mat, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
     return mx_compose(m, n, v, vec3<f32>(0.0, 0.0, 1.0), false);

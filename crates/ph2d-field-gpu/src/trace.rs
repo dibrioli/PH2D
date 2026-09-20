@@ -128,6 +128,21 @@ pub struct MarchSetup {
     /// pagar um passe que a lei do módulo manda não pagar — *dois motores, uma lei*.
     pub antialias: bool,
     pub edge_cos: f32,
+    /// ⭐⭐⭐ **A BORDA MOLE DA SOMBRA** (`docs/Render3d/10` §12) — o raio por CANAL, em PÍXEIS de
+    /// ecrã, ou `None`.
+    ///
+    /// Com ele, o passe que pinta corre as duas passagens separáveis do
+    /// [`ph2d_field_render::sss_shadow`] sobre a visibilidade de cada lâmpada, e a closure de
+    /// subsuperfície lê a MÉDIA da vizinhança em vez da visibilidade dura deste pixel. ⚠️ `None` é
+    /// o caminho de sempre **ao bit**: o passo do buffer não cresce e o pintor sai pelo braço curto
+    /// do `mx_direct_sss`.
+    ///
+    /// ⛔⛔ **Ele é UM raio para o quadro inteiro, e o chamador RECUSA quando a cena tem dois.** A
+    /// lei da CPU escolhe o raio **por material** ([`ph2d_field_render::sss_shadow::blur_por_material`]),
+    /// e a selecção por pixel pede o dono do ponto dentro do borrão — que arrastaria o campo e a
+    /// tabela de donos para um passe que só precisa da normal. *Com dois raios o chamador cai na
+    /// CPU, que tem a lei inteira: nenhuma imagem errada, em sítio nenhum.*
+    pub mole: Option<[f32; 3]>,
 }
 
 /// ⭐⭐⭐ **O TRAÇADOR: o dispositivo, o cache de pipelines e o layout, vivos entre quadros.**
@@ -498,10 +513,12 @@ fn marcha_com(
     // empréstimo do cache impediria a compilação do pipeline mais abaixo de lhe tocar.
     let b_grades = cache.grades(device, sculpts).clone();
     let b_centro = cria("centro", n * 16);
-    // ⭐ O passo é `1 + n_lamps + 3`: o céu, uma visibilidade por lâmpada e o RICOCHETE
-    // (`docs/Render3d/08`). ⚠️ Ele é a mesma conta do `passo_da_luz()` do WGSL, e as duas têm de
-    // andar juntas: um buffer curto faz o shader escrever fora e a `wgpu` recusa o despacho.
-    let passo_luz = u64::from(setup.n_lamps) + 1 + 6;
+    // ⭐ O passo é `1 + n_lamps + 6`: o céu, uma visibilidade por lâmpada e o RICOCHETE
+    // (`docs/Render3d/08`) — mais **SEIS por lâmpada** quando há BORDA MOLE (o intermediário da
+    // passagem horizontal e o resultado, `docs/Render3d/10` §25). ⚠️ Ele é a mesma conta do
+    // `passo_da_luz()` do WGSL, e as duas têm de andar juntas: um buffer curto faz o shader
+    // escrever fora e a `wgpu` recusa o despacho.
+    let passo_luz = u64::from(setup.n_lamps) * (1 + 6 * u64::from(setup.mole.is_some())) + 1 + 6;
     let b_luz = cria("luz", n * passo_luz * 4);
     // ⛔⛔ **O TECTO da lista de bordas era `6 %` e ESTOUROU** — o gate da paridade apanhou-o: na
     // ROSCA a GPU devolveu exactamente `1 296` bordas, que **é** o tecto, contra `1 745` da CPU, e

@@ -310,9 +310,10 @@ mod extraccao_tests {
                 "o molde da curvatura perdeu a marca {marca}"
             );
         }
-        // ⚠️⚠️ **Quem CHAMA está na outra metade** (`PINTOR_SONDAS`), e a 1.ª redacção deste gate
-        // procurou-a aqui e reprovou — *as duas metades são UM shader*, como o cabeçalho deste
-        // ficheiro diz, e o corte entre elas foi um tecto de LOC e não um assunto. A declaração
+        // ⚠️⚠️ **Quem CHAMA está noutra metade** (`PINTOR_SONDAS`), e a 1.ª redacção deste gate
+        // procurou-a aqui e reprovou — *as metades são UM shader* (são TRÊS desde 2026-09-19, com o
+        // `PINTOR_MOLE`), como o cabeçalho deste ficheiro diz, e o corte entre elas foi sempre um
+        // tecto de LOC e nunca um assunto. A declaração
         // entra por esta marca, a chamada mora no irmão, e o gate tem de olhar para os dois.
         assert!(
             crate::paint_wgsl_sondas::PINTOR_SONDAS.contains("curvatura_em(p)")

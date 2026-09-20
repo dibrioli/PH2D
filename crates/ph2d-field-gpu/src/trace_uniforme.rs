@@ -28,7 +28,8 @@ pub(super) fn uniforme_do_pedido(
         setup.n_lamps,
         // ⭐ **Há chão?** — a altura vai no `f32` do grupo de baixo. Ver `MarchSetup::ground`.
         u32::from(setup.ground.is_some()),
-        0,
+        // ⭐ **Há borda mole?** — o raio dela vai no `vec3` do grupo de baixo. Ver `MarchSetup::mole`.
+        u32::from(setup.mole.is_some()),
         0,
     ] {
         u.extend_from_slice(&v.to_le_bytes());
@@ -55,6 +56,9 @@ pub(super) fn uniforme_do_pedido(
         setup.up,
         setup.fwd,
         setup.ball_center,
+        // ⚠️ **Sem borda mole ele vai a ZERO e ninguém o lê** — o `s.mole` é que decide, e um raio
+        // aqui sem a bandeira não acorda passagem nenhuma.
+        setup.mole.unwrap_or([0.0; 3]),
     ] {
         for f in v {
             u.extend_from_slice(&f.to_le_bytes());

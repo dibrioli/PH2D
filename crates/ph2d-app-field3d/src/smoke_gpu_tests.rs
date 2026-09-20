@@ -218,6 +218,7 @@ mod gpu_gbuffer_parity {
                 ground: None,
                 antialias: true,
                 edge_cos: ph2d_field_render::EDGE_COS,
+                mole: None,
                 step: passo,
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                 budget: ((ph2d_field_render::MAX_STEPS as f32) * shrink.max(1.0)
@@ -531,6 +532,7 @@ mod gpu_frame_clock {
                 ground: None,
                 antialias: true,
                 edge_cos: ph2d_field_render::EDGE_COS,
+                mole: None,
             };
             // ⛔⛔ **O TRAÇADOR VIVE ENTRE QUADROS, e a 1.ª redacção desta sonda usava a porta que
             // abre o dispositivo a cada chamada** — ela leu `130 ms` a `640×360`, *mais lento que a

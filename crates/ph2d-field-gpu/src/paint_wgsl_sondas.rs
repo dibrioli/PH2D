@@ -1,4 +1,7 @@
-//! ⭐⭐⭐ **AS SONDAS E O RICOCHETE, em WGSL** — a segunda metade do corpo do pintor.
+//! ⭐⭐⭐ **AS SONDAS E O RICOCHETE, em WGSL** — a segunda de TRÊS metades do corpo do pintor.
+//!
+//! ⚠️ **A terceira nasceu em 2026-09-19** — o [`super::paint_wgsl_mole`], pelo mesmo tecto e pela
+//! mesma lei: *split, nunca allowlist*.
 //!
 //! # Por que um TERCEIRO ficheiro
 //!
@@ -8,10 +11,10 @@
 //! ⛔ **Split, nunca allowlist** (`CLAUDE.md` §5.0). ⚠️ E a fronteira **não foi escolhida** — ela já
 //! estava escrita no próprio texto, entre *«o que o pintor lê»* e *«o que ele integra»*.
 //!
-//! ⚠️ **As duas metades são UM shader**, concatenadas por quem monta: o corte é o tecto a pedir uma
+//! ⚠️ **As metades são UM shader**, concatenadas por quem monta: o corte é o tecto a pedir uma
 //! fronteira, e não duas leis.
 
-/// ⭐⭐⭐ **AS SONDAS e o RICOCHETE, em WGSL** — a segunda metade do corpo do pintor.
+/// ⭐⭐⭐ **AS SONDAS e o RICOCHETE, em WGSL** — a segunda de TRÊS metades do corpo do pintor.
 ///
 /// ⚠️ **Ela é CONCATENADA com a [`PINTOR`] por quem monta**, e não substituída: as duas são o mesmo
 /// shader, e o corte é só o tecto de LOC a pedir uma fronteira. *A fronteira que ele escolheu é a
@@ -251,8 +254,22 @@ fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu
             to_light = mundo_para_vista(d * inv);
         }
         // ⭐ **A sombra entra na radiância que CHEGA** — não no `N·L` e não no resultado.
-        let chega = pintor.lamp[l].rgb * luz[base + 1u + l] / max(cru, piso);
-        rgb = rgb + mx_direct(m, n, v, to_light, chega);
+        let dura = luz[base + 1u + l];
+        let chega = pintor.lamp[l].rgb * dura / max(cru, piso);
+        // ⭐⭐⭐ **E a SUBSUPERFÍCIE lê a visibilidade MOLE, que é a da vizinhança**
+        // (`docs/Render3d/10` §12): a luz que uma peça translúcida devolve não entrou por ESTE
+        // ponto — entrou à volta dele e espalhou-se por baixo da superfície.
+        //
+        // ⚠️ **Com `s.mole = 0` os três canais são a DURA** ⇒ o `mx_direct_sss` sai pelo braço curto
+        // e o quadro é o de sempre, AO BIT. É o gémeo exacto do `soft_at` da CPU, que devolve a dura
+        // quando a passagem não foi assada.
+        var mole = vec3<f32>(dura);
+        if (s.mole == 1u) {
+            let bm = base_do_mole(i, l);
+            mole = vec3<f32>(luz[bm], luz[bm + 1u], luz[bm + 2u]);
+        }
+        let chega_mole = pintor.lamp[l].rgb * mole / max(cru, piso);
+        rgb = rgb + mx_direct_sss(m, n, v, to_light, chega, chega_mole);
     }
     // ⭐⭐⭐ **O ESTILO ENTRA AQUI, entre a física e o olhar** — o gémeo exacto do
     // `ph2d_field_render::shade_render`. ⛔ Depois do olhar seria tinta sobre um valor já cortado, e
@@ -559,6 +576,7 @@ fn pinta_ricochete(@builtin(global_invocation_id) g: vec3<u32>) {
 // *A guarda da normal aplicada a CADA salto é transitiva — uma vizinhança GEODÉSICA, que não
 // atravessa um vinco; uma recolha larga guardada pelo centro atravessa-o quando as duas pontas por
 // acaso concordam.*
+
 @compute @workgroup_size(8, 8, 1)
 fn borra_ricochete(@builtin(global_invocation_id) g: vec3<u32>) {
     if (g.x >= s.w || g.y >= s.h) { return; }

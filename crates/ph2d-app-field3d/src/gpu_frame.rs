@@ -95,7 +95,9 @@ pub fn march(
         bordas,
         ..Sonda::default()
     };
-    let (campo, fita, setup) = pedido(doc, reg, cam, lamps, ground, cabem, sonda, w, h)?;
+    // ⚠️ **A MARCHA não assa borda mole**, e está certo: este caminho devolve o G-buffer para a CPU
+    // sombrear, e é ela que a assa com a lei inteira ([`ph2d_field_render::sss_shadow`]).
+    let (campo, fita, setup) = pedido(doc, reg, cam, lamps, ground, cabem, sonda, w, h, None)?;
     let screen = ph2d_field_render::Screen::new(w, h, cam.half_extent);
     let dev = tracer
         .lock()
@@ -232,7 +234,24 @@ pub fn paint_com(
         return None;
     }
     let cabem = lamps_that_fit(tracer, w, h);
-    let (campo, fita, setup) = pedido(doc, reg, cam, &mundos, ground, cabem, sonda, w, h)?;
+    // ⭐⭐⭐ **A BORDA MOLE DA SOMBRA** (`docs/Render3d/10` §12) — o raio sai dos ESPALHAMENTOS
+    // DISTINTOS da cena, exactamente como a lei da CPU o tira.
+    //
+    // ⛔⛔ **Com DOIS raios distintos o dispositivo RECUSA o quadro**, e o chamador cai na CPU. A lei
+    // da CPU escolhe o raio **por material**, e a selecção por pixel pede o dono do PONTO dentro do
+    // borrão — que arrastaria o campo e a tabela de donos para um passe que só precisa da normal.
+    // *Recusar entrega a imagem CERTA mais devagar; sombrear com o raio da vizinha entrega a errada
+    // depressa.*
+    //
+    // ⚠️ **Zero distintos é o caminho de sempre, AO BIT:** uma cena sem material translúcido não
+    // paga um byte de buffer nem um despacho.
+    let distintos = ph2d_field_render::sss_shadow::espalhamentos_distintos(surfaces);
+    let mole = match distintos.as_slice() {
+        [] => None,
+        [um] => Some(ph2d_field_render::sss_shadow::raio_em_pixeis(cam, h, *um)),
+        _ => return None,
+    };
+    let (campo, fita, setup) = pedido(doc, reg, cam, &mundos, ground, cabem, sonda, w, h, mole)?;
     // ⚠️ **As duas listas nascem do MESMO `points`**, e é por isso que a ordem não pode divergir:
     // a posição da lâmpada `l` viaja no `MarchSetup` e a radiância dela aqui.
     let mut lamp_radiance = [[0.0f32; 3]; ph2d_field_gpu::trace::MAX_LAMPS];
@@ -300,6 +319,8 @@ pub fn paint_com(
         } else {
             0
         },
+        // ⭐ O gémeo do `MarchSetup::mole`, do lado de quem COMPILA — os dois vêm da mesma decisão.
+        mole: setup.mole.is_some(),
         stops: pres.look.exposure_stops,
         view: ph2d_view_transform::wgsl::view_code(pres.look.view),
         // ⭐⭐⭐ **A camada de ESTILO, no MESMO tipo que a CPU recebeu** (`docs/Render3d/03`, a
@@ -411,6 +432,11 @@ fn pedido(
     sonda: Sonda,
     w: u32,
     h: u32,
+    // ⭐⭐⭐ **O RAIO DA BORDA MOLE, por canal e em píxeis** — ver [`ph2d_field_gpu::trace::MarchSetup::mole`].
+    // ⚠️ Ele entra por ARGUMENTO e não é derivado aqui porque esta função não vê os materiais:
+    // quem os tem é o `paint_com`. *Uma função que inventasse o raio sem os materiais mediria outro
+    // programa.*
+    mole: Option<[f32; 3]>,
 ) -> Option<(
     ph2d_field_eval::device::DeviceField,
     ph2d_field_eval::wgsl::TapeWgsl,
@@ -475,6 +501,7 @@ fn pedido(
         ao_reach: ph2d_field_render::OCCLUSION_REACH * cam.half_extent,
         ground: ground.map(|g| g.height),
         edge_cos: ph2d_field_render::EDGE_COS,
+        mole,
     };
     Some((campo, fita, setup))
 }

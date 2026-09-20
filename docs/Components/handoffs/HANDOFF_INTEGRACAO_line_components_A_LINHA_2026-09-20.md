@@ -1,5 +1,15 @@
 # HANDOFF DE INTEGRAÇÃO — **A LINHA `line/components` INTEIRA** (2026-09-20)
 
+> ⛔⛔ **SUPERSEDIDO como documento de INTEGRAÇÃO** por
+> [`…_OS_ABERTOS_2026-09-20.md`](HANDOFF_INTEGRACAO_line_components_OS_ABERTOS_2026-09-20.md):
+> a linha fechou aqui e o dono REABRIU-A no mesmo dia (*«vamos fechar o que está em aberto»*),
+> e a superfície de colisão medida neste ficheiro **envelheceu na hora** — o `PROJECT_SCHEMA`
+> andou mais **três** degraus desde então. ⚠️ **Leia a superfície LÁ.**
+>
+> ⭐ **O que fica vivo aqui é o §6** — a lição do rebase (as oito memórias do `main` órfãs num
+> índice que esta linha compactou no mesmo dia, e as cinco contagens de família paradas que um
+> gate DESTA linha acordou). Ele não foi reescrito no documento novo.
+
 > **Para o agente INTEGRADOR.** Este é o documento do §1.5.9 da DIRETRIZ: a superfície de colisão
 > MEDIDA, os contadores como DELTA, onde um merge textual pode colidir, a prova de fecho, e o que só
 > a árvore combinada pode reprovar.

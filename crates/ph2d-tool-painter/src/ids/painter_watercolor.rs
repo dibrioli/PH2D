@@ -214,9 +214,18 @@ pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 6] = [
 /// The Watercolor **SetValue** number-fields — one membership check for the panel's number-field forward
 /// (`is_param_field`) and register loop. UI cards (redesign 2026-07-07): **Wash** = Body(Fill) /
 /// Concentration(Depth) / Opacity / Edge Darkening(Edge) / Bleed(Spread) / Ragged Edge(Warp); **Brush** = Charge /
-/// Dilution / Pull; **Water** = Rewet(Wet) / Smudge / Pigment(Mix). Granulation lives in the Grain
-/// section; the full Paper slot (Size / Angle / Offset / Depth / params) in the Paper section.
-pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 27] = [
+/// Dilution / Pull / Self Pickup; **Water** = Rewet(Wet) / Smudge / Pigment(Mix). Granulation lives
+/// in the Grain section; the full Paper slot (Size / Angle / Offset / Depth / params) in the Paper
+/// section.
+///
+/// ⛔⛔ **Um id que o painel PINTA e que não está aqui é um campo MUDO**: o `is_param_field` do
+/// `event.rs` responde `false`, o `ValueChanged` morre dentro do painel, e o espelho do quadro
+/// seguinte repõe o número autorado — o artista vê o valor *saltar de volta ao que era*. Foi assim
+/// que o `Self Pickup` shipou (report do dono, 2026-09-20: *«valor não sai de 0»*). ⚠️ E o gate
+/// `seam::watercolor_sliders_forward_setvalue` **não o podia ver**, porque varre esta mesma lista;
+/// quem o apanha é o censo DERIVADO DA TELA em
+/// `seam_watercolor_cards::cada_campo_que_a_aquarela_acrescenta_a_tela_chega_a_ferramenta`.
+pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 28] = [
     PAINTER_WATERCOLOR_DRY_TIME,
     PAINTER_WATERCOLOR_WET_PREVIEW,
     PAINTER_WATERCOLOR_EDGE,
@@ -232,6 +241,7 @@ pub const PAINTER_WATERCOLOR_FIELDS: [NodeId; 27] = [
     PAINTER_WATERCOLOR_CHARGE,
     PAINTER_WATERCOLOR_DILUTION,
     PAINTER_WATERCOLOR_PULL,
+    PAINTER_WATERCOLOR_SELF_PICKUP,
     PAINTER_WATERCOLOR_PAPER_SIZE_X,
     PAINTER_WATERCOLOR_PAPER_SIZE_Y,
     PAINTER_WATERCOLOR_PAPER_ANGLE,

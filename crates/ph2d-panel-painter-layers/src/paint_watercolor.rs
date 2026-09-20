@@ -313,7 +313,9 @@ fn paint_brush_card(
         content_w,
         y,
         tr("panel.painter_layers.watercolor.brush"),
-        3,
+        // ⚠️ QUATRO linhas: Charge · Dilution · Pull · Self Pickup. O `card_frame` dimensiona a
+        //    moldura por este número — uma linha a mais do que ele diz é pintada FORA do cartão.
+        4,
     );
     ry = card_row(
         ctx,
@@ -343,7 +345,10 @@ fn paint_brush_card(
         number_field::FINE_STEP,
         2,
     );
-    let _ = card_row(
+    // ⚠️ O `y` de retorno de uma `card_row` é o `y` da linha SEGUINTE — deitá-lo fora (`let _ =`)
+    //    só é honesto na ÚLTIMA. O `Pull` era a última quando foi escrito, e ao ganhar uma vizinha
+    //    as duas passaram a ser pintadas no MESMO `y` (report do dono: *«label embolada»*).
+    ry = card_row(
         ctx,
         theme,
         ix,

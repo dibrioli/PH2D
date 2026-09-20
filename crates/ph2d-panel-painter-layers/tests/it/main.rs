@@ -27,4 +27,5 @@ mod seam_spray;
 mod seam_substrate;
 mod seam_taper;
 mod seam_texture_colors;
+mod seam_watercolor_cards;
 mod seam_wetpaint;

@@ -177,9 +177,33 @@ o raio da fixtura — o que provou que o problema não era o número, era o gate
   (CLAUDE.md §5), cuja nota já diz que `pad += 2·raio` **não** é a cura.
   ⚠️ *É por isso que o gate irmão mede a `120`: uma barra posta num raio onde outro defeito já vive não
   afirma nada sobre este.*
-- ⏳ O custo por quadro do campo com Rewet alto e pincel grande (a janela cresce `R` para cada lado) —
-  ver o handoff. ⚠️ **Não medido ainda**: esta máquina esteve a `load 38`–`45` a jornada inteira, e a lei do
-  §5.0 (*nenhuma leitura de relógio vale acima de `load ~5`*) proíbe a tabela.
+- ✅ **O CUSTO está MEDIDO** (sonda versionada `measure_the_cost_of_the_reserve_field`, `--ignored`; traço em U
+  inteiro = depósito + composites por quadro + o assar do pen-up; mínimo de 3; **CPU `99 %` ociosa**, medida
+  por `vmstat` e não pelo `loadavg`, que estava a decair de `45` e mente).
+
+  | canvas | `r` | knobs | nova lei | lei antiga | razão |
+  |---|---|---|---|---|---|
+  | 512 | 32 | **charge 1 (sem mapa)** | `80,8` | `72,6` | **`1,11`** |
+  | 512 | 32 | seco | `118,3` | `68,2` | `1,73` |
+  | 512 | 32 | rewet 1,0 | `287,2` | `174,4` | `1,65` |
+  | 512 | 96 | **charge 1 (sem mapa)** | `214,2` | `213,1` | **`1,00`** |
+  | 512 | 96 | seco | `330,4` | `205,4` | `1,61` |
+  | 512 | 96 | rewet 1,0 | `923,8` | `719,7` | `1,28` |
+  | 2048 | 250 | **charge 1 (sem mapa)** | `1 553,0` | `1 512,4` | **`1,03`** |
+  | 2048 | 250 | seco | `1 903,5` | `1 212,4` | `1,57` |
+  | 2048 | 250 | rewet 1,0 | `5 345,4` | `3 823,8` | `1,40` |
+
+  ⭐ **A linha que decide é a do CONTROLO:** com `Charge = 1` — o valor de fábrica, onde não há mapa de
+  reserva — a cura é **de graça** (`1,00` · `1,03`; a célula de `r = 32` lê `1,11` em release e `0,99` em dev,
+  ou seja **as duas leituras cavalgam o `1,00`** sobre um total de `~75 ms` ⇒ ruído, e é a célula mais
+  pequena da tabela). *O artista que não usa Charge não paga nada por isto.*
+  ⚠️ Armada (`Charge < 1`), ela custa `1,28`–`1,73×` o traço. **Derivado** (não medido directamente): sobre
+  `~90` composites de um U, isso são `+1,3 ms` por quadro a `r = 32` e `+2,1 ms` a `r = 96` — e a `2048/250` o
+  quadro já custava `34 ms` **na lei antiga**, logo ali o orçamento é um problema que não é desta wave.
+  ⛔ **E o `--release` NÃO é 20× o dev aqui, ao contrário do que a lei geral do §5.0 faz esperar:** as duas
+  colunas batem (`seco` lê `1,73`/`1,75`, `rewet 1,0` `1,65`/`1,49`), porque a `ph2d-tool-painter` está na
+  lista `[profile.dev.package.*]` `opt-level = 2` do `Cargo.toml` da raiz. *Quem re-medir isto não precisa de
+  pagar um build de release.*
 - ⚠️ **PROMOÇÃO PEDIDA à família de flakes de fan-out (CLAUDE.md §5.0)** — a linha pede, o integrador escreve:
   `the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`
   (`ph2d-tool-painter`, `tool::paint::tests::measure_input_cost`). Assinatura completa: único ✗ de `1 257`

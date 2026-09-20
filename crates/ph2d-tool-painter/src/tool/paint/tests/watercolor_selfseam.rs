@@ -762,3 +762,63 @@ fn measure_who_owns_the_stale_pixel() {
         }
     }
 }
+
+/// **Sonda de CUSTO** — o que o campo da reserva cobra a um traço inteiro (depósito + composites por
+/// quadro + o assar do pen-up), contra o CONTROLO (a lei antiga no mesmo arnês). Relógio de parede:
+/// só vale com a máquina calma — imprime o `loadavg` ao lado. `--ignored --nocapture`.
+#[test]
+#[ignore = "sonda de medicao: relogio"]
+fn measure_the_cost_of_the_reserve_field() {
+    let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!(
+        "\n=== CUSTO do traco em U inteiro (ms, minimo de 3) — loadavg {}",
+        load.trim()
+    );
+    eprintln!("    canvas     r  knobs            nova lei   lei antiga   razao");
+    let time = |u: UStroke, k: SeamKnobs| -> f64 {
+        (0..3)
+            .map(|_| {
+                let t0 = std::time::Instant::now();
+                let t = paint_u(u, k);
+                std::hint::black_box(&t);
+                t0.elapsed().as_secs_f64() * 1e3
+            })
+            .fold(f64::MAX, f64::min)
+    };
+    let big = UStroke {
+        size: 2048,
+        r: 250.0,
+        xa: 700.0,
+        xb: 1000.0,
+        y0: 400.0,
+        y1: 1600.0,
+    };
+    for (u, step) in [
+        (UStroke::new(32.0), 4.0f32),
+        (UStroke::new(96.0), 4.0),
+        (big, 12.0),
+    ] {
+        for (label, rewet, charge1) in [
+            ("charge 1 (sem mapa)", 0.0f32, true),
+            ("seco", 0.0, false),
+            ("rewet 0,4", 0.4, false),
+            ("rewet 1,0", 1.0, false),
+        ] {
+            let k = SeamKnobs {
+                rewet,
+                step_px: step,
+                paper: true,
+                granulation: 0.3,
+                span_factor: if charge1 { 1.0e9 } else { 1.5 },
+                ..Default::default()
+            };
+            let (new, old) = (time(u, k), with_the_old_law(|| time(u, k)));
+            eprintln!(
+                "  {:6} {:5.0}  {label:<18} {new:9.1} {old:12.1} {:7.2}",
+                u.size,
+                u.r,
+                new / old
+            );
+        }
+    }
+}

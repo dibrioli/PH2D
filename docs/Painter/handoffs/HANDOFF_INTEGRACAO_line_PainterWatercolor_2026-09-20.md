@@ -585,3 +585,91 @@ só é um buraco depois de se perguntar quem mais o mede.*
 ⏳ A junção com o mixer **desligado** mede `0,43` contra `0,54` da borda — dentro da barra, e é o
 lado que o dono nunca reportou. Se algum dia ele o apontar, a alavanca é a rampa do próprio
 depósito (`accumulate_wet_color`, `source-over` com o feather do dab), não este campo.
+
+## §17 — A LEI DA TINTA vira folha; o Digital troca, a Aquarela NÃO (ordem do dono, 2026-09-20)
+
+> *«Em watercolor pigment só funciona se pintar sobre tinta seca. Sobre tinta molhada fica como na
+> imagem.»* (foto: azul e amarelo encostados, faixa PÁLIDA no meio) · *«Prefiro: Trocar as duas para
+> a lei do Wet Paint (os três meios passam a misturar igual).»*
+
+### §17.1 — O que a medição respondeu ANTES de construir
+
+A pergunta que veio antes (*«podia ser implementado para digital e watercolor?»*) tinha uma resposta
+que só a medição dá: **já estava implementado nos dois** — é o slider `Pigment`, `OFF` de fábrica —
+e **não é a lei do Wet Paint**: era **RYB** (Gossett & Chen 2004) contra o **Kubelka–Munk** do
+fluido. Uma nota do `spec.rs` dizia «Kubelka–Munk» sobre a implementação RYB, e foi corrigida
+(`aa331f9e9`) — *uma nota que troca o nome do modelo faz alguém comparar duas tintas diferentes
+julgando que são a mesma*.
+
+**Custo, medido** (release, 94–97 % de CPU ociosa, canvas 4096², quadro de 16,7 ms): na aquarela o
+`Pigment` custa **abaixo do ruído** (`0,897 → 0,891 ms`); no digital **`2,1×`** o traço (`+0,20` a
+`+0,36 ms` para raios de 50–200 px, `1,2 %`–`2,2 %` de um quadro). A lei em si: RYB `18,3 ns`,
+K–M `30,3 ns` (`1,65×`). ⚠️ A linha de `raio 400` da varredura leu `0,004 ms` e foi **descartada**:
+o passo fixo de 40 px não emite dab para aquele raio — *aquilo é nada pintado, não um caso barato*.
+
+### §17.2 — W1: a lei muda de ENDEREÇO (entregue)
+
+[`ph2d-pigment`](../../../crates/ph2d-pigment/) — folha nova, `libm` pinado e mais nada. O K–M sai
+do `ph2d-wet-paint` **sem uma linha de matemática mudada** e aquele motor **delega** (suíte
+`88 + 37 + 6` verde, byte-idêntica). ⚠️ *Uma lei escrita em dois sítios ainda não é uma lei.*
+
+### §17.3 — W2: o Digital troca (entregue) · a Aquarela NÃO (medido e revertido)
+
+O `blend_over_pigment` lê a porta. A troca é **observável**: a 50/50, `amarelo + vermelho` lia
+`141,84,28` e lê `227,38,28`.
+
+⛔⛔ **Na aquarela a troca foi CONSTRUÍDA, MEDIDA e REVERTIDA, e o que ela quebra não é a cor — é a
+FAIXA DINÂMICA.** Ali o parceiro da mistura é a **BASE** (papel quase branco, `K/S ≈ 0`), e um lerp
+em `K/S` contra o zero é violentamente não-linear: um pigmento saturado escurece até ao chão. Medido
+pelo produto, o `watercolor_soak_deepens_and_widens_the_dissolve_while_parked` passou a ler **o
+MESMO pixel** (`228,23,23`) para 2 s de demora e para a passagem rápida — *os dois lados saturam e o
+knob deixa de modular*. ⭐ **A pista da 2.ª tentativa está nomeada no sítio:** para *«uma camada de
+pigmento SOBRE um fundo»* o operador K–M não é o `mix`, é o **glaze**
+(`km_glaze_channel_linear`, que já existe e é energia-limitado).
+
+### §17.4 — O defeito da FOTO: diagnosticado, com duas curas medidas e mortas
+
+⛔⛔ **A causa não é a lei — é COM O QUÊ se mistura.** O termo `Pigment` mistura a lavagem com a
+base **CONGELADA**, e um vizinho molhado é *session-mate*: **não está lá**. Ele mistura com o PAPEL.
+Medido no meio da sobreposição: `254,252,235` (quase branco) com o botão LIGADO contra `253,245,140`
+desligado — *o botão não falha wet-on-wet; ele mistura com a coisa errada*.
+
+**Duas curas construídas e revertidas:**
+1. **trocar a LEI no depósito** — irrelevante: no meio o peso do `over` é `w = a/na ≈ 1` e **qualquer**
+   lei devolve a cor de cima;
+2. **trocar o PESO** para a fracção de massa (`a/(a+da)`) — o depósito vai de `250,230,64` para
+   `210,223,65` e pára aí: *~20 dabs amarelos passam pelo mesmo texel e cada um volta a misturar*,
+   lavando o azul embora geometricamente.
+
+⭐ **A cura que sobra é estrutural e está desenhada:** a cobertura é **max-blended** porque uma
+lavagem é **UMA passagem**, e a cor tem de obedecer à mesma lei — o peso do depósito não é o alfa do
+dab, é o **INCREMENTO da cobertura** (`max(0, depois − antes)`), zero quando o mesmo traço repassa e
+positivo quando um traço NOVO chega. O incremento só é visível dentro do passe de COBERTURA (o de
+cor corre depois, sobre o envelope já fechado) ⇒ **a cura junta os dois passes**, o que de graça
+apaga a duplicação do replay de rng que eles hoje mantêm em lock-step. O instrumento fica versionado
+em `diag_pigment_molhado_sobre_molhado` (`#[ignore]`, com a tabela das quatro células).
+
+### §17.5 — Premissas mortas e armadilhas pagas
+
+- `pigment_mixes_blue_and_yellow_toward_green` exigia *«o verde ACIMA da média plana»* — propriedade
+  do **RYB**. No K–M as absorvências SOMAM e a mistura é mais **ESCURA** (`0,275` contra `0,500`).
+  Fica o hallmark das duas leis (o verde DOMINAR) + a metade que **afirma a troca** + o controlo.
+- O cabeçalho do `ph2d-painter-brush` dizia *«zero dependências de propósito — nenhuma transferência
+  sRGB é precisa aqui»*: a lei da tinta **é** uma.
+- ⛔ A 1.ª `mix_unit` passava por **BYTES** e quantizava a saída a `1/255`, apagando a diferença que
+  o gate do soak mede — a porta do `K/S` é uma **tabela interpolada** e aceita `0..255` fraccionário.
+- ⛔ **Mover um ficheiro troca o REGIME DE LINT que o governa** (§5.0, outra camada): o `transfer.rs`
+  vivia sob dois `allow` de **crate inteira** da casa de origem. Um virou `clamp` (mesma resposta,
+  `NaN` incluído) e o outro é **isenção nomeada de um método só** — *uma folha nova não herda uma
+  licença em branco porque o ficheiro veio de uma casa que a tinha*.
+
+### §17.6 — Aberto, e de quem é
+
+- ⏳ **O controlo do `Pigment` no DIGITAL** — a lei já é a do Wet Paint ali, e o portão
+  (`effective_pigment_mix` exige `watercolor && pigment`) mantém-na **inalcançável**: a fileira vive
+  no cartão da AQUARELA. Abrir o portão sem pintar a fileira entregaria uma feature que o artista
+  não alcança, que é o defeito que esta casa já nomeia. ⚠️ **E há uma razão de PRODUTO para a ordem
+  ser esta:** a troca escurece as misturas, e o dono deve julgá-la num meio antes de ela alcançar um
+  terceiro.
+- ⏳ **O wet-on-wet** (§17.4) — cura desenhada, junta os dois passes do depósito.
+- ⏳ **A aquarela com o glaze** (§17.3) — a 2.ª tentativa da troca de lei.

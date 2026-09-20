@@ -488,6 +488,112 @@ fn audit_the_stamp_duplicator_population() {
     eprintln!("  cenas do duplicador: {cenas_dup:?}\n");
 }
 
+/// ⭐⭐⭐ **DE QUE LADO VEM A FORMA** — o ⏳ que a §5.2 do doc 116 deixou por medir, e o que decide
+/// se a W1(b) é um ENTREGÁVEL ou mais uma bancada.
+///
+/// ⚠️ **A sonda irmã conta os dois nós por CENA; esta conta o PAR.** Para cada cartão de
+/// `motion.duplicator` ela sobe a montante da porta `0` (a forma) e da porta `1` (os pontos) e
+/// pergunta o que lá encontra — porque as três cercas da §2 vivem em camadas diferentes:
+///
+/// - uma **`source.shape`** a montante é um **vector VIVO**, e a ponte recusa o grafo inteiro
+///   (ADR-0154) **mesmo com o carimbo a ter kernel** ⇒ ali a W1(b) não muda uma linha;
+/// - um **`source.object`** é uma textura, e aí a cerca é a da §2.1: dar um verbo estrutural ao
+///   carimbo faz o `suffix_changes_count` responder `true` e a ponte passa a **RECUSAR o que hoje
+///   aceita** — uma regressão noutra cena, não uma melhoria nesta;
+/// - **nenhum dos dois** é o caso em que a W1(b) entrega sozinha.
+///
+/// ⛔ *Sem esta contagem a wave escolhe-se pela pureza da prova outra vez, que é o erro que a
+/// §5.2 já apanhou uma vez.*
+#[test]
+#[ignore = "sonda de auditoria (ciclo 10), nao gate"]
+fn audit_the_stamp_shape_side() {
+    /// Os nomes de tipo a montante de `(no, porta)`, subindo por todas as portas.
+    fn montante(
+        g: &ph2d_nodegraph::graph::Graph,
+        no: ph2d_nodegraph::graph::NodeId,
+        porta: usize,
+        vistos: &mut Vec<String>,
+    ) {
+        let Some((src, _, _)) = g.input_edge(no, porta) else {
+            return;
+        };
+        let Some(inst) = g.node(src) else { return };
+        if vistos.contains(&inst.type_name) && vistos.len() > 64 {
+            return; // cerca de ciclo: um grafo do produto é acíclico, isto é defesa
+        }
+        vistos.push(inst.type_name.clone());
+        for p in 0..8 {
+            montante(g, src, p, vistos);
+        }
+    }
+
+    let (mut so_forma, mut so_objecto, mut ambos, mut nenhum, mut total) = (0, 0, 0, 0, 0);
+    let (mut com_transfer, mut pontos_com_forma) = (0, 0);
+    let mut cenas_objecto: Vec<u32> = Vec::new();
+    for level in 1..=crate::motion_state::demo_router::MAX_DEMO_LEVEL {
+        let mut m = crate::motion_state::MotionState::new();
+        let _ = crate::motion_demo_legend::monta(&level.to_string(), &mut m.doc, &m.registry);
+        let man = m
+            .registry
+            .manifests()
+            .find(|man| man.id == ph2d_nodegraph::node::NodeTypeId::of("motion.duplicator"))
+            .expect("o `motion.duplicator` esta' registado");
+        let ids: Vec<_> = m
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == "motion.duplicator")
+            .map(|n| n.id)
+            .collect();
+        for id in ids {
+            total += 1;
+            let mut lado_forma = Vec::new();
+            montante(&m.doc.graph, id, 0, &mut lado_forma);
+            let mut lado_pontos = Vec::new();
+            montante(&m.doc.graph, id, 1, &mut lado_pontos);
+            let f = |v: &[String], t: &str| v.iter().any(|n| n == t);
+            let (tem_forma, tem_obj) = (
+                f(&lado_forma, "source.shape"),
+                f(&lado_forma, "source.object"),
+            );
+            match (tem_forma, tem_obj) {
+                (true, true) => ambos += 1,
+                (true, false) => so_forma += 1,
+                (false, true) => {
+                    so_objecto += 1;
+                    if !cenas_objecto.contains(&level) {
+                        cenas_objecto.push(level);
+                    }
+                }
+                (false, false) => nenhum += 1,
+            }
+            pontos_com_forma += usize::from(f(&lado_pontos, "source.shape"));
+            let t = m
+                .doc
+                .graph
+                .node_param_overrides(id)
+                .and_then(|o| o.get("transfer").copied())
+                .unwrap_or_else(|| {
+                    man.params
+                        .iter()
+                        .find(|s| s.name == "transfer")
+                        .map_or(0.0, |s| s.default)
+                });
+            com_transfer += usize::from(t.round() as i32 != 0);
+        }
+    }
+    eprintln!("\n=== DE QUE LADO VEM A FORMA (ciclo 10, W1b) ===\n");
+    eprintln!("  cartoes de `motion.duplicator` .............. {total}");
+    eprintln!("  porta 0 com `source.shape` (vector VIVO) .... {so_forma}");
+    eprintln!("  porta 0 com `source.object` (textura) ....... {so_objecto}");
+    eprintln!("  porta 0 com os DOIS ......................... {ambos}");
+    eprintln!("  porta 0 com NENHUM dos dois ................. {nenhum}");
+    eprintln!("  (controlo) porta 1 com `source.shape` ....... {pontos_com_forma}");
+    eprintln!("  com `transfer != Shape Wins` ................ {com_transfer}\n");
+    eprintln!("  cenas com objecto no lado da forma: {cenas_objecto:?}\n");
+}
+
 /// ⭐⭐⭐ **A ENTRADA DE UM MULTIPLICADOR TRAZ `Index` E `Count`?** — a medição que decide o
 /// DESENHO da W1 (doc 116 §5.1).
 ///

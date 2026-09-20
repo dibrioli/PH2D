@@ -481,6 +481,57 @@ e **nenhum kernel existente o declara**; o `is_source_mapped` responde ao mesmo 
 mais ele; e o plano derivado coincide com a lista que substituiu para **todos** os dez verbos
 anteriores, porque os únicos condicionais de então também LIAM (`here == presente`).
 
+### §5.6 — ⛔⛔⛔ E A W1(b) NÃO É O ENTREGÁVEL: `36` de `36` cartões trazem um VECTOR VIVO
+
+O ⏳ que a §5.2 deixou por medir — *«dos 36 cartões, quantos têm uma `source.shape` na porta 0
+contra um objecto com textura»* — foi medido (`audit_the_stamp_shape_side`, a sonda que conta o
+**PAR** e não os dois nós por cena), subindo a montante de cada porta:
+
+| o lado da FORMA (porta 0) de cada cartão | cartões |
+|---|---:|
+| com `source.shape` a montante (**vector VIVO**) | **`36`** |
+| com `source.object` a montante (textura) | `0` |
+| com os dois | `0` |
+| com nenhum dos dois | `0` |
+| *(controlo)* o lado dos PONTOS com `source.shape` | `0` |
+| com `transfer ≠ Shape Wins` | `6` |
+
+⛔⛔⛔ **⇒ dar um kernel ao `motion.duplicator` muda ZERO cartões no produto.** A recusa que manda
+não é a do planeador, é a da PONTE, e ela corre **antes de planear**:
+
+```rust
+if graph_has_live_vector_source(&motion.doc.graph, &motion.registry) {
+    return fell(motion, "CPU: o grafo traz uma FORMA vectorial viva (source.shape)");
+}
+```
+
+*Ela olha o GRAFO inteiro*, não a fronteira: com o carimbo a ter verbo estrutural, aqueles 36
+cartões continuam a cair na CPU pela **mesma linha**, sem uma etapa de GPU a correr.
+
+⚠️⚠️ **Isto refuta a conclusão da §5.2 com o número que ela própria encomendou.** Ela escreveu *«as
+duas metades fecham na MESMA wave: a lei prova-se no clone e **ATERRA** no duplicador (34)»* — e o
+aterrar era uma suposição sobre uma contagem que não estava feita. *A §5.2 apanhou-me a escolher uma
+wave pela pureza da prova; esta apanha-me a escolher a seguinte pela população do NÓ quando o que
+decide é a população da CADEIA.*
+
+⭐ **E ela ilibou a cerca §2.1 para esta população, com número:** `0` dos 36 tem `source.object` no
+lado da forma, logo o par `graph_has_object_source && suffix_changes_count` **não é o que bloqueia
+aqui**. ⛔ Ele continua a ser uma dívida real do dia em que a W2 assar a forma — porque uma forma
+assada **é** uma textura —, e a §2.1 fica de pé como preço da W2, não da W1(b).
+
+⇒ **A ordem muda, e a razão é medida:**
+
+| wave | estado | porquê |
+|---|---|---|
+| **W1(a)** `motion.clone` | ✅ **fechada** | a BANCADA da lei de contagem — `2` cartões, e prova-se sem forma no caminho |
+| **W1(b)** `motion.duplicator` | ⏸️ **ADIADA, com o número** | inerte até a W2: `36/36` recusados uma camada acima. Construí-la agora seria a **segunda** bancada seguida |
+| **W2** o *bake fallback* (ADR-0154 Fase 3) | ⭐ **a seguinte** | é ela que dissolve a cerca que gateia **100 %** dos cartões |
+
+⚠️ **E a W1(b) volta a ser obrigatória no dia em que a W2 aterrar:** com a forma assada, a cadeia
+fica `forma(fronteira) → carimbo(fronteira) → …` e **não sobra etapa nenhuma para o dispositivo** —
+a W2 sozinha tira a recusa e não põe nada na placa. *As duas são necessárias e a ORDEM entre elas
+inverteu-se.*
+
 ---
 
 ## §6 — CERCAS que este ciclo herda (lidas, não lembradas)

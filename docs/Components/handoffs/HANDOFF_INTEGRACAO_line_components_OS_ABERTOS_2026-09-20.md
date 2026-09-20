@@ -6,7 +6,7 @@
 > daqui. não vamos trabalhar com ele. siga»*). ⚠️ **O §6 dele continua vivo e não foi reescrito
 > aqui** — a lição do rebase (as memórias órfãs, as contagens de família paradas) é dele.
 
-**17 commits** · `127` ficheiros · merge-base `395da6a55`.
+**19 commits** · `141` ficheiros · merge-base `395da6a55`.
 ⭐ **O `main` NÃO andou** desde o merge-base ⇒ *a árvore combinada É esta*, e os censos da soma
 foram corridos sobre ela (127/127).
 
@@ -58,6 +58,7 @@ gravados): um blob anterior é **recusado em voz alta** em vez de lido errado em
 | 12 | **o portão batched** | os três vermelhos que o laço interno é cego a (ver §5) |
 | 13 | **o roteiro do gatilho** | ele NOMEIA o botão novo, com a metade que diz onde ele NÃO aparece |
 | 14 | **o ENUM de um script** | uma propriedade de texto com LISTA vira CHIP, e o valor de fora **não chega ao script** (ver §5-bis) |
+| 15 | **a POSIÇÃO e a COR** | uma fileira com DOIS campos e uma AMOSTRA que abre o selector — as duas variantes APENDADAS, zero degrau (ver §5-ter) |
 
 ---
 
@@ -303,16 +304,27 @@ dono aprovou*.
 
 ## §8 — Prova de fecho
 
-- `bash scripts/nextest-impacted.sh` → **17 684 / 17 684** — ⚠️ com **duas** corridas a acusarem
+- `bash scripts/nextest-impacted.sh` → **17 702 / 17 702**, zero reprovadas (a corrida do §5-ter).
+  ⚠️ A penúltima corrida acusou **dois** tectos de LOC, curados por **CORTE** — o pintor por TIPO
+  saiu da `linha` (`242` de `200`) e as seis amostras de tinta saíram do `sync` (`603 → 531`), as
+  duas **verbatim e na mesma posição**. ⛔ Nenhuma entrada nova no `FILE_OVERAGE_OK`, que continua
+  **vazio**.
+- corridas anteriores desta reabertura → **17 684 / 17 684** — ⚠️ com **duas** a acusarem
   **UM** membro NOMEADO da família de flakes de fan-out cada, e **membros DIFERENTES entre elas**
   (`the_cost_of_a_player_is_linear_in_their_number` · `the_cost_of_depth_is_linear_not_explosive`),
   os dois `3 de 3` verdes sozinhos a `load 28`–`46` e com **zero linhas de diff** nas crates deles.
   ⭐ *O conjunto de reprovadas MUDAR entre corridas é a assinatura mais forte da família.*
-- `bash scripts/censos-da-arvore-combinada.sh` → **127 / 127** (controlo do filtro: 12 de 12 censos correram)
+- `bash scripts/censos-da-arvore-combinada.sh` → **127 / 127** (controlo do filtro: 12 de 12 censos
+  correram). ⚠️ O `main` **não andou** desde o merge-base ⇒ a árvore combinada É esta.
+  ⭐ Um deles reprovou no §5-ter e a cura é uma **isenção NOMEADA**: as duas formas com que um
+  valor de script se lê numa linha de órfão (`vec2(…)` · `color(…)`) **não são língua** — são o
+  construtor que o artista escreveu no `.luau` dele, e traduzi-las mostrava-lhe uma forma que ele
+  não pode escrever. É a mesma isenção que o rótulo de uma opção de enum já carrega, e ela entra
+  na lista **com o mecanismo**, que é o que aquele gate exige.
 - `cargo clippy --workspace --all-targets -- -D warnings` → **zero**
 - `cargo fmt --all` → limpo
 - provas de mutação desta reabertura: **7 de 7** (wave 10) + **2 de 2** (wave 11) + **2 de 2**
-  (wave 13) + **12 de 12** (wave 14), todas a sangrar
+  (wave 13) + **12 de 12** (wave 14) + **16 de 16** (wave 15, o §5-ter), todas a sangrar
   — ⚠️ com o arnês a abortar alto **duas** vezes (uma âncora que casava `2×`; uma mutação
   **NO-OP para o gate**, porque um sufixo deixa a agulha do `contains` intacta e isso lê-se
   exactamente como sobreviver).

@@ -11,15 +11,47 @@
 use ph2d_label_census::gate::{self, Excecao};
 
 const PREFIX: &str = "panel.model3d.";
-/// ⚠️ **TRÊS tabelas e não uma:** o vocabulário do painel foi cortado por ASSUNTO quando o
-/// `model3d.rs` passou o tecto de LOC — os nomes das coisas, as RAZÕES de uma fileira travada, e a
-/// APRESENTAÇÃO da cena (o olhar, a exposição, o estilo). *Um censo que leia só a primeira acusa as
-/// chaves das outras duas como «sem tradução».*
-const TABLES: &[&str] = &[
-    "crates/ph2d-i18n/src/model3d.rs",
-    "crates/ph2d-i18n/src/model3d_inert.rs",
-    "crates/ph2d-i18n/src/model3d_render.rs",
-];
+
+/// ⚠️ **QUATRO tabelas e não uma:** o vocabulário do painel foi cortado por ASSUNTO quando o
+/// `model3d.rs` passou o tecto de LOC — os nomes das coisas, as RAZÕES de uma fileira travada, a
+/// APRESENTAÇÃO da cena (o olhar, a exposição, o estilo) e o BRILHO. *Um censo que leia só a
+/// primeira acusa as chaves das outras como «sem tradução».*
+///
+/// ⛔⛔ **E ela deixou de ser escrita à MÃO em 2026-09-20, porque a quarta apanhou-a.** A lista
+/// nomeava três ficheiros, a `W7` do brilho criou o `model3d_bloom.rs`, o `lib.rs` do `ph2d-i18n`
+/// **declarou-o e encadeou-o no `tr`** — e este censo continuou a ler três: `174` declaradas contra
+/// `182` usadas, com **`19`** chaves do brilho acusadas de não ter tradução **tendo-a**.
+/// *Uma lista escrita à mão ao lado de uma realidade derivada são duas respostas à mesma pergunta,
+/// e a que envelhece é sempre a escrita à mão.*
+///
+/// ⇒ a lista sai do **`lib.rs` que as declara**, que é o mesmo sítio de onde o `tr` as encadeia:
+/// uma tabela nova entra neste censo **no commit em que nasce**, sem ninguém se lembrar dela.
+/// ⚠️ Com **piso de população** — uma varredura partida devolve zero ficheiros, e um censo sobre
+/// zero tabelas lê **toda** chave como «sem tradução», que se lê exactamente como esta falha e não
+/// é ela.
+fn tabelas(repo: &std::path::Path) -> Vec<String> {
+    let lib = std::fs::read_to_string(repo.join("crates/ph2d-i18n/src/lib.rs"))
+        .expect("o `lib.rs` do ph2d-i18n — é ele que declara as tabelas");
+    let achadas: Vec<String> = lib
+        .lines()
+        .filter_map(|l| l.trim().strip_prefix("mod ")?.strip_suffix(';'))
+        .filter(|m| *m == "model3d" || m.starts_with("model3d_"))
+        .map(|m| format!("crates/ph2d-i18n/src/{m}.rs"))
+        .collect();
+    assert!(
+        achadas.len() >= 4,
+        "a colheita das tabelas devolveu {} — ela partiu-se, e um censo sobre zero tabelas acusa \
+         TODA chave de não ter tradução",
+        achadas.len()
+    );
+    for t in &achadas {
+        assert!(
+            repo.join(t).is_file(),
+            "o `lib.rs` declara `{t}` e o ficheiro não existe"
+        );
+    }
+    achadas
+}
 
 /// ⭐ As excepções, **com o mecanismo**.
 const NOT_LANGUAGE: &[Excecao] = &[(
@@ -37,8 +69,9 @@ fn every_word_this_panel_shows_comes_from_the_string_table() {
         intrusos.is_empty(),
         "estes textos com cara de língua estão escritos no fonte do painel e nunca chegam à tabela \
          de strings (HR-15):\n  {}\n\nA cura é uma chave `{PREFIX}<secção>.<nome>` numa das tabelas \
-         ({TABLES:?}) e um `tr(\"…\")` no sítio (uma frase com peças do código: `tr_with`).",
-        intrusos.join("\n  ")
+         ({:?}) e um `tr(\"…\")` no sítio (uma frase com peças do código: `tr_with`).",
+        intrusos.join("\n  "),
+        tabelas(&gate::raizes(env!("CARGO_MANIFEST_DIR")).1)
     );
 }
 
@@ -66,7 +99,9 @@ fn every_named_exception_still_shelters_a_real_literal() {
 #[test]
 fn every_key_of_this_panel_exists_on_both_sides() {
     let (_, repo) = gate::raizes(env!("CARGO_MANIFEST_DIR"));
-    let c = gate::chaves(&repo, PREFIX, TABLES);
+    let tabelas = tabelas(&repo);
+    let refs: Vec<&str> = tabelas.iter().map(String::as_str).collect();
+    let c = gate::chaves(&repo, PREFIX, &refs);
     println!("  declaradas: {} · usadas: {}", c.declaradas, c.usadas);
     // ⛔ Controlo de vacuidade: o vocabulário medido em 2026-09-19, menos folga para encolher.
     assert!(
@@ -135,7 +170,9 @@ fn orfa(sufixo: &str) -> String {
 #[test]
 fn every_inherited_orphan_is_still_an_orphan() {
     let (_, repo) = gate::raizes(env!("CARGO_MANIFEST_DIR"));
-    let c = gate::chaves(&repo, PREFIX, TABLES);
+    let tabelas = tabelas(&repo);
+    let refs: Vec<&str> = tabelas.iter().map(String::as_str).collect();
+    let c = gate::chaves(&repo, PREFIX, &refs);
     let curadas: Vec<String> = ORFAS_HERDADAS
         .iter()
         .map(|s| orfa(s))

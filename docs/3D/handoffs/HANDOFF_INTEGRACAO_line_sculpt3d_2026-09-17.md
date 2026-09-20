@@ -5080,3 +5080,138 @@ mutação **10 de 10 a sangrar** · vassouras com os **mesmos** achados do HEAD,
 ⏳ **ABERTO:** o eixo da COR do Blender tem mais modos que nós não temos (*Single*
 · *Random* · *Object*) e nenhum foi pedido; e o `Flat` **não** entra no bake nem
 na doação de forma — ele é vista, como o resto desta fileira.
+
+---
+
+## §102 — A TINTA CHEGA AO DEVICE (o 2.º report da pintura, 2026-09-20)
+
+*«ainda não consegue pintar os vértices»* — com a cura do shader (§101) no sítio
+e **correcta**.
+
+### §102.1 — O elo que quebrava, e a medição que o isolou
+
+O `MeshRenderer::upload_region_at` escrevia **seis** canais e **não a cor**:
+
+```
+queue.write_buffer(&g.positions,  at,           …)
+queue.write_buffer(&g.normals,    at,           …)
+queue.write_buffer(&g.masks,      a as u64 * 4, …)
+queue.write_buffer(&g.preview,    a as u64 * 4, …)
+queue.write_buffer(&g.curvatures, a as u64 * 4, …)
+queue.write_buffer(&g.curv_world, a as u64 * 4, …)
+// ⇒ `&g.colors` não aparecia nesta função
+```
+
+E essa **é** a rota do produto para um dab de pintura:
+`Verb::Paint.escreve_um_canal()` ⇒ `last_gpu_dirty()` devolve a janela ⇒
+`SlotJob::Region` ⇒ `upload_region_at` devolve `true` (a topologia não mudou),
+logo **nunca** cai no `upload_at`.
+
+Sonda pelas portas do produto (um dab vermelho, raio `0,6`, esfera `48×72`):
+
+| grandeza | leitura |
+|---|---|
+| janela suja publicada | `203` vértices |
+| plano de cor na CPU instalado e vermelho | `true` |
+| `upload_region_at` aceitou | `true` |
+| centro, rota **incremental** | `(186, 176, 166)` ← barro cru |
+| centro, upload **cheio** (oráculo) | `(186, 3, 3)` ← vermelho |
+
+### §102.2 — A comment que causou o esquecimento
+
+A duas linhas da escrita da máscara: *«um dab é de geometria ou de máscara —
+**nunca dos dois**»*. Essa dicotomia virou **tricotomia** no dia em que a cor
+nasceu, e a frase ficou — ⚠️ *quem escreveu a cor na malha, no layout, no shader
+e no upload CHEIO leu esta comment e foi informado, pelo próprio ficheiro, de que
+só havia dois casos*. Ela passa a nomear os **três** canais que um dab escreve, e
+a dizer porque mudou.
+
+### §102.3 — E o gate que prometia isto estava VERDE sobre o ponto cego
+
+O `a_region_upload_shows_exactly_what_a_full_upload_shows` dirige um traço de
+`Verb::Draw` — **geometria pura** — sobre uma peça **POR PINTAR**, onde o canal
+de cor vale o mesmo em todo lado e as duas imagens coincidem **por construção**.
+
+⛔⛔ *Um oráculo de IGUALDADE só afirma sobre os canais que a FIXTURA faz variar.*
+
+O gémeo da **máscara** existe desde a W4.2 e o doc dele diz à letra a mesma frase
+(*«pintamos e nada aparece»*); o da **cor** nunca foi escrito. Está agora —
+`a_pintura_chega_ao_device_pela_rota_incremental` —, com o **CONTROLO POSITIVO
+antes do veredito**: sem ele, uma fixtura em que a tinta não chegasse a pixel
+nenhum deixaria as duas imagens iguais e o gate passaria a certificar que dois
+nadas são o mesmo nada.
+
+⭐ O offset é o `at` **que já estava calculado**: a cor é `[f32; 3]`, o mesmo
+stride da posição e da normal ⇒ não há aritmética nova a conferir.
+
+### §102.4 — O 2.º defeito: a cena armava o RÓTULO e não o pincel
+
+`cena.brush.verb = v` deixa a afinação do `Draw` (força `0,50`) num pincel que
+declara **`0,75`** — um terço menos de tinta por passagem. ⚠️ **E era
+irreversível dentro da cena:** o `switch_verb_parts` devolve cedo quando o verbo
+que entra já é o que está em mãos, logo clicar no chip `Paint` era um **no-op** e
+o `0,75` ficava **inalcançável**. *A cena que arma pelo campo cru tranca a
+afinação que ela própria quis escolher.* É a lei que a irmã `=49` já escreve ao
+lado do `toggle_dyntopo`.
+
+### §102.5 — O 3.º: o roteiro nomeava uma fileira que não existe
+
+O passo (4-bis) mandava escolher `Light` e o painel pinta **`Material`**
+(`panel.sculpt3d.matcap`) — a família do `Auto-Smooth` da `=41`, e desta vez
+**escrita por mim no report ao dono**.
+
+⇒ censo **DERIVADO do próprio roteiro**: todo nome entre crases tem de existir
+numa das **quatro** populações que o artista vê — as fileiras da TABELA no nível
+em que o painel nasce · os chips de VERBO · os rótulos que o **pintor do corpo**
+traduz (a população que a tabela de rows **não** contém, e onde a fileira da luz
+vive) · as TECLAS, lista nomeada com controlo a proibir que alguém ali estacione
+um rótulo que o painel de facto pinta. Mais o piso de população e a **paridade
+das crases**, que vem primeiro: uma solta faz o emparelhamento colher meia frase
+como se fosse o nome de um controlo, e o erro lê-se como *«o roteiro nomeia algo
+que não existe»*.
+
+⚠️ **O roteiro fica DENTRO do `eprintln!`, e isso é a decisão.** Ele esteve numa
+`const` para o censo o poder ler, e o **censo de TEXTO** desta família reprovou-o
+na hora: a isenção do HR-15 aqui é *«sai por `eprintln!`, logo é terminal e não
+ecrã»*, e uma `const` solta **perde-a**. A cura teria sido **uma linha nova de
+dívida** para tornar um gate mais fácil de escrever ⇒ o censo colhe as linhas do
+fonte pelo prefixo do módulo, que é o molde que a `=49` já usa.
+
+⚠️ E a régua textual do FIO leu, à primeira, **o doc-comment que EXPLICA a cura**
+e acusou-a de ser o defeito — a forma que a Fase B da física registou ao varrer
+`\bApp\b`. Hoje ela lê o **CÓDIGO**, com piso de população.
+
+### §102.6 — Prova
+
+**Mutação, 4 de 4 a sangrar:**
+
+| # | mutação | leitura |
+|---|---|---|
+| 1 | apagar a escrita da cor no upload de região | `5 264` bytes diferem |
+| 2 | a mesma escrita com o passo de `4` bytes | `6 377` bytes diferem |
+| 3 | o `arma` de volta ao campo cru | *«deixou de passar pela porta»* |
+| 4 | o painel renomeia a fileira (i18n `Material` → outro) | o roteiro é acusado |
+
+A 4.ª é a que prova a propriedade **para a frente**: no dia em que alguém
+renomear a fileira, o roteiro reprova em vez de envelhecer. E a crase solta
+reprova na paridade, **antes** de o censo colher nada.
+
+**Portão:** `nextest-impacted` **16 532/16 532** · suíte de GPU com adaptador
+**76/76** · censos da árvore **COMBINADA** 90/90 · clippy `-D warnings` zero ·
+`cargo fmt` limpo. Zero contador partilhado, zero contrato, zero ADR.
+
+### §102.7 — O que uma leitura rápida do diff entende ao contrário
+
+1. **A cura do §101 não estava errada** — ela é a razão de o oráculo deste gate
+   (o upload cheio) ler vermelho. Eram **dois elos**, um a jusante do outro.
+2. **A rota do upload CHEIO nunca esteve partida**; o que faltava era a
+   incremental, que é a que corre em todo movimento do rato.
+3. **A `const ROTEIRO` foi revertida por MEDIÇÃO, não por gosto** — ela custava
+   uma entrada nova no `FORA` do HR-15.
+4. **O `Verb::Blur` e o `SmearColor` estavam no mesmo buraco** (os três passam
+   por `escreve_um_canal`), logo os passos (5) e (6) do roteiro estavam
+   igualmente mortos.
+
+⏳ **ABERTO:** o custo por dab dos dois verbos que lêem o anel continua por
+varrer, e a cor continua a **não viajar no `.ph2dproj`** — os dois já estavam na
+lista do §100.

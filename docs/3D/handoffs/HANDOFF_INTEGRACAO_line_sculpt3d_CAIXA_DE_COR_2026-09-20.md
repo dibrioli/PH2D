@@ -365,3 +365,16 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULP
 carregar na **caixa de cor da fileira `Color`**, escolher, e carregar **fora**
 do selector para o fechar. O nome `Color` é o que o painel de facto pinta — há
 gate a ligar as duas pontas.
+
+### O binário fica PRÉ-CONSTRUÍDO (§1.5.9 item 9)
+
+⚠️ **O item 7 corre ANTES do 9**, e a ordem importa: `rm -rf target/*/incremental`
+reclamou **`6,3 GB`** e o binário do perfil `smoke` **sobrevive-lhe** — a 2.ª
+passagem lê, com **zero** `Compiling`:
+
+```
+▸ linha line_sculpt3d · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.35s
+```
+
+⇒ o dono não espera build nenhum.

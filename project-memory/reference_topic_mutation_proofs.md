@@ -138,3 +138,35 @@ outra coisa. **How to apply:** antes de escrever o gate que mata o sobrevivente,
 **refutação da causa**: corra a tabela nas TRÊS configurações (com a peça nova · com a antiga · com
 NENHUMA) pela porta do produto. A terceira coluna é a que quase nunca se mede e foi a que decidiu.
 Ver [[reference_topic_measurement_discipline]].
+
+---
+
+## ⛔⛔ O arnês pode depender de uma ferramenta que a MÁQUINA não tem (`bc`), e aí ele aborta TUDO
+
+`line/sculpt3d`, 2026-09-20 (a caixa de cor). O arnês contava *«quantos testes
+de facto correram»* — o controlo positivo que esta família prescreve — somando
+as linhas `test result:` com `… | paste -sd+ | bc`. **Esta máquina não tem
+`bc`**: a soma vinha **vazia**, o `${corridos:-0}` lia `0`, e as **nove**
+mutações saíram `ABORTA: o filtro correu ZERO testes` — sobre um filtro que
+corria `4` e `6` testes.
+
+**Why:** o modo de falha foi o **conservador** — ele abortou alto em vez de ler
+*«sobreviveu»* —, e é isso que torna o incidente barato em vez de caro. Mas o
+diagnóstico custou uma corrida inteira, porque o sintoma (*«o filtro não casa»*)
+aponta para o **filtro**, e a causa estava no **somatório**. É a mesma forma do
+alias `S` colidir com a pasta de logs, um bloco acima: *o arnês acusa a árvore
+quando o defeito é dele.*
+
+**How to apply:** um arnês de mutação só pode depender de `sh`, `awk`, `grep`,
+`python3` e `cargo` — tudo o resto confirma-se antes (`which`), ou não se usa.
+E quando **todas** as células abortam com a mesma mensagem, a hipótese nº 1 é
+**o arnês**, nunca o código: uma corrida que acusa nove de nove não está a medir
+nove coisas, está a medir uma.
+
+⚠️ E na mesma jornada ele mentiu uma **segunda** vez, também para o lado seguro:
+o `cargo fmt` juntou uma chamada de três linhas numa só **depois** de a prova ter
+corrido, e a agulha multi-linha passou a casar **zero** vezes — irmã de
+[[feedback_python_replace_silent_noop_after_fmt]], e do porquê de
+[[feedback_a_restored_file_keeps_its_old_mtime_and_cargo_reuses_the_mutant]].
+⇒ *toda prova de mutação re-corre depois de um `fmt`*, e a contagem da agulha
+faz-se em Python: **`grep -cF` conta LINHAS, não ocorrências.**

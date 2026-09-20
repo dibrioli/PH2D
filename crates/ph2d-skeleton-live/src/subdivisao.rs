@@ -14,11 +14,14 @@
 //!
 //! # ⭐⭐ O alvo é DERIVADO, e a régua é a lei que já existe
 //!
-//! O passo é **o osso mais curto a dividir por [`DIVISOES_POR_OSSO`]**, e esse `3` não foi
-//! escolhido: ele é o menor valor em que a lei dos **pontos de controlo** passa a concordar com a
-//! lei da **CURVA** ([`ph2d_vec_skin::curva`], que é a imagem verdadeira da pele) dentro da
-//! [`ph2d_vec_skin::curva::TOLERANCIA`] que a casa já usa. Medido na barra da cena, com a ponta
-//! girada `0,8 rad` e com a barra inteira enrolada:
+//! O passo é **o osso mais curto a dividir por [`DIVISOES_POR_OSSO`]**. ⚠️ *A lei é a do peso, não
+//! a do desenho:* a escala fina de um campo de pesos é o comprimento de um osso, e é por isso que
+//! o passo se mede contra ele e não contra o tamanho da forma.
+//!
+//! # ⛔⛔⛔ O `K = 3` foi calibrado numa grandeza que os DOIS lados partilhavam (corrigido 2026-09-20)
+//!
+//! A 1.ª redacção escolheu `3` como *«o menor valor em que a lei dos pontos de controlo passa a
+//! concordar com a lei da CURVA dentro da [`ph2d_vec_skin::curva::TOLERANCIA`]»*, e mediu:
 //!
 //! | ossos | osso | `K=1` | `K=2` | **`K=3`** |
 //! |---|---|---|---|---|
@@ -27,14 +30,39 @@
 //! | 4 | `1,600` | `0,0699` | `0,0000` | **`0,0000`** |
 //! | 6 | `1,067` | `0,0567` | `0,0000` | **`0,0000`** |
 //!
-//! ⇒ `K = 2` **falha** com dois e três ossos e `K = 3` é suficiente em todas as linhas das duas
-//! poses. ⚠️ *A lei é a do peso, não a do desenho:* a escala fina de um campo de pesos é o
-//! comprimento de um osso, e é por isso que o passo se mede contra ele e não contra o tamanho da
-//! forma.
+//! ⛔ **Aquela régua mede a CONCORDÂNCIA de dois caminhos, e ela é cega ao defeito que os DOIS
+//! têm.** As duas leis concordam a `0,0000` **e as duas ONDULAM**: medido com a régua nova
+//! ([`crate::skinned_mesh::ondulacao_regua_tests`]), o contorno sai com **seis serpentinas de
+//! `4,9 %` da espessura da barra** — e a mídia IMAGEM, que é o padrão-ouro, tem `0,12 %` no mesmo
+//! sítio. *Um zero de «as duas dão o mesmo» e um zero de «está liso» são o mesmo byte.*
 //!
-//! ⭐⭐ **E ela torna o desenho MAIS BARATO:** o refit da lei da curva só corre onde a lei ingénua
-//! se afasta, e com a forma subdividida ele deixa de correr — medido em `debug`, o recook da barra
-//! passou de **`732 µs`** (8 nós, refit a arder) para **`58 µs`** (34 nós, sem refit).
+//! # ⭐⭐⭐ O `K` re-medido na grandeza que o dono vê, com o preço ao lado
+//!
+//! A barra a `90°` em S, a flecha MEDIANA das ondas mais curtas que a espessura da peça, e o
+//! recook em `--release` (o que corre **todo quadro**, por forma):
+//!
+//! | `K` | nós | flecha p50 | recook | de um quadro |
+//! |---|---|---|---|---|
+//! | `3` (o que shipava) | `34` | **`0,04863`** | `267 µs` | `1,60 %` |
+//! | `3,6` | `38` | `0,04863` | `298 µs` | `1,78 %` |
+//! | `4,3` | `50` | `0,00345` | `400 µs` | `2,40 %` |
+//! | **`5`** | **`54`** | **`0,00175`** | **`434 µs`** | **`2,60 %`** |
+//! | `5,3` | `62` | `0,00175` | `493 µs` | `2,95 %` |
+//! | `6` / `7,1` | `66` | `0,00175` | `520 µs` | `3,12 %` |
+//! | `8` | `86` | `0,00095` | `679 µs` | `4,07 %` |
+//!
+//! ⇒ **`K = 5`** é o PLANALTO: ele corta a serpentina **`28×`** — até ao nível do próprio
+//! padrão-ouro — por **`+167 µs`**, que é `1,0 %` de um quadro; e `K = 6` e `K = 7,1` leem
+//! **exactamente o mesmo** número, logo o joelho não é escolhido, é onde a coluna deixa de descer.
+//! ⚠️ `K = 8` compra mais `1,8×` por `+57 %` de relógio, e é aí que a curva vira preço.
+//!
+//! ⛔ **A coluna `flecha MÁX` NÃO converge** (`0,053` em toda a tabela, até `446` nós): essa é a
+//! **QUINA** que a lei de mistura cria na aresta de dentro, e *uma cúbica nunca faz uma quina —
+//! mais nós só a espremem*. Ela é assunto do [`ph2d_skeleton::MisturaDoAngulo`] e não deste passo.
+//!
+//! ⭐⭐ **E subdividir torna o desenho MAIS BARATO na outra ponta:** o refit da lei da curva só
+//! corre onde a lei ingénua se afasta, e com a forma subdividida ele deixa de correr — medido em
+//! `debug`, o recook da barra passou de **`732 µs`** (8 nós, refit a arder) para **`58 µs`**.
 //!
 //! # ⛔ O tecto, e de que recurso ele é
 //!
@@ -58,7 +86,13 @@
 use ph2d_vec_scene::VecPath;
 
 /// Em quantos pedaços o osso mais curto é dividido. Ver o cabeçalho.
-pub const DIVISOES_POR_OSSO: f64 = 3.0;
+///
+/// ⚠️ **`3 → 5` em 2026-09-20**, e a razão não é afinação: o `3` foi calibrado contra a
+/// concordância de duas leis que **ondulam as duas**, e o `5` é o planalto da grandeza que o dono
+/// vê. O gate que o defende é o
+/// [`crate::skinned_mesh::ondulacao_regua_tests::a_serpentina_do_desenho_morre_com_os_nos`], e ele
+/// leva o CONTROLO do `3` dentro — *sem ele, alguém baixa este número e nada fica vermelho.*
+pub const DIVISOES_POR_OSSO: f64 = 5.0;
 
 /// Quantos vértices uma forma presa pode ter. Ver o cabeçalho — o recurso é o **relógio do recook**.
 pub const VERTICES_MAX: usize = 4096;

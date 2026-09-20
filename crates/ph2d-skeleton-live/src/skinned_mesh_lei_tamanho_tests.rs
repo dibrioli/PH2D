@@ -29,7 +29,16 @@ fn a_lei_desdobrada_e_local_e_nao_refaz_a_forma() {
     use ph2d_skeleton::MisturaDoAngulo;
     const ESPESSURA: f64 = 1.0;
     let mut p = b_palco(true);
-    let rest = b_amostra(&p.fonte);
+    // ⛔⛔ **A amostra é uniforme em ARCO e não por segmento, e a diferença é o gate inteiro.**
+    // A [`b_amostra`] põe `32` pontos em CADA segmento, logo a mediana que ela alimenta é pesada
+    // pela contagem de nós — e ela mudou quando o `DIVISOES_POR_OSSO` subiu (`34 → 54`), pondo
+    // este gate a `5,6 %` contra a barra de `5 %` **sem uma linha de lei se mexer**. ⚠️ A frase
+    // que o gate afirma é *«metade do CONTORNO não se mexe»*, e um contorno mede-se em
+    // comprimento: ver [`super::ondulacao_regua_tests`].
+    let rest = {
+        let denso = b_amostra_com(&p.fonte, 256);
+        super::ondulacao_regua_tests::b_no_passo(&denso, &denso, 0.01).0
+    };
     for (graus, tecto) in [(45.0_f32, 0.015), (70.0, 0.035), (90.0, 0.070)] {
         p.dobra(graus);
         let pele = p.pele();

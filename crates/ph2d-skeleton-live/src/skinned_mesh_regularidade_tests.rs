@@ -285,11 +285,36 @@ fn o_campo_estreita_a_passagem_e_e_isso_que_faz_o_canto() {
         "com um sub-osso e o campo ligado o contorno devia ter a quina do report (~155°) \
          e leu {um_com:.1}° — esta fixtura deixou de conter o fenómeno"
     );
-    // (2) ⛔ O CAMPO PIORA O CANTO. É a metade que reprovou a minha leitura do desenho.
+    // (2) ⛔ O CAMPO PIORA O CANTO, e a régua é a LARGURA DA PASSAGEM e não o ângulo.
+    //
+    // ⛔⛔ **A 1.ª redacção media `um_com > um_sem + 25°` e ela morreu quando o
+    // `DIVISOES_POR_OSSO` subiu de `3` para `5`** (2026-09-20): com `54` nós os dois lados leem
+    // `166,5°` e `165,0°` — colados, e os dois perto do tecto de `180°` do [`b_quina`]. *O campo
+    // não deixou de vincar; o lado SEM campo é que deixou de estar sub-resolvido pelo modelo, e
+    // uma régua com tecto deixa de discriminar quando os dois lados o atingem.*
+    //
+    // ⇒ a metade afirma o MECANISMO que a prosa acima declara — a passagem de um osso para o
+    // outro é **muito mais estreita** com o campo —, e essa grandeza não satura.
+    p.reparte(1);
+    p.dobra_em_s(90.0);
+    let pele = p.pele();
+    let rest = b_amostra(&p.fonte);
+    let largura = |campo: bool| {
+        larguras_da_passagem(&rest, &perfil_do_peso(&p, &pele, &rest, campo))
+            .first()
+            .copied()
+            .unwrap_or(f64::NAN)
+    };
+    let (lc, ls) = (largura(true), largura(false));
+    println!(
+        "  passagem: {lc:.4} u com campo · {ls:.4} u sem — {:.1}× mais estreita",
+        ls / lc
+    );
     assert!(
-        um_com > um_sem + 25.0,
-        "o campo devia ENDURECER o canto em dezenas de graus e foi de {um_sem:.1}° para \
-         {um_com:.1}° — se isto deixar de ser verdade, a prosa acima tem de ser reescrita"
+        lc.is_finite() && ls.is_finite() && ls > lc * 3.0,
+        "o campo devia ESTREITAR a passagem de um osso para o outro em várias vezes e foi de \
+         {ls:.4} para {lc:.4} u de contorno — se isto deixar de ser verdade, a prosa acima tem \
+         de ser reescrita"
     );
     // (3) Repartir a dobra corta a quina para menos de metade, com campo e sem ele.
     assert!(
@@ -380,20 +405,7 @@ fn diag_b_porque_o_campo_faz_cantos() {
         // `|1 − θ̄′·r|`, e `θ̄′` é a rotação a dividir pela largura em que ela acontece. *Uma
         // transição mais ESTREITA concentra a mesma dobra em menos contorno e faz um canto mais
         // duro* — e um campo BBW é mais localizado que uma queda euclidiana por construção.
-        let cum = b_cum(&rest);
-        let mut larguras = Vec::new();
-        let (mut entrou, mut s0) = (false, 0.0_f64);
-        for i in 0..n {
-            let v = perfil[i];
-            if !entrou && v > 0.1 && v < 0.9 {
-                entrou = true;
-                s0 = cum[i];
-            } else if entrou && !(0.1..=0.9).contains(&v) {
-                entrou = false;
-                larguras.push(cum[i] - s0);
-            }
-        }
-        larguras.sort_by(f64::total_cmp);
+        let larguras = larguras_da_passagem(&rest, &perfil);
         println!(
             "{:<28} | transição 0,1→0,9: {} troço(s), a mais estreita {:.4} u de contorno",
             "",
@@ -592,4 +604,61 @@ fn a_fileira_das_alcas_nasce_escondida_e_e_isso_que_o_dono_nao_achou() {
         "a fileira `Curve Handles` deixou de ser pintada de todo — isso não é «escondida», é \
          AUSENTE, e a cura é outra"
     );
+}
+
+/// ⭐⭐⭐ **A LARGURA DA PASSAGEM DE UM OSSO PARA O OUTRO**, em unidades de contorno, ordenada da
+/// mais estreita para a mais larga.
+///
+/// É *quanto contorno o peso do 2.º tendão leva a passar de `0,1` a `0,9`*, e é a grandeza que a
+/// forma fechada do vinco aponta: o esticão da aresta de dentro vale `|1 − θ̄′·r|`, com `θ̄′` a ser
+/// a rotação **a dividir pela largura em que ela acontece**.
+///
+/// ⛔⛔ **Ela existe como porta porque a [`pior_quina`] SATURA.** Aquele ângulo é limitado a `180°`
+/// por construção, e quando o `DIVISOES_POR_OSSO` subiu de `3` para `5` os dois lados do controlo
+/// passaram a lê-lo colados (`166,5°` com campo contra `165,0°` sem, onde antes eram dezenas de
+/// graus de diferença) — *não porque o campo deixasse de vincar, mas porque o lado SEM campo
+/// deixou de estar sub-resolvido pelo modelo*. A largura não satura. ⚠️ *Uma régua com tecto
+/// deixa de discriminar exactamente quando os dois lados a atingem, e isso lê-se como «a lei
+/// mudou».*
+pub(super) fn larguras_da_passagem(rest: &[[f64; 2]], perfil: &[f64]) -> Vec<f64> {
+    let n = perfil.len().min(rest.len());
+    let cum = b_cum(&rest[..n]);
+    let mut out = Vec::new();
+    let (mut entrou, mut s0) = (false, 0.0_f64);
+    for i in 0..n {
+        let v = perfil[i];
+        if !entrou && v > 0.1 && v < 0.9 {
+            entrou = true;
+            s0 = cum[i];
+        } else if entrou && !(0.1..=0.9).contains(&v) {
+            entrou = false;
+            out.push(cum[i] - s0);
+        }
+    }
+    out.sort_by(f64::total_cmp);
+    out
+}
+
+/// O peso do 2.º tendão ao longo do contorno, com a lei do peso como PARÂMETRO.
+pub(super) fn perfil_do_peso(
+    p: &BPalco,
+    pele: &ph2d_skeleton::Skin,
+    rest: &[[f64; 2]],
+    campo: bool,
+) -> Vec<f64> {
+    rest.iter()
+        .map(|&x| {
+            let mut w = pele.scratch();
+            if campo {
+                let linha = p
+                    .campo
+                    .linha(x)
+                    .unwrap_or_else(|| b_mais_proximo(&p.campo, x));
+                pele.weights_corrected(x, Some(&linha), &mut w, &p.correcoes);
+            } else {
+                pele.weights_corrected(x, None, &mut w, &p.correcoes);
+            }
+            w.get(1).copied().unwrap_or(0.0)
+        })
+        .collect()
 }

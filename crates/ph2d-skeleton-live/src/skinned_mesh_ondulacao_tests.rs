@@ -659,10 +659,40 @@ fn a_leitura_c1_cura_o_campo_e_nao_chega_ao_desenho() {
     );
 
     // (2) ⛔ E o DESENHO não se mexe — é isto que manda a porta nascer desligada.
-    let desenho = ondulacoes(&b_amostra(&p.produto(true, true)), &rectas);
+    //
+    // ⛔⛔ **A 1.ª redacção comparava duas CONTAGENS e ela morreu em 2026-09-20**, quando o
+    // `DIVISOES_POR_OSSO` subiu de `3` para `5`: a [`ondulacoes`] conta por AMOSTRA e a
+    // [`b_amostra`] amostra por SEGMENTO, logo `34 → 54` nós leva a contagem do desenho de `12`
+    // para `16` **sem uma linha de lei se mexer** — e a asserção `desenho * 2 < o_c1 + 8` passou
+    // a `32 < 30`. *Uma régua cuja população segue a contagem de nós não pode comparar-se com uma
+    // que não a segue* — ver [`super::ondulacao_regua_tests`].
+    //
+    // ⭐ A metade que fica é a que de facto manda a porta nascer desligada, e é uma AMPLITUDE: o
+    // desenho serpenteia **muito mais** do que o campo que ele copia, logo alisar as facetas do
+    // campo não tem por onde mover o desenho.
+    use super::serpentina_tests as regua;
+    let denso_rest = b_amostra_com(&p.fonte, 256);
+    let s_desenho =
+        regua::serpentina_para_teste(&denso_rest, &b_amostra_com(&p.produto(true, true), 256));
+    let s_campo = regua::serpentina_para_teste(&denso_rest, &{
+        let rest2 = denso_rest.clone();
+        rest2
+            .iter()
+            .map(|&x| {
+                let mut w = pele.scratch();
+                let linha = p
+                    .campo
+                    .linha(x)
+                    .unwrap_or_else(|| b_mais_proximo(&p.campo, x));
+                pele.weights_corrected(x, Some(&linha), &mut w, &p.correcoes);
+                pele.blend(x, &w)
+            })
+            .collect::<Vec<_>>()
+    });
+    println!("  serpentina: desenho {s_desenho:.6} · campo {s_campo:.6}");
     assert!(
-        desenho * 2 < o_c1 + 8,
-        "o caminho vectorial ({desenho}) devia continuar abaixo do campo curado ({o_c1}) — se \
-         ele passar a segui-lo, o ajuste deixou de dominar e a porta muda de valor de fábrica"
+        s_campo > 0.0 && s_desenho > s_campo * 4.0,
+        "o desenho ({s_desenho}) devia serpentear muito mais que o campo ({s_campo}) — se ele \
+         passar a segui-lo, o ajuste deixou de dominar e a porta muda de valor de fábrica"
     );
 }

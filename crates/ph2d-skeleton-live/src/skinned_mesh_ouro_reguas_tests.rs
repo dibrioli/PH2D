@@ -38,18 +38,35 @@ pub(super) fn b_eval(c: &[[f64; 2]; 4], t: f64) -> [f64; 2] {
 }
 
 /// O contorno `0` amostrado na parametrização `(segmento, t)`, `t ∈ [0,1)`.
+///
+/// ⛔⛔ **O NÚMERO DE AMOSTRAS É POR SEGMENTO, e é por isso que ele não atravessa duas contagens
+/// de nós.** A mesma peça com `8` nós dá `256` amostras e com `34` dá `1 088` — `4,25×` —, logo
+/// toda régua que CONTE amostras (e não que as agregue) lê números diferentes sobre a mesma
+/// forma. *Medido: a LEI IDEAL, que não sabe quantos nós o caminho tem, lê `12` numa e `68` na
+/// outra.* ⇒ para comparar contagens de nós use a [`super::ondulacao_regua_tests::b_no_passo`],
+/// que reamostra as duas a um passo de ARCO fixo.
 pub(super) fn b_amostra(p: &ph2d_vec_scene::VecPath) -> Vec<[f64; 2]> {
+    b_amostra_com(p, B_N)
+}
+
+/// A [`b_amostra`] com a densidade como PARÂMETRO — a porta que a régua de passo fixo usa para
+/// amostrar as duas peças **densas** antes de as levar ao mesmo passo.
+///
+/// ⚠️ Ela é a mesma lei: a `b_amostra` delega. *Duas cópias divergiriam no dia em que a
+/// parametrização mudasse, e é ela que faz a correspondência ponto a ponto entre a fonte e o
+/// produto valer.*
+pub(super) fn b_amostra_com(p: &ph2d_vec_scene::VecPath, por_seg: usize) -> Vec<[f64; 2]> {
     let cozido = p.cooked();
     let Some((v, _)) = cozido.contour(0) else {
         return Vec::new();
     };
     let n = v.len();
-    let mut out = Vec::with_capacity(n * B_N);
+    let mut out = Vec::with_capacity(n * por_seg);
     for k in 0..n {
         let c = b_cub(v, k);
-        for i in 0..B_N {
-            #[expect(clippy::cast_precision_loss, reason = "i < B_N")]
-            out.push(b_eval(&c, i as f64 / B_N as f64));
+        for i in 0..por_seg {
+            #[expect(clippy::cast_precision_loss, reason = "i < por_seg, um punhado")]
+            out.push(b_eval(&c, i as f64 / por_seg as f64));
         }
     }
     out
@@ -516,8 +533,25 @@ pub(super) fn b_chao(
     campo: &ph2d_vec_skin::pesos::CampoDoDominio,
     correcoes: &[ph2d_skeleton::Correccao],
 ) -> (Vec<[f64; 2]>, f64, Vec<f64>) {
-    #[expect(clippy::cast_precision_loss, reason = "i <= B_N")]
-    let ts: Vec<f64> = (0..=B_N).map(|i| i as f64 / B_N as f64).collect();
+    b_chao_com(fonte, pele, campo, correcoes, B_N)
+}
+
+/// O [`b_chao`] com a densidade como PARÂMETRO — ver [`b_amostra_com`] para o porquê.
+///
+/// ⚠️ A densidade governa **duas** coisas aqui e elas não são a mesma: quantos pontos alimentam o
+/// ajuste de cada cúbica, e quantos pontos a polilinha devolvida tem. *Subi-la aperta o chão e
+/// afina a régua ao mesmo tempo* — o que é o que se quer, porque o chão é um LIMITE e um limite
+/// medido com folga não é um limite.
+pub(super) fn b_chao_com(
+    fonte: &ph2d_vec_scene::VecPath,
+    pele: &ph2d_skeleton::Skin,
+    campo: &ph2d_vec_skin::pesos::CampoDoDominio,
+    correcoes: &[ph2d_skeleton::Correccao],
+    por_seg: usize,
+) -> (Vec<[f64; 2]>, f64, Vec<f64>) {
+    let b_n = por_seg;
+    #[expect(clippy::cast_precision_loss, reason = "i <= por_seg")]
+    let ts: Vec<f64> = (0..=b_n).map(|i| i as f64 / b_n as f64).collect();
     let cozido = fonte.cooked();
     let Some((v, _)) = cozido.contour(0) else {
         return (Vec::new(), 0.0, Vec::new());
@@ -525,7 +559,7 @@ pub(super) fn b_chao(
     let n = v.len();
     let mut poli = Vec::new();
     let mut pior = 0.0_f64;
-    let mut por_seg = Vec::with_capacity(n);
+    let mut por_seg_erro = Vec::with_capacity(n);
     for k in 0..n {
         let c = b_cub(v, k);
         let ouro: Vec<[f64; 2]> = ts
@@ -538,11 +572,11 @@ pub(super) fn b_chao(
             let q = b_eval(&best, t);
             e = e.max((q[0] - ouro[i][0]).hypot(q[1] - ouro[i][1]));
         }
-        por_seg.push(e);
+        por_seg_erro.push(e);
         pior = pior.max(e);
-        for &t in &ts[..B_N] {
+        for &t in &ts[..b_n] {
             poli.push(b_eval(&best, t));
         }
     }
-    (poli, pior, por_seg)
+    (poli, pior, por_seg_erro)
 }

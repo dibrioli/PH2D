@@ -258,3 +258,18 @@ mod regularidade_tests;
 #[cfg(test)]
 #[path = "skinned_mesh_ondulacao_tests.rs"]
 mod ondulacao_tests;
+
+/// ⭐⭐⭐ **A RÉGUA DAS ONDAS A PASSO FIXO** — o irmão do [`ondulacao_tests`] conta **por
+/// amostra** e a amostragem dele é **por segmento**, logo duas contagens de nós não são
+/// comparáveis ali. ⛔ Foi dessa confusão que saiu o mecanismo errado que eu reportei ao dono.
+#[cfg(test)]
+#[path = "skinned_mesh_ondulacao_regua_tests.rs"]
+mod ondulacao_regua_tests;
+
+/// ⭐⭐⭐ **A SERPENTINA** — o TAMANHO de uma onda (a flecha e o arco), o joelho do
+/// [`crate::subdivisao::DIVISOES_POR_OSSO`] e os gates dele. ⚠️ Irmão do
+/// [`ondulacao_regua_tests`], e a separação é a dos dois trabalhos: **um torna duas densidades
+/// comparáveis, o outro pergunta se a onda SE VÊ.**
+#[cfg(test)]
+#[path = "skinned_mesh_serpentina_tests.rs"]
+mod serpentina_tests;

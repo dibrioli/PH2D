@@ -1,40 +1,39 @@
 ---
 name: feedback_a_rename_probe_is_void_if_the_check_stops_at_the_first_error
-description: "A sonda de órfão por renomeação só afirma algo se a corrida chegar ao FIM — um cargo check pára de agendar unidades no primeiro erro, e o relatório lê-se igual a «sem chamadores»"
-metadata: 
-  node_type: memory
+description: Renomear um símbolo para ver quem o chama só afirma alguma coisa se a corrida chegar ao FIM — o `cargo check` pára de agendar unidades no 1.º erro e as crates a jusante ficam por verificar, com o relatório a ler-se «sem chamadores»
+metadata:
   type: feedback
-  originSessionId: e990a2f5-7d16-405a-8ddf-54393edf203d
-  modified: 2026-09-19T18:08:26.263Z
 ---
 
-⛔⛔⛔ **A prova canónica de que um acessório é ÓRFÃO — renomeá-lo e ver a workspace compilar — é
-INVÁLIDA se a corrida não chegar ao fim.** Um `cargo check` **pára de agendar unidades novas no
-primeiro erro** (acaba só as já lançadas). Logo, se a renomeação partir uma crate a MONTANTE, todas
-as crates a jusante ficam **por verificar** — e o relatório lê-se **exactamente igual a «sem
-chamadores»**.
+A sonda de órfão mais barata que existe é **renomear o símbolo e ver quem grita**: se nada partir,
+ninguém o chama e ele pode ser apagado.
 
-**Medido 2026-09-19** (`line/UIUX`, a fronteira dos motores): renomeei **sete** acessórios de uma
-vez. A `ph2d-vec-scene` não compilou, e com ela ficaram por verificar os painéis que dela dependem —
-que eram precisamente os que pintavam dois deles. Declarei os seis órfãos e **apaguei-os**. O
-`cargo check` seguinte devolveu `no method named 'name'` em **cinco painéis** de produto:
-`BlendMode::name()` tinha **22 rótulos vivos em três painéis**, e o `SymmetryKind::label()` era
-pintado pela fileira de simetria do painel de vector.
+⛔⛔ **Ela é INVÁLIDA se a corrida não chegar ao fim.** O `cargo check` **pára de agendar unidades
+de compilação no primeiro erro** — as crates a jusante daquela que partiu nunca chegam a ser
+verificadas, e o relatório que se lê é *«só estes N sítios»* quando a verdade é *«estes N, mais
+tudo o que vem depois e não foi medido»*.
 
-**Why:** o modo de falha não é o teste a mentir — é o teste a **não correr**, e a ausência de
-vermelho a ser lida como verde. É a mesma família de *«um filtro que casou zero testes imprime `ok`
-e lê-se como sobreviveu»*, uma camada acima: ali não corre o TESTE, aqui não compila a CRATE.
+⚠️ **O modo de falha é o caro, porque a leitura errada é a CONFORTÁVEL:** «poucos chamadores»
+convida a apagar.
 
-**How to apply:**
-- **uma renomeação de cada vez**, ou `cargo check --workspace --all-targets --keep-going`;
-- **leia os erros TODOS**, não só os que espera — o que prova a orfandade é a corrida chegar ao fim
-  sem nenhum, e não a ausência do erro que você procurava;
-- ⭐ o inverso é a boa notícia: **quando a corrida completa fica verde com a função apagada, isso É a
-  prova** — mais forte que qualquer `grep`, porque apanha o `Tipo::metodo` passado como valor de
-  função, que nenhuma régua textual vê;
-- ⚠️ ela continua cega a um consumidor atrás de `#[cfg(feature = …)]` desligada — `--all-targets`
-  não é `--all-features`.
+**Caso medido (`line/UIUX`, 2026-09-19, a fronteira dos motores do HR-15).** A sonda custou **seis
+apagões errados**, dois deles sobre símbolos com **22 rótulos vivos em três painéis**.
 
-Irmãs: [[feedback_a_mutation_proof_needs_a_control_on_its_own_filter]] ·
-[[feedback_a_bins_run_never_reaches_the_gates_that_live_in_tests]] ·
-[[reference_topic_measurement_discipline]]
+**Why:** o `check` é um *scheduler*, não um verificador exaustivo; o `--keep-going` existe
+precisamente porque o comportamento de omissão é desistir cedo. Uma sonda que conta erros herda a
+política de agendamento da ferramenta, e essa política não é sobre a sua pergunta.
+
+**How to apply:** toda sonda por renomeação corre com `--keep-going` (ou
+`cargo check --workspace --all-targets --keep-going`) **e** com um **controlo positivo**: um
+símbolo que sabidamente tem N chamadores tem de devolver os N. Se a corrida abortar por qualquer
+razão, o resultado é **VOID**, nunca «zero chamadores» — a mesma lei que
+[[feedback_a_mutation_proof_needs_a_control_on_its_own_filter]] cobra do filtro de uma mutação e
+que [[feedback_a_tail_is_a_window_not_a_verdict]] cobra de uma leitura truncada.
+
+⭐ **Os símbolos, nomeados** (a mesma corrida): `BlendMode::name()` tinha **22 rótulos vivos em
+três painéis** e o `SymmetryKind::label()` era pintado pela fileira de simetria do painel de vector
+— os dois declarados órfãos e apagados, e o `cargo check` seguinte devolveu `no method named 'name'`
+em **cinco painéis de produto**. ⚠️ E a sonda continua cega a um consumidor atrás de
+`#[cfg(feature = …)]` desligada: `--all-targets` **não é** `--all-features`.
+
+Vizinhos: [[reference_topic_measurement_discipline]] · [[reference_topic_gate_discipline]]

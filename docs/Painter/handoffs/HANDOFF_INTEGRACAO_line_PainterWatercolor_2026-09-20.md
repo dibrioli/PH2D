@@ -234,3 +234,77 @@ largura da borda externa do traço (razão `~1,00` em quatro durezas).
   incremental diverge do cheio `~94` níveis **a seco e com a lei antiga**. Parente dos dois
   `watercolor_app_params_incremental_*` que seguem `#[ignore]`.
 - ⏳ Sob **Tiling**, o arrasto dos níveis levanta toroidal como o da base; não tem gate próprio.
+
+---
+
+## §12 — O ITEM 4, construído por ordem do dono (2026-09-20)
+
+> *«implemente Item 4 como opção extra e não como substituto»*. Knob **`Self Pickup`** (`0..1`), que
+> **nasce em `0`** ⇒ o caminho de fábrica é byte-idêntico, com gate a afirmá-lo. Análise prévia:
+> [doc 40 §S2-C e §9](../40_a_costura_dura_do_retorno_sobre_o_proprio_traco.md).
+
+### §12.1 — A cerca, e porque ela é a feature
+
+O risco não é a recolha não funcionar, é funcionar **de mais**: com espaçamento de fábrica o dab
+`i−1` cobre `~95 %` do disco do dab `i`, logo ler o próprio rasto é **self-feeding literal** e o
+Charge deixa de gastar. A cerca é a **IDADE** — plano novo `stroke_arc` com o **arco da PRIMEIRA
+cobertura** de cada texel.
+
+⛔ **PRIMEIRA e não última:** um plano de «última cobertura» seria sobrescrito pela cabeça da
+própria volta e leria idade `≈ 0` em quase tudo — o travão nunca armaria.
+
+⭐ **O limiar é DERIVADO:** num traço recto o tap mais atrasado fica a `r/2` do centro e foi coberto
+quando o centro estava a `1,5 r` ⇒ **`0,75` diâmetros**. `PICKUP_AGE_DIAMETERS = 2,5` deixa `3,3×`
+de margem; a perna de ida de um U de raio `32` é cruzada com `~5,8` diâmetros. Daí o par de fixturas
+que discrimina sozinho: **recto ⇒ AO BIT igual**, **U ⇒ diverge**.
+
+### §12.2 — Três correcções que a MEDIÇÃO impôs ao desenho prévio
+
+1. ⛔ **A recolha não pode entrar no reservatório de COR.** Em papel virgem com `Charge < 1` o passe
+   de cor toma o caminho *«pula»* e o `stroke_color` **nunca é escrito** (doc 40 §8) ⇒ o reservatório
+   lia BRANCO e a volta sairia mais **clara** — o oposto do item 4. A reserva viaja em canal próprio.
+2. ⛔ **Ela não pode viver no AVANÇO** (passe de cor). Instrumentado, o avanço media `live_pig =
+   0,58` na volta e **a tela não mexia**: quem escreve o mapa de pigmento que o composite lê
+   (`stroke_deplete`) é o passe de **COBERTURA**, e ele corre **primeiro**. ⭐ E pô-la no replay
+   daquele passe torna-a **independente do corte dos lotes de graça**.
+3. ⛔⛔ **Escrita com o idioma `fresco ∨ carry` da casa, ela é um DEGRAU.** `base.max(live·gain)` só
+   morde quando `live·gain` passa o fresco, e abaixo disso morre ao primeiro dab — porque esse dab
+   dilui o nível que o seguinte vai amostrar. **Medido** (nível da reserva na volta): `67 → 69 →
+   137` para knob `0 / 0,5 / 1`. Interpolando (`base + gain·(live − base)⁺`): **`67 → 98 → 137`**,
+   com os dois extremos intactos.
+
+### §12.3 — Medido
+
+| grandeza | número |
+|---|---|
+| G na perna de VOLTA, knob `0 → 1` | `230 → 206` no corpo, **`198 → 166`** no flanco |
+| a perna de IDA | **intocada** (`193`/`191` nas duas) |
+| nível da reserva na volta, knob `0 / 0,5 / 1` | `67 / 98 / 137` |
+| custo (razão knob-1 / knob-0, `92 %` CPU ociosa) | **`1,004`** (r = 32) · **`0,998`** (r = 96) |
+| memória do plano | `2 B/texel`, **só alocado com o knob ligado** |
+| prova de mutação | **`6` de `6` sangram**, controlo do arnês nas duas pontas |
+
+⚠️ **A §9.5 do doc 40 não se materializou:** a reordenação «alto risco de construção» foi
+desnecessária — a cerca de idade já dá a independência de lotes.
+
+⛔⛔ **E uma mutação SOBREVIVEU antes de a régua existir**, com uma lição própria: o knob é guardado
+em **três** sítios (a alocação do plano, o atalho `gain > 0`, o multiplicador) e cada um sozinho já
+entrega o comportamento certo a `0` ⇒ mutar um era **neutralizado** pelos outros e lia-se como
+sobrevivência. *Três guardas correctas tornam-se, juntas, uma lei que nenhuma mutação de um sítio
+consegue matar.* A saída não foi apagar guardas — as três ganham o lugar (`33,6 MB`, o laço de taps
+por dab, e a lei) — foi **medir a lei onde ela é CONTÍNUA** (`the_knob_is_a_dial_not_a_switch`).
+
+### §12.4 — Superfície
+
+`PROJECT_SCHEMA` **0** (o `BrushSpec` não deriva `Serialize`) · contratos congelados **0** ·
+`shells/desktop` **0** · pacotes externos **0**. O knob percorre os **sete** sítios que um irmão
+(`wet_pull`) ocupa: `BrushSpec` + default · `BrushSettings` + o `snapshot` que a popula · o `reset` ·
+o id · o setter + o braço do despacho · a fileira do painel · a chave de i18n.
+⚠️ **O `BrushSettings` é um espelho separado do `BrushSpec`** e um censo do irmão por nome não os
+separa — foi o clippy que o apanhou.
+
+### §12.5 — O que smokar
+
+Paint Mode **Watercolor**, **Charge** a meio, **Self Pickup** no máximo, e o MESMO gesto do report:
+descer, virar e voltar por cima do próprio traço **sem levantar**. A volta tem de sair **mais
+carregada** onde cruza a ida, e um traço **recto** tem de ficar exactamente como estava.

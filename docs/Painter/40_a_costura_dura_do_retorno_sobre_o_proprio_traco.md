@@ -321,7 +321,29 @@ na mesma cadeia `prev → centro` que o `smear_wet_base` já percorre.
   smoke, senão a S2-B lê-se como "não funcionou".
 * Kernel novo em `ph2d-painter-brush` (irmã do módulo, não é foundational de contrato).
 
-### S2-C · o pincel gasto RECOLHE a própria tinta molhada ao voltar — ⏸️ decisão do dono (a mais física; cara de CONSTRUIR, barata de RELÓGIO — §9)
+### S2-C · o pincel gasto RECOLHE a própria tinta molhada ao voltar — ✅ **CONSTRUÍDA em 2026-09-20**
+
+> ✅ **Ordem do dono (2026-09-20): *«implemente Item 4 como opção extra e não como substituto»*.**
+> Shipa como o knob **`Self Pickup`**, que **nasce em `0`** ⇒ o caminho de fábrica é byte-idêntico.
+> Mecanismo, as três correcções que a medição impôs ao desenho abaixo, a prova de mutação e o custo:
+> [handoff de integração](handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-09-20.md) §12.
+>
+> ⚠️ **O desenho desta secção estava certo na CERCA e errado em DUAS coisas**, e as duas só
+> apareceram a correr: *(a)* a recolha tem de entrar no **piso do pigmento** e nunca no reservatório
+> de COR (em papel virgem o `stroke_color` nunca é escrito, §8 — o reservatório lia branco e a volta
+> sairia mais CLARA); *(b)* ela tem de viver no **replay do passe de COBERTURA** e não no avanço do
+> passe de cor, porque quem escreve o mapa de pigmento é a cobertura e ela corre PRIMEIRO —
+> instrumentado, o avanço media `live_pig = 0,58` e a tela não mexia. ⭐ E *(c)*: escrita com o
+> idioma `fresco ∨ carry` da casa, ela é um **DEGRAU** e não um mostrador (`67 → 69 → 137` de nível
+> para knob `0 / 0,5 / 1`); interpolando dá `67 → 98 → 137`.
+>
+> ⭐ **O custo previsto no §9.3 (`≲ +1 %`) confirmou-se e é ainda menor:** medido no produto a
+> `92 %` de CPU ociosa, a razão knob-1/knob-0 lê **`1,004`** (r = 32) e **`0,998`** (r = 96) — as
+> duas cavalgam o `1,00`, ou seja abaixo do ruído. E a §9.5 **não se materializou**: a reordenação
+> «alto risco de construção» foi desnecessária, porque a cerca de idade torna a recolha independente
+> do corte dos lotes por construção (os planos ainda não têm os dabs deste lote, e os do anterior
+> estão a menos de uma fracção de diâmetro).
+
 
 Na vida real o pincel quase seco que volta sobre o próprio escuro molhado **pega pigmento e o carrega**
 (Pull) — a volta sairia com um degradê puxado do flanco escuro. Exige distinguir *"o pincel VOLTOU"* de

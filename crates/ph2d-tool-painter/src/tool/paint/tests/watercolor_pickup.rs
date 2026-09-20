@@ -186,3 +186,38 @@ fn diag_o_perfil_do_pickup() {
         eprintln!("[nivel]  pickup {p:.1}  x160..280: {lvl:?}");
     }
 }
+
+/// **SONDA de CUSTO** — o que o Self Pickup cobra a um traço inteiro, contra o CONTROLO (o mesmo
+/// traço com o knob em `0`). A análise previu `≲ +1 %` do carimbo na variante certa (doc 40 §9.3);
+/// esta é a medição no produto. Relógio de parede: imprime o `loadavg` ao lado.
+#[test]
+#[ignore = "sonda de medicao: relogio"]
+fn measure_the_cost_of_self_pickup() {
+    let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!(
+        "\n=== CUSTO do Self Pickup (ms, minimo de 5) — loadavg {}",
+        load.trim()
+    );
+    eprintln!("     r   knob 0    knob 1    razao");
+    let t = |u: UStroke, p: f32| -> f64 {
+        (0..5)
+            .map(|_| {
+                let t0 = std::time::Instant::now();
+                let out = paint_u(
+                    u,
+                    SeamKnobs {
+                        pickup: p,
+                        ..SeamKnobs::default()
+                    },
+                );
+                std::hint::black_box(&out);
+                t0.elapsed().as_secs_f64() * 1e3
+            })
+            .fold(f64::MAX, f64::min)
+    };
+    for r in [32.0f32, 96.0] {
+        let u = UStroke::new(r);
+        let (off, on) = (t(u, 0.0), t(u, 1.0));
+        eprintln!("  {r:5.0}  {off:8.1}  {on:8.1}  {:7.3}", on / off);
+    }
+}

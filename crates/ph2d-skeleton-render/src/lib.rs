@@ -36,7 +36,7 @@ mod peso;
 pub use bendy::{BEND_HANDLE_R_PX, BendHandles, draw_bend};
 pub use goal::{Goal, draw_chains, draw_goals, goal_radius_px};
 pub use limit::{LIMIT_HANDLE_R_PX, LimitArc, draw_limit};
-pub use peso::{WEIGHT_DOT_R_PX, draw_weight_brush, draw_weights};
+pub use peso::{WEIGHT_DOT_R_PX, draw_weight_brush, draw_weight_mesh, draw_weights};
 
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{

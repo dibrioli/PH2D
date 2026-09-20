@@ -173,3 +173,40 @@ fn a_especie_da_mancha_sai_da_porta_do_modo() {
         "o sinal voltou a ser escrito NO DESPACHO, ao lado da porta que existe para o guardar"
     );
 }
+
+/// ⭐⭐⭐ **O RETÍCULO É DESENHADO, E POR BAIXO DOS PONTOS** (report do dono, 2026-09-20:
+/// *«não deveria aparecer o lattice na hora de pintar os pesos?»*).
+///
+/// ⛔⛔ **Nenhum gate de crate reprova se esta chamada desaparecer.** A [`ph2d_skeleton_live`]
+/// prova que a malha se constrói, a [`ph2d_skeleton_render`] prova que ela se pinta, e as duas
+/// ficam verdes com o quadro a nunca chamar nenhuma — *é o terceiro passo que um `grep` não vê: o
+/// painel escreve, alguém lê, e o LEITOR decide ou entrega a quem descarta*. E o sintoma é
+/// exactamente o report que a trouxe: uma malha calculada, guardada, consultada e **invisível**.
+///
+/// ⚠️ **A 2.ª metade é a ORDEM, e ela é a leitura:** os nós são onde o pincel ANCORA a mancha,
+/// logo eles ficam POR CIMA — com o retículo desenhado depois, ele tapa os pontos que o artista
+/// precisa de apontar.
+#[test]
+fn o_reticulo_do_peso_e_desenhado_por_baixo_dos_pontos() {
+    let src = code_only(
+        &std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/render_loop/fase_vector_bone_overlay.rs"
+        ))
+        .expect("a fase que desenha o rig sobre a arte vectorial"),
+    );
+    let malha = src.find("draw_weight_mesh(").expect(
+        "o quadro nao desenha o reticulo do peso — a malha do dominio volta a ser invisivel",
+    );
+    assert!(
+        src.contains("malhas_do_indicador("),
+        "o quadro deixou de PEDIR os reticulos — ele desenha uma lista que ninguem enche"
+    );
+    let pontos = src
+        .find("draw_weights(")
+        .expect("o quadro tem de continuar a desenhar os pontos dos nos");
+    assert!(
+        malha < pontos,
+        "o reticulo e' desenhado DEPOIS dos pontos — ele tapa os nos em que o pincel ancora a mancha"
+    );
+}

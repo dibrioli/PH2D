@@ -79,31 +79,19 @@ impl crate::App {
                 // pré-visualização tem de responder à MESMA pergunta»* — juntava duas perguntas
                 // diferentes: *onde o traço vai pintar* (do dedo, e continua a ser) e *o que este
                 // osso governa* (do osso). A segunda não tem cursor nenhum dentro.
+                // ⭐⭐⭐ **O PESO À VISTA** — o retículo, os pontos e o anel do pincel, num
+                // assunto só. ⚠️ **Ele saiu para um irmão por TECTO DE FUNÇÃO** (`204` contra
+                // `200`, 2026-09-20) e o corte é por RESPONSABILIDADE: aqui decide-se a ORDEM dos
+                // passes, ali o que o pincel de peso mostra.
                 if self.vec.draw_config.bone_action == ph2d_tool_vector::BoneAction::Weight {
-                    // ⚠️ **O raio do painel e' de ECRA e o anel quer PIXEIS** — ele é o único
-                    // consumidor dele nesta fase desde que o indicador deixou de perguntar «que
-                    // arte está debaixo do dedo?», que era a pergunta que pedia MUNDO.
-                    let raio_px = self.vec.draw_config.weight_radius;
-                    // ⚠️ **Qual arte é o sujeito é LEI e mora na crate**
-                    // ([`ph2d_skeleton_live::peso_a_mao::pontos_do_indicador`]): aqui decide-se a
-                    // ORDEM dos passes, não de quem se mostram os pesos.
-                    let pontos = ph2d_skeleton_live::peso_a_mao::pontos_do_indicador(
+                    pincel_de_peso_a_vista(
                         sim,
-                        hero.project.pixels_per_meter,
                         osso_focado.map(ph2d_ecs::Entity::from_bits),
-                    );
-                    ph2d_skeleton_render::draw_weights(
-                        &pontos,
-                        cam_affine,
-                        hero.theme,
-                        vector_scene,
-                    );
-                    // ⚠️ **O anel desenha-se em PIXEIS, sem escala nenhuma** — ele mostra o
-                    // número que o artista escolheu no painel, que é uma grandeza de ECRÃ (ver o
-                    // doc de [`ph2d_skeleton_render::draw_weight_brush`], com a tabela medida).
-                    ph2d_skeleton_render::draw_weight_brush(
-                        self.skeleton.weight_cursor,
-                        raio_px,
+                        PincelDePeso {
+                            ppm: hero.project.pixels_per_meter,
+                            raio_px: self.vec.draw_config.weight_radius,
+                            cursor: self.skeleton.weight_cursor,
+                        },
                         cam_affine,
                         hero.theme,
                         vector_scene,
@@ -255,4 +243,61 @@ fn fundo_do_osso_focado(
         theme,
         target,
     );
+}
+
+/// ⭐⭐⭐ **O QUE O PINCEL DE PESO MOSTRA** — o retículo, os pontos e o anel.
+///
+/// ⚠️ **Os três são UMA leitura e por isso moram juntos:** o retículo é o campo, os pontos são os
+/// nós em que a mancha ANCORA, e o anel é onde ela vai cair. Separá-los espalharia a ordem entre
+/// eles por três sítios, e a ordem é a leitura.
+/// O estado do PINCEL que o desenho precisa — ver [`pincel_de_peso_a_vista`].
+///
+/// ⚠️ **Os três viajam juntos porque são do mesmo gesto**, e não para calar o `too_many_arguments`:
+/// a `ppm` escolhe os pontos, o raio desenha o anel e o cursor diz onde ele está. *Separá-los
+/// deixaria a assinatura a aceitar o raio de um pincel com o cursor de outro.*
+struct PincelDePeso {
+    ppm: f32,
+    raio_px: f64,
+    cursor: Option<[f64; 2]>,
+}
+
+fn pincel_de_peso_a_vista(
+    sim: &SimWorld,
+    osso_focado: Option<ph2d_ecs::Entity>,
+    pincel: PincelDePeso,
+    cam_affine: ph2d_vector::Affine,
+    theme: ph2d_tokens::Theme,
+    target: &mut ph2d_vector::VectorScene,
+) {
+    let PincelDePeso {
+        ppm,
+        raio_px,
+        cursor,
+    } = pincel;
+    // ⚠️ **O raio do painel e' de ECRA e o anel quer PIXEIS** — ele é o único
+    // consumidor dele nesta fase desde que o indicador deixou de perguntar «que
+    // arte está debaixo do dedo?», que era a pergunta que pedia MUNDO.
+    // ⚠️ **Qual arte é o sujeito é LEI e mora na crate**
+    // ([`ph2d_skeleton_live::peso_a_mao::pontos_do_indicador`]): aqui decide-se a
+    // ORDEM dos passes, não de quem se mostram os pesos.
+    // ⭐⭐⭐ **O RETÍCULO, POR BAIXO DOS PONTOS** (report do dono, 2026-09-20:
+    // *«não deveria aparecer o lattice na hora de pintar os pesos?»*). A malha do
+    // domínio é construída no bind, guardada no ficheiro e lida a cada quadro — e
+    // até aqui **nunca era desenhada**: o que a tela mostrava eram os `34` nós
+    // daquela barra sobre `498` vértices com a resposta do padrão-ouro.
+    //
+    // ⚠️ **ANTES dos pontos, e a ordem é a leitura:** os nós são onde o pincel
+    // ANCORA a mancha, logo eles ficam por cima — o retículo é o campo, os pontos
+    // são os sítios em que se lhe toca.
+    for m in ph2d_skeleton_live::peso_a_mao_malha::malhas_do_indicador(sim, osso_focado) {
+        ph2d_skeleton_render::draw_weight_mesh(
+            &m.verts, &m.pesos, &m.tris, cam_affine, theme, target,
+        );
+    }
+    let pontos = ph2d_skeleton_live::peso_a_mao::pontos_do_indicador(sim, ppm, osso_focado);
+    ph2d_skeleton_render::draw_weights(&pontos, cam_affine, theme, target);
+    // ⚠️ **O anel desenha-se em PIXEIS, sem escala nenhuma** — ele mostra o
+    // número que o artista escolheu no painel, que é uma grandeza de ECRÃ (ver o
+    // doc de [`ph2d_skeleton_render::draw_weight_brush`], com a tabela medida).
+    ph2d_skeleton_render::draw_weight_brush(cursor, raio_px, cam_affine, theme, target);
 }

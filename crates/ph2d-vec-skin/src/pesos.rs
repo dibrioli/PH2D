@@ -135,6 +135,35 @@ impl CampoDoDominio {
         ]
     }
 
+    /// ⭐⭐⭐ **UM VÉRTICE DA MALHA, no espaço LOCAL do caminho** — a [`Self::para_malha`] desfeita.
+    ///
+    /// ⛔⛔ **Ela existe para a malha poder ser DESENHADA, e a régua é que a torna obrigatória:** os
+    /// vértices guardados vivem no espaço em que o solver correu (escalado e transladado), e quem
+    /// desenhar directamente `malha.rest` põe o retículo no sítio errado e com o tamanho errado —
+    /// *em silêncio, porque uma malha deslocada ainda parece uma malha*.
+    ///
+    /// ⚠️ **`escala` nula devolve `None`** em vez de dividir: um campo cujo par não fecha já é
+    /// recusado pela [`Self::valida`], e esta é a mesma recusa um nível abaixo.
+    #[must_use]
+    pub fn local_do_vertice(&self, i: usize) -> Option<[f64; 2]> {
+        let v = *self.malha.rest.get(i)?;
+        let s = self.regua[2];
+        (s.is_finite() && s != 0.0).then(|| [v[0] / s + self.regua[0], v[1] / s + self.regua[1]])
+    }
+
+    /// **A linha de pesos guardada do vértice `i`** — sem amostragem, porque ele **É** um nó.
+    ///
+    /// ⚠️ ⛔ Ela não é a [`Self::linha`] avaliada no vértice: são a mesma resposta, e esta é a que
+    /// não paga uma busca de triângulo por vértice quando o consumidor os quer todos.
+    #[must_use]
+    pub fn linha_do_vertice(&self, i: usize) -> Option<&[f64]> {
+        if !self.valida() {
+            return None;
+        }
+        let n = self.ossos();
+        self.pesos.get(i * n..(i + 1) * n)
+    }
+
     /// ⭐⭐⭐ **A LINHA DE PESOS DE UM PONTO QUALQUER do interior** — o que a tabela por ponto de
     /// controlo não sabe responder.
     ///

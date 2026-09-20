@@ -47,6 +47,7 @@ mod esqueletos_tests_support;
 pub mod goal;
 /// ⭐⭐⭐ **O PESO À MÃO** — o gesto e o olho da correcção que o artista pinta.
 pub mod peso_a_mao;
+pub mod peso_a_mao_malha;
 #[cfg(test)]
 #[path = "peso_entre_os_nos_tests.rs"]
 mod peso_entre_os_nos_tests;

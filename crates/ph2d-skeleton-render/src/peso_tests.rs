@@ -180,3 +180,69 @@ fn as_pontas_da_rampa_sao_as_paradas_declaradas() {
         );
     }
 }
+
+/// Quantos caminhos o retículo encoda — o oráculo é o que foi MESMO desenhado.
+fn caminhos(verts: &[[f64; 2]], pesos: &[f64], tris: &[[u32; 3]]) -> u32 {
+    let mut cena = ph2d_vector::VectorScene::new();
+    super::draw_weight_mesh(
+        verts,
+        pesos,
+        tris,
+        ph2d_vector::Affine::IDENTITY,
+        Theme::Forge,
+        &mut cena,
+    );
+    cena.inner().encoding().n_paths
+}
+
+/// ⭐⭐⭐ **CADA TRIÂNGULO ENCODA O PREENCHIMENTO E A ARESTA** — e a aresta é o que o torna um
+/// RETÍCULO.
+///
+/// ⛔ **A metade da ARESTA é metade do report:** com só o preenchimento o artista vê uma mancha de
+/// cor e não vê a grelha que a produz — *«aparecer o lattice»* pede a grelha.
+///
+/// ⚠️ **As duas metades NEGATIVAS vêm com ela:** sem triângulos não se desenha nada (uma pele sem
+/// campo não pode pintar a tela), e um par `vértices/pesos` que não fecha é **recusado** em vez de
+/// desenhado com o peso do vizinho.
+#[test]
+fn cada_triangulo_encoda_o_preenchimento_e_a_aresta() {
+    let v = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
+    let w = [0.0, 0.5, 1.0, 0.25];
+    let t = [[0, 1, 2], [0, 2, 3]];
+    assert_eq!(
+        caminhos(&v, &w, &t),
+        4,
+        "esperava um preenchimento e uma aresta por triângulo"
+    );
+    assert_eq!(caminhos(&v, &w, &[]), 0, "sem triângulos não há retículo");
+    assert_eq!(
+        caminhos(&v, &w[..3], &t),
+        0,
+        "um par que não fecha tem de ser RECUSADO — desenhá-lo dá a cada vértice o peso do vizinho"
+    );
+    assert_eq!(
+        caminhos(&v, &w, &[[0, 1, 9]]),
+        0,
+        "um índice fora da malha tem de saltar o triângulo, nunca entrar em pânico"
+    );
+}
+
+/// ⭐⭐ **A COR DO TRIÂNGULO É A MÉDIA DOS TRÊS CANTOS.**
+///
+/// ⚠️ **Um canto só seria a leitura errada e passaria despercebida**: num triângulo que atravessa
+/// uma junta os três cantos têm pesos muito diferentes, e pintar pelo primeiro faria a fronteira do
+/// campo saltar com a ORDEM em que a malha foi triangulada.
+#[test]
+fn a_cor_do_triangulo_e_a_media_dos_tres_cantos() {
+    let w = [0.0, 0.6, 0.9, f64::NAN];
+    let m = super::media(&w, &[0, 1, 2]).expect("os três cantos existem");
+    assert!((m - 0.5).abs() < 1e-12, "média errada: {m}");
+    assert!(
+        super::media(&w, &[0, 1, 3]).is_none(),
+        "um peso não-finito tem de recusar o triângulo"
+    );
+    assert!(
+        super::media(&w, &[0, 1, 9]).is_none(),
+        "um índice fora da tabela tem de recusar o triângulo"
+    );
+}

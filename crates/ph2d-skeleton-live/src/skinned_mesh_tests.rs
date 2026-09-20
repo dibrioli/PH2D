@@ -394,3 +394,132 @@ fn diag_o_desenho_com_e_sem_campo_na_configuracao_do_produto() {
             .trim()
     );
 }
+
+/// ⚠️ **SONDA — o BRAÇO DA CENA DO DONO, com e sem o campo, pelo caminho do PRODUTO.**
+///
+/// ⛔⛔ Ela existe porque o dono reportou *«parece sem mudanças»* (2026-09-20) sobre a cena
+/// `PH2D_VEC_BONE_SMOKE=1`, e as tabelas da wave saíram de um rectângulo `40 × 10` e de uma elipse
+/// — *a barra da cena é um `7 × 1` com as pontas redondas*, que é outra forma. **A fixtura tem de
+/// ser a da cena que o dono usou.**
+#[test]
+fn diag_o_braco_da_cena_do_dono() {
+    use crate::barra_da_cena_tests_support::barra_da_cena_com;
+    use ph2d_ecs::{Entity, Transform};
+    use ph2d_skeleton_ecs::SkinBind;
+
+    println!("\n{:-<86}", "");
+    println!(
+        "{:<24} {:>5} {:>7} {:>7} {:>11} {:>14}",
+        "caso", "nós", "malha", "graus", "desvio", "% da barra (7 u)"
+    );
+    println!("{:-<86}", "");
+    for subdividir in [false, true] {
+        let (mut sim, scene, map, id, ossos) = barra_da_cena_com(subdividir);
+        let e = Entity::from_bits(map[&id]);
+        let skin = sim.world().get::<SkinBind>(e).expect("pele").clone();
+        let g = crate::skinned_mesh::le(&skin.source).expect("a fonte lê-se");
+        let nos = g.path.verts_all().count();
+        let malha = g.campo.as_ref().map_or(0, |c| c.malha.rest.len());
+        for graus in [20.0f32, 45.0, 70.0] {
+            for o in &ossos[1..] {
+                sim.world_mut()
+                    .get_mut::<Transform>(*o)
+                    .expect("Transform")
+                    .rotation = graus.to_radians();
+            }
+            let (mut sem, mut com) = (scene.clone(), scene.clone());
+            crate::skin_live::recook_com_mistura(&sim, &mut sem, true, true, false);
+            crate::skin_live::recook_com_mistura(&sim, &mut com, true, true, true);
+            let pega = |s: &ph2d_vec_scene::VecScene| {
+                s.paths().iter().find(|p| p.id == id).expect("path").clone()
+            };
+            let d = crate::test_support::pior_desvio_do_desenho(&pega(&sem), &pega(&com));
+            let cru = pega(&scene);
+            let dobrou = crate::test_support::pior_desvio_do_desenho(&cru, &pega(&sem));
+            println!(
+                "{:<24} {nos:>5} {malha:>7} {graus:>7.0} {d:>11.5} {:>13.2} %  (a dobra move {dobrou:.4})",
+                if subdividir { "BIND (produto)" } else { "cru" },
+                d / 7.0 * 100.0
+            );
+        }
+    }
+    println!("{:-<86}", "");
+}
+
+/// ⚠️ **SONDA — a mesma forma em TAMANHOS diferentes.** A lei é geométrica, logo a coluna do
+/// `% da peça` TEM de ser a mesma; se não for, quem manda é um número ABSOLUTO escondido.
+#[test]
+fn diag_o_campo_e_invariante_a_escala() {
+    use ph2d_skeleton::{Skin, SkinBone, Xform};
+    use ph2d_skin_weights::Handle;
+
+    println!("\n{:-<72}", "");
+    println!(
+        "{:<22} {:>6} {:>8} {:>12} {:>14}",
+        "forma", "nós", "malha", "desvio", "% da peça"
+    );
+    println!("{:-<72}", "");
+    for (rotulo, w, h, forma) in [
+        (
+            "rect 40x10",
+            40.0_f64,
+            10.0_f64,
+            ph2d_vec_scene::ShapeKind::Rectangle,
+        ),
+        ("rect 7x1", 7.0, 1.0, ph2d_vec_scene::ShapeKind::Rectangle),
+        (
+            "rect 4x1 (mesma razão)",
+            40.0,
+            10.0,
+            ph2d_vec_scene::ShapeKind::Rectangle,
+        ),
+        (
+            "elipse 40x10",
+            40.0,
+            10.0,
+            ph2d_vec_scene::ShapeKind::Ellipse,
+        ),
+        ("elipse 7x1", 7.0, 1.0, ph2d_vec_scene::ShapeKind::Ellipse),
+        ("elipse 6x2", 6.0, 2.0, ph2d_vec_scene::ShapeKind::Ellipse),
+    ] {
+        let eixos = vec![
+            Handle {
+                a: [0.0, h * 0.5],
+                b: [w * 0.5, h * 0.5],
+            },
+            Handle {
+                a: [w * 0.5, h * 0.5],
+                b: [w, h * 0.5],
+            },
+        ];
+        let osso = |x0: f64, rot: f64| {
+            let (c, s) = (rot.cos(), rot.sin());
+            SkinBone::new(
+                Xform([1.0, 0.0, 0.0, 1.0, x0, h * 0.5]),
+                w * 0.5,
+                1.0,
+                Xform([c, s, -s, c, x0, h * 0.5]),
+                Xform::IDENTITY,
+            )
+            .expect("repouso")
+        };
+        let k = Skin::new(vec![osso(0.0, 0.0), osso(w * 0.5, 0.8)]).expect("2 ossos");
+        let mut src = ph2d_vec_scene::cook(forma, [0.0, 0.0], [w, h], &[]);
+        if let Some(alvo) = crate::subdivisao::alvo_dos_eixos(&eixos) {
+            crate::subdivisao::subdivide(&mut src, alvo, crate::subdivisao::VERTICES_MAX);
+        }
+        let campo = ph2d_vec_skin::pesos::campo_do_caminho(&src, &eixos).expect("campo");
+        let tabela = ph2d_vec_skin::pesos::pesos_dos_pontos(&src, &campo);
+        let (mut a, mut b) = (src.clone(), src.clone());
+        ph2d_vec_skin::curva::aplica_pela_curva_com(&k, &mut a, &tabela, &[], true, None);
+        ph2d_vec_skin::curva::aplica_pela_curva_com(&k, &mut b, &tabela, &[], true, Some(&campo));
+        let d = crate::test_support::pior_desvio_do_desenho(&a, &b);
+        println!(
+            "{rotulo:<22} {:>6} {:>8} {d:>12.6} {:>13.3} %",
+            src.verts_all().count(),
+            campo.malha.rest.len(),
+            d / w * 100.0
+        );
+    }
+    println!("{:-<72}", "");
+}

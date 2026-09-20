@@ -100,7 +100,7 @@ pub const FUSAO: f64 = 0.5;
 /// ⚠️ **`√|det|` é a lei da casa para «quanto isto aumenta»**, e não é uma invenção deste módulo:
 /// é o factor que o bug #27 fixou para a caneta sob escala não-uniforme (a média geométrica — para
 /// escala uniforme é a própria escala, e é invariante à rotação).
-fn mundo_e_escala(sim: &SimWorld, alvo: Entity) -> (Xform, f64) {
+pub(crate) fn mundo_e_escala(sim: &SimWorld, alvo: Entity) -> (Xform, f64) {
     let x = crate::skin_live::world_of(sim, alvo);
     let [a, b, c, d, _, _] = x.0;
     let det = d.mul_add(a, -(b * c));
@@ -459,7 +459,7 @@ fn pesos_guardados(skin: &SkinBind, pontos: usize) -> Option<Vec<f64>> {
 
 /// **O tendão deste osso nesta pele** — a MESMA lei que o
 /// [`SkinBind::correcoes_resolvidas`] aplica, e por isso lida de uma porta só.
-fn tendao_de(sim: &SimWorld, skin: &SkinBind, osso: Entity) -> Option<usize> {
+pub(crate) fn tendao_de(sim: &SimWorld, skin: &SkinBind, osso: Entity) -> Option<usize> {
     let id = *sim.world().get::<ph2d_ecs::StableId>(osso)?;
     skin.tendons.iter().position(|t| t.bone == id)
 }

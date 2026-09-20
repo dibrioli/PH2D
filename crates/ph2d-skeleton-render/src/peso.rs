@@ -82,6 +82,110 @@ pub fn draw_weights(
     }
 }
 
+/// A opacidade do RETÍCULO — ver [`draw_weight_mesh`].
+///
+/// ⚠️ **Mais fraca que a dos pontos de propósito:** ele cobre a peça INTEIRA, e os pontos são
+/// pousados em cima dele. A `0,85` dos pontos a arte desaparecia debaixo de uma chapa de cor.
+const WEIGHT_MESH_ALPHA: f32 = 0.30;
+
+/// A espessura da aresta do retículo, em píxeis de ecrã.
+///
+/// ⚠️ **Em ECRÃ e não em mundo** — é a gramática desta crate inteira: *o vértice sobe pelo afim, a
+/// espessura não*. Com a espessura em mundo, afastar o zoom colaria as arestas numa mancha sólida,
+/// que é precisamente o contrário do que um retículo mostra.
+const WEIGHT_MESH_EDGE_PX: f64 = 0.6; // LITERAL-PX-OK: espessura de ecrã
+
+/// ⭐⭐⭐ **O RETÍCULO À VISTA** — a malha do domínio que o bind guardou, pintada pelo peso.
+///
+/// # ⛔⛔⛔ Porque ele existe
+///
+/// Report do dono (2026-09-20): *«não deveria aparecer o lattice na hora de pintar os pesos?»* — e
+/// ele tinha razão: a malha era construída no bind, guardada no ficheiro, consultada a cada quadro
+/// e **nunca desenhada**. O que estava na tela eram os `34` pontos dos nós daquela barra, sobre
+/// `498` vértices de malha com a resposta do padrão-ouro em cada um.
+///
+/// ⚠️ **Ele é a mesma grandeza dos pontos, na mesma [`Rampa`]** — e tem de ser: duas leituras do
+/// mesmo número na mesma tela com escalas de cor diferentes fazem o artista escolher em qual
+/// acreditar.
+///
+/// ⚠️ **O triângulo é preenchido pela MÉDIA dos três cantos**, e não por um gradiente: o Vello
+/// desenha um gradiente por caminho, logo um por triângulo seria uma malha de `~900` gradientes por
+/// quadro. ⭐ Com a malha graduada pelas articulações, um triângulo é pequeno exactamente onde o
+/// campo varia depressa — *a densidade da malha já é o anti-aliasing da leitura*.
+///
+/// ⛔ **A aresta é desenhada, e é o que o torna um RETÍCULO** — sem ela o artista vê uma mancha de
+/// cor e não vê a grelha que a produz, que é metade do que o report pede.
+pub fn draw_weight_mesh(
+    verts: &[[f64; 2]],
+    pesos: &[f64],
+    tris: &[[u32; 3]],
+    transform: Affine,
+    theme: Theme,
+    target: &mut VectorScene,
+) {
+    let _ = theme;
+    if verts.len() != pesos.len() || tris.is_empty() {
+        return;
+    }
+    let rampa = Rampa::nova();
+    let borda = ColorToken::Border.resolve(theme);
+    let borda = VelloColor::from_rgba8(borda.r, borda.g, borda.b, borda.a).multiply_alpha(0.25);
+    // ⚠️ **UM caminho para o passe inteiro** — um por triângulo seriam `~900` alocações por quadro
+    // na arte medida do smoke, para desenhar três segmentos de cada vez.
+    let mut caminho = ph2d_vector::BezPath::new();
+    for t in tris {
+        let Some(p) = canto(verts, transform, t) else {
+            continue;
+        };
+        let Some(w) = media(pesos, t) else { continue };
+        caminho.truncate(0);
+        caminho.move_to(p[0]);
+        caminho.line_to(p[1]);
+        caminho.line_to(p[2]);
+        caminho.close_path();
+        target.inner_mut().fill(
+            Fill::NonZero,
+            Affine::IDENTITY,
+            &Brush::Solid(rampa.cor(w).multiply_alpha(WEIGHT_MESH_ALPHA)),
+            None,
+            &caminho,
+        );
+        target.inner_mut().stroke(
+            &Stroke::new(WEIGHT_MESH_EDGE_PX),
+            Affine::IDENTITY,
+            &Brush::Solid(borda),
+            None,
+            &caminho,
+        );
+    }
+}
+
+/// Os três cantos de um triângulo, já em ecrã — `None` se um índice não existe ou não é finito.
+fn canto(verts: &[[f64; 2]], transform: Affine, t: &[u32; 3]) -> Option<[Point; 3]> {
+    let mut fora = [Point::ZERO; 3];
+    for (k, &i) in t.iter().enumerate() {
+        let v = *verts.get(i as usize)?;
+        if !(v[0].is_finite() && v[1].is_finite()) {
+            return None;
+        }
+        fora[k] = transform * Point::new(v[0], v[1]);
+    }
+    Some(fora)
+}
+
+/// A média dos pesos dos três cantos — `None` se um índice não existe ou não é finito.
+fn media(pesos: &[f64], t: &[u32; 3]) -> Option<f64> {
+    let mut soma = 0.0;
+    for &i in t {
+        let w = *pesos.get(i as usize)?;
+        if !w.is_finite() {
+            return None;
+        }
+        soma += w;
+    }
+    Some(soma / 3.0)
+}
+
 /// **O ANEL do pincel** — onde ele vai pintar, e com que tamanho.
 ///
 /// ⛔⛔ **O raio deste era em MUNDO, com um argumento escrito aqui, e a medição refutou-o**

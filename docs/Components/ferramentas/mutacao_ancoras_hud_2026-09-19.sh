@@ -183,6 +183,60 @@ bloco "o recook nao recebe a vista" ph2d-host-desktop o_hud_conduz_a_raiz \
   '        self.layout_live.vista = self.components.hud.vista;' \
   '' '--test it'
 
+echo "=== O LADO DE CADA PECA (report do dono, 20/09) ==="
+
+# ⛔⛔ O defeito EXACTO que ele reportou: a peca presa a DIREITA estava autorada a ESQUERDA e
+# vice-versa. Em `Keep` o delta e' `0,0` e nada se ve; em `Expand` elas atravessam-se.
+# ⚠️ A cura foi o SINAL passar a sair da REGRA — estas tres mutacoes atacam cada elo dessa cadeia.
+CANTO=crates/ph2d-app-components/src/hud_smoke_anchors.rs
+
+bloco "o sinal da posicao deixa de sair da regra" ph2d-app-components hud_smoke_anchors \
+  "$CANTO" 1 \
+  '        let sinal = if self.fraccao() > 0.5 { 1.0 } else { -1.0 };' \
+  '        let sinal = -1.0;' '--lib'
+
+bloco "o sinal da posicao vem INVERTIDO" ph2d-app-components hud_smoke_anchors \
+  "$CANTO" 1 \
+  '        let sinal = if self.fraccao() > 0.5 { 1.0 } else { -1.0 };' \
+  '        let sinal = if self.fraccao() > 0.5 { -1.0 } else { 1.0 };' '--lib'
+
+# A PORTA da cena troca os dois cantos: o tipo continua coerente e a cena continua a chamar com os
+# argumentos certos — so' este gate o ve.
+bloco "prende_os_cantos troca os dois" ph2d-app-components hud_smoke_anchors \
+  "$CANTO" 1 \
+  $'    world.entity_mut(contagem).insert(Canto::Esquerda.regra());\n    world.entity_mut(pontos).insert(Canto::Direita.regra());' \
+  $'    world.entity_mut(contagem).insert(Canto::Direita.regra());\n    world.entity_mut(pontos).insert(Canto::Esquerda.regra());' '--lib'
+
+# E a CENA a emparelhar ao contrario — a metade que so' a shell pode afirmar.
+bloco "a cena autora a pontuacao a esquerda" ph2d-host-desktop cada_peca_de_baixo \
+  "$CENA" 1 \
+  '                local: Canto::Direita.local(),' \
+  '                local: Canto::Esquerda.local(),' '--test it'
+
+bloco "a cena troca os argumentos da porta" ph2d-host-desktop cada_peca_de_baixo \
+  "$CENA" 1 \
+  'prende_os_cantos(world, e_resta, e_pontos);' \
+  'prende_os_cantos(world, e_pontos, e_resta);' '--test it'
+
+echo "=== OS LOGS INFINITOS (report do dono, 20/09) ==="
+
+# ⛔ `levanta_o_inspector(0)` devolve `0` para sempre ⇒ a conferencia corria a cada quadro, a 60 Hz.
+bloco "a escada nao tem ponto fixo" ph2d-host-desktop a_escada_da_cena_do_hud_tem_fim \
+  "$CENA" 1 \
+  '        _ => estado,' \
+  '        _ => 2,' '--bins'
+
+bloco "a cauda corre no ESTADO e nao na transicao" ph2d-host-desktop a_conferencia_do_dedo_corre \
+  "$CENA" 1 \
+  '        if seguinte == FEITO && estado != FEITO {' \
+  '        if seguinte == FEITO {' '--bins'
+
+# E a CENA a esconder o proprio sujeito atras de um painel.
+bloco "a cena reabre a timeline" ph2d-host-desktop a_cena_do_hud_fecha_o_painel \
+  "$CENA" 1 \
+  'hero.panel_visibility.insert("timeline", false);' \
+  'hero.panel_visibility.insert("timeline", true);' '--test it'
+
 echo
 echo "════════════════════════════════════════"
 if [ "$FALHAS" = 0 ]; then

@@ -1,5 +1,13 @@
 //! ⭐⭐⭐ **AGRUPAR / DESAGRUPAR pela Hierarquia** (Enio, 2026-08-30).
 //!
+//! ⚠️ **Ele viveu na `shells/desktop` e mudou-se para cá em 2026-09-20**, quando a catraca
+//! `the_shell_only_shrinks` cobrou a wave das âncoras do HUD. ⭐ A mudança é a lei da casa
+//! (ADR-0075: *código de família vive em `crates/ph2d-app-<família>`*) e não um arranjo: o ficheiro
+//! e os gates dele tocavam **só** `ph2d_vec_entities`, `ph2d_ecs` e `ph2d_editor_core` — nenhum
+//! símbolo da shell —, e o modelo de grupo que eles governam já vivia em
+//! [`ph2d_vec_entities::entities`]. O que fica lá é a FASE que resolve a linha em bits e chama
+//! estas portas.
+//!
 //! # O que faltava, e o que não faltava
 //!
 //! O modelo de grupo **já existia inteiro**: uma entidade sem geometria própria com filhos
@@ -36,7 +44,7 @@ use ph2d_i18n::{tr, tr_with};
 /// diferente a dizer ao artista, e *um verbo que come o clique em silêncio é pior que um ausente* —
 /// é a lei que a própria tabela deste menu declara.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Outcome {
+pub enum Outcome {
     /// Nasceu um grupo com `n` membros. Carrega os bits dele: quem chama selecciona-o e recolhe-o.
     Grouped { group: u64, members: usize },
     /// A selecção tinha menos de dois objectos DISTINTOS de topo.
@@ -53,7 +61,7 @@ impl Outcome {
     /// A frase que o artista lê. ⚠️ Ela nomeia **o que aconteceu**, não o verbo que ele carregou:
     /// *"Grouped 3 objects"* diz-lhe que a conta bateu; *"Group"* não diria nada que ele já não
     /// soubesse.
-    pub(crate) fn toast(self) -> Toast {
+    pub fn toast(self) -> Toast {
         match self {
             Self::Grouped { members, .. } => Toast::success(tr_with(
                 "shell.hier_group.grouped_objects",
@@ -81,7 +89,7 @@ impl Outcome {
 
 /// Sobre quem o verbo age — ou porque ele não age.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum Subject {
+pub enum Subject {
     /// Estes objectos, **na ordem da selecção**.
     ///
     /// ⚠️ A ordem é load-bearing: o `group_entities` insere os filhos por ela e o `Children`
@@ -94,7 +102,7 @@ pub(crate) enum Subject {
 
 /// A lei do sujeito, pura — ver o doc do módulo.
 #[must_use]
-pub(crate) fn subject(row: u64, selected: &[u64]) -> Subject {
+pub fn subject(row: u64, selected: &[u64]) -> Subject {
     if selected.contains(&row) {
         return Subject::These(selected.to_vec());
     }
@@ -109,7 +117,7 @@ pub(crate) fn subject(row: u64, selected: &[u64]) -> Subject {
 
 /// Aplica o verbo. A mutação vai pelas portas que já existem — esta função decide **o quê** e
 /// **o que dizer**, e não reimplementa nenhuma delas.
-pub(crate) fn apply(sim: &mut ph2d_ecs::SimWorld, subject: &Subject, group: bool) -> Outcome {
+pub fn apply(sim: &mut ph2d_ecs::SimWorld, subject: &Subject, group: bool) -> Outcome {
     let Subject::These(subjects) = subject else {
         return Outcome::ClickedOutsideSelection;
     };

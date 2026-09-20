@@ -108,6 +108,7 @@ pub mod fx_live_memo;
 pub mod fx_live_resolve;
 pub mod fx_silhouette;
 pub mod guide;
+pub mod hier_group;
 pub mod marquee;
 pub mod morph_edit;
 pub mod morph_live;

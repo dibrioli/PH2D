@@ -53,16 +53,16 @@ impl crate::App {
         // geometria é a mesma e o modo é a única diferença — ver a chamada abaixo.
         // ⭐⭐⭐ **AGRUPAR / DESAGRUPAR** (Enio, 2026-08-30) — o alcance de um verbo que já
         // existia em `Ctrl+G` e que nenhum menu do app nomeava. A lei do sujeito e as frases
-        // vivem em [`crate::hier_group`], puras e gateadas; aqui só se resolve a linha em bits,
+        // vivem em [`ph2d_app_vec::hier_group`], puras e gateadas; aqui só se resolve a linha em bits,
         // se aplica e se diz.
         if let Some((row, agrupar)) = group_row
             && let Some(live) = hero_live.as_ref()
             && let Some(row_bits) = live.bridge.entity_for(row)
         {
             let escolhidos: Vec<u64> = hero.gizmo.iter_selected().collect();
-            let sujeito = crate::hier_group::subject(row_bits, &escolhidos);
-            let desfecho = crate::hier_group::apply(sim, &sujeito, agrupar);
-            if let crate::hier_group::Outcome::Grouped { group, .. } = desfecho {
+            let sujeito = ph2d_app_vec::hier_group::subject(row_bits, &escolhidos);
+            let desfecho = ph2d_app_vec::hier_group::apply(sim, &sujeito, agrupar);
+            if let ph2d_app_vec::hier_group::Outcome::Grouped { group, .. } = desfecho {
                 // O grupo novo passa a ser a selecção — o gesto seguinte do artista é sobre
                 // ELE, e não sobre as peças que acabaram de deixar de ser objectos de topo.
                 hero.gizmo.selection = Some(group);

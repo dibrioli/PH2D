@@ -230,7 +230,6 @@ mod hero_bridge;
 mod hero_intents;
 /// ⭐⭐⭐ **AGRUPAR / DESAGRUPAR pela Hierarquia** — o alcance de um verbo que já existia em `Ctrl+G`
 /// e que nenhum menu, botão ou rótulo do app nomeava.
-mod hier_group;
 mod hover_highlight;
 mod hud_label_live;
 mod hud_smoke;

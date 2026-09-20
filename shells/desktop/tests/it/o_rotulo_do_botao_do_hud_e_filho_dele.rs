@@ -62,47 +62,130 @@ fn o_rotulo_do_botao_do_hud_e_filho_do_botao() {
     );
 }
 
-/// ⭐⭐⭐ **As duas peças de baixo PRENDEM-SE aos cantos OPOSTOS** — o item que o handoff do #20
-/// deixou aberto (*«as âncoras não estão ligadas ao canvas»*).
+/// ⭐⭐⭐ **Cada peça de baixo é AUTORADA do lado a que ela se prende** — e a régua cruza as duas
+/// metades, que é precisamente o que a redacção anterior deste gate não fazia.
 ///
-/// ⚠️ A régua é o TEXTO da cena, e o que ela afirma é a coisa que um artista vê: **os dois cantos
-/// são opostos em `x`**. Um gate que só contasse *«há duas âncoras»* ficaria verde com as duas
-/// presas ao MESMO canto — e as duas peças empilhavam-se uma em cima da outra ao alargar a janela.
+/// # ⛔⛔ A premissa do gate anterior MORREU, e ela foi paga por um report
 ///
-/// **Mutação que deve sangrar:** pôr `min: [0.0, 0.0]` nas duas.
+/// Ele lia as fracções `min` da crate da família e afirmava que os dois cantos eram **opostos em
+/// `x`** — e estavam. O que ninguém media era ONDE cada peça está desenhada: a pontuação prendia-se
+/// à aresta DIREITA e era autorada em `x = −7`, a contagem prendia-se à ESQUERDA e estava em
+/// `x = +8`. Em `Keep` a caixa efectiva é a de referência, o delta é `0,0` e nada se move — logo
+/// *«os demais modos OK»*; em `Expand` cada uma anda para a sua borda e a certa altura elas
+/// **atravessam-se** (report do dono, 2026-09-20).
+///
+/// ⇒ *um gate que mede a REGRA e nunca a POSIÇÃO fica verde sobre uma cena que se cruza.*
+///
+/// # O que este afirma
+///
+/// A aritmética está provada na folha ([`ph2d_app_components::hud_smoke_anchors`], onde o SINAL da
+/// posição é derivado da fracção da regra, com o controlo da autoria espelhada ao lado). O que só
+/// se pode afirmar AQUI é o **EMPARELHAMENTO**: que a peça a que a cena dá a regra da esquerda é a
+/// mesma que ela autora com [`Canto::Esquerda`].
+///
+/// **Mutação que deve sangrar:** trocar os dois argumentos do `prende_os_cantos`.
 #[test]
-fn as_duas_pecas_de_baixo_prendem_se_a_cantos_opostos() {
-    // ⚠️ **A fonte é a CRATE DA FAMÍLIA, e o endereço já se mudou uma vez:** a regra vivia em
-    // `shells/desktop/src/hud_smoke_anchors.rs` e saiu para a crate em 2026-09-19, quando a
-    // catraca da shell a mandou para casa. *Uma agulha que nomeia um endereço falha ALTO no dia da
-    // mudança, que é a espécie barata.*
-    let src = include_str!("../../../../crates/ph2d-app-components/src/hud_smoke_anchors.rs");
-    let resta = src
-        .find("world.entity_mut(contagem).insert(VecAnchors {")
-        .expect("a contagem deixou de se prender ao canto");
-    let pontos = src
-        .find("world.entity_mut(pontos).insert(VecAnchors {")
-        .expect("os pontos deixaram de se prender ao canto");
+fn cada_peca_de_baixo_e_autorada_do_lado_a_que_se_prende() {
+    let src = sem_comentarios(include_str!("../../src/hud_smoke.rs"));
 
-    // A fracção em `x` de cada um, lida do bloco que começa em cada `find`.
-    let x_de = |i: usize| -> f64 {
-        // ⚠️ A fatia SATURA: o ficheiro é curto, e `i + 200` passava do fim dele — a 1.ª
-        // redacção rebentava no `slice index out of range` em vez de medir.
+    // (a) Que CANTO cada peça usa para nascer.
+    let canto_de = |peca: &str| -> String {
+        let i = src
+            .find(&format!("{peca}: Peca {{"))
+            .unwrap_or_else(|| panic!("a cena do HUD deixou de montar a peca `{peca}`"));
         let bloco = &src[i..src.len().min(i + 200)];
-        let m = bloco.find("min: [").expect("a regra tem um `min`");
-        bloco[m + 6..]
-            .split(',')
+        let k = bloco
+            .find("local: Canto::")
+            .unwrap_or_else(|| panic!("a peca `{peca}` deixou de nascer de um `Canto`"));
+        bloco[k + "local: Canto::".len()..]
+            .split('.')
             .next()
-            .expect("a fraccao em x")
+            .expect("o nome do canto")
             .trim()
-            .parse()
-            .expect("um numero")
+            .to_owned()
     };
-    let (a, b) = (x_de(resta), x_de(pontos));
+
+    // (b) Que peça está por trás de cada `Entity` — lido da tupla que as liga, nunca do nome.
+    let i = src
+        .find("let (Some(e_pontos), Some(e_resta)")
+        .expect("a cena deixou de ligar as pecas a entidades");
+    let bloco = &src[i..src.len().min(i + 400)];
+    let nomes: Vec<&str> = bloco
+        .split("Some(")
+        .skip(1)
+        .filter_map(|t| t.split(')').next())
+        .collect();
+    let pecas: Vec<&str> = bloco
+        .split("ent(pend.")
+        .skip(1)
+        .filter_map(|t| t.split('.').next())
+        .collect();
     assert!(
-        (a - b).abs() > 0.5,
-        "as duas pecas prendem-se ao MESMO lado em x ({a} e {b}) — ao alargar a janela elas \
-         empilham-se uma sobre a outra"
+        nomes.len() >= 2 && pecas.len() >= 2,
+        "controlo positivo: a extraccao leu {} entidades e {} pecas — este gate passou a medir o \
+         nada",
+        nomes.len(),
+        pecas.len()
+    );
+    let peca_de = |entidade: &str| -> String {
+        let k = nomes
+            .iter()
+            .position(|n| *n == entidade)
+            .unwrap_or_else(|| panic!("a cena nao liga `{entidade}` a peca nenhuma"));
+        (*pecas.get(k).expect("uma peca por entidade")).to_owned()
+    };
+
+    // (c) A quem a cena dá cada regra. A assinatura é `(world, contagem, pontos)`, e a contagem
+    // prende-se à ESQUERDA (provado na folha).
+    let i = src
+        .find("prende_os_cantos(")
+        .expect("a cena deixou de prender os cantos");
+    let args: Vec<String> = src[i..]
+        .split_once('(')
+        .expect("a chamada tem argumentos")
+        .1
+        .split_once(')')
+        .expect("a chamada fecha")
+        .0
+        .split(',')
+        .map(|a| a.trim().to_owned())
+        .collect();
+    assert_eq!(args.len(), 3, "a chamada mudou de forma: {args:?}");
+
+    for (arg, esperado) in [(&args[1], "Esquerda"), (&args[2], "Direita")] {
+        let peca = peca_de(arg);
+        let canto = canto_de(&peca);
+        assert_eq!(
+            canto, esperado,
+            "a cena da' a regra do canto `{esperado}` a `{arg}` (a peca `{peca}`), que nasce em \
+             `Canto::{canto}` — ela e' autorada do lado OPOSTO aquele a que se prende, e em \
+             `Expand` as duas pecas atravessam-se"
+        );
+    }
+}
+
+/// ⛔⛔⛔ **A cena FECHA o painel da timeline, senão o HUD dela fica atrás dele.**
+///
+/// ⚠️ **Medido na foto de 2026-09-20** (janela `1930×1012`): com a timeline aberta o botão do HUD
+/// é alcançável na caixa de ecrã `y 728..848` e o painel começa em `~720` ⇒ a sonda do produto lê
+/// `on_canvas=false (painel=Some(true))` e o gesto do dono **nem chega ao ramo do HUD**. Fechado,
+/// a mesma sonda lê `on_canvas=true` e o clique é consumido nos dois lados.
+///
+/// ⚠️⚠️ **`false` e não a AUSÊNCIA da linha:** a arrumação vive em `~/.ph2d/layout.txt`, fora do
+/// repositório — com a timeline aberta de ontem, não abrir não fecha nada.
+///
+/// **Mutação que deve sangrar:** voltar a pôr `true`.
+#[test]
+fn a_cena_do_hud_fecha_o_painel_da_timeline() {
+    let src = sem_comentarios(include_str!("../../src/hud_smoke.rs"));
+    assert!(
+        src.contains(r#"panel_visibility.insert("timeline", false)"#),
+        "a cena do HUD deixou de FECHAR a timeline — com ela aberta as pecas de baixo caem atras \
+         do painel, e nem se veem nem se clicam"
+    );
+    assert!(
+        !src.contains(r#"panel_visibility.insert("timeline", true)"#),
+        "a cena do HUD volta a ABRIR a timeline — as duas linhas nao podem conviver"
     );
 }
 

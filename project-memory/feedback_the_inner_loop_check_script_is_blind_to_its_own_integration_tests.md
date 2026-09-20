@@ -25,6 +25,14 @@ sessão e só cai no portão de fecho, longe da edição que o causou.
 assinatura/num campo público, `cargo check -p <crate> --all-targets` à mão — é o mesmo relógio e
 alcança o que o outro deixa de fora.
 
+⛔⛔ **E a cegueira é MAIOR do que o título diz — ela alcança o `#[cfg(test)]` do PRÓPRIO `src/`**
+(medido 2026-09-19): acrescentei um campo obrigatório a uma struct do retrato e o script fechou
+**VERDE** com **doze** construções por compilar, em `flow_tests.rs`, `geom_tests.rs`,
+`interact_tests.rs`, `measure_card_cost.rs` e mais sete — todas `mod` sob `#[cfg(test)]` **dentro
+da mesma crate**. *Não é só «ele não alcança a pasta `tests/`»: ele não compila o `cfg(test)` de
+lado nenhum*, porque sem `--all-targets` o `cargo check` constrói só a lib. ⇒ ao mexer num CAMPO
+ou numa ASSINATURA pública, `--all-targets` não é opcional.
+
 Irmãs: [[feedback_a_bins_run_never_reaches_the_gates_that_live_in_tests]] ·
 [[feedback_a_closing_run_with_a_name_filter_never_reaches_a_tree_scanning_gate]] ·
 [[feedback_a_tail_is_a_window_not_a_verdict]]

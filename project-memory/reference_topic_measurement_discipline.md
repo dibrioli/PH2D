@@ -765,3 +765,16 @@ a `60 Hz`, com uma linha de diagnóstico cada.
 ele, nunca no estado. ⚠️ A lei tinha de ser pura porque *um gate que precisa de janela, GPU e
 superfície para medir dois números está no sítio errado* — e o gate afirma o ponto fixo com o
 controlo (*a escada de facto ANDA*) primeiro, senão uma escada que devolvesse sempre o fim passaria.
+
+---
+
+## ⚠️ Adoptadas na integração de 2026-09-20 (da `teste-cascadeur`)
+
+⚠️ **Porque elas estão aqui:** o índice foi **compactado** pela `line/components` no mesmo dia em que
+a outra linha escreveu estas memórias, e a compactação deixou-as **órfãs** — *um ficheiro que o
+índice não aponta não é lido por ninguém*. Ficam a **2 saltos**, que é o desenho.
+
+- ⛔⛔⛔ [Todos os portões mediam o OBJECTIVO da lei e nenhum o PREÇO](feedback_every_ruler_measured_the_goal_and_none_measured_the_cost.md) — `50,3 cm` num quadro com 5 portões verdes, e a cerca que cura o preço matava a feature.
+- ⛔⛔⛔ [Uma lei com DUAS cercas só está medida quando a CÉLULA é medida](feedback_a_laws_two_fences_must_be_measured_in_the_same_ruler.md) — cada metade sozinha parece certa (`3,0·1,39` não cura nada; `3,0·2,20` estraga as capturas; `0,5·2,20` cura tudo).
+- ⛔⛔ [Sujeito NOVO ⇒ toda régua e toda NOTA sobre o antigo têm de ser reconferidas](feedback_when_the_subject_changes_every_ruler_and_note_about_the_old_one_must_be_rechecked.md) — o «cima» humanoide deitou o dinossauro, e a tira tinha «1,80 m» escrito dentro.
+- ⛔⛔⛔ [Depois da cura re-meça a FRASE do dono, não o número em que a traduziu](feedback_after_the_cure_remeasure_the_owners_sentence_not_your_proxy.md) — *«a cauda desceu»* ≠ o tronco a empinar: curado `7,4° → 0,2°` e a cauda ia ao chão na mesma.

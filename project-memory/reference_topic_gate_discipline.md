@@ -461,3 +461,15 @@ uma escolha com preço em linhas.
 mesma forma; as **11** que saíram são as que carregam vocabulário de `crate::<x>_edits` (o módulo que
 a catraca do DAG obriga a existir), e as **16** que ficaram carregam `screens::hero::*FieldEdit` —
 edições do modelo de SPRITE e de AUTORIA. *O que as separa é o assunto.*
+
+---
+
+## ⚠️ Adoptadas na integração de 2026-09-20 (da `teste-cascadeur`)
+
+⚠️ Ver a nota igual no [`reference_topic_measurement_discipline`](reference_topic_measurement_discipline.md):
+o índice foi compactado no mesmo dia em que estas nasceram, e ficaram **órfãs**.
+
+- ⛔⛔ [Um portão pode ter um DEFEITO escrito dentro dele como LEI](feedback_a_gate_can_record_a_loading_defect_as_a_law.md) — e fica verde sobre a lista truncada que o defeito criou (menu `6`, lista `14`).
+- ⛔⛔⛔ [Duas leis a responder à mesma pergunta em CAMADAS diferentes](feedback_two_laws_answering_the_same_question_in_different_layers.md) — a de cima apaga a de baixo, e o portão de baixo deixa de afirmar **sem ficar vermelho**.
+- ⛔⛔ [Uma entrada AUSENTE de uma tabela não fica «sem lei»: fica com a lei de OMISSÃO do motor](feedback_an_omitted_table_entry_is_the_default_law_not_no_law.md) — e o portão de continência salta quem não tem limite (o dorso: `90°` dos `118°` do tronco).
+- ⛔⛔⛔ [Arnês que escreve na árvore de VERDADE paga três preços e só um é o relógio](feedback_a_harness_that_writes_to_the_real_tree_cannot_be_parallel.md) — `22 min → 138 s`, e a suíte ao lado mede o **mutante**.

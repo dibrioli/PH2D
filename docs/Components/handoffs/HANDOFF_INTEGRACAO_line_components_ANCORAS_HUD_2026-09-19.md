@@ -113,8 +113,10 @@ sobre o `profile_live`. *A armadilha está escrita no repo (handoff da física, 
 | o que se DESENHA | `shells/desktop/src/layout_live_anchors_canvas_tests.rs` | **4** gates |
 | a ORDEM no quadro | `shells/desktop/tests/it/o_hud_conduz_a_raiz_antes_de_as_ancoras_a_lerem.rs` | **2** gates |
 | a CENA | `…/o_rotulo_do_botao_do_hud_e_filho_dele.rs` | **+1** gate |
-| **provas de mutação** | `docs/Components/ferramentas/mutacao_ancoras_hud_2026-09-19.sh` | **8 de 8 sangram** |
-| **portão** | `scripts/nextest-impacted.sh` | **15 458 de 15 458** · clippy `-D warnings` a zero · `fmt` limpo |
+| a caixa efectiva contra o ORÁCULO | `ph2d-hud/src/tests.rs` | a tabela do bloco **L4**, verbatim |
+| o selector do `Fit` | `ph2d-app-components/src/hud_inspector_tests.rs` | **2** gates |
+| **provas de mutação** | `docs/Components/ferramentas/mutacao_ancoras_hud_2026-09-19.sh` | **11 de 11 sangram** |
+| **portão** | `scripts/nextest-impacted.sh` | **15 465**, com a única reprovada a ser membro confirmado da família de flakes de FAN-OUT (3/3 verde sozinho a `load 22`, zero linhas de diff) · clippy `-D warnings` a zero |
 
 ## §8 — ⛔⛔ DUAS mutações sobreviveram primeiro, e as duas eram MINHAS
 
@@ -127,11 +129,55 @@ sobre o `profile_live`. *A armadilha está escrita no repo (handoff da física, 
 apagada ele era ancorado pelos DOIS passes e o valor final continuava a não ser `5` ⇒ a asserção
 passou a ser **EXACTA** (`[16, 26]`). *Um gate que recusa UM valor não afirma qual é o certo.*
 
+## §8-bis — ⛔⛔ A SEGUNDA METADE: o `Keep` estava a fazer o trabalho do `expand`
+
+⚠️⚠️ **A 1.ª versão desta wave shipou um defeito por uma hora:** o `effective_box` crescia a caixa
+no **`Keep`**, e isso fazia o `Keep` comportar-se como o **`expand`** do alvo — uma divergência
+**silenciosa** que retirava a capacidade de confinar o HUD à área segura.
+
+⭐⭐⭐ **O oráculo decidiu, e ao NÚMERO.** A sonda ganhou o bloco **L4** (um `Control` preso ao canto
+inferior-direito, janela `720×450` do headless):
+
+| aspecto | ref | a caixa que o filho lê | o canto dele no ecrã |
+|---|---|---|---|
+| `keep` | `640×360` | **`(640, 360)`** — a referência | `(720, 428)`, a **`22 px`** da borda |
+| `keep` | `1280×360` | `(1280, 360)` | `(720, 326)`, a `124` |
+| `expand` | `640×360` | **`(640, 400)`** | `(720, 450)` — **a borda** |
+| `expand` | `1280×360` | `(1280, 800)` | `(720, 450)` |
+| `expand` | `320×480` | `(768, 480)` | `(720, 450)` |
+
+⭐ A nossa caixa efectiva reproduz o `expand` **nos três casos** (`janela/escala`), e o gate
+`a_caixa_efectiva_bate_o_oraculo_ao_numero` tem a tabela **verbatim**.
+
+⇒ **`Keep` devolve a referência** (byte-idêntico ao de antes) e **`Expand` é o modo novo**. A POSE
+dos dois é a mesma **ao bit** — o que muda é só até onde uma âncora pode ir.
+
+⚠️ **`Fit` ganha uma variante APENDADA** (a posição é a tag do postcard ⇒ ficheiros gravados leem-se
+na mesma): `PROJECT_SCHEMA` **0**.
+
+⭐⭐ **E o `Fit` deixou de ser mapeado À MÃO.** O Inspector fazia `u8::from(fit == Stretch)` e
+`if *i == 1` ⇒ o modo novo existiria com lei e gates e **o artista não lhe chegava** — o defeito que
+o `Density` da escultura e o verbo `Destroy` pagaram. Hoje há `Fit::ALL` + `label()` +
+`index()`/`from_index`, e o menu tem **uma linha por modo**, com gate a prender as duas listas.
+
+### As três armadilhas que esta metade pagou
+
+| # | o que aconteceu | a lição |
+|---|---|---|
+| **o selector** | a mutação que punha `ALL = [Keep, Stretch, Stretch]` **sobreviveu** ao gate de ida-e-volta | *Um `ALL` com DUPLICADO fecha a volta* — o `index()` devolve a posição do **primeiro** igual. Quem o apanha é o `dedup` dos rótulos, noutra crate ⇒ a mutação mudou de alvo |
+| **a âncora** | `'…\n…'` num `'…'` do bash são **dois caracteres**, não uma quebra ⇒ casou zero vezes | o arnês **ABORTOU alto** (`⛔ ANCORA`), que é para o que ele existe ⇒ `$'…'` |
+| **o censo do HR-15** | ele acusou a minha própria **string de teste** (`panel.inspector.hud.fit_`) | *Um gate que procura chaves não pode CONTER uma* ⇒ a agulha monta-se por pedaços com `concat!` |
+
+⚠️ **E a cena mudou de modo:** ela abre em `Expand`, porque com `Keep` **arrastar a borda não move
+um pixel** e o roteiro manda arrastar (gate `a_cena_do_hud_abre_em_expand`). ⭐ O **CONTROLO** é o
+próprio selector — o passo (5) manda trocá-lo para `Keep` e alargar outra vez.
+
+**11 de 11** mutações sangram.
+
 ## §9 — ABERTO, e de quem é cada item
 
 | item | de quem |
 |---|---|
-| o **`Fit::Expand`** como terceiro modo | **produto** — a recusa dissolveu-se (§4.3), a wave é pequena, e o dono decide se o quer |
 | **no EDITOR** um HUD colado às bordas cai atrás dos painéis | **decisão de produto** (a vista da câmera é a da JANELA) |
 | o `UiButton` só é alcançável por caminho **vectorial** | nomeado, não construído |
 | a âncora de um filho armada **na janela errada** grava a caixa daquela janela | a cena arma-a contra a de REFERÊNCIA; um gesto de painel para HUD ainda não existe |
@@ -143,5 +189,8 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_HUD
 ```
 
 A contagem fica em baixo à **esquerda** e os pontos em baixo à **direita**. **Arraste a borda da
-janela** para a alargar: as duas seguem as bordas reais. Antes desta wave ficavam paradas a uma
-banda delas.
+janela** para a alargar: as duas seguem as bordas reais.
+
+⭐ E o **CONTROLO**: na secção *HUD* do Inspector troque **`Fit`** de `Expand` para `Keep` e alargue
+outra vez — agora elas param na **área segura**, a uma banda da borda. *Os dois modos existem de
+propósito, e é o que o alvo faz.*

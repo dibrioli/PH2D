@@ -191,6 +191,24 @@ os painéis apenas abertos.
 responde **rolando**, não alargando. ⚠️ Isto contradiz o instinto e é precisamente por isso que
 está escrito.
 
+### ⭐⭐⭐ E há um SEGUNDO eixo, que esta secção não respondia: a LARGURA DA JANELA (2026-09-20)
+
+*«Não escala com o alvo de toque»* é uma recusa de **crescer**, e ela continua de pé. O eixo que
+ficava sem resposta é o outro: **a janela ser mais ESTREITA que a referência.** Ali o número
+absoluto não protege nada — ele *agrava*, porque a mesma decisão passa a valer mais fracção
+(`44,8 %` no `1366` contra **`54,0 %`** no iPad mini).
+
+⇒ a largura de **fábrica** de uma coluna passou a ser um **TECTO em fracção da janela**
+([`ChromeBands::default_dock_w`](../../../crates/ph2d-editor-core/src/screens/dock_seam.rs)), com a
+fracção **derivada** dos tokens que já existiam (`308 / 1366`). ⭐ **As duas metades desta secção
+dizem agora a mesma coisa lida dos dois lados:** *as colunas nunca tomam mais fracção da janela do
+que tomam na referência* — a §6 recusa que ela SUBA com o dedo, a lei nova impede que ela suba com
+um ecrã pequeno.
+
+⛔ **E ela é inerte ACIMA da referência, ao bit**, exactamente pelo argumento dos `765 px` que esta
+secção usa: escalar nos dois sentidos poria as colunas em `870 px` na janela de `1 930` em que o
+dono trabalha.
+
 ⚠️ **E são dois eixos, não um** — Godot e Spectrum discordam e a discordância é real:
 `EDSCALE` (um float global) responde *«o ecrã é fino?»*; o `scale-set` por-token responde *«o
 dedo é gordo?»*. ⏳ **Proposta:** dois números independentes, `pixel_scale` (do SO) e

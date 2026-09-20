@@ -154,6 +154,7 @@ mod the_two_looks_are_one_switch_apart;
 mod the_ui_pill_opens_the_authored_panel;
 mod todo_aponte_passa_pela_janela_da_cena;
 mod um_orcamento_de_texto_e_a_largura_de_um_espaco;
+mod uma_coluna_custa_a_mesma_fraccao_em_todo_alvo;
 mod uma_coluna_de_rotulo_cabe_a_familia_inteira;
 mod uma_frase_de_ajuda_quebra_em_vez_de_ser_cortada;
 mod uma_inversa_confere_se_contra_a_lei;

@@ -306,11 +306,27 @@ O `66 de 74` é do `3D Model`. Recolher as duas colunas dá `89–92 %` |
 | ✅ **um gesto de RECOLHER** | ⛔⛔ **DECIDIDO pelo dono em 2026-09-09, e a decisão foi CONTRA:** *«Vamos retirar a opção de colapsar arrastando. Deixa o colapsar apenas no menu da barra superior»* — depois de o gesto existir (arrastar a borda para dentro) e de ele **prender o app por um minuto** ao ser combinado com o menu. A w49 removeu-o e unificou o piso da largura. ⇒ recolher é, por ordem, **dois itens de menu** — e esta linha não se reabre sem ele. Ver [`medicoes/09 §4`](../medicoes/09_o_penhasco_com_todos_os_paineis_abertos.md) |
 | ✅ **a fila de ferramentas** | **CURADA na entrega 32, pela cura que esta linha já escolhia:** a faixa é **sempre uma linha** e o que não cabe vive atrás do `⋯` (`tool_bar::bar_split`). Medido: `+3,2` pontos de área no iPad 11 e `+3,3` no mini, e a coluna «com pincel» deixou de ser o pior caso. ⚠️ **Foi o TECTO de obsolescência do gate que obrigou a actualizar os números** (`40,8 → 44,0` disparou-o) — [`the_chrome_never_eats_more_of_a_tablet_than_this`](../../../crates/ph2d-editor-core/tests/it/the_chrome_never_eats_more_of_a_tablet_than_this.rs) |
 
-### ⛔ E a largura do chrome não escala — o que agrava, não alivia
+### ✅ E a largura do chrome PASSOU a encolher com a janela (2026-09-20, ordem do dono: *«item 2»*)
 
-As duas colunas são `612 px` **absolutos**: `44,8 %` da largura no 12,9" e **`54,0 %`** no mini.
-O [`spec/01 §6`](01_modelo_de_areas.md) declara que a largura do encaixe **não escala com o alvo de
-toque** — e não dizia nada sobre ecrãs mais pequenos, onde o mesmo número custa mais.
+As duas colunas eram `612 px` **absolutos**: `44,8 %` da largura no 12,9" e **`54,0 %`** no mini.
+O [`spec/01 §6`](01_modelo_de_areas.md) declarava que a largura do encaixe **não escala com o alvo
+de toque** — e não dizia nada sobre ecrãs mais pequenos, onde o mesmo número custa mais.
+
+⇒ a largura de **fábrica** é hoje um **tecto em fracção da janela**
+([`ChromeBands::default_dock_w`](../../../crates/ph2d-editor-core/src/screens/dock_seam.rs)), com a
+fracção derivada de `HIERARCHY_W / HERO_VIEWPORT_W`. Área de desenho, medida pelo gate do
+orçamento:
+
+| alvo | antes | depois |
+|---|---:|---:|
+| iPad 12,9" | `50,6 %` | `50,6 %` — a referência, intocada |
+| iPad 11" | `44,0 %` | **`49,6 %`** |
+| iPad mini | `40,9 %` | **`48,9 %`** |
+
+⛔⛔ **E o gate do orçamento era CEGO a isto**: ele construía as bandas a partir da const
+`ChromeBands::DEFAULT`, logo media `612 px` em qualquer janela e ficou **verde durante três
+semanas** sobre a linha que o `medicoes/06 §1` já escrevia. *Um gate que reconstrói a banda em vez
+de ler a LEI mede a fórmula e não o produto* — a segunda vez no mesmo ficheiro.
 
 ⚠️ **Toda proposta de UI nova passa a nomear o que custa em ALTURA e em LARGURA, nos três alvos.**
 O gate que o exige é `the_chrome_never_eats_more_of_a_tablet_than_this`.

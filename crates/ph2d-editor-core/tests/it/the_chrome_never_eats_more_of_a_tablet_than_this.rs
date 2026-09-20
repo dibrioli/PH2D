@@ -27,7 +27,9 @@
 //! sem censo de obsolescência não desce: ela vira licença* (`CLAUDE.md` §5.0).
 
 use ph2d_editor_core::screens::hero::{HeroScreen, menu_bar, tool_bar};
-use ph2d_editor_core::screens::layout::{CenterSplit, ChromeBands, DockSides, HeroLayout};
+use ph2d_editor_core::screens::layout::{
+    CenterSplit, ChromeBands, DockSide, DockSides, HeroLayout,
+};
 use ph2d_editor_core::widget::RailButtonSize;
 use ph2d_editor_core::zones::Rect;
 
@@ -43,9 +45,30 @@ const TABLETS: [(&str, f32, f32); 3] = [
 ///
 /// | alvo | sem pincel | com pincel |
 /// |---|---:|---:|
-/// | iPad 12.9 | 50,8 % | 50,8 % |
-/// | iPad 11 | 44,0 % | 44,0 % |
-/// | iPad mini | 40,9 % | 40,9 % |
+/// | iPad 12.9 | ~~50,8 %~~ → **50,6 %** | idem |
+/// | iPad 11 | ~~44,0 %~~ → **49,6 %** | idem |
+/// | iPad mini | ~~40,9 %~~ → **48,9 %** | idem |
+///
+/// ⭐⭐⭐ **O PISO SUBIU em 2026-09-20, e quem o mandou subir foi a metade da OBSOLESCÊNCIA.** A
+/// largura de fábrica de uma coluna deixou de ser um absoluto e passou a ser uma **fracção da
+/// janela** ([`ChromeBands::default_dock_w`]): `+5,6` pontos no iPad 11 e **`+8,0`** no mini.
+///
+/// ⚠️⚠️ **E o `50,6` do 12,9" NÃO é desta wave: a TABELA é que estava para trás.** O piso desceu
+/// `0,2` pontos em 2026-09-07 (a divisória de `4 px` por fronteira, a pedido do dono) e o `FLOOR`
+/// foi actualizado — *esta tabela não*. ⇒ ela dizia `50,8` sobre um produto que media `50,6` havia
+/// duas semanas. *Quando um ficheiro imprime duas medidas da mesma grandeza e elas discordam, isso
+/// É o achado.*
+///
+/// ⚠️ **E o iPad 12,9" não se mexeu um pixel com esta wave** — ele É a referência, e a lei é inerte acima dela
+/// por construção. *Uma cura que melhorasse os três teria escalado também o ecrã grande, e ali
+/// escalar faz o chrome CRESCER* (na janela de `1 930 px` do dono seriam `870 px` de colunas
+/// contra `612`).
+///
+/// ⛔⛔ **E este gate era CEGO ao defeito até esse dia:** ele construía as bandas a partir da const
+/// `ChromeBands::DEFAULT`, logo media `612 px` em qualquer janela e ficava verde sobre a linha que
+/// o `medicoes/06 §1` já escrevia havia três semanas. *Um gate que reconstrói a banda em vez de
+/// ler a LEI mede a fórmula e não o produto* — a mesma armadilha do `tool_bar_lines`, no mesmo
+/// ficheiro, pela segunda vez.
 ///
 /// ⭐⭐ **A coluna «com pincel» DEIXOU de ser pior** (entrega 32). Ela media `40,8` e `37,6` porque
 /// a fila de ferramentas quebrava em duas linhas (`54 → 108 px`) nos dois tablets menores no
@@ -68,7 +91,7 @@ const TABLETS: [(&str, f32, f32); 3] = [
 /// ⛔ **Um piso que desce por pedido do dono continua a ser uma catraca** — o que ele proíbe é
 /// descer em SILÊNCIO, por uma faixa que ninguém pediu. *A barra move-se com a assinatura de quem
 /// a moveu.*
-const FLOOR: [(&str, f32); 3] = [("iPad 12.9", 50.5), ("iPad 11", 43.6), ("iPad mini", 40.6)];
+const FLOOR: [(&str, f32); 3] = [("iPad 12.9", 50.5), ("iPad 11", 49.3), ("iPad mini", 48.6)];
 
 /// Quanto acima do piso é «ganhou-se área e a barra ficou obsoleta».
 const STALE_ABOVE: f32 = 2.0;
@@ -80,6 +103,14 @@ fn drawing_area_pct(w: f32, h: f32) -> f32 {
         rail_w: 0.0,
         top_bar_h: menu_bar::MENU_BAR_H,
         tool_bar_h: 0.0,
+        // ⭐⭐⭐ **As colunas vêm da LEI e não do `DEFAULT` cru** (2026-09-20). ⛔ Enquanto este
+        // gate lia a const, ele era **cego à largura da janela** — e foi por isso que ele ficou
+        // verde durante três semanas sobre o defeito que o `medicoes/06 §1` já nomeava: *«a mesma
+        // decisão custa 20 % mais no aparelho mais pequeno»*. ⚠️ Um gate que reconstrói a banda em
+        // vez de ler a lei mede a fórmula, não o produto — é a mesma armadilha que a nota do
+        // `tool_bar_lines` aqui em baixo regista, e ela mordeu duas vezes no mesmo ficheiro.
+        left_dock_w: ChromeBands::default_dock_w(DockSide::Left, w),
+        right_dock_w: ChromeBands::default_dock_w(DockSide::Right, w),
         ..ChromeBands::DEFAULT
     };
     // ⭐ **UMA linha, como o `hero::frame_layout` faz desde 2026-08-31** — o que não cabe vai para

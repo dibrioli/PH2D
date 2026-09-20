@@ -20,9 +20,31 @@ tablets que o Enio nomeia — e é por isso que medir só nele esconde o problem
 | iPad Pro 11" | 1194 × 834 |
 | iPad mini | 1133 × 744 |
 
-⚠️ **A largura do chrome NÃO escala com o ecrã** — as duas colunas são `308 + 304 = 612 px`
-absolutos. ⇒ elas são **44,8 %** da largura no 12,9" e **54,0 %** no mini. *A mesma decisão de
-desenho custa 20 % mais no aparelho mais pequeno, e nenhum documento dizia isso.*
+⚠️ **A largura do chrome NÃO escalava com o ecrã** — as duas colunas eram `308 + 304 = 612 px`
+absolutos. ⇒ elas eram **44,8 %** da largura no 12,9" e **54,0 %** no mini. *A mesma decisão de
+desenho custava 20 % mais no aparelho mais pequeno, e nenhum documento dizia isso.*
+
+### ✅ CURADO em 2026-09-20 (ordem do dono: *«item 2»*)
+
+A largura de **fábrica** de uma coluna passou a ser um **tecto em fracção da janela** —
+[`ChromeBands::default_dock_w`](../../../crates/ph2d-editor-core/src/screens/dock_seam.rs). A
+fracção é **derivada** e não escolhida: `HIERARCHY_W / HERO_VIEWPORT_W`, dois tokens que já
+existiam, um a dividir pela janela para que foi autorado.
+
+| alvo | as duas colunas, antes | depois |
+|---|---:|---:|
+| iPad 12,9" | `44,8 %` | `44,8 %` — **a referência, intocada ao bit** |
+| iPad 11" | `51,3 %` | **`44,8 %`** |
+| iPad mini | `54,0 %` | **`44,8 %`** |
+
+⛔⛔ **É um TECTO e nunca uma ESCALA, e a diferença tem número:** escalar nos dois sentidos poria as
+colunas em `1930 × 308/1366 = 435 px` cada na janela do dono — **`870`** contra `612`. *A cura
+tornaria o app pior exactamente onde ele é usado todos os dias.* ⇒ acima da referência a lei é
+inerte, com gate a exigi-lo.
+
+⚠️ **Ela não toca na largura que o ARTISTA arrastou** — apertar uma escolha explícita é o *«aceita
+e mente»* do §0.0. ⏳ Fica declarado: uma escolha gravada num ecrã largo continua a valer o que vale
+num estreito.
 
 ---
 
@@ -33,9 +55,15 @@ presentes (o chrome de produção):
 
 | alvo | colunas abertas | colunas abertas **a pintar** | colunas fechadas |
 |---|---:|---:|---:|
-| iPad 12.9 | 50,8 % | 50,8 % | **92,0 %** |
-| iPad 11 | 44,0 % | ~~40,8 %~~ → **44,0 %** | 90,2 % |
-| iPad mini | 40,9 % | ~~37,6 %~~ → **40,9 %** | 89,0 % |
+| iPad 12.9 | ~~50,8 %~~ → **50,6 %** | idem | **91,8 %** |
+| iPad 11 | ~~44,0 %~~ → **49,6 %** | idem | 90,0 % |
+| iPad mini | ~~40,9 %~~ → **48,9 %** | idem | 88,8 % |
+
+⭐ **Os números de 2026-09-20 estão na coluna da direita de cada célula**, e quem os mandou
+actualizar foi a **metade da obsolescência** do gate, não eu: `+5,6` pontos no iPad 11 e **`+8,0`**
+no mini. ⚠️ **E o `50,6` do 12,9" NÃO é desta wave** — o piso desceu `0,2` pontos em 2026-09-07 (a
+divisória de `4 px`) e esta tabela ficou para trás; *quando um doc imprime duas medidas da mesma
+grandeza e elas discordam, isso É o achado.*
 
 ⇒ **no iPad mini, a pintar, com os dois painéis abertos, o artista desenhava em 37,6 % do ecrã.**
 

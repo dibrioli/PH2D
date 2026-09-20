@@ -16,16 +16,21 @@ impl WidgetStore {
     ///
     /// ⚠️ Clampada na PORTA e não em cada leitor: uma coluna que possa encolher a zero ou comer a
     /// janela é estado inalcançável de volta (não sobra borda para agarrar).
-    pub fn dock_width(&self, side: crate::screens::layout::DockSide) -> f32 {
+    ///
+    /// ⭐⭐⭐ **E a de FÁBRICA depende da JANELA desde 2026-09-20** — ver
+    /// [`ChromeBands::default_dock_w`]. ⛔ **O `janela_w` é um argumento e não um campo do
+    /// `WidgetStore`, de propósito:** a largura da janela é um facto do QUADRO e o store é o
+    /// estado AUTORADO; guardá-la ali poria duas respostas à mesma pergunta, e a que o layout usa
+    /// seria a do quadro anterior.
+    ///
+    /// ⚠️ **A escolha do artista NÃO é escalada** — só a base. Ver o doc da lei.
+    pub fn dock_width(&self, side: crate::screens::layout::DockSide, janela_w: f32) -> f32 {
         use crate::screens::layout::{ChromeBands, DockSide};
         let stored = match side {
             DockSide::Left => self.dock_w_left,
             DockSide::Right => self.dock_w_right,
         };
-        let base = match side {
-            DockSide::Left => ChromeBands::DEFAULT.left_dock_w,
-            DockSide::Right => ChromeBands::DEFAULT.right_dock_w,
-        };
+        let base = ChromeBands::default_dock_w(side, janela_w);
         // ⚠️ **O piso é o do PAINEL** — ver [`Self::set_dock_width`]. Ele foi o do FECHO entre
         //    2026-09-08 e 2026-09-09, enquanto o arrasto podia fechar a coluna.
         crate::math::safe_clamp(stored.unwrap_or(base), Self::DOCK_W_MIN, Self::DOCK_W_MAX)

@@ -21,12 +21,15 @@ pub(super) fn frame_layout(hero: &HeroScreen, viewport: Rect) -> HeroLayout {
     let mut bands = crate::screens::layout::ChromeBands {
         // ⭐ As larguras das colunas são AUTORADAS — o artista arrasta a borda interior delas
         // (`DOCK_SEAM_PX`), e o valor vive no `WidgetStore` como qualquer outra escolha de chrome.
+        // ⭐ **A largura de FÁBRICA delas depende da janela** ([`ChromeBands::default_dock_w`]) —
+        //    é por isso que o `viewport.w` atravessa a porta. Acima da referência a lei é inerte
+        //    ao bit, logo o ecrã em que o dono trabalha não muda um pixel.
         left_dock_w: hero
             .store
-            .dock_width(crate::screens::layout::DockSide::Left),
+            .dock_width(crate::screens::layout::DockSide::Left, viewport.w),
         right_dock_w: hero
             .store
-            .dock_width(crate::screens::layout::DockSide::Right),
+            .dock_width(crate::screens::layout::DockSide::Right, viewport.w),
         // ⭐ E a faixa do FUNDO é a irmã vertical delas — a costura do topo do timeline escreve-a,
         // e quem partilha a banda (o grafo de nós) segue por construção.
         bottom_dock_h: hero.store.dock_bottom_h(),

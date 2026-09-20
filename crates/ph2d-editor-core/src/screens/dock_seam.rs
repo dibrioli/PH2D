@@ -6,7 +6,9 @@
 //! coluna se redimensiona?»* — uma pergunta sobre um GESTO, e o único sítio deste módulo que
 //! precisa de saber que existe um ponteiro.
 
-use super::layout::{HIERARCHY_W, HeroLayout, INSPECTOR_W, TIMELINE_DOCK_H, TOPBAR_H};
+use super::layout::{
+    HERO_VIEWPORT_W, HIERARCHY_W, HeroLayout, INSPECTOR_W, TIMELINE_DOCK_H, TOPBAR_H,
+};
 use crate::zones::Rect;
 
 /// **As MEDIDAS do chrome deste quadro** — larguras e alturas, nunca modos.
@@ -55,6 +57,64 @@ impl ChromeBands {
         tool_bar_h: 0.0,
         bottom_dock_h: TIMELINE_DOCK_H,
     };
+
+    /// ⭐⭐⭐ **A LARGURA DE FÁBRICA DE UMA COLUNA, NUMA JANELA** — a mesma decisão de desenho a
+    /// custar a mesma FRACÇÃO em todo alvo.
+    ///
+    /// > Enio, 2026-08-31: *«esse app tem tablets e iPad como alvo. Não podemos ir perdendo
+    /// > espaço.»*
+    ///
+    /// # ⛔⛔ O defeito que ela cura, em números
+    ///
+    /// As duas colunas são `308 + 304 = 612 px` **absolutos**, e o [`HERO_VIEWPORT_W`] diz contra
+    /// que janela eles foram autorados. ⇒ elas custam `44,8 %` na referência, `51,3 %` no iPad 11"
+    /// e **`54,0 %`** no iPad mini: *a mesma decisão custa `20 %` mais no aparelho mais pequeno, e
+    /// nenhum documento dizia isso* (`medicoes/06 §1`).
+    ///
+    /// # ⭐ A fracção é DERIVADA, não escolhida
+    ///
+    /// Ela é `HIERARCHY_W / HERO_VIEWPORT_W` — dois tokens que já existem, um a dividir pela janela
+    /// para que foi autorado. ⛔ Não há número novo nesta lei; há a decisão que já estava tomada,
+    /// aplicada onde ela ainda não chegava. *`CLAUDE.md` §0.0: um limite legítimo diz de que
+    /// recurso ele é.* O recurso aqui é a **largura da janela**, e a referência é o único sítio
+    /// onde alguém escolheu quanto dela o chrome podia comer.
+    ///
+    /// # ⛔⛔ É um TECTO e nunca uma ESCALA, e a diferença tem número
+    ///
+    /// Escalar nos dois sentidos poria a coluna a **crescer** no ecrã grande: na janela de
+    /// `1 930 px` da bancada do dono, `1930 × 308/1366 = 435 px` por coluna — **`870`** contra os
+    /// `612` de hoje. *A cura tornaria o app pior exactamente onde ele é usado todos os dias.*
+    /// ⇒ acima da referência ela devolve o token **ao bit**, e há gate a exigi-lo
+    /// (`acima_da_referencia_a_lei_nao_toca_em_nada`).
+    ///
+    /// # ⚠️ O que ela NÃO toca, declarado
+    ///
+    /// A largura que o **artista arrastou** ([`crate::interaction::WidgetStore::dock_width_choice`]).
+    /// Apertar uma escolha explícita seria o *«aceita e mente»* que o §0.0 proíbe — e o preço fica
+    /// nomeado: uma escolha gravada num ecrã largo continua a valer o que vale num estreito.
+    ///
+    /// ⚠️ **E ela pára no mínimo do PAINEL** ([`ph2d_tokens::PANEL_MIN_W_PX`]): abaixo dele o
+    /// cabeçalho e uma linha deixam de caber juntos, e uma coluna que não se sabe desenhar é pior
+    /// do que uma coluna larga. Nos três tablets o mínimo **não** morde — se um dia morder, a
+    /// fracção medida passa a ser a do clamp e não a da lei, e o gate diz isso em voz alta.
+    #[must_use]
+    pub fn default_dock_w(side: DockSide, janela_w: f32) -> f32 {
+        let token = match side {
+            DockSide::Left => HIERARCHY_W,
+            DockSide::Right => INSPECTOR_W,
+        };
+        // ⭐⭐ **SEM RAMO NENHUM, e as três propriedades saem da aritmética:**
+        //
+        //  * **acima da referência é inerte AO BIT** — `1366.0 / 1366.0` é exactamente `1.0` em
+        //    IEEE (um valor a dividir por si mesmo), e `token * 1.0` é o token;
+        //  * **`NaN` cai do lado seguro** — `f32::min` devolve o OUTRO operando quando um é `NaN`,
+        //    logo uma janela sem largura lê `1.0` e recebe o token. *Toda guarda escrita com `<`
+        //    ou `>` é cega ao `NaN`, e aqui não há guarda nenhuma a ser cega.*
+        //  * **uma janela degenerada (`0` ou negativa) recebe o mínimo do painel**, que é a única
+        //    largura que um painel sabe desenhar.
+        let escala = (janela_w / HERO_VIEWPORT_W).min(1.0);
+        (token * escala).max(ph2d_tokens::PANEL_MIN_W_PX)
+    }
 }
 
 /// **A faixa de agarre que redimensiona uma coluna** — a borda INTERIOR dela.

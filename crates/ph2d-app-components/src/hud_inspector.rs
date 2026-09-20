@@ -73,8 +73,21 @@ pub fn build_info(
         .get::<CounterRuntime>(e)
         .map_or_else(|| counter.as_ref().map_or(0, |c| c.start), |r| r.value);
     let c_fit = canvas.map_or(0, |c| c.fit.index());
+    // ⭐ A raiz do canvas de quem este objecto é filho — para a secção poder dizer ONDE estão as
+    // linhas que ela não mostra. ⚠️ Só quando ele NÃO é a própria raiz: numa raiz as linhas estão
+    // à vista, e a nota seria ruído.
+    let canvas_parent = if canvas.is_some() {
+        None
+    } else {
+        sim.world()
+            .get::<ph2d_ecs::ChildOf>(e)
+            .map(|c| c.parent())
+            .filter(|p| sim.world().get::<UiCanvas>(*p).is_some())
+            .and_then(|p| sim.world().get::<ph2d_ecs::Name>(p).map(|n| n.0.clone()))
+    };
     Some(InspectorHudInfo {
         entity_bits: bits,
+        canvas_parent,
         has_canvas: canvas.is_some(),
         ref_w: canvas.map_or(0.0, |c| c.ref_w),
         ref_h: canvas.map_or(0.0, |c| c.ref_h),

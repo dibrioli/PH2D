@@ -41,9 +41,8 @@
 //! errada ensina que o botão está partido.*
 
 use ph2d_ecs::{
-    ChildOf, Counter, CounterRuntime, Entity, Fit, LabelSource, Name, SignalAction, SignalActions,
-    SignalTarget, SignalVerb, Timer, TimerRuntime, TimerState, Timers, Transform, UiButton,
-    UiCanvas, UiLabel,
+    ChildOf, Counter, CounterRuntime, Entity, Fit, LabelSource, Name, SignalActions, TimerRuntime,
+    TimerState, Timers, Transform, UiButton, UiCanvas, UiLabel,
 };
 use ph2d_vec_scene::VecPathId;
 
@@ -51,7 +50,7 @@ use ph2d_app_vec::text_edit::VecTextEdit;
 
 /// A caixa em que o HUD é desenhado, em unidades de mundo. ⚠️ **`16:9` e centrada**, como o
 /// `UiCanvas::default()`: é a caixa que o `Fit::Keep` mapeia sobre a vista da câmera.
-use ph2d_app_components::hud_smoke_anchors::{REF_H, REF_W};
+use ph2d_app_components::hud_smoke_anchors::{REF_H, REF_W, accao, relogio};
 
 /// O tamanho do glyph, em unidades da caixa de referência.
 const TXT: f64 = 1.1; // LITERAL-PX-OK: metros
@@ -500,9 +499,9 @@ impl crate::App {
             },
             CounterRuntime { value: 0 },
             SignalActions(vec![
-                accao(SINAL_TICK, "1"),
+                accao(SINAL_TICK, PLACAR, "1"),
                 // ⭐ O MESMO contador, por outro caminho: é isto que faz a wave fechar com o #5.
-                accao(SINAL_BONUS, BONUS),
+                accao(SINAL_BONUS, PLACAR, BONUS),
             ]),
             Name::new(PLACAR),
         ));
@@ -546,33 +545,14 @@ impl crate::App {
              ESCOLHIDO, e a seccao HUD do Inspector mostra a fonte dele.\n\
              [hud-smoke] ⭐ ARRASTE A BORDA DA JANELA para a alargar: a contagem (em baixo a' \
              ESQUERDA) e os pontos (em baixo a' DIREITA) seguem as bordas REAIS.\n\
-             [hud-smoke] ⭐ E O CONTROLO e' o proprio selector: na seccao HUD do Inspector troque \
-             `Fit` de `Expand` para `Keep` e alargue outra vez — agora eles param na AREA SEGURA, \
-             a uma banda da borda. Os dois modos existem de proposito, e e' o que o alvo faz."
+             [hud-smoke] ⭐ E O CONTROLO: na HIERARQUIA (painel da esquerda) clique na linha \
+             «HUD» — e' a RAIZ, e e' so' nela que a seccao do Inspector mostra `Fit`, porque o \
+             modo e' uma propriedade do CANVAS e nao do rotulo. Troque `Fit` de `Expand` para \
+             `Keep` e alargue outra vez: agora eles param na AREA SEGURA, a uma banda da borda. \
+             Os dois modos existem de proposito, e e' o que o alvo faz.\n\
+             [hud-smoke] ⚠️ A raiz «HUD» NAO se pega no canvas (ela nao tem forma nenhuma) — a \
+             Hierarquia e' a unica porta para ela."
         );
-    }
-}
-
-/// Uma linha da tabela do TOP-20 #5: este sinal soma `quanto` ao contador desta entidade.
-fn accao(sinal: &str, quanto: &str) -> SignalAction {
-    SignalAction {
-        on: sinal.to_owned(),
-        target: PLACAR.to_owned(),
-        verb: SignalVerb::AddToCounter,
-        arg: quanto.to_owned(),
-        target_by: SignalTarget::Named,
-        from: ph2d_ecs::SignalFrom::Anyone,
-    }
-}
-
-/// Um relógio que publica `sinal` ao fechar.
-fn relogio(sinal: &str, us: u64, repeat: bool) -> Timer {
-    Timer {
-        name: sinal.to_owned(),
-        duration_us: us,
-        repeat,
-        autostart: true,
-        signal: sinal.to_owned(),
     }
 }
 

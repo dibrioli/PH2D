@@ -100,6 +100,27 @@ fn bloco_rotulo(
     i: &InspectorHudInfo,
 ) -> f32 {
     let mut cur_y = y;
+    // ⭐⭐⭐ **E a secção DIZ onde está a metade que ela não mostra** (report do dono, 20/09).
+    //
+    // ⚠️ As linhas do canvas (`Fit`, a caixa de referência) vivem **na raiz**, e com um rótulo
+    // escolhido a secção mostrava só a metade dele. *Uma secção que mostra metade e não diz onde
+    // está a outra faz o artista concluir que ela não existe* — e foi exactamente o que aconteceu.
+    //
+    // ⚠️ Ela nomeia a RAIZ pelo nome dela, porque essa raiz **não se pega no canvas** (não tem
+    // forma nenhuma): a Hierarquia é a única porta, e um aviso que não diga **qual** linha clicar
+    // manda o artista procurar.
+    if let Some(raiz) = i.canvas_parent.as_deref() {
+        cur_y = warn(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            &ph2d_i18n::tr_with("panel.inspector.hud.rows_live_on_root", &[("raiz", &raiz)]),
+            ColorToken::Text3,
+        );
+    }
     if i.has_label {
         cur_y = seg_row(
             scene,

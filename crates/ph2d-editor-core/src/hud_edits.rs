@@ -78,6 +78,15 @@ pub struct InspectorHudInfo {
     pub entity_bits: u64,
     /// Tem [`ph2d_ecs::UiCanvas`]?
     pub has_canvas: bool,
+    /// ⭐⭐⭐ **O nome da RAIZ do canvas, quando este objecto é FILHO de uma** — `None` se ele
+    /// próprio é a raiz, ou se não está debaixo de nenhuma.
+    ///
+    /// ⚠️⚠️ **Report do dono, 2026-09-20, com foto:** *«se a secção HUD que vc se refere é no
+    /// inspector, não tem as opções que vc mandou mudar»*. As linhas do canvas (`Fit`, a caixa de
+    /// referência) só se pintam **na raiz**, e com um rótulo escolhido a secção mostra só a metade
+    /// dele — sem dizer **onde** está a outra. *Uma secção que mostra metade e não diz onde está a
+    /// outra metade faz o artista concluir que ela não existe.*
+    pub canvas_parent: Option<String>,
     /// A largura da caixa de referência.
     pub ref_w: f32,
     /// A altura dela.

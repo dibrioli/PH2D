@@ -65,6 +65,8 @@ PASSE=shells/desktop/src/layout_live_anchors.rs
 SELECAO=crates/ph2d-app-components/src/hud_anchors.rs
 FASE=shells/desktop/src/render_loop/fase_hud.rs
 RECOOK=shells/desktop/src/render_loop/fase_vector_layout_recook.rs
+INSPECTOR=crates/ph2d-app-components/src/hud_inspector.rs
+CENA=shells/desktop/src/hud_smoke.rs
 
 echo "=== A LEI: a caixa efectiva (ph2d-hud) ==="
 
@@ -131,6 +133,25 @@ bloco "a cerca do PAI sai" ph2d-app-components um_filho_de_moldura_nao_entra \
   "$SELECAO" 1 \
   '    let cfg = *w.get::<ph2d_ecs::UiCanvas>(parent)?;' \
   '    let cfg = w.get::<ph2d_ecs::UiCanvas>(parent).copied().unwrap_or_default();'
+
+echo "=== O QUE A SECCAO DIZ (report do dono, 20/09) ==="
+
+# A nota que diz ONDE estao as linhas do canvas desaparece ⇒ o artista ve' metade e conclui que a
+# outra nao existe, que foi exactamente o report.
+# ⚠️ A mutação é de UMA linha de propósito: a 1.ª redacção metia um `\n` num `'…'` do bash e o
+# ficheiro saiu com um `\` literal ⇒ nao compilou, e o arnês leu «filtro vazio». Aqui ela faz a
+# nota aparecer TAMBEM na raiz, que e' a metade NEGATIVA do gate.
+bloco "a nota aparece tambem na RAIZ" ph2d-app-components a_seccao_diz_onde_estao \
+  "$INSPECTOR" 1 \
+  '    let canvas_parent = if canvas.is_some() {' \
+  '    let canvas_parent = if false {'
+
+# O roteiro deixa de nomear a HIERARQUIA ⇒ o passo volta a ser impossivel a quem tem o rotulo
+# escolhido.
+bloco "o roteiro nao diz onde escolher a raiz" ph2d-host-desktop o_roteiro_manda_escolher \
+  "$CENA" 1 \
+  'na HIERARQUIA (painel da esquerda) clique na linha' \
+  'no painel clique na linha' '--test it'
 
 echo "=== A ORDEM no quadro ==="
 

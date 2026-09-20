@@ -54,3 +54,32 @@ pub fn prende_os_cantos(world: &mut World, contagem: Entity, pontos: Entity) {
         base: BASE,
     });
 }
+
+/// **Uma linha da tabela do TOP-20 #5**: este sinal soma `quanto` ao contador chamado `placar`.
+///
+/// ⚠️ O nome do placar **entra por argumento** e não sai de uma const daqui: ele é um CONTRATO
+/// entre quatro sítios da cena (o relógio, a tabela, o contador e o botão), e uma segunda cópia
+/// dele nesta crate divergiria da primeira na primeira edição.
+#[must_use]
+pub fn accao(sinal: &str, placar: &str, quanto: &str) -> ph2d_ecs::SignalAction {
+    ph2d_ecs::SignalAction {
+        on: sinal.to_owned(),
+        target: placar.to_owned(),
+        verb: ph2d_ecs::SignalVerb::AddToCounter,
+        arg: quanto.to_owned(),
+        target_by: ph2d_ecs::SignalTarget::Named,
+        from: ph2d_ecs::SignalFrom::Anyone,
+    }
+}
+
+/// **Um relógio que publica `sinal` ao fechar**, e que nasce a correr.
+#[must_use]
+pub fn relogio(sinal: &str, us: u64, repeat: bool) -> ph2d_ecs::Timer {
+    ph2d_ecs::Timer {
+        name: sinal.to_owned(),
+        duration_us: us,
+        repeat,
+        autostart: true,
+        signal: sinal.to_owned(),
+    }
+}

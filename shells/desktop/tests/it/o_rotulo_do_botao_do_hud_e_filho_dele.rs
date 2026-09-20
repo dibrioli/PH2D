@@ -123,3 +123,42 @@ fn a_cena_do_hud_abre_em_expand() {
          manda arrastar"
     );
 }
+
+/// ⛔⛔⛔ **O passo do roteiro que manda trocar o `Fit` NOMEIA a linha da Hierarquia, e não o
+/// painel** — porque a linha `Fit` só existe com a RAIZ escolhida.
+///
+/// ⚠️⚠️ **Report do dono, 2026-09-20, com foto:** *«se a secção HUD que vc se refere é no
+/// inspector, não tem as opções que vc mandou mudar»*. E ele tinha razão: a cena abre com o
+/// **rótulo** escolhido, e o painter pinta as linhas do canvas só `if has_canvas` ⇒ com um filho
+/// seleccionado a linha `Fit` **não está lá**. *Um passo que manda clicar numa linha AFIRMA que ela
+/// está na tela, e o dono aprova o smoke com o passo impossível dentro.*
+///
+/// ⚠️ E a raiz **não se pega no canvas**: ela não tem `Sprite` nem `VecShape`, logo o
+/// `pick_sprite_at_world` nunca a devolve — a Hierarquia é a única porta. É a mesma lei que a cena
+/// do #15 pagou, e aqui a cura é o roteiro NOMEAR a porta certa.
+///
+/// **Mutação que deve sangrar:** tirar a palavra `HIERARQUIA` do roteiro.
+#[test]
+fn o_roteiro_manda_escolher_a_raiz_na_hierarquia_antes_do_fit() {
+    let src = include_str!("../../src/hud_smoke.rs");
+    // ⚠️ **A agulha cabe numa LINHA:** o roteiro é um `println!` com continuações `\`, e a 1.ª
+    // redacção procurou «`Fit` de `Expand` para `Keep`» — que o corte de linha parte em duas.
+    // *Uma agulha tem de sobreviver à forma como o texto está escrito.*
+    let i = src
+        .find("de `Expand` para")
+        .expect("o roteiro deixou de mandar trocar o Fit");
+    // O passo tem de nomear a HIERARQUIA **antes** de falar do `Fit`.
+    let antes = &src[..i];
+    let h = antes
+        .rfind("HIERARQUIA")
+        .expect("o roteiro manda trocar o `Fit` sem dizer onde escolher a RAIZ");
+    assert!(
+        i - h < 400,
+        "a palavra HIERARQUIA esta' longe demais do passo do `Fit` — nao e' o mesmo passo"
+    );
+    // ⭐ E a raiz tem de ter NOME, senão a linha da Hierarquia não é nomeável.
+    assert!(
+        src.contains("Name::new(\"HUD\")"),
+        "a raiz do canvas perdeu o nome — o roteiro manda clicar numa linha sem etiqueta"
+    );
+}

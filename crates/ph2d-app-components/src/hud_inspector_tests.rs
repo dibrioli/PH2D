@@ -201,3 +201,100 @@ fn o_menu_do_fit_tem_uma_linha_por_modo() {
         ph2d_ecs::Fit::ALL.len()
     );
 }
+
+/// ⭐⭐⭐ **A secção DIZ onde está a metade que ela não mostra** — report do dono, 20/09, com foto.
+///
+/// ⚠️⚠️ As linhas do canvas (`Fit`, a caixa de referência) pintam-se **só na raiz**; com um rótulo
+/// escolhido a secção mostrava a metade dele e **calava-se** sobre a outra. *Uma secção que mostra
+/// metade e não diz onde está a outra faz o artista concluir que ela não existe* — e foi
+/// exactamente o que aconteceu.
+///
+/// ⚠️ **As DUAS metades**, e a negativa é a que impede o ruído: numa raiz as linhas estão à vista,
+/// e um aviso ali seria uma frase que nunca ajuda ninguém.
+///
+/// **Mutação que deve sangrar:** devolver `canvas_parent` sempre, mesmo na raiz.
+#[test]
+fn a_seccao_diz_onde_estao_as_linhas_do_canvas() {
+    use ph2d_ecs::{ChildOf, Name, Transform, UiCanvas};
+    let mut sim = SimWorld::default();
+    let raiz = sim
+        .world_mut()
+        .spawn((Transform::default(), UiCanvas::default(), Name::new("HUD")))
+        .id();
+    let filho = sim
+        .world_mut()
+        .spawn((
+            Transform::default(),
+            ChildOf(raiz),
+            UiLabel {
+                source: LabelSource::Counter("pontos".into()),
+                prefix: String::new(),
+                suffix: String::new(),
+            },
+        ))
+        .id();
+    let tree = TagTree::default();
+
+    // (a) no FILHO, a nota nomeia a raiz.
+    let i = build_info(&mut sim, &tree, filho.to_bits(), false).expect("info do filho");
+    assert!(!i.has_canvas, "o filho nao devia ter as linhas do canvas");
+    assert_eq!(
+        i.canvas_parent.as_deref(),
+        Some("HUD"),
+        "a seccao nao diz ONDE estao as linhas que ela nao mostra"
+    );
+
+    // (b) na RAIZ, ela cala-se — as linhas estão à vista.
+    let r = build_info(&mut sim, &tree, raiz.to_bits(), false).expect("info da raiz");
+    assert!(r.has_canvas);
+    assert_eq!(
+        r.canvas_parent, None,
+        "a raiz mostra as linhas E um aviso a dizer onde elas estao"
+    );
+
+    // ⚠️⚠️ **(c) um canvas DEBAIXO de outro canvas — e é este o caso que o guarda existe para
+    // cobrir.** A 1.ª redacção deste gate parava em (b), e a mutação que trocava
+    // `if canvas.is_some()` por `if false` **SOBREVIVEU**: a raiz de (b) não tem pai nenhum, logo
+    // o ramo mutado devolvia `None` na mesma. *Uma fixtura que não contém o fenómeno não o
+    // reprova* — e um canvas aninhado é legal, logo o caso é real e não um espantalho.
+    let dentro = sim
+        .world_mut()
+        .spawn((
+            Transform::default(),
+            ChildOf(raiz),
+            UiCanvas::default(),
+            Name::new("HUD de dentro"),
+        ))
+        .id();
+    let d = build_info(&mut sim, &tree, dentro.to_bits(), false).expect("info do aninhado");
+    assert!(d.has_canvas, "ele TEM canvas proprio");
+    assert_eq!(
+        d.canvas_parent, None,
+        "um canvas dentro de outro mostra as proprias linhas E um aviso a apontar para o pai"
+    );
+}
+
+/// ⛔ **E um filho de um objecto QUALQUER não inventa uma raiz** — a nota é sobre um canvas, e só.
+#[test]
+fn um_filho_de_um_objecto_comum_nao_nomeia_raiz_nenhuma() {
+    use ph2d_ecs::{ChildOf, Name, Transform};
+    let mut sim = SimWorld::default();
+    let pai = sim
+        .world_mut()
+        .spawn((Transform::default(), Name::new("Nao e um canvas")))
+        .id();
+    let filho = sim
+        .world_mut()
+        .spawn((
+            Transform::default(),
+            ChildOf(pai),
+            UiLabel {
+                source: LabelSource::Counter("pontos".into()),
+                prefix: String::new(),
+                suffix: String::new(),
+            },
+        ))
+        .id();
+    let i = build_info(&mut sim, &TagTree::default(), filho.to_bits(), false).expect("info");
+    assert_eq!(i.canvas_parent, None);
+}

@@ -6,6 +6,8 @@ fn cheio() -> InspectorHudInfo {
     InspectorHudInfo {
         entity_bits: 7,
         has_canvas: true,
+        // ⚠️ A raiz mostra as próprias linhas ⇒ nenhuma nota a apontar para outro sítio.
+        canvas_parent: None,
         ref_w: 32.0,
         ref_h: 18.0,
         fit: 0,

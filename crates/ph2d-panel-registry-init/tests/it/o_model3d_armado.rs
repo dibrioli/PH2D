@@ -220,7 +220,7 @@ fn fileiras() -> Vec<ParamRow> {
         key,
         value: 1.5,
         lo: 0.0,
-        live: true,
+        inert: None,
         integral: false,
         bound: Bound::Soft(10.0),
         section: None,
@@ -259,7 +259,13 @@ fn fileiras() -> Vec<ParamRow> {
         // ⛔ Uma linha que NÃO pode ser mexida — ela é pintada como um FACTO (rótulo e número),
         //    sem pista e sem campo, que é outra caixa.
         ParamRow {
-            live: false,
+            // ⚠️ **O campo era um booleano de «viva» e passou a ser um `inert: Option<razão>`** na
+            // integração de 2026-09-20 (`line/3DModeling`): *um booleano com um `reason` ao lado
+            // seriam duas respostas à mesma pergunta*, e a combinação «apagado SEM razão» — o
+            // defeito que o dono reportou — deixa de ser exprimível. ⇒ o valor INVERTE-SE, e uma
+            // fileira apagada tem de NOMEAR a razão dela. Esta é a do produto para um eixo de
+            // rotação travado (`Span::Locked`), logo a fixtura continua a encenar o caso real.
+            inert: Some("field.inert.gimbal_axis"),
             ..base(Param::Rot(1), dim(4))
         },
         // ⭐ Uma ESCOLHA — a lista REAL do produto (o único `Span::Choice` que ele declara).

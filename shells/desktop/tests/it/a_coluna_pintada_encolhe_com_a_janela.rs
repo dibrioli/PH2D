@@ -128,3 +128,50 @@ fn a_coluna_pintada_encolhe_com_a_janela() {
          ({min}) — abaixo dele o cabeçalho e uma linha deixam de caber juntos"
     );
 }
+
+/// ⭐⭐ **O READOUT DIZ A COLUNA QUE DECIDE O REPORT** (`PH2D_DOCK_LOG=1`).
+///
+/// ⛔⛔ **DUAS rondas de report não chegaram a uma conclusão por falta desta coluna.** O log de
+/// `resize` da shell diz a JANELA e cala o resto, e as duas causas possíveis — *a coluna está na
+/// largura de FÁBRICA, que segue a janela* contra *está numa ESCOLHA gravada, que não segue* —
+/// **leem-se exactamente iguais no ecrã**.
+///
+/// ⚠️ A agulha é o **par inteiro** e não o nome da variável: um readout que imprimisse só a
+/// largura ficaria verde com um `grep` por `dock_width`, *que é precisamente o estado em que ele
+/// não bissecta nada*.
+#[test]
+fn o_readout_das_colunas_diz_de_onde_vem_cada_largura() {
+    const FASE: &str = include_str!("../../src/render_loop/fase_hero_paint.rs");
+    for agulha in [
+        "PH2D_DOCK_LOG",
+        "dock_width_choice(side)",
+        concat!("(escolha ", "{ce})"),
+        concat!("(escolha ", "{cd})"),
+    ] {
+        assert!(
+            FASE.contains(agulha),
+            "o readout das colunas perdeu `{agulha}` — sem a coluna da ESCOLHA ele volta a não \
+             distinguir «a largura de fábrica segue a janela» de «a escolha gravada não segue», \
+             que é o que deixou duas rondas de report sem conclusão"
+        );
+    }
+    // ⭐ E o CONTROLO: ela tem de sair por `eprintln!`, porque é essa a isenção do HR-15 aqui —
+    //   montá-la num `format!` para uma variável perde-a **sem tirar o literal do binário**, e o
+    //   censo de texto da shell reprovou a 1.ª redacção desta função exactamente assim.
+    //
+    // ⛔⛔ **A agulha NÃO pode exigir adjacência, e isso foi medido:** a 1.ª redacção procurava
+    //   `format!("[dock]` colados e **uma mutação SOBREVIVEU** — no ficheiro real o `cargo fmt`
+    //   põe a macro e o literal em linhas diferentes. *Uma agulha que depende da formatação é
+    //   cega exactamente à formatação que o ficheiro tem.* ⇒ acha-se o literal e olha-se para
+    //   TRÁS numa janela, que é layout-independente.
+    let i = FASE
+        .find(concat!("\"[dock] ", "janela="))
+        .expect("o readout perdeu a linha `[dock] janela=` — ele deixou de existir");
+    let antes = &FASE[i.saturating_sub(40)..i];
+    assert!(
+        antes.contains("eprintln!"),
+        "a linha do readout não sai de um `eprintln!` (os 40 caracteres antes dela são {antes:?}) \
+         — ela perde a isenção de terminal do HR-15 sem tirar o literal do binário, e o censo de \
+         texto da shell reprova-a"
+    );
+}

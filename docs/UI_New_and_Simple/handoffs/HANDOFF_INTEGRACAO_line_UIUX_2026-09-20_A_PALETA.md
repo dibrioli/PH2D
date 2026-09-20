@@ -487,6 +487,31 @@ ecrã largo) **sobreviveu** porque a minha fixtura usava `300` na coluna esquerd
 do token daquele lado (`308`) — *os números REAIS do dono estão ACIMA do token e a minha fixtura
 estava abaixo: ela não continha o fenómeno*. Trocada pelo `371,722_66` dele, ela sangrou.
 
+### ⭐⭐⭐ E o 3.º report trouxe o LOG, que não decidia nada — daí o readout
+
+O dono colou o log de `resize` (`732x768` → `1920x1022`): ele diz a **janela** e cala o que o app
+fez com ela. ⚠️ As duas causas possíveis — *a coluna está na largura de FÁBRICA, que segue a
+janela* contra *está numa ESCOLHA gravada, que não segue* — **leem-se exactamente iguais no ecrã**,
+e foi isso que deixou **duas** rondas sem conclusão. ⇒ `PH2D_DOCK_LOG=1`, uma linha por **mudança**
+de largura (nunca por quadro):
+
+```
+[dock] janela=732   esq=220.0 (escolha -)  dir=220.0 (escolha -)  — '-' = largura de fabrica, …
+[dock] janela=1920  esq=308.0 (escolha -)  dir=304.0 (escolha -)
+```
+
+⛔ **A linha vive DENTRO do `eprintln!`, e isso é MEDIDO:** a 1.ª redacção montava-a num `format!`
+para uma variável e o censo de texto da shell **reprovou-a na hora** — a isenção do HR-15 ali é
+*«sai por `eprintln!`, logo é terminal»*, e passar pela variável **perde-a sem tirar o literal do
+binário** (a lei que a cena `=51` do sculpt3d já tinha pago).
+
+⚠️⚠️ **E o gate do readout teve uma MUTAÇÃO SOBREVIVENTE, por defeito da agulha:** ela procurava
+`format!("[dock]` **colados**, e no ficheiro o `cargo fmt` põe a macro e o literal em linhas
+diferentes ⇒ *uma agulha que depende da formatação é cega exactamente à formatação que o ficheiro
+tem*. Hoje ela acha o literal e olha para TRÁS numa janela de 40 caracteres, que é
+layout-independente. Mutação **2 de 2** (a palavra que identifica a coluna · a linha a sair do
+`eprintln!`).
+
 ### ⏳ ABERTO, com o número — DECISÃO DO DONO
 
 Uma escolha é gravada em **pixels absolutos** e não sobrevive a uma mudança de forma da janela: no

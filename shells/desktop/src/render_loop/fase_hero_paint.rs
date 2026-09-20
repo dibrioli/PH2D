@@ -26,6 +26,14 @@ impl crate::App {
             viewport,
             text: text_system,
         };
+        // ⭐⭐⭐ **O readout da LARGURA DAS COLUNAS** (`PH2D_DOCK_LOG=1`) — e ele existe porque
+        //    DUAS rondas de report não chegaram a uma conclusão sem ele.
+        //
+        // ⚠️ O log de `resize` diz a JANELA e cala o que o app fez com ela; a pergunta que ficou
+        //    por responder duas vezes é outra: *esta coluna está na largura de FÁBRICA (que segue
+        //    a janela) ou numa ESCOLHA gravada (que não segue)?* — e as duas leem-se iguais no
+        //    ecrã. *Um instrumento que não se identifica não bissecta nada.*
+        dock_log(hero, viewport);
         // Frame profiler: panel/chrome Vello encode (includes the painter panel's Paper preview).
         let hero_t0 = frame_prof_on().then(Instant::now);
         paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
@@ -86,4 +94,51 @@ impl crate::App {
             vector_scene.fill_rect(VRect::new(x1 - 1.0, y0, x1, y1), border);
         }
     }
+}
+
+/// **Uma linha por MUDANÇA de largura de janela, e só com `PH2D_DOCK_LOG=1`.**
+///
+/// ⚠️ **Por mudança e não por quadro:** a 60 Hz um readout por quadro afoga o terminal e deixa de
+/// se ler — e o que interessa aqui é exactamente a transição.
+fn dock_log(hero: &ph2d_editor_core::HeroScreen, viewport: EditorRect) {
+    use ph2d_editor_core::screens::layout::DockSide;
+    use std::cell::Cell;
+    thread_local! {
+        static LIGADO: Cell<i8> = const { Cell::new(-1) };
+        static ULTIMA: Cell<f32> = const { Cell::new(f32::NAN) };
+    }
+    let ligado = LIGADO.with(|c| {
+        if c.get() < 0 {
+            let on = std::env::var("PH2D_DOCK_LOG").is_ok_and(|v| v != "0");
+            c.set(i8::from(on));
+        }
+        c.get() == 1
+    });
+    if !ligado {
+        return;
+    }
+    let w = viewport.w;
+    if ULTIMA.with(|c| (c.get() - w).abs() < 0.5) {
+        return;
+    }
+    ULTIMA.with(|c| c.set(w));
+    // ⛔⛔ **A linha inteira vive DENTRO do `eprintln!`, e isso é MEDIDO, não estilo:** a isenção
+    //    do HR-15 aqui é *«sai por `eprintln!`, logo é terminal»*, e montá-la num `format!` para
+    //    uma variável **perde a isenção sem tirar o literal do binário** — o censo de texto da
+    //    shell reprovou a 1.ª redacção desta função exactamente assim.
+    //
+    // ⭐ A coluna que decide o report é a da ESCOLHA: de fábrica ela segue a janela, escolhida
+    //   não segue, e no ecrã as duas leem-se iguais.
+    let escolha = |side| {
+        hero.store
+            .dock_width_choice(side)
+            .map_or_else(|| "-".to_string(), |c| format!("{c:.0}"))
+    };
+    eprintln!(
+        "[dock] janela={w:.0}  esq={le:.1} (escolha {ce})  dir={ld:.1} (escolha {cd})           — '-' = largura de fabrica, a unica que segue a janela",
+        le = hero.store.dock_width(DockSide::Left, w),
+        ld = hero.store.dock_width(DockSide::Right, w),
+        ce = escolha(DockSide::Left),
+        cd = escolha(DockSide::Right),
+    );
 }

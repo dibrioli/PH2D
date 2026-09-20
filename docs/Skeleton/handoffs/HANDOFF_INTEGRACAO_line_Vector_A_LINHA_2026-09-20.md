@@ -387,8 +387,8 @@ CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets → zero
 scripts/check-standalone-optional.sh   → 10/10
 scripts/check-workflow-packages.sh     → 32/32
 
-rm -rf target/*/incremental            → 84 GB reclamados (71 do debug + 13 do smoke)
-build do smoke (1.ª corrida)           → Finished in 31,43s
+rm -rf target/*/incremental            → 30,8 GB reclamados (28 do debug + 2,8 do smoke)   (PÓS-F9)
+build do smoke (1.ª corrida)           → Finished in 30,23s
 build do smoke (2.ª corrida)           → Finished in 0,27s, ZERO linhas "Compiling"   ← a PROVA
 ```
 

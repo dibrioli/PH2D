@@ -114,6 +114,48 @@ pub fn lei_da_curva_activa() -> bool {
 /// ⚠️ **O erro de PESO é `0,0329`** depois de o bind subdividir (`0,3752` antes) — e a linha do
 /// meio diz o resto: *a subdivisão do bind já põe nós onde o campo teria dito o mesmo*, e o que
 /// sobra para o campo corrigir vale um terço de um por cento da peça.
+/// ⭐⭐⭐ **O CAMPO É LIDO COM DERIVADA CONTÍNUA?** — a porta de bissecção da cura de 2026-09-20.
+///
+/// Report do dono, com o arco que ele esperava marcado a verde sobre a foto: *«a imagem vetorial
+/// deforma mal, com várias curvas ao longo do caminho. Baixa qualidade para um app pro»*.
+///
+/// # A causa, que está no PAPER e não é nossa
+///
+/// O *Bounded Biharmonic Weights* diz que os pesos são **`C¹` nas alças e `C∞` em todo o resto** —
+/// e discretiza o problema **com elementos finitos LINEARES**. ⇒ o campo verdadeiro é liso e as
+/// facetas são da **discretização**: um campo linear por triângulo tem gradiente constante lá
+/// dentro e um SALTO em cada aresta, e o contorno da peça do dono atravessa **119** deles.
+///
+/// # ⛔⛔⛔ ELA NASCE DESLIGADA, e a razão é a MEDIÇÃO e não a prudência
+///
+/// A cura funciona **no campo** e **não chega ao que o artista vê**:
+///
+/// | a `90°` em S, na barra da cena do dono | baricêntrica | **`C¹`** |
+/// |---|---:|---:|
+/// | ondulações da LEI (o campo sozinho, ponto a ponto) | `68` | **`22`** |
+/// | a amplitude delas (`\|k\|` p90) | `2,76` | **`1,62`** |
+/// | **ondulações do CAMINHO VECTORIAL — o que se desenha** | **`12`** | **`12`** |
+///
+/// ⇒ *o ajuste das cúbicas já alisava abaixo do que o campo contribui*, e a `4,3×` menos
+/// facetas no campo correspondem a **zero** no desenho. O preço é `0,363 ms` por forma por
+/// quadro só para derivar os gradientes (`2,2 %` de um quadro a uma forma presa, `17 %` a oito),
+/// mais `~50 %` por consulta.
+///
+/// ⚠️⚠️ **E os `12` que sobram NÃO são do campo — são do AJUSTE**, com a assinatura medida: eles
+/// escalam com a contagem de SEGMENTOS (`8` nós → `6` ondulações, `34` nós → `12`), que é o erro
+/// de um ajuste feito **segmento a segmento** a alternar de sinal. *A cura que falta é um ajuste
+/// com continuidade GLOBAL, e não um campo mais liso.*
+///
+/// ⭐ Ela fica porque a medição dela é o que nomeia a próxima, e porque no dia em que o ajuste
+/// for global o campo volta a ser o tecto.
+///
+/// ⚠️ **Lida no SÍTIO DE CHAMADA e uma vez por forma**, pela mesma razão escrita nas duas irmãs
+/// acima: um `var_os` por amostra seria uma syscall dentro do laço do desenho.
+#[must_use]
+pub fn lei_c1_activa() -> bool {
+    std::env::var("PH2D_SKIN_C1").as_deref() == Ok("1")
+}
+
 #[must_use]
 pub fn lei_do_campo_activa() -> bool {
     std::env::var("PH2D_SKIN_CAMPO").as_deref() != Ok("0")
@@ -133,7 +175,15 @@ struct SegmentoDaPele<'a> {
     /// A mistura: rígida (o produto) ou linear (o controlo dos gates).
     rigido: bool,
     /// ⭐⭐⭐ **O CAMPO DO DOMÍNIO, quando o bind o guardou** — ver [`Self::pesos`].
+    /// ⭐⭐⭐ **O CAMPO DO DOMÍNIO, quando o bind o guardou** — ver [`Self::pesos`].
     campo: Option<&'a crate::pesos::CampoDoDominio>,
+    /// ⭐⭐⭐ **A leitura `C¹` do MESMO campo** — ver [`crate::pesos_suave`].
+    ///
+    /// ⛔⛔ **Os DOIS coexistem de propósito, e a 1.ª redacção não os separou:** ela punha só o
+    /// suave, e com `PH2D_SKIN_C1=0` o campo deixava de ser consultado **de todo** — a porta da
+    /// leitura desligava em silêncio a porta do CAMPO, que é outra wave. A sonda leu `24` em vez
+    /// de `12` e denunciou-a. *Uma porta de bissecção que desliga duas coisas não bissecta nada.*
+    suave: Option<&'a crate::pesos_suave::CampoSuave<'a>>,
 }
 
 impl SegmentoDaPele<'_> {
@@ -158,7 +208,12 @@ impl SegmentoDaPele<'_> {
     /// ESPAÇO e já eram somadas no ponto — o que esta wave muda é a BASE sobre que elas pousam.
     fn pesos(&self, p: [f64; 2], t: f64) -> Vec<f64> {
         let mut w = self.pele.scratch();
-        if let Some(linha) = self.campo.and_then(|c| c.linha(p)) {
+        // ⭐ A leitura `C¹` primeiro; a baricêntrica é o que sobra quando a porta a desliga.
+        let lida = self
+            .suave
+            .and_then(|s| s.linha(p))
+            .or_else(|| self.campo.and_then(|c| c.linha(p)));
+        if let Some(linha) = lida {
             self.pele
                 .weights_corrected(p, Some(&linha), &mut w, self.correcoes);
             return w;
@@ -325,6 +380,16 @@ pub fn aplica_pela_curva_com(
 ) {
     let fonte = path.clone();
     crate::aplica_corrigido_com(pele, path, pesos, correcoes, rigido);
+    // ⭐⭐⭐ **OS GRADIENTES DO CAMPO DERIVAM-SE UMA VEZ POR FORMA, aqui.** A leitura `C¹` precisa
+    // do gradiente de cada peso em cada vértice da malha, e ele é `O(V·B)`: derivá-lo por AMOSTRA
+    // de curva seria uma varredura da malha dentro do laço do desenho.
+    //
+    // ⚠️ `PH2D_SKIN_C1=0` volta à leitura baricêntrica de sempre, e é por onde se bissecta um
+    // report — ver [`lei_c1_activa`].
+    let suave = campo
+        .filter(|_| lei_c1_activa())
+        .and_then(crate::pesos_suave::CampoSuave::novo);
+    let suave_ref = suave.as_ref();
     let ossos = if pesos.is_empty() {
         0
     } else {
@@ -348,6 +413,7 @@ pub fn aplica_pela_curva_com(
                 correcoes,
                 rigido,
                 campo,
+                suave: suave_ref,
             };
             let Some((alvo, _)) = path.contour_mut(c) else {
                 continue;

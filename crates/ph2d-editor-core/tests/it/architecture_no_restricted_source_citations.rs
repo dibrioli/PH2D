@@ -169,6 +169,9 @@ const ALVO_PERMISSIVO: &[(&str, &str)] = &[
     // estava errada, e foi o revisor que a desmentiu.
     ("layout.py", "bancada do PH2D, obra própria"),
     ("metrics.py", "bancada do PH2D, obra própria"),
+    // O arnês que corre a SciPy (BSD-3) sobre o NOSSO lattice — ver
+    // `docs/Skeleton/ferramentas/oraculo_do_campo.py`, escrito nesta casa.
+    ("oraculo_do_campo.py", "bancada do PH2D, obra própria"),
 ];
 
 /// ⚠️ **A entrada que este ficheiro teve ERRADA, e o registo fica:** o

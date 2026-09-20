@@ -126,6 +126,7 @@ fn conciliar_as_alcas_tira_a_quina_que_o_ajuste_livre_crava() {
                 correcoes: &[],
                 rigido: true,
                 campo: None,
+                suave: None,
             };
             let ja = super::cubica(&livre.verts, seg, n);
             let (d1, d2) = super::correccao_das_alcas(&s, &ja);
@@ -164,6 +165,7 @@ fn conciliar_as_alcas_tira_a_quina_que_o_ajuste_livre_crava() {
                 correcoes: &[],
                 rigido: true,
                 campo: None,
+                suave: None,
             };
             let (ing, agora) = (
                 super::cubica(&ingenua.verts, seg, n2),
@@ -234,6 +236,7 @@ fn numa_forma_de_arestas_rectas_o_passe_nao_toca_em_nada() {
             correcoes: &[],
             rigido: true,
             campo: None,
+            suave: None,
         };
         let ja = super::cubica(&livre.verts, seg, n);
         let (d1, d2) = super::correccao_das_alcas(&s, &ja);
@@ -324,6 +327,7 @@ fn num_no_misto_a_metade_sem_eixo_nao_entra_na_media() {
             correcoes: &[],
             rigido: true,
             campo: None,
+            suave: None,
         };
         let ja = super::cubica(&livre.verts, seg, n);
         let (d1, d2) = super::correccao_das_alcas(&s, &ja);

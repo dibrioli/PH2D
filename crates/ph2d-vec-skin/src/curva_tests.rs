@@ -425,6 +425,7 @@ fn as_alcas_corrigidas_seguem_a_curva_verdadeira() {
             correcoes: &[],
             rigido: true,
             campo: None,
+            suave: None,
         };
         let (ja, agora) = (
             super::cubica(&ingenua.verts, seg, n),

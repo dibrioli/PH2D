@@ -353,3 +353,316 @@ fn a_aresta_ondula_e_a_onda_nasce_no_lattice() {
         "o ajuste das cúbicas devia alisar a lei ideal para menos de metade ({ideal} → {hoje})"
     );
 }
+
+/// ⭐⭐⭐ **SONDA — DESPEJA O LATTICE E O CONTORNO para o oráculo.**
+///
+/// §0.9: *quando outro app já faz isto, ele é um ORÁCULO que se CORRE sobre entradas NOSSAS*. A
+/// pergunta desta wave é de **interpolação de dados dispersos**, e o interpolante `C¹` de
+/// referência desde os anos 60 é o **Clough–Tocher** — que a SciPy (**BSD-3**) implementa em
+/// `CloughTocher2DInterpolator`, ao lado do `LinearNDInterpolator`, que é **o que nós fazemos
+/// hoje**. ⇒ os dois lados da comparação saem do MESMO oráculo, sobre a NOSSA malha e o NOSSO
+/// contorno.
+///
+/// `PH2D_ORACULO_DIR=<pasta>`; sem a variável não faz nada.
+#[test]
+fn diag_b_despeja_para_o_oraculo() {
+    use std::fmt::Write as _;
+    let Some(dir) = std::env::var_os("PH2D_ORACULO_DIR") else {
+        return;
+    };
+    let dir = std::path::PathBuf::from(dir);
+    let mut p = b_palco(true);
+    p.reparte_com(1, false);
+    p.lei_do_peso(false);
+    p.dobra_em_s(90.0);
+    let rest = b_amostra(&p.fonte);
+    let campo = &p.campo;
+    let ossos = campo.ossos();
+
+    // (1) Os vértices do lattice, **no espaço do caminho** (a `regua` converte).
+    let mut v = String::new();
+    for i in 0..campo.malha.rest.len() {
+        let q = campo.local_do_vertice(i).expect("régua");
+        let linha = campo.linha_do_vertice(i).expect("linha");
+        let _ = write!(v, "{:.12},{:.12}", q[0], q[1]);
+        for w in linha {
+            let _ = write!(v, ",{w:.12}");
+        }
+        v.push('\n');
+    }
+    std::fs::write(dir.join("lattice.csv"), v).expect("escreve o lattice");
+
+    // (2) Os pontos onde o contorno é amostrado.
+    let mut q = String::new();
+    for x in &rest {
+        let _ = writeln!(q, "{:.12},{:.12}", x[0], x[1]);
+    }
+    std::fs::write(dir.join("consulta.csv"), q).expect("escreve as consultas");
+
+    println!(
+        "despejado: {} vértices × {ossos} ossos · {} pontos de consulta → {}",
+        campo.malha.rest.len(),
+        rest.len(),
+        dir.display()
+    );
+}
+
+/// ⭐⭐⭐ **SONDA — A RESPOSTA DO ORÁCULO, DEFORMADA PELO MOTOR DO PRODUTO.**
+///
+/// A [`diag_b_despeja_para_o_oraculo`] escreve o lattice e o contorno; o `oraculo_do_campo.py` corre a
+/// SciPy (**BSD-3**) e devolve **dois** campos de peso nos MESMOS pontos — o `LinearNDInterpolator`
+/// (o que fazemos hoje) e o `CloughTocher2DInterpolator` (o `C¹` de referência). Esta lê os dois
+/// de volta e passa-os pela **porta do produto** ([`ph2d_skeleton::Skin::weights_from`] seguida do
+/// `blend`), que é a única forma de a comparação ser sobre a LEI e não sobre duas aritméticas.
+///
+/// ⚠️ **Os dois lados saem do MESMO oráculo** — se eu tivesse posto o nosso interpolador de um
+/// lado e a SciPy do outro, a diferença incluiria toda divergência de implementação.
+#[test]
+fn diag_b_o_oraculo_deformado_pelo_produto() {
+    let Some(dir) = std::env::var_os("PH2D_ORACULO_DIR") else {
+        return;
+    };
+    let dir = std::path::PathBuf::from(dir);
+    let mut p = b_palco(true);
+    p.reparte_com(1, false);
+    p.lei_do_peso(false);
+    p.dobra_em_s(90.0);
+    let rest = b_amostra(&p.fonte);
+    let rectas = b_rectas(&rest);
+    let pele = p.pele();
+
+    println!("\n{:=<86}", "");
+    println!("SONDA · O ORÁCULO (SciPy, BSD-3) deformado pelo MOTOR DO PRODUTO");
+    println!("{:=<86}", "");
+    println!(
+        "{:<22} | {:>12} | {:>12}",
+        "campo de peso", "ondulações", "pior quina"
+    );
+    for nome in [
+        "linear",
+        "clough_tocher",
+        "molificado_1.0",
+        "molificado_2.0",
+        "molificado_4.0",
+    ] {
+        let Ok(txt) = std::fs::read_to_string(dir.join(format!("pesos_{nome}.csv"))) else {
+            println!("  (falta pesos_{nome}.csv — corra o oraculo_do_campo.py primeiro)");
+            continue;
+        };
+        let linhas: Vec<Vec<f64>> = txt
+            .lines()
+            .filter(|l| !l.trim().is_empty())
+            .map(|l| l.split(',').filter_map(|v| v.trim().parse().ok()).collect())
+            .collect();
+        assert_eq!(
+            linhas.len(),
+            rest.len(),
+            "o oráculo devolveu outra contagem"
+        );
+        let saida: Vec<[f64; 2]> = rest
+            .iter()
+            .zip(&linhas)
+            .map(|(&x, row)| {
+                let mut w = pele.scratch();
+                pele.weights_from(x, row, &mut w);
+                pele.blend(x, &w)
+            })
+            .collect();
+        println!(
+            "{nome:<22} | {:>12} | {:>11.1}°",
+            ondulacoes(&saida, &rectas),
+            super::regularidade_tests::pior_quina(&saida)
+        );
+    }
+    println!("{:=<86}", "");
+}
+
+/// ⭐⭐⭐ **SONDA — ONDE MORAM OS `12` QUE SOBRAM: no CAMPO ou no AJUSTE das cúbicas?**
+///
+/// A leitura `C¹` ([`ph2d_vec_skin::pesos_suave`]) tira a faceta do CAMPO — o oráculo mediu
+/// `68 → 16` — e o caminho vectorial **não se mexe** (`12` com ela e `12` sem ela). Esta sonda
+/// separa as duas metades:
+///
+/// - a **LEI IDEAL** com cada leitura, que é o campo sozinho;
+/// - o **VECTOR** com `8` e com `34` nós, que é o ajuste sozinho (o campo é o mesmo).
+///
+/// *Se o campo melhora e o vector não, o que sobra nasce no ajuste — e mais nós têm de o baixar.*
+#[test]
+fn diag_b_onde_moram_os_doze() {
+    let mut p8 = b_palco(false);
+    let mut p34 = b_palco(true);
+    println!("\n{:=<92}", "");
+    println!("SONDA · ONDE MORAM OS 12 — o campo ou o ajuste das cúbicas?");
+    println!("{:=<92}", "");
+    println!(
+        "{:<26} | {:>14} | {:>14} | {:>14}",
+        "caso", "ondulações", "nós", "amostras"
+    );
+    for (rot, p) in [
+        ("8 nós (o artista)", &mut p8),
+        ("34 nós (o BIND)", &mut p34),
+    ] {
+        p.reparte_com(1, false);
+        p.lei_do_peso(false);
+        p.dobra_em_s(90.0);
+        let rest = b_amostra(&p.fonte);
+        let rectas = b_rectas(&rest);
+        let pele = p.pele();
+        let prod = p.produto(true, true);
+        // A LEI IDEAL com as DUAS leituras do campo — o campo sozinho, sem ajuste nenhum.
+        let suave = ph2d_vec_skin::pesos_suave::CampoSuave::novo(&p.campo);
+        let ideal = |c1: bool| -> usize {
+            let v: Vec<[f64; 2]> = rest
+                .iter()
+                .map(|&x| {
+                    let mut w = pele.scratch();
+                    let linha = match (c1, suave.as_ref()) {
+                        (true, Some(s)) => s.linha(x),
+                        _ => p.campo.linha(x),
+                    }
+                    .unwrap_or_else(|| b_mais_proximo(&p.campo, x));
+                    pele.weights_corrected(x, Some(&linha), &mut w, &p.correcoes);
+                    pele.blend(x, &w)
+                })
+                .collect();
+            ondulacoes(&v, &rectas)
+        };
+        println!(
+            "{rot:<26} | vector {:>7} | {:>14} | {:>14}",
+            ondulacoes(&b_amostra(&prod), &rectas),
+            prod.verts_all().count(),
+            rest.len()
+        );
+        println!(
+            "{:<26} | ideal baricêntrico {:>2} · ideal C¹ {:>2}",
+            "",
+            ideal(false),
+            ideal(true)
+        );
+    }
+    println!("{:=<92}", "");
+}
+
+/// ⚠️ **SONDA — a AMPLITUDE da ondulação e o PREÇO da leitura `C¹`.**
+///
+/// A contagem diz *quantas* ondas e não *de que tamanho*. E uma cura que não move a contagem pode
+/// ainda assim baixar a amplitude — ou não, e aí ela não se paga.
+#[test]
+fn diag_b_a_amplitude_e_o_preco_do_c1() {
+    use std::time::Instant;
+    let mut p = b_palco(true);
+    p.reparte_com(1, false);
+    p.lei_do_peso(false);
+    p.dobra_em_s(90.0);
+    let rest = b_amostra(&p.fonte);
+    let rectas = b_rectas(&rest);
+
+    println!("\n{:=<92}", "");
+    println!("SONDA · a AMPLITUDE da ondulação e o PREÇO da leitura C¹");
+    println!("{:=<92}", "");
+    println!(
+        "{:<22} | {:>10} {:>12} {:>12} | {:>12}",
+        "leitura", "ondas", "|k| p90", "|k| MÁX", "ms/recozer"
+    );
+    // ⚠️ A porta é lida por `aplica_pela_curva_com`, e uma env **não** se muda a meio de um teste
+    // (a suíte corre em threads). ⇒ mede-se a LEI directamente, pelas duas portas.
+    let suave = ph2d_vec_skin::pesos_suave::CampoSuave::novo(&p.campo);
+    for (rot, c1) in [("baricêntrica", false), ("C¹", true)] {
+        let pele = p.pele();
+        let t0 = Instant::now();
+        let v: Vec<[f64; 2]> = rest
+            .iter()
+            .map(|&x| {
+                let mut w = pele.scratch();
+                let linha = match (c1, suave.as_ref()) {
+                    (true, Some(s)) => s.linha(x),
+                    _ => p.campo.linha(x),
+                }
+                .unwrap_or_else(|| b_mais_proximo(&p.campo, x));
+                pele.weights_corrected(x, Some(&linha), &mut w, &p.correcoes);
+                pele.blend(x, &w)
+            })
+            .collect();
+        let ms = t0.elapsed().as_secs_f64() * 1e3;
+        let mut k: Vec<f64> = rectas.iter().map(|&i| b_menger(&v, B_H)[i].abs()).collect();
+        let (_, p90, max) = b_pct(&mut k);
+        println!(
+            "{rot:<22} | {:>10} {p90:>12.4} {max:>12.4} | {ms:>12.3}",
+            ondulacoes(&v, &rectas)
+        );
+    }
+    // ⭐ O preço de DERIVAR os gradientes — uma vez por forma por quadro.
+    let t0 = Instant::now();
+    for _ in 0..20 {
+        let _ = ph2d_vec_skin::pesos_suave::CampoSuave::novo(&p.campo);
+    }
+    println!(
+        "  derivar os gradientes ({} vértices × {} ossos): {:.3} ms",
+        p.campo.malha.rest.len(),
+        p.campo.ossos(),
+        t0.elapsed().as_secs_f64() * 1e3 / 20.0
+    );
+    println!(
+        "  loadavg: {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+    println!("{:=<92}", "");
+}
+
+/// ⭐⭐⭐ **GATE — A LEITURA `C¹` CURA O CAMPO, E NÃO CHEGA AO DESENHO.**
+///
+/// As duas metades são a wave inteira, e **nenhuma sozinha é honesta**:
+///
+/// 1. o campo melhora de facto (`68 → 22` ondulações, amplitude `2,76 → 1,62`) — sem isto a
+///    [`ph2d_vec_skin::pesos_suave`] seria código morto;
+/// 2. **o caminho vectorial não se mexe** (`12` com ela e `12` sem ela) — e é por isso que a porta
+///    [`ph2d_vec_skin::curva::lei_c1_activa`] nasce **DESLIGADA**.
+///
+/// ⚠️⚠️ *Uma cura medida na grandeza errada é indistinguível de uma cura.* Se um dia este gate
+/// reprovar na 2.ª metade, é porque o ajuste das cúbicas deixou de dominar — e aí o valor de
+/// fábrica da porta muda, com este número no diff.
+#[test]
+fn a_leitura_c1_cura_o_campo_e_nao_chega_ao_desenho() {
+    let mut p = b_palco(true);
+    p.reparte_com(1, false);
+    p.lei_do_peso(false);
+    p.dobra_em_s(90.0);
+    let rest = b_amostra(&p.fonte);
+    let rectas = b_rectas(&rest);
+    let pele = p.pele();
+    let suave = ph2d_vec_skin::pesos_suave::CampoSuave::novo(&p.campo).expect("campo válido");
+
+    let campo_so = |c1: bool| -> Vec<[f64; 2]> {
+        rest.iter()
+            .map(|&x| {
+                let mut w = pele.scratch();
+                let linha = if c1 { suave.linha(x) } else { p.campo.linha(x) }
+                    .unwrap_or_else(|| b_mais_proximo(&p.campo, x));
+                pele.weights_corrected(x, Some(&linha), &mut w, &p.correcoes);
+                pele.blend(x, &w)
+            })
+            .collect()
+    };
+    let (bar, c1) = (campo_so(false), campo_so(true));
+    let (o_bar, o_c1) = (ondulacoes(&bar, &rectas), ondulacoes(&c1, &rectas));
+    println!("  campo: baricêntrico {o_bar} ondas · C¹ {o_c1}");
+    assert!(
+        o_bar >= 50,
+        "a leitura baricêntrica devia ondular muito ({o_bar}) — a fixtura deixou de conter o \
+         fenómeno que a cura existe para tirar"
+    );
+    assert!(
+        o_c1 * 2 < o_bar,
+        "a leitura C¹ devia cortar as ondulações do CAMPO para menos de metade ({o_bar} → {o_c1})"
+    );
+
+    // (2) ⛔ E o DESENHO não se mexe — é isto que manda a porta nascer desligada.
+    let desenho = ondulacoes(&b_amostra(&p.produto(true, true)), &rectas);
+    assert!(
+        desenho * 2 < o_c1 + 8,
+        "o caminho vectorial ({desenho}) devia continuar abaixo do campo curado ({o_c1}) — se \
+         ele passar a segui-lo, o ajuste deixou de dominar e a porta muda de valor de fábrica"
+    );
+}

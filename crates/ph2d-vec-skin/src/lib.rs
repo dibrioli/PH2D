@@ -41,6 +41,9 @@
 /// euclidiana derivada.
 pub mod pesos;
 
+/// ⭐⭐⭐ **O campo de peso lido com DERIVADA CONTÍNUA** — a cura da ondulação de 2026-09-20.
+pub mod pesos_suave;
+
 use ph2d_skeleton::Skin;
 use ph2d_vec_scene::VecPath;
 

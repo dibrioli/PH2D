@@ -126,6 +126,14 @@ impl CampoDoDominio {
         n > 0 && self.pesos.len().is_multiple_of(n) && !self.malha.tris.is_empty()
     }
 
+    /// A [`Self::para_malha`] para quem está fora deste módulo — o [`crate::pesos_suave`] precisa
+    /// dela e **não** pode ter a sua própria cópia: a régua é a resposta a *«onde é este ponto na
+    /// malha?»*, e duas cópias dela divergem no dia em que a régua ganhar um termo.
+    #[must_use]
+    pub fn para_malha_pub(&self, p: [f64; 2]) -> [f64; 2] {
+        self.para_malha(p)
+    }
+
     /// O ponto `p` do espaço **LOCAL** do caminho, em coordenadas da malha.
     #[must_use]
     fn para_malha(&self, p: [f64; 2]) -> [f64; 2] {

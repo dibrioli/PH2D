@@ -5,9 +5,13 @@
 //! uma tem UM controlo, e é o idioma de toda engine madura (o `@export` do Godot, o `go.property`
 //! do Defold): o artista vê todos os números do script de uma vez.
 //!
-//! ⚠️⚠️ **Três tabelas de controlo com o MESMO tamanho** (número · caixa · texto), porque o tipo de
-//! uma linha é o do DEFAULT declarado e muda quando o ficheiro muda. A linha `i` pinta um dos três
-//! e regista só esse no `HitIndex`.
+//! ⚠️⚠️ **QUATRO tabelas de controlo com o MESMO tamanho** (número · caixa · texto · chip), porque
+//! o tipo de uma linha é o do DEFAULT declarado e muda quando o ficheiro muda. A linha `i` pinta um
+//! dos quatro e regista só esse no `HitIndex`.
+//!
+//! ⭐ **A quarta não é um tipo novo:** um enum é um `Text` cujo script declarou uma LISTA, e é a
+//! lista — não o tipo — que separa o chip do campo livre. *Uma variante nova no valor custaria um
+//! degrau no fio e não compraria nada.*
 //!
 //! ⭐ **O tamanho é o `ph2d_script::PROPS_MAX`**, e os dois são o MESMO facto (há gate na shell, que
 //! vê as duas crates): *um modelo que aceita o que o painel não mostra produz estado inalcançável*.
@@ -200,3 +204,93 @@ pub const INSP_SCRIPT_ORPHAN_REMOVE: [NodeId; 32] = [
     hash_node_id("insp_script_orphan_remove30"),
     hash_node_id("insp_script_orphan_remove31"),
 ];
+
+/// ⭐⭐⭐ **O CHIP da linha `i`** — uma propriedade de texto cujo script declarou uma LISTA.
+///
+/// ⚠️ **É a QUARTA tabela do mesmo tamanho**, pela razão do cabeçalho: o tipo de uma linha é o do
+/// default declarado e muda quando o ficheiro muda. Um texto **sem** lista continua a pintar o
+/// [`INSP_SCRIPT_TEXT`]; *a lista é o que separa um chip de um campo livre*.
+pub const INSP_SCRIPT_ENUM: [NodeId; 32] = build_enum_chips();
+
+/// ⭐⭐⭐ **As opções do popover — UMA tabela para TODAS as linhas, e isso é a lei.**
+///
+/// ⚠️⚠️ **Só um popover está aberto de cada vez**, logo uma tabela por linha custaria
+/// `32 x 32 = 1024` ids para pintar, no máximo, `32`. ⛔ E a partilha tem um preço que tem de ser
+/// pago com uma CERCA: se dois chips estivessem abertos, os mesmos ids seriam registados duas
+/// vezes e o índice de acerto ficaria com o ÚLTIMO — o artista carregaria numa opção e escolheria
+/// para a outra linha. ⇒ o pintor desenha as opções de **um** chip só, e há gate.
+pub const INSP_SCRIPT_ENUM_OPT: [NodeId; 32] = build_enum_opts();
+
+const fn build_enum_chips() -> [NodeId; 32] {
+    [
+        hash_node_id("insp_script_enum0"),
+        hash_node_id("insp_script_enum1"),
+        hash_node_id("insp_script_enum2"),
+        hash_node_id("insp_script_enum3"),
+        hash_node_id("insp_script_enum4"),
+        hash_node_id("insp_script_enum5"),
+        hash_node_id("insp_script_enum6"),
+        hash_node_id("insp_script_enum7"),
+        hash_node_id("insp_script_enum8"),
+        hash_node_id("insp_script_enum9"),
+        hash_node_id("insp_script_enum10"),
+        hash_node_id("insp_script_enum11"),
+        hash_node_id("insp_script_enum12"),
+        hash_node_id("insp_script_enum13"),
+        hash_node_id("insp_script_enum14"),
+        hash_node_id("insp_script_enum15"),
+        hash_node_id("insp_script_enum16"),
+        hash_node_id("insp_script_enum17"),
+        hash_node_id("insp_script_enum18"),
+        hash_node_id("insp_script_enum19"),
+        hash_node_id("insp_script_enum20"),
+        hash_node_id("insp_script_enum21"),
+        hash_node_id("insp_script_enum22"),
+        hash_node_id("insp_script_enum23"),
+        hash_node_id("insp_script_enum24"),
+        hash_node_id("insp_script_enum25"),
+        hash_node_id("insp_script_enum26"),
+        hash_node_id("insp_script_enum27"),
+        hash_node_id("insp_script_enum28"),
+        hash_node_id("insp_script_enum29"),
+        hash_node_id("insp_script_enum30"),
+        hash_node_id("insp_script_enum31"),
+    ]
+}
+
+const fn build_enum_opts() -> [NodeId; 32] {
+    [
+        hash_node_id("insp_script_enum_opt_00"),
+        hash_node_id("insp_script_enum_opt_01"),
+        hash_node_id("insp_script_enum_opt_02"),
+        hash_node_id("insp_script_enum_opt_03"),
+        hash_node_id("insp_script_enum_opt_04"),
+        hash_node_id("insp_script_enum_opt_05"),
+        hash_node_id("insp_script_enum_opt_06"),
+        hash_node_id("insp_script_enum_opt_07"),
+        hash_node_id("insp_script_enum_opt_08"),
+        hash_node_id("insp_script_enum_opt_09"),
+        hash_node_id("insp_script_enum_opt_10"),
+        hash_node_id("insp_script_enum_opt_11"),
+        hash_node_id("insp_script_enum_opt_12"),
+        hash_node_id("insp_script_enum_opt_13"),
+        hash_node_id("insp_script_enum_opt_14"),
+        hash_node_id("insp_script_enum_opt_15"),
+        hash_node_id("insp_script_enum_opt_16"),
+        hash_node_id("insp_script_enum_opt_17"),
+        hash_node_id("insp_script_enum_opt_18"),
+        hash_node_id("insp_script_enum_opt_19"),
+        hash_node_id("insp_script_enum_opt_20"),
+        hash_node_id("insp_script_enum_opt_21"),
+        hash_node_id("insp_script_enum_opt_22"),
+        hash_node_id("insp_script_enum_opt_23"),
+        hash_node_id("insp_script_enum_opt_24"),
+        hash_node_id("insp_script_enum_opt_25"),
+        hash_node_id("insp_script_enum_opt_26"),
+        hash_node_id("insp_script_enum_opt_27"),
+        hash_node_id("insp_script_enum_opt_28"),
+        hash_node_id("insp_script_enum_opt_29"),
+        hash_node_id("insp_script_enum_opt_30"),
+        hash_node_id("insp_script_enum_opt_31"),
+    ]
+}

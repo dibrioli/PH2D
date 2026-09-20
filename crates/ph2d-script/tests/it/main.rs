@@ -12,4 +12,5 @@ mod lateral_storage_rejects_non_pod;
 mod luau_script_component;
 mod m7_gc_pause;
 mod m7_host;
+mod mede_o_que_a_composicao_ja_da_aos_tipos;
 mod messaging_proptest;

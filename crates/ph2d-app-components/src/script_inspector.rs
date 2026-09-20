@@ -10,7 +10,7 @@
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_editor_core::script_edits::{
     InspectorScriptInfo, InspectorScriptOrphan, InspectorScriptProp, InspectorScriptStatus,
-    InspectorScriptValue, ScriptFieldEdit as E,
+    InspectorScriptValue, PorqueOrfao, ScriptFieldEdit as E,
 };
 use ph2d_script::props::{forget, put, resolve};
 use ph2d_script::{LuauScript, Origin, OrphanWhy, ScriptHost, ScriptInfo, ScriptValue};
@@ -70,6 +70,9 @@ pub fn build_info(
                 name: p.name.clone(),
                 value: para_painel(&p.value),
                 own: p.origin == Origin::Own,
+                // ⭐ **A lista viaja do script para o painel e para mais lado nenhum** — ela não
+                // entra no documento: o que o objecto guarda é o texto escolhido.
+                options: p.hint.options.clone(),
                 min: p.hint.min,
                 max: p.hint.max,
                 step: Some(passo(default, p.hint.step)),
@@ -83,8 +86,9 @@ pub fn build_info(
             name: o.name.clone(),
             value: para_painel(&o.value),
             wants: match o.why {
-                OrphanWhy::Missing => None,
-                OrphanWhy::WrongKind { declared } => Some(declared.label()),
+                OrphanWhy::Missing => PorqueOrfao::NaoDeclarado,
+                OrphanWhy::WrongKind { declared } => PorqueOrfao::OutroTipo(declared.label()),
+                OrphanWhy::NotAnOption => PorqueOrfao::ForaDaLista,
             },
         })
         .collect();

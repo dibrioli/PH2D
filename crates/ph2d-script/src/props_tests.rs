@@ -148,6 +148,7 @@ fn q6_a_faixa_nao_prende_o_valor_gravado() {
             min: Some(0.0),
             max: Some(10.0),
             step: None,
+            options: Vec::new(),
         },
     }];
     let r = resolve(Some(&v2), &own(&[("speed", ScriptValue::Number(15.0))]));
@@ -255,7 +256,8 @@ fn as_declaracoes_mal_formadas_sao_recusadas_com_o_nome() {
                 PropHint {
                     min: Some(2.0),
                     max: Some(1.0),
-                    step: None
+                    step: None,
+                    options: Vec::new(),
                 }
             )
         ),
@@ -270,7 +272,8 @@ fn as_declaracoes_mal_formadas_sao_recusadas_com_o_nome() {
                 PropHint {
                     min: Some(1.0),
                     max: Some(1.0),
-                    step: None
+                    step: None,
+                    options: Vec::new(),
                 }
             )
         ),
@@ -306,4 +309,158 @@ fn um_script_nao_oferece_mais_propriedades_do_que_o_painel_pinta() {
         check_decl(&cheias, &num("mais", 0.0)),
         Err(DeclError::TooMany("mais".into()))
     );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ O ENUM — um texto cuja declaração traz uma LISTA.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Uma declaração de enum com as opções `opts` e o default `padrao`.
+fn enum_decl(padrao: &str, opts: &[&str]) -> PropDecl {
+    PropDecl {
+        name: "mode".into(),
+        default: ScriptValue::Text(padrao.into()),
+        hint: PropHint {
+            options: opts.iter().map(|o| (*o).to_owned()).collect(),
+            ..PropHint::default()
+        },
+    }
+}
+
+fn texto(v: &str) -> ScriptValue {
+    ScriptValue::Text(v.into())
+}
+
+/// ⭐⭐⭐ **O DEFEITO QUE A WAVE MATA: um valor fora da lista NÃO CHEGA ao script.**
+///
+/// ⚠️⚠️ **As três metades, e cada uma sozinha mente:**
+///
+/// 1. o objecto lê o **DEFAULT** (sem isto, `"fst"` chega ao script, que compara com `"fast"` e
+///    cai no ramo errado **em silêncio** — o que ele fazia até hoje, medido pela sonda do §5.0);
+/// 2. o valor é **NOMEADO** como órfão (sem isto ele desaparece da vista do artista, que fica sem
+///    saber porque a escolha dele não valeu — a perda que a divergência D2 existe para impedir);
+/// 3. o valor gravado fica **INTACTO** (encostá-lo à opção mais parecida é o *«aceita e mente»*
+///    que esta casa já pagou três vezes).
+///
+/// **Mutações que devem sangrar:** tirar o `aceita` da 1.ª metade do `resolve` · tirar o braço
+/// `NotAnOption` da 2.ª · fazer o `aceita` devolver `true` sempre.
+#[test]
+fn um_valor_fora_da_lista_nao_chega_ao_script_e_e_nomeado() {
+    let decls = [enum_decl("fast", &["slow", "fast"])];
+    let own: BTreeMap<String, ScriptValue> = [("mode".to_owned(), texto("fst"))].into();
+    let r = resolve(Some(&decls), &own);
+
+    assert_eq!(
+        r.values[0].value,
+        texto("fast"),
+        "o objecto tem de ler o DEFAULT — senao `fst` chega ao script e o ramo errado corre calado"
+    );
+    assert_eq!(r.values[0].origin, Origin::Default);
+    assert_eq!(
+        r.orphans.len(),
+        1,
+        "e o valor tem de ser NOMEADO — um valor que some sem explicacao e' a perda do D2"
+    );
+    assert_eq!(r.orphans[0].why, OrphanWhy::NotAnOption);
+    assert_eq!(
+        r.orphans[0].value,
+        texto("fst"),
+        "e fica INTACTO: encosta'-lo a' opcao mais parecida e' o «aceita e mente»"
+    );
+}
+
+/// ⭐⭐ **O CONTROLO: um valor QUE ESTÁ na lista aplica-se, e é próprio.**
+///
+/// ⚠️ Sem esta metade, um `aceita` que devolvesse `false` sempre passaria no gate de cima — *uma
+/// cerca que recusa tudo satisfaz toda régua que só mede recusas*.
+#[test]
+fn um_valor_da_lista_aplica_se_e_e_proprio() {
+    let decls = [enum_decl("fast", &["slow", "fast"])];
+    let own: BTreeMap<String, ScriptValue> = [("mode".to_owned(), texto("slow"))].into();
+    let r = resolve(Some(&decls), &own);
+    assert_eq!(r.values[0].value, texto("slow"));
+    assert_eq!(r.values[0].origin, Origin::Own);
+    assert!(r.orphans.is_empty(), "um valor da lista nao e' orfao");
+}
+
+/// ⭐⭐ **E SEM lista o texto continua LIVRE — ao bit.**
+///
+/// ⚠️ Esta é a metade que prova que a wave não mexeu no caminho de omissão: toda propriedade de
+/// texto que já existia continua a aceitar o que o artista escrever.
+#[test]
+fn sem_lista_o_texto_continua_livre() {
+    let decls = [PropDecl {
+        name: "label".into(),
+        default: texto("oi"),
+        hint: PropHint::default(),
+    }];
+    let own: BTreeMap<String, ScriptValue> = [("label".to_owned(), texto("qualquer coisa"))].into();
+    let r = resolve(Some(&decls), &own);
+    assert_eq!(r.values[0].value, texto("qualquer coisa"));
+    assert_eq!(r.values[0].origin, Origin::Own);
+    assert!(r.orphans.is_empty());
+}
+
+/// ⛔⛔ **O TIPO vem ANTES da lista** — e a ordem é a afirmação.
+///
+/// Um NÚMERO gravado numa propriedade que passou a enum é `WrongKind`, nunca `NotAnOption`:
+/// *«o script quer um texto»* diz ao artista a coisa útil; *«não é uma das opções»* mandá-lo-ia
+/// procurar o valor numa lista onde ele nunca poderia estar.
+#[test]
+fn um_numero_numa_propriedade_de_enum_e_do_tipo_errado_e_nao_fora_da_lista() {
+    let decls = [enum_decl("fast", &["slow", "fast"])];
+    let own: BTreeMap<String, ScriptValue> = [("mode".to_owned(), ScriptValue::Number(3.0))].into();
+    let r = resolve(Some(&decls), &own);
+    assert_eq!(
+        r.orphans[0].why,
+        OrphanWhy::WrongKind {
+            declared: ScriptValueKind::Text
+        },
+        "o tipo e' a queixa mais util das duas, e por isso e' a primeira"
+    );
+}
+
+/// ⭐⭐⭐ **AS QUATRO RECUSAS de uma lista malformada — e ela falha FECHADA.**
+///
+/// ⚠️ A quarta é a mais importante: sem ela um objecto que não pôs nada leria um valor que a
+/// própria declaração recusa, e o `resolve` cairia num default que ele próprio nomearia órfão se
+/// alguém o tivesse posto à mão.
+#[test]
+fn uma_lista_malformada_recusa_a_declaracao_inteira() {
+    let casos: [(&str, PropDecl); 5] = [
+        (
+            "opcoes num default que nao e' TEXTO",
+            PropDecl {
+                name: "n".into(),
+                default: ScriptValue::Number(1.0),
+                hint: PropHint {
+                    options: vec!["a".into()],
+                    ..PropHint::default()
+                },
+            },
+        ),
+        ("uma opcao VAZIA", enum_decl("a", &["a", ""])),
+        ("opcoes REPETIDAS", enum_decl("a", &["a", "a"])),
+        ("o default FORA da lista", enum_decl("z", &["a", "b"])),
+        ("mais opcoes do que o painel pinta", {
+            let muitas: Vec<String> = (0..=OPCOES_MAX).map(|i| format!("o{i}")).collect();
+            PropDecl {
+                name: "n".into(),
+                default: texto("o0"),
+                hint: PropHint {
+                    options: muitas,
+                    ..PropHint::default()
+                },
+            }
+        }),
+    ];
+    for (porque, d) in casos {
+        assert!(
+            check_decl(&[], &d).is_err(),
+            "uma lista com «{porque}» tem de RECUSAR a declaracao — um parser que falha ABERTO \
+             manda a lista malformada DESENHAR (a lei que o L-System pagou)"
+        );
+    }
+    // ⭐ E o CONTROLO: uma lista boa passa.
+    assert!(check_decl(&[], &enum_decl("a", &["a", "b"])).is_ok());
 }

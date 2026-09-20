@@ -94,7 +94,7 @@ impl ScriptValueKind {
 ///
 /// ⚠️ **Pistas, não leis** (Q6): elas mandam no que o painel deixa escrever e arrastar; o valor
 /// gravado fora delas é lido como está. Um script que estreite a faixa não reescreve o documento.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct PropHint {
     /// O menor valor que o painel aceita.
     pub min: Option<f64>,
@@ -102,6 +102,15 @@ pub struct PropHint {
     pub max: Option<f64>,
     /// O passo de arrasto.
     pub step: Option<f64>,
+    /// ⭐⭐⭐ **AS OPÇÕES de um texto** — `ph2d.property("mode", "fast", {options = {…}})`.
+    ///
+    /// Vazia = texto livre, que é o de sempre **ao bit**. Com opções, o painel pinta um chip e a
+    /// lei abaixo deixa de aceitar o que não está nelas.
+    ///
+    /// ⚠️ **O enum NÃO é uma variante do [`ScriptValue`]**, e a medição é que o decidiu: ele é um
+    /// `Text` com a lista na PISTA. Uma variante nova custaria um degrau no fio (o postcard é
+    /// posicional) e não compraria nada — *o valor de um enum é o texto que o script compara*.
+    pub options: Vec<String>,
 }
 
 /// **Uma declaração** — `ph2d.property(name, default, hint)` no topo de um script.
@@ -147,6 +156,15 @@ pub enum OrphanWhy {
         /// O tipo que o script declara agora.
         declared: ScriptValueKind,
     },
+    /// ⭐⭐⭐ **O script declara-o com uma LISTA, e este valor não está nela** — o objecto lê o
+    /// default, e o artista vê o valor gravado com um *Remove* ao lado.
+    ///
+    /// ⚠️ **É a MESMA lei do [`Self::WrongKind`] uma casa abaixo**, e a razão é a mesma: um valor
+    /// que a declaração não admite **não se aplica nem se converte**. ⛔ A alternativa — encostá-lo
+    /// à opção mais parecida, ou à primeira — é o *«aceita e mente»* que esta casa já pagou três
+    /// vezes; e deixá-lo passar é o que ele fazia até hoje, com o script a comparar `"fst"` com
+    /// `"fast"` e a cair no ramo errado **em silêncio**.
+    NotAnOption,
 }
 
 /// Um valor próprio sem onde ser aplicado.
@@ -185,15 +203,15 @@ pub fn resolve(decls: Option<&[PropDecl]>, own: &BTreeMap<String, ScriptValue>) 
     let mut out = Resolution::default();
     for d in decls {
         let (value, origin) = match own.get(&d.name) {
-            Some(v) if v.kind() == d.default.kind() => (v.clone(), Origin::Own),
-            // D3: o do tipo errado não se aplica — o objecto lê o default.
+            Some(v) if v.kind() == d.default.kind() && aceita(d, v) => (v.clone(), Origin::Own),
+            // D3: o do tipo errado — e o de fora da LISTA — não se aplicam: o objecto lê o default.
             _ => (d.default.clone(), Origin::Default),
         };
         out.values.push(Resolved {
             name: d.name.clone(),
             value,
             origin,
-            hint: d.hint,
+            hint: d.hint.clone(),
         });
     }
     for (name, value) in own {
@@ -202,6 +220,9 @@ pub fn resolve(decls: Option<&[PropDecl]>, own: &BTreeMap<String, ScriptValue>) 
             Some(d) if d.default.kind() != value.kind() => OrphanWhy::WrongKind {
                 declared: d.default.kind(),
             },
+            // ⚠️ **Depois do tipo, nunca antes:** um número gravado numa propriedade que passou a
+            // enum é `WrongKind`, que diz ao artista a coisa mais útil das duas.
+            Some(d) if !aceita(d, value) => OrphanWhy::NotAnOption,
             Some(_) => continue,
         };
         out.orphans.push(Orphan {
@@ -211,6 +232,20 @@ pub fn resolve(decls: Option<&[PropDecl]>, own: &BTreeMap<String, ScriptValue>) 
         });
     }
     out
+}
+
+/// **A declaração admite este valor?** — a porta, lida pelas DUAS metades do [`resolve`].
+///
+/// ⚠️ **Escrita uma vez de propósito:** as duas perguntas (*«aplica-se?»* e *«é órfão?»*) são a
+/// mesma, e duas cópias divergiriam no dia em que uma delas ganhasse um caso — que é como um valor
+/// passaria a ser recusado **e** a não ser nomeado, ou o contrário.
+///
+/// ⭐ Sem opções ela é `true` **sempre**: o caminho de omissão é o de sempre, ao bit.
+fn aceita(d: &PropDecl, v: &ScriptValue) -> bool {
+    match v {
+        ScriptValue::Text(t) if !d.hint.options.is_empty() => d.hint.options.iter().any(|o| o == t),
+        _ => true,
+    }
 }
 
 /// **O artista PÔS este valor** (D1: fica próprio mesmo igual ao default).
@@ -290,6 +325,17 @@ impl std::fmt::Display for DeclError {
 /// que vê as duas crates, afirma-o.
 pub const PROPS_MAX: usize = 32;
 
+/// **Quantas OPÇÕES um enum pode oferecer.**
+///
+/// ⚠️ **De que recurso ele é, e ele NÃO é a altura do popover:** o popover **rola** (há gate,
+/// `a_long_popover_scrolls`), logo o ecrã não o limita. O recurso é a **tabela de ids** do
+/// selector — um custo pago em tempo de compilação —, e os dois números são o MESMO facto, com o
+/// mesmo gate na shell a afirmá-lo que o [`PROPS_MAX`] tem.
+///
+/// ⭐ Ele é `32` por ser o mesmo tamanho do irmão, e isso é uma escolha de CONVENIÊNCIA declarada:
+/// as duas tabelas nascem do mesmo construtor, e um número diferente não compraria nada.
+pub const OPCOES_MAX: usize = 32;
+
 /// Os nomes que o `self` já usa — um script não os pode declarar.
 pub const RESERVED_NAMES: &[&str] = &["id"];
 
@@ -320,7 +366,7 @@ pub fn check_decl(previous: &[PropDecl], decl: &PropDecl) -> Result<(), DeclErro
     {
         return Err(DeclError::BadDefault(n.clone()));
     }
-    let h = decl.hint;
+    let h = &decl.hint;
     let has_hint = h.min.is_some() || h.max.is_some() || h.step.is_some();
     if has_hint && decl.default.kind() != ScriptValueKind::Number {
         return Err(DeclError::BadHint(n.clone()));
@@ -336,6 +382,47 @@ pub fn check_decl(previous: &[PropDecl], decl: &PropDecl) -> Result<(), DeclErro
         && lo > hi
     {
         return Err(DeclError::BadHint(n.clone()));
+    }
+    opcoes_sao_validas(decl, n.as_str())?;
+    Ok(())
+}
+
+/// ⭐⭐⭐ **A recusa de uma LISTA malformada — e ela falha FECHADA.**
+///
+/// ⚠️⚠️ **A lei que esta casa pagou no L-System:** *o parser falhava ABERTO em dois dos três
+/// sub-campos de uma regra — uma condição que não compila EVAPORAVA e ia desenhar.* Aqui, uma
+/// lista que não se pode honrar **recusa a declaração inteira**, com a queixa a chegar ao painel
+/// pelo caminho que o `DeclError` já tem.
+///
+/// As quatro recusas, e cada uma impede um estado que o produto não sabe pintar:
+///
+/// 1. **opções num default que não é TEXTO** — o chip escolheria uma string para um número;
+/// 2. **uma opção VAZIA** — um chip sem rótulo é um controlo que o artista não sabe que existe;
+/// 3. **opções REPETIDAS** — duas entradas iguais dão dois chips indistinguíveis, e escolher um
+///    deles é indistinguível de escolher o outro;
+/// 4. ⭐ **o default FORA da lista** — a mais importante das quatro: sem ela, um objecto que não
+///    pôs nada leria um valor que a própria declaração recusa, e o [`resolve`] cairia num default
+///    que ele próprio nomearia órfão se alguém o tivesse posto à mão.
+fn opcoes_sao_validas(decl: &PropDecl, n: &str) -> Result<(), DeclError> {
+    let opts = &decl.hint.options;
+    if opts.is_empty() {
+        return Ok(());
+    }
+    let ScriptValue::Text(padrao) = &decl.default else {
+        return Err(DeclError::BadHint(n.to_owned()));
+    };
+    if opts.iter().any(String::is_empty) {
+        return Err(DeclError::BadHint(n.to_owned()));
+    }
+    let unicas: std::collections::BTreeSet<&String> = opts.iter().collect();
+    if unicas.len() != opts.len() {
+        return Err(DeclError::BadHint(n.to_owned()));
+    }
+    if !opts.contains(padrao) {
+        return Err(DeclError::BadHint(n.to_owned()));
+    }
+    if opts.len() > OPCOES_MAX {
+        return Err(DeclError::BadHint(n.to_owned()));
     }
     Ok(())
 }

@@ -45,6 +45,12 @@ pub struct InspectorScriptProp {
     pub value: InspectorScriptValue,
     /// ⭐ **O artista PÔS este valor?** — a cor da linha e o botão *Reset*.
     pub own: bool,
+    /// ⭐⭐⭐ **As OPÇÕES que o script declarou** — vazia = texto livre, que é o de sempre.
+    ///
+    /// ⚠️ Ela é do PAINEL e não do documento: o que o objecto guarda é o texto escolhido, e a
+    /// lista vive na declaração — *renomear uma opção no script não reescreve o que os objectos
+    /// têm*, e é isso que faz um valor que saiu da lista ser NOMEADO em vez de apagado.
+    pub options: Vec<String>,
     /// As pistas de edição de um número (a faixa do campo).
     pub min: Option<f64>,
     /// Ver [`Self::min`].
@@ -60,8 +66,24 @@ pub struct InspectorScriptOrphan {
     pub name: String,
     /// O valor gravado, pronto a ler.
     pub value: InspectorScriptValue,
-    /// `None` = o script já não o declara; `Some(tipo)` = declara-o com OUTRO tipo.
-    pub wants: Option<&'static str>,
+    /// Porque ele não se aplica — ver [`PorqueOrfao`].
+    pub wants: PorqueOrfao,
+}
+
+/// **Porque um valor próprio não tem onde ser aplicado** — a frase que o painel mostra.
+///
+/// ⚠️⚠️ **É um ENUM e não um `Option` com um `bool` ao lado**, e a razão é a lei da casa: dois
+/// campos que têm de concordar divergem, e o terceiro estado nasceu exactamente assim (ele foi um
+/// `Option<&str>` de dois estados até o enum de script chegar). *Um estado a mais num tipo é um
+/// braço a mais num `match`; um estado a mais em dois campos é uma combinação impossível.*
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PorqueOrfao {
+    /// O script já não declara este nome (D2).
+    NaoDeclarado,
+    /// O script declara-o com OUTRO tipo (D3) — o nome do tipo que ele pede agora.
+    OutroTipo(&'static str),
+    /// ⭐ O script declara-o com uma LISTA, e este valor não está nela.
+    ForaDaLista,
 }
 
 /// **Em que estado está o ficheiro.**

@@ -61,7 +61,7 @@ use ph2d_editor_core::screens::hero::{
 };
 use ph2d_editor_core::script_edits::{
     InspectorScriptInfo, InspectorScriptOrphan, InspectorScriptProp, InspectorScriptStatus,
-    InspectorScriptValue,
+    InspectorScriptValue, PorqueOrfao,
 };
 use ph2d_editor_core::sequence_edits::InspectorSequenceInfo;
 use ph2d_editor_core::shake_edits::{
@@ -785,6 +785,7 @@ fn arma_o_top20() {
                 name: "speed".to_string(),
                 value: InspectorScriptValue::Number(2.0),
                 own: true,
+                options: Vec::new(),
                 min: Some(0.0),
                 max: Some(10.0),
                 step: Some(0.1),
@@ -793,6 +794,7 @@ fn arma_o_top20() {
                 name: "greeting".to_string(),
                 value: InspectorScriptValue::Text("hello".to_string()),
                 own: false,
+                options: Vec::new(),
                 min: None,
                 max: None,
                 step: None,
@@ -801,6 +803,7 @@ fn arma_o_top20() {
                 name: "chatty".to_string(),
                 value: InspectorScriptValue::Bool(true),
                 own: false,
+                options: Vec::new(),
                 min: None,
                 max: None,
                 step: None,
@@ -809,7 +812,7 @@ fn arma_o_top20() {
         orphans: vec![InspectorScriptOrphan {
             name: "legacy_speed".to_string(),
             value: InspectorScriptValue::Number(1.0),
-            wants: None,
+            wants: PorqueOrfao::NaoDeclarado,
         }],
         kept: 1,
         failure: None,

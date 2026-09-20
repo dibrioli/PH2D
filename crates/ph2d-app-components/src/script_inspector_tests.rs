@@ -129,12 +129,24 @@ fn os_orfaos_dizem_o_que_o_script_quer_agora() {
     let (mut sim, bits) = cena(cfg);
     let h = pronto(&mut sim);
     let info = build_info(&sim, Some(&h), bits, 1, false).expect("tem");
-    let o: Vec<(&str, Option<&str>)> = info
+    let o: Vec<(&str, ph2d_editor_core::script_edits::PorqueOrfao)> = info
         .orphans
         .iter()
         .map(|o| (o.name.as_str(), o.wants))
         .collect();
-    assert_eq!(o, [("nome", Some("string")), ("velho", None)]);
+    assert_eq!(
+        o,
+        [
+            (
+                "nome",
+                ph2d_editor_core::script_edits::PorqueOrfao::OutroTipo("string")
+            ),
+            (
+                "velho",
+                ph2d_editor_core::script_edits::PorqueOrfao::NaoDeclarado
+            )
+        ]
+    );
     assert_eq!(
         info.props[3].value,
         V::Text("bob".into()),

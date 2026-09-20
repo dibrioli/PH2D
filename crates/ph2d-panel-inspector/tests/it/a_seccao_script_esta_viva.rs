@@ -41,6 +41,8 @@ fn prop(name: &str, value: V, own: bool) -> InspectorScriptProp {
         name: name.into(),
         value,
         own,
+        // ⚠️ Vazia = texto LIVRE, que é o de sempre: este arnês mede as três linhas de sempre.
+        options: Vec::new(),
         min: Some(0.0),
         max: Some(10.0),
         step: Some(0.1),
@@ -63,7 +65,7 @@ fn info() -> InspectorScriptInfo {
         orphans: vec![InspectorScriptOrphan {
             name: "height".into(),
             value: V::Number(9.0),
-            wants: None,
+            wants: ph2d_editor_core::script_edits::PorqueOrfao::NaoDeclarado,
         }],
         kept: 0,
         failure: None,
@@ -201,5 +203,91 @@ fn a_caixa_manda_o_contrario_do_snapshot() {
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     let a = clica(&mut h, &mut st, &rects, ids::INSP_SCRIPT_BOOL[2]);
     assert_eq!(edicoes(&a), [E::SetBool("active".into(), false)]);
+    set_current_inspector_script(None);
+}
+
+/// A linha de ENUM que os dois gates abaixo usam — ⚠️ **a escolha alvo é a TERCEIRA das três**, de
+/// propósito: com uma opção só, um despacho que devolvesse sempre `0` ficaria **inobservável**.
+fn info_com_enum() -> InspectorScriptInfo {
+    let mut i = info();
+    i.props = vec![InspectorScriptProp {
+        name: "mode".into(),
+        value: V::Text("fast".into()),
+        own: false,
+        options: vec!["slow".into(), "fast".into(), "turbo".into()],
+        min: None,
+        max: None,
+        step: None,
+    }];
+    i.orphans.clear();
+    i
+}
+
+/// ⭐⭐⭐ **Uma propriedade com LISTA pinta um CHIP, e sem lista pinta um CAMPO.**
+///
+/// ⚠️ **As duas metades, e cada uma sozinha mente:** sem a primeira o artista escreve o valor à
+/// mão e um erro de escrita passa; sem a segunda **toda** propriedade de texto viraria um chip
+/// sem opções — um controlo que abre um popover vazio.
+#[test]
+fn a_lista_e_o_que_separa_um_chip_de_um_campo_livre() {
+    let (mut h, mut st) = host(Some(info_com_enum()));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert!(
+        rect_de(&rects, ids::INSP_SCRIPT_ENUM[0]).is_some(),
+        "uma propriedade com lista tem de pintar o CHIP"
+    );
+    assert!(
+        rect_de(&rects, ids::INSP_SCRIPT_TEXT[0]).is_none(),
+        "e NAO o campo livre — dois controlos na mesma linha e' a linha a mentir"
+    );
+
+    // ⭐ O CONTROLO: a mesma linha SEM lista volta a ser um campo.
+    let mut sem = info_com_enum();
+    sem.props[0].options.clear();
+    set_current_inspector_script(Some(sem));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert!(
+        rect_de(&rects, ids::INSP_SCRIPT_TEXT[0]).is_some(),
+        "sem lista o texto tem de continuar LIVRE — o caminho de omissao e' o de sempre"
+    );
+    assert!(rect_de(&rects, ids::INSP_SCRIPT_ENUM[0]).is_none());
+    set_current_inspector_script(None);
+}
+
+/// ⭐⭐⭐ **O CHIP abre, cada opção fica sob o ponteiro, e a escolhida chega ao barramento com o
+/// TEXTO certo.**
+///
+/// ⚠️⚠️ **Três juntas que ninguém vê da chamada:** `set_pending_script_enum` →
+/// `take_pending_script_enum` → o passe diferido. Qualquer uma partida dá o mesmo sintoma —
+/// *«abre e não dá para escolher»* — e **compila**.
+///
+/// ⭐ E a escolha é um `SetText`: *o valor de um enum É o texto que o script compara*.
+#[test]
+fn o_chip_do_enum_abre_e_a_escolha_chega_com_o_texto_certo() {
+    let (mut h, mut st) = host(Some(info_com_enum()));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let chip = ids::INSP_SCRIPT_ENUM[0];
+    assert!(rect_de(&rects, chip).is_some(), "o chip nao foi pintado");
+    assert_eq!(
+        h.dropdown_is_open(chip),
+        Some(false),
+        "o chip nao esta' registado como Dropdown — o despachante nao o sabe abrir"
+    );
+
+    h.set_dropdown_open(chip, true);
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    for j in 0..3 {
+        let id = ids::INSP_SCRIPT_ENUM_OPT[j];
+        let r = rect_de(&rects, id)
+            .unwrap_or_else(|| panic!("a opcao {j} nao chegou ao indice de acerto"));
+        assert!(r.w > 0.0 && r.h > 0.0, "opcao {j} sem area");
+    }
+
+    let acoes = clica(&mut h, &mut st, &rects, ids::INSP_SCRIPT_ENUM_OPT[2]);
+    assert_eq!(
+        edicoes(&acoes),
+        vec![E::SetText("mode".into(), "turbo".into())],
+        "a escolha tem de carregar o NOME da propriedade e o TEXTO da opcao"
+    );
     set_current_inspector_script(None);
 }

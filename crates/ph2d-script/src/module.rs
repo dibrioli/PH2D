@@ -181,6 +181,15 @@ fn read_decl(
                 Value::String(s) => s.to_str().map(|s| s.to_owned()).unwrap_or_default(),
                 _ => String::new(),
             };
+            // ⭐⭐⭐ **A LISTA de um enum** — ela não é um número, logo não passa pelo `slot`.
+            //
+            // ⚠️ **A recusa é de FORMA aqui e de CONTEÚDO no `check_decl`**, que é a partição que
+            // esta função já declara: aqui recusa-se *«isto não é uma lista de textos»*; lá
+            // recusa-se *«esta lista não se pode honrar»* (vazia, repetida, sem o default dentro).
+            if key == "options" {
+                hint.options = lista_de_textos(&v).ok_or(DeclError::BadHint(name.clone()))?;
+                continue;
+            }
             let slot = match key.as_str() {
                 "min" => &mut hint.min,
                 "max" => &mut hint.max,
@@ -209,6 +218,25 @@ fn read_decl(
         default,
         hint,
     })
+}
+
+/// **Uma sequência Luau de textos**, ou `None` se não for isso.
+///
+/// ⚠️ **Ela lê por `sequence_values` e não por `pairs`**, e isso é a lei: uma tabela Luau com
+/// chaves esparsas (`{[1]="a", [3]="b"}`) é um mapa e não uma lista, e percorrê-la por pares
+/// daria uma ORDEM que o artista não escreveu — *a ordem das opções é a que ele leu no ficheiro*.
+fn lista_de_textos(v: &Value) -> Option<Vec<String>> {
+    let t = v.as_table()?;
+    let mut out = Vec::new();
+    for item in t.clone().sequence_values::<Value>() {
+        let Ok(Value::String(s)) = item else {
+            return None;
+        };
+        out.push(s.to_str().ok()?.to_owned());
+    }
+    // ⛔ Uma tabela VAZIA não é «sem opções»: é uma lista que o artista escreveu e que não tem
+    //    nada dentro — e o `check_decl` trata `is_empty` como *texto livre*. ⇒ recusa-se aqui.
+    (!out.is_empty()).then_some(out)
 }
 
 #[cfg(test)]

@@ -82,6 +82,42 @@ pub(super) fn paint_deferred_top20_popovers(
             hit_index,
         );
     }
+    // ⭐ **E o do ENUM de um SCRIPT** — a mesma máquina, com UMA diferença: o que o pendente
+    // guarda é a LINHA, e as opções relêem-se do instantâneo. ⚠️ Se a linha desapareceu entre o
+    // chip e este passe (o ficheiro mudou no mesmo quadro), não se pinta nada — *um popover sobre
+    // uma lista que já não existe ofereceria escolhas que o script não conhece*.
+    let pendente = state_popovers::take_pending_script_enum();
+    // ⚠️ **Escrita AQUI e não no chip**, e é o que faz o clique funcionar: quem pode ser clicado é
+    // quem foi REGISTADO, e é esta passagem que regista. Ela apaga-se quando não há popover, senão
+    // um clique numa opção de um quadro antigo escolheria para a linha errada.
+    state_popovers::set_linha_do_enum_pintado(pendente.map(|(linha, _)| linha));
+    if let Some((linha, chip)) = pendente
+        && let Some(info) = crate::state_components::current_inspector_script()
+        && let Some(p) = info.props.get(linha)
+        && !p.options.is_empty()
+    {
+        let mut dd = Dropdown::new(
+            crate::ids::INSP_SCRIPT_ENUM[linha],
+            "",
+            sections::script::opcoes_da_linha(p),
+        )
+        .open(true);
+        if let ph2d_editor_core::script_edits::InspectorScriptValue::Text(t) = &p.value
+            && let Some(j) = p.options.iter().position(|o| o == t)
+        {
+            dd.select(j);
+        }
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
     // ⭐ **E o do GATILHO** — mesma máquina, e o `take` é o que garante que ele se pinta uma vez.
     if let Some((edge, chip)) = state_popovers::take_pending_trigger_dd() {
         let mut dd = Dropdown::new(

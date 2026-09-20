@@ -231,6 +231,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.script.browse" => "Browse",
         "panel.inspector.script.no_longer_in_the_script" => "No longer in the script:",
         "panel.inspector.script.not_in_the_script" => "not in the script",
+        "panel.inspector.script.not_one_of_the_options" => "not one of the options",
         "panel.inspector.script.the_script_now_wants_a" => "the script now wants a {tipo}",
         "panel.inspector.script.remove" => "Remove",
         "panel.inspector.statemachine.never_fires" => "(never fires)",

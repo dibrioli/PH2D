@@ -8,7 +8,7 @@
 //! pelo `is_focusable`, e o ramo `None => false` engole o clique em silêncio).
 
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
-use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, TextInputState};
+use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, DropdownState, TextInputState};
 
 use super::populate::register_button_ids;
 
@@ -28,6 +28,20 @@ pub(crate) fn populate_script(store: &mut WidgetStore) {
     store.register(crate::ids::INSP_SCRIPT_SOURCE, text_input());
     for id in crate::ids::INSP_SCRIPT_TEXT {
         store.register(id, text_input());
+    }
+    // ⭐⭐ **O CHIP de um enum e as OPÇÕES dele** — as opções são BOTÕES, e é o `is_focusable`
+    // delas que decide se a escolha chega. ⚠️ Sem esta linha o chip abre e o clique numa opção
+    // morre: *um controlo pintado e ausente daqui está MORTO SOB O DEDO*.
+    register_button_ids(store, &crate::ids::INSP_SCRIPT_ENUM_OPT);
+    for id in crate::ids::INSP_SCRIPT_ENUM {
+        store.register(
+            id,
+            InteractiveState::Dropdown {
+                state: DropdownState::Normal,
+                open: false,
+                selected_index: None,
+            },
+        );
     }
     for id in crate::ids::INSP_SCRIPT_BOOL {
         store.register(

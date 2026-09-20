@@ -95,6 +95,26 @@ thread_local! {
         std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> =
         const { std::cell::Cell::new(None) };
 
+    /// SCRIPT: `(índice da LINHA, rect do chip)`. ⚠️ **A linha e não a escolha**, ao contrário
+    /// das duas irmãs: aqui as opções são da DECLARAÇÃO e mudam de linha para linha, logo o passe
+    /// diferido tem de as reler do instantâneo — guardar a escolha não lhe diria de que lista ela é.
+    pub(crate) static PENDING_SCRIPT_ENUM:
+        std::cell::Cell<Option<(usize, ph2d_editor_core::zones::Rect)>> =
+        const { std::cell::Cell::new(None) };
+
+    /// ⭐⭐⭐ **A LINHA cujas opções de enum estão NA TELA** — escrita por quem as REGISTA no
+    /// índice de acerto, e lida pelo clique.
+    ///
+    /// ⛔⛔ **Ela NÃO é o `open` do chip, e a diferença é o defeito que um gate apanhou:** o
+    /// despacho FECHA um dropdown aberto no `pointer_down`, logo quando o clique numa opção chega
+    /// ao painel o `open` já é `false` e a linha seria `None` — *a escolha morria em silêncio, com
+    /// o chip pintado, as opções registadas e o braço do evento no sítio*.
+    ///
+    /// ⚠️ Ela **sobrevive** ao quadro de propósito (não há `take`): a única maneira de um id de
+    /// opção ser clicado é ele ter sido registado, e quem o registou escreveu isto.
+    pub(crate) static LINHA_DO_ENUM_PINTADO: std::cell::Cell<Option<usize>> =
+        const { std::cell::Cell::new(None) };
+
     /// ⭐ **O popover que ESTE painel pintou neste quadro** — `(dono, rect do painel)`.
     ///
     /// ⚠️ Ele existe para uma coisa só: o `dispatch::pointer_down` fecha um dropdown aberto quando
@@ -191,6 +211,24 @@ pub(crate) fn set_pending_trigger_dd(chip: Option<(u8, ph2d_editor_core::zones::
 
 pub(crate) fn take_pending_trigger_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
     PENDING_TRIGGER_DD.with(std::cell::Cell::take)
+}
+
+/// **A linha cujas opções de enum estão na tela** — ver [`LINHA_DO_ENUM_PINTADO`].
+pub(crate) fn linha_do_enum_pintado() -> Option<usize> {
+    LINHA_DO_ENUM_PINTADO.with(std::cell::Cell::get)
+}
+
+/// Escrita por quem REGISTA as opções no índice de acerto.
+pub(crate) fn set_linha_do_enum_pintado(linha: Option<usize>) {
+    LINHA_DO_ENUM_PINTADO.with(|c| c.set(linha));
+}
+
+pub(crate) fn set_pending_script_enum(chip: Option<(usize, ph2d_editor_core::zones::Rect)>) {
+    PENDING_SCRIPT_ENUM.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_script_enum() -> Option<(usize, ph2d_editor_core::zones::Rect)> {
+    PENDING_SCRIPT_ENUM.with(std::cell::Cell::take)
 }
 
 /// Regista que um popover foi pintado neste quadro — ver [`PAINTED_POPOVER`].

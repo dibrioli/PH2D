@@ -19,9 +19,9 @@
 
 use super::*;
 use ph2d_editor_core::script_edits::{
-    InspectorScriptInfo, InspectorScriptProp, InspectorScriptValue,
+    InspectorScriptInfo, InspectorScriptProp, InspectorScriptValue, PorqueOrfao,
 };
-use ph2d_editor_core::widget::SectionFold;
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, SectionFold, paint_dropdown_chip};
 use ph2d_i18n::{tr, tr_with};
 
 /// **A largura de um botão que DIZ o rótulo inteiro** — o texto medido no tamanho do botão e o recuo
@@ -45,6 +45,26 @@ fn legivel(v: &InspectorScriptValue) -> String {
         InspectorScriptValue::Bool(b) => b.to_string(),
         InspectorScriptValue::Text(t) => format!("\u{201c}{t}\u{201d}"),
     }
+}
+
+/// **As opções de uma linha de enum** — a PORTA, lida pelo chip **e** pelo passe diferido que
+/// desenha o popover.
+///
+/// ⚠️ **Escrita uma vez de propósito:** as duas passagens têm de concordar na ORDEM e nos IDS, e
+/// duas cópias divergiriam no dia em que uma delas ganhasse um caso — o artista carregaria na
+/// terceira opção e escolheria a segunda.
+///
+/// ⛔ **O rótulo é o valor do script e NÃO passa pela tabela de strings**, e isso é uma isenção
+/// com mecanismo: `"fast"` é um valor que o ARTISTA escreveu no ficheiro dele, não língua desta
+/// casa — traduzi-lo mudaria o que o script compara. É a mesma lei do nome de um objecto.
+#[must_use]
+pub fn opcoes_da_linha(p: &InspectorScriptProp) -> Vec<DropdownOption<usize>> {
+    p.options
+        .iter()
+        .enumerate()
+        .take(ids::INSP_SCRIPT_ENUM_OPT.len())
+        .map(|(j, texto)| DropdownOption::new(ids::INSP_SCRIPT_ENUM_OPT[j], j, texto.clone()))
+        .collect()
 }
 
 /// Um botão de largura inteira ou à direita. Regista e pinta.
@@ -184,6 +204,38 @@ fn linha(
                 text_system,
                 theme,
             );
+        }
+        // ⭐⭐⭐ **Um texto com LISTA é um CHIP; sem ela é um campo livre.**
+        //
+        // ⚠️⚠️ **O discriminador é a LISTA e não o tipo**, e é isso que faz o enum não custar uma
+        // variante no fio: o valor continua a ser o texto que o script compara.
+        InspectorScriptValue::Text(_) if !p.options.is_empty() => {
+            let id = ids::INSP_SCRIPT_ENUM[i];
+            hit_index.register(id, ctrl);
+            let aberto = matches!(
+                store.get(id),
+                Some(InteractiveState::Dropdown { open: true, .. })
+            );
+            let mut dd = Dropdown::new(id, "", opcoes_da_linha(p)).open(aberto);
+            // ⚠️ **A escolha vem do SNAPSHOT e o `open` do store** — a mesma lei do chip do
+            // gatilho. E ⛔ um valor FORA da lista não selecciona nada: ele nem chega aqui (a lei
+            // do `resolve` não o aplica), e se chegasse o `position` devolveria `None` em vez de
+            // encostar à primeira — *encostar é o «aceita e mente» que esta wave existe para
+            // matar*.
+            if let InspectorScriptValue::Text(t) = &p.value
+                && let Some(j) = p.options.iter().position(|o| o == t)
+            {
+                dd.select(j);
+            }
+            paint_dropdown_chip(&dd, ctrl, scene, text_system, theme);
+            // ⛔⛔ **UM popover de cada vez, e a cerca é esta linha:** a tabela de ids das opções
+            // é PARTILHADA por todas as linhas, logo dois chips abertos registariam os mesmos ids
+            // duas vezes e o índice de acerto ficaria com o ÚLTIMO — o artista carregaria numa
+            // opção e escolheria para a outra linha. O `set` guarda o último, e o `take` do passe
+            // diferido pinta um só.
+            if aberto {
+                crate::state_popovers::set_pending_script_enum(Some((i, ctrl)));
+            }
         }
         InspectorScriptValue::Text(_) => {
             let id = ids::INSP_SCRIPT_TEXT[i];
@@ -376,11 +428,19 @@ pub(crate) fn paint_script_section(
         .zip(ids::INSP_SCRIPT_ORPHAN_REMOVE.iter())
     {
         let porque = match o.wants {
-            None => String::from(tr("panel.inspector.script.not_in_the_script")),
-            Some(tipo) => tr_with(
+            PorqueOrfao::NaoDeclarado => {
+                String::from(tr("panel.inspector.script.not_in_the_script"))
+            }
+            PorqueOrfao::OutroTipo(tipo) => tr_with(
                 "panel.inspector.script.the_script_now_wants_a",
                 &[("tipo", &tipo)],
             ),
+            // ⭐ A frase da lista é OUTRA de propósito: *«o script quer um texto»* seria verdade e
+            // inútil — o valor JÁ é um texto, e o que falta é ele estar entre os que o script
+            // aceita.
+            PorqueOrfao::ForaDaLista => {
+                String::from(tr("panel.inspector.script.not_one_of_the_options"))
+            }
         };
         let reset_w = largura_do_botao(text_system, id, tr("panel.inspector.script.remove"));
         let gap = Spacing::Xs.px();

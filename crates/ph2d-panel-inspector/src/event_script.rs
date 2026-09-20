@@ -32,6 +32,20 @@ pub(crate) fn apply_script_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 .map(|p| E::Forget(p.name.clone()))
         } else if let Some(i) = linha(&crate::ids::INSP_SCRIPT_ORPHAN_REMOVE, id) {
             info.orphans.get(i).map(|o| E::Forget(o.name.clone()))
+        // ⭐⭐⭐ **A escolha de um ENUM** — ela é um `SetText` e não uma edição nova, porque o valor
+        // de um enum É o texto que o script compara.
+        //
+        // ⛔⛔ **Ela tem de viver DENTRO desta cadeia**, e um gate de costura provou-o: o `else`
+        // abaixo faz `return false`, logo um braço escrito a seguir ao bloco é CÓDIGO MORTO para
+        // todo `Click`. *É o «dreno de um braço só» do §5.0 — um handler cujo `if let` não cobre a
+        // variante —, e ele compila, pinta e regista sem que nada acuse.*
+        } else if let Some(j) = linha(&crate::ids::INSP_SCRIPT_ENUM_OPT, id) {
+            // ⚠️ A LINHA vem de quem REGISTOU as opções, nunca do `open` do chip: o despacho fecha
+            // o dropdown no `pointer_down`, logo aqui ele já é `false`.
+            crate::state_popovers::linha_do_enum_pintado()
+                .and_then(|i| info.props.get(i))
+                .and_then(|p| p.options.get(j).map(|o| (p, o)))
+                .map(|(p, escolha)| E::SetText(p.name.clone(), escolha.clone()))
         } else {
             return false;
         };

@@ -160,7 +160,10 @@ fn o_bob_alto_mostra_o_orfao_height() {
         .expect("tem secção");
     assert_eq!(info.orphans.len(), 1);
     assert_eq!(info.orphans[0].name, "height");
-    assert_eq!(info.orphans[0].wants, None);
+    assert_eq!(
+        info.orphans[0].wants,
+        ph2d_editor_core::script_edits::PorqueOrfao::NaoDeclarado
+    );
     let amp = info
         .props
         .iter()

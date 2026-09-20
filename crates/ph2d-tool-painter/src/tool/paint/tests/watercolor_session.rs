@@ -1616,3 +1616,101 @@ fn watercolor_color_change_junction_is_soft() {
          a ser suavizada na fronteira de posse"
     );
 }
+
+/// **A MEDIÇÃO do report «pigment só funciona sobre tinta SECA»** (dono, 2026-09-20, foto de azul +
+/// amarelo com uma faixa PÁLIDA no meio em vez de verde). Instrumento de uma recusa, não um gate —
+/// ele IMPRIME a tabela que separou as quatro células e é o ponto de partida de quem pegar nisto.
+///
+/// ⛔⛔ **A CAUSA, medida:** o termo `Pigment` do composite mistura a lavagem com a **BASE
+/// CONGELADA** — a tinta SECA por baixo da sessão. Um vizinho MOLHADO é um *session-mate* e **não
+/// está na base** (a própria `build_rewet_fields` o diz por escrito), logo ali ele mistura com o
+/// PAPEL: no meio lê `254,252,235`, quase branco, contra `253,245,140` com o botão desligado. *O
+/// botão não falha wet-on-wet; ele mistura com a coisa errada.*
+///
+/// ⛔ **E DUAS curas foram construídas, medidas e REVERTIDAS** — nenhuma é a que falta:
+/// 1. **trocar a LEI** (RYB → Kubelka–Munk no depósito): irrelevante aqui, porque o peso do `over`
+///    no meio da sobreposição é `w = a/na ≈ 1` e **qualquer** lei devolve a cor de cima;
+/// 2. **trocar o PESO** para a fracção de massa (`a/(a+da)`): o depósito passa de `250,230,64` para
+///    `210,223,65` e pára aí — *~20 dabs amarelos passam pelo mesmo texel e cada um volta a
+///    misturar*, lavando o azul embora geometricamente.
+///
+/// ⭐ **A cura que SOBRA está desenhada e é estrutural:** a cobertura é **max-blended** porque uma
+/// lavagem é UMA passagem, e a cor tem de obedecer à mesma lei — o peso do depósito não é o alfa do
+/// dab, é o **INCREMENTO da cobertura** (`max(0, depois − antes)`), que é zero quando o mesmo traço
+/// repassa e positivo quando um traço NOVO chega. O incremento só é visível dentro do passe de
+/// COBERTURA (o de cor corre depois, sobre o envelope já fechado), logo a cura junta os dois passes
+/// — o que de graça apaga a duplicação do replay de rng que eles hoje mantêm em lock-step.
+#[test]
+#[ignore = "measurement, not a gate — o instrumento da recusa acima"]
+fn diag_pigment_molhado_sobre_molhado() {
+    let azul = [0.25, 0.45, 0.95];
+    let amarelo = [0.98, 0.90, 0.25];
+    let medir = |secar: bool, pigment: bool| {
+        let size = 192u32;
+        let mut t = white_canvas(size, 14.0);
+        let mut b = BrushSpec {
+            radius_px: 14.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: azul,
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.30,
+            depth: 1.2,
+            edge_gain: 0.4,
+            edge_spread: 10.0,
+            warp: 0.0,
+            granulation: 0.0,
+            smooth_edges: true,
+            pigment,
+            pigment_mix: 1.0,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        t.paint.brush_by_mode.fill(b);
+        let stroke_v = |t: &mut PainterTool, x: f32| {
+            assert!(t.on_canvas_pointer(cp([x, 40.0], PointerPhase::Down)));
+            let mut y = 40.0f32;
+            while y < 150.0 {
+                y += 2.0;
+                t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp([x, 150.0], PointerPhase::Up));
+        };
+        stroke_v(&mut t, 86.0);
+        if secar {
+            for _ in 0..300 {
+                t.paint_tick(0.5);
+            }
+        }
+        b.color = amarelo;
+        t.paint.brush = b;
+        t.paint.brush_by_mode.fill(b);
+        stroke_v(&mut t, 100.0); // SOBREPÕE o azul
+        let yy = 96u32;
+        let fw = size as usize;
+        let cb = &t.paint.stroke_color;
+        let dep = |x: usize| {
+            let i = (yy as usize * fw + x) * 4;
+            format!("{},{},{}/a{}", cb[i], cb[i + 1], cb[i + 2], cb[i + 3])
+        };
+        println!(
+            "secar={secar:<5} pigment={pigment:<5} | x86 {:?} x93(meio) {:?} x100 {:?} | deposito x93 {}",
+            &px(&t, size, 86, yy)[..3],
+            &px(&t, size, 93, yy)[..3],
+            &px(&t, size, 100, yy)[..3],
+            dep(93),
+        );
+    };
+    println!();
+    for secar in [false, true] {
+        for pigment in [false, true] {
+            medir(secar, pigment);
+        }
+    }
+    println!(
+        "\nreferência: azul {:?} amarelo {:?} — VERDE seria ~(70..140, 140..200, 40..90)",
+        azul.map(|v: f32| (v * 255.0) as u8),
+        amarelo.map(|v: f32| (v * 255.0) as u8)
+    );
+}

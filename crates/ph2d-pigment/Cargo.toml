@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-pigment"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Esta folha é UMA pergunta: *como é que duas tintas se misturam?* Ela nasceu por ordem do dono
+# (2026-09-20, *«trocar as duas para a lei do Wet Paint — os três meios passam a misturar igual»*),
+# e nasceu como folha porque os consumidores são TRÊS crates que não se conhecem: o motor de fluido
+# (`ph2d-wet-paint`, de onde a lei veio), o motor de pincel (`ph2d-painter-brush`, o Digital) e a
+# lavagem (`ph2d-tool-painter`, a Aquarela). ⚠️ *Uma lei escrita em dois sítios ainda não é uma lei
+# — só uma PORTA é*, e uma cópia aqui divergiria no dia em que alguém afinasse uma delas.
+
+[dependencies]
+# ⚠️ **A única dependência, e ela é a razão de o resultado ser o MESMO nos três sistemas
+# operativos** — a 1.ª redacção deste ficheiro dizia «zero dependências» e não chegou a compilar.
+# Ela entra SÓ nos nós da tabela sRGB, calculados uma vez: entre nós há apenas `+ − × ÷` e uma
+# truncagem, que o IEEE-754 especifica ao bit. Mesmo pin e mesma razão do `ph2d-wet-paint` e do
+# `ph2d-ecs`: um bump de patch move um ulp e parte os gates de determinismo.
+libm = { version = "=0.2.16", default-features = false }
+
+[lints]
+workspace = true

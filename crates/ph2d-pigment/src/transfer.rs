@@ -215,13 +215,11 @@ pub fn srgb255_of_linear(r: f64) -> f64 {
 /// sites' behaviour instead of quietly imposing one policy on both.
 #[inline]
 pub fn srgb255_to_linear(c: f64) -> f64 {
-    let c = if c < 0.0 {
-        0.0
-    } else if c > 255.0 {
-        255.0
-    } else {
-        c
-    };
+    // ⚠️ Era um `if/else if/else` escrito à mão, que a crate de origem tolerava por um
+    // `allow(clippy::manual_clamp)` de CRATE INTEIRA. Aqui é `clamp` — a resposta é a mesma em todo
+    // valor, `NaN` incluído (o `f64::clamp` propaga-o, como o `else` propagava), e uma folha nova
+    // não herda uma licença em branco só porque o ficheiro veio de uma casa que a tinha.
+    let c = c.clamp(0.0, 255.0);
     if c <= 0.04045 * 255.0 {
         // The reference's LINEAR segment, with the reference's own two-step
         // arithmetic — this branch stays bit-exact rather than folding the

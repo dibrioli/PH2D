@@ -31,6 +31,14 @@ authors.workspace = true
 # comece no meio de uma aresta recomputa `x` e sai um `f32` diferente. Todo uso novo desta dep exige
 # ADR novo (a cerca de contenção do ADR-0109).
 rayon = "1"
+# A LEI da mistura de tintas (K–M), partilhada com o Wet Paint e a Aquarela — ordem do dono
+# (2026-09-20): os três meios misturam igual, logo leem a MESMA porta e não três cópias.
+#
+# ⚠️ **Ela derruba a premissa escrita no cabeçalho acima** (*«Zero dependências de propósito — o dab
+# mistura no espaço nativo da camada, logo nenhuma transferência sRGB é precisa aqui»*): a lei da
+# tinta É uma transferência sRGB, e quem moveu o número reconfere a nota (§0.0). O que a razão
+# antiga protegia — *nada de UI, de editor-core, de contrato nem de GPU* — continua de pé.
+ph2d-pigment = { path = "../ph2d-pigment" }
 
 [dev-dependencies]
 # A régua lexical do HR-15, para o censo deste motor.

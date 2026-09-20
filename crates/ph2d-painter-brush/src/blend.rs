@@ -186,9 +186,15 @@ pub fn blend_over_pigment(
     if m <= 0.0 {
         return plain; // byte-identical to `blend_over` when Pigment is off or the canvas is bare
     }
-    // Subtractive target: the canvas pigment and the dab pigment mixed through RYB by coverage `a`
+    // Subtractive target: the canvas pigment and the dab pigment mixed by coverage `a`
     // (a = 0 → canvas, a = 1 → dab). Crossfade from the plain result toward it by `m`.
-    let sub = ryb_mix([dst[0], dst[1], dst[2]], color, a.clamp(0.0, 1.0));
+    //
+    // ⭐ **A LEI É A DO WET PAINT** (ordem do dono 2026-09-20: *«trocar as duas para a lei do Wet
+    // Paint — os três meios passam a misturar igual»*). Era o RYB de Gossett & Chen; hoje é o
+    // Kubelka–Munk que o motor de fluido shipa, lido da folha [`ph2d_pigment`] — a MESMA porta.
+    // ⚠️ Medido a 50/50, as duas NÃO dão a mesma tinta: `amarelo + vermelho` lia `141,84,28` em RYB
+    // e lê `227,38,28` em K–M. A troca é OBSERVÁVEL e foi pedida, não é um refactor.
+    let sub = ph2d_pigment::mix_unit([dst[0], dst[1], dst[2]], color, a.clamp(0.0, 1.0));
     [
         lerp(plain[0], sub[0], m),
         lerp(plain[1], sub[1], m),
@@ -560,6 +566,17 @@ mod tests {
 
     /// The pigment path mixes a blue canvas + a yellow dab **toward green** — the subtractive hallmark
     /// the plain source-over (Krita's smudge) cannot produce.
+    ///
+    /// ⛔⛔ **A METADE *«o verde fica ACIMA da média plana»* MORREU com a troca de lei** (ordem do dono
+    /// 2026-09-20: *«trocar as duas para a lei do Wet Paint»*). Ela era verdade do **RYB** e é FALSA do
+    /// **Kubelka–Munk**, e não por defeito: no K–M de constante única as absorvências SOMAM, logo a
+    /// mistura de dois pigmentos saturados é mais ESCURA do que a média — medido, `0,275` de verde
+    /// contra `0,500` da média plana, onde o RYB dava acima. *Uma metade que descrevia a lei antiga
+    /// não descreve «mistura de pigmento»; descrevia o RYB.*
+    ///
+    /// ⭐ **O que fica é o que é hallmark das DUAS leis** — o verde DOMINAR, que a mistura de luz não
+    /// produz —, mais a metade nova que afirma a troca: a mistura é mais escura que a média plana, e
+    /// no dia em que alguém voltar ao RYB ela reprova com a mudança à vista no diff.
     #[test]
     fn pigment_mixes_blue_and_yellow_toward_green() {
         let blue = [0.10, 0.20, 0.75, 1.0]; // already-laid wet blue (dst alpha 1)
@@ -567,12 +584,19 @@ mod tests {
         let plain = blend_over(BrushBlend::Mix, blue, yellow, 0.5);
         let pig = blend_over_pigment(BrushBlend::Mix, blue, yellow, 0.5, 1.0);
         assert!(
-            pig[1] > plain[1],
-            "pigment must lift green above the flat average: pig {pig:?} vs plain {plain:?}"
-        );
-        assert!(
             pig[1] > pig[0] && pig[1] > pig[2],
             "green is the dominant channel of blue + yellow: {pig:?}"
+        );
+        assert!(
+            pig[1] < plain[1],
+            "a lei do Wet Paint SOMA absorvências, logo a mistura é mais ESCURA que a média plana \
+             (pig {pig:?} vs plain {plain:?}) — se isto passar a ser falso, a lei voltou ao RYB"
+        );
+        // E o controlo que separa «mistura de pigmento» de «mistura de luz»: a média plana NÃO tem
+        // dominante verde nenhuma (ela é o cinzento que o modelo existe para não produzir).
+        assert!(
+            plain[1] <= plain[0] + 1e-6,
+            "o controlo tem de ser um cinzento sem dominante verde: {plain:?}"
         );
     }
 

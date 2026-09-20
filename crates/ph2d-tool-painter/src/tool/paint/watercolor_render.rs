@@ -569,6 +569,24 @@ impl PainterTool {
                             f32::from(lut.l2s_byte(sb[1])) / 255.0,
                             f32::from(lut.l2s_byte(sb[2])) / 255.0,
                         ];
+                        // ⛔⛔ **A LEI AQUI CONTINUA RYB, e a troca para o Kubelka–Munk foi
+                        // CONSTRUÍDA, MEDIDA e REVERTIDA** (ordem do dono 2026-09-20: *«trocar as
+                        // duas para a lei do Wet Paint»*; o Digital JÁ trocou, em
+                        // [`ph2d_painter_brush::blend::blend_over_pigment`]).
+                        //
+                        // ⚠️ **O que ela quebra não é a cor, é a FAIXA DINÂMICA:** aqui o parceiro
+                        // da mistura é a BASE — papel quase branco, `K/S ≈ 0` —, e um lerp em `K/S`
+                        // contra o zero é violentamente não-linear: um pigmento saturado escurece
+                        // até ao chão mesmo com `film_a` modesto. Medido pelo produto, o
+                        // `watercolor_soak_deepens_and_widens_the_dissolve_while_parked` passou a
+                        // ler **o MESMO pixel** (`228,23,23`) para 2 s de demora e para a passagem
+                        // rápida: os dois lados saturam e o knob deixa de modular.
+                        //
+                        // ⭐ **E a pista da 2.ª tentativa está NOMEADA:** o K–M para *«uma camada de
+                        // pigmento SOBRE um fundo»* não é o `mix` — é o **glaze**
+                        // ([`ph2d_wet_paint::colorops::km_glaze_channel_linear`], que já existe e é
+                        // energia-limitado). *Misturar com o papel trata o papel como pigmento;
+                        // envernizar sobre ele é a operação que este sítio de facto faz.*
                         let mixed = ryb_mix(
                             mix_base,
                             [

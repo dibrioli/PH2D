@@ -65,93 +65,19 @@ pub fn rgb_to_hsv(r: f64, g: f64, b: f64) -> [f64; 3] {
     [h, if max == 0.0 { 0.0 } else { d / max }, max]
 }
 
-pub mod transfer;
+pub use ph2d_pigment::transfer;
 
 // The standard sRGB EOTF and its inverse, plus the 0..255-domain doors the
 // K–M and glaze sites use. ONE door each: every experimental site goes through
 // these, and the tables live behind them so no call site can pick a different
 // transfer than its neighbour.
-pub use transfer::{ks_of_srgb255, linear_to_srgb, srgb_to_linear, srgb255_of_linear};
+pub use ph2d_pigment::{ks_of_srgb255, linear_to_srgb, srgb_to_linear, srgb255_of_linear};
 
-// ---------------------------------------------------------------------------
-// Kubelka–Munk single-constant mixing. A reflectance R maps to K/S =
-// (1-R)^2 / 2R; mixtures are LINEAR in K/S, so convert, lerp, invert:
-// R = 1 + KS - sqrt(KS^2 + 2 KS). Reflectance floored at 1/255 so pure
-// black cannot make KS blow up.
-//
-// The forward half (colour -> K/S, floor included) is [`ks_of_srgb255`], in
-// `transfer` — it is the half a table can carry, and it owns the floor. Only
-// the inverse stays here, because it is one `sqrt` and nothing to tabulate.
-// ---------------------------------------------------------------------------
-
-#[inline]
-fn reflectance_of_ks(ks: f64) -> f64 {
-    1.0 + ks - (ks * ks + 2.0 * ks).sqrt()
-}
-
-/// How the engine blends two pigment colors. `Plain` is the default (the
-/// composites of SPEC §6/§10/§11); `Km` is the "pigment mixing (K–M)"
-/// experimental checkbox. An enum, not a fn pointer: the hot loops match on
-/// it once per call and the compiler sees through both arms.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ColorMix {
-    Plain,
-    Km,
-}
-
-impl ColorMix {
-    /// Mix dst -> src by weight w, both 0..255 float channels, into `out`.
-    #[inline]
-    pub fn mix(
-        self,
-        dr: f64,
-        dg: f64,
-        db: f64,
-        sr: f64,
-        sg: f64,
-        sb: f64,
-        w: f64,
-        out: &mut [f64; 3],
-    ) {
-        match self {
-            ColorMix::Plain => {
-                out[0] = dr + (sr - dr) * w;
-                out[1] = dg + (sg - dg) * w;
-                out[2] = db + (sb - db) * w;
-            }
-            ColorMix::Km => {
-                // A mix that moves nothing must CHANGE nothing, to the bit.
-                // Mathematically w=0 is dst and w=1 is src, so this is not a
-                // shortcut past the model, it is the model's own answer — and
-                // taking it matters because a weight of exactly 0 does occur
-                // (a settle or a lift whose incoming mass rounds to no
-                // coverage) and it recurs on the SAME cell every pass. The
-                // tabulated round trip is accurate but is not an identity, so
-                // without this a still wash would be nudged forever by passes
-                // that deposit nothing (see `transfer`'s fixed-point note).
-                if w <= 0.0 {
-                    *out = [dr, dg, db];
-                    return;
-                }
-                if w >= 1.0 {
-                    *out = [sr, sg, sb];
-                    return;
-                }
-                // Otherwise: into K/S through the door, lerp (mixtures are
-                // LINEAR in K/S — that is the whole of the model), and back
-                // out through the inverse. The `/255` rescale and the floor
-                // ride inside the door's table index.
-                let iw = 1.0 - w;
-                let ks_r = iw * ks_of_srgb255(dr) + w * ks_of_srgb255(sr);
-                let ks_g = iw * ks_of_srgb255(dg) + w * ks_of_srgb255(sg);
-                let ks_b = iw * ks_of_srgb255(db) + w * ks_of_srgb255(sb);
-                out[0] = srgb255_of_linear(reflectance_of_ks(ks_r));
-                out[1] = srgb255_of_linear(reflectance_of_ks(ks_g));
-                out[2] = srgb255_of_linear(reflectance_of_ks(ks_b));
-            }
-        }
-    }
-}
+// ── Kubelka–Munk: a lei MUDOU-SE para a folha [`ph2d_pigment`] (ordem do dono 2026-09-20, «os três
+// meios passam a misturar igual»). Ela não mudou uma linha de matemática — mudou de ENDEREÇO, para
+// que o Digital e a Aquarela leiam esta e não uma cópia. Este motor delega, logo continua
+// byte-idêntico; ⛔ nada de reescrever `ColorMix` aqui, que é a segunda cópia que diverge. ──
+pub use ph2d_pigment::{ColorMix, reflectance_of_ks};
 
 /// K–M weighted mean of up to 4 engine colors (the advection's incoming-color
 /// mean when pigment mixing is ON): mixtures are linear in K/S, so average

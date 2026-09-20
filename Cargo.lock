@@ -7791,6 +7791,7 @@ name = "ph2d-painter-brush"
 version = "0.0.0"
 dependencies = [
  "ph2d-label-census",
+ "ph2d-pigment",
  "rayon",
 ]
 
@@ -8386,6 +8387,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-pigment"
+version = "0.0.0"
+dependencies = [
+ "libm",
+]
+
+[[package]]
 name = "ph2d-platformer"
 version = "0.0.0"
 dependencies = [
@@ -8952,6 +8960,7 @@ dependencies = [
  "ph2d-light",
  "ph2d-painter-brush",
  "ph2d-painter-effects",
+ "ph2d-pigment",
  "ph2d-tool-registry",
  "ph2d-vector",
  "ph2d-wet-paint",
@@ -9389,6 +9398,7 @@ name = "ph2d-wet-paint"
 version = "0.0.0"
 dependencies = [
  "libm",
+ "ph2d-pigment",
  "rayon",
 ]
 

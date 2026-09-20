@@ -161,7 +161,7 @@ const fn dono_do_peso(caminho: bool, k: usize) -> usize {
 /// ⚠️ Ela existe para a [`pele_sob_o_cursor`] poder perguntar *«o cursor está DENTRO desta arte?»*,
 /// que é uma pergunta sobre a SILHUETA e não sobre os pontos dela.
 #[must_use]
-fn posados(sim: &SimWorld, alvo: Entity, ppm: f32) -> Vec<[f64; 2]> {
+pub(crate) fn posados(sim: &SimWorld, alvo: Entity, ppm: f32) -> Vec<[f64; 2]> {
     let Some(skin) = sim.world().get::<SkinBind>(alvo).cloned() else {
         return Vec::new();
     };

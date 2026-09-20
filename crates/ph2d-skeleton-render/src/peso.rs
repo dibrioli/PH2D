@@ -107,6 +107,20 @@ const WEIGHT_MESH_EDGE_ALPHA: f32 = 0.85;
 /// pede*. ⚠️ E ela não pode fechar o vão: a `3` px as arestas tocam-se e o retículo vira chapa.
 const WEIGHT_MESH_EDGE_PX: f64 = 1.0; // LITERAL-PX-OK: vão medido de ~12 px, tabela acima
 
+/// O raio do ponto de um VÉRTICE do retículo, em píxeis de ecrã.
+///
+/// ⚠️ **Ele é o ponto do NÓ noutra escala, e a janela tem os dois lados MEDIDOS:** o vão da malha
+/// na tela da cena do dono é `~12` px (a tabela do [`WEIGHT_MESH_EDGE_PX`]), logo
+///
+/// | cerca | número |
+/// |---|---|
+/// | tem de se ver como DISCO ao lado de uma aresta de `1,0` px | raio `≥ 1,5` |
+/// | ⛔ não pode fechar o vão de `12` px nem passar por um ponto de NÓ (raio `5,0`) | raio `≤ 2,5` |
+///
+/// ⇒ `2,0` é o meio dessa janela: um disco de `4` px deixa `8` px de vão entre vizinhos, e é
+/// `2,5 ×` menor que o ponto de um nó — *as duas leituras não se confundem*.
+const WEIGHT_MESH_VERT_R_PX: f64 = 2.0; // LITERAL-PX-OK: raio de ecrã, janela medida acima
+
 /// ⭐⭐⭐ **O RETÍCULO À VISTA** — a malha do domínio que o bind guardou, pintada pelo peso.
 ///
 /// # ⛔⛔⛔ Porque ele existe
@@ -120,13 +134,43 @@ const WEIGHT_MESH_EDGE_PX: f64 = 1.0; // LITERAL-PX-OK: vão medido de ~12 px, t
 /// mesmo número na mesma tela com escalas de cor diferentes fazem o artista escolher em qual
 /// acreditar.
 ///
-/// ⚠️ **O triângulo é preenchido pela MÉDIA dos três cantos**, e não por um gradiente: o Vello
-/// desenha um gradiente por caminho, logo um por triângulo seria uma malha de `~900` gradientes por
-/// quadro. ⭐ Com a malha graduada pelas articulações, um triângulo é pequeno exactamente onde o
-/// campo varia depressa — *a densidade da malha já é o anti-aliasing da leitura*.
+/// ⛔⛔⛔ **E a premissa que aqui estava MORREU no dia seguinte** (report do dono, 2026-09-20:
+/// *«a malha apareceu mas os pesos não estão nos vértices da malha»*). Ela dizia, por escrito, que
+/// o preenchimento pela MÉDIA bastava porque *«a densidade da malha já é o anti-aliasing da
+/// leitura»* — medido na barra da cena, o peso dentro de UM triângulo varia:
+///
+/// | osso | triângulos | salto p50 | salto p99 | salto máx |
+/// |---|---:|---:|---:|---:|
+/// | Bone 1 | `878` | `0,0000` | `0,1555` | `0,1587` |
+/// | Bone 2 | `878` | `0,0000` | `0,1592` | `0,1626` |
+/// | Bone 3 | `878` | `0,0000` | `0,1592` | `0,1626` |
+///
+/// ⇒ na banda de transição — *o único sítio que o artista lê* — um triângulo cobre **`16 %` da
+/// rampa inteira** e é pintado de uma cor só. ⚠️ **A malha é graduada pelas ARTICULAÇÕES e não
+/// pelo gradiente do campo**, que são coisas diferentes, e é por isso que a nota estava errada.
+///
+/// # ⭐⭐⭐ O que o vértice ganha (2026-09-20)
+///
+/// 1. **A ARESTA é pintada pela média dos SEUS DOIS vértices**, nunca pela do triângulo. ⛔ Antes
+///    as duas faces que partilham uma aresta pintavam-na cada uma com a média DELA, logo **a cor
+///    de uma linha da grelha era a de quem desenhou por último** — um número que não é de nenhum
+///    dos dois extremos e que depende da ordem do `for`. Hoje as duas escrevem o mesmo valor.
+/// 2. **Cada VÉRTICE ganha um ponto com o peso DELE** — a leitura exacta, que nenhuma média dá.
+///
+/// ⚠️ **O preenchimento continua a média, e continua a ser o FUNDO:** ele é a mancha a `30 %` que
+/// diz *«que osso manda nesta zona»*; quem responde *«quanto, aqui»* é o vértice. ⛔ Um gradiente
+/// por triângulo fica fora com o número ao lado — o Vello desenha um gradiente por CAMINHO, e
+/// subdividir para lá chegar é exponencial (o salto só CAI PARA METADE a cada nível, e a rampa
+/// mede `~4 096` bytes por unidade de peso: seriam `4⁸` sub-triângulos para o pior deles).
 ///
 /// ⛔ **A aresta é desenhada, e é o que o torna um RETÍCULO** — sem ela o artista vê uma mancha de
 /// cor e não vê a grelha que a produz, que é metade do que o report pede.
+///
+/// # O preço, medido em `--release` na malha da cena do dono (`498` vértices, `878` triângulos)
+///
+/// `4 010` caminhos encodados em **`0,587 ms`** — **`3,5 %`** de um quadro, e **só** enquanto o
+/// verbo *Weight* está na mão. ⚠️ A conta é `878 × (1 preenchimento + 3 arestas) + 498 pontos`;
+/// pela lei de ontem (uma aresta por triângulo, sem pontos) eram `1 756`.
 pub fn draw_weight_mesh(
     verts: &[[f64; 2]],
     pesos: &[f64],
@@ -147,7 +191,8 @@ pub fn draw_weight_mesh(
         let Some(p) = canto(verts, transform, t) else {
             continue;
         };
-        let Some(w) = media(pesos, t) else { continue };
+        let Some(w3) = cantos(pesos, t) else { continue };
+        let w = (w3[0] + w3[1] + w3[2]) / 3.0;
         caminho.truncate(0);
         caminho.move_to(p[0]);
         caminho.line_to(p[1]);
@@ -169,12 +214,36 @@ pub fn draw_weight_mesh(
             None,
             &caminho,
         );
-        target.inner_mut().stroke(
-            &Stroke::new(WEIGHT_MESH_EDGE_PX),
+        // ⭐⭐⭐ **Uma aresta é pintada pelos DOIS vértices dela** — ver o cabeçalho: as duas
+        // faces que a partilham escrevem agora o MESMO valor, e a grelha deixa de depender da
+        // ordem do `for`.
+        for (a, b) in [(0usize, 1usize), (1, 2), (2, 0)] {
+            caminho.truncate(0);
+            caminho.move_to(p[a]);
+            caminho.line_to(p[b]);
+            let ca = rampa.cor((w3[a] + w3[b]) * 0.5);
+            target.inner_mut().stroke(
+                &Stroke::new(WEIGHT_MESH_EDGE_PX),
+                Affine::IDENTITY,
+                &Brush::Solid(ca.multiply_alpha(WEIGHT_MESH_EDGE_ALPHA)),
+                None,
+                &caminho,
+            );
+        }
+    }
+    // ⭐⭐⭐ **E O PESO DE CADA VÉRTICE, por cima de tudo** — a resposta literal ao report. Ele vem
+    // depois do laço porque um vértice é partilhado por até seis triângulos: pintá-lo lá dentro
+    // seria desenhá-lo seis vezes.
+    for (v, &w) in verts.iter().zip(pesos) {
+        if !(v[0].is_finite() && v[1].is_finite() && w.is_finite()) {
+            continue;
+        }
+        target.inner_mut().fill(
+            Fill::NonZero,
             Affine::IDENTITY,
-            &Brush::Solid(c.multiply_alpha(WEIGHT_MESH_EDGE_ALPHA)),
+            &Brush::Solid(rampa.cor(w).multiply_alpha(WEIGHT_MESH_EDGE_ALPHA)),
             None,
-            &caminho,
+            &Circle::new(transform * Point::new(v[0], v[1]), WEIGHT_MESH_VERT_R_PX),
         );
     }
 }
@@ -192,17 +261,20 @@ fn canto(verts: &[[f64; 2]], transform: Affine, t: &[u32; 3]) -> Option<[Point; 
     Some(fora)
 }
 
-/// A média dos pesos dos três cantos — `None` se um índice não existe ou não é finito.
-fn media(pesos: &[f64], t: &[u32; 3]) -> Option<f64> {
-    let mut soma = 0.0;
-    for &i in t {
+/// Os pesos dos três cantos — `None` se um índice não existe ou não é finito.
+///
+/// ⚠️ **Ela devolve os TRÊS e não a média**, e é isso que faz a aresta poder ser pintada pelos dois
+/// vértices dela: com uma média só, a informação de qual canto é qual já se perdeu aqui.
+fn cantos(pesos: &[f64], t: &[u32; 3]) -> Option<[f64; 3]> {
+    let mut fora = [0.0; 3];
+    for (k, &i) in t.iter().enumerate() {
         let w = *pesos.get(i as usize)?;
         if !w.is_finite() {
             return None;
         }
-        soma += w;
+        fora[k] = w;
     }
-    Some(soma / 3.0)
+    Some(fora)
 }
 
 /// **O ANEL do pincel** — onde ele vai pintar, e com que tamanho.

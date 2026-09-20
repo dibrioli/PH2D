@@ -262,3 +262,312 @@ fn diag_qual_osso_mostra_mais() {
         ""
     );
 }
+
+/// ⛔⛔⛔ **A RECUSA MEDIDA: ancorar a mancha NO DEDO deixa o pincel de fábrica INERTE.**
+///
+/// # O report e o que ele parecia ser
+///
+/// *«a malha apareceu mas os pesos não estão nos vértices da malha. e não houve melhora na
+/// deformação»* (dono, 2026-09-20, com foto). A leitura óbvia — e a que eu segui — é que a mancha
+/// devia pousar **onde o dedo aponta**, e não no contorno: medido pela porta do produto, o dedo em
+/// cima de um vértice do MIOLO guardava a correcção até **`0,4340`** dali, com um pincel de raio
+/// **`0,400`** — *a mancha aterrava mais longe do que ela própria alcança*.
+///
+/// A cura foi construída (baricêntricas no triângulo POSADO do retículo, que dão a inversa exacta
+/// do mapa e põem o desvio em `0,0000` nas cinco células) e **a medição do DESENHO refutou-a**:
+///
+/// | raio do pincel | mancha no RETÍCULO | mancha no CONTORNO (o produto) |
+/// |---|---:|---:|
+/// | **`0,40`** (fábrica) | **`0,00000`** | `0,49921` |
+/// | `0,80` | `0,30967` | `0,50600` |
+/// | `1,20` | `0,55686` | `0,65708` |
+///
+/// # ⭐⭐⭐ O mecanismo, e é ele que fecha o assunto
+///
+/// **Numa forma vectorial o desenho é o CONTORNO.** O interior do retículo é andaime: o campo
+/// vive lá, mas não há arte para mover. A barra tem meia-altura `0,5` contra um pincel de `0,40`
+/// ⇒ uma mancha centrada no meio **não chega a nenhuma das duas bordas**, e o pincel de fábrica
+/// ficaria mudo exactamente onde o artista arrasta — que é um report PIOR do que o que a motivou.
+///
+/// ⚠️ **O `onde_pousa` já escrevia esta lei** (*«no caminho, estar DENTRO da forma também conta …
+/// e é pelo miolo que o artista arrasta»*), e a projecção no contorno **é** o que faz um pincel
+/// pequeno alcançar a arte a partir do miolo. *Não era um atalho: era a lei.*
+///
+/// ⚠️ **Fica NOMEADO o que a projecção custa:** ela escolhe a borda MAIS PERTO, logo um arrasto que
+/// cruze a linha média da barra salta da borda de baixo para a de cima (medido: `y = 2,343 → 2,000`
+/// e `y = 2,566 → 3,000`). Com a fusão de manchas o resultado é as duas bordas ficarem pintadas,
+/// que é o que se quer numa barra — mas quem for atrás de *«irregularidades»* deve medir isto
+/// primeiro.
+///
+/// ⛔ O instrumento fica aqui, atrás do `cfg(test)`, porque ele é a prova da recusa — ⚠️ e uma
+/// porta pública sem consumidor de produto é a *lei viva e órfã* que o `CLAUDE.md` já nomeia.
+fn ancora_no_reticulo(
+    m: &super::MalhaDoPeso,
+    repousos: &[[f64; 2]],
+    mundo: [f64; 2],
+) -> Option<[f64; 2]> {
+    for t in &m.tris {
+        let (i, j, k) = (t[0] as usize, t[1] as usize, t[2] as usize);
+        let (a, b, c) = (*m.verts.get(i)?, *m.verts.get(j)?, *m.verts.get(k)?);
+        let area = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+        if area.abs() <= f64::EPSILON {
+            continue;
+        }
+        let l1 =
+            ((b[0] - mundo[0]) * (c[1] - mundo[1]) - (b[1] - mundo[1]) * (c[0] - mundo[0])) / area;
+        let l2 =
+            ((c[0] - mundo[0]) * (a[1] - mundo[1]) - (c[1] - mundo[1]) * (a[0] - mundo[0])) / area;
+        let l3 = 1.0 - l1 - l2;
+        if l1 < -1e-9 || l2 < -1e-9 || l3 < -1e-9 {
+            continue;
+        }
+        let (ra, rb, rc) = (*repousos.get(i)?, *repousos.get(j)?, *repousos.get(k)?);
+        return Some([
+            l3.mul_add(rc[0], l2.mul_add(rb[0], l1 * ra[0])),
+            l3.mul_add(rc[1], l2.mul_add(rb[1], l1 * ra[1])),
+        ]);
+    }
+    None
+}
+
+/// **Os repousos dos vértices do retículo** — o par de [`super::MalhaDoPeso::verts`], lido do campo.
+fn repousos_do_reticulo(sim: &ph2d_ecs::SimWorld, alvo: ph2d_ecs::Entity) -> Vec<[f64; 2]> {
+    let skin = sim
+        .world()
+        .get::<ph2d_skeleton_ecs::SkinBind>(alvo)
+        .expect("pele")
+        .clone();
+    let g = crate::skinned_mesh::le(&skin.source).expect("fonte");
+    let campo = g.campo.as_ref().expect("campo");
+    (0..campo.malha.rest.len())
+        .map(|i| campo.local_do_vertice(i).expect("vértice"))
+        .collect()
+}
+
+/// ⚠️⚠️ **SONDA — ONDE MORAM OS PESOS, e onde uma pincelada POUSA** (report do dono, 2026-09-20:
+/// *«a malha apareceu mas os pesos não estão nos vértices da malha»*).
+///
+/// Três perguntas que o olho lê como uma:
+///
+/// 1. **quantos** pontos de peso (o que o artista vê como bolinha) contra vértices de retículo;
+/// 2. **onde** — quantos vértices de retículo SÃO uma bolinha;
+/// 3. **onde a mancha CAI** com o dedo em cima de um vértice do MIOLO, pela porta do produto,
+///    com a coluna do que a [`ancora_no_reticulo`] daria ao lado (ver a recusa medida ali).
+#[test]
+fn diag_onde_moram_os_pesos() {
+    use crate::peso_a_mao::{mundo_e_escala, pinta, pontos_de_peso};
+    use ph2d_skeleton_ecs::SkinBind;
+
+    let (mut sim, _scene, map, id, ossos) = barra_da_cena();
+    let alvo = forma(&map, id);
+    let osso = ossos[1];
+    let m = malha_do_peso(&sim, alvo, osso).expect("retículo");
+    let repousos = repousos_do_reticulo(&sim, alvo);
+    let pontos = pontos_de_peso(&sim, alvo, osso, PPM);
+
+    println!("\n{:-<84}", "");
+    println!("vértices do retículo ..... {}", m.verts.len());
+    println!("pontos de peso (bolinhas) . {}", pontos.len());
+    let coincidem = m
+        .verts
+        .iter()
+        .filter(|v| {
+            pontos
+                .iter()
+                .any(|p| (v[0] - p.mundo[0]).hypot(v[1] - p.mundo[1]) < 1e-6)
+        })
+        .count();
+    println!(
+        "vértices que SÃO uma bolinha: {coincidem} de {}",
+        m.verts.len()
+    );
+
+    let (x, escala) = mundo_e_escala(&sim, alvo);
+    let raio = raio_de_fabrica();
+    println!("{:-<84}", "");
+    println!(
+        "{:>4} {:>18} {:>18} {:>9} {:>11}",
+        "i", "dedo (local)", "mancha (local)", "desvio", "retículo"
+    );
+    for i in [40usize, 120, 200, 260, 330] {
+        let Some(local) = repousos.get(i).copied() else {
+            continue;
+        };
+        let mundo = x.apply(local);
+        let pelo_reticulo = ancora_no_reticulo(&m, &repousos, m.verts[i])
+            .map_or(f64::NAN, |r| (r[0] - local[0]).hypot(r[1] - local[1]));
+        let _ = pinta(
+            &mut sim,
+            alvo,
+            osso,
+            PPM,
+            mundo,
+            raio,
+            ph2d_skeleton::Especie::Soma(0.2),
+        );
+        let depois = sim.world().get::<SkinBind>(alvo).expect("pele").clone();
+        let Some(c) = depois.correcoes.last() else {
+            println!("{i:>4}  nada guardado");
+            continue;
+        };
+        let d = (c.centro[0] - local[0]).hypot(c.centro[1] - local[1]);
+        println!(
+            "{i:>4} [{:>7.3},{:>7.3}] [{:>7.3},{:>7.3}] {d:>9.4} {pelo_reticulo:>11.4}",
+            local[0], local[1], c.centro[0], c.centro[1]
+        );
+    }
+    println!(
+        "{:-<84}\nraio do pincel = {raio:.3} mundo ({:.3} local, escala {escala:.3}); \
+         a meia-altura da barra e 0,5",
+        "",
+        raio / escala
+    );
+}
+
+/// ⛔⛔⛔ **SONDA — a pincelada no MIOLO chega ao DESENHO?** É esta que REFUTA a cura óbvia; a
+/// tabela e o mecanismo vivem no doc da [`ancora_no_reticulo`].
+#[test]
+fn diag_a_pincelada_no_miolo_chega_ao_desenho() {
+    use crate::peso_a_mao::{posados, repousos};
+    use ph2d_ecs::{SimWorld, Transform};
+    use ph2d_skeleton_ecs::{CorreccaoDePeso, SkinBind};
+
+    /// A barra JÁ DOBRADA — uma árvore nova por caso, porque o mundo não se clona.
+    fn dobrada() -> (
+        SimWorld,
+        ph2d_vec_scene::VecScene,
+        ph2d_vec_scene::VecPathId,
+        ph2d_ecs::Entity,
+        Vec<ph2d_ecs::Entity>,
+    ) {
+        let (mut sim, scene, map, id, ossos) = barra_da_cena();
+        let alvo = forma(&map, id);
+        for o in &ossos[1..] {
+            sim.world_mut()
+                .get_mut::<Transform>(*o)
+                .expect("Transform")
+                .rotation = 45.0f32.to_radians();
+        }
+        (sim, scene, id, alvo, ossos)
+    }
+    let desenha = |sim: &SimWorld, scene: &ph2d_vec_scene::VecScene, id| {
+        let mut s = scene.clone();
+        crate::skin_live::recook_com_mistura(sim, &mut s, true, true, true);
+        s.paths().iter().find(|p| p.id == id).expect("path").clone()
+    };
+    // A mesma pincelada, com o CENTRO dado — é o centro que as duas leis disputam.
+    let com_mancha = |centro: [f64; 2], raio: f64| {
+        let (mut sim, scene, id, alvo, ossos) = dobrada();
+        let bone = *sim
+            .world()
+            .get::<ph2d_ecs::StableId>(ossos[2])
+            .expect("id do osso");
+        let mut skin = sim.world().get::<SkinBind>(alvo).expect("pele").clone();
+        skin.correcoes.push(CorreccaoDePeso {
+            bone,
+            centro,
+            raio,
+            especie: ph2d_skeleton::Especie::Alvo(1.0),
+        });
+        sim.world_mut().entity_mut(alvo).insert(skin);
+        desenha(&sim, &scene, id)
+    };
+
+    let (sim, scene, id, alvo, ossos) = dobrada();
+    let sem = desenha(&sim, &scene, id);
+    let m = malha_do_peso(&sim, alvo, ossos[2]).expect("retículo");
+    let reps = repousos_do_reticulo(&sim, alvo);
+    // O dedo: o meio da barra (x = -5, y = 2,5), levado à pose.
+    let i = reps
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| {
+            let f = |p: &[f64; 2]| (p[0] + 5.0).hypot(p[1] - 2.5);
+            f(a).partial_cmp(&f(b)).expect("finito")
+        })
+        .map(|(i, _)| i)
+        .expect("um vértice");
+    let dedo = m.verts[i];
+    let no_reticulo = ancora_no_reticulo(&m, &reps, dedo).expect("dentro de um triângulo");
+    let no_contorno = crate::ancora_da_mancha::no_contorno(
+        &repousos(&sim, alvo, PPM),
+        &posados(&sim, alvo, PPM),
+        dedo,
+    )
+    .expect("contorno")
+    .repouso;
+
+    println!("\n{:-<76}", "");
+    println!(
+        "dedo (repouso) .... [{:.3}, {:.3}]",
+        no_reticulo[0], no_reticulo[1]
+    );
+    println!(
+        "contorno diz ...... [{:.3}, {:.3}]",
+        no_contorno[0], no_contorno[1]
+    );
+    println!("{:-<76}", "");
+    println!(
+        "{:>8} {:>18} {:>20} {:>14}",
+        "raio", "no retículo", "no contorno (hoje)", "razão"
+    );
+    for raio in [0.4_f64, 0.8, 1.2] {
+        let a = crate::test_support::pior_desvio_do_desenho(&sem, &com_mancha(no_reticulo, raio));
+        let b = crate::test_support::pior_desvio_do_desenho(&sem, &com_mancha(no_contorno, raio));
+        println!(
+            "{raio:>8.2} {a:>18.5} {b:>20.5} {:>13.2}x",
+            if b > 1e-12 { a / b } else { f64::INFINITY }
+        );
+    }
+    println!(
+        "{:-<76}\nnuma forma vectorial o desenho e o CONTORNO: o miolo do reticulo e andaime",
+        ""
+    );
+}
+
+/// ⚠️⚠️ **SONDA — o retículo pintado por TRIÂNGULO perde quanto?** O desenho enche cada triângulo
+/// com a MÉDIA dos três cantos, logo a cor é constante por pedaço: se o peso variar muito DENTRO
+/// de um triângulo, o que o artista vê não é o peso do vértice — é uma banda.
+#[test]
+fn diag_o_reticulo_pinta_por_triangulo_e_nao_por_vertice() {
+    let (sim, _scene, map, id, ossos) = barra_da_cena();
+    let alvo = forma(&map, id);
+    println!("\n{:-<80}", "");
+    println!(
+        "{:<10} {:>10} {:>14} {:>14} {:>12}",
+        "osso", "triâng.", "salto p50", "salto p99", "salto máx"
+    );
+    println!("{:-<80}", "");
+    for (k, &o) in ossos.iter().enumerate() {
+        let Some(m) = malha_do_peso(&sim, alvo, o) else {
+            continue;
+        };
+        let mut saltos: Vec<f64> = m
+            .tris
+            .iter()
+            .filter_map(|t| {
+                let w: Vec<f64> = t
+                    .iter()
+                    .map(|&i| m.pesos.get(i as usize).copied().unwrap_or(0.0))
+                    .collect();
+                let lo = w.iter().copied().fold(f64::INFINITY, f64::min);
+                let hi = w.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+                (hi - lo).is_finite().then_some(hi - lo)
+            })
+            .collect();
+        saltos.sort_by(|a, b| a.partial_cmp(b).expect("finito"));
+        let q = |f: f64| saltos[((saltos.len() - 1) as f64 * f) as usize];
+        println!(
+            "Bone {:<5} {:>10} {:>14.4} {:>14.4} {:>12.4}",
+            k + 1,
+            saltos.len(),
+            q(0.5),
+            q(0.99),
+            saltos.last().copied().unwrap_or(0.0)
+        );
+    }
+    println!(
+        "{:-<80}\no peso vive em 0..1; um salto de 0,10 dentro de um triangulo sao ~25 de 255 na cor",
+        ""
+    );
+}

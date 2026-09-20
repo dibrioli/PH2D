@@ -206,6 +206,28 @@ pub struct GripLaw {
     /// de `grip` em vez de um segundo predicado"*, passar a dizer que a demão
     /// tem âncora.
     pub coat: bool,
+    /// ⭐⭐ **A QUARTA lei de acumulação: o *over* de uma tinta** —
+    /// `a ← a + w·(1 − a)`, que satura em `1` sem nunca lá chegar.
+    ///
+    /// ⚠️ **Ela é EXACTAMENTE a composição do `Paint.js:129-131`**, e não uma
+    /// aproximação dela. A referência escreve a cor VIVA a cada dab
+    /// (`c ← c(1−w) + cor·w`); escrevendo `c_k = lerp(base, cor, a_k)`, aquela
+    /// linha é `c_{k+1} = lerp(base, cor, a_k + w(1 − a_k))`. ⇒ acumular assim e
+    /// interpolar do `base` congelado dá a mesma cor que compor sobre a viva —
+    /// **e** mantém a lei do envelope desta casa, onde o resultado é função do
+    /// caminho e não de quantas vezes o motor o amostrou.
+    ///
+    /// ⛔ **Somar e saturar (`min(a + w, 1)`, o [`Self::additive`] da máscara)
+    /// NÃO serve, e a diferença é visível:** com o `w` de fábrica do alvo
+    /// (`0,75`) a soma chega a `1` em DOIS dabs e o *over* leva quatro para
+    /// passar de `0,99`. A máscara soma porque a referência DELA soma
+    /// (`Masking.js:70`); as duas leis não são a mesma escrita de outra
+    /// maneira.
+    ///
+    /// ⚠️ **Do VERBO e não do [`Grip`]**, como a irmã acima e pela mesma razão:
+    /// o grip do canal é partilhado com a máscara, e as duas referências
+    /// compõem de maneiras diferentes.
+    pub tint: bool,
 }
 
 impl Grip {
@@ -270,6 +292,7 @@ impl Grip {
             additive,
             // ⚠️ **Nenhum grip a declara, de propósito** — ver o doc do campo.
             coat: false,
+            tint: false,
         }
     }
 }

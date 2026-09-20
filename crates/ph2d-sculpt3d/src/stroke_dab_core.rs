@@ -247,7 +247,7 @@ impl SculptStroke {
         // ficava permanente, e o botão "Clear" seria um controle morto que
         // *parece* funcionar em toda região parcial. Ela gateia quem MOVE
         // GEOMETRIA; quem edita o próprio canal a lê como dado, não como freio.
-        let gated_by_mask = !brush.verb.paints_mask();
+        let gated_by_mask = !brush.verb.escreve_um_canal();
         // ⚠️ **A LEI deste verbo, resolvida UMA vez, numa TABELA** — e a tabela
         // mora no [`Grip`], não aqui. Ela muda exatamente quatro coisas neste
         // laço, e nada mais: a captura, a máscara, a simetria, o refit e o undo
@@ -265,6 +265,7 @@ impl SculptStroke {
             unit_accum,
             additive,
             coat,
+            tint,
         } = brush.verb.grip_law(brush.accumulate, field.is_some());
         // ⚠️ **Quem SEGURA trabalha sobre o que já TOCOU, não sobre a consulta
         // deste dab — e sem isto o Grab PERDE barro.** A consulta sai das
@@ -433,8 +434,14 @@ impl SculptStroke {
                     // inv_r` e portão `1`, ou seja o mundo que já shipa, ao bit.
                     let (raw, gate) = footprint.at(from, dist, inv_r);
                     let t = brush.shaped_distance(raw);
+                    // ⚠️ **Cada CANAL traz a dureza dele, e a curva é UMA** —
+                    // ver [`Brush::channel_weight`]. A geometria segue a curva
+                    // que o artista escolheu no pincel; um canal segue a do
+                    // `s-mode`, que é a lei portada.
                     let c = if brush.verb.paints_mask() {
                         brush.mask_weight(t)
+                    } else if brush.verb.paints_color() {
+                        brush.paint_weight(t)
                     } else {
                         brush.falloff.weight(t)
                     };
@@ -592,6 +599,9 @@ impl SculptStroke {
                 // porque perderia a pressão E a curva.
                 let new_accum = if unit_accum {
                     1.0
+                } else if tint {
+                    // O *over* de uma tinta — ver [`crate::GripLaw::tint`].
+                    me.accum[s] + w * (1.0 - me.accum[s])
                 } else if additive {
                     (me.accum[s] + w).min(1.0)
                 } else if coat {
@@ -625,9 +635,13 @@ impl SculptStroke {
             if self.moved.is_empty() {
                 return 0;
             }
-            self.last_paints_mask = brush.verb.paints_mask();
-            if brush.verb.paints_mask() {
-                self.apply_mask(mesh, brush);
+            self.last_paints_mask = brush.verb.escreve_um_canal();
+            if brush.verb.escreve_um_canal() {
+                if brush.verb.paints_color() {
+                    self.apply_color(mesh, brush);
+                } else {
+                    self.apply_mask(mesh, brush);
+                }
                 // Nada de geometria mudou: quem lê `last_refreshed` tem de ver
                 // vazio, não a lista do dab anterior.
                 self.region.forget();

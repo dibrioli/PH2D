@@ -102,8 +102,31 @@ impl GpuContext {
         // cannot run the integrator; the sequencer REFUSES such a kernel at cook
         // time (`GpuCookError::TooManyBindings`) and the caller falls back to the
         // CPU, rather than the pipeline blowing up at first dispatch.
+        // **Vertex buffers per pipeline.** The default is 8 — again the WebGPU
+        // guaranteed minimum, and again a floor no desktop adapter is limited
+        // by: measured on this machine (2026-09-19, `vulkaninfo`), BOTH the
+        // NVIDIA RTX 5060 Ti and the AMD RADV iGPU advertise
+        // `maxVertexInputBindings = 32`, four times what the mesh pipeline
+        // needs. The sculpt mesh feeds ONE buffer per per-vertex channel
+        // (position, normal, mask, curvature, world curvature, thickness,
+        // preview, AO — and, since the paint brushes, vertex COLOUR), which is
+        // exactly 9 and lands one over the floor.
+        //
+        // Raised to the adapter's advertised max by the SAME argument as the
+        // three below: a superset of the default, so `request_device` cannot
+        // fail on it and nothing that worked breaks. ⚠️ Unlike the storage
+        // bindings, there is no graceful per-kernel refusal here — a device
+        // that really does stop at 8 cannot build the mesh pipeline at all. It
+        // does not exist among the adapters this app ships to (desktop
+        // Vulkan/Metal/D3D12 all advertise ≥ 16); a downlevel/WebGPU-floor
+        // adapter would have to pack two scalar channels into one `vec2`
+        // buffer, and the pair that costs nothing to pack is the curvature one
+        // (both derived, both uploaded in the same call, full and partial).
         let adapter_limits = adapter.limits();
         let mut required_limits = wgpu::Limits::default();
+        required_limits.max_vertex_buffers = required_limits
+            .max_vertex_buffers
+            .max(adapter_limits.max_vertex_buffers);
         required_limits.max_storage_buffer_binding_size = required_limits
             .max_storage_buffer_binding_size
             .max(adapter_limits.max_storage_buffer_binding_size);

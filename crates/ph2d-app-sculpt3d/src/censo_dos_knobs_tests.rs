@@ -205,6 +205,17 @@ const MORTOS_CONHECIDOS: &[(Verb, &str, &str)] = &[
          do carimbo não o alcança (recusa medida, com dois gates a defendê-la)",
     ),
     (
+        Verb::Paint,
+        "panel.sculpt3d.falloff",
+        "DIVERGÊNCIA declarada, e é a MESMA da máscara: os dois verbos de canal \
+         têm a curva DELES (`paint_hardness` · `mask_hardness`), que é a mesma \
+         fórmula da referência com durezas de fábrica diferentes (`0,75` contra \
+         `0,25`) — e a curva que o artista escolhe no pincel governa a \
+         GEOMETRIA. ⚠️ A fileira é pintada sempre pela cerca de produto MEDIDA \
+         que a §39 desta linha registou; o `Brush::curva_inerte` já diz a razão \
+         na tela",
+    ),
+    (
         Verb::Pose,
         "panel.sculpt3d.falloff",
         "DIVERGÊNCIA declarada, e o knob NÃO está morto: a espec dele (§1.2) diz \

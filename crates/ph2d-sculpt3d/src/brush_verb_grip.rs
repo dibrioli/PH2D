@@ -73,7 +73,13 @@ impl Verb {
             Self::LocalScale => Grip::Turn(Amount::Fraction),
             // O CARIMBO: a faixa compõe sobre a lista de dabs como o Draw.
             Self::ClayStrips => Grip::Stamp,
-            Self::Mask => Grip::Paint,
+            // ⚠️ **Os DOIS verbos de canal partilham o grip**, e o nome dele
+            // sempre foi o desta família: ele diz *«este gesto pinta um canal e
+            // não carimba geometria»*. ⛔ Sem isto o [`Verb::Paint`] caía no
+            // [`Grip::Stamp`] e passava a **oferecer o `Accumulate`** — um
+            // interruptor que o `Paint.js` não tem e que o barro não sentia; o
+            // censo `o_accumulate_nao_e_oferecido_a_quem_nao_o_sente` apanhou-o.
+            Self::Mask | Self::Paint => Grip::Paint,
             _ => Grip::Stamp,
         }
     }

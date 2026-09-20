@@ -89,6 +89,7 @@ impl SculptStroke {
         // raio do traço novo apontar como a superfície estava no anterior.
         self.nrm0_do_pen_down.clear();
         self.base_mask.clear();
+        self.base_color.clear();
         self.accum.clear();
         self.target.clear();
         // ⚠️ **Um traço novo não herda a direção do anterior** — sem esta linha o

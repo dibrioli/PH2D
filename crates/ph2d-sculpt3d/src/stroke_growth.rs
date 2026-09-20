@@ -145,6 +145,18 @@ impl SculptStroke {
             self.base_nrm_of(mesh, b.b),
         ));
         let mask = 0.5 * (self.base_mask_of(mesh, b.a) + self.base_mask_of(mesh, b.b));
+        // ⚠️ **A cor do recém-nascido é a MÉDIA dos pais, como a máscara** — e
+        // pela mesma razão: um vértice que nasce no meio de uma zona pintada
+        // pertence a ela. Herdar o `DEFAULT_COLOR` faria o refino salpicar a
+        // pintura de branco, que é o defeito que a média existe para não ter.
+        let cor = {
+            let (ca, cb) = (self.base_color_of(mesh, b.a), self.base_color_of(mesh, b.b));
+            [
+                0.5 * (ca[0] + cb[0]),
+                0.5 * (ca[1] + cb[1]),
+                0.5 * (ca[2] + cb[2]),
+            ]
+        };
         let accum = 0.5 * (pa.map_or(0.0, |s| self.accum[s]) + pb.map_or(0.0, |s| self.accum[s]));
         let target = mid3(
             pa.map_or(mesh.positions()[b.a as usize], |s| self.target[s]),
@@ -156,6 +168,7 @@ impl SculptStroke {
         self.base_pos.push(pos);
         self.base_nrm.push(nrm);
         self.base_mask.push(mask);
+        self.base_color.push(cor);
         self.accum.push(accum);
         self.target.push(target);
     }
@@ -184,6 +197,16 @@ impl SculptStroke {
             self.base_mask[self.slot[vi] as usize]
         } else {
             mesh.masks().map_or(DEFAULT_MASK, |m| m[vi])
+        }
+    }
+
+    /// A COR de `v` ANTES do traço — o gémeo exacto da irmã acima.
+    fn base_color_of(&self, mesh: &Mesh, v: u32) -> [f32; 3] {
+        let vi = v as usize;
+        if self.stamp[vi] == self.epoch {
+            self.base_color[self.slot[vi] as usize]
+        } else {
+            mesh.colors().map_or(ph2d_mesh::DEFAULT_COLOR, |c| c[vi])
         }
     }
 }
@@ -257,6 +280,7 @@ impl SculptStroke {
             self.base_pos[to] = self.base_pos[from];
             self.base_nrm[to] = self.base_nrm[from];
             self.base_mask[to] = self.base_mask[from];
+            self.base_color[to] = self.base_color[from];
             self.accum[to] = self.accum[from];
             self.target[to] = self.target[from];
             self.slot[self.touched[to] as usize] = u32::try_from(to).unwrap_or(u32::MAX);
@@ -265,6 +289,7 @@ impl SculptStroke {
         self.base_pos.truncate(keep);
         self.base_nrm.truncate(keep);
         self.base_mask.truncate(keep);
+        self.base_color.truncate(keep);
         self.accum.truncate(keep);
         self.target.truncate(keep);
     }

@@ -573,6 +573,35 @@ pub enum Verb {
     ///
     /// A espec é `docs/3D/cleanroom/SPEC_unblocked_brushes.md` §6.
     SceneProject,
+    /// ⭐⭐⭐⭐ **PINTAR — o primeiro verbo que escreve COR e não forma** (ordem do
+    /// dono, 2026-09-19: *«vamos implementar o pincel de pintura, de Blur e
+    /// Smear para pintura»*).
+    ///
+    /// ⭐ **PORTE FIEL T0, sem parede**, do `Paint.js` do **SculptGL**
+    /// (MIT, © 2019 Stéphane Ginier) — a licença foi lida no artefacto
+    /// instalado e a escada de triagem da SKILL pára no primeiro degrau:
+    /// *«porte fiel, verbatim se quiser; sem parede, sem espec — só manter a
+    /// atribuição»*. É o mesmo precedente que trouxe o colapso de arestas
+    /// curtas e os kernels do `s-mode` a um ULP.
+    ///
+    /// ⭐⭐ **E a lei dele já vivia nesta casa.** O `fallOff` da referência é
+    /// `(1 − d/r)^(2(1−dureza)) × intensidade × máscara × alpha`, que é
+    /// **exactamente** o `w` que o [`crate::SculptStroke`] calcula para todo
+    /// verbo de carimbo — a curva `s-mode`, a força, a máscara e o estêncil,
+    /// pela mesma porta. O que o porte acrescenta é **para onde esse peso vai**:
+    /// em vez de mover o vértice, ele mistura a cor do pincel na cor dele.
+    ///
+    /// ⚠️ **Ele não move UM vértice**, como a [`Verb::Mask`] — e, como ela, o
+    /// dab não refresca normal nenhuma. A diferença entre os dois é o CANAL, e
+    /// é por isso que a pergunta *«que canal este verbo escreve?»* tem duas
+    /// portas irmãs ([`Verb::paints_mask`] · [`Verb::paints_color`]) em vez de
+    /// um booleano *«escreve posição»*.
+    ///
+    /// ⚠️ **O material da referência (rugosidade/metalness) fica FORA**, e a
+    /// ausência é a mesma decisão que o doc do buffer da máscara já escrevia:
+    /// subir dois canais que ninguém lê seriam 8 B/vértice e dois controlos
+    /// mortos. O albedo é o que o sombreamento desta casa consome hoje.
+    Paint,
     /// ⭐⭐⭐ **BOX TRIM — o corte por uma forma desenhada** (ordem do dono,
     /// 2026-09-15: *«Crie o botão nos tools para box trim»*).
     ///

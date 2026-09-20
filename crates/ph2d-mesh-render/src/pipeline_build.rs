@@ -331,6 +331,14 @@ impl MeshRenderer {
         /// proteção que o artista pintou — e restaurá-la depois seria uma
         /// promessa que um `return` esquecido quebra em silêncio.
         const PREVIEW: [wgpu::VertexAttribute; 1] = f32_attr(7);
+        /// A COR por vértice — o albedo que os pincéis de pintura escrevem.
+        ///
+        /// ⚠️ **Buffer próprio e não empacotado com um vizinho**, pela mesma
+        /// razão que separa o AO da espessura: ele muda a CADA dab de pintura,
+        /// e o vizinho com quem coubesse pagaria um upload por dab de um canal
+        /// que ninguém tocou. ⭐ É o 9.º buffer, um acima do piso do WebGPU —
+        /// ver a medição em [`ph2d_gpu`].
+        const COLOR: [wgpu::VertexAttribute; 1] = vec3_attr(8);
         // Irmão do `vec3_buffer`, e uma CLOSURE pela mesma razão que ele: o
         // `make` abaixo é chamado duas vezes (a cena e o G-buffer), e um valor
         // capturado por move faria dele um `FnOnce`.
@@ -417,6 +425,7 @@ impl MeshRenderer {
                         f32_buffer(&CURVW),
                         f32_buffer(&THICK),
                         f32_buffer(&PREVIEW),
+                        vec3_buffer(&COLOR),
                     ],
                 },
                 fragment: Some(wgpu::FragmentState {
@@ -683,6 +692,7 @@ impl MeshRenderer {
             scratch_preview: Vec::new(),
             scratch_ao: Vec::new(),
             scratch_thickness: Vec::new(),
+            scratch_colors: Vec::new(),
         }
     }
 }

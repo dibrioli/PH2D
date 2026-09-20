@@ -62,6 +62,15 @@ bytemuck = { version = "1", features = ["derive"] }
 half = "2"
 
 [dev-dependencies]
+# naga (mesmo major do wgpu 29) — faz o PARSE e a VALIDACAO do `mesh.wgsl` no
+# `cargo test`, sem device.
+#
+# ⛔ Ele nasceu porque esta crate NAO tinha nenhum: o `cargo check` nao olha
+# para WGSL, e os gates que olham precisam de adapter (`#[ignore]`, logo o CI
+# nunca os corre). Um erro de shader — uma entrada de vertice a mais, um
+# varying que nao casa — so' aparecia no primeiro quadro de quem abrisse a cena.
+# Espelha o gate do `sprite.wgsl` (ph2d-render) e do `impasto_light.wgsl`.
+naga = { version = "29.0.4", features = ["wgsl-in"] }
 # Os gates de GPU sao headless e bloqueiam no request_adapter/map_async.
 # ⛔ TETO: ver `ph2d-gpu/Cargo.toml` (segurado pelo rfd).
 pollster = "0.4.0"

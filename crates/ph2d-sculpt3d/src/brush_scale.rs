@@ -370,8 +370,27 @@ impl Brush {
     /// pergunta.
     #[must_use]
     pub fn mask_weight(&self, t: f32) -> f32 {
-        let softness = 2.0 * (1.0 - f64::from(self.mask_hardness));
+        self.channel_weight(t, self.mask_hardness)
+    }
+
+    /// **A CURVA DE UM CANAL, com a dureza de quem a pede** — a porta que o
+    /// [`Self::mask_weight`] e o [`Self::paint_weight`] partilham.
+    ///
+    /// ⭐ **Ela é literalmente a mesma expressão nos dois lados da referência**
+    /// (`Masking.js:66-69` e `Paint.js:124-127` escrevem `softness = 2(1−h)` e
+    /// `pow(1−d, softness)`), e é por isso que ela é UMA função: duas cópias da
+    /// potência divergiriam no dia em que alguém corrigisse uma delas.
+    #[must_use]
+    pub fn channel_weight(&self, t: f32, hardness: f32) -> f32 {
+        let softness = 2.0 * (1.0 - f64::from(hardness));
         (1.0 - f64::from(t)).powf(softness) as f32
+    }
+
+    /// **A CURVA DO CANAL DE COR** — `channel_weight` com a dureza do
+    /// [`Verb::Paint`]. Ver [`Self::paint_hardness`].
+    #[must_use]
+    pub fn paint_weight(&self, t: f32) -> f32 {
+        self.channel_weight(t, self.paint_hardness)
     }
 }
 

@@ -137,6 +137,10 @@ pub struct SculptStroke {
     /// pen-down por construção — nada foi escrito.
     nrm0_do_pen_down: Vec<[f32; 3]>,
     base_mask: Vec<f32>,
+    /// ⭐ **A COR de cada vértice ANTES do traço** — o gémeo do
+    /// [`Self::base_mask`], e pela mesma lei: o peso de um dab é um facto sobre
+    /// a superfície CONGELADA. Ver [`crate::Verb::paints_color`].
+    base_color: Vec<[f32; 3]>,
     /// **A saída por-índice do map do dab** — ver [`super::stroke_map`]. ⚠️
     /// Campo e não local: alocar `count` entradas por dab devolveria ao
     /// alocador o que o paralelismo economiza.

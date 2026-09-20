@@ -101,7 +101,7 @@ fn the_accumulate_delegation_changed_nothing() {
 /// Antes desta tabela o app shipava `0,5` em toda geometria (o **D3** do doc
 /// 20). O Draw é o único que sobrevive intacto.
 #[test]
-fn the_wave_moves_the_factory_strength_of_nine_verbs_and_only_these() {
+fn the_wave_moves_the_factory_strength_of_ten_verbs_and_only_these() {
     let moved: Vec<&str> = Verb::ALL
         .iter()
         // ⚠️ **Só quem a REFERÊNCIA move**, e o filtro entrou em 2026-08-17: a
@@ -128,6 +128,11 @@ fn the_wave_moves_the_factory_strength_of_nine_verbs_and_only_these() {
             "Magnify",
             "Crease",
             "Move / Grab",
+            // ⭐ **O décimo, 2026-09-19** — a premissa «nove» morreu com a
+            // chegada do [`Verb::Paint`], e o nome do gate mudou com ela. A
+            // intensidade dele é `0,75` (`Paint.js:12`), contra o `0,5`
+            // genérico que esta casa shipava.
+            "Paint",
         ],
         "a lista do que a referência move; o Draw e a Mask já batiam"
     );

@@ -172,6 +172,13 @@ mod spacing;
 mod stroke;
 mod transform;
 
+/// ⭐⭐⭐ **A porta que os censos usam para perguntar «este dab mudou alguma
+/// coisa?»** — ver [`canal_de_teste`]. Ela nasceu quando o segundo verbo de
+/// canal chegou e TRÊS harnesses acusaram produto correcto, cada um com a sua
+/// cópia de `if paints_mask() { máscara } else { posições }`.
+#[cfg(test)]
+mod canal_de_teste;
+
 pub use alpha::{
     Alpha, AlphaFrame, AlphaImage, AlphaStencil, DEFAULT_ALPHA_SCALE, MAX_ALPHA_SCALE,
     MAX_AXIS_ELEV_DEG, MIN_ALPHA_SCALE, recommended_scale, sampled_edge,

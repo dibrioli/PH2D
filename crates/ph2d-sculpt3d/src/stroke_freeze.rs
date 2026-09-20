@@ -17,7 +17,7 @@
 //! `the_weight_is_a_fact_about_the_frozen_surface`.
 
 use super::SculptStroke;
-use ph2d_mesh::{DEFAULT_MASK, Mesh};
+use ph2d_mesh::{DEFAULT_COLOR, DEFAULT_MASK, Mesh};
 
 impl SculptStroke {
     /// Guarda o `pre` de um vértice, se ainda não guardou. Idempotente.
@@ -33,6 +33,8 @@ impl SculptStroke {
         self.base_nrm.push(mesh.normals()[vi]);
         self.base_mask
             .push(mesh.masks().map_or(DEFAULT_MASK, |m| m[vi]));
+        self.base_color
+            .push(mesh.colors().map_or(DEFAULT_COLOR, |c| c[vi]));
         self.accum.push(0.0);
         // Alvo neutro: sem dab que vença, `lerp(base, base, 0)` não move nada.
         self.target.push(mesh.positions()[vi]);

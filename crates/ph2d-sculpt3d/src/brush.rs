@@ -213,6 +213,25 @@ pub struct Brush {
     /// quártica da geometria (a `Plateau` vale `0,6875` a meio raio, esta vale
     /// `0,3536`). Em `1.0` o expoente é ZERO e o canal vira um disco duro.
     pub mask_hardness: f32,
+    /// **A DUREZA DA CURVA DO CANAL DE COR** — a irmã exacta do
+    /// [`Self::mask_hardness`], e literalmente a mesma fórmula: o `Paint.js` e
+    /// o `Masking.js` do SculptGL escrevem os dois
+    /// `softness = 2·(1 − hardness)` e `pow(1 − d, softness)`.
+    ///
+    /// ⚠️ **`0,75` é o `_hardness` de fábrica do `Paint.js:12`**, não um número
+    /// escolhido — ele dá expoente `0,5` (uma raiz quadrada), que é uma borda
+    /// MUITO mais macia que a da máscara (expoente `1,5`). Pintar quer bordo
+    /// esbatido; proteger quer bordo definido.
+    ///
+    /// ⛔ **Dois campos e UMA curva:** a lei mora em [`Self::channel_weight`] e
+    /// os dois verbos só lhe dizem a dureza. Uma segunda cópia da potência
+    /// divergiria no dia em que alguém corrigisse uma delas.
+    pub paint_hardness: f32,
+    /// ⭐ **A COR QUE O PINCEL DEPOSITA** — o albedo do [`Verb::Paint`].
+    ///
+    /// ⚠️ **É o `_color` de fábrica do `Paint.js:13`** (o ouro morno da
+    /// referência), portado com ela; o artista troca-o no painel.
+    pub color: [f32; 3],
     /// **A DUREZA DO DAB** em `[0, 1]` — o `hardness` do Blender, e **`0` é a
     /// identidade**.
     ///

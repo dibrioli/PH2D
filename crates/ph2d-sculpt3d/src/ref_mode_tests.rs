@@ -198,9 +198,14 @@ fn the_census_of_offered_chips() {
     // dizer: o catálogo cresceu de 21 para 22 e a lista de exclusões cresceu
     // junto, então *um censo de contagem sozinho seria verde sobre um verbo que
     // ninguém classificou*.
+    // ⭐ **`16` desde 2026-09-19**, com a chegada do [`crate::Verb::Paint`]: ele
+    // é um porte **T0** do `Paint.js` (SculptGL, MIT), logo declara perfil `S`
+    // como os outros quinze. *O número sobe quando um verbo NOVO traz uma
+    // tabela da referência, e é isso que este censo existe para tornar
+    // deliberado.*
     assert_eq!(
         count(RefMode::S),
-        15,
+        16,
         "S: todos menos o Sharpen, o Clay Strips, o Blob, o Clay Thumb, o Multiplane Scrape, o Slide Relax e o Surface Smooth"
     );
     // ⚠️ O `B` alcança TODO verbo com uma coisa só — a força ELEVADA AO
@@ -251,7 +256,9 @@ fn the_census_of_offered_chips() {
     // e com a lista negra escrita no mesmo dia:** a referência restrita tem-no
     // e o SculptGL não, logo o `B` é a única que o declara — e é de lá que vêm
     // a força ao quadrado **e** a curva de queda afiada de fábrica.
-    assert_eq!(count(RefMode::B), 29, "B: a lei da força vale para todos");
+    // ⭐ **30 desde a PINTURA** (2026-09-19): o `b-mode` é a lei da força, e ela
+    // vale para todo verbo que tenha força — a cor inclusive.
+    assert_eq!(count(RefMode::B), 30, "B: a lei da força vale para todos");
     // A literatura chega paper a paper, nas waves W4/W5/W7.
     //
     // ⚠️ **E o Surface Smooth NÃO o move, embora SEJA um paper** (Vollmer,

@@ -83,6 +83,42 @@ impl SculptStroke {
             out[vi] = (self.base_mask[s] + sign * self.accum[s]).clamp(0.0, 1.0);
         }
     }
+
+    /// ⭐⭐⭐⭐ **O APLICADOR DA COR** — o irmão do [`Self::apply_mask`], e a
+    /// diferença entre os dois é a LEI da referência, não o canal.
+    ///
+    /// ⚠️⚠️ **A máscara SOMA e a cor INTERPOLA, e as duas estão certas.** O
+    /// `Masking.js` acumula (`clamp(free − f)`), o que faz de cada esfregada a
+    /// mesma esfregada; o `Paint.js:129-131` escreve
+    /// `c = c·(1 − f) + cor·f` — uma **mistura**, que é assintótica de
+    /// propósito: pintar por cima aproxima-se da cor sem nunca a ultrapassar,
+    /// e é isso que torna a tinta uma tinta. Trocar as duas leis daria uma
+    /// máscara que nunca fecha e uma pintura que estoura o canal.
+    ///
+    /// ⚠️ **A partida é o `base_color` congelado e o peso é o `accum` do
+    /// traço**, e não a cor viva por dab: é a lei do envelope desta casa
+    /// (`docs/3D/04.1`) — o resultado é função do CAMINHO e não de quão fino o
+    /// motor amostrou. Com `accumulate` ligado o `accum` cresce ao longo do
+    /// traço exactamente como os dabs da referência se compõem, e o gate de
+    /// paridade é quem mede se as duas contas concordam.
+    ///
+    /// ⛔ **Sem `clamp`, e a ausência é uma afirmação:** os dois extremos já
+    /// estão dentro de `[0,1]` (o `base_color` porque ninguém escreve fora, a
+    /// cor do pincel porque o painel a coage) e uma interpolação entre dois
+    /// valores da faixa **não sai dela**. Um clamp aqui esconderia o dia em que
+    /// um deles passasse a sair.
+    pub(super) fn apply_color(&self, mesh: &mut Mesh, brush: &Brush) {
+        let out = mesh.colors_mut();
+        for &v in &self.moved {
+            let vi = v as usize;
+            let s = self.slot[vi] as usize;
+            let a = self.accum[s].clamp(0.0, 1.0);
+            let base = self.base_color[s];
+            for k in 0..3 {
+                out[vi][k] = base[k] * (1.0 - a) + brush.color[k] * a;
+            }
+        }
+    }
 }
 
 /// **O APLICADOR** — de `b` para `t`, andando a fração `a`.

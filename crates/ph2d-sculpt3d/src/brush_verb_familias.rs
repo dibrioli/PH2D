@@ -27,6 +27,30 @@ impl Verb {
         matches!(self, Self::Mask)
     }
 
+    /// Este verbo escreve na COR em vez da posição?
+    ///
+    /// ⭐ **O segundo verbo de canal chegou** (2026-09-19, o [`Self::Paint`]), e
+    /// o doc da irmã acima previa-o por escrito — *«duas listas divergiriam no
+    /// dia em que entrar o segundo verbo de canal»*. ⇒ a pergunta que o resto
+    /// do motor faz não é nenhuma das duas: é [`Self::escreve_um_canal`].
+    #[must_use]
+    pub fn paints_color(self) -> bool {
+        matches!(self, Self::Paint)
+    }
+
+    /// ⭐⭐ **Este verbo escreve um CANAL em vez de mover barro?**
+    ///
+    /// ⚠️ **É esta a pergunta que o motor faz**, e não *«qual canal»*: quem
+    /// decide se o dab refresca normais, se o `Ctrl+Z` fotografa geometria e se
+    /// o aplicador de posições corre está a perguntar se alguma **posição**
+    /// mudou — e a resposta é a mesma para os dois canais. Deixar cada sítio
+    /// perguntar `paints_mask()` foi o que fez a chegada da cor tocar em cada
+    /// um deles.
+    #[must_use]
+    pub fn escreve_um_canal(self) -> bool {
+        self.paints_mask() || self.paints_color()
+    }
+
     /// Este verbo ajusta um plano à pegada do dab? (Quem responde `true` usa o
     /// knob `plane_offset`.)
     ///

@@ -66,6 +66,21 @@ pub(super) struct MeshGpu {
     /// isso passa pelo [`ao_of`]: nem toda peça foi assada, e a que não foi tem
     /// de subir o céu aberto para renderizar como sempre renderizou.
     pub(super) ao: wgpu::Buffer,
+    /// A COR por vértice — o albedo que os pincéis de pintura escrevem.
+    ///
+    /// ⚠️ **Irmão do [`ao`](Self::ao) e não da máscara:** ele é `Option` na
+    /// malha (uma esfera que ninguém pintou não paga 12 B/vértice) e a ausência
+    /// sobe como [`ph2d_mesh::DEFAULT_COLOR`] — **branco**, o neutro do produto
+    /// que multiplica —, porque uma peça que ninguém pintou tem de renderizar
+    /// EXACTAMENTE como antes de este canal existir. Se a ausência subisse
+    /// preta, toda peça nasceria apagada e o artista iria procurar o defeito no
+    /// shader.
+    ///
+    /// ⭐ **Ele é o 9.º buffer de vértice, e o 9.º passa do piso do WebGPU** — o
+    /// `max_vertex_buffers` de omissão é `8`. O limite sobe ao máximo do
+    /// adaptador em [`ph2d_gpu`], onde a medição desta máquina (`32`) está
+    /// escrita ao lado do argumento.
+    pub(super) colors: wgpu::Buffer,
     pub(super) indices: wgpu::Buffer,
     pub(super) index_count: u32,
     pub(super) vert_capacity: usize,

@@ -100,3 +100,11 @@ impl RigRaw {
 #[cfg(test)]
 #[path = "lighting_tests.rs"]
 mod lighting_tests;
+
+/// ⛔⛔ **O gate que valida o `mesh.wgsl` SEM device** — ver
+/// [`wgsl_gate_tests`]. Ele mora declarado aqui, ao lado do irmão que já lê o
+/// shader como texto, e não num `tests/` próprio: os gates de GPU desta crate
+/// são todos `#[ignore]`, logo o CI nunca os corre.
+#[cfg(test)]
+#[path = "wgsl_gate_tests.rs"]
+mod wgsl_gate_tests;

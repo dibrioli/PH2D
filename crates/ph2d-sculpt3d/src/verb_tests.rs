@@ -167,7 +167,7 @@ fn invert_digs_where_the_verb_lifted() {
 #[test]
 fn invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite() {
     let centre = [0.0, 0.0, 1.0];
-    let run = |brush: &Brush| -> (Vec<[f32; 3]>, Vec<f32>) {
+    let run = |brush: &Brush| -> (Vec<[f32; 3]>, Vec<f32>, Vec<f32>) {
         // ⚠️ **A malha vem da PORTA, não da fixture do arquivo** — um verbo que
         // lê o anel só age sobre irregularidade, e a esfera lisa é o caso
         // degenerado dele (ver [`mesh_for`]).
@@ -203,7 +203,13 @@ fn invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite() {
         }
         let n = mesh.vert_count();
         let mask = mesh.masks().map_or_else(|| vec![0.0; n], <[f32]>::to_vec);
-        (mesh.positions().to_vec(), mask)
+        // ⭐ **A terceira coluna é o CANAL QUE ESTE VERBO ESCREVE**, pela porta
+        // — ver [`crate::canal_de_teste`]. Sem ela o [`Verb::Paint`] reprovava
+        // aqui com *«o dab não fez nada em canal nenhum»*, que era a frase
+        // certa sobre esta régua e falsa sobre o produto: ele escrevia na COR,
+        // que nem as posições nem a máscara mostram.
+        let canal = crate::canal_de_teste::retrato_do_canal(&mesh, brush.verb);
+        (mesh.positions().to_vec(), mask, canal)
     };
     let moved = |a: &[[f32; 3]], b: &[[f32; 3]]| {
         a.iter()
@@ -248,24 +254,33 @@ fn invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite() {
             strength: 1.0,
             ..Brush::default()
         };
-        let (up_pos, up_mask) = run(&Brush {
+        // ⚠️ **O pincel passa pela porta que põe o canal EM CONDIÇÕES DE
+        // MUDAR**, e a razão é o `DEFAULT_COLOR`: ele é BRANCO, e um pincel
+        // branco sobre barro branco é um no-op perfeito. Sem isto o censo
+        // dependeria de a cor de fábrica do pincel calhar diferente do barro.
+        let b = crate::canal_de_teste::pincel_com_canal_vivo(b);
+        let rest_canal = crate::canal_de_teste::retrato_do_canal(&mesh_for(verb), verb);
+        let (up_pos, up_mask, up_canal) = run(&Brush {
             invert: false,
             ..b.clone()
         });
-        let (down_pos, down_mask) = run(&Brush {
+        let (down_pos, down_mask, down_canal) = run(&Brush {
             invert: true,
             ..b.clone()
         });
 
         let up_move = moved(&rest, &up_pos);
         let up_paint = up_mask.iter().fold(0.0f32, |m, &x| m.max(x));
+        let up_canal_mudou = crate::canal_de_teste::desvio(&rest_canal, &up_canal);
         assert!(
-            up_move > 1e-4 || up_paint > 1e-4,
+            up_move > 1e-4 || up_paint > 1e-4 || up_canal_mudou > 1e-4,
             "{}: o dab não fez nada em canal nenhum — a comparação abaixo seria vácuo",
             verb.label()
         );
 
-        let differs = moved(&up_pos, &down_pos) > 1e-4 || repainted(&up_mask, &down_mask) > 1e-4;
+        let differs = moved(&up_pos, &down_pos) > 1e-4
+            || repainted(&up_mask, &down_mask) > 1e-4
+            || crate::canal_de_teste::desvio(&up_canal, &down_canal) > 1e-4;
         assert_eq!(
             differs,
             verb.honours_invert(),

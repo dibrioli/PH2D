@@ -52,6 +52,7 @@ impl crate::Verb {
             Self::Crease => "sculpt3d.verb.crease",
             Self::Blob => "sculpt3d.verb.blob",
             Self::Mask => "sculpt3d.verb.mask",
+            Self::Paint => "Paint",
             Self::Move => "sculpt3d.verb.move",
             Self::SnakeHook => "sculpt3d.verb.snake_hook",
             Self::Twist => "sculpt3d.verb.twist",

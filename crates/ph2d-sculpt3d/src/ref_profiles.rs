@@ -224,6 +224,28 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
             accumulate: Some(false),
             ..VerbProfile::SILENT
         },
+        // ⭐ **`Paint.js:11-13`** — o porte T0 declara os valores de fábrica da
+        // referência: intensidade `0,75` e o raio de `50`, que é o raio comum
+        // desta casa (factor `1`).
+        //
+        // ⚠️ **A DUREZA não está aqui, e a ausência segue a máscara:** ela é a
+        // forma da CURVA DO CANAL, mora no pincel
+        // ([`crate::Brush::paint_hardness`], `0,75` de fábrica) e o artista
+        // move-a. O perfil declara o que o VERBO fixa; a dureza é dele.
+        //
+        // ⛔⛔ **O `accumulate` NÃO está aqui, e a 1.ª redacção pô-lo — foi um
+        // controlo INVENTADO.** O `Paint.js` não tem interruptor nenhum de
+        // acumular (`_radius`, `_hardness`, `_intensity`, `_culling`, `_color`,
+        // `_material`, `_lockPosition` — e mais nenhum), e quem o apanhou foi o
+        // censo `o_accumulate_nao_e_oferecido_a_quem_nao_o_sente`: ele acusou o
+        // verbo de oferecer o interruptor e o barro não sentir. *A composição
+        // dos dabs deste pincel é a LEI dele* ([`crate::GripLaw::tint`]), não
+        // uma escolha do artista.
+        Verb::Paint => VerbProfile {
+            strength: Some(0.75),
+            radius_factor: Some(1.0),
+            ..VerbProfile::SILENT
+        },
         // `Masking.js:13-16` — força CHEIA, e o nosso default já concorda.
         Verb::Mask => VerbProfile {
             falloff: Some(Falloff::Plateau),

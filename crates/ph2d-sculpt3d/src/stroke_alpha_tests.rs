@@ -289,7 +289,11 @@ fn every_verb_reads_the_alpha() {
             stroke.begin(&mesh);
             stroke.reference = referencia_sintetica(&mesh);
             stroke.pecas_da_cena = alvo_sintetico();
-            let mut brush = textured(verb);
+            // ⚠️ **A porta que põe o canal em condições de mudar** — ver
+            // [`crate::canal_de_teste::pincel_com_canal_vivo`]: o
+            // `DEFAULT_COLOR` é BRANCO, e um pincel branco sobre barro branco
+            // é um no-op perfeito.
+            let mut brush = crate::canal_de_teste::pincel_com_canal_vivo(textured(verb));
             if !armed {
                 brush.alpha = None;
             }
@@ -304,11 +308,11 @@ fn every_verb_reads_the_alpha() {
                     Symmetry::default(),
                 );
             }
-            snap[k] = if verb.paints_mask() {
-                mesh.masks().expect("a máscara existe").to_vec()
-            } else {
-                mesh.positions().iter().flat_map(|p| *p).collect()
-            };
+            // ⭐ **Pela PORTA, e não por um `if paints_mask()`** — esta cópia
+            // da pergunta era a segunda de três, e ela acusou o
+            // [`Verb::Paint`] de não ler o alpha quando o que ela não lia era
+            // a COR. Ver [`crate::canal_de_teste`].
+            snap[k] = crate::canal_de_teste::retrato_do_canal(&mesh, verb);
         }
         assert!(
             snap[0].iter().zip(&snap[1]).any(|(a, b)| a != b),

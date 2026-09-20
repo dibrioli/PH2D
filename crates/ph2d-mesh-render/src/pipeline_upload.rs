@@ -74,6 +74,24 @@ fn ao_of<'a>(mesh: &'a Mesh, scratch: &'a mut Vec<f32>) -> &'a [f32] {
     }
 }
 
+/// A COR por vértice, com a ausência resolvida — o gêmeo exato do [`ao_of`], e
+/// pelo mesmo motivo: o device não tem `Option`.
+///
+/// ⚠️ **A ausência sobe como `DEFAULT_COLOR` (BRANCO) e não como zero**, pela
+/// mesma lei que o AO escreve uma função acima: o branco é o neutro do produto
+/// que o shader faz, logo uma peça que ninguém pintou desenha exactamente como
+/// desenhava antes de este canal existir. Preto apagaria toda peça do app.
+fn colors_of<'a>(mesh: &'a Mesh, scratch: &'a mut Vec<[f32; 3]>) -> &'a [[f32; 3]] {
+    match mesh.colors() {
+        Some(c) => c,
+        None => {
+            scratch.clear();
+            scratch.resize(mesh.vert_count(), ph2d_mesh::DEFAULT_COLOR);
+            scratch
+        }
+    }
+}
+
 /// A **espessura** por vértice, com a ausência resolvida — o gêmeo do
 /// [`ao_of`], com uma diferença que não é estilo.
 ///
@@ -165,6 +183,11 @@ impl MeshRenderer {
                 0,
                 bytemuck::cast_slice(preview_of(preview, mesh, &mut self.scratch_preview)),
             );
+            queue.write_buffer(
+                &g.colors,
+                0,
+                bytemuck::cast_slice(colors_of(mesh, &mut self.scratch_colors)),
+            );
             queue.write_buffer(&g.indices, 0, bytemuck::cast_slice(&self.scratch_indices));
             g.index_count = index_count;
             // ⚠️ **A topologia pode ter mudado, então as arestas morrem aqui.**
@@ -205,6 +228,10 @@ impl MeshRenderer {
             preview: vb(
                 "ph2d-mesh preview",
                 bytemuck::cast_slice(preview_of(preview, mesh, &mut self.scratch_preview)),
+            ),
+            colors: vb(
+                "ph2d-mesh color",
+                bytemuck::cast_slice(colors_of(mesh, &mut self.scratch_colors)),
             ),
             indices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("ph2d-mesh idx"),

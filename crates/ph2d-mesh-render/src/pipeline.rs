@@ -136,6 +136,9 @@ pub struct MeshRenderer {
     scratch_preview: Vec<f32>,
     scratch_ao: Vec<f32>,
     scratch_thickness: Vec<f32>,
+    /// O rascunho da COR — irmão do [`Self::scratch_ao`], e `[f32; 3]` porque
+    /// o canal é um albedo. Ver `colors_of`.
+    scratch_colors: Vec<[f32; 3]>,
     // ---- o AO de TELA (`crate::ssao`) ----
     ssao_bgl: wgpu::BindGroupLayout,
     ssao_uniform: wgpu::Buffer,
@@ -324,6 +327,7 @@ impl MeshRenderer {
             pass.set_vertex_buffer(5, slot.gpu.curv_world.slice(..));
             pass.set_vertex_buffer(6, slot.gpu.thickness.slice(..));
             pass.set_vertex_buffer(7, slot.gpu.preview.slice(..));
+            pass.set_vertex_buffer(8, slot.gpu.colors.slice(..));
             pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..count, 0, 0..1);
         }

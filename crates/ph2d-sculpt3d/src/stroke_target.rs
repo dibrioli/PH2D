@@ -652,7 +652,10 @@ impl SculptStroke {
             // O alvo de posição de um verbo de máscara é o próprio lugar: ele
             // não move geometria ([`crate::Grip::Paint`]), e `apply_mask` é quem
             // escreve o canal dele.
-            Verb::Mask => base,
+            // ⚠️ **Os DOIS verbos de CANAL devolvem o `base`** — eles não movem
+            // um vértice, e o alvo neutro é o que garante que o aplicador de
+            // posições, se algum dia for chamado por engano, não move nada.
+            Verb::Mask | Verb::Paint => base,
             // **OS QUATRO GESTOS COM ÂNCORA** vivem no irmão [`gripped`] — a
             // família que a [`Verb::anchors`] nomeia.
             // **OS QUATRO GESTOS COM ÂNCORA**, mais os **DOIS TANGENCIAIS** que

@@ -123,6 +123,10 @@ impl Default for Brush {
             scrape_dynamic: false,
             // O `_hardness` de fábrica da `Masking` do original.
             mask_hardness: 0.25,
+            // O `_hardness` de fábrica do `Paint` do original — ver o campo.
+            paint_hardness: 0.75,
+            // O `_color` de fábrica do `Paint` do original (`Paint.js:13`).
+            color: [1.0, 0.766, 0.336],
             // O neutro da etapa de dureza — ver o campo.
             hardness: 0.0,
             // ⚠️ **`0,5` é o valor de fábrica da referência, lido do cabeçalho

@@ -373,6 +373,13 @@ struct VsOut {
     // esta grandeza decide alguma coisa. Vazamento com ele: **0,3 %** na esfera
     // grossa e 0,5 % no toro, contra **0,0 %** nos dois com a forma correta.
     @location(7) facing: f32,
+    // **A COR POR VÉRTICE** — o albedo que os pincéis de pintura escrevem.
+    //
+    // ⚠️ **Ela NÃO substitui o barro, MULTIPLICA-o**, e é isso que faz a
+    // ausência ser exacta: quem não pintou sobe `DEFAULT_COLOR` = branco, e
+    // `CLAY * 1.0` é `CLAY` **ao bit** em `f32`. A peça de sempre desenha como
+    // sempre desenhou.
+    @location(8) vcolor: vec3<f32>,
 };
 
 fn vs_core(
@@ -384,8 +391,11 @@ fn vs_core(
     curv_world: f32,
     thickness: f32,
     preview: f32,
+    vcolor: vec3<f32>,
 ) -> VsOut {
     var out: VsOut;
+    // Adimensional como a máscara: o `obj.model` não a toca.
+    out.vcolor = vcolor;
     out.clip = cam.view_proj * obj.model * vec4<f32>(pos, 1.0);
     out.mask = mask;
     // Um peso adimensional, como a máscara: `obj.model` não o toca.
@@ -606,8 +616,9 @@ fn vs_main(
     @location(5) curv_world: f32,
     @location(6) thickness: f32,
     @location(7) preview: f32,
+    @location(8) vcolor: vec3<f32>,
 ) -> VsOut {
-    return vs_core(pos, normal, mask, curv, ao, curv_world, thickness, preview);
+    return vs_core(pos, normal, mask, curv, ao, curv_world, thickness, preview, vcolor);
 }
 
 // **O EMPURRÃO LATERAL** — o fio sai meio pixel para FORA, e só onde a face
@@ -722,7 +733,11 @@ fn vs_wire(
     @location(6) thickness: f32,
     @location(7) preview: f32,
 ) -> VsOut {
-    var out = vs_core(pos, normal, mask, curv, ao, curv_world, thickness, preview);
+    // ⚠️ **O arame NÃO lê a cor por vértice, e não é esquecimento:** ele
+    // desenha num tinto próprio, e declarar a entrada aqui obrigaria o passe de
+    // arestas a amarrar um buffer que ele nunca amostra. O branco é o neutro do
+    // produto lá em baixo, logo passar `1` é o mesmo que não passar nada.
+    var out = vs_core(pos, normal, mask, curv, ao, curv_world, thickness, preview, vec3<f32>(1.0));
     out.clip.z = out.clip.z + (out.clip.z - out.clip.w) * WIRE_DEPTH_NUDGE;
     out.clip = wire_lateral_push(pos, normal, out.clip, out.facing);
     return out;
@@ -953,7 +968,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // Sem lâmpada acesa não há razão a computar: o barro cru é a leitura honesta
     // de "o artista apagou tudo" para uma superfície opaca.
     if (rig.n == 0u) {
-        return vec4<f32>(CLAY, 1.0);
+        return vec4<f32>(CLAY * in.vcolor, 1.0);
     }
 
     var diffuse = vec3<f32>(0.0);
@@ -1020,7 +1035,13 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // tambem nao leva `cav_occ`: uma fresta oclui a luz que vem de FORA, e esta
     // ja' estava dentro da materia -- ocluir aqui seria escurecer a luz pelo
     // caminho que ela nao tomou.
-    var c = CLAY * m * cav_occ + CLAY * trans + CLAY_SHINE * spec;
+    // ⭐ **A COR PINTADA multiplica o barro nos dois termos DIFUSOS e deixa o
+    // especular em paz.** Um realce especular de dielétrico é a imagem da
+    // LÂMPADA e não a cor da tinta — tingi-lo faria a tinta escura comer o
+    // brilho e a peça perder a leitura de forma exactamente onde ela é mais
+    // forte. ⚠️ E com `vcolor = 1` (quem não pintou) isto é `CLAY` **ao bit**.
+    let clay = CLAY * in.vcolor;
+    var c = clay * m * cav_occ + clay * trans + CLAY_SHINE * spec;
 
     // A máscara entra DEPOIS da luz, sobre a cor já acesa: ela tinge o que se vê
     // em vez de mudar como a superfície responde à lâmpada. Tingir antes faria a

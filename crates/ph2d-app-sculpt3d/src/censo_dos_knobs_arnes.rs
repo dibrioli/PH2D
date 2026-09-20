@@ -205,9 +205,15 @@ pub(super) fn corre(b: &Brush) -> Mesh {
     mesh
 }
 
-/// O maior desvio entre duas saídas — **posição E máscara**, porque há verbos
-/// que só escrevem o canal (`Verb::Mask`) e um censo que olhasse só posições
-/// acusaria todos os knobs dele.
+/// O maior desvio entre duas saídas — **posição, máscara E COR**, porque há
+/// verbos que só escrevem um canal (`Verb::Mask`, `Verb::Paint`) e um censo que
+/// olhasse só posições acusaria todos os knobs deles.
+///
+/// ⚠️ **A COR entrou em 2026-09-19 e foi a QUARTA cópia desta pergunta a
+/// acusar produto correcto** — as outras três vivem na `ph2d-sculpt3d` e hoje
+/// passam pela porta `canal_de_teste`. Esta não a alcança (ela é `cfg(test)`
+/// da outra crate), e é por isso que a régua está escrita duas vezes: *a
+/// duplicação é declarada, não esquecida.*
 pub(super) fn desvio(a: &Mesh, b: &Mesh) -> f32 {
     // ⭐⭐⭐ **A CONTAGEM PRIMEIRO — dois barros de tamanhos diferentes são
     // diferentes**, e sem esta metade o `zip` abaixo compararia o **PREFIXO** e
@@ -244,7 +250,17 @@ pub(super) fn desvio(a: &Mesh, b: &Mesh) -> f32 {
     let canal = (0..n)
         .map(|i| (em(a.masks(), i) - em(b.masks(), i)).abs())
         .fold(0.0f32, f32::max);
-    pos.max(canal)
+    // ⚠️ **E a COR pela MESMA lei da ausência:** quem não pintou lê
+    // `DEFAULT_COLOR`, nunca «não comparável» — senão o `Verb::Paint` lia-se
+    // INERTE contra a peça por tocar, exactamente como o `Verb::Mask` lia.
+    let ec = |c: Option<&[[f32; 3]]>, i: usize| c.map_or(ph2d_mesh::DEFAULT_COLOR, |v| v[i]);
+    let cor = (0..n)
+        .map(|i| {
+            let (p, q) = (ec(a.colors(), i), ec(b.colors(), i));
+            (0..3).map(|k| (p[k] - q[k]).abs()).fold(0.0f32, f32::max)
+        })
+        .fold(0.0f32, f32::max);
+    pos.max(canal).max(cor)
 }
 
 /// O pincel deste verbo como o painel o entrega, com o raio na régua do censo.

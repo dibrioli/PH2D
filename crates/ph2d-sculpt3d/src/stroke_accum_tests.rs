@@ -524,17 +524,22 @@ fn the_accumulate_default_is_the_references_tool_by_tool() {
 fn o_accumulate_nao_e_oferecido_a_quem_nao_o_sente() {
     /// Um traço de seis dabs que ANDA — um carimbo isolado não distingue as
     /// duas posições, porque a distância só diverge depois de o barro se mover.
-    fn barro(verb: Verb, accumulate: bool) -> Vec<[f32; 3]> {
+    ///
+    /// ⭐ **Devolve o CANAL que o verbo escreve e não as posições** — ver
+    /// [`crate::canal_de_teste`]. Esta foi a terceira cópia da pergunta *«este
+    /// dab mudou alguma coisa?»* a acusar o [`Verb::Paint`] de inerte quando o
+    /// que ela não olhava era a COR.
+    fn barro(verb: Verb, accumulate: bool) -> Vec<f32> {
         let mut m = ph2d_mesh::shapes::uv_sphere(24, 32, 1.0);
         let mut s = crate::SculptStroke::default();
         s.begin(&m);
-        let b = Brush {
+        let b = crate::canal_de_teste::pincel_com_canal_vivo(Brush {
             verb,
             accumulate,
             radius: 0.4,
             strength: 1.0,
             ..Brush::default()
-        };
+        });
         for k in 0..6 {
             let x = 0.08 * f32::from(u8::try_from(k).unwrap_or(0));
             let c = [x, 0.0, (1.0f32 - x * x).max(0.0).sqrt()];
@@ -545,7 +550,7 @@ fn o_accumulate_nao_e_oferecido_a_quem_nao_o_sente() {
                 crate::Symmetry::default(),
             );
         }
-        m.positions().to_vec()
+        crate::canal_de_teste::retrato_do_canal(&m, verb)
     }
 
     let (mut inertes, mut vivos) = (Vec::new(), 0usize);

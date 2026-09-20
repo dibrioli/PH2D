@@ -3007,12 +3007,28 @@ fn os_controlos_proprios_de_um_pincel_cabem_no_encaixe() {
     const FOLGA_PX: f32 = 1.0;
     /// ⛔ **SÓ ENCOLHE** — os cinco que passam a dobra hoje, com o número medido
     /// em 2026-09-17. Curar um deles é apagar a linha dele daqui.
+    ///
+    /// ⛔⛔⛔ **E ela SUBIU `+23 px` em 2026-09-19, por ORDEM DO DONO — a única
+    /// espécie de subida que esta casa admite.** Ele mandou *«implementar o
+    /// pincel de pintura, de Blur e Smear»*, e um verbo novo precisa de um
+    /// CHIP: a grelha de verbos é adaptativa à LARGURA dos rótulos, o 36.º
+    /// rebentou a linha, e uma fileira de chips a mais na secção *Tool* empurra
+    /// **todos** os pincéis para baixo — os cinco pela mesma quantidade.
+    ///
+    /// ⚠️⚠️ **O preço é REAL e não some por estar registado:** o encaixe mede
+    /// `880` e o pior destes já estava em `1 107`. Cada `+23` é mais rolagem
+    /// entre o artista e um controlo que ele tem de alcançar, e a «etapa de
+    /// arrumação» que o dono anunciou passa a ter um número. *Registar uma
+    /// subida não é curá-la; é impedir que a seguinte passe calada.*
+    ///
+    /// ⚠️ **Blur e Smear ainda não estão no catálogo** — se os rótulos deles
+    /// rebentarem outra linha, esta tabela volta a acusar, e é isso que se quer.
     const ACIMA_DA_DOBRA: [(&str, f32); 5] = [
-        ("Cloth", 1107.0),
-        ("Boundary", 1083.0),
-        ("Plane", 1003.0),
-        ("SmearMultires", 964.0),
-        ("BoxTrim", 961.0),
+        ("Cloth", 1130.0),
+        ("Boundary", 1106.0),
+        ("Plane", 1026.0),
+        ("SmearMultires", 987.0),
+        ("BoxTrim", 984.0),
     ];
 
     let proprios: [&[ph2d_a11y::NodeId]; 7] = [

@@ -130,6 +130,19 @@ impl Verb {
             law.unit_accum = false;
             law.from_live = false;
         }
+        // ⭐⭐ **A PINTURA compõe como uma tinta** — ver [`crate::GripLaw::tint`],
+        // onde está a álgebra que mostra que isto **é** o `Paint.js:129-131` e
+        // não uma aproximação dele.
+        //
+        // ⚠️ **E `unit_accum` falso**, pela mesma razão que a demão: o `accum`
+        // deste verbo **é** a fracção de mistura que o aplicador interpola. Com
+        // ele verdadeiro o primeiro dab levaria a cor inteira e o pincel
+        // deixaria de ter borda.
+        if self == Self::Paint {
+            law.tint = true;
+            law.unit_accum = false;
+            law.additive = false;
+        }
         // ⛔⛔⛔ **A PROJECÇÃO mede da posição VIVA, SEMPRE** — espec §6.5 com
         // todas as letras: *«não há normalização por área, nem acumulador, nem
         // memória entre dabs — cada dab re-mede a distância a partir de onde o

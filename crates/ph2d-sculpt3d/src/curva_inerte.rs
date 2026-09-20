@@ -64,7 +64,12 @@ impl crate::Brush {
     #[must_use]
     pub fn curva_inerte(&self) -> Option<CurvaInerte> {
         match self.verb {
-            crate::Verb::Mask => Some(CurvaInerte::OCanalTemCurvaPropria),
+            // ⭐ **Os DOIS verbos de canal**, e pela mesma razão exacta: cada
+            // um tem a curva DELE (`mask_hardness` · `paint_hardness`, a mesma
+            // fórmula da referência com durezas diferentes), e a curva que o
+            // artista escolhe no pincel governa a GEOMETRIA. Quem o apanhou foi
+            // o censo dos knobs mortos, no minuto em que a pintura acordou nele.
+            crate::Verb::Mask | crate::Verb::Paint => Some(CurvaInerte::OCanalTemCurvaPropria),
             // ⚠️ **ANTES do braço geral**, senão ele responde `SemLeiPorVertice`
             // e o artista lê uma frase sobre topologia com um corte na mão.
             crate::Verb::BoxTrim => Some(CurvaInerte::OGestoNaoCarimba),

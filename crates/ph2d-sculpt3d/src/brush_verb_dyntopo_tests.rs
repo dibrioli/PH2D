@@ -289,6 +289,59 @@ fn os_nove_ancorados_tem_resposta_e_quatro_deles_mexem() {
 /// referências, mesma família na medida). Se ele a quiser de volta a
 /// adensar, é esta linha que muda — *uma herança silenciosa e uma decisão
 /// leem-se igual numa tabela, e é a lista que as separa.*
+/// ⭐⭐⭐⭐ **A TOPOLOGIA DINÂMICA VALE PARA OS PINCÉIS DE PINTURA — ordem do
+/// dono** (2026-09-19: *«permita que o dynamic topology funciona para os 3
+/// pincéis»*).
+///
+/// ⛔⛔ **E ela CONTRADIZ o argumento com que a MÁSCARA foi curada, que está
+/// escrito nesta mesma tabela:** *«um gesto que não escreve posição não tem
+/// porque mudar a topologia»*. Os verbos de pintura também não escrevem
+/// posição — e mesmo assim têm de adensar.
+///
+/// ⭐ **O mecanismo que os separa, e que o argumento da máscara não continha:**
+/// a cor por vértice é uma IMAGEM, e a resolução dela **é** a resolução da
+/// malha. Pintar numa peça grossa dá manchas do tamanho dos triângulos, e a
+/// única maneira de o artista ganhar detalhe é a malha ganhar vértices debaixo
+/// do pincel. A máscara é uma SELECÇÃO — ela não tem de desenhar nada — e é
+/// isso que a deixa do outro lado. *O discriminador nunca foi «escreve
+/// posição?»: é «este canal carrega um DESENHO?».*
+///
+/// ⚠️ **O valor coincide com o de fábrica** (`_ => !self.anchors()`, e nenhum
+/// deles ancora) ⇒ um braço no `match` seria uma linha que a mutação não mata,
+/// e é por isso que a decisão mora AQUI — a mesma lei que o irmão abaixo
+/// aplica às cinco células de 14/09.
+#[test]
+fn o_dono_manda_a_topologia_dinamica_valer_para_os_pinceis_de_pintura() {
+    let pintura: Vec<Verb> = Verb::ALL.into_iter().filter(|v| v.paints_color()).collect();
+    assert!(
+        !pintura.is_empty(),
+        "piso de população: nenhum verbo declara pintar cor — a extracção \
+         partiu-se, e o veredito do dono ficou a afirmar sobre o vazio"
+    );
+    for v in pintura {
+        assert!(
+            v.refina_no_dyntopo(),
+            "`{}` tem de REFINAR: o dono mandou a topologia dinâmica valer para \
+             os pincéis de pintura, e a resolução da cor É a da malha",
+            v.label()
+        );
+        assert!(
+            v.colapsa_no_dyntopo(),
+            "`{}`: as duas colunas separaram-se debaixo de um veredito que as \
+             tratava juntas — se for de propósito, é este gate que muda",
+            v.label()
+        );
+    }
+    // ⚠️ **O CONTROLO é a MÁSCARA**, e sem ele isto não afirma nada: se algum
+    // dia todo verbo passar a refinar, as asserções acima ficam verdes por
+    // vácuo. Ela é o outro lado do discriminador — um canal que não desenha.
+    assert!(
+        !Verb::Mask.refina_no_dyntopo(),
+        "CONTROLO: a máscara voltou a refinar — o discriminador «este canal \
+         carrega um DESENHO?» deixou de separar alguém"
+    );
+}
+
 #[test]
 fn o_veredito_do_dono_sobre_cinco_celulas() {
     /// `(verbo, mexe?, o que ele disse)`.

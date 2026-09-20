@@ -279,7 +279,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         // unidades diferentes e âmbitos diferentes, é um controlo a mentir — e quem chega primeiro
         // não é quem tem de mudar. ⭐ E «offset» é a palavra do próprio dono (*«crie no nó Shape o
         // offset do Pivot»*), que diz o que o `0` significa: *o pivô natural DESTA forma*.
-        label: "Pivot Offset X",
+        label: "node.source.shape.param.pivot_x",
         min: -2.0,
         max: 2.0,
         step: 0.01,
@@ -287,7 +287,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::PIVOT_Y,
-        label: "Pivot Offset Y",
+        label: "node.source.shape.param.pivot_y",
         min: -2.0,
         max: 2.0,
         step: 0.01,

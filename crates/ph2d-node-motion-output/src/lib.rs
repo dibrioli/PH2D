@@ -323,7 +323,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: COLLIDE_PARAM,
-        label: "Collide",
+        label: "node.motion.output.param.collide",
         min: 0.0,
         max: 1.0,
         step: 1.0,
@@ -331,7 +331,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: COLLIDE_ITERATIONS_PARAM,
-        label: "Collide Sweeps",
+        label: "node.motion.output.param.collide_iterations",
         min: 1.0,
         max: COLLIDE_ITERATIONS_SLIDER_MAX,
         step: 1.0,

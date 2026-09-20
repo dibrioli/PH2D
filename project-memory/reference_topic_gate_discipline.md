@@ -507,3 +507,22 @@ o índice foi compactado no mesmo dia em que estas nasceram, e ficaram **órfãs
   `paint_realce.rs` acusado; o ficheiro passou a `realce.rs`.
   Irmãs: [[feedback_a_never_used_warning_measures_visibility_not_the_law]] ·
   [[feedback_the_inner_channel_fixture_is_below_the_break]]
+
+---
+
+## Um censo por SUBSTRING não sabe onde uma expressão acaba — a régua é o ESCOPO (2026-09-20)
+
+Escrevi um censo que exigia que `base_w * view.zoom` aparecesse **uma** vez no ficheiro (dentro da
+porta que decide a largura de um fio). Ele reprovou sobre produto CERTO: a porta tem dois braços,
+e o segundo é `base_w * view.zoom.max(PISO)` — *a cadeia procurada é PREFIXO da outra*.
+
+**Why:** um `matches(..).count()` conta ocorrências de texto, e uma expressão não tem terminador
+no texto. Qualquer sufixo (`.max(..)`, `.clamp(..)`, `* 2.0`) transforma um uso legítimo numa
+segunda «ocorrência», e a contagem passa a medir a SINTAXE em vez da lei.
+
+**How to apply:** parta o ficheiro no **bloco** (`split_once("fn <porta>")` + o fecho) e conte
+**fora** dele, exigindo zero — mais um **controlo de janela não-vazia** (a janela tem de conter o
+que se espera), senão o zero de fora é trivialmente verdadeiro num ficheiro em que a porta
+desapareceu. ⚠️ E escolha a agulha pelo NOME da grandeza (`GHOST_W * view.zoom`), nunca por
+«qualquer `* view.zoom`»: uma regra larga demais obriga a isentar os usos legítimos, que é como um
+censo morre. Ver [[feedback_a_textual_census_survives_an_if_false]].

@@ -930,3 +930,48 @@ e é ele que diz se uma cadeia **ladrilha**. É a mesma família do `edge_max` g
 comprimento a partir do quadro que o produto entrega e exige aterrar no elemento seguinte — com a
 **segunda metade obrigatória**: a mesma conta sobre a entrada crua tem de FALHAR, senão um nó que
 devolvesse a entrada intacta passa por vacuidade. Ver [[feedback_a_ruler_that_counts_how_many_never_sees_which]].
+
+---
+
+## Uma medição feita a UM ponto do parâmetro não afirma nada sobre outro ponto (2026-09-20)
+
+A fonte da cápsula do grafo tinha de ser o maior corpo em que o pior nome do catálogo (136 tipos)
+ainda cabe em `166` unidades. Medi a largura do pior nome **a corpo `100`**, dividi (*a largura é
+linear no corpo*) e escrevi `22,33`. O gate reprovou: a corpo `22` o nome mede **`169,8`**, não
+`166`. A largura por unidade de corpo do MESMO nome:
+
+| corpo | largura/unidade |
+|---:|---:|
+| `100,0` | `7,3608` |
+| `30,0` | `7,4121` |
+| `21,8` | `7,6167` |
+| `17,9` | `7,7139` |
+
+**Why:** o arredondamento de métricas de fonte é **por tamanho**, logo a largura não é linear no
+corpo — e o desvio cresce quando o corpo encolhe, isto é, **erra sempre no sentido que CORTA**.
+Uma extrapolação a partir de um ponto confortável de medição (onde a resolução é boa) chega ao
+ponto de uso com o sinal errado. É irmã de *«contar operações ≠ perfil, e o PERFIL DE BUILD decide
+o número»*: ali o regime era o build, aqui é o tamanho.
+
+**How to apply:** meça **no ponto em que o produto corre** — e quando a resposta é o extremo de um
+parâmetro, ache-o por **busca** com o medidor real a cada passo (24 iterações de bissecção custam
+milissegundos), nunca por uma divisão a partir de outro ponto. ⚠️ E o pior caso pode **mudar** com
+o parâmetro: a busca tem de reavaliar quem é o pior a cada passo. Ver
+[[feedback_an_operation_count_is_not_a_profile_and_the_build_profile_decides_the_number]].
+
+---
+
+## Uma régua que só vê o lado que NÃO estoura aprova o valor de ontem (2026-09-20)
+
+O gate da fonte da cápsula media *«o pior nome cabe?»* e ficou verde durante uma jornada inteira
+sobre um corpo **26 % abaixo** do que a mesma pastilha aceitava — porque `CAPSULA_FONTE = 1,0`
+também «cabe». A ordem seguinte do dono foi exactamente *«fonts maiores»*.
+
+**Why:** uma propriedade com um só lado é metade de uma lei. *Cabe* é a cerca de segurança; o que
+o produto quer é *cabe **e** é o MAIOR que cabe*. Sem o segundo lado, toda folga de estimativa
+sobrevive indefinidamente, invisível, até alguém olhar para a tela.
+
+**How to apply:** quando um número é escolhido por «o pior caso ainda passa», gateie **as duas
+metades** — a que estoura e a que mede a FOLGA que sobra (`folga < x % do disponível`). Vale para
+tectos de recurso, tamanhos de fonte, raios, passos: *a metade que falta é sempre a que custa
+produto em vez de correcção*.

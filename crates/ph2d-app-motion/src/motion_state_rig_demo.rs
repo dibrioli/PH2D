@@ -679,6 +679,10 @@ pub(super) fn captions() -> Vec<Caption> {
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "motion_state_rig_demo_arrumacao_tests.rs"]
 mod arrumacao_tests;
+/// ⭐ **O primeiro pano da cena tem gates próprios** — ver o cabeçalho do irmão.
+#[cfg(test)]
+#[path = "motion_state_rig_demo_corda_tests.rs"]
+mod corda_tests;
 #[cfg(test)]
 #[path = "motion_state_rig_demo_tests.rs"]
 mod tests;

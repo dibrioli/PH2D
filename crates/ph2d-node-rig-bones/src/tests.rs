@@ -218,19 +218,35 @@ fn corrente_crua(pos: &[[f32; 2]]) -> Stream {
 /// saía **sem rodar** — vinte traços deitados na horizontal onde o dono pediu um cordão. A régua
 /// é exacta: uma cotovelada de `(1,0)` seguida de `(0,1)` dá `0°` e `90°`, com comprimento `1`.
 ///
-/// FALSIFICADO por apagar o `derive_frame` (não há coluna `rot` nenhuma na saída).
+/// ⛔⛔ **E O `90` É A CORRECÇÃO, com a premissa morta à vista:** a 1.ª redacção deste gate exigia
+/// `FRAC_PI_2` — ele nasceu na mesma wave que a lei e herdou a unidade errada dela, logo os dois
+/// concordavam um com o outro e discordavam do PRODUTO (o dono fotografou a corda por rodar).
+/// *Um gate escrito na mesma hora que a lei que ele cobre não é uma segunda opinião.*
+///
+/// ⚠️ **A régua é a da FAMÍLIA** (`dir`, que converte graus): ela já existia neste ficheiro e era
+/// o que qualquer fixtura daqui usava — a lei nova é que falava noutra língua.
+///
+/// FALSIFICADO por apagar o `derive_frame` (não há coluna `rot` nenhuma na saída) ou por devolver
+/// o `atan2` cru (o segundo lê `1,5708` contra `90`).
 #[test]
 fn o_quadro_de_um_osso_sai_do_segmento_quando_a_corrente_nao_o_traz() {
     let s = bones(&corrente_crua(&[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]));
     assert_eq!(s.count(), 2, "tres juntas dao dois ossos");
     let rot = escalar(&s, "rot");
     assert!(
-        (rot[0] - 0.0).abs() < 1e-6,
+        (rot[0] - 0.0).abs() < 1e-4,
         "o primeiro aponta para +x: {rot:?}"
     );
     assert!(
-        (rot[1] - std::f32::consts::FRAC_PI_2).abs() < 1e-6,
-        "o segundo aponta para +y: {rot:?}"
+        (rot[1] - 90.0).abs() < 1e-4,
+        "o segundo aponta para +y, em GRAUS: {rot:?}"
+    );
+    // ⭐ A metade que fecha a unidade: o ângulo derivado anda pela MESMA régua que a corrente
+    // resolvida usa, logo a direcção que ele descreve é a do segmento.
+    let d = dir(rot[1]);
+    assert!(
+        d[0].abs() < 1e-6 && (d[1] - 1.0).abs() < 1e-6,
+        "a direccao lida do angulo derivado e' a do segmento: {d:?}"
     );
     let len = escalar(&s, "len");
     assert!(

@@ -196,7 +196,22 @@ fn derive_frame(out: &mut Stream, input: &Stream, ossos: &[(usize, usize)], pos:
                         let d = delta(b);
                         // ⚠️ Duas juntas no MESMO ponto não têm direcção; `atan2(0, 0)` devolve
                         // `0`, que é o valor que uma peça de comprimento nulo desenha na mesma.
-                        d[1].atan2(d[0])
+                        //
+                        // ⛔⛔⛔ **E O RESULTADO VAI EM GRAUS, que é a unidade de ÂNGULO desta
+                        // casa** — report do dono (2026-09-21, foto): *«a rot não acontece»*.
+                        // A 1.ª redacção desta lei devolvia o `atan2` CRU, e o desenho lê o `rot`
+                        // em graus e converte na borda (`ph2d_eval_motion::lower`: *«the `rot`
+                        // column is in **degrees** — the app's authored-angle unit … radians live
+                        // nowhere in the Motion authoring surface»*), nas DUAS rotas. Medido na
+                        // corda do dono: o 1.º segmento saía `−1,999` e desenhava-se a **−2°** —
+                        // vinte peças praticamente deitadas, que é a foto à letra.
+                        //
+                        // ⚠️⚠️ **E as fixturas DESTA crate já o diziam:** a `corrente` constrói a
+                        // cadeia com `dir(graus)`, e o contrato do rig (`fk.rs`) chama ao `rot`
+                        // *«o ângulo de MUNDO do osso»*. A lei nova era a única coisa da família a
+                        // falar noutra unidade — e o gate que a cobria nasceu na MESMA wave e
+                        // herdou o engano (ele exigia `FRAC_PI_2`).
+                        d[1].atan2(d[0]).to_degrees()
                     })
                     .collect::<Vec<_>>(),
             ),

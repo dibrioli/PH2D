@@ -452,3 +452,144 @@ fn diag_b_as_duas_escolhas_que_a_mutacao_nao_mata() {
     }
     println!("{:=<86}", "");
 }
+
+/// ⭐⭐⭐ **SONDA — OS BOTÕES QUE O ARTISTA TEM, medidos.**
+///
+/// ⛔⛔⛔ **Ela existe porque eu mandei o dono carregar numa fileira que não está na tela.** Em
+/// 2026-09-20 escrevi-lhe *«ponha Curve Handles em From Chain e suba Segments para 4»*, e ele
+/// respondeu com duas fotos do painel: *«não existe Curve Handles ou From Chain em lugar nenhum»*.
+/// Ele tem razão — o `handles_row` **não pinta** a fileira com `Segments = 1`, que é o que nasce
+/// (a razão está escrita lá e é boa: com um segmento a curvatura é provadamente inerte). ⇒ *os
+/// passos estavam na ORDEM errada, e a fileira que ensina a usar o `Segments` só aparece depois
+/// de ele já estar usado.*
+///
+/// ⚠️⚠️ **E a segunda foto mostrou uma fileira que eu não tinha medido:** *Deform By ·
+/// **Artwork** | **Bone Reach***. Eu estava a mandá-lo bissectar por `PH2D_SKIN_CAMPO=0`, que é
+/// **outra coisa** — aquele corta só a consulta ao campo ENTRE os nós, e o *Bone Reach* troca a
+/// lei do peso inteira. *Quase lhe mandei carregar num botão cujo efeito eu nunca tinha medido.*
+///
+/// ⇒ esta sonda mede **só o que tem botão**, na dobra de `90°` em S.
+#[test]
+fn diag_b_os_botoes_que_o_artista_tem() {
+    let mut p = b_palco(true);
+    println!("\n{:=<92}", "");
+    println!("SONDA · OS BOTOES QUE O ARTISTA TEM — dobra de 90° em S, a pior quina do contorno");
+    println!("{:=<92}", "");
+    println!(
+        "{:<34} {:>10} | {:>34}",
+        "Deform By / Segments", "quina", "onde se carrega"
+    );
+    for (envelope, segs, corrente, onde) in [
+        (false, 1_u8, false, "o que NASCE"),
+        (false, 2, false, "so' escrever Segments 2"),
+        (false, 4, false, "so' escrever Segments 4"),
+        (false, 8, false, "so' escrever Segments 8"),
+        (false, 4, true, "Segments 4 + Curve Handles"),
+        (false, 8, true, "Segments 8 + Curve Handles"),
+        (true, 1, false, "Deform By: Bone Reach"),
+        (true, 4, true, "Bone Reach + as duas"),
+    ] {
+        p.lei_do_peso(envelope);
+        p.reparte_com(segs, corrente);
+        p.dobra_em_s(90.0);
+        let rot = format!(
+            "{} · {segs} seg · alcas {}",
+            if envelope { "Bone Reach" } else { "Artwork" },
+            if corrente && segs > 1 {
+                "da corrente"
+            } else {
+                "manuais"
+            }
+        );
+        println!(
+            "{rot:<34} {:>9.1}° | {onde:>34}",
+            pior_quina(&b_amostra(&p.produto(true, true)))
+        );
+    }
+    println!("{:=<92}", "");
+}
+
+/// ⭐⭐⭐ **GATE — `Segments` SOZINHO NÃO MOVE UM BIT, e a fileira que o torna útil só aparece
+/// DEPOIS dele.**
+///
+/// Report do dono (2026-09-20, duas fotos do painel): *«não existe Curve Handles ou From Chain em
+/// lugar nenhum»*. **Ele tem razão**, e a cadeia de causas é esta:
+///
+/// 1. O `handles_row` do painel **não pinta** a fileira *Curve Handles* enquanto o osso for rígido
+///    e `Segments <= 1` — e `1` é o que nasce. A razão está escrita lá e é boa: *com um segmento a
+///    curvatura é provadamente inerte, e um segmentado que grava sem mudar um pixel é o painel a
+///    mentir.*
+/// 2. ⛔⛔⛔ **Mas `Segments` sozinho também não muda um pixel.** Com as alças em `Manual` (o que
+///    nasce) e a curvatura em [`ph2d_skeleton::bend::Bend::STRAIGHT`] (idem), o osso é o rígido de
+///    sempre **ao bit**, seja qual for o número — e o doc do `Bone::curve` diz isso por escrito.
+///
+/// ⇒ *o knob que faz alguma coisa está escondido atrás de um knob que não faz nada.* O artista
+/// escreve `4`, **não vê diferença nenhuma**, e não tem razão para reparar que nasceu uma fileira
+/// por baixo. É a espécie *«aceita e mente»* que o `CLAUDE.md` §5.0 nomeia, com uma volta a mais.
+///
+/// | o que se carrega | a pior quina |
+/// |---|---:|
+/// | o que nasce | `155,3°` |
+/// | só escrever `Segments` `2`, `4` ou `8` | **`155,3°` — o MESMO** |
+/// | `Segments 4` **+** *Curve Handles: From Chain* | **`61,7°`** |
+#[test]
+fn o_numero_de_segmentos_sozinho_nao_move_um_bit() {
+    let mut p = b_palco(true);
+    p.lei_do_peso(false);
+    p.reparte_com(1, false);
+    p.dobra_em_s(90.0);
+    let base = b_amostra(&p.produto(true, true));
+
+    // (1) ⛔ Escrever o número sozinho é BYTE-IDÊNTICO — não é «pouco», é nada.
+    for segs in [2_u8, 4, 8] {
+        p.reparte_com(segs, false);
+        p.dobra_em_s(90.0);
+        let so_numero = b_amostra(&p.produto(true, true));
+        assert_eq!(so_numero.len(), base.len(), "a amostragem mudou de tamanho");
+        for (i, (a, b)) in base.iter().zip(&so_numero).enumerate() {
+            assert_eq!(
+                (a[0].to_bits(), a[1].to_bits()),
+                (b[0].to_bits(), b[1].to_bits()),
+                "com Segments = {segs} e as alças MANUAIS o ponto {i} mexeu-se — se isto passar a \
+                 ser falso, o painel deixou de mentir e esta prosa tem de ser reescrita"
+            );
+        }
+    }
+
+    // (2) ⭐ E com a fileira que só aparece depois, ela vale mais de metade da quina.
+    p.reparte_com(4, true);
+    p.dobra_em_s(90.0);
+    let com_alcas = pior_quina(&b_amostra(&p.produto(true, true)));
+    let q0 = pior_quina(&base);
+    println!(
+        "  quina: o que nasce {q0:.1}° · Segments 4 sozinho {q0:.1}° (ao bit) · com as alças {com_alcas:.1}°"
+    );
+    assert!(
+        com_alcas < q0 * 0.5,
+        "as duas juntas deviam cortar a quina para menos de metade e foram de {q0:.1}° para \
+         {com_alcas:.1}°"
+    );
+}
+
+/// ⭐⭐ **GATE — a fileira *Curve Handles* está ESCONDIDA no estado em que o painel nasce.**
+///
+/// A metade do report que é sobre a TELA: o dono procurou a fileira e ela não estava lá. Este gate
+/// lê o guarda do painel pelo texto — *um gate que reimplementasse a condição estaria a afirmar
+/// sobre a sua própria cópia dela*.
+#[test]
+fn a_fileira_das_alcas_nasce_escondida_e_e_isso_que_o_dono_nao_achou() {
+    let fonte = include_str!("../../ph2d-panel-skeleton/src/section.rs");
+    let guarda = "if osso.is_rigid() && ph2d_skeleton::bend::segments_of(osso.segments) <= 1 {";
+    assert!(
+        fonte.contains(guarda),
+        "o guarda que esconde a fileira `Curve Handles` mudou de forma — o report de 2026-09-20 \
+         dependia dele, e a prosa do gate irmão descreve-o"
+    );
+    // ⚠️ O CONTROLO: a fileira EXISTE (não foi apagada), senão este gate leria a ausência dela
+    // como «está escondida» e as duas curas seriam opostas.
+    assert!(
+        fonte.contains("tr(\"panel.vector.bone.handles\")"),
+        "a fileira `Curve Handles` deixou de ser pintada de todo — isso não é «escondida», é \
+         AUSENTE, e a cura é outra"
+    );
+}

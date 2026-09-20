@@ -421,16 +421,41 @@ impl BPalco {
     /// tira as alças das tangentes dos VIZINHOS ⇒ a corrente inteira vira uma curva lisa em vez de
     /// uma cadeia de segmentos rígidos. ⚠️ **Com `segments = 1` a saída é a de sempre, ao bit.**
     pub(super) fn reparte(&mut self, segments: u8) {
+        self.reparte_com(segments, true);
+    }
+
+    /// ⚠️⚠️ **As DUAS metades separadas, e a separação é obrigatória:** `Segments` é um número que
+    /// o artista escreve, e *Curve Handles* é uma fileira que o painel **só pinta com
+    /// `Segments > 1`**. Mexer nas duas juntas e depois dizer ao dono *«suba o Segments»* seria
+    /// prometer-lhe um resultado que só a outra metade produz — e em 2026-09-20 eu quase o fiz.
+    pub(super) fn reparte_com(&mut self, segments: u8, alcas_da_corrente: bool) {
         use ph2d_skeleton_ecs::{Bone, BoneHandles};
         for o in &self.ossos {
             if let Some(mut b) = self.sim.world_mut().get_mut::<Bone>(*o) {
                 b.segments = segments;
-                b.handles = if segments > 1 {
+                b.handles = if alcas_da_corrente && segments > 1 {
                     BoneHandles::Auto
                 } else {
                     BoneHandles::Authored
                 };
             }
+        }
+    }
+
+    /// ⭐⭐⭐ **A LEI DO PESO que o painel oferece** — a fileira *Deform By*.
+    ///
+    /// ⛔⛔ **Ela NÃO é o `PH2D_SKIN_CAMPO`, e confundi-las custou-me um passo de smoke errado.**
+    /// O `campo` do [`crate::skin_live::recook_com_mistura`] corta só a consulta ao campo **ENTRE
+    /// os nós** — a tabela BBW continua a mandar nos nós. A [`SkinLaw::Envelope`] (*Bone Reach*)
+    /// faz o `pesos_do_quadro` devolver **vazio** e a lei euclidiana manda em tudo.
+    pub(super) fn lei_do_peso(&mut self, envelope: bool) {
+        use ph2d_skeleton_ecs::{SkinBind, SkinLaw};
+        if let Some(mut b) = self.sim.world_mut().get_mut::<SkinBind>(self.alvo) {
+            b.law = if envelope {
+                SkinLaw::Envelope
+            } else {
+                SkinLaw::Auto
+            };
         }
     }
 

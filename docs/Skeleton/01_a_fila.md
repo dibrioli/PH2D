@@ -543,8 +543,10 @@ afrouxada:**
 ⚠️ **A lei viaja como PARÂMETRO** (`bind_com`), nunca numa variável de ambiente — a lição do
 `recook_com`: uma porta global lida dentro da lei é um canal entre testes.
 
-⏳ **ABERTO:** o indicador mostra os pontos, e a **mancha** pintada entre dois deles continua sem
-representação na tela (ver a F31) · uma forma com efeitos · e `Release` devolve a forma
+✅ **E o aberto da F31 DISSOLVEU-SE aqui, medido:** *«a mancha pintada entre dois nós não tem
+representação na tela»* deixou de ter sujeito — com os nós que o `Bind` põe, uma pincelada de fábrica
+muda a cor de **`5` dos `34`** pontos, com a maior mudança a valer `0,1304`. ⚠️ *A cura não foi
+desenhar a mancha: foi o sítio onde ela pousa passar a ter um ponto.* · uma forma com efeitos · e `Release` devolve a forma
 **subdividida** (o mesmo desenho, mais pontos de controlo), que é consequência declarada.
 
 ### F31 — ⭐⭐⭐ **O PINCEL DE PESO ALCANÇA O MEIO DE UMA ARESTA** (report do dono, 2026-09-19: *«o que vc mandou fazer não funcionou»*)
@@ -611,13 +613,12 @@ que a contém.*
 
 Mutação **8 de 8** a sangrar. Zero schema, zero registo novo.
 
-⏳ **ABERTO e NOMEADO: o INDICADOR ainda mostra só os NÓS.** A barra tem oito pontos coloridos e a
-mancha entre eles não move nenhum deles (ela está a `3` unidades de qualquer um, com raio `0,40`)
-⇒ *o artista vê a arte dobrar e as cores paradas*. A cura é a mesma lei da F30 — o peso ao longo da
-curva é `lerp(ra, rb, t)` mais as manchas —, e ela vive **dentro** da
-[`curva::SegmentoDaPele::ponto`](../../crates/ph2d-vec-skin/src/curva.rs): expô-la como porta com
-dois consumidores (o refit e o olho) é a wave. ⛔ **Não a reescreva no indicador** — uma segunda
-resposta à mesma pergunta divergiria, e o sintoma seria o olho a pintar um peso que a arte não tem.
+✅ **FECHADO pela F32, e não pela cura que esta linha prescrevia.** Escrito aqui: *«a barra tem oito
+pontos coloridos e a mancha entre eles não move nenhum deles»*, com a cura a ser expor a mistura de
+pesos da [`curva`] ao indicador. ⛔ **Essa wave não chegou a ser precisa:** a subdivisão do bind pôs
+nós onde a mancha pousa, e medido na barra do produto uma pincelada de fábrica muda **`5` dos `34`**
+pontos (maior mudança `0,1304`). ⚠️ *A cura certa de «o artista não vê onde o peso mora» era dar-lhe
+pontos, não desenhar-lhe manchas* — e as duas leituras têm o mesmo aspecto numa lista de abertos.
 
 ### F30 — ⭐⭐⭐ **A ARTE SEGUE O PESO ENTRE OS NÓS** (ordem do dono, 2026-09-19, *«construa e veremos se fica bom»*)
 

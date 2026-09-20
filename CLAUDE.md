@@ -350,6 +350,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   diz independente do relógio ainda o é, se o numerador e o denominador forem tempos*) ·
   `measure_brush_kernel` ([`ph2d-sculpt3d`](crates/ph2d-sculpt3d/tests/it/measure_brush_kernel.rs) —
   cara, 34 s sozinha, no pico do fan-out por construção) ·
+  `the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`
+  ([`ph2d-tool-painter`](crates/ph2d-tool-painter/) — promovido 2026-09-20 pela `line/Vector`: único
+  ✗ de **15 644** a `load 10,70`, **3 de 3 verde sozinho a `load 4,44`**, e **zero linhas** do diff
+  daquela rodada naquela crate) ·
   `packing_a_dense_scribble_is_bounded` ([`ph2d-flip-render`](crates/ph2d-flip-render/tests/it/pack_perf.rs)
   — medido 2026-09-01 numa corrida de **20 309** testes, verde **3 de 3** sozinho e com **zero
   linhas** do diff naquela crate) ·

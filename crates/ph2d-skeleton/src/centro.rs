@@ -51,6 +51,47 @@
 
 use crate::{Skin, SkinBone};
 
+/// ⭐⭐⭐ **COMO A MISTURA RESOLVE O ÂNGULO MÉDIO DE VÁRIOS OSSOS.**
+///
+/// # ⛔⛔⛔ Porque existe uma escolha aqui
+///
+/// A auditoria de 2026-09-20 (ordem do dono, ao report *«não houve nenhuma melhora na deformação
+/// do vetor»*) mediu o caminho vectorial contra um padrão-ouro construído de raiz — a mesma forma
+/// deformada como malha densa sobre o campo do domínio — e o veredito foi contra a suspeita:
+///
+/// | o que | medido |
+/// |---|---|
+/// | o caminho vectorial contra o padrão-ouro, até `90°` | `≤ 0,46 %` da espessura |
+/// | os NÓS | exactos ao bit |
+/// | a quina nas junções (a promessa do `reconcilia`) | `0,0000°` |
+/// | **e o padrão-ouro tem o MESMO vinco** | `40,7°` a `70°`, `180°` a `90°` |
+///
+/// ⇒ *o defeito dominante não é a curva nem o peso: é a LEI.* A aresta de DENTRO de um cotovelo é
+/// esmagada por `|1 − θ̄′·r|`, e quando `θ̄′·r = 1` ela colapsa num BICO — na barra da cena do dono
+/// isso dá **`≈ 92,7°`**, com previsão e medição a bater a 3–4 casas decimais.
+///
+/// # ⭐⭐ A terceira saída, que NUNCA tinha sido medida
+///
+/// O cabeçalho deste módulo declarava a mistura fechada: *«o `dual quaternion` é RECUSA MEDIDA»*.
+/// Ele é — e a recusa responde a **outra** pergunta (ele escolhe a ROTAÇÃO e deixa o centro ao
+/// acaso; esta lei escolhe o CENTRO). A saída que ninguém tinha corrido é trocar a média em
+/// CÍRCULO por uma média LINEAR sobre os ângulos **DESDOBRADOS** ao longo da cadeia.
+///
+/// ⚠️ **Ela nasce DESLIGADA** ([`MisturaDoAngulo::Circulo`] é o `Default`) e o caminho de omissão
+/// é **byte-idêntico**, com gate a afirmá-lo.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum MisturaDoAngulo {
+    /// `atan2(Σ w sin θ, Σ w cos θ)` — o que o produto ship, e o que o shader implementa.
+    #[default]
+    Circulo,
+    /// `Σ w θ̃`, com `θ̃` o ângulo escolhido na volta mais próxima do osso ANTERIOR da cadeia.
+    ///
+    /// ⛔ **Ela NÃO tem a degenerescência da irmã** (duas poses a `180°` exactos com pesos iguais,
+    /// onde a soma dos vectores é zero e a lei cai na mistura linear): desdobrados, `+180°` e
+    /// `−180°` são o **mesmo** ângulo e a média deles é ele próprio.
+    Desdobrado,
+}
+
 impl SkinBone {
     /// O segmento de repouso **deste sub-osso** — ver [`SkinBone::sub`].
     ///
@@ -178,31 +219,38 @@ impl Skin {
     ///
     /// `p' = R(θ̄)·(p − c) + Σ wᵢ Mᵢ(c)`
     ///
-    /// ⚠️ **O ângulo é a média em CÍRCULO** (`atan2(Σ w sin, Σ w cos)`), nunca a soma `Σ w θ`: os
-    /// ângulos vêm de um `atan2` e vivem em `(−π, π]`, logo somá-los **salta** quando um osso passa
-    /// meia volta. ⛔ A média em círculo tem uma degenerescência própria — duas rotações a `180°`
-    /// exactas com pesos iguais —, e ali a soma é zero e a lei cai na mistura linear.
+    /// ⚠️ **O ângulo é a média em CÍRCULO por omissão** (`atan2(Σ w sin, Σ w cos)`), e não a soma
+    /// `Σ w θ`: os ângulos vêm de um `atan2` e vivem em `(−π, π]`, logo somá-los **crus** salta
+    /// quando um osso passa meia volta. ⭐ A saída que os soma **DESDOBRADOS** existe desde
+    /// 2026-09-20 e é a [`MisturaDoAngulo::Desdobrado`], ligada por
+    /// `ph2d_skeleton_live::skin_live::mistura_do_ambiente`.
+    ///
+    /// ⛔⛔⛔ **E a degenerescência que esta prosa declarava NÃO é alcançável:** ela dizia que com
+    /// duas rotações a `180°` exactas e pesos iguais *«a soma é zero e a lei cai na mistura
+    /// linear»*. Medido — `sin(π)` em `f64` vale **`1,2246e-16`**, logo `Σ w sin` é
+    /// `+6,123234e-17`, a guarda `sx == 0 && sy == 0` **nunca arma**, e o `atan2` devolve **`+90°`:
+    /// uma rotação inteira tirada do resíduo de um arredondamento.** *Uma promessa de fallback num
+    /// doc-comment é o pior sítio para uma guarda morta — quem a lê deixa de procurar o caso.*
+    /// A guarda FICA (ela é barata e a soma pode ser zero por outro caminho), e o que a descreve
+    /// agora é o gate `na_meia_volta_o_guarda_do_circulo_nao_arma`.
     #[must_use]
     pub fn blend(&self, p: [f64; 2], w: &[f64]) -> [f64; 2] {
+        self.blend_com(p, w, self.mistura)
+    }
+
+    /// ⭐⭐⭐ **A MISTURA COM A LEI DO ÂNGULO ESCOLHIDA À MÃO** — a porta dos gates e das sondas.
+    ///
+    /// ⚠️⚠️ **Ela existe para a lei ser um PARÂMETRO e nunca o ambiente.** Este repo já pagou a
+    /// lição no colisor do Motion: *uma lei que só é alcançável pelo ambiente não é gateável, e um
+    /// gate que lê o ambiente mede a máquina*. O produto escolhe uma vez, na porta que constrói a
+    /// [`Skin`]; um gate chama esta função com as duas leis e compara-as.
+    #[must_use]
+    pub fn blend_com(&self, p: [f64; 2], w: &[f64], lei: MisturaDoAngulo) -> [f64; 2] {
         let Some(c) = self.centro_de_rotacao(w) else {
             return self.blend_linear(p, w);
         };
-        let (mut sx, mut sy, mut soma) = (0.0_f64, 0.0_f64, 0.0_f64);
-        for (b, &peso) in self.bones.iter().zip(w.iter()) {
-            if peso == 0.0 {
-                continue;
-            }
-            let t = b.angulo_da_pose();
-            sx = peso.mul_add(t.cos(), sx);
-            sy = peso.mul_add(t.sin(), sy);
-            soma += peso;
-        }
-        if soma == 0.0 || (sx == 0.0 && sy == 0.0) {
+        let Some((co, si)) = self.direccao_media(w, lei) else {
             return self.blend_linear(p, w);
-        }
-        let (co, si) = {
-            let n = sx.hypot(sy);
-            (sx / n, sy / n)
         };
         let base = self.blend_linear(c, w);
         let d = [p[0] - c[0], p[1] - c[1]];
@@ -210,6 +258,57 @@ impl Skin {
             si.mul_add(-d[1], co.mul_add(d[0], base[0])),
             si.mul_add(d[0], co.mul_add(d[1], base[1])),
         ]
+    }
+
+    /// O `(cos θ̄, sin θ̄)` da rotação média, ou `None` quando a lei não tem resposta e o chamador
+    /// tem de cair na [`Skin::blend_linear`].
+    ///
+    /// ⛔⛔ **No braço DESDOBRADO o `continue` do peso zero vem DEPOIS de a cadeia avançar, e isso é
+    /// a lei inteira:** desdobrar é uma propriedade da CADEIA, não do ponto. Saltar um osso sem
+    /// peso antes de actualizar a referência faria o ângulo do osso seguinte depender de **quais**
+    /// ossos aquele ponto por acaso reclama — dois pontos vizinhos com pesos diferentes leriam
+    /// voltas diferentes, e a arte rasgava na fronteira entre eles.
+    fn direccao_media(&self, w: &[f64], lei: MisturaDoAngulo) -> Option<(f64, f64)> {
+        match lei {
+            MisturaDoAngulo::Circulo => {
+                let (mut sx, mut sy, mut soma) = (0.0_f64, 0.0_f64, 0.0_f64);
+                for (b, &peso) in self.bones.iter().zip(w.iter()) {
+                    if peso == 0.0 {
+                        continue;
+                    }
+                    let t = b.angulo_da_pose();
+                    sx = peso.mul_add(t.cos(), sx);
+                    sy = peso.mul_add(t.sin(), sy);
+                    soma += peso;
+                }
+                if soma == 0.0 || (sx == 0.0 && sy == 0.0) {
+                    return None;
+                }
+                let n = sx.hypot(sy);
+                Some((sx / n, sy / n))
+            }
+            MisturaDoAngulo::Desdobrado => {
+                let (mut ang, mut soma, mut ant) = (0.0_f64, 0.0_f64, 0.0_f64);
+                for (b, &peso) in self.bones.iter().zip(w.iter()) {
+                    let mut t = b.angulo_da_pose();
+                    while t - ant > std::f64::consts::PI {
+                        t -= std::f64::consts::TAU;
+                    }
+                    while t - ant < -std::f64::consts::PI {
+                        t += std::f64::consts::TAU;
+                    }
+                    ant = t;
+                    if peso == 0.0 {
+                        continue;
+                    }
+                    ang = peso.mul_add(t, ang);
+                    soma += peso;
+                }
+                (soma != 0.0)
+                    .then(|| (ang / soma).sin_cos())
+                    .map(|(s, c)| (c, s))
+            }
+        }
     }
 }
 

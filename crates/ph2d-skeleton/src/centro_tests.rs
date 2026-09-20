@@ -325,3 +325,237 @@ fn num_osso_que_dobra_a_junta_e_a_do_sub_osso() {
         c2[0]
     );
 }
+
+// ─────────────────────── A LEI DO ÂNGULO DESDOBRADO (2026-09-20) ───────────────────────
+
+use crate::MisturaDoAngulo;
+
+/// Três ossos em linha com **um ângulo POR OSSO** — a `cadeia3` dá o mesmo aos dois primeiros, e
+/// uma cadeia assim não distingue um desdobramento que salta um elo.
+fn cadeia3_angulos(j1: f64, j2: f64, fim: f64, t: [f64; 3]) -> Skin {
+    let rot = |a: f64, o: [f64; 2]| {
+        let (c, s) = (a.cos(), a.sin());
+        Xform([
+            c,
+            s,
+            -s,
+            c,
+            c.mul_add(o[0], -(s * o[1])),
+            s.mul_add(o[0], c * o[1]),
+        ])
+    };
+    let seg = |a: f64, l: f64, ang: f64| {
+        SkinBone::new(
+            Xform([1.0, 0.0, 0.0, 1.0, a, 0.0]),
+            l,
+            1.0,
+            rot(ang, [a, 0.0]),
+            Xform::IDENTITY,
+        )
+        .expect("osso")
+    };
+    Skin::new(vec![
+        seg(0.0, j1, t[0]),
+        seg(j1, j2 - j1, t[1]),
+        seg(j2, fim - j2, t[2]),
+    ])
+    .expect("tres ossos")
+}
+
+/// ⭐⭐⭐ **A OMISSÃO É BYTE-IDÊNTICA — a lei nova shipa DESLIGADA.**
+///
+/// ⚠️ **As três metades, e nenhuma basta:** a pele que a [`Skin::new`] devolve escolhe o CÍRCULO ·
+/// o [`Skin::blend`] dela é **bit a bit** o [`Skin::blend_com`] com o círculo · e a lei
+/// **desdobrada existe e dá OUTRA coisa** nesta mesma fixtura. *Sem a terceira, uma implementação
+/// que ignorasse o parâmetro passaria as duas primeiras.*
+#[test]
+fn a_omissao_e_o_circulo_e_e_byte_identica() {
+    let k = cadeia3(2.0, 5.0, 7.0, 2.4, 4.8);
+    assert_eq!(k.mistura(), MisturaDoAngulo::Circulo);
+    let w = [0.5, 0.3, 0.2];
+    let mut mexeu = false;
+    for x in [[1.0, 0.7], [3.0, -0.4], [6.5, 0.2], [0.0, 0.0]] {
+        let a = k.blend(x, &w);
+        let b = k.blend_com(x, &w, MisturaDoAngulo::Circulo);
+        assert_eq!(
+            a.to_bits_pair(),
+            b.to_bits_pair(),
+            "em {x:?} a omissão não é o círculo"
+        );
+        let d = k.blend_com(x, &w, MisturaDoAngulo::Desdobrado);
+        mexeu |= (d[0] - a[0]).hypot(d[1] - a[1]) > 1e-9;
+    }
+    assert!(
+        mexeu,
+        "a lei desdobrada devolveu o MESMO que a de círculo em toda a fixtura — \
+         ou ela não está ligada, ou esta fixtura não a distingue"
+    );
+}
+
+/// Um par de `f64` comparado ao BIT — `0.0 == -0.0` e `NaN != NaN` não servem a uma promessa de
+/// identidade.
+trait ParDeBits {
+    fn to_bits_pair(self) -> (u64, u64);
+}
+impl ParDeBits for [f64; 2] {
+    fn to_bits_pair(self) -> (u64, u64) {
+        (self[0].to_bits(), self[1].to_bits())
+    }
+}
+
+/// ⭐⭐⭐ **A LEI DESDOBRADA É A MÉDIA LINEAR DOS ÂNGULOS DA CADEIA, em forma fechada.**
+///
+/// Numa cadeia de três ossos a `0`, `r₁` e `r₂`, com pesos `w`, a rotação que a lei aplica tem de
+/// ser exactamente `Σ wᵢ θ̃ᵢ` — e aqui `r₁`/`r₂` são pequenos, logo o desdobramento é a identidade
+/// e o número calcula-se à mão sem ambiguidade nenhuma.
+#[test]
+fn a_lei_desdobrada_e_a_media_linear_dos_angulos() {
+    let (r1, r2) = (0.4_f64, 0.9_f64);
+    let k = cadeia3(2.0, 5.0, 7.0, r1, r2);
+    let w = [0.5, 0.3, 0.2];
+    // A cadeia3 põe o ângulo `r1` nos DOIS primeiros ossos e `r2` no terceiro.
+    let alvo = 0.5f64.mul_add(r1, 0.3 * r1) + 0.2 * r2;
+    let c = k.centro_de_rotacao(&w).expect("ha' pares");
+    let o = k.blend_com(c, &w, MisturaDoAngulo::Desdobrado);
+    let u = k.blend_com([c[0] + 1.0, c[1]], &w, MisturaDoAngulo::Desdobrado);
+    let medido = (u[1] - o[1]).atan2(u[0] - o[0]);
+    assert!(
+        (medido - alvo).abs() < 1e-12,
+        "a lei aplicou {medido} e a média linear dos ângulos é {alvo}"
+    );
+    // ⚠️ O CONTROLO: a média em CÍRCULO dá OUTRO número na mesma fixtura, senão este gate não
+    // distingue as duas leis.
+    let oc = k.blend_com(c, &w, MisturaDoAngulo::Circulo);
+    let uc = k.blend_com([c[0] + 1.0, c[1]], &w, MisturaDoAngulo::Circulo);
+    let circ = (uc[1] - oc[1]).atan2(uc[0] - oc[0]);
+    assert!(
+        (circ - alvo).abs() > 1e-6,
+        "a média em círculo deu {circ}, que é a linear — a fixtura não separa as duas leis"
+    );
+}
+
+/// ⭐⭐⭐ **UM OSSO DE PESO ZERO NO MEIO DA CADEIA NÃO PARTE O DESDOBRAMENTO.**
+///
+/// ⛔⛔⛔ **Esta é a lei inteira da implementação, e ela cabe na ORDEM de duas linhas:** desdobrar é
+/// uma propriedade da **CADEIA** e não do ponto. O `continue` do peso zero tem de vir **DEPOIS** de
+/// a referência avançar; posto antes, o ângulo do osso seguinte passa a depender de **quais** ossos
+/// aquele ponto por acaso reclama.
+///
+/// A fixtura tem os três ossos a `0`, `0,7π` e `1,4π`: **o do meio é a PONTE** que leva o terceiro
+/// à volta certa. Saltá-lo faz o desdobramento medir `1,4π` (que vem enrolado como `−0,6π`) contra
+/// `0` em vez de contra `0,7π`, e ele aterra **uma volta inteira** para o outro lado.
+///
+/// ⚠️⚠️ **Dois pontos VIZINHOS com pesos diferentes leriam então rotações a `2π` de distância, e a
+/// arte RASGAVA na fronteira entre eles** — é isso que este gate impede, e é a 2.ª metade
+/// (a continuidade) que o afirma.
+///
+/// ⛔⛔ **A 1.ª redacção deste gate SOBREVIVEU à mutação**, e a causa foi a fixtura: a [`cadeia3`]
+/// dá o **mesmo** ângulo aos dois primeiros ossos, logo saltar o do meio não movia a referência e
+/// as duas ordens davam o mesmo número. *Uma cadeia em que o elo saltado não muda nada não testa
+/// um desdobramento que salta elos.*
+#[test]
+fn um_osso_de_peso_zero_nao_parte_a_cadeia_do_desdobramento() {
+    use std::f64::consts::PI;
+    let k = cadeia3_angulos(2.0, 5.0, 7.0, [0.0, 0.7 * PI, 1.4 * PI]);
+    // ⚠️ O CONTROLO da fixtura: o 3.º osso chega enrolado, senão não há volta a escolher.
+    let cru = k.bones()[2].angulo_da_pose();
+    assert!(
+        cru < 0.0,
+        "o 3.º osso devia chegar ENROLADO (o atan2 vive em (−π, π]) e leu {cru}"
+    );
+    let c = k.centro_de_rotacao(&[0.5, 0.0, 0.5]).expect("ha' par");
+    let angulo = |w: &[f64; 3]| {
+        let o = k.blend_com(c, w, MisturaDoAngulo::Desdobrado);
+        let u = k.blend_com([c[0] + 1.0, c[1]], w, MisturaDoAngulo::Desdobrado);
+        (u[1] - o[1]).atan2(u[0] - o[0])
+    };
+    // Com a cadeia honrada: 0,5·0 + 0,5·1,4π = 0,7π ⇒ enrolado, 0,7π.
+    let esperado = 0.7 * PI;
+    let medido = angulo(&[0.5, 0.0, 0.5]);
+    assert!(
+        (medido - esperado).abs() < 1e-12,
+        "com o osso do meio a peso ZERO a lei aplicou {medido} e a cadeia manda {esperado}"
+    );
+    // ⚠️ E a CONTINUIDADE, que é o que o defeito quebrava: dar um fio de peso ao osso do meio não
+    // pode saltar a resposta.
+    let e = 1e-6;
+    let vizinho = angulo(&[0.5 - e * 0.5, e, 0.5 - e * 0.5]);
+    let mut salto = vizinho - medido;
+    while salto > PI {
+        salto -= 2.0 * PI;
+    }
+    while salto < -PI {
+        salto += 2.0 * PI;
+    }
+    assert!(
+        salto.abs() < 1e-4,
+        "um fio de peso no osso do meio saltou a rotação em {salto} rad — a cadeia partiu-se"
+    );
+}
+
+/// ⭐⭐⭐ **A MEIA VOLTA: o guarda da degenerescência da lei de CÍRCULO é CÓDIGO MORTO.**
+///
+/// ⛔⛔⛔ **O doc do [`Skin::blend`] prometia** que com duas rotações a `180°` exactas e pesos
+/// iguais *«a soma é zero e a lei cai na mistura linear»*. **Ela não cai.** Medido: com os ossos a
+/// `0` e a `π`, `Σ w cos` é `0` **exacto** e `Σ w sin` é **`+6,123234e-17`** — porque `sin(π)` em
+/// `f64` não é zero —, logo a guarda `sx == 0 && sy == 0` **nunca arma** e o `atan2` devolve
+/// **`+90°`**: uma rotação inteira tirada do resíduo de um arredondamento.
+///
+/// ⚠️ *Uma promessa de fallback num doc-comment é o pior sítio para uma guarda morta: quem a lê
+/// deixa de procurar o caso.* ⇒ este gate afirma o que **acontece**, e a prosa foi corrigida.
+///
+/// ⭐ A lei DESDOBRADA chega ao mesmo `+90°`, e a diferença é toda: ali ele é a média linear
+/// `0,5·0 + 0,5·π`, **por construção**, e não o sinal de um último bit.
+#[test]
+fn na_meia_volta_o_guarda_do_circulo_nao_arma() {
+    use std::f64::consts::PI;
+    let k = cadeia(2.0, 7.0, PI);
+    let w = [0.5, 0.5];
+    let c = k.centro_de_rotacao(&w).expect("ha' par");
+    let base = k.blend_linear(c, &w);
+    let angulo = |lei: MisturaDoAngulo| {
+        let u = k.blend_com([c[0] + 1.0, c[1]], &w, lei);
+        (u[1] - base[1]).atan2(u[0] - base[0])
+    };
+
+    // (1) A guarda NÃO arma — o resíduo de `sin(π)` mantém o vector não-nulo.
+    let (sx, sy) = (0.5f64.mul_add(1.0, 0.5 * PI.cos()), 0.5 * PI.sin());
+    assert_eq!(sx, 0.0, "a soma dos cossenos devia ser zero exacto");
+    assert!(
+        sy != 0.0 && sy.abs() < 1e-15,
+        "a soma dos senos é o resíduo de sin(π) e vale {sy:e} — é ele que mata a guarda"
+    );
+
+    // (2) ⇒ a lei de círculo NÃO cai na mistura linear: ela roda 90°.
+    let p = [5.0, 1.0];
+    let circulo = k.blend_com(p, &w, MisturaDoAngulo::Circulo);
+    let linear = k.blend_linear(p, &w);
+    assert!(
+        (circulo[0] - linear[0]).hypot(circulo[1] - linear[1]) > 1e-3,
+        "a média em círculo caiu na mistura linear — a guarda que o doc prometia armou,          e esta fixtura deixou de descrever o defeito que ela documenta"
+    );
+    assert!(
+        (angulo(MisturaDoAngulo::Circulo) - PI * 0.5).abs() < 1e-9,
+        "o círculo devia aplicar os +90° que o resíduo produz"
+    );
+
+    // (3) A desdobrada chega ao mesmo número, e POR CONSTRUÇÃO — é a média linear `0,5·0 + 0,5·π`.
+    assert!(
+        (angulo(MisturaDoAngulo::Desdobrado) - PI * 0.5).abs() < 1e-12,
+        "a lei desdobrada devia aplicar a média LINEAR dos dois ângulos"
+    );
+
+    // (4) E ela é RÍGIDA: a distância ao centro conserva-se, que é o que a mistura linear perde.
+    let desd = k.blend_com(p, &w, MisturaDoAngulo::Desdobrado);
+    let antes = (p[0] - c[0]).hypot(p[1] - c[1]);
+    let depois = (desd[0] - base[0]).hypot(desd[1] - base[1]);
+    assert!(
+        (depois - antes).abs() < 1e-12,
+        "a lei desdobrada encolheu o raio de {antes} para {depois}"
+    );
+    let dlin = (linear[0] - base[0]).hypot(linear[1] - base[1]);
+    assert!(
+        (dlin - antes).abs() > 1e-3,
+        "a mistura linear devia ENCOLHER o raio — é o controlo desta metade"
+    );
+}

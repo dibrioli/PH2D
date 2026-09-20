@@ -69,6 +69,21 @@ pub fn a_placa_posa() -> bool {
 /// já era a do ponto de repouso, porque a tinta está pintada na forma de repouso.
 ///
 /// `None` quando a UV não fecha (um `size` com lado nulo), exactamente como o irmão.
+///
+/// ⛔⛔⛔ **COM UMA LEI DE ÂNGULO QUE O SHADER NÃO EXPRIME, ELA DELEGA NA CPU** — e a delegação
+/// vive AQUI, dentro da porta, nunca no chamador. O `sprite.wgsl` faz a média em CÍRCULO e recebe
+/// `(cos θ, sin θ)` por osso; a média DESDOBRADA precisa do ângulo como número **REAL** (é a volta
+/// que ela escolhe que a define), logo o payload de hoje não a exprime — dois ossos a `+170°` e
+/// `−170°` chegam ao shader indistinguíveis de `+170°` e `+190°`.
+///
+/// ⚠️⚠️ **A 1.ª redacção devolvia `None` e isso era um DEFEITO, não uma recusa:** o chamador faz
+/// `continue` num `None`, logo a imagem não era deformada **de todo** — *«a placa não exprime»* e
+/// *«esta imagem não tem pele»* liam-se no mesmo byte, e o artista veria a arte em repouso por
+/// cima de um esqueleto dobrado. Uma porta que entrega a resposta CERTA por outro caminho é a
+/// única forma de o chamador não poder errar.
+///
+/// ⇒ *o caminho lento não define o produto, mas uma imagem lenta é melhor que uma imagem ERRADA.*
+/// Pôr a lei no shader é wave própria — ela custa um `f32` por osso no payload.
 #[must_use]
 pub fn sprite_mesh_para_a_placa(
     mesh: Mesh2d,
@@ -79,6 +94,11 @@ pub fn sprite_mesh_para_a_placa(
     size: [f32; 2],
     correcoes: &[Correccao],
 ) -> Option<SpriteMesh> {
+    if pele.mistura() != ph2d_skeleton::MisturaDoAngulo::Circulo {
+        return crate::skin_image::posed_sprite_mesh_corrigida(
+            mesh, p2l, pele, pesos, anchor, size, correcoes,
+        );
+    }
     let ossos_da_tabela = if mesh.rest.is_empty() {
         0
     } else {

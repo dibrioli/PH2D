@@ -187,14 +187,38 @@ impl SkinBone {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Skin {
     bones: Vec<SkinBone>,
+    /// Qual lei resolve o ângulo médio da mistura. Ver [`centro::MisturaDoAngulo`].
+    ///
+    /// ⚠️ **Ela vive na PELE e não num argumento do [`Skin::blend`]** porque a escolha é de quem
+    /// monta o quadro, e o `blend` é chamado por PONTO — passá-la por ponto poria a mesma pergunta
+    /// em dezenas de sítios de chamada, que é como uma lei ganha duas respostas.
+    mistura: centro::MisturaDoAngulo,
 }
 
 impl Skin {
     /// `None` sem osso nenhum — uma pele vazia não é a identidade, é a **ausência** de pele, e o
     /// chamador tem de deixar a forma em paz em vez de a passar por um mapa que não existe.
+    ///
+    /// A lei do ângulo é a de omissão ([`centro::MisturaDoAngulo::Circulo`]); quem quer a outra usa
+    /// a [`Skin::com_mistura`].
     #[must_use]
     pub fn new(bones: Vec<SkinBone>) -> Option<Self> {
-        (!bones.is_empty()).then_some(Self { bones })
+        Self::com_mistura(bones, centro::MisturaDoAngulo::default())
+    }
+
+    /// [`Skin::new`] com a lei do ângulo escolhida — a porta do PRODUTO e das sondas.
+    #[must_use]
+    pub fn com_mistura(bones: Vec<SkinBone>, mistura: centro::MisturaDoAngulo) -> Option<Self> {
+        (!bones.is_empty()).then_some(Self { bones, mistura })
+    }
+
+    /// Que lei do ângulo esta pele usa.
+    ///
+    /// ⚠️ **O caminho do DISPOSITIVO pergunta-lhe isto**: o shader implementa a média em círculo e
+    /// mais nenhuma, logo com a outra lei ligada ele **recusa** o quadro e a CPU pinta.
+    #[must_use]
+    pub fn mistura(&self) -> centro::MisturaDoAngulo {
+        self.mistura
     }
 
     /// Quantos ossos esta pele tem.
@@ -507,6 +531,7 @@ mod correccao;
 pub use correccao::{Correccao, Especie};
 
 pub mod centro;
+pub use centro::MisturaDoAngulo;
 pub mod fold;
 /// ⭐ Os gates e a sonda da régua da dobra.
 #[cfg(test)]

@@ -45,6 +45,8 @@ pub mod esqueletos;
 #[path = "esqueletos_tests_support.rs"]
 mod esqueletos_tests_support;
 pub mod goal;
+/// ⭐⭐⭐ **Qual LEI mistura as rotações dos ossos** — a porta `PH2D_SKIN_ANGULO`.
+pub mod mistura_do_angulo;
 /// ⭐⭐⭐ **O PESO À MÃO** — o gesto e o olho da correcção que o artista pinta.
 pub mod peso_a_mao;
 pub mod peso_a_mao_malha;

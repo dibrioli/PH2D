@@ -213,3 +213,34 @@ pub fn grava(g: &SkinnedPath) -> Option<Vec<u8>> {
 #[cfg(test)]
 #[path = "skinned_mesh_tests.rs"]
 mod tests;
+
+/// ⭐⭐ **A LENTE B — as réguas contra o PADRÃO-OURO** (auditoria de 2026-09-20).
+///
+/// ⚠️ Saiu do [`tests`] por tecto de LOC, e o corte é por RESPONSABILIDADE: o irmão mede *«as duas
+/// leis concordam?»* e este mede *«a nossa lei bate a mesma forma deformada como malha densa?»*.
+#[cfg(test)]
+#[path = "skinned_mesh_ouro_reguas_tests.rs"]
+mod ouro_reguas_tests;
+
+#[cfg(test)]
+#[path = "skinned_mesh_ouro_tests.rs"]
+mod ouro_tests;
+
+/// ⭐⭐ **ONDE O ERRO NASCE** — a atribuição ao substrato, e o que cada wave comprou.
+#[cfg(test)]
+#[path = "skinned_mesh_ouro_nos_tests.rs"]
+mod ouro_nos_tests;
+
+/// ⭐⭐⭐ **A LEI QUE MISTURA OS OSSOS** — o vinco, as três leis lado a lado, e onde cada uma parte.
+#[cfg(test)]
+#[path = "skinned_mesh_lei_tests.rs"]
+mod lei_tests;
+
+/// ⭐⭐⭐ **QUANTO a lei nova move o DESENHO** — o gate do TAMANHO, e a imagem que o produziu.
+///
+/// ⚠️ Ele é o par obrigatório do [`lei_tests`]: lá mede-se um extremo LOCAL (`5,1×` na aresta do
+/// cotovelo) e aqui o tamanho do que se vê (`4,3 %` da espessura). *Uma régua local não diz o
+/// tamanho.*
+#[cfg(test)]
+#[path = "skinned_mesh_lei_tamanho_tests.rs"]
+mod lei_tamanho_tests;

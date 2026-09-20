@@ -381,3 +381,67 @@ fn uma_tabela_de_juntas_truncada_e_recusada() {
         "uma lista de angulos INCOMPLETA passou a cerca — o `θ̄` sairia do angulo do vizinho"
     );
 }
+
+/// ⭐⭐⭐ **COM UMA LEI QUE O SHADER NÃO EXPRIME, A PORTA DA PLACA ENTREGA A RESPOSTA DA CPU.**
+///
+/// ⛔⛔⛔ **A 1.ª redacção devolvia `None` e isso era um DEFEITO, não uma recusa:** o chamador
+/// (`skin_image::attach_skin_meshes`) faz `continue` num `None`, logo a imagem não era deformada
+/// **de todo** — *«a placa não exprime esta lei»* e *«esta coisa não tem pele»* liam-se no mesmo
+/// byte, e o artista veria a arte em REPOUSO por cima de um esqueleto dobrado.
+///
+/// ⚠️ **As três metades, e nenhuma basta:** com a lei nova a porta devolve a malha **POSADA** e
+/// ela é **bit a bit** a da CPU (1) e **não** traz a tabela do dispositivo (2); e com a lei de
+/// omissão ela continua a entregar o payload da placa (3), senão isto teria desligado a F9.
+#[test]
+fn com_uma_lei_que_o_shader_nao_exprime_a_placa_entrega_a_da_cpu() {
+    use ph2d_skeleton::MisturaDoAngulo;
+    let (pesos, p2l) = (tabela(), p2l());
+    let ossos = pele().bones().to_vec();
+    let desd = Skin::com_mistura(ossos.clone(), MisturaDoAngulo::Desdobrado).expect("pele");
+    let circ = Skin::com_mistura(ossos, MisturaDoAngulo::Circulo).expect("pele");
+
+    let cpu = crate::skin_image::posed_sprite_mesh_corrigida(
+        malha(),
+        p2l,
+        &desd,
+        &pesos,
+        ANCHOR,
+        SIZE,
+        &[],
+    )
+    .expect("a CPU posa");
+    let porta = sprite_mesh_para_a_placa(malha(), p2l, &desd, &pesos, ANCHOR, SIZE, &[])
+        .expect("a porta entrega a da CPU");
+
+    // (1) BIT A BIT — um epsilon aqui deixaria passar «quase a mesma lei».
+    for (i, (a, b)) in cpu.local.iter().zip(&porta.local).enumerate() {
+        assert_eq!(
+            (a[0].to_bits(), a[1].to_bits()),
+            (b[0].to_bits(), b[1].to_bits()),
+            "o vértice {i} da porta não é o da CPU: {a:?} contra {b:?}"
+        );
+    }
+    // (2) E ela NÃO traz a tabela do dispositivo — senão o shader posaria por cima do já posado.
+    assert!(
+        porta.skin.is_none(),
+        "a porta entregou a malha da CPU E a tabela da placa — o vértice seria posado DUAS vezes"
+    );
+    // (3) ⚠️ O CONTROLO: com a lei de omissão nada disto arma.
+    let placa = sprite_mesh_para_a_placa(malha(), p2l, &circ, &pesos, ANCHOR, SIZE, &[])
+        .expect("a placa recebe");
+    assert!(
+        placa.skin.is_some(),
+        "com a lei de omissão a placa TEM de continuar a posar — a F9 depende disso"
+    );
+    let parado = cpu
+        .local
+        .iter()
+        .zip(&placa.local)
+        .map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]))
+        .fold(0.0f32, f32::max);
+    assert!(
+        parado > 1e-4,
+        "o payload da placa devia vir em REPOUSO e saiu igual ao posado — esta fixtura \
+         deixou de distinguir os dois caminhos"
+    );
+}

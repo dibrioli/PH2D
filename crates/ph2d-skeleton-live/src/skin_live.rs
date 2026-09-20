@@ -239,7 +239,7 @@ fn resolve_with(
             &mut ossos,
         );
     }
-    Skin::new(ossos)
+    Skin::com_mistura(ossos, crate::mistura_do_angulo::mistura_do_ambiente())
 }
 
 /// ⭐⭐⭐ **A PELE DE UMA COISA, resolvida agora** — a porta que serve quem não é um `VecPath`.

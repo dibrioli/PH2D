@@ -167,3 +167,16 @@ mod sonda_da_pele_como_warp_tests;
 #[cfg(test)]
 #[path = "campo_tests.rs"]
 mod campo_tests;
+
+/// ⭐⭐ **AS SONDAS da auditoria de 2026-09-20** — elas IMPRIMEM; os gates são o irmão acima.
+///
+/// ⚠️ Saíram por tecto de LOC, e o corte é por RESPONSABILIDADE: *uma medição exploratória e uma
+/// lei são coisas diferentes, e juntá-las faz o ficheiro crescer a cada report sem lei nova.*
+#[cfg(test)]
+#[path = "campo_sondas_tests.rs"]
+mod campo_sondas_tests;
+
+/// ⭐⭐ **A 2.ª metade das sondas** — o que ligar o campo, ou pousar uma mancha, de facto MOVE.
+#[cfg(test)]
+#[path = "campo_sondas_ablacao_tests.rs"]
+mod campo_sondas_ablacao_tests;

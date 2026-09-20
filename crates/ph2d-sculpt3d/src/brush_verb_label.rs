@@ -52,9 +52,20 @@ impl crate::Verb {
             Self::Crease => "sculpt3d.verb.crease",
             Self::Blob => "sculpt3d.verb.blob",
             Self::Mask => "sculpt3d.verb.mask",
-            Self::Paint => "Paint",
-            Self::Blur => "Blur",
-            Self::SmearColor => "Smear Color",
+            // ⛔⛔ **INTEGRAÇÃO (20/09): estes três nasceram nesta linha com o RÓTULO no
+            // lugar da CHAVE, e a fusão foi limpa e compilou.** A `line/UIUX`
+            // migrou a fronteira dos motores para chave + tabela no mesmo dia, e
+            // uma variante nova escrita no idioma antigo não é erro de
+            // compilação — `label_key` devolve `&'static str` nos dois idiomas.
+            // Quem os apanhou foi o censo `cada_rotulo_deste_motor_vem_da_tabela`
+            // na ÁRVORE COMBINADA. ⚠️ E o `"Blur"` escapou ao censo do `ph2d-i18n`
+            // porque o painel do VECTOR já tem uma ponte para essa palavra: as
+            // pontes são indexadas pela PALAVRA e não pelo par `(crate, palavra)`,
+            // logo uma coincidência de vocabulário entre dois motores esconde um
+            // rótulo cru num terceiro. *Aqui a forma da chave apanha-o de graça.*
+            Self::Paint => "sculpt3d.verb.paint",
+            Self::Blur => "sculpt3d.verb.blur",
+            Self::SmearColor => "sculpt3d.verb.smear_color",
             Self::Move => "sculpt3d.verb.move",
             Self::SnakeHook => "sculpt3d.verb.snake_hook",
             Self::Twist => "sculpt3d.verb.twist",

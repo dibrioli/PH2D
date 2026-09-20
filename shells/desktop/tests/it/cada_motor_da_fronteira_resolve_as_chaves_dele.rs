@@ -271,6 +271,18 @@ fn nenhum_pintor_chama_o_acessorio_ingles_de_um_motor_da_fronteira() {
             &["nao mudou a malha"],
             "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
         ),
+        // ⛔⛔ **INTEGRAÇÃO (20/09): a MESMA linha, acusada por um SEGUNDO tipo.** A
+        //    `line/sculpt3d` acrescentou a este ficheiro um campo `queda: ph2d_sculpt3d::Falloff`,
+        //    e a régua empareha *«o ficheiro NOMEIA o tipo»* com *«o ficheiro chama o acessório»* —
+        //    logo o `Falloff` herdou a acusação de um `.label()` que é de um `Verb` e que o main já
+        //    isentava acima. ⇒ é a família do `paint/brush.rs`, com o `eprintln!` por baixo:
+        //    *nomear um tipo não é chamá-lo.*
+        (
+            "crates/ph2d-app-sculpt3d/src/dyntopo.rs",
+            "Falloff",
+            &["nao mudou a malha"],
+            "o `.label()` desta linha e' de OUTRO tipo (um `Verb`, isento acima) e vai para um `eprintln!`: o ficheiro so' NOMEIA o `Falloff`, num campo de struct. Diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
+        ),
         (
             "crates/ph2d-app-sculpt3d/src/keys.rs",
             "TrimForma",

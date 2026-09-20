@@ -26,8 +26,8 @@
 
 use ph2d_sculpt3d::{
     Alpha, BoundaryModo, BoundaryQueda, ClothArea, ClothFilterKind, ClothFilterOrientation,
-    ClothForceFalloff, ClothMode, Falloff, FilterKind, PlanoInversao, PoseDeformacao, PoseModo,
-    ProjectMode, RefMode, SmearMode, TransformKind, TrimForma, Verb,
+    ClothForceFalloff, ClothMode, Falloff, FilterKind, PlanoInversao, PoseArrasto, PoseDeformacao,
+    PoseModo, ProjectMode, RefMode, SmearMode, TransformKind, TrimForma, Verb,
 };
 // ⚠️ A `Scales` do kelvinlet não é re-exportada na raiz (o `lib.rs` só levanta a constante do
 // alcance) — o caminho longo é o que existe, e escrevê-lo aqui é mais honesto do que abrir a
@@ -87,6 +87,12 @@ fn pares() -> Vec<(&'static str, &'static str)> {
         BoundaryQueda,
         PoseDeformacao,
         PoseModo,
+        // ⚠️ **INTEGRAÇÃO (20/09):** a `PoseArrasto` é a 21.ª família e entrou DEPOIS deste censo
+        //    — e o chip dela não é pintado por ninguém (o botão saiu por veredito do dono, e a
+        //    palavra fica escrita para o dia em que ele a pedir de volta). *Fora desta lista, a
+        //    presença das duas chaves na tabela ficaria sem régua, e o dia em que o chip voltasse
+        //    ele pintaria `sculpt3d.pose_arrasto.completo` cru na tela.*
+        PoseArrasto,
     );
     v
 }

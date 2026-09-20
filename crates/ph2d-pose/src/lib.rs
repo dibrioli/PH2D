@@ -95,7 +95,7 @@ pub use vizinhanca::Vizinhanca;
 /// o valor de [`Controlos::default`] e **é o que as `69` fixturas alimentam**.
 /// *Apagá-la levava o corpus do oráculo junto* — a mesma razão pela qual a
 /// folga simétrica do `Scene Project` ficou viva depois de recusada. E o
-/// [`Arrasto::label`] fica com ela: o dia em que alguém quiser a escolha de
+/// [`Arrasto::label_key`] fica com ela: o dia em que alguém quiser a escolha de
 /// volta, ela está escrita.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Arrasto {
@@ -117,12 +117,26 @@ impl Arrasto {
     /// Os dois, na ordem em que o painel os pinta — o de fábrica primeiro.
     pub const ALL: [Self; 2] = [Self::AoLongoDoOsso, Self::Completo];
 
-    /// O rótulo do chip (a UI da casa é inglesa).
+    /// ⭐⭐ **A CHAVE do rótulo** — `sculpt3d.pose_arrasto.<variante>`; o texto vive na
+    /// tabela de strings (`ph2d-i18n/src/sculpt_engine.rs`) e quem o resolve é a interface,
+    /// como nos dois irmãos deste ficheiro ([`Deformacao::label_key`], [`Modo::label_key`]).
+    ///
+    /// ⛔ **Esta crate NÃO ganha o acessório em inglês que o `ph2d-sculpt3d` tem**, e a razão
+    /// está escrita no `Cargo.toml` dela: *«a lib continua sem dependência nenhuma»*. Um
+    /// `tr_em(Ingles, …)` aqui traria a tabela de strings para dentro de uma crate de LEI.
+    ///
+    /// ⛔⛔ **INTEGRAÇÃO (20/09): esta família nasceu nesta linha DEPOIS de os dois irmãos
+    /// serem migrados, e nasceu com o rótulo no lugar da chave** — a fusão foi limpa e
+    /// compilou, porque as duas redacções devolvem `&'static str`. ⚠️ E o chip não é pintado
+    /// por ninguém (o botão saiu por veredito do dono, acima), o que a fazia parecer um
+    /// ÓRFÃO a apagar: ela fica **porque a decisão diz que fica**, e a forma que a mantém
+    /// honesta é a mesma dos irmãos — a palavra na tabela, não no fonte. O dia em que o
+    /// chip voltar, ele já está traduzível.
     #[must_use]
-    pub fn label(self) -> &'static str {
+    pub fn label_key(self) -> &'static str {
         match self {
-            Self::AoLongoDoOsso => "Along Bone",
-            Self::Completo => "Full Drag",
+            Self::AoLongoDoOsso => "sculpt3d.pose_arrasto.ao_longo_do_osso",
+            Self::Completo => "sculpt3d.pose_arrasto.completo",
         }
     }
 

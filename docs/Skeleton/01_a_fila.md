@@ -394,6 +394,96 @@ Mutação **12 de 12** a sangrar.
 ⏳ **ABERTO:** o espelho não tem gesto de canvas (só o painel) · e a arte presa não é espelhada com
 os ossos — o ramo novo nasce sem pele, e prendê-la é o gesto que já existe (*Bind*).
 
+### F36 — ⭐⭐⭐ **O TRAÇO DE UMA FORMA PRESA SOBREVIVE AO QUADRO** (report do dono, 2026-09-19, *«num vector linkado aos ossos não consigo mudar a espessura do stroke»*)
+
+⛔⛔⛔ **A causa NÃO era o painel, e é isso que a torna instrutiva.** O valor chegava ao documento —
+a fileira *Width* está sempre visível e o `vector_bridge` reestiliza a selecção pelo mesmo
+`SetValue(VECTOR_WIDTH)` — e o **re-cozimento da pele devolvia-o no quadro seguinte**. Medido: o
+artista põe `width = 0,2` e o recook lê `None`, sem um erro e sem um pixel de aviso. *Um controlo
+que o produto desfaz no quadro seguinte lê-se exactamente como um controlo morto.*
+
+⭐⭐ **O mecanismo é a fonte de cada re-cozimento.** A [`VecPath::replace_cooked`] responde *«o que
+um re-cozimento produz»* para quem re-gera a forma a partir dos **PARÂMETROS** dela — o texto a cada
+tecla, o objecto de texto, o envelope —, e ali o estilo **é** produto do cozimento. ⚠️ **A pele não
+é desse tipo:** a fonte dela é uma **FOTOGRAFIA** tirada no instante do `Bind`, congelada em bytes
+opacos, e o que ela re-gera por quadro é a **posição** de cada ponto.
+
+⇒ **[`VecPath::replace_geometry`]**, a porta de *«re-gerei ONDE os pontos estão»*: escreve
+`verts`/`closed`/`subpaths` e preserva **todo** o estilo. ⛔ **As duas portas destruturam a struct de
+forma EXAUSTIVA de propósito** — um campo novo obriga a responder **as duas** perguntas (*é produto
+de um re-cozimento?* e *é GEOMETRIA?*) no commit em que ele nasce.
+
+⚠️ O `release(Keep::Source)` passa pela mesma porta: *o Release devolve o que o artista DESENHOU, e
+a cor com que ele o pintou depois do `Bind` é dele.*
+
+⛔⛔ **E o censo dos hosts que reescrevem `verts` teve de crescer no MESMO commit:** no instante da
+troca de porta o detector **deixou de ver o `skin_live.rs`**, e o piso de população é o que
+transforma isso num vermelho em vez de um silêncio. *A cura de um defeito pode apagar um host do
+censo que o vigia* — o doc daquele gate já avisava, e esta é a quarta assinatura.
+
+**Gates:** `replace_geometry_carries_the_points_and_leaves_the_style_alone` (as duas metades, com a
+fixtura fora do neutro dos dois lados) · `o_traco_que_o_artista_poe_numa_forma_presa_sobrevive_ao_quadro`
+(produto, com o controlo de que o quadro escreveu de facto a geometria). **Mutações: 3 de 3.**
+
+### F35 — ⭐⭐⭐ **AS DUAS ALÇAS DE UM NÓ VOLTAM A RODAR JUNTAS** (report do dono, 2026-09-19, *«muitas irregularidades na deformação de vetores. Certamente um mau tratamento das alças dos handles»*)
+
+⛔⛔⛔ **A F33 resolvia cada segmento SOZINHO.** As duas alças que se encontram num nó — a de saída do
+segmento `k` e a de entrada do `k+1` — saíam de dois sistemas de mínimos quadrados que não se
+conhecem ⇒ **deixavam de ser colineares**, e o nó que o artista desenhou LISO virava uma QUINA.
+Medido na barra da cena, a mudança da tangente contra a lei ingénua:
+
+| dobra | p50 | máx |
+|---|---|---|
+| `30°` | `2,58°` | `5,86°` |
+| `60°` | `5,08°` | `13,00°` |
+| `90°` | `7,30°` | `20,92°` |
+| `120°` | `9,05°` | `28,62°` |
+
+⭐⭐ **O CONTROLO é o que nomeia a causa:** a lei INGÉNUA mede `0,000°` em **todas** aquelas dobras,
+porque as três metades de um vértice passam pelo MESMO afim e *um afim preserva colinearidade*.
+⇒ *a quebra não vinha da pele: vinha do ajuste.* ⚠️ E a própria curva-ALVO quebra ali (`28,2°` a
+`120°`, medido por diferença central), porque o peso é interpolado no **PARÂMETRO** e a derivada
+dele salta em cada nó — *seguir fielmente um alvo com uma quina é desenhar a quina*.
+
+⭐⭐⭐ **A cura é um quarto passe** ([`ph2d_vec_skin::curva::reconcilia`]): cada alça tem um **EIXO** —
+a direcção que o afim **daquele nó** dá à tangente da fonte —, o ajuste livre afastou-a dele por um
+ângulo, e o passe faz as duas metades concordarem num ângulo só (a média pesada pelo COMPRIMENTO) e
+roda cada uma para lá. ⇒ quebra **`0,000°`** em todas as dobras, e o desvio à curva verdadeira
+**melhora ao mesmo tempo** (`0,03371 → 0,01900` a `90°`, contra `0,03371` da lei ingénua): *conciliar
+a tangente não tira graus de liberdade ao ajuste — redistribui-os.*
+
+⚠️ **Quatro decisões, cada uma com a medição:** rodar e nunca reescrever a alça a partir do eixo
+(`|h|·versor(h)` não é `h` em vírgula flutuante, e a rotação de `0` é a identidade **ao bit**) · o
+eixo vem do afim do NÓ e não da cúbica já deformada (aquele vector mistura **dois** nós quando a
+alça é degenerada, e as duas pontas de uma aresta recta recebiam a mesma recta) · uma alça **sem
+eixo** fica fora da média e fora da rotação (o nó ali é um CANTO) · e a **cascata** da tangente foi
+construída e **removida** por nenhuma mutação a conseguir matar.
+
+⛔ **RECUSA MEDIDA — o `smoothstep` no peso:** `lerp(ra, rb, 3t²−2t³)` corta a quebra do ALVO a meio
+(`p50 9,05 → 3,98`) e **não** cura o máximo (`28,62 → 26,98`); com a conciliação por cima não muda a
+quebra (já é zero) e **piora** o desvio (`0,03049 → 0,03459`).
+
+⚠️⚠️ **PREMISSA MORTA, com a morte visível no diff:** o `com_a_lei_da_curva_o_ponto_novo_nao_move_nada`
+dizia *«por construção»* e media `0,00 %`. Com a conciliação o resultado num segmento depende do
+**vizinho**, e partir um segmento muda a vizinhança de um nó ⇒ o salto passa a **`0,0201 %`** da peça
+(`0,008` unidades numa peça de `40 × 10`). A barra sai do vale entre duas medições: `0,0201 %` hoje
+contra **`11,11 %`** com a compensação da F28 ligada.
+
+⚠️ **E três réguas tiveram de ser corrigidas antes do algoritmo:** o ângulo de VIRAGEM sozinho não
+serve (um rectângulo tem quinas autoradas e lê `90°` em repouso) ⇒ mede-se a **MUDANÇA** contra a lei
+ingénua; um nó com alça degenerada devolve `None` e **não** um salto, senão o emparelhamento com o
+outro estado do caminho desalinha; e a fixtura tem de ser uma **ELIPSE** — num `RoundRect` o
+arredondamento é um `corner_radius` **dentro do vértice**, logo a FONTE continua a ser um rectângulo
+de alças degeneradas. *Uma forma que parece curva na tela pode ser recta na fonte.*
+
+⛔ **DUAS cercas ficam DECLARADAS sem gate**, com o mecanismo escrito ao lado (a do vector nulo no
+`versor` e a `soma.1 <= 0.0`): nas fixturas construídas para as provocar a alça colapsa junto com o
+mapa e a `reconcilia` salta o nó antes de olhar para o eixo. *Ficam porque o modo de falha delas é a
+forma do artista DESAPARECER.*
+
+**Mutações: 12 de 12.** Dois cortes de LOC por responsabilidade, nenhuma entrada nova no
+`FILE_OVERAGE_OK`.
+
 ### F34 — ⭐⭐⭐ **O ENTALHE DO COTOVELO: a arte roda em torno da JUNTA** (ordem do dono, 2026-09-19, *«vamos curar o entalhe no lado de dentro do cotovelo»*)
 
 ⛔⛔⛔ **A mistura linear interpola POSIÇÕES, e isso dá a CORDA do arco.** Um ponto a meio caminho
@@ -832,6 +922,22 @@ escolher sozinho.
 **três** consumidores — esconder/inactivar os dois no modo absoluto é a lente do painel, que já
 existe para o `Pose` e o `Density`. E o censo dos knobs mede se um controlo chega ao barro, logo um
 botão inactivo que continue a escrever seria apanhado.
+
+⭐⭐⭐ **A PERGUNTA QUE DECIDIA ESTÁ RESPONDIDA — ordem do dono, 2026-09-19:** *«a última manda (é o
+comportamento normal de um pincel absoluto)»*.
+
+⇒ **duas manchas absolutas sobrepostas não se somam: vence a ÚLTIMA que o artista pintou.** Isso
+fecha as três consequências que a medição acima previa, e nenhuma delas é de UI:
+
+1. a `Correccao` ganha **espécie** (`Soma` para o modo cumulativo · `Alvo` para o absoluto);
+2. a **ORDEM da lista passa a ter significado** — hoje ela é um conjunto de contribuições comutativas
+   e passa a ser uma pilha onde a última `Alvo` que alcança um ponto ganha;
+3. e como a lista viaja em bytes opacos dentro do `SkinBind`, isto é **degrau de `PROJECT_SCHEMA`**.
+
+⛔ **O caso degenerado continua por decidir e é do dono:** um ponto que só o osso em mãos governa
+(os outros somam ZERO) não tem por onde repartir o `1 − v`. As duas saídas honestas são *o pincel
+não faz nada ali* e *o `v` é ignorado e o peso fica `1`* — ⚠️ escolher em código sem perguntar é
+como esta casa produz um controlo que faz duas coisas diferentes conforme o sítio.
 
 ### F28 — ⭐⭐⭐ **UM PONTO NOVO NUMA FORMA PRESA SOBREVIVE, E JÁ NASCE COM PESO** (ordem do dono, 2026-09-19)
 
@@ -2140,6 +2246,9 @@ refinar em *compute shader* por quadro sem primeiro medir a malha assada.
 | ⭐⭐ **A LEI DO MEIO que as duas recusas acima partilham** | ⛔ *Duas técnicas de topo do campo (difusão de calor · centros de rotação) foram recusadas pela MESMA propriedade da nossa geometria:* uma folha plana com os ossos no plano dela. Qualquer candidata que dependa de **distinguir pontos pelos PESOS** falha aqui, porque os dois lados da folha têm o mesmo vector de peso. ⇒ *sabe-se antes de construir*, e é isso que esta linha vale. |
 | **Apertar os pesos** para curar a dobra da pele (F6-j, 2026-09-14) — ⚠️ **a recusa vale; o NÚMERO dela é da lei ANTIGA** (ver a linha seguinte) | **Piora, e é a resposta intuitiva:** `0,25 ×` do osso dá `0,64 %` de arte invertida contra `0,17 %` do alcance de hoje. O que dobra a arte é o **gradiente** dos pesos — apertá-los torna-o mais íngreme. Quem cura é ALARGAR: a `2,08 ×` a meia-altura da arte são **zero** pontos invertidos até `150°`. |
 | **SUBDIVIDIR o osso (o mecanismo do B-Bone) como cura da dobra** | Com a população de amostras constante ele **piora**: `2,61 % → 4,94 %` a `24` sub-ossos. Com o alcance já certo não cura nada — compra **margem** (`det_min` `0,013 → 0,367`). ⇒ a ordem é o alcance primeiro. ⛔ E a variante «raio encolhe com o sub-osso» lê `0 %` invertido a **`94,5 %` de amostras órfãs**: é a régua a não medir nada. |
+| ⭐⭐ **O `smoothstep` no peso entre dois nós** (`lerp(ra, rb, 3t²−2t³)`, F35, 2026-09-19) | Ele torna a derivada do peso **nula nos dois nós**, o que faz a curva-ALVO deixar de quebrar ali por construção — e **não chega**: corta a quebra do alvo a meio (`p50 9,05° → 3,98°`) e deixa o **máximo** em `26,98°` contra `28,62°`, porque o resto da quebra é do AJUSTE e não do alvo. Com a conciliação das alças por cima ele não muda a quebra (já é `0,000°`) e **piora** o desvio à verdade (`0,03049 → 0,03459`). *Uma segunda lei que não move a régua da primeira não entra.* |
+| ⭐⭐ **A CASCATA da tangente** (`C''`, depois a corda) para dar eixo a uma alça degenerada (F35) | Construída e **removida**: nos nós em que ela era lida a **outra** metade do nó tinha comprimento zero e a `reconcilia` saltava-os na mesma ⇒ **nenhuma mutação a conseguia matar**. *Uma linha que a mutação não mata não é lei.* ⚠️ E a variante óbvia — tirar o eixo da cúbica **já deformada** — é pior que inerte: aquele vector mistura DOIS nós, logo as duas pontas de uma aresta recta recebiam a **mesma recta** e o segmento não conseguia arquear. |
+| ⭐⭐⭐ **A correcção das alças PRESA à direcção de cada uma** (o primeiro desenho da F35) | Ela dá quebra `0,000°` e **mata a F30**: numa aresta recta as duas pontas ficam sobre a mesma linha e o segmento **não arqueia** ⇒ pintar peso no meio de uma aresta volta a mover `0,000000`. Medido, o desvio à verdade também é pior que o da conciliação (`0,03049` contra `0,02451` a `120°`). *A tangente tem de poder RODAR — desde que os dois lados rodem juntos.* |
 | **Ler os lados do modo MISTO da pose VIVA** | Estável enquanto o alvo está ao alcance (o modo é ponto fixo, e há gate) e **apagado para sempre** no primeiro arrasto que o leve para fora dele: fora do alcance a resposta certa é a RECTA, e uma recta não tem lado nenhum para ler. «Inicial» tem de ser o DOCUMENTO. |
 | ⭐⭐⭐ **A DOBRA SOB A LEI DE PESO DE HOJE, RE-MEDIDA** (2026-09-18) — *não é uma recusa, é a reconferência que o §0.0 exige* | ⛔⛔ A recusa acima diz *«zero pontos invertidos até `150°`»* e mede a lei **derivada por distância**; o bind passou ao **padrão-ouro (BBW)** em **15/09** e **ninguém reconferiu**. Re-medida pela porta do produto sobre a arte do braço da cena `=2` (sonda `sonda_da_dobra`, `ph2d-skeleton-live`): a lei **continua de pé** — `0` triângulos do avesso a `0/13/25/50/75°` por junta, e a **primeira** inversão a `90°` (`19` de `3 593`), com a corrente dobrada por completo sobre si. Pior factor de área: `1,44 · 1,22 · 0,99 · 0,49 · 0,03 · −0,18`. ⇒ **gate** `a_pele_nao_vira_um_triangulo_ate_setenta_e_cinco_graus`, com o controlo positivo a `90°` dentro dele. ⛔⛔ **E uma nota de PRODUTO caiu junto:** a cena `=2` dobrava `13°` por um doc meu que dizia que a `25°` *«a malha dobra sobre si mesma e a arte lê-se RASGADA»* — **falso**; o rasgo da foto eram os gargalos da união dos quadros e o configurar-depois-de-prender, os dois curados na mesma jornada. *Baixar o ângulo fez o sintoma encolher, e por isso pareceu uma cura.* A cena volta a `25°`. |
 | **Fazer a malha SEGUIR a silhueta** em vez de a cobrir (F6-b) | Traz de volta as células deformadas da borda, que são o defeito que a wave cura. O recorte fino é do **alfa da própria arte**, de graça e ao sub-pixel — o *Expansion* do *Puppet* do AE. |

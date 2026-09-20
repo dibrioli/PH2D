@@ -46,6 +46,7 @@
 
 pub use ph2d_material::{OpenPbr, Rgb, Surface};
 
+pub mod imagem;
 pub mod wgsl;
 
 #[cfg(test)]

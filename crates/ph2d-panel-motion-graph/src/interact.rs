@@ -35,6 +35,12 @@ mod socket;
 #[path = "interact_drop.rs"]
 mod drop_gesture;
 
+/// **ONDE UM NÓ ARRASTADO É LARGADO** — irmão cortado no tecto de LOC e por RESPONSABILIDADE:
+/// este ficheiro decide *que gesto é este*, aquele responde *o que quer dizer largar uma CARTA
+/// aqui* (ordem do dono, 2026-09-19).
+#[path = "interact_node_drop.rs"]
+mod node_drop;
+
 #[path = "interact_menu.rs"]
 mod menu;
 use menu::{drag_menu_thumb, grab_menu_thumb, resolve_menu, scroll_menu};
@@ -143,7 +149,7 @@ fn apply_gesture(
     }
     match g.kind {
         GraphHitKind::Background => apply_background(state, g, rect, snap),
-        GraphHitKind::Node { node } => apply_node(state, g, node as u32, snap),
+        GraphHitKind::Node { node } => apply_node(state, g, node as u32, snap, rect),
         // ⭐ **Arrastar um param no cartão** (ciclo 1) — o número do Blender.
         GraphHitKind::ParamRow { node, row } => {
             apply_param_row(state, g, node as u32, row, rect, snap);
@@ -421,6 +427,7 @@ fn apply_node(
     g: GraphGesture,
     node: u32,
     snap: &GraphViewSnapshot,
+    rect: Rect,
 ) {
     // Probe armed: this press PICKS the node to read instead of selecting/dragging
     // it. The pick disarms (three exits, like the knife).
@@ -440,6 +447,7 @@ fn apply_node(
                 nodes: state.selected.iter().copied().collect(),
                 last: (g.x, g.y),
                 started: false,
+                moved: (0.0, 0.0),
             };
         }
         GesturePhase::Update => {
@@ -448,11 +456,14 @@ fn apply_node(
                 nodes,
                 last,
                 started,
+                moved,
             } = &mut state.interaction
             {
                 let (dx, dy) = ((g.x - last.0) / zoom, (g.y - last.1) / zoom);
                 *last = (g.x, g.y);
                 if dx != 0.0 || dy != 0.0 {
+                    moved.0 += dx;
+                    moved.1 += dy;
                     if !*started {
                         push_intent(GraphIntent::BeginDrag);
                         *started = true;
@@ -468,9 +479,25 @@ fn apply_node(
             }
         }
         GesturePhase::End => {
-            if let Interaction::DragNodes { started, .. } = std::mem::take(&mut state.interaction)
+            if let Interaction::DragNodes {
+                nodes,
+                started,
+                moved,
+                ..
+            } = std::mem::take(&mut state.interaction)
                 && started
             {
+                // ⭐⭐⭐ **A largada pode querer dizer mais do que «mover»** (ordem do dono,
+                // 2026-09-19) — as duas leituras, a ordem entre elas e o porquê de só valer com
+                // UM nó arrastado vivem em [`node_drop`].
+                //
+                // ⚠️ **O estrutural vai ANTES do `EndDrag`**, de propósito: o parênteses
+                // `BeginDrag`/`EndDrag` é que comita o passo de undo, logo mover **e** trocar
+                // ficam sendo **um** Ctrl+Z — que é o número de gestos que o artista fez.
+                if let [um] = nodes.as_slice() {
+                    let view = View::new(rect, state.view);
+                    node_drop::pedir(snap, &view, *um, (g.x, g.y), moved);
+                }
                 push_intent(GraphIntent::EndDrag);
             }
         }

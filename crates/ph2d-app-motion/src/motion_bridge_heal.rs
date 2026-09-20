@@ -52,6 +52,13 @@ pub(super) fn is_destructive(i: &GraphIntent) -> bool {
             | GraphIntent::DeleteSelection { .. }
             | GraphIntent::CutWires { .. }
             | GraphIntent::MoveWireEnd { .. }
+            // ⚠️ **As duas largadas de 2026-09-19 são DESTRUTIVAS**, e a classificação é uma
+            // decisão: as duas desligam fios de propósito (a troca reescreve TODAS as ligações
+            // dos dois nós; o splice tira o nó da cadeia onde estava). *O artista está a refazer
+            // a fiação à mão, e uma cura automática por cima disso desfaz o que ele acabou de
+            // fazer* — a mesma leitura que o `MoveWireEnd` já carrega.
+            | GraphIntent::SwapInChain { .. }
+            | GraphIntent::SpliceExistingIntoWire { .. }
     )
 }
 

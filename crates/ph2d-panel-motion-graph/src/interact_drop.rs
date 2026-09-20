@@ -94,14 +94,21 @@ pub(super) fn node_body_target(
             && n.kind != crate::snapshot::NodeViewKind::Subgraph
             && geom::card_rect(n, view).contains(x, y)
     })?;
-    node.inputs.iter().enumerate().find_map(|(i, inp)| {
+    // ⭐⭐⭐ **A PORTA PRINCIPAL primeiro** — report do dono (2026-09-19): um fio de posições
+    // largado sobre um `Duplicator` aterrava na `shape`, porque *«a primeira LIVRE e
+    // compatível»* não distingue duas entradas do MESMO tipo. A lei é partilhada com o
+    // `smart_connect` e com o splice: [`ph2d_node_registry::landing_port`].
+    ph2d_node_registry::landing_port(node.primary_input, node.inputs.len(), |i| {
         let occupied = snap
             .edges
             .iter()
-            .any(|e| e.to_node == node.id && e.to_port == i as u16 && !e.delayed);
-        let compat = inp.domain == out.domain && inp.dim == out.dim && inp.clock == out.clock;
-        (!occupied && compat).then_some((node.id, i as u16))
+            .any(|e| e.to_node == node.id && e.to_port == i && !e.delayed);
+        let compat = node.inputs.get(i as usize).is_some_and(|inp| {
+            inp.domain == out.domain && inp.dim == out.dim && inp.clock == out.clock
+        });
+        !occupied && compat
     })
+    .map(|p| (node.id, p))
 }
 
 /// The first OUTPUT of the regular node whose card body contains `(x, y)`, type-compatible with the

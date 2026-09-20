@@ -217,6 +217,7 @@ fn the_ghost_end_snaps_to_the_target_socket() {
         level: None,
         breadcrumb: Vec::new(),
         nodes: vec![GraphNodeView {
+            primary_input: 0,
             kind: NodeViewKind::Node,
             id: 5,
             display_name: "n".into(),

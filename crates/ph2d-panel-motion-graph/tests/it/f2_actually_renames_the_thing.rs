@@ -52,6 +52,7 @@ fn layout() -> HeroLayout {
 
 fn card(id: u32, name: &str, kind: NodeViewKind, x: f32) -> GraphNodeView {
     GraphNodeView {
+        primary_input: 0,
         id,
         kind,
         display_name: name.into(),

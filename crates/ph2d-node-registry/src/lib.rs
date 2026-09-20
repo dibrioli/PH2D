@@ -34,8 +34,10 @@ mod fontes_de_posicoes;
 /// LUT, uniform derivado…): o que um nó escreve e o que o sequenciador lê. Módulo irmão pelo TETO
 /// DE LOC, cortado por RESPONSABILIDADE como o `requirements` (ciclo 7, doc 112).
 mod gpu_channels;
+mod port_landing;
 mod requirements;
 mod ui;
+pub use port_landing::landing_port;
 
 pub use ui::table_external_key;
 pub use ui::{

@@ -444,6 +444,12 @@ fn card_view(
             .iter()
             .filter_map(|p| port_view(p, false))
             .collect(),
+        // ⚠️ **Um cartão não tem porta principal, e ninguém lha pergunta:** as portas dele são
+        // DERIVADAS dos membros, e um fio largado sobre o corpo de um cartão vai pelo menu que
+        // PERGUNTA qual delas (`card_port_menu`), nunca pelo aterramento automático — o
+        // `node_body_target` salta um [`NodeViewKind::Subgraph`] de propósito. `0` é o valor que
+        // o campo já significa para quem não declara.
+        primary_input: 0,
         // Not a cook readout — a card does not cook. It is how much is folded in
         // here, which is the number the artist actually wants off a closed door.
         readout: Some(ph2d_i18n::tr_with(

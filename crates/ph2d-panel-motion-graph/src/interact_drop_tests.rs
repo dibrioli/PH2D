@@ -207,3 +207,82 @@ fn a_backward_wire_dropped_on_a_node_body_takes_its_first_compatible_output() {
         "the backward wire took node 2's first compatible output"
     );
 }
+
+/// ⛔⛔⛔ **E ELE PREFERE A PORTA PRINCIPAL — report do dono, 2026-09-19:** *«o grid em vez de se
+/// conectar em points, está se conectando no slot de Shape. isso acontece com outros nós de
+/// posição.»*
+///
+/// ⚠️ **A régua do irmão acima — *«a primeira LIVRE e compatível»* — é cega ao caso que morde:**
+/// as duas entradas do `motion.duplicator` têm o MESMO tipo e estão as DUAS livres, logo a
+/// primeira é sempre a `shape`. O que desempata é o que o TIPO declara
+/// ([`ph2d_node_registry::NodeRegistry::primary_input`]), e é por isso que ele viaja no retrato.
+///
+/// ⚠️ **A segunda metade é a CEDÊNCIA:** com a principal OCUPADA o fio continua a aterrar na
+/// outra — *uma preferência que recusa em vez de ceder transforma um acerto num bloqueio*.
+#[test]
+fn um_fio_largado_no_corpo_prefere_a_porta_principal() {
+    use crate::snapshot::NodeViewKind;
+    let alvo = |ocupada: Option<u16>| {
+        let _ = drain_intents();
+        let mut b = body_node(
+            2,
+            200.0,
+            NodeViewKind::Node,
+            vec![port(Domain::Instances), port(Domain::Instances)],
+            vec![],
+        );
+        b.primary_input = 1;
+        let snap = GraphViewSnapshot {
+            level: None,
+            breadcrumb: Vec::new(),
+            nodes: vec![
+                body_node(
+                    1,
+                    0.0,
+                    NodeViewKind::Node,
+                    vec![],
+                    vec![port(Domain::Instances)],
+                ),
+                b,
+            ],
+            edges: ocupada
+                .map(|p| GraphEdgeView {
+                    from_node: 3,
+                    from_port: 0,
+                    to_node: 2,
+                    to_port: p,
+                    delayed: false,
+                    out_domain: Domain::Instances,
+                })
+                .into_iter()
+                .collect(),
+            backdrops: Vec::new(),
+            probe: None,
+            now: 0.0,
+        };
+        let mut st = MotionGraphPanelState::default();
+        let out = GraphHitKind::SocketOut { node: 1, port: 0 };
+        for (fase, x, y) in [
+            (GesturePhase::Begin, 10.0, 37.0),
+            (GesturePhase::Update, 295.0, 50.0),
+            (GesturePhase::End, 295.0, 50.0),
+        ] {
+            apply_gesture(&mut st, gesture(out, fase, x, y), RECT, CENTER, &snap);
+        }
+        match drain_intents().as_slice() {
+            [GraphIntent::Connect { to_port, .. }] => Some(*to_port),
+            _ => None,
+        }
+    };
+
+    assert_eq!(
+        alvo(None),
+        Some(1),
+        "as duas entradas livres e do mesmo tipo: ganha a que o TIPO declara"
+    );
+    assert_eq!(
+        alvo(Some(1)),
+        Some(0),
+        "com a principal ocupada ele CEDE, senao a preferencia vira um bloqueio"
+    );
+}

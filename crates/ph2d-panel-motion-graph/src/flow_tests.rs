@@ -7,6 +7,7 @@ use ph2d_nodegraph::port::Domain;
 
 fn node(id: u32, is_sink: bool, count: Option<u32>) -> GraphNodeView {
     GraphNodeView {
+        primary_input: 0,
         kind: crate::snapshot::NodeViewKind::Node,
         id,
         display_name: format!("n{id}"),

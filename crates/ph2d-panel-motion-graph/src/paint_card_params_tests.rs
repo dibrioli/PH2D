@@ -26,6 +26,7 @@ const H: f32 = 800.0; // LITERAL-PX-OK: tela de teste
 
 fn node(k: usize) -> GraphNodeView {
     GraphNodeView {
+        primary_input: 0,
         kind: NodeViewKind::Node,
         id: 1,
         display_name: "Grid".into(),

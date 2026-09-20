@@ -144,6 +144,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             " — insert a `{ty}` to read one number from it"
         }
         // ph2d-migrar-texto:end
+        // ⚠️ Escrita À MÃO e FORA dos marcadores, como o cabeçalho manda — a recusa da troca de
+        // dois nós de lugar na cadeia (ordem do dono, 2026-09-19).
+        "app.motion.motion_bridge_rewire.these_two_nodes_cannot_trade_places" => {
+            "These two nodes can't trade places in the chain"
+        }
         _ => return None,
     })
 }

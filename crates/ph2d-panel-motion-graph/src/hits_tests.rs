@@ -20,6 +20,7 @@ const CANVAS: Rect = Rect {
 
 fn node(id: u32, x: f32, y: f32) -> GraphNodeView {
     GraphNodeView {
+        primary_input: 0,
         kind: crate::snapshot::NodeViewKind::Node,
         id,
         display_name: "n".into(),

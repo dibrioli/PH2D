@@ -22,6 +22,7 @@ fn card(params: Vec<CardParam>) -> GraphViewSnapshot {
         level: None,
         breadcrumb: Vec::new(),
         nodes: vec![GraphNodeView {
+            primary_input: 0,
             kind: NodeViewKind::Node,
             id: 7,
             display_name: "Grid".into(),

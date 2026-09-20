@@ -418,6 +418,36 @@ pub(super) fn apply_graph_intents(
             // already cooks. No document edit, no undo step, no `mark_dirty`. Probing
             // a CARD reads what the group EMITS (its first output's source) — the
             // question a closed door can still answer.
+            // ⭐⭐⭐ **AS DUAS LEITURAS DE UMA CARTA LARGADA** (ordem do dono, 2026-09-19). As duas
+            // vêm DENTRO do parênteses `BeginDrag`/`EndDrag` que o arrasto abriu, logo nenhuma
+            // empurra undo próprio — o `EndDrag` comita o gesto inteiro como **um** passo.
+            //
+            // ⛔ Um cartão dobrado não chega aqui (o painel não o oferece como sujeito nem como
+            // alvo), e esta guarda é a segunda porta: um id com o bit de subgrafo não é um
+            // `NodeId`, e tratá-lo como um apagaria o nó que por acaso tem aquele número.
+            GraphIntent::SwapInChain {
+                a,
+                b,
+                back_dx,
+                back_dy,
+            } => {
+                if !ph2d_panel_motion_graph::is_subgraph_view(a)
+                    && !ph2d_panel_motion_graph::is_subgraph_view(b)
+                {
+                    rewire::swap_in_chain(motion, toasts, a, b, back_dx, back_dy);
+                }
+            }
+            GraphIntent::SpliceExistingIntoWire {
+                node,
+                to_node,
+                to_port,
+            } => {
+                if !ph2d_panel_motion_graph::is_subgraph_view(node)
+                    && let Some((t, tp)) = subgraph::resolve_port(motion, to_node, to_port, true)
+                {
+                    rewire::splice_existing_into_wire(motion, toasts, node, t.0, tp);
+                }
+            }
             GraphIntent::SetProbe { node } => {
                 motion.probe = node.and_then(|v| subgraph::probe_target(motion, v));
                 motion.probe_ring.clear();

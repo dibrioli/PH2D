@@ -246,6 +246,40 @@ pub enum GraphIntent {
         x: f32,
         y: f32,
     },
+    /// ⭐⭐⭐ **TROCAR DOIS NÓS DE LUGAR NA CADEIA** — ordem do dono (2026-09-19): *«Se arrastar
+    /// um nó no grafo em cima de outro nó, eles mudam de posição na cadeia»*.
+    ///
+    /// Cada nó passa a ter as ligações do outro — quem alimentava `a` alimenta `b`, quem `a`
+    /// alimentava passa a ser alimentado por `b`, e vice-versa. ⚠️ **E as CARTAS trocam de
+    /// sítio também**: o arrastado fica onde o alvo estava, e o alvo vai para onde o arrastado
+    /// começou — `back` é o deslocamento acumulado do arrasto, que é a Única coisa que o painel
+    /// sabe e a shell não (ela já aplicou cada `MoveNodes` ao vivo). *Trocar a cadeia e deixar as
+    /// cartas sobrepostas entrega um grafo certo e ilegível.*
+    ///
+    /// ⚠️ Vai DENTRO do parênteses `BeginDrag`/`EndDrag`, logo o gesto inteiro — mover **e**
+    /// trocar — é **um** passo de undo.
+    SwapInChain {
+        a: u32,
+        b: u32,
+        back_dx: f32,
+        back_dy: f32,
+    },
+    /// ⭐⭐⭐ **ENFIAR UM NÓ QUE JÁ EXISTE NUM FIO** — ordem do dono (2026-09-19): *«Se arrastar
+    /// num nó em cima de uma conexão (linha) mesmo se o nó já está conectado em cadeia ou mesmo
+    /// se estiver desconectado, ele passa a ser conectado naquela linha, contudo, sem quebrar a
+    /// cadeia»*.
+    ///
+    /// O fio é nomeado pela PONTA de chegada (`to_node`/`to_port`), como em toda esta família —
+    /// uma entrada recebe exactamente uma fonte, logo o par identifica o fio.
+    ///
+    /// ⚠️ **As duas metades do *«sem quebrar a cadeia»*:** a cadeia de ONDE ele sai fecha-se
+    /// (quem o alimentava passa a alimentar quem ele alimentava) e a cadeia ONDE ele entra
+    /// continua ligada (`u → nó → v`, nunca `u → nó` com o `v` a pairar).
+    SpliceExistingIntoWire {
+        node: u32,
+        to_node: u32,
+        to_port: u16,
+    },
     /// Point the probe at a node (or clear it). The shell samples that node's
     /// output every tick and publishes the readout + the ring of recent samples
     /// back on the snapshot. UI-only: it never edits the document, so no undo step.

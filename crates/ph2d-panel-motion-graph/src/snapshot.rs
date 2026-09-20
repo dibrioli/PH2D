@@ -142,6 +142,15 @@ pub struct GraphNodeView {
     pub y: f32,
     pub inputs: Vec<PortView>,
     pub outputs: Vec<PortView>,
+    /// ⭐⭐ **A porta por onde um fio DEVE aterrar neste nó** — side-metadata do registo
+    /// ([`ph2d_node_registry::NodeRegistry::primary_input`]), `0` para quem não declara.
+    ///
+    /// ⛔⛔ **Ela viaja no retrato porque o painel decide um aterramento e NÃO tem o registo**
+    /// (o `node_body_target`, o fio largado sobre o CORPO de um cartão). Sem ela, o painel
+    /// respondia *«a primeira entrada LIVRE e compatível»* — que num `motion.duplicator` é sempre
+    /// a `shape`, porque as duas entradas têm o MESMO tipo e nem o tipo nem o `validate` as
+    /// distinguem. *Um facto sobre o TIPO não se re-deriva do desenho: viaja com ele.*
+    pub primary_input: u16,
     /// **The inline readout** (F2): what this node produced on THIS frame's cook — the
     /// number the artist would otherwise have to aim the probe at, on every card at once.
     ///

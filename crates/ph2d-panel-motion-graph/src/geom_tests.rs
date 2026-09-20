@@ -7,6 +7,7 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain};
 
 fn node_with_inputs(id: u32, x: f32, n_in: usize) -> GraphNodeView {
     GraphNodeView {
+        primary_input: 0,
         kind: crate::snapshot::NodeViewKind::Node,
         id,
         display_name: "n".into(),

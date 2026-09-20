@@ -60,6 +60,9 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                     })
                     .unwrap_or_default(),
                 outputs: manifest.map(|m| port_views(m.outputs)).unwrap_or_default(),
+                // ⭐ Um facto sobre o TIPO, do registo — ver o campo. Ausente ⇒ `0`, que é o
+                // que os 133 tipos que não a declaram sempre tiveram.
+                primary_input: manifest.map(|m| registry.primary_input(m.id)).unwrap_or(0),
                 // The readout, the stream's mass, whether it changed, and which nodes are
                 // sinks all need the COOK (or the shell's sink list), which only the shell
                 // owns; it fills them in afterwards, exactly as it does the backdrops below.

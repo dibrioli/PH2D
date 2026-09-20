@@ -42,6 +42,7 @@ pub(super) fn port(domain: Domain) -> PortView {
 /// socket 0 at screen (200, 37) under the identity view.
 pub(super) fn two_node_snapshot() -> GraphViewSnapshot {
     let node = |id: u32, x: f32, ins: Vec<PortView>, outs: Vec<PortView>| GraphNodeView {
+        primary_input: 0,
         kind: crate::snapshot::NodeViewKind::Node,
         id,
         display_name: "n".into(),
@@ -117,6 +118,7 @@ pub(super) fn body_node(
     outs: Vec<PortView>,
 ) -> GraphNodeView {
     GraphNodeView {
+        primary_input: 0,
         kind,
         id,
         display_name: "n".into(),

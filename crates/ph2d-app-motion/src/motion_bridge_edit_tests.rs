@@ -354,3 +354,50 @@ fn deleting_a_mid_chain_node_via_the_intent_heals_the_chain() {
     );
     assert!(motion.doc.graph.validate(&motion.registry).is_ok());
 }
+
+/// ⛔⛔⛔ **O FIO DA PALETA ATERRA NA PORTA PRINCIPAL — report do dono, 2026-09-19:**
+/// *«quando puxo um fio de grip e abre-se o modal de nós e escolho Duplicator, o grid em vez de
+/// se conectar em points, está se conectando no slot de Shape. isso acontece com outros nós de
+/// posição.»*
+///
+/// ⚠️⚠️ **Nem o tipo nem o `validate` podem acusar isto:** as duas entradas do
+/// `motion.duplicator` são `INST_VEC2`, logo o grafo fica **VÁLIDO** com o significado trocado —
+/// as posições entram pelo lado da APARÊNCIA e o produto cartesiano explode pelo lado errado. A
+/// única régua que o apanha é medir **em que porta o fio caiu**.
+///
+/// ⚠️ **O CONTROLO é a segunda metade:** um tipo que não declara principal tem de continuar a
+/// aterrar na `0` — senão a cura seria *«toda a gente na porta 1»*, que é outro defeito.
+#[test]
+fn o_fio_da_paleta_aterra_na_porta_principal() {
+    let porta_de = |tipo: &str| {
+        let mut motion = MotionState::new();
+        motion.doc.graph = Graph::new();
+        let grid = motion.doc.graph.add_node("motion.grid");
+        let mut toasts = ToastQueue::default();
+        edit::smart_connect(&mut motion, &mut toasts, grid.0, 0, tipo, 300.0, 80.0);
+        let g = &motion.doc.graph;
+        let alvo = g
+            .nodes()
+            .iter()
+            .find(|n| n.type_name == tipo)
+            .expect("o no' escolhido na paleta entrou no grafo")
+            .id;
+        g.edges()
+            .iter()
+            .find(|e| e.from.0 == grid && e.to.0 == alvo && !e.delayed)
+            .map(|e| e.to.1)
+    };
+
+    // O report: o `motion.duplicator` declara `primary_input = 1` (`points`).
+    assert_eq!(
+        porta_de("motion.duplicator"),
+        Some(1),
+        "um fio de POSICOES tem de aterrar em `points`, nunca em `shape`"
+    );
+    // ⛔ O CONTROLO: quem não declara nada continua na `0`.
+    assert_eq!(
+        porta_de("motion.move"),
+        Some(0),
+        "um tipo sem porta principal declarada aterra na 0, como sempre"
+    );
+}

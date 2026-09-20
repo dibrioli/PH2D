@@ -14,6 +14,63 @@ use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 use ph2d_nodegraph::port::PortType;
 
+/// ⭐⭐⭐ **A PORTA por onde um fio entra NESTE nó** — a lei partilhada
+/// ([`ph2d_node_registry::landing_port`]) aplicada a um nó que JÁ EXISTE, num grafo qualquer (o
+/// documento ou um `trial` a meio de uma edição).
+///
+/// `ty` é o tipo do fio; `None` quer dizer *«não sei»* e deixa a principal ganhar sem prova — o
+/// `validate` a seguir tem a última palavra, como em toda esta família.
+fn entrada_de(
+    g: &Graph,
+    reg: &ph2d_node_registry::NodeRegistry,
+    n: NodeId,
+    ty: Option<PortType>,
+) -> u16 {
+    let Some(man) = g
+        .node(n)
+        .and_then(|x| reg.resolve(x.type_id()))
+        .map(|op| op.manifest())
+    else {
+        return 0;
+    };
+    ph2d_node_registry::landing_port(reg.primary_input(man.id), man.inputs.len(), |i| {
+        ty.is_none_or(|t| man.inputs.get(i as usize).is_some_and(|p| p.ty == t))
+    })
+    .unwrap_or(0)
+}
+
+/// ⭐⭐ **LIGAR `u → nó → v` NUM `trial`**, com a autoridade de sempre (`connect` + `validate`).
+///
+/// ⚠️ **As DUAS rotas de splice acabam aqui** — a que CRIA o nó ([`splice_into_wire`]) e a que
+/// move um que JÁ EXISTE ([`splice_existing_into_wire`]) —, e o corpo delas era **byte a byte o
+/// mesmo**. *Uma lei escrita em dois sítios ainda não é uma lei*, e a prova de mutação desta wave
+/// tropecçou nisso antes de um humano o ver: a âncora casava duas vezes.
+///
+/// `false` quer dizer *«o `trial` ficou inutilizável»* — o chamador deita-o fora e avisa.
+fn liga_pelo_meio(
+    trial: &mut Graph,
+    reg: &ph2d_node_registry::NodeRegistry,
+    edge: Edge,
+    node: NodeId,
+    entrada: u16,
+) -> bool {
+    trial
+        .connect(Edge {
+            from: edge.from,
+            to: (node, entrada),
+            delayed: false,
+        })
+        .is_ok()
+        && trial
+            .connect(Edge {
+                from: (node, 0),
+                to: edge.to,
+                delayed: false,
+            })
+            .is_ok()
+        && trial.validate(reg).is_ok()
+}
+
 /// The reroute node type that fits a given port type. `None` when the wire carries something
 /// no reroute speaks — which cannot happen today (the whole library uses three port types and
 /// there is a reroute for each), but a new port type must not silently splice the wrong dot.
@@ -89,24 +146,17 @@ fn splice_into_wire(
     // `motion.duplicator`, cujas duas entradas são do MESMO tipo (`INST_VEC2`), de modo que
     // nem o `validate` nem o tipo podem acusar. Ver
     // [`ph2d_node_registry::NodeRegistry::register_primary_input`]: ausente ⇒ `0`.
-    let entrada = motion
-        .registry
-        .primary_input(ph2d_nodegraph::node::NodeTypeId::of(type_name));
-    let ok = trial
-        .connect(Edge {
-            from: edge.from,
-            to: (node, entrada),
-            delayed: false,
-        })
-        .is_ok()
-        && trial
-            .connect(Edge {
-                from: (node, 0),
-                to: edge.to,
-                delayed: false,
-            })
-            .is_ok()
-        && trial.validate(&motion.registry).is_ok();
+    // ⚠️ Desde 2026-09-19 pela PORTA que as três rotas partilham ([`entrada_de`]) — e com o
+    // predicado do TIPO, que esta rota não tinha: uma principal que não aceita o fio passava a
+    // recusar o splice inteiro, quando havia uma porta que o levava. *Uma preferência que não
+    // cede é um bloqueio.*
+    let entrada = entrada_de(
+        &trial,
+        &motion.registry,
+        node,
+        wire_type(motion, edge.from.0, edge.from.1),
+    );
+    let ok = liga_pelo_meio(&mut trial, &motion.registry, edge, node, entrada);
 
     if !ok {
         toasts.push(ph2d_editor_core::Toast::info(refuse_msg));
@@ -263,15 +313,22 @@ pub(super) fn move_wire_end(
 /// which the delete's `reconcile` re-derives regardless.
 pub(super) fn heal_deleted_node(motion: &mut MotionState, nid: NodeId) -> bool {
     // The wire feeding port 0 — the stream this node sits on. Its source is what carries through.
+    // ⛔⛔ **A ponte é pela porta PRINCIPAL e não pela `0`** (2026-09-19): o doc acima dizia
+    // *«PRIMARY input (port 0)»*, e as duas coisas deixaram de ser a mesma no dia em que o
+    // `motion.duplicator` declarou `primary_input = 1`. Apagar um duplicador do meio de uma
+    // cadeia fazia a ponte pela `shape` — a corrente de POSIÇÕES ficava cortada e a cadeia
+    // «curada» passava a carregar a aparência. *Nem o tipo nem o `validate` acusam: as duas
+    // entradas dele são do mesmo tipo.*
+    let principal = entrada_de(&motion.doc.graph, &motion.registry, nid, None);
     let Some(source) = motion
         .doc
         .graph
         .edges()
         .iter()
-        .find(|e| e.to.0 == nid && e.to.1 == 0 && !e.delayed)
+        .find(|e| e.to.0 == nid && e.to.1 == principal && !e.delayed)
         .map(|e| e.from)
     else {
-        return false; // nothing feeds port 0 (a source node) — no chain to heal
+        return false; // nothing feeds the primary input (a source node) — no chain to heal
     };
     // Every wire leaving port 0 — the targets that must keep their input after nid is gone.
     let targets: Vec<(NodeId, u16)> = motion
@@ -307,6 +364,186 @@ pub(super) fn heal_deleted_node(motion: &mut MotionState, nid: NodeId) -> bool {
     true
 }
 
+/// ⭐⭐⭐ **TROCAR DOIS NÓS DE LUGAR NA CADEIA** — ordem do dono (2026-09-19): *«Se arrastar um nó
+/// no grafo em cima de outro nó, eles mudam de posição na cadeia»*.
+///
+/// A lei é uma só: **cada um passa a ter as ligações do outro**. Quem alimentava `a` alimenta `b`,
+/// quem `a` alimentava passa a ser alimentado por `b`, e um fio que ia de `a` para `b` passa a ir
+/// de `b` para `a`. ⚠️ **Escrita como um remapeamento de TODAS as arestas**, e não como um par de
+/// casos (adjacentes / distantes): o caso adjacente é o mesmo remapeamento, e escrevê-lo à parte
+/// é a segunda lei que diverge da primeira no dia em que alguém mexer numa delas.
+///
+/// ⚠️ **As portas trocam pelo ÍNDICE**, o que pode não caber (dois nós com manifestos diferentes)
+/// — e aí a máquina de sempre (`connect` + `validate` num clone) RECUSA e o grafo fica intacto.
+/// *Uma troca meia-feita é pior do que nenhuma.*
+///
+/// ⛔⛔ **Ela NÃO empurra um passo de undo**: corre DENTRO do parênteses `BeginDrag`/`EndDrag` que
+/// o arrasto abriu, e é o `EndDrag` que comita. Empurrar aqui daria ao artista **dois** Ctrl+Z
+/// para desfazer **um** gesto.
+pub(super) fn swap_in_chain(
+    motion: &mut MotionState,
+    toasts: &mut ToastQueue,
+    a: u32,
+    b: u32,
+    back_dx: f32,
+    back_dy: f32,
+) {
+    let (a, b) = (NodeId(a), NodeId(b));
+    if a == b || motion.doc.graph.node(a).is_none() || motion.doc.graph.node(b).is_none() {
+        return;
+    }
+    let pre = motion.doc.clone();
+    let mut trial: Graph = motion.doc.graph.clone();
+    // ⚠️ **As `delayed` ficam de fora**: são o `pre` que o motor mantém, e o `reconcile` no fim
+    // re-deriva-as para a forma nova do grafo.
+    let arestas: Vec<Edge> = trial
+        .edges()
+        .iter()
+        .filter(|e| !e.delayed)
+        .cloned()
+        .collect();
+    for e in &arestas {
+        trial.disconnect(e.to.0, e.to.1);
+    }
+    let troca = |n: NodeId| {
+        if n == a {
+            b
+        } else if n == b {
+            a
+        } else {
+            n
+        }
+    };
+    let ok = arestas.iter().all(|e| {
+        trial
+            .connect(Edge {
+                from: (troca(e.from.0), e.from.1),
+                to: (troca(e.to.0), e.to.1),
+                delayed: false,
+            })
+            .is_ok()
+    }) && trial.validate(&motion.registry).is_ok();
+    if !ok {
+        toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+            "app.motion.motion_bridge_rewire.these_two_nodes_cannot_trade_places",
+        )));
+        return;
+    }
+    // ⭐ **E as CARTAS trocam de sítio também.** O arrastado fica onde o alvo estava; o alvo vai
+    // para onde o arrastado COMEÇOU — que a shell já não sabe, porque aplicou cada `MoveNodes` ao
+    // vivo, e por isso o painel manda o deslocamento acumulado. *Trocar a cadeia e deixar as duas
+    // cartas empilhadas entrega um grafo certo e ilegível.*
+    let (pa, pb) = (motion.doc.graph.pos(a), motion.doc.graph.pos(b));
+    motion.doc.graph = trial;
+    if let (Some(pa), Some(pb)) = (pa, pb) {
+        motion.doc.graph.set_pos(a, pb);
+        motion.doc.graph.set_pos(
+            b,
+            Pos {
+                x: pa.x - back_dx,
+                y: pa.y - back_dy,
+            },
+        );
+    }
+    super::reconcile(motion, &pre.graph);
+    motion.pump.mark_dirty();
+}
+
+/// ⭐⭐⭐ **ENFIAR UM NÓ QUE JÁ EXISTE NUM FIO** — ordem do dono (2026-09-19): *«Se arrastar num nó
+/// em cima de uma conexão (linha) mesmo se o nó já está conectado em cadeia ou mesmo se estiver
+/// desconectado, ele passa a ser conectado naquela linha, contudo, sem quebrar a cadeia»*.
+///
+/// ⚠️⚠️ **O *«sem quebrar a cadeia»* tem DUAS metades e nenhuma basta sozinha:**
+/// 1. a cadeia de **ONDE ELE SAI** fecha-se — quem o alimentava passa a alimentar quem ele
+///    alimentava (a mesma ponte do [`heal_deleted_node`], sem apagar o nó);
+/// 2. a cadeia **ONDE ELE ENTRA** continua ligada — `u → nó → v`, nunca `u → nó` com o `v` a
+///    pairar.
+///
+/// *Com a (1) sozinha o artista fica com um buraco onde o nó estava; com a (2) sozinha fica com
+/// o nó ligado em dois sítios ao mesmo tempo.*
+///
+/// ⛔⛔ **Largar um nó no PRÓPRIO fio é inerte — e isso é uma propriedade da MÁQUINA, não uma
+/// guarda.** A 1.ª redação tinha um `if` a recusá-lo, e **a mutação que o apagava NÃO
+/// SANGROU**: sem ele o splice tenta ligar `nó → nó`, que é um ciclo, e o `connect` recusa-o como
+/// recusa qualquer outro — o documento fica intacto na mesma. *Uma linha que a mutação não
+/// consegue matar não é lei, é comentário com sintaxe de código* (`CLAUDE.md` §5.0) ⇒ ela saiu, e
+/// o gate ficou, a medir a recusa de quem de facto a faz. ⚠️ O artista passa a ver o toast da
+/// recusa em vez de um silêncio, o que é melhor.
+///
+/// ⛔⛔ Como a irmã acima, ela **não empurra undo**: vive dentro do parênteses do arrasto.
+pub(super) fn splice_existing_into_wire(
+    motion: &mut MotionState,
+    toasts: &mut ToastQueue,
+    node: u32,
+    to_node: u32,
+    to_port: u16,
+) {
+    let node = NodeId(node);
+    let Some(edge) = wire_edge(motion, NodeId(to_node), to_port) else {
+        return;
+    };
+    if motion.doc.graph.node(node).is_none() {
+        return;
+    }
+    let pre = motion.doc.clone();
+    let mut trial: Graph = motion.doc.graph.clone();
+
+    // (1) SAIR da cadeia onde ele está, fechando-a.
+    let principal = entrada_de(&trial, &motion.registry, node, None);
+    let fonte = trial
+        .edges()
+        .iter()
+        .find(|e| e.to.0 == node && e.to.1 == principal && !e.delayed)
+        .map(|e| e.from);
+    let destinos: Vec<(NodeId, u16)> = trial
+        .edges()
+        .iter()
+        .filter(|e| e.from.0 == node && e.from.1 == 0 && !e.delayed)
+        .map(|e| e.to)
+        .collect();
+    let meus: Vec<(NodeId, u16)> = trial
+        .edges()
+        .iter()
+        .filter(|e| !e.delayed && (e.from.0 == node || e.to.0 == node))
+        .map(|e| e.to)
+        .collect();
+    for (n, p) in meus {
+        trial.disconnect(n, p);
+    }
+    if let Some(f) = fonte {
+        for d in &destinos {
+            // ⚠️ A ponte é **best-effort**: um destino que já não aceite a fonte (o tipo mudou de
+            // lado com o nó fora do caminho) fica desligado, e o `validate` no fim decide se o
+            // conjunto ainda é um grafo. *Recusar o gesto inteiro por causa de um ramo lateral
+            // seria punir o artista pela forma da cadeia dele.*
+            let _ = trial.connect(Edge {
+                from: f,
+                to: *d,
+                delayed: false,
+            });
+        }
+    }
+
+    // (2) ENTRAR no fio.
+    trial.disconnect(edge.to.0, edge.to.1);
+    let entrada = entrada_de(
+        &trial,
+        &motion.registry,
+        node,
+        wire_type(motion, edge.from.0, edge.from.1),
+    );
+    let ok = liga_pelo_meio(&mut trial, &motion.registry, edge, node, entrada);
+    if !ok {
+        toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+            "app.motion.motion_bridge_rewire.can_t_insert_this_node_into_this_wire",
+        )));
+        return;
+    }
+    motion.doc.graph = trial;
+    super::reconcile(motion, &pre.graph);
+    motion.pump.mark_dirty();
+}
+
 #[cfg(test)]
 #[path = "motion_bridge_rewire_tests.rs"]
 mod tests;
@@ -329,3 +566,9 @@ mod drive_param_tests;
 #[cfg(test)]
 #[path = "motion_bridge_tee_probe_tests.rs"]
 mod tee_probe_tests;
+
+/// As duas LARGADAS de uma carta (ordem do dono, 2026-09-19) — irmão por RESPONSABILIDADE: ali o
+/// sujeito é o FIO, aqui é o NÓ, e o que ele deixa para trás é metade da lei.
+#[cfg(test)]
+#[path = "motion_bridge_largada_tests.rs"]
+mod largada_tests;

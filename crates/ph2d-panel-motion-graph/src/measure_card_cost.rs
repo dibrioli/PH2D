@@ -38,6 +38,7 @@ fn card_with_params(id: u32, k: usize) -> GraphNodeView {
         clock: Clock::Frame,
     };
     GraphNodeView {
+        primary_input: 0,
         kind: NodeViewKind::Node,
         id,
         // Um nome de comprimento realista: o custo de um cartão é dominado pelo TEXTO, e um

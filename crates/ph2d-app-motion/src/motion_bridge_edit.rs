@@ -330,18 +330,30 @@ pub(super) fn smart_connect(
         .and_then(|n| motion.registry.resolve(n.type_id()))
         .and_then(|op| op.manifest().outputs.get(from_port as usize))
         .map(|p| p.ty);
+    // ⭐⭐⭐ **A PORTA PRINCIPAL, e não a primeira que casa o tipo** — report do dono
+    // (2026-09-19): *«quando puxo um fio de grip e abre-se o modal de nós e escolho Duplicator, o
+    // grid em vez de se conectar em points, está se conectando no slot de Shape»*.
+    //
+    // ⛔⛔ O `position(|i| i.ty == ty)` daqui era a MESMA lei que o splice já curara em
+    // 2026-09-01, escrita uma segunda vez — e as duas entradas do `motion.duplicator` são
+    // `INST_VEC2`, logo a primeira que casa é sempre a `shape`. Hoje as três rotas passam pela
+    // porta [`ph2d_node_registry::landing_port`].
     let port = out_ty.and_then(|ty| {
-        motion
+        let man = motion
             .doc
             .graph
             .node(target)
             .and_then(|n| motion.registry.resolve(n.type_id()))
-            .and_then(|op| op.manifest().inputs.iter().position(|i| i.ty == ty))
+            .map(|op| op.manifest())?;
+        let primaria = motion.registry.primary_input(man.id);
+        ph2d_node_registry::landing_port(primaria, man.inputs.len(), |i| {
+            man.inputs.get(i as usize).is_some_and(|p| p.ty == ty)
+        })
     });
     if let Some(port) = port {
         let edge = Edge {
             from: (NodeId(from_node), from_port),
-            to: (target, port as u16),
+            to: (target, port),
             delayed: false,
         };
         let mut trial = motion.doc.graph.clone();

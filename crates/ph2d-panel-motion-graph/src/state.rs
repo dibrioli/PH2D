@@ -80,6 +80,12 @@ pub(crate) enum Interaction {
         nodes: Vec<u32>,
         last: (f32, f32),
         started: bool,
+        /// ⭐ **O deslocamento ACUMULADO do arrasto, em espaço de grafo** — a única coisa que o
+        /// painel sabe e a shell não: ela já aplicou cada `MoveNodes` ao vivo, logo não tem mais
+        /// onde ler ONDE a carta começou. A troca de dois nós
+        /// ([`crate::snapshot::GraphIntent::SwapInChain`]) precisa dele para pôr o alvo no sítio
+        /// de onde o arrastado veio.
+        moved: (f32, f32),
     },
     /// Dragging a backdrop by its header — it carries the nodes it FRAMES, whose
     /// set is captured once at grab time (`nodes`) rather than re-tested each

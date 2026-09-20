@@ -190,7 +190,12 @@ lei para a próxima wave:**
 
 ---
 
-## §10 — O que smokar (o dono)
+## §10 — O que smokar (o dono) — ✅ **APROVADO em 2026-09-20**
+
+> ✅ **Smoke do dono APROVADO** (2026-09-20): *«Smoke OK.»* — sobre o gesto do report original (descer,
+> virar e voltar por cima do próprio traço sem levantar a caneta, com `Charge < 1`).
+> ⛔ **Aprovar o smoke NÃO é autorizar a integração** (§0.7): a linha fica fechada e PARADA até ordem
+> explícita do dono.
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && cargo run -p ph2d-host-desktop --profile smoke

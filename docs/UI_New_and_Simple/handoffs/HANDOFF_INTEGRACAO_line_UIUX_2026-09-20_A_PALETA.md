@@ -150,9 +150,21 @@ mundo no dia em que foi escrito e não é actualizado depois»* (está no cabeç
 Reescrevê-lo apagaria a medição que justificou a decisão do dono naquele dia. *Um registo morto que
 alguém «actualiza» deixa de ser prova de coisa nenhuma.*
 
-⚠️ **Nenhum deles foi editado por esta linha, de propósito:** a `line/sculpt3d` fechou para
-integrar em 2026-09-20 com `102` commits e `594` ficheiros, e `scenes_pente.rs` é dela. *Editar um
-ficheiro que outra linha acabou de fechar é fabricar um conflito no ficheiro mais quente da rodada.*
+⚠️ **Nenhum deles foi editado por esta linha** — e ⛔⛔ **a razão que eu escrevi primeiro estava
+ERRADA, derrubada por medição no mesmo dia.** Eu escrevi *«a `line/sculpt3d` fechou com 102 commits
+e 594 ficheiros e o `scenes_pente.rs` é dela»*. Medido (`git merge-base` + `diff --name-only` nas
+duas árvores):
+
+| facto | medido |
+|---|---|
+| merge-base da `line/sculpt3d` | **`395da6a55`** — o MESMO que o desta linha, ou seja **o `main` de agora** |
+| ⇒ aquele fecho de `102` commits | **já ATERROU**; o `scenes_pente.rs` vive no `main` |
+| a `line/sculpt3d` hoje | **REABERTA**, `36` ficheiros (as manchas pretas + a caixa de cor) |
+| `scenes_pente.rs` está nesses 36? | **NÃO** |
+| ficheiros em comum com esta linha | **ZERO** |
+
+⇒ *a minha razão era de calendário e o calendário já tinha virado.* O que fica de pé é a outra
+metade, que é de **produto** e está no §7.2.
 
 ⇒ **acto do INTEGRADOR, depois de as duas linhas aterrarem:** re-correr
 `cargo test -p ph2d-panel-sculpt3d --test it diag_onde_cai_a_pista_do_pente -- --ignored --nocapture`
@@ -203,16 +215,21 @@ COMANDOS**, que é exactamente o que a `D2` manda triar.
 
 ⛔⛔ **E ela NÃO foi feita nesta jornada, por DUAS razões medidas:**
 
-1. **Preço cross-line:** `1 018 − 148 = 870 < 880` ⇒ o `Edge Flow` sobe para cima da dobra e o
-   `o_roteiro_da_49_diz_onde_o_edge_flow_esta` **reprova**. A cura que ele próprio prescreve é
-   *apagar a frase da rolagem do roteiro* — uma edição em `scenes_pente.rs`, ficheiro da linha que
-   acabou de fechar (§5). *Ela é barata depois da integração e cara agora.*
-2. **É decisão de PRODUTO, e há uma cerca com razão escrita.** O `mask_tools.rs` declara: *«as seis
-   moram na secção do PINCEL, não numa própria: um artista que acabou de pintar máscara procura o
-   que fazer com ela onde ele a pintou»*. ⚠️ Essa frase argumenta contra **uma secção própria três
-   rolagens abaixo** — e o destino da `D2` não é isso, é o **chip-pulldown da fila**, que é um
-   clique e está sempre à vista. *A cerca não responde à pergunta que a `D2` faz, e quem decide é o
-   dono.*
+1. ⚠️ **Preço cross-line — REAL, e mais barato do que eu disse:** `1 018 − 148 = 870 < 880` ⇒ o
+   `Edge Flow` sobe para cima da dobra e o `o_roteiro_da_49_diz_onde_o_edge_flow_esta` **reprova**.
+   ⭐ E isso **não é um acidente: aquele gate foi escrito a antecipar este dia** — ele é uma
+   EQUIVALÊNCIA, e o doc dele diz por extenso *«no dia em que a arrumação que o dono anunciou
+   trouxer esta fileira para cima da dobra, ela reprova — e a cura é apagar a frase da rolagem do
+   roteiro, nunca afrouxar o número»*. ⇒ a cura está **prescrita pelo instrumento da outra linha**,
+   e o ficheiro (`scenes_pente.rs`) está no `main` e **não** entre os `36` da reabertura dela (§5).
+   *Isto deixou de ser um bloqueio e passou a ser um item de trabalho com preço conhecido.*
+2. ⛔ **O que BLOQUEIA é decisão de PRODUTO, e há uma cerca com razão escrita.** O `mask_tools.rs`
+   declara: *«as seis moram na secção do PINCEL, não numa própria: um artista que acabou de pintar
+   máscara procura o que fazer com ela onde ele a pintou»*. ⚠️ Essa frase argumenta contra **uma
+   secção própria três rolagens abaixo** — e o destino da `D2` não é isso, é o **chip-pulldown da
+   fila**, que é um clique e está sempre à vista. *A cerca não responde à pergunta que a `D2` faz*,
+   logo ela não decide — mas **onde um controlo mora é produto**, e quem decide é o dono. Ele tem a
+   pergunta com os dois números (`148 px`; `Symmetry` + meia `Topology` a caberem).
 
 ### 7.2 — O resto do painel
 
@@ -238,8 +255,9 @@ estado com as `28` secções armadas, que nenhum objecto real tem. *Um censo que
 poria-o no topo e mandaria a wave para o sítio errado* — é para isso que a coluna dos **comandos**
 existe.
 
-⚠️ E os dois maiores são de linhas que **acabaram de fechar** (`line/components` escreve a maior
-parte das secções do Inspector): a mesma aritmética do §7.1 vale para eles.
+⚠️ E o `inspector` é escrito em grande parte pela `line/components`, que está **viva** — a mesma
+pergunta de sobreposição do §5 tem de ser refeita **no dia** em que essa wave abrir, e não herdada
+daqui: *uma medição de superfície de colisão vale para o dia em que foi tirada.*
 
 ---
 
@@ -252,7 +270,10 @@ parte das secções do Inspector): a mesma aritmética do §7.1 vale para eles.
    `Filter` é uma fileira de `22`: cortá-la não move a dobra de nada. O que a cruza está `148 px`
    abaixo dela, noutra secção.
 3. ⛔ **o report 3 tinha a causa do report 1** (dedução) — a causa real era a ordem do despacho (§3).
-4. ⛔⛔ **Corri o ÂMBITO POBRE e o gate recusou-o com a cura na mensagem.**
+4. ⛔⛔ **«o `scenes_pente.rs` é de uma linha que acabou de fechar»** — ele está no `main`, e a
+   `line/sculpt3d` está REABERTA sem ele no diff (§5). *Uma afirmação sobre o estado de outra linha
+   mede-se com `git merge-base`, não com o que o roteador diz que aconteceu ontem.*
+5. ⛔⛔ **Corri o ÂMBITO POBRE e o gate recusou-o com a cura na mensagem.**
    `cargo test -p ph2d-panel-registry-init` reprova **12** testes porque `flip`, `flip_frames`,
    `painter_layers` e `wet_tuning` chegam pelo `shells/desktop` e a `default` desta crate não os
    liga — a corrida certa é
@@ -287,7 +308,9 @@ parte das secções do Inspector): a mesma aritmética do §7.1 vale para eles.
 > que corta é **uma fileira**, por `8 px`. ⏳ **ABERTO:** o bloco das seis operações de máscara
 > (`148 px`, seis COMANDOS pela `D2`) é a próxima fatia e **espera a integração** — ele baixa o
 > `Edge Flow` para `870 < 880` e faz reprovar o `o_roteiro_da_49_diz_onde_o_edge_flow_esta` da
-> `line/sculpt3d`, cuja cura é uma edição no `scenes_pente.rs` **dela**. ⚠️ E a tabela do `Edge
+> `line/sculpt3d` — ⭐ e **aquele gate foi escrito a antecipar este dia**: ele prescreve a cura
+> (*apagar a frase da rolagem*), e o ficheiro dela está no `main`. ⇒ o que falta ali **não é um
+> bloqueio técnico, é a decisão de PRODUTO** de onde seis comandos moram. ⚠️ E a tabela do `Edge
 > Flow` que este §5 publica **ficou obsoleta por esta linha** (`−253 px` em todas as fileiras): o §5
 > do handoff diz os **dois** sítios vivos e o comando que os reescreve.
 

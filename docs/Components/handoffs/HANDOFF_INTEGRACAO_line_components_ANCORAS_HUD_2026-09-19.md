@@ -182,14 +182,94 @@ próprio selector — o passo (5) manda trocá-lo para `Keep` e alargar outra ve
 | o `UiButton` só é alcançável por caminho **vectorial** | nomeado, não construído |
 | a âncora de um filho armada **na janela errada** grava a caixa daquela janela | a cena arma-a contra a de REFERÊNCIA; um gesto de painel para HUD ainda não existe |
 
+## §8-ter — ⛔⛔⛔ A TERCEIRA METADE: o LADO de cada peça, e a escada sem fim (report de 20/09)
+
+Dois reports do dono no mesmo dia, e **nenhum era a lei das âncoras**.
+
+### (a) *«infinitos logs. melhor tirar.»*
+
+A auto-conferência do dedo corria no quadro em que `hud_raise` chegava a `0` — e
+`levanta_o_inspector(0)` devolve `0` **para sempre** a partir daí ⇒ ela corria em **todos** os
+quadros seguintes, a `60 Hz`, com uma linha de diagnóstico cada.
+
+> *Um contador que SATURA não é um estado terminal.*
+
+⇒ [`proximo_estado`](../../../shells/desktop/src/hud_smoke.rs), **pura**, com `FEITO` a ser **ponto
+fixo**, e a cauda a correr na **TRANSIÇÃO** e nunca no estado. ⚠️ A lei é uma função porque *um gate
+que precisa de janela, GPU e superfície para medir dois números está no sítio errado*. Medido depois
+da cura: o log da cena inteira tem **24 linhas**.
+
+### (b) *«em expand ... podem ir para seu próprio lado ou para o lado oposto e até se cruzar»*
+
+A **REGRA** estava certa e a **POSIÇÃO** não: a pontuação prendia-se à aresta DIREITA e era autorada
+em `x = −7`; a contagem prendia-se à ESQUERDA e estava em `+8`. Com `Fit::Keep` a caixa efectiva é a
+de referência, o delta sai `0,0` por subtracção de iguais e nada se move — logo *«os demais modos
+OK»*; com `Fit::Expand` cada uma anda para a **sua** borda.
+
+Medido pelas portas do produto (`anchor_frame_of` + `delta_local`, ref `32 × 18`, meia-altura `4,5`):
+
+| aspecto da vista | pontuação | contagem | |
+|---|---|---|---|
+| `1,78` (`16:9`) | `−3,50` | `+4,00` | cada uma no lado ERRADO |
+| `2,22` | `−1,50` | `+2,00` | a aproximarem-se |
+| `2,67` | `+0,50` | `0,00` | **cruzam-se** |
+| `4,00` | `+6,50` | `−6,00` | já do outro lado uma da outra |
+
+⭐⭐ **A cura não é mover dois literais: é o SINAL passar a sair da REGRA.** [`Canto::local`] deriva-o
+de [`Canto::fraccao`] ⇒ *uma peça autorada do lado oposto à âncora dela deixa de ser exprimível*.
+
+### ⚠️ E o gate que devia ter apanhado isto media só a REGRA
+
+O `as_duas_pecas_de_baixo_prendem_se_a_cantos_opostos` lia as fracções `min` e comparava-as — e elas
+**estavam** opostas. *Ele nunca perguntou ONDE a peça está.* Reescrito como
+`cada_peca_de_baixo_e_autorada_do_lado_a_que_se_prende`, com a premissa morta visível no diff: ele
+**CRUZA** as duas metades (que canto cada peça usa para nascer × a quem a cena dá cada regra), e lê a
+tupla que liga peça↔entidade em vez de confiar no nome.
+
+⭐ E a folha ganhou o **CONTROLO** que prova que a régua contém o fenómeno
+(`o_controlo_a_autoria_espelhada_de_facto_se_cruza`): com a autoria **espelhada** as duas TROCAM de
+ordem ao longo do varrimento. ⛔ Mais `prende_os_cantos_da_a_regra_da_esquerda_a_contagem`, o elo do
+meio — *uma lei verificada nas duas pontas ainda pode ser contrariada no meio*.
+
+### ⛔⛔ E a FOTO apanhou mais DOIS defeitos, com todos os gates verdes
+
+1. **Com a timeline ABERTA o HUD cai atrás do painel.** Medido numa janela `1930×1012`: o botão é
+   alcançável na caixa de ecrã `y 728..848` e o painel começa em `~720` ⇒ a sonda do produto lê
+   **`on_canvas=false (painel=Some(true))`** e o gesto do dono **nem chega ao ramo do HUD**. A cena
+   passa a **FECHÁ-LO** — ⚠️ e não a «deixar de o abrir»: a arrumação vive em `~/.ph2d/layout.txt`,
+   FORA do repositório. Fechado, a mesma sonda lê `on_canvas=true` e o clique é consumido nos dois
+   lados.
+2. **`Pontos: 16` passava por baixo do Inspector.** ⚠️ O recurso **não** é a caixa de referência
+   (`±16`, e os rótulos cabem: `Pontos: 1230` tem meia-largura `3,391`) — é o **sub-rectângulo entre
+   os painéis**, que é o item aberto do #20. `DENTRO` desce de `7` para `5` (a ponta do placar ia a
+   `6,29` de mundo contra uma borda de canvas em `5,84`; passa a `5,31`), **com a calibração e o
+   limite dela escritos ao lado**: as larguras dos painéis não vivem no repositório.
+
+⭐ E o [`fotografa_cena.sh`](../ferramentas/fotografa_cena.sh) ganhou `FOTO_LOG=<ficheiro>`: a janela
+do `awk` mostra do 1.º anúncio ao 2.º, logo **todo diagnóstico posterior é invisível** — foi essa
+janela que escondeu a auto-conferência, e é a **3.ª vez** que ela custa uma volta.
+
+### ⛔ A catraca da shell, outra vez — e o 1.º candidato foi REVERTIDO
+
+Ela cobrou **114 linhas**. Curada por **CORTE**: o [`hier_group`](../../../crates/ph2d-app-vec/src/hier_group.rs)
+(a lei de AGRUPAR/DESAGRUPAR, `238` linhas com os gates) foi para a `ph2d-app-vec` — ele tocava
+**só** `ph2d_vec_entities`/`ph2d_ecs`/`ph2d_editor_core`, e o modelo de grupo que ele governa já
+vivia lá (ADR-0075). ⚠️ **O 1.º candidato (`morph_set_tests`) foi revertido:** ele declara um irmão
+que usa `crate::morph_live` — *um gate que viaja sem o irmão não compila*, e a §5.0 já nomeia a
+família.
+
+**Prova de fecho desta metade:** `24 878 / 24 878` verdes (a mesma contagem antes e depois do
+move ⇒ nada evaporou) · clippy `-D warnings` a zero · **23 de 23** mutações sangram.
+
 ## §10 — O SMOKE
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_HUD_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke
 ```
 
-A contagem fica em baixo à **esquerda** e os pontos em baixo à **direita**. **Arraste a borda da
-janela** para a alargar: as duas seguem as bordas reais.
+A contagem (`N.N s`) fica em baixo à **esquerda** e os pontos em baixo à **direita** — ⚠️ desde
+2026-09-20, porque até aí cada uma estava autorada do lado OPOSTO àquele a que se prende (§8-ter).
+**Arraste a borda da janela** para a alargar: as duas seguem as bordas reais e **nunca se cruzam**.
 
 ⭐ E o **CONTROLO**: na secção *HUD* do Inspector troque **`Fit`** de `Expand` para `Keep` e alargue
 outra vez — agora elas param na **área segura**, a uma banda da borda. *Os dois modos existem de

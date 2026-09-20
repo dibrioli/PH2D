@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**11 arquivos** · **4** citados pelo `CLAUDE.md` (marcados **◆**) · **11** são handoffs (registro **morto**).
+**11 arquivos** · **5** citados pelo `CLAUDE.md` (marcados **◆**) · **11** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -25,7 +25,7 @@
 | 2026-09-14 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-14_LINHA_DE_PROPRIEDADE.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-14_LINHA_DE_PROPRIEDADE.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-14 · **A LINHA DE PROPRIEDADE TEM PORTA** |
 | 2026-09-14 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-14_VAOS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-14_VAOS.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-14 · **O PASSO VERTICAL DE UMA PILHA PERGUNTA A PORTA** |
 | 2026-09-16 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_FECHO_2026-09-16.md](HANDOFF_INTEGRACAO_line_UIUX_FECHO_2026-09-16.md) | ⚠️ handoff (morto) | FECHO da `line/UIUX` — o guia do INTEGRADOR (2026-09-16) |
-| 2026-09-20 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-20 |
+| 2026-09-20 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-09-20 |
 
 ---
 

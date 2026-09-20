@@ -176,12 +176,12 @@ fn cada_peca_cabe_na_banda_visivel() {
         // altura no MUNDO é metade da LARGURA do sprite. *Medir o centro deixou a 1.ª redacção
         // verde sobre três torretas cortadas pela borda de baixo* — o defeito que a foto apanhou.
         let meia_alt = sp.size[0] * 0.5;
-        let meia_larg = sp.size[1] * 0.5;
+        let meia_largura = sp.size[1] * 0.5;
         let (x, y) = (t.translation.x, t.translation.y);
         assert!(
-            x.abs() + meia_larg <= BANDA_LADO,
+            x.abs() + meia_largura <= BANDA_LADO,
             "«{nome}» ocupa ate' x = {}, e a banda acaba em {BANDA_LADO} m",
-            x.abs() + meia_larg
+            x.abs() + meia_largura
         );
         assert!(
             y - meia_alt >= -BANDA_ABAIXO && y + meia_alt <= BANDA_ACIMA,

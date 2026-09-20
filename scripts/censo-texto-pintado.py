@@ -242,11 +242,11 @@ def tabelas_de(src):
     out={}
     for m in TABELA.finditer(src):
         corpo=args_of(src, m.end()-1)
-        lits=[]
+        literais=[]
         for a in corpo:
             g=LIT.match(a)
-            if g: lits.append(g.group(1))
-        if lits: out[m.group(1)]=lits
+            if g: literais.append(g.group(1))
+        if literais: out[m.group(1)]=literais
     return out
 
 LIT=re.compile(r'^\s*"((?:[^"\\]|\\.)*)"\s*$')

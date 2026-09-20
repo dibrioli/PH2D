@@ -342,6 +342,61 @@ extend-ignore-identifiers-re = [
     # `alternador` — português, o substantivo de *alternar*: *«um alternador, não um selector»*, a
     # lei da fileira de modos do Painter. O `typos` oferece `alternator`, que é a peça do carro.
     "^alternador$",
+    # ─────────────────────────────────────────────────────────────────────────
+    # ⚠️ **Rodada de integração de 2026-09-20 — seis linhas.** Dezoito palavras, e a lei de 17/09
+    # repetiu-se à letra: o `typos` só corre no `ship.sh`, logo cada palavra portuguesa nova de
+    # CADA linha aterra na mesa do integrador. ⛔ **DUAS delas eram abreviaturas a SÉRIO e foram
+    # CORRIGIDAS no código, não isentadas** — o `lits` do `censo-texto-pintado.py` (hoje
+    # `literais`) e o `meia_larg` do `weapon_smoke_tests.rs` (hoje `meia_largura`): é o precedente
+    # do `…drawin` da rodada anterior, *uma palavra truncada é re-acusada para sempre*.
+    # ─────────────────────────────────────────────────────────────────────────
+    # `portugues` / `PORTUGUES` — português sem acento, e é IDENTIFICADOR: o alias
+    # `portuguese_tokens as portugues` da `ph2d-label-census`, o módulo `src/portugues.rs` e o nome
+    # do gate `nenhuma_frase_que_o_artista_le_esta_em_portugues`. 14 ocorrências. ⛔ Trocá-lo
+    # renomearia a régua que decide se o que o ARTISTA lê está em inglês — o HR-15 em pessoa.
+    "^(portugues|PORTUGUES)$",
+    # `parenteses` / `parentesis` — pt «parênteses»/«parêntesis» sem acento, no `text_elide` (a lei
+    # de encurtar um rótulo: *«um nome perde a EXPLICAÇÃO antes de perder LETRAS»*, e a explicação
+    # vem entre parênteses) e no gate do índice da memória, que lê o `primeiro_numero_entre_parentesis`.
+    "^(parenteses|parentesis)$",
+    # `FACTORES` — pt-PT de «fatores», no cabeçalho da sonda da parede fina do `ph2d-sculpt3d`: a
+    # TABELA de factores de espalhamento. O `typos` quer `FACTORS`.
+    "^FACTORES$",
+    # `contendor` / `CONTENDOR` — português, *quem contende*: o ficheiro
+    # `unreal_contendor_tests.rs` pergunta se a Unreal é o padrão-ouro, e a resposta medida é que
+    # ela é um CONTENDOR e não a verdade (o oráculo é um traçado convergido). O `typos` oferece o
+    # inglês `contender`, que é a mesma palavra noutra língua — e isto é um nome de FICHEIRO.
+    "^(contendor|CONTENDOR)$",
+    # `tradicional` — português, no cabeçalho de duas ferramentas de mutação do Motion. O `typos`
+    # quer `traditional`.
+    "^tradicional$",
+    # `Inh` — ⚠️ **não é uma palavra: é o RÓTULO CORTADO que o app pinta.** A varredura das elisões
+    # mediu `Inherit` a caber em `34,4 px` e a sair `Inh…`, e as três ocorrências CITAM essa
+    # medição (`pintava Inh… e PP…`). *Corrigi-la falsificaria o registo de uma medição.*
+    "^Inh$",
+    # `indicativo` — português, o adjectivo: *«um traço indicativo»*, o fio que o grafo do Motion
+    # desenha enquanto a mão arrasta. O `typos` oferece o substantivo `indication`.
+    "^indicativo$",
+    # `destrutor` — português, no doc do inspector do tween: o par construtor/destrutor. O `typos`
+    # quer o inglês `destructor`.
+    "^destrutor$",
+    # `participe` — português, 3.ª pessoa do subjuntivo de *participar*: *«participe ou não»*, no
+    # doc de um gate do `ph2d-contact`. O `typos` oferece o verbo inglês `participate`.
+    "^participe$",
+    # `INTERACTIVO` — pt-PT de «interativo», no doc do `number_input`. O `typos` oferece
+    # `INTERACTION`, que troca um adjectivo por um substantivo.
+    "^INTERACTIVO$",
+    # `INSTANTANEOS` — a MAIÚSCULA do `^instantaneos$` que já está isento acima, na mensagem de um
+    # gate de a11y. ⚠️ O `typos` é sensível à caixa, logo uma isenção em minúsculas não cobre a
+    # ênfase — que é o idioma deste repo.
+    "^INSTANTANEOS$",
+    # `CARACTER` — pt «caráter», no roteiro da cena do abanão da vista: *«o «Punch» de 1 a 3 muda o
+    # CARACTER»*. O `typos` quer `CHARACTER`, que aqui seria a personagem.
+    "^CARACTER$",
+    # `iz` — ⚠️ **não é `is`: é o ÍNDICE do eixo Z**, irmão do `ix` no laço duplo da grelha do
+    # `ground_bounce` (`let k = iz * n + ix`). O `typos` conhece o `ix` e não o `iz`, e a troca que
+    # ele oferece não compila.
+    "^iz$",
 ]
 
 [default.extend-identifiers]
@@ -364,6 +419,16 @@ reflecte = "reflecte"  # pt-PT de «reflete», dentro de `o_espelho_conserva_o_c
 # e o nome da feature seguem "container" (ingles correto) no codigo.
 resolvemos = "resolvemos"  # pt-BR (citacao VERBATIM do Enio: "ainda nao resolvemos o primeiro traco")
 instale = "instale"  # pt-BR imperativo ("instale este plano", donated_form.rs) — lido como "install" mal escrito
+# ─────────────────────────────────────────────────────────────────────────────
+# ⚠️ Rodada de 2026-09-20. ⛔ **QUATRO palavras que JÁ estão no `extend-ignore-identifiers-re` acima
+# e continuavam acusadas** — e a lição de 17/09, escrita três parágrafos acima, é a explicação
+# exacta: aquela lista casa o identificador INTEIRO e estas aparecem DENTRO de um nome composto ou
+# em PROSA. *Uma isenção ancorada no sítio errado lê-se como escrita e não faz nada* — a régua
+# desceu de 66 achados para 11 e parou ali. As duas entradas coexistem, como o `contactos` já faz.
+portugues = "portugues"  # dentro de `nenhuma_frase_que_o_artista_le_esta_em_portugues` e do módulo `src/portugues.rs`
+parenteses = "parenteses"  # dentro de `entre_parenteses`/`sem_parenteses`, a lei de encurtar um rótulo
+parentesis = "parentesis"  # dentro de `primeiro_numero_entre_parentesis`, o leitor do índice da memória
+contendor = "contendor"  # dentro de `unreal_contendor_*` e em prosa: quem CONTENDE com o padrão-ouro
 # ORDINAIS LATINOS: o `docs/3D/quad-remesh/PLAN.md` numera as secoes por ordinal
 # latino (`§4-bis`, `§4-decies`, `§4-tricies`, `§4-quinquagies`) porque sao dezenas
 # de secoes acrescentadas em ordem estrita e um numero arabe colidiria com os

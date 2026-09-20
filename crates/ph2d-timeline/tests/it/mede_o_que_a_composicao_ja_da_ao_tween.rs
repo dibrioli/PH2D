@@ -32,9 +32,21 @@
 //! E) **…e ele alcança um objecto que NASCEU na corrida?**
 //! F) **O motor de curvas existe, e quem o vê?**
 
-use ph2d_anim::{AnimValue, Easing, EasingFamily, EasingMode, Interp, RationalTime};
+use ph2d_anim::{Easing, EasingFamily, EasingMode};
+use ph2d_timeline::PropKind;
+// ⛔⛔ **INTEGRAÇÃO (20/09): as importações do bloco D/E vivem sob o MESMO `cfg` que os usos
+//    delas, e sem isso esta crate não compila SOZINHA.** Os blocos que as consomem estão atrás de
+//    `#[cfg(feature = "render")]`; com a feature ligada (que é o que toda irmã faz na workspace) o
+//    ficheiro compila limpo, e a corrida que o `ship.sh` faz crate-a-crate — sem as features que os
+//    vizinhos ligam — lê-as como `unused_imports`, que o `build.warnings` nega. ⇒ é a armadilha
+//    *«uma feature não viaja com o código»* do HOWTO, aqui do lado do `use`: *um `use` não gateado
+//    é uma dependência declarada por quem não a usa.*
+#[cfg(feature = "render")]
+use ph2d_anim::{AnimValue, Interp, RationalTime};
+#[cfg(feature = "render")]
 use ph2d_ecs::{Name, SimWorld, Transform};
-use ph2d_timeline::{PropKind, StackHost, StripSource, TimelineState, apply_container};
+#[cfg(feature = "render")]
+use ph2d_timeline::{StackHost, StripSource, TimelineState, apply_container};
 
 /// O `ph2d-anim` ao alcance de quem escreve o componente? — o manifesto responde, e ele é lido
 /// em tempo de COMPILAÇÃO, logo não pode envelhecer sem o ficheiro mudar.

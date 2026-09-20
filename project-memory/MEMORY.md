@@ -131,6 +131,7 @@
 - ⛔⛔ [Lei de ORDEM do 1.º consumidor não viaja para o 2.º](feedback_a_law_written_for_one_medium_does_not_travel_to_the_second.md)
 - ⛔⛔ [Consumidor que escolhe o relógio à mão escreve um 4.º palpite](feedback_a_consumer_that_picks_among_clocks_by_hand_is_the_answer_that_ages.md)
 - ⛔⛔ [Duas guardas que se EXCLUEM desligam um recurso sem o dizer](feedback_two_guards_that_exclude_each_other_disable_a_feature_silently.md)
+- ⛔⛔ [Uma AMOSTRA de selector NÃO emite evento — o despacho curto-circuita, e um braço de `Click` ali é código morto](feedback_a_picker_swatch_emits_no_event_and_a_click_arm_for_it_is_dead_code.md)
 - [Registro de painel — (5) sítios](reference_topic_panel_registration.md) · [Gotchas de código (27)](reference_topic_code_gotchas.md)
 - ⛔ [Renomear um símbolo por NOME destrói a PROSA que o cita — num repo onde o porquê vive em doc-comments, a memória histórica é a vítima mais comum](feedback_a_rename_by_name_cannot_tell_an_address_from_a_memory.md)
 - ⛔⛔ [Apagar um item deixa o `#[cfg]` dele a gatear o VIZINHO — e com a feature ligada por omissão nenhuma build da CI o vê](feedback_an_orphaned_cfg_attaches_to_the_next_item_and_the_default_build_is_blind.md)

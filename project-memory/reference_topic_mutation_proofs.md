@@ -331,3 +331,15 @@ população (isso paga uma suíte inteira em **cada** mutação): é pôr o **el
 já corre — um `include_str!` relativo alcança uma crate irmã sem dependência nenhuma. ⚠️ E o
 sobrevivente fabricado **esconde a pergunta real**: *aquele lado está gateado de todo?* Ali não
 estava. Ver [[reference_topic_gate_discipline]].
+
+## ⛔⛔ Uma fixtura recusada por DOIS motivos não afirma NENHUM dos dois (2026-09-20, `line/components`)
+
+A lei nova dizia *«uma tabela do Luau só é um valor se ela se DECLARAR (`__kind`)»*, e o gate tinha
+três fixturas: uma **lista** `{1,0,0}`, uma com marca **errada**, e **meia** (`__kind` certo e um
+campo a menos). A mutação que assume a marca em falta (*«se não tiver, é um `vec2`»*) **SOBREVIVEU**
+— porque cada uma daquelas tabelas também era recusada por **não ter os campos**, logo nenhuma
+media a marca. **Why:** três casos que parecem cobrir a lei podem estar todos a cair num segundo
+`return None` a jusante dela; *uma população onde toda fixtura falha duas vezes lê-se como cobertura
+e é vácuo*. **How to apply:** para cada cerca, construa a fixtura que **só** ela recusa — aqui um
+registo com `x` e `y` **e sem marca** —, e a prova de mutação é quem diz se ela existe. Ver
+[[reference_topic_gate_discipline]] e [[reference_topic_measurement_discipline]].

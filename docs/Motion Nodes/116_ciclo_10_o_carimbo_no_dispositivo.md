@@ -157,7 +157,7 @@ lia **`39,80 ms` de `cpu-encode`** com `4,49` de cozimento, ou seja **`~35 ms` f
 | wave | o que é | porquê nesta ordem |
 |---|---|---|
 | **W0** ✅ | A **auditoria** (§2–§4), com as três sondas versionadas | A frase da fila nomeava **um** nó e a cadeia tem **três** cercas (§2) |
-| **W1** | **A CONTAGEM:** um verbo estrutural para o produto cartesiano (`motion.duplicator` + `motion.clone`), **mais** a partição por textura a sobreviver a ele (§2.1) | É a metade que a [auditoria 98](98_auditoria_de_performance_2026-09-01.md) mede em `50,9×`, e o `motion.clone` é o caso **puro** dela — mede-se sem forma nenhuma no caminho |
+| **W1** | **A CONTAGEM:** um verbo estrutural para o produto cartesiano (`motion.duplicator` + `motion.clone`), **mais** a partição por textura a sobreviver a ele (§2.1) | É a metade que a [auditoria 98](98_auditoria_de_performance_2026-09-01.md) mede em `50,9×`, e o `motion.clone` é o caso **puro** dela — mede-se sem forma nenhuma no caminho. ⚠️ **A §5.2 mediu a população e ela reordena a wave por dentro:** o `clone` é a BANCADA (`2` cartões no produto) e o `duplicator` é o ENTREGÁVEL (`34`) — as duas metades fecham juntas |
 | **W2** | **A FORMA DESENHÁVEL:** o *bake fallback* do ADR-0154 Fase 3, **se** a escada do §4.3 o justificar | Sem ela a cadeia do report continua 🔴 pela cerca 2 e 3, mesmo com a W1 fechada |
 | **W3** | A **MEDIÇÃO** do ciclo (passo 5) — a mesma bancada, depois das curas | §0.0 |
 | **W4** | O **smoke do dono** (passo 7) | **Enio** |
@@ -192,6 +192,40 @@ Antes de desenhar um verbo novo, medido contra a API que existe:
   nenhum dos dois índices é `i`.
 
 ⭐ *Metade da wave era composição, e sabê-lo antes de a escrever é o que a §5.0 compra.*
+
+### §5.2 — ⛔⛔ A POPULAÇÃO, medida — e ela REORDENA a W1
+
+A §5.1 escolheu a ordem `(a)` → `(b)` por **provabilidade** (*«o `motion.clone` é o caso puro: mede-se
+sem forma nenhuma no caminho»*), e isso continua verdade. O que faltava era a outra pergunta —
+**quantas cenas do produto caem em cada caso** —, e ela tem agora duas sondas versionadas
+(`audit_the_stamp_clone_population` · `audit_the_stamp_duplicator_population`), varrendo os
+`MAX_DEMO_LEVEL` níveis do roteador:
+
+| nó | cenas que o usam | cartões | no regime que a wave alcança |
+|---|---|---|---|
+| `motion.clone` | **3** (`=64` · `=90` · `=106`) | `6` | **`2`** (linear · sem leque · sem taper) |
+| `motion.duplicator` | **11** (`=62` · `=98` · `=110` · `=114` · `=115` · `=120`..`=125`) | `36` | **`34`** com `pick = Off`, que é o produto cartesiano |
+| `source.shape` | **15** | — | — |
+
+⛔⛔ **⇒ a W1(a) alcança DOIS cartões em todo o produto.** Ela continua a ser a wave certa para
+**PRIMEIRA**, e a razão muda de nome: ela é a **BANCADA** da lei de contagem — o sítio onde a
+maquinaria se prova sem uma forma no caminho —, e **não** um entregável que o dono sinta. *Uma
+wave escolhida pela pureza da prova e não pela população é uma wave que ninguém sente*, e as duas
+frases dos reports dele nomeiam o outro nó à letra (*«Retirando Shape e Duplicator fica um pouco
+melhor»*).
+
+⇒ **as duas metades fecham na MESMA wave**: a lei de contagem prova-se no `motion.clone` (2
+cartões, grátis) e **aterra** no `motion.duplicator` (34), que é onde os `50,9×` da
+[auditoria 98](98_auditoria_de_performance_2026-09-01.md) esperam. Fechar `(a)` e parar seria
+entregar a máquina sem o consumidor dela.
+
+⚠️ **E o `pick` confirma a cerca §6.4 com número:** `34` de `36` estão em `Off`. Os outros `2`
+não são um caso de canto a ignorar — são a metade da lei que uma contagem ingénua entrega errada,
+e eles existem no produto.
+
+⏳ **Por medir, e é o que decide a W2:** dos `36` cartões, quantos têm uma `source.shape` na porta
+`0` (a cerca do vector VIVO, que é a 2.ª das três do §2) contra um objecto com textura. A sonda de
+hoje conta os dois nós por cena, não o par.
 
 ---
 

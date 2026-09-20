@@ -323,3 +323,167 @@ fn audit_the_stamp_encode_cost() {
     }
     eprintln!("\n  load no fim: {}\n", carga());
 }
+
+/// Os quatro nomes de param que decidem em que REGIME um `motion.clone` corre.
+///
+/// ⚠️ **Eles são conferidos contra o manifesto antes de qualquer leitura** ([`regime_do_clone`]):
+/// um nome que o nó renomeou lê-se como *«toda gente está no default»*, que é a resposta mais
+/// tranquilizadora que uma régua pode dar e a única que não se nota. *Um censo que classifica por
+/// string tem de provar que as strings existem.*
+const KNOBS_DO_CLONE: [&str; 4] = ["mode", "time_offset", "scale_taper", "rot_taper"];
+
+/// O regime de UM `motion.clone`: `(radial, com leque, com taper)`.
+fn regime_do_clone(
+    g: &ph2d_nodegraph::graph::Graph,
+    reg: &ph2d_node_registry::NodeRegistry,
+    id: NodeId,
+) -> (bool, bool, bool) {
+    let tid = ph2d_nodegraph::node::NodeTypeId::of("motion.clone");
+    let man = reg
+        .manifests()
+        .find(|m| m.id == tid)
+        .expect("o `motion.clone` esta' registado");
+    for nome in KNOBS_DO_CLONE {
+        assert!(
+            man.params.iter().any(|p| p.name == nome),
+            "o param `{nome}` sumiu do manifesto do `motion.clone` — este censo classificaria \
+             tudo como default"
+        );
+    }
+    let p = |nome: &str| -> f32 {
+        g.node_param_overrides(id)
+            .and_then(|o| o.get(nome).copied())
+            .unwrap_or_else(|| {
+                man.params
+                    .iter()
+                    .find(|s| s.name == nome)
+                    .map_or(0.0, |s| s.default)
+            })
+    };
+    (
+        p("mode") >= 0.5,
+        p("time_offset") != 0.0,
+        p("scale_taper") != 1.0 || p("rot_taper") != 0.0,
+    )
+}
+
+/// ⭐⭐⭐ **A POPULAÇÃO DA W1(a)** — em que REGIME o `motion.clone` de facto corre nas cenas do
+/// produto (doc 116 §5.1, e a lei do `CLAUDE.md` §0.0: *medir antes de construir*).
+///
+/// A W1(a) é *«o caso de UMA porta é exprimível com os verbos que já existem»* — e ela tem
+/// **fronteiras declaradas** que a auditoria ainda não contou: o leque de relógios é COZIMENTO e
+/// não kernel, o modo `Radial` carrega trig por cópia, e o taper **cunha** uma coluna ausente (o
+/// `size`/`rot` que a grelha não traz), que é a única coisa da lei que uma binding de escrita não
+/// sabe fazer condicionalmente.
+///
+/// ⇒ *«quantas das cenas que usam o nó caem no regime que a wave alcança?»* é a pergunta que
+/// decide se ela vale a pena, e nenhuma régua deste repo a respondia.
+#[test]
+#[ignore = "sonda de auditoria (ciclo 10), nao gate"]
+fn audit_the_stamp_clone_population() {
+    let (mut total, mut so_linear, mut com_leque, mut com_taper, mut radiais) = (0, 0, 0, 0, 0);
+    let mut cenas: Vec<u32> = Vec::new();
+    for level in 1..=crate::motion_state::demo_router::MAX_DEMO_LEVEL {
+        let mut m = crate::motion_state::MotionState::new();
+        let _ = crate::motion_demo_legend::monta(&level.to_string(), &mut m.doc, &m.registry);
+        let clones: Vec<NodeId> = m
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == "motion.clone")
+            .map(|n| n.id)
+            .collect();
+        if clones.is_empty() {
+            continue;
+        }
+        cenas.push(level);
+        for id in clones {
+            total += 1;
+            let (radial, leque, taper) = regime_do_clone(&m.doc.graph, &m.registry, id);
+            radiais += usize::from(radial);
+            com_leque += usize::from(leque);
+            com_taper += usize::from(taper);
+            so_linear += usize::from(!radial && !leque && !taper);
+        }
+    }
+    eprintln!("\n=== o `motion.clone` nas cenas do produto (ciclo 10, W1a) ===\n");
+    eprintln!("  cenas que o usam ...... {} {cenas:?}", cenas.len());
+    eprintln!("  cartoes no total ...... {total}");
+    eprintln!("  LINEAR, sem leque, sem taper (o que a W1a alcanca) ... {so_linear}");
+    eprintln!("  em modo Radial ........ {radiais}");
+    eprintln!("  com leque de relogios . {com_leque}");
+    eprintln!("  com taper ............. {com_taper}\n");
+}
+
+/// ⭐⭐⭐ **A POPULAÇÃO DA W1(b) E DA W2** — quantas cenas do produto levam o `motion.duplicator`
+/// (e com que `pick`), e quantas levam uma `source.shape`.
+///
+/// ⚠️ **É a irmã da [`audit_the_stamp_clone_population`], e existe porque aquela mediu `3` cenas
+/// em ~126.** O `motion.clone` é o caso **puro** da contagem — prova-se sem uma forma no caminho —,
+/// e o que o dono fotografou nos dois reports é o OUTRO: `grid → shape → duplicator`. *Uma wave
+/// escolhida pela pureza da prova e não pela população é uma wave que ninguém sente.*
+///
+/// ⚠️ O `pick` é a cerca §6.4 do doc 116: só o `Off` é o produto cartesiano — os outros dois
+/// emitem exactamente `np` linhas, e uma lei de contagem que o ignore erra em dois dos três.
+#[test]
+#[ignore = "sonda de auditoria (ciclo 10), nao gate"]
+fn audit_the_stamp_duplicator_population() {
+    let tid = ph2d_nodegraph::node::NodeTypeId::of("motion.duplicator");
+    let (mut dups, mut pick_off, mut com_escala) = (0, 0, 0);
+    let (mut cenas_dup, mut cenas_forma): (Vec<u32>, Vec<u32>) = (Vec::new(), Vec::new());
+    for level in 1..=crate::motion_state::demo_router::MAX_DEMO_LEVEL {
+        let mut m = crate::motion_state::MotionState::new();
+        let _ = crate::motion_demo_legend::monta(&level.to_string(), &mut m.doc, &m.registry);
+        let man = m
+            .registry
+            .manifests()
+            .find(|man| man.id == tid)
+            .expect("o `motion.duplicator` esta' registado");
+        for nome in ["pick", "point_scale"] {
+            assert!(
+                man.params.iter().any(|p| p.name == nome),
+                "o param `{nome}` sumiu do manifesto do `motion.duplicator`"
+            );
+        }
+        let mut tem_dup = false;
+        let mut tem_forma = false;
+        for n in m.doc.graph.nodes() {
+            if n.type_name == "source.shape" {
+                tem_forma = true;
+            }
+            if n.type_name != "motion.duplicator" {
+                continue;
+            }
+            tem_dup = true;
+            dups += 1;
+            let p = |nome: &str| -> f32 {
+                m.doc
+                    .graph
+                    .node_param_overrides(n.id)
+                    .and_then(|o| o.get(nome).copied())
+                    .unwrap_or_else(|| {
+                        man.params
+                            .iter()
+                            .find(|s| s.name == nome)
+                            .map_or(0.0, |s| s.default)
+                    })
+            };
+            pick_off += usize::from(p("pick") < 0.5);
+            com_escala += usize::from(p("point_scale") > 0.0);
+        }
+        if tem_dup {
+            cenas_dup.push(level);
+        }
+        if tem_forma {
+            cenas_forma.push(level);
+        }
+    }
+    eprintln!("\n=== o CARIMBO nas cenas do produto (ciclo 10, W1b e W2) ===\n");
+    eprintln!("  cenas com `motion.duplicator` ... {}", cenas_dup.len());
+    eprintln!("  cenas com `source.shape` ....... {}", cenas_forma.len());
+    eprintln!("  cartoes de duplicador .......... {dups}");
+    eprintln!("  com `pick = Off` (o produto cartesiano) ... {pick_off}");
+    eprintln!("  com `point_scale > 0` .......... {com_escala}\n");
+    eprintln!("  cenas do duplicador: {cenas_dup:?}\n");
+}

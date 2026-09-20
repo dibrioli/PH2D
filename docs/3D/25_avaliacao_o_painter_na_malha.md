@@ -271,6 +271,17 @@ que o §0.0 proíbe.
 
 ## §9 — O que falta MEDIR antes da primeira linha
 
+> ✅ **MEDIDO em 2026-09-20 — quatro das cinco linhas desta tabela estão fechadas, e duas
+> delas ao CONTRÁRIO do que ela supunha:** a malha do artista parametriza-se **melhor**
+> que a remalhada, e um patch **não** é uma ilha (são `4`–`13`, não `88`–`116`). A quinta
+> continua a ser acto de uma janela **E**. ⇒ [`26_a_parametrizacao_como_atlas.md`](26_a_parametrizacao_como_atlas.md),
+> com o instrumento versionado em `ph2d-quadchain/examples/atlas_probe.rs`.
+>
+> ⛔ **E a 1.ª linha da tabela abaixo está ERRADA como estava escrita:** a casa TEM o
+> número por fase desde que a `ChainTiming` existe, e o `chain_time` imprime-o pela porta
+> do produto; os `123 s` que ela cita são o **BOTÃO** (quatro tentativas em cascata sobre
+> dois campos), não a cadeia, que na peça do dono custa `7 884 ms`.
+
 | pergunta | porque não está respondida | como se mede |
 |---|---|---|
 | quanto custa a **parametrização sozinha** (G1–G3) | o único número que a casa tem é a cadeia INTEIRA de retopologia: **`123 s`** na peça do dono, e ela inclui F1–F5, a extracção, o acabamento e **4 tentativas em cascata** | correr o `gridmap` isolado sobre o corpus, com o relógio |

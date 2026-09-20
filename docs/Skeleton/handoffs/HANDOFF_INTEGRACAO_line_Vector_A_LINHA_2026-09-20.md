@@ -236,24 +236,37 @@ depois*, e o primeiro de cada par shipa um comportamento que o segundo **substit
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && env PH2D_VEC_BONE_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke
 ```
 
-✅ **Aprovado pelo dono em 2026-09-20** (*«Muito bom. Parabéns. Smoke OK»*) nas duas curas de fecho:
-a **espessura do contorno** que sobrevive ao quadro, e o **contorno sem bicos** ao dobrar a barra.
+✅ **Aprovado pelo dono em 2026-09-20**, DUAS vezes:
+
+1. nas curas de fecho da linha (*«Muito bom. Parabéns. Smoke OK»*) — a **espessura do contorno** que
+   sobrevive ao quadro, e o **contorno sem bicos** ao dobrar a barra;
+2. ⭐⭐ **e no caminho de GPU da pele (F9), depois de ele fechar** (*«smoke OK. Depois faremos
+   ajustes finos. Antes de seguir vamos integrar ao main»*) — o roteiro que ele correu foi a arte
+   dobrada com a placa a posar **contra** a mesma arte com `PH2D_SKIN_GPU=0`, que devolve a lei à
+   CPU **sem recompilar**:
+   ```
+   cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && env PH2D_SKIN_GPU=0 PH2D_VEC_BONE_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke
+   ```
+
+⚠️ **«Ajustes finos» é trabalho que o dono ADIOU, não dívida desta linha** — ele disse-o na mesma
+frase em que mandou integrar. ⛔ *Um adiamento do dono e um item por fazer lêem-se igual numa lista
+de abertos;* este está no §11 com o dono nomeado.
 
 ⏳ **O que NÃO foi smokado, e o integrador deve saber:**
 
 - as cenas `=2` e `=3` do mesmo smoke (as três mídias · o braço a animar) foram smokadas nas
-  **jornadas delas**, não depois do rebase;
-- ⛔⛔ **o caminho de GPU da pele (F9) SHIPA LIGADO e NÃO foi smokado pelo dono** — ele fechou
-  depois da aprovação de 2026-09-20. ⚠️ Ele é o caminho de **OMISSÃO** de toda arte presa, logo o
-  re-smoke do `PH2D_VEC_BONE_SMOKE=1` (e das cenas `=2`/`=3`) é o **primeiro** pedido desta linha ao
-  dono. A bissecção é `PH2D_SKIN_GPU=0`, que devolve a lei à CPU **sem recompilar**:
+  **jornadas delas**, não depois do rebase nem depois da F9. ⚠️ Elas desenham pela **mesma** porta
+  da `=1` (o `attach_skin_meshes`), logo o que a F9 lhes fez está coberto pelo gate de PIXEL abaixo
+  — *mas isso é um argumento, não um smoke*;
+- ⭐ **o gate de PIXEL da F9 é o que prende a placa à CPU** (`sprite_mesh_gpu::a_placa_desenha_o_que_a_cpu_posa`),
+  e ele lê **`0 px`** de diferença entre as duas imagens, de `1150` pintados, com o controlo (a
+  mesma malha **sem** posar) a `1250 px`. ⚠️⚠️ **Ele é `#[ignore]`, logo o CI NUNCA o corre** — o
+  integrador corre-o à mão, uma vez, na árvore combinada:
   ```
-  cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && env PH2D_SKIN_GPU=0 PH2D_VEC_BONE_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke
+  PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-render --test it -- --ignored --exact sprite_mesh_gpu::a_placa_desenha_o_que_a_cpu_posa
   ```
-  ⭐ **O que o substitui enquanto não há smoke** é um gate de **PIXEL** sobre um adaptador real
-  (`sprite_mesh_gpu::a_placa_desenha_o_que_a_cpu_posa`), que lê **`0 px`** de diferença entre as
-  duas imagens. ⚠️ **Ele é `#[ignore]`, logo o CI nunca o corre** — corra-o à mão com
-  `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-render --test it -- --ignored --exact sprite_mesh_gpu::a_placa_desenha_o_que_a_cpu_posa`;
+  ⛔ E o filtro é **`sprite_mesh_gpu::…`**, sem o prefixo `it::`: com ele o `cargo` casa **ZERO**
+  testes e imprime `ok`, que se lê como verde (pago nesta jornada);
 - ⛔ **um clique não é provável na sessão virtual da fotografia** (o XTest da Xwayland é ignorado e o
   `ydotool` mexe no rato REAL do dono) ⇒ toda costura de clique desta linha prova-se em **gate**
   (`seam_*` / `MockPanelHost`), nunca por foto. O instrumento da foto é
@@ -331,7 +344,7 @@ a **espessura do contorno** que sobrevive ao quadro, e o **contorno sem bicos** 
 
 | item | de quem |
 |---|---|
-| ⛔ **O SMOKE da F9** — a pele no dispositivo é o caminho de OMISSÃO e **não foi visto pelo dono** (ver §8) | **DONO** |
+| ⭐ **«Ajustes finos»** — o dono ADIOU-os por escrito ao aprovar o smoke da F9 e mandar integrar (*«Depois faremos ajustes finos»*). ⛔ **Não são dívida desta linha nem trabalho do integrador**: são a wave seguinte, e o que ela ajusta ainda não foi nomeado | **DONO**, depois a linha |
 | O **memo do payload** da pele: os `12,5 %` que sobram **não são deformação**, são a tabela de pesos derivada por vértice a cada construção. ⭐ Ela é grandeza do **BIND** (a quota sai do REPOUSO) | linha |
 | A truncagem a `K = 4` passou a tocar o **CENTRO** e não só os pesos — exacta com `≤ 4` ossos por vértice (a arte do dono tem `3`), aproximação **declarada** acima disso | declarado |
 | A **150°** a face de dentro do cotovelo ainda se dobra sobre si mesma | geometria, **declarado** |

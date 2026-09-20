@@ -17,9 +17,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::screens::hero::{
-    InspectorOrderingInfo, InspectorSpriteInfo, SpriteFieldEdit,
-};
+use ph2d_editor_core::screens::hero::{InspectorOrderingInfo, InspectorSpriteInfo};
 use ph2d_editor_core::widget::{CheckboxValue, TextInputState};
 
 pub(crate) fn sync_inspector_from_snapshots(
@@ -394,85 +392,20 @@ fn sync_sprite_fields(
     // catraca deste projeto **só desce**. Levar os dois juntos (e não só o novo) é o que a faz
     // descer de facto — 223 → ~178, e a tolerância deixa de ter objeto.
     crate::sync_sprite_value::sync_sprite_sliders(host, sp, focus, drag);
-    // Tint / Self Tint swatches. The BlenderColorPicker round-trips
-    // the chosen color through `widget_color(<swatch>)` (mirrored
-    // each frame from the picker in `hero.rs`, BEFORE this panel
-    // paints). Two regimes:
-    //   • picker targets THIS swatch → the user is actively picking:
-    //     dispatch the divergence as a Sprite edit (live preview,
-    //     same 1-frame post-commit lag the Opacity slider tolerates).
-    //     Byte-compare against the committed channel so sub-1/255
-    //     float dust doesn't spin the bus every frame, and so the
-    //     stream stops the instant the commit lands (round-trip is
-    //     exact: u8 → /255 → ×255 round-nearest → same u8).
-    //   • otherwise → keep the swatch fill in lock-step with the
-    //     committed channel so undo / external edits reflect.
-    // On an entity switch the top `entity_changed` block has already
-    // closed any tint picker bound to the prior selection, so this
-    // reads `None` on the switch frame and the loop reseeds both
-    // swatches from the new sprite's committed channels.
-    let picker_target = host.store().picker_target();
-    for (swatch_id, chan) in [
-        (crate::ids::INSP_SPRITE_TINT_SWATCH, sp.tint),
-        (crate::ids::INSP_SPRITE_SELF_TINT_SWATCH, sp.self_tint),
-    ] {
-        let committed = crate::state_tint::tint_f32_to_u8(chan);
-        if picker_target == Some(swatch_id) {
-            if let Some(picked) = host.store().widget_color(swatch_id)
-                && picked != committed
-            {
-                let new_chan = crate::state_tint::tint_u8_to_f32(picked);
-                let edit = if swatch_id == crate::ids::INSP_SPRITE_TINT_SWATCH {
-                    SpriteFieldEdit::Tint(new_chan)
-                } else {
-                    SpriteFieldEdit::SelfTint(new_chan)
-                };
-                host.bus_mut().push(EditorAction::InspectorSpriteEdit {
-                    entity_bits: sp.entity_bits,
-                    edit,
-                });
-            }
-        } else {
-            host.store_mut().set_widget_color(swatch_id, committed);
-        }
-    }
-    // Per-corner tint swatches (TL, TR, BL, BR). Same regime as Tint/Self.
-    //
-    // ⚠️ **Um canto por edição** (`PerCornerTintAt`), e não o array inteiro. Enquanto o edit
-    // carregava os quatro cantos da PRIMÁRIA, o fan-out de BulkSelect atropelava os cantos
-    // divergentes de todas as outras — enquanto o painter pintava «Mixed» para esse mesmo estado.
-    // *A promessa e o verbo discordavam* (auditoria `docs/Sprite_projeto/20` §3.2). É a lei que já
-    // tinha criado `OffsetX`/`OffsetY` e `RegionX/Y/W/H`; faltava aplicá-la aqui.
-    let corner_ids = [
-        crate::ids::INSP_SPRITE_CORNER_TL,
-        crate::ids::INSP_SPRITE_CORNER_TR,
-        crate::ids::INSP_SPRITE_CORNER_BL,
-        crate::ids::INSP_SPRITE_CORNER_BR,
-    ];
-    for (i, &corner_id) in corner_ids.iter().enumerate() {
-        let committed = crate::state_tint::tint_f32_to_u8(sp.per_corner_tint[i]);
-        if picker_target == Some(corner_id) {
-            if let Some(picked) = host.store().widget_color(corner_id)
-                && picked != committed
-            {
-                host.bus_mut().push(EditorAction::InspectorSpriteEdit {
-                    entity_bits: sp.entity_bits,
-                    edit: SpriteFieldEdit::PerCornerTintAt(
-                        u8::try_from(i).unwrap_or(0),
-                        crate::state_tint::tint_u8_to_f32(picked),
-                    ),
-                });
-            }
-        } else {
-            host.store_mut().set_widget_color(corner_id, committed);
-        }
-    }
+    crate::sync_tint_swatches::sync_tint_swatches(host, sp);
 }
 
-/// True for any of the 6 Sprite color-swatch ids (Tint, Self Tint, and
-/// the 4 per-corner swatches) whose picker is bound to the current
-/// selection — used to close the picker on an entity switch so the prior
-/// sprite's picked color can't stream onto the next one.
+/// **Uma amostra de cor cujo selector está preso à selecção ACTUAL** — as 6 da Sprite (Tinta,
+/// Tinta Própria e os 4 cantos) e as do SCRIPT.
+///
+/// ⛔⛔ **É por isto que o selector se fecha ao trocar de objecto:** o host espelha
+/// selector → `widget_color` em TODO quadro, logo re-semear a amostra sozinha **não ganha** — a
+/// cor escolhida no objecto anterior escorreria para o seguinte.
+///
+/// ⚠️⚠️ **As do SCRIPT entraram em 2026-09-20 e a omissão teria sido MUDA:** a lei é a mesma e
+/// estava escrita só para uma das duas famílias. *Uma cerca indexada por uma lista de ids esquece
+/// a família seguinte, e o esquecimento não tem sintoma até alguém trocar de objecto com o
+/// selector aberto.*
 fn is_sprite_color_swatch(id: ph2d_a11y::NodeId) -> bool {
     matches!(
         id,
@@ -482,7 +415,7 @@ fn is_sprite_color_swatch(id: ph2d_a11y::NodeId) -> bool {
             | crate::ids::INSP_SPRITE_CORNER_TR
             | crate::ids::INSP_SPRITE_CORNER_BL
             | crate::ids::INSP_SPRITE_CORNER_BR
-    )
+    ) || crate::ids::INSP_SCRIPT_COLOR.contains(&id)
 }
 
 /// ⭐⭐ **Espelhar o mundo VIVO nas caixas — sem pisar o que a mão está a escrever.**

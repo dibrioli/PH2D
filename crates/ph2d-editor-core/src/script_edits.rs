@@ -34,6 +34,10 @@ pub enum InspectorScriptValue {
     Bool(bool),
     /// Um texto — campo de texto.
     Text(String),
+    /// ⭐ Uma posição — **dois campos numa fileira só**.
+    Vec2([f64; 2]),
+    /// ⭐ Uma cor — **uma amostra** que abre o selector da casa.
+    Color([f64; 4]),
 }
 
 /// Uma linha de propriedade, na ordem da declaração.
@@ -138,6 +142,15 @@ pub enum ScriptFieldEdit {
     SetBool(String, bool),
     /// O artista PÔS este texto.
     SetText(String, String),
+    /// ⭐ O artista PÔS esta posição.
+    ///
+    /// ⚠️ **Ela leva as DUAS componentes**, e não *«a componente `i`»*: o documento guarda um
+    /// valor só, e uma edição por eixo obrigaria quem aplica a ler o valor de antes para compor o
+    /// novo — a segunda resposta a *«qual é a posição?»*, com a corrida entre os dois campos por
+    /// prémio. O painel lê o par vivo e manda-o inteiro.
+    SetVec2(String, [f64; 2]),
+    /// ⭐ O artista PÔS esta cor.
+    SetColor(String, [f64; 4]),
     /// `Reset` numa linha, e `Remove` num órfão — a MESMA porta (`ph2d_script::props::forget`).
     Forget(String),
 }
@@ -154,11 +167,15 @@ mod tests {
             InspectorScriptValue::Number(1.0),
             InspectorScriptValue::Bool(true),
             InspectorScriptValue::Text(String::new()),
+            InspectorScriptValue::Vec2([0.0, 0.0]),
+            InspectorScriptValue::Color([1.0, 1.0, 1.0, 1.0]),
         ] {
             let e = match v {
                 InspectorScriptValue::Number(n) => ScriptFieldEdit::SetNumber("a".into(), n),
                 InspectorScriptValue::Bool(b) => ScriptFieldEdit::SetBool("a".into(), b),
                 InspectorScriptValue::Text(t) => ScriptFieldEdit::SetText("a".into(), t),
+                InspectorScriptValue::Vec2(p) => ScriptFieldEdit::SetVec2("a".into(), p),
+                InspectorScriptValue::Color(c) => ScriptFieldEdit::SetColor("a".into(), c),
             };
             assert!(!matches!(e, ScriptFieldEdit::Forget(_)));
         }

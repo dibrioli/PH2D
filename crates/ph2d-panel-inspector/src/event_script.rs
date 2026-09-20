@@ -32,6 +32,16 @@ pub(crate) fn apply_script_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 .map(|p| E::Forget(p.name.clone()))
         } else if let Some(i) = linha(&crate::ids::INSP_SCRIPT_ORPHAN_REMOVE, id) {
             info.orphans.get(i).map(|o| E::Forget(o.name.clone()))
+        // ⛔⛔ **A AMOSTRA de cor NÃO tem braço aqui, e a ausência é a lei** — medida por um gate
+        // de costura que reprovou com *«o ponteiro não virou evento»*: o despacho **curto-circuita**
+        // toda amostra registada por `register_picker_swatch` (ele abre o selector ele próprio e
+        // devolve, para o clique não focar nem arrastar o canvas), logo **nenhum `Click` chega
+        // aqui**.
+        //
+        // ⚠️⚠️ A 1.ª redacção desta wave escreveu o braço à mão — a semente, o alvo do selector, o
+        // valor do widget — e ele era **CÓDIGO MORTO**: *a porta generalizada já existia, e eu
+        // escrevi a segunda resposta à mesma pergunta*. O que faz a amostra funcionar é uma linha
+        // no `populate_script`, e o que manda a edição é a semente (`sync_script::cores`).
         // ⭐⭐⭐ **A escolha de um ENUM** — ela é um `SetText` e não uma edição nova, porque o valor
         // de um enum É o texto que o script compara.
         //
@@ -88,14 +98,43 @@ pub(crate) fn apply_script_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
         return true;
     }
 
-    if let WidgetEvent::ValueChanged(id) = ev
-        && let Some(i) = linha(&crate::ids::INSP_SCRIPT_NUM, id)
-        && let Some(p) = info.props.get(i)
-        && matches!(p.value, V::Number(_))
-    {
-        let v = host.store().number_value(id).unwrap_or(0.0);
-        push(host, bits, E::SetNumber(p.name.clone(), v));
-        return true;
+    if let WidgetEvent::ValueChanged(id) = ev {
+        if let Some(i) = linha(&crate::ids::INSP_SCRIPT_NUM, id)
+            && let Some(p) = info.props.get(i)
+            && matches!(p.value, V::Number(_))
+        {
+            let v = host.store().number_value(id).unwrap_or(0.0);
+            push(host, bits, E::SetNumber(p.name.clone(), v));
+            return true;
+        }
+        // ⭐⭐ **Um eixo mexido manda a POSIÇÃO inteira** — ver o doc do `SetVec2`.
+        //
+        // ⚠️ **Os dois vêm do STORE e não do instantâneo**, e é a leitura honesta: o instantâneo é
+        // do quadro passado, logo mexer em X e depois em Y no mesmo quadro mandaria o Y velho de
+        // volta. A semente mantém o eixo NÃO tocado em dia com o documento.
+        for (k, tabela) in [
+            (0, &crate::ids::INSP_SCRIPT_VEC2_X),
+            (1, &crate::ids::INSP_SCRIPT_VEC2_Y),
+        ] {
+            if let Some(i) = linha(tabela, id)
+                && let Some(p) = info.props.get(i)
+                && let V::Vec2(atual) = &p.value
+            {
+                let leitura = |t: &[ph2d_a11y::NodeId], eixo: usize| {
+                    t.get(i)
+                        .and_then(|&x| host.store().number_value(x))
+                        .unwrap_or(atual[eixo])
+                };
+                let mut par = [
+                    leitura(&crate::ids::INSP_SCRIPT_VEC2_X, 0),
+                    leitura(&crate::ids::INSP_SCRIPT_VEC2_Y, 1),
+                ];
+                // O eixo que acabou de mudar lê-se do próprio id, sem passar pela tabela.
+                par[k] = host.store().number_value(id).unwrap_or(par[k]);
+                push(host, bits, E::SetVec2(p.name.clone(), par));
+                return true;
+            }
+        }
     }
     false
 }

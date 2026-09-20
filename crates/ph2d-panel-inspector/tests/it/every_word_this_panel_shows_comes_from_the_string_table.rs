@@ -42,7 +42,25 @@ const TABLES: &[&str] = &[
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.
-const NOT_LANGUAGE: &[(&str, &str, &str)] = &[];
+const NOT_LANGUAGE: &[(&str, &str, &str)] = &[
+    // ⭐⭐ As duas formas com que um valor de SCRIPT se lê numa linha de órfão. Elas são o
+    // CONSTRUTOR que o artista escreveu no ficheiro `.luau` dele (`ph2d.vec2(1, 2)`), não língua
+    // desta casa: traduzi-las mostrava-lhe uma forma que ele não pode escrever, e um órfão existe
+    // exactamente para ele o reconhecer no ficheiro. É a MESMA isenção que o rótulo de uma opção
+    // de enum já carrega, e que o cabeçalho da `opcoes_da_linha` declara por escrito.
+    (
+        "sections/script.rs",
+        "vec2({}, {})",
+        "o construtor que o artista escreveu no .luau dele; traduzi-lo mostra uma forma que ele \
+         não pode escrever, e um órfão existe para ser reconhecido no ficheiro",
+    ),
+    (
+        "sections/script.rs",
+        "color({}, {}, {}, {})",
+        "o construtor que o artista escreveu no .luau dele; traduzi-lo mostra uma forma que ele \
+         não pode escrever, e um órfão existe para ser reconhecido no ficheiro",
+    ),
+];
 
 fn src_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src")

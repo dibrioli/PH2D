@@ -32,6 +32,10 @@ fn assinatura(info: &InspectorScriptInfo) -> u64 {
             V::Number(n) => n.to_bits().hash(&mut h),
             V::Bool(b) => b.hash(&mut h),
             V::Text(t) => t.hash(&mut h),
+            // ⚠️ **Toda componente entra na assinatura**: se só o `x` entrasse, mexer no `y` de um
+            // objecto e voltar a ele deixaria o campo com o valor velho — a aresta não armava.
+            V::Vec2(v) => v.map(f64::to_bits).hash(&mut h),
+            V::Color(c) => c.map(f64::to_bits).hash(&mut h),
         }
         for x in [p.min, p.max, p.step] {
             x.map(f64::to_bits).hash(&mut h);
@@ -61,6 +65,7 @@ pub(crate) fn sync(
             };
         }
     }
+    cores(host, &info);
     let sig = assinatura(&info);
     if !entity_changed && inspector_state.last_script_sig == Some(sig) {
         return;
@@ -90,7 +95,65 @@ pub(crate) fn sync(
                     crate::sync_text_field::escreve_texto(host, focus, id, t);
                 }
             }
-            V::Bool(_) => {}
+            // ⭐ Os dois eixos entram pela MESMA porta do campo de um número — um eixo de uma
+            // posição É um campo numérico, e a faixa declarada vale para os dois.
+            V::Vec2(v) => {
+                for (k, tabela) in [
+                    (0, &crate::ids::INSP_SCRIPT_VEC2_X),
+                    (1, &crate::ids::INSP_SCRIPT_VEC2_Y),
+                ] {
+                    let Some(&id) = tabela.get(i) else { break };
+                    faixa(host, id, p.min, p.max, p.step);
+                    if focus != Some(id) && drag != Some(id) {
+                        host.store_mut().set_number_value(id, v[k]);
+                    }
+                }
+            }
+            // A amostra é semeada em TODO quadro pela [`cores`] — ver o doc dela.
+            V::Bool(_) | V::Color(_) => {}
+        }
+    }
+}
+
+/// ⭐⭐⭐ **As AMOSTRAS de cor — semeadas em TODO quadro, como as caixas.**
+///
+/// ⚠️⚠️ **Ela NÃO pode viver atrás da aresta da assinatura**, e o motivo é o selector: enquanto o
+/// artista arrasta dentro dele, a cor viva chega por `widget_color(id)` e é a DIVERGÊNCIA contra o
+/// valor gravado que tem de virar uma edição — *um valor que só é lido quando o instantâneo já
+/// mudou nunca fecha o ciclo*. É o mesmo regime das amostras de tinta da Sprite (`sync.rs`).
+///
+/// **Os dois regimes:**
+/// - o selector aponta para ESTA amostra ⇒ o artista está a escolher: a diferença vai ao
+///   barramento, comparada em **`u8`** para o pó de `f32` abaixo de `1/255` não pôr o barramento a
+///   girar em todo quadro (e para o fluxo PARAR no instante em que o commit aterra — a ida e volta
+///   é exacta);
+/// - caso contrário ⇒ a amostra é re-semeada do valor gravado, e é assim que um `Ctrl+Z` ou uma
+///   edição de fora se reflectem nela.
+fn cores(host: &mut dyn PanelHostInternal, info: &InspectorScriptInfo) {
+    use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
+    use ph2d_editor_core::script_edits::ScriptFieldEdit;
+
+    let alvo = host.store().picker_target();
+    for (i, p) in info.props.iter().enumerate() {
+        let V::Color(c) = &p.value else { continue };
+        let Some(&id) = crate::ids::INSP_SCRIPT_COLOR.get(i) else {
+            break;
+        };
+        let gravado = crate::state_tint::cor_do_script(*c);
+        if alvo == Some(id) {
+            if let Some(escolhido) = host.store().widget_color(id)
+                && escolhido != gravado
+            {
+                host.bus_mut().push(EditorAction::InspectorComponentEdit {
+                    entity_bits: info.entity_bits,
+                    edit: ComponentEdit::Script(ScriptFieldEdit::SetColor(
+                        p.name.clone(),
+                        crate::state_tint::cor_para_o_script(escolhido),
+                    )),
+                });
+            }
+        } else {
+            host.store_mut().set_widget_color(id, gravado);
         }
     }
 }

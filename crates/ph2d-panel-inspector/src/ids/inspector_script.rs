@@ -294,3 +294,123 @@ const fn build_enum_opts() -> [NodeId; 32] {
         hash_node_id("insp_script_enum_opt_31"),
     ]
 }
+
+/// ⭐⭐⭐ **O campo X da linha `i`** — uma propriedade cujo default é um `ph2d.vec2`.
+///
+/// ⚠️⚠️ **São DOIS campos numa fileira só, e é isso que a wave compra:** duas propriedades
+/// (`pos_x`, `pos_y`) já exprimiam uma posição — o que faltava era ela ser UMA coisa, com um
+/// `Reset` só e uma edição só (ver o `SetVec2`).
+pub const INSP_SCRIPT_VEC2_X: [NodeId; 32] = [
+    hash_node_id("insp_script_vec2x0"),
+    hash_node_id("insp_script_vec2x1"),
+    hash_node_id("insp_script_vec2x2"),
+    hash_node_id("insp_script_vec2x3"),
+    hash_node_id("insp_script_vec2x4"),
+    hash_node_id("insp_script_vec2x5"),
+    hash_node_id("insp_script_vec2x6"),
+    hash_node_id("insp_script_vec2x7"),
+    hash_node_id("insp_script_vec2x8"),
+    hash_node_id("insp_script_vec2x9"),
+    hash_node_id("insp_script_vec2x10"),
+    hash_node_id("insp_script_vec2x11"),
+    hash_node_id("insp_script_vec2x12"),
+    hash_node_id("insp_script_vec2x13"),
+    hash_node_id("insp_script_vec2x14"),
+    hash_node_id("insp_script_vec2x15"),
+    hash_node_id("insp_script_vec2x16"),
+    hash_node_id("insp_script_vec2x17"),
+    hash_node_id("insp_script_vec2x18"),
+    hash_node_id("insp_script_vec2x19"),
+    hash_node_id("insp_script_vec2x20"),
+    hash_node_id("insp_script_vec2x21"),
+    hash_node_id("insp_script_vec2x22"),
+    hash_node_id("insp_script_vec2x23"),
+    hash_node_id("insp_script_vec2x24"),
+    hash_node_id("insp_script_vec2x25"),
+    hash_node_id("insp_script_vec2x26"),
+    hash_node_id("insp_script_vec2x27"),
+    hash_node_id("insp_script_vec2x28"),
+    hash_node_id("insp_script_vec2x29"),
+    hash_node_id("insp_script_vec2x30"),
+    hash_node_id("insp_script_vec2x31"),
+];
+
+/// O campo Y da linha `i` — ver [`INSP_SCRIPT_VEC2_X`].
+pub const INSP_SCRIPT_VEC2_Y: [NodeId; 32] = [
+    hash_node_id("insp_script_vec2y0"),
+    hash_node_id("insp_script_vec2y1"),
+    hash_node_id("insp_script_vec2y2"),
+    hash_node_id("insp_script_vec2y3"),
+    hash_node_id("insp_script_vec2y4"),
+    hash_node_id("insp_script_vec2y5"),
+    hash_node_id("insp_script_vec2y6"),
+    hash_node_id("insp_script_vec2y7"),
+    hash_node_id("insp_script_vec2y8"),
+    hash_node_id("insp_script_vec2y9"),
+    hash_node_id("insp_script_vec2y10"),
+    hash_node_id("insp_script_vec2y11"),
+    hash_node_id("insp_script_vec2y12"),
+    hash_node_id("insp_script_vec2y13"),
+    hash_node_id("insp_script_vec2y14"),
+    hash_node_id("insp_script_vec2y15"),
+    hash_node_id("insp_script_vec2y16"),
+    hash_node_id("insp_script_vec2y17"),
+    hash_node_id("insp_script_vec2y18"),
+    hash_node_id("insp_script_vec2y19"),
+    hash_node_id("insp_script_vec2y20"),
+    hash_node_id("insp_script_vec2y21"),
+    hash_node_id("insp_script_vec2y22"),
+    hash_node_id("insp_script_vec2y23"),
+    hash_node_id("insp_script_vec2y24"),
+    hash_node_id("insp_script_vec2y25"),
+    hash_node_id("insp_script_vec2y26"),
+    hash_node_id("insp_script_vec2y27"),
+    hash_node_id("insp_script_vec2y28"),
+    hash_node_id("insp_script_vec2y29"),
+    hash_node_id("insp_script_vec2y30"),
+    hash_node_id("insp_script_vec2y31"),
+];
+
+/// ⭐⭐⭐ **A AMOSTRA de cor da linha `i`** — ela abre o selector da casa.
+///
+/// ⚠️ **Ela é registada como amostra do selector** (`register_picker_swatch`), que é o que faz o
+/// clique abrir o selector partilhado e a cor escolhida voltar por `widget_color(id)` — o mesmo
+/// caminho das amostras de tinta do Sprite.
+///
+/// ⛔⛔ **Um id POR LINHA, e a razão está medida noutra linha desta casa:** em 19/09 o painel do
+/// modelador teve CINCO fileiras de cor a partilharem um id, e mexer numa mudava as cinco. *Duas
+/// amostras com o mesmo id não são duas amostras.*
+pub const INSP_SCRIPT_COLOR: [NodeId; 32] = [
+    hash_node_id("insp_script_color0"),
+    hash_node_id("insp_script_color1"),
+    hash_node_id("insp_script_color2"),
+    hash_node_id("insp_script_color3"),
+    hash_node_id("insp_script_color4"),
+    hash_node_id("insp_script_color5"),
+    hash_node_id("insp_script_color6"),
+    hash_node_id("insp_script_color7"),
+    hash_node_id("insp_script_color8"),
+    hash_node_id("insp_script_color9"),
+    hash_node_id("insp_script_color10"),
+    hash_node_id("insp_script_color11"),
+    hash_node_id("insp_script_color12"),
+    hash_node_id("insp_script_color13"),
+    hash_node_id("insp_script_color14"),
+    hash_node_id("insp_script_color15"),
+    hash_node_id("insp_script_color16"),
+    hash_node_id("insp_script_color17"),
+    hash_node_id("insp_script_color18"),
+    hash_node_id("insp_script_color19"),
+    hash_node_id("insp_script_color20"),
+    hash_node_id("insp_script_color21"),
+    hash_node_id("insp_script_color22"),
+    hash_node_id("insp_script_color23"),
+    hash_node_id("insp_script_color24"),
+    hash_node_id("insp_script_color25"),
+    hash_node_id("insp_script_color26"),
+    hash_node_id("insp_script_color27"),
+    hash_node_id("insp_script_color28"),
+    hash_node_id("insp_script_color29"),
+    hash_node_id("insp_script_color30"),
+    hash_node_id("insp_script_color31"),
+];

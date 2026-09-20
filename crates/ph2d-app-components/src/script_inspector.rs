@@ -21,6 +21,8 @@ fn para_painel(v: &ScriptValue) -> InspectorScriptValue {
         ScriptValue::Number(n) => InspectorScriptValue::Number(*n),
         ScriptValue::Bool(b) => InspectorScriptValue::Bool(*b),
         ScriptValue::Text(t) => InspectorScriptValue::Text(t.clone()),
+        ScriptValue::Vec2(v) => InspectorScriptValue::Vec2(*v),
+        ScriptValue::Color(c) => InspectorScriptValue::Color(*c),
     }
 }
 
@@ -61,8 +63,18 @@ pub fn build_info(
         .map(|p| {
             let default = decls
                 .and_then(|d| d.iter().find(|d| d.name == p.name))
-                .map(|d| match d.default {
-                    ScriptValue::Number(n) => n,
+                .map(|d| match &d.default {
+                    ScriptValue::Number(n) => *n,
+                    // ⭐ Um `vec2` também tem passo: a regra é a mesma — *o que o autor ESCREVEU*.
+                    // Ela lê o eixo com casas decimais, senão `ph2d.vec2(0, 1.5)` pediria passos
+                    // inteiros por o primeiro eixo ser redondo.
+                    ScriptValue::Vec2(v) => {
+                        if v[0].fract() == 0.0 {
+                            v[1]
+                        } else {
+                            v[0]
+                        }
+                    }
                     _ => 0.0,
                 })
                 .unwrap_or(0.0);
@@ -135,6 +147,8 @@ pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
         E::SetNumber(n, v) => posto(n, ScriptValue::Number(*v)).map(|v| Mexe::Poe(n.clone(), v)),
         E::SetBool(n, b) => posto(n, ScriptValue::Bool(*b)).map(|v| Mexe::Poe(n.clone(), v)),
         E::SetText(n, t) => posto(n, ScriptValue::Text(t.clone())).map(|v| Mexe::Poe(n.clone(), v)),
+        E::SetVec2(n, p) => posto(n, ScriptValue::Vec2(*p)).map(|v| Mexe::Poe(n.clone(), v)),
+        E::SetColor(n, c) => posto(n, ScriptValue::Color(*c)).map(|v| Mexe::Poe(n.clone(), v)),
         E::Forget(n) => cfg.own.contains_key(n).then(|| Mexe::Larga(n.clone())),
     };
     let Some(mexe) = mexe else {

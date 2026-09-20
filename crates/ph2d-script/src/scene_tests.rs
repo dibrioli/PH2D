@@ -466,3 +466,59 @@ fn tirar_o_script_esquece_o_vivo() {
     host.scene_sync(sim.world_mut());
     assert_eq!(host.scene().live_count(), 0);
 }
+
+/// ⭐⭐⭐ **O VALOR CHEGA AO SCRIPT COM A FORMA CERTA, e o objecto move-se por ele.**
+///
+/// ⚠️⚠️ **É este o elo que nenhum dos outros gates mede.** A lei prova que a declaração resolve; o
+/// portão-coroa prova que a tabela do construtor e a que a casa escreve têm a mesma forma; a
+/// costura prova que o painel está vivo. **Falta o meio:** que o `to_lua` ponha a tabela em `self`
+/// e que `self.offset.x` a leia — e um `to_lua` que devolvesse `nil` para os dois tipos novos
+/// deixaria tudo isso VERDE com o script a estoirar no primeiro quadro.
+///
+/// ⭐ E ele mede o **valor PRÓPRIO** por cima do default, que é o que separa *«o tipo existe»* de
+/// *«o objecto tem o dele»*.
+///
+/// **Mutações que devem sangrar:** trocar `x` por `y` no [`crate::valores::tabela_de`] · devolver
+/// `None` ali para o `Vec2` · não aplicar o valor próprio.
+#[test]
+fn uma_posicao_e_uma_cor_chegam_ao_script_com_a_forma_do_construtor() {
+    const ANDA_PELA_POSICAO: &str = r#"
+ph2d.property("offset", ph2d.vec2(1, 0))
+ph2d.property("tint", ph2d.color(1, 1, 1, 1))
+function update(self, dt)
+  local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3
+  ph2d.set(self.id, "x", ph2d.get(self.id, "x") + self.offset.x * brilho * dt)
+  ph2d.set(self.id, "y", ph2d.get(self.id, "y") + self.offset.y * brilho * dt)
+end
+"#;
+    let path = script_file("forma", ANDA_PELA_POSICAO);
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    // O de omissão: `(1, 0)` branco ⇒ anda `1` por segundo em `x` e nada em `y`.
+    let padrao = actor(w, 1, &path, &[]);
+    // O PRÓPRIO: `(0, 2)` a meio brilho ⇒ `0` em `x` e `1` por segundo em `y`.
+    let proprio = actor(
+        w,
+        2,
+        &path,
+        &[
+            ("offset", ScriptValue::Vec2([0.0, 2.0])),
+            ("tint", ScriptValue::Color([0.5, 0.5, 0.5, 1.0])),
+        ],
+    );
+    let mut host = ScriptHost::new().expect("vm");
+    for _ in 0..4 {
+        let r = frame(&mut host, &mut sim, 0.25);
+        assert!(r.failed.is_empty(), "{:?}", r.failed);
+    }
+    let pose = |e| {
+        let t = sim.world().get::<Transform>(e).expect("pose");
+        (t.translation.x, t.translation.y)
+    };
+    assert_eq!(pose(padrao), (1.0, 0.0), "o default nao chegou como (1, 0)");
+    assert_eq!(
+        pose(proprio),
+        (0.0, 1.0),
+        "o valor PROPRIO nao chegou, ou os canais da cor leem-se noutra ordem"
+    );
+}

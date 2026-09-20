@@ -60,8 +60,16 @@ ph2d.property("top_signal", "")                        -- o grito, a cada topo (
 -- ⭐ A LISTA: o painel pinta um CHIP em vez de um campo livre, e um valor que não esteja aqui
 --    não chega a este script — ele é NOMEADO no painel em vez de cair no ramo errado calado.
 ph2d.property("wave", "sine", { options = { "sine", "square", "still" } })
+-- ⭐ UMA FILEIRA COM DOIS CAMPOS: uma posição é UMA coisa, e não duas propriedades que você tem
+--    de se lembrar de manter juntas. `(0, 1)` é a reta para cima — o de sempre, ao bit.
+ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })
+-- ⭐ UMA AMOSTRA: carregue nela e o selector de cor do app abre.
+--    ⚠️ O script ainda NÃO sabe pintar — o vocabulário dele é só posição —, então aqui a cor
+--    entra como os três números que ela é: quanto mais CLARA, mais alto ele sobe.
+ph2d.property("tint", ph2d.color(1, 1, 1))
 
 function init(self)
+  self.base_x = ph2d.get(self.id, "x")
   self.base_y = ph2d.get(self.id, "y")
   self.t = 0
   self.was_up = false
@@ -79,7 +87,11 @@ function update(self, dt)
   else
     s = math.sin(self.t * self.speed)
   end
-  ph2d.set(self.id, "y", self.base_y + s * self.amplitude)
+  -- ⭐ O BRILHO da cor escala o passeio, e a DIREÇÃO diz para onde ele é.
+  local brilho = (self.tint.r + self.tint.g + self.tint.b) / 3
+  local d = s * self.amplitude * brilho
+  ph2d.set(self.id, "x", self.base_x + d * self.direction.x)
+  ph2d.set(self.id, "y", self.base_y + d * self.direction.y)
   local up = s > 0.98
   if up and not self.was_up and self.top_signal ~= "" then
     ph2d.emit(self.top_signal)
@@ -207,7 +219,12 @@ pub fn montar(world: &mut World, _nivel: u32, dir: &Path) -> std::io::Result<Mon
          ⭐ E a fileira «wave» e' um CHIP e nao um campo: o script declarou uma LISTA \
          (`sine · square · still`). Escolha `square` e o boneco passa a saltar entre dois \
          niveis; `still` para-o. ⚠️ Deu errado se ela vier como campo de escrever, ou se \
-         escolher uma opcao nao mudar o movimento"
+         escolher uma opcao nao mudar o movimento.\n\
+         ⭐ A fileira «direction» e' UMA fileira com DOIS campos (X e Y), e nao duas linhas: \
+         escreva `1` no primeiro e o boneco passa a passear na diagonal. ⭐ E «tint» e' uma \
+         AMOSTRA de cor: carregue nela e o selector do app abre — escolha uma cor ESCURA e ele \
+         passeia menos, uma CLARA e ele passeia mais. ⚠️ Deu errado se a posicao vier em duas \
+         linhas, se a cor vier como tres campos de numero, ou se o selector nao abrir"
     );
     Ok(Montada {
         nivel: 1,

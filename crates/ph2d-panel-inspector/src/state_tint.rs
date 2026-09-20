@@ -25,3 +25,30 @@ pub(crate) fn tint_u8_to_f32(c: [u8; 4]) -> [f32; 4] {
         c[3] as f32 / 255.0, // LITERAL-PX-OK: sRGB byte normalize
     ]
 }
+
+/// ⭐⭐ **Uma cor de SCRIPT em bytes** — a ponte `f64` → `f32` → `[u8; 4]`, numa porta só.
+///
+/// ⚠️ **O Luau mede em `f64` e toda a tinta deste app é `f32`**, logo há uma conversão a mais do
+/// que nas irmãs. Ela vive AQUI, com as duas que compõe, porque os seus dois consumidores — o
+/// pintor da fileira e a semente que fala com o selector — **têm de concordar ao byte**: a
+/// comparação que decide se o barramento recebe uma edição é feita em `u8`, e duas aritméticas
+/// diferentes dariam um fluxo de edições que nunca pára.
+pub(crate) fn cor_do_script(c: [f64; 4]) -> [u8; 4] {
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "um canal e' 0..=1 (conferido na declaracao): o f32 representa-o de sobra"
+    )]
+    let f = [c[0] as f32, c[1] as f32, c[2] as f32, c[3] as f32];
+    tint_f32_to_u8(f)
+}
+
+/// O inverso de [`cor_do_script`] — o que o selector devolveu, pronto a gravar.
+pub(crate) fn cor_para_o_script(c: [u8; 4]) -> [f64; 4] {
+    let f = tint_u8_to_f32(c);
+    [
+        f64::from(f[0]),
+        f64::from(f[1]),
+        f64::from(f[2]),
+        f64::from(f[3]),
+    ]
+}

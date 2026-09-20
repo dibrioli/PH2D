@@ -211,3 +211,84 @@ fn browse_escreve_o_que_o_dialogo_devolve_e_cancelar_nao_escreve_nada() {
         "/a/b.luau"
     );
 }
+
+/// ⭐⭐⭐ **As duas edições novas chegam ao documento, e a IDEMPOTÊNCIA fica** — pôr o mesmo par
+/// duas vezes não toca no componente na segunda.
+///
+/// ⚠️ **A 2.ª metade é a que importa e a 1.ª sozinha mente:** o `bevy` marca a alteração no
+/// `deref_mut`, logo um dreno que escrevesse sempre poria toda amostra de cor a acordar quem lê
+/// `Changed<…>` a cada quadro em que o selector estivesse aberto — e o selector espelha a cor
+/// viva **por quadro**. ⭐ E a 3.ª é a divergência D1: pôr o valor pela PRIMEIRA vez muda, mesmo
+/// igual ao default.
+#[test]
+fn a_posicao_e_a_cor_chegam_ao_documento_e_nao_mexem_duas_vezes() {
+    const TIPOS: &str = r#"
+ph2d.property("offset", ph2d.vec2(0, 1))
+ph2d.property("tint", ph2d.color(1, 1, 1))
+"#;
+    let (mut sim, bits) = cena(LuauScript::at(script_file(TIPOS)));
+    let h = pronto(&mut sim);
+    let ler = |sim: &SimWorld, n: &str| {
+        build_info(sim, Some(&h), bits, 1, false)
+            .expect("tem")
+            .props
+            .iter()
+            .find(|p| p.name == n)
+            .map(|p| (p.value.clone(), p.own))
+            .unwrap_or_else(|| panic!("`{n}` nao resolveu"))
+    };
+    assert_eq!(ler(&sim, "offset"), (V::Vec2([0.0, 1.0]), false));
+    assert_eq!(ler(&sim, "tint"), (V::Color([1.0, 1.0, 1.0, 1.0]), false));
+
+    assert!(apply(
+        &mut sim,
+        bits,
+        &E::SetVec2("offset".into(), [2.0, -3.0])
+    ));
+    assert_eq!(ler(&sim, "offset"), (V::Vec2([2.0, -3.0]), true));
+    assert!(
+        !apply(&mut sim, bits, &E::SetVec2("offset".into(), [2.0, -3.0])),
+        "o mesmo par duas vezes tocou no componente na segunda"
+    );
+
+    let cor = [0.5, 0.25, 0.0, 1.0];
+    assert!(apply(&mut sim, bits, &E::SetColor("tint".into(), cor)));
+    assert_eq!(ler(&sim, "tint"), (V::Color(cor), true));
+    assert!(!apply(&mut sim, bits, &E::SetColor("tint".into(), cor)));
+
+    // ⭐ D1: pôr o valor IGUAL ao default pela primeira vez torna-o PRÓPRIO.
+    assert!(apply(
+        &mut sim,
+        bits,
+        &E::SetColor("tint".into(), [1.0, 1.0, 1.0, 1.0])
+    ));
+    assert_eq!(ler(&sim, "tint"), (V::Color([1.0; 4]), true));
+
+    // ⭐ E o `Reset` larga-o — a MESMA porta dos outros tipos.
+    assert!(apply(&mut sim, bits, &E::Forget("tint".into())));
+    assert_eq!(ler(&sim, "tint"), (V::Color([1.0; 4]), false));
+}
+
+/// ⭐ **O passo de arrasto de um `vec2` lê o eixo com CASAS DECIMAIS** — `ph2d.vec2(0, 1.5)` pede
+/// passos finos, e a regra é a mesma dos números: *o que o autor ESCREVEU*.
+///
+/// ⚠️ **Mutação que deve sangrar:** ler sempre o eixo `x` — com `(0, 1.5)` ele é redondo, e a
+/// fileira inteira passaria a arrastar de um em um.
+#[test]
+fn o_passo_de_uma_posicao_sai_do_eixo_com_casas_decimais() {
+    let passo = |src: &str| {
+        let (mut sim, bits) = cena(LuauScript::at(script_file(src)));
+        let h = pronto(&mut sim);
+        build_info(&sim, Some(&h), bits, 1, false)
+            .expect("tem")
+            .props[0]
+            .step
+    };
+    assert_eq!(passo("ph2d.property(\"p\", ph2d.vec2(0, 1.5))"), Some(0.1));
+    assert_eq!(passo("ph2d.property(\"p\", ph2d.vec2(2, 3))"), Some(1.0));
+    // ⭐ E o `step` declarado ganha sempre — ele é o que o autor ESCREVEU.
+    assert_eq!(
+        passo("ph2d.property(\"p\", ph2d.vec2(2, 3), { step = 0.25 })"),
+        Some(0.25)
+    );
+}

@@ -163,7 +163,8 @@ só um tem defeito de **CORRECÇÃO**.
 | `Color` | 4 declarações → 4 fileiras | **afordância** (uma amostra em vez de quatro campos) |
 | **enum** | 1 declaração de texto | ⛔ **CORRECÇÃO**: o objecto guarda `"fst"`, o painel mostra `"fst"`, **não é órfão** — ele CHEGA ao script, que compara com `"fast"` e cai no ramo errado **em silêncio** |
 
-⇒ a wave é o **enum**, e os outros dois ficam com o preço nomeado (afordância, wave própria).
+⇒ a wave é o **enum**, e os outros dois ficam com o preço nomeado (afordância, wave própria) —
+✅ **e a wave própria deles fechou a seguir: §5-ter.**
 
 ⭐⭐ **Ele NÃO é uma variante nova do `ScriptValue`** — é um `Text` com a lista na PISTA. O
 `PropHint` é declaração e não viaja no ficheiro ⇒ **`PROJECT_SCHEMA` intocado**, e o valor continua
@@ -182,6 +183,85 @@ para todo clique. É o *«dreno de um braço só»* do §5.0, e ele compila, pin
 acuse. ⛔ E a LINHA do popover vem de **quem REGISTA as opções**, nunca do `open` do chip: o
 despacho fecha o dropdown no `pointer_down`, logo ali ele já é `false` — a 1.ª redacção lia o store
 e o gate reprovou-a.
+
+---
+
+## §5-ter — A POSIÇÃO e a COR, e a porta que eu escrevi duas vezes
+
+Os dois tipos que o §5-bis deixou nomeados. **`PROJECT_SCHEMA` intocado, registos intocados** —
+as duas variantes do `ScriptValue` são **APENDADAS**, e o postcard é posicional: as três tags de
+cima ficam onde estavam e todo ficheiro gravado continua a ler-se. O gate que o afirma é o
+`os_valores_viajam_no_fio…`, que passou de `3` para `5` linhas.
+
+### A declaração é um CONSTRUTOR, e é isso que compra a lei
+
+```luau
+ph2d.property("direction", ph2d.vec2(0, 1), { min = -1, max = 1 })
+ph2d.property("tint", ph2d.color(1, 1, 1))
+```
+
+⭐⭐⭐ **A razão não é estética: é que o artista LÊ `self.direction.x`.** Com um `kind` na pista
+(`ph2d.property("d", {0,1}, { kind = "vec2" })`) a declaração seria uma **LISTA** e o `self` um
+**REGISTO** — *duas formas para a mesma coisa*, e quem copiasse uma para a outra escreveria um
+default que o painel não sabe pintar. ⇒ [`valores::tabela_de`](../../../crates/ph2d-script/src/valores.rs)
+tem **dois** chamadores (o construtor e o `to_lua` da cena), e o **portão-coroa**
+(`a_forma_que_o_artista_escreve_e_a_forma_que_ele_le`) compara as duas tabelas **chave a chave**
+sobre a VM real.
+
+⛔ **A desambiguação é EXPLÍCITA** (`__kind`) e nunca pelo comprimento: `{1, 0, 0}` lê-se igual a
+uma cor vermelha e a uma posição com lixo no fim.
+
+### As três decisões da lei, cada uma com o mecanismo
+
+| decisão | mecanismo |
+|---|---|
+| **um canal de cor fora de `0..=1` RECUSA a declaração** | a única superfície que edita uma cor é a AMOSTRA, e o selector é `0..=1` por construção: um `2` seria pintado como `1` e **reescrito em silêncio** no 1.º toque. ⭐ E a recusa **não fecha caminho nenhum** — quem quiser um valor fora da faixa declara três números, como antes desta wave |
+| **a faixa vale num `vec2` e é recusada numa `color`** | as duas componentes de uma posição partilham uma faixa (o `@export_range` do oráculo faz o mesmo sobre um `Vector2`); o domínio de uma cor é `0..=1` por natureza, e um `min`/`max` ali é a segunda resposta à mesma pergunta |
+| **a finitude passa por uma PORTA** (`ScriptValue::componentes`) | ela era um `if let` sobre o `Number`, logo **um tipo novo com números lá dentro passava calado** — *uma conferência indexada pela variante esquece a variante seguinte* |
+
+⚠️ **E a assimetria com o enum é DECLARADA:** um valor fora da LISTA vira órfão porque o artista o
+pode **ESCREVER** (o campo é livre); um canal fora de `0..=1` não vira, porque a única superfície
+que escreve uma cor é o selector, que é limitado por construção — *inventar uma quarta razão de
+orfandade para um estado que nada produz é construir para um fantasma*.
+
+### ⛔⛔ O gate de costura derrubou código que eu tinha ACABADO de escrever
+
+A 1.ª redacção deu à amostra um braço de `Click` no `event_script.rs` — semear a cor, apontar o
+selector, semear o widget. O gate reprovou com **«o ponteiro não virou evento»**, e o **CONTROLO**
+(um campo numérico vivo há waves, que emite `Focus + Click`) provou que o instrumento estava bom.
+
+⭐⭐⭐ **A causa:** o despacho **curto-circuita** toda amostra registada por
+`register_picker_swatch` — ele abre o selector ele próprio e devolve, *para o clique não focar nem
+arrastar o canvas* —, logo **nenhum `Click` chega ao painel**. O meu braço era **código morto**:
+*a porta generalizada já existia, e eu escrevi a segunda resposta à mesma pergunta.* O que faz a
+amostra funcionar é **uma linha no `populate_script`**.
+
+⚠️ **E a régua teve de mudar com isso:** ali a ausência de evento **é o desenho**, logo a amostra
+mede-se pelo EFEITO (o alvo do selector e a semente) e os dois eixos pelo gesto real.
+
+### A afordância, e o que ela NÃO compra
+
+⛔ **`ph2d.set` escreve POSE e mais nada** (`POSE_FIELDS`, cinco campos) ⇒ **um script não sabe
+pintar**. A cor chega a `self.tint.r/.g/.b/.a` com a forma certa e o artista usa-a como três
+números — é assim que a cena de smoke a demonstra (*o brilho escala o passeio*), e o roteiro
+di-lo. ⏳ Um canal de tinta no vocabulário do script é **wave própria**.
+
+⚠️ **O default da cena é a IDENTIDADE:** `direction = (0, 1)` é a reta para cima e `tint` é branca
+(brilho `1`) ⇒ os três bonecos fazem **exactamente** o que faziam antes desta wave, com gate a
+afirmá-lo — *uma cena que muda de comportamento ao ganhar um controlo deixa de ser a cena que o
+dono aprovou*.
+
+### ⚠️ Duas armadilhas de arnês pagas aqui
+
+1. **Uma fixtura recusada por DOIS motivos não afirma nenhum dos dois.** A prova de mutação que
+   assume a marca (`__kind` em falta ⇒ *«é um vec2»*) **SOBREVIVEU**, porque cada tabela do gate
+   também não tinha os campos. O caso que discrimina é um **registo com `x` e `y` e sem marca**.
+2. **O `cargo fmt` reescreveu uma âncora da mutação** depois de ela ter sido copiada da linha
+   única — e *uma âncora que não casa lê-se exactamente como uma mutação que sobreviveu*. Quem a
+   apanhou foi o controlo de contagem do arnês.
+
+**Prova:** `16` de `16` mutações sangram
+([roteiro](../ferramentas/mutacao_tipos_do_script_2026-09-20.sh)).
 
 ---
 
@@ -212,7 +292,7 @@ e o gate reprovou-a.
 |---|---|
 | **o `.luau` não viaja no projecto** | ⛔ **Mesma fronteira DECLARADA do áudio, e não é do script:** medido, o `AudioSource2D` também **nomeia um ficheiro e também não embute**, e o doc do `LuauScript` já escreve que *«a cura das duas é a mesma: pôr o tipo no índice de assets»*. Um embed só para o script seria **a segunda resposta à mesma pergunta**. ⇒ wave do índice de assets, não desta linha. |
 | **`SignalFrom::Tagged`** | ⛔ Sem consumidor, e a metade que importa está COBERTA: para a origem que toda cena tem — o TOQUE — a composição **já** o exprime pelo `SignalTagFilter`, que é do **produtor** (a `=dano` usa-o). Para as outras origens nenhuma cena pede. |
-| **`Vector2` e `Color` nas propriedades de script** | ⭐ **O ENUM FECHOU** (§5-bis). Estes dois ficam, e o preço está MEDIDO: os dois já se exprimem pela composição e o que falta é **afordância** (uma fileira em vez de duas; uma amostra em vez de quatro campos) — nenhum tem defeito de correcção, ao contrário do enum. Acrescentar as variantes é **append-only** (⇒ sem degrau de schema); o custo é a ponte do Luau a aceitar uma tabela como default, com a desambiguação a ser **explícita** (um `{1,0,0}` não diz se é posição ou cor, e adivinhar pelo comprimento é um palpite). |
+| **um script não sabe PINTAR** | ⛔ **Medido:** o `ph2d.set` escreve `POSE_FIELDS` — `x`, `y`, `rotation`, `scale_x`, `scale_y` — e mais nada. Uma propriedade `color` chega ao script com a forma certa (`self.tint.r`) e ele usa-a como NÚMEROS; a tinta de verdade pede um canal novo no vocabulário, que é wave própria. ⚠️ O `Vector2` **não** tem este limite: a pose é escrevível, e é por isso que a cena de smoke o demonstra a sério.
 | **script e física no MESMO corpo** | Fronteira declarada no handoff do #16. |
 | **HUD atrás dos painéis no EDITOR** | ⭐ **Deixou de ser um item de defeito** — é consequência de uma decisão, hoje afirmada por gate (§4). O que sobra é a **área segura** no editor, que é decisão de produto. |
 | **abanão ANGULAR** | ⛔ Recusa medida: a `CameraView` tem **três** campos e nenhum é um ângulo. |

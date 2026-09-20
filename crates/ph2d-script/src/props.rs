@@ -52,6 +52,18 @@ pub enum ScriptValue {
     Bool(bool),
     /// Uma `string`.
     Text(String),
+    /// ⭐⭐⭐ **Uma POSIÇÃO** — `ph2d.vec2(x, y)`. Uma fileira com dois campos, em vez de duas
+    /// propriedades que o artista tem de lembrar-se de manter juntas.
+    Vec2([f64; 2]),
+    /// ⭐⭐⭐ **Uma COR** — `ph2d.color(r, g, b, a?)`, cada canal em `0..=1`. Uma amostra que abre
+    /// o selector da casa, em vez de três ou quatro campos numéricos.
+    ///
+    /// ⚠️ **O domínio `0..=1` é conferido na DECLARAÇÃO e NÃO no valor gravado**, e a assimetria
+    /// com o enum tem mecanismo: um valor fora da lista de um enum existe porque o artista o pode
+    /// **ESCREVER** (o campo é livre); um canal fora de `0..=1` não, porque a única superfície que
+    /// escreve uma cor é o selector, que é limitado por construção. *Inventar uma quarta razão de
+    /// orfandade para um estado que nada produz é construir para um fantasma.*
+    Color([f64; 4]),
 }
 
 /// **De que tipo um valor é** — a pergunta do D3, com uma resposta só.
@@ -63,6 +75,10 @@ pub enum ScriptValueKind {
     Bool,
     /// Um texto.
     Text,
+    /// Uma posição.
+    Vec2,
+    /// Uma cor.
+    Color,
 }
 
 impl ScriptValue {
@@ -73,6 +89,24 @@ impl ScriptValue {
             Self::Number(_) => ScriptValueKind::Number,
             Self::Bool(_) => ScriptValueKind::Bool,
             Self::Text(_) => ScriptValueKind::Text,
+            Self::Vec2(_) => ScriptValueKind::Vec2,
+            Self::Color(_) => ScriptValueKind::Color,
+        }
+    }
+
+    /// ⭐⭐ **Os NÚMEROS que este valor carrega** — a porta única da conferência de finitude.
+    ///
+    /// ⚠️ **Ela existe porque a lei era escrita à mão para UM tipo:** o `check_decl` tinha
+    /// `if let ScriptValue::Number(v) = … && !v.is_finite()`, e um tipo novo com números lá dentro
+    /// passaria por ele **calado** — um `nan` numa componente chega ao script e o painel pinta
+    /// `NaN`. *Uma conferência indexada pela variante esquece a variante seguinte.*
+    #[must_use]
+    pub fn componentes(&self) -> &[f64] {
+        match self {
+            Self::Number(n) => std::slice::from_ref(n),
+            Self::Bool(_) | Self::Text(_) => &[],
+            Self::Vec2(v) => v.as_slice(),
+            Self::Color(c) => c.as_slice(),
         }
     }
 }
@@ -86,6 +120,10 @@ impl ScriptValueKind {
             Self::Number => "number",
             Self::Bool => "boolean",
             Self::Text => "string",
+            // ⭐ O nome é o do CONSTRUTOR que o artista escreveu (`ph2d.vec2`), pela mesma lei das
+            // três de cima: a mensagem devolve-lhe a palavra do ficheiro dele.
+            Self::Vec2 => "vec2",
+            Self::Color => "color",
         }
     }
 }
@@ -268,8 +306,10 @@ pub enum DeclError {
     Reserved(String),
     /// Declarado duas vezes.
     Twice(String),
-    /// O default não é número finito, sim/não nem texto.
+    /// O default não é número finito, sim/não, texto, `vec2` nem `color`.
     BadDefault(String),
+    /// ⭐ Um canal de cor fora de `0..=1` — ver a recusa no [`check_decl`].
+    ColorOutOfRange(String),
     /// Uma opção que a casa não conhece (`mni` em vez de `min`).
     UnknownOption {
         /// A propriedade.
@@ -294,16 +334,28 @@ impl std::fmt::Display for DeclError {
             Self::BadDefault(n) => {
                 write!(
                     f,
-                    "property '{n}' needs a number, boolean or string default"
+                    "property '{n}' needs a number, boolean, string, ph2d.vec2 or ph2d.color \
+                     default"
                 )
             }
+            // ⭐ A frase diz a SAÍDA e não só a recusa: quem quer um valor fora de `0..=1` tem a
+            // composição de três números, que é a que sempre existiu.
+            Self::ColorOutOfRange(n) => write!(
+                f,
+                "property '{n}': every ph2d.color channel must be between 0 and 1 (for values \
+                 outside it, declare plain numbers)"
+            ),
+            // ⚠️ A lista de chaves é a que o `read_decl` de facto aceita — ela ficou a dizer três
+            // no dia em que o enum trouxe a quarta, e uma mensagem que nomeia menos do que o
+            // parser aceita manda o artista apagar uma chave que funciona.
             Self::UnknownOption { name, option } => write!(
                 f,
-                "property '{name}': unknown option '{option}' (min, max, step)"
+                "property '{name}': unknown option '{option}' (min, max, step, options)"
             ),
             Self::BadHint(n) => write!(
                 f,
-                "property '{n}': min/max/step need a number default, step > 0 and min <= max"
+                "property '{n}': min/max/step need a number or ph2d.vec2 default, step > 0 and \
+                 min <= max"
             ),
             Self::TooMany(n) => write!(
                 f,
@@ -361,14 +413,39 @@ pub fn check_decl(previous: &[PropDecl], decl: &PropDecl) -> Result<(), DeclErro
     if previous.len() >= PROPS_MAX {
         return Err(DeclError::TooMany(n.clone()));
     }
-    if let ScriptValue::Number(v) = decl.default
-        && !v.is_finite()
-    {
+    // ⚠️ **Pela PORTA, e não por variante** — ver [`ScriptValue::componentes`].
+    if decl.default.componentes().iter().any(|v| !v.is_finite()) {
         return Err(DeclError::BadDefault(n.clone()));
+    }
+    // ⭐⭐⭐ **O domínio de uma COR, e a recusa NÃO retira capacidade nenhuma.**
+    //
+    // A única superfície que edita uma cor é a AMOSTRA, e o selector da casa é `0..=1` por
+    // construção. Um canal declarado a `2` seria pintado como `1` e **reescrito em silêncio** no
+    // primeiro toque — o *«aceita e mente»* que esta casa já pagou no `lattice`, no `kaleidoscope`
+    // e no `iterations` do colisor.
+    //
+    // ⭐ **E o que torna a recusa barata é a COMPOSIÇÃO ficar intacta:** quem quiser uma cor fora
+    // de `0..=1` (um emissivo) declara **três números**, exactamente como fazia antes desta wave.
+    // *Uma recusa que não fecha caminho nenhum é só um silêncio que passou a falar.*
+    if let ScriptValue::Color(c) = &decl.default
+        && c.iter().any(|v| !(0.0..=1.0).contains(v))
+    {
+        return Err(DeclError::ColorOutOfRange(n.clone()));
     }
     let h = &decl.hint;
     let has_hint = h.min.is_some() || h.max.is_some() || h.step.is_some();
-    if has_hint && decl.default.kind() != ScriptValueKind::Number {
+    // ⭐ **A faixa vale para o `Vec2`, e as duas componentes partilham-na** — é o que o
+    // `@export_range` do oráculo faz sobre um `Vector2`, e uma faixa por eixo seria uma segunda
+    // resposta a *«até onde este ponto pode ir»*.
+    //
+    // ⛔ **Numa COR ela é RECUSADA:** o domínio dela é `0..=1` por natureza, e um `min`/`max` ali
+    // seria a segunda resposta à mesma pergunta — com as duas a divergirem no dia em que uma
+    // mudasse.
+    let aceita_faixa = matches!(
+        decl.default.kind(),
+        ScriptValueKind::Number | ScriptValueKind::Vec2
+    );
+    if has_hint && !aceita_faixa {
         return Err(DeclError::BadHint(n.clone()));
     }
     let finite = |x: Option<f64>| x.is_none_or(f64::is_finite);

@@ -54,7 +54,14 @@ pub(crate) fn populate_script(store: &mut WidgetStore) {
     }
     // ⚠️ **Sem faixa aqui**: a faixa de cada linha é a PISTA que o script declarou, e quem a
     // conhece é o snapshot — a semente escreve-a (`sync_script`).
-    for id in crate::ids::INSP_SCRIPT_NUM {
+    //
+    // ⭐ **Os dois campos de um `vec2` entram pela MESMA porta que o campo de um número**: um eixo
+    // de uma posição é um campo numérico, e uma segunda forma de o registar divergiria da primeira.
+    for id in crate::ids::INSP_SCRIPT_NUM
+        .into_iter()
+        .chain(crate::ids::INSP_SCRIPT_VEC2_X)
+        .chain(crate::ids::INSP_SCRIPT_VEC2_Y)
+    {
         store.register(
             id,
             InteractiveState::NumberInput {
@@ -66,5 +73,13 @@ pub(crate) fn populate_script(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
+    }
+    // ⭐⭐ **As AMOSTRAS de cor** — `Plain` (como as do Sprite e a da grelha), que é o que faz o
+    // `is_focusable` responder `true` e o clique virar `Click`. ⚠️ E `register_picker_swatch`, sem
+    // o qual o clique chega e **o selector não abre**: a amostra não carrega valor nenhum, a cor
+    // dela vive na tabela lateral `widget_colors`.
+    for id in crate::ids::INSP_SCRIPT_COLOR {
+        store.register(id, InteractiveState::Plain);
+        store.register_picker_swatch(id);
     }
 }

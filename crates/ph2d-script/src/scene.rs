@@ -219,11 +219,22 @@ fn pose_of(t: &Transform) -> [f64; 5] {
     ]
 }
 
+/// O valor como o script o lê em `self`.
+///
+/// ⚠️⚠️ **A tabela de um `vec2`/`color` sai da MESMA porta que o construtor `ph2d.vec2` usa**
+/// ([`crate::valores::tabela_de`]): o que o artista escreve na declaração e o que ele lê em `self`
+/// têm de ser a mesma forma, senão copiar uma para a outra produz um default que o painel não sabe
+/// pintar. Há gate de ida-e-volta.
 fn to_lua(lua: &Lua, v: &ScriptValue) -> mlua::Result<Value> {
+    if let Some(t) = crate::valores::tabela_de(lua, v)? {
+        return Ok(t);
+    }
     Ok(match v {
         ScriptValue::Number(n) => Value::Number(*n),
         ScriptValue::Bool(b) => Value::Boolean(*b),
         ScriptValue::Text(s) => Value::String(lua.create_string(s)?),
+        // A [`crate::valores::tabela_de`] já os devolveu acima.
+        ScriptValue::Vec2(_) | ScriptValue::Color(_) => unreachable!("a porta ja' os cobriu"),
     })
 }
 

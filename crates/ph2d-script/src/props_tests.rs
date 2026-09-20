@@ -285,10 +285,18 @@ fn as_declaracoes_mal_formadas_sao_recusadas_com_o_nome() {
 fn os_valores_viajam_no_fio_e_a_ordem_das_variantes_e_o_contrato() {
     // ⚠️ postcard é posicional: a TAG é o índice da variante. Trocar a ordem leria um Bool como
     // Number, em silêncio.
+    //
+    // ⭐⭐⭐ **E é POR ISTO que o `vec2` e a `color` não custaram um degrau de `PROJECT_SCHEMA`:**
+    // elas foram APENDADAS, logo as três tags de cima ficam onde estavam e todo ficheiro gravado
+    // continua a ler-se. ⛔ Uma variante no MEIO teria trocado o sentido de cada byte gravado — o
+    // caso que este gate existe para impedir, e que só se vê aqui porque os valores **são** os
+    // números do artista e não um enum interno.
     for (v, tag) in [
         (ScriptValue::Number(1.5), 0u8),
         (ScriptValue::Bool(true), 1),
         (ScriptValue::Text("a".into()), 2),
+        (ScriptValue::Vec2([1.0, -2.0]), 3),
+        (ScriptValue::Color([1.0, 0.5, 0.0, 1.0]), 4),
     ] {
         let bytes = postcard::to_allocvec(&v).expect("serializa");
         assert_eq!(bytes[0], tag, "{v:?}");
@@ -463,4 +471,164 @@ fn uma_lista_malformada_recusa_a_declaracao_inteira() {
     }
     // ⭐ E o CONTROLO: uma lista boa passa.
     assert!(check_decl(&[], &enum_decl("a", &["a", "b"])).is_ok());
+}
+
+// ─── vec2 e color: a POSIÇÃO e a COR ────────────────────────────────────────────────────────────
+//
+// ⚠️ **Os dois já se exprimiam pela COMPOSIÇÃO** (duas ou quatro propriedades numéricas), e a sonda
+// `mede_o_que_a_composicao_ja_da_aos_tipos` mediu-o antes da 1.ª linha: ao contrário do enum,
+// **nenhum dos dois tinha defeito de CORRECÇÃO** — o que faltava era a AFORDÂNCIA. Estes gates
+// guardam as decisões que a afordância obrigou a tomar.
+
+fn com_tipo(name: &str, v: ScriptValue) -> PropDecl {
+    PropDecl {
+        name: name.into(),
+        default: v,
+        hint: PropHint::default(),
+    }
+}
+
+/// ⭐ Uma posição e uma cor resolvem-se como qualquer outro valor — a lei do [`resolve`] é do
+/// TIPO, e não de uma lista de variantes escrita à mão.
+#[test]
+fn uma_posicao_e_uma_cor_resolvem_se_como_os_outros() {
+    let decls = vec![
+        com_tipo("offset", ScriptValue::Vec2([0.0, 0.0])),
+        com_tipo("tint", ScriptValue::Color([1.0, 1.0, 1.0, 1.0])),
+    ];
+    let r = resolve(
+        Some(&decls),
+        &own(&[("offset", ScriptValue::Vec2([3.0, -1.0]))]),
+    );
+    assert_eq!(
+        valor(&r, "offset"),
+        (ScriptValue::Vec2([3.0, -1.0]), Origin::Own)
+    );
+    assert_eq!(
+        valor(&r, "tint"),
+        (ScriptValue::Color([1.0, 1.0, 1.0, 1.0]), Origin::Default)
+    );
+    assert!(r.orphans.is_empty());
+
+    // ⚠️ E o D3 vale para eles: uma posição gravada onde hoje há uma cor **não se converte**.
+    let r = resolve(
+        Some(&decls),
+        &own(&[("tint", ScriptValue::Vec2([1.0, 0.0]))]),
+    );
+    assert_eq!(
+        valor(&r, "tint").1,
+        Origin::Default,
+        "um vec2 gravado numa cor foi aplicado"
+    );
+    assert_eq!(
+        r.orphans[0].why,
+        OrphanWhy::WrongKind {
+            declared: ScriptValueKind::Color
+        }
+    );
+}
+
+/// ⛔⛔ **Um canal de cor fora de `0..=1` RECUSA a declaração — e a recusa não fecha caminho nenhum.**
+///
+/// A única superfície que edita uma cor é a AMOSTRA, e o selector da casa é `0..=1` por construção:
+/// um canal a `2` seria pintado como `1` e **reescrito em silêncio** no primeiro toque. ⭐ Quem
+/// quiser um valor fora da faixa declara **três números**, exactamente como antes desta wave.
+///
+/// **Mutações que devem sangrar:** trocar o `contains` por `>= 0.0` · apagar a conferência.
+#[test]
+fn um_canal_de_cor_fora_da_faixa_recusa_a_declaracao() {
+    for mau in [
+        [2.0, 0.0, 0.0, 1.0],
+        [0.0, -0.5, 0.0, 1.0],
+        [0.0, 0.0, 0.0, 1.5],
+    ] {
+        assert_eq!(
+            check_decl(&[], &com_tipo("c", ScriptValue::Color(mau))),
+            Err(DeclError::ColorOutOfRange("c".into())),
+            "{mau:?} passou"
+        );
+    }
+    // ⭐ O CONTROLO: as duas pontas da faixa são legais.
+    assert!(check_decl(&[], &com_tipo("c", ScriptValue::Color([0.0; 4]))).is_ok());
+    assert!(check_decl(&[], &com_tipo("c", ScriptValue::Color([1.0; 4]))).is_ok());
+}
+
+/// ⚠️ **A finitude passa pela PORTA** ([`ScriptValue::componentes`]) e alcança TODO tipo com
+/// números lá dentro — antes ela era um `if let` sobre o `Number`, e um tipo novo passava calado.
+///
+/// **Mutação que deve sangrar:** devolver `&[]` para o `Vec2`/`Color` na porta.
+#[test]
+fn nenhum_componente_de_nenhum_tipo_pode_ser_nao_finito() {
+    for mau in [
+        ScriptValue::Number(f64::NAN),
+        ScriptValue::Vec2([1.0, f64::INFINITY]),
+        ScriptValue::Vec2([f64::NAN, 0.0]),
+        // ⚠️ Um `NaN` num canal de cor é apanhado pela FINITUDE e nunca pela faixa: um
+        // `(0.0..=1.0).contains(&NaN)` é `false`, e as duas mensagens mandam o artista a sítios
+        // diferentes — a ordem das duas conferências é o que escolhe a certa.
+        ScriptValue::Color([f64::NAN, 0.0, 0.0, 1.0]),
+    ] {
+        assert_eq!(
+            check_decl(&[], &com_tipo("x", mau.clone())),
+            Err(DeclError::BadDefault("x".into())),
+            "{mau:?} passou"
+        );
+    }
+    // ⭐ O CONTROLO: os três tipos sem números passam.
+    assert!(check_decl(&[], &com_tipo("x", ScriptValue::Bool(true))).is_ok());
+    assert!(check_decl(&[], &com_tipo("x", ScriptValue::Text("a".into()))).is_ok());
+}
+
+/// ⭐ **A faixa vale para um `vec2` e é RECUSADA numa cor** — as duas componentes de uma posição
+/// partilham uma faixa (é o que o `@export_range` do oráculo faz sobre um `Vector2`); o domínio de
+/// uma cor é `0..=1` por natureza, e um `min`/`max` ali seria a segunda resposta à mesma pergunta.
+///
+/// **Mutação que deve sangrar:** alargar o `aceita_faixa` a todo tipo.
+#[test]
+fn a_faixa_vale_para_uma_posicao_e_nao_para_uma_cor() {
+    let faixa = PropHint {
+        min: Some(-10.0),
+        max: Some(10.0),
+        step: Some(0.5),
+        options: Vec::new(),
+    };
+    let com_faixa = |v: ScriptValue| PropDecl {
+        name: "p".into(),
+        default: v,
+        hint: faixa.clone(),
+    };
+    assert!(check_decl(&[], &com_faixa(ScriptValue::Vec2([0.0, 0.0]))).is_ok());
+    assert!(check_decl(&[], &com_faixa(ScriptValue::Number(0.0))).is_ok());
+    for sem in [
+        ScriptValue::Color([0.0; 4]),
+        ScriptValue::Bool(false),
+        ScriptValue::Text(String::new()),
+    ] {
+        assert_eq!(
+            check_decl(&[], &com_faixa(sem.clone())),
+            Err(DeclError::BadHint("p".into())),
+            "{sem:?} aceitou uma faixa"
+        );
+    }
+}
+
+/// ⛔ **Uma LISTA continua a pedir um texto** — o enum e os dois tipos novos não se cruzam, e a
+/// recusa é a que o `opcoes_sao_validas` já escrevia.
+#[test]
+fn uma_lista_de_opcoes_nao_se_aplica_a_uma_posicao_nem_a_uma_cor() {
+    for v in [ScriptValue::Vec2([0.0, 0.0]), ScriptValue::Color([0.0; 4])] {
+        let d = PropDecl {
+            name: "m".into(),
+            default: v.clone(),
+            hint: PropHint {
+                options: vec!["a".into(), "b".into()],
+                ..PropHint::default()
+            },
+        };
+        assert_eq!(
+            check_decl(&[], &d),
+            Err(DeclError::BadHint("m".into())),
+            "{v:?} aceitou uma lista"
+        );
+    }
 }

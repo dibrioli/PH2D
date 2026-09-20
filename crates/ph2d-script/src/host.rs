@@ -588,6 +588,10 @@ fn wire_ph2d_api(
     ph2d.set("state_clear", state_clear_fn)?;
     // ⭐ TOP-20 #16 — as declarações de um script (só no topo; ver `crate::module`).
     ph2d.set("property", crate::module::property_binding(lua)?)?;
+    // ⭐⭐ Os dois construtores de valor. ⚠️ Eles **não** são só para a declaração: a tabela que
+    //    devolvem é a mesma que o script lê em `self` (ver `crate::valores`).
+    ph2d.set("vec2", crate::valores::vec2_binding(lua)?)?;
+    ph2d.set("color", crate::valores::color_binding(lua)?)?;
 
     Ok(())
 }

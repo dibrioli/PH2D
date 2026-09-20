@@ -291,3 +291,103 @@ fn o_chip_do_enum_abre_e_a_escolha_chega_com_o_texto_certo() {
     );
     set_current_inspector_script(None);
 }
+
+// ─── vec2 e color ───────────────────────────────────────────────────────────────────────────────
+
+/// Uma secção com as duas fileiras novas, cada uma PRÓPRIA (para o `Reset` também entrar).
+fn info_tipos() -> InspectorScriptInfo {
+    InspectorScriptInfo {
+        props: vec![
+            prop("offset", V::Vec2([1.0, 2.0]), true),
+            prop("tint", V::Color([1.0, 0.25, 0.0, 1.0]), false),
+        ],
+        orphans: Vec::new(),
+        ..info()
+    }
+}
+
+/// ⭐⭐⭐ **Uma POSIÇÃO é UMA fileira com DOIS campos, e a COR é UMA amostra** — e os três estão
+/// vivos sob o dedo.
+///
+/// ⚠️ **O que este gate apanha e nenhum outro apanha:** um controlo pintado, hit-indexado e
+/// **ausente do `populate`** é engolido pelo `is_focusable` do despacho — *um controlo nunca
+/// pintado e um morto sob o dedo dão o MESMO report*, e só o gesto REAL os separa.
+///
+/// **Mutações que devem sangrar:** tirar os ids do `populate_script` · pintar só um dos eixos.
+#[test]
+fn a_posicao_tem_dois_campos_e_a_cor_uma_amostra_e_os_tres_estao_vivos() {
+    let (mut h, mut st) = host(Some(info_tipos()));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let x = rect_de(&rects, ids::INSP_SCRIPT_VEC2_X[0]).expect("o eixo X nao foi pintado");
+    let y = rect_de(&rects, ids::INSP_SCRIPT_VEC2_Y[0]).expect("o eixo Y nao foi pintado");
+    let c = rect_de(&rects, ids::INSP_SCRIPT_COLOR[1]).expect("a amostra nao foi pintada");
+    // ⚠️ **Os dois eixos partilham a fileira** — se um deles descesse, a linha valeria o dobro e a
+    //    secção inteira empurrava tudo o que vem por baixo.
+    assert!(
+        (x.y - y.y).abs() < 0.5,
+        "os dois eixos nao estao na MESMA fileira: {x:?} contra {y:?}"
+    );
+    assert!(x.x + x.w <= y.x + 0.5, "o X tem de vir ANTES do Y");
+    assert!(x.w > 0.0 && y.w > 0.0 && c.w > 0.0);
+    // ⛔ E nenhum controlo de OUTRO tipo foi pintado nestas duas linhas.
+    for id in [
+        ids::INSP_SCRIPT_NUM[0],
+        ids::INSP_SCRIPT_TEXT[0],
+        ids::INSP_SCRIPT_BOOL[0],
+        ids::INSP_SCRIPT_ENUM[1],
+        ids::INSP_SCRIPT_NUM[1],
+    ] {
+        assert!(
+            rect_de(&rects, id).is_none(),
+            "{id:?}: um controlo de outro tipo foi pintado"
+        );
+    }
+    // ⭐ O gesto REAL nos dois eixos — o `clica` reprova alto se o ponteiro não virar evento.
+    //
+    // ⛔ **A amostra NÃO entra aqui, e a exclusão é MEDIDA:** o despacho curto-circuita toda
+    //    amostra de selector (ele abre o selector e devolve), logo ali a ausência de evento é o
+    //    desenho e não um defeito — ela é medida pelo EFEITO no gate irmão.
+    for id in [ids::INSP_SCRIPT_VEC2_X[0], ids::INSP_SCRIPT_VEC2_Y[0]] {
+        let _ = clica(&mut h, &mut st, &rects, id);
+    }
+    set_current_inspector_script(None);
+}
+
+/// ⭐⭐ **Carregar na amostra APONTA o selector a ela — e não escreve no documento.**
+///
+/// ⚠️ **As duas metades são a lei:** é o selector apontado que faz a semente mandar a divergência
+/// como edição (a pré-visualização), e uma escrita no clique poria uma cor no `Ctrl+Z` só por o
+/// artista ter aberto o selector para olhar.
+///
+/// **Mutações que devem sangrar:** não apontar o selector · empurrar um `SetColor` no clique.
+#[test]
+fn a_amostra_abre_o_selector_e_o_clique_nao_escreve_nada() {
+    let (mut h, mut st) = host(Some(info_tipos()));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let r = rect_de(&rects, ids::INSP_SCRIPT_COLOR[1]).expect("a amostra nao foi pintada");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    let _ = h.drained_actions();
+    // ⚠️ **Um `Down` e mais nada** — o despacho curto-circuita aqui e nunca emite um `Click`, logo
+    //    medir eventos mediria a coisa errada. A régua é o EFEITO.
+    let evs = h.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    assert!(
+        evs.is_empty(),
+        "uma amostra de selector nao emite evento — se passou a emitir, o desenho mudou: {evs:?}"
+    );
+    assert_eq!(
+        edicoes(&h.drained_actions()),
+        Vec::<E>::new(),
+        "o clique na amostra escreveu no documento"
+    );
+    assert_eq!(
+        h.store().picker_target(),
+        Some(ids::INSP_SCRIPT_COLOR[1]),
+        "o selector nao ficou apontado a esta amostra"
+    );
+    // ⭐ E ele nasce semeado com a cor GRAVADA, senão ele abre noutra cor e o 1.º toque salta.
+    assert_eq!(
+        h.store().widget_color(ids::INSP_SCRIPT_COLOR[1]),
+        Some([0xff, 0x40, 0x00, 0xff])
+    );
+    set_current_inspector_script(None);
+}

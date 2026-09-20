@@ -30,6 +30,7 @@ pub mod module;
 pub mod props;
 pub mod registry;
 pub mod scene;
+mod valores;
 
 pub use component::LuauScript;
 pub use host::ScriptHost;

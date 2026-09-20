@@ -264,3 +264,48 @@ fn o_ficheiro_da_cena_declara_a_lista_que_o_roteiro_promete() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O ficheiro da cena DECLARA a posição e a cor que o roteiro promete — e o `(0, 1)` de
+/// omissão deixa a cena BYTE-IDÊNTICA à de antes desta wave.**
+///
+/// ⚠️⚠️ **A segunda metade é a que importa e a primeira sozinha mente:** um `direction` qualquer
+/// declararia a fileira e mudaria o que os três bonecos fazem — *uma cena que muda de
+/// comportamento ao ganhar um controlo deixa de ser a cena que o dono aprovou*. O `(0, 1)` é a
+/// reta para cima, e `brilho = 1` com a cor branca deixa o passeio exactamente onde estava.
+///
+/// **Mutações que devem sangrar:** trocar o default por `(1, 0)` · escurecer a cor de fábrica ·
+/// tirar qualquer das duas declarações · tirar a frase do roteiro.
+#[test]
+fn o_ficheiro_da_cena_declara_a_posicao_e_a_cor_que_o_roteiro_promete() {
+    use ph2d_script::props::ScriptValue;
+    let h = ph2d_script::ScriptHost::new().expect("a VM da casa arranca");
+    let m = ph2d_script::module::load_module(h.runtime().lua(), "bob.luau", super::BOB_LUAU)
+        .expect("o ficheiro da cena CARREGA — um erro aqui e' a cena partida, nao o gate");
+    let achar = |n: &str| {
+        m.decls
+            .iter()
+            .find(|d| d.name == n)
+            .unwrap_or_else(|| panic!("o ficheiro da cena declara `{n}`"))
+            .default
+            .clone()
+    };
+    assert_eq!(
+        achar("direction"),
+        ScriptValue::Vec2([0.0, 1.0]),
+        "o default tem de ser a RETA PARA CIMA — qualquer outro muda a cena que o dono aprovou"
+    );
+    assert_eq!(
+        achar("tint"),
+        ScriptValue::Color([1.0, 1.0, 1.0, 1.0]),
+        "a cor de fabrica tem de ser BRANCA — o brilho dela multiplica o passeio, e qualquer \
+         outra encolhe-o em silencio"
+    );
+    // ⭐ E o roteiro nomeia as duas fileiras pelo nome que o painel pinta.
+    let roteiro = include_str!("script_smoke.rs");
+    for n in ["direction", "tint"] {
+        assert!(
+            roteiro.contains(&format!("«{n}»")),
+            "o roteiro nao nomeia a fileira «{n}»"
+        );
+    }
+}

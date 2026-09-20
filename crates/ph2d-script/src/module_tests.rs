@@ -194,3 +194,120 @@ fn um_modulo_le_a_biblioteca_mas_nao_reescreve_a_casa() {
         .expect("a casa é só de leitura");
     assert!(matches!(e, ModuleError::Runtime(_)), "{e:?}");
 }
+
+// ─── vec2 e color: os construtores ──────────────────────────────────────────────────────────────
+
+/// ⭐⭐ **Os dois construtores atravessam a sandbox e dão o tipo certo** — com a `color` a assumir
+/// opaco quando o quarto argumento falta.
+#[test]
+fn os_construtores_declaram_o_tipo_do_valor() {
+    let h = host();
+    let m = load_module(
+        h.runtime().lua(),
+        "tipos.luau",
+        r#"
+ph2d.property("offset", ph2d.vec2(1.5, -2))
+ph2d.property("tint", ph2d.color(1, 0.5, 0))
+ph2d.property("fade", ph2d.color(0, 0, 0, 0.25))
+"#,
+    )
+    .expect("carrega");
+    assert_eq!(m.decls[0].default, ScriptValue::Vec2([1.5, -2.0]));
+    assert_eq!(m.decls[1].default, ScriptValue::Color([1.0, 0.5, 0.0, 1.0]));
+    assert_eq!(
+        m.decls[2].default,
+        ScriptValue::Color([0.0, 0.0, 0.0, 0.25])
+    );
+}
+
+/// ⭐⭐⭐ **O PORTÃO-COROA: a forma que o artista ESCREVE é a forma que ele LÊ em `self`.**
+///
+/// ⚠️⚠️ **Sem isto o artista tem duas formas para a mesma coisa** — escreveria a declaração como
+/// uma lista e leria `self.offset.x` como um registo, e copiar uma para a outra produziria um
+/// default que o painel não sabe pintar. A propriedade é comprada por [`crate::valores::tabela_de`]
+/// ter **dois** chamadores (o construtor e o `to_lua` da cena), e é isso que este gate mede: a
+/// tabela que o construtor devolveu ao SCRIPT e a que a casa escreve para o MESMO valor têm de ter
+/// as mesmas chaves e os mesmos números.
+///
+/// **Mutações que devem sangrar:** trocar uma chave num dos lados · acrescentar um campo só num.
+#[test]
+fn a_forma_que_o_artista_escreve_e_a_forma_que_ele_le() {
+    let h = host();
+    let lua = h.runtime().lua();
+    let m = load_module(
+        lua,
+        "forma.luau",
+        r#"
+ph2d.property("offset", ph2d.vec2(1.5, -2))
+ph2d.property("tint", ph2d.color(1, 0.5, 0, 0.25))
+"#,
+    )
+    .expect("carrega");
+    for d in &m.decls {
+        // O que o SCRIPT vê quando escreve o construtor.
+        let do_artista: mlua::Table = match &d.default {
+            ScriptValue::Vec2([x, y]) => lua
+                .load(format!("return ph2d.vec2({x}, {y})"))
+                .eval()
+                .expect("o construtor corre"),
+            ScriptValue::Color([r, g, b, a]) => lua
+                .load(format!("return ph2d.color({r}, {g}, {b}, {a})"))
+                .eval()
+                .expect("o construtor corre"),
+            outro => panic!("esperava um tipo novo, veio {outro:?}"),
+        };
+        // O que a CASA escreve em `self` para o mesmo valor — a mesma porta do `to_lua`.
+        let mlua::Value::Table(da_casa) = crate::valores::tabela_de(lua, &d.default)
+            .expect("constroi")
+            .expect("os dois tipos novos SAO tabela")
+        else {
+            panic!("a porta devolveu algo que nao e' uma tabela");
+        };
+        let chaves = |t: &mlua::Table| {
+            let mut ks: Vec<String> = t
+                .clone()
+                .pairs::<String, mlua::Value>()
+                .map(|par| par.expect("par").0)
+                .collect();
+            ks.sort();
+            ks
+        };
+        assert_eq!(
+            chaves(&do_artista),
+            chaves(&da_casa),
+            "`{}`: o script e a casa escrevem CHAVES diferentes",
+            d.name
+        );
+        for k in chaves(&do_artista) {
+            let a: mlua::Value = do_artista.get(k.as_str()).expect("do artista");
+            let b: mlua::Value = da_casa.get(k.as_str()).expect("da casa");
+            assert_eq!(
+                format!("{a:?}"),
+                format!("{b:?}"),
+                "`{}`.{k}: o script le' um valor e a casa escreve outro",
+                d.name
+            );
+        }
+    }
+}
+
+/// ⛔ **Uma tabela que não se declara continua a ser recusada** — e a lista `{1, 0, 0}`, que é a
+/// forma que alguém escreveria a adivinhar, é o caso que importa: *adivinhar pelo comprimento é um
+/// palpite, e um `{1, 0, 0}` lê-se igual a uma cor vermelha e a uma posição com lixo no fim.*
+#[test]
+fn uma_tabela_crua_nao_e_um_default() {
+    let h = host();
+    let lua = h.runtime().lua();
+    for src in [
+        r#"ph2d.property("t", {1, 0, 0})"#,
+        r#"ph2d.property("t", { x = 1, y = 2 })"#,
+        r#"ph2d.property("t", { __kind = "vec3", x = 1, y = 2, z = 3 })"#,
+    ] {
+        let e = load_module(lua, "mau.luau", src).err().expect(src);
+        assert_eq!(
+            e,
+            ModuleError::Decl(DeclError::BadDefault("t".into())),
+            "{src}"
+        );
+    }
+}

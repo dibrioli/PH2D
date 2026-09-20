@@ -160,6 +160,8 @@ mod sync_sprite_value;
 mod sync_statemachine;
 /// ⭐ A SEMENTE de um campo de texto — a porta única das três secções que os têm.
 mod sync_text_field;
+/// ⭐ As SEIS amostras de cor da sprite — irmão do `sync`, que voltou ao tecto em 2026-09-20.
+mod sync_tint_swatches;
 mod sync_tween;
 mod sync_weapon;
 

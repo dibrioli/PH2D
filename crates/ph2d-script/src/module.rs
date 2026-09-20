@@ -169,6 +169,13 @@ fn read_decl(
             Ok(s) => ScriptValue::Text(s.to_owned()),
             Err(_) => return Err(DeclError::BadDefault(name)),
         },
+        // ⭐⭐⭐ **Uma TABELA só é um default se ela se DECLARAR** — o `__kind` que os construtores
+        // põem. ⛔ Adivinhar pelo comprimento (`{1,0,0}` é uma cor? uma posição com lixo?) é o
+        // palpite que o §7 do handoff proibiu por escrito.
+        Value::Table(t) => match crate::valores::tabela_tipada(t) {
+            Some(v) => v,
+            None => return Err(DeclError::BadDefault(name)),
+        },
         _ => return Err(DeclError::BadDefault(name)),
     };
     let mut hint = PropHint::default();

@@ -87,6 +87,22 @@ mod counters {
     thread_local! {
         static BUILDS: Cell<u32> = const { Cell::new(0) };
         static COOKS: Cell<u32> = const { Cell::new(0) };
+        static CARIMBOS: Cell<u32> = const { Cell::new(0) };
+        static SIMPLES: Cell<u32> = const { Cell::new(0) };
+    }
+    pub(super) fn bump_stamp(preparado: bool) {
+        if preparado {
+            CARIMBOS.with(|c| c.set(c.get() + 1));
+        } else {
+            SIMPLES.with(|c| c.set(c.get() + 1));
+        }
+    }
+    /// `(carimbos, simples)` desde a última leitura.
+    pub(super) fn take_stamps() -> (u32, u32) {
+        (
+            CARIMBOS.with(|c| c.replace(0)),
+            SIMPLES.with(|c| c.replace(0)),
+        )
     }
     pub(super) fn bump_build() {
         BUILDS.with(|c| c.set(c.get() + 1));
@@ -106,6 +122,15 @@ pub(crate) fn count_build() {
 }
 pub(crate) fn count_cook() {
     counters::bump_cook();
+}
+/// ⭐⭐ **Conta por CÓPIA qual das duas rotas o lote tomou.**
+///
+/// ⚠️ Ele existe porque a economia do carimbo preparado é **invisível a toda régua de valor**: as
+/// duas rotas escrevem os MESMOS bytes (é isso que o gate da `ph2d-vector` prova), logo nenhuma
+/// comparação de desenho a vê. *Uma cura que não muda o que se vê só pode ser gateada pela CONTA* —
+/// a mesma lei que o passe de contacto do Motion já pagou.
+pub(crate) fn count_stamp(preparado: bool) {
+    counters::bump_stamp(preparado);
 }
 
 /// Desenha UMA forma pelo caminho do produto e devolve `(construções, cozimentos)`.
@@ -274,5 +299,72 @@ fn measure_encode_by_style() {
         "\nN={N}  fill={f:.3} ms  stroke={s:.3} ms  both={b:.3} ms   fill/stroke={:.2}x  both/fill={:.2}x",
         f / s,
         b / f
+    );
+}
+
+/// ⭐⭐⭐ **O LOTE CARIMBA A FORMA PREPARADA — uma CONTA, porque não há desenho que a veja.**
+///
+/// As duas rotas escrevem os MESMOS bytes (gate `o_carimbo_preparado_escreve_os_mesmos_bytes`, na
+/// `ph2d-vector`), logo **nenhuma** comparação de imagem, de encoding ou de pixel distingue a cura
+/// da ausência dela: apagar a preparação deixaria tudo verde e o produto `3,2×` mais lento.
+/// ⇒ o gate mede a CONTA — quantas cópias tomaram cada rota.
+///
+/// ⚠️ **A rota entra por PARÂMETRO** (`draw_shared_instances_com`) e não pela variável de ambiente:
+/// *um gate que lê o ambiente mede a máquina*.
+///
+/// ⚠️ Mutação que tem de sangrar: apagar a chamada a `prepare_primitive`; devolver `None` nela;
+/// carimbar também o vetor-DOCUMENTO.
+#[test]
+fn o_lote_carimba_a_forma_preparada_uma_vez_por_geometria() {
+    const N: usize = 40;
+    let primitivo = ph2d_vec_scene::ellipse([0.0, 0.0], 0.4, 0.4);
+    let mut documento = VecScene::demo_grid(1).paths_mut()[0].clone();
+    documento.fill = Some(Paint::solid(Rgba8::new(90, 150, 230, 255)));
+
+    for (nome, path, preparado, esperado) in [
+        // O primitivo pela rota nova: TODAS as cópias carimbam.
+        ("primitivo preparado", &primitivo, true, (N as u32, 0)),
+        // O CONTROLO da própria régua: com a rota desligada, nenhuma carimba. Sem ele os
+        // `assert` de cima passariam com um contador que responde sempre «carimbou».
+        ("primitivo simples", &primitivo, false, (0, N as u32)),
+        // ⛔ Um vetor-DOCUMENTO NUNCA é carimbado, e isso é lei e não omissão: ele honra a tinta
+        // AUTORADA dele (que pode ser gradiente, padrão ou dilatação), e nada disso é «uma cor por
+        // cópia».
+        ("documento", &documento, true, (0, N as u32)),
+    ] {
+        let items: Vec<(u32, Affine, [f32; 4])> = (0..N)
+            .map(|i| (1u32, Affine::translate((i as f64, 0.0)), [1.0; 4]))
+            .collect();
+        let mut target = VectorScene::new();
+        let _ = counters::take_stamps();
+        crate::instance::draw_shared_instances_com(
+            items.iter().copied(),
+            |_| Some(path),
+            &mut target,
+            preparado,
+        );
+        assert_eq!(
+            counters::take_stamps(),
+            esperado,
+            "{nome}: (carimbos, simples) nao bate"
+        );
+    }
+}
+
+/// ⭐ **O caminho de OMISSÃO é o carimbo preparado** — a lei da porta de bissecção, afirmada sobre
+/// a função PURA dela, sem tocar no ambiente do processo.
+#[test]
+fn a_porta_de_bisseccao_shipa_ligada() {
+    assert!(
+        crate::instance::preparado_por(None),
+        "com a variavel AUSENTE o produto tem de carimbar — e' o caminho de omissao"
+    );
+    assert!(
+        !crate::instance::preparado_por(Some("0")),
+        "`0` tem de devolver a rota antiga, senao a bisseccao nao bissecta nada"
+    );
+    assert!(
+        crate::instance::preparado_por(Some("1")),
+        "qualquer outro valor fica na rota nova"
     );
 }

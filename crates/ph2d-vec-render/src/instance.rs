@@ -133,6 +133,21 @@ pub fn draw_shared_instances<'p>(
     resolve: impl Fn(u32) -> Option<&'p VecPath>,
     target: &mut VectorScene,
 ) {
+    draw_shared_instances_com(instances, resolve, target, carimbo_preparado());
+}
+
+/// O CORPO do lote, com a rota como **parâmetro**.
+///
+/// ⚠️⚠️ **Ela é um parâmetro e não uma leitura do ambiente, e a razão é uma lei desta casa:** *uma
+/// lei que só é alcançável pelo ambiente não é gateável, e um gate que lê o ambiente mede a
+/// máquina* (`CLAUDE.md` §5, `Cercas`). Os gates entram por aqui e escolhem a rota; o ambiente é
+/// lido **uma vez**, na porta pública de cima.
+pub(crate) fn draw_shared_instances_com<'p>(
+    instances: impl IntoIterator<Item = (u32, Affine, [f32; 4])>,
+    resolve: impl Fn(u32) -> Option<&'p VecPath>,
+    target: &mut VectorScene,
+    preparado: bool,
+) {
     let mut cache: std::collections::BTreeMap<u32, (PathTess, Option<PreparedFill>)> =
         std::collections::BTreeMap::new();
     for (handle, transform, tint) in instances {
@@ -141,9 +156,11 @@ pub fn draw_shared_instances<'p>(
         };
         let (tess, prep) = cache.entry(handle).or_insert_with(|| {
             let tess = tessellate_shape_instance(path);
-            let prep = prepare_primitive(path, &tess);
+            let prep = preparado.then(|| prepare_primitive(path, &tess)).flatten();
             (tess, prep)
         });
+        #[cfg(test)]
+        crate::encode_cost_tests::count_stamp(prep.is_some());
         draw_shape_instance_tessellated(path, tess, prep.as_ref(), transform, tint, target);
     }
 }
@@ -160,7 +177,7 @@ pub fn draw_shared_instances<'p>(
 /// que é o que `N` cópias repetem. *Um traço por cópia é raro no carimbo, e assá-lo obrigaria a
 /// preparar também a expansão da caneta — outra wave, e sem medição que a peça.*
 fn prepare_primitive(path: &VecPath, tess: &PathTess) -> Option<PreparedFill> {
-    if path.fill.is_some() || !carimbo_preparado() {
+    if path.fill.is_some() {
         return None;
     }
     tess.fill_bp
@@ -181,7 +198,17 @@ fn prepare_primitive(path: &VecPath, tess: &PathTess) -> Option<PreparedFill> {
 /// bissectar — haveria dois produtos.
 fn carimbo_preparado() -> bool {
     static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *LIGADO.get_or_init(|| std::env::var("PH2D_CARIMBO_PREPARADO").as_deref() != Ok("0"))
+    *LIGADO.get_or_init(|| preparado_por(std::env::var("PH2D_CARIMBO_PREPARADO").ok().as_deref()))
+}
+
+/// A lei da porta, **pura** — o que a variável significa, sem a ler.
+///
+/// ⚠️ Ela existe separada por uma razão de instrumento: um gate que leia o ambiente mede a
+/// **máquina** em que corre, e a pergunta *«qual é o caminho de OMISSÃO?»* é sobre o produto.
+/// Aqui ela é uma função de um `Option<&str>`, logo o gate afirma as três células (ausente ·
+/// `"0"` · outra coisa) sem tocar no processo.
+pub(crate) fn preparado_por(valor: Option<&str>) -> bool {
+    valor != Some("0")
 }
 
 #[cfg(test)]

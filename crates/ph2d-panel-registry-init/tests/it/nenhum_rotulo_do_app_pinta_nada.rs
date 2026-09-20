@@ -156,14 +156,35 @@ fn bandas(col_w: f32) -> ph2d_editor_core::screens::layout::ChromeBands {
 /// painéis e `3 146` rótulos; a árvore inteira, com a unificação de features, mede **28** e
 /// **`4 022`** — e traz **dois cortes a mais**, que a primeira lista não tinha.
 ///
-/// ⚠️ *Uma crate testada sozinha é testada num mundo que o produto não habita* (`CLAUDE.md` §2), e
-/// aqui isso lê-se como uma catraca completa. O piso cobre os dois mundos de propósito, e o censo
-/// de obsolescência **salta** as linhas cujo painel esta build não liga — senão a corrida com as
-/// features pobres acusaria de obsoletas duas linhas vivas.
-const PISO_DE_MEDICOES: usize = 2_800;
+/// ⚠️ *Uma crate testada sozinha é testada num mundo que o produto não habita* (`CLAUDE.md` §2).
+///
+/// ⛔⛔⛔ **E O PISO COBRIA OS DOIS MUNDOS, O QUE O FAZIA NÃO AFIRMAR NADA SOBRE NENHUM.** A
+/// redacção anterior punha-o no número MENOR *«de propósito, para o gate passar das duas
+/// maneiras»* — e a frase seguinte, escrita pelo mesmo autor, já dizia porque isso estava errado:
+/// *«um piso posto no menor dos dois deixa de afirmar o que acontece no maior — e é lá que o app
+/// de facto corre»*. A integração de 2026-09-20 cobrou-a: os três painéis que só a árvore inteira
+/// liga (`flip`, `painter_layers`, `wet_tuning`) cortavam **7** rótulos que as duas catracas
+/// declaravam a ZERO, e as duas fecharam **verdes** em todas as corridas `-p` da linha.
+/// ⇒ *a régua estava calibrada num âmbito e julgada noutro*, que é a forma exacta que
+/// [`feedback_an_operation_count_is_not_a_profile_and_the_build_profile_decides_the_number`]
+/// descreve uma volta abaixo.
+///
+/// ⭐ **Hoje o piso é o do âmbito em que o app CORRE, e a corrida pobre reprova ALTO** em vez de
+/// medir menos em silêncio. Medido em 2026-09-20, com `--cargo-profile ci-test`:
+///
+/// | âmbito | painéis | rótulos |
+/// |---|---:|---:|
+/// | `-p ph2d-panel-registry-init` (features de omissão) | `24` | `11 375` |
+/// | `--workspace` (unificação de features — o que o `ship.sh` e o CI correm) | **`28`** | **`12 545`** |
+///
+/// ⚠️ O piso de medições fica **entre os dois** (`12 000`): abaixo do que a árvore inteira produz,
+/// acima do que a pobre produz. *Um piso que ambos os âmbitos passam não é um piso, é um adorno.*
+const PISO_DE_MEDICOES: usize = 12_000;
 
 /// ⛔ E o piso de PAINÉIS: uma varredura que registasse zero painéis passaria os quatro gates.
-const PISO_DE_PAINEIS: usize = 24;
+/// ⚠️ Ele é **28** — a população da árvore inteira — pela razão da irmã acima: com `24` a corrida
+/// `-p` respondia sobre um app a que faltam três painéis, e respondia VERDE.
+const PISO_DE_PAINEIS: usize = 28;
 
 /// ⭐⭐ **A DÍVIDA NOMEADA — o que sai cortado HOJE, em inglês.** Ela só **encolhe**: uma linha
 /// daqui sai quando alguém curar o rótulo, e o censo de obsolescência **reprova** se ela ficar a
@@ -530,6 +551,22 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     ("authored", 1),
     ("model3d", 1),
     ("widget_lab", 1),
+    // ⛔⛔⛔ **OS TRÊS QUE SÓ A ÁRVORE INTEIRA VÊ** (integração de 2026-09-20). Eles estão atrás de
+    //    features que o `default` desta crate NÃO liga (`panel-flip`, `panel-painter-layers`,
+    //    `panel-wet-tuning`) e chegam pelo `shells/desktop` ⇒ numa corrida `-p` não são sequer
+    //    REGISTADOS, e a catraca lia `0` como *«este painel não corta»* em vez de *«este painel
+    //    não existe aqui»*. *Os dois lêem-se igual num número.* O piso de população passou a
+    //    recusar aquele âmbito (ver [`PISO_DE_PAINEIS`]), e estes números são a medição do âmbito
+    //    em que o app corre.
+    // ⚠️ São **dívida da linha**, não decisão de produto: o §7 do handoff de 20/09 já os nomeia
+    //    (*«os ~46 cortes do degrau estreito FORA do Inspector, em sete painéis»*) — o que faltava
+    //    era a régua conseguir vê-los.
+    // `["Delete", "Duplicate"]`
+    ("flip", 2),
+    // `["Composite Brush", "Digital Basic", "Sync with other tools"]`
+    ("painter_layers", 3),
+    // `["Glaze layering (K-M)", "Pigment mixing (K-M)"]`
+    ("wet_tuning", 2),
 ];
 
 /// ⭐⭐⭐ **QUANTOS ROTULOS PERDEM LETRAS** — a catraca que o DONO ve, e a irmã da de cima.
@@ -562,6 +599,11 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     ("authored", 1),
     ("model3d", 1),
     ("widget_lab", 1),
+    // ⛔ Os dois que só a árvore inteira vê — o mecanismo está na irmã
+    //    [`CORTES_NO_DEGRAU_ESTREITO`]. ⚠️ O `wet_tuning` NÃO entra aqui: os dois rótulos dele
+    //    são cortes que **não acabam em reticência**, e é isso que separa esta catraca da irmã.
+    ("flip", 2),
+    ("painter_layers", 3),
 ];
 
 /// ⭐⭐⭐ **E NENHUM PAINEL PASSA A COMER MAIS LETRAS** — as duas metades, como a irmã.
@@ -789,7 +831,12 @@ fn varre() -> Vec<Achado> {
         tudo.len() >= PISO_DE_MEDICOES && visitados >= PISO_DE_PAINEIS,
         "a varredura mediu {} rótulos em {visitados} painéis (piso {PISO_DE_MEDICOES} / \
          {PISO_DE_PAINEIS}) — ou um painel deixou de pintar, ou o censo deixou de ouvir a lei da \
-         reticência. Uma varredura que lê pouco devolve ZERO cortes e lê-se como aprovação.",
+         reticência. Uma varredura que lê pouco devolve ZERO cortes e lê-se como aprovação.\n\
+         ⚠️ SE VOCÊ CORREU ISTO COM `-p ph2d-panel-registry-init`, a causa é essa e não o código: \
+         `flip`, `flip_frames`, `painter_layers` e `wet_tuning` NÃO estão no `default` desta crate \
+         — eles chegam pelo `shells/desktop`, e só a unificação de features de um build de \
+         WORKSPACE os acende (medido 2026-09-20: 24 painéis/11 375 rótulos contra 28/12 545). \
+         ⇒ corra `cargo nextest run --workspace -E 'test(nenhum_rotulo_do_app_pinta_nada)'`.",
         tudo.len()
     );
     tudo

@@ -71,6 +71,33 @@ pub struct DockSides {
 /// sério publicam o rect da coluna INTEIRO.
 const COLUMN_TAKEN_FRAC: f32 = 0.5; // LITERAL-PX-OK: fracção de área, não um token de desenho
 
+/// **E quanto do PAINEL a coluna tem de ser.** A segunda metade da pergunta, e sem ela a primeira
+/// fecha um CICLO.
+///
+/// ⛔⛔⛔ **Report do dono (2026-09-21): *«pisca do lado direito quando escondemos o inspector e
+/// aumentamos muito a área do grafo de nós»*.** Com a coluna da direita vazia a área de desenho
+/// cresce para dentro dela (que é o que este módulo existe para permitir) — e o painel que vive na
+/// área passa a **publicar um rect que cobre a coluna**. No quadro seguinte a régua de cima lia
+/// isso como *«a coluna está ocupada»*, a área encolhia, o painel encolhia com ela, e no quadro a
+/// seguir a coluna voltava a ler-se livre. **Período dois, a 60 Hz** — uma faixa da largura do
+/// Inspector a aparecer e a desaparecer.
+///
+/// ⚠️ **A régua fechava um ciclo consigo mesma:** *a área cresce porque a coluna está livre; a
+/// coluna lê-se ocupada porque a área cresceu.*
+///
+/// ⭐⭐ **O discriminador é de FORMA e continua sem lista nenhuma:** um inquilino de coluna publica
+/// **o rect da coluna** (são `18` painéis a publicar o `ctx.slot`, que é o slot do encaixe), e um
+/// painel da ÁREA que transbordou para cima dela é muito mais largo. Medido na reprodução do
+/// report (janela `1930×1012`, grafo no máximo): a coluna é **`0,185`** da área do grafo e
+/// **`1,000`** da área de um inquilino a sério — o vale tem `5,4×`, e a barra fica no meio, no
+/// mesmo número da metade de cima: *para tomar uma coluna, o painel e a coluna têm de ser,
+/// maioritariamente, a mesma coisa*.
+///
+/// ⚠️ **Ela só APERTA:** todo rect que deixa de tomar uma coluna já não a tomava por outra via
+/// nenhuma — logo os casos que a metade de cima recusa (o popover que roça) continuam recusados,
+/// e o inquilino que nenhuma lista nomeia continua a entrar.
+const PANEL_IS_THE_COLUMN_FRAC: f32 = 0.5; // LITERAL-PX-OK: fracção de área, não um token de desenho
+
 impl DockSides {
     /// As duas colunas ocupadas — o estado do mockup de referência, e o que os construtores que
     /// **não perguntam** assumem (`for_viewport` e irmãos, usados por fixtures e testes de
@@ -110,10 +137,16 @@ impl DockSides {
     }
 }
 
-/// O rect `r` **toma** a coluna `col`? (cobre ao menos [`COLUMN_TAKEN_FRAC`] da área dela)
+/// O rect `r` **toma** a coluna `col`?
+///
+/// As duas metades, e cada uma recusa uma coisa diferente: a sobreposição cobre ao menos
+/// [`COLUMN_TAKEN_FRAC`] da **coluna** (senão é um popover a roçar) **e** ao menos
+/// [`PANEL_IS_THE_COLUMN_FRAC`] do **painel** (senão é um painel da área que transbordou para cima
+/// dela — ver a doc daquela constante, que é o report do piscar).
 fn takes(r: Rect, col: Rect) -> bool {
     let area = col.w * col.h;
-    if area <= 0.0 {
+    let area_r = r.w * r.h;
+    if area <= 0.0 || area_r <= 0.0 {
         return false;
     }
     let w = (r.x + r.w).min(col.x + col.w) - r.x.max(col.x);
@@ -121,5 +154,6 @@ fn takes(r: Rect, col: Rect) -> bool {
     if w <= 0.0 || h <= 0.0 {
         return false;
     }
-    (w * h) / area >= COLUMN_TAKEN_FRAC
+    let sobreposta = w * h;
+    sobreposta / area >= COLUMN_TAKEN_FRAC && sobreposta / area_r >= PANEL_IS_THE_COLUMN_FRAC
 }

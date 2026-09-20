@@ -89,9 +89,30 @@ fn matcaps() -> &'static [&'static str] {
 /// compilador: *a irmã do modelador precisa de um gate para a mesma garantia porque lá as fileiras
 /// são `Vec`s que podem ficar vazias sem deixar de compilar.*
 pub fn arma() {
+    set_current_sculpt3d(Some(retrato(UiLevel::Pro, true)));
+}
+
+/// ⭐⭐⭐ **O MESMO retrato, no estado do DIA A DIA** — nível `Basic` e o filtro DESARMADO.
+///
+/// ⛔⛔ **Ele existe porque a irmã arma o estado MÁXIMO, e as duas respondem a perguntas
+/// diferentes.** A [`arma`] pinta tudo de propósito (é o que faz uma régua de LARGURA ver todos os
+/// rótulos), e medir a ALTURA do painel nela lê o **pior caso**: medido em 2026-09-20, as catorze
+/// fichas do filtro sozinhas valem `~221 px`, e elas **não são pintadas** enquanto o artista não
+/// armar o filtro. *Uma coluna que colapsa dois estados num número descreve um app que ninguém
+/// usa.*
+///
+/// ⚠️ **Ela partilha o construtor** ([`retrato`]) — duas cópias divergiriam no primeiro campo novo,
+/// e a garantia que o cabeçalho deste ficheiro promete (*um campo novo é erro de compilação aqui*)
+/// vale por haver **UM** sítio a nomear os quinze.
+pub fn arma_o_dia_a_dia() {
+    set_current_sculpt3d(Some(retrato(UiLevel::Basic, false)));
+}
+
+/// O retrato, com os dois botões que separam o **pior caso** do **dia a dia**.
+fn retrato(nivel: UiLevel, filtro_armado: bool) -> Sculpt3dSnapshot {
     let ui = Sculpt3dUi {
         // ⚠️ Ver o cabeçalho: em `Basic` metade das fileiras não é pintada.
-        ui_level: UiLevel::Pro,
+        ui_level: nivel,
         // Um material escolhido — sem isto o chip do rig ganha e os dez nomes não são medidos.
         // ⚠️⚠️ **O campo `matcap: Option<u8>` MORREU na `line/sculpt3d`** (o commit da luz PLANA):
         //    com que luz olhar passou a ser UM enum de três estados (`Flat` · `Rig` · `Matcap(i)`),
@@ -104,13 +125,13 @@ pub fn arma() {
         wireframe: true,
         ..Sculpt3dUi::default()
     };
-    set_current_sculpt3d(Some(Sculpt3dSnapshot {
+    Sculpt3dSnapshot {
         ui,
         // ⚠️ O filtro ARMADO pinta a fileira dele, que é outra caixa. ⛔ Ele e o `transform` são
         //    mutuamente exclusivos por construção na cena — armar os dois pintaria um estado que o
         //    produto não sabe representar.
         transform: None,
-        filter_armed: true,
+        filter_armed: filtro_armado,
         dyntopo: true,
         level: 1,
         level_count: 3,
@@ -127,7 +148,7 @@ pub fn arma() {
         alpha_seed: 0.35,
         model_span: 2.0,
         has_bake_target: true,
-    }));
+    }
 }
 
 /// ⛔ **Obrigatório:** a porta é `thread_local` e o binário de teste corre todos os módulos na
@@ -144,9 +165,18 @@ pub fn desarma() {
 #[test]
 fn a_fixtura_arma_o_nivel_que_pinta_mais() {
     const ESTE: &str = include_str!("o_sculpt3d_armado.rs");
+    // ⛔⛔ **A AGULHA MONTA-SE, e a razão é que este gate lê o PRÓPRIO ficheiro.** A redacção
+    //    anterior procurava `ui_level: UiLevel::Pro`, e essa frase aparece **no corpo deste
+    //    teste** (o `pro` que ele constrói para comparar) ⇒ ela era satisfeita por si mesma, e
+    //    trocar o nível na fixtura tê-lo-ia deixado VERDE. *Um censo textual que se lê a si mesmo
+    //    encontra sempre o que procura.*
+    // ⭐ A forma montada nunca existe inteira no fonte, que é a mesma cura que a vassoura do HR-15
+    //    desta casa usa.
+    let agulha = concat!("retrato(UiLevel::", "Pro, true)");
     assert!(
-        ESTE.contains("ui_level: UiLevel::Pro"),
-        "a fixtura deixou de armar o nivel que pinta mais"
+        ESTE.contains(agulha),
+        "a fixtura deixou de armar o pior caso — ela tem de pedir o nivel que pinta MAIS e o \
+         filtro ARMADO, senao a varredura de largura deixa de ver metade dos rotulos deste painel"
     );
     let base = Sculpt3dUi::default();
     let pro = Sculpt3dUi {

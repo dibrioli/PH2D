@@ -58,6 +58,14 @@ pub const SCULPT3D_SEC_BAKE: NodeId = hash_node_id("sculpt3d.sec.bake");
 /// ⚠️ **O tamanho é o do `Verb::ALL`, e o gate o compara** — um verbo novo sem
 /// chip aqui é uma ferramenta que o artista não alcança, que é exatamente o que
 /// aconteceu com o `Magnify` antes de ele ganhar a tecla `A`.
+/// ⭐⭐⭐ **O SELECTOR DE PINCÉIS — o chip que substituiu as 38 fichas.**
+///
+/// Ordem do dono, 2026-09-20. A faixa de verbos media `276 px` num painel que estoura o encaixe
+/// em `1 493`, e os `38` chips são hoje **um** botão cuja face é o pincel na mão e cujo clique abre
+/// a paleta ([`crate::brush_palette`]). ⚠️ Os ids das 38 fichas **ficam** — eles são a identidade
+/// de cada item da paleta, e trocá-los por ids novos daria ao app dois sítios para o mesmo verbo.
+pub const SCULPT3D_OPEN_BRUSHES: NodeId = hash_node_id("sculpt3d.open_brushes");
+
 pub const SCULPT3D_VERB: [NodeId; 38] = [
     hash_node_id("sculpt3d.verb.0"),
     hash_node_id("sculpt3d.verb.1"),

@@ -463,6 +463,14 @@ pub enum Sculpt3dIntent {
     /// guardasse uma segunda cópia do arm para decidir. Clicar o aceso desarma —
     /// e quem faz essa conta é `Sculpt3dScene::arm_transform`, uma vez.
     ArmTransform(ph2d_sculpt3d::TransformKind),
+    /// ⭐⭐⭐ **ABRE A PALETA DE PINCÉIS** — o selector que saiu do painel (ordem do dono,
+    /// 2026-09-20).
+    ///
+    /// ⚠️ **Sem operando, e a razão é que ele não escolhe nada**: escolher é o que o *pick* da
+    /// paleta faz, noutro quadro. Este intent só diz *«mostra-me o catálogo»* — e é por isso que
+    /// quem o serve é o [`crate::…::panel_bridge::dispatch`], que tem o `HeroScreen` na mão, e não
+    /// o `apply_panel_intent`, que só tem a cena.
+    OpenBrushPalette,
     /// **Arma (ou desarma) o FILTRO** — o verbo corrente na malha inteira.
     ///
     /// ⚠️ **Sem operando, e a assimetria com o irmão acima é REAL, não

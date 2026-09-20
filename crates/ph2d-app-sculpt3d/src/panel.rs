@@ -269,6 +269,21 @@ impl Sculpt3dScene {
             // ⚠️ Ele ARMA e sai, e não faz nada com a cena: o bake precisa do
             // mundo, do renderizador e do mapa de atlas, e os três só existem
             // dentro do frame. Mesmo desenho do `Shift+B`.
+            // ⛔⛔ **ESTE NUNCA CHEGA AQUI, e o `debug_assert` é quem o afirma.** Abrir a paleta
+            // precisa do `HeroScreen`, que esta função não tem — quem o serve é o
+            // [`crate::panel_bridge::dispatch`], que o **intercepta** antes do laço. ⚠️ Um `None`
+            // calado seria o no-op silencioso que a DIRETIVA §2 proíbe: o artista carregaria no
+            // botão e nada aconteceria, com a suíte verde. ⭐ E há gate a provar a intercepção
+            // ([`crate::panel_bridge`]), senão este braço passaria de *inalcançável* a *a lei*
+            // no dia em que alguém mexesse no laço.
+            Sculpt3dIntent::OpenBrushPalette => {
+                debug_assert!(
+                    false,
+                    "OpenBrushPalette tem de ser interceptado pelo panel_bridge::dispatch, que e' \
+                     quem tem o HeroScreen -- a cena nao consegue abrir uma paleta"
+                );
+                return None;
+            }
             Sculpt3dIntent::BakeToSprite => return Some(Sculpt3dFrameRequest::Bake),
             // ⚠️ Mesmo desenho, e pela mesma razão: ler os pixels de um sprite
             // precisa do mundo, do renderizador e do mapa de atlas.

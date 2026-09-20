@@ -81,11 +81,41 @@ pub fn dispatch(
     // virar), e guardar só o último perderia um em silêncio.
     let mut want = Vec::new();
     for intent in ph2d_panel_sculpt3d::drain_intents() {
+        // ⭐⭐⭐ **A PALETA DE PINCÉIS É INTERCEPTADA AQUI** — o selector saiu do painel em
+        // 2026-09-20 (ordem do dono), e abrir uma paleta precisa do `HeroScreen`, que o
+        // `apply_panel_intent` não tem. ⚠️ O braço de lá tem um `debug_assert!(false)` a dizê-lo:
+        // se esta linha se perder, o botão fica **mudo** e a suíte verde.
+        if matches!(intent, ph2d_panel_sculpt3d::Sculpt3dIntent::OpenBrushPalette) {
+            hero.store
+                .open_command_palette(ph2d_panel_sculpt3d::brush_palette::build());
+            continue;
+        }
         if let Some(req) = scene.apply_panel_intent(intent)
             && !want.contains(&req)
         {
             want.push(req);
         }
+    }
+
+    // ── 4. O *pick* da paleta volta NOUTRO QUADRO. ──
+    //
+    // ⚠️⚠️ **O dreno é CONDICIONAL, e isso não é zelo:** este canal tem **cinco** consumidores (a
+    // biblioteca do Motion, o `Ctrl+K`, o `+` do Inspector, a paleta de formas do 3D e agora esta),
+    // e um `take` incondicional engoliria o *pick* de outro — com o sintoma a ser *«às vezes não
+    // faz nada»*.
+    //
+    // ⭐ **E o que o *pick* faz é a MESMA LEI que a ficha fazia** — o `intent_for_palette_pick`
+    // delega no mesmo `group_chip_ui` de sempre (que faz `switch_verb`: guarda o pincel vivo no
+    // slot do verbo que sai e carrega o do que entra). *Escrever «troca o verbo» aqui seria a
+    // segunda resposta à mesma pergunta.*
+    if let Some(id) = hero
+        .store
+        .take_command_pick_if(|id| ph2d_panel_sculpt3d::brush_palette::verb_at(id).is_some())
+        && let Some(intent) = ph2d_panel_sculpt3d::intent_for_palette_pick(id)
+        && let Some(req) = scene.apply_panel_intent(intent)
+        && !want.contains(&req)
+    {
+        want.push(req);
     }
     want
 }

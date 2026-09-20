@@ -626,9 +626,22 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
     }
     let sliders = want.len();
     // Os grupos de chips, os toggles e os comandos.
-    for (i, v) in Verb::ALL.into_iter().enumerate() {
-        want.push((format!("verb {}", v.label()), ids::SCULPT3D_VERB[i]));
-    }
+    //
+    // ⛔⛔ **OS 38 VERBOS SAÍRAM DAQUI EM 2026-09-20, e não é uma tolerância** (ordem do dono): eles
+    // deixaram de ser pintados no painel e vivem na paleta
+    // ([`ph2d_panel_sculpt3d::brush_palette`]). Esta varredura pergunta *«o que o painel pinta é
+    // clicável onde está desenhado?»*, e um controlo que ele já não pinta não é sujeito dela.
+    //
+    // ⚠️⚠️ **Quem responde por eles agora são TRÊS gates, e a divisão é de propósito:** a paleta
+    // contém os 38 com os ids do painel (`todo_pincel_chega_a_paleta_com_o_id_do_painel`), o id
+    // volta a ser o verbo certo (`o_id_da_paleta_resolve_para_o_verbo_certo`), e o **botão que a
+    // abre** é pintado e clicável — que é o que a linha abaixo põe nesta mesma varredura.
+    // *Apagar uma linha de uma tabela de cobertura sem dizer quem passou a cobrir é como uma
+    // catraca vira licença.*
+    want.push((
+        "open brushes".to_string(),
+        ids::SCULPT3D_OPEN_BRUSHES,
+    ));
     for (i, f) in Falloff::ALL.into_iter().enumerate() {
         want.push((format!("falloff {}", f.label()), ids::SCULPT3D_FALLOFF[i]));
     }
@@ -2995,18 +3008,30 @@ fn every_trim_control_is_clickable_where_it_is_drawn() {
 /// publica ao dizer que *«o nó desenha 1083 px num dock de 880»*. ⛔ Não é um
 /// número escolhido aqui.
 ///
-/// # ⚠️ A CATRACA, e porque ela existe
+/// # ⭐⭐⭐ A CATRACA ESTÁ A **ZERO** desde 2026-09-20, e quem a desceu foi o CENSO DE OBSOLESCÊNCIA
 ///
-/// **Cinco pincéis passam a dobra hoje**, e isso é PRÉ-EXISTENTE: medido em
-/// 2026-09-17, antes de esta wave tocar em nenhum deles. Curá-los é mexer na
-/// disposição de cinco ferramentas que o dono já aprovou em smoke, e isso é
-/// wave dele — não um efeito colateral desta.
+/// Ela nasceu em 2026-09-17 com **cinco** pincéis cujos controlos próprios caíam
+/// abaixo da dobra, e o doc dela dizia: *«curá-los é mexer na disposição de cinco
+/// ferramentas que o dono já aprovou em smoke, e isso é wave dele»*, com o preço
+/// nomeado — *«cada `+23` é mais rolagem entre o artista e um controlo que ele tem
+/// de alcançar, e a "etapa de arrumação" que o dono anunciou passa a ter um número»*.
 ///
-/// ⇒ a lista [`ACIMA_DA_DOBRA`] é uma **catraca que só ENCOLHE**, com as duas
-/// metades que o `CLAUDE.md` §5.0 exige: ela **não pode crescer** (um pincel
-/// registado que piore reprova) e **não pode apodrecer** (um que passe a caber
-/// reprova a dizer que a entrada dele tem de sair). *Uma catraca sem censo de
-/// obsolescência não desce: ela vira licença.*
+/// ⭐ **A etapa de arrumação chegou** (ordem do dono, 2026-09-20): o selector de
+/// pincéis saiu do painel para a paleta, e a secção `Tool` encolheu `276 px`. Os
+/// **cinco** passaram a caber, e a lista está **vazia**.
+///
+/// ⚠️⚠️ **Não fui eu que medi a descida — foi a METADE DA OBSOLESCÊNCIA deste
+/// gate**, na primeira corrida a seguir à cirurgia:
+///
+/// ```text
+/// Cloth: ele passou a caber no encaixe (y = 854 <= 880) — APAGUE a linha dele
+/// da catraca, senao ela vira licenca
+/// ```
+///
+/// ⭐⭐ E a lista vazia é a régua mais apertada que existe: com ela, **o `else`
+/// abaixo exige que TODOS os sete caibam**, e nenhuma linha sobra onde registar
+/// um que volte a não caber. *Uma catraca sem censo de obsolescência não desce:
+/// ela vira licença* — esta desceu porque o tinha.
 #[test]
 fn os_controlos_proprios_de_um_pincel_cabem_no_encaixe() {
     /// O encaixe MEDIDO desta casa — ver o doc.
@@ -3032,13 +3057,10 @@ fn os_controlos_proprios_de_um_pincel_cabem_no_encaixe() {
     ///
     /// ⚠️ **Blur e Smear ainda não estão no catálogo** — se os rótulos deles
     /// rebentarem outra linha, esta tabela volta a acusar, e é isso que se quer.
-    const ACIMA_DA_DOBRA: [(&str, f32); 5] = [
-        ("Cloth", 1130.0),
-        ("Boundary", 1106.0),
-        ("Plane", 1026.0),
-        ("SmearMultires", 987.0),
-        ("BoxTrim", 984.0),
-    ];
+    // ⭐⭐⭐ **VAZIA desde 2026-09-20** — ver o cabeçalho. ⛔ Ela só ENCOLHE: uma
+    // entrada nova aqui é um pincel que deixou de caber, e a cura é a disposição,
+    // nunca a linha.
+    const ACIMA_DA_DOBRA: [(&str, f32); 0] = [];
 
     let proprios: [&[ph2d_a11y::NodeId]; 7] = [
         &ids::SCULPT3D_CLOTH_MODE[..],
@@ -3420,4 +3442,78 @@ fn diag_onde_cai_a_pista_do_pente() {
             );
         }
     }
+}
+
+/// ⭐⭐⭐ **O BOTÃO QUE SUBSTITUIU AS 38 FICHAS PEDE A PALETA** — a metade de costura do gesto.
+///
+/// ⛔⛔ Sem isto, o selector podia estar pintado, hit-indexado, **e mudo sob o dedo** — a espécie
+/// que este painel pagou treze vezes num dia só (os chips de `Deformation`, 2026-09-14: pintados,
+/// com braço no `event.rs`, e **ausentes do `populate`**). ⭐ Aqui ele entra pela tabela
+/// `COMMANDS`, que é a lista ÚNICA que o `populate` e o `event` percorrem — e é isso que torna
+/// este gate uma confirmação e não uma esperança.
+///
+/// *Mutação que sangra:* apagar a linha dele da `COMMANDS`.
+#[test]
+fn o_botao_dos_pinceis_pede_a_paleta() {
+    let (mut host, mut state) = arrange(Sculpt3dUi::default());
+    host.apply_panel_event::<Sculpt3dPanel>(
+        &mut state,
+        WidgetEvent::Click(ids::SCULPT3D_OPEN_BRUSHES),
+    );
+    assert!(
+        matches!(
+            only_intent("open brushes"),
+            Sculpt3dIntent::OpenBrushPalette
+        ),
+        "o botão do selector enfileirou o intent errado",
+    );
+}
+
+/// ⭐⭐⭐ **O *PICK* DA PALETA FAZ A MESMA COISA QUE A FICHA FAZIA** — a prova de que há UMA lei.
+///
+/// ⛔⛔ O *pick* volta pela shell (`take_command_pick_if`) e não como evento de painel, logo era o
+/// sítio natural para nascer uma **segunda resposta** a *«o que é trocar de pincel?»*. A porta
+/// [`ph2d_panel_sculpt3d::intent_for_palette_pick`] delega no mesmo `group_chip_ui`, e este gate
+/// mede-o **contra o caminho da ficha**: os dois têm de produzir o MESMO `SetUi`, ao bit.
+///
+/// ⚠️ **O CONTROLO está dentro**: a comparação é com o que o clique na ficha produz, não com um
+/// valor escrito à mão. *Um `assert_eq!` contra uma constante minha provaria a minha aritmética,
+/// não a igualdade das duas rotas.*
+///
+/// *Mutação que sangra:* o `intent_for_palette_pick` construir o `Sculpt3dUi` ele próprio.
+#[test]
+fn o_pick_da_paleta_e_a_ficha_produzem_a_mesma_lei() {
+    for verbo in [Verb::Clay, Verb::Smooth, Verb::Pose] {
+        let i = Verb::ALL.iter().position(|&v| v == verbo).unwrap();
+
+        // (a) o caminho da FICHA — o que o painel fazia até 2026-09-20.
+        let (mut host, mut state) = arrange(Sculpt3dUi::default());
+        host.apply_panel_event::<Sculpt3dPanel>(
+            &mut state,
+            WidgetEvent::Click(ids::SCULPT3D_VERB[i]),
+        );
+        let Sculpt3dIntent::SetUi(pela_ficha) = only_intent("ficha do verbo") else {
+            panic!("a ficha do verbo enfileirou o tipo errado de intent");
+        };
+
+        // (b) o caminho da PALETA — o mesmo id, pela porta nova.
+        let (_host, _state) = arrange(Sculpt3dUi::default());
+        let Some(Sculpt3dIntent::SetUi(pelo_pick)) =
+            ph2d_panel_sculpt3d::intent_for_palette_pick(ids::SCULPT3D_VERB[i])
+        else {
+            panic!("o pick da paleta não resolveu para um SetUi");
+        };
+
+        assert_eq!(
+            pelo_pick, pela_ficha,
+            "{verbo:?}: as duas rotas divergiram — há uma segunda lei algures",
+        );
+    }
+    // ⚠️ **E o controlo negativo**: um id que não é de verbo não produz intent nenhum. Sem ele,
+    //    um `intent_for_palette_pick` que devolvesse sempre `Some` passaria o laço de cima.
+    let (_host, _state) = arrange(Sculpt3dUi::default());
+    assert!(
+        ph2d_panel_sculpt3d::intent_for_palette_pick(ids::SCULPT3D_OPEN_BRUSHES).is_none(),
+        "o botão que ABRE a paleta não é um pincel",
+    );
 }

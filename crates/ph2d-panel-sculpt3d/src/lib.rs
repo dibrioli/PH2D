@@ -44,6 +44,10 @@ pub mod state_modes;
 
 mod event;
 
+/// ⭐⭐⭐ **O QUE UM *PICK* DA PALETA DE PINCÉIS FAZ** — a mesma lei que a ficha fazia, exportada
+/// para a ponte (`ph2d-app-sculpt3d`), que é quem drena o *pick* da shell.
+pub use event::intent_for_palette_pick;
+
 /// ⭐ **O CENSO DAS FILEIRAS DE CHIP** — o painel oferece exactamente o que o
 /// motor tem. Filho por `#[path]`, no molde dos outros testes deste crate.
 #[cfg(test)]

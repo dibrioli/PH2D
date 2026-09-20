@@ -478,8 +478,23 @@ fn diag_onde_caem_as_seccoes_da_escultura() {
             .find(|a| a.painel == "sculpt3d")
             .expect("a escultura tem armação");
 
+        // ⛔⛔ **DOIS estados, e não um.** A armação pinta o estado MÁXIMO de propósito (nível
+        //    `Pro`, filtro ARMADO) — é o que faz uma régua de LARGURA ver todos os rótulos. Medir a
+        //    ALTURA ali lê o **pior caso**: as catorze fichas do filtro valem `~221 px` e só são
+        //    pintadas depois de o artista armar o filtro. *Uma coluna que colapsa dois estados num
+        //    número descreve um app que ninguém usa.*
+        for (nome_do_estado, arma) in [
+            ("PIOR CASO (Pro, filtro armado)", arm.arma),
+            (
+                "DIA A DIA (Basic, filtro desarmado)",
+                (|store: &mut ph2d_editor_core::interaction::WidgetStore| {
+                    let _ = store;
+                    super::o_sculpt3d_armado::arma_o_dia_a_dia();
+                }) as fn(&mut ph2d_editor_core::interaction::WidgetStore),
+            ),
+        ] {
         let mut host = MockPanelHost::new();
-        (arm.arma)(host.store_mut());
+        (arma)(host.store_mut());
         painel.populate(host.store_mut());
         let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
         let pintados = host.registos_da_ultima_pintura();
@@ -497,7 +512,9 @@ fn diag_onde_caem_as_seccoes_da_escultura() {
         linhas.sort_by(|a, b| a.0.total_cmp(&b.0));
 
         let fundo = conta(host.store(), &pintados).altura;
-        println!("\n  === o painel da ESCULTURA, por secção (dobra = {DOBRA:.0} px) ===");
+        println!(
+            "\n  === o painel da ESCULTURA — {nome_do_estado} (dobra = {DOBRA:.0} px) ==="
+        );
         let mut anterior: Option<(f32, &str)> = None;
         for (y, nome) in &linhas {
             if let Some((ya, na)) = anterior {
@@ -514,6 +531,7 @@ fn diag_onde_caem_as_seccoes_da_escultura() {
             println!("      {na:<12} ocupa {:>6.0} px", fundo - ya);
         }
         println!("  {fundo:>6.0}  (fim do conteúdo)\n");
+        }
     });
 }
 

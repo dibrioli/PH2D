@@ -11,25 +11,36 @@
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
 use ph2d_sculpt3d::{
-    ClothFilterKind, ClothFilterOrientation, FilterKind, RefMode, Verb, kelvinlet::Scales,
+    ClothFilterKind, ClothFilterOrientation, FilterKind, RefMode, kelvinlet::Scales,
 };
 use ph2d_tokens::Spacing;
 
-use super::widgets::{self, command, header, labelled_seg, seg, toggle};
+use super::widgets::{self, command, header, labelled_seg, toggle};
 use crate::state::{Sculpt3dSnapshot, UiLevel};
 
-/// **A FERRAMENTA** — os verbos do [`Verb::ALL`] numa faixa que REFLUI.
+/// **A FERRAMENTA** — hoje **um botão** cuja face é o pincel na mão.
 ///
-/// É a mesma decisão que a lista de dez ferramentas do Impasto tomou: um grupo
-/// segmentado com muitas opções quebra em linhas, e a alternativa (um dropdown)
-/// esconde todas menos uma atrás de um clique.
+/// # ⛔⛔ A faixa que REFLUÍA saiu daqui, e a nota que a defendia tinha a premissa EXPIRADA
 ///
-/// ⚠️ **A CONTAGEM não é citada aqui de propósito.** Este doc dizia *"os
-/// dezesseis verbos"* e *"esconde quinze ferramentas"* sobre uma lista que já
-/// tinha **23** — a wave que acrescentou os quatro dabs que não são discos, a da
-/// demão e as do campo elástico passaram por cima dele sem ninguém reconferir a
-/// frase. Um número escrito à mão ao lado de uma lista que cresce é uma nota que
-/// envelhece calada; a lista é a fonte.
+/// Este doc dizia: *«um grupo segmentado com muitas opções quebra em linhas, e a alternativa (um
+/// dropdown) esconde todas menos uma atrás de um clique»* — e a frase a seguir admitia que a
+/// contagem crescera sem ninguém a reconferir (ela foi escrita para **~10** verbos, depois **16**,
+/// depois **23**). Hoje são **38**, e é o `CLAUDE.md` §0.0: *quem move o número que tornava algo
+/// inalcançável tem de reconferir a nota.*
+///
+/// **Medido** (`quantas_entradas_tem_cada_painel.rs`, 2026-09-20): o painel mede `2 373 px` num
+/// encaixe de `880` e o artista vê **2 das 7** secções; esta secção come `614 px` — `70 %` do que
+/// ele vê —, dos quais `276` eram as fichas. Os botões que ele gira enquanto esculpe começavam em
+/// `y = 722`, **onde a tela acaba**. ⇒ ordem do dono, 2026-09-20: *«sim»*.
+///
+/// ⚠️ **E o destino NÃO é um dropdown** — a objecção original continua de pé. É a **paleta**
+/// ([`crate::brush_palette`]), que é o contentor desta casa para um catálogo: modal centrado, com
+/// rolagem própria e **busca**. ⛔ Um menu de área foi medido e recusado: o `preferred_height` do
+/// menu de contexto **soma sem tecto e não rola**, logo `38 × 22 ≈ 836 px` pintariam para fora de
+/// um tablet de `1 024` — *o mesmo defeito noutro sítio*.
+///
+/// ⚠️ **A CONTAGEM continua a não ser citada** — a lista é a fonte. Os números acima são de uma
+/// medição datada, que é outra coisa: eles descrevem o dia em que a decisão foi tomada.
 pub(super) fn paint_tool(
     ctx: &mut PaintCtx,
     snap: &Sculpt3dSnapshot,
@@ -48,17 +59,17 @@ pub(super) fn paint_tool(
     let Some(fold) = fold else {
         return y;
     };
-    let selected = Verb::ALL
-        .iter()
-        .position(|&v| v == snap.ui.brush.verb)
-        .unwrap_or(0);
-    let labels: Vec<&str> = Verb::ALL.iter().map(|v| tr(v.label_key())).collect();
-    y = seg(
+    // ⭐⭐⭐ **UM BOTÃO, e a face dele é o pincel na mão** — as 38 fichas foram para a paleta
+    //    ([`crate::brush_palette`]), por ordem do dono de 2026-09-20. Ver o cabeçalho desta função
+    //    para a medição e para a nota que isto reconfere.
+    //
+    // ⚠️ **O rótulo é o do verbo e mais nada** (HR-15): compor `"{} …"` aqui seria texto pintado
+    //    por este ficheiro, e o que o botão significa — *«é este o pincel; clique para trocar»* —
+    //    é o que a posição dele no cabeçalho da secção `Tool` já diz.
+    y = command(
         ctx,
-        crate::ids::SCULPT3D_SEC_TOOL,
-        &crate::ids::SCULPT3D_VERB,
-        &labels,
-        selected,
+        crate::ids::SCULPT3D_OPEN_BRUSHES,
+        tr(snap.ui.brush.verb.label_key()),
         x,
         w,
         y,

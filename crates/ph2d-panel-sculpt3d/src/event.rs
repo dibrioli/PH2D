@@ -30,6 +30,13 @@ fn index_of(group: &[ph2d_a11y::NodeId], id: ph2d_a11y::NodeId) -> Option<usize>
 /// cascata de `if id == …`, porque o `event` e o `populate` têm de concordar sobre
 /// a LISTA e uma cascata é o formato que apodrece calado.
 pub(crate) const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
+    // ⭐⭐⭐ **O SELECTOR DE PINCÉIS** — o botão que substituiu as 38 fichas (ordem do dono,
+    // 2026-09-20). ⭐ Ele entra AQUI e não numa cascata própria, e é isso que lhe dá o registo de
+    // graça: esta tabela é a lista ÚNICA que o `populate` e o `event` percorrem.
+    (
+        crate::ids::SCULPT3D_OPEN_BRUSHES,
+        Sculpt3dIntent::OpenBrushPalette,
+    ),
     (crate::ids::SCULPT3D_DYNTOPO, Sculpt3dIntent::ToggleDyntopo),
     // ⚠️ **O filtro cabe AQUI e o transform não**, e a diferença não é arbitrária:
     // um comando desta tabela é `id → intent` sem operando, e o transform manda
@@ -322,6 +329,25 @@ fn arm_alpha_chip(snapshot: &crate::state::Sculpt3dSnapshot, i: usize) {
 /// no [`table_intent`]: aquele devolve uma entrada de tabela, este lê o retrato
 /// vivo e devolve o estado inteiro com um campo trocado. Juntá-los obrigaria a
 /// tabela a receber o snapshot, e aí ela deixaria de ser uma tabela.
+/// ⭐⭐⭐ **O QUE UM *PICK* DA PALETA FAZ** — e é a **MESMA LEI** que a ficha fazia.
+///
+/// ⛔⛔ **Ela existe para não haver uma segunda resposta.** O selector de pincéis saiu do painel
+/// para a paleta em 2026-09-20, e o *pick* volta pela shell (`take_command_pick_if`) em vez de
+/// chegar como evento de painel. Escrever ali *«troca o verbo»* seria o segundo sítio a responder
+/// *«o que é trocar de pincel?»* — e o primeiro
+/// ([`group_chip_ui`], que faz `switch_verb`: guardar o pincel vivo no slot que sai e carregar o
+/// do que entra) tem lei própria que ninguém iria copiar inteira.
+///
+/// ⚠️ **Os ids são os MESMOS** das 38 fichas, que é o que torna esta delegação possível — a lei do
+/// `area_bar` do `3D Model`: *um comando com dois ids tem dois sítios a apodrecer em separado.*
+///
+/// `None` = este id não é de um pincel (ou não há retrato publicado, i.e. não há cena).
+#[must_use]
+pub fn intent_for_palette_pick(id: ph2d_a11y::NodeId) -> Option<Sculpt3dIntent> {
+    let snapshot = crate::state_channel::current()?;
+    group_chip_ui(&snapshot, id).map(Sculpt3dIntent::SetUi)
+}
+
 fn group_chip_ui(
     snapshot: &crate::state::Sculpt3dSnapshot,
     id: ph2d_a11y::NodeId,

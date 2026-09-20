@@ -9,10 +9,17 @@ use std::collections::BTreeMap;
 
 /// O sentinela do 4.º índice de um TRIÂNGULO.
 ///
-/// ⚠️ **Ele é o mesmo valor que a `ph2d_mesh::TRI`, e isso é GATEADO do lado de
-/// lá** — esta crate não a pode importar (ela não depende da `ph2d-mesh`), e
-/// duas constantes que têm de concordar sem ninguém a verificar é a forma que
-/// esta casa já pagou. Ver `ph2d-mesh` :: `o_sentinela_do_triangulo_e_o_mesmo`.
+/// ⚠️ **Ele é o mesmo valor que a `ph2d_mesh::TRI`** — esta crate não a pode
+/// importar (ela declara zero dependências), e duas constantes que têm de
+/// concordar sem ninguém a verificar é a forma que esta casa já pagou. ⇒ o
+/// gate vive na primeira crate que vê as duas:
+/// `ph2d-sculpt3d` :: `o_sentinela_do_triangulo_e_o_mesmo_nas_duas_crates`.
+///
+/// ⛔ **Esta linha já apontou para um gate que NÃO existia** (`ph2d-mesh` ::
+/// `o_sentinela_do_triangulo_e_o_mesmo`, que o `git log -S` não encontra) — a
+/// família dos oito de 13/09, reintroduzida numa crate fora do alcance do
+/// censo que a cura. *Um gate citado e um gate escrito leem-se igual num
+/// cabeçalho.*
 pub const TRI: u32 = u32::MAX;
 
 /// Quantos cantos uma face tem, lida com o sentinela.

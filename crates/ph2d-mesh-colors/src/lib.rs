@@ -143,6 +143,56 @@ impl Tinta {
         }
     }
 
+    /// ⭐⭐⭐ **A TINTA QUE JÁ EXISTE, LEVADA PARA UM NÍVEL** — a porta de subir
+    /// (e de descer) a resolução sem perder o que está pintado.
+    ///
+    /// Cada amostra recebe a mistura das cores dos CANTOS da face em que ela
+    /// cai. ⭐ **As amostras de vértice recebem o valor do vértice, exactamente**
+    /// (ali a mistura é `1` num canto e `0` nos outros), logo subir e descer o
+    /// nível **nunca mexe** na tinta que o nível zero já continha.
+    ///
+    /// ⛔⛔ **Sem esta porta, armar a tinta fina sobre uma peça JÁ PINTADA
+    /// apagava-a** — a [`Self::nova`] nasce branca, e o defeito lê-se como *«o
+    /// pincel apagou o meu trabalho»*. Foi um gate que o apanhou, com um desvio
+    /// de `1,0` num canal, que é uma cor inteira e nunca um arredondamento.
+    #[must_use]
+    pub fn semeada<'a>(
+        cores: &[[f32; 3]],
+        faces: impl Iterator<Item = &'a [u32]> + Clone,
+        nivel: u8,
+    ) -> Self {
+        let mut t = Self::nova(cores.len(), faces.clone(), nivel);
+        let l = t.lado();
+        for (fi, f) in faces.enumerate() {
+            let n = topo::cantos(f);
+            let c: Vec<[f32; 3]> = f[..n].iter().map(|&v| cores[v as usize]).collect();
+            if n == 3 {
+                for i in 0..=l {
+                    for j in 0..=(l - i) {
+                        let k = l - i - j;
+                        let w = [
+                            i as f32 / l as f32,
+                            j as f32 / l as f32,
+                            k as f32 / l as f32,
+                        ];
+                        let idx = indice(&t.topo, l, fi, sitio_tri(l, i, j, k), &f[..n]) as usize;
+                        t.amostras[idx] = mistura(&c, &w);
+                    }
+                }
+            } else {
+                for j in 0..=l {
+                    for i in 0..=l {
+                        let (u, v) = (i as f32 / l as f32, j as f32 / l as f32);
+                        let w = [(1.0 - u) * (1.0 - v), u * (1.0 - v), u * v, (1.0 - u) * v];
+                        let idx = indice(&t.topo, l, fi, sitio_quad(l, i, j), &f[..n]) as usize;
+                        t.amostras[idx] = mistura(&c, &w);
+                    }
+                }
+            }
+        }
+        t
+    }
+
     /// O nível efectivo (`k`).
     #[must_use]
     pub fn nivel(&self) -> u8 {
@@ -204,4 +254,16 @@ impl Tinta {
         let l = self.lado();
         indice(&self.topo, l, face, sitio_quad(l, i, j), cantos)
     }
+}
+
+/// A mistura de cores por pesos — a aritmética que a [`Tinta::semeada`] usa nas
+/// duas retículas.
+fn mistura(c: &[[f32; 3]], w: &[f32]) -> [f32; 3] {
+    let mut o = [0.0f32; 3];
+    for (q, k) in c.iter().zip(w) {
+        for e in 0..3 {
+            o[e] += q[e] * k;
+        }
+    }
+    o
 }

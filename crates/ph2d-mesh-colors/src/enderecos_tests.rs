@@ -169,3 +169,96 @@ fn um_canto_nunca_e_classificado_como_aresta() {
         assert_eq!(sitio_quad(lado, 0, lado), Sitio::Canto(3));
     }
 }
+
+/// ⭐⭐⭐⭐ **A FRONTEIRA PARTILHADA DE DOIS QUADS** — a irmã da
+/// [`as_duas_faces_leem_a_mesma_amostra_na_aresta_comum`], que é de
+/// TRIÂNGULOS.
+///
+/// ⛔⛔ **Ela nasceu de uma MUTAÇÃO SOBREVIVENTE, e a razão é a fixtura:** o
+/// [`sitio_quad`] tem DOIS lados que andam para trás (`c→d` no eixo `i`,
+/// `d→a` no eixo `j`), e trocar o `t: lado - j` do `d→a` por `t: j` passava os
+/// `19` gates desta crate. *Nenhuma fixtura tinha dois quads a tocarem-se* — a
+/// irmã são dois triângulos, e o único quad do corpus está sozinho, onde
+/// inverter o `t` de uma aresta é apenas uma PERMUTAÇÃO da própria aresta.
+///
+/// ⚠️⚠️ **E é por isso que a bijecção não o via:** ela conta índices
+/// distintos, e uma permutação dentro do bloco de uma aresta deixa a contagem
+/// **exactamente igual**. O que a apanha é a IGUALDADE por ponto FÍSICO.
+///
+/// ⭐⭐ **A malha é uma grelha `2×2` de quads, e o tamanho dela é DERIVADO da
+/// pergunta:** os quatro lados de um quad têm de ser partilhados **pelo menos
+/// uma vez**, senão o ramo que não é cruzado fica sem régua — que foi
+/// exactamente como o `d→a` chegou aqui. Numa fita de dois só as arestas
+/// `1`/`3` se tocam, e o gémeo `c→d` ficava de fora; na grelha, `3–4` é o lado
+/// **`2`** (`c→d`, o outro que anda para trás) de um e o lado `0` de outro.
+/// ⚠️ E o vértice do meio é partilhado por **quatro** faces, que é o único
+/// sítio onde um canto é visitado mais do que duas vezes.
+///
+/// ⭐ As posições são comparadas **ao bit** e isso é exacto, não uma folga: a
+/// bilinear dos dois lados reduz-se à MESMA expressão na aresta comum
+/// (`u = 1` num, `u = 0` no outro), e as coordenadas são inteiros pequenos com
+/// `lado` potência de dois.
+#[test]
+fn dois_quads_leem_a_mesma_amostra_na_aresta_comum() {
+    use super::amostragem::posicao_quad;
+    use std::collections::{BTreeMap, BTreeSet};
+
+    let p: Vec<[f32; 3]> = (0..3)
+        .flat_map(|y| (0..3).map(move |x| [x as f32, y as f32, 0.0]))
+        .collect();
+    let faces: Vec<Vec<u32>> = vec![
+        vec![0, 1, 4, 3],
+        vec![1, 2, 5, 4],
+        vec![3, 4, 7, 6],
+        vec![4, 5, 8, 7],
+    ];
+    let it = || faces.iter().map(|f| &f[..]);
+
+    for nivel in 1..=4u8 {
+        let t = Tinta::nova(p.len(), it(), nivel);
+        let l = t.lado();
+        let mut visto: BTreeMap<[u32; 3], u32> = BTreeMap::new();
+        let mut partilhadas = 0usize;
+
+        for (fi, f) in faces.iter().enumerate() {
+            let q = [
+                p[f[0] as usize],
+                p[f[1] as usize],
+                p[f[2] as usize],
+                p[f[3] as usize],
+            ];
+            for j in 0..=l {
+                for i in 0..=l {
+                    let pos = posicao_quad(q, l, (i, j));
+                    let chave = [pos[0].to_bits(), pos[1].to_bits(), pos[2].to_bits()];
+                    let idx = t.indice_quad(fi, f, i, j);
+                    if let Some(antes) = visto.insert(chave, idx) {
+                        partilhadas += 1;
+                        assert_eq!(
+                            antes, idx,
+                            "nível {nivel}, face {fi}, ({i},{j}): o mesmo ponto \
+                             da superfície tem DOIS endereços"
+                        );
+                    }
+                }
+            }
+        }
+
+        // ⭐ CONTROLO 1: a aresta comum TEM de ter sido visitada pelas duas —
+        //   sem ele, um gate que nunca vê um ponto duas vezes passa por vácuo.
+        //   `4(L+1)² − (2L+1)²`: os pares (face, ponto) menos os pontos
+        //   DISTINTOS da grelha `2×2`.
+        let esperadas = 4 * (l as usize + 1).pow(2) - (2 * l as usize + 1).pow(2);
+        assert_eq!(
+            partilhadas, esperadas,
+            "nível {nivel}: as arestas comuns não foram percorridas pelas duas faces"
+        );
+        // ⭐ CONTROLO 2: e pontos DISTINTOS não podem colidir num índice.
+        let distintos: BTreeSet<u32> = visto.values().copied().collect();
+        assert_eq!(
+            distintos.len(),
+            visto.len(),
+            "nível {nivel}: dois pontos distintos da superfície colidiram"
+        );
+    }
+}

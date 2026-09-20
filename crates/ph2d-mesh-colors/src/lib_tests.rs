@@ -15,7 +15,7 @@ fn tetra() -> (Vec<[f32; 3]>, Vec<[u32; 3]>) {
     (p, f)
 }
 
-fn faces_de(f: &[[u32; 3]]) -> impl Iterator<Item = &[u32]> {
+fn faces_de(f: &[[u32; 3]]) -> impl Iterator<Item = &[u32]> + Clone {
     f.iter().map(|t| &t[..])
 }
 
@@ -127,4 +127,154 @@ fn a_malha_mista_conta_cada_face_pela_forma_dela() {
     t.para_cada_amostra_tri(0, &faces[0], |i, _| visto[i as usize] = true);
     t.para_cada_amostra_quad(1, &faces[1], |i, _| visto[i as usize] = true);
     assert!(visto.iter().all(|&b| b), "a malha mista deixou um buraco");
+}
+
+/// ⭐⭐⭐ **SUBIR O NÍVEL NÃO MEXE NA TINTA QUE JÁ LÁ ESTÁ.**
+///
+/// ⛔ É o gate que faltava quando a [`Tinta::nova`] foi armada sobre uma peça
+/// já pintada: ela nasce BRANCA, e o efeito é *«o pincel apagou o meu
+/// trabalho»*. O desvio medido foi `1,0` num canal — uma cor inteira, nunca um
+/// arredondamento.
+#[test]
+fn semear_preserva_a_cor_dos_vertices_ao_bit() {
+    let (_, f) = tetra();
+    let cores = vec![
+        [0.10, 0.20, 0.30],
+        [0.40, 0.50, 0.60],
+        [0.70, 0.80, 0.90],
+        [0.11, 0.22, 0.33],
+    ];
+    for nivel in 0..=3u8 {
+        let t = Tinta::semeada(&cores, faces_de(&f), nivel);
+        for (v, c) in cores.iter().enumerate() {
+            assert_eq!(
+                t.de_vertice(v),
+                *c,
+                "nível {nivel}: a amostra do vértice {v} não é a cor dele"
+            );
+        }
+        // ⭐ E as amostras NOVAS ficam dentro do envelope das cores de entrada —
+        // uma mistura convexa não pode sair dele, e um endereço trocado sairia.
+        for a in t.amostras() {
+            for e in 0..3 {
+                let lo = cores.iter().map(|c| c[e]).fold(f32::MAX, f32::min);
+                let hi = cores.iter().map(|c| c[e]).fold(f32::MIN, f32::max);
+                assert!(
+                    a[e] >= lo - 1e-6 && a[e] <= hi + 1e-6,
+                    "nível {nivel}: a amostra {a:?} saiu do envelope [{lo}, {hi}]"
+                );
+            }
+        }
+    }
+}
+
+/// ⭐ **A `lado = 1` semear é o mesmo que copiar, AO BIT** — o controlo que
+/// amarra a porta nova ao caso base.
+#[test]
+fn a_lado_um_semear_e_copiar() {
+    let (_, f) = tetra();
+    let cores = vec![
+        [0.10, 0.20, 0.30],
+        [0.40, 0.50, 0.60],
+        [0.70, 0.80, 0.90],
+        [0.11, 0.22, 0.33],
+    ];
+    let a = Tinta::semeada(&cores, faces_de(&f), 0);
+    let b = Tinta::do_plano_por_vertice(&cores, faces_de(&f));
+    assert_eq!(a.amostras(), b.amostras());
+}
+
+/// ⛔ **E o ramo dos QUADS de [`Tinta::semeada`] precisa de um quad na fixtura.**
+///
+/// ⚠️ A irmã corre sobre um tetraedro, que é **só de triângulos** — e uma
+/// mutação que trocava a mistura bilinear pelo primeiro canto **SOBREVIVEU**
+/// a ela. *Uma fixtura que não contém a forma não testa o ramo dela.*
+#[test]
+fn semear_preserva_a_cor_dos_vertices_tambem_num_quad() {
+    let faces: Vec<Vec<u32>> = vec![vec![0, 1, 2, 3]];
+    let it = || faces.iter().map(|f| &f[..]);
+    let cores = vec![
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [1.0, 1.0, 0.0],
+    ];
+    for nivel in 0..=3u8 {
+        let t = Tinta::semeada(&cores, it(), nivel);
+        for (v, c) in cores.iter().enumerate() {
+            assert_eq!(
+                t.de_vertice(v),
+                *c,
+                "nível {nivel}: a amostra do vértice {v} do QUAD não é a cor dele"
+            );
+        }
+        // ⭐ E o CENTRO é a média dos quatro — a bilinear em `(½, ½)`. Um
+        // `c[0]` ali passa no teste dos cantos e falha aqui.
+        if nivel >= 1 {
+            let l = t.lado();
+            let centro = t.indice_quad(0, &faces[0], l / 2, l / 2) as usize;
+            let m = t.amostras()[centro];
+            for e in 0..3 {
+                let esperado = cores.iter().map(|c| c[e]).sum::<f32>() / 4.0;
+                assert!(
+                    (m[e] - esperado).abs() <= 1e-6,
+                    "nível {nivel}: o centro do quad é {m:?} e devia ser a média"
+                );
+            }
+        }
+    }
+}
+
+/// ⭐⭐⭐⭐ **UM TRIÂNGULO MARCADO COM O SENTINELA É O MESMO TRIÂNGULO** — o
+/// ramo de [`topo::cantos`] que lê `[a, b, c, TRI]` entrega **exactamente** o
+/// que `[a, b, c]` entrega, ao bit.
+///
+/// ⛔⛔ **Este gate nasceu de uma MUTAÇÃO SOBREVIVENTE, e o que ela expôs não
+/// foi uma fixtura em falta — foi um ramo SEM CHAMADOR.** Trocar aquele `=> 3`
+/// por `=> 4` passava os `18` gates desta crate, porque **todas** as fixturas
+/// passam fatias de `3`, e no produto a [`ph2d_mesh::Face::verts`] **corta o
+/// sentinela antes de sair** (ela devolve `&self.0[..self.vert_count()]`).
+///
+/// ⚠️ **E é por isso que o ramo FICA em vez de ser apagado:** a porta desta
+/// crate aceita `&[u32]` cru, e o array de uma `Face` desta casa é um
+/// `[u32; 4]` com `u32::MAX` no 4.º slot. Um chamador que passe `&face.0[..]`
+/// em vez de `face.verts()` é o erro mais natural que existe aqui — e sem o
+/// ramo ele lê um triângulo como quad com um canto `u32::MAX`, que é um
+/// `index out of bounds` na [`Tinta::semeada`] ou endereços trocados em
+/// silêncio. *Um ramo defensivo sem gate é indistinguível de um ramo morto, e
+/// os dois leem-se igual numa mutação.*
+///
+/// ⭐ A régua é a IGUALDADE das duas `Tinta` inteiras (a disposição, a
+/// topologia e as amostras), e não uma contagem: uma contagem igual com
+/// endereços trocados é exactamente o defeito que isto existe para impedir.
+#[test]
+fn o_sentinela_do_triangulo_nao_muda_uma_amostra() {
+    let (_, f3) = tetra();
+    let f4: Vec<[u32; 4]> = f3.iter().map(|t| [t[0], t[1], t[2], topo::TRI]).collect();
+    let cores = vec![
+        [0.10, 0.20, 0.30],
+        [0.40, 0.50, 0.60],
+        [0.70, 0.80, 0.90],
+        [0.11, 0.22, 0.33],
+    ];
+    for nivel in 0..=3u8 {
+        let bare = || f3.iter().map(|t| &t[..]);
+        let sent = || f4.iter().map(|t| &t[..]);
+
+        // ⭐ O CONTROLO vem primeiro: o sentinela TEM de ser lido, senão este
+        //   gate mede duas listas de três e não afirma nada.
+        assert_eq!(topo::cantos(&f4[0][..]), 3, "o sentinela não foi lido");
+        assert_eq!(f4[0].len(), 4, "a fatia marcada tem mesmo quatro entradas");
+
+        assert_eq!(
+            Tinta::nova(4, sent(), nivel),
+            Tinta::nova(4, bare(), nivel),
+            "nível {nivel}: o plano em branco de um triângulo marcado difere"
+        );
+        assert_eq!(
+            Tinta::semeada(&cores, sent(), nivel),
+            Tinta::semeada(&cores, bare(), nivel),
+            "nível {nivel}: a semeadura de um triângulo marcado difere"
+        );
+    }
 }

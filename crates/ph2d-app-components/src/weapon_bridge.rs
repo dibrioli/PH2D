@@ -20,6 +20,7 @@
 //! disparar no mesmo tique têm de produzir sempre a mesma sequência de sinais — senão o replay
 //! determinista (`physics_ecs_c9`) diverge entre máquinas.
 
+use ph2d_ecs::counter::{self, Ambito};
 use ph2d_ecs::{
     Counter, CounterRuntime, Entity, Municao, SimWorld, StableId, WeaponFire, WeaponRuntime,
 };
@@ -105,9 +106,19 @@ pub fn frame(sim: &mut SimWorld, playing: bool, dt_us: u64, fired: &[&str]) -> W
             Municao::default()
         } else {
             let mundo: &bevy_ecs::world::World = sim.world();
-            match (mundo.get::<Counter>(e), mundo.get::<CounterRuntime>(e)) {
-                (Some(c), Some(rt)) if c.name.trim() == alvo => Municao {
-                    tem: rt.value,
+            // ⭐⭐ **PELA PORTA, desde 2026-09-20** ([`ph2d_ecs::counter::soma`] com
+            // [`Ambito::Objecto`]). Ela nasceu a somar a cena inteira e esta ponte escrevia a
+            // leitura por-objecto à mão — *uma lei escrita em dois sítios ainda não é uma lei*, e
+            // a segunda cópia apareceu no dia em que a vigia precisou da mesma pergunta.
+            //
+            // ⚠️ O `cheio` continua a vir do `Counter` **desta** entidade: ele é o `start` da
+            // CONFIG e não um valor vivo, logo não é coisa que uma soma responda.
+            match (
+                mundo.get::<Counter>(e),
+                counter::soma(mundo, alvo, Ambito::Objecto(e)),
+            ) {
+                (Some(c), Some(tem)) => Municao {
+                    tem,
                     cheio: c.start,
                     existe: true,
                 },

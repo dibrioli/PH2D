@@ -35,13 +35,15 @@ pub(crate) fn populate_counter_watch(store: &mut WidgetStore) {
         },
     );
 
-    store.register(
-        crate::ids::INSP_WATCH_ONCE,
-        InteractiveState::Checkbox {
-            state: CheckboxState::Normal,
-            value: CheckboxValue::Unchecked,
-        },
-    );
+    for id in [crate::ids::INSP_WATCH_ONCE, crate::ids::INSP_WATCH_SCOPE] {
+        store.register(
+            id,
+            InteractiveState::Checkbox {
+                state: CheckboxState::Normal,
+                value: CheckboxValue::Unchecked,
+            },
+        );
+    }
     for id in [
         crate::ids::INSP_WATCH_COUNTER,
         crate::ids::INSP_WATCH_SIGNAL,

@@ -158,7 +158,8 @@ pub use anchor_mount::{
 pub use baked_form::BakedForm;
 pub use blend::BlendMode;
 pub use counter_watch::{
-    Compare, CounterWatch, CounterWatchRow, CounterWatchRuntime, WATCHES_MAX, WatchState,
+    Compare, CounterScope, CounterWatch, CounterWatchRow, CounterWatchRuntime, WATCHES_MAX,
+    WatchState,
 };
 pub use emissive::{EMISSIVE_MAX, EMISSIVE_OFF, SpriteEmissive};
 pub use factory::{

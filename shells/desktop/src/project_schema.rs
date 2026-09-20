@@ -426,4 +426,24 @@
 /// cinco anteriores do material.
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v160 e' recusado em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 161;
+/// # `161 → 162` — a vida POR INIMIGO: a vigia ganha ÂMBITO
+///
+/// O `ph2d_ecs::CounterWatchRow` ganhou `scope: CounterScope` **apendado no fim**, e o postcard e'
+/// POSICIONAL: um blob v161 tem cinco campos onde este binario pede seis.
+///
+/// ⭐⭐⭐ **A grandeza e' NOVA:** ate' aqui a porta `counter::soma` respondia SEMPRE pela cena
+/// inteira, logo dez inimigos com a mesma vigia sobre `vida` liam a soma dos dez e **morriam todos
+/// juntos**. Com `CounterScope::Own` cada um julga o contador que vive nele.
+///
+/// ⚠️ **O valor de fabrica e' `World` = o comportamento de sempre**, logo toda cena ja' gravada se
+/// comporta exactamente como antes depois de migrada.
+///
+/// ⭐ **E o mesmo degrau apagou a SEGUNDA copia da lei:** a arma lia o pente dela com
+/// `mundo.get::<Counter>(e)` a` mao e passou a entrar pela porta — o que CUROU um defeito latente
+/// (um pente por estrear dava municao INFINITA, porque a leitura a` mao exigia o `CounterRuntime`
+/// e caia no `Municao::default()`).
+///
+/// ⚠️ **A tripla NAO ve^ este degrau** — o `CounterWatch` viaja num `ComponentBlob`.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v161 e' recusado em voz alta.
+pub(crate) const PROJECT_SCHEMA: u32 = 162;

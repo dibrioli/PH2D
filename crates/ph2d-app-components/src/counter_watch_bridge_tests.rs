@@ -14,6 +14,7 @@ fn regra(counter: &str, compare: Compare, value: i64, signal: &str) -> CounterWa
         value,
         signal: signal.into(),
         once: false,
+        scope: Default::default(),
     }
 }
 
@@ -156,4 +157,80 @@ fn um_contador_inexistente_e_orfao_e_mudo() {
     let f = frame(&mut sim, true, 1);
     assert_eq!(f.orfas, 0);
     assert_eq!(f.disparos.len(), 1, "com o contador a existir, ela fala");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ UMA VIDA POR INIMIGO — o ÂMBITO da vigia (2026-09-20)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Três inimigos iguais: cada um com a vida DELE, a vigia DELE e o sinal DELE.
+///
+/// ⚠️ **O `scope` é parâmetro do arranjo** — é ele que os dois gates variam, e tudo o resto é
+/// idêntico: *dois arranjos que só diferem no que se está a medir*.
+fn arena(scope: ph2d_ecs::CounterScope, vidas: &[i64]) -> (SimWorld, Vec<ph2d_ecs::Entity>) {
+    let mut sim = SimWorld::default();
+    let ids = vidas
+        .iter()
+        .map(|v| {
+            let mut r = regra("vida", Compare::AtMost, 0, "morri");
+            r.scope = scope;
+            sim.world_mut()
+                .spawn((
+                    Counter {
+                        name: "vida".into(),
+                        start: 3,
+                        keep_on_restart: false,
+                    },
+                    CounterRuntime { value: *v },
+                    CounterWatch(vec![r]),
+                    CounterWatchRuntime(vec![ph2d_ecs::counter_watch::born()]),
+                ))
+                .id()
+        })
+        .collect();
+    (sim, ids)
+}
+
+/// ⭐⭐⭐ **Com `Own`, só o inimigo que chegou a zero morre.**
+///
+/// Vidas `[0, 2, 2]`: UM disparo, e é o do primeiro.
+///
+/// **Mutação que deve sangrar:** a ponte passar `Ambito::Mundo` (a soma é `4`, ninguém dispara).
+#[test]
+fn com_o_ambito_do_objecto_so_o_que_chegou_a_zero_morre() {
+    let (mut sim, ids) = arena(ph2d_ecs::CounterScope::Own, &[0, 2, 2]);
+    let out = frame(&mut sim, true, 1);
+    assert_eq!(out.disparos.len(), 1, "UM so' morre: {:?}", out.disparos);
+    assert_eq!(
+        out.disparos[0].0,
+        ids[0].to_bits(),
+        "e e' o que tem a vida a zero"
+    );
+}
+
+/// ⚠️ **CONTROLO: com o âmbito da CENA (o de fábrica) o mesmo arranjo é MUDO.**
+///
+/// A soma das três vidas é `4`, que não passa o `AtMost 0` — e é exactamente este o defeito que a
+/// wave curou: *dez inimigos com a mesma regra liam a soma dos dez*.
+#[test]
+fn com_o_ambito_da_cena_o_mesmo_arranjo_e_mudo() {
+    let (mut sim, _) = arena(ph2d_ecs::CounterScope::World, &[0, 2, 2]);
+    let out = frame(&mut sim, true, 1);
+    assert!(
+        out.disparos.is_empty(),
+        "a soma e' 4: ninguem devia falar — {:?}",
+        out.disparos
+    );
+}
+
+/// ⛔⛔ **E a outra metade do defeito: com a CENA eles morrem TODOS JUNTOS.**
+///
+/// Vidas `[0, 0, 0]` — a soma é `0`, logo as três regras disparam **no mesmo tique**, mesmo que
+/// só uma delas descrevesse um inimigo morto. *Um gate que só medisse o caso mudo não distinguiria
+/// «a lei está certa» de «a lei nunca fala».*
+#[test]
+fn com_o_ambito_da_cena_morrem_todos_juntos() {
+    let (mut sim, _) = arena(ph2d_ecs::CounterScope::World, &[0, 0, 0]);
+    let out = frame(&mut sim, true, 1);
+    assert_eq!(out.disparos.len(), 3, "a soma e' zero: falam os tres");
 }

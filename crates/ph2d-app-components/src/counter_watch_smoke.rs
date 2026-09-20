@@ -72,6 +72,7 @@ fn regra(limiar: i64, sinal: &str) -> CounterWatchRow {
         value: limiar,
         signal: sinal.into(),
         once: true,
+        scope: Default::default(),
     }
 }
 

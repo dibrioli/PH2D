@@ -31,6 +31,9 @@ pub const INSP_WATCH_SIGNAL: NodeId = hash_node_id("insp_watch_signal");
 /// Só da primeira vez.
 pub const INSP_WATCH_ONCE: NodeId = hash_node_id("insp_watch_once");
 
+/// A caixa **Only this object** — a vida de UM inimigo em vez do placar da cena.
+pub const INSP_WATCH_SCOPE: NodeId = hash_node_id("insp_watch_scope");
+
 /// **O CHIP da comparação** — o único `Dropdown` desta secção no store.
 ///
 /// ⚠️ **As opções são BOTÕES** ([`INSP_WATCH_CMP_OPT`]), e o chip guarda só o `open`: é a máquina

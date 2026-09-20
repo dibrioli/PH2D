@@ -10,6 +10,7 @@ fn regra(compare: Compare, value: i64) -> CounterWatchRow {
         value,
         signal: "morri".into(),
         once: false,
+        scope: Default::default(),
     }
 }
 
@@ -186,6 +187,7 @@ fn rebobinar_re_arma_a_aresta() {
                 value: 0,
                 signal: "morri".into(),
                 once: true,
+                scope: Default::default(),
             }]),
             CounterWatchRuntime(vec![WatchState {
                 held: true,

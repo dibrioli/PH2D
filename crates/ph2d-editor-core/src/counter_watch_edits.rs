@@ -29,6 +29,11 @@ pub enum CounterWatchFieldEdit {
     Signal(u8, String),
     /// `(regra, só a primeira vez)`.
     Once(u8, bool),
+    /// ⭐⭐ `(regra, só o contador DESTE objecto)` — a vida por inimigo.
+    ///
+    /// ⚠️ **Viaja como `bool` e não como o enum do motor**, pela mesma cerca de dependência do
+    /// `Compare`: o painel não vê a `ph2d-ecs`. A tradução é da shell, com gate de ida-e-volta.
+    Scope(u8, bool),
 }
 
 /// Uma linha da lista, como o painel a mostra.
@@ -44,6 +49,11 @@ pub struct InspectorWatchRow {
     pub signal: String,
     /// Só da primeira vez.
     pub once: bool,
+    /// ⭐⭐ **Esta regra julga só o contador DESTE objecto?**
+    ///
+    /// Desligado (o de fábrica) ela lê a soma da cena inteira — o placar. Ligado, ela lê a vida
+    /// deste inimigo, e dez inimigos com a mesma regra morrem cada um por si.
+    pub scope_own: bool,
     /// ⭐⭐ **Existe um contador com este nome na cena?**
     ///
     /// ⚠️ **É o snapshot que responde, e não o painel** — a resposta é uma varredura do mundo, e o

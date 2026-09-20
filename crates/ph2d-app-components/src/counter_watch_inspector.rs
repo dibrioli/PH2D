@@ -6,7 +6,8 @@
 //! dispara.
 
 use ph2d_ecs::{
-    Compare, CounterWatch, CounterWatchRow, CounterWatchRuntime, SimWorld, WATCHES_MAX, counter,
+    Compare, CounterScope, CounterWatch, CounterWatchRow, CounterWatchRuntime, SimWorld,
+    WATCHES_MAX, counter,
 };
 use ph2d_editor_core::counter_watch_edits::{
     CounterWatchFieldEdit as E, InspectorCounterWatchInfo, InspectorWatchRow,
@@ -51,13 +52,16 @@ pub fn build_info(
         .iter()
         .map(|r| {
             // ⚠️ **Pela PORTA** — a mesma soma que o placar mostra e que a vigia lê.
-            let valor_vivo = counter::soma(world, &r.counter);
+            // ⚠️ **O MESMO âmbito que a lei lê** — senão o painel mostra a soma da cena e a
+            // regra julga a vida de um inimigo, e o artista vê dois números para um facto.
+            let valor_vivo = counter::soma(world, &r.counter, r.scope.ambito(e));
             InspectorWatchRow {
                 counter: r.counter.clone(),
                 compare: u8_de_compare(r.compare),
                 value: r.value,
                 signal: r.signal.clone(),
                 once: r.once,
+                scope_own: r.scope == CounterScope::Own,
                 counter_existe: valor_vivo.is_some(),
                 valor_vivo,
             }
@@ -98,9 +102,12 @@ fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
             cfg.0.remove(i);
             return true;
         }
-        E::Counter(i, _) | E::Compare(i, _) | E::Value(i, _) | E::Signal(i, _) | E::Once(i, _) => {
-            usize::from(*i)
-        }
+        E::Counter(i, _)
+        | E::Compare(i, _)
+        | E::Value(i, _)
+        | E::Signal(i, _)
+        | E::Once(i, _)
+        | E::Scope(i, _) => usize::from(*i),
     };
     let Some(row) = cfg.0.get_mut(i) else {
         return false;
@@ -137,6 +144,19 @@ fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
             }
             row.once = *b;
         }
+        // ⚠️ **A ponte `bool` ⇄ enum vive AQUI, na shell** — o painel não vê a `ph2d-ecs`, e é a
+        // mesma cerca de dependência que o `Compare` já paga.
+        E::Scope(_, b) => {
+            let novo = if *b {
+                CounterScope::Own
+            } else {
+                CounterScope::World
+            };
+            if row.scope == novo {
+                return false;
+            }
+            row.scope = novo;
+        }
         E::Add | E::Remove(_) => return false,
     }
     true
@@ -168,3 +188,7 @@ pub fn tem_runtime(sim: &SimWorld, bits: u64) -> bool {
         .get::<CounterWatchRuntime>(ph2d_ecs::Entity::from_bits(bits))
         .is_some()
 }
+
+#[cfg(test)]
+#[path = "counter_watch_inspector_tests.rs"]
+mod tests;

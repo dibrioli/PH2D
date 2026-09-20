@@ -191,8 +191,12 @@ pub fn valor(
         LabelSource::Authored => None,
         // ⚠️ **Pela PORTA** ([`crate::counter::soma`]) — ela SOMA (a ordem de iteração entre
         // arquétipos não é prometida) e distingue `None` de zero. O outro leitor é a vigia.
+        // ⚠️ **`Ambito::Mundo`, e é a resposta CERTA para um rótulo de HUD:** ele mostra *o
+        // placar*, que é a soma da cena. Um rótulo flutuante sobre UM inimigo pediria o outro
+        // âmbito e é feature nova — nomeada, não construída (nenhum rótulo é pintado no mundo).
         LabelSource::Counter(nome) => {
-            crate::counter::soma(world, nome).map(ph2d_hud::Valor::Inteiro)
+            crate::counter::soma(world, nome, crate::counter::Ambito::Mundo)
+                .map(ph2d_hud::Valor::Inteiro)
         }
         // ⚠️ O MENOR tempo que falta — o relógio que vai tocar primeiro. ⛔ Somar tempos que
         // correm em paralelo não significa nada.

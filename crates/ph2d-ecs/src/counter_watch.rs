@@ -95,6 +95,46 @@ pub struct CounterWatchRow {
     pub signal: String,
     /// **Só da primeira vez.** Desligado, ela fala a **cada** travessia.
     pub once: bool,
+    /// ⭐⭐⭐ **QUAL contador com esse nome** — a cena inteira, ou só o desta entidade.
+    ///
+    /// É o que faz *«uma vida POR inimigo»* existir: dez inimigos com um `Counter{"vida"}` cada e
+    /// a MESMA vigia, e cada um morre com a própria vida a zero. Com [`CounterScope::World`] (o de
+    /// fábrica, e o comportamento de sempre) os dez lêem a soma dos dez e **morrem todos juntos**.
+    pub scope: CounterScope,
+}
+
+/// **Onde a vigia procura o contador que ela julga.**
+///
+/// ⚠️ **`#[repr(u8)]` e APPEND-ONLY**, como a [`Compare`] ao lado: ele viaja no documento pelo
+/// postcard, que é posicional.
+///
+/// ⛔ **Não há `Tagged` ao lado destes dois, e a ausência é medida:** o [`crate::tags`] resolve uma
+/// tag para uma LISTA de entidades, e *somar a vida de um grupo* é a pergunta que o `World` já
+/// responde quando o nome é só daquele grupo. Um modo sem consumidor é um controlo morto com cara
+/// de feature — a mesma recusa que o `SignalTarget::Speaker` levou.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum CounterScope {
+    /// **A soma de toda a cena** — o placar. O de fábrica, e o de todo ficheiro já gravado.
+    #[default]
+    World,
+    /// **Só o contador que vive nesta entidade** — a vida de UM inimigo.
+    Own,
+}
+
+impl CounterScope {
+    /// O âmbito que a porta [`crate::counter::soma`] lê, dado QUEM é o dono desta vigia.
+    ///
+    /// ⚠️ Esta é a única ponte entre o que o ficheiro guarda (um modo) e o que a porta pede (um
+    /// modo **com a entidade dentro**) — e é por ela ser uma função com gate que o dia em que
+    /// houver um terceiro modo não tem onde divergir.
+    #[must_use]
+    pub const fn ambito(self, dono: crate::Entity) -> crate::counter::Ambito {
+        match self {
+            Self::World => crate::counter::Ambito::Mundo,
+            Self::Own => crate::counter::Ambito::Objecto(dono),
+        }
+    }
 }
 
 /// **As vigias de uma entidade** — o componente registado. ⚠️ CONFIG, como o `Timers`.

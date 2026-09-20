@@ -250,7 +250,7 @@ fn mede_o_que_a_composicao_ja_da_a_arma() {
         let mut c = mundo.get_mut::<CounterRuntime>(dono).unwrap();
         c.value -= 1;
     }
-    let restante = ph2d_ecs::counter::soma(sim3.world(), "ammo");
+    let restante = ph2d_ecs::counter::soma(sim3.world(), "ammo", ph2d_ecs::counter::Ambito::Mundo);
     eprintln!("(D) AS MUNIÇÕES — a arma pára quando o pente acaba?");
     eprintln!("    o pente ......................... {PENTE}");
     eprintln!("    gatilhos ........................ {tiros}");

@@ -54,6 +54,7 @@ fn linha(counter: &str, compare: u8, existe: bool) -> InspectorWatchRow {
         value: 0,
         signal: "morri".into(),
         once: false,
+        scope_own: false,
         counter_existe: existe,
         valor_vivo: existe.then_some(3),
     }
@@ -237,6 +238,42 @@ fn a_caixa_do_so_uma_vez_afirma_o_contrario_do_snapshot() {
         edicoes(&acoes),
         vec![E::Once(u8::try_from(ALVO).unwrap(), false)],
         "a caixa tem de pedir o CONTRARIO do que o snapshot mostra"
+    );
+    set_current_inspector_counter_watch(None);
+}
+
+/// ⭐⭐⭐ **A caixa «Only This Object» está viva, e NÃO é a vizinha** (2026-09-20).
+///
+/// ⚠️⚠️ **As duas metades, e a segunda é a que importa:** o braço do `Toggled` tinha **um** ramo, e
+/// uma caixa nova pintada ao lado dele fica *pintada, hit-registada e morta sob o dedo* — a família
+/// que esta crate já pagou sete vezes. Aqui afirma-se que a caixa nova chega ao barramento **e**
+/// que a antiga não foi roubada por ela.
+///
+/// **Mutação que deve sangrar:** o ramo novo devolver `E::Once`; ou o `populate` não registar o id.
+#[test]
+fn a_caixa_do_ambito_esta_viva_e_nao_e_a_vizinha() {
+    let mut i = info();
+    // ⚠️ Os dois campos em valores OPOSTOS: *dois booleanos iguais não distinguem duas caixas.*
+    i.rows[ALVO].once = true;
+    i.rows[ALVO].scope_own = false;
+    let (mut h, mut st) = host(Some(i));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let _ = clica(&mut h, &mut st, &rects, ids::INSP_WATCH_ROW[ALVO]);
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+
+    let acoes = clica(&mut h, &mut st, &rects, ids::INSP_WATCH_SCOPE);
+    assert_eq!(
+        edicoes(&acoes),
+        vec![E::Scope(u8::try_from(ALVO).unwrap(), true)],
+        "a caixa do AMBITO tem de chegar como Scope, com o contrario do snapshot"
+    );
+
+    // CONTROLO: a vizinha continua a chegar como `Once`, e com o valor DELA.
+    let acoes = clica(&mut h, &mut st, &rects, ids::INSP_WATCH_ONCE);
+    assert_eq!(
+        edicoes(&acoes),
+        vec![E::Once(u8::try_from(ALVO).unwrap(), false)],
+        "a caixa antiga nao pode ter sido roubada pelo ramo novo"
     );
     set_current_inspector_counter_watch(None);
 }

@@ -377,11 +377,20 @@ fn editor(
         x,
         w,
         cur_y,
-        &[(
-            ids::INSP_WATCH_ONCE,
-            tr("panel.inspector.counter_watch.only_once"),
-            row.once,
-        )],
+        &[
+            (
+                ids::INSP_WATCH_ONCE,
+                tr("panel.inspector.counter_watch.only_once"),
+                row.once,
+            ),
+            // ⭐ A vida POR INIMIGO. ⚠️ Ela fica **colada ao nome do contador** em espírito e ao
+            // `Only once` na tela: as duas respondem *«sobre QUE contador é esta regra?»*.
+            (
+                ids::INSP_WATCH_SCOPE,
+                tr("panel.inspector.counter_watch.only_this_object"),
+                row.scope_own,
+            ),
+        ],
         sec,
     );
     avisos(scene, text_system, theme, x, w, cur_y, info, row)

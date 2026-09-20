@@ -231,7 +231,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `SignalVerb::RestartRun` eram a mesma função sem parâmetro.
         // ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA SÉTIMA vez, e pela razão de sempre: o
         // `Counter` viaja num `ComponentBlob`, que para ela é opaco.
-        (161, 13, 22),
+        // ⭐ **PROJECT 161→162** (2026-09-20): a vida POR INIMIGO — ⛔ **ZERO componentes novos**,
+        // logo os três contadores do registo NÃO se mexem: é um CAMPO novo no `CounterWatchRow`
+        // (`scope`). ⚠️ **A tripla NÃO vê este degrau** — a DÉCIMA OITAVA vez.
+        (162, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

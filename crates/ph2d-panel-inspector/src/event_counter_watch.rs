@@ -62,12 +62,19 @@ pub(crate) fn apply_counter_watch_event(
         }
     }
 
+    // ⚠️ **As DUAS caixas desta secção** — um `if` de um ramo só engoliria o clique da segunda em
+    // silêncio, que é a família que esta crate já pagou sete vezes.
     if let WidgetEvent::Toggled(id) = ev
-        && id == crate::ids::INSP_WATCH_ONCE
         && !info.rows.is_empty()
     {
-        push(host, bits, E::Once(sel_u8, !info.rows[sel].once));
-        return true;
+        if id == crate::ids::INSP_WATCH_ONCE {
+            push(host, bits, E::Once(sel_u8, !info.rows[sel].once));
+            return true;
+        }
+        if id == crate::ids::INSP_WATCH_SCOPE {
+            push(host, bits, E::Scope(sel_u8, !info.rows[sel].scope_own));
+            return true;
+        }
     }
 
     if let WidgetEvent::TextChanged(id) = ev

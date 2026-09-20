@@ -124,17 +124,28 @@ fn mede_o_que_a_composicao_ja_da_ao_golpe() {
     );
 
     // -- D) Duas vidas, ou uma so'? ------------------------------------------
-    let (w2, _) = arena(2);
-    let soma = ph2d_ecs::counter::soma(&w2, "vida");
+    // ⭐⭐ **A resposta MUDOU em 2026-09-20** e esta sonda fica com as DUAS colunas: ela e' o
+    // registo de que o buraco que a media fechou. A porta ganhou um ÂMBITO, e a nota que dizia
+    // *«uma vida POR INIMIGO nao e' exprimivel»* morre a` vista aqui.
+    let (mut w2, _) = arena(2);
+    let mundo = ph2d_ecs::counter::soma(&w2, "vida", ph2d_ecs::counter::Ambito::Mundo);
+    let alvos2: Vec<_> = w2
+        .query_filtered::<ph2d_ecs::Entity, bevy_ecs::prelude::With<ph2d_ecs::Counter>>()
+        .iter(&w2)
+        .collect();
+    let cada: Vec<_> = alvos2
+        .iter()
+        .map(|e| ph2d_ecs::counter::soma(&w2, "vida", ph2d_ecs::counter::Ambito::Objecto(*e)))
+        .collect();
     println!("D) DOIS inimigos, cada um com `Counter{{name:\"vida\", start:3}}`");
-    println!("   o que a porta do contador responde a «quanto vale `vida`?»: {soma:?}");
+    println!("   `Ambito::Mundo`   -> {mundo:?}   (o placar: a SOMA dos dois)");
+    println!("   `Ambito::Objecto` -> {cada:?}   (a vida de CADA um)");
     println!(
         "   => {}\n",
-        if soma == Some(6) {
-            "UMA so' -- a porta SOMA por NOME, em todo o mundo (e o doc dela di-lo). \
-             Uma vida POR INIMIGO nao e' exprimivel com um nome partilhado."
+        if mundo == Some(6) && cada == vec![Some(3), Some(3)] {
+            "as DUAS perguntas tem resposta -- uma vida POR INIMIGO e' exprimivel desde 20/09"
         } else {
-            "a porta separou-os -- reconferir a nota"
+            "a porta nao separa os dois ambitos -- reconferir a nota"
         }
     );
 

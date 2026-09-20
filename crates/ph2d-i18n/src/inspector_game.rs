@@ -354,6 +354,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.counter_watch.value" => "Value",
         "panel.inspector.counter_watch.signal_name_empty_mute" => "Signal name (empty = mute)",
         "panel.inspector.counter_watch.only_once" => "Only once",
+        "panel.inspector.counter_watch.only_this_object" => "Only This Object",
         "panel.inspector.counter_watch.mute" => "mute",
         "panel.inspector.counter_watch.no_counter_named_yet" => {
             "This rule watches no counter yet \u{2014} name one above."

@@ -842,6 +842,7 @@ fn arma_o_top20() {
             value: 100,
             signal: "won".to_string(),
             once: true,
+            scope_own: false,
             counter_existe: true,
             valor_vivo: Some(42),
         }],

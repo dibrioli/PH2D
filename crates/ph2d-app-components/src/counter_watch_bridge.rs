@@ -61,7 +61,7 @@ pub fn frame(sim: &mut SimWorld, playing: bool, ticks: u32) -> VigiaFrame {
             continue;
         };
         for row in &cfg.0 {
-            if counter::soma(world, &row.counter).is_none() {
+            if counter::soma(world, &row.counter, row.scope.ambito(*e)).is_none() {
                 out.orfas += 1;
             }
         }
@@ -85,7 +85,7 @@ pub fn frame(sim: &mut SimWorld, playing: bool, ticks: u32) -> VigiaFrame {
         let somas: Vec<Option<i64>> = cfg
             .0
             .iter()
-            .map(|row| counter::soma(world, &row.counter))
+            .map(|row| counter::soma(world, &row.counter, row.scope.ambito(e)))
             .collect();
         let Some(mut rt) = world.get_mut::<CounterWatchRuntime>(e) else {
             continue;

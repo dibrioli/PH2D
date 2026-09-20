@@ -30,6 +30,31 @@ impl SculptStroke {
         if dab.radius <= 0.0 || brush.strength <= 0.0 || dab.pressure <= 0.0 {
             return 0;
         }
+        // ⭐⭐⭐⭐ **A OPÇÃO DO DONO CONGELA A ÂNCORA, e não só a direcção** — 2.º
+        // report de 2026-09-19: *«no decorrer da puxada a normal muda e não se
+        // mantém firme na primeira direcção escolhida no clique»*. A direcção
+        // já estava congelada e está MEDIDA (`0,00°` em oito dabs); o que
+        // andava era o CENTRO, que no gancho segue o cursor — ver
+        // [`super::stroke_normal_do_gesto::AncoraDoPuxao`], onde está a tabela.
+        //
+        // ⚠️ **Aqui, antes da consulta da pegada, e não no sítio onde o puxão é
+        // reescrito** (mais abaixo): a pegada, o ajuste de plano e os pesos de
+        // queda saem todos de `dab.center`, e trocá-lo a meio deixaria a pegada
+        // tirada de um sítio com os pesos medidos de outro.
+        //
+        // ⚠️ **No `Verb::Move` isto é no-op**: o `grab_at` já entrega a âncora
+        // como centro em todos os eventos. É o `Verb::SnakeHook` que muda de
+        // comportamento com a opção ligada — e é ele que o report nomeia.
+        let dab_ancorado;
+        let dab = if brush.puxa_pela_normal && brush.oferece_puxar_pela_normal() {
+            dab_ancorado = crate::Dab {
+                center: self.centro_do_puxao(dab.center),
+                ..*dab
+            };
+            &dab_ancorado
+        } else {
+            dab
+        };
         // A pegada sai das posições VIVAS: o pincel age onde a superfície está
         // agora, não onde ela estava no pen-down. É só o ALVO que vem do `pre`.
         //
@@ -172,6 +197,11 @@ impl SculptStroke {
                     .sqrt();
             if l > 0.0 && l.is_finite() {
                 let n = self.direccao_do_puxao(mesh, brush, dab, plane.normal);
+                // ⭐ **E o centro do PRÓXIMO dab sai com o barro** — ver
+                // [`Self::centro_do_puxao`]: sem isto o gancho satura a um raio.
+                if Self::o_centro_viaja(brush) {
+                    self.puxao_percorreu(l);
+                }
                 dab_pela_normal = crate::Dab {
                     pull: [n[0] * l, n[1] * l, n[2] * l],
                     ..*dab

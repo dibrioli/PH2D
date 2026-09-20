@@ -403,6 +403,11 @@ mod tests;
 #[cfg(test)]
 #[path = "gancho_report_tests.rs"]
 mod gancho_report;
+/// ⭐ **A ÂNCORA do «puxar pela normal»** — o 2.º report do mesmo dia, e um
+/// assunto próprio: ali mede-se a MÁSCARA, aqui o ponto em que a puxada prende.
+#[cfg(test)]
+#[path = "puxao_ancora_tests.rs"]
+mod puxao_ancora;
 
 /// ⭐⭐⭐ **OS DOIS MOTORES, SEM CENA E SEM DEVICE** — o miolo do
 /// [`Sculpt3dScene::refine_for_dab`], com **dois** chamadores.

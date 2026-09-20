@@ -118,9 +118,10 @@ impl SculptStroke {
         for m in &mut self.plano_memorias {
             m.esquecer();
         }
-        // ⭐ **E a normal do puxão morre com o traço**, pela mesma lei: ela é a
-        // superfície no PEN-DOWN deste gesto (ver [`Brush::puxa_pela_normal`]).
-        self.normal_do_puxao.clear();
+        // ⭐ **E a âncora do puxão morre com o traço**, pela mesma lei: ela é o
+        // ponto e a superfície do PEN-DOWN deste gesto (ver
+        // [`Brush::puxa_pela_normal`]).
+        self.ancora_do_puxao.clear();
         // ⚠️ **O `b` do HC morre com o traço**, e é o que faz dele o *"array
         // zerado no início do traço"* do *Surface Smooth*: dentro de um gesto
         // ele PERSISTE entre dabs (a lei da referência), entre gestos não.

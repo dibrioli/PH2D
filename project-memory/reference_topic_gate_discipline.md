@@ -591,3 +591,22 @@ que se espera), senão o zero de fora é trivialmente verdadeiro num ficheiro em
 desapareceu. ⚠️ E escolha a agulha pelo NOME da grandeza (`GHOST_W * view.zoom`), nunca por
 «qualquer `* view.zoom`»: uma regra larga demais obriga a isentar os usos legítimos, que é como um
 censo morre. Ver [[feedback_a_textual_census_survives_an_if_false]].
+
+- ⛔⛔ **UM GATE «O CAMINHO DE OMISSÃO NÃO MUDA» QUE CORRE A MESMA CONFIGURAÇÃO
+  DOS DOIS LADOS É UMA TAUTOLOGIA.** Medido 2026-09-19 (`line/sculpt3d`, a opção
+  «puxar pela normal»): o `desligada_ela_nao_muda_um_bit` construía dois pincéis
+  com `puxa_pela_normal: false`, corria o mesmo traço nos dois e comparava as
+  posições — com um `ba.puxa_pela_normal = false` no meio que não mudava nada.
+  *Uma igualdade entre duas corridas da MESMA experiência é verdadeira por
+  construção*, logo ele ficou **verde** sobre a mutação que faz a feature
+  alcançar quem não a pediu, e quem o expôs foi a prova de mutação, nunca a
+  leitura. ⚠️ **A forma engana** porque o corpo tem um `assert_eq!` entre duas
+  coisas que *parecem* diferentes (duas malhas, dois strokes). ⇒ ao escrever *«X
+  não muda»*, pergunte **o que está do outro lado da igualdade e se a mudança
+  que temo consegue alcançá-lo**. As saídas, por ordem: (1) medir o **ESTADO**
+  em vez do produto — *o código da feature não corre* é exacto, barato e imune a
+  plataforma (aqui: a memória da opção fica **vazia**, com o CONTROLO de que ela
+  existe com a opção ligada, senão o gate passa com a feature morta); (2) um
+  **golden** — ⚠️ e ele **não serve** quando a saída vem de `sin`/`cos` mais
+  somas `f32`, porque vira mais um membro da família de flakes a atravessar os
+  três sistemas operativos do CI.

@@ -177,9 +177,15 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        ⭐ Ela so' aparece nesses dois pinceis, e a razao esta' medida:\n\
              [sculpt3d]           nos outros o puxao ou nao existe ou e' tangencial (pol-lo na\n\
              [sculpt3d]           normal deixaria zero).\n\
+             [sculpt3d]        c) Com o `Snake Hook`, continue a arrastar LONGE. O espigao so'\n\
+             [sculpt3d]           fica mais COMPRIDO -- ele nao vai atras da sua mao, e a base\n\
+             [sculpt3d]           dele fica onde voce clicou.\n\
+             [sculpt3d]           (Pedido seu, 2.a volta: antes o gancho ia levando a crista\n\
+             [sculpt3d]            atras do cursor e ela inclinava-se ate' 18 graus.)\n\
              [sculpt3d]        -> COMO SABER QUE DEU ERRADO: se com a caixa marcada o espigao\n\
-             [sculpt3d]           sair TORTO ou for ENROLANDO conforme voce arrasta. A direcao\n\
-             [sculpt3d]           congela quando voce encosta a caneta, e nao muda ate' largar."
+             [sculpt3d]           sair TORTO, for ENROLANDO conforme voce arrasta, ou PARAR de\n\
+             [sculpt3d]           crescer enquanto voce continua a arrastar. A direcao E o\n\
+             [sculpt3d]           ponto de partida congelam quando voce encosta a caneta."
         );
     }
 

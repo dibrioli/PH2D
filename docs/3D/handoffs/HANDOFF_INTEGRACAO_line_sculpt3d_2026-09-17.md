@@ -4604,3 +4604,135 @@ corrida que morra, a lista de testes que o `cargo test` já imprimiu diz quem
 **não** chegou ao fim — é por aí que se nomeia a vítima. *Um `SIGSEGV` não se
 enterra num rodapé, e afirmar que ele é meu ou que é pré-existente seria, hoje,
 escolher entre duas medições que não discriminam.*
+
+---
+
+## §98 — A ÂNCORA DO PUXÃO: congelar a direcção não chega, tem de se congelar o PONTO
+
+**Report do dono (2026-09-19, o 2.º sobre a opção):** *«Pull Along the normal
+precisa fixar a puxada na normal no momento do clique do mouse, pois no decorrer
+da puxada a normal muda e não se mantém firme na primeira direção escolhida no
+clique.»*
+
+### §98.1 — A direcção JÁ estava congelada, e isso está medido
+
+A primeira coisa a fazer foi **não acreditar em mim nem nele**, e medir. A sonda
+[`diag_a_direccao_ao_longo_do_traco`](../../../crates/ph2d-sculpt3d/src/stroke_puxao_normal_tests.rs)
+percorre o traço pelo caminho da lei e imprime, dab a dab, o eixo do que o barro
+deixou:
+
+| fixtura | eixo vs dab 0, ao 8.º dab |
+|---|---|
+| `SnakeHook`, polo, modo `S` | `0,00°` |
+| `SnakeHook`, pen-down a `40°`, modo `S` | `0,00°` |
+| `Move`, polo e a `40°`, modo `S` | `0,00°` |
+| `SnakeHook`, modo `L` (campo elástico) | `≤ 2,57°` |
+
+⇒ **o `AncoraDoPuxao::normal` prende, e a hipótese «o memo está a ser limpo a
+meio do traço» morreu com número.** O `begin` tem **um** chamador de produto
+(`input_down.rs`), o despacho do movimento não lhe toca, e nem o `grow_with` nem
+o `shrink_with` mexem no campo.
+
+### §98.2 — O que andava era ONDE, e a fixtura que o revela precisa do PASSE
+
+⛔⛔ **A sonda da lei é CEGA ao report, e a razão é estrutural:** sem passe de
+topologia não nasce barro NOVO debaixo do cursor que anda, logo o vértice mais
+deslocado é sempre o mesmo e a inclinação não tem de onde aparecer. Corrida pelo
+laço do PRODUTO (`passe_nos_motores` → `dab`), a mesma medição diz outra coisa:
+
+| 16 dabs, arrasto `0,80`, raio `0,30` | eixo vs a normal do CLIQUE | comprimento |
+|---|---|---|
+| `SnakeHook`, pen-down a `40°`, opção LIGADA — **antes** | **`17,1°`** | `0,6725` |
+| `Move`, a `40°`, opção LIGADA — **antes** | `17,9°` | `0,6624` |
+| `SnakeHook` e `Move`, opção DESLIGADA (o controlo) | `17,1°` / `17,9°` | — |
+
+⚠️⚠️ **Os dois lados liam o MESMO número**, e é isso o achado: com a opção
+ligada cada empurrão ia na normal congelada, mas o **centro do dab** continuava
+a seguir o cursor ⇒ cada dab levanta barro novo mais à frente, e a crista
+**inclina-se atrás da mão**. *Uma direcção congelada aplicada a barro que muda
+não é uma puxada firme* — e o dono descreveu exactamente isso com as palavras
+que tinha.
+
+### §98.3 — A cura tem DUAS metades, e a primeira sozinha estraga o gancho
+
+**(a) A âncora congela**, ao lado da normal e na mesma struct
+([`AncoraDoPuxao`](../../../crates/ph2d-sculpt3d/src/stroke_normal_do_gesto.rs)),
+lida no **topo** do `dab_core` — antes da consulta da pegada, porque a pegada, o
+ajuste de plano e os pesos de queda saem todos do centro e trocá-lo a meio daria
+uma pegada tirada de um sítio com pesos medidos de outro.
+
+⛔⛔ **Prender o centro no clique foi construído, medido, e é METADE da cura:**
+ele endireita o eixo (`9,35° → 0,94°` no polo, 8 dabs) e faz o espigão
+**SATURAR** — a lei do `Verb::SnakeHook` mede a queda das posições **vivas**,
+logo o barro que sai afasta-se do centro preso, o peso dele cai a zero e o
+espigão pára a cerca de um raio (`0,3776 → 0,2789` a `40°`). *Um gancho que não
+sabe puxar um chifre longo deixou de ser o gancho.*
+
+**(b) O centro VIAJA com o barro** — `ancora + n × percorrido`, onde
+`percorrido` é a soma dos `‖puxão‖` do passe. É a mesma lei que o pincel afiado
+já paga no §54 (*o centro do dab segue o barro, e não desliza*). O cursor deixa
+de mandar na DIRECÇÃO e continua a mandar em QUANTO.
+
+⚠️ **Só viaja quem parte da posição VIVA** (`Grip::Hook`). Quem SEGURA
+(`Grip::Hold`) resolve do `pre` congelado e já saía recto com a âncora parada —
+medido `0,96°` e comprimento `0,4000` para um arrasto de `0,40`, **exactamente
+linear**; fazê-lo viajar mexeria numa lei que a medição diz estar certa (e a
+mutação que o faz **sangra**, a `6,09°`).
+
+**Depois**, pelo caminho do produto, 16 dabs:
+
+| | eixo vs a normal do clique | comprimento (arrasto `0,80`) |
+|---|---|---|
+| `SnakeHook` a `40°` | **`1,31°`** | **`0,8256`** |
+| `SnakeHook` no polo | `1,46°` | `0,8001` |
+| `Move` a `40°` | `1,60°` | `0,8235` |
+| controlo (opção desligada) | `17,1°`–`17,9°` | — |
+
+### §98.4 — Duas mutações SOBREVIVENTES, e as duas eram gates meus a medir nada
+
+⛔⛔⛔ **O `desligada_ela_nao_muda_um_bit` era uma TAUTOLOGIA.** Ele corria o
+mesmo pincel duas vezes — `puxa_pela_normal: false` dos dois lados, com um
+`ba.puxa_pela_normal = false` no meio que não mudava nada — e comparava a saída
+**consigo própria**. *Uma igualdade entre duas corridas da MESMA configuração é
+verdadeira por construção*, logo ele ficava verde com o caminho de omissão
+alterado: a mutação que faz a âncora alcançar quem **não** pediu a opção passou
+por ele. ⇒ hoje a régua é o ESTADO e não o barro (`ancora_do_puxao` **vazia**
+com a opção desligada, com o CONTROLO de que ela existe com a opção ligada) —
+⚠️ e **um golden da malha não serviria**: a esfera nasce de `sin`/`cos` e o
+traço soma `f32`, logo uma impressão digital seria mais uma candidata à família
+de flakes que atravessa os três sistemas operativos do CI.
+
+⛔⛔ **E o `a_direccao_congela_no_pen_down` media no POLO**, onde a normal do
+gesto, a normal do plano e o olho são **todos** `+z` — a fixtura não distinguia
+a lei congelada da lei viva, e a mutação que apaga o congelamento **SOBREVIVIA**.
+A `40°` ela sangra. *É a mesma lei que esta linha já pagou oito vezes: uma
+fixtura que não contém o fenómeno não afirma nada.*
+
+### §98.5 — O gate, com o controlo dentro
+
+[`o_espigao_sai_a_direito_da_normal_do_clique`](../../../crates/ph2d-app-sculpt3d/src/puxao_ancora_tests.rs)
+corre os dois verbos pelo caminho do produto e afirma **três** coisas:
+
+1. com a opção ligada o eixo fica a `≤ 3°` da normal do clique;
+2. **CONTROLO** — com ela desligada o eixo segue a MÃO e passa `10°`, senão a
+   fixtura deixou de conter o fenómeno e a 1.ª asserção não afirma nada;
+3. o comprimento é `≥ 0,9 ×` o arrasto — ⚠️ **é esta que separa a cura da versão
+   medida e recusada**: com o centro preso no clique a 1.ª metade passava e o
+   gancho saturava.
+
+### §98.6 — Prova e preço
+
+**Mutação `5 de 5`, todas a sangrar** (a âncora não congela · o centro não viaja
+· o centro viaja para toda a gente · a direcção não congela · a âncora alcança
+quem não pediu), com o controlo verde nos três gates.
+
+⚠️ **E o arnês mentiu primeiro:** o `cargo test` imprime `error: test failed`
+quando um teste REPROVA, logo perguntar pelo compilador **antes** de perguntar
+pelo veredito rotula toda mutação que sangra como *«não compila»* — a 1.ª
+corrida leu três sangrias como três erros de build.
+
+⚠️ Tecto de LOC curado por **CORTE** (`gancho_report_tests.rs` `756 → 570`, com
+a âncora a virar assunto próprio em `puxao_ancora_tests.rs`), nunca por isenção.
+Zero contador partilhado, zero contrato, zero ADR; o roteiro da `=14` passo (13)
+ganhou a alínea (c) e a nova forma de saber que deu errado (*o espigão PARAR de
+crescer enquanto se arrasta*).

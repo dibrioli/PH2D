@@ -20,9 +20,9 @@ use ph2d_mesh::Mesh;
 use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
 
 /// O olho da cena — a câmara olha no `−z`.
-const OLHO: [f32; 3] = [0.0, 0.0, -1.0];
+pub(super) const OLHO: [f32; 3] = [0.0, 0.0, -1.0];
 
-fn norma(v: [f32; 3]) -> f32 {
+pub(super) fn norma(v: [f32; 3]) -> f32 {
     (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
 }
 

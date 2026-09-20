@@ -145,7 +145,99 @@ pub fn tangencial(delta: [f32; 3], n: [f32; 3]) -> [f32; 3] {
     ]
 }
 
+/// ⭐⭐⭐⭐ **O QUE O PEN-DOWN CONGELA QUANDO O [`Brush::puxa_pela_normal`] ESTÁ
+/// LIGADO** — uma por passe de simetria, morta com o traço
+/// ([`SculptStroke::begin`]).
+///
+/// ⛔⛔ **São DUAS coisas e não uma, e o 2.º report do dono é a prova.** A 1.ª
+/// wave congelou só a **direcção**, e ele voltou com *«no decorrer da puxada a
+/// normal muda e não se mantém firme na primeira direcção escolhida no
+/// clique»*. Medido pelo caminho do produto, a direcção de cada empurrão
+/// **estava** congelada — `0,00°` de desvio do eixo em oito dabs, no polo e a
+/// `40°`, com e sem campo elástico. O que continuava a andar era **ONDE** o
+/// empurrão acontecia: no gancho o centro segue o cursor, logo cada dab levanta
+/// barro NOVO e a crista inclina-se atrás da mão.
+///
+/// | com o passe de topologia a correr, 8 dabs | eixo vs pen-down |
+/// |---|---|
+/// | `SnakeHook`, centro a seguir o cursor (antes) | **`9,35°`** (polo) · `4,75°` (a 40°) |
+/// | `Move`, centro já ancorado | `0,96°` · `1,12°` (ruído do 1.º dab) |
+///
+/// ⇒ *uma direcção congelada aplicada a barro que muda não é uma puxada firme*,
+/// e é por isso que a âncora entra aqui ao lado da normal: as duas nascem no
+/// mesmo instante, morrem no mesmo instante, e separá-las em dois campos era
+/// convidar a que só uma fosse limpa.
+///
+/// ⚠️ **O centro nasce no PRIMEIRO dab e a normal no primeiro dab COM PUXÃO**,
+/// e a diferença é deliberada: um Grab abre o gesto com puxão nulo (o dedo
+/// ainda não andou), e ler a superfície nesse instante ou no seguinte dá o
+/// mesmo — mas ler o CENTRO no seguinte daria a âncora um evento depois do
+/// clique, que é exactamente o que o dono pediu para não acontecer.
+#[derive(Clone, Debug)]
+pub(super) struct AncoraDoPuxao {
+    /// O centro do primeiro dab deste passe — o clique.
+    pub centro: [f32; 3],
+    /// A normal da superfície ali, escrita no primeiro dab que tem puxão.
+    pub normal: Option<[f32; 3]>,
+    /// ⭐ **Quanto o barro já viajou ao longo da normal**, para o centro poder
+    /// ir com ele. Fica em `0` para quem não viaja — ver [`Self::centro_do_puxao`].
+    pub percorrido: f32,
+}
+
 impl SculptStroke {
+    /// **O CENTRO do dab quando a opção está ligada** — a âncora do clique,
+    /// deslocada ao longo da normal pelo que o barro já viajou.
+    ///
+    /// ⚠️ **Ela é lida no TOPO do [`Self::dab_core`], antes da consulta da
+    /// pegada** — e tem de ser: a pegada, o ajuste de plano e os pesos de queda
+    /// saem todos do centro, e trocá-lo depois da consulta daria uma pegada
+    /// tirada de um sítio com pesos medidos de outro.
+    ///
+    /// ⛔⛔ **PRENDER o centro no clique foi construído, MEDIDO e é metade da
+    /// cura:** ele endireita o gancho (eixo `9,35° → 0,94°`) e faz o espigão
+    /// **SATURAR** — a lei do [`crate::Verb::SnakeHook`] mede a queda das
+    /// posições VIVAS, logo o barro que sai afasta-se do centro preso, o peso
+    /// dele cai a zero e o espigão pára a cerca de um raio (a `40°`, `0,3776`
+    /// para `0,2789` de comprimento). *Um gancho que não sabe puxar um chifre
+    /// longo deixou de ser o gancho.*
+    ///
+    /// ⇒ o centro **viaja com o barro**, que é a mesma lei que o pincel
+    /// afiado já paga (o centro segue o que ele cava, nunca desliza). O cursor
+    /// deixa de mandar na DIRECÇÃO e continua a mandar em QUANTO.
+    ///
+    /// ⚠️ **Só viaja quem parte da posição VIVA** — o [`crate::Grip::Hook`].
+    /// Quem SEGURA ([`crate::Grip::Hold`]) resolve do `pre` congelado e já sai
+    /// recto com a âncora parada (medido: `0,96°` e comprimento `0,4000` para
+    /// um arrasto de `0,40`, exactamente linear) — fazê-lo viajar mexeria numa
+    /// lei que a medição diz estar certa.
+    pub(super) fn centro_do_puxao(&mut self, centro: [f32; 3]) -> [f32; 3] {
+        let passe = self.passe_simetria;
+        if self.ancora_do_puxao.len() <= passe {
+            self.ancora_do_puxao.resize_with(passe + 1, || None);
+        }
+        let a = self.ancora_do_puxao[passe].get_or_insert(AncoraDoPuxao {
+            centro,
+            normal: None,
+            percorrido: 0.0,
+        });
+        match a.normal {
+            Some(n) => [
+                a.centro[0] + n[0] * a.percorrido,
+                a.centro[1] + n[1] * a.percorrido,
+                a.centro[2] + n[2] * a.percorrido,
+            ],
+            None => a.centro,
+        }
+    }
+
+    /// **O barro viajou mais `l` ao longo da normal** — só para quem parte da
+    /// posição viva; ver [`Self::centro_do_puxao`].
+    pub(super) fn puxao_percorreu(&mut self, l: f32) {
+        if let Some(Some(a)) = self.ancora_do_puxao.get_mut(self.passe_simetria) {
+            a.percorrido += l;
+        }
+    }
+
     /// ⭐⭐⭐⭐ **A DIRECÇÃO DO PUXÃO QUANDO O ARTISTA LIGA O
     /// [`Brush::puxa_pela_normal`]** — a normal do gesto, **congelada no
     /// pen-down** e guardada uma por passe de simetria.
@@ -188,14 +280,25 @@ impl SculptStroke {
         do_plano: [f32; 3],
     ) -> [f32; 3] {
         let passe = self.passe_simetria;
-        if self.normal_do_puxao.len() <= passe {
-            self.normal_do_puxao.resize(passe + 1, None);
-        }
-        if let Some(n) = self.normal_do_puxao[passe] {
+        if let Some(Some(a)) = self.ancora_do_puxao.get(passe)
+            && let Some(n) = a.normal
+        {
             return n;
         }
         let n = self.normal_do_gesto(mesh, brush, dab).unwrap_or(do_plano);
-        self.normal_do_puxao[passe] = Some(n);
+        // ⚠️ O centro já foi congelado no topo do `dab_core`, então a entrada
+        // existe — mas o `get_or_insert` fica porque a porta é chamável de um
+        // gate, e um `unwrap` aqui seria um pânico à espera de um arnês.
+        self.centro_do_puxao(dab.center);
+        if let Some(Some(a)) = self.ancora_do_puxao.get_mut(passe) {
+            a.normal = Some(n);
+        }
         n
+    }
+
+    /// `true` quando o centro do dab deste verbo acompanha o barro que sai —
+    /// ver [`Self::centro_do_puxao`], onde a medição está.
+    pub(super) fn o_centro_viaja(brush: &Brush) -> bool {
+        matches!(brush.verb.grip(), crate::Grip::Hook)
     }
 }

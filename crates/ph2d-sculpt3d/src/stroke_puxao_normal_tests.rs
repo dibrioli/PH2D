@@ -91,45 +91,70 @@ fn com_a_opcao_ligada_o_barro_vai_pela_normal_e_nao_pelo_arrasto() {
     );
 }
 
-/// ⭐⭐⭐ **O NEUTRO É BYTE-IDÊNTICO** — desligada, a opção não existe para o
-/// motor.
+/// ⭐⭐⭐ **DESLIGADA, A OPÇÃO NÃO CORRE** — e a régua é o ESTADO, não o barro.
 ///
-/// ⚠️ Sem este gate, a lei poderia estar a passar por um caminho novo que
-/// **recalcula** o mesmo número por outra ordem, e os oráculos dos dois verbos
-/// mediriam outro programa ao último bit.
+/// ⛔⛔ **A 1.ª redacção deste gate era uma TAUTOLOGIA, e quem o provou foi uma
+/// mutação SOBREVIVENTE** (2026-09-19): ela corria o mesmo pincel duas vezes —
+/// `puxa_pela_normal: false` dos dois lados, com um `ba.puxa_pela_normal =
+/// false` no meio que não mudava nada — e comparava a saída consigo própria.
+/// *Uma igualdade entre duas corridas da MESMA configuração é verdadeira por
+/// construção*, logo o gate ficava verde mesmo quando o caminho de omissão
+/// mudava: a mutação que fazia a âncora alcançar quem **não** pediu a opção
+/// passou por ele.
+///
+/// ⚠️ **E um GOLDEN da malha não serve aqui:** a esfera nasce de `sin`/`cos` e
+/// o traço soma `f32`, logo uma impressão digital seria mais uma candidata à
+/// família de flakes que atravessa os três sistemas operativos do CI.
+///
+/// ⇒ a propriedade EXACTA é *o código da opção não corre*: com ela desligada a
+/// [`SculptStroke::ancora_do_puxao`] fica **vazia** — nenhum passe escreveu
+/// âncora nenhuma. O **CONTROLO** é a mesma corrida com a opção ligada, onde
+/// ela tem de ter exactamente um passe: sem ele isto passaria com a feature
+/// inteira morta.
 #[test]
-fn desligada_ela_nao_muda_um_bit() {
+fn desligada_a_opcao_nao_corre_e_ligada_corre() {
     for verbo in [Verb::Move, Verb::SnakeHook] {
-        let mut a = esfera();
-        let mut b = esfera();
-        let mut ba = Brush {
-            verb: verbo,
-            radius: 0.35,
-            strength: 1.0,
-            puxa_pela_normal: false,
-            ..Brush::default()
-        };
-        let mut sa = SculptStroke::default();
-        let mut sb = SculptStroke::default();
-        sa.begin(&a);
-        sb.begin(&b);
-        for k in 0..6 {
-            let c = [0.05 * k as f32, 0.0, 1.0];
-            let d = match verbo {
-                Verb::SnakeHook => Dab::hooking(c, ba.radius, OLHO, [0.05, 0.0, 0.0]),
-                _ => Dab::pulling(POLO, ba.radius, OLHO, [0.05 * (k + 1) as f32, 0.0, 0.0]),
+        for liga in [false, true] {
+            let mut m = esfera();
+            let b = Brush {
+                verb: verbo,
+                radius: 0.35,
+                strength: 1.0,
+                puxa_pela_normal: liga,
+                ..Brush::default()
             };
-            sa.dab(&mut a, &ba, &d, Symmetry::default());
-            // O mesmo, com o campo do pincel a declarar a opção DESLIGADA de
-            // outra maneira (o `Default` já a põe a `false`).
-            ba.puxa_pela_normal = false;
-            sb.dab(&mut b, &ba, &d, Symmetry::default());
+            let mut st = SculptStroke::default();
+            st.begin(&m);
+            for k in 0..6 {
+                let c = [0.05 * k as f32, 0.0, 1.0];
+                let d = match verbo {
+                    Verb::SnakeHook => Dab::hooking(c, b.radius, OLHO, [0.05, 0.0, 0.0]),
+                    _ => Dab::pulling(POLO, b.radius, OLHO, [0.05 * (k + 1) as f32, 0.0, 0.0]),
+                };
+                st.dab(&mut m, &b, &d, Symmetry::default());
+            }
+            let n = st.ancora_do_puxao.len();
+            if liga {
+                assert_eq!(
+                    n, 1,
+                    "{verbo:?}: CONTROLO — com a opcao LIGADA a ancora devia existir \
+                     (um passe de simetria) e ha' {n}; o gate acima passaria com a \
+                     feature inteira morta"
+                );
+                assert!(
+                    st.ancora_do_puxao[0]
+                        .as_ref()
+                        .is_some_and(|a| a.normal.is_some()),
+                    "{verbo:?}: CONTROLO — a ancora existe e a direccao nunca foi escrita"
+                );
+            } else {
+                assert_eq!(
+                    n, 0,
+                    "{verbo:?}: o caminho de OMISSAO escreveu {n} ancora(s) — o codigo \
+                     da opcao corre com ela desligada"
+                );
+            }
         }
-        assert_eq!(
-            a.positions(),
-            b.positions(),
-            "{verbo:?}: o caminho de omissao deixou de ser byte-identico"
-        );
     }
 }
 
@@ -138,8 +163,21 @@ fn desligada_ela_nao_muda_um_bit() {
 /// Num gancho, cada dab vira a superfície debaixo do cursor; lida viva, a normal
 /// do dab `k+1` é a que o dab `k` acabou de criar. O gate mede o ÂNGULO entre o
 /// primeiro e o último incremento do traço: congelada, ele é **zero**.
+///
+/// ⛔⛔ **O pen-down é OBLÍQUO e isso é o gate:** a 1.ª redacção arrancava no
+/// POLO, e ali a normal do gesto, a normal do plano e o olho são **todos**
+/// `+z` — a fixtura não distinguia a lei congelada da lei viva, e a mutação
+/// que apaga o congelamento **SOBREVIVIA** a ela (medido 2026-09-19). A `40°`
+/// as três respostas separam-se e a mutação sangra.
+///
+/// ⚠️ **A régua é o incremento contra a NORMAL DO CLIQUE**, e não contra o
+/// primeiro incremento: na esfera unitária o pen-down é o próprio ponto, logo
+/// o alvo é conhecido em forma fechada e o primeiro dab deixa de ser uma
+/// referência que o ruído do arranque pode envenenar.
 #[test]
 fn a_direccao_congela_no_pen_down_e_o_espigao_sai_a_direito() {
+    const GRAUS: f32 = 40.0;
+    let p0 = [GRAUS.to_radians().sin(), 0.0, GRAUS.to_radians().cos()];
     let mut m = esfera();
     let b = Brush {
         verb: Verb::SnakeHook,
@@ -151,10 +189,11 @@ fn a_direccao_congela_no_pen_down_e_o_espigao_sai_a_direito() {
     let mut st = SculptStroke::default();
     st.begin(&m);
     let mut antes = m.positions().to_vec();
-    let mut primeiro = [0.0f32; 3];
-    let mut ultimo = [0.0f32; 3];
+    let mut pior = 0.0f32;
+    let mut mediu = 0usize;
     for k in 0..8 {
-        let c = [0.04 * k as f32, 0.0, 1.0];
+        // O centro anda no plano de profundidade do pen-down, como o `hook_step`.
+        let c = [p0[0] + 0.04 * k as f32, 0.0, p0[2]];
         st.dab(
             &mut m,
             &b,
@@ -162,24 +201,24 @@ fn a_direccao_congela_no_pen_down_e_o_espigao_sai_a_direito() {
             Symmetry::default(),
         );
         let d = maior(&m, &antes);
-        if k == 0 {
-            primeiro = d;
+        let l = norma(d);
+        if l > 1e-4 {
+            let cos = (d[0] * p0[0] + d[1] * p0[1] + d[2] * p0[2]) / l;
+            pior = pior.max(cos.clamp(-1.0, 1.0).acos().to_degrees());
+            mediu += 1;
         }
-        ultimo = d;
         antes = m.positions().to_vec();
     }
-    let (l0, l1) = (norma(primeiro), norma(ultimo));
-    assert!(
-        l0 > 1e-4 && l1 > 1e-4,
-        "o traco nao moveu barro ({l0:.6}, {l1:.6})"
+    assert_eq!(
+        mediu,
+        8,
+        "o traco nao moveu barro em {} dos 8 dabs",
+        8 - mediu
     );
-    let cos =
-        (primeiro[0] * ultimo[0] + primeiro[1] * ultimo[1] + primeiro[2] * ultimo[2]) / (l0 * l1);
-    let graus = cos.clamp(-1.0, 1.0).acos().to_degrees();
     assert!(
-        graus < 1.0,
-        "o incremento virou {graus:.2}° entre o primeiro dab e o oitavo: a \
-         direccao nao esta' congelada e o espigao enrola"
+        pior < 1.0,
+        "o incremento afastou-se {pior:.2}° da normal do CLIQUE: a direccao nao \
+         esta' congelada e o espigao enrola"
     );
 }
 
@@ -313,6 +352,98 @@ fn diag_quem_sente_a_opcao() {
                     ""
                 }
             );
+        }
+    }
+}
+
+/// ⛔⛔ **A SONDA DO REPORT DE 2026-09-19** — *«no decorrer da puxada a normal
+/// muda e não se mantém firme na primeira direcção escolhida no clique»*.
+///
+/// O gate do congelamento mede o INCREMENTO do gancho; esta sonda mede o que o
+/// dono vê — o **eixo do espigão**, dab a dab, nos dois verbos e nos dois modos
+/// de referência (o `L` liga o campo elástico, cujo `r` cresce com o espigão).
+#[test]
+#[ignore = "sonda: imprime a direccao ao longo do traco, nao afirma nada"]
+fn diag_a_direccao_ao_longo_do_traco() {
+    println!("\n== A DIRECCAO AO LONGO DO TRACO (o eixo do espigao, dab a dab) ==\n");
+    for modo in [crate::RefMode::S] {
+        for verbo in [Verb::SnakeHook, Verb::Move] {
+            let b = Brush {
+                verb: verbo,
+                radius: 0.35,
+                strength: 1.0,
+                puxa_pela_normal: true,
+                mode: modo,
+                ..Brush::default()
+            };
+            if !b.oferece_puxar_pela_normal() {
+                continue;
+            }
+            // ⚠️ **A fixtura do POLO não distingue nada:** ali a normal, o
+            // plano e o olho são todos `+z`. O gesto do dono arranca OBLÍQUO.
+            for graus in [0.0f32, 40.0] {
+                let rad = graus.to_radians();
+                let p0 = [rad.sin(), 0.0, rad.cos()];
+                let mut m = esfera();
+                let repouso = m.positions().to_vec();
+                let mut st = SculptStroke::default();
+                st.begin(&m);
+                println!(
+                    "  -- {verbo:?} · modo {modo:?} · campo {:?} · pen-down a {graus:.0}° \
+                 (normal {:+.3},{:+.3},{:+.3})",
+                    modo.field(verbo),
+                    p0[0],
+                    p0[1],
+                    p0[2]
+                );
+                let mut eixo0 = [0.0f32; 3];
+                let passo = 0.05f32;
+                for k in 0..8 {
+                    let antes = m.positions().to_vec();
+                    let dab = if verbo == Verb::SnakeHook {
+                        // Como o `hook_step`: o centro anda no plano de
+                        // profundidade do pen-down (`z` constante) e o dab recebe o
+                        // INCREMENTO.
+                        Dab::hooking(
+                            [p0[0] + passo * (k + 1) as f32, 0.0, p0[2]],
+                            b.radius,
+                            OLHO,
+                            [passo, 0.0, 0.0],
+                        )
+                    } else {
+                        // Como o `grab_at`: o centro é a ÂNCORA e o puxão é o TOTAL.
+                        Dab::pulling(p0, b.radius, OLHO, [passo * (k + 1) as f32, 0.0, 0.0])
+                    };
+                    st.dab(&mut m, &b, &dab, Symmetry::default());
+                    let inc = maior(&m, &antes);
+                    let eixo = maior(&m, &repouso);
+                    if k == 0 {
+                        eixo0 = eixo;
+                    }
+                    let ang = |u: [f32; 3], v: [f32; 3]| {
+                        let (a, c) = (norma(u), norma(v));
+                        if a < 1e-9 || c < 1e-9 {
+                            return f32::NAN;
+                        }
+                        (((u[0] * v[0] + u[1] * v[1] + u[2] * v[2]) / (a * c)).clamp(-1.0, 1.0))
+                            .acos()
+                            .to_degrees()
+                    };
+                    println!(
+                        "     dab {k}: inc ({:+.4},{:+.4},{:+.4}) |{:.4}| · eixo \
+                     ({:+.4},{:+.4},{:+.4}) |{:.4}| · eixo vs dab0 {:>6.2}°",
+                        inc[0],
+                        inc[1],
+                        inc[2],
+                        norma(inc),
+                        eixo[0],
+                        eixo[1],
+                        eixo[2],
+                        norma(eixo),
+                        ang(eixo, eixo0),
+                    );
+                }
+            }
         }
     }
 }

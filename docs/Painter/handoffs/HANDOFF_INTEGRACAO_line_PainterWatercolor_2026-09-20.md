@@ -323,7 +323,9 @@ carregada** onde cruza a ida, e um traço **recto** tem de ficar exactamente com
   comentários que o merge-base já tinha (`spec.rs`, `spec_default.rs`, `brush_fallback.rs`,
   `stroke_lifecycle.rs`, `watercolor_accum.rs`), e **três** delas são texto do `CLAUDE.md` §5
   escrito por *outra* linha.
-* **A única adição que casa é a LEITURA de um campo público NOSSO** (`brush.stroke_method`), cuja
+* **A única adição que casa é a LEITURA de um campo público NOSSO** (o *método de traço* do
+  pincel — ⚠️ o nome exacto dele fica FORA desta frase de propósito, senão o documento passa a ser
+  mais um acerto da vassoura: é a mesma cura que o parágrafo abaixo descreve), cuja
   **declaração** — essa sim, pré-existente — é que traz a citação do alvo no doc-comment. Usar a
   nossa própria API não é uma citação nova; a dívida é da declaração, e a triagem dela é do **R**.
 
@@ -389,3 +391,90 @@ os testes que de facto correram** (`4`) e controlo verde nas duas pontas:
 ficheiros de produto (`paint_watercolor.rs`, `ids/painter_watercolor.rs`) e um de teste novo
 (`tests/it/seam_watercolor_cards.rs`). Portão: `nextest-impacted` **18 067/18 067**, clippy
 `-D warnings` a zero.
+
+---
+
+## §15 — O ITEM 4 FOI RETIRADO, por veredito do dono, no dia em que shipou
+
+> *«feature com resultado ruim, não consegue distribuir corretamente a carga da tinta. retire e
+> limpe o código de Self Pickup»* (2026-09-20, depois do smoke da fileira curada na §14).
+
+O `Self Pickup` **não existe**: o controlo, a lei, o plano do arco e o campo do traço foram
+apagados. ⇒ **as §12 e §14 descrevem código que já não está na árvore**, e ficam aqui como a
+medição da recusa.
+
+### §15.1 — O que saiu, e o que a ausência PROTEGE
+
+| camada | o que saiu |
+|---|---|
+| contrato do pincel | `BrushSpec::wet_self_pickup` + o default · o espelho `BrushSettings` · o `snapshot` |
+| painel | a fileira do cartão BRUSH (`4` → `3` linhas) · o `brush_fallback` · a chave de i18n |
+| despacho | o id `PAINTER_WATERCOLOR_SELF_PICKUP` · a entrada em `…_FIELDS` (`28` → `27`) · o setter · o braço · a linha do reset |
+| motor | `ARC_UNIT_PX` · `PICKUP_AGE_DIAMETERS` · `arc_stamp` · `LivePickup` · `live_reserve` · o termo `gain` da `wet_mix_depletion` |
+| estado | `PaintState::stroke_arc` e os **quatro** sítios do ciclo de vida dele |
+| gates | `tests/watercolor_pickup.rs` (4 gates + 2 sondas) · o `SeamKnobs::pickup` · o gate da fileira |
+
+⭐ **A `wet_mix_depletion` volta a devolver `Option<Vec<f32>>`**: o segundo elemento do par (o
+percurso) tinha **um** consumidor, o carimbo do arco — *quando o único leitor de um valor sai, o
+valor sai com ele, senão fica um campo que ninguém lê e que a próxima leitura interpreta*.
+
+⚠️ **E a EMENDA ao `wet_charge` foi RETRACTADA.** Ela tinha tornado condicional a frase *«the pickup
+reads the FROZEN pre-stroke base, so it can't self-feed»*; com o controlo fora, a frase é
+incondicional outra vez, e o doc di-lo com a data das duas mudanças. *Uma emenda que sobrevive à
+feature que a motivou é uma nota que mente ao contrário.*
+
+### §15.2 — O que NÃO saiu, e porquê
+
+Os **três** gates de painel da §14 **ficam** — nenhum deles é sobre o Self Pickup:
+
+* `cada_campo_que_a_aquarela_acrescenta_a_tela_chega_a_ferramenta` (o censo derivado da TELA),
+* `nenhuma_linha_dos_cartoes_e_pintada_por_cima_de_outra`,
+* `o_numero_de_linhas_que_um_cartao_declara_e_o_que_ele_pinta`.
+
+⭐ Eles nasceram de um defeito desta feature e medem uma propriedade do **painel**: *a fileira que
+os motivou foi-se, e a armadilha que eles apanham fica* — e o `let _ = card_row(…)` do `Pull`, que
+voltou a ser a última linha, leva agora escrito por cima o aviso de que quem lhe puser uma vizinha
+tem de o trocar por `ry =` **e** subir o `n_rows`.
+
+### §15.3 — O instrumento que esta wave teve de curar
+
+⛔⛔ **O censo dos cartões NÃO saltava comentários, e a primeira prosa com uma VÍRGULA partiu-o ao
+meio:** o scanner de parênteses leu essa vírgula como separador de argumento e o `n_rows` passou a
+ler-se *«e nada no desenho3»* ⇒ ele acusou um cartão **CORRECTO** de não declarar um literal.
+⚠️ A mesma cegueira inflaria a CONTAGEM (um `…_row(` citado num comentário conta como uma linha
+pintada). ⇒ `sem_comentarios`, com reconhecimento de string, corrido **antes** de qualquer
+contagem. *Uma régua que lê código tem de decidir o que é código antes de contar seja o que for.*
+
+**Prova de mutação: 5 de 5 sangram** (o cartão a declarar a mais · a `card_row` a não avançar o `y`
+⇒ TODAS as linhas sobrepostas · o `is_param_field` a largar a família · **CONTROLO** do
+classificador de delegação · e o `sem_comentarios` inerte, que é a prova da cura acima), com o
+arnês a contar os testes que de facto correram (`3`). ⚠️ **Uma delas casou a âncora `3×` e foi
+ABORTADA** antes de medir seja o que for — *outros cartões também declaram `3`, e uma mutação que
+casa N vezes não é a mutação que se quis medir*.
+
+### §15.4 — Portão, e as vassouras
+
+`nextest-impacted` **18 062/18 062** · `CARGO_BUILD_WARNINGS=deny cargo check --workspace
+--all-targets` verde · clippy `--workspace --all-targets -D warnings` zero · `cargo machete` limpo ·
+standalone-optional e workflow-packages verdes · censos da árvore COMBINADA **127/127** · `fmt`
+limpo.
+
+⚠️ **As vassouras foram re-atribuídas FICHEIRO A FICHEIRO contra o merge-base** (o total agregado
+não serve: `11` dos `36` ficheiros do diff não existiam lá, e comparar `34` com `40` é comparar
+populações diferentes). Resultado: **`24` ficheiros iguais ou melhores**, e três a olhar:
+
+* `watercolor_smudge.rs` `0 → 2` — a **leitura** de um campo público NOSSO, cuja declaração é que
+  traz a citação e é **pré-existente** (já registado no §13; a triagem é do **R**).
+* `docs/Painter/ferramentas/oraculo_costura/costura.c` `— → 2` — a chamada que entrega um ponto do
+  traço ao pincel, **API pública da `libmypaint` (ISC, a porta aberta do §0.9)**: a vassoura casa um
+  pedaço genérico do nome dela. Isenção **NOMEADA**; a triagem é do **R**. ⚠️ O nome exacto da
+  função fica FORA desta frase pela mesma razão do ponto abaixo.
+* o próprio handoff — **era MINHA, TRÊS vezes, e está curada**: o §13 escrevia o nome do campo
+  para explicar que ele é pré-existente, esta §15 voltou a escrevê-lo, e a §15.4 chegou a citar o
+  nome da função ISC ao explicar que ela é legítima. *Um instrumento que procura uma agulha não
+  pode CONTÊ-LA — e a prosa que EXPLICA um achado é o sítio mais provável para ela reaparecer,
+  porque explicar dá vontade de nomear.*
+
+⚠️ **E o arnês das vassouras tinha um defeito que lia como achado:** ele alimentava a lista de
+caminhos do `git diff` **incluindo os APAGADOS**, e um caminho inexistente faz a vassoura sair
+`rc = 2` — as dez acusaram de uma vez. Curado com `--diff-filter=d`.

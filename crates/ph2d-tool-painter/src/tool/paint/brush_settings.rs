@@ -490,9 +490,6 @@ pub struct BrushSettings {
     pub wet_dilution: f32,
     /// **Pull** (`0..1`) — Wet Mix colour-carry / smudge length (inert unless `wet_charge < 1`).
     pub wet_pull: f32,
-    /// **Self Pickup** (`0..1`) — o pincel gasto recolhe a tinta do PROPRIO traco ao voltar por
-    /// cima dela (doc 40 §S2-C). `0` = so' a base congelada, ao bit. Inerte com `wet_charge == 1`.
-    pub wet_self_pickup: f32,
     /// **Drying Time** in SECONDS (`2..60 s`) — CANVAS-level, not a brush param (carried in this
     /// display snapshot for the Wetness card's slider read-back). Doc 13 #11.
     pub dry_time_s: f32,

@@ -139,10 +139,6 @@ impl PainterTool {
                         self.set_brush_wet_pull(v);
                         true
                     }
-                    x if x == crate::ids::PAINTER_WATERCOLOR_SELF_PICKUP => {
-                        self.set_brush_wet_self_pickup(v);
-                        true
-                    }
                     x if x == crate::ids::PAINTER_WATERCOLOR_PAPER_SIZE_X => {
                         self.set_brush_paper_size(0, v);
                         true
@@ -299,12 +295,6 @@ impl PainterTool {
         self.paint.brush.wet_pull = v.clamp(0.0, 1.0);
     }
 
-    /// Set **Self Pickup** (recolher a tinta do proprio traco, doc 40 §S2-C), clamped to `0..=1`.
-    /// `0` = a recolha le' so' a base CONGELADA — o caminho de sempre, ao bit.
-    pub fn set_brush_wet_self_pickup(&mut self, v: f32) {
-        self.paint.brush.wet_self_pickup = v.clamp(0.0, 1.0);
-    }
-
     /// Set the paper **Drying Time** in SECONDS (canvas-level, `2..60 s`) → the wetness-bytes/second
     /// rate (`255 / seconds`); the wet-session fusion window (doc 13 #11). Read back via
     /// [`Self::dry_time_s`].
@@ -453,7 +443,6 @@ impl PainterTool {
         b.wet_charge = d.wet_charge;
         b.wet_dilution = d.wet_dilution;
         b.wet_pull = d.wet_pull;
-        b.wet_self_pickup = d.wet_self_pickup;
         b.watercolor_shape_auto = d.watercolor_shape_auto;
         // Drying Time + wetness-preview are canvas-level (not on `b`): reset them to their defaults too.
         self.paint.dry_rate_per_s = super::watercolor_backdrop::CANVAS_WET_DRY_DEFAULT;

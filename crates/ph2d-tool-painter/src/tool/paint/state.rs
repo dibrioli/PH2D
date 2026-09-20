@@ -480,20 +480,6 @@ pub(crate) struct PaintState {
     /// dabs e o afilamento da beira derivam desta grandeza por tabela
     /// ([`super::watercolor_reserve`], doc 41).
     pub(super) stroke_deplete_prox: Vec<u8>,
-    /// O **arco da PRIMEIRA cobertura** de cada texel deste traço, em unidades de
-    /// [`super::watercolor_mixer::ARC_UNIT_PX`] e deslocado de `1` (`0` = a lavagem nunca tocou
-    /// aqui). É a cerca de IDADE do Self Pickup (doc 40 §S2-C): só se recolhe de tinta cujo
-    /// percurso desde a primeira cobertura passe de alguns diâmetros.
-    ///
-    /// ⛔ **PRIMEIRA e não última, e a diferença é a feature inteira:** com espaçamento de
-    /// fábrica o dab `i−1` cobre ~95 % do disco do dab `i`, logo um plano de «última cobertura»
-    /// seria sobrescrito pela cabeça da própria volta e leria idade ≈ 0 em quase tudo — o travão
-    /// nunca armaria e o pincel reabastecia-se do próprio rasto.
-    ///
-    /// ⚠️ Ele também é o que torna a recolha **independente do corte dos lotes**: um texel coberto
-    /// por um dab do MESMO lote tem idade ~0 e é excluído, venha ele antes ou depois no lote.
-    /// Vazio quando o mixer está desligado (o caminho de fábrica não o aloca).
-    pub(super) stroke_arc: Vec<u16>,
     /// EDGE-1 (doc 12): canvas-wide MOISTURE map (`w*h`) surviving pen-up — dries on the heartbeat
     /// (~8.5 s, DiVerdi/Adobe; Curtis wet-area mask); the bake pours the HARDENED coverage
     /// (max-blend). While wet, watercolor strokes CONTINUE one **wet session**

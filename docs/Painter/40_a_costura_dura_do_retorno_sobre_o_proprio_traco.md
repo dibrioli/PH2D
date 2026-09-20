@@ -321,7 +321,37 @@ na mesma cadeia `prev → centro` que o `smear_wet_base` já percorre.
   smoke, senão a S2-B lê-se como "não funcionou".
 * Kernel novo em `ph2d-painter-brush` (irmã do módulo, não é foundational de contrato).
 
-### S2-C · o pincel gasto RECOLHE a própria tinta molhada ao voltar — ✅ **CONSTRUÍDA em 2026-09-20**
+### S2-C · o pincel gasto RECOLHE a própria tinta molhada ao voltar — ⛔⛔ **CONSTRUÍDA E RETIRADA em 2026-09-20, por veredito do dono**
+
+> ⛔⛔⛔ **VEREDITO DO DONO, no mesmo dia em que ela shipou:** *«feature com resultado ruim, não
+> consegue distribuir corretamente a carga da tinta. retire e limpe o código de Self Pickup»*.
+> O controlo, a lei, o plano do arco e o campo do traço foram **APAGADOS** — o `Self Pickup` não
+> existe, e o `wet_charge` volta a ler **só** a base congelada, incondicionalmente.
+>
+> ⚠️⚠️ **O QUE ELE JULGOU, e o que isto NÃO diz:** a cerca de idade **funcionava** (um traço recto
+> continuava byte-idêntico e a volta de um U escurecia, medido) e o custo era nulo (`1,004`/`0,998`).
+> O que ele reprovou foi a **DISTRIBUIÇÃO da carga** — *quanto* pigmento a volta recolhe e como ele
+> se reparte ao longo dela. ⛔ Uma segunda tentativa que reconstrua a mesma lei com outro knob
+> volta ao mesmo veredito: o que teria de mudar é a **lei de repartição**, e ela não está desenhada
+> em lado nenhum.
+>
+> ⭐ **O que fica medido, para não ser re-pago:** *(a)* a recolha tem de entrar no **piso do
+> pigmento** e nunca no reservatório de COR (em papel virgem o `stroke_color` nunca é escrito, §8 —
+> o reservatório lia branco e a volta sairia mais CLARA); *(b)* ela tem de viver no **replay do
+> passe de COBERTURA** e não no avanço do passe de cor, porque quem escreve o mapa de pigmento é a
+> cobertura e ela corre PRIMEIRO (instrumentado, o avanço media `live_pig = 0,58` e a tela não
+> mexia); *(c)* escrita com o idioma `fresco ∨ carry` da casa ela é um **DEGRAU** e não um
+> mostrador (`67 → 69 → 137` de nível para knob `0 / 0,5 / 1`; interpolando dá `67 → 98 → 137`);
+> *(d)* a cerca é o arco da **PRIMEIRA** cobertura — a última seria sobrescrita pela cabeça da
+> própria volta e leria idade `≈ 0` em quase tudo; *(e)* o custo previsto no §9.3 (`≲ +1 %`)
+> confirmou-se, e a §9.5 **não se materializou** (a reordenação «alto risco de construção» era
+> desnecessária: a cerca de idade torna a recolha independente do corte dos lotes por construção).
+>
+> A árvore que a continha é o commit `ca48e24bf` e os dois anteriores; o mecanismo, as três
+> correcções e a prova de mutação ficam no
+> [handoff de integração](handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-09-20.md) §12 e §15.
+
+<details><summary>O desenho original da secção, como ele foi escrito antes de ser construído</summary>
 
 > ✅ **Ordem do dono (2026-09-20): *«implemente Item 4 como opção extra e não como substituto»*.**
 > Shipa como o knob **`Self Pickup`**, que **nasce em `0`** ⇒ o caminho de fábrica é byte-idêntico.
@@ -354,6 +384,8 @@ se reabastece do próprio rastro e o Charge deixa de gastar.
 
 Arte prévia: [doc 20 §9.2 / §10](20_accumulate_na_mesma_pincelada.md) chegou **ao mesmo plano** pelo lado do
 Impasto e o precificou como o caminho **caro**. Se um dia as duas features forem pedidas, o plano é um só.
+
+</details>
 
 ### S2-D · "pen-up automático" quando o traço volta sobre si — ⛔ recusada
 

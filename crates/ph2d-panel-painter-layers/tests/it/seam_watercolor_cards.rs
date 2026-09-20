@@ -22,7 +22,6 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
-use ph2d_editor_core::tool::Tool;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
 use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
@@ -45,13 +44,6 @@ fn painted(tool: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(
     let mut st = PainterLayersPanelState;
     let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     (host, st, rects)
-}
-
-fn rect_of(rects: &[(NodeId, Rect)], id: NodeId) -> Option<Rect> {
-    rects
-        .iter()
-        .find(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
-        .map(|(_, r)| *r)
 }
 
 /// ⭐⭐⭐ **TODO CAMPO QUE A AQUARELA ACRESCENTA À TELA CHEGA À FERRAMENTA.**
@@ -150,61 +142,6 @@ fn nenhuma_linha_dos_cartoes_e_pintada_por_cima_de_outra() {
     }
 }
 
-/// ⭐⭐⭐ **O `Self Pickup` É UMA LINHA PRÓPRIA, E A EDIÇÃO DELE CHEGA AO PINCEL** — com o `Pull`,
-/// que ele estava a tapar, como CONTROLO do outro lado.
-///
-/// ⚠️ **As duas metades são precisas.** Sem a primeira, um `Self Pickup` registado por cima do
-/// `Pull` ganharia o clique (o hit resolve de trás para a frente) e o gate passaria a medir o
-/// vizinho; sem a segunda, mover os dois ao mesmo tempo leria-se como sucesso.
-#[test]
-fn o_self_pickup_e_uma_linha_propria_e_a_edicao_chega_ao_pincel() {
-    let mut tool = tool_em(PaintMedia::Watercolor);
-    let antes = tool.brush_settings();
-    let (mut host, mut st, rects) = painted(&tool);
-
-    let pickup = rect_of(
-        &rects,
-        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SELF_PICKUP,
-    )
-    .expect("o campo Self Pickup não é pintado");
-    let pull = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PULL)
-        .expect("o campo Pull não é pintado");
-    assert!(
-        (pickup.y - pull.y).abs() > pickup.h * 0.5,
-        "o Self Pickup é pintado em cima do Pull (y {} contra {}) — as duas labels sobrepõem-se e o \
-         dedo só alcança uma delas",
-        pickup.y,
-        pull.y
-    );
-
-    // ⚠️ O gesto é a EDIÇÃO do número e não um arrasto: medido nesta mesma família (`Dilution` e
-    //    `Pull`, que shipam há meses), um `drag_at` sobre um chip deste painel produz cinco eventos
-    //    e autora ZERO — o chip é um `NumberInput`, não um `Slider`, e é `type_into_number` que o
-    //    testkit conduz. *Escolher o gesto errado aqui daria um gate vermelho sobre produto certo
-    //    nas três linhas, o que se lê como defeito de lei.*
-    for ev in host.type_into_number(
-        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SELF_PICKUP,
-        "0.62",
-    ) {
-        host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
-    }
-    for action in host.drained_actions() {
-        if let EditorAction::ToolPanelEvent(pe) = action {
-            tool.handle_panel_event(pe);
-        }
-    }
-    let depois = tool.brush_settings();
-    assert!(
-        (depois.wet_self_pickup - 0.62).abs() < 1e-3,
-        "escrever 0.62 no Self Pickup não chegou ao pincel (ficou em {})",
-        depois.wet_self_pickup
-    );
-    assert!(
-        (depois.wet_pull - antes.wet_pull).abs() < 1e-6,
-        "escrever no Self Pickup mexeu no Pull — a edição caiu na linha errada"
-    );
-}
-
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // O terceiro defeito do report: o cartão dimensionado para MENOS linhas do que tem.
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -224,8 +161,38 @@ const FICHEIROS_COM_CARTAO: [(&str, &str); 2] = [
     ),
 ];
 
-/// O último argumento de uma chamada `card_frame(`, lido por contagem de parênteses (o argumento é
-/// `n_rows`). `None` quando ele não é um literal inteiro.
+/// O corpo de uma função **sem os comentários de linha** — a mesma fatia, com cada `//…` até ao
+/// fim da linha apagado (e o `//` dentro de uma string preservado, por contagem de aspas).
+///
+/// ⛔⛔ **Ela existe porque a 1.ª redacção deste censo NÃO saltava comentários, e a primeira prosa
+/// com uma VÍRGULA partiu-a ao meio:** o scanner de parênteses leu essa vírgula como separador de
+/// argumento e o `n_rows` passou a ler-se *«e nada no desenho3»* ⇒ o gate acusou um cartão
+/// CORRECTO de não declarar um literal. ⚠️ A mesma cegueira inflaria a CONTAGEM — um `…_row(`
+/// citado num comentário contava como uma linha pintada. *Uma régua que lê código tem de decidir
+/// o que é código antes de contar seja o que for.*
+fn sem_comentarios(corpo: &str) -> String {
+    let mut fora = String::with_capacity(corpo.len());
+    for linha in corpo.lines() {
+        let (mut aspas, mut corte) = (false, linha.len());
+        let b = linha.as_bytes();
+        for i in 0..b.len() {
+            match b[i] {
+                b'"' if i == 0 || b[i - 1] != b'\\' => aspas = !aspas,
+                b'/' if !aspas && i + 1 < b.len() && b[i + 1] == b'/' => {
+                    corte = i;
+                    break;
+                }
+                _ => {}
+            }
+        }
+        fora.push_str(&linha[..corte]);
+        fora.push('\n');
+    }
+    fora
+}
+
+/// O último argumento de uma chamada `card_frame(` (o `n_rows`), lido por contagem de parênteses
+/// sobre o corpo JÁ sem comentários. `None` quando ele não é um literal inteiro.
 fn n_rows_declarado(corpo: &str, inicio: usize) -> Option<usize> {
     // ⚠️ O último argumento NÃO é o texto depois da última vírgula: o Rust admite vírgula final, e
     //    com ela esse texto é espaço em branco. A leitura honesta é a última FATIA não vazia.
@@ -255,17 +222,10 @@ fn n_rows_declarado(corpo: &str, inicio: usize) -> Option<usize> {
             _ => {}
         }
     }
-    // Tira comentários de linha e espaços — o argumento pode vir precedido de prosa.
-    let limpo = |s: &str| -> String {
-        s.lines()
-            .map(|l| l.split("//").next().unwrap_or("").trim())
-            .collect::<Vec<_>>()
-            .join("")
-    };
     fatias
         .iter()
         .rev()
-        .map(|s| limpo(s))
+        .map(|s| s.trim())
         .find(|s| !s.is_empty())
         .and_then(|s| s.parse().ok())
 }
@@ -289,10 +249,13 @@ fn o_numero_de_linhas_que_um_cartao_declara_e_o_que_ele_pinta() {
 
     for (nome, fonte) in FICHEIROS_COM_CARTAO {
         // Um "corpo" é o texto de uma função: do `fn ` até ao `fn ` seguinte na coluna zero.
-        for corpo in fonte
+        for cru in fonte
             .split("\nfn ")
             .flat_map(|c| c.split("\npub(crate) fn "))
         {
+            // ⚠️ Comentários fora ANTES de qualquer contagem — ver [`sem_comentarios`].
+            let corpo = sem_comentarios(cru);
+            let corpo = corpo.as_str();
             let Some(pos) = corpo.find("card_frame(") else {
                 continue;
             };

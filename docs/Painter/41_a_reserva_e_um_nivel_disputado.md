@@ -70,9 +70,11 @@ serializado**), nenhum `PROJECT_SCHEMA`. O `WetStrokeStyle` é `Clone + Copy` de
 ## §4 — UI: nenhum controlo novo
 
 Os quatro knobs que o artista já tem — **Charge · Rewet · Smudge · Bleed** — passam a alcançar a costura.
-Nada a pintar, registar ou ligar; as quatro condições de UI ficam como estavam. ⏳ O **item 4** do doc 40
-(o pincel esgotado RE-CAPTAR a própria tinta ao voltar) é **decisão do dono** e não entrou: muda o look
-aprovado da depleção e pede um plano `u16` de «arco da PRIMEIRA cobertura» (custo medido no doc 40 §9).
+Nada a pintar, registar ou ligar; as quatro condições de UI ficam como estavam. ⛔⛔ O **item 4** do
+doc 40 (o pincel esgotado RE-CAPTAR a própria tinta ao voltar) foi construído como o knob `Self Pickup`
+em 2026-09-20 e **RETIRADO no mesmo dia por veredito do dono** — *«não consegue distribuir corretamente
+a carga da tinta»*. ⇒ este cartão volta a ter **três** linhas, e a recusa medida (com o que funcionava
+e o que ele julgou) vive no [doc 40 §S2-C](40_a_costura_dura_do_retorno_sobre_o_proprio_traco.md).
 
 ## §5 — Medido (preset de aquarela do PRODUTO, Ragged Edge `6 px`; `load 2,85`)
 
@@ -167,7 +169,10 @@ o raio da fixtura — o que provou que o problema não era o número, era o gate
 
 ## §8 — Aberto
 
-- ⏳ **Item 4** (re-captar a própria tinta) — decisão do dono (§4).
+- ⛔ **Item 4** (re-captar a própria tinta) — **CONSTRUÍDO e RETIRADO** por veredito do dono
+  (2026-09-20). ⚠️ Recusa MEDIDA: a cerca de idade funcionava e o custo era nulo; o que ele reprovou
+  foi a **DISTRIBUIÇÃO da carga** — doc 40 §S2-C. *Reconstruir a mesma lei com outro knob volta ao
+  mesmo veredito.*
 - ⏳ **ACHADO PRÉ-EXISTENTE, fora desta wave, agora com CONTROLO:** no U desta régua o composite incremental
   e o full divergem em raios isolados — **e a lei ANTIGA lê o mesmo número**, que é o que o data. Varrido por
   [`diag_a_escada_do_raio_da_janela`]: `r = 88` lê `161` molhado · `94` seco · **`94` com a lei antiga**;

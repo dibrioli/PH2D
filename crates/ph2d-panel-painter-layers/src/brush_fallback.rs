@@ -253,7 +253,6 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     wet_charge: 1.0, // LITERAL-PX-OK: full fresh paint → mixer off (mirrors BrushSpec::default)
     wet_dilution: 0.0, // LITERAL-PX-OK: full-strength deposit (mirrors BrushSpec::default)
     wet_pull: 0.0, // LITERAL-PX-OK: no colour carry (mirrors BrushSpec::default)
-    wet_self_pickup: 0.0, // LITERAL-PX-OK: frozen-base pickup only (mirrors BrushSpec::default)
     dry_time_s: 10.0, // LITERAL-PX-OK: ~10 s drying window (255 / CANVAS_WET_DRY_DEFAULT 25.5)
     wet_preview: 0.3, // LITERAL-PX-OK: default wetness-preview veil strength (mirrors WET_PREVIEW_DEFAULT)
     paper_kind: 0,    // None (TextureKind wire 0)

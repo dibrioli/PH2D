@@ -313,9 +313,11 @@ fn paint_brush_card(
         content_w,
         y,
         tr("panel.painter_layers.watercolor.brush"),
-        // ⚠️ QUATRO linhas: Charge · Dilution · Pull · Self Pickup. O `card_frame` dimensiona a
-        //    moldura por este número — uma linha a mais do que ele diz é pintada FORA do cartão.
-        4,
+        // ⚠️ TRÊS linhas: Charge · Dilution · Pull. O `card_frame` dimensiona a moldura por este
+        //    número — uma linha a mais do que ele diz é pintada FORA do cartão, e nada no desenho
+        //    reclama. O gate `o_numero_de_linhas_que_um_cartao_declara_e_o_que_ele_pinta` é quem o
+        //    apanha (report do dono, 2026-09-20).
+        3,
     );
     ry = card_row(
         ctx,
@@ -345,10 +347,13 @@ fn paint_brush_card(
         number_field::FINE_STEP,
         2,
     );
-    // ⚠️ O `y` de retorno de uma `card_row` é o `y` da linha SEGUINTE — deitá-lo fora (`let _ =`)
-    //    só é honesto na ÚLTIMA. O `Pull` era a última quando foi escrito, e ao ganhar uma vizinha
-    //    as duas passaram a ser pintadas no MESMO `y` (report do dono: *«label embolada»*).
-    ry = card_row(
+    // ⛔⛔ **QUEM ACRESCENTAR UMA LINHA AQUI TEM DE TROCAR ESTE `let _ =` POR `ry =`, E SUBIR O
+    //    `n_rows` ACIMA.** O `y` de retorno de uma `card_row` é o `y` da linha SEGUINTE, logo
+    //    deitá-lo fora só é honesto na ÚLTIMA — e em 2026-09-20 uma linha nova (`Self Pickup`,
+    //    entretanto retirada por ordem do dono) foi pintada EM CIMA desta, porque este `let _ =`
+    //    continuou a ser o que era quando o `Pull` fechava o cartão. *Uma linha correcta virou
+    //    defeito sem ser tocada.*
+    let _ = card_row(
         ctx,
         theme,
         ix,
@@ -357,20 +362,6 @@ fn paint_brush_card(
         "panel.painter_layers.watercolor.pull",
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PULL,
         brush.wet_pull,
-        0.0,
-        1.0,
-        number_field::FINE_STEP,
-        2,
-    );
-    let _ = card_row(
-        ctx,
-        theme,
-        ix,
-        iw,
-        ry,
-        tr("panel.painter_layers.watercolor.self_pickup"),
-        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SELF_PICKUP,
-        brush.wet_self_pickup,
         0.0,
         1.0,
         number_field::FINE_STEP,

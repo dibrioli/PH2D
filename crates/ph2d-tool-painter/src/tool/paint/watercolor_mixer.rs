@@ -187,10 +187,7 @@ impl PainterTool {
     /// per-pixel depletion map — REPLAYS the travel chain from the stored `wet_mix` without writing
     /// it back (the colour pass advances it once per batch — the rng replay discipline).
     /// `None` when the mixer is off (no depletion — byte-identical default).
-    /// ⚠️ Devolve `(reserva, percurso)` por dab: o percurso ja' e' calculado aqui, e o plano do
-    /// ARCO precisa exactamente dele — deriva-lo outra vez no passe de cobertura seria a segunda
-    /// resposta a' mesma pergunta.
-    pub(super) fn wet_mix_depletion(&self, dabs: &[Dab]) -> Option<Vec<(f32, f32)>> {
+    pub(super) fn wet_mix_depletion(&self, dabs: &[Dab]) -> Option<Vec<f32>> {
         if !self.wet_mixer_active() {
             return None;
         }
@@ -198,30 +195,6 @@ impl PainterTool {
         let pickup = (1.0 - charge).clamp(0.0, 1.0);
         let mut travel = self.paint.wet_mix.travel;
         let mut last = self.paint.wet_mix.last_pos;
-        // Self Pickup (doc 40 §S2-C) — a vista do depósito VIVO. ⭐ Ela vive AQUI, no replay do
-        // passe de COBERTURA, e não no avanço do passe de cor: quem escreve o mapa de pigmento
-        // (`stroke_deplete`, o que o composite lê) é a cobertura, e ela corre PRIMEIRO. Ligado ao
-        // avanço, o termo alimentava só o alfa da cor — que em papel virgem é saltado
-        // (`if a <= 0 { continue }`, doc 40 §9.2) ⇒ media-se `live_pig = 0,58` e a tela não mexia.
-        //
-        // ⚠️ E ficar aqui torna a recolha **independente do corte dos lotes** de graça: os planos
-        // ainda não têm os dabs DESTE lote, e os do lote anterior estão a menos de uma fracção de
-        // diâmetro ⇒ a cerca de idade fecha sobre eles de qualquer maneira.
-        let (fw, fh) = self.source_size;
-        let (fw, fh) = (fw as usize, fh as usize);
-        let n_tex = fw * fh;
-        let gain = self.paint.brush.wet_self_pickup.clamp(0.0, 1.0);
-        let live_planes = (gain > 0.0
-            && self.paint.stroke_arc.len() == n_tex
-            && self.paint.stroke_coverage.len() == n_tex
-            && self.paint.stroke_deplete.len() == n_tex
-            && self.paint.stroke_color.len() == n_tex * 4)
-            .then_some((
-                &self.paint.stroke_coverage[..],
-                &self.paint.stroke_deplete[..],
-                &self.paint.stroke_arc[..],
-                &self.paint.stroke_color[..],
-            ));
         // The carry factor needs the reservoir's evolution too — approximate with the CURRENT stored
         // state (exact per-dab values need the full pickup resample; the coverage fade tolerance is
         // perceptual, and the colour pass applies the exact factor to the deposit itself).
@@ -234,31 +207,7 @@ impl PainterTool {
                 travel += (dx * dx + dy * dy).sqrt();
             }
             last = Some(d.center);
-            // ⭐ O item 4 em uma linha: a reserva recolhida do próprio traço é mais um PISO do
-            // pigmento que o pincel leva, ao lado do fresco e do carry. Com o knob em `0` o
-            // `live_planes` é `None` ⇒ o termo é `0` e a expressão volta à de sempre, ao bit.
-            let live = live_planes.map_or(0.0, |(cov, lvl, arc, col)| {
-                let l = LivePickup {
-                    cov,
-                    lvl,
-                    arc,
-                    col,
-                    now: arc_stamp(travel),
-                    min_age: ((PICKUP_AGE_DIAMETERS * 2.0 * d.radius_px) / ARC_UNIT_PX).max(1.0)
-                        as u16,
-                };
-                live_reserve(&l, fw, fh, d.center, d.radius_px)
-            });
-            // ⭐⭐ O knob INTERPOLA, nunca disputa — e a diferença é o que o torna um mostrador.
-            // Escrito como `base.max(live * gain)` (a 1.ª redacção, o idioma `fresco ∨ carry` da
-            // casa) ele vira um DEGRAU: a recolha só morde quando `live·gain` passa o fresco, e
-            // abaixo disso ela morre ao primeiro dab, porque o próprio dab dilui o nível que o
-            // seguinte vai amostrar. MEDIDO no nível da perna de volta: `67 → 69 → 137` para
-            // `0 / 0,5 / 1` — `0,5` do curso comprava `3 %` do efeito. Interpolando, o meio curso
-            // é o meio do efeito, e os dois extremos ficam onde estavam (`gain = 0` ⇒ `base`, ao
-            // bit; `gain = 1` ⇒ o mesmo `max` de antes, porque só se interpola para CIMA).
-            let base = deplete_fresh(travel, d.radius_px, charge).max(carry);
-            out.push((base + gain * (live - base).max(0.0), travel));
+            out.push(deplete_fresh(travel, d.radius_px, charge).max(carry));
         }
         Some(out)
     }
@@ -295,110 +244,6 @@ fn reservoir_pigment(mix: &WetMix) -> f32 {
 /// disc at `center` (radius `r`), via a cheap 5-tap star (centre + 4 mid-radius points). Presence =
 /// the max per-channel departure from the local ground, dead-zoned like the rewet (`14→50` bytes), so
 /// bare ground contributes `w = 0` (no pickup there). Returns `(straight sRGB 0..1, presence 0..1)`.
-/// A unidade em que o arco da primeira cobertura é guardado (px de percurso por passo do `u16`).
-///
-/// ⚠️ **O recurso é o alcance, não a precisão:** a `4 px` o `u16` cobre `262 143 px` de percurso
-/// num traço, e o que se perde é a resolução da idade — que é comparada contra um limiar de
-/// *diâmetros*, ou seja dezenas a centenas de px. Um traço mais longo que isso satura, e a
-/// saturação é o lado CONSERVADOR (idade lida como `0` ⇒ não se recolhe).
-pub(super) const ARC_UNIT_PX: f32 = 4.0;
-
-/// A idade mínima, em DIÂMETROS de percurso, para um texel do próprio traço ser recolhível.
-///
-/// ⭐ **Este número é DERIVADO, não escolhido.** Num traço recto o tap mais atrasado do amostrador
-/// fica a `r/2` atrás do centro, e um texel ali foi coberto pela primeira vez quando o centro
-/// estava a `r/2 + r = 1,5 r` — ou seja **`0,75` diâmetros** de idade. Qualquer limiar acima disso
-/// fecha a cerca num traço recto; `2,5` deixa **`3,3×`** de margem. Do outro lado, a perna de ida de
-/// um U de raio `32` é cruzada com `~5,8` diâmetros de idade ⇒ a cerca abre. O gate
-/// `a_straight_stroke_never_feeds_on_its_own_trail` mede o lado fechado e o
-/// `the_return_leg_picks_up_the_pigment_it_crosses` o lado aberto.
-pub(super) const PICKUP_AGE_DIAMETERS: f32 = 2.5;
-
-/// O carimbo de arco de um percurso: `0` fica reservado para «nunca coberto».
-#[inline]
-pub(super) fn arc_stamp(travel: f32) -> u16 {
-    let q = (travel / ARC_UNIT_PX).max(0.0);
-    1 + (q.min(f32::from(u16::MAX - 1))) as u16
-}
-
-/// A vista do depósito VIVO que o Self Pickup lê (doc 40 §S2-C) — `None` no caminho de fábrica.
-pub(super) struct LivePickup<'a> {
-    /// Cobertura do traço (`stroke_coverage`).
-    pub cov: &'a [u8],
-    /// NÍVEL da reserva depositada (`stroke_deplete`) — o pigmento que de facto está lá.
-    pub lvl: &'a [u8],
-    /// O arco da PRIMEIRA cobertura (`stroke_arc`), `0` = nunca coberto.
-    pub arc: &'a [u16],
-    /// A cor depositada (`stroke_color`, RGBA) — só se recolhe COR onde o alfa dela é > 0.
-    pub col: &'a [u8],
-    /// O carimbo de arco AGORA.
-    pub now: u16,
-    /// A idade mínima, já em unidades de arco.
-    pub min_age: u16,
-}
-
-impl LivePickup<'_> {
-    /// O que este texel oferece: `(presença, Some(rgb) se ele tem cor própria)`.
-    ///
-    /// ⚠️ A cor vem `None` em papel virgem **de propósito**: deixá-la acender tira os dabs da volta
-    /// do caminho *«pula»* do passe de cor e põe-nos no *«deposita»*, medido a `2,6×` o carimbo por
-    /// dab (doc 40 §9.4) — e é trabalho inútil, porque num traço de uma cor só a cor recolhida **é**
-    /// a do pincel, que o composite já usa como recurso.
-    #[inline]
-    fn at(&self, i: usize) -> (f32, Option<[f32; 3]>) {
-        let a = self.arc[i];
-        if a == 0 || self.now.saturating_sub(a) < self.min_age {
-            return (0.0, None);
-        }
-        let pig = (f32::from(self.cov[i]) / 255.0) * (f32::from(self.lvl[i]) / 255.0);
-        if pig <= 0.0 {
-            return (0.0, None);
-        }
-        let ci = i * 4;
-        let rgb = (self.col.get(ci + 3).copied().unwrap_or(0) > 0).then(|| {
-            [
-                f32::from(self.col[ci]) / 255.0,
-                f32::from(self.col[ci + 1]) / 255.0,
-                f32::from(self.col[ci + 2]) / 255.0,
-            ]
-        });
-        (pig.clamp(0.0, 1.0), rgb)
-    }
-}
-
-/// A **reserva** que o pincel recolhe do PRÓPRIO traço sob o disco (doc 40 §S2-C) — o máximo sobre
-/// os MESMOS 5 taps do [`sample_surface`].
-///
-/// ⛔ **Cinco taps e não a integral do disco:** ela parece «mais correcta» e custa uma segunda
-/// caminhada do disco por dab — **`+58 %`** do passe de cobertura nos dois raios medidos
-/// (doc 40 §9.4). Recusa medida.
-///
-/// ⚠️ Este canal **não toca na cor**: em papel virgem com `Charge < 1` o passe de cor toma o
-/// caminho «pula» e o `stroke_color` nunca é escrito (doc 40 §8), logo somar presença ao
-/// reservatório de cor puxá-lo-ia para o BRANCO e a volta sairia mais CLARA — o oposto do item 4.
-fn live_reserve(l: &LivePickup<'_>, fw: usize, fh: usize, center: [f32; 2], r: f32) -> f32 {
-    let rr = (r * 0.5).max(0.0);
-    let taps = [
-        (center[0], center[1]),
-        (center[0] - rr, center[1]),
-        (center[0] + rr, center[1]),
-        (center[0], center[1] - rr),
-        (center[0], center[1] + rr),
-    ];
-    let mut best = 0.0f32;
-    for (tx, ty) in taps {
-        if tx < 0.0 || ty < 0.0 {
-            continue;
-        }
-        let (x, y) = (tx as usize, ty as usize);
-        if x >= fw || y >= fh {
-            continue;
-        }
-        best = best.max(l.at(y * fw + x).0);
-    }
-    best
-}
-
 fn sample_surface(
     base: &[u8],
     ground: &[u8],

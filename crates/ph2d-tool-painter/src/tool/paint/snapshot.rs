@@ -368,7 +368,6 @@ impl PainterTool {
             wet_charge: b.wet_charge,
             wet_dilution: b.wet_dilution,
             wet_pull: b.wet_pull,
-            wet_self_pickup: b.wet_self_pickup,
             dry_time_s,
             wet_preview,
             paper_kind: b.paper.kind.to_u8(),

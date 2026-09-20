@@ -381,10 +381,12 @@ pub struct BrushSpec {
     /// and blends it into the deposit — `pickup = 1 − charge`. The pickup reads the FROZEN pre-stroke
     /// base, so it can't self-feed. Only read by the render-path when [`Self::watercolor`] is on.
     ///
-    /// ⚠️ **A frase «never the live canvas» valia até 2026-09-20** e passou a ser condicional: com
-    /// [`Self::wet_self_pickup`] acima de `0` a recolha TAMBÉM vê o depósito do próprio traço, e o
-    /// que impede o self-feeding deixa de ser *«não olhar»* e passa a ser a **cerca de IDADE**
-    /// descrita lá. Com ele em `0` (o valor de fábrica) a frase original continua exacta, ao bit.
+    /// ⚠️ **A frase «the FROZEN pre-stroke base» é INCONDICIONAL outra vez.** Em 2026-09-20 ela foi
+    /// emendada para condicional por um `wet_self_pickup` que deixava a recolha ver o depósito do
+    /// próprio traço; o dono RETIROU esse controlo no mesmo dia (*«feature com resultado ruim, não
+    /// consegue distribuir corretamente a carga da tinta»*) e a emenda foi com ele. O mecanismo e
+    /// os números ficam em `docs/Painter/40_…` §S2-C — ⚠️ o que ele julgou foi a DISTRIBUIÇÃO da
+    /// carga, não a cerca de idade que impedia o self-feeding (essa funcionava, e está medida).
     pub wet_charge: f32,
     /// **Dilution** `0..1` — how much water thins the deposit (Procreate Wet Mix). `0` (default) =
     /// full-strength deposit (byte-identical); `1` = a near-transparent wash (the dab lays down less
@@ -395,24 +397,6 @@ pub struct BrushSpec {
     /// toward `1` the picked-up colour LAGS and is dragged along the stroke (a red crossed early
     /// bleeds far downstream). Inert unless [`Self::wet_charge`] < 1. Only read by the render-path.
     pub wet_pull: f32,
-    /// **Self Pickup** `0..1` — o pincel gasto volta a CAPTAR a tinta molhada **do próprio traço**
-    /// ao passar por cima dela (doc 40 §S2-C, o "item 4"; ordem do dono 2026-09-20: *«como opção
-    /// extra e não como substituto»*). `0` (o valor de fábrica) = a recolha lê só a base
-    /// CONGELADA, exactamente como sempre leu — **byte-idêntico**.
-    ///
-    /// ⚠️ **O que impede o self-feeding é uma cerca de IDADE, não a ausência de leitura.** Com
-    /// espaçamento de fábrica (~10 % do raio) o dab `i−1` já cobriu ~95 % do disco do dab `i`; sem
-    /// cerca o pincel reabastecia-se do próprio rasto e o Charge deixava de gastar. A cerca é o
-    /// **arco da PRIMEIRA cobertura** de cada texel: só se recolhe de tinta cuja idade de percurso
-    /// passe de alguns diâmetros — que é o tempo físico de contacto entre a ida e a volta.
-    /// ⛔ **A última cobertura NÃO serve** (seria sobrescrita pela cabeça da própria volta e leria
-    /// idade ≈ 0 em quase tudo — o travão nunca armaria).
-    ///
-    /// ⚠️ Recolhe a **RESERVA sempre** e a **COR só onde o depósito do traço já tem cor**: deixar a
-    /// cor acender em papel virgem tira os dabs da volta do caminho *«pula»* e põe-nos no
-    /// *«deposita*», medido a **`2,6×`** o carimbo por dab — e é trabalho inútil, porque num traço
-    /// de uma cor só a cor recolhida **é** a do pincel. Inert unless [`Self::wet_charge`] < 1.
-    pub wet_self_pickup: f32,
 
     // ── Watercolor Paper slot + Granulation coupling (render-path only) ────────────────────────────
     /// The **Paper** slot: the substrate tooth (its own full texture section — a procedural `Paper*`/other

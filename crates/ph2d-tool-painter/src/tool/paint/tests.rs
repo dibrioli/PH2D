@@ -124,7 +124,6 @@ mod stroke_and_session;
 mod texture_and_tiling;
 mod watercolor_look;
 mod watercolor_parity;
-mod watercolor_pickup; // o item 4 (doc 40 §S2-C): o pincel gasto recolhe a tinta do PROPRIO traco
 mod watercolor_seams;
 mod watercolor_selfseam; // a costura do retorno sobre o PROPRIO traco (doc 40): a regua e os gates
 mod watercolor_session;

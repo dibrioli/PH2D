@@ -469,7 +469,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.watercolor.charge" => "Charge",
         "panel.painter_layers.watercolor.dilution" => "Dilution",
         "panel.painter_layers.watercolor.pull" => "Pull",
-        "panel.painter_layers.watercolor.self_pickup" => "Self Pickup",
         "panel.painter_layers.watercolor.water" => "Water",
         "panel.painter_layers.watercolor.rewet" => "Rewet",
         "panel.painter_layers.watercolor.smudge" => "Smudge",

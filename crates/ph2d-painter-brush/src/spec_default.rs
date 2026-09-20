@@ -146,7 +146,6 @@ impl Default for BrushSpec {
             wet_dilution: 0.0, // full-strength deposit → byte-identical
             wet_pull: 0.0,     // no colour carry (inert unless charge < 1)
             // A recolha le' so' a base CONGELADA — o caminho de sempre, ao bit (doc 40 §S2-C).
-            wet_self_pickup: 0.0,
             // Paper slot inactive by default (the render-path falls back to its built-in paper noise);
             // granulation follows the paper's tooth until the artist points it at the Grain slot map.
             paper: TextureSettings::default(),

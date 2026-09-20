@@ -610,3 +610,24 @@ censo morre. Ver [[feedback_a_textual_census_survives_an_if_false]].
   **golden** — ⚠️ e ele **não serve** quando a saída vem de `sin`/`cos` mais
   somas `f32`, porque vira mais um membro da família de flakes a atravessar os
   três sistemas operativos do CI.
+- ⛔⛔⛔ **UMA LISTA DE ISENÇÕES CUJA GRANULARIDADE ESTÁ ERRADA FICA VERDE A NÃO ISENTAR NADA — e lê-se
+  exactamente como escrita** (medido 2026-09-20, no envio da rodada de seis linhas, em DUAS réguas
+  diferentes na mesma hora). ⭐ **A forma é a mesma nas duas:** a ponte que diz *«esta palavra inglesa
+  já tem chave»* é indexada pela **PALAVRA** e não pelo par `(crate, palavra)` — o painel do vector
+  mapeia `"Blur"` e isso **esconde um rótulo cru no motor da escultura**, uma coincidência de
+  vocabulário entre dois módulos que não se conhecem; e a lista do `typos` casa o **identificador
+  INTEIRO** (`^portugues$`), logo a mesma palavra DENTRO de um nome composto
+  (`…esta_em_portugues`, `primeiro_numero_entre_parentesis`) continua acusada — a régua desceu de
+  `66` achados para `11` e **parou ali**, com quatro isenções recém-escritas a não fazer nada.
+  ⇒ *antes de escrever uma isenção, pergunte de que é a CHAVE da lista* — e a metade que salva é
+  haver uma **segunda régua com outra âncora** (ali, a que confere a FORMA da chave do lado do
+  motor, que apanhou o terceiro rótulo que a ponte escondia).
+- ⛔⛔ **«ÓRFÃO, LOGO APAGUE» É FALSO QUANDO O ÓRFÃO É DELIBERADO — e o censo não sabe a diferença**
+  (medido 2026-09-20). O censo da fronteira dos motores prescreve, na própria mensagem, *«se o
+  rótulo não é pintado por ninguém, ele é um ÓRFÃO e a cura é APAGÁ-LO»* — e o rótulo acusado era o
+  de um botão que o DONO mandou retirar da tela, com a prosa ao lado da variante a dizer que a
+  palavra fica escrita para o dia em que ele a pedir de volta. ⇒ *apagar teria apagado uma decisão
+  de produto registada*; a cura é a TERCEIRA saída, que o próprio ficheiro já tinha em dois irmãos —
+  migrar o texto para a tabela e deixar o chip por pintar. ⚠️ **Um órfão por esquecimento e um
+  órfão por decisão têm o mesmo aspecto numa varredura**, e o que os separa não está no código: está
+  na prosa que registou o veredito.

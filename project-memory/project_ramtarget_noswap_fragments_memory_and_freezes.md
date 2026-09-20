@@ -101,3 +101,26 @@ referência, logo a RAM não se liberta e a nova monta por cima.
 
 ⚠️ O `/etc/fstab` tem cópia em `/etc/fstab.bak-20260830-193827`; `findmnt
 --verify` dá **0 erros** (o aviso do swapfile é normal para ficheiro de swap).
+
+## ⛔⛔⛔ E ele COBRA-SE AO CGROUP: no primário o tecto de memória mede duas coisas (2026-09-20)
+
+As páginas de um `tmpfs` são cobradas ao cgroup que as **escreveu**, e quem escreve
+em `/mnt/ramtarget/PH2D/debug` é sempre um `cargo` que passou pelo
+`scripts/ph2d-run.sh` ⇒ os **46,5 G** ficam na fatia `ph2d-ph2d.slice` e **lá
+ficam depois de o comando acabar**, porque o ficheiro continua a existir.
+
+⇒ **no primário, `PH2D_MEM_MAX` é o disco em RAM MAIS o trabalho.** Com o `48G`
+que uma linha usa sobravam `~1,5 G`, e o `ship.sh` da rodada de seis linhas levou
+um **SIGKILL** num teste que pede `6,2 G` de RSS.
+
+⭐⭐⭐ **O controlo que fecha a atribuição:** o MESMO teste, no MESMO commit, com o
+MESMO tecto, **passa** na fatia de uma worktree (`ph2d-line_*.slice`, que não
+carrega o disco em RAM) e **morre** na do primário; com `96G` no primário passa.
+⚠️ **E o `oom-killer` acusa quem morreu, não a causa** — ele imprime
+`anon-rss:6544504kB` do teste e `limit 50331648kB` do cgroup nas duas linhas
+seguidas: *leia as duas LADO A LADO antes de acusar o teste*.
+
+⚠️ Hoje o mount **não** tem `noswap` (`findmnt -no OPTIONS /mnt/ramtarget`), logo
+aquelas páginas podem sair para o disco e subir o tecto não reabre o travamento
+acima. Tabela das quatro corridas: `docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md`
+§1.1.

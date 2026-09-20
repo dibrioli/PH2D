@@ -16,15 +16,12 @@ use crate::{
     AEDIT_LOOP_BAKE, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD,
     AEDIT_MARK_DEL, AEDIT_SPLIT, loop_state,
 };
-use ph2d_editor_core::paint::{paint_text_centered, resolve};
-use ph2d_editor_core::widget::{
-    Slider, SliderOrientation, button_label_font, paint_slider, paint_slider_track,
-    segment_rects_for,
-};
+
+use ph2d_editor_core::widget::{button_label_font, segment_rects_for};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
+use ph2d_tokens::{Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 /// Paint the loop section starting at `y`; returns the `y` below it. `loaded` dims
@@ -47,7 +44,6 @@ pub(crate) fn paint_loop_section(
 
     // No title row: the section header above carries the name AND the readout. Printing
     // "Loop" twice is what turned this panel into a wall of text (Enio, 2026-07-12).
-    let label_h = TypeToken::Xs.px();
 
     // Set (from selection) | Clear.
     // ⭐ A fileira mede as PALAVRAS (`segment_rects_for`): em partes iguais, a peça mais larga
@@ -85,41 +81,29 @@ pub(crate) fn paint_loop_section(
     );
     y += row_h + gap;
 
-    // Crossfade slider (normalized 0..1 → ms, mapped shell-side). Labelled; no numeric
-    // readout — it is a feel control and the exact ms is the shell's business.
-    paint_text_centered(
-        text_system,
-        scene,
+    // Crossfade (normalized 0..1 → ms, mapped shell-side), na CAIXA ÚNICA do app.
+    //
+    // ⚠️ **A nota anterior dizia *«no numeric readout — it is a feel control e o ms exacto é
+    //    assunto da shell»*, e o que ela descrevia era a AUSÊNCIA de uma leitura, não uma
+    //    decisão sobre qual.** A caixa mostra a FRACÇÃO, que é o que este painel tem: ela não
+    //    promete `ms` nenhum e diz onde o dedo está — *um controlo de sensação continua a ser um
+    //    controlo, e um que não diz nada obriga a arrastar para descobrir onde estava*.
+    //
+    // ⛔ Sem laço a fileira é pintada e NÃO registada — ver [`crate::fileira_de_param`].
+    y = crate::fileira_de_param::fileira_de_param(
+        y,
+        x,
+        w,
         tr("panel.audio_editor.loop.crossfade"),
-        Rect::new(x, y, w, label_h),
-        TypeToken::Xs.px(),
-        resolve(ColorToken::Text2, theme),
-    );
-    y += label_h + ph2d_tokens::control_gap_px();
-    let track = Rect::new(x, y, w, Spacing::Md.px());
-    if has_loop {
-        let mut slider = Slider::new(AEDIT_LOOP_XFADE, tr("panel.audio_editor.loop.crossfade"))
-            .orientation(SliderOrientation::Horizontal);
-        slider.set_value(loop_state::xfade_norm());
-        paint_slider(&slider, track, scene, theme);
-        hit_index.register(AEDIT_LOOP_XFADE, track);
-    } else {
-        // Inert track (no thumb, not hit-registered) when there is nothing to audition.
-        // ⚠️ Par visual NEUTRO e declarado, pela razão da irmã em `paint_delivery`: sem registo
-        // não há estado a que perguntar, e acender seria prometer um arrasto que não existe.
-        paint_slider_track(
-            track,
-            loop_state::xfade_norm(),
-            SliderOrientation::Horizontal,
-            (
-                ph2d_editor_core::widget::SliderState::Normal,
-                ph2d_editor_core::motion::SETTLED,
-            ),
-            scene,
-            theme,
-        );
-    }
-    y += Spacing::Md.px() + ph2d_tokens::control_gap_px();
+        loop_state::xfade_norm(),
+        None,
+        AEDIT_LOOP_XFADE,
+        has_loop,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    ) + ph2d_tokens::control_gap_px();
 
     // **Crossfade Loop** — bake the seam into the audio.
     //

@@ -21,7 +21,7 @@ use crate::{
     AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW, spectral_state,
 };
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider};
+
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
@@ -136,31 +136,23 @@ pub(crate) fn paint_spectral_section(
     // The Amount slider drives whichever denoise is used: the W5 one (needs a profile) or the
     // AI one (always available in this build). Live when either can run.
     let live = can_edit && (spectral_state::has_profile() || ml);
-    paint_text(
-        text_system,
-        scene,
-        tr("panel.audio_editor.spectral.amount"),
-        x,
+    // ⭐ A quantidade, na CAIXA ÚNICA do app — nome à esquerda dentro, fracção à direita dentro.
+    //   ⛔ Sem perfil e sem o modelo, a fileira é pintada e NÃO registada: o `live` já dizia essa
+    //      recusa PELA COR, e agora ela também a diz pelo dedo — ver [`crate::fileira_de_param`].
+    y = crate::fileira_de_param::fileira_de_param(
         y,
-        label_h,
+        x,
         w,
-        resolve(
-            if live {
-                ColorToken::Text2
-            } else {
-                ColorToken::Text3
-            },
-            theme,
-        ),
-    );
-    y += label_h + ph2d_tokens::control_gap_px();
-    let track = Rect::new(x, y, w, Spacing::Md.px());
-    let mut slider = Slider::new(AEDIT_SPEC_AMOUNT, tr("panel.audio_editor.spectral.amount"))
-        .orientation(SliderOrientation::Horizontal);
-    slider.set_value(spectral_state::amount());
-    paint_slider(&slider, track, scene, theme);
-    hit_index.register(AEDIT_SPEC_AMOUNT, track);
-    y += Spacing::Md.px() + gap;
+        tr("panel.audio_editor.spectral.amount"),
+        spectral_state::amount(),
+        None,
+        AEDIT_SPEC_AMOUNT,
+        live,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    ) + gap;
 
     // The status line is the section's teacher: it says what is selected and what is
     // missing, so a dimmed button is never a mystery. While a job runs it says *that* instead:

@@ -24,7 +24,7 @@ use crate::{
     AEDIT_CODEC_NEXT, AEDIT_CODEC_PREV, AEDIT_EXPORT_SET, AEDIT_OGG_QUALITY, delivery_state,
 };
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, paint_slider_track};
+
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
@@ -77,55 +77,30 @@ pub(crate) fn paint_delivery_section(
     // than by pretending to do something.
     let lossy = delivery_state::is_lossy();
     let live = loaded && lossy;
+    // ⭐ O nome deste controlo é do MOTOR (`Quality` ou `Bitrate`, conforme o codec) — ver
+    //    `editor_publish_delivery`. Ele vai para a coluna do NOME da caixa única; a coluna do
+    //    valor fica com a fracção, que é o que este painel tem.
     let label = delivery_state::quality_label();
-    y = text_row(
+    // ⛔ Um codec sem perdas não tem qualidade que se troque: a fileira é pintada e NÃO
+    //    registada — ver [`crate::fileira_de_param`], onde essa recusa é uma só para as cinco.
+    y = crate::fileira_de_param::fileira_de_param(
+        y,
+        x,
+        w,
         if label.is_empty() {
             tr("panel.audio_editor.delivery.quality")
         } else {
             &label
         },
-        x,
-        y,
-        w,
-        label_h,
-        resolve(
-            if live {
-                ColorToken::Text2
-            } else {
-                ColorToken::Text3
-            },
-            theme,
-        ),
+        delivery_state::quality_norm(),
+        None,
+        AEDIT_OGG_QUALITY,
+        live,
         scene,
         text_system,
-    ) + Spacing::Xs.px();
-    let track = Rect::new(x, y, w, Spacing::Md.px());
-    if live {
-        let mut slider = Slider::new(AEDIT_OGG_QUALITY, tr("panel.audio_editor.delivery.quality"))
-            .orientation(SliderOrientation::Horizontal);
-        slider.set_value(delivery_state::quality_norm());
-        paint_slider(&slider, track, scene, theme);
-        hit_index.register(AEDIT_OGG_QUALITY, track);
-    } else {
-        // Inert track (no thumb, not hit-registered): a lossless codec has no quality
-        // to trade, and a live-looking slider that did nothing would be a lie.
-        //
-        // ⚠️ Por isso o par visual é o NEUTRO **declarado**: uma trilha que ninguém regista não
-        // tem estado no store para acender, e reagir ao ponteiro seria exactamente a mentira que
-        // o ramo acima recusa.
-        paint_slider_track(
-            track,
-            delivery_state::quality_norm(),
-            SliderOrientation::Horizontal,
-            (
-                ph2d_editor_core::widget::SliderState::Normal,
-                ph2d_editor_core::motion::SETTLED,
-            ),
-            scene,
-            theme,
-        );
-    }
-    y += Spacing::Md.px() + gap;
+        theme,
+        hit_index,
+    ) + gap;
 
     // What the ENGINE pays — the half of the trade the codec has no say in.
     let frac = delivery_state::budget_frac();

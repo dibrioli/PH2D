@@ -18,7 +18,7 @@ use crate::{
     MAX_VARIATIONS, variation_state,
 };
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
-use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider};
+
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
@@ -256,7 +256,7 @@ fn paint_var_list(
 /// range). No numeric readout — it is a feel control, like the loop crossfade.
 #[allow(clippy::too_many_arguments)]
 fn paint_jitter_slider(
-    mut y: f32,
+    y: f32,
     x: f32,
     w: f32,
     label: &str,
@@ -267,25 +267,25 @@ fn paint_jitter_slider(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let label_h = TypeToken::Xs.px();
-    paint_text_centered(
-        text_system,
-        scene,
+    // ⚠️ **A nota do cabecalho dizia *«sem leitura numerica — e um controlo de
+    //    sensacao, como o crossfade do laco»*, e o que ela descrevia era a AUSENCIA de uma
+    //    leitura.** A caixa unica mostra a FRACCAO, que e o que este painel tem: ela nao promete
+    //    unidade nenhuma e diz onde o dedo esta. O irmao do laco mudou no mesmo commit, pela
+    //    mesma razao.
+    crate::fileira_de_param::fileira_de_param(
+        y,
+        x,
+        w,
         label,
-        Rect::new(x, y, w, label_h),
-        label_h,
-        resolve(ColorToken::Text2, theme),
-    );
-    y += label_h + ph2d_tokens::control_gap_px();
-    // ⚠️ Ver o irmão no `audio-mixer/paint_widgets.rs`: a altura da PISTA ganha nome para não
-    //    se ler como um vão quando reaparece na cauda.
-    let track_h = Spacing::Md.px();
-    let track = Rect::new(x, y, w, track_h);
-    let mut slider = Slider::new(id, label).orientation(SliderOrientation::Horizontal);
-    slider.set_value(value);
-    paint_slider(&slider, track, scene, theme);
-    hit_index.register(id, track);
-    y + track_h + ph2d_tokens::control_gap_px()
+        value,
+        None,
+        id,
+        true,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    ) + ph2d_tokens::control_gap_px()
 }
 
 /// The Variations readout, for the section header — how many clips the set holds,

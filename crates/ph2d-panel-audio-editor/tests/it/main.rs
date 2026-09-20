@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod every_word_this_panel_shows_comes_from_the_string_table;
+mod nenhuma_fileira_fora_da_porta;
 mod no_dead_buttons;
 mod seam;
 mod the_audio_editor_asks_the_store_how_its_buttons_look;

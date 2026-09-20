@@ -18,6 +18,8 @@
 mod clipped_hits;
 pub mod delivery_state;
 mod event;
+/// ⭐ A fileira de parâmetro deste painel — uma porta, cinco consumidores.
+mod fileira_de_param;
 pub mod ids;
 pub mod loop_state;
 mod paint;

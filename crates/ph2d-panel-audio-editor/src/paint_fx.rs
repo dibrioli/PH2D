@@ -299,41 +299,23 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
     let gap = Spacing::Xs.px();
     let views = snapshot::fx_param_views();
     let norms = snapshot::fx_norms();
-    let Ctx {
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    } = ctx;
-    let tema = *theme;
     for (i, (label, value)) in views.iter().enumerate().take(AEDIT_FX_PARAMS.len()) {
-        // ⚠️ Um slot que o efeito nao usa e pintado e NAO registado -- o `NodeId(0)` no
-        //    lugar do slider tira-o do indice sem o tirar do ecra, que e a recusa que esta funcao
-        //    ja praticava com o `if loaded`.
-        let id = if loaded {
-            AEDIT_FX_PARAMS[i]
-        } else {
-            ph2d_a11y::NodeId(0)
-        };
-        let alto = hit_index.com_recorte(|store, hits| {
-            ph2d_editor_core::widget::paint_slider_with_chip_layout_adaptive(
-                Rect::new(x, y, w, ph2d_tokens::ROW_H_PX),
-                label,
-                norms[i],
-                f64::from(norms[i]),
-                Some(value.as_str()),
-                id,
-                ph2d_a11y::NodeId(0),
-                ph2d_editor_core::widget::DEFAULT_LABEL_W,
-                ph2d_editor_core::widget::DEFAULT_CHIP_W,
-                store,
-                hits,
-                scene,
-                text_system,
-                tema,
-            )
-        });
-        y += alto + gap;
+        // ⚠️ Um slot que o efeito não usa é pintado e NÃO registado — a recusa que esta função já
+        //    praticava com o `if loaded`, hoje dita à porta.
+        y = crate::fileira_de_param::fileira_de_param(
+            y,
+            x,
+            w,
+            label,
+            norms[i],
+            Some(value.as_str()),
+            AEDIT_FX_PARAMS[i],
+            loaded,
+            ctx.scene,
+            ctx.text_system,
+            ctx.theme,
+            ctx.hit_index,
+        ) + gap;
     }
 
     // **The room.** Only the Convolution Reverb has one, and it is the one thing in the rack

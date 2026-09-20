@@ -283,6 +283,64 @@ portada, logo é uma **variante** e não um bloqueio; o **taper** (`3` cartões)
 `size`/`rot` quando o knob está ligado e a coluna falta — o mesmo problema do ponto 3, no mesmo
 verbo novo.
 
+### §5.4 — ✅ A PEÇA EM FALTA EXISTE: `ColumnAccess::SourceReadWriteExisting`
+
+Construída no mesmo dia em que a §5.3 a nomeou. Ela é a **cruza** do `SourceRead` (lê a porta
+template num índice que o corpo calcula) com o `ReadWriteExisting` (escreve só quando a entrada
+carrega a coluna) — e nenhuma das nove variantes que existiam tinha as duas metades.
+
+⚠️ **Append-only** no `ph2d-nodegraph` (side-metadata do ADR-0136; ⛔ **não** o contrato congelado
+do `CLAUDE.md` §6.2), e o alcance é pequeno de propósito: a variante, três predicados
+(`reads` · `writes` · `is_source_read`) e **um** braço no `plan_bindings`. *Nenhum kernel que não a
+declare muda um byte.*
+
+⭐⭐ **E o alcance ser pequeno é uma propriedade do desenho, não sorte:** todo consumidor do enum
+passa por predicados (`reads()`, `writes(present)`, `consumes()`, `broadcasts()`, `refuses()`,
+`is_gather_key()`, `is_source_read()`) em vez de um `match` sobre o verbo — medido, há **cinco**
+sítios em toda a `ph2d-gpu-cook` + `ph2d-nodegraph` que nomeiam uma variante, e um deles é o braço
+que esta wave escreveu.
+
+⛔⛔ **A variante compilou sem quebrar um único `match`, e isso é o sinal de alarme e não o de
+sucesso** — é a forma exacta do *dreno de um braço só* que o `CLAUDE.md` §5.0 nomeia: um verbo novo
+que cai num `_ =>` responde plausivelmente e em silêncio. ⇒ o gate que fica é um **`match`
+EXAUSTIVO** (`indice`) de que a lista de variantes é **derivada**: quem acrescentar um verbo é
+obrigado a dar-lhe um índice (erro de compilação) e a lista não pode ficar para trás sem reprovar.
+*As listas escritas à mão que já existiam nos gates deste enum varriam seis nomes de nove.*
+
+⚠️ **E as duas populações condicionais passam a ser afirmadas** (quem escreve só-se-presente ·
+quem lê num índice que o corpo calcula), porque um verbo que caia numa delas por acidente muda o
+produto sem tocar numa linha de gate.
+
+**Gates:** `toda_variante_esta_na_lista_e_na_ordem_do_indice` ·
+`a_cruza_le_na_fonte_e_escreve_so_o_que_existe` (com o CONTROLO dos dois irmãos, cada um com uma
+metade) · `as_duas_populacoes_condicionais_sao_as_que_a_casa_declara` — os três na
+`ph2d-nodegraph`; e na `ph2d-gpu-cook`, `a_cruza_escreve_so_quando_a_coluna_existe` (o PLANO de
+bindings: `ReadBuffer`+`WriteBuffer` presente, `ReadIdentity`+`WriteDropped` ausente) e
+`o_acessor_de_escrita_existe_mesmo_quando_a_coluna_falta`.
+
+⛔ **Os dois níveis são obrigatórios e o de cima não prova o de baixo:** o do enum afirma o que os
+predicados respondem, o do codegen afirma que ele os HONRA — e as duas coisas já divergiram nesta
+casa (o `ReadBroadcast` nasceu com os predicados certos e um `match` que o tratava como escritor;
+quem o apanhou foi o naga a recusar `redefinition of out_v`).
+
+**Mutação: 6 de 6 sangram**, com os dois controlos verdes — quatro sobre a LEI (ela cunha · ela
+nunca escreve · ela deixa de ler na fonte · ela deixa de ler), uma sobre o CODEGEN (o `write_`
+no-op esquecido) e uma sobre a DERIVAÇÃO. ⚠️ **E a da derivação teve de ser reescrita:** *tirar* a
+variante da lista não compila (o array é `[ColumnAccess; 10]`), e uma mutação que não compila
+lê-se no relatório exactamente como uma que sobreviveu — a forma que este repo já pagou. A que
+mede é **trocar a ORDEM** de duas entradas, que compila e reprova; a remoção fica nomeada como o
+caso **mais forte** (erro de compilação, não teste vermelho).
+
+⚠️ **Promoção pedida à lista de flakes de fan-out** (`CLAUDE.md` §5.0 — a linha pede, o integrador
+escreve): **`the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`**
+(`ph2d-tool-painter`, módulo `measure_input_cost`) — único ✗ de `18 433` no portão desta wave, com
+**zero** linhas do diff naquela crate (ele toca `ph2d-nodegraph`, `ph2d-gpu-cook` e um doc), e
+**3 de 3 verde sozinho a `load 38`–`41`**, que é acima da carga em que reprovou. *Gate de custo
+medido ⇒ a assinatura da família.*
+
+⏳ **O que falta para a W1(a) fechar:** o kernel WGSL do `motion.clone` (o molde do §5.3 ponto 1),
+o `DerivedUniform` do `k`, e a paridade GPU↔CPU na bancada da `ph2d-gpu-cook`.
+
 ---
 
 ## §6 — CERCAS que este ciclo herda (lidas, não lembradas)

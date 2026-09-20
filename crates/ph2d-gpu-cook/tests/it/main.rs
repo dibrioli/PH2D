@@ -43,3 +43,4 @@ mod node_key_uniform;
 mod plan_analysis;
 mod plan_simulation;
 mod sim_invalidation;
+mod source_read_write_existing;

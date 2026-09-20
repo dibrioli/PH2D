@@ -71,6 +71,29 @@ pub enum ColumnAccess {
     /// the point the artist animated. Absent still reads the identity (the
     /// `0 =>` arm); only the length-1 case is new.
     ReadBroadcast,
+    /// **A leitura mapeada na FONTE que também ESCREVE, e só quando a coluna existe** — a cruza
+    /// do [`Self::SourceRead`] com o [`Self::ReadWriteExisting`], e a peça que faltava para um
+    /// kernel `SourceRows` poder **RENUMERAR**.
+    ///
+    /// ⛔⛔ **As duas metades são obrigatórias e nenhuma das outras variantes as tem juntas:**
+    ///
+    /// - **ler na FONTE** (`i % n`, o índice que o corpo calcula), porque num kernel que muda a
+    ///   contagem o elemento `i` da saída não é o elemento `i` de porta nenhuma — o
+    ///   `ReadWriteExisting` lê em `i` e leria fora de alcance;
+    /// - **escrever SÓ SE PRESENTE**, porque o que o corpo não escreve chega por GATHER (uma
+    ///   cópia do template) e escrever uma coluna ausente **CUNHA-A** — uma coluna a mais viaja,
+    ///   é serializada e muda o que um nó a jusante vê.
+    ///
+    /// ⚠️ **Ela existe por uma MEDIÇÃO e não por simetria** (doc 116 §5.3): varridas as cenas
+    /// porta a porta de todo multiplicador, **`40`** trazem `Index` e `Count` e **`38`** não — ou
+    /// seja, *«escrever sempre»* cunha em metade do produto e *«recuar sempre»* perde a outra
+    /// metade. O braço do `match` da CPU que ela exprime é literalmente
+    /// `("Index", Column::Scalar(v)) => …`, que só toca a coluna quando ela existe.
+    ///
+    /// ⭐ O `motion.kaleidoscope` contornou isto **recuando** (`applicable: |p| p(REINDEX) < 0.5`),
+    /// o que ali é aceitável porque a renumeração dele é um knob opcional; num cloner ela é
+    /// **incondicional**, logo o mesmo contorno recusaria o nó sempre.
+    SourceReadWriteExisting,
     /// **The `id`-gather key** (ADR-0130), the conditional successor to
     /// [`Self::RefuseIfPresent`] for `motion.integrate`/`motion.spring`. Names
     /// the column this node pairs its per-element state by — an `id` on the
@@ -135,6 +158,7 @@ impl ColumnAccess {
                 | ColumnAccess::GatherKey
                 // A source-mapped read reads its template at the body's own index.
                 | ColumnAccess::SourceRead
+                | ColumnAccess::SourceReadWriteExisting
         )
     }
 
@@ -149,7 +173,9 @@ impl ColumnAccess {
             | ColumnAccess::GatherKey
             | ColumnAccess::SourceRead => false,
             ColumnAccess::Write | ColumnAccess::ReadWrite => true,
-            ColumnAccess::ReadWriteExisting => present_on_input,
+            ColumnAccess::ReadWriteExisting | ColumnAccess::SourceReadWriteExisting => {
+                present_on_input
+            }
         }
     }
 
@@ -177,8 +203,15 @@ impl ColumnAccess {
 
     /// Is this a [`Self::SourceRead`] — a read from a length-decoupled template
     /// port (`StreamOp::SourceRows`), present at the port's own length?
+    /// ⚠️ **A cruza conta**, e é o que lhe dá a length-decouple: sem isto o
+    /// `column_present` julgaria a porta template pela regra POSICIONAL (tem de ser o
+    /// comprimento do dispatch) e a coluna sairia ABSENT numa cadeia que a traz — a lei
+    /// seria escrita e nunca armaria.
     pub const fn is_source_read(self) -> bool {
-        matches!(self, ColumnAccess::SourceRead)
+        matches!(
+            self,
+            ColumnAccess::SourceRead | ColumnAccess::SourceReadWriteExisting
+        )
     }
 }
 
@@ -213,4 +246,109 @@ pub struct ColumnBinding {
     /// state — and `vel` is read from BOTH (the seed from `rest`, the step from
     /// `forces`), which is why the port cannot be a property of the column name.
     pub port: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ColumnAccess;
+
+    /// **O ÍNDICE de cada verbo** — e este `match` é EXAUSTIVO de propósito: uma variante nova
+    /// é **erro de compilação aqui**, e não uma linha que cai num `_ =>` em silêncio.
+    ///
+    /// ⚠️ Ele é o que torna a [`TODAS`] derivada em vez de escrita à mão. *Uma lista de variantes
+    /// mantida à mão é a lista que envelhece* — e as que já existem nos gates deste enum
+    /// envelheceram exactamente assim (o `Consume`/`RefuseIfPresent` varrem seis nomes de nove).
+    fn indice(a: ColumnAccess) -> usize {
+        match a {
+            ColumnAccess::Read => 0,
+            ColumnAccess::Write => 1,
+            ColumnAccess::ReadWrite => 2,
+            ColumnAccess::ReadWriteExisting => 3,
+            ColumnAccess::Consume => 4,
+            ColumnAccess::RefuseIfPresent => 5,
+            ColumnAccess::ReadBroadcast => 6,
+            ColumnAccess::SourceReadWriteExisting => 7,
+            ColumnAccess::GatherKey => 8,
+            ColumnAccess::SourceRead => 9,
+        }
+    }
+
+    /// Todos os verbos, na ordem do [`indice`] — ver o gate que prende as duas coisas.
+    const TODAS: [ColumnAccess; 10] = [
+        ColumnAccess::Read,
+        ColumnAccess::Write,
+        ColumnAccess::ReadWrite,
+        ColumnAccess::ReadWriteExisting,
+        ColumnAccess::Consume,
+        ColumnAccess::RefuseIfPresent,
+        ColumnAccess::ReadBroadcast,
+        ColumnAccess::SourceReadWriteExisting,
+        ColumnAccess::GatherKey,
+        ColumnAccess::SourceRead,
+    ];
+
+    /// ⭐⭐⭐ **A LISTA É DERIVADA, e uma variante nova não pode ficar de fora dela.**
+    ///
+    /// O [`indice`] é exaustivo ⇒ quem acrescentar um verbo é obrigado a dar-lhe um índice; este
+    /// gate exige que esse índice caiba na [`TODAS`] **e** que ela esteja na ordem dele. ⇒ o par
+    /// não pode divergir sem alguém reparar.
+    #[test]
+    fn toda_variante_esta_na_lista_e_na_ordem_do_indice() {
+        for (i, a) in TODAS.into_iter().enumerate() {
+            assert_eq!(indice(a), i, "{a:?} esta' fora de ordem na TODAS");
+        }
+    }
+
+    /// ⭐⭐⭐ **O PERFIL DA CRUZA** (`SourceReadWriteExisting`, doc 116 §5.3) — e as duas metades
+    /// que a definem, mais os quatro predicados que ela **não** é.
+    ///
+    /// ⚠️ **A 2.ª metade é a que o `ReadWriteExisting` também tem**, e a 1.ª é a que o
+    /// `SourceRead` também tem; o que não existia era o PAR. *Sem a `is_source_read` a porta
+    /// template seria julgada pela regra POSICIONAL e a coluna sairia absent numa cadeia que a
+    /// traz — a lei ficaria escrita e nunca armaria.*
+    #[test]
+    fn a_cruza_le_na_fonte_e_escreve_so_o_que_existe() {
+        let a = ColumnAccess::SourceReadWriteExisting;
+        assert!(a.reads(), "ela LE");
+        assert!(a.is_source_read(), "e le na FONTE (length-decoupled)");
+        assert!(a.writes(true), "escreve quando a coluna existe");
+        assert!(!a.writes(false), "e NAO a cunha quando ela falta");
+        // ⛔ E não é nenhuma das outras coisas — sem isto, um predicado novo que a apanhasse por
+        // acidente mudaria o que ela faz sem tocar nesta linha.
+        assert!(!a.consumes() && !a.broadcasts() && !a.refuses() && !a.is_gather_key());
+        // ⭐ O CONTROLO: o irmão que lê na fonte NUNCA escreve, e é por isso que ele não chegava.
+        assert!(ColumnAccess::SourceRead.is_source_read());
+        assert!(!ColumnAccess::SourceRead.writes(true));
+        // …e o irmão que escreve condicionalmente NÃO lê na fonte.
+        assert!(ColumnAccess::ReadWriteExisting.writes(true));
+        assert!(!ColumnAccess::ReadWriteExisting.is_source_read());
+    }
+
+    /// ⭐ **Exactamente DOIS verbos escrevem condicionalmente, e exactamente DOIS leem na fonte** —
+    /// as populações derivadas da [`TODAS`], para que um verbo novo que caia numa delas por
+    /// acidente reprove aqui em vez de mudar o produto em silêncio.
+    #[test]
+    fn as_duas_populacoes_condicionais_sao_as_que_a_casa_declara() {
+        let condicionais: Vec<_> = TODAS
+            .into_iter()
+            .filter(|a| a.writes(true) && !a.writes(false))
+            .collect();
+        assert_eq!(
+            condicionais,
+            vec![
+                ColumnAccess::ReadWriteExisting,
+                ColumnAccess::SourceReadWriteExisting
+            ],
+            "quem escreve SO SE PRESENTE"
+        );
+        let na_fonte: Vec<_> = TODAS.into_iter().filter(|a| a.is_source_read()).collect();
+        assert_eq!(
+            na_fonte,
+            vec![
+                ColumnAccess::SourceReadWriteExisting,
+                ColumnAccess::SourceRead
+            ],
+            "quem le num indice que o CORPO calcula"
+        );
+    }
 }

@@ -149,7 +149,11 @@ pub fn plan_bindings(
             let write = match b.access {
                 // The one shape a boolean cannot carry: absent, so no buffer,
                 // but the body still needs a `write_` symbol to call (a no-op).
-                ColumnAccess::ReadWriteExisting if !here => Some(BindingPlan::WriteDropped),
+                ColumnAccess::ReadWriteExisting | ColumnAccess::SourceReadWriteExisting
+                    if !here =>
+                {
+                    Some(BindingPlan::WriteDropped)
+                }
                 a if a.writes(here) => Some(BindingPlan::WriteBuffer),
                 _ => None,
             };

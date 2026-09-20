@@ -159,6 +159,84 @@ pub(crate) fn capsula_h(_n: &GraphNodeView) -> f32 {
     CAPSULA_H
 }
 
+/// **O respiro lateral do nome dentro da cápsula**, em unidades de grafo.
+///
+/// ⚠️ Ele vive aqui, com a GEOMETRIA, e não no pintor: desde que a largura segue o nome, esta
+/// margem é o que separa o texto da borda **e** o que a largura acrescenta à medida do texto —
+/// *duas leituras do mesmo número, e por isso ele tem uma casa só*.
+pub(crate) const MARGEM_X_DA_CAPSULA: f32 = 12.0; // LITERAL-PX-OK: respiro lateral, unidades de grafo
+
+/// **O avanço por caractere, para quando NÃO há medida** — calibrado no **pior GLIFO** da fonte,
+/// e não no pior nome do catálogo.
+///
+/// ⭐ **Aqui a folga é o lado CERTO do erro, e é o oposto do que ela era na fonte:** uma
+/// estimativa larga custa **enchimento** (uma pastilha com mais respiro do que precisa) e uma
+/// estreita custa um nome **CORTADO**. ⚠️ Na fonte o mesmo idioma custava `20 %` de corpo e foi
+/// por isso que saiu de lá — *a mesma estimativa é errada num sítio e certa no outro, e o que
+/// decide é o que o erro paga*.
+///
+/// ⛔⛔ **E a 1.ª redacção calibrou-a no CATÁLOGO (`0,6730`, em *«ADSR»*) — o gate reprovou-a com
+/// dezasseis `W`.** O catálogo não é a população: *o artista RENOMEIA um nó para o que quiser*, e
+/// um censo dos 136 tipos não diz nada sobre o nome que ele escreve. Medido por glifo a corpo
+/// `27,95`: `W` `1,0062` · `@` `0,9966` · `%` `0,9282` · `M` `0,8906` · `m` `0,8760` · `A`
+/// `0,7126` · `0` `0,6426`.
+///
+/// ⛔ Ela é um **fallback** e não o caminho normal: no produto a medida chega sempre
+/// (`crate::capsula_larguras::medir` corre no topo do quadro, antes do `interact`), e quem lê
+/// isto é um gate sem medidor de texto — ou um nó cuja geometria alguém peça antes do 1.º
+/// quadro. *É por isso que o enchimento de `~40 %` que ela dá a um nome normal não custa nada:
+/// ninguém o vê.*
+const AVANCO_POR_CHAR: f32 = 1.06; // LITERAL-PX-OK: pior GLIFO medido (W, 1,0062) + 5 %
+
+/// ⭐⭐⭐ **A LARGURA DE UMA CÁPSULA — ela SEGUE O NOME.**
+///
+/// Ordem do dono (2026-09-20): *«aumenta a largura do retângulo conforme o tamanho do nome»*, e
+/// ela resolve o conflito entre as duas ordens anteriores — *«fonts 30 % maiores»* e *«sem 3
+/// pontos»*: a `+30 %` **14 dos 136** nomes do catálogo não cabiam na largura do cartão, e a
+/// escolha era cortá-los ou baixar a fonte. Com a largura livre não há escolha a fazer.
+///
+/// ⚠️ **O piso é a largura do CARTÃO** ([`CARD_W`]): um nome curto não encolhe a pastilha, senão
+/// voltavam os *«tamanhos irregulares»* — a uniformidade que o dono pediu em 19/09 fica para
+/// toda a população que já cabia, e só cresce quem precisa.
+///
+/// ⚠️⚠️ **A medida é MEDIDA** ([`crate::capsula_larguras`]) e não estimada: com o pior avanço do
+/// catálogo, uma estimativa generosa entregaria *«Simulation Zone»* numa pastilha de `321`
+/// unidades onde o texto mede `232`.
+pub(crate) fn largura_da_capsula(n: &GraphNodeView) -> f32 {
+    let texto = crate::capsula_larguras::largura_medida(&n.display_name)
+        .unwrap_or_else(|| estimativa_da_largura(&n.display_name));
+    CARD_W.max(texto + 2.0 * MARGEM_X_DA_CAPSULA)
+}
+
+/// Ver [`AVANCO_POR_CHAR`] — o que responde quando ninguém mediu.
+pub(crate) fn estimativa_da_largura(nome: &str) -> f32 {
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "contagem de caracteres cabe num f32"
+    )]
+    let chars = nome.chars().count() as f32;
+    chars * crate::paint::paint_capsula::CAPSULA_FONTE * AVANCO_POR_CHAR
+}
+
+/// ⭐⭐ **ONDE UM NÓ COMEÇA E QUANTO ELE MEDE, neste zoom** — em unidades de grafo, a porta única
+/// do [`Detalhe`] para a geometria horizontal (o irmão do [`card_h_at`]).
+///
+/// ⭐ **Uma cápsula larga cresce para os DOIS lados**, mantendo o centro do cartão. ⚠️ Não é
+/// gosto, é MEDIDO: com a disposição automática a `DX = 220` e o cartão a `190` sobram `30`
+/// unidades entre dois nós encadeados. Crescer só para a direita põe as `42` unidades da pior
+/// pastilha **todas** num vão (`30 − 42 = −12`, e ela cobre o vizinho); centrada, cada lado leva
+/// `21` e só dois nomes LONGOS lado a lado se tocam (`30 − 21 = 9` de folga contra um vizinho
+/// normal).
+pub(crate) fn card_x_w_at(n: &GraphNodeView, view: &View) -> (f32, f32) {
+    match detalhe(view) {
+        Detalhe::Completo => (n.x, CARD_W),
+        Detalhe::Capsula => {
+            let w = largura_da_capsula(n);
+            (n.x + (CARD_W - w) * 0.5, w)
+        }
+    }
+}
+
 /// A folga TOTAL acima do primeiro pino e abaixo do último — meia de cada lado. ⚠️ Não é gosto:
 /// um pino é um DISCO centrado na fileira, logo um pino colado à borda fica **meio fora** da
 /// forma, qualquer que ela seja.

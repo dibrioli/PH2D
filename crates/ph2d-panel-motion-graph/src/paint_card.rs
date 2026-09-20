@@ -21,11 +21,14 @@ pub(super) fn draw_card(
     theme: Theme,
     veiled: bool,
 ) -> Rect {
-    let (sx, sy) = view.pt(n.x, n.y);
-    let w = geom::CARD_W * view.zoom;
-    let h = geom::card_h_at(n, view) * view.zoom;
+    // ⚠️ **O rect vem da GEOMETRIA** (`card_rect`), e não de `CARD_W`: desde 2026-09-20 uma
+    // cápsula é tão larga quanto o nome dela, e o pintor tem de desenhar exactamente o rect que o
+    // hit-test regista — *duas contas para a mesma caixa divergem no dia em que uma delas mudar*.
+    let body = geom::card_rect(n, view);
+    let (sx, sy) = (body.x, body.y);
+    let w = body.w;
+    let h = body.h;
     let r = CARD_RADIUS * view.zoom;
-    let body = Rect::new(sx, sy, w, h);
 
     // ⭐⭐⭐ **A CÁPSULA** (ordem do dono, 2026-09-19) — abaixo do limiar do texto o nó deixa de ser
     // um cartão e passa a ser uma pastilha da cor do grupo, com o nome a enchê-la. Ver

@@ -264,7 +264,11 @@ pub(crate) fn preview_toggle_rect(n: &GraphNodeView, view: &View) -> Option<Rect
 /// Screen center of a socket (`output` picks the right vs left edge; `i` is the
 /// row index).
 pub(crate) fn socket_center(n: &GraphNodeView, view: &View, output: bool, i: usize) -> (f32, f32) {
-    let edge_x = if output { n.x + CARD_W } else { n.x };
+    // ⚠️ **A borda é a da FORMA deste zoom, não a do cartão** — desde que a cápsula segue o nome
+    // (2026-09-20), `n.x + CARD_W` deixaria o pino de saída **dentro** de uma pastilha larga, e o
+    // fio a aterrar no meio do nome.
+    let (cx, cw) = card_x_w_at(n, view);
+    let edge_x = if output { cx + cw } else { cx };
     #[expect(clippy::cast_precision_loss, reason = "indice de porta cabe num f32")]
     let y = match detalhe(view) {
         Detalhe::Completo => n.y + HEADER_H + i as f32 * ROW_H + ROW_H * 0.5,
@@ -353,8 +357,9 @@ pub(crate) fn band_rect(anchor: (f32, f32), cur: (f32, f32)) -> Rect {
 
 /// A card's rect on screen — the same geometry `paint` draws and `hits` registers.
 pub(crate) fn card_rect(n: &GraphNodeView, view: &View) -> Rect {
-    let (sx, sy) = view.pt(n.x, n.y);
-    Rect::new(sx, sy, CARD_W * view.zoom, card_h_at(n, view) * view.zoom)
+    let (x, w) = card_x_w_at(n, view);
+    let (sx, sy) = view.pt(x, n.y);
+    Rect::new(sx, sy, w * view.zoom, card_h_at(n, view) * view.zoom)
 }
 
 /// Every node the rubber band **touches** — its card INTERSECTS the band. Touch,

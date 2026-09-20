@@ -251,45 +251,32 @@ fn o_nome_tem_um_tamanho_so_e_nunca_e_cortado() {
 
     // ⚠️ **As duas primeiras metades vivem no COMPILADOR**, e é por isso que não estão aqui: o
     // `CAPSULA_FONTE` é uma constante (logo TAMANHO ÚNICO por construção) e o `const _: () =
-    // assert!(CAPSULA_FONTE > 1.3 * TITLE_SIZE)` ao lado dela recusa um corpo que não seja «bem
-    // maior». *O clippy recusa um `assert!` de teste sobre duas constantes — ele é dobrado antes
-    // de correr —, e uma cerca que o compilador impõe é mais forte que um gate.*
+    // assert!(CAPSULA_FONTE > 2.0 * TITLE_SIZE)` ao lado dela recusa um corpo que não seja o que
+    // o dono pediu. *O clippy recusa um `assert!` de teste sobre duas constantes — ele é dobrado
+    // antes de correr —, e uma cerca que o compilador impõe é mais forte que um gate.*
     //
-    // O que SOBRA para medir é a única metade que uma constante não decide: SEM RETICÊNCIAS — o
-    // pior nome do catálogo, com o medidor que o pintor consulta.
+    // ⛔⛔ **E a metade que este gate media MORREU em 2026-09-20**, com a ordem *«aumenta a
+    // largura do retângulo conforme o tamanho do nome»*: ele exigia que o pior nome coubesse na
+    // largura do CARTÃO e que o corpo fosse MÁXIMO para ela — *as duas perguntas eram sobre uma
+    // largura fixa, e a largura deixou de ser fixa*. O que sobra a medir é a **estimativa**, que
+    // é o único caminho por onde um nome ainda pode sair cortado (quando ninguém mediu).
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
-    let disponivel = CARD_W - 2.0 * 12.0;
     for nome in [
         "Fibonacci Spiral",
         "Simulation Zone",
-        "Four Point Warp",
+        "ADSR",
         "Reroute (Value)",
         "MMMMMMMMMMMMMMMM",
     ] {
         let w = ts.prefix_width_weighted(nome, CAPSULA_FONTE, ph2d_text::FontWeight::SEMI_BOLD);
-        eprintln!("  {nome:<18} {w:>8.1} de {disponivel:.1}");
+        let est = geom::estimativa_da_largura(nome);
+        eprintln!("  {nome:<18} texto {w:>7.1}  estimativa {est:>7.1}");
+        assert!(
+            w <= est,
+            "a estimativa de «{nome}» ({est:.1}) e' mais ESTREITA que o texto ({w:.1}) — num \
+             quadro sem medida o nome sai CORTADO"
+        );
     }
-    let pior = "Simulation Zone";
-    let largura = ts.prefix_width_weighted(pior, CAPSULA_FONTE, ph2d_text::FontWeight::SEMI_BOLD);
-    assert!(
-        largura <= disponivel,
-        "o pior nome do catalogo sairia CORTADO: «{pior}» mede {largura} e so' ha' {disponivel} \
-         — re-meca o `PIOR_NOME_POR_UNIDADE` com a sonda `mede_o_corpo_maximo_da_capsula`"
-    );
-
-    // ⭐⭐⭐ **E A OUTRA METADE, que é a ordem de 2026-09-20 (*«fonts maiores»*): o corpo é
-    // MÁXIMO.** ⛔ Sem ela este gate só diz *«cabe»*, e `CAPSULA_FONTE = 1,0` também cabe — *uma
-    // régua que só vê o lado que não estoura aprova a fonte de ontem*, que é exactamente como o
-    // `0,58` de folga sobreviveu uma jornada inteira.
-    let folga = disponivel - largura;
-    assert!(
-        folga < disponivel * 0.05,
-        "o corpo nao esta' MAXIMO: sobram {folga:.1} de {disponivel:.1} na largura do pior nome \
-         — ha' fonte por usar, e a ordem do dono foi «fonts maiores»"
-    );
-
-    // E a cápsula tem sempre a largura do cartão — só a ALTURA muda.
-    assert!((CARD_W - 190.0).abs() < 1e-6);
 }
 
 /// ⭐⭐⭐ **O CANTO É O DO CABEÇALHO — um RECTÂNGULO, não uma pastilha.**
@@ -336,4 +323,117 @@ fn o_nome_fica_no_centro_da_pastilha() {
             "o meio do texto tem de cair no meio da pastilha (largura {w})"
         );
     }
+}
+
+/// ⭐⭐⭐ **A LARGURA SEGUE O NOME — e um nome curto NÃO encolhe a pastilha.**
+///
+/// Ordem do dono (2026-09-20): *«aumenta a largura do retângulo conforme o tamanho do nome»*.
+/// ⚠️ **As três metades reprovam por motivos diferentes:** o PISO (um nome curto fica na largura
+/// do cartão, senão voltam os *«tamanhos irregulares»* de 19/09), o CRESCIMENTO (um nome comprido
+/// alarga, e o texto cabe com a margem dos dois lados) e a INÉRCIA no regime do cartão (de perto
+/// nada disto acontece).
+#[test]
+fn a_largura_da_capsula_segue_o_nome_com_piso_no_cartao() {
+    crate::capsula_larguras::esquece();
+    let mut curto = no(1, 1);
+    curto.display_name = "FK".into();
+    let mut longo = no(1, 1);
+    longo.display_name = "Simulation Zone".into();
+    // As medidas que o produto teria — pregadas, porque um gate não tem medidor de texto.
+    crate::capsula_larguras::prega("FK", 40.0);
+    crate::capsula_larguras::prega("Simulation Zone", 208.5);
+
+    let v = vista(0.5);
+    assert_eq!(geom::detalhe(&v), Detalhe::Capsula);
+
+    // (1) O PISO: um nome curto não encolhe nada.
+    let (_, w_curto) = geom::card_x_w_at(&curto, &v);
+    assert!(
+        (w_curto - CARD_W).abs() < 1e-6,
+        "um nome curto tem de ficar na largura do cartao: {w_curto} contra {CARD_W}"
+    );
+
+    // (2) O CRESCIMENTO: o texto cabe, com a margem dos dois lados.
+    let (_, w_longo) = geom::card_x_w_at(&longo, &v);
+    assert!(
+        w_longo >= 208.5 + 2.0 * geom::MARGEM_X_DA_CAPSULA,
+        "a pastilha ({w_longo}) tem de caber o texto (208,5) mais as duas margens"
+    );
+    assert!(
+        w_longo > CARD_W,
+        "e tem de CRESCER: {w_longo} contra {CARD_W}"
+    );
+
+    // (3) A INÉRCIA: de perto, o cartão é o cartão.
+    let perto = vista(1.0);
+    assert_eq!(geom::detalhe(&perto), Detalhe::Completo);
+    for n in [&curto, &longo] {
+        let (x, w) = geom::card_x_w_at(n, &perto);
+        assert!(
+            (w - CARD_W).abs() < 1e-6 && (x - n.x).abs() < 1e-6,
+            "no regime do cartao nada se mexe: ({x}, {w})"
+        );
+    }
+    crate::capsula_larguras::esquece();
+}
+
+/// ⭐⭐ **A PASTILHA CRESCE PARA OS DOIS LADOS** — o centro do cartão é preservado.
+///
+/// ⚠️ **Medido, não escolhido:** com `DX = 220` e o cartão a `190` sobram `30` unidades entre dois
+/// nós encadeados; crescer só para a direita põe as `42` da pior pastilha num vão só (`−12`, e
+/// ela cobre o vizinho), centrada cada lado leva `21`. FALSIFICADO por devolver `n.x` no braço
+/// da cápsula.
+#[test]
+fn a_capsula_larga_cresce_para_os_dois_lados() {
+    crate::capsula_larguras::esquece();
+    let mut longo = no(1, 1);
+    longo.display_name = "Simulation Zone".into();
+    crate::capsula_larguras::prega("Simulation Zone", 208.5);
+
+    let v = vista(0.5);
+    let (x, w) = geom::card_x_w_at(&longo, &v);
+    let centro_do_cartao = longo.x + CARD_W * 0.5;
+    assert!(
+        ((x + w * 0.5) - centro_do_cartao).abs() < 1e-4,
+        "o centro tem de ficar onde o do cartao esta': {} contra {centro_do_cartao}",
+        x + w * 0.5
+    );
+    assert!(x < longo.x, "e ela tem de comecar a' ESQUERDA do cartao");
+    crate::capsula_larguras::esquece();
+}
+
+/// ⭐⭐⭐ **O PINO ATERRA NA BORDA DA FORMA, não na do cartão.**
+///
+/// ⛔ Sem isto o pino de saída de uma pastilha larga fica **dentro** dela e o fio aterra no meio
+/// do nome — e nenhum dos gates de geometria que já existiam o via, porque todos mediam o `y`.
+/// FALSIFICADO por voltar a `n.x + CARD_W` no `socket_center`.
+#[test]
+fn o_pino_aterra_na_borda_da_capsula_larga() {
+    crate::capsula_larguras::esquece();
+    let mut longo = no(1, 1);
+    longo.display_name = "Simulation Zone".into();
+    crate::capsula_larguras::prega("Simulation Zone", 208.5);
+
+    let v = vista(0.5);
+    let corpo = geom::card_rect(&longo, &v);
+    let (sx, _) = geom::socket_center(&longo, &v, true, 0);
+    let (ex, _) = geom::socket_center(&longo, &v, false, 0);
+    assert!(
+        (sx - (corpo.x + corpo.w)).abs() < 1e-3,
+        "a saida tem de cair na borda DIREITA da pastilha: {sx} contra {}",
+        corpo.x + corpo.w
+    );
+    assert!(
+        (ex - corpo.x).abs() < 1e-3,
+        "a entrada tem de cair na borda ESQUERDA: {ex} contra {}",
+        corpo.x
+    );
+    // O CONTROLO: numa pastilha que não cresceu, as bordas são as do cartão de sempre.
+    let mut curto = no(1, 1);
+    curto.display_name = "FK".into();
+    crate::capsula_larguras::prega("FK", 40.0);
+    let (cx, _) = geom::socket_center(&curto, &v, true, 0);
+    let (esperado, _) = v.pt(curto.x + CARD_W, 0.0);
+    assert!((cx - esperado).abs() < 1e-3, "{cx} contra {esperado}");
+    crate::capsula_larguras::esquece();
 }

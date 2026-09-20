@@ -210,8 +210,10 @@ fn nenhum_nome_do_catalogo_e_cortado_numa_capsula() {
     );
     assert!(
         nao_cabem.is_empty(),
-        "estes nomes sairiam CORTADOS numa capsula: {nao_cabem:?} — baixe o `CAPSULA_FONTE` do \
-         painel (e re-meca a razao contra o titulo do cartao) ou encurte o nome"
+        "a ESTIMATIVA de largura da capsula e' mais ESTREITA que estes nomes: {nao_cabem:?} — no \
+         quadro em que ninguem os mediu eles sairiam CORTADOS. Suba o `AVANCO_POR_CHAR` do \
+         `geom_card` (ele paga enchimento, nunca um corte) e re-meca com a sonda \
+         `mede_o_corpo_maximo_da_capsula`"
     );
 }
 
@@ -274,12 +276,88 @@ fn mede_o_corpo_maximo_da_capsula() {
         "  corpo MAXIMO {lo:.3}  (pior: {nome:?} a {w:.2}, folga {:.2})",
         disponivel - w
     );
-    eprintln!("  --- a largura por unidade NAO e' constante ---");
-    for corpo in [100.0_f32, 30.0, lo, 17.9] {
-        let (w, n) = pior_a(&mut ts, corpo);
+
+    // ⭐ **QUANTOS NOMES SERIAM CORTADOS a cada corpo** — a coluna que decide o preço de
+    // «fonts 30 % maiores» (ordem do dono, 2026-09-20).
+    eprintln!("  --- quantos dos {} seriam CORTADOS ---", nomes.len());
+    for corpo in [21.5_f32, 24.0, 25.0, 26.0, 27.95, 30.0] {
+        let cortados: Vec<&str> = nomes
+            .iter()
+            .filter(|n| {
+                ts.prefix_width_weighted(n, corpo, ph2d_text::FontWeight::SEMI_BOLD) > disponivel
+            })
+            .copied()
+            .collect();
         eprintln!(
-            "  corpo {corpo:>6.2} => pior {n:?} {w:>7.2}  ({:.4}/unidade)",
-            w / corpo
+            "  corpo {corpo:>6.2} ({:+.0}%) => {:>3} cortados  {:?}",
+            (corpo / 21.5 - 1.0) * 100.0,
+            cortados.len(),
+            &cortados[..cortados.len().min(6)]
         );
     }
+
+    // ⭐⭐⭐ **A LARGURA SEGUE O NOME** (ordem do dono, 2026-09-20: *«aumenta a largura do
+    // retângulo conforme o tamanho do nome»*) ⇒ a fonte deixa de ser limitada pelo pior nome, e
+    // o que se mede passa a ser o AVANÇO POR CARACTERE, que é o que a geometria (sem medidor de
+    // texto) pode estimar.
+    let corpo = 27.95_f32;
+    let mut pior_avanco = (0.0_f32, "");
+    let mut mais_largo = (0.0_f32, "");
+    for n in &nomes {
+        let w = ts.prefix_width_weighted(n, corpo, ph2d_text::FontWeight::SEMI_BOLD);
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "contagem de caracteres cabe num f32"
+        )]
+        let chars = n.chars().count() as f32;
+        let avanco = w / (chars * corpo);
+        if avanco > pior_avanco.0 {
+            pior_avanco = (avanco, n);
+        }
+        if w > mais_largo.0 {
+            mais_largo = (w, n);
+        }
+    }
+    eprintln!("  --- a corpo {corpo} ---");
+    eprintln!(
+        "  pior AVANCO por caractere: {:.4} ({:?})",
+        pior_avanco.0, pior_avanco.1
+    );
+    eprintln!(
+        "  nome mais LARGO: {:.1} unidades ({:?}) => cartao {:.1}",
+        mais_largo.0,
+        mais_largo.1,
+        mais_largo.0 + 2.0 * MARGEM_X
+    );
+    for avanco in [0.52_f32, 0.55, 0.58] {
+        let estreitos: Vec<&str> = nomes
+            .iter()
+            .filter(|n| {
+                #[expect(clippy::cast_precision_loss, reason = "contagem cabe num f32")]
+                let chars = n.chars().count() as f32;
+                ts.prefix_width_weighted(n, corpo, ph2d_text::FontWeight::SEMI_BOLD)
+                    > chars * corpo * avanco
+            })
+            .copied()
+            .collect();
+        eprintln!(
+            "  avanco {avanco:.2} => {:>3} nomes ficariam CORTADOS  {:?}",
+            estreitos.len(),
+            &estreitos[..estreitos.len().min(4)]
+        );
+    }
+    // ⭐⭐ **O PIOR GLIFO** — a estimativa de recurso tem de o aguentar, porque o artista pode
+    // renomear um nó para o que quiser.
+    eprintln!("  --- pior GLIFO (a estimativa de recurso calibra-se aqui) ---");
+    let mut pior = (0.0_f32, ' ');
+    for c in "MWmw@%#&QO0AB".chars() {
+        let s: String = std::iter::repeat_n(c, 16).collect();
+        let w = ts.prefix_width_weighted(&s, corpo, ph2d_text::FontWeight::SEMI_BOLD);
+        let avanco = w / (16.0 * corpo);
+        if avanco > pior.0 {
+            pior = (avanco, c);
+        }
+        eprintln!("  {c:?} x16 => {w:>7.1}  ({avanco:.4}/caractere)");
+    }
+    eprintln!("  PIOR: {:?} a {:.4} por caractere", pior.1, pior.0);
 }

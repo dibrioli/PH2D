@@ -193,6 +193,16 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // era daí que vinham o offset e o tremor do arrasto (ver `HeroLayout::split_band`).
     let band = ctx.layout.split_band;
 
+    // ⭐⭐⭐ **A MEDIDA DOS NOMES, antes de qualquer geometria** — desde 2026-09-20 a largura de
+    // uma cápsula segue o nome (`geom::largura_da_capsula`), e quem precisa dela é o hit-rect
+    // tanto como o pintor.
+    //
+    // ⚠️⚠️ **A POSIÇÃO desta linha é a lei:** o `interact::process` logo abaixo já consulta
+    // rects de nó, logo medir depois dele daria ao dedo deste quadro a largura do anterior. E
+    // medir antes do `View::new` é de propósito — *a medida não depende do zoom; a forma que a
+    // consome é que depende*.
+    crate::capsula_larguras::medir(ctx.text_system, &snap);
+
     // Fold this frame's gestures/zoom/keys into the state before drawing.
     crate::interact::process(state, ctx, rect, band, &snap);
 

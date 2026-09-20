@@ -37,9 +37,6 @@
 
 use super::*;
 
-/// **O respiro lateral do nome**, em unidades de grafo.
-const MARGEM_X: f32 = 12.0; // LITERAL-PX-OK: respiro lateral, unidades de grafo
-
 /// ⭐⭐⭐ **O TAMANHO ÚNICO do nome numa cápsula** — *«fonts de tamanho único»* (2026-09-19) e
 /// *«fonts maiores»* (2026-09-20).
 ///
@@ -69,7 +66,7 @@ const MARGEM_X: f32 = 12.0; // LITERAL-PX-OK: respiro lateral, unidades de grafo
 ///
 /// Contra as `13` do título do cartão: **1,65×** (eram `1,38×`), e o mesmo corpo para toda
 /// cápsula porque a altura delas é uma só.
-pub(crate) const CAPSULA_FONTE: f32 = 21.5; // LITERAL-PX-OK: corpo MEDIDO por busca (ver acima)
+pub(crate) const CAPSULA_FONTE: f32 = 27.95; // LITERAL-PX-OK: 21,5 x 1,30, ordem do dono
 
 /// ⛔ E a ordem *«bem maiores»* é uma afirmação conferível pelo COMPILADOR — `1,6×` o título do
 /// cartão, no mínimo, medido em `1,72×`. ⚠️ Ela vive aqui e não num teste porque o clippy recusa
@@ -79,7 +76,7 @@ pub(crate) const CAPSULA_FONTE: f32 = 21.5; // LITERAL-PX-OK: corpo MEDIDO por b
 /// ⚠️⚠️ **A barra SUBIU de `1,3` para `1,6` com a 2.ª ordem do dono, e isso é uma CATRACA:** sem
 /// ela, voltar à estimativa por contagem de caracteres (`1,38×`) passaria neste ponto sem uma
 /// linha vermelha — *uma cerca escrita para a 1.ª ordem não defende a segunda*.
-const _: () = assert!(CAPSULA_FONTE > 1.6 * TITLE_SIZE); // LITERAL-PX-OK: a razão que «fonts maiores» nomeia
+const _: () = assert!(CAPSULA_FONTE > 2.0 * TITLE_SIZE); // LITERAL-PX-OK: a razão que «30 % maiores» nomeia
 
 /// ⭐⭐⭐ **ESTE NOME CABE NUMA CÁPSULA SEM RETICÊNCIAS?** — a porta que o censo do catálogo (em
 /// `ph2d-app-motion`, onde os 136 tipos vivem) pergunta por cada nó registado.
@@ -88,11 +85,18 @@ const _: () = assert!(CAPSULA_FONTE > 1.6 * TITLE_SIZE); // LITERAL-PX-OK: a raz
 /// caracteres.** Dezasseis `M` medem `261` unidades e dezasseis letras de um nome real medem
 /// `136` — *um censo de contagem aprovaria um nome que o pintor cortaria*. ⇒ quem responde é o
 /// medidor REAL, o mesmo que o corte com reticências consulta.
+///
+/// ⚠️⚠️ **O QUE ELA MEDE MUDOU em 2026-09-20, e o nome ficou:** desde que a largura da pastilha
+/// segue o nome, *«cabe na largura do cartão»* deixou de ser a pergunta — a pastilha cresce. O
+/// que pode CORTAR um nome é a **estimativa** que a geometria usa quando ninguém mediu
+/// ([`geom::estimativa_da_largura`]) ser mais estreita que o texto, e é isso que esta porta
+/// agora responde. *Uma porta cuja pergunta muda tem de o dizer, senão o censo do outro lado
+/// continua verde a afirmar outra coisa.*
 #[must_use]
 pub fn nome_cabe_na_capsula(text_system: &mut ph2d_text::TextSystem, nome: &str) -> bool {
     let largura =
         text_system.prefix_width_weighted(nome, CAPSULA_FONTE, ph2d_text::FontWeight::SEMI_BOLD);
-    largura <= geom::CARD_W - 2.0 * MARGEM_X
+    largura <= geom::estimativa_da_largura(nome)
 }
 
 /// ⭐⭐⭐ **O RAIO DO CANTO** — *«os retângulos como nos headers dos nós»* (ordem do dono,
@@ -148,7 +152,7 @@ pub(super) fn draw_capsula(
         corpo,
         ph2d_text::FontWeight::SEMI_BOLD,
     );
-    let disponivel = (body.w - 2.0 * MARGEM_X * view.zoom).max(0.0);
+    let disponivel = (body.w - 2.0 * geom::MARGEM_X_DA_CAPSULA * view.zoom).max(0.0);
     paint_text_title_elided(
         ctx.text_system,
         ctx.scene,

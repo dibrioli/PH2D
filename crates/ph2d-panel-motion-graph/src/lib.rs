@@ -13,6 +13,7 @@
 #![forbid(unsafe_code)]
 
 mod backdrop;
+mod capsula_larguras;
 mod flow;
 mod geom;
 

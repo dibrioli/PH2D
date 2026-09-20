@@ -96,6 +96,36 @@ o plano irmão. *Quem fundir uma linha que leia `stroke_deplete` cruamente tem d
   própria wave (a construção do campo desceu para trás da porta `PainterTool::reserve_fields`) e
   fechou em `697` de `700`.
 
+### §5-bis — O portão de fecho, corrido (todos os números)
+
+| passo | resultado |
+|---|---|
+| `nextest-impacted.sh` | ✅ **`15 469` testes, `15 469` passaram**, `13 230` saltados |
+| `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` | ✅ |
+| `cargo clippy --workspace --all-targets -- -D warnings` | ✅ |
+| `cargo machete` | ✅ |
+| `check-standalone-optional.sh` | ✅ |
+| `check-workflow-packages.sh` | ✅ |
+| `censos-da-arvore-combinada.sh` (pós-rebase) | ✅ **`127/127`**, controlo do filtro `12 de 12` |
+| `cargo fmt --check -p ph2d-tool-painter` | ✅ |
+| as **10** vassouras clean-room vivas | ⚠️ `4` acusam, `8` achados — **TODOS pré-existentes** |
+
+⚠️ **As vassouras: `4` de `10` acusam e NENHUM achado é desta linha.** Os tokens são
+`PAINTER_BRUSH_SPACE_ATTEN` e `space_overlap_factor`, em `accumulate_probe.rs`,
+`accumulate_tests.rs`, `tests/brush_panel.rs` e `watercolor_accum.rs`. Duas provas independentes:
+**(a)** nenhum aparece como ADIÇÃO em `git diff <merge-base>..HEAD`; **(b)** os quatro ficheiros já os
+carregam **no merge-base**, com as contagens idênticas (`1`, `2`, `2`, `1`). Três dos quatro ficheiros
+esta linha nem toca. ⛔ A triagem deles é do **R**, não desta linha — e esta linha **não tem parede**:
+o oráculo dela é a `libmypaint` (**ISC**), porta aberta pelo §0.9.
+
+⛔⛔ **E uma LIÇÃO DE INSTRUMENTO que quase entrou neste documento como facto.** A primeira corrida do
+controlo do merge-base devolveu **`0` ocorrências nos quatro ficheiros** — o que, lido à letra, diria
+que os achados eram NOVOS, o oposto da verdade. A causa foi o shell a comer o `:c` de
+`$B:crates/…` (`fatal: Not a valid object name 395da6a55rates/…`) com o erro engolido por um
+`2>/dev/null`, deixando o `grep -c` a contar **entrada vazia**. ⚠️ *Um zero de «não medido» e um zero
+de «limpo» são o mesmo byte* — a cura foi citar o caminho (`"${B}:…"`) e **conferir primeiro que o
+objecto existe**, e só então acreditar no número.
+
 ---
 
 ## §6 — Catracas baixadas

@@ -279,8 +279,24 @@ pub fn build_event_loop() -> Option<EventLoop<()>> {
     builder.build().ok()
 }
 
+// ⛔⛔⛔ **INTEGRAÇÃO (20/09): este braço tem de existir SÓ onde o chamador dele existe, e sem
+//    isso o CI reprova em macOS E Windows** — enquanto uma máquina de desenvolvimento Linux não vê
+//    nada. A assimetria é que o braço de cima é `pub` (logo é superfície pública e nunca é código
+//    morto) e este é privado, e o único chamador dos dois é um `#[test]`, que só é compilado sob
+//    `cfg(test)`. O passo `cargo check (workspace, --features bevy_ecs)` do CI **não** passa
+//    `--all-targets` ⇒ fora do Linux a função ficava sem um único chamador e o
+//    `build.warnings = "deny"` transformava o `dead_code` em erro.
+//    ⚠️⚠️ **A 1.ª cura foi gatear este braço ao `test`, e o CONTROLO (um `cargo check --target
+//    aarch64-apple-darwin`) refutou-a na primeira corrida:** ela só DESLOCOU o aviso, porque o
+//    `EventLoop` do `use` lá acima é usado apenas pelas ASSINATURAS destes dois braços — sem
+//    nenhum deles ele passa a ser `unused_imports`. *Uma cura que empurra a cadeia um elo à frente
+//    lê-se como cura até o controlo correr.*
+//    ⇒ a cura que fica é a SIMÉTRICA: os dois braços com a mesma visibilidade, que é a que o braço
+//    de cima já declara — esta função É a superfície desta crate-sonda, e um item `pub` numa lib
+//    nunca é código morto em plataforma nenhuma. ⛔ Nunca um `#[allow(dead_code)]`, que apagaria o
+//    sinal para sempre.
 #[cfg(not(target_os = "linux"))]
-fn build_event_loop() -> Option<EventLoop<()>> {
+pub fn build_event_loop() -> Option<EventLoop<()>> {
     None
 }
 

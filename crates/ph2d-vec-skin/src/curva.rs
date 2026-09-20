@@ -83,6 +83,8 @@ struct SegmentoDaPele<'a> {
     /// A linha de pesos do nó de CHEGADA.
     rb: Option<&'a [f64]>,
     correcoes: &'a [Correccao],
+    /// A mistura: rígida (o produto) ou linear (o controlo dos gates).
+    rigido: bool,
 }
 
 impl SegmentoDaPele<'_> {
@@ -106,7 +108,11 @@ impl SegmentoDaPele<'_> {
             // ⛔ Sem tabela a lei é a DERIVADA, e ela já é função da posição — não há o que misturar.
             _ => self.pele.weights_corrected(p, None, &mut w, self.correcoes),
         }
-        let q = self.pele.blend(p, &w);
+        let q = if self.rigido {
+            self.pele.blend(p, &w)
+        } else {
+            self.pele.blend_linear(p, &w)
+        };
         Point::new(q[0], q[1])
     }
 
@@ -146,8 +152,19 @@ impl SegmentoDaPele<'_> {
 /// ⚠️ O parâmetro `tolerancia` **saiu**: não há o que tolerar quando não há decisão. Quem governa a
 /// fidelidade é [`AMOSTRAS`].
 pub fn aplica_pela_curva(pele: &Skin, path: &mut VecPath, pesos: &[f64], correcoes: &[Correccao]) {
+    aplica_pela_curva_com(pele, path, pesos, correcoes, true);
+}
+
+/// **A lei da curva com a mistura como PARÂMETRO** — ver [`crate::aplica_corrigido_com`].
+pub fn aplica_pela_curva_com(
+    pele: &Skin,
+    path: &mut VecPath,
+    pesos: &[f64],
+    correcoes: &[Correccao],
+    rigido: bool,
+) {
     let fonte = path.clone();
-    crate::aplica_corrigido(pele, path, pesos, correcoes);
+    crate::aplica_corrigido_com(pele, path, pesos, correcoes, rigido);
     let ossos = if pesos.is_empty() {
         0
     } else {
@@ -167,6 +184,7 @@ pub fn aplica_pela_curva(pele: &Skin, path: &mut VecPath, pesos: &[f64], correco
                 ra: linha(pesos, ossos, base + k),
                 rb: linha(pesos, ossos, base + (k + 1) % n),
                 correcoes,
+                rigido,
             };
             let Some((alvo, _)) = path.contour_mut(c) else {
                 continue;

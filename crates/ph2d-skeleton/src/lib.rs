@@ -487,8 +487,15 @@ impl Skin {
     /// ⛔ **Soma zero devolve o ponto INTACTO** e nunca a origem: é a leitura honesta de *«nenhum
     /// osso manda aqui»*, e é o que impede uma arte de saltar para o zero do mundo quando o artista
     /// tira todo o peso com o pincel.
+    ///
+    /// ⛔⛔⛔ **ELA JÁ NÃO É O CAMINHO DO PRODUTO, e desde 2026-09-19 chama-se `_linear` por isso.**
+    /// Interpolar POSIÇÕES dá a **CORDA** do arco: um ponto entre dois ossos que divergem `θ` é
+    /// puxado para `cos(θ/2)` da distância à junta, e a arte colapsa (medido: `0,5000` a `120°`
+    /// sobre um raio de `1`). Quem move um ponto chama a [`Skin::blend`], que roda em torno da
+    /// JUNTA — ver [`crate::centro`]. ⚠️ Esta fica porque a lei nova a usa para a **translação** do
+    /// centro, e porque é o CONTROLO de todos os gates que medem a cura.
     #[must_use]
-    pub fn blend(&self, p: [f64; 2], w: &[f64]) -> [f64; 2] {
+    pub fn blend_linear(&self, p: [f64; 2], w: &[f64]) -> [f64; 2] {
         let mut out = [0.0, 0.0];
         let mut soma = 0.0;
         for (b, &peso) in self.bones.iter().zip(w.iter()) {
@@ -595,6 +602,8 @@ pub fn project_to_segment(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> (f64, f64) {
 /// ⭐⭐⭐ **O OSSO QUE DOBRA** — a fábrica de sub-ossos de um *bendy bone*. Crate-irmã da [`Skin`]
 /// por responsabilidade: *que poses existem* e *como elas se misturam* são duas perguntas, e a
 /// segunda não muda uma linha por a primeira passar a dar `N` respostas.
+/// ⭐⭐⭐ **O CENTRO DE ROTAÇÃO** — a cura do entalhe do cotovelo.
+pub mod centro;
 pub mod bend;
 /// ⭐ Os gates do osso que dobra.
 #[cfg(test)]

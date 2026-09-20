@@ -78,11 +78,27 @@ pub fn aplica_com(skin: &Skin, path: &mut VecPath, pesos: &[f64]) {
 /// ⛔ Com `correcoes` vazio ela é **byte-idêntica** ao [`aplica_com`], e é por isso que aquele
 /// delega aqui em vez de duplicar o laço: *duas cópias do mesmo percurso divergem no primeiro
 /// ajuste*, e este já se partiu uma vez quando o padrão-ouro chegou.
+/// ⭐⭐⭐ **DEFORMA UM CAMINHO** — a porta do produto, com a lei RÍGIDA.
+///
+/// ⚠️ **A lei viaja como PARÂMETRO na irmã [`aplica_corrigido_com`]**, nunca numa variável de
+/// ambiente — a lição do `recook_com`: uma porta global lida dentro da lei é um canal entre testes.
+/// `rigido = false` é a mistura LINEAR, o caminho de antes de 2026-09-19, e é o **CONTROLO** de
+/// todo gate que mede a cura do entalhe.
 pub fn aplica_corrigido(
     skin: &Skin,
     path: &mut VecPath,
     pesos: &[f64],
     correcoes: &[ph2d_skeleton::Correccao],
+) {
+    aplica_corrigido_com(skin, path, pesos, correcoes, true);
+}
+
+pub fn aplica_corrigido_com(
+    skin: &Skin,
+    path: &mut VecPath,
+    pesos: &[f64],
+    correcoes: &[ph2d_skeleton::Correccao],
+    rigido: bool,
 ) {
     let mut w = skin.scratch();
     let pontos = path.verts_all().count() * 3;
@@ -102,7 +118,11 @@ pub fn aplica_corrigido(
         let guardados = usa.then(|| &pesos[k * n..(k + 1) * n]);
         skin.weights_corrected(v.anchor, guardados, &mut w, correcoes);
         for p in [&mut v.anchor, &mut v.in_handle, &mut v.out_handle] {
-            *p = skin.blend(*p, &w);
+            *p = if rigido {
+                skin.blend(*p, &w)
+            } else {
+                skin.blend_linear(*p, &w)
+            };
         }
         k += 3;
     });

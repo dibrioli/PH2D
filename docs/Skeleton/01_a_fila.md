@@ -394,6 +394,82 @@ Mutação **12 de 12** a sangrar.
 ⏳ **ABERTO:** o espelho não tem gesto de canvas (só o painel) · e a arte presa não é espelhada com
 os ossos — o ramo novo nasce sem pele, e prendê-la é o gesto que já existe (*Bind*).
 
+### F34 — ⭐⭐⭐ **O ENTALHE DO COTOVELO: a arte roda em torno da JUNTA** (ordem do dono, 2026-09-19, *«vamos curar o entalhe no lado de dentro do cotovelo»*)
+
+⛔⛔⛔ **A mistura linear interpola POSIÇÕES, e isso dá a CORDA do arco.** Um ponto a meio caminho
+entre dois ossos que divergem `θ` é puxado para `cos(θ/2)` da distância à junta — a `120°` isso é
+**metade**. É o *«candy-wrapper»* de toda a literatura, e o entalhe que o dono fotografou.
+
+⚠️ **A RÉGUA é o PESCOÇO — o sítio mais estreito da forma —, e as outras três foram medidas e
+recusadas:** a **área** mal se mexe (`90,6 %` a `150°`) e não distingue um entalhe de um
+encolhimento; a **viragem** satura (`33°` a `90°` e a `150°`); os **cruzamentos** do contorno só
+aparecem quando já é tarde (`0` até `90°`). ⛔⛔ E a régua teve de ser limpa **duas** vezes: a
+`RoundRect` tem dois segmentos de comprimento ZERO, e as amostras repetidas fabricavam `64`
+cruzamentos **em repouso** e um pescoço de `0,0172` numa barra de espessura `1`.
+
+⭐⭐ **A LEI: em 2D o centro de rotação NÃO se estima — ele é SABIDO.** A literatura estima-o
+(*Optimized Centers of Rotation*, Le & Hodgins 2016: uma média das posições de repouso pesada pela
+SEMELHANÇA entre vectores de peso, com um `σ` a afinar). ⛔ Aqui não é preciso: **um esqueleto 2D é
+uma árvore de segmentos que PARTILHAM pontas**, e dois ossos que disputam um ponto partilham uma
+junta ⇒ o centro é a média das juntas de cada par, pesada pelo **produto** dos pesos do par.
+
+| dobra | mistura linear | estimador (`σ² = 5e-4`) | **a JUNTA** |
+|---|---|---|---|
+| `60°` | `0,4882` | `0,9496` | **`0,9432`** |
+| `90°` | `0,3343` | `0,8615` | **`0,8659`** |
+| `120°` | `0,1643` | `0,3317` | **`0,3763`** |
+
+⇒ *a junta iguala ou bate o estimador, **sem um parâmetro e sem um byte guardado**.*
+
+⭐ **Medido na barra da cena do dono, pela porta do produto:**
+
+| dobra | área LINEAR | área RÍGIDA | pescoço LINEAR | pescoço RÍGIDO |
+|---|---|---|---|---|
+| `30°` | `99,4 %` | **`100,0 %`** | `0,9655` | **`0,9833`** |
+| `60°` | `97,7 %` | **`100,0 %`** | `0,8646` | **`0,9487`** |
+| `90°` | `95,4 %` | **`100,0 %`** | `0,7045` | **`0,8927`** |
+| `120°` | `92,8 %` | **`100,0 %`** | `0,1746` | **`0,3949`** |
+
+⛔ **LIMITAÇÃO DECLARADA:** a `150°` o pescoço continua a fechar (`0,0017`) — ali a face de dentro
+dobra-se sobre si mesma qualquer que seja a lei. *Está no gate, para ninguém ler a tabela como
+«curado em todo o percurso».*
+
+⭐ **Não há descontinuidade onde um osso manda sozinho:** ali a transformação é RÍGIDA, e uma rotação
+rígida leva `p` ao mesmo sítio **qualquer que seja o centro** (`R(θ)(p−c) + M(c) = M(p)`). ⇒ o centro
+deixa de importar exactamente onde ele deixa de existir.
+
+⛔⛔ **E o `dual quaternion` continua RECUSA MEDIDA** (`2,52 % → 4,47 %` de imagem dobrada). ⚠️ **Mas
+o MECANISMO que a recusa escreveu está corrigido:** ela dizia *«o colapso vem do GRADIENTE dos
+pesos»*, e a varredura da largura da transição diz o contrário — **alargar** a transição PIORA
+(pescoço `0,2796 → 0,0092` a `120°`, área `59,4 % → 25,0 %`). *O colapso vem de a mistura de duas
+POSIÇÕES ser a corda; o `log` resolve a rotação e deixa o centro ao acaso, esta lei escolhe o
+centro.*
+
+⛔⛔⛔ **TRÊS fixturas simétricas aprovaram, cada uma, uma lei que não distinguia nada:**
+1. com a junta no MEIO da barra, o centróide calha nela e o estimador devolvia `(3,500 · 0,500)` para
+   **todo** peso — `σ²` de `2e-5` a `100` dava o mesmo número;
+2. com DOIS ossos há um par só, e o peso dele **cancela-se na normalização** ⇒ `wᵢ·wⱼ` e `wᵢ+wⱼ`
+   eram indistinguíveis (mutação sobrevivente);
+3. com os dois ossos a rodar em torno da mesma junta, ela **não se mexe** ⇒ `blend_linear(junta)`
+   e `junta` eram o mesmo ponto (mutação sobrevivente).
+⇒ os gates de hoje pedem três ossos, pesos assimétricos e a junta a VIAJAR.
+
+⚠️ **A lei viaja como PARÂMETRO** (`aplica_corrigido_com` · `aplica_pela_curva_com` ·
+`recook_com_mistura`), e a mistura antiga fica como [`Skin::blend_linear`] — ela é o **CONTROLO** de
+todo gate que mede a cura, e é a translação que a lei nova usa para o centro.
+
+⛔ **DUAS premissas morreram:** as barras do envelope (`1,0 · 2,0 · 1,0`) foram calibradas sobre a
+mistura linear e a `Line` caiu para `0,848767` — *a lei nova preserva a forma, logo mexer no alcance
+move-a MENOS: o número descer é a cura*; e o gate de paridade da PLACA deixou de poder afirmar
+paridade (a CPU mudou de lei e o shader não). ⇒ ele passa a afirmar o que é verdade — *a placa
+reproduz a `blend_linear`, e isso NÃO é o produto* —, com a **dívida** medida (`1,789e-1`) e
+gateada, para reprovar no dia em que alguém ligar o caminho da placa.
+
+Mutação **6 de 6** a sangrar. Zero schema, zero registo novo.
+
+⏳ **ABERTO:** o caminho de GPU ficou com a lei antiga (dívida com gate) · e a `150°` a face de
+dentro dobra-se, que é geometria e não lei.
+
 ### F33 — ⭐⭐⭐ **A DEFORMAÇÃO DEIXA DE SALTAR: o refit sai, entra a correcção das ALÇAS** (report do dono, 2026-09-19, com duas fotos)
 
 *«Em determinado momento da deformação as alças sofrem uma mudança e o path muda repentinamente,

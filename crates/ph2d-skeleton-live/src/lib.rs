@@ -65,6 +65,9 @@ pub mod skin_refine;
 pub mod skinned_mesh;
 /// ⭐⭐⭐ **A SUBDIVISÃO DO BIND** — os pontos nascem visíveis quando a forma é presa.
 pub mod subdivisao;
+#[cfg(test)]
+#[path = "entalhe_tests.rs"]
+mod entalhe_tests;
 
 /// ⚠️ **Os auxiliares que ATRAVESSAM a fronteira, e nada mais** (HOWTO §2.5).
 ///

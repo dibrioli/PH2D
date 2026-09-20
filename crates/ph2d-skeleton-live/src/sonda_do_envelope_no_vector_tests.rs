@@ -127,9 +127,14 @@ fn so_um_caminho_aberto_ainda_sente_o_envelope() {
     // ⭐ O CONTROLO POSITIVO: sem ele o gate acima ficava verde sobre um produto em que o envelope
     // é inerte em TODA parte — e aí a cura certa seria tirar o controlo do painel, não escondê-lo.
     for (kind, minimo) in [
-        (ShapeKind::Line, 1.0),
-        (ShapeKind::Arc, 2.0),
-        (ShapeKind::Spiral, 1.0),
+        // ⛔⛔ **As barras foram RE-MEDIDAS em 2026-09-19**, quando a mistura passou a rodar em
+        // torno da junta ([`ph2d_skeleton::centro`]). Elas eram `1,0` · `2,0` · `1,0`, calibradas
+        // sobre a mistura LINEAR — e a `Line` caiu para `0,848767`, abaixo da sua. *A lei nova
+        // preserva a forma, logo mexer no alcance do envelope move-a MENOS: o número descer é a
+        // cura, não a perda.* As de hoje: `0,848767` · `3,206084` · `1,382372`, com metade de folga.
+        (ShapeKind::Line, 0.4),
+        (ShapeKind::Arc, 1.6),
+        (ShapeKind::Spiral, 0.6),
     ] {
         let d = amplitude(kind);
         assert!(

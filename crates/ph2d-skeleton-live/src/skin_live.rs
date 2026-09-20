@@ -292,6 +292,14 @@ pub fn recook(sim: &SimWorld, scene: &mut VecScene) {
 /// testes em THREADS do mesmo processo. A suíte reprovava em conjunto e passava sozinha, que é a
 /// assinatura mais cara que há. ⇒ a lei é **parâmetro**, e quem lê o ambiente é o [`recook`].
 pub fn recook_com(sim: &SimWorld, scene: &mut VecScene, curva: bool) {
+    recook_com_mistura(sim, scene, curva, true);
+}
+
+/// **O recook com as DUAS leis como parâmetro** — a da curva e a da MISTURA.
+///
+/// `rigido = false` é a mistura LINEAR, o caminho de antes de 2026-09-19: ela dá a CORDA do arco e
+/// encolhe a arte, e é o **CONTROLO** dos gates que medem a cura do entalhe do cotovelo.
+pub fn recook_com_mistura(sim: &SimWorld, scene: &mut VecScene, curva: bool, rigido: bool) {
     let alvos: Vec<(Entity, SkinBind, VecPathId)> = sim
         .world()
         .iter_entities()
@@ -361,14 +369,21 @@ pub fn recook_com(sim: &SimWorld, scene: &mut VecScene, curva: bool) {
         // por onde se bissecta um report. ⛔ A leitura é UMA vez por quadro e não por forma: um
         // `var_os` por pele seria uma syscall no laço do desenho.
         if curva {
-            ph2d_vec_skin::curva::aplica_pela_curva(
+            ph2d_vec_skin::curva::aplica_pela_curva_com(
                 &pele,
                 &mut src,
                 pesos,
                 &skin.correcoes_resolvidas(),
+                rigido,
             );
         } else {
-            ph2d_vec_skin::aplica_corrigido(&pele, &mut src, pesos, &skin.correcoes_resolvidas());
+            ph2d_vec_skin::aplica_corrigido_com(
+                &pele,
+                &mut src,
+                pesos,
+                &skin.correcoes_resolvidas(),
+                rigido,
+            );
         }
         if let Some(p) = scene.path_mut(id) {
             p.replace_cooked(src);

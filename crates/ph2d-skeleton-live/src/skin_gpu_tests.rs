@@ -122,7 +122,10 @@ fn por_tendao(mesh: &Mesh2d, tendoes: usize, largura: f64) -> Vec<f64> {
     out
 }
 
-/// ⭐⭐⭐ **A LEI DO SHADER REPRODUZ A LEI DO PRODUTO** — esta é a W2 inteira, numa asserção.
+/// ⭐⭐⭐ **A LEI DO SHADER REPRODUZ A MISTURA LINEAR — e ela JÁ NÃO É a lei do produto.**
+///
+/// ⛔⛔ **O nome e a promessa mudaram em 2026-09-19** e ficam assim de propósito: a CPU passou a
+/// rodar em torno da JUNTA e o shader não. Ver o corpo.
 ///
 /// ⚠️ **A barra é DERIVADA e não escolhida:** a referência corre em `f64` (é o produto) e a lei da
 /// placa em `f32`, logo o desvio é o erro de representação nas coordenadas em jogo. Com o eixo a
@@ -156,20 +159,43 @@ fn a_lei_da_placa_reproduz_a_lei_do_produto() {
     let poses = poses_do_quadro(&p);
     let placa = posa_como_a_placa(&gpu, &poses);
 
-    // A referência: a porta do PRODUTO, ponto a ponto.
+    // ⛔⛔⛔ **A LEI DA PLACA É A MISTURA LINEAR, E O PRODUTO JÁ NÃO A USA** (2026-09-19). A CPU
+    // passou a rodar em torno da JUNTA ([`ph2d_skeleton::centro`]) para curar o entalhe do cotovelo,
+    // e o shader ficou com a lei antiga. ⇒ este gate deixou de poder afirmar PARIDADE e passa a
+    // afirmar o que é verdade: *a placa reproduz a [`Skin::blend_linear`], e isso NÃO é o produto.*
+    //
+    // ⚠️ **As duas metades são obrigatórias.** A primeira é a que guarda o shader (ele continua a
+    // ser a lei que diz ser, ao ULP). A segunda é a **DÍVIDA**: ela mede que as duas leis DIFEREM, e
+    // reprova no dia em que alguém ligar o caminho da placa a pensar que ele está pronto. *Uma
+    // dívida sem gate é uma nota que envelhece* — e este caminho está PARADO por decisão do dono
+    // desde 2026-09-17, o que torna a nota ainda mais fácil de esquecer.
     let mut w = p.scratch();
     let barra = LARGURA * f64::from(f32::EPSILON) * 4.0;
-    let mut pior = 0.0_f64;
+    let (mut pior_linear, mut pior_produto) = (0.0_f64, 0.0_f64);
     for (v, &q) in m.rest.iter().enumerate() {
-        let esperado = p.point_with(q, &pt[v * 4..(v + 1) * 4], &mut w);
+        let linha = &pt[v * 4..(v + 1) * 4];
         let obtido = placa[v];
-        let d = (f64::from(obtido[0]) - esperado[0]).hypot(f64::from(obtido[1]) - esperado[1]);
-        pior = pior.max(d);
+        let d = |alvo: [f64; 2]| {
+            (f64::from(obtido[0]) - alvo[0]).hypot(f64::from(obtido[1]) - alvo[1])
+        };
+        // a lei LINEAR, ponto a ponto — o que o shader implementa
+        p.weights_from(q, linha, &mut w);
+        pior_linear = pior_linear.max(d(p.blend_linear(q, &w)));
+        pior_produto = pior_produto.max(d(p.point_with(q, linha, &mut w)));
     }
-    println!("  lei da placa x lei do produto: pior desvio {pior:.3e} (barra {barra:.3e})");
+    println!(
+        "  a placa contra a lei LINEAR: {pior_linear:.3e} (barra {barra:.3e}) · contra o PRODUTO: \
+         {pior_produto:.3e}"
+    );
     assert!(
-        pior <= barra,
-        "a lei da placa erra {pior:.3e} contra a barra de {barra:.3e} — ela NAO e' a lei do produto"
+        pior_linear <= barra,
+        "a lei da placa erra {pior_linear:.3e} contra a barra de {barra:.3e} — ela deixou de ser \
+         sequer a mistura LINEAR"
+    );
+    assert!(
+        pior_produto > barra * 100.0,
+        "a placa e o produto passaram a concordar ({pior_produto:.3e}) — se alguem portou a lei da \
+         junta para o shader, esta metade e' a divida a apagar, e o gate volta a ser de PARIDADE"
     );
 
     // ⛔ O CONTROLO: com as poses de OUTRA corrente, a mesma barra tem de ser violada.
@@ -279,8 +305,12 @@ fn a_pele_da_placa_nao_conhece_as_correccoes_e_isso_esta_nomeado() {
     // (2) As duas mídias vivas chamam a porta CORRIGIDA.
     let recook = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/skin_live.rs"))
         .expect("o recook da mídia vectorial");
+    // ⚠️ **A agulha é `aplica_corrigido_com(`** desde 2026-09-19: a porta ganhou a MISTURA como
+    // parâmetro (rígida no produto, linear no controlo dos gates), e o recook passou a chamar a
+    // irmã. *A agulha nomeia um endereço de fiação, e é a espécie de gate que um refactor parte —
+    // ela falha ALTO, que é a sorte desta família.*
     assert!(
-        recook.contains("aplica_corrigido("),
+        recook.contains("aplica_corrigido_com(") || recook.contains("aplica_pela_curva_com("),
         "o recook do vector deixou de passar pela porta corrigida"
     );
     let imagem = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/skin_image.rs"))

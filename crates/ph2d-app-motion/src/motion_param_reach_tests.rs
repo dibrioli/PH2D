@@ -214,3 +214,72 @@ fn nenhum_nome_do_catalogo_e_cortado_numa_capsula() {
          painel (e re-meca a razao contra o titulo do cartao) ou encurte o nome"
     );
 }
+
+/// **SONDA (medição, 2026-09-20): qual é o MAIOR corpo de fonte em que TODO nome do catálogo
+/// ainda cabe numa cápsula?** — a ordem do dono foi *«fonts maiores»*, e §0.0 manda medir antes
+/// de escrever o número.
+///
+/// ⛔⛔ **A 1.ª redacção desta sonda mediu a corpo `100` e dividiu**, supondo a largura LINEAR no
+/// corpo — e o gate do painel reprovou-a: *«Simulation Zone»* mede `7,3608` por unidade a corpo
+/// `100` e **`7,603`** a corpo `22`, **`+3,3 %`**. O arredondamento de métricas por tamanho não é
+/// linear, logo *uma medição feita a um corpo não afirma nada sobre outro* ⇒ a busca é **no corpo
+/// REAL**, com o medidor que o pintor consulta.
+///
+/// `cargo test -p ph2d-app-motion -- --ignored --nocapture mede_o_corpo_maximo_da_capsula`
+#[test]
+#[ignore = "medicao"]
+fn mede_o_corpo_maximo_da_capsula() {
+    const CARD_W: f32 = 190.0;
+    const MARGEM_X: f32 = 12.0;
+    let disponivel = CARD_W - 2.0 * MARGEM_X;
+    let m = crate::motion_state::MotionState::new();
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let nomes: Vec<&'static str> = m
+        .registry
+        .manifests()
+        .map(|man| {
+            m.registry
+                .ui_manifest(man.id)
+                .map_or(man.name, |u| u.display_name)
+        })
+        .collect();
+    eprintln!("  tipos medidos: {}", nomes.len());
+
+    // O pior nome A ESTE corpo — e ele pode MUDAR com o corpo, que é meia razão para a busca.
+    let pior_a = |ts: &mut ph2d_text::TextSystem, corpo: f32| -> (f32, &'static str) {
+        nomes
+            .iter()
+            .map(|n| {
+                (
+                    ts.prefix_width_weighted(n, corpo, ph2d_text::FontWeight::SEMI_BOLD),
+                    *n,
+                )
+            })
+            .fold((0.0, ""), |a, b| if b.0 > a.0 { b } else { a })
+    };
+
+    // Busca binária sobre o corpo, com o medidor REAL em cada passo.
+    let (mut lo, mut hi) = (8.0_f32, 40.0_f32);
+    for _ in 0..24 {
+        let meio = 0.5 * (lo + hi);
+        if pior_a(&mut ts, meio).0 <= disponivel {
+            lo = meio;
+        } else {
+            hi = meio;
+        }
+    }
+    let (w, nome) = pior_a(&mut ts, lo);
+    eprintln!("  disponivel {disponivel:.1}");
+    eprintln!(
+        "  corpo MAXIMO {lo:.3}  (pior: {nome:?} a {w:.2}, folga {:.2})",
+        disponivel - w
+    );
+    eprintln!("  --- a largura por unidade NAO e' constante ---");
+    for corpo in [100.0_f32, 30.0, lo, 17.9] {
+        let (w, n) = pior_a(&mut ts, corpo);
+        eprintln!(
+            "  corpo {corpo:>6.2} => pior {n:?} {w:>7.2}  ({:.4}/unidade)",
+            w / corpo
+        );
+    }
+}

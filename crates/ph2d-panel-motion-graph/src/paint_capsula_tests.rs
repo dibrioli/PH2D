@@ -269,15 +269,57 @@ fn o_nome_tem_um_tamanho_so_e_nunca_e_cortado() {
         let w = ts.prefix_width_weighted(nome, CAPSULA_FONTE, ph2d_text::FontWeight::SEMI_BOLD);
         eprintln!("  {nome:<18} {w:>8.1} de {disponivel:.1}");
     }
-    let pior = "Fibonacci Spiral";
+    let pior = "Simulation Zone";
     let largura = ts.prefix_width_weighted(pior, CAPSULA_FONTE, ph2d_text::FontWeight::SEMI_BOLD);
     assert!(
         largura <= disponivel,
-        "a estimativa de avanco nao e' generosa: «{pior}» mede {largura} e so' ha' {disponivel} \
-         — re-derive o `AVANCO_POR_CHAR`"
+        "o pior nome do catalogo sairia CORTADO: «{pior}» mede {largura} e so' ha' {disponivel} \
+         — re-meca o `PIOR_NOME_POR_UNIDADE` com a sonda `mede_o_corpo_maximo_da_capsula`"
     );
+
+    // ⭐⭐⭐ **E A OUTRA METADE, que é a ordem de 2026-09-20 (*«fonts maiores»*): o corpo é
+    // MÁXIMO.** ⛔ Sem ela este gate só diz *«cabe»*, e `CAPSULA_FONTE = 1,0` também cabe — *uma
+    // régua que só vê o lado que não estoura aprova a fonte de ontem*, que é exactamente como o
+    // `0,58` de folga sobreviveu uma jornada inteira.
+    let folga = disponivel - largura;
+    assert!(
+        folga < disponivel * 0.05,
+        "o corpo nao esta' MAXIMO: sobram {folga:.1} de {disponivel:.1} na largura do pior nome \
+         — ha' fonte por usar, e a ordem do dono foi «fonts maiores»"
+    );
+
     // E a cápsula tem sempre a largura do cartão — só a ALTURA muda.
     assert!((CARD_W - 190.0).abs() < 1e-6);
+}
+
+/// ⭐⭐⭐ **O CANTO É O DO CABEÇALHO — um RECTÂNGULO, não uma pastilha.**
+///
+/// Ordem do dono (2026-09-20): *«no lugar das cápsulas os retângulos como nos headers dos nós, só
+/// que grandes»*. ⚠️ **As duas metades reprovam por motivos diferentes:** a primeira é a
+/// IDENTIDADE (o mesmo raio do cabeçalho, em qualquer zoom — um número igual escrito à mão
+/// passaria hoje e divergiria no dia em que o cartão mudasse de raio); a segunda é a FORMA (um
+/// raio de meia altura é a definição de pastilha, e é o que estava lá).
+#[test]
+fn o_canto_da_capsula_e_o_do_cabecalho_e_nao_o_de_uma_pastilha() {
+    use crate::paint::CARD_RADIUS;
+    use crate::paint::paint_capsula::raio_do_canto;
+
+    for zoom in [ZOOM_DA_CAPSULA, 0.5, 0.2] {
+        let v = vista(zoom);
+        let r = raio_do_canto(&v);
+        assert!(
+            (r - CARD_RADIUS * zoom).abs() < 1e-6,
+            "o canto tem de ser o MESMO do cabecalho a zoom {zoom}: {r} contra {}",
+            CARD_RADIUS * zoom
+        );
+        // A metade da FORMA: uma pastilha teria `altura / 2`.
+        let pastilha = capsula_h(&no(1, 1)) * zoom * 0.5;
+        assert!(
+            r < pastilha * 0.5,
+            "a zoom {zoom} o canto {r} esta' na ordem da meia-altura {pastilha} — isto voltou a \
+             ser uma CAPSULA"
+        );
+    }
 }
 
 /// ⭐⭐ **O NOME FICA NO CENTRO DA PASTILHA** — *«bem alinhadas no centro da cápsula»* (ordem do

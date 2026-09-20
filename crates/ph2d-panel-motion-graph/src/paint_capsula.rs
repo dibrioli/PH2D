@@ -18,46 +18,68 @@
 //! | 3 pontos | o nome era cortado ao caber, em vez de a FONTE ser dimensionada para o nome mais comprido do catálogo caber |
 //! | slots pequenos | o raio partia do `SOCKET_R` do cartão, e não do ALVO |
 //!
+//! ⛔⛔⛔ **E a 2.ª redacção foi reprovada na FORMA** (2026-09-20): *«Fonts maiores. linhas mais
+//! grossas. No lugar das capsulas os retângulos como nos headers dos nós, só que grandes»*.
+//!
+//! | queixa | cura |
+//! |---|---|
+//! | fonts maiores | o corpo era uma ESTIMATIVA por contagem de caracteres com `13 %` de folga; medido por busca no corpo real, a mesma pastilha aceita `+20 %` ([`CAPSULA_FONTE`]) |
+//! | retângulos como nos headers | o raio era `altura × 0,5`, a definição de pastilha; passa a ser o [`CARD_RADIUS`] do cabeçalho ([`raio_do_canto`]) |
+//! | linhas mais grossas | o fio continuava a encolher com o zoom depois de tudo o resto parar — `crate::paint::paint_wire::largura_do_fio` |
+//!
+//! ⚠️ **O nome «cápsula» fica, e é HISTÓRICO:** ele é o nome do REGIME (o desenho de longe), não
+//! da forma — que hoje é um rectângulo. Renomeá-lo atravessaria a API pública que o censo do
+//! catálogo consome noutra crate, por zero mudança de comportamento; *o que não pode ficar é a
+//! forma descrita errada, e por isso a tabela acima está aqui.*
+//!
 //! ⚠️ **Irmão do [`super::paint_card`] por RESPONSABILIDADE:** aquele desenha o cartão que o
 //! artista LÊ de perto; este o que ele RECONHECE de longe.
 
 use super::*;
 
-/// **O nome mais comprido do catálogo**, MEDIDO (sonda de 2026-09-19 sobre os 136 tipos
-/// registados): *«Fibonacci Spiral»*, `16` caracteres — mediana `7`, p90 `12`.
-///
-/// ⛔⛔ **É dele que sai o tamanho da fonte, e é por isso que não há reticências:** em vez de
-/// cortar o nome ao que cabe, a fonte é escolhida para o PIOR nome caber. ⚠️ Há um censo do outro
-/// lado (`ph2d-app-motion`) a afirmar que nenhum nó registado passa deste número — *um nome novo
-/// mais comprido reprova lá, com o endereço, em vez de aparecer cortado na tela do artista*.
-pub(crate) const NOME_MAIS_LONGO: f32 = 16.0; // LITERAL-PX-OK: contagem de caracteres MEDIDA no catálogo
-
-/// **O avanço médio por caractere**, em fracção do corpo da fonte — o mesmo idioma que o
-/// `geom::crumb_w` usa para o mesmo fim.
-///
-/// ⭐ **MEDIDO, e com folga declarada:** *«Simulation Zone»* (15 caracteres, o mais largo dos
-/// nomes compridos do catálogo) mede `138,0` unidades a corpo `17,9` ⇒ `0,514` por caractere. O
-/// `0,58` é esse número com **13 % de folga**, porque uma estimativa que erre para o lado curto
-/// devolve as reticências que o dono recusou. ⚠️ E há um gate com o medidor REAL a confirmá-lo.
-const AVANCO_POR_CHAR: f32 = 0.58; // LITERAL-PX-OK: fracção do corpo da fonte
-
 /// **O respiro lateral do nome**, em unidades de grafo.
 const MARGEM_X: f32 = 12.0; // LITERAL-PX-OK: respiro lateral, unidades de grafo
 
-/// ⭐⭐⭐ **O TAMANHO ÚNICO do nome numa cápsula** — *«fonts de tamanho único»*, e ele é
-/// **DERIVADO**: o maior corpo em que [`NOME_MAIS_LONGO`] caracteres ainda cabem na largura da
-/// pastilha.
+/// ⭐⭐⭐ **O TAMANHO ÚNICO do nome numa cápsula** — *«fonts de tamanho único»* (2026-09-19) e
+/// *«fonts maiores»* (2026-09-20).
 ///
-/// `(190 − 2 × 12) / (16 × 0,58) = 17,9` unidades, contra as `13` do título do cartão — **1,38×**,
-/// e a mesma para toda cápsula porque a altura delas é uma só.
-pub(crate) const CAPSULA_FONTE: f32 =
-    (geom::CARD_W - 2.0 * MARGEM_X) / (NOME_MAIS_LONGO * AVANCO_POR_CHAR);
+/// ⭐⭐ **MEDIDO por BUSCA, no corpo REAL:** `mede_o_corpo_maximo_da_capsula` (em
+/// `ph2d-app-motion`, onde vivem os **136** tipos registados) procura o maior corpo em que o pior
+/// nome do catálogo ainda cabe em `190 − 2 × 12 = 166` unidades, medindo com o mesmo medidor que
+/// o pintor consulta. Resposta: **`21,794`**, com *«Simulation Zone»* a assentar em `166,00`.
+/// Ship-se `21,5`, `1,3 %` abaixo — a folga é do **empate na borda**, não de uma estimativa.
+///
+/// ⛔⛔ **A 1.ª redacção CONTAVA CARACTERES, e as reticências que o dono recusou eram pagas por
+/// `13 %` de folga num avanço médio:** `n_chars × 0,58` devolvia `17,9`. A medição mostrou a
+/// folga a ser **dinheiro em cima da mesa** — `+20 %` de corpo pela mesma pastilha.
+///
+/// ⛔⛔⛔ **E a 2.ª redacção mediu a corpo `100` e DIVIDIU, supondo a largura linear no corpo —
+/// o gate do painel reprovou-a em voz alta.** A largura por unidade de corpo do pior nome:
+///
+/// | corpo | largura/unidade |
+/// |---:|---:|
+/// | `100,0` | `7,3608` |
+/// | `30,0` | `7,4121` |
+/// | `21,8` | **`7,6167`** |
+/// | `17,9` | `7,7139` |
+///
+/// ⇒ *uma medição feita a um corpo não afirma nada sobre outro* (o arredondamento de métricas por
+/// tamanho não é linear, e ele erra sempre no sentido que CORTA). A extrapolação pedia `22,33` e
+/// o nome mediria `169,8` — cortado.
+///
+/// Contra as `13` do título do cartão: **1,65×** (eram `1,38×`), e o mesmo corpo para toda
+/// cápsula porque a altura delas é uma só.
+pub(crate) const CAPSULA_FONTE: f32 = 21.5; // LITERAL-PX-OK: corpo MEDIDO por busca (ver acima)
 
-/// ⛔ E a ordem *«bem maiores»* é uma afirmação conferível pelo COMPILADOR — `1,3×` o título do
-/// cartão, no mínimo. ⚠️ Ela vive aqui e não num teste porque o clippy recusa um `assert!` sobre
-/// duas constantes (ele é dobrado antes de correr), que é a mesma cicatriz que o espaçamento do
-/// pincel afiado desta casa já pagou.
-const _: () = assert!(CAPSULA_FONTE > 1.3 * TITLE_SIZE); // LITERAL-PX-OK: a razão que «bem maiores» nomeia
+/// ⛔ E a ordem *«bem maiores»* é uma afirmação conferível pelo COMPILADOR — `1,6×` o título do
+/// cartão, no mínimo, medido em `1,72×`. ⚠️ Ela vive aqui e não num teste porque o clippy recusa
+/// um `assert!` sobre duas constantes (ele é dobrado antes de correr), que é a mesma cicatriz que
+/// o espaçamento do pincel afiado desta casa já pagou.
+///
+/// ⚠️⚠️ **A barra SUBIU de `1,3` para `1,6` com a 2.ª ordem do dono, e isso é uma CATRACA:** sem
+/// ela, voltar à estimativa por contagem de caracteres (`1,38×`) passaria neste ponto sem uma
+/// linha vermelha — *uma cerca escrita para a 1.ª ordem não defende a segunda*.
+const _: () = assert!(CAPSULA_FONTE > 1.6 * TITLE_SIZE); // LITERAL-PX-OK: a razão que «fonts maiores» nomeia
 
 /// ⭐⭐⭐ **ESTE NOME CABE NUMA CÁPSULA SEM RETICÊNCIAS?** — a porta que o censo do catálogo (em
 /// `ph2d-app-motion`, onde os 136 tipos vivem) pergunta por cada nó registado.
@@ -71,6 +93,20 @@ pub fn nome_cabe_na_capsula(text_system: &mut ph2d_text::TextSystem, nome: &str)
     let largura =
         text_system.prefix_width_weighted(nome, CAPSULA_FONTE, ph2d_text::FontWeight::SEMI_BOLD);
     largura <= geom::CARD_W - 2.0 * MARGEM_X
+}
+
+/// ⭐⭐⭐ **O RAIO DO CANTO** — *«os retângulos como nos headers dos nós»* (ordem do dono,
+/// 2026-09-20), e por isso ele é o **mesmo [`CARD_RADIUS`] que o `paint_card` dá ao cabeçalho**.
+///
+/// ⛔ **A 1.ª redacção devolvia `altura × 0,5`**, que é a definição de uma pastilha: com ela os
+/// topos e os fundos eram semicírculos e o dono leu-os como cápsulas, que é o que ele acabou de
+/// recusar. *A diferença entre as duas formas cabe nesta linha.*
+///
+/// ⚠️ **Uma função e não uma linha dentro do pintor**, pela razão que este ficheiro já pagou duas
+/// vezes: uma decisão enfiada no meio do desenho só se deixa gatear por um censo TEXTUAL, e um
+/// censo de texto sobrevive a um `if false &&`. *Aqui mede-se o NÚMERO.*
+pub(crate) fn raio_do_canto(view: &View) -> f32 {
+    CARD_RADIUS * view.zoom
 }
 
 /// **ONDE O NOME COMEÇA** — o `x` que o centra na pastilha, dada a largura MEDIDA do texto.
@@ -93,8 +129,14 @@ pub(super) fn draw_capsula(
     body: Rect,
 ) -> Rect {
     let h = body.h;
-    // ⭐ Cantos totalmente arredondados: é isso que faz dela uma cápsula e não um cartão baixo.
-    let r = h * 0.5;
+    // ⭐⭐ **O canto é o do CABEÇALHO, e é a MESMA constante** — ordem do dono (2026-09-20): *«no
+    // lugar das cápsulas os retângulos como nos headers dos nós, só que grandes»*. A 1.ª redacção
+    // usava `h × 0,5`, que é o que faz de um rectângulo uma pastilha.
+    //
+    // ⚠️ **Uma constante partilhada e não um número igual:** o `paint_card` desenha o cabeçalho
+    // com este mesmo `CARD_RADIUS`, logo as duas formas **não podem divergir** no dia em que
+    // alguém mexer no raio do cartão — *duas respostas à mesma pergunta divergem, uma porta não*.
+    let r = raio_do_canto(view);
     fill_rounded_rect(ctx.scene, body, r, resolve(cat_token(n.category), theme));
 
     // ⭐⭐ **O NOME, no centro dos DOIS eixos.** ⚠️ Centrado com a medida REAL do texto

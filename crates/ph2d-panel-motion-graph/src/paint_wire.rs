@@ -60,6 +60,43 @@ impl WireEmphasis {
     }
 }
 
+/// **O zoom a que um fio pára de encolher** — `100 %`, o zoom a que o artista lê um cartão.
+const ZOOM_DO_PISO_DO_FIO: f32 = 1.0; // LITERAL-PX-OK: zoom de referência, não uma espessura
+
+/// ⭐⭐⭐ **A LARGURA COM QUE UM FIO É TRAÇADO, em píxeis de ecrã — a porta única.**
+///
+/// Ordem do dono (2026-09-20), sobre o grafo AFASTADO: *«linhas mais grossas»*. ⭐⭐ **E a lei
+/// não é uma espessura nova — é a do LOD que a cápsula já declara:** *na cápsula, as coisas param
+/// de encolher* (é à letra o que o [`crate::geom::raio_do_pino_na_capsula`] faz aos pinos). Um
+/// fio afastado parava de se ver: `base × zoom` a `zoom = 0,3` dá **`0,54 px`** para o fio mais
+/// fino, que é menos de meio pixel — *uma cadeia que se deixou de poder seguir exactamente no
+/// regime que existe para a seguir*.
+///
+/// | zoom | fio fino (`1,8`) | fio pesado (`5,2`) |
+/// |---:|---:|---:|
+/// | `1,00` (cartão) | `1,80` | `5,20` |
+/// | `0,66` (limiar) | `1,18` | `3,43` |
+/// | `0,30` antes | `0,54` | `1,56` |
+/// | `0,30` **agora** | **`1,80`** | **`5,20`** |
+/// | `0,20` (o mínimo) **agora** | **`1,80`** | **`5,20`** |
+///
+/// ⭐ **O canal da MASSA sobrevive**, e é por isso que o piso é um zoom e não uma largura: um
+/// tecto único achataria os dois fios no mesmo traço, e a largura de um fio *diz quantos
+/// elementos passam nele* ([`flow::wire_width`]). Congelar o ZOOM congela a família inteira.
+///
+/// ⛔ **Acima do limiar a resposta é `base × zoom` AO BIT** — o cartão de perto não muda um
+/// pixel, e há gate a exigi-lo. *Um piso que mordesse no regime do cartão mudaria o desenho de
+/// um regime sobre o qual ninguém se queixou.*
+///
+/// ⚠️ **E o salto no limiar é deliberado**, o mesmo que a forma do nó já dá ali: os dois desenhos
+/// trocam no MESMO ponto, logo o artista vê **um** degrau e não dois.
+pub(crate) fn largura_do_fio(base_w: f32, view: &View) -> f32 {
+    match crate::geom::detalhe(view) {
+        crate::geom::Detalhe::Completo => base_w * view.zoom,
+        crate::geom::Detalhe::Capsula => base_w * view.zoom.max(ZOOM_DO_PISO_DO_FIO),
+    }
+}
+
 pub(crate) fn draw_wire(
     ctx: &mut PaintCtx,
     snap: &GraphViewSnapshot,
@@ -92,7 +129,8 @@ pub(crate) fn draw_wire(
     } else {
         (flow::wire_width(src.and_then(|n| n.count)), domain)
     };
-    stroke_polyline(ctx.scene, &pts, base_w * view.zoom, resolve(token, theme));
+    let largura = largura_do_fio(base_w, view);
+    stroke_polyline(ctx.scene, &pts, largura, resolve(token, theme));
 
     // **Data is moving through this wire right now** — the source's output changed since last
     // frame (TouchDesigner's animated wire). Bright dashes march along it, source → target.
@@ -107,10 +145,12 @@ pub(crate) fn draw_wire(
             flow::DASH_ON * z,
             snap.now * flow::DASH_SPEED * z,
         );
+        // ⚠️ A MESMA largura do fio, pela mesma porta: os tracejados andam SOBRE ele, e dois
+        // números que se querem iguais divergem no dia em que um deles mudar.
         stroke_subpaths(
             ctx.scene,
             &dashes,
-            base_w * z,
+            largura,
             resolve(ColorToken::Text1, theme),
         );
     }
@@ -123,7 +163,7 @@ pub(crate) fn draw_wire(
         stroke_polyline(
             ctx.scene,
             &pts,
-            base_w * view.zoom,
+            largura,
             resolve(ColorToken::GraphInert, theme),
         );
     }
@@ -146,7 +186,7 @@ fn draw_pre_badges(
     if emphasis.lit() {
         // Reveal the pair: a thin ghost of the path the state actually takes.
         let pts = wire_polyline(p0, p3, view.zoom);
-        stroke_polyline(ctx.scene, &pts, WIRE_W_DELAYED * view.zoom, color);
+        stroke_polyline(ctx.scene, &pts, largura_do_fio(WIRE_W_DELAYED, view), color);
     }
     let self_loop = e.from_node == e.to_node;
     for (cx, cy) in crate::hits::pre_badge_centers(p0, p3, view.zoom, self_loop)
@@ -255,7 +295,7 @@ pub(crate) fn draw_wire_ghost(
             // Forward wire's target is an INPUT socket; the loose end snaps to it when locked on.
             let tc = ghost_target_center(target, snap, view, false);
             let pts = wire_polyline(p0, tc.unwrap_or(*cur), view.zoom);
-            stroke_polyline(ctx.scene, &pts, GHOST_W * view.zoom, color);
+            stroke_polyline(ctx.scene, &pts, largura_do_fio(GHOST_W, view), color);
 
             if let (Some((_, _, compat)), Some((cx, cy))) = (target, tc) {
                 let r = (SOCKET_R + TARGET_RING_PAD) * view.zoom;
@@ -291,7 +331,7 @@ pub(crate) fn draw_wire_ghost(
             // the input) snaps to it when locked on.
             let tc = ghost_target_center(target, snap, view, true);
             let pts = wire_polyline(tc.unwrap_or(*cur), p3, view.zoom);
-            stroke_polyline(ctx.scene, &pts, GHOST_W * view.zoom, color);
+            stroke_polyline(ctx.scene, &pts, largura_do_fio(GHOST_W, view), color);
 
             if let (Some((_, _, compat)), Some((cx, cy))) = (target, tc) {
                 let r = (SOCKET_R + TARGET_RING_PAD) * view.zoom;

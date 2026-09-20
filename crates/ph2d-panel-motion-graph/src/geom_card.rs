@@ -160,7 +160,12 @@ pub(crate) fn capsula_h(_n: &GraphNodeView) -> f32 {
 }
 
 /// A folga TOTAL acima do primeiro pino e abaixo do último — meia de cada lado. ⚠️ Não é gosto:
-/// um pino colado à borda de uma forma de cantos totalmente arredondados fica **meio fora** dela.
+/// um pino é um DISCO centrado na fileira, logo um pino colado à borda fica **meio fora** da
+/// forma, qualquer que ela seja.
+///
+/// ⚠️⚠️ **A razão escrita aqui MUDOU quando a forma mudou** (2026-09-20): ela dizia *«de uma forma
+/// de cantos totalmente arredondados»*, e com o rectângulo de cabeçalho a premissa morreria — *e
+/// a folga continua necessária pela razão mais simples, que é a única que sempre a sustentou*.
 const MARGEM_DO_PINO: f32 = 0.5 * ROW_H;
 
 /// **O passo entre dois pinos de uma cápsula.** É o do cartão ([`ROW_H`]) enquanto eles couberem,

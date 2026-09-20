@@ -153,7 +153,22 @@ pub const OLHAR_DA_FORMA: ph2d_view_transform::Look = ph2d_view_transform::Look 
 /// segunda aresta para a óptica seria um segundo sítio por onde a versão dela entra.
 #[must_use]
 pub fn material_da_forma() -> ph2d_form_pbr::Surface {
-    ph2d_form_pbr::OpenPbr::default().prepare()
+    openpbr_da_forma().prepare()
+}
+
+/// ⭐⭐⭐ **O MATERIAL ANTES DE PREPARADO** — a mesma porta, para quem precisa do `OpenPbr` e não do
+/// [`ph2d_form_pbr::Surface`].
+///
+/// ⚠️ **Ela nasceu porque o VISOR passou a acender com esta lei** (o modo `Lighting::Pbr` do
+/// `ph2d-mesh-render`, 2026-09-20, por ordem do dono: *«Já temos o material do módulo Modelling.
+/// porque não trazer para o sculpt?»*). O `Shade` do visor guarda um `OpenPbr` e prepara-o na
+/// fronteira do device; a [`material_da_forma`] entrega já preparado. ⛔ São a MESMA decisão vista
+/// de dois lados, e é por isso que a segunda DELEGA na primeira em vez de escrever
+/// `OpenPbr::default()` outra vez — *duas cópias divergem no primeiro dia em que alguém mexer num
+/// campo, com o sintoma a ser «a sprite assa diferente do que o visor mostrava»*.
+#[must_use]
+pub fn openpbr_da_forma() -> ph2d_form_pbr::OpenPbr {
+    ph2d_form_pbr::OpenPbr::default()
 }
 
 #[cfg(test)]

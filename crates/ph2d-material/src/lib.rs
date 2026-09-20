@@ -685,17 +685,13 @@ pub mod wgsl;
 #[cfg(test)]
 mod tests;
 
-/// ⭐ Os gates da **matiz que segue a profundidade** — a primeira lei desta crate que DIVERGE da
-/// referência de propósito. Módulo próprio porque o [`tests`] está a `681` linhas de um tecto de
-/// `700`, e a cura de um tecto é corte por responsabilidade.
-#[cfg(test)]
-mod tests_cor_da_profundidade;
-
-/// ⭐ Os gates do **realce desligado** — a segunda divergência declarada desta crate, e a primeira
-/// em que ela CORRIGE a referência. Módulo próprio pela mesma razão que o vizinho: o [`tests`] está
-/// a `681` linhas de um tecto de `700`.
-#[cfg(test)]
-mod tests_o_realce_desligado;
-
+// ⚠️ **A prosa de cada um destes irmãos vive no CABEÇALHO dele, e não aqui.** Ela esteve nesta
+// lista e o ficheiro chegou a `701` de um tecto de `700` — e um doc de módulo escrito no sítio da
+// declaração é prosa que quem abre o módulo **não lê**. A cura de um tecto é corte por
+// responsabilidade, e a responsabilidade de descrever um módulo é do módulo.
 #[cfg(test)]
 mod tests_a_cor_do_texel;
+#[cfg(test)]
+mod tests_cor_da_profundidade;
+#[cfg(test)]
+mod tests_o_realce_desligado;

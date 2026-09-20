@@ -1631,3 +1631,25 @@ da lei; a régua continua a **discriminar** (a direcção sobrevive) e a **magni
 da população que está **no tecto ou no chão** — e uma razão cuja população satura só pode ser citada
 como sinal, nunca como número.
 Ver [[reference_topic_gate_discipline]].
+
+- ⛔⛔ **Um ORÁCULO escolhido pelo harness que estava à mão mede o que AQUELE harness mede, e o nome
+dele não diz qual lei ele corre.** Medido 2026-09-21: para provar que o visor 3D passou a acender
+com a lei que assa a sprite, reutilizei o harness *«as duas luzes sobre a mesma forma»* — e ele assa
+o sprite pelo `ImpastoLightPass`, que é a lei da **TINTA**, não a `acende_texel`. A tabela leu
+`0,055` de desvio médio e eu li-a como *«as duas implementações da mesma lei divergem»*; o que ela
+media eram **duas leis diferentes**. Trocado o oráculo pela FUNÇÃO de referência em CPU, o mesmo
+produto lê `0,000215`. **Why:** um harness pronto traz o oráculo dele embutido, e o nome de um
+harness descreve o ASSUNTO (*«as duas luzes»*), nunca a IMPLEMENTAÇÃO que ele corre de cada lado.
+**How to apply:** antes de reutilizar um harness de paridade, leia **quem ele chama** no lado do
+oráculo e escreva esse nome no doc do gate novo — e prefira sempre a função de referência à saída de
+um passe, que traz uma segunda calibração pelo meio. Ver [[reference_topic_oracle_discipline]].
+- ⛔⛔ **Um alvo HDR NÃO implica que alguém à frente exponha — leia o passe de apresentação antes de
+chamar a um número «cru».** Medido 2026-09-21: o visor 3D escreve `Rgba16Float` e o `tonemap.wgsl`
+da shell é uma **PASSAGEM** (`BYPASS_LUT = true`, um `clamp` a `1`) sem exposição nenhuma ⇒ a
+radiância crua chega ao ecrã como está. O modo novo lia `0,128` de média onde a sprite lia `0,539` —
+`4,3×`, que é exactamente o `2^2,1` do olhar que a lei aplica no fim. **Why:** «HDR» diz o FORMATO do
+buffer, e a exposição é uma DECISÃO que alguém tem de tomar; um passe de apresentação que existe e é
+inerte lê-se, de fora, igual a um que expõe. **How to apply:** quando dois caminhos da mesma lei dão
+níveis diferentes por um factor redondo, procure o **último acto** da lei (a transformada de vista) e
+pergunte quem o corre — e trate-o como parte da LEI, nunca como acabamento do visualizador.
+Ver [[reference_topic_code_pattern_gotchas]].

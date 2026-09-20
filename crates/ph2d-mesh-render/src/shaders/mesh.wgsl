@@ -101,9 +101,31 @@ struct Shade {
     env: f32,
 };
 
+// **DE QUE MATERIA ESTA PECA E' FEITA, e sob que ceu** (`crate::pbr::PbrRaw`).
+//
+// ⚠️ **Um uniform PROPRIO e nao campos no `Shade`:** aquele tem 32 B exactos e o doc do ultimo campo
+// dele diz que o derradeiro `_pad` foi gasto. A frequencia e' a mesma (um write por quadro), logo o
+// corte e' por ASSUNTO — *com que luz e quanto de cavidade* e' a VISTA; *de que materia* e' o OBJECTO.
+//
+// ⛔ O `Mat` vem da fonte da LEI, que e' composta ANTES deste ficheiro (`crate::pbr::fonte`).
+struct Pbr {
+    mat: Mat,
+    // A irradiancia na horizontal. `rgb`, com o `a` a padding — um `vec3` num uniform alinha a 16 B
+    // de qualquer maneira, e declarar o preenchimento e' mais honesto do que deixa'-lo implicito.
+    ceu_base: vec4<f32>,
+    // Quanto ela sobe para o topo da TELA.
+    ceu_inclinacao: vec4<f32>,
+    // O OLHAR: `x` = os stops de exposicao; `yzw` sao RESERVA declarada (ver o `PbrRaw`).
+    olhar: vec4<f32>,
+    // O codigo da vista em `x`; `yzw` reserva. Ele e' INTEIRO e viaja como tal — enfia'-lo num
+    // `f32` por bits obrigaria os dois lados a concordar num `bitcast` que nenhum gate mede.
+    vista: vec4<u32>,
+};
+
 @group(0) @binding(0) var<uniform> cam: Camera;
 @group(0) @binding(1) var<uniform> rig: Rig;
 @group(0) @binding(2) var<uniform> shade: Shade;
+@group(0) @binding(3) var<uniform> pbr: Pbr;
 @group(1) @binding(0) var<uniform> obj: Object;
 
 // O piso AMBIENTE: o que uma face totalmente virada para longe da luz ainda
@@ -132,6 +154,13 @@ const FLAT_FLOOR: f32 = 1.0e-4;
 
 // O barro de estúdio: claro e dessaturado, para a FORMA aparecer.
 const CLAY: vec3<f32> = vec3<f32>(0.74, 0.70, 0.66);
+
+// **A VISTA do modo PBR** — o EIXO da camera, nao o raio do pixel.
+//
+// ⚠️ Ela e' o `ph2d_form_pbr::VISTA`, e a igualdade e' gateada do lado que ve' as duas crates
+// (`ph2d-app-sculpt3d`): e' ela que faz o visor e a sprite assada responderem a mesma coisa, e duas
+// copias divergentes dariam de novo o report que este modo existe para fechar.
+const PBR_VIEW: vec3<f32> = vec3<f32>(0.0, 0.0, 1.0);
 
 // **O GANHO DA CAVIDADE** — o que leva a curvatura crua à faixa que o olho usa.
 //
@@ -201,7 +230,13 @@ const PREVIEW_STRENGTH: f32 = 0.45;
 // *um valor esquecido que é silencioso é um defeito que ninguém conserta*.
 const LIGHTING_FLAT: u32 = 0u;
 const LIGHTING_RIG: u32 = 1u;
-const LIGHTING_FIRST_MATCAP: u32 = 2u;
+// ⭐⭐⭐ **A LEI QUE ASSA, no visor** — o OpenPBR com o material desta peca e o ceu deste rig.
+//
+// ⚠️ Ele entra no MEIO da escada e nao no fim, e o preco esta' pago: o `LIGHTING_FIRST_MATCAP`
+// desceu de `2` para `3`. ⭐ E' de graca porque o `Shade` **nao e' serializado** — ele e' estado de
+// VISTA, e o u32 e' so' a codificacao do uniform, refeita pelo `ShadeRaw::pack` a cada quadro.
+const LIGHTING_PBR: u32 = 2u;
+const LIGHTING_FIRST_MATCAP: u32 = 3u;
 
 // **O que um matcap É:** sombreamento que é função APENAS da normal em espaço de
 // vista. A luz viaja com a câmera, então orbitar não muda a leitura da forma — é
@@ -1023,6 +1058,74 @@ fn fs_core(in: VsOut, vcolor: vec3<f32>) -> vec4<f32> {
     // de "o artista apagou tudo" para uma superfície opaca.
     if (rig.n == 0u) {
         return vec4<f32>(CLAY * in.vcolor, 1.0);
+    }
+
+    // ⭐⭐⭐⭐ **O MODO PBR — a MESMA lei que assa o sprite.**
+    //
+    // Report do dono (2026-09-21): *«o que se ve' no objecto 3d nao e' o que se ve' na sprite
+    // cozida. Ja' temos o material do modulo Modelling. porque nao trazer para o sculpt?»* — e o
+    // cabecalho deste ficheiro ja' declarava a divida por escrito desde a W3 (*«O QUE NAO E'
+    // COMPARTILHADO E' O MATERIAL … o material da malha e' a wave do shader, W7»*).
+    //
+    // ⚠️ **A VISTA e' o EIXO da camera e nao o raio do pixel, e isso NAO e' uma simplificacao nova:**
+    // o modelo de argila ao lado ja' o faz — o realce dele le' `l.hlf.z`, e o meio-vector `hlf` e'
+    // calculado na CPU **por lampada** (`ph2d_light::resolve`), o que so' e' correcto com uma vista
+    // constante. ⭐ E e' essa constante que faz o visor e a sprite responderem a MESMA coisa: o
+    // canvas e' uma projeccao 2D, e a lei que assa le' `(0,0,1)` pelo mesmo motivo.
+    //
+    // ⚠️ **O LACO e' nosso, a LEI nao e'.** O laco do sprite vive na `ph2d-form-pbr` e assume a
+    // vista constante **e** a ausencia de rig por pixel; aqui as lampadas ja' estao no uniform.
+    // *Um laco e' onde as amostras entram; a lei e' o que responde.*
+    //
+    // ⚠️ **O `cav_occ` pesa SO' a indirecta**, como no sprite: uma lampada que o artista apontou tem
+    // de chegar onde ele a apontou, e escurecer a directa com oclusao de forma e' o que faz um
+    // objecto parecer sujo em vez de ocluido.
+    if (shade.lighting == LIGHTING_PBR) {
+        // ⛔ O ceu entra pelos `var<private>` ANTES da chamada — a ranhura e' preenchida DENTRO da
+        // fonte da lei, que vem antes deste ficheiro, e la' o `pbr` ainda nao existe.
+        ceu_base = pbr.ceu_base.rgb;
+        ceu_inclinacao = pbr.ceu_inclinacao.rgb;
+
+        // ⭐⭐⭐ A COR DO TEXEL E' o `base_color` e nao um factor no fim da conta — a mesma porta e a
+        // mesma licao que o sprite pagou: o `compose` NAO e' linear no `base_color` (so' o lobulo
+        // difuso escala com ele), e multiplicar no fim da' a um plastico vermelho um destaque
+        // VERMELHO, que e' o que um METAL faz.
+        let mt = mx_at_base_color(pbr.mat, CLAY * in.vcolor);
+
+        var luz = vec3<f32>(0.0);
+        for (var i = 0u; i < rig.n; i = i + 1u) {
+            let l = rig.lamps[i];
+            luz = luz + mx_direct(mt, nc, PBR_VIEW, l.dir.xyz, l.tint.rgb);
+        }
+        let cena = luz + mx_indirect(mt, nc, PBR_VIEW) * cav_occ;
+
+        // ⭐⭐⭐ **O OLHAR e' o ULTIMO ACTO DA LEI, e nao um acabamento do visor.** A `acende_texel`
+        // do sprite recebe-o como argumento e devolve ja' display-referred; sem ele este ramo
+        // entregava a radiancia CRUA onde a tela entrega a exposta — medido sobre a mesma esfera,
+        // `0,128` de media contra `0,539`, que e' o report do dono a' letra.
+        //
+        // ⚠️ **E o tonemap da shell NAO o substitui:** ele e' uma PASSAGEM (`BYPASS_LUT = true`, um
+        // `clamp` a `1`) e nao tem exposicao nenhuma — a HDR que sai daqui chega ao ecra' como esta'.
+        // *Um alvo HDR nao implica que alguem la' a' frente exponha.*
+        let visto = vt_to_display(cena, pbr.olhar.x, pbr.vista.x);
+
+        // A mascara e a pre-visualizacao entram pela MESMA lei dos outros modos: elas sao tinta de
+        // EDICAO, nao material — e a razao relativa delas e' contra a resposta do proprio modo.
+        //
+        // ⚠️ **A razao mede-se no MESMO espaco em que a cor e' escrita** (display-referred nos dois
+        // termos): medi-la em cena e aplica'-la a um valor exposto daria um tinto de edicao
+        // `2^stops` mais forte no dia em que a exposicao mudasse — um controlo de LUZ a mexer na
+        // forca de uma ajuda de EDICAO.
+        let flat_ref = mx_indirect(mt, vec3<f32>(0.0, 0.0, 1.0), PBR_VIEW);
+        let flat_pbr = max(
+            vt_to_display(flat_ref, pbr.olhar.x, pbr.vista.x),
+            vec3<f32>(FLAT_FLOOR)
+        );
+        let ratio = visto / flat_pbr;
+        var cp = visto;
+        cp = mix(cp, PREVIEW_TINT * ratio * cav_occ, clamp(in.preview, 0.0, 1.0) * PREVIEW_STRENGTH);
+        cp = mix(cp, MASK_TINT * ratio * cav_occ, clamp(in.mask, 0.0, 1.0) * MASK_STRENGTH);
+        return vec4<f32>(cp, 1.0);
     }
 
     var diffuse = vec3<f32>(0.0);

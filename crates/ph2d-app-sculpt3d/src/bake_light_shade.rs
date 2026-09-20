@@ -60,7 +60,42 @@ pub(super) fn shared_law_shade() -> Shade {
         // `DEFAULT_ENV = 0.0` diz isso, e o doc dele nomeia a adoção como
         // follow-up. Zerar aqui é honrar essa fronteira em vez de a atravessar.
         env: 0.0,
+        // ⚠️ **O material só é lido pelo `Lighting::Pbr`** — aqui a lei em prova é a do BARRO, e
+        // ele ignora este campo. Ele está escrito por nome e não por `..Default::default()` de
+        // propósito: um campo novo no `Shade` tem de ser uma decisão desta sonda, não uma herança.
+        material: ph2d_material::OpenPbr::default(),
+        // ⚠️ **NEUTRO aqui, e é uma decisão:** o olhar só é lido pelo `Lighting::Pbr`, e a lei em
+        // prova nesta vista é a do BARRO, que escreve uma resposta RELATIVA (dividida pela de uma
+        // superfície plana sob a mesma luz) — ela não tem unidade de cena para expor. O irmão
+        // [`pbr_law_shade`] é que escreve o olhar com que esta casa assa.
+        look: ph2d_mesh_render::Look::default(),
         // Uma vista, não uma lei.
         wireframe: false,
+    }
+}
+
+/// ⭐⭐⭐ **A VISTA em que o visor acende com a LEI QUE ASSA** — o modo `Pbr`, com toda ajuda de
+/// edição desligada.
+///
+/// ⚠️ **As quatro que ficam a zero não são cosmética:** a cavidade, os dois AOs e o espalhamento são
+/// leituras de FORMA que o visor derruba por cima da lei, e o sprite recebe a oclusão dele por um
+/// canal separado. Deixá-los vivos aqui poria a mesma sombra num lado só, e a diferença leria-se
+/// como *«as duas leis divergem»* quando o que divergiu foram as ajudas.
+///
+/// ⛔ **O `env` fica a zero e é inerte neste modo**, e dizê-lo evita a leitura errada: ele é o knob
+/// do ambiente com direcção do modelo de ARGILA. No modo `Pbr` o ambiente entra pela ranhura da lei,
+/// com o céu que o rig produz — *são dois caminhos para a mesma palavra, e só um corre aqui*.
+pub(super) fn pbr_law_shade() -> Shade {
+    Shade {
+        lighting: ph2d_mesh_render::Lighting::Pbr,
+        // ⭐⭐⭐ **O OLHAR com que esta casa assa, e sem ele esta sonda mede OUTRA COISA.**
+        //
+        // A [`ph2d_form_pbr::acende_texel`] recebe-o como argumento e devolve já display-referred;
+        // o visor sem ele entrega a radiância CRUA. Medido antes desta linha existir, sobre a mesma
+        // esfera e com o mesmo albedo: `0,128` de média viva contra `0,539` de assada — `4,3×`, que
+        // é exactamente o `2^2,1` do [`OLHAR_DA_FORMA`]. *Uma comparação entre duas implementações
+        // da mesma lei que só corre metade de uma delas mede a metade que falta.*
+        look: ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA,
+        ..shared_law_shade()
     }
 }

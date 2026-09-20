@@ -13,18 +13,52 @@
 //! crate apanhava. Espelha o `sprite.wgsl` (`ph2d-render`) e o
 //! `impasto_light.wgsl`, que já viviam com a mesma forma.
 
-/// **O shader compila** — parse + validação completa, na CPU.
+/// **O shader compila** — parse + validação completa, na CPU, sobre **o que o produto entrega ao
+/// device**.
+///
+/// # ⛔⛔ A premissa que MORREU, e foi este gate que a matou
+///
+/// Ele lia `include_str!("shaders/mesh.wgsl")` — *o ficheiro sozinho* — e isso era verdade enquanto
+/// o passe da malha tivesse toda a óptica dentro dele. Com o modo [`crate::shade::Lighting::Pbr`] a
+/// lei passou a vir da [`ph2d_material`], e o ficheiro cru **deixou de parsar**: ele nomeia `Mat` e
+/// `mx_direct`, que a composição traz.
+///
+/// ⭐ **E ele reprovou ANTES de eu ter ligado a composição ao `pipeline_build`** — que ainda dava o
+/// `MESH_WGSL` cru ao `create_shader_module`. *Um gate que lê o ficheiro em vez da porta acusa o
+/// dia em que o produto passa a montar; um que lê a porta acusa o dia em que a montagem quebra —
+/// e só o segundo continua a valer depois.*
 #[test]
 fn o_mesh_wgsl_parsa_e_valida_no_naga() {
-    let src = include_str!("shaders/mesh.wgsl");
-    let module = naga::front::wgsl::parse_str(src)
-        .unwrap_or_else(|e| panic!("mesh.wgsl nao parsa: {}", e.emit_to_string(src)));
+    let src = crate::pbr::fonte();
+    let module = naga::front::wgsl::parse_str(&src)
+        .unwrap_or_else(|e| panic!("a fonte da malha nao parsa: {}", e.emit_to_string(&src)));
     let mut validator = naga::valid::Validator::new(
         naga::valid::ValidationFlags::all(),
         naga::valid::Capabilities::empty(),
     );
     let r = validator.validate(&module);
-    assert!(r.is_ok(), "mesh.wgsl nao valida: {:?}", r.err());
+    assert!(r.is_ok(), "a fonte da malha nao valida: {:?}", r.err());
+}
+
+/// ⛔⛔ **E O QUE O `pipeline_build` ENTREGA AO DEVICE É A FONTE COMPOSTA** — a metade que o parse
+/// não vê.
+///
+/// ⚠️ O gate acima pode ficar verde com o produto a dar o ficheiro CRU ao `create_shader_module`, e
+/// foi exactamente esse o estado em que ele me apanhou. *Um gate sobre a fonte certa é cego a quem
+/// compila a errada* — a mesma forma que esta casa já paga com os censos de fiação.
+#[test]
+fn o_produto_compila_a_fonte_composta_e_nao_o_ficheiro_cru() {
+    let build = include_str!("pipeline_build.rs");
+    assert!(
+        build.contains("crate::pbr::fonte()"),
+        "o `create_shader_module` da malha tem de receber a fonte COMPOSTA"
+    );
+    // ⭐ **O CONTROLO da régua:** ela tem de saber dizer NÃO — o nome cru não pode sobrar num
+    // `ShaderSource`, que é como a recaída aconteceria.
+    assert!(
+        !build.contains("ShaderSource::Wgsl(MESH_WGSL"),
+        "controlo: o ficheiro cru não pode voltar a ser a fonte do passe"
+    );
 }
 
 /// ⭐⭐ **AS ENTRADAS DE VÉRTICE DO SHADER SÃO AS QUE O PIPELINE AMARRA** — a

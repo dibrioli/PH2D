@@ -104,6 +104,8 @@ pub struct MeshRenderer {
     rig_uniform: wgpu::Buffer,
     /// As opções de sombreamento do barro — ver [`crate::shade`].
     shade_uniform: wgpu::Buffer,
+    /// O material e o céu que o modo `Pbr` lê — ver [`crate::pbr`].
+    pbr_uniform: wgpu::Buffer,
     bind: wgpu::BindGroup,
     /// O layout do grupo 1 — guardado porque um `Slot` novo nasce a cada objeto
     /// que a cena ganha, e cada um precisa do seu bind group.
@@ -507,6 +509,24 @@ impl MeshRenderer {
             &self.shade_uniform,
             0,
             bytemuck::bytes_of(&ShadeRaw::pack(shade)),
+        );
+        // ⭐⭐⭐ **O MATERIAL e o CÉU que este rig produz** — o modo `Pbr`.
+        //
+        // ⚠️ **O `prepare()` corre aqui, uma vez por quadro, e isso é a divisão certa:** ele é por
+        // MATERIAL e não por pixel, e correr no dispositivo o que já está calculado poria a mesma
+        // conta a dar o mesmo número um milhão de vezes (o doc do `ph2d_material::wgsl::pack` diz
+        // isso por escrito).
+        //
+        // ⚠️ **Sem lâmpada acesa o `plano` é zero e a rampa é toda zero** — o céu apaga com o rig,
+        // que é a metade que torna a tradução do piso relativo honesta.
+        queue.write_buffer(
+            &self.pbr_uniform,
+            0,
+            bytemuck::bytes_of(&crate::pbr::PbrRaw::pack(
+                &shade.material.prepare(),
+                rig.map_or([0.0; 3], ph2d_light::flat_response),
+                shade.look,
+            )),
         );
 
         let depth = self.depth.as_ref().expect("ensure_depth acabou de rodar");

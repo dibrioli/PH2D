@@ -30,24 +30,35 @@
 //! índice que o `ShadeRaw::pack` prende no último, e o artista vê **a cera
 //! vermelha ao pedir outra coisa**. Nenhum dos dois produz erro.
 
-/// Os `+ 2` são o PLANO e o RIG, que não são matcaps: as duas primeiras opções
-/// da fileira são *sem luz* e *a luz do DOCUMENTO*, e é por isso que a igualdade
-/// não é `len == len`.
+/// Os fixos são as opções da fileira que **não são matcaps** — hoje o PLANO, o RIG e a LEI QUE
+/// ASSA —, e é por isso que a igualdade não é `len == len`.
 ///
-/// ⛔⛔ **Era `+ 1` até 2026-09-20 e a premissa MORREU por ordem do dono**
-/// (*«precisamos como no blender modos de shaders além do matcap para
-/// pintar»*): o modo PLANO entrou à frente do rig. A morte fica à vista no
-/// diff, que é a lei desta casa para uma premissa que cai — e o nome do gate
-/// mudou com ela, porque o antigo prometia a contagem antiga.
+/// ⛔⛔ **O número esteve escrito à mão DUAS vezes e morreu DUAS vezes:** era `+ 1` até 2026-09-20
+/// (entrou o PLANO, por ordem do dono — *«precisamos como no blender modos de shaders além do
+/// matcap para pintar»*) e `+ 2` até 2026-09-21 (entrou o **PBR**, pelo report seguinte — *«o que se
+/// vê no objecto 3d não é o que se vê na sprite cozida»*). Da segunda vez ele reprovou com
+/// `left: 13, right: 12` numa crate que a linha **não editou**, e só a varredura IMPACTADA o viu.
+///
+/// ⭐⭐⭐ **Por isso ele passou a ser DERIVADO** ([`ph2d_panel_sculpt3d::state::LightMode::FIXOS`]),
+/// que é a mesma porta que o pintor da fileira lê. *Um número que morre de cada vez que a lista
+/// cresce não é uma constante: é a segunda contagem da mesma coisa* — e o nome do gate deixa de
+/// prometer um valor que ele não escolhe.
 #[test]
-fn there_are_two_fixed_chips_plus_one_per_material() {
+fn ha_um_chip_por_material_mais_os_modos_fixos() {
     let materials = ph2d_mesh_render::MATCAPS.len();
+    let fixos = ph2d_panel_sculpt3d::state::LightMode::FIXOS;
     let chips = ph2d_panel_sculpt3d::ids::SCULPT3D_MATCAP.len();
     assert_eq!(
         chips,
-        materials + 2,
-        "{chips} chips para {materials} materiais + o plano + o rig — \
+        materials + fixos,
+        "{chips} chips para {materials} materiais + {fixos} modos fixos — \
          um material ficou inalcançável ou um chip nasceu anônimo"
+    );
+    // ⭐ **O CONTROLO:** os fixos têm de ser MENOS que a fileira inteira, senão a igualdade acima
+    // ficaria verde sobre uma fileira sem material nenhum.
+    assert!(
+        fixos < chips,
+        "controlo: a fileira tem de oferecer materiais ({fixos} fixos de {chips} chips)"
     );
 }
 

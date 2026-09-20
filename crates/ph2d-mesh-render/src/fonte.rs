@@ -46,16 +46,26 @@ fn fs_main_tinta(in: VsOut, @builtin(primitive_index) pi: u32) -> @location(0) v
 ///
 /// `com_tinta` é [`wgpu::Features::PRIMITIVE_INDEX`] — e a decisão é do
 /// chamador, que é quem tem o device.
+///
+/// ⭐⭐ **A base é a fonte COMPOSTA do [`crate::pbr::fonte`], nunca o
+/// [`MESH_WGSL`] cru** (integração de 2026-09-25, `line/sculpt3d` +
+/// `line/3DModeling`): desde o modo `Lighting::Pbr` o `mesh.wgsl` chama as
+/// `mx_*` da `ph2d-material` e o tonemap da `ph2d-view-transform`, e sozinho
+/// **não parsa**. As duas linhas compunham a fonte cada uma à sua maneira — a
+/// tinta fina por fora, a lei de luz por dentro —, e *duas composições da
+/// mesma fonte divergem no dia em que alguém mexer numa*: a tinta passa a
+/// embrulhar a composição da luz, e os gates do `naga` leem esta porta.
 #[must_use]
 pub fn mesh_wgsl(com_tinta: bool) -> Cow<'static, str> {
+    let base = crate::pbr::fonte();
     if com_tinta {
         // ⚠️ **A directiva `enable` tem de vir ANTES de toda declaração**, logo
         //   ela abre a fonte e não o bloco — foi o `naga` que o disse, em voz
         //   alta: *«the `primitive_index` enable extension is not enabled»*.
         Cow::Owned(format!(
-            "enable primitive_index;\n{MESH_WGSL}\n{TINTA_WGSL}\n{TINTA_ENTRADA_WGSL}"
+            "enable primitive_index;\n{base}\n{TINTA_WGSL}\n{TINTA_ENTRADA_WGSL}"
         ))
     } else {
-        Cow::Borrowed(MESH_WGSL)
+        Cow::Owned(base)
     }
 }

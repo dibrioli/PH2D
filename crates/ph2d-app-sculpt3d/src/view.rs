@@ -117,6 +117,26 @@ impl Sculpt3dScene {
                 )
             },
             lighting: self.lighting,
+            // ⏳ **UM material para a CENA, e a dívida é declarada.** Ele só é lido pelo
+            // `Lighting::Pbr`, e hoje a escultura tem **um** barro (o `CLAY` do shader é uma
+            // constante) — logo um material por cena é a granularidade que de facto existe.
+            // O modelador já faz por NÓ (`ph2d_field_ecs::FieldMaterial`), e é para lá que este
+            // campo vai: no dia em que for por peça ele muda de bind group.
+            //
+            // ⭐⭐⭐ **E ele vem da PORTA da lei que assa, nunca de um `default()` escrito aqui:**
+            // esta linha era `ph2d_material::OpenPbr::default()` e era a SEGUNDA resposta a *«de que
+            // matéria é a peça»* — ela concordava com a do sprite por acidente, e divergiria no
+            // primeiro dia em que alguém mexesse num campo, com o sintoma a ser exactamente o report
+            // do dono (*«o que se vê no objecto 3d não é o que se vê na sprite cozida»*).
+            material: ph2d_form_donation::lei_da_luz::openpbr_da_forma(),
+            // ⭐⭐⭐ **O OLHAR com que esta casa assa** — e é a APP que o diz, porque a
+            // `ph2d-mesh-render` desenha malhas e não sabe o que é um sprite.
+            //
+            // ⚠️ **Sem ele o modo `Pbr` mostrava a radiância CRUA:** medido sobre a mesma esfera,
+            // `0,128` de média contra `0,539` do sprite — `4,3×`, que é o `2^2,1` do
+            // [`ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA`]. ⛔ E o tonemap da shell **não** o
+            // substitui: ele é uma passagem (`BYPASS_LUT = true`) sem exposição nenhuma.
+            look: ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA,
             wireframe: self.wireframe,
         }
     }

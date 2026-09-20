@@ -101,9 +101,15 @@ pub const SCULPT3D_ALPHA_SPRITE: NodeId = hash_node_id("sculpt3d.alpha_sprite");
 /// **não** são matcaps. ⛔ **Era `+ 1` até 2026-09-20**, e a premissa morreu por
 /// ordem do dono (*«modos de shaders além do matcap para pintar»*): a igualdade
 /// continua gateada, e um chip a mais pinta uma opção que o shader não tem.
-pub const SCULPT3D_MATCAP: [NodeId; 12] = [
+pub const SCULPT3D_MATCAP: [NodeId; 13] = [
     hash_node_id("sculpt3d.matcap.flat"),
     hash_node_id("sculpt3d.matcap.rig"),
+    // ⚠️⚠️ **A POSIÇÃO é a tag.** O `event` resolve o chip por
+    // [`crate::state::LightMode::from_option_index`], logo este id entra
+    // EXACTAMENTE onde a porta o põe (`2`) — e não no fim, que é onde um id
+    // novo costuma entrar. Pô-lo no fim ligava o chip do PBR ao último matcap
+    // e deslocava os dez, em silêncio.
+    hash_node_id("sculpt3d.matcap.pbr"),
     hash_node_id("sculpt3d.matcap.0"),
     hash_node_id("sculpt3d.matcap.1"),
     hash_node_id("sculpt3d.matcap.2"),

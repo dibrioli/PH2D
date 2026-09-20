@@ -29,6 +29,18 @@ pub mod baked_form;
 pub mod donated_form;
 pub mod lei_da_luz;
 
+/// ⭐⭐ **A FOLHA DA LEI, re-exportada** — a ÚNICA porta desta árvore para a óptica.
+///
+/// ⚠️ **Ela existe pela mesma razão que a [`lei_da_luz::material_da_forma`] escreve:** *uma segunda
+/// aresta para a óptica seria um segundo sítio por onde a versão dela entra*. Quem precisa de nomear
+/// um [`ph2d_form_pbr::Texel`] ou de chamar a [`ph2d_form_pbr::acende_texel`] — a REFERÊNCIA em CPU
+/// da lei que assa — passa por aqui, e não por uma dependência própria.
+///
+/// ⭐ O 1.º consumidor foi o gate que mede o modo `Pbr` do VISOR contra esta referência
+/// (2026-09-20): sem a re-exportação ele teria de pedir a folha directamente, e a árvore ficaria com
+/// duas setas para a mesma versão.
+pub use ph2d_form_pbr as lei;
+
 /// A sonda do CEU da forma — ver o cabecalho dela.
 #[cfg(test)]
 #[path = "ceu_da_forma_sondas.rs"]

@@ -263,6 +263,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // de "None" faria o artista ler o modo default como "sem sombreamento".
         "panel.sculpt3d.matcap.flat" => "Flat",
         "panel.sculpt3d.matcap.rig" => "Rig",
+        // ⚠️ "PBR" e não "As Baked": ele acende a peça com a MESMA lei que assa a
+        // sprite (o OpenPBR sobre o rig e o céu do documento), e ainda assim a
+        // imagem NÃO é a assada — a vista é em perspectiva, a tela é ortográfica,
+        // e esta escreve HDR onde aquela escreve 8 bits sob a transformada de
+        // vista. Prometer "as baked" num rótulo seria uma promessa medida e falsa.
+        "panel.sculpt3d.matcap.pbr" => "PBR",
         "panel.sculpt3d.wireframe" => "Wireframe",
         "panel.sculpt3d.wire_grade" => "Show Grid",
         "panel.sculpt3d.accumulate" => "Accumulate",

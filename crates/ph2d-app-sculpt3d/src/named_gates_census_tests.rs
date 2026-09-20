@@ -69,7 +69,33 @@ const PREFIXOS: [&str; 21] = [
 ];
 
 /// `(nome, onde a memória vive, porque é prosa e não endereço)`.
-const MEMORIAS: [(&str, &str, &str); 14] = [
+const MEMORIAS: [(&str, &str, &str); 16] = [
+    (
+        "a_lei_da_forma_nao_chama_o_ambiente",
+        "crates/ph2d-form-donation/src/baked_form/passe_da_forma_tests.rs",
+        "o gate cuja premissa morreu DUAS vezes em três dias, e é por isso que \
+         a prosa fica. (1) Ele afirmava que a lei da forma nunca toca no céu, \
+         porque *«o rig desta casa é KEY + 3 × FILL e as lâmpadas de \
+         preenchimento SÃO o ambiente dele»* — e as três de preenchimento \
+         nascem APAGADAS, logo `25,03 %` da peça saía PRETA. (2) Reescrito para \
+         afirmar só que a espelhada do céu não é lida, morreu na coluna B3 de \
+         2026-09-20, quando a indirecta do OpenPBR substituiu o ambiente \
+         lambertiano escrito à mão. Hoje quem afirma é o \
+         `a_lei_da_forma_chama_as_duas_metades_da_ranhura`, com as três metades",
+    ),
+    (
+        "a_oclusao_de_forma_e_inerte_enquanto_o_ambiente_for_zero",
+        "crates/ph2d-form-donation/src/baked_form_lei_tests.rs",
+        "o gate que afirmava a INÉRCIA de propósito e que trazia escrito *«no \
+         dia em que esta lei ganhar ambiente, a metade de cima reprova e a \
+         premissa morre à vista no diff»* — o dia foi 2026-09-20. O irmão de \
+         hoje (`a_oclusao_de_forma_chega_ao_pixel`) tem as MESMAS duas metades \
+         com os papéis trocados: o que era a afirmação passou a ser o CONTROLO. \
+         A nota guarda o mecanismo — a inércia nunca foi da oclusão, era do \
+         AMBIENTE, que multiplicava o canal por zero antes de ele chegar a um \
+         pixel, e foi por isso que a mutação que apaga a leitura da textura de \
+         oclusão SOBREVIVEU com `pior = 0` bytes",
+    ),
     (
         "a_porta_do_produto_poe_a_face_mediana_no_k_pedido",
         "crates/ph2d-mesh-colors/src/p2_tests.rs",

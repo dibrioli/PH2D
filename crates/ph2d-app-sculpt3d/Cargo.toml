@@ -49,6 +49,8 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 ph2d-trim = { path = "../ph2d-trim" }
 ph2d-mesh-bool = { path = "../ph2d-mesh-bool" }
 ph2d-mesh-render = { path = "../ph2d-mesh-render" }
+# A lei da OPTICA — o material que o modo `Lighting::Pbr` do visor lê. Folha com ZERO deps.
+ph2d-material = { path = "../ph2d-material" }
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 # ⭐ O Painter pinta a peça (`painter_na_malha`): família → ferramenta é a
 # família a compor a UI do módulo dela, que a lei das camadas permite.

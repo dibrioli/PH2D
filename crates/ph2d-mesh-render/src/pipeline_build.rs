@@ -8,102 +8,26 @@
 //! estado, o outro quando a cena ganha um objeto.
 
 use super::{CameraRaw, MeshRenderer};
+use grupo::GrupoDoQuadro;
+
+/// ⭐ **O grupo 0** — ver o cabeçalho do irmão.
+#[path = "pipeline_build_grupo.rs"]
+mod grupo;
 use crate::lighting::RigRaw;
 use crate::shade::ShadeRaw;
 
 impl MeshRenderer {
     #[must_use]
     pub fn new(device: &wgpu::Device, target_format: wgpu::TextureFormat) -> Self {
-        let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("ph2d-mesh bgl"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // O RIG. Buffer separado do da câmera de propósito: são duas
-                // frequências (a câmera muda a cada arrasto, o rig quando o
-                // artista abre o card) e, sobretudo, o gate do layout coluna-major
-                // da câmera continua olhando exatamente os mesmos 128 bytes que
-                // olhava antes desta wave.
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // **AS OPÇÕES DE SOMBREAMENTO** (hoje: a cavidade). Terceira
-                // entrada do grupo 0 e não um campo apendado ao rig, apesar de o
-                // `RigRaw` ter padding sobrando: uma cavidade não é uma lâmpada, e
-                // aquele struct é o espelho do `Lamp` do passe de luz da tinta —
-                // enfiar um knob de barro nele faria a próxima wave que sincronizar
-                // os dois herdar um campo que o outro lado não tem.
-                //
-                // A FREQUÊNCIA é a que justifica o grupo: câmera, rig e opções são
-                // todos da CENA (uma escrita por frame). O `Object` é o grupo 1
-                // porque ele é por-desenho.
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
-
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-mesh camera"),
-            size: size_of::<CameraRaw>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let rig_uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-mesh rig"),
-            size: RigRaw::SIZE as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let shade_uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-mesh shade"),
-            size: ShadeRaw::SIZE as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-mesh bind"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: rig_uniform.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: shade_uniform.as_entire_binding(),
-                },
-            ],
-        });
+        let grupo = grupo::monta(device);
+        let GrupoDoQuadro {
+            bgl,
+            uniform,
+            rig_uniform,
+            shade_uniform,
+            pbr_uniform,
+            bind,
+        } = grupo;
 
         // ⭐ A tinta fina entra AQUI, no grupo por OBJECTO — ver
         //   `crate::tinta_gpu`. As seis entradas vêm de lá porque este ficheiro
@@ -294,6 +218,10 @@ impl MeshRenderer {
         let com_tinta = device.features().contains(wgpu::Features::PRIMITIVE_INDEX);
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ph2d-mesh shader"),
+            // ⭐⭐⭐ **A fonte COMPOSTA, e nunca o `MESH_WGSL` cru** (2026-09-21): desde o modo
+            // `Lighting::Pbr` este passe chama as `mx_*` da `ph2d-material`, e o ficheiro sozinho
+            // **não parsa** — a lei dele vem de outra crate, como o passe do sprite já fazia.
+            // ⚠️ Quem o apanhou foi o gate do `naga`, que ainda lia o ficheiro solto.
             source: wgpu::ShaderSource::Wgsl(crate::fonte::mesh_wgsl(com_tinta)),
         });
 
@@ -621,6 +549,7 @@ impl MeshRenderer {
             uniform,
             rig_uniform,
             shade_uniform,
+            pbr_uniform,
             bind,
             obj_bgl,
             depth: None,

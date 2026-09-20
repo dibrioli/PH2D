@@ -162,10 +162,11 @@ fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f3
     // vizinho; um id sem material seria um chip anônimo que despacha. Cortar
     // pelo mínimo faz das duas listas uma só, e o gate do shell é quem exige
     // que elas tenham o mesmo tamanho de verdade.
-    // ⚠️ **DUAS opções antes dos materiais** desde 2026-09-20 (o plano e o rig),
-    // e a aritmética vive na porta [`crate::state::LightMode::option_index`] —
-    // aqui fica só quantos materiais cabem.
-    const FIXOS: usize = 2;
+    // ⚠️⚠️ **QUANTOS FIXOS vêm antes dos materiais sai da PORTA, e nunca de um literal aqui.** Ele
+    // era `2`, passou a `3` quando o modo `Pbr` entrou (2026-09-21) — e um literal parado faria cada
+    // chip de material pintar o NOME do vizinho enquanto despachava o id certo, com o gate dos chips
+    // verde por cima (ele percorre ids e nunca lê um rótulo). Ver o doc da const.
+    const FIXOS: usize = crate::state::LightMode::FIXOS;
     let n = snap
         .matcap_keys
         .len()
@@ -175,6 +176,7 @@ fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f3
     let mut labels: Vec<&str> = vec![
         tr("panel.sculpt3d.matcap.flat"),
         tr("panel.sculpt3d.matcap.rig"),
+        tr("panel.sculpt3d.matcap.pbr"),
     ];
     labels.extend(snap.matcap_keys[..n].iter().map(|k| tr(k)));
     let options = &crate::ids::SCULPT3D_MATCAP[..n + FIXOS];

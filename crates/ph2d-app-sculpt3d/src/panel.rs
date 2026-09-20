@@ -622,6 +622,7 @@ pub(crate) fn luz_para_o_painel(
     match l {
         ph2d_mesh_render::Lighting::Flat => LightMode::Flat,
         ph2d_mesh_render::Lighting::Rig => LightMode::Rig,
+        ph2d_mesh_render::Lighting::Pbr => LightMode::Pbr,
         ph2d_mesh_render::Lighting::Matcap(i) => LightMode::Matcap(i),
     }
 }
@@ -634,6 +635,7 @@ pub(crate) fn luz_do_painel(
     match l {
         LightMode::Flat => ph2d_mesh_render::Lighting::Flat,
         LightMode::Rig => ph2d_mesh_render::Lighting::Rig,
+        LightMode::Pbr => ph2d_mesh_render::Lighting::Pbr,
         LightMode::Matcap(i) => ph2d_mesh_render::Lighting::Matcap(i),
     }
 }

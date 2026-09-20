@@ -168,6 +168,20 @@ pub enum Lighting {
     /// ao lado (`ph2d-light`).
     #[default]
     Rig,
+    /// ⭐⭐⭐⭐ **A LEI QUE ASSA** — o OpenPBR inteiro, com o material desta peça e o
+    /// céu que este rig produz.
+    ///
+    /// ⚠️ **É a MESMA lei que acende o sprite depois do bake**, e é isso que ele
+    /// existe para dar: *o que se vê é o que se assa*. O modo [`Self::Rig`] ao
+    /// lado é um modelo de ARGILA — uma cor, um expoente e um brilho cravados no
+    /// shader —, e duas leis sobre o mesmo objecto respondem diferente por
+    /// construção.
+    ///
+    /// ⛔ **O que ele NÃO promete é o mesmo PIXEL:** a câmera do visor é
+    /// perspectiva e o canvas é uma projecção 2D, logo a mesma peça ocupa outra
+    /// forma no quadro. O que é igual é a **resposta da superfície** — dado o
+    /// mesmo normal, a mesma luz e o mesmo material.
+    Pbr,
     /// **A LUZ DO OLHO** — o matcap `i` de [`MATCAPS`], que é sombreamento
     /// função apenas da normal em espaço de vista.
     Matcap(u8),
@@ -180,11 +194,25 @@ impl Lighting {
     /// ⚠️ **Uma porta e não um `matches!` no sítio de uso:** o `ensure_matcap`
     /// e o painel perguntam o mesmo, e duas cópias divergiriam no dia do quarto
     /// modo.
+    /// ⭐⭐ **TODOS os modos, derivados da tabela de matcaps** — a lista que os gates da ponte
+    /// percorrem.
+    ///
+    /// ⚠️ **Ela mora na crate que declara o tipo e não no teste que a consome:** a versão escrita à
+    /// mão do outro lado ficou com `2` fixos quando o terceiro chegou, e o gate da ponte acusou
+    /// `12` contra `13`. *Uma lista escrita à mão ao lado de um enum é a segunda resposta a «quais
+    /// são os modos», e ela envelhece na primeira wave que acrescenta um.*
+    #[must_use]
+    pub fn todos() -> Vec<Self> {
+        let mut v = vec![Self::Flat, Self::Rig, Self::Pbr];
+        v.extend((0..MATCAPS.len()).map(|i| Self::Matcap(u8::try_from(i).unwrap_or(u8::MAX))));
+        v
+    }
+
     #[must_use]
     pub const fn matcap_index(self) -> Option<u8> {
         match self {
             Self::Matcap(i) => Some(i),
-            Self::Flat | Self::Rig => None,
+            Self::Flat | Self::Rig | Self::Pbr => None,
         }
     }
 }
@@ -237,6 +265,33 @@ pub struct Shade {
     /// baixo e põe em cima, que é o que separa *"o ambiente tem direção"* de
     /// *"a cena ficou mais clara"*.
     pub env: f32,
+    /// ⭐⭐⭐ **DE QUE MATÉRIA A PEÇA É FEITA** — lido só pelo [`Lighting::Pbr`].
+    ///
+    /// ⚠️ **Ele viaja no `Shade`, que é *as opções de VISTA*, e isso é uma dívida
+    /// DECLARADA e não um descuido:** hoje a escultura tem **um** barro para a
+    /// cena inteira (o `CLAY` do shader é uma constante), logo um material por
+    /// cena é exactamente a granularidade que existe. ⏳ No dia em que ele for
+    /// **por peça** — que é o que o modelador já faz, com um
+    /// `ph2d_field_ecs::FieldMaterial` por nó — ele muda de GRUPO: passa a viver
+    /// no bind do objecto, ao lado da pose, porque a frequência dele deixa de ser
+    /// a do quadro e passa a ser a do desenho.
+    ///
+    /// ⚠️ **Nos outros três modos ele não é lido** e o caminho fica byte-idêntico
+    /// ao de antes deste campo existir — há gate.
+    pub material: ph2d_material::OpenPbr,
+    /// ⭐⭐⭐ **O OLHAR com que a cena linear vira ecrã** — exposição + curva de vista.
+    ///
+    /// ⚠️ **Ele é lido SÓ pelo [`Lighting::Pbr`]**, e a razão é que ele é o ÚLTIMO ACTO daquela lei:
+    /// a [`ph2d_form_pbr::acende_texel`] recebe-o como argumento e devolve já display-referred. Os
+    /// outros três modos escrevem uma resposta **relativa** (dividida pela de uma superfície plana
+    /// sob a mesma luz), que não tem unidade de cena para expor.
+    ///
+    /// ⛔⛔ **A omissão é [`ph2d_view_transform::Look::default`] — neutra — e NÃO o olhar com que
+    /// esta casa assa.** Esta crate desenha malhas e não sabe o que é um sprite; quem diz *«este
+    /// visor mostra a lei que assa, com o olho com que ela assa»* é a APP, que escreve o
+    /// `OLHAR_DA_FORMA` da `ph2d-form-donation` aqui — e há gate a exigi-lo. *Uma constante de
+    /// produto escrita numa folha é a segunda resposta que ninguém sabe que existe.*
+    pub look: ph2d_view_transform::Look,
     /// A malha desenhada por cima da forma.
     ///
     /// ⚠️ Ele viaja aqui e **não entra no [`ShadeRaw`]**: é um segundo PASSE, não
@@ -255,6 +310,13 @@ impl Default for Shade {
             ssao: DEFAULT_SSAO_STRENGTH,
             sss: crate::sss::SssParams::default(),
             lighting: DEFAULT_LIGHTING,
+            // ⚠️ **O OpenPBR de omissão, que é o mesmo que a lei do sprite usa** — é isso que faz o
+            // visor e a sprite responderem a mesma coisa antes de existir um material autorável.
+            material: ph2d_material::OpenPbr::default(),
+            // ⚠️ **Neutro, e não o olhar da casa** — ver o doc do campo. Com exposição `0` e a vista
+            // `Standard`, o `vt_to_display` devolve a entrada para luz dentro de `0..=1`: o modo
+            // `Pbr` construído sem uma decisão mostra a CENA, que é honesto e é escuro.
+            look: ph2d_view_transform::Look::default(),
             wireframe: false,
         }
     }
@@ -268,8 +330,15 @@ impl Default for Shade {
 pub const LIGHTING_FLAT: u32 = 0;
 /// Ver [`LIGHTING_FLAT`].
 pub const LIGHTING_RIG: u32 = 1;
+/// ⭐⭐⭐ Ver [`LIGHTING_FLAT`] — a lei que ASSA, no visor.
+///
+/// ⚠️ **Ele entrou no MEIO da escada e o `LIGHTING_FIRST_MATCAP` desceu de `2` para `3`.** ⭐ A
+/// renumeração é de graça porque o [`Shade`] **não é serializado** — ele é estado de VISTA, e este
+/// `u32` é só a codificação do uniform, refeita pelo [`ShadeRaw::pack`] a cada quadro. *Um número
+/// que ninguém grava não tem compatibilidade para trás a pagar.*
+pub const LIGHTING_PBR: u32 = 2;
 /// Ver [`LIGHTING_FLAT`]. O matcap `i` é `LIGHTING_FIRST_MATCAP + i`.
-pub const LIGHTING_FIRST_MATCAP: u32 = 2;
+pub const LIGHTING_FIRST_MATCAP: u32 = 3;
 
 /// As opções, como o fragment shader as lê.
 #[repr(C)]
@@ -362,6 +431,7 @@ impl ShadeRaw {
             lighting: match shade.lighting {
                 Lighting::Flat => LIGHTING_FLAT,
                 Lighting::Rig => LIGHTING_RIG,
+                Lighting::Pbr => LIGHTING_PBR,
                 Lighting::Matcap(i) => LIGHTING_FIRST_MATCAP + u32::from(i.min(n - 1)),
             },
             // Clampado pela mesma razão da cavidade: o device não tem opinião, e

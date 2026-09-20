@@ -34,6 +34,7 @@ pub mod fonte;
 mod form;
 mod lighting;
 pub mod matcap;
+pub mod pbr;
 mod pipeline;
 /// **A DISPOSIÇÃO POR VÉRTICE** — os nove buffers que o `mesh.wgsl` lê. Módulo
 /// de topo (e não filho do `pipeline`) porque o GATE da paridade com o shader o
@@ -50,6 +51,11 @@ pub use form::FormPlanes;
 pub use lighting::{LampRaw, RigRaw};
 pub use matcap::{Credit, Encoding, Matcap};
 pub use pipeline::tinta_gpu::cfg_de as tinta_cfg;
+/// ⭐ **O tipo do [`Shade::look`], re-exportado** — quem constrói uma [`Shade`] campo a campo (que é
+/// o idioma desta casa, para um campo novo ser erro de compilação) tem de saber nomeá-lo, e uma
+/// aresta nova para a folha do olhar só por causa de um literal seria um segundo sítio por onde a
+/// versão dela entra.
+pub use ph2d_view_transform::Look;
 pub use pipeline::{MeshRenderer, camera_uniform_bytes, view_proj_from_bytes};
 pub use shade::{
     CAVITY_GAIN, DEFAULT_AO_STRENGTH, DEFAULT_CAVITY, DEFAULT_ENV, DEFAULT_LIGHTING,

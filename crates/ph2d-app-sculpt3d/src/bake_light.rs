@@ -167,6 +167,7 @@ fn render_live(
     camera: &Camera3d,
     rig: &ph2d_light::ResolvedRig,
     size: (u32, u32),
+    shade: ph2d_mesh_render::Shade,
 ) -> Vec<f32> {
     let (w, h) = size;
     let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
@@ -211,7 +212,7 @@ fn render_live(
         &view,
         camera,
         Some(rig),
-        shared_law_shade(),
+        shade,
         size,
     );
     gpu.queue.submit([enc.finish()]);
@@ -284,21 +285,20 @@ fn compare(
     camera: &Camera3d,
     rig: &LightRig,
     base_rgb: [u8; 3],
+    shade: ph2d_mesh_render::Shade,
 ) -> Comparison {
     let size = (SIDE, SIDE);
     let n = (SIDE * SIDE) as usize;
     let resolved = ph2d_light::resolve(rig).expect("o rig default tem lampada acesa");
 
-    let live = render_live(gpu, renderer, camera, &resolved, size);
+    let live = render_live(gpu, renderer, camera, &resolved, size, shade);
+    // ⚠️ **A MESMA vista nos dois lados.** O `fs_gbuffer` não lê `shade.lighting`
+    // — ele escreve a normal e a oclusão —, logo passar a vista aqui não muda
+    // um bit; o que ela impede é a deriva do dia em que ele passar a ler algum
+    // campo e os dois lados desta comparação deixarem de descrever a MESMA
+    // superfície, em silêncio.
     let form = renderer
-        .form_plane(
-            &gpu.device,
-            &gpu.queue,
-            camera,
-            size,
-            shared_law_shade(),
-            None,
-        )
+        .form_plane(&gpu.device, &gpu.queue, camera, size, shade, None)
         .expect("a malha esta la'");
 
     let mut base = vec![0u8; n * 4];
@@ -380,6 +380,12 @@ fn compare(
 mod shade;
 use shade::shared_law_shade;
 
+/// **O MODO `Pbr` do visor contra a lei que assa** — irmão (`#[path]`) pelo
+/// mesmo motivo: o corte é de ASSUNTO, e este ficheiro mede a pergunta OPOSTA à
+/// deste (ali duas leis, aqui a mesma lei em duas implementações).
+#[path = "bake_light_pbr.rs"]
+mod pbr;
+
 /// A esfera do smoke `=11`, a câmera do escultor e o rig do artista.
 fn stage(gpu: &GpuContext) -> (MeshRenderer, Camera3d, LightRig) {
     let mesh = ph2d_mesh::shapes::uv_sphere(96, 144, 1.0);
@@ -409,7 +415,7 @@ fn measure_the_two_lights_over_the_same_form() {
     ];
 
     // O CONTROLE primeiro — mesmo albedo dos dois lados ⇒ o que sobra é a LEI.
-    let c = compare(&gpu, &mut renderer, &camera, &rig, clay);
+    let c = compare(&gpu, &mut renderer, &camera, &rig, clay, shared_law_shade());
     println!("\n=== CONTROLE: o sprite veste o albedo do barro {clay:?} ===");
     println!("  dist |    texels |  |dif| medio |   |dif| max |  vivo  | assado");
     for (b, name) in NAMES.iter().enumerate() {
@@ -442,7 +448,14 @@ fn measure_the_two_lights_over_the_same_form() {
     println!("\n=== O TETO: quanto da forma sobra, por albedo do sprite ===");
     println!("  albedo | estourados | % da silhueta | luma medio do assado");
     for v in [255u8, 224, 192, clay[0], 160, 128] {
-        let k = compare(&gpu, &mut renderer, &camera, &rig, [v, v, v]);
+        let k = compare(
+            &gpu,
+            &mut renderer,
+            &camera,
+            &rig,
+            [v, v, v],
+            shared_law_shade(),
+        );
         let inside = k.inside.max(1) as f64;
         let luma: f64 = (0..8)
             .map(|b| k.mean_bake[b] * k.count[b] as f64)
@@ -500,7 +513,7 @@ fn the_two_lights_agree_where_the_form_turns_away() {
         (CLAY[1] * 255.0 + 0.5) as u8,
         (CLAY[2] * 255.0 + 0.5) as u8,
     ];
-    let c = compare(&gpu, &mut renderer, &camera, &rig, clay);
+    let c = compare(&gpu, &mut renderer, &camera, &rig, clay, shared_law_shade());
     assert!(
         c.count[0] > 300,
         "premissa: a silhueta tem borda para medir (achei {} texels em d=0)",

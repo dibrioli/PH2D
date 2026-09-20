@@ -27,6 +27,10 @@
 //! 3D existir, e aí `paint` sai no primeiro `if`: um painel de escultura sem
 //! escultura seriam seis seções de controles que não alcançam nada.
 
+/// ⭐⭐⭐ **O SELECTOR DE PINCÉIS, fora do painel** — a metade 2 da **D2** (o painel mede
+/// `2 373 px` num encaixe de `880`, e a secção `Tool` come `614` deles). Ordem do dono, 2026-09-20.
+pub mod brush_palette;
+
 pub mod ids;
 mod paint;
 mod populate;

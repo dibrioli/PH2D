@@ -122,6 +122,19 @@ pub use onion_modal::paint_onion_modal;
 /// Re-exported so the hero paint pass renders it over the whole app, above the floating dialogs.
 pub use command_palette::{command_palette_max_scroll, paint_command_palette};
 
+/// ⭐⭐⭐ **O PONTEIRO DE UM MODAL DE ECRÃ INTEIRO, hoistado para ANTES dos painéis.**
+///
+/// ⛔ Ele **também** está na lista gerada do [`dispatch_all`], e ali é inerte: o `apply_event`
+/// corre o [`super::pre_dispatch`] primeiro. A entrada gerada fica porque a lista é escrita pelo
+/// `ph2d-chrome-sync` (um registo, não uma ordem de execução) — *tirá-la à mão seria uma edição
+/// que o gerador desfaz na corrida seguinte*.
+///
+/// ⚠️ **Porta `pub(super)` e não um `mod` público:** o `mod command_palette` vive entre os
+/// marcadores gerados, e o gate da staleness acusa quem lhe mude a visibilidade à mão.
+///
+/// Mecanismo e a tabela das famílias hoistadas: [`super::pre_dispatch`].
+pub(super) use command_palette::apply as command_palette_pointer;
+
 /// A chave de visibilidade que o pill MODEL alterna (ADR-0161).
 ///
 /// ⚠️ Re-exportada para o gate `the_model_pill_toggles_the_panel_the_shell_knows`, que a compara

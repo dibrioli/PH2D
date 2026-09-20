@@ -40,6 +40,15 @@ fn primeiro_pincel() -> NodeId {
 /// item.
 #[test]
 fn escolher_um_pincel_fecha_a_paleta_e_deixa_o_pick() {
+    // ⛔⛔⛔ **A ESCULTURA TEM DE ESTAR ARMADA, e sem isso o gate não contém o fenómeno.**
+    //
+    // ⚠️ A 2.ª redacção deste gate já entrava pela porta do quadro e **continuava verde** sobre o
+    //    defeito: sem retrato publicado o painel da escultura ignora o evento, logo a rota nunca
+    //    chega a passar por quem o consome. *Uma fixtura que não arma o sujeito mede o caminho
+    //    onde o defeito não existe.*
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    super::o_sculpt3d_armado::arma();
+
     let mut hero = HeroScreen::new(NodeId(1));
     let pincel = primeiro_pincel();
     hero.store
@@ -49,14 +58,25 @@ fn escolher_um_pincel_fecha_a_paleta_e_deixa_o_pick() {
         "a paleta tinha de abrir — sem isso o resto deste gate não mede nada",
     );
 
-    // ⭐⭐ **Pela PORTA REAL do chrome, nunca pelo handler directo.** O `dispatch_all` é o que o
-    //    quadro corre, e ele percorre os handlers por prioridade — *um gate que chama a função em
-    //    vez de percorrer a rota afirma que a lei existe, nunca que o app a usa* (a lei que a
-    //    cena do pente desta casa já pagou).
-    let consumiu = ph2d_editor_core::screens::hero::chrome::dispatch_all(
-        &mut hero,
-        WidgetEvent::Click(pincel),
-    );
+    // ⛔⛔⛔ **PELA PORTA DO QUADRO — `HeroScreen::apply_event` — E NÃO PELO CHROME.**
+    //
+    // ⚠️⚠️ A 1.ª redacção deste gate chamava o `chrome::dispatch_all`, com um comentário a
+    //    gabar-se de *«pela porta REAL do chrome»*. **Ele passava, e o app não fechava o modal**
+    //    (report do dono, 2026-09-20, o mesmo defeito uma segunda vez). A rota do quadro é:
+    //
+    // ```text
+    //    pre_dispatch  →  os PAINÉIS (Consumed ⇒ return)  →  showcase  →  chrome::dispatch_all
+    // ```
+    //
+    //    ⇒ o painel da escultura reconhece o `SCULPT3D_VERB[i]` (é a lei que o *pick* reusa),
+    //    **consome** o clique, troca o pincel, e o chrome nunca corre. *Eu tinha entrado ABAIXO
+    //    da rotura e chamado-lhe a porta real.*
+    //
+    // ⭐ O `apply_event` é a porta que o quadro usa (`fase_chrome_clock` drena por ela), e é a
+    //    única que percorre a rota inteira.
+    let consumiu = hero.apply_event(WidgetEvent::Click(pincel));
+    // ⛔ O estado que uma fixtura deixa para trás é o estado que a régua seguinte mede.
+    super::o_sculpt3d_armado::desarma();
 
     assert!(
         consumiu,

@@ -1374,6 +1374,111 @@ fn a_mask_dab_reaches_the_device_through_the_incremental_path() {
     );
 }
 
+/// Uma esfera com um dab de PINTURA vermelho, mais a janela que o traço publicou
+/// — o gémeo exato da [`masked_sphere`], um canal ao lado.
+fn painted_sphere() -> (Mesh, Vec<u32>) {
+    let mut mesh = shapes::uv_sphere(48, 72, 1.0);
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&mesh);
+    stroke.dab(
+        &mut mesh,
+        &Brush {
+            verb: Verb::Paint,
+            radius: 0.6,
+            strength: 1.0,
+            color: [1.0, 0.0, 0.0],
+            ..Brush::default()
+        },
+        &Dab::at([0.0, 0.0, 1.0], 0.6, [0.0, 0.0, -1.0]),
+        Symmetry::default(),
+    );
+    let dirty = stroke.last_gpu_dirty().to_vec();
+    assert!(!dirty.is_empty(), "o traço de pintura tem de tocar alguém");
+    // ⚠️ **A CPU tem de estar pintada ANTES de o device ser julgado** — senão
+    // este helper entrega uma peça branca e todo gate abaixo mede o NADA.
+    assert!(
+        mesh.colors()
+            .is_some_and(|c| c.iter().any(|cor| cor[1] < 0.5)),
+        "a lei de cor não escreveu no canal: o sujeito deste gate não existe"
+    );
+    (mesh, dirty)
+}
+
+/// ⭐⭐⭐⭐ **A PINTURA CHEGA AO DEVICE PELA ROTA INCREMENTAL** — o report do dono
+/// de 2026-09-20, o SEGUNDO sobre a mesma frase: *«ainda não consegue pintar os
+/// vértices»*.
+///
+/// ⛔⛔ **A cura do dia anterior — o shader a multiplicar pelo `vcolor` — estava
+/// CERTA e não bastava.** A rota que o produto toma em TODO dab é o
+/// [`MeshRenderer::upload_region_at`], e ele escrevia SEIS canais — posição,
+/// normal, máscara, preview e as duas curvaturas — e **não a cor**: a tinta
+/// ficava na CPU, e o device desenhava barro cru. Medido pelas portas do
+/// produto, o centro do dab lia `(186, 176, 166)` pela rota incremental contra
+/// `(186, 3, 3)` pelo upload cheio.
+///
+/// ⚠️⚠️ **E o gate irmão que prometia esta propriedade estava VERDE sobre o
+/// ponto cego:** o `a_region_upload_shows_exactly_what_a_full_upload_shows`
+/// dirige um traço de `Verb::Draw` — geometria pura — sobre uma peça POR
+/// PINTAR, onde o canal de cor vale o mesmo em todo lado e as duas imagens
+/// coincidem **por construção**. ⇒ *um oráculo de igualdade só afirma sobre os
+/// canais que a FIXTURA faz variar.*
+#[test]
+#[ignore = "precisa de adapter"]
+fn a_pintura_chega_ao_device_pela_rota_incremental() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    let plain = shapes::uv_sphere(48, 72, 1.0);
+    let cam = camera_for(&plain);
+    let (painted, dirty) = painted_sphere();
+
+    // O caminho do produto: a malha limpa já está no device, e só a janela suja
+    // do dab é copiada por cima.
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    renderer.upload_at(&device, &queue, 0, &plain, &[]);
+    assert!(
+        renderer.upload_region_at(&queue, 0, &painted, &dirty, &[]),
+        "a região tem de ser aceita: a topologia não mudou"
+    );
+    let incremental = render_using(&device, &queue, &mut renderer, &cam);
+
+    // E o oráculo é o upload CHEIO da mesma malha — a mesma dança do gate irmão
+    // da máscara.
+    let full = render(&device, &queue, &painted, &cam);
+
+    // ⚠️ **O CONTROLO POSITIVO vem ANTES do veredito.** Sem ele, uma fixtura em
+    // que a tinta não chegasse a pixel nenhum deixaria as duas imagens iguais, e
+    // este gate passaria a certificar que dois nadas são o mesmo nada.
+    let cru = render(&device, &queue, &plain, &cam);
+    let i = ((H / 2 * W + W / 2) * 4) as usize;
+    let (verde_pintado, verde_cru) = (f32::from(full[i + 1]), f32::from(cru[i + 1]));
+    assert!(
+        verde_cru > 8.0,
+        "o centro da peça por pintar está preto: a câmara não aponta para barro"
+    );
+    assert!(
+        verde_pintado < verde_cru * 0.5,
+        "a fixtura não contém o fenómeno: o verde do centro leu {verde_pintado} contra \
+         {verde_cru} da peça por pintar, logo nem o upload CHEIO mostra a tinta"
+    );
+
+    // ⚠️ A contagem em vez do `assert_eq!` de duas imagens: a diferença é o
+    // número que diz se falta um canal (milhares de bytes) ou se é ruído de
+    // rasterização (zero, por construção — as duas malhas são a MESMA).
+    let diff = incremental
+        .iter()
+        .zip(&full)
+        .filter(|(a, b)| a != b)
+        .count();
+    assert_eq!(
+        diff, 0,
+        "{diff} bytes diferem: a tinta não chega ao device pela rota que o produto \
+         toma em todo movimento do rato — o `upload_region_at` sobe a geometria e a \
+         máscara e esquece a COR"
+    );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // W8.1 — **A CENA É UMA LISTA**, e cada objeto tem a sua pose.
 // ─────────────────────────────────────────────────────────────────────────────

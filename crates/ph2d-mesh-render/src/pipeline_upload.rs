@@ -327,6 +327,10 @@ impl MeshRenderer {
         // padrão desenhado é o de antes do traço, no lugar em que o artista está
         // olhando: a mesma frase da curvatura, um canal ao lado.
         let prev = preview_of(preview, mesh, &mut self.scratch_preview);
+        // ⚠️ **E a COR na mesma janela** — ela é o terceiro canal que um dab
+        // ESCREVE, ao lado da geometria e da máscara. Ver a frase dos três
+        // canais dentro do laço: esta linha é a metade da CPU dela.
+        let cores = colors_of(mesh, &mut self.scratch_colors);
         let g = &self.slots.get(index).expect("conferido acima").gpu;
 
         let stride = size_of::<[f32; 3]>() as u64;
@@ -342,13 +346,27 @@ impl MeshRenderer {
                 bytemuck::cast_slice(&mesh.positions()[a..b]),
             );
             queue.write_buffer(&g.normals, at, bytemuck::cast_slice(&mesh.normals()[a..b]));
-            // ⚠️ **A máscara viaja na MESMA janela, sempre.** Um dab é de
-            // geometria ou de máscara — nunca dos dois — então uma das duas
-            // cópias reescreve bytes idênticos, e a alternativa (perguntar de
-            // qual canal é este dab) seria o chamador conhecendo a regra que o
-            // `last_gpu_dirty` existe para responder.
+            // ⚠️⚠️ **TODO canal que um dab ESCREVE viaja na MESMA janela,
+            // sempre — e eles são TRÊS: geometria, máscara e COR.** Um dab é de
+            // um deles, então os outros dois reescrevem bytes idênticos, e a
+            // alternativa (perguntar de qual canal é este dab) seria o chamador
+            // conhecendo a regra que o `last_gpu_dirty` existe para responder.
+            //
+            // ⛔⛔ **Esta frase dizia «geometria ou máscara — nunca dos dois» e
+            // isso ficou FALSO no dia em que a cor nasceu**, e a cor não foi
+            // acrescentada aqui: quem a escreveu na malha, no layout, no shader
+            // e no upload CHEIO leu esta comment e foi informado, pelo próprio
+            // ficheiro, de que só havia dois casos. O resultado media-se — a CPU
+            // pintava vermelho e o device desenhava barro cru, com o gate de
+            // região VERDE porque o traço dele é `Draw`, geometria pura, numa
+            // peça POR PINTAR. ⇒ *o quarto canal que alguém escrever pertence a
+            // esta frase sem que ela mude, e o gate que o prova é o
+            // `a_pintura_chega_ao_device_pela_rota_incremental`.*
             queue.write_buffer(&g.masks, a as u64 * 4, bytemuck::cast_slice(&masks[a..b]));
             queue.write_buffer(&g.preview, a as u64 * 4, bytemuck::cast_slice(&prev[a..b]));
+            // A COR partilha o `at` da posição e da normal, e não por acaso: ela
+            // é `[f32; 3]`, o MESMO stride — não há aritmética nova a conferir.
+            queue.write_buffer(&g.colors, at, bytemuck::cast_slice(&cores[a..b]));
             // **E a CURVATURA também**, pela mesma janela e pelo mesmo motivo.
             // ⚠️ Aqui ela é ainda mais obrigatória que a máscara: a lista que
             // chega é o `refreshed()` do `RegionScratch`, que é exatamente o

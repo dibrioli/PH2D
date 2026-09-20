@@ -49,9 +49,26 @@ pub(crate) const LONGITUDES: usize = 144;
 /// ⛔ **A topologia dinâmica fica DESLIGADA de propósito** (ver o cabeçalho), e
 /// a cor da peça fica por pintar: semeá-la daria ao dono uma peça já colorida e
 /// o passo (2) deixaria de mostrar a tinta a chegar.
+///
+/// ⛔⛔ **E ela troca de ferramenta pela PORTA, nunca escrevendo o campo.**
+/// `cena.brush.verb = v` põe o RÓTULO do pincel de pintura num pincel que
+/// continua afinado como o `Draw` — e o que se perde tem número: a força fica
+/// em `0,50` (o default do `Draw`) onde o `Paint` declara **`0,75`**, um terço
+/// menos de tinta em cada passagem. ⚠️ **E era irreversível dentro da cena:** o
+/// [`ph2d_panel_sculpt3d::state::switch_verb_parts`] devolve cedo quando o verbo
+/// que entra é o que já está em mãos, logo clicar no chip `Paint` é um no-op e o
+/// `0,75` fica inalcançável — *a cena que arma pelo campo cru tranca a afinação
+/// que ela própria quis escolher*. É a lei que a irmã `=49` já escreve ao lado
+/// do `toggle_dyntopo`: **uma cena arma pela porta do produto, ou é a segunda
+/// resposta à mesma pergunta.**
 pub(crate) fn arma(cena: &mut crate::Sculpt3dScene) {
     if let Some(v) = verbo_da_cena(pintura_scene()) {
-        cena.brush.verb = v;
+        ph2d_panel_sculpt3d::state::switch_verb_parts(
+            &mut cena.verb_slots,
+            &mut cena.brush,
+            &mut cena.radius_px,
+            v,
+        );
     }
 }
 
@@ -72,6 +89,19 @@ pub(crate) fn verbo_da_cena(e_a_cena: bool) -> Option<Verb> {
 }
 
 /// O roteiro da `=51`.
+///
+/// ⛔⛔ **O texto fica DENTRO do `eprintln!`, e isso é uma decisão.** Ele esteve
+/// numa `const` para o censo dos nomes o poder ler, e o censo de TEXTO desta
+/// família reprovou-o na hora: a isenção do HR-15 aqui é *«sai por `eprintln!`,
+/// logo é terminal e não ecrã»*, e uma `const` solta perde-a — *a cura teria
+/// sido uma linha nova de dívida para tornar um gate mais fácil de escrever*.
+/// ⇒ o censo colhe as linhas do roteiro do próprio fonte (as que trazem o
+/// prefixo do módulo), que é o molde que a `=49` já usa.
+///
+/// ⛔ **E não há uma crase SOLTA aqui dentro**, nem para nomear a própria tecla:
+/// o censo empareja as crases para saber o que o roteiro NOMEIA, e uma solta
+/// fá-lo colher meia frase como se fosse o rótulo de um controlo. Há gate sobre
+/// a paridade delas, e ele diz isto.
 pub(crate) fn announce() {
     if !pintura_scene() {
         return;
@@ -80,9 +110,9 @@ pub(crate) fn announce() {
         "[sculpt3d] =51 PINTAR A PECA -- a tinta, o esbater e o esfregar\n\
          [sculpt3d]    O pincel de PINTURA ja' esta' na sua mao.\n\
          [sculpt3d]\n\
-         [sculpt3d]    (1) Abra o painel (tecla CRASE `) e escolha uma cor forte nas tres\n\
-         [sculpt3d]        pistas `Color R` / `Color G` / `Color B` -- por exemplo R=1,\n\
-         [sculpt3d]        G=0, B=0 para vermelho.\n\
+         [sculpt3d]    (1) Abra o painel (tecla CRASE, acima do TAB) e escolha uma cor\n\
+         [sculpt3d]        forte nas tres pistas `Color R` / `Color G` / `Color B` --\n\
+         [sculpt3d]        por exemplo R=1, G=0, B=0 para vermelho.\n\
          [sculpt3d]    (2) Arraste sobre a peca.\n\
          [sculpt3d]        -> A peca ganha a cor onde voce passou. A forca da pista\n\
          [sculpt3d]           `Strength` diz quanto de cor cada passagem deposita.\n\
@@ -93,9 +123,9 @@ pub(crate) fn announce() {
          [sculpt3d]        -> A malha adensa debaixo do pincel e esta marca sai com a\n\
          [sculpt3d]           borda LIMPA. Compare as duas lado a lado.\n\
          [sculpt3d]\n\
-         [sculpt3d]    (4-bis) COM QUE LUZ: no painel, a fileira `Light` (secao Shading,\n\
-         [sculpt3d]        role a roda) tem agora tres familias -- `Flat`, `Rig` e os\n\
-         [sculpt3d]        materiais. Escolha `Flat`.\n\
+         [sculpt3d]    (4-bis) COM QUE LUZ: no painel, a fileira `Material` (secao\n\
+         [sculpt3d]        Shading, role a roda) tem agora tres familias -- `Flat`, `Rig`\n\
+         [sculpt3d]        e os materiais. Escolha `Flat`.\n\
          [sculpt3d]        -> A peca fica SEM SOMBRA e a cor que voce escolheu e' a cor que\n\
          [sculpt3d]           voce ve'. E' o modo de JULGAR a cor: com luz, a mesma tinta\n\
          [sculpt3d]           parece mais escura onde a luz e' escura.\n\

@@ -54,7 +54,7 @@ use ph2d_ui_testkit::MockPanelHost;
 /// ⛔ Não é escolhida: é o número que a `line/sculpt3d` mediu em 2026-09-19 ao responder ao dono
 /// onde o botão do pente caía (`crates/ph2d-app-sculpt3d/src/scenes_pente.rs`, a tabela do `y`),
 /// e é contra ele que aquela linha declara *«o painel está sobre o orçamento»*.
-const DOBRA: f32 = 880.0;
+pub(super) const DOBRA: f32 = 880.0;
 
 /// ⛔⛔ **A viewport é ALTA de propósito: `4000 px`.**
 ///
@@ -64,7 +64,7 @@ const DOBRA: f32 = 880.0;
 /// exactamente o painel que precisou de barra de rolagem (que foi o report do dono que abriu
 /// este degrau, em 2026-08-27). ⇒ mede-se com ecrã a sobrar, e o número é o do painel, não o da
 /// janela.
-const VIEWPORT: Rect = Rect {
+pub(super) const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1920.0,

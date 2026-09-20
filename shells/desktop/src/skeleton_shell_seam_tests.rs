@@ -324,7 +324,17 @@ const PREMIDO: &str = include_str!("input_dispatch/despacho_clique_vetor_premido
 /// O passe que resolve *«o que está sob o cursor?»* uma vez por quadro.
 const SUJEITOS: &str = include_str!("render_loop/fase_pointer_subjects.rs");
 /// O passe que pinta os realces do vector.
-const OVERLAYS: &str = include_str!("render_loop/fase_vector_overlays.rs");
+/// A FASE dos overlays vectoriais **e a filha dela**.
+///
+/// ⚠️ **Duas e não uma, e foi um gate vermelho a dizê-lo:** em 2026-09-20 os três realces do fim
+/// (Trim · Balde · o ponto da caneta) saíram para a `fase_vector_click_previews` por tecto de LOC,
+/// e uma agulha que lê UM ficheiro deixou de achar o `draw_insert_preview(`. *A lei é «este realce
+/// é pintado no quadro», e o ficheiro onde o corpo mora é um endereço* — a falha foi ALTA, que é a
+/// espécie barata desta armadilha (a muda seria um censo a varrer zero e a ficar verde).
+const OVERLAYS: &str = concat!(
+    include_str!("render_loop/fase_vector_overlays.rs"),
+    include_str!("render_loop/fase_vector_click_previews.rs"),
+);
 
 /// ⭐⭐⭐ **O PONTO NOVO DA CANETA CHEGA À FONTE DA PELE** — a costura que só aqui pode ser afirmada.
 ///

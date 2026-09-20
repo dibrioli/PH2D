@@ -19,7 +19,7 @@
 | branch | `line/motion-value` |
 | HEAD | `git rev-parse line/motion-value` — ⚠️ o último commit é de **DOCS** (a prova do §7.2); o último de **código** é `aaeed84e4` |
 | merge-base | **`76bd6de02`** (o tip do `main` no fecho — a linha foi **rebaseada** em 2026-09-20) |
-| commits | **113** |
+| commits | **conte-os** (`git rev-list --count main..line/motion-value`) — `113` até ao último de CÓDIGO (`aaeed84e4`); tudo depois dele é DOC de fecho. ⚠️ *Um número escrito aqui fica obsoleto com o commit que o escreve.* |
 | ficheiros | **364** · `+33 157 / −10 656` |
 | jornadas | 17/09 (34) · 18/09 (31) · 19/09 (41) · 20/09 (7) |
 | ADR criados | **nenhum** |

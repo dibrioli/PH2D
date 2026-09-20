@@ -11,17 +11,38 @@ use super::always;
 use super::types::{Place, Row};
 use crate::state::{Sculpt3dUi, UiLevel};
 
-/// **Só com a luz do DOCUMENTO em uso.**
+/// **Só com a luz do DOCUMENTO em uso** — e a população disto ENCOLHEU em
+/// 2026-09-20, por report do dono (*«não encontrei no painel de Sculpt os
+/// parâmetros de iluminação»*).
 ///
 /// ⚠️ Um matcap é sombreamento função apenas da normal de VISTA: ele não lê o
-/// rig, por definição. Deixar as duas pistas de lâmpada pintadas sob um matcap
-/// seriam **dois controles que não fazem nada** — e não um pouco: o artista
-/// arrastaria o ângulo da luz olhando uma escultura que não se move, que é a
-/// forma mais cara de descobrir o que um modo significa.
+/// rig, por definição. Um termo que **só** o `mesh.wgsl` consome — o ambiente do
+/// estúdio e as duas metades da subsuperfície — é de facto inerte ali, e a razão
+/// de sempre continua de pé para eles: seriam controles que não fazem nada, e o
+/// artista arrastaria um número olhando uma escultura que não se move.
+///
+/// ⛔⛔ **O que ela NUNCA descreveu são as duas pistas de LÂMPADA, e isso está
+/// medido:** o azimute e a elevação não são estado de vista nenhum — eles
+/// escrevem o **RIG do documento** (`ph2d_app_sculpt3d::panel::apply_ui`, uma
+/// atribuição sem `if`), e o rig tem um consumidor que o matcap **não desliga**:
+/// a fase `fase_relight_baked_forms` do quadro re-acende **todo objecto 3D
+/// assado** cujo carimbo de rig ficou velho, uma vez por quadro e **fora de toda
+/// `feature`** (é o que o gate `a_baked_object_outlives_the_3d_module` do shell
+/// já afirma). ⇒ *com um matcap ligado as duas pistas não estão paradas: elas
+/// mudam os pixels de todos os sprites acesos pela forma.*
+///
+/// ⚠️⚠️ E como o painel nasce com `LightMode::Matcap(0)`, o efeito era o pior dos
+/// dois mundos: **dois controlos VIVOS que o dedo não alcança** — a leitura
+/// *«inalcançável»* da coluna que o `CLAUDE.md` §5.0 separa da *«ausência
+/// DECIDIDA»*, e cujas curas são opostas. Medido no painel a sério, no estado de
+/// fábrica: a secção `Shading` abre em `y = 1602` num encaixe de `880`, os três
+/// knobs de luz **não são pintados**, e a fileira `Material` que os revelaria
+/// está em `y = 1754` — ou seja **148 px ABAIXO** do sítio onde eles apareceriam.
+/// *O revelador estava debaixo do revelado.*
 fn under_the_rig(u: &Sculpt3dUi) -> bool {
-    // ⚠️ **E o modo PLANO também as esconde**, pela razão levada ao extremo: ali
-    // não há luz nenhuma a apontar — arrastar o ângulo de uma lâmpada apagada é
-    // o mesmo controlo morto, com a peça ainda mais parada.
+    // ⚠️ **E o modo PLANO também os esconde**, pela razão levada ao extremo: ali
+    // não há luz nenhuma a ler — um ambiente somado a uma peça sem luz é o mesmo
+    // controlo morto, com a peça ainda mais parada.
     u.lighting == crate::state::LightMode::Rig
 }
 
@@ -53,7 +74,10 @@ pub(super) static SHADING: &[Row] = &[
         decimals: 0,
         get: |u| u.light_az_deg,
         set: |u, v| u.light_az_deg = v,
-        show: under_the_rig,
+        // ⭐ **SEMPRE** — ver o doc do [`under_the_rig`]: esta pista escreve o rig
+        // do DOCUMENTO, e o rig acende os objectos assados a cada quadro, com ou
+        // sem matcap. Escondê-la era esconder um controlo vivo.
+        show: always,
         level: UiLevel::Basic,
         place: Place::Knobs,
     },
@@ -70,7 +94,8 @@ pub(super) static SHADING: &[Row] = &[
         decimals: 0,
         get: |u| u.light_elev_deg,
         set: |u, v| u.light_elev_deg = v,
-        show: under_the_rig,
+        // ⭐ **SEMPRE**, pela mesma razão da irmã acima.
+        show: always,
         level: UiLevel::Basic,
         place: Place::Knobs,
     },

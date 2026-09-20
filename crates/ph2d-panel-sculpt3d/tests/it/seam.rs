@@ -1389,32 +1389,48 @@ fn the_wireframe_toggle_flips_only_the_view() {
     }
 }
 
-/// **AS ROWS QUE LEEM O RIG somem sob um matcap** — e estão lá sob o rig.
+/// **SÓ O ESTÚDIO SOME SOB UM MATCAP — as duas pistas da LÂMPADA ficam.**
 ///
-/// ⚠️ Um matcap é sombreamento função apenas da normal de vista: ele não lê o
-/// rig, por definição. As duas metades são um gate só de propósito — a de
-/// presença sozinha ficaria verde com o `show` cravado em `true`, e a de
-/// ausência sozinha ficaria verde com ele cravado em `false`.
+/// ⛔⛔ **Este gate chamava-se `the_rows_that_read_the_rig_vanish_under_a_matcap`
+/// e a premissa dele MORREU em 2026-09-20, por report do dono** (*«não encontrei
+/// no painel de Sculpt os parâmetros de iluminação»*). Ele afirmava que as TRÊS
+/// rows somem, e a que foi medida é outra:
 ///
-/// ⚠️ **O AMBIENTE entrou nesta lista e não ganhou gate próprio**, e a razão é
-/// que a lei é *a mesma*: um matcap **já É um ambiente** — uma esfera de
-/// iluminação capturada, de onde saem o piso, o céu e o realce de uma vez —,
-/// então o termo do estúdio não entra naquele caminho e o slider seria um
-/// controle que não faz nada. Um segundo gate aqui seria a segunda cópia de
-/// *"esta row lê o rig"*, e ele divergiria no dia em que a terceira row entrasse
-/// só numa das duas listas.
+/// * o **ambiente do estúdio** e as duas metades da **subsuperfície** são
+///   consumidos **só** pelo `mesh.wgsl` ⇒ sob um matcap são de facto inertes, e
+///   a razão de sempre continua de pé (*um matcap já É um ambiente*);
+/// * o **azimute** e a **elevação** escrevem o **RIG DO DOCUMENTO**
+///   (`ph2d_app_sculpt3d::panel::apply_ui`, uma atribuição sem `if`), e o rig
+///   tem um consumidor que o matcap **não desliga** — a fase
+///   `fase_relight_baked_forms` re-acende **todo objecto 3D assado** cujo
+///   carimbo de rig ficou velho, uma vez por quadro e **fora de toda `feature`**
+///   (o gate `a_baked_object_outlives_the_3d_module` do shell já o afirma).
+///
+/// ⇒ escondê-las era esconder **dois controlos VIVOS**, e como o painel nasce em
+/// `Matcap(0)` o artista não tinha por onde descobrir que este app tem um rig.
+///
+/// ⚠️ **As duas metades num gate só, de propósito:** a de ausência sozinha
+/// ficaria verde com o `show` cravado em `false` (o defeito do report), e a de
+/// presença sozinha ficaria verde com ele cravado em `true` — o que apagaria a
+/// lei que ainda protege os três do estúdio.
 #[test]
-fn the_rows_that_read_the_rig_vanish_under_a_matcap() {
-    let lamps = [
-        ids::SCULPT3D_LIGHT_AZ,
-        ids::SCULPT3D_LIGHT_ELEV,
-        ids::SCULPT3D_ENV,
-    ];
-    // ⚠️ **E o modo PLANO esconde as lâmpadas pela razão levada ao extremo:**
-    // ali não há luz nenhuma a apontar. Ele entrou na tabela em 2026-09-20.
+fn so_o_estudio_some_sob_um_matcap_as_lampadas_ficam() {
     use ph2d_panel_sculpt3d::state::LightMode;
-    for (lighting, want) in [
+
+    // O que o matcap de facto torna inerte: o `mesh.wgsl` nem chega a estes
+    // termos. A subsuperfície entra aqui desde 2026-08-30, pela mesma lei.
+    let so_do_rig = [ids::SCULPT3D_ENV, ids::SCULPT3D_SSS];
+    // O que escreve o rig do DOCUMENTO — ver o doc acima.
+    let lampadas = [ids::SCULPT3D_LIGHT_AZ, ids::SCULPT3D_LIGHT_ELEV];
+
+    // ⚠️ **O estado de FÁBRICA é um matcap**, e é ali que o dono não as achou.
+    // Se ele deixar de o ser, é esta asserção que muda primeiro.
+    assert_eq!(Sculpt3dUi::default().lighting, LightMode::Matcap(0));
+
+    for (lighting, quer_o_estudio) in [
         (LightMode::Rig, true),
+        // ⚠️ O modo PLANO esconde o estúdio pela razão levada ao extremo: ali
+        // não há luz nenhuma a ler. Ele entrou na tabela em 2026-09-20.
         (LightMode::Flat, false),
         (LightMode::Matcap(0), false),
         (LightMode::Matcap(3), false),
@@ -1424,12 +1440,21 @@ fn the_rows_that_read_the_rig_vanish_under_a_matcap() {
             ..Sculpt3dUi::default()
         });
         let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
-        for id in lamps {
+        let pintada = |id| painted.iter().any(|(pid, _)| *pid == id);
+        for id in so_do_rig {
             assert_eq!(
-                painted.iter().any(|(pid, _)| *pid == id),
-                want,
+                pintada(id),
+                quer_o_estudio,
                 "com a luz {lighting:?} a row {id:?} devia {}",
-                if want { "estar lá" } else { "sumir" }
+                if quer_o_estudio { "estar lá" } else { "sumir" }
+            );
+        }
+        for id in lampadas {
+            assert!(
+                pintada(id),
+                "com a luz {lighting:?} a pista {id:?} tem de ser PINTADA: ela \
+                 escreve o rig do documento, e o rig acende os objectos assados \
+                 a cada quadro — esconde^-la e' esconder um controlo VIVO"
             );
         }
     }

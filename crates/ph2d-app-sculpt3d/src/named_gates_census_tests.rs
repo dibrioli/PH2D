@@ -69,7 +69,7 @@ const PREFIXOS: [&str; 21] = [
 ];
 
 /// `(nome, onde a memória vive, porque é prosa e não endereço)`.
-const MEMORIAS: [(&str, &str, &str); 13] = [
+const MEMORIAS: [(&str, &str, &str); 14] = [
     (
         "a_porta_do_produto_poe_a_face_mediana_no_k_pedido",
         "crates/ph2d-mesh-colors/src/p2_tests.rs",
@@ -189,6 +189,20 @@ const MEMORIAS: [(&str, &str, &str); 13] = [
         "the_l_mode_is_withheld_because_nothing_of_its_own_was_built_yet",
         "crates/ph2d-sculpt3d/src/ref_mode_tests.rs",
         "o gate SUBSTITUÍDO pelo de hoje, que tem a resposta do outro lado",
+    ),
+    (
+        "the_rows_that_read_the_rig_vanish_under_a_matcap",
+        "crates/ph2d-panel-sculpt3d/tests/it/seam.rs",
+        "o gate SUBSTITUÍDO em 2026-09-20 pelo \
+         `so_o_estudio_some_sob_um_matcap_as_lampadas_ficam`, por report do \
+         dono («não encontrei no painel de Sculpt os parâmetros de \
+         iluminação»). Ele afirmava que as TRÊS rows do rig somem sob um \
+         matcap, e isso é verdade só para o ambiente do estúdio e a \
+         subsuperfície, que o `mesh.wgsl` é o único a ler: o azimute e a \
+         elevação escrevem o RIG DO DOCUMENTO, que a fase \
+         `fase_relight_baked_forms` lê a cada quadro e fora de toda `feature` \
+         ⇒ eram dois controlos VIVOS que o dedo não alcançava. A prosa fica \
+         porque ela é a premissa que morreu",
     ),
 ];
 

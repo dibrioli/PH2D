@@ -122,6 +122,10 @@ pub(crate) fn announce() {
          [sculpt3d]    (4) Carregue `P` (topologia dinamica) e pinte AO LADO da 1.a marca.\n\
          [sculpt3d]        -> A malha adensa debaixo do pincel e esta marca sai com a\n\
          [sculpt3d]           borda LIMPA. Compare as duas lado a lado.\n\
+         [sculpt3d]        -> E o traco tem de sair INTEIRO na cor que voce escolheu.\n\
+         [sculpt3d]           Ate' 20/09 apareciam FACES PRETAS de aresta dura no meio\n\
+         [sculpt3d]           dele: arraste LONGE, va' e volte, e confira que nao ha\n\
+         [sculpt3d]           nenhuma. Se houver UMA que seja, PARE e reporte.\n\
          [sculpt3d]\n\
          [sculpt3d]    (4-bis) COM QUE LUZ: no painel, a fileira `Material` (secao\n\
          [sculpt3d]        Shading, role a roda) tem agora tres familias -- `Flat`, `Rig`\n\

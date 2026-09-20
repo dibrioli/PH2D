@@ -293,7 +293,7 @@ fn tabela(linhas: &[Linha]) -> String {
         let c = l.cheia();
         let fora = c.altura - DOBRA;
         s.push_str(&format!(
-            "  {:<26} {:>8}  {:>7}  {:>5}  {:>6}  {:>5}  {:>7.0}  {}\n",
+            "  {:<26} {:>8}  {:>7}  {:>5}  {:>6}  {:>5}  {:>7.0}  {}{}\n",
             l.painel,
             c.comandos,
             c.valores,
@@ -301,6 +301,21 @@ fn tabela(linhas: &[Linha]) -> String {
             c.orfaos,
             c.total(),
             c.altura,
+            if l.armado.is_some() {
+                // ⛔⛔ **As duas leituras, nunca o `max` sozinho.** A armação de um painel é o
+                //    estado MÁXIMO dele e não o do dia a dia: medido em 2026-09-20, a fixtura da
+                //    escultura arma o FILTRO, e as catorze fichas dele são condicionais
+                //    (`if !snap.filter_armed { return }`) — escondê-las atrás de um `max` daria
+                //    `+230 px` a um painel que o artista raramente vê assim. *Uma coluna que
+                //    colapsa dois estados num número descreve um app que ninguém usa.*
+                format!(
+                    "vazio {:.0} · armado {:.0}  ",
+                    l.vazio.altura,
+                    l.armado.map(|a| a.altura).unwrap_or(0.0)
+                )
+            } else {
+                String::new()
+            },
             if !altura_e_do_conteudo(l.vazio.altura, l.altura_curta) {
                 // ⛔ Ele ancora no fundo: a leitura é da JANELA. Ver [`VIEWPORT_CURTA`].
                 format!("(ancora — segue a janela: {:.0} vs {:.0})", l.vazio.altura, l.altura_curta)
@@ -499,5 +514,108 @@ fn diag_onde_caem_as_seccoes_da_escultura() {
             println!("      {na:<12} ocupa {:>6.0} px", fundo - ya);
         }
         println!("  {fundo:>6.0}  (fim do conteúdo)\n");
+    });
+}
+
+
+/// ⭐⭐⭐ **O QUE COME OS `614 px` DA SECÇÃO `Tool`** — a sonda que impede a cura errada.
+///
+/// ⛔⛔ **Ela existe porque eu quase propus cortar a coisa errada.** A secção `Tool` mede `614 px`
+/// e tem `38` chips de VERBO, e a conta de cabeça («38 chips ⇒ 614 px») **não fecha**: `38` chips
+/// numa coluna de `~300 px` são `~9` fileiras, `~216 px`. ⇒ o resto são as **outras 24 famílias de
+/// chips** daquele painel (o modo da pose, os oito do pano, os seis do contorno, os nove do
+/// filtro…), que aparecem conforme o verbo na mão.
+///
+/// *Uma cura desenhada sobre a família que eu já tinha na cabeça teria devolvido um terço do que
+/// promete* — e a régua que a impede é esta.
+#[test]
+fn diag_o_que_come_a_seccao_tool_da_escultura() {
+    use ph2d_panel_sculpt3d::ids as sid;
+
+    // ⚠️ **As famílias são NOMEADAS, e a lista é a do ficheiro de ids** — não um `grep` meu. Uma
+    //    família nova que não esteja aqui aparece na linha `(sem família nomeada)`, que é o que
+    //    impede esta sonda de mentir por omissão.
+    let familias: &[(&str, &[NodeId])] = &[
+        ("VERB", &sid::SCULPT3D_VERB),
+        ("FALLOFF", &sid::SCULPT3D_FALLOFF),
+        ("ALPHA", &sid::SCULPT3D_ALPHA),
+        ("MATCAP", &sid::SCULPT3D_MATCAP),
+        ("FILTER_KIND", &sid::SCULPT3D_FILTER_KIND),
+        ("CLOTH_MODE", &sid::SCULPT3D_CLOTH_MODE),
+        ("BOUNDARY_MODE", &sid::SCULPT3D_BOUNDARY_MODE),
+        ("POSE_MODE", &sid::SCULPT3D_POSE_MODE),
+        ("CLOTH_FILTER_KIND", &sid::SCULPT3D_CLOTH_FILTER_KIND),
+        ("REF_MODE", &sid::SCULPT3D_REF_MODE),
+        ("ADD", &sid::SCULPT3D_ADD),
+        ("MASK_OP", &sid::SCULPT3D_MASK_OP),
+        ("TRANSFORM", &sid::SCULPT3D_TRANSFORM),
+        ("BOUNDARY_FALLOFF", &sid::SCULPT3D_BOUNDARY_FALLOFF),
+        ("ELASTIC_SCALES", &sid::SCULPT3D_ELASTIC_SCALES),
+        ("CLOTH_AREA", &sid::SCULPT3D_CLOTH_AREA),
+        ("CFILTER_AXIS", &sid::SCULPT3D_CFILTER_AXIS),
+        ("TRIM_FORMA", &sid::SCULPT3D_TRIM_FORMA),
+        ("SMEAR_MODE", &sid::SCULPT3D_SMEAR_MODE),
+        ("UI_LEVEL", &sid::SCULPT3D_UI_LEVEL),
+        ("RETOPO_MODE", &sid::SCULPT3D_RETOPO_MODE),
+        ("PROJECT_MODE", &sid::SCULPT3D_PROJECT_MODE),
+        ("PLANO_INVERSAO", &sid::SCULPT3D_PLANO_INVERSAO),
+        ("CLOTH_FORCE_FALLOFF", &sid::SCULPT3D_CLOTH_FORCE_FALLOFF),
+        ("CLOTH_FILTER_ORIENT", &sid::SCULPT3D_CLOTH_FILTER_ORIENT),
+    ];
+
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "sculpt3d")
+            .expect("o painel da escultura tem de estar no registo");
+        let arm = super::paineis_armados::TABELA
+            .iter()
+            .find(|a| a.painel == "sculpt3d")
+            .expect("a escultura tem armação");
+
+        let mut host = MockPanelHost::new();
+        (arm.arma)(host.store_mut());
+        painel.populate(host.store_mut());
+        let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        let pintados = host.registos_da_ultima_pintura();
+        (arm.desarma)();
+
+        // Só o que cai DENTRO da secção `Tool` (entre o cabeçalho dela e o da `Brush`).
+        let y_de = |id: NodeId| pintados.iter().find(|(p, _)| *p == id).map(|(_, r)| r.y);
+        let (topo, fundo) = (
+            y_de(sid::SCULPT3D_SEC_TOOL).unwrap_or(0.0),
+            y_de(sid::SCULPT3D_SEC_BRUSH).unwrap_or(f32::MAX),
+        );
+
+        println!("\n  === a secção `Tool` ({topo:.0}..{fundo:.0}) por família de chips ===");
+        let mut somado = 0usize;
+        let mut linhas: Vec<(f32, String)> = Vec::new();
+        for (nome, ids) in familias {
+            let dentro: Vec<f32> = ids
+                .iter()
+                .filter_map(|id| y_de(*id))
+                .filter(|y| *y >= topo && *y < fundo)
+                .collect();
+            if dentro.is_empty() {
+                continue;
+            }
+            somado += dentro.len();
+            let lo = dentro.iter().copied().fold(f32::MAX, f32::min);
+            let hi = dentro.iter().copied().fold(f32::MIN, f32::max);
+            linhas.push((lo, format!("  {lo:>6.0}..{hi:<6.0} {nome:<22} {:>3} chips", dentro.len())));
+        }
+        linhas.sort_by(|a, b| a.0.total_cmp(&b.0));
+        for (_, l) in &linhas {
+            println!("{l}");
+        }
+        let total_na_seccao = pintados
+            .iter()
+            .filter(|(_, r)| r.y >= topo && r.y < fundo)
+            .count();
+        println!(
+            "  → {somado} chips em famílias nomeadas, de {total_na_seccao} rectângulos na secção\n"
+        );
     });
 }

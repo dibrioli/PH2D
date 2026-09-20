@@ -67,6 +67,7 @@ FASE=shells/desktop/src/render_loop/fase_hud.rs
 RECOOK=shells/desktop/src/render_loop/fase_vector_layout_recook.rs
 INSPECTOR=crates/ph2d-app-components/src/hud_inspector.rs
 CENA=shells/desktop/src/hud_smoke.rs
+IDS=crates/ph2d-panel-inspector/src/ids/inspector_hud.rs
 
 echo "=== A LEI: a caixa efectiva (ph2d-hud) ==="
 
@@ -152,6 +153,23 @@ bloco "o roteiro nao diz onde escolher a raiz" ph2d-host-desktop o_roteiro_manda
   "$CENA" 1 \
   'na HIERARQUIA (painel da esquerda) clique na linha' \
   'no painel clique na linha' '--test it'
+
+echo "=== O QUE O ARTISTA VE (report do dono, 20/09) ==="
+
+# ⛔⛔ O defeito EXACTO que ele reportou: o pintor passa tres rotulos e o array de ids tem DOIS ⇒
+# o terceiro segmento nunca e' pintado. A regua antiga (contar rotulos no fonte) era cega a isto.
+# ⚠️ A mutação apaga a ENTRADA **e** a aridade: apagar só a entrada deixa um `[NodeId; 3]` com
+# duas, que é um erro de TIPO — e *uma mutação que não compila lê-se como sangrar*.
+bloco "o segmentado perde um id" ph2d-panel-inspector o_segmentado_do_fit_tem_um_id \
+  "$IDS" 1 \
+  $'[NodeId; 3] = [\n    hash_node_id("insp_hud_fit_0"),\n    hash_node_id("insp_hud_fit_1"),\n    hash_node_id("insp_hud_fit_2"),\n];' \
+  $'[NodeId; 2] = [\n    hash_node_id("insp_hud_fit_0"),\n    hash_node_id("insp_hud_fit_1"),\n];' '--test it'
+
+# E dois segmentos com o MESMO id: a contagem fica certa e o clique de um acende o outro.
+bloco "dois segmentos partilham id" ph2d-panel-inspector os_ids_do_segmentado_sao_distintos \
+  "$IDS" 1 \
+  '    hash_node_id("insp_hud_fit_2"),' \
+  '    hash_node_id("insp_hud_fit_1"),' '--test it'
 
 echo "=== A ORDEM no quadro ==="
 

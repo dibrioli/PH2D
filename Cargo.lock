@@ -7972,6 +7972,7 @@ dependencies = [
  "ph2d-component-desc",
  "ph2d-editor-core",
  "ph2d-host",
+ "ph2d-hud",
  "ph2d-i18n",
  "ph2d-label-census",
  "ph2d-label-fold",

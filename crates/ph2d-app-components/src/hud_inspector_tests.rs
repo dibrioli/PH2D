@@ -178,16 +178,25 @@ fn o_selector_do_fit_oferece_todos_os_modos() {
     }
 }
 
-/// ⛔ **E o número de opções PINTADAS é o número de modos da lei.**
+/// ⛔⛔⛔ **E o número de SEGMENTOS pintados é o número de modos da lei.**
 ///
-/// ⚠️ Metade que o gate de cima não dá: ele prova que cada modo VIAJA, e este que nenhum fica de
-/// fora do menu. A lente é o texto do pintor, porque a lista dele é literal.
+/// ⚠️⚠️ **A 1.ª redacção deste gate contava os RÓTULOS no fonte do pintor e era CEGA ao defeito
+/// que o dono reportou** (*«só tem as opções de keep e Stretch. Não expand»*): o pintor passava os
+/// três rótulos e o array `INSP_HUD_FIT` tinha **dois** ids — e o segmentado pinta **um segmento
+/// por id**, logo o terceiro rótulo era simplesmente ignorado. *Uma régua que conta rótulos não vê
+/// quantos SEGMENTOS são pintados.*
+///
+/// ⇒ a régua passa a ser o **ARRAY DE IDS**, que é o que os TRÊS consumidores lêem (o pintor, o
+/// `populate` que os regista, e o despacho do clique). Os rótulos ficam como a segunda metade.
 #[test]
 fn o_menu_do_fit_tem_uma_linha_por_modo() {
     let src = include_str!("../../ph2d-panel-inspector/src/sections/hud_corpo.rs");
     // ⚠️⚠️ **A agulha é montada por pedaços de propósito:** escrita inteira, ela LÊ-SE COMO UMA
     // CHAVE e o censo do HR-15 acusa este ficheiro de usar um `tr` que não existe na tabela — foi
     // exactamente o que ele fez na 1.ª corrida. *Um gate que procura chaves não pode conter uma.*
+    // ⚠️ **A metade que decide o que se VÊ — o array de ids — mora no PAINEL**, porque esta crate
+    // não o vê (seria subir uma camada): `o_segmentado_do_fit_tem_um_id_por_modo`, na
+    // `ph2d-panel-inspector`. Aqui fica a dos RÓTULOS, que é a segunda.
     let prefixo = concat!("panel.inspector.", "hud.fit_");
     let i = src
         .find(&format!("{prefixo}keep"))
@@ -197,7 +206,7 @@ fn o_menu_do_fit_tem_uma_linha_por_modo() {
     assert_eq!(
         n,
         ph2d_ecs::Fit::ALL.len(),
-        "o menu pinta {n} opcoes e a lei tem {} modos",
+        "o menu pinta {n} rotulos e a lei tem {} modos",
         ph2d_ecs::Fit::ALL.len()
     );
 }

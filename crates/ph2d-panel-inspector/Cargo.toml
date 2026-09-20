@@ -21,6 +21,11 @@ ph2d-anim = { path = "../ph2d-anim" }
 # ⚠️ É uma FOLHA (zero dependências), como a `ph2d-tween` acima — a parede do ADR-0029 é contra a
 # `ph2d-ecs`, e esta crate não a atravessa.
 ph2d-shake = { path = "../ph2d-shake" }
+# ⭐ A lei do CANVAS do HUD (TOP-20 #20) — a secção lê o `Fit::ALL` para saber **quantos segmentos
+# pintar**. ⛔ Uma lista de dois escrita à mão aqui é o que fez o `Expand` existir, com lei e gates,
+# e o artista não lhe chegar (report do dono, 20/09). ⚠️ É uma FOLHA (só `serde`), como a
+# `ph2d-shake` acima — a parede do ADR-0029 é contra a `ph2d-ecs`, e esta não a atravessa.
+ph2d-hud = { path = "../ph2d-hud" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # ADR-0166 / plano F0: a §7 Ordering é a seção PILOTO — os rótulos das linhas dela vêm do
 # descritor, não de literais no pintor. ⚠️ Ligá-la revelou que as duas fontes já discordavam

@@ -104,6 +104,7 @@ do processo**, que tornaria a suíte mais um membro da família de flakes de fan
 | `scripts/censos-da-arvore-combinada.sh` | **+2 termos no `$FILTRO`** — ver §5-bis | aditivo |
 | `scripts/censo-texto-pintado.py` | a régua de porta deixou de mentir nos dois sentidos | — |
 | 38 `Cargo.toml` | a crate-régua `ph2d-label-census` entra como **dev-dep** | aditivo |
+| ⛔ **`CLAUDE.md`** | **`+7 / −4`** no parágrafo do `dock_columns` da secção `UI/UX` (commit `52d4c8f64`) — ver §9(c) | ⚠️ **conflito provável** |
 
 ⚠️⚠️ **A ÚNICA assinatura pública que mudou:**
 `screens::hero::topbar::paint_hover_tooltip` passou de `-> ()` a **`-> bool`** (devolve se pintou).
@@ -277,7 +278,15 @@ garantido. ⇒ o entregável da linha é o texto; o escritor é quem funde.
 
 > ⭐⭐⭐ **[handoff de 20/09](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md)** — a fronteira dos motores, a escada das elisões e o balão; o §4 tem **sete** coisas que uma leitura rápida do diff entende ao contrário (entre elas que a catraca dos cortes **não desce** com a lei de encurtar, e porquê) e o §5-bis os **dois** vermelhos que só a árvore combinada viu ·
 
-**(c) ⚠️ E o parágrafo do `dock_columns` desta mesma secção já foi CORRIGIDO por esta linha**
-(commit `52f591b17`… na verdade `52d4c8f64`): ele dizia que o `close` tinha zero chamadores de
-produto, e hoje os dois alternadores do menu *View* existem. O texto no `main` já reflecte isso —
-**não o reescreva**.
+**(c) ⛔⛔ E ATENÇÃO: esta linha JÁ EDITOU o `CLAUDE.md`, uma vez, e isso é superfície de
+conflito.** O commit **`52d4c8f64`** mexe em **`+7 / −4`** linhas do parágrafo do `dock_columns`,
+dentro da secção `UI/UX` do §5 — ele dizia que o `dock_columns::close` tinha **zero chamadores de
+produto** (o gesto de arrastar saiu por ordem do dono em 09/09 e o item de menu nunca foi escrito),
+e esta linha escreveu a outra metade: *View ▸ Left Column* / *Right Column*. O texto está
+**correcto e actual**; ⇒ **não o reescreva**, e ao fundir o §5 conte com este ficheiro no conjunto
+de conflito.
+
+⚠️ **Isto contradiz a tabela de anti-colisão** (*«§5 só na integração, no primário»*) e fica
+declarado em vez de escondido: foi a única vez, é uma correcção de facto sobre a própria secção da
+linha, e o parágrafo (a) acima **substitui texto que inclui essa edição** — aplique (a) sobre o
+estado FUNDIDO, nunca sobre uma cópia antiga.

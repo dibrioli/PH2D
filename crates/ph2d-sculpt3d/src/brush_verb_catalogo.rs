@@ -14,7 +14,7 @@ use super::verb::Verb;
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 36] = [
+    pub const ALL: [Self; 38] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -51,5 +51,7 @@ impl Verb {
         Self::Plane,
         Self::DrawSharp,
         Self::Paint,
+        Self::Blur,
+        Self::SmearColor,
     ];
 }

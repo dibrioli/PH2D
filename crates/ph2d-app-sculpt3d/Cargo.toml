@@ -74,6 +74,11 @@ test-support = []
 [dev-dependencies]
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
+# ⚠️ **A SEMENTE DE COR do censo dos knobs, e só ela:** os dois verbos que leem
+# o ANEL de cor medem-se inertes sobre uma peça branca (a média de branco é
+# branco), e a lei que põe a cor a variar vive num `#[cfg(test)]` da outra
+# crate — invisível daqui. ⛔ `dev` de propósito: o produto nunca semeia cor.
+ph2d-sculpt3d = { path = "../ph2d-sculpt3d", features = ["test-support"] }
 
 [lints]
 workspace = true

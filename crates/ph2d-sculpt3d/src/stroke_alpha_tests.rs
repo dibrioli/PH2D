@@ -285,6 +285,10 @@ fn every_verb_reads_the_alpha() {
         for (k, armed) in [false, true].into_iter().enumerate() {
             let mut mesh = sphere();
             mesh.put_masks(vec![ph2d_mesh::DEFAULT_MASK; mesh.vert_count()]);
+            // ⭐ Ver [`crate::canal_de_teste::semeia_cor`]: sem cor a variar os
+            // dois verbos que leem o anel são inertes por CONSTRUÇÃO, e o gate
+            // acusaria produto correcto de não ler o alpha.
+            crate::canal_de_teste::semeia_cor(&mut mesh);
             let mut stroke = SculptStroke::default();
             stroke.begin(&mesh);
             stroke.reference = referencia_sintetica(&mesh);

@@ -162,6 +162,17 @@ fn mesh_for(verb: Verb) -> Mesh {
     if verb == Verb::Boundary {
         return sphere_with_open_cap();
     }
+    // ⭐⭐ **UM VERBO DE COR QUE LÊ O ANEL precisa de cor a VARIAR**, e é a
+    // mesma lei que a linha abaixo já escreve para a geometria: *um verbo que
+    // lê o anel só age sobre irregularidade, e a esfera lisa é o caso
+    // degenerado dele*. Numa peça toda branca a média da vizinhança **é**
+    // branca, e o [`Verb::Blur`] devolve o que já lá estava — ao bit. Ver
+    // [`crate::canal_de_teste::semeia_cor`].
+    if verb.paints_color() {
+        let mut m = sphere();
+        crate::canal_de_teste::semeia_cor(&mut m);
+        return m;
+    }
     if verb.uses_neighbours() {
         // Forma exacta, superfície RUGOSA — o que um alisamento conserta. (A
         // irmã `uv_sphere_shuffled` é o contrário: forma exacta, ESPAÇAMENTO

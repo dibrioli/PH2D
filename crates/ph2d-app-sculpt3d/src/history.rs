@@ -56,6 +56,14 @@ pub(super) enum StrokeUndo {
         positions: Vec<[f32; 3]>,
         /// As máscaras de antes, quando o traço PINTOU máscara.
         masks: Option<Vec<f32>>,
+        /// As CORES de antes, quando o traço PINTOU cor.
+        ///
+        /// ⚠️ **Um TERCEIRO canal e não um segundo caso**, pela lei que o
+        /// [`super::undo`] já escreve sobre a máscara: os canais desfazem-se
+        /// **cada um por si**, e a pergunta *«qual dos três foi?»* não existe.
+        /// Um gesto que mexa em dois (uma pintura com auto-smooth armado mexe
+        /// na cor E na posição) desfaz-se inteiro, sem ninguém escolher.
+        colors: Option<Vec<[f32; 3]>>,
     },
     /// Uma operação de máscara mexeu na malha inteira: o estado anterior é o
     /// plano INTEIRO. ⚠️ O `None` aqui quer dizer *não havia máscara*, o que se
@@ -569,6 +577,9 @@ impl Sculpt3dScene {
             masks: self
                 .mask_window_changed()
                 .then(|| self.stroke.base_masks().to_vec()),
+            colors: self
+                .color_window_changed()
+                .then(|| self.stroke.base_colors().to_vec()),
         };
         self.record(entry);
     }
@@ -590,6 +601,30 @@ impl Sculpt3dScene {
     ///
     /// Sem plano vivo não há o que ter mudado: o `capture` congela
     /// [`ph2d_mesh::DEFAULT_MASK`] onde ele não existe, e é isso que continua lá.
+    /// **Este gesto mudou o canal de COR?** — o gémeo exacto do
+    /// [`Self::mask_window_changed`], e ele nasceu com a mesma lição já paga:
+    /// a pergunta é um **FATO sobre a janela**, nunca uma inferência sobre o
+    /// verbo em mãos (`paints_color()`).
+    ///
+    /// ⚠️ **E a inferência daria a resposta ERRADA já hoje**, não numa wave
+    /// futura: com o `Verb::Paint` na mão, um gesto de FILTRO escreve
+    /// POSIÇÕES e cor nenhuma — a mesma costura que o picker desacoplou na
+    /// máscara e que o dono reportou como *«não temos undo para Filter»*.
+    ///
+    /// Sem plano vivo não há o que ter mudado: o congelamento escreve
+    /// [`ph2d_mesh::DEFAULT_COLOR`] onde ele não existe, e é isso que continua
+    /// lá.
+    fn color_window_changed(&self) -> bool {
+        let Some(live) = self.mesh().colors() else {
+            return false;
+        };
+        self.stroke
+            .touched()
+            .iter()
+            .zip(self.stroke.base_colors())
+            .any(|(&v, &c)| live[v as usize] != c)
+    }
+
     fn mask_window_changed(&self) -> bool {
         let Some(live) = self.mesh().masks() else {
             return false;

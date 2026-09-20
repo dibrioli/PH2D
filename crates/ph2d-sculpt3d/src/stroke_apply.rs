@@ -1,6 +1,37 @@
 //! **O QUE O TRAÇO ESCREVE** — os dois aplicadores e a aritmética que eles
 //! partilham.
 //!
+//! # ⭐⭐⭐⭐ A PINTURA, e de onde a lei dela vem
+//!
+//! ⭐⭐⭐⭐ **PINTAR — o primeiro verbo que escreve COR e não forma** (ordem do
+//! dono, 2026-09-19: *«vamos implementar o pincel de pintura, de Blur e
+//! Smear para pintura»*).
+//!
+//! ⭐ **PORTE FIEL T0, sem parede**, do `Paint.js` do **SculptGL**
+//! (MIT, © 2019 Stéphane Ginier) — a licença foi lida no artefacto
+//! instalado e a escada de triagem da SKILL pára no primeiro degrau:
+//! *«porte fiel, verbatim se quiser; sem parede, sem espec — só manter a
+//! atribuição»*. É o mesmo precedente que trouxe o colapso de arestas
+//! curtas e os kernels do `s-mode` a um ULP.
+//!
+//! ⭐⭐ **E a lei dele já vivia nesta casa.** O `fallOff` da referência é
+//! `(1 − d/r)^(2(1−dureza)) × intensidade × máscara × alpha`, que é
+//! **exactamente** o `w` que o [`crate::SculptStroke`] calcula para todo
+//! verbo de carimbo — a curva `s-mode`, a força, a máscara e o estêncil,
+//! pela mesma porta. O que o porte acrescenta é **para onde esse peso vai**:
+//! em vez de mover o vértice, ele mistura a cor do pincel na cor dele.
+//!
+//! ⚠️ **Ele não move UM vértice**, como a [`Verb::Mask`] — e, como ela, o
+//! dab não refresca normal nenhuma. A diferença entre os dois é o CANAL, e
+//! é por isso que a pergunta *«que canal este verbo escreve?»* tem duas
+//! portas irmãs ([`Verb::paints_mask`] · [`Verb::paints_color`]) em vez de
+//! um booleano *«escreve posição»*.
+//!
+//! ⚠️ **O material da referência (rugosidade/metalness) fica FORA**, e a
+//! ausência é a mesma decisão que o doc do buffer da máscara já escrevia:
+//! subir dois canais que ninguém lê seriam 8 B/vértice e dois controlos
+//! mortos. O albedo é o que o sombreamento desta casa consome hoje.
+//!
 //! ⚠️ **Filho (`#[path]`) de [`super`], e não um irmão:** eles leem os planos
 //! congelados (`base_pos`, `base_mask`, `accum`, `slot`) e a lista `moved`, e um
 //! módulo irmão os obrigaria a virar `pub(crate)` — a visibilidade viraria
@@ -107,7 +138,28 @@ impl SculptStroke {
     /// cor do pincel porque o painel a coage) e uma interpolação entre dois
     /// valores da faixa **não sai dela**. Um clamp aqui esconderia o dia em que
     /// um deles passasse a sair.
-    pub(super) fn apply_color(&self, mesh: &mut Mesh, brush: &Brush) {
+    pub(super) fn apply_color(&self, mesh: &mut Mesh, brush: &Brush, dab: &Dab) {
+        // ⭐⭐⭐ **DUAS composições, e a segunda tem de calcular TODOS os alvos
+        // antes de escrever UM.**
+        //
+        // A pintura mistura uma cor FIXA a partir do `pre` congelado (o porte
+        // T0, e o `accum` dela é o *over* da referência). Os dois que leem o
+        // ANEL puxam a cor VIVA para a vizinhança de AGORA — e ali o buffer tem
+        // de ser duplo, senão metade da pegada lê o valor que a outra metade
+        // acabou de escrever e a saída passa a depender da ORDEM em que ela foi
+        // percorrida. Ver [`crate::stroke_cor`].
+        if brush.verb != Verb::Paint {
+            let alvos = self.alvos_de_cor(mesh, brush, dab);
+            let out = mesh.colors_mut();
+            for (&v, alvo) in self.moved.iter().zip(&alvos) {
+                let vi = v as usize;
+                let a = self.accum[self.slot[vi] as usize].clamp(0.0, 1.0);
+                for k in 0..3 {
+                    out[vi][k] = out[vi][k] * (1.0 - a) + alvo[k] * a;
+                }
+            }
+            return;
+        }
         let out = mesh.colors_mut();
         for &v in &self.moved {
             let vi = v as usize;

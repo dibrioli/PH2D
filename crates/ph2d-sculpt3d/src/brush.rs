@@ -213,24 +213,16 @@ pub struct Brush {
     /// quártica da geometria (a `Plateau` vale `0,6875` a meio raio, esta vale
     /// `0,3536`). Em `1.0` o expoente é ZERO e o canal vira um disco duro.
     pub mask_hardness: f32,
-    /// **A DUREZA DA CURVA DO CANAL DE COR** — a irmã exacta do
-    /// [`Self::mask_hardness`], e literalmente a mesma fórmula: o `Paint.js` e
-    /// o `Masking.js` do SculptGL escrevem os dois
-    /// `softness = 2·(1 − hardness)` e `pow(1 − d, softness)`.
-    ///
-    /// ⚠️ **`0,75` é o `_hardness` de fábrica do `Paint.js:12`**, não um número
-    /// escolhido — ele dá expoente `0,5` (uma raiz quadrada), que é uma borda
-    /// MUITO mais macia que a da máscara (expoente `1,5`). Pintar quer bordo
-    /// esbatido; proteger quer bordo definido.
-    ///
-    /// ⛔ **Dois campos e UMA curva:** a lei mora em [`Self::channel_weight`] e
-    /// os dois verbos só lhe dizem a dureza. Uma segunda cópia da potência
-    /// divergiria no dia em que alguém corrigisse uma delas.
+    /// ⚠️ **A DUREZA do canal de COR** — a gémea da [`Self::mask_hardness`],
+    /// com a MESMA fórmula (`pow(1 − d, 2·(1 − dureza))`) e a lei numa porta só
+    /// ([`Self::channel_weight`]). `0,75` é o `_hardness` de fábrica do
+    /// `Paint.js:12` — expoente `0,5`, uma borda muito mais macia que a da
+    /// máscara: *pintar quer bordo esbatido; proteger quer bordo definido*.
     pub paint_hardness: f32,
     /// ⭐ **A COR QUE O PINCEL DEPOSITA** — o albedo do [`Verb::Paint`].
     ///
-    /// ⚠️ **É o `_color` de fábrica do `Paint.js:13`** (o ouro morno da
-    /// referência), portado com ela; o artista troca-o no painel.
+    /// ⚠️ **O `_color` de fábrica do `Paint.js:13`** — ver a proveniência em
+    /// [`crate::stroke_apply`].
     pub color: [f32; 3],
     /// **A DUREZA DO DAB** em `[0, 1]` — o `hardness` do Blender, e **`0` é a
     /// identidade**.
@@ -488,31 +480,13 @@ pub struct Brush {
     /// ⭐⭐⭐ ***Connected Only*** — o pincel age só no que a superfície LIGA ao
     /// ponto que o artista aponta.
     ///
-    /// # O defeito que ele cura, medido
+    /// ⭐ **Ligado, o peso de quem FICA não muda um bit**: a lei é uma MÁSCARA
+    /// e não uma régua nova.
     ///
-    /// Um dab junta os vértices dentro de uma **esfera** e pesa cada um pela
-    /// distância **pelo ar**. Numa malha com duas partes vizinhas — um modelo
-    /// importado em duas peças, o resultado de um *Extract*, dois dedos — a
-    /// esfera alcança o outro lado. Medido (duas peças, folga `0,05`, raio
-    /// `0,35`): **`47,1 %` do peso do carimbo cai na peça ERRADA**, e um dab real
-    /// move `60` vértices dela.
-    ///
-    /// ⭐ **Ligado, o peso de quem FICA não muda um bit** — a lei é uma máscara e
-    /// não uma régua nova ([`crate::dab_alcance`]), então nada do que já estava
-    /// certo se mexe por causa dela.
-    ///
-    /// # ⚠️ O default é `true` por DECISÃO DO DONO (2026-09-10)
-    ///
-    /// *«As duas opções devem existir com a segunda como default»* — a segunda
-    /// era o lado curado da comparação da cena `=39`. ⛔ A minha proposta era
-    /// nascer desligado, porque um gate de arquitectura tinha apanhado a
-    /// justificação que eu dera para o contrário; o veredito é dele e o registo
-    /// da minha objecção está no [`crate::dab_alcance`].
-    ///
-    /// ⚠️ **Ele é um CAMPO e não uma variável de ambiente**, e isso paga-se em
-    /// duas coisas que uma env não podia dar: o artista escolhe (era a ordem), e
-    /// uma **fixtura pode PREGÁ-LO** para continuar a reproduzir a geometria em
-    /// que foi calibrada — que é o que a [`shells/desktop`] faz com a orelha.
+    /// ⚠️ **O default é `true` por DECISÃO DO DONO (2026-09-10)**, e o defeito
+    /// medido, a objecção que eu levantei e a razão de ele ser um CAMPO (e não
+    /// uma env) vivem onde a lei corre: [`crate::dab_alcance`]. *A narrativa
+    /// mora no módulo da lei; aqui fica o campo.*
     pub surface_only: bool,
     /// ⭐⭐⭐ **O PUXÃO VAI PELA NORMAL** (ordem do dono, 19/09) — o gesto passa
     /// a dizer só *quanto*. ⛔ Divergência DECLARADA, com as três escolhas

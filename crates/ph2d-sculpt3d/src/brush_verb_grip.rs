@@ -79,7 +79,10 @@ impl Verb {
             // [`Grip::Stamp`] e passava a **oferecer o `Accumulate`** — um
             // interruptor que o `Paint.js` não tem e que o barro não sentia; o
             // censo `o_accumulate_nao_e_oferecido_a_quem_nao_o_sente` apanhou-o.
-            Self::Mask | Self::Paint => Grip::Paint,
+            // ⚠️ **Os QUATRO**: o grip do canal diz *«este gesto pinta um canal
+            // e não carimba geometria»*, e é ele que tira o `Accumulate` da
+            // tela — um interruptor que nenhum destes lê.
+            Self::Mask | Self::Paint | Self::Blur | Self::SmearColor => Grip::Paint,
             _ => Grip::Stamp,
         }
     }

@@ -143,6 +143,22 @@ impl Verb {
             law.unit_accum = false;
             law.additive = false;
         }
+        // ⭐⭐ **OS DOIS QUE LEEM O ANEL compõem por DAB, e não ao longo do
+        // traço** — nenhuma das três leis de acumulação serve, e a que fica é o
+        // `w` cru.
+        //
+        // ⚠️ **A razão é que o ALVO deles MUDA a cada dab:** ele é a
+        // vizinhança VIVA, e ela é reescrita pelo dab anterior. Um acumulador
+        // ao longo do traço (o `tint` da pintura, o `additive` da máscara)
+        // guarda *quanto já se andou* para um alvo FIXO; aqui isso misturaria a
+        // fracção de hoje com o destino de ontem. ⇒ cada dab puxa a cor viva
+        // uma fracção `w` para a vizinhança de AGORA, que é o que uma
+        // esfregadela é. Ver [`crate::stroke_cor`].
+        if self.le_o_anel_de_cor() {
+            law.tint = false;
+            law.unit_accum = false;
+            law.additive = false;
+        }
         // ⛔⛔⛔ **A PROJECÇÃO mede da posição VIVA, SEMPRE** — espec §6.5 com
         // todas as letras: *«não há normalização por área, nem acumulador, nem
         // memória entre dabs — cada dab re-mede a distância a partir de onde o

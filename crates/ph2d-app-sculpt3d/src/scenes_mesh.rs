@@ -150,6 +150,12 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     if parede_fina::parede_fina_scene() {
         return parede_fina::barbatana();
     }
+    // ⭐ **A `=51` abre DENSA porque a cor mora nos VÉRTICES:** a resolução da
+    // tinta é a da malha, e é o degrau entre a marca serrilhada e a marca limpa
+    // (depois de ligar a topologia dinâmica) que a cena ensina.
+    if pintura::pintura_scene() {
+        return pintura::peca();
+    }
     // ⭐ **A `=40` abre na MESMA enrugada, e a razão é a mesma da `=34` vista de
     // outro lado:** os dois gestos tangenciais movem o barro NO PLANO da
     // superfície, e numa esfera lisa isso não muda a silhueta nem quase a luz —

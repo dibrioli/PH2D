@@ -15,6 +15,7 @@
 //! diferiu*, não do tipo do canal. Devolver três tipos obrigaria cada chamador
 //! a voltar a ramificar — que é exactamente o defeito que esta porta apaga.
 
+#[cfg(test)]
 use crate::{Brush, Verb};
 use ph2d_mesh::Mesh;
 
@@ -25,6 +26,7 @@ use ph2d_mesh::Mesh;
 /// posições, e devolver vazio faria a comparação ser entre dois nadas —
 /// verdadeira por construção, que é a tautologia que esta casa já pagou.
 #[must_use]
+#[cfg(test)]
 pub(crate) fn retrato_do_canal(mesh: &Mesh, verb: Verb) -> Vec<f32> {
     if verb.paints_mask() {
         return mesh.masks().map_or_else(
@@ -49,6 +51,7 @@ pub(crate) fn retrato_do_canal(mesh: &Mesh, verb: Verb) -> Vec<f32> {
 /// de topologia a meio de um traço muda a contagem de vértices, e ali a
 /// resposta honesta é *«mudou»*.
 #[must_use]
+#[cfg(test)]
 pub(crate) fn desvio(a: &[f32], b: &[f32]) -> f32 {
     if a.len() != b.len() {
         return f32::INFINITY;
@@ -67,9 +70,38 @@ pub(crate) fn desvio(a: &[f32], b: &[f32]) -> f32 {
 /// Um censo que não troque a cor lê *«o dab não fez nada»* sobre um pincel
 /// impecável — a forma de que este ficheiro é a cura, repetida um nível abaixo.
 #[must_use]
+#[cfg(test)]
 pub(crate) fn pincel_com_canal_vivo(mut brush: Brush) -> Brush {
     if brush.verb.paints_color() {
         brush.color = [0.0, 0.0, 0.0];
     }
     brush
+}
+
+/// **A PEÇA com cor a VARIAR** — o que os verbos que leem o ANEL precisam para
+/// não serem inertes por construção.
+///
+/// ⛔⛔ **O pincel preto não chega para eles, e a diferença é o que esta função
+/// existe para dizer:** a pintura deposita uma cor e basta que ela difira do
+/// barro; o [`Verb::Blur`] e o [`Verb::SmearColor`] leem a VIZINHANÇA, e numa
+/// peça toda branca a média da vizinhança **é branca** — eles devolvem o que já
+/// lá estava, ao bit. Um censo corrido assim acusa-os de mortos com toda a
+/// razão sobre a fixtura e nenhuma sobre o produto.
+///
+/// ⚠️ **O padrão é uma faixa pelo `x`**, e não ruído: uma fronteira nítida é o
+/// que uma média do anel tem de esbater e o que um transporte tem de mover, e
+/// ela existe em toda peça deste repo (todas atravessam a origem).
+pub fn semeia_cor(mesh: &mut Mesh) {
+    let faixa: Vec<[f32; 3]> = mesh
+        .positions()
+        .iter()
+        .map(|p| {
+            if p[0] < 0.0 {
+                [1.0, 0.0, 0.0]
+            } else {
+                [0.0, 0.0, 1.0]
+            }
+        })
+        .collect();
+    mesh.colors_mut().copy_from_slice(&faixa);
 }

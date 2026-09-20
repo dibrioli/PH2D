@@ -353,6 +353,7 @@ impl Sculpt3dScene {
                 verts,
                 positions,
                 masks,
+                colors,
             } => {
                 // ⚠️ **DOIS CANAIS INDEPENDENTES, e não um `if/else`.** A versão
                 // anterior tratava a entrada como *ou* máscara *ou* geometria, e
@@ -369,6 +370,24 @@ impl Sculpt3dScene {
                         // que muda é o que a GPU tem de re-ler. É o mesmo par que
                         // o braço do [`StrokeUndo::Mask`] escreve um degrau
                         // acima, e não uma segunda lei.
+                        self.piece_mut().uploaded = false;
+                        self.edits += 1;
+                        Some(was)
+                    }
+                    None => None,
+                };
+                // ⚠️ **O TERCEIRO canal, e a lei é a mesma do segundo**: ele
+                // desfaz-se por si, sem perguntar o que o gesto era. ⛔ Um
+                // `else if` aqui reintroduziria o defeito que o comentário
+                // acima narra — um gesto que mexeu em dois canais desfazer-se
+                // pela metade, em silêncio.
+                let colors_now = match colors {
+                    Some(c) => {
+                        let was =
+                            swap_window(self.piece_mut().stack.mesh_mut().colors_mut(), &verts, &c);
+                        // Cor não move geometria: a octree fica de pé e o que
+                        // muda é o que a GPU tem de re-ler — o mesmo par que o
+                        // braço da máscara escreve três linhas acima.
                         self.piece_mut().uploaded = false;
                         self.edits += 1;
                         Some(was)
@@ -399,6 +418,7 @@ impl Sculpt3dScene {
                     verts,
                     positions: positions_now,
                     masks: masks_now,
+                    colors: colors_now,
                 }
             }
         }
@@ -409,6 +429,12 @@ impl Sculpt3dScene {
 #[cfg(test)]
 #[path = "undo_tests.rs"]
 mod tests;
+
+/// **OS GATES DOS CANAIS** (máscara · cor) — ver [`canais`]. Irmão dos
+/// [`tests`], cortado pelo ASSUNTO e pelo tecto de LOC.
+#[cfg(test)]
+#[path = "undo_canais_tests.rs"]
+mod canais;
 
 /// **O traço do pincel de plano desfaz e refaz** — ver [`plano_tests`]. Irmão dos [`tests`],
 /// cortado pelo tecto de LOC e pelo assunto (o report de 2026-09-16).

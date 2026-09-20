@@ -64,6 +64,14 @@ libm = { version = "=0.2.16", default-features = false }
 # `.gz` das fixtures do oráculo do pincel de tecido — a lib continua sem ele.
 # `miniz_oxide` e não `flate2`, pela mesma razão da `ph2d-cloth` e da
 # `ph2d-quadfill`: já está na árvore.
+[features]
+# ⚠️ **Do TAMANHO do que ATRAVESSA a fronteira, e nada mais** (HOWTO §2.5): ela
+# abre **uma** função — a [`canal_de_teste::semeia_cor`], que põe cor a VARIAR
+# numa peça —, porque o censo dos knobs da `ph2d-app-sculpt3d` mede dois verbos
+# que leem o ANEL de cor e uma peça branca faz os dois lerem-se inertes. Abrir o
+# módulo inteiro «por segurança» entrega `dead_code` no que ninguém lê.
+test-support = []
+
 [dev-dependencies]
 miniz_oxide = "0.8"
 

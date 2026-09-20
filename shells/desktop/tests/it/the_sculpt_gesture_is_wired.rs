@@ -992,6 +992,30 @@ fn every_verb_is_reachable_from_the_keyboard() {
         // que a esvazia continua a ser de produto: uma gramática nova (um
         // modificador, um segundo toque) ou tirar um dígito a quem hoje o tem.
         "DrawSharp",
+        // ⭐⭐⭐⭐ **OS TRÊS DE COR, e eles são a PRIMEIRA FAMÍLIA que não disputa
+        // o teclado da escultura** (ordem do dono, 2026-09-19: *«vamos
+        // implementar o pincel de pintura, de Blur e Smear para pintura»*).
+        //
+        // ⚠️ **A razão aritmética dos dois vizinhos vale aqui também** — `25`
+        // das `26` letras estão reclamadas e os dez dígitos são dos dez
+        // primeiros verbos —, mas ela NÃO é a razão principal, e a diferença
+        // importa: os oito da fila do `L` são gestos de FORMA que se alternam a
+        // esculpir, e o teclado deles existe para a mão não sair do barro.
+        // Estes três escrevem **COR**: o artista troca para eles quando muda de
+        // assunto, não a meio de uma pincelada.
+        //
+        // ⛔ **E eles não são inertes de fábrica** (a razão dos quatro
+        // primeiros desta lista): os três trabalham numa peça acabada de
+        // nascer. *O que os mantém sem tecla é serem outra família — e a
+        // decisão de lhes dar uma gramática própria (um modificador, um
+        // segundo toque) é de produto.*
+        //
+        // ⇒ a fila dos pretendentes ao `L` continua em **DEZ**: estes três não
+        // entram nela, e é por isso que a razão deles está escrita e não
+        // herdada.
+        "Paint",
+        "Blur",
+        "SmearColor",
     ];
     let keys = function_body(&sculpt_src(), "key");
     // ⚠️ **O gate COLETA em vez de abortar no primeiro, e isso não é estilo.**

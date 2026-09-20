@@ -231,7 +231,13 @@ impl Sculpt3dScene {
             level: self.level(),
             verts: session.moving().to_vec(),
             positions: session.base_positions().to_vec(),
+            // ⚠️ **Os DOIS canais são `None` por LEI e não por omissão:** um
+            // gizmo de transformação move POSIÇÕES e mais nada — ele nem passa
+            // pela cadeia de peso, logo não há máscara nem cor de antes a
+            // guardar. *Um `None` que o compilador obriga a escrever é uma
+            // afirmação; um campo em falta seria um esquecimento.*
             masks: None,
+            colors: None,
         };
         self.record(entry);
     }

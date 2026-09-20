@@ -329,6 +329,20 @@ impl RefMode {
             // mesma frase: o `Move.js` leva o gesto INTEIRO, e o que define
             // estes dois é levarem só a componente tangencial dele. Uma
             // subtracção que o parente não faz é uma ferramenta que ele não tem.
+            // ⛔⛔⛔ **E os DOIS DE COR QUE LEEM O ANEL ficam FORA desta lista, o
+            // que é o contrário do que parece:** esta lista não diz *«o
+            // SculptGL não tem»* — ela **ENCAMINHA para o `B`**, e só faz
+            // sentido para uma ferramenta que o `B` TENHA (é de lá que o
+            // [`crate::Brush::weight`] tira a força ao quadrado do `Plane` e do
+            // `DrawSharp`). O [`Verb::Blur`] e o [`Verb::SmearColor`] não são
+            // porte de referência nenhuma ([`crate::stroke_cor`]) ⇒ encaminhá-los
+            // punha-os a NASCER no `B` sem perfil lá, e o peso deles cairia no
+            // slider cru **enquanto o gate `the_weight_asks_the_reference_that_
+            // has_the_tool` exigia o quadrado** — reprovando sobre produto
+            // correcto. Ficam com o `Cloth`, a `Pose`, o `Boundary`, a
+            // `Density` e o `BoxTrim`: declarados aqui, sem perfil em lado
+            // nenhum, força **LINEAR**, e NOMEADOS no censo
+            // `o_censo_das_referencias_que_ninguem_declara`.
             Self::S => !matches!(
                 verb,
                 Verb::ClayStrips

@@ -43,6 +43,30 @@ pub const SCULPT3D_STRENGTH: NodeId = hash_node_id("sculpt3d.strength");
 /// Chip ligado a [`SCULPT3D_STRENGTH`].
 pub const SCULPT3D_STRENGTH_NUM: NodeId = hash_node_id("sculpt3d.strength_num");
 
+/// **A COR QUE O PINCEL DEPOSITA** — três pistas, uma por canal.
+///
+/// ⛔⛔ **TRÊS pistas e não um selector de cor, e a dívida é DECLARADA:** esta
+/// casa tem editores ricos de cor ([`ph2d-param-editors`]), e hospedá-los aqui
+/// é uma janela flutuante sobre o painel — substrato que este painel não tem e
+/// que é wave própria. O que esta wave entrega é a capacidade **alcançável e
+/// gateada**: sem ela o pincel deposita para sempre a cor de fábrica da
+/// referência, que é um pincel de pintura com uma cor só.
+///
+/// ⚠️ **Elas só existem com o [`ph2d_sculpt3d::Verb::Paint`] em mãos** — os dois
+/// verbos que leem o ANEL puxam a cor da vizinhança e não olham para este
+/// campo.
+pub const SCULPT3D_COLOR_R: NodeId = hash_node_id("sculpt3d.color_r");
+/// Chip ligado a [`SCULPT3D_COLOR_R`].
+pub const SCULPT3D_COLOR_R_NUM: NodeId = hash_node_id("sculpt3d.color_r_num");
+/// Ver [`SCULPT3D_COLOR_R`].
+pub const SCULPT3D_COLOR_G: NodeId = hash_node_id("sculpt3d.color_g");
+/// Chip ligado a [`SCULPT3D_COLOR_G`].
+pub const SCULPT3D_COLOR_G_NUM: NodeId = hash_node_id("sculpt3d.color_g_num");
+/// Ver [`SCULPT3D_COLOR_R`].
+pub const SCULPT3D_COLOR_B: NodeId = hash_node_id("sculpt3d.color_b");
+/// Chip ligado a [`SCULPT3D_COLOR_B`].
+pub const SCULPT3D_COLOR_B_NUM: NodeId = hash_node_id("sculpt3d.color_b_num");
+
 /// Deslocamento do plano, em fração do raio (só os verbos de plano o leem).
 pub const SCULPT3D_PLANE_OFFSET: NodeId = hash_node_id("sculpt3d.plane_offset");
 

@@ -241,6 +241,13 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // verbo de oferecer o interruptor e o barro não sentir. *A composição
         // dos dabs deste pincel é a LEI dele* ([`crate::GripLaw::tint`]), não
         // uma escolha do artista.
+        // ⛔⛔ **OS DOIS DE COR QUE LEEM O ANEL NÃO TÊM PERFIL `s`, e a ausência
+        // é a PROVENIÊNCIA:** o SculptGL não tem estas ferramentas, logo não há
+        // número a LER — a mesma razão exacta do tecido e da pose, duas linhas
+        // acima. ⛔ Um `SILENT` aqui seria pior que o `None`: ele ofereceria o
+        // chip `S` com um perfil que não declara nada, e o gate
+        // `every_offered_chip_has_a_profile_behind_it` acusou-o à primeira.
+        Verb::Blur | Verb::SmearColor => return None,
         Verb::Paint => VerbProfile {
             strength: Some(0.75),
             radius_factor: Some(1.0),
@@ -456,6 +463,15 @@ const fn profile_b(verb: Verb) -> Option<VerbProfile> {
             | Verb::Density
             | Verb::EraseMultires
             | Verb::SmearMultires
+            // ⛔⛔ **E OS DOIS DE COR QUE LEEM O ANEL ficam de fora pela razão do
+            // TECIDO, não pela da densidade:** a lei deles **não é porte de
+            // nenhuma referência** (ver [`crate::stroke_cor`]) — o que existe é
+            // uma composição de leis desta casa aplicada a outro canal —, logo
+            // não há tabela de fábrica de onde tirar força, curva ou alcance.
+            // ⚠️ *Oferecer um `B` aqui vestiria de referência uma escolha
+            // nossa*, que é exactamente o que o §4 do plano proíbe pelo nome.
+            | Verb::Blur
+            | Verb::SmearColor
     ) {
         return None;
     }

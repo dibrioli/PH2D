@@ -638,7 +638,7 @@ impl SculptStroke {
             self.last_paints_mask = brush.verb.escreve_um_canal();
             if brush.verb.escreve_um_canal() {
                 if brush.verb.paints_color() {
-                    self.apply_color(mesh, brush);
+                    self.apply_color(mesh, brush, dab);
                 } else {
                     self.apply_mask(mesh, brush);
                 }

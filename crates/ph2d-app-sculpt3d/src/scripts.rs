@@ -505,6 +505,7 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
     crate::scenes::afiado::announce();
     crate::scenes::pente::announce();
     crate::scenes::parede_fina::announce();
+    crate::scenes::pintura::announce();
     if crate::donation_scene() {
         eprintln!(
             "[sculpt3d] =2 A DOACAO: ha uma TELA BRANCA embaixo, e a tecla D alterna\n\

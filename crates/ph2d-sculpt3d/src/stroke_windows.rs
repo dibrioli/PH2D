@@ -35,6 +35,23 @@ impl SculptStroke {
         &self.base_mask
     }
 
+    /// As CORES de antes do traço, na ordem de [`Self::touched`].
+    ///
+    /// ⚠️ **Ela é a TERCEIRA janela do mesmo congelamento**, e não um sistema
+    /// novo: o [`Self::begin`] já fotografa a cor por vértice tocado (é dela
+    /// que a pintura interpola, `stroke_apply::apply_color`), logo a entrada de
+    /// undo de um traço de cor **já existia** — faltava alguém pedi-la.
+    ///
+    /// ⚠️ **Uma peça sem plano de cor devolve o [`ph2d_mesh::DEFAULT_COLOR`]**
+    /// (o congelamento é que o escreve), e é isso que faz desfazer o PRIMEIRO
+    /// traço de uma peça virgem devolver o barro à cor de origem em vez de a
+    /// uma fila de zeros — *a ausência de um canal é o DEFAULT dele, nunca
+    /// vazio*.
+    #[must_use]
+    pub fn base_colors(&self) -> &[[f32; 3]] {
+        &self.base_color
+    }
+
     /// Os vértices que o ÚLTIMO [`Self::dab`] de fato moveu — **todas as cópias
     /// de espelho dele**, e não a última.
     ///

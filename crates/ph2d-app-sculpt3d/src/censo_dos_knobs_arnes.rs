@@ -34,7 +34,23 @@ pub(super) fn peca_de(verb: Verb) -> Mesh {
         // o que já tinha porta.*
         return crate::scenes::boundary::tigela();
     }
-    ph2d_mesh::shapes::uv_sphere(24, 32, 1.0)
+    let mut m = ph2d_mesh::shapes::uv_sphere(24, 32, 1.0);
+    // ⛔⛔ **OS DOIS QUE LEEM O ANEL DE COR precisam de uma peça com cor a
+    // VARIAR, e sem ela o censo acusa knobs VIVOS de mortos:** a média da
+    // vizinhança de uma peça branca é branca, e o transporte de branco também
+    // ⇒ os dois leriam `0,000` em toda a linha. *Um corpus no ponto NEUTRO de
+    // um canal não testa esse canal*, que é a terceira forma desta armadilha
+    // neste arnês (as outras duas foram o `Dab::at` genérico e a peça sem
+    // bordo).
+    //
+    // ⚠️ **A semente vem da PORTA da outra crate** (`test-support`), nunca
+    // escrita aqui: a lei dela — uma faixa pelo `x`, e não ruído — é o que faz
+    // a fronteira ser NÍTIDA, que é o que uma média tem de esbater e um
+    // transporte tem de mover.
+    if verb.le_o_anel_de_cor() {
+        ph2d_sculpt3d::canal_de_teste::semeia_cor(&mut m);
+    }
+    m
 }
 
 pub(super) const PONTA: [f32; 3] = [0.0, 0.0, 1.0];

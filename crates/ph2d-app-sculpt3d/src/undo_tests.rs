@@ -44,7 +44,7 @@ macro_rules! gpu_or_skip {
 const CENTRE: (f32, f32) = (450.0, 350.0);
 
 /// Uma cena com uma esfera e o verbo pedido em mãos.
-fn scene(device: &wgpu::Device, verb: Verb) -> Sculpt3dScene {
+pub(super) fn scene(device: &wgpu::Device, verb: Verb) -> Sculpt3dScene {
     let mut s = Sculpt3dScene::new(device, uv_sphere(24, 36, 1.0), 1.0);
     s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
     s.brush.verb = verb;
@@ -54,7 +54,7 @@ fn scene(device: &wgpu::Device, verb: Verb) -> Sculpt3dScene {
 /// Um traço de UM dab no meio da peça — a sequência que o braço de escultura do
 /// `sculpt3d_pointer_down` percorre (`aim` → `stroke.begin` → `sculpt_at`,
 /// `sculpt3d_input.rs:172-202`), sem o `App` que ela precisaria para existir.
-fn one_dab(s: &mut Sculpt3dScene) {
+pub(super) fn one_dab(s: &mut Sculpt3dScene) {
     assert!(s.aim(CENTRE.0, CENTRE.1), "o raio errou a peca enquadrada");
     s.stroke.begin(s.objects[s.active].stack.mesh());
     assert!(
@@ -62,106 +62,6 @@ fn one_dab(s: &mut Sculpt3dScene) {
         "o dab nao pegou a malha: a fixture nao contem o fenomeno"
     );
     s.close_stroke();
-}
-
-/// **UM TRAÇO DE MÁSCARA DESFAZ, E AVISA A TELA.**
-///
-/// ⚠️ **As duas metades falhavam por motivos diferentes**, e é por isso que uma
-/// asserção só não bastaria:
-///
-/// - o canal voltava (o braço trocava as máscaras), mas
-/// - o braço **não chamava `mesh_rebuilt()` nem tocava o `uploaded`** — então a
-///   máscara voltava na memória e a GPU continuava a mostrar a de antes. O
-///   irmão [`super::super::StrokeUndo::Mask`] (a operação de plano inteiro) faz
-///   exactamente esse par um degrau acima; o traço não fazia.
-///
-/// ⚠️ **O que volta é o VALOR neutro, não a AUSÊNCIA do plano.** `masks_mut()`
-/// cria o plano ao ser tocado, e desfazer um traço nunca o remove — quem remove
-/// é o `StrokeUndo::Mask { before: None }`, que é outra entrada e outro gesto.
-/// Afirmar `masks().is_none()` aqui seria pinar a lei do vizinho.
-#[test]
-#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
-fn a_mask_stroke_undoes_and_tells_the_screen() {
-    let gpu = gpu_or_skip!();
-    let mut s = scene(&gpu.device, Verb::Mask);
-    assert!(
-        s.mesh().masks().is_none(),
-        "premissa: a malha nasce sem plano de mascara"
-    );
-
-    one_dab(&mut s);
-    let painted = s
-        .mesh()
-        .masks()
-        .expect("o traco de mascara nao criou o plano")
-        .iter()
-        .filter(|m| **m != ph2d_mesh::DEFAULT_MASK)
-        .count();
-    assert!(
-        painted > 0,
-        "premissa: o dab nao escreveu mascara nenhuma, e sem isso o desfazer nao tem o que desfazer"
-    );
-
-    s.objects[s.active].uploaded = true;
-    let edits = s.edits;
-
-    assert!(
-        s.undo_stroke(),
-        "o traco de mascara nao gravou passo de undo"
-    );
-    let still = s
-        .mesh()
-        .masks()
-        .expect("o plano nao devia ter sido removido")
-        .iter()
-        .filter(|m| **m != ph2d_mesh::DEFAULT_MASK)
-        .count();
-    assert_eq!(
-        still, 0,
-        "o Ctrl+Z deixou {still} vertices mascarados: a janela do traco nao cobria o que ele pintou"
-    );
-    assert!(
-        !s.objects[s.active].uploaded,
-        "o desfazer nao invalidou o upload: a mascara voltou na memoria e a tela mostra a de antes"
-    );
-    assert_ne!(
-        s.edits, edits,
-        "o desfazer nao contou como edicao: a doacao ao Painter serve um carimbo velho"
-    );
-}
-
-/// **UM TRAÇO DE GEOMETRIA NÃO INVENTA UM PLANO DE MÁSCARA.**
-///
-/// ⚠️ **É o CONTROLE do irmão acima, e ele mede a metade que o report escondia:**
-/// enquanto o registo perguntava *"o verbo pinta máscara?"*, um gesto de FILTRO
-/// com o pincel `Mask` em mãos gravava máscaras que ninguém pintou — e desfazer
-/// **criava** o plano (`masks_mut()` o instala com [`ph2d_mesh::DEFAULT_MASK`])
-/// numa malha que nunca teve um. Aqui o verbo é o `Draw`: a pergunta certa é
-/// sobre a JANELA, e a resposta dela não pode mudar por causa do pincel.
-#[test]
-#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
-fn a_geometry_stroke_leaves_the_mask_channel_alone() {
-    let gpu = gpu_or_skip!();
-    let mut s = scene(&gpu.device, Verb::Draw);
-    let before: Vec<[f32; 3]> = s.mesh().positions().to_vec();
-
-    one_dab(&mut s);
-    assert_ne!(
-        s.mesh().positions(),
-        &before[..],
-        "premissa: o dab nao moveu a malha"
-    );
-
-    assert!(s.undo_stroke(), "o traco nao gravou passo de undo");
-    assert_eq!(
-        s.mesh().positions(),
-        &before[..],
-        "o Ctrl+Z nao devolveu a geometria"
-    );
-    assert!(
-        s.mesh().masks().is_none(),
-        "o desfazer INVENTOU um plano de mascara numa malha que nunca teve um"
-    );
 }
 
 /// ⭐ **A RETOPOLOGIA MUDA A MALHA, DÁ QUADS, E DESFAZ INTEIRA.**

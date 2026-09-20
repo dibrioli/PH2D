@@ -63,6 +63,37 @@
 //! ([`crate::stroke_symmetry`]: ele é dono da própria expansão de simetria) ⇒ os
 //! `86` traços do corpus do tecido não podem ser tocados por esta máscara. Não é
 //! uma cerca que alguém tem de lembrar — é o roteamento.
+//!
+//! # ⭐⭐⭐ O CAMPO QUE ARMA ESTA MÁSCARA, e de onde o default dele vem
+//!
+//! ⭐⭐⭐ ***Connected Only*** — o pincel age só no que a superfície LIGA ao
+//! ponto que o artista aponta.
+//!
+//! # O defeito que ele cura, medido
+//!
+//! Um dab junta os vértices dentro de uma **esfera** e pesa cada um pela
+//! distância **pelo ar**. Numa malha com duas partes vizinhas — um modelo
+//! importado em duas peças, o resultado de um *Extract*, dois dedos — a
+//! esfera alcança o outro lado. Medido (duas peças, folga `0,05`, raio
+//! `0,35`): **`47,1 %` do peso do carimbo cai na peça ERRADA**, e um dab real
+//! move `60` vértices dela.
+//!
+//! ⭐ **Ligado, o peso de quem FICA não muda um bit** — a lei é uma máscara e
+//! não uma régua nova ([`crate::dab_alcance`]), então nada do que já estava
+//! certo se mexe por causa dela.
+//!
+//! # ⚠️ O default é `true` por DECISÃO DO DONO (2026-09-10)
+//!
+//! *«As duas opções devem existir com a segunda como default»* — a segunda
+//! era o lado curado da comparação da cena `=39`. ⛔ A minha proposta era
+//! nascer desligado, porque um gate de arquitectura tinha apanhado a
+//! justificação que eu dera para o contrário; o veredito é dele e o registo
+//! da minha objecção está no [`crate::dab_alcance`].
+//!
+//! ⚠️ **Ele é um CAMPO e não uma variável de ambiente**, e isso paga-se em
+//! duas coisas que uma env não podia dar: o artista escolhe (era a ordem), e
+//! uma **fixtura pode PREGÁ-LO** para continuar a reproduzir a geometria em
+//! que foi calibrada — que é o que a [`shells/desktop`] faz com a orelha.
 
 use ph2d_mesh::Mesh;
 

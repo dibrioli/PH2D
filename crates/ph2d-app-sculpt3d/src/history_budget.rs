@@ -30,11 +30,20 @@ impl StrokeUndo {
                 verts,
                 positions,
                 masks,
+                colors,
                 ..
             } => {
                 verts.capacity() * size_of::<u32>()
                     + positions.capacity() * size_of::<[f32; 3]>()
                     + plane(masks)
+                    // ⚠️ **A cor pesa TRÊS vezes a máscara por vértice**, e é
+                    // por isso que ela entra na conta em vez de ser arredondada
+                    // para o mesmo `plane`: um traço largo de pintura guarda o
+                    // triplo do que um de máscara guarda, e o tecto da pilha é
+                    // em BYTES.
+                    + colors
+                        .as_ref()
+                        .map_or(0, |x| x.capacity() * size_of::<[f32; 3]>())
             }
             Self::Mask { before, .. } => plane(before),
             Self::DroppedLevel(level) => level.bytes(),

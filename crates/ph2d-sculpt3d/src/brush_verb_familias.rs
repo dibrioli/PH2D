@@ -35,7 +35,7 @@ impl Verb {
     /// do motor faz não é nenhuma das duas: é [`Self::escreve_um_canal`].
     #[must_use]
     pub fn paints_color(self) -> bool {
-        matches!(self, Self::Paint)
+        matches!(self, Self::Paint | Self::Blur | Self::SmearColor)
     }
 
     /// ⭐⭐ **Este verbo escreve um CANAL em vez de mover barro?**
@@ -123,6 +123,38 @@ impl Verb {
             self,
             Self::Smooth | Self::Sharpen | Self::SurfaceSmooth | Self::SmearMultires
         )
+    }
+
+    /// **Este verbo lê a COR DA VIZINHANÇA em vez de depositar a sua?** — o
+    /// [`Self::Blur`] e o [`Self::SmearColor`], contra o [`Self::Paint`].
+    ///
+    /// ⚠️ **Ela existe porque o conjunto estava escrito à mão em DOIS sítios
+    /// como `paints_color() && self != Paint`** — a lei de acumulação
+    /// ([`Self::grip_law`]) e o arnês do censo dos knobs — e o terceiro
+    /// chamador chegou no mesmo dia. *Uma lei escrita em dois sítios ainda não
+    /// é uma lei.*
+    ///
+    /// ⛔⛔ **E o consumidor que a obrigou é uma FIXTURA:** um censo que corra
+    /// estes dois sobre uma peça de cor UNIFORME lê `0,000` em toda a linha —
+    /// a média de branco é branco, e o transporte de branco também — e acusa
+    /// de mortos os knobs de um pincel impecável. *Um corpus no ponto NEUTRO
+    /// de um canal não testa esse canal*, e a porta é o que diz a quem monta a
+    /// peça que ela precisa de ter cor a VARIAR.
+    #[must_use]
+    pub const fn le_o_anel_de_cor(self) -> bool {
+        matches!(self, Self::Blur | Self::SmearColor)
+    }
+
+    /// **Este verbo deposita a COR DO PINCEL?** — o [`Self::Paint`], e só ele.
+    ///
+    /// ⚠️ **DERIVADA das duas portas que já existem, e não uma terceira lista:**
+    /// pinta cor **e** não lê o anel. Os dois que leem o anel puxam a cor da
+    /// VIZINHANÇA — o `Brush::color` não entra na lei deles em sítio nenhum —,
+    /// logo oferecer-lhes a cor do pincel seria um controlo morto, que é a
+    /// espécie que o censo dos knobs varre a cada wave.
+    #[must_use]
+    pub fn deposita_a_cor_do_pincel(self) -> bool {
+        self.paints_color() && !self.le_o_anel_de_cor()
     }
 
     /// **Este verbo SUBTRAI a normal do puxão?** — os dois gestos TANGENCIAIS

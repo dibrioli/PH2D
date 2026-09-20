@@ -176,8 +176,16 @@ mod transform;
 /// coisa?»** — ver [`canal_de_teste`]. Ela nasceu quando o segundo verbo de
 /// canal chegou e TRÊS harnesses acusaram produto correcto, cada um com a sua
 /// cópia de `if paints_mask() { máscara } else { posições }`.
-#[cfg(test)]
-mod canal_de_teste;
+///
+/// ⚠️ **E ela ATRAVESSA a fronteira da crate desde 2026-09-19, pela feature
+/// `test-support` e do TAMANHO do que atravessa** (HOWTO §2.5): o censo dos
+/// knobs da `ph2d-app-sculpt3d` precisa de semear a cor da peça — sem isso os
+/// dois verbos que leem o ANEL medem-se inertes sobre uma peça branca — e um
+/// `#[cfg(test)]` é invisível do outro lado. ⛔ Só a [`canal_de_teste::semeia_cor`]
+/// é pública; o resto do módulo continua `cfg(test)`, senão uma build com a
+/// feature ligada e sem testes entrega `dead_code` no que ninguém lê.
+#[cfg(any(test, feature = "test-support"))]
+pub mod canal_de_teste;
 
 pub use alpha::{
     Alpha, AlphaFrame, AlphaImage, AlphaStencil, DEFAULT_ALPHA_SCALE, MAX_ALPHA_SCALE,

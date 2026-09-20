@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 50;
+pub const CENAS: u32 = 51;
 
 /// ⭐⭐ **O PRÓLOGO — o que uma cena ARMA depois de a cena nascer.**
 ///
@@ -61,6 +61,7 @@ pub const CENAS: u32 = 50;
 /// tem prólogo, pelo próprio predicado.
 pub(crate) fn prologo(cena: &mut crate::Sculpt3dScene) {
     pente::arma(cena);
+    pintura::arma(cena);
 }
 
 /// **A env do roteador, lida DENTRO da crate.**
@@ -509,6 +510,11 @@ pub(crate) mod parede_fina;
 #[cfg(test)]
 #[path = "scenes_parede_fina_report.rs"]
 mod parede_fina_report;
+/// **A PINTURA** (`=51`) — ver [`pintura`]. ⚠️ Ela abre com o pincel de pintura
+/// JÁ na mão e com a topologia dinâmica DESLIGADA: o degrau entre a marca
+/// serrilhada e a marca limpa **é** a lição.
+#[path = "scenes_pintura.rs"]
+pub(crate) mod pintura;
 /// **O PINCEL DE PLANO** (`=47`) — ver [`plano`]. ⚠️ Ela abre num campo de
 /// BOSSAS: numa esfera lisa este pincel pára sozinho, e o dono veria uma
 /// ferramenta que «não faz nada».

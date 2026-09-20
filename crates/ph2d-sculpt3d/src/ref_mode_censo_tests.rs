@@ -47,6 +47,7 @@ fn o_censo_das_referencias_que_ninguem_declara() {
     // |---|---|
     // | `Cloth` · `Pose` · `Boundary` | desviam antes do dab ([`Verb::resolve_a_propria_regiao`]) e a lei deles lê `brush.strength` **directo** — o `weight` não está no caminho |
     // | `Density` · `Box Trim` | não têm lei por-vértice ([`Verb::sem_lei_por_vertice`]): não há barro a pesar |
+    // | `Blur` · `Smear Color` | o `weight` ESTÁ no caminho deles e o slider cru é a lei CERTA: a composição não é porte de referência nenhuma ([`crate::stroke_cor`]), logo não há curva a herdar — o `w` do dab é o do artista |
     //
     // ⛔⛔ **E os QUATRO que ficam são DÍVIDA NOMEADA, não isenção** — os três
     // pincéis de multiresolução/projecção e o **afiar**:
@@ -76,6 +77,15 @@ fn o_censo_das_referencias_que_ninguem_declara() {
         "Smear Displacement",
         "Scene Project",
         "Box Trim",
+        // ⚠️⚠️ **Estes DOIS são a única entrada da lista cujo peso o dab de facto
+        // LÊ** (os outros ou desviam antes do dab ou não têm lei por-vértice), e
+        // é por isso que a razão deles é uma AFIRMAÇÃO e não uma isenção: eles
+        // não caem aqui por descuido — **o slider cru é a lei que a composição
+        // pede**. Encaminhá-los para o `B` (a lista negra do
+        // [`crate::RefMode::declares`]) dar-lhes-ia a força ao QUADRADO de uma
+        // referência que não os governa.
+        "Blur",
+        "Smear Color",
     ];
     assert_eq!(
         caem, esperado,

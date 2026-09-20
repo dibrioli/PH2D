@@ -114,27 +114,11 @@ pub struct SculptStroke {
     pub reference: Vec<[f32; 3]>,
     base_pos: Vec<[f32; 3]>,
     base_nrm: Vec<[f32; 3]>,
-    /// ⭐⭐⭐ **AS NORMAIS DA MALHA INTEIRA NO PEN-DOWN** — vazia para todo verbo
-    /// menos o [`crate::Verb::SceneProject`] em [`crate::ProjectMode::Plane`].
-    ///
-    /// ⛔⛔ **Ela existe porque o [`Self::base_nrm`] NÃO é o pen-down: ele é o
-    /// PRIMEIRO TOQUE.** A captura é preguiçosa (um vértice entra no `base_*`
-    /// quando o primeiro dab o alcança), e um vértice que só entra no 3.º dab é
-    /// fotografado com a normal que ele tem **nessa altura** — já inclinada
-    /// pelos vizinhos que os dois dabs anteriores afundaram. Para vinte e tal
-    /// verbos isso é invisível; aqui a normal **É a direcção do raio**, e um
-    /// grau de inclinação vira transporte lateral de barro.
-    ///
-    /// ⚠️ **MEDIDO no corpus do oráculo** (`projectar_normal_plano_area`, seis
-    /// dabs): com o `base_nrm` o desvio é `1,036e-2` e é **inteiramente
-    /// lateral**; com esta fotografia ele cai para a ordem do `f32`. *A
-    /// diferença entre «congelado no pen-down» e «congelado no primeiro toque»
-    /// é de `5 000×` a barra desta bancada.*
-    ///
-    /// ⚠️ **Preenchida no PRIMEIRO dab e não no [`Self::begin`]**, e a razão é a
-    /// assinatura: o `begin` não recebe o pincel, logo pagaria um `O(V)` a
-    /// TODOS os verbos para servir um. No primeiro dab a malha ainda é a do
-    /// pen-down por construção — nada foi escrito.
+    /// ⭐ **A NORMAL de cada vértice no PEN-DOWN** — a fotografia de que a
+    /// direcção de um gesto vive. A medição (a diferença entre *congelado no
+    /// pen-down* e *congelado no primeiro toque* vale `5 000×` a barra da
+    /// bancada) e a razão de ela nascer no primeiro DAB estão onde a lei corre:
+    /// [`crate::stroke_normal_do_gesto`].
     nrm0_do_pen_down: Vec<[f32; 3]>,
     base_mask: Vec<f32>,
     /// ⭐ **A COR de cada vértice ANTES do traço** — o gémeo do
@@ -587,6 +571,12 @@ mod target;
 /// ⭐⭐ **O CAMPO DE DESLOCAMENTO DO ESFREGÃO** — ver [`stroke_smear`].
 #[path = "stroke_smear.rs"]
 mod stroke_smear;
+
+/// ⭐⭐⭐ **AS DUAS LEIS DE COR QUE LEEM O ANEL** — ver [`stroke_cor`], onde a
+/// proveniência delas (composição das leis da casa, **não** um porte) está
+/// dita antes da lei.
+#[path = "stroke_cor.rs"]
+mod stroke_cor;
 
 /// **O QUE O ANEL DIZ** — a média congelada e a normal que o relax remove.
 /// Filho pelo mesmo motivo do [`target`]: os dois leem o `pre`.

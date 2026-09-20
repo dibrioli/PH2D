@@ -35,6 +35,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.surface_only" => "Connected Only",
         "panel.sculpt3d.puxa_pela_normal" => "Pull Along Normal",
         "panel.sculpt3d.strength" => "Strength",
+        "panel.sculpt3d.color_r" => "Color R",
+        "panel.sculpt3d.color_g" => "Color G",
+        "panel.sculpt3d.color_b" => "Color B",
         "panel.sculpt3d.falloff" => "Falloff",
         // ⭐⭐⭐ **A RAZÃO À VISTA** — a fileira da curva é a única que o painel do
         // sculpt pinta SEMPRE (cerca de produto medida e gateada), e três

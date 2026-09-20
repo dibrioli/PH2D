@@ -655,7 +655,12 @@ impl SculptStroke {
             // ⚠️ **Os DOIS verbos de CANAL devolvem o `base`** — eles não movem
             // um vértice, e o alvo neutro é o que garante que o aplicador de
             // posições, se algum dia for chamado por engano, não move nada.
-            Verb::Mask | Verb::Paint => base,
+            // ⚠️ **Os QUATRO verbos de CANAL devolvem o `base`** — nenhum
+            // deles move um vértice, e o alvo neutro é o que garante que o
+            // aplicador de posições, se algum dia for chamado por engano, não
+            // move nada. O alvo de COR deles não passa por aqui: ele lê o ANEL
+            // e é calculado em bloco ([`crate::stroke_cor`]).
+            Verb::Mask | Verb::Paint | Verb::Blur | Verb::SmearColor => base,
             // **OS QUATRO GESTOS COM ÂNCORA** vivem no irmão [`gripped`] — a
             // família que a [`Verb::anchors`] nomeia.
             // **OS QUATRO GESTOS COM ÂNCORA**, mais os **DOIS TANGENCIAIS** que

@@ -570,6 +570,58 @@ a sua cura:
 de uma folha nova DERIVAM-se dos caminhos que o código escreve — a 1.ª redacção escrita à mão
 esqueceu uma, e foi o próprio guião que parou.
 
+### §2.21 — Mover um ficheiro troca o REGIME DE VISIBILIDADE que o governa ⛔⛔⛔ mudo no Linux, VERMELHO em macOS e Windows
+
+**Medido no envio de 2026-09-20.** A `crates/ph2d-probe-cursor-grab` nasceu naquela rodada, quando a
+catraca `the_shell_only_shrinks` mandou para casa uma sonda de `295` linhas que **nada chamava**. Ela
+levou consigo uma função com dois braços de plataforma:
+
+```rust
+#[cfg(target_os = "linux")]
+pub fn build_event_loop() -> Option<EventLoop<()>> { … }   // superfície pública
+
+#[cfg(not(target_os = "linux"))]
+fn build_event_loop() -> Option<EventLoop<()>> { None }    // ⛔ PRIVADA
+```
+
+…e o único chamador dos dois é um `#[test]`.
+
+⛔⛔ **A rodada fechou VERDE em tudo o que esta máquina sabe correr** — o portão da linha, o
+`censos-da-arvore-combinada.sh`, e o `ship.sh` com `25 844/25 844` — e o CI reprovou em **macOS E
+Windows** com `dead_code: function build_event_loop is never used`. São **duas** condições a
+coincidir, e nenhuma é observável aqui:
+- a máquina de desenvolvimento é **Linux**, onde o braço que existe é o `pub` (um item `pub` numa
+  lib é API e **nunca** é código morto);
+- o passo do CI é `cargo check (workspace, --features bevy_ecs) --locked`, **sem `--all-targets`** ⇒
+  `cfg(test)` desligado ⇒ fora do Linux a função privada fica sem um único chamador, e o
+  `build.warnings = "deny"` transforma o aviso em erro.
+
+⭐⭐ **A LEI, e é a irmã da §2.19 e da dos tectos de LOC:** *dentro da shell aquilo vivia num módulo
+de um BINÁRIO, onde `pub` é decoração; numa crate de BIBLIOTECA, `pub` é API e privado-sem-chamador é
+código morto.* ⇒ **a mesma linha de código muda de significado ao mudar de casa**, e a acusação
+aparece **na plataforma onde quem a moveu não trabalha**.
+
+⛔⛔ **E a 1.ª cura foi REFUTADA pelo controlo.** Gatear o braço não-Linux ao `test`
+(`#[cfg(all(not(target_os = "linux"), test))]`) parece a cura exacta — *o esboço existe onde o
+chamador existe* — e só **DESLOCA** o aviso: o `EventLoop` do `use` lá acima é consumido apenas pelas
+**assinaturas** dos dois braços, logo sem nenhum deles ele vira `unused_imports`, e o `deny`
+reprova outra vez. *Uma cura que empurra a cadeia um elo à frente lê-se como cura até o controlo
+correr.* A cura que fica é a **simétrica**: os dois braços com a visibilidade que o de cima já
+declarava.
+
+⇒ **quem move ou escreve um `#[cfg(target_os`  cruza-o ANTES de fechar:**
+
+```bash
+PH2D_MEM_MAX=48G bash scripts/ph2d-run.sh env CARGO_BUILD_WARNINGS=deny \
+  cargo check -p <crate> --target aarch64-apple-darwin
+```
+
+⚠️ **Só `aarch64-apple-darwin` e `wasm32-unknown-unknown` estão instalados — não há alvo de Windows
+nesta máquina**, logo ali o CI é a única régua. ⭐ E o risco reduz-se por MEDIÇÃO e não por palpite:
+das crates tocadas numa rodada, conte quantas têm `cfg(target_os` (`grep -rl 'cfg(.*target_os'`) e
+cruze **essas**; na rodada de 20/09 eram **duas**, e a outra não tinha uma linha de diff — logo já
+vinha provada por corridas verdes anteriores.
+
 ## §3 — A prova (as cinco, com os números do piloto)
 
 ```bash

@@ -343,6 +343,26 @@ fecha a linha ([`CLAUDE.md §0.7`](../../CLAUDE.md)). Conteúdo mínimo (curto, 
    código que saiu, e as famílias copiaram a lista da shell em bloco. Nada disso falha a compilar;
    o CI reprova. Esta alínea já pedia *«deps novas p/ machete»* no handoff, e nenhuma linha o correu,
    porque o comando de fecho (`/pd-linha-fechar`) não o chamava pelo nome — hoje chama.
+
+   ⛔⛔⛔ **E há uma classe que NEM o `ship.sh` pega, porque ele corre no LINUX: código
+   condicionado à PLATAFORMA.** Medido no envio de 20/09 — a rodada fechou verde no portão da
+   linha, verde no `censos-da-arvore-combinada.sh` e **verde no `ship.sh` (25 844/25 844)**, e o CI
+   reprovou em **macOS E Windows** por um aviso de `dead_code` que nenhuma régua desta máquina pode
+   produzir: uma função com dois braços `#[cfg(target_os = …)]` em que o do Linux era `pub` (logo
+   superfície pública, nunca código morto) e o outro era **privado**, com o único chamador dos dois
+   a ser um `#[test]`. O passo do CI é `cargo check (workspace, --features bevy_ecs) --locked`, que
+   **não passa `--all-targets`** ⇒ fora do Linux o `cfg(test)` está desligado, a função fica sem um
+   único chamador, e o `build.warnings = "deny"` transforma o aviso em erro.
+   ⇒ **se a sua linha escreveu ou moveu um `#[cfg(target_os` , cruze-o ANTES de fechar:**
+   ```bash
+   PH2D_MEM_MAX=48G bash scripts/ph2d-run.sh env CARGO_BUILD_WARNINGS=deny \
+     cargo check -p <crate> --target aarch64-apple-darwin
+   ```
+   ⚠️ **Só o alvo de macOS (`aarch64-apple-darwin`) e o `wasm32` estão instalados — não há alvo de
+   Windows nesta máquina**, logo ali o CI é a única régua e a corrida dele é o controlo. E o
+   mecanismo pelo qual isto NASCE está no [`HOWTO §2.21`](HOWTO_partir_uma_familia_da_shell.md):
+   *mover um ficheiro troca o regime de VISIBILIDADE que o governa*, e a acusação aparece na
+   plataforma onde quem o moveu não trabalha.
    [`HOWTO_partir_uma_familia_da_shell.md`](HOWTO_partir_uma_familia_da_shell.md) §2.18.
    ⚠️ **E três que o `ship.sh` ganhou e a linha também corre ao fechar** (13/09): um `dead_code` que só a
    workspace inteira vê (`CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets`), uma crate

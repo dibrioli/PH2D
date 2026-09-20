@@ -23,25 +23,10 @@ const H: u32 = 128;
 /// `f16` de volta poria uma conversão entre a medição e o olho.
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
-fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
-    let instance = wgpu::Instance::default();
-    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-        power_preference: wgpu::PowerPreference::HighPerformance,
-        compatible_surface: None,
-        force_fallback_adapter: false,
-    }))
-    .ok()?;
-    let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-        label: Some("ph2d-mesh viewport test device"),
-        required_features: wgpu::Features::empty(),
-        required_limits: wgpu::Limits::default(),
-        experimental_features: wgpu::ExperimentalFeatures::default(),
-        memory_hints: wgpu::MemoryHints::Performance,
-        trace: wgpu::Trace::Off,
-    }))
-    .expect("request_device");
-    Some((device, queue))
-}
+/// O device de teste — **a porta única desta suíte**
+/// ([`super::device_de_teste`]): quatro cópias pediam o piso do WebGPU
+/// enquanto o produto pede os limites do adaptador.
+use super::device_de_teste::device;
 
 fn target(device: &wgpu::Device) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {

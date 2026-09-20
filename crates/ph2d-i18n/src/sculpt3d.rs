@@ -238,6 +238,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ "Rig" e não "None": a primeira opção NÃO é a ausência de luz, é a
         // luz do DOCUMENTO — a mesma lâmpada que acende a tinta ao lado. Chamá-la
         // de "None" faria o artista ler o modo default como "sem sombreamento".
+        "panel.sculpt3d.matcap.flat" => "Flat",
         "panel.sculpt3d.matcap.rig" => "Rig",
         "panel.sculpt3d.wireframe" => "Wireframe",
         "panel.sculpt3d.wire_grade" => "Show Grid",

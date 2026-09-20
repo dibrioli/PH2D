@@ -412,7 +412,7 @@ fn the_placement_runs_before_any_piece_enters_the_scene() {
 #[test]
 fn the_scene_opens_on_the_material_the_renderer_declares() {
     assert!(
-        sculpt_src().contains("matcap: ph2d_mesh_render::DEFAULT_MATCAP"),
+        sculpt_src().contains("lighting: ph2d_mesh_render::DEFAULT_LIGHTING"),
         "o nascimento da cena tem de DELEGAR o material de abertura ao \
          renderizador; um literal aqui e' a segunda resposta que diverge"
     );

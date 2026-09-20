@@ -26,20 +26,10 @@ const W: u32 = 512;
 const H: u32 = 512;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
-fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
-    let instance = wgpu::Instance::default();
-    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-        power_preference: wgpu::PowerPreference::HighPerformance,
-        compatible_surface: None,
-        force_fallback_adapter: false,
-    }))
-    .ok()?;
-    pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-        label: Some("sonda do wireframe"),
-        ..Default::default()
-    }))
-    .ok()
-}
+/// O device de teste — **a porta única desta suíte**
+/// ([`super::device_de_teste`]): quatro cópias pediam o piso do WebGPU
+/// enquanto o produto pede os limites do adaptador.
+use super::device_de_teste::device;
 
 fn camera_for(mesh: &Mesh) -> Camera3d {
     let mut cam = Camera3d {

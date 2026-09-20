@@ -45,8 +45,9 @@ pub use lighting::{LampRaw, RigRaw};
 pub use matcap::{Credit, Encoding, Matcap};
 pub use pipeline::{MeshRenderer, camera_uniform_bytes, view_proj_from_bytes};
 pub use shade::{
-    CAVITY_GAIN, DEFAULT_AO_STRENGTH, DEFAULT_CAVITY, DEFAULT_ENV, DEFAULT_MATCAP,
-    DEFAULT_SSAO_STRENGTH, MATCAPS, Shade, ShadeRaw,
+    CAVITY_GAIN, DEFAULT_AO_STRENGTH, DEFAULT_CAVITY, DEFAULT_ENV, DEFAULT_LIGHTING,
+    DEFAULT_SSAO_STRENGTH, LIGHTING_FIRST_MATCAP, LIGHTING_FLAT, LIGHTING_RIG, Lighting, MATCAPS,
+    Shade, ShadeRaw,
 };
 pub use ssao::{RADIUS_FRACTION as SSAO_RADIUS_FRACTION, SsaoParams, SsaoRaw};
 

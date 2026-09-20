@@ -80,18 +80,18 @@ fn the_names_are_the_table_read_in_order() {
 
 /// **O índice 0 é o do SculptGL, porque ele É o default do app.**
 ///
-/// ⚠️ O [`crate::DEFAULT_MATCAP`] aponta para `0`, então *qual chip nasce
+/// ⚠️ O [`crate::DEFAULT_LIGHTING`] aponta para o matcap `0`, então *qual chip nasce
 /// marcado* e *qual é a primeira linha da tabela* são o MESMO fato. Este gate é
 /// o que impede alguém de reordenar a lista por gosto e mudar o default do app
 /// sem perceber — o que na tela é o barro abrindo com outra luz.
 #[test]
 fn the_default_is_the_sculptgl_matcap_and_it_leads_the_table() {
-    assert_eq!(crate::DEFAULT_MATCAP, Some(0));
+    assert_eq!(crate::DEFAULT_LIGHTING, crate::Lighting::Matcap(0));
     assert_eq!(MATCAPS[0].credit, Credit::HazardousArts);
     assert_eq!(MATCAPS[0].name_key, "sculpt3d.matcap.skin_haz_2");
     assert_eq!(
-        crate::Shade::default().matcap,
-        crate::DEFAULT_MATCAP,
+        crate::Shade::default().lighting,
+        crate::DEFAULT_LIGHTING,
         "o `Shade::default` tem de ARMAR o default, não repetir um número"
     );
 }

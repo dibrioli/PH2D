@@ -151,15 +151,10 @@ pub struct Sculpt3dScene {
     /// ficheiro ao tecto de LOC. Ver [`viewports::Janela`].
     pub(crate) janela: viewports::Janela,
 
-    /// **Com que luz o barro é mostrado** — `None` é o RIG DO ARTISTA, `Some(i)`
-    /// é o matcap `i`. Ver [`ph2d_mesh_render::Shade::matcap`].
-    ///
-    /// ⚠️ Estado de VISTA, não do documento: ele não é salvo, pelo mesmo motivo
-    /// que o onion da timeline não é. Escolher com que luz olhar não muda a
-    /// escultura, e um projeto que reabrisse em metal diria que alguém mexeu
-    /// nela.
-    pub(crate) matcap: Option<u8>,
-    /// A malha desenhada por cima da forma. Vista, como o [`Self::matcap`].
+    /// **COM QUE LUZ** — ver [`ph2d_mesh_render::Lighting`]. VISTA, e não
+    /// documento: escolher com que luz olhar não muda a escultura.
+    pub(crate) lighting: ph2d_mesh_render::Lighting,
+    /// A malha desenhada por cima da forma. Vista, como o [`Self::lighting`].
     pub(crate) wireframe: bool,
     /// ⭐⭐⭐⭐ **A VISTA DA GRADE** — o arame esconde a diagonal de cada
     /// triângulo ([`ph2d_mesh_render::wire_indices_com`]).

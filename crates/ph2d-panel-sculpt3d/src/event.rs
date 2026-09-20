@@ -414,15 +414,15 @@ fn group_chip_ui(
     } else if let Some(i) = index_of(&crate::ids::SCULPT3D_CLOTH_FORCE_FALLOFF, id) {
         ui.brush.cloth_force_falloff = ph2d_sculpt3d::ClothForceFalloff::ALL[i];
     } else {
-        // A opção `0` é o rig do artista e as seguintes são os matcaps, o mesmo
-        // deslocamento que o pintor usa. `checked_sub` e não `- 1`: a opção zero
-        // não é o material `-1`, é a AUSÊNCIA de matcap.
+        // A escada da fileira (`0` plano · `1` rig · `2 + i` matcap) vive numa
+        // PORTA, e é a mesma que o pintor lê para dizer qual chip está aceso:
+        // duas cópias da aritmética divergiriam no dia do quarto modo.
         //
         // ⚠️ **É o ÚLTIMO braço, e é ele que devolve `None` para um id alheio** —
         // a fileira da densidade viveu aqui entre dois reports do mesmo dia e
         // saiu por ordem do dono, deixando este no fim outra vez.
         let i = index_of(&crate::ids::SCULPT3D_MATCAP, id)?;
-        ui.matcap = i.checked_sub(1).map(|k| u8::try_from(k).unwrap_or(u8::MAX));
+        ui.lighting = crate::state::LightMode::from_option_index(i);
     }
     Some(ui)
 }

@@ -40,6 +40,13 @@ pub use crate::slots::{
 /// caminho de chamador muda por causa dele.
 pub use crate::state_modes::{RetopoMode, UiLevel};
 
+/// **COM QUE LUZ** — ver [`luz`]. Irmão (`#[path]`), e o corte foi forçado pelo
+/// tecto de LOC deste painel (`645` contra `600`) mais o assunto: *«que modos de
+/// luz existem»* é uma pergunta própria, como a dos modos e a do canal.
+#[path = "state_luz.rs"]
+mod luz;
+pub use luz::LightMode;
+
 /// **O estado AUTORADO da cena 3D** — tudo o que um controle contínuo ou um
 /// rádio deste painel escreve.
 #[derive(Clone, Debug, PartialEq)]
@@ -154,12 +161,12 @@ pub struct Sculpt3dUi {
     pub light_az_deg: f32,
     /// Elevação da lâmpada selecionada, em graus.
     pub light_elev_deg: f32,
-    /// **COM QUE LUZ** — `None` é o rig do artista, `Some(i)` é o matcap `i`.
+    /// **COM QUE LUZ** — ver [`LightMode`].
     ///
     /// ⚠️ Ele mora no estado AUTORADO e não nos fatos porque o artista o escolhe;
     /// mas ele **não é do documento** (o shell não o salva) — escolher com que
     /// luz olhar não muda a escultura.
-    pub matcap: Option<u8>,
+    pub lighting: LightMode,
     /// **O padrão do pincel, VISTO NO BARRO** antes de o traço acontecer.
     ///
     /// ⚠️ Nasce **LIGADO**: o preview responde *"esta densidade serve para a
@@ -279,7 +286,7 @@ impl Default for Sculpt3dUi {
             // que vale é o que o snapshot da shell escreve no primeiro frame —
             // a fonte é `ph2d_mesh_render::DEFAULT_MATCAP`. Ele espelha para que
             // uma fixture de seam veja o mesmo mundo que o artista vê.
-            matcap: Some(0),
+            lighting: LightMode::Matcap(0),
             alpha_preview: true,
             wireframe: false,
             wire_grade: false,

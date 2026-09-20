@@ -42,7 +42,7 @@ pub(super) fn shared_law_shade() -> Shade {
         // ⭐ **O rig do documento, e não a luz do olho.** É o único modelo que a
         // tinta também implementa — comparar contra um matcap é comparar duas
         // leis diferentes e chamar à diferença um defeito.
-        matcap: None,
+        lighting: ph2d_mesh_render::Lighting::Rig,
         // A cavidade é leitura de FORMA e só o barro a tem no caminho desta
         // sonda: a tinta a recebe assada, por outro canal.
         cavity: 0.0,

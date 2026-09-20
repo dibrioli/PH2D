@@ -19,7 +19,10 @@ use crate::state::{Sculpt3dUi, UiLevel};
 /// arrastaria o ângulo da luz olhando uma escultura que não se move, que é a
 /// forma mais cara de descobrir o que um modo significa.
 fn under_the_rig(u: &Sculpt3dUi) -> bool {
-    u.matcap.is_none()
+    // ⚠️ **E o modo PLANO também as esconde**, pela razão levada ao extremo: ali
+    // não há luz nenhuma a apontar — arrastar o ângulo de uma lâmpada apagada é
+    // o mesmo controlo morto, com a peça ainda mais parada.
+    u.lighting == crate::state::LightMode::Rig
 }
 
 /// Como a forma é LIDA — a cavidade e a lâmpada.

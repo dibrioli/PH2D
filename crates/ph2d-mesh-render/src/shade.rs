@@ -137,7 +137,57 @@ pub use crate::matcap::MATCAP_NAME_KEYS as MATCAPS;
 /// abrir aceso pela luz do OLHO em vez da do documento. O caminho do rig
 /// continua inteiro e alcançável pelo primeiro chip da fileira — o que mudou foi
 /// qual deles nasce marcado.
-pub const DEFAULT_MATCAP: Option<u8> = Some(0);
+pub const DEFAULT_LIGHTING: Lighting = Lighting::Matcap(0);
+
+/// ⭐⭐⭐⭐ **COM QUE LUZ o barro é mostrado** — os três modos, num tipo só.
+///
+/// ⛔⛔ **Ele substitui um `Option<u8>`, e a razão é o terceiro estado.** Até
+/// 2026-09-20 «com que luz» tinha DUAS respostas (`None` = o rig do artista ·
+/// `Some(i)` = o matcap `i`), e o report do dono pediu a terceira: *«precisamos
+/// como no blender modos de shaders além do matcap para pintar»*. Um `bool flat`
+/// ao lado do `Option` seria **dois campos que precisam concordar** — o defeito
+/// que o doc do [`ShadeRaw::lighting`] já condena por escrito, e que admitiria
+/// o estado sem sentido *«plano E matcap 3»*.
+///
+/// ⚠️ **E os três são o MESMO eixo, não três features:** cada um responde
+/// *«de onde vem a luz?»* — de lado nenhum · das lâmpadas do documento · do
+/// olho. É a separação que o Blender faz entre *Lighting* e *Color*, e o eixo
+/// da COR desta casa é a cor por vértice, que desde a mesma data **sobrevive
+/// aos três** (`mesh.wgsl`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum Lighting {
+    /// **SEM LUZ** — o albedo cru (o barro × a cor pintada).
+    ///
+    /// ⭐ É o modo em que um pintor JULGA a cor: com sombreamento, a mesma tinta
+    /// lê-se mais escura na parte escura da luz, e escolher cor assim é escolher
+    /// contra a iluminação. ⚠️ **Com a peça por pintar ele mostra o barro
+    /// CHAPADO** — uma silhueta sem forma —, e isso é a resposta certa e não um
+    /// defeito: *não há forma sem luz*.
+    Flat,
+    /// **O RIG DO ARTISTA** — a luz do documento, a mesma que acende a tinta 2D
+    /// ao lado (`ph2d-light`).
+    #[default]
+    Rig,
+    /// **A LUZ DO OLHO** — o matcap `i` de [`MATCAPS`], que é sombreamento
+    /// função apenas da normal em espaço de vista.
+    Matcap(u8),
+}
+
+impl Lighting {
+    /// **QUE IMAGEM DE MATCAP ESTE MODO PRECISA** — a pergunta que a CPU faz
+    /// para residir a textura, e a única que ela faz sobre este tipo.
+    ///
+    /// ⚠️ **Uma porta e não um `matches!` no sítio de uso:** o `ensure_matcap`
+    /// e o painel perguntam o mesmo, e duas cópias divergiriam no dia do quarto
+    /// modo.
+    #[must_use]
+    pub const fn matcap_index(self) -> Option<u8> {
+        match self {
+            Self::Matcap(i) => Some(i),
+            Self::Flat | Self::Rig => None,
+        }
+    }
+}
 
 /// **COMO O BARRO É MOSTRADO** — as opções de vista, num tipo só.
 ///
@@ -149,14 +199,9 @@ pub const DEFAULT_MATCAP: Option<u8> = Some(0);
 pub struct Shade {
     /// Quanto a curvatura escurece a fresta e clareia a crista.
     pub cavity: f32,
-    /// **Com que luz** — `None` é o RIG DO ARTISTA (a luz do documento, a mesma
-    /// que acende a tinta ao lado); `Some(i)` é o matcap `i` de [`MATCAPS`], a
-    /// luz do OLHO.
-    ///
-    /// ⚠️ `Option` e não um índice com `0` reservado: *"nenhum matcap"* não é um
-    /// matcap, e um sentinela obrigaria todo leitor a saber disso. A conversão
-    /// para o sentinela do uniform acontece **uma vez**, no [`ShadeRaw::pack`].
-    pub matcap: Option<u8>,
+    /// **Com que luz** — ver [`Lighting`]. A conversão para a escada do uniform
+    /// acontece **uma vez**, no [`ShadeRaw::pack`].
+    pub lighting: Lighting,
     /// **Quanto do AO assado entra.** `0` = o barro sem oclusão, e é o default:
     /// um canal que nem foi assado não pode escurecer nada.
     ///
@@ -209,11 +254,22 @@ impl Default for Shade {
             ao: DEFAULT_AO_STRENGTH,
             ssao: DEFAULT_SSAO_STRENGTH,
             sss: crate::sss::SssParams::default(),
-            matcap: DEFAULT_MATCAP,
+            lighting: DEFAULT_LIGHTING,
             wireframe: false,
         }
     }
 }
+
+/// **A ESCADA DA LUZ, como o device a lê** — e ela é escrita **duas vezes de
+/// propósito**: aqui e no `mesh.wgsl`, porque um uniform não partilha
+/// constantes com Rust. ⚠️ O gate `a_escada_da_luz_concorda_com_o_shader` lê o
+/// WGSL por [`include_str!`] e exige os mesmos três números — *duas cópias sem
+/// gate divergem na primeira wave que acrescentar um modo*.
+pub const LIGHTING_FLAT: u32 = 0;
+/// Ver [`LIGHTING_FLAT`].
+pub const LIGHTING_RIG: u32 = 1;
+/// Ver [`LIGHTING_FLAT`]. O matcap `i` é `LIGHTING_FIRST_MATCAP + i`.
+pub const LIGHTING_FIRST_MATCAP: u32 = 2;
 
 /// As opções, como o fragment shader as lê.
 #[repr(C)]
@@ -221,12 +277,19 @@ impl Default for Shade {
 pub struct ShadeRaw {
     /// Quanto da cavidade entra. `0` = o barro liso da W3, **ao byte**.
     pub cavity: f32,
-    /// **Qual matcap** — `0` é o rig do artista, `n` é o material `n − 1`.
+    /// **COM QUE LUZ**, na escada que o shader lê: `0` = [`Lighting::Flat`] ·
+    /// `1` = [`Lighting::Rig`] · `2 + i` = o matcap `i`.
     ///
-    /// ⚠️ O sentinela existe SÓ aqui, na fronteira do device: um uniform não tem
-    /// `Option`, e a alternativa (um segundo `u32` dizendo *"tem matcap?"*) seria
+    /// ⚠️ A escada existe SÓ aqui, na fronteira do device: um uniform não tem
+    /// enum, e a alternativa (um segundo `u32` dizendo *«tem matcap?»*) seriam
     /// dois campos que precisam concordar.
-    pub matcap: u32,
+    ///
+    /// ⛔⛔ **E o `0` MUDOU de significado em 2026-09-20** (era o rig): quem
+    /// esquecer um sítio na conversão produz o modo **PLANO**, que é visível na
+    /// primeira olhada — *uma escada nova cujo valor esquecido é silencioso é
+    /// uma escada que ninguém conserta*. As três constantes vivem no
+    /// `mesh.wgsl` ao lado do `if` que as lê.
+    pub lighting: u32,
     /// Quanto do AO assado entra. `0` = byte-idêntico ao barro sem o canal.
     ///
     /// ⚠️ **Este é um dos dois `f32` que o `_pad` reservava** dizendo *"é aqui
@@ -288,16 +351,19 @@ impl ShadeRaw {
     /// sairia com a cor invertida. Clampar no shader seria a segunda cópia da
     /// mesma regra, e ela divergiria no dia em que o painel chegasse.
     ///
-    /// ⚠️ **E o índice do matcap é clampado pelo MESMO motivo:** um `Some(9)` numa
-    /// tabela de seis cairia no `default` do `switch` do shader — que é um
-    /// material legítimo — e o artista veria a cera vermelha ao pedir algo que
-    /// não existe, sem nada dizendo que o pedido era inválido.
+    /// ⚠️ **E o índice do matcap é clampado pelo MESMO motivo:** um `Matcap(9)`
+    /// numa tabela de seis cairia num material que não é o pedido, e o artista
+    /// veria outra cera sem nada dizendo que o pedido era inválido.
     #[must_use]
     pub fn pack(shade: Shade) -> Self {
         let n = u8::try_from(MATCAPS.len()).unwrap_or(u8::MAX);
         Self {
             cavity: shade.cavity.clamp(0.0, 1.0),
-            matcap: shade.matcap.map_or(0, |i| u32::from(i.min(n - 1)) + 1),
+            lighting: match shade.lighting {
+                Lighting::Flat => LIGHTING_FLAT,
+                Lighting::Rig => LIGHTING_RIG,
+                Lighting::Matcap(i) => LIGHTING_FIRST_MATCAP + u32::from(i.min(n - 1)),
+            },
             // Clampado pela mesma razão da cavidade: o device não tem opinião, e
             // um `ao` de 3 faria o `mix` extrapolar para além do canal.
             ao: shade.ao.clamp(0.0, 1.0),

@@ -1188,15 +1188,16 @@ fn every_matcap_chip_arms_its_own_material() {
         let Sculpt3dIntent::SetUi(got) = only_intent("matcap") else {
             panic!("o chip {i} enfileirou o tipo errado de intent");
         };
-        let want = match i {
-            0 => None,
-            k => Some(u8::try_from(k - 1).expect("cabe")),
-        };
-        assert_eq!(got.matcap, want, "o chip {i} armou {:?}", got.matcap);
+        // ⚠️ **A escada vem da PORTA** (`LightMode::from_option_index`) e não de
+        // um `match` escrito aqui: uma segunda cópia da aritmética divergiria no
+        // dia do quarto modo — e o quarto modo foi 2026-09-20, quando o PLANO
+        // entrou à frente do rig.
+        let want = ph2d_panel_sculpt3d::state::LightMode::from_option_index(i);
+        assert_eq!(got.lighting, want, "o chip {i} armou {:?}", got.lighting);
         assert_eq!(
             got,
             Sculpt3dUi {
-                matcap: want,
+                lighting: want,
                 ..base
             },
             "o chip {i} mexeu num campo que não é dele"
@@ -1398,9 +1399,17 @@ fn the_rows_that_read_the_rig_vanish_under_a_matcap() {
         ids::SCULPT3D_LIGHT_ELEV,
         ids::SCULPT3D_ENV,
     ];
-    for (matcap, want) in [(None, true), (Some(0), false), (Some(3), false)] {
+    // ⚠️ **E o modo PLANO esconde as lâmpadas pela razão levada ao extremo:**
+    // ali não há luz nenhuma a apontar. Ele entrou na tabela em 2026-09-20.
+    use ph2d_panel_sculpt3d::state::LightMode;
+    for (lighting, want) in [
+        (LightMode::Rig, true),
+        (LightMode::Flat, false),
+        (LightMode::Matcap(0), false),
+        (LightMode::Matcap(3), false),
+    ] {
         let (mut host, mut state) = arrange(Sculpt3dUi {
-            matcap,
+            lighting,
             ..Sculpt3dUi::default()
         });
         let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
@@ -1408,7 +1417,7 @@ fn the_rows_that_read_the_rig_vanish_under_a_matcap() {
             assert_eq!(
                 painted.iter().any(|(pid, _)| *pid == id),
                 want,
-                "com matcap {matcap:?} a row {id:?} devia {}",
+                "com a luz {lighting:?} a row {id:?} devia {}",
                 if want { "estar lá" } else { "sumir" }
             );
         }
@@ -1756,7 +1765,7 @@ fn the_scatter_track_follows_the_channel_it_belongs_to() {
     // fixtura que chega ao estado por omissao inverte de sentido no dia em que o default se move.*
     let mut ui = Sculpt3dUi {
         sss: 0.0,
-        matcap: None,
+        lighting: ph2d_panel_sculpt3d::state::LightMode::Rig,
         ..Sculpt3dUi::default()
     };
     assert!(

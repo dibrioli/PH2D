@@ -59,7 +59,7 @@ impl Sculpt3dScene {
                 cloth_filter_orientation: self.tecido.orientation,
                 cloth_filter: self.tecido.props,
                 cloth_filter_axes: self.tecido.axes,
-                matcap: self.matcap,
+                lighting: luz_para_o_painel(self.lighting),
                 alpha_preview: self.alpha_preview,
                 wireframe: self.wireframe,
                 wire_grade: self.wire_grade,
@@ -207,7 +207,7 @@ impl Sculpt3dScene {
         self.tecido.orientation = ui.cloth_filter_orientation;
         self.tecido.props = ui.cloth_filter;
         self.tecido.axes = ui.cloth_filter_axes;
-        self.matcap = ui.matcap;
+        self.lighting = luz_do_painel(ui.lighting);
         self.alpha_preview = ui.alpha_preview;
         self.wireframe = ui.wireframe;
         self.wire_grade = ui.wire_grade;
@@ -557,3 +557,41 @@ impl Sculpt3dScene {
 #[cfg(test)]
 #[path = "panel_tests.rs"]
 mod tests;
+
+/// ⭐⭐ **A PONTE entre os dois tipos de «com que luz»** — o do painel
+/// ([`ph2d_panel_sculpt3d::state::LightMode`]) e o do device
+/// ([`ph2d_mesh_render::Lighting`]).
+///
+/// ⛔⛔ **Os dois existem porque o painel NÃO conhece o renderizador** (ele é UI
+/// e não arrasta o `wgpu`), logo o conceito está escrito duas vezes de
+/// propósito. *O que torna a duplicação honesta é o gate de IDA-E-VOLTA*
+/// (`panel_luz_tests`): toda luz do device resolve para um modo do painel e
+/// volta ao mesmo, e todo modo do painel é alcançável — sem isso, um terceiro
+/// modo nasceria de um lado só e o chip escolheria outra coisa em silêncio.
+pub(crate) fn luz_para_o_painel(
+    l: ph2d_mesh_render::Lighting,
+) -> ph2d_panel_sculpt3d::state::LightMode {
+    use ph2d_panel_sculpt3d::state::LightMode;
+    match l {
+        ph2d_mesh_render::Lighting::Flat => LightMode::Flat,
+        ph2d_mesh_render::Lighting::Rig => LightMode::Rig,
+        ph2d_mesh_render::Lighting::Matcap(i) => LightMode::Matcap(i),
+    }
+}
+
+/// A volta — ver [`luz_para_o_painel`].
+pub(crate) fn luz_do_painel(
+    l: ph2d_panel_sculpt3d::state::LightMode,
+) -> ph2d_mesh_render::Lighting {
+    use ph2d_panel_sculpt3d::state::LightMode;
+    match l {
+        LightMode::Flat => ph2d_mesh_render::Lighting::Flat,
+        LightMode::Rig => ph2d_mesh_render::Lighting::Rig,
+        LightMode::Matcap(i) => ph2d_mesh_render::Lighting::Matcap(i),
+    }
+}
+
+/// **A PONTE DA LUZ, nos dois sentidos** — ver [`panel_luz_tests`].
+#[cfg(test)]
+#[path = "panel_luz_tests.rs"]
+mod panel_luz_tests;

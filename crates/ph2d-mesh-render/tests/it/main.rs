@@ -6,6 +6,11 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+/// **O DEVICE DE TESTE, numa porta só** — ver [`device_de_teste`]. ⛔ Ele
+/// existe porque quatro cópias pediam o PISO do WebGPU enquanto o produto pede
+/// os limites do adaptador, e dezasseis gates ficaram vermelhos de uma vez.
+mod device_de_teste;
+
 mod camera_uniform_layout;
 mod gpu_render;
 mod gpu_viewport;

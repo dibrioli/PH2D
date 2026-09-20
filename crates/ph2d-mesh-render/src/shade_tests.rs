@@ -2,40 +2,76 @@
 
 use super::*;
 
-/// **O rig é o `0`, e nenhum matcap pousa nele.**
+/// ⭐⭐⭐ **A ESCADA DA LUZ É EXACTA: plano `0`, rig `1`, matcap `2 + i`.**
 ///
-/// ⚠️ É o gate do sentinela: o shader lê `matcap > 0` para escolher o caminho,
-/// então um material que empacotasse em zero seria *invisível* — o artista
-/// escolheria o `Clay Warm` e veria a luz do documento, sem nada dizendo por quê.
+/// ⛔⛔ **Este gate chamava-se `the_rig_is_zero_and_no_matcap_lands_there` e a
+/// premissa dele MORREU em 2026-09-20**, por ordem do dono (*«precisamos como no
+/// blender modos de shaders além do matcap para pintar»*): o `0` deixou de ser o
+/// rig e passou a ser o modo PLANO. A morte está à vista no diff, que é a lei
+/// desta casa para uma premissa que cai.
 ///
-/// ⚠️ **A premissa do rig é DECLARADA, e ela já foi herdada em silêncio uma
-/// vez:** esta linha era `Shade::default()`, o que só dizia *"o rig é zero"*
-/// enquanto o default FOSSE o rig. Quando ele virou o matcap do SculptGL
-/// (2026-08-10) o gate ficou vermelho — a sorte de ele ter sido escrito com um
-/// `assert_eq` e não com um `assert_ne`. Uma fixture que chega ao estado pelo
-/// default inverte de sentido no dia em que o default anda, e continua verde
-/// testando o oposto.
+/// ⚠️ **E o `0` ser o PLANO é deliberado:** quem esquecer um sítio na conversão
+/// produz uma peça sem luz, que se vê na primeira olhada — *um valor esquecido
+/// que é silencioso é um defeito que ninguém conserta*.
+///
+/// ⚠️ **A premissa do rig continua DECLARADA e não herdada do default** (a
+/// lição que este gate já pagou uma vez: uma fixtura que chega ao estado pelo
+/// `Shade::default()` inverte de sentido no dia em que o default anda).
 #[test]
-fn the_rig_is_zero_and_no_matcap_lands_there() {
+fn a_escada_da_luz_e_exacta_e_o_zero_e_o_plano() {
     assert_eq!(
         ShadeRaw::pack(Shade {
-            matcap: None,
+            lighting: Lighting::Flat,
             ..Shade::default()
         })
-        .matcap,
-        0
+        .lighting,
+        LIGHTING_FLAT
+    );
+    assert_eq!(
+        ShadeRaw::pack(Shade {
+            lighting: Lighting::Rig,
+            ..Shade::default()
+        })
+        .lighting,
+        LIGHTING_RIG
     );
     for i in 0..MATCAPS.len() {
         let packed = ShadeRaw::pack(Shade {
-            matcap: Some(u8::try_from(i).expect("a tabela cabe num u8")),
+            lighting: Lighting::Matcap(u8::try_from(i).expect("a tabela cabe num u8")),
             ..Shade::default()
         });
-        assert_ne!(
-            packed.matcap, 0,
-            "o material {i} empacotou como \"sem matcap\""
+        assert_eq!(packed.lighting, LIGHTING_FIRST_MATCAP + i as u32);
+        // O CONTROLO: nenhum material pousa num dos dois degraus fixos, senão
+        // ele seria invisível — o artista escolheria uma cera e veria outra luz.
+        assert!(
+            packed.lighting != LIGHTING_FLAT && packed.lighting != LIGHTING_RIG,
+            "o material {i} empacotou como um dos modos SEM matcap"
         );
-        assert_eq!(packed.matcap, i as u32 + 1);
     }
+}
+
+/// ⭐⭐ **A ESCADA É A MESMA NO SHADER** — e ela está escrita duas vezes de
+/// propósito, porque um uniform não partilha constantes com Rust.
+///
+/// ⛔ *Duas cópias sem gate divergem na primeira wave que acrescentar um modo*,
+/// e o modo de falha é MUDO: o artista escolhe «plano» e vê um matcap.
+#[test]
+fn a_escada_da_luz_concorda_com_o_shader() {
+    const WGSL: &str = include_str!("shaders/mesh.wgsl");
+    for (nome, valor) in [
+        ("LIGHTING_FLAT", LIGHTING_FLAT),
+        ("LIGHTING_RIG", LIGHTING_RIG),
+        ("LIGHTING_FIRST_MATCAP", LIGHTING_FIRST_MATCAP),
+    ] {
+        let agulha = format!("const {nome}: u32 = {valor}u;");
+        assert!(
+            WGSL.contains(&agulha),
+            "o shader não declara `{agulha}` — as duas escadas divergiram"
+        );
+    }
+    // O CONTROLO da própria extracção: uma agulha que o shader NÃO tem tem de
+    // falhar, senão este gate ficaria verde sobre um ficheiro vazio.
+    assert!(!WGSL.contains("const LIGHTING_FLAT: u32 = 99u;"));
 }
 
 /// **Um índice fora da tabela é PRESO no último, nunca deixado passar.**
@@ -50,17 +86,17 @@ fn the_rig_is_zero_and_no_matcap_lands_there() {
 #[test]
 fn an_index_past_the_table_is_pinned_to_the_last_material() {
     let last = ShadeRaw::pack(Shade {
-        matcap: Some(u8::try_from(MATCAPS.len() - 1).expect("cabe")),
+        lighting: Lighting::Matcap(u8::try_from(MATCAPS.len() - 1).expect("cabe")),
         ..Shade::default()
     });
     for i in [MATCAPS.len() as u8, 200, u8::MAX] {
         assert_eq!(
             ShadeRaw::pack(Shade {
-                matcap: Some(i),
+                lighting: Lighting::Matcap(i),
                 ..Shade::default()
             })
-            .matcap,
-            last.matcap,
+            .lighting,
+            last.lighting,
             "o índice {i} escapou da tabela"
         );
     }

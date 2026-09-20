@@ -159,23 +159,30 @@ fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f3
     // vizinho; um id sem material seria um chip anônimo que despacha. Cortar
     // pelo mínimo faz das duas listas uma só, e o gate do shell é quem exige
     // que elas tenham o mesmo tamanho de verdade.
+    // ⚠️ **DUAS opções antes dos materiais** desde 2026-09-20 (o plano e o rig),
+    // e a aritmética vive na porta [`crate::state::LightMode::option_index`] —
+    // aqui fica só quantos materiais cabem.
+    const FIXOS: usize = 2;
     let n = snap
         .matcap_keys
         .len()
-        .min(crate::ids::SCULPT3D_MATCAP.len() - 1);
+        .min(crate::ids::SCULPT3D_MATCAP.len() - FIXOS);
     // ⚠️ Os nomes dos materiais chegam como CHAVES (a `ph2d-mesh-render` desenha pixels e não
     // conhece a tabela de strings) — quem os resolve é aqui, ao lado do «Rig», que já era chave.
-    let mut labels: Vec<&str> = vec![tr("panel.sculpt3d.matcap.rig")];
+    let mut labels: Vec<&str> = vec![
+        tr("panel.sculpt3d.matcap.flat"),
+        tr("panel.sculpt3d.matcap.rig"),
+    ];
     labels.extend(snap.matcap_keys[..n].iter().map(|k| tr(k)));
-    let options = &crate::ids::SCULPT3D_MATCAP[..=n];
-    let selected = snap.ui.matcap.map_or(0, |i| usize::from(i) + 1);
+    let options = &crate::ids::SCULPT3D_MATCAP[..n + FIXOS];
+    let selected = snap.ui.lighting.option_index();
     let mut y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.matcap"),
         crate::ids::SCULPT3D_SEC_SHADING,
         options,
         &labels,
-        selected.min(n),
+        selected.min(n + FIXOS - 1),
         x,
         w,
         y,

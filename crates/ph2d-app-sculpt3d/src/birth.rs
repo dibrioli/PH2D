@@ -63,7 +63,7 @@ impl Sculpt3dScene {
             // **três respostas para uma pergunta, e a que ganhava era a que
             // ninguém tinha escrito de propósito**, porque é a shell quem passa
             // o campo ao `Shade`. O anúncio sobreviveu ao fato.
-            matcap: ph2d_mesh_render::DEFAULT_MATCAP,
+            lighting: ph2d_mesh_render::DEFAULT_LIGHTING,
             wireframe: false,
             wire_grade: false,
             brush: Brush::default(),

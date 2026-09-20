@@ -94,13 +94,15 @@ pub const SCULPT3D_BAKE_SPRITE: NodeId = hash_node_id("sculpt3d.bake_sprite");
 /// forma de o artista aprender que ele não funciona.
 pub const SCULPT3D_ALPHA_SPRITE: NodeId = hash_node_id("sculpt3d.alpha_sprite");
 
-/// **COM QUE LUZ o barro é mostrado** — a primeira opção é o RIG DO ARTISTA e as
-/// outras são os matcaps de [`ph2d_mesh_render::MATCAPS`].
+/// **COM QUE LUZ o barro é mostrado** — o modo PLANO, o RIG DO ARTISTA, e os
+/// matcaps de [`ph2d_mesh_render::MATCAPS`].
 ///
-/// ⚠️ O tamanho é `MATCAPS.len() + 1`, e o `+ 1` é o rig — que **não** é um
-/// matcap. A igualdade das duas contagens é gateada: um chip a mais pinta uma
-/// opção que o shader não tem, um a menos deixa um material inalcançável.
-pub const SCULPT3D_MATCAP: [NodeId; 11] = [
+/// ⚠️ O tamanho é `MATCAPS.len() + 2`, e os `+ 2` são o plano e o rig — que
+/// **não** são matcaps. ⛔ **Era `+ 1` até 2026-09-20**, e a premissa morreu por
+/// ordem do dono (*«modos de shaders além do matcap para pintar»*): a igualdade
+/// continua gateada, e um chip a mais pinta uma opção que o shader não tem.
+pub const SCULPT3D_MATCAP: [NodeId; 12] = [
+    hash_node_id("sculpt3d.matcap.flat"),
     hash_node_id("sculpt3d.matcap.rig"),
     hash_node_id("sculpt3d.matcap.0"),
     hash_node_id("sculpt3d.matcap.1"),

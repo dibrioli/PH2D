@@ -93,6 +93,14 @@ pub(crate) fn announce() {
          [sculpt3d]        -> A malha adensa debaixo do pincel e esta marca sai com a\n\
          [sculpt3d]           borda LIMPA. Compare as duas lado a lado.\n\
          [sculpt3d]\n\
+         [sculpt3d]    (4-bis) COM QUE LUZ: no painel, a fileira `Light` (secao Shading,\n\
+         [sculpt3d]        role a roda) tem agora tres familias -- `Flat`, `Rig` e os\n\
+         [sculpt3d]        materiais. Escolha `Flat`.\n\
+         [sculpt3d]        -> A peca fica SEM SOMBRA e a cor que voce escolheu e' a cor que\n\
+         [sculpt3d]           voce ve'. E' o modo de JULGAR a cor: com luz, a mesma tinta\n\
+         [sculpt3d]           parece mais escura onde a luz e' escura.\n\
+         [sculpt3d]        -> Volte a um material e veja a cor acender com a forma.\n\
+         [sculpt3d]\n\
          [sculpt3d]    (5) No painel, na fileira de ferramentas, escolha `Blur` e arraste\n\
          [sculpt3d]        POR CIMA da fronteira entre a cor e o barro.\n\
          [sculpt3d]        -> Ela ESBATE: a cor de cada ponto vai ficando a media da\n\
@@ -109,7 +117,9 @@ pub(crate) fn announce() {
          [sculpt3d]    COMO SABER QUE DEU ERRADO: se no (2) a peca nao mudar de cor\n\
          [sculpt3d]    nenhuma, confirme que as pistas de cor nao estao todas em 1 (branco\n\
          [sculpt3d]    sobre barro claro nao se ve). Se o `Ctrl+Z` do (7) nao devolver a\n\
-         [sculpt3d]    tinta, ou se o (4) nao mudar nada na borda, PARE e reporte."
+         [sculpt3d]    tinta, ou se o (4) nao mudar nada na borda, PARE e reporte.\n\
+         [sculpt3d]    Se a cor SUMIR ao trocar de luz no (4-bis), PARE: ate' 20/09 o\n\
+         [sculpt3d]    material de matcap descartava a tinta, e era esse o defeito."
     );
 }
 

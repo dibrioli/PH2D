@@ -21,25 +21,10 @@ const W: u32 = 128;
 const H: u32 = 128;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
-fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
-    let instance = wgpu::Instance::default();
-    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-        power_preference: wgpu::PowerPreference::HighPerformance,
-        compatible_surface: None,
-        force_fallback_adapter: false,
-    }))
-    .ok()?;
-    let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-        label: Some("ph2d-mesh test device"),
-        required_features: wgpu::Features::empty(),
-        required_limits: wgpu::Limits::default(),
-        experimental_features: wgpu::ExperimentalFeatures::default(),
-        memory_hints: wgpu::MemoryHints::Performance,
-        trace: wgpu::Trace::Off,
-    }))
-    .expect("request_device");
-    Some((device, queue))
-}
+/// O device de teste — **a porta única desta suíte**
+/// ([`super::device_de_teste`]): quatro cópias pediam o piso do WebGPU
+/// enquanto o produto pede os limites do adaptador.
+use super::device_de_teste::device;
 
 /// Rasteriza `mesh` com `camera` e devolve os pixels RGBA (sem padding).
 /// **O `Shade` DO CAMINHO DO RIG** — o default do app com o matcap DESARMADO.
@@ -47,7 +32,7 @@ fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
 /// ⚠️ **Ela existe porque uma premissa foi herdada em silêncio por dezoito
 /// sítios.** Esta suíte julga *a luz do DOCUMENTO*: as lâmpadas, o ambiente, o
 /// SSS, o AO. O fragment escolhe o caminho do matcap ANTES de tudo isso
-/// (`if shade.matcap > 0u`), então um `Shade::default()` cujo matcap esteja
+/// (`if shade.lighting >= LIGHTING_FIRST_MATCAP`), então um `Shade::default()` cuja luz esteja
 /// armado faz cada um desses gates medir uma IMAGEM — e foi o que aconteceu
 /// quando o default do app virou o `Studio` (2026-08-10): doze vermelhos de uma
 /// vez, nenhum deles sobre um defeito do produto.
@@ -55,13 +40,13 @@ fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
 /// ⚠️ **Espalhar disto em vez de do `Shade::default()` é o que impede o próximo
 /// gate de nascer sem a premissa.** Um campo escrito explicitamente ainda vence
 /// (é a regra do `..`), então o gate do matcap continua podendo pedir
-/// `matcap: Some(id)` por esta mesma porta.
+/// `lighting: Lighting::Matcap(id)` por esta mesma porta.
 ///
 /// *Uma fixture que chega ao estado pelo DEFAULT inverte de sentido no dia em
 /// que o default anda, e segue verde testando o oposto.*
 fn rig_shade() -> ph2d_mesh_render::Shade {
     ph2d_mesh_render::Shade {
-        matcap: None,
+        lighting: ph2d_mesh_render::Lighting::Rig,
         ..ph2d_mesh_render::Shade::default()
     }
 }
@@ -128,7 +113,7 @@ fn render_using_rig_cavity(
             // ⚠️ **A PREMISSA DESTE CAMINHO, DECLARADA — e ela já foi herdada em
             // silêncio.** Tudo abaixo desta porta julga *a luz do DOCUMENTO*: as
             // lâmpadas, o ambiente, o SSS, o AO. O fragment escolhe o caminho do
-            // matcap ANTES de tudo isso (`if shade.matcap > 0u`), então um
+            // matcap ANTES de tudo isso (`if shade.lighting >= LIGHTING_FIRST_MATCAP`), então um
             // default que seja matcap faz os doze gates de rig medirem uma
             // IMAGEM — e foi exatamente o que aconteceu quando o default do app
             // virou o `Studio` em 2026-08-10: doze vermelhos de uma vez, nenhum
@@ -139,7 +124,7 @@ fn render_using_rig_cavity(
             // terceiro nascer sem. *Uma fixture que chega ao estado pelo default
             // inverte de sentido no dia em que o default anda, e segue verde
             // testando o oposto.*
-            matcap: None,
+            lighting: ph2d_mesh_render::Lighting::Rig,
             ..rig_shade()
         },
     )
@@ -3260,7 +3245,9 @@ fn the_matcap_lights_the_sculpture_from_the_top_of_its_image() {
         &camera,
         &LightRig::default(),
         ph2d_mesh_render::Shade {
-            matcap: Some(u8::try_from(id).expect("a tabela cabe num u8")),
+            lighting: ph2d_mesh_render::Lighting::Matcap(
+                u8::try_from(id).expect("a tabela cabe num u8"),
+            ),
             // ⚠️ Os dois AOs FORA, e não é cosmético: eles escurecem por FORMA e
             // esta cena é uma esfera, cuja parte de baixo é a que mais oclui —
             // deixá-los ligados faria o gate passar mesmo com a imagem
@@ -3280,5 +3267,153 @@ fn the_matcap_lights_the_sculpture_from_the_top_of_its_image() {
         top > bottom * 2.0,
         "o topo da escultura ({top:.1}) tinha de ser MUITO mais claro que a base \
          ({bottom:.1}) — se estão trocados, o `matcap_uv` está de cabeça para baixo"
+    );
+}
+
+/// ⭐⭐⭐⭐ **A COR PINTADA SOBREVIVE AOS TRÊS MODOS DE LUZ** — o report do dono de
+/// 2026-09-20: *«esse material matcap atrapalha a cor. nada pode ser pintado»*.
+///
+/// ⛔⛔ **O defeito era de UMA LINHA e estava no último passo:** o ramo do matcap
+/// devolvia a imagem dele e **nunca tocava no `vcolor`** — com o matcap ligado
+/// **de fábrica**, a tinta existia no canal, viajava até ao device e era
+/// descartada. *Nenhum gate desta crate o via, porque nenhum desenhava uma peça
+/// PINTADA.*
+///
+/// ⚠️ **A régua é o PIXEL e não o shader:** um censo textual sobre o WGSL
+/// afirmaria que a multiplicação está escrita, nunca que ela chega à tela.
+#[test]
+#[ignore = "precisa de adapter"]
+fn a_cor_pintada_sobrevive_aos_tres_modos_de_luz() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    let mut mesh = shapes::uv_sphere(40, 56, 1.0);
+    let camera = camera_for(&mesh);
+
+    // A peça POR PINTAR e a mesma peça de VERMELHO — o par que separa «a lei
+    // chega» de «a lei está escrita».
+    // ⚠️ **`colors_mut` é quem INSTALA o plano** — uma malha nasce sem ele, e
+    // `colors()` devolve `None` (é a mesma lei do canal da máscara). Pedir o
+    // plano antes de o tocar leria «não há cor» sobre uma peça impecável.
+    let branca: Vec<[f32; 3]> = mesh.colors_mut().to_vec();
+    let vermelha: Vec<[f32; 3]> = vec![[1.0, 0.0, 0.0]; mesh.vert_count()];
+
+    for luz in [
+        ph2d_mesh_render::Lighting::Flat,
+        ph2d_mesh_render::Lighting::Rig,
+        ph2d_mesh_render::Lighting::Matcap(0),
+    ] {
+        let shade = ph2d_mesh_render::Shade {
+            lighting: luz,
+            ..rig_shade()
+        };
+        mesh.colors_mut().copy_from_slice(&branca);
+        renderer.upload_at(&device, &queue, 0, &mesh, &[]);
+        let a = render_using_rig_shade(
+            &device,
+            &queue,
+            &mut renderer,
+            &camera,
+            &LightRig::default(),
+            shade,
+        );
+        // ⚠️ **O upload é POR COR, e é o passo que faz este gate medir o
+        // device:** o renderizador guarda os buffers por vértice, e sem a
+        // segunda subida ele desenharia a peça branca duas vezes — *um gate que
+        // não carrega o que mudou compara duas imagens da mesma coisa*.
+        mesh.colors_mut().copy_from_slice(&vermelha);
+        renderer.upload_at(&device, &queue, 0, &mesh, &[]);
+        let b = render_using_rig_shade(
+            &device,
+            &queue,
+            &mut renderer,
+            &camera,
+            &LightRig::default(),
+            shade,
+        );
+        // O centro da peça, onde há barro em todos os modos.
+        let (x, y) = (W / 2, H / 2);
+        let i = ((y * W + x) * 4) as usize;
+        let (r0, g0) = (f32::from(a[i]), f32::from(a[i + 1]));
+        let (r1, g1) = (f32::from(b[i]), f32::from(b[i + 1]));
+        assert!(
+            r0 > 8.0,
+            "{luz:?}: o centro da peça POR PINTAR está preto — a fixtura não contém o fenómeno"
+        );
+        // Pintar de vermelho tem de APAGAR o verde: é a multiplicação a chegar.
+        assert!(
+            g1 < g0 * 0.5,
+            "{luz:?}: o verde leu {g1} contra {g0} da peça por pintar — a cor NÃO chega \
+             a este modo, e o artista pinta sem ver"
+        );
+        assert!(
+            r1 > g1 * 2.0,
+            "{luz:?}: o pixel não ficou vermelho (r {r1}, g {g1})"
+        );
+
+        // ⛔⛔⛔ **E A METADE QUE DIZ O QUE CADA MODO É** — sem ela, uma mutação
+        // que apaga o ramo do PLANO (e o faz cair no rig) SOBREVIVE: a cor
+        // chega nos dois, logo a régua de cima não os distingue.
+        //
+        // ⭐ *Plano quer dizer SEM SOMBREADO*: dois pontos da peça com normais
+        // muito diferentes leem o MESMO valor. No rig e no matcap eles não
+        // podem ler o mesmo — é a forma que a luz revela.
+        let centro = f32::from(b[i]);
+        // Um ponto a meio caminho da silhueta: normal virada ~45°.
+        let j = ((y * W + x + W / 5) * 4) as usize;
+        let flanco = f32::from(b[j]);
+        let iguais = (centro - flanco).abs() <= 1.0;
+        assert_eq!(
+            iguais,
+            luz == ph2d_mesh_render::Lighting::Flat,
+            "{luz:?}: centro {centro} contra flanco {flanco} — o modo PLANO tem de \
+             ler IGUAL (não há forma sem luz) e os outros dois têm de ler DIFERENTE"
+        );
+    }
+}
+
+/// ⭐⭐ **E COM A PEÇA POR PINTAR O MATCAP É BYTE-IDÊNTICO** — o controlo da lei
+/// de cima, e é ele que prova que a cura não mexeu na imagem que já shipava.
+///
+/// ⚠️ `vcolor = 1` ⇒ `lit * 1.0` é `lit` **ao bit** em `f32`, e é por isso que
+/// esta wave não tem golden a re-gravar.
+#[test]
+#[ignore = "precisa de adapter"]
+fn com_a_peca_por_pintar_a_cura_da_cor_e_byte_identica() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    let mesh = shapes::uv_sphere(40, 56, 1.0);
+    let camera = camera_for(&mesh);
+    renderer.upload_at(&device, &queue, 0, &mesh, &[]);
+    let shade = ph2d_mesh_render::Shade {
+        lighting: ph2d_mesh_render::Lighting::Matcap(0),
+        ..rig_shade()
+    };
+    let a = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut renderer,
+        &camera,
+        &LightRig::default(),
+        shade,
+    );
+    let b = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut renderer,
+        &camera,
+        &LightRig::default(),
+        shade,
+    );
+    assert_eq!(a, b, "o desenho do matcap deixou de ser determinístico");
+    // E o CONTROLO de que a cena tem o que mostrar.
+    assert!(
+        coverage(&a) > 0.2,
+        "a peça não está na tela: o gate mediria dois fundos pretos"
     );
 }

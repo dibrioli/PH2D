@@ -72,7 +72,7 @@ struct Shade {
     // ⚠️ Um `u32` no uniform e não uma permutação de pipeline: trocar de material
     // é um clique, e recompilar um pipeline por clique é meia-tela de trava. É a
     // mesma decisão que a cavidade já tomou, pelo motivo vizinho.
-    matcap: u32,
+    lighting: u32,
     // **QUANTO DO AO ASSADO ENTRA.** `0` = o barro sem oclusão, **ao byte** — e
     // é o default, porque um canal que nem foi assado não pode escurecer nada.
     //
@@ -191,6 +191,18 @@ const PREVIEW_STRENGTH: f32 = 0.45;
 
 // ============================ O MATCAP ============================
 //
+// ⭐⭐⭐⭐ **A ESCADA DA LUZ** — os três modos, e ela é a mesma do
+// `shade.rs` (gate `a_escada_da_luz_concorda_com_o_shader`, que lê ESTE ficheiro
+// por `include_str!`: um uniform não partilha constantes com Rust, e duas
+// cópias sem gate divergem na primeira wave que acrescentar um modo).
+//
+// ⛔ **O `0` é o PLANO e não o rig**, e a escolha é deliberada: quem esquecer um
+// sítio na conversão produz o modo sem luz, que se vê na primeira olhada —
+// *um valor esquecido que é silencioso é um defeito que ninguém conserta*.
+const LIGHTING_FLAT: u32 = 0u;
+const LIGHTING_RIG: u32 = 1u;
+const LIGHTING_FIRST_MATCAP: u32 = 2u;
+
 // **O que um matcap É:** sombreamento que é função APENAS da normal em espaço de
 // vista. A luz viaja com a câmera, então orbitar não muda a leitura da forma — é
 // por isso que todo app de escultura o oferece, e é a razão de ele NÃO ser
@@ -945,7 +957,19 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // **O MATCAP** — a luz do OLHO, e não a do documento. Ele vem ANTES da recusa
     // por rig apagado: ele não usa o rig, então apagar as lâmpadas do card não
     // pode apagá-lo.
-    if (shade.matcap > 0u) {
+    // ⭐⭐⭐⭐ **O MODO PLANO — sem luz nenhuma, o albedo cru** (report do dono,
+    // 2026-09-20: *«precisamos como no blender modos de shaders além do matcap
+    // para pintar»*). É onde a cor que o artista escolheu é a cor que ele vê.
+    //
+    // ⚠️ **Ele vem ANTES de tudo, inclusive da cavidade:** *plano* quer dizer
+    // que nenhuma lei de forma entra — a cavidade é sombreamento derivado da
+    // curvatura, e deixá-la aqui faria a fresta escurecer a tinta exactamente no
+    // modo que existe para a tinta ser julgada sem sombra.
+    if (shade.lighting == LIGHTING_FLAT) {
+        return vec4<f32>(CLAY * in.vcolor, 1.0);
+    }
+
+    if (shade.lighting >= LIGHTING_FIRST_MATCAP) {
         // ⚠️ **O `id` não chega mais aqui, e a ausência é a wave inteira:** a
         // imagem residente É a identidade do matcap. Quem escolhe é o
         // `MeshRenderer::ensure_matcap`, na CPU, reescrevendo a textura quando o
@@ -959,7 +983,18 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         // esta razão que deixa a máscara tingir com a MESMA lei nos dois modos.
         let flat = max(matcap_shade(vec3<f32>(0.0, 0.0, 1.0)), vec3<f32>(FLAT_FLOOR));
         let ratio = lit / flat;
-        var cm = lit * cav_occ;
+        // ⛔⛔⛔ **A COR PINTADA MULTIPLICA A LUZ DO OLHO** — e a ausência disto
+        // era o report do dono de 2026-09-20 (*«esse material matcap atrapalha a
+        // cor. nada pode ser pintado»*): este ramo devolvia a imagem do matcap e
+        // **nunca tocava no `vcolor`**, com o matcap LIGADO de fábrica ⇒ a tinta
+        // existia no canal, viajava até ao device e era **descartada no último
+        // passo**.
+        //
+        // ⚠️ **É a mesma lei do caminho do rig** (`CLAY * in.vcolor`), e não uma
+        // segunda regra: um matcap é luz + material, e a cor por vértice é o
+        // ALBEDO que essa luz ilumina. ⭐ Com `vcolor = 1` (quem não pintou) isto
+        // é `lit` **ao bit** — a peça de sempre desenha como sempre desenhou.
+        var cm = lit * in.vcolor * cav_occ;
         cm = mix(cm, PREVIEW_TINT * ratio * cav_occ, clamp(in.preview, 0.0, 1.0) * PREVIEW_STRENGTH);
         cm = mix(cm, MASK_TINT * ratio * cav_occ, clamp(in.mask, 0.0, 1.0) * MASK_STRENGTH);
         return vec4<f32>(cm, 1.0);

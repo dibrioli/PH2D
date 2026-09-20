@@ -90,7 +90,10 @@ impl MeshRenderer {
         queue: &wgpu::Queue,
         shade: crate::Shade,
     ) {
-        let Some(id) = shade.matcap.map(usize::from) else {
+        // ⚠️ **Pela PORTA do modo** e não por um `matches!` aqui: os modos
+        // [`crate::Lighting::Flat`] e [`crate::Lighting::Rig`] não precisam de
+        // imagem nenhuma, e quem sabe isso é o tipo.
+        let Some(id) = shade.lighting.matcap_index().map(usize::from) else {
             return;
         };
         let id = id.min(crate::matcap::MATCAPS.len() - 1);

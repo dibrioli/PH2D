@@ -116,7 +116,7 @@ impl Sculpt3dScene {
                     self.sss_scatter,
                 )
             },
-            matcap: self.matcap,
+            lighting: self.lighting,
             wireframe: self.wireframe,
         }
     }

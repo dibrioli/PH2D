@@ -17,7 +17,7 @@
 | | |
 |---|---|
 | branch | `line/motion-value` |
-| HEAD | *(ver §7 — o sha final está lá, depois do último commit)* |
+| HEAD | `git rev-parse line/motion-value` — ⚠️ o último commit é de **DOCS** (a prova do §7.2); o último de **código** é `aaeed84e4` |
 | merge-base | **`76bd6de02`** (o tip do `main` no fecho — a linha foi **rebaseada** em 2026-09-20) |
 | commits | **113** |
 | ficheiros | **364** · `+33 157 / −10 656` |

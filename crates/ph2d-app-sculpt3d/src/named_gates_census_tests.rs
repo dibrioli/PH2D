@@ -48,12 +48,18 @@ use std::path::{Path, PathBuf};
 
 /// As crates da família. ⚠️ Os ficheiros da shell que ainda são dela entram por caminho (ver
 /// [`da_familia`]).
-const FAMILIA: [&str; 5] = [
+const FAMILIA: [&str; 6] = [
     "crates/ph2d-app-sculpt3d",
     "crates/ph2d-sculpt3d",
     "crates/ph2d-cloth",
     "crates/ph2d-panel-sculpt3d",
     "crates/ph2d-form-donation",
+    // ⛔ Entrou em 2026-09-20 depois de a crate nascer FORA do alcance deste
+    //    censo e reintroduzir, no primeiro dia, a família que ele cura: o doc
+    //    da `TRI` dela citava um gate que o `git log -S` não encontra. *Uma
+    //    crate-folha nova da família é população nova, e o censo não a vê até
+    //    alguém a escrever aqui.*
+    "crates/ph2d-mesh-colors",
 ];
 
 /// A primeira palavra de um nome de gate nesta casa.
@@ -63,7 +69,21 @@ const PREFIXOS: [&str; 21] = [
 ];
 
 /// `(nome, onde a memória vive, porque é prosa e não endereço)`.
-const MEMORIAS: [(&str, &str, &str); 10] = [
+const MEMORIAS: [(&str, &str, &str); 11] = [
+    (
+        "o_sentinela_do_triangulo_e_o_mesmo",
+        "crates/ph2d-mesh-colors/src/topo.rs",
+        "o gate que NUNCA EXISTIU. O doc da `TRI` daquela crate dizia que as \
+         duas constantes eram gateadas «do lado de lá» e apontava para este \
+         nome em `ph2d-mesh`, que o `git log -S` não encontra — a família dos \
+         oito de 2026-09-13, reintroduzida numa crate que nasceu FORA desta \
+         lista. Quem hoje o afirma é o \
+         `o_sentinela_do_triangulo_e_o_mesmo_nas_duas_crates`, e ele vive na \
+         `ph2d-sculpt3d` porque a `ph2d-mesh-colors` declara zero dependências \
+         e não pode importar a `ph2d_mesh::TRI` para a comparar. A prosa fica \
+         porque ela é a prova de que um gate CITADO e um gate ESCRITO se leem \
+         igual num cabeçalho",
+    ),
     (
         "a_folha_escolhe_se_uma_vez_e_nao_a_meio_do_traco",
         "crates/ph2d-sculpt3d/src/dab_alcance_olho_tests.rs",

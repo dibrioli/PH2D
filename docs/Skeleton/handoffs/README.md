@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**8 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **8** são handoffs (registro **morto**).
+**9 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **9** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -23,6 +23,7 @@
 | 2026-09-15 |   | [HANDOFF_O_OSSO_QUE_DOBRA_2026-09-15.md](HANDOFF_O_OSSO_QUE_DOBRA_2026-09-15.md) | ⚠️ handoff (morto) | O OSSO QUE DOBRA — os *bendy bones*, da lei ao painel (`line/Vector`, 2026-09-15) |
 | 2026-09-15 |   | [HANDOFF_O_RESTO_DO_APP_ACHAVA_A_ARTE_PLANA_2026-09-15.md](HANDOFF_O_RESTO_DO_APP_ACHAVA_A_ARTE_PLANA_2026-09-15.md) | ⚠️ handoff (morto) | O RESTO DO APP AINDA ACHAVA QUE A ARTE É PLANA — o censo, e as três ferramentas curadas |
 | 2026-09-16 |   | [HANDOFF_INTEGRACAO_line_Vector_2026-09-16.md](HANDOFF_INTEGRACAO_line_Vector_2026-09-16.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/Vector` (o ESQUELETO), 2026-09-16 |
+| 2026-09-20 |   | [HANDOFF_INTEGRACAO_line_Vector_A_LINHA_2026-09-20.md](HANDOFF_INTEGRACAO_line_Vector_A_LINHA_2026-09-20.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/Vector` (o ESQUELETO), a linha inteira · 2026-09-20 |
 
 ---
 

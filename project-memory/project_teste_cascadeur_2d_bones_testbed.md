@@ -578,3 +578,38 @@ Está inteiro em `auditoria/ACHADOS.md` B45; commit `3ffff4f`. O que fica para d
   sai de régua nenhuma (49,4 / 65,3 / 40,5).
 - ✅ limpo: os dois artefactos gerados saem byte a byte; a cerca do chão da B44 aguenta em ~1 900
   arrastos.
+
+### 2026-09-19/20 (8.ª volta) — AS CURAS da auditoria («siga na ordem»), B46
+
+Os seis achados curados, cada um com portão + mutação, e um SÉTIMO que a re-medição destapou.
+
+- **A3** `dino_parado` abre com os dois pés presos (puxar a cabeça: pés 34 → 0,0 cm; o outro pé 29,9 → 0,0).
+  Portão: todo exemplo que abre DE PÉ (medido na pose do quadro 0) abre PRESO — 15 exemplos.
+- **A1** `dorso` com limite (−15, 15) e rigidez 0,6 escritos (caminhada deles: −1,1..0,1). Perna 60 cm à
+  frente: tronco 7,4° → 0,2°; pior da varredura 118° → 47,6°. Portão de COBERTURA (todo osso móvel tem
+  lei escrita, nos dois rigs) + o de continência deixou de saltar quem não tem limite (23 de 23).
+  ⚠️ Os «8° da caminhada» não são barra de arrasto: por gesto, pernas 9 de 144 acima, cabeça/peito 58 de 72.
+- ⛔⛔⛔ **A1-bis — «a cauda desceu» NÃO era o dorso: era o EQUILÍBRIO a pagar pela cauda** (rigidez 0,15,
+  95 kg, 2,8 m de alavanca). Com o equilíbrio desligado a cauda não mexe. Rigidez escolhida pela CONTAGEM
+  num corpus (14 gestos × 3 granularidades) contra a régua da caminhada deles: 0,15 → **32 de 42** fora ·
+  0,30 → 5 (caótico: depende da granularidade) · **0,45 → 3**, estável. Lição em
+  [[feedback_after_the_cure_remeasure_the_owners_sentence_not_your_proxy]].
+  ⛔ **ABERTO, medido:** o ALVO do equilíbrio é o MEIO do apoio, e o CoM que o Cascadeur DECLARA para o
+  Dracorex está em cima da BOLA do pé (−0,93 da meia-largura; a pessoa −0,47; o nosso modelo de massas
+  reproduz os 17,8 cm dele). Parado, a lei já pede 16 cm de peso à frente. Mudar o alvo muda a pessoa
+  (3,4 cm) ⇒ decisão do dono, com `veredito_pose.js` por re-correr.
+- **A4** a lei do meio do membro vale também para a junta da RAIZ quando o osso acima é MÓVEL (na pessoa
+  é a anca, fixa ⇒ inerte): o «Joelho» do dinossauro passa a `dobra`/`gira`. A guarda do osso fixo mede-se
+  num rig SINTÉTICO (era inerte nos dois). ⚠️ Partiu o filtro de 3 mutações antigas — o controlo do
+  filtro disse-o.
+- **A5** uma porta `simuladasDesteMenu` (do esqueleto aberto, sem diagnósticos) com dois consumidores; as
+  notas dizem PORQUÊ em vez de citar a pessoa; o laranja só é prometido quando existe. ⚠️ Um 2.º filtro
+  no `pose_rede` foi escrito e RETIRADO (tornava o da porta inobservável).
+- **A2** `torax ← Spine1_Rigid`, `pescoco ← Spine2+Neck1`, `dorso ←` nada; gerador recusa `cm` fora de
+  [0,1]; portão nos dois rigs. Amostras byte a byte iguais.
+- **A6** a linha do chão risca-se na BASE do desenho em repouso (`rig.chaoDesenho`: −7,2 / −6,3 cm) e a
+  cerca do corpo inteiro é da CÁPSULA (`rig.piso`, `rig.gordura`). Joelho: 8,5 cm abaixo da linha → 0,0.
+  Portão de rato (k) acha a linha nos PIXELS. ⛔ E partiu o «giro em bloco» (0,00° de 30): a alça tinha
+  dois pontos na janela em duas linhas gémeas e só uma viajou ⇒ porta `alcaNaJanela`.
+- Instrumento: uma cópia de ensaio da árvore por symlinks corre a suíte da pasta REAL se o
+  `rodar_testes.js` também for symlink (o Node resolve o módulo principal) — leva-se como FICHEIRO.

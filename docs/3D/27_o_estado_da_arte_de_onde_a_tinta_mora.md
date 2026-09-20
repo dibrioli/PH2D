@@ -273,6 +273,222 @@ das duas, é qual delas vem primeiro.*
 
 ---
 
+## §14 — ⭐⭐⭐ A VIA 1 ESCOLHIDA: a lei existe e o dab já escreve nela
+
+> **Ordem do dono (2026-09-20):** *«1»* — seguir pelos pontos da malha.
+
+⚠️ **O que esta secção NÃO diz:** que o dono já pode ver. A **lei** está
+construída e gateada e o **pincel** já a escreve; o que falta é a fiação que a
+torna visível (armar pelo painel, subir à placa, a cena). Isso está na
+[§15](#15--o-que-falta-para-o-dono-ver).
+
+### §14.1 — As duas medições que escolheram a fiação
+
+| medição | número | o que ela decidiu |
+|---|---|---|
+| construir o plano | **`40 ms`** na malha de fábrica (`99 225` V / `197 192` F) | ⇒ **não cabe num dab** — o plano arma-se uma vez, não se refaz por carimbo |
+| `PRIMITIVE_INDEX` | **`true`** nas três rotas desta máquina (RTX 5060 Ti/Vulkan · RADV iGPU · RTX/GL) | ⇒ um shader de fragmento **pode saber em que face está**, que é o que a leitura por amostra pede |
+
+Instrumentos versionados: `ph2d-mesh-colors --example mede_o_plano` ·
+`ph2d-gpu --example o_que_a_placa_anuncia`.
+
+### §14.2 — ⭐⭐⭐ O que muda no pincel: o SÍTIO onde a distância é medida, e só
+
+A lei do pincel **não muda**. O peso de uma amostra sai das mesmas portas do dab
+por-vértice, e a composição é a mesma do `GripLaw` verbo a verbo. O que muda é
+onde a distância é medida.
+
+⛔⛔ **E para que isso fosse verdade e não uma promessa, duas portas tiveram de
+ser EXTRAÍDAS** ([`peso_do_ponto`](../../crates/ph2d-sculpt3d/src/peso_do_ponto.rs)):
+a **curva de queda de um ponto** e a **ordem do produto** (`fall × intensity ×
+keep`, cuja re-associação diverge em **30,4 %** dos triplos). A extracção é
+verbatim e o caminho por-vértice fica byte-idêntico — quem o afirma são os
+**618 + 248** testes das duas crates, que correram verdes sem uma barra mexer.
+*Uma lei escrita em dois sítios ainda não é uma lei; só uma PORTA é.*
+
+### §14.3 — ⭐⭐⭐ A escada, medida
+
+Um traço de pintura na mesma peça, lido nos mesmos pontos da superfície pela
+porta que o shader vai usar, comparado com o limite (nível `4`):
+
+| nível | lado | amostras | erro contra o limite |
+|---|---|---|---|
+| `0` | `1` | `362` | `0,01753` |
+| `1` | `2` | `1 442` | `0,00547` |
+| `2` | `4` | `5 762` | `0,00146` |
+| `3` | `8` | `23 042` | `0,00030` |
+| `4` | `16` | `92 162` | — |
+
+⇒ **o erro cai `~3,6×` por nível** e as amostras sobem `4×`, que é a assinatura
+de um interpolante linear sobre um perfil suave. *A malha não mexeu uma vez.*
+
+### §14.4 — ⛔ O que os gates apanharam EM MIM, e nenhum passou
+
+1. ⛔⛔ **Um CANTO está em DOIS lados ao mesmo tempo**, e a minha régua devolvia
+   `Option<usize>` com o primeiro. A `lado = 1` isso fazia **três dos seis**
+   pares de um tetraedro saírem a dobrar — e o sintoma é *um fio mais escuro ao
+   longo de metade das arestas da peça*.
+2. ⛔⛔ **A `uv_sphere` desta casa é quase toda de QUADS**, e o meu laço só
+   tratava triângulos ⇒ o pincel não pintava nada. O gate leu *«o nível zero
+   divergiu»*, que é a frase certa sobre a causa errada.
+3. ⛔⛔ **Armar a tinta fina sobre uma peça JÁ PINTADA apagava-a** — a
+   `Tinta::nova` nasce branca. Desvio medido: **`1,0` num canal**, que é uma cor
+   inteira e nunca um arredondamento. ⇒ a porta `Tinta::semeada`, que é também a
+   lei de **subir e descer** o nível sem perder tinta.
+4. ⛔⛔ **Faltavam-me TRÊS metades da lei do anel**: a própria amostra entra com
+   peso `1` (sem ela um dab a peso cheio apaga a cor de uma vez), a direcção do
+   esfregão é do **MODO** e não do caminho, e é preciso **DIVIDIR** em vez de
+   multiplicar pelo recíproco. Desvio contra o caminho por-vértice:
+   **`3,8e-2` → `5,96e-8`**, que é um ULP.
+5. ⛔ A minha régua de convergência **lia onde a lei não age**: ela pintava no
+   equador (tudo quads) e lia nos pólos (os únicos triângulos), e os quatro
+   níveis deram `6e-7` — ruído de `f32`. *Uma régua que lê onde a lei não age
+   mede o nada e chama-lhe empate.*
+
+### §14.5 — ⛔ Uma constante foi escrita, MEDIDA e RETIRADA
+
+A `MARGEM_DO_ANEL` existia para o anel não ficar truncado na borda da pegada.
+Varrida contra o caminho por-vértice (que lê a adjacência inteira da malha), ela
+lê **`5,96e-8` em `1,00`, `1,25`, `1,50` e `2,00`** — *o mesmo ULP nas quatro*,
+porque a consulta do octree já é conservadora. ⇒ ela saiu, e quem garante a
+propriedade é o gate. *Uma constante que a medição não consegue mover é um
+comentário com sintaxe de código.*
+
+### §14.6 — ⚠️ E um achado que NÃO é desta wave: de quem é o último bit
+
+O gate irmão do caminho por-vértice afirma que o `Blur` é **inerte ao bit** numa
+peça de cor uniforme. Medido com uma cor qualquer (`0,3 · 0,7 · 0,45`), **as
+DUAS rotas mexem**: `4` vértices no caminho por-vértice e `103` amostras na
+tinta fina (mais porque são mais). A causa é a forma do aplicador que as duas
+partilham — `b·(1−a) + t·a`, a que o `stroke_apply` mede com **53 315**
+divergências na coluna `t = b`. ⇒ *a inércia é uma promessa sobre a cor de
+FÁBRICA*, e o gate passou a dizer qual é em vez de a herdar.
+
+---
+
+### §14.7 — ⛔⛔ Uma MUTAÇÃO SOBREVIVENTE achou um ramo SEM CHAMADOR — e, por baixo dele, um gate CITADO que nunca existiu
+
+A `M1` troca o discriminante tri/quad do `topo::cantos`
+(`4 if face[3] == TRI => 3` por `=> 4`) e **sobreviveu aos dezoito gates que a
+crate então tinha**.
+
+⭐ **A causa não é uma fixtura em falta, é um ramo que ninguém percorre.**
+Todas as fixturas passam fatias de `3`, e no produto a
+[`ph2d_mesh::Face::verts`](../../crates/ph2d-mesh/src/face.rs) **corta o
+sentinela antes de sair** — ela devolve `&self.0[..self.vert_count()]`. ⇒ um
+triângulo marcado **nunca chega** a esta crate pelo caminho do produto, e o
+ramo que o lê é *defensivo*.
+
+⚠️ **E ele FICA em vez de ser apagado, com o mecanismo:** a porta desta crate
+aceita `&[u32]` cru, e o array de uma `Face` desta casa é um `[u32; 4]` com
+`u32::MAX` no 4.º slot. Um chamador que passe `&face.0[..]` em vez de
+`face.verts()` é o erro mais natural que aqui existe — e sem o ramo ele lê um
+triângulo como quad com um canto `u32::MAX`, que é um `index out of bounds` na
+`Tinta::semeada` ou endereços trocados **em silêncio**. *Um ramo defensivo sem
+gate é indistinguível de um ramo morto, e os dois leem-se igual numa mutação.*
+⇒ `o_sentinela_do_triangulo_nao_muda_uma_amostra`, cuja régua é a **igualdade
+das duas `Tinta` inteiras** e não uma contagem (uma contagem igual com
+endereços trocados é exactamente o defeito que ele existe para impedir).
+
+⛔⛔ **E a puxar esse fio apareceu a família de 13/09, reintroduzida por mim:**
+o doc da `TRI` desta crate dizia *«é GATEADO do lado de lá»* e apontava para
+`ph2d-mesh :: o_sentinela_do_triangulo_e_o_mesmo` — **que o `git log -S` não
+encontra**. Ele não podia existir ali: a `ph2d-mesh-colors` declara **zero
+dependências** e a `ph2d-mesh` não a conhece, logo a primeira crate que vê as
+duas constantes é a `ph2d-sculpt3d`, e é lá que o gate vive hoje
+(`o_sentinela_do_triangulo_e_o_mesmo_nas_duas_crates`).
+
+### ⛔⛔ E a SEGUNDA sobrevivente é a mesma forma noutro sítio: a fronteira de dois QUADS
+
+A `M6` troca o `t: lado - j` do lado **`d→a`** do `sitio_quad` por `t: j` — e
+**sobreviveu aos dezanove gates**, com a fronteira partilhada a ser a claim
+central desta família inteira ([§3](#3--as-famílias-e-o-eixo-que-as-separa)).
+
+⭐ **A causa é outra vez a fixtura, e a razão pela qual a bijecção não a vê é
+exacta:** inverter o `t` de uma aresta é uma **PERMUTAÇÃO** do bloco dela, logo
+a contagem de índices distintos fica *igual ao bit*. O que a apanha é a
+igualdade por ponto **FÍSICO**, e o gate que a faz
+(`as_duas_faces_leem_a_mesma_amostra_na_aresta_comum`) tinha como fixtura dois
+**TRIÂNGULOS** — o único quad do corpus estava **sozinho**, onde não há
+vizinho com quem discordar.
+
+⭐⭐ **E o tamanho da fixtura nova é DERIVADO da pergunta, não escolhido:** os
+quatro lados de um quad têm de ser partilhados pelo menos uma vez, senão o ramo
+que não é cruzado fica sem régua. Numa **fita de dois** só os lados `1`/`3` se
+tocam e o gémeo `c→d` ficava de fora — a `M10`, escrita depois, prova-o. ⇒ a
+fixtura é uma **grelha `2×2`**, e o controlo positivo é uma contagem fechada:
+`4(L+1)² − (2L+1)²` pontos vistos mais de uma vez.
+
+### As dez mutações
+
+⭐ **O arnês é versionado** — [`docs/3D/ferramentas/muta_a_lei_da_reticula.sh`](ferramentas/muta_a_lei_da_reticula.sh),
+e corre-se de uma vez:
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && \
+  bash scripts/ph2d-run.sh bash docs/3D/ferramentas/muta_a_lei_da_reticula.sh
+```
+
+⚠️ Ele **controla-se a si mesmo em três pontos**, porque cada um deles já
+mentiu nesta casa: a âncora tem de casar **exactamente uma vez** (contada em
+Python, não por `grep -cF`), a mutação tem de **compilar**, e a corrida tem de
+correr **`N > 0`** testes — contados de `test result:`, porque o
+`running N tests` conta os `#[ignore]`.
+
+
+| # | lei | a troca | veredito |
+|---|---|---|---|
+| `M1` | `topo::cantos` | o sentinela lê-se como quad | ⭐ **sobreviveu à 1.ª corrida** |
+| `M2` | `interior_por_face` | o triângulo conta o dobro | sangra |
+| `M3` | `indice` | a aresta virada não vira o `t` | sangra |
+| `M4` | `indice` | o canto deixa de ser o índice do vértice | sangra |
+| `M5` | `total` | o bloco das arestas conta uma a mais | sangra |
+| `M6` | `sitio_quad` | o lado `d→a` anda para a frente | ⭐ **sobreviveu à 1.ª corrida** |
+| `M7` | `semeada` (tri) | `i` e `j` trocados | sangra |
+| `M8` | `semeada` (quad) | a bilinear vira o primeiro canto | sangra |
+| `M9` | `mistura` | os pesos são ignorados | sangra |
+| `M10` | `sitio_quad` | o lado `c→d` anda para a frente | sangra *(o gémeo da `M6`, escrito por causa dela)* |
+
+⚠️⚠️ **E o ARNÊS mentiu antes de dizer a verdade, na forma que esta casa já tem
+escrita:** `grep -cF` conta **LINHAS**, logo uma âncora de duas linhas casa
+«duas vezes» numa ocorrência só — as `M6` e `M8` **abortaram alto** por isso, e
+a `M6` só se revelou depois de a contagem passar a ser feita em Python. *Um
+aborto do arnês e uma sobrevivência leem-se igual num placar que não os
+separe.*
+
+⚠️⚠️ **O censo que cura essa família não a podia ver:** o
+`named_gates_census_tests` lê a lista `FAMILIA`, que tinha **cinco** crates e
+não a que nasceu esta semana. ⇒ ela entrou (`5 → 6`), e o nome morto entrou nas
+`MEMORIAS` **com o mecanismo**, que é a porta que aquele censo já tinha para
+prosa que não é endereço. *Uma crate-folha nova de uma família é população
+nova, e o censo dela não a vê até alguém a escrever na lista.*
+
+---
+
+## §15 — ⏳ O que falta para o DONO ver
+
+| peça | estado |
+|---|---|
+| a lei da retícula (`ph2d-mesh-colors`) | ✅ **20 gates, 10 de 10 mutações sangram** (§14.7) |
+| o dab por amostra (as três leis de cor) | ✅ **7 gates** |
+| armar o plano pelo painel (*Paint Detail*) | ⏳ |
+| subir as amostras à placa e lê-las no shader | ⏳ — o caminho está medido (`PRIMITIVE_INDEX`) |
+| uma cena de smoke | ⏳ |
+| o desfazer ligado à janela de amostras | ⚠️ a janela existe (`tocadas`/`base`); falta o consumidor |
+| o passe de topologia com o plano armado | ⛔ **decisão de produto** — ver abaixo |
+
+⛔⛔ **E a decisão que o dono tem de tomar quando a vir:** construir o plano
+custa `40 ms`, logo ele **não pode ser refeito a cada carimbo que mude a
+topologia**. A saída conservadora é *com a tinta fina armada, os pincéis de cor
+deixam de adensar a malha* — e ⭐ **a razão pela qual eles a adensavam
+DISSOLVEU-SE**: a ordem de 14/09 (*«dynamic topology para os 3 pincéis»*) vinha
+de *«a cor por vértice é uma IMAGEM e a resolução dela É a da malha»*, e é
+exactamente isso que esta wave deixa de ser verdade (§0.0 — *quem move o número
+que tornava algo inalcançável tem de reconferir a nota*). A manutenção
+incremental do plano é wave própria.
+
+---
+
 ## §12 — Registo de contaminação, e é meu
 
 ⚠️ Ao pesquisar como a referência escreve os píxeis, uma busca devolveu-me **a descrição em prosa do

@@ -369,6 +369,62 @@ impl Surface {
         Self { curvature, ..self }
     }
 
+    /// ⭐⭐⭐ **O mesmo material, com a COR DESTE TEXEL** — o albedo como `base_color`, por pixel.
+    ///
+    /// # ⛔⛔ Porque ela existe, com o número: multiplicar DEPOIS tinge o destaque
+    ///
+    /// Um consumidor com albedo por-texel (um sprite, uma textura) é tentado a acender uma vez com
+    /// o material e **multiplicar** a resposta pela cor do texel. Isso está errado, e não por pouco:
+    /// o `compose` **não é linear no `base_color`** — só o lóbulo difuso escala com ele, e o
+    /// especular não escala nada. Medido no destaque de um dieléctrico de omissão
+    /// (`specular_roughness 0,3`, normal quase na bissectriz, lâmpada branca):
+    ///
+    /// ```text
+    ///   albedo              multiplicar depois          base_color = albedo     R/B
+    ///   [0,80 0,10 0,10]   [0,5096 0,0637 0,0637]   [0,6370 0,4251 0,4251]   8,00 → 1,50
+    ///   [0,05 0,05 0,90]   [0,0319 0,0319 0,5733]   [0,4099 0,4099 0,6673]   0,06 → 0,61
+    /// ```
+    ///
+    /// ⇒ multiplicar depois dá a um plástico vermelho um **destaque vermelho**, que é o que um
+    /// METAL faz. *A cor de um texel é o `base_color` dele, não um factor no fim da conta.*
+    ///
+    /// # ⭐ Porque ela é BARATA, e onde deixa de o ser
+    ///
+    /// Das grandezas que o [`OpenPbr::prepare`] deriva, **uma só** depende do `base_color`: o
+    /// [`Surface::modulated_base_darkening`]. E ele é `mix3([1;3], darkening, coat_weight ×
+    /// coat_darkening)` ⇒ **sem verniz ele vale `[1;3]` qualquer que seja a cor**, e esta porta é
+    /// então uma troca de campo. Com verniz, ela re-deriva as quatro linhas que faltam — aqui, onde
+    /// a óptica mora, e nunca no consumidor.
+    ///
+    /// ⚠️ **É a irmã do [`Surface::at_curvature`]**, e pela mesma razão: uma grandeza do PIXEL numa
+    /// struct que se diz «por material». O gémeo em WGSL escreve o `base_color_weight.rgb` do
+    /// [`crate::wgsl`] antes de compor, exactamente como o passe já escreve a curvatura no `ss_btdf_curv.a`.
+    #[must_use]
+    pub fn at_base_color(self, base_color: Rgb) -> Self {
+        let m = OpenPbr {
+            base_color,
+            ..self.m
+        };
+        let peso = m.coat_weight * m.coat_darkening;
+        if peso <= 0.0 {
+            // ⭐ O caminho de toda peça sem verniz: **nada se re-deriva**, e há gate a afirmar que
+            // ele é byte-idêntico a um `prepare()` inteiro com esta cor.
+            return Self { m, ..self };
+        }
+        // As MESMAS quatro linhas do `prepare`, e não uma segunda redacção: ver o §
+        // `modulated_base_darkening` lá. Elas vivem aqui porque a óptica é desta crate.
+        let coat_f0 = bsdf::ior_to_f0(m.coat_ior);
+        let k_coat = 1.0 - (1.0 - coat_f0) / (m.coat_ior * m.coat_ior);
+        let e_metal = bsdf::scale3(m.base_color, m.specular_weight);
+        let e_base = bsdf::mix3(m.base_color, e_metal, m.base_metalness);
+        let darkening = e_base.map(|e| (1.0 - k_coat) / (1.0 - e * k_coat));
+        Self {
+            modulated_base_darkening: bsdf::mix3([1.0; 3], darkening, peso),
+            m,
+            ..self
+        }
+    }
+
     /// ⭐⭐⭐ **Este material LÊ a curvatura?** — a porta que decide se alguém paga por ela.
     ///
     /// Só o caminho MACIÇO da subsuperfície a lê: a parede fina é a lambertiana do lado de lá e não
@@ -637,3 +693,6 @@ mod tests_cor_da_profundidade;
 /// a `681` linhas de um tecto de `700`.
 #[cfg(test)]
 mod tests_o_realce_desligado;
+
+#[cfg(test)]
+mod tests_a_cor_do_texel;

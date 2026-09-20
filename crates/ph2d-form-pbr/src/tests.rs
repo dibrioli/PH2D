@@ -138,6 +138,13 @@ fn a_oclusao_nao_toca_a_luz_directa() {
 /// Esta crate é o LAÇO; a lei é de lá. O gate reproduz a conta à mão a partir da porta pública da
 /// `ph2d-material` e exige igualdade **ao bit** — no dia em que alguém escrever óptica aqui, ele
 /// reprova.
+///
+/// ⛔⛔ **A PREMISSA ANTERIOR DESTE GATE MORREU, e ele é que a matou.** Ele dizia, por escrito, *«o
+/// laço tem de ser albedo × `Surface::direct`, ao bit»* — e essa composição está **errada com
+/// número**: o `compose` não é linear no `base_color`, logo multiplicar depois **tinge o destaque
+/// especular** (medido: razão `R/B` de `8,00` num texel vermelho, contra `1,50` da lei). A cor de
+/// um texel é o `base_color` dele, e a porta que o faz vive onde a óptica mora
+/// ([`Surface::at_base_color`]). *O diff mostra a morte da premissa.*
 #[test]
 fn a_optica_e_a_da_crate_da_lei_ao_bit() {
     let s = superficie();
@@ -150,11 +157,22 @@ fn a_optica_e_a_da_crate_da_lei_ao_bit() {
     let nosso = acende_texel(&s, &t, &[l], [0.0; 3]);
 
     let n = normaliza(t.normal).unwrap();
-    let d = s.direct(n, VISTA, l.para_a_luz, l.radiancia);
-    let esperado = [t.albedo[0] * d[0], t.albedo[1] * d[1], t.albedo[2] * d[2]];
+    let esperado = s
+        .at_base_color(t.albedo)
+        .direct(n, VISTA, l.para_a_luz, l.radiancia);
     assert_eq!(
         nosso, esperado,
-        "o laço tem de ser albedo × Surface::direct, ao bit"
+        "o laço tem de ser Surface::at_base_color(albedo).direct, ao bit"
+    );
+
+    // ⛔ **O CONTROLO que prova que a barra discrimina:** a lei REJEITADA (multiplicar depois) dá
+    // outra coisa. Sem ele, um dia em que a `at_base_color` virasse um no-op este gate ficaria
+    // verde sobre exactamente o defeito que ele existe para impedir.
+    let d = s.direct(n, VISTA, l.para_a_luz, l.radiancia);
+    let rejeitada = [t.albedo[0] * d[0], t.albedo[1] * d[1], t.albedo[2] * d[2]];
+    assert_ne!(
+        nosso, rejeitada,
+        "controlo: as duas leis TÊM de diferir neste texel"
     );
 }
 
@@ -268,23 +286,31 @@ fn diag_onde_nasce_o_nan() {
 /// **gesto contínuo** — `16,7 ms` por quadro. Um custo acima disso num tamanho que o artista usa
 /// diz que o dispositivo não é optimização, é a condição de a feature existir.
 ///
-/// # ⭐⭐⭐ O que ele MEDIU (2026-09-20, `load 3,3`, `--release`, 32 núcleos)
+/// # ⭐⭐⭐ O que ele MEDIU (2026-09-20, `--release`, 32 núcleos, **87–98 % de CPU ociosa**)
+///
+/// ⚠️ **A ociosidade REAL, medida por `vmstat`, e não o `loadavg`** — ele mente a decair: a primeira
+/// corrida desta tabela saiu com `load 8,9` sobre uma máquina que o `vmstat` lia a `97 %` ociosa,
+/// e a leitura oposta (aceitar um `loadavg` baixo herdado) é a que esta casa já pagou.
 ///
 /// ```text
 ///  lado    texels      ms   ms/Mtexel   par ms  ganho
-///   256     65536     7,2      110,1      0,8    8,7x
-///   512    262144    28,5      108,6      2,5   11,3x
-///  1024   1048576   111,0      105,9      9,8   11,4x
-///  2048   4194304   443,5      105,7     39,2   11,3x
+///   256     65536     7,4      112,8      0,9    7,8x
+///   512    262144    28,7      109,4      2,5   11,4x
+///  1024   1048576   113,6      108,3      9,3–10,7  ~11x
+///  2048   4194304   457,5      109,1     39,0     ~12x
 ///
-///  a 1024², em paralelo, por numero de lampadas:
-///   1 lampada    11,1 ms     3 lampadas   25,3 ms
-///   2 lampadas   18,3 ms     4 lampadas   34,1 ms
+///  a 1024², em paralelo, por numero de lampadas (tres corridas):
+///   1 lampada    9,3 · 10,5 · 10,3 ms      3 lampadas  29,2 · 24,0 · 29,2 ms
+///   2 lampadas  17,0 · 16,3 · 21,0 ms      4 lampadas  31,7 · 37,4 · 31,7 ms
 /// ```
+///
+/// ⭐ **E a cura da cor do texel custou `~3 %`** (`105,9 → 108,3` ms/Mtexel): pôr o albedo como
+/// `base_color` em vez de o multiplicar no fim é, sem verniz, uma troca de campo — o número
+/// confirma o argumento em vez de o substituir.
 ///
 /// ⭐⭐⭐ **O VEREDITO: o passe de dispositivo NÃO é optimização — é a condição de a re-acendida
 /// continuar a ser um gesto contínuo.** A `1024²` a CPU paralela atravessa o orçamento de um quadro
-/// **à SEGUNDA lâmpada**, e o rig permite quatro; a `2048²` ela estoura com uma só.
+/// (`16,7 ms`) **à SEGUNDA lâmpada**, e o rig permite quatro; a `2048²` ela estoura com uma só.
 ///
 /// ⚠️⚠️ **E a medição em PARALELO é que torna esse veredito honesto.** Com o número de UM núcleo
 /// (`111 ms` a `1024²`, `6,6×` um quadro) eu teria escrito a mesma conclusão **pela razão errada**,
@@ -403,6 +429,74 @@ fn diag_quanto_custa_acender_um_sprite() {
         println!(
             "  {k} lampada(s): {:>6.1} ms",
             t.elapsed().as_secs_f64() * 1e3
+        );
+    }
+}
+/// ⛔⛔⛔ **A SONDA QUE REFUTOU A 1.ª REDACÇÃO DESTA LEI** — multiplicar o albedo no fim TINGE o
+/// destaque especular.
+///
+/// O `compose` do OpenPBR **não é linear no `base_color`**: só o lóbulo difuso escala com ele, e o
+/// especular não escala nada. ⇒ `albedo × direct(…)` dá a um plástico vermelho um destaque
+/// **vermelho**, que é o que um METAL faz.
+///
+/// ```text
+///   albedo              (A) multiplicar depois      (B) base_color = albedo    razao R/B
+///   [0,80 0,10 0,10]   [0,5096 0,0637 0,0637]   [0,6370 0,4251 0,4251]   A 8,00  B 1,50
+///   [0,10 0,80 0,10]   [0,0637 0,5096 0,0637]   [0,4251 0,6370 0,4251]   A 1,00  B 1,00
+///   [0,05 0,05 0,90]   [0,0319 0,0319 0,5733]   [0,4099 0,4099 0,6673]   A 0,06  B 0,61
+///   [0,80 0,80 0,80]   [0,5096 0,5096 0,5096]   [0,6370 0,6370 0,6370]   A 1,00  B 1,00
+/// ```
+///
+/// ⚠️ **A linha CINZENTA é o controlo**, e ela diz porque o defeito passou despercebido: num albedo
+/// sem matiz as duas leis dão a MESMA razão entre canais. *Uma régua corrida só em cinzento aprova
+/// as duas.*
+///
+/// ⇒ a cura é [`ph2d_material::Surface::at_base_color`], e o gate que a guarda é o
+/// [`a_optica_e_a_da_crate_da_lei_ao_bit`], cuja premissa esta sonda matou.
+#[test]
+#[ignore = "diagnostico: a medicao que escolheu a lei; corre a' mao"]
+fn diag_o_albedo_multiplicado_contra_o_albedo_como_base_color() {
+    use ph2d_material::OpenPbr;
+    const VISTA: [f32; 3] = [0.0, 0.0, 1.0];
+    // Uma lâmpada BRANCA perto do espelho — é lá que o destaque vive.
+    let luz = {
+        let v = [0.25f32, 0.0, 0.968_246_3];
+        let q = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+        [v[0] / q, v[1] / q, v[2] / q]
+    };
+    let n = [0.13f32, 0.0, 0.991_5]; // quase a bissectriz ⇒ destaque forte
+    let padrao = OpenPbr::default().prepare();
+
+    println!(
+        "  albedo                 (A) albedo x direct        (B) base_color = albedo      razao R/B"
+    );
+    for albedo in [
+        [0.8f32, 0.1, 0.1],
+        [0.1, 0.8, 0.1],
+        [0.05, 0.05, 0.9],
+        [0.8, 0.8, 0.8],
+    ] {
+        let d = padrao.direct(n, VISTA, luz, [1.0; 3]);
+        let a = [albedo[0] * d[0], albedo[1] * d[1], albedo[2] * d[2]];
+        let b = OpenPbr {
+            base_color: albedo,
+            ..OpenPbr::default()
+        }
+        .prepare()
+        .direct(n, VISTA, luz, [1.0; 3]);
+        println!(
+            "  [{:.2} {:.2} {:.2}]   [{:.4} {:.4} {:.4}]   [{:.4} {:.4} {:.4}]   A {:.2}  B {:.2}",
+            albedo[0],
+            albedo[1],
+            albedo[2],
+            a[0],
+            a[1],
+            a[2],
+            b[0],
+            b[1],
+            b[2],
+            a[0] / a[2].max(1e-9),
+            b[0] / b[2].max(1e-9),
         );
     }
 }

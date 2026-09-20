@@ -126,6 +126,10 @@ fn forma_acende_texel(
     }
     let n = normal * inverseSqrt(q);
 
+    // ⭐⭐⭐ A cor do texel E' o `base_color` — ver o doc da `acende_texel`. A porta e' da
+    // `ph2d-material`, e a fronteira do verniz esta' declarada la'.
+    let mt = mx_at_base_color(m, albedo);
+
     var luz = vec3<f32>(0.0);
     for (var i = 0u; i < lampadas.n; i = i + 1u) {
         let l = lampadas.l[i];
@@ -133,12 +137,13 @@ fn forma_acende_texel(
         // apontada de frente para trás pinta a peça INTEIRA de `NaN`.
         let h = FORMA_VISTA + l.para_a_luz;
         if (dot(h, h) >= FORMA_EPS_N) {
-            luz = luz + mx_direct(m, n, FORMA_VISTA, l.para_a_luz, l.radiancia);
+            luz = luz + mx_direct(mt, n, FORMA_VISTA, l.para_a_luz, l.radiancia);
         }
     }
 
-    // ⚠️ A oclusão pesa SÓ o ambiente. Ver o doc da `acende_texel`.
-    let aceso = albedo * (luz + ambiente * oclusao);
+    // ⚠️ A oclusão pesa SÓ o ambiente, e o ambiente é um termo nosso e não a indirecta da lei —
+    // ver o doc da `acende_texel`.
+    let aceso = luz + albedo * ambiente * oclusao;
 
     let c = clamp(cobertura, 0.0, 1.0);
     return albedo + (aceso - albedo) * c;

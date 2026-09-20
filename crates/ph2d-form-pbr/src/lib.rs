@@ -95,7 +95,7 @@ pub const VISTA: [f32; 3] = [0.0, 0.0, 1.0];
 /// num `N·L` dá uma peça `3 %` mais escura em todo lado, e isso lê-se como *«o material está
 /// errado»*. ⛔ Normalizar no chamador poria a mesma conta em cada consumidor novo.
 ///
-/// # ⚠️ A COBERTURA multiplica no fim, e a ordem importa
+/// # ⚠️ A COBERTURA mistura no fim, e a ordem importa
 ///
 /// Ela mistura entre o albedo cru e o albedo aceso — **nunca entre preto e o aceso**. Misturar com
 /// preto escureceria a borda da silhueta a cada re-acendida, que é exactamente o defeito que o
@@ -108,6 +108,19 @@ pub fn acende_texel(s: &Surface, t: &Texel, lampadas: &[Lampada], ambiente: Rgb)
     let Some(n) = n else {
         return t.albedo;
     };
+
+    // ⭐⭐⭐ **A COR DO TEXEL É O `base_color`, e não um factor no fim da conta.**
+    //
+    // ⛔⛔ A 1.ª redacção desta lei multiplicava a resposta pelo albedo depois, e isso está errado
+    // com número: o `compose` **não é linear no `base_color`** — só o lóbulo difuso escala com ele,
+    // o especular não escala nada. Medido no destaque de um dieléctrico de omissão, um texel
+    // `[0,80 0,10 0,10]` saía com razão `R/B = 8,00` (destaque VERMELHO, que é o que um METAL faz)
+    // contra `1,50` da lei. *Um plástico vermelho tem destaque branco.*
+    //
+    // ⚠️ A porta é da `ph2d-material`, onde a óptica mora, e é a irmã do `at_curvature`: uma
+    // grandeza do PIXEL numa struct que se diz «por material». Sem verniz ela é uma troca de
+    // campo — e há gate LÁ a prová-lo byte-idêntico a um `prepare()` inteiro, com e sem verniz.
+    let s = s.at_base_color(t.albedo);
 
     let mut luz: Rgb = [0.0; 3];
     for l in lampadas {
@@ -136,16 +149,16 @@ pub fn acende_texel(s: &Surface, t: &Texel, lampadas: &[Lampada], ambiente: Rgb)
     // ⚠️ **A oclusão só pesa o AMBIENTE**, nunca a luz directa. Uma lâmpada que o artista apontou
     // tem de chegar onde ele a apontou; escurecer a directa com oclusão de forma é o que faz um
     // objecto parecer sujo em vez de ocluído — e nenhuma das cinco referências o faz.
-    let amb = [
-        ambiente[0] * t.oclusao,
-        ambiente[1] * t.oclusao,
-        ambiente[2] * t.oclusao,
-    ];
-
+    //
+    // ⏳ **E este termo é DECLARADAMENTE nosso, não a lei:** a indirecta do OpenPBR é a
+    // [`Surface::indirect`], e ela pede um CÉU — que é do consumidor (é o que preenche o
+    // `ENV_SLOT`). Enquanto ele não existir, o ambiente é um termo lambertiano chapado, pesado pela
+    // oclusão de forma. *Trocá-lo pela lei é a coluna B3 do plano, e é uma feature — não uma
+    // correcção.*
     let aceso = [
-        t.albedo[0] * (luz[0] + amb[0]),
-        t.albedo[1] * (luz[1] + amb[1]),
-        t.albedo[2] * (luz[2] + amb[2]),
+        luz[0] + t.albedo[0] * ambiente[0] * t.oclusao,
+        luz[1] + t.albedo[1] * ambiente[1] * t.oclusao,
+        luz[2] + t.albedo[2] * ambiente[2] * t.oclusao,
     ];
 
     let c = t.cobertura.clamp(0.0, 1.0);

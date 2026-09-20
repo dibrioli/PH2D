@@ -176,6 +176,22 @@ fn mx_forward_facing(n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
     return n;
 }
 
+// ⭐⭐⭐ O GEMEO do `Surface::at_base_color` — a cor do PIXEL entra como `base_color`.
+//
+// Ver o doc daquela porta para porque multiplicar a resposta pelo albedo DEPOIS esta' errado (ela
+// tinge o destaque especular, que e' o que um METAL faz). E' a irmao da curvatura: uma grandeza do
+// PIXEL escrita no `Mat` antes de compor.
+//
+// ⛔⛔ FRONTEIRA DECLARADA: com verniz A ESCURECER (`coat_weight x coat_darkening > 0`) o
+// `modulated_base_darkening` depende da cor, e ele NAO e' re-derivavel aqui — o `coat_darkening`
+// nao viaja no `pack` (a CPU dobra-o dentro do peso). ⇒ nesse regime este gemeo DIVERGE da CPU, e
+// a cura e' o `coat_darkening` ganhar a ranhura livre do `emissive.w`, nao uma conta escrita aqui.
+fn mx_at_base_color(m: Mat, rgb: vec3<f32>) -> Mat {
+    var o = m;
+    o.base_color_weight = vec4<f32>(rgb, m.base_color_weight.a);
+    return o;
+}
+
 fn mx_ior_to_f0(ior: f32) -> f32 {
     let r = (ior - 1.0) / (ior + 1.0);
     return r * r;

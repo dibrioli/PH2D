@@ -308,7 +308,11 @@ fn nenhuma_linha_da_forma_se_chama_como_uma_do_sink() {
         reg.param_ui(id)
             .unwrap_or(&[])
             .iter()
-            .map(|h| h.label)
+            // ⚠️ O `label` de um hint é uma CHAVE desde a fronteira dos motores (linha UI/UX,
+            // 20/09) — o sujeito deste censo é o nome que o ARTISTA LÊ, logo resolve-se aqui.
+            // Sem o `tr`, as duas listas passam a conter chaves, nenhuma colide, e o censo
+            // ficava verde a medir identificadores.
+            .map(|h| ph2d_i18n::tr(h.label))
             .collect::<Vec<_>>()
     };
     let da_forma = rotulos(ph2d_node_motion_shape::MANIFEST.id);

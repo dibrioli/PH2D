@@ -26,8 +26,8 @@
 
 use super::stamp_card_params;
 use crate::motion_bridge::params::build_params_snapshot;
-use crate::motion_state::MotionState;
 use crate::motion_param_rows::ParamRow;
+use crate::motion_state::MotionState;
 
 /// O rótulo de uma row, qualquer que seja a variante — a struct não expõe um acessor.
 fn rotulo(r: &ParamRow) -> &str {

@@ -209,9 +209,8 @@ fn o_roteiro_nomeia_o_que_a_cena_tem() {
     // manda-o apagar para ver o defeito; um passo que nomeia um cartão AFIRMA que ele está na tela
     // com aquele nome. *Derivado, senão um rename deixa o roteiro a mandar procurar o que não há.*
     let ossos = ph2d_i18n::tr(
-        reg
-        .ui_manifest(ph2d_node_rig_bones::MANIFEST.id)
-        .expect("o `rig.bones` tem cartao")
+        reg.ui_manifest(ph2d_node_rig_bones::MANIFEST.id)
+            .expect("o `rig.bones` tem cartao")
             .display_key,
     );
     assert!(
@@ -222,11 +221,16 @@ fn o_roteiro_nomeia_o_que_a_cena_tem() {
         .param_ui(ph2d_node_motion_shape::MANIFEST.id)
         .expect("o cartao do `source.shape` tem hints");
     let rotulo = |nome: &str| {
-        hints
-            .iter()
-            .find(|h| h.param == nome)
-            .unwrap_or_else(|| panic!("o param {nome} tem de ter linha no cartao"))
-            .label
+        // ⚠️ O `label` de um hint é uma CHAVE desde a fronteira dos motores (linha UI/UX,
+        // 20/09), e o roteiro nomeia o que o ARTISTA LÊ — logo resolve-se aqui. Sem o `tr`
+        // a régua compara prosa com identificadores e acusa um roteiro correcto.
+        ph2d_i18n::tr(
+            hints
+                .iter()
+                .find(|h| h.param == nome)
+                .unwrap_or_else(|| panic!("o param {nome} tem de ter linha no cartao"))
+                .label,
+        )
     };
     for nome in [
         ph2d_node_motion_shape::param::PIVOT_X,

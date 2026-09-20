@@ -82,7 +82,10 @@ mod tests {
         );
 
         // E volta enquanto está a ser editada.
-        crate::render_loop::master_editing_mark_for_tests(&mut sim, Some(e.to_bits()));
+        crate::render_loop::master_editing_for_tests::master_editing_mark_for_tests(
+            &mut sim,
+            Some(e.to_bits()),
+        );
         assert!(
             !view_state(&sim, &map).is_hidden(id),
             "a receita nao volta ao ser editada — a forma do mestre fica inalcancavel"

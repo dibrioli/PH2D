@@ -235,7 +235,7 @@ fn o_roteiro_nomeia_controlos_que_existem() {
         let tem: Vec<&str> = m
             .registry
             .param_ui(ph2d_nodegraph::node::NodeTypeId::of(tipo))
-            .map(|h| h.iter().map(|x| x.label).collect())
+            .map(|h| h.iter().map(|x| ph2d_i18n::tr(x.label)).collect())
             .unwrap_or_default();
         assert!(
             tem.contains(&citado),

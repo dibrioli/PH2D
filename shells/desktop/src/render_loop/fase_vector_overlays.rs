@@ -190,43 +190,13 @@ impl crate::App {
         {
             ph2d_vec_render::draw_hover_outline(&self.hover_outline, cam_affine, vector_scene);
         }
-        // ⭐⭐⭐ **O REALCE DO TRIM** (plano 38): o pedaço que o clique vai apagar, a vermelho,
-        // como no Fusion. ⚠️ **A geometria vem da MESMA porta que o corte** — ela é calculada
-        // no dreno do ponteiro e guardada, então o que acende neste quadro é literalmente o que
-        // o `vec_trim::apply` vai comer. Uma segunda conta aqui seria a divergência mais cara
-        // que uma ferramenta destrutiva pode ter.
-        if !self.vec.trim_piece.is_empty() {
-            ph2d_vec_render::draw_trim_piece(&self.vec.trim_piece, cam_affine, vector_scene);
-        }
-        // ⭐⭐⭐ **A FACE que o Balde vai preencher** (plano 40), na TINTA que ele vai depositar.
-        // ⚠️ A geometria vem da MESMA porta que o preenchimento usa; e a tinta é a corrente,
-        // não uma cor neutra — um realce noutra cor prometeria uma coisa e entregaria outra.
-        // ⚠️ A tinta é lida do CAMPO (`vec_pen`), e não pelo `bucket_paint()`: um método em
-        // `&self` pede o objecto INTEIRO emprestado, e aqui há um empréstimo mútuo vivo. Os
-        // campos são disjuntos; a lei do `alpha == 0` é a mesma dos dois lados.
-        let tinta_balde = self.vec.pen.style().fill;
-        if let Some(face) = self.vec.bucket_face.as_ref()
-            && tinta_balde.a != 0
-        {
-            let t = tinta_balde;
-            ph2d_vec_render::draw_bucket_face(
-                &face.face,
-                [t.r, t.g, t.b, t.a],
-                cam_affine,
-                vector_scene,
-            );
-        }
-        // ⭐⭐⭐ **ONDE UM CLIQUE DA CANETA PORIA UM PONTO** (report do dono, 2026-09-19: *«não tem
-        // indicação visual que você está em cima da linha para criar um ponto»*), ao lado dos dois
-        // realces acima e pela mesma razão: ele responde a *«o que este clique faria?»*.
-        //
-        // ⚠️ **A posição vem da MESMA porta que o clique usa** (`PenTool::previa_de_insercao`, que
-        // chama o `insert_hit` e decide o raio com a mesma linha do press). Uma segunda conta aqui
-        // acenderia a marca num sítio em que o clique já não insere — o defeito que o realce do Trim
-        // e o do Balde nomeiam por escrito, logo acima.
-        if let Some(p) = self.vec.previa_insercao {
-            ph2d_vec_render::draw_insert_preview(p, cam_affine, vector_scene);
-        }
+        // ⭐⭐⭐ **OS TRÊS REALCES QUE RESPONDEM *«o que este clique faria?»*** — fase FILHA, e a
+        // prosa dela já os declarava como um assunto só (*«ao lado dos dois realces acima e pela
+        // mesma razão»*). ⚠️ **Ela é uma `fase_` e é chamada por `self.`, e as duas coisas são
+        // obrigatórias:** o texto emendado do quadro (`frame_text`) só colhe `fn fase_*` e só
+        // emenda em `self.fase_…(` — com outro nome ou outro receptor, este bloco DESAPARECE do
+        // oráculo de toda lei de ordem da shell, em silêncio, e a ordem de z é o contrato aqui.
+        self.fase_vector_click_previews(cam_affine);
         Some((overlay, vec_xf, cam_affine))
     }
 }

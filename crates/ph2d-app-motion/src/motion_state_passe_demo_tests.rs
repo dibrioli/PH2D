@@ -145,7 +145,7 @@ fn o_roteiro_nomeia_controlos_que_existem() {
         .registry
         .param_ui(ph2d_nodegraph::node::NodeTypeId::of("motion.output"))
         .expect("o Output declara hints");
-    let rotulos: Vec<&str> = hints.iter().map(|h| h.label).collect();
+    let rotulos: Vec<&str> = hints.iter().map(|h| ph2d_i18n::tr(h.label)).collect();
     for citado in ["Collide", "Collide Sweeps"] {
         assert!(
             rotulos.contains(&citado),

@@ -272,8 +272,12 @@ fn the_published_flow_goes_through_the_length_aware_door() {
     // `line/render-loop` (2026-09-13) o quadro vive em fases, e a publicação do fluxo já mora na
     // `fase_vector_selection_states_panel`.
     let src = crate::frame_text::render_frame();
+    // ⚠️ A agulha nomeia a PORTA e não o endereço dela: a 1.ª redacção dizia
+    // `vec_layout_edit::flow_in_display(` e reprovou **sobre produto correcto** no dia em que o
+    // módulo saiu da shell para a `ph2d-app-vec` (integração de 2026-09-20). *Um alias de caminho
+    // é onde o código MORA; a lei é que a publicação passa por aquela função.*
     assert!(
-        src.contains("vec_layout_edit::flow_in_display("),
+        src.contains("::flow_in_display("),
         "os dez comprimentos do fluxo cruzam a fronteira por UMA porta — mapear o struct em bloco \
          levaria a contagem de colunas junto"
     );

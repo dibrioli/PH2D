@@ -147,25 +147,15 @@ pub(crate) use audio_2d::AudioSceneReport;
 // ⭐⭐ **A fase da câmera SAIU para a crate da família em 19/09** (catraca `the_shell_only_shrinks`)
 // — o relatório dela continua a ser lido aqui pela `fase_game_camera`.
 pub(crate) use ph2d_app_components::camera_2d::CameraSceneReport;
+#[cfg(test)]
+#[path = "master_editing_for_tests.rs"]
+pub(crate) mod master_editing_for_tests;
 /// ⭐⭐⭐ **A ponte do cérebro autorável** (TOP-20 #15) — ver o cabeçalho dela.
 mod state_machine_tick;
-/// ⚠️ A MESMA porta do passe, alcançável dos gates de outro módulo (a cadeia de visibilidade do
-/// vetor lê a marca, e o gate dela tem de a poder carimbar). *Um segundo carimbo escrito à mão no
-/// teste seria a segunda resposta.*
-#[cfg(test)]
-pub(crate) fn master_editing_mark_for_tests(
-    sim: &mut ph2d_ecs::SimWorld,
-    selection: Option<u64>,
-) -> bool {
-    ph2d_app_components::master_editing::mark(sim, selection, &mut None).touched
-}
 /// The joint-anchor point gizmo's publish rule — extracted from `snapshots` so
 /// "which entity gets a point handle" is gated headless.
-// ⭐ O `point_gizmo` MUDOU-SE para [`ph2d_app_physics::overlay::point_gizmo`] (W2/L2 Fase C):
-// ele tinha nome genérico e era 100% física — os `use` dele eram
-// `ph2d_physics_ecs::{JointSide, PhysicsBridge}` e o `joint_glyphs` da própria crate, e as
-// seis funções são junta, corda, roldana e âncora. O laço continua a chamá-lo PELO NOME,
-// que é o que o HOWTO §4 manda: o que sai são os CORPOS.
+// ⭐ O `point_gizmo` MUDOU-SE para a crate da física (W2/L2 Fase C, handoff daquela fase): o laço
+// continua a chamá-lo PELO NOME, que é o que o HOWTO §4 manda — o que sai são os CORPOS.
 use ph2d_app_physics::overlay::point_gizmo;
 mod present;
 /// ⭐⭐⭐ **As faixas de desenho** (ADR-0154 Fase 2) — irmão por assunto do [`present`].
@@ -431,6 +421,7 @@ mod fase_vector_bone_overlay;
 mod fase_vector_bool_apply_and_morph_reconcile;
 /// Fase do quadro: o grupo booleano e o verbo da forma.
 mod fase_vector_bool_shape_row;
+mod fase_vector_click_previews;
 /// Fase do quadro: o overlay de edicao vectorial e as imagens com pele.
 mod fase_vector_edit_overlay;
 /// Fase do quadro: a recozedura de FX e de padroes.

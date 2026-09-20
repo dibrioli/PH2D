@@ -89,7 +89,7 @@ fn a_escada_das_varreduras_e_o_que_esta_cena_mostra() {
         .param_ui(ph2d_nodegraph::node::NodeTypeId::of("motion.output"))
         .and_then(|h| {
             h.iter()
-                .find(|x| x.label == "Collide Sweeps")
+                .find(|x| ph2d_i18n::tr(x.label) == "Collide Sweeps")
                 .map(|x| x.max)
         })
         .expect("o cartao do sink oferece `Collide Sweeps`");
@@ -184,7 +184,7 @@ fn o_roteiro_nomeia_controlos_que_existem() {
         let tem: Vec<&str> = m
             .registry
             .param_ui(ph2d_nodegraph::node::NodeTypeId::of(tipo))
-            .map(|h| h.iter().map(|x| x.label).collect())
+            .map(|h| h.iter().map(|x| ph2d_i18n::tr(x.label)).collect())
             .unwrap_or_default();
         assert!(
             tem.contains(&citado),
@@ -202,7 +202,7 @@ fn o_roteiro_nomeia_controlos_que_existem() {
         .param_ui(ph2d_nodegraph::node::NodeTypeId::of("motion.output"))
         .and_then(|h| {
             h.iter()
-                .find(|x| x.label == "Collide Sweeps")
+                .find(|x| ph2d_i18n::tr(x.label) == "Collide Sweeps")
                 .map(|x| x.max)
         })
         .expect("o cartao do sink oferece `Collide Sweeps`");

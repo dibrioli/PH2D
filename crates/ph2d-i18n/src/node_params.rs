@@ -177,8 +177,6 @@ pub(crate) const ENTRADAS: &[(&str, &str)] = &[
     ("node.fx.rgb_split.param.strength", "Strength"),
     ("node.fx.rgb_split.param.x", "Offset X"),
     ("node.fx.rgb_split.param.y", "Offset Y"),
-    ("node.motion.output.param.collide", "Collide"),
-    ("node.motion.output.param.collide_iterations", "Collide Sweeps"),
     ("node.pulse.adsr.param.attack", "Attack"),
     ("node.pulse.adsr.param.attack_shape", "Attack Shape"),
     ("node.pulse.adsr.param.decay", "Decay"),

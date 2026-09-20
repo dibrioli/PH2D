@@ -72,3 +72,68 @@ fn a_lei_nova_nao_toca_no_passe_da_tinta() {
         "controlo: o caminho da tinta TEM de usar o passe da tinta"
     );
 }
+
+/// ⛔⛔⛔ **A OCLUSÃO DE FORMA É INERTE NESTA LEI — e quem o descobriu foi uma mutação SOBREVIVENTE.**
+///
+/// A mutação que apaga a leitura da textura de oclusão no [`super::passe_da_forma`] (`occ = 1.0`)
+/// **sobreviveu** à paridade no pixel, com `pior = 0` bytes. ⚠️ **E não é a fixtura que não contém o
+/// fenómeno: é a LEI.** A [`ph2d_form_pbr::acende_texel`] aplica a oclusão a **um** termo —
+/// `albedo × ambiente × oclusão` — e o ambiente desta lei é **zero por desenho** (o rig desta casa é
+/// `KEY + 3 × FILL`, ver o [`super::AMBIENTE_DA_FORMA`]) ⇒ *o canal é multiplicado por zero antes de
+/// chegar a um pixel.*
+///
+/// ⏳ **ABERTO, e é do dono:** o objecto assado GUARDA a cavidade × os dois AOs (`form_occ`), a lei
+/// da TINTA lê-a, e esta **não**. Parte do *«a sombra mais funda»* que o smoke das duas leis
+/// mostrou pode ser isto — e a cura não é inventar aqui um termo que nenhuma referência declara
+/// (`docs/Render3d/15` §7).
+///
+/// ⚠️ **As DUAS metades:** a de cima afirma a inércia (o que a mutação mede) e a de baixo é o
+/// CONTROLO que impede o gate de ser vácuo — com um ambiente **não** nulo o canal move pixels. ⇒ no
+/// dia em que esta lei ganhar ambiente, a metade de cima reprova e a premissa morre à vista no diff.
+#[test]
+fn a_oclusao_de_forma_e_inerte_enquanto_o_ambiente_for_zero() {
+    let lado = 16u32;
+    let n = (lado * lado) as usize;
+    let base = vec![200u8; n * 4];
+    // Uma forma virada ao ecrã, com cobertura cheia — o regime em que a lei de facto acende.
+    let mut form = vec![0.0f32; n * 4];
+    for t in form.as_chunks_mut::<4>().0 {
+        *t = [0.0, 0.0, 1.0, 1.0];
+    }
+    let cheia = vec![1.0f32; n];
+    // ⚠️ Uma oclusão que VARIA — uma constante diferente de `1` seria indistinguível de um albedo
+    // mais escuro, e o que se mede é se o CANAL chega.
+    let variada: Vec<f32> = (0..n).map(|i| (i % 8) as f32 / 8.0).collect();
+
+    let material = crate::lei_da_luz::material_da_forma();
+    let rig = ph2d_light::LightRig::default();
+    let lampadas = super::lampadas_do_rig(&rig).expect("o rig de fábrica tem lâmpada acesa");
+    let acende = |occ: &[f32], ambiente| {
+        ph2d_form_pbr::imagem::acende_imagem(
+            &material,
+            &ph2d_form_pbr::imagem::Planos {
+                size: (lado, lado),
+                base: &base,
+                form: &form,
+                form_occ: occ,
+            },
+            &lampadas,
+            ambiente,
+            crate::lei_da_luz::OLHAR_DA_FORMA,
+        )
+        .expect("acende")
+    };
+
+    assert_eq!(
+        acende(&cheia, super::AMBIENTE_DA_FORMA),
+        acende(&variada, super::AMBIENTE_DA_FORMA),
+        "com o ambiente a ZERO a oclusão de forma não pode mover um único byte"
+    );
+    // **O CONTROLO**: com ambiente, ela move — senão este gate ficaria verde sobre um canal que
+    // ninguém liga a nada.
+    assert_ne!(
+        acende(&cheia, [0.5; 3]),
+        acende(&variada, [0.5; 3]),
+        "controlo: com ambiente a oclusão TEM de mover pixels, senão a inércia acima é vácuo"
+    );
+}

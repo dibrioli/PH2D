@@ -159,19 +159,80 @@ o caminho lento a definir o produto. A margem real não é `6,6×`, são **duas 
 número que outra pessoa pode mudar (mais núcleos, ou cozer por tiles): *quem o mover reconfere esta
 nota.*
 
-### ⏳ A seguir, com o preço medido
+### ✅ E O PASSE EXISTE — a obra 1 fechou, e a medição mudou a leitura do problema
+
+[`ph2d_form_donation::baked_form::passe_da_forma`](../../crates/ph2d-form-donation/src/baked_form/passe_da_forma.rs)
+— um compute que **compõe** três fontes que já existiam e acrescenta só o ponto de entrada (ler três
+texels, chamar a lei, escrever um pixel). ⛔ **Zero linhas de óptica**, e a `naga` prova-o: ela
+resolve o `mx_direct` contra a fonte composta, logo o que o laço chama é o do `ph2d-material`.
+
+**Medido na placa** (`--release`, mínimo de 9, com `poll` — sem ele o relógio mede a fila de
+submissão e não o trabalho):
+
+| lado | lâmpadas | CPU paralela | **placa** | ganho |
+|---|---|---|---|---|
+| `1024²` | 1 | `11,1 ms` | **`1,74 ms`** | `6,4×` |
+| `1024²` | 4 | `34,1 ms` | **`2,08 ms`** | `16,4×` |
+| `2048²` | 1 | *estourava* | `6,64 ms` | — |
+| `2048²` | 4 | — | `7,95 ms` | — |
+
+⭐⭐⭐ **E o achado é a FORMA da coluna, não o ganho:** na CPU a 4.ª lâmpada custa `3,1×` a primeira
+(`11,1 → 34,1`); na placa custa **`1,2×`** (`1,74 → 2,08`). *O gargalo mudou de sítio* — ele já não é
+a lei, é o **transporte**: os três canais sobem a cada acendida e a forma é `Rgba32Float`, ou seja
+`16 bytes` por texel. ⇒ o orçamento de quadro deixou de ser a pergunta, e a que fica está nomeada
+em baixo.
+
+### ✅ E a obra 3 — a PARIDADE do laço — fechou, com o número
+
+`a_placa_e_a_regua_concordam_no_pixel` (`#[ignore]`, precisa de adapter): a régua é a
+`pixels_pela_forma_na_cpu` e a placa é o `acende_com(Lei::Forma, …)`, **as duas pela porta do
+produto**. Medido a `256²`: **`100,000 %` dos `262 144` bytes idênticos**, pior desvio `0`.
+
+⛔⛔ **A barra NÃO é `0`, e dizê-lo é honestidade:** um backend pode contrair `a*b + c` num `fma`
+(que é *mais* exacto, logo diferente), e os três mecanismos estão medidos e escritos no cabeçalho da
+`ph2d-style`. ⇒ o tecto portátil é **um byte**, o degrau da quantização.
+
+⚠️⚠️ **E um tecto de `1` sozinho deixou uma mutação SOBREVIVER:** apagar o `+ 0.5` do shader
+(arredondar → truncar) desloca metade da tela por um byte e passa. *Uma barra larga não é só uma
+afirmação fraca — é o sítio onde uma régua errada sobrevive.* ⇒ a segunda barra é a **POPULAÇÃO**, e
+ela separa as duas causas pelo mecanismo:
+
+| causa | pior | quantos bytes |
+|---|---|---|
+| contracção `fma` no backend | `1` | os que caem a ~1 ULP de uma fronteira |
+| uma LEI diferente (a truncagem) | `1` | **todos** os que não são exactos |
+
+**Prova de mutação: 4 de 4** — a exposição que não chega (`pior 223`), a cobertura cravada a `1`
+(`46`), a truncagem (a população), e a oclusão, que é a quarta e está **NOMEADA** logo abaixo.
+
+### ⛔⛔⛔ ABERTO, e é do dono: a OCLUSÃO DE FORMA não chega a esta lei
+
+A mutação que apaga a leitura da textura de oclusão **sobreviveu, com `pior = 0`** — e não é a
+fixtura que não contém o fenómeno, **é a lei**: a `acende_texel` aplica a oclusão a um termo só
+(`albedo × ambiente × oclusão`) e o ambiente desta lei é **zero por desenho** (o rig é
+`KEY + 3 × FILL`, as lâmpadas de preenchimento *são* o ambiente dele) ⇒ *o canal é multiplicado por
+zero antes de chegar a um pixel*.
+
+⚠️ **O objecto assado GUARDA a cavidade × os dois AOs, a lei da TINTA lê-a, e esta não.** Parte do
+*«a sombra mais funda da direita»* que o §8 mostra pode ser isto, ao contrário. ⛔ A cura **não** é
+inventar aqui um termo que nenhuma referência declara — é decisão de produto, e o gate
+`a_oclusao_de_forma_e_inerte_enquanto_o_ambiente_for_zero` afirma a inércia **com o controlo ao
+lado**, para a premissa morrer à vista no dia em que esta lei ganhar ambiente.
+
+### ⏳ O que fica, com o preço medido
 
 | # | obra | preço |
 |---|---|---|
-| 1 | **o passe** (`ph2d-render`, ao lado do `ImpastoLightPass`) | ~`600` linhas, a medida do passe irmão |
-| 2 | a **escolha por objecto** no `baked_form::light()` | o `BakedForm` ganha por onde acende |
-| 3 | a **paridade CPU↔device** do LAÇO | ⭐ a da ÓPTICA **já está paga** (`ph2d_field_gpu::material_parity`) — o que falta medir são as ~8 linhas do laço |
+| 1 | **não re-enviar a forma quando só o rig mudou** | é onde o tempo está: o canal **não depende do rig** (é o que torna arrastar a lâmpada barato) e sobe na mesma a cada quadro. A diferença entre `1,74` e `2,08 ms` diz que a lei custa `~0,3 ms`; o resto é transporte |
+| 2 | a **escolha por objecto** (`PROJECT_SCHEMA`) | gateada no veredito do dono sobre o §8 |
+| 3 | a **oclusão** acima | decisão de produto |
 
-⛔ **O kill-criterion da §6 fica com a leitura que a construção fixou:** *«byte-idêntica no ponto
-neutro»* quer dizer **um objecto que NÃO optou** pela lei nova — o caminho da tinta tem de ficar
-intacto ao bit. Não há ponto onde as duas leis coincidam, e nem podia haver: mudar a aparência é a
-razão de a obra existir.
-
+⚠️ **E o endereço do passe não é o que esta secção escreveu.** Ela mandava-o para a `ph2d-render`,
+*«~600 linhas, a medida do passe irmão»* — medido, as duas metades estão erradas pela mesma razão: o
+irmão carrega região, janela de planos, `planes_seeded` e a LUT especular, e esta acendida é **a tela
+inteira, uma vez, sem tabela**. Ele vive na `ph2d-form-donation` com **zero dependências novas** (a
+crate já declarava a lei, o gémeo, a vista, o rig e o `wgpu`), ao lado do seu único consumidor. Ver o
+cabeçalho do módulo para os três argumentos.
 
 ---
 

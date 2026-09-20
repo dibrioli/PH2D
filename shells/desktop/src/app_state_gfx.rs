@@ -189,10 +189,18 @@ pub(crate) struct AppGfx {
     /// ⚠️ **NÃO é `cfg`-gated**, e é isso que torna a promessa verificável em vez de prosa.
     pub(crate) baked_forms:
         std::collections::BTreeMap<u64, ph2d_form_donation::baked_form::BakedForm>,
-    /// O passe que ACENDE um objeto assado — o MESMO que acende a tinta do Painter, criado na
-    /// primeira acendida. Ver o topo do [`ph2d_form_donation::baked_form`]: um kernel de luz próprio seria a
-    /// segunda resposta a *como uma normal vira luz*.
-    pub(crate) baked_light: Option<ph2d_render::ImpastoLightPass>,
+    /// **OS PASSES que ACENDEM um objeto assado** — um por LEI (a tinta do Painter e o OpenPBR da
+    /// forma), cada um construído na primeira acendida DELE.
+    ///
+    /// ⚠️ Era um `Option<ImpastoLightPass>` até a lei da forma ganhar o passe de dispositivo
+    /// (`docs/Render3d/15` §7). ⛔ Um segundo `Option` ao lado deste seria **quatro sítios a ter de
+    /// concordar** (aqui, no `FrameGfx` e nas duas fases do quadro), e uma terceira lei a custar as
+    /// quatro edições outra vez — ver o doc da [`ph2d_form_donation::baked_form::PassesDaLuz`].
+    ///
+    /// ⚠️ **Sem `Option` à volta, e isso NÃO é uma capacidade nova:** o vazio dele é o `Default`, e
+    /// cada passe continua a nascer preguiçoso. Ver o [`crate::project_forget`] para porque ele não
+    /// é limpo ao esquecer um projecto.
+    pub(crate) baked_light: ph2d_form_donation::baked_form::PassesDaLuz,
     /// ADR-0114 W1 T1.7: as passagens de espaço-de-cor (resolve 16F→sRGB8 e blit
     /// sRGB8→16F) que ligam o rasterizador ao `LayerCompositor` do Painter. Criado
     /// 1× (device + formato do game_rt). O compositor em si é o `flip_composite`.

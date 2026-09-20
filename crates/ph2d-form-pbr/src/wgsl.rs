@@ -37,6 +37,19 @@
 //! derivada do formato do alvo, como a `ph2d-flip` já faz. Até lá a promessa desta crate é
 //! exactamente a que os gates escrevem, e nem uma linha a mais.
 
+/// ⭐⭐ **A ÓPTICA, re-exportada — a porta ÚNICA por onde a versão dela entra num consumidor.**
+///
+/// ⚠️ Quem monta o shader precisa de **quatro** coisas da `ph2d-material` (a fonte da lei, a
+/// ranhura do ambiente, o empacotador do material e o tamanho dele), e a alternativa era cada
+/// consumidor declarar a sua própria aresta àquela crate. ⛔ Isso seria **um segundo sítio por onde
+/// a versão da óptica entra** — a mesma frase que o [`super::acende_pela_forma`] do consumidor já
+/// escreve sobre o `prepare`, e a razão de o `Cargo.toml` desta crate declarar `ph2d-material` como
+/// *a* dependência de produção.
+///
+/// ⚠️ **`SOURCE_DA_LEI` e não `SOURCE`**, porque `SOURCE` é o nome do gémeo DESTA crate (o laço) e
+/// dois `SOURCE` no mesmo `use` seriam duas coisas com um nome só.
+pub use ph2d_material::wgsl::{ENV_SLOT, EnvLobe, PACKED, SOURCE as SOURCE_DA_LEI, pack};
+
 /// Quantos `f32` uma [`super::Lampada`] ocupa no buffer: `dir.xyz` + `_pad` + `rgb` + `_pad`.
 ///
 /// ⚠️ **`8` e não `6`** — um `vec3<f32>` num array de storage alinha a `16` bytes em WGSL, e

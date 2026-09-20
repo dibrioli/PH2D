@@ -112,6 +112,26 @@ pub const OLHAR_DA_FORMA: ph2d_view_transform::Look = ph2d_view_transform::Look 
     view: ph2d_view_transform::ViewTransform::Standard,
 };
 
+/// ⭐⭐⭐ **O MATERIAL da lei nova — uma porta, dois caminhos.**
+///
+/// ⚠️ **Ela existe porque há agora DOIS motores a acender a mesma coisa** (a referência em CPU e o
+/// passe de dispositivo), e um material escrito nos dois sítios divergiria no primeiro dia em que
+/// alguém mexesse num campo — com o sintoma a ser *«a placa acende diferente da régua»*, ou seja um
+/// defeito de **ponte** lido como um defeito de **paridade**. Aqui é o mesmo `Surface` para os dois,
+/// e quem os compara compara só **onde a aritmética corre**.
+///
+/// ⏳ **É o OpenPBR de omissão, e isso está DECLARADO:** um material por objecto é a coluna B1 do
+/// plano (`docs/Render3d/15`). Hoje o que varia por texel é a COR, que entra como `base_color` —
+/// ver [`ph2d_form_pbr::Surface::at_base_color`], que é a porta que impede o albedo de tingir o
+/// destaque especular.
+///
+/// ⚠️ **Pela re-exportação da folha da lei e não por uma seta própria à `ph2d-material`:** uma
+/// segunda aresta para a óptica seria um segundo sítio por onde a versão dela entra.
+#[must_use]
+pub fn material_da_forma() -> ph2d_form_pbr::Surface {
+    ph2d_form_pbr::OpenPbr::default().prepare()
+}
+
 #[cfg(test)]
 mod tests {
     use super::{ENV, Lei};

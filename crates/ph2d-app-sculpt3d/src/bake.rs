@@ -21,9 +21,9 @@ use std::collections::BTreeMap;
 
 use ph2d_ecs::{BakedForm as BakedFormId, Entity, SimWorld};
 use ph2d_gpu::GpuContext;
-use ph2d_render::{ImpastoLightPass, SpriteRenderer};
+use ph2d_render::SpriteRenderer;
 
-use ph2d_form_donation::baked_form::{BakedForm, light, rig_stamp};
+use ph2d_form_donation::baked_form::{BakedForm, PassesDaLuz, light, rig_stamp};
 
 use super::Sculpt3dScene;
 
@@ -43,7 +43,7 @@ use super::Sculpt3dScene;
 fn bake_one(
     scene: &mut Sculpt3dScene,
     forms: &mut BTreeMap<u64, BakedForm>,
-    pass: &mut Option<ImpastoLightPass>,
+    passes: &mut PassesDaLuz,
     next_id: &mut u32,
     gpu: &GpuContext,
     entity_bits: u64,
@@ -99,7 +99,7 @@ fn bake_one(
         rig,
         lit_with: None,
     };
-    light(gpu, renderer, pass, &rig, &bake)?;
+    light(gpu, renderer, passes, &rig, &bake)?;
     // Só DEPOIS de a luz ter chegado ao slot: apontar o sprite para uma textura vazia e falhar
     // deixaria o objeto invisível, que é pior que o gesto não ter acontecido.
     if let Some(mut sprite) = sim.world_mut().get_mut::<ph2d_render::Sprite>(entity) {
@@ -146,7 +146,7 @@ fn stamp_identity(sim: &mut SimWorld, entity: Entity, next_id: &mut u32) -> u32 
 pub fn drain(
     scene: &mut Sculpt3dScene,
     forms: &mut BTreeMap<u64, BakedForm>,
-    pass: &mut Option<ImpastoLightPass>,
+    passes: &mut PassesDaLuz,
     next_id: &mut u32,
     gpu: &GpuContext,
     want_bake: bool,
@@ -182,7 +182,7 @@ pub fn drain(
     };
     Some(match selected {
         Some(bits) => match bake_one(
-            scene, forms, pass, next_id, gpu, bits, sim, renderer, ler_fonte,
+            scene, forms, passes, next_id, gpu, bits, sim, renderer, ler_fonte,
         ) {
             Ok((w, h)) => format!(
                 "[sculpt3d] ASSADO no sprite ({w}x{h}){note} -- mova a lampada (Q/E/R/F) e ele \

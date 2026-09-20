@@ -1,0 +1,494 @@
+//! ⭐⭐⭐ **A LEI DA FORMA NO DISPOSITIVO** — o mesmo laço da [`ph2d_form_pbr::imagem`], num compute.
+//!
+//! # ⛔ Porque ele é OBRIGATÓRIO, com o número
+//!
+//! O caminho de referência (CPU, **em paralelo**, 32 núcleos, `--release`, `load 3,3`) acende um
+//! sprite de `1024²` em `11,1 ms` com **uma** lâmpada e `34,1 ms` com **quatro**, contra um
+//! orçamento de quadro de `16,7 ms` ⇒ *ele atravessa o orçamento à SEGUNDA lâmpada, e o rig permite
+//! quatro*. A re-acendida é o gesto contínuo que o [`super::relight_stale`] promete por escrito
+//! (arrastar a lâmpada re-acende **todo** objecto assado, a cada quadro), logo este passe não é
+//! aceleração: é a condição de a promessa ser verdade (`docs/Render3d/15` §7).
+//!
+//! ⚠️⚠️ **E foi a coluna PARALELA que tornou o veredito honesto** — com o número de um núcleo
+//! (`111 ms`) a conclusão seria a mesma pela razão errada, que é o §0.0 ao contrário. A margem real
+//! são **duas lâmpadas**, e é um número que outra pessoa pode mudar: *quem o mover reconfere isto.*
+//!
+//! # ⚠️ Porque ele mora AQUI e não na `ph2d-render`, que é o endereço que a §7 escreveu
+//!
+//! A §7 estimou *«~600 linhas, a medida do passe irmão»* e deu-lhe a morada do
+//! [`ph2d_render::ImpastoLightPass`]. Medido, as duas partes daquela frase estão erradas e pela
+//! mesma razão — **o irmão carrega coisas que esta acendida não tem**:
+//!
+//! | o irmão tem | esta acendida |
+//! |---|---|
+//! | região + janela de planos + `planes_seeded` | é sempre **a tela inteira**, uma vez |
+//! | LUT especular a subir e a indexar | a óptica é o OpenPBR, sem tabela |
+//! | planos persistentes entre quadros | os canais vêm do documento, prontos |
+//!
+//! ⇒ o que sobra é **a montagem e o despacho**, e ele cabe onde o consumidor está. E os três
+//! argumentos que decidem:
+//!
+//! * **zero dependências novas** — esta crate já declara `ph2d-form-pbr` (a lei **e** o gémeo),
+//!   `ph2d-view-transform`, `ph2d-light`, `ph2d-gpu` e `wgpu`; pô-lo na `ph2d-render` abriria a
+//!   aresta `ph2d-render → ph2d-form-pbr` para servir **um** chamador, que vive aqui;
+//! * o **único consumidor** é o [`super::acende_pela_forma`], a duas funções de distância;
+//! * a `ph2d-render` é **território disputado** nesta rodada (o handoff da `line/Vector` nomeia os
+//!   cinco ficheiros do passe de sprites), e um ficheiro novo lá é atrito de fusão a troco de nada.
+//!
+//! # ⭐ O que atravessa a costura: NENHUMA linha de óptica
+//!
+//! O corpo do shader é **composto** de três fontes que já existem, e este ficheiro acrescenta só o
+//! ponto de entrada (ler três texels, chamar a lei, escrever um). A ordem é a que o cabeçalho do
+//! [`ph2d_form_pbr::wgsl`] manda, e ela é load-bearing — o WGSL não tem referência para a frente:
+//!
+//! 1. [`ph2d_view_transform::wgsl::SOURCE`] — define `vt_to_display`;
+//! 2. [`ph2d_form_pbr::wgsl::SOURCE_DA_LEI`] com a ranhura `{ENV}` preenchida — define `Mat`,
+//!    `mx_at_base_color` e `mx_direct`;
+//! 3. [`ph2d_form_pbr::wgsl::SOURCE`] com a ranhura `{MAX_LAMPADAS}` preenchida — define
+//!    `forma_acende_texel`, que chama as três de cima;
+//! 4. o [`ENTRADA`] deste ficheiro.
+//!
+//! ⛔⛔ **As duas funções do ambiente são stubs a ZERO, e isso é a lei e não uma omissão.** O rig
+//! desta casa é `KEY + 3 × FILL` — *as lâmpadas de preenchimento **são** o ambiente dele* —, e o
+//! caminho de referência soma ambiente `[0, 0, 0]` pelo mesmo motivo (ver o doc da
+//! [`super::acende_pela_forma`]). A [`forma_acende_texel`] **não chama** nenhuma delas; elas existem
+//! porque a fonte da lei traz a ranhura e sem ela não parsa. Há gate a afirmar as duas metades.
+//!
+//! # ⚠️ A quantização é EXPLÍCITA
+//!
+//! A CPU escreve `(c.clamp(0,1) * 255 + 0.5) as u8`; um `textureStore` num `rgba8unorm` deixa o
+//! arredondamento ao backend, e a metade exacta (`.5`) é onde os dois se separam. ⇒ o shader
+//! arredonda ele próprio, que é a política que o passe irmão já declara por escrito.
+
+use ph2d_form_pbr::wgsl as gemeo;
+use ph2d_form_pbr::{Lampada, Rgb, Surface, imagem::Planos};
+use ph2d_gpu::GpuContext;
+use ph2d_view_transform::Look;
+
+/// Aresta do grupo de trabalho — espelha o `@workgroup_size(8, 8, 1)` da [`ENTRADA`].
+const ARESTA: u32 = 8;
+
+/// Quantas lâmpadas o uniform carrega.
+///
+/// ⚠️ **É o número do RIG, e não um espelho dele** — a lição que o passe irmão já pagou (ele tinha
+/// um `4` escrito à mão com um comentário a dizer *«espelha o rig»* e um gate que o comparava
+/// contra o literal `4`, ou seja um gate que não podia falhar pelo motivo que alegava).
+pub const MAX_LAMPADAS: usize = ph2d_light::MAX_LIGHTS;
+
+/// ⭐ **O PONTO DE ENTRADA — e a única coisa deste ficheiro que é WGSL.**
+///
+/// Ver o cabeçalho do módulo para a ordem da composição e para os dois stubs do ambiente.
+const ENTRADA: &str = r#"
+struct Globais {
+    material: Mat,
+    // rgb = o ambiente; a = os stops de exposição do olhar.
+    ambiente_stops: vec4<f32>,
+    // x = o código da vista (`ph2d_view_transform::wgsl::view_code`).
+    vista: vec4<u32>,
+    lampadas: Lampadas,
+};
+
+@group(0) @binding(0) var base_tex: texture_2d<f32>;
+@group(0) @binding(1) var form_tex: texture_2d<f32>;
+@group(0) @binding(2) var occ_tex: texture_2d<f32>;
+@group(0) @binding(3) var saida: texture_storage_2d<rgba8unorm, write>;
+@group(0) @binding(4) var<uniform> g: Globais;
+
+@compute @workgroup_size(8, 8, 1)
+fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let dim = textureDimensions(saida);
+    if (gid.x >= dim.x || gid.y >= dim.y) { return; }
+    let p = vec2<i32>(i32(gid.x), i32(gid.y));
+
+    // ⚠️ O albedo é lido LINEAR — a textura é `rgba8unorm` e NUNCA `…Srgb`, que é a mesma
+    // convenção do passe da tinta sobre os MESMOS bytes. Ver o cabeçalho da `ph2d_form_pbr::imagem`.
+    let px = textureLoad(base_tex, p, 0);
+    let f = textureLoad(form_tex, p, 0);
+    let occ = textureLoad(occ_tex, p, 0).r;
+
+    let c = forma_acende_texel(
+        g.material,
+        f.xyz,
+        px.rgb,
+        f.w,
+        occ,
+        g.lampadas,
+        g.ambiente_stops.rgb,
+        g.ambiente_stops.a,
+        g.vista.x,
+    );
+
+    // ⚠️ **O ALFA atravessa intacto** — ele é a silhueta do sprite, e uma lei de luz que lhe
+    // tocasse mudaria o RECORTE do objecto ao mover a lâmpada.
+    // ⚠️ E a quantização é nossa, não do backend — ver o cabeçalho do módulo.
+    let q = floor(clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)) * 255.0 + 0.5) / 255.0;
+    textureStore(saida, p, vec4<f32>(q, px.a));
+}
+"#;
+
+/// ⛔⛔ **As duas funções que a ranhura `{ENV}` pede, a ZERO.** Ver o cabeçalho do módulo.
+const SEM_INDIRECTA: &str = r#"
+// Esta lei não tem indirecta: o rig é `KEY + 3 x FILL` e as lampadas de preenchimento SAO o
+// ambiente dele. A `forma_acende_texel` nao chama nenhuma destas — elas existem so' porque a fonte
+// da lei traz a ranhura, e sem ela nao parsa.
+fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> { return vec3<f32>(0.0); }
+fn env_irradiance(n: vec3<f32>) -> vec3<f32> { return vec3<f32>(0.0); }
+"#;
+
+/// ⭐⭐ **O corpo do shader, composto** — e uma função pública porque o gate o quer **sem placa**.
+///
+/// ⚠️ Um WGSL que ninguém compila é prosa, e todo gate desta casa que olha para um shader precisa de
+/// adapter e é `#[ignore]`. Com a montagem numa porta, a `naga` pode parsá-la e validá-la como
+/// aritmética — que é o que apanhou os dois defeitos que o gémeo tinha antes de haver um pixel.
+#[must_use]
+pub fn fonte() -> String {
+    format!(
+        "{}\n{}\n{}\n{}",
+        ph2d_view_transform::wgsl::SOURCE,
+        gemeo::SOURCE_DA_LEI.replace(gemeo::ENV_SLOT, SEM_INDIRECTA),
+        gemeo::SOURCE.replace(gemeo::CAP_SLOT, &format!("{MAX_LAMPADAS}u")),
+        ENTRADA,
+    )
+}
+
+/// O uniform, com a disposição do `struct Globais` do [`ENTRADA`].
+///
+/// ⚠️ **Escrito como `f32` crus e não como uma struct com `repr(C)`**, porque a parte grande dele é
+/// o material — que chega já empacotado da porta que a `ph2d-material` declara, e re-declarar os
+/// doze `vec4` aqui seria a segunda redacção de um layout. O gate `o_uniform_tem_a_forma_que_o_wgsl_le`
+/// prende os quatro offsets.
+struct Globais {
+    dados: Vec<f32>,
+}
+
+impl Globais {
+    /// `Mat` + `ambiente_stops` + `vista` + `Lampadas { n, _pad×3, l[MAX] }`.
+    const FLOATS: usize = gemeo::PACKED + 4 + 4 + 4 + MAX_LAMPADAS * gemeo::LAMPADA_FLOATS;
+
+    fn novo(
+        material: &Surface,
+        lampadas: &[Lampada],
+        ambiente: Rgb,
+        olhar: Look,
+    ) -> Result<Self, String> {
+        if lampadas.len() > MAX_LAMPADAS {
+            return Err(format!(
+                "o passe da forma carrega {MAX_LAMPADAS} lampadas e o rig trouxe {}",
+                lampadas.len()
+            ));
+        }
+        let mut d = vec![0.0f32; Self::FLOATS];
+        // ⚠️ `EnvLobe::IGNORED` e não um número: os dois `shrink` só são lidos por um céu
+        // direccional, e esta lei não tem nenhum (ver [`SEM_INDIRECTA`]).
+        d[..gemeo::PACKED].copy_from_slice(&gemeo::pack(material, gemeo::EnvLobe::IGNORED));
+        let i = gemeo::PACKED;
+        d[i] = ambiente[0];
+        d[i + 1] = ambiente[1];
+        d[i + 2] = ambiente[2];
+        d[i + 3] = olhar.exposure_stops;
+        // ⚠️ O código da vista viaja como `u32` e é escrito aqui pelos bits: o `f32` do vector é só
+        // o transporte, e o WGSL lê o slot como `vec4<u32>`.
+        d[i + 4] = f32::from_bits(ph2d_view_transform::wgsl::view_code(olhar.view));
+        // O `n` das lâmpadas, no primeiro slot do `Lampadas` — os três a seguir são o padding que o
+        // alinhamento de 16 bytes do array exige (ver [`gemeo::LAMPADA_FLOATS`]).
+        let j = i + 8;
+        d[j] = f32::from_bits(u32::try_from(lampadas.len()).unwrap_or(0));
+        let empacotadas = gemeo::pack_lampadas(lampadas);
+        d[j + 4..j + 4 + empacotadas.len()].copy_from_slice(&empacotadas);
+        Ok(Self { dados: d })
+    }
+
+    fn bytes(&self) -> &[u8] {
+        bytemuck::cast_slice(&self.dados)
+    }
+}
+
+/// As cinco texturas de um tamanho, **reconstruídas juntas**.
+///
+/// ⚠️ Uma checagem de dimensão em vez de cinco que podiam discordar — a lei que o passe irmão
+/// declara por escrito. E a ranhura é **uma só**: o gesto que a paga é arrastar a lâmpada, onde o
+/// mesmo sprite é re-aceso quadro após quadro.
+struct Alvo {
+    largura: u32,
+    altura: u32,
+    base: wgpu::TextureView,
+    base_tex: wgpu::Texture,
+    form: wgpu::TextureView,
+    form_tex: wgpu::Texture,
+    occ: wgpu::TextureView,
+    occ_tex: wgpu::Texture,
+    saida: wgpu::TextureView,
+    saida_tex: wgpu::Texture,
+}
+
+/// ⭐⭐⭐ **O passe.** Um por sessão, ao lado do [`ph2d_render::ImpastoLightPass`] que acende a outra lei.
+pub struct PasseDaForma {
+    pipeline: wgpu::ComputePipeline,
+    bgl: wgpu::BindGroupLayout,
+    uniforme: wgpu::Buffer,
+    alvo: Option<Alvo>,
+}
+
+impl PasseDaForma {
+    /// Compila o pipeline. Barato — nenhuma textura até à primeira [`Self::acende`].
+    #[must_use]
+    pub fn new(gpu: &GpuContext) -> Self {
+        let shader = gpu
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("ph2d-form-donation passe_da_forma"),
+                source: wgpu::ShaderSource::Wgsl(fonte().into()),
+            });
+        let lido = |binding: u32| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Texture {
+                // ⚠️ `filterable: false` e não uma escolha: os canais da forma são `Rgba32Float`,
+                // que o núcleo do WebGPU não deixa filtrar — e o shader só faz `textureLoad`.
+                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                view_dimension: wgpu::TextureViewDimension::D2,
+                multisampled: false,
+            },
+            count: None,
+        };
+        let bgl = gpu
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ph2d-form-donation passe_da_forma bgl"),
+                entries: &[
+                    lido(0), // base, por acender
+                    lido(1), // a forma doada
+                    lido(2), // a oclusão de forma
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::StorageTexture {
+                            access: wgpu::StorageTextureAccess::WriteOnly,
+                            format: wgpu::TextureFormat::Rgba8Unorm,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+        let layout = gpu
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("ph2d-form-donation passe_da_forma layout"),
+                bind_group_layouts: &[Some(&bgl)],
+                immediate_size: 0,
+            });
+        let pipeline = gpu
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("ph2d-form-donation passe_da_forma pipeline"),
+                layout: Some(&layout),
+                module: &shader,
+                entry_point: Some("cs_main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                cache: None,
+            });
+        let uniforme = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-form-donation passe_da_forma globais"),
+            size: (Globais::FLOATS * 4) as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        Self {
+            pipeline,
+            bgl,
+            uniforme,
+            alvo: None,
+        }
+    }
+
+    /// ⭐⭐⭐ **Acende o sprite inteiro e devolve a textura acesa.**
+    ///
+    /// Ela sai com `COPY_SRC` porque o destino dela é o slot do sprite — ⛔ a usage em falta era um
+    /// **panic** do wgpu e não um erro devolvido, e nada sem placa a via (ver o doc da
+    /// [`super::planes::upload_rgba_copiavel`], que pagou a mesma lição).
+    ///
+    /// # Errors
+    ///
+    /// Se algum plano não medir o que o `size` pede (a MESMA [`Planos::confere`] que o caminho de
+    /// referência corre — *um segundo predicado de «este pedido está bem formado» continuaria a
+    /// passar depois de o primeiro ficar torto*), ou se o rig trouxer mais lâmpadas do que o
+    /// uniform carrega.
+    pub fn acende(
+        &mut self,
+        gpu: &GpuContext,
+        material: &Surface,
+        planos: &Planos,
+        lampadas: &[Lampada],
+        ambiente: Rgb,
+        olhar: Look,
+    ) -> Result<&wgpu::Texture, String> {
+        planos.confere()?;
+        let globais = Globais::novo(material, lampadas, ambiente, olhar)?;
+        let (w, h) = planos.size;
+        self.garante_alvo(gpu, w, h);
+        let alvo = self.alvo.as_ref().expect("acabou de ser garantido");
+
+        escreve(gpu, &alvo.base_tex, planos.base, w * 4, (w, h));
+        escreve(
+            gpu,
+            &alvo.form_tex,
+            bytemuck::cast_slice(planos.form),
+            w * 16,
+            (w, h),
+        );
+        escreve(
+            gpu,
+            &alvo.occ_tex,
+            bytemuck::cast_slice(planos.form_occ),
+            w * 4,
+            (w, h),
+        );
+        gpu.queue.write_buffer(&self.uniforme, 0, globais.bytes());
+
+        let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-form-donation passe_da_forma bg"),
+            layout: &self.bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&alvo.base),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&alvo.form),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&alvo.occ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&alvo.saida),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.uniforme.as_entire_binding(),
+                },
+            ],
+        });
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ph2d-form-donation passe_da_forma enc"),
+            });
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("ph2d-form-donation passe_da_forma"),
+                timestamp_writes: None,
+            });
+            cp.set_pipeline(&self.pipeline);
+            cp.set_bind_group(0, &bg, &[]);
+            cp.dispatch_workgroups(w.div_ceil(ARESTA), h.div_ceil(ARESTA), 1);
+        }
+        gpu.queue.submit(std::iter::once(enc.finish()));
+        Ok(&self
+            .alvo
+            .as_ref()
+            .expect("acabou de ser garantido")
+            .saida_tex)
+    }
+
+    fn garante_alvo(&mut self, gpu: &GpuContext, w: u32, h: u32) {
+        if self
+            .alvo
+            .as_ref()
+            .is_some_and(|a| a.largura == w && a.altura == h)
+        {
+            return;
+        }
+        use wgpu::TextureFormat as F;
+        use wgpu::TextureUsages as U;
+        let base_tex = textura(gpu, "base", w, h, F::Rgba8Unorm, U::TEXTURE_BINDING);
+        // ⚠️ Ponto flutuante, e não um formato normalizado: as componentes de uma normal vivem em
+        // `[-1, 1]` — a mesma razão que o passe irmão já escreve.
+        let form_tex = textura(gpu, "form", w, h, F::Rgba32Float, U::TEXTURE_BINDING);
+        let occ_tex = textura(gpu, "form_occ", w, h, F::R32Float, U::TEXTURE_BINDING);
+        let saida_tex = textura(
+            gpu,
+            "saida",
+            w,
+            h,
+            F::Rgba8Unorm,
+            U::STORAGE_BINDING | U::COPY_SRC,
+        );
+        let v = |t: &wgpu::Texture| t.create_view(&wgpu::TextureViewDescriptor::default());
+        self.alvo = Some(Alvo {
+            largura: w,
+            altura: h,
+            base: v(&base_tex),
+            form: v(&form_tex),
+            occ: v(&occ_tex),
+            saida: v(&saida_tex),
+            base_tex,
+            form_tex,
+            occ_tex,
+            saida_tex,
+        });
+    }
+}
+
+fn textura(
+    gpu: &GpuContext,
+    nome: &str,
+    w: u32,
+    h: u32,
+    formato: wgpu::TextureFormat,
+    usos: wgpu::TextureUsages,
+) -> wgpu::Texture {
+    gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some(&format!("ph2d-form-donation passe_da_forma {nome}")),
+        size: wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: formato,
+        usage: usos | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    })
+}
+
+fn escreve(gpu: &GpuContext, tex: &wgpu::Texture, dados: &[u8], linha: u32, (w, h): (u32, u32)) {
+    gpu.queue.write_texture(
+        wgpu::TexelCopyTextureInfo {
+            texture: tex,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        dados,
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(linha),
+            rows_per_image: Some(h),
+        },
+        wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
+    );
+}
+
+#[cfg(test)]
+#[path = "passe_da_forma_tests.rs"]
+mod tests;

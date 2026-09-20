@@ -219,8 +219,10 @@ fn as_duas_leis_sobre_a_mesma_forma() {
             ..bake
         };
         b.rig = LightRig::default();
-        let mut passe = None;
-        acende_com(lei, &gpu, &mut renderer, &mut passe, &b.rig, &b)
+        // ⚠️ **Uma ranhura NOVA por lei**, e ela é a de sempre: cada lei constrói o pipeline
+        // dela na primeira acendida, e partilhá-la entre as duas não provaria nada a mais.
+        let mut passes = PassesDaLuz::default();
+        acende_com(lei, &gpu, &mut renderer, &mut passes, &b.rig, &b)
             .unwrap_or_else(|e| panic!("a lei `{nome}` recusou: {e}"));
         let (_, _, px) = renderer
             .readback_individual(b.texture_id)
@@ -291,4 +293,203 @@ fn as_duas_leis_sobre_a_mesma_forma() {
     } else {
         println!("\n  (sem PH2D_LEI_DUMP: só a tabela)");
     }
+}
+
+/// ⭐⭐⭐⭐ **A PARIDADE DO LAÇO — a placa calcula a mesma resposta que a régua.**
+///
+/// Obra **3** da §7 do `docs/Render3d/15`. ⭐ **A da ÓPTICA já estava paga** pelo
+/// `ph2d_field_gpu::material_parity`: o `mx_direct` que este shader chama é, pela `naga`, o do
+/// `ph2d-material` — o que faltava medir eram as ~8 linhas do LAÇO (normalizar a normal, somar as
+/// lâmpadas, pesar o ambiente pela oclusão, aplicar a vista, misturar pela cobertura) mais a
+/// montagem que as alimenta.
+///
+/// ⚠️ **As duas metades entram pela PORTA DO PRODUTO**: a régua é a
+/// [`super::pixels_pela_forma_na_cpu`] e a placa é o [`super::acende_com`] com
+/// [`Lei::Forma`], que é o que o app corre. *Um arnês que montasse a sua própria chamada continuaria
+/// a passar depois de a do produto ficar torta* — a lei que esta linha já pagou quatro vezes.
+///
+/// # A barra, e de onde ela sai
+///
+/// ⛔ **Byte-idêntico não é exigível e dizê-lo é honestidade, não folga:** um backend pode contrair
+/// `a*b + c` num `fma` (que é *mais* exacto, logo diferente), o `pow` do WGSL não é o `powf` do
+/// Rust, e os subnormais podem ser esvaziados — os três estão medidos e escritos no cabeçalho da
+/// `ph2d-style`. ⇒ a barra é **um byte** de `255`, que é o degrau da quantização: abaixo dele as
+/// duas leis escreveriam o mesmo pixel.
+///
+/// ⚠️ **E a FRACÇÃO não é a régua — o PIOR é.** Uma fracção afoga um defeito que ocupa 10 % da
+/// imagem (a lição que a `W8` do modelador pagou); aqui afirma-se o **máximo** e imprime-se a
+/// distribuição ao lado.
+/// **Quantos bytes podem divergir, em percentagem.** ⚠️ **Medido, não escolhido:** nesta placa a
+/// paridade é **exacta** (`0,000 %` de `262 144` bytes, `2026-09-20`), e a mutação que troca o
+/// arredondamento por truncagem lê a ordem de grandeza do outro lado. A barra fica no vale entre os
+/// dois, longe das duas pontas.
+const POPULACAO_MAXIMA: f64 = 0.5;
+
+#[test]
+#[ignore = "precisa de adapter"]
+fn a_placa_e_a_regua_concordam_no_pixel() {
+    let Some(gpu) = placa() else {
+        eprintln!("sem placa — a sonda desiste (skip gracioso NÃO é verde)");
+        return;
+    };
+    let bake = peca();
+    let rig = LightRig::default();
+
+    // A RÉGUA — a lei em Rust, pela porta do produto.
+    let cpu = pixels_pela_forma_na_cpu(&bake, &rig).expect("a régua acende");
+
+    // A PLACA — o caminho que o app corre.
+    let atlas = TextureAtlas::new(&gpu, 256);
+    let mut renderer = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 64);
+    let mut b = BakedForm {
+        texture_id: renderer
+            .acquire_individual(LADO, LADO, &bake.base)
+            .expect("slot"),
+        base: bake.base.clone(),
+        form: bake.form.clone(),
+        form_occ: bake.form_occ.clone(),
+        ..bake
+    };
+    b.rig = rig;
+    let mut passes = PassesDaLuz::default();
+    acende_com(Lei::Forma, &gpu, &mut renderer, &mut passes, &b.rig, &b).expect("a placa acende");
+    let (_, _, placa_px) = renderer
+        .readback_individual(b.texture_id)
+        .expect("le de volta");
+
+    assert_eq!(
+        cpu.len(),
+        placa_px.len(),
+        "as duas telas têm de medir o mesmo"
+    );
+
+    // ⚠️ **O ALFA entra na conta.** Ele atravessa intacto nos dois caminhos por LEI, e uma
+    // divergência ali seria o RECORTE do objecto a mudar — pior que um desvio de luz.
+    let mut hist = [0u32; 5];
+    let mut pior = 0i32;
+    let mut onde = 0usize;
+    for (i, (a, b)) in cpu.iter().zip(placa_px.iter()).enumerate() {
+        let d = i32::from(*a) - i32::from(*b);
+        let d = d.abs();
+        hist[(d.min(4)) as usize] += 1;
+        if d > pior {
+            pior = d;
+            onde = i;
+        }
+    }
+    let n = cpu.len();
+    println!("\n  == a placa contra a régua, {LADO}x{LADO} ==");
+    for (d, c) in hist.iter().enumerate() {
+        let rotulo = if d == 4 {
+            "4+".to_string()
+        } else {
+            d.to_string()
+        };
+        println!(
+            "  |Δ| = {rotulo:<3} {c:>9} bytes  ({:>6.3} %)",
+            100.0 * f64::from(*c) / n as f64
+        );
+    }
+    println!(
+        "  pior: {pior} byte(s), no canal {} do texel {}\n",
+        onde % 4,
+        onde / 4
+    );
+    // ⛔⛔ **DUAS barras, e a segunda existe porque a primeira deixou uma mutação SOBREVIVER.**
+    //
+    // Apagar o `+ 0.5` do shader (arredondar → truncar) desloca metade da tela por UM byte, e um
+    // tecto de `1` aceita isso — *uma barra larga não é só uma afirmação fraca: é o sítio onde uma
+    // régua errada sobrevive*. O que separa os dois casos não é a MAGNITUDE, é a POPULAÇÃO:
+    //
+    // | causa | pior | quantos bytes |
+    // |---|---|---|
+    // | contracção `fma` no backend | `1` | os que caem a ~1 ULP de uma fronteira de quantização |
+    // | uma LEI diferente (a truncagem) | `1` | **todos** os que não são exactos |
+    //
+    // ⇒ *um desvio de um byte SISTEMÁTICO é um defeito de lei; um esporádico é representação.*
+    let divergentes = n - hist[0] as usize;
+    let fraccao = 100.0 * divergentes as f64 / n as f64;
+    assert!(
+        pior <= 1,
+        "a placa e a régua divergem {pior} bytes — a barra é UM, o degrau da quantização"
+    );
+    assert!(
+        fraccao <= POPULACAO_MAXIMA,
+        "{fraccao:.3} % dos bytes divergem — acima de {POPULACAO_MAXIMA} % isto é uma LEI \
+         diferente e não a representação (ver a tabela acima)"
+    );
+}
+
+/// ⭐⭐⭐⭐ **O QUE A PLACA CUSTA** — a segunda coluna da tabela que a §7 do `docs/Render3d/15` abriu.
+///
+/// A primeira foi medida na [`ph2d_form_pbr::imagem`] e é o que obrigou este passe a existir: em
+/// **paralelo**, a `1024²`, o corredor de referência custa `11,1 ms` com uma lâmpada e `34,1 ms` com
+/// quatro, contra um orçamento de quadro de `16,7 ms`.
+///
+/// ⚠️ **O relógio inclui o `poll`**, e sem ele isto mediria a fila de submissão em vez do trabalho:
+/// o `submit` devolve antes de a placa ter feito nada, e uma tabela tirada assim leria microssegundos
+/// para qualquer tamanho — *a maneira mais fácil de publicar um número que é só o custo de pedir.*
+///
+/// ⚠️ **E ele inclui os uploads**, que é o que o produto paga: os três canais sobem a cada acendida
+/// (a forma é `Rgba32Float`, ou seja `16 bytes` por texel). *Medir só o despacho responderia sobre
+/// um programa que ninguém corre.*
+///
+/// ```text
+/// bash scripts/ph2d-run.sh env PH2D_GPU=1 cargo test -p ph2d-form-donation --release \
+///     diag_quanto_a_placa_custa -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda: imprime a tabela, nao afirma nada"]
+fn diag_quanto_a_placa_custa() {
+    let Some(gpu) = placa() else {
+        eprintln!("sem placa — a sonda desiste");
+        return;
+    };
+    let material = crate::lei_da_luz::material_da_forma();
+    let uma = vec![ph2d_form_pbr::Lampada {
+        para_a_luz: [0.0, 0.3, 0.95],
+        radiancia: [1.0; 3],
+    }];
+    let quatro = vec![uma[0]; 4];
+
+    println!("\n  lado    lâmpadas    ms (mínimo de 9)   % de um quadro de 16,7 ms");
+    for lado in [256u32, 512, 1024, 2048] {
+        let n = (lado * lado) as usize;
+        let base = vec![180u8; n * 4];
+        let mut form = vec![0.0f32; n * 4];
+        for t in form.as_chunks_mut::<4>().0 {
+            *t = [0.0, 0.0, 1.0, 1.0];
+        }
+        let occ = vec![1.0f32; n];
+        let planos = ph2d_form_pbr::imagem::Planos {
+            size: (lado, lado),
+            base: &base,
+            form: &form,
+            form_occ: &occ,
+        };
+        for (rotulo, lampadas) in [("1", &uma), ("4", &quatro)] {
+            let mut passe = passe_da_forma::PasseDaForma::new(&gpu);
+            let mut melhor = f64::MAX;
+            for _ in 0..9 {
+                let t0 = std::time::Instant::now();
+                passe
+                    .acende(
+                        &gpu,
+                        &material,
+                        &planos,
+                        lampadas,
+                        [0.0; 3],
+                        crate::lei_da_luz::OLHAR_DA_FORMA,
+                    )
+                    .expect("acende");
+                let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                melhor = melhor.min(t0.elapsed().as_secs_f64() * 1000.0);
+            }
+            println!(
+                "  {lado:>5}    {rotulo:>8}    {melhor:>14.2}   {:>22.1}",
+                100.0 * melhor / 16.7
+            );
+        }
+    }
+    println!();
 }

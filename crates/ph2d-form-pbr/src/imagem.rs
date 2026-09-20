@@ -62,7 +62,15 @@ impl Planos<'_> {
     ///
     /// Sem isto, o laço leria o que coubesse e devolveria uma imagem plausível com a metade de
     /// baixo a preto — *um defeito de tamanho lido como um defeito de luz*.
-    fn confere(&self) -> Result<usize, String> {
+    ///
+    /// ⭐ **`pub` desde que o passe de dispositivo existe, e a razão é uma lei desta casa:** os dois
+    /// caminhos correm o MESMO predicado. Um segundo *«este pedido está bem formado»* escrito do
+    /// lado da placa continuaria a passar depois de este ficar torto — e o sintoma de um pedido
+    /// recusado é o sprite **não mudar nada**, indistinguível de a tecla não ter chegado.
+    ///
+    /// # Errors
+    /// Se algum plano não medir o que o [`Planos::size`] pede, dizendo **qual**.
+    pub fn confere(&self) -> Result<usize, String> {
         let n = self.texels();
         for (nome, tem, quer) in [
             ("base", self.base.len(), n * 4),

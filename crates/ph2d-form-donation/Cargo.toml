@@ -31,11 +31,22 @@ ph2d-render        = { path = "../ph2d-render" }
 # ⚠️ **INVISÍVEL dentro da shell** (armadilha §2.4 do HOWTO): lá o `wgpu` é dependência do
 # binário, e o `planes.rs` escrevia `wgpu::Device` sem nada no ficheiro que o declarasse.
 wgpu = "29.0.4"
+# ⚠️ **Para o passe da forma subir `f32` sem os COPIAR.** Os canais da forma são `[f32]` e a placa
+# quer `[u8]`; a alternativa era um `Vec<u8>` novo por acendida — `16 MB` a `1024²`, ou seja
+# milissegundos gastos a copiar para um passe que existe para poupar milissegundos.
+# ⛔ É a MESMA crate que o passe irmão usa (`ph2d-render`), e pelo mesmo motivo.
+bytemuck = "1"
 
 # ⚠️ **INVISÍVEL dentro da shell, a segunda vez nesta crate** (§2.4): o `#[cfg(test)]` do
 # `baked_form` faz round-trip do documento por `postcard`, e lá ele era dependência do binário.
 [dev-dependencies]
 postcard = { version = "1", features = ["alloc"] }
+# ⛔⛔ **A `naga` (o MESMO major do `wgpu` 29) — porque um WGSL que ninguém compila é PROSA.**
+# O `cargo check` não olha para uma `&str`, e todo gate deste repo que olha para um shader
+# precisa de adapter e é `#[ignore]` ⇒ um erro na fonte do passe só apareceria no 1.º quadro de
+# quem abrisse a cena. É a mesma dependência, com a mesma justificação, que a `ph2d-form-pbr`
+# declara — e aqui ela mede a fonte do PRODUTO, não uma montagem de exemplo.
+naga = { version = "29.0.4", features = ["wgsl-in"] }
 
 [lints]
 workspace = true

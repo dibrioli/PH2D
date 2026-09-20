@@ -109,7 +109,7 @@ fn the_bake_gesture_lights_the_selected_sprite() {
 
     let mut scene = Sculpt3dScene::new(&gpu.device, uv_sphere(48, 72, 1.0), 1.0);
     let mut forms = BTreeMap::new();
-    let mut pass = None;
+    let mut pass = ph2d_form_donation::baked_form::PassesDaLuz::default();
     let mut next_id = 0u32;
     let line = ph2d_app_sculpt3d::bake::drain(
         &mut scene,

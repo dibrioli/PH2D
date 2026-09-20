@@ -147,13 +147,14 @@ pub fn build_input<'a>(
 
 /// Sobe `pixels` como uma textura `rgba8unorm` — a **fonte que o passe acende**.
 ///
-/// ⚠️ Ela é para ser LIDA por um shader, e é isso que as usages dizem. Quem precisa de a COPIAR
-/// para outro sítio pede a [`upload_rgba_copiavel`] — ver lá porque a diferença não é cosmética.
+/// ⚠️ Ela é para ser LIDA por um shader, e é isso que as usages dizem. Quem precisar de a COPIAR
+/// para outro sítio pede a usage pela porta [`sobe`] — ver lá porque a diferença não é cosmética.
 pub fn upload_rgba(gpu: &GpuContext, size: (u32, u32), pixels: &[u8]) -> wgpu::Texture {
     sobe(gpu, size, pixels, wgpu::TextureUsages::empty())
 }
 
-/// ⛔⛔ **A irmã que pode ser COPIADA** — e ela existe porque a falta dela derrubava o app.
+/// ⛔⛔ **A PORTA ÚNICA das texturas deste módulo — e a usage entra por PARÂMETRO porque a falta
+/// dela derrubava o app.**
 ///
 /// # O defeito, medido na placa
 ///
@@ -171,12 +172,11 @@ pub fn upload_rgba(gpu: &GpuContext, size: (u32, u32), pixels: &[u8]) -> wgpu::T
 /// e a varredura impactada leu **3 196/3 196** — a feature morria no PRIMEIRO uso. *Uma usage em
 /// falta não é um erro de tipos: é um contrato que só o dispositivo confere.*
 ///
-/// ⚠️ A usage entra por PARÂMETRO de uma porta só, e não por uma segunda cópia do descritor: duas
-/// redacções do mesmo `create_texture` divergiriam no dia em que o formato mudasse.
-pub fn upload_rgba_copiavel(gpu: &GpuContext, size: (u32, u32), pixels: &[u8]) -> wgpu::Texture {
-    sobe(gpu, size, pixels, wgpu::TextureUsages::COPY_SRC)
-}
-
+/// ⚠️ **A irmã `upload_rgba_copiavel` MORREU quando a lei da forma passou ao dispositivo** (a saída
+/// do passe **já é** uma textura, logo não há upload nenhum entre acender e copiar) — e ela foi
+/// APAGADA em vez de ficar viva e órfã, que é a cura desta casa para um `pub` sem chamador. ⭐ A
+/// lição, essa, fica: ela é a razão de a usage ser um parâmetro, e o
+/// [`super::passe_da_forma::PasseDaForma::acende`] cita-a ao pedir o `COPY_SRC` da saída dele.
 fn sobe(
     gpu: &GpuContext,
     size: (u32, u32),

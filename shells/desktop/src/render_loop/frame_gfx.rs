@@ -35,7 +35,7 @@ pub(super) struct FrameGfx<'a> {
     pub(super) sculpt3d: &'a mut Option<ph2d_app_sculpt3d::Sculpt3dScene>,
     pub(super) baked_forms:
         &'a mut std::collections::BTreeMap<u64, ph2d_form_donation::baked_form::BakedForm>,
-    pub(super) baked_light: &'a mut Option<ph2d_render::ImpastoLightPass>,
+    pub(super) baked_light: &'a mut ph2d_form_donation::baked_form::PassesDaLuz,
     pub(super) next_baked_form: &'a mut u32,
     pub(super) surface: &'a mut SurfaceContext,
     pub(super) renderer: &'a mut SpriteRenderer,

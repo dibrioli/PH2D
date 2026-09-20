@@ -5808,6 +5808,8 @@ dependencies = [
 name = "ph2d-form-donation"
 version = "0.0.0"
 dependencies = [
+ "bytemuck",
+ "naga",
  "ph2d-form-pbr",
  "ph2d-gpu",
  "ph2d-light",

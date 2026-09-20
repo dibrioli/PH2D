@@ -153,7 +153,7 @@ pub(crate) fn build_initial_state(
         // Os objetos que uma forma acende (`docs/3D/02.2`). Nascem vazios e NÃO são `cfg`-gated: um
         // projeto salvo pode trazer objetos assados para um binário sem o módulo 3D.
         baked_forms: std::collections::BTreeMap::new(),
-        baked_light: None,
+        baked_light: ph2d_form_donation::baked_form::PassesDaLuz::default(),
         surface,
         renderer,
         sim,

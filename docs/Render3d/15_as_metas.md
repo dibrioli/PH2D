@@ -171,3 +171,45 @@ nota.*
 neutro»* quer dizer **um objecto que NÃO optou** pela lei nova — o caminho da tinta tem de ficar
 intacto ao bit. Não há ponto onde as duas leis coincidam, e nem podia haver: mudar a aparência é a
 razão de a obra existir.
+
+
+---
+
+## §8 — A 1.ª obra tem IMAGEM: as duas leis, lado a lado
+
+![as duas leis](imagens/as_duas_leis_2026-09-20.png)
+
+> Quatro bolas, a **mesma** forma e o **mesmo** nível de brilho (a exposição da lei nova foi medida
+> para igualar o da de sempre — ver o `OLHAR_DA_FORMA`), acesas pelas duas leis num adaptador real.
+> Gerado pela sonda `as_duas_leis_sobre_a_mesma_forma`.
+
+**O que muda, e é a razão da obra:** à esquerda o destaque tem a **cor da bola** e a peça lê-se
+chapada; à direita ele é **branco** e há um terminador de material. *Um plástico vermelho tem
+destaque branco; só um metal o tinge* — e é isso que separa um modelo de tinta de um pipeline
+fisicamente correcto.
+
+E a diferença é MEDIDA, não uma impressão — a razão `R/B` no destaque (o topo `3 %` mais brilhante
+de cada bola):
+
+| bola | a lei de sempre | a lei nova |
+|---|---|---|
+| vermelha | `2,686` | **`1,485`** |
+| azul | `0,372` | **`0,673`** |
+| **cinzenta (controlo)** | `1,000` | `1,000` |
+
+⭐ O `1,485` é, ao terceiro decimal, o número que a sonda de CPU previu (`1,50`) **antes de haver
+placa** — e a bola cinzenta lê `1,000` nas duas, que é o controlo que dá direito às outras linhas.
+
+⚠️ **O que a imagem NÃO decide** é se a sombra mais funda da direita é o que se quer: a lei de
+sempre levanta os pretos e esta não. Isso é produto, e é do dono.
+
+### Como o ver no app
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling && \
+  env PH2D_FORM_PBR=1 cargo run -p ph2d-host-desktop --profile smoke
+```
+
+Depois: pôr uma imagem no canvas, escolhê-la, esculpir uma peça, e carregar em **`Light the
+Selected Sprite`**. ⚠️ **Sem a variável, tudo fica exactamente como está hoje** — a lei nova shipa
+desligada, e um projecto gravado abre com a aparência com que foi gravado.

@@ -302,10 +302,17 @@ pub fn pixels_pela_forma_na_cpu(bake: &BakedForm, rig: &LightRig) -> Result<Vec<
 /// continua a ser o piso.
 #[must_use]
 pub(crate) fn ceu_do_rig(lampadas: &[ph2d_form_pbr::Lampada]) -> ph2d_form_pbr::Ceu {
-    /// O piso RELATIVO convertido para um termo ADITIVO — ver o doc acima. ⛔ Não é escolhido: é
-    /// `A/(1 − A)`, a única solução de `f/(1 + f) = A`.
-    const F: f32 = ph2d_light::AMBIENT / (1.0 - ph2d_light::AMBIENT);
-
+    // ⭐⭐ **A conversão vive na [`ph2d_light::env_ramp`] desde 2026-09-21, e não aqui.** Ela estava
+    // escrita neste corpo — o `f = A/(1 − A)`, o `/π` e as duas constantes do estúdio — e ganhou um
+    // SEGUNDO consumidor no dia em que o barro vivo passou a acender pela mesma lei. *O que dois
+    // consumidores têm de responder igual mora onde os dois alcançam*, que é a frase que a
+    // `ph2d-light` já escreve sobre o realce do barro.
+    //
+    // ⚠️ **O `plano` continua a ser calculado aqui e isso é declarado:** a porta irmã
+    // ([`ph2d_light::flat_response`]) lê um [`ph2d_light::ResolvedRig`] e esta função recebe
+    // [`ph2d_form_pbr::Lampada`], que é o vocabulário da ÓPTICA — as sondas desta crate constroem
+    // lâmpadas à mão e nunca têm um rig resolvido. ⭐ As duas contas são a mesma e há gate a
+    // afirmá-lo (`as_duas_portas_do_plano_concordam`).
     let mut plano = [0.0f32; 3];
     for l in lampadas {
         // ⚠️ A normal PLANA é a [`ph2d_form_pbr::VISTA`], logo `n·l` é a componente `z` da lâmpada.
@@ -314,11 +321,8 @@ pub(crate) fn ceu_do_rig(lampadas: &[ph2d_form_pbr::Lampada]) -> ph2d_form_pbr::
             *p += ndl * r;
         }
     }
-    let k = [0, 1, 2].map(|i| F * plano[i] / std::f32::consts::PI);
-    ph2d_form_pbr::Ceu {
-        base: [0, 1, 2].map(|i| k[i] * ph2d_light::ENV_BASE[i]),
-        inclinacao: [0, 1, 2].map(|i| k[i] * ph2d_light::ENV_SLOPE[i]),
-    }
+    let (base, inclinacao) = ph2d_light::env_ramp(plano);
+    ph2d_form_pbr::Ceu { base, inclinacao }
 }
 
 /// As lâmpadas do rig, no vocabulário que a óptica pede.

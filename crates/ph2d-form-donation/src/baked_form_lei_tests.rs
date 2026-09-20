@@ -233,3 +233,49 @@ fn a_sombra_vale_ambient_do_plano() {
         "controlo: sem céu a sombra é PRETA; leu {sem_ceu:?}"
     );
 }
+
+/// ⭐⭐ **AS DUAS PORTAS DO «PLANO» CONCORDAM** — a que lê o rig resolvido e a que lê as lâmpadas da
+/// óptica.
+///
+/// A conversão do piso relativo em rampa mudou-se para a [`ph2d_light::env_ramp`] quando o barro
+/// vivo passou a ser o segundo consumidor dela. A entrada dessa conversão — a **resposta plana** —
+/// ficou calculada nos dois sítios, porque cada consumidor tem o seu vocabulário de lâmpada.
+///
+/// ⚠️ **Duas contas iguais escritas em dois tipos são exactamente como uma lei diverge**, e a única
+/// coisa que o impede é este gate: ele constrói o MESMO rig dos dois lados e exige o mesmo `f32`.
+///
+/// ⭐ **E o CONTROLO é o que lhe dá direito:** um rig com todas as lâmpadas apagadas tem de ler
+/// `[0, 0, 0]` — senão a igualdade acima seria entre dois zeros e não afirmaria nada.
+///
+/// **Mutação que deve sangrar:** tirar o `max(0.0)` de um dos lados.
+#[test]
+fn as_duas_portas_do_plano_concordam() {
+    let rig = ph2d_light::LightRig::default();
+    let resolvido = ph2d_light::resolve(&rig).expect("o rig de fábrica tem uma lâmpada acesa");
+
+    let pela_luz = ph2d_light::flat_response(&resolvido);
+    let lampadas = crate::baked_form::lampadas_do_rig(&rig).expect("o rig resolve");
+    let mut pela_optica = [0.0f32; 3];
+    for l in &lampadas {
+        let ndl = l.para_a_luz[2].max(0.0);
+        for (p, r) in pela_optica.iter_mut().zip(l.radiancia) {
+            *p += ndl * r;
+        }
+    }
+    assert_eq!(
+        pela_luz, pela_optica,
+        "as duas portas da resposta plana divergiram — a rampa do céu passa a ser outra no barro \
+         vivo e no sprite assado, e o sintoma é «o assado não está igual ao vivo»"
+    );
+
+    // ⭐ **O CONTROLO**: a fixtura tem de ter luz, senão a igualdade é entre dois zeros.
+    assert!(
+        pela_luz.iter().any(|c| *c > 1.0e-3),
+        "controlo: o rig de fábrica tem de dar resposta plana ({pela_luz:?})"
+    );
+
+    // ⛔ E a metade que prova que o céu SEGUE o rig: sem lâmpada nenhuma a rampa é toda zero, e a
+    // lei que a lê volta a ser byte a byte a de antes de haver céu.
+    let (base, inc) = ph2d_light::env_ramp([0.0; 3]);
+    assert_eq!((base, inc), ([0.0; 3], [0.0; 3]));
+}

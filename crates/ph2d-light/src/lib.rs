@@ -124,6 +124,65 @@ pub fn env_ambient(n_canvas: [f32; 3]) -> [f32; 3] {
     ]
 }
 
+/// ⭐⭐⭐ **O CÉU ABSOLUTO que este rig produz** — o [`AMBIENT`] traduzido de FRACÇÃO para uma
+/// irradiância, na forma de rampa que uma lei de óptica consegue ler.
+///
+/// Devolve `(base, inclinação)`: a irradiância normalizada vale `base + inclinação · (−n.y)`, com
+/// `n` no referencial do CANVAS — a mesma rampa do [`env_ambient`], noutra unidade.
+///
+/// # ⛔⛔ Porque ela mora AQUI, e é a mesma razão que o [`clay_shine`] já escreve
+///
+/// *O que dois consumidores têm de responder igual mora onde os dois alcançam.* Hoje são dois: a lei
+/// que acende o SPRITE assado (`ph2d-form-pbr`, pela porta da `ph2d-form-donation`) e a que acende o
+/// BARRO VIVO no visor. Escrita duas vezes, ela divergiria na primeira wave que mexesse no `AMBIENT`
+/// — e o sintoma seria *«o assado não está igual ao vivo»*, que é literalmente o report que criou
+/// metade dos gates deste módulo.
+///
+/// # ⚠️ A conversão NÃO é uma escolha: `f = A/(1 − A)`
+///
+/// O [`AMBIENT`] declara-se como *«o que uma face totalmente virada PARA LONGE da luz ainda
+/// devolve»* — uma **fracção da resposta plana**, não uma quantidade de luz. Uma lei ABSOLUTA (o
+/// OpenPBR) precisa da quantidade, e o termo aditivo que faz `sombra/plano` voltar a valer
+/// exactamente `A` é `f = A/(1 − A)` — a única solução de `f/(1 + f) = A`.
+///
+/// ⚠️ **E o `plano` é a resposta de uma superfície PLANA sob este rig** (`Σ max(l·z, 0) · tint`, com
+/// a normal plana a ser o eixo da vista), dividida por `π` porque o que a lei pede é a irradiância
+/// **normalizada** (`E/π`, *o que uma difusa branca devolveria*).
+///
+/// ⭐ **Apagar as lâmpadas apaga o céu**, e isso é a metade que torna a tradução honesta: o estúdio
+/// É o rig. Com `plano = [0, 0, 0]` a rampa é toda zero, e a lei que a lê fica byte-idêntica ao que
+/// ela era antes de haver céu nenhum.
+#[must_use]
+pub fn env_ramp(plano: [f32; 3]) -> ([f32; 3], [f32; 3]) {
+    /// Ver o doc: `A/(1 − A)`, a única solução de `f/(1 + f) = A`.
+    const F: f32 = AMBIENT / (1.0 - AMBIENT);
+    let k = [0, 1, 2].map(|i| F * plano[i] / core::f32::consts::PI);
+    (
+        [0, 1, 2].map(|i| k[i] * ENV_BASE[i]),
+        [0, 1, 2].map(|i| k[i] * ENV_SLOPE[i]),
+    )
+}
+
+/// **A RESPOSTA PLANA deste rig** — `Σ max(l·z, 0) · tint`, a entrada do [`env_ramp`].
+///
+/// ⚠️ **A normal plana é o eixo da VISTA**, logo `n·l` é a componente `z` da lâmpada — e ela é a
+/// mesma nos dois consumidores porque o rig é autorado em espaço de CANVAS nos dois.
+///
+/// ⚠️ **Ela é uma porta e não quatro linhas em cada chamador**, porque é a entrada de uma conversão
+/// cuja outra metade ([`env_ramp`]) tem uma subtileza — e uma metade partilhada ao lado de uma
+/// copiada é exactamente como as duas divergem.
+#[must_use]
+pub fn flat_response(rig: &ResolvedRig) -> [f32; 3] {
+    let mut plano = [0.0f32; 3];
+    for l in rig.lamps() {
+        let ndl = l.dir[2].max(0.0);
+        for (p, r) in plano.iter_mut().zip(l.tint) {
+            *p += ndl * r;
+        }
+    }
+    plano
+}
+
 /// **O REALCE do barro** — quanto do especular entra na superfície de argila.
 ///
 /// ⚠️ **Ele mora AQUI e não na crate do renderizador de malha, e a razão não é organização:** um

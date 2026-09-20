@@ -333,13 +333,153 @@ caso **mais forte** (erro de compilação, não teste vermelho).
 
 ⚠️ **Promoção pedida à lista de flakes de fan-out** (`CLAUDE.md` §5.0 — a linha pede, o integrador
 escreve): **`the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`**
-(`ph2d-tool-painter`, módulo `measure_input_cost`) — único ✗ de `18 433` no portão desta wave, com
-**zero** linhas do diff naquela crate (ele toca `ph2d-nodegraph`, `ph2d-gpu-cook` e um doc), e
-**3 de 3 verde sozinho a `load 38`–`41`**, que é acima da carga em que reprovou. *Gate de custo
-medido ⇒ a assinatura da família.*
+(`ph2d-tool-painter`, módulo `measure_input_cost`) — único ✗ de `18 433` no portão da W1 do verbo,
+com **zero** linhas do diff naquela crate, e **3 de 3 verde sozinho a `load 38`–`41`**.
 
-⏳ **O que falta para a W1(a) fechar:** o kernel WGSL do `motion.clone` (o molde do §5.3 ponto 1),
-o `DerivedUniform` do `k`, e a paridade GPU↔CPU na bancada da `ph2d-gpu-cook`.
+⭐⭐ **E ele REPETIU na W1(a), que é o que fecha a assinatura:** único ✗ de **`18 443`**, outra vez
+com **zero** linhas de diff em `ph2d-tool-painter`, e **3 de 3 verde sozinho a `load 13,13`**. ⇒
+*duas corridas independentes, dois diffs sem uma linha naquela crate, e o teste verde sozinho nas
+duas — gate de custo medido, a assinatura exacta da família do `CLAUDE.md` §5.0.*
+
+### §5.5 — ✅ A W1(a) FECHOU: o `motion.clone` CORRE NO DISPOSITIVO
+
+O kernel é o molde do §5.3 ponto 1 com uma **translação** no lugar da rotação — *slice-major*
+(`copia = i / n`, `linha = i % n`), `write_cp_rows`, `read_P(linha)`, `write_P`, e o sequenciador a
+colher todas as outras colunas do template nesses índices, que é exactamente o `replicate` da CPU.
+
+**Três números saem do hospedeiro por `DerivedUniform`, calculados pelas MESMAS funções do `eval`:**
+
+| uniform | a lei | quem mais a lê |
+|---|---|---|
+| `cl_k` | `copies_within_budget(param_as_count(count), n, RECOMMENDED_MAX_ELEMENTS)` | a `count_law` deste kernel |
+| `cl_step_x` / `cl_step_y` | `radial::linear_step(angle, distance)` | o `Placement::of` da CPU |
+
+⛔ **O passo NÃO podia ser trig no dispositivo** (HR-5: a seno parabólica da casa portada seria a
+segunda cópia de uma lei, e o `sin` do WGSL é outra curva) — e ele é um número **por NÓ**, logo
+derivá-lo não custa um ciclo à placa. ⛔ **E o `k` também não:** reescrito em WGSL ele seria a
+segunda resposta a *«quantas cópias?»*, e duas respostas que discordem **desenham um número
+diferente de coisas**. ⭐ O `linear_step` nasceu desta wave como **porta com dois leitores** — o
+`eval` multiplica-o pelo posto, o uniform entrega-o resolvido.
+
+#### ⛔⛔ E a §5.4 estava INCOMPLETA por UMA variante — quem o disse foi um gate que já existia
+
+A `Count` da CPU vale `total` em toda a linha: *ela não depende do que entrou*, logo o corpo
+escreve-a e **nunca a lê**. Ligada com a cruza — a única variante que então tinha as duas metades
+de que ela precisa —, o módulo declarava `in_Count`, o corpo não chamava `read_Count`, **a naga
+apagava esse buffer do layout derivado** e o bind group do sequenciador ficava com uma entrada a
+mais: `create_bind_group` estoura, e **só no tique em que a coluna nasce**.
+
+⭐⭐ **Quem o apanhou foi o `every_registered_kernel_validates_across_the_whole_presence_space`**,
+que varre as `2ⁿ` máscaras de presença de todo kernel registado **sem placa nenhuma** — e cuja
+mensagem já nomeava o mecanismo inteiro, escrita por outra wave. *Eu tinha considerado este risco e
+dispensado-o por raciocínio; o gate mediu-o em sete segundos.*
+
+⇒ **`ColumnAccess::SourceWriteExisting`** (append-only, o 11.º verbo): escreve só se presente ·
+porta length-decoupled · **não lê**. As três ligações da família passam a ser
+
+| verbo | lê? | escreve? | porta |
+|---|---|---|---|
+| `SourceRead` | na fonte | ⛔ nunca | template |
+| `SourceReadWriteExisting` | na fonte | só se presente | template |
+| **`SourceWriteExisting`** | ⛔ **não** | só se presente | template |
+
+⚠️ **E o predicado mudou de NOME porque a pergunta dele nunca foi sobre LER:** o `column_present`
+pergunta *«com que comprimento julgo esta porta?»* ⇒ `is_source_read` → **`is_source_mapped`**.
+*Enquanto ele se chamou pelo que dois dos três faziam, o terceiro não cabia no nome sem o tornar
+falso.*
+
+⭐⭐ **Duas decisões do codegen deixaram de ser LISTAS e passaram a ser DERIVAÇÕES**, e as duas por
+o verbo novo não caber nelas:
+
+1. o braço do `WriteDropped` enumerava `ReadWriteExisting | SourceReadWriteExisting` — *a forma
+   exacta que o comentário três linhas acima condena por escrito*; hoje pergunta
+   `writes(true) && !writes(false)`, que é **ser condicional**;
+2. a **assinatura de presença** tinha o bit preso a `reads()`. Uma escrita condicional sem leitura
+   produz módulos diferentes (`WriteBuffer` contra `WriteDropped`) **com o mesmo conjunto de
+   ligações declaradas** ⇒ presos à mesma entrada da cache, o wgpu valida um bind group contra o
+   layout errado — o crash que o doc daquela função descreve. ⭐ Para todo acesso que já existia a
+   troca é **byte-idêntica**: os condicionais de então também liam.
+
+#### A BANCADA: a renumeração não aparece na POSIÇÃO
+
+⛔⛔ `Index`/`Count` são colunas que o desenho não carrega, e a cópia `c` põe as peças exactamente
+onde a translação manda **quer o `Index` tenha sido renumerado quer não**. ⇒ a cadeia da bancada
+projecta **`Index / Count`** num campo (`value.attribute` × 2 + `value.math ▸ Divide`) e pinta-o com
+o `motion.color_ramp`: `t` varre `[0,1)` **uma vez sobre o conjunto multiplicado**, e a TINTA passa
+a ser a renumeração à vista. ⭐ O discriminador é o par `(j, j + n)` — o mesmo elemento da fonte em
+duas cópias vizinhas —, afirmado no lado da CPU **antes** de se comparar seja o que for.
+
+| caso | pior \|Δpos\| | pior \|Δtint\| |
+|---|---|---|
+| `count 6` · dist 2 · 0° | `0` | `5,8826e-3` |
+| `count 4` · dist 1,25 · 37° | `4,77e-7` | `5,8824e-3` |
+| `count 5` · dist 0,9 · −110° · centrado | `0` | `5,8824e-3` |
+| **`count 1`** (o cloner em PASSAGEM) | `0` | **`5,8824e-3`** |
+
+⭐⭐ **A última linha é o CONTROLO, e é ela que torna a tabela legível:** com uma cópia só o
+multiplicador não multiplica nada e a tinta lê **o mesmo** desvio ⇒ *ele é a quantização da LUT da
+rampa* — a `LUT_RESOLUTION` dela é **`256`**, logo a célula mede `1/255 = 3,92e-3` e o canto de uma
+parada a cair dentro de uma célula vale `1,5/255 = 5,88e-3`, que é o número medido; tudo isto
+pré-existente —, **não** uma deriva do kernel novo. ⛔ E a barra (`1e-2`)
+continua a discriminar por duas ordens de grandeza: a avaria que o gate existe para apanhar — a
+renumeração a evaporar-se — desloca `t` em `1/k`, que a `k = 6` é `17×` a barra.
+
+⚠️ **A cadeia inteira é reclamada pelo dispositivo** (`grelha → clone → 2× atributo → divisão →
+rampa → saída`), com o `plan.is_fully_gpu()` a estourar se não for — *uma fronteira de CPU faria a
+bancada comparar a CPU consigo própria*.
+
+#### As RECUSAS, com a população ao lado
+
+Dos `6` cartões de `motion.clone` no produto (§5.2) este kernel alcança **`2`**; as outras quatro
+são `applicable` a devolver `false`, **com gate de PLANO a prová-lo e o controlo dos valores de
+fábrica na mesma corrida**:
+
+| recusa | cartões | mecanismo |
+|---|---|---|
+| `time_offset ≠ 0` | `1` | **COZIMENTO e não kernel** — ele re-cozinha a entrada em N instantes (`TimeFans`, ADR-0163). O que muda não é a conta, é quantas vezes o grafo a montante corre |
+| `mode = Radial` | `1` | uma **variante** por escrever (o `wgsl_lib` do kaleidoscope já tem a seno parabólica portada), não um bloqueio |
+| taper (`scale`/`rot`) | `3` | o único que **CUNHA**: com o knob ligado e a coluna ausente o `eval` cria `size`/`rot`, e uma escrita `…Existing` é por definição a que não cunha. ⚠️ O `applicable` só vê PARAMS, logo a recusa é pelo knob — inclusive nas cadeias em que a coluna existe |
+
+**Gates:** `a_lei_de_contagem_e_a_do_eval` · `o_passo_derivado_e_o_da_cpu_ao_bit` ·
+`o_k_derivado_e_o_do_orcamento` · `as_quatro_recusas_sao_as_medidas` ·
+`a_renumeracao_entra_pela_cruza` · `o_corpo_chama_o_que_as_ligacoes_declaram` (na crate do nó) ·
+`a_escrita_sem_leitura_e_de_porta_template_e_nao_cunha` (no enum) ·
+`a_escrita_sem_leitura_nao_liga_buffer_de_leitura` · `a_presenca_de_uma_escrita_sem_leitura_entra_na_chave`
+(no codegen) · `o_cloner_concorda_com_a_cpu_dentro_do_epsilon` ·
+`as_recusas_do_cloner_entregam_o_no_a_cpu`.
+
+**Mutação: 13 de 13 sangram**, com **seis** controlos verdes — quatro sobre o KERNEL pela paridade
+na placa (o `Index` deixa de renumerar · a `Count` fica a do template · a fatia deixa de ser
+slice-major · o posto ignora o `center`), uma sobre o **verbo** pelo naga (a `Count` volta a ser a
+cruza — *a que reproduz o defeito que esta wave encontrou*), duas sobre os uniformes derivados, uma
+sobre as recusas, três sobre o enum e duas sobre a derivação do codegen.
+
+⏳ **O que a W1(a) deixa aberto:** o modo `Radial` como variante (a trig já está portada no irmão),
+e o taper — que precisa de um verbo que **CUNHE** numa porta template, exactamente a pergunta que
+esta wave respondeu do lado oposto.
+
+#### ⛔⛔ E a pista `--ignored` da GPU tem DOIS vermelhos PRÉ-EXISTENTES, atribuídos por ABLAÇÃO
+
+Correr a bateria de placa inteira (`226` testes que **nem o CI nem o `ship.sh` correm**) devolveu
+três reprovados. A atribuição foi feita **antes** de olhar para o commit, ablando a única metade
+desta wave que podia tocar noutro nó — o plano derivado do `codegen` e o bit da assinatura de
+presença:
+
+| teste | com a minha mudança | ABLADA | veredito |
+|---|---|---|---|
+| `both_routes_composite_the_same_document_in_the_same_blend` | vermelho | **vermelho** | pré-existente |
+| `value_slope_kernel_matches_the_cpu_on_the_device` | vermelho | **vermelho** | pré-existente |
+| `crossing_the_reach_boundary_does_not_step_the_cost` | **verde** | **verde** | flake de carga (reprovou no meio dos 226, passa sozinho) |
+
+⚠️ **Os dois são de espécies diferentes e nenhum é um ε a derrapar:** o primeiro devolve **`0`
+instâncias contra `64`** (uma avaria estrutural — o dispositivo não emite nada), o segundo lê
+`max |d| = 1,05e-4` contra uma barra de `1e-4` (um fio acima). ⇒ *dívida NOMEADA, de quem os
+escreveu; esta wave não os toca e não os afrouxa.*
+
+⭐ **E o resto da mudança é inerte por construção, não por promessa:** o verbo novo é **append-only**
+e **nenhum kernel existente o declara**; o `is_source_mapped` responde ao mesmo conjunto de sempre
+mais ele; e o plano derivado coincide com a lista que substituiu para **todos** os dez verbos
+anteriores, porque os únicos condicionais de então também LIAM (`here == presente`).
 
 ---
 

@@ -105,10 +105,10 @@ impl Placement {
                 distance,
             }
         } else {
-            let (c, s) = cos_sin_cycles(angle_deg / DEG_PER_TURN);
+            let (dx, dy) = linear_step(angle_deg, distance);
             Self::Linear {
-                dx: rank * (distance * c),
-                dy: rank * (distance * s),
+                dx: rank * dx,
+                dy: rank * dy,
             }
         }
     }
@@ -131,6 +131,19 @@ impl Placement {
             }
         }
     }
+}
+
+/// **O passo de UMA cópia da fila** — o vector `distance · (cos θ, sin θ)`, com θ em GRAUS.
+///
+/// ⚠️ **Ela existe por ter DOIS leitores que não se conhecem:** o [`Placement::of`] (que o
+/// multiplica pelo posto da cópia, o caminho da CPU) e o uniform DERIVADO do kernel
+/// (`ph2d_node_motion_clone::kernel`), que o entrega ao dispositivo já resolvido. ⛔ Escrita
+/// duas vezes ela seria a segunda cópia de uma lei — e aqui isso custaria mais do que o
+/// costume, porque a metade do dispositivo teria de ser em **WGSL**, onde o `sin` é de outro
+/// fabricante (HR-5). *Derivada no hospedeiro, as duas rotas multiplicam o MESMO `f32`.*
+pub(super) fn linear_step(angle_deg: f32, distance: f32) -> (f32, f32) {
+    let (c, s) = cos_sin_cycles(angle_deg / DEG_PER_TURN);
+    (distance * c, distance * s)
 }
 
 /// O passo angular entre cópias vizinhas, em graus — ver o cabeçalho.

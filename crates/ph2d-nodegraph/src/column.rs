@@ -142,6 +142,30 @@ pub enum ColumnAccess {
     /// the same port (`kaleidoscope` reads the source `P` and writes a transformed
     /// output `P` — two bindings, because they live in different buffers).
     SourceRead,
+    /// **ESCREVE só quando a coluna existe, numa porta TEMPLATE, e NUNCA lê** — o terceiro membro
+    /// da família do [`StreamOp::SourceRows`](crate::gpu::StreamOp), e a variante que uma
+    /// **medição** obrigou a existir no dia seguinte à [`Self::SourceReadWriteExisting`].
+    ///
+    /// ⛔⛔ **Ela não é simetria: um buffer LIDO POR NINGUÉM é um crash.** A `Count` do
+    /// `motion.clone` vale `total` em toda a linha — *ela não depende do que entrou* —, logo o
+    /// corpo escreve-a e nunca a lê. Ligada como a cruza, o módulo declarava `in_Count`, o corpo
+    /// não chamava `read_Count`, **a naga apagava esse buffer do layout derivado** e o bind group
+    /// do sequenciador ficava com uma entrada a mais — `create_bind_group` estoura, e só no tique
+    /// em que a coluna nasce. Quem o apanhou foi o
+    /// `every_registered_kernel_validates_across_the_whole_presence_space`, que varre as 2ⁿ
+    /// máscaras de presença sem placa nenhuma.
+    ///
+    /// ⚠️ **As duas metades que ela partilha, e a que ela larga:**
+    ///
+    /// - **escreve SÓ SE PRESENTE**, como a [`Self::ReadWriteExisting`] e a cruza — escrever uma
+    ///   coluna ausente CUNHA-A, e num kernel `SourceRows` o que o corpo não escreve chega por
+    ///   GATHER;
+    /// - **a porta é length-decoupled** ([`Self::is_source_mapped`]), como a cruza e o
+    ///   [`Self::SourceRead`] — sem isso a presença seria julgada pela regra POSICIONAL (tem de
+    ///   ter o comprimento do dispatch) e a coluna sairia ABSENT numa cadeia que a traz;
+    /// - **não lê**, e é isso que a separa da cruza: nenhum acessor `read_`, nenhum buffer de
+    ///   leitura, nenhuma entrada no bind group.
+    SourceWriteExisting,
 }
 
 impl ColumnAccess {
@@ -173,9 +197,9 @@ impl ColumnAccess {
             | ColumnAccess::GatherKey
             | ColumnAccess::SourceRead => false,
             ColumnAccess::Write | ColumnAccess::ReadWrite => true,
-            ColumnAccess::ReadWriteExisting | ColumnAccess::SourceReadWriteExisting => {
-                present_on_input
-            }
+            ColumnAccess::ReadWriteExisting
+            | ColumnAccess::SourceReadWriteExisting
+            | ColumnAccess::SourceWriteExisting => present_on_input,
         }
     }
 
@@ -201,16 +225,25 @@ impl ColumnAccess {
         matches!(self, ColumnAccess::GatherKey)
     }
 
-    /// Is this a [`Self::SourceRead`] — a read from a length-decoupled template
-    /// port (`StreamOp::SourceRows`), present at the port's own length?
-    /// ⚠️ **A cruza conta**, e é o que lhe dá a length-decouple: sem isto o
-    /// `column_present` julgaria a porta template pela regra POSICIONAL (tem de ser o
-    /// comprimento do dispatch) e a coluna sairia ABSENT numa cadeia que a traz — a lei
-    /// seria escrita e nunca armaria.
-    pub const fn is_source_read(self) -> bool {
+    /// **A porta desta ligação é o TEMPLATE de um [`StreamOp::SourceRows`](crate::gpu::StreamOp)**
+    /// — length-decoupled do dispatch, logo presente ao comprimento DELA e não ao da corrida.
+    ///
+    /// ⚠️⚠️ **O nome diz PORTA e não LEITURA de propósito, e a diferença já mordeu:** a pergunta
+    /// que o `column_present` faz é *«com que comprimento julgo esta porta?»*, e ela tem três
+    /// respostas afirmativas — a que só lê ([`Self::SourceRead`]), a que lê e escreve
+    /// ([`Self::SourceReadWriteExisting`]) e a que **só escreve**
+    /// ([`Self::SourceWriteExisting`]). Enquanto o predicado se chamou `is_source_read`, a
+    /// terceira não cabia no nome sem o tornar falso.
+    ///
+    /// ⛔ Sem isto o `column_present` julgaria a porta template pela regra POSICIONAL (tem de ser
+    /// o comprimento do dispatch) e a coluna sairia ABSENT numa cadeia que a traz — a lei ficaria
+    /// escrita e nunca armaria.
+    pub const fn is_source_mapped(self) -> bool {
         matches!(
             self,
-            ColumnAccess::SourceRead | ColumnAccess::SourceReadWriteExisting
+            ColumnAccess::SourceRead
+                | ColumnAccess::SourceReadWriteExisting
+                | ColumnAccess::SourceWriteExisting
         )
     }
 }
@@ -270,11 +303,12 @@ mod tests {
             ColumnAccess::SourceReadWriteExisting => 7,
             ColumnAccess::GatherKey => 8,
             ColumnAccess::SourceRead => 9,
+            ColumnAccess::SourceWriteExisting => 10,
         }
     }
 
     /// Todos os verbos, na ordem do [`indice`] — ver o gate que prende as duas coisas.
-    const TODAS: [ColumnAccess; 10] = [
+    const TODAS: [ColumnAccess; 11] = [
         ColumnAccess::Read,
         ColumnAccess::Write,
         ColumnAccess::ReadWrite,
@@ -285,6 +319,7 @@ mod tests {
         ColumnAccess::SourceReadWriteExisting,
         ColumnAccess::GatherKey,
         ColumnAccess::SourceRead,
+        ColumnAccess::SourceWriteExisting,
     ];
 
     /// ⭐⭐⭐ **A LISTA É DERIVADA, e uma variante nova não pode ficar de fora dela.**
@@ -310,18 +345,43 @@ mod tests {
     fn a_cruza_le_na_fonte_e_escreve_so_o_que_existe() {
         let a = ColumnAccess::SourceReadWriteExisting;
         assert!(a.reads(), "ela LE");
-        assert!(a.is_source_read(), "e le na FONTE (length-decoupled)");
+        assert!(a.is_source_mapped(), "e le na FONTE (length-decoupled)");
         assert!(a.writes(true), "escreve quando a coluna existe");
         assert!(!a.writes(false), "e NAO a cunha quando ela falta");
         // ⛔ E não é nenhuma das outras coisas — sem isto, um predicado novo que a apanhasse por
         // acidente mudaria o que ela faz sem tocar nesta linha.
         assert!(!a.consumes() && !a.broadcasts() && !a.refuses() && !a.is_gather_key());
         // ⭐ O CONTROLO: o irmão que lê na fonte NUNCA escreve, e é por isso que ele não chegava.
-        assert!(ColumnAccess::SourceRead.is_source_read());
+        assert!(ColumnAccess::SourceRead.is_source_mapped());
         assert!(!ColumnAccess::SourceRead.writes(true));
-        // …e o irmão que escreve condicionalmente NÃO lê na fonte.
+        // …e o irmão que escreve condicionalmente NÃO é de porta template.
         assert!(ColumnAccess::ReadWriteExisting.writes(true));
-        assert!(!ColumnAccess::ReadWriteExisting.is_source_read());
+        assert!(!ColumnAccess::ReadWriteExisting.is_source_mapped());
+    }
+
+    /// ⭐⭐⭐ **O PERFIL DA ESCRITA SEM LEITURA** (`SourceWriteExisting`) — a variante que um
+    /// **buffer lido por ninguém** obrigou a existir.
+    ///
+    /// ⚠️ **A metade que a define é uma AUSÊNCIA** (`!reads()`), e uma ausência não se prova com
+    /// o predicado sozinho: o CONTROLO é a cruza ao lado, que tem tudo isto **mais** a leitura.
+    /// *Sem ele este gate passaria com um alias da cruza.*
+    #[test]
+    fn a_escrita_sem_leitura_e_de_porta_template_e_nao_cunha() {
+        let a = ColumnAccess::SourceWriteExisting;
+        assert!(
+            !a.reads(),
+            "ela NAO le -- e' isso que lhe tira o buffer de leitura"
+        );
+        assert!(a.is_source_mapped(), "mas a porta dela e' o TEMPLATE");
+        assert!(a.writes(true), "escreve quando a coluna existe");
+        assert!(!a.writes(false), "e NAO a cunha quando ela falta");
+        assert!(!a.consumes() && !a.broadcasts() && !a.refuses() && !a.is_gather_key());
+        // ⭐ O CONTROLO: a cruza é ela MAIS a leitura, e é a leitura que as separa.
+        let cruza = ColumnAccess::SourceReadWriteExisting;
+        assert!(cruza.reads(), "a cruza LE");
+        assert_eq!(cruza.is_source_mapped(), a.is_source_mapped());
+        assert_eq!(cruza.writes(true), a.writes(true));
+        assert_eq!(cruza.writes(false), a.writes(false));
     }
 
     /// ⭐ **Exactamente DOIS verbos escrevem condicionalmente, e exactamente DOIS leem na fonte** —
@@ -337,18 +397,20 @@ mod tests {
             condicionais,
             vec![
                 ColumnAccess::ReadWriteExisting,
-                ColumnAccess::SourceReadWriteExisting
+                ColumnAccess::SourceReadWriteExisting,
+                ColumnAccess::SourceWriteExisting
             ],
             "quem escreve SO SE PRESENTE"
         );
-        let na_fonte: Vec<_> = TODAS.into_iter().filter(|a| a.is_source_read()).collect();
+        let na_fonte: Vec<_> = TODAS.into_iter().filter(|a| a.is_source_mapped()).collect();
         assert_eq!(
             na_fonte,
             vec![
                 ColumnAccess::SourceReadWriteExisting,
-                ColumnAccess::SourceRead
+                ColumnAccess::SourceRead,
+                ColumnAccess::SourceWriteExisting
             ],
-            "quem le num indice que o CORPO calcula"
+            "quem vive numa porta TEMPLATE (length-decoupled)"
         );
     }
 }

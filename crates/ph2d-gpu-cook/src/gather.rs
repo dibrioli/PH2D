@@ -50,12 +50,16 @@ pub(crate) fn column_present(
 ) -> bool {
     match inputs.get(b.port) {
         None => false,
-        // A source-mapped read (ADR-0136, `StreamOp::SourceRows`): the template
-        // port is length-decoupled from the dispatch (dispatch = count law,
-        // template = its own length), so presence is "carries the column at any
-        // non-empty length" — the same rule the id-gather's state ports get, and
-        // the body reads it at its OWN index (`kaleidoscope`'s `i % src_n`).
-        Some(s) if b.access.is_source_read() => s.count > 0 && s.cols.contains_key(b.column),
+        // Uma ligação de porta TEMPLATE (ADR-0136, `StreamOp::SourceRows`): a porta é
+        // length-decoupled do dispatch (dispatch = lei de contagem, template = o comprimento
+        // dela), logo a presença é *«carrega a coluna a qualquer comprimento não-vazio»* — a
+        // mesma regra que as portas de estado do id-gather têm, e o corpo lê-a no índice DELE
+        // (o `i % src_n` do `kaleidoscope`).
+        //
+        // ⚠️ **A pergunta é sobre a PORTA e não sobre ler:** a `SourceWriteExisting` não lê nada
+        // e precisa exactamente deste julgamento, senão a escrita condicional dela seria
+        // descartada numa cadeia que TRAZ a coluna.
+        Some(s) if b.access.is_source_mapped() => s.count > 0 && s.cols.contains_key(b.column),
         Some(s) if gather_port.is_some_and(|kp| b.port != kp) => {
             s.count > 0 && s.cols.contains_key(b.column)
         }

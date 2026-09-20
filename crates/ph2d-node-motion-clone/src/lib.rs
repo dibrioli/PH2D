@@ -34,6 +34,8 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 /// O LEQUE de tempo — o atraso por cópia (doc 89, folha 08).
 pub mod fan;
+/// ⭐ O kernel do DISPOSITIVO (ciclo 10 W1a, doc 116 §5.3) — ver [`kernel`].
+mod kernel;
 mod radial;
 mod trig;
 
@@ -108,9 +110,14 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             default: 0.0,
         },
     ],
-    // CPU-only by design (see handoff §9): a cloner *changes the element count*
-    // (1 → N×in), which is structural, not a per-element `ph2d-expr` map an
-    // `eval_column` could lower; and no Instances-domain WGSL runtime exists.
+    // Sem lowering de EXPRESSÃO: um cloner *muda a contagem* (1 → N×in), que é estrutural e
+    // não um mapa por-elemento que um `eval_column` pudesse baixar.
+    //
+    // ⚠️ **Isto não quer dizer «CPU-only», e a segunda metade da frase que aqui esteve
+    // (*«e não existe runtime WGSL no domínio Instances»*) está REFUTADA desde o ciclo 10**: o
+    // nó corre no dispositivo por um [`kernel`] registado ao lado (`StreamOp::SourceRows`,
+    // ADR-0136), que é outro canal. *Um `LoweringKind` fala de expressões; um `GpuKernel` fala
+    // do device.*
     lowerings: &[LoweringKind::Cpu],
 };
 
@@ -423,6 +430,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         }],
     );
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    // Ciclo 10 W1(a): o caminho do dispositivo — ver [`kernel`].
+    kernel::regista(reg);
     Ok(())
 }
 

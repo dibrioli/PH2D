@@ -120,6 +120,22 @@ pub enum BindingPlan {
     WriteDropped,
 }
 
+/// **Este acesso escreve SÓ QUANDO a coluna existe?** — derivado da
+/// [`ColumnAccess::writes`], nunca de uma lista de variantes.
+///
+/// ⚠️ *Uma condição que enumera os leitores dela apodrece* — a lista que aqui esteve tinha dois
+/// nomes e o terceiro verbo chegou no dia seguinte.
+fn escrita_condicional(a: ColumnAccess) -> bool {
+    a.writes(true) && !a.writes(false)
+}
+
+/// **O plano desta ligação depende de a coluna estar lá?** — a pergunta que a assinatura de
+/// presença faz, e a única honesta: um plano que muda com a presença tem de mudar a CHAVE da
+/// cache, senão dois módulos diferentes partilham um pipeline (ver [`presence_signature`]).
+fn plano_depende_da_presenca(a: ColumnAccess) -> bool {
+    a.reads() || escrita_condicional(a)
+}
+
 /// The per-binding plan for a kernel against a concrete input column set:
 /// `(read plan, write plan)` in `kernel.bindings` order. `present` answers
 /// "does the binding's port carry this column?".
@@ -130,7 +146,13 @@ pub fn plan_bindings(
     bindings
         .iter()
         .map(|b| {
-            let here = b.access.reads() && present(b);
+            // ⚠️ **A presença pergunta-se SEMPRE, e não só a quem lê.** Enquanto a única
+            // escrita condicional era de um acesso que também lia, `reads() && present(b)`
+            // respondia às duas perguntas por acidente; a `SourceWriteExisting` **não lê**, e com
+            // o curto-circuito a escrita dela caía sempre no ramo do `WriteDropped` — a coluna
+            // nunca chegava à saída, numa cadeia que a traz.
+            let presente = present(b);
+            let here = b.access.reads() && presente;
             let read = b.access.reads().then_some(if here {
                 BindingPlan::ReadBuffer
             } else {
@@ -146,16 +168,19 @@ pub fn plan_bindings(
             // column, and naga rejected `redefinition of out_v`. It would have
             // been subtle for a kernel with only ONE such port.
             // [[feedback_a_condition_that_enumerates_its_readers_rots]]
-            let write = match b.access {
-                // The one shape a boolean cannot carry: absent, so no buffer,
-                // but the body still needs a `write_` symbol to call (a no-op).
-                ColumnAccess::ReadWriteExisting | ColumnAccess::SourceReadWriteExisting
-                    if !here =>
-                {
-                    Some(BindingPlan::WriteDropped)
-                }
-                a if a.writes(here) => Some(BindingPlan::WriteBuffer),
-                _ => None,
+            //
+            // ⭐⭐ **E o braço do `WriteDropped` passou a ser DERIVADO, pela mesma razão.** Ele
+            // enumerava `ReadWriteExisting | SourceReadWriteExisting`, que é exactamente a forma
+            // que o parágrafo acima condena — e a lista teria de crescer a cada verbo novo. Hoje
+            // a pergunta é a que a própria [`ColumnAccess::writes`] responde: *escreve com a
+            // coluna e não escreve sem ela* ⇒ é condicional ⇒ o corpo ainda precisa de um
+            // `write_` **no-op** para chamar (a única forma que um booleano não carrega).
+            let write = if b.access.writes(presente) {
+                Some(BindingPlan::WriteBuffer)
+            } else if escrita_condicional(b.access) {
+                Some(BindingPlan::WriteDropped)
+            } else {
+                None
             };
             (read, write)
         })
@@ -222,8 +247,13 @@ pub fn presence_signature(
         h = (h ^ (b.access as u64)).wrapping_mul(0x100_0000_01b3);
         (h ^ (b.port as u64)).wrapping_mul(0x100_0000_01b3)
     });
+    // ⚠️ **O bit é a presença de quem o PLANO consulta, não de quem LÊ.** Uma escrita condicional
+    // sem leitura produz módulos diferentes (`WriteBuffer` contra `WriteDropped`) com o mesmo
+    // conjunto de ligações — com o bit preso a `reads()` os dois colidiriam numa entrada de cache,
+    // que é o crash que o parágrafo acima descreve. ⭐ Para todo acesso que já existia isto é
+    // byte-idêntico: os condicionais de então também liam.
     for (i, b) in bindings.iter().enumerate() {
-        let here = b.access.reads() && present(b);
+        let here = plano_depende_da_presenca(b.access) && present(b);
         sig ^= (here as u64) << (i % 64);
     }
     sig

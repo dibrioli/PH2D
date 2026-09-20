@@ -5848,6 +5848,7 @@ dependencies = [
  "ph2d-node-motion-bend",
  "ph2d-node-motion-bezier-warp",
  "ph2d-node-motion-boids",
+ "ph2d-node-motion-clone",
  "ph2d-node-motion-collide",
  "ph2d-node-motion-color-ramp",
  "ph2d-node-motion-combine",

@@ -36,6 +36,49 @@ repo já o fazem à vista — `cargo-test-narrow.sh` re-entra com `900 s`,
 `nextest-impacted.sh` com `5400 s`, `ship.sh` com `7200 s`, cada um com o número
 escrito no próprio ficheiro.
 
+### ⛔⛔⛔ §1.1 — A fatia do PRIMÁRIO já vem com ~46 G gastos, e o tecto de memória não o sabe *(medido 2026-09-20)*
+
+O `target/debug` do primário é um **symlink para `/mnt/ramtarget/PH2D/debug`**
+(um `tmpfs` de 64 G, armado pelo `scripts/ram-build.sh` em 2026-08-24), e
+**as páginas de um `tmpfs` são cobradas ao cgroup que as escreveu**. Como quem as
+escreve é sempre um `cargo` que passou por esta porta, elas ficam na fatia
+`ph2d-ph2d.slice` — e lá ficam depois de o comando acabar, porque o ficheiro
+continua a existir.
+
+⇒ **no primário, `PH2D_MEM_MAX` não é o que o trabalho pode tomar: é o disco em
+RAM MAIS o trabalho.** Medido no envio da rodada de seis linhas:
+
+| corrida | tecto | disco em RAM cobrado | sobra para o trabalho | veredito |
+|---|---|---|---|---|
+| `ship.sh` no primário | `48 G` | `46,5 G` | `~1,5 G` | ⛔ **SIGKILL** no `a_panic_downstream_does_not_take_down_the_caller` (`ph2d-quadchain`), que sozinho pede `6,2 G` de RSS |
+| o MESMO teste, sozinho | `48 G` | `46,5 G` | `~1,5 G` | ⛔ **SIGKILL** aos 31 s — *reproduz, logo não é flake de fan-out* |
+| o MESMO teste, sozinho | **`96 G`** | `46,5 G` | `~49 G` | ✅ **PASS** em `62,7 s` |
+| o portão foundational na worktree da linha | `48 G` | **`0`** | `48 G` | ✅ PASS em `70,5 s` |
+
+⭐⭐ **A última linha é o controlo que fecha a atribuição:** a fatia de uma
+worktree é OUTRA (`ph2d-line_<nome>.slice`) e não carrega o disco em RAM, logo o
+mesmo teste, no mesmo commit, com o mesmo tecto, passa lá e morre aqui. *Um tecto
+que mede duas coisas diferentes com o mesmo número não é um tecto — é uma
+coincidência que expira quando uma delas cresce.*
+
+⚠️ **E o `oom-killer` acusa o teste, não a causa:** o despejo do kernel diz
+`Killed process … (veto-…) anon-rss:6544504kB` e `memory: usage 50331648kB,
+limit 50331648kB` — as duas metades estão lá, e a leitura fácil (*«o teste come
+48 G»*) é falsa: ele come `6,2` de um tecto que já tinha `46,5` gastos. ⇒ *num
+SIGKILL, leia o `limit` do cgroup e o RSS do morto LADO A LADO antes de acusar
+quem morreu.*
+
+⛔ **O `tmpfs` NÃO está `noswap`** (`findmnt -no OPTIONS /mnt/ramtarget`), logo
+aquelas páginas podem sair para o disco — é por isso que subir o tecto é seguro
+aqui e não reabre o travamento de
+[`project_ramtarget_noswap_fragments_memory_and_freezes`](../../project-memory/project_ramtarget_noswap_fragments_memory_and_freezes.md).
+
+⇒ **no primário, todo comando pesado leva `PH2D_MEM_MAX=96G`** (`46,5` do disco
+em RAM + os `48` que uma linha tem). Quem reclamar o `tmpfs`
+([`DIRETIVA_FIM_DE_DIA`](../IntegracaoMultiAgente/DIRETIVA_FIM_DE_DIA.md) §2-bis)
+pode voltar ao tecto de uma linha — e tem de **reconferir esta nota**, que é a lei
+do §0.0 sobre quem move o número.
+
 ---
 
 ## §2 — Por que a fatia é da LINHA e não do comando (medido 2026-09-15)

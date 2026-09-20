@@ -180,13 +180,17 @@ fn o_chip_da_cerca_cobre_o_enum_e_respeita_a_ordem_dele() {
         let tag = u8::try_from(i).unwrap();
         assert_eq!(cerca.tag(), tag, "a POSICAO no `ALL` e' a tag");
         // ⭐ E o rótulo que o painel pinta é o que o motor chama àquela posição.
+        // ⚠️ **São DUAS chaves e não uma** (o painel tem a dele, o motor passou a ter o dele na
+        //    integração de 2026-09-20) — e é por isso que esta asserção continua a dizer alguma
+        //    coisa: ela exige que as duas resolvam para a MESMA palavra. *Derivar uma da outra
+        //    tornaria este gate uma tautologia.*
         let chave = ph2d_panel_inspector::chave_da_cerca_do_abanao(tag);
         assert_eq!(
             ph2d_i18n::tr(chave),
-            cerca.label(),
+            ph2d_i18n::tr(cerca.label_key()),
             "o chip da posicao {i} diz «{}» e o motor chama-lhe «{}»",
             ph2d_i18n::tr(chave),
-            cerca.label()
+            ph2d_i18n::tr(cerca.label_key())
         );
     }
 }

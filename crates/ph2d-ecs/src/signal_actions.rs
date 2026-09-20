@@ -311,9 +311,13 @@ impl SignalFrom {
     /// ⚠️ **APPEND-ONLY**: a posição é a tag e ela viaja no ficheiro.
     pub const ALL: [SignalFrom; 2] = [SignalFrom::Anyone, SignalFrom::Myself];
 
-    /// O rótulo que o artista lê. Inglês (HR-15).
+    /// ⭐ **A CHAVE do rótulo que o artista lê** — quem pinta é que a resolve (HR-15).
+    ///
+    /// ⚠️ **O nome mudou de `label` para `label_key` na integração de 2026-09-20**, com o valor:
+    /// um método chamado `label` que devolve `ecs.signal_from.anyone` mente ao chamador seguinte,
+    /// e o irmão `SignalVerb` já se chamava assim.
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn label_key(self) -> &'static str {
         match self {
             SignalFrom::Anyone => "ecs.signal_from.anyone",
             SignalFrom::Myself => "ecs.signal_from.myself",

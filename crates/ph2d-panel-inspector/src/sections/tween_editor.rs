@@ -336,6 +336,38 @@ fn campos_de_para(
 
     cur_y
 }
+/// ⭐⭐ **Os rótulos dos quatro selectores desta secção, RESOLVIDOS.**
+///
+/// ⚠️ **Eles saem daqui e não do corpo do [`editor`] por MEDIÇÃO:** a integração de 2026-09-20 pôs
+/// os quatro motores (`Preset` · `Canal` · `AoAcabar` · `Ciclo`) a publicar `label_key()`, e as
+/// quatro linhas a resolvê-la levaram aquela função a `205` de um tecto de `200`. A cura de um
+/// tecto é o CORTE, nunca uma entrada no `FN_OVERAGE_OK` — e o corte é por RESPONSABILIDADE: isto
+/// é *«a palavra que cada chip mostra»*, que é um assunto só.
+///
+/// ⭐ A lei que eles obedecem é a da fronteira dos motores: **o motor publica a CHAVE e quem pinta
+/// é que a resolve** — um motor que devolvesse a palavra seria uma segunda tabela de strings.
+struct Rotulos;
+
+impl Rotulos {
+    fn presets() -> Vec<&'static str> {
+        ph2d_tween::Preset::ALL
+            .iter()
+            .map(|p| tr(p.label_key()))
+            .collect()
+    }
+    fn canais() -> Vec<&'static str> {
+        Canal::ALL.iter().map(|c| tr(c.label_key())).collect()
+    }
+    fn fins() -> Vec<&'static str> {
+        AoAcabar::ALL.iter().map(|a| tr(a.label_key())).collect()
+    }
+    fn ciclos() -> Vec<&'static str> {
+        ph2d_tween::Ciclo::ALL
+            .iter()
+            .map(|c| tr(c.label_key()))
+            .collect()
+    }
+}
 
 /// O editor do tween aberto. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
@@ -373,10 +405,7 @@ pub(super) fn editor(
     }
     // ⭐⭐⭐ **Os PRESETS primeiro** — eles reescrevem tudo o que vem a seguir, e é isso que os põe
     // em cima: *um botão que muda os cinco campos abaixo dele lê-se; um que os muda acima, não.*
-    let presets: Vec<&str> = ph2d_tween::Preset::ALL
-        .iter()
-        .map(|p| tr(p.label_key()))
-        .collect();
+    let presets = Rotulos::presets();
     cur_y = grupo(
         scene,
         text_system,
@@ -415,7 +444,7 @@ pub(super) fn editor(
         );
     }
     let canal = Canal::from_tag(row.canal);
-    let canais: Vec<&str> = Canal::ALL.iter().map(|c| tr(c.label_key())).collect();
+    let canais = Rotulos::canais();
     cur_y = grupo(
         scene,
         text_system,
@@ -517,7 +546,7 @@ pub(super) fn editor(
         &modos,
         row.modo as usize,
     );
-    let fins: Vec<&str> = AoAcabar::ALL.iter().map(|a| tr(a.label_key())).collect();
+    let fins = Rotulos::fins();
     cur_y = grupo(
         scene,
         text_system,
@@ -537,10 +566,7 @@ pub(super) fn editor(
     // ⚠️ **Ele vem DEPOIS do `When Done` de propósito:** os dois falam do tempo, e a ordem é a da
     // pergunta que o artista faz — *o que acontece DENTRO de uma volta* lê-se depois de *o que
     // acontece no FIM*, porque é o fim que ele já conhece do resto do painel.
-    let ciclos: Vec<&str> = ph2d_tween::Ciclo::ALL
-        .iter()
-        .map(|c| tr(c.label_key()))
-        .collect();
+    let ciclos = Rotulos::ciclos();
     grupo(
         scene,
         text_system,

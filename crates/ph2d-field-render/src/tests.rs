@@ -6,6 +6,7 @@ use ph2d_field_eval::hybrid::Registry;
 
 mod banda;
 mod chao_ricochete;
+mod chao_sem_reflexo;
 mod cornell;
 mod curvatura_gates;
 mod ground_gates;

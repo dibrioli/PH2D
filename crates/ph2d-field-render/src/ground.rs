@@ -78,6 +78,15 @@ impl Ground {
 ///
 /// ⚠️ **Sem especular de propósito:** um reflexo depende da direcção de vista, e a sombra de um
 /// chão não pode mudar quando a câmera roda.
+///
+/// ⛔⛔⛔ **E `specular_weight: 0` NÃO chegava para o cumprir** (medido 2026-09-19): aquele knob não
+/// multiplica o lobo — ele modula o ÍNDICE, e a zero o índice fica `1`. O albedo direccional do lobo
+/// indirecto tinha o `F90` **cravado em `1`**, logo esta superfície reflectia até **`0,270`** do céu
+/// no rasante, e o [`crate::ground_shade::catcher`] lê-a com o `v` do pixel ⇒ *a razão da sombra
+/// dependia de onde a câmera estava*. A cura é [`ph2d_material::bsdf::grazing_dielectric`], e a
+/// promessa desta frase passou a ser **afirmada** pelo gate
+/// `tests::chao_sem_reflexo::a_regua_do_chao_nao_reflecte_o_ceu`. *Uma promessa escrita num doc é
+/// uma nota; escrita num gate é uma propriedade.*
 #[must_use]
 pub fn catcher_surface() -> ph2d_material::Surface {
     ph2d_material::OpenPbr {

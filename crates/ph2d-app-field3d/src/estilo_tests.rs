@@ -460,13 +460,39 @@ fn o_dispositivo_e_a_referencia_pintam_o_mesmo_estilo() {
     );
 }
 
-/// ⭐⭐⭐ **E A FÁBRICA É BYTE-IDÊNTICA NO DISPOSITIVO** — a asserção de que tudo o resto depende.
+/// ⭐⭐⭐ **E A FÁBRICA CONCORDA NO DISPOSITIVO A MENOS DE UM PASSO DE ARREDONDAMENTO** — a asserção
+/// de que tudo o resto depende.
 ///
 /// ⚠️ Sem ela, as paridades já pagas (`docs/Render3d/08` §12, a `100,000 %`) passariam a medir outra
-/// coisa sem ninguém notar. **Medido: `0` píxeis fora, pior `0`.**
+/// coisa sem ninguém notar.
+///
+/// # ⛔⛔ A PREMISSA «byte-idêntica» MORREU em 2026-09-19, e ela era um ACIDENTE
+///
+/// Ela dizia *«`0` píxeis fora, pior `0`»*, e era verdade — **por sorte, não por lei**. O ricochete
+/// tem **DUAS implementações** (a referência em Rust, `probes::probe_bounce`, e a do pintor em
+/// WGSL), logo os últimos bits dele nunca foram os mesmos; o que era `0` é quantos píxeis caíam do
+/// mesmo lado do arredondamento para *aquele* valor.
+///
+/// A wave do realce desligado ([`ph2d_material::bsdf::grazing_dielectric`]) mudou o VALOR: o
+/// [`ph2d_material::Surface::matte`] do recolhedor difuso — que é uma superfície com
+/// `specular_weight = 0` — deixou de reflectir o céu no rasante, que é o que o doc dele já mandava
+/// (*«o que este produto não faz é TRANSPORTAR o especular por um recolhedor difuso»*). O quadro
+/// ficou `+122` mais claro na soma, e **três** píxeis passaram a arredondar para o outro lado.
+///
+/// # ⭐ A barra sai de um VALE MEDIDO que inclui o lado APROVADO
+///
+/// | os dois motores | píxeis fora | pior byte |
+/// |---|---:|---:|
+/// | com a MESMA lei (aprovado) | **`3`** | `1` |
+/// | com leis DIFERENTES (a cura só de um lado — refutado) | **`122`** | `1` |
+///
+/// ⛔⛔ **O `pior byte` NÃO discrimina** — ele é `1` nos dois lados —, e é por isso que a contagem
+/// fica: *uma barra só de magnitude passaria com os dois motores a correr leis diferentes*. E a de
+/// magnitude fica também, porque ela é a única das duas que é uma LEI (`±1` é um passo de
+/// arredondamento; qualquer coisa acima é divergência de lei).
 #[test]
 #[ignore = "precisa de adaptador de GPU"]
-fn o_estilo_de_fabrica_e_byte_identico_no_dispositivo() {
+fn o_estilo_de_fabrica_concorda_no_dispositivo_a_menos_de_um_passo() {
     let doc = peca_com_aresta_e_cova();
     let (_, _, mats) = crate::gpu_frame::paint_parity_tests::fixtura();
     let materiais = vec![mats[0]];
@@ -487,7 +513,24 @@ fn o_estilo_de_fabrica_e_byte_identico_no_dispositivo() {
         panic!("sem adaptador de GPU");
     };
     let fora = cpu.iter().zip(&gpu).filter(|(a, b)| a != b).count();
-    assert_eq!(fora, 0, "a fábrica moveu {fora} bytes no dispositivo");
+    let maior = cpu
+        .iter()
+        .zip(&gpu)
+        .map(|(a, b)| a.abs_diff(*b))
+        .max()
+        .unwrap_or(0);
+    assert!(
+        maior <= 1,
+        "a fábrica moveu {maior} bytes num pixel ({fora} fora) — acima de um passo de \
+         arredondamento os dois motores estão a correr LEIS diferentes"
+    );
+    /// O vale entre o lado aprovado (`3`) e o refutado (`122`) — ver o doc desta função.
+    const FORA_MAX: usize = 16;
+    assert!(
+        fora <= FORA_MAX,
+        "a fábrica moveu {fora} bytes no dispositivo (pior {maior}) — com a MESMA lei nos dois \
+         motores isto mede `3`, e com leis diferentes mede `122`"
+    );
 }
 
 /// Pinta pela porta da REFERÊNCIA, com a apresentação inteira.

@@ -90,6 +90,7 @@
 - ⛔⛔ [Contar operações ≠ perfil; o PERFIL DE BUILD decide o número](feedback_an_operation_count_is_not_a_profile_and_the_build_profile_decides_the_number.md)
 - ⛔⛔⛔ [Régua de calma que não nomeia o PERFIL: a leitura a 98 % ociosa foi a PIOR das quatro — era debug](feedback_a_calm_ruler_that_does_not_name_the_build_profile_reads_as_a_verdict.md)
 - ⛔⛔⛔ [Pixel de silhueta cujo CENTRO falha não tem ponto/céu/oclusão — `[0,0,0]` ou `t<0` pintam com material que não está lá (fio branco de 1 px); empreste o PIXEL, não o valor](feedback_an_edge_pixel_asks_the_centre_for_what_the_centre_does_not_have.md)
+- ⛔⛔⛔ [Botão DESLIGADO implementado como ÍNDICE reflecte no rasante: `0,0000` a uma lâmpada e `0,41` ao céu na MESMA superfície — e o oráculo faz igual](feedback_an_off_knob_implemented_as_an_index_still_reflects_at_grazing.md)
 - ⛔ [Carga de fundo ~7: meça o MÍNIMO de N corridas — e o `loadavg` MENTE a decair (`7,5` com a CPU ocupada): espere pela OCIOSIDADE](feedback_the_background_load_of_this_workstation_never_falls_below_five.md)
 - [Reprodução/diagnóstico (23) — ⛔ o SÍTIO onde um defeito ATERRA não é o que o PROVOCA](reference_topic_repro_discipline.md) · [Réguas do quad remesh (19)](reference_topic_quad_remesh_rulers.md)
 - ⛔ [Id errado numa lista só é visível depois de ler quem a consome](feedback_a_wrong_id_in_a_list_is_not_a_visible_defect_until_its_reader_is_read.md)

@@ -631,3 +631,9 @@ mod tests;
 /// `700`, e a cura de um tecto é corte por responsabilidade.
 #[cfg(test)]
 mod tests_cor_da_profundidade;
+
+/// ⭐ Os gates do **realce desligado** — a segunda divergência declarada desta crate, e a primeira
+/// em que ela CORRIGE a referência. Módulo próprio pela mesma razão que o vizinho: o [`tests`] está
+/// a `681` linhas de um tecto de `700`.
+#[cfg(test)]
+mod tests_o_realce_desligado;

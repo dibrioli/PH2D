@@ -272,14 +272,97 @@ composto) é o cinzento do canvas a passar pela transparência que sobra (`α = 
 pixel dá a mesma cor de peça (`58,7`), logo o chão não a cria — ele só a torna **visível**, por pôr
 uma sombra escura do outro lado.
 
-⚠️⚠️ **A normal vira para BAIXO e a peça CLAREIA** ⇒ quem a acende é a metade de baixo do ambiente do
-estúdio, e **nada a tapa**: a oclusão do céu da peça não inclui o CHÃO que está logo ali — `céu visto
-1,000` a um pixel de uma sombra de contacto que lê `0,477`. *É esse o «rim sem rim»: a peça é
-iluminada por baixo por um céu que o chão devia estar a bloquear.*
+⛔⛔⛔ **E a leitura seguinte foi MINHA e estava ERRADA:** escrevi que *«a normal vira para BAIXO e a
+peça CLAREIA ⇒ quem a acende é a metade de baixo do ambiente, e nada a tapa — a oclusão do céu não
+inclui o CHÃO»*, e mandei a wave para o chão. **A aritmética do céu diz o contrário:** a irradiância
+do estúdio é uma **rampa** (`ph2d_light::env_ambient`: `AMBIENT · (ENV_BASE + ENV_SLOPE · n.y)`, com
+`n` em VISTA), logo uma normal que desce recebe **menos** difuso, não mais. ⚠️ *A decomposição que
+fechou aquela conclusão — «céu `+15,1`, lâmpada `+8,2`» — desliga o céu INTEIRO e não distingue o
+difuso do especular.* E o reflexo naquele pixel aponta para **CIMA** (`r.y ≈ +0,57`): nenhum chão o
+taparia.
 
-⏳ A cura é dar ao céu da peça um oclusor a mais — o plano do chão — e ela é wave própria, **nos dois
-motores**. ⛔ Não é o passe da sombra (refutado acima) nem a amostragem (a verdade `4×` reproduz a
-banda).
+### §8.6 — ⭐⭐⭐ A causa a sério: um REALCE DESLIGADO que reflecte o céu
+
+A sonda [`de_que_termo_e_a_banda`] parte o ambiente nas duas metades que o material de facto lê — a
+`irradiance` alimenta o **difuso** e a `radiance` o **especular** ([`ph2d_material::indirect`]) —, o
+que separa os dois termos **sem modelo nenhum**. No pior pixel da banda (`755, 335`), cor CRUA da
+peça:
+
+| termo | `y−1` | **`y+0`** | `y+1` |
+|---|---:|---:|---:|
+| tudo | `55,0` | **`84,0`** | `61,2` |
+| céu DIFUSO + lâmpada | `24,1` | `43,2` | `47,2` |
+| céu **ESPECULAR** + lâmpada | `54,9` | **`71,8`** | `36,9` |
+| só a lâmpada | `0,0` | `0,0` | `0,0` |
+
+⇒ **a banda é INTEIRAMENTE o especular do ambiente**: o difuso é monótono (`43,2 < 47,2`, sem banda)
+e a lâmpada não chega ali. E ele quase **DOBRA** no rasante, que é a assinatura de Fresnel.
+
+⭐⭐⭐ **E o sujeito é a BARRA ESCURA, que é autorada com `specular_weight: 0`.** O `specular_weight`
+do OpenPBR **não multiplica o lobo**: ele modula o **índice** (`modulated_eta_s`), e a zero o índice
+fica exactamente `1` — um interface que não existe. A partir daí os dois caminhos do MESMO material
+respondem coisas opostas:
+
+| caminho | o que usa | `η = 1`, `n·v = 0,405` |
+|---|---|---:|
+| LUZ directa | `fresnel_dielectric(v·h, η)`, exacta | **`0,0000`** |
+| CÉU indirecto | `ggx_dir_albedo(n·v, α, F0, F90)` com **`F90 = 1`** | **`0,0702`** (e `0,41` no rasante) |
+
+⚠️ **A porta é FIEL — o defeito é da lei de origem.** Corrido o oráculo (MaterialX 1.39.5,
+Apache-2.0, instalado nesta máquina), o `mx_dielectric_bsdf.glsl` escreve
+`mx_ggx_dir_albedo(NdotV, avgAlpha, F0, 1.0)` nos **dois** ramos, e o
+`mx_ggx_dir_albedo(…, FresnelData)` do `mx_environment_prefilter` escreve `vec3(1.0)` para o modelo
+dieléctrico ⇒ **divergência DECLARADA**, com o gate em `ph2d-material/src/tests_o_realce_desligado.rs`.
+
+⭐ A cura é `ph2d_material::bsdf::grazing_dielectric(η)` — o valor rasante **exacto**, `1` para todo
+interface e `0` quando não há interface —, lida pelos **quatro** sítios onde o `F90` estava cravado
+(indirecto e `throughput`, CPU e WGSL). **Todo material com um índice a sério continua BYTE A BYTE o
+mesmo** (para `η ≠ 1` ela devolve `1,0` exactamente, e as duas paridades contra o oráculo ficam
+verdes).
+
+⚠️⚠️ **E o gate achou uma SEGUNDA metade que o report não continha:** o `throughput` do lobo
+desligado **comia `37,1 %` do difuso no rasante** — energia destruída por uma camada que nunca
+devolve nada. Mais uma terceira, achada pela prova: a própria `fresnel_dielectric` devolve **`1,0`**
+no rasante com `η = 1`, porque `η·η + c·c − 1` **cancela** em `f32` (a `c = 1e-4`, `1 + 1e-8`
+arredonda para `1`) — ⇒ a lei tem **uma expressão e dois leitores**, e a guarda é uma identidade e
+não um epsilon.
+
+**Medido no caminho do produto** (cena `=36`, `960×540`): o `só o céu ESPECULAR` passa a ler `0,0` em
+toda a coluna, e o pico da silhueta cai de **`+22,9` para `+7,5`** bytes.
+
+### §8.7 — ⭐⭐⭐ A cura apanhou MAIS DUAS superfícies, e as duas prometiam por escrito o que não faziam
+
+Ela não é um remendo na cena `=36`: **toda** superfície de realce desligado deste módulo estava a
+reflectir o céu no rasante, e as duas que existem trazem a promessa violada no próprio doc.
+
+1. **O medidor do CHÃO** ([`ground::catcher_surface`](../../crates/ph2d-field-render/src/ground.rs)) —
+   *«Sem especular de propósito: um reflexo depende da direcção de vista, e a sombra de um chão não
+   pode mudar quando a câmera roda.»* MEDIDO: ele reflectia até **`0,270`** do céu no rasante, e o
+   `catcher` lê-o com o `v` do pixel ⇒ **a razão da sombra do chão dependia de onde a câmera estava.**
+   Hoje a frase é um gate
+   ([`chao_sem_reflexo`](../../crates/ph2d-field-render/src/tests/chao_sem_reflexo.rs)).
+2. **O recolhedor do RICOCHETE** ([`Surface::matte`](../../crates/ph2d-material/src/lib.rs)) — *«o que
+   este produto não faz é TRANSPORTAR o especular por um recolhedor difuso»*. Ele é literalmente `o
+   mesmo material com specular_weight = 0`, logo transportava-o no rasante.
+
+⛔⛔ **E a segunda matou a premissa de um gate** (o `o_estilo_de_fabrica_…_no_dispositivo`): a
+fábrica deixou de ser **byte-idêntica** entre os dois motores. ⭐ *Aquele `0` era um ACIDENTE e não
+uma lei* — o ricochete tem **DUAS implementações** (a referência em Rust e o pintor em WGSL), logo os
+últimos bits nunca foram os mesmos; o `0` era quantos píxeis caíam do mesmo lado do arredondamento
+**para aquele valor**. O quadro ficou `+122` mais claro na soma e **três** píxeis passaram a
+arredondar para o outro lado.
+
+⚠️ **A barra nova sai de um VALE MEDIDO que inclui o lado aprovado**, e o `pior byte` **não
+discrimina**:
+
+| os dois motores | píxeis fora | pior byte |
+|---|---:|---:|
+| com a MESMA lei (aprovado) | **`3`** | `1` |
+| com leis DIFERENTES (a cura só de um lado) | **`122`** | `1` |
+
+⇒ ficam as **duas** asserções: o pior byte `≤ 1` (que é a lei — `±1` é um passo de arredondamento) e
+a contagem no vale (que é o único discriminador). *Uma barra só de magnitude passaria com os dois
+motores a correr leis diferentes.*
 
 ## ⛔ Recusas MEDIDAS
 
@@ -294,3 +377,8 @@ banda).
 | emprestar à borda o ÍNDICE e não só o ponto | não move o rebordo um byte (`+0,0` das duas maneiras) e parte NOVE paridades, o miolo divergente a `257` contra a barra de `60` (§8.3) |
 | culpar a luz devolvida pelo pico que sobra | zerá-la não move o número: `+35,9` com e sem (§8.4) |
 | medir o rebordo desfazendo `sRGB(C·a)` | *a régua supunha a fórmula do defeito*: depois da cura ela continuou a imprimir `+15,8` sobre uma imagem correcta (§1) |
+| dar ao céu da PEÇA o chão como oclusor | a banda é o especular, e o reflexo dela aponta para CIMA (`r.y ≈ +0,57`) — um chão não a tapa; e a rampa do céu ESCURECE com a normal a descer (§8.5) |
+| tomar o limite rasante chamando a `fresnel_dielectric` com um epsilon | `η·η + c·c − 1` cancela em `f32` e devolve `1,0` exactamente no caso que ela tinha de separar (§8.6) |
+| deixar o `F90` cravado por fidelidade ao oráculo | a mesma superfície devolvia `0,0000` a uma lâmpada e `0,41` ao céu, e comia `37,1 %` do difuso que nunca devolve (§8.6) |
+| manter a barra «byte-idêntica» da fábrica no dispositivo | ela era um ACIDENTE: o ricochete tem duas implementações, e o `0` era quantos píxeis caíam do mesmo lado do arredondamento PARA AQUELE VALOR (§8.7) |
+| medir essa paridade só pela MAGNITUDE | o pior byte é `1` no lado aprovado **e** no refutado — só a contagem discrimina (`3` contra `122`) (§8.7) |

@@ -32,7 +32,7 @@
 //! coisa»**, e uma esfera convexa não se tapa a si própria — pô-lo a reportar auto-orientação é
 //! mudar o que ele quer dizer.
 //!
-//! # ⭐⭐⭐ O que a banda É, então
+//! # ⭐⭐⭐ O que a banda É — e as DUAS causas que foram construídas e REFUTADAS antes
 //!
 //! Decomposto no pixel `(206, 355)` a `960×540`, com e sem chão:
 //!
@@ -43,12 +43,39 @@
 //!
 //! ⇒ **a superfície é mesmo quase o dobro mais clara na última fileira**, e o resto do que se vê
 //! (`59,4` composto) é o cinzento do canvas a passar pela transparência que sobra (`α = 229`), com a
-//! sombra do chão por trás. Sem chão o mesmo pixel dá a mesma cor de peça (`58,7`).
+//! sombra do chão por trás.
 //!
-//! ⚠️ A normal vira para BAIXO e a peça CLAREIA ⇒ o que a acende é a metade de baixo do ambiente do
-//! estúdio, e **nada a tapa**: a oclusão do céu da peça não inclui o CHÃO que está logo ali
-//! (`céu visto 1,000` a um pixel de uma sombra de contacto que lê `0,477`). *É esse o «rim sem rim»:
-//! a peça é iluminada por baixo por um céu que o chão devia estar a bloquear.*
+//! ⛔⛔ **REFUTADA (1): «é a SOMBRA a mentir».** A cura (traçar também os pixels de borda) leva a
+//! visibilidade de `1,000` a `0,670` e **não muda o pixel um byte** — ali `N·L ≤ 0` e a lâmpada já
+//! não contribuía —, e o `uma_esfera_nao_se_tapa_a_si_propria` reprova-a.
+//!
+//! ⛔⛔⛔ **REFUTADA (2): «é o CHÃO que devia tapar o céu por baixo».** Eu li *«a normal vira para
+//! BAIXO e a peça CLAREIA»* como a metade de baixo do ambiente a entrar sem oclusão, e a aritmética
+//! do céu diz o contrário: a irradiância do estúdio é uma **rampa** (`ph2d_light::env_ambient`:
+//! `AMBIENT · (ENV_BASE + ENV_SLOPE · n.y)`), logo uma normal que desce recebe **menos** difuso.
+//! ⚠️ *A decomposição que fechou aquela conclusão — «céu `+15,1`, lâmpada `+8,2`» — desliga o céu
+//! INTEIRO, e não distingue o difuso do especular.* E o reflexo naquele pixel aponta para CIMA
+//! (`r.y ≈ +0,57`): um chão nunca o taparia.
+//!
+//! # ⭐⭐⭐ A causa, com o céu partido nas DUAS metades ([`de_que_termo_e_a_banda`])
+//!
+//! No pior pixel da banda (`755, 335`), a cor CRUA da peça por termo:
+//!
+//! | termo | `y−1` | **`y+0`** | `y+1` |
+//! |---|---:|---:|---:|
+//! | tudo | `55,0` | **`84,0`** | `61,2` |
+//! | céu DIFUSO + lâmpada | `24,1` | `43,2` | `47,2` |
+//! | céu **ESPECULAR** + lâmpada | `54,9` | **`71,8`** | `36,9` |
+//! | só a lâmpada | `0,0` | `0,0` | `0,0` |
+//!
+//! ⇒ **a banda é INTEIRAMENTE o especular do ambiente** (o difuso é monótono e a lâmpada não chega
+//! ali), e ela quase DOBRA no rasante — que é a assinatura de Fresnel.
+//!
+//! ⭐⭐⭐ **E o sujeito é a BARRA ESCURA, cujo `specular_weight` é ZERO** (o `materiais_da_cena(36)`
+//! escreve-o, com o porquê ao lado). A cura vive no material e não no render:
+//! [`ph2d_material::bsdf::grazing_dielectric`] — *um realce desligado não pode reflectir o céu*.
+//! Depois dela, o `só o céu ESPECULAR` lê **`0,0`** em toda a coluna e o pico da silhueta cai de
+//! **`+22,9` para `+7,5`** bytes.
 
 use super::device_tests::{LH, LW, contexto};
 use super::rebordo_sondas::{cena_com_materiais, pico_da_silhueta};
@@ -305,6 +332,262 @@ fn o_traco_claro_contra_uma_verdade_de_terreno() {
             );
         }
     }
+}
+
+/// ⭐⭐⭐ **O CÉU PARTIDO EM DUAS METADES** — a `irradiance` alimenta o DIFUSO e a `radiance`
+/// alimenta o ESPECULAR ([`ph2d_material::indirect`]), logo desligar uma delas separa os dois termos
+/// **sem modelo nenhum**: é a mesma manobra de «uma luz de cada vez» que esta sonda já faz para o céu
+/// contra a lâmpada, um nível abaixo.
+struct MeioCeu {
+    difuso: bool,
+    especular: bool,
+}
+
+impl ph2d_material::Environment for MeioCeu {
+    fn radiance(&self, dir: [f32; 3], alpha: f32) -> [f32; 3] {
+        if self.especular {
+            crate::studio::Studio::of_the_product().radiance(dir, alpha)
+        } else {
+            [0.0; 3]
+        }
+    }
+    fn irradiance(&self, n: [f32; 3]) -> [f32; 3] {
+        if self.difuso {
+            crate::studio::Studio::of_the_product().irradiance(n)
+        } else {
+            [0.0; 3]
+        }
+    }
+}
+
+/// ⭐⭐⭐ **DE QUE TERMO É A BANDA** — a pergunta que decide se a cura é a oclusão do chão.
+///
+/// # ⛔⛔⛔ Porque ela teve de existir: a minha causa anterior contradiz a ARITMÉTICA do céu
+///
+/// O cabeçalho deste ficheiro conclui que *«a normal vira para BAIXO e a peça CLAREIA ⇒ quem a
+/// acende é a metade de baixo do ambiente»*. ⚠️ **A irradiância do estúdio é uma RAMPA**
+/// (`ph2d_light::env_ambient`: `AMBIENT · (ENV_BASE + ENV_SLOPE · n.y)`, com `n` em VISTA), logo uma
+/// normal que desce recebe **menos** difuso, não mais. *A decomposição «céu `+15,1`, lâmpada `+8,2`»
+/// que fechou aquela conclusão não distingue o difuso do especular — ela desliga o céu INTEIRO.*
+///
+/// ⇒ esta sonda separa as duas metades do ambiente **e** as duas da lâmpada, e imprime o `n·v` ao
+/// lado: *o especular de um ambiente a incidência rasante é Fresnel, e Fresnel na silhueta É um rim.*
+#[test]
+#[ignore = "medição"]
+fn de_que_termo_e_a_banda() {
+    let (doc, world, raiz) = cena_com_materiais();
+    let reg = crate::smoke::sampled_registry();
+    let cam = ph2d_field_render::Orbit::default();
+    let tabela =
+        crate::materials::Table::build(&world, raiz, cam.half_extent, f32::from(LH as u16));
+    let surfaces = tabela.surfaces_for();
+    let (onde, luz) = crate::lights::opening_light(&cam);
+    let lampada = ph2d_field_render::PointLamp {
+        world: onde,
+        radiance_at_one: [luz.intensity; 3],
+    };
+    let mut ancora = None;
+    let chao = crate::floor::anchored(&mut ancora, crate::shading::Shading::Render, &doc, &reg);
+    const W: u32 = 960;
+    const H: u32 = 540;
+    let g = ph2d_field_render::trace(&doc, &reg, &cam, W, H);
+    let sh = ph2d_field_render::shadow_pass_on(&doc, &reg, &cam, &g, &[onde], chao);
+    let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
+    let pinta = |ceu: &(dyn ph2d_material::Environment + Sync),
+                 pontos: &[ph2d_field_render::PointLamp]| {
+        ph2d_field_render::shade_render(
+            &g,
+            &cam,
+            &surfaces,
+            &ph2d_field_render::Lighting {
+                lamps: &sem_ecra,
+                points: pontos,
+                sky: ceu,
+                shadows: Some(&sh),
+            },
+            &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
+            [0, 0, 0, 0],
+        )
+    };
+    let tudo = MeioCeu {
+        difuso: true,
+        especular: true,
+    };
+    let so_difuso = MeioCeu {
+        difuso: true,
+        especular: false,
+    };
+    let so_especular = MeioCeu {
+        difuso: false,
+        especular: true,
+    };
+    let nada = MeioCeu {
+        difuso: false,
+        especular: false,
+    };
+    let quadros = [
+        ("tudo", pinta(&tudo, &[lampada])),
+        ("céu DIFUSO + lâmpada", pinta(&so_difuso, &[lampada])),
+        ("céu ESPECULAR + lâmpada", pinta(&so_especular, &[lampada])),
+        ("só a lâmpada", pinta(&nada, &[lampada])),
+        ("só o céu (sem lâmpada)", pinta(&tudo, &[])),
+        ("só o céu DIFUSO", pinta(&so_difuso, &[])),
+        ("só o céu ESPECULAR", pinta(&so_especular, &[])),
+    ];
+    // A cor CRUA da peça, sem compor com o canvas — na banda `α = 255`, logo é a superfície.
+    let (w, h) = (W as usize, H as usize);
+    let luma = |px: &[u8], i: usize| -> f32 {
+        0.2126 * f32::from(px[i * 4])
+            + 0.7152 * f32::from(px[i * 4 + 1])
+            + 0.0722 * f32::from(px[i * 4 + 2])
+    };
+    // Onde a banda é pior, pela MESMA régua da sonda irmã: o pixel que mais passa os dois vizinhos
+    // verticais, no quadro completo.
+    let mut pior = (f32::NEG_INFINITY, 0usize);
+    for y in 1..h - 1 {
+        for x in 0..w {
+            let i = y * w + x;
+            if !g.hit[i] || !g.hit[i - w] {
+                continue;
+            }
+            let d =
+                luma(&quadros[0].1, i) - luma(&quadros[0].1, i - w).max(luma(&quadros[0].1, i + w));
+            if d > pior.0 {
+                pior = (d, i);
+            }
+        }
+    }
+    let (x, y) = (pior.1 % w, pior.1 / w);
+    println!("\n  {}", contexto());
+    println!(
+        "  pior banda em ({x}, {y}) · +{:.1} bytes de peça CRUA",
+        pior.0
+    );
+    println!(
+        "  pico da silhueta, quadro completo: {:+.1}",
+        pico_da_silhueta(&quadros[0].1, w, h)
+    );
+    println!(
+        "\n  {:<24} {:>8} {:>8} {:>8} {:>8}",
+        "termo", "y-2", "y-1", "y+0", "y+1"
+    );
+    for (nome, px) in &quadros {
+        print!("  {nome:<24}");
+        for dy in -2i32..=1 {
+            #[allow(clippy::cast_sign_loss, clippy::cast_possible_wrap)]
+            let j = (y as i32 + dy) as usize * w + x;
+            print!(" {:>8.1}", luma(px, j));
+        }
+        println!();
+    }
+    println!("\n  a geometria nas mesmas quatro fileiras:");
+    for dy in -2i32..=1 {
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_wrap)]
+        let j = (y as i32 + dy) as usize * w + x;
+        let n = g.normal[j];
+        // ⚠️ O `n.z` da VISTA é o `n·v` de uma paralela, e o proxy do rasante numa perspectiva —
+        // é ele que o Fresnel de Schlick eleva à quinta.
+        let ndv = n[2].clamp(0.0, 1.0);
+        println!(
+            "    y{dy:+} · α {:>3} · n [{:+.3} {:+.3} {:+.3}] · n·v {ndv:.3} · (1−n·v)^5 {:.4} · céu visto {:.3}",
+            quadros[0].1[j * 4 + 3],
+            n[0],
+            n[1],
+            n[2],
+            (1.0 - ndv).powi(5),
+            sh.ambient_at(j),
+        );
+    }
+}
+
+/// ⭐⭐⭐ **NA CENA DO REPORT, O CÉU NÃO SE REFLECTE EM PIXEL NENHUM** — a lei do material medida no
+/// caminho do PRODUTO, que é onde o dono a viu.
+///
+/// # ⛔ Porque ela vive AQUI e não só na [`ph2d_material`]
+///
+/// Os gates daquela crate afirmam a lei sobre uma `Surface` construída à mão. Este afirma que a lei
+/// **chega ao pixel** — pela mesma cena, pelos mesmos materiais e pelo mesmo `shade_render` que
+/// pintou a foto do report. *Uma paridade medida a montante de uma conversão não afirma nada sobre a
+/// conversão*, e esta família já pagou isso duas vezes (a curva do contorno e a da pose).
+///
+/// ⚠️ **O CONTROLO é obrigatório e é a metade que não é óbvia:** com o realce LIGADO o mesmo quadro
+/// tem de mudar. Sem ele, apagar o especular indirecto de TODA superfície ficaria verde.
+#[test]
+fn na_cena_do_report_o_ceu_nao_se_reflecte() {
+    let (doc, world, raiz) = cena_com_materiais();
+    let reg = crate::smoke::sampled_registry();
+    let cam = ph2d_field_render::Orbit::default();
+    // ⚠️ Pequeno de propósito: a lei é por-pixel e não por-resolução, e um gate que corre sempre
+    // paga o próprio relógio. `240×135` é a `=36` com a mesma silhueta.
+    const W: u32 = 240;
+    const H: u32 = 135;
+    let tabela = crate::materials::Table::build(&world, raiz, cam.half_extent, f32::from(H as u16));
+    let (onde, luz) = crate::lights::opening_light(&cam);
+    let lampada = ph2d_field_render::PointLamp {
+        world: onde,
+        radiance_at_one: [luz.intensity; 3],
+    };
+    let mut ancora = None;
+    let chao = crate::floor::anchored(&mut ancora, crate::shading::Shading::Render, &doc, &reg);
+    let g = ph2d_field_render::trace(&doc, &reg, &cam, W, H);
+    let sh = ph2d_field_render::shadow_pass_on(&doc, &reg, &cam, &g, &[onde], chao);
+    let sem_ecra: [ph2d_field_render::Lamp; 0] = [];
+    let pinta = |surfaces: &ph2d_field_render::Surfaces<'_>, especular: bool| {
+        ph2d_field_render::shade_render(
+            &g,
+            &cam,
+            surfaces,
+            &ph2d_field_render::Lighting {
+                lamps: &sem_ecra,
+                points: &[lampada],
+                sky: &MeioCeu {
+                    difuso: true,
+                    especular,
+                },
+                shadows: Some(&sh),
+            },
+            &ph2d_field_render::Presentation::of(ph2d_view_transform::Look::default()),
+            [0, 0, 0, 0],
+        )
+    };
+    let surfaces = tabela.surfaces_for();
+    assert!(
+        g.hit.iter().filter(|h| **h).count() > 1_000,
+        "a fixtura não tem peça: {} pixels de acerto",
+        g.hit.iter().filter(|h| **h).count()
+    );
+    let com = pinta(&surfaces, true);
+    let sem = pinta(&surfaces, false);
+    let difere = com.iter().zip(&sem).filter(|(a, b)| a != b).count();
+    assert_eq!(
+        difere, 0,
+        "{difere} bytes da cena mudam ao ligar o ESPECULAR do céu — e as quatro folhas dela são \
+         autoradas com `specular_weight: 0`. É o rim que o dono fotografou."
+    );
+    // ⭐ O CONTROLO: o mesmo quadro com o realce LIGADO tem de sentir o céu.
+    let ligados: Vec<ph2d_material::Surface> = (0..4)
+        .map(|_| {
+            ph2d_material::OpenPbr {
+                base_color: [0.055, 0.055, 0.065],
+                ..ph2d_material::OpenPbr::default()
+            }
+            .prepare()
+        })
+        .collect();
+    let controlo = ph2d_field_render::Surfaces {
+        all: &ligados,
+        owners: surfaces.owners,
+    };
+    let muda = pinta(&controlo, true)
+        .iter()
+        .zip(pinta(&controlo, false))
+        .filter(|(a, b)| **a != *b)
+        .count();
+    assert!(
+        muda > 1_000,
+        "o CONTROLO ficou mudo ({muda} bytes): com o realce LIGADO o céu tem de se reflectir, \
+         senão a asserção acima passa por vácuo"
+    );
 }
 
 /// ⭐⭐⭐ **A CENA DO REPORT, COMPOSTA SOBRE O CINZENTO DO CANVAS** — a prova que se OLHA.

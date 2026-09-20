@@ -47,7 +47,10 @@ pub(crate) fn dielectric(
     let fresnel = [fresnel_dielectric(ndv, ior); 3];
     let comp = ggx_energy_compensation(ndv, alpha, fresnel);
     let f0 = ior_to_f0(ior);
-    let fg = ggx_dir_albedo(ndv, alpha, [f0; 3], [1.0; 3]);
+    // ⭐⭐⭐ **O `F90` SAI DO PRÓPRIO ÍNDICE** — ver [`bsdf::grazing_dielectric`] para o report do
+    // dono, a medição (`0,4296` de céu num realce DESLIGADO) e a divergência declarada contra o
+    // `1.0` cravado da referência. ⚠️ Para todo índice a sério ele é `1,0` **ao bit**.
+    let fg = ggx_dir_albedo(ndv, alpha, [f0; 3], [bsdf::grazing_dielectric(ior); 3]);
     let dir_albedo = mul3(fg, comp);
     let li = radiance(n, v, alpha, fg, env);
     let tint = tint.map(|t| t.max(0.0));

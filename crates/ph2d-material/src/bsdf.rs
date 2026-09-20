@@ -144,8 +144,50 @@ pub(crate) fn ior_to_f0(ior: f32) -> f32 {
     r * r
 }
 
+/// ⭐⭐⭐ **O VALOR RASANTE EXACTO DA FRESNEL DIELÉCTRICA** — `1` para todo interface, e **`0` quando
+/// não há interface nenhum** (`η = 1`).
+///
+/// # ⛔⛔⛔ Ele existe porque o `F90` estava CRAVADO em `1`, e um realce desligado não desligava
+///
+/// O `specular_weight` do OpenPBR não multiplica o lobo dieléctrico: ele **modula o índice**
+/// (`modulated_eta_s`), e a zero o índice fica exactamente `1`. A partir daí o caminho da LUZ usa a
+/// [`fresnel_dielectric`] exacta e devolve `0` em todo ângulo, enquanto o caminho do CÉU usava
+/// `ggx_dir_albedo(…, F0, 1.0)` e devolvia **`0,41`** no rasante. *A mesma superfície não reflectia
+/// uma lâmpada e reflectia o céu* — a banda clara que o dono fotografou em 2026-09-19.
+///
+/// ⚠️ **A referência tem o mesmo `1`** (MaterialX 1.39.5, Apache-2.0, corrido nesta máquina:
+/// `mx_dielectric_bsdf.glsl` nos dois ramos e `mx_ggx_dir_albedo(…, FresnelData)` no modelo
+/// dieléctrico) ⇒ isto é **divergência DECLARADA**, com o gate em
+/// [`crate::tests_o_realce_desligado`].
+///
+/// # ⭐ A derivação, e porque ela é uma identidade e não um epsilon
+///
+/// `g² = η² − 1 + c²`. No limite `c → 0`: com `η ≠ 1` fica `g > c = 0` ⇒ `a = 1`, `b = −1` e `R = 1`
+/// (e `η < 1` cai na reflexão interna total, que também devolve `1`); com `η = 1` fica `g = c` ⇒
+/// `a = 0` e `R = 0`.
+///
+/// ⚠️⚠️ **Não se toma este limite chamando a [`fresnel_dielectric`] com um epsilon.** Ali o `g²` é
+/// escrito `η·η + c·c − 1`, e em `f32` com `η = 1` e `c = 1e-6` a soma `1 + 1e-12` **arredonda para
+/// `1`** ⇒ `g² = 0`, `g = 0 ≠ c`, e a fórmula devolve `1,0` exactamente no caso que ela tinha de
+/// separar. *Um limite tomado com um epsilon dentro de uma expressão que cancela mede o
+/// cancelamento, não o limite.*
+#[allow(clippy::float_cmp)] // a pergunta É a identidade: existe interface?
+pub(crate) fn grazing_dielectric(ior: f32) -> f32 {
+    if ior * ior == 1.0 { 0.0 } else { 1.0 }
+}
+
 /// `mx_fresnel_dielectric` — a de Fresnel exacta, com reflexão interna total.
+///
+/// ⚠️⚠️ **A guarda do interface ausente é OBRIGATÓRIA e não é cosmética** — ver
+/// [`grazing_dielectric`], que é a mesma lei e o único sítio onde ela está escrita. Com `η = 1` a
+/// fórmula abaixo devolve `0` a meio caminho e **`1,0` no rasante**, porque `η·η + c·c − 1` cancela
+/// em `f32` (a `c = 1e-4` a soma `1 + 1e-8` arredonda para `1`, `g` fica `0 ≠ c`, e `a² = b² = 1`).
+/// *Foi o gate irmão que a apanhou, sobre um material cujo realce está desligado: a lâmpada devolvia
+/// `115,04` num ângulo rasante.*
 pub(crate) fn fresnel_dielectric(cos_theta: f32, ior: f32) -> f32 {
+    if grazing_dielectric(ior) == 0.0 {
+        return 0.0;
+    }
     let c = cos_theta;
     let g2 = ior * ior + c * c - 1.0;
     if g2 < 0.0 {
@@ -280,7 +322,14 @@ pub(crate) fn dielectric_reflection(
     let fresnel = [fresnel_dielectric(f.vdh, ior); 3];
     let comp = ggx_energy_compensation(f.ndv, f.alpha, fresnel);
     let f0 = ior_to_f0(ior);
-    let dir_albedo = mul3(ggx_dir_albedo(f.ndv, f.alpha, [f0; 3], [1.0; 3]), comp);
+    // ⭐⭐⭐ **A OUTRA METADE DO MESMO DEFEITO, e ela não estava no report:** o `throughput` é *o que
+    // esta camada deixa passar para o substrato*, e com o `F90` cravado em `1` um lobo **desligado**
+    // comia `37,1 %` do difuso no rasante sem nunca devolver nada em troca. Ver
+    // [`grazing_dielectric`].
+    let dir_albedo = mul3(
+        ggx_dir_albedo(f.ndv, f.alpha, [f0; 3], [grazing_dielectric(ior); 3]),
+        comp,
+    );
     Bsdf {
         response: scale3(
             mul3(mul3(fresnel, comp), max0(tint)),

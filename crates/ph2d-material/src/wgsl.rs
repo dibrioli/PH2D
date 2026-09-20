@@ -181,7 +181,23 @@ fn mx_ior_to_f0(ior: f32) -> f32 {
     return r * r;
 }
 
+// ⭐⭐⭐ **O valor RASANTE exacto da Fresnel dieléctrica** — `1` para todo interface e `0` quando não
+// há interface nenhum (`η = 1`). O gémeo do `ph2d_material::bsdf::grazing_dielectric`, que é onde
+// vivem o report do dono, a medição e a divergência declarada contra o `1.0` cravado da referência.
+//
+// ⚠️ Uma IGUALDADE e não um epsilon: `mx_fresnel_dielectric` escreve `g²` como `η·η + c·c − 1`, e
+// com `η = 1` e um `c` pequeno a soma cancela para zero e a fórmula devolve `1,0` justamente no caso
+// que ela tinha de separar.
+fn mx_grazing_dielectric(ior: f32) -> f32 {
+    if (ior * ior == 1.0) { return 0.0; }
+    return 1.0;
+}
+
 fn mx_fresnel_dielectric(cos_theta: f32, ior: f32) -> f32 {
+    // ⚠️⚠️ A guarda do interface ausente — a MESMA lei do `mx_grazing_dielectric` acima, e o único
+    // sítio onde ela está escrita. Sem ela, com `η = 1` esta fórmula devolve `1,0` no rasante por
+    // cancelamento de `f32`.
+    if (mx_grazing_dielectric(ior) == 0.0) { return 0.0; }
     let c = cos_theta;
     let g2 = ior * ior + c * c - 1.0;
     if (g2 < 0.0) { return 1.0; }
@@ -268,7 +284,8 @@ fn mx_dielectric_reflection(
     let fresnel = vec3<f32>(mx_fresnel_dielectric(f.vdh, ior));
     let comp = mx_ggx_energy_compensation(f.ndv, f.alpha, fresnel);
     let f0 = mx_ior_to_f0(ior);
-    let dir_albedo = mx_ggx_dir_albedo(f.ndv, f.alpha, vec3<f32>(f0), vec3<f32>(1.0)) * comp;
+    // ⭐⭐⭐ O `F90` sai do próprio índice — o gémeo do `ph2d_material::bsdf::grazing_dielectric`.
+    let dir_albedo = mx_ggx_dir_albedo(f.ndv, f.alpha, vec3<f32>(f0), vec3<f32>(mx_grazing_dielectric(ior))) * comp;
     return Bsdf(
         fresnel * comp * max(tint, vec3<f32>(0.0)) * (f.d * f.g * weight / (4.0 * f.ndv)),
         vec3<f32>(1.0) - dir_albedo * weight
@@ -386,7 +403,8 @@ fn mx_dielectric_indirect(
     let fresnel = vec3<f32>(mx_fresnel_dielectric(ndv, ior));
     let comp = mx_ggx_energy_compensation(ndv, alpha, fresnel);
     let f0 = mx_ior_to_f0(ior);
-    let fg = mx_ggx_dir_albedo(ndv, alpha, vec3<f32>(f0), vec3<f32>(1.0));
+    // ⭐⭐⭐ O `F90` sai do próprio índice — o gémeo do `ph2d_material::bsdf::grazing_dielectric`.
+    let fg = mx_ggx_dir_albedo(ndv, alpha, vec3<f32>(f0), vec3<f32>(mx_grazing_dielectric(ior)));
     let dir_albedo = fg * comp;
     let li = mx_env_mirror(n, v, alpha, shrink, fg);
     return Bsdf(li * max(tint, vec3<f32>(0.0)) * comp * weight, vec3<f32>(1.0) - dir_albedo * weight);

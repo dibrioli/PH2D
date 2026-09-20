@@ -18,8 +18,8 @@
 | ramo | `line/3DModeling` |
 | **já rebaseado sobre `main`** | ✅ `git rebase main` corrido em 2026-09-20 — ver a §6 |
 | merge-base do rebase | `76bd6de02` (o `main` local desse momento) |
-| commits | **87** |
-| ficheiros | **228** |
+| commits | **88** · ⛔ **conte-os, não os leia daqui:** `git log --oneline main..HEAD \| wc -l` |
+| ficheiros | **230** · `git diff --name-only main...HEAD \| wc -l` |
 | ⚠️ o `main` pode ter andado | *se andou, o §3 diz exactamente o que reconferir — e é UMA coisa* |
 
 ---
@@ -88,7 +88,7 @@ estoura com `AttributeError: 'NoneType'`, e isso **não é um defeito dele**.
 
 ## §4 — Os ficheiros PARTILHADOS onde um merge textual pode colidir
 
-**26 ficheiros fora do módulo.** Os outros 202 vivem em `crates/ph2d-{app-field3d,field-render,field-gpu,panel-model3d,field-ecs,field,field-eval,bloom,style,material}/`, `docs/{Render3d,3DModeling}/` e `project-memory/`.
+**26 ficheiros fora do módulo.** Os restantes vivem em `crates/ph2d-{app-field3d,field-render,field-gpu,panel-model3d,field-ecs,field,field-eval,bloom,style,material}/`, `docs/{Render3d,3DModeling}/` e `project-memory/`.
 
 ### 4.1 — ⛔⛔ Infra de AGENTE: a parede clean-room deixou de ser uma promessa
 
@@ -194,8 +194,8 @@ Tudo abaixo **na árvore já rebaseada**.
 | `git rebase main` (86 commits) | ✅ **dois conflitos, ambos em ficheiros de MEMÓRIA append-only** (`project-memory/{MEMORY.md,reference_topic_gate_discipline.md}`), resolvidos ficando com **os dois lados**. **Zero conflitos em código.** |
 | `censos-da-arvore-combinada.sh` | ✅ 94/94, controlo do filtro 8/8 |
 | suítes das crates tocadas | ✅ `ph2d-material` 15 · `ph2d-field-gpu` 3 · `ph2d-field-render` 112+ · `ph2d-app-field3d` 461 · `ph2d-panel-model3d` 46 |
-| `cargo clippy --all-targets -- -D warnings` | ✅ verde nas quatro crates do produto |
-| `cargo fmt --check` | ✅ verde |
+| `cargo clippy --all-targets -- -D warnings` | ✅ verde, **pós-rebase**, nas SETE crates que a linha toca (`ph2d-material` · `-field-render` · `-field-gpu` · `-app-field3d` · `-panel-model3d` · `-style` · `-bloom`) |
+| `cargo fmt --check --all` | ✅ verde, **pós-rebase** |
 | gates de GPU da `W10` | ✅ `as_duas_colunas_da_banda_leem_o_mesmo` (`1,00` / `1,00`) · `a_borda_mole_da_sombra_e_a_mesma_nos_dois_motores` (`100,000 %`, pior byte `1`) · `o_gemeo_da_borda_mole_esta_ligado_no_dispositivo` · `o_material_do_dispositivo_e_o_da_cpu` |
 | prova de mutação da `W10` | ✅ **6 de 6** sangram, com controlo verde |
 | `nextest-impacted.sh` (BASE=main) | ✅ **15 118 testes, 15 118 passados, zero falhas** (108,6 s; 12 061 saltados) |

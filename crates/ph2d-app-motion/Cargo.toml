@@ -45,6 +45,10 @@ ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
 ph2d-node-motion-distribute-poisson = { path = "../ph2d-node-motion-distribute-poisson" }
 ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }
 ph2d-node-motion-shape = { path = "../ph2d-node-motion-shape" }
+# ⚠️ Só para o CENSO dos rótulos (ver `nenhuma_linha_da_forma_se_chama_como_uma_do_sink`):
+# duas linhas com o mesmo nome no mesmo grafo são um controlo a mentir, e a régua tem de ver
+# as DUAS tabelas.
+ph2d-node-motion-output = { path = "../ph2d-node-motion-output" }
 # O colisor que uma peça declarou, pela porta do solver (o gizmo do colisor, doc 109 §5).
 ph2d-contact = { path = "../ph2d-contact" }
 ph2d-node-motion-strobe = { path = "../ph2d-node-motion-strobe" }

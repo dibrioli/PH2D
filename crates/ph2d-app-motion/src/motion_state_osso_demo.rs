@@ -241,13 +241,13 @@ pub(super) fn announce() {
          ombro e fino no cotovelo. A ponta grossa marca o ponto em que ele GIRA.\n\
          (2) Carregue em PLAY: a onda PERCORRE essa cadeia, da raiz para a ponta, e cada\n    \
          osso vira com ela. As POSICOES mexem-se, nao so' as pecas.\n\
-         (3) Pause. Clique no cartao `Shape` dessa coluna e arraste `Pivot X`. Enquanto\n    \
+         (3) Pause. Clique no cartao `Shape` dessa coluna e arraste `Pivot Offset X`. Enquanto\n    \
          arrasta, um ALVO (um anel com uma cruz) aparece sobre cada osso, no ponto em\n    \
          que ele gira — e o numero conta-se em TAMANHOS da forma:\n    \
          `0` = a CABECA (o valor de fabrica desta forma);\n    \
          `-1` = o MEIO, como qualquer carimbo;\n    \
          `+1` = a PONTA fina. `2` poe o ponto uma forma inteira para fora.\n    \
-         Com o PLAY ligado a diferenca ve-se de uma vez. Ha' tambem `Pivot Y`.\n\
+         Com o PLAY ligado a diferenca ve-se de uma vez. Ha' tambem `Pivot Offset Y`.\n\
          (4) Afaste a vista e olhe a da ESQUERDA (a cadeia enrolada) e a da DIREITA (as\n    \
          cruzinhas, que sao as mesmas posicoes sem forma nenhuma).\n\
          \n\

@@ -273,7 +273,13 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // catálogo reescala a forma para ela na mesma, e o teclado aceita o que o artista escrever.
     ParamUiHint {
         param: param::PIVOT_X,
-        label: "Pivot X",
+        // ⛔⛔ **«Pivot Offset» e não «Pivot», e a razão é uma COLISÃO que esta wave criou:** o
+        // `motion.output` já tem duas linhas chamadas *«Pivot X»/«Pivot Y»* (o pivô do SINK, que
+        // vale para tudo o que ele desenha). Duas linhas com o MESMO nome no mesmo grafo, com
+        // unidades diferentes e âmbitos diferentes, é um controlo a mentir — e quem chega primeiro
+        // não é quem tem de mudar. ⭐ E «offset» é a palavra do próprio dono (*«crie no nó Shape o
+        // offset do Pivot»*), que diz o que o `0` significa: *o pivô natural DESTA forma*.
+        label: "Pivot Offset X",
         min: -2.0,
         max: 2.0,
         step: 0.01,
@@ -281,7 +287,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::PIVOT_Y,
-        label: "Pivot Y",
+        label: "Pivot Offset Y",
         min: -2.0,
         max: 2.0,
         step: 0.01,

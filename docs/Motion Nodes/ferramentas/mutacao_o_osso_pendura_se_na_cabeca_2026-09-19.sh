@@ -180,7 +180,7 @@ bloco "o pivot sai da chave da geometria" ph2d-app-motion o_pivot_entra_na_chave
 # 11. O ROTULO do cartao: o roteiro tem de o citar pelo nome que esta' na tela.
 bloco "o rotulo do cartao muda e o roteiro fica a mentir" ph2d-app-motion o_roteiro_nomeia \
   "$HIN" 1 \
-  '        label: "Pivot X",' \
+  '        label: "Pivot Offset X",' \
   '        label: "Anchor X",'
 
 # 12. A UNIDADE: `1` tem de ser a ARESTA (o `Size` e' o SEMI-eixo), e nao a extensao inteira.

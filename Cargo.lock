@@ -5034,6 +5034,7 @@ dependencies = [
  "ph2d-node-motion-clone",
  "ph2d-node-motion-distribute-poisson",
  "ph2d-node-motion-emitter",
+ "ph2d-node-motion-output",
  "ph2d-node-motion-shape",
  "ph2d-node-motion-slit-scan",
  "ph2d-node-motion-strobe",

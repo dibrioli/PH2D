@@ -193,3 +193,161 @@ fn o_pivot_e_relativo_ao_size() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A FORMA RODA EM TORNO DO PIVÔ — medido de ponta a ponta, em quatro ângulos.**
+///
+/// Report do dono (2026-09-19): *«a rot da forma não está acontecendo a partir do pivot»*. ⚠️ **As
+/// duas metades desta lei viviam em sítios diferentes e nenhuma régua as juntava:** a geometria é
+/// cortada com o pivô na origem local (`motion_shape_gen`) e a pose põe o ponto local `q` em
+/// `P + basis·(q·size)` (`instance_pose`). *Cada uma estava gateada sozinha, e o que o dono vê é a
+/// COMPOSIÇÃO.*
+///
+/// A régua tem duas metades, e a segunda é o discriminador:
+/// 1. o ponto do pivô aterra **EXACTAMENTE** em `P`, em qualquer ângulo;
+/// 2. o CENTRO da forma **ORBITA** — ele afasta-se de `P` e o afastamento roda com o ângulo.
+///
+/// ⛔ Sem a (2), um produto que ignorasse o pivô por inteiro passaria a (1) por vacuidade: com o
+/// pivô no centro, o centro TAMBÉM aterra em `P`.
+#[test]
+fn a_forma_roda_em_torno_do_pivot() {
+    use crate::motion_state::MotionState;
+    // A geometria internada pelo caminho do app, com o pivô na ARESTA esquerda.
+    let mut st = MotionState::new();
+    let n = st.doc.graph.add_node("source.shape".to_string());
+    st.doc
+        .graph
+        .set_param(n, "kind", ShapeKind::Circle as i32 as f32);
+    st.doc.graph.set_param(n, "size", 1.0);
+    st.doc
+        .graph
+        .set_param(n, ph2d_node_motion_shape::param::PIVOT_X, 1.0);
+    super::publish(&mut st, 0.0);
+    let out = st
+        .pump
+        .cook
+        .cook(&st.doc.graph, &st.registry, n, 0.0)
+        .expect("cook");
+    let s = out[0].as_stream();
+    let Some(ph2d_nodegraph::attr::Column::Scalar(g)) = s.get("geometry_id") else {
+        panic!("sem geometria")
+    };
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "o handle e' um u32 que viaja num f32, como em todo o lowering"
+    )]
+    let handle = g[0] as u32;
+    let path = st.shape_store.get(handle).expect("o path esta' no store");
+    let (lo, hi) = path.verts.iter().fold((f64::MAX, f64::MIN), |(l, h), v| {
+        (l.min(v.anchor[0]), h.max(v.anchor[0]))
+    });
+    assert!(
+        lo.abs() < 1e-6,
+        "com `Pivot X = 1` a origem local tem de ser a ARESTA: [{lo}, {hi}]"
+    );
+    let centro_local = 0.5 * (lo + hi);
+
+    // E a POSE real, pela mesma função que o `encode` chama.
+    let p_mundo = [3.0_f32, -7.0];
+    let size = 0.5_f32;
+    for graus in [0.0_f32, 37.0, 90.0, 180.0] {
+        let (sin_r, cos_r) = graus.to_radians().sin_cos();
+        let inst = ph2d_eval_motion::VectorInstance {
+            geometry_id: handle,
+            texture_id: 0,
+            atlas_uv: [0.0, 0.0, 1.0, 1.0],
+            premultiplied: 0.0,
+            world_pos: p_mundo,
+            size: [size, size],
+            basis: [cos_r, sin_r, -sin_r, cos_r],
+            tint: [1.0; 4],
+            anchor: [0.0, 0.0],
+        };
+        let a = super::instance_pose(&inst, ph2d_vector::Affine::IDENTITY);
+        // (1) O PIVÔ não se mexe.
+        let piv = a * ph2d_vector::Point::new(0.0, 0.0);
+        assert!(
+            (piv.x - f64::from(p_mundo[0])).abs() < 1e-9
+                && (piv.y - f64::from(p_mundo[1])).abs() < 1e-9,
+            "a {graus}° o pivô tem de aterrar NA posicao: ({}, {})",
+            piv.x,
+            piv.y
+        );
+        // (2) O CENTRO orbita — e o afastamento roda com o ângulo.
+        let c = a * ph2d_vector::Point::new(centro_local, 0.0);
+        let raio = f64::from(size) * centro_local;
+        let (dx, dy) = (c.x - f64::from(p_mundo[0]), c.y - f64::from(p_mundo[1]));
+        let folga = 8.0 * f64::from(f32::EPSILON);
+        assert!(
+            (dx - raio * f64::from(cos_r)).abs() < folga
+                && (dy - raio * f64::from(sin_r)).abs() < folga,
+            "a {graus}° o centro tem de estar a {raio} NA DIRECCAO do angulo: ({dx}, {dy})"
+        );
+    }
+}
+
+/// ⛔⛔ **NENHUMA LINHA DO CARTÃO DA FORMA TEM O NOME DE UMA LINHA DO CARTÃO DO SINK.**
+///
+/// Report do dono (2026-09-19): *«a rot da forma não está acontecendo a partir do pivot»* — e ao
+/// procurar a causa apareceu esta, que é minha: o `motion.output` já tinha duas linhas chamadas
+/// *«Pivot X»/«Pivot Y»* (o pivô do SINK, em fracção do `size` de CADA LINHA e válido para tudo o
+/// que ele desenha), e esta wave pôs duas com o MESMO nome no cartão da forma.
+///
+/// ⚠️⚠️ **Duas linhas com o mesmo nome no mesmo grafo não são um problema de estética:** as
+/// unidades diferem (semi-eixo contra extensão), os âmbitos diferem (uma forma contra todo o
+/// sink), e o artista que arrasta a errada vê a lei da outra. *Um controlo que se chama como
+/// outro é um controlo que mente sobre o que faz.*
+///
+/// ⚠️ **É um CENSO e não uma asserção sobre dois nomes:** ele varre as duas tabelas registadas,
+/// logo uma linha nova de qualquer um dos lados que colida reprova no dia em que nascer.
+#[test]
+fn nenhuma_linha_da_forma_se_chama_como_uma_do_sink() {
+    let mut reg = ph2d_node_registry::NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registram");
+    let rotulos = |id| {
+        reg.param_ui(id)
+            .unwrap_or(&[])
+            .iter()
+            .map(|h| h.label)
+            .collect::<Vec<_>>()
+    };
+    let da_forma = rotulos(ph2d_node_motion_shape::MANIFEST.id);
+    let do_sink = rotulos(ph2d_node_motion_output::MANIFEST.id);
+    // ⛔ O piso: sem ele, uma extracção partida deixa as duas listas vazias e o censo fica verde
+    // por vacuidade — a forma de falha MUDA que este repo já pagou em censos por prefixo.
+    assert!(
+        da_forma.len() > 20 && do_sink.len() > 3,
+        "as duas tabelas tem de estar lá: {} e {}",
+        da_forma.len(),
+        do_sink.len()
+    );
+    // ⚠️⚠️ **UMA isenção NOMEADA, e ela é PRÉ-EXISTENTE — não é desta wave.** O `Collide` do
+    // cartão da forma DECLARA um colisor nas peças dela; o do cartão do sink LIGA o passe de
+    // separação que os consome. *São as duas metades de uma coisa só, e o artista precisa das
+    // duas ligadas* — mas continuam a ser dois controlos com o mesmo nome, e a decisão de os
+    // separar é de quem desenhou aquele par (doc 115), não desta linha.
+    //
+    // ⛔ **E a isenção tem a metade da OBSOLESCÊNCIA:** se alguém renomear um dos dois, esta
+    // entrada deixa de descrever alguma coisa e o gate manda apagá-la. *Uma lista de dívida
+    // tolerada sem censo de obsolescência não desce: vira licença.*
+    const ISENTOS: &[&str] = &["Collide"];
+    let colisoes: Vec<&str> = da_forma
+        .iter()
+        .filter(|l| do_sink.contains(l))
+        .copied()
+        .collect();
+    for i in ISENTOS {
+        assert!(
+            colisoes.contains(i),
+            "a isencao {i:?} ja' nao descreve nada — apague-a desta lista"
+        );
+    }
+    let novas: Vec<&str> = colisoes
+        .into_iter()
+        .filter(|l| !ISENTOS.contains(l))
+        .collect();
+    assert!(
+        novas.is_empty(),
+        "estas linhas chamam-se igual nos dois cartoes, e as leis sao diferentes: {novas:?}"
+    );
+}

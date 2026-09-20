@@ -171,6 +171,28 @@ precisa de esperar.
 e a tabela do §2 diz porquê: o que se perde não são os milissegundos do nó, é o **dispositivo
 inteiro** para tudo o que vem antes dele.
 
+### §5.1 — ⭐⭐ O que a composição JÁ exprime (a lei do `CLAUDE.md` §5.0, aplicada à W1)
+
+Antes de desenhar um verbo novo, medido contra a API que existe:
+
+| a peça | já existe? | onde |
+|---|---|---|
+| a contagem `ns · np` **no hospedeiro** | ✅ **sim** | `CountLawCtx::inputs` dá *«a contagem de cada porta, em ordem de porta»* — uma lei pode perguntar quão LARGAS são as entradas dela |
+| herdar **toda** coluna de UMA porta numa linha calculada | ✅ **sim** | `StreamOp::SourceRows` — o kernel escreve `cp_rows` e o sequenciador colhe o resto |
+| ler uma coluna de OUTRA porta **noutro índice** | ⛔ **não** | uma `ColumnBinding` lê a coluna *no mesmo elemento*; o índice é do elemento, não do binding |
+
+⇒ **a W1 parte-se em duas, e a fronteira está medida:**
+
+- **(a) o caso de UMA porta** (`motion.clone`: `saída = entrada × k`) é exprimível **com os verbos
+  que já existem** — `SourceRows` na porta 0 mais uma `count_law`. ⚠️ Com **uma** reserva já lida: a
+  lei dele tem um canto que é de COZIMENTO e não de kernel (o leque de relógios do `time_offset`,
+  que re-cozinha a entrada em N instantes) — esse fica na CPU, declarado.
+- **(b) o PRODUTO de duas portas** (`motion.duplicator`) precisa do **segundo gather**, e é essa a
+  única maquinaria nova do ciclo: `P` e `rot` somam a forma em `i / np` com o ponto em `i % np`, e
+  nenhum dos dois índices é `i`.
+
+⭐ *Metade da wave era composição, e sabê-lo antes de a escrever é o que a §5.0 compra.*
+
 ---
 
 ## §6 — CERCAS que este ciclo herda (lidas, não lembradas)

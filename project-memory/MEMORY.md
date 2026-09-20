@@ -48,6 +48,7 @@
 - ⛔⛔ [Um SELO é texto E chave da COR — traduzi-lo apaga o tom](feedback_a_badge_is_painted_text_and_the_key_of_its_own_colour.md)
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo mesmo com a ferramenta defeituosa** ([§SUPRESSÃO, 29/08](feedback_perfection_no_deferrals.md)) — e meio-feito é pior que não começar
 - ⛔ [Restaurar uma mutação com `mv` devolve mtime ANTIGO e o cargo guarda o build DA MUTAÇÃO — `touch` no fim](feedback_a_mutation_restore_by_mv_leaves_cargo_with_the_mutated_build.md)
+- ⛔⛔ [Um CORTE de LOC move os imports também — a lint corrida antes do corte não vale, e foi o build do dono que apanhou os órfãos](feedback_a_cut_moves_the_imports_too_relint_after_it.md)
 - ⭐⭐ [Constante cara DENTRO do construtor de uma árvore corre onde a ÁRVORE é construída — 6 → 3 852 por quadro, com a imagem perfeita](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
 - 📚 [Comunicação & decisão: mais (63) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)

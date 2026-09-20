@@ -28,8 +28,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{
-    ButtonState, IconButtonStyle, IconGlyph, SEGMENT_HAIRLINE, Slider, SliderOrientation,
-    paint_icon_button, paint_slider,
+    ButtonState, IconButtonStyle, IconGlyph, SEGMENT_HAIRLINE, paint_icon_button,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -274,43 +273,67 @@ fn paint_head(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -
     y + ph2d_editor_core::widget::grid_height(3, row_h) + ph2d_tokens::control_gap_px()
 }
 
-/// One row per parameter of the selected stage: `label ......... value`, with the
-/// slider under it. Slots the effect doesn't use are simply not painted — and not
-/// hit-registered, so a stale slider can't be grabbed.
+/// ⭐⭐⭐ **Uma fileira por parametro, na CAIXA UNICA do app** — o nome a esquerda
+/// DENTRO, o valor a direita DENTRO, e o preenchimento a dizer a fraccao.
+///
+/// ⛔⛔⛔ **Report do dono, 2026-09-19, com foto:** *«por que esses sliders nao sao colocados
+/// no padrao do app?»*. A redaccao anterior desenhava DUAS linhas — `nome | valor`
+/// centrados em meias-larguras, e a pista nua por BAIXO deles. Ela e anterior a lei do formulario
+/// e nunca foi convertida; o handoff da linha ja nomeava a divida por escrito (*«as superficies de
+/// UI que as outras linhas trouxeram foram escritas contra a lei de espacamento ANTIGA»*).
+///
+/// ⚠️⚠️ **E ela punha o nome POR CIMA do controlo**, que e exactamente o que o dono recusou
+/// em 2026-09-14 (*«Label acima do campo numerico! Muito ruim!»*) — a mesma frase que fez o
+/// Inspector inteiro mudar de lei.
+///
+/// ⭐ **O chip vai a `NodeId(0)`, e isso e a decisao:** a porta so o regista quando o id nao
+/// e zero, logo o valor e SO DE LEITURA e nao nasce um controlo morto. O valor destes parametros e
+/// uma string ja formatada pelo motor (`20.0 kHz`, `0.71`), com uma curva propria por efeito
+/// — torna-lo editavel obriga a ler a string de volta pela curva, que e outra wave.
+///
+/// ⚠️ A altura e a que a porta DEVOLVE, nunca uma constante: numa coluna estreita ela
+/// promove o rotulo para uma fileira propria, e um `y` fixo poria a linha seguinte por cima.
+///
+/// ⚠️ Um slot que o efeito nao usa continua a nao ser pintado nem registado.
 fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 {
     let gap = Spacing::Xs.px();
     let views = snapshot::fx_param_views();
     let norms = snapshot::fx_norms();
-    let label_h = TypeToken::Xs.px();
-    let half = (w * 0.5).max(1.0);
+    let Ctx {
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    } = ctx;
+    let tema = *theme;
     for (i, (label, value)) in views.iter().enumerate().take(AEDIT_FX_PARAMS.len()) {
-        paint_text_centered(
-            ctx.text_system,
-            ctx.scene,
-            label,
-            Rect::new(x, y, half, label_h),
-            TypeToken::Xs.px(),
-            resolve(ColorToken::Text2, ctx.theme),
-        );
-        paint_text_centered(
-            ctx.text_system,
-            ctx.scene,
-            value,
-            Rect::new(x + half, y, half, label_h),
-            TypeToken::Xs.px(),
-            resolve(text_tone(loaded), ctx.theme),
-        );
-        y += label_h + ph2d_tokens::control_gap_px();
-
-        let id = AEDIT_FX_PARAMS[i];
-        let track = Rect::new(x, y, w, Spacing::Md.px());
-        let mut slider = Slider::new(id, label.as_str()).orientation(SliderOrientation::Horizontal);
-        slider.set_value(norms[i]);
-        paint_slider(&slider, track, ctx.scene, ctx.theme);
-        if loaded {
-            ctx.hit_index.register(id, track);
-        }
-        y += Spacing::Md.px() + gap;
+        // ⚠️ Um slot que o efeito nao usa e pintado e NAO registado -- o `NodeId(0)` no
+        //    lugar do slider tira-o do indice sem o tirar do ecra, que e a recusa que esta funcao
+        //    ja praticava com o `if loaded`.
+        let id = if loaded {
+            AEDIT_FX_PARAMS[i]
+        } else {
+            ph2d_a11y::NodeId(0)
+        };
+        let alto = hit_index.com_recorte(|store, hits| {
+            ph2d_editor_core::widget::paint_slider_with_chip_layout_adaptive(
+                Rect::new(x, y, w, ph2d_tokens::ROW_H_PX),
+                label,
+                norms[i],
+                f64::from(norms[i]),
+                Some(value.as_str()),
+                id,
+                ph2d_a11y::NodeId(0),
+                ph2d_editor_core::widget::DEFAULT_LABEL_W,
+                ph2d_editor_core::widget::DEFAULT_CHIP_W,
+                store,
+                hits,
+                scene,
+                text_system,
+                tema,
+            )
+        });
+        y += alto + gap;
     }
 
     // **The room.** Only the Convolution Reverb has one, and it is the one thing in the rack
@@ -344,7 +367,7 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
             } else {
                 &read
             },
-            Rect::new(x, y, w, label_h),
+            Rect::new(x, y, w, TypeToken::Xs.px()),
             TypeToken::Xs.px(),
             resolve(
                 if read.is_empty() {
@@ -355,7 +378,7 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
                 ctx.theme,
             ),
         );
-        y += label_h + gap;
+        y += TypeToken::Xs.px() + gap;
     }
     y + ph2d_tokens::control_gap_px()
 }

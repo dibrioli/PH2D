@@ -18,10 +18,10 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::motion::{self, hover_of, pressed_of};
 use ph2d_editor_core::paint::{paint_text_centered, resolve};
-use ph2d_editor_core::widget::{ButtonState, Slider, SliderOrientation, paint_slider};
+use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
 use ph2d_vector::{Color as VelloColor, VectorScene};
 
 /// ⭐⭐⭐ **OS RÓTULOS DAS BARRAS DO MASTER — a POPULAÇÃO de que a coluna deriva.**
@@ -92,9 +92,28 @@ pub fn coluna_dos_nomes_em(
     preciso.clamp(FX_LABEL_MIN_W, tecto) // CLAMP-OK: o tecto é forçado acima do piso na linha de cima
 }
 
-/// Paint a small left label + a full-width horizontal Slider on one row (the
-/// master-fx parameter rows: EQ, reverb Size/Return, sends, ducking Depth).
-/// Returns the next y.
+/// ⭐⭐⭐ **Uma fileira de parametro do master, na CAIXA UNICA do app** — o nome a
+/// esquerda DENTRO, o valor a direita DENTRO, e o preenchimento a dizer a fraccao. (EQ, `Size` /
+/// `Return` do reverb, os envios, o `Depth` do ducking.) Devolve o `y` seguinte.
+///
+/// ⛔⛔⛔ **Report do dono, 2026-09-19, com foto:** *«por que esses sliders nao sao colocados
+/// no padrao do app?»*. A redaccao anterior desenhava um rotulo CENTRADO numa coluna a esquerda e
+/// uma pista nua ao lado, **sem valor nenhum** — ela e anterior a lei do formulario e nunca
+/// foi convertida. O handoff da linha ja nomeava a divida por escrito (*«as superficies de UI que
+/// as outras linhas trouxeram foram escritas contra a lei de espacamento ANTIGA»*).
+///
+/// ⚠️⚠️ **E ela nao mostrava o NUMERO.** Uma pista sem leitura diz *quanto* so pela posicao
+/// do preenchimento, e a `220 px` de coluna isso sao uns poucos pixels — *um controlo que
+/// nao diz o valor dele obriga o artista a arrastar para descobrir onde estava*.
+///
+/// ⭐ **O chip vai a `NodeId(0)`, e isso e a decisao:** a porta so o regista quando o id nao
+/// e zero, logo o valor e SO DE LEITURA e nao nasce um controlo morto. ⚠️ **O numero e a
+/// fraccao normalizada** (`0..1`), que e o que o retrato traz: os parametros do rack do master
+/// atravessam a fronteira ja normalizados, e inventar aqui uma unidade (`dB`, `Hz`) seria uma
+/// segunda resposta a *«quanto vale isto?»* ao lado da do motor. — divida NOMEADA.
+///
+/// ⚠️ A altura e a que a porta DEVOLVE, nunca uma constante: numa coluna estreita ela
+/// promove o rotulo para uma fileira propria, e um `y` fixo poria a linha seguinte por cima.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_labeled_slider(
     y: f32,
@@ -110,28 +129,28 @@ pub(crate) fn paint_labeled_slider(
     store: &WidgetStore,
     hit_index: &mut HitIndex,
 ) -> f32 {
-    let label_rect = Rect::new(content_x, y, col_w, Spacing::Md.px());
-    paint_text_centered(
-        text_system,
-        scene,
+    // ⚠️ O `col_w` fica na assinatura e e IGNORADO de proposito: ele era a coluna EXTERNA do
+    //    rotulo, e a caixa unica poe essa grandeza a zero. A porta da casa documenta a mesma
+    //    decisao para os ~50 chamadores dela. ⛔ Nao o reaproveite para outra coisa.
+    let _ = col_w;
+    let v = value.clamp(0.0, 1.0);
+    let alto = ph2d_editor_core::widget::paint_slider_with_chip_layout_adaptive(
+        Rect::new(content_x, y, content_w, ph2d_tokens::ROW_H_PX),
         label,
-        label_rect,
-        TypeToken::Xs.px(),
-        resolve(ColorToken::Text2, theme),
+        v,
+        f64::from(v),
+        None,
+        id,
+        NodeId(0),
+        ph2d_editor_core::widget::DEFAULT_LABEL_W,
+        ph2d_editor_core::widget::DEFAULT_CHIP_W,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
     );
-    let slider_x = content_x + col_w + Spacing::Sm.px();
-    let slider_w = (content_w - col_w - Spacing::Sm.px()).max(1.0);
-    // ⚠️ A altura da PISTA tem nome desde a wave 19: escrita em linha, ela reaparecia na cauda
-    //    (`y + Spacing::Md.px() + …`) e lia-se como um segundo vão — o censo da cauda acusou-a.
-    let track_h = Spacing::Md.px();
-    let slider_rect = Rect::new(slider_x, y, slider_w, track_h);
-    let mut slider = Slider::new(id, label)
-        .orientation(SliderOrientation::Horizontal)
-        .visual(store.slider_visual(id));
-    slider.set_value(value.clamp(0.0, 1.0));
-    paint_slider(&slider, slider_rect, scene, theme);
-    hit_index.register(id, slider_rect);
-    y + track_h + ph2d_tokens::control_gap_px()
+    y + alto + ph2d_tokens::control_gap_px()
 }
 
 /// Paint one toggle button (mute / solo / effect enable): `active_bg` tint +

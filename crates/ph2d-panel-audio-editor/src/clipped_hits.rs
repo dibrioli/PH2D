@@ -46,6 +46,26 @@ impl<'a> ClippedHits<'a> {
         (self.store, self.hit_index)
     }
 
+    /// ⭐⭐⭐ **O par, com o RECORTE do corpo EMPURRADO no indice** — para quem chama um
+    /// pintor da casa que se regista POR DENTRO.
+    ///
+    /// ⛔⛔⛔ **O [`Self::store_and_index_mut`] entrega o indice CRU, e um pintor que registe
+    /// por dentro dele escapa ao recorte deste envelope** — que e exactamente o fantasma
+    /// que este tipo existe para impedir (*uma row rolada para debaixo da barra de titulo continua
+    /// a responder ao rato*). Enquanto os unicos chamadores registavam a MAO, isso nao mordia;
+    /// no dia em que uma fileira passou a usar a `paint_slider_with_chip_layout_adaptive`,
+    /// passaria.
+    ///
+    /// ⭐ O [`HitIndex`] sabe recortar-se sozinho desde a wave da dobra
+    /// ([`HitIndex::push_clip`]), e o neutro dele e **nao chamar** — logo esta porta e a
+    /// mesma aritmetica do [`Self::register`], dita ao indice em vez de ao envelope.
+    pub(crate) fn com_recorte<R>(&mut self, f: impl FnOnce(&WidgetStore, &mut HitIndex) -> R) -> R {
+        self.hit_index.push_clip(self.clip);
+        let r = f(self.store, self.hit_index);
+        self.hit_index.pop_clip();
+        r
+    }
+
     /// **O par visual deste id** — o estado discreto e quanto do hover está presente.
     ///
     /// Delega à porta única do store ([`WidgetStore::button_visual`]); existe aqui só para o
@@ -129,6 +149,43 @@ mod tests {
         let straddling = Rect::new(10.0, 90.0, 100.0, 20.0); // crosses BODY.y = 100
         ClippedHits::new(&store, &mut index, BODY).register(id(4), straddling);
         assert_eq!(index.hit(50.0, 105.0), None, "half-grabbable widget");
+    }
+
+    /// ⭐⭐⭐ **O [`ClippedHits::com_recorte`] recorta quem se regista POR DENTRO.**
+    ///
+    /// ⛔ Sem ele, um pintor da casa que registe sozinho (a caixa unica do slider) escapava
+    /// ao envelope e deixava o fantasma que este tipo existe para impedir. ⚠️ A regua e a
+    /// MESMA do [`ClippedHits::register`], dita ao indice em vez de ao envelope, logo o resultado
+    /// tem de ser o mesmo: invisivel ⇒ nao clicavel.
+    #[test]
+    fn quem_se_regista_dentro_do_com_recorte_tambem_e_recortado() {
+        let store = WidgetStore::default();
+        let mut index = HitIndex::new();
+        let fora = Rect::new(10.0, 600.0, 100.0, 20.0); // abaixo do pe do corpo
+        ClippedHits::new(&store, &mut index, BODY).com_recorte(|_, hits| {
+            hits.register(id(6), fora);
+        });
+        assert_eq!(
+            index.hit(50.0, 610.0),
+            None,
+            "um widget rolado para fora continua clicavel — o recorte nao foi empurrado"
+        );
+    }
+
+    /// ⭐ **O CONTROLO: o que esta DENTRO continua a registar-se.**
+    ///
+    /// ⚠️ Sem esta metade, um `com_recorte` que recusasse TUDO leria verde no teste de cima
+    /// e mataria a seccao inteira sob o rato — *uma regua que so mede o caso que tem de
+    /// falhar nao sabe se o que tem de passar ainda passa*.
+    #[test]
+    fn e_quem_esta_dentro_do_com_recorte_regista_se() {
+        let store = WidgetStore::default();
+        let mut index = HitIndex::new();
+        let dentro = Rect::new(10.0, 200.0, 100.0, 20.0);
+        ClippedHits::new(&store, &mut index, BODY).com_recorte(|_, hits| {
+            hits.register(id(7), dentro);
+        });
+        assert_eq!(index.hit(50.0, 210.0), Some(id(7)));
     }
 
     /// Exactly flush with the body's bounds still counts as inside — otherwise the

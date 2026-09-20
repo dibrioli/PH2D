@@ -17,13 +17,61 @@
 use std::fs;
 
 /// Os dois pintores, com a `fn` e a porta que cada um tem de atravessar.
+///
+/// ⛔⛔⛔ **A PREMISSA DA SEGUNDA LINHA MORREU EM 2026-09-19, e isto e a morte dela no diff.**
+/// Ela exigia `store.slider_visual(id)` DENTRO do `paint_labeled_slider`, porque aquele pintor
+/// construia um [`Slider`] a mao e *construir um `Slider` nao e vesti-lo com o par vivo*. Report
+/// do dono no mesmo dia (*«por que esses sliders nao sao colocados no padrao do app?»*) levou-o a
+/// delegar na CAIXA UNICA da casa, que le o par vivo por dentro — logo a exigencia antiga
+/// passou a reprovar sobre produto CERTO.
+///
+/// ⚠️ A pergunta do gate nao mudou (*«este pintor pergunta ao store como o widget se pinta
+/// AGORA?»*); mudou a RESPOSTA certa para um deles: ali ela e **atravessar a porta**.
 const PAINTERS: [(&str, &str); 2] = [
     ("pub(crate) fn paint_toggle(", "store.button_visual(id)"),
     (
         "pub(crate) fn paint_labeled_slider(",
-        "store.slider_visual(id)",
+        "paint_slider_with_chip_layout_adaptive(",
     ),
 ];
+
+/// ⭐⭐⭐ **E a PORTA continua a perguntar ao store** — a metade que torna a linha de
+/// cima honesta.
+///
+/// ⛔ Sem ela, o gate passaria a afirmar apenas *«o pintor chama uma funcao com este
+/// nome»*, e no dia em que alguem tirasse a leitura do par vivo de dentro dela o mixer voltava a
+/// ser inerte sob o rato com este ficheiro **verde**. *Delegar move a obrigacao; nao a apaga.*
+///
+/// ⚠️ Ela le a crate VIZINHA pelo caminho relativo, como as irmas deste repo, e por isso
+/// tem o controlo positivo (`expect`) no sitio onde a funcao devia estar.
+#[test]
+fn e_a_porta_da_casa_pergunta_ao_store() {
+    let caminho = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../ph2d-editor-core/src/widget/slider_with_chip/mod.rs"
+    );
+    let src = fs::read_to_string(caminho).expect("slider_with_chip/mod.rs");
+    let at = src
+        .find("pub fn paint_slider_with_chip_layout_adaptive(")
+        .unwrap_or_else(|| panic!("a porta mudou de nome — o gate ficou a olhar para nada"));
+    // ⚠️ O corpo dela delega no `paint_slider_with_chip_layout`, logo a leitura vive nesse;
+    //    a regua e o FICHEIRO, que e a unidade em que a porta e as duas metades dela vivem.
+    let _ = at;
+    assert!(
+        src.contains("store.slider_visual(slider_id)"),
+        "a caixa unica deixou de perguntar ao store como o slider se pinta — o `paint_toggle` do \
+         mixer ainda o faz, e o slider dele passou a depender desta linha"
+    );
+    let classico = fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../ph2d-editor-core/src/widget/slider_with_chip/classic.rs"
+    ))
+    .expect("slider_with_chip/classic.rs");
+    assert!(
+        classico.contains("store.slider_visual(slider_id)"),
+        "a aparencia CLASSICA deixou de perguntar ao store — e ela e o caminho de OMISSAO"
+    );
+}
 
 fn body_after(src: &str, start: usize) -> &str {
     let rest = &src[start..];

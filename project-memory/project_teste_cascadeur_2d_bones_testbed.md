@@ -637,4 +637,10 @@ espelhada (esq direita) como faz o blender»*. Lei no motor (`copiarPose`/`espel
 - ⚠️ Dois pisos de população calibrados na pessoa (402 poses) reprovaram o dinossauro (24) sobre produto
   certo ⇒ pisos POR POSE. ⚠️ O Ctrl+C com TEXTO seleccionado é do navegador (o dono copia números do
   painel para os relatos) — portão com as duas metades.
-- ABERTO (dono): preservar a folga do destino (1,8 cm em pontas de pés) vs. zerá-la · colar SEM o giro.
+- ✅ **B48 — «manter a orientação deste quadro»** (ordem do dono no mesmo dia): UMA caixa para os dois
+  colares (um 3.º botão deixava «espelhada + manter» sem porta; ⛔ sem tecla, que COMPORIA com a caixa).
+  `manterGiro` ⇒ o giro fica o do destino ao bit. No mortal: de omissão a chave desvira 173°, com a caixa 0.
+  O aviso DIZ que a caixa actuou e quantos graus ficaram de fora — é um modo que fica marcado. Suíte 247 ·
+  mutações 126. ⚠️ O portão inclina metade dos destinos 0,8 rad: no corpus do dino os giros diferem 6° e o
+  controlo dava quase o mesmo número.
+- ABERTO (dono): preservar a folga do destino (1,8 cm em pontas de pés) vs. zerá-la.

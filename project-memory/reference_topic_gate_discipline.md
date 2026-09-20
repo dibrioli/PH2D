@@ -417,7 +417,6 @@ mutação nova.
   ficheiro sobre o mesmo tipo. ⇒ a granularidade é a **LINHA**: o ficheiro só é isento se TODA linha
   com o acessório casar com um trecho declarado.
 
----
 
 ## ⛔⛔ Um gate BINÁRIO («ou A ou B») fica vermelho sobre código MELHOR quando nasce um C
 
@@ -440,7 +439,6 @@ era, porque passa a saber que a porta delega mesmo.
 fundação e a wave correu a crate do painel. *Um fecho que só corre as crates que a linha EDITOU
 é cego aos gates que vivem noutra* — quinta ocorrência registada neste repo.
 
----
 
 ## ⛔⛔ Um corte numa ponta que ENGORDA a outra não é um corte (2026-09-18)
 
@@ -462,7 +460,6 @@ mesma forma; as **11** que saíram são as que carregam vocabulário de `crate::
 a catraca do DAG obriga a existir), e as **16** que ficaram carregam `screens::hero::*FieldEdit` —
 edições do modelo de SPRITE e de AUTORIA. *O que as separa é o assunto.*
 
----
 
 ## ⚠️ Adoptadas na integração de 2026-09-20 (da `teste-cascadeur`)
 
@@ -495,3 +492,18 @@ o índice foi compactado no mesmo dia em que estas nasceram, e ficaram **órfãs
   resultado tem de ficar byte-idêntico.
 
 - ⛔⛔⛔ [Gate que CONSTRÓI a entrada da lei à mão nunca pergunta se o GESTO a produz — a F30 shipou lei sem gesto](feedback_a_law_measured_by_a_handbuilt_fixture_has_no_gesture.md)
+- ⛔⛔⛔ **UM CENSO TEXTUAL SOBREVIVE A UM `if false &&`** (medido 2026-09-19). Eu pus a decisão de
+  *«que realce acende»* dentro dos dois PINTORES e gateei-a por um censo que varria os ficheiros à
+  procura do nome do campo (`state.largada_viva`). A prova de mutação desligou a pintura inteira com
+  `if false && state.largada_viva == …` e o gate ficou **VERDE**: o nome continua lá. *Um censo de
+  texto afirma que alguém escreveu a palavra, nunca que o desenho acontece.*
+  ⇒ a cura é **partir em duas metades obrigatórias**: a DECISÃO sai para uma função pura com gate de
+  **VALOR** (`realce_do_cartao(state, id) -> Option<f32>`), e o censo textual passa a perguntar a
+  única coisa que só texto responde — ***o pintor ainda a CHAMA?***. Uma lei que ninguém chama não
+  desenha; uma chamada a uma lei errada desenha a coisa errada.
+  ⚠️ **E o ficheiro da lei não se pode chamar `paint_*`**: o censo de a11y (HR-12) varre todo
+  `paint_*` de um painel a exigir fiação de acessibilidade, e uma decisão pura não tem pixel nenhum
+  — *o nome de um ficheiro é a primeira coisa que um censo lê*. Quem o disse foi o portão, com o
+  `paint_realce.rs` acusado; o ficheiro passou a `realce.rs`.
+  Irmãs: [[feedback_a_never_used_warning_measures_visibility_not_the_law]] ·
+  [[feedback_the_inner_channel_fixture_is_below_the_break]]

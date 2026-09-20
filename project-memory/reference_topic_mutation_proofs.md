@@ -197,3 +197,40 @@ fica»* — **as duas leituras erradas, da mesma medição feita numa amostra de
 uma HEURÍSTICA?* Uma lei sem gate escreve-se o gate; uma heurística sem gate mede-se no
 corpus inteiro e ou ganha sempre, ou sai. Ver
 [[feedback_a_line_a_mutation_cannot_kill_is_a_comment_with_code_syntax]].
+
+---
+
+## 30 — Um ramo DEFENSIVO sem chamador lê-se, numa mutação, exactamente como um ramo MORTO (2026-09-20)
+
+`ph2d-mesh-colors`: trocar o discriminante `4 if face[3] == TRI => 3` por `=> 4`
+**sobreviveu aos 18 gates da crate**. A causa não era uma fixtura em falta — era
+que **nada no produto percorre aquele ramo**: a `ph2d_mesh::Face::verts()`
+devolve `&self.0[..vert_count()]` e **corta o sentinela antes de sair**.
+
+⚠️ **A pergunta que a mutação faz não é *«falta um gate?»*, é *«quem chama isto?»***
+— e as duas respostas têm curas OPOSTAS: um ramo morto apaga-se, um ramo
+defensivo gateia-se. Aqui ele ficou, com o mecanismo escrito: a porta aceita
+`&[u32]` cru, o array de uma `Face` desta casa é `[u32; 4]` com `u32::MAX` no
+4.º slot, e um chamador que passe `&face.0[..]` em vez de `face.verts()` lê um
+triângulo como quad com um canto `u32::MAX` — `index out of bounds` ou endereços
+trocados **em silêncio**.
+
+## 31 — Uma PERMUTAÇÃO é invisível a uma régua que CONTA (2026-09-20)
+
+Na mesma crate, inverter o `t` do lado `d→a` de um quad (`lado - j` por `j`)
+sobreviveu a **19** gates, incluindo a bijecção — que é o gate mais forte da
+crate e cujo doc promete provar a fronteira partilhada. ⭐ **Inverter o `t` de
+uma aresta é uma permutação do bloco dela, logo a contagem de índices distintos
+fica IGUAL AO BIT.** O que a apanha é a igualdade por **ponto FÍSICO**: duas
+faces que se tocam têm de devolver o mesmo índice para o mesmo sítio.
+
+⚠️⚠️ E o gate que já media isso tinha a fixtura errada de espécie: dois
+**TRIÂNGULOS**. O único quad do corpus estava **sozinho**, onde não há vizinho
+com quem discordar. ⇒ *o TAMANHO de uma fixtura deriva-se da pergunta*: os
+quatro lados de um quad têm de ser partilhados pelo menos uma vez, senão o ramo
+que não é cruzado fica sem régua — numa fita de dois quads o gémeo `c→d` ficava
+de fora, e a mutação escrita depois prova-o. A fixtura é uma grelha `2×2`.
+
+Ver [[feedback_a_mutation_that_survives_may_mean_a_missing_gate]] ·
+[[feedback_a_surviving_mutation_can_mean_the_code_is_redundant]] ·
+[[reference_topic_measurement_discipline]].

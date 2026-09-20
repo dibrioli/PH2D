@@ -27,6 +27,7 @@
 - [Projetos num disco DEDICADO de 2TB](project_projects_live_on_a_dedicated_2tb_disk.md) · [target em tmpfs: «File exists» pós-boot](feedback_a_tmpfs_backed_target_reports_file_exists_not_broken_link.md)
 - [Disco cheio → mold SIGBUS](project_disk_full_corrupts_objects_mold_sigbus.md) · [«cheio» = metadata btrfs](project_btrfs_metadata_starved_not_disk_full_2026_08_22.md)
 - ⭐ [MotionBricks (Apache-2.0) instalado e a correr, headless](reference_motionbricks_oracle_installed.md)
+- ⚠️ [O ambiente diz `fish` e a shell é **zsh** — `$VAR` sem aspas NÃO se parte em palavras](reference_shell_is_zsh_not_fish_and_does_not_word_split.md)
 - [Prompt Deck](reference_prompt_deck_app.md) · [~/Apps invisíveis ao cachy-update](reference_manual_apps_in_home_apps_are_invisible_to_cachy_update.md) · [atalho global Plasma 6](reference_kde_plasma6_global_shortcut.md)
 - [HISTÓRICO: aquarela/wash (19)](reference_topic_watercolor_historical.md)
 

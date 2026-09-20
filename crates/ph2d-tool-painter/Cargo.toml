@@ -55,9 +55,13 @@ ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 ph2d-light = { path = "../ph2d-light" }
 # Wet Paint (PaintMode::WetPaint): the parity-tested fluid engine — ADR-0134.
 ph2d-wet-paint = { path = "../ph2d-wet-paint" }
-# A LEI da mistura de tintas (K–M), partilhada com o Wet Paint e o Digital — ordem do dono
-# (2026-09-20): os três meios misturam igual, logo leem a MESMA porta.
-ph2d-pigment = { path = "../ph2d-pigment" }
+# ⛔ **A `ph2d-pigment` NÃO entra aqui, e a ausência é um registo.** Ela esteve declarada entre
+# 2026-09-20 e o mesmo dia: foi acrescentada para a tentativa de trocar a lei da AQUARELA para o
+# K–M, que foi construída, MEDIDA (o `watercolor_soak_…` passou a ler o mesmo pixel para as duas
+# demoras — os dois lados saturam) e revertida. A dependência **sobreviveu à reversão** e o
+# `cargo machete` apanhou-a. *Quando o único leitor de um valor sai, o valor sai com ele* — e isso
+# vale para uma linha de `Cargo.toml` tanto como para um campo. A lei vive na `ph2d-painter-brush`
+# (que a lê no `blend_over_pigment`) e na `ph2d-wet-paint`; esta crate só a alcança por elas.
 # Content-aware heal (Inpaint paint-mode): multi-scale PatchMatch reconstruction
 # of the brushed defect region on pen-up (ADR-0102). CPU reference path; the
 # `gpu` feature turns on its GPU compute path.

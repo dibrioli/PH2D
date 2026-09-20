@@ -280,8 +280,12 @@ pub fn montar(world: &mut World, _nivel: u32) -> Montada {
          (6) na seccao TRIGGER troque o nome da accao de `{ACCAO}` para `{ACCAO_SEM_TECLA}`: ela \
          EXISTE e nao tem tecla, e o painel diz isso com OUTRA frase — porque a cura e' outra \
          (ligar uma tecla, nao criar a accao). Escreva `fier` e compare: o aviso muda\n\
-         (7) deu errado se: nada sai ao carregar no {TECLA_NOME} · as DUAS balas saem para o mesmo \
-         lado · alguma coisa sai com o relogio PARADO · ou o passo (6) nao muda o aviso"
+         (7) com `fier` escrito aparece o botao «Create this action»: carregue nele e a accao \
+         NASCE — o aviso some ali mesmo, e o botao com ele. ⚠️ Ele so' existe onde a accao NAO \
+         existe: com `{ACCAO}` ou com `{ACCAO_SEM_TECLA}` escritos ele nao e' desenhado\n\
+         (8) deu errado se: nada sai ao carregar no {TECLA_NOME} · as DUAS balas saem para o mesmo \
+         lado · alguma coisa sai com o relogio PARADO · o passo (6) nao muda o aviso · ou o botao \
+         do passo (7) aparece com uma accao que JA' existe"
     );
     Montada {
         nivel: 1,

@@ -132,3 +132,33 @@ fn quem_nasce_escolhido_e_o_heroi_e_ele_tem_gatilho() {
         "o escolhido tem de ter a seccao que o roteiro manda ver"
     );
 }
+
+/// ⭐⭐⭐ **O botão que o roteiro manda carregar EXISTE na tela.**
+///
+/// ⚠️⚠️ *Um passo que nomeia um controlo AFIRMA que ele está lá* — e o dono aprova o smoke com o
+/// passo impossível lá dentro. Esta casa já o pagou duas vezes (o `Auto-Smooth` da `=41`, que é
+/// `Pro` num painel que abre em `Basic`; a fileira `Light` da `=51`, que o painel pinta
+/// `Material`), as duas por eu ter escrito o nome de memória.
+///
+/// ⭐ **A régua é a TABELA que o painel lê**, e não uma cópia: renomear a chave acusa o roteiro.
+///
+/// **Mutações que devem sangrar:** mudar o valor da chave no `ph2d-i18n` · tirar a frase do
+/// roteiro.
+#[test]
+fn o_roteiro_nomeia_o_botao_que_o_painel_de_facto_pinta() {
+    let roteiro = include_str!("trigger_smoke.rs");
+    let rotulo = ph2d_i18n::tr("panel.inspector.trigger.create_this_action");
+    assert!(
+        roteiro.contains(rotulo),
+        "o roteiro manda carregar num botao com outro nome: o painel pinta «{rotulo}»"
+    );
+
+    // ⛔ **E a metade NEGATIVA, que é a lei do botão:** o roteiro tem de dizer que ele NÃO existe
+    // sobre uma acção que já existe. Sem ela o dono lê *«carregue no botão»* e conclui que o app
+    // está partido quando ele não aparece — que é o defeito de que a secção inteira se defende.
+    assert!(
+        roteiro.contains("so' existe onde a accao NAO"),
+        "o roteiro deixou de dizer que o botao so' aparece onde a accao FALTA — e' a metade que \
+         impede o dono de ler a ausencia dele como avaria"
+    );
+}

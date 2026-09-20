@@ -31,6 +31,35 @@ use ph2d_app_components::scene_ctx::SceneCtx;
 /// do que ele acrescenta a seguir.
 pub(crate) const LEVANTA_O_INSPECTOR: u8 = 3;
 
+/// ⭐⭐⭐ **Abre a régua do transporte para mostrar a CORRIDA — no separador que a MOSTRA.**
+///
+/// # ⛔⛔⛔ Porque ela existe: onze cenas abriam a régua ERRADA, e a foto é que o disse
+///
+/// Onze prólogos desta família escreviam `panel_visibility.insert("timeline", true)` com a mesma
+/// justificação — *«o dono tem de ver que a corrida ANDA»* — e a régua abre no separador de
+/// fábrica, o **`Keys`**. ⚠️⚠️ **Ali ela mostra o relógio do CLIPE e não o do jogo**
+/// ([`crate::render_loop::fase_timeline_drain`]: *«o clip clock em Keys mode, o da timeline em
+/// Arrange»*).
+///
+/// **Medido em 2026-09-20** (sonda no `advance_ticks` + foto da cena do fim de jogo): com o jogo a
+/// `5,750 s` e `playing = true`, o painel lia **`Time(s) 0`, `Frame 0`** e o cursor colado ao zero.
+/// Depois desta porta: **`Time(s) 7,267`, `Frame 174`**, com o cursor onde devia.
+///
+/// ⚠️ *Uma cena que abre uma prova e mostra a prova errada é pior que uma cena sem prova nenhuma* —
+/// o dono lê «o jogo não anda» sobre um jogo que anda (`CLAUDE.md` §5.0).
+///
+/// ⭐ **A metade do separador já tinha porta** — a [`ph2d_panel_timeline::state::request_arrange_tab`]
+/// nasceu no `SequencePlayer` para exactamente isto. O que faltava era as duas metades andarem
+/// JUNTAS: *uma lei escrita em onze sítios não é uma lei*, que é a frase que a
+/// [`crate::App::levanta_o_inspector`] logo acima já pagou com nove cópias.
+///
+/// ⛔ **Ela NÃO serve uma cena sobre a TIMELINE** (o `buffer_smoke` e as irmãs de animação): ali o
+/// `Keys` é o separador certo, porque o sujeito É o clipe.
+pub(crate) fn abre_a_regua_da_corrida(hero: &mut ph2d_editor_core::HeroScreen) {
+    hero.panel_visibility.insert("timeline", true);
+    ph2d_panel_timeline::state::request_arrange_tab();
+}
+
 impl crate::App {
     /// ⭐⭐⭐ **Traz o Inspector à FRENTE no encaixe, e conta o quadro** — devolve quantos faltam.
     ///
@@ -188,7 +217,7 @@ impl crate::App {
         if cena == 2 {
             self.timeline.flags.simulate_physics = true;
             if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-                hero.panel_visibility.insert("timeline", true);
+                crate::components_scenes::abre_a_regua_da_corrida(hero);
             }
             self.playhead.rewind();
             self.playhead.play();
@@ -271,7 +300,7 @@ impl crate::App {
         // ⚠️ **A régua abre junto** — uma instrução que manda rebobinar sobre um ecrã sem
         // transporte devolve *«que régua?»* (a lição da cena 67 da física).
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
         }
         self.playhead.rewind();
         self.playhead.play();
@@ -302,7 +331,7 @@ impl crate::App {
         // ⚠️ A régua abre junto — uma instrução que fala do transporte sobre um ecrã sem ele
         // devolve *«que régua?»* (a lição da cena 67 da física).
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
         }
         self.playhead.rewind();
         self.playhead.play();
@@ -327,7 +356,7 @@ impl crate::App {
         let montada = ph2d_app_components::script_smoke::montar(cx.sim.world_mut(), nivel, &dir);
         self.components.smokes.script = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
             match montada {
                 // ⚠️ O `clear()` anda colado ao `selection` (a lei da cena de física).
                 Ok(m) => {
@@ -370,7 +399,7 @@ impl crate::App {
         // ⚠️ A régua abre junto — uma instrução que fala do transporte sobre um ecrã sem ele
         // devolve *«que régua?»* (a lição da cena 67 da física).
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
         }
         self.playhead.rewind();
         self.playhead.play();
@@ -402,7 +431,7 @@ impl crate::App {
         // ⚠️ A régua abre junto — uma instrução que fala do transporte sobre um ecrã sem ele
         // devolve *«que régua?»* (a lição da cena 67 da física).
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
         }
         self.playhead.rewind();
         self.playhead.play();
@@ -433,7 +462,7 @@ impl crate::App {
         // ⚠️ A régua abre junto — uma instrução que fala do transporte sobre um ecrã sem ele
         // devolve *«que régua?»* (a lição da cena 67 da física).
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
             // ⛔⛔ **O INSPECTOR É TRAZIDO À FRENTE, e foi a FOTO que o disse:** a instrução manda
             // clicar numa fonte e ver a secção *«no painel da direita»*, e naquele encaixe estava o
             // painel do esqueleto por cima — o passo nomeava uma superfície que o dono não tinha à

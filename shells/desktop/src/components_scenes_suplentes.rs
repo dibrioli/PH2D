@@ -85,7 +85,7 @@ impl crate::App {
             // do editor*), e sem a timeline o dono não vê que a corrida anda nem tem onde a parar.
             // *Uma instrução que fala do transporte sobre um ecrã sem ele devolve «que régua?»* —
             // a lição da cena 67 da física, que as irmãs `=1` do topdown e do projéctil já pagam.
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
             // ⛔ **O HERÓI nasce ESCOLHIDO** — o roteiro manda ver a secção *Trigger* no painel da
             // direita, e com ninguém escolhido o Inspector diz *«Select an entity in the
             // Hierarchy»*. ⚠️ O `clear()` anda colado ao `selection` (a lei da cena de física).
@@ -129,11 +129,27 @@ impl crate::App {
             hero.panel_visibility.insert("inspector", true);
             // ⚠️ **A RÉGUA DO TRANSPORTE abre junto** — o dono tem de ver que a corrida ANDA, e o
             // recomeço é o relógio a voltar ao princípio: sem a régua ele não vê a prova.
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
             // ⛔ **O HERÓI nasce ESCOLHIDO** — os passos (4) a (6) do roteiro nomeiam secções dele.
             hero.gizmo.selection = Some(montada.escolhido);
             hero.gizmo.extra_selection.clear();
         }
+        // ⛔⛔⛔ **E ela abre no `Arrange`, não no `Keys` — MEDIDO em 2026-09-20.**
+        //
+        // O `Keys` é o separador de FÁBRICA, e ali a régua mostra o relógio do **CLIPE**
+        // ([`crate::render_loop::fase_timeline_drain`]: *«o clip clock em Keys mode, o da
+        // timeline em Arrange»*). ⇒ com a corrida a `5,750 s` — medido por sonda no
+        // `advance_ticks`, com `playing=true` — o painel lia **`Time(s) 0`** e o cursor ficava
+        // colado ao zero. Foi isto que a foto de 19/09 registou como *«não confirmado»*.
+        //
+        // ⚠️⚠️ **O relógio do jogo NUNCA esteve parado, e a cena estava certa:** o defeito era
+        // esta linha abrir a régua no separador que mostra OUTRO relógio. *Uma cena que abre uma
+        // prova e mostra a prova errada é pior que uma cena sem prova nenhuma* — o dono lê «o
+        // jogo não anda» sobre um jogo que anda.
+        // ⭐ **A porta já existia** — ela nasceu no `SequencePlayer` para exactamente isto: *uma
+        // cena que escolhe um objecto E pede o Arrange quer dizer a segunda coisa*, e a ordem em
+        // que o `publish_view` as honra é o que o exprime sem um campo de prioridade.
+        ph2d_panel_timeline::state::request_arrange_tab();
         self.playhead.rewind();
         self.playhead.play();
     }
@@ -183,7 +199,7 @@ impl crate::App {
             hero.panel_visibility.insert("inspector", true);
             // ⚠️ **A RÉGUA DO TRANSPORTE abre junto** — o passo (6) manda parar a corrida, e uma
             // instrução sobre o transporte num ecrã sem ele devolve *«que régua?»*.
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
             // ⛔ **A BOMBA nasce ESCOLHIDA** — o roteiro manda ver a secção *Shake Emitter*.
             hero.gizmo.selection = Some(montada.escolhido);
             hero.gizmo.extra_selection.clear();
@@ -235,7 +251,7 @@ impl crate::App {
             // ⛔ **Mas quem o roteiro manda carregar são os chips `Pause`/`Reset` da barra de
             // CIMA**, e não esta régua: ela pinta ÍCONES, e a 1.ª redacção mandava carregar num
             // «STOP» que não é pintado em lado nenhum (report do dono, 19/09).
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
             // ⛔ **O HERÓI nasce ESCOLHIDO** — o roteiro manda ver a secção no painel da direita, e
             // com ninguém escolhido o Inspector diz *«Select an entity in the Hierarchy»*.
             hero.gizmo.selection = Some(montada.escolhido);
@@ -277,7 +293,7 @@ impl crate::App {
             // ⚠️ A régua abre junto — os passos (2) e (3) falam do relógio a andar, e *uma
             // instrução que fala do transporte sobre um ecrã sem ele devolve «que régua?»* (a
             // lição da cena 67 da física).
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
             // ⛔ **O OLHO DA FRENTE nasce ESCOLHIDO** — o roteiro manda ler a secção `Ray Sensor`
             // no painel da direita, e com ninguém escolhido o Inspector diz *«Select an entity in
             // the Hierarchy»*.
@@ -328,7 +344,7 @@ impl crate::App {
         // passo fixo. ⛔ Ligar só na `=2` daria duas respostas a *«o que é uma corrida?»*.
         self.timeline.flags.simulate_physics = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
             hero.panel_visibility.insert("inspector", true);
             // ⛔ **Alguém nasce ESCOLHIDO** — com ninguém escolhido o Inspector diz *«Select an
             // entity in the Hierarchy»* e o passo (3) nomeia uma secção que não está na tela.
@@ -372,7 +388,7 @@ impl crate::App {
         ph2d_app_components::path_follow_smoke::anuncia();
         self.timeline.flags.simulate_physics = true;
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
             hero.panel_visibility.insert("inspector", true);
             // ⛔ **Alguém nasce ESCOLHIDO** — com ninguém escolhido o Inspector diz *«Select an
             // entity in the Hierarchy»* e o passo (2) nomeia uma secção que não está na tela.
@@ -428,7 +444,7 @@ impl crate::App {
                 )));
             }
             hero.panel_visibility.insert("inspector", true);
-            hero.panel_visibility.insert("timeline", true);
+            crate::components_scenes::abre_a_regua_da_corrida(hero);
             hero.gizmo.selection = Some(montada.escolhido);
             hero.gizmo.extra_selection.clear();
         }

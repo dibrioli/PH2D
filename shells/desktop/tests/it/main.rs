@@ -16,6 +16,7 @@ mod a_frames_handle_resizes_it_and_does_not_scale_it;
 mod a_layout_never_commands_a_panel_a_bridge_owns;
 mod a_placed_instance_lands_a_screen_step_from_its_main;
 mod a_refused_gesture_speaks_on_screen;
+mod a_regua_de_uma_cena_de_jogo_abre_no_arrange;
 mod a_shading_scene_owns_its_whole_cast;
 mod a_shape_and_an_image_share_one_draw_order;
 mod a_skinned_image_is_drawn_once;

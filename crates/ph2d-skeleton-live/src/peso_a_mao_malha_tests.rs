@@ -225,3 +225,40 @@ fn diag_o_preco_do_reticulo() {
             .trim()
     );
 }
+
+/// ⚠️ **SONDA — que osso da barra tem mais a MOSTRAR.** O roteiro de um smoke nomeia UM osso, e a
+/// escolha decide se o artista vê a rampa inteira ou uma cor só.
+#[test]
+fn diag_qual_osso_mostra_mais() {
+    let (sim, _scene, map, id, ossos) = barra_da_cena();
+    let alvo = forma(&map, id);
+    println!("\n{:-<64}", "");
+    println!(
+        "{:<10} {:>8} {:>8} {:>10} {:>10}",
+        "osso", "min", "max", "x do max", "faixa"
+    );
+    println!("{:-<64}", "");
+    for (k, &o) in ossos.iter().enumerate() {
+        let Some(m) = malha_do_peso(&sim, alvo, o) else {
+            println!("Bone {}: sem retículo", k + 1);
+            continue;
+        };
+        let (mut lo, mut hi, mut xhi) = (f64::INFINITY, f64::NEG_INFINITY, 0.0);
+        for (v, &w) in m.verts.iter().zip(&m.pesos) {
+            lo = lo.min(w);
+            if w > hi {
+                hi = w;
+                xhi = v[0];
+            }
+        }
+        println!(
+            "Bone {:<4} {lo:>8.3} {hi:>8.3} {xhi:>10.2} {:>10.3}",
+            k + 1,
+            hi - lo
+        );
+    }
+    println!(
+        "{:-<64}\na barra vive em x ∈ [-8,5 ; -1,5]; o canvas corta em ~x = -6,5",
+        ""
+    );
+}

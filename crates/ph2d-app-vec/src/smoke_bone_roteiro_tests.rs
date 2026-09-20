@@ -150,8 +150,22 @@ fn o_roteiro_ensina_a_acrescentar_um_ponto_onde_falta_controlo() {
         );
     }
     // ⛔ E a lição vive JUNTO da linha que nomeia os ossos da barra, não solta no fim: quem lê
-    // *quem governa a barra* tem de encontrar ali *o que fazer com ela*. ⚠️ A régua é a distância
-    // entre as duas — *duas linhas separadas por vinte lêem-se como dois assuntos*.
+    // *quem governa a barra* tem de encontrar ali *o que fazer com ela*.
+    //
+    // ⛔⛔ **A RÉGUA DE BYTES MORREU, e a morte está à vista neste diff.** Ela mediu duas coisas
+    // erradas, uma de cada vez:
+    //
+    // 1. `inicio → inicio`, que reprovou no dia em que a lição do meio **cresceu** (já corrigido
+    //    na altura para `fim → inicio`);
+    // 2. e `fim → inicio` **em bytes de FONTE**, que conta o doc-comment entre as duas — *prosa que
+    //    o artista nunca lê*. Ao nascer a lição do retículo (2026-09-20) ela leu `1126` contra uma
+    //    barra de `400`, e sem comentários ainda `556`: **o texto novo é uma lição a mais sobre o
+    //    MESMO assunto**, e uma régua de comprimento não distingue isso de um assunto estranho
+    //    enfiado no meio.
+    //
+    // ⇒ a propriedade que se quer é *«nada de OUTRO assunto entre elas»*, e é essa que está aqui.
+    // ⚠️ **Com piso de população:** sem ele, um roteiro em que as três lições desapareçam deixa o
+    // laço a varrer zero mensagens e o gate fica verde a afirmar nada.
     let quem = texto
         .find("BARRA LARANJA obedece")
         .expect("quem governa a barra");
@@ -159,24 +173,39 @@ fn o_roteiro_ensina_a_acrescentar_um_ponto_onde_falta_controlo() {
         .find("PINCEL DE PESO NA BARRA")
         .expect("a licao do pincel");
     let caneta = texto.find("A OUTRA SAIDA").expect("a outra saida");
-    // ⚠️⚠️ **A régua é o VÃO entre as lições, e não a distância entre os princípios delas** — a 1.ª
-    // redacção media `inicio → inicio` e reprovou no dia em que a lição do meio **cresceu**, sobre
-    // um roteiro correcto. *Uma régua que cresce com o tamanho do que ela separa mede a coisa
-    // errada.*
-    let vao = |a: usize, b: usize| {
-        let fim = texto[a..].find(");").map_or(a, |k| a + k);
-        b.saturating_sub(fim)
-    };
     assert!(
-        pincel > quem && vao(quem, pincel) < 400,
-        "a licao do pincel ficou a {} bytes do fim de quem governa a barra",
-        vao(quem, pincel)
+        quem < pincel && pincel < caneta,
+        "a ordem das licoes da barra trocou — quem governa, o que fazer, e a saida alternativa"
     );
+    let entre = &texto[quem..caneta];
+    let mensagens: Vec<&str> = entre
+        .match_indices("[vec-bone-smoke]")
+        // ⚠️ **Só as mensagens COMPLETAS** — a fatia acaba no meio do `eprintln!` da caneta, e um
+        // fragmento truncado lia-se como *«uma lição sem a palavra BARRA»*. *Um pedaço de mensagem
+        // não é uma mensagem.*
+        //
+        // ⚠️⚠️ **E o fim de uma é a ASPA seguida de quebra de linha, nunca `");`** — as linhas
+        // intermédias acabam em `\` e o `);` mora na linha SEGUINTE, indentado. A 1.ª redacção
+        // procurou `");` e colheu **zero** mensagens: sem o piso de população ela teria ficado
+        // verde a varrer o nada.
+        .filter_map(|(i, _)| {
+            let r = &entre[i..];
+            r.find("\"\n").map(|k| &r[..k])
+        })
+        .collect();
     assert!(
-        caneta > pincel && vao(pincel, caneta) < 400,
-        "a outra saida ficou a {} bytes do fim da licao do pincel",
-        vao(pincel, caneta)
+        mensagens.len() >= 2,
+        "esperava pelo menos as duas licoes da barra entre os dois marcos e achei {}",
+        mensagens.len()
     );
+    for m in &mensagens {
+        assert!(
+            m.contains("BARRA") || m.contains("barra"),
+            "uma licao de OUTRO assunto foi enfiada entre «quem governa a barra» e «a outra \
+             saida» — o artista que le' a primeira deixa de encontrar a segunda ali: {:?}",
+            &m[..m.len().min(90)]
+        );
+    }
 }
 
 /// ⭐⭐⭐ **OS DOIS ESQUELETOS DA CENA NÃO PARTILHAM UM ÚNICO OSSO** — o facto que o report do dono
@@ -313,4 +342,65 @@ fn o_roteiro_do_pincel_nomeia_rotulos_que_existem() {
             "o roteiro nomeia «{inventado}», que nao e' rotulo nenhum deste painel"
         );
     }
+}
+
+/// ⭐⭐⭐ **O ROTEIRO PROMETE UMA GRELHA, E A BARRA TEM UMA** — as duas metades.
+///
+/// ⛔⛔ **Um passo de smoke é uma AFIRMAÇÃO sobre a tela**, e esta linha nasceu de um report em que
+/// o dono procurou na tela uma coisa que o app calculava e não desenhava. *Prometê-la num
+/// `eprintln!` sem que ela exista é o mesmo defeito ao contrário — e o dono aprova o smoke com o
+/// passo impossível dentro.*
+///
+/// ⚠️ **A 2.ª metade mede o PRODUTO** ([`ph2d_skeleton_live::peso_a_mao_malha::malha_do_peso`],
+/// que é a porta que o quadro chama), e não a presença de uma função: o retículo de uma barra sem
+/// campo guardado é `None`, e a frase ficaria a mentir em silêncio.
+///
+/// ⚠️ **E ela exige DENSIDADE, não só existência:** uma malha com tantos vértices quantos os nós
+/// não é uma grelha — é a lista de pontos que o artista já via.
+#[test]
+fn o_roteiro_promete_uma_grelha_e_a_barra_tem_uma() {
+    let texto = include_str!("smoke_bone.rs");
+    assert!(
+        texto.contains("E ENTRE OS PONTOS ESTA' A MALHA"),
+        "o roteiro deixou de nomear a grelha — ela volta a ser calculada, guardada e invisivel"
+    );
+
+    // ⚠️ **A barra sai da const da CENA** ([`super::BARRA`]) e a cadeia dos mesmos valores que o
+    // `build` usa — senão este gate mede uma peça que o smoke não desenha.
+    let mut sim = ph2d_ecs::SimWorld::default();
+    let mut scene = ph2d_vec_scene::VecScene::new();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
+    let id = scene.push_path(ph2d_vec_scene::cook(
+        ph2d_vec_scene::ShapeKind::RoundRect,
+        super::BARRA.0,
+        super::BARRA.1,
+        &[super::BARRA.2],
+    ));
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
+    let raiz = super::cadeia(
+        &mut sim,
+        ph2d_skeleton_demo::ARM_A,
+        ph2d_skeleton_demo::ARM_B,
+        ph2d_skeleton_demo::ARM_BONES,
+    )
+    .expect("a cadeia da barra monta");
+    assert_eq!(
+        ph2d_skeleton_live::skin_live::bind(&mut sim, &scene, &map, &[id], Some(raiz)),
+        1,
+        "a barra tem de se prender, senao nao ha' campo nenhum a guardar"
+    );
+    let ossos = ph2d_skeleton_live::esqueletos::ossos_desde(&sim, raiz);
+    let alvo = ph2d_ecs::Entity::from_bits(*map.get(&id).expect("a forma tem entidade"));
+    let m = ph2d_skeleton_live::peso_a_mao_malha::malha_do_peso(&sim, alvo, ossos[1])
+        .expect("a barra da cena tem de ter reticulo — o roteiro promete-o");
+    assert!(
+        m.verts.len() > 100,
+        "o reticulo da barra tem {} vertices — com tao poucos ele nao e' uma GRELHA, e a frase do \
+         roteiro promete uma",
+        m.verts.len()
+    );
+    assert!(
+        m.tris.len() > m.verts.len() / 2,
+        "o reticulo nao tem triangulos que cheguem para se ver como grelha"
+    );
 }

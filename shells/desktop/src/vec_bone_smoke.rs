@@ -136,10 +136,24 @@ impl crate::App {
                                         &mut gfx.tools,
                                         ph2d_tool_vector::BoneAction::Weight,
                                     );
-                                    // ⚠️ **Pelo NOME, e nunca «o primeiro que a iteracao der»:** o
-                                    // osso do MEIO de uma cadeia de tres nao possui nada nesta arte, e
-                                    // uma foto tirada com ele escolhido mostraria UMA cor so' — que e'
-                                    // exactamente o retrato que o report de 19/09 trouxe.
+                                    // ⚠️ **Pelo NOME, e nunca «o primeiro que a iteracao der».**
+                                    //
+                                    // ⛔⛔ **E a razao escrita aqui estava REFUTADA, com o numero:**
+                                    // ela dizia que *«o osso do MEIO de uma cadeia de tres nao possui
+                                    // nada nesta arte»*, e medido pelo reticulo do produto
+                                    // (`diag_qual_osso_mostra_mais`) os TRES chegam a `1,000` na
+                                    // barra. O que os separa e' **onde** o quente cai:
+                                    //
+                                    // | osso | `x` do maximo | o canvas corta em `x ≈ −6,5` |
+                                    // |---|---|---|
+                                    // | `Bone 1` | `−8,21` | **atras do painel** |
+                                    // | `Bone 2` | `−5,09` | a` vista |
+                                    // | `Bone 3` | `−2,97` | a` vista |
+                                    //
+                                    // ⇒ a foto e' tirada com o do MEIO, que e' o unico cuja rampa
+                                    // inteira cabe no enquadramento — *a mesma lei que a nota do
+                                    // `=2` ja' escrevia para o braco pintado, aplicada ao contrario
+                                    // por uma premissa que ninguem tinha medido*.
                                     let escolhido = gfx
                                         .sim
                                         .world()
@@ -153,7 +167,7 @@ impl crate::App {
                                                     {
                                                         "Bone 14"
                                                     } else {
-                                                        "Bone 1"
+                                                        "Bone 2"
                                                     }
                                                 })
                                         })

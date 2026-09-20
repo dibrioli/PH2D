@@ -49,6 +49,12 @@ use ph2d_skeleton_demo::{
 /// caminho de omissão — *a cena que o dono já aprovou, nunca uma que ele não pediu*.
 pub const NIVEIS: u32 = 2;
 
+/// ⭐ **A BARRA LARANJA da cena, num sítio só** — canto mínimo, canto máximo e o raio da quina.
+///
+/// ⚠️ **Ela é `pub(crate)` porque um GATE a lê** (o do retículo): *um literal copiado para um teste
+/// deixa de descrever a cena no dia em que alguém mexe nela, e o gate fica verde sobre outra peça.*
+pub(crate) const BARRA: ([f64; 2], [f64; 2], f64) = ([-8.5, 2.0], [-1.5, 3.0], 0.5);
+
 /// **O roteador desta cena** — lê a `PH2D_VEC_BONE_SMOKE`.
 #[must_use]
 pub fn armed() -> bool {
@@ -120,9 +126,9 @@ pub fn build(
     // ⭐ O BRAÇO e o TENTÁCULO: barras deitadas, com a cadeia pelo MEIO delas.
     let braco = scene.push_path(shape(
         ShapeKind::RoundRect,
-        [-8.5, 2.0],
-        [-1.5, 3.0],
-        &[0.5],
+        BARRA.0,
+        BARRA.1,
+        &[BARRA.2],
         [230, 170, 90],
     ));
     let tentaculo = scene.push_path(shape(
@@ -385,6 +391,20 @@ pub fn bind(
              com OITO, os oito nas duas pontas, e o Bind poe os que faltam. Cada ponto muda de cor \
              onde o pincel passa (do AZUL, que nao manda nada, ao VERMELHO, que manda sozinho), e a \
              barra MUDA DE FORMA ali."
+        );
+        // ⭐⭐⭐ **O RETÍCULO É NOMEADO, e ele é a resposta ao report do dono de 2026-09-20**
+        // (*«não deveria aparecer o lattice na hora de pintar os pesos?»*). A malha do domínio
+        // existia desde o bind e nunca era desenhada — o artista via os pontos e mais nada.
+        //
+        // ⚠️ **Ele é dito na BARRA e não no braço pintado**, e o motivo é medido: a malha do
+        // domínio é do caminho VECTORIAL, e uma imagem presa já **é** a própria malha (ali os
+        // pontos são todos os vértices dela, e o retículo seria a segunda cópia do que se vê).
+        eprintln!(
+            "[vec-bone-smoke] ⭐ E ENTRE OS PONTOS ESTA' A MALHA: com «Weight» na mao, a barra \
+             inteira fica coberta por uma GRELHA colorida -- ela e' o lattice que o Bind calculou \
+             e guardou, fina junto das juntas e larga no meio de cada osso. A grelha DOBRA com o \
+             osso, e e' ela que decide a cor de cada pedaco da arte entre os pontos. Arraste o \
+             pincel por cima e veja a grelha mudar de cor debaixo dele."
         );
         eprintln!(
             "[vec-bone-smoke] ⭐ A OUTRA SAIDA, se quiser um no' de verdade ali: pegue na CANETA e \

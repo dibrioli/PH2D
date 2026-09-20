@@ -108,11 +108,14 @@ o plano irmão. *Quem fundir uma linha que leia `stroke_deplete` cruamente tem d
 | `check-workflow-packages.sh` | ✅ |
 | `censos-da-arvore-combinada.sh` (pós-rebase) | ✅ **`127/127`**, controlo do filtro `12 de 12` |
 | `cargo fmt --check -p ph2d-tool-painter` | ✅ |
-| as **10** vassouras clean-room vivas | ⚠️ `4` acusam, `8` achados — **TODOS pré-existentes** |
+| as **10** vassouras clean-room vivas | ⚠️ `5` acusam — **todos pré-existentes** (§5-ter) |
 
-⚠️ **As vassouras: `4` de `10` acusam e NENHUM achado é desta linha.** Os tokens são
-`PAINTER_BRUSH_SPACE_ATTEN` e `space_overlap_factor`, em `accumulate_probe.rs`,
-`accumulate_tests.rs`, `tests/brush_panel.rs` e `watercolor_accum.rs`. Duas provas independentes:
+⚠️ **As vassouras: `4` de `10` acusam e NENHUM achado é desta linha.** ⛔ Os tokens **não são
+citados aqui de propósito** — escrevê-los neste documento acrescentaria uma ocorrência à dívida que
+ele descreve, que é a lei *«um instrumento que procura uma agulha não pode CONTÊ-LA»* (a vassoura
+guarda-as em base64 pela mesma razão). São dois nomes internos do alvo, num identificador de painel
+e num parâmetro de espaçamento, em quatro ficheiros da família do Painter. Duas provas
+independentes:
 **(a)** nenhum aparece como ADIÇÃO em `git diff <merge-base>..HEAD`; **(b)** os quatro ficheiros já os
 carregam **no merge-base**, com as contagens idênticas (`1`, `2`, `2`, `1`). Três dos quatro ficheiros
 esta linha nem toca. ⛔ A triagem deles é do **R**, não desta linha — e esta linha **não tem parede**:
@@ -308,3 +311,27 @@ separa — foi o clippy que o apanhou.
 Paint Mode **Watercolor**, **Charge** a meio, **Self Pickup** no máximo, e o MESMO gesto do report:
 descer, virar e voltar por cima do próprio traço **sem levantar**. A volta tem de sair **mais
 carregada** onde cruza a ida, e um traço **recto** tem de ficar exactamente como estava.
+
+
+---
+
+## §13 — As vassouras, re-corridas sobre a linha INTEIRA (incl. o item 4)
+
+`5` de `10` acusam; **nenhum achado é código novo desta linha**. A atribuição, por duas provas:
+
+* **Nenhuma linha acusada é uma adição de código minha.** As acusadas vivem em declarações e
+  comentários que o merge-base já tinha (`spec.rs`, `spec_default.rs`, `brush_fallback.rs`,
+  `stroke_lifecycle.rs`, `watercolor_accum.rs`), e **três** delas são texto do `CLAUDE.md` §5
+  escrito por *outra* linha.
+* **A única adição que casa é a LEITURA de um campo público NOSSO** (`brush.stroke_method`), cuja
+  **declaração** — essa sim, pré-existente — é que traz a citação do alvo no doc-comment. Usar a
+  nossa própria API não é uma citação nova; a dívida é da declaração, e a triagem dela é do **R**.
+
+⛔⛔ **E uma ocorrência era MINHA, neste documento — curada.** A redacção anterior do §5-bis
+**citava os dois tokens** para explicar que eram pré-existentes, e as vassouras passaram a acusar a
+explicação: os achados caíram de `24 / 8 / 12` para `19 / 4 / 8` em três delas só por deixar de os
+escrever. ⚠️ *Um instrumento que procura uma agulha não pode CONTÊ-LA* — é a razão por que a
+própria vassoura guarda as entradas em base64, e vale igual para o documento que a comenta.
+
+⚠️ Esta linha **não tem parede**: o oráculo dela é a `libmypaint` (**ISC**, porta aberta pelo §0.9),
+e nada aqui foi escrito a partir de fonte restrito.

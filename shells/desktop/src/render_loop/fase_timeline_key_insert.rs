@@ -136,7 +136,7 @@ impl crate::App {
                                 // O `push` da fila de toasts devolve se coube; derrubar
                                 // um toast nunca derruba trabalho, e aqui não há
                                 // trabalho — a recusa É o resultado.
-                                let _ = toasts.push(Toast::warning(r.message()));
+                                let _ = toasts.push(Toast::warning(ph2d_i18n::tr(r.message_key())));
                             }
                         }
                     }
@@ -156,7 +156,7 @@ impl crate::App {
                     prop,
                 ) {
                     // Derrubar um toast nunca derruba trabalho: aqui a recusa É o resultado.
-                    let _ = toasts.push(Toast::warning(r.message()));
+                    let _ = toasts.push(Toast::warning(ph2d_i18n::tr(r.message_key())));
                     continue;
                 }
                 // In KEYS mode the animator sees the active clip soloed, so the

@@ -29,3 +29,5 @@ metadata:
 
 - ⛔⛔ [Uma vista NOVA entra ao LADO da que os consumidores já lêem, nunca no lugar dela — 24 leitores tratavam `contours()` como a figura e estavam certos; 2 gates velhos apanharam-no](feedback_a_new_view_cannot_replace_the_one_consumers_read.md)
 - ⛔ [Sonda que arma o módulo por env var mede OUTRO programa que o pill (5 reports) — e a do arco cronometrava a PLACA com o dono no modo MODEL, que traça na CPU (12 196 facetas contra 0)](feedback_a_probe_that_arms_a_module_by_env_var_measures_another_program_than_the_pill.md)
+
+- ⛔⛔⛔ [Comutar duas leis por um LIMIAR não dá um salto: dá CHATTER — ajuste a DIFERENÇA, que é zero onde nada há a corrigir](feedback_a_boolean_over_a_continuous_quantity_is_a_step.md)

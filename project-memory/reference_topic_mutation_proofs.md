@@ -81,3 +81,5 @@ e escrever-lhe torna a suíte mais um membro da família de flakes de fan-out.
 - ⭐⭐ **E a cura da régua foi trocar o número medido pelo PRODUTO:** em vez de afirmar o parâmetro,
   afirmar **onde o ponto nasceu** — a pergunta do artista, que não depende da parameterização e mata
   na mesma o valor cravado. *Uma régua escrita sobre uma grandeza interna herda a convenção dela.*
+
+- ⛔⛔ [Guarda de ramo inalcançável e cerca a jusante do estrago: as duas mutações sobrevivem, e a cura é APAGAR](feedback_a_line_the_mutation_cannot_kill_is_not_law.md)

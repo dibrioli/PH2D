@@ -871,3 +871,10 @@ largas, ⛔ nunca tendas — na tenda o vértice do meio lê `(0,1,0)` e volta a
 
 ⭐ **A forma geral:** *uma grandeza somada sobre PARES precisa de pelo menos TRÊS membros para a
 ponderação ser observável* — a mesma família do corpus no ponto neutro de um knob, um nível acima.
+
+- ⛔⛔⛔ [Ajuste resolvido PEÇA A PEÇA quebra o que vive na FRONTEIRA — e cada peça, lida sozinha, está certa (quina de 28,6° num nó liso; o CONTROLO é a lei antiga, que media 0,000°)](feedback_a_per_piece_fit_breaks_the_property_that_lives_on_the_seam.md)
+- ⛔⛔ [PRENDER cada grau de liberdade compra a continuidade e MATA a feature — o gate que morre a seguir é o da feature, não o da lei](feedback_a_constrained_fit_buys_continuity_by_killing_the_feature.md)
+- ⛔ [Régua de ÂNGULO tem de medir a MUDANÇA: o valor cru acusa as quinas que o artista desenhou, e uma forma que parece curva na tela pode ser RECTA na fonte](feedback_an_angle_ruler_must_measure_the_change_not_the_value.md)
+- ⛔⛔⛔ [Uma cena que MUDA de aspecto depois de uma wave pode ser a CURA — construa o lado convergido e meça os dois contra ele (`0,3767` contra `0,0142`)](feedback_a_photograph_found_what_no_gate_could_see.md)
+- ⛔⛔ [Gate que mede com a MESMA função que julga fica verde sobre qualquer mutação dela](feedback_a_ruler_that_is_the_law_approves_any_law.md)
+- ⛔⛔ [Uma recusa medida guarda o VEREDITO; o mecanismo escrito ao lado é hipótese, e pode mandar procurar no sítio errado](feedback_a_refusal_names_a_mechanism_and_the_mechanism_can_be_wrong.md)

@@ -493,3 +493,5 @@ o índice foi compactado no mesmo dia em que estas nasceram, e ficaram **órfãs
   a trabalhar não tinha fixtura nenhuma.* ⇒ o gate é a degenerescência escolhida por TEORIA (um osso
   só ⇒ a deformação é afim ⇒ o refit é dispensável), e ali a lei antiga tem de mover a arte **e** o
   resultado tem de ficar byte-idêntico.
+
+- ⛔⛔⛔ [Gate que CONSTRÓI a entrada da lei à mão nunca pergunta se o GESTO a produz — a F30 shipou lei sem gesto](feedback_a_law_measured_by_a_handbuilt_fixture_has_no_gesture.md)

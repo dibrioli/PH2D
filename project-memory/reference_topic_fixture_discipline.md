@@ -45,3 +45,5 @@ quadrado é a figura que qualquer um desenha primeiro para testar quinas.
 lados), a fixtura **varre** esse parâmetro — e o valor «natural» que vem à cabeça (`90°`, `1:1`,
 `potência de 2`) é justamente o mais provável de ser o ponto onde o erro se anula. *Pergunte de que
 número a lei depende, e teste longe dele.*
+
+- ⛔⛔⛔ [Fixtura SIMÉTRICA aprova uma lei que não distingue nada — 4× numa wave; o sinal é o parâmetro não ter efeito](feedback_a_symmetric_fixture_approves_a_law_that_distinguishes_nothing.md)

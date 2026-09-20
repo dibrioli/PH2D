@@ -57,3 +57,5 @@ laço ela é chamada. Quatro mutações da FIAÇÃO desta wave sobreviveram a **
   procure o penhasco, não o platô.* ⛔ E a alternativa óbvia (subir a atração global à pose anterior)
   foi **medida e recusada**: de 0,5 a 10 a deriva não baixa de 12 cm, porque ela não distingue o que
   o artista posou do que ele não tocou.
+
+- ⛔⛔ [«O que um re-cozimento produz» tem DUAS respostas e quem as separa é a FONTE (parâmetros vivos ⇒ estilo · fotografia congelada ⇒ só posições); e trocar de porta APAGA o host do censo que o vigia](feedback_a_recook_has_two_questions_and_the_source_decides_which.md)

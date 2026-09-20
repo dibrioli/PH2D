@@ -1196,12 +1196,33 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   em 18 crates). ⛔⛔ **Para quem funde:** os 30 gates são CENSOS — um literal de UI novo de outra linha reprova na
   árvore COMBINADA (cura: migrar o texto, ou isenção NOMEADA com mecanismo), e o CI **não os corre** (o job de teste é
   um `-p` de 25 pacotes; quem os corre é o `ship.sh`).
-  **Aberto:** **três decisões do dono**, todas já com o número ao lado: a pose 2D/3D
-  (`722` sítios de produto, 5 crates), partir o `DrawMode` nos dois eixos (`17` variantes vivas, eram 14) e os 9 toggles
-  de módulo → Layout · o **«travou por um minuto»** de 09/09 segue **sem reprodução** (o gatilho — colapsar por arrasto —
-  saiu na w49, e o penhasco de `182 ms` foi medido e **não** é ele: três ordens de grandeza) · ⏳ **as superfícies de UI
-  que as outras linhas trouxeram foram escritas contra a lei de espaçamento ANTIGA** — wave do dono da UI, não da
-  integração.
+  **Aberto:** ⭐⭐⭐ **A FRONTEIRA DOS MOTORES FECHOU e o HR-15 está a ZERO sobre a população LARGA**
+  (20/09, [handoff](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md)): os `1 519` rótulos que
+  os MOTORES escreviam numa tabela de dados falam por `ph2d-i18n` (`4 344` → **`5 386`** chaves, 19 tabelas novas), com a
+  chave **derivada do id** — ⭐ `74 %` da fronteira era DERIVAÇÃO e não autoria, medido antes da 1.ª linha. ⚠️ **A
+  população do gate era `44` de `325` crates**, e alargada ela acusou `189` rótulos que ninguém via: *a dívida não era o
+  que a régua dizia; a régua é que era estreita.* ⭐⭐ **E há uma régua que lê o ECRÃ e não o fonte** — os 30 censos
+  respondem *«vem da tabela?»* e a varredura das elisões responde ***«COUBE?»***, sobre uma **ESCADA** de quatro larguras
+  (⛔ ela media UMA, a de FÁBRICA, e o dono trabalha no mínimo: `129` cortes invisíveis e **três controlos que pintavam
+  NADA** apareceram de uma vez). ⭐⭐⭐ **E a ordem do dono de 19/09 — *«encurtar · balão ao passar o rato»* — está
+  cumprida nas duas metades:** toda palavra cortada por este app é legível ao passar o rato (`128` de `128`, com o gate a
+  prová-lo pela MESMA varredura que as achou), e *um nome perde a EXPLICAÇÃO antes de perder LETRAS* tirou as reticências
+  a `18` rótulos **sem uma chave nova**. ⛔ **Renomear um rótulo à mão foi MEDIDO e REVERTIDO:** quatro renomes fecharam
+  `2` de `80` e deixaram `54` citações do nome antigo na prosa, três delas **neste §5** ⇒ os `~63` nomes compostos que
+  ficam são decisão de VOCABULÁRIO do dono, não dívida.
+  ⛔⛔⛔ **E a varredura das elisões estava calibrada num ÂMBITO e julgada noutro — curado na integração de 20/09:**
+  `flip`, `painter_layers` e `wet_tuning` **não estão no `default`** do `ph2d-panel-registry-init` (chegam pelo
+  `shells/desktop`), logo uma corrida `-p` **não os regista** e a catraca lia `0` como *«este painel não corta»* em vez de
+  *«este painel não existe aqui»* — `7` rótulos cortados que as duas catracas declaravam a ZERO, com todas as corridas da
+  linha verdes. Medido: `-p` **24 painéis / 11 375 rótulos** contra `--workspace` **28 / 12 545**. ⭐ Hoje o piso é o do
+  âmbito em que o app CORRE (`28` / `12 000`) e a corrida pobre **reprova alto com a causa na mensagem** — *um piso que
+  ambos os âmbitos passam não é um piso, é um adorno*, e a frase que condena a redacção antiga já estava escrita pelo
+  próprio autor dela.
+  ⏳ **Ficam as três decisões do dono:** a pose 2D/3D (`722` sítios de produto, 5 crates), partir o `DrawMode` nos dois
+  eixos (`17` variantes vivas, eram 14) e os 9 toggles de módulo → Layout · o **«travou por um minuto»** de 09/09 segue
+  **sem reprodução** (o gatilho — colapsar por arrasto — saiu na w49, e o penhasco de `182 ms` foi medido e **não** é ele:
+  três ordens de grandeza) · ⏳ **as superfícies de UI que as outras linhas trouxeram foram escritas contra a lei de
+  espaçamento ANTIGA** — wave do dono da UI, não da integração.
   **Smokes:** abrir o app (a UI nova é o caminho de omissão) · abrir **todos** os painéis pelo menu *Window* e mexer no
   ecrã (a w50: sem número à vista, o sintoma é o app deixar de engasgar) · *View → Reset Panel Layout*.
   ⚠️ **`PH2D_UI_NEW=0` NÃO é o ecrã de antes do redesenho** — ele devolve **seis pintores de widget**, a família de temas
@@ -1213,6 +1234,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **A arrumação vive fora do repo** (`~/.ph2d/layout.txt`, XOR contra o `DEFAULT_VISIBLE`) — um ficheiro velho abre o
   app com um painel fechado, e **apagá-lo é o reset**, não sintoma de regressão.
   **Ler:** [`docs/UI_New_and_Simple/`](docs/UI_New_and_Simple/) ·
+  ⭐⭐⭐ **[handoff de 20/09](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-20.md)** — a fronteira dos motores, a escada das elisões e o balão; o §4 tem **sete** coisas que uma leitura rápida do diff entende ao contrário (entre elas que a catraca dos cortes **não desce** com a lei de encurtar, e porquê) e o §5-bis os **dois** vermelhos que só a árvore combinada viu ·
   [handoff de 10/09](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-10.md) (⚠️ o §6 é o que a
   fusão parte, com endereço — o `Panel::ICON` obrigatório, o `IconId` cuja **ordem é o índice**, o `slot_tabs` partido em
   quatro e as **sete catracas a zero de folga**; o §11 as leis que a jornada pagou) ·

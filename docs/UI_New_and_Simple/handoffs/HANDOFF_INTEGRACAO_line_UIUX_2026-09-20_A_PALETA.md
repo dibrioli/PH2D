@@ -336,6 +336,37 @@ daqui: *uma medição de superfície de colisão vale para o dia em que foi tira
 > Flow` que este §5 publica **ficou obsoleta por esta linha** (`−253 px` em todas as fileiras): o §5
 > do handoff diz os **dois** sítios vivos e o comando que os reescreve.
 
+> ⭐⭐⭐ **E A LARGURA DE FÁBRICA DE UMA COLUNA PASSOU A SER UMA FRACÇÃO DA JANELA** (20/09, 2.ª
+> volta — [handoff §9-bis..§9-quater](docs/UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-20_A_PALETA.md)):
+> `default_dock_w = (token × min(1, janela/1366)).max(PANEL_MIN_W_PX)` — um **TECTO em fracção**,
+> **inerte** acima da referência (a coluna não cresce num ecrã grande) e com o piso do painel em
+> baixo. Antes, as duas laterais eram `612 px` FIXOS: `45 %` de um iPad 12,9" e **`54 %` de um iPad
+> mini**. ⛔⛔⛔ **E o smoke foi REPROVADO TRÊS vezes com a lei CERTA, com as causas a serem outras
+> três coisas** (§9-ter): **(1)** o `~/.ph2d/layout.txt` do dono tinha uma largura gravada nas seis
+> áreas de trabalho e o `install_saved` escreve-a **antes do 1.º quadro** — *uma lei de valor de
+> FÁBRICA é invisível a quem já tem uma escolha gravada*, e o perfil de smoke passa a ser
+> `HOME=/tmp/...`; **(2)** o meu roteiro mandava ESTREITAR e a coluna só se move entre `976` e
+> `1 366 px`, com a janela a abrir em `1 024` — *a direcção onde não há nada para ver*; **(3)** um
+> defeito de PRODUTO a sério — **um arrasto que aterra na largura de fábrica GRAVAVA-A como
+> escolha** e a coluna saía da lei para sempre, e ele mordia com a janela apertada porque a lei
+> comparava a largura CRUA enquanto o store **CORTA** no piso (`|80 − 220| = 140` ⇒ grava `220`, que
+> é o número que a própria lei dava). ⇒ `ChromeBands::escolha_de_um_arrasto` (a lei **corta com o
+> mesmo token** antes de comparar) e `set_dock_width(side, Option<f32>)` — ⚠️ a forma `Option` é o
+> que a mantém a **zero referências novas** na catraca do DAG `interaction → screens`, que a 1.ª
+> redacção levava de `18` a `20`. ⛔ **O gate de costura irmão era CEGO por PREFIXO:** o
+> `the_border_gesture_reaches_the_panel` procura `set_dock_width`, que é **prefixo** do nome da
+> porta nova ⇒ ficava verde com a regressão inteira dentro. ⭐⭐ **E o gate que faltava mede o
+> PIXEL** (`a_coluna_pintada_encolhe_com_a_janela`, quatro quadros pela rota real em sete larguras):
+> a lei tinha três gates — a lei, a porta do store e o **TEXTO** do quadro — e *nenhum percorria a
+> rota até ao rectângulo que a coluna OCUPA*, que é a única coisa que o dono vê. ✅ **Smoke do dono
+> APROVADO** (`PH2D_DOCK_LOG=1`, ~70 redimensionamentos de `1 920` a `647`): `escolha -` dos dois
+> lados em todas as linhas, e a curva dele mede os **dois pisos separadamente** (`988` à direita,
+> `976` à esquerda — cada um do seu token), que nenhuma fixtura desta linha fazia. ⏳ **DECISÃO DO
+> DONO:** a largura arrastada é guardada em **píxeis absolutos**, logo num tablet que roda os
+> `371,72 px` dele são `32,8 %` deitado e `50,0 %` em pé; curá-lo ou exige um tecto que ninguém
+> mediu, ou muda o que «arrastar a borda» significa **e** o formato do `layout.txt`.
+
+
 ## §9-bis — ⭐⭐⭐ A SEGUNDA WAVE: a largura de fábrica de uma coluna é uma FRACÇÃO da janela
 
 > Ordem do dono, 2026-09-20, sobre a fila do §7.3: **«item 2»**.
@@ -611,6 +642,48 @@ pinta quatro quadros pela rota real em sete larguras e afirma a tabela:
 `HeroScreen::new` nasce sem painel nenhum visível, e sem a semente do manifesto todas as
 desigualdades de *«encolheu»* passariam **por vácuo**. Mutação **2 de 2** (cravar `1366.0` no
 quadro · a lei inteira inerte).
+
+---
+
+## §9-quater — ✅ **O SMOKE DO DONO APROVOU a §9-bis + a cura da §9-ter, e o log DELE mede os dois pisos**
+
+O dono correu o roteiro com o perfil limpo (`HOME=/tmp/ph2d-smoke-novo`, `PH2D_DOCK_LOG=1`) e colou
+o readout de **~70 eventos de redimensionamento**, de `1 920` a `647 px`. Ele fecha as duas metades:
+
+| janela (px) | esquerda | direita | escolha |
+|---:|---:|---:|---|
+| `1 920` · `1 780` · `1 595` · `1 370` | `308,0` | `304,0` | `-` · `-` |
+| `1 335` | `301,0` | `297,1` | `-` · `-` |
+| `1 187` | `267,6` | `264,2` | `-` · `-` |
+| `1 020` | `230,0` | `227,0` | `-` · `-` |
+| `991` | `223,4` | **`220,5`** | `-` · `-` |
+| `983` | `221,6` | **`220,0`** | `-` · `-` |
+| `977` | **`220,3`** | `220,0` | `-` · `-` |
+| `965` … `647` | **`220,0`** | `220,0` | `-` · `-` |
+
+⭐⭐⭐ **A metade que a cura da §9-ter defende:** em **todas** as linhas, dos dois lados, a coluna da
+escolha lê **`-`**. O defeito reportado era exactamente o contrário — `dir=220.0 (escolha 220)` numa
+coluna que ele nunca escolheu —, e ele não volta a aparecer numa varredura de ponta a ponta da
+faixa. ⚠️ *Ele não tocou numa borda nesta corrida, que é precisamente a condição do gate.*
+
+⭐⭐⭐ **E o log dele mede os DOIS pisos separadamente, que nenhuma fixtura desta linha tinha feito.**
+A lei prende cada lado quando `token × janela/1366` chega a `PANEL_MIN_W_PX`, logo os dois pisos
+caem em janelas **diferentes**: `220 × 1366 / 304 = 988,4` à direita e `220 × 1366 / 308 = 975,6` à
+esquerda. O readout dele mostra a direita a assentar entre `991` e `983`, e a esquerda entre `977` e
+`965` — **as duas janelas previstas, com `13 px` de separação entre elas**, medidas na máquina do
+dono pela rota do produto. *O gate desta linha mede as duas na mesma corrida a `900 px`, onde já
+assentaram; a curva dele é a prova independente de que cada piso é o do PRÓPRIO token.*
+
+⚠️ **O que este smoke NÃO cobre, e fica nomeado:** os passos (3) e (4) do roteiro — arrastar uma
+borda de propósito (a coluna passa a `escolha <número>` e sai da lei) e arrastá-la de volta ao
+tamanho de fábrica (volta a `escolha -`). Essa metade tem os três gates da §9-ter
+(`um_arrasto_que_aterra_na_largura_de_fabrica_nao_grava_excepcao`, o controlo
+`e_um_arrasto_para_outra_largura_continua_a_ser_uma_escolha` e `o_piso_desta_lei_e_o_piso_do_store`)
+e **não tem smoke do dono**.
+
+⏳ **E a decisão que continua com ele** (§7): a largura arrastada é guardada em **píxeis absolutos**,
+logo num tablet que roda os `371,72 px` do ficheiro dele são `32,8 %` do ecrã deitado e `50,0 %` em
+pé. As duas saídas têm preço e nenhuma é derivável de uma medição desta linha.
 
 ---
 

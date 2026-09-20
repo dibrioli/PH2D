@@ -108,6 +108,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "node.pulse.sample_hold.name" => "Sample & Hold",
         "node.pulse.signal.name" => "Signal",
         "node.pulse.threshold.name" => "Threshold",
+        "node.rig.bones.name" => "Bones",
         "node.rig.fabrik.name" => "FABRIK",
         "node.rig.fk.name" => "FK",
         "node.rig.ik_2bone.name" => "IK 2-Bone",

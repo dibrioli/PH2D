@@ -543,7 +543,7 @@ fn selecting_a_child_of_a_flowing_frame_publishes_an_item() {
     let (mut sim, scene, map, frame, kids) = frame_with_children(2);
     arm(&mut sim, frame, VecLayout::default());
     let _ = &scene;
-    let it = crate::vec_layout_edit::selected_item(&sim, &map, &[kids[0]]);
+    let it = ph2d_app_vec::layout_edit::selected_item(&sim, &map, &[kids[0]]);
     assert!(
         it.is_some(),
         "o filho de uma moldura que flui TEM de publicar um item — sem isso o painel nao pinta o \
@@ -558,7 +558,7 @@ fn selecting_a_child_of_a_frame_that_does_not_flow_publishes_nothing() {
     let (sim, scene, map, _frame, kids) = frame_with_children(2);
     let _ = &scene;
     assert!(
-        crate::vec_layout_edit::selected_item(&sim, &map, &[kids[0]]).is_none(),
+        ph2d_app_vec::layout_edit::selected_item(&sim, &map, &[kids[0]]).is_none(),
         "sem fluxo no pai nao ha item"
     );
 }

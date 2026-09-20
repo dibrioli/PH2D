@@ -104,14 +104,14 @@ impl crate::App {
         // `flow_in_display` é a porta, e o `selected_flow` continua a falar mundo — o
         // nome dele descreve o que a cena TEM, e converter lá dentro o faria mentir.
         ph2d_panel_vector::state::set_layout_flow(
-            crate::vec_layout_edit::selected_flow(sim, &self.vec.entities, &sel).map(|f| {
-                crate::vec_layout_edit::flow_in_display(
+            ph2d_app_vec::layout_edit::selected_flow(sim, &self.vec.entities, &sel).map(|f| {
+                ph2d_app_vec::layout_edit::flow_in_display(
                     f,
                     ph2d_editor_core::LengthDisplay::of(&hero.project),
                 )
             }),
         );
-        ph2d_panel_vector::state::set_layout_item(crate::vec_layout_edit::selected_item(
+        ph2d_panel_vector::state::set_layout_item(ph2d_app_vec::layout_edit::selected_item(
             sim,
             &self.vec.entities,
             &sel,

@@ -602,7 +602,6 @@ pub(crate) use ph2d_vec_text::glyph as vec_glyph;
 /// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
 pub(crate) use ph2d_app_vec::guide as vec_guide;
 /// A CÓPIA segue a âncora do mestre — o corolário da âncora viva, do lado do componente.
-mod vec_layout_edit;
 pub(crate) use ph2d_app_vec::marquee as vec_marquee;
 pub(crate) use ph2d_app_vec::morph_edit as vec_morph_edit;
 pub(crate) use ph2d_app_vec::overlay as vec_overlay;

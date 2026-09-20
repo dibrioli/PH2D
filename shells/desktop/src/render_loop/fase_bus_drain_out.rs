@@ -162,7 +162,7 @@ pub(in crate::render_loop) struct DrainOut {
     // esta' aceso.
     pub(in crate::render_loop) pending_bool_shape_op: Option<u8>,
     // O AUTO LAYOUT (plano UI/UX W2, ADR-0153): um chip de radio e um campo numerico.
-    pub(in crate::render_loop) pending_layout_edit: Option<crate::vec_layout_edit::LayoutEdit>,
+    pub(in crate::render_loop) pending_layout_edit: Option<ph2d_app_vec::layout_edit::LayoutEdit>,
     pub(in crate::render_loop) pending_anchor_edit: Option<crate::vec_anchor_edit::AnchorEdit>,
     // **Resize Box** (plano UI/UX W3b): o clique e' um TOGGLE, entao nao ha' operando —
     // um bool basta para dizer *"houve clique"*.
@@ -171,7 +171,7 @@ pub(in crate::render_loop) struct DrainOut {
     // um TOGGLE, então um bool basta — o operando é a ficha da ferramenta, e ela não viaja.
     pub(in crate::render_loop) pending_stroke_present: bool,
     pub(in crate::render_loop) pending_layout_field:
-        Option<(crate::vec_layout_edit::LayoutField, f64)>,
+        Option<(ph2d_app_vec::layout_edit::LayoutField, f64)>,
     // **O Z-INDEX global** (Enio, 2026-08-04): o numero que sobrepoe a ordem da
     // hierarquia. Campo numerico, entao a rota e' a mesma do Transform.
     pub(in crate::render_loop) pending_vec_z: Option<f64>,

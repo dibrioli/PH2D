@@ -1,6 +1,6 @@
 //! **AS ÂNCORAS da seleção** — a projeção que o painel lê, e a porta que a edita (plano UI/UX W3).
 //!
-//! Irmão do [`crate::vec_layout_edit`], e com a mesma divisão de donos: a verdade mora no ECS
+//! Irmão do [`ph2d_app_vec::layout_edit`], e com a mesma divisão de donos: a verdade mora no ECS
 //! ([`ph2d_ecs::VecAnchors`], no FILHO) e isto é o que a shell publica por frame. O painel não
 //! alcança o mundo — se alcançasse, a resposta que DESENHA o chip aceso divergiria da que HONRA o
 //! clique.

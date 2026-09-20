@@ -25,6 +25,7 @@ authors.workspace = true
 # ⭐ A ponte documento ⇄ árvore, que saiu para uma folha porque a `motion` e a `flip` também a
 # consomem (`line/shell-folhas`, 12/09). O `entity_map` desta crate é um re-export dela.
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }
+ph2d-vec-layout = { path = "../ph2d-vec-layout" }
 # ⚠️ A INTERFACE da shell (`AppFamily`), não o agregador — a família declara-se com um valor
 # desta crate, e importá-lo do `ph2d-app-registry-init` fecharia o ciclo `registry → família
 # → registry`. Ver o doc-comment de `ph2d-app-host::family`.

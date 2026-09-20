@@ -8,9 +8,9 @@ use super::*;
 /// Os pedidos de moldura, layout, z e âncoras que o dreno do barramento recolheu neste quadro.
 pub(super) struct FrameLayoutIntents {
     pub(super) pending_frame_clip: Option<bool>,
-    pub(super) pending_layout_edit: Option<crate::vec_layout_edit::LayoutEdit>,
+    pub(super) pending_layout_edit: Option<ph2d_app_vec::layout_edit::LayoutEdit>,
     pub(super) pending_anchor_edit: Option<crate::vec_anchor_edit::AnchorEdit>,
-    pub(super) pending_layout_field: Option<(crate::vec_layout_edit::LayoutField, f64)>,
+    pub(super) pending_layout_field: Option<(ph2d_app_vec::layout_edit::LayoutField, f64)>,
     pub(super) pending_vec_z: Option<f64>,
 }
 
@@ -72,7 +72,7 @@ impl crate::App {
         // mesma razao do recorte acima: publicar primeiro deixaria o chip a piscar de
         // volta ao valor antigo por um quadro.
         if let Some(e) = pending_layout_edit {
-            crate::vec_layout_edit::apply_layout_edit(sim, &self.vec.entities, &sel, e);
+            ph2d_app_vec::layout_edit::apply_layout_edit(sim, &self.vec.entities, &sel, e);
         }
         if let Some((f, v)) = pending_layout_field {
             // ⚠️ **A VOLTA da fronteira de display, e ela pergunta ao TIPO.** No mesmo
@@ -86,7 +86,7 @@ impl crate::App {
             } else {
                 v
             };
-            crate::vec_layout_edit::apply_layout_field(sim, &self.vec.entities, &sel, f, v);
+            ph2d_app_vec::layout_edit::apply_layout_field(sim, &self.vec.entities, &sel, f, v);
         }
         // **O Z-INDEX**, honrado ANTES de publicar (a ordem dos vizinhos): publicar
         // primeiro deixaria o campo a mostrar o valor ANTERIOR por um quadro.

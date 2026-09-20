@@ -67,7 +67,7 @@ const JUSTIFIES: &[(ph2d_editor_core::NodeId, LayoutJustify)] = &[
 /// O que um clique num chip do layout PEDE. Nomeado para o roteador não carregar cinco
 /// `Option<…>` paralelos que podem estar preenchidos ao mesmo tempo.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum LayoutEdit {
+pub enum LayoutEdit {
     /// Uma direção — `None` = **Off**, que REMOVE o componente.
     Dir(Option<LayoutDir>),
     Align(LayoutAlign),
@@ -80,7 +80,7 @@ pub(crate) enum LayoutEdit {
 
 /// Este id é um chip do layout? Porta única do roteador — a mesma varredura das três tabelas.
 #[must_use]
-pub(crate) fn layout_edit_for_id(id: ph2d_editor_core::NodeId) -> Option<LayoutEdit> {
+pub fn layout_edit_for_id(id: ph2d_editor_core::NodeId) -> Option<LayoutEdit> {
     if id == ids::VECTOR_LAYOUT_DIR_OFF {
         return Some(LayoutEdit::Dir(None));
     }
@@ -120,7 +120,7 @@ fn size_edit_for_id(id: ph2d_editor_core::NodeId) -> Option<LayoutEdit> {
 
 /// Qual campo numérico do layout este id endereça, e o que ele escreve.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum LayoutField {
+pub enum LayoutField {
     /// Vão: `0` principal, `1` transversal.
     Gap(usize),
     /// Recuo de UM lado (índice na ordem do CSS: topo, direita, base, esquerda).
@@ -150,7 +150,7 @@ impl LayoutField {
     /// compilador a cobra. É por isso que a pergunta mora no tipo e não numa lista de ids ao lado
     /// da conversão.
     #[must_use]
-    pub(crate) fn is_length(self) -> bool {
+    pub fn is_length(self) -> bool {
         match self {
             LayoutField::Gap(_)
             | LayoutField::Pad(_)
@@ -169,7 +169,7 @@ impl LayoutField {
 /// os dez comprimentos — mapear o struct em bloco dividiria *"três colunas"* por cem e a grade
 /// nasceria com zero. Os chips (`NodeId`) e os modos de tamanho também não são números do artista.
 #[must_use]
-pub(crate) fn flow_in_display(flow: LayoutFlow, d: ph2d_editor_core::LengthDisplay) -> LayoutFlow {
+pub fn flow_in_display(flow: LayoutFlow, d: ph2d_editor_core::LengthDisplay) -> LayoutFlow {
     LayoutFlow {
         gap: flow.gap.map(|v| d.value(v)),
         pad: flow.pad.map(|v| d.value(v)),
@@ -181,7 +181,7 @@ pub(crate) fn flow_in_display(flow: LayoutFlow, d: ph2d_editor_core::LengthDispl
 
 /// Porta única do roteador para os campos numéricos.
 #[must_use]
-pub(crate) fn layout_field_for_id(id: ph2d_editor_core::NodeId) -> Option<LayoutField> {
+pub fn layout_field_for_id(id: ph2d_editor_core::NodeId) -> Option<LayoutField> {
     let f = match id {
         _ if id == ids::VECTOR_LAYOUT_GAP_MAIN => LayoutField::Gap(0),
         _ if id == ids::VECTOR_LAYOUT_GAP_CROSS => LayoutField::Gap(1),
@@ -242,7 +242,7 @@ fn item_of_selection(sim: &SimWorld, map: &VecEntityMap, selected: &[VecPathId])
 
 /// O fluxo da moldura da seleção — `None` = não há moldura, ou ela não empilha.
 #[must_use]
-pub(crate) fn selected_flow(
+pub fn selected_flow(
     sim: &SimWorld,
     map: &VecEntityMap,
     selected: &[VecPathId],
@@ -265,7 +265,7 @@ pub(crate) fn selected_flow(
 
 /// Como o filho selecionado se comporta — `None` = a seleção não está num fluxo.
 #[must_use]
-pub(crate) fn selected_item(
+pub fn selected_item(
     sim: &SimWorld,
     map: &VecEntityMap,
     selected: &[VecPathId],
@@ -322,7 +322,7 @@ fn bounds(sim: &SimWorld, e: Entity, floor: bool) -> [f64; 2] {
 
 /// Aplica um clique de chip. Devolve `true` se o mundo mudou — o `post_frame_undo` regista por
 /// diff, então um no-op não custa passo de undo.
-pub(crate) fn apply_layout_edit(
+pub fn apply_layout_edit(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     selected: &[VecPathId],
@@ -430,7 +430,7 @@ fn write_size(
 }
 
 /// Aplica um valor de campo numérico.
-pub(crate) fn apply_layout_field(
+pub fn apply_layout_field(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     selected: &[VecPathId],
@@ -536,7 +536,7 @@ pub(crate) fn apply_layout_field(
                 } else {
                     ph2d_ecs::BoundProp::LayoutGapCross
                 };
-                crate::vec_bindings::set_selected_binding(sim, map, selected, prop, None);
+                crate::bindings::set_selected_binding(sim, map, selected, prop, None);
             }
             write_layout(sim, e, Some(cur), Some(next))
         }
@@ -565,5 +565,5 @@ fn write_layout(
 }
 
 #[cfg(test)]
-#[path = "vec_layout_edit_tests.rs"]
+#[path = "layout_edit_tests.rs"]
 mod tests;

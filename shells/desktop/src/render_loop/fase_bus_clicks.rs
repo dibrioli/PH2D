@@ -239,7 +239,7 @@ impl crate::App {
             // A MOLDURA recorta ou não. O valor mora no COMPONENTE (mundo),
             // então o clique é da shell — o painel só mostra.
             pd.pending_frame_clip = Some(*id == ph2d_panel_vector::ids::VECTOR_FRAME_CLIP_ON);
-        } else if let Some(e) = crate::vec_layout_edit::layout_edit_for_id(*id) {
+        } else if let Some(e) = ph2d_app_vec::layout_edit::layout_edit_for_id(*id) {
             // O AUTO LAYOUT (plano UI/UX W2): direção, alinhamento e
             // distribuição moram no COMPONENTE, então o clique e' da shell —
             // o painel so' mostra qual chip esta' aceso.

@@ -182,6 +182,11 @@ pub mod smoke_bone_paint;
 pub mod smoke_fade;
 pub mod smoke_stack;
 pub mod smoke_svg;
+/// A lei do AUTO LAYOUT de uma forma — veio da shell na integracao de 2026-09-20,
+/// por CORTE da catraca `the_shell_only_shrinks` (ADR-0153: o passe publica ONDE as
+/// coisas ficam, e nunca escreve onde elas estao).
+pub mod layout_edit;
+
 pub mod snap;
 pub mod snap_labels;
 pub mod snap_sprites;

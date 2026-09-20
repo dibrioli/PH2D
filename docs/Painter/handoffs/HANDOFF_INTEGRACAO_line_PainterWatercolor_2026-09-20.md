@@ -673,3 +673,123 @@ em `diag_pigment_molhado_sobre_molhado` (`#[ignore]`, com a tabela das quatro c�
   terceiro.
 - ⏳ **O wet-on-wet** (§17.4) — cura desenhada, junta os dois passes do depósito.
 - ⏳ **A aquarela com o glaze** (§17.3) — a 2.ª tentativa da troca de lei.
+
+---
+
+## §18 — «LIGUE O DIGITAL»: a cerca do MEIO sai, e a fileira ganha uma porta (ordem do dono, 2026-09-20)
+
+> *«smoke OK. LIgue o digital»* — depois de ele aprovar o smoke da §16/§17.
+
+**O que muda:** `BrushSpec::effective_pigment_mix` deixa de gatear em `watercolor && pigment` e
+passa a gatear em `pigment` sozinho. A pergunta que aquele predicado responde é ***«como é que a cor
+deste dab encontra a tinta que já lá está?»***, e ela é de **todo meio que componha um dab** pela
+porta `blend_over_pigment` — amarrá-la à aguada tornava a lei **inalcançável no Digital**, que é o
+meio de omissão do app.
+
+### §18.1 — O ALCANCE foi MEDIDO antes de a cerca sair
+
+⛔⛔ *Alargar uma LEI cria imediatamente duas maneiras de ela e o BOTÃO discordarem, e as curas são
+OPOSTAS* — o meio que lê a lei e não vê a fileira tem um knob **INALCANÇÁVEL** (cura: pintá-la), o
+que a vê e não a lê tem um knob **MORTO** (cura: escondê-la). *As duas leem-se igual numa tabela.*
+
+A sonda [`diag_pigmento_por_meio`](../../../crates/ph2d-tool-painter/src/tool/paint/diag_pigmento_por_meio.rs)
+pinta **azul sobre amarelo** (complementares: a lei aditiva dá cinzento, a subtractiva dá escuro e
+saturado) e compara o pixel da sobreposição com o knob a `0` e a `1`:
+
+| meio | sem | com | `|Δ|max` |
+|---|---|---|---|
+| **Digital** | `197,203,203` | `55,111,202` | **142** |
+| **Watercolor** | `178,198,247` | `182,194,243` | **4** |
+| **Impasto** | `197,203,203` | `55,111,202` | **142** |
+| **WetPaint** | `42,76,203` | `42,76,203` | **0** |
+
+⇒ a porta é **`PaintMedia::offers_pigment_mixing`** — Digital · Watercolor · Impasto.
+⛔ **O Wet Paint fica de fora com a medição ao lado, e não por esquecimento:** o depósito dele é do
+solver de fluido, que **tem o Kubelka–Munk próprio** (`ph2d_wet_paint::ColorMix::Km`) e o slider de
+pigmento por dab dele — oferecer esta fileira ali seria um segundo controlo sobre a mesma pergunta,
+e ele seria **inerte**.
+
+⚠️⚠️ **A 1.ª redacção da sonda leu `0` nas QUATRO linhas** e teria concluído que a lei não chega a
+lado nenhum: ela corria com cobertura CHEIA, e com `a = 1` o `blend_over_pigment` devolve a cor de
+cima *seja qual for a lei*. **A meia força é o que faz a fixtura conter o fenómeno** — *a mistura só
+é observável onde há o que misturar*.
+
+### §18.2 — A fileira: uma lei, uma porta, dois hospedeiros
+
+A fileira `Pigment` deixa de ser propriedade de uma secção. O valor que ela mostra **é DERIVADO**
+(`pigment ? pigment_mix : 0` — o par *toggle + amount* que a redesign de 2026-07-07 fundiu), e
+*duas derivações do mesmo número divergem no dia em que alguém afina uma delas* ⇒
+[`paint_pigment.rs`](../../../crates/ph2d-panel-painter-layers/src/paint_pigment.rs), com:
+
+- o cartão **Water** da aquarela (onde o dono a aprendeu, ao lado do Rewet e do Smudge) e
+- o cartão **`Mixing`** novo, no lugar da secção do meio, para o **Digital** e o **Impasto**.
+
+⚠️ **A aguada é subtraída explicitamente** em `paint_brush_sections.rs`: sem isso os dois cartões
+pintam o MESMO id no mesmo quadro — e um id repetido não é um controlo a mais, é um **hit-rect a
+tapar o outro** (o `HitIndex::hit` resolve de trás para a frente).
+
+⚠️ **O id continua a chamar-se `PAINTER_WATERCOLOR_MIX` de propósito.** Ele é `hash_node_id` de uma
+STRING: renomeá-lo muda o `NodeId`, que é o que a arrumação guardada do artista e todo
+`register`/`route` já usam — *o preço de um nome mais honesto seria uma chave que não casa com
+nada*. A herança está escrita no doc dele.
+
+### §18.3 — O PREÇO, e onde ele mora mesmo
+
+**Medido** (`--release`, mediana de 96 traços de 24 eventos, **89 % de CPU ociosa**):
+`0,075 ms` sem contra **`0,130 ms`** com ⇒ **`1,73×`** o traço na CPU, e o absoluto fica bem abaixo
+de `1 %` de um quadro.
+
+⛔⛔ **Mas esse não é o preço inteiro, e o número grande não está nesta tabela:** o
+`stamp_device::eligible` exige `pigment_mix == 0`, logo **ligar o knob DESLIGA o carimbo no
+dispositivo** e o traço volta à rota em banda. Não é defeito — é o preço de uma lei que lê o alfa do
+destino por texel —, e ele passou a estar escrito no doc daquela cláusula, que até hoje só falava da
+aguada.
+
+### §18.4 — Os gates, e por que dois deles vivem na crate ERRADA à primeira vista
+
+**8 mutações, todas a sangrar**, com controlo sobre o próprio filtro (`passed+failed` do
+`test result:`, porque `running N tests` conta os `#[ignore]`).
+
+⭐⭐⭐ **M2 e M3 SOBREVIVEM no gate do PAINEL e sangram no da FERRAMENTA — e isso é o desenho.** O
+gate do painel compara *a tela* com *a porta*; mexer na porta põe os dois lados a concordar e ele
+fica verde sobre um knob inalcançável. ⇒ **a asserção da porta vive nos gates de LEI**
+(`assert!(PaintMedia::Digital.offers_pigment_mixing())` depois de medir o barro): *só quem mede o
+barro pode amarrar a porta*.
+
+| # | mutação | sangra em |
+|---|---|---|
+| M1 | a cerca do meio volta ao `effective_pigment_mix` | ferramenta (2 de 3) |
+| M2 | a porta passa a oferecer ao Wet Paint (knob MORTO) | ferramenta |
+| M3 | a porta deixa de oferecer ao Digital (INALCANÇÁVEL) | ferramenta |
+| M4 | a aguada deixa de ser subtraída (id pintado 2×) | painel |
+| M5 | o cartão `Mixing` deixa de ser pintado | painel |
+| M6 | a fileira mostra o campo CRU (`pigment_mix`) | painel |
+| M7 | a cadeia do HR-12 é apagada (volta a exigir 1 salto) | `ph2d-editor-core` |
+| M8 | o salto aponta para um ficheiro que a porta não chama | `ph2d-editor-core` |
+
+### §18.5 — O HR-12 apanhou o ficheiro novo, e a cura foi ESTENDER a verificação
+
+O `every_widget_file_wires_a11y` reprovou sobre `paint_pigment.rs`. Ele delega por `card_row`, que é
+uma **porta desta crate** — a terceira forma que o gate já reconhece — só que de **DOIS saltos**
+(`card_row` → `number_field::chip` → `paint_number_input_with_buffer`), e a verificação das
+`PORTAS_DE_CRATE_VERIFICADAS` só sabia **um**.
+
+⛔ **A cura NÃO foi isentar o consumidor** (`PANEL_A11Y_DELEGATE_OK`), que é como uma catraca vira
+licença. Foi dar à lista um **4.º campo — o salto seguinte** —, que tem de existir, de ser
+mencionado pela porta e de **ACABAR num primitivo**. *Exigir um salto só não era uma regra: era o
+formato do primeiro caso* (o `fileira_de_param` do audio-editor, que a criou).
+
+### §18.6 — Três notas que a troca deixou FALSAS
+
+- o doc do campo `BrushSpec::pigment`: *«Only read when `watercolor` is on»*;
+- o doc do `stamp_device::eligible`: *«o crossfade **RYB** do pigmento»* (a lei é K–M desde a §17);
+- ⚠️ **a fixtura do teste dele**, que pregava `watercolor: true` — *sem essa linha ela lia `0` e o
+  caso passava **pelo motivo errado**: ele media a aguada, não o pigmento*.
+
+### §18.7 — Aberto, e de quem é
+
+- ⏳ **O escurecimento chega agora a DOIS meios novos** — é a mesma troca que ele aprovou na aguada,
+  e o veredito sobre ela no Digital é **smoke do dono**.
+- ⏳ **O `Mixing` no Impasto não foi pedido**, e entra porque a medição diz que aquele meio lê a lei:
+  a alternativa era um knob vivo sem botão. **Decisão do dono**, e reverter é uma linha.
+- ⏳ Ficam os dois da §17.6: o **wet-on-wet** e a **aquarela com o glaze**.

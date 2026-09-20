@@ -33,8 +33,38 @@ use std::sync::OnceLock;
 use ph2d_field::{Bound, Param};
 use ph2d_panel_model3d::{ModeChip, ModelSnapshot, ParamRow, publish};
 
-/// A tabela dos rótulos deste painel.
-const TABELA: &str = "../ph2d-i18n/src/model3d.rs";
+/// ⛔⛔ **As tabelas dos rótulos deste painel — DERIVADAS, e eram uma escrita à mão.**
+///
+/// Medido na integração de 2026-09-20: esta fixtura nasceu no `main` a ler **um** ficheiro
+/// (`model3d.rs`), e a `line/3DModeling` partiu o vocabulário em **quatro** por assunto quando
+/// aquele ficheiro passou o tecto de LOC (os nomes · as RAZÕES de uma fileira travada · a
+/// APRESENTAÇÃO da cena · o BRILHO). As `7` chaves `panel.model3d.act.*` mudaram de endereço, e
+/// esta leitura passou a devolver **ZERO** — que o `chips` lê como *«uma fileira vazia»*.
+///
+/// ⚠️⚠️ **Nenhum dos dois lados vê isto sozinho:** o `main` não sabe que a tabela se vai partir, e
+/// a linha não sabe que uma fixtura de outra família a lê pelo nome do ficheiro. *É a mudança de
+/// ENDEREÇO do §5.0, e só a árvore combinada a exibe.*
+///
+/// ⭐ A cura é a que a própria linha já escreveu para o censo do painel: **a lista sai do `lib.rs`
+/// que as declara**, que é o mesmo sítio de onde o `tr` as encadeia — uma tabela nova entra aqui no
+/// commit em que nasce. Com **piso de população**, porque uma colheita partida devolve zero
+/// ficheiros e um censo sobre zero tabelas lê toda família como vazia.
+fn tabelas() -> Vec<String> {
+    let lib = ler("../ph2d-i18n/src/lib.rs");
+    let achadas: Vec<String> = lib
+        .lines()
+        .filter_map(|l| l.trim().strip_prefix("mod ")?.strip_suffix(';'))
+        .filter(|m| *m == "model3d" || m.starts_with("model3d_"))
+        .map(|m| format!("../ph2d-i18n/src/{m}.rs"))
+        .collect();
+    assert!(
+        achadas.len() >= PISO_DE_TABELAS,
+        "a colheita das tabelas devolveu {} (piso {PISO_DE_TABELAS}) — ela partiu-se, e uma \
+         fixtura sobre zero tabelas mede um painel VAZIO e lê-se como aprovação",
+        achadas.len()
+    );
+    achadas
+}
 
 /// A tabela das FORMAS — lida só para as **tirar** da fileira de criar. Ver o cabeçalho.
 const TABELA_DE_FORMAS: &str = "../ph2d-app-field3d/src/shapes_table.rs";
@@ -44,6 +74,8 @@ const TABELA_DE_FORMAS: &str = "../ph2d-app-field3d/src/shapes_table.rs";
 const PISO_DE_DIMENSOES: usize = 140;
 const PISO_DE_FORMAS: usize = 60;
 const PISO_DE_SECCOES: usize = 4;
+/// ⛔ O piso das TABELAS do vocabulário — ver [`tabelas`]. Quatro desde o corte por assunto.
+const PISO_DE_TABELAS: usize = 4;
 
 fn ler(rel: &str) -> String {
     let p = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(rel);
@@ -77,8 +109,9 @@ fn por_largura(mut v: Vec<(String, String)>) -> Vec<(String, String)> {
 /// As chaves do catálogo com um dado prefixo, do rótulo mais largo para o mais estreito.
 fn familia(prefixo: &str) -> Vec<(String, String)> {
     por_largura(
-        pares(TABELA)
-            .into_iter()
+        tabelas()
+            .iter()
+            .flat_map(|t| pares(t))
             .filter(|p| p.chave.starts_with(prefixo))
             .map(|p| (p.chave, p.texto))
             .collect(),

@@ -65,9 +65,14 @@ fn uma_chave_que_existe_chega_ao_widget() {
     // ⚠️ **A dica propriamente dita pode ainda não existir** — as chaves `.tip` são escritas pelo
     // dono da tabela de textos, e a ausência delas é o estado NORMAL. ⇒ o que este gate mede é o
     // FIO (o que a porta entrega chega ao widget e volta de lá), com um texto que existe de certeza.
-    let com_dica = ph2d_i18n::tr("panel.model3d.title");
+    // ⚠️ **A chave vem do `Panel::TITLE` e não de um `tr` escrito à mão**, e isto não é estilo: o
+    // gate `no_panel_paints_its_own_name_beside_the_key` conta as SEGUNDAS portas para o nome de um
+    // painel, e uma delas é o que deu ao artista `"Tokens"` no cabeçalho e `"Design Tokens"` na aba.
+    // ⇒ *uma chave, duas superfícies* — e de graça a fixtura deixa de poder derivar da tabela.
+    let com_dica = <crate::Model3dPanel as ph2d_editor_core::panel::Panel>::TITLE.tr();
     assert_ne!(
-        com_dica, "panel.model3d.title",
+        com_dica,
+        <crate::Model3dPanel as ph2d_editor_core::panel::Panel>::TITLE.key(),
         "a fixtura deste gate deixou de existir na tabela"
     );
     let viva = format!("uma.chave.qualquer{SUFIXO}");

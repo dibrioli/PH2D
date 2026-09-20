@@ -390,6 +390,21 @@ const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
         "Background Parallax Layer",
         "nome do artista · 110,8 px",
     ),
+    // ⭐⭐ **A TRIPLA DA SUBSUPERFÍCIE, na integração de 2026-09-20.** A `W10` da `line/3DModeling`
+    //    trouxe `"Subsurface Color R/G/B"` (a luz que atravessa a peça, por canal), e nas TRÊS
+    //    larguras largas só o **G** é cortado: `G` pinta mais largo que `R` e `B`, logo dois irmãos
+    //    cabem nos `110 px` da fileira e o terceiro perde uma letra.
+    // ⚠️⚠️ *Nenhum dos dois lados vê isto sozinho:* o rótulo é da linha, a régua que o mede chegou
+    //    do `main` na MESMA rodada, e o painel dela só passou a ser medido quando a fixtura deixou
+    //    de ler uma tabela de quatro (ver `o_model3d_armado`).
+    // ⛔ **E a cura não é renomear:** a lei de 19/09 manda um nome perder a EXPLICAÇÃO antes das
+    //    LETRAS, e aqui não há explicação para tirar — `Subsurface Color G` é o nome. Renomear a
+    //    tripla é decisão de VOCABULÁRIO do dono, que esta casa já mediu e reverteu uma vez.
+    (
+        "model3d",
+        "Subsurface Color G",
+        "fileira de campo · 110,0 px · a tripla R/G/B, e o `G` pinta mais largo que os irmaos",
+    ),
 ];
 
 /// ⛔⛔⛔ **O QUE FICA CORTADO NUMA SUPERFÍCIE QUE O DONO JÁ MANDOU SAIR — e por isso NÃO é
@@ -549,7 +564,14 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     ("tags", 2),
     ("audio_editor", 1),
     ("authored", 1),
-    ("model3d", 1),
+    // ⭐⭐ Era `1` (a `"Subsurface Anisotropy"`): a wave da SUBSUPERFÍCIE desta linha (`W10`, 17/09)
+    //    trouxe a tripla `"Subsurface Color R/G/B"`, e no degrau estreito **só o G** é cortado —
+    //    `G` pinta mais largo que `R` e `B`, logo dois irmãos cabem em `110 px` e o terceiro não.
+    //    ⚠️ *Nenhum dos dois lados vê isto sozinho:* o rótulo é da linha e a régua que o mede
+    //    chegou do `main` na mesma rodada. ⛔ E a cura NÃO é renomear — a lei de 19/09 manda o nome
+    //    perder a EXPLICAÇÃO antes das LETRAS, e aqui não há explicação para tirar: os `~63` nomes
+    //    compostos que ficam são decisão de VOCABULÁRIO do dono, medida e revertida uma vez.
+    ("model3d", 2),
     ("widget_lab", 1),
     // ⛔⛔⛔ **OS TRÊS QUE SÓ A ÁRVORE INTEIRA VÊ** (integração de 2026-09-20). Eles estão atrás de
     //    features que o `default` desta crate NÃO liga (`panel-flip`, `panel-painter-layers`,
@@ -596,7 +618,9 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     ("tags", 2),
     ("audio_editor", 1),
     ("authored", 1),
-    ("model3d", 1),
+    // ⭐ Era `1`, pela MESMA tripla da irmã [`CORTES_NO_DEGRAU_ESTREITO`] — o `"Subsurface Color G"`
+    //    acaba em reticência, logo conta nas duas.
+    ("model3d", 2),
     ("widget_lab", 1),
     // ⛔ Os dois que só a árvore inteira vê — o mecanismo está na irmã
     //    [`CORTES_NO_DEGRAU_ESTREITO`]. ⚠️ O `wet_tuning` NÃO entra aqui: os dois rótulos dele

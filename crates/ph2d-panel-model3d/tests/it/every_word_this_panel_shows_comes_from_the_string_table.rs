@@ -54,12 +54,18 @@ fn tabelas(repo: &std::path::Path) -> Vec<String> {
 }
 
 /// ⭐ As excepções, **com o mecanismo**.
-const NOT_LANGUAGE: &[Excecao] = &[(
-    "lib.rs",
-    "Model 3D",
-    "o `Panel::TITLE` e' um `const &'static str` que o registo le para a ABA, e o `tr` nao e' \
-     `const fn` -- a mesma excepcao dos paineis Grid Settings, Painter, Vector e Inspector.",
-)];
+///
+/// ✅ **A do `Panel::TITLE` MORREU na integração de 2026-09-20, e foi a metade da obsolescência que
+/// a apanhou.** Ela foi escrita contra a árvore desta linha, onde aquela `const` ainda era um
+/// `&'static str` com `"Model 3D"` dentro; no `main` de hoje ela é um `TextKey`
+/// (`panel.model3d.title`) e quem pinta a aba traduz — logo o literal saiu do binário, não só do
+/// alcance deste censo. *O gate irmão do painel autorado registou exactamente esta remoção em
+/// 2026-09-17, três dias antes de esta linha a herdar.*
+///
+/// ⚠️ **Ela não foi apagada por incómodo: foi o `excecoes_mortas` a pedi-lo pelo nome** — uma
+/// isenção que já não abriga literal nenhum é a licença de que o §5.0 avisa, e mantê-la deixaria
+/// este censo cego ao dia em que alguém escrevesse `"Model 3D"` outra vez no fonte.
+const NOT_LANGUAGE: &[Excecao] = &[];
 
 #[test]
 fn every_word_this_panel_shows_comes_from_the_string_table() {

@@ -74,6 +74,14 @@ impl App {
         if self.capture_binding_if_listening(physical_key, kind) {
             return;
         }
+        // ⛔⛔⛔ **A PALETA VEM AQUI, e a POSIÇÃO é a cura** — report do dono de 2026-09-20
+        // (*«o modal não captura o que escrevo. o painel lateral captura os atalhos»*). O
+        // mecanismo, e porque só o capturador de atalhos fica acima dela, vivem no doc do
+        // [`super::keyboard_palette`], que é a porta; aqui fica a ORDEM, que é o que se lê.
+        // ⛔ Gate: `shells/desktop/tests/it/um_modal_aberto_tem_o_teclado_antes_da_cena_3d.rs`.
+        if self.command_palette_keys(physical_key, state, text.as_deref()) {
+            return;
+        }
         if self.ramo_teclas_3d(physical_key, state) {
             return;
         }
@@ -92,12 +100,6 @@ impl App {
         {
             return;
         }
-        // ⭐ **As teclas do PALETTE vivem no irmão** — ver [`super::keyboard_palette`]. Ele é
-        // MODAL: se devolve `true`, engoliu a tecla inteira (press e release).
-        if self.command_palette_keys(physical_key, state, text.as_deref()) {
-            return;
-        }
-
         // O PEEK do Flip (Shift & Trace fatia 2): F1/F2/F3 são o flip de papel —
         // SEGURAR mostra só o desenho vizinho (anterior/atual/seguinte) sem mover o
         // playhead; soltar volta. A política é pura (`flip_peek::key_transition`):

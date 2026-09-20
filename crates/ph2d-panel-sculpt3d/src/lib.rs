@@ -40,6 +40,10 @@ pub mod slots;
 pub mod state;
 mod state_channel;
 /// **AS ESCOLHAS nomeadas** — os enums que um chip escreve — ver [`state_modes`].
+/// ⭐ **O QUE O PAINEL PEDE** — irmão do [`state`] pelo tecto de LOC, cortado por
+/// responsabilidade (ver o cabeçalho dele).
+mod state_intent;
+
 pub mod state_modes;
 
 mod event;
@@ -55,9 +59,10 @@ pub use event::intent_for_palette_pick;
 mod censo_das_fileiras_tests;
 
 pub use state::{
-    RetopoMode, Sculpt3dIntent, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, UiLevel,
-    alpha_chip_index, drain_intents, last_content_h, last_visible_h, set_current_sculpt3d,
+    RetopoMode, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, UiLevel, alpha_chip_index,
+    drain_intents, last_content_h, last_visible_h, set_current_sculpt3d,
 };
+pub use state_intent::Sculpt3dIntent;
 
 /// **Este interruptor é oferecido AGORA?** — a mesma porta que o despacho e o
 /// pintor lêem.

@@ -638,10 +638,7 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
     // abre** é pintado e clicável — que é o que a linha abaixo põe nesta mesma varredura.
     // *Apagar uma linha de uma tabela de cobertura sem dizer quem passou a cobrir é como uma
     // catraca vira licença.*
-    want.push((
-        "open brushes".to_string(),
-        ids::SCULPT3D_OPEN_BRUSHES,
-    ));
+    want.push(("open brushes".to_string(), ids::SCULPT3D_OPEN_BRUSHES));
     for (i, f) in Falloff::ALL.into_iter().enumerate() {
         want.push((format!("falloff {}", f.label()), ids::SCULPT3D_FALLOFF[i]));
     }

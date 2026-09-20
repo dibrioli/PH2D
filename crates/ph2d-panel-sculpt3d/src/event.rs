@@ -17,7 +17,8 @@ use ph2d_sculpt3d::{
 pub(crate) mod toggles;
 
 use crate::rows;
-use crate::state::{self, Sculpt3dIntent};
+use crate::state::{self};
+use crate::state_intent::Sculpt3dIntent;
 
 /// A posição de um id num array de opções — o inverso exato da ordem que o
 /// pintor usa, e por isso o chip que acende e o valor que pousa não podem

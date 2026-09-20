@@ -85,7 +85,10 @@ pub fn dispatch(
         // 2026-09-20 (ordem do dono), e abrir uma paleta precisa do `HeroScreen`, que o
         // `apply_panel_intent` não tem. ⚠️ O braço de lá tem um `debug_assert!(false)` a dizê-lo:
         // se esta linha se perder, o botão fica **mudo** e a suíte verde.
-        if matches!(intent, ph2d_panel_sculpt3d::Sculpt3dIntent::OpenBrushPalette) {
+        if matches!(
+            intent,
+            ph2d_panel_sculpt3d::Sculpt3dIntent::OpenBrushPalette
+        ) {
             hero.store
                 .open_command_palette(ph2d_panel_sculpt3d::brush_palette::build());
             continue;

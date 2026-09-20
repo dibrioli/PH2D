@@ -63,7 +63,35 @@ impl Button {
                 ColorToken::BgElev
             }
             (ButtonKind::Default, ButtonState::Pressed) => ColorToken::AccentSoft,
-            (ButtonKind::Default, _) => return None,
+            // ⭐⭐⭐ **UM BOTÃO PARADO PINTA `Bg2`** (report do dono, 2026-09-20: *«não se pode
+            //    saber que é um botão pois só aparece o nome … todo o app tem essa aparência»*).
+            //
+            // ⛔⛔ **Havia DUAS leis para «que cor tem um botão em repouso», e o doc de uma
+            //    afirmava ser a outra.** O
+            //    [`crate::widget::button_surface::flat_button_surface`] — que cinco sítios de
+            //    pintura usam — diz `repouso Bg2 … as mesmas superfícies que o `Button` canónico
+            //    usa*, e o `Button` canónico devolvia **`None`**. É por isso que na foto do dono os
+            //    chips segmentados (`S | B`, `Basic | Pro`, `Move | Rotate | Scale`) se leem como
+            //    botões e o `Draw`, o `Filter Collisions` e o `Apply to all tools` se leem como
+            //    legendas: *o chip conhecia a lei e o Button não* — a MESMA assimetria entre estes
+            //    dois widgets que a wave 20 já registou para a lei do GRUPO.
+            //
+            // ⭐ **E a tabela de design desta linha já o declarava**
+            //    (`pesquisa/08 §7.16`): *«um botão em repouso PINTA `Bg2`»*, com a coluna
+            //    `botão (Bg2) = #292929` no Dark, contra o painel a `#131313` e o cartão a
+            //    `#1f1f1f`. ⇒ isto não escolhe cor nenhuma: põe o widget a obedecer à escada que
+            //    já foi medida e aprovada.
+            //
+            // ⛔⛔ **A cura NÃO é devolver a moldura**, e a razão está no `paint_button`: num tema
+            //    moderno o traço de repouso é filtrado por `Widgets::of(theme).inactive.bg_stroke`
+            //    (o Godot só traça com *Draw Extra Borders*), e o redesenho tirou-a de propósito.
+            //    *A afordância de um botão plano é a SUPERFÍCIE dele, não um contorno.*
+            //
+            // ⚠️⚠️ **E o `border_color` logo abaixo já escrevia o report inteiro** — *«without it
+            //    a Normal-state Cancel / Reset is bare text indistinguishable from a label»* —, só
+            //    que o tema moderno desligava a coisa que a nota prometia. *Uma promessa escrita
+            //    num sítio e desligada noutro.*
+            (ButtonKind::Default, _) => ColorToken::Bg2,
             (ButtonKind::IconOnly { .. }, ButtonState::Hovered | ButtonState::Focused) => {
                 ColorToken::BgElev
             }

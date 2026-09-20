@@ -16,7 +16,8 @@
 //! ⚠️ **Nenhum caminho de chamador muda:** o `state.rs` re-exporta as seis portas com a mesma
 //! visibilidade que tinham.
 
-use crate::state::{Sculpt3dIntent, Sculpt3dSnapshot};
+use crate::state::Sculpt3dSnapshot;
+use crate::state_intent::Sculpt3dIntent;
 use std::cell::{Cell, RefCell};
 
 thread_local! {

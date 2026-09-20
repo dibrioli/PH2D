@@ -160,7 +160,10 @@ fn classifica(c: &mut Contagem, s: &InteractiveState) {
 /// `paint` desenha o subconjunto do estado actual. Medido: o `3D Model` **regista `912`** e a
 /// triagem da `D2` contou **`74`** — ⭐ e foi o CONTROLO POSITIVO deste ficheiro que apanhou a 1.ª
 /// redacção a medir o catálogo e a chamar-lhe ecrã.
-fn conta(store: &ph2d_editor_core::interaction::WidgetStore, pintados: &[(NodeId, Rect)]) -> Contagem {
+fn conta(
+    store: &ph2d_editor_core::interaction::WidgetStore,
+    pintados: &[(NodeId, Rect)],
+) -> Contagem {
     let mut c = Contagem::default();
     for (id, r) in pintados {
         match store.get(*id) {
@@ -318,7 +321,10 @@ fn tabela(linhas: &[Linha]) -> String {
             },
             if !altura_e_do_conteudo(l.vazio.altura, l.altura_curta) {
                 // ⛔ Ele ancora no fundo: a leitura é da JANELA. Ver [`VIEWPORT_CURTA`].
-                format!("(ancora — segue a janela: {:.0} vs {:.0})", l.vazio.altura, l.altura_curta)
+                format!(
+                    "(ancora — segue a janela: {:.0} vs {:.0})",
+                    l.vazio.altura, l.altura_curta
+                )
             } else if fora > 0.0 {
                 format!("+{fora:.0} px  ({:.0}%)", 100.0 * fora / DOBRA)
             } else {
@@ -493,48 +499,51 @@ fn diag_onde_caem_as_seccoes_da_escultura() {
                 }) as fn(&mut ph2d_editor_core::interaction::WidgetStore),
             ),
         ] {
-        let mut host = MockPanelHost::new();
-        (arma)(host.store_mut());
-        painel.populate(host.store_mut());
-        let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
-        let pintados = host.registos_da_ultima_pintura();
-        (arm.desarma)();
+            let mut host = MockPanelHost::new();
+            (arma)(host.store_mut());
+            painel.populate(host.store_mut());
+            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            let pintados = host.registos_da_ultima_pintura();
+            (arm.desarma)();
 
-        let mut linhas: Vec<(f32, &str)> = seccoes
-            .iter()
-            .filter_map(|(nome, id)| {
-                pintados
-                    .iter()
-                    .find(|(pid, _)| pid == id)
-                    .map(|(_, r)| (r.y, *nome))
-            })
-            .collect();
-        linhas.sort_by(|a, b| a.0.total_cmp(&b.0));
+            let mut linhas: Vec<(f32, &str)> = seccoes
+                .iter()
+                .filter_map(|(nome, id)| {
+                    pintados
+                        .iter()
+                        .find(|(pid, _)| pid == id)
+                        .map(|(_, r)| (r.y, *nome))
+                })
+                .collect();
+            linhas.sort_by(|a, b| a.0.total_cmp(&b.0));
 
-        let fundo = conta(host.store(), &pintados).altura;
-        println!(
-            "\n  === o painel da ESCULTURA — {nome_do_estado} (dobra = {DOBRA:.0} px) ==="
-        );
-        let mut anterior: Option<(f32, &str)> = None;
-        for (y, nome) in &linhas {
-            if let Some((ya, na)) = anterior {
-                println!("      {na:<12} ocupa {:>6.0} px", y - ya);
-            }
+            let fundo = conta(host.store(), &pintados).altura;
             println!(
-                "  {:>6.0}  {nome:<12} {}",
-                y,
-                if *y > DOBRA { "⛔ fora do ecrã" } else { "visível" }
+                "\n  === o painel da ESCULTURA — {nome_do_estado} (dobra = {DOBRA:.0} px) ==="
             );
-            anterior = Some((*y, nome));
-        }
-        if let Some((ya, na)) = anterior {
-            println!("      {na:<12} ocupa {:>6.0} px", fundo - ya);
-        }
-        println!("  {fundo:>6.0}  (fim do conteúdo)\n");
+            let mut anterior: Option<(f32, &str)> = None;
+            for (y, nome) in &linhas {
+                if let Some((ya, na)) = anterior {
+                    println!("      {na:<12} ocupa {:>6.0} px", y - ya);
+                }
+                println!(
+                    "  {:>6.0}  {nome:<12} {}",
+                    y,
+                    if *y > DOBRA {
+                        "⛔ fora do ecrã"
+                    } else {
+                        "visível"
+                    }
+                );
+                anterior = Some((*y, nome));
+            }
+            if let Some((ya, na)) = anterior {
+                println!("      {na:<12} ocupa {:>6.0} px", fundo - ya);
+            }
+            println!("  {fundo:>6.0}  (fim do conteúdo)\n");
         }
     });
 }
-
 
 /// ⭐⭐⭐ **O QUE COME OS `614 px` DA SECÇÃO `Tool`** — a sonda que impede a cura errada.
 ///
@@ -622,7 +631,13 @@ fn diag_o_que_come_a_seccao_tool_da_escultura() {
             somado += dentro.len();
             let lo = dentro.iter().copied().fold(f32::MAX, f32::min);
             let hi = dentro.iter().copied().fold(f32::MIN, f32::max);
-            linhas.push((lo, format!("  {lo:>6.0}..{hi:<6.0} {nome:<22} {:>3} chips", dentro.len())));
+            linhas.push((
+                lo,
+                format!(
+                    "  {lo:>6.0}..{hi:<6.0} {nome:<22} {:>3} chips",
+                    dentro.len()
+                ),
+            ));
         }
         linhas.sort_by(|a, b| a.0.total_cmp(&b.0));
         for (_, l) in &linhas {

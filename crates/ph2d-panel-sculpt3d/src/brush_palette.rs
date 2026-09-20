@@ -50,11 +50,11 @@
 //! `3D Model` escreve por extenso: *«um comando com dois ids tem dois sítios a apodrecer em
 //! separado»*. ⛔ Um id novo aqui obrigaria a uma segunda rota de despacho.
 
+use crate::ids::SCULPT3D_VERB;
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::widget::command_palette::{
     PaletteGroup, PaletteItem, PaletteModel, PaletteSub,
 };
-use crate::ids::SCULPT3D_VERB;
 use ph2d_sculpt3d::Verb;
 
 /// ⭐ **O modelo da paleta** — sobre o catálogo do produto ([`Verb::ALL`]).
@@ -95,10 +95,7 @@ pub fn build_from(verbos: &[Verb]) -> PaletteModel {
             // design, e com um grupo só ela não distingue nada de nada — o que ela faz é não ser
             // uma excepção na paleta.
             color: ph2d_tokens::ColorToken::NodeCatSource,
-            subs: vec![PaletteSub {
-                title: None,
-                items,
-            }],
+            subs: vec![PaletteSub { title: None, items }],
         }],
         // ⚠️ **Sem caixa da banda**: ela existe na paleta de componentes para revelar o
         // inaplicável, e aqui todo pincel é aplicável. Não há segunda metade para mostrar.

@@ -64,9 +64,56 @@ fn disabled_overrides_fg() {
     );
 }
 
+/// ⭐⭐⭐ **UM BOTÃO PARADO PINTA A SUPERFÍCIE DELE** — e este gate tinha a PREMISSA INVERTIDA.
+///
+/// ⛔⛔ Ele chamava-se `default_normal_has_no_bg` e afirmava `is_none()`. Era o **defeito escrito
+/// como lei**: report do dono, 2026-09-20, com foto — *«a aparência deste tipo de botão precisa
+/// mudar: veja como não se pode saber que é um botão pois só aparece o nome. Todo o app tem essa
+/// aparência ruim»*.
+///
+/// ⚠️ O que o desmentiu não foi gosto: o
+/// [`crate::widget::button_surface::flat_button_surface`] — a lei que CINCO sítios de pintura já
+/// usavam — declara `repouso Bg2` e diz, no doc, ser *«as mesmas superfícies que o `Button`
+/// canónico usa»*. **Não eram.** ⇒ havia duas respostas a *«que cor tem um botão parado?»*, e o
+/// doc de uma afirmava ser a outra.
+///
+/// ⭐ E o `border_color` deste mesmo ficheiro já escrevia o report inteiro — *«without it a
+/// Normal-state Cancel / Reset is bare text indistinguishable from a label»* —, só que o tema
+/// moderno desliga o traço que ele prometia (`Widgets::inactive.bg_stroke`, que o Godot só traça
+/// com *Draw Extra Borders*). *Uma promessa escrita num sítio e desligada noutro.*
+///
+/// *Mutação que sangra:* devolver `None` ao repouso do `Default`.
 #[test]
-fn default_normal_has_no_bg() {
-    assert!(fixture().bg_color(Theme::Forge).is_none());
+fn default_normal_paints_its_surface() {
+    assert_eq!(
+        fixture().bg_color(Theme::Forge),
+        Some(ColorToken::Bg2.resolve(Theme::Forge)),
+        "um botão parado tem de ter superfície — sem ela ele é texto centrado, e o artista não \
+         tem como saber que ali há um botão",
+    );
+    // ⚠️ **E o CONTROLO: ele continua a LEVANTAR sob o rato.** Sem esta metade, pintar o repouso
+    //    com a cor do hover passaria o `assert` de cima e apagaria a resposta ao ponteiro.
+    assert_ne!(
+        fixture().bg_color(Theme::Forge),
+        fixture().state(ButtonState::Hovered).bg_color(Theme::Forge),
+        "o repouso e o hover não podem ser a mesma cor",
+    );
+}
+
+/// ⛔ **E o ícone-só FICA sem superfície**, que é a decisão oposta e é deliberada: um chip de fila
+/// de ferramentas é uma grelha densa de ícones, e dar fundo a cada um faz a fila virar um tabuleiro
+/// de xadrez. ⚠️ Ali a afordância é o ÍCONE e a posição na fila, não uma superfície.
+///
+/// *Mutação que sangra:* dar `Bg2` ao repouso do `IconOnly` junto com o do `Default`.
+#[test]
+fn an_icon_only_chip_stays_frameless_at_rest() {
+    let b = fixture().kind(ButtonKind::IconOnly {
+        icon: crate::IconId::Spinner,
+    });
+    assert!(
+        b.bg_color(Theme::Forge).is_none(),
+        "o chip de ícone da fila não leva superfície de repouso",
+    );
 }
 
 #[test]

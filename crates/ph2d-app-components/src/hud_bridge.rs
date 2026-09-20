@@ -113,3 +113,49 @@ pub fn anchor_frame_of(cfg: UiCanvas, vista: View) -> Option<([f64; 4], [f64; 2]
 #[cfg(test)]
 #[path = "hud_bridge_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ **QUAL botão o dedo tocou** — a lei que o ramo do clique da shell consulta.
+///
+/// # ⛔⛔ Ela recebe CANDIDATOS e não um ponto, e é isso que a torna testável
+///
+/// Quem está sob o cursor sai de duas varreduras que precisam de uma `wgpu::Surface` e de uma cena
+/// vectorial construída (`path_at` · `pick_sprite_at_world`), logo a shell não é alcançável de um
+/// teste. ⇒ a shell colhe os candidatos e a LEI vive aqui, onde um `World` basta — a mesma forma
+/// que o [`clique`] da folha já tem.
+///
+/// # ⭐⭐ A lei: **o PRIMEIRO candidato que SOBE até um botão elegível ganha**
+///
+/// ⚠️ **E não *«o primeiro candidato»*.** A diferença é o caso que fez esta porta existir: o
+/// `path_at` devolve *a forma mais ao topo que contém o ponto* entre as VECTORIAIS, e ela pode não
+/// ter nada que ver com um botão (um cenário desenhado, o rótulo de outra coisa). Com a regra
+/// ingénua, um botão feito de **sprite** por baixo de qualquer forma vectorial ficava inalcançável
+/// — e o dono leria isso como *«o botão não funciona»*, sem nada na tela a distingui-lo de um
+/// botão sem nome.
+///
+/// ⚠️ **A ordem dos candidatos é da SHELL** (primeiro o vectorial, que é o meio próprio do HUD),
+/// e essa escolha está escrita lá.
+///
+/// # ⚠️ A ELEGIBILIDADE mora aqui, no mesmo sítio
+///
+/// `disabled` e o nome em branco são as **duas maneiras de um botão não ser um botão**, e separá-las
+/// de quem o encontra daria dois lugares para decidir. ⛔ E note-se que um candidato que sobe até um
+/// botão **inelegível** não bloqueia o seguinte: *um botão desligado é decoração, e decoração não
+/// engole um clique que era de outra coisa*.
+#[must_use]
+pub fn botao_sob_o_cursor(
+    world: &bevy_ecs::world::World,
+    candidatos: impl IntoIterator<Item = u64>,
+) -> Option<Entity> {
+    for bits in candidatos {
+        let Some(e) = ph2d_ecs::hud::botao_de(world, Entity::from_bits(bits)) else {
+            continue;
+        };
+        if world
+            .get::<ph2d_ecs::UiButton>(e)
+            .is_some_and(|b| !b.disabled && b.name().is_some())
+        {
+            return Some(e);
+        }
+    }
+    None
+}

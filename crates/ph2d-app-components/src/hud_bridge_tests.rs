@@ -136,3 +136,96 @@ fn um_quadro_sem_mudanca_continua_a_declarar_a_conducao() {
          conduzida viraria documento"
     );
 }
+
+// ── QUAL botão o dedo tocou (`botao_sob_o_cursor`) ────────────────────────────────────────────
+
+/// Monta `(mundo, botão elegível, filho do botão, forma solta, botão desligado)`.
+fn cena_de_botoes() -> (
+    SimWorld,
+    ph2d_ecs::Entity,
+    ph2d_ecs::Entity,
+    ph2d_ecs::Entity,
+    ph2d_ecs::Entity,
+) {
+    let mut sim = SimWorld::new();
+    let botao = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            ph2d_ecs::UiButton {
+                signal: "disparar".into(),
+                disabled: false,
+            },
+        ))
+        .id();
+    let rotulo = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, ph2d_ecs::ChildOf(botao)))
+        .id();
+    let solta = sim.world_mut().spawn(Transform::IDENTITY).id();
+    let desligado = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            ph2d_ecs::UiButton {
+                signal: "cinzento".into(),
+                disabled: true,
+            },
+        ))
+        .id();
+    (sim, botao, rotulo, solta, desligado)
+}
+
+/// ⭐⭐⭐ **O caso que fez esta porta existir: o SEGUNDO candidato ganha quando o primeiro não é
+/// um botão.**
+///
+/// ⚠️ **É esta a diferença entre a lei e a regra ingénua** (*«o primeiro candidato»*): com ela, um
+/// botão feito de **sprite** por baixo de qualquer forma vectorial ficava inalcançável, e o dono
+/// leria isso como *«o botão não funciona»*.
+///
+/// **Mutações que devem sangrar:** `for` → olhar só o primeiro · `continue` → `return None`.
+#[test]
+fn o_primeiro_candidato_que_sobe_ate_um_botao_ganha() {
+    let (sim, botao, _, solta, _) = cena_de_botoes();
+    let w = sim.world();
+    assert_eq!(
+        super::botao_sob_o_cursor(w, [solta.to_bits(), botao.to_bits()]),
+        Some(botao),
+        "uma forma que nao e' botao NAO pode engolir o candidato seguinte"
+    );
+    // ⚠️ **O CONTROLO:** sozinha, a forma solta não devolve botão nenhum — sem esta metade o gate
+    // acima ficaria verde sobre uma lei que devolvesse sempre o último candidato.
+    assert_eq!(super::botao_sob_o_cursor(w, [solta.to_bits()]), None);
+}
+
+/// ⚠️ **Um botão INELEGÍVEL também não bloqueia o seguinte** — *um botão desligado é decoração, e
+/// decoração não engole um clique que era de outra coisa*.
+#[test]
+fn um_botao_desligado_nao_engole_o_candidato_seguinte() {
+    let (sim, botao, _, _, desligado) = cena_de_botoes();
+    let w = sim.world();
+    assert_eq!(super::botao_sob_o_cursor(w, [desligado.to_bits()]), None);
+    assert_eq!(
+        super::botao_sob_o_cursor(w, [desligado.to_bits(), botao.to_bits()]),
+        Some(botao)
+    );
+}
+
+/// ⭐ **A subida da cadeia continua a valer** — o dedo toca o RÓTULO e o clique é do botão.
+/// ⚠️ E as duas leis compõem: um rótulo é o candidato, e ele sobe.
+#[test]
+fn o_dedo_no_rotulo_e_um_clique_no_botao() {
+    let (sim, botao, rotulo, _, _) = cena_de_botoes();
+    assert_eq!(
+        super::botao_sob_o_cursor(sim.world(), [rotulo.to_bits()]),
+        Some(botao)
+    );
+}
+
+/// ⚠️ **Sem candidatos, ninguém** — o piso de população desta família: um iterador vazio satisfaz
+/// o laço em silêncio, e sem esta linha uma lei que devolvesse o primeiro botão do MUNDO passaria.
+#[test]
+fn sem_candidatos_nao_ha_botao() {
+    let (sim, _, _, _, _) = cena_de_botoes();
+    assert_eq!(super::botao_sob_o_cursor(sim.world(), []), None);
+}

@@ -81,6 +81,7 @@ mod o_painel_pinta_todo_o_modelo_aceita;
 mod o_perfilador_diz_qual_motor_da_grelha_correu;
 mod o_pincel_de_peso_esta_fiado;
 mod o_quadro_publica_o_que_o_pintor_mediu;
+mod o_ramo_do_hud_pergunta_aos_dois_meios;
 mod o_rebobinar_repoe_o_estado_vivo;
 mod o_rotulo_do_botao_do_hud_e_filho_dele;
 mod o_tween_corre_depois_de_quem_o_arranca;

@@ -36,15 +36,37 @@ impl crate::App {
     /// texto (*a forma mais ao topo que contém o ponto*), não o rectângulo por baixo. Sem a subida
     /// da cadeia o corpo só seria alcançável na margem à volta das letras — *o alvo maior da tela,
     /// inalcançável no meio dele*. A lei vive em [`ph2d_ecs::hud::botao_de`], com os gates lá.
-    fn hud_button_at(&self, screen: (f32, f32)) -> Option<ph2d_ecs::Entity> {
-        let gfx = self.gfx.as_ref()?;
+    fn hud_button_at(&mut self, screen: (f32, f32)) -> Option<ph2d_ecs::Entity> {
         let world = self.vec_world_at(screen)?;
         let tol = 10.0 * self.vec_px_to_world();
-        let id = self.vec.pen.path_at(&gfx.vec_scene, world, tol)?;
-        let bits = *self.vec.entities.get(&id)?;
-        let e = ph2d_ecs::hud::botao_de(gfx.sim.world(), ph2d_ecs::Entity::from_bits(bits))?;
-        let b = gfx.sim.world().get::<ph2d_ecs::UiButton>(e)?;
-        (!b.disabled && b.name().is_some()).then_some(e)
+        let gfx = self.gfx.as_mut()?;
+        // ⚠️ **O VECTORIAL primeiro, e a ordem é uma DECISÃO:** ele é o meio próprio do HUD (um
+        // `UiLabel` é texto vectorial) e o `path_at` já resolve a forma mais ao topo entre as
+        // vectoriais. O *sprite* é a segunda pergunta.
+        let vectorial = self
+            .vec
+            .pen
+            .path_at(&gfx.vec_scene, world, tol)
+            .and_then(|id| self.vec.entities.get(&id).copied());
+        // ⭐⭐⭐ **E um botão feito de SPRITE é alcançável desde 2026-09-20** — antes disto o ramo
+        // consultava só a cena vectorial, logo um menu montado com arte em pixels era **mudo** e
+        // nada na tela o distinguia de um botão sem nome.
+        // ⚠️ **O MESMO ponto de mundo**, e é isso que interessa: o `vec_world_at` passa pela
+        // porta `App::scene_window` (a BANDA em que o chrome da cena desenha), que é o defeito
+        // pré-existente que a wave do #20 curou. A conversão para `f32` é da API do pick de
+        // sprites e não de uma segunda aritmética.
+        #[allow(clippy::cast_possible_truncation)]
+        let sprite = ph2d_render::pick_sprite_at_world(
+            gfx.present.world_mut(),
+            [world[0] as f32, world[1] as f32],
+        );
+        // ⚠️ **Quem escolhe é a LEI** (`botao_sob_o_cursor`), e não este ramo: *o primeiro candidato
+        // que SOBE até um botão elegível ganha* — a regra ingénua («o primeiro candidato») deixaria
+        // um botão de sprite por baixo de qualquer forma vectorial inalcançável. Gates na crate.
+        ph2d_app_components::hud_bridge::botao_sob_o_cursor(
+            gfx.sim.world(),
+            vectorial.into_iter().chain(sprite),
+        )
     }
 
     /// Ver o cabeçalho do módulo. `true` = o clique foi consumido pelo HUD.
@@ -68,7 +90,8 @@ impl crate::App {
             PointerKind::Up => Gesto::Cima,
             PointerKind::Down | PointerKind::Move => return false,
         };
-        let sob = self.hud_button_at(self.last_pointer);
+        let ponteiro = self.last_pointer;
+        let sob = self.hud_button_at(ponteiro);
         // ⚠️ Um `Baixo` que não pousa em botão nenhum **não é deste ramo** — devolver `true` ali
         // comeria todo clique de canvas durante uma corrida.
         if gesto == Gesto::Baixo && sob.is_none() {

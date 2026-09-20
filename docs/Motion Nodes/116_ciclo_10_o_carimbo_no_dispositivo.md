@@ -691,6 +691,58 @@ ele fotografou.
 
 ---
 
+### §5.8 — ⭐⭐⭐ A CENA QUE MOSTRA (ordem do dono, 2026-09-20): `=126`, e a população NÃO é a do report
+
+O dono mandou construí-la (*«construa uma cena de demonstração»*), e a §5.7 já dizia porquê: **as
+onze cenas com carimbo não contêm o fenómeno** — a pior desenha `190` linhas e custa `0,1 %` de um
+quadro. A cena vive em [`motion_state_carimbo_demo.rs`](../../crates/ph2d-app-motion/src/motion_state_carimbo_demo.rs)
+e a cadeia é a do report e **nada mais**: `motion.grid → motion.duplicator ← source.shape (Star) →
+motion.output`. *Um oscilador a mais entra na conta do quadro e a cena passa a medir outra coisa.*
+
+⛔⛔ **E a população que a §5.7 encomendou — `320 × 320 = 102 400`, a do report — está MEDIDA e
+NÃO SERVE para o olho do dono.** Pelas portas do produto (§4.3) aquela população custa `7,36 ms`
+pela rota antiga e `3,24` pela de hoje: as **duas** cabem num quadro de 60 fps, logo **as duas
+corridas mostram `60` no número que ele lê** e a diferença só aparece no terceiro campo da barra
+(`raw`, que é `1000/cpu`). *Ela prova a lei e não a mostra.*
+
+⇒ a população sai de uma **derivação escrita como cerca de compilação** (duas `const _: () =
+assert!`), com o recurso nomeado (o quadro de 60 fps) e o custo por cópia MEDIDO:
+
+| rota | desenho | cozer | CPU do quadro | **por cópia** |
+|---|---:|---:|---:|---:|
+| `fill` por cópia (ANTES) | `6,37 ms` | `0,99 ms` | `7,36 ms` (`44 %`) | **`0,0719 µs`** |
+| carimbo preparado (HOJE) | `2,25 ms` | `0,99 ms` | `3,24 ms` (`19 %`) | **`0,0316 µs`** |
+
+A `560 × 560` = **`313 600`**: `22,6 ms` pela antiga (**mais de um quadro inteiro** ⇒ o número CAI)
+e `9,9 ms` pela de hoje (`59 %` ⇒ ele fica em `60`). As duas metades da janela são cerca:
+grande de mais e as **duas** corridas saem lentas; pequena de mais e as **duas** dão `60` — e
+*as duas falhas leem-se como «a cura não faz nada»*.
+
+⚠️ **A extrapolação é legítima porque o custo por cópia é PLANO sobre `1000×`** (§4.3, `1 000` a
+`1 000 000`, mesma razão `3,2×`) — não é um palpite sobre o joelho de uma curva.
+
+⛔ **E o campo é MAIOR que o ecrã por ARITMÉTICA, não por descuido:** uma estrela só se lê como
+estrela com `~6 px` (`0,108` de mundo a `55,5 px`/unidade, a régua medida da `=124`) e a câmara de
+arranque mostra `21,8 × 6,8` unidades ⇒ cabem **`~10 000`** estrelas legíveis no ecrã, e a cena
+precisa de `313 600` para o relógio se mexer. *Encolher a estrela até tudo caber entrega um
+rectângulo cinzento*, e uma cena onde o dono não vê estrelas não ensina que aquilo são estrelas.
+A conta é paga pelas `313 600` estejam à vista ou não — **o desenho não tem recorte por câmara**, e
+é isso que faz a cena medir o que ela diz medir.
+
+⚠️ **O smoke é `--release`** (`CLAUDE.md` §5: o `smoke` não tem LTO), e por isso a ferramenta de
+fotografia ganhou a porta `FOTO_PERFIL` — **por omissão continua `smoke`**, e `release` é só para
+um smoke de PERFORMANCE, senão as duas colunas de um A/B medem o perfil de build.
+
+⏳ **POR CONFIRMAR NA APP, e está declarado:** a derivação acima é do **CPU** (as portas do
+produto). Falta a corrida das duas rotas no app com o perfilador (`PH2D_FLUID_PROFILE=1`) e as duas
+fotografias — *a GPU não entra na conta de nenhuma destas sondas*, e uma população que o encode
+aguenta pode ser derrubada pela rasterização. ⛔ **A cena não vai ao dono antes disso** (a lei da
+casa: cada passo de um smoke é conduzido e fotografado antes de lhe ser passado). Em 2026-09-20 a
+placa esteve reservada por outra linha e a máquina a `2`–`16 %` de ociosidade, o que torna qualquer
+leitura de relógio inútil (`CLAUDE.md` §5.0).
+
+---
+
 ## §6 — CERCAS que este ciclo herda (lidas, não lembradas)
 
 1. ⛔ **A contagem de um `Compact` vem do dispositivo por leitura de volta; a deste NÃO.**

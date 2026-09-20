@@ -31,7 +31,7 @@ use super::*;
 /// número em dois sítios, que é como ele envelhece. *Um valor sob `cfg(test)` é invisível do
 /// outro lado da fronteira (HOWTO §2.5) — e aqui a cura não é abrir uma feature, é reconhecer
 /// que a constante deixou de ser só do teste.*
-pub const MAX_DEMO_LEVEL: u32 = 125;
+pub const MAX_DEMO_LEVEL: u32 = 126;
 
 /// **As cenas de smoke dos CICLOS** — irmãs pelo tecto de LOC, cortadas por responsabilidade;
 /// ver o cabeçalho delas.
@@ -490,6 +490,15 @@ pub fn build_level(
         Some("122") => {
             let sinks = passe_sim_demo::build(doc, registry).unwrap_or_default();
             passe_sim_demo::announce();
+            sinks
+        }
+        // ⭐⭐⭐ **O CAMPO DE ESTRELAS** — a cena do report de 2026-09-14 (*«usando shape (exemplo:
+        // star) fps cai para 27»*), montada à escala em que a cura do carimbo se VÊ. ⚠️ Ela é a
+        // única cena de PERFORMANCE de desenho do catálogo, e é por isso que ela não podia ser uma
+        // das outras: medido (doc 116 §5.7), a mais pesada delas desenha `190` linhas.
+        Some("126") => {
+            let sinks = carimbo_demo::build(doc, registry).unwrap_or_default();
+            carimbo_demo::announce();
             sinks
         }
         // ⭐⭐⭐ **AS POSIÇÕES E A MARCA** — a cena que o report de 2026-09-19 pedia

@@ -107,6 +107,13 @@ mod osso_demo;
 #[path = "motion_state_pontos_demo.rs"]
 mod pontos_demo;
 
+/// ⭐⭐⭐ **O CAMPO DE ESTRELAS** (cena `=126`) — `560 × 560` posições vestidas com a MESMA estrela,
+/// que é o grafo do report do dono. Ela existe porque **nenhuma cena do catálogo mostra a cura do
+/// carimbo**: a mais pesada de todas desenha `190` linhas (doc 116 §5.7), e a diferença entre as
+/// duas rotas é SÓ relógio. Ver o cabeçalho dela, que traz a derivação da população.
+#[path = "motion_state_carimbo_demo.rs"]
+mod carimbo_demo;
+
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]
 mod passe_sim_demo;

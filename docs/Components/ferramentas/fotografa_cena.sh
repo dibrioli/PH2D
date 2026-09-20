@@ -35,7 +35,14 @@ ALT="${3:?altura}"
 SAIDA="${4:?saida.png}"
 ESPERA="${5:-9}"
 RAIZ="$(cd "$(dirname "$0")/../../.." && pwd)"
-BIN="$RAIZ/target/smoke/ph2d-host-desktop"
+# ⚠️ O PERFIL, e ele é `smoke` por omissão — a lei do `CLAUDE.md` §5 (o `release` optimiza a shell
+# num só thread e cada correcção pós-smoke custava 161 s contra 3).
+#
+# ⛔⛔ **Mas um smoke de PERFORMANCE não pode ser fotografado em `smoke`**, e a mesma linha do §5
+# di-lo: *«o `smoke` não tem LTO e corre mais devagar»* ⇒ ali as duas colunas de um A/B mediriam o
+# perfil de build e não a lei. ⇒ `FOTO_PERFIL=release` para essas, e para mais nenhuma.
+PERFIL="${FOTO_PERFIL:-smoke}"
+BIN="$RAIZ/target/$PERFIL/ph2d-host-desktop"
 
 # ⛔⛔⛔ ELE CONSTRÓI, e a razão é um defeito MEDIDO (2026-09-18, `line/Vector`).
 #
@@ -49,10 +56,10 @@ BIN="$RAIZ/target/smoke/ph2d-host-desktop"
 # contra uma foto que afirma sobre código que não corre. E ele fica **por dentro**, e não num passo
 # que quem chama tem de se lembrar de escrever: *uma ferramenta que depende de um passo lembrado
 # tem o defeito de volta no dia em que alguém a chamar à pressa.*
-echo "[foto] a construir o binario do smoke (senao esta foto e' da build de ontem)…" >&2
-( cd "$RAIZ" && cargo build -q -p ph2d-host-desktop --profile smoke ) \
+echo "[foto] a construir o binario ($PERFIL) — senao esta foto e' da build de ontem…" >&2
+( cd "$RAIZ" && cargo build -q -p ph2d-host-desktop --profile "$PERFIL" ) \
   || { echo "[foto] a build falhou — nao fotografo uma arvore que nao compila" >&2; exit 2; }
-[ -x "$BIN" ] || { echo "falta o binario: cargo build -p ph2d-host-desktop --profile smoke" >&2; exit 2; }
+[ -x "$BIN" ] || { echo "falta o binario: cargo build -p ph2d-host-desktop --profile $PERFIL" >&2; exit 2; }
 
 # ⛔⛔⛔ **ELE NÃO CONSTRÓI, LOGO SEM ISTO FOTOGRAFA O PROGRAMA ANTERIOR** (medido 2026-09-19).
 # A cena do golpe foi curada, fotografada DUAS vezes com o binário de antes da cura, e as duas fotos
@@ -66,7 +73,7 @@ NOVO="$(find "$RAIZ/crates" "$RAIZ/shells" -name '*.rs' -newer "$BIN" -print -qu
 if [ -n "$NOVO" ]; then
   echo "RECUSA: ha' codigo mais novo que o binario (ex.: ${NOVO#"$RAIZ/"})" >&2
   echo "  a foto seria do programa ANTERIOR. Corra primeiro:" >&2
-  echo "  bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke" >&2
+  echo "  bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile $PERFIL" >&2
   exit 2
 fi
 

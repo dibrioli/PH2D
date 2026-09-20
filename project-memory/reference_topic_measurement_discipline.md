@@ -1605,3 +1605,29 @@ REFERENCIAL ERRADO** — `|p − autorada| ≤ ladrilho/2` mede a pose no MUNDO,
 limitar a posição NO ECRÃ (`|p − c − autorada| ≤ ladrilho/2`). A régua gravada aprovava a lei que
 prendia o fundo ao mundo, e a fileira saía da vista ao fim de ~30 m. *Uma metade «absoluta» também
 tem um referencial, e ele é o do FENÓMENO — o artista vê o ecrã, não as coordenadas do mundo.*
+## ⛔⛔⛔ Uma afirmação derivada do MODELO do que uma lei correcta faz não é uma medição do que o código VELHO fazia (2026-09-20)
+Ao trocar o ambiente lambertiano do sprite pela indirecta do OpenPBR, escrevi em **quatro** sítios
+(o doc da lei, o gémeo em WGSL, um gate e um handoff) que *«um metal sem lâmpada saía `[0,0,0]` ao
+bit»*. Medido pela sonda: o código velho somava `albedo × E(n)` a **todo** material, logo um metal e
+um barro recebiam **o MESMO** ambiente, ao bit — `[0,3069589, 0,3176986, 0,35053548]` os dois.
+**Why:** eu raciocinei a partir do modelo correcto (*«num OpenPBR um metal não tem lóbulo difuso,
+logo sem especular ele é preto»*) em vez de correr o código de ontem. A frase era dramática, soava a
+número, e o defeito real era **pior e mais interessante**: o ambiente não errava a QUANTIDADE, errava
+a **CLOSURE** — ele não sabia que material estava a iluminar. **How to apply:** antes de escrever
+*«antes isto dava X»*, **corra** a lei antiga (guarde-a num `#[cfg(test)]` dentro da sonda, com o
+cabeçalho a dizer que é a redacção anterior); e desconfie de toda afirmação sobre o passado cujo
+número você **deduziu** em vez de ter lido de uma corrida.
+Ver [[reference_topic_oracle_discipline]] e [[reference_topic_gate_discipline]].
+
+## ⛔⛔ Uma RAZÃO entre dois números CORTADOS mede também o corte — e pode ler-se ao contrário (2026-09-20)
+A régua que separa as duas leis de luz do sprite é o `R/B` no destaque (o topo `3 %` mais brilhante).
+Depois de a indirecta entrar ela leu `1,485 → 1,956` na bola vermelha, que se lê exactamente como
+*«a lei nova tinge MAIS o destaque»* — o oposto do que ela faz. A coluna que faltava: **`~99 %` dos
+texels do destaque têm pelo menos um canal em `255`, nas DUAS leis**. Com o canal dominante pregado
+no tecto, a razão passa a medir quanto o OUTRO canal subiu, e a energia a mais empurra-a para longe
+de `1`. **Why:** o valor lido é `min(x, 255)/min(y, 255)`, e uma razão entre saturações não é a razão
+da lei; a régua continua a **discriminar** (a direcção sobrevive) e a **magnitude** deixa de ser da
+óptica. **How to apply:** toda régua que divide dois valores quantizados carrega, ao lado, a fracção
+da população que está **no tecto ou no chão** — e uma razão cuja população satura só pode ser citada
+como sinal, nunca como número.
+Ver [[reference_topic_gate_discipline]].

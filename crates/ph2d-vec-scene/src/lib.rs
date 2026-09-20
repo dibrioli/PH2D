@@ -48,11 +48,13 @@ pub use paint::{GradientPoint, GradientStop, Paint, PatternFill, PatternSource, 
 // quem lê um `Paint::Pattern` não deve ter de declarar a folha para o entender.
 pub use ph2d_vec_pattern::{PatternMode, TileKind, TileLaw};
 
-/// **Re-cozimento em lugar** ([`VecPath::replace_cooked`]): a porta única de "esta forma foi
-/// re-gerada dos próprios parâmetros". Irmão de `compound` (os dois só acrescentam métodos
-/// inerentes a [`VecPath`]); mora aqui, e não no sítio de chamada, porque quem sabe **quais
-/// campos um re-cozimento produz** é a crate dona do tipo — e três chamadores a responderem por
-/// conta própria já custou a pilha de efeitos do texto.
+/// **Re-escrita em lugar** — DUAS portas, uma por pergunta: a [`VecPath::replace_cooked`] é
+/// *"esta forma foi re-gerada dos próprios PARÂMETROS"* (geometria e estilo) e a
+/// [`VecPath::replace_geometry`] é *"eu re-gerei ONDE os pontos estão"* (só a geometria, todo o
+/// estilo sobrevive). Irmão de `compound` (os dois só acrescentam métodos inerentes a
+/// [`VecPath`]); mora aqui, e não no sítio de chamada, porque quem sabe **quais campos cada uma
+/// produz** é a crate dona do tipo — e chamadores a responderem por conta própria já custou a
+/// pilha de efeitos do texto e o traço de uma forma presa aos ossos.
 mod recook;
 
 /// Pilha de z + recorte de copy/paste. A ÁRVORE de objetos é a Hierarchy do

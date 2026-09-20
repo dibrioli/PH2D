@@ -31,6 +31,28 @@
 //! - a **pilha de efeitos** (`effects`) — é dado AUTORADO sobre a forma, e a forma cozida é a
 //!   entrada dela, não a saída (ADR-0121: fonte autorada ≠ geometria cozida).
 //!
+//! # ⛔⛔⛔ E há uma SEGUNDA pergunta, que o dono reportou em 2026-09-19
+//!
+//! *«Num vector linkado aos ossos não consigo mudar a espessura do stroke.»*
+//!
+//! A [`VecPath::replace_cooked`] responde *«o que um re-cozimento produz»* para quem re-gera a
+//! forma **a partir dos parâmetros dela** — o texto a cada tecla, o objecto de texto a cada knob.
+//! Ali o estilo É produto do re-cozimento, e tem de vir do `next`.
+//!
+//! ⚠️ **A PELE não é desse tipo:** a fonte dela é uma FOTOGRAFIA tirada no instante do `Bind`
+//! ([`ph2d_skeleton_ecs::SkinBind::source`]), congelada em bytes opacos, e o que ela re-gera a cada
+//! quadro é a **posição de cada ponto**. Mandar o estilo daquela fotografia para o path vivo faz o
+//! quadro seguinte **desfazer** toda edição de traço, preenchimento ou regra de preenchimento —
+//! medido: o artista põe `width = 0,2` e o recook devolve `None`, sem um erro e sem um pixel de
+//! aviso. *Um controlo que o produto desfaz no quadro seguinte lê-se exactamente como um controlo
+//! morto.*
+//!
+//! ⇒ a [`VecPath::replace_geometry`] é a porta de *«re-gerei ONDE os pontos estão»*, e ela preserva
+//! todo o estilo. ⛔ **As duas portas destruturam a struct de forma EXAUSTIVA**, e é deliberado: um
+//! campo novo obriga a responder **as duas** perguntas — *é produto de um re-cozimento?* e *é
+//! GEOMETRIA?* — no commit em que ele nasce, que é a única hora em que as duas respostas são
+//! conhecidas.
+//!
 //! # Por que o compilador é o guarda, e não um comentário
 //!
 //! A enumeração do envelope estava **certa e frágil**: acertava os seis campos de hoje e ficaria
@@ -85,6 +107,40 @@ impl VecPath {
         self.subpaths = subpaths;
         self.fill_rule = fill_rule;
         // `self.id`, `self.effects`, `self.opacity` e `self.blend` sobrevivem — a lei do módulo.
+    }
+
+    /// ⭐⭐⭐ **Substitui em lugar só a GEOMETRIA** — onde os pontos estão —, preservando **todo** o
+    /// estilo do objecto: `fill`, `stroke`, `fill_rule`, a pilha de aparência, a de efeitos, a
+    /// opacidade, a mistura e a identidade.
+    ///
+    /// É a porta de quem re-gera POSIÇÕES a partir de uma fonte que ele guardou: a pele a cada
+    /// quadro ([`ph2d_skeleton_live::skin_live`]) e o `Release` que devolve o desenho autorado.
+    /// ⚠️ **Quem re-gera a forma a partir dos PARÂMETROS dela** — o texto, o objecto de texto, o
+    /// envelope — continua a ir pela [`Self::replace_cooked`]: ali o estilo é produto do
+    /// re-cozimento. Ver o cabeçalho do módulo para o report que separou as duas.
+    ///
+    /// `next.id` é descartado de propósito, pela mesma razão da irmã.
+    pub fn replace_geometry(&mut self, next: Self) {
+        // ⚠️ Destructuring EXAUSTIVO, como na irmã: é isto que faz o compilador barrar um campo
+        // novo esquecido. Não troque por `..`.
+        let Self {
+            id: _,
+            verts,
+            closed,
+            subpaths,
+            // ⭐ **Tudo o que segue é ESTILO e sobrevive** — é o que o artista autora no painel
+            // sobre a forma, e a fotografia do `Bind` não tem nada a dizer sobre isso.
+            fill: _,
+            stroke: _,
+            fill_rule: _,
+            effects: _,
+            opacity: _,
+            blend: _,
+            paints: _,
+        } = next;
+        self.verts = verts;
+        self.closed = closed;
+        self.subpaths = subpaths;
     }
 }
 

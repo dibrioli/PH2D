@@ -178,3 +178,50 @@ fn a_recook_preserves_the_appearance_stack() {
         "a pilha de aparencia e' autoria, nao produto do cozimento"
     );
 }
+
+/// ⭐⭐⭐ **A PORTA DA GEOMETRIA LEVA AS POSIÇÕES E NÃO TOCA NO ESTILO** — o gate red-first do report
+/// do dono de 2026-09-19 (*«num vector linkado aos ossos não consigo mudar a espessura do stroke»*).
+///
+/// ⚠️ **Ele é o irmão INVERSO do [`a_recook_preserves_the_effects_stack`]**, e as duas metades são
+/// obrigatórias: sem a 1.ª asserção, uma [`VecPath::replace_geometry`] que não escrevesse nada
+/// passaria; sem a 2.ª, a de ontem — que trazia o estilo da fotografia do `Bind` — passaria
+/// também. *Uma porta que se define pelo que NÃO faz precisa de um gate que veja as duas coisas.*
+///
+/// ⚠️ **A fixtura tem os dois lados FORA do neutro de propósito** (a autorada tem traço de `0,5` e
+/// preenchimento, a cozida tem `stroke: None` e outro preenchimento): com os dois iguais este gate
+/// ficaria verde sobre a porta errada.
+#[test]
+fn replace_geometry_carries_the_points_and_leaves_the_style_alone() {
+    let mut p = authored();
+    let antes = p.clone();
+    p.replace_geometry(freshly_cooked());
+
+    // (1) a GEOMETRIA veio — senão isto seria um no-op a passar por lei.
+    let cozido = freshly_cooked();
+    assert_eq!(p.verts, cozido.verts, "as posicoes tinham de vir do `next`");
+    assert_eq!(p.closed, cozido.closed, "o fecho e' geometria");
+    assert_eq!(
+        p.subpaths, cozido.subpaths,
+        "os contornos extra sao geometria"
+    );
+
+    // (2) e NADA de estilo se mexeu — é a metade que o report do dono é.
+    assert_eq!(
+        p.stroke, antes.stroke,
+        "o traco e' autoria do OBJECTO: uma re-escrita de posicoes que o leve desfaz, no quadro \
+         seguinte, toda edicao de espessura que o artista fizer numa forma presa aos ossos"
+    );
+    assert_eq!(p.fill, antes.fill, "o preenchimento idem");
+    assert_eq!(
+        p.fill_rule, antes.fill_rule,
+        "a regra de preenchimento idem"
+    );
+    assert_eq!(
+        p.id, antes.id,
+        "quem manda na identidade e' o path que ja' esta' na cena"
+    );
+    assert_eq!(p.effects, antes.effects, "a pilha de efeitos idem");
+    assert_eq!(p.paints, antes.paints, "a pilha de aparencia idem");
+    assert_eq!(p.opacity, antes.opacity, "a opacidade idem");
+    assert_eq!(p.blend, antes.blend, "a mistura idem");
+}

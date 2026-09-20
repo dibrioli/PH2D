@@ -1,15 +1,21 @@
 //! **O ESQUELETO, vivo** (estudo 42 item 5, doc 47) — a forma presa aos ossos é re-cozida a cada
 //! quadro a partir da fonte autorada e da pose de agora.
 //!
-//! Irmão do [`crate::envelope_live`] no padrão (fonte em bytes dentro do componente · `replace_cooked`
-//! por quadro · undo e save de graça porque os dois capturam o mundo ECS) e diferente em duas coisas
-//! que valem a pena ler antes de mexer:
+//! Irmão do [`crate::envelope_live`] no padrão (fonte em bytes dentro do componente · re-escrita
+//! em lugar por quadro · undo e save de graça porque os dois capturam o mundo ECS) e diferente em
+//! TRÊS coisas que valem a pena ler antes de mexer:
 //!
 //! 1. **Não há container.** A gaiola do envelope não é entidade e precisa de um dono; um esqueleto
 //!    **já são entidades**, então a forma presa fica onde o artista a pôs.
 //! 2. **A cinemática não se escreve.** O mundo de cada osso sai de `parent_world_transform`, que é a
 //!    propagação de `Transform` que a casa já corre — logo FK é de borla, e a timeline anima um osso
 //!    porque anima um `Transform`.
+//! 3. ⛔⛔ **A fonte é uma FOTOGRAFIA, não os parâmetros vivos** — e é por isso que o quadro escreve
+//!    por [`ph2d_vec_scene::VecPath::replace_geometry`] e não pela irmã `replace_cooked`, que o
+//!    envelope e o texto usam. O envelope deforma o path que o artista está a editar (o estilo vem
+//!    de lá, vivo); a pele guardou os bytes no instante do `Bind`, logo o estilo dela está
+//!    **congelado** — mandá-lo para o path vivo desfaz toda edição de traço no quadro seguinte
+//!    (report do dono, 2026-09-19).
 //!
 //! ⚠️ **O ponto onde isto se parte, se alguém o refactorar:** a matriz de um osso é
 //! `S_agora⁻¹ ∘ B_agora ∘ rest⁻¹`, e o `rest` guardado **é** `S_bind⁻¹ ∘ B_bind`. Ligar num espaço e
@@ -386,7 +392,11 @@ pub fn recook_com_mistura(sim: &SimWorld, scene: &mut VecScene, curva: bool, rig
             );
         }
         if let Some(p) = scene.path_mut(id) {
-            p.replace_cooked(src);
+            // ⭐⭐⭐ **GEOMETRIA, e nunca o estilo** — report do dono de 2026-09-19 (*«num vector
+            // linkado aos ossos não consigo mudar a espessura do stroke»*). A `src` é a FOTOGRAFIA
+            // do instante do `Bind`, e mandar o estilo dela para cá desfazia toda edição de traço
+            // ou preenchimento no quadro seguinte. Ver o cabeçalho da [`ph2d_vec_scene::recook`].
+            p.replace_geometry(src);
         }
     }
 }
@@ -522,7 +532,11 @@ pub struct OssoPreso {
 /// ⚠️ **Um osso sem `StableId` é SALTADO**: `StableId::NONE` não nomeia ninguém, e guardá-lo daria
 /// um tendão que resolve para nada — pior que um osso a menos, porque *parece* ligado.
 #[must_use]
-pub(crate) fn tendons_and_axes(sim: &SimWorld, ossos: &[Entity], shape_inv: Xform) -> Vec<OssoPreso> {
+pub(crate) fn tendons_and_axes(
+    sim: &SimWorld,
+    ossos: &[Entity],
+    shape_inv: Xform,
+) -> Vec<OssoPreso> {
     ossos
         .iter()
         .filter_map(|&e| {
@@ -559,7 +573,9 @@ pub fn release(
             && let Some(g) = crate::skinned_mesh::le(&skin.source)
             && let Some(p) = scene.path_mut(id)
         {
-            p.replace_cooked(g.path);
+            // ⚠️ **GEOMETRIA**, pela mesma razão do quadro: o *Release* devolve **o que o artista
+            // DESENHOU**, e a cor com que ele o pintou depois do `Bind` é dele.
+            p.replace_geometry(g.path);
         }
         sim.world_mut().entity_mut(e).remove::<SkinBind>();
         feitos += 1;
@@ -649,6 +665,11 @@ pub fn chain_to(sim: &SimWorld, bits: u64) -> Vec<Entity> {
 #[cfg(test)]
 #[path = "skin_live_tests.rs"]
 mod tests;
+
+/// ⭐ **O gate do TRAÇO que sobrevive ao quadro**, num irmão — ver o cabeçalho dele.
+#[cfg(test)]
+#[path = "skin_live_traco_tests.rs"]
+mod traco_tests;
 
 #[cfg(test)]
 #[path = "skin_live_seleccao_tests.rs"]

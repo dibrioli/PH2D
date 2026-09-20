@@ -23,16 +23,28 @@ use std::fs;
 
 /// A assinatura de "eu reescrevo a geometria autorada deste path".
 ///
-/// Três formas, porque os hosts usam as três: `p.verts = …` (blend, morph, live shape),
-/// `p.verts.clear()` seguido de `extend` (o conector, que remonta a polilinha) e
-/// `p.replace_cooked(…)` (a porta única do re-cozimento — o envelope e o texto).
+/// Quatro formas, porque os hosts usam as quatro: `p.verts = …` (blend, morph, live shape),
+/// `p.verts.clear()` seguido de `extend` (o conector, que remonta a polilinha),
+/// `p.replace_cooked(…)` (o re-cozimento que produz geometria E estilo — o envelope e o texto) e
+/// `p.replace_geometry(…)` (o re-cozimento que produz SÓ as posições — a pele).
 ///
 /// ⚠️ **A terceira entrou depois de o gate ter cegado por ela.** O `envelope_live` escrevia
 /// os campos à mão; quando passou pela porta única, a assinatura dele desapareceu do
 /// detector e o controle positivo abaixo caiu de 5 para 4 hosts — exatamente a falha que
 /// aquele `assert` existe para gritar. Uma porta NOVA de reescrita tem de entrar aqui no
 /// MESMO commit em que nasce, senão este gate passa a guardar menos do que promete.
-const VERTS_REWRITE: [&str; 3] = [".verts = ", ".verts.clear()", ".replace_cooked("];
+///
+/// ⚠️⚠️ **E a quarta prova que aquele aviso não era teórico:** em 2026-09-19 a pele trocou a porta
+/// (o estilo da fotografia do `Bind` desfazia toda edição de traço — ver
+/// [`ph2d_vec_scene::recook`]), e no instante da troca este detector deixou de ver o
+/// `skin_live.rs`. *A cura de um defeito pode apagar um host do censo que o vigia*, e o piso de
+/// população abaixo é o que transforma isso num vermelho em vez de um silêncio.
+const VERTS_REWRITE: [&str; 4] = [
+    ".verts = ",
+    ".verts.clear()",
+    ".replace_cooked(",
+    ".replace_geometry(",
+];
 
 /// As árvores onde um host vivo pode morar, relativas à raiz da workspace.
 ///

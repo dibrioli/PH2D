@@ -10,7 +10,7 @@
 //! noutra unidade na borda lê-se, na tela, exactamente como um `rot` ausente — foi o que o dono
 //! fotografou, com o gate da coluna VERDE por cima.
 
-use super::super::rig_demo::tests::{CORDA, DT, TIQUES, pontos, primeiro};
+use super::super::rig_demo::tests::{CORDA, DT, FK, TIQUES, pontos, primeiro};
 use super::build;
 use crate::motion_state::MotionState;
 
@@ -118,8 +118,14 @@ fn os_segmentos_da_corda_apontam_ao_seguinte() {
 ///    cada uma reprova por um motivo diferente;
 /// 2. **o eixo desenhado aponta à junta seguinte** — a `basis` é `[cos, sin, −sin, cos]`, logo a
 ///    primeira coluna dela é para onde o `+x` local vai no mundo;
-/// 3. **o CONTROLO**: a corda está curvada, logo as direcções DIFEREM — sem ele uma corda direita
-///    (ou uma lei que não rodasse nada) passaria as duas primeiras.
+/// 3. **ela CHEGA à junta seguinte** — o comprimento DESENHADO (`2 × size`) contra o vão, ver
+///    [`TOLERANCIA_DO_VAO`]. ⛔⛔ **Esta metade FALTAVA e o nome do gate prometia-a** (escrita a
+///    2026-09-21, na varredura que o dono pediu depois do smoke da unidade): o comprimento de uma
+///    peça de rig é um número da FORMA e o comprimento verdadeiro é a coluna `len` da corrente —
+///    e **nada os liga**. Aqui eles batem porque o `CORDA_PECA` é derivado do vão; um `Count`
+///    diferente no painel desenha `0,47×` ou `1,85×` do vão, que é a foto do rosário outra vez;
+/// 4. **o CONTROLO**: a corda está curvada, logo as direcções DIFEREM — sem ele uma corda direita
+///    (ou uma lei que não rodasse nada) passaria as primeiras.
 ///
 /// FALSIFICADO por devolver o `atan2` cru no `derive_frame` (a metade 2 lê um eixo quase `+x`
 /// enquanto a corda desce), ou por dar ao sink um pivô que não seja a origem (a metade 1 cai).
@@ -200,5 +206,131 @@ fn cada_peca_da_corda_e_desenhada_da_junta_ate_a_seguinte() {
             peca.basis[0],
             peca.basis[1]
         );
+        // ⭐⭐⭐ **E ela CHEGA** — a metade que faltava, e o nome deste gate prometia-a desde que
+        // ele existe. Ver [`TOLERANCIA_DO_VAO`].
+        let desenhado = 2.0 * peca.size[0];
+        assert!(
+            (desenhado - n).abs() / n < TOLERANCIA_DO_VAO,
+            "a peca {i} CHEGA a junta {}: desenhada {desenhado:.5} contra um vao de {n:.5} \
+             ({:.1}% de erro)",
+            i + 1,
+            (desenhado - n).abs() / n * 100.0
+        );
     }
+}
+
+/// O quanto o comprimento DESENHADO de uma peça pode afastar-se do vão que ela atravessa.
+///
+/// ⛔⛔ **A barra sai de uma MEDIÇÃO e não de um gosto:** a corda é um solver, e às `TIQUES` de
+/// queda o vão dela já não é o de repouso — o pior segmento estica **`2,52 %`** (medido pelo
+/// [`diag_a_peca_contra_o_vao`], que imprime os vinte). Os `5 %` são esse número com folga, e são
+/// **`9×` mais apertados** que o defeito que este gate existe para apanhar (`0,47×` e `1,85×`).
+const TOLERANCIA_DO_VAO: f32 = 0.05;
+
+/// ⭐⭐⭐ **A PEÇA CONTRA O VÃO** — a sonda que nomeia o que a varredura de 2026-09-21 achou
+/// (ordem do dono, depois do smoke da unidade: *«veja se erro similar acontece em outros locais
+/// do módulo»*).
+///
+/// ⛔⛔⛔ **O comprimento DESENHADO de uma peça de rig é um número da FORMA; o comprimento
+/// VERDADEIRO é a coluna `len` da corrente — e o `len` não tem UM consumidor de desenho em toda a
+/// casa.** Ele é escrito pelo `rig.bones` e pelo `source.lsystem`, e lido só pelo `fk::resolve`
+/// (que reconstrói `P` com ele) e pelo próprio `rig.bones` (que pergunta se ele já lá está). Quem
+/// decide o tamanho na tela é a coluna `size`, que vem da forma.
+///
+/// ⚠️ **Nas duas cenas isto bate porque o número foi DERIVADO à mão** (`CORDA_PECA` do vão da
+/// corda, `OSSO_PECA` do `OSSO_LEN`), e é por isso que nenhum gate o via: eles leem `P`, `rot` e
+/// `size`, e os três estão certos. O que nenhum lê é a RELAÇÃO entre `size` e o vão.
+///
+/// Medido (pela porta do produto, com a `TIQUES` de queda na corda):
+///
+/// | knob do painel | vão | desenhado | razão | o que se vê |
+/// |---|---|---|---|---|
+/// | `Count = 10`   | `0,21201` | `0,10000` | **`0,47×`** | um rosário, com buracos entre as contas |
+/// | `Count = 20`   | `0,10252` | `0,10000` | `0,98×` | o cordão que o dono aprovou |
+/// | `Count = 30`   | `0,06944` | `0,10000` | `1,44×` | as peças montam umas nas outras |
+/// | `Count = 40`   | `0,05393` | `0,10000` | **`1,85×`** | uma barra contínua |
+/// | `Length = 0,2` | `0,20000` | `0,45000` | **`2,25×`** | o mesmo, na fileira dos ossos |
+/// | `Length = 0,45`| `0,45000` | `0,45000` | `1,00×` | a cadeia que ladrilha |
+/// | `Length = 0,9` | `0,90000` | `0,45000` | **`0,50×`** | ossos soltos, um vão de cada dois vazio |
+///
+/// ⏳ **DECISÃO DO DONO** (as duas saídas, com o preço): (a) ficar como está — o artista escreve o
+/// tamanho da peça a condizer com a corrente, e o painel não o ajuda; (b) uma peça de rig VESTIR o
+/// osso dela (o `size` por elemento sai do `len`), que é o que faz a corda ler-se como um cordão
+/// **em qualquer `Count`** e custa o `size` deixar de ser o que o artista escreveu na forma.
+#[test]
+#[ignore = "sonda de medicao, nao gate"]
+fn diag_a_peca_contra_o_vao() {
+    eprintln!("\n=== a peca DESENHADA contra o vao que ela atravessa ===");
+    for count in [10.0f32, 20.0, 30.0, 40.0] {
+        let (vao, desenhado, n) = mede_a_corda(Some(count));
+        eprintln!(
+            "  Count={count:>5}  pecas={n:>3}  vao={vao:.5}  desenhado={desenhado:.5}  \
+             razao={:.2}x",
+            desenhado / vao
+        );
+    }
+    for length in [0.2f32, 0.45, 0.9] {
+        let (vao, desenhado, n) = mede_o_osso(length);
+        eprintln!(
+            "  Length={length:>4}  pecas={n:>3}  vao={vao:.5}  desenhado={desenhado:.5}  \
+             razao={:.2}x",
+            desenhado / vao
+        );
+    }
+}
+
+/// O vão do 1.º segmento da corda e o comprimento que o desenho lhe dá, depois de `TIQUES`.
+fn mede_a_corda(count: Option<f32>) -> (f32, f32, usize) {
+    let mut m = MotionState::new();
+    let sinks = build(&mut m.doc, &m.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    let corda = primeiro(&m.doc.graph, "motion.verlet_rope");
+    if let Some(c) = count {
+        m.doc.graph.set_param(corda, "count", c);
+    }
+    let sink = sinks[CORDA];
+    let mut t = 0.0f64;
+    for _ in 0..TIQUES {
+        let _ = m.pump.cook.cook(&m.doc.graph, &m.registry, sink, t);
+        let _ = m.pump.cook.advance_tick(&m.doc.graph, &m.registry, t);
+        t += DT;
+    }
+    let juntas = pontos(
+        m.pump
+            .cook
+            .cook(&m.doc.graph, &m.registry, corda, t)
+            .expect("a corda coze")[0]
+            .as_stream(),
+    );
+    let saida = m
+        .pump
+        .cook
+        .cook(&m.doc.graph, &m.registry, sink, t)
+        .expect("o sink coze");
+    peca_contra_vao(saida[0].as_stream(), &juntas)
+}
+
+/// O mesmo, na fileira do FK — a cadeia de ossos do `rig.skeleton`.
+fn mede_o_osso(length: f32) -> (f32, f32, usize) {
+    let mut m = MotionState::new();
+    let sinks = build(&mut m.doc, &m.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    let esq = primeiro(&m.doc.graph, "rig.skeleton");
+    m.doc.graph.set_param(esq, "length", length);
+    let saida = m
+        .pump
+        .cook
+        .cook(&m.doc.graph, &m.registry, sinks[FK], 0.0)
+        .expect("o sink coze");
+    let s = saida[0].as_stream();
+    let pos = pontos(s);
+    peca_contra_vao(s, &pos)
+}
+
+/// O vão entre as duas primeiras cabeças contra `2 × size` da 1.ª peça desenhada.
+fn peca_contra_vao(s: &ph2d_nodegraph::attr::Stream, juntas: &[[f32; 2]]) -> (f32, f32, usize) {
+    let mut pecas = Vec::new();
+    ph2d_eval_motion::lower_to_vector_instances_onto(s, ph2d_render::SinkStyle::PLAIN, &mut pecas);
+    let d = [juntas[1][0] - juntas[0][0], juntas[1][1] - juntas[0][1]];
+    (d[0].hypot(d[1]), 2.0 * pecas[0].size[0], pecas.len())
 }

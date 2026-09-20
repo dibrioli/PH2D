@@ -24,7 +24,7 @@ use ph2d_nodegraph::graph::Graph;
 /// Os seis panos, pela ordem em que [`build`] os empilha.
 pub(super) const CORDA: usize = 0;
 const CAMPO: usize = 1;
-const FK: usize = 2;
+pub(super) const FK: usize = 2;
 const IK: usize = 3;
 const PELE_IGUAL: usize = 4;
 const PELE_QUINHAO: usize = 5;

@@ -105,7 +105,11 @@ const CORDA_COMPRIMENTO: f32 = 1.9;
 /// ⭐ Com `0,05` o disco mede exactamente o vão: as contas encostam em repouso, **separam-se onde
 /// a corda estica e apertam onde ela encolhe** — que é a coisa que este pano existe para mostrar.
 /// ⚠️ *Nenhum gate desta cena via isto: eles leem `P` e `size`, e os dois estavam certos.*
-const CORDA_PECA: f32 = 0.05;
+///
+/// ⛔⛔⛔ **E ele era um LITERAL com esta doc a chamar-lhe «derivado»** (2026-09-21): mexer nos
+/// dois números acima deixava a peça para trás **em silêncio** (tabela no `diag_a_peca_contra_o_
+/// vao`). Escrito como a divisão que a doc já descrevia, é **byte-idêntico** (`0x3d4ccccd`).
+const CORDA_PECA: f32 = CORDA_COMPRIMENTO / (CORDA_PONTOS - 1.0) / 2.0;
 /// A porta `state` da corda. ⚠️ **Contada no manifesto** (`anchor_x` · `anchor_y` · `state`),
 /// nunca adivinhada: um índice errado liga o laço a um ANCORADOURO e a corda voa.
 const CORDA_PORTA_ESTADO: u16 = 2;

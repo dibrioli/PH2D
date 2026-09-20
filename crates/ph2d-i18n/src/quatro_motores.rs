@@ -106,6 +106,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "timeline.key.path_needs_keys_tab" => {
             "Can't key the path here: a trajectory belongs to its clip \u{2014} switch to the Keys tab"
         }
+        // ⚠️ A sexta recusa chegou pela `line/Vector` no mesmo dia em que esta tabela nasceu, e
+        //    ela escreveu a FRASE onde as irmãs já escreviam a CHAVE — o `message_key` devolvia um
+        //    literal. *Um merge textual funde as duas metades limpo: nenhum dos dois lados contém
+        //    as duas coisas.*
+        "timeline.key.bone_handles_from_chain" => {
+            "Can't key the bend: this bone's handles come from the chain \u{2014} set Curve Handles to Manual"
+        }
         // ph2d-migrar-texto:end
         _ => return None,
     })

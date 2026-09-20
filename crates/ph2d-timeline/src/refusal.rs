@@ -103,9 +103,7 @@ impl KeyRefusal {
             Self::Overridden => "timeline.key.overridden",
             Self::ExpressionDriven => "timeline.key.expression_driven",
             Self::PathNeedsKeysTab => "timeline.key.path_needs_keys_tab",
-            Self::BoneHandlesFromChain => {
-                "Can't key the bend: this bone's handles come from the chain — set Curve Handles to Manual"
-            }
+            Self::BoneHandlesFromChain => "timeline.key.bone_handles_from_chain",
         }
     }
 }

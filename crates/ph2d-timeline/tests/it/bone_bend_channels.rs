@@ -138,7 +138,10 @@ fn a_alca_de_um_osso_que_segue_a_corrente_recusa_a_chave_e_diz_porque() {
 
     // ⚠️ E a mensagem tem de dizer **o que trocar**: uma recusa que só diz «não dá» manda o
     // artista adivinhar qual dos controlos do painel é o culpado.
-    let msg = ph2d_timeline::KeyRefusal::BoneHandlesFromChain.message();
+    // ⚠️ **A régua lê o que o ARTISTA lê, não a chave.** O motor publica `message_key` (a
+    //    `line/UIUX` migrou as recusas para a tabela no mesmo dia em que esta nasceu) e quem
+    //    mostra resolve — *afirmar sobre a chave aprovaria uma tradução em branco*.
+    let msg = ph2d_i18n::tr(ph2d_timeline::KeyRefusal::BoneHandlesFromChain.message_key());
     assert!(
         msg.contains("Manual"),
         "a recusa tem de NOMEAR a cura (Curve Handles: Manual), e diz: {msg:?}"

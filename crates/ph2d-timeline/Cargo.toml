@@ -94,6 +94,10 @@ serde_json = "1"
 # HR-3 zero-alloc gate for the apply pass (tests/no_alloc_bridge.rs), mirroring
 # ph2d-anim's sampling gate.
 dhat = "0.3"
+# ⭐ **Só nos TESTES, e a lei que o permite está escrita no `refusal.rs`:** este motor publica a
+# CHAVE da recusa e nunca resolve o catálogo — mas uma régua que mede *«a frase NOMEIA a cura?»*
+# tem de ler o que o artista lê. É o idioma que 16 crates de nó e a `ph2d-field` já declaram.
+ph2d-i18n = { path = "../ph2d-i18n" }
 
 [lints]
 workspace = true

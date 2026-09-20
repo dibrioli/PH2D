@@ -67,6 +67,7 @@ use super::{
 const PAINT: &str = include_str!("paint.rs");
 const PAINT_BODY: &str = include_str!("paint/body.rs");
 const PAINT_BRUSH: &str = include_str!("paint/brush.rs");
+const PAINT_BRUSH_COR: &str = include_str!("paint/brush_cor.rs");
 const PAINT_BRUSH_FILEIRAS: &str = include_str!("paint/brush_fileiras.rs");
 const PAINT_MASK_TOOLS: &str = include_str!("paint/mask_tools.rs");
 const PAINT_TOOL: &str = include_str!("paint/tool.rs");
@@ -83,6 +84,7 @@ const PAINT_WIDGETS: &str = include_str!("paint/widgets.rs");
 const PINTORES: &[(&str, &str)] = &[
     ("body", PAINT_BODY),
     ("brush", PAINT_BRUSH),
+    ("brush_cor", PAINT_BRUSH_COR),
     ("brush_fileiras", PAINT_BRUSH_FILEIRAS),
     ("mask_tools", PAINT_MASK_TOOLS),
     ("tool", PAINT_TOOL),
@@ -173,6 +175,94 @@ const SOLTOS_COM_GATE_PROPRIO: &[(&str, &str)] = &[
     ),
 ];
 
+/// ⭐⭐⭐ **A TERCEIRA ESPÉCIE — a AMOSTRA DE COR**, que os dois censos acima
+/// acusam e sobre a qual os dois estão errados.
+///
+/// # O que ela é, e porque nenhum dos dois a descreve
+///
+/// Uma amostra de cor é pintada e hit-indexada como qualquer controlo, e **não
+/// é registada no `WidgetStore`** — o braço do `pointer_down` que a serve
+/// (*«any panel that paints a `ColorSwatch` and calls `register_picker_swatch`»*)
+/// **devolve antes** de o foco ser calculado, logo `is_focusable` nunca chega a
+/// ser perguntado. O que a torna viva é o `register_picker_swatch`, feito pelo
+/// PINTOR a cada quadro.
+///
+/// ⇒ o censo dos soltos lê-a como **MORTA** (*«pintada e não registada»*) e a
+/// catraca lê-a como **NOVA**, e as duas curas que eles prescrevem — registá-la
+/// como widget, ou escrever-lhe uma linha na catraca dos soltos — estariam
+/// **erradas**: a primeira poria um `InteractiveState` que nada lê, a segunda
+/// misturaria duas espécies numa lista cuja razão de existir é serem todas da
+/// mesma. *É a mesma família do `CLAUDE.md` §5.0 — o morto e o órfão leem-se
+/// iguais —, com um terceiro membro.*
+///
+/// # ⛔ A metade que impede esta lista de ser uma LICENÇA
+///
+/// Uma categoria nova é onde um defeito se esconde. As duas metades de
+/// [`toda_amostra_declarada_e_de_facto_registada_como_amostra`] fecham-na nos
+/// dois sentidos: tudo o que está aqui é **passado a `register_picker_swatch`**
+/// por um pintor, e tudo o que é passado a `register_picker_swatch` **está
+/// aqui**. Sem a primeira, escrever uma linha aqui calaria o censo sobre um
+/// controlo genuinamente morto; sem a segunda, uma amostra nova nasceria fora
+/// de todo censo.
+const SOLTOS_QUE_SAO_AMOSTRA_DE_COR: &[(&str, &str)] = &[
+    // A cor que o pincel deposita. Pintada em `paint/brush_cor.rs`, registada
+    // como amostra a cada quadro, e servida pelo `Down` genérico da fundação.
+    // Costura: `seam_cor::o_dedo_abre_o_selector_e_a_cor_escolhida_chega_ao_pincel`,
+    // que percorre a corrente inteira (pintar · clicar · escolher · publicar).
+    (
+        "SCULPT3D_COLOR_SWATCH",
+        "amostra de cor · seam: o_dedo_abre_o_selector_e_a_cor_escolhida_chega_ao_pincel",
+    ),
+];
+
+/// Os ids que um pintor passa a `register_picker_swatch` — a extracção que faz
+/// a lista acima ser **derivável** em vez de declarada.
+fn registados_como_amostra() -> std::collections::BTreeSet<&'static str> {
+    let mut achados = std::collections::BTreeSet::new();
+    for &(_, fonte) in PINTORES {
+        for linha in codigo(fonte) {
+            let Some((_, direita)) = linha.split_once("register_picker_swatch(crate::ids::") else {
+                continue;
+            };
+            let fim = direita
+                .find(|c: char| !(c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_'))
+                .unwrap_or(direita.len());
+            if fim > 1 {
+                achados.insert(&direita[..fim]);
+            }
+        }
+    }
+    achados
+}
+
+/// ⛔⛔⛔ **GATE — a lista das amostras é FECHADA sobre o que o pintor regista.**
+///
+/// As duas metades, porque as curas são opostas: uma linha sem registo é uma
+/// isenção a calar um controlo morto; um registo sem linha é uma amostra fora
+/// de todo censo.
+#[test]
+fn toda_amostra_declarada_e_de_facto_registada_como_amostra() {
+    let declaradas: std::collections::BTreeSet<&str> = SOLTOS_QUE_SAO_AMOSTRA_DE_COR
+        .iter()
+        .map(|&(n, _)| n)
+        .collect();
+    let registadas = registados_como_amostra();
+    assert!(
+        !registadas.is_empty(),
+        "a extraccao de `register_picker_swatch(crate::ids::NOME)` devolveu \
+         ZERO — ou a forma da chamada mudou, ou o pintor que a faz saiu da \
+         tabela `PINTORES`. Um censo por diferenca sobre um conjunto vazio e' \
+         trivialmente verde"
+    );
+    assert_eq!(
+        declaradas, registadas,
+        "a lista `SOLTOS_QUE_SAO_AMOSTRA_DE_COR` e o que o `paint/` de facto \
+         regista divergiram. ⛔ Uma linha SEM registo cala o censo dos soltos \
+         sobre um controlo morto; um registo SEM linha e' uma amostra que \
+         nenhum censo ve'"
+    );
+}
+
 /// Os `mod X;` declarados numa fonte.
 fn modulos(fonte: &'static str) -> std::collections::BTreeSet<&'static str> {
     codigo(fonte)
@@ -238,12 +328,21 @@ fn derivados_de_tabela() -> std::collections::BTreeSet<&'static str> {
 }
 
 /// **OS IDS SOLTOS PINTADOS** — o sujeito dos três gates abaixo.
+///
+/// ⚠️ **As AMOSTRAS DE COR saem daqui, e a exclusão é DERIVADA do código**
+/// (`registados_como_amostra`), nunca da lista que as declara: elas são a
+/// terceira espécie — pintadas, hit-indexadas, e vivas por
+/// `register_picker_swatch` em vez de por um `InteractiveState` — e as três
+/// afirmações abaixo são **falsas** sobre elas. Ver
+/// [`SOLTOS_QUE_SAO_AMOSTRA_DE_COR`], cujo gate fecha a lista nos dois sentidos
+/// para que esta exclusão não possa virar um buraco.
 fn soltos_pintados() -> std::collections::BTreeSet<&'static str> {
     let (soltos_declarados, _) = declaracoes();
     let cobertos = derivados_de_tabela();
+    let amostras = registados_como_amostra();
     pintados()
         .into_iter()
-        .filter(|n| soltos_declarados.contains(n) && !cobertos.contains(n))
+        .filter(|n| soltos_declarados.contains(n) && !cobertos.contains(n) && !amostras.contains(n))
         .collect()
 }
 

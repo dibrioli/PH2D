@@ -16,6 +16,7 @@ use ph2d_sculpt3d::{Alpha, Falloff, Verb};
 use ph2d_tokens::Spacing;
 
 use super::body::paint_one_row;
+use super::brush_cor;
 use super::brush_fileiras::{
     paint_boundary_rows, paint_cloth_rows, paint_plano_rows, paint_pose_rows, paint_project_rows,
     paint_smear_rows, paint_trim_rows,
@@ -71,7 +72,22 @@ pub(super) fn paint_brush_tail(
     w: f32,
     y: f32,
 ) -> f32 {
-    // ⭐⭐⭐ **AS FILEIRAS DA POSE VÊM PRIMEIRO, coladas aos knobs dela** — ordem
+    // ⭐⭐⭐ **A COR DO PINCEL VEM PRIMEIRO** — ordem do dono (2026-09-20:
+    // *«troque os sliders de cor pelo seletor de Cor (caixa de cor)»*).
+    //
+    // ⚠️ **O sítio é a MESMA lei que o bloco seguinte escreveu**, e ela chega
+    // aqui inteira: as três pistas de cor viviam no bloco de knobs, logo abaixo
+    // da força; a amostra não é uma `Row` e não cabe lá, e *o topo da cauda é o
+    // sítio imediatamente abaixo do último knob do pincel*. Ela desce **duas
+    // fileiras e meia** contra o que a cor ocupava, porque três linhas viraram
+    // uma.
+    //
+    // ⚠️ **A ORDEM entre as quatro primeiras é indiferente AO OLHO, e isso é
+    // medido:** os conjuntos de verbos são DISJUNTOS — quem deposita cor não
+    // oferece pose, nem projectar, nem contorno —, logo nenhum pincel vê duas
+    // delas ao mesmo tempo e nenhuma empurra a outra em nenhuma configuração.
+    let y = brush_cor::paint_cor_do_pincel(ctx, snap, x, w, y);
+    // ⭐⭐⭐ **AS FILEIRAS DA POSE VÊM A SEGUIR, coladas aos knobs dela** — ordem
     // do dono (2026-09-15: *«que os botões de deformation fiquem na seção
     // details junto com os outros parâmetros do pincel»*).
     //

@@ -23,6 +23,9 @@ use crate::{Sculpt3dPanel, rows};
 mod body;
 /// A cabeça e a cauda da seção do PINCEL — ver o doc do módulo.
 mod brush;
+/// ⭐⭐⭐ **A COR DO PINCEL É UMA CAIXA** — a amostra e o selector que ela abre;
+/// ver o cabeçalho dele.
+mod brush_cor;
 /// As fileiras próprias de cada pincel — ver [`brush_fileiras`].
 mod brush_fileiras;
 /// **O QUE SE FAZ COM UMA MÁSCARA PINTADA** — irmão do [`body`], cortado por
@@ -43,6 +46,11 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
     // ⭐ **UMA recusa, e não duas.** Só o artista cala este painel: fechado, ele limpa o rect e
     // sai — e é isso que faz o `panel_at` parar de o devolver no instante em que ele fecha.
     if !ctx.host.panel_visible(Sculpt3dPanel::ID) {
+        // ⚠️ **E o selector de cor fecha COM o painel** — ver
+        // [`brush_cor::fecha_um_selector_orfao`]. Sem isto, fechar o painel com
+        // ele aberto deixaria a janela a flutuar sobre o canvas a editar uma
+        // amostra que já ninguém pinta.
+        brush_cor::fecha_um_selector_orfao(ctx, false);
         ctx.host.store_mut().clear_panel_rect(ids::SCULPT3D_PANEL);
         return;
     }
@@ -54,6 +62,10 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
     // Inspector ao lado: `218` glifos no quadro (só o cromo de base) contra `269`, e nenhuma aba
     // para clicar de volta. ⇒ ele publica o rect e DIZ porquê está vazio.
     let Some(snapshot) = state::current() else {
+        // ⚠️ Sem cena não há pincel, logo não há amostra — a MESMA lei do ramo
+        // de cima, e as duas saídas precisam dela porque um selector aberto
+        // sobrevive a qualquer delas.
+        brush_cor::fecha_um_selector_orfao(ctx, false);
         let rect: Rect = ctx.slot;
         let theme = ctx.host.theme();
         ctx.host
@@ -120,6 +132,15 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
     ctx.scene.pop_layer();
+
+    // ⭐⭐⭐ **O SELECTOR SEGUE O SUJEITO** — ver
+    // [`brush_cor::fecha_um_selector_orfao`]. A pergunta é feita à MESMA porta
+    // que decide pintar a amostra, e não a uma lista de verbos ao lado: duas
+    // respostas divergiriam no dia do terceiro verbo que deposita cor.
+    //
+    // ⚠️ **Aqui e não dentro do pintor:** ele devolve cedo quando o verbo não
+    // deposita cor, logo o sítio onde a ausência é observável é FORA dele.
+    brush_cor::fecha_um_selector_orfao(ctx, snapshot.ui.brush.verb.deposita_a_cor_do_pincel());
 
     paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
 }

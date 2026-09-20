@@ -8,5 +8,6 @@
 
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod seam;
+mod seam_cor;
 mod the_armed_transform_is_shown;
 mod verb_slots;

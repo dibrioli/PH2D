@@ -132,54 +132,22 @@ pub(crate) static BRUSH: &[Row] = &[
         level: UiLevel::Basic,
         place: Place::Knobs,
     },
-    // ⭐⭐ **A COR DO PINCEL** — três pistas, logo abaixo da força, porque é ali
-    // que o artista está a olhar quando escolhe *quanto* e *de que cor*.
+    // ⭐⭐⭐ **A COR DO PINCEL NÃO É UMA `Row`, e SAIU desta tabela em 2026-09-20**
+    // (ordem do dono: *«troque os sliders de cor pelo seletor de Cor (caixa de
+    // cor)»*) — ela é a AMOSTRA de [`crate::paint::brush_cor`].
     //
-    // ⚠️ **`Basic` de propósito:** um pincel de pintura cuja cor vive num nível
-    // avançado deposita, na configuração de fábrica, uma cor só — e o dono
-    // reportaria exactamente isso.
-    Row {
-        label: "panel.sculpt3d.color_r",
-        slider: crate::ids::SCULPT3D_COLOR_R,
-        chip: crate::ids::SCULPT3D_COLOR_R_NUM,
-        min: 0.0,
-        max: 1.0,
-        step: 0.05, // LITERAL-PX-OK: passo de um canal de cor, não métrica de layout
-        decimals: 2,
-        get: |u| u.brush.color[0],
-        set: |u, v| u.brush.color[0] = v,
-        show: |u| u.brush.verb.deposita_a_cor_do_pincel(),
-        level: UiLevel::Basic,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.color_g",
-        slider: crate::ids::SCULPT3D_COLOR_G,
-        chip: crate::ids::SCULPT3D_COLOR_G_NUM,
-        min: 0.0,
-        max: 1.0,
-        step: 0.05, // LITERAL-PX-OK: passo de um canal de cor, não métrica de layout
-        decimals: 2,
-        get: |u| u.brush.color[1],
-        set: |u, v| u.brush.color[1] = v,
-        show: |u| u.brush.verb.deposita_a_cor_do_pincel(),
-        level: UiLevel::Basic,
-        place: Place::Knobs,
-    },
-    Row {
-        label: "panel.sculpt3d.color_b",
-        slider: crate::ids::SCULPT3D_COLOR_B,
-        chip: crate::ids::SCULPT3D_COLOR_B_NUM,
-        min: 0.0,
-        max: 1.0,
-        step: 0.05, // LITERAL-PX-OK: passo de um canal de cor, não métrica de layout
-        decimals: 2,
-        get: |u| u.brush.color[2],
-        set: |u, v| u.brush.color[2] = v,
-        show: |u| u.brush.verb.deposita_a_cor_do_pincel(),
-        level: UiLevel::Basic,
-        place: Place::Knobs,
-    },
+    // ⚠️ **Ela não podia continuar aqui, e a razão é estrutural:** uma [`Row`] é
+    // UM número sobre uma faixa (`min`/`max`/`step`/`decimals`/`track_of`, e um
+    // `get`/`set` que devolvem `f32`), e uma cor são TRÊS. Mantê-la na tabela
+    // com um campo novo daria seis campos inertes por linha de cor, e o
+    // [`crate::populate`] registaria um `Slider` mais um `NumberInput` que
+    // pintor nenhum desenha — *ids órfãos, que é a metade do censo cuja cura é
+    // APAGAR*.
+    //
+    // ⚠️ **O preço de sair da tabela está pago:** o que ela perde são as três
+    // listas que a travessia dá de graça (registo, despacho, costura), e cada
+    // uma foi reposta à mão com o gate que a prende — ver o censo dos ids
+    // soltos, que ganhou a categoria da AMOSTRA no mesmo commit.
     // **A DUREZA** — logo abaixo da força, que é onde o Blender a põe, e não por
     // costume: as duas moldam o MESMO peso em eixos ortogonais (a força diz
     // *quanto*, a dureza diz *até onde o cheio vai antes de a curva começar*), e

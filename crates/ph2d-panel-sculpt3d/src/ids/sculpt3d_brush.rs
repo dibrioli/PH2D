@@ -43,29 +43,41 @@ pub const SCULPT3D_STRENGTH: NodeId = hash_node_id("sculpt3d.strength");
 /// Chip ligado a [`SCULPT3D_STRENGTH`].
 pub const SCULPT3D_STRENGTH_NUM: NodeId = hash_node_id("sculpt3d.strength_num");
 
-/// **A COR QUE O PINCEL DEPOSITA** — três pistas, uma por canal.
+/// ⭐⭐⭐ **A COR QUE O PINCEL DEPOSITA — UMA AMOSTRA, não três pistas** (ordem
+/// do dono, 2026-09-20: *«troque os sliders de cor pelo seletor de Cor (caixa
+/// de cor)»*).
 ///
-/// ⛔⛔ **TRÊS pistas e não um selector de cor, e a dívida é DECLARADA:** esta
-/// casa tem editores ricos de cor ([`ph2d-param-editors`]), e hospedá-los aqui
-/// é uma janela flutuante sobre o painel — substrato que este painel não tem e
-/// que é wave própria. O que esta wave entrega é a capacidade **alcançável e
-/// gateada**: sem ela o pincel deposita para sempre a cor de fábrica da
-/// referência, que é um pincel de pintura com uma cor só.
+/// # ⛔⛔⛔ A dívida que estava declarada aqui tinha a PREMISSA ERRADA
 ///
-/// ⚠️ **Elas só existem com o [`ph2d_sculpt3d::Verb::Paint`] em mãos** — os dois
-/// verbos que leem o ANEL puxam a cor da vizinhança e não olham para este
+/// A redacção anterior escrevia, ao lado dos três ids de canal, que um selector
+/// rico *«é uma janela flutuante sobre o painel — substrato que este painel não
+/// tem e que é wave própria»*. **Medido em 2026-09-20: é falso, e era falso no
+/// dia em que foi escrito.** O selector de cor desta casa é **UM**, ele **já**
+/// flutua sobre o canvas, e um painel entra nele por **duas linhas** — registar
+/// o id como amostra ([`ph2d_editor_core::interaction::WidgetStore::register_picker_swatch`])
+/// e manter a `widget_color` dela em dia. O braço que abre o selector no
+/// `pointer_down` diz de si mesmo, por escrito, que foi **generalizado** de um
+/// caso particular do Painter para *«any panel that paints a `ColorSwatch`»*.
+///
+/// ⚠️ Não é a §0.0 (*quem move o número que tornava algo inalcançável reconfere
+/// a nota*): **ninguém teve de mover número nenhum**, a capacidade já estava do
+/// outro lado quando a nota nasceu. *Uma ausência afirmada sem olhar a API é um
+/// palpite com cara de medição* — a terceira vez que este repo a paga.
+///
+/// # ⚠️ Ela só existe com um verbo que DEPOSITA cor em mãos
+///
+/// [`ph2d_sculpt3d::Verb::deposita_a_cor_do_pincel`]: os dois verbos que leem o
+/// ANEL (`Blur`, `Smear Color`) puxam a cor da vizinhança e não olham para este
 /// campo.
-pub const SCULPT3D_COLOR_R: NodeId = hash_node_id("sculpt3d.color_r");
-/// Chip ligado a [`SCULPT3D_COLOR_R`].
-pub const SCULPT3D_COLOR_R_NUM: NodeId = hash_node_id("sculpt3d.color_r_num");
-/// Ver [`SCULPT3D_COLOR_R`].
-pub const SCULPT3D_COLOR_G: NodeId = hash_node_id("sculpt3d.color_g");
-/// Chip ligado a [`SCULPT3D_COLOR_G`].
-pub const SCULPT3D_COLOR_G_NUM: NodeId = hash_node_id("sculpt3d.color_g_num");
-/// Ver [`SCULPT3D_COLOR_R`].
-pub const SCULPT3D_COLOR_B: NodeId = hash_node_id("sculpt3d.color_b");
-/// Chip ligado a [`SCULPT3D_COLOR_B`].
-pub const SCULPT3D_COLOR_B_NUM: NodeId = hash_node_id("sculpt3d.color_b_num");
+///
+/// # ⚠️ É um id SOLTO e de uma espécie que o censo não conhecia
+///
+/// Ele não é registado no [`crate::populate`] como um widget — o braço do
+/// `pointer_down` que o serve **devolve antes** de o foco ser calculado, logo
+/// `is_focusable` nunca é perguntado. O que o torna vivo é o
+/// `register_picker_swatch`, feito pelo PINTOR a cada quadro. Ver a terceira
+/// categoria do censo dos soltos.
+pub const SCULPT3D_COLOR_SWATCH: NodeId = hash_node_id("sculpt3d.color_swatch");
 
 /// Deslocamento do plano, em fração do raio (só os verbos de plano o leem).
 pub const SCULPT3D_PLANE_OFFSET: NodeId = hash_node_id("sculpt3d.plane_offset");

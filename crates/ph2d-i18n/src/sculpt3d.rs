@@ -35,9 +35,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.surface_only" => "Connected Only",
         "panel.sculpt3d.puxa_pela_normal" => "Pull Along Normal",
         "panel.sculpt3d.strength" => "Strength",
-        "panel.sculpt3d.color_r" => "Color R",
-        "panel.sculpt3d.color_g" => "Color G",
-        "panel.sculpt3d.color_b" => "Color B",
+        // ⭐ **UMA chave, e ela substitui TRÊS** — o `Color R`/`G`/`B` saiu em
+        // 2026-09-20 com as pistas que os pintava (ordem do dono: *«troque os
+        // sliders de cor pelo seletor de Cor (caixa de cor)»*). O rótulo é o
+        // que a amostra diz de si ao leitor de ecrã, e o que o roteiro da cena
+        // `=51` nomeia.
+        "panel.sculpt3d.color" => "Color",
         "panel.sculpt3d.falloff" => "Falloff",
         // ⭐⭐⭐ **A RAZÃO À VISTA** — a fileira da curva é a única que o painel do
         // sculpt pinta SEMPRE (cerca de produto medida e gateada), e três

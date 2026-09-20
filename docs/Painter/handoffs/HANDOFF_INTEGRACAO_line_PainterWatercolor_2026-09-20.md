@@ -335,3 +335,57 @@ própria vassoura guarda as entradas em base64, e vale igual para o documento qu
 
 ⚠️ Esta linha **não tem parede**: o oráculo dela é a `libmypaint` (**ISC**, porta aberta pelo §0.9),
 e nada aqui foi escrito a partir de fonte restrito.
+
+---
+
+## §14 — O SMOKE do item 4 REPROVOU a fileira, e eram TRÊS defeitos numa edição de quatro linhas
+
+> Report do dono (2026-09-20, com foto): *«label embolada e valor não sai de 0»*.
+
+A LEI do item 4 estava certa — os quatro gates e as seis mutações do §12 medem-na, e nenhum deles
+toca no painel. O que reprovou foi a **fileira**, e ela tinha três defeitos independentes:
+
+| # | defeito | o que o dono vê |
+|---|---|---|
+| 1 | `card_frame(…, 3)` com **4** linhas dentro | a 4.ª linha é desenhada **FORA** da moldura |
+| 2 | a linha do `Pull` fazia `let _ = card_row(…)` | `Pull` e `Self Pickup` no **MESMO `y`** — a «label embolada» |
+| 3 | o id nunca entrou em `PAINTER_WATERCOLOR_FIELDS` | o `ValueChanged` **morre no painel** ⇒ *«o valor não sai de 0»* |
+
+⭐ **O (2) é a armadilha do idioma:** o `y` de retorno de uma `card_row` é o `y` da linha SEGUINTE, e
+deitá-lo fora (`let _ =`) só é honesto na **ÚLTIMA**. O `Pull` era a última quando foi escrito, e
+ganhar uma vizinha transformou uma linha correcta num defeito **sem que ela fosse tocada**.
+
+⛔⛔ **O (3) tinha um gate a apontar-lhe e ele estava VERDE por construção:** o
+`seam::watercolor_sliders_forward_setvalue` itera o próprio `PAINTER_WATERCOLOR_FIELDS` — *um censo
+que varre a lista que esqueceu o membro não pode ver o membro que falta*. ⇒ o instrumento novo é
+**DERIVADO DA TELA**: pinta o painel no meio `Watercolor` e no `Digital`, e a população é a
+**diferença** — *o que a secção ACRESCENTA ao ecrã*, que ninguém tem de se lembrar de estender.
+
+⚠️ **E o (1) não move um único retângulo de hit**, logo nenhum gate de costura o alcança: o censo
+dele lê o FONTE dos dois ficheiros que declaram cartões e compara o `n_rows` com as chamadas
+`…_row(` do mesmo corpo. ⚠️ A classificação é **derivada** — um cartão que DELEGA as linhas a um
+irmão (`…_rows(`, plural) é detectado pela CHAMADA e saltado, com **piso nos dois lados** para o
+classificador não colapsar. ⚠️⚠️ E a 1.ª redacção dele acusou **três cartões correctos**, porque
+contava só `card_row(`: *uma `card_row` não é a única espécie de linha de um cartão* (há botões,
+caixas e dropdowns, cada um a ocupar uma fileira).
+
+⚠️ **O gesto do gate é a EDIÇÃO do número, nunca um arrasto** — medido nos irmãos que shipam há
+meses (`Dilution`, `Pull`): um `drag_at` sobre um chip deste painel produz cinco eventos e autora
+**ZERO**, porque um chip é um `NumberInput` e não um `Slider`. *Escolher o gesto errado daria um
+gate vermelho sobre produto certo nas três linhas, o que se lê como defeito de lei.*
+
+**Prova de mutação: 5 de 5 sangram**, cada uma no gate que lhe corresponde, com o arnês a **contar
+os testes que de facto correram** (`4`) e controlo verde nas duas pontas:
+
+| mutação | sangra em |
+|---|---|
+| o cartão volta a declarar `3` | o censo dos cartões |
+| o `Pull` volta a `let _ =` | a sobreposição **e** a linha própria |
+| o id sai de `…_FIELDS` | o censo derivado **e** a edição que chega |
+| o `is_param_field` larga a família | os dois acima |
+| **CONTROLO:** tudo lido como delegado | o censo (piso de população) |
+
+**Superfície:** `PROJECT_SCHEMA` **0** · contratos **0** · shell **0** · pacotes **0**. Três
+ficheiros de produto (`paint_watercolor.rs`, `ids/painter_watercolor.rs`) e um de teste novo
+(`tests/it/seam_watercolor_cards.rs`). Portão: `nextest-impacted` **18 067/18 067**, clippy
+`-D warnings` a zero.

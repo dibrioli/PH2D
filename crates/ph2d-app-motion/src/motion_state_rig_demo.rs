@@ -94,22 +94,20 @@ const CENA_Y: f32 = -0.9;
 const CORDA_PONTOS: f32 = 20.0;
 /// O comprimento em unidades de mundo — a corda pendurada tem de caber no pano.
 const CORDA_COMPRIMENTO: f32 = 1.9;
-/// O semi-eixo de uma CONTA da corda — **derivado do espaçamento, não escolhido**.
+/// ⭐⭐⭐ **A PEÇA JUSTA: uma cadeia de rig já não escolhe o tamanho da peça — ela HERDA-O**
+/// (ordem do dono, 2026-09-20: *«DEVE SIM»*).
 ///
-/// ⛔⛔ **Ele valia `0,13` enquanto uma posição se desenhava como uma marca, e a forma mudou a
-/// unidade:** a receita do `source.shape` corta a peça de uma caixa de largura `2 × size`, logo o
-/// mesmo número passou a pintar um disco de `0,26` sobre um espaçamento de
-/// `CORDA_COMPRIMENTO / (CORDA_PONTOS − 1) = 0,1` — **`2,6×` de sobreposição**, e a foto mostrava
-/// uma BARRA BRANCA CONTÍNUA onde a legenda promete vinte pontos presos uns aos outros.
+/// Desde que o [`ph2d_node_rig_bones::veste`] escreve o `size` de cada osso a partir do `len`
+/// dele, o `amount` do `motion.scale` que vem a seguir **multiplica** essa base — ou seja, deixou
+/// de ser um comprimento e passou a ser uma **RAZÃO**: `1` é a peça a ir exactamente de uma junta
+/// à seguinte, `0,9` deixa folga entre as peças, `0,5` devolve as contas soltas.
 ///
-/// ⭐ Com `0,05` o disco mede exactamente o vão: as contas encostam em repouso, **separam-se onde
-/// a corda estica e apertam onde ela encolhe** — que é a coisa que este pano existe para mostrar.
-/// ⚠️ *Nenhum gate desta cena via isto: eles leem `P` e `size`, e os dois estavam certos.*
-///
-/// ⛔⛔⛔ **E ele era um LITERAL com esta doc a chamar-lhe «derivado»** (2026-09-20): mexer nos
-/// dois números acima deixava a peça para trás **em silêncio** (tabela no `diag_a_peca_contra_o_
-/// vao`). Escrito como a divisão que a doc já descrevia, é **byte-idêntico** (`0x3d4ccccd`).
-const CORDA_PECA: f32 = CORDA_COMPRIMENTO / (CORDA_PONTOS - 1.0) / 2.0;
+/// ⛔⛔ **Ele substitui DOIS números que eram a mesma lei feita à mão** — o semi-eixo da conta da
+/// corda (`CORDA_COMPRIMENTO / (CORDA_PONTOS − 1) / 2`) e o do osso (`OSSO_LEN / 2`). Os dois
+/// batiam **só no ponto de fábrica**: mexer num knob do painel deixava a peça para trás em
+/// silêncio, de `0,47×` a `2,25×` do vão (a tabela está no doc do `veste`). *Uma lei escrita à mão
+/// em dois sítios é a lei que o produto não tem.*
+const PECA_JUSTA: f32 = 1.0;
 /// A porta `state` da corda. ⚠️ **Contada no manifesto** (`anchor_x` · `anchor_y` · `state`),
 /// nunca adivinhada: um índice errado liga o laço a um ANCORADOURO e a corda voa.
 const CORDA_PORTA_ESTADO: u16 = 2;
@@ -139,14 +137,6 @@ const OSSO_RAIZ: f32 = 90.0;
 /// Quanto cada junta dobra, em graus, no pano do FK. A rampa multiplica-o, logo a dobra CRESCE ao
 /// longo da cadeia — é isso que mostra que o ângulo é **por junta**.
 const FK_DOBRA: f32 = 40.0;
-/// O semi-eixo da peça de OSSO, e ele é **derivado e não escolhido**.
-///
-/// ⛔⛔ A receita do `source.shape` corta toda forma de uma caixa de **largura `2 × size`**, logo
-/// a peça mede `2 × OSSO_PECA` de comprimento. Com `OSSO_LEN / 2` ela vai **exactamente** de uma
-/// junta à seguinte: a cadeia ladrilha. Com o vão inteiro cada osso mediria o DOBRO do vão e a
-/// corrente saía como uma massa contínua em que não se distingue peça nenhuma — o defeito que a
-/// foto da cena irmã `=125` já pagou.
-const OSSO_PECA: f32 = OSSO_LEN / 2.0;
 /// ⭐⭐ **A ESBELTEZA do osso, DERIVADA da própria silhueta:** o `aspect` multiplica o semi-eixo
 /// `y`, logo a altura é `2 × aspect × size` e o comprimento é `2 × size` ⇒ **`1/3` é, à letra,
 /// «três vezes mais comprido do que largo»**. ⛔ Sem ele o valor de fábrica (`1`) faz da peça um
@@ -538,17 +528,17 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         // o quadro de cada osso quando a corrente não o traz. *Os dois eram factos que o produto
         // já tinha e não dizia.*
         //
-        // ⚠️ **O `CORDA_PECA` não muda de número e muda de PAPEL:** ele era o semi-eixo de uma
-        // conta e é agora o do segmento — e ele já valia metade do vão, logo a peça, cortada de
-        // `[0, 2s]` como todo símbolo de rig, vai **exactamente** de um ponto ao seguinte. A
-        // cadeia ladrilha e a corda lê-se como um cordão com um nó em cada junta.
+        // ⚠️⚠️ **E o tamanho da peça DEIXOU DE SER ESCRITO AQUI** (ordem do dono, 2026-09-20):
+        // ele era o semi-eixo de uma conta, passou a ser o do segmento, e era nos dois casos a
+        // mesma divisão feita à mão — *que batia só no ponto de fábrica*. Hoje o `rig.bones`
+        // escreve-o do `len` de cada osso e o que fica aqui é a RAZÃO ([`PECA_JUSTA`]).
         let ossos = ossos_de(doc, c, y)?;
         // ⚠️ A corda PENDURA-SE, logo o pano dela sobe: centrada, metade dela sairia por baixo.
         sinks.push(pousa(
             doc,
             ossos,
             cordao,
-            CORDA_PECA,
+            PECA_JUSTA,
             [-COL_X, fileira_y(0) + 0.9],
             y,
         )?);
@@ -593,7 +583,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
             doc,
             b,
             osso,
-            OSSO_PECA,
+            PECA_JUSTA,
             [-COL_X, fileira_y(1) - 0.9],
             y,
         )?);
@@ -635,7 +625,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
             doc,
             b,
             osso,
-            OSSO_PECA,
+            PECA_JUSTA,
             [COL_X, fileira_y(1) - 0.9],
             y,
         )?);

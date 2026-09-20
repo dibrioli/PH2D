@@ -9,6 +9,10 @@
 > ⛔ a **W1 foi REFUTADA por medição** (§3.1) e a wave da força de constraint **dissolveu** na
 > coluna que já existia (§7-W2). ⇒ o ciclo aberto passa a ser o **10**
 > ([doc 116](116_ciclo_10_o_carimbo_no_dispositivo.md)).
+>
+> ⭐ **E a §16 fechou o 1.º item da §15.2 por ordem do dono (*«DEVE SIM»*):** uma peça de rig
+> **veste o osso** — o `size` de cada elemento sai do `len` dele, e o que o artista escreve na
+> forma passa a ser uma RAZÃO.
 
 ---
 
@@ -1201,11 +1205,8 @@ um painel, arrumar um grafo, ler uma corda de perto).
 
 Nada disto bloqueia o ciclo 10; está aqui para não se perder.
 
-- ⭐ **A peça VESTIR o osso** — hoje o comprimento desenhado de uma peça de rig sai da FORMA e o
-  verdadeiro é a coluna `len`, e nada os liga (`5d4fbb90a` mediu a quebra: `0,47×` a `2,25×`
-  conforme o knob). Derivar o `size` por elemento a partir do `len` faria a corda ler-se como uma
-  corda em qualquer `Count` — **ao preço de o `size` deixar de ser o que o artista escreveu na
-  forma**. É **decisão do dono**, com a tabela em `5d4fbb90a`.
+- ✅ **A peça VESTIR o osso — FECHADO, por ordem do dono (2026-09-20: *«DEVE SIM»*).** A §16
+  tem o mecanismo, a tabela do antes/depois e o preço aceite.
 - ⏳ **O `Shape: Rope Segment` não tem um único consumidor** (§10 e o commit `71b14b423`): ele é uma
   forma ORIENTADA e a `motion.verlet_rope` não publica `rot`. Quem o quiser precisa de um nó que
   escreva o ângulo da direcção **ao vizinho seguinte** — o `rig.bones` exige `parent`/`len`/`rot` e
@@ -1214,3 +1215,71 @@ Nada disto bloqueia o ciclo 10; está aqui para não se perder.
   `motion.boids` ([doc 91](91_os_tetos_que_ninguem_mediu.md)).
 - ⏳ **A ALÇA no canvas** (P0 da folha 16) fica fora da lista por ser **UI e não param** — um gesto
   de canvas novo neste módulo compete com a selecção, e a decisão é de produto (§5).
+
+---
+
+## §16 — ⭐⭐⭐ A PEÇA VESTE O OSSO (ordem do dono, 2026-09-20: *«DEVE SIM»*)
+
+Perguntado se *«uma peça de osso deve ajustar-se sozinha ao tamanho do osso»*, o dono respondeu
+**DEVE SIM** — e com isso o item que a §15.2 deixou aberto fecha.
+
+### §16.1 — A lei, e onde ela mora
+
+O [`ph2d_node_rig_bones::veste`](../../crates/ph2d-node-rig-bones/src/lib.rs) escreve, depois de
+derivar o quadro de cada osso, **`size = [len/2, len/2]`** por elemento. O `½` **não é escolhido**:
+é o contrato da receita do `source.shape`, que constrói toda forma numa caixa de **largura
+`2 × size`** e deixa a escala para a instância ⇒ `2 × len/2 = len`, o osso exacto.
+
+⚠️ **A lei é dos OSSOS e não de todo carimbo.** O nó é a identidade num stream que não é um rig
+(sem `parent` não há osso), logo ele **não inventa** um `size` — sem essa metade, a peça de um
+`motion.grid` mudava de tamanho em silêncio. É o CONTROLO do gate da crate.
+
+### §16.2 — A tabela, medida pela porta do produto
+
+A sonda `diag_a_peca_contra_o_vao` (cena `=120`, os `TIQUES` de queda na corda) media a quebra
+célula a célula; hoje as **sete** leem `1,00×`:
+
+| knob do painel | vão | desenhado ANTES | razão ANTES | desenhado HOJE | razão HOJE |
+|---|---|---|---|---|---|
+| `Count = 10`   | `0,21201` | `0,10000` | **`0,47×`** | `0,21201` | `1,00×` |
+| `Count = 20`   | `0,10252` | `0,10000` | `0,98×` | `0,10252` | `1,00×` |
+| `Count = 30`   | `0,06944` | `0,10000` | `1,44×` | `0,06944` | `1,00×` |
+| `Count = 40`   | `0,05393` | `0,10000` | **`1,85×`** | `0,05393` | `1,00×` |
+| `Length = 0,2` | `0,20000` | `0,45000` | **`2,25×`** | `0,20000` | `1,00×` |
+| `Length = 0,45`| `0,45000` | `0,45000` | `1,00×` | `0,45000` | `1,00×` |
+| `Length = 0,9` | `0,90000` | `0,45000` | **`0,50×`** | `0,90000` | `1,00×` |
+
+⭐ **A barra do gate desceu de `0,05` para `1e-5`, e a premissa do número antigo MORREU à vista no
+diff:** ele tolerava o esticão do solver (*«às `TIQUES` de queda o pior segmento estica 2,52 %»*),
+que era um erro enquanto o comprimento da peça fosse um número escrito à mão. O `len` sai das
+**mesmas posições** de que o vão é medido ⇒ a peça já não se afasta do vão: **ela segue-o**, e a
+barra passa a medir só uma divisão e uma multiplicação por dois.
+
+### §16.3 — ⚠️ O PREÇO, aceite e nomeado
+
+O `size` deixa de ser o que o artista escreveu na forma — e o que ele escreve passa a ser uma
+**RAZÃO**: o `amount` do `motion.scale` multiplica a base que a lei dá (`1` = justo · `0,9` =
+folga · `0,5` = contas soltas). ⇒ **a espessura da corda passa a seguir o `Count`**: a `40` a peça
+mede `0,05393` contra `0,10252` a `20`, **`1,90×` mais fina**. Antes era um número fixo, e era
+por isso que a corda se lia como um rosário fora do `Count` em que foi afinada.
+
+### §16.4 — ⛔ A cena `=125` tinha uma SEGUNDA CÓPIA da lei
+
+Ela declarava `const TAMANHO: f32 = OSSO / 2.0` com o `½` do contrato explicado em prosa ao lado —
+**a mesma conta**, escrita à mão. Ela acertava por os ossos daquela cadeia terem todos o mesmo
+`length`, e ficava para trás no dia em que um deles não tivesse. Hoje a forma não escolhe tamanho
+nenhum (o `size` de fábrica dela é `1`) e o `point_scale = 1` deixa a corrente decidir — a saída é
+a MESMA (`2 × size = OSSO`, gateado), e é isso que torna a troca honesta.
+
+⚠️ **E o cabeçalho dos gates daquela cena declarava uma LEI DO ARNÊS que não existe** (*«o que
+passa por um `source.shape` coze `n = 0` headless»*): a cena irmã já tinha achado a porta, e ela é
+**uma linha** — o `motion_shape_gen::publish`. Com ela o que a peça DESENHA é medível ali.
+
+### §16.5 — Provas
+
+`veste` na crate do nó (com o controlo da nuvem) · `a_peca_veste_o_osso_em_todo_o_curso_dos_knobs`
+na `=120` (as sete células + os dois eixos + o controlo do pano do CAMPO, que não passa por
+`rig.bones` e lê `3,9×`) · `a_peca_desta_cena_veste_o_osso` na `=125`.
+**Mutação: 6 de 6 sangram**, com os dois controlos verdes — e as duas últimas são a FIAÇÃO
+(*a lei não existe* · *a lei existe e não CHEGA*, porque o valor de fábrica do duplicador deita a
+escala do ponto fora).

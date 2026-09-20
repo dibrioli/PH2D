@@ -51,19 +51,6 @@ const OSSO: f32 = 0.6;
 /// seguinte, e pouco para ela não se cruzar consigo mesma.
 const CURVA: f32 = 14.0;
 
-/// O tamanho do osso — **METADE do vão, porque o `size` é o SEMI-eixo**.
-///
-/// ⛔⛔ **A primeira redacção usou o vão inteiro e a foto mostrou porquê:** a receita do
-/// `source.shape` corta toda forma de uma caixa de LARGURA `2 × size`, logo o comprimento
-/// desenhado é `2 × size`. Com `size = OSSO` cada osso media o DOBRO do vão entre duas juntas, e a
-/// cadeia saía como uma massa branca contínua em que não se distinguia peça nenhuma — *e muito
-/// menos para que lado cada uma aponta*, que é o que a cena existe para mostrar.
-///
-/// ⭐ **E desde o 2.º report do dono (19/09) o osso pendura-se na CABEÇA** (a caixa dele é
-/// `[0, 2s]` e não `[−s, s]`), logo com este número cada peça vai **exactamente** da junta em que
-/// está à seguinte — a cadeia ladrilha, em vez de cada osso montar metade do vizinho.
-const TAMANHO: f32 = OSSO / 2.0;
-
 /// ⭐⭐ **A ESBELTEZA do osso, e ela é DERIVADA da própria silhueta.**
 ///
 /// O `aspect` multiplica o semi-eixo `y` da caixa, logo a altura do osso é `2 × aspect × size` e
@@ -211,11 +198,25 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         })
         .ok()?;
         corpo = ossos;
+        // ⭐⭐⭐ **A FORMA NÃO ESCOLHE O TAMANHO — o OSSO é que o dá** (ordem do dono, 2026-09-20:
+        // *«uma peça de osso deve ajustar-se sozinha ao tamanho do osso? DEVE SIM»*).
+        //
+        // ⛔⛔ Aqui viveu uma `const TAMANHO = OSSO / 2.0` com o `½` do contrato da receita
+        // explicado em prosa ao lado — **a mesma conta que o [`ph2d_node_rig_bones::veste`] passou
+        // a fazer por elemento**, escrita uma segunda vez. Ela acertava por os ossos desta cadeia
+        // terem todos o mesmo `length`, e ficava para trás no dia em que um deles não tivesse.
+        //
+        // ⚠️ **O `size` de fábrica da forma é `1`** (a receita constrói em raio 1 e deixa a escala
+        // para a instância), logo o que a peça mede é `2 × (1 × len/2) = len` — o osso, exacto e
+        // por elemento. O gate [`tests::a_peca_desta_cena_veste_o_osso`] mede-o pelo produto.
         let forma = no(g, "source.shape", 0.0, y + 120.0);
         g.set_param(forma, ph2d_node_motion_shape::param::KIND, osso);
-        g.set_param(forma, ph2d_node_motion_shape::param::SIZE, TAMANHO);
         g.set_param(forma, ph2d_node_motion_shape::param::ASPECT, ESBELTEZA);
         let dup = no(g, "motion.duplicator", 380.0, y);
+        // ⚠️ **Sem esta linha a lei acima não CHEGA:** o valor de fábrica do duplicador é `0` —
+        // *«a forma vence e a escala do ponto é deitada fora»* —, e a peça sairia no tamanho de
+        // fábrica da forma (`2,0`, três ossos e meio de comprimento).
+        g.set_param(dup, "point_scale", 1.0);
         // ⚠️ A forma na porta `0`, os pontos na `1` — a ordem do manifesto do duplicador.
         for (de, porta) in [(forma, 0u16), (corpo, 1)] {
             g.connect(Edge {

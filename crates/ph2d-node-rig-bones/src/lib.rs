@@ -55,6 +55,11 @@
 //!    knob como o `reindex` do `motion.cull`: ali o artista escolhe entre manter a cor de cada
 //!    peça e re-numerar; aqui a mudança de população é **estrutural** e nunca opcional.
 //!
+//! 4. ⭐⭐⭐ **A peça VESTE o osso** (ordem do dono, 2026-09-20): ele escreve o `size` de cada
+//!    elemento a partir do `len` dele, e é isso que faz uma corrente desenhar-se como UMA coisa em
+//!    qualquer posição do knob. A lei, a medição do defeito que ela cura e a troca que ela paga
+//!    estão em [`veste`].
+//!
 //! ⚠️ **Numa corrente que NÃO é um rig ele é a identidade** (doc 39): sem coluna `parent` não há
 //! árvore, e o stream sai como entrou — ⛔ e não vazio, que é o que uma leitura ingénua de
 //! *«sem pais ⇒ sem ossos»* entregaria a quem largar este nó sobre um `motion.grid`.
@@ -101,6 +106,8 @@ const LROT: &str = "lrot";
 const WROT: &str = "wrot";
 const INDEX: &str = "Index";
 const COUNT: &str = "Count";
+/// A coluna que decide o TAMANHO desenhado de cada elemento — ver [`veste`].
+const SIZE: &str = "size";
 
 /// **O quadro de cada osso.** Ver o cabeçalho do módulo para a lei e para a medição.
 #[must_use]
@@ -153,6 +160,8 @@ pub fn bones(input: &Stream) -> Stream {
     // erro de vírgula flutuante em toda a família, para não mudar resposta nenhuma. *Onde a
     // corrente responde, a resposta dela ganha.*
     derive_frame(&mut out, input, &ossos, &pos);
+    // ⭐⭐⭐ **A PEÇA VESTE O OSSO** (ordem do dono, 2026-09-20) — ver [`veste`].
+    veste(&mut out);
     // Ver a decisão (3) do cabeçalho.
     #[expect(
         clippy::cast_precision_loss,
@@ -231,6 +240,64 @@ fn derive_frame(out: &mut Stream, input: &Stream, ossos: &[(usize, usize)], pos:
             ),
         );
     }
+}
+
+/// ⭐⭐⭐ **A PEÇA VESTE O OSSO** — ordem do dono (2026-09-20): perguntado se *«uma peça de osso
+/// deve ajustar-se sozinha ao tamanho do osso»*, ele respondeu **«DEVE SIM»**.
+///
+/// ⛔⛔⛔ **O defeito que ela cura, medido pela porta do produto** (`diag_a_peca_contra_o_vao`,
+/// na cena `=120`): o comprimento **DESENHADO** de uma peça de rig era um número da FORMA e o
+/// comprimento **VERDADEIRO** é a coluna `len` desta corrente — *e nada os ligava*. Mexer num knob
+/// do painel deixava a peça para trás, em silêncio:
+///
+/// | knob | vão | desenhado | razão | o que se via |
+/// |---|---|---|---|---|
+/// | `Count = 10` | `0,21201` | `0,10000` | **`0,47×`** | um rosário, com buracos entre as contas |
+/// | `Count = 20` | `0,10252` | `0,10000` | `0,98×` | o cordão que o dono aprovou |
+/// | `Count = 40` | `0,05393` | `0,10000` | **`1,85×`** | uma barra contínua |
+/// | `Length = 0,2` | `0,20000` | `0,45000` | **`2,25×`** | o mesmo, na fileira dos ossos |
+/// | `Length = 0,9` | `0,90000` | `0,45000` | **`0,50×`** | ossos soltos, um vão de cada dois vazio |
+///
+/// ⚠️ **Nenhum gate o via, e a razão é a lente:** eles leem `P`, `rot` e `size`, e os três estavam
+/// certos. O que nenhum lia era a **RELAÇÃO** entre o `size` e o vão.
+///
+/// ## A lei, e de onde sai o meio
+///
+/// `size = [len/2, len/2]`. O **½** não é um gosto: é o contrato da receita do `source.shape` —
+/// *toda forma é cortada de uma caixa de largura `2 × size`*, e um símbolo de rig é cortado de
+/// `[0, 2s]` com a origem na **CABEÇA**. Logo `size = len/2` põe a ponta da peça exactamente na
+/// junta seguinte, que é a frase inteira.
+///
+/// ⭐⭐ **Os DOIS componentes, e a prova é que ela reproduz o desenho APROVADO.** Na cena `=120` o
+/// osso era `motion.scale(OSSO_LEN / 2)` **uniforme** ⇒ `size = [0,225, 0,225]`; esta lei, com
+/// `len = 0,45`, escreve **exactamente o mesmo par**. *Uma lei que reproduz ao dígito o desenho
+/// que o dono aprovou no ponto de fábrica, e cura os outros pontos do knob, é a lei certa.*
+/// ⛔ Escrever só o eixo `x` deixaria a espessura na identidade (`1`) e a fileira dos ossos sairia
+/// com peças **`0,667` de altura sobre `0,45` de comprimento** — a peça a caber em comprimento e a
+/// virar um bloco na espessura.
+///
+/// ⚠️ **TROCA NOMEADA, com o número:** a espessura passa a seguir o comprimento, logo uma corda a
+/// `Count = 40` desenha-se **`1,9×` mais fina** que a `Count = 20` (`0,0539` contra `0,1025` de
+/// vão). Manter a espessura ao variar o comprimento é outra lei — e ela precisa de um segundo
+/// número que esta corrente **não carrega**.
+///
+/// ## Ela ESCREVE, e o caminho de volta é o `motion.scale`
+///
+/// ⛔ Ela **não multiplica** o que vinha: a frase é *«o tamanho deste elemento É o osso dele»*, e
+/// multiplicar faria o número deixar de ser o comprimento do osso. ⭐ O que isso compra é melhor
+/// do que um botão: um `motion.scale` a jusante **multiplica** esta base, logo o `amount` dele
+/// passa a ser **RELATIVO** — `1` é justo, `0,9` deixa folga entre as peças, `0,5` devolve as
+/// contas soltas. *O knob de volta já existia e ficou melhor; um param novo aqui seria a segunda
+/// maneira de dizer o que o `motion.scale` já diz.*
+///
+/// ⚠️ **Sem `len` ela não escreve nada** — e depois do [`derive_frame`] a coluna existe sempre,
+/// logo o `else` é a cerca contra uma ordem de chamada trocada, não um caso do produto.
+fn veste(out: &mut Stream) {
+    let Some(Column::Scalar(len)) = out.get(LEN) else {
+        return;
+    };
+    let s: Vec<[f32; 2]> = len.iter().map(|&l| [l * 0.5, l * 0.5]).collect();
+    out.set(SIZE, Column::Vec2(s));
 }
 
 /// As posições do stream (ausentes → a origem), do tamanho declarado.

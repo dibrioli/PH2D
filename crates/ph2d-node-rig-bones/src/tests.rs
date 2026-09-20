@@ -294,3 +294,47 @@ fn cada_metade_do_quadro_decide_por_si() {
         "e o angulo em falta e' derivado na mesma"
     );
 }
+
+/// ⭐⭐⭐ **A PEÇA VESTE O OSSO** — ordem do dono (2026-09-20: *«DEVE SIM»*), e a lei está no doc
+/// do [`veste`], com a tabela do defeito que ela cura.
+///
+/// ⚠️ **As DUAS metades medem coisas diferentes e as duas são obrigatórias:**
+///
+/// 1. o `size` de cada osso é **metade** do `len` dele (o ½ é o contrato da receita do
+///    `source.shape`: toda forma é cortada de uma caixa de largura `2 × size`);
+/// 2. ele é o **MESMO nos dois eixos** — a peça ESCALA, e uma escala é um par. Sem esta, escrever
+///    só o comprimento passaria a primeira e deixaria a espessura na identidade.
+///
+/// ⛔ **E o CONTROLO é a nuvem:** num stream que não é um rig o nó é a identidade, logo ele **não
+/// pode inventar um `size`** — *uma lei que alcança quem não é osso muda o desenho de um
+/// `motion.grid` em silêncio*.
+#[test]
+fn a_peca_veste_o_osso() {
+    const LEN: f32 = 0.6;
+    let saida = bones(&corrente(6, LEN, 30.0, 0.0));
+    let Some(Column::Vec2(size)) = saida.get("size") else {
+        panic!("a lista de ossos traz a coluna `size`")
+    };
+    let len = escalar(&saida, "len");
+    assert_eq!(size.len(), saida.count(), "um `size` por osso");
+    for (i, (s, l)) in size.iter().zip(&len).enumerate() {
+        assert!(
+            (s[0] - l * 0.5).abs() < 1e-6,
+            "o osso {i} veste `len/2`: {:.6} contra {:.6}",
+            s[0],
+            l * 0.5
+        );
+        assert!(
+            (s[0] - s[1]).abs() < 1e-6,
+            "o osso {i} escala nos DOIS eixos: [{:.6}, {:.6}]",
+            s[0],
+            s[1]
+        );
+    }
+    // ⛔ O CONTROLO — sem `parent` não há osso, logo não há tamanho de osso a escrever.
+    let nuvem = Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]]));
+    assert!(
+        bones(&nuvem).get("size").is_none(),
+        "numa nuvem que nao e' um rig o no' nao inventa um `size`"
+    );
+}

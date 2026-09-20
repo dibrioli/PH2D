@@ -10,7 +10,7 @@
 //! noutra unidade na borda lê-se, na tela, exactamente como um `rot` ausente — foi o que o dono
 //! fotografou, com o gate da coluna VERDE por cima.
 
-use super::super::rig_demo::tests::{CORDA, DT, FK, TIQUES, pontos, primeiro};
+use super::super::rig_demo::tests::{CAMPO, CORDA, DT, FK, TIQUES, pontos, primeiro};
 use super::build;
 use crate::motion_state::MotionState;
 
@@ -221,11 +221,84 @@ fn cada_peca_da_corda_e_desenhada_da_junta_ate_a_seguinte() {
 
 /// O quanto o comprimento DESENHADO de uma peça pode afastar-se do vão que ela atravessa.
 ///
-/// ⛔⛔ **A barra sai de uma MEDIÇÃO e não de um gosto:** a corda é um solver, e às `TIQUES` de
-/// queda o vão dela já não é o de repouso — o pior segmento estica **`2,52 %`** (medido pelo
-/// [`diag_a_peca_contra_o_vao`], que imprime os vinte). Os `5 %` são esse número com folga, e são
-/// **`9×` mais apertados** que o defeito que este gate existe para apanhar (`0,47×` e `1,85×`).
-const TOLERANCIA_DO_VAO: f32 = 0.05;
+/// ⛔⛔⛔ **A PREMISSA DESTE NÚMERO MORREU em 2026-09-20, e a morte está à vista no diff.** Ele
+/// valia `0,05` e a justificação era: *«a corda é um solver, e às `TIQUES` de queda o vão já não é
+/// o de repouso — o pior segmento estica `2,52 %`»*. Isso era verdade enquanto o comprimento da
+/// peça fosse um número ESCRITO À MÃO, de que o vão se afastava ao esticar.
+///
+/// ⭐ Desde a ordem do dono (*«DEVE SIM»*) o [`ph2d_node_rig_bones::veste`] escreve o `size` de
+/// cada osso do `len` dele, e o `len` sai das MESMAS posições de que o vão é medido ⇒ a peça já
+/// não se afasta do vão: **ela segue-o**. O esticão deixou de ser um erro para ser a coisa que a
+/// peça acompanha, e a barra passa a medir só a aritmética entre os dois (uma divisão e uma
+/// multiplicação por dois, as duas exactas em binário).
+const TOLERANCIA_DO_VAO: f32 = 1e-5;
+
+/// ⭐⭐⭐ **A PEÇA VESTE O OSSO EM TODO O CURSO DO KNOB** — ordem do dono (2026-09-20), e este gate
+/// é a **tabela da sonda virada catraca**.
+///
+/// O [`diag_a_peca_contra_o_vao`] mediu o defeito célula a célula (`0,47×` · `1,85×` · `2,25×` ·
+/// `0,50×`) e a tabela dele está no doc do [`ph2d_node_rig_bones::veste`]. Depois da lei, as
+/// **sete** células leem `1,00×` — e é isso que fica preso aqui, porque *uma tabela impressa numa
+/// sonda que ninguém corre não impede regressão nenhuma*.
+///
+/// ⚠️ **As duas metades, e a segunda é o CONTROLO:**
+///
+/// 1. as sete células de uma cadeia de RIG (a corda por `Count`, os ossos por `Length`) vestem o
+///    osso;
+/// 2. o pano do **CAMPO** — que não passa por `rig.bones` — continua a desenhar o tamanho
+///    AUTORADO. Sem ela, um `peca_contra_vao` que devolvesse o vão nos dois lados passaria a
+///    primeira metade **afirmando nada**, e a lei ficaria indistinguível de uma tautologia do
+///    arnês.
+///
+/// FALSIFICADO por apagar a chamada ao `veste` (a 1.ª metade lê `19,53×` na corda), por lhe tirar
+/// o meio (`2,00×`) ou por pôr a lei a alcançar quem não é rig (a 2.ª metade cai).
+#[test]
+fn a_peca_veste_o_osso_em_todo_o_curso_dos_knobs() {
+    for count in [10.0f32, 20.0, 30.0, 40.0] {
+        let (vao, desenhado, n) = mede_a_corda(Some(count));
+        assert!(n > 0, "Count={count}: a corda desenha alguma coisa");
+        assert!(
+            (desenhado - vao).abs() / vao < TOLERANCIA_DO_VAO,
+            "Count={count}: a peca veste o osso — desenhada {desenhado:.6} contra um vao de \
+             {vao:.6} ({:.2}x)",
+            desenhado / vao
+        );
+    }
+    for length in [0.2f32, 0.45, 0.9] {
+        let (vao, desenhado, n) = mede_o_osso(length);
+        assert!(n > 0, "Length={length}: a cadeia desenha alguma coisa");
+        assert!(
+            (desenhado - vao).abs() / vao < TOLERANCIA_DO_VAO,
+            "Length={length}: a peca veste o osso — desenhada {desenhado:.6} contra um vao de \
+             {vao:.6} ({:.2}x)",
+            desenhado / vao
+        );
+    }
+    // ⭐ **O CONTROLO: a lei é dos OSSOS e não do carimbo.** O pano do campo é uma grelha que
+    // nunca passa por `rig.bones`, logo a peça dele **não** mede o vão — ela mede o que a cadeia
+    // dele escreveu (o `size` do próprio `motion.wave`, que a cena multiplica). Se a lei
+    // alcançasse todo carimbo, este número seria o vão da grelha.
+    //
+    // ⚠️ A barra é a RAZÃO e não um número: o que se afirma é que os dois são grandezas
+    // diferentes, e `1,5×` separa-os com folga (medido: `3,9×`).
+    // ⭐⭐ **E a peça veste-o nos DOIS eixos** — sem esta metade, escrever só o comprimento
+    // passaria as sete células acima e deixaria a espessura na identidade (`1`), que na fileira
+    // dos ossos é uma peça de `0,667` de altura sobre `0,45` de comprimento. *A afirmação é que a
+    // peça ESCALA, e uma escala é um par.*
+    let (sx, sy) = mede_os_dois_eixos_do_osso();
+    assert!(
+        (sx - sy).abs() / sx < TOLERANCIA_DO_VAO,
+        "a peca escala nos DOIS eixos: size = [{sx:.6}, {sy:.6}]"
+    );
+    let desenhado = mede_a_peca_do_campo();
+    let vao_da_grelha = super::CAMPO_VAO;
+    let razao = vao_da_grelha / desenhado;
+    assert!(
+        razao > 1.5,
+        "o pano do CAMPO nao passa por `rig.bones`, logo a peca dele NAO mede o vao: desenhada \
+         {desenhado:.6} contra um vao de {vao_da_grelha:.6} ({razao:.2}x)"
+    );
+}
 
 /// ⭐⭐⭐ **A PEÇA CONTRA O VÃO** — a sonda que nomeia o que a varredura de 2026-09-20 achou
 /// (ordem do dono, depois do smoke da unidade: *«veja se erro similar acontece em outros locais
@@ -325,6 +398,50 @@ fn mede_o_osso(length: f32) -> (f32, f32, usize) {
     let s = saida[0].as_stream();
     let pos = pontos(s);
     peca_contra_vao(s, &pos)
+}
+
+/// **Os dois semi-eixos da 1.ª peça da fileira dos OSSOS** — a metade do gate que prende a escala
+/// a ser um PAR e não um comprimento.
+fn mede_os_dois_eixos_do_osso() -> (f32, f32) {
+    let mut m = MotionState::new();
+    let sinks = build(&mut m.doc, &m.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    let saida = m
+        .pump
+        .cook
+        .cook(&m.doc.graph, &m.registry, sinks[FK], 0.0)
+        .expect("o sink coze");
+    let mut pecas = Vec::new();
+    ph2d_eval_motion::lower_to_vector_instances_onto(
+        saida[0].as_stream(),
+        ph2d_render::SinkStyle::PLAIN,
+        &mut pecas,
+    );
+    assert!(!pecas.is_empty(), "a fileira dos ossos desenha");
+    (pecas[0].size[0], pecas[0].size[1])
+}
+
+/// **O comprimento DESENHADO da 1.ª peça do pano do CAMPO** — o controlo do gate acima.
+///
+/// ⚠️ Ele não é um vão: o campo é uma grelha e o tamanho da peça dele é AUTORADO, que é
+/// precisamente o que este número existe para mostrar.
+fn mede_a_peca_do_campo() -> f32 {
+    let mut m = MotionState::new();
+    let sinks = build(&mut m.doc, &m.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    let saida = m
+        .pump
+        .cook
+        .cook(&m.doc.graph, &m.registry, sinks[CAMPO], 0.0)
+        .expect("o sink coze");
+    let mut pecas = Vec::new();
+    ph2d_eval_motion::lower_to_vector_instances_onto(
+        saida[0].as_stream(),
+        ph2d_render::SinkStyle::PLAIN,
+        &mut pecas,
+    );
+    assert!(!pecas.is_empty(), "o pano do campo desenha alguma coisa");
+    2.0 * pecas[0].size[0]
 }
 
 /// O vão entre as duas primeiras cabeças contra `2 × size` da 1.ª peça desenhada.

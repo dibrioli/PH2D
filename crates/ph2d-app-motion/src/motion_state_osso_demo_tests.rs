@@ -1,11 +1,17 @@
 //! Gates da cena `=125` — **o osso numa cadeia**.
 //!
-//! ⚠️⚠️ **Como as irmãs, o que passa por um `source.shape` coze `n = 0` num arnês headless** — a
-//! geometria é assada pela SHELL. Medido: o sink das duas colunas vestidas sai **sem `P` e sem
-//! `rot`**, e a primeira redacção destes gates pediu-os ao sink e reprovou.
+//! ⚠️⚠️ **O que passa por um `source.shape` coze `n = 0` num arnês headless** — a geometria é
+//! assada pela SHELL. Medido: o sink das duas colunas vestidas sai **sem `P` e sem `rot`**, e a
+//! primeira redacção destes gates pediu-os ao sink e reprovou.
 //!
-//! ⇒ o que se mede é a **CADEIA** (a cabeça de cada coluna, antes do duplicador) e a estrutura do
-//! grafo. *A corrente que a forma recebe é a mesma; o que falta headless é a forma.*
+//! ⇒ a maioria destes gates mede a **CADEIA** (a cabeça de cada coluna, antes do duplicador) e a
+//! estrutura do grafo. *A corrente que a forma recebe é a mesma; o que falta headless é a forma.*
+//!
+//! ⛔⛔ **E a leitura de que isso era uma LEI do arnês MORREU em 2026-09-20**, com a morte à vista
+//! no diff: a cena irmã `=120` achou a porta, e ela é **uma linha** — o
+//! [`crate::motion_shape_gen::publish`], que é o passe da shell que publica as formas. Com ele o
+//! sink coze as peças e o que elas DESENHAM é medível aqui (ver [`pecas_vestidas`]).
+//! *Uma ausência afirmada pelo arnês em que se tropeçou é um palpite com cara de medição.*
 
 use super::*;
 use ph2d_node_registry::NodeRegistry;
@@ -345,4 +351,70 @@ fn a_cadeia_de_ossos_ladrilha() {
         erro > 0.2 * OSSO,
         "o controlo tem de FALHAR: sem o `rig.bones` a peca erra {erro} de um osso de {OSSO}"
     );
+}
+
+/// **Os dois semi-eixos da 1.ª peça de cada coluna VESTIDA**, pelo caminho do produto.
+///
+/// ⚠️⚠️ **O cabeçalho deste ficheiro dizia que isto não era medível headless** (*«o que passa por
+/// um `source.shape` coze `n = 0` num arnês headless»*) — **e a premissa MORREU**: a cena irmã
+/// `=120` achou a porta, e ela é uma linha ([`crate::motion_shape_gen::publish`], que é o passe da
+/// shell que publica as formas). *Sem ela o sink sai vazio e a 1.ª redacção destes gates leu isso
+/// como uma lei do arnês.*
+fn pecas_vestidas() -> Vec<(f32, f32)> {
+    let mut m = crate::motion_state::MotionState::new();
+    let sinks = build(&mut m.doc, &m.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    // ⚠️ As DUAS primeiras são as vestidas; a terceira é o controlo NU (sem forma nenhuma).
+    sinks[..2]
+        .iter()
+        .map(|&sink| {
+            let saida = m
+                .pump
+                .cook
+                .cook(&m.doc.graph, &m.registry, sink, 0.0)
+                .expect("o sink coze");
+            let mut pecas = Vec::new();
+            ph2d_eval_motion::lower_to_vector_instances_onto(
+                saida[0].as_stream(),
+                ph2d_render::SinkStyle::PLAIN,
+                &mut pecas,
+            );
+            assert!(!pecas.is_empty(), "a coluna vestida desenha alguma coisa");
+            (pecas[0].size[0], pecas[0].size[1])
+        })
+        .collect()
+}
+
+/// ⭐⭐⭐ **A PEÇA DESTA CENA VESTE O OSSO, e o tamanho dela deixou de ser um número escrito à
+/// mão** — ordem do dono (2026-09-20: *«uma peça de osso deve ajustar-se sozinha ao tamanho do
+/// osso? DEVE SIM»*).
+///
+/// ⛔⛔ **A cena tinha uma SEGUNDA CÓPIA da lei**: uma `const TAMANHO = OSSO / 2.0` com o `½` do
+/// contrato da receita do `source.shape` explicado em prosa ao lado — exactamente a conta que o
+/// [`ph2d_node_rig_bones::veste`] passou a fazer por elemento. Ela acertava **por os ossos desta
+/// cadeia terem todos o mesmo `length`**, e ficava para trás no dia em que um deles não tivesse.
+/// *Uma lei escrita em dois sítios ainda não é uma lei.*
+///
+/// ⚠️ **A saída é a MESMA, e é isso que torna a troca honesta:** `2 × size` continua a medir um
+/// osso. O que mudou é de onde o número vem — da corrente, e não de uma constante.
+///
+/// FALSIFICADO por apagar o `point_scale = 1` (a escala do ponto é deitada fora e a forma desenha
+/// no tamanho de FÁBRICA, `2,0`), por apagar a chamada ao `veste`, ou por alguém repor um `size`
+/// autorado na forma.
+#[test]
+fn a_peca_desta_cena_veste_o_osso() {
+    for (i, (sx, sy)) in pecas_vestidas().into_iter().enumerate() {
+        let desenhado = 2.0 * sx;
+        assert!(
+            (desenhado - OSSO).abs() / OSSO < 1e-5,
+            "a coluna {i} desenha um OSSO: {desenhado:.6} contra {OSSO:.6} ({:.2}x)",
+            desenhado / OSSO
+        );
+        // ⭐ A escala é um PAR: sem esta metade, escrever só o comprimento passava a primeira e
+        // deixava a espessura na identidade (o `aspect` da forma multiplicaria `1` e não `len/2`).
+        assert!(
+            (sx - sy).abs() / sx < 1e-5,
+            "a coluna {i} escala nos DOIS eixos: size = [{sx:.6}, {sy:.6}]"
+        );
+    }
 }

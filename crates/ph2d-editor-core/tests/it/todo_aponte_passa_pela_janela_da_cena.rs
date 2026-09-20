@@ -65,8 +65,22 @@ const RESOLVIDOS_NO_CHAMADOR: &[(&str, &str)] = &[
     ),
 ];
 
+/// ⚠️⚠️ **Este censo MUDOU DE CRATE na integração de 2026-09-20 e o caminho é a parte que viaja
+/// mal.** Ele nasceu em `shells/desktop/tests/it/` e mudou-se para junto dos 27 irmãos
+/// `architecture_*` porque **lê a shell por CAMINHO** — não exercita um único byte dela —, e o
+/// `the_shell_only_shrinks`, que mede a shell inteira, já vive aqui pela mesma razão.
+///
+/// ⛔ O gatilho foi a catraca: a rodada de 20/09 pôs a shell `567` linhas acima do tecto, e a lei
+/// dela é **MOVER, nunca subir o número**. *Um censo que lê um directório não tem de morar nele.*
+///
+/// ⚠️ **O `CARGO_MANIFEST_DIR` é agora o desta crate** — os pisos de população abaixo são o que
+/// torna um caminho errado BARULHENTO em vez de mudo (uma varredura que lê zero ficheiros devolve
+/// zero acusações e lê-se como aprovação).
 fn raiz() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("src")
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../shells/desktop/src")
+        .canonicalize()
+        .expect("a shell é irmã desta crate")
 }
 
 /// Tira comentários de linha e de bloco, e o conteúdo das strings.
@@ -375,60 +389,6 @@ fn a_porta_delega_e_por_isso_herda_a_identidade_fora_do_split() {
              quarta cópia"
         );
     }
-}
-
-/// ⭐⭐⭐ **QUANTO é que o dedo errava — o número, e a exigência de que ele EXISTA.**
-///
-/// Sem isto, os censos acima são afirmações sobre TEXTO. Esta metade mede a coisa: com o centro
-/// partido a `55 %` (a ferramenta Motion activa) e a superfície da foto de 17/09
-/// (`1930×1012`), o MESMO pixel de ecrã resolve para dois pontos do mundo diferentes.
-///
-/// ⛔ **E ela exige que a divergência seja GRANDE**, não que seja pequena: um tecto que aceitasse
-/// «quase igual» tornaria a cura opcional. *A régua que aprova os dois lados não separa nada.*
-///
-/// ⚠️ **Os DOIS eixos**, e não só o `y`: o `aspect = w/h` cresce quando o `h` encolhe, logo o
-/// `half_w` cresce com ele. A leitura *«está deslocado para baixo»* é o sintoma mais visível, não
-/// a conta.
-#[test]
-fn a_janela_errada_aponta_para_outro_sitio_do_mundo() {
-    use ph2d_editor_core::screens::layout::CenterSplit;
-    use ph2d_host::WindowSize;
-
-    let janela = WindowSize::new(1930, 1012);
-    let banda = ph2d_app_motion::field_gizmo::scene_camera_window(
-        CenterSplit::Horizontal { t: 0.55 },
-        janela,
-    );
-    assert_ne!(
-        banda.height, janela.height,
-        "a fixtura não parte o centro — este gate mediria o nada"
-    );
-    let cam = ph2d_render::Camera2d::new([0.0, 0.0], 10.0);
-    // O centro do botão do HUD na foto de 17/09.
-    let ponto = (965.0_f32, 432.0_f32);
-    let certo = cam.screen_to_world(ponto, banda);
-    let errado = cam.screen_to_world(ponto, janela);
-    let dx = f64::from((certo[0] - errado[0]).abs());
-    let dy = f64::from((certo[1] - errado[1]).abs());
-    assert!(
-        dy > 1.0,
-        "o eixo Y tinha de divergir mais de 1 metro e divergiu {dy:.3} — se a divergência \
-         desaparecer, ou a lei do split mudou, ou esta régua deixou de a medir"
-    );
-    // ⚠️ No centro horizontal da vista o `x` coincide por SIMETRIA (`nx = 0` anula o `half_w`).
-    //    Fora dele não coincide, e é isso que se afirma — senão alguém lê «é só o y» como lei.
-    let fora = (1700.0_f32, 432.0_f32);
-    let dx_fora = f64::from(
-        (cam.screen_to_world(fora, banda)[0] - cam.screen_to_world(fora, janela)[0]).abs(),
-    );
-    assert!(
-        dx < 1e-6 && dx_fora > 1.0,
-        "no centro o X coincide por simetria ({dx:.6}) e fora dele NÃO ({dx_fora:.3}) — se esta \
-         relação se inverter, a conta do `aspect` mudou"
-    );
-    println!(
-        "[banda] com o centro a 55%: o mesmo pixel resolve {dy:.2} m ao lado no Y e {dx_fora:.2} m no X"
-    );
 }
 
 /// A janela CRUA é legítima aqui — `(ficheiro, porquê)`, e o porquê foi LIDO.

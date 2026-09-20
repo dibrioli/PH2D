@@ -431,12 +431,12 @@ fn a_caixa_efectiva_bate_o_oraculo_ao_numero() {
 fn todo_modo_e_alcancavel_e_o_indice_volta() {
     assert_eq!(Fit::ALL.len(), 3);
     for f in Fit::ALL {
-        assert!(!f.label().is_empty());
+        assert!(!f.label_key().is_empty());
         assert_eq!(Fit::from_index(f.index()), f, "o indice de {f:?} nao volta");
     }
     assert_eq!(Fit::default(), Fit::Keep);
     // ⛔ Dois modos com o mesmo rótulo dariam duas linhas indistinguíveis no menu.
-    let mut rotulos: Vec<&str> = Fit::ALL.iter().map(|f| f.label()).collect();
+    let mut rotulos: Vec<&str> = Fit::ALL.iter().map(|f| f.label_key()).collect();
     rotulos.sort_unstable();
     rotulos.dedup();
     assert_eq!(rotulos.len(), 3, "dois modos partilham rotulo");

@@ -76,16 +76,16 @@ impl Canal {
     /// dívida: os MOTORES escrevem o rótulo numa tabela de dados, e a fronteira de os derivar do
     /// id está declarada pela linha da UI.
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn label_key(self) -> &'static str {
         match self {
-            Canal::Opacity => "Opacity",
-            Canal::Tint => "Tint",
-            Canal::Silhueta => "Silhouette",
-            Canal::PositionX => "Position X",
-            Canal::PositionY => "Position Y",
-            Canal::ScaleX => "Scale X",
-            Canal::ScaleY => "Scale Y",
-            Canal::Rotation => "Rotation",
+            Canal::Opacity => "tween.canal.opacity",
+            Canal::Tint => "tween.canal.tint",
+            Canal::Silhueta => "tween.canal.silhueta",
+            Canal::PositionX => "tween.canal.position_x",
+            Canal::PositionY => "tween.canal.position_y",
+            Canal::ScaleX => "tween.canal.scale_x",
+            Canal::ScaleY => "tween.canal.scale_y",
+            Canal::Rotation => "tween.canal.rotation",
         }
     }
 

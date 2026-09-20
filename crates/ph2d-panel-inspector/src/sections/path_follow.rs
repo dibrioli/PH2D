@@ -198,7 +198,10 @@ fn corpo(
         cur_y = relogio(scene, text_system, theme, hit_index, store, x, w, cur_y, i);
     }
 
-    let ciclos: Vec<&str> = ph2d_tween::Ciclo::ALL.iter().map(|c| c.label()).collect();
+    let ciclos: Vec<&str> = ph2d_tween::Ciclo::ALL
+        .iter()
+        .map(|c| tr(c.label_key()))
+        .collect();
     cur_y = grupo(
         scene,
         text_system,
@@ -251,7 +254,7 @@ fn corpo(
     );
     let fins: Vec<&str> = ph2d_tween::AoAcabar::ALL
         .iter()
-        .map(|a| a.label())
+        .map(|a| tr(a.label_key()))
         .collect();
     cur_y = grupo(
         scene,

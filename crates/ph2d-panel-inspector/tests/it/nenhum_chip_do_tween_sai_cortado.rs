@@ -51,7 +51,10 @@ fn familias() -> Vec<(&'static str, Vec<&'static str>)> {
     vec![
         (
             "canal",
-            ph2d_tween::Canal::ALL.iter().map(|c| c.label()).collect(),
+            ph2d_tween::Canal::ALL
+                .iter()
+                .map(|c| ph2d_i18n::tr(c.label_key()))
+                .collect(),
         ),
         (
             "curva",
@@ -71,16 +74,22 @@ fn familias() -> Vec<(&'static str, Vec<&'static str>)> {
             "fim",
             ph2d_tween::AoAcabar::ALL
                 .iter()
-                .map(|a| a.label())
+                .map(|a| ph2d_i18n::tr(a.label_key()))
                 .collect(),
         ),
         (
             "ciclo",
-            ph2d_tween::Ciclo::ALL.iter().map(|c| c.label()).collect(),
+            ph2d_tween::Ciclo::ALL
+                .iter()
+                .map(|c| ph2d_i18n::tr(c.label_key()))
+                .collect(),
         ),
         (
             "preset",
-            ph2d_tween::Preset::ALL.iter().map(|p| p.label()).collect(),
+            ph2d_tween::Preset::ALL
+                .iter()
+                .map(|p| ph2d_i18n::tr(p.label_key()))
+                .collect(),
         ),
     ]
 }
@@ -113,7 +122,10 @@ fn o_chip_pintado_cabe_o_rotulo_pintado() {
     // ⇒ o que se afirma é que **o pintor pôs na fileira o número que a PORTA manda** para a largura
     // que ele de facto usou. Com a constante de volta ele põe `4` onde a porta diz `3`, e isto
     // sangra em qualquer largura.
-    let rotulos: Vec<&str> = ph2d_tween::Canal::ALL.iter().map(|c| c.label()).collect();
+    let rotulos: Vec<&str> = ph2d_tween::Canal::ALL
+        .iter()
+        .map(|c| ph2d_i18n::tr(c.label_key()))
+        .collect();
     let esperado = ph2d_panel_inspector::chips_por_fileira(&mut ts, largura_da_fileira, &rotulos);
     assert_eq!(
         pintados, esperado,
@@ -130,7 +142,7 @@ fn o_chip_pintado_cabe_o_rotulo_pintado() {
         let Some(r) = rects.iter().find(|(n, _)| n == id).map(|(_, r)| *r) else {
             continue;
         };
-        let rotulo = ph2d_tween::Canal::ALL[i].label();
+        let rotulo = ph2d_i18n::tr(ph2d_tween::Canal::ALL[i].label_key());
         let m = ts.prefix_width(rotulo, fonte);
         if m > r.w {
             cortados.push(format!(
@@ -262,7 +274,10 @@ fn a_regua_dos_chips_acusa_a_configuracao_que_o_dono_fotografou() {
     let mut ts = TextSystem::new();
     let w = linha(304.0); // a largura de omissão, onde a foto foi tirada
     let cw = (w - gap * 3.0) / 4.0; // o `4` fixo de antes da cura
-    let canais: Vec<&str> = ph2d_tween::Canal::ALL.iter().map(|c| c.label()).collect();
+    let canais: Vec<&str> = ph2d_tween::Canal::ALL
+        .iter()
+        .map(|c| ph2d_i18n::tr(c.label_key()))
+        .collect();
     let cortados: Vec<&&str> = canais
         .iter()
         .filter(|t| ts.prefix_width(t, fonte) > cw)

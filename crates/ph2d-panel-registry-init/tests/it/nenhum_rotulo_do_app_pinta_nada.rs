@@ -284,6 +284,31 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
 /// ⚠️ **Cada linha diz o NÚMERO e o MECANISMO**, e a lista **só encolhe** — o censo de
 /// obsolescência abaixo reprova quem deixar de descrever um corte.
 const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
+    // ⭐⭐⭐ **AS QUATRO DA INTEGRAÇÃO DE 2026-09-20.** Elas apareceram no dia em que as DEZ portas
+    //    novas do Inspector (`action_trigger` · `counter_watch` · `emitter` · `hud` ·
+    //    `path_follow` · `ray` · `sequence` · `shake` · `tween` · `weapon`) passaram a ser
+    //    ARMADAS por esta fixtura — antes delas a varredura media aquelas secções VAZIAS.
+    // ⚠️ *Elas não são cortes novos do produto: são cortes que ninguém conseguia ver.*
+    (
+        "inspector",
+        "Fit and canvas size live on HUD — pick it in the Hierarchy",
+        "aviso de 57 caracteres numa caixa de 268 px: ele DIZ onde o controlo mora, e encurtá-lo          tira a metade que responde «onde». A cura é a frase QUEBRAR, como a do áudio — outra wave.",
+    ),
+    (
+        "inspector",
+        "Authored",
+        "opção de um segmentado de 3 numa fileira de 268 px ⇒ 48 px por peça, e a palavra pede ~62.          A porta que mede as PALAVRAS (`segment_rects_for`) reparte o que há, e aqui não há.",
+    ),
+    (
+        "inspector",
+        "Counter",
+        "a irmã da de cima, no mesmo segmentado — a mais larga das três é que decide.",
+    ),
+    (
+        "inspector",
+        "The timer ends at 3.00 s and the cutscene is 6.50 s — it never reaches the end.",
+        "aviso DERIVADO de dois números (a duração do relógio e a da cutscene): ele não tem versão          curta que continue a dizer os dois. Mesma cura que o irmão do HUD — quebrar.",
+    ),
     // ✅ **As DUAS fileiras de MARCAR saíram em 2026-09-19, por ordem do dono.** O controlo de uma
     //    caixa precisa de `18 px` e a coluna do nome fica com `174`, porque ela é medida para as
     //    fileiras de CAMPOS da mesma secção — e `Center (makes it a 9-slice Region)` pedia `~190`.
@@ -536,7 +561,7 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    rotulo que sai `"Acceleration"` de `"Acceleration (0 = instant)"` continua a esconder a
     //    explicacao do artista — o que muda e ele deixar de comer o NOME. Quem conta essa
     //    diferenca e a [`LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO`], e e por isso que sao duas.
-    ("inspector", 80),
+    ("inspector", 103),
     ("motion_params", 16),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
@@ -586,7 +611,7 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⭐ `63` de `80`: a lei de encurtar tirou as reticencias a **17** rotulos deste painel, sem
     //    um unico nome novo. Os `63` que ficam sao nomes compostos, e encurtar um deles e trocar
     //    o nome — decisao de vocabulario, que e do dono.
-    ("inspector", 63),
+    ("inspector", 86),
     ("motion_params", 15),
     ("audio_mixer", 5),
     ("sculpt3d", 6),

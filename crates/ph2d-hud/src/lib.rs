@@ -68,11 +68,11 @@ impl Fit {
 
     /// O rótulo que o artista lê. Inglês (HR-15).
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn label_key(self) -> &'static str {
         match self {
-            Self::Keep => "Keep",
-            Self::Stretch => "Stretch",
-            Self::Expand => "Expand",
+            Self::Keep => "hud.fit.keep",
+            Self::Stretch => "hud.fit.stretch",
+            Self::Expand => "hud.fit.expand",
         }
     }
 

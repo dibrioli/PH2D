@@ -185,7 +185,7 @@ fn o_catalogo_deriva_a_aridade_e_a_tag() {
         assert_eq!(c.tag() as usize, i, "{c:?}: a tag nao e' a posicao");
         assert_eq!(Canal::from_tag(c.tag()), *c, "{c:?}: a ida-e-volta partiu");
         assert!(matches!(c.aridade(), 1 | 4), "{c:?}: aridade estranha");
-        assert!(!c.label().is_empty());
+        assert!(!c.label_key().is_empty());
     }
     // Um tag fora de alcance cai no primeiro, nunca em panico.
     assert_eq!(Canal::from_tag(200), Canal::Opacity);

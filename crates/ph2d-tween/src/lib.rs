@@ -100,10 +100,10 @@ impl AoAcabar {
 
     /// O rótulo que o artista lê. Inglês, como as irmãs deste catálogo de motores.
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn label_key(self) -> &'static str {
         match self {
-            AoAcabar::Hold => "Hold",
-            AoAcabar::Rewind => "Rewind",
+            AoAcabar::Hold => "tween.ao_acabar.hold",
+            AoAcabar::Rewind => "tween.ao_acabar.rewind",
         }
     }
 
@@ -161,10 +161,10 @@ impl Ciclo {
 
     /// O rótulo que o artista lê. Inglês, como as irmãs deste catálogo de motores.
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn label_key(self) -> &'static str {
         match self {
-            Ciclo::Reinicia => "Restart",
-            Ciclo::PingPong => "Ping-Pong",
+            Ciclo::Reinicia => "tween.ciclo.reinicia",
+            Ciclo::PingPong => "tween.ciclo.ping_pong",
         }
     }
 

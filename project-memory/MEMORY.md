@@ -99,7 +99,7 @@
 - [Teste Cascadeur (ossos 2D fora do repo); a rede neural só pelo rato simulado](project_teste_cascadeur_2d_bones_testbed.md)
 - [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)
 - [Física do impasto/sculpt (10)](reference_topic_impasto_physics.md)
-- ⭐ [**Como uma RÉGUA mente** — a família (147)](reference_topic_measurement_discipline.md)
+- ⭐ [**Como uma RÉGUA mente** — a família (150)](reference_topic_measurement_discipline.md)
 - ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA ⇒ reporta-o LIMPO (vinco: 2,2e-6 contra 1,9e-1) — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)
 - ⛔ [Régua de vazamento cuja máscara usa o predicado DO PRODUTO lê 0,00 % sobre o defeito](feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak.md)
 - ⛔⛔ [Sweep da parede VERDE sobre espec que TRADUZIA o alvo](feedback_a_sweep_in_one_language_does_not_prove_filtering_in_another.md)

@@ -260,6 +260,5 @@ mod the_width_tool_owns_its_gesture;
 mod the_z_projection_reads_the_tree_after_the_sync;
 mod timeline_signal_emits_in_arrange_only;
 mod timeline_stamps_the_clock_direction;
-mod todo_aponte_passa_pela_janela_da_cena;
 mod um_aperto_no_canvas_larga_o_teclado_do_painel;
 mod um_roteiro_nunca_rouba_uma_tecla_do_editor;

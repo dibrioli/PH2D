@@ -40,8 +40,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // que a expanda parte a coluna do selector, que foi medida para quatro entradas curtas.
         "ecs.audio_bus.sfx" => "SFX",
         "ecs.audio_bus.voice" => "Voice",
+        "ecs.signal_from.anyone" => "Anyone",
+        "ecs.signal_from.myself" => "Myself",
+        "ecs.signal_verb.add_to_counter" => "Add to Counter",
+        "ecs.signal_verb.destroy" => "Destroy",
         "ecs.signal_verb.hide" => "Hide",
         "ecs.signal_verb.play_sound" => "Play Sound",
+        "ecs.signal_verb.restart_run" => "Restart Run",
         "ecs.signal_verb.show" => "Show",
         "ecs.signal_verb.start_timer" => "Start Timer",
         "ecs.signal_verb.stop_sound" => "Stop Sound",

@@ -13,11 +13,11 @@ fn todo_preset_produz_um_tween_que_se_mexe() {
         let t = p.tween();
         let a = valor(&t, Relogio::a_correr(0.0)).expect("a correr, ele escreve");
         let b = valor(&t, Relogio::a_correr(1.0)).expect("idem");
-        assert_ne!(a, b, "{:?} nao move nada", p.label());
+        assert_ne!(a, b, "{:?} nao move nada", p.label_key());
         // …e o meio não é nenhum dos dois extremos: ele ATRAVESSA.
         let m = valor(&t, Relogio::a_correr(0.5)).unwrap();
-        assert_ne!(m, a, "{}: o meio e' o principio", p.label());
-        assert_ne!(m, b, "{}: o meio e' o fim", p.label());
+        assert_ne!(m, a, "{}: o meio e' o principio", p.label_key());
+        assert_ne!(m, b, "{}: o meio e' o fim", p.label_key());
     }
 }
 
@@ -75,7 +75,7 @@ fn a_duracao_de_um_pisca_cabe_em_quadros_que_se_veem() {
         assert!(
             q >= 12,
             "{} dura so' {q} quadros — le^-se como um corte",
-            p.label()
+            p.label_key()
         );
     }
     assert!(
@@ -90,7 +90,7 @@ fn a_tag_de_um_preset_e_a_posicao() {
     for (i, p) in Preset::ALL.iter().enumerate() {
         assert_eq!(p.tag() as usize, i);
         assert_eq!(Preset::from_tag(p.tag()), *p);
-        assert!(!p.label().is_empty());
+        assert!(!p.label_key().is_empty());
     }
     assert_eq!(Preset::from_tag(200), Preset::FadeIn);
 }

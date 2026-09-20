@@ -157,7 +157,22 @@ fn botoes(
     if n == 0 {
         return y;
     }
-    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, BTN_H), n);
+    // ⭐ **A fileira mede as PALAVRAS, nunca partes iguais** — `segment_rects_for` (a lei que a
+    //    `line/UIUX` fechou a ZERO em 2026-09-19). *Uma média não é um máximo: a fileira pode
+    //    caber inteira e cortar a peça mais larga na mesma.*
+    let mut rotulos: Vec<&str> = Vec::with_capacity(n);
+    if pode_juntar {
+        rotulos.push(tr("panel.inspector.emitter.plus_add_source"));
+    }
+    if pode_tirar {
+        rotulos.push(tr("panel.inspector.emitter.x_remove_source"));
+    }
+    let seg = ph2d_editor_core::widget::segment_rects_for(
+        Rect::new(x, y, w, BTN_H),
+        &rotulos,
+        ph2d_editor_core::widget::button_label_font(),
+        text_system,
+    );
     let mut cell = 0usize;
     if pode_juntar {
         let (rect, group) = seg[cell];

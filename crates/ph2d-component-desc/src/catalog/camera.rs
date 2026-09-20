@@ -68,23 +68,23 @@ const LIMITS_FIELDS: &[FieldDesc] = &[
 /// ⚠️ **«Punch» e não «Exponent»:** o artista escolhe o CARÁCTER do abanão, e a potência a que o
 /// trauma é elevado é como a lei o exprime, não como ele o pensa.
 const SHAKE_FIELDS: &[FieldDesc] = &[
-    f(0, "Amplitude", K::Scalar),
-    f(1, "Frequency", K::Scalar),
-    f(2, "Decay", K::Scalar),
-    f(3, "Punch", K::Int),
+    f(0, "component.field.shake_fields.0", K::Scalar),
+    f(1, "component.field.shake_fields.1", K::Scalar),
+    f(2, "component.field.shake_fields.2", K::Scalar),
+    f(3, "component.field.shake_fields.3", K::Int),
     // ⭐ `Seed` e nao `Int`: ela nao tem valor CERTO, so tem de ser DIFERENTE.
-    f(4, "Seed", K::Seed),
+    f(4, "component.field.shake_fields.4", K::Seed),
 ];
 
 /// ⭐⭐⭐ **Uma FONTE de abanão** (suplente #25) — como a vigia e o gatilho, o componente é uma LISTA
 /// e isto descreve a LINHA.
 const SHAKE_SOURCE_FIELDS: &[FieldDesc] = &[
     // ⚠️ **Vazio = calada** — a lei da vigia, do gatilho e da §11.
-    f(0, "On", K::Text),
-    f(1, "From", K::Enum),
-    f(2, "Strength", K::Scalar),
-    f(3, "Full Within", K::Scalar),
-    f(4, "Nothing Beyond", K::Scalar),
+    f(0, "component.field.shake_source_fields.0", K::Text),
+    f(1, "component.field.shake_source_fields.1", K::Enum),
+    f(2, "component.field.shake_source_fields.2", K::Scalar),
+    f(3, "component.field.shake_source_fields.3", K::Scalar),
+    f(4, "component.field.shake_source_fields.4", K::Scalar),
 ];
 
 /// Os descritores da família.
@@ -118,7 +118,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // impediria o artista de o preparar antes de anexar a câmera.
     D::authored(
         "ph2d::ecs::CameraShake",
-        "Camera Shake",
+        "component.camera_shake.name",
         C::Camera,
         O::ANY,
         SHAKE_FIELDS,
@@ -136,7 +136,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // VAZIO quanto uma sprite.
     D::authored(
         "ph2d::ecs::ShakeEmitter",
-        "Shake Emitter",
+        "component.shake_emitter.name",
         C::Camera,
         O::ANY,
         SHAKE_SOURCE_FIELDS,

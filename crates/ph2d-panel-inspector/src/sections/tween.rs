@@ -107,7 +107,7 @@ fn list(
         paint_text(
             text_system,
             scene,
-            Canal::from_tag(row.canal).label(),
+            tr(Canal::from_tag(row.canal).label_key()),
             x + Spacing::Sm.px(),
             cur_y + (ROW_H - font) * 0.5,
             font,
@@ -143,7 +143,22 @@ fn buttons(
     }
     // ⭐⭐ **`+ Add | x Remove` é UM par**, e por isso passa pela porta do grupo — há gate
     // (`no_panel_lays_a_button_row_out_by_hand`).
-    let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, BTN_H), n);
+    // ⭐ **A fileira mede as PALAVRAS, nunca partes iguais** — `segment_rects_for` (a lei que a
+    //    `line/UIUX` fechou a ZERO em 2026-09-19). *Uma média não é um máximo: a fileira pode
+    //    caber inteira e cortar a peça mais larga na mesma.*
+    let mut rotulos: Vec<&str> = Vec::with_capacity(n);
+    if can_add {
+        rotulos.push(tr("panel.inspector.tween.plus_add_tween"));
+    }
+    if can_remove {
+        rotulos.push(tr("panel.inspector.tween.x_remove_tween"));
+    }
+    let seg = ph2d_editor_core::widget::segment_rects_for(
+        Rect::new(x, y, w, BTN_H),
+        &rotulos,
+        ph2d_editor_core::widget::button_label_font(),
+        text_system,
+    );
     let mut cell = 0usize;
     if can_add {
         let (rect, group) = seg[cell];

@@ -43,7 +43,10 @@ fn mede_o_que_a_composicao_ja_da_ao_abanao() {
     eprintln!("\n════ §5.0 — O QUE A COMPOSIÇÃO JÁ DÁ AO ABANÃO (suplente #25) ════\n");
 
     // ── (A) A tabela de acções sabe dizer «treme»? ────────────────────────────────────────────
-    let verbos: Vec<&str> = SignalVerb::ALL.iter().map(|v| v.label()).collect();
+    let verbos: Vec<&str> = SignalVerb::ALL
+        .iter()
+        .map(|v| ph2d_i18n::tr(v.label_key()))
+        .collect();
     let abana = verbos
         .iter()
         .any(|v| v.to_lowercase().contains("shake") || v.to_lowercase().contains("camera"));
@@ -83,7 +86,10 @@ fn mede_o_que_a_composicao_ja_da_ao_abanao() {
     let escritas = ph2d_app_components::tween_bridge::drive_tweens(&mut sim, &mut drive, &[]);
     let pose = sim.world().get::<Transform>(camera).unwrap().translation.x;
     let vista = sim.world().get::<CameraRuntime>(camera).unwrap().center;
-    let canais: Vec<&str> = Canal::ALL.iter().map(|c| c.label()).collect();
+    let canais: Vec<&str> = Canal::ALL
+        .iter()
+        .map(|c| ph2d_i18n::tr(c.label_key()))
+        .collect();
     eprintln!("(B) UM TWEEN SOBRE A PRÓPRIA CÂMERA (o concorrente)");
     eprintln!(
         "    canais que existem ............ {} : {canais:?}",

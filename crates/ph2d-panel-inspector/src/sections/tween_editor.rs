@@ -373,7 +373,10 @@ pub(super) fn editor(
     }
     // ⭐⭐⭐ **Os PRESETS primeiro** — eles reescrevem tudo o que vem a seguir, e é isso que os põe
     // em cima: *um botão que muda os cinco campos abaixo dele lê-se; um que os muda acima, não.*
-    let presets: Vec<&str> = ph2d_tween::Preset::ALL.iter().map(|p| p.label()).collect();
+    let presets: Vec<&str> = ph2d_tween::Preset::ALL
+        .iter()
+        .map(|p| tr(p.label_key()))
+        .collect();
     cur_y = grupo(
         scene,
         text_system,
@@ -412,7 +415,7 @@ pub(super) fn editor(
         );
     }
     let canal = Canal::from_tag(row.canal);
-    let canais: Vec<&str> = Canal::ALL.iter().map(|c| c.label()).collect();
+    let canais: Vec<&str> = Canal::ALL.iter().map(|c| tr(c.label_key())).collect();
     cur_y = grupo(
         scene,
         text_system,
@@ -514,7 +517,7 @@ pub(super) fn editor(
         &modos,
         row.modo as usize,
     );
-    let fins: Vec<&str> = AoAcabar::ALL.iter().map(|a| a.label()).collect();
+    let fins: Vec<&str> = AoAcabar::ALL.iter().map(|a| tr(a.label_key())).collect();
     cur_y = grupo(
         scene,
         text_system,
@@ -534,7 +537,10 @@ pub(super) fn editor(
     // ⚠️ **Ele vem DEPOIS do `When Done` de propósito:** os dois falam do tempo, e a ordem é a da
     // pergunta que o artista faz — *o que acontece DENTRO de uma volta* lê-se depois de *o que
     // acontece no FIM*, porque é o fim que ele já conhece do resto do painel.
-    let ciclos: Vec<&str> = ph2d_tween::Ciclo::ALL.iter().map(|c| c.label()).collect();
+    let ciclos: Vec<&str> = ph2d_tween::Ciclo::ALL
+        .iter()
+        .map(|c| tr(c.label_key()))
+        .collect();
     grupo(
         scene,
         text_system,

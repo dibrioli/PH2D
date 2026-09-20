@@ -54,11 +54,11 @@ impl Preset {
 
     /// O rótulo que o artista lê. Inglês, como as irmãs deste catálogo de motores.
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn label_key(self) -> &'static str {
         match self {
-            Preset::FadeIn => "Fade In",
-            Preset::FadeOut => "Fade Out",
-            Preset::Flash => "Flash",
+            Preset::FadeIn => "tween.preset.fade_in",
+            Preset::FadeOut => "tween.preset.fade_out",
+            Preset::Flash => "tween.preset.flash",
         }
     }
 

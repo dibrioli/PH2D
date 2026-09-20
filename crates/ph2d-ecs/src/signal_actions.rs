@@ -184,9 +184,9 @@ impl SignalVerb {
             SignalVerb::ToggleVisibility => "ecs.signal_verb.toggle_visibility",
             SignalVerb::PlaySound => "ecs.signal_verb.play_sound",
             SignalVerb::StopSound => "ecs.signal_verb.stop_sound",
-            SignalVerb::AddToCounter => "Add to Counter",
-            SignalVerb::Destroy => "Destroy",
-            SignalVerb::RestartRun => "Restart Run",
+            SignalVerb::AddToCounter => "ecs.signal_verb.add_to_counter",
+            SignalVerb::Destroy => "ecs.signal_verb.destroy",
+            SignalVerb::RestartRun => "ecs.signal_verb.restart_run",
         }
     }
 
@@ -315,8 +315,8 @@ impl SignalFrom {
     #[must_use]
     pub const fn label(self) -> &'static str {
         match self {
-            SignalFrom::Anyone => "Anyone",
-            SignalFrom::Myself => "Myself",
+            SignalFrom::Anyone => "ecs.signal_from.anyone",
+            SignalFrom::Myself => "ecs.signal_from.myself",
         }
     }
 

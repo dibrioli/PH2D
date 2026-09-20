@@ -320,7 +320,7 @@ pub const DESCS: &[D] = &[
     // certa é não excluir ninguém. *Exigir um corpo entregaria uma cerca que a lei não tem.*
     D::authored(
         "ph2d::physics::RaySensor",
-        "Ray Sensor",
+        "component.ray_sensor.name",
         C::Physics,
         O::ANY,
         &[],
@@ -328,7 +328,7 @@ pub const DESCS: &[D] = &[
     // ⚠️ Os dois NOMES são `Intrinsic` pela razão dos irmãos `SignalOnHit`/`SignalOnLeave`: eles
     // nascem das rows da secção, nunca do `+`. Um `RaySignals::default()` anexado à mão é **calado
     // nos dois extremos**, logo seria uma porta que entrega nada.
-    i("ph2d::physics::RaySignals", "Ray Signals"),
+    i("ph2d::physics::RaySignals", "component.ray_signals.name"),
     // ⭐ **PORTA 1 — a que o dono conhecia pelo nome.** Era o botão *Add Physics Body* da face
     // vazia da §11; desde o ADR-0166/F3 a rota é o `+`, e o rótulo passa a dizer o que a secção
     // que nasce diz.

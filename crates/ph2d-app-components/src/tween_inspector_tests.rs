@@ -336,7 +336,7 @@ fn um_preset_deixa_o_painel_sem_queixa() {
             i.rows[0].queixa(i.tem_sprite),
             None,
             "o preset `{}` deixou uma queixa",
-            p.label()
+            ph2d_i18n::tr(p.label_key())
         );
     }
     // ⛔ O CONTROLO: sem sprite, o MESMO preset de aparência queixa-se — a porta está viva.
@@ -538,7 +538,7 @@ fn e_cor_e_derivado_da_aridade_e_nomeia_exactamente_dois_canais() {
             c.e_cor(),
             c.aridade() == 4,
             "o `{}` responde uma coisa a `e_cor` e outra a `aridade`",
-            c.label()
+            ph2d_i18n::tr(c.label_key())
         );
     }
 }

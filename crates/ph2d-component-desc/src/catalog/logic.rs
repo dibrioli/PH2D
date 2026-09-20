@@ -101,7 +101,7 @@ const ACTION_FIELDS: &[FieldDesc] = &[
 ///
 /// ⚠️ **UM campo, e a lista curta é a wave:** duração, repetir e *«está a correr»* são do `Timer`,
 /// que este componente EXIGE. Um `Duration` aqui seria um segundo relógio (plano 16 §1-bis).
-const SEQUENCE_FIELDS: &[FieldDesc] = &[f(1, "Container", K::Text)];
+const SEQUENCE_FIELDS: &[FieldDesc] = &[f(1, "component.field.sequence_fields.1", K::Text)];
 
 const LIFETIME_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.lifetime_fields.1", K::Scalar),
@@ -140,16 +140,16 @@ const FACTORY_FIELDS: &[FieldDesc] = &[
 ///
 /// ⛔ **Não há campo de DURAÇÃO**, pela mesma razão do tween e da fábrica: o tempo vem do `Timers`.
 const PATH_FOLLOW_FIELDS: &[FieldDesc] = &[
-    f(1, "Path", K::Text),
-    f(2, "Timer", K::Scalar),
-    f(3, "Cycle", K::Enum),
-    f(4, "Curve", K::Enum),
-    f(5, "Ease", K::Enum),
-    f(6, "When Done", K::Enum),
-    f(7, "Start At", K::Scalar),
-    f(8, "Face Path", K::Toggle),
-    f(9, "Angle", K::Angle),
-    f(10, "Side", K::Scalar),
+    f(1, "component.field.path_follow_fields.1", K::Text),
+    f(2, "component.field.path_follow_fields.2", K::Scalar),
+    f(3, "component.field.path_follow_fields.3", K::Enum),
+    f(4, "component.field.path_follow_fields.4", K::Enum),
+    f(5, "component.field.path_follow_fields.5", K::Enum),
+    f(6, "component.field.path_follow_fields.6", K::Enum),
+    f(7, "component.field.path_follow_fields.7", K::Scalar),
+    f(8, "component.field.path_follow_fields.8", K::Toggle),
+    f(9, "component.field.path_follow_fields.9", K::Angle),
+    f(10, "component.field.path_follow_fields.10", K::Scalar),
 ];
 
 /// **Os campos de UM tween** (suplente #22) — como o `Timers`, o componente é uma LISTA e isto
@@ -164,26 +164,26 @@ const PATH_FOLLOW_FIELDS: &[FieldDesc] = &[
 /// campos — um escalar e um de cor — seriam duas respostas a *«de onde para onde?»*.
 const WEAPON_FIELDS: &[FieldDesc] = &[
     // ⚠️ **Vazio = nunca dispara**, a lei do consumidor de sinal desta casa.
-    f(1, "On Signal", K::Text),
-    f(2, "Cooldown (ms)", K::Scalar),
+    f(1, "component.field.weapon_fields.1", K::Text),
+    f(2, "component.field.weapon_fields.2", K::Scalar),
     // ⭐⭐ **O NOME do contador que É o pente** — vazio = munição infinita. ⛔ A munição não é um
     // campo deste componente, e é isso que a põe no HUD (`LabelSource::Counter`) de graça.
-    f(3, "Ammo Counter", K::Text),
-    f(4, "Reload (ms)", K::Scalar),
-    f(5, "Reload On", K::Text),
+    f(3, "component.field.weapon_fields.3", K::Text),
+    f(4, "component.field.weapon_fields.4", K::Scalar),
+    f(5, "component.field.weapon_fields.5", K::Text),
     // ⭐ **O fio para a `Factory`**: sem ele a arma dispara e nada nasce.
-    f(6, "On Fire", K::Text),
-    f(7, "On Empty", K::Text),
-    f(8, "On Reloaded", K::Text),
+    f(6, "component.field.weapon_fields.6", K::Text),
+    f(7, "component.field.weapon_fields.7", K::Text),
+    f(8, "component.field.weapon_fields.8", K::Text),
 ];
 
 const TWEEN_FIELDS: &[FieldDesc] = &[
-    f(1, "Channel", K::Enum),
-    f(2, "From", K::Vec4),
-    f(3, "To", K::Vec4),
-    f(4, "Curve", K::Enum),
-    f(5, "Ease", K::Enum),
-    f(6, "When Done", K::Enum),
+    f(1, "component.field.tween_fields.1", K::Enum),
+    f(2, "component.field.tween_fields.2", K::Vec4),
+    f(3, "component.field.tween_fields.3", K::Vec4),
+    f(4, "component.field.tween_fields.4", K::Enum),
+    f(5, "component.field.tween_fields.5", K::Enum),
+    f(6, "component.field.tween_fields.6", K::Enum),
 ];
 
 /// ⭐⭐⭐ **Uma REGRA da vigia** — como o `Timers`, o componente é uma LISTA e isto descreve a LINHA.
@@ -195,19 +195,19 @@ const TWEEN_FIELDS: &[FieldDesc] = &[
 /// ⚠️ **`Action` é o nome da acção do INPUT MAP e não o de uma tecla** — é ele que sobrevive a um
 /// remapeamento, e é ele que a fita determinística grava.
 const TRIGGER_FIELDS: &[FieldDesc] = &[
-    f(1, "Action", K::Text),
-    f(2, "When", K::Enum),
+    f(1, "component.field.trigger_fields.1", K::Text),
+    f(2, "component.field.trigger_fields.2", K::Enum),
     // ⚠️ **Vazio = calada** — a lei da vigia e da §11.
-    f(3, "Signal", K::Text),
+    f(3, "component.field.trigger_fields.3", K::Text),
 ];
 
 const WATCH_FIELDS: &[FieldDesc] = &[
-    f(1, "Counter", K::Text),
-    f(2, "Compare", K::Enum),
-    f(3, "Value", K::Int),
+    f(1, "component.field.watch_fields.1", K::Text),
+    f(2, "component.field.watch_fields.2", K::Enum),
+    f(3, "component.field.watch_fields.3", K::Int),
     // ⚠️ **Vazio = calada** — a lei da §11, a mesma do `Signal` do relógio logo abaixo.
-    f(4, "Signal", K::Text),
-    f(5, "Only Once", K::Toggle),
+    f(4, "component.field.watch_fields.4", K::Text),
+    f(5, "component.field.watch_fields.5", K::Toggle),
 ];
 
 /// Os descritores da família. ⚠️ **ORDENADOS por `canonical_name`** — há gate.
@@ -225,7 +225,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // um valor que ele não deve mostrar nem editar.
     D::authored(
         "ph2d::ecs::CounterWatch",
-        "Counter Watch",
+        "component.counter_watch.name",
         C::Logic,
         O::ANY,
         WATCH_FIELDS,
@@ -274,7 +274,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // ⚠️ `O::ANY` pela razão do tween: um objecto vazio que seja o pai de um grupo também patrulha.
     D::authored_requiring(
         "ph2d::ecs::PathFollow",
-        "Path Follow",
+        "component.path_follow.name",
         C::Logic,
         O::ANY,
         PATH_FOLLOW_FIELDS,
@@ -292,7 +292,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // objecto VAZIO («o realizador da cena»).
     D::authored_requiring(
         "ph2d::ecs::SequencePlayer",
-        "Sequence Player",
+        "component.sequence_player.name",
         C::Logic,
         O::ANY,
         SEQUENCE_FIELDS,
@@ -321,7 +321,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // fora de ordem o descritor devolve `None` para um tipo que existe.
     D::authored(
         "ph2d::ecs::SignalOnAction",
-        "Trigger",
+        "component.signal_on_action.name",
         C::Logic,
         O::ANY,
         TRIGGER_FIELDS,
@@ -361,7 +361,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // o artista descobrir.
     D::authored_requiring(
         "ph2d::ecs::Tweens",
-        "Tween",
+        "component.tweens.name",
         C::Logic,
         O::ANY,
         TWEEN_FIELDS,
@@ -380,7 +380,7 @@ pub const DESCS: &[ComponentDesc] = &[
     // `requires`, a arma nasceria com munição infinita em silêncio e o artista descobria-o a jogar.
     D::authored_requiring(
         "ph2d::ecs::WeaponFire",
-        "Weapon",
+        "component.weapon_fire.name",
         C::Logic,
         O::ANY,
         WEAPON_FIELDS,

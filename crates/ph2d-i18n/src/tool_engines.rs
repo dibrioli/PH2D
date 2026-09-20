@@ -27,6 +27,9 @@
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         // ph2d-migrar-texto:begin
+        "hud.fit.expand" => "Expand",
+        "hud.fit.keep" => "Keep",
+        "hud.fit.stretch" => "Stretch",
         "tool.bgremoval.falloff.constant" => "Hard",
         "tool.bgremoval.falloff.sharp" => "Sharp",
         "tool.bgremoval.falloff.smooth" => "Smooth",
@@ -66,6 +69,21 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "tool.painter.media.impasto" => "Impasto",
         "tool.painter.media.watercolor" => "Watercolor",
         "tool.painter.media.wet_paint" => "Wet Paint",
+        "tween.ao_acabar.hold" => "Hold",
+        "tween.ao_acabar.rewind" => "Rewind",
+        "tween.canal.opacity" => "Opacity",
+        "tween.canal.position_x" => "Position X",
+        "tween.canal.position_y" => "Position Y",
+        "tween.canal.rotation" => "Rotation",
+        "tween.canal.scale_x" => "Scale X",
+        "tween.canal.scale_y" => "Scale Y",
+        "tween.canal.silhueta" => "Silhouette",
+        "tween.canal.tint" => "Tint",
+        "tween.ciclo.ping_pong" => "Ping-Pong",
+        "tween.ciclo.reinicia" => "Restart",
+        "tween.preset.fade_in" => "Fade In",
+        "tween.preset.fade_out" => "Fade Out",
+        "tween.preset.flash" => "Flash",
         // ph2d-migrar-texto:end
         _ => return None,
     })

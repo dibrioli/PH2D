@@ -35,11 +35,18 @@
 //! forma de esta fixtura não envelhecer em silêncio, que é como as catracas deste repo viram
 //! licença.
 
+use ph2d_editor_core::action_trigger_edits::{
+    InspectorActionTriggerInfo, InspectorTriggerRow, NoMapa,
+};
+use ph2d_editor_core::counter_watch_edits::{InspectorCounterWatchInfo, InspectorWatchRow};
 use ph2d_editor_core::factory_edits::{
     InspectorFactory, InspectorFactoryInfo, InspectorLifecycle, InspectorSpawnWhere,
 };
+use ph2d_editor_core::hud_edits::InspectorHudInfo;
 use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
+use ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo;
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
+use ph2d_editor_core::ray_edits::InspectorRayInfo;
 use ph2d_editor_core::screens::hero::{
     AddedRow, ApplyChoice, InspectorActionInfo, InspectorActionRow, InspectorAnchorInfo,
     InspectorAnchorRow, InspectorAnimInfo, InspectorAnimRow, InspectorAudioInfo,
@@ -56,12 +63,18 @@ use ph2d_editor_core::script_edits::{
     InspectorScriptInfo, InspectorScriptOrphan, InspectorScriptProp, InspectorScriptStatus,
     InspectorScriptValue,
 };
+use ph2d_editor_core::sequence_edits::InspectorSequenceInfo;
+use ph2d_editor_core::shake_edits::{
+    InspectorEmitterInfo, InspectorEmitterRow, InspectorShakeInfo,
+};
 use ph2d_editor_core::statemachine_edits::{
     InspectorStateMachineInfo, InspectorStateRow, InspectorTransitionRow,
 };
 use ph2d_editor_core::topdown_edits::{
     InspectorFacing, InspectorMoveDirections, InspectorTopDownInfo, InspectorViewpoint,
 };
+use ph2d_editor_core::tween_edits::{InspectorTweenInfo, InspectorTweenRow};
+use ph2d_editor_core::weapon_edits::InspectorWeaponInfo;
 use ph2d_panel_inspector as insp;
 
 /// O objecto da fixtura. ⚠️ Um valor qualquer: nenhuma das leis medidas aqui o lê como endereço.
@@ -781,11 +794,182 @@ fn arma_o_top20() {
         also_physics: false,
         selected_count: 1,
     }));
+    // ⭐⭐⭐ **AS NOVE PORTAS que a `line/components` acrescentou em 17–20/09.** Elas chegaram
+    //    depois desta fixtura e o censo DERIVADO acusou-as na integração — que é exactamente
+    //    para o que ele existe (*«a secção nº 29 chega, ninguém se lembra desta fixtura, e a
+    //    régua de largura volta a medir um painel vazio em silêncio»*).
+    // ⚠️ **Cada uma é armada com CONTEÚDO e não com um `default()`**: a varredura de elisões
+    //    mede o que é PINTADO, e uma lista vazia não pinta uma única palavra.
+    insp::set_current_inspector_action_trigger(Some(InspectorActionTriggerInfo {
+        entity_bits: BITS,
+        rows: vec![InspectorTriggerRow {
+            action: "jump".to_string(),
+            edge: 0,
+            signal: "jumped".to_string(),
+            no_mapa: NoMapa::Ligada,
+        }],
+        clock_playing: true,
+        selected_count: 1,
+    }));
+    insp::set_current_inspector_counter_watch(Some(InspectorCounterWatchInfo {
+        entity_bits: BITS,
+        rows: vec![InspectorWatchRow {
+            counter: "Score".to_string(),
+            compare: 1,
+            value: 100,
+            signal: "won".to_string(),
+            once: true,
+            counter_existe: true,
+            valor_vivo: Some(42),
+        }],
+        clock_playing: true,
+        selected_count: 1,
+    }));
+    insp::set_current_inspector_emitter(Some(InspectorEmitterInfo {
+        entity_bits: BITS,
+        rows: vec![InspectorEmitterRow {
+            on: "explosion".to_string(),
+            de: 1,
+            forca: 0.8,
+            dentro: 2.0,
+            fora: 12.0,
+        }],
+        ha_camera_que_treme: true,
+        clock_playing: true,
+        selected_count: 1,
+    }));
+    insp::set_current_inspector_shake(Some(InspectorShakeInfo {
+        entity_bits: BITS,
+        amplitude: 0.35,
+        frequencia: 18.0,
+        decaimento: 1.4,
+        expoente: 2,
+        semente: 9,
+        trauma: 0.5,
+        activa: true,
+        clock_playing: true,
+        selected_count: 1,
+    }));
+    insp::set_current_inspector_hud(Some(InspectorHudInfo {
+        entity_bits: BITS,
+        has_canvas: true,
+        canvas_parent: Some("HUD".to_string()),
+        ref_w: 1920.0,
+        ref_h: 1080.0,
+        fit: 1,
+        tem_camera: true,
+        has_label: true,
+        source: 1,
+        source_name: "Score".to_string(),
+        prefix: "Score: ".to_string(),
+        suffix: " pts".to_string(),
+        vivo: "Score: 42 pts".to_string(),
+        has_button: true,
+        signal: "pause".to_string(),
+        disabled: false,
+        has_counter: true,
+        counter_name: "Score".to_string(),
+        counter_start: 0.0,
+        counter_value: 42,
+    }));
+    insp::set_current_inspector_path_follow(Some(InspectorPathFollowInfo {
+        entity_bits: BITS,
+        caminho: "Patrol".to_string(),
+        nome_existe: true,
+        nome_tem_forma: true,
+        relogio: 0,
+        relogios: 2,
+        duracao_us: Some(2_000_000),
+        repeat: true,
+        autostart: true,
+        ciclo: 1,
+        familia: 2,
+        modo: 1,
+        ao_acabar: 1,
+        deslocamento: 0.25,
+        alinha: true,
+        angulo: 90.0,
+        lado: 0.5,
+        clock_playing: true,
+        selected_count: 1,
+    }));
+    insp::set_current_inspector_ray(Some(InspectorRayInfo {
+        entity_bits: BITS,
+        origin_x: 0.0,
+        origin_y: 0.5,
+        dir_x: 1.0,
+        dir_y: 0.0,
+        reach: 8.0,
+        layer: 3,
+        on_enter: "spotted".to_string(),
+        on_exit: "lost".to_string(),
+        sees: "Player".to_string(),
+        sees_at: 4.5,
+        clock_playing: true,
+        selected_count: 1,
+    }));
+    insp::set_current_inspector_sequence(Some(InspectorSequenceInfo {
+        entity_bits: BITS,
+        container: "Cutscene".to_string(),
+        nomes: vec!["Intro".to_string(), "Reveal".to_string()],
+        escolhido: Some(1),
+        duracao_da_cutscene: 6.5,
+        tem_relogio: true,
+        a_correr: true,
+        duracao_do_relogio: 3.0,
+        t: 1.25,
+        clock_playing: true,
+        vista_deixa_correr: true,
+        selected_count: 1,
+    }));
+    insp::set_current_inspector_tween(Some(InspectorTweenInfo {
+        entity_bits: BITS,
+        rows: vec![InspectorTweenRow {
+            canal: 1,
+            de: [0.0, 0.0, 0.0, 1.0],
+            para: [1.0, 0.0, 0.0, 1.0],
+            familia: 2,
+            modo: 1,
+            ao_acabar: 1,
+            ciclo: 1,
+            duracao_us: Some(500_000),
+            repeat: false,
+            autostart: true,
+        }],
+        tem_sprite: true,
+        selected_count: 1,
+    }));
+    insp::set_current_inspector_weapon(Some(InspectorWeaponInfo {
+        entity_bits: BITS,
+        on_signal: "fire".to_string(),
+        cooldown_ms: 120,
+        ammo_counter: "Ammo".to_string(),
+        reload_ms: 900,
+        reload_on: "reload".to_string(),
+        on_fire: "shot".to_string(),
+        on_empty: "click".to_string(),
+        on_reloaded: "ready".to_string(),
+        municao: Some(7),
+        pente: 12,
+        recarregando: false,
+        clock_playing: true,
+        selected_count: 1,
+    }));
 }
 
 /// **Desarma as 28 portas.** ⚠️ Sem isto a varredura de fábrica passaria a medir um Inspector
 /// armado — *o estado que uma fixtura deixa para trás é o estado que a régua seguinte mede*.
 pub fn desarma_tudo() {
+    insp::set_current_inspector_action_trigger(None);
+    insp::set_current_inspector_counter_watch(None);
+    insp::set_current_inspector_emitter(None);
+    insp::set_current_inspector_hud(None);
+    insp::set_current_inspector_path_follow(None);
+    insp::set_current_inspector_ray(None);
+    insp::set_current_inspector_sequence(None);
+    insp::set_current_inspector_shake(None);
+    insp::set_current_inspector_tween(None);
+    insp::set_current_inspector_weapon(None);
     insp::set_current_inspector_name(None);
     insp::set_current_inspector_transform(None);
     insp::set_current_inspector_visibility(None);

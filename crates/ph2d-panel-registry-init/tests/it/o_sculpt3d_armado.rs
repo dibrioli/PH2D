@@ -93,7 +93,13 @@ pub fn arma() {
         // ⚠️ Ver o cabeçalho: em `Basic` metade das fileiras não é pintada.
         ui_level: UiLevel::Pro,
         // Um material escolhido — sem isto o chip do rig ganha e os dez nomes não são medidos.
-        matcap: Some(0),
+        // ⚠️⚠️ **O campo `matcap: Option<u8>` MORREU na `line/sculpt3d`** (o commit da luz PLANA):
+        //    com que luz olhar passou a ser UM enum de três estados (`Flat` · `Rig` · `Matcap(i)`),
+        //    porque os dois campos antigos podiam dizer coisas contraditórias ao mesmo tempo. Esta
+        //    fixtura nasceu no `main` a escrever o campo velho ⇒ ela **não compilava** na árvore
+        //    combinada, e é a colisão semântica que o §1.5.5 nomeia: *um campo que muda de forma
+        //    funde limpo e não compila*. ⭐ A tradução é exacta e diz o MESMO: escolher o matcap `0`.
+        lighting: ph2d_panel_sculpt3d::state::LightMode::Matcap(0),
         alpha_preview: true,
         wireframe: true,
         ..Sculpt3dUi::default()

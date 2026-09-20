@@ -19,5 +19,12 @@ authors.workspace = true
 [dependencies]
 ph2d-material = { path = "../ph2d-material" }
 
+# ⛔⛔ **naga (o MESMO major do wgpu 29) — porque um WGSL que ninguem compila e' PROSA.**
+# O `cargo check` nao olha para uma `&str`, e todo gate que olha para um shader neste repo precisa
+# de adapter e e' `#[ignore]` ⇒ um erro de sintaxe no gemeo so' apareceria no 1.º quadro de quem
+# abrisse a cena. Aqui ele e' aritmetica, nao uma pergunta para a placa.
+[dev-dependencies]
+naga = { version = "29.0.4", features = ["wgsl-in"] }
+
 [lints]
 workspace = true

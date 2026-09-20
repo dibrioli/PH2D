@@ -10,11 +10,30 @@
 //!
 //! # Como se monta
 //!
+//! ⚠️⚠️ **NÃO é uma concatenação, e foi o gate de `naga` que o descobriu** — a redacção anterior
+//! deste bloco dizia que era, e estava errada nas duas metades: a fonte da lei traz um `{ENV}` por
+//! preencher, e a nossa traz um `{MAX_LAMPADAS}`.
+//!
 //! ```ignore
-//! let fonte = format!("{}\n{}", ph2d_material::wgsl::SOURCE, ph2d_form_pbr::wgsl::SOURCE);
+//! let fonte = format!(
+//!     "{}\n{}",
+//!     ph2d_material::wgsl::SOURCE.replace(ph2d_material::wgsl::ENV_SLOT, o_ambiente_do_consumidor),
+//!     ph2d_form_pbr::wgsl::SOURCE.replace(ph2d_form_pbr::wgsl::CAP_SLOT, "4u"),
+//! );
 //! ```
 //!
 //! ⚠️ **Por esta ordem**: o nosso laço chama `mx_direct`, que vem de lá.
+//!
+//! # ⏳ O que os gates desta crate NÃO afirmam, e é dívida NOMEADA
+//!
+//! Eles medem a **ESTRUTURA** do gémeo — que ele parsa, que valida, que chama a óptica de lá em vez
+//! de a reescrever, e que as duas constantes são as da lei. ⛔ **Eles não medem um VALOR**: nada
+//! aqui prova que o dispositivo calcula o mesmo número que a [`super::acende_texel`].
+//!
+//! ⚠️ E isso **não** se cura nesta crate: medir um valor pede um `Device`, e uma folha que ganhasse
+//! `wgpu` deixava de ser folha. *A paridade é do PASSE* — ela nasce com o consumidor, com a barra
+//! derivada do formato do alvo, como a `ph2d-flip` já faz. Até lá a promessa desta crate é
+//! exactamente a que os gates escrevem, e nem uma linha a mais.
 
 /// Quantos `f32` uma [`super::Lampada`] ocupa no buffer: `dir.xyz` + `_pad` + `rgb` + `_pad`.
 ///
@@ -22,6 +41,22 @@
 /// empacotar `6` faria a segunda lâmpada ser lida do meio da primeira. *O alinhamento é uma
 /// propriedade da linguagem, não uma escolha nossa.*
 pub const LAMPADA_FLOATS: usize = 8;
+
+/// ⛔⛔ **Onde o TECTO de lâmpadas entra no [`SOURCE`] — e porque ele NÃO é um número desta crate.**
+///
+/// O WGSL não tem array de tamanho dinâmico **por valor**, e a alternativa — receber um
+/// `ptr<storage, …>` — **não é WGSL do núcleo**: a `naga` recusa-a com `InvalidArgumentPointerSpace`,
+/// e foi assim que este tecto apareceu (o gate `o_gemeo_em_wgsl_parsa_e_valida` reprovou a 1.ª
+/// redacção deste ficheiro, antes de haver um pixel).
+///
+/// ⚠️ **Quem sabe o número é o RIG, e esta crate não depende dele de propósito** — logo escrevê-lo
+/// aqui seria a segunda cópia de um valor que vive noutro sítio, e as duas divergiriam na primeira
+/// lâmpada nova. ⇒ ele entra como MARCA, que é o idioma que o [`ph2d_material::wgsl::ENV_SLOT`] já
+/// paga para a mesma classe de pergunta: *o que o consumidor sabe, o consumidor escreve.*
+///
+/// O que substituir esta marca tem de ser um literal `u32` de WGSL (`"4u"`), e tem de ser **≥ o
+/// número de lâmpadas que o buffer dele carrega**.
+pub const CAP_SLOT: &str = "{MAX_LAMPADAS}";
 
 /// Empacota as lâmpadas para o buffer que o [`SOURCE`] lê.
 ///
@@ -59,6 +94,13 @@ struct LampadaGpu {
     _pad1: f32,
 };
 
+// ⛔ As lâmpadas entram por VALOR e a contagem viaja COM elas: um `n` passado ao lado seria um
+// segundo argumento que se pode esquecer, e o laço leria lixo do resto do array.
+struct Lampadas {
+    n: u32,
+    l: array<LampadaGpu, {MAX_LAMPADAS}>,
+};
+
 // A vista de um canvas 2D. MUST equal `ph2d_form_pbr::VISTA` — preso por
 // `a_vista_do_shader_e_a_da_lei`.
 const FORMA_VISTA: vec3<f32> = vec3<f32>(0.0, 0.0, 1.0);
@@ -74,8 +116,7 @@ fn forma_acende_texel(
     albedo: vec3<f32>,
     cobertura: f32,
     oclusao: f32,
-    lampadas: ptr<storage, array<LampadaGpu>, read>,
-    n_lampadas: u32,
+    lampadas: Lampadas,
     ambiente: vec3<f32>,
 ) -> vec3<f32> {
     let q = dot(normal, normal);
@@ -86,9 +127,14 @@ fn forma_acende_texel(
     let n = normal * inverseSqrt(q);
 
     var luz = vec3<f32>(0.0);
-    for (var i = 0u; i < n_lampadas; i = i + 1u) {
-        let l = (*lampadas)[i];
-        luz = luz + mx_direct(m, n, FORMA_VISTA, l.para_a_luz, l.radiancia);
+    for (var i = 0u; i < lampadas.n; i = i + 1u) {
+        let l = lampadas.l[i];
+        // ⛔ A cerca do meio-vector degenerado — ver o doc da `acende_texel`. Sem ela uma lâmpada
+        // apontada de frente para trás pinta a peça INTEIRA de `NaN`.
+        let h = FORMA_VISTA + l.para_a_luz;
+        if (dot(h, h) >= FORMA_EPS_N) {
+            luz = luz + mx_direct(m, n, FORMA_VISTA, l.para_a_luz, l.radiancia);
+        }
     }
 
     // ⚠️ A oclusão pesa SÓ o ambiente. Ver o doc da `acende_texel`.
@@ -98,6 +144,10 @@ fn forma_acende_texel(
     return albedo + (aceso - albedo) * c;
 }
 "#;
+
+#[cfg(test)]
+#[path = "wgsl_gate_tests.rs"]
+mod gate_tests;
 
 #[cfg(test)]
 mod tests {

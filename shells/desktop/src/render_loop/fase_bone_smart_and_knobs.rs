@@ -4,6 +4,24 @@
 use super::*;
 use ph2d_i18n::{tr, tr_with};
 
+/// ⭐ **Qual dos quatro números da ÂNCORA o campo escreveu.**
+///
+/// ⚠️ **Ele morava no `mod.rs` de propósito** — *«viaja nas intenções de uma fase de outro
+/// ficheiro»* —, e mudou-se para aqui na integração de 2026-09-20 por um tecto de LOC que só a
+/// árvore COMBINADA acendeu: o `render_loop/mod.rs` estava em `599` de `600` no `main` e esta
+/// linha acrescentou-lhe `7`. ⛔ A cura de um tecto vermelho é **corte por responsabilidade**, e a
+/// responsabilidade é desta fase: é ela que declara o campo que o carrega e é ela que o DRENA — o
+/// `mod.rs` é o índice das fases, não o vocabulário delas.
+#[derive(Clone, Copy, PartialEq)]
+pub(super) enum IkKnob {
+    Mix,
+    Softness,
+    Chain,
+    /// ⭐⭐⭐ **O DESVIO DO APONTAR**, em GRAUS na tela e radianos no documento — a conversão vive
+    /// no dreno, como a do limite da junta. Ver [`ph2d_skeleton_ecs::IkGoal::offset`].
+    Offset,
+}
+
 /// Os pedidos que o dreno do barramento recolheu neste quadro para esta fase.
 pub(super) struct BoneSmartAndKnobsIntents {
     pub(super) pending_ik_knob: Option<(IkKnob, f64)>,

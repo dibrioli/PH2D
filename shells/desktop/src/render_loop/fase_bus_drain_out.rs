@@ -7,6 +7,8 @@
 //! de 16/09 (`CLAUDE.md` §5.0).
 
 use super::*;
+// ⚠️ O `IkKnob` mora na FASE que o drena, não no índice — ver o cabeçalho dele.
+use super::fase_bone_smart_and_knobs::IkKnob;
 
 /// Os pedidos que o dreno do barramento recolheu neste quadro, para as fases que os consomem.
 ///

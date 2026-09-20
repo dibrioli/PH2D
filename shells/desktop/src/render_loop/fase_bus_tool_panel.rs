@@ -3,6 +3,8 @@
 //! sub-dreno é re-derivado (o dreno só corre com ele). Ver o cabeçalho de lá.
 
 use super::*;
+// ⚠️ O `IkKnob` mora na FASE que o drena, não no índice — ver o cabeçalho dele.
+use super::fase_bone_smart_and_knobs::IkKnob;
 use ph2d_editor_core::action_bus::EditorAction;
 
 impl crate::App {

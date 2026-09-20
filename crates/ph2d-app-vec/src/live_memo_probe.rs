@@ -269,8 +269,8 @@ fn live_memo_commutation_probe() {
     use ph2d_vec_scene::bake_xform;
 
     const D: f64 = 0.12;
-    let join = crate::vec_expand::join_of_code(1);
-    let side = crate::vec_expand::side_of_code(0);
+    let join = crate::expand::join_of_code(1);
+    let side = crate::expand::side_of_code(0);
 
     println!("[comuta] offset d = {D}; desvio maximo de vertice entre as duas rotas");
     println!("[comuta] {:<22} {:>12} {:>8}", "pose", "desvio", "escala");
@@ -333,11 +333,11 @@ fn live_memo_commutation_profile_probe() {
 
         let mut world = stroked();
         bake_xform(&mut world, &x);
-        let by_world = crate::vec_expand::power_stroke_layers(&world, &stops);
+        let by_world = crate::expand::power_stroke_layers(&world, &stops);
 
         // (a) a rota local INGENUA: coze com a largura autorada e assa a saida.
         let naive = {
-            let mut out = crate::vec_expand::power_stroke_layers(&stroked(), &stops);
+            let mut out = crate::expand::power_stroke_layers(&stroked(), &stops);
             for p in &mut out {
                 bake_xform(p, &x);
             }
@@ -350,7 +350,7 @@ fn live_memo_commutation_profile_probe() {
             if let Some(sp) = local.stroke.as_mut() {
                 sp.width = W / s;
             }
-            let mut out = crate::vec_expand::power_stroke_layers(&local, &stops);
+            let mut out = crate::expand::power_stroke_layers(&local, &stops);
             for p in &mut out {
                 bake_xform(p, &x);
             }

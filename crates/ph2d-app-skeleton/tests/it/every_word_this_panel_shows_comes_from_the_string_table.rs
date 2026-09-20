@@ -10,8 +10,71 @@
 //! e um censo sobre um prefixo vazio é dois conjuntos vazios a concordarem.
 use ph2d_label_census::gate::{self, Excecao};
 
+/// ⭐⭐ **O mecanismo das dezasseis excepções do [`verbos.rs`], escrito UMA vez.**
+///
+/// Elas são as AGULHAS de um censo textual: o `Verbo::rastos_na_shell` devolve, por verbo, os
+/// fragmentos de CÓDIGO que a fase do quadro tem de conter — e o gate daquela crate varre o fonte
+/// da shell à procura deles. ⛔ Traduzi-las apagaria o censo: o rasto é um caminho de Rust
+/// (`skeleton_live::release(`), uma variante (`Keep::Deformed`) ou uma escrita (`smart_pick =
+/// Some(`), e nenhum deles é uma palavra que alguém lê no ecrã.
+///
+/// ⚠️ **Porque a régua lexical as lê como língua, e ela não está errada:** um `(` ou um espaço
+/// quebram o teste do `TokenNu`, e `Keep::Deformed` é Capitalizado — *a cegueira que as salvaria
+/// seria «tudo o que parece código», que branquearia centenas de rótulos verdadeiros*.
+///
+/// ⭐ **E este ficheiro fica sob censo:** `verbos.rs` hoje não tem uma única palavra de ecrã, logo
+/// um rótulo escrito lá amanhã REPROVA. Uma isenção de FICHEIRO INTEIRO
+/// ([`gate::intrusos_fora_de`]) calaria essa metade para sempre.
+const AGULHA_DO_CENSO_DA_SHELL: &str = "\
+é uma AGULHA do censo textual de `Verbo::rastos_na_shell`: um fragmento de CÓDIGO que a fase do \
+quadro tem de conter para o verbo ter rasto. Traduzi-la apagaria o censo — ver a nota acima";
+
 /// ⭐ As excepções, **com o mecanismo** — nunca uma lista aberta.
 const NOT_LANGUAGE: &[Excecao] = &[
+    ("verbos.rs", "espelho::espelha(", AGULHA_DO_CENSO_DA_SHELL),
+    ("verbos.rs", "goal::add_look_at(", AGULHA_DO_CENSO_DA_SHELL),
+    (
+        "verbos.rs",
+        "skeleton_live::bind(",
+        AGULHA_DO_CENSO_DA_SHELL,
+    ),
+    (
+        "verbos.rs",
+        "skeleton_live::release(",
+        AGULHA_DO_CENSO_DA_SHELL,
+    ),
+    ("verbos.rs", "Keep::Deformed", AGULHA_DO_CENSO_DA_SHELL),
+    ("verbos.rs", "Keep::Source", AGULHA_DO_CENSO_DA_SHELL),
+    (
+        "verbos.rs",
+        "pose_de_repouso::aplica(",
+        AGULHA_DO_CENSO_DA_SHELL,
+    ),
+    ("verbos.rs", "Verbo::Repor", AGULHA_DO_CENSO_DA_SHELL),
+    ("verbos.rs", "Verbo::Guardar", AGULHA_DO_CENSO_DA_SHELL),
+    ("verbos.rs", "skeleton_goal::add(", AGULHA_DO_CENSO_DA_SHELL),
+    (
+        "verbos.rs",
+        "skeleton_goal::remove(",
+        AGULHA_DO_CENSO_DA_SHELL,
+    ),
+    (
+        "verbos.rs",
+        "bone_limit::add_limit(",
+        AGULHA_DO_CENSO_DA_SHELL,
+    ),
+    (
+        "verbos.rs",
+        "bone_limit::remove_limit(",
+        AGULHA_DO_CENSO_DA_SHELL,
+    ),
+    ("verbos.rs", "smart::add(", AGULHA_DO_CENSO_DA_SHELL),
+    (
+        "verbos.rs",
+        "skeleton_smart::remove(",
+        AGULHA_DO_CENSO_DA_SHELL,
+    ),
+    ("verbos.rs", "smart_pick = Some(", AGULHA_DO_CENSO_DA_SHELL),
     (
         "goal.rs",
         "Shoulder",

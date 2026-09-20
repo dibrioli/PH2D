@@ -6,8 +6,8 @@
 //! quisesse — verde sobre o bug.
 
 use super::*;
+use crate::selection_sync::VecSelSync;
 use crate::vec_selection::sync_selection;
-use ph2d_app_vec::selection_sync::VecSelSync;
 use ph2d_ecs::{Transform, VecClipContent, VecPathRef};
 use ph2d_editor_core::screens::hero::GizmoStateGroup;
 use ph2d_vec_entities::entities::{VecEntityMap, sync};

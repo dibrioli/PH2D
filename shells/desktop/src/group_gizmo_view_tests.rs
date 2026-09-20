@@ -1,9 +1,14 @@
+//! ⚠️ **Estes testes ficaram na SHELL quando o `group_gizmo_view` se mudou para a
+//! `ph2d-app-vec`** (integração de 2026-09-20, tecto de LOC da shell): eles montam a cena com
+//! componentes de OUTRA família (`ph2d_app_components`), e família→família é o que o
+//! `architecture_no_dependency_climbs_a_layer` proíbe. *O sujeito é do vector; a pergunta que
+//! eles fazem é de COMPOSIÇÃO* (HOWTO §2.6) — daí o `super::` ter virado `crate::group_gizmo_view::`.
 //! Os gates do gizmo de grupo/vazio (report do Enio, 2026-08-26).
 //!
 //! ⚠️ **O oráculo é a CAIXA, e nunca «a função devolveu `Some`»**: um gizmo publicado com
 //! meia-extensão zero passa em qualquer teste de presença e é exatamente o defeito reportado.
 
-use super::EMPTY_HALF_PX;
+use crate::group_gizmo_view::EMPTY_HALF_PX;
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform, Visibility};
 use ph2d_editor_core::GizmoView;
 use ph2d_host::WindowSize;
@@ -24,7 +29,7 @@ fn empty_root(sim: &mut SimWorld, name: &str) -> Entity {
 
 /// A `GizmoView` que o passe publicaria, com uma câmera de teste.
 fn boxed(sim: &SimWorld, e: Entity) -> Option<GizmoView> {
-    super::view(
+    crate::group_gizmo_view::view(
         sim,
         e,
         &Camera2d::default(),
@@ -202,7 +207,7 @@ fn every_empty_object_is_listed_children_or_not() {
     let group = empty_root(&mut sim, "Group");
     sim.world_mut()
         .spawn((Transform::IDENTITY, sprite([1.0, 1.0]), ChildOf(group)));
-    let listed = super::empty_objects(&sim);
+    let listed = crate::group_gizmo_view::empty_objects(&sim);
     assert!(
         listed.contains(&lonely) && listed.contains(&group),
         "o censo devolveu {listed:?} — faltou o vazio ou o grupo"
@@ -237,7 +242,7 @@ fn what_draws_itself_and_what_is_not_on_the_canvas_get_no_ring() {
             Visibility::hidden(),
         ))
         .id();
-    let listed = super::empty_objects(&sim);
+    let listed = crate::group_gizmo_view::empty_objects(&sim);
     for (what, e) in [
         ("uma sprite", with_art),
         ("a receita", recipe),
@@ -254,7 +259,7 @@ fn what_draws_itself_and_what_is_not_on_the_canvas_get_no_ring() {
         .remove::<ph2d_ecs::MasterRoot>();
     ph2d_ecs::assign_master_pieces(sim.world_mut());
     assert!(
-        super::empty_objects(&sim).contains(&recipe),
+        crate::group_gizmo_view::empty_objects(&sim).contains(&recipe),
         "sem a marca de receita a entidade continuou sem anel — o gate estaria verde por outra razao"
     );
 }
@@ -268,8 +273,8 @@ fn what_draws_itself_and_what_is_not_on_the_canvas_get_no_ring() {
 /// anel, sem caixa e impegável **no único estado em que está na tela**. Mover a receita inteira era
 /// inalcançável por gesto de canvas.
 ///
-/// ⚠️ **Os TRÊS consumidores no mesmo gate, de propósito** — a tinta ([`super::empty_objects`]), o
-/// dedo ([`super::pick_empty_at_world`]) e a caixa ([`super::view`]). Eles caem juntos porque a
+/// ⚠️ **Os TRÊS consumidores no mesmo gate, de propósito** — a tinta ([`crate::group_gizmo_view::empty_objects`]), o
+/// dedo ([`crate::group_gizmo_view::pick_empty_at_world`]) e a caixa ([`crate::group_gizmo_view::view`]). Eles caem juntos porque a
 /// pergunta é uma só, e um gate sobre um deles deixaria os outros dois a apodrecer.
 ///
 /// ⚠️ E o gesto é o de verdade: quem acende é `master_editing::mark`, a mesma função que o quadro
@@ -291,18 +296,19 @@ fn the_recipe_being_edited_gets_its_ring_its_finger_and_its_box_back() {
     // Controlo NEGATIVO: sem ninguém a editar, a receita não está na cena e não tem anel.
     ph2d_app_components::master_editing::mark(&mut sim, None::<u64>, &mut None);
     assert!(
-        !super::empty_objects(&sim).contains(&recipe),
+        !crate::group_gizmo_view::empty_objects(&sim).contains(&recipe),
         "a receita ganhou anel sem ninguem a editar — o gate mediria o estado errado"
     );
 
     // O gesto: escolher a linha dela na Hierarquia.
     ph2d_app_components::master_editing::mark(&mut sim, Some(recipe.to_bits()), &mut None);
     assert!(
-        super::empty_objects(&sim).contains(&recipe),
+        crate::group_gizmo_view::empty_objects(&sim).contains(&recipe),
         "a receita editada continua sem anel — ela nao tem UM pixel no canvas"
     );
     assert!(
-        super::pick_empty_at_world(&sim, [0.0, 0.0], PPM).contains(&recipe.to_bits()),
+        crate::group_gizmo_view::pick_empty_at_world(&sim, [0.0, 0.0], PPM)
+            .contains(&recipe.to_bits()),
         "o centro da receita editada nao pega — mover a receita inteira e' inalcancavel por gesto"
     );
     let half = half_of(&boxed(&sim, recipe).expect("a receita editada nao publica GizmoView"));
@@ -330,15 +336,15 @@ fn the_ring_takes_the_click_at_the_centre_and_not_beyond_it() {
             Name::new("Group"),
         ))
         .id();
-    let r = super::marker_world_radius(&sim, e, PPM);
+    let r = crate::group_gizmo_view::marker_world_radius(&sim, e, PPM);
     assert!(r > 0.0, "raio do marcador nao positivo: {r}");
     assert_eq!(
-        super::pick_empty_at_world(&sim, [3.0, -1.0], PPM),
+        crate::group_gizmo_view::pick_empty_at_world(&sim, [3.0, -1.0], PPM),
         vec![e.to_bits()],
         "o centro do anel nao pegou"
     );
     assert!(
-        super::pick_empty_at_world(&sim, [3.0 + r * 1.5, -1.0], PPM).is_empty(),
+        crate::group_gizmo_view::pick_empty_at_world(&sim, [3.0 + r * 1.5, -1.0], PPM).is_empty(),
         "o anel pegou um ponto a 1,5 raio — ele rouba o clique dos vizinhos"
     );
 }
@@ -364,7 +370,7 @@ fn the_ring_scales_by_the_geometric_mean() {
         ))
         .id();
     let base = EMPTY_HALF_PX / PPM;
-    let got = super::marker_world_radius(&sim, e, PPM);
+    let got = crate::group_gizmo_view::marker_world_radius(&sim, e, PPM);
     assert!(
         (got - base * 2.0).abs() < 1e-5,
         "raio {got} — a media geometrica de (4, 1) e' 2, entao esperava-se {}",

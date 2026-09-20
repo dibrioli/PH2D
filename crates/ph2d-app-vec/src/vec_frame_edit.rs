@@ -77,7 +77,7 @@ pub(crate) fn entity_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Op
 /// ⚠️ **`pub(crate)` porque o AUTO LAYOUT (W2) faz a MESMA pergunta** — *qual moldura o artista
 /// está a olhar?* — e uma segunda resolução divergiria desta no dia em que a regra de expansão
 /// mudasse: a seção Frame e a seção Layout apareceriam em seleções diferentes.
-pub(crate) fn frame_of_selection(
+pub fn frame_of_selection(
     sim: &SimWorld,
     map: &VecEntityMap,
     selected: &[VecPathId],

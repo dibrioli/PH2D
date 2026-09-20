@@ -53,6 +53,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.blend_mode.name" => "Blend Mode",
         "component.bone.name" => "Bone",
         "component.bone_limit.name" => "Angle Limit",
+        "component.bone_rest.name" => "Rest Pose",
         "component.camera_follow.name" => "Camera Follow",
         "component.camera_limits.name" => "Camera Limits",
         "component.camera_shake.name" => "Camera Shake",

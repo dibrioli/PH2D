@@ -67,7 +67,7 @@ pub(crate) fn clip_subject_of_selection(
 /// O recorte da seleção deste frame: `None` = a seleção não oferece o controlo; `Some(false)` =
 /// oferece e está desligado.
 #[must_use]
-pub(crate) fn selected_clip(
+pub fn selected_clip(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -79,7 +79,7 @@ pub(crate) fn selected_clip(
 
 /// Liga/desliga o recorte na forma da seleção. Devolve `true` se algo mudou — o
 /// `post_frame_undo` captura por diff, então um no-op não custa passo de undo.
-pub(crate) fn set_selected_clip(
+pub fn set_selected_clip(
     sim: &mut SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,

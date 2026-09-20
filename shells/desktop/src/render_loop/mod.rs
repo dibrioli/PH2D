@@ -521,16 +521,6 @@ use std::time::Instant;
 #[cfg(feature = "panel-audio-mixer")]
 const _: () = assert!(ph2d_audio::SUB_BUS_COUNT == ph2d_panel_audio_mixer::SUB_BUS_COUNT);
 
-/// Qual dos três números da ÂNCORA o campo escreveu (no MÓDULO: viaja nas intenções de uma fase de outro ficheiro).
-#[derive(Clone, Copy, PartialEq)]
-enum IkKnob {
-    Mix,
-    Softness,
-    Chain,
-    /// ⭐⭐⭐ **O DESVIO DO APONTAR**, em GRAUS na tela e radianos no documento — a conversão vive
-    /// no dreno, como a do limite da junta. Ver [`ph2d_skeleton_ecs::IkGoal::offset`].
-    Offset,
-}
 impl crate::App {
     pub(super) fn run_render_frame(&mut self) {
         let player_input = self.fase_pointer_subjects();

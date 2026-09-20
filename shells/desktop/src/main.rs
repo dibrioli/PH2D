@@ -221,7 +221,14 @@ mod global_palette_input;
 /// **A cena da SUJIDADE NA LENTE** (`PH2D_GLOW_DIRT_SMOKE=1`, doc 89 folha 11) — a máscara
 /// precisa de uma IMAGEM a sério, que é o que os demos de grafo não têm.
 mod grid_smoke;
-mod group_gizmo_view;
+pub(crate) use ph2d_app_vec::group_gizmo_view;
+// ⛔⛔ **E os TESTES dele FICAM aqui, por LEI e não por conveniência** (HOWTO §2.6): eles montam a
+// cena com componentes de OUTRA família (`ph2d_app_components`), e uma família a depender de outra
+// família é o que o `architecture_no_dependency_climbs_a_layer` proíbe. *O sujeito é do vector; a
+// pergunta que os testes fazem é de COMPOSIÇÃO, e composição mora na shell.*
+#[cfg(test)]
+#[path = "group_gizmo_view_tests.rs"]
+mod group_gizmo_view_tests;
 mod guide_gesture;
 mod guide_smoke;
 /// A cena de smoke das Color Harmonies (abre o picker com Triad) — `PH2D_HARMONY_SMOKE=1`.
@@ -263,11 +270,6 @@ mod layout_reorder;
 mod layout_scroll_gesture;
 mod layout_smoke;
 mod legacy_chrome;
-/// SONDA (`--ignored`): quanto custa MOVER uma forma que tem geometria viva. A §11 do plano 25
-/// afirma que todo memo de geometria e' chaveado no MUNDO — esta sonda pergunta ao produto.
-#[cfg(test)]
-#[path = "live_memo_probe.rs"]
-mod live_memo_probe;
 /// `Merge to Layers` — instala no Painter o documento que a fusão produziu (plano Sprite 18 W10).
 mod merge_layers;
 mod sequence_smoke;
@@ -546,10 +548,10 @@ mod vec_bucket;
 // da shell ele simplesmente não existe. Ele é a sonda do report de 2026-09-02 e corre com os testes
 // da própria `ph2d-app-vec`, que é onde o sujeito dele vive; um alias aqui só pedia à shell um nome
 // que nenhuma build dela pode ver.
+pub(crate) use ph2d_app_vec::component_edit as vec_component_edit;
 /// O chip *Clip content* — a projeção e a edição do RECORTE, que vale para qualquer forma
 /// vetorial FECHADA (e não só para a moldura, desde 2026-08-21).
-mod vec_clip_edit;
-pub(crate) use ph2d_app_vec::component_edit as vec_component_edit;
+pub(crate) use ph2d_app_vec::vec_clip_edit;
 /// ⭐⭐⭐ **A secção *Component* do painel vetorial, ligada ao mecanismo GERAL** (F4.6c) — nasce
 /// DESLIGADA (`PH2D_VEC_COMPONENT_GENERAL=1` arma). Ver o cabeçalho de lá.
 mod vec_component_general;
@@ -586,10 +588,10 @@ mod vec_zorder_late_writers_tests;
 // alterações nos ~60 sítios que os chamam, e é o molde para a Fase B.
 #[cfg(feature = "panel-vector")]
 pub(crate) use ph2d_app_vec::font_preview as vec_font_preview;
-pub(crate) use ph2d_system_fonts::library as vec_font;
-/// A moldura da SELEÇÃO (plano UI/UX W0): o que o painel mostra, e o que o chip escreve.
-mod vec_frame_edit;
 pub(crate) use ph2d_app_vec::frame_labels as vec_frame_labels;
+/// A moldura da SELEÇÃO (plano UI/UX W0): o que o painel mostra, e o que o chip escreve.
+pub(crate) use ph2d_app_vec::vec_frame_edit;
+pub(crate) use ph2d_system_fonts::library as vec_font;
 mod vec_frame_resize;
 pub(crate) use ph2d_app_vec::frame_spans as vec_frame_spans;
 pub(crate) use ph2d_vec_text::glyph as vec_glyph;
@@ -611,9 +613,9 @@ pub(crate) use ph2d_app_vec::paint_stack as vec_paint_stack;
 /// O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern e pelo Text on Path.
 pub(crate) use ph2d_app_vec::pick as vec_pick;
 pub(crate) use ph2d_app_vec::resize_box_edit as vec_resize_box_edit;
-mod vec_selection;
 pub(crate) use ph2d_app_vec::shape_live as vec_shape_live;
 pub(crate) use ph2d_app_vec::shape_params as vec_shape_params;
+pub(crate) use ph2d_app_vec::vec_selection;
 mod vec_snap;
 /// Os alvos de snap vindos do RASTER (irmão de `vec_snap`, teto de LOC).
 mod vec_snap_sprites;
@@ -653,7 +655,7 @@ mod weld_smoke;
 /// catálogo, no z dela. A ponte mora aqui porque só a shell alcança as duas metades.
 pub(crate) use ph2d_app_vec::widget_live;
 mod widget_skin_smoke;
-mod width_handles;
+pub(crate) use ph2d_app_vec::width_handles;
 /// A cena de smoke do **Width Tool** (`PH2D_BUILD_SMOKE=42`) — irmã de `build_smoke`, teto de LOC.
 mod width_tool_smoke;
 mod winit_host;

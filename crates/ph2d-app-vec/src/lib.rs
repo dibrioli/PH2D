@@ -72,6 +72,16 @@ pub mod align_live;
 // ⛔⛔ **O censo de ÓRFÃOS desta crate** — um ficheiro que nenhum `mod` declara não é compilado, e
 // nenhum `check`, `clippy` ou suíte o acusa. Ver o cabeçalho do módulo: ele nasceu de um defeito
 // real, apanhado só pelo `ONLY-A` da prova.
+/// ⭐ **SONDA (`--ignored`): quanto custa MOVER uma forma que tem geometria VIVA.**
+///
+/// ⚠️ Ela morava em `shells/desktop/src/` e mudou-se para aqui na integração de 2026-09-20, pela
+/// catraca `the_shell_only_shrinks`. ⭐ **O endereço certo é ESTE e não uma crate própria** (o
+/// molde do `ph2d-probe-cursor-grab`): os cinco produtores que ela mede — `contour_live`,
+/// `offset_live`, `profile_live`, `symmetry_live`, `vec_expand` — vivem nesta crate, e uma folha
+/// a depender de uma FAMÍLIA é o que o `architecture_no_dependency_climbs_a_layer` proíbe.
+#[cfg(test)]
+#[path = "live_memo_probe.rs"]
+mod live_memo_probe;
 #[cfg(test)]
 #[path = "no_orphan_module_tests.rs"]
 mod no_orphan_module_tests;
@@ -107,6 +117,7 @@ pub mod fx_live_hit;
 pub mod fx_live_memo;
 pub mod fx_live_resolve;
 pub mod fx_silhouette;
+pub mod group_gizmo_view;
 pub mod guide;
 pub mod hier_group;
 pub mod marquee;
@@ -131,7 +142,10 @@ pub mod trim;
 pub mod ui_panel_spec;
 pub mod ui_state_bridge;
 pub mod ui_state_edit;
+pub mod vec_clip_edit;
+pub mod vec_frame_edit;
 pub mod vec_gizmo_view;
+pub mod vec_selection;
 pub mod vector_bridge;
 pub mod widget_drive;
 pub mod widget_edit;
@@ -175,6 +189,7 @@ pub mod state;
 pub mod stroke_paint;
 pub mod stroke_present;
 pub mod weld;
+pub mod width_handles;
 
 /// **O que esta família declara à shell** (`ph2d-app-registry-init`).
 ///

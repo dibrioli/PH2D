@@ -50,7 +50,7 @@ use ph2d_vec_entities::transform::world_transform;
 /// ⚠️ **Pixels de ARTE, não de tela** — convertidos por `pixels_per_meter`, como toda medida
 /// geométrica do canvas. Em px de tela o marcador não escalaria com o zoom e a caixa de um objeto
 /// vazio seria a única do app que muda de tamanho de mundo quando ninguém lhe toca.
-pub(crate) const EMPTY_HALF_PX: f32 = 2.0 * ph2d_editor_core::HANDLE_SIZE_PX;
+pub const EMPTY_HALF_PX: f32 = 2.0 * ph2d_editor_core::HANDLE_SIZE_PX;
 
 /// ⛔ **Quem já tem gizmo próprio** — ver o cabeçalho.
 ///
@@ -106,7 +106,7 @@ fn publishes_its_own_handles(sim: &SimWorld, e: Entity) -> bool {
 /// inalcançável por gesto de canvas, no único estado em que ela está na tela. Os três consumidores
 /// morriam juntos ([`empty_objects`], [`pick_empty_at_world`] e [`view`]), porque a pergunta é uma
 /// só. Hoje ela chama a porta ([`ph2d_entity_visibility::off_canvas::is_unedited_recipe`]).
-pub(crate) fn is_empty_object(sim: &SimWorld, e: Entity) -> bool {
+pub fn is_empty_object(sim: &SimWorld, e: Entity) -> bool {
     let w = sim.world();
     w.get::<Transform>(e).is_some()
         && w.get::<ph2d_render::Sprite>(e).is_none()
@@ -124,7 +124,7 @@ pub(crate) fn is_empty_object(sim: &SimWorld, e: Entity) -> bool {
 /// escala uniforme é a própria escala, e é invariante à rotação. Um anel que fosse elipse teria de
 /// ser apanhado por um teste de elipse, e o dedo e a tinta discordariam no dia em que um dos dois
 /// esquecesse.
-pub(crate) fn marker_world_radius(sim: &SimWorld, e: Entity, pixels_per_meter: f32) -> f32 {
+pub fn marker_world_radius(sim: &SimWorld, e: Entity, pixels_per_meter: f32) -> f32 {
     let wt = world_transform(sim, e);
     marker_half(pixels_per_meter) * (wt.scale.x * wt.scale.y).abs().sqrt()
 }
@@ -143,7 +143,7 @@ fn marker_half(pixels_per_meter: f32) -> f32 {
 ///
 /// ⚠️ Um objeto com o olho FECHADO não entra: `Visibility` é per-entidade neste motor, e um objeto
 /// que o artista escondeu não está na tela.
-pub(crate) fn empty_objects(sim: &SimWorld) -> Vec<Entity> {
+pub fn empty_objects(sim: &SimWorld) -> Vec<Entity> {
     // ⚠️ Pelos ARQUÉTIPOS, e não por uma `query` — esta é a única travessia do mundo inteiro que
     // corre com `&World` (uma `query` pede `&mut`, e o passe de pintura só tem a partilhada).
     // Precedente: a contagem de componentes em `snapshots`.
@@ -170,11 +170,7 @@ pub(crate) fn empty_objects(sim: &SimWorld) -> Vec<Entity> {
 /// objeto vazio»*). *Uma alça que só se alcança noutro sítio não está no canvas.*
 ///
 /// ⚠️ **Disco, não aro:** o interior conta. Um aro de 1,5 px é um alvo que se persegue.
-pub(crate) fn pick_empty_at_world(
-    sim: &SimWorld,
-    world: [f32; 2],
-    pixels_per_meter: f32,
-) -> Vec<u64> {
+pub fn pick_empty_at_world(sim: &SimWorld, world: [f32; 2], pixels_per_meter: f32) -> Vec<u64> {
     empty_objects(sim)
         .into_iter()
         .filter(|&e| {
@@ -192,7 +188,7 @@ pub(crate) fn pick_empty_at_world(
 /// ⚠️ **A caixa é o MARCADOR, sempre** — ver o cabeçalho: a união dos filhos foi construída e
 /// rejeitada por veredito de produto.
 #[must_use]
-pub(crate) fn view(
+pub fn view(
     sim: &SimWorld,
     entity: Entity,
     camera: &Camera2d,
@@ -205,7 +201,7 @@ pub(crate) fn view(
         return None;
     }
     let half = marker_half(pixels_per_meter);
-    Some(ph2d_app_vec::vec_gizmo_view::gizmo_view_from(
+    Some(crate::vec_gizmo_view::gizmo_view_from(
         [0.0, 0.0],
         [half, half],
         world_transform(sim, entity),
@@ -215,7 +211,3 @@ pub(crate) fn view(
         pivot_tool_active,
     ))
 }
-
-#[cfg(test)]
-#[path = "group_gizmo_view_tests.rs"]
-mod tests;

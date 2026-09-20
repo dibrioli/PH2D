@@ -34,7 +34,7 @@ use ph2d_vec_scene::{VecPathId, VecScene, WidthStop, WidthStops, bake_xform, xfo
 
 use ph2d_vec_entities::entities::VecEntityMap;
 
-use ph2d_app_vec::width_grab::Grab;
+use crate::width_grab::Grab;
 
 /// A meia-largura do traço de `id`, em unidades de MUNDO — a régua da alça.
 ///
@@ -84,7 +84,7 @@ fn profile_or_neutral(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Widt
 
 /// **O braço de uma parada** — o que a mão agarra e o que ele mede.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub(crate) struct HandleView {
+pub struct HandleView {
     /// A ficha agarrável, **SOBRE a curva**, no ponto da parada.
     pub at: [f64; 2],
     /// A ponta da haste: a borda da fita ali (`meia-largura × multiplicador` pela normal).
@@ -110,7 +110,7 @@ pub(crate) struct HandleView {
 /// A normal da haste é a esquerda da tangente, sempre o mesmo lado: a fita é simétrica, então
 /// duas hastes por parada seriam dois controles para um número.
 #[must_use]
-pub(crate) fn handles(
+pub fn handles(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -213,7 +213,7 @@ fn landing(
 /// e o arrasto seguinte é que o move. Uma parada que nascesse em `1.0` faria a fita saltar sob o
 /// dedo antes de o artista pedir qualquer coisa.
 #[must_use]
-pub(crate) fn press(
+pub fn press(
     sim: &mut SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -297,7 +297,7 @@ fn working_stops(
 /// As duas de uma vez, e não uma por eixo: o dedo aponta um LUGAR, e o lugar responde as duas
 /// perguntas. Separá-las (uma tecla para cada) seria pedir ao artista que soubesse qual metade da
 /// alça ele está a mover.
-pub(crate) fn drag(
+pub fn drag(
     sim: &mut SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -337,7 +337,7 @@ pub(crate) fn drag(
 
 /// **Desfaz uma parada que nasceu num clique e nunca foi movida** — ver [`Grab::created`]. No-op
 /// para uma alça agarrada (ela já existia) ou para um gesto que arrastou.
-pub(crate) fn discard_if_untouched(sim: &mut SimWorld, map: &VecEntityMap, grab: Grab) {
+pub fn discard_if_untouched(sim: &mut SimWorld, map: &VecEntityMap, grab: Grab) {
     if !grab.created {
         return;
     }
@@ -362,7 +362,7 @@ pub(crate) fn discard_if_untouched(sim: &mut SimWorld, map: &VecEntityMap, grab:
 /// Abaixo de duas paradas não sobra perfil: a lista é limpa e o traço volta a ser o uniforme de
 /// sempre — o mesmo neutro-é-ausência das outras rotas, em vez de deixar uma parada solta a
 /// governar a largura inteira por um caminho que ninguém mais usa.
-pub(crate) fn remove(
+pub fn remove(
     sim: &mut SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,

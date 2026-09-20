@@ -194,7 +194,26 @@ gasta.*
 
 ## §7 — O que fica ABERTO, e porque ESPERA
 
-### 7.1 — O bloco da máscara é a próxima fatia, e ela é `148 px`
+### 7.1 — ⛔⛔ **DECISÃO DO DONO (2026-09-20): FICA COMO ESTÁ** — e as três saídas foram medidas
+
+Posta a escolha com os números, ele respondeu **«fica como está»**. ⇒ a disposição daquele painel
+**não muda**, e o que está abaixo fica como o registo do que foi medido e recusado — *não como
+trabalho por fazer*.
+
+| saída | ganho | preço |
+|---|---:|---|
+| só o `Transform` sai para a fila | `25 px` — a secção `Brush` passa a caber **inteira** | zero: é o precedente do `3D Model` que ele aprovou em 01/09, e é o único dos seis cuja **face** lê um estado |
+| **as seis saem** | `148 px` — `Symmetry` inteiro + `Dynamic Topology` e `Detail` | cinco chips com face constante (⛔ a lei do `AreaMenu`: *«um chip que diz sempre a mesma coisa custa a mesma largura e não informa nada»*) + reescrever um passo do roteiro da `=49` |
+| ✅ **fica como está** | — | `5` das `7` secções fora do ecrã; a última fileira do `Brush` cortada por `8 px` |
+
+⚠️ **O mecanismo de destino EXISTE e tem um inquilino só** ([`interaction::area_menu`], hoje o
+`ph2d-panel-model3d/src/area_bar.rs`), e os ids seriam **os mesmos** — *um comando com dois ids tem
+dois sítios a apodrecer em separado*. ⛔ Não é falta de substrato que trava isto; é a decisão acima.
+
+<details>
+<summary>A medição que produziu a escolha (fica para quem a reabrir)</summary>
+
+### O bloco da máscara são `148 px`
 
 A régua nova (`o_que_o_artista_nao_alcanca`) diz, fileira a fileira, que no **dia a dia** a única
 coisa da secção `Brush` que cruza a dobra é esta:
@@ -230,6 +249,8 @@ COMANDOS**, que é exactamente o que a `D2` manda triar.
    fila**, que é um clique e está sempre à vista. *A cerca não responde à pergunta que a `D2` faz*,
    logo ela não decide — mas **onde um controlo mora é produto**, e quem decide é o dono. Ele tem a
    pergunta com os dois números (`148 px`; `Symmetry` + meia `Topology` a caberem).
+
+</details>
 
 ### 7.2 — O resto do painel
 
@@ -308,9 +329,10 @@ daqui: *uma medição de superfície de colisão vale para o dia em que foi tira
 > que corta é **uma fileira**, por `8 px`. ⏳ **ABERTO:** o bloco das seis operações de máscara
 > (`148 px`, seis COMANDOS pela `D2`) é a próxima fatia e **espera a integração** — ele baixa o
 > `Edge Flow` para `870 < 880` e faz reprovar o `o_roteiro_da_49_diz_onde_o_edge_flow_esta` da
-> `line/sculpt3d` — ⭐ e **aquele gate foi escrito a antecipar este dia**: ele prescreve a cura
-> (*apagar a frase da rolagem*), e o ficheiro dela está no `main`. ⇒ o que falta ali **não é um
-> bloqueio técnico, é a decisão de PRODUTO** de onde seis comandos moram. ⚠️ E a tabela do `Edge
+> `line/sculpt3d` (⭐ aquele gate foi escrito a antecipar este dia e prescreve a cura) — ⛔⛔ **e a
+> DECISÃO DO DONO, com as três saídas e o preço de cada uma na mesa, foi «FICA COMO ESTÁ»**, logo
+> aquele painel não muda e o §7.1 do handoff é o registo de uma recusa e não de trabalho por fazer.
+> ⚠️ E a tabela do `Edge
 > Flow` que este §5 publica **ficou obsoleta por esta linha** (`−253 px` em todas as fileiras): o §5
 > do handoff diz os **dois** sítios vivos e o comando que os reescreve.
 

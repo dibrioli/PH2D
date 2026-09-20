@@ -1,4 +1,4 @@
-# W0 — A PARAMETRIZAÇÃO VISTA COMO ATLAS, medida
+# A PARAMETRIZAÇÃO COMO ATLAS — a medição (W0) e o atlas (W1)
 
 > **Ordem do dono (2026-09-20):** *«OK. Implemente»* / *«siga»*, sobre a recomendação da
 > [avaliação](25_avaliacao_o_painter_na_malha.md) §8, corrigida pela §11.
@@ -167,7 +167,7 @@ palpite: gasta mais de metade já dentro da caixa.*
 
 | §8 da avaliação | depois desta medição |
 |---|---|
-| **W1** «a malha ganha UV», com o F1 implícito | ⭐ **sem F1**: a parametrização corre na malha do artista e sai **melhor** (§2). O que a W1 tem de fazer é o canal `uvs`, o **merge das ilhas** (union-find sobre as costuras coladas) e o empacotamento de `4`–`13` rectângulos |
+| **W1** «a malha ganha UV», com o F1 implícito | ✅ **FEITA na §8, e sem F1**: a parametrização corre na malha do artista e sai **melhor** (§2). ⛔ E **sem** o canal `uvs` na `Mesh`: o atlas é por CANTO, que é a menor unidade em que ele é exprimível. ⏳ Fica o vermelho da sobreposição |
 | **W2** a textura + o shader | igual; a resolução de partida é **`2048²`** e está medida (§5) |
 | **W3** o ponteiro chega ao Painter | igual; e a §11 mantém-se: **pintar no ECRÃ** e projectar |
 
@@ -178,3 +178,81 @@ podia fechar.
 ⏳ **E uma decisão que é do dono, não minha** (a mesma da §9): com topologia dinâmica
 ligada, a textura fica esticada onde a malha adensou. As três referências resolvem isso
 **proibindo** — pinta-se em textura *depois* de retopologizar.
+
+---
+
+## §8 — ⭐⭐⭐ W1: O ATLAS EXISTE — e a medição dele tem um vermelho
+
+> **Crate nova:** [`ph2d-uv-atlas`](../../crates/ph2d-uv-atlas/) — zero dependências
+> externas, como a `ph2d-cloth`, a `ph2d-pose` e a `ph2d-boundary`. Ela recebe o que a
+> cadeia já produz (malha triangulada · corte · mapa contínuo · saltos) e devolve **um
+> `(u, v)` por CANTO em `[0,1]²`**, com as ilhas juntas, assentes e arrumadas.
+>
+> ⚠️ **Por CANTO e não por vértice:** um vértice sobre um corte tem `(u, v)` diferente de
+> cada lado, e um plano por-vértice não o sabe dizer. *O canto é a menor unidade em que um
+> atlas é exprimível* — e é por isso que a `Mesh` **não** ganhou um quinto plano nesta
+> wave, ao contrário do que a §4 da avaliação supunha.
+
+### O que ela faz, em três passos
+
+| passo | o que decide |
+|---|---|
+| **juntar** | costura com salto `0 (mod 4)` não é corte ⇒ união dos patches (§3) |
+| **assentar** | um deslocamento por patch, acumulado ao longo de uma **ÁRVORE** |
+| **arrumar** | prateleiras, mais altas primeiro, com o **vão do mip** (`8` texels a `2048²`) |
+
+### A tabela, nas peças do dono
+
+| peça | entrada | ilhas | cantos | órfãos | cortes que o atlas obrigou (rasgo) | aprov. | **texels pintados 2×** | relógio |
+|---|---|---|---|---|---|---|---|---|
+| `_base_sculpt` | CRUA | 13 | 101 376 | **0** | 53 (`12,9`) | 74,6 % | **10,06 %** | 0,3 ms |
+| `_base_sculpt` | F1 | 4 | 9 108 | 0 | 27 (`23,4`) | 50,5 % | 6,58 % | 0,1 ms |
+| `sculpt_antes` | CRUA | 4 | 82 080 | 0 | 49 (`33,6`) | 67,7 % | **34,07 %** | 0,3 ms |
+| `sculpt_antes` | F1 | 10 | 11 946 | 0 | 31 (`7,1`) | 82,3 % | 8,80 % | 0,1 ms |
+| `Sculpt_Blender` | CRUA | 11 | 49 746 | 0 | 60 (`49,3`) | 55,7 % | 16,73 % | 0,2 ms |
+| `Sculpt_Blender` | F1 | 5 | 11 580 | 0 | 30 (`6,3`) | 61,4 % | 12,60 % | 0,1 ms |
+
+⭐ **O atlas custa `0,1`–`0,3 ms`** — nada ao lado dos `22`–`52 s` da parametrização que o
+alimenta. *A peça cara é a de cima, e ela já estava construída.*
+
+### ⛔⛔⛔ O VERMELHO, e ele é de correcção: `6,6 %` a `34 %` dos texels são pintados DUAS VEZES
+
+Uma ilha assentada ao longo de uma árvore **não tem holonomia e pode dobrar-se sobre si
+mesma** — nada no assentamento o impede. Um texel coberto por dois sítios da superfície é
+tinta que aparece onde ninguém a pôs, e é o defeito que um atlas não pode ter.
+
+⚠️ **Nenhuma régua desta wave o via**, e a razão é a de sempre nesta casa: as doze do
+`ph2d-uv-atlas` olham **caixas** (cabe no quadrado · não sobrepõe a vizinha · a costura não
+rasga) e **uma dobra acontece DENTRO de uma caixa**. A medição existe hoje na sonda
+(`sobreposicao`, rasterizando a `1024²`) e ⏳ **a cura é a wave seguinte**: é o passo de
+CORTE que todo desenrolador tem, e que esta versão não tem.
+
+⇒ ⛔ **O atlas ainda NÃO serve para pintar.** Ele serve para exportar, para medir e para
+ver; e o número que falta descer é este.
+
+### O que a construção ensinou, e não estava previsto
+
+1. ⭐⭐⭐ **Os «cortes que o atlas obrigou» não são um defeito — são o género da peça.** O
+   assentamento percorre uma árvore, e toda costura colada que sobra depois dela é uma
+   aresta que não cabe no plano. *Uma esfera não se desenrola sem um corte.* ⛔ O que
+   **seria** defeito é existirem e ninguém as contar: aí o rasgo lê-se como *«o solver
+   falhou»* em vez de *«a peça tem género»* — por isso o relatório tem a coluna.
+2. ⛔⛔ **A régua da holonomia era um ESPELHO.** A 1.ª redacção comparava `oa − t` com
+   `ob`, que é literalmente a expressão que assentou as cartas, e a mutação que trocava o
+   SINAL do assentamento **sobreviveu**. Hoje ela pergunta a coisa que interessa: *com as
+   cartas postas, os dois lados caem no mesmo ponto?*
+3. ⛔⛔ **O empacotador só verificava a ALTURA**, e uma ilha mais larga que o quadrado era
+   «colocada» na primeira prateleira com o laço a declarar que coube (`u = 1,42`). Quem o
+   apanhou foi o gate do quadrado unitário, na primeira corrida.
+4. ⛔⛔⛔ **A fixtura de DUAS cartas deixava dois braços do código fora do alcance da
+   prova** — o `(Some, None)` do assentamento só corre quando a fita FECHA, e o
+   `position(…)` da rotulagem só corre com três patches. Duas mutações sobreviveram por
+   não serem alcançadas, o que num relatório se lê exactamente como *«o gate não vê o
+   defeito»*. ⇒ a fixtura passou a ser **três cartas com um interruptor de ANEL**.
+5. ⛔⛔ **E as cartas nasciam CONTÍGUAS**, o que dá translação de costura **zero** — e `+0`
+   e `−0` são a mesma coisa, logo o sinal do assentamento continuava inatacável. *Um
+   corpus no ponto NEUTRO de um parâmetro não testa esse parâmetro.*
+
+**Gates:** 12, com **10 mutações e 10 a sangrar** (as três últimas nasceram das
+sobreviventes). O controlo de produto vive no `atlas_probe`, que corre sobre as peças do
+dono e desenha o atlas (`PH2D_ATLAS_DUMP=<dir>`, um `.ppm` com uma cor por ilha).

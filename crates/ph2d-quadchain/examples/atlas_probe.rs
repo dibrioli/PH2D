@@ -211,7 +211,7 @@ fn ilhas_de_facto(
 }
 
 /// Corre F2 → G3 sobre uma malha e imprime o bloco dela.
-fn corrida(rotulo: &str, mesh: &Mesh, alvo: f32) {
+fn corrida(rotulo: &str, mesh: &Mesh, alvo: f32, marca: &str) {
     let mut clock = std::time::Instant::now();
     let mut lap = || {
         let ms = clock.elapsed().as_secs_f64() * 1000.0;
@@ -324,6 +324,35 @@ fn corrida(rotulo: &str, mesh: &Mesh, alvo: f32) {
         "   escala   area em UV {uv_em_mundo:.4} de mundo contra {area:.4} de superficie = {:.3}x",
         uv_em_mundo / area.max(1.0e-12)
     );
+    // ⭐⭐⭐ **O ATLAS DE VERDADE** — as ilhas juntas, assentes e arrumadas em `[0,1]²`.
+    // Tudo acima é a matéria-prima; isto é o que uma textura recebe.
+    let relogio = std::time::Instant::now();
+    let atl = ph2d_uv_atlas::build(mesh, &cut, &map, &jumps);
+    let ms_atlas = relogio.elapsed().as_secs_f64() * 1000.0;
+    let r = atl.relatorio;
+    println!(
+        "   ATLAS    {} ilhas | {} cantos, {} orfaos | {} cortes que o atlas obrigou (rasgo {:.2e}) | \
+         cola_max {:.2e} | aproveitamento {:.1}% | {ms_atlas:.1} ms",
+        r.ilhas,
+        r.cantos,
+        r.orfaos,
+        r.ciclos,
+        r.holonomia_max,
+        r.cola_max,
+        100.0 * f64::from(r.aproveitamento)
+    );
+    let (cobertos, dobrados) = sobreposicao(&atl, mesh, 1024);
+    println!(
+        "   dobra    {dobrados} de {cobertos} texels de 1024^2 pintados MAIS DE UMA VEZ ({:.2}%)",
+        if cobertos == 0 {
+            0.0
+        } else {
+            100.0 * as_f64(dobrados) / as_f64(cobertos)
+        }
+    );
+    if let Ok(dir) = std::env::var("PH2D_ATLAS_DUMP") {
+        desenha(&atl, mesh, &format!("{dir}/atlas_{marca}.ppm"), 1024);
+    }
     // ⭐ A resolução que a peça pede: com o atlas aproveitado a `fill`, quanto mede um texel.
     for n in [1024u32, 2048, 4096] {
         let uteis = f64::from(n) * f64::from(n) * (fill / 100.0);
@@ -332,6 +361,128 @@ fn corrida(rotulo: &str, mesh: &Mesh, alvo: f32) {
             "   {n}^2     um texel mede {texel:.5} de mundo = 1/{:.1} do quad pedido ({alvo:.5})",
             f64::from(alvo) / texel.max(1.0e-12)
         );
+    }
+}
+
+/// ⭐ **DESENHA O ATLAS** num `.ppm` — uma cor por ilha, os triângulos preenchidos.
+///
+/// ⚠️ É a única forma de o dono ver o que a arrumação fez. *Uma tabela de aproveitamento
+/// não diz se as ilhas ficaram legíveis* — e esta linha já leu duas imagens ao contrário
+/// por decidir por tabela.
+fn desenha(atlas: &ph2d_uv_atlas::Atlas, mesh: &Mesh, caminho: &str, lado: usize) {
+    let mut px = vec![[24u8, 24, 28]; lado * lado];
+    let cor = |i: u32| -> [u8; 3] {
+        // Uma roda de matizes: ilhas vizinhas nunca saem parecidas.
+        let h = f32::from(u16::try_from(i % 12).unwrap_or(0)) / 12.0 * 6.0;
+        let f = h - h.floor();
+        let (a, b) = ((255.0 * f) as u8, (255.0 * (1.0 - f)) as u8);
+        match h as u32 {
+            0 => [255, a, 40],
+            1 => [b, 255, 40],
+            2 => [40, 255, a],
+            3 => [40, b, 255],
+            4 => [a, 40, 255],
+            _ => [255, 40, b],
+        }
+    };
+    let (base, _) = ph2d_uv_atlas::bases_dos_cantos(mesh);
+    for (f, face) in mesh.faces().iter().enumerate() {
+        let n = face.verts().len();
+        if n < 3 {
+            continue;
+        }
+        let b = base[f] as usize;
+        let c = cor(atlas.ilha[b]);
+        // Leque a partir do canto 0 — chega para triângulos e quads.
+        for k in 1..(n - 1) {
+            let t = [atlas.uv[b], atlas.uv[b + k], atlas.uv[b + k + 1]];
+            preenche(&mut px, lado, t, c);
+        }
+    }
+    let mut out = format!("P6\n{lado} {lado}\n255\n").into_bytes();
+    for p in &px {
+        out.extend_from_slice(p);
+    }
+    if let Err(e) = std::fs::write(caminho, out) {
+        println!("   (nao consegui escrever {caminho}: {e})");
+    } else {
+        println!("   desenho  {caminho}");
+    }
+}
+
+/// ⭐⭐⭐ **QUANTOS TEXELS O ATLAS PINTA DUAS VEZES** — a única pergunta de CORRECÇÃO que
+/// sobra depois de as ilhas caberem no quadrado.
+///
+/// ⛔ Uma ilha assentada ao longo de uma árvore não tem holonomia **e pode dobrar-se sobre
+/// si mesma** — nada no assentamento o impede. Um texel coberto por dois sítios da
+/// superfície é tinta que aparece onde ninguém a pôs. ⚠️ *Nenhum gate desta casa media
+/// isto*: as réguas do atlas olham caixas, e uma dobra acontece DENTRO de uma caixa.
+///
+/// Devolve `(texels cobertos, texels cobertos MAIS DE UMA VEZ)`.
+fn sobreposicao(atlas: &ph2d_uv_atlas::Atlas, mesh: &Mesh, lado: usize) -> (usize, usize) {
+    let mut n = vec![0u16; lado * lado];
+    let (base, _) = ph2d_uv_atlas::bases_dos_cantos(mesh);
+    for (f, face) in mesh.faces().iter().enumerate() {
+        let k = face.verts().len();
+        if k < 3 {
+            continue;
+        }
+        let b = base[f] as usize;
+        for j in 1..(k - 1) {
+            conta(
+                &mut n,
+                lado,
+                [atlas.uv[b], atlas.uv[b + j], atlas.uv[b + j + 1]],
+            );
+        }
+    }
+    let cobertos = n.iter().filter(|&&c| c > 0).count();
+    let dobrados = n.iter().filter(|&&c| c > 1).count();
+    (cobertos, dobrados)
+}
+
+/// A mesma varredura do [`preenche`], a CONTAR em vez de pintar.
+///
+/// ⚠️ Ela é uma segunda travessia do mesmo rectângulo de propósito: o pintor escreve a
+/// última cor e a contagem soma, e juntar as duas num só percurso faria a imagem depender
+/// de quem se sobrepõe. *Duas perguntas, duas varreduras.*
+fn conta(n: &mut [u16], lado: usize, t: [[f32; 2]; 3]) {
+    varre(lado, t, &mut |i| n[i] = n[i].saturating_add(1));
+}
+
+/// Um triângulo cheio, em coordenadas `[0,1]²`.
+fn preenche(px: &mut [[u8; 3]], lado: usize, t: [[f32; 2]; 3], c: [u8; 3]) {
+    varre(lado, t, &mut |i| px[i] = c);
+}
+
+/// ⭐ **A VARREDURA, uma só** — quem pinta e quem conta percorrem exactamente os mesmos
+/// texels, senão a imagem e o número descrevem atlas diferentes.
+fn varre(lado: usize, t: [[f32; 2]; 3], f: &mut dyn FnMut(usize)) {
+    let n = lado as f32;
+    let p: Vec<[f32; 2]> = t.iter().map(|z| [z[0] * n, (1.0 - z[1]) * n]).collect();
+    let (mut lo, mut hi) = ([f32::MAX; 2], [f32::MIN; 2]);
+    for q in &p {
+        lo[0] = lo[0].min(q[0]);
+        lo[1] = lo[1].min(q[1]);
+        hi[0] = hi[0].max(q[0]);
+        hi[1] = hi[1].max(q[1]);
+    }
+    let y0 = lo[1].floor().max(0.0) as usize;
+    let y1 = (hi[1].ceil().max(0.0) as usize).min(lado);
+    let x0 = lo[0].floor().max(0.0) as usize;
+    let x1 = (hi[0].ceil().max(0.0) as usize).min(lado);
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let q = [x as f32 + 0.5, y as f32 + 0.5];
+            let w = |a: [f32; 2], b: [f32; 2]| {
+                (b[0] - a[0]).mul_add(q[1] - a[1], -((b[1] - a[1]) * (q[0] - a[0])))
+            };
+            let (u, v, s) = (w(p[0], p[1]), w(p[1], p[2]), w(p[2], p[0]));
+            let dentro = (u >= 0.0 && v >= 0.0 && s >= 0.0) || (u <= 0.0 && v <= 0.0 && s <= 0.0);
+            if dentro {
+                f(y * lado + x);
+            }
+        }
     }
 }
 
@@ -350,7 +501,7 @@ fn main() {
     println!("peca {name} | alvo de aresta {alvo:.5}");
 
     // ⭐⭐⭐ **A PERGUNTA QUE DECIDE A ARQUITECTURA:** a mesma medição nas duas entradas.
-    corrida("CRUA (a malha do artista)", &crua, alvo);
+    corrida("CRUA (a malha do artista)", &crua, alvo, "crua");
     let f1 = ph2d_quadchain::phase_zero(&crua, alvo);
-    corrida("F1 (remalhada, como o botao faz)", &f1, alvo);
+    corrida("F1 (remalhada, como o botao faz)", &f1, alvo, "f1");
 }

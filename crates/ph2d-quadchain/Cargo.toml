@@ -24,3 +24,7 @@ ph2d-quadfill = { path = "../ph2d-quadfill" }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+# So para o exemplo `atlas_probe`: a lib da cadeia nao conhece o atlas, e nao deve.
+ph2d-uv-atlas = { path = "../ph2d-uv-atlas" }

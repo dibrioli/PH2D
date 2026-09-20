@@ -8456,6 +8456,7 @@ dependencies = [
  "ph2d-quadfill",
  "ph2d-remesh-iso",
  "ph2d-trace",
+ "ph2d-uv-atlas",
  "rayon",
 ]
 
@@ -9167,6 +9168,14 @@ dependencies = [
 [[package]]
 name = "ph2d-untangle"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-uv-atlas"
+version = "0.0.0"
+dependencies = [
+ "ph2d-gridmap",
+ "ph2d-mesh",
+]
 
 [[package]]
 name = "ph2d-vec-art-live"

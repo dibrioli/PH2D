@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-uv-atlas"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐⭐⭐ **O ATLAS** — o mapa de grade da `ph2d-gridmap` arrumado em `[0,1]²`, que é a
+# forma que uma TEXTURA pede.
+#
+# ⚠️ Ela é uma crate própria e não um módulo da `ph2d-gridmap` porque a pergunta é
+# outra: aquela resolve `(u, v)` sobre a peça, esta decide **onde cada ilha se senta**.
+# E não é a `ph2d-quadchain`, cujo cabeçalho declara por escrito que ela é a ORDEM e
+# não tem algoritmo — um empacotador é algoritmo.
+#
+# ⛔ **ZERO dependências externas**, como a `ph2d-cloth`, a `ph2d-pose` e a
+# `ph2d-boundary`: o que esta crate faz é aritmética sobre o que as vizinhas produzem.
+
+[dependencies]
+ph2d-mesh = { path = "../ph2d-mesh" }
+ph2d-gridmap = { path = "../ph2d-gridmap" }
+
+[lints]
+workspace = true

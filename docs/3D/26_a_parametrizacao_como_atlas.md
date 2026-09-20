@@ -1,4 +1,4 @@
-# A PARAMETRIZAÇÃO COMO ATLAS — a medição (W0) e o atlas (W1)
+# A PARAMETRIZAÇÃO COMO ATLAS — a medição (W0), o atlas (W1) e o corte (W2)
 
 > **Ordem do dono (2026-09-20):** *«OK. Implemente»* / *«siga»*, sobre a recomendação da
 > [avaliação](25_avaliacao_o_painter_na_malha.md) §8, corrigida pela §11.
@@ -230,6 +230,12 @@ CORTE que todo desenrolador tem, e que esta versão não tem.
 ⇒ ⛔ **O atlas ainda NÃO serve para pintar.** Ele serve para exportar, para medir e para
 ver; e o número que falta descer é este.
 
+> ✅ **CURADO na W2 — e a atribuição mostrou que a causa não era a que esta secção supõe.**
+> A frase *«uma ilha assentada … pode dobrar-se sobre si mesma»* está certa; o que faltava
+> era saber **quanto** de cada mecanismo, e a régua nova diz que `97 %`–`99,5 %` do
+> vermelho é o ASSENTAMENTO a pôr duas cartas da mesma ilha uma em cima da outra, contra
+> `0,07 %`–`0,10 %` de dobra do solver. ⇒ [`§9`](#9--w2-o-corte--o-vermelho-desce-a-zero-e-o-preço-tem-número)
+
 ### O que a construção ensinou, e não estava previsto
 
 1. ⭐⭐⭐ **Os «cortes que o atlas obrigou» não são um defeito — são o género da peça.** O
@@ -256,3 +262,189 @@ ver; e o número que falta descer é este.
 **Gates:** 12, com **10 mutações e 10 a sangrar** (as três últimas nasceram das
 sobreviventes). O controlo de produto vive no `atlas_probe`, que corre sobre as peças do
 dono e desenha o atlas (`PH2D_ATLAS_DUMP=<dir>`, um `.ppm` com uma cor por ilha).
+
+---
+
+## §9 — ⭐⭐⭐ W2: O CORTE — o vermelho desce a ZERO, e o preço tem número
+
+> **Ordem do dono (2026-09-20):** *«smoke parece OK. Siga»* — sobre o vermelho que a §8
+> deixou nomeado.
+
+### §9.1 — ⛔⛔ Passo zero: a régua velha dizia QUANTO e não dizia DE QUEM
+
+A W1 mediu a sobreposição por TEXEL e leu `0,04 %` numa peça e `38 %` noutra. *Uma régua
+que conta QUANTOS nunca vê QUAIS* — a lei que esta casa já pagou no `edge_max` cego ao
+quad fino, no `χ` cego à almofada e nas três réguas da ponta que deitavam fora o índice
+antes de devolver.
+
+A régua nova ([`ph2d_uv_atlas::sobreposicao`](../../crates/ph2d-uv-atlas/src/sobreposicao.rs))
+mede a **área exacta** em que dois triângulos se cruzam (recorte de polígono convexo em
+`f64`, com o piso em `1e-6` da área do menor — ⛔ *relativo e não absoluto: uma malha fina
+tem triângulos de `1e-6` do atlas, e um epsilon absoluto acusaria a vizinhança inteira*) e
+**atribui cada cruzamento a um mecanismo**:
+
+| classe | o que aconteceu | onde está a cura |
+|---|---|---|
+| `dobra` | os dois triângulos são **vizinhos na peça** e mesmo assim se cruzam ⇒ o mapa inverteu-se | a montante, no solver contínuo (G3) |
+| `mesma-carta` | uma carta não é injectiva **sozinha** | a montante |
+| `mesma-ilha` | duas cartas da mesma ilha foram **assentadas uma em cima da outra** | o CORTE |
+| `ilhas-diferentes` | ⛔ **CONTROLO — tem de ser ZERO** | o empacotador |
+
+**E a tabela decidiu a wave inteira**, sobre a malha CRUA, que é o caminho do produto:
+
+| peça | área cruzada | `dobra` | `mesma-carta` | **`mesma-ilha`** | `ilhas-diferentes` |
+|---|---|---|---|---|---|
+| `_base_sculpt` | `9,56 %` | `0,10 %` | `0,15 %` | **`9,31 %`** | `0,00 %` |
+| `sculpt_antes` | `31,57 %` | `0,08 %` | `0,07 %` | **`31,42 %`** | `0,00 %` |
+| `sculpt_Depois` | `26,41 %` | `0,07 %` | `0,42 %` | **`25,93 %`** | `0,00 %` |
+| `esfera:24` | `0,05 %` | `0,04 %` | `0,01 %` | `0,00 %` | `0,00 %` |
+
+⇒ **`97 %` a `99,5 %` do vermelho é o assentamento**, e não o solver a dobrar. *Sem a
+atribuição eu teria começado por afinar o G3, que responde por um décimo de ponto.*
+
+⛔⛔ **E a última linha é a mais importante para quem escrever gates: a ESFERA NÃO CONTÉM
+O FENÓMENO QUE ESTA WAVE ATACA.** Ali `mesma-ilha` lê `0,00 %` — *um gate escrito sobre a
+peça de demonstração ficaria verde a afirmar nada*. As fixturas dos gates desta wave são
+construídas para se dobrarem, e cada uma traz o controlo plano ao lado.
+
+⚠️ **Isso NÃO quer dizer que o corte não faça nada na esfera, e a 1.ª redacção desta linha
+dizia-o:** medido, ela vai de `2` para `14` peças, porque o corte separa também os pares da
+classe `dobra` **entre faces vizinhas** (`62` na esfera crua). *Uma classe que responde por
+um décimo de ponto de ÁREA pode responder por seis vezes a contagem de peças* — e na
+esfera F1, com `17,94 %` dos triângulos invertidos, ela leva `2` peças a **`153`**.
+
+### §9.2 — A lei do corte, e porque ela TERMINA
+
+Uma peça cresce por vizinhança a partir de uma face semente e **só aceita uma face que não
+cruze nenhuma das que já lá estão**, com o teste exacto acima. Daí saem as duas
+propriedades que interessam: cada peça é injectiva **por construção e não por promessa**, e
+o laço acaba porque toda passagem coloca pelo menos a semente.
+
+⛔⛔ **A unidade é a FACE e nunca o triângulo.** O atlas guarda um `(u, v)` **por canto**, e
+os dois triângulos de um quad partilham dois cantos: pô-los em peças diferentes pediria
+dois `(u, v)` no mesmo canto, que é inexprimível. ⇒ *o que este corte não separa é uma face
+que se dobra sobre si mesma* — e essa é exactamente a coluna `dobra` da tabela, cuja cura é
+a montante.
+
+### §9.3 — ⛔⛔ A 1.ª redacção ficou CERTA e ILEGÍVEL, e a medição disse porquê
+
+Ela crescia **uma peça até ao fim** e só depois semeava a seguinte:
+
+| redacção | peças | de uma face só | maior peça | aproveitamento | texels 2× |
+|---|---|---|---|---|---|
+| **sem corte** (W1) | `13` | — | — | `74,6 %` | `10,06 %` |
+| crescer até ao fim | `485` | **`361`** | `21 801` | `61,4 %` | `0,00 %` |
+| ronda-a-ronda | `382` | `55` | `1 457` | `67,7 %` | `0,00 %` |
+| **+ fusão** (o que shipa) | **`226`** | `53` | `4 047` | `67,7 %` | `0,00 %` |
+
+*(`_base_sculpt`, malha CRUA, `33 792` faces.)* ⚠️ A linha do meio foi medida **com** a
+oferta a uma peça vizinha que a [§9.5](#95--⛔-o-que-a-construção-ensinou-e-não-estava-previsto)
+mostrou valer `±5 %` e que foi apagada; as outras três são o caminho que shipa.
+
+⚠️ **As `361` peças de uma face não eram geometria, eram a ORDEM:** uma face recusada
+ficava para trás enquanto a peça que a recusou **lhe comia todos os vizinhos**, e quando
+ela enfim era semeada já não tinha para onde crescer. *Uma peça que cresce até ao fim antes
+de a seguinte nascer não está a repartir a ilha — está a ficar com ela.* ⇒ cada peça activa
+avança **uma face por ronda**, e uma face recusada vira semente **na mesma corrida**, logo
+compete pelos próprios vizinhos em vez de os perder.
+
+⭐⭐ **E a ronda-a-ronda traz o defeito oposto, que a FUSÃO desfaz:** duas frentes que se
+encontram sem se cruzarem ficaram separadas por nada — a maior peça caiu de `21 801` para
+`1 457` faces, que é um corte que a geometria não pediu. Duas peças que se encostam e cujo
+conjunto continua injectivo passam a ser **uma**, por conjunto disjunto sobre as peças
+(⭐ *a grelha de busca nunca é reescrita, e é isso que torna a fusão barata o bastante para
+correr em rondas*).
+
+### §9.4 — A tabela final, nas peças do dono
+
+| peça | entrada | ilhas → peças | de uma face | fusões | aprov. | **texels 2×** | atlas |
+|---|---|---|---|---|---|---|---|
+| `_base_sculpt` | CRUA | `13` → **`226`** | `53` | `260` | `74,6 → 67,7 %` | **`10,06 % → 0,00 %`** | `83 ms` |
+| `_base_sculpt` | F1 | `4` → `93` | `15` | `72` | `50,5 → 67,7 %` | `6,58 % → 0,00 %` | `5,3 ms` |
+| `sculpt_antes` | CRUA | `4` → **`129`** | `30` | `244` | `67,7 → 67,7 %` | **`34,07 % → 0,00 %`** | `94 ms` |
+| `sculpt_antes` | F1 | `10` → `88` | `17` | `70` | `82,3 → 67,7 %` | `8,80 % → 0,00 %` | `7,6 ms` |
+| `sculpt_Depois` | CRUA | `37` → **`424`** | `86` | `428` | `50,5 → 61,4 %` | **`21,94 % → 0,00 %`** | `139 ms` |
+| `sculpt_Depois` | F1 | `5` → `86` | `18` | `84` | `67,7 → 67,7 %` | `4,99 % → 0,00 %` | `4,9 ms` |
+| `esfera:24` | CRUA | `2` → `14` | `2` | `24` | `67,7 → 61,4 %` | `0,04 % → 0,00 %` | `5,0 ms` |
+| `esfera:24` | F1 | `2` → `153` | `26` | `106` | `50,5 → 67,7 %` | `38,12 % → 0,00 %` | `14,4 ms` |
+
+⭐⭐ **O que sobra está ABAIXO DE UM TEXEL, e isso é uma MEDIÇÃO e não um arredondamento
+da tabela.** A régua imprime o pior par de cada corrida: no `sculpt_Depois` ele mede
+**`1,57e-10`** do quadrado unitário, e um texel a `1024²` mede `9,5e-7` ⇒ o pior
+cruzamento que fica é **`6 000×` mais pequeno que um texel**. ⚠️ *Sem essa linha, um `1`
+na coluna de uma classe lê-se igual a um `1000`* — e a contagem de `mesma-ilha` chega a
+`1` numa das seis corridas, que é o piso de `f32` entre o plano da ilha e o `[0,1]²`, não
+uma ilha que se dobrou.
+
+⭐ As `18`–`144` ocorrências que a coluna conta são, todas, dessa ordem; a classe delas é
+`dobra` — as faces que se dobram sobre si mesmas, que o corte por face não separa **por
+desenho**.
+
+⚠️ **O aproveitamento vai nos dois sentidos** (`−15` a `+11` pontos): muitas peças pequenas
+arrumam-se melhor que poucas esparramadas numa peça e pior noutra. **O preço com nome é a
+CONTAGEM DE ILHAS** — é ela que conta as costuras que o artista pode ver.
+
+⭐ **O relógio do atlas (a coluna da direita) inclui o corte** e vai de `5` a `139 ms`, ao
+lado dos `22`–`52 s` da parametrização que o alimenta. *A peça cara continua a ser a de
+cima.*
+
+### §9.5 — ⛔ O que a construção ensinou, e não estava previsto
+
+1. ⛔⛔ **Uma linha que a prova de mutação não consegue matar é um comentário com sintaxe
+   de código — e a MEDIÇÃO que a julga tem de ser a do produto, não a de uma peça.** Eu
+   escrevi uma oferta *«antes de abrir peça nova, dá-a a uma peça vizinha»*; a mutação que
+   a apagava deixou os `25` gates verdes, logo ela não é lei nenhuma. Medida nas quatro
+   corridas:
+
+   | corrida | com a oferta | sem ela |
+   |---|---|---|
+   | `_base_sculpt` CRUA | `227` peças | **`226`** |
+   | `_base_sculpt` F1 | `92` | `93` |
+   | `sculpt_antes` CRUA | `122` | `129` |
+   | `sculpt_antes` F1 | `89` | `88` |
+
+   ⇒ ela **troca de sinal entre peças** e vale `±5 %`. *Uma heurística que ganha numa peça
+   e perde noutra não é uma alavanca; é ruído com dez linhas de código* — foi **apagada**,
+   com a tabela ao lado para quem a quiser reconstruir saber o que compra.
+2. ⛔⛔ **O primeiro gate do rasgo media a coisa errada, e ele nasceu VERMELHO.** Eu
+   desloquei um VÉRTICE do plano para fabricar um corte, e isso move os cantos dos dois
+   lados juntos — é uma aresta **esticada**, não um rasgo, e as duas faces continuam a
+   encostar. *Um corte só existe onde o mesmo vértice tem `(u, v)` DIFERENTE de cada lado*,
+   e a fixtura passou a deslocar por CANTO.
+3. ⛔⛔ **Duas mutações sobreviveram e cada uma nomeou uma régua em falta:** o elo verificar
+   **as duas pontas** de uma aresta (as fixturas deslocavam a costura inteira, e nenhuma a
+   deslocava numa ponta só — que é a forma de uma costura em LEQUE) e a face **meio posta**
+   (`all` trocado por `any`: nenhuma fixtura tinha uma face com dois cantos de três, e meia
+   face entra com o canto que falta em `(0, 0)`). Com as duas leis escritas: **14 mutações,
+   14 sangram.**
+4. ⚠️ **HR-5 mordeu onde importa.** O clippy recusou `HashMap`/`HashSet`, e aqui não é
+   decoração: a ordem em que os elos saem alimenta a partição, e uma tabela de dispersão
+   daria outro atlas a cada arranque. Tudo em `BTreeMap`/`BTreeSet`.
+5. ⭐ **A tolerância do elo virou PORTA** (`topo::TOLERANCIA_DO_ELO`): ela tinha três
+   chamadores a escrever `1e-2` cada um, e *três respostas à mesma pergunta divergem no dia
+   em que alguém afina uma*.
+6. ⚠️ **O `Opcoes { cortar: false }` é uma PORTA e não uma variável de ambiente** — uma env
+   lida dentro da crate alcançaria todo chamador e faria um gate medir a máquina em vez da
+   lei. A sonda é o único sítio que a passa, e é ela que desenha o lado sem corte, que é o
+   CONTROLO da wave.
+
+### §9.6 — ⏳ O que fica ABERTO, com o mecanismo
+
+- ⏳⏳ **O corte parte por um cruzamento de QUALQUER tamanho, e num mapa limpo isso é caro:**
+  na esfera crua ele paga **`12` peças a mais para tirar `92` texels** de `1024²`. ⭐ O
+  recurso da cura tem nome — *um cruzamento menor que um TEXEL não é um defeito que o
+  artista veja* —, e é por isso que ela não entra nesta wave: o texel só existe depois de
+  se saber o lado do quadrado, e o lado do quadrado depende das peças que o corte deu.
+  *Quebrar essa circularidade (estimar o lado antes de cortar, e gatear que a estimativa
+  nunca cresce o erro) é uma wave com espec própria.*
+- ⛔ **O `dobra` que sobra é a montante.** `18`–`52` triângulos por peça com a área UV
+  invertida; a cura é do G3 e não do atlas, e o corte por face não a pode alcançar.
+- ⏳ **A contagem de peças é ALTA porque o mapa é amarrotado.** `226`–`413` peças para
+  `13`–`37` ilhas de superfície. O corte é fiel: ele parte onde a superfície se dobra. ⇒ a
+  alavanca seguinte **não é o corte**, é a parametrização produzir ilhas mais chatas —
+  cortar a ilha **antes** de assentar, nas arestas de maior distorção, que é o passo
+  *seamster* que esta cadeia nunca teve.
+- ⏳ **O empacotador continua a ser de prateleiras** sobre caixas, e com centenas de peças
+  pequenas ele tem mais a ganhar do que tinha com treze. Não medido.
+- ⏳ **A dilatação da costura não existe** (o vão do mip está reservado e ninguém o pinta) —
+  é o que impede um fio de fundo de aparecer na borda de uma ilha ao afastar a câmara.

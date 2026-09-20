@@ -20,6 +20,12 @@
 //! | o `χ` sobrevive? | quantas **ILHAS**, e quanta **COSTURA**? |
 //! | quantos quads saem? | que **RESOLUÇÃO** a peça pede, e quanto do atlas se desperdiça? |
 //!
+//! ⭐ **As linhas `ATLAS`, `corte`, `dobra` e `cruza` são a W1 e a W2** (doc 26 §8–§9): o
+//! atlas construído, o corte que o torna injectivo, e as duas réguas da sobreposição — a
+//! de TEXELS e a de ÁREA ATRIBUÍDA. ⛔ **Sobre `esfera:24` o defeito que a W2 ataca não
+//! existe**, e isso está medido: ali `mesma-ilha` lê `0,00 %` (o corte age na mesma, pela
+//! classe `dobra`). *Quem quiser ver a wave a trabalhar corre uma peça esculpida.*
+//!
 //! ⚠️⚠️ **E a pergunta que decide a arquitectura inteira é a primeira linha da tabela:**
 //! a cadeia do botão REMALHA antes de parametrizar (F1), e uma textura tem de viver na
 //! malha que o artista esculpiu. *Se a parametrização só funcionar depois do F1, o
@@ -341,6 +347,18 @@ fn corrida(rotulo: &str, mesh: &Mesh, alvo: f32, marca: &str) {
         r.cola_max,
         100.0 * f64::from(r.aproveitamento)
     );
+    println!(
+        "   corte    {} ilhas da superficie => {} pecas ({} de uma face so', {} sem vizinho) | \
+         {} recusas, {} fusoes | peca p50 {} max {}",
+        r.ilhas_antes_do_corte,
+        r.ilhas,
+        r.pecas_de_uma_face,
+        r.faces_sem_vizinho,
+        r.recusas_do_corte,
+        r.fusoes_do_corte,
+        r.peca_p50,
+        r.peca_max
+    );
     let (cobertos, dobrados) = sobreposicao(&atl, mesh, 1024);
     println!(
         "   dobra    {dobrados} de {cobertos} texels de 1024^2 pintados MAIS DE UMA VEZ ({:.2}%)",
@@ -350,8 +368,58 @@ fn corrida(rotulo: &str, mesh: &Mesh, alvo: f32, marca: &str) {
             100.0 * as_f64(dobrados) / as_f64(cobertos)
         }
     );
+    // ⭐⭐⭐ **A ATRIBUIÇÃO** — a linha de cima diz QUANTO e esta diz DE QUEM. Sem ela a
+    // wave do corte começaria por adivinhar o mecanismo.
+    let sob = ph2d_uv_atlas::sobreposicao::medir(mesh, &atl);
+    assert!(
+        sob.triangulos_com_area > 0,
+        "nem um triangulo do atlas tem area em {rotulo} — a regua da sobreposicao nao mediu nada"
+    );
+    print!(
+        "   cruza    {:.3}% da area pintada, {} de {} triangulos tocados |",
+        100.0 * sob.fraccao(),
+        sob.triangulos_tocados,
+        sob.triangulos_com_area
+    );
+    for c in ph2d_uv_atlas::sobreposicao::Classe::ALL {
+        print!(
+            " {}={} ({:.2}%)",
+            c.nome(),
+            sob.pares_por_classe[c.indice()],
+            100.0 * sob.area_por_classe[c.indice()] / sob.area_pintada.max(1.0e-12)
+        );
+    }
+    println!();
+    // ⭐ O PIOR par que sobra, com a área e a classe. ⚠️ Sem esta linha um `1` na coluna
+    // de uma classe lê-se igual a um `1000`: *uma contagem sem magnitude não diz se o que
+    // sobrou cabe num texel ou numa peça*.
+    if let Some(pior) = sob.pares.first() {
+        println!(
+            "   pior     {} de area {:.3e} ({:.2e} da area pintada) entre os triangulos {} e {}",
+            pior.classe.nome(),
+            pior.area,
+            pior.area / sob.area_pintada.max(1.0e-12),
+            pior.a,
+            pior.b
+        );
+    }
     if let Ok(dir) = std::env::var("PH2D_ATLAS_DUMP") {
         desenha(&atl, mesh, &format!("{dir}/atlas_{marca}.ppm"), 1024);
+        // ⭐ O lado SEM corte, pela mesma porta — é o CONTROLO da wave: sem ele «o corte
+        // melhorou» é uma afirmação sobre uma imagem que ninguém pôs ao lado da outra.
+        let cru = ph2d_uv_atlas::build_com(
+            mesh,
+            &cut,
+            &map,
+            &jumps,
+            ph2d_uv_atlas::Opcoes { cortar: false },
+        );
+        desenha(
+            &cru,
+            mesh,
+            &format!("{dir}/atlas_{marca}_sem_corte.ppm"),
+            1024,
+        );
     }
     // ⭐ A resolução que a peça pede: com o atlas aproveitado a `fill`, quanto mede um texel.
     for n in [1024u32, 2048, 4096] {
@@ -385,19 +453,16 @@ fn desenha(atlas: &ph2d_uv_atlas::Atlas, mesh: &Mesh, caminho: &str, lado: usize
             _ => [255, 40, b],
         }
     };
-    let (base, _) = ph2d_uv_atlas::bases_dos_cantos(mesh);
-    for (f, face) in mesh.faces().iter().enumerate() {
-        let n = face.verts().len();
-        if n < 3 {
-            continue;
-        }
-        let b = base[f] as usize;
-        let c = cor(atlas.ilha[b]);
-        // Leque a partir do canto 0 — chega para triângulos e quads.
-        for k in 1..(n - 1) {
-            let t = [atlas.uv[b], atlas.uv[b + k], atlas.uv[b + k + 1]];
-            preenche(&mut px, lado, t, c);
-        }
+    // ⭐ O leque vem da PORTA — ver [`ph2d_uv_atlas::topo::triangulos`]. Esta sonda
+    // escrevia-o duas vezes (aqui e no contador) e as duas concordavam por acaso.
+    for t in ph2d_uv_atlas::topo::triangulos(mesh) {
+        let c = cor(atlas.ilha[t[0] as usize]);
+        let z = [
+            atlas.uv[t[0] as usize],
+            atlas.uv[t[1] as usize],
+            atlas.uv[t[2] as usize],
+        ];
+        preenche(&mut px, lado, z, c);
     }
     let mut out = format!("P6\n{lado} {lado}\n255\n").into_bytes();
     for p in &px {
@@ -410,31 +475,31 @@ fn desenha(atlas: &ph2d_uv_atlas::Atlas, mesh: &Mesh, caminho: &str, lado: usize
     }
 }
 
-/// ⭐⭐⭐ **QUANTOS TEXELS O ATLAS PINTA DUAS VEZES** — a única pergunta de CORRECÇÃO que
-/// sobra depois de as ilhas caberem no quadrado.
+/// ⭐⭐⭐ **QUANTOS TEXELS O ATLAS PINTA DUAS VEZES** — a pergunta de CORRECÇÃO, na
+/// unidade em que o artista a sente.
 ///
 /// ⛔ Uma ilha assentada ao longo de uma árvore não tem holonomia **e pode dobrar-se sobre
 /// si mesma** — nada no assentamento o impede. Um texel coberto por dois sítios da
-/// superfície é tinta que aparece onde ninguém a pôs. ⚠️ *Nenhum gate desta casa media
-/// isto*: as réguas do atlas olham caixas, e uma dobra acontece DENTRO de uma caixa.
+/// superfície é tinta que aparece onde ninguém a pôs.
+///
+/// ⚠️ **Ela e a [`ph2d_uv_atlas::sobreposicao`] medem a MESMA coisa em unidades
+/// diferentes, e as duas ficam:** esta conta TEXELS (que é o que se vê) e aquela conta
+/// ÁREA exacta com a ATRIBUIÇÃO ao mecanismo (que é o que se corta). *Uma régua agregada
+/// diz que há defeito e não diz o que se corta.*
 ///
 /// Devolve `(texels cobertos, texels cobertos MAIS DE UMA VEZ)`.
 fn sobreposicao(atlas: &ph2d_uv_atlas::Atlas, mesh: &Mesh, lado: usize) -> (usize, usize) {
     let mut n = vec![0u16; lado * lado];
-    let (base, _) = ph2d_uv_atlas::bases_dos_cantos(mesh);
-    for (f, face) in mesh.faces().iter().enumerate() {
-        let k = face.verts().len();
-        if k < 3 {
-            continue;
-        }
-        let b = base[f] as usize;
-        for j in 1..(k - 1) {
-            conta(
-                &mut n,
-                lado,
-                [atlas.uv[b], atlas.uv[b + j], atlas.uv[b + j + 1]],
-            );
-        }
+    for t in ph2d_uv_atlas::topo::triangulos(mesh) {
+        conta(
+            &mut n,
+            lado,
+            [
+                atlas.uv[t[0] as usize],
+                atlas.uv[t[1] as usize],
+                atlas.uv[t[2] as usize],
+            ],
+        );
     }
     let cobertos = n.iter().filter(|&&c| c > 0).count();
     let dobrados = n.iter().filter(|&&c| c > 1).count();

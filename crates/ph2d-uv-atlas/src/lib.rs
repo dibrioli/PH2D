@@ -3,13 +3,14 @@
 //! # O que esta crate acrescenta, e o que ela NÃO refaz
 //!
 //! A `ph2d-gridmap` já resolve `(u, v)` sobre a peça inteira, com as costuras acopladas.
-//! O que falta a uma TEXTURA é outra coisa, e são três passos de aritmética:
+//! O que falta a uma TEXTURA é outra coisa, e são quatro passos:
 //!
 //! | passo | porquê |
 //! |---|---|
 //! | **juntar** os patches em ILHAS | ⛔ *um patch não é uma ilha* — onde o salto de período é `0 (mod 4)` os dois lados leem a mesma função a menos de uma translação, e ali não há corte nenhum |
 //! | **assentar** cada ilha num plano só | cada patch traz o seu `(u, v)` numa origem própria; pô-los lado a lado é acumular a translação ao longo de uma árvore |
-//! | **arrumar** as ilhas em `[0,1]²` | é o que um sampler pede, e é onde o desperdício mora |
+//! | ⭐ **cortar** a ilha que se dobra | ⛔ *uma ilha assentada ao longo de uma árvore pode cair em cima de si mesma*, e aí a tinta aparece em dois sítios — ver [`corte`] |
+//! | **arrumar** as peças em `[0,1]²` | é o que um sampler pede, e é onde o desperdício mora |
 //!
 //! ⭐ **O tamanho do trabalho foi MEDIDO antes da primeira linha**
 //! (`docs/3D/26_a_parametrizacao_como_atlas.md`): nas peças do dono são **`4` a `13`**
@@ -23,6 +24,10 @@
 //! vez de um por vértice. [`Relatorio::cola_max`] mede a dispersão dessa translação e
 //! [`Relatorio::holonomia_max`] mede o que sobra ao fechar um ciclo dentro de uma ilha.
 //! *Sem as duas, «as ilhas ficaram bem» é uma afirmação sobre uma imagem que ninguém viu.*
+
+pub mod corte;
+pub mod sobreposicao;
+pub mod topo;
 
 use ph2d_gridmap::{CutMesh, GridMap};
 use ph2d_mesh::Mesh;
@@ -69,6 +74,24 @@ pub struct Relatorio {
     /// ⛔⛔ **O RASGO na pior dessas costuras**, em células de grade. É a distância a que
     /// os dois lados de um ciclo ficam um do outro depois de a árvore os assentar.
     pub holonomia_max: f32,
+    /// ⭐⭐⭐ **Ilhas ANTES do corte** — as componentes ligadas das costuras coladas.
+    ///
+    /// ⚠️ [`Self::ilhas`] conta o que o empacotador arrumou, que é o que o artista vê;
+    /// esta conta o que a superfície dava. *A diferença é o preço do corte, e sem as duas
+    /// colunas ele não é observável.*
+    pub ilhas_antes_do_corte: usize,
+    /// Peças com **uma face só** — ver [`corte::Corte::pecas_de_uma_face`].
+    pub pecas_de_uma_face: usize,
+    /// Quantas vezes o corte recusou uma face — ver [`corte::Corte::recusas`].
+    pub recusas_do_corte: usize,
+    /// ⛔ Ver [`corte::Corte::faces_sem_vizinho`].
+    pub faces_sem_vizinho: usize,
+    /// Pares de peças que a fusão juntou — ver [`corte::Corte::fusoes`].
+    pub fusoes_do_corte: usize,
+    /// A mediana do tamanho de uma peça, em faces.
+    pub peca_p50: usize,
+    /// O maior.
+    pub peca_max: usize,
     /// A fracção do quadrado que as caixas das ilhas ocupam.
     pub aproveitamento: f32,
     /// ⛔ Cantos da malha que não receberam `(u, v)`.
@@ -91,6 +114,13 @@ pub struct Atlas {
     pub uv: Vec<[f32; 2]>,
     /// Por canto, a ilha a que ele pertence — é o que dá cor a um desenho do atlas.
     pub ilha: Vec<u32>,
+    /// Por canto, a CARTA (o patch do corte) de onde ele veio.
+    ///
+    /// ⚠️ **Uma ilha é feita de cartas, e as duas granularidades respondem a perguntas
+    /// diferentes:** um cruzamento DENTRO de uma carta acusa o solver contínuo, e um
+    /// entre duas cartas da mesma ilha acusa o assentamento. *Guardar só a ilha faz as
+    /// duas lerem-se igual* — ver [`sobreposicao::Classe`].
+    pub carta: Vec<u32>,
     /// Ver [`Relatorio`].
     pub relatorio: Relatorio,
 }
@@ -159,6 +189,28 @@ fn cola(map: &GridMap, seam: &ph2d_gridmap::Seam) -> Option<([f32; 2], f32)> {
     Some((media, disp))
 }
 
+/// ⭐ **O que o atlas faz de opcional.**
+///
+/// ⚠️ **É uma PORTA e não uma variável de ambiente:** uma env lida dentro desta crate
+/// alcançaria todo chamador e faria um gate medir a máquina em vez da lei. *Quem quiser
+/// bissectar o corte passa-o aqui, e a sonda é o único sítio que o faz.*
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Opcoes {
+    /// Partir cada ilha até ela deixar de se pintar duas vezes — ver [`corte`].
+    pub cortar: bool,
+}
+
+impl Default for Opcoes {
+    /// ⚠️ **O corte nasce LIGADO, contra a lei da casa de tudo o que é novo shipar
+    /// desligado — e a razão é que aqui não há produto do outro lado.** Nenhum botão
+    /// consome este atlas ainda; desligá-lo faria [`build`] devolver, por omissão, um
+    /// atlas que se pinta duas vezes e que a régua da [`sobreposicao`] acusa. *Uma
+    /// omissão que entrega um resultado sabidamente errado não é conservadora.*
+    fn default() -> Self {
+        Self { cortar: true }
+    }
+}
+
 /// ⭐⭐⭐ **Constrói o atlas.**
 ///
 /// As entradas são o que a cadeia já produz — a malha **triangulada**, o corte, o mapa
@@ -170,6 +222,22 @@ fn cola(map: &GridMap, seam: &ph2d_gridmap::Seam) -> Option<([f32; 2], f32)> {
 #[must_use]
 #[allow(clippy::too_many_lines)]
 pub fn build(mesh: &Mesh, cut: &CutMesh, map: &GridMap, jumps: &[Option<i32>]) -> Atlas {
+    build_com(mesh, cut, map, jumps, Opcoes::default())
+}
+
+/// Ver [`build`] e [`Opcoes`].
+///
+/// # Panics
+/// Nunca: toda ausência vira [`Relatorio::orfaos`] ou uma ilha própria.
+#[must_use]
+#[allow(clippy::too_many_lines)]
+pub fn build_com(
+    mesh: &Mesh,
+    cut: &CutMesh,
+    map: &GridMap,
+    jumps: &[Option<i32>],
+    opcoes: Opcoes,
+) -> Atlas {
     let np = cut.origin.len();
     let mut rel = Relatorio {
         patches: np,
@@ -233,13 +301,166 @@ pub fn build(mesh: &Mesh, cut: &CutMesh, map: &GridMap, jumps: &[Option<i32>]) -
             }
         }
     }
-    // ⛔⛔ **A HOLONOMIA mede-se nos PONTOS ASSENTES, nunca na fórmula que os assentou.**
+    rel.holonomia_max = holonomia(cut, map, jumps, &off);
+
+    // Um patch que nenhuma cola alcançou é uma ilha só dele.
+    for o in &mut off {
+        if o.is_none() {
+            *o = Some([0.0, 0.0]);
+        }
+    }
+
+    // ── 3. A ilha de cada carta.
+    let mut ilha_de = vec![0u32; np];
+    let mut ordem: Vec<usize> = Vec::new();
+    for (p, slot) in ilha_de.iter_mut().enumerate() {
+        let r = raiz(&mut pai, p);
+        if let Some(i) = ordem.iter().position(|&q| q == r) {
+            *slot = u32::try_from(i).unwrap_or(0);
+        } else {
+            *slot = u32::try_from(ordem.len()).unwrap_or(0);
+            ordem.push(r);
+        }
+    }
+    rel.ilhas_antes_do_corte = ordem.len();
+
+    // ── 4. O PLANO: um `(u, v)` por canto, ainda na origem da ilha.
     //
-    // A 1.ª redacção comparava `oa − t` com `ob`, que é literalmente a expressão do laço
-    // acima — e uma mutação que trocava o SINAL do assentamento **SOBREVIVEU**, porque a
-    // régua errava do mesmo lado. *Um espelho não acusa.* Hoje pergunta-se a coisa que
-    // interessa: com as cartas postas no plano da ilha, os dois lados de uma costura
-    // colada caem no MESMO ponto?
+    // ⭐ Este passo era o ÚLTIMO e passou a ser o do meio: o corte precisa de ver a ilha
+    // assentada, e o empacotador precisa de ver as peças que o corte deu. *Empacotar
+    // antes de cortar seria arrumar rectângulos que ainda vão mudar de tamanho.*
+    let (base, ncantos) = bases_dos_cantos(mesh);
+    let mut plano = vec![[0.0f32, 0.0]; ncantos];
+    let mut carta = vec![u32::MAX; ncantos];
+    let mut ilha = vec![u32::MAX; ncantos];
+    let mut posto = vec![false; ncantos];
+    for (p, tris) in cut.tris.iter().enumerate() {
+        let i = ilha_de[p];
+        let o = off[p].unwrap_or([0.0, 0.0]);
+        for (ti, t) in tris.iter().enumerate() {
+            let Some(&fi) = cut.tri_face[p].get(ti) else {
+                continue;
+            };
+            let Some(face) = mesh.faces().get(fi as usize) else {
+                continue;
+            };
+            let verts = face.verts();
+            for &l in t {
+                let Some(&g) = cut.origin[p].get(l as usize) else {
+                    continue;
+                };
+                let Some(k) = verts.iter().position(|&v| v == g) else {
+                    continue;
+                };
+                let Some(&z) = map.uv[p].get(l as usize) else {
+                    continue;
+                };
+                let c = base[fi as usize] as usize + k;
+                if c >= ncantos {
+                    continue;
+                }
+                plano[c] = [z[0] + o[0], z[1] + o[1]];
+                carta[c] = u32::try_from(p).unwrap_or(u32::MAX);
+                ilha[c] = i;
+                posto[c] = true;
+            }
+        }
+    }
+
+    // ── 5. O CORTE. Ver [`corte`] — a atribuição que o encomendou está no cabeçalho de lá.
+    let nfaces = mesh.faces().len();
+    let mut ilha_da_face = vec![u32::MAX; nfaces];
+    let mut tem_uv = vec![false; nfaces];
+    for (f, face) in mesh.faces().iter().enumerate() {
+        let n = face.verts().len();
+        let b = base[f] as usize;
+        // ⛔ **TODOS os cantos, e não «algum»:** uma face meio posta daria um triângulo
+        // com um canto em `(0, 0)`, que o corte leria como geometria e o empacotador
+        // esticaria a caixa da ilha inteira até à origem.
+        tem_uv[f] = n >= 3 && (0..n).all(|k| posto.get(b + k).copied().unwrap_or(false));
+        if tem_uv[f] {
+            ilha_da_face[f] = ilha[b];
+        }
+    }
+    let ct = if opcoes.cortar {
+        corte::corta(mesh, &plano, &ilha_da_face, &tem_uv)
+    } else {
+        // ⭐ Sem corte, a PEÇA é a ilha: é assim que a bissecção devolve o atlas da W1
+        // pelo mesmo caminho, e não por um segundo ramo que envelheceria sozinho.
+        corte::Corte {
+            peca_da_face: ilha_da_face.clone(),
+            pecas: rel.ilhas_antes_do_corte,
+            ..corte::Corte::default()
+        }
+    };
+    rel.ilhas = ct.pecas;
+    rel.pecas_de_uma_face = ct.pecas_de_uma_face;
+    rel.recusas_do_corte = ct.recusas;
+    rel.faces_sem_vizinho = ct.faces_sem_vizinho;
+    rel.fusoes_do_corte = ct.fusoes;
+    rel.peca_p50 = ct.tamanho_p50;
+    rel.peca_max = ct.tamanho_max;
+
+    // ── 6. A caixa de cada PEÇA, no plano dela.
+    let (lo, hi) = caixas(mesh, &base, &plano, &ct.peca_da_face, rel.ilhas);
+
+    // ── 7. Arrumar.
+    let (pos, lado, area) = arruma(&lo, &hi);
+    rel.aproveitamento = if lado > 0.0 {
+        area / (lado * lado)
+    } else {
+        0.0
+    };
+
+    // ── 8. O `(u, v)` de cada canto, em `[0,1]²`.
+    let mut uv = vec![[0.0f32, 0.0]; ncantos];
+    for (f, face) in mesh.faces().iter().enumerate() {
+        let pi = ct.peca_da_face[f];
+        let b = base[f] as usize;
+        if pi == u32::MAX {
+            // ⛔ Uma face que o corte não colocou não tem lugar no atlas, e os cantos dela
+            // contam como ÓRFÃOS — *um canto com `(u, v)` de uma face que ninguém arrumou
+            // aponta para um sítio do quadrado que não é dela*.
+            for k in 0..face.verts().len() {
+                if let Some(q) = posto.get_mut(b + k) {
+                    *q = false;
+                }
+            }
+            continue;
+        }
+        let (pi, (px, py), (lx, ly)) = (
+            pi as usize,
+            (pos[pi as usize][0], pos[pi as usize][1]),
+            (lo[pi as usize][0], lo[pi as usize][1]),
+        );
+        for k in 0..face.verts().len() {
+            let q = plano[b + k];
+            uv[b + k] = [(q[0] - lx + px) / lado, (q[1] - ly + py) / lado];
+            ilha[b + k] = u32::try_from(pi).unwrap_or(u32::MAX);
+        }
+    }
+    rel.cantos = posto.iter().filter(|&&b| b).count();
+    rel.orfaos = ncantos - rel.cantos;
+
+    Atlas {
+        uv,
+        ilha,
+        carta,
+        relatorio: rel,
+    }
+}
+
+/// ⛔⛔ **O RASGO na pior costura colada, medido nos PONTOS ASSENTES.**
+///
+/// ⚠️ **Nunca na fórmula que os assentou.**
+///
+/// A 1.ª redacção comparava `oa − t` com `ob`, que é literalmente a expressão do laço
+/// do assentamento — e uma mutação que trocava o SINAL dele **SOBREVIVEU**, porque a
+/// régua errava do mesmo lado. *Um espelho não acusa.* Hoje pergunta-se a coisa que
+/// interessa: com as cartas postas no plano da ilha, os dois lados de uma costura
+/// colada caem no MESMO ponto?
+fn holonomia(cut: &CutMesh, map: &GridMap, jumps: &[Option<i32>], off: &[Option<[f32; 2]>]) -> f32 {
+    let mut maior = 0.0f32;
     for (s, seam) in cut.seams.iter().enumerate() {
         if !matches!(jumps.get(s), Some(Some(j)) if j.rem_euclid(4) == 0) {
             continue;
@@ -263,48 +484,46 @@ pub fn build(mesh: &Mesh, cut: &CutMesh, map: &GridMap, jumps: &[Option<i32>]) -
                 (za[0] + oa[0]) - (zb[0] + ob[0]),
                 (za[1] + oa[1]) - (zb[1] + ob[1]),
             ];
-            rel.holonomia_max = rel
-                .holonomia_max
-                .max(d[0].mul_add(d[0], d[1] * d[1]).sqrt());
+            maior = maior.max(d[0].mul_add(d[0], d[1] * d[1]).sqrt());
         }
     }
-    // Um patch que nenhuma cola alcançou é uma ilha só dele.
-    for o in &mut off {
-        if o.is_none() {
-            *o = Some([0.0, 0.0]);
-        }
-    }
+    maior
+}
 
-    // ── 3. A caixa de cada ilha, no plano dela.
-    let mut ilha_de = vec![0u32; np];
-    let mut ordem: Vec<usize> = Vec::new();
-    for (p, slot) in ilha_de.iter_mut().enumerate() {
-        let r = raiz(&mut pai, p);
-        if let Some(i) = ordem.iter().position(|&q| q == r) {
-            *slot = u32::try_from(i).unwrap_or(0);
-        } else {
-            *slot = u32::try_from(ordem.len()).unwrap_or(0);
-            ordem.push(r);
+/// A caixa de cada peça no plano da ilha dela.
+fn caixas(
+    mesh: &Mesh,
+    base: &[u32],
+    plano: &[[f32; 2]],
+    peca_da_face: &[u32],
+    pecas: usize,
+) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
+    let mut lo = vec![[f32::MAX; 2]; pecas];
+    let mut hi = vec![[f32::MIN; 2]; pecas];
+    for (f, face) in mesh.faces().iter().enumerate() {
+        let pi = peca_da_face[f];
+        if pi == u32::MAX {
+            continue;
+        }
+        let (pi, b) = (pi as usize, base[f] as usize);
+        for k in 0..face.verts().len() {
+            let q = plano[b + k];
+            lo[pi][0] = lo[pi][0].min(q[0]);
+            lo[pi][1] = lo[pi][1].min(q[1]);
+            hi[pi][0] = hi[pi][0].max(q[0]);
+            hi[pi][1] = hi[pi][1].max(q[1]);
         }
     }
-    rel.ilhas = ordem.len();
-    let mut lo = vec![[f32::MAX; 2]; rel.ilhas];
-    let mut hi = vec![[f32::MIN; 2]; rel.ilhas];
-    for p in 0..np {
-        let i = ilha_de[p] as usize;
-        let o = off[p].unwrap_or([0.0, 0.0]);
-        for z in &map.uv[p] {
-            let q = [z[0] + o[0], z[1] + o[1]];
-            lo[i][0] = lo[i][0].min(q[0]);
-            lo[i][1] = lo[i][1].min(q[1]);
-            hi[i][0] = hi[i][0].max(q[0]);
-            hi[i][1] = hi[i][1].max(q[1]);
-        }
-    }
+    (lo, hi)
+}
 
-    // ── 4. Arrumar: prateleiras, mais altas primeiro, com o vão do mip.
+/// ⭐ **O empacotador: prateleiras, as mais altas primeiro, com o vão do mip.**
+///
+/// Devolve `(canto de cada peça, lado do quadrado, área somada das caixas)`.
+fn arruma(lo: &[[f32; 2]], hi: &[[f32; 2]]) -> (Vec<[f32; 2]>, f32, f32) {
+    let n = lo.len();
     let fraccao = VAO_EM_TEXELS / TEXTURA_DE_REFERENCIA;
-    let mut tam: Vec<(usize, f32, f32)> = (0..rel.ilhas)
+    let mut tam: Vec<(usize, f32, f32)> = (0..n)
         .map(|i| {
             let (w, h) = if lo[i][0] <= hi[i][0] {
                 (hi[i][0] - lo[i][0], hi[i][1] - lo[i][1])
@@ -317,10 +536,10 @@ pub fn build(mesh: &Mesh, cut: &CutMesh, map: &GridMap, jumps: &[Option<i32>]) -
     tam.sort_by(|a, b| b.2.total_cmp(&a.2));
     let area: f32 = tam.iter().map(|t| t.1 * t.2).sum();
     let mut lado = area.sqrt().max(1.0e-6);
-    let mut pos = vec![[0.0f32, 0.0]; rel.ilhas];
+    let mut pos = vec![[0.0f32, 0.0]; n];
     // ⚠️ O laço CRESCE o quadrado até caber. *Um empacotador que devolve «não coube» a
     // quem lhe deu rectângulos não resolveu nada* — e o preço de crescer é medido pelo
-    // aproveitamento, que é a coluna que este relatório publica.
+    // aproveitamento, que é a coluna que o relatório publica.
     for _ in 0..200 {
         let vao = lado * fraccao;
         let (mut x, mut y, mut alt) = (vao, vao, 0.0f32);
@@ -353,63 +572,21 @@ pub fn build(mesh: &Mesh, cut: &CutMesh, map: &GridMap, jumps: &[Option<i32>]) -
         }
         lado *= 1.05;
     }
-    rel.aproveitamento = if lado > 0.0 {
-        area / (lado * lado)
-    } else {
-        0.0
-    };
-
-    // ── 5. O `(u, v)` de cada canto, em `[0,1]²`.
-    let (base, ncantos) = bases_dos_cantos(mesh);
-    let mut uv = vec![[0.0f32, 0.0]; ncantos];
-    let mut ilha = vec![u32::MAX; ncantos];
-    let mut posto = vec![false; ncantos];
-    for (p, tris) in cut.tris.iter().enumerate() {
-        let i = ilha_de[p] as usize;
-        let o = off[p].unwrap_or([0.0, 0.0]);
-        let (px, py) = (pos[i][0], pos[i][1]);
-        let (lx, ly) = (lo[i][0], lo[i][1]);
-        for (ti, t) in tris.iter().enumerate() {
-            let Some(&fi) = cut.tri_face[p].get(ti) else {
-                continue;
-            };
-            let Some(face) = mesh.faces().get(fi as usize) else {
-                continue;
-            };
-            let verts = face.verts();
-            for &l in t {
-                let Some(&g) = cut.origin[p].get(l as usize) else {
-                    continue;
-                };
-                let Some(k) = verts.iter().position(|&v| v == g) else {
-                    continue;
-                };
-                let Some(&z) = map.uv[p].get(l as usize) else {
-                    continue;
-                };
-                let c = base[fi as usize] as usize + k;
-                if c >= ncantos {
-                    continue;
-                }
-                uv[c] = [
-                    (z[0] + o[0] - lx + px) / lado,
-                    (z[1] + o[1] - ly + py) / lado,
-                ];
-                ilha[c] = u32::try_from(i).unwrap_or(u32::MAX);
-                posto[c] = true;
-            }
-        }
-    }
-    rel.cantos = posto.iter().filter(|&&b| b).count();
-    rel.orfaos = ncantos - rel.cantos;
-
-    Atlas {
-        uv,
-        ilha,
-        relatorio: rel,
-    }
+    (pos, lado, area)
 }
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod lib_tests;
+
+#[cfg(test)]
+#[path = "sobreposicao_tests.rs"]
+mod sobreposicao_tests;
+
+#[cfg(test)]
+#[path = "corte_tests.rs"]
+mod corte_tests;
+
+#[cfg(test)]
+#[path = "topo_tests.rs"]
+mod topo_tests;

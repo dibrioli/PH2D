@@ -29,7 +29,25 @@ use ph2d_mesh::{Face, Mesh};
 /// volta acumula `3` células de translação, e nenhum plano recebe a fita inteira sem um
 /// corte. *É o controlo positivo da régua da holonomia* — sem ele, uma régua que nunca
 /// mede nada lê `0` e passa.
-fn fita(salto: i32, anel: bool) -> (Mesh, CutMesh, GridMap, Vec<Option<i32>>) {
+pub(crate) fn fita(salto: i32, anel: bool) -> (Mesh, CutMesh, GridMap, Vec<Option<i32>>) {
+    fita_com(salto, anel, false)
+}
+
+/// ⭐⭐⭐ **`dobra = true` põe a 2.ª carta EM CIMA da primeira** — e é a única fixtura
+/// desta crate que contém o fenómeno que o corte existe para desfazer.
+///
+/// ⚠️ **Ela é precisa porque a esfera NÃO contém o fenómeno:** medida pela sonda, a
+/// esfera dá `mesma-ilha = 0,00 %` e o corte não faz nada nela. *Um gate escrito sobre
+/// uma peça onde a cura é inerte fica verde a afirmar nada.*
+///
+/// A carta `1` continua colada à `0` pela mesma costura e pela mesma translação — o que
+/// muda é a FORMA dela no plano: em vez de continuar para a direita, ela volta para trás
+/// e cobre a carta `0` exactamente.
+pub(crate) fn fita_com(
+    salto: i32,
+    anel: bool,
+    dobra: bool,
+) -> (Mesh, CutMesh, GridMap, Vec<Option<i32>>) {
     let pos = vec![
         [0.0, 1.0, 0.0],
         [1.0, 1.0, 0.0],
@@ -95,12 +113,31 @@ fn fita(salto: i32, anel: bool) -> (Mesh, CutMesh, GridMap, Vec<Option<i32>>) {
             [x + 1.0 + o[0], o[1]],
         ]
     };
+    // A carta que VOLTA: os mesmos quatro cantos, com os dois do fim a recuar em vez de
+    // avançar. A costura continua a casar (locais `0`/`1` no mesmo sítio), logo a
+    // translação e a ilha não mudam — só o sítio para onde a carta se estende.
+    let carta_de_volta = |o: [f32; 2]| {
+        vec![
+            [1.0 + o[0], o[1]],
+            [1.0 + o[0], 1.0 + o[1]],
+            [o[0], 1.0 + o[1]],
+            [o[0], o[1]],
+        ]
+    };
     let map = GridMap {
-        uv: vec![
-            carta(0.0, [0.0, 0.0]),
-            carta(1.0, [10.0, 3.0]),
-            carta(2.0, [20.0, -7.0]),
-        ],
+        uv: if dobra {
+            vec![
+                carta(0.0, [0.0, 0.0]),
+                carta_de_volta([10.0, 3.0]),
+                carta_de_volta([20.0, -7.0]),
+            ]
+        } else {
+            vec![
+                carta(0.0, [0.0, 0.0]),
+                carta(1.0, [10.0, 3.0]),
+                carta(2.0, [20.0, -7.0]),
+            ]
+        },
         shift: vec![[0.0, 0.0]; 3],
     };
     (mesh, cut, map, jumps)
@@ -395,9 +432,21 @@ fn uma_costura_torta_e_acusada_em_vez_de_colada_em_silencio() {
         "uma costura torta tem de aparecer no relatorio: {}",
         a.relatorio.cola_max
     );
-    // ⚠️ E ela continua a colar, de propósito: *acusar não é recusar* — quem decide o que
-    // fazer com uma peça torta é quem a mostra ao artista, e calar o número seria pior.
-    assert_eq!(a.relatorio.ilhas, 1);
+    // ⛔⛔ **A PREMISSA DESTE GATE MORREU COM O CORTE, e a morte fica à vista no diff.**
+    //
+    // Ele afirmava `ilhas == 1` com a razão *«acusar não é recusar»*, e ela continua
+    // certa — sobre a COLA. O que mudou é que `ilhas` deixou de contar componentes das
+    // costuras e passou a contar **peças arrumadas**: meia célula de torto é muito maior
+    // que a tolerância do elo, logo as duas cartas deixam de encostar NO PLANO e o corte
+    // separa-as. *Uma coluna só não distingue «não colou» de «colou e depois partiu-se».*
+    assert_eq!(
+        a.relatorio.ilhas_antes_do_corte, 1,
+        "a cola aconteceu na mesma: a costura e' colada"
+    );
+    assert_eq!(
+        a.relatorio.ilhas, 2,
+        "e o corte separou duas cartas que ja' nao se encostam"
+    );
 }
 
 /// ⭐ **O VÃO existe** — duas ilhas encostadas seriam misturadas pelo primeiro mip.
@@ -431,4 +480,28 @@ fn um_patch_sozinho_vira_ilha_e_nao_um_orfao() {
     let a = build(&mesh, &cut, &map, &[]);
     assert_eq!(a.relatorio.ilhas, 3, "sem costura sao tres ilhas");
     assert_eq!(a.relatorio.orfaos, 0, "e nenhum canto fica sem uv");
+}
+
+/// ⛔⛔ **Uma face com UM canto sem `(u, v)` não entra no atlas — nem meia.**
+///
+/// ⚠️ A lei nasceu de uma **mutação SOBREVIVENTE** (`all` trocado por `any`): nenhuma
+/// fixtura tinha uma face meio posta, e a régua que faltava era esta. *Meia face entra
+/// com o canto que falta em `(0, 0)`* — um triângulo esticado até à origem do plano, que
+/// o empacotador engole dentro da caixa da ilha inteira.
+#[test]
+fn uma_face_com_um_canto_sem_uv_nao_entra_no_atlas() {
+    let (mesh, cut, mut map, jumps) = fita(0, false);
+    // O local `3` da carta `0` é o vértice `1`, e ele só aparece na face `1` por este
+    // caminho — tirar-lhe o `(u, v)` deixa a face `1` com dois cantos de três.
+    map.uv[0].pop();
+    let a = build(&mesh, &cut, &map, &jumps);
+    assert_eq!(
+        a.relatorio.orfaos, 3,
+        "a face inteira fica de fora, e os TRES cantos dela sao orfaos"
+    );
+    assert_eq!(a.relatorio.cantos, 15, "as outras cinco faces entram");
+    // ⭐ O CONTROLO: sem o buraco, nenhum órfão.
+    let (m2, c2, p2, j2) = fita(0, false);
+    let b = build(&m2, &c2, &p2, &j2);
+    assert_eq!((b.relatorio.orfaos, b.relatorio.cantos), (0, 18));
 }

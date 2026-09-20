@@ -43,7 +43,14 @@ pub fn paint_property_label(
     if col_w <= 0.0 {
         return;
     }
-    let (cabe, recuo, largura) = property_label_origin(text_system, text, x, font_size, col_w);
+    // ⭐⭐ **O BALÃO**: a área é a COLUNA do nome, não os glifos que sobraram — o rótulo está
+    //    alinhado à direita e encolhe, e um alvo do tamanho do que coube seria menor quanto mais
+    //    texto faltasse, que é exactamente ao contrário do que se quer.
+    //    Ver [`crate::text_elide::balao`].
+    let area = crate::zones::Rect::new(x, y, col_w, font_size);
+    let (cabe, recuo, largura) = crate::text_elide::balao::na_area(area, || {
+        property_label_origin(text_system, text, x, font_size, col_w)
+    });
     // ⛔⛔ **O orçamento é a largura MEDIDA do que já coube — nunca `x + col_w − recuo`.**
     // Aquela diferença cancela em `f32` e devolve um valor um ULP abaixo de `largura` em ~8,6 %
     // das posições de `x`, e o pintor voltava a cortar um rótulo que cabia: era isto que o dono
@@ -91,7 +98,10 @@ pub fn property_label_origin(
     font_size: f32,
     col_w: f32,
 ) -> (String, f32, f32) {
-    let cabe = crate::text_elide::fit(text_system, text, font_size, col_w);
+    // ⭐⭐⭐ **`fit_do_nome` e não `fit`** — aqui o texto é o NOME de uma linha de formulário, e a
+    // lei do dono é *um nome perde a EXPLICAÇÃO antes de perder LETRAS*. Sem parênteses no fim ela
+    // é byte-idêntica ao `fit`. Ver [`crate::text_elide::fit_do_nome`].
+    let cabe = crate::text_elide::fit_do_nome(text_system, text, font_size, col_w);
     let largura = text_system.prefix_width(&cabe, font_size);
     // ⚠️ **O `max(0)` é o degrau para a ESQUERDA**: um texto maior que a coluna (quando nem a
     // reticência cabe, o `fit` devolve-o cru) encosta ao princípio dela em vez de recuar para fora.

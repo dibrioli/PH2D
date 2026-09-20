@@ -187,7 +187,47 @@ pub fn tooltip_rect(target: Rect, pill_w: f32, pill_h: f32, gap: f32, viewport: 
     Rect::new(x, y, pill_w, pill_h)
 }
 
-pub fn paint_hover_tooltip(
+/// ⭐⭐⭐ **O BALÃO DE UMA PALAVRA CORTADA** — a segunda metade da ordem do dono de 2026-09-19
+/// (*«encurtar · balão ao passar o rato»*).
+///
+/// Ele mostra o texto INTEIRO de um rótulo que a coluna cortou, e é a única resposta possível
+/// para o texto que o **artista** escreveu (o nome de um objecto, de uma âncora, de uma
+/// propriedade de script): encurtar cura os nomes que são NOSSOS e não toca nesses.
+///
+/// ⚠️ **Ele só fala quando a dica de widget se cala**, e a ordem é deliberada: uma dica autorada
+/// diz o que o controlo FAZ, e esta diz só o que já estava na tela. *Duas bolhas no mesmo sítio
+/// leem-se como um defeito de pintura.*
+///
+/// ⚠️ **Quem recolhe o que foi cortado é a lei da reticência** ([`crate::text_elide::balao`]),
+/// durante a pintura deste mesmo quadro — este pintor corre no fim e só lê.
+pub fn paint_elision_balloon(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    viewport: Rect,
+) {
+    let Some((area, texto)) = crate::text_elide::balao::sob() else {
+        return;
+    };
+    let font_size = ph2d_tokens::TypeToken::Sm.px();
+    let measured_w = text_system.layout(&texto, font_size, f32::INFINITY).width();
+    let pill_w = (measured_w + Spacing::Xl.px()).max(60.0); // LITERAL-PX-OK: tooltip pill min width (chrome-specific)
+    let pill_h = (font_size + 10.0).max(22.0); // LITERAL-PX-OK: tooltip pill height composite + min (chrome-specific)
+    let tip_rect = tooltip_rect(area, pill_w, pill_h, Spacing::Sm.px(), viewport);
+    let tip = Tooltip::new(NodeId(0), &texto);
+    paint_tooltip(&tip, tip_rect, scene, text_system, theme);
+}
+
+/// ⭐⭐⭐ **AS DUAS BOLHAS, e a PRECEDÊNCIA entre elas** — a porta que o quadro chama.
+///
+/// ⛔ **Ela existe porque a precedência é uma lei destes DOIS pintores, e não do quadro:** eles
+/// partilham a geometria da pílula ([`tooltip_rect`]) e pintariam um por cima do outro. Com a
+/// escolha escrita no `paint_hero_screen`, a lei ficava a 700 linhas de quem a tem de honrar — e
+/// o tecto de LOC daquele ficheiro apanhou-a a sair de casa (2026-09-19).
+///
+/// ⚠️ **A dica AUTORADA ganha:** ela diz o que o controlo FAZ, e o balão diz só o que já estava
+/// na tela. *Duas bolhas no mesmo sítio leem-se como um defeito de pintura.*
+pub fn paint_hover_overlays(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -195,8 +235,23 @@ pub fn paint_hover_tooltip(
     store: &WidgetStore,
     viewport: Rect,
 ) {
+    if !paint_hover_tooltip(scene, text_system, theme, hit_index, store, viewport) {
+        paint_elision_balloon(scene, text_system, theme, viewport);
+    }
+}
+
+/// ⚠️ **Devolve se pintou** — o [`paint_elision_balloon`] corre a seguir e precisa de saber se o
+/// sítio já está ocupado.
+pub fn paint_hover_tooltip(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &HitIndex,
+    store: &WidgetStore,
+    viewport: Rect,
+) -> bool {
     let Some(id) = store.hot_id() else {
-        return;
+        return false;
     };
     // Suppress the tooltip when the hot widget is an open Dropdown
     // (or any widget whose popover paints directly below the hit
@@ -208,13 +263,13 @@ pub fn paint_hover_tooltip(
         Some(crate::interaction::InteractiveState::Dropdown { open: true, .. })
             | Some(crate::interaction::InteractiveState::Combobox { open: true, .. })
     ) {
-        return;
+        return false;
     }
     let Some(text) = store.tooltip_for(id) else {
-        return;
+        return false;
     };
     let Some(target_rect) = hit_index.rect_for(id) else {
-        return;
+        return false;
     };
     // Real text measurement instead of `chars × 6.5` — for
     // proportional fonts the approximation is off by 10-30 % and
@@ -227,6 +282,7 @@ pub fn paint_hover_tooltip(
     let tip_rect = tooltip_rect(target_rect, pill_w, pill_h, Spacing::Sm.px(), viewport);
     let tip = Tooltip::new(NodeId(0), text);
     paint_tooltip(&tip, tip_rect, scene, text_system, theme);
+    true
 }
 
 #[allow(clippy::too_many_arguments)]

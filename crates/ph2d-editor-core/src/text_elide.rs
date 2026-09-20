@@ -12,6 +12,11 @@
 
 use ph2d_text::{FontWeight, TextSystem};
 
+pub mod balao;
+pub mod encurtar;
+
+pub use encurtar::{fit_do_nome, nome_sem_a_explicacao};
+
 /// ⭐⭐⭐ **O CENSO DAS ELISÕES — que rótulo foi MEDIDO contra que orçamento, e o que saiu.**
 ///
 /// ⭐⭐ **Ele começou a ouvir só o CORTE e isso era metade da pergunta** (2026-09-18, no mesmo
@@ -274,6 +279,7 @@ pub(crate) fn elide(
         // ⛔ O corte para NADA — nem a reticência cabe. É o pior dos dois, e entra no censo pela
         //    mesma porta: quem o leu na foto do dono leu uma fileira de `[…]`.
         elisao::regista(text, "", max_width, font_size, weight);
+        balao::corte(text);
         return None;
     }
     let bounds: Vec<usize> = text.char_indices().map(|(i, _)| i).collect();
@@ -290,6 +296,10 @@ pub(crate) fn elide(
     }
     let saida = corte(text, bounds[lo]);
     elisao::regista(text, &saida, max_width, font_size, weight);
+    // ⭐⭐⭐ **O BALÃO nasce AQUI, e não nos pintores** — ver [`balao`]. Este é o único sítio do
+    //    app onde se decide que uma palavra não cabe, logo um pintor novo herda o balão por usar
+    //    a porta em vez de repetir a conta.
+    balao::corte(text);
     Some(saida)
 }
 

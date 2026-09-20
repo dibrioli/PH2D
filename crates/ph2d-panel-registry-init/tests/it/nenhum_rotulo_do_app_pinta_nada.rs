@@ -464,11 +464,36 @@ pub(crate) const DEGRAU_ESTREITO: &str = "colunas no minimo";
 /// **tecto**, que e a ordem 2: `coluna <= util - vao - 72`. A `220` de coluna isso da
 /// **`90 px` para o nome**, e o Inspector tem dezenas de rotulos entre `100` e `190`.
 ///
-/// ⚠️⚠️ **Nao ha cura de codigo dentro das duas ordens**, e as tres saidas estao medidas:
-/// encurtar o rotulo (o que o dono escolheu em 2026-09-19 para duas caixas) · mostrar o nome
-/// inteiro num BALAO ao passar o rato (o que esta casa ja fez pela legenda do L-System, quando a
-/// coluna tinha `~35` caracteres e o texto `~100`) · deixar o nome subir para cima do
-/// controlo so quando nao cabe (a ordem 1 proibe-o hoje). **E decisao do dono.**
+/// ⛔⛔⛔ **A frase que estava aqui — *«nao ha cura de codigo dentro das duas ordens»* — MORREU em
+/// 2026-09-19, e as duas curas cabem dentro delas.** O dono escolheu, das tres saidas que esta
+/// nota lhe devolveu, **duas**: *«encurtar · balao ao passar o rato»*.
+///
+/// 1. **O BALAO** ([`ph2d_editor_core::text_elide::balao`]): toda palavra cortada por este app
+///    e legivel ao passar o rato — `128` de `128`, com o gate [`toda_palavra_cortada_tem_balao`]
+///    a prova-lo pela MESMA varredura que as achou. ⭐ E ele e a unica resposta possivel para o
+///    texto que o ARTISTA escreve (o nome de um objecto, de uma ancora, de uma propriedade de
+///    script), que encurtar nunca pode alcançar.
+/// 2. **ENCURTAR**, e a parte mecanica dela nao custou um unico nome novo: *um nome perde a
+///    EXPLICACAO antes de perder LETRAS* ([`ph2d_editor_core::text_elide::fit_do_nome`]) —
+///    `"Acceleration (0 = instant)"` deixa de sair `"Acceleration…"` e sai **`"Acceleration"`**.
+///    `18` rotulos, zero chaves novas e zero prosa a envelhecer.
+///
+/// ⛔⛔ **E QUATRO renomes a mao foram construidos e REVERTIDOS, com o preco medido:** encurtar
+/// `"Always show anchors"` para `"Always show"` (e outros tres, todos onde a SECCAO ja diz a
+/// palavra que sai) fechou **`2`** rotulos de `80` e deixou **`54`** citacoes do nome antigo na
+/// prosa deste repo — tres delas no roteador (`CLAUDE.md` §5), que uma linha nao pode editar.
+/// ⇒ *renomear um rotulo custa as citacoes dele*, e e por isso que a lei da casa para encurtar um
+/// nome (2026-09-19, tres caixas) passa pelo DONO a escolher o nome e pela explicacao a mudar-se
+/// para o balao do widget — nunca por um palpite a mais.
+///
+/// ⚠️ **O que sobra e uma decisao de VOCABULARIO, e e dele:** `~36` nomes compostos
+/// (`Air Acceleration`, `Non-Spatialized Radius`, `Crouch Height`) precisam de **`13`–`15`
+/// caracteres** para caber em `78`–`90 px`, e medem `16`–`22`. Encurta-los nao e tirar gordura, e
+/// **trocar o nome** — e ate la o balao le-os.
+///
+/// ⛔ **A terceira saida continua fora:** o nome subir para cima do controlo, que a ordem 1
+/// proibe. E ⛔ **alargar a coluna tambem**: ela acaba na METADE da linha por ordem do dono
+/// (2026-09-14, *«as labels alinhadas todas a direita, no centro do painel»*).
 ///
 /// # ⚠️ Porque uma CONTAGEM por painel, e nao uma linha por corte
 ///
@@ -486,6 +511,10 @@ pub(crate) const DEGRAU_ESTREITO: &str = "colunas no minimo";
 /// ⚠️ `motion_params` esta aqui com `5` e **fora de escopo** por decisao do dono (ver
 /// [`FORA_POR_DECISAO_DO_DONO`]): o numero fica para a catraca nao mentir sobre a populacao.
 const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
+    // ⚠️⚠️ **Este numero NAO desce com a lei de encurtar de 2026-09-19, e isso e a lei.** Um
+    //    rotulo que sai `"Acceleration"` de `"Acceleration (0 = instant)"` continua a esconder a
+    //    explicacao do artista — o que muda e ele deixar de comer o NOME. Quem conta essa
+    //    diferenca e a [`LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO`], e e por isso que sao duas.
     ("inspector", 80),
     ("motion_params", 16),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
@@ -502,6 +531,101 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     ("model3d", 1),
     ("widget_lab", 1),
 ];
+
+/// ⭐⭐⭐ **QUANTOS ROTULOS PERDEM LETRAS** — a catraca que o DONO ve, e a irmã da de cima.
+///
+/// ⛔⛔ **Ela existe porque a [`CORTES_NO_DEGRAU_ESTREITO`] deixou de separar duas coisas muito
+/// diferentes** no dia em que o `fit_do_nome` chegou: um rotulo que sai `"Acceleration"` e um que
+/// sai `"Acceleration…"` contam os DOIS como corte — e contam bem, porque nos dois o artista fica
+/// sem a explicacao. Mas so o segundo lhe come o NOME, e e o segundo que ele fotografou.
+///
+/// ⇒ *duas grandezas estavam a ser lidas como uma*, que e a forma exacta que o `shift_frac_max`
+/// do gridmap ja custou a esta casa. Esta catraca conta **so quem acaba em reticencias** (ou em
+/// nada), e e sobre ela que «encurtar» se mede.
+///
+/// ⚠️ **As duas sao precisas.** Sem a de cima, encurtar um nome ate ele caber e esconder um
+/// corte tem a mesma leitura; sem esta, o `fit_do_nome` nao teria numero nenhum a mostrar.
+const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
+    // ⭐ `63` de `80`: a lei de encurtar tirou as reticencias a **17** rotulos deste painel, sem
+    //    um unico nome novo. Os `63` que ficam sao nomes compostos, e encurtar um deles e trocar
+    //    o nome — decisao de vocabulario, que e do dono.
+    ("inspector", 63),
+    ("motion_params", 15),
+    ("audio_mixer", 5),
+    ("sculpt3d", 6),
+    ("hierarchy", 5),
+    ("tokens", 5),
+    ("vector", 3),
+    ("color_equalization", 2),
+    ("tags", 2),
+    ("audio_editor", 1),
+    ("authored", 1),
+    ("model3d", 1),
+    ("widget_lab", 1),
+];
+
+/// ⭐⭐⭐ **E NENHUM PAINEL PASSA A COMER MAIS LETRAS** — as duas metades, como a irmã.
+#[test]
+fn as_letras_perdidas_no_degrau_estreito_so_encolhem() {
+    let mut por_painel: std::collections::BTreeMap<&str, std::collections::BTreeSet<String>> =
+        std::collections::BTreeMap::new();
+    for a in varre()
+        .iter()
+        .filter(|a| a.degrau == DEGRAU_ESTREITO && !a.m.coube())
+        // ⭐ **A reticencia e o discriminador** — ela e o que o olho do dono le como «cortado».
+        //   Um `pintado` VAZIO e o degrau pior da mesma escada e conta aqui tambem.
+        .filter(|a| a.m.pintado.ends_with('\u{2026}') || a.m.pintado.is_empty())
+    {
+        por_painel
+            .entry(a.painel)
+            .or_default()
+            .insert(a.m.texto.clone());
+    }
+    let declarado: std::collections::BTreeMap<&str, usize> =
+        LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO.iter().copied().collect();
+    let piorou: Vec<String> = por_painel
+        .iter()
+        .filter(|(id, v)| v.len() > declarado.get(*id).copied().unwrap_or(0))
+        .map(|(id, v)| {
+            let mut nomes: Vec<&str> = v.iter().map(String::as_str).collect();
+            nomes.sort_unstable();
+            format!(
+                "{id}: {} rotulos comidos (declarado {}) — {:?}",
+                v.len(),
+                declarado.get(id).copied().unwrap_or(0),
+                nomes
+            )
+        })
+        .collect();
+    assert!(
+        piorou.is_empty(),
+        "na largura em que o dono trabalha estes paineis passaram a COMER LETRAS de mais \
+         rotulos:\n  {}",
+        piorou.join("\n  ")
+    );
+    let obsoletos: Vec<String> = declarado
+        .iter()
+        .filter(|(id, n)| {
+            por_painel
+                .get(*id)
+                .map_or(0, std::collections::BTreeSet::len)
+                < **n
+        })
+        .map(|(id, n)| {
+            format!(
+                "{id}: declarado {n}, mede {}",
+                por_painel
+                    .get(id)
+                    .map_or(0, std::collections::BTreeSet::len)
+            )
+        })
+        .collect();
+    assert!(
+        obsoletos.is_empty(),
+        "estes numeros ja nao descrevem quantas letras o painel come — BAIXE-OS:\n  {}",
+        obsoletos.join("\n  ")
+    );
+}
 
 /// ⭐⭐⭐ **A DIVIDA DO DEGRAU ESTREITO SO ENCOLHE** — as duas metades.
 #[test]
@@ -1271,4 +1395,87 @@ fn nenhum_painel_isento_deixou_de_abrigar_uma_palavra_escrita_a_mao() {
         }
     }
     assert!(mortas.is_empty(), "{}", mortas.join("\n"));
+}
+
+/// ⭐⭐⭐ **TODA PALAVRA CORTADA POR ESTE APP TEM BALAO.**
+///
+/// ⛔⛔ **A ordem do dono (2026-09-19) foi *«encurtar · balao ao passar o rato»*, e esta e a
+/// metade que vale para o texto que ELE escreve.** Encurtar cura os nomes que sao NOSSOS; o nome
+/// de um objecto, de uma ancora ou de uma propriedade de script nao tem dono nenhum deste lado, e
+/// a unica resposta para esses e poder ler o inteiro.
+///
+/// ⭐⭐ **A regua e a MESMA varredura que achou os `128` cortes** — o instrumento que descobriu o
+/// problema e o que prova a cura. Para cada corte que o censo das elisoes viu, tem de existir um
+/// balao com o MESMO texto; quando nao existe, e porque o pintor daquele sitio nao embrulhou a
+/// pintura num [`ph2d_editor_core::text_elide::balao::na_area`] e o app nao sabe ONDE por a bolha.
+///
+/// ⚠️ **A mensagem de falha nomeia o PINTOR** (`Medido::onde`), e nao so o texto: sem isso a cura
+/// seria arqueologia, que e a lei que aquele campo existe para pagar.
+#[test]
+fn toda_palavra_cortada_tem_balao() {
+    let (tudo, baloes) = ph2d_editor_core::text_elide::balao::medindo(varre);
+
+    let mut disponiveis: std::collections::BTreeMap<String, usize> = Default::default();
+    for (_, texto) in &baloes {
+        *disponiveis.entry(texto.clone()).or_default() += 1;
+    }
+
+    let mut sem_balao: Vec<String> = Vec::new();
+    let mut cortes = 0usize;
+    for a in tudo.iter().filter(|a| !a.m.coube()) {
+        cortes += 1;
+        match disponiveis.get_mut(&a.m.texto) {
+            Some(n) if *n > 0 => *n -= 1,
+            _ => sem_balao.push(format!(
+                "{}: {:?} cortado em {:.1} px e SEM balao — o pintor de {} nao chama \
+                 `text_elide::balao::na_area`",
+                a.onde(),
+                a.m.texto,
+                a.m.largura,
+                a.m.onde
+            )),
+        }
+    }
+
+    // ⚠️ **PISO DE POPULACAO:** uma varredura que deixasse de cortar seja o que for devolveria
+    //    ZERO sem balao e leria-se como aprovacao — a forma exacta que este repo ja pagou num
+    //    censo por prefixo. O numero sai da medicao de 2026-09-19 (`128` cortes nos 4 degraus,
+    //    e a escada corre cada painel 4 vezes).
+    assert!(
+        cortes >= 100,
+        "a varredura viu {cortes} cortes (piso 100) — ou o app deixou de cortar (verifique a \
+         escada), ou este censo deixou de medir. Um censo que varre menos fica verde."
+    );
+    sem_balao.sort_unstable();
+    sem_balao.dedup();
+    assert!(
+        sem_balao.is_empty(),
+        "estas palavras sao cortadas e o artista NAO tem como as ler:\n  {}",
+        sem_balao.join("\n  ")
+    );
+}
+
+/// ⭐ **O CONTROLO: o balao nao inventa.**
+///
+/// ⚠️ Sem esta metade, um `na_area` que registasse TODO rotulo — cortado ou nao — passaria o gate
+/// de cima e encheria a tela de bolhas sobre texto que se le perfeitamente. *Uma regua que so
+/// verifica a presenca aprova o excesso.*
+#[test]
+fn o_balao_so_guarda_o_que_foi_cortado() {
+    let (tudo, baloes) = ph2d_editor_core::text_elide::balao::medindo(varre);
+    let cortados: std::collections::BTreeSet<&str> = tudo
+        .iter()
+        .filter(|a| !a.m.coube())
+        .map(|a| a.m.texto.as_str())
+        .collect();
+    let intrusos: Vec<&str> = baloes
+        .iter()
+        .map(|(_, t)| t.as_str())
+        .filter(|t| !cortados.contains(t))
+        .collect();
+    assert!(
+        intrusos.is_empty(),
+        "o balao guardou texto que COUBE — ele passaria a aparecer sobre rotulos legiveis:\n  \
+         {intrusos:?}"
+    );
 }

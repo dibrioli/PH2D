@@ -216,7 +216,11 @@ pub(crate) fn paint_text_lines(
     // existe.
     let elided;
     let text = if lines == Lines::ElideToOne {
-        elided = crate::text_elide::fit_weighted(text_system, text, font_size, max_width, weight);
+        // ⭐ **O BALÃO** — ver [`crate::text_elide::balao`].
+        let area = crate::zones::Rect::new(x, y, max_width, font_size);
+        elided = crate::text_elide::balao::na_area(area, || {
+            crate::text_elide::fit_weighted(text_system, text, font_size, max_width, weight)
+        });
         elided.as_str()
     } else {
         text
@@ -474,6 +478,9 @@ fn paint_elided_weighted(
     if max_width <= 0.0 {
         return;
     }
+    // ⭐ **O BALÃO** — a área é a faixa que este pintor recebeu. Ver [`crate::text_elide::balao`].
+    let _balao =
+        crate::text_elide::balao::Ambito::nova(crate::zones::Rect::new(x, y, max_width, font_size));
     // ⚠️ **A pergunta vai pela porta** ([`crate::text_elide::coube`]) e não por uma comparação
     // escrita aqui: é ela que o censo das elisões ouve, e um pintor que a repita à mão fica
     // invisível ao gate que pergunta *«e quando alguém traduzir?»*.

@@ -530,7 +530,13 @@ fn every_widget_file_wires_a11y() {
                 // transitively (each owns its own AccessKit emission).
                 let delegates_to_widgets =
                     WIDGET_DELEGATE_MARKERS.iter().any(|m| content.contains(m));
-                if !has_direct_a11y && !delegates_to_widgets {
+                // ⭐⭐⭐ **A TERCEIRA FORMA: a PORTA da própria crate** — ver
+                //    [`PORTAS_DE_CRATE_VERIFICADAS`]. Ela é verificada noutro teste deste
+                //    ficheiro, logo aqui basta reconhecê-la.
+                let delega_pela_porta = PORTAS_DE_CRATE_VERIFICADAS
+                    .iter()
+                    .any(|(porta, dono, _)| *dono == crate_name && content.contains(porta));
+                if !has_direct_a11y && !delegates_to_widgets && !delega_pela_porta {
                     violations.push(key);
                 }
             });
@@ -547,6 +553,59 @@ fn every_widget_file_wires_a11y() {
          (panel files) in this test with a 1-line justification.",
         violations.join("\n  "),
     );
+}
+
+/// ⭐⭐⭐ **AS PORTAS DE CRATE — a terceira forma de um ficheiro de painel ter a11y.**
+///
+/// ⛔⛔ **O gate conhecia DUAS formas** (o ficheiro fia a11y ele próprio · chama um primitivo
+/// canónico) e uma crate pode ter uma **TERCEIRA**: uma porta sua, com N consumidores, que
+/// delega no primitivo. Foi o que aconteceu ao `ph2d-panel-audio-editor` em 2026-09-19 — as cinco
+/// secções dele deixaram de escrever a fileira de param à mão e passaram a chamar
+/// `fileira_de_param`, e **três** ficheiros que estavam verdes na véspera ficaram vermelhos sobre
+/// código MELHOR do que o de antes.
+///
+/// ⚠️⚠️ **Isto NÃO é uma tolerância: cada entrada é VERIFICADA** pelo
+/// [`toda_porta_de_crate_delega_mesmo_num_primitivo`] — o ficheiro da porta tem de existir e de
+/// conter um dos [`WIDGET_DELEGATE_MARKERS`]. *Uma lista de dívida sem censo de obsolescência é
+/// uma licença*, e esta responde por si.
+///
+/// `(nome da porta, crate dona, ficheiro que a define)`.
+const PORTAS_DE_CRATE_VERIFICADAS: &[(&str, &str, &str)] = &[(
+    "fileira_de_param",
+    "ph2d-panel-audio-editor",
+    "src/fileira_de_param.rs",
+)];
+
+/// ⭐⭐ **E toda porta desta lista delega MESMO num primitivo.**
+///
+/// ⚠️ Sem esta metade, a lista de cima seria a forma mais barata de calar o gate: bastava
+/// inventar um nome de função. *Uma entrada verificada e uma isenção leem-se igual numa lista; o
+/// que as separa é este teste.*
+#[test]
+fn toda_porta_de_crate_delega_mesmo_num_primitivo() {
+    let crates_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("crates/");
+    assert!(
+        !PORTAS_DE_CRATE_VERIFICADAS.is_empty(),
+        "a lista esvaziou-se — apague-a e o braço que a lê, senão ela fica a mentir sobre uma \
+         forma que já não existe"
+    );
+    for (porta, dono, ficheiro) in PORTAS_DE_CRATE_VERIFICADAS {
+        let caminho = crates_root.join(dono).join(ficheiro);
+        let fonte = std::fs::read_to_string(&caminho).unwrap_or_else(|_| {
+            panic!("a porta `{porta}` diz viver em {dono}/{ficheiro} e esse ficheiro nao existe")
+        });
+        assert!(
+            fonte.contains(&format!("fn {porta}")),
+            "{dono}/{ficheiro} ja nao define `{porta}`"
+        );
+        assert!(
+            WIDGET_DELEGATE_MARKERS.iter().any(|m| fonte.contains(m)),
+            "a porta `{porta}` ({dono}/{ficheiro}) ja NAO delega em primitivo nenhum — os \
+             consumidores dela estao a ser dados por fiados sobre uma promessa que morreu"
+        );
+    }
 }
 
 /// Canonical widget primitives. Calling any of these inside a panel

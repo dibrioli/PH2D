@@ -96,6 +96,7 @@ mod nothing_inside_a_section_wears_the_section_tone;
 mod number_input_curved_link;
 mod number_input_focus_replaces;
 mod number_input_mapped_link;
+mod o_balao_de_um_rotulo_cortado_chega_a_pixel;
 mod o_censo_das_elisoes_ve_o_que_foi_cortado;
 mod only_one_door_lays_out_a_row_of_fields;
 mod the_animation_column_has_one_x;

@@ -117,7 +117,11 @@ pub fn paint_text_centered_com_orcamento(
     // orçamento de quebra o layout devolvia DUAS linhas e o `y` centrava-as, deixando a primeira
     // acima do topo da caixa. *Uma centragem que mede outra coisa do que se pinta é um deslocamento
     // com cara de arredondamento.*
-    let shown = crate::text_elide::fit(text_system, text, font_size, orcamento);
+    // ⭐ **O BALÃO**: a área é a CAIXA, não o texto — hoverar a caixa inteira é o que o artista
+    //    faz, e o texto cortado vive dentro dela. Ver [`crate::text_elide::balao`].
+    let shown = crate::text_elide::balao::na_area(rect, || {
+        crate::text_elide::fit(text_system, text, font_size, orcamento)
+    });
     let layout = text_system.layout(&shown, font_size, f32::INFINITY);
     let text_w = layout.width();
     let text_h = layout.height();

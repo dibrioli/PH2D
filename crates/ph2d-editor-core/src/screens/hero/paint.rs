@@ -135,6 +135,9 @@ pub fn paint_hero_screen(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
 ) {
+    // ⭐ **O quadro começa aqui para o BALÃO** — ⚠️ ANTES de qualquer pintor, senão o que ele
+    // recolheu já foi apagado. Ver [`crate::text_elide::balao::novo_quadro`].
+    crate::text_elide::balao::novo_quadro();
     // Publish the user-picked radius scale to the thread-local read
     // by `paint::fill_rounded_rect` / `stroke_rounded_rect`. Set
     // every frame so it stays in sync with the topbar's radius menu.
@@ -600,8 +603,9 @@ pub fn paint_hero_screen(
             &hero.store,
         );
     }
-    // Tooltip overlay on top of all chrome (Phase 3 polish).
-    topbar::paint_hover_tooltip(
+    // ⭐ As duas bolhas, por cima de todo o chrome — a dica AUTORADA de um widget, ou o balão de
+    // uma palavra cortada quando ela se cala. A precedência mora com os dois pintores.
+    topbar::paint_hover_overlays(
         scene,
         text_system,
         hero.theme,

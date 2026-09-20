@@ -478,3 +478,110 @@ populações diferentes). Resultado: **`24` ficheiros iguais ou melhores**, e tr
 ⚠️ **E o arnês das vassouras tinha um defeito que lia como achado:** ele alimentava a lista de
 caminhos do `git diff` **incluindo os APAGADOS**, e um caminho inexistente faz a vassoura sair
 `rc = 2` — as dez acusaram de uma vez. Curado com `--diff-filter=d`.
+
+## §16 — A COR do dono era o ÚLTIMO param por-dono lido DISCRETO (report do dono, 2026-09-20)
+
+> *"trocar a cor do pincel também criou pixelamento da borda"* — foto com um traço AZUL e um VERDE
+> lado a lado, a fronteira entre eles serrilhada, e as setas do painel em **Charge 0,326 · Rewet
+> 0,272 · Smudge 0,468**.
+
+### §16.1 — A causa, e porque ela sobreviveu dois meses
+
+O **#18** (doc 13, 2026-07-11) suavizou os params por-dono na fronteira de posse: `fill` · `depth` ·
+`edge_gain` · `opacity` · `warp`, mais o `wet` que já tinha campo próprio. **A COR ficou de fora** —
+o `st.color` continua a sair do mapa de posse por `style_at`, que é **NEAREST**. Enquanto os dois
+traços de uma sessão molhada têm a mesma cor o degrau é invisível; trocar a cor imprime-o.
+
+⚠️⚠️ **E o que o torna VISÍVEL é exactamente o que as setas da foto apontam.** Com o mixer armado
+(`wet_charge < 1`) **sobre papel virgem** o `sample_surface` não tem o que captar, logo
+`prio = pickup × load` é **ZERO**, `accumulate_wet_color` escreve alfa `0` em cada texel, e a cor
+passa a vir **INTEIRA** do dono. Com o mixer desligado o depósito escreve uma rampa `source-over`
+que **MASCARA** o degrau. *O defeito esteve lá desde o #18; foi preciso um knob para o revelar.*
+
+### §16.2 — A régua, e porque a óbvia mente
+
+Um `max |Δ|` cru por pixel lê a **borda sobre papel** — um degrau legítimo contra o branco — como
+sempre pior que a junção (`56`–`67` contra `54`), e teria ilibado o defeito. O que separa um degrau
+duro de uma rampa é a **fracção do salto TOTAL de cor que cabe num pixel**: `1,00` = um pixel,
+`~0,4` = três a quatro. E a **barra sai da MESMA imagem** — a junção não pode ser mais dura que a
+borda de silhueta que a AA já entrega ali ao lado; não é um número escolhido.
+
+| célula (fixtura do report) | antes | depois | barra (borda sobre papel) |
+|---|---|---|---|
+| junção, mixer **ON**, cor trocada | **0,99** | **0,24** | 0,58 |
+| junção, mixer **OFF**, cor trocada | 0,40 | 0,43 | 0,54 |
+| junção, cor **IGUAL** (controlo) | — | — | o swing total cai `5,7×` |
+
+A tabela de atribuição que separou as quatro causas possíveis (medida antes de uma linha de cura):
+
+| | junção (salto abs.) | alfa do depósito |
+|---|---|---|
+| mixer ON + cor trocada | **79** | **0** |
+| mixer ON + cor igual | 14 | 0 |
+| mixer OFF + cor trocada | 38 | 255 |
+| mixer OFF + cor igual | 19 | 255 |
+
+### §16.3 — A cura
+
+A cor entra no campo suavizado por-dono (`StyleField::sample_color`, `blur(c·m)/blur(m)`, o mesmo
+`WET_FIELD_BLUR_PX` dos outros cinco), e **a ponta do lerp do depósito parte dela e nunca da
+discreta** — é o lado que o depósito não cobre, e era ele que degrauava.
+
+⚠️ **`params_differ` passa a incluir a cor, e sem isso a cura é INALCANÇÁVEL:** trocar SÓ a cor
+deixava o predicado `false` ⇒ campo nenhum ⇒ o caminho discreto, que é o defeito. *Um param novo que
+não seja acrescentado ali nasce com a cura morta.*
+
+⛔ **RECUSA MEDIDA — um raio PRÓPRIO para a cor foi construído e RETIRADO.** A justificação que eu
+lhe tinha escrito (*«a `8` a junção de dois traços de 24 px fica com 16 px de degradê e as duas
+cores deixam de ser duas»*) é **FALSA**: varridos `2 · 4 · 8` sobre a fixtura do report, os miolos
+dos dois traços saem **byte-idênticos nos três** e a junção mede `0,21 · 0,21 · 0,26`. E um raio
+próprio pedia uma **segunda MASSA** (normalizar uma cor borrada a `r` pela máscara de `8` clareia a
+orla, onde as duas discordam) — dois campos e uma constante a mais para comprar `0,05`, quando o
+`#18` já escolhera aquele raio contra o vão do guarda de não-contacto, que a cor herda de graça.
+
+⚠️ **Mudança declarada no lado que NÃO foi reportado:** com o mixer desligado a junção passa de
+`0,40` para `0,43`, porque uma troca de cor passa a construir o campo (antes `params_differ` era
+`false` e não havia nenhum). Os outros cinco params são iguais entre os donos, logo suavizá-los ali
+é um no-op; o que se move é a ponta do lerp.
+
+### §16.4 — O tecto de LOC, curado por CORTE
+
+O `watercolor_render.rs` passou a `703` (tecto `700`). Cortado **por assunto, nunca por isenção**:
+*«que cor tem o pigmento neste pixel»* (dono suavizado → depósito → água: dissolve e backrun) vira o
+irmão [`watercolor_render/pigment.rs`](../../../crates/ph2d-tool-painter/src/tool/paint/watercolor_render/pigment.rs),
+ao lado do `diag.rs` e do `window.rs` que o mesmo tecto já produzira. O pai fica em **667**, e ali o
+laço volta a responder só *quanta densidade há aqui*.
+
+### §16.5 — A prova de mutação, e o sobrevivente que foi ATRIBUÍDO
+
+**4 de 4 sangram**, corridas contra a **suíte INTEIRA da crate** de propósito — para que um
+sobrevivente do gate novo seja *atribuído a outro gate* em vez de lido como buraco:
+
+| mutação | veredito |
+|---|---|
+| M1 a cura desligada (`sample_color` devolve sempre a discreta) | **sangra** no gate novo |
+| M2 `params_differ` larga a cor | **sangra** no gate novo |
+| M3 `sample_color` lê sempre o plano `0` | **sangra** em **3** (o novo + dois de sessão) |
+| M4 a ponta do lerp troca dono↔depósito | **sangra em QUATRO gates do Wet Mix que já existiam** |
+
+⚠️ **O M4 NÃO sangra no gate novo, e a razão é a fixtura:** com o mixer armado sobre papel virgem
+`ca8 == 0`, logo o ramo do lerp **nunca corre** ali. A propriedade está gateada — pelos
+`watercolor_wet_mix_*`, que é onde ela vive (a brocha a cruzar tinta que existe). *Um sobrevivente
+só é um buraco depois de se perguntar quem mais o mede.*
+
+### §16.6 — O gate
+
+`watercolor_color_change_junction_is_soft`, irmão do `watercolor_param_change_junction_is_soft` do
+#18, com **três** metades:
+
+1. **a fixtura CONTÉM o fenómeno** — `alfa do depósito == 0`. Se alguém mudar o mixer para escrever
+   ali, o gate diz que a fixtura deixou de conter o fenómeno em vez de ficar verde em silêncio;
+2. **há uma troca de cor para medir** — o swing da junção colorida é `≥ 3×` o da de cor igual, senão
+   a fracção é a razão de dois ruídos;
+3. **a cura** — `fracção(junção) ≤ fracção(borda sobre papel)`, na mesma imagem.
+
+### §16.7 — Aberto
+
+⏳ A junção com o mixer **desligado** mede `0,43` contra `0,54` da borda — dentro da barra, e é o
+lado que o dono nunca reportou. Se algum dia ele o apontar, a alavanca é a rampa do próprio
+depósito (`accumulate_wet_color`, `source-over` com o feather do dab), não este campo.

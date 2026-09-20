@@ -96,6 +96,7 @@
 - [Estado autorado & relógios (21)](reference_topic_authored_state_and_clocks.md) · [modo que não exclui ninguém é outro produtor](feedback_a_mode_whose_entry_excludes_nobody_is_just_another_producer.md)
 - [seção partilhada regride quem chegou primeiro](feedback_a_shared_section_header_is_a_regression_to_whoever_arrived_first.md)
 - [filtro que casa ZERO imprime «SOBREVIVEU»](feedback_a_mutation_proof_needs_a_control_on_its_own_filter.md)
+- ⛔ [mutação sobrevivente numa HEURÍSTICA mede-se no CORPUS, nunca numa peça — ela troca de sinal](feedback_a_line_a_mutation_cannot_kill_is_a_comment_with_code_syntax.md)
 - [Oráculo (21) — paridade da LEI ≠ o PRODUTO do dono](reference_topic_oracle_discipline.md)
 - ⛔ [Janela I não faz grep por nome do alvo nos docs antigos do módulo](feedback_the_clean_window_does_not_grep_old_module_docs_for_a_target_name.md)
 - ⛔⛔ [A chave que o ARTISTA fez manda mais que a correção automática](feedback_the_artists_key_outranks_the_automatic_correction.md)

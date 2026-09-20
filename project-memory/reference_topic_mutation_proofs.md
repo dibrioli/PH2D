@@ -170,3 +170,30 @@ corrido, e a agulha multi-linha passou a casar **zero** vezes — irmã de
 [[feedback_a_restored_file_keeps_its_old_mtime_and_cargo_reuses_the_mutant]].
 ⇒ *toda prova de mutação re-corre depois de um `fmt`*, e a contagem da agulha
 faz-se em Python: **`grep -cF` conta LINHAS, não ocorrências.**
+
+---
+
+## ⛔⛔ Uma mutação sobrevivente sobre uma HEURÍSTICA não pede um gate — pede a medição no CORPUS (2026-09-20, `line/sculpt3d`, o corte do atlas)
+
+Escrevi dez linhas de heurística (*«antes de abrir peça nova, oferece a face a uma peça
+vizinha»*) e a mutação que as apagava deixou **os 25 gates verdes**. A leitura fácil é
+*«falta um gate»*; a certa é **medir no produto** — e a medição disse que ela **troca de
+sinal entre peças**:
+
+| corrida | com a heurística | sem ela |
+|---|---|---|
+| peça A | `227` | `226` |
+| peça A (remalhada) | `92` | `93` |
+| peça B | `122` | `129` |
+| peça B (remalhada) | `89` | `88` |
+
+⇒ *uma heurística que ganha numa peça e perde noutra não é uma alavanca; é ruído com dez
+linhas de código.* Foi **apagada**, com a tabela ao lado para quem a quiser reconstruir
+saber o que compra. ⚠️ **E a lição de método é o denominador:** com UMA peça eu teria lido
+`227 → 226` e concluído *«é inerte, apaga»*, ou `122 → 129` e concluído *«vale 5 %,
+fica»* — **as duas leituras erradas, da mesma medição feita numa amostra de um**.
+
+⭐ A regra que fica: quando uma mutação sobrevive, pergunte primeiro *isto é uma LEI ou
+uma HEURÍSTICA?* Uma lei sem gate escreve-se o gate; uma heurística sem gate mede-se no
+corpus inteiro e ou ganha sempre, ou sai. Ver
+[[feedback_a_line_a_mutation_cannot_kill_is_a_comment_with_code_syntax]].

@@ -206,6 +206,27 @@ ela lê `1,10×` a `102 400` e **PERDE** a `10⁶` (`26,7` contra `18,3 ms`) —
 chega.* A sonda `audit_the_stamp_encode_routes` fica, para a recusa ser uma medição e não uma
 opinião.
 
+#### E o mesmo quadro pelas PORTAS DO PRODUTO — o encode era `85 %` do custo de CPU
+
+⭐⭐⭐ **A escada mede o encode SOZINHO; esta mede o quadro do report** (`audit_the_stamp_frame_split`:
+a cadeia `grade 320×320 + source.shape + motion.duplicator`, cozida pelo `pump` e desenhada pelo
+`motion_shape_gen::encode`, `90 %` de CPU ociosa, mínimo de três por coluna):
+
+| rota | cozer | desenho | CPU do quadro |
+|---|---:|---:|---:|
+| `fill` por cópia | `0,54`–`0,74 ms` | **`3,75 ms`** | `27 %` |
+| carimbo PREPARADO | `0,57`–`0,59 ms` | **`1,68 ms`** | **`13 %`** |
+
+⇒ **o quadro passa a metade**, e a cura caiu exactamente na metade que manda. ⚠️ O `cozer` **não**
+se mexe entre as duas rotas, e é isso que prova que a diferença é lei e não máquina — *a única
+leitura que o contradisse foi a 1.ª corrida depois de trocar a variável, com as caches frias, e o
+mínimo de repetições deita-a fora*.
+
+⏳ **O degrau seguinte fica NOMEADO com o número:** a escada pura lê `3,2×` de ganho e a porta do
+produto lê `2,2×` para as mesmas `102 400` cópias. A diferença é o que o `encode` faz **por
+instância além do encode** — compor a pose (`instance_pose`: base · tamanho · âncora · câmera) e
+percorrer os `VectorInstance`. *Hoje isso é ~`40 %` do desenho, e é onde a próxima medição começa.*
+
 ⚠️ **E o que NENHUMA destas colunas mede é a PLACA.** A lei já estava escrita no
 `motion_custo_do_quadro_probe`: *se o encode for barato, o que sobra é a placa, e o que a governa
 não é o número de formas — é quantos PIXEIS elas cobrem*. A `102 400` cópias minúsculas o encode

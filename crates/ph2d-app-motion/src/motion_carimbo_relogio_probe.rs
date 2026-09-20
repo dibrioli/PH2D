@@ -39,6 +39,25 @@
 //!
 //! ⇒ por cópia, `0,055 µs` → **`0,017 µs`**, PLANO sobre um intervalo de `1000×`. A um quarto de um
 //! quadro de 60 fps cabiam `~76 000` cópias e cabem **`~245 000`**.
+//!
+//! ## E o mesmo quadro, pelas PORTAS DO PRODUTO (`audit_the_stamp_frame_split`, `90 %` ocioso)
+//!
+//! | rota | cozer | desenho | CPU do quadro |
+//! |---|---:|---:|---:|
+//! | `fill` por cópia | `0,54`–`0,74 ms` | **`3,75 ms`** | `27 %` |
+//! | carimbo PREPARADO | `0,57`–`0,59 ms` | **`1,68 ms`** | **`13 %`** |
+//!
+//! ⭐ **O encode era `85 %` do custo de CPU deste quadro** — a cura caiu exactamente na metade que
+//! manda, e o quadro passa a metade. ⚠️ O `cozer` **não** se mexe entre as duas rotas, e é isso que
+//! prova que a diferença é a lei e não a máquina (a única leitura que o contradisse foi a 1.ª
+//! corrida depois de trocar a variável, com as caches frias — *o mínimo de repetições é o que a
+//! deita fora*).
+//!
+//! ⏳ **E o degrau seguinte fica NOMEADO com o número:** a escada pura lê `1,76 ms` e a porta do
+//! produto lê `1,68`–`2,14` para as mesmas `102 400` cópias, mas com `3,2×` contra `2,2×` de ganho
+//! — a diferença é o que o `motion_shape_gen::encode` faz **por instância além do encode**: compor
+//! a pose (`instance_pose`: base · tamanho · âncora · câmera) e percorrer os `VectorInstance`.
+//! *Hoje isso é ~`40 %` do desenho, e é onde a próxima medição tem de começar.*
 
 /// ⛔⛔ **A FATIA — as sondas deste ficheiro NÃO podem correr ao mesmo tempo.**
 ///
@@ -299,4 +318,88 @@ fn audit_the_stamp_encode_split() {
         "  ⇒ copiar o CAMINHO e re-encodar o PINCEL custaria ≈ {oa:.4} µs/cópia + {mb:.5} µs/segmento"
     );
     eprintln!("\n  load no fim: {}\n", carga());
+}
+
+/// ⭐⭐⭐ **O QUADRO DO CARIMBO, PARTIDO EM COZER E DESENHAR** — a pergunta que decide se a cura do
+/// encode é VISÍVEL ao dono, e que nomeia o degrau seguinte se não for.
+///
+/// ⚠️ **A escada das irmãs mede o ENCODE sozinho**, e o `motion_custo_do_quadro_probe` já escreve a
+/// lei que isso deixa em aberto: *se o encode for barato, o que sobra é a placa* — e, antes da
+/// placa, o **COZIMENTO**. A cadeia do report (`grade + carimbo`) é CPU-only nas duas cercas
+/// (§5.6: o duplicador muda a contagem, e a ponte recusa um vector VIVO), logo o cozimento dela
+/// corre todo na CPU e **não** é o que esta linha curou.
+///
+/// ⇒ esta sonda mede os dois pedaços do MESMO quadro, pelas portas do produto
+/// ([`crate::motion_shape_gen::encode`] e o `pump`), e imprime a POPULAÇÃO ao lado — *contar a
+/// lista errada lê-se exactamente como uma cena vazia*.
+///
+/// ⚠️ Corra-a **duas** vezes (com e sem `PH2D_CARIMBO_PREPARADO=0`): a diferença entre as duas
+/// corridas na coluna `desenho` é a cura, e a coluna `cozer` tem de ficar igual — se ela se mexer,
+/// a leitura é de carga e não de lei.
+#[test]
+#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+fn audit_the_stamp_frame_split() {
+    let _fatia = fatia();
+    let (mut m, saida) = crate::motion_carimbo_probe::monta("grade + carimbo");
+    let uv = [0.0, 0.0, 1.0, 1.0];
+    let tam = [1.0, 1.0];
+    // Aquecimento: um quadro inteiro, para o memo e os buffers nascerem.
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    m.pump.mark_dirty();
+    assert!(
+        m.pump
+            .pump(&m.doc.graph, &m.registry, &[saida], 0, 0.0, uv, tam),
+        "controlo: o quadro tem de cozinhar"
+    );
+    let linhas = m.pump.vector_instances.len();
+    assert!(
+        linhas > 100_000,
+        "controlo: a cadeia do report tem de trazer as 102 400 linhas, e trouxe {linhas}"
+    );
+
+    // ⚠️ O `mark_dirty` é obrigatório: sem ele o `pump` bate no MEMO e lê `~0` — a armadilha que o
+    // `motion_custo_do_quadro_probe` registou por escrito.
+    let mut cozer = f64::INFINITY;
+    for t in 1..4u64 {
+        let ph = f64::from(u32::try_from(t).unwrap_or(0)) / 60.0;
+        crate::motion_shape_gen::publish(&mut m, ph);
+        m.pump.mark_dirty();
+        let inicio = std::time::Instant::now();
+        assert!(
+            m.pump
+                .pump(&m.doc.graph, &m.registry, &[saida], t, ph, uv, tam),
+            "o quadro tem de cozinhar"
+        );
+        cozer = cozer.min(inicio.elapsed().as_secs_f64() * 1e3);
+    }
+
+    let insts = &m.pump.vector_instances;
+    let store = &m.shape_store;
+    let desenho = melhor_quente(3, |cena| {
+        let mut sem_arte = |_: u32, _: [f32; 4]| None;
+        crate::motion_shape_gen::encode(
+            insts,
+            store,
+            &mut sem_arte,
+            ph2d_vector::Affine::IDENTITY,
+            cena,
+        );
+    });
+
+    eprintln!(
+        "\n  ═══ O QUADRO DO CARIMBO, PEDAÇO A PEDAÇO (load {}) ═══\n",
+        carga()
+    );
+    eprintln!("  linhas vectoriais |     cozer |   desenho |  soma |  % de um quadro");
+    eprintln!("  ------------------|-----------|-----------|-------|----------------");
+    eprintln!(
+        "  {linhas:>17} | {cozer:>6.2} ms | {desenho:>6.2} ms | {:>2.0}% | {:>14.0}%",
+        desenho / (cozer + desenho) * 100.0,
+        (cozer + desenho) / 16.67 * 100.0
+    );
+    eprintln!(
+        "\n  ⚠️ a coluna `%` é a FRACÇÃO do quadro que é desenho — é ela que diz se a cura do\n  \
+         encode se vê, e a que sobra nomeia o degrau seguinte.\n"
+    );
+    eprintln!("  load no fim: {}\n", carga());
 }

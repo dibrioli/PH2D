@@ -65,7 +65,7 @@ fn liga(m: &mut crate::motion_state::MotionState, de: NodeId, dp: u16, para: Nod
 ///
 /// ⚠️ **A grade é `320 × 320`** (`102 400`), que é a população do report da estrela — nem o milhão
 /// (onde tudo dói) nem um punhado (onde nada dói).
-fn monta(qual: &str) -> (crate::motion_state::MotionState, NodeId) {
+pub(crate) fn monta(qual: &str) -> (crate::motion_state::MotionState, NodeId) {
     let mut m = crate::motion_state::MotionState::new();
     let estrela = indice_da_forma(&m.registry, "Star");
     let grade = m.doc.graph.add_node("motion.grid");

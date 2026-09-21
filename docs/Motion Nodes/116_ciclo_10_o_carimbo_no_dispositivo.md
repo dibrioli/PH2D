@@ -699,47 +699,70 @@ quadro. A cena vive em [`motion_state_carimbo_demo.rs`](../../crates/ph2d-app-mo
 e a cadeia é a do report e **nada mais**: `motion.grid → motion.duplicator ← source.shape (Star) →
 motion.output`. *Um oscilador a mais entra na conta do quadro e a cena passa a medir outra coisa.*
 
-⛔⛔ **E a população que a §5.7 encomendou — `320 × 320 = 102 400`, a do report — está MEDIDA e
-NÃO SERVE para o olho do dono.** Pelas portas do produto (§4.3) aquela população custa `7,36 ms`
-pela rota antiga e `3,24` pela de hoje: as **duas** cabem num quadro de 60 fps, logo **as duas
-corridas mostram `60` no número que ele lê** e a diferença só aparece no terceiro campo da barra
-(`raw`, que é `1000/cpu`). *Ela prova a lei e não a mostra.*
+⛔⛔ **E a população que a §5.7 encomendou — `320 × 320 = 102 400`, a do report — NÃO SERVE para o
+olho do dono, e a razão é a `raw`:** pelas portas do produto (§4.3) aquela população custa
+`7,36 ms` pela rota antiga e `3,24` pela de hoje, ou seja **as duas cabem num quadro de 60 fps** ⇒
+as duas corridas mostram `60` no número que ele lê, e a diferença só aparece no terceiro campo da
+barra (`raw = 1000/cpu`). *Ela prova a lei e não a mostra.*
 
-⇒ a população sai de uma **derivação escrita como cerca de compilação** (duas `const _: () =
-assert!`), com o recurso nomeado (o quadro de 60 fps) e o custo por cópia MEDIDO:
+⛔⛔⛔ **E a derivação a partir das portas do produto errou por `~3×` — o achado desta wave.** A
+1.ª redacção desta cena escolheu `560 × 560 = 313 600` porque a recta dos `0,0719` / `0,0316 µs` por
+cópia prometia `22,6` contra `9,9 ms`. Medido **no app**, com o perfilador e em `--release`:
 
-| rota | desenho | cozer | CPU do quadro | **por cópia** |
+| rota | quadro medido | ~fps | do qual o COZER | previsto pela recta |
 |---|---:|---:|---:|---:|
-| `fill` por cópia (ANTES) | `6,37 ms` | `0,99 ms` | `7,36 ms` (`44 %`) | **`0,0719 µs`** |
-| carimbo preparado (HOJE) | `2,25 ms` | `0,99 ms` | `3,24 ms` (`19 %`) | **`0,0316 µs`** |
+| `fill` por cópia (ANTES) | `90,4 ms` | `11` | `18,0 ms` | `22,6 ms` |
+| carimbo preparado (HOJE) | `53,6 ms` | `19` | `19,7 ms` | **`9,9 ms`** |
 
-A `560 × 560` = **`313 600`**: `22,6 ms` pela antiga (**mais de um quadro inteiro** ⇒ o número CAI)
-e `9,9 ms` pela de hoje (`59 %` ⇒ ele fica em `60`). As duas metades da janela são cerca:
-grande de mais e as **duas** corridas saem lentas; pequena de mais e as **duas** dão `60` — e
-*as duas falhas leem-se como «a cura não faz nada»*.
+⚠️⚠️ **O `audit_the_stamp_frame_split` mede DUAS fases** (cozer · encode) **e o quadro do app tem
+mais** — resolver, publicar, os gizmos, a moldura. *Uma derivação que só conta as fases que a sonda
+mede prevê um quadro que o app não tem*, e as duas rotas saíram do mesmo lado da fronteira: `11` e
+`19` fps, ou seja **as duas a engasgar**, que é exactamente a metade da janela que a cerca de
+compilação existia para impedir — **e ela deixou passar, porque as constantes dela é que estavam
+erradas**. ⇒ *uma cerca é tão boa como o número que lhe puseram dentro*.
 
-⚠️ **A extrapolação é legítima porque o custo por cópia é PLANO sobre `1000×`** (§4.3, `1 000` a
-`1 000 000`, mesma razão `3,2×`) — não é um palpite sobre o joelho de uma curva.
+⭐ **O que a mesma tabela ILIBA:** o **cozer é igual nas duas** (`18,0` contra `19,7`, a rota não lhe
+toca) ⇒ a distância inteira é o DESENHO. E é por o cozer ser comum que a razão do **quadro**
+(`1,69×`) é muito menor que a do **encode** (`3,2×`) — *é a do quadro que manda na população, porque
+é o quadro que o dono lê*.
+
+⇒ **`300 × 300` = `90 000`**, com as constantes da cerca re-escritas a partir do APP
+(`0,288` / `0,171 µs` por cópia) e a janela a exigir que a rota de hoje caiba num quadro e a antiga
+peça **mais de um quadro e meio**. O que o app entrega, com a máquina a `88 %` ociosa:
+
+| rota | **a barra de baixo diz** | quadro | cozer |
+|---|---|---:|---:|
+| carimbo preparado (HOJE) | **`59 fps · 16.7 ms · 95 raw`** | `16,64 ms` (preso ao ecrã) | `1,8 ms` |
+| `fill` por cópia (ANTES) | **`33 fps · 29.4 ms · 34 raw`** | `28,6`–`38,7 ms` | `6,7`–`9,0 ms` |
+
+⭐⭐ **E o cozer caiu de `19,7` para `1,8 ms` sem ninguém lhe tocar:** acima de `16,67 ms` a shell
+cozinha **um quadro por tique em dívida** (`MOTION = N × cozer + 1 × separar`, a aritmética que o
+`motion.contact` deixou nomeada), logo a `313 600` o cozer já trazia `N ≈ 3` dentro. *A cura do
+encode paga-se DUAS vezes: no encode, e no cozer que ela deixa de arrastar.*
+
+⭐⭐⭐ **E as duas fotografias são a MESMA IMAGEM, pixel a pixel** — as duas rotas escrevem os mesmos
+bytes, com gate na `ph2d-vector` — **e só o número da barra muda**. É isso que faz desta cena uma
+demonstração, e não a comparação de duas coisas diferentes.
 
 ⛔ **E o campo é MAIOR que o ecrã por ARITMÉTICA, não por descuido:** uma estrela só se lê como
 estrela com `~6 px` (`0,108` de mundo a `55,5 px`/unidade, a régua medida da `=124`) e a câmara de
 arranque mostra `21,8 × 6,8` unidades ⇒ cabem **`~10 000`** estrelas legíveis no ecrã, e a cena
-precisa de `313 600` para o relógio se mexer. *Encolher a estrela até tudo caber entrega um
-rectângulo cinzento*, e uma cena onde o dono não vê estrelas não ensina que aquilo são estrelas.
-A conta é paga pelas `313 600` estejam à vista ou não — **o desenho não tem recorte por câmara**, e
-é isso que faz a cena medir o que ela diz medir.
+precisa de `90 000` para o relógio se mexer. *Encolher a estrela até tudo caber entrega um
+rectângulo cinzento*, e uma cena onde o dono não vê estrelas não ensina que aquilo são estrelas —
+é por isso que o passo (2) do roteiro manda **aproximar com a roda** até as pontas aparecerem. A
+conta é paga pelas `90 000` estejam à vista ou não: **o desenho não tem recorte por câmara**, e é
+isso que faz a cena medir o que ela diz medir.
 
 ⚠️ **O smoke é `--release`** (`CLAUDE.md` §5: o `smoke` não tem LTO), e por isso a ferramenta de
 fotografia ganhou a porta `FOTO_PERFIL` — **por omissão continua `smoke`**, e `release` é só para
 um smoke de PERFORMANCE, senão as duas colunas de um A/B medem o perfil de build.
 
-⏳ **POR CONFIRMAR NA APP, e está declarado:** a derivação acima é do **CPU** (as portas do
-produto). Falta a corrida das duas rotas no app com o perfilador (`PH2D_FLUID_PROFILE=1`) e as duas
-fotografias — *a GPU não entra na conta de nenhuma destas sondas*, e uma população que o encode
-aguenta pode ser derrubada pela rasterização. ⛔ **A cena não vai ao dono antes disso** (a lei da
-casa: cada passo de um smoke é conduzido e fotografado antes de lhe ser passado). Em 2026-09-20 a
-placa esteve reservada por outra linha e a máquina a `2`–`16 %` de ociosidade, o que torna qualquer
-leitura de relógio inútil (`CLAUDE.md` §5.0).
+⚠️⚠️ **E a MÁQUINA decidiu metade do dia:** a 1.ª tentativa de medir apanhou a placa **reservada
+por outra linha** (o guarda recusou, e bem) e depois `2`–`16 %` de ociosidade; a corrida do
+`audit_the_stamp_frame_split` feita nessa janela leu `cozer 4,75 ms` contra os `0,99` da máquina
+calma — **`4,8×`**, e foi deitada fora. *Os números desta secção são todos de `88 %` ocioso, e a
+sonda imprime a carga ao lado de cada um precisamente para que uma tabela dessas nunca entre num
+doc por engano* (`CLAUDE.md` §5.0).
 
 ---
 

@@ -25,23 +25,49 @@
 //!
 //! # A POPULAÇÃO é DERIVADA, e a janela dela é ERRO DE COMPILAÇÃO
 //!
-//! O recurso é o **quadro de 60 fps** (`16,67 ms`), e o custo por cópia está MEDIDO pelas portas
-//! do produto ([`crate::motion_carimbo_relogio_probe`], `audit_the_stamp_frame_split`, a
-//! `102 400` cópias, `73`–`85 %` de CPU ociosa):
+//! O recurso é o **quadro de 60 fps** (`16,67 ms`), e o custo por cópia está MEDIDO **no app**,
+//! com o perfilador (`PH2D_FLUID_PROFILE=1`), em `--release`, a `88 %` de CPU ociosa, sobre esta
+//! própria cena a `560 × 560` = `313 600`:
 //!
-//! | rota | desenho | cozer | CPU do quadro | **por cópia** |
+//! | rota | quadro | ~fps | do qual o COZER | **por cópia** |
 //! |---|---:|---:|---:|---:|
-//! | `fill` por cópia (ANTES) | `6,37 ms` | `0,99 ms` | `7,36 ms` (`44 %`) | **`0,0719 µs`** |
-//! | carimbo preparado (HOJE) | `2,25 ms` | `0,99 ms` | `3,24 ms` (`19 %`) | **`0,0316 µs`** |
+//! | `fill` por cópia (ANTES) | `90,4 ms` | `11` | `18,0 ms` | **`0,288 µs`** |
+//! | carimbo preparado (HOJE) | `53,6 ms` | `19` | `19,7 ms` | **`0,171 µs`** |
 //!
-//! ⇒ a `560 × 560` = **`313 600`** cópias, a conta dá **`22,6 ms`** pela rota antiga (mais de um
-//! quadro inteiro ⇒ o número de baixo CAI) e **`9,9 ms`** pela de hoje (`59 %` de um quadro ⇒ ele
-//! fica em `60`). É essa DISTÂNCIA que a cena existe para mostrar, e as duas metades dela estão
-//! presas por [`_A_JANELA_DA_POPULACAO`].
+//! ⭐ **O COZER é o MESMO nas duas** (a rota não lhe toca) ⇒ a distância inteira é o DESENHO, que
+//! é a lei desta cura. ⚠️ **E é por o cozer ser comum que a razão do QUADRO (`1,69×`) é muito
+//! menor que a do encode (`3,2×`)** — é a razão do quadro que manda na população, porque é o
+//! quadro que o dono lê.
 //!
-//! ⚠️ **A extrapolação é legítima porque o custo por cópia é PLANO**, medido sobre um intervalo de
-//! `1000×` (`1 000` a `1 000 000` cópias, mesma razão `3,2×`) — não é um palpite sobre o joelho de
-//! uma curva.
+//! ⛔⛔⛔ **A 1.ª redacção desta cena derivou a população das portas do PRODUTO (`0,0719` e
+//! `0,0316 µs`/cópia, o `audit_the_stamp_frame_split`) e errou por `~3×`:** aquelas sondas medem
+//! **duas** fases (cozer · encode) e o quadro do app tem mais — resolver, publicar, os gizmos, a
+//! moldura. Com elas a cena a `313 600` devia custar `9,9 ms` e custa **`53,6`**. *Uma derivação
+//! que só conta as fases que a sonda mede prevê um quadro que o app não tem* ⇒ **os números acima
+//! são do APP e de mais lado nenhum**, e é isso que a torna honesta.
+//!
+//! ⚠️ **O modelo linear é CONSERVADOR para a rota de hoje:** com o quadro acima de `16,67 ms` a
+//! shell cozinha **um quadro por tique em dívida** (a lei que o `motion.contact` já registou —
+//! `MOTION = N × cozer + 1 × separar`), logo a `313 600` o cozer medido já traz `N ≈ 3` dentro. Ao
+//! descer a população o `N` cai para `1` **e o custo desce mais depressa do que a recta prevê** —
+//! a cerca abaixo usa a recta, que erra para o lado seguro.
+//!
+//! # O QUE A CENA ENTREGA (medido no app, `--release`, as duas rotas, `88 %` ocioso)
+//!
+//! A `300 × 300` = **`90 000`**, e é isto que o dono lê na barra de baixo:
+//!
+//! | rota | a barra diz | quadro | cozer |
+//! |---|---|---:|---:|
+//! | carimbo preparado (HOJE) | **`59 fps · 16.7 ms · 95 raw`** | `16,64 ms` (preso ao ecrã) | `1,8 ms` |
+//! | `fill` por cópia (ANTES) | **`33 fps · 29.4 ms · 34 raw`** | `28,6`–`38,7 ms` | `6,7`–`9,0 ms` |
+//!
+//! ⭐⭐ **E a PREVISÃO do cozer confirmou-se ao descer:** ele cai de `19,7` para **`1,8 ms`** — não
+//! por ser mais barato, mas porque **o laço da dívida de tiques se desfaz** quando o quadro passa a
+//! caber. *A cura do encode paga-se DUAS vezes: no encode e no cozer que ela deixa de arrastar.*
+//!
+//! ⭐⭐⭐ **As duas fotografias são a MESMA IMAGEM, pixel a pixel** — as duas rotas escrevem os
+//! mesmos bytes (gate na `ph2d-vector`) — e só o número da barra muda. *É isso que faz desta cena
+//! uma demonstração e não uma comparação de duas coisas diferentes.*
 //!
 //! # Porque o campo é MAIOR do que o ecrã
 //!
@@ -91,7 +117,12 @@ pub(super) const VAO: f32 = 2.4 * TAMANHO;
 
 /// **O LADO da grelha.** Ver a tabela do cabeçalho: ele não é escolhido, é o que põe as duas rotas
 /// em lados opostos de um quadro de 60 fps.
-pub(super) const LADO_N: u32 = 560;
+///
+/// ⚠️ **E ele é `300` e não os `320` do report** (`102 400`), por uma margem: a recta põe `320` a
+/// `17,5 ms` pela rota de hoje, ou seja **do lado errado da fronteira** — e uma cena em que as
+/// duas corridas engasgam não mostra a cura. `300` dá `15,4 ms` contra `25,9`, que é a distância
+/// que a cena existe para mostrar.
+pub(super) const LADO_N: u32 = 300;
 
 /// O mesmo número para quem escreve o param (o nó lê `f32`). ⚠️ **Uma fonte só** — dois literais
 /// aqui divergiriam no dia em que alguém mexesse num deles.
@@ -103,12 +134,12 @@ pub(super) const ESTRELAS: u64 = (LADO_N as u64) * (LADO_N as u64);
 /// Um quadro de 60 fps, em nanossegundos — o RECURSO de que a população sai.
 const QUADRO_NS: u64 = 16_667_000;
 
-/// O custo de CPU de uma cópia pela rota ANTIGA, em nanossegundos (`0,0719 µs`, arredondado para
-/// cima — ver a tabela do cabeçalho).
-const ANTES_NS: u64 = 72;
+/// O custo de UM QUADRO por cópia pela rota ANTIGA, em nanossegundos — MEDIDO NO APP
+/// (`90,4 ms / 313 600`; ver a tabela do cabeçalho).
+const ANTES_NS: u64 = 288;
 
-/// O mesmo pela rota de HOJE (`0,0316 µs`).
-const HOJE_NS: u64 = 32;
+/// O mesmo pela rota de HOJE (`53,6 ms / 313 600`).
+const HOJE_NS: u64 = 171;
 
 // ⭐⭐⭐ **A JANELA DA POPULAÇÃO, e ela é ERRO DE COMPILAÇÃO nas DUAS metades.**
 //
@@ -128,13 +159,13 @@ const HOJE_NS: u64 = 32;
 // ⚠️ **Aritmética inteira de propósito** — comparar `f32` em contexto `const` é terreno que esta
 // casa não precisa de pisar para prender dois números medidos.
 const _: () = assert!(
-    ESTRELAS * HOJE_NS <= 70 * QUADRO_NS / 100,
-    "a cena nao cabe em 70% de um quadro pela rota de HOJE -- as duas corridas sairiam \
-     lentas e a cura leria-se como inutil"
+    ESTRELAS * HOJE_NS <= QUADRO_NS,
+    "a cena nao cabe num quadro pela rota de HOJE -- as duas corridas sairiam lentas e a cura \
+     leria-se como inutil"
 );
 const _: () = assert!(
-    ESTRELAS * ANTES_NS >= 120 * QUADRO_NS / 100,
-    "a cena cabe num quadro pela rota ANTIGA -- as duas corridas dariam 60 fps e a cena \
+    ESTRELAS * ANTES_NS >= 150 * QUADRO_NS / 100,
+    "a cena cabe em menos de quadro e meio pela rota ANTIGA -- as duas dariam 60 fps e a cena \
      nao mostraria nada"
 );
 
@@ -219,23 +250,21 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 /// O que ela tem para dizer é um número que já está na tela: a barra de baixo.
 pub(super) fn announce() {
     let n = ESTRELAS;
-    let antes = (ESTRELAS * ANTES_NS) as f64 / 1e6;
-    let hoje = (ESTRELAS * HOJE_NS) as f64 / 1e6;
     eprintln!(
         "\n[estrelas] UM CAMPO DE {n} ESTRELAS ({LADO_N} x {LADO_N}) — a cena do seu report\n\
          («usando shape star fps cai»). O `Grid` poe as posicoes e o `Duplicator` veste cada\n\
          uma com a MESMA estrela.\n\
          \n\
-         (1) Olhe a BARRA DE BAIXO do ecra. Ela diz algo como `60 fps · 16.7 ms · 300 raw`.\n    \
-         O 1.o numero e' a fluidez; o 3.o (`raw`) e' a FOLGA — quanto maior, mais sobra.\n\
-         (2) Arraste o fundo (botao do meio) para passear pelo campo: tem de andar LISO.\n    \
-         O ecra mostra um pedaco — as {n} estrelas existem e sao todas desenhadas.\n\
-         (3) Feche o app e corra o MESMO comando com `PH2D_CARIMBO_PREPARADO=0` a' frente:\n    \
-         e' o caminho ANTIGO, e a mesma cena passa a engasgar.\n\
-         (4) Compare os dois numeros. A imagem e' a MESMA, ponto por ponto — so' o tempo muda.\n\
-         \n\
-         O que esta maquina mediu para este tamanho: ANTIGO ~{antes:.0} ms por quadro (abaixo de\n\
-         60 fps) contra HOJE ~{hoje:.0} ms (60 fps com folga).\n\
+         (1) Olhe a BARRA DE BAIXO do ecra. Ela tem de dizer `59 fps · 16.7 ms` e um\n    \
+         `raw` perto de 95. O 1.o numero e' a fluidez; o `raw` e' a FOLGA — quanto\n    \
+         maior, mais sobra por quadro.\n\
+         (2) Aproxime com a roda do rato ate' ver as pontas: sao ESTRELAS, todas iguais.\n    \
+         O ecra mostra um pedaco do campo — as {n} existem e sao TODAS desenhadas.\n\
+         (3) Arraste o fundo com o botao do meio: tem de passear LISO.\n\
+         (4) Feche o app e corra o MESMO comando com `PH2D_CARIMBO_PREPARADO=0` a' frente:\n    \
+         e' o caminho ANTIGO. A barra cai para perto de `33 fps · 29.4 ms` com o `raw`\n    \
+         a `34`, e o arrasto engasga.\n\
+         (5) Compare. A imagem e' a MESMA, ponto por ponto — so' o tempo muda.\n\
          \n\
          DEU ERRADO se: o campo nao aparecer; se as duas corridas derem o MESMO numero;\n\
          ou se a imagem for DIFERENTE entre as duas.\n"

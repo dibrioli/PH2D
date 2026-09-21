@@ -121,11 +121,22 @@ mod paralelo_tests {
     /// **Mutação que sangra:** trocar a banda de colunas por uma de linhas com semente refeita.
     #[test]
     fn as_duas_rotas_dao_o_mesmo_f32() {
-        let (w, h) = (293usize, 197usize);
+        let (w, h) = (813usize, 197usize);
         let buf = tela(w, h);
         // Várias larguras de banda e vários `k` — ⚠️ uma região estreita de mais tem MENOS bandas
         // que threads, e um `k` pequeno faz `box_radii` devolver raios diferentes.
-        for (bw, bh) in [(64usize, 64usize), (200, 150), (291, 195), (7, 190)] {
+        // ⚠️⚠️ **`(800, 120)` fecha um buraco que o próprio doc desta função nomeava:** as outras
+        // quatro regiões estão TODAS abaixo do piso de `LARGURA_MINIMA_DA_BANDA`, logo a rota
+        // paralela tomava a saída antecipada e `bandas_da_vertical` nunca chegava a partir nada
+        // aqui. *Uma paridade cuja fixtura não alcança o regime que ela julga é verde a afirmar
+        // nada* — e é essa a largura em que o produto vive.
+        for (bw, bh) in [
+            (64usize, 64usize),
+            (200, 150),
+            (291, 195),
+            (7, 190),
+            (800, 120),
+        ] {
             for k in [1usize, 3, 8, 24, 57] {
                 for wrap in [[false, false], [true, true]] {
                     let a = blur_region_caixa_com(

@@ -59,7 +59,10 @@ mod composite_formas_tests; // a pilha contra os metodos de RE-CARIMBO: o boolea
 mod diag_composite_e_as_formas;
 
 #[path = "diag_preco_do_recarimbo.rs"]
-mod diag_preco_do_recarimbo; // o PRECO de um re-carimbo com a pilha (report do dono, 2026-09-21) // a pilha contra os metodos de RE-CARIMBO (report do dono, 2026-09-21)
+mod diag_preco_do_recarimbo; // o PRECO
+
+#[path = "diag_auditoria_do_aspecto.rs"]
+mod diag_auditoria_do_aspecto; // a auditoria do report de 2026-09-21 (o ASPECTO do anel) // o PRECO de um re-carimbo com a pilha (report do dono, 2026-09-21) // a pilha contra os metodos de RE-CARIMBO (report do dono, 2026-09-21)
 
 #[path = "composite_acumulado_tests.rs"]
 mod composite_acumulado_tests; // a pilha que ACUMULA: o preço, a exactidão e o rectângulo

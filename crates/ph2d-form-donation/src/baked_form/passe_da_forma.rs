@@ -257,6 +257,28 @@ pub fn fonte() -> String {
 /// o material — que chega já empacotado da porta que a `ph2d-material` declara, e re-declarar os
 /// doze `vec4` aqui seria a segunda redacção de um layout. O gate `o_uniform_tem_a_forma_que_o_wgsl_le`
 /// prende os quatro offsets.
+/// ⭐⭐⭐ **A LEI DA LUZ de uma acendida, nos quatro valores de que o [`Globais::novo`] é função.**
+///
+/// ⛔⛔ **Ela NÃO é açúcar para calar um lint.** Os quatro viajam SEMPRE juntos: as **duas** portas
+/// do passe ([`PasseDaForma::acende`] e [`PasseDaForma::acende_residente`]) recebem-nos só para os
+/// entregar ao MESMO `Globais::novo`, e nenhuma delas lê um sem os outros. *Um grupo que já é a
+/// lista de argumentos de uma função é um TIPO que faltava* — e sem ele a 2.ª porta escrevia a
+/// mesma quádrupla por extenso, que é a segunda ortografia da mesma lei.
+///
+/// ⚠️ **É `Copy` de propósito**: ela é um empréstimo de quatro coisas que o chamador já tem, e não
+/// um dono — passá-la não muda a vida de nada.
+#[derive(Clone, Copy)]
+pub struct LuzDaCena<'a> {
+    /// O material do sprite (a [`ph2d_form_pbr`] empacota-o).
+    pub material: &'a Surface,
+    /// As lâmpadas do rig — ⚠️ mais do que [`MAX_LAMPADAS`] é **recusado**, não truncado.
+    pub lampadas: &'a [Lampada],
+    /// O céu, nas duas metades que o `env_ambient` lê.
+    pub ceu: Ceu,
+    /// O olhar (exposição + vista), que o `vt_to_display` pede.
+    pub olhar: Look,
+}
+
 struct Globais {
     dados: Vec<f32>,
 }
@@ -265,12 +287,13 @@ impl Globais {
     /// `Mat` + `olhar` + `ceu_base` + `ceu_inclinacao` + `vista` + `Lampadas { n, _pad×3, l[MAX] }`.
     const FLOATS: usize = gemeo::PACKED + 4 + 4 + 4 + 4 + 4 + MAX_LAMPADAS * gemeo::LAMPADA_FLOATS;
 
-    fn novo(
-        material: &Surface,
-        lampadas: &[Lampada],
-        ceu: Ceu,
-        olhar: Look,
-    ) -> Result<Self, String> {
+    fn novo(luz: LuzDaCena) -> Result<Self, String> {
+        let LuzDaCena {
+            material,
+            lampadas,
+            ceu,
+            olhar,
+        } = luz;
         if lampadas.len() > MAX_LAMPADAS {
             return Err(format!(
                 "o passe da forma carrega {MAX_LAMPADAS} lampadas e o rig trouxe {}",
@@ -430,33 +453,103 @@ impl PasseDaForma {
     pub fn acende(
         &mut self,
         gpu: &GpuContext,
-        material: &Surface,
+        luz: LuzDaCena,
         planos: &Planos,
-        lampadas: &[Lampada],
-        ceu: Ceu,
-        olhar: Look,
     ) -> Result<&wgpu::Texture, String> {
         planos.confere()?;
-        let globais = Globais::novo(material, lampadas, ceu, olhar)?;
+        let globais = Globais::novo(luz)?;
         let (w, h) = planos.size;
         self.garante_alvo(gpu, w, h);
-        let alvo = self.alvo.as_ref().expect("acabou de ser garantido");
+        {
+            let alvo = self.alvo.as_ref().expect("acabou de ser garantido");
+            escreve(gpu, &alvo.base_tex, planos.base, w * 4, (w, h));
+            escreve(
+                gpu,
+                &alvo.form_tex,
+                bytemuck::cast_slice(planos.form),
+                w * 16,
+                (w, h),
+            );
+            escreve(
+                gpu,
+                &alvo.occ_tex,
+                bytemuck::cast_slice(planos.form_occ),
+                w * 4,
+                (w, h),
+            );
+        }
+        self.despacha(gpu, &globais, (w, h), None)
+    }
 
-        escreve(gpu, &alvo.base_tex, planos.base, w * 4, (w, h));
-        escreve(
-            gpu,
-            &alvo.form_tex,
-            bytemuck::cast_slice(planos.form),
-            w * 16,
-            (w, h),
-        );
-        escreve(
-            gpu,
-            &alvo.occ_tex,
-            bytemuck::cast_slice(planos.form_occ),
-            w * 4,
-            (w, h),
-        );
+    /// ⭐⭐⭐ **O MESMO PASSE, com a FORMA JÁ NA PLACA** — a costura da **rota B** (o catavento).
+    ///
+    /// A [`Self::acende`] recebe os dois planos da forma como fatias da CPU e **carrega-os** a cada
+    /// acendida, porque quem a chama é o assado: ele corre **uma vez, num botão**, e o `Vec<f32>` é
+    /// o que viaja no documento. Esta recebe-os como **vistas de textura que já vivem na placa** —
+    /// tipicamente a saída de uma rasterização feita no mesmo quadro — e **nada desce nem sobe**.
+    ///
+    /// # ⛔⛔ Porque ela existe: a medição da §5.0 do catavento
+    ///
+    /// A porta que rasteriza e traz os planos de volta ([`ph2d_mesh_render::MeshRenderer::form_plane`])
+    /// custa **`31×`** a rasterização sozinha a `512²` — o readback é o preço inteiro. Chamá-la por
+    /// quadro dá `4` objectos; com esta costura a corrente cabe `26` vezes num quadro.
+    /// Tabelas: `docs/Render3d/17_a_rota_b_o_catavento.md`.
+    ///
+    /// # ⭐ E ela não custou uma linha de shader
+    ///
+    /// ⚠️ **As vistas podem ter OUTRO formato do que as texturas da [`Self::acende`]** (que são
+    /// `Rgba32Float`/`R32Float`): o layout declara `Float { filterable: false }` e o shader só faz
+    /// `textureLoad`, logo o `Rgba16Float`/`R16Float` que a rasterização produz liga-se ali sem
+    /// nada mudar — e o `f16` sobe a `f32` **sem perda** (10 bits de mantissa contra 23).
+    ///
+    /// ⛔ **O `base` continua a ser carregado**, e isso é o desenho: ele são os pixels que o artista
+    /// desenhou — a arte —, e não um subproduto da malha.
+    ///
+    /// # Errors
+    ///
+    /// Se o `base` não medir `w × h × 4`, ou se o rig trouxer mais lâmpadas do que o uniform carrega.
+    pub fn acende_residente(
+        &mut self,
+        gpu: &GpuContext,
+        luz: LuzDaCena,
+        size: (u32, u32),
+        base: &[u8],
+        forma: (&wgpu::TextureView, &wgpu::TextureView),
+    ) -> Result<&wgpu::Texture, String> {
+        let (w, h) = size;
+        let esperado = w as usize * h as usize * 4;
+        if base.len() != esperado {
+            return Err(format!(
+                "base mede {} e o tamanho pede {esperado}",
+                base.len()
+            ));
+        }
+        let globais = Globais::novo(luz)?;
+        self.garante_alvo(gpu, w, h);
+        {
+            let alvo = self.alvo.as_ref().expect("acabou de ser garantido");
+            escreve(gpu, &alvo.base_tex, base, w * 4, (w, h));
+        }
+        self.despacha(gpu, &globais, (w, h), Some(forma))
+    }
+
+    /// **O DESPACHO — a lei, uma vez só.**
+    ///
+    /// ⚠️ Ela existe porque as duas entradas acima diferem **apenas em de onde vem a forma**, e
+    /// *uma lei escrita em dois sítios ainda não é uma lei*: com duas cópias, a próxima linha que
+    /// mexesse no bind group ou no despacho teria de ser escrita nas duas, e a que alguém
+    /// esquecesse divergia em silêncio.
+    fn despacha(
+        &self,
+        gpu: &GpuContext,
+        globais: &Globais,
+        (w, h): (u32, u32),
+        residente: Option<(&wgpu::TextureView, &wgpu::TextureView)>,
+    ) -> Result<&wgpu::Texture, String> {
+        let alvo = self.alvo.as_ref().expect("acabou de ser garantido");
+        // ⛔ **O `unwrap_or` é a única diferença entre as duas rotas** — e é aqui, e não em dois
+        // corpos paralelos, porque é isso que torna a rota B *a mesma lei com outra fonte*.
+        let (forma, oclusao) = residente.unwrap_or((&alvo.form, &alvo.occ));
         gpu.queue.write_buffer(&self.uniforme, 0, globais.bytes());
 
         let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -469,11 +562,11 @@ impl PasseDaForma {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&alvo.form),
+                    resource: wgpu::BindingResource::TextureView(forma),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&alvo.occ),
+                    resource: wgpu::BindingResource::TextureView(oclusao),
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
@@ -500,11 +593,7 @@ impl PasseDaForma {
             cp.dispatch_workgroups(w.div_ceil(ARESTA), h.div_ceil(ARESTA), 1);
         }
         gpu.queue.submit(std::iter::once(enc.finish()));
-        Ok(&self
-            .alvo
-            .as_ref()
-            .expect("acabou de ser garantido")
-            .saida_tex)
+        Ok(&alvo.saida_tex)
     }
 
     fn garante_alvo(&mut self, gpu: &GpuContext, w: u32, h: u32) {

@@ -246,7 +246,12 @@ fn um_rig_maior_que_o_uniform_recusa() {
     };
     let muitas = vec![l; MAX_LAMPADAS + 1];
     let s = ph2d_form_pbr::OpenPbr::default().prepare();
-    let Err(e) = Globais::novo(&s, &muitas, Ceu::PRETO, Look::default()) else {
+    let Err(e) = Globais::novo(LuzDaCena {
+        material: &s,
+        lampadas: &muitas,
+        ceu: Ceu::PRETO,
+        olhar: Look::default(),
+    }) else {
         panic!("um rig maior que o uniform tem de recusar");
     };
     assert!(
@@ -254,7 +259,15 @@ fn um_rig_maior_que_o_uniform_recusa() {
         "a queixa diz o número que chegou: {e}"
     );
     // CONTROLO: o rig de hoje cabe.
-    assert!(Globais::novo(&s, &muitas[..MAX_LAMPADAS], Ceu::PRETO, Look::default()).is_ok());
+    assert!(
+        Globais::novo(LuzDaCena {
+            material: &s,
+            lampadas: &muitas[..MAX_LAMPADAS],
+            ceu: Ceu::PRETO,
+            olhar: Look::default()
+        })
+        .is_ok()
+    );
 }
 
 /// ⭐⭐ **O `n` e a VISTA viajam pelos BITS, e voltam.**
@@ -273,7 +286,13 @@ fn a_contagem_e_a_vista_viajam_pelos_bits() {
         exposure_stops: 3.0,
         view: ph2d_view_transform::ViewTransform::Neutral,
     };
-    let g = Globais::novo(&s, &[l, l], Ceu::PRETO, olhar).expect("duas lâmpadas cabem");
+    let g = Globais::novo(LuzDaCena {
+        material: &s,
+        lampadas: &[l, l],
+        ceu: Ceu::PRETO,
+        olhar,
+    })
+    .expect("duas lâmpadas cabem");
     let i = gemeo::PACKED;
     assert!(
         (g.dados[i + 3] - 3.0).abs() < 1e-6,

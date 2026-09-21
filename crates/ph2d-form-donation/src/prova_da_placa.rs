@@ -564,11 +564,13 @@ fn diag_quanto_a_placa_custa() {
                 passe
                     .acende(
                         &gpu,
-                        &material,
+                        passe_da_forma::LuzDaCena {
+                            material: &material,
+                            lampadas,
+                            ceu: ceu_do_rig(lampadas),
+                            olhar: crate::lei_da_luz::OLHAR_DA_FORMA,
+                        },
                         &planos,
-                        lampadas,
-                        ceu_do_rig(lampadas),
-                        crate::lei_da_luz::OLHAR_DA_FORMA,
                     )
                     .expect("acende");
                 let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());

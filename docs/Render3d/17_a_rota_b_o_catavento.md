@@ -207,6 +207,106 @@ sprite**. Um catavento de `256²` cabe `45` vezes num quadro; o mesmo catavento 
 
 ---
 
+## §5 — ⭐⭐⭐ W1: **a costura residente** (construída em 2026-09-21)
+
+A §2 diz que as duas metades já vivem na placa e que a costura entre elas passa pela CPU. A W1 abre
+essa costura, e ela custou **uma porta e nenhuma linha de shader**.
+
+### §5.1 — A porta
+
+[`PasseDaForma::acende_residente`](../../crates/ph2d-form-donation/src/baked_form/passe_da_forma.rs)
+— irmã da `acende`, e a diferença é **de onde vem a forma**:
+
+| | `acende` (rota A, o assado) | **`acende_residente`** (rota B, o catavento) |
+|---|---|---|
+| a forma | fatias da CPU, **carregadas** a cada acendida | **vistas de textura** que já vivem na placa |
+| o `base` | carregado | **carregado** — ele é a arte, não um subproduto da malha |
+| corre | uma vez, num botão | **por quadro** |
+
+⭐ **As duas entram no MESMO `despacha`**, e a única diferença é um `unwrap_or` sobre os dois
+bindings. *Com dois corpos paralelos, a próxima linha que mexesse no bind group teria de ser escrita
+nas duas, e a que alguém esquecesse divergia em silêncio.*
+
+⚠️ **E as duas recebem a luz num TIPO** (`LuzDaCena`: material · lâmpadas · céu · olhar), que é
+exactamente a lista de argumentos do `Globais::novo`. *Um grupo que já é a lista de argumentos de
+uma função é um tipo que faltava* — quem o achou foi o clippy a acusar `9/7` argumentos na porta
+nova, e ⛔ a saída barata (um `#[allow]`) deixava a 2.ª porta a escrever a mesma quádrupla por
+extenso, que é a segunda ortografia da mesma lei.
+
+### §5.2 — ⭐⭐ E ela não custou uma linha de shader
+
+O layout já declarava `Float { filterable: false }` e o shader só faz `textureLoad` ⇒ **as texturas
+`Rgba16Float`/`R16Float` que a rasterização produz ligam-se ali sem nada mudar**, embora a `acende`
+crie as dela em `Rgba32Float`/`R32Float`.
+
+⚠️ **Isso é um facto sobre o `wgpu` e sobre este shader, e um facto assim afirma-se e não se supõe**
+— é o gate `a_rota_residente_aceita_a_meia_precisao_da_rasterizacao`.
+
+### §5.3 — As TRÊS afirmações, com o número
+
+| gate | o que afirma | medido |
+|---|---|---|
+| `a_rota_residente_e_a_mesma_lei_ao_bit` | com as MESMAS texturas (`f32`), as duas rotas saem **byte-idênticas** | **`0` componentes fora**, sem folga nenhuma |
+| `a_rota_residente_aceita_a_meia_precisao_da_rasterizacao` | e ela aceita o `f16` da rasterização | **pior byte `1`**, `168` de `65 536` componentes (`0,26 %`) |
+| `a_cerca_do_tamanho_do_base_recusa_em_voz_alta` | um `base` do tamanho errado é **recusado**, e a recusa diz o quê e por quanto | escrito por uma **mutação sobrevivente** (§5.4) |
+
+⛔ **A primeira não tem barra de propósito:** a rota residente não é uma aproximação da carregada —
+é a mesma lei com outra fonte para dois bindings. *Uma folga ali deixaria passar uma segunda
+redacção do despacho.*
+
+⭐ **E a segunda tem o CONTROLO na primeira:** com `f32` a mesma montagem lê `0`, logo o `1` mede o
+**FORMATO** e mais nada. ⇒ **a meia precisão da rasterização chega ao passe da luz a um byte no pior
+pixel, e não precisa de passe de conversão nenhum.**
+
+### §5.4 — ⛔⛔ A prova de mutação, e as DUAS que ela devolveu contra o meu próprio instrumento
+
+| # | o que a mutação apaga | onde | veredito |
+|---|---|---|---|
+| `M1` | a rota residente ignora as vistas e lê as texturas do passe | produto | ✅ **sangra** (2 de 3) |
+| `M2` | o `base` da rota residente nunca sobe | produto | ✅ **sangra** (2 de 3) |
+| `M3` | a cerca do tamanho do `base` deixa de recusar | produto | ⛔ **sobreviveu** → curada, hoje ✅ (1 de 3) |
+| `M4` | a fixtura fica com o `base` PRETO | arnês | ⛔ **sobreviveu** → **NOMEADA**, ver abaixo |
+| `M4-bis` | a **cobertura** da fixtura vai a `0` | arnês | ⛔ **sobreviveu** → curada, hoje ✅ (1 de 3) |
+| `M4-ter` | a fixtura fica sem relevo nenhum | arnês | ✅ **sangra** (1 de 3) |
+
+⛔ **`M3` — a cerca não tinha gate nenhum.** Ela recusa um `base` de tamanho errado, e sem ela o
+`write_texture` do `wgpu` faz **panic** com fatia curta: esta porta corre **por quadro**, onde um
+`Err` é uma cena que continua e um panic é o app a fechar. ⇒ `a_cerca_do_tamanho_do_base_recusa_em_voz_alta`,
+com o **controlo positivo primeiro** — *sem ele, uma porta que recusasse SEMPRE passava o gate e a
+mensagem lia-se exactamente igual.*
+
+⛔⛔ **`M4` e `M4-bis` são a MESMA lição em duas camadas, e as duas são sobre a RÉGUA.** O vácuo que o
+gate da igualdade ao bit tem de excluir é *as duas rotas concordarem por não haver FORMA nenhuma*, e
+eu escrevi a grandeza errada **duas vezes**:
+
+1. A 1.ª contava pixels **acesos** (`p[0] > 8`). Um `base` preto não os apaga — a luz acrescenta
+   ambiente e especular. ⇒ a grandeza passou a ser a **excursão** do canal, não o brilho.
+2. A 2.ª media a excursão da **imagem inteira**. Com a cobertura a `0` o shader devolve o albedo
+   cru, ou seja um disco **chapado** sobre fundo transparente — e a excursão continuava a ler o
+   degrau entre o disco e o fundo. *Uma régua que soma o fundo mede o **RECORTE** do objecto e não a
+   forma dele*, e o recorte não é o que esta porta pode estragar. ⇒ a excursão passou a ser medida
+   **dentro da silhueta**, com piso de população.
+
+⭐⭐ **E a barra sai de um VALE MEDIDO que inclui o lado bom:**
+
+| fixtura | pixels na silhueta | excursão no vermelho |
+|---|---|---|
+| a boa | `9 289` | **`188`** |
+| `M4` — o `base` todo PRETO | `9 289` | **`246`** |
+| `M4-bis` — a cobertura a `0` | `9 289` | **`0`** |
+| `M4-ter` — sem relevo nenhum | `16 384` | **`0`** |
+
+⛔⛔⛔ **A 2.ª linha é porque a `M4` não se cura: ela NÃO é um vácuo.** Um `base_color` preto tira a
+**COR** e não a **FORMA** — o destaque especular não sai do albedo —, e a imagem fica **mais**
+contrastada que a boa (`246` contra `188`). *Uma mutação que AUMENTA a grandeza sob teste não alcança
+a propriedade que o gate afirma, e apertar a régua para a matar mediria outra coisa.* ⇒ ela fica
+**nomeada** no gate e aqui, nunca silenciada.
+
+⚠️ **O gate IMPRIME o número mesmo quando passa** — uma barra calibrada num vale cujo valor corrente
+ninguém vê é a que envelhece em silêncio no dia em que a fixtura mudar.
+
+---
+
 ## ⛔ Recusas MEDIDAS
 
 | o que | porquê | onde |
@@ -215,3 +315,5 @@ sprite**. Um catavento de `256²` cabe `45` vezes num quadro; o mesmo catavento 
 | baixar a resolução do G-buffer para poupar relógio | não compra rasterização (ela é plana no lado) **nem** acendida (o passe despacha sobre os pixels do SPRITE) | §1.1 + §1.2-bis + §1.3 |
 | medir a rasterização com uma esfera leve | o custo é de VÉRTICES: `33×` de malha vale `1,6×` de tempo, e a fixtura não continha a grandeza | §1.4 |
 | dividir o orçamento pelo custo de RASTERIZAR | é metade da corrente: a conta dá `126` objectos e a corrente inteira dá `26` | §1.2-bis |
+| apertar o controlo de vácuo até a fixtura PRETA o disparar | ela não é um vácuo: tira a COR e não a FORMA, e lê `246` de excursão contra `188` da boa — apertar mediria outra grandeza | §5.4 |
+| dar folga ao gate da igualdade `f32` | a rota residente não é uma aproximação: uma barra ali deixa passar uma 2.ª redacção do despacho | §5.3 |

@@ -238,11 +238,13 @@ fn acende_pela_forma(
         .get_or_insert_with(|| passe_da_forma::PasseDaForma::new(gpu));
     let out = passe.acende(
         gpu,
-        &crate::lei_da_luz::material_da_forma(),
+        passe_da_forma::LuzDaCena {
+            material: &crate::lei_da_luz::material_da_forma(),
+            lampadas: &lampadas,
+            ceu: ceu_do_rig(&lampadas),
+            olhar: crate::lei_da_luz::OLHAR_DA_FORMA,
+        },
         &planos,
-        &lampadas,
-        ceu_do_rig(&lampadas),
-        crate::lei_da_luz::OLHAR_DA_FORMA,
     )?;
     renderer
         .copy_texture_into_individual(bake.texture_id, out, w, h)
@@ -475,6 +477,12 @@ mod prova_da_placa;
 #[cfg(test)]
 #[path = "mede_o_acender_por_quadro.rs"]
 mod mede_o_acender_por_quadro;
+
+/// ⭐⭐⭐ **Os gates da COSTURA RESIDENTE** — a porta da rota B, e as duas afirmações que a tornam
+/// mais do que uma promessa. Ver `docs/Render3d/17_a_rota_b_o_catavento.md`.
+#[cfg(test)]
+#[path = "costura_residente_tests.rs"]
+mod costura_residente_tests;
 
 #[cfg(test)]
 mod tests {

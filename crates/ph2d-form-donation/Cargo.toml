@@ -52,6 +52,11 @@ serde = { version = "1", features = ["derive"] }
 # `ph2d-form-pbr`, do lado de quem escreve bytes.
 ph2d-color = { path = "../ph2d-color" }
 postcard = { version = "1", features = ["alloc"] }
+# ⚠️ **Só para a RÉGUA da costura residente**, e por isso é dev: o gate que mede o preço do formato
+# que a RASTERIZAÇÃO produz (`Rgba16Float`) converte as fatias ele próprio — *se a conversão fosse
+# do backend, a medição seria de um caminho escondido e não do formato*. ⛔ O produto desta crate
+# não a usa: as texturas dele são `f32`, e quem produz `f16` é a `ph2d-mesh-render`.
+half = "2"
 # ⛔⛔ **A `naga` (o MESMO major do `wgpu` 29) — porque um WGSL que ninguém compila é PROSA.**
 # O `cargo check` não olha para uma `&str`, e todo gate deste repo que olha para um shader
 # precisa de adapter e é `#[ignore]` ⇒ um erro na fonte do passe só apareceria no 1.º quadro de

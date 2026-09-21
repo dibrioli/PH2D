@@ -1469,6 +1469,125 @@ di-lo em voz alta, e sem as quatro features o `wet_tuning` desaparece da catraca
 
 ---
 
+## §9-duodecies — ⭐⭐⭐ O Inspector ABRE DOBRADO: de `2,5`–`6,5` ecrãs para `0,8`
+
+O §9-decies fechou com *«triar o Inspector devolve POUCO ecrã: o que o enche são propriedades»*.
+Isto ataca a altura pelo outro lado — **o que aparece QUANDO**.
+
+### §9-duodecies.1 — ⛔⛔ Passo zero, e ele mudou a wave
+
+A fixtura [`o_inspector_armado::arma_tudo`] monta um **objecto IMPOSSÍVEL** (o cabeçalho dela di-lo
+por escrito: *«ele não pretende ser um objecto que exista»*). Medir a ALTURA nela dá **`14 987 px`
+= `17` ecrãs** — *um estado que nenhum artista alcança*, e uma wave gasta ali seria a terceira
+perseguição a um fantasma neste ficheiro.
+
+⇒ a fixtura ganhou a `PORTAS` (tabela `(nome, fn())` **derivada da `desarma_tudo`**, com gate de
+cobertura nos dois sentidos), que a deixa **compor-se**: armar tudo e desarmar um subconjunto dá a
+altura de um objecto que existe, e desarmar uma porta de cada vez dá o **preço** de cada secção.
+
+### §9-duodecies.2 — A medição
+
+| objecto | antes | depois |
+|---|---:|---:|
+| **sprite simples** (o mais comum do app) | `2 175 px` (`2,5` ecrãs) | **`673 px` (`0,8`)** |
+| sprite + corpo físico | `3 146` (`3,6`) | **`673`** |
+| herói de plataforma | `5 736` (`6,5`) | **`673`** |
+| *o objecto impossível* | *`14 987` (`17,0`)* | — |
+
+A dobra é `880 px`.
+
+### §9-duodecies.3 — ⭐ O mecanismo estava completo; faltava a POLÍTICA
+
+`SectionFold`, o chevron, a animação, o recorte e o clique já existiam e estão certos — medido,
+**`0` de `38`** secções vivas têm dobra inerte. O que não existia era **uma secção nascer dobrada**:
+a única linha do repo que semeava uma dobra era a máscara de *cull* da câmera.
+
+### §9-duodecies.4 — ⚠️⚠️ A `Transform` não é preferência: é a única que CABE
+
+O orçamento da dobra dá para **uma** secção. Medidas uma a uma:
+
+| política | altura | cabe? |
+|---|---:|---|
+| **só a `Transform`** | **`849 px`** | ✅ |
+| só a `Render` | `1 000` | ❌ |
+| `Transform` + `Render` | `1 097` | ❌ |
+| identidade (4 secções) | `1 097` | ❌ |
+
+⭐ E o número **não depende do objecto** (`673`/`849` nos três cenários), porque tudo o que varia
+entre eles está dobrado: *o painel abre sempre igual e cabe sempre.*
+
+### §9-duodecies.5 — ⛔⛔ O SÍTIO da política mediu-se em gates partidos
+
+| onde ela mora | gates que reprovam |
+|---|---:|
+| `Panel::populate` do Inspector | **342** |
+| a porta de arranque do EDITOR (`pre_populate::marca_as_gavetas`) | **4** |
+
+⇒ *o painel declara o que PODE mostrar; quem compõe o editor declara como ele ABRE* — e o painel
+**não conhece a altura da janela**. A `marca_as_gavetas` foi extraída nesta wave (ela já era o sítio
+que marca o conjunto das gavetas; passou a dizer também como elas nascem), e tem **dois**
+chamadores: o produto e o arnês.
+
+### §9-duodecies.6 — ⭐⭐ A `collapsed_choice` ganhou o primeiro consumidor do repo
+
+O doc dela descrevia por escrito o defeito da semeadura crua — *«semear por cima de uma escolha do
+artista reabriria a gaveta que ele fechou, a cada quadro»* — e ela **não tinha um único chamador**.
+Hoje `set_collapsed_if_unchosen` torna a semeadura idempotente e os **quatro** sítios que semeiam
+dobra passam por ela, com censo (`toda_semeadura_de_dobra_passa_pela_porta`) a proibir a recaída.
+
+⚠️ **O perigo é LATENTE e não vivo, e a distinção está escrita:** hoje o `populate` do Inspector
+corre **uma vez** (`HeroScreen::new` do arranque), mas **cinco** painéis da shell re-populam-se por
+interacção. Reproduzido pela porta do produto sobre a máscara de *cull*:
+`true` → clique → `false` → `populate` → **`true`**.
+
+### §9-duodecies.7 — ⛔⛔⛔ A consequência atravessou TRÊS censos
+
+Os três medem o **ECRÃ**, e o ecrã passou a dobrar:
+
+| régua | o que passou a ler | cura |
+|---|---|---|
+| censo de entradas | `12` comandos onde há `88` | abre as gavetas antes de medir |
+| varredura das elisões | deixa de ver rótulos dentro das gavetas | idem |
+| `4` gates do painel | *«o id não foi pintado»* | `open_all_sections` no testkit |
+
+⇒ **duas perguntas, duas réguas**: os censos perguntam *quanto o painel TEM*, o
+`o_inspector_abre_dentro_da_dobra` pergunta *quanto ele MOSTRA ao abrir*. ⚠️ Chamar o
+`open_all_sections` é uma **declaração** de que aquele gate é sobre conteúdo.
+
+⚠️ **Uma catraca de elisão sobe `4 → 5`** no `painter_layers`: o `Use Color Ramp` vive numa secção
+que aquele painel semeia dobrada e a varredura passou a abri-la. *População nova, não regressão.*
+
+### §9-duodecies.8 — ⛔ Uma hipótese minha, refutada pelo fonte
+
+Li o `paint_core_sections` (Name · Visibility · Transform passam por `begin_section`/`finish_section`
+**sem consultar a dobra**) como *«três chevrons mortos»* — a família que 2026-08-21 curou em
+Ordering · Sampling · Blend. **Falso:** a `Name` e a `Visibility` são **fileiras sem cabeçalho**,
+logo não há promessa quebrada. ⚠️ E a 1.ª régua disso era fraca (`conta == base`); a que decide
+imprime o **DELTA** de cada secção, e é ela que mostra a `visibility` a `−2` contra `physics −27` e
+`player −62`.
+
+### §9-duodecies.9 — ⛔ O arnês mediu outro programa duas vezes
+
+- **`populate_shared` PENDURA o censo**: ele toca no registo de painéis e o censo já tem o *mutex*
+  dele na mão — **10 min a `0 %` de CPU**. ⇒ a `marca_as_gavetas` existe também por isso.
+- **As duas réguas da dobra não passavam pela mesma porta**: o «chão» lia `752 px` e a abertura
+  `673` — *o painel com a `Transform` ABERTA lia-se mais baixo do que com tudo fechado*, porque só
+  uma delas via as SUB-secções que o produto semeia (a grelha de 32 camadas, a máscara de *cull*).
+
+### §9-duodecies.10 — Prova e portão
+
+**6 de 6 mutações sangram**: a política sai · a `Transform` nasce dobrada também · a porta volta a
+escrever por cima da escolha · o censo deixa de abrir as gavetas · o arnês deixa de as marcar (o
+controlo dele) · uma semeadura CRUA volta a um `populate`.
+
+Portão: `nextest-impacted` **`15 497/15 497`** · censos da árvore combinada **`127/127`** ·
+`ph2d-panel-inspector` **`355/355`** · clippy `-D warnings` zero · fmt limpo · tectos de LOC verdes
+(`pre_populate.rs` `676` de `700`).
+
+⚠️⚠️ **ISTO MUDA O PRODUTO** e o smoke do dono está por fazer.
+
+---
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

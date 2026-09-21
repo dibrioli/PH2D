@@ -49,6 +49,9 @@ mod measure_penup_cost; // o que custa FECHAR um traço — a irmã do `measure_
 #[path = "diag_pigmento_por_meio.rs"]
 mod diag_pigmento_por_meio; // em que MEIOS a lei do pigmento chega ao barro (a fronteira da oferta)
 
+#[path = "diag_composite_cinco_camadas.rs"]
+mod diag_composite_cinco_camadas; // o preco MARGINAL de uma camada na pilha, e a lei do tamanho
+
 #[path = "look_watercolor_arc.rs"]
 mod look_watercolor_arc; // o arco palido na concavidade: o oraculo e o RENDER, nao um escalar
 #[path = "measure_impasto_cost.rs"]

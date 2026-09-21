@@ -150,6 +150,9 @@ mod stencil;
 /// Stroke-method control (set / non-shape memory / restore) — the Brush-panel + rail Shapes seam.
 mod stroke_ctl;
 pub use stencil::{StencilOverlay, StencilPreview};
+/// ⭐⭐ **A fronteira de uma sub-figura, derivada do arco** — a porta que o esfregão e a
+/// subamostragem da pilha perguntam antes de atravessar de uma figura para a seguinte.
+mod arco_subfigura;
 mod blur_route;
 /// The `impl CanvasPaintTool` pointer entry (`on_canvas_pointer`); split from `paint.rs` (LOC cap).
 mod canvas_pointer;

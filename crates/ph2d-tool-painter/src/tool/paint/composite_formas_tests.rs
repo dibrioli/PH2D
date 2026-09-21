@@ -420,3 +420,111 @@ fn a_primeira_figura_nao_muda_quando_nasce_a_segunda() {
         );
     }
 }
+
+/// ⭐⭐ **A SEGUNDA FIGURA NÃO PAGA O ARCO DA PRIMEIRA** — a outra metade do report do dono de
+/// 2026-09-21 (*«se dois círculos cada um tem um aspecto»*), e a que só arma quando uma camada é
+/// **MAIOR que o pincel**. O dono disse qual era a pilha dele: *«todas as camadas ativas, com
+/// tamanhos diferentes»*.
+///
+/// Uma camada com `size > 1` subamostra a lista por ARCO e o acumulador dela (`composite_arco`) é
+/// por TRAÇO. Um lote do re-carimbo é a **CONCATENAÇÃO** das figuras vivas, logo o arco do lote
+/// **anda para trás** na fronteira entre elas — e a subamostragem lê isso como *«este dab está
+/// perto demais do último que guardei»* e **recusa a lista inteira da segunda figura**.
+///
+/// ⚠️ **É a MESMA fronteira que a corrente do esfregão parte**
+/// ([`super::arco_subfigura`]), por isso as duas a perguntam à mesma porta.
+///
+/// ⚠️ **`size = 3` é ingrediente e não decoração:** com `size = 1` o `camada_dabs` devolve `None`,
+/// o acumulador nunca é escrito e o fenómeno **não existe** — é por isso que o CONTROLO desta
+/// fixtura é a mesma cena com o knob no ponto neutro.
+#[test]
+fn a_segunda_figura_nao_paga_o_arco_da_primeira() {
+    use CompositeOp::Brush;
+    let (a, b, r) = ([70.0f32, 70.0], [190.0f32, 190.0], 40.0f32);
+    const JANELA: u32 = 130;
+
+    let duas_figuras = |size: f32| -> (usize, usize) {
+        let mut t = cena_vazia(&[(Brush, 1.0)]);
+        for pos in 0..t.composite_len() {
+            t.set_composite_layer_size(pos, size);
+        }
+        elipse(&mut t, a, r);
+        elipse(&mut t, b, r);
+        (alfa_na_caixa(&t, 0, JANELA), alfa_na_caixa(&t, JANELA, S))
+    };
+
+    // CONTROLO: no ponto neutro do knob as duas figuras pintam o mesmo — é isso que prova que a
+    // fixtura mede a SUBAMOSTRAGEM e não a geometria das duas posições.
+    let (n1_neutro, n2_neutro) = duas_figuras(1.0);
+    assert!(
+        n1_neutro > 500 && n2_neutro > 500,
+        "controlo: com `size = 1` as duas figuras têm de pintar ({n1_neutro} / {n2_neutro})"
+    );
+
+    let (n1, n2) = duas_figuras(3.0);
+    assert!(
+        n1 > 500,
+        "a fixtura não contém o fenómeno: a 1.ª figura mal pintou ({n1} texels)"
+    );
+    // As duas figuras são CONGRUENTES (mesmo raio, mesmo pincel, mesma pilha), logo a segunda tem
+    // de pintar o que a primeira pinta. A folga cobre a orla — a lista de dabs é re-derivada a
+    // cada carimbo — e nada mais.
+    let razao = n2 as f32 / n1 as f32;
+    assert!(
+        razao > 0.9,
+        "a 2.ª figura pagou o arco da 1.ª: {n2} texels contra {n1} ({:.0} %)",
+        razao * 100.0
+    );
+}
+
+/// ⭐⭐⭐ **A CORRENTE PARTE NA FRONTEIRA MESMO QUANDO A CAMADA SUBAMOSTRA** — os dois
+/// acumuladores deste report **compõem**, e é essa composição que decide que a cura é uma PORTA.
+///
+/// O esfregão parte a corrente dele quando o arco anda para trás, mas ele lê a lista **DEPOIS** da
+/// subamostragem da camada. Se o filtro comesse o primeiro dab da 2.ª figura, o esfregão nunca
+/// veria o arco andar para trás e a corrente atravessaria a tela — *a cura de uma metade seria
+/// desfeita pela outra, em silêncio*.
+///
+/// O que torna isto verdade não é uma cerca a lembrar: é a porta responder à mesma pergunta nos
+/// dois sítios, logo **o dab da fronteira sobrevive ao filtro por construção**.
+///
+/// ⚠️ **`size = 3` é o ingrediente** — no ponto neutro o filtro nem corre, e este gate seria o
+/// irmão dele outra vez.
+#[test]
+fn a_corrente_parte_na_fronteira_mesmo_numa_camada_subamostrada() {
+    use CompositeOp::{Brush, Smear};
+    let (a, b, r) = ([70.0f32, 70.0], [190.0f32, 190.0], 40.0f32);
+    const JANELA: u32 = 130;
+    let camadas = [(Smear, 1.0), (Brush, 1.0)];
+
+    let cena_grande = || {
+        let mut t = cena_vazia(&camadas);
+        for pos in 0..t.composite_len() {
+            t.set_composite_layer_size(pos, 3.0);
+        }
+        t
+    };
+
+    let mut so_a = cena_grande();
+    elipse(&mut so_a, a, r);
+    let antes = janela_bytes(&so_a, JANELA);
+
+    let mut as_duas = cena_grande();
+    elipse(&mut as_duas, a, r);
+    elipse(&mut as_duas, b, r);
+    let depois = janela_bytes(&as_duas, JANELA);
+
+    // CONTROLO POSITIVO: as duas figuras existem na cena subamostrada — sem isto o gate compara
+    // dois vazios e passa por vácuo, que é exactamente o estado em que o defeito a curar punha a
+    // segunda figura.
+    let n1 = alfa_na_caixa(&so_a, 0, JANELA);
+    let n2 = alfa_na_caixa(&as_duas, JANELA, S);
+    assert!(n1 > 500, "a 1.ª figura mal pintou ({n1} texels)");
+    assert!(n2 > 500, "a 2.ª figura não nasceu ({n2} texels)");
+
+    let difs = antes.iter().zip(&depois).filter(|(x, y)| x != y).count();
+    assert_eq!(
+        difs, 0,
+        "com a camada a subamostrar, nascer a 2.ª figura mexeu em {difs} bytes da 1.ª"
+    );
+}

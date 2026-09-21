@@ -88,13 +88,15 @@ impl PainterTool {
             // de uma esfrega até ao primeiro dab da outra, **atravessando a tela**. Medido: com
             // uma 2.ª figura LONGE da 1.ª, a 1.ª perdia `14 %` do alfa dela.
             //
-            // ⚠️ **A fronteira é DERIVADA e não um campo novo:** todo `fill_*_preview` recomeça o
-            // `arc_len` em zero (`stroke/ellipse.rs`: *«fresh fill → the Flow along-coordinate
-            // starts at the perimeter's origin»*), logo um arco que ANDA PARA TRÁS é uma
-            // sub-figura nova. ⛔ Um limiar sobre o comprimento do salto seria um número escolhido
-            // — e um traço à mão livre rápido produz saltos legítimos do mesmo tamanho.
+            // ⚠️ **A fronteira é DERIVADA e não um campo novo**, e a derivação vive na PORTA —
+            // com o porquê de ela não poder ser um limiar de salto, e o outro acumulador que a
+            // pergunta: [`super::arco_subfigura`]. *Esta regra esteve escrita à mão aqui durante
+            // um dia, e no dia seguinte o mesmo defeito apareceu na subamostragem da pilha, com a
+            // cura já escrita a três ficheiros de distância.*
             let fonte = match from {
-                Some((_, arco)) if d.arc_len < arco => None,
+                Some((_, arco)) if super::arco_subfigura::nasce_uma_subfigura(arco, d.arc_len) => {
+                    None
+                }
                 outro => outro,
             };
             if let Some((prev, _)) = fonte {

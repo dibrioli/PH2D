@@ -617,7 +617,19 @@ impl PainterTool {
             if let Some(vao) = vao {
                 let passo = vao * d.radius_px;
                 let ultimo = self.paint.composite_arco[pos];
-                if ultimo.is_finite() && d.arc_len - ultimo < passo {
+                // ⭐⭐ **A FRONTEIRA DE UMA SUB-FIGURA PARTE O ACUMULADOR** (report do dono,
+                // 2026-09-21: *«se dois círculos cada um tem um aspecto»*, com a pilha dele a
+                // ter *«tamanhos diferentes»* — que é a precondição desta metade). Um lote do
+                // re-carimbo é a CONCATENAÇÃO das figuras vivas, logo o arco anda **para trás**
+                // na junta entre elas; sem isto a subtracção fica negativa, lê-se como *«este
+                // dab está perto demais do último que guardei»* e **recusa a lista inteira** da
+                // figura seguinte. Medido com uma camada `Brush` de `size = 3` e dois círculos
+                // congruentes: **`0` texels contra `1 835`** — a 2.ª figura não aparecia de todo.
+                //
+                // ⚠️ A derivação da fronteira (e o porquê de ela não ser um limiar de salto) vive
+                // na porta, que o esfregão também pergunta: [`super::arco_subfigura`].
+                let fronteira = super::arco_subfigura::nasce_uma_subfigura(ultimo, d.arc_len);
+                if !fronteira && ultimo.is_finite() && d.arc_len - ultimo < passo {
                     continue;
                 }
                 self.paint.composite_arco[pos] = d.arc_len;

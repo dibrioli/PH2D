@@ -268,6 +268,34 @@ dono aprovou*.
 
 ---
 
+## §5-quater — O levantamento do catálogo da Godot (docs, **ZERO linhas de produto**)
+
+Ordem do dono, depois do smoke: *«Vá até o manual da godot. Descubra tudo que ela tem e que pode se
+transformar em um objeto ou em um componente de nossa engine. Faça essa pesquisa minuciosa.»*
+
+⚠️ **Para o integrador: este commit não toca em código.** Três ficheiros, todos sob `docs/` —
+nenhuma crate, nenhum contador partilhado, nenhum gate, nenhum `Cargo.lock`.
+
+| ficheiro | o que é |
+|---|---|
+| `docs/Components/pesquisa/dossie_godot_o_catalogo_medido_2026-09-20.md` | o levantamento (novo) |
+| `docs/Components/ferramentas/godot_classdb_probe.gd` | a sonda que o produziu (nova, versionada) |
+| `docs/Components/pesquisa/dossie_godot.md` | **+9 linhas** de cabeçalho: o ponteiro para o irmão medido |
+
+⭐ **O método é o do §0.9, e é a diferença inteira:** o dossiê de 2026-08-20 foi **lido** de
+`docs.godotengine.org` e cita ~60 nós; este foi **corrido** do binário instalado (`ClassDB` da
+4.7.2, MIT) e enumera **1 054** classes com a superfície de cada uma — propriedades com tipo e
+dica, grupos do inspector e sinais. *Uma leitura não enumera, ela recorda.*
+
+⚠️ **E ele corrigiu três números que eu ia escrever de memória**, o que é a razão de a contagem
+vir de correr e não de varrer: o catálogo tem **157** descritores (medido com
+`ph2d_component_desc::catalog::all()`; três `grep` diferentes deram três respostas erradas, porque
+os `requires:` citam nomes alheios e cada família usa um construtor próprio), os painéis são **27**
+e os formatos de imagem **16**.
+
+⛔ **Nada ali é um plano.** A §8.1 lista o que ele tem e nós não, **sem ordem, de propósito** —
+ordenar seria decidir, e a decisão é do dono.
+
 ## §6 — O que uma leitura rápida do diff entende ao CONTRÁRIO
 
 1. **O `+3` do `PROJECT_SCHEMA` não é de uma wave só** — são três, e nenhum tem degrau de migração

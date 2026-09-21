@@ -11,6 +11,14 @@
 > campo "path"). Sinais viram eventos do componente; groups viram tags.
 > **Iluminação 2D (PointLight2D, DirectionalLight2D, LightOccluder2D): ADIADO por decisão do dono
 > (2026-08-20)** — listado no fim, sem priorização.
+>
+> ⭐⭐ **LEIA PRIMEIRO o irmão MEDIDO:** [`dossie_godot_o_catalogo_medido_2026-09-20.md`](dossie_godot_o_catalogo_medido_2026-09-20.md).
+> Este documento foi **LIDO** das docs e cita ~60 nós; aquele foi **CORRIDO** do binário instalado
+> (`ClassDB`, 4.7.2) e enumera as **1 054** classes, com a superfície de cada uma e o cruzamento
+> contra os 157 componentes do PH2D. ⚠️ **Este aqui envelheceu em pontos que importam** — o ranking
+> dos «matadores de código» no fim foi escrito quando `Camera2D`, `Timer`, `Tween`, partículas,
+> `AnimatedSprite2D` e os controladores ainda não existiam do nosso lado, e **hoje existem**.
+> O que continua a valer aqui é a PROSA: o que cada nó elimina de código e com o que ele compõe.
 
 ---
 

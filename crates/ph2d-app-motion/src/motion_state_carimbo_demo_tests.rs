@@ -197,3 +197,64 @@ fn o_roteiro_nomeia_o_que_o_dono_vai_ver() {
         );
     }
 }
+
+/// ⭐⭐⭐ **OS DOIS INSTRUMENTOS DE BISSECÇÃO NÃO MUDAM A CENA QUANDO NINGUÉM LHES TOCA.**
+///
+/// Eles existem por causa do report do dono de 2026-09-20 (o `Corner Radius`) e do erro de
+/// calibração que ele expôs: um gesto de painel **não é alcançável de um teste**, e sem uma porta
+/// a única forma de medir o quadro que ele viu era clicar — coisa que esta casa não faz.
+///
+/// ⚠️⚠️ **A metade que interessa é a NEGATIVA:** *uma porta de bissecção que mude a cena quando
+/// ninguém a arma deixa de bissectar coisa nenhuma* — ela passaria a ser um segundo produto, e as
+/// duas colunas de um A/B mediriam cenas diferentes.
+///
+/// ⚠️ E ela entra pela LEI PURA e não pela leitura do ambiente: *um gate que lê o ambiente mede a
+/// máquina em que corre*.
+#[test]
+fn os_instrumentos_de_bisseccao_nao_mudam_a_cena_de_omissao() {
+    // Ausente ⇒ a cena de sempre, nas duas portas.
+    assert!(
+        (super::corner_por(None) - 0.0).abs() < f32::EPSILON,
+        "sem a variavel a estrela tem de ser a PONTIAGUDA (corner 0)"
+    );
+    assert_eq!(
+        super::lado_por(None),
+        super::LADO_N,
+        "sem a variavel a grelha tem de ser a da cena"
+    );
+    // ⚠️⚠️ **As DUAS portas tratam «fora da faixa» de maneira OPOSTA, e é deliberado — este gate
+    // reprovou a escrevê-lo ao contrário.** O `corner` SATURA porque a faixa `0..1` é o domínio da
+    // própria lei (o `build_shape_path` já faz `clamp(0,1)`), logo saturar aqui devolve exactamente
+    // o que o produto faria. O `lado` FILTRA porque ali a faixa é um TECTO DE RECURSO: um `5000`
+    // escrito por engano montaria `25 M` estrelas e o app não voltava — *saturar em `2000` daria
+    // uma cena que ninguém pediu, e é pior do que ignorar o número*.
+    for lixo in ["", "  ", "abc", "NaN"] {
+        assert!(
+            (super::corner_por(Some(lixo)) - 0.0).abs() < f32::EPSILON,
+            "{lixo:?} nao e' um numero: tinha de cair no corner de omissao"
+        );
+    }
+    for (fora, esperado) in [("-1", 0.0f32), ("1e9", 1.0)] {
+        assert!(
+            (super::corner_por(Some(fora)) - esperado).abs() < f32::EPSILON,
+            "{fora:?} e' um numero FORA da faixa: ele satura em {esperado}, como a lei da forma"
+        );
+    }
+    for lixo in ["", "zero", "0", "1", "2001", "-5"] {
+        assert_eq!(
+            super::lado_por(Some(lixo)),
+            super::LADO_N,
+            "{lixo:?} nao e' um lado utilizavel: tinha de cair no lado de omissao"
+        );
+    }
+    // E armados, eles ARMAM — senão a cerca acima seria satisfeita por uma porta morta.
+    assert!(
+        (super::corner_por(Some("0.5")) - 0.5).abs() < f32::EPSILON,
+        "com a variavel armada o corner tem de chegar"
+    );
+    assert_eq!(
+        super::lado_por(Some("400")),
+        400,
+        "com a variavel armada o lado tem de chegar"
+    );
+}

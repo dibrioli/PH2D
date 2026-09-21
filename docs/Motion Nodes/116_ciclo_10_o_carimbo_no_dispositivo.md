@@ -693,6 +693,14 @@ ele fotografou.
 
 ### §5.8 — ⭐⭐⭐ A CENA QUE MOSTRA (ordem do dono, 2026-09-20): `=126`, e a população NÃO é a do report
 
+> ⛔⛔⛔ **LEIA A [§5.9](#59--o-report-do-corner-radius-e-a-segunda-derivação-errada-da-mesma-cena)
+> ANTES DE CITAR QUALQUER NÚMERO DESTA SECÇÃO.** A tabela do «o que o app entrega»
+> (`33 fps · 29.4 ms · 34 raw` pela rota antiga) **não reproduz**: ela foi obtida escalando por
+> regra de três uma medição feita a `313 600` estrelas, e aquele regime tem um multiplicador — a
+> dívida de tiques — que **não existe** abaixo da fronteira do vsync. Medido no app à população
+> desta cena, a rota antiga custa `14,67 ms` e corre a `60` fps. *A secção fica inteira, com a
+> refutação ao lado, porque o erro dela é o achado da §5.9.*
+
 O dono mandou construí-la (*«construa uma cena de demonstração»*), e a §5.7 já dizia porquê: **as
 onze cenas com carimbo não contêm o fenómeno** — a pior desenha `190` linhas e custa `0,1 %` de um
 quadro. A cena vive em [`motion_state_carimbo_demo.rs`](../../crates/ph2d-app-motion/src/motion_state_carimbo_demo.rs)
@@ -763,6 +771,106 @@ por outra linha** (o guarda recusou, e bem) e depois `2`–`16 %` de ociosidade;
 calma — **`4,8×`**, e foi deitada fora. *Os números desta secção são todos de `88 %` ocioso, e a
 sonda imprime a carga ao lado de cada um precisamente para que uma tabela dessas nunca entre num
 doc por engano* (`CLAUDE.md` §5.0).
+
+---
+
+### §5.9 — O report do `Corner Radius`, e a SEGUNDA derivação errada da mesma cena
+
+O dono correu o smoke da §5.8 e devolveu **uma frase com duas coisas dentro**: *«O caminho mais
+novo é mais rápido mas nenhum dos dois tolerou modificar o corner radius das estrelas. travou»*.
+
+#### §5.9.1 — O que o `Corner Radius` faz, medido
+
+⭐ **A causa é de POPULAÇÃO DE SEGMENTOS e nada mais.** O
+[`round_closed_corners`](../../crates/ph2d-vec-scene/src/corners.rs) troca **cada** vértice de quina
+por dois — ou **três**, quando a quina vira mais de `90°`, que é o caso das pontas de uma estrela —
+⇒ a estrela de `5` pontas passa de **`12` para `30`** vértices assim que o `corner` sai de zero, e
+fica lá (a contagem é `30` em todo o resto do curso do slider).
+
+Medido no app (`--release`, `1930×1040`, o `cpu-encode(raw)` do perfilador, que é o **quadro
+inteiro de CPU**), sobre as `90 000` estrelas desta cena:
+
+| rota | `corner = 0` (12 vértices) | `corner = 0,5` (30 vértices) | razão |
+|---|---:|---:|---:|
+| carimbo preparado | `9,99 ms` | **`19,53 ms`** | `1,96×` |
+| `fill` por cópia | `13,36 ms` | **`30,30 ms`** | `2,27×` |
+
+⇒ **o quadro dobra**, e as duas rotas passam o orçamento de `16,67 ms`. *A `90 000` cópias não há
+rota que salve `2,5×` de segmentos.*
+
+⚠️ **E o GESTO está ilibado com número:** o custo de um arrasto de slider é o `publish` com uma
+chave de conteúdo nova (a forma reconstruída, internada e medida para o colisor), e ele mede
+**`0,01 ms`** — dentro do ruído. *Arrastar não é pior do que o valor parado; o que trava é o que
+fica desenhado.* O instrumento `PH2D_CARIMBO_CORNER=<f>` semeia o valor sem clicar, e é o que torna
+isto medível (um gesto de painel **não é alcançável de um teste**).
+
+⛔⛔ **E as sondas de encode NÃO continham o fenómeno, por uma razão que vale para toda a casa.** A
+[`audit_the_corner_radius_cost`](../../crates/ph2d-app-motion/src/motion_carimbo_relogio_probe.rs)
+mede, pelas portas do produto, `cozer + desenho`: ela lê `3,10 → 4,08 ms` (`+32 %`) pela rota de
+hoje enquanto o app lê `+96 %`. O que falta na conta é a **preparação da cena no Vello**, que corre
+depois do encode, escala com os segmentos e **nenhuma sonda deste módulo mede** — o cabeçalho do
+`motion_carimbo_relogio_probe` já o dizia por escrito (*«o que sobra é a RASTERIZAÇÃO, que nenhuma
+destas sondas mede»*) e eu li a frase como uma nota de rodapé em vez de uma fronteira de régua.
+
+#### §5.9.2 — ⛔⛔⛔ A tabela da §5.8 não reproduz, e a causa é o REGIME
+
+Ao reproduzir o report, o **controlo** contradisse a §5.8: a rota antiga com `corner = 0` lê
+**`13,4`–`14,7 ms` de CPU e corre a `60` fps**, onde aquela secção promete `33 fps · 29,4 ms`. Duas
+corridas independentes, a `91 %` de CPU ociosa, com o mesmo binário.
+
+⭐⭐⭐ **A causa está na ESCADA, e ela é o achado:** com o knob `PH2D_CARIMBO_LADO` mediu-se a
+população no app, nas duas rotas —
+
+| lado | estrelas | carimbo preparado | `fill` por cópia | razão |
+|---:|---:|---:|---:|---:|
+| **`300`** | **`90 000`** | **`10,37 ms`** | **`14,67 ms`** | **`1,41×`** |
+| `320` | `102 400` | `16,77` | `21,26` | `1,27×` |
+| `400` | `160 000` | `25,64` | `33,40` | `1,30×` |
+| `500` | `250 000` | `45,70` | `56,94` | `1,25×` |
+| `600` | `360 000` | `72,58` | `88,89` | `1,22×` |
+
+De `90 000` para `102 400` o relógio sobe **`1,62×`** para **`1,14×`** de população; de `102 400`
+para `360 000` a inclinação é **`3,3×` menor**. ⇒ *a descontinuidade não é a população — é o
+vsync*: acima de `16,67 ms` a shell cozinha **um quadro por tique em dívida**
+(`MOTION = N × cozer + 1 × separar`) e esse multiplicador desaparece do outro lado.
+
+⇒ **um custo medido acima da fronteira NÃO se extrapola para baixo dela**, e foi exactamente isso
+que a §5.8 fez: ela mediu a `313 600` (onde o quadro já estava em dívida) e dividiu por `3,48`.
+
+⚠️⚠️ **É a MESMA classe de erro da §5.8, um nível acima.** Lá a lição foi *«uma derivação que só
+conta as fases que a sonda mede prevê um quadro que o app não tem»* e a cura foi **medir no app**.
+Aqui a medição É do app e continua a não transferir, porque **o regime muda**. ⇒ a lei que fica:
+*medir no sítio certo não basta — tem de ser no REGIME em que o produto vai correr*.
+
+#### §5.9.3 — ⚠️⚠️ E a fronteira não é só abrupta: ela é INSTÁVEL
+
+Três corridas na fronteira, a `305`, `310` e `315` de lado, pela **mesma** rota e com o mesmo
+binário: `15,62`, `11,77` e `16,44 ms` — **não monótonas**. Ali o app cai de um lado ou do outro da
+dívida conforme o ruído do arranque, e uma cena naquele ponto daria ao dono **um número diferente a
+cada corrida**. ⇒ *nenhuma cena deste repo pode viver na fronteira do vsync*, e a cerca de
+compilação da `=126` passou a exigi-lo.
+
+#### §5.9.4 — O que a cena passa a ser
+
+A `300 × 300` fica (a razão **cai** com a população, logo aumentar dilui a cura em vez de a
+mostrar), e o que muda é **o que o roteiro manda ler**:
+
+| rota | a barra de baixo diz | CPU do quadro |
+|---|---|---:|
+| carimbo preparado (HOJE) | `59 fps · 16.7 ms · **~96 raw**` | `10,37 ms` |
+| `fill` por cópia (ANTES) | `59 fps · 16.7 ms · **~68 raw**` | `14,67 ms` |
+
+⚠️ **Os `fps` são iguais nas duas e isso é o ECRÃ, não a cura** — as duas cabem no quadro e ficam
+presas ao vsync. A coluna que se move é o **`raw`** (`1000 / cpu`), que é a folga. *Um roteiro que
+mandasse comparar os `fps` ensinaria que a cura não faz nada* — a espécie que o `CLAUDE.md` §5.0
+chama de **pior que uma cena ausente**, e que a §5.8 shipou sem saber.
+
+A cerca de compilação passou de duas metades para **quatro**, e uma delas estava **invertida**: ela
+exigia que a rota antiga custasse *mais de um quadro e meio* e passava só porque as constantes
+vinham do regime com dívida. Hoje: *a de hoje cabe* · *a antiga também cabe* (a cena não vive na
+zona instável) · *a antiga usa pelo menos três quartos do quadro* (abaixo disso o que é fixo domina
+e a diferença dilui-se) · *e a distância entre as duas é grande o bastante para se ler*.
+**10 mutações, 10 sangram**, três delas por **não compilar**.
 
 ---
 

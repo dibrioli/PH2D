@@ -17,70 +17,98 @@
 //!
 //! # A CADEIA é a do report, e nada mais
 //!
-//! `motion.grid` (`560 × 560`) → `motion.duplicator` ← `source.shape` (**Star**) → `motion.output`
+//! `motion.grid` (`300 × 300`) → `motion.duplicator` ← `source.shape` (**Star**) → `motion.output`
 //!
 //! ⛔ **Sem oscilador, sem campo, sem simulação.** Tudo o que se acrescentasse entrava na conta do
 //! quadro e a cena passaria a medir outra coisa — *o que está aqui é o mínimo que produz o
 //! fenómeno*, e é por isso que ela não é uma cena de ciclo.
 //!
-//! # A POPULAÇÃO é DERIVADA, e a janela dela é ERRO DE COMPILAÇÃO
+//! # A POPULAÇÃO sai de uma ESCADA MEDIDA NO APP, e a janela dela é ERRO DE COMPILAÇÃO
 //!
-//! O recurso é o **quadro de 60 fps** (`16,67 ms`), e o custo por cópia está MEDIDO **no app**,
-//! com o perfilador (`PH2D_FLUID_PROFILE=1`), em `--release`, a `88 %` de CPU ociosa, sobre esta
-//! própria cena a `560 × 560` = `313 600`:
+//! O recurso é o **quadro de 60 fps** (`16,67 ms`), e a coluna que decide é o `cpu-encode(raw)` do
+//! perfilador (`PH2D_FLUID_PROFILE=1`) — que, apesar do nome, é **o quadro INTEIRO de CPU**
+//! (`present.rs`: `work_before_acquire + work_after_acquire`). Medida em `--release`, janela
+//! `1930×1040`, a `84`–`91 %` de CPU ociosa, com o knob `PH2D_CARIMBO_LADO`:
 //!
-//! | rota | quadro | ~fps | do qual o COZER | **por cópia** |
-//! |---|---:|---:|---:|---:|
-//! | `fill` por cópia (ANTES) | `90,4 ms` | `11` | `18,0 ms` | **`0,288 µs`** |
-//! | carimbo preparado (HOJE) | `53,6 ms` | `19` | `19,7 ms` | **`0,171 µs`** |
+//! | lado | estrelas | carimbo preparado | `fill` por cópia | razão |
+//! |---:|---:|---:|---:|---:|
+//! | **`300`** | **`90 000`** | **`10,37 ms`** | **`14,67 ms`** | **`1,41×`** |
+//! | `320` | `102 400` | `16,77` | `21,26` | `1,27×` |
+//! | `400` | `160 000` | `25,64` | `33,40` | `1,30×` |
+//! | `500` | `250 000` | `45,70` | `56,94` | `1,25×` |
+//! | `600` | `360 000` | `72,58` | `88,89` | `1,22×` |
 //!
-//! ⭐ **O COZER é o MESMO nas duas** (a rota não lhe toca) ⇒ a distância inteira é o DESENHO, que
-//! é a lei desta cura. ⚠️ **E é por o cozer ser comum que a razão do QUADRO (`1,69×`) é muito
-//! menor que a do encode (`3,2×`)** — é a razão do quadro que manda na população, porque é o
-//! quadro que o dono lê.
+//! ⭐⭐ **A razão CAI com a população**, e é isso que escolhe o `300`: o que sobra do quadro (a
+//! rasterização do Vello, a moldura) cresce com as cópias tanto quanto o encode, logo aumentar a
+//! cena **dilui** a cura em vez de a mostrar. *A melhor população é a MENOR que ainda separa.*
 //!
-//! ⛔⛔⛔ **A 1.ª redacção desta cena derivou a população das portas do PRODUTO (`0,0719` e
-//! `0,0316 µs`/cópia, o `audit_the_stamp_frame_split`) e errou por `~3×`:** aquelas sondas medem
-//! **duas** fases (cozer · encode) e o quadro do app tem mais — resolver, publicar, os gizmos, a
-//! moldura. Com elas a cena a `313 600` devia custar `9,9 ms` e custa **`53,6`**. *Uma derivação
-//! que só conta as fases que a sonda mede prevê um quadro que o app não tem* ⇒ **os números acima
-//! são do APP e de mais lado nenhum**, e é isso que a torna honesta.
+//! ⛔⛔⛔ **E as DUAS derivações anteriores estavam erradas, cada uma à sua maneira:**
 //!
-//! ⚠️ **O modelo linear é CONSERVADOR para a rota de hoje:** com o quadro acima de `16,67 ms` a
-//! shell cozinha **um quadro por tique em dívida** (a lei que o `motion.contact` já registou —
-//! `MOTION = N × cozer + 1 × separar`), logo a `313 600` o cozer medido já traz `N ≈ 3` dentro. Ao
-//! descer a população o `N` cai para `1` **e o custo desce mais depressa do que a recta prevê** —
-//! a cerca abaixo usa a recta, que erra para o lado seguro.
+//! 1. A 1.ª derivou das portas do PRODUTO (`audit_the_stamp_frame_split`) e errou por `~3×` —
+//!    aquelas sondas medem **duas** fases (cozer · encode) e o quadro do app tem mais (resolver,
+//!    publicar, gizmos, moldura). *Uma derivação que só conta as fases que a sonda mede prevê um
+//!    quadro que o app não tem.*
+//! 2. A 2.ª mediu **no app** e ficou certa sobre o número e errada sobre o REGIME: ela correu a
+//!    `313 600` (`90,4` e `53,6 ms`) e escalou por regra de três para `90 000`, prevendo `25,9` e
+//!    `15,4 ms`. O app mede **`14,67` e `10,37`**. ⚠️ Acima de `16,67 ms` a shell cozinha **um
+//!    quadro por tique em dívida** (`MOTION = N × cozer + 1 × separar`) e esse multiplicador
+//!    **não existe** abaixo da fronteira ⇒ *um custo medido acima dela não se extrapola para
+//!    baixo dela*. A escada mostra-o à vista: de `90 000` para `102 400` o relógio sobe `1,62×`
+//!    para `1,14×` de população, e daí para cima a inclinação é **`3,3×` menor**.
 //!
-//! # O QUE A CENA ENTREGA (medido no app, `--release`, as duas rotas, `88 %` ocioso)
+//! ⚠️⚠️ **E a fronteira não é só abrupta — ela é INSTÁVEL.** Três corridas a `305`, `310` e `315`
+//! de lado leram `15,62`, `11,77` e `16,44 ms` pela mesma rota: **não monótonas**. Ali o app cai
+//! de um lado ou do outro da dívida conforme o ruído, e uma cena naquele ponto daria ao dono um
+//! número diferente a cada arranque. ⇒ **a cena fica com as DUAS rotas dentro do quadro**, e o que
+//! ela mostra é a FOLGA.
+//!
+//! # O QUE A CENA ENTREGA (medido no app, `--release`, as duas rotas)
 //!
 //! A `300 × 300` = **`90 000`**, e é isto que o dono lê na barra de baixo:
 //!
-//! | rota | a barra diz | quadro | cozer |
-//! |---|---|---:|---:|
-//! | carimbo preparado (HOJE) | **`59 fps · 16.7 ms · 95 raw`** | `16,64 ms` (preso ao ecrã) | `1,8 ms` |
-//! | `fill` por cópia (ANTES) | **`33 fps · 29.4 ms · 34 raw`** | `28,6`–`38,7 ms` | `6,7`–`9,0 ms` |
+//! | rota | a barra diz | CPU do quadro |
+//! |---|---|---:|
+//! | carimbo preparado (HOJE) | **`59 fps · 16.7 ms · ~96 raw`** | `10,37 ms` |
+//! | `fill` por cópia (ANTES) | **`59 fps · 16.7 ms · ~68 raw`** | `14,67 ms` |
 //!
-//! ⭐⭐ **E a PREVISÃO do cozer confirmou-se ao descer:** ele cai de `19,7` para **`1,8 ms`** — não
-//! por ser mais barato, mas porque **o laço da dívida de tiques se desfaz** quando o quadro passa a
-//! caber. *A cura do encode paga-se DUAS vezes: no encode e no cozer que ela deixa de arrastar.*
+//! ⚠️⚠️ **Os `fps` são IGUAIS nas duas, e isso é o ecrã e não a cura:** as duas cabem no quadro,
+//! logo as duas ficam presas ao vsync. **A coluna que se move é o `raw`** (`1000 / cpu`), que é a
+//! FOLGA — e é por isso que o roteiro manda ler o terceiro número e não o primeiro. *Um roteiro
+//! que mandasse comparar os `fps` ensinaria que a cura não faz nada.*
 //!
-//! ⭐⭐⭐ **As duas fotografias são a MESMA IMAGEM, pixel a pixel** — as duas rotas escrevem os
-//! mesmos bytes (gate na `ph2d-vector`) — e só o número da barra muda. *É isso que faz desta cena
-//! uma demonstração e não uma comparação de duas coisas diferentes.*
+//! ⭐⭐⭐ **As duas corridas são a MESMA IMAGEM, pixel a pixel** — as duas rotas escrevem os mesmos
+//! bytes (gate na `ph2d-vector`) — e só a folga muda. *É isso que faz desta cena uma demonstração
+//! e não uma comparação de duas coisas diferentes.*
+//!
+//! # O `Corner Radius` (report do dono, 2026-09-20) — porque ele derruba a cena
+//!
+//! *«nenhum dos dois tolerou modificar o corner radius das estrelas. travou»*. Medido: arredondar
+//! as quinas troca **cada** vértice por dois ou três ([`ph2d_vec_scene::corners`]) ⇒ a estrela vai
+//! de **`12` para `30`** vértices, e o custo do quadro **segue os segmentos**:
+//!
+//! | rota | corner `0` | corner `0,5` |
+//! |---|---:|---:|
+//! | carimbo preparado | `9,99 ms` | **`19,53 ms`** |
+//! | `fill` por cópia | `13,36 ms` | **`30,30 ms`** |
+//!
+//! ⇒ a `90 000` cópias, cantos redondos **dobram** o quadro e passam o orçamento nas duas rotas.
+//! ⚠️ **E o gesto não custa nada a mais:** o `publish` com chave nova mede `0,01 ms` (a forma é
+//! reconstruída e internada uma vez), logo *arrastar o slider não é pior do que o valor parado* —
+//! o que trava é a população de SEGMENTOS, não a edição. `PH2D_CARIMBO_CORNER=<f>` semeia o valor
+//! sem clicar.
 //!
 //! # Porque o campo é MAIOR do que o ecrã
 //!
 //! ⛔ **As duas leis puxam em sentidos opostos e a aritmética não deixa cedermos as duas:** uma
 //! estrela só se lê como estrela com `~6 px` (`0,108` de mundo a `55,5 px` por unidade, a régua
 //! medida da cena `=124`), e o que a câmara de arranque mostra são `21,8 × 6,8` unidades ⇒ cabem
-//! **`~10 000`** estrelas legíveis no ecrã, e a cena precisa de **`313 600`** para o relógio se
+//! **`~10 000`** estrelas legíveis no ecrã, e a cena precisa de **`90 000`** para o relógio se
 //! mexer. *Encolher a estrela até tudo caber entrega um rectângulo cinzento* — e uma cena em que o
 //! dono não vê estrelas não ensina que isto são estrelas.
 //!
-//! ⇒ o campo é `~73 × 73` unidades e o ecrã mostra um pedaço dele. **A conta é paga pelas
-//! `313 600`**, estejam elas à vista ou não: o desenho não tem recorte por câmara, e é isso que
-//! faz a cena medir o que ela diz medir.
+//! ⇒ o campo é `~39 × 39` unidades (`300 × VAO`) e o ecrã mostra um pedaço dele. **A conta é paga
+//! pelas `90 000`**, estejam elas à vista ou não: o desenho não tem recorte por câmara, e é isso
+//! que faz a cena medir o que ela diz medir.
 //!
 //! # Como o dono compara (o roteiro está no [`announce`])
 //!
@@ -118,34 +146,89 @@ pub(super) const VAO: f32 = 2.4 * TAMANHO;
 /// **O LADO da grelha.** Ver a tabela do cabeçalho: ele não é escolhido, é o que põe as duas rotas
 /// em lados opostos de um quadro de 60 fps.
 ///
-/// ⚠️ **E ele é `300` e não os `320` do report** (`102 400`), por uma margem: a recta põe `320` a
-/// `17,5 ms` pela rota de hoje, ou seja **do lado errado da fronteira** — e uma cena em que as
-/// duas corridas engasgam não mostra a cura. `300` dá `15,4 ms` contra `25,9`, que é a distância
-/// que a cena existe para mostrar.
+/// ⚠️ **E ele é `300` e não os `320` do report** (`102 400`), MEDIDO e não por regra de três: a
+/// `320` a rota de hoje lê `16,77 ms` — **em cima da fronteira do vsync**, onde o app salta entre
+/// dois regimes e o número muda a cada arranque. A `300` ele lê `10,37` contra `14,67`, que é a
+/// distância que a cena existe para mostrar, **com as duas corridas estáveis**.
 pub(super) const LADO_N: u32 = 300;
+
+/// **O LADO com que a cena NASCE** — o [`LADO_N`], a menos que `PH2D_CARIMBO_LADO=<n>` diga outro.
+///
+/// ⛔⛔ **INSTRUMENTO DE BISSECÇÃO, e ele existe por um erro MEU de 2026-09-20:** as constantes
+/// desta cena (`ANTES_NS`/`HOJE_NS`) foram derivadas de uma medição no app a **`313 600`**
+/// estrelas, e a `LADO_N` saiu delas por regra de três. ⚠️ Mas a `313 600` o quadro já passa dos
+/// `16,67 ms` e a shell entra em **dívida de tiques** (`MOTION = N × cozer + 1 × separar`), que
+/// multiplica o cozimento — *um custo medido acima da fronteira não é linear e não se extrapola
+/// para baixo dela*. Medido a `90 000`, as duas rotas cabem num quadro (`10,0` e `13,4 ms` de
+/// CPU) e a cena não mostra o que existe para mostrar.
+///
+/// ⇒ a população passa a sair de uma ESCADA medida **no app, à população que se vai usar**, e este
+/// knob é o que a torna medível sem recompilar onze vezes.
+///
+/// ⚠️ Valor ausente, ilegível ou fora de `[2, 2000]` ⇒ [`LADO_N`], que é a cena de sempre.
+fn lado_semeado() -> u32 {
+    lado_por(std::env::var("PH2D_CARIMBO_LADO").ok().as_deref())
+}
+
+/// A LEI da porta acima, **pura** — pela mesma razão que a [`corner_por`].
+fn lado_por(valor: Option<&str>) -> u32 {
+    valor
+        .and_then(|v| v.trim().parse::<u32>().ok())
+        .filter(|n| (2..=2000).contains(n))
+        .unwrap_or(LADO_N)
+}
 
 /// O mesmo número para quem escreve o param (o nó lê `f32`). ⚠️ **Uma fonte só** — dois literais
 /// aqui divergiriam no dia em que alguém mexesse num deles.
+///
+/// ⚠️ **Quem MONTA a cena lê a [`lado_semeado`], não isto** — ela devolve este mesmo número quando
+/// ninguém arma o instrumento de bissecção. Esta constante fica para quem afirma a lei (o gate do
+/// vão derivado), que é sobre a cena de OMISSÃO.
+#[cfg_attr(not(test), expect(dead_code, reason = "a lei é afirmada pelos gates"))]
 pub(super) const LADO: f32 = LADO_N as f32;
 
 /// Quantas estrelas a cena carimba.
-pub(super) const ESTRELAS: u64 = (LADO_N as u64) * (LADO_N as u64);
+pub(crate) const ESTRELAS: u64 = (LADO_N as u64) * (LADO_N as u64);
 
 /// Um quadro de 60 fps, em nanossegundos — o RECURSO de que a população sai.
 const QUADRO_NS: u64 = 16_667_000;
 
-/// O custo de UM QUADRO por cópia pela rota ANTIGA, em nanossegundos — MEDIDO NO APP
-/// (`90,4 ms / 313 600`; ver a tabela do cabeçalho).
-const ANTES_NS: u64 = 288;
+/// O custo de UM QUADRO por cópia pela rota ANTIGA, em nanossegundos — MEDIDO NO APP **À
+/// POPULAÇÃO QUE ESTA CENA USA** (`14,67 ms / 90 000`, o `cpu-encode(raw)` do perfilador).
+///
+/// ⛔⛔ **A 1.ª redacção lia `288` e vinha de `90,4 ms / 313 600`, e esse número mede outro
+/// programa.** A `313 600` o quadro passa dos `16,67 ms` e a shell cozinha **um quadro por tique
+/// em dívida** (`MOTION = N × cozer + 1 × separar`) ⇒ o custo lá dentro carrega um multiplicador
+/// que **não existe** abaixo da fronteira. Medida a escada no app (`300`·`320`·`340`·`360`·`400`·
+/// `500`·`600` de lado, as duas rotas), o salto de `90 000` para `102 400` é de `10,37` para
+/// `16,77 ms` — `1,62×` de relógio para `1,14×` de população —, e de `102 400` para `360 000` a
+/// inclinação é **`3,3×` menor**. *A descontinuidade é o vsync, não a população.*
+///
+/// ⇒ **um custo medido acima da fronteira não se extrapola para baixo dela**, e é por isso que
+/// estes dois números são hoje medidos exactamente onde a cena corre.
+const ANTES_NS: u64 = 163;
 
-/// O mesmo pela rota de HOJE (`53,6 ms / 313 600`).
-const HOJE_NS: u64 = 171;
+/// O mesmo pela rota de HOJE (`10,37 ms / 90 000`).
+const HOJE_NS: u64 = 115;
 
-// ⭐⭐⭐ **A JANELA DA POPULAÇÃO, e ela é ERRO DE COMPILAÇÃO nas DUAS metades.**
+// ⭐⭐⭐ **A JANELA DA POPULAÇÃO, e ela é ERRO DE COMPILAÇÃO nas QUATRO metades.**
 //
-// Uma cena grande de mais deixa de correr a `60` **dos dois lados** e o dono vê duas corridas
-// lentas; uma pequena de mais corre a `60` dos dois e ele vê duas corridas iguais. **As duas
-// falhas leem-se como *«a cura não faz nada»***, e é por isso que as duas estão presas aqui.
+// ⛔⛔⛔ **A 1.ª redacção tinha DUAS metades e a segunda estava INVERTIDA**: ela exigia que a rota
+// antiga custasse **mais** de um quadro e meio, *«senão as duas dariam 60 fps e a cena não
+// mostraria nada»*. Medido no app à população desta cena, a rota antiga custa `14,67 ms` — ela
+// **cabe**, e a cerca passava só porque o `ANTES_NS` vinha do regime com dívida.
+//
+// ⚠️⚠️ **E pôr a cena do outro lado da fronteira é PIOR do que parece, porque ali ela não é
+// estável:** três corridas a `305`, `310` e `315` de lado leram `15,62`, `11,77` e `16,44 ms` pela
+// mesma rota — *não monótonas*. Perto do vsync o app salta entre dois regimes (com e sem tiques em
+// dívida) conforme o ruído, logo uma cena ali daria ao dono um número diferente em cada corrida.
+// ⇒ a cena fica **deste** lado, com as duas rotas a `60` fps, e o que ela mostra é a **FOLGA** —
+// o terceiro número da barra (`raw = 1000 / cpu`), que é `~96` contra `~68`.
+//
+// ⇒ as QUATRO metades: *a rota de hoje cabe* · *a antiga TAMBÉM cabe* (a cena não vive na zona
+// instável) · *a antiga usa pelo menos três quartos do quadro* (abaixo disso o que é fixo — a
+// moldura, o chrome — passa a dominar e a diferença dilui-se) · *e a distância entre as duas é
+// grande o bastante para se ler*.
 //
 // ⛔ Ela **não** pode viver num teste: um `assert!` sobre constantes é dobrado pelo compilador
 // antes de correr, e o clippy di-lo em voz alta (a lei que a cena `=124` já escreve).
@@ -164,9 +247,19 @@ const _: () = assert!(
      leria-se como inutil"
 );
 const _: () = assert!(
-    ESTRELAS * ANTES_NS >= 150 * QUADRO_NS / 100,
-    "a cena cabe em menos de quadro e meio pela rota ANTIGA -- as duas dariam 60 fps e a cena \
-     nao mostraria nada"
+    ESTRELAS * ANTES_NS <= QUADRO_NS,
+    "a cena nao cabe num quadro pela rota ANTIGA -- ela passa a viver na fronteira do vsync, onde \
+     o app salta entre dois regimes e o numero muda a cada corrida"
+);
+const _: () = assert!(
+    ESTRELAS * ANTES_NS >= 75 * QUADRO_NS / 100,
+    "a cena e' pequena de mais -- o que sobra do quadro (a moldura, o chrome) passa a dominar e \
+     a diferenca entre as duas rotas dilui-se no `raw`"
+);
+const _: () = assert!(
+    ANTES_NS * 100 >= 135 * HOJE_NS,
+    "as duas rotas custam quase o mesmo -- a folga (o terceiro numero da barra) nao se distingue \
+     e a cena nao mostra nada"
 );
 
 /// **O índice da estrela no `kind` do `source.shape`, derivado do PRÓPRIO enum.**
@@ -194,6 +287,35 @@ fn indice_da_estrela() -> f32 {
     }
 }
 
+/// **O `Corner Radius` com que a cena NASCE** — `0` (a estrela pontiaguda) a menos que
+/// `PH2D_CARIMBO_CORNER=<f>` diga outra coisa.
+///
+/// ⛔⛔ **Isto é um INSTRUMENTO DE BISSECÇÃO e não um knob de produto.** Ele existe por causa do
+/// report do dono de 2026-09-20 (*«nenhum dos dois tolerou modificar o corner radius das estrelas.
+/// travou»*): o gesto que o produz é arrastar um slider, e **um gesto de painel não é alcançável de
+/// um teste** — sem esta porta a única forma de medir o quadro que ele viu era eu clicar, que esta
+/// casa não faz (o XTest é ignorado na Xwayland virtual e o `ydotool` mexe no rato REAL do dono).
+///
+/// ⚠️ **Valor ausente ou ilegível ⇒ `0`, e `0` é a cena de sempre AO BIT** — o param é o default do
+/// manifesto e a geometria é a mesma estrela de 12 vértices. *Uma porta de bissecção que mude a
+/// cena quando ninguém lhe toca deixa de bissectar coisa nenhuma.*
+fn corner_semeado() -> f32 {
+    corner_por(std::env::var("PH2D_CARIMBO_CORNER").ok().as_deref())
+}
+
+/// A LEI da porta acima, **pura** — o que a variável significa, sem a ler.
+///
+/// ⚠️ Separada por uma razão de instrumento que esta casa já pagou: *um gate que lê o ambiente
+/// mede a MÁQUINA em que corre*, e a pergunta *«com que forma a cena nasce?»* é sobre o produto.
+/// Aqui ela é função de um `Option<&str>`, logo o gate afirma as células (ausente · número ·
+/// lixo · fora de faixa) sem tocar no processo.
+fn corner_por(valor: Option<&str>) -> f32 {
+    valor
+        .and_then(|v| v.trim().parse::<f32>().ok())
+        .filter(|v| v.is_finite())
+        .map_or(0.0, |v| v.clamp(0.0, 1.0))
+}
+
 /// Constrói o documento. `None` se algum tipo de nó não estiver registado.
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     // ⚠️ O registo entra na assinatura porque o roteador o passa a todas as cenas — e aqui ele
@@ -211,8 +333,13 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
     // ── AS POSIÇÕES.
     let grade = no(g, "motion.grid", 0.0, 0.0);
-    g.set_param(grade, "rows", LADO);
-    g.set_param(grade, "cols", LADO);
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "um lado de grelha, muito abaixo de 2^24"
+    )]
+    let lado = lado_semeado() as f32;
+    g.set_param(grade, "rows", lado);
+    g.set_param(grade, "cols", lado);
     g.set_param(grade, "gap_x", VAO);
     g.set_param(grade, "gap_y", VAO);
 
@@ -220,6 +347,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     let forma = no(g, "source.shape", 0.0, 220.0);
     g.set_param(forma, ph2d_node_motion_shape::param::KIND, indice_da_estrela());
     g.set_param(forma, ph2d_node_motion_shape::param::SIZE, TAMANHO);
+    g.set_param(forma, ph2d_node_motion_shape::param::CORNER, corner_semeado());
 
     // ── O CARIMBO. ⚠️ A forma na porta `0`, os pontos na `1` — a ordem que o manifesto do
     // duplicador declara, e que um censo do roteador confere em toda cena.
@@ -255,18 +383,19 @@ pub(super) fn announce() {
          («usando shape star fps cai»). O `Grid` poe as posicoes e o `Duplicator` veste cada\n\
          uma com a MESMA estrela.\n\
          \n\
-         (1) Olhe a BARRA DE BAIXO do ecra. Ela tem de dizer `59 fps · 16.7 ms` e um\n    \
-         `raw` perto de 95. O 1.o numero e' a fluidez; o `raw` e' a FOLGA — quanto\n    \
-         maior, mais sobra por quadro.\n\
+         (1) Olhe a BARRA DE BAIXO do ecra. Ela diz `59 fps · 16.7 ms` e um TERCEIRO\n    \
+         numero, o `raw`, perto de `96`. E' o `raw` que interessa aqui: os `60 fps`\n    \
+         sao o tecto do ecra, e o `raw` e' a FOLGA — quanto maior, mais sobra por\n    \
+         quadro para o resto do trabalho.\n\
          (2) Aproxime com a roda do rato ate' ver as pontas: sao ESTRELAS, todas iguais.\n    \
          O ecra mostra um pedaco do campo — as {n} existem e sao TODAS desenhadas.\n\
          (3) Arraste o fundo com o botao do meio: tem de passear LISO.\n\
          (4) Feche o app e corra o MESMO comando com `PH2D_CARIMBO_PREPARADO=0` a' frente:\n    \
-         e' o caminho ANTIGO. A barra cai para perto de `33 fps · 29.4 ms` com o `raw`\n    \
-         a `34`, e o arrasto engasga.\n\
-         (5) Compare. A imagem e' a MESMA, ponto por ponto — so' o tempo muda.\n\
+         e' o caminho ANTIGO. Os `fps` ficam nos mesmos `60` (e' o tecto do ecra), e o\n    \
+         `raw` cai para perto de `68` — um terco da folga desaparece.\n\
+         (5) Compare. A imagem e' a MESMA, ponto por ponto — so' a folga muda.\n\
          \n\
-         DEU ERRADO se: o campo nao aparecer; se as duas corridas derem o MESMO numero;\n\
+         DEU ERRADO se: o campo nao aparecer; se o `raw` for IGUAL nas duas corridas;\n\
          ou se a imagem for DIFERENTE entre as duas.\n"
     );
 }

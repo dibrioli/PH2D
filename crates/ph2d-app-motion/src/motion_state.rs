@@ -112,7 +112,7 @@ mod pontos_demo;
 /// carimbo**: a mais pesada de todas desenha `190` linhas (doc 116 §5.7), e a diferença entre as
 /// duas rotas é SÓ relógio. Ver o cabeçalho dela, que traz a derivação da população.
 #[path = "motion_state_carimbo_demo.rs"]
-mod carimbo_demo;
+pub(crate) mod carimbo_demo;
 
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]

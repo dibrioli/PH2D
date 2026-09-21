@@ -425,3 +425,109 @@ fn audit_the_stamp_frame_split() {
     );
     eprintln!("  load no fim: {}\n", carga());
 }
+
+/// ⭐⭐⭐ **O QUE O `Corner Radius` CUSTA** — o report do dono de 2026-09-20 (*«nenhum dos dois
+/// tolerou modificar o corner radius das estrelas. travou»*).
+///
+/// ⚠️ **A pergunta é de POPULAÇÃO DE SEGMENTOS, não de rota.** As irmãs deste ficheiro medem o
+/// encode de `N` cópias de UMA forma fixa e devolvem uma razão entre as duas rotas; o report diz
+/// que as DUAS travam, logo o que muda tem de ser comum às duas — e a única coisa que um
+/// `corner > 0` muda na forma é **quantos vértices ela tem**. Esta sonda conta-os pela porta do
+/// produto ([`crate::motion_shape_gen::build_shape_path`] sobre o descritor NORMALIZADO, que é o
+/// que o `publish` interna) e põe o relógio ao lado, à população da cena `=126`.
+///
+/// ⚠️ **O descritor é lido pela escada do produto** (`ShapeParams::read_unit` sobre os defaults do
+/// manifesto) — escrever um `ShapeParams` à mão mediria uma forma que a cena não produz.
+///
+/// À mão, em RELEASE e com a máquina calma:
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture audit_the_corner_radius
+/// env PH2D_CARIMBO_PREPARADO=0 cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture audit_the_corner_radius
+/// ```
+#[test]
+#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+fn audit_the_corner_radius_cost() {
+    let _fatia = fatia();
+    let (mut m, saida) = crate::motion_carimbo_probe::monta("grade + carimbo");
+    let forma = m
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .find(|n| n.type_name == "source.shape")
+        .map(|n| n.id)
+        .expect("a cadeia do carimbo tem uma `source.shape`");
+    let uv = [0.0, 0.0, 1.0, 1.0];
+    let tam = [1.0, 1.0];
+    eprintln!(
+        "\n  ═══ O QUE O `Corner Radius` CUSTA, PELAS PORTAS DO PRODUTO (load {}) ═══\n",
+        carga()
+    );
+    eprintln!("   corner |  vértices | publicar |   cozer |  desenho |   soma |  % de um quadro");
+    eprintln!("  --------|-----------|----------|---------|----------|--------|----------------");
+    for passo in 0..=10u32 {
+        let c = f64::from(passo) / 10.0;
+        #[expect(clippy::cast_possible_truncation, reason = "onze posições do slider")]
+        m.doc
+            .graph
+            .set_param(forma, ph2d_node_motion_shape::param::CORNER, c as f32);
+
+        // ⚠️ **O `mark_dirty` é obrigatório**: sem ele o `pump` bate no MEMO e lê `~0` — a
+        // armadilha que o `motion_custo_do_quadro_probe` registou por escrito.
+        //
+        // ⭐ E o `publish` é cronometrado À PARTE porque ele é **o que um arrasto de slider
+        // acrescenta**: com o param parado a chave de conteúdo não muda e o `intern` bate no memo;
+        // com o dedo no slider ela muda por quadro, e a forma é reconstruída, internada e medida
+        // para o colisor. *Sem esta coluna, medir a cena PARADA não diz nada sobre o gesto.*
+        let mut cozer = f64::INFINITY;
+        let mut publicar = f64::INFINITY;
+        for t in 1..4u64 {
+            let ph = f64::from(u32::try_from(t).unwrap_or(0)) / 60.0;
+            // A chave muda a cada passagem (o `t` entra no `seconds`), como num arrasto.
+            let inicio_pub = std::time::Instant::now();
+            crate::motion_shape_gen::publish(&mut m, ph);
+            publicar = publicar.min(inicio_pub.elapsed().as_secs_f64() * 1e3);
+            m.pump.mark_dirty();
+            let inicio = std::time::Instant::now();
+            assert!(
+                m.pump
+                    .pump(&m.doc.graph, &m.registry, &[saida], t, ph, uv, tam),
+                "o quadro tem de cozinhar"
+            );
+            cozer = cozer.min(inicio.elapsed().as_secs_f64() * 1e3);
+        }
+
+        let insts = &m.pump.vector_instances;
+        assert!(
+            insts.len() > 100_000,
+            "controlo: a cadeia tem de trazer as 102 400 linhas, e trouxe {}",
+            insts.len()
+        );
+        let store = &m.shape_store;
+        let segs = insts
+            .first()
+            .and_then(|i| store.get(i.geometry_id))
+            .map_or(0, segmentos);
+        let desenho = melhor_quente(3, |cena| {
+            let mut sem_arte = |_: u32, _: [f32; 4]| None;
+            crate::motion_shape_gen::encode(
+                insts,
+                store,
+                &mut sem_arte,
+                ph2d_vector::Affine::IDENTITY,
+                cena,
+            );
+        });
+        eprintln!(
+            "  {c:>7.2} | {segs:>9} | {publicar:>5.2} ms | {cozer:>4.2} ms | {desenho:>5.2} ms | {:>3.2} ms | {:>13.0}%",
+            publicar + cozer + desenho,
+            (publicar + cozer + desenho) / 16.67 * 100.0
+        );
+    }
+    eprintln!(
+        "\n  ⚠️ a coluna `vértices` é a POPULAÇÃO da forma, e é ela que o `corner` muda: arredondar\n  \
+         uma quina troca UM vértice por dois ou três. As outras duas dizem quem paga por isso.\n"
+    );
+    eprintln!("  load no fim: {}\n", carga());
+}

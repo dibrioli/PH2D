@@ -44,8 +44,10 @@ const MIN_SLIDER_W: f32 = 24.0; // LITERAL-PX-OK: slider track floor
 const SWATCH_W: f32 = 22.0; // LITERAL-PX-OK: per-layer colour swatch
 /// The "back to the brush colour" button of row B.
 const CLEAR_W: f32 = 16.0; // LITERAL-PX-OK: the clear-override button
-/// Row B's indent — it hangs under its layer's row A.
-const INDENT: f32 = 14.0; // LITERAL-PX-OK: row B hangs under row A
+// ⛔ O recuo da fileira B **não é uma constante deste ficheiro**: ele vem da porta
+// [`ph2d_tokens::list_indent_px`], que é o único número de recuo do app (o gate
+// `no_surface_declares_an_indent_constant_of_its_own` apanhou-o aqui à primeira — e o marcador
+// `LITERAL-PX-OK` não isenta, porque a queixa não é o literal, é a SEGUNDA resposta).
 
 /// ⚠️ **A contagem é a do MOTOR** (`BrushSettings::composite_ops`), nunca um literal: a extensão de
 /// 2026-09-20 encontrou exactamente um `3` escrito à mão neste ficheiro, e ele teria deixado duas
@@ -262,7 +264,7 @@ fn paint_layer_row_b(
 ) -> f32 {
     let gap = Spacing::Xs.px();
     let font = TypeToken::Sm.px();
-    let bx = x + INDENT;
+    let bx = x + ph2d_tokens::list_indent_px();
     let mut cx = bx;
 
     // ── A cor, só para quem a deposita ───────────────────────────────────────────────────────

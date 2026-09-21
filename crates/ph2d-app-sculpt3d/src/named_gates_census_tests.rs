@@ -69,7 +69,7 @@ const PREFIXOS: [&str; 21] = [
 ];
 
 /// `(nome, onde a memória vive, porque é prosa e não endereço)`.
-const MEMORIAS: [(&str, &str, &str); 16] = [
+const MEMORIAS: [(&str, &str, &str); 17] = [
     (
         "a_lei_da_forma_nao_chama_o_ambiente",
         "crates/ph2d-form-donation/src/baked_form/passe_da_forma_tests.rs",
@@ -229,6 +229,20 @@ const MEMORIAS: [(&str, &str, &str); 16] = [
          `fase_relight_baked_forms` lê a cada quadro e fora de toda `feature` \
          ⇒ eram dois controlos VIVOS que o dedo não alcançava. A prosa fica \
          porque ela é a premissa que morreu",
+    ),
+    (
+        "a_lei_nova_shipa_desligada",
+        "crates/ph2d-form-donation/src/lei_da_luz.rs",
+        "o gate que afirmava que a lei OpenPBR do bake shipava DESLIGADA. A \
+         premissa morreu em 2026-09-21: o dono reportou TRÊS vezes que a sprite \
+         e o barro 3D têm de ser idênticos, e medido eles divergiam `0,055042` \
+         por canal — `28×` a barra de meio código — porque o visor mostrava \
+         OpenPBR e o produto assava pela lei da TINTA. Hoje quem afirma é o \
+         `a_lei_de_fabrica_e_a_forma_e_so_o_zero_desliga`, com a escada \
+         invertida, e o `a_lei_que_assa_e_a_lei_que_o_visor_mostra` amarra as \
+         duas metades. A prosa fica porque é ela que guarda a razão de a lei \
+         ter shipado desligada — um projecto gravado tem de abrir com a \
+         aparência com que foi gravado, e essa dívida continua NOMEADA.",
     ),
 ];
 

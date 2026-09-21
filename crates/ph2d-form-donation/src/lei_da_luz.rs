@@ -6,12 +6,33 @@
 //! mais um especular lido de uma tabela, **sem GGX e sem conservação de energia**. Ao lado, o
 //! modelador acende com o OpenPBR inteiro.
 //!
-//! # ⛔ Ela SHIPA DESLIGADA, e o valor de fábrica é a lei de sempre
+//! # ⭐⭐⭐⭐ Ela SHIPA LIGADA desde 2026-09-21, por ORDEM do dono e com número
 //!
-//! É a lei desta casa para tudo o que é novo, e aqui ela tem um segundo motivo, mais duro: um
-//! projecto gravado tem de continuar a abrir **com a aparência com que foi gravado**. O `BakedForm`
-//! guarda o `rig` autorado exactamente por essa razão, e trocar a lei por baixo mudaria a arte de
-//! todo objecto assado que já existe, em silêncio.
+//! ⛔⛔ **Ela shipou DESLIGADA e a razão está aqui em baixo, intacta — o que mudou foi o veredito
+//! que ela própria esperava.** O plano escrito neste módulo dizia: *«primeiro o interruptor que lhe
+//! dá a imagem para julgar; o campo gravado vem com o “sim”»*. O dono julgou **três** vezes, e a
+//! última sem ambiguidade: *«a malha 3d parece ter mais luz indireta que a imagem do Bake. Mas
+//! precisa ser idêntica.»*
+//!
+//! **Medido** (`bake_light_pbr::o_visor_contra_a_sprite_que_o_produto_assa`, a mesma forma, o mesmo
+//! rig, o mesmo albedo dos dois lados — o visor a mostrar a lei que assa contra a sprite que o
+//! produto assava): desvio médio por canal **`0,055042`**, pior `0,159365`, contra uma barra de meio
+//! código de `0,001961` ⇒ **`28×`**. *É o report dele, com número.*
+//!
+//! ⚠️⚠️ **E esse número já tinha sido medido uma vez e lido ao contrário.** Numa sonda anterior
+//! desta linha ele apareceu como `0,055` e foi anotado como *«são duas leis diferentes»* — o que era
+//! verdade e era, à letra, o defeito. *Uma explicação que dissolve a evidência é mais cara que
+//! nenhuma.*
+//!
+//! # ⚠️ O que a razão antiga dizia, e o que sobra dela
+//!
+//! *«Um projecto gravado tem de continuar a abrir com a aparência com que foi gravado. O
+//! `BakedForm` guarda o `rig` autorado exactamente por essa razão, e trocar a lei por baixo mudaria
+//! a arte de todo objecto assado que já existe, em silêncio.»* Isso continua **verdade**, e é a
+//! dívida que fica NOMEADA: a escolha certa é **por objecto e GRAVADA**, e ela custa um degrau de
+//! `PROJECT_SCHEMA` (um número que SOMA entre linhas). ⛔ O que não se podia manter era o estado
+//! em que *nenhuma* das duas metades do produto concorda com a outra — o dono não consegue julgar
+//! uma aparência que nunca vê inteira.
 //!
 //! # ⚠️ Porque a escolha é uma VARIÁVEL DE AMBIENTE e não um campo do documento — hoje
 //!
@@ -33,16 +54,18 @@
 /// A lei que acende os pixels de um objecto assado.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Lei {
-    /// O passe do Painter — o modelo de TINTA. ⭐ O valor de fábrica, e a aparência de todo
-    /// projecto que já foi gravado.
-    #[default]
+    /// O passe do Painter — o modelo de TINTA (difuso envolvido + um especular de tabela, sem GGX
+    /// e sem conservação de energia). ⛔ **Deixou de ser o valor de fábrica em 2026-09-21**: ver o
+    /// cabeçalho do módulo. Alcançável por `PH2D_FORM_PBR=0`, que é o que bissecta.
     Tinta,
-    /// O OpenPBR, pela [`ph2d_form_pbr`]. Hoje no caminho de REFERÊNCIA (CPU) — ver o custo medido
-    /// no `diag_quanto_custa_acender_um_sprite` daquela crate.
+    /// ⭐⭐⭐ **O OpenPBR, pela [`ph2d_form_pbr`] — e é ELA que o visor mostra.** O valor de fábrica
+    /// desde 2026-09-21, para que *o que se vê seja o que se assa*.
+    #[default]
     Forma,
 }
 
-/// A variável que a liga. ⛔ Ausente ou `0` ⇒ [`Lei::Tinta`].
+/// A variável que volta à lei da TINTA. ⛔ **Só o `"0"` desliga** — ausente ou qualquer outra
+/// coisa ⇒ [`Lei::Forma`], que é o valor de fábrica desde 2026-09-21.
 pub const ENV: &str = "PH2D_FORM_PBR";
 
 impl Lei {
@@ -58,8 +81,8 @@ impl Lei {
     #[must_use]
     pub fn do_texto(v: Option<&str>) -> Self {
         match v {
-            Some("1") => Self::Forma,
-            _ => Self::Tinta,
+            Some("0") => Self::Tinta,
+            _ => Self::Forma,
         }
     }
 }
@@ -175,25 +198,35 @@ pub fn openpbr_da_forma() -> ph2d_form_pbr::OpenPbr {
 mod tests {
     use super::{ENV, Lei};
 
-    /// ⛔⛔ **ELA SHIPA DESLIGADA** — e a metade que interessa é a lista do que NÃO liga.
+    /// ⭐⭐⭐ **A LEI DE FÁBRICA É A `Forma` — a que o visor mostra.**
     ///
-    /// ⚠️ O `"0"` e o `""` estão lá porque são o que alguém escreve a tentar desligá-la, e um
-    /// `Some(_) => Forma` acidental deixaria os dois a LIGÁ-LA — *o oposto exacto da intenção de
-    /// quem os escreveu*.
+    /// ⚠️⚠️ **Este gate chamava-se `a_lei_nova_shipa_desligada` e afirmava o CONTRÁRIO.** A premissa
+    /// morreu em 2026-09-21 por ordem do dono (*«precisa ser idêntica»*), com `0,055042` de desvio
+    /// medido entre o que ele via e o que ele assava — `28×` a barra de meio código. *Um gate cuja
+    /// premissa morre é o gate a funcionar; reescrevê-lo com a morte à vista é o que impede que a
+    /// razão se perca.*
+    ///
+    /// ⛔ **Só o `"0"` desliga**, e a exactidão é a mesma das outras bandeiras desta casa
+    /// (`PH2D_SKIN_GPU=0`, `PH2D_ISO_ADAPT=0`, `PH2D_RETOPO_EXTRACT=0`): aceitar `"false"` ou
+    /// `"no"` seria uma segunda ortografia que nenhuma delas tem.
     #[test]
-    fn a_lei_nova_shipa_desligada() {
+    fn a_lei_de_fabrica_e_a_forma_e_so_o_zero_desliga() {
         assert_eq!(
             Lei::do_texto(None),
-            Lei::Tinta,
-            "sem a variável é a de sempre"
+            Lei::Forma,
+            "sem a variável é a lei que o visor MOSTRA"
         );
-        assert_eq!(Lei::default(), Lei::Tinta, "e o `Default` diz o mesmo");
-        for v in ["", "0", "2", "true", "sim", " 1", "1 "] {
-            assert_eq!(Lei::do_texto(Some(v)), Lei::Tinta, "`{v}` não pode ligar");
+        assert_eq!(Lei::default(), Lei::Forma, "e o `Default` diz o mesmo");
+        for v in ["", "1", "2", "true", "sim", " 0", "0 "] {
+            assert_eq!(
+                Lei::do_texto(Some(v)),
+                Lei::Forma,
+                "`{v}` não pode desligar a lei de fábrica"
+            );
         }
-        // **O CONTROLO**: o `"1"` LIGA — senão este gate ficaria verde sobre uma porta que nunca
-        // devolve a lei nova, e a feature seria inalcançável com todos os gates verdes.
-        assert_eq!(Lei::do_texto(Some("1")), Lei::Forma);
+        // **O CONTROLO**: o `"0"` DESLIGA — senão este gate ficaria verde sobre uma porta que nunca
+        // devolve a lei da tinta, e a bissecção seria inalcançável com todos os gates verdes.
+        assert_eq!(Lei::do_texto(Some("0")), Lei::Tinta);
     }
 
     /// ⛔⛔ **O OLHAR DA LEI NOVA NÃO É A IDENTIDADE, e isso é uma MEDIÇÃO e não um gosto.**
@@ -227,13 +260,19 @@ mod tests {
     }
 
     /// ⚠️ **O nome da variável é o que o roteiro do smoke escreve** — e um renome silencioso
-    /// deixaria o dono a correr um comando que não liga nada.
+    /// deixaria o dono a correr um comando que não desliga nada.
+    ///
+    /// ⚠️⚠️ **A 2.ª metade tinha a premissa INVERTIDA e ela morreu em 2026-09-21:** ela dizia
+    /// *«sem a variável no ambiente, o binário corre a lei de sempre»* — verdade enquanto a lei
+    /// nova shipava desligada, e falsa desde que o dono pediu que o visor e a sprite fossem
+    /// idênticos. Hoje ela afirma o contrário, que é o mesmo facto do outro lado: *sem variável
+    /// nenhuma, o binário corre a lei que o visor MOSTRA*.
     #[test]
     fn o_nome_da_variavel_e_o_que_o_roteiro_diz() {
         assert_eq!(ENV, "PH2D_FORM_PBR");
         assert!(
-            super::do_ambiente() == Lei::Tinta || std::env::var(ENV).is_ok(),
-            "controlo: sem a variável no ambiente, o binário corre a lei de sempre"
+            super::do_ambiente() == Lei::Forma || std::env::var(ENV).is_ok(),
+            "controlo: sem a variável no ambiente, o binário corre a lei da FORMA"
         );
     }
 }

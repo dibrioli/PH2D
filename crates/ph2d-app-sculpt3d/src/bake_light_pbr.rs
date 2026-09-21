@@ -421,7 +421,8 @@ fn o_que_o_app_mostra_de_fabrica_e_a_lei_que_assa() {
 /// diferentes, logo comparar índices compararia sítios diferentes da peça. Se a lei for invariante
 /// ao enquadramento, as duas médias têm de cair dentro de meio código.
 ///
-/// Corre-se com o filtro `a_oclusao_de_tela_sobrevive` sobre esta crate, com `--ignored --nocapture`.
+/// Corre-se com o filtro `a_oclusao_de_tela_sobrevive_ao_enquadramento` sobre esta crate, com
+/// `--ignored --nocapture`.
 #[test]
 #[ignore = "precisa de adapter"]
 fn a_oclusao_de_tela_sobrevive_ao_enquadramento() {
@@ -464,5 +465,229 @@ fn a_oclusao_de_tela_sobrevive_ao_enquadramento() {
          vista LARGA  1600x900  : média {largo:.6} sobre {n_largo} texels\n  \
          sprite QUADRADO 1024²  : média {quadrado:.6} sobre {n_quadrado} texels\n  \
          diferença              : {dif:.6}  (meio código = {MEIO_CODIGO:.6})"
+    );
+}
+
+/// ⭐⭐⭐⭐ **O VISOR contra a SPRITE QUE O PRODUTO DE FACTO ASSA — o report do dono, com número.**
+///
+/// # Porque nenhuma sonda desta linha o via
+///
+/// Todas as outras comparam o visor contra a [`acende_texel`], que é a lei **`Forma`**. E a lei que
+/// o binário corre sai de [`ph2d_form_donation::lei_da_luz::do_ambiente`], que **sem a variável de
+/// ambiente devolve [`ph2d_form_donation::lei_da_luz::Lei::Tinta`]** — o passe do Painter, que o
+/// próprio módulo descreve como *«difuso envolvido mais um especular lido de uma tabela, sem GGX e
+/// sem conservação de energia»*.
+///
+/// ⛔⛔ *Uma paridade medida contra uma lei que o produto não corre não afirma nada sobre o
+/// produto.* É a 2.ª vez que esta linha o paga com o mesmo oráculo: da 1.ª vez eu li `0,055` aqui e
+/// escrevi *«são duas leis diferentes»* — e era, à letra, o defeito que o dono reportava.
+///
+/// Corre-se com o filtro `o_visor_contra_a_sprite_que_o_produto_assa`, com `--ignored --nocapture`.
+#[test]
+#[ignore = "precisa de adapter"]
+fn o_visor_contra_a_sprite_que_o_produto_assa() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter: nada a medir");
+        return;
+    };
+    let (mut renderer, camera, rig) = stage(&gpu);
+    let barro = [
+        (CLAY[0] * 255.0 + 0.5) as u8,
+        (CLAY[1] * 255.0 + 0.5) as u8,
+        (CLAY[2] * 255.0 + 0.5) as u8,
+    ];
+    // O visor COMO ELE SHIPA desde que o `DEFAULT_LIGHTING` é a lei que assa.
+    let c = super::compare(&gpu, &mut renderer, &camera, &rig, barro, pbr_law_shade());
+
+    let (mut texels, mut soma, mut pior) = (0u64, 0f64, 0f32);
+    let (mut vivo, mut assado) = (0f64, 0f64);
+    for b in 0..c.count.len() {
+        let n = c.count[b];
+        if n == 0 {
+            continue;
+        }
+        texels += n;
+        soma += c.mean_diff[b] * n as f64;
+        vivo += c.mean_live[b] * n as f64;
+        assado += c.mean_bake[b] * n as f64;
+        pior = pior.max(c.max_diff[b]);
+    }
+    let n = texels as f64;
+    println!(
+        "\n=== o visor (a lei que assa) contra a sprite que o PRODUTO assa hoje ===\n  \
+         lei do bake            : {:?}  (ENV `{}`)\n  \
+         texels                 : {texels}\n  \
+         desvio médio por canal : {:.6}   (meio código = {MEIO_CODIGO:.6})\n  \
+         pior                   : {:.6}\n  \
+         média VIVA             : {:.6}\n  \
+         média ASSADA           : {:.6}",
+        ph2d_form_donation::lei_da_luz::do_ambiente(),
+        ph2d_form_donation::lei_da_luz::ENV,
+        soma / n,
+        pior,
+        vivo / n,
+        assado / n
+    );
+}
+
+/// ⭐⭐⭐⭐ **A LEI QUE ASSA É A LEI QUE O VISOR MOSTRA — as duas metades, num sítio só.**
+///
+/// # Porque este gate tem de existir, e porque nenhum dos outros o substitui
+///
+/// O produto tem **dois** valores de fábrica e eles são de crates diferentes: o que o visor MOSTRA
+/// ([`ph2d_mesh_render::DEFAULT_LIGHTING`]) e a lei que ASSA
+/// ([`ph2d_form_donation::lei_da_luz::Lei`], escolhida pela porta que o `light` chama). Enquanto
+/// discordarem, *o que se vê não é o que se assa* — e foi isso, três vezes, o report do dono.
+///
+/// ⛔⛔ **Os gates de paridade não o veem, e a razão é estrutural:** o [`o_visor_acende_com_a_lei_que_assa`]
+/// crava o modo, o [`o_que_o_app_mostra_de_fabrica_e_a_lei_que_assa`] mede o barro contra a
+/// [`acende_texel`] — e a `acende_texel` é a lei `Forma`. *Se o produto assar pela `Tinta`, os dois
+/// ficam verdes sobre um produto partido*, que é exactamente o estado em que esta linha esteve.
+///
+/// ⚠️ **Ele é PURO e corre SEMPRE** (sem adapter, sem ambiente): os gates de GPU são `#[ignore]` e o
+/// CI nunca os corre, logo a amarra entre as duas metades não podia viver num deles. E ele lê
+/// [`ph2d_form_donation::lei_da_luz::Lei::do_texto`] com `None` — *o caminho do produto sem variável
+/// nenhuma* — em vez de `do_ambiente`, porque **um gate que lê o ambiente mede a máquina**.
+#[test]
+fn a_lei_que_assa_e_a_lei_que_o_visor_mostra() {
+    use ph2d_form_donation::lei_da_luz::Lei;
+
+    assert_eq!(
+        Lei::do_texto(None),
+        Lei::Forma,
+        "sem variável nenhuma o produto tem de assar pela lei da FORMA (o OpenPBR); \
+         com a `Tinta` aqui, a sprite sai de um modelo sem GGX e sem conservação de energia \
+         enquanto o visor mostra o OpenPBR — o report do dono, medido em 0,055 por canal"
+    );
+    assert_eq!(
+        ph2d_mesh_render::DEFAULT_LIGHTING,
+        ph2d_mesh_render::Lighting::Pbr,
+        "e o visor tem de ABRIR na mesma lei — é o `Lighting::Pbr` que corre o OpenPBR"
+    );
+
+    // ⭐ **O CONTROLO, e sem ele isto seriam duas constantes a olhar uma para a outra:** as duas
+    // metades têm de ser SEPARÁVEIS. Se a bissecção não existisse, o gate acima estaria a afirmar
+    // uma coincidência em vez de uma escolha — e ninguém poderia medir as duas leis lado a lado.
+    assert_eq!(
+        Lei::do_texto(Some("0")),
+        Lei::Tinta,
+        "a lei da tinta tem de continuar ALCANÇÁVEL para bissecar"
+    );
+    assert_ne!(
+        ph2d_mesh_render::DEFAULT_LIGHTING,
+        ph2d_mesh_render::Lighting::Matcap(0),
+        "controlo: o matcap é a luz do OLHO e não pode ser o que abre — ele não é assável"
+    );
+}
+
+/// ⭐⭐⭐⭐ **O VISOR CONTRA OS BYTES DA SPRITE — a prova de ponta a ponta que faltava.**
+///
+/// # O que ela mede que nenhuma outra media
+///
+/// As outras comparam o visor contra a [`acende_texel`], que é a lei num PONTO. Esta compara-o
+/// contra [`ph2d_form_donation::baked_form::pixels_pela_forma_na_cpu`] — **os pixels da sprite**,
+/// pela régua que o produto declara para a lei que ele assa, com o mesmo material, as mesmas
+/// lâmpadas, os mesmos planos e o mesmo olhar. É o que o dono compara com os olhos.
+///
+/// ⚠️ **A barra é de DOIS códigos de oito bits**, e ela é composta e não escolhida: a quantização
+/// para `u8` custa meio código por construção, e o resíduo de `f32` entre o visor e a lei mede
+/// `0,000797` (≈ `0,2` de código). *Uma barra de meio código seria mais apertada que a própria
+/// quantização, e reprovaria um produto correcto.*
+///
+/// ⛔ **O CONTROLO é o visor SEM luz:** com `Lighting::Flat` a mesma comparação tem de reprovar por
+/// uma ordem de grandeza. Sem ele, o dia em que esta sonda deixasse de ver a diferença entre duas
+/// leis ela ficaria verde a afirmar nada — que é exactamente como esta linha chegou aqui.
+#[test]
+#[ignore = "precisa de adapter"]
+fn o_visor_e_os_bytes_da_sprite_sao_a_mesma_imagem() {
+    use ph2d_form_donation::baked_form::{BakedForm, pixels_pela_forma_na_cpu};
+
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter: nada a afirmar");
+        return;
+    };
+    // ⭐ A lei que esta sonda usa como oráculo TEM de ser a que o produto assa — senão ela volta a
+    // medir um programa que ninguém corre.
+    assert_eq!(
+        ph2d_form_donation::lei_da_luz::Lei::do_texto(None),
+        ph2d_form_donation::lei_da_luz::Lei::Forma,
+        "o oráculo desta sonda só descreve o produto se a lei de fábrica for a `Forma`"
+    );
+
+    let (mut renderer, camera, rig) = stage(&gpu);
+    let size = (SIDE, SIDE);
+    let vista = vista_com(ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA);
+    let planes = renderer
+        .form_plane(&gpu.device, &gpu.queue, &camera, size, vista, None)
+        .expect("a malha esta la'");
+    let n = (SIDE * SIDE) as usize;
+
+    // O `base` é o barro do shader, para o albedo ser o MESMO dos dois lados.
+    let mut base = vec![0u8; n * 4];
+    for px in base.as_chunks_mut::<4>().0.iter_mut() {
+        px.copy_from_slice(&[
+            (CLAY[0] * 255.0 + 0.5) as u8,
+            (CLAY[1] * 255.0 + 0.5) as u8,
+            (CLAY[2] * 255.0 + 0.5) as u8,
+            255,
+        ]);
+    }
+    let bake = BakedForm {
+        size,
+        base,
+        form: planes.normal.clone(),
+        form_occ: planes.occlusion.clone(),
+        texture_id: 0,
+        rig,
+        lit_with: None,
+    };
+    let sprite = pixels_pela_forma_na_cpu(&bake, &rig).expect("o rig default tem lampada acesa");
+
+    let resolved = ph2d_light::resolve(&rig).expect("o rig default tem lampada acesa");
+    let profundidade = depth_from_edge(&planes.normal, SIDE, SIDE);
+
+    let mut medir = |modo| {
+        let vivo = render_live(
+            &gpu,
+            &mut renderer,
+            &camera,
+            &resolved,
+            size,
+            ph2d_mesh_render::Shade {
+                lighting: modo,
+                ..vista
+            },
+        );
+        let (mut pior, mut dentro) = (0f32, 0usize);
+        for i in 0..n {
+            if profundidade[i] == u32::MAX {
+                continue;
+            }
+            dentro += 1;
+            for k in 0..3 {
+                let byte_do_visor = (vivo[i * 4 + k].clamp(0.0, 1.0) * 255.0 + 0.5).floor();
+                pior = pior.max((byte_do_visor - f32::from(sprite[i * 4 + k])).abs());
+            }
+        }
+        (pior, dentro)
+    };
+
+    let (pior, dentro) = medir(ph2d_mesh_render::DEFAULT_LIGHTING);
+    assert!(
+        dentro > 40_000,
+        "controlo: a silhueta tem de encher o quadro ({dentro} texels)"
+    );
+    assert!(
+        pior <= 2.0,
+        "o visor e a sprite diferem {pior} códigos de oito bits — o dono lê isso como \
+         «o bake não é idêntico ao que se vê em 3d»"
+    );
+
+    // ⭐ **O CONTROLO**: sem luz a mesma régua tem de reprovar por uma ordem de grandeza.
+    let (cru, _) = medir(ph2d_mesh_render::Lighting::Flat);
+    assert!(
+        cru > pior * 10.0,
+        "controlo: o visor SEM luz tinha de divergir por uma ordem de grandeza, e leu {cru} \
+         contra {pior}"
     );
 }

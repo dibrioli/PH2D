@@ -167,6 +167,10 @@ pub(crate) fn blur_region(
     out
 }
 
+/// Blend the blurred region into `buf` over the footprint bbox, weighting each pixel by `weight(i, j)`
+/// (the dab mask × strength; `0` skips). `dest = lerp(dest, blurred, w)` per straight channel — the
+/// `IMB_BLEND_INTERPOLATE` composite Blender's soften uses. Shared with the canvas-fixed Grain path
+/// ([`crate::blur_grain`]), which supplies a per-pixel silhouette × Grain weight closure.
 #[allow(clippy::too_many_arguments)]
 #[inline]
 pub(crate) fn blend_blurred(

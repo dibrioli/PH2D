@@ -201,11 +201,6 @@ pub(crate) fn blur_region_caixa(
     cur
 }
 
-/// Blend the blurred region into `buf` over the footprint bbox, weighting each pixel by `weight(i, j)`
-/// (the dab mask × strength; `0` skips). `dest = lerp(dest, blurred, w)` per straight channel — the
-/// `IMB_BLEND_INTERPOLATE` composite Blender's soften uses. Shared with the canvas-fixed Grain path
-/// ([`crate::blur_grain`]), which supplies a per-pixel silhouette × Grain weight closure.
-
 #[cfg(test)]
 mod tests {
     use super::*;

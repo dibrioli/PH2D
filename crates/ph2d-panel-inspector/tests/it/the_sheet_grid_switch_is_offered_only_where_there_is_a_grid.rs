@@ -35,7 +35,10 @@ const VIEWPORT: Rect = Rect {
 fn painted_with_grid(hf: u32, vf: u32) -> (MockPanelHost, Vec<(ph2d_a11y::NodeId, Rect)>) {
     let mut host = MockPanelHost::with_panel_and_shared_chrome::<InspectorPanel>();
     let mut state = InspectorState::default();
-    host.settle_section_folds();
+    // ⚠️ **Este gate mede o CONTEÚDO de uma secção**, e desde 2026-09-21 o Inspector abre com
+    //    toda secção com chevron DOBRADA menos a Transform. Sem esta linha ele mede a política de
+    //    dobra e queixa-se de que o id não foi pintado.
+    host.open_all_sections();
     set_current_inspector_sprite(Some(InspectorSpriteInfo {
         entity_bits: 0x5EED_0777,
         world_size: [1.0, 1.0],

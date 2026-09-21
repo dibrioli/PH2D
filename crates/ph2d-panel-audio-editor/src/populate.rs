@@ -177,7 +177,7 @@ fn populate_sections(store: &mut WidgetStore) {
         AEDIT_SEC_VARIATIONS,
         AEDIT_SEC_DELIVERY,
     ] {
-        store.set_collapsed(id, true);
+        store.set_collapsed_if_unchosen(id, true);
     }
 }
 

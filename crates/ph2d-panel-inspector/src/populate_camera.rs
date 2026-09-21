@@ -91,5 +91,10 @@ pub(crate) fn populate_camera(store: &mut WidgetStore) {
     }
     // ⚠️ **A máscara nasce RECOLHIDA**, como a irmã da visibilidade: são 32 caixas numa pergunta
     // avançada, e abri-la por omissão empurraria os campos que interessam para fora do ecrã.
-    store.set_collapsed(ids::INSP_CAMERA_CULL_HEADER, true);
+    // ⛔⛔ **`_if_unchosen`, e não o `set_collapsed` cru.** Hoje este `populate` corre UMA vez (o
+    // `HeroScreen::new` do arranque), logo a escrita crua não mordia; ⚠️ mas com ela a gaveta é
+    // **INABRÍVEL** na primeira vez que alguém re-popular este painel, como cinco painéis da shell
+    // já fazem por interacção. Reproduzido pela porta do produto em 2026-09-21:
+    // `true` → clique → `false` → `populate` → **`true`**.
+    store.set_collapsed_if_unchosen(ids::INSP_CAMERA_CULL_HEADER, true);
 }

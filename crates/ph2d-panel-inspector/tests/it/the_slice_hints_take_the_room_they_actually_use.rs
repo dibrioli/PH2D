@@ -75,7 +75,10 @@ fn hint_gap(width: f32) -> f32 {
     set_current_inspector_slice(Some(simple_slice()));
     let mut host = MockPanelHost::with_panel_and_shared_chrome::<InspectorPanel>();
     let mut state = InspectorState::default();
-    host.settle_section_folds();
+    // ⚠️ **Este gate mede o CONTEÚDO de uma secção**, e desde 2026-09-21 o Inspector abre com
+    //    toda secção com chevron DOBRADA menos a Transform. Sem esta linha ele mede a política de
+    //    dobra e queixa-se de que o id não foi pintado.
+    host.open_all_sections();
     let viewport = Rect {
         x: 0.0,
         y: 0.0,

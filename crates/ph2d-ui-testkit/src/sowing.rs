@@ -96,6 +96,23 @@ impl MockPanelHost {
         }
     }
 
+    /// ⭐⭐⭐ **Abre TODA secção e assenta a dobra** — para um gate que mede o CONTEÚDO de uma.
+    ///
+    /// ⛔⛔ **Desde 2026-09-21 o Inspector ABRE DOBRADO** (toda secção com chevron nasce recolhida
+    /// menos a Transform — `pre_populate::marca_as_gavetas`), porque com tudo aberto ele desenhava
+    /// `2,5` a `6,5` ecrãs. ⇒ *um gate que pinta pela porta do cromo partilhado e procura um
+    /// controlo DENTRO de uma secção tem de a abrir primeiro*, senão ele mede a política de dobra
+    /// e diz «o id não foi pintado».
+    ///
+    /// ⚠️ **Chamá-la é uma DECLARAÇÃO**: este gate é sobre o conteúdo da secção, não sobre como o
+    /// painel abre. Quem mede a abertura é o `o_inspector_abre_dentro_da_dobra`.
+    pub fn open_all_sections(&mut self) {
+        for id in self.store.collapsible_ids() {
+            self.store.set_collapsed(id, false);
+        }
+        self.settle_section_folds();
+    }
+
     /// Set a registered slider's stored value — what a pointer drag writes
     /// into the store *before* the dispatch emits `ValueChanged(id)`. Panics
     /// (never silently no-ops) if `id` is absent or not a slider.

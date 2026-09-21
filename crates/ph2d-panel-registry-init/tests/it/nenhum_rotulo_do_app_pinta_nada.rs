@@ -595,7 +595,11 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    lado (`129` cortes invisíveis de uma vez).
     // ⛔ Continua a ser DÍVIDA, e a cura é a do dono (2026-09-20): encurtar o nome, com o balão a
     //    guardar a explicação.
-    ("painter_layers", 4),
+    // ⚠️ `4 → 5` em 2026-09-21: o **`Use Color Ramp`** vive numa secção que este painel semeia
+    //    DOBRADA, e esta varredura passou a abrir toda gaveta antes de medir (ver
+    //    [`abre_as_gavetas`]). *População nova, não regressão* — o rótulo sempre foi cortado; o
+    //    que mudou é que agora há quem o veja.
+    ("painter_layers", 5),
     // `["Glaze layering (K-M)", "Pigment mixing (K-M)"]`
     ("wet_tuning", 2),
 ];
@@ -637,10 +641,35 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     ("flip", 2),
     // ⚠️ `3 → 4` em 2026-09-21 pelo MESMO motivo da irmã: o Painter passou a ser ARMADO e o
     //    `View Plane` só existe com um padrão escolhido. Ver a nota lá.
-    ("painter_layers", 4),
+    // ⚠️ `4 → 5` no mesmo dia: a varredura passou a ABRIR as gavetas, e o `Use Color Ramp` vive
+    //    numa secção que este painel semeia dobrada. *População nova, não regressão.*
+    ("painter_layers", 5),
 ];
 
 /// ⭐⭐⭐ **E NENHUM PAINEL PASSA A COMER MAIS LETRAS** — as duas metades, como a irmã.
+/// ⭐⭐⭐ **ABRE TODA GAVETA antes de medir** — esta varredura mede o ECRÃ, e desde 2026-09-21 o
+/// ecrã **DOBRA** (o Inspector abre com toda secção com chevron recolhida menos a Transform).
+///
+/// ⛔⛔ *Sem isto a varredura passa a medir os rótulos VISÍVEIS ao abrir, e um rótulo cortado dentro
+/// de uma gaveta fechada lê-se como inexistente* — que é a cegueira que a fixtura
+/// [`super::o_inspector_armado`] existe para curar, agora um nível acima.
+///
+/// ⚠️ Gémea da `abre_tudo` do censo de entradas: as duas passam pela MESMA porta do produto
+/// ([`ph2d_editor_core::screens::hero::pre_populate::marca_as_gavetas`]), porque o conjunto das
+/// gavetas é semeado por ela e não pelo `Panel::populate`.
+fn abre_as_gavetas(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    ph2d_editor_core::screens::hero::pre_populate::marca_as_gavetas(store);
+    let gavetas = store.collapsible_ids();
+    assert!(
+        gavetas.len() >= 38,
+        "o arnês vê {} gavetas — sem elas esta varredura mede um painel dobrado",
+        gavetas.len()
+    );
+    for id in gavetas {
+        store.set_collapsed(id, false);
+    }
+}
+
 #[test]
 fn as_letras_perdidas_no_degrau_estreito_so_encolhem() {
     let mut por_painel: std::collections::BTreeMap<&str, std::collections::BTreeSet<String>> =
@@ -821,6 +850,7 @@ fn varre() -> Vec<Achado> {
                 let id = painel.manifest.id;
                 let mut host = MockPanelHost::new();
                 painel.populate(host.store_mut());
+                abre_as_gavetas(host.store_mut());
                 for m in host.medindo_a_pintura_do_registo_com_bandas(painel, viewport, bandas) {
                     tudo.push(Achado {
                         painel: id,
@@ -845,6 +875,7 @@ fn varre() -> Vec<Achado> {
                     let mut host = MockPanelHost::new();
                     (arm.arma)(host.store_mut());
                     painel.populate(host.store_mut());
+                    abre_as_gavetas(host.store_mut());
                     for m in host.medindo_a_pintura_do_registo_com_bandas(painel, viewport, bandas)
                     {
                         tudo.push(Achado {
@@ -1134,6 +1165,7 @@ fn uma_fixtura_nao_deixa_nada_para_tras() {
             let vazio = |painel: &mut ph2d_editor_core::panel::ErasedPanel| {
                 let mut host = MockPanelHost::new();
                 painel.populate(host.store_mut());
+                abre_as_gavetas(host.store_mut());
                 host.medindo_a_pintura_do_registo(painel, viewport)
                     .into_iter()
                     .map(|m| (m.texto, m.pintado, m.largura.to_bits()))
@@ -1144,6 +1176,7 @@ fn uma_fixtura_nao_deixa_nada_para_tras() {
                 let mut host = MockPanelHost::new();
                 (arm.arma)(host.store_mut());
                 painel.populate(host.store_mut());
+                abre_as_gavetas(host.store_mut());
                 let _ = host.medindo_a_pintura_do_registo(painel, viewport);
             }
             (arm.desarma)();

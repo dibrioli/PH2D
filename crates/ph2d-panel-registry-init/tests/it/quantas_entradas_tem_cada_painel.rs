@@ -377,6 +377,38 @@ impl Linha {
     }
 }
 
+/// ⭐⭐⭐ **ABRE TODA GAVETA antes de medir** — o censo mede o que o painel CONTÉM.
+///
+/// ⛔⛔ **Ele mede o ECRÃ e não o catálogo** (ver [`conta`]: registar e pintar diferem por `12×`),
+/// e desde 2026-09-21 o ecrã **DOBRA**: o Inspector abre com toda secção com chevron recolhida
+/// menos a Transform. *Sem esta linha o censo passaria a ler `~10` comandos onde há `88`, e a
+/// dívida não teria desaparecido — teria ficado escondida.*
+///
+/// ⇒ são DUAS perguntas e DUAS réguas: este censo pergunta *quanto este painel TEM*, e o
+/// [`o_inspector_abre_dentro_da_dobra`] pergunta *quanto ele MOSTRA ao abrir*.
+///
+/// ⚠️ **Pela porta [`ph2d_editor_core::interaction::WidgetStore::collapsible_ids`]**, que é o
+/// conjunto que o `populate` semeou — uma lista escrita à mão aqui ficaria cega à gaveta que a
+/// próxima wave acrescentar, e o modo de falha é o censo a encolher em silêncio.
+fn abre_tudo(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    // ⚠️⚠️ **O conjunto das gavetas é semeado pelo `populate_shared` do PRODUTO**, não pelo
+    //    `Panel::populate` — sem esta chamada o `collapsible_ids` devolve **vazio** no arnês e o
+    //    `abre_tudo` abre nada, em silêncio. *O censo lia `12` comandos no Inspector e a régua
+    //    parecia certa.*
+    ph2d_editor_core::screens::hero::pre_populate::marca_as_gavetas(store);
+    let gavetas = store.collapsible_ids();
+    assert!(
+        gavetas.len() >= 38,
+        "o arnês vê {} gavetas e as secções vivas do Inspector são {} — sem elas este censo mede \
+         um painel dobrado e chama-lhe a dívida dele",
+        gavetas.len(),
+        ph2d_editor_core::ids::LIVE_SECTIONS.len()
+    );
+    for id in gavetas {
+        store.set_collapsed(id, false);
+    }
+}
+
 /// Varre **todo** painel do registo e conta o que cada um regista, por espécie.
 fn censo() -> Vec<Linha> {
     let _ = ph2d_panel_registry_init::register_all_panels();
@@ -387,6 +419,7 @@ fn censo() -> Vec<Linha> {
 
             let mut host = MockPanelHost::new();
             painel.populate(host.store_mut());
+            abre_tudo(host.store_mut());
             // ⭐ A pintura corre DENTRO do censo dos compostos — ver [`conta`].
             let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
                 let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
@@ -404,6 +437,7 @@ fn censo() -> Vec<Linha> {
                     let mut host = MockPanelHost::new();
                     (arm.arma)(host.store_mut());
                     painel.populate(host.store_mut());
+                    abre_tudo(host.store_mut());
                     let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
                         let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
                     });
@@ -420,6 +454,7 @@ fn censo() -> Vec<Linha> {
             //   haver um documento na mão.
             let mut host = MockPanelHost::new();
             painel.populate(host.store_mut());
+            abre_tudo(host.store_mut());
             let (_, grupos_curta) = ph2d_editor_core::widget::composto::medindo(|| {
                 let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT_CURTA);
             });
@@ -684,6 +719,7 @@ fn diag_onde_caem_as_seccoes_da_escultura() {
             let mut host = MockPanelHost::new();
             (arma)(host.store_mut());
             painel.populate(host.store_mut());
+            abre_tudo(host.store_mut());
             let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
             let pintados = host.registos_da_ultima_pintura();
             (arm.desarma)();
@@ -787,6 +823,7 @@ fn diag_o_que_come_a_seccao_tool_da_escultura() {
         let mut host = MockPanelHost::new();
         (arm.arma)(host.store_mut());
         painel.populate(host.store_mut());
+        abre_tudo(host.store_mut());
         let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
         let pintados = host.registos_da_ultima_pintura();
         (arm.desarma)();
@@ -887,6 +924,7 @@ fn diag_de_quem_sao_as_entradas_do_inspector() {
         let mut host = MockPanelHost::new();
         (arm.arma)(host.store_mut());
         painel.populate(host.store_mut());
+        abre_tudo(host.store_mut());
         // ⭐ A pintura corre DENTRO do censo dos compostos — senão esta sonda volta a contar cada
         //   opção de um selector como um comando, que é o defeito que ela própria revelou.
         let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
@@ -1040,6 +1078,7 @@ fn os_pintores_de_composto_declaram_o_grupo() {
             let mut host = MockPanelHost::new();
             (arm.arma)(host.store_mut());
             painel.populate(host.store_mut());
+            abre_tudo(host.store_mut());
             let (_, grupos) = composto::medindo(|| {
                 let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
             });
@@ -1154,6 +1193,7 @@ fn diag_compostos_por_declarar() {
                 (a.arma)(host.store_mut());
             }
             painel.populate(host.store_mut());
+            abre_tudo(host.store_mut());
             let (_, grupos) = composto::medindo(|| {
                 let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
             });
@@ -1424,6 +1464,7 @@ fn diag_de_quem_sao_as_entradas_do_tokens() {
             .expect("o painel de tokens tem de estar no registo");
         let mut host = MockPanelHost::new();
         painel.populate(host.store_mut());
+        abre_tudo(host.store_mut());
         let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
             let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
         });
@@ -1459,4 +1500,560 @@ fn diag_de_quem_sao_as_entradas_do_tokens() {
         }
         println!("\n  grupos declarados: {}", grupos.len());
     });
+}
+
+/// Pinta o Inspector com as portas de [`super::o_inspector_armado::PORTAS`] cujo nome está em
+/// `ligadas`, e devolve a altura em píxeis.
+#[cfg(test)]
+fn altura_do_inspector_com(ligadas: &[&str]) -> f32 {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut h = 0.0;
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "inspector")
+            .expect("o inspector tem de estar no registo");
+        super::o_inspector_armado::arma_tudo();
+        for (nome, desarma) in super::o_inspector_armado::PORTAS {
+            if !ligadas.contains(nome) {
+                desarma();
+            }
+        }
+        let mut host = MockPanelHost::new();
+        painel.populate(host.store_mut());
+        // ⚠️ **A política de dobra mora no arranque do EDITOR**, não no `Panel::populate` —
+        //    esta régua percorre a porta do produto, senão mede um painel todo aberto.
+        ph2d_editor_core::screens::hero::pre_populate::marca_as_gavetas(host.store_mut());
+        let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
+            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        });
+        h = conta(host.store(), &host.registos_da_ultima_pintura(), &grupos).altura;
+        super::o_inspector_armado::desarma_tudo();
+    });
+    h
+}
+
+/// SONDA TEMPORÁRIA — **o preço de cada secção do Inspector, em píxeis e em ecrãs.**
+#[test]
+#[ignore]
+fn diag_o_preco_de_cada_seccao_do_inspector() {
+    let todas: Vec<&str> = super::o_inspector_armado::PORTAS
+        .iter()
+        .map(|(n, _)| *n)
+        .collect();
+    let cheio = altura_do_inspector_com(&todas);
+    println!(
+        "\n  TUDO ARMADO (o objecto impossível): {cheio:.0} px = {:.1} ecrãs\n",
+        cheio / DOBRA
+    );
+
+    let mut precos: Vec<(f32, &str)> = Vec::new();
+    for (nome, _) in super::o_inspector_armado::PORTAS {
+        let sem: Vec<&str> = todas.iter().copied().filter(|n| n != nome).collect();
+        precos.push((cheio - altura_do_inspector_com(&sem), nome));
+    }
+    precos.sort_by(|a, b| b.0.total_cmp(&a.0));
+    println!("  secção                  custo px   ecrãs");
+    let mut soma = 0.0;
+    for (px, nome) in &precos {
+        soma += px;
+        println!("  {nome:22} {px:9.0}  {:6.2}", px / DOBRA);
+    }
+    println!("\n  soma dos custos: {soma:.0} px (o cheio é {cheio:.0})");
+
+    // ⭐ Cenários que EXISTEM.
+    for (nome, ligadas) in CENARIOS_REAIS {
+        let h = altura_do_inspector_com(ligadas);
+        println!(
+            "\n  [{nome}] {h:.0} px = {:.1} ecrãs  ({} secções)",
+            h / DOBRA,
+            ligadas.len()
+        );
+    }
+}
+
+/// ⭐⭐⭐ **Objectos que EXISTEM** — cada um é uma combinação que o app de facto produz.
+///
+/// ⛔ A [`super::o_inspector_armado::arma_tudo`] monta um objecto impossível, e o cabeçalho dela
+/// di-lo por escrito. *Uma régua de ALTURA corrida sobre ele mede um estado que nenhum artista
+/// alcança.*
+const CENARIOS_REAIS: &[(&str, &[&str])] = &[
+    // O mais comum do app: uma imagem na cena.
+    (
+        "sprite simples",
+        &[
+            "name",
+            "transform",
+            "visibility",
+            "sprite",
+            "sampling",
+            "blend",
+            "visibility_section",
+            "ordering",
+        ],
+    ),
+    // O mesmo, com um corpo — a cena de física mais simples.
+    (
+        "sprite + corpo físico",
+        &[
+            "name",
+            "transform",
+            "visibility",
+            "sprite",
+            "sampling",
+            "blend",
+            "visibility_section",
+            "ordering",
+            "physics",
+        ],
+    ),
+    // O herói de um plataforma: corpo, controlador, câmera a segui-lo.
+    (
+        "herói de plataforma",
+        &[
+            "name",
+            "transform",
+            "visibility",
+            "sprite",
+            "sampling",
+            "blend",
+            "visibility_section",
+            "ordering",
+            "physics",
+            "player",
+            "camera",
+            "tags",
+        ],
+    ),
+];
+
+/// SONDA TEMPORÁRIA — **o CHÃO do Inspector**: quanto ele custa com todas as secções dobradas.
+#[test]
+#[ignore]
+fn diag_o_chao_do_inspector_com_tudo_dobrado() {
+    // ⭐ A TABELA, nunca uma varredura de texto: a 1.ª redacção filtrava literais por
+    //   «section»/«header» e achou **1** de `38` — os ids das secções vivas vivem na fundação,
+    //   e a `nomes_do_inspector` só lê a crate do painel.
+    let cabecalhos = ph2d_editor_core::ids::LIVE_SECTIONS;
+    println!("\n  secções vivas: {}", cabecalhos.len());
+
+    for (nome, ligadas) in CENARIOS_REAIS {
+        let _ = ph2d_panel_registry_init::register_all_panels();
+        ph2d_editor_core::panel::with_registry(|reg| {
+            let painel = reg
+                .panels_mut()
+                .iter_mut()
+                .find(|p| p.manifest.id == "inspector")
+                .expect("o inspector");
+            super::o_inspector_armado::arma_tudo();
+            for (p, desarma) in super::o_inspector_armado::PORTAS {
+                if !ligadas.contains(p) {
+                    desarma();
+                }
+            }
+            let mut host = MockPanelHost::new();
+            painel.populate(host.store_mut());
+            // ⭐ Dobrar TUDO depois do `populate` — ele é quem semeia o estado das secções.
+            let mut dobrados = 0usize;
+            for (seccao, _cor) in &cabecalhos {
+                host.store_mut().set_collapsed(*seccao, true);
+                dobrados += 1;
+            }
+            let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
+                let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            });
+            let c = conta(host.store(), &host.registos_da_ultima_pintura(), &grupos);
+            super::o_inspector_armado::desarma_tudo();
+            println!(
+                "  [{nome}] dobrado: {:.0} px = {:.1} ecrãs  ({dobrados} cabeçalhos postos a dobrar, {} controlos ainda pintados)",
+                c.altura,
+                c.altura / DOBRA,
+                c.total()
+            );
+        });
+    }
+}
+
+/// Pinta o Inspector no cenário `ligadas`, com as secções vivas dobradas **excepto** `abertas`
+/// (que se nomeia pelo miolo do literal: `"name"` ⇒ `insp_live_name_section`), e devolve a altura.
+#[cfg(test)]
+fn altura_do_inspector_dobrando_tudo_menos(ligadas: &[&str], abertas: &[&str]) -> f32 {
+    let deixa_aberta: Vec<NodeId> = abertas
+        .iter()
+        .map(|n| ph2d_tool_registry::hash_node_id_runtime(&format!("insp_live_{n}_section")))
+        .collect();
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut h = 0.0;
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "inspector")
+            .expect("o inspector");
+        super::o_inspector_armado::arma_tudo();
+        for (p, desarma) in super::o_inspector_armado::PORTAS {
+            if !ligadas.contains(p) {
+                desarma();
+            }
+        }
+        let mut host = MockPanelHost::new();
+        painel.populate(host.store_mut());
+        // ⚠️⚠️ **Pela porta do produto PRIMEIRO**, e a razão é um gate vermelho: ela semeia também
+        //    as SUB-secções (a grelha de 32 camadas da visibilidade, a máscara de *cull*), que não
+        //    são secções vivas. Sem esta linha o «chão» media `752 px` e a abertura media `673` —
+        //    *o painel com a Transform ABERTA lia-se mais baixo do que com tudo fechado*, porque as
+        //    duas réguas não estavam a medir o mesmo painel.
+        ph2d_editor_core::screens::hero::pre_populate::marca_as_gavetas(host.store_mut());
+        // ⚠️ **Escreve as DUAS pontas**, e não só a dobra: a política já semeia, logo uma função
+        //    que só fecha não consegue exprimir «tudo aberto» — e sem isso o CONTROLO do gate da
+        //    dobra não existe.
+        for (seccao, _cor) in &ph2d_editor_core::ids::LIVE_SECTIONS {
+            host.store_mut()
+                .set_collapsed(*seccao, !deixa_aberta.contains(seccao));
+        }
+        let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
+            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        });
+        h = conta(host.store(), &host.registos_da_ultima_pintura(), &grupos).altura;
+        super::o_inspector_armado::desarma_tudo();
+    });
+    h
+}
+
+/// SONDA TEMPORÁRIA — **as políticas de abertura, lado a lado.**
+#[test]
+#[ignore]
+fn diag_as_politicas_de_abertura_do_inspector() {
+    const POLITICAS: &[(&str, &[&str])] = &[
+        (
+            "identidade (name·transform·visibility·render)",
+            &["name", "transform", "visibility", "render"],
+        ),
+        ("só o transform", &["transform"]),
+        ("transform + render", &["transform", "render"]),
+        ("tudo dobrado", &[]),
+    ];
+    let todas: Vec<&str> = SECCOES_POR_NOME.to_vec();
+    println!("\n  cenário                  como o painel ABRE hoje");
+    for (nome, ligadas) in CENARIOS_REAIS {
+        let h = altura_do_inspector_com(ligadas);
+        println!("  {nome:24} {h:7.0} px = {:.1} ecrãs", h / DOBRA);
+    }
+    println!("\n  cenário                  com TUDO forçado aberto (o antes)");
+    for (nome, ligadas) in CENARIOS_REAIS {
+        let h = altura_do_inspector_dobrando_tudo_menos(ligadas, &todas);
+        println!("  {nome:24} {h:7.0} px = {:.1} ecrãs", h / DOBRA);
+    }
+    for (pol, abertas) in POLITICAS {
+        println!("\n  política: {pol}");
+        for (nome, ligadas) in CENARIOS_REAIS {
+            let h = altura_do_inspector_dobrando_tudo_menos(ligadas, abertas);
+            println!(
+                "  {nome:24} {h:7.0} px = {:.1} ecrãs  {}",
+                h / DOBRA,
+                if h <= DOBRA { "✓ cabe" } else { "" }
+            );
+        }
+    }
+}
+
+/// SONDA TEMPORÁRIA — **o que fica no chão** quando toda secção viva está dobrada.
+#[test]
+#[ignore]
+fn diag_o_que_sobra_no_chao_do_inspector() {
+    let nomes = nomes_do_inspector();
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "inspector")
+            .expect("o inspector");
+        super::o_inspector_armado::arma_tudo();
+        let ligadas = CENARIOS_REAIS[0].1;
+        for (p, desarma) in super::o_inspector_armado::PORTAS {
+            if !ligadas.contains(p) {
+                desarma();
+            }
+        }
+        let mut host = MockPanelHost::new();
+        painel.populate(host.store_mut());
+        for (seccao, _cor) in &ph2d_editor_core::ids::LIVE_SECTIONS {
+            host.store_mut().set_collapsed(*seccao, true);
+        }
+        let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
+            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        });
+        let pintados = host.registos_da_ultima_pintura();
+        let store = host.store();
+        let celula: std::collections::BTreeSet<u64> =
+            grupos.iter().flatten().map(|n| n.0).collect();
+        let mut v: Vec<(f32, f32, String, String)> = pintados
+            .iter()
+            .filter(|(id, _)| !celula.contains(&id.0))
+            .filter_map(|(id, r)| {
+                store.get(*id).map(|s| {
+                    (
+                        r.y,
+                        r.h,
+                        format!("{s:?}")
+                            .split(' ')
+                            .next()
+                            .unwrap_or("?")
+                            .to_string(),
+                        nomes
+                            .get(&id.0)
+                            .cloned()
+                            .unwrap_or_else(|| "(sem literal)".into()),
+                    )
+                })
+            })
+            .collect();
+        v.sort_by(|a, b| a.0.total_cmp(&b.0));
+        println!("\n  y      h    espécie        id");
+        for (y, h, esp, lit) in &v {
+            println!("  {y:6.0} {h:4.0}  {esp:14} {lit}");
+        }
+        super::o_inspector_armado::desarma_tudo();
+    });
+}
+
+/// Quantos controlos o Inspector pinta com `dobrada` dobrada (ou nenhuma, se `None`), com TODAS as
+/// portas armadas.
+#[cfg(test)]
+fn controlos_do_inspector_dobrando(dobrada: Option<NodeId>) -> usize {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut n = 0usize;
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "inspector")
+            .expect("o inspector");
+        super::o_inspector_armado::arma_tudo();
+        let mut host = MockPanelHost::new();
+        painel.populate(host.store_mut());
+        if let Some(id) = dobrada {
+            host.store_mut().set_collapsed(id, true);
+        }
+        let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
+            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        });
+        n = conta(host.store(), &host.registos_da_ultima_pintura(), &grupos).total();
+        super::o_inspector_armado::desarma_tudo();
+    });
+    n
+}
+
+/// SONDA TEMPORÁRIA — **quantas secções vivas CUMPREM o chevron que pintam.**
+#[test]
+#[ignore]
+fn diag_que_seccoes_do_inspector_nao_dobram() {
+    let base = controlos_do_inspector_dobrando(None);
+    println!("\n  tudo aberto: {base} controlos\n");
+    let nomes: std::collections::BTreeMap<u64, String> = SECCOES_POR_NOME
+        .iter()
+        .map(|n| {
+            (
+                ph2d_tool_registry::hash_node_id_runtime(&format!("insp_live_{n}_section")).0,
+                (*n).to_string(),
+            )
+        })
+        .collect();
+    let mut mortas = Vec::new();
+    for (seccao, _cor) in &ph2d_editor_core::ids::LIVE_SECTIONS {
+        let n = controlos_do_inspector_dobrando(Some(*seccao));
+        let nome = nomes
+            .get(&seccao.0)
+            .cloned()
+            .unwrap_or_else(|| format!("{:x}", seccao.0));
+        let caiu = base - n;
+        println!("  {nome:16} dobrada: {n:4} controlos  (−{caiu})");
+        if caiu <= 1 {
+            mortas.push(nome.clone());
+        }
+    }
+    println!(
+        "\n  {} de {} secções pintam o chevron e NÃO dobram: {:?}",
+        mortas.len(),
+        ph2d_editor_core::ids::LIVE_SECTIONS.len(),
+        mortas
+    );
+}
+
+/// Os miolos dos literais `insp_live_<x>_section`, para as sondas nomearem o que acham.
+const SECCOES_POR_NOME: &[&str] = &[
+    "action",
+    "anchor",
+    "anim",
+    "audio",
+    "blend",
+    "camera",
+    "color",
+    "emitter",
+    "factory",
+    "hud",
+    "joint",
+    "lifecycle",
+    "name",
+    "ordering",
+    "particles",
+    "pathfollow",
+    "physics",
+    "player",
+    "projectile",
+    "ray",
+    "render",
+    "sampling",
+    "script",
+    "seq",
+    "shake",
+    "sheet",
+    "slice",
+    "sm",
+    "tags",
+    "timer",
+    "topdown",
+    "transform",
+    "trigger",
+    "tween",
+    "visibility",
+    "watch",
+    "weapon",
+    "wheel",
+];
+
+/// SONDA TEMPORÁRIA — **o artista consegue abrir a máscara de cull da câmera?**
+#[test]
+#[ignore]
+fn diag_a_mascara_de_cull_da_camera_abre() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "inspector")
+            .expect("o inspector");
+        super::o_inspector_armado::arma_tudo();
+        let mut host = MockPanelHost::new();
+        let cull = ph2d_tool_registry::hash_node_id_runtime("insp_camera_cull_header");
+        painel.populate(host.store_mut());
+        println!(
+            "\n  depois do 1.º populate: dobrada = {}  (escolha do artista = {:?})",
+            host.store().is_collapsed(cull),
+            host.store().collapsed_choice(cull)
+        );
+        // O artista carrega no cabeçalho.
+        host.store_mut().toggle_collapsed(cull);
+        println!(
+            "  depois do clique:       dobrada = {}",
+            host.store().is_collapsed(cull)
+        );
+        // O quadro seguinte.
+        painel.populate(host.store_mut());
+        println!(
+            "  depois do 2.º populate: dobrada = {}   <-- se voltou a `true`, ela NÃO abre",
+            host.store().is_collapsed(cull)
+        );
+        super::o_inspector_armado::desarma_tudo();
+    });
+}
+
+/// ⭐⭐⭐ **O INSPECTOR ABRE DENTRO DA DOBRA** — para um objecto que EXISTE.
+///
+/// ⛔⛔ **A fixtura [`super::o_inspector_armado::arma_tudo`] monta um objecto IMPOSSÍVEL** e o
+/// cabeçalho dela di-lo por escrito. Medi-la em altura dá `14 987 px` (`17` ecrãs) e manda uma wave
+/// atrás de um estado que nenhum artista alcança — é por isso que este gate corre os
+/// [`CENARIOS_REAIS`].
+///
+/// ⚠️ **As três metades:** o painel cabe · o CONTROLO (com tudo forçado aberto ele **não** cabe,
+/// senão isto ficaria verde sobre um painel que já coubesse por acaso) · e a terceira, que é a que
+/// impede a cura barata: **alguma coisa continua ABERTA**. *Um painel que abre com tudo dobrado
+/// cabe sempre e não serve para nada.*
+#[test]
+fn o_inspector_abre_dentro_da_dobra() {
+    let todas: Vec<&str> = SECCOES_POR_NOME.to_vec();
+    let chao = altura_do_inspector_dobrando_tudo_menos(CENARIOS_REAIS[0].1, &[]);
+    for (nome, ligadas) in CENARIOS_REAIS {
+        let abre = altura_do_inspector_com(ligadas);
+        assert!(
+            abre <= DOBRA,
+            "o Inspector abre com {abre:.0} px para «{nome}», contra uma dobra de {DOBRA:.0} — \
+             o artista tem de rolar para ver um objecto acabado de escolher.\n\
+             ⇒ a política vive no `populate` do painel: toda secção com chevron nasce dobrada \
+             menos a Transform."
+        );
+        let tudo_aberto = altura_do_inspector_dobrando_tudo_menos(ligadas, &todas);
+        assert!(
+            tudo_aberto > DOBRA * 2.0,
+            "o CONTROLO falhou: com TUDO aberto «{nome}» mede {tudo_aberto:.0} px, e este gate \
+             precisa que esse estado NÃO caiba — senão ele fica verde sobre um painel que caberia \
+             de qualquer maneira."
+        );
+        assert!(
+            abre > chao,
+            "«{nome}» abre com {abre:.0} px e o chão (tudo dobrado) é {chao:.0} — ou seja, NADA \
+             está aberto. ⛔ Um painel que abre fechado cabe sempre e não mostra nada."
+        );
+    }
+}
+
+/// ⛔⛔ **TODA SEMEADURA DE DOBRA PASSA PELA PORTA.**
+///
+/// Um `set_collapsed` cru dentro de um `populate` torna a gaveta **INABRÍVEL** se aquele
+/// `populate` voltar a correr — ver [`ph2d_editor_core::interaction::WidgetStore::set_collapsed_if_unchosen`].
+/// ⚠️ Hoje o do Inspector corre **uma vez**, logo o perigo é latente; *uma lei que depende de
+/// quantas vezes alguém chama uma função é uma lei à espera da chamada seguinte.*
+#[test]
+fn toda_semeadura_de_dobra_passa_pela_porta() {
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("crates/");
+    let mut cruas = Vec::new();
+    let mut vistos = 0usize;
+    let mut pilha = vec![raiz.to_path_buf()];
+    while let Some(d) = pilha.pop() {
+        let Ok(rd) = std::fs::read_dir(&d) else {
+            continue;
+        };
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                pilha.push(p);
+                continue;
+            }
+            let Some(f) = p.file_name().and_then(|s| s.to_str()) else {
+                continue;
+            };
+            // ⚠️ A população é o `populate*`/`pre_populate*`, que é onde a re-corrida é
+            //    possível — um `set_collapsed` num braço de CLIQUE é exactamente o que tem
+            //    de ser cru. ⛔ O `pre_populate` entrou depois: a semeadura da grelha de
+            //    camadas da visibilidade vivia lá e o censo não a via.
+            if !(f.starts_with("populate") || f.starts_with("pre_populate")) || !f.ends_with(".rs")
+            {
+                continue;
+            }
+            let Ok(src) = std::fs::read_to_string(&p) else {
+                continue;
+            };
+            vistos += 1;
+            for (n, linha) in src.lines().enumerate() {
+                if linha.contains(".set_collapsed(") && !linha.trim_start().starts_with("//") {
+                    cruas.push(format!("{}:{}", p.display(), n + 1));
+                }
+            }
+        }
+    }
+    // ⚠️ O piso: sem ele uma varredura partida lê zero ficheiros e o gate fica verde a medir nada.
+    assert!(
+        vistos >= 20,
+        "a varredura viu só {vistos} ficheiros `populate*` — ela partiu-se"
+    );
+    assert!(
+        cruas.is_empty(),
+        "estas semeaduras de dobra são CRUAS e tornam a gaveta inabrível se o `populate` \
+         re-correr:\n  {}\n⇒ use `set_collapsed_if_unchosen`.",
+        cruas.join("\n  ")
+    );
 }

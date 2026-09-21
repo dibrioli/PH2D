@@ -40,6 +40,32 @@ impl WidgetStore {
         self.collapsed.insert(id, collapsed);
     }
 
+    /// ⭐⭐⭐ **SEMEIA como a secção NASCE — e nunca por cima do que o artista escolheu.**
+    ///
+    /// ⚠️⚠️ **O perigo é LATENTE e não vivo, e a distinção está MEDIDA** (2026-09-21): um
+    /// `set_collapsed` cru dentro de um `populate` torna a gaveta **INABRÍVEL** se aquele
+    /// `populate` voltar a correr — o artista carrega, o estado vira, e a corrida seguinte escreve
+    /// por cima. Reproduzido pela porta do produto sobre a máscara de *cull* da câmera:
+    /// `dobrada = true` → clique → `false` → `populate` → **`true`**.
+    ///
+    /// ⛔ **Hoje isso não acontece**, e a razão é frágil: o `Panel::populate` do Inspector corre
+    /// **uma vez**, no `HeroScreen::new` do arranque. ⚠️ Mas **cinco** painéis do `shells/desktop`
+    /// re-populam-se por interacção (`equalize_sizes` · `padding` · `bgremoval` ·
+    /// `color_equalization` · `upscale`), e nenhum deles semeia dobra **por acaso**. *Uma lei que
+    /// depende de quantas vezes alguém chama uma função é uma lei à espera da sexta chamada.*
+    ///
+    /// ⇒ esta porta torna a semeadura **idempotente por construção**, e o censo
+    /// `toda_semeadura_de_dobra_passa_pela_porta` proíbe a escrita crua num `populate`.
+    ///
+    /// ⚠️ **O discriminador é o [`Self::collapsed_choice`]**, cujo doc já descrevia este defeito
+    /// por escrito — e que não tinha **um único chamador** no repo inteiro. *Uma porta com a lei
+    /// certa e zero consumidores é uma lei que não está em vigor.*
+    pub fn set_collapsed_if_unchosen(&mut self, id: NodeId, collapsed: bool) {
+        if self.collapsed_choice(id).is_none() {
+            self.collapsed.insert(id, collapsed);
+        }
+    }
+
     /// Flip the collapsed state for `id`. Convenience for click
     /// handlers — equivalent to
     /// `set_collapsed(id, !is_collapsed(id))`.
@@ -115,5 +141,51 @@ impl WidgetStore {
     /// alvo e o neutro coincidem e ela assenta sem animar: *nascer fechada não é dobrar-se*.
     pub fn collapse_states(&self) -> impl Iterator<Item = (NodeId, bool)> + '_ {
         self.collapsed.iter().map(|(k, v)| (*k, *v))
+    }
+}
+
+#[cfg(test)]
+mod semeadura_tests {
+    use super::super::WidgetStore;
+    use ph2d_a11y::NodeId;
+
+    /// ⛔ **Semear NÃO apaga a escolha do artista** — a lei inteira de
+    /// [`WidgetStore::set_collapsed_if_unchosen`], nas três posições que ela distingue.
+    #[test]
+    fn uma_semeadura_de_dobra_nunca_apaga_a_escolha_do_artista() {
+        let id = NodeId(987_654);
+        let mut s = WidgetStore::default();
+
+        // (1) Ninguém escolheu ⇒ a semente manda.
+        assert_eq!(
+            s.collapsed_choice(id),
+            None,
+            "a fixtura tem de partir do vazio"
+        );
+        s.set_collapsed_if_unchosen(id, true);
+        assert!(
+            s.is_collapsed(id),
+            "a semente tem de valer quando não há escolha"
+        );
+
+        // (2) O artista abre ⇒ a semente seguinte NÃO a fecha.
+        //     ⚠️ É esta metade que separa esta porta do `set_collapsed` cru, e é a que torna a
+        //     gaveta ABRÍVEL mesmo que o `populate` volte a correr.
+        s.toggle_collapsed(id);
+        assert!(!s.is_collapsed(id), "o clique tem de abrir");
+        s.set_collapsed_if_unchosen(id, true);
+        assert!(
+            !s.is_collapsed(id),
+            "a semente escreveu por cima de uma escolha — a gaveta é INABRÍVEL"
+        );
+
+        // (3) ⭐ O CONTROLO: o `set_collapsed` cru **fecha-a**, que é o defeito que esta porta
+        //     existe para impedir. Sem ele, (2) passaria com as duas funções iguais.
+        s.set_collapsed(id, true);
+        assert!(
+            s.is_collapsed(id),
+            "o controlo falhou: se a escrita crua também respeitasse a escolha, esta porta não \
+             estaria a afirmar nada"
+        );
     }
 }

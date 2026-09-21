@@ -76,6 +76,6 @@ pub(crate) fn register_collapsible_sections(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SECTION,
         ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SECTION,
     ] {
-        store.set_collapsed(collapsed, true);
+        store.set_collapsed_if_unchosen(collapsed, true);
     }
 }

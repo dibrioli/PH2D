@@ -27,7 +27,7 @@ régua. *Uma dívida grande esconde os erros do instrumento no meio do trabalho 
 ⛔ **E o discriminador de «isto é N comandos ou UM repetido?» NÃO é geométrico.** Agrupar por
 coluna colapsou `34` botões de largura cheia **empilhados** do Inspector em `1`. Ele é a
 **PROVENIÊNCIA do identificador**: escrito no fonte = uma capacidade; nascido de
-`format!("…{row}")` = uma instância. Ver [[a-ruler-must-know-every-form-an-id-is-declared-in]].
+`format!("…{row}")` = uma instância. Ver a família [[reference_topic_measurement_discipline]].
 
 Relacionado: [[feedback_a_key_census_that_sees_only_literals_prescribes_deleting_live_labels]] ·
 [[reference_topic_measurement_discipline]].

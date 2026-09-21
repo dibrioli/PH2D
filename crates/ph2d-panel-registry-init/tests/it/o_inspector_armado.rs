@@ -1000,6 +1000,76 @@ pub fn desarma_tudo() {
     insp::set_current_inspector_script(None);
 }
 
+/// ⭐⭐⭐ **A TABELA QUE DESARMA UMA PORTA DE CADA VEZ** — o preço de cada secção, em píxeis.
+///
+/// ⛔⛔ **A [`arma_tudo`] monta um objecto IMPOSSÍVEL**, e o cabeçalho deste ficheiro di-lo por
+/// escrito: *«ele não pretende ser um objecto que exista»*. Ela serve a régua de LARGURA, que
+/// precisa da união das populações de rótulos. ⚠️ **Ela NÃO serve a régua de ALTURA**: medir a
+/// dívida de ecrã do Inspector nos `14 987 px` dela é pôr uma wave a perseguir um estado que
+/// nenhum artista alcança.
+///
+/// ⇒ esta tabela deixa a fixtura **compor-se**: armar tudo e desarmar um subconjunto dá a altura
+/// de um objecto que EXISTE, e desarmar uma porta de cada vez dá o **preço** de cada secção.
+///
+/// ⚠️ [`a_tabela_de_portas_cobre_todas_as_portas`] deriva a lista do fonte da [`desarma_tudo`] —
+/// uma porta nova nasce acusada aqui também.
+pub const PORTAS: &[(&str, fn())] = &[
+    ("action_trigger", || {
+        insp::set_current_inspector_action_trigger(None)
+    }),
+    ("counter_watch", || {
+        insp::set_current_inspector_counter_watch(None)
+    }),
+    ("emitter", || insp::set_current_inspector_emitter(None)),
+    ("hud", || insp::set_current_inspector_hud(None)),
+    ("path_follow", || {
+        insp::set_current_inspector_path_follow(None)
+    }),
+    ("ray", || insp::set_current_inspector_ray(None)),
+    ("sequence", || insp::set_current_inspector_sequence(None)),
+    ("shake", || insp::set_current_inspector_shake(None)),
+    ("tween", || insp::set_current_inspector_tween(None)),
+    ("weapon", || insp::set_current_inspector_weapon(None)),
+    ("name", || insp::set_current_inspector_name(None)),
+    ("transform", || insp::set_current_inspector_transform(None)),
+    ("visibility", || {
+        insp::set_current_inspector_visibility(None)
+    }),
+    ("sprite", || insp::set_current_inspector_sprite(None)),
+    ("sampling", || insp::set_current_inspector_sampling(None)),
+    ("blend", || insp::set_current_inspector_blend(None)),
+    ("visibility_section", || {
+        insp::set_current_inspector_visibility_section(None)
+    }),
+    ("ordering", || insp::set_current_inspector_ordering(None)),
+    ("slice", || insp::set_current_inspector_slice(None)),
+    ("anchor", || insp::set_current_inspector_anchor(None)),
+    ("anim", || insp::set_current_inspector_anim(None)),
+    ("instance", || insp::set_current_inspector_instance(None)),
+    ("properties", || {
+        insp::set_current_inspector_properties(None)
+    }),
+    ("tags", || insp::set_current_inspector_tags(None)),
+    ("physics", || insp::set_current_inspector_physics(None)),
+    ("joint", || insp::set_current_inspector_joint(None)),
+    ("wheel", || insp::set_current_inspector_wheel(None)),
+    ("player", || insp::set_current_inspector_player(None)),
+    ("timer", || insp::set_current_inspector_timer(None)),
+    ("action", || insp::set_current_inspector_action(None)),
+    ("audio", || insp::set_current_inspector_audio(None)),
+    ("camera", || insp::set_current_inspector_camera(None)),
+    ("factory", || insp::set_current_inspector_factory(None)),
+    ("topdown", || insp::set_current_inspector_topdown(None)),
+    ("projectile", || {
+        insp::set_current_inspector_projectile(None)
+    }),
+    ("statemachine", || {
+        insp::set_current_inspector_statemachine(None)
+    }),
+    ("particles", || insp::set_current_inspector_particles(None)),
+    ("script", || insp::set_current_inspector_script(None)),
+];
+
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // ⛔⛔ O CENSO DERIVADO — uma porta nova nasce ACUSADA
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -1079,5 +1149,42 @@ fn toda_porta_do_inspector_e_desarmada() {
         em_falta.is_empty(),
         "estas secções ficam ARMADAS depois da varredura:\n  {}",
         em_falta.join("\n  ")
+    );
+}
+
+/// ⛔ **A [`PORTAS`] cobre TODAS as portas** — derivada do fonte da [`desarma_tudo`], nunca de uma
+/// lista escrita à mão. Uma porta nova nasce acusada nos dois sítios.
+#[test]
+fn a_tabela_de_portas_cobre_todas_as_portas() {
+    let corpo = ESTE_FICHEIRO
+        .split_once("pub fn desarma_tudo() {")
+        .expect("a desarma_tudo tem de existir")
+        .1;
+    let corpo = corpo.split_once("\n}").expect("o fim da desarma_tudo").0;
+    let mut no_fonte: Vec<&str> = Vec::new();
+    for pedaco in corpo.split("insp::set_current_inspector_").skip(1) {
+        if let Some(n) = pedaco.split("(None)").next() {
+            no_fonte.push(n);
+        }
+    }
+    // ⚠️ O piso: sem ele, um `split` que devolvesse nada deixaria a comparação abaixo
+    //    trivialmente verdadeira sobre uma tabela vazia.
+    assert!(
+        no_fonte.len() >= 30,
+        "a leitura da `desarma_tudo` achou só {} portas — a varredura partiu-se",
+        no_fonte.len()
+    );
+    let na_tabela: Vec<&str> = PORTAS.iter().map(|(n, _)| *n).collect();
+    let em_falta: Vec<&&str> = no_fonte.iter().filter(|n| !na_tabela.contains(n)).collect();
+    assert!(
+        em_falta.is_empty(),
+        "estas portas não estão na `PORTAS`: {em_falta:?}\n\
+         ⇒ sem elas a régua de ALTURA não consegue desarmar a secção, e ela entra em todo cenário \
+         «objecto real» como se fosse obrigatória."
+    );
+    let sobra: Vec<&&str> = na_tabela.iter().filter(|n| !no_fonte.contains(n)).collect();
+    assert!(
+        sobra.is_empty(),
+        "estas entradas da `PORTAS` já não existem no painel: {sobra:?}"
     );
 }

@@ -593,6 +593,20 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
     // Bottom-LEFT resize handles (post-2026-05-24 chrome canon — every
     // floating panel resizable from EITHER bottom corner).
 
+    marca_as_gavetas(store);
+}
+
+/// ⭐⭐⭐ **Marca TODA gaveta que o despacho sabe dobrar** — a porta, com dois chamadores.
+///
+/// ⚠️ **Ela saiu do corpo do `populate_hierarchy_chrome` em 2026-09-21 porque o ARNÊS precisa
+/// dela.** O censo dos painéis mede o que cada um pinta e tem de os medir **abertos** (senão ele
+/// lê a política de dobra e chama-lhe a dívida do painel) — e para abrir precisa de saber *quais
+/// são as gavetas*, que é este conjunto.
+///
+/// ⛔⛔ **A alternativa era o arnês chamar o [`populate_shared`], e ela PENDURA:** aquele caminho
+/// toca no registo de painéis, e o censo já tem o *mutex* dele na mão. Medido — o binário ficou
+/// `10 min` a `0 %` de CPU.
+pub fn marca_as_gavetas(store: &mut WidgetStore) {
     // Every section header that the Inspector + Widget Gallery paint
     // is collapse-toggle eligible. UI canon post-2026-05-24: every
     // section is collapsible (vide
@@ -631,5 +645,32 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
     }
     // §8 Visibility Layer grid defaults COLLAPSED — it's a tall, advanced
     // (camera cull-mask) control, rarely touched in the common flow.
-    store.set_collapsed(ids::INSP_VIS_LAYER_HEADER, true);
+    store.set_collapsed_if_unchosen(ids::INSP_VIS_LAYER_HEADER, true);
+
+    // ⭐⭐⭐ **TODA SECÇÃO COM CHEVRON NASCE DOBRADA, MENOS A TRANSFORM** — o ecrã que o Inspector
+    //    devolve.
+    //
+    // ⛔⛔ **MEDIDO em 2026-09-21, pela porta do produto:** com tudo aberto o Inspector desenha
+    //    `2 175 px` para um **sprite simples**, `3 146` com um corpo e `5 736` para um herói de
+    //    plataforma — **`2,5`, `3,6` e `6,5` ecrãs** contra uma dobra de `880`. *Até a imagem mais
+    //    simples do app transbordava duas vezes e meia.*
+    //
+    // ⭐ **O mecanismo já estava completo** (`SectionFold`, o chevron, a animação, o clique): o que
+    //    faltava era a POLÍTICA — nenhuma secção nascia dobrada.
+    //
+    // ⚠️⚠️ **A TRANSFORM não é uma preferência — é a única que CABE.** Medido, o orçamento da dobra
+    //    dá para **uma** secção: com ela aberta o painel mede `849 px` (`1,0` ecrãs); com a
+    //    `Render` no lugar dela `1 000`, com as duas `1 097`. ⇒ *abre-se a que ainda cabe, e a
+    //    medição diz que há exactamente uma.* ⭐ E o número não depende do objecto: `849` nos três
+    //    cenários, porque tudo o que varia entre eles está dobrado.
+    //
+    // ⛔⛔ **Ela mora AQUI e não no `Panel::populate` do Inspector, e o preço disse-o:** posta lá,
+    //    ela reprova **342** gates da crate do painel — eles medem o que o painel PODE mostrar, e
+    //    a dobra é uma decisão do ECRÃ DO EDITOR, que o painel não conhece (ele não sabe a altura
+    //    da janela). *O painel declara o que tem; quem compõe o editor declara como ele abre.*
+    //
+    // ⚠️ **`_if_unchosen`**: a escolha do artista manda, e ela sobrevive à sessão inteira.
+    for (seccao, _cor) in ids::LIVE_SECTIONS {
+        store.set_collapsed_if_unchosen(seccao, seccao != ids::INSP_LIVE_TRANSFORM_SECTION);
+    }
 }

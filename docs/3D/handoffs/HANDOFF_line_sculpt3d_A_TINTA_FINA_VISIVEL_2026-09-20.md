@@ -256,6 +256,21 @@ fica em **`21 855` bytes com `145` de folga** — ⛔ e não nos `21 995` com `5
 a primeira tentativa deu: *uma folga de cinco bytes devolve o vermelho à
 primeira linha que acrescentar um ponteiro.*
 
+## §5-septies — O PORTÃO, com os números
+
+| régua | resultado |
+|---|---|
+| `scripts/nextest-impacted.sh` | **`18 553 / 18 553`** (verde a `load 44`) |
+| suíte de GPU com adaptador (`ph2d-mesh-render --test it -- --ignored`) | **`79 / 79`**, incluindo os dois `tinta_no_device` e a paridade da retícula placa↔CPU |
+| `scripts/censos-da-arvore-combinada.sh` | **`127 / 127`**, com o controlo do filtro (`12 de 12` censos correram) |
+| `clippy --all-targets -- -D warnings` (7 crates tocadas) | **zero** |
+| prova de mutação | **`15 de 16`** — a 16.ª é o CONTROLO |
+
+⚠️ **A placa esteve `~40 min` em fila atrás de outra linha** (`line/3DModeling`
+segurava a exclusão), e a 1.ª tentativa desistiu ao fim de `300 s` como a porta
+manda. ⛔ *Não se força: duas linhas na placa ao mesmo tempo foi o que pendurou o
+driver em 14/09.* Quem repetir usa `PH2D_GPU_ESPERA=2400`.
+
 ## §6 — ⏳ O que fica ABERTO, com o dono de cada item
 
 | item | dono | nota |

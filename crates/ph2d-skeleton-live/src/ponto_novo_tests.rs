@@ -52,16 +52,16 @@ pub(super) fn osso(
 /// Um rectângulo deitado com um braço de dois ossos por cima — a fixtura das outras suítes desta
 /// crate, e ela tem tabela de pesos porque a forma é FECHADA.
 ///
-/// ⛔⛔ **Ela prende SEM a subdivisão do bind, e isso é a lei desta suíte inteira** (2026-09-19). A
-/// F28 responde *«o que acontece quando um ponto NOVO entra numa forma GROSSEIRA?»*, e desde a
-/// ordem do dono (*«criar a subdivisão visível logo na associação com os ossos»*) o produto já não
-/// produz formas grosseiras — ele subdivide no `Bind`. ⇒ o sujeito destes gates alcança-se pelo
-/// parâmetro ([`crate::skin_live::bind_com`]), que é **o caminho de antes de 19/09 e o de um
-/// ficheiro GRAVADO antes dele**.
+/// ⛔⛔ **Ela prende SEM a subdivisão do bind, e desde 2026-09-20 isso é o PRODUTO** (ordem do
+/// dono: *«retire a criação automática de ponto no bind»*). A F28 responde *«o que acontece
+/// quando um ponto NOVO entra numa forma GROSSEIRA?»* — e uma forma grosseira voltou a ser o que
+/// o artista tem na mão depois de carregar em *Bind*.
 ///
-/// ⚠️ *Com o bind de hoje estes gates ficariam VERDES por vácuo* — não há salto para compensar
-/// quando a forma já tem pontos que cheguem, e é isso que a irmã
-/// [`a_subdivisao_do_bind_dissolve_o_salto`] mede.
+/// ⚠️⚠️ **A redacção de 19/09 dizia o CONTRÁRIO e ficou aqui um dia:** *«desde a ordem do dono o
+/// produto já não produz formas grosseiras — ele subdivide no Bind … com o bind de hoje estes
+/// gates ficariam VERDES por vácuo»*. ⇒ *toda a razão de ser desta suíte voltou, e o que a
+/// protegeu de um dia inteiro a medir o caminho errado foi ela pedir a lei pelo PARÂMETRO em vez
+/// de a herdar do default.*
 pub(super) fn palco() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
     let mut sim = SimWorld::default();
     let mut cena = VecScene::new();
@@ -76,11 +76,17 @@ pub(super) fn palco() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 
     (sim, cena, mapa, id, [raiz, ponta])
 }
 
-/// ⭐ **O MESMO palco como o PRODUTO o prende** — com a subdivisão do bind.
+/// ⭐ **O MESMO palco com a SUBDIVISÃO — a lei que saiu do produto em 2026-09-20.**
 ///
-/// ⚠️ Ele existe porque duas leis desta suíte deixaram de valer no mundo grosso e passaram a valer
-/// aqui: *a fidelidade de uma forma presa é propriedade da GEOMETRIA, e a subdivisão é quem a dá.*
-pub(super) fn palco_do_produto() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
+/// ⚠️⚠️ **Ele chamava-se `palco_do_produto` e pedia a subdivisão pelo DEFAULT do
+/// [`crate::skin_live::bind`]** — e no dia em que o default virou, ele passou a ser byte-idêntico
+/// ao [`palco`] **sem uma linha mudar**. *Dois nomes para o mesmo palco são duas respostas à
+/// mesma pergunta, e a que envelhece é a que herda o default:* hoje ele pede a lei pelo
+/// parâmetro, como a irmã, e o nome diz o que ele É em vez de para quem ele serve.
+///
+/// Ele é o **contrafactual** de tudo o que a subdivisão comprava: *a fidelidade de uma forma
+/// presa é propriedade da GEOMETRIA, e é ela que a dá.*
+pub(super) fn palco_subdividido() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
     let mut sim = SimWorld::default();
     let mut cena = VecScene::new();
     let mut mapa = VecEntityMap::new();
@@ -89,8 +95,8 @@ pub(super) fn palco_do_produto() -> (SimWorld, VecScene, VecEntityMap, VecPathId
     let raiz = osso(&mut sim, "Arm", [0.0, 5.0], 20.0, None);
     let ponta = osso(&mut sim, "Forearm", [20.0, 0.0], 20.0, Some(raiz));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    let n = crate::skin_live::bind(&mut sim, &cena, &mapa, &[id], Some(raiz));
-    assert_eq!(n, 1, "o palco do produto tem de prender");
+    let n = crate::skin_live::bind_com(&mut sim, &cena, &mapa, &[id], Some(raiz), true);
+    assert_eq!(n, 1, "o palco subdividido tem de prender");
     (sim, cena, mapa, id, [raiz, ponta])
 }
 

@@ -57,14 +57,36 @@ pub(crate) fn barra_da_cena() -> (SimWorld, VecScene, VecEntityMap, VecPathId, V
     barra_da_cena_com(true)
 }
 
+/// ⭐⭐⭐ **A mesma barra presa pela PORTA DO PRODUTO** — o [`crate::skin_live::bind`], sem
+/// parâmetro nenhum.
+///
+/// ⛔⛔ **Ela existe por uma MUTAÇÃO SOBREVIVENTE (2026-09-20):** o gate que afirma *«o produto
+/// deixa os oito pontos»* pedia `barra_da_cena_com(false)` e ficava **VERDE** com o `bind` a
+/// subdividir outra vez — *um gate que chama a porta interna afirma que a lei existe, nunca que o
+/// gesto a usa*, e é a lei que esta casa já escreveu três vezes noutras famílias.
+///
+/// ⚠️ Toda metade de gate que fale do **PRODUTO** entra por aqui; a irmã parametrizada fica para
+/// o contrafactual.
+pub(crate) fn barra_da_cena_do_produto()
+-> (SimWorld, VecScene, VecEntityMap, VecPathId, Vec<Entity>) {
+    monta_a_barra(None)
+}
+
 /// ⭐⭐ **A mesma barra com a SUBDIVISÃO DO BIND como parâmetro.**
 ///
-/// `subdividir = false` é o mundo de **antes de 2026-09-19** — oito nós, os oito nas duas pontas —
-/// e é o sujeito de tudo o que o dono reportou naquele dia. ⚠️ Ele continua alcançável no produto
-/// (um ficheiro GRAVADO antes daquela wave traz a forma assim), e é por isso que os gates daquelas
-/// leis o pedem por nome em vez de o perderem.
+/// `subdividir = false` é o mundo de **antes de 2026-09-19** e o de **depois de 2026-09-20**;
+/// `true` é a lei que o dono mandou retirar do gesto e que fica como **contrafactual** (e como o
+/// sujeito de toda forma GRAVADA entre os dois dias). ⚠️ Ele é a porta do CONTROLO — quem afirma
+/// sobre o produto usa a [`barra_da_cena_do_produto`].
 pub(crate) fn barra_da_cena_com(
     subdividir: bool,
+) -> (SimWorld, VecScene, VecEntityMap, VecPathId, Vec<Entity>) {
+    monta_a_barra(Some(subdividir))
+}
+
+/// A barra e o esqueleto; `None` prende pela porta do produto, `Some(b)` pela parametrizada.
+fn monta_a_barra(
+    subdividir: Option<bool>,
 ) -> (SimWorld, VecScene, VecEntityMap, VecPathId, Vec<Entity>) {
     let mut sim = SimWorld::default();
     let mut scene = VecScene::new();
@@ -84,7 +106,10 @@ pub(crate) fn barra_da_cena_com(
         pai = Some(e);
         ids.push(e);
     }
-    crate::skin_live::bind_com(&mut sim, &scene, &map, &[id], None, subdividir);
+    match subdividir {
+        None => crate::skin_live::bind(&mut sim, &scene, &map, &[id], None),
+        Some(b) => crate::skin_live::bind_com(&mut sim, &scene, &map, &[id], None, b),
+    };
     // ⛔⛔ **A FORMA CARREGA UM `Sprite`, e sem ele esta fixtura não contém o fenómeno** — no app
     // toda arte vectorial tem um, e a 1.ª redacção da porta escolhia o ramo da mídia por
     // `tem Sprite?`: ali o `SkinnedMesh` não parseia, a porta respondia «não achei» e a tela ficava

@@ -83,17 +83,21 @@ fn hoje_um_ponto_novo_numa_forma_presa_evapora_se() {
 
     let n = ph2d_skeleton_live::skin_live::bind(&mut sim, &cena, &mapa, &[caminho], Some(raiz));
     assert_eq!(n, 1, "o palco tem de prender, senao nao mede nada");
-    // ⚠️⚠️ **O que o quadro devolve é a FONTE, e ela já não tem a contagem do que o artista
-    // desenhou** (2026-09-19): desde a subdivisão do bind, prender acrescenta pontos de propósito.
-    // *A 1.ª redacção desta sonda comparava o depois com o ANTES — a premissa era «a fonte é a
-    // forma autorada, ponto por ponto», e ela morreu no dia em que o dono mandou pôr pontos ali.*
+    // ⚠️⚠️ **O que o quadro devolve é a FONTE, e ela voltou a ser a forma que o artista desenhou.**
+    // A 1.ª redacção comparava o `depois` com o ANTES; em 2026-09-19 a subdivisão do bind matou
+    // essa premissa e esta linha passou a exigir `na_fonte > antes`; em **2026-09-20** o dono
+    // mandou *«retire a criação automática de ponto no bind»* e ela morreu outra vez, **para o
+    // lado de onde tinha vindo**.
+    // ⭐ *A sonda atravessou as duas ordens opostas por medir a FONTE em vez de um literal — o que
+    // muda aqui é só o SENTIDO da comparação, e ele é afirmado em vez de presumido.*
     let na_fonte = ph2d_ecs::Entity::try_from_bits(*mapa.get(&caminho).expect("entidade"))
         .and_then(|e| sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e))
         .and_then(|sk| ph2d_skeleton_live::skinned_mesh::le(&sk.source))
         .map_or(0, |g| g.path.verts_all().count());
-    assert!(
-        na_fonte > antes,
-        "o bind nao subdividiu ({na_fonte} contra {antes}) — esta sonda passa a medir outra coisa"
+    assert_eq!(
+        na_fonte, antes,
+        "o bind mexeu na contagem de pontos da forma ({na_fonte} contra {antes}) — a subdivisao \
+         voltou ao caminho de produto, e esta sonda passa a medir outra coisa"
     );
 
     // ⚠️ **É a porta que a caneta chama**: o `insert_on_selected_segment` do `ph2d-vec-edit` faz

@@ -63,11 +63,23 @@ pub(crate) fn gira(sim: &mut SimWorld, e: Entity, graus: f32) {
         .rotation = graus.to_radians();
 }
 
-/// ⭐⭐⭐ **PRENDER NÃO MOVE UM PIXEL.** A pose de repouso é a identidade por construção (doc 47
-/// §2.5), então o artista carrega em *Bind* e **nada acontece** — que é exactamente o que ele
-/// espera. Uma pele que salta ao ligar é o defeito nº 1 de todo pacote de rig.
+/// ⭐⭐⭐ **PRENDER NÃO MOVE UM PIXEL — E NÃO ACRESCENTA UM PONTO.** A pose de repouso é a
+/// identidade por construção (doc 47 §2.5), então o artista carrega em *Bind* e **nada acontece**
+/// — que é exactamente o que ele espera. Uma pele que salta ao ligar é o defeito nº 1 de todo
+/// pacote de rig.
+///
+/// ⛔⛔ **A segunda metade INVERTEU em 2026-09-20, por ordem do dono** (*«retire a criação
+/// automática de ponto no bind»*). Ela dizia, desde 19/09, `depois.verts.len() > antes.verts.len()`
+/// com o comentário *«sem isto esta régua nova ficaria verde sobre um bind que deixou de
+/// subdividir, que é o report do dono de volta»* — e hoje é **o contrário** que o dono quer, com a
+/// mesma força. *A régua não mudou; o lado dela mudou, e é por isso que ela tinha de existir.*
+///
+/// ⚠️ **A régua do desvio continua a ser a do DESENHO e não a dos VÉRTICES**, mesmo agora que as
+/// contagens voltaram a bater: ela é a promessa certa (*o que o artista VÊ*), e trocá-la de volta
+/// poria esta função a afirmar de novo uma coisa mais fraca no dia em que alguém mexer na
+/// contagem.
 #[test]
-fn binding_a_shape_moves_nothing() {
+fn binding_a_shape_moves_nothing_and_adds_no_point() {
     let (mut sim, mut scene, map, id, _) = palco();
     let antes = scene.paths()[0].clone();
     assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
@@ -81,13 +93,31 @@ fn binding_a_shape_moves_nothing() {
         pior < 1e-9,
         "prender moveu a forma em {pior} - o `rest` nao esta' a ser o composto `S-1 . B`"
     );
-    // ⭐ E a subdivisão ACONTECEU — sem isto esta régua nova ficaria verde sobre um bind que
-    // deixou de subdividir, que é o report do dono de volta.
-    assert!(
-        depois.verts.len() > antes.verts.len(),
-        "o bind nao subdividiu ({} -> {} vertices)",
+    // ⛔⛔ **E A FORMA DO ARTISTA CONTINUA A TER OS PONTOS DO ARTISTA** — a ordem de 20/09. Sem
+    // esta metade a subdivisão volta sozinha no dia em que alguém trocar um `false` por um `true`
+    // na porta, e o único sinal seria o dono a ver a forma dele cheia de nós outra vez.
+    assert_eq!(
+        depois.verts.len(),
+        antes.verts.len(),
+        "o bind acrescentou pontos a` forma do artista ({} -> {} vertices) — a subdivisao voltou \
+         ao caminho de produto",
         antes.verts.len(),
         depois.verts.len()
+    );
+    // ⭐ **O CONTROLO, e ele é obrigatório:** a lei retirada continua a existir e continua a
+    // acrescentar. *Sem ele, apagar a subdivisão inteira deixaria a linha de cima verde e ninguém
+    // saberia que o contrafactual dos gates da fidelidade deixou de existir.*
+    let (mut s2, mut scene2, map2, id2, _) = palco();
+    assert_eq!(
+        crate::skin_live::bind_com(&mut s2, &scene2, &map2, &[id2], None, true),
+        1
+    );
+    let com = quadro(&s2, &mut scene2, id2);
+    assert!(
+        com.verts.len() > antes.verts.len(),
+        "a lei retirada ({} nos) deixou de acrescentar — ela e' o contrafactual dos gates da \
+         fidelidade, e sem ela eles passam a medir-se contra nada",
+        com.verts.len()
     );
 }
 

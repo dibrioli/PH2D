@@ -425,6 +425,17 @@ pub fn recook_com_mistura(
 /// A fonte é a geometria que a forma tem **agora** — o que faz um segundo Bind ser um *re-bind na
 /// pose actual*, que é o gesto que todo o pacote de rig oferece. E como a pose de repouso é a
 /// identidade por construção (§2.5 do doc 47), **prender não move um pixel**.
+///
+/// ⛔⛔⛔ **E ele NÃO acrescenta um ponto à forma do artista** — ordem do dono, 2026-09-20:
+/// *«retire a criação automática de ponto no bind»*. ⚠️ **A capacidade não foi afinada, foi
+/// RETIRADA do gesto:** a subdivisão graduada pelas juntas continua medida e alcançável por
+/// [`bind_com`], e o que a produção deixou de fazer está afirmado — com o CONTROLO ao lado — em
+/// `skin_live::tests::binding_a_shape_moves_nothing_and_adds_no_point` e em
+/// `subdivisao::subdivisao_tests::a_lei_retirada_poe_os_pontos_a_vista_e_o_produto_deixa_os_oito`.
+///
+/// ⚠️ **O que isso custa está medido e não é pequeno** — a tabela vive no cabeçalho de
+/// [`crate::subdivisao`]. *Ela fica ali de propósito: o passo seguinte tem de a bater, e sem o
+/// número ao lado ninguém saberia por quanto.*
 pub fn bind(
     sim: &mut SimWorld,
     scene: &VecScene,
@@ -432,7 +443,7 @@ pub fn bind(
     paths: &[VecPathId],
     seed: Option<Entity>,
 ) -> usize {
-    bind_com(sim, scene, map, paths, seed, true)
+    bind_com(sim, scene, map, paths, seed, false)
 }
 
 /// **O `bind` com a subdivisão como PARÂMETRO** — ver [`crate::subdivisao`].
@@ -442,8 +453,15 @@ pub fn bind(
 /// threads do MESMO processo), e a suíte reprova junta e passa sozinha. É a mesma forma do
 /// [`recook_com`].
 ///
-/// `subdividir = false` é o caminho de ANTES de 2026-09-19 — por onde se bissecta um report e por
-/// onde o contrafactual de um gate se mede.
+/// ⛔⛔ **`subdividir = true` é a lei RETIRADA do produto em 2026-09-20** (ordem do dono), e ela
+/// fica aqui por duas razões que não são a mesma: ela é o **contrafactual** dos gates que medem o
+/// que a subdivisão comprava, e é o **sujeito** de toda forma GRAVADA entre 19 e 20 de Setembro —
+/// *um ficheiro daqueles traz a forma já subdividida, e ela tem de continuar a ser deformada.*
+///
+/// ⚠️ **Nenhum caminho de produto desta crate passa `true`**, e isso é gateado por censo
+/// (`subdivisao::subdivisao_tests::nenhum_caminho_de_produto_pede_a_subdivisao`, que conta
+/// parênteses e não linhas) — *uma capacidade retirada do gesto e viva na porta é exactamente o
+/// que volta sozinho.*
 pub fn bind_com(
     sim: &mut SimWorld,
     scene: &VecScene,

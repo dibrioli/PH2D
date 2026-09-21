@@ -356,9 +356,10 @@ pub fn bind(
         // ⚠️ **A ordem é a da CADEIA, e não a da [`ossos_desde`]** — ela ordena por `to_bits`, que no
         // bevy é a criação INVERTIDA, e a lista saía «Bone 3, Bone 2, Bone 1». *Uma lista que conta
         // ao contrário lê-se como um defeito, e o dono não tem como saber que não é.*
-        // ⚠️ **A contagem é LIDA da forma presa, nunca escrita à mão** — ela é função do esqueleto
-        // (o osso mais curto a dividir por três), logo mudar a cena muda o número. *O roteiro dizia
-        // «os oito nós» e a subdivisão do bind matou a frase no mesmo dia em que ela foi escrita.*
+        // ⚠️ **A contagem é LIDA da forma presa, nunca escrita à mão** — *o roteiro dizia «os oito
+        // nós», a subdivisão do bind matou a frase no dia em que ela foi escrita (19/09), e a
+        // ordem de 20/09 retirou a subdivisão e devolveu o oito.* Ler em vez de afirmar atravessou
+        // as duas ordens opostas sem uma linha de mudança.
         let nos = pecas
             .first()
             .and_then(|(pid, _)| map.get(pid))
@@ -387,8 +388,8 @@ pub fn bind(
              arraste o CORPO de «{ponta_da_barra}» (o ultimo osso da barra) para dobrar a ponta \
              dela -- EM REPOUSO o peso nao move nada, seja ele qual for; (2) escolha a linha \
              «{ponta_da_barra}» na Hierarquia e carregue «Weight» no painel Bones; (3) arraste POR \
-             CIMA DA BARRA. ⭐ A barra tem agora {nos} PONTOS coloridos ao longo dela -- ela nasceu \
-             com OITO, os oito nas duas pontas, e o Bind poe os que faltam. Cada ponto muda de cor \
+             CIMA DA BARRA. ⭐ A barra tem {nos} PONTOS coloridos, que sao os pontos que VOCE \
+             desenhou -- desde 2026-09-20 prender NAO acrescenta nenhum. Cada ponto muda de cor \
              onde o pincel passa (do AZUL, que nao manda nada, ao VERMELHO, que manda sozinho), e a \
              barra MUDA DE FORMA ali."
         );

@@ -279,9 +279,15 @@ fn a_lista_de_ossos_da_barra_conta_do_primeiro_para_o_ultimo() {
 /// ⭐⭐⭐ **O ROTEIRO CONTA OS PONTOS DA BARRA, NUNCA OS AFIRMA.**
 ///
 /// ⛔⛔ **A frase «os oito nós da barra» morreu no mesmo dia em que foi escrita** (2026-09-19): o
-/// dono mandou *«criar a subdivisão visível logo na associação com os ossos»*, e desde então a
-/// contagem é função do ESQUELETO — o osso mais curto a dividir por três. *Um roteiro que afirma um
-/// número que a cena deriva envelhece na wave seguinte.*
+/// dono mandou *«criar a subdivisão visível logo na associação com os ossos»*, e a contagem passou
+/// a ser função do ESQUELETO. *Um roteiro que afirma um número que a cena deriva envelhece na wave
+/// seguinte.*
+///
+/// ⛔⛔⛔ **E em 2026-09-20 ela voltou a valer OITO** — o dono mandou *«retire a criação automática
+/// de ponto no bind»* e a contagem passou a ser a da FORMA que o artista desenhou. ⭐ **O roteiro
+/// não precisou de uma linha:** ele conta em vez de afirmar, logo atravessou as duas ordens
+/// opostas sozinho. *É exactamente por isto que a proibição fica — a frase estaria certa hoje e
+/// errada outra vez amanhã.*
 #[test]
 fn o_roteiro_nao_afirma_uma_contagem_de_nos() {
     let texto = include_str!("smoke_bone.rs");

@@ -5,8 +5,11 @@
 //! ponto aqui*. Numa forma são as três metades de cada vértice; numa imagem são os vértices da
 //! malha que este ficheiro constrói.
 //!
-//! ⚠️ A imagem já nascia com a **malha graduada pelas articulações**; foi a forma que ganhou o
-//! equivalente em 2026-09-19 ([`crate::subdivisao`]).
+//! ⚠️ A imagem nasce com a **malha graduada pelas articulações**, e ela NÃO saiu: a ordem do dono
+//! de 2026-09-20 (*«retire a criação automática de ponto no bind»*) é sobre os PONTOS DE CONTROLO
+//! de uma forma vectorial, que são geometria que o artista desenhou e vê
+//! ([`crate::subdivisao`]) — *uma malha de tinta não é autoria de ninguém, e sem ela uma imagem
+//! presa é um quadrilátero que não sabe dobrar.*
 
 use crate::skin_live::{skeleton_of, tendons_and_axes, world_of};
 use ph2d_ecs::{Entity, SimWorld};

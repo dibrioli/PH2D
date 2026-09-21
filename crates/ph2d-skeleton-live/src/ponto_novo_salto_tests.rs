@@ -9,7 +9,7 @@ use ph2d_ecs::Transform;
 use ph2d_vec_scene::{ShapeKind, VecScene, cook};
 
 use super::tests::{
-    LEI_DA_CURVA, LEI_INGENUA, ancoras, fonte, osso, palco, palco_desenhado, palco_do_produto,
+    LEI_DA_CURVA, LEI_INGENUA, ancoras, fonte, osso, palco, palco_desenhado, palco_subdividido,
 };
 
 /// ⭐⭐⭐ **A FORMA QUASE NÃO SE MOVE, e o «quase» é medido e tem mecanismo.**
@@ -378,9 +378,26 @@ fn a_segunda_passagem_e_exigida_por_uma_mancha() {
 /// ⚠️ **A barra sai do VALE entre duas medições e não de um número confortável:** `0,0201 %` com a
 /// lei de hoje contra **`11,11 %`** com a compensação ligada — `550×`. *O que este gate afirma
 /// continua a ser o que importa ao artista: acrescentar um ponto não mexe no desenho a olho.*
+///
+/// ⛔⛔⛔ **E em 2026-09-20 o SUJEITO deixou de ser o produto** (ordem do dono: *«retire a criação
+/// automática de ponto no bind»*). A propriedade **não é da lei da curva — é da GEOMETRIA**, e o
+/// gate passou a dizê-lo com os dois lados medidos pela mesma porta:
+///
+/// | a forma presa | salto do desenho ao ganhar um ponto |
+/// |---|---:|
+/// | subdividida (a lei RETIRADA) | **`0,000000 %`** da peça |
+/// | **os 4 nós do artista (o que SHIPA)** | **`7,5639 %`** |
+///
+/// ⚠️ A linha de cima lia `0,0201 %` enquanto a conciliação das alças existia; ela foi apagada em
+/// 20/09 (*«muito curvado»*) e o salto foi a zero — *re-medida na mesma corrida, não herdada*.
+///
+/// ⚠️⚠️ **A segunda linha é uma DÍVIDA NOMEADA e por isso é uma asserção e não um `println!`:**
+/// ela tem de continuar a existir até alguém a curar, senão a cura de 19/09 volta por acidente e
+/// ninguém repara. ⛔ E a compensação da F28 **não é a saída** — com a lei da curva ela mede
+/// `11,11 %`, que é pior do que o defeito.
 #[test]
-fn com_a_lei_da_curva_o_ponto_novo_nao_move_nada() {
-    let (mut sim, mut cena, mapa, id, [_, ponta]) = palco_do_produto();
+fn com_a_lei_da_curva_o_ponto_novo_nao_move_nada_na_forma_subdividida() {
+    let (mut sim, mut cena, mapa, id, [_, ponta]) = palco_subdividido();
     sim.world_mut()
         .get_mut::<Transform>(ponta)
         .expect("Transform")
@@ -406,10 +423,10 @@ fn com_a_lei_da_curva_o_ponto_novo_nao_move_nada() {
         salto / diagonal * 100.0
     );
     // ⛔⛔ **A contagem já não é `5`, e a premissa morreu duas vezes no mesmo dia:** a subdivisão do
-    // bind põe os nós que os ossos pedem, e a fixtura passou a ser a do PRODUTO. O que se afirma é
+    // bind põe os nós que os ossos pedem, e a fixtura passou a ser a subdividida. O que se afirma é
     // o que importa — *a fonte ganhou UM ponto* —, e não um literal.
     let sem_o_ponto = {
-        let (s2, _c, m2, i2, _) = palco_do_produto();
+        let (s2, _c, m2, i2, _) = palco_subdividido();
         fonte(&s2, &m2, i2).path.verts_all().count()
     };
     assert_eq!(
@@ -420,10 +437,39 @@ fn com_a_lei_da_curva_o_ponto_novo_nao_move_nada() {
     assert!(
         salto / diagonal < 1e-3,
         "com a lei da curva acrescentar um ponto moveu o desenho {:.4} % da peca — ou a compensacao \
-         da F28 voltou a correr (ela ESTRAGA aqui, 11,11 %), ou o bind deixou de subdividir. ⚠️ Na \
-         forma GROSSA isto vale 1,40 %: a correccao das alcas nao segue uma feicao mais fina do que \
-         um segmento, e a cura daquele mundo e' a subdivisao",
+         da F28 voltou a correr (ela ESTRAGA aqui, 11,11 %), ou a forma deixou de estar \
+         subdividida",
         salto / diagonal * 100.0
+    );
+
+    // ⛔⛔⛔ **A DÍVIDA que a ordem de 2026-09-20 deixou aberta, medida pela MESMA porta.** Sem
+    // esta metade o gate acima lê-se como *«o produto está bem»*, e o produto é a linha de baixo.
+    let grosso = {
+        let (mut s, mut c, m, i, [_, p]) = palco();
+        s.world_mut()
+            .get_mut::<Transform>(p)
+            .expect("Transform")
+            .rotation = 0.8;
+        crate::skin_live::recook_com(&s, &mut c, LEI_DA_CURVA);
+        let antes = polilinha(&c, i);
+        assert!(insere_ponto_com(&mut s, &m, i, 0, 0.5, LEI_DA_CURVA).is_some());
+        crate::skin_live::recook_com(&s, &mut c, LEI_DA_CURVA);
+        polilinha(&c, i)
+            .iter()
+            .map(|q| ph2d_skeleton::dist2_to_polyline(*q, &antes).sqrt())
+            .fold(0.0_f64, f64::max)
+            / diagonal
+    };
+    eprintln!(
+        "[ponto-novo] na forma do ARTISTA (o que shipa): {:.4} %",
+        grosso * 100.0
+    );
+    assert!(
+        grosso > 1e-2,
+        "o salto na forma GROSSA mede {:.4} % — ou alguem o curou (e entao esta divida fecha e \
+         este bloco sai, com o numero novo no cabecalho), ou o bind voltou a subdividir por baixo \
+         e o gate de cima passou a medir a mesma coisa duas vezes",
+        grosso * 100.0
     );
 }
 

@@ -1,16 +1,41 @@
-//! ⭐⭐⭐ **A SUBDIVISÃO DO BIND — os pontos nascem VISÍVEIS quando a forma é presa.**
+//! ⛔⛔⛔ **A SUBDIVISÃO DO BIND SAIU DO PRODUTO em 2026-09-20 — ordem do dono.**
 //!
-//! Ordem do dono (2026-09-19): *«sem saber onde os pontos estão não fica legal. Melhor criar a
-//! subdivisão visível logo na associação com os ossos»*. É a lei que a 2.ª mídia já tinha — uma
-//! imagem presa ganha uma **malha graduada pelas articulações** no bind —, agora também para uma
-//! forma vectorial.
+//! > *«ok. o custo não compensa. vamos tentar de outra forma. Primeiro: retire a criação
+//! > automática de ponto no bind»*
 //!
-//! # ⛔⛔ O que ela substitui
+//! O [`crate::skin_live::bind`] passa `subdividir = false`: **a forma do artista fica com os
+//! pontos do artista**. A lei continua aqui inteira, alcançável por
+//! [`crate::skin_live::bind_com`], por **duas** razões que não são a mesma:
 //!
-//! A barra da cena do dono tem **oito** nós, os oito nas duas pontas. Pintar peso no meio dela era
+//! 1. ela é o **CONTRAFACTUAL** dos gates que medem o que ela comprava (abaixo);
+//! 2. ela é o **SUJEITO** de toda forma gravada entre 19 e 20 de Setembro — um ficheiro daqueles
+//!    traz a geometria já subdividida, e ela tem de continuar a deformar-se.
+//!
+//! ⚠️ **Nenhum caminho de produto desta crate a pede**, e há censo a contá-lo
+//! ([`subdivisao_tests::nenhum_caminho_de_produto_pede_a_subdivisao`]) — *uma capacidade retirada
+//! do gesto e viva na porta é exactamente o que volta sozinho.*
+//!
+//! # ⛔⛔ O QUE A REMOÇÃO CUSTA, medido no mesmo dia
+//!
+//! Barra da cena do dono, pose em S, contra **a mesma cadeia com o passo `48×` mais fino** (a
+//! «verdade»), pela porta do produto
+//! ([`subdivisao_tests::a_subdivisao_aproxima_o_desenho_da_verdade`]):
+//!
+//! | a forma presa | nós | erro contra a verdade |
+//! |---|---:|---:|
+//! | **o que SHIPA desde 20/09** | `8` | **`0,216709`** |
+//! | com esta lei (o contrafactual) | `54` | `0,001176` |
+//!
+//! ⇒ **`184×`**, ou `~22 %` da espessura da barra contra `0,1 %`. *O número fica aqui de propósito:
+//! o caminho seguinte tem de o bater, e sem ele ninguém saberia por quanto.*
+//!
+//! # ⚠️ E o que ela resolvia, que volta a estar em aberto
+//!
+//! A barra da cena do dono tem **oito** nós, os oito nas duas pontas. Pintar peso no meio dela é
 //! pintar num sítio sem ponto nenhum à vista: o artista não sabe onde o peso mora, e o indicador
-//! mostra oito pontos parados enquanto a arte dobra. *Uma ferramenta cujo efeito não tem onde ser
-//! visto lê-se como partida.*
+//! mostra oito pontos parados enquanto a arte dobra (medido: o indicador passa de `54` pontos para
+//! `8`). *Uma ferramenta cujo efeito não tem onde ser visto lê-se como partida* — e era essa a
+//! ordem de 19/09, que a de 20/09 **supersede**.
 //!
 //! # ⭐⭐ O alvo é DERIVADO, e a régua é a lei que já existe
 //!

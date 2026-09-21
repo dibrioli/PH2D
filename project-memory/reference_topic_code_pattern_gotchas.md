@@ -106,3 +106,4 @@ torna a morte visível depois. ⭐ Aqui o defeito foi apanhado por uma régua no
   duas ata o que se vê a um gesto que não é sobre isso. **How to apply:** deixar a lei que a lê
   (aqui, sair do PBR) é o **único** caminho para esquecer; largar a selecção devolve *«nada a
   fazer»*, e uma leitura que FALHA deixa o que já lá está.
+- ⛔⛔ [Prefixo que um ORÁCULO colhe (`fase_*`) obriga tanto a usá-lo como a NÃO o usar](feedback_a_naming_convention_that_an_oracle_harvests_cuts_both_ways.md): ele afirma *«o QUADRO chama-me»*, e numa função-filha isso é mentira — o gate das fases órfãs reprovou; a regra que o repo tinha escrita guardava só a metade já paga.

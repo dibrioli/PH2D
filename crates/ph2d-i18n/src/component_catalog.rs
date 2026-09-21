@@ -374,6 +374,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.scroll_limits.name" => "Parallax Limits",
         "component.scroll_motion.name" => "Parallax Drift",
         "component.sculpt_3d_piece_ref.name" => "Sculpt Piece",
+        "component.mesh_3d.name" => "Live Mesh",
         "component.sequence_player.name" => "Sequence Player",
         "component.shake_emitter.name" => "Shake Emitter",
         "component.show_behind_parent.name" => "Show Behind Parent",

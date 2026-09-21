@@ -596,4 +596,32 @@
 /// ⭐ E a escolha do valor para um objecto ja' gravado seria `Lei::Forma` de qualquer maneira: e' o
 /// que o binario mostra desde 21/09, logo migrar nao mudaria um pixel — o que o degrau compra e' o
 /// ALINHAMENTO dos bytes, nao a lei.
-pub(crate) const PROJECT_SCHEMA: u32 = 172;
+/// # `172 → 173` — O CATAVENTO: a malha que um sprite mantem VIVA, e a POSE 3D dela
+///
+/// O `ph2d_ecs::Mesh3D` entra no registo (a rota B do
+/// `docs/3D/02-Arquitetura/02.2-Sprite-com-malha-filha.md`): a malha deixa de ser assada uma vez e
+/// passa a rasterizar POR QUADRO para o G-buffer, de modo que **virar o objecto faz a luz
+/// acompanhar**.
+///
+/// ⭐⭐⭐ **A POSE mora no componente e nao no `Transform`, e isso e' uma MEDICAO.** Aquele tem
+/// `rotation: f32` e exprime **apenas** a rotacao no plano do ecra' — e a §5.0 do catavento mediu
+/// que *essa* a rota A ja' da' **exactamente**: uma rotacao `R` em torno do eixo da vista leva as
+/// normais a `R·n` e a imagem a `R·imagem`, duas operacoes 2D sobre o plano ja' assado (`0,00°` de
+/// desacordo, contra `28,58°` de um plano fixo). Fora do plano nao ha' operacao 2D nenhuma
+/// (`31,69°`) ⇒ *a rotacao que justifica esta rota e' exactamente a que FALTA aquele campo*.
+/// Tabelas: `docs/Render3d/17_a_rota_b_o_catavento.md` §1.5.
+///
+/// ⛔⛔ **A PRESENCA da componente e' a decisao, e nao um `live: bool`:** o `02.2` diz que a escolha
+/// entre as duas rotas e' *«uma propriedade do objeto»*, e ter ou nao ter **e'** essa propriedade.
+/// Um campo ao lado seria um segundo sitio a dizê-lo, e os dois divergiriam no primeiro dia em
+/// que alguem escrevesse um sem o outro.
+///
+/// ⛔⛔ **E nao ha' `MeshShading`**, apesar de o `02.2` o desenhar: a
+/// `ph2d_form_donation::lei_da_luz::material_da_forma()` **nao recebe argumentos** — o material e'
+/// GLOBAL — e a escolha de sombreamento que ja' e' por objecto **e ja' e' gravada** e' a `Lei` do
+/// degrau `161`. *Seriam quatro knobs sem consumidor*, que e' o defeito que esta casa caca com
+/// censo.
+///
+/// ⛔ **Sem degrau de migracao** (decisao do Enio, 26/08): um v161 e' recusado em voz alta.
+/// ⚠️ **A tripla NAO ve^ este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 173;

@@ -93,6 +93,9 @@ pub mod scroll_motion;
 pub mod scroll_repeat;
 /// ⭐⭐⭐ **A PEÇA DA ESCULTURA na árvore do editor** — ver [`sculpt_piece_ref`].
 pub mod sculpt_piece_ref;
+
+/// ⭐⭐⭐ **O CATAVENTO** — a malha que um sprite mantém VIVA, e a pose 3D dela. Ver [`mesh3d`].
+pub mod mesh3d;
 pub mod sequence;
 pub mod sibling_order;
 /// ⭐⭐⭐ **A tabela nome → acção** (TOP-20 #5) — o consumidor que faltava aos sinais.
@@ -205,6 +208,7 @@ pub use scroll_factor::ScrollFactor;
 pub use scroll_limits::{ScrollLimits, confina_eixo, meia_da_camada};
 pub use scroll_motion::ScrollMotion;
 pub use scroll_repeat::{ScrollRepeat, envolve_eixo};
+pub use mesh3d::Mesh3D;
 pub use sculpt_piece_ref::Sculpt3dPieceRef;
 pub use sequence::SequencePlayer;
 pub use sibling_order::{

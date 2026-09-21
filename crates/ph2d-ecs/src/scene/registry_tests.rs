@@ -220,11 +220,18 @@ fn register_ecs_components_populates_registry() {
     // ⚠️ **2026-09-22: `106` -> `107`, delta +1** -- o `ScrollMotion` (o MOVIMENTO PROPRIO,
     //   plano 24 W4): `velocidade × playhead`. ⛔ **Sem runtime**, pela razao do `ScrollFactor`.
     //   Quem integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 107);
     assert!(reg.get_by_name("ph2d::ecs::ScrollMotion").is_some());
     assert!(reg.get_by_name("ph2d::ecs::ScrollLimits").is_some());
     assert!(reg.get_by_name("ph2d::ecs::ScrollRepeat").is_some());
     assert!(reg.get_by_name("ph2d::ecs::ScrollFactor").is_some());
+    // ⚠️ **2026-09-21: `107` -> `108`, delta +1** (renumerado na integracao de 2026-09-25) -- o `Mesh3D` (o CATAVENTO, a rota B do `02.2`):
+    //   a malha que um sprite mantem VIVA e a POSE 3D dela. ⛔ **UM so'**, e as DUAS ausencias ao
+    //   lado dele sao LEIS medidas: nao ha' `live: bool` (a PRESENCA da componente e' a decisao, e
+    //   um campo seria um segundo sitio a dizê-lo) e nao ha' `MeshShading` (a
+    //   `material_da_forma()` nao recebe argumentos -- o material e' GLOBAL -- e a escolha por
+    //   objecto ja' gravada e' a `Lei` do assado ⇒ seriam quatro knobs sem consumidor). Quem
+    //   integrar conta o DELTA, nunca o literal.
+    assert_eq!(reg.len(), 108);
     assert!(reg.get_by_name("ph2d::ecs::WeaponFire").is_some());
     assert!(reg.get_by_name("ph2d::ecs::CameraShake").is_some());
     assert!(reg.get_by_name("ph2d::ecs::ShakeEmitter").is_some());

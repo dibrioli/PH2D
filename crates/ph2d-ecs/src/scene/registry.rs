@@ -398,6 +398,12 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // peça↔entidade e o load duplicaria as linhas da Hierarquia — o mesmo defeito, à letra,
     // que o `FlipObjectRef` acima existe para evitar.
     reg.register_default::<crate::Sculpt3dPieceRef>("ph2d::ecs::Sculpt3dPieceRef");
+    // ⭐⭐⭐ O CATAVENTO (a rota B do `02.2`): a malha que um sprite mantém VIVA, e a POSE 3D dela.
+    // ⛔ A pose mora no componente e não no `Transform` por MEDIÇÃO: aquele tem `rotation: f32` e
+    // exprime só o plano do ecrã, que é exactamente a rotação que a rota A já dá (`0,00°` de
+    // desacordo medido). Sem registá-la, virar um catavento não sobreviveria a um `Ctrl+Z` nem ao
+    // arquivo — e a arte voltaria a apontar para outro lado, em silêncio.
+    reg.register_default::<crate::Mesh3D>("ph2d::ecs::Mesh3D");
     // Live Shapes: os parâmetros de uma forma paramétrica viva (a geometria é
     // derivada deles). Sem registrar, um save/undo perderia a "forma-ness" e o texto
     // não saberia se re-cozinhar / converter em curvas.

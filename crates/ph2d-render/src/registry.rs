@@ -103,7 +103,10 @@ mod tests {
         //   24 W3), registado no ECS. ⛔ **UM so'**. Quem integrar conta o DELTA, nunca o literal.
         // ⚠️ **2026-09-22: `107` -> `108`, delta +1** -- o `ScrollMotion` (o MOVIMENTO PROPRIO,
         //   plano 24 W4), registado no ECS. ⛔ **UM so'**. Quem integrar conta o DELTA.
-        assert_eq!(reg.len(), 108);
+        // ⚠️ **2026-09-21: `108` -> `109`, delta +1** (renumerado na integracao de 2026-09-25) -- o `Mesh3D` (o CATAVENTO), registado no
+        //   ECS. ⛔ **UM so'**: nem um `live: bool` (a PRESENCA e' a decisao) nem um `MeshShading`
+        //   (o material e' GLOBAL) existem. Quem integrar conta o DELTA.
+        assert_eq!(reg.len(), 109);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());

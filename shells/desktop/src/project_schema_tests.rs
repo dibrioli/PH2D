@@ -267,7 +267,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // degrau** — o documento e' campo do `ProjectFile`, e nao bytes dentro de um
         // `ComponentBlob`; e' a 1.ª vez em dezassete degraus que isso acontece, e e' por isso que a
         // linha abaixo se mexe.
-        (172, 13, 22),
+        // ⚠️ **`162` desde 2026-09-21** — o CATAVENTO (`ph2d_ecs::Mesh3D`, a rota B do `02.2`): a
+        // malha que um sprite mantem VIVA e a POSE 3D dela. Os dois numeros ao lado NAO se mexem —
+        // nada na forma do `FlipDoc` nem da `VecScene` mudou. Quem integrar conta o DELTA (+1).
+        (173, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

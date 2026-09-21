@@ -252,6 +252,22 @@ pub const DESCS: &[D] = &[
         C::Instancing,
         &[],
     ),
+    // ⭐⭐⭐ **O CATAVENTO** (a rota B do `02.2`, 2026-09-21): a malha que um sprite mantém VIVA, e a
+    // POSE 3D dela. A pose mora no componente por MEDIÇÃO — o `Transform` tem `rotation: f32` e
+    // exprime só o plano do ecrã, que é a rotação que a rota A já dá **exactamente**
+    // (`docs/Render3d/17_a_rota_b_o_catavento.md` §1.5).
+    //
+    // ⛔⛔ **Ele NÃO é um `owned_bridge`, e a 1.ª redacção pô-lo em `bridges` por ANALOGIA com o
+    // `Sculpt3dPieceRef`.** A analogia é falsa e o gate da cópia profunda obrigou a medi-la: aquele
+    // **É** a peça na árvore do editor (1:1, e a ponte impõe-no), enquanto este apenas **REFERE**
+    // uma, e o passe vivo só a **LÊ**. ⇒ duas sprites a apontar para a mesma peça, com poses
+    // diferentes, é um campo de cataventos — legítimo, seguro e de graça. *Dropá-la ao duplicar
+    // daria uma cópia que perde a forma em silêncio; copiá-la dá uma cópia que funciona.*
+    //
+    // ⚠️ **`machinery` descreve o que ela é HOJE:** nada a oferece no `+` do Inspector e nada a
+    // edita — quem a põe é a ponte. *Quando a pose ganhar uma secção, é este construtor que muda,
+    // e a troca não custa um degrau de schema (o descritor não é gravado).*
+    D::machinery("ph2d::ecs::Mesh3D", "component.mesh_3d.name", C::Model3D),
     D::intrinsic("ph2d::ecs::Name", "component.name.name", C::Identity, NAME),
     // ⭐ **As EXCEPÇÕES de uma instância** (ADR-0164 / F4.4) — o conjunto de `(peça, componente)`
     // que a cópia possui contra a receita.

@@ -303,16 +303,26 @@ fn o_indice_da_a_mesma_resposta_que_a_varredura() {
 /// pior do que não a ter.
 #[test]
 fn a_lei_da_curva_deriva_o_indice_uma_vez_por_forma() {
-    let fonte = include_str!("curva.rs");
+    // ⛔⛔ **A POPULAÇÃO MUDOU e o gate reprovou, que é para o que ele existe:** ele lia só a
+    // `curva.rs` e exigia `2`; as duas rotas do segundo corpo saíram para o irmão
+    // `curva_segundo_corpo.rs` por tecto de LOC, e a contagem caiu para `1` **sobre produto
+    // correcto**. ⇒ hoje ele lê as DUAS, e a morte da premissa fica à vista no diff.
+    let lei = include_str!("curva.rs");
+    let corpo2 = include_str!("curva_segundo_corpo.rs");
+    let fonte = format!("{lei}{corpo2}");
     let n = fonte.matches("IndiceDoCampo::novo").count();
     assert_eq!(
-        n, 2,
-        "a [`crate::curva`] deriva o índice {n} vezes e devia derivá-lo DUAS (uma por lei: a que \
-         ship e o refit medido) — se for 0, cada amostra voltou a varrer os 878 triângulos e o \
-         recook triplica em silêncio"
+        n, 3,
+        "a lei da curva deriva o índice {n} vezes e devia derivá-lo TRÊS (a que ship, mais as \
+         duas rotas medidas do segundo corpo) — se for 0 na que ship, cada amostra voltou a \
+         varrer os 878 triângulos e o recook triplica em silêncio"
     );
     // ⛔ FORA do laço: a linha que o deriva não pode estar dentro de um `for` de segmentos.
-    for lei in ["pub fn aplica_pela_curva_com(", "pub fn refit_pela_curva("] {
+    for lei in [
+        "pub fn aplica_pela_curva_com(",
+        "pub fn refit_pela_curva(",
+        "pub fn refit_pelo_bake(",
+    ] {
         let i = fonte.find(lei).expect("a lei existe");
         let corpo = &fonte[i..];
         let idx = corpo.find("IndiceDoCampo::novo").expect("deriva o índice");

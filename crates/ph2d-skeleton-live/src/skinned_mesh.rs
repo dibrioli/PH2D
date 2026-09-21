@@ -284,3 +284,9 @@ mod serpentina_tests;
 #[cfg(test)]
 #[path = "skinned_mesh_rive_tests.rs"]
 mod rive_tests;
+
+/// ⭐⭐ **AS SONDAS** da mesma jornada — elas imprimem; as leis são o irmão acima. Saíram por
+/// tecto de LOC, e o corte é por RESPONSABILIDADE.
+#[cfg(test)]
+#[path = "skinned_mesh_rive_sondas_tests.rs"]
+mod rive_sondas_tests;

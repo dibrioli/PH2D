@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prova de mutação da ph2d-mesh.
+# Prova de mutação da ph2d-mesh-render.
 #
 # ⚠️ O arnês CONTROLA-SE A SI MESMO em três pontos, porque cada um deles já
 # mentiu nesta casa:
@@ -9,14 +9,14 @@
 #   (c) a corrida tem de correr N > 0 testes, contados de `test result:`
 #       (o `running N tests` CONTA os `#[ignore]`).
 set -u
-CRATE=crates/ph2d-mesh
+CRATE=crates/ph2d-mesh-render
 SRC=$CRATE/src
 BK=$(mktemp -d)
 cp -r "$SRC" "$BK/src"
 restore() { rm -rf "$SRC"; cp -r "$BK/src" "$SRC"; find "$SRC" -name '*.rs' -exec touch {} +; }
 trap restore EXIT
 
-verde=$(cargo test -p ph2d-mesh 2>&1 | grep -oP 'test result: ok\. \K[0-9]+' | paste -sd+ - | tr '+' ' ' | awk '{s=0;for(i=1;i<=NF;i++)s+=$i;print s}')
+verde=$(env PH2D_GPU=1 cargo test -p ph2d-mesh-render --test it -- --ignored a_lei_da_reticula 2>&1 | grep -oP 'test result: ok\. \K[0-9]+' | paste -sd+ - | tr '+' ' ' | awk '{s=0;for(i=1;i<=NF;i++)s+=$i;print s}')
 echo "VERDE antes: $verde testes correram"
 [ "${verde:-0}" -gt 0 ] || { echo "ABORTO: a corrida limpa não correu teste nenhum"; exit 2; }
 
@@ -37,7 +37,7 @@ open(p,'w').write(s.replace(a, b, 1))
 PY
   touch "$f"
   local out rc
-  out=$(cargo test -p ph2d-mesh 2>&1); rc=$?
+  out=$(env PH2D_GPU=1 cargo test -p ph2d-mesh-render --test it -- --ignored a_lei_da_reticula 2>&1); rc=$?
   if echo "$out" | grep -q '^error\[\|^error: could not compile'; then
     echo "  ABORTO [$nome]: a mutação não compila"
   else
@@ -55,22 +55,39 @@ PY
   restore
 }
 
-muta mesh.rs \
-  'o.push(((fi as u32) << 1) | sub as u32);' \
-  'o.push((fi as u32) << 1);' \
-  'A1 a origem esquece qual metade do quad'
+muta shaders/tinta.wgsl \
+  'if ((w & 1u) == 1u) { tt = l - t; }' \
+  'if (false) { tt = l - t; }' \
+  'W1 a VIRADA da aresta nao viaja no shader'
 
-muta mesh.rs \
-  'o.push(((fi as u32) << 1) | sub as u32);' \
-  'o.push((fi as u32) | sub as u32);' \
-  'A2 a origem nao desloca a face'
+muta shaders/tinta.wgsl \
+  'if (sub == 1u) { uv = vec2<f32>(bar.y, bar.y + bar.z); }' \
+  'if (false) { uv = vec2<f32>(bar.y, bar.y + bar.z); }' \
+  'W2 as duas metades de um quad leem o mesmo (u,v)'
 
-muta mesh.rs \
-  '        self.triangle_indices_com_origem(out, None);' \
-  '        self.triangle_indices_com_origem(out, None);
-        out.truncate(out.len().saturating_sub(1));' \
-  'A3 a porta sem origem deixa de entregar a mesma lista'
+muta shaders/tinta.wgsl \
+  '        ijk0 = vec3<u32>(i, j + 1u, k + 1u);' \
+  '        ijk0 = vec3<u32>(i + 1u, j, k);' \
+  'W3 o sub-triangulo INVERTIDO le o canto do direito'
+
+muta shaders/tinta.wgsl \
+  '        let wa = dot(cross(pc - pb, p - pb), n) / dd;' \
+  '        let wa = dot(cross(pc - pb, p - pb), n) / dd * 0.5;' \
+  'W4 a baricentrica sai errada'
+
+# ⛔⛔ **W5 SOBREVIVE DE PROPOSITO, e a medicao esta' no shader.** Apagar o
+#    corte do piso em `L−1` nao muda a COR: em `u = 1` exacto o `fu` sai
+#    exactamente ZERO, logo as duas amostras de fora da face entram com peso
+#    `0`. O corte guarda o ENDERECO, e um endereco fora do intervalo e' seguro
+#    em WGSL e um PANICO do lado da `ph2d-mesh-colors` — onde a mesma mutacao
+#    (`M12`) sangra. *Uma mutacao que nenhuma regua de saida pode matar nao e'
+#    uma regua em falta.*
+muta shaders/tinta.wgsl \
+  '    let i = min(u32(floor(c.x)), l - 1u);' \
+  '    let i = u32(floor(c.x));' \
+  'W5 o piso do quad nao e cortado (SOBREVIVE de proposito — ver acima)'
 
 echo
-echo "MUTACAO: $sangram de $total sangram"
-[ "$sangram" -eq "$total" ]
+echo "MUTACAO: $sangram de $total sangram (a W5 sobrevive de proposito)"
+# ⚠️ O tecto e' `total - 1`: a W5 esta' NOMEADA acima com a medicao.
+[ "$sangram" -eq $((total - 1)) ]

@@ -392,6 +392,13 @@ struct VsOut {
     // `CLAY * 1.0` é `CLAY` **ao bit** em `f32`. A peça de sempre desenha como
     // sempre desenhou.
     @location(8) vcolor: vec3<f32>,
+    // ⭐⭐ **A POSIÇÃO NO ESPAÇO DO OBJECTO** — só a tinta fina a lê.
+    //
+    // ⚠️ **Ela NÃO cruza o `obj.model`, e isso é a lei e não uma economia:** o
+    // plano de amostras e as posições dos vértices vivem no espaço da MALHA, e
+    // as baricêntricas que este ponto resolve são contra esses vértices. Mover
+    // a peça no mundo não pode mover a tinta na superfície dela.
+    @location(9) opos: vec3<f32>,
 };
 
 fn vs_core(
@@ -408,6 +415,8 @@ fn vs_core(
     var out: VsOut;
     // Adimensional como a máscara: o `obj.model` não a toca.
     out.vcolor = vcolor;
+    // No espaço da MALHA, de propósito — ver o campo.
+    out.opos = pos;
     out.clip = cam.view_proj * obj.model * vec4<f32>(pos, 1.0);
     out.mask = mask;
     // Um peso adimensional, como a máscara: `obj.model` não o toca.
@@ -947,6 +956,16 @@ fn fs_wire(in: VsOut) -> @location(0) vec4<f32> {
 
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    return fs_core(in, in.vcolor);
+}
+
+/// ⭐⭐⭐ **O CORPO DO SOMBREAMENTO, com o albedo como ARGUMENTO.**
+///
+/// ⛔ Ele existe para que a tinta fina não traga uma segunda lei de luz: o
+/// `fs_main` passa o `in.vcolor` de sempre e o `fs_main_tinta` passa a cor
+/// lida da retícula, e daí para baixo é **o mesmo caminho**. *Duas leis de luz
+/// para a mesma peça divergem no dia em que alguém afinar uma.*
+fn fs_core(in: VsOut, vcolor: vec3<f32>) -> vec4<f32> {
     let nc = canvas_normal(in.n_view);
 
     // A leitura de FORMA — cavidade × os dois AOs — pela porta que o G-buffer
@@ -966,7 +985,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // curvatura, e deixá-la aqui faria a fresta escurecer a tinta exactamente no
     // modo que existe para a tinta ser julgada sem sombra.
     if (shade.lighting == LIGHTING_FLAT) {
-        return vec4<f32>(CLAY * in.vcolor, 1.0);
+        return vec4<f32>(CLAY * vcolor, 1.0);
     }
 
     if (shade.lighting >= LIGHTING_FIRST_MATCAP) {
@@ -994,7 +1013,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         // segunda regra: um matcap é luz + material, e a cor por vértice é o
         // ALBEDO que essa luz ilumina. ⭐ Com `vcolor = 1` (quem não pintou) isto
         // é `lit` **ao bit** — a peça de sempre desenha como sempre desenhou.
-        var cm = lit * in.vcolor * cav_occ;
+        var cm = lit * vcolor * cav_occ;
         cm = mix(cm, PREVIEW_TINT * ratio * cav_occ, clamp(in.preview, 0.0, 1.0) * PREVIEW_STRENGTH);
         cm = mix(cm, MASK_TINT * ratio * cav_occ, clamp(in.mask, 0.0, 1.0) * MASK_STRENGTH);
         return vec4<f32>(cm, 1.0);
@@ -1075,7 +1094,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // LÂMPADA e não a cor da tinta — tingi-lo faria a tinta escura comer o
     // brilho e a peça perder a leitura de forma exactamente onde ela é mais
     // forte. ⚠️ E com `vcolor = 1` (quem não pintou) isto é `CLAY` **ao bit**.
-    let clay = CLAY * in.vcolor;
+    let clay = CLAY * vcolor;
     var c = clay * m * cav_occ + clay * trans + CLAY_SHINE * spec;
 
     // A máscara entra DEPOIS da luz, sobre a cor já acesa: ela tinge o que se vê

@@ -71,6 +71,12 @@ half = "2"
 # varying que nao casa — so' aparecia no primeiro quadro de quem abrisse a cena.
 # Espelha o gate do `sprite.wgsl` (ph2d-render) e do `impasto_light.wgsl`.
 naga = { version = "29.0.4", features = ["wgsl-in"] }
+# ⚠️ DEV-dependency: o gate de PARIDADE corre a lei da reticula nos DOIS lados
+# — a `Tinta` na CPU e o gemeo em WGSL na placa — sobre a mesma malha e o mesmo
+# plano. Reescrever a lei aqui seria a segunda redaccao que o gate existe para
+# impedir. O `src/` nao a toca (o shader recebe os buffers ja' prontos de quem
+# chama), entao isto e' machete-safe.
+ph2d-mesh-colors = { path = "../ph2d-mesh-colors" }
 # Os gates de GPU sao headless e bloqueiam no request_adapter/map_async.
 # ⛔ TETO: ver `ph2d-gpu/Cargo.toml` (segurado pelo rfd).
 pollster = "0.4.0"

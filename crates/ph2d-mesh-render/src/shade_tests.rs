@@ -189,7 +189,12 @@ fn the_clay_and_the_donation_ask_the_same_door_how_dark_a_crevice_is() {
         1,
         "a porta é uma"
     );
-    for entry in ["fs_main", "fs_gbuffer"] {
+    // ⚠️ **O corpo do sombreamento mudou de casa em 2026-09-20 e este gate
+    //   reprovou — que é ele a funcionar.** O `fs_main` passou a delegar num
+    //   `fs_core(in, vcolor)` para que a tinta fina não trouxesse uma SEGUNDA
+    //   lei de luz, logo é o `fs_core` que tem de perguntar à porta. A metade
+    //   nova, logo abaixo, é a que impede alguém de re-embutir um corpo.
+    for entry in ["fs_core", "fs_gbuffer"] {
         let body = src
             .split_once(&format!("fn {entry}("))
             .expect("o fragment existe")
@@ -202,6 +207,28 @@ fn the_clay_and_the_donation_ask_the_same_door_how_dark_a_crevice_is() {
             "`{entry}` tem de perguntar à porta, não compor a oclusão por conta própria"
         );
     }
+    // ⭐ E as DUAS entradas de cor delegam no MESMO corpo — sem isto, a tinta
+    // fina podia ganhar uma cópia do sombreamento e a peça acenderia de duas
+    // maneiras conforme o plano estivesse armado.
+    for entry in ["fs_main", "fs_main_tinta"] {
+        let fonte = crate::fonte::mesh_wgsl(true);
+        let body = fonte
+            .split_once(&format!("fn {entry}("))
+            .unwrap_or_else(|| panic!("`{entry}` existe"))
+            .1
+            .split_once("\n}")
+            .expect("ele fecha")
+            .0;
+        assert!(
+            body.contains("fs_core("),
+            "`{entry}` tem de delegar no corpo único, não compor a luz por conta própria"
+        );
+        assert!(
+            !body.contains("form_occlusion("),
+            "`{entry}` voltou a compor a oclusão — o corpo é do `fs_core`"
+        );
+    }
+
     // A metade que impede a divergência de VOLTAR: os três ingredientes são nomeados UMA vez, dentro
     // da porta. Se um deles reaparecer noutro lugar, alguém está compondo a oclusão de novo.
     //

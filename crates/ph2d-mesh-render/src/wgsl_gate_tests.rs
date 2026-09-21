@@ -96,3 +96,68 @@ fn localizacoes(texto: &str, agulha: &str) -> std::collections::BTreeSet<u32> {
         })
         .collect()
 }
+
+/// ⭐⭐⭐⭐ **AS DUAS FONTES COMPILAM, e a de baixo compila SEM a capacidade** —
+/// o gate que faz a degradação ser real em vez de uma promessa.
+///
+/// ⛔⛔ **A validação de um módulo WGSL é tudo-ou-nada:** uma fonte que
+/// mencione `@builtin(primitive_index)` numa placa que não o anuncia **não
+/// compila NADA**, e a peça deixaria de desenhar de todo — não só a tinta
+/// fina. É por isso que o corte é na FONTE ([`crate::fonte::mesh_wgsl`]) e não
+/// num `if` lá dentro.
+///
+/// ⭐ **E o corte é entre a LEI e a ENTRADA, de propósito:** o gémeo em WGSL
+/// recebe o índice do triângulo como ARGUMENTO, logo ele valida sem a
+/// capacidade e sem device — em toda máquina que corra `cargo test`. Quem
+/// precisa da capacidade é só o `fs_main_tinta`.
+#[test]
+fn as_duas_fontes_do_shader_parsam_e_validam() {
+    // ⚠️ A capacidade do `primitive_index` no naga, para a fonte de cima.
+    let com_pi = naga::valid::Capabilities::PRIMITIVE_INDEX;
+    for (nome, com_tinta, caps) in [
+        (
+            "sem tinta (a placa não anuncia)",
+            false,
+            naga::valid::Capabilities::empty(),
+        ),
+        ("com tinta", true, com_pi),
+    ] {
+        let src = crate::fonte::mesh_wgsl(com_tinta);
+        let module = naga::front::wgsl::parse_str(&src)
+            .unwrap_or_else(|e| panic!("{nome}: nao parsa: {}", e.emit_to_string(&src)));
+        let r = naga::valid::Validator::new(naga::valid::ValidationFlags::all(), caps)
+            .validate(&module);
+        assert!(r.is_ok(), "{nome}: nao valida: {:?}", r.err());
+    }
+
+    // ⭐⭐ CONTROLO, e é ele que prova que o corte serve para alguma coisa: com
+    //   a tinta dentro e SEM a capacidade, a validação TEM de recusar. Sem
+    //   esta metade, o `if` da composição poderia não estar a fazer nada.
+    let src = crate::fonte::mesh_wgsl(true);
+    let module = naga::front::wgsl::parse_str(&src).expect("parsa");
+    let r = naga::valid::Validator::new(
+        naga::valid::ValidationFlags::all(),
+        naga::valid::Capabilities::empty(),
+    )
+    .validate(&module);
+    assert!(
+        r.is_err(),
+        "a fonte COM tinta validou sem a capacidade do `primitive_index` — \
+         então o corte da fonte não está a proteger nada"
+    );
+
+    // ⭐ CONTROLO: a fonte de baixo é a de cima MENOS o bloco, e não outra
+    //   coisa — se alguém a escrever à mão, as duas divergem em silêncio.
+    assert!(
+        crate::fonte::mesh_wgsl(true).contains(crate::fonte::MESH_WGSL),
+        "a fonte com tinta deixou de ser a de sempre MAIS o bloco"
+    );
+    assert!(
+        crate::fonte::mesh_wgsl(true).starts_with("enable "),
+        "a directiva `enable` tem de abrir a fonte — ela precede toda declaração"
+    );
+    assert!(
+        !crate::fonte::mesh_wgsl(false).contains("primitive_index"),
+        "a fonte sem tinta ainda menciona a capacidade que ela existe para evitar"
+    );
+}

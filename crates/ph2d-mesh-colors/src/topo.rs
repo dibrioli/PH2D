@@ -207,8 +207,14 @@ impl Topologia {
         for (f, cantos) in faces.enumerate() {
             let n = crate::cantos(cantos);
             debug_assert_eq!(n, self.cantos_de(f), "o payload recebeu outra face");
-            for s in 0..4 {
-                out.push(if s < n { cantos[s] } else { TRI });
+            // ⚠️ `iter().take(n)` e não um índice: o clippy recusa a indexação
+            //   por variável de laço, e aqui ela seria mesmo pior — o `n` vem
+            //   do sentinela e a fatia pode ser mais curta que `4`.
+            for c in cantos.iter().take(n) {
+                out.push(*c);
+            }
+            for _ in n..4 {
+                out.push(TRI);
             }
             for s in 0..4 {
                 out.push(if s < n {

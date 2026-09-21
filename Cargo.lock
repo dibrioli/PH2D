@@ -6451,6 +6451,7 @@ dependencies = [
  "ph2d-imageio-png",
  "ph2d-light",
  "ph2d-mesh",
+ "ph2d-mesh-colors",
  "ph2d-sculpt3d",
  "ph2d-sdf",
  "pollster",

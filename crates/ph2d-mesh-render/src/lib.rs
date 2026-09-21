@@ -29,6 +29,8 @@
 //! pura e tem gate sem device; quem executa é o [`MeshRenderer`].
 
 mod camera;
+/// ⭐ **A FONTE do shader, composta** — ver [`fonte::mesh_wgsl`].
+pub mod fonte;
 mod form;
 mod lighting;
 pub mod matcap;
@@ -180,7 +182,7 @@ mod clay_tests {
     /// não está igual ao vivo"*, que é literalmente o report que criou estas constantes.
     #[test]
     fn the_clays_material_is_the_same_number_in_the_shader_and_in_rust() {
-        let src = include_str!("shaders/mesh.wgsl");
+        let src = crate::fonte::MESH_WGSL;
         for (name, value) in [
             ("CLAY_SHINE", super::CLAY_SHINE),
             ("CLAY_EXPONENT", super::CLAY_EXPONENT),

@@ -42,7 +42,12 @@ PY
     echo "  ABORTO [$nome]: a mutação não compila"
   else
     local corridos
-    corridos=$(echo "$out" | grep -oP 'test result: \w+\. \K[0-9]+' | awk '{s+=$1}END{print s+0}')
+    # ⚠️⚠️ A populacao e' `passed + failed`, nunca so' `passed`. Com UM teste
+    #    no filtro, uma mutacao que SANGRA deixa `0 passed; 1 failed` — e um
+    #    contador que le so' o `passed` le' isso como *«zero testes correram»* e
+    #    ABORTA a mutacao que estava a funcionar. Medido em 2026-09-20, sobre o
+    #    gate de paridade da placa: `0 de 5` onde a verdade era `4 de 5`.
+    corridos=$(echo "$out" | grep -oP 'test result: \w+\. \K[0-9]+(?= passed)|[0-9]+(?= failed)' | awk '{s+=$1}END{print s+0}')
     if [ "$corridos" -eq 0 ]; then echo "  ABORTO [$nome]: zero testes correram"
     elif [ $rc -ne 0 ]; then echo "  SANGRA  [$nome]"; sangram=$((sangram+1))
     else echo "  SOBREVIVE [$nome]  <<<<"; fi

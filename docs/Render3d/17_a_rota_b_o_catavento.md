@@ -151,6 +151,43 @@ de facto ocupa no ecrã — nunca um número escolhido.
 
 ---
 
+### §1.5 — ⭐⭐⭐⭐ Bloco E: **DE QUE ROTAÇÃO é a rota B?** (a pergunta que decide o componente)
+
+O `02.2` promete *«rodar um sprite e ver a luz acompanhar — o efeito que nenhum sprite
+normal-mapeado comum consegue»*. ⚠️ **Essa frase é verdadeira para metade das rotações e FALSA para
+a outra metade**, e nenhuma medição a tinha partido.
+
+A régua é o **ângulo entre normais** onde os dois planos cobrem, mais o desacordo de silhueta. O
+sucedâneo 2D é aplicado a **`90°` de propósito**: ali ele é uma **permutação EXACTA de pixels** mais
+a troca `(x, y, z) → (y, −x, z)` das normais — *sem reamostragem, logo o que sobra é o fenómeno e
+não o filtro*.
+
+| malha | rotação de `90°` | mediana | p99 | silhueta |
+|---|---|---|---|---|
+| com relevo | **no plano, com o sucedâneo 2D** | **`0,00°`** | `0,03°` | `0,00 %` |
+| com relevo | no plano, com o plano FIXO | `28,58°` | `130,93°` | `6,16 %` |
+| com relevo | **fora do plano, com o plano FIXO** | **`31,69°`** | `125,14°` | `6,71 %` |
+| esfera lisa (**CONTROLO**) | as quatro linhas | `0,00°` | `0,03°` | `0,00 %` |
+
+⭐⭐⭐ **A rota A JÁ DÁ a rotação NO PLANO, e dá-a EXACTAMENTE.** Uma rotação `R` em torno do eixo da
+vista leva as normais a `R·n` e a imagem a `R·imagem` — **duas operações 2D sobre o plano já
+assado**, e a medição lê `0,00°` sobre `0,00 %` de silhueta discordante. ⛔ **Fora do plano não há
+sucedâneo nenhum:** aparecem faces que não estavam na imagem, e nenhuma operação 2D as inventa.
+
+⭐ **E o CONTROLO é o que dá direito à leitura:** uma esfera lisa **não tem orientação** — o campo de
+normais dela visto de uma câmera não depende de como ela está rodada —, logo ela lê `0,00°` nas
+quatro linhas. *Uma fixtura sem o fenómeno tem de ler zero, senão a régua está a medir o
+instrumento.*
+
+⛔⛔⛔ **E isto decide o COMPONENTE, não só a cena.** O
+[`ph2d_ecs::Transform`](../../crates/ph2d-ecs/src/transform.rs) tem `rotation: f32` e exprime
+**apenas** a rotação no plano — que é exactamente a que a rota A já dá. ⇒ **a pose 3D tem de viajar
+no componente da malha**, porque a hierarquia 2D não sabe exprimir a rotação que justifica a obra.
+E a cena de smoke tem de mostrar uma pá a **VIRAR**, nunca um sprite a girar no plano: *uma cena que
+mostrasse a rotação no plano estaria a demonstrar uma coisa que a rota A já faz.*
+
+---
+
 ## §2 — O que a composição dá, o que ela NÃO dá, e onde está a costura
 
 ⭐⭐⭐ **As duas metades já vivem na placa, e a costura entre elas passa pela CPU.**
@@ -315,5 +352,7 @@ ninguém vê é a que envelhece em silêncio no dia em que a fixtura mudar.
 | baixar a resolução do G-buffer para poupar relógio | não compra rasterização (ela é plana no lado) **nem** acendida (o passe despacha sobre os pixels do SPRITE) | §1.1 + §1.2-bis + §1.3 |
 | medir a rasterização com uma esfera leve | o custo é de VÉRTICES: `33×` de malha vale `1,6×` de tempo, e a fixtura não continha a grandeza | §1.4 |
 | dividir o orçamento pelo custo de RASTERIZAR | é metade da corrente: a conta dá `126` objectos e a corrente inteira dá `26` | §1.2-bis |
+| a rota B para a rotação NO PLANO | a rota A dá-a **exactamente** (`0,00°` contra `28,58°` de um plano fixo): são duas operações 2D sobre o plano assado | §1.5 |
+| pôr a pose 3D da malha no `Transform` do filho | ele tem `rotation: f32` e só exprime o plano do ecrã — a rotação que justifica a obra é **inexprimível** ali | §1.5 |
 | apertar o controlo de vácuo até a fixtura PRETA o disparar | ela não é um vácuo: tira a COR e não a FORMA, e lê `246` de excursão contra `188` da boa — apertar mediria outra grandeza | §5.4 |
 | dar folga ao gate da igualdade `f32` | a rota residente não é uma aproximação: uma barra ali deixa passar uma 2.ª redacção do despacho | §5.3 |

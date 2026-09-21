@@ -66,6 +66,92 @@ use ph2d_app_sculpt3d::Sculpt3dScene;
 /// contra 6,89 a 1024²).
 const EDGE: u32 = 256;
 
+/// **A BANCADA dos dois gates** — monta o mundo do produto, põe uma tela de `bg` na mesa e assa.
+///
+/// ⛔⛔ **Ela nasceu de uma CATRACA** (`the_shell_only_shrinks`, 21/09): o gate da tela vazia
+/// duplicava, linha a linha, a montagem do irmão — `SpriteRenderer`, `SimWorld`, `AssetDb`, o mapa
+/// de atlas, a esfera e o `drain`. ⚠️ *Duas cópias de uma montagem convergem enquanto ninguém mexe
+/// numa delas*, e o que difere entre os dois gates é **um número**: o fundo da tela.
+///
+/// Devolve o veredito, o renderizador e os bits da entidade — tudo o que as asserções leem.
+fn assa_uma_tela(
+    gpu: &ph2d_gpu::GpuContext,
+    bg: u8,
+) -> (
+    ph2d_app_sculpt3d::bake::Veredito,
+    SpriteRenderer,
+    SimWorld,
+    u64,
+) {
+    let mut renderer =
+        SpriteRenderer::new(gpu.clone(), GameRt::FORMAT, TextureAtlas::dummy(gpu), 8);
+    let mut sim = SimWorld::new();
+    let asset_db = AssetDb::new();
+    let mut atlas_map = BTreeMap::new();
+    // ⚠️ **A MESMA porta que a cena de smoke usa** para pôr a tela na mesa — uma fixtura que
+    // montasse o sprite à mão testaria um objecto que o produto não produz.
+    let (_, bits) = crate::image_import::spawn_blank_canvas(
+        &mut sim,
+        &mut renderer,
+        &asset_db,
+        0,
+        EDGE,
+        bg,
+        ph2d_core::Vec2::new(0.0, 0.0),
+        100.0, // LITERAL-PX-OK: pixels por metro da fixture, nao metrica de design
+        &mut atlas_map,
+    )
+    .expect("a tela da fixture");
+
+    let mut scene = Sculpt3dScene::new(&gpu.device, uv_sphere(48, 72, 1.0), 1.0);
+    let mut forms = BTreeMap::new();
+    let mut pass = ph2d_form_donation::baked_form::PassesDaLuz::default();
+    let mut next_id = 0u32;
+    let veredito = ph2d_app_sculpt3d::bake::drain(
+        &mut scene,
+        &mut forms,
+        &mut pass,
+        &mut next_id,
+        gpu,
+        true,
+        Some(bits),
+        &mut sim,
+        &mut renderer,
+        false,
+        &mut |sim: &mut SimWorld, renderer: &mut SpriteRenderer| {
+            // PRECISION-READONLY: a bancada LÊ os pixels para os comparar com o antes e o depois
+            // do bake, e nunca os escreve de volta — quem os escreve é o `drain`.
+            crate::hero_intents::texture_edit::read_sprite_source(
+                ph2d_ecs::Entity::from_bits(bits),
+                sim,
+                renderer,
+                &asset_db,
+                &atlas_map,
+            )
+            .map(|s| s.image)
+        },
+    )
+    .expect("o gesto foi pedido, entao ele responde alguma coisa");
+    (veredito, renderer, sim, bits)
+}
+
+/// **Os texels do slot que o sprite assado aponta** — a outra metade partilhada.
+fn texels(renderer: &mut SpriteRenderer, sim: &SimWorld, bits: u64) -> Vec<[u8; 4]> {
+    let ph2d_render::SpriteSource::Individual { texture_id } = sim
+        .world()
+        .get::<ph2d_render::Sprite>(Entity::from_bits(bits))
+        .expect("o sprite continua na cena")
+        .source
+    else {
+        panic!("o sprite assado tem de deixar o atlas: os pixels dele agora sao base x luz");
+    };
+    let (w, h, rgba) = renderer
+        .readback_individual(texture_id)
+        .expect("o slot do sprite volta");
+    assert_eq!((w, h), (EDGE, EDGE));
+    rgba.as_chunks::<4>().0.to_vec()
+}
+
 /// **O gesto inteiro: a forma da escultura acende um sprite da cena.**
 ///
 /// ⚠️ **O oráculo é a APARÊNCIA, e sem ele o gate seria verde sobre um bake que
@@ -83,61 +169,15 @@ fn the_bake_gesture_lights_the_selected_sprite() {
         eprintln!("no GPU adapter on this machine — nothing to assert");
         return;
     };
-    let mut renderer =
-        SpriteRenderer::new(gpu.clone(), GameRt::FORMAT, TextureAtlas::dummy(&gpu), 8);
-    let mut sim = SimWorld::new();
-    let asset_db = AssetDb::new();
-    let mut atlas_map = BTreeMap::new();
-    // A MESMA porta que a cena de smoke usa para pôr a tela na mesa — uma
-    // fixture que montasse o sprite à mão testaria um objeto que o produto não
-    // produz.
-    let (_, bits) = crate::image_import::spawn_blank_canvas(
-        &mut sim,
-        &mut renderer,
-        &asset_db,
-        0,
-        EDGE,
-        // Branco OPACO: a luz da forma MULTIPLICA, então sobre branco o que se vê
-        // é ela e mais nada. É também o que torna a asserção de aparência simples
-        // — qualquer texel abaixo de 255 veio da escultura.
-        2,
-        ph2d_core::Vec2::new(0.0, 0.0),
-        100.0, // LITERAL-PX-OK: pixels por metro da fixture, nao metrica de design
-        &mut atlas_map,
-    )
-    .expect("a tela branca da fixture");
-
-    let mut scene = Sculpt3dScene::new(&gpu.device, uv_sphere(48, 72, 1.0), 1.0);
-    let mut forms = BTreeMap::new();
-    let mut pass = ph2d_form_donation::baked_form::PassesDaLuz::default();
-    let mut next_id = 0u32;
-    let line = ph2d_app_sculpt3d::bake::drain(
-        &mut scene,
-        &mut forms,
-        &mut pass,
-        &mut next_id,
-        &gpu,
-        true,
-        Some(bits),
-        &mut sim,
-        &mut renderer,
-        false,
-        &mut |sim: &mut SimWorld, renderer: &mut SpriteRenderer| {
-            // PRECISION-READONLY: este gate LÊ os pixels para os comparar com o antes e o
-            // depois do bake, e nunca os escreve de volta — quem os escreve é o `drain`, que
-            // declara o custo dele na entrada própria deste censo (`render_loop/mod.rs`).
-            crate::hero_intents::texture_edit::read_sprite_source(
-                ph2d_ecs::Entity::from_bits(bits),
-                sim,
-                renderer,
-                &asset_db,
-                &atlas_map,
-            )
-            .map(|s| s.image)
-        },
-    )
-    .expect("o gesto foi pedido, entao ele responde alguma coisa");
-    assert!(line.contains("ASSADO"), "o gesto recusou o bake: {line}");
+    // Branco OPACO: a luz da forma MULTIPLICA, então sobre branco o que se vê é ela e mais nada —
+    // é também o que torna a asserção de aparência simples (qualquer texel abaixo de 255 veio da
+    // escultura).
+    let (veredito, mut renderer, sim, bits) = assa_uma_tela(&gpu, 2);
+    assert!(
+        veredito.assou(),
+        "o gesto recusou o bake: {}",
+        veredito.frase()
+    );
 
     // ── O que o sprite virou ────────────────────────────────────────────────
     let entity = Entity::from_bits(bits);
@@ -145,9 +185,6 @@ fn the_bake_gesture_lights_the_selected_sprite() {
         .world()
         .get::<ph2d_render::Sprite>(entity)
         .expect("o sprite continua na cena");
-    let ph2d_render::SpriteSource::Individual { texture_id } = sprite.source else {
-        panic!("o sprite assado tem de deixar o atlas: os pixels dele agora sao base x luz");
-    };
     assert!(
         !sprite.premultiplied,
         "o passe devolve alpha DIREITO, como recebeu"
@@ -158,16 +195,8 @@ fn the_bake_gesture_lights_the_selected_sprite() {
     );
 
     // ── E o oráculo: a forma ACENDEU ────────────────────────────────────────
-    let (w, h, rgba) = renderer
-        .readback_individual(texture_id)
-        .expect("o slot do sprite volta");
-    assert_eq!((w, h), (EDGE, EDGE));
-    let shaded = rgba
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .filter(|px| px[0] < 250 && px[3] > 0)
-        .count();
+    let px = texels(&mut renderer, &sim, bits);
+    let shaded = px.iter().filter(|p| p[0] < 250 && p[3] > 0).count();
     let total = (EDGE * EDGE) as usize;
     eprintln!("bake: {shaded} de {total} texels sairam da chapa branca");
     assert!(
@@ -175,4 +204,64 @@ fn the_bake_gesture_lights_the_selected_sprite() {
         "a esfera cobre boa parte do quadro e mal escureceu {shaded} de {total} texels — \
          o gesto respondeu Ok e a tela continua uma chapa"
     );
+}
+
+/// ⭐⭐⭐⭐ **E UMA TELA VAZIA SAI VISÍVEL** — o gate que o report de 21/09 pediu, pela rota do
+/// produto e com a placa a decidir.
+///
+/// ⚠️ **Porque é que ele não existia:** o irmão acima assa a tela `bg: 2` (branca OPACA), a que a
+/// cena de smoke põe na mesa, e **nenhuma fixtura desta casa alguma vez assou uma transparente** —
+/// era ali que o defeito do dono vivia. O mecanismo, a leitura errada que eu fiz do report e a lei
+/// que ficou estão em [`ph2d_app_sculpt3d::albedo::veste_a_forma`].
+///
+/// ## O que se afirma aqui, e porquê cada metade
+///
+/// 1. **o gesto não recusa** (era isto que ele via);
+/// 2. **o resultado tem alfa** — a única metade que prova que o problema dele acabou;
+/// 3. **e ele tem SOMBRA**, senão a lei podia ter pintado um quadrado branco chapado;
+/// 4. ⭐ **e os CANTOS continuam vazios**: a peça é uma bola, logo uma lei que pintasse o
+///    rectângulo inteiro passaria em 1–3 e falharia aqui. *É esta metade que separa «vestir a
+///    forma» de «pintar a tela de branco».*
+///
+/// `#[ignore]`: precisa de um adapter de GPU (não há na CI).
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn uma_tela_vazia_veste_a_peca_e_sai_visivel() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter on this machine — nothing to assert");
+        return;
+    };
+    // ⛔ **`0` = totalmente TRANSPARENTE** — a tela do report, e a única que esta casa nunca tinha
+    // assado.
+    let (veredito, mut renderer, sim, bits) = assa_uma_tela(&gpu, 0);
+    assert!(
+        veredito.assou(),
+        "uma tela vazia NAO e' recusada desde 21/09: {}",
+        veredito.frase()
+    );
+
+    let px = texels(&mut renderer, &sim, bits);
+    let opacos = px.iter().filter(|p| p[3] > 200).count();
+    let sombreados = px.iter().filter(|p| p[3] > 200 && p[0] < 250).count();
+    let total = (EDGE * EDGE) as usize;
+    eprintln!("tela vazia: {opacos} opacos e {sombreados} sombreados de {total}");
+    assert!(
+        opacos * 20 > total,
+        "a peca cobre boa parte do quadro e o resultado tem so' {opacos} de {total} texels \
+         opacos — e' o objecto INVISIVEL do report"
+    );
+    assert!(
+        sombreados * 40 > total,
+        "o objecto ficou visivel mas CHAPADO ({sombreados} de {total} com sombra) — a forma tem \
+         de acender o branco que ela vestiu"
+    );
+    // ⭐ **A metade que separa «vestir a forma» de «pintar a tela»**: uma bola nao chega aos
+    // cantos, e uma lei que pintasse o rectangulo inteiro passaria em tudo acima e aqui nao.
+    for (x, y) in [(0, 0), (EDGE as usize - 1, 0), (0, EDGE as usize - 1)] {
+        assert_eq!(
+            px[y * EDGE as usize + x][3],
+            0,
+            "o canto ({x},{y}) da tela vazia tem de ficar VAZIO: a peca e' uma bola"
+        );
+    }
 }

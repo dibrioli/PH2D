@@ -72,38 +72,76 @@ pub(crate) fn materia_para(
     if let Some(b) = forms.get(&bits) {
         return Ok((b.base.clone(), b.size));
     }
-    let src = ler_fonte()
-        .ok_or_else(|| "nao consegui ler os pixels do sprite selecionado".to_string())?;
+    let src = ler_fonte().ok_or_else(|| {
+        ph2d_i18n::tr("app.sculpt3d.albedo.nao_consegui_ler_os_pixels").to_string()
+    })?;
     let straight = src.into_straight();
     let size = (straight.width, straight.height);
     if size.0 == 0 || size.1 == 0 {
-        return Err("o sprite selecionado nao tem pixels".into());
-    }
-    // ⛔⛔⛔ **UM SPRITE TOTALMENTE TRANSPARENTE NÃO PODE SER ASSADO** (report do dono, 21/09:
-    // *«em sprite transparente o bake fica invisível»*).
-    //
-    // ⚠️ **A lei da luz está CERTA e é ela que o explica:** o passe escreve
-    // `vec4(cor_acesa, px.a)` — *«o ALFA atravessa intacto, ele é a silhueta do sprite»* —, logo
-    // com alfa zero em toda parte a saída é invisível **por construção**, e nenhuma lâmpada a traz
-    // de volta.
-    //
-    // ⭐⭐⭐ **E o que torna isto uma RECUSA e não um aviso é que o estado PRENDE:** o ramo logo
-    // acima reusa o `base` de um sprite já assado (*re-assar não lê a tela de volta*), logo um bake
-    // sobre o vazio grava um albedo transparente que TODO re-bake herda — o artista pinta depois e
-    // a tinta nunca chega ao objecto. *Um gesto que deixa o objecto num estado de que ele não sai é
-    // pior do que um gesto recusado.*
-    //
-    // ⚠️ **A régua é «existe UM pixel com alfa»**, e não uma fracção: um sprite recortado (um
-    // personagem sobre transparente) é o caso NORMAL, e uma barra de cobertura recusaria o trabalho
-    // de toda a gente. *A pergunta é «há alguma coisa para acender?», não «há muito?».*
-    if !straight.pixels.as_chunks::<4>().0.iter().any(|p| p[3] > 0) {
-        return Err(
-            "this sprite is fully transparent - the form has nothing to light, and baking it \
-             would freeze the object invisible (paint it first, then Shift+B)"
-                .into(),
-        );
+        return Err(ph2d_i18n::tr("app.sculpt3d.albedo.sem_pixels").to_string());
     }
     Ok((straight.pixels, size))
+}
+
+/// ⭐⭐⭐⭐ **UM SPRITE VAZIO VESTE A SILHUETA DA FORMA** — a lei que o report de 21/09 pediu, e
+/// que substitui a RECUSA que a 1.ª leitura dele produziu.
+///
+/// ## O que o dono disse, e o que eu li ao contrário
+///
+/// Ele escreveu *«em sprite transparente o bake fica invisível»* e eu respondi com uma **recusa**.
+/// A foto seguinte — *«o objeto continua sem assar»*, com o aviso na tela — é o mesmo pedido pela
+/// segunda vez: ⛔ *ele não queria ser impedido; ele queria que funcionasse.*
+///
+/// ## Porque é que ele ficava invisível, e porque é que a cura é a FORMA
+///
+/// O passe escreve `vec4(cor_acesa, px.a)` — *o alfa atravessa intacto, ele é a silhueta do
+/// sprite*. Sobre uma tela vazia isso é `a = 0` em toda parte, e **nenhuma lâmpada a traz de
+/// volta**: o objecto fica assado, virável, aceso — e invisível.
+///
+/// ⭐ A silhueta que falta **já está rasterizada ao lado**: o G-buffer é `[nx, ny, nz, COBERTURA]`
+/// por texel ([`ph2d_mesh_render::FormPlanes::normal`]), e a cobertura é exactamente *«onde a peça
+/// está»*. ⇒ onde o sprite não tem nada e a peça tem, a matéria passa a ser a **NEUTRA**.
+///
+/// ⚠️ **E o branco não é escolha minha:** é o que as cenas de bake desta casa já põem na mesa
+/// (`donation::canvas_wanted` pede `bg: 2`), com a razão escrita no gate do gesto — *«a luz da
+/// forma MULTIPLICA, então sobre branco o que se vê é ela e mais nada»*. Branco é o **neutro
+/// multiplicativo**, e usá-lo aqui é aplicar a escolha que o produto já fez.
+///
+/// ## ⛔⛔ A CERCA é «o sprite inteiro está vazio», e sem ela isto seria uma regressão grave
+///
+/// Um personagem **recortado** sobre transparente é o caso normal deste app. Se a lei valesse
+/// texel a texel, a peça pintaria branco em toda a zona recortada — *o recorte deixaria de ser
+/// recorte*. ⇒ ela só arma quando **nenhum** texel tem alfa, que é a condição que o report
+/// descreve, e para toda sprite com arte a saída é **byte-idêntica** (o `false` sai antes de
+/// escrever um byte).
+///
+/// ## ⚠️ O alfa é a COBERTURA e não `255`
+///
+/// A cobertura da borda é fraccionária (é ela que dá o anti-serrilhado da rasterização). Escrever
+/// `255` onde `cobertura > 0` devolveria a peça com a borda **serrilhada**, e o canal já tem a
+/// resposta suave — custa o mesmo.
+///
+/// Devolve **quantos texels** vestiu, `0` quando não armou: é o que o toast diz ao artista, e é o
+/// que um gate mede sem ter de olhar para pixels.
+pub(crate) fn veste_a_forma(base: &mut [u8], forma: &[f32]) -> usize {
+    if base.as_chunks::<4>().0.iter().any(|p| p[3] > 0) {
+        return 0;
+    }
+    let mut vestidos = 0usize;
+    for (px, n) in base
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .zip(forma.as_chunks::<4>().0)
+    {
+        let cobertura = n[3].clamp(0.0, 1.0);
+        if cobertura > 0.0 {
+            // LITERAL-COLOR-OK: o NEUTRO multiplicativo da luz da forma, com o alfa da cobertura
+            *px = [255, 255, 255, (cobertura * 255.0).round() as u8];
+            vestidos += 1;
+        }
+    }
+    vestidos
 }
 
 /// **O QUE O QUADRO TEM DE FAZER COM A MATÉRIA** — a saída de [`decide`].

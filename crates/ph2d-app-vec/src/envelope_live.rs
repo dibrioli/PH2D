@@ -486,3 +486,8 @@ fn write_shape(scene: &mut VecScene, id: VecPathId, cooked: VecPath) {
 #[cfg(test)]
 #[path = "envelope_live_tests.rs"]
 mod tests;
+
+/// ⭐⭐ **AS SONDAS** — elas imprimem; os gates são o irmão acima.
+#[cfg(test)]
+#[path = "envelope_sondas_tests.rs"]
+mod sondas_tests;

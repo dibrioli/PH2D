@@ -56,7 +56,9 @@ fn ellipse(c: [f64; 2], r: f64) -> VecPath {
 
 /// Cria um envelope sobre `shapes` (formas em MUNDO/identidade), com o `sync` que dá entidade a cada
 /// uma. Devolve `(sim, scene, map, container_bits, child_ids)`.
-fn envelope_over(shapes: Vec<VecPath>) -> (SimWorld, VecScene, VecEntityMap, u64, Vec<VecPathId>) {
+pub(super) fn envelope_over(
+    shapes: Vec<VecPath>,
+) -> (SimWorld, VecScene, VecEntityMap, u64, Vec<VecPathId>) {
     let mut sim = SimWorld::default();
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();

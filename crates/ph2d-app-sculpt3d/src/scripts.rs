@@ -341,6 +341,13 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        O que sobra, e e' declarado: um sprite e' de 8 bits e o barro e' HDR,\n\
              [sculpt3d]        entao onde a luz passa de 1,0 os dois cortam no mesmo sitio mas so' o\n\
              [sculpt3d]        assado perde a diferenca ao gravar.\n\
+             [sculpt3d]    (6-ter) E ELE NAO PODE MUDAR AO TROCAR O QUE ESTA' SELECIONADO -- foi o\n\
+             [sculpt3d]        QUINTO report. Com o sprite a' vista (depois do D), clique nele na\n\
+             [sculpt3d]        Hierarquia e depois clique na ESCULTURA: a aparencia do que esta' na\n\
+             [sculpt3d]        tela tem de ficar EXATAMENTE igual. Se ao pegar na escultura ela\n\
+             [sculpt3d]        clarear ou parecer mais brilhante, reprove -- o visor voltou ao barro\n\
+             [sculpt3d]        de fabrica, que e' mais escuro (e uma base escura le'-se como mais\n\
+             [sculpt3d]        brilhante, porque so' o brilho nao acompanha a cor).\n\
              [sculpt3d]    (7) Assar DE NOVO por outro angulo tem de substituir a luz, nao somar --\n\
              [sculpt3d]        gire, Shift+B, e o sprite nao pode ficar mais escuro a cada bake.\n\
              [sculpt3d]    (8) E ele SOBREVIVE a fechar o app -- mas isso e' a cena =12, que tem\n\

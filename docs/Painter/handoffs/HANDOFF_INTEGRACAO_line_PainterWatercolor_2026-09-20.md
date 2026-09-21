@@ -1647,3 +1647,23 @@ usa.
   tirada com a pilha levada a sete à mão, antes desta wave existir.
 * ⏳ O `x` e o `+` não têm atalho de teclado nem desfazer próprio (eles entram no undo do painel,
   que **não existe** — decisão antiga do dono).
+
+### §25.8 — O menu do `+` era um BOTÃO disfarçado, e o dono devolveu-o
+
+> *«Ao lado do + deveria ser um dropdown como eu especifiquei. Com todas as opções que ainda podem
+> ser colocadas em camadas.»*
+
+⛔⛔ **Ele estava REGISTADO como `Dropdown` e abria a lista — o que faltava era a AFORDÂNCIA.** Eu
+pintei-o com o `paint_button`, logo ele tinha o comportamento certo e a cara errada. *Um controlo
+que se comporta como um dropdown e se desenha como um botão é um dropdown que ninguém clica.*
+
+⭐ A cura é o pintor CANÓNICO da casa (`paint_dropdown_chip`, o mesmo do Blend e do Falloff), com a
+seta e a moldura do tema, e a **largura que sobra na fileira** — um chip estreito ao lado de um `+`
+lê-se como um segundo botão. O pintor partilhado ganhou um estado **INATIVO**, que é um parâmetro e
+não um segundo pintor; inativo ele **não regista hit rect**, e é isso que o torna inerte.
+
+⭐⭐ **E o gate que nasceu daí apanhou um defeito de ORDEM que ninguém tinha visto:** a passagem
+diferida que pinta a lista drenava **ANTES** de o cartão a encher (o cartão vive no CORPO, que
+pinta depois dos outros popovers), logo o menu abria sempre com o rect do quadro **ANTERIOR**. Ela
+passou para o fim da pintura. ⚠️ *Uma passagem diferida tem de correr depois de quem a ENCHE, e a
+ordem de pintura deste painel não é a ordem do ficheiro.*

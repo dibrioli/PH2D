@@ -160,6 +160,8 @@ impl PainterTool {
         fases::soma(fases::COPIAS, t_copias2);
         #[cfg(test)]
         fases::conta_area(alvo, w, h);
+        #[cfg(test)]
+        fases::conta_cobertura(&camadas, pad, alvo, w, h);
         self.declare_wrote(Some(alvo));
         self.mark_dirty(alvo);
     }
@@ -584,6 +586,16 @@ pub(super) mod fases {
         /// A soma das áreas de `alvo`, em fracção da TELA — *o que decide se o custo segue a
         /// FIGURA ou a TELA*.
         static AREA: Cell<f64> = const { Cell::new(0.0) };
+        /// A área relativa de um cover por blocos de [`BLOCOS`], somada por evento.
+        static COBERTURA: Cell<[f64; 5]> = const { Cell::new([0.0; 5]) };
+    }
+
+    /// Os lados de bloco que a sonda da cobertura varre.
+    pub(in crate::tool::paint) const BLOCOS: [u32; 5] = [16, 32, 64, 128, 256];
+
+    /// A cobertura acumulada desde a última leitura — e ZERA.
+    pub(in crate::tool::paint) fn take_cobertura() -> [f64; 5] {
+        COBERTURA.with(Cell::take)
     }
 
     pub(in crate::tool::paint) fn soma(i: usize, t: std::time::Instant) {
@@ -601,6 +613,56 @@ pub(super) mod fases {
             let a = f64::from(alvo.w) * f64::from(alvo.h) / tela;
             AREA.with(|c| c.set(c.get() + a));
         }
+    }
+
+    /// **A área que um cover POR BLOCOS pagaria, contra a caixa envolvente** — a medição que
+    /// decide se vale a pena compor a FIGURA em vez do RECTÂNGULO dela.
+    ///
+    /// Um anel ocupa `~5 %` da caixa dele, e a composição percorre a caixa inteira. Mas cada bloco
+    /// paga o **avental** do borrão (`pad` de cada lado), logo um bloco pequeno é quase todo
+    /// avental: *o tamanho óptimo do bloco é uma medição, não uma escolha.*
+    pub(in crate::tool::paint) fn conta_cobertura(
+        camadas: &[Vec<ph2d_painter_brush::Dab>],
+        pad: u32,
+        alvo: Region,
+        w: u32,
+        h: u32,
+    ) {
+        let bbox = f64::from(alvo.w) * f64::from(alvo.h);
+        if bbox <= 0.0 {
+            return;
+        }
+        let mut out = [0f64; BLOCOS.len()];
+        for (bi, &b) in BLOCOS.iter().enumerate() {
+            let nx = w.div_ceil(b) as usize;
+            let ny = h.div_ceil(b) as usize;
+            let mut marca = vec![false; nx * ny];
+            for lista in camadas {
+                for d in lista {
+                    let r = d.radius_px + pad as f32;
+                    let x0 = ((d.center[0] - r).max(0.0) as u32 / b) as usize;
+                    let x1 = ((d.center[0] + r).max(0.0) as u32 / b).min(nx as u32 - 1) as usize;
+                    let y0 = ((d.center[1] - r).max(0.0) as u32 / b) as usize;
+                    let y1 = ((d.center[1] + r).max(0.0) as u32 / b).min(ny as u32 - 1) as usize;
+                    for gy in y0..=y1 {
+                        for gx in x0..=x1 {
+                            marca[gy * nx + gx] = true;
+                        }
+                    }
+                }
+            }
+            let n = marca.iter().filter(|m| **m).count();
+            // Cada bloco compõe-se com o avental dele: `(b + 2·pad)²`.
+            let lado = f64::from(b + 2 * pad);
+            out[bi] = n as f64 * lado * lado / bbox;
+        }
+        COBERTURA.with(|c| {
+            let mut v = c.get();
+            for (i, o) in out.iter().enumerate() {
+                v[i] += o;
+            }
+            c.set(v);
+        });
     }
 
     /// O que a pilha fez desde a última leitura — e ZERA.

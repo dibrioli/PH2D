@@ -13,6 +13,13 @@ empilhadas**, cada uma escondida pela anterior, e cada correcção só tornava a
 página é a ordem em que elas caíram, com o número de cada — para que a próxima leitura de *«ainda
 não está igual»* comece por medir em vez de recomeçar.
 
+⭐⭐ **E houve uma QUINTA, no smoke que aprovou esta página** (*«Finalmente Correto, contudo… se
+seleciono o objeto 3d, ele muda a aparência»*): a matéria do visor era da **SELECÇÃO** e passou a
+ser da **PEÇA**. Ela vive em
+[`../Render/01_o_assado_e_identico_ao_que_se_ve.md`](../Render/01_o_assado_e_identico_ao_que_se_ve.md),
+que é também a **PORTA** do assunto inteiro — a partição das **cinco** perguntas e a **RECEITA** de
+as medir quando o report voltar. ⛔ *Não recomece por aqui: comece por lá.*
+
 ---
 
 ## §1 — A partição: onde cada causa vivia

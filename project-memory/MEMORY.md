@@ -106,6 +106,8 @@
 - [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)
 - [Física do impasto/sculpt (10)](reference_topic_impasto_physics.md)
 - ⭐ [**Como uma RÉGUA mente** — a família (160)](reference_topic_measurement_discipline.md)
+- ⛔⛔⛔ [Uma régua enviesada ENVIA TRABALHO para onde ela própria está errada — o `tokens` liderava com `110` e oferece `4`, e só atacá-lo a refutou](feedback_a_biased_ruler_sends_work_to_where_it_is_itself_wrong.md)
+- ⚠️⚠️ [Há TRÊS formas de declarar um id, e a que faltar à varredura subestima sempre (o `grid-snap` lia `10` de `20`)](feedback_a_ruler_must_know_every_form_an_id_is_declared_in.md)
 - ⛔ [Régua de vazamento cuja máscara usa o predicado DO PRODUTO lê 0,00 % sobre o defeito](feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak.md)
 - ⛔⛔ [Sweep da parede VERDE sobre espec que TRADUZIA o alvo](feedback_a_sweep_in_one_language_does_not_prove_filtering_in_another.md)
 - ⛔ [viés em NDC não é constante no mundo: 3e-3 = 30 % da distância do olho](feedback_a_depth_bias_constant_in_ndc_is_not_constant_in_the_world.md)

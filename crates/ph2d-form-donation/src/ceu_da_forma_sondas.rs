@@ -66,6 +66,7 @@ pub fn bola_com_fresta() -> BakedForm {
         texture_id: 0,
         rig: LightRig::default(),
         lit_with: None,
+        lei: crate::lei_da_luz::Lei::default(),
     }
 }
 

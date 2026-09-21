@@ -348,6 +348,14 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        clarear ou parecer mais brilhante, reprove -- o visor voltou ao barro\n\
              [sculpt3d]        de fabrica, que e' mais escuro (e uma base escura le'-se como mais\n\
              [sculpt3d]        brilhante, porque so' o brilho nao acompanha a cor).\n\
+             [sculpt3d]    (6-quater) E VOCE ESCOLHE A LEI QUE ACENDE ESTE OBJETO, e ela FICA NO\n\
+             [sculpt3d]        ARQUIVO. Com o sprite ASSADO selecionado, o painel mostra a fileira\n\
+             [sculpt3d]        `Lighting Law` na secao Bake, com `Form (PBR)` marcado. Clique em\n\
+             [sculpt3d]        `Paint`: a aparencia muda NA HORA (e' a lei antiga -- sem brilho de\n\
+             [sculpt3d]        verdade e sem conservacao de energia). Volte a `Form (PBR)` e ela\n\
+             [sculpt3d]        volta. Se a fileira nao aparecer, ou se clicar nao mudar nada,\n\
+             [sculpt3d]        reprove. ⚠️ Cada objeto tem a SUA -- dois sprites assados na mesma\n\
+             [sculpt3d]        cena podem usar leis diferentes, e o arquivo guarda a de cada um.\n\
              [sculpt3d]    (7) Assar DE NOVO por outro angulo tem de substituir a luz, nao somar --\n\
              [sculpt3d]        gire, Shift+B, e o sprite nao pode ficar mais escuro a cada bake.\n\
              [sculpt3d]    (8) E ele SOBREVIVE a fechar o app -- mas isso e' a cena =12, que tem\n\

@@ -76,9 +76,9 @@ fn o_visor_e_os_bytes_da_sprite_sao_a_mesma_imagem() {
     // ⭐ A lei que esta sonda usa como oráculo TEM de ser a que o produto assa — senão ela volta a
     // medir um programa que ninguém corre.
     assert_eq!(
-        ph2d_form_donation::lei_da_luz::Lei::do_texto(None),
+        ph2d_form_donation::lei_da_luz::Lei::default(),
         ph2d_form_donation::lei_da_luz::Lei::Forma,
-        "o oráculo desta sonda só descreve o produto se a lei de fábrica for a `Forma`"
+        "o oráculo desta sonda só descreve o produto se um objecto NASCER na lei `Forma`"
     );
 
     let (mut renderer, camera, rig) = stage(&gpu);
@@ -115,6 +115,7 @@ fn o_visor_e_os_bytes_da_sprite_sao_a_mesma_imagem() {
             texture_id: 0,
             rig,
             lit_with: None,
+            lei: ph2d_form_donation::lei_da_luz::Lei::default(),
         };
         let sprite =
             pixels_pela_forma_na_cpu(&bake, &rig).expect("o rig default tem lampada acesa");
@@ -217,6 +218,7 @@ fn de_onde_vem_a_cor_de_cada_lado() {
             texture_id: 0,
             rig,
             lit_with: None,
+            lei: ph2d_form_donation::lei_da_luz::Lei::default(),
         };
         pixels_pela_forma_na_cpu(&bake, &rig).expect("o rig default tem lampada acesa")
     };
@@ -326,6 +328,7 @@ fn atribuicao_do_desvio() {
                 texture_id: 0,
                 rig,
                 lit_with: None,
+                lei: ph2d_form_donation::lei_da_luz::Lei::default(),
             },
             &rig,
         )
@@ -450,6 +453,7 @@ fn a_projeccao_da_fonte_sobrevive_ao_enquadramento() {
             texture_id: 0,
             rig,
             lit_with: None,
+            lei: ph2d_form_donation::lei_da_luz::Lei::default(),
         },
         &rig,
     )

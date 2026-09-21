@@ -47,6 +47,7 @@ use crate::Sculpt3dScene;
 pub fn dispatch(
     hero: &mut HeroScreen,
     scene: Option<&mut Sculpt3dScene>,
+    lei_do_alvo: Option<usize>,
 ) -> Vec<crate::Sculpt3dFrameRequest> {
     // ── 0. O pill SCULPT diz o que a forma É. ──
     // ⚠️ **ANTES do early-return**, e é a metade que o torna correto: sem cena o pill tem de ficar
@@ -73,7 +74,12 @@ pub fn dispatch(
     // ⚠️ O alvo do bake é um fato da cena **2D**, então ele é injetado aqui: a
     // escultura não sabe — nem deve saber — quem está selecionado no canvas.
     let has_bake_target = hero.gizmo.iter_selected().next().is_some();
-    ph2d_panel_sculpt3d::set_current_sculpt3d(Some(scene.panel_snapshot(has_bake_target)));
+    // ⚠️ **A LEI vem de FORA pela mesma razão que o alvo**, e uma a mais: ela é um
+    // campo do DOCUMENTO do objecto assado, e o mapa dos assados é do shell — a
+    // escultura não sabe que um sprite foi assado, nem deve saber.
+    ph2d_panel_sculpt3d::set_current_sculpt3d(Some(
+        scene.panel_snapshot(has_bake_target, lei_do_alvo),
+    ));
 
     // ── 3. Aplicar. O painel enfileirou os intents no dispatch de eventos. ──
     // ⚠️ **Os pedidos ACUMULAM num conjunto, não num `Option`:** dois gestos

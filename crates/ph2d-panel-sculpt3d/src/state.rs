@@ -454,6 +454,24 @@ pub struct Sculpt3dSnapshot {
     /// condição é dita, não deixada para o artista descobrir*, e a linha só
     /// existe quando há o que avisar (um aviso permanente vira moldura).
     pub has_bake_target: bool,
+    /// **QUAL LEI o sprite escolhido usa hoje** — `None` quando ele ainda não
+    /// está assado (e então a fileira não existe).
+    ///
+    /// ⚠️ **Um índice e não uma lei**, e a razão é a seta das dependências:
+    /// quem define as leis é a `ph2d-form-donation`, que puxa o `wgpu` — um
+    /// painel não depende dela. A tradução `índice ⇄ lei` vive **num sítio só**
+    /// (`Lei::index`/`from_index`), com ida-e-volta gateada lá.
+    ///
+    /// ⚠️ Como o `has_bake_target`, é um FATO que o painel MOSTRA e não possui:
+    /// quem está selecionado é pergunta da cena 2D, e a lei é do documento.
+    pub lei_do_alvo: Option<usize>,
+    /// As chaves de i18n dos rótulos da fileira acima, **na ordem dos chips**.
+    ///
+    /// ⛔ Elas vêm de fora (`lei_da_luz::CHAVES_DOS_ROTULOS`) em vez de serem
+    /// escritas aqui: dois nomes escritos no painel seriam a **segunda
+    /// ortografia** da mesma lei, e o dia em que uma terceira lei entrasse ela
+    /// nasceria com o nome de outra.
+    pub lei_rotulos: &'static [&'static str],
 }
 
 /// Estado retido por-instância. Vazio de propósito: a autoridade é a

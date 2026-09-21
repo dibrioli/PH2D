@@ -99,7 +99,7 @@ Quem a responder por memória ou pelo [`03`](03_o_plano.md) responde a fila erra
 
 | ordem | obra | estado |
 |---|---|---|
-| **1.ª** | a lei que acende o sprite | ✅ **NO PRODUTO e com o smoke do dono APROVADO (21/09)** — `Lei::Forma` é o **valor de fábrica** desde 21/09 (`PH2D_FORM_PBR=0` bissecta). ⏳ fica a **cauda** do §7, e o item `2` dela está **DESBLOQUEADO** por essa aprovação |
+| **1.ª** | a lei que acende o sprite | ✅ **NO PRODUTO, com o smoke do dono APROVADO (21/09)** e com a **escolha POR OBJECTO gravada no ficheiro** (o item `2` da cauda, fechado no mesmo dia — degrau `161`). ⏳ fica o resto da cauda do §7 (o destaque que satura · a oclusão especular · não re-enviar a forma quando só o rig mudou) |
 | **2.ª** | a rota B — o catavento | ⏳ **é a PRÓXIMA**, e não começou: `Mesh3D`/`MeshShading` **não existem** (medido no `ph2d-ecs`) |
 | 3.ª | a luz sobrevive ao movimento | ⏳ **absorve a `W9`** do [`03`](03_o_plano.md), com o gate VERMELHO que o dono mandou tratar lá |
 | 4.ª | texturas | ⏳ o material continua **uma cor por objecto** |
@@ -364,7 +364,7 @@ da sombra.
 | 0 | **o destaque SATURA** (`~99 %` do topo `3 %`, nas DUAS leis) | a exposição é calibrada no MIOLO e quem traz o destaque de volta é a **vista**, não ela. A régua já existe (a coluna `a 255` do §8); falta a wave |
 | 0-bis | a **oclusão especular** (Lagarde) | divergência DECLARADA: a oclusão pesa o termo inteiro. Ela é uma lei com oráculo próprio |
 | 1 | **não re-enviar a forma quando só o rig mudou** | é onde o tempo está: o canal **não depende do rig** (é o que torna arrastar a lâmpada barato) e sobe na mesma a cada quadro. A diferença entre `1,74` e `2,08 ms` diz que a lei custa `~0,3 ms`; o resto é transporte |
-| 2 | a **escolha por objecto** (`PROJECT_SCHEMA`) e **GRAVADA** | ⭐ **DESBLOQUEADA em 2026-09-21**: ela esperava o veredito do dono sobre a APARÊNCIA, e ele aprovou o smoke. ⛔ Enquanto ela não existir a lei é **global e não viaja no ficheiro** — um projecto gravado hoje abre amanhã com outra aparência se alguém bissectar |
+| 2 | ~~a **escolha por objecto** e **GRAVADA**~~ | ✅ **FECHADA em 2026-09-21** (degrau `161` do `PROJECT_SCHEMA`): a lei vive no `BakedForm::lei`, ao lado do `rig` e **pelo mesmo argumento**, com fileira **`Lighting Law`** no painel. O `PH2D_FORM_PBR` deixou de ESCOLHER e passou a **SOBREPOR-SE** — e há gate a proibi-lo de escrever no documento. ⭐ Re-assar **preserva** a escolha. Mecanismo: [handoff §9](../3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_A_CURVA_2026-09-21.md) |
 | 3 | ~~a **oclusão**~~ | ✅ **FECHADA** acima — a cura era o céu, não uma decisão de produto |
 
 ⚠️ **E o endereço do passe não é o que esta secção escreveu.** Ela mandava-o para a `ph2d-render`,

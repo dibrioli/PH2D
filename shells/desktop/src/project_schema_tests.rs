@@ -262,7 +262,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⭐ **PROJECT 170→171** (2026-09-24): o IMPACTO (plano 28, W5) — ⛔ **ZERO componentes
         // registados novos** (nove CAMPOS em dois que já existiam): os três contadores NÃO se mexem.
         // ⚠️ **A tripla NÃO vê este degrau** — a VIGÉSIMA SÉTIMA vez.
-        (171, 13, 22),
+        // ⭐⭐ **PROJECT 160→161** (2026-09-21): o `BakedFormDocument` ganhou a LEI que acende
+        // aqueles pixels (`lei`), apendada no fim e ao lado do `rig`. ⚠️ **A tripla VE^ este
+        // degrau** — o documento e' campo do `ProjectFile`, e nao bytes dentro de um
+        // `ComponentBlob`; e' a 1.ª vez em dezassete degraus que isso acontece, e e' por isso que a
+        // linha abaixo se mexe.
+        (172, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

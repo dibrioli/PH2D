@@ -5,15 +5,23 @@
 //! adapter. O que mora aqui é a metade que é aritmética: *que a porta com a lei dita existe, que a
 //! porta do produto a chama, e que a lei de fábrica continua a ser a de sempre.*
 
-/// ⛔⛔ **A PORTA DO PRODUTO DELEGA** — e sem isto o `light()` podia ficar com uma terceira
-/// redacção da escolha.
+/// ⛔⛔ **A PORTA DO PRODUTO PERGUNTA AO OBJECTO** — e sem isto o `light()` podia ficar com uma
+/// terceira redacção da escolha.
+///
+/// # ⚠️⚠️ A premissa que MORREU, e ela era o nome deste gate
+///
+/// Ele chamava-se `a_porta_do_produto_pergunta_ao_ambiente_e_delega` e exigia, por escrito, que o
+/// corpo do `light` contivesse `crate::lei_da_luz::do_ambiente()`. Isso era **a lei** enquanto a
+/// escolha era global; desde 2026-09-21 ela é um **campo do objecto** e o ambiente só se
+/// **SOBREPÕE** ⇒ o corpo tem de conter a porta que compõe os dois (`efectiva`) e o campo que ela
+/// lê (`bake.lei`). *Um gate que exige o nome da função antiga defende o desenho antigo.*
 ///
 /// ⚠️ A régua é o TEXTO porque a função pede um `GpuContext`, um `SpriteRenderer` e um passe — ela
 /// **não é alcançável de um teste** sem placa, e é exactamente a família de defeito que esta casa
 /// já pagou quatro vezes: *um motor com a lei certa e a porta a não a ligar lê-se como um motor sem
 /// a lei*.
 #[test]
-fn a_porta_do_produto_pergunta_ao_ambiente_e_delega() {
+fn a_porta_do_produto_pergunta_ao_objecto_e_delega() {
     let fonte = include_str!("baked_form.rs");
 
     // ⚠️⚠️ **A agulha é lida DENTRO do corpo da `light`, e em DOIS pedaços** — a 1.ª redacção
@@ -26,12 +34,20 @@ fn a_porta_do_produto_pergunta_ao_ambiente_e_delega() {
     let corpo = &fonte[i..i + fonte[i..]
         .find("\npub fn acende_com(")
         .expect("controlo: a irmã vem a seguir")];
-    for pedaco in ["acende_com(", "crate::lei_da_luz::do_ambiente()"] {
+    for pedaco in ["acende_com(", "crate::lei_da_luz::efectiva(bake.lei)"] {
         assert!(
             corpo.contains(pedaco),
-            "o corpo do `light` tem de conter `{pedaco}` — ele é quem pergunta ao ambiente"
+            "o corpo do `light` tem de conter `{pedaco}` — ele é quem pergunta ao OBJECTO, com o \
+             bissector do ambiente por cima"
         );
     }
+
+    // ⛔ **E ele NÃO pode voltar a perguntar directamente ao ambiente:** com `do_ambiente` ali, a
+    // lei gravada de cada peça deixava de ser lida e todo objecto acendia pela mesma lei outra vez.
+    assert!(
+        !corpo.contains("lei_da_luz::sobreposicao()"),
+        "a porta do produto não lê a sobreposição à mão — quem a compõe é a `efectiva`"
+    );
 
     // E os DOIS braços têm de estar na porta que recebe a lei, não espalhados.
     for braco in [

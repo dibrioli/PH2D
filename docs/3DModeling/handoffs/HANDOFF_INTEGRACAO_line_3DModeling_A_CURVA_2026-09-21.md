@@ -235,3 +235,142 @@ O **bake** continua a recusar sem uma sprite escolhida (*«selecione um SPRITE a
 na mão o visor mostra a matéria certa e o `Shift+B` recusa. Torná-lo pegajoso — assar na **última**
 sprite escolhida — é **decisão de produto e não de lei**: transforma uma recusa numa AÇÃO que
 escreve numa imagem que o artista não está a olhar. ⛔ Não foi feito.
+
+---
+
+## §9 — E A LEI QUE ACENDE UM OBJECTO ASSADO PASSOU A SER DELE, E A VIAJAR NO FICHEIRO
+
+> **Ordem do dono, 2026-09-21** (depois do *«Smoke OK»* da §8): *«sim. siga»* — sobre a cauda da
+> 1.ª obra das metas: **a escolha da lei por OBJECTO e GRAVADA**.
+
+⭐⭐⭐ **O plano desta wave estava escrito no código desde que a lei nova nasceu**, e a palavra que o
+datava era um `hoje`: o cabeçalho da [`ph2d_form_donation::lei_da_luz`](../../../crates/ph2d-form-donation/src/lei_da_luz.rs)
+dizia *«a escolha certa é por objecto — é o que deixa dois objectos numa cena usar leis diferentes —
+e o que decide se ela vale um degrau de `PROJECT_SCHEMA` é o veredito do dono sobre a APARÊNCIA, que
+ainda não existe ⇒ primeiro o interruptor que lhe dá a imagem para julgar; o campo gravado vem com o
+“sim”»*. **O «sim» chegou**, e com ele o degrau.
+
+### §9.1 — O que mudou, em três linhas
+
+| antes | agora |
+|---|---|
+| a lei era **do binário** (uma variável de ambiente, global) | ela é um **campo do objecto assado** (`BakedForm::lei`), ao lado do `rig` |
+| `PH2D_FORM_PBR` ESCOLHIA a lei | ela **SOBREPÕE-SE** a toda a gente (`0` força a tinta, `1` força a forma, ausente ⇒ cada objecto decide) |
+| o artista não podia escolher | fileira **`Lighting Law`** na secção *Bake*, só quando o sprite escolhido já está assado |
+
+⚠️ **O argumento do campo é o do `rig`, letra por letra** — e o doc dele já o escrevia desde que
+existe: *«sem ele o load acenderia com o rig DEFAULT, e a arte mudaria de luz ao ser reaberta, em
+silêncio»*. A lei é o mesmo tipo de facto sobre COMO aqueles pixels foram acesos.
+
+### §9.2 — ⚠️ `PROJECT_SCHEMA` `160 → 161` — **conte o DELTA**
+
+O `BakedFormDocument` ganhou `lei` **apendada no fim** (regra dos degraus `109`/`110`; o postcard é
+posicional). ⭐ **E a TRIPLA VÊ este degrau** — a 1.ª vez em dezassete: o documento é campo do
+`ProjectFile`, e não bytes dentro de um `ComponentBlob` nem do `FlipDoc`/`VecScene` ⇒ a linha da
+tripla mexe-se (`(160, 13, 22)` → `(161, 13, 22)`).
+
+⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — e aqui ela é fácil de defender: a
+escolha para um objecto já gravado seria `Lei::Forma` de qualquer maneira (é o que o binário mostra
+desde 21/09), logo migrar **não mudaria um pixel**; o que o degrau compra é o ALINHAMENTO dos bytes.
+
+⚠️ **Contadores restantes intactos:** os três registos do ECS, `FLIP_SCHEMA`, `VEC_SCENE_SCHEMA` e
+`FIELD_DOC_VERSION` **não se mexem**. Zero contrato encostado, zero ADR.
+
+### §9.3 — A porta, e as duas metades que ela compõe
+
+```rust
+pub fn efectiva(do_objecto: Lei) -> Lei { efectiva_com(sobreposicao(), do_objecto) }
+pub const fn efectiva_com(sobreposta: Option<Lei>, do_objecto: Lei) -> Lei { … }
+```
+
+⭐ **A segunda existe para ser GATEADA:** a [`sobreposicao`] lê uma variável de ambiente **global ao
+processo** e memoiza a resposta ⇒ *um gate sobre a `efectiva` mediria a máquina e a ordem dos
+testes*. Com a sobreposição como PARÂMETRO, *«o bissector ganha»* e *«sem bissector manda o
+objecto»* passam a ser **duas afirmações** — e a mutação que colapsa uma delas sangra.
+
+⛔ **E o bissector NUNCA escreve no documento**, com gate (`a_sobreposicao_nao_escreve_no_documento`,
+que o cabeçalho **prometia e não existia** — o censo dos gates nomeados apanhou-o na mesma corrida).
+*A alternativa é a mais cruel que este módulo podia ter: o artista bissectaria uma vez e o ficheiro
+ficaria com a lei do bissector para sempre, em toda peça da cena.*
+
+### §9.4 — ⭐⭐ Re-assar PRESERVA a lei, e isso é uma PORTA
+
+`Shift+B` sobre um objecto já assado reusa o `texture_id` **e a lei** — as duas são propriedades do
+OBJECTO, não consequências do gesto. ⇒ [`bake::lei_ao_assar`](../../../crates/ph2d-app-sculpt3d/src/bake.rs),
+uma função à parte **porque o gesto não é alcançável de um teste** (ele pede `GpuContext`,
+`SpriteRenderer` e o mapa de atlas) e o que ela decide **não tem um pixel dentro**. Escrita em linha,
+a mutação que a troca por `Lei::default()` passava a suíte inteira — e o sintoma seria o pior: *o
+artista escolhe a lei uma vez e perde-a no gesto seguinte, em silêncio*.
+
+### §9.5 — ⛔⛔ SETE coisas que uma leitura rápida do diff entende ao contrário
+
+1. **O `do_ambiente` não foi renomeado — a PERGUNTA dele deixou de existir.** Ele respondia *«qual é
+   a lei?»*, que era global; hoje o texto do ambiente responde *«sobrepõe-te»* ou *«não te metas»*, e
+   quem responde «qual lei» é o campo gravado. Por isso ele devolve `Option`.
+2. **A fileira não vive no `Sculpt3dUi`.** Todos os outros chips desta crate escrevem no estado
+   autorado do PINCEL; este é um **pedido ao shell**, como o botão de assar — a lei é do documento do
+   objecto, e quem tem o mapa dos assados é o shell.
+3. **O snapshot carrega um ÍNDICE e não uma lei**, e não é preguiça: o painel **não depende** da
+   `ph2d-form-donation` (ela puxa o `wgpu`), de propósito. A tradução `índice ⇄ lei` vive num sítio
+   só, com ida-e-volta gateada, e as **chaves dos rótulos** são derivadas em tempo de compilação do
+   `Lei::label_key` — *dois nomes escritos no painel seriam a segunda ortografia da mesma lei*.
+4. **O gate que amarra as duas listas vive na crate da FAMÍLIA** (`panel_lei_tests`), porque ela é a
+   **única que vê os dois lados**. Sem ele, uma lei nova nasceria com lei, com gates e **sem chip** —
+   o defeito exacto que o `Density` desta família já pagou (`left: 28, right: 29`).
+5. **O `lit_with = None` do braço do shell não é higiene** — é a porta única da re-acendida. Sem ele
+   o artista carrega no chip, **nada muda na tela**, e a lei nova só apareceria no dia em que ele
+   mexesse numa lâmpada: *um controlo que escreve certo e não se vê lê-se como um controlo morto*.
+6. **A fase-filha `ponte_do_sculpt3d` NÃO se chama `fase_`, e isso é uma decisão com gate a
+   confirmá-la.** O emendador do quadro colhe as `fase_*` e emenda-as **onde o QUADRO as chama**;
+   esta é chamada de dentro de outra fase ⇒ com aquele nome ela apareceria como **fase ÓRFÃ**. ⚠️ A
+   lei da wave da FÁBRICA (*«a fase-filha teve de se chamar `fase_*`»*) valia para uma fase que o
+   QUADRO chama — aqui a resposta é a oposta, e os censos que a medem leem o **FICHEIRO**.
+7. **A fixtura da costura declara `lei_do_alvo: Some(1)`**, e não é decoração: a fileira só é pintada
+   com o alvo assado, logo com `None` os dois chips ficariam **vivos na tela e nunca clicados** —
+   *a fixtura tem de conter o fenómeno*, a quarta vez que aquele ficheiro escreve a frase.
+
+### §9.6 — ⛔ TRÊS mutações SOBREVIVERAM primeiro, e cada uma escreveu um gate
+
+| mutação | porque sobreviveu | o gate que ela obrigou |
+|---|---|---|
+| a fileira deixa de ser **pintada** | o sweep dos comandos despacha por `Click` **sintético** ⇒ verde sobre um chip invisível | os dois ids entram no `every_painted_control_is_clickable_where_it_is_drawn` |
+| o retrato publica **`None` sempre** | o sweep de pintura **alimenta o retrato à mão** ⇒ entra ABAIXO da rotura (a 5.ª vez nesta casa) | `a_lei_atravessa_a_ponte_ate_ao_retrato` (as três pernas do fio) |
+| o shell publica **índice `0` sempre** | a fileira continua pintada e a despachar — ela mostra *«Paint»* marcado em toda peça | `a_lei_publicada_e_a_do_objecto_seleccionado` |
+
+⭐ *Uma mutação que sobrevive não diz que o produto está mau: diz que a régua não existe.* **Nove
+mutações no fim, todas a sangrar.**
+
+⚠️ **E o ARNÊS mentiu antes de qualquer delas:** o contador de testes corridos usava o `bc`, que
+**não está instalado nesta máquina** ⇒ ele lia `0` e abortava com *«ZERO testes correram»* sobre
+mutações que sangravam. *Um arnês que falha alto é a sorte da história; um que lesse `0 passed` como
+«sobreviveu» teria fabricado três achados falsos.*
+
+### §9.7 — Os cortes de LOC, os dois por RESPONSABILIDADE
+
+| ficheiro | antes | agora | o corte |
+|---|---|---|---|
+| `ph2d-panel-sculpt3d/src/state.rs` | `627` (tecto `600`) | **`514`** | o `Sculpt3dIntent` saiu para `state_intent.rs` — *o que o painel MOSTRA* contra *o que ele PEDE* |
+| `fase_world_panel_bridges::fase_world_panel_bridges` | `201` (tecto `200`) | **`~150`** | a ponte da escultura virou `ponte_do_sculpt3d` — uma fase, um assunto |
+
+⛔ **Nenhum por isenção:** o `FILE_OVERAGE_OK` e o `FN_OVERAGE_OK` não ganharam uma linha.
+
+### §9.8 — Portão
+
+* `nextest-impacted` **verde** · `cargo fmt --check` limpo · clippy `-D warnings` **zero**.
+* **Mutação 9 de 9 a sangrar.**
+* Ficheiros de produto: `lei_da_luz.rs` · `baked_form.rs` · `bake.rs` · `panel.rs` ·
+  `panel_bridge.rs` · `state.rs`+`state_intent.rs` · `event.rs` · `ids/sculpt3d_shading.rs` ·
+  `paint/body.rs` · `sculpt3d.rs` (i18n) · `project_baked_form.rs` · `project_schema.rs` ·
+  `fase_world_panel_bridges.rs`.
+* **Dependência nova:** `serde` (com `derive`) na `ph2d-form-donation`, **só** pelo `derive` da
+  `Lei` — a alternativa era o ficheiro guardar um `u8` e a shell traduzi-lo, *a segunda ortografia da
+  mesma lei, exactamente onde o postcard é posicional*.
+
+### §9.9 — ⏳ ABERTO
+
+* ⏳ **O smoke do dono:** passo **(6-quater)** da cena `=11` — escolher o sprite assado, clicar em
+  `Paint`, ver a aparência mudar na hora, e voltar a `Form (PBR)`.
+* ⏳ A lei é **por objecto** e não há gesto para a aplicar a VÁRIOS de uma vez (o painel governa o
+  sprite escolhido). Ninguém pediu.
+* ⏳ A fileira não diz **porque** desapareceu num sprite por assar — ela simplesmente não existe. O
+  `ParamRow::inert` com a razão à vista é o padrão que a `line/3DModeling` já usa noutro painel.

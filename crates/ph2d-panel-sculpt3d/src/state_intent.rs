@@ -95,6 +95,15 @@ pub enum Sculpt3dIntent {
     /// mesmo caminho que o `Shift+B` já usava, e é por passarem pela MESMA porta
     /// que o botão e o atalho não podem divergir.
     BakeToSprite,
+    /// **Trocar a LEI que acende o sprite assado** — o índice do chip no
+    /// `ph2d_form_donation::lei_da_luz::Lei::ALL`.
+    ///
+    /// ⚠️ **Ele ARMA e sai, como os dois vizinhos**, e por uma razão a mais: a
+    /// lei é um campo do DOCUMENTO do objecto assado (degrau `161`), e quem tem
+    /// o mapa dos objectos assados é o shell — a cena 3D não o conhece.
+    ///
+    /// ⚠️ **Um ÍNDICE e não uma lei:** ver o [`Sculpt3dSnapshot::lei_do_alvo`].
+    LeiDoAlvo(usize),
     /// **Usar o sprite selecionado como padrão** — o alpha por IMAGEM.
     ///
     /// ⚠️ **Ele ARMA e sai, pelo mesmo motivo do [`Self::BakeToSprite`] logo

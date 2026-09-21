@@ -521,7 +521,7 @@ fn o_visor_contra_a_sprite_que_o_produto_assa() {
          pior                   : {:.6}\n  \
          média VIVA             : {:.6}\n  \
          média ASSADA           : {:.6}",
-        ph2d_form_donation::lei_da_luz::do_ambiente(),
+        ph2d_form_donation::lei_da_luz::efectiva(ph2d_form_donation::lei_da_luz::Lei::default()),
         ph2d_form_donation::lei_da_luz::ENV,
         soma / n,
         pior,
@@ -547,15 +547,17 @@ fn o_visor_contra_a_sprite_que_o_produto_assa() {
 /// ⚠️ **Ele é PURO e corre SEMPRE** (sem adapter, sem ambiente): os gates de GPU são `#[ignore]` e o
 /// CI nunca os corre, logo a amarra entre as duas metades não podia viver num deles. E ele lê
 /// [`ph2d_form_donation::lei_da_luz::Lei::do_texto`] com `None` — *o caminho do produto sem variável
-/// nenhuma* — em vez de `do_ambiente`, porque **um gate que lê o ambiente mede a máquina**.
+/// nenhuma* — em vez da [`ph2d_form_donation::lei_da_luz::sobreposicao`], porque **um gate que lê o
+/// ambiente mede a máquina**. ⚠️ Desde 2026-09-21 a pergunta é *«com que lei NASCE um objecto
+/// assado?»* (o `Lei::default`), porque a escolha passou a ser um campo DELE.
 #[test]
 fn a_lei_que_assa_e_a_lei_que_o_visor_mostra() {
     use ph2d_form_donation::lei_da_luz::Lei;
 
     assert_eq!(
-        Lei::do_texto(None),
+        Lei::default(),
         Lei::Forma,
-        "sem variável nenhuma o produto tem de assar pela lei da FORMA (o OpenPBR); \
+        "um objecto assado HOJE tem de nascer na lei da FORMA (o OpenPBR); \
          com a `Tinta` aqui, a sprite sai de um modelo sem GGX e sem conservação de energia \
          enquanto o visor mostra o OpenPBR — o report do dono, medido em 0,055 por canal"
     );
@@ -569,8 +571,8 @@ fn a_lei_que_assa_e_a_lei_que_o_visor_mostra() {
     // metades têm de ser SEPARÁVEIS. Se a bissecção não existisse, o gate acima estaria a afirmar
     // uma coincidência em vez de uma escolha — e ninguém poderia medir as duas leis lado a lado.
     assert_eq!(
-        Lei::do_texto(Some("0")),
-        Lei::Tinta,
+        Lei::sobreposicao_do_texto(Some("0")),
+        Some(Lei::Tinta),
         "a lei da tinta tem de continuar ALCANÇÁVEL para bissecar"
     );
     assert_ne!(

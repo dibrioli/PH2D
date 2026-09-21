@@ -63,6 +63,19 @@ pub(crate) const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
         crate::ids::SCULPT3D_BAKE_SPRITE,
         Sculpt3dIntent::BakeToSprite,
     ),
+    // ⚠️ **Os dois chips da LEI entram AQUI e não numa cascata de `index_of`**,
+    // ao contrário dos chips do pincel: eles não escrevem no `Sculpt3dUi` — cada
+    // um é um PEDIDO ao shell, exactamente como o bake acima. ⇒ o `populate`
+    // regista-os de graça (ele varre esta tabela) e a fileira não pode nascer
+    // morta sob o dedo, que é o defeito que esta crate já pagou sete vezes.
+    (
+        crate::ids::SCULPT3D_BAKE_LAW[0],
+        Sculpt3dIntent::LeiDoAlvo(0),
+    ),
+    (
+        crate::ids::SCULPT3D_BAKE_LAW[1],
+        Sculpt3dIntent::LeiDoAlvo(1),
+    ),
     (
         crate::ids::SCULPT3D_ALPHA_SPRITE,
         Sculpt3dIntent::AlphaFromSprite,

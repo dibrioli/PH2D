@@ -94,6 +94,27 @@ pub const SCULPT3D_BAKE_SPRITE: NodeId = hash_node_id("sculpt3d.bake_sprite");
 /// forma de o artista aprender que ele não funciona.
 pub const SCULPT3D_ALPHA_SPRITE: NodeId = hash_node_id("sculpt3d.alpha_sprite");
 
+/// **QUAL LEI ACENDE O SPRITE ESCOLHIDO** — a TINTA (o passe do Painter) ou a
+/// FORMA (o OpenPBR), por objecto e GRAVADA no ficheiro.
+///
+/// ⚠️ **A escolha é do OBJECTO e não do pincel nem da cena**, e é por isso que
+/// ela não vive no `Sculpt3dUi` como os outros chips desta crate: ela viaja no
+/// `.ph2dproj` (degrau `161` do `PROJECT_SCHEMA`), logo o clique é um **pedido
+/// ao shell** — a mesma forma do `SCULPT3D_BAKE_SPRITE` acima.
+///
+/// ⚠️ **A fileira só é pintada quando o sprite escolhido JÁ está assado**: sem
+/// canais não há lei para escolher, e um selector que não governa nada é o
+/// controlo morto que esta crate já pagou sete vezes.
+///
+/// ⛔ **A POSIÇÃO é a tag**, como em toda fileira segmentada desta casa: ela é
+/// comparada com o `ph2d_form_donation::lei_da_luz::Lei::ALL` por um gate da
+/// crate da família (a única que vê os dois lados), logo uma lei nova que não
+/// passe por aqui nasce **inalcançável** em vez de sumir em silêncio.
+pub const SCULPT3D_BAKE_LAW: [NodeId; 2] = [
+    hash_node_id("sculpt3d.bake_law.0"),
+    hash_node_id("sculpt3d.bake_law.1"),
+];
+
 /// **COM QUE LUZ o barro é mostrado** — o modo PLANO, o RIG DO ARTISTA, e os
 /// matcaps de [`ph2d_mesh_render::MATCAPS`].
 ///

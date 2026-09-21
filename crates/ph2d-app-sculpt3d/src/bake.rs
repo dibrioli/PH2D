@@ -75,6 +75,12 @@ fn bake_one(
         Some(b) => b.texture_id,
         None => renderer.acquire_individual_empty(size.0, size.1),
     };
+    // ⭐⭐ **RE-ASSAR PRESERVA A LEI DA PEÇA** — ela é uma escolha do ARTISTA sobre este objecto
+    // (`BakedForm::lei`), como o slot acima, e não uma consequência do gesto. Sem esta linha um
+    // `Shift+B` devolvia toda peça ao valor de fábrica **em silêncio**, que é o defeito que o
+    // campo gravado existe para impedir: *o artista escolheria a lei uma vez e perdê-la-ia no
+    // gesto seguinte*.
+    let lei = lei_ao_assar(forms.get(&entity_bits));
     let planes = scene
         .form_plane_for(gpu, size)
         .ok_or_else(|| "a cena nao tem malha para doar".to_string())?;
@@ -87,6 +93,7 @@ fn bake_one(
         texture_id,
         rig,
         lit_with: None,
+        lei,
     };
     light(gpu, renderer, passes, &rig, &bake)?;
     // Só DEPOIS de a luz ter chegado ao slot: apontar o sprite para uma textura vazia e falhar
@@ -107,6 +114,56 @@ fn bake_one(
         },
     );
     Ok(size)
+}
+
+/// ⭐⭐ **COM QUE LEI ESTE BAKE FICA** — a do objecto, se ele já existe; a de fábrica, se nasce.
+///
+/// ⚠️ **Ela é uma função e não duas linhas lá em cima por uma razão desta casa:** o gesto de assar
+/// pede um `GpuContext`, um `SpriteRenderer` e um mapa de atlas, logo *não é alcançável de um teste*
+/// — e o que esta decisão afirma não tem um pixel dentro. Escrita lá dentro, a mutação que a troca
+/// por `Lei::default()` passava a suíte inteira, e o sintoma seria o pior: *o artista escolhe a lei
+/// uma vez e perde-a no `Shift+B` seguinte*, em silêncio.
+///
+/// ⛔ **Re-assar NÃO é escolher** — é a mesma lei do `texture_id` logo acima dela: o slot e a lei
+/// são propriedades do OBJECTO, e o gesto reusa as duas.
+fn lei_ao_assar(anterior: Option<&BakedForm>) -> ph2d_form_donation::lei_da_luz::Lei {
+    anterior.map_or_else(ph2d_form_donation::lei_da_luz::Lei::default, |b| b.lei)
+}
+
+#[cfg(test)]
+mod lei_ao_assar_tests {
+    use ph2d_form_donation::lei_da_luz::Lei;
+
+    /// ⭐ **As DUAS metades, porque as curas são opostas** — e a fixtura escolhe a lei que NÃO é a
+    /// de fábrica, senão *«preservou»* e *«nasceu de novo»* leem-se igual.
+    #[test]
+    fn re_assar_preserva_a_lei_e_um_bake_novo_nasce_na_de_fabrica() {
+        let anterior = ph2d_form_donation::baked_form::BakedForm {
+            size: (1, 1),
+            base: vec![0; 4],
+            form: vec![0.0; 4],
+            form_occ: Vec::new(),
+            texture_id: 0,
+            rig: ph2d_light::LightRig::default(),
+            lit_with: None,
+            lei: Lei::Tinta,
+        };
+        assert_ne!(
+            Lei::Tinta,
+            Lei::default(),
+            "controlo: a fixtura tem de carregar a lei que NÃO é a de fábrica"
+        );
+        assert_eq!(
+            super::lei_ao_assar(Some(&anterior)),
+            Lei::Tinta,
+            "re-assar preserva a escolha do artista — ela é do OBJECTO, não do gesto"
+        );
+        assert_eq!(
+            super::lei_ao_assar(None),
+            Lei::default(),
+            "um objecto que nasce assado nasce na lei que o visor mostra"
+        );
+    }
 }
 
 /// Carimba (ou preserva) o [`BakedFormId`] deste sprite e devolve o id.

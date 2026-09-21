@@ -30,6 +30,12 @@ pub enum Sculpt3dFrameRequest {
     Bake,
     /// Ler os pixels do sprite selecionado como PADRÃO do pincel.
     AlphaFromSprite,
+    /// ⭐⭐ **Trocar a LEI que acende o sprite assado** (degrau `161`).
+    ///
+    /// ⚠️ **É o terceiro pedido que a cena 3D não executa, e por uma razão NOVA:**
+    /// os dois vizinhos precisam do frame; este precisa do **mapa dos objectos
+    /// assados**, que é do shell — a escultura não sabe que um sprite foi assado.
+    LeiDoAlvo(ph2d_form_donation::lei_da_luz::Lei),
 }
 
 impl Sculpt3dScene {
@@ -38,7 +44,11 @@ impl Sculpt3dScene {
     ///
     /// `has_bake_target` vem de FORA porque ele é um fato da cena **2D** — quem
     /// está selecionado no canvas não é pergunta que uma escultura responda.
-    pub(crate) fn panel_snapshot(&self, has_bake_target: bool) -> Sculpt3dSnapshot {
+    pub(crate) fn panel_snapshot(
+        &self,
+        has_bake_target: bool,
+        lei_do_alvo: Option<usize>,
+    ) -> Sculpt3dSnapshot {
         let light = self.rig.current();
         Sculpt3dSnapshot {
             transform: self.transform_arm(),
@@ -107,6 +117,11 @@ impl Sculpt3dScene {
                     .max(b.max[2] - b.min[2])
             },
             has_bake_target,
+            lei_do_alvo,
+            // ⛔ **As chaves são DERIVADAS da crate que define as leis** — ver o
+            // doc do campo no retrato: dois nomes escritos no painel seriam a
+            // segunda ortografia da mesma lei.
+            lei_rotulos: &ph2d_form_donation::lei_da_luz::CHAVES_DOS_ROTULOS,
         }
     }
 
@@ -303,6 +318,15 @@ impl Sculpt3dScene {
             // precisa do mundo, do renderizador e do mapa de atlas.
             Sculpt3dIntent::AlphaFromSprite => {
                 return Some(Sculpt3dFrameRequest::AlphaFromSprite);
+            }
+            // ⚠️ **A tradução índice → lei vive na porta da crate que as define**
+            // (`Lei::from_index`, com ida-e-volta gateada lá): um `match` aqui
+            // seria a segunda resposta a *«que lei é o chip 1?»*, e as duas
+            // divergiriam no dia da terceira lei. ⛔ Um índice que ela não
+            // conhece é **descartado** — o painel não pode pedir o inexistente.
+            Sculpt3dIntent::LeiDoAlvo(i) => {
+                return ph2d_form_donation::lei_da_luz::Lei::from_index(i)
+                    .map(Sculpt3dFrameRequest::LeiDoAlvo);
             }
             // ⚠️ **Este NÃO precisa do frame**, ao contrário dos dois acima: a
             // imagem já está aqui: o artista a trouxe uma vez e a cena a
@@ -644,3 +668,8 @@ pub(crate) fn luz_do_painel(
 #[cfg(test)]
 #[path = "panel_luz_tests.rs"]
 mod panel_luz_tests;
+
+/// **A FILEIRA DA LEI ALCANÇA TODA LEI** — ver [`panel_lei_tests`].
+#[cfg(test)]
+#[path = "panel_lei_tests.rs"]
+mod panel_lei_tests;

@@ -42,7 +42,7 @@ fn a_pista_do_detalhe_chega_ao_motor() {
     // dono de 14/09 são campos diferentes.
     s.dyntopo.detail = 0.15;
     s.brush.density_detail = 0.35;
-    let retrato = s.panel_snapshot(false).ui;
+    let retrato = s.panel_snapshot(false, None).ui;
     assert!(
         (retrato.dyn_detail - 0.15).abs() < 1e-6,
         "o retrato não publica o detalhe da CENA — a pista nasceria a mostrar \
@@ -60,7 +60,7 @@ fn a_pista_do_detalhe_chega_ao_motor() {
     // chamasse o ajudante interno afirmaria sobre código que o painel não usa —
     // a mesma armadilha que este repo já registou como *nomear a VISIBILIDADE
     // em vez da lei*.
-    let mut ui = s.panel_snapshot(false).ui;
+    let mut ui = s.panel_snapshot(false, None).ui;
     ui.dyn_detail = 0.9;
     ui.brush.density_detail = 0.8;
     s.apply_panel_intent(ph2d_panel_sculpt3d::Sculpt3dIntent::SetUi(ui));

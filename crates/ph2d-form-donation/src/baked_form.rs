@@ -130,6 +130,16 @@ pub struct BakedForm {
     pub rig: LightRig,
     /// O rig com que os pixels visíveis foram acesos — `None` até a primeira acendida.
     pub lit_with: Option<RigStamp>,
+    /// ⭐⭐⭐⭐ **A LEI QUE ACENDE ESTES PIXELS** — e ela viaja no documento, como o `rig`.
+    ///
+    /// ⚠️ **O argumento é o do vizinho, letra por letra:** reabrir sem ele acenderia o objecto com a
+    /// lei de fábrica **de quem o abre**, e a arte mudaria em silêncio. É por isso que este campo
+    /// mora aqui e não numa variável de ambiente — ver o cabeçalho da
+    /// [`crate::lei_da_luz`], que carregou o plano desta wave escrito desde que existe.
+    ///
+    /// ⛔ **Quem o lê é a [`light`], através da [`crate::lei_da_luz::efectiva`]** — nunca
+    /// directamente, senão o bissector deixaria de alcançar metade dos caminhos.
+    pub lei: crate::lei_da_luz::Lei,
 }
 
 /// ⭐⭐⭐ **AS DUAS LEIS, CADA UMA COM O SEU PASSE — numa ranhura só.**
@@ -167,7 +177,7 @@ pub fn light(
     bake: &BakedForm,
 ) -> Result<(), String> {
     acende_com(
-        crate::lei_da_luz::do_ambiente(),
+        crate::lei_da_luz::efectiva(bake.lei),
         gpu,
         renderer,
         passes,
@@ -606,6 +616,7 @@ mod tests {
             texture_id: 7,
             rig: authored,
             lit_with: None,
+            lei: crate::lei_da_luz::Lei::default(),
         };
         assert!(
             needs_relight(loaded.lit_with, rig_stamp(&loaded.rig)),

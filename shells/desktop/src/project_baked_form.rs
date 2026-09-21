@@ -63,6 +63,15 @@ pub(crate) struct BakedFormDocument {
     /// silêncio, e sem nada na tela dizendo por quê. Ele é o único campo aqui que não é pixel, e é o
     /// que separa *reabrir o trabalho* de *reabrir uma aproximação dele*.
     pub(crate) rig: LightRig,
+    /// ⭐⭐⭐ **A LEI com que estes pixels acendem** — o campo que o degrau `161` do
+    /// `PROJECT_SCHEMA` trouxe.
+    ///
+    /// ⚠️ **O argumento é o do `rig`, letra por letra:** ele é uma escolha do ARTISTA sobre este
+    /// objecto, e um ficheiro que não a carregasse reabriria com a lei de fábrica **de quem o
+    /// abre** — a arte mudaria em silêncio, que é exactamente o que o vizinho existe para impedir.
+    ///
+    /// ⛔ Ele é o **terceiro** campo que não é pixel, e o postcard é POSICIONAL: ele entra no FIM.
+    pub(crate) lei: ph2d_form_donation::lei_da_luz::Lei,
 }
 
 impl crate::App {
@@ -97,6 +106,7 @@ impl crate::App {
                 form: form_to_rgba8(&bake.form),
                 form_occ: occlusion_to_r8(&bake.form_occ),
                 rig: bake.rig,
+                lei: bake.lei,
             });
         }
         out
@@ -164,6 +174,7 @@ impl crate::App {
                     form_occ: occlusion_from_r8(&doc.form_occ),
                     texture_id,
                     rig: doc.rig,
+                    lei: doc.lei,
                     // Nunca aceso NESTA sessão: é isto que faz o passe de re-acendida trabalhar no
                     // primeiro frame, pela porta única.
                     lit_with: None,
@@ -192,14 +203,61 @@ fn reattach_texture(sprite: &mut Sprite, texture_id: u32) {
 mod tests {
     use super::*;
 
-    /// **O DOCUMENTO ATRAVESSA O DISCO INTEIRO** — os canais e, sobretudo, o RIG.
+    /// ⛔⛔ **OS DOIS LADOS DA VIAGEM CARREGAM A LEI** — o gravar e o devolver.
     ///
-    /// ⚠️ O rig é o único campo aqui que não é pixel, e é o mais fácil de perder em silêncio: um
-    /// documento que gravasse só os dois planos continuaria carregando um objeto perfeito, com a luz
-    /// errada. Este gate existe porque a consequência de errá-lo não parece um bug — parece uma
-    /// escolha estética que ninguém fez.
+    /// ⚠️ **O round-trip do irmão abaixo NÃO cobre isto:** ele monta o documento à mão, logo fica
+    /// verde com um `collect` que escreva a lei de FÁBRICA em toda peça — *o ficheiro seria
+    /// perfeito e a escolha do artista morreria no save*. E o defeito é mudo: as duas leis acendem,
+    /// e ele só aparece ao reabrir.
+    ///
+    /// ⚠️ **A régua é o TEXTO** porque as duas funções são métodos da `App` — elas pedem o mundo, o
+    /// renderizador e o mapa dos assados, e nenhum existe num teste headless. É a mesma família do
+    /// `the_bake_button_is_wired` do lado dos `tests/it`.
+    ///
+    /// **Mutação que deve sangrar:** `lei: bake.lei` → `lei: Lei::default()` no `collect`.
     #[test]
-    fn a_baked_document_survives_the_disk_with_the_rig_it_was_baked_with() {
+    fn a_lei_viaja_nos_dois_sentidos_do_documento() {
+        let fonte = include_str!("project_baked_form.rs");
+        // ⚠️ **As agulhas são MONTADAS**: um censo textual que contém a própria agulha encontra-se
+        // sempre a si mesmo — a lição que a `lei_da_luz` pagou com um gate vermelho no mesmo dia.
+        for (funcao, agulha, porque) in [
+            (
+                "fn collect_baked_forms",
+                concat!("lei: bake", ".lei,"),
+                "gravar",
+            ),
+            (
+                "fn restore_baked_forms",
+                concat!("lei: doc", ".lei,"),
+                "devolver",
+            ),
+        ] {
+            let i = fonte
+                .find(funcao)
+                .unwrap_or_else(|| panic!("controlo: a `{funcao}` tem de existir com este nome"));
+            let corpo = &fonte[i..];
+            let fim = corpo.find("\n    }\n").unwrap_or(corpo.len());
+            assert!(
+                corpo[..fim].contains(agulha),
+                "a `{funcao}` tem de {porque} a LEI do objecto — sem isso a escolha do artista \
+                 morre no save, e o ficheiro reabre com a lei de fabrica de quem o abre"
+            );
+        }
+    }
+
+    /// **O DOCUMENTO ATRAVESSA O DISCO INTEIRO** — os canais e, sobretudo, o RIG **e a LEI**.
+    ///
+    /// ⚠️ Os dois são os únicos campos aqui que não são pixel, e são os mais fáceis de perder em
+    /// silêncio: um documento que gravasse só os dois planos continuaria carregando um objeto
+    /// perfeito, com a luz errada. Este gate existe porque a consequência de errá-los não parece um
+    /// bug — parece uma escolha estética que ninguém fez.
+    ///
+    /// ⭐⭐ **A lei entrou no degrau `161`, e a fixtura escolhe a `Tinta` DE PROPÓSITO:** ela é a
+    /// única das duas que não é o `Default`, logo um campo perdido no caminho devolveria a `Forma`
+    /// e a asserção reprovaria — *com a `Forma` na fixtura, o gate ficava verde sobre um documento
+    /// que não grava lei nenhuma*.
+    #[test]
+    fn a_baked_document_survives_the_disk_with_the_rig_and_law_it_was_baked_with() {
         let mut authored = LightRig::default();
         authored.current_mut().angle_deg = 77;
         authored.current_mut().intensity = 0.42;
@@ -215,6 +273,7 @@ mod tests {
                 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.5,
             ]),
             rig: authored,
+            lei: ph2d_form_donation::lei_da_luz::Lei::Tinta,
         };
         let bytes = postcard::to_allocvec(&doc).expect("serializa");
         let back: BakedFormDocument = postcard::from_bytes(&bytes).expect("desserializa");
@@ -229,6 +288,19 @@ mod tests {
         assert_eq!(
             back.rig, authored,
             "o RIG tem de voltar inteiro -- sem ele o objeto reabre com outra luz, em silencio"
+        );
+        assert_eq!(
+            back.lei,
+            ph2d_form_donation::lei_da_luz::Lei::Tinta,
+            "a LEI tem de voltar inteira -- sem ela o objeto reabre com a lei de FABRICA de quem o \
+             abre, e a arte muda em silencio (degrau 161)"
+        );
+        // ⭐ **O CONTROLO da fixtura**: a lei gravada NÃO é o `Default`, logo a asserção acima
+        // distingue *«voltou»* de *«nasceu de novo»*.
+        assert_ne!(
+            ph2d_form_donation::lei_da_luz::Lei::Tinta,
+            ph2d_form_donation::lei_da_luz::Lei::default(),
+            "controlo: a fixtura tem de gravar a lei que NAO e' a de fabrica"
         );
         assert_ne!(
             back.rig,

@@ -571,5 +571,24 @@ fn paint_bake(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f3
     if !snap.has_bake_target {
         y = readout(ctx, tr("panel.sculpt3d.bake_sprite.hint"), x, w, y);
     }
+    // ⭐⭐ **A LEI do objecto assado — e ela só é pintada quando há objecto assado.**
+    // Sem canais não há lei para escolher, e um selector que não governa nada é o
+    // controlo morto que esta crate já pagou sete vezes. ⚠️ Os rótulos vêm do
+    // RETRATO e não daqui: quem define as leis é outra crate, e dois nomes
+    // escritos no painel seriam a segunda ortografia da mesma lei.
+    if let Some(escolhida) = snap.lei_do_alvo {
+        let labels: Vec<&str> = snap.lei_rotulos.iter().map(|k| tr(k)).collect();
+        y = widgets::labelled_seg(
+            ctx,
+            tr("panel.sculpt3d.bake_law"),
+            crate::ids::SCULPT3D_SEC_BAKE,
+            &crate::ids::SCULPT3D_BAKE_LAW,
+            &labels,
+            escolhida,
+            x,
+            w,
+            y,
+        );
+    }
     widgets::end_fold(ctx, fold, y + Spacing::Md.px())
 }

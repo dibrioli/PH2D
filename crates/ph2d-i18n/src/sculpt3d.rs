@@ -253,6 +253,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.bake_sprite" => "Light the Selected Sprite",
         "panel.sculpt3d.alpha_sprite" => "Use Selected Sprite as Pattern",
         "panel.sculpt3d.bake_sprite.hint" => "Select a sprite on the canvas — the form lights IT",
+        // ⚠️ A lei que acende o objecto assado — ela viaja no ficheiro, logo o
+        // rótulo diz o que ela GOVERNA e não o verbo que a mudou.
+        "panel.sculpt3d.bake_law" => "Lighting Law",
+        "panel.sculpt3d.bake_law.paint" => "Paint",
+        "panel.sculpt3d.bake_law.form" => "Form (PBR)",
         "panel.sculpt3d.ssao" => "Screen Occlusion",
         "panel.sculpt3d.sss" => "Subsurface",
         "panel.sculpt3d.sss_scatter" => "Scatter",

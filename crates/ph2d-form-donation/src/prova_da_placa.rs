@@ -116,6 +116,7 @@ fn peca() -> BakedForm {
         texture_id: 0,
         rig: LightRig::default(),
         lit_with: None,
+        lei: crate::lei_da_luz::Lei::default(),
     }
 }
 

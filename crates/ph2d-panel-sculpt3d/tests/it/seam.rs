@@ -95,6 +95,15 @@ fn snapshot(ui: Sculpt3dUi, has_bake_target: bool) -> Sculpt3dSnapshot {
         // de fato aperta o botão — e o que mantém a DICA fora do caminho de
         // todo sweep de layout. Quem varia este campo é o gate do botão.
         has_bake_target,
+        // ⚠️ **ASSADO e na lei de FÁBRICA** (o índice `1`, a `Forma`): a fileira da
+        // lei só existe quando o sprite escolhido já tem canais, e o sweep de
+        // costura tem de encontrar os dois chips dela — com `None` aqui eles
+        // ficavam vivos na tela e nunca clicados por gate nenhum.
+        lei_do_alvo: Some(1),
+        lei_rotulos: &[
+            "panel.sculpt3d.bake_law.paint",
+            "panel.sculpt3d.bake_law.form",
+        ],
         // ⚠️ Um modelo de tamanho 2 — a esfera unitária que este módulo abre. Um
         // zero aqui faria o preview cair no piso do `span_of` e a fixture mediria
         // o degenerado em vez do caso normal.
@@ -423,7 +432,7 @@ fn every_command_reaches_the_shell() {
 }
 
 fn corpo_de_every_command_reaches_the_shell() {
-    let casos: [(ph2d_a11y::NodeId, fn() -> Sculpt3dIntent); 25] = [
+    let casos: [(ph2d_a11y::NodeId, fn() -> Sculpt3dIntent); 27] = [
         (ids::SCULPT3D_DYNTOPO, || Sculpt3dIntent::ToggleDyntopo),
         (ids::SCULPT3D_LEVEL_DOWN, || {
             Sculpt3dIntent::ChangeLevel(false)
@@ -453,10 +462,14 @@ fn corpo_de_every_command_reaches_the_shell() {
         (ids::SCULPT3D_MASK_OP[2], || Sculpt3dIntent::MaskBlur),
         (ids::SCULPT3D_MASK_OP[3], || Sculpt3dIntent::MaskSharpen),
         (ids::SCULPT3D_COLOR_FILL, || Sculpt3dIntent::ColorFill),
+        // ⭐ Os dois chips da LEI do objecto assado: **um PEDIDO por chip**, e a
+        // POSIÇÃO é a tag — por isso o índice aparece aqui à mão, e não derivado.
+        (ids::SCULPT3D_BAKE_LAW[0], || Sculpt3dIntent::LeiDoAlvo(0)),
+        (ids::SCULPT3D_BAKE_LAW[1], || Sculpt3dIntent::LeiDoAlvo(1)),
     ];
     assert_eq!(
         casos.len(),
-        25,
+        27,
         "o piso de população: a lista dos comandos de um toque encolheu"
     );
     for (id, faz) in casos {
@@ -701,6 +714,15 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
         ("merge", ids::SCULPT3D_MERGE),
         ("bake ao", ids::SCULPT3D_BAKE_AO),
         ("bake sprite", ids::SCULPT3D_BAKE_SPRITE),
+        // ⭐⭐ **Os dois chips da LEI do objecto assado.** ⚠️ Eles só são pintados
+        // com `lei_do_alvo: Some(..)` no retrato — e é por isso que a fixture o
+        // declara: *a fixture tem de conter o fenómeno*, a quarta vez que este
+        // ficheiro escreve a frase. Sem esta entrada, uma fileira que deixasse de
+        // ser pintada continuava a despachar por `Click` sintético e o sweep dos
+        // comandos ficava VERDE — que é a diferença entre *nunca pintado* e
+        // *morto sob o dedo*, e esta crate já a pagou sete vezes.
+        ("bake law paint", ids::SCULPT3D_BAKE_LAW[0]),
+        ("bake law form", ids::SCULPT3D_BAKE_LAW[1]),
     ] {
         want.push((name.to_string(), id));
     }

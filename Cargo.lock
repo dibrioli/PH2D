@@ -5820,6 +5820,7 @@ dependencies = [
  "ph2d-render",
  "ph2d-view-transform",
  "postcard",
+ "serde",
  "wgpu",
 ]
 

@@ -148,6 +148,13 @@ fn retrato(nivel: UiLevel, filtro_armado: bool) -> Sculpt3dSnapshot {
         alpha_seed: 0.35,
         model_span: 2.0,
         has_bake_target: true,
+        // ⚠️ **ASSADO e na lei da FORMA** (o índice `1`): esta fixtura arma o que PINTA MAIS, e a
+        // fileira da lei só existe quando o sprite escolhido já tem canais assados.
+        lei_do_alvo: Some(1),
+        lei_rotulos: &[
+            "panel.sculpt3d.bake_law.paint",
+            "panel.sculpt3d.bake_law.form",
+        ],
     }
 }
 

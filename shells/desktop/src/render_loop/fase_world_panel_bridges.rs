@@ -14,6 +14,9 @@ impl crate::App {
         let FrameGfx {
             #[cfg(feature = "sculpt3d")]
             sculpt3d,
+            // ⚠️ **O mapa dos objectos ASSADOS é do shell**, e é por isso que a lei de cada um
+            // entra e sai do painel por aqui: a escultura não sabe que um sprite foi assado.
+            baked_forms,
             sim,
             toasts,
             tools,
@@ -159,17 +162,10 @@ impl crate::App {
         // `Shift+B` — uma porta, dois pedintes. O gesto é consumido no
         // dispatch do frame SEGUINTE (o `bake::drain` roda mais cedo neste),
         // exatamente como o do teclado.
+        // ⭐ **A ponte do painel da escultura vive na fase-filha** logo abaixo — ver o doc dela
+        // para porque o corte é por RESPONSABILIDADE e porque o NOME dela começa por `fase_`.
         #[cfg(feature = "sculpt3d")]
-        for req in ph2d_app_sculpt3d::panel_bridge::dispatch(hero, sculpt3d.as_mut()) {
-            match req {
-                ph2d_app_sculpt3d::Sculpt3dFrameRequest::Bake => {
-                    self.sculpt3d_req.bake_request = true;
-                }
-                ph2d_app_sculpt3d::Sculpt3dFrameRequest::AlphaFromSprite => {
-                    self.sculpt3d_req.alpha_request = true;
-                }
-            }
-        }
+        ponte_do_sculpt3d(hero, sculpt3d, baked_forms, &mut self.sculpt3d_req);
         // ⭐⭐⭐ **E O QUE A ESCULTURA TEM A DIZER CHEGA AO ECRÃ** — a caixa de saída da cena
         // (`Sculpt3dScene::take_avisos`), drenada aqui porque é aqui que a fila de avisos e a cena
         // estão os dois em mão. ⚠️ **As recusas da retopologia viviam só no `eprintln!`**, com a
@@ -179,6 +175,62 @@ impl crate::App {
         if let Some(scene) = sculpt3d.as_mut() {
             for aviso in scene.take_avisos() {
                 toasts.push(ph2d_editor_core::Toast::warning(aviso));
+            }
+        }
+    }
+}
+
+/// ⭐⭐ **A PONTE DO PAINEL DA ESCULTURA** — publicar o retrato e aplicar o que o artista pediu.
+///
+/// ⚠️ **Fase-FILHA, e o corte é por RESPONSABILIDADE:** a irmã acima é *«os painéis de MUNDO»*, e
+/// isto é um assunto só (a escultura). O corte foi obrigado pelo tecto de LOC por FUNÇÃO (`201`
+/// contra `200`) quando a fileira da LEI chegou — ⛔ e a cura é partir, nunca subir o número do
+/// `FN_OVERAGE_OK`, que só desce.
+///
+/// ⚠️⚠️ **O NOME NÃO começa por `fase_`, e isso é uma decisão com gate a confirmá-la:** o texto
+/// emendado do quadro colhe as funções com esse prefixo **e emenda-as onde o QUADRO as chama**
+/// (`self.fase_x()`); esta é chamada de dentro de outra fase, logo com aquele nome ela apareceria
+/// como **fase ÓRFÃ** — *«definida e nunca chamada pelo quadro»*. ⭐ E a asserção do oráculo fica
+/// honesta: ela não é uma fase do quadro, é o corpo de uma. ⇒ os censos que a medem leem o
+/// FICHEIRO (`source("render_loop/fase_world_panel_bridges.rs")`), nunca o texto do quadro.
+///
+/// ⚠️ Ela corre DEPOIS do dispatch de eventos (os intents são enfileirados ali) e ANTES do paint —
+/// senão o quadro pintaria o estado de antes do clique e o chip piscaria de volta.
+#[cfg(feature = "sculpt3d")]
+fn ponte_do_sculpt3d(
+    hero: &mut ph2d_editor_core::screens::hero::HeroScreen,
+    sculpt3d: &mut Option<ph2d_app_sculpt3d::Sculpt3dScene>,
+    baked_forms: &mut std::collections::BTreeMap<u64, ph2d_form_donation::baked_form::BakedForm>,
+    pedidos: &mut ph2d_app_sculpt3d::Sculpt3dRequests,
+) {
+    // ⭐⭐ **A LEI do objecto assado** — lida ANTES do despacho (o painel pinta o estado de
+    // agora) e escrita DEPOIS dele. ⚠️ `None` quando o sprite escolhido ainda não tem canais:
+    // sem canais não há lei para escolher, e a fileira nem é pintada.
+    let lei_do_alvo = hero
+        .gizmo
+        .iter_selected()
+        .next()
+        .and_then(|bits| baked_forms.get(&bits))
+        .map(|b| b.lei.index());
+    for req in ph2d_app_sculpt3d::panel_bridge::dispatch(hero, sculpt3d.as_mut(), lei_do_alvo) {
+        match req {
+            ph2d_app_sculpt3d::Sculpt3dFrameRequest::Bake => {
+                pedidos.bake_request = true;
+            }
+            ph2d_app_sculpt3d::Sculpt3dFrameRequest::AlphaFromSprite => {
+                pedidos.alpha_request = true;
+            }
+            // ⭐⭐⭐ **Trocar a lei é escrever no DOCUMENTO do objecto e ESQUECER o carimbo.**
+            // ⚠️ O `lit_with = None` não é higiene: ele é a porta única da re-acendida
+            // (`relight_stale` pergunta *«estes pixels foram acesos pelo rig de agora?»*), e sem
+            // ele a lei nova só apareceria no dia em que o artista mexesse numa lâmpada.
+            ph2d_app_sculpt3d::Sculpt3dFrameRequest::LeiDoAlvo(lei) => {
+                if let Some(bits) = hero.gizmo.iter_selected().next()
+                    && let Some(bake) = baked_forms.get_mut(&bits)
+                {
+                    bake.lei = lei;
+                    bake.lit_with = None;
+                }
             }
         }
     }

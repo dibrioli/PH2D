@@ -69,7 +69,7 @@ const PREFIXOS: [&str; 21] = [
 ];
 
 /// `(nome, onde a memória vive, porque é prosa e não endereço)`.
-const MEMORIAS: [(&str, &str, &str); 17] = [
+const MEMORIAS: [(&str, &str, &str); 19] = [
     (
         "a_lei_da_forma_nao_chama_o_ambiente",
         "crates/ph2d-form-donation/src/baked_form/passe_da_forma_tests.rs",
@@ -243,6 +243,33 @@ const MEMORIAS: [(&str, &str, &str); 17] = [
          duas metades. A prosa fica porque é ela que guarda a razão de a lei \
          ter shipado desligada — um projecto gravado tem de abrir com a \
          aparência com que foi gravado, e essa dívida continua NOMEADA.",
+    ),
+    (
+        "a_lei_de_fabrica_e_a_forma_e_so_o_zero_desliga",
+        "crates/ph2d-form-donation/src/lei_da_luz.rs",
+        "o gate que perguntava a uma porta chamada `do_texto` QUAL era a lei do \
+         BINÁRIO. Ele nasceu em 2026-09-21 a substituir o \
+         `a_lei_nova_shipa_desligada` e morreu no mesmo dia, quando a escolha \
+         passou a ser um CAMPO do objecto (degrau `161` do `PROJECT_SCHEMA`, o \
+         «sim» do dono ao smoke): a pergunta *«qual é a lei?»* deixou de ter \
+         resposta global, e o texto do ambiente passou a responder outra coisa \
+         — *«sobrepõe-te a toda a gente»* ou *«não te metas»*. Hoje quem afirma \
+         é o `um_objecto_nasce_na_lei_da_forma_e_o_ambiente_apenas_sobrepoe`. A \
+         prosa fica porque é ela que guarda a razão do degrau: um gate que \
+         morre e renasce duas vezes em doze horas é a melhor prova de que a \
+         premissa tinha de estar escrita.",
+    ),
+    (
+        "a_porta_do_produto_pergunta_ao_ambiente_e_delega",
+        "crates/ph2d-form-donation/src/baked_form_lei_tests.rs",
+        "o censo que exigia, por escrito, que o corpo do `light` contivesse \
+         `crate::lei_da_luz::do_ambiente()`. Isso era A LEI enquanto a escolha \
+         era global; com o campo no objecto (2026-09-21) ele passou a defender \
+         o desenho ANTIGO — *um gate que exige o nome da função antiga impede a \
+         cura*. Hoje quem afirma é o \
+         `a_porta_do_produto_pergunta_ao_objecto_e_delega`, que exige a porta \
+         que compõe as duas metades (`efectiva(bake.lei)`) e PROÍBE a leitura \
+         directa da sobreposição.",
     ),
 ];
 

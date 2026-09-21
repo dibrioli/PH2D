@@ -36,6 +36,12 @@ wgpu = "29.0.4"
 # milissegundos gastos a copiar para um passe que existe para poupar milissegundos.
 # ⛔ É a MESMA crate que o passe irmão usa (`ph2d-render`), e pelo mesmo motivo.
 bytemuck = "1"
+# ⚠️ **Só pelo `derive` da [`lei_da_luz::Lei`], e a razão é o degrau `161` do `PROJECT_SCHEMA`:**
+# a lei que acende um objecto assado passou a viajar NO DOCUMENTO, ao lado do `rig` (que já é
+# `serde`, pela `ph2d-light`). ⛔ A alternativa era o ficheiro guardar um `u8` e a shell traduzi-lo
+# — a **segunda ortografia** da mesma lei, exactamente onde o postcard é posicional e uma troca de
+# ordem é silenciosa.
+serde = { version = "1", features = ["derive"] }
 
 # ⚠️ **INVISÍVEL dentro da shell, a segunda vez nesta crate** (§2.4): o `#[cfg(test)]` do
 # `baked_form` faz round-trip do documento por `postcard`, e lá ele era dependência do binário.

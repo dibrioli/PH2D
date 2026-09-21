@@ -1035,3 +1035,150 @@ endurecimento de borda que o doc 25 §13.10 já mede.
 
 ⏳ **Decisão do dono:** (a) a tela grande — a `2048²` a pilha de cinco põe o quadro no limite, e a
 saída medida é o Smear, que é `70 %` dela e cresce com a ÁREA; (b) o cartão a `288 px`.
+
+---
+
+## §21 — «SIM. VAMOS FAZER» — a pilha de CINCO camadas, e o Blur da pilha com núcleo de CAIXA
+
+> Ordem do dono, 2026-09-20, logo a seguir à medição da §20: *«sim. vamos fazer. veja se abaixando
+> a qualidade do blur não fica bem mais leve. Mas só no Blur do composite. O Blur como ferramenta
+> isolada não deve ser modificado.»*
+
+### §21.1 — O que o artista passa a poder fazer
+
+O *Composite Brush* tinha **três** camadas (Brush · Smear · Blur) com **um** knob cada (Strength).
+Passa a ter **cinco**, cada uma com um **selector de operação** (Brush · Smear · Blur · **Erase**),
+e cada uma com **tamanho do carimbo** próprio; as que depositam cor ganham também uma **cor**
+própria, com botão de voltar à cor do pincel.
+
+As duas posições novas **nascem caladas** (`strength = 0`), logo *quem já usava a ferramenta não vê
+um pixel diferente* — há gate a afirmá-lo por igualdade byte a byte contra uma pilha de três.
+
+### §21.2 — Três coisas que a construção obrigou, e nenhuma estava no pedido
+
+**(a) Duas camadas Brush partilhavam o CAP de cobertura e a segunda depositava ZERO.** O
+`stroke_mask` é o tecto do *Accumulate OFF* e é **por TRAÇO**; com duas camadas a primeira levava-o
+ao tecto e a segunda não tinha onde escrever. Medido antes da cura, com Strength `0,6`: **uma**
+camada deixava `61,08` de tinta e **duas** deixavam `61,04` — e `0,6 × 0,4 × 255 = 61,2` é
+exactamente o cap, quando dois passes dariam `1 − 0,4² = 0,84` ⇒ `~86`. ⇒ **uma máscara por
+POSIÇÃO** (`composite_mask[pos]`, trocada para dentro e para fora por `mem::swap` à volta de cada
+camada). O gate mede a **TINTA** e leva o **CONTROLO** da mesma pilha com uma camada só — *um número
+sozinho não diz se a segunda camada trabalhou*.
+
+**(b) Reutilizar a lista de dabs num carimbo maior custa ×4, e isso é EXACTO.** O `spacing` é uma
+fracção do **DIÂMETRO**; dobrar o raio de uma camada sem tocar na lista dá um espaçamento efectivo
+de `0,10 → 0,025`, ou seja **quatro vezes** os dabs pelo mesmo traço. ⇒ a camada com `size > 1`
+**sub-amostra por arco** (`composite_arco[pos]`), e a que tem `size == 1` e nenhuma cor autorada
+devolve `None` — *a mesma fatia, zero cópias*.
+
+**(c) Os dois limites do tamanho são DERIVADOS, não escolhidos** (§0.0): o **piso** é o `spacing` do
+próprio pincel — *abaixo dele o traço conta como esferas* e o defeito começa exactamente ali —, e o
+**tecto** é `4,0`, que é onde o relógio do quadro o põe.
+
+### §21.3 — O núcleo de CAIXA, e o que a medição pareada corrigiu
+
+Três caixas por **somas correntes** no lugar da convolução binomial, com as larguras escolhidas por
+**casamento de variância** (`σ² = k/2`; a largura ideal `√(1+2k)` realizada como mistura de duas
+larguras ímpares vizinhas). Custo `~6` ops/pixel **independente de `k`**, contra `2(2k+1)` taps.
+
+**MEDIDO** (`--release`, canvas `1024²`, traço de 720 px, **pareado**, `load 3,4`–`4,0`):
+
+| raio | binomial | caixa | ganho p50 (p10..p90) | pior byte | média |
+|---|---|---|---|---|---|
+| 12 | `4,03` | `4,09` | **`×0,98`** (`0,95`..`1,00`) | `1` | `0,001` |
+| 24 | `8,84` | `7,04` | `×1,26` (`1,23`..`1,27`) | `3` | `0,017` |
+| 48 | `24,21` | `13,31` | `×1,83` (`1,76`..`1,86`) | `1` | `0,001` |
+| 96 | `84,23` | `26,28` | **`×3,19`** (`3,09`..`3,26`) | `1` | `0,007` |
+
+⛔⛔ **A leitura anterior dizia `×1,21` no raio 12 e estava ERRADA.** Ela era `min(B)/min(A)` de
+corridas **separadas** a `load 15` — *a mesma forma que esta sessão já tinha pago uma vez*, quando
+um marginal de `~10 ms` se leu como **`−0,54 ms`**. Pareada, ali **não há ganho nenhum**: a caixa só
+se paga a partir do raio `~24`, porque três passagens com avental próprio custam o que um binomial
+de lado `9` custa. ⇒ *um ganho lido de dois mínimos de janelas diferentes é um palpite com cara de
+medição, e o erro tanto inventa ganho como o esconde.*
+
+A diferença de **imagem** é de `1` a `3` bytes no pior pixel e `0,001`–`0,017` na média: **a
+«qualidade mais baixa» que o dono autorizou não é visível.**
+
+### §21.4 — A fronteira do dono é GATEADA, em três metades
+
+`o_nucleo_de_caixa_e_do_blur_da_pilha_e_so_dele`, e cada metade sozinha mente:
+
+1. **as duas rotas DISCORDAM** — sem isto a pilha podia estar no binomial em silêncio e o ganho
+   medido seria de outra coisa;
+2. **elas discordam POUCO** (`pior ≤ 8`) — é esta que torna *«baixar a qualidade»* uma afirmação e
+   não uma esperança;
+3. o `Caixa` é pedido num **ficheiro só** de toda a crate da ferramenta, o do laço da pilha.
+
+⚠️ A 3.ª é **textual de propósito**: a rota isolada entra por uma porta **sem argumento**
+(`stamp_dabs_blur`), logo o binomial dela é **por construção** e não há barro onde medir a ausência
+— *uma ausência prova-se contando os sítios, não olhando*.
+
+⚠️⚠️ **E a agulha é montada em runtime porque este ficheiro seria ele próprio um acerto** (a lição
+do gate auto-referente da escultura). A 1.ª redacção esperava `composite.rs` **e este ficheiro**, e
+**reprovou alto**: eu escrevera a expectativa como se ele fosse cúmplice e o código já o punha de
+fora.
+
+⭐ E o núcleo é nomeado **uma vez** no braço do Blur (`const NUCLEO`), com **dois** chamadores —
+escrito duas vezes, o dia em que um deles mudasse deixava a base do smear a receber um borrão de
+outra lei, e *as duas metades do mesmo depósito divergiriam em silêncio*.
+
+### §21.5 — Prova de mutação: 5 de 5, e DUAS sobreviveram primeiro
+
+As duas sobreviventes nomearam gates **meus** a afirmar menos do que prometiam:
+
+⛔ **`a_caixa_tripla_preserva_um_campo_constante` varria só `0..3`.** Trocar `1/lado` por
+`1/(lado − ½)` — um ganho uniforme de `20 %` — passava **VERDE**. Este é um borrão em espaço
+**premultiplicado** e o último passo un-premultiplica por `255/α`: *um ganho uniforme entra no
+numerador e no denominador e divide-se a si próprio*. O único canal que não é dividido por nada é
+o **α**. ⇒ **num borrão premultiplicado, um campo constante de RGB não é régua de normalização
+nenhuma.**
+
+⛔ **`os_dois_nucleos_borram_a_mesma_quantidade` ficava trivialmente verdadeiro** com o despacho a
+ignorar o núcleo pedido: os dois lados passam a ser o **mesmo** binomial e `d = 0`. *Uma régua de
+SEMELHANÇA é satisfeita de graça pela IDENTIDADE* ⇒ ela precisa do controlo **«e as duas saídas
+DIFEREM»**, que é o que prova que o argumento chegou a ser lido.
+
+⚠️ E uma terceira **abortou**: a agulha `let alvo = k as f32 / 2.0;` casa **duas** vezes, porque o
+gate recalcula o alvo com a mesma expressão do produto (ali é uma fórmula do domínio, não uma
+constante partilhada — mas a agulha teve de levar contexto).
+
+### §21.6 — O preço das cinco camadas, com o Blur já barato
+
+Re-medido a `load 3,4` com o núcleo novo já no sítio (`raio 24`, traço de 720 px, 362 eventos):
+
+```
+  pincel sozinho (pilha DESLIGADA)      5,82 ms    0,016 ms/evento
+  [Brush]                               5,30 ms
+  [Smear]                              70,82 ms
+  [Blur]                                6,77 ms        (isolado ⇒ binomial)
+  [Brush+Smear+Blur]  <- HOJE          94,35 ms    0,261 ms/evento
+  1.º Brush  11,05 ms [10,67..11,48]   contra 5,30 sozinho ⇒ a DOBRA vale ×2,09
+  2.º Brush  10,03 ms [ 6,91..12,69]   <- a camada que o dono pediu
+  Blur       13,02 ms [12,81..14,14]   contra 6,77 sozinho ⇒ ×1,92
+  PREVISTO [Brush+Brush+Erase+Smear+Blur] = 112,55 ms (0,311 ms/evento) = ×1,19 a pilha de hoje
+```
+
+⚠️ **A DOBRA é o mecanismo dominante e não é desta wave:** com uma sessão de Smear viva, toda camada
+que não é Smear deposita **DUAS** vezes (canvas + a base congelada do Smear) — é a cura de
+2026-08-09, sem a qual um traço perde `33` das `141` colunas. Medida aqui em `×2,09` (Brush) e
+`×1,92` (Blur), e é por isso que as partes sozinhas somam `82,89` e a pilha mede `94,35`
+(**`+13,8 %`**).
+
+⚠️ E o `Smear` é **`70,82` dos `94,35`**: *a camada que o dono acrescentou custa `10 ms` numa pilha
+cujo membro mais caro custa setenta*.
+
+### §21.7 — O que NÃO se mexeu
+
+Zero `PROJECT_SCHEMA`, zero contrato congelado (a pilha **não** é serializada), zero pacote novo, e
+**o Blur isolado sai byte a byte igual ao de sempre**. Os ids novos do painel entram **apendados**
+aos arrays que já existiam, logo os três primeiros hashes ficam intactos.
+
+### §21.8 — Aberto
+
+- ⏳ **O tecto de `4,0` do tamanho é do relógio a `raio 24`** — num pincel muito maior ele é
+  generoso de mais, e a faixa não foi varrida por raio.
+- ⏳ **O cartão cresce de `113 px` para `~288 px`** com cinco camadas de duas fileiras; não há
+  medição de quanto isso empurra o resto do painel para baixo da dobra.
+- ⏳ **O ganho da caixa a `raio 12` é `×0,98`** — dentro do ruído, e o `p90` toca `1,00`. Não há
+  cerca por raio a desligar a caixa em baixo, e nenhuma medição diz que valha a pena tê-la.

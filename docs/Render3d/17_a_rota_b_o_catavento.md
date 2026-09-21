@@ -629,6 +629,47 @@ camadas vivas antes da imagem guardada) passa a ser afirmada **contando as leitu
 ⚠️ E caiu hoje a **terceira** âncora de gate presa a prosa traduzível (`"escala {scale:"`, depois
 de `"=52 O CATAVENTO"`).
 
+## §9 — ⭐⭐⭐ O smoke seguinte: o barro PRETO e o painel sem controlos (2026-09-21)
+
+O dono aprovou a lei do vestido com **duas** observações, e as duas eram reais.
+
+### §9.1 — ⛔⛔⛔ *«retiro a sprite branca, coloco um transparente e o objecto 3D fica PRETO»*
+
+A causa é a **mesma porta**, no **outro consumidor** dela. O [`albedo::sincroniza`] pinta o barro
+com a matéria que o bake vai acender — é a promessa escrita do módulo — e usa a mesma
+`materia_para`. Uma matéria `[0,0,0,0]` subida ao device é **preto opaco**, não invisível.
+
+⚠️⚠️ **E a RECUSA de ontem escondia isto por ACIDENTE:** com o `Err`, a matéria vazia nunca chegava
+ao `set_albedo_source`. ⇒ *retirar uma recusa devolve todos os caminhos que ela calava, não só o
+que a motivou* — e quem os conta é o `grep` pelos chamadores da porta, antes de a mexer.
+
+| | cobertura | porquê |
+|---|---|---|
+| **bake** | `Cobertura::DaForma` (o canal `w` do G-buffer) | ali a peça tem silhueta, e é ela que o objecto veste |
+| **visor** | `Cobertura::Toda` | o sujeito é o **barro inteiro**, e o visor não rasteriza forma nenhuma — ele corre por quadro |
+
+⛔⛔ **E uma MUTAÇÃO SOBREVIVENTE apanhou a metade que faltava:** apagar a chamada no `sincroniza`
+deixava o gate **verde** — *um gate que chama a função afirma que a lei existe, nunca que o
+consumidor a usa*. ⇒ a 2.ª metade lê o corpo por `include_str!`, que deixa de **compilar** se o
+ficheiro mudar de sítio.
+
+### §9.2 — ⭐⭐ *«ao assar com a sprite transparente, não aparece no Inspector os controlos»*
+
+A secção `Live Mesh` só é pintada **com** o componente (ADR-0166), e até aqui **só a cena `=52` o
+semeava** — o artista que assava a peça dele tinha a forma 3D no objecto e **nenhuma superfície
+para a virar**. *Um motor com a lei certa e o artista sem lhe chegar lê-se, da cadeira dele, como
+um motor sem a lei.*
+
+⇒ **assar carimba o `Mesh3D`.** O que o bake produz **é** uma forma 3D doada, e virá-la é a razão
+de a rota B existir.
+
+⭐ **É barato:** ele nasce em `yaw = pitch = spin = 0`, a identidade da rota B **ao bit**.
+⚠️ **E só na PRIMEIRA vez** (`get` antes do `insert`): re-assar não pode devolver a pose ao zero,
+senão um `Shift+B` apagava o giro que o artista acabou de pôr — o mesmo argumento que o
+`lei_ao_assar` e o slot da textura já fazem no mesmo ficheiro.
+
+---
+
 ---
 
 ## ⛔ Recusas MEDIDAS
@@ -659,4 +700,8 @@ de `"=52 O CATAVENTO"`).
 | declarar o `bake.rs` como código de TERMINAL | a fase faz `eprintln!` **e** `toasts.push` com a mesma `String` — a isenção era metade da verdade, e a outra metade era a foto do dono | §8.6 |
 | medir a ORDEM das fontes do padrão pelo escrutínio de um `match` | uma régua de texto sobre quem chama a porta; contar as leituras é a lei, e sobrevive à mudança de casa | §8.7 |
 | subir o tecto da shell para caber os gates novos | a cura é MOVER a lei para a crate da família, e foi ela que pagou as `85` linhas | §8.7 |
+| deixar o VISOR não pintar quando a matéria está vazia | a promessa do módulo é *o visor pinta a matéria que o bake vai ACENDER* — não pintar mostraria o barro de sempre, que é outra coisa do que o bake vai fazer | §9.1 |
+| usar a cobertura do G-buffer também no visor | ele corre **por quadro** e não rasteriza forma nenhuma; ali a peça é o barro inteiro | §9.1 |
+| a cobertura fora do plano cair na última lida | um `base` maior que o G-buffer é um defeito de TAMANHO, e vesti-lo escondê-lo-ia com uma cauda de branco | §9.1 |
+| carimbar o `Mesh3D` em TODO bake, mesmo re-assando | apagaria o giro que o artista acabou de pôr — o argumento que o `lei_ao_assar` e o slot já fazem | §9.2 |
 | uma âncora de gate feita do TÍTULO de uma cena | ela reprova no dia da tradução, e o defeito que o gate existe para apanhar continua vivo — a âncora é o **número** (`=52 `) | §8.6 |

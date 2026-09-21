@@ -107,18 +107,17 @@ pub(crate) fn paint_appearance_sections(
             }
         };
 
-        // ── O cartão **Mixing** (a fileira `Pigment`) — para os meios que SENTEM a mistura
-        //    subtractiva e não têm um cartão onde ela caiba.
+        // ── O cartão **Mixing** (a fileira `Pigment`) — o ÚNICO hospedeiro dela, nos três meios.
         //
         //    ⭐⭐ Ele nasceu da ordem do dono de 2026-09-20 (*«ligue o digital»*), que tirou a cerca
-        //    `watercolor &&` do `effective_pigment_mix`. A pergunta *«que meios a sentem?»* tem UMA
-        //    resposta — `PaintMedia::offers_pigment_mixing`, cuja lista é MEDIDA — e a aguada é
-        //    subtraída aqui porque ela já hospeda a fileira no cartão *Water*, ao lado do Rewet e do
-        //    Smudge, que é onde o artista a aprendeu.
+        //    `watercolor &&` do `effective_pigment_mix`. ⚠️ **Ele fica AQUI, acima da secção do
+        //    meio, pela mesma razão que o chip do Paint Mode fica acima do que governa:** desde
+        //    aquela ordem o `Pigment` vale para três meios, logo deixou de pertencer à secção de um.
         //
-        //    ⚠️ **Subtrair a aguada é o que impede o MESMO id de ser pintado duas vezes no mesmo
-        //    quadro** — e um id repetido não é um controlo a mais, é um hit-rect a tapar o outro. ──
-        if media.offers_pigment_mixing() && media != PaintMedia::Watercolor {
+        //    ⛔ **A condição é UMA** (`pigment_offered`, derivada pela ferramenta do MEIO ∧ do
+        //    GESTO), e é ela que responde ao 2.º report do dono — *«confira se funciona para Blur e
+        //    Smear»*: não funciona, e antes desta linha a fileira aparecia lá na mesma. ──
+        if brush.pigment_offered {
             y = sep(ctx.scene, theme, x, content_w, y);
             y = crate::paint_pigment::paint_mixing_section(ctx, theme, x, content_w, y, &brush);
         }

@@ -71,6 +71,22 @@ pub(crate) enum PaintMode {
 pub(crate) const PAINT_MODE_COUNT: usize = 12;
 
 impl PaintMode {
+    /// **Este modo DEPOSITA a cor de um dab?** — a pergunta que decide quem pode ver um controlo
+    /// sobre *como essa cor encontra a tinta que já lá está*.
+    ///
+    /// ⛔ **Só o [`PaintMode::Paint`]**, e o `_ =>` é deliberado: os outros ou mexem no que já está
+    /// (Smear · Blur · Knife · Deform), ou escrevem noutro canal (Mask · Sculpt), ou não passam pelo
+    /// composite do dab (Fill · Clone · Inpaint · Selection · WetPaint). ⚠️ **Um braço por variante
+    /// seria pior:** ele empataria com o valor de fábrica e a mutação não o conseguiria matar; assim,
+    /// um modo NOVO nasce do lado conservador (não oferece) e quem o quiser tem de o escrever.
+    ///
+    /// A tabela medida que sustenta isto está na [`super::PaintMedia::offers_pigment_mixing_in`],
+    /// que é quem compõe esta metade com a do MEIO.
+    #[must_use]
+    pub(crate) fn deposita_a_cor_do_dab(self) -> bool {
+        matches!(self, PaintMode::Paint)
+    }
+
     /// Whether this mode drags canvas content along the stroke — the **smear field**.
     ///
     /// The ordinary [`PaintMode::Smear`] and the [`PaintMode::Knife`] are the same operation with

@@ -3,9 +3,14 @@
 //! it paints three bordered cards named for what the painter controls —
 //! **Wash** (how the stroke dries: Body · Concentration · Edge Darkening · Bleed · Ragged Edge),
 //! **Brush** (what's on the brush: Charge · Dilution · Pull), and
-//! **Water** (interaction with paint already down: Rewet · Smudge · Pigment). Names mirror the
+//! **Water** (interaction with paint already down: Rewet · Smudge). Names mirror the
 //! industry vocabulary (Rebelle "Edge Darkening" / "Re-wet", Corel "Concentration", Procreate
-//! Charge/Dilution/Pull). The **Pigment** slider is the merged old Pigment-toggle + Mix pair (`0` = off).
+//! Charge/Dilution/Pull).
+//!
+//! ⚠️ **O `Pigment` SAIU do cartão Water em 2026-09-20** (ordem do dono, *«ligue o digital»*): a
+//! mistura subtractiva deixou de ser da aguada e vive hoje no cartão **`Mixing`**
+//! ([`crate::paint_pigment`]), acima da secção do meio, porque governa três deles. *Este cartão
+//! voltou a ser só o que o nome dele diz.*
 //!
 //! All controls are fixed-id, tool-global widgets (registered in [`crate::populate`]); this module only
 //! paints them off the published [`BrushSettings`] snapshot. The number fields forward the real value as
@@ -379,6 +384,19 @@ fn paint_water_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
+    // ⭐⭐⭐ **A 3.ª fileira (o `Pigment`) SAIU deste cartão em 2026-09-20, e quem a mandou sair foi
+    //    um CENSO.** A mistura subtractiva deixou de ser da aguada (ordem do dono, *«ligue o
+    //    digital»*) e passou a ter de desaparecer nos gestos que não depositam cor (report dele,
+    //    *«confira se funciona para Blur e Smear»* — não funciona). A 1.ª redacção derivou o
+    //    `n_rows` daquela condição, e o `o_numero_de_linhas_que_um_cartao_declara_e_o_que_ele_pinta`
+    //    reprovou em voz alta: *«o `n_rows` não é um literal»*.
+    //
+    //    ⚠️ **Ele tinha razão, e a cura barata era cegá-lo.** Um cartão de altura variável não é
+    //    verificável por aquela régua, e ensiná-la a ler um `if` tornaria-a um parser — a mesma
+    //    régua que existe porque um cartão dimensionado para `3` com `4` dentro já shipou uma vez.
+    //    ⇒ a fileira mudou-se para o cartão **`Mixing`** ([`crate::paint_pigment`]), que é UM
+    //    hospedeiro para os três meios e some inteiro quando não é oferecido. *Este cartão volta a
+    //    ser o que o nome dele diz — o que o traço faz com a ÁGUA — e a declarar um literal.*
     let (ix, iw, mut ry, next_y) = card_frame(
         ctx,
         theme,
@@ -386,7 +404,7 @@ fn paint_water_card(
         content_w,
         y,
         tr("panel.painter_layers.watercolor.water"),
-        3,
+        2,
     );
     ry = card_row(
         ctx,
@@ -416,10 +434,6 @@ fn paint_water_card(
         number_field::FINE_STEP,
         2,
     );
-    // ⭐ A terceira fileira sai de [`crate::paint_pigment`] desde 2026-09-20: a mistura subtractiva
-    //   deixou de ser da aguada (ordem do dono, *«ligue o digital»*) e passou a ter **dois**
-    //   hospedeiros — este cartão e o cartão `Mixing` dos meios sem cartão de água. O valor que ela
-    //   mostra é DERIVADO, e derivá-lo aqui seria a segunda resposta à mesma pergunta.
-    let _ = crate::paint_pigment::paint_pigment_row(ctx, theme, ix, iw, ry, brush);
+    let _ = ry; // a 3.ª fileira saiu deste cartão (ver o bloco do `card_frame` acima)
     next_y
 }

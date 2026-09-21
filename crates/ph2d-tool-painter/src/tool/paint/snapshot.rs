@@ -335,6 +335,9 @@ impl PainterTool {
             jitter_spacing: b.jitter_spacing,
             spray_count: b.spray_count,
             media: self.paint_media().to_u8(),
+            pigment_offered: self
+                .paint_media()
+                .offers_pigment_mixing_in(self.paint.paint_mode, self.paint.eraser),
             wetpaint: self.paint.wetpaint.armed,
             wet_knobs: self.paint.wetpaint.knobs,
             wet_tool: self.paint.wetpaint.tool,

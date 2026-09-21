@@ -6,17 +6,25 @@
 //! componha um dab pela porta `blend_over_pigment` —, e com ela a fileira deixou de pertencer a uma
 //! secção só.
 //!
-//! ⛔⛔ **Por isso ela mora AQUI e não em dois sítios.** O valor que o slider mostra não é um campo:
+//! ⛔⛔ **Por isso ela mora AQUI, e num hospedeiro SÓ.** O valor que o slider mostra não é um campo:
 //! ele é DERIVADO (`pigment ? pigment_mix : 0`, o par toggle+amount que a redesign de 2026-07-07
 //! fundiu num controlo só), e *duas derivações do mesmo número divergem no dia em que alguém afina
-//! uma delas*. Os dois hospedeiros — o cartão Water da aguada e o cartão **Mixing** que os outros
-//! meios ganham — chamam [`paint_pigment_row`]; nenhum sabe a lei.
+//! uma delas*.
 //!
-//! ⚠️ **Quem responde «este meio tem a fileira?» é `PaintMedia::offers_pigment_mixing`**, e a lista
-//! dela é MEDIDA (`diag_pigmento_por_meio`), não raciocinada: Digital · Watercolor · Impasto leem a
-//! lei; o **Wet Paint não** (o depósito é do solver de fluido, que tem o Kubelka–Munk próprio e o
-//! slider de pigmento dele). Um meio que lê a lei e não vê a fileira é um knob INALCANÇÁVEL; um que
-//! a vê e não a lê é um knob MORTO — as duas leem-se igual numa tabela, e só a medição as separa.
+//! ⚠️⚠️ **A 1.ª redacção tinha DOIS hospedeiros** — este cartão e o cartão *Water* da aguada, que
+//! era onde a fileira nasceu — e um CENSO mandou-a juntar-se: com a fileira a poder desaparecer (o
+//! 2.º report do dono), o `n_rows` do cartão Water passou a ser derivado e o
+//! `o_numero_de_linhas_que_um_cartao_declara_e_o_que_ele_pinta` reprovou em voz alta (*«não é um
+//! literal»*). ⛔ *A cura barata era cegar o censo; a certa era o cartão de altura variável ser
+//! ESTE, que some inteiro.*
+//!
+//! ⚠️ **Quem responde «isto é oferecido AGORA?» é o `BrushSettings::pigment_offered`**, derivado
+//! pela ferramenta em `PaintMedia::offers_pigment_mixing_in` — o MEIO ∧ o GESTO na mão —, e as duas
+//! listas são MEDIDAS (`diag_pigmento_por_meio`), não raciocinadas: Digital · Watercolor · Impasto
+//! sentem a lei e o **Wet Paint não**; e dos NOVE gestos que desenham esta metade do painel, só o
+//! **pincel** deposita a cor de um dab. Um caso que lê a lei e não vê a fileira é um knob
+//! INALCANÇÁVEL; um que a vê e não a lê é um knob MORTO — as duas leem-se igual numa tabela, e só a
+//! medição as separa.
 
 use crate::card::{card_frame, card_row};
 use crate::number_field;
@@ -63,11 +71,11 @@ pub(crate) fn paint_pigment_row(
     )
 }
 
-/// O cartão **Mixing** — o hospedeiro da fileira nos meios que não têm um cartão onde ela caiba.
+/// O cartão **Mixing** — o hospedeiro ÚNICO da fileira, acima da secção do meio.
 ///
-/// ⚠️ **A aguada NÃO o usa:** lá a fileira vive no cartão *Water*, ao lado do Rewet e do Smudge, que
-/// é onde o dono a aprendeu e onde ela pertence (as três são *«o que o traço faz com a tinta que já
-/// está na tela»*). Pintar os dois seria pintar o mesmo id duas vezes no mesmo quadro.
+/// ⚠️ Ele fica acima porque o `Pigment` governa **três** meios, e a lei desta casa já diz que um
+/// controlo que reinterpreta o que está abaixo dele se senta ACIMA (é o argumento escrito para o
+/// chip do Paint Mode). Um cartão de uma linha é o preço de ela poder desaparecer inteira.
 pub(crate) fn paint_mixing_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,

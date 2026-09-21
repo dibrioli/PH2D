@@ -407,6 +407,15 @@ pub struct BrushSettings {
     /// medium's section — this one.
     pub media: u8,
 
+    /// **A fileira `Pigment` é oferecida AGORA?** — derivada pela ferramenta em
+    /// [`super::PaintMedia::offers_pigment_mixing_in`] (o MEIO ∧ o GESTO na mão ∧ não-borracha).
+    ///
+    /// ⚠️ Ela é um campo e não um predicado do painel **porque a resposta precisa do `PaintMode`**,
+    /// que o snapshot não carrega — e a alternativa era o painel re-derivar o gesto de uma lista
+    /// escrita à mão de `is_*` (que não tem `is_fill` nem `is_knife`, logo nasceria com dois
+    /// buracos). *A pergunta é respondida onde o facto vive.*
+    pub pigment_offered: bool,
+
     // ── Wet Paint section (the fluid engine, ADR-0134) ──
     /// The Wet Paint **Enable** checkbox — the ARMED state (`WetPaintState::armed`, not a
     /// `BrushSpec` field: one fact, mode-independent, survives slot switches). While armed, the

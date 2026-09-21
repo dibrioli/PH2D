@@ -64,6 +64,52 @@ fn azul_sobre_amarelo(media: PaintMedia, pigmento: f32) -> [u8; 4] {
     px(&t, SIZE, 32, 32)
 }
 
+/// A tela do report do dono para o Blur/Smear: **duas faixas encostadas**, amarela em cima e azul
+/// em baixo, com a fronteira exactamente em `y = 32`. É ali que aqueles dois modos têm o que
+/// misturar — eles não depositam a cor do pincel, eles MEXEM na que já está.
+fn duas_faixas(modo: &str) -> PainterTool {
+    let mut t = white_canvas(SIZE, RADIO);
+    // ⚠️ Meia força pela MESMA razão da `tela`: é o único regime em que o `brush` — o CONTROLO
+    //    desta tabela — move o byte. *Com ele a ler `0` os zeros do Blur e do Smear não ilibam
+    //    ninguém: a tabela inteira diria «nenhum modo mistura», incluindo o que mistura.*
+    t.paint.brush.strength = 0.5;
+    t.paint.brush_by_mode.iter_mut().for_each(|b| {
+        b.strength = 0.5;
+    });
+    for (cor, y) in [([0.98f32, 0.90, 0.10], 22.0f32), ([0.10, 0.25, 0.85], 42.0)] {
+        t.set_paint_tool_mode("brush");
+        t.paint.brush.color = cor;
+        t.paint.brush_by_mode.iter_mut().for_each(|b| b.color = cor);
+        t.on_canvas_pointer(cp([8.0, y], PointerPhase::Down));
+        for x in (10..=56).step_by(2) {
+            #[allow(clippy::cast_precision_loss)]
+            t.on_canvas_pointer(cp([x as f32, y], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([56.0, y], PointerPhase::Up));
+        for _ in 0..10 {
+            frame(&mut t);
+        }
+    }
+    t.set_paint_tool_mode(modo);
+    t
+}
+
+/// Arrasta o modo pedido ao longo da fronteira das duas faixas e devolve o pixel do meio.
+fn na_fronteira(modo: &str, pigmento: f32) -> [u8; 4] {
+    let mut t = duas_faixas(modo);
+    t.set_brush_pigment_mixing(pigmento);
+    t.on_canvas_pointer(cp([12.0, 32.0], PointerPhase::Down));
+    for x in (14..=52).step_by(2) {
+        #[allow(clippy::cast_precision_loss)]
+        t.on_canvas_pointer(cp([x as f32, 32.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
+    for _ in 0..10 {
+        frame(&mut t);
+    }
+    px(&t, SIZE, 32, 32)
+}
+
 /// A distância entre o canal mais alto e o mais baixo — *quão longe do cinzento* a cor está.
 fn espalhamento(c: [u8; 4]) -> u32 {
     u32::from(c[..3].iter().copied().max().unwrap_or(0))
@@ -216,6 +262,99 @@ fn diag_o_preco_do_pigmento_no_digital() {
     println!("\n=== O PRECO DO PIGMENTO NO DIGITAL (traco de 24 eventos, mediana de {N}) ===\n");
     println!("sem pigmento   {sem:8.3} ms");
     println!("com pigmento   {com:8.3} ms   ({:.2}x)", com / sem);
+    println!();
+}
+
+/// ⚠️ **E o BLUR e o SMEAR, misturam?** — a pergunta do dono (2026-09-20), medida antes de
+/// respondida.
+///
+/// Eles **não depositam a cor do pincel**: o Blur faz a média do que está na tela e o Smear
+/// arrasta-a. A fixtura tem de ser outra — duas FAIXAS encostadas, amarela e azul, com o modo a
+/// correr **ao longo da fronteira**, que é o único sítio onde eles têm o que misturar.
+/// ⛔⛔⛔ **A BORRACHA NÃO TINGE O QUE APAGA** — o defeito que a pergunta do dono expôs.
+///
+/// O `BrushBlend::EraseAlpha` devolve o RGB do destino **letra por letra** e mexe só no alfa; o
+/// crossfade do pigmento reescrevia-o por cima. Medido antes da cura: uma passagem da borracha
+/// sobre a fronteira de duas faixas com o `Pigment` a `1` trocava o pixel de `197,203,203` para
+/// `54,109,206` — *ela apagava o alfa e pintava, com uma cor que o artista nem vê em modo
+/// borracha*.
+///
+/// ⚠️ **Defeito PRÉ-EXISTENTE** (alcançável desde que o `Pigment` existe, com a aguada armada) e
+/// **invisível a tudo**: nenhum gate desta casa punha uma borracha e um pigmento na mesma fixtura.
+/// A cura é do BLEND e não do modo — quem apaga é a borracha autorada **ou** o botão direito do
+/// Grid Stamp, e as duas chegam ao carimbo pelo mesmo `EraseAlpha`.
+#[test]
+fn a_borracha_nao_tinge_o_que_apaga() {
+    let sem = na_fronteira("eraser", 0.0);
+    let com = na_fronteira("eraser", 1.0);
+    assert_eq!(
+        sem, com,
+        "com o Pigment ligado a borracha mudou o pixel — ela está a TINGIR o que apaga"
+    );
+    // CONTROLO: a fixtura contém o fenómeno — o mesmo gesto com o PINCEL move o byte.
+    let p_sem = na_fronteira("brush", 0.0);
+    let p_com = na_fronteira("brush", 1.0);
+    assert!(
+        p_sem != p_com,
+        "CONTROLO: com o pincel as duas colunas têm de divergir, senão este gate está a comparar \
+         dois nadas ({p_sem:?} contra {p_com:?})"
+    );
+    // ⛔⛔ **E a PORTA tem de o dizer.** Sem esta linha, tirar o `!eraser` da oferta deixa o gate
+    //    do painel VERDE — ele compara a TELA com a porta, logo mexer na porta põe as duas a
+    //    concordar — e a borracha volta a mostrar um controlo que ela não sente.
+    assert!(
+        !duas_faixas("eraser").brush_settings().pigment_offered,
+        "a borracha não sente a mistura, logo o painel não lhe pode oferecer a fileira"
+    );
+}
+
+/// ⛔⛔ **E NENHUM dos gestos que MEXEM na tinta a mistura** — a resposta directa ao report.
+///
+/// Blur · Smear · Clone · Sculpt · Mask · Fill · Knife devolvem o pixel **ao bit** com o knob a `0`
+/// e a `1`: eles não depositam a cor de um dab, logo não há o que misturar. É esta medição que
+/// autoriza o painel a **esconder** a fileira neles (`PaintMode::deposita_a_cor_do_dab`) — sem ela,
+/// esconder seria um palpite e mostrar era um knob morto.
+#[test]
+fn os_gestos_que_nao_depositam_cor_nao_misturam() {
+    for modo in ["blur", "smear", "clone", "sculpt", "mask", "fill", "knife"] {
+        let sem = na_fronteira(modo, 0.0);
+        let com = na_fronteira(modo, 1.0);
+        assert_eq!(sem, com, "o modo `{modo}` mexeu com o Pigment ligado");
+        // ⛔⛔ **A metade que amarra a PORTA ao barro**, pela mesma razão da borracha: o gate do
+        //    painel compara duas respostas, e só quem MEDE pode dizer qual delas está certa.
+        assert!(
+            !duas_faixas(modo).brush_settings().pigment_offered,
+            "o gesto `{modo}` não mistura e o painel oferece-lhe a fileira — knob MORTO"
+        );
+    }
+    // CONTROLO: o gesto que DEPOSITA continua a ser oferecido — senão a metade de cima ficaria
+    // verde com a porta a responder `false` a tudo, e o controlo teria desaparecido do app.
+    assert!(
+        duas_faixas("brush").brush_settings().pigment_offered,
+        "CONTROLO: o pincel deposita a cor do dab e TEM de ver a fileira"
+    );
+}
+
+#[test]
+#[ignore = "sonda de estudo; roda sob demanda"]
+fn diag_o_pigmento_no_blur_e_no_smear() {
+    println!("\n=== NA FRONTEIRA DE DUAS FAIXAS (pigmento 0 contra 1) ===\n");
+    println!("{:<10} {:>18} {:>18} {:>8}", "modo", "sem", "com", "|Δ|max");
+    for modo in [
+        "brush", "blur", "smear", "clone", "sculpt", "mask", "fill", "knife", "eraser",
+    ] {
+        let sem = na_fronteira(modo, 0.0);
+        let com = na_fronteira(modo, 1.0);
+        let d = (0..3)
+            .map(|i| i32::from(sem[i]).abs_diff(i32::from(com[i])))
+            .max()
+            .unwrap_or(0);
+        println!(
+            "{modo:<10} {:>18} {:>18} {d:>8}",
+            format!("{},{},{}", sem[0], sem[1], sem[2]),
+            format!("{},{},{}", com[0], com[1], com[2]),
+        );
+    }
     println!();
 }
 

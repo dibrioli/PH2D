@@ -37,9 +37,24 @@ fn viewport() -> Rect {
     Rect::new(0.0, 0.0, 1600.0, 900.0)
 }
 
+/// ⭐ **Os gestos que o painel de facto desenha com a fileira à vista.** Medidos (2026-09-20): o
+/// `selection`, o `inpaint` e o `liquify` não pintam a secção nenhuma, logo não entram nesta
+/// população — *incluí-los faria o gate passar por AUSÊNCIA e não por decisão*.
+const GESTOS: [&str; 9] = [
+    "brush", "blur", "smear", "clone", "sculpt", "mask", "fill", "knife", "eraser",
+];
+
 fn pintado(media: PaintMedia) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
+    pintado_em(media, "brush")
+}
+
+fn pintado_em(
+    media: PaintMedia,
+    gesto: &str,
+) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
     let mut t = PainterTool::default();
     t.set_paint_media(media);
+    t.set_paint_tool_mode(gesto);
     set_current_brush(Some(t.brush_settings()));
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
     let mut st = PainterLayersPanelState;
@@ -49,7 +64,11 @@ fn pintado(media: PaintMedia) -> (MockPanelHost, PainterLayersPanelState, Vec<(N
 
 /// Quantas vezes o id da fileira é pintado com retângulo VIVO neste meio.
 fn vezes_pintada(media: PaintMedia) -> usize {
-    let (_, _, rects) = pintado(media);
+    vezes_pintada_em(media, "brush")
+}
+
+fn vezes_pintada_em(media: PaintMedia, gesto: &str) -> usize {
+    let (_, _, rects) = pintado_em(media, gesto);
     rects
         .iter()
         .filter(|(id, r)| {
@@ -82,6 +101,47 @@ fn a_fileira_do_pigmento_e_pintada_nos_meios_que_a_porta_declara() {
         }
     }
     assert!(erros.is_empty(), "{}", erros.join(" · "));
+}
+
+/// ⭐⭐⭐ **E O GESTO NA MÃO CONTA TANTO COMO O MEIO** — report do dono, 2026-09-20: *«confira se
+/// funciona para Blur e Smear também misturam»*.
+///
+/// ⛔⛔ **Não funciona, e a fileira aparecia lá na mesma.** Medida a tela antes desta metade
+/// existir, ela era pintada em **NOVE** gestos e **um** deposita a cor de um dab ⇒ oito knobs
+/// mortos, *seis dos quais já o eram antes desta wave, com a aguada armada*. A pergunta que o
+/// controlo faz — *como é que a cor deste dab encontra a tinta que já lá está?* — **não existe**
+/// num gesto que não deposita cor nenhuma.
+///
+/// ⚠️ A régua varre `meio × gesto` e compara com a porta única
+/// (`BrushSettings::pigment_offered`, derivada em `PaintMedia::offers_pigment_mixing_in`), nos dois
+/// sentidos — e o **CONTROLO** é a linha do `brush`: sem ela, um predicado que respondesse `false`
+/// a tudo deixaria este gate verde sobre um painel que já não tem o controlo nenhum.
+#[test]
+fn a_fileira_so_aparece_no_gesto_que_deposita_a_cor_do_dab() {
+    let mut erros: Vec<String> = Vec::new();
+    let mut vistas = 0usize;
+    for media in MEIOS {
+        for gesto in GESTOS {
+            let mut t = PainterTool::default();
+            t.set_paint_media(media);
+            t.set_paint_tool_mode(gesto);
+            let oferece = t.brush_settings().pigment_offered;
+            let n = vezes_pintada_em(media, gesto);
+            vistas += n;
+            if oferece != (n > 0) {
+                erros.push(format!(
+                    "{media:?}/{gesto}: a porta diz {oferece} e a tela pinta {n}×"
+                ));
+            }
+        }
+    }
+    assert!(erros.is_empty(), "{}", erros.join(" · "));
+    // CONTROLO: a fileira tem de continuar a existir nalgum sítio.
+    assert!(
+        vistas >= 3,
+        "a fileira desapareceu de TODA a matriz ({vistas} aparições) — a porta passou a responder \
+         `false` a tudo e este gate ficaria verde sobre um painel sem o controlo"
+    );
 }
 
 /// ⛔ **E ela é pintada UMA vez por quadro, nunca duas.**

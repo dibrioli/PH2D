@@ -218,6 +218,10 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     // The medium: `0` = Digital, matching the three master flags below being off. The fallback is what
     // a pre-publish frame paints, and Digital is the medium that IS the absence of the others.
     media: 0,
+    // ⚠️ `true` porque é o que o meio `0` (Digital) com o gesto de omissão (`Paint`, sem borracha)
+    //    publica — o fallback ESPELHA o default, não escolhe um. Pôr `false` «por segurança» faria a
+    //    fileira piscar no 1.º quadro de toda sessão, que é um defeito visível a trocar por nada.
+    pigment_offered: true,
     wetpaint: false,
     wet_knobs: ph2d_tool_painter::WetKnobs::DEFAULT,
     wet_tool: ph2d_tool_painter::WetTool::Paint,

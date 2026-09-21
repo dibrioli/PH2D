@@ -129,6 +129,38 @@ impl PaintMedia {
         }
     }
 
+    /// **A fileira `Pigment` é oferecida AGORA?** — o medium *e* o gesto na mão, numa resposta só.
+    ///
+    /// ⛔⛔ **A metade do MEIO não chega, e o report do dono de 2026-09-20 (*«confira se funciona
+    /// para Blur e Smear»*) é a prova.** Medida a tela, a fileira era pintada em **NOVE** modos
+    /// (brush · blur · smear · clone · sculpt · mask · fill · knife · borracha) e **um** deposita a
+    /// cor de um dab. Os outros oito eram knobs MORTOS — *e seis deles já o eram antes desta wave,
+    /// com a aguada armada: a minha troca alargou o defeito de um meio para três*.
+    ///
+    /// **Medido na fronteira de duas faixas (amarela/azul), pigmento `0` contra `1`:**
+    ///
+    /// | modo | `|Δ|max` | | modo | `|Δ|max` |
+    /// |---|---|---|---|---|
+    /// | **brush** | **100** | | fill | `0` |
+    /// | blur | `0` | | knife | `0` |
+    /// | smear | `0` | | sculpt | `0` |
+    /// | clone | `0` | | mask | `0` |
+    ///
+    /// ⚠️ **A BORRACHA lia `143` e isso era um DEFEITO, não uma coluna** — ela apagava o alfa e
+    /// **tingia** o que apagava com a cor do pincel. A cura é do lado da LEI
+    /// (`BrushBlend::lays_pigment`), e é por isso que a borracha não precisa de aparecer nesta
+    /// conta: depois dela, o blend dela lê `0` como os outros.
+    ///
+    /// ⚠️⚠️ **O CONTROLO da tabela é o `brush`, e a 1.ª corrida dela leu `0` em TODAS as linhas** —
+    /// ela corria à força cheia, onde a cor de cima ganha seja qual for a lei. *Com o controlo a
+    /// ler zero, os zeros do Blur e do Smear não ilibavam ninguém.*
+    /// ⚠️ `pub(crate)` porque o [`PaintMode`] é da crate: o painel não pergunta AQUI, ele lê o
+    /// `BrushSettings::pigment_offered` que o snapshot já derivou desta porta.
+    #[must_use]
+    pub(crate) fn offers_pigment_mixing_in(self, mode: PaintMode, eraser: bool) -> bool {
+        self.offers_pigment_mixing() && mode.deposita_a_cor_do_dab() && !eraser
+    }
+
     /// Can this medium work in `mode` — is the tool in the artist's hand one this medium paints with?
     ///
     /// `Digital` answers `false` everywhere on purpose: it is the *absence* of a medium, so it never

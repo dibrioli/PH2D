@@ -128,6 +128,30 @@ impl BrushBlend {
 /// All inputs/outputs are straight-alpha RGBA in `[0, 1]` in the layer's native space. Colour
 /// blend modes keep the destination alpha (you cannot paint colour where there is no coverage and
 /// no alpha); `Mix` composites alpha via source-over; `EraseAlpha`/`AddAlpha` only move alpha.
+impl BrushBlend {
+    /// **Este blend DEPOSITA pigmento?** — a cerca da mistura subtractiva
+    /// ([`blend_over_pigment`]), e a única resposta a essa pergunta.
+    ///
+    /// ⛔⛔ **O `EraseAlpha` e o `AddAlpha` só movem ALFA — o [`blend_over`] devolve o RGB do
+    /// destino LETRA POR LETRA —, e o crossfade do pigmento reescrevia-o por cima.** Medido em
+    /// 2026-09-20 (report do dono: *«confira se funciona para Blur e Smear»*, que expôs a família):
+    /// com o `Pigment` a `1`, uma passagem da BORRACHA sobre a fronteira de duas faixas trocava o
+    /// pixel de `197,203,203` para `54,109,206` — *ela apagava o alfa e TINGIA o que apagava com a
+    /// cor do pincel*, que o artista nem vê em modo borracha.
+    ///
+    /// ⚠️ **A cerca é do BLEND e não do modo, de propósito:** quem apaga é a borracha autorada
+    /// **ou** o botão direito do Grid Stamp, e as duas chegam ao carimbo pelo mesmo
+    /// `brush.blend = EraseAlpha` (`stamp_route::stroke_erases`). *Uma cerca no modo teria de ser
+    /// escrita duas vezes e só uma delas seria lembrada.*
+    ///
+    /// ⚠️ O defeito é **PRÉ-EXISTENTE** — ele era alcançável desde que o `Pigment` existe, com a
+    /// aguada armada — e passou despercebido porque aquele knob nasce desligado e vivia num meio só.
+    #[must_use]
+    pub fn lays_pigment(self) -> bool {
+        !matches!(self, BrushBlend::EraseAlpha | BrushBlend::AddAlpha)
+    }
+}
+
 #[must_use]
 pub fn blend_over(mode: BrushBlend, dst: [f32; 4], color: [f32; 3], a: f32) -> [f32; 4] {
     let a = a.clamp(0.0, 1.0);
@@ -183,8 +207,9 @@ pub fn blend_over_pigment(
 ) -> [f32; 4] {
     let plain = blend_over(mode, dst, color, a);
     let m = mix.clamp(0.0, 1.0) * dst[3].clamp(0.0, 1.0);
-    if m <= 0.0 {
-        return plain; // byte-identical to `blend_over` when Pigment is off or the canvas is bare
+    if m <= 0.0 || !mode.lays_pigment() {
+        return plain; // byte-identical to `blend_over` when Pigment é off, o canvas é nu, ou o
+        // blend não DEPOSITA pigmento nenhum (ver `lays_pigment`)
     }
     // Subtractive target: the canvas pigment and the dab pigment mixed by coverage `a`
     // (a = 0 → canvas, a = 1 → dab). Crossfade from the plain result toward it by `m`.

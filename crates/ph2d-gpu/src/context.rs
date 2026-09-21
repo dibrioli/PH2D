@@ -146,6 +146,8 @@ impl GpuContext {
         }))
         .map_err(|e| GpuError::DeviceRequest(format!("{e:?}")))?;
 
+        relata_erros_do_dispositivo(&device);
+
         Ok(Self {
             instance,
             adapter: Arc::new(adapter),
@@ -157,6 +159,63 @@ impl GpuContext {
     /// Default Instance with PRIMARY backends (Metal/Vulkan/D3D12/WebGPU).
     pub fn default_instance() -> wgpu::Instance {
         wgpu::Instance::default()
+    }
+}
+
+/// ⭐⭐⭐ **O DISPOSITIVO PASSA A DIZER QUANDO SE PARTE** — sem isto ele falha em SILÊNCIO.
+///
+/// ⛔⛔ **Report do dono, 2026-09-21: *«tela fica em branco ao maximizar»*, e a janela INTEIRA
+/// (painéis, menus e a barra de baixo incluídos) fica vazia e **não recupera até fechar o app**.**
+/// Essa assinatura — tudo desaparece de uma vez e para sempre — é a de um erro do DISPOSITIVO, e
+/// até aqui o produto **não registava um único observador deles**: o `on_uncaptured_error` só
+/// existia num teste de perfil (`ph2d-gpu/tests/it/pass_profiler_gpu.rs`). ⇒ o app entrava no
+/// estado partido e **não tinha como o dizer**, nem ao dono nem ao terminal.
+///
+/// ⚠️ **Isto não é a cura do defeito — é o instrumento que permite achá-lo.** A máquina de
+/// recuperação do `acquire` ([`crate::surface`]) trata `Lost`, `Outdated` e `Timeout` e é sólida;
+/// o que não existia era voz para tudo o que acontece FORA dela (uma alocação recusada, um erro de
+/// validação num submit, um device perdido). *Um app que fica em branco sem uma linha no terminal
+/// obriga quem o investiga a adivinhar, e foi exactamente onde esta caça começou.*
+///
+/// ⚠️ **Ele não pode INUNDAR:** um dispositivo perdido devolve o mesmo erro em todo submit, ou
+/// seja `60` linhas por segundo. As três primeiras saem inteiras — é a que interessa — e a partir
+/// daí só as potências de dez, **com a contagem**, que é o que distingue *«aconteceu uma vez»* de
+/// *«está a acontecer em todo quadro»*.
+fn relata_erros_do_dispositivo(device: &wgpu::Device) {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static VISTOS: AtomicU64 = AtomicU64::new(0);
+    device.on_uncaptured_error(std::sync::Arc::new(|e: wgpu::Error| {
+        let n = VISTOS.fetch_add(1, Ordering::Relaxed) + 1;
+        if n <= 3 || n.e_potencia_de_dez() {
+            eprintln!(
+                "[gpu-erro] #{n} — o dispositivo recusou trabalho. Se o ecra' ficou vazio e nao \
+                 volta, e' isto:\n[gpu-erro] {e}"
+            );
+        }
+    }));
+}
+
+/// `n` é uma potência de dez — a escada de silêncio do [`relata_erros_do_dispositivo`].
+///
+/// ⚠️ Escrita por extenso porque a `u64` não a tem, e **sem `f64::log10`**: a partir de `10^15` o
+/// `f64` deixa de representar cada inteiro, e uma escada de log que erre num extremo cala
+/// exactamente o caso que ela existe para contar.
+trait PotenciaDeDez {
+    fn e_potencia_de_dez(self) -> bool;
+}
+
+impl PotenciaDeDez for u64 {
+    fn e_potencia_de_dez(self) -> bool {
+        let mut p: u64 = 1;
+        loop {
+            if p == self {
+                return true;
+            }
+            match p.checked_mul(10) {
+                Some(maior) if maior <= self => p = maior,
+                _ => return false,
+            }
+        }
     }
 }
 
@@ -190,5 +249,57 @@ mod tests {
         // On any real desktop / Apple-Silicon adapter at least ONE compression
         // family is present; a bare WebGPU adapter legitimately has none.
         eprintln!("compression features granted on this device: {device_caps:?}");
+    }
+}
+
+#[cfg(test)]
+mod voz_do_dispositivo_tests {
+    use super::PotenciaDeDez;
+
+    /// ⭐ A escada de silêncio do [`super::relata_erros_do_dispositivo`], afirmada nos dois lados.
+    ///
+    /// ⚠️ **As duas metades são precisas.** Sem a positiva a escada pode nunca disparar e o
+    /// relatório cala-se para sempre depois da 3.ª linha; sem a negativa ela pode disparar SEMPRE,
+    /// e um dispositivo perdido enche o terminal a `60` linhas por segundo — o que esconde
+    /// exactamente a 1.ª linha, que é a que diz a causa.
+    #[test]
+    fn a_escada_do_relatorio_e_so_as_potencias_de_dez() {
+        for p in [1u64, 10, 100, 1_000, 10_000, 1_000_000_000_000_000_000] {
+            assert!(p.e_potencia_de_dez(), "{p} E' uma potencia de dez");
+        }
+        for n in [0u64, 2, 9, 11, 99, 101, 999, 1_001, u64::MAX] {
+            assert!(!n.e_potencia_de_dez(), "{n} NAO e' uma potencia de dez");
+        }
+        // ⚠️ O caso que uma escada por `f64::log10` erraria: acima de `2^53` o `f64` deixa de
+        // representar cada inteiro, e `10^19` não cabe num `u64` (o `checked_mul` tem de parar).
+        assert!(!(u64::MAX - 1).e_potencia_de_dez());
+        assert!(10_000_000_000_000_000_000u64.e_potencia_de_dez());
+    }
+
+    /// ⛔⛔ **O produto REGISTA o observador de erros do dispositivo.**
+    ///
+    /// Sem isto o app entra no estado que o dono reportou em 2026-09-21 — a janela inteira vazia,
+    /// sem recuperar — e **não diz uma palavra**. O gate não pode criar um device (precisaria de
+    /// adaptador, logo seria `#[ignore]` e o CI nunca o correria), então ele afirma a FIAÇÃO: quem
+    /// constrói o [`super::GpuContext`] chama o relator.
+    ///
+    /// ⚠️ **A agulha é montada em runtime**, nunca escrita como literal: *um censo textual que se
+    /// lê a si mesmo encontra sempre o que procura* (a armadilha que a `line/sculpt3d` registou ao
+    /// escrever um gate trivialmente verdadeiro). Aqui o texto lido é o do PRODUTO e o gate vive
+    /// noutro módulo, mas a regra vale na mesma — o `concat!` garante-o para quem os juntar.
+    #[test]
+    fn quem_cria_o_dispositivo_liga_a_voz_dele() {
+        let fonte = include_str!("context.rs");
+        let chamada = concat!("relata_erros_do_", "dispositivo(&device);");
+        assert!(
+            fonte.contains(chamada),
+            "o construtor do GpuContext tem de chamar o relator logo apos o request_device -- \
+             sem ele um erro de dispositivo deixa a janela vazia EM SILENCIO"
+        );
+        let registo = concat!("on_uncaptured", "_error");
+        assert!(
+            fonte.contains(registo),
+            "o relator tem de registar o observador do wgpu"
+        );
     }
 }

@@ -334,6 +334,45 @@ fn a_pilha_nasce_vazia_e_monta_se_pelo_mais_e_pelo_x() {
     );
 }
 
+/// ⭐⭐ **O reordenar pára na última camada VIVA, não na última POSIÇÃO.**
+///
+/// ⛔ Com o tecto no `MAX_CAMADAS` a camada de baixo trocaria com uma posição da CAUDA — que está
+/// a `strength = 0` e não é pintada —, e ela **saía da lista** aos olhos do artista. *A cauda
+/// existe no array e não existe na pilha.*
+///
+/// ⚠️ **A metade do DESCER é a que tem dentes:** a do subir é defensiva e a mutação que a troca
+/// pelo `MAX_CAMADAS` **não é observável** (subir a posição `0` é um no-op nas duas versões, e o
+/// painel nunca oferece a seta de uma posição que não existe) — declarado no doc do próprio
+/// método em vez de coberto por um gate que afirmaria o nada.
+#[test]
+fn o_reordenar_para_na_ultima_camada_viva() {
+    let mut t = tela();
+    t.acrescenta_camada(0);
+    t.acrescenta_camada(2);
+    assert_eq!(t.composite_len(), 2);
+    let antes: Vec<CompositeOp> = (0..composite::MAX_CAMADAS)
+        .map(|i| t.paint.composite[i].op)
+        .collect();
+    // A última VIVA a descer é um no-op; a primeira a subir também.
+    t.move_composite_layer_down(1);
+    t.move_composite_layer_up(0);
+    let depois: Vec<CompositeOp> = (0..composite::MAX_CAMADAS)
+        .map(|i| t.paint.composite[i].op)
+        .collect();
+    assert_eq!(
+        antes, depois,
+        "o reordenar nas pontas moveu alguma coisa — a de baixo caiu para a cauda morta"
+    );
+    // CONTROLO: no MEIO da lista ele move mesmo.
+    t.acrescenta_camada(1);
+    t.move_composite_layer_down(1);
+    assert_eq!(
+        t.paint.composite[1].op,
+        CompositeOp::Smear,
+        "CONTROLO: o reordenar tem de funcionar no meio da lista"
+    );
+}
+
 /// ⭐⭐⭐ **A QUOTA: `3 Brush · 2 Erase · 1 Blur · 1 Smear`, e o menu encolhe à medida que ela gasta.**
 ///
 /// ⚠️ **As três metades são independentes e cada uma sozinha mente:** o menu deixar de oferecer ·

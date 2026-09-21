@@ -170,6 +170,12 @@ pub const PAINTER_BRUSH_COMPOSITE_ENABLE: NodeId = hash_node_id("painter_brush.c
 /// `31` ao lado — *duas segundas respostas na mesma const*. A extensão de 2026-09-21 encontrou-as.
 const N_POS: usize = crate::N_COMPOSITE_LAYERS;
 
+// ⭐⭐ **E a derivação compra uma propriedade que nenhum gate precisa de afirmar:** subir uma
+// QUOTA sem estender estes arrays deixa de COMPILAR, com um `E0080` a apontar o array exacto (a
+// avaliação const do `PAINTER_BRUSH_COMPOSITE_BUTTONS` indexa fora). *Medido em 2026-09-21 pela
+// prova de mutação: a mutação que põe a quota do Blur em 3 não sangra — ela não compila, e isso é
+// mais forte do que sangrar.*
+
 /// **O `x` de cada camada** — `Click` → [`PainterTool::retira_camada`].
 pub const PAINTER_BRUSH_COMPOSITE_REMOVE: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_remove_0"),

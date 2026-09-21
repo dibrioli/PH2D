@@ -355,6 +355,12 @@ impl PainterTool {
     ///
     /// ⚠️ O tecto é o número de camadas VIVAS e não o `MAX_CAMADAS`: trocar com uma posição da
     /// cauda tiraria a camada da lista.
+    ///
+    /// ⚠️⚠️ **E aqui esse tecto é DEFENSIVO — a mutação que o troca pelo `MAX_CAMADAS` não é
+    /// observável.** Subir a posição `0` é um no-op nas duas versões, e o painel nunca oferece a
+    /// seta de uma posição que não existe; quem tem dentes é o irmão
+    /// [`Self::move_composite_layer_down`], onde a última VIVA cairia para a cauda. *Declarado
+    /// com a medição, em vez de um gate que afirma o nada.*
     pub fn move_composite_layer_up(&mut self, pos: usize) {
         if (1..self.paint.composite_len).contains(&pos) {
             self.paint.composite.swap(pos, pos - 1);

@@ -128,6 +128,11 @@ pub fn paint_tabs_with_hover(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    // ⭐⭐⭐ **Uma fila de abas é UM controlo** — ver [`crate::widget::composto`]. Os itens dela
+    //    são registados como botões, logo sem esta linha o censo das entradas conta cada aba como
+    //    um COMANDO: era assim que o selector `Center / Pivot / Custom` do Inspector entrava três
+    //    vezes na dívida. ⚠️ Desarmado isto é um `Cell::get` e um `return`.
+    crate::widget::composto::grupo(tabs.items.iter().map(|t| t.id));
     if tabs.variant == TabsVariant::Segmented {
         // ⭐ Raio e moldura pela porta do TEMA — a calha das abas é plana num tema moderno.
         let radius = crate::paint::frame_radius(theme, Radius::Md.px());

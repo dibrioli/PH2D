@@ -420,6 +420,8 @@ fn editor(
     );
     cur_y += font + ph2d_tokens::control_gap_px();
     let gap = Spacing::Xs.px();
+    // ⭐ Uma ESCOLHA, não quatro comandos — ver [`ph2d_editor_core::widget::composto`].
+    ph2d_editor_core::widget::composto::grupo(ids::INSP_ANIM_DIR.iter().copied());
     let n = ids::INSP_ANIM_DIR.len() as f32;
     let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
     for (i, (&id, label)) in ids::INSP_ANIM_DIR

@@ -790,9 +790,15 @@ fn diag_de_quem_sao_as_entradas_do_inspector() {
         let mut host = MockPanelHost::new();
         (arm.arma)(host.store_mut());
         painel.populate(host.store_mut());
-        let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        // ⭐ A pintura corre DENTRO do censo dos compostos — senão esta sonda volta a contar cada
+        //   opção de um selector como um comando, que é o defeito que ela própria revelou.
+        let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
+            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        });
         let pintados = host.registos_da_ultima_pintura();
         let store = host.store();
+        let celula: std::collections::BTreeSet<u64> =
+            grupos.iter().flatten().map(|id| id.0).collect();
 
         let mut por_seccao: BTreeMap<String, Contagem> = BTreeMap::new();
         let mut sem_nome = 0usize;
@@ -806,6 +812,10 @@ fn diag_de_quem_sao_as_entradas_do_inspector() {
                 }
             };
             let c = por_seccao.entry(seccao.clone()).or_default();
+            if celula.contains(&id.0) {
+                c.celulas += 1;
+                continue;
+            }
             match store.get(*id) {
                 Some(s) => classifica(c, s),
                 None => {
@@ -828,6 +838,15 @@ fn diag_de_quem_sao_as_entradas_do_inspector() {
             e.1 = e.1.max(r.y + r.h);
         }
         let altura = |s: &str| faixa.get(s).map_or(0.0, |f| f.1 - f.0);
+        // ⭐ Cada grupo conta como UM valor, na secção do 1.º membro que tem literal.
+        for g in &grupos {
+            if let Some(sec) = g.iter().find_map(|id| nome.get(&id.0).map(|v| v.0.clone())) {
+                let c = por_seccao.entry(sec).or_default();
+                c.valores += 1;
+                c.grupos += 1;
+            }
+        }
+
         let mut linhas: Vec<(&String, &Contagem)> = por_seccao.iter().collect();
         linhas.sort_by(|a, b| altura(b.0).total_cmp(&altura(a.0)));
         println!(
@@ -853,6 +872,9 @@ fn diag_de_quem_sao_as_entradas_do_inspector() {
         //   lê-se no nome do gesto, nunca na contagem.
         let mut cmds: BTreeMap<String, Vec<String>> = BTreeMap::new();
         for (id, _r) in &pintados {
+            if celula.contains(&id.0) {
+                continue;
+            }
             if let (
                 Some((sec, lit)),
                 Some(ph2d_editor_core::interaction::InteractiveState::Button { .. }),
@@ -988,5 +1010,172 @@ fn os_pintores_de_composto_declaram_o_grupo() {
          (`paint_segmented_group_adaptive`) deixou de declarar o grupo, e o censo volta a contar \
          cada opção como um comando. Grupos: {:?}",
         grupos.iter().map(Vec::len).collect::<Vec<_>>()
+    );
+}
+
+/// O mapa `NodeId -> literal` dos ids do Inspector, para as sondas nomearem o que acham.
+fn nomes_do_inspector() -> std::collections::BTreeMap<u64, String> {
+    use ph2d_tool_registry::hash_node_id_runtime;
+    let dir = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../ph2d-panel-inspector/src/ids"
+    );
+    let mut m = std::collections::BTreeMap::new();
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return m;
+    };
+    for e in rd.flatten() {
+        let Ok(src) = std::fs::read_to_string(e.path()) else {
+            continue;
+        };
+        for pedaco in src.split("hash_node_id(\"").skip(1) {
+            if let Some(lit) = pedaco.split('"').next() {
+                m.insert(hash_node_id_runtime(lit).0, lit.to_string());
+            }
+        }
+    }
+    m
+}
+
+/// SONDA TEMPORÁRIA — fileiras de botões lado a lado que NINGUÉM declarou como grupo.
+#[test]
+#[ignore]
+fn diag_compostos_por_declarar() {
+    use ph2d_editor_core::widget::composto;
+    use std::collections::BTreeMap;
+
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let mut total = 0usize;
+        for painel in reg.panels_mut() {
+            let id = painel.manifest.id;
+            let mut host = MockPanelHost::new();
+            let arm = super::paineis_armados::TABELA
+                .iter()
+                .find(|a| a.painel == id);
+            if let Some(a) = arm {
+                (a.arma)(host.store_mut());
+            }
+            painel.populate(host.store_mut());
+            let (_, grupos) = composto::medindo(|| {
+                let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            });
+            let pintados = host.registos_da_ultima_pintura();
+            let store = host.store();
+            if let Some(a) = arm {
+                (a.desarma)();
+            }
+            let declarado: std::collections::BTreeSet<u64> =
+                grupos.iter().flatten().map(|n| n.0).collect();
+
+            // Botões pintados, por FAIXA de linha (mesmo `y`, mesma altura).
+            let mut faixas: BTreeMap<(i32, i32), Vec<(f32, u64)>> = BTreeMap::new();
+            for (nid, r) in &pintados {
+                if declarado.contains(&nid.0) {
+                    continue;
+                }
+                if !matches!(
+                    store.get(*nid),
+                    Some(ph2d_editor_core::interaction::InteractiveState::Button { .. })
+                ) {
+                    continue;
+                }
+                faixas
+                    .entry((r.y.round() as i32, r.h.round() as i32))
+                    .or_default()
+                    .push((r.x, nid.0));
+            }
+            // ⚠️ Uma FILEIRA é um conjunto de botões ENCOSTADOS (a folga entre dois vizinhos é
+            //    pequena). Dois botões longe um do outro na mesma linha são dois comandos.
+            let mut suspeitos = 0usize;
+            let mut maior = 0usize;
+            let mut nomeadas: Vec<Vec<String>> = Vec::new();
+            for ((_, h), mut v) in faixas {
+                if v.len() < 2 {
+                    continue;
+                }
+                v.sort_by(|a, b| a.0.total_cmp(&b.0));
+                suspeitos += v.len();
+                maior = maior.max(v.len());
+                nomeadas.push(
+                    v.iter()
+                        .map(|(_, hh)| nomes_do_inspector().get(hh).cloned().unwrap_or_default())
+                        .collect(),
+                );
+                let _ = h;
+            }
+            if suspeitos > 0 {
+                println!(
+                    "  {id:22} {suspeitos:4} botões em fileira por declarar (maior fileira: {maior})"
+                );
+                total += suspeitos;
+            }
+            if id == "inspector" {
+                for v in &nomeadas {
+                    println!("      fileira de {}: {}", v.len(), v.join(" · "));
+                }
+            }
+        }
+        println!("\n  TOTAL por declarar: {total}");
+    });
+}
+
+/// ⛔ **A CATRACA DA CARGA DE COMANDOS — ela só ENCOLHE.**
+///
+/// ⚠️⚠️ **Ela existe porque o número que ordena esta lista já foi `3,6×` maior do que a verdade.**
+/// O Inspector leu **`314`** enquanto a `D2` o media; com os compostos declarados lê **`88`**, e
+/// pelo caminho o `3D Model` foi de `39` para `1`. *Cada declaração que alguém apague devolve a
+/// mentira em silêncio* — e o defeito é MUDO, porque um número maior lê-se como «este painel tem
+/// mais dívida», que é uma frase plausível.
+///
+/// ⛔ **Os números são MEDIDOS, não escolhidos**, e a catraca só desce: um painel que passe a
+/// contar mais **reprova**, e a cura é declarar o composto que falta — nunca subir a linha.
+/// ⚠️ Um painel que passe a contar MENOS também reprova, com a outra metade: *ela não é folga, é o
+/// sítio onde se escreve o número novo.*
+const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
+    // ⭐ `314 → 150` (os pintores canónicos) `→ 88` (o helper de 16 sítios + as abas).
+    ("inspector", 88),
+    // ⛔ O `tokens` é hoje o topo da lista, e **não usa composto nenhum** — a dívida dele é real.
+    ("tokens", 110),
+    ("wet_tuning", 58),
+    ("physics", 49),
+    ("sculpt3d", 36),
+    ("vector", 24),
+    // ⭐ `39 → 1`: ele era quase só selectores.
+    ("model3d", 1),
+];
+
+#[test]
+fn a_carga_de_comandos_de_um_painel_so_encolhe() {
+    let linhas = censo();
+    let medido: std::collections::BTreeMap<&str, usize> = linhas
+        .iter()
+        .map(|l| (l.painel, l.cheia().comandos))
+        .collect();
+    let mut subiram = Vec::new();
+    let mut desceram = Vec::new();
+    for (painel, tecto) in CARGA_DE_COMANDOS {
+        let Some(&n) = medido.get(painel) else {
+            panic!("`{painel}` saiu do registo — apague a linha da catraca");
+        };
+        if n > *tecto {
+            subiram.push(format!("{painel}: {n} contra {tecto}"));
+        } else if n < *tecto {
+            desceram.push(format!("{painel}: {n} contra {tecto}"));
+        }
+    }
+    assert!(
+        subiram.is_empty(),
+        "estes painéis passaram a contar MAIS comandos:\n  {}\n\n\
+         ⇒ quase de certeza um composto deixou de se declarar (um selector de N opções volta a \
+         entrar N vezes). ⛔ A cura é declarar o grupo, nunca subir o número.{}",
+        subiram.join("\n  "),
+        tabela(&linhas)
+    );
+    assert!(
+        desceram.is_empty(),
+        "estes painéis contam MENOS do que a catraca diz — ESCREVA o número medido:\n  {}{}",
+        desceram.join("\n  "),
+        tabela(&linhas)
     );
 }

@@ -167,6 +167,15 @@ pub(super) fn grupo(
     labels: &[&str],
     sel: usize,
 ) -> f32 {
+    // ⭐⭐⭐ **Isto é UM controlo, não `N` comandos** — ver
+    //    [`ph2d_editor_core::widget::composto`]. ⛔ Esta fileira é uma ESCOLHA (ela recebe o
+    //    `sel`), e sem esta linha o censo das entradas por painel conta cada opção como um
+    //    comando: era assim que o `tween` lia `32` e o `path_follow` `18`, quando os comandos a
+    //    sério deles são o `Add` e o `Remove`.
+    //
+    // ⚠️ O grupo é o `ids_` INTEIRO e não cada fileira: o refluxo em blocos é disposição, e uma
+    //    família partida em três linhas continua a ser uma pergunta só.
+    ph2d_editor_core::widget::composto::grupo(ids_.iter().copied());
     let font = TypeToken::Sm.px();
     paint_text(
         text_system,

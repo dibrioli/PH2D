@@ -60,6 +60,8 @@ fn where_row(
     );
     let row_y = y + font + Spacing::Xs.px();
     let gap = Spacing::Xs.px();
+    // ⭐ Uma ESCOLHA, não três comandos — ver [`ph2d_editor_core::widget::composto`].
+    ph2d_editor_core::widget::composto::grupo(crate::ids::INSP_FACTORY_WHERE.iter().copied());
     let n = ph2d_editor_core::ids::INSP_FACTORY_WHERE_LEN as f32;
     let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
     for (i, &id) in crate::ids::INSP_FACTORY_WHERE.iter().enumerate() {

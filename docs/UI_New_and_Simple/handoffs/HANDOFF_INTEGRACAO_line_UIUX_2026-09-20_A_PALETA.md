@@ -1199,6 +1199,85 @@ relógios não deixa de ser um relógio por a razão ser adimensional.*
 
 ---
 
+## §9-decies — ⭐⭐⭐ O Inspector: **`314 → 150 → 88`**, e a `D2` não é o que lhe dá ecrã
+
+Continuação da §9-octies, depois do smoke aprovado do Painter.
+
+### O que faltava à régua
+
+A §9-octies ligou os **pintores canónicos** (`paint_segmented_group{,_adaptive}` ·
+`paint_bitmask_grid32`) e o Inspector caiu de `314` para `150`. ⛔ Mas nem todo selector do app
+passa por eles: com a sonda nova `diag_compostos_por_declarar` — *fileiras de botões encostados que
+ninguém declarou* — sobravam **`307`** em **16** painéis, `105` só no Inspector.
+
+⚠️ **E `307` não é a dívida:** uma fileira de `Add`+`Remove` são **dois comandos** e têm de contar
+dois. *A sonda diz onde olhar, nunca o veredito* — quem decide é o que o pintor DESENHA.
+
+### ⭐⭐ Duas linhas cobriram quase tudo
+
+| onde | o que cobre |
+|---|---|
+| `sections::tween_editor::grupo` (helper local do Inspector) | **16 sítios** em quatro secções (`tween` · `path_follow` · `shake` · `shake_emitter`) |
+| `widget::paint_tabs_with_hover` (canónico) | **toda fila de abas do app** — o `Center / Pivot / Custom` do Inspector entrava três vezes |
+
+Mais duas fileiras escritas à mão (a direcção da animação, o *onde* da fábrica). ⇒ o Inspector foi
+de `105` para **`43`** botões por declarar, e desses a maioria são comandos a sério.
+
+⚠️ **A porta passou a `pub`, e a razão é medida:** os pintores canónicos moram na fundação, mas
+**16 sítios do Inspector passam por um helper local**. *Uma porta que só a fundação pode chamar
+deixa de fora exactamente os painéis que a régua existe para medir.*
+
+### ⛔⛔⛔ E a conclusão que muda a wave seguinte
+
+| | comandos | valores |
+|---|---:|---:|
+| Inspector, como a `D2` o media | `314` | `313` |
+| **Inspector, medido** | **`88`** | **`367`** |
+
+**O Inspector é `81 %` VALORES.** A `D2` do dono manda *comando do app → barra; comando do editor →
+chip; **propriedade → fica***. ⇒ **triar o Inspector devolve pouco ecrã**, porque o que o enche são
+propriedades, e propriedades ficam pela regra dele. ⚠️ *A wave que a régua velha mandava fazer era
+trabalho sobre um número que não existia.*
+
+⭐ E ele **deixou de liderar**: o topo é hoje o `tokens` (`110`), que **não usa composto nenhum** —
+a dívida dele é real.
+
+### A catraca
+
+`a_carga_de_comandos_de_um_painel_so_encolhe` prende os sete números medidos, **nas duas
+direcções**: subir quer dizer que um composto deixou de se declarar (a cura é declará-lo, ⛔ nunca
+subir a linha) e descer quer dizer que há um número novo para escrever. *Cada declaração que alguém
+apague devolve a mentira em silêncio, e o defeito é MUDO — um número maior lê-se como «este painel
+tem mais dívida», que é uma frase plausível.*
+
+**Mutação: 5 de 5 sangram** (o helper dos 16 sítios · as abas · a animação · a fábrica · o
+CONTROLO do número obsoleto).
+
+### ⏳ O que fica ABERTO, com o número
+
+- `43` botões do Inspector por declarar, dos quais **`7` são da `line/components`** (`hud_fit` ·
+  `hud_source`) e **`11`** são a grelha de regiões do 9-slice — um picker espacial, que é um
+  composto de outra forma. Os restantes `~25` são comandos a sério.
+- Os outros **15 painéis** com fileiras por declarar (`264` botões). ⚠️ O `tokens`, que lidera, não
+  está entre eles.
+
+---
+
+### O portão desta wave
+
+| passo | resultado |
+|---|---|
+| `cargo test -p ph2d-panel-registry-init` (âmbito do app) | **`106 / 106`** |
+| `scripts/nextest-impacted.sh` | **`15 492 / 15 492`** · ⚠️ uma reprovada, `the_cost_of_a_player_is_linear_in_their_number` — **flake de carga já NOMEADA no §5.0**, `3` de `3` verde sozinha a `load 52`–`55` e **zero linhas** desta linha naquela crate |
+| `scripts/censos-da-arvore-combinada.sh` | **`127 / 127`** |
+| `cargo clippy --all-targets -- -D warnings` · `cargo fmt --check` | zero · limpo |
+| prova de mutação | **5 de 5 sangram** |
+
+✅ **E o smoke do dono APROVOU a §9-nonies** (*«smoke OK»*): a secção `SHAPE ▸ Texture` mostra
+`Contrast` · `Brightness` · `Turbulence` · `Rings`.
+
+---
+
 ## §10 — O portão do fecho
 
 | passo | resultado |

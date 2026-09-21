@@ -76,6 +76,16 @@ pub fn medindo<R>(f: impl FnOnce() -> R) -> (R, Vec<Vec<NodeId>>) {
 
 /// ⭐ **Um pintor de composto declara aqui as células dele.**
 ///
+/// ⚠️⚠️ **`pub` e não `pub(crate)`, e a razão é medida:** os pintores canónicos moram nesta crate,
+/// mas **nem todo selector do app passa por eles**. Medido em 2026-09-21 com o
+/// `diag_compostos_por_declarar`: sobram **`307` botões em fileira** por declarar em 16 painéis, e
+/// no Inspector **`16` sítios** de quatro secções passam por UM helper local
+/// (`sections::tween_editor::grupo`), que reflui as opções em blocos. *Uma porta que só a fundação
+/// pode chamar deixa de fora exactamente os painéis que a régua existe para medir.*
+///
+/// ⛔ **Quem chama isto declara uma ESCOLHA** (*«uma de N»*), nunca uma fileira de comandos
+/// distintos: `Add`+`Remove` lado a lado são **dois** comandos e têm de continuar a contar dois.
+///
 /// ⚠️ **Desarmado isto é um `Cell::get` e um `return`** — o caminho do produto não paga uma
 /// alocação. É a metade que o censo de elisões já pagou para aprender: *um censo sempre ligado
 /// aloca por quadro, e o vazamento é o que o `leak_key` do `ph2d-i18n` custou a esta casa.*
@@ -83,7 +93,7 @@ pub fn medindo<R>(f: impl FnOnce() -> R) -> (R, Vec<Vec<NodeId>>) {
 /// ⛔ Um grupo de **uma** célula não é um composto: ele entra na mesma, e quem decide o que fazer
 /// com ele é o leitor — *filtrar aqui esconderia do censo a diferença entre «um selector de uma
 /// opção» e «um botão solto», que é precisamente o que ele existe para ver.*
-pub(crate) fn grupo(ids: impl IntoIterator<Item = NodeId>) {
+pub fn grupo(ids: impl IntoIterator<Item = NodeId>) {
     if !ARMADO.get() {
         return;
     }

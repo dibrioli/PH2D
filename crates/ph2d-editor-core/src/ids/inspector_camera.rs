@@ -61,6 +61,9 @@ pub const INSP_LIVE_SHAKE_SECTION: NodeId = hash_node_id("insp_live_shake_sectio
 pub const INSP_LIVE_EMITTER_SECTION: NodeId = hash_node_id("insp_live_emitter_section");
 /// O cabeçalho dobrável da secção WEAPON — o RITMO, o PENTE e a recarga da arma do jogador.
 pub const INSP_LIVE_WEAPON_SECTION: NodeId = hash_node_id("insp_live_weapon_section");
+/// O cabeçalho dobrável da secção LIVE MESH — o CATAVENTO (`docs/3D/02.2`, rota B): a pose 3D da
+/// malha que este sprite mantém viva, e as voltas por segundo dela.
+pub const INSP_LIVE_MESH3D_SECTION: NodeId = hash_node_id("insp_live_mesh3d_section");
 /// A secção LIFECYCLE — o cabeçalho colapsável (TOP-20 #12, W3).
 pub const INSP_LIVE_LIFECYCLE_SECTION: NodeId = hash_node_id("insp_live_lifecycle_section");
 /// ⛔⛔ **Os PONTOS DE COR das três secções novas, e eles nasceram de um DEFEITO MEDIDO.**
@@ -122,5 +125,7 @@ pub const INSP_LIVE_DAMAGE_COLOR: NodeId = hash_node_id("insp_live_damage_color"
 pub const INSP_LIVE_HEALTH_BAR_SECTION: NodeId = hash_node_id("insp_live_health_bar_section");
 /// O ponto de cor da secção HEALTH BAR.
 pub const INSP_LIVE_HEALTH_BAR_COLOR: NodeId = hash_node_id("insp_live_health_bar_color");
+/// O ponto de cor da secção LIVE MESH (o catavento).
+pub const INSP_LIVE_MESH3D_COLOR: NodeId = hash_node_id("insp_live_mesh3d_color");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

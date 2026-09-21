@@ -83,6 +83,7 @@ impl crate::App {
                 parallax_edits: take(&mut pd.parallax_edits),
                 weapon_edits: take(&mut pd.weapon_edits),
                 vida_edits: take(&mut pd.vida_edits),
+                mesh3d_edits: take(&mut pd.mesh3d_edits),
                 tween_edits: take(&mut pd.tween_edits),
                 path_follow_edits: take(&mut pd.path_follow_edits),
                 statemachine_edits: take(&mut pd.statemachine_edits),

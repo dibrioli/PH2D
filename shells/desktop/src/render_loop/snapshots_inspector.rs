@@ -17,6 +17,12 @@ pub(super) fn publish(
     sheets: &BTreeMap<u32, ph2d_sprite_sheet::AuthoredSheet>,
     renderer: &ph2d_render::SpriteRenderer,
     window_size: WindowSize,
+    // ⭐ **O sprite escolhido já tem forma ASSADA?** — a queixa da secção LIVE MESH (rota B).
+    //
+    // ⚠️ **Estado da SHELL:** o mapa de formas assadas vive no `AppGfx` e nenhuma crate o vê.
+    // O que atravessa a fronteira é um `bool`, e é isso que mantém a ponte do Inspector testável
+    // **sem um device**.
+    catavento_assado: bool,
     game_camera_preview: bool,
     preview_drive: &ph2d_preview_drive::PreviewDrive,
     // ⭐ O relógio anda? — a secção FACTORY di-lo (TOP-20 #11).
@@ -139,6 +145,7 @@ pub(super) fn publish(
         inspector_parallax,
         inspector_weapon,
         inspector_vida,
+        inspector_mesh3d,
         inspector_tween,
         inspector_path_follow,
         inspector_statemachine,
@@ -149,6 +156,7 @@ pub(super) fn publish(
         &inspector_selection,
         selected_count,
         window_size,
+        catavento_assado,
         game_camera_preview,
         preview_drive,
         tags,
@@ -195,6 +203,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_parallax(inspector_parallax);
         ph2d_panel_inspector::set_current_inspector_weapon(inspector_weapon);
         ph2d_panel_inspector::set_current_inspector_vida(inspector_vida);
+        ph2d_panel_inspector::set_current_inspector_mesh3d(inspector_mesh3d);
         ph2d_panel_inspector::set_current_inspector_tween(inspector_tween);
         ph2d_panel_inspector::set_current_inspector_path_follow(inspector_path_follow);
         ph2d_panel_inspector::set_current_inspector_statemachine(inspector_statemachine);
@@ -253,6 +262,7 @@ struct LateSections {
     inspector_weapon: Option<ph2d_editor_core::weapon_edits::InspectorWeaponInfo>,
     /// ⭐⭐⭐ As secções HEALTH e DAMAGE (plano 28, W3).
     inspector_vida: Option<ph2d_editor_core::vida_edits::InspectorVidaInfo>,
+    inspector_mesh3d: Option<ph2d_editor_core::mesh3d_edits::InspectorMesh3dInfo>,
     inspector_tween: Option<ph2d_editor_core::tween_edits::InspectorTweenInfo>,
     /// ⭐⭐⭐ A secção PATH FOLLOW (suplente #23).
     inspector_path_follow: Option<ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo>,
@@ -279,6 +289,12 @@ fn late(
     inspector_selection: &[u64],
     selected_count: usize,
     window_size: WindowSize,
+    // ⭐ **O sprite escolhido já tem forma ASSADA?** — a queixa da secção LIVE MESH (rota B).
+    //
+    // ⚠️ **Estado da SHELL:** o mapa de formas assadas vive no `AppGfx` e nenhuma crate o vê.
+    // O que atravessa a fronteira é um `bool`, e é isso que mantém a ponte do Inspector testável
+    // **sem um device**.
+    catavento_assado: bool,
     game_camera_preview: bool,
     preview_drive: &ph2d_preview_drive::PreviewDrive,
     // ⭐ A árvore de tags (TOP-20 #9) — a secção SIGNAL ACTIONS mostra o CAMINHO da tag alvo.
@@ -416,6 +432,15 @@ fn late(
             clock_playing,
         )
     });
+    // ⭐⭐⭐ A secção LIVE MESH — o CATAVENTO (`docs/3D/02.2`, rota B), `None` para quem não tem o
+    // componente (ADR-0166).
+    //
+    // ⚠️ **Ela pede UMA coluna que não vem do componente** — *este sprite já foi assado?* —, e é
+    // dela que sai a queixa: sem isso, um catavento por assar **não faz nada** e parece partido.
+    let inspector_mesh3d = hero
+        .gizmo
+        .selection
+        .and_then(|b| ph2d_app_sculpt3d::vivo_inspector::build_info(sim, b, catavento_assado));
     // ⭐⭐⭐ A secção TWEEN (suplente #22) — `None` para quem não tem o componente (ADR-0166).
     //
     // ⚠️ Ela pede DUAS colunas que não vêm do componente — *há timer neste índice?* e *há sprite?*
@@ -470,6 +495,7 @@ fn late(
         inspector_parallax,
         inspector_weapon,
         inspector_vida,
+        inspector_mesh3d,
         inspector_tween,
         inspector_path_follow,
         inspector_statemachine,

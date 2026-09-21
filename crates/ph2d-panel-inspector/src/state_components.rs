@@ -16,6 +16,7 @@
 //! ⛔ **Nunca subir o número do cap: ele só desce.**
 
 use ph2d_editor_core::parallax_edits::InspectorParallaxInfo;
+use ph2d_editor_core::mesh3d_edits::InspectorMesh3dInfo;
 use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
 use ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo;
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
@@ -131,6 +132,16 @@ pub fn set_current_inspector_vida(info: Option<InspectorVidaInfo>) {
 
 pub(crate) fn current_inspector_vida() -> Option<InspectorVidaInfo> {
     CURRENT_INSPECTOR_VIDA.with(|c| c.borrow().clone())
+}
+
+/// ⭐ O snapshot do CATAVENTO — a shell escreve-o todo o quadro, porque ele carrega o *«já foi
+/// assado?»* e não só os campos.
+pub fn set_current_inspector_mesh3d(info: Option<InspectorMesh3dInfo>) {
+    CURRENT_INSPECTOR_MESH3D.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_mesh3d() -> Option<InspectorMesh3dInfo> {
+    CURRENT_INSPECTOR_MESH3D.with(|c| *c.borrow())
 }
 
 /// ⭐ O snapshot do CÉREBRO (TOP-20 #15) — a shell escreve-o todo o quadro.
@@ -265,11 +276,18 @@ thread_local! {
     /// ⭐⭐⭐ **O snapshot das secções HEALTH e DAMAGE** (plano 28, W3).
     static CURRENT_INSPECTOR_VIDA:
         std::cell::RefCell<Option<InspectorVidaInfo>> = const { std::cell::RefCell::new(None) };
+    /// ⭐⭐⭐ **O snapshot da secção LIVE MESH** (o CATAVENTO, `docs/3D/02.2` rota B).
+    ///
+    /// ⚠️ Ele carrega **se o sprite está ASSADO**, que não vem de campo nenhum — vem do mapa de
+    /// formas assadas, onde a shell vive. É dele que sai a queixa que torna a secção uma ferramenta
+    /// em vez de três números.
+    static CURRENT_INSPECTOR_MESH3D:
+        std::cell::RefCell<Option<InspectorMesh3dInfo>> = const { std::cell::RefCell::new(None) };
 
     /// ⭐⭐⭐ **O snapshot da secção STATE MACHINE** (TOP-20 #15).
-    static CURRENT_INSPECTOR_STATEMACHINE:
-        std::cell::RefCell<Option<InspectorStateMachineInfo>> =
-        const { std::cell::RefCell::new(None) };
+static CURRENT_INSPECTOR_STATEMACHINE:
+    std::cell::RefCell<Option<InspectorStateMachineInfo>> =
+    const { std::cell::RefCell::new(None) };
 
     /// ⭐⭐⭐ **O snapshot da secção SCRIPT** (TOP-20 #16).
     static CURRENT_INSPECTOR_SCRIPT: std::cell::RefCell<Option<InspectorScriptInfo>> =

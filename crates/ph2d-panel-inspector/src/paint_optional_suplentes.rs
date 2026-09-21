@@ -197,3 +197,64 @@ pub(crate) fn paint_weapon_section(
         &[],
     )
 }
+
+/// A moldura da secção LIVE MESH — o CATAVENTO (`docs/3D/02.2`, rota B).
+///
+/// ⚠️ **A secção só existe se o objecto TIVER o componente** — ADR-0166. ⭐ E, ao contrário das
+/// irmãs, ela é pintada mesmo quando o catavento **não faz nada** (o sprite por assar): é
+/// exactamente esse o caso em que o artista precisa de ler a queixa.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_mesh3d_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    info: Option<&ph2d_editor_core::mesh3d_edits::InspectorMesh3dInfo>,
+) -> f32 {
+    let Some(info) = info else {
+        return y;
+    };
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_MESH3D_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::mesh3d::paint_mesh3d_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        info,
+    );
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_MESH3D_SECTION,
+        y_before,
+        new_y,
+        &[],
+    )
+}
+

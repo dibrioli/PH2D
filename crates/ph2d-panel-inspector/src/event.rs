@@ -223,6 +223,9 @@ fn sheet_grid_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool
         });
         return true;
     }
+    if crate::event_mesh3d::apply_mesh3d_event(host, ev) {
+        return true;
+    }
     false
 }
 

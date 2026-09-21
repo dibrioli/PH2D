@@ -65,6 +65,12 @@ pub(super) fn publish(
     sheets: &BTreeMap<u32, ph2d_sprite_sheet::AuthoredSheet>,
     renderer: &ph2d_render::SpriteRenderer,
     window_size: WindowSize,
+    // ⭐ **O sprite escolhido já tem forma ASSADA?** — a queixa da secção LIVE MESH (rota B).
+    //
+    // ⚠️ **Estado da SHELL, como o vizinho: o mapa de formas assadas vive no `AppGfx`** e nenhuma
+    // crate o vê. O que atravessa a fronteira é um `bool`, e é isso que mantém a ponte do
+    // Inspector testável **sem um device**.
+    catavento_assado: bool,
     // ⭐ **A vista está a ser conduzida pela câmera da cena?** (TOP-20 #7)
     //
     // ⚠️ **Estado da SHELL, e por isso viaja como argumento** — o painel não tem como o saber, e
@@ -237,6 +243,7 @@ pub(super) fn publish(
         sheets,
         renderer,
         window_size,
+        catavento_assado,
         game_camera_preview,
         preview_drive,
         clock_playing,

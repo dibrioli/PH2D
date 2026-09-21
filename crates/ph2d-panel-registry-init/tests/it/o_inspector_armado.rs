@@ -43,6 +43,7 @@ use ph2d_editor_core::factory_edits::{
     InspectorFactory, InspectorFactoryInfo, InspectorLifecycle, InspectorSpawnWhere,
 };
 use ph2d_editor_core::hud_edits::InspectorHudInfo;
+use ph2d_editor_core::mesh3d_edits::InspectorMesh3dInfo;
 use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
 use ph2d_editor_core::path_follow_edits::InspectorPathFollowInfo;
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
@@ -1084,6 +1085,17 @@ fn arma_o_top20() {
         clock_playing: true,
         selected_count: 1,
     }));
+    // ⭐⭐⭐ O CATAVENTO (`docs/3D/02.2`, rota B). ⚠️ **`assado: true` de propósito:** com `false` a
+    // secção pinta a queixa `bake this sprite first` e as três caixas continuam lá — mas é a
+    // configuração TRABALHADORA que a varredura de elisões tem de medir, e a queixa mais longa é a
+    // do outro braço. *Uma fixtura no estado degenerado mede a metade que o artista menos vê.*
+    insp::set_current_inspector_mesh3d(Some(InspectorMesh3dInfo {
+        entity_bits: BITS,
+        yaw: 0.75,
+        pitch: -0.25,
+        spin: 0.25,
+        assado: true,
+    }));
 }
 
 /// **Desarma as 29 portas.** ⚠️ Sem isto a varredura de fábrica passaria a medir um Inspector
@@ -1102,6 +1114,7 @@ pub fn desarma_tudo() {
     insp::set_current_inspector_tween(None);
     insp::set_current_inspector_weapon(None);
     insp::set_current_inspector_vida(None);
+    insp::set_current_inspector_mesh3d(None);
     insp::set_current_inspector_name(None);
     insp::set_current_inspector_transform(None);
     insp::set_current_inspector_visibility(None);

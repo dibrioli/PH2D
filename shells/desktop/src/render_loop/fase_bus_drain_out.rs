@@ -469,6 +469,9 @@ pub(in crate::render_loop) struct DrainOut {
         Vec<(u64, ph2d_editor_core::weapon_edits::WeaponFieldEdit)>,
     /// ⭐⭐⭐ As edições das secções HEALTH e DAMAGE (plano 28, W3).
     pub(in crate::render_loop) vida_edits: Vec<(u64, ph2d_editor_core::vida_edits::VidaFieldEdit)>,
+    /// ⭐ As edições do CATAVENTO (`docs/3D/02.2`, rota B).
+    pub(in crate::render_loop) mesh3d_edits:
+        Vec<(u64, ph2d_editor_core::mesh3d_edits::Mesh3dFieldEdit)>,
     /// ⭐⭐⭐ As edições da secção TWEEN (suplente #22).
     pub(in crate::render_loop) tween_edits:
         Vec<(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)>,

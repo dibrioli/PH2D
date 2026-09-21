@@ -133,6 +133,9 @@ pub struct InspectorState {
     /// A assinatura do último instantâneo do MOVER DE VISTA DE CIMA semeado (plano 28, W5 — a
     /// semente que a secção dele nunca teve).
     pub last_topdown_sig: Option<u64>,
+    /// A assinatura da última semente da secção LIVE MESH — o catavento (ver o
+    /// [`crate::sync_mesh3d`]).
+    pub last_mesh3d_sig: Option<u64>,
     /// A assinatura do último instantâneo do TWEEN semeado (suplente #22).
     pub last_tween_sig: Option<u64>,
     /// A assinatura do último instantâneo do SEGUIDOR DE CAMINHO semeado (suplente #23).

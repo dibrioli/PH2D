@@ -68,6 +68,8 @@ pub mod donation;
 /// forma acende a partir delas, de modo que virar o objecto faz a luz acompanhar.
 pub mod vivo;
 pub mod vivo_fase;
+/// A ponte do Inspector do catavento — o instantâneo e o dreno.
+pub mod vivo_inspector;
 
 /// Os gates do catavento: a promessa da rota B afirmada no PIXEL, com o controlo da esfera lisa.
 #[cfg(test)]

@@ -345,6 +345,24 @@ pub(crate) fn paint_optional_sections(
         header_h,
         snaps,
     );
+    // ── MODELO 3D (11) ────────────────────────────────────────────────────────────────────────
+    // ⭐ A LIVE MESH (o CATAVENTO, `docs/3D/02.2` rota B) — `ph2d::ecs::Mesh3D` é da família
+    // `Model3D`, a 11.ª do catálogo, e é por ela que a secção aparece entre a FÍSICA e a LÓGICA
+    // (integração de 2026-09-25: a linha pintava-a colada à ARMA, antes de a ordem ser derivada).
+    y = crate::paint_optional_suplentes::paint_mesh3d_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        snaps.mesh3d_info.as_ref(),
+    );
     // ── LÓGICA (12) ───────────────────────────────────────────────────────────────────────────
     y = crate::paint_familias::paint_familia_logica(
         scene,

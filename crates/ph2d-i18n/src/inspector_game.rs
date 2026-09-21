@@ -663,6 +663,21 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.weapon.the_clock_is_stopped_u_a_weapon_only_fires_during_a_run" => {
             "The clock is stopped \u{2014} a weapon only fires during a run."
         }
+        // ⭐⭐⭐ O CATAVENTO — a malha 3D viva de um sprite (`docs/3D/02.2`, rota B).
+        "panel.inspector.mesh3d.live_mesh" => "Live Mesh",
+        // ⚠️ **A unidade vive no CAMPO** (`Unit::Degrees` e `Unit::PerSecond`), nunca no rótulo —
+        // a spec da linha de propriedade §7.
+        "panel.inspector.mesh3d.yaw" => "Yaw",
+        "panel.inspector.mesh3d.pitch" => "Pitch",
+        "panel.inspector.mesh3d.spin" => "Spin",
+        // ⚠️ **A QUEIXA, da mais especifica para a mais geral** — a ordem vive na porta
+        // `InspectorMesh3dInfo::queixa`, e estas duas sao so' a lingua dela.
+        "panel.inspector.mesh3d.bake_this_sprite_first" => {
+            "Bake this sprite first \u{2014} without a baked form nothing turns."
+        }
+        "panel.inspector.mesh3d.it_is_standing_still" => {
+            "It is standing still \u{2014} give it turns per second, or set the angles by hand."
+        }
         // ph2d-migrar-texto:end
         _ => return None,
     })

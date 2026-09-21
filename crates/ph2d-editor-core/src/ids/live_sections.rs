@@ -30,7 +30,7 @@ use super::*;
 /// ⚠️ `finish_section` lê `store.section_outline_color(<id da seção>)` para TODA seção viva, por
 /// isso uma seção ausente daqui tem um contorno que o passe de pintura está pronto a desenhar e
 /// gesto nenhum que o possa definir.
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 42] = [
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 43] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_COLOR),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_COLOR),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_COLOR),
@@ -115,6 +115,9 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 42] = [
     (INSP_LIVE_DAMAGE_SECTION, INSP_LIVE_DAMAGE_COLOR),
     // ⭐ A 42.ª — HEALTH BAR (plano 28, W4), no mesmo commit que a secção, pela lei do censo acima.
     (INSP_LIVE_HEALTH_BAR_SECTION, INSP_LIVE_HEALTH_BAR_COLOR),
+    // ⭐ A 43.ª — LIVE MESH (o CATAVENTO, `docs/3D/02.2` rota B), no mesmo commit que a secção,
+    // pela lei do censo `architecture_every_live_section_is_in_the_table`.
+    (INSP_LIVE_MESH3D_SECTION, INSP_LIVE_MESH3D_COLOR),
 ];
 
 /// Só os cabeçalhos — **projeção** de [`LIVE_SECTIONS`], nunca uma segunda lista.

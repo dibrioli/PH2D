@@ -38,6 +38,7 @@ mod event_hud;
 /// ⭐⭐ **Os cliques do CARTÃO de instância** — irmão por assunto do `event`.
 mod event_instance;
 mod event_joint;
+mod event_mesh3d;
 mod event_ordering;
 /// ⭐⭐⭐ O despacho da secção PARALLAX (plano 24, W7).
 mod event_parallax;
@@ -112,6 +113,7 @@ mod populate_hud;
 /// ⭐⭐ O registo do CARTÃO de instância — irmão por assunto, ver o cabeçalho de lá.
 mod populate_instance;
 mod populate_parallax;
+mod populate_mesh3d;
 mod populate_particles;
 mod populate_path_follow;
 mod populate_physics;
@@ -152,6 +154,7 @@ mod sync_counter_watch;
 mod sync_hud;
 /// ⭐⭐⭐ A semente da secção PARALLAX (plano 24, W7) — ver o cabeçalho dela.
 mod sync_parallax;
+mod sync_mesh3d;
 /// ⭐ A semente da secção PARTICLES — irmã do `sync_sections` por CAP de ficheiro.
 mod sync_particles;
 mod sync_path_follow;
@@ -264,7 +267,7 @@ pub use state_components::{
     set_current_inspector_action, set_current_inspector_action_trigger,
     set_current_inspector_audio, set_current_inspector_camera, set_current_inspector_counter_watch,
     set_current_inspector_emitter, set_current_inspector_factory, set_current_inspector_hud,
-    set_current_inspector_parallax, set_current_inspector_particles,
+    set_current_inspector_parallax, set_current_inspector_mesh3d, set_current_inspector_particles,
     set_current_inspector_path_follow, set_current_inspector_projectile, set_current_inspector_ray,
     set_current_inspector_script, set_current_inspector_sequence, set_current_inspector_shake,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,

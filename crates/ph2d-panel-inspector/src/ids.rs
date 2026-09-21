@@ -33,6 +33,7 @@ mod inspector_factory;
 mod inspector_hud;
 /// Os ids da secção RAY SENSOR (suplente #21).
 mod inspector_parallax;
+mod inspector_mesh3d;
 mod inspector_particles;
 mod inspector_projectile;
 mod inspector_ray;
@@ -48,6 +49,7 @@ pub use inspector_camera::*;
 pub use inspector_factory::*;
 pub use inspector_hud::*;
 pub use inspector_parallax::*;
+pub use inspector_mesh3d::*;
 pub use inspector_particles::*;
 pub use inspector_projectile::*;
 pub use inspector_ray::*;

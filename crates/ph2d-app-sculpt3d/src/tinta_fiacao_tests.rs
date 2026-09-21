@@ -1,4 +1,4 @@
-//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os CATORZE elos que as curas
+//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os DEZASSEIS elos que as curas
 //! desta jornada precisam de ter LIGADOS: os três consumidores da porta
 //! [`crate::tinta_da_peca::o_gesto_muda_a_topologia`], a metade da porta que lê
 //! a tinta **EMPRESTADA**, o `close_stroke` do gesto que **erra** a peça, as
@@ -68,6 +68,12 @@ const TINTA_FINA: &str = include_str!("../../ph2d-sculpt3d/src/tinta_fina.rs");
 /// logo ele não se importa com isso.
 const HISTORY: &str = include_str!("history.rs");
 const UNDO: &str = include_str!("undo.rs");
+/// ⭐⭐⭐⭐ **E a CERCA DO DEVICE vive noutra crate ainda** — a
+/// `ph2d-mesh-render`, que é quem fala com a placa. O censo alcança-a pelo
+/// mesmo caminho relativo dos dois do motor, e pela mesma razão: *a cura mora
+/// onde a lei corre; a régua mora onde há cena para a exercitar.*
+const DEVICE: &str = include_str!("../../ph2d-mesh-render/src/tinta_gpu.rs");
+const VOZ: &str = include_str!("recusa.rs");
 
 /// Cada elo: o ficheiro, a agulha, e o nome da mutação que ela mata.
 fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
@@ -89,17 +95,41 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
             .join("\n"),
             DYNTOPO,
         ),
+        // ⚠️⚠️ **A agulha MUDOU em 2026-09-21 e a mudança é uma PORTA.** As
+        // três metades da condição do pen-down (o interruptor · a pilha por
+        // montar · o gesto mexer mesmo) passaram a viver na
+        // `tinta_da_peca::o_passe_corre_no_pen_down`, porque a VOZ lia só a
+        // primeira. *Quem cortar a porta fora volta a poder divergir, e é isso
+        // que este elo mata.*
         (
             "history_dyntopo.rs",
             "M22 o pen-down volta a fotografar/triangular para quem não mexe na topologia",
             [
-                "        if !self.o_gesto_em_maos_muda_a_topologia(self.brush.verb) {",
+                "        if !self.o_passe_de_topologia_corre_no_pen_down() {",
                 "            self.dyn_before = None;",
                 "            return;",
                 "        }",
             ]
             .join("\n"),
             PEN_DOWN,
+        ),
+        // ⛔⛔⛔ **E A VOZ LÊ A MESMA PORTA** — o elo que faltava, e o defeito
+        // que ele mata está MEDIDO: com o interruptor desligado e o `Density`
+        // em mãos o plano é refeito e o artista ficava calado; com uma pilha de
+        // multiresolução ele era avisado de um preço que não se paga.
+        (
+            "recusa.rs",
+            "M10 a lente da voz volta a ser o INTERRUPTOR e não a porta",
+            [
+                "            && crate::tinta_da_peca::o_passe_corre_no_pen_down(",
+                "                verbo,",
+                "                self.dyntopo_armado,",
+                "                self.niveis,",
+                "                self.tinta_fina_armada,",
+                "            )",
+            ]
+            .join("\n"),
+            VOZ,
         ),
         (
             "tinta_da_peca.rs",
@@ -218,6 +248,28 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
             .join("\n"),
             INPUT_DOWN,
         ),
+        // ⛔⛔⛔ **O ELO DO PÂNICO DO DONO (2026-09-21).** A porta do device
+        // subia um registo construído com as faces do MESH contra a topologia
+        // do PLANO, e a rota do plano EMPRESTADO é a única que não reconcilia
+        // — `index out of bounds: the len is 196608 but the index is 196608`,
+        // que é `4 × 49 152`.
+        //
+        // ⚠️ **A prova de comportamento é `#[ignore]` + PLACA**
+        // (`um_plano_da_malha_de_antes_desarma_em_vez_de_estourar`), logo nem o
+        // CI nem a suíte da família a correm — é exactamente a população para
+        // que este ficheiro existe.
+        (
+            "tinta_gpu.rs",
+            "N7 a porta do device ignora o veredito do payload",
+            [
+                "        if !t",
+                "            .topologia()",
+                "            .descreve(mesh.vert_count(), mesh.faces().len())",
+                "            || !t.topologia().payload(faces(), &mut pay)",
+            ]
+            .join("\n"),
+            DEVICE,
+        ),
         (
             "undo.rs",
             "M32 o quarto canal deixa de ser aplicado no desfazer",
@@ -239,12 +291,12 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
 /// busca falhar em voz alta — mas um que devolvesse **tudo** faria a prosa
 /// satisfazer a agulha, e é isso que o [`so_a_prosa`] recusa.
 #[test]
-fn a_cura_da_tinta_fina_esta_ligada_nos_catorze_sitios() {
+fn a_cura_da_tinta_fina_esta_ligada_nos_dezasseis_sitios() {
     let elos = elos();
     assert_eq!(
         elos.len(),
-        14,
-        "a população deste censo são os catorze elos"
+        16,
+        "a população deste censo são os dezasseis elos"
     );
 
     for (ficheiro, mutacao, agulha, fonte) in elos {

@@ -19,17 +19,21 @@ impl Sculpt3dScene {
         // inclui quem corre SEM o interruptor** (ordem do dono sobre o pincel de
         // densidade). *Perguntar só pelo interruptor deixaria um traço que muda
         // a contagem sem nada para o `Ctrl+Z` devolver.*
-        let livre = self.brush.verb.corre_sem_o_interruptor();
-        if (!self.dyntopo.armed && !livre) || self.level_count() != 1 {
-            self.dyn_before = None;
-            return;
-        }
+        //
         // ⭐⭐⭐⭐ **E O GESTO TEM DE IR MESMO MEXER NA TOPOLOGIA** — desde
-        // 2026-09-20 a pergunta passa pela porta que também vê o plano de tinta
-        // fina ([`crate::tinta_da_peca::o_gesto_muda_a_topologia`]). *Sem esta
-        // linha um traço de COR com o plano armado clonava a malha inteira por
-        // pen-down para desfazer uma mudança de topologia que já não acontece.*
-        if !self.o_gesto_em_maos_muda_a_topologia(self.brush.verb) {
+        // 2026-09-20 a terceira metade da porta é a que também vê o plano de
+        // tinta fina ([`crate::tinta_da_peca::o_gesto_muda_a_topologia`]).
+        // *Sem ela um traço de COR com o plano armado clonava a malha inteira
+        // por pen-down para desfazer uma mudança de topologia que já não
+        // acontece.*
+        //
+        // ⭐⭐⭐⭐ **E AS TRÊS METADES PASSARAM A SER UMA PORTA em 2026-09-21**
+        // ([`crate::tinta_da_peca::o_passe_corre_no_pen_down`]): a VOZ do
+        // pen-down perguntava por UMA delas (o interruptor) e ficava calada
+        // exactamente no `Density`, que corre sem ele. *Duas respostas à mesma
+        // pergunta divergem no dia em que uma ganha uma cerca — e esta tinha
+        // ganho duas.*
+        if !self.o_passe_de_topologia_corre_no_pen_down() {
             self.dyn_before = None;
             return;
         }

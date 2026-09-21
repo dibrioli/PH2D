@@ -60,6 +60,9 @@ mod enderecos_tests;
 #[path = "lib_tests.rs"]
 mod lib_tests;
 #[cfg(test)]
+#[path = "topo_tests.rs"]
+mod topo_tests;
+#[cfg(test)]
 #[path = "vizinhanca_tests.rs"]
 mod vizinhanca_tests;
 

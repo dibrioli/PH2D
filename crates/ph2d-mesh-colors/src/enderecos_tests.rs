@@ -433,7 +433,10 @@ fn o_payload_resolve_o_mesmo_endereco_que_a_lei() {
             let l = t.lado();
             let topo = t.topologia();
             let mut pay = Vec::new();
-            topo.payload(it(), &mut pay);
+            assert!(
+                topo.payload(it(), &mut pay),
+                "{nome}: a porta recusou as faces dela"
+            );
             assert_eq!(
                 pay.len(),
                 faces.len() * PAYLOAD_STRIDE,

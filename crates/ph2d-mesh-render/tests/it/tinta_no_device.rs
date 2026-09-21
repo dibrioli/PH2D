@@ -114,3 +114,113 @@ fn desarmar_o_plano_nao_estoura_e_o_slot_continua_desenhavel() {
         "armar/desarmar deu erro de validação: {erro:?}"
     );
 }
+
+/// ⭐⭐⭐⭐ **GATE — O PÂNICO DO DONO, pela rota do PRODUTO: um plano da malha
+/// de ANTES DESARMA, e não estoura.**
+///
+/// ⛔⛔ **Report de 2026-09-21, quadro `10216`:**
+/// `index out of bounds: the len is 196608 but the index is 196608` em
+/// `ph2d-mesh-colors/src/topo.rs:239`. O número é `4 × 49 152` — a conta
+/// `4 * f + s` com `f` a valer a contagem de faces do PLANO, ou seja a lista de
+/// faces que chegou ao registo tinha mais faces do que ele.
+///
+/// **O caminho:** o pen-down de um gesto de FORMA com o plano armado empresta o
+/// plano ao traço e **logo a seguir** tritura a malha
+/// (`history_dyntopo::open_dyntopo_stroke`, os dois motores de topologia
+/// recusam quads) — e a rota do plano emprestado é a única que não reconcilia.
+///
+/// ⚠️ **O cabeçalho da porta já escrevia o perigo** (*«um plano da malha de
+/// antes é tinta no vértice errado, e nenhuma contagem o vê»*) e a única régua
+/// era um `debug_assert`, que no perfil `smoke` **não existe**.
+///
+/// ⭐ **O discriminador é a CONTAGEM DE AMOSTRAS IGUAL dos dois lados.** A
+/// `upload_tinta_amostras_at` recusa por duas razões — o slot não estar armado
+/// *ou* o device ter outro número de amostras —, e ao nível `0` um plano vale
+/// `verts` amostras **triangulado ou não**. Com as contagens presas, o `false`
+/// dela só pode vir do `armado`, que é a propriedade que este gate afirma.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn um_plano_da_malha_de_antes_desarma_em_vez_de_estourar() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adaptador nesta máquina — nada a afirmar");
+        return;
+    };
+    let mut r = MeshRenderer::new(&device, wgpu::TextureFormat::Rgba8UnormSrgb);
+
+    // A peça de QUADS, e o plano que nasce dela.
+    let quads = shapes::cube(1.0);
+    let plano = Tinta::nova(
+        quads.vert_count(),
+        quads.faces().iter().map(ph2d_mesh::Face::verts),
+        0,
+    );
+
+    // A MESMA peça depois do que o pen-down faz.
+    let mut tris = quads.clone();
+    let partidas = tris.triangulate();
+    assert!(
+        partidas > 0,
+        "a fixtura tem de CONTER o fenómeno: a peça já era de triângulos"
+    );
+    assert_eq!(
+        tris.vert_count(),
+        quads.vert_count(),
+        "triangular não cria vértices — é isso que prende a contagem de amostras"
+    );
+    assert!(
+        tris.faces().len() > quads.faces().len(),
+        "o gate precisa de MAIS faces: {} contra {}",
+        tris.faces().len(),
+        quads.faces().len()
+    );
+
+    let escopo = device.push_error_scope(wgpu::ErrorFilter::Validation);
+    // (1) o CONTROLO: a malha de que o plano nasceu ARMA.
+    r.upload_at(&device, &queue, 0, &quads, &[]);
+    r.upload_tinta_at(&device, &queue, 0, &quads, Some(&plano));
+    let mut sujas = vec![0u32];
+    assert!(
+        r.upload_tinta_amostras_at(&queue, 0, &plano, &mut sujas),
+        "o CONTROLO falhou: o plano da própria malha tinha de deixar o slot armado"
+    );
+
+    // (2) e a malha de DEPOIS, com o plano de ANTES: desarma.
+    r.upload_at(&device, &queue, 0, &tris, &[]);
+    r.upload_tinta_at(&device, &queue, 0, &tris, Some(&plano));
+    let mut sujas = vec![0u32];
+    assert!(
+        !r.upload_tinta_amostras_at(&queue, 0, &plano, &mut sujas),
+        "o plano descreve {} faces e a malha tem {} — o slot tinha de ficar DESARMADO",
+        plano.topologia().faces(),
+        tris.faces().len()
+    );
+
+    // (3) ⭐⭐⭐⭐ **E a metade que o PAYLOAD não pode ver: os VÉRTICES.**
+    // Um registo é feito de FACES, logo um `payload` que aceite a lista inteira
+    // não afirma nada sobre a contagem de vértices — e a `pos` e as `amostras`
+    // que sobem ao lado dele são indexadas por vértice. A malha aqui tem as
+    // MESMAS faces e um vértice ÓRFÃO a mais, que é a única maneira de pôr as
+    // duas réguas a discordar.
+    let mut posicoes = quads.positions().to_vec();
+    posicoes.push([9.0, 9.0, 9.0]);
+    let com_orfao = ph2d_mesh::Mesh::from_parts(posicoes, quads.faces().to_vec())
+        .expect("um vértice a mais não torna as faces inválidas");
+    assert_eq!(
+        com_orfao.faces().len(),
+        quads.faces().len(),
+        "o CONTROLO: só os VÉRTICES podem diferir, senão o payload já decidia"
+    );
+    r.upload_at(&device, &queue, 0, &com_orfao, &[]);
+    r.upload_tinta_at(&device, &queue, 0, &com_orfao, Some(&plano));
+    let mut sujas = vec![0u32];
+    assert!(
+        !r.upload_tinta_amostras_at(&queue, 0, &plano, &mut sujas),
+        "o plano descreve {} vértices e a malha tem {} — o slot tinha de ficar DESARMADO",
+        plano.topologia().verts(),
+        com_orfao.vert_count()
+    );
+
+    device.poll(wgpu::PollType::wait_indefinitely()).ok();
+    let erro = pollster::block_on(escopo.pop());
+    assert!(erro.is_none(), "a subida deu erro de validação: {erro:?}");
+}

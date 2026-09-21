@@ -267,24 +267,31 @@ impl Sculpt3dScene {
                 // o plano custava `21,9 ms` no degrau `8×` da peça de fábrica
                 // e `81,7 ms` no `16×`, contra um quadro de `16,7`.
                 //
-                // ⚠️ **As três cercas são o que a torna segura**, e cada uma
-                // nomeia o que ela assume: a topologia e as posições não
-                // mexeram (`!mexeu`), ninguém pediu o plano inteiro
-                // (`!tinta_suja`), e o device tem EXACTAMENTE este plano (a
-                // contagem de amostras, conferida lá dentro). Falhando
-                // qualquer uma, cai no caminho de sempre.
-                let so_as_amostras = emprestado
-                    && !mexeu
-                    && !self.objects[i].tinta_suja
-                    && match self.stroke.tinta_fina.as_mut() {
-                        Some(fina) => {
-                            let sujas = &mut self.tinta_sujas;
-                            fina.drena_sujas(sujas);
-                            self.renderer
-                                .upload_tinta_amostras_at(queue, k, fina.tinta(), sujas)
-                        }
-                        None => false,
-                    };
+                // ⚠️ **As QUATRO cercas são o que a torna segura**, e cada uma
+                // nomeia o que ela assume — ver
+                // [`crate::tinta_da_peca::so_as_amostras_bastam`], onde elas
+                // vivem numa função pura porque a decisão não tem pixel
+                // nenhum. Falhando qualquer uma, cai no caminho de sempre.
+                //
+                // ⛔⛔ **A quarta nasceu em 2026-09-21 e o defeito era MUDO:**
+                // o `!mexeu` não diz *«a topologia não mudou»*, porque o
+                // `mesh_rebuilt` limpa o próprio `dirty` que ele lê. Sem ela,
+                // o pen-down de um verbo com âncora saltava a cerca do plano
+                // e deixava a tinta a descrever a malha de antes.
+                let so_as_amostras = crate::tinta_da_peca::so_as_amostras_bastam(
+                    emprestado,
+                    mexeu,
+                    self.objects[i].tinta_suja,
+                    matches!(line.job, SlotJob::Full),
+                ) && match self.stroke.tinta_fina.as_mut() {
+                    Some(fina) => {
+                        let sujas = &mut self.tinta_sujas;
+                        fina.drena_sujas(sujas);
+                        self.renderer
+                            .upload_tinta_amostras_at(queue, k, fina.tinta(), sujas)
+                    }
+                    None => false,
+                };
                 if !so_as_amostras {
                     let plano = if emprestado {
                         self.stroke

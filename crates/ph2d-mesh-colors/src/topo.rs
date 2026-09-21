@@ -168,6 +168,31 @@ impl Topologia {
         (v >> 1, v & 1 == 1)
     }
 
+    /// ⭐⭐⭐⭐ **ESTA TOPOLOGIA AINDA DESCREVE AQUELA MALHA?** — a lei, no
+    /// sítio onde a topologia mora.
+    ///
+    /// ⛔⛔ **Ela existe por um PÂNICO do dono** (2026-09-21, quadro `10216`):
+    /// `index out of bounds: the len is 196608 but the index is 196608` no
+    /// [`Self::payload`], que é `4 × 49 152` — a lista de faces que lá chegou
+    /// tinha **mais** faces do que esta topologia. O caminho é o pen-down de um
+    /// gesto de FORMA com o plano armado: o plano é emprestado ao traço e
+    /// **logo a seguir** a malha é triangulada, e a rota do plano emprestado é
+    /// a única que não reconcilia.
+    ///
+    /// ⚠️ **Compara vértices E faces, e as duas metades são precisas:** um
+    /// colapso seguido de um refino pode devolver a MESMA contagem de vértices
+    /// com outras faces, e um refino que só parte quads deixa a contagem de
+    /// faces a subir com a de vértices parada. *Uma régua que conta uma
+    /// grandeza só aprova a metade das mudanças de topologia.*
+    ///
+    /// ⚠️ **Ela é NECESSÁRIA e não suficiente** — duas malhas podem ter as
+    /// mesmas duas contagens e outras faces. Quem precisa da resposta forte é
+    /// o [`Self::payload`], que a confere face a face por construção.
+    #[must_use]
+    pub fn descreve(&self, verts: usize, faces: usize) -> bool {
+        self.verts == verts && self.faces() == faces
+    }
+
     /// ⭐ **Esta face é a dona do lado `s`?** — ver [`Self::dono_da_aresta`].
     #[must_use]
     pub fn dona_do_lado(&self, f: usize, s: usize) -> bool {
@@ -219,12 +244,37 @@ impl Topologia {
     /// de quem chama), logo ela precisa das faces **outra vez** — e têm de ser
     /// as MESMAS, na mesma ordem, senão o payload descreve outra malha. O gate
     /// confere o registo contra o [`crate::indice`] face a face.
-    pub fn payload<'a>(&self, faces: impl Iterator<Item = &'a [u32]>, out: &mut Vec<u32>) {
+    ///
+    /// ⭐⭐⭐⭐ **E ELA DEVOLVE SE ERAM MESMO AS MESMAS.** `false` = a lista
+    /// não é a desta topologia (mais faces, menos faces, ou uma face com outro
+    /// número de cantos), e aí `out` fica **vazio** — nunca meio escrito. As
+    /// três recusas são a mesma pergunta que a [`Self::descreve`] faz pelas
+    /// contagens, agora respondida face a face.
+    ///
+    /// ⚠️ **Antes de 2026-09-21 esta porta ESTOURAVA**, e o pânico é o do
+    /// report do dono — ver a [`Self::descreve`] para o caminho do produto que
+    /// lá chega.
+    #[must_use]
+    pub fn payload<'a>(&self, faces: impl Iterator<Item = &'a [u32]>, out: &mut Vec<u32>) -> bool {
         out.clear();
         out.reserve(self.faces() * PAYLOAD_STRIDE);
+        let mut vistas = 0usize;
         for (f, cantos) in faces.enumerate() {
+            // ⛔⛔ **A RECUSA, e ela substitui um `debug_assert`.** A linha que
+            // aqui estava dizia a mesma coisa e **só em `debug`** — no perfil
+            // `smoke`, que é o que o dono corre, ela não existe e o que o
+            // artista recebe é o pânico do índice. *Uma promessa escrita num
+            // `debug_assert` é uma promessa que o produto não faz.*
+            if f >= self.faces() {
+                out.clear();
+                return false;
+            }
             let n = crate::cantos(cantos);
-            debug_assert_eq!(n, self.cantos_de(f), "o payload recebeu outra face");
+            if n != self.cantos_de(f) {
+                out.clear();
+                return false;
+            }
+            vistas = f + 1;
             // ⚠️ `iter().take(n)` e não um índice: o clippy recusa a indexação
             //   por variável de laço, e aqui ela seria mesmo pior — o `n` vem
             //   do sentinela e a fatia pode ser mais curta que `4`.
@@ -244,5 +294,15 @@ impl Topologia {
             out.push(self.off_interior[f]);
             out.push(n as u32);
         }
+        // ⚠️ **A metade CURTA é a que não estoura, e é a pior.** Com menos
+        // faces do que esta topologia o laço acaba sozinho e o registo fica
+        // truncado: o shader lê o bloco de interior de uma face que já não
+        // está lá e pinta tinta **válida no sítio errado**, em silêncio. É por
+        // isso que a régua é a IGUALDADE e não um tecto.
+        if vistas != self.faces() {
+            out.clear();
+            return false;
+        }
+        true
     }
 }

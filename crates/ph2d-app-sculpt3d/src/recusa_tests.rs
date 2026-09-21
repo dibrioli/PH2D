@@ -31,6 +31,9 @@ fn entradas<'a>(mesh: &'a Mesh, brush: &'a Brush, outras_pecas: usize) -> Entrad
         //    primeiras correr num arranjo que não é o do produto.
         tinta_fina_armada: false,
         dyntopo_armado: false,
+        // ⚠️ **UM nível é o caso do produto** (uma peça nasce sem pilha), e é o
+        // único em que o passe de topologia chega a correr.
+        niveis: 1,
     }
 }
 
@@ -326,6 +329,41 @@ fn o_pen_down_diz_o_preco_da_tinta_fina() {
     assert!(
         e.recusa().is_none(),
         "com um verbo que nao mexe na topologia, calado"
+    );
+
+    // ⛔⛔⛔ **AS DUAS CÉLULAS DA LENTE ESTREITA (2026-09-21).** Até aqui a voz
+    // perguntava `dyntopo_armado` e o consumidor pergunta outra coisa — cada
+    // uma destas é um erro de SINAL diferente, e as duas viviam no mesmo `if`.
+
+    // (a) O FALSO NEGATIVO: o `Density` corre SEM o interruptor.
+    let livre = Brush {
+        verb: Verb::Density,
+        ..Brush::default()
+    };
+    assert!(
+        livre.verb.corre_sem_o_interruptor(),
+        "o arranjo tem de conter o fenomeno: este verbo corre sem o interruptor"
+    );
+    let mut e = entradas(&m, &livre, 0);
+    e.tinta_fina_armada = true;
+    // ⚠️ E o interruptor fica DESLIGADO de propósito — é essa a célula.
+    let dito = e
+        .recusa()
+        .expect("o Density refaz o plano com o interruptor desligado, e tem de o DIZER");
+    assert!(
+        dito.contains("Paint Detail"),
+        "a voz tem de NOMEAR o controlo que custa: {dito}"
+    );
+
+    // (b) O FALSO POSITIVO: com a pilha montada os dois motores RECUSAM.
+    let mut e = entradas(&m, &mexe, 0);
+    e.tinta_fina_armada = true;
+    e.dyntopo_armado = true;
+    e.niveis = 2;
+    assert!(
+        e.recusa().is_none(),
+        "com uma pilha de multiresolução o passe não corre — avisar aqui é \
+         pôr o preço de um gesto que ninguém paga"
     );
 }
 

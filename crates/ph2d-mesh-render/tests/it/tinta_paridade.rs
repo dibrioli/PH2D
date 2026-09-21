@@ -190,7 +190,10 @@ fn a_lei_da_reticula_le_o_mesmo_na_placa_e_na_cpu() {
         }
 
         let mut pay = Vec::new();
-        t.topologia().payload(it(), &mut pay);
+        assert!(
+            t.topologia().payload(it(), &mut pay),
+            "a porta recusou as faces de que o plano nasceu"
+        );
         let mut tris = Vec::new();
         let mut origem = Vec::new();
         m.triangle_indices_com_origem(&mut tris, Some(&mut origem));

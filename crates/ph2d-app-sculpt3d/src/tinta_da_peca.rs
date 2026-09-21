@@ -99,8 +99,16 @@ pub(crate) const CUSTO_POR_VERTICE_NO_TECTO: usize = 256;
 /// outras faces, e um refino que só parte quads deixa a contagem de faces a
 /// subir com a de vértices parada. *Uma régua que conta uma grandeza só aprova
 /// a metade das mudanças de topologia.*
+///
+/// ⭐⭐⭐⭐ **E A CONTA NÃO MORA AQUI DESDE 2026-09-21: ela é a
+/// [`ph2d_mesh_colors::Topologia::descreve`].** O pânico do dono provou que a
+/// pergunta tem um SEGUNDO leitor que esta crate não alcança — a porta do
+/// device, em `ph2d-mesh-render` —, e *uma lei escrita em dois sítios ainda
+/// não é uma lei; só uma PORTA é*. O que fica aqui é a tradução de `Tinta` e
+/// `Mesh` para as duas contagens.
 pub(crate) fn concorda_com(t: &Tinta, mesh: &Mesh) -> bool {
-    t.topologia().verts() == mesh.vert_count() && t.topologia().faces() == mesh.faces().len()
+    t.topologia()
+        .descreve(mesh.vert_count(), mesh.faces().len())
 }
 
 /// ⭐⭐⭐⭐ **ESTE GESTO VAI MEXER NA TOPOLOGIA?** — a porta de que a decisão do
@@ -141,7 +149,91 @@ pub(crate) fn o_gesto_muda_a_topologia(
     verbo.refina_no_dyntopo() || verbo.colapsa_no_dyntopo()
 }
 
+/// ⭐⭐⭐⭐ **O PASSE DE TOPOLOGIA VAI CORRER NESTE PEN-DOWN?** — a pergunta
+/// inteira, com as TRÊS metades que o consumidor de facto aplica.
+///
+/// ⛔⛔ **Ela nasceu de uma lente ESTREITA medida em 2026-09-21**, ao lado do
+/// pânico do §14: a VOZ que avisa *«a tinta fina perde detalhe com a
+/// topologia»* perguntava só pelo INTERRUPTOR, e o
+/// [`crate::Sculpt3dScene::open_dyntopo_stroke`] corre com
+/// `interruptor || verbo.corre_sem_o_interruptor()` **e** com a pilha por
+/// montar. ⇒ o mesmo `if` produzia os dois erros de uma vez:
+///
+/// | configuração | o consumidor | a voz de antes |
+/// |---|---|---|
+/// | interruptor OFF + `Density` + plano armado | **corre** e refaz o plano | **calada** |
+/// | interruptor ON + pilha de multiresolução | **não corre** | **avisa** de um preço que ninguém paga |
+///
+/// ⚠️ *Um falso negativo e um falso positivo na mesma condição, e nenhum deles
+/// é visível a quem lê só um dos dois sítios* — que é a forma exacta que o
+/// §5.0 desta casa chama de **a lente do painel mais larga que a do
+/// consumidor**, aqui com os papéis trocados numa metade e não na outra.
+///
+/// ⚠️ **É uma função PURA**, como a [`o_gesto_muda_a_topologia`] de que ela é
+/// dona: a cena pede um `wgpu::Device` e um gate ali nasceria `#[ignore]`.
+pub(crate) fn o_passe_corre_no_pen_down(
+    verbo: ph2d_sculpt3d::Verb,
+    dyntopo_armado: bool,
+    niveis: usize,
+    tinta_fina_armada: bool,
+) -> bool {
+    // ⚠️ **O `Density` corre SEM o interruptor** (ordem do dono de 14/09:
+    // *«Dynamic topology é para os outros pincéis»*), logo perguntar pelo
+    // interruptor sozinho deixa-o de fora.
+    (dyntopo_armado || verbo.corre_sem_o_interruptor())
+        // ⚠️ **Com a pilha montada os dois motores recusam**, e a queixa sai no
+        // ARM em vez de por dab — ver o `refine_for_dab`.
+        && niveis == 1
+        && o_gesto_muda_a_topologia(verbo, tinta_fina_armada)
+}
+
+/// ⭐⭐⭐⭐ **BASTA SUBIR AS AMOSTRAS, ou o device precisa do plano INTEIRO?**
+///
+/// O atalho que tira o custo da tinta fina de cima de `O(plano)` — medido em
+/// 2026-09-20: só empacotar o plano custa `21,9 ms` no degrau `8×` da peça de
+/// fábrica e `81,7 ms` no `16×`, **por quadro**, contra um quadro de `16,7`.
+///
+/// ⛔⛔⛔ **A cerca `!mexeu` NÃO diz o que o comentário dela prometia** (medido
+/// 2026-09-21, ao lado do pânico do §14): ela é `!dirty.is_empty()`, e o
+/// [`crate::Sculpt3dScene::mesh_rebuilt`] — que é quem TODA mudança de
+/// topologia chama — faz `dirty.clear()`. *A linha que regista «a topologia
+/// mudou» é a mesma que apaga a evidência de que alguma coisa mudou.*
+///
+/// ⚠️⚠️ **E é alcançável por um gesto comum:** um verbo com ÂNCORA (`Grab`,
+/// `Snake Hook`) **não carimba no pen-down, ele PEGA** — logo depois da
+/// triangulação do pen-down existe um quadro com a malha NOVA, o `dirty`
+/// VAZIO e o plano emprestado. Ali o atalho disparava, o
+/// `upload_tinta_at` nunca era chamado, e a entrada de fragmento da tinta
+/// ficava a resolver o `@builtin(primitive_index)` da geometria que o
+/// `upload_at` acabou de renovar contra o `origem`/`topo` de ANTES.
+///
+/// ⇒ a quarta cerca é **`malha_por_subir`** (o `SlotJob::Full`), que é o
+/// device a dizer *«eu não tenho esta malha»*.
+///
+/// ⚠️ **É PURA porque a decisão não tem pixel nenhum**, e a lei do módulo é a
+/// mesma da [`Rota`]: um gate no laço de upload pediria um `wgpu::Device` e
+/// nasceria `#[ignore]`, fora da varredura que o CI corre.
+pub(crate) fn so_as_amostras_bastam(
+    emprestado: bool,
+    mexeu: bool,
+    tinta_suja: bool,
+    malha_por_subir: bool,
+) -> bool {
+    emprestado && !mexeu && !tinta_suja && !malha_por_subir
+}
+
 impl crate::Sculpt3dScene {
+    /// ⭐⭐⭐ **A [`o_passe_corre_no_pen_down`] com as quatro entradas que a cena
+    /// tem** — a irmã da [`Self::o_gesto_em_maos_muda_a_topologia`].
+    pub(crate) fn o_passe_de_topologia_corre_no_pen_down(&self) -> bool {
+        o_passe_corre_no_pen_down(
+            self.brush.verb,
+            self.dyntopo.armed,
+            self.level_count(),
+            self.tinta_fina_armada(),
+        )
+    }
+
     /// ⭐⭐⭐⭐ **A TINTA FINA ESTÁ ARMADA NA PEÇA ACTIVA?** — contando o plano
     /// que o TRAÇO segura.
     ///
@@ -332,6 +424,11 @@ pub(crate) fn devolve_ao_dono(
     true
 }
 
+/// ⚠️ **Irmão do [`tests`], cortado dele pelo tecto de LOC e pelo ASSUNTO** —
+/// lá o PLANO, aqui as PORTAS que decidem. Ver o cabeçalho do ficheiro.
+#[cfg(test)]
+#[path = "tinta_da_peca_portas_tests.rs"]
+mod portas_tests;
 #[cfg(test)]
 #[path = "tinta_da_peca_tests.rs"]
 mod tests;

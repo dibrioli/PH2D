@@ -208,7 +208,40 @@ impl MeshRenderer {
         //    payload precisa dos cantos, e a `Topologia` não os guarda.
         let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
         let mut pay = Vec::new();
-        t.topologia().payload(faces(), &mut pay);
+        // ⛔⛔⛔ **A CERCA, e ela vem do PÂNICO do dono de 2026-09-21** — ver
+        // [`ph2d_mesh_colors::Topologia::descreve`]. O cabeçalho desta porta já
+        // escrevia o perigo (*«um plano da malha de antes é tinta no vértice
+        // errado, e nenhuma contagem o vê»*) e **nada o media**: no perfil
+        // `smoke` o `debug_assert` do payload não existe, e o que o artista
+        // recebia era `index out of bounds` a meio de uma pincelada.
+        //
+        // ⚠️ **Desarmar é a resposta CERTA e não um remendo:** o plano já não
+        // descreve esta malha, logo não há tinta fina que se possa desenhar. O
+        // device passa a mostrar a cor POR VÉRTICE, que é exactamente o que a
+        // `tinta_da_peca::garante` vai reconstruir assim que o traço largar o
+        // plano. *Meio quadro com a cor de baixa resolução é o que já ia
+        // acontecer; um pânico é a sessão inteira.*
+        // ⚠️⚠️ **As DUAS perguntas, e nenhuma cobre a outra.** A
+        // [`ph2d_mesh_colors::Topologia::descreve`] é `O(1)` e é a única que vê
+        // os **VÉRTICES** — o payload nunca os olha, porque um registo é feito
+        // de faces. O payload é o veredito FORTE, face a face, e é a única que
+        // separa duas malhas com as mesmas duas contagens. *Uma sozinha aprova
+        // metade das mudanças de topologia.*
+        //
+        // ⭐ A `descreve` vem à frente pela ordem barata: ela corta sem
+        // percorrer as faces todas, que é o caso comum durante um traço de
+        // FORMA com o plano armado.
+        if !t
+            .topologia()
+            .descreve(mesh.vert_count(), mesh.faces().len())
+            || !t.topologia().payload(faces(), &mut pay)
+        {
+            if slot.gpu.tinta.armado {
+                queue.write_buffer(&slot.gpu.tinta.cfg, 0, bytemuck::cast_slice(&cfg_de(None)));
+                self.slots[index].gpu.tinta.armado = false;
+            }
+            return;
+        }
         let mut tris = Vec::new();
         let mut origem = Vec::new();
         mesh.triangle_indices_com_origem(&mut tris, Some(&mut origem));

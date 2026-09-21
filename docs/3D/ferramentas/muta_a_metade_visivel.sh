@@ -22,6 +22,13 @@
 #   exemplo:  MUTA_FILTRO='^M3[0-5] ' bash docs/3D/ferramentas/muta_a_metade_visivel.sh
 set -u
 FILTRO="${MUTA_FILTRO:-}"
+# ⭐⭐⭐⭐ **PRE-VOO DAS ANCORAS (`MUTA_SO_ANCORAS=1`)** — confere que cada
+# ancora casa EXACTAMENTE uma vez, sem correr um unico teste.
+# ⛔⛔ Ele existe porque `cargo fmt` (ou um corte de ficheiro) reescreve a
+# indentacao de uma ancora, ela passa a casar ZERO, e **isso le-se exactamente
+# como uma mutacao que SOBREVIVEU** — com o custo de uma corrida inteira para
+# descobrir. O pre-voo custa segundos e corre-se DEPOIS de todo `fmt`.
+SO_ANCORAS="${MUTA_SO_ANCORAS:-}"
 APP=crates/ph2d-app-sculpt3d/src
 PAN=crates/ph2d-panel-sculpt3d/src
 # ⚠️ **O MOTOR entra na rede a partir de 21/09.** As mutacoes M27-M29 vivem na
@@ -57,6 +64,7 @@ populacao() { grep -oP '\K[0-9]+(?= tests? run)' | awk '{s+=$1}END{print s+0}'; 
 # deitava fora o codigo de saida. Com a arvore vermelha ANTES de mutar, TODA
 # mutacao le-se como SANGRA e o placar sai perfeito e fabricado — e o erro e'
 # para o lado que nao se nota, porque um placar cheio nao faz ninguem olhar.
+if [ -z "$SO_ANCORAS" ]; then
 limpa=$(corrida); rc_limpo=$?
 verde=$(printf '%s' "$limpa" | populacao)
 echo "VERDE antes: $verde testes correram"
@@ -66,6 +74,7 @@ if [ "$rc_limpo" -ne 0 ]; then
   printf '%s' "$limpa" | grep -E '^ *(FAIL|test result:|Summary)' | tail -8 | sed 's/^/      | /'
   exit 2
 fi
+fi
 
 sangram=0; total=0
 muta() { # ficheiro  ancora  substituto  nome
@@ -73,6 +82,12 @@ muta() { # ficheiro  ancora  substituto  nome
   # ⚠️ O filtro corta ANTES do contador: o `total` tem de descrever a POPULACAO
   # que de facto correu, senao o placar diz «N de 35» sobre seis corridas.
   if [ -n "$FILTRO" ] && ! printf '%s' "$nome" | grep -Eq "$FILTRO"; then return; fi
+  if [ -n "$SO_ANCORAS" ]; then
+    total=$((total+1))
+    local n; n=$(python3 -c 'import sys;print(open(sys.argv[1]).read().count(sys.argv[2]))' "$f" "$agulha")
+    if [ "$n" -ne 1 ]; then echo "  ✗ ANCORA [$nome]: casou $n vezes (esperado 1)"; else sangram=$((sangram+1)); fi
+    return
+  fi
   total=$((total+1))
   local n; n=$(python3 -c 'import sys;print(open(sys.argv[1]).read().count(sys.argv[2]))' "$f" "$agulha")
   if [ "$n" -ne 1 ]; then echo "  ABORTO [$nome]: a ancora casou $n vezes (esperado 1)"; return; fi
@@ -117,15 +132,24 @@ muta "$APP/tinta_da_peca.rs" \
   '        && concorda_com(t, mesh)' \
   'M2 garante: trocar de nivel deixa de reconstruir'
 
+# ⚠️⚠️ **A CONTA MUDOU DE SITIO em 2026-09-21** — ela e' hoje a
+# `ph2d_mesh_colors::Topologia::descreve`, porque o panico do dono provou que a
+# pergunta tem um segundo leitor (a porta do device) que esta crate nao
+# alcanca. O que sobra aqui e' a TRADUCAO de `Tinta`+`Mesh` para as duas
+# contagens, e e' ela que estas duas mutacoes medem; a LEI tem rede propria no
+# `muta_a_cerca_do_plano.sh` (N5/N6).
+# ⛔ As duas ancoras de antes casavam ZERO vezes depois da delegacao, e o
+# aborto do arnes foi quem o disse — *uma rede sem controlo de ancora teria
+# lido as duas como SOBREVIVENTES*.
 muta "$APP/tinta_da_peca.rs" \
-  't.topologia().verts() == mesh.vert_count() && t.topologia().faces() == mesh.faces().len()' \
-  't.topologia().verts() == mesh.vert_count()' \
-  'M3 concorda_com: a metade das FACES desaparece'
+  '.descreve(mesh.vert_count(), mesh.faces().len())' \
+  '.descreve(mesh.vert_count(), t.topologia().faces())' \
+  'M3 concorda_com: a metade das FACES passa a concordar sempre'
 
 muta "$APP/tinta_da_peca.rs" \
-  't.topologia().verts() == mesh.vert_count() && t.topologia().faces() == mesh.faces().len()' \
-  't.topologia().faces() == mesh.faces().len()' \
-  'M4 concorda_com: a metade dos VERTICES desaparece'
+  '.descreve(mesh.vert_count(), mesh.faces().len())' \
+  '.descreve(t.topologia().verts(), mesh.faces().len())' \
+  'M4 concorda_com: a metade dos VERTICES passa a concordar sempre'
 
 muta "$APP/tinta_da_peca.rs" \
   '        let por_vertice = t.plano_por_vertice().to_vec();
@@ -155,10 +179,47 @@ muta "$APP/tinta_da_peca.rs" \
   'M9 rota: TODA peca da cena ganha um plano novo'
 
 # ── A VOZ do pen-down ────────────────────────────────────────────────────
+# ⚠️⚠️ **A LENTE DA VOZ mudou de agulha em 2026-09-21** — ela era
+# `dyntopo_armado && o_gesto_muda_a_topologia(...)` e o consumidor perguntava
+# `(interruptor || corre_sem_o_interruptor) && niveis == 1 && ...`; hoje os
+# dois leem a `o_passe_corre_no_pen_down`. A ancora de antes casava ZERO vezes.
 muta "$APP/recusa.rs" \
-  '            && crate::tinta_da_peca::o_gesto_muda_a_topologia(verbo, self.tinta_fina_armada)' \
-  '            && true' \
-  'M10 recusa: a lente passa a ser o interruptor e nao a PORTA'
+  '            && crate::tinta_da_peca::o_passe_corre_no_pen_down(
+                verbo,
+                self.dyntopo_armado,
+                self.niveis,
+                self.tinta_fina_armada,
+            )' \
+  '            && self.dyntopo_armado' \
+  'M10 recusa: a lente volta a ser o INTERRUPTOR e nao a PORTA'
+
+# ── A PORTA DO PEN-DOWN, metade a metade ─────────────────────────────────
+muta "$APP/tinta_da_peca.rs" \
+  '    (dyntopo_armado || verbo.corre_sem_o_interruptor())' \
+  '    dyntopo_armado' \
+  'M38 porta: o Density deixa de contar (o falso NEGATIVO da voz)'
+
+muta "$APP/tinta_da_peca.rs" \
+  '        && niveis == 1
+        && o_gesto_muda_a_topologia(verbo, tinta_fina_armada)' \
+  '        && o_gesto_muda_a_topologia(verbo, tinta_fina_armada)' \
+  'M39 porta: a pilha montada deixa de contar (o falso POSITIVO da voz)'
+
+muta "$APP/history_dyntopo.rs" \
+  '        if !self.o_passe_de_topologia_corre_no_pen_down() {' \
+  '        if false {' \
+  'M40 pen-down: a foto e a triangulacao voltam a correr para todo gesto'
+
+# ── O ATALHO DO UPLOAD ───────────────────────────────────────────────────
+muta "$APP/tinta_da_peca.rs" \
+  '    emprestado && !mexeu && !tinta_suja && !malha_por_subir' \
+  '    emprestado && !mexeu && !tinta_suja' \
+  'M41 atalho: a QUARTA cerca desaparece (a malha por subir deixa de contar)'
+
+muta "$APP/slots.rs" \
+  '                    matches!(line.job, SlotJob::Full),' \
+  '                    false,' \
+  'M42 atalho: a quarta cerca fica certa e a CHAMADA passa-lhe sempre false'
 
 muta "$APP/recusa.rs" \
   '            tinta_fina_armada: self.tinta_fina_armada(),' \
@@ -237,8 +298,11 @@ muta "$APP/dyntopo.rs" \
   '' \
   'M21 toggle: ligar o interruptor volta a triangular com o plano armado'
 
+# ⚠️ A M22 media a TERCEIRA metade sozinha; hoje ela vive dentro da porta e a
+# mutacao que a apaga e' a M39 acima. O que sobra aqui e' a mesma pergunta pela
+# porta INTEIRA, que e' o que o pen-down de facto le.
 muta "$APP/history_dyntopo.rs" \
-  '        if !self.o_gesto_em_maos_muda_a_topologia(self.brush.verb) {
+  '        if !self.o_passe_de_topologia_corre_no_pen_down() {
             self.dyn_before = None;
             return;
         }' \
@@ -353,6 +417,14 @@ muta "$APP/input_down.rs" \
   'M37 o emprestimo deixa de carregar quem o emprestou'
 
 echo
+if [ -n "$SO_ANCORAS" ]; then
+  # ⚠️ **O sumario tem de dizer o que ele MEDIU.** Aqui nenhum teste correu:
+  # dizer «sangram» sobre uma corrida de ancoras seria um instrumento a
+  # descrever-se mal, que e' o defeito que este arnes inteiro existe para nao ter.
+  echo "PRE-VOO: $sangram de $total ancoras casam exactamente uma vez (ZERO testes corridos)"
+  [ "$sangram" -eq "$total" ] || exit 1
+  exit 0
+fi
 if [ -n "$FILTRO" ]; then
   echo "MUTACAO: $sangram de $total sangram  ⚠️ SUBCONJUNTO (MUTA_FILTRO='$FILTRO')"
 else

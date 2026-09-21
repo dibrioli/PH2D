@@ -69,7 +69,19 @@ pub(crate) struct Entradas<'a> {
     /// coisa que separa *perder detalhe* de *perder detalhe sem saber porquê*.
     pub tinta_fina_armada: bool,
     /// O passe de topologia está armado?
+    ///
+    /// ⚠️ **Ele é o INTERRUPTOR e não «o passe corre»** — as duas perguntas
+    /// divergem em duas configurações, e a segunda é a
+    /// [`crate::tinta_da_peca::o_passe_corre_no_pen_down`]. O que sobra aqui é
+    /// a entrada crua, que a segunda voz (a da AUSÊNCIA) de facto quer.
     pub dyntopo_armado: bool,
+    /// ⭐⭐ **Quantos níveis a pilha tem.**
+    ///
+    /// ⛔ Com mais de um os dois motores de topologia RECUSAM, logo o passe não
+    /// corre — e sem esta entrada a voz avisava de um preço que ninguém paga.
+    /// *Um aviso que soa quando não devia é ruído que o artista aprende a
+    /// ignorar, exactamente quando ele passar a ser verdade.*
+    pub niveis: usize,
 }
 
 /// **A peça tem bordo aberto?**
@@ -148,9 +160,22 @@ impl Entradas<'_> {
         // seria pôr o preço de um gesto que deixou de o pagar. *Duas respostas
         // à mesma pergunta divergem no dia em que uma delas ganha uma cerca — e
         // esta ganhou uma.*
+        //
+        // ⛔⛔⛔ **E A LENTE ERA MAIS ESTREITA QUE A DO CONSUMIDOR, medido em
+        // 2026-09-21 ao lado do pânico do §14.** Ela perguntava
+        // `dyntopo_armado` e o `open_dyntopo_stroke` corre com
+        // `interruptor || verbo.corre_sem_o_interruptor()` **e** com a pilha por
+        // montar ⇒ com o interruptor DESLIGADO e o `Density` em mãos o plano
+        // era refeito e o artista **não era avisado**, e com uma pilha de
+        // multiresolução ele era avisado de um preço que **não se paga**. Hoje
+        // os dois leem a MESMA porta.
         if self.tinta_fina_armada
-            && self.dyntopo_armado
-            && crate::tinta_da_peca::o_gesto_muda_a_topologia(verbo, self.tinta_fina_armada)
+            && crate::tinta_da_peca::o_passe_corre_no_pen_down(
+                verbo,
+                self.dyntopo_armado,
+                self.niveis,
+                self.tinta_fina_armada,
+            )
         {
             return Some(ph2d_i18n::tr_with(
                 "app.sculpt3d.recusa.a_tinta_fina_perde_detalhe_com_topologia",
@@ -211,6 +236,7 @@ impl Sculpt3dScene {
             // [`crate::Sculpt3dScene::tinta_fina_armada`].
             tinta_fina_armada: self.tinta_fina_armada(),
             dyntopo_armado: self.dyntopo.armed,
+            niveis: self.level_count(),
         };
         if let Some(motivo) = entradas.recusa() {
             eprintln!("[sculpt3d] {motivo}");

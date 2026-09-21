@@ -33,6 +33,10 @@ fn viewport() -> Rect {
 fn painted(tool: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
     set_current_brush(Some(tool.brush_settings()));
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    // ⚠️ **Este gate mede o CONTEÚDO de uma secção**, e desde 2026-09-21 as secções que chegaram
+    //    DEPOIS da decisão do dono de 2026-06-24 nascem recolhidas. Sem esta linha ele mede a
+    //    política de dobra e queixa-se de que a fileira não foi pintada.
+    host.open_all_sections();
     let mut st = PainterLayersPanelState;
     let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     (host, st, rects)

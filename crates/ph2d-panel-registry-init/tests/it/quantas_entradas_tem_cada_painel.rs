@@ -2111,3 +2111,198 @@ fn diag_que_paineis_abrem_fora_da_dobra() {
         }
     });
 }
+
+/// SONDA TEMPORÁRIA — **o preço de cada secção do painel do PAINTER**, e quais ele de facto pinta.
+#[test]
+#[ignore]
+fn diag_o_preco_de_cada_seccao_do_painter() {
+    // ⭐ Os nomes derivam-se das próprias constantes do motor, nunca de uma lista escrita à mão.
+    let seccoes: &[(&str, NodeId)] = &[
+        ("shape", ph2d_tool_painter::ids::PAINTER_SHAPE_SECTION),
+        (
+            "shape_ramp",
+            ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SECTION,
+        ),
+        (
+            "brush_texture",
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SECTION,
+        ),
+        (
+            "brush_stroke",
+            ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SECTION,
+        ),
+        (
+            "brush_randomize",
+            ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
+        ),
+        (
+            "brush_color_ramp",
+            ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
+        ),
+        (
+            "brush_tiling",
+            ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_SECTION,
+        ),
+        (
+            "brush_symmetry",
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SECTION,
+        ),
+        ("wetpaint", ph2d_tool_painter::ids::PAINTER_WETPAINT_SECTION),
+        (
+            "watercolor",
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SECTION,
+        ),
+        (
+            "watercolor_paper",
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION,
+        ),
+        ("impasto", ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION),
+        ("mask", ph2d_tool_painter::ids::PAINTER_MASK_SECTION),
+    ];
+
+    let mede = |dobrar: Option<NodeId>, abrir_tudo: bool| -> (f32, bool) {
+        let mut h = 0.0;
+        let mut pintou = false;
+        ph2d_editor_core::panel::with_registry(|reg| {
+            let painel = reg
+                .panels_mut()
+                .iter_mut()
+                .find(|p| p.manifest.id == "painter_layers")
+                .expect("o painel do painter");
+            let arm = super::paineis_armados::TABELA
+                .iter()
+                .find(|a| a.painel == "painter_layers")
+                .expect("o painter tem armação");
+            let mut host = MockPanelHost::new();
+            (arm.arma)(host.store_mut());
+            painel.populate(host.store_mut());
+            if abrir_tudo {
+                for id in host.store().collapsible_ids() {
+                    host.store_mut().set_collapsed(id, false);
+                }
+            }
+            if let Some(id) = dobrar {
+                host.store_mut().set_collapsed(id, true);
+            }
+            let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
+                let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            });
+            let pintados = host.registos_da_ultima_pintura();
+            pintou = dobrar.is_none_or(|id| pintados.iter().any(|(n, _)| *n == id));
+            h = conta(host.store(), &pintados, &grupos).altura;
+            (arm.desarma)();
+        });
+        (h, pintou)
+    };
+
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let (como_abre, _) = mede(None, false);
+    let (tudo_aberto, _) = mede(None, true);
+    println!(
+        "\n  como ABRE hoje (a política do dono de 2026-06-24): {como_abre:.0} px = {:.1} ecrãs",
+        como_abre / DOBRA
+    );
+    println!(
+        "  com TUDO aberto: {tudo_aberto:.0} px = {:.1} ecrãs\n",
+        tudo_aberto / DOBRA
+    );
+    println!("  secção                  pintada?  custo px   ecrãs");
+    let mut v: Vec<(f32, &str, bool)> = Vec::new();
+    for (nome, id) in seccoes {
+        let (h, pintada) = mede(Some(*id), true);
+        v.push((tudo_aberto - h, nome, pintada));
+    }
+    v.sort_by(|a, b| b.0.total_cmp(&a.0));
+    for (px, nome, pintada) in &v {
+        println!(
+            "  {nome:22} {:8}  {px:9.0}  {:6.2}",
+            if *pintada { "sim" } else { "NÃO" },
+            px / DOBRA
+        );
+    }
+}
+
+/// Quanto um painel MOSTRA ao abrir — com a armação dele e a política de dobra do editor.
+#[cfg(test)]
+fn altura_de_abertura(id_painel: &str) -> f32 {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut h = 0.0;
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == id_painel)
+            .unwrap_or_else(|| panic!("`{id_painel}` saiu do registo"));
+        let arm = super::paineis_armados::TABELA
+            .iter()
+            .find(|a| a.painel == id_painel);
+        let mut host = MockPanelHost::new();
+        if let Some(a) = arm {
+            (a.arma)(host.store_mut());
+        }
+        painel.populate(host.store_mut());
+        ph2d_editor_core::screens::hero::pre_populate::marca_as_gavetas(host.store_mut());
+        let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
+            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        });
+        h = conta(host.store(), &host.registos_da_ultima_pintura(), &grupos).altura;
+        if let Some(a) = arm {
+            (a.desarma)();
+        }
+    });
+    h
+}
+
+/// ⛔⛔ **A ALTURA DE ABERTURA SÓ ENCOLHE.**
+///
+/// ⚠️⚠️ **Ela existe porque o modo de falha está DATADO.** Em 2026-06-24 o dono decidiu quais
+/// secções do painel do Painter nascem abertas; medido por `git log -S`, o `Shape` nasceu a
+/// **`06-25`**, o `Shape Ramp` a `06-25`, o `Symmetry` a `06-29` e o `Watercolor Paper` a `07-05`
+/// — **todas ABERTAS, e nenhuma delas reviu a decisão**. O painel foi de caber para `3,1` ecrãs
+/// sem que uma linha de política mudasse.
+///
+/// ⇒ *uma secção nova nascer aberta é o caminho por onde um painel volta a transbordar*, e é
+/// silencioso: ninguém mede a altura de abertura de um painel.
+///
+/// ⛔ **Um painel que passe a mostrar MAIS reprova**; um que mostre MENOS também, com a outra
+/// metade — *ela não é folga, é o sítio onde se escreve o número novo*.
+const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
+    // ⭐ `14 987 → 918` (o objecto impossível da fixtura) quando a política de dobra nasceu.
+    ("inspector", 918.0),
+    // ⭐ `2 709 → 1 529`: as quatro secções que chegaram DEPOIS da decisão do dono nascem
+    //    recolhidas. ⛔ Ele não cabe, e o que falta é DECISÃO: o `Texture` (`450`) e o `Stroke`
+    //    (`368`) são dele, e com tudo recolhido o painel mediria `736`.
+    ("painter_layers", 1529.0),
+    ("sculpt3d", 2097.0),
+    ("tokens", 2866.0),
+    ("vector", 1349.0),
+    ("physics", 1293.0),
+    ("audio_mixer", 1209.0),
+];
+
+#[test]
+fn a_altura_de_abertura_de_um_painel_so_encolhe() {
+    let mut subiram = Vec::new();
+    let mut desceram = Vec::new();
+    for (painel, tecto) in ALTURA_DE_ABERTURA {
+        let h = altura_de_abertura(painel);
+        if h > tecto + 0.5 {
+            subiram.push(format!("{painel}: {h:.0} px contra {tecto:.0}"));
+        } else if h < tecto - 0.5 {
+            desceram.push(format!("{painel}: {h:.0} px contra {tecto:.0}"));
+        }
+    }
+    assert!(
+        subiram.is_empty(),
+        "estes painéis passaram a MOSTRAR MAIS ao abrir:\n  {}\n\n\
+         ⇒ quase de certeza uma secção nova nasceu ABERTA. ⛔ A cura é semeá-la recolhida \
+         (`set_collapsed_if_unchosen`), nunca subir o número — foi assim que o painel do Painter \
+         foi de caber para `3,1` ecrãs entre 06-24 e 07-05 de 2026.",
+        subiram.join("\n  ")
+    );
+    assert!(
+        desceram.is_empty(),
+        "estes painéis mostram MENOS do que a catraca diz — ESCREVA o número medido:\n  {}",
+        desceram.join("\n  ")
+    );
+}

@@ -29,6 +29,7 @@
 pub mod ablate; // measurement-only ablation switch for the height texel loop (never armed in product)
 pub mod blend;
 pub mod blur;
+pub mod blur_caixa;
 pub mod blur_grain;
 pub mod canvas_warp;
 mod canvas_warp_curve;

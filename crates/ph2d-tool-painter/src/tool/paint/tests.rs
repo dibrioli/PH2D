@@ -53,7 +53,9 @@ mod diag_pigmento_por_meio; // em que MEIOS a lei do pigmento chega ao barro (a 
 mod composite_cinco_tests; // a pilha de CINCO: cor, tamanho e o Erase por camada
 
 #[path = "diag_composite_cinco_camadas.rs"]
-mod diag_composite_cinco_camadas; // o preco MARGINAL de uma camada na pilha, e a lei do tamanho
+mod diag_composite_cinco_camadas;
+#[path = "diag_ordem_entre_carimbos.rs"]
+mod diag_ordem_entre_carimbos; // o pincel de cima coberto pelo de baixo do lote seguinte // o preco MARGINAL de uma camada na pilha, e a lei do tamanho
 
 #[path = "look_watercolor_arc.rs"]
 mod look_watercolor_arc; // o arco palido na concavidade: o oraculo e o RENDER, nao um escalar

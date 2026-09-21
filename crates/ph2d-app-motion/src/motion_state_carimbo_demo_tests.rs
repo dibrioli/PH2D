@@ -40,7 +40,11 @@ fn dos(doc: &MotionDoc, tipo: &str) -> Vec<NodeId> {
 fn a_cena_e_a_cadeia_do_report_e_nada_mais() {
     let (doc, _reg, sinks) = cena();
     assert_eq!(sinks.len(), 1, "uma saida so'");
-    assert_eq!(doc.graph.nodes().len(), 4, "quatro nos: grid, shape, dup, output");
+    assert_eq!(
+        doc.graph.nodes().len(),
+        4,
+        "quatro nos: grid, shape, dup, output"
+    );
     let grade = *dos(&doc, "motion.grid").first().expect("ha' uma grelha");
     let forma = *dos(&doc, "source.shape").first().expect("ha' uma forma");
     let dup = *dos(&doc, "motion.duplicator")

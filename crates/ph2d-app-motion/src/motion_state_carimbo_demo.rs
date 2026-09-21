@@ -146,7 +146,7 @@ pub(super) const TAMANHO: f32 = ESTRELA_PX / (2.0 * PX_POR_UNIDADE);
 ///
 /// ⚠️ Com as estrelas encostadas o campo volta a ler-se como uma textura — a mesma lei que a
 /// cena `=124` pagou com a foto das cruzes fundidas numa treliça.
-pub(super) const VAO: f32 = 2.4 * TAMANHO;
+pub(crate) const VAO: f32 = 2.4 * TAMANHO;
 
 /// **O LADO da grelha.** Ver a tabela do cabeçalho: ele não é escolhido, é o que põe as duas rotas
 /// em lados opostos de um quadro de 60 fps.
@@ -155,7 +155,7 @@ pub(super) const VAO: f32 = 2.4 * TAMANHO;
 /// `320` a rota de hoje lê `16,77 ms` — **em cima da fronteira do vsync**, onde o app salta entre
 /// dois regimes e o número muda a cada arranque. A `300` ele lê `10,37` contra `14,67`, que é a
 /// distância que a cena existe para mostrar, **com as duas corridas estáveis**.
-pub(super) const LADO_N: u32 = 300;
+pub(crate) const LADO_N: u32 = 300;
 
 /// **O LADO com que a cena NASCE** — o [`LADO_N`], a menos que `PH2D_CARIMBO_LADO=<n>` diga outro.
 ///
@@ -325,7 +325,12 @@ fn corner_por(valor: Option<&str>) -> f32 {
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     // ⚠️ O registo entra na assinatura porque o roteador o passa a todas as cenas — e aqui ele
     // serve de guarda: uma cena que monte com um nó que não existe cozinha zero e desenha nada.
-    for tipo in ["motion.grid", "motion.duplicator", "source.shape", "motion.output"] {
+    for tipo in [
+        "motion.grid",
+        "motion.duplicator",
+        "source.shape",
+        "motion.output",
+    ] {
         reg.manifests()
             .find(|m| m.id == ph2d_nodegraph::node::NodeTypeId::of(tipo))?;
     }
@@ -350,9 +355,17 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
     // ── A FORMA: uma estrela, e só uma. É ela que o carimbo prepara uma vez.
     let forma = no(g, "source.shape", 0.0, 220.0);
-    g.set_param(forma, ph2d_node_motion_shape::param::KIND, indice_da_estrela());
+    g.set_param(
+        forma,
+        ph2d_node_motion_shape::param::KIND,
+        indice_da_estrela(),
+    );
     g.set_param(forma, ph2d_node_motion_shape::param::SIZE, TAMANHO);
-    g.set_param(forma, ph2d_node_motion_shape::param::CORNER, corner_semeado());
+    g.set_param(
+        forma,
+        ph2d_node_motion_shape::param::CORNER,
+        corner_semeado(),
+    );
 
     // ── O CARIMBO. ⚠️ A forma na porta `0`, os pontos na `1` — a ordem que o manifesto do
     // duplicador declara, e que um censo do roteador confere em toda cena.

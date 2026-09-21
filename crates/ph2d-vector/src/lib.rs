@@ -20,6 +20,8 @@
 //! API so downstream crates don't need direct deps on every
 //! Linebender package.
 
+/// A porta que corre o passo de RESOLUÇÃO do Vello — o pedaço de CPU entre o encode e a placa.
+pub mod resolve_cost;
 pub mod scene;
 /// A porta do carimbo — uma forma encodada UMA vez, carimbada `N` vezes.
 pub mod scene_prepared;
@@ -35,6 +37,7 @@ mod atlas_probe_pieces_tests;
 #[cfg(test)]
 mod atlas_probe_tests;
 
+pub use resolve_cost::{ResolveSize, SceneResolver};
 pub use scene::{CLIPPED_IMAGE_INFO_WORDS, StableImage, VELLO_BIN_DATA_WORDS, VectorScene};
 pub use vector_network::{
     ProceduralFillImage, build_region_path, draw_variable_width_stroke, draw_vector_network,

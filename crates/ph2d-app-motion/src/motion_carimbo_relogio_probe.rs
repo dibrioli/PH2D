@@ -531,3 +531,9 @@ fn audit_the_corner_radius_cost() {
     );
     eprintln!("  load no fim: {}\n", carga());
 }
+
+/// ⭐ **A ATRIBUIÇÃO do quadro** — as sondas que dizem quanto dele é nosso, e sobre que população.
+/// Vivem num ficheiro irmão por RESPONSABILIDADE (e o tecto de LOC obrigou-o a acontecer no dia
+/// certo): aqui medem-se as ROTAS do encode, ali mede-se quem paga o quê.
+#[path = "motion_carimbo_atribuicao_probe.rs"]
+mod atribuicao;

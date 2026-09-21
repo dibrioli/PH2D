@@ -159,6 +159,14 @@ pub(crate) fn announce() {
          [sculpt3d]        -> Agora escolha o `Draw` na fileira de cima e desenhe: o arame\n\
          [sculpt3d]           adensa, o TERMINAL avisa, e a tinta volta a ser grossa. E'\n\
          [sculpt3d]           o preco de mudar a malha, e ele so' se paga onde e' pedido.\n\
+         [sculpt3d]        -> E o app NAO FECHA. Ate' 21/09 este gesto exacto -- um pincel\n\
+         [sculpt3d]           de FORMA com o plano armado -- matava a sessao no primeiro\n\
+         [sculpt3d]           traco, porque o plano ficava a descrever a malha de antes.\n\
+         [sculpt3d]    (6-quinquies) Escolha `Move / Grab`, PEGUE na bola e fique um\n\
+         [sculpt3d]        instante SEM arrastar, antes de puxar.\n\
+         [sculpt3d]        -> Tambem nao fecha, e a tinta nao pisca. Este gesto tem um\n\
+         [sculpt3d]           caminho so' dele: ele PEGA em vez de carimbar, logo ha' um\n\
+         [sculpt3d]           instante em que a malha ja' mudou e nada a marcou como suja.\n\
          [sculpt3d]    (6-bis) Clique UMA VEZ no VAZIO, fora da bola, e depois\n\
          [sculpt3d]        pinte outra marca.\n\
          [sculpt3d]        -> As marcas de antes continuam finas. Ate' 21/09 um clique\n\
@@ -192,7 +200,9 @@ pub(crate) fn announce() {
          [sculpt3d]    reporte. Se a peca ficar PRETA, ou aparecerem faces pretas de\n\
          [sculpt3d]    aresta dura no meio da marca, PARE e reporte. Se no (6-ter) o\n\
          [sculpt3d]    arrasto RODAR a camara em vez de pintar, PARE e reporte. Se no\n\
-         [sculpt3d]    (7) o Ctrl+Z deixar a marca onde estava, PARE e reporte."
+         [sculpt3d]    (7) o Ctrl+Z deixar a marca onde estava, PARE e reporte. E se o\n\
+         [sculpt3d]    app FECHAR sozinho em qualquer passo, PARE e mande a linha do\n\
+         [sculpt3d]    terminal que comeca por PH2D PANIC -- ela diz onde."
     );
 }
 

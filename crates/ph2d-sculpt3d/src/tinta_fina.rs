@@ -5,6 +5,53 @@
 //! escolheu esta família está em
 //! `docs/3D/27_o_estado_da_arte_de_onde_a_tinta_mora.md`.
 //!
+//! # ⛔⛔⛔ As TRÊS cercas de VÉRTICES do dab, e porque elas cediam
+//!
+//! Report do dono, 2026-09-21: *«a tinta só é depositada se o pincel está
+//! sobre um vertex»*. O [`crate::stroke_dab_core`] tem **três** saídas cedo em
+//! fila — a **pegada** (nenhum vértice na esfera de consulta), a **máscara**
+//! de alcance e os **movidos** —, e as três contam VÉRTICES enquanto a unidade
+//! que este módulo escreve é a AMOSTRA. Numa malha grossa há dezenas de
+//! amostras entre dois vértices.
+//!
+//! ⚠️ **A régua é o MAPA e não a quantidade.** Varrendo o ecrã de 5 em 5
+//! píxeis com um clique em cada sítio, na cena `=52` (`738` vértices, aresta
+//! média `0,1304`), a tinta caía em **`3` de `61`** posições com o pincel fino
+//! e em `23` de `61` com o seguinte — *o mapa das que pintavam é a rede de
+//! vértices*. Somar as amostras da varredura inteira esconde isso atrás dos
+//! sítios que funcionavam.
+//!
+//! ⚠️⚠️ **E a atribuição custou duas tentativas erradas:** curar a cerca dos
+//! MOVIDOS deixou o mapa idêntico carácter a carácter, e a da PEGADA também.
+//! *Uma cura que não move a régua não é a cura* — quem apontou a cerca certa
+//! (a do meio, em `96` das corridas) foi um rasto por `PH2D_DAB_TRACE`.
+//!
+//! ⭐ **A lei que fica: a máscara decide quando tem PROVA.** Se ela CORTOU
+//! vértices e não sobrou nenhum, decidiu — e o dab morre para todos. Se a
+//! pegada já estava vazia, não havia um único vértice sobre que julgar, e a
+//! unidade que sobra é a amostra. As cercas ficam inteiras para quem escreve
+//! posição, máscara ou cor por-vértice.
+//!
+//! # ⛔⛔ E a máscara já era INERTE para a cor fina
+//!
+//! A `Connected Only` — que o dono mandou shipar LIGADA — corta VÉRTICES, e a
+//! cura do report de 19/09 (*«Snake Hook … deformando a face POSTERIOR»*)
+//! protege o vértice. Medido na barbatana de `0,06` de espessura, o MESMO
+//! traço com ela armada e desarmada:
+//!
+//! | raio | antes: armada / desarmada | depois: armada / desarmada |
+//! |---|---|---|
+//! | 64 px | `66 179` / `66 179` | **`33 841`** / `66 179` |
+//! | 24 px | `13 035` / `13 035` | **`7 603`** / `13 035` |
+//! | 10 px | `2 536` / `2 536` | `2 536` / `2 536` ← **CONTROLO** |
+//!
+//! ⭐ *A linha do raio pequeno é o controlo que dá direito às outras duas:* ali
+//! a esfera do dab não alcança as costas da folha, logo não há o que cortar.
+//!
+//! ⚠️ **Das três condições daquela máscara só a NORMAL se transplanta:** a
+//! conectividade e a razão `superfície/ar` são um passeio por ARESTAS, e uma
+//! amostra não tem vizinhos no grafo.
+//!
 //! # ⭐⭐⭐ O que muda, e o que NÃO muda
 //!
 //! **Não muda a lei do pincel.** O peso de uma amostra sai das MESMAS portas do
@@ -380,6 +427,35 @@ impl crate::SculptStroke {
         }
         // ── 1. O PESO de cada amostra, pelas portas do dab por-vértice. ──
         let amostras = std::mem::take(&mut fina.amostras);
+        // ⚠️⚠️ **A SEGUNDA METADE da lei da folha é o ARMAR, e a minha 1.ª
+        // redacção largou-a — SEIS gates de lei apanharam-na.** A máscara de
+        // alcance só corta *«se alguma coisa na pegada estiver virada ao
+        // artista»*; sem essa pergunta, uma fixtura cujo olho é RADIAL
+        // (`Dab::at(c, r, c)`, o construtor que os gates deste ficheiro usam)
+        // lê toda a gente virada ao contrário e a cor DESAPARECE.
+        // *O valor conservador é não cortar quando não há prova.*
+        let le =
+            (dab.eye[0] * dab.eye[0] + dab.eye[1] * dab.eye[1] + dab.eye[2] * dab.eye[2]).sqrt();
+        let olho_bom = le.is_finite() && le > 1e-6;
+        let dot_olho = |n: [f32; 3]| -> f32 {
+            (n[0] * dab.eye[0] + n[1] * dab.eye[1] + n[2] * dab.eye[2]) / le
+        };
+        // ⛔⛔⛔ **E a POPULAÇÃO do armar é quem está DENTRO do raio** — a 1.ª
+        // redacção varria todas as colhidas e SEIS gates de lei reprovaram com
+        // *«o traço não tocou amostra nenhuma»*. A consulta de amostras é por
+        // CAIXA (`faces_in_sphere`) e devolve faces do outro lado da peça; a
+        // pegada de vértices, que é quem a máscara arma, é uma ESFERA. Com as
+        // de fora dentro da conta, uma amostra da face oposta (virada ao
+        // artista) ARMAVA a cerca e as do cursor — que numa fixtura de olho
+        // radial leem `+1` — eram todas cortadas. *Uma lei transplantada tem
+        // de trazer a população dela junto.*
+        let corta_a_folha = brush.surface_only
+            && brush.offers_surface_only()
+            && olho_bom
+            && amostras
+                .iter()
+                .filter(|a| a.dentro)
+                .any(|a| dot_olho(a.nrm) <= crate::dab_alcance::NORMAL_LIMIAR);
         let mut pesos: Vec<f32> = Vec::with_capacity(amostras.len());
         for a in &amostras {
             if !a.dentro {
@@ -394,6 +470,27 @@ impl crate::SculptStroke {
             let dist = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
             let curve =
                 crate::peso_do_ponto::curva_do_ponto(brush, ctx.footprint, a.pos, dist, ctx.inv_r);
+            // ⭐⭐⭐⭐ **A LEI DA FOLHA, na unidade que ESTE laço escreve.**
+            //
+            // ⛔⛔ A máscara de alcance ([`crate::dab_alcance`]) corta VÉRTICES,
+            // e o report de 2026-09-19 (*«Snake Hook … deformando a face
+            // POSTERIOR do traço»*) foi curado ali. A cor fina escreve
+            // AMOSTRAS, e o A/B na barbatana mediu a máscara **inerte** para
+            // ela: `66 179`, `13 035` e `2 536` amostras pintadas com ela
+            // armada **e** desarmada, aos três raios.
+            //
+            // ⚠️ **Das três condições daquela máscara só a NORMAL se transplanta
+            // honestamente:** a conectividade e a razão `superfície/ar` são um
+            // passeio por ARESTAS, e uma amostra não tem vizinhos no grafo. A
+            // folha que o olho vê, essa, é uma pergunta POR PONTO — e é a que
+            // guarda a parede fina.
+            //
+            // ⚠️ O olho degenerado **desliga** a condição em vez de cortar ao
+            // acaso, que é o valor conservador que a máscara já escolhe.
+            if corta_a_folha && dot_olho(a.nrm) > crate::dab_alcance::NORMAL_LIMIAR {
+                pesos.push(0.0);
+                continue;
+            }
             let facing = match brush.mode.kernel_for(brush.verb).front_face {
                 crate::FrontFace::Continuous if brush.front_faces_only => {
                     (-(a.nrm[0] * dab.eye[0] + a.nrm[1] * dab.eye[1] + a.nrm[2] * dab.eye[2]))

@@ -14,12 +14,17 @@
 set -u
 APP=crates/ph2d-app-sculpt3d/src
 PAN=crates/ph2d-panel-sculpt3d/src
+# ⚠️ **O MOTOR entra na rede a partir de 21/09.** As mutacoes M27-M29 vivem na
+# `ph2d-sculpt3d` (as duas cercas do dab e a lei da folha na amostra), e uma
+# arvore que so' guarda `$APP`/`$PAN` deixaria uma mutacao CONGELADA ali se o
+# arnes fosse morto — o incidente do §8-bis, numa crate que ninguem restaura.
+SC=crates/ph2d-sculpt3d/src
 BK=$(mktemp -d)
-cp -r "$APP" "$BK/app"; cp -r "$PAN" "$BK/pan"
+cp -r "$APP" "$BK/app"; cp -r "$PAN" "$BK/pan"; cp -r "$SC" "$BK/sc"
 restore() {
-  rm -rf "$APP" "$PAN"
-  cp -r "$BK/app" "$APP"; cp -r "$BK/pan" "$PAN"
-  find "$APP" "$PAN" -name '*.rs' -exec touch {} +
+  rm -rf "$APP" "$PAN" "$SC"
+  cp -r "$BK/app" "$APP"; cp -r "$BK/pan" "$PAN"; cp -r "$BK/sc" "$SC"
+  find "$APP" "$PAN" "$SC" -name '*.rs' -exec touch {} +
 }
 trap restore EXIT
 
@@ -256,6 +261,26 @@ muta "$APP/input_down.rs" \
   '            if took || scene.brush.verb.paints_color() {' \
   '            if took {' \
   'M26 um traco de cor que comeca fora da peca volta a virar orbita'
+
+# ---- ⭐ O 3.º REPORT DE 21/09: «a tinta so' e' depositada se o pincel esta'
+#      sobre um vertex». As duas cercas do dab contam VERTICES e a unidade que
+#      a tinta fina escreve e' a AMOSTRA; a terceira e' a lei da folha na
+#      unidade certa. ⚠️ As tres tem gate de comportamento, e os tres sao
+#      `#[ignore]` + placa — logo quem as mata aqui e' o elo no censo de texto.
+muta "$SC/stroke_dab_core.rs" \
+  '        if pegada_ja_vazia && !so_amostras {' \
+  '        if pegada_ja_vazia {' \
+  'M27 a pegada VAZIA volta a matar o dab de cor fina'
+
+muta "$SC/stroke_dab_core.rs" \
+  '            if self.footprint.is_empty() && !(so_amostras && pegada_ja_vazia) {' \
+  '            if self.footprint.is_empty() {' \
+  'M28 a mascara volta a decidir sem um vertice sobre que julgar'
+
+muta "$SC/tinta_fina.rs" \
+  '            if corta_a_folha && dot_olho(a.nrm) > crate::dab_alcance::NORMAL_LIMIAR {' \
+  '            if false && dot_olho(a.nrm) > crate::dab_alcance::NORMAL_LIMIAR {' \
+  'M29 a lei da folha deixa de valer para a AMOSTRA'
 
 echo
 echo "MUTACAO: $sangram de $total sangram"

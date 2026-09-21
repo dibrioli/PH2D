@@ -238,39 +238,6 @@ fn o_interruptor_nao_triangula_a_peca_com_a_tinta_fina_armada() {
     );
 }
 
-/// Sonda: ONDE mora o plano em cada passo de dois traços de cor.
-#[test]
-#[ignore = "precisa de adaptador"]
-fn diag_onde_mora_o_plano_entre_dois_tracos() {
-    let gpu = gpu_or_skip!();
-    let mut s = cena_52(&gpu.device);
-    let (on, _) = s.toggle_dyntopo();
-    eprintln!("[diag] interruptor armado = {on}");
-    s.sync_mesh(&gpu.device, &gpu.queue);
-    fn onde(s: &Sculpt3dScene, quando: &str) {
-        eprintln!(
-            "[diag] {quando:<28} peca={:?} traco={:?} nivel={:?} topo={:?}",
-            s.objects[s.active]
-                .tinta
-                .as_ref()
-                .map(|t| t.amostras().len()),
-            s.stroke.tinta_fina.as_ref().map(|t| t.tocadas().len()),
-            s.tinta_nivel,
-            topologia(s),
-        );
-    }
-    onde(&s, "inicio");
-    let a = traco(&mut s, 400.0);
-    onde(&s, "A: pen-up, pre-sync");
-    s.sync_mesh(&gpu.device, &gpu.queue);
-    onde(&s, "A: pos-sync");
-    let b = traco(&mut s, 250.0);
-    onde(&s, "B: pen-up, pre-sync");
-    s.sync_mesh(&gpu.device, &gpu.queue);
-    onde(&s, "B: pos-sync");
-    eprintln!("[diag] pen-down aceite: A={a} B={b}");
-}
-
 /// ⭐⭐⭐⭐ **GATE — UM CLIQUE FORA DA PEÇA NÃO LEVA O PLANO COM ELE.**
 ///
 /// ⛔⛔ **O defeito que isto impede foi o que sobrou do report de 21/09 depois
@@ -362,49 +329,6 @@ fn gesto(s: &mut Sculpt3dScene, x0: f32, x1: f32, n: u16) -> bool {
     ok
 }
 
-/// Sonda do report de 21/09: *«se comecar a pintar sem tocar um vertex acontece
-/// mais vezes de sumir a pintura»*.
-#[test]
-#[ignore = "precisa de adaptador"]
-fn diag_o_gesto_que_comeca_fora_da_peca() {
-    let gpu = gpu_or_skip!();
-    let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
-    let nasceu = amostras(&s).len();
-    fn conta(s: &Sculpt3dScene) -> usize {
-        amostras(s)
-            .iter()
-            .filter(|c| **c != [1.0, 1.0, 1.0])
-            .count()
-    }
-    let estado = |s: &Sculpt3dScene, q: &str| {
-        eprintln!(
-            "[diag] {q:<34} plano={:<7?} traco={:<8?} pintadas={:<6} drag_aberto={}",
-            amostras(s).len(),
-            s.stroke.tinta_fina.as_ref().map(|t| t.tocadas().len()),
-            conta(s),
-            s.drag.is_some(),
-        );
-    };
-    eprintln!("[diag] o plano nasceu com {nasceu} amostras; a peca ocupa x em [280, 610]");
-    estado(&s, "inicio");
-
-    // (A) um traco NORMAL, todo dentro da peca.
-    gesto(&mut s, 380.0, 460.0, 10);
-    s.sync_mesh(&gpu.device, &gpu.queue);
-    estado(&s, "A: dentro da peca");
-
-    // (B) o gesto do report: COMECA FORA e entra na peca.
-    gesto(&mut s, 150.0, 480.0, 20);
-    s.sync_mesh(&gpu.device, &gpu.queue);
-    estado(&s, "B: comecou FORA, entrou");
-
-    // (C) e um traco normal outra vez, para ver o que sobrou.
-    gesto(&mut s, 380.0, 460.0, 10);
-    s.sync_mesh(&gpu.device, &gpu.queue);
-    estado(&s, "C: dentro outra vez");
-}
-
 /// ⭐⭐⭐⭐ **GATE — UM TRAÇO DE COR QUE COMEÇA FORA DA PEÇA PINTA.**
 ///
 /// ⛔⛔ **Report do dono (21/09, o SEGUNDO sobre o mesmo sintoma):** *«se começar
@@ -476,3 +400,130 @@ fn um_traco_de_cor_que_comeca_fora_da_peca_pinta() {
          intacta para quem muda a FORMA"
     );
 }
+
+/// Quantas amostras estão pintadas (≠ branco) no plano da peça activa.
+fn pintadas(s: &Sculpt3dScene) -> usize {
+    amostras(s)
+        .iter()
+        .filter(|c| **c != [1.0, 1.0, 1.0])
+        .count()
+}
+
+/// Varre o ecrã de 5 em 5 píxeis com UM clique em cada sítio e devolve em
+/// quantos deles alguma coisa foi pintada.
+fn sitios_que_pintam(gpu: &ph2d_gpu::GpuContext, raio: f32, nivel: Option<u8>) -> (usize, usize) {
+    let mut s = cena_52(&gpu.device);
+    s.tinta_nivel = nivel;
+    s.radius_px = raio;
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let (mut acertos, mut sitios) = (0usize, 0usize);
+    let mut antes = pintadas(&s);
+    let mut x = 300.0f32;
+    while x <= 600.0 {
+        gesto(&mut s, x, x, 1);
+        s.sync_mesh(&gpu.device, &gpu.queue);
+        let agora = pintadas(&s);
+        sitios += 1;
+        if agora > antes {
+            acertos += 1;
+        }
+        antes = agora;
+        x += 5.0;
+    }
+    (acertos, sitios)
+}
+
+/// ⭐⭐⭐⭐ **A TINTA FINA NÃO PRECISA DE UM VÉRTICE DEBAIXO DO PINCEL** —
+/// report do dono, 21/09: *«a tinta só é depositada se o pincel está sobre um
+/// vertex»*.
+///
+/// ⛔⛔ **A régua é a fracção de SÍTIOS que pintam, e não quanto pintam.** O
+/// defeito era um mapa em ILHAS — a tinta caía onde a rede de vértices estava
+/// e em mais lado nenhum —, e uma contagem de amostras somada sobre a varredura
+/// esconde isso atrás dos sítios que funcionavam.
+///
+/// ⚠️ **O CONTROLO é o MESMO gesto com a tinta no modo `Mesh`**, onde a cor
+/// mora nos vértices e precisar de um é a LEI. Sem ele este gate passaria com
+/// um pincel que pinta a peça inteira a cada clique.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn a_tinta_fina_nao_precisa_de_um_vertice_debaixo_do_pincel() {
+    let gpu = gpu_or_skip!();
+    let fino = crate::scenes::tinta_fina::DEGRAU_DA_LICAO.nivel();
+    assert!(fino.is_some(), "premissa: o degrau da lição arma o plano");
+    for raio in [6.0f32, 12.0] {
+        let (com, n) = sitios_que_pintam(&gpu, raio, fino);
+        assert_eq!(
+            com,
+            n,
+            "raio {raio}: a tinta fina deixou {} de {n} sítios sem pintar — \
+             é o report de 21/09, e o mapa das que pintam é a rede de vértices",
+            n - com
+        );
+        let (sem, n2) = sitios_que_pintam(&gpu, raio, None);
+        assert_eq!(n, n2, "as duas varreduras têm de ter os mesmos sítios");
+        assert!(
+            sem < com,
+            "CONTROLO: no modo `Mesh` a cor mora nos VÉRTICES e precisar de um é \
+             a lei — se ele também pinta em {sem} de {n2} sítios, esta régua não \
+             mede a tinta fina"
+        );
+    }
+}
+
+/// ⭐⭐⭐⭐ **A FOLHA QUE O OLHO VÊ VALE PARA A AMOSTRA** — a lei que a máscara
+/// de alcance aplica ao VÉRTICE desde 2026-09-19, na unidade que a tinta fina
+/// escreve.
+///
+/// ⛔⛔ Antes desta wave ela era **inerte** para a cor fina, e isso está
+/// medido: o mesmo traço na barbatana pintava o mesmo número de amostras com a
+/// máscara armada e desarmada.
+///
+/// ⚠️ **O CONTROLO é o raio PEQUENO**: ali a esfera do dab não alcança as
+/// costas, logo não há o que cortar e as duas colunas TÊM de ler igual. Sem
+/// ele, uma cerca que cortasse por engano em todo lado passaria.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn a_folha_que_o_olho_ve_vale_para_a_amostra() {
+    let gpu = gpu_or_skip!();
+    let conta = |mascara: bool, raio: f32| -> usize {
+        let mut s = Sculpt3dScene::new(&gpu.device, crate::scenes::parede_fina::barbatana(), 1.0);
+        s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+        ph2d_panel_sculpt3d::state::switch_verb_parts(
+            &mut s.verb_slots,
+            &mut s.brush,
+            &mut s.radius_px,
+            Verb::Paint,
+        );
+        s.brush.color = [1.0, 0.0, 0.0];
+        s.brush.surface_only = mascara;
+        s.tinta_nivel = crate::scenes::tinta_fina::DEGRAU_DA_LICAO.nivel();
+        s.radius_px = raio;
+        s.sync_mesh(&gpu.device, &gpu.queue);
+        gesto(&mut s, 420.0, 470.0, 8);
+        s.sync_mesh(&gpu.device, &gpu.queue);
+        pintadas(&s)
+    };
+    // ⚠️ A barbatana tem `0,06` de espessura: um pincel GORDO alcança as costas
+    // e um FINO não. É essa a fronteira que separa as duas metades do gate.
+    let (armada, livre) = (conta(true, 64.0), conta(false, 64.0));
+    assert!(livre > 0, "premissa: o traço tem de pintar alguma coisa");
+    assert!(
+        armada * 10 < livre * 8,
+        "a máscara não cortou nada de substancial na tinta fina: {armada} contra \
+         {livre} — antes desta wave ela era INERTE aqui, e a lei da folha tem de \
+         valer para a AMOSTRA e não só para o vértice"
+    );
+    let (perto_a, perto_l) = (conta(true, 10.0), conta(false, 10.0));
+    assert_eq!(
+        perto_a, perto_l,
+        "CONTROLO: com o pincel fino a esfera não alcança as costas da folha, \
+         logo não há o que cortar e as duas colunas têm de ler igual"
+    );
+}
+
+/// ⭐ **AS SONDAS vivem no irmão** — ver [`sondas`]. O corte foi por
+/// responsabilidade quando o par cruzou o tecto de LOC: *um gate AFIRMA e uma
+/// sonda MEDE*, e as que medem imprimem tabelas sem barra nenhuma.
+#[path = "tinta_no_produto_sondas.rs"]
+mod sondas;

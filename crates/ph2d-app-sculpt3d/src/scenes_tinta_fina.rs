@@ -171,8 +171,16 @@ pub(crate) fn announce() {
          [sculpt3d]           este gesto nao pintava NADA, e lia-se como a tinta a sumir.\n\
          [sculpt3d]        -> O PRECO: com um pincel de cor, arrastar no vazio ja' NAO\n\
          [sculpt3d]           roda a camara. Para rodar, use o botao DIREITO.\n\
+         [sculpt3d]    (6-quater) Escolha um pincel BEM FINO (a pista `Radius`) e\n\
+         [sculpt3d]        pinte entre dois quadrados do arame, longe de um canto.\n\
+         [sculpt3d]        -> A marca SAI. Ate' 21/09 a tinta so' caia quando o pincel\n\
+         [sculpt3d]           apanhava um CANTO do arame: o deposito pedia um vertice,\n\
+         [sculpt3d]           e a tinta fina existe precisamente para nao o pedir.\n\
          [sculpt3d]    (7) `Ctrl+Z` algumas vezes.\n\
-         [sculpt3d]        -> A tinta volta atras, passo a passo, com plano ou sem ele.\n\
+         [sculpt3d]        -> No modo `Mesh` a tinta volta atras, passo a passo.\n\
+         [sculpt3d]        ⚠️ COM o plano armado (`2x`..`16x`) o Ctrl+Z NAO desfaz a\n\
+         [sculpt3d]           tinta -- esta' MEDIDO e e' um buraco conhecido, nao uma\n\
+         [sculpt3d]           regressao desta sessao. Nao reporte; ja' esta' na fila.\n\
          [sculpt3d]\n\
          [sculpt3d]    COMO SABER QUE DEU ERRADO: se no (4) a borda sair igual a' do (2),\n\
          [sculpt3d]    ou se o arame ADENSAR quando voce so' trocou a fileira, PARE e\n\

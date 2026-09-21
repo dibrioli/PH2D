@@ -1,4 +1,4 @@
-//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os SEIS elos que a cura desta
+//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os NOVE elos que a cura desta
 //! wave precisa de ter LIGADOS: os três consumidores da porta
 //! [`crate::tinta_da_peca::o_gesto_muda_a_topologia`], a metade da porta que lê
 //! a tinta **EMPRESTADA**, e o `close_stroke` do gesto que **erra** a peça.
@@ -55,6 +55,12 @@ const DYNTOPO: &str = include_str!("dyntopo.rs");
 const PEN_DOWN: &str = include_str!("history_dyntopo.rs");
 const PORTA: &str = include_str!("tinta_da_peca.rs");
 const INPUT_DOWN: &str = include_str!("input_down.rs");
+/// ⚠️ **Caminho relativo para FORA da crate, e é de propósito:** estes dois
+/// elos vivem no MOTOR (`ph2d-sculpt3d`) e o censo vive na FAMÍLIA, porque é a
+/// família que tem a cena e os gates de produto. Um `git mv` do motor faz isto
+/// **falhar a COMPILAR**, que é a metade barata da família (HOWTO §2).
+const DAB_CORE: &str = include_str!("../../ph2d-sculpt3d/src/stroke_dab_core.rs");
+const TINTA_FINA: &str = include_str!("../../ph2d-sculpt3d/src/tinta_fina.rs");
 
 /// Cada elo: o ficheiro, a agulha, e o nome da mutação que ela mata.
 fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
@@ -133,6 +139,34 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
             "            if took || scene.brush.verb.paints_color() {".to_string(),
             INPUT_DOWN,
         ),
+        // ⭐⭐⭐⭐ **Os TRÊS elos do 3.º report de 21/09** — *«a tinta só é
+        // depositada se o pincel está sobre um vertex»*. As duas cercas do dab
+        // contam VÉRTICES, e a unidade que a tinta fina escreve é a AMOSTRA;
+        // a terceira é a lei da folha, transplantada para essa unidade.
+        //
+        // ⚠️ Os três têm gate de comportamento em `tinta_no_produto_tests.rs`,
+        // e os três são `#[ignore]` + placa — que é exactamente a população
+        // que nem o arnês de mutação nem o CI correm.
+        (
+            "stroke_dab_core.rs",
+            "M27 a pegada VAZIA volta a matar o dab de cor fina",
+            "        if pegada_ja_vazia && !so_amostras {".to_string(),
+            DAB_CORE,
+        ),
+        (
+            "stroke_dab_core.rs",
+            "M28 a máscara volta a decidir sem ter um único vértice sobre que julgar",
+            "            if self.footprint.is_empty() && !(so_amostras && pegada_ja_vazia) {"
+                .to_string(),
+            DAB_CORE,
+        ),
+        (
+            "tinta_fina.rs",
+            "M29 a lei da folha deixa de valer para a AMOSTRA",
+            "            if corta_a_folha && dot_olho(a.nrm) > crate::dab_alcance::NORMAL_LIMIAR {"
+                .to_string(),
+            TINTA_FINA,
+        ),
     ]
 }
 
@@ -143,9 +177,9 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
 /// busca falhar em voz alta — mas um que devolvesse **tudo** faria a prosa
 /// satisfazer a agulha, e é isso que o [`so_a_prosa`] recusa.
 #[test]
-fn a_cura_da_tinta_fina_esta_ligada_nos_seis_sitios() {
+fn a_cura_da_tinta_fina_esta_ligada_nos_nove_sitios() {
     let elos = elos();
-    assert_eq!(elos.len(), 6, "a população deste censo são os seis elos");
+    assert_eq!(elos.len(), 9, "a população deste censo são os nove elos");
 
     for (ficheiro, mutacao, agulha, fonte) in elos {
         let codigo = sem_prosa(fonte);

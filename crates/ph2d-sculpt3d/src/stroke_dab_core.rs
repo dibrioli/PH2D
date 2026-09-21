@@ -85,7 +85,13 @@ impl SculptStroke {
             Some(i) => self.footprint.clone_from(&self.pegada_ancorada[i].verts),
             None => mesh.verts_in_sphere(dab.center, query_r, &mut self.query, &mut self.footprint),
         }
-        if self.footprint.is_empty() {
+        // ⭐⭐⭐⭐ **A 1.ª das TRÊS cercas de VÉRTICES, e a tinta fina pinta
+        // AMOSTRAS** — o mecanismo, o mapa em ilhas e os números estão em
+        // [`crate::tinta_fina`] (a lei corre lá, e a prosa foi para lá quando
+        // este ficheiro cruzou o tecto de LOC).
+        let so_amostras = brush.verb.paints_color() && self.tinta_fina.is_some();
+        let pegada_ja_vazia = self.footprint.is_empty();
+        if pegada_ja_vazia && !so_amostras {
             return 0;
         }
         if congela && guardada.is_none() {
@@ -138,7 +144,11 @@ impl SculptStroke {
                 &mut self.footprint,
                 Some(&memoria),
             );
-            if self.footprint.is_empty() {
+            // ⭐⭐⭐⭐ **A MÁSCARA DECIDE QUANDO TEM PROVA** — se ela CORTOU e
+            // não sobrou ninguém, decidiu; se a pegada já estava vazia, não
+            // havia um vértice sobre que julgar. Ver [`crate::tinta_fina`],
+            // com o A/B que mede que ela já era INERTE para a cor fina.
+            if self.footprint.is_empty() && !(so_amostras && pegada_ja_vazia) {
                 return 0;
             }
         }
@@ -620,7 +630,11 @@ impl SculptStroke {
                 *out = Some((v, s, new_accum, new_target));
             });
 
-            if self.moved.is_empty() {
+            // ⭐⭐⭐⭐ **A 3.ª cerca de VÉRTICES** — `moved` são os vértices que
+            // o carimbo mexeu, e a cor fina mexe AMOSTRAS. Mecanismo e
+            // números: [`crate::tinta_fina`].
+            let so_amostras = brush.verb.paints_color() && self.tinta_fina.is_some();
+            if self.moved.is_empty() && !so_amostras {
                 return 0;
             }
             self.last_paints_mask = brush.verb.escreve_um_canal();

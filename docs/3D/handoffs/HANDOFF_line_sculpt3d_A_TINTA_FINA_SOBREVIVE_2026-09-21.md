@@ -592,3 +592,140 @@ uma vassoura é do R, nunca da janela I** — fica NOMEADO, com a medição, com
   orbitar).
 - ⏳ O empréstimo por `active` (§10.5), latente e nomeado.
 - ⏳ O **SMOKE**: a `=52` passa a ter um passo que começa o traço FORA da bola.
+
+---
+
+## §11 — «A TINTA SÓ É DEPOSITADA SE O PINCEL ESTÁ SOBRE UM VERTEX»
+
+> *«o problema da tinta sumindo já foi resolvido, mas a tinta só é depositada
+> se o pincel está sobre um vertex»* — o dono, 2026-09-21, o **terceiro** report
+> do dia, depois do §10.
+
+⭐ **A primeira metade do report é o veredito do §10:** o plano deixou de morrer.
+A segunda é um defeito **separado**, que o §10 tornou visível ao devolver o
+traço a quem começava fora da peça.
+
+### §11.1 — A reprodução, e a régua é o MAPA e não a quantidade
+
+A sonda `diag_a_tinta_so_cai_onde_ha_vertice` varre o ecrã de 5 em 5 píxeis com
+**um clique em cada sítio** e imprime `#` onde alguma amostra foi pintada:
+
+```
+a peça tem 738 vertices e 768 faces; aresta média 0,1304
+raio  6 px  pintou em  3/61  ...#....................................................##...
+raio 12 px  pintou em 23/61  ..###..###...........###....####....###...........###..###..#
+raio 24 px  pintou em 61/61  #############################################################
+raio 48 px  pintou em 61/61  #############################################################
+```
+
+⛔⛔ **A régua tinha de ser a FRACÇÃO DE SÍTIOS e não a contagem de amostras:**
+o defeito é um mapa em **ILHAS**, e somar as amostras da varredura inteira
+esconde-o atrás dos sítios que funcionavam. *O mapa das posições que pintam é a
+rede de vértices, e é isso que o dono descreve.*
+
+### §11.2 — ⛔⛔⛔ A minha primeira atribuição estava ERRADA, e a medição disse-o
+
+Escrevi a cura no `if self.moved.is_empty()` do fim do dab — a cerca que conta
+os vértices que o carimbo MOVEU — e a re-medição devolveu **o mapa idêntico,
+carácter a carácter**. *Uma cura que não move a régua não é a cura*, e a
+segunda tentativa (a cerca da PEGADA, no princípio do dab) deu exactamente o
+mesmo.
+
+⭐⭐ **Quem resolveu foi o RASTO, não o raciocínio:** um `eprintln!` atrás de
+`PH2D_DAB_TRACE` em cada cerca mostrou o dab a passar as duas e a morrer numa
+**terceira** — a da máscara de alcance, que corre depois delas:
+
+```
+[trace] dab_core: r=0,0315 footprint=0 so_amostras=true fina=true
+[trace] pos-mascara: footprint=0 (surface_only=true)     ← 96 das corridas
+[trace] chegou ao ramo da COR fina                       ← 148
+```
+
+⚠️ **São TRÊS cercas de vértices em fila** (`pegada` · `máscara` · `movidos`), e
+cada uma sozinha lê-se como *a* causa. *Uma cadeia de guardas só se ataca com
+um instrumento que diz em qual delas se morre.*
+
+### §11.3 — A máscara decide quando tem PROVA
+
+A cerca da máscara fica — mas com a pergunta certa: se ela **cortou** vértices e
+não sobrou nenhum, ela decidiu, e o dab morre para todos. Se a pegada **já
+estava vazia**, ela não julgou nada — não havia um único vértice sobre que
+julgar — e a unidade que sobra é a **amostra**.
+
+### §11.4 — ⛔⛔ E abrir essa cerca obrigou a uma segunda cura, porque a máscara
+### já era INERTE para a cor fina
+
+O A/B (`diag_a_mascara_ainda_decide_na_tinta_fina`) sobre a barbatana de `0,06`
+de espessura, o MESMO traço com a máscara armada e desarmada:
+
+| raio | armada | desarmada |
+|---|---|---|
+| 64 px | `66 179` | `66 179` |
+| 24 px | `13 035` | `13 035` |
+| 10 px | `2 536` | `2 536` |
+
+⛔⛔⛔ **Iguais aos três raios: a `Connected Only` — que o dono mandou shipar
+LIGADA — não cortava uma única amostra de cor fina.** A cura do report de 19/09
+(*«Snake Hook … deformando a face POSTERIOR»*) protege o VÉRTICE, e a tinta fina
+escreve AMOSTRAS: *o pincel já pintava as costas de uma parede fina, e ninguém
+tinha medido*.
+
+⇒ a lei da folha passa a valer para a amostra. Depois da cura:
+
+| raio | armada | desarmada |
+|---|---|---|
+| 64 px | **`33 841`** | `66 179` |
+| 24 px | **`7 603`** | `13 035` |
+| 10 px | `2 536` | `2 536` ← **o CONTROLO** |
+
+⭐ **A linha do raio pequeno é o controlo que dá direito às outras duas:** ali a
+esfera do dab não alcança as costas, logo não há o que cortar — e as duas
+colunas TÊM de ler igual.
+
+⚠️ **Das três condições daquela máscara só a NORMAL se transplanta:** a
+conectividade e a razão `superfície/ar` são um passeio por ARESTAS, e uma
+amostra não tem vizinhos no grafo.
+
+### §11.5 — ⛔⛔ E a transplantação custou DUAS correcções, as duas por gates vermelhos
+
+1. **O ARMAR.** A máscara só corta *«se alguma coisa na pegada estiver virada ao
+   artista»*, e a minha 1.ª redacção largou essa metade ⇒ **seis** gates de lei
+   reprovaram com *«o traço não tocou amostra nenhuma»*: as fixturas daquele
+   ficheiro constroem o dab com `Dab::at(c, r, c)` — **o olho é RADIAL** —, e
+   sem o armar toda a gente lê *virada ao contrário*.
+2. **A POPULAÇÃO do armar.** Com o armar escrito mas a varrer **todas** as
+   amostras colhidas, os mesmos seis continuaram vermelhos: a consulta de
+   amostras é por **CAIXA** (`faces_in_sphere`) e traz faces do outro lado da
+   peça, enquanto a pegada de vértices é uma **ESFERA**. Uma amostra da face
+   oposta armava a cerca e as do cursor eram todas cortadas. ⇒ o armar conta só
+   quem está **dentro** do raio.
+
+⭐⭐⭐ *Uma lei transplantada tem de trazer a POPULAÇÃO dela junto — e as duas
+correcções foram achadas por gates que já existiam, não por leitura.*
+
+### §11.6 — ⛔ E uma coisa que eu MEDI e NÃO curei: o `Ctrl+Z`
+
+`diag_o_ctrl_z_desfaz_a_tinta_fina`, pelo caminho do produto (a tecla, pela
+porta que a shell chama):
+
+```
+antes do traço:  0 amostras pintadas
+depois do traço: 1010
+Ctrl+Z consumido=true; depois do desfazer: 1010
+```
+
+⛔⛔ **Com o plano armado o desfazer não devolve uma única amostra.** A entrada
+de desfazer é a janela de **vértices tocados** (`touched` + `base_colors`), e a
+cor fina não escreve no canal por-vértice — o `close_stroke` até sai cedo quando
+essa janela está vazia.
+
+⚠️⚠️ **E o roteiro da `=52` dizia o contrário** (*«a tinta volta atrás, passo a
+passo, **com plano ou sem ele**»*) — a espécie que o §5.0 do roteador chama de
+**pior que uma cena ausente**. O passo (7) foi corrigido para dizer o que
+acontece e para o dono **não** o reportar como regressão.
+
+⭐ **O material da cura já existe e está pago:** o `TintaDoTraco` guarda
+`tocadas` (as amostras do traço) e `base` (a cor delas antes) — é a janela, com
+a mesma forma da que o canal por-vértice usa. Falta a variante de `StrokeUndo` e
+o `swap` involutivo que serve desfazer e refazer com um buffer só. **Wave
+própria, nomeada, com o material identificado.**

@@ -4,10 +4,39 @@
 //! Pure data (no painting) — the name drops the `paint_` prefix so the HR-12 a11y gate (which checks
 //! `paint*.rs` orchestrator files) skips it.
 
-use ph2d_tool_painter::{BrushSettings, FalloffPoint, HandleType};
+use ph2d_tool_painter::{BrushSettings, FalloffPoint, HandleType, N_COMPOSITE_LAYERS as N_CAMADAS};
 
 /// Padding entry for the fixed-size `falloff_points` array (only the first
 /// `falloff_len` are read).
+/// As operações de fábrica da pilha (`Brush · Smear · Blur · Erase · Brush · …`), com tudo o que
+/// passa das cinco primeiras a `Brush` CALADO. ⚠️ Derivadas, nunca escritas — ver `N_CAMADAS`.
+const OPS_DE_FABRICA: [u8; N_CAMADAS] = {
+    let mut a = [0u8; N_CAMADAS];
+    if N_CAMADAS > 1 {
+        a[1] = 1;
+    }
+    if N_CAMADAS > 2 {
+        a[2] = 2;
+    }
+    if N_CAMADAS > 3 {
+        a[3] = 3;
+    }
+    a
+};
+
+/// A força de fábrica: só as três primeiras posições falam.
+const FORCAS_DE_FABRICA: [f32; N_CAMADAS] = {
+    let mut a = [0.0f32; N_CAMADAS];
+    a[0] = 1.0;
+    if N_CAMADAS > 1 {
+        a[1] = 0.5;
+    }
+    if N_CAMADAS > 2 {
+        a[2] = 0.5;
+    }
+    a
+};
+
 const FALLOFF_PT_NIL: FalloffPoint = FalloffPoint {
     id: 0,
     x: 0.0,
@@ -101,17 +130,17 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     clone_aligned: true,
     clone_sample_armed: false,
     composite_enabled: false,
-    // Brush / Smear / Blur / Erase / Brush — espelha o `PaintState::default`, com as DUAS últimas
-    // posições a Strength ZERO (é o Strength que as mantém caladas, nunca a operação).
-    composite_ops: [0, 1, 2, 3, 0],
-    composite_strength: [1.0, 0.5, 0.5, 0.0, 0.0],
-    // As cinco seguem a cor do pincel (o preto do fallback) e o tamanho dele.
-    composite_color: [[0.0, 0.0, 0.0]; 5],
-    composite_color_authored: [false; 5],
-    composite_hardness: [1.0; 5],
-    composite_hardness_authored: [false; 5],
-    composite_erase_scope: [0; 5],
-    composite_size: [1.0; 5],
+    // Espelha o `PaintState::default`, e a FORMA é derivada de `N_CAMADAS` — ⚠️ um `5` escrito à
+    // mão aqui é a segunda resposta que aquela const existe para não haver (a extensão de 21/09
+    // encontrou-a em NOVE sítios, oito deles no instantâneo).
+    composite_ops: OPS_DE_FABRICA,
+    composite_strength: FORCAS_DE_FABRICA,
+    composite_color: [[0.0, 0.0, 0.0]; N_CAMADAS],
+    composite_color_authored: [false; N_CAMADAS],
+    composite_hardness: [1.0; N_CAMADAS],
+    composite_hardness_authored: [false; N_CAMADAS],
+    composite_erase_scope: [0; N_CAMADAS],
+    composite_size: [1.0; N_CAMADAS],
     tiling: [false, false],
     repeat_image: false,
     // Symmetry section — disabled by default (mirror X, 6 segments), no pick mode armed.

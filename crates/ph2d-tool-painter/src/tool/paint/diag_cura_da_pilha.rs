@@ -347,3 +347,195 @@ fn diag_cura_o_residuo() {
         }
     }
 }
+
+/// ⭐⭐⭐ **O CUSTO MARGINAL DE UMA CAMADA** — a pergunta do dono de 2026-09-21: *«qual o custo de
+/// mais duas camadas de Brush e Erase?»*
+///
+/// ⚠️ A pergunta anterior dele (mais duas tools, 20/09) foi respondida sobre o motor de REPLAY,
+/// onde cada camada multiplicava a janela. Com a acumulação cada camada é **um depósito dos dabs
+/// NOVOS + uma passagem sobre a região**, logo a lei esperada é linear — e é isso que esta sonda
+/// mede em vez de assumir.
+#[test]
+#[ignore = "sonda de relógio: corre à mão, em --release e com a máquina calma"]
+fn diag_cura_o_custo_marginal_de_uma_camada() {
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    // ⚠️ **As duas últimas tabelas precisam de posições que a pilha de hoje não tem.** Elas
+    // RECUSAM em voz alta em vez de medir menos e parecer que mediram — *uma sonda que mede um
+    // subconjunto sem o dizer é a régua que fica verde sobre o nada*. Para as reproduzir, ponha
+    // `N_CAMADAS = 7` no `composite.rs` (a forma de tudo o resto é derivada dela).
+    if composite::N_CAMADAS < 7 {
+        println!(
+            "\n  ⚠️ `N_CAMADAS = {}`: as tabelas da PERGUNTA DO DONO e da CAUSA precisam de 7 \
+             posições e ficam FORA desta corrida.",
+            composite::N_CAMADAS
+        );
+    }
+    println!(
+        "\n  O CUSTO MARGINAL DE UMA CAMADA  (load {})",
+        carga.trim()
+    );
+    println!("  canvas 1024² · rabisco de 240 passos sobre arte · passo 2 px\n");
+    println!("  pilha                      | activas |     ms |  ms/ev | marginal");
+    println!("  ---------------------------+---------+--------+--------+---------");
+    for (nome, op) in [
+        ("k × Brush", CompositeOp::Brush),
+        ("k × Erase", CompositeOp::Erase),
+    ] {
+        let mut anterior = 0f64;
+        for k in 1..=composite::N_CAMADAS {
+            let mut melhor = f64::MAX;
+            for _ in 0..3 {
+                let mut t = tela_com_arte(40.0, 0);
+                for pos in 0..k {
+                    t.paint.composite[pos] = CompositeLayer {
+                        op,
+                        strength: 0.5,
+                        color: (op == CompositeOp::Brush).then_some([1.0, 0.0, 0.0]),
+                        ..CompositeLayer::default()
+                    };
+                }
+                let pts = caminho_rabisco(240);
+                let ini = std::time::Instant::now();
+                corre(&mut t, &pts);
+                melhor = melhor.min(ini.elapsed().as_secs_f64() * 1e3);
+            }
+            let marg = if k == 1 {
+                "—".to_string()
+            } else {
+                format!("{:+6.2} ms", melhor - anterior)
+            };
+            println!(
+                "  {nome:26} | {k:7} | {melhor:6.1} | {:6.2} | {marg}",
+                melhor / 241.0
+            );
+            anterior = melhor;
+        }
+    }
+
+    println!("\n  A PERGUNTA DO DONO: a pilha dele MAIS um Brush e MAIS uma borracha\n");
+    println!("  configuração                          | activas |     ms |  ms/ev | marginal");
+    println!("  --------------------------------------+---------+--------+--------+---------");
+    let mut anterior = 0f64;
+    for (nome, extra) in [
+        ("a de hoje (4 activas)", &[][..]),
+        ("+ 1 Brush", &[(CompositeOp::Brush, 0.3)][..]),
+        (
+            "+ 1 Brush e 1 Erase",
+            &[(CompositeOp::Brush, 0.3), (CompositeOp::Erase, 0.3)][..],
+        ),
+    ] {
+        let (mut melhor, mut activas) = (f64::MAX, 0usize);
+        for _ in 0..3 {
+            let mut t = tela_com_arte(40.0, 0);
+            pilha_do_dono(&mut t);
+            for (k, &(op, forca)) in extra.iter().enumerate() {
+                let pos = 5 + k;
+                if pos < composite::N_CAMADAS {
+                    t.paint.composite[pos] = CompositeLayer {
+                        op,
+                        strength: forca,
+                        color: (op == CompositeOp::Brush).then_some([0.0, 1.0, 0.0]),
+                        ..CompositeLayer::default()
+                    };
+                }
+            }
+            activas = t.camadas_activas();
+            let pts = caminho_rabisco(240);
+            let ini = std::time::Instant::now();
+            corre(&mut t, &pts);
+            melhor = melhor.min(ini.elapsed().as_secs_f64() * 1e3);
+        }
+        let marg = if anterior == 0.0 {
+            "—".to_string()
+        } else {
+            format!("{:+6.1} ms", melhor - anterior)
+        };
+        println!(
+            "  {nome:37} | {activas:7} | {melhor:6.1} | {:6.2} | {marg}",
+            melhor / 241.0
+        );
+        anterior = melhor;
+    }
+    println!("\n  DE ONDE VEM A DIFERENÇA (o marginal isolado é ~29 ms, na pilha dele é ~134)\n");
+    println!("  configuração                          | activas |     ms | marginal");
+    println!("  --------------------------------------+---------+--------+---------");
+    for (nome, smear, extra) in [
+        ("a dele SEM o Smear", false, false),
+        ("a dele SEM o Smear, + 1 Brush", false, true),
+        ("a dele COM o Smear", true, false),
+        ("a dele COM o Smear, + 1 Brush", true, true),
+    ] {
+        let (mut melhor, mut activas) = (f64::MAX, 0usize);
+        for _ in 0..3 {
+            let mut t = tela_com_arte(40.0, 0);
+            pilha_do_dono(&mut t);
+            if !smear {
+                t.paint.composite[4].strength = 0.0;
+            }
+            let livre = 5usize;
+            if extra && livre < composite::N_CAMADAS {
+                t.paint.composite[livre] = CompositeLayer {
+                    op: CompositeOp::Brush,
+                    strength: 0.3,
+                    color: Some([0.0, 1.0, 0.0]),
+                    ..CompositeLayer::default()
+                };
+            }
+            activas = t.camadas_activas();
+            let pts = caminho_rabisco(240);
+            let ini = std::time::Instant::now();
+            corre(&mut t, &pts);
+            melhor = melhor.min(ini.elapsed().as_secs_f64() * 1e3);
+        }
+        println!("  {nome:37} | {activas:7} | {melhor:6.1} |");
+    }
+    println!("\n  A CAUSA: o marginal de uma camada é O(REGIÃO), e o avental do Blur manda nela\n");
+    println!("  pilha                      | activas |     ms | marginal");
+    println!("  ---------------------------+---------+--------+---------");
+    for com_blur in [false, true] {
+        let mut anterior = 0f64;
+        for k in 2..=5usize {
+            let mut melhor = f64::MAX;
+            for _ in 0..3 {
+                let mut t = tela_com_arte(40.0, 0);
+                for pos in 0..k {
+                    t.paint.composite[pos] = CompositeLayer {
+                        op: CompositeOp::Brush,
+                        strength: 0.5,
+                        color: Some([1.0, 0.0, 0.0]),
+                        ..CompositeLayer::default()
+                    };
+                }
+                let slot_blur = composite::N_CAMADAS - 1;
+                if com_blur && slot_blur >= k {
+                    t.paint.composite[slot_blur] = CompositeLayer {
+                        op: CompositeOp::Blur,
+                        strength: 0.362,
+                        ..CompositeLayer::default()
+                    };
+                }
+                let pts = caminho_rabisco(240);
+                let ini = std::time::Instant::now();
+                corre(&mut t, &pts);
+                melhor = melhor.min(ini.elapsed().as_secs_f64() * 1e3);
+            }
+            let marg = if anterior == 0.0 {
+                "—".to_string()
+            } else {
+                format!("{:+6.1} ms", melhor - anterior)
+            };
+            let nome = if com_blur {
+                "k × Brush + 1 Blur"
+            } else {
+                "k × Brush (sem Blur)"
+            };
+            let activas = k + usize::from(com_blur);
+            println!("  {nome:26} | {activas:7} | {melhor:6.1} | {marg}");
+            anterior = melhor;
+        }
+    }
+    println!(
+        "\n  ⚠️ `N_CAMADAS = {}` nesta corrida.",
+        composite::N_CAMADAS
+    );
+}

@@ -1,6 +1,7 @@
 //! Brush/Stroke parameter snapshot & setters (the single UI-edit clamp source); a submodule of
 //! `paint`, split from `paint.rs` for the workspace LOC cap. Per-dab-jitter setters: `jitter_settings`.
 
+use super::composite::N_CAMADAS;
 use super::shape_layers::MAX_SHAPE_LAYERS;
 use super::{BRUSH_COUNT_SLIDER_MAX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX};
 use ph2d_painter_brush::{FalloffPoint, MAX_FALLOFF_POINTS};
@@ -174,24 +175,24 @@ pub struct BrushSettings {
     /// **Composite Brush** on: the Strength slider hides + the 5-layer stack card shows (panel).
     pub composite_enabled: bool,
     /// Composite stack op per position (`CompositeOp::to_u8`: 0 Brush/1 Smear/2 Blur/3 Erase).
-    pub composite_ops: [u8; 5],
+    pub composite_ops: [u8; N_CAMADAS],
     /// Composite stack Strength per position (`0..1`).
-    pub composite_strength: [f32; 5],
+    pub composite_strength: [f32; N_CAMADAS],
     /// A cor de cada posição, **já resolvida** (a autorada, ou a do pincel) — é o que a amostra pinta.
-    pub composite_color: [[f32; 3]; 5],
+    pub composite_color: [[f32; 3]; N_CAMADAS],
     /// Quais posições têm cor AUTORADA. ⚠️ Sem esta bandeira, uma camada que SEGUE o pincel e uma
     /// que por acaso tem a mesma cor leem-se iguais na tela, e o artista não sabe qual é qual.
-    pub composite_color_authored: [bool; 5],
+    pub composite_color_authored: [bool; N_CAMADAS],
     /// A DUREZA de cada posição, **já resolvida** (a autorada, ou a do pincel).
-    pub composite_hardness: [f32; 5],
+    pub composite_hardness: [f32; N_CAMADAS],
     /// Quais posições têm dureza AUTORADA — a mesma razão da bandeira da cor: sem ela o botão de
     /// volta apareceria onde não há nada para limpar.
-    pub composite_hardness_authored: [bool; 5],
+    pub composite_hardness_authored: [bool; N_CAMADAS],
     /// O tamanho do carimbo de cada posição, como multiplicador do raio do pincel (`1` = o pincel).
-    pub composite_size: [f32; 5],
+    pub composite_size: [f32; N_CAMADAS],
     /// **Até onde a borracha de cada posição chega** (`0` = a imagem também · `1` = só este traço).
     /// Inerte em toda operação que não é a borracha, e o cartão só o pinta lá.
-    pub composite_erase_scope: [u8; 5],
+    pub composite_erase_scope: [u8; N_CAMADAS],
     /// Seamless **Tiling** (wrap-around painting) flags `[x, y]`.
     pub tiling: [bool; 2],
     /// **Repeat Image** tile-preview toggle (the on-canvas 3×3 grid).

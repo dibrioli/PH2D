@@ -121,31 +121,28 @@ impl Default for PaintState {
             // fileira troca a operação sem mexer na força, e é por isso que as posições `2` e `3`
             // podem declarar `Brush` e `Erase` sem que nada aconteça até alguém subir a barra.
             composite_enabled: false,
-            composite: [
-                CompositeLayer {
-                    op: CompositeOp::Brush,
-                    strength: 1.0,
-                    ..CompositeLayer::default()
-                },
-                CompositeLayer {
-                    op: CompositeOp::Brush,
-                    ..CompositeLayer::default()
-                },
-                CompositeLayer {
-                    op: CompositeOp::Erase,
-                    ..CompositeLayer::default()
-                },
-                CompositeLayer {
-                    op: CompositeOp::Smear,
-                    strength: 0.5,
-                    ..CompositeLayer::default()
-                },
-                CompositeLayer {
-                    op: CompositeOp::Blur,
-                    strength: 0.5,
-                    ..CompositeLayer::default()
-                },
-            ],
+            // ⚠️ A ordem AUTORADA é a do dono; as posições além dela nascem CALADAS
+            // (`CompositeLayer::default()`, `strength = 0`). A forma é DERIVADA de `N_CAMADAS` —
+            // um literal de cinco aqui é a segunda resposta que aquela const existe para não
+            // haver.
+            composite: {
+                const AUTORADAS: [(super::CompositeOp, f32); 5] = [
+                    (super::CompositeOp::Brush, 1.0),
+                    (super::CompositeOp::Brush, 0.0),
+                    (super::CompositeOp::Erase, 0.0),
+                    (super::CompositeOp::Smear, 0.5),
+                    (super::CompositeOp::Blur, 0.5),
+                ];
+                std::array::from_fn(|i| {
+                    AUTORADAS
+                        .get(i)
+                        .map_or_else(CompositeLayer::default, |&(op, strength)| CompositeLayer {
+                            op,
+                            strength,
+                            ..CompositeLayer::default()
+                        })
+                })
+            },
             composite_mask: std::array::from_fn(|_| Vec::new()),
             composite_arco: [f32::NEG_INFINITY; crate::tool::paint::composite::N_CAMADAS],
             pilha: crate::tool::paint::composite_pilha::PilhaDoTraco::default(),

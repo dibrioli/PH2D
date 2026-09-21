@@ -50,7 +50,7 @@ use ph2d_painter_brush::Dab;
 /// **Quantas posições a pilha tem.** ⚠️ Ela é lida pelo motor, pelo instantâneo, pelos ids e pelo
 /// cartão — *um `3` escrito à mão em qualquer um deles é a segunda resposta que esta const existe
 /// para não haver* (a extensão de 2026-09-20 encontrou exactamente um, o `N_LAYERS` do painel).
-pub(crate) const N_CAMADAS: usize = 5;
+pub const N_CAMADAS: usize = 5;
 
 /// **O tecto do tamanho de uma camada, e o recurso dele é o QUADRO.**
 ///

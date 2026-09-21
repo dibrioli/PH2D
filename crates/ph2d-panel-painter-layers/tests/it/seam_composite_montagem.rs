@@ -123,3 +123,66 @@ fn com_a_pilha_cheia_o_mais_fica_inerte_e_a_rota_recusa() {
         "a rota criou uma camada além da quota"
     );
 }
+
+/// ⭐⭐⭐ **A lista aberta mostra EXACTAMENTE as operações que ainda têm quota** — *«as opções vão
+/// sumindo do dropdown à medida que vão sendo usadas»*.
+///
+/// ⚠️ A régua corre o PAINEL inteiro (é uma passagem DIFERIDA que pinta a lista, por cima das
+/// fileiras) e lê os ids que ela registou — *uma lista pintada sem hit rect é um menu morto sob o
+/// dedo, e o cartão não sabe a diferença*.
+#[test]
+fn a_lista_mostra_so_as_operacoes_com_quota() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::widget::DropdownState;
+    let kind = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD_KIND;
+
+    let opcoes_visiveis = |t: &PainterTool| -> Vec<usize> {
+        set_current_brush(Some(t.brush_settings()));
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        // Abrir o menu pela store, que é o que o despacho genérico do `Dropdown` faz.
+        {
+            use ph2d_editor_core::panel::PanelHostInternal;
+            host.store_mut().register(
+                kind,
+                InteractiveState::Dropdown {
+                    state: DropdownState::Normal,
+                    open: true,
+                    selected_index: None,
+                },
+            );
+        }
+        let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
+        (0..ph2d_tool_painter::N_COMPOSITE_OPS)
+            .filter(|&i| {
+                let id = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD_OPTION[i];
+                rects
+                    .iter()
+                    .any(|(r, rect)| *r == id && rect.w > 0.0 && rect.h > 0.0)
+            })
+            .collect()
+    };
+
+    let mut t = PainterTool::default();
+    t.toggle_composite();
+    assert_eq!(
+        opcoes_visiveis(&t),
+        vec![0, 1, 2, 3],
+        "com a pilha vazia a lista tem de oferecer as QUATRO operações"
+    );
+
+    // Gastar a quota do Blur (1) e do Smear (1): elas têm de sair da lista, e só elas.
+    t.handle_panel_event(PanelEvent::SelectOption(kind, "2".to_string()));
+    t.handle_panel_event(PanelEvent::Click(
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD,
+    ));
+    t.handle_panel_event(PanelEvent::SelectOption(kind, "1".to_string()));
+    t.handle_panel_event(PanelEvent::Click(
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD,
+    ));
+    assert_eq!(
+        opcoes_visiveis(&t),
+        vec![0, 3],
+        "o Blur e o Smear gastaram a quota e TÊM de sumir; o Brush e o Erase ficam"
+    );
+}

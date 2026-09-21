@@ -7,14 +7,11 @@
 //! ⚠️ Corte por RESPONSABILIDADE do [`super::paint_composite`] (que bateu `659` linhas contra o
 //! tecto de `600`): lá mora *como se pinta uma camada*, aqui *como se monta a pilha*.
 
-use super::paint_composite::{ARROW_W, largura_do_chip_da_operacao, op_name};
+use super::paint_composite::{ARROW_W, op_name};
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{Button, paint_button};
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
 /// **A fileira do `+`** — o botão que cria uma camada e, ao lado, o menu com as operações que
@@ -42,51 +39,30 @@ pub(crate) fn paint_add_row(
     let add_rect = Rect::new(x, y, ARROW_W, ROW_H_PX);
     crate::paint_rows::paint_reorder_btn(ctx, theme, add_id, add_rect, pode, IconId::Add);
 
-    // O menu ao lado dele. Ele é registado como `Dropdown` (o despacho genérico abre/fecha), e a
-    // lista aberta é uma passagem DIFERIDA, como o «+ Adjustment» do painel de Layers.
+    // ⭐⭐ **O menu ao lado dele é o DROPDOWN da casa** — o mesmo pintor do Blend e do Falloff
+    // ([`crate::paint_brush_rows::paint_dropdown_chip_activo`]), com a seta e a moldura do tema.
+    //
+    // ⛔⛔ **A 1.ª redacção pintou-o com o `paint_button` e o dono devolveu-a**: *«ao lado do +
+    // deveria ser um dropdown como eu especifiquei»*. Ele estava REGISTADO como dropdown e abria
+    // a lista — o que faltava era a AFORDÂNCIA. *Um controlo que se comporta como um dropdown e
+    // se desenha como um botão é um dropdown que ninguém clica.*
+    //
+    // ⚠️ E ele leva a LARGURA que sobra na fileira, não a do nome mais largo: um dropdown estreito
+    // ao lado de um `+` lê-se como um segundo botão.
     let kind_id = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD_KIND;
     let kind_x = x + ARROW_W + gap;
-    let kind_w = largura_do_chip_da_operacao(ctx.text_system);
-    let kind_rect = Rect::new(kind_x, y, kind_w, ROW_H_PX);
-    let aberto = matches!(
-        ctx.host.store().get(kind_id),
-        Some(ph2d_editor_core::interaction::InteractiveState::Dropdown { open: true, .. })
+    let kind_rect = Rect::new(kind_x, y, (x + row_w - kind_x).max(0.0), ROW_H_PX);
+    let aberto = crate::paint_brush_rows::paint_dropdown_chip_activo(
+        ctx,
+        theme,
+        kind_id,
+        brush.composite_add_op,
+        op_name(brush.composite_add_op),
+        kind_rect,
+        pode,
     );
-    let mut chip = Button::new(kind_id, op_name(brush.composite_add_op));
+
     if aberto {
-        chip.kind = ph2d_editor_core::widget::ButtonKind::Accent;
-    }
-    paint_button(&chip, kind_rect, ctx.scene, ctx.text_system, theme);
-    if pode {
-        ctx.host.hit_index_mut().register(kind_id, kind_rect);
-    }
-
-    // A frase que diz o que o `+` faz, à direita do menu — sem ela a fileira é dois glifos mudos.
-    let font = TypeToken::Base.px();
-    let texto_x = kind_x + kind_w + gap;
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        tr(if pode {
-            "panel.painter_layers.composite.add_layer"
-        } else {
-            "panel.painter_layers.composite.stack_full"
-        }),
-        texto_x,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        (x + row_w - texto_x).max(0.0),
-        resolve(
-            if pode {
-                ColorToken::Text2
-            } else {
-                ColorToken::TextDisabled
-            },
-            theme,
-        ),
-    );
-
-    if aberto && pode {
         crate::state::set_pending_composite_add_menu(Some(kind_rect));
     }
 }

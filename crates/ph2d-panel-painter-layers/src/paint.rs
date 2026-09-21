@@ -226,11 +226,6 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     if let Some(menu_chip) = state::take_pending_adj_menu() {
         crate::adjust_menu::paint_adjustment_menu_popover(ctx, theme, menu_chip);
     }
-    // O menu do `+` da pilha do Composite Brush — a mesma passagem diferida, para a lista abrir
-    // por cima das fileiras em vez de ficar debaixo do cartão.
-    if let Some(chip) = state::take_pending_composite_add_menu() {
-        crate::paint_composite_montagem::paint_add_menu_popover(ctx, theme, chip);
-    }
 
     // Deferred: the active Texture layer's editor dropdown popovers (Kind + Color Ramp Mode /
     // Interp / Alpha), drained on top of the rows so they float unclipped.
@@ -301,6 +296,14 @@ fn paint_brush_view(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, rect: Rect, h
     // The open dropdown popover (Blend / Falloff / Method / Jitter Unit) floats over the body,
     // unclipped, above the scrollbar.
     crate::paint_brush::paint_brush_popovers(ctx, theme);
+    // ⛔⛔ **O menu do `+` da pilha drena-se no FIM, e não com os popovers diferidos lá em cima.**
+    // O cartão do Composite vive no CORPO, que pinta depois deles; drenado antes, o menu abria com
+    // o rect do quadro ANTERIOR. *Uma passagem diferida tem de correr depois de quem a ENCHE, e a
+    // ordem de pintura deste painel não é a ordem do ficheiro.* ⚠️ Quem o apanhou foi um gate de
+    // costura: com o dreno em cima ele lia ZERO opções registadas numa pintura única.
+    if let Some(chip) = state::take_pending_composite_add_menu() {
+        crate::paint_composite_montagem::paint_add_menu_popover(ctx, theme, chip);
+    }
 }
 
 /// ⭐⭐⭐ **OS DOIS MODOS DO DOCK, num grupo segmentado** — devolve o `y` em que o corpo começa.

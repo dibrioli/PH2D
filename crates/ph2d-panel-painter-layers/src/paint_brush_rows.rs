@@ -157,6 +157,24 @@ pub(crate) fn paint_dropdown_chip(
     cur_label: &str,
     rect: Rect,
 ) -> bool {
+    paint_dropdown_chip_activo(ctx, theme, id, cur_value, cur_label, rect, true)
+}
+
+/// O mesmo chip, com um estado **INATIVO** — ele continua a ver-se e deixa de ser alcançável.
+///
+/// ⭐ Ele é um parâmetro e não um segundo pintor: *duas maneiras de desenhar um dropdown divergem
+/// no dia em que uma delas ganhar um estado*. Nasceu com o menu do `+` da pilha do Composite
+/// (2026-09-21), onde a quota gasta tem de o «inativar» sem o fazer desaparecer.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_dropdown_chip_activo(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    id: ph2d_a11y::NodeId,
+    cur_value: u8,
+    cur_label: &str,
+    rect: Rect,
+    activo: bool,
+) -> bool {
     ctx.host.store_mut().register_if_absent(
         id,
         InteractiveState::Dropdown {
@@ -213,7 +231,14 @@ pub(crate) fn paint_dropdown_chip(
         ctx.scene,
         icon,
         chevron_rect,
-        resolve(ColorToken::Text2, theme),
+        resolve(
+            if activo {
+                ColorToken::Text2
+            } else {
+                ColorToken::TextDisabled
+            },
+            theme,
+        ),
         StrokeToken::Default.px(),
     );
 
@@ -228,9 +253,19 @@ pub(crate) fn paint_dropdown_chip(
         rect.y + (rect.h - font) * 0.5,
         font,
         text_w,
-        resolve(ColorToken::Text1, theme),
+        resolve(
+            if activo {
+                ColorToken::Text1
+            } else {
+                ColorToken::TextDisabled
+            },
+            theme,
+        ),
     );
 
-    ctx.host.hit_index_mut().register(id, rect);
-    open
+    // ⛔ Um chip inativo NÃO regista hit rect — é isso que o torna inerte sob o dedo, e não a cor.
+    if activo {
+        ctx.host.hit_index_mut().register(id, rect);
+    }
+    activo && open
 }

@@ -1667,3 +1667,160 @@ diferida que pinta a lista drenava **ANTES** de o cartão a encher (o cartão vi
 pinta depois dos outros popovers), logo o menu abria sempre com o rect do quadro **ANTERIOR**. Ela
 passou para o fim da pintura. ⚠️ *Uma passagem diferida tem de correr depois de quem a ENCHE, e a
 ordem de pintura deste painel não é a ordem do ficheiro.*
+
+## §26 — «O BOOLEAN NÃO FUNCIONA COM O COMPOSITE» + «UNDO/REDO DEIXA RESÍDUOS» — um defeito só (2026-09-21)
+
+Dois reports do dono, no mesmo smoke:
+
+> *«OS Stroke:Method vivos (booleanos) — Ellipse, Polygon, Line, etc — não funcionam corretamente
+> com o composite, mudam de aparência e o Boolean não funciona»* (com foto: duas circunferências
+> `Add` que se cruzam, as duas desenhadas INTEIRAS)
+>
+> *«undo/redo não estão perfeitos e podem deixar resíduos para os mesmos strokes methods»*
+
+**São a mesma causa.**
+
+### §26.1 — A lei violada, e ela já estava escrita em dois sítios
+
+Um método de **RE-CARIMBO** — os cinco editores de figura mais Drag Dot / Anchored / Line — não
+acrescenta tinta: ele **restaura** o recorte do quadro anterior e re-emite a lista INTEIRA de dabs
+sobre a tela limpa. O `StrokeMethod::is_incremental` já o diz por escrito, e nomeia o perigo:
+
+> *«the shape editors and the interactive methods re-emit their whole dab list every preview frame,
+> which against a fluid / accumulating target would pile paint while the artist just looks»*
+
+A pilha do Composite **é** um alvo que acumula: desde 21/09 cada camada tem um PLANO onde ela
+acumula ao longo do traço. E o `stamp_drag_preview` já tinha **três** canais que um re-carimbo repõe,
+lado a lado, cada um com o parágrafo dele:
+
+```rust
+self.reset_stroke_height();   // o envelope de relevo
+self.restamp_reset_sculpt();  // o plano do sculpt
+self.restamp_reset_erase();   // a mordida da borracha
+```
+
+**A pilha era o QUARTO, e ninguém lhe perguntou.**
+
+### §26.2 — O que se via, medido pelo caminho do produto
+
+⚠️ Uma sessão de figuras é **UM traço** (o pen-up não fecha nada — a figura fica editável até ao
+Apply), logo os planos guardavam *toda geometria por onde a mão passou*.
+
+O ciclo de vida, impresso (`diag_o_ciclo_de_vida_da_pilha`, pilha `Blur`/`Brush`):
+
+| passo | tela | `pilha.pre` | planos |
+|---|---|---|---|
+| `up 1` (a 1.ª figura carimba) | `1 675` | `262 144` (branco) | `[262144, 262144]` |
+| `down 2` (o rascunho DESCASCA) | `0` | `262 144` | **`[262144, 262144]`** ← ✗ |
+| `up 2` (o boolean carimba a UNIÃO) | **`2 839`** | `262 144` | `[262144, 262144]` |
+
+*A tela voltou a zero e os planos ficaram cheios* — a composição repõe a 1.ª figura INTEIRA por cima
+do contorno da união, e os `448` texels a mais **são** os arcos interiores.
+
+**O arco que o boolean tem de apagar** (o branco é `255`, duas circunferências `Add` que se cruzam):
+
+| pilha | tinta | o arco interior |
+|---|---|---|
+| sem pilha | `2 391` | `255` ✓ |
+| 1 camada | `2 391` | `255` ✓ (com menos de duas camadas activas a pilha nem abre) |
+| `Blur`/`Brush` | `2 839` | **`26`** ✗ |
+| `Smear`/`Brush` | `672` | **`0`** ✗ |
+| `Brush`/`Brush` | `2 839` | **`63`** ✗ |
+| `Erase`/`Brush` | `2 839` | **`0`** ✗ |
+
+**O RASTO** (arrastar UMA figura 70 px, a tela tem de mostrar UMA figura):
+
+| pilha | uma figura | depois de arrastar | excesso |
+|---|---|---|---|
+| sem pilha | `1 496` | `1 496` | `+0 %` |
+| `Blur`/`Brush` · `Brush`/`Brush` · `Erase`/`Brush` | `1 496` | `1 822` | **`+22 %`** |
+| `Smear`/`Brush` | `481` | `804` | **`+67 %`** |
+| `Blur`/`Smear`/`Brush` | `1 110` | `1 584` | **`+43 %`** |
+
+⇒ *o «resíduo» do 2.º report é este rasto, e o «boolean não funciona» do 1.º é o mesmo plano por
+descascar visto noutro gesto.*
+
+### §26.3 — A cura: uma porta, um sítio, e a SEGUNDA metade que o Smear exigiu
+
+[`PainterTool::restamp_reset_pilha`](../../../crates/ph2d-tool-painter/src/tool/paint/composite_acumulado.rs),
+chamada do `stamp_drag_preview` **ao lado das outras três**:
+
+1. os **planos** de cada camada voltam a vazio;
+2. os **lotes** da rota de bissecção (`PH2D_COMPOSITE_REPLAY=1`) também — *uma cura que só tratasse
+   a rota de omissão deixaria a bissecção a medir outro programa*;
+3. o acumulador de **ARCO** da subamostragem de uma camada MAIOR;
+4. ⭐ e o **campo de deslocamento do Smear** (`paint.warp`), que é por TRAÇO como os planos e vive
+   **fora** deles — pela porta que o pen-up já usa (`end_smear_session`, que exclui o Deform por
+   construção). Sem esta metade o rasto do `Smear` ficava em `+10 %`.
+
+⚠️ **O `pre` FICA, e isso é lei e não economia:** o descascar devolve a tela a exactamente o que ele
+guarda. Re-fotografá-la por evento custaria uma cópia do canvas inteiro por movimento do rato
+(67 MB a 4096²) para escrever os mesmos bytes.
+
+**Depois:** o arco interior lê `255` nas SEIS pilhas, o rasto lê **`+0 %`** nas seis, e a tinta do
+boolean volta a `2 391` — **o mesmo número que sem pilha nenhuma**.
+
+### §26.4 — Três coisas que a medição me corrigiu
+
+⛔ **(a) A 1.ª redacção pôs a cura na porta ERRADA.** Eu pu-la dentro do `peel_drag_preview`, que é
+a porta de descascar — e ela tem um chamador que **não é um re-carimbo**: o bracket do
+`Style: Solid` no `stamp_dabs`, que descasca a cada LOTE de um traço à mão livre **cumulativo**.
+Ali esquecer o acumulado é o oposto do certo. ⚠️ **E a medição corrigiu-me duas vezes:** eu li a
+camada `Smear` inerte sob `Solid` como uma regressão minha, e ela é **PRÉ-EXISTENTE** — com a
+chamada lá e sem ela a saída é byte-idêntica. A chamada saiu porque é **redundante** (a mutação que
+só a apaga sobrevive aos gates) *e* porque a porta é partilhada, não porque estivesse a partir nada.
+
+⛔⛔ **(b) O cap de Accumulate JÁ era limpo, e eu ia escrever a segunda resposta.** A 1.ª redacção
+limpava o `composite_mask`, e a mutação que a apagava **sobreviveu**: o
+`stamp_cache::prepare_stroke_mask` já o zera para todo método que não é incremental, com esta lei no
+doc dele desde que existe — *«os métodos de preenchimento re-carimbam o TRAÇO INTEIRO, logo o cap
+tem de começar FRESCO»* — e o `composite_mask[pos]` está TROCADO para dentro do `stroke_mask` quando
+ele corre. *Duas respostas à mesma pergunta divergem no dia em que uma mudar de chave*, e a minha
+era indexada pelo DESCASCAR contra uma indexada pelo MÉTODO. ⇒ **linha apagada.**
+
+⭐ **(c) O ARCO, esse, era dívida REAL e ninguém mais o repõe.** Com duas camadas `Brush` de
+`size = 3`, a figura re-carimbada pinta **`740`** texels contra `5 641` — o `d.arc_len` recomeça do
+zero a cada re-carimbo e o acumulador do carimbo anterior recusa a lista inteira. Gate próprio, e
+⚠️ **`size = 3` é ingrediente da fixtura**: com `size = 1` a camada não subamostra nada e o
+acumulador nunca é escrito (*uma fixtura no ponto neutro do knob não testa o knob*).
+
+### §26.5 — Os gates, e a prova de mutação
+
+[`composite_formas_tests.rs`](../../../crates/ph2d-tool-painter/src/tool/paint/composite_formas_tests.rs),
+todos pela porta do produto (pen-down / move / pen-up):
+
+- `o_boolean_apaga_o_arco_interior_com_a_pilha_montada` — ⚠️ com **CONTROLO**: as mesmas duas
+  figuras em `Overlay` têm aquele ponto **pintado**; sem ele, um gate que só exigisse branco passaria
+  numa fixtura em que as figuras nem se cruzam.
+- `arrastar_uma_figura_nao_deixa_rasto` — a `Smear`/`Brush` é o membro que exige a 2.ª metade.
+- `uma_camada_maior_sobrevive_ao_recarimbo` — ⚠️ a barra sai de um **vale medido** (`99,5 %` contra
+  `13 %`, um vale de `7,6×`) e não de uma folga escolhida; a igualdade exacta não vale porque a
+  lista de dabs de uma figura é re-derivada a cada carimbo (`5 627` de `5 658`).
+- `a_rota_de_bisseccao_tambem_descasca_a_historia` — o `PH2D_COMPOSITE_REPLAY`, por CAMPO e nunca
+  pela variável de ambiente.
+
+**Mutação: 5 sangram, 1 NOMEADA.**
+
+| # | mutação | veredito |
+|---|---|---|
+| M2 | `stamp_drag_preview` sem o `restamp_reset_pilha()` | SANGRA (3 de 3) |
+| M3 | sem o `end_smear_session()` | SANGRA |
+| M4 | sem limpar os planos | SANGRA (2 de 3) |
+| M6 | sem limpar os `lotes` | SANGRA (a rota de bissecção) |
+| M7 | sem repor o `composite_arco` | SANGRA |
+| M8 | sem a saída antecipada do `pre` vazio | **NOMEADA** — ela é guarda de CUSTO e não lei (sem ela um pincel comum paga os `clear()` por evento para não mudar um bit) |
+
+⚠️ **E o arnês mentiu primeiro, na forma que este repo já tem escrita:** `grep -cF` conta **LINHAS**,
+logo uma agulha multi-linha casou `4` e `3` vezes e o arnês abortou dois casos sobre produto
+correcto. Ele passou a contar ocorrências.
+
+### §26.6 — O que fica ABERTO, e não é da pilha
+
+- ⚠️ **A camada `Smear` é inerte sob `Style: Solid`** — medido: a impressão da tela é, ao bit, a de
+  não haver pilha nenhuma. **PRÉ-EXISTENTE** (não muda com esta wave, em nenhum dos dois sentidos),
+  sem causa investigada.
+- ⚠️ **Dois `Ctrl+Z` a meio de uma sessão de duas figuras esvaziam a tela** em vez de deixarem a 1.ª
+  — e **o mesmo acontece SEM pilha** (`sem pilha` lê `0` exactamente como as seis pilhas). É do undo
+  dos editores de figura, não do composite, e é o que sobra do 2.º report depois desta cura.
+- ⚠️ Com uma camada `Smear` na pilha, desenhar uma figura **por cima de arte já aplicada** esborrata
+  essa arte. É o que um esfregão faz — nomeado aqui porque a sonda o lê como «perdeu a 1.ª figura».

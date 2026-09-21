@@ -10,6 +10,7 @@
 //!     diag_cura -- --ignored --nocapture --test-threads=1
 //! ```
 
+use super::diag_auditoria_da_pilha::Caso;
 use super::diag_auditoria_da_pilha::{
     SIZE, caminho_rabisco, caminho_rapido, corre, diff_visivel, grava_ppm, pilha_do_dono,
     tela_com_arte,
@@ -26,7 +27,7 @@ fn diag_cura_as_duas_rotas() {
     println!("\n  AS DUAS ROTAS — acumulação contra replay (o que se VÊ, sobre branco)\n");
     println!("  caminho  | pilha                          | pior |  médio | px visíveis");
     println!("  ---------+--------------------------------+------+--------+------------");
-    let casos: [(&str, fn(&mut PainterTool)); 5] = [
+    let casos: &[Caso] = &[
         ("dois Brushes (deve ser EXACTO)", |t| {
             t.paint.composite[0] = CompositeLayer {
                 op: CompositeOp::Brush,
@@ -86,7 +87,7 @@ fn diag_cura_as_duas_rotas() {
         ("rabisco", caminho_rabisco(120)),
         ("rápido", caminho_rapido(240, 20)),
     ] {
-        for (nome, monta) in casos {
+        for &(nome, monta) in casos {
             let img = |replay: bool| {
                 let mut t = tela_com_arte(40.0, 0);
                 t.paint.pilha_por_replay = replay;
@@ -266,7 +267,7 @@ fn diag_cura_o_residuo() {
     println!("  pilha                          | sem limite | pior | px  | caixa");
     println!("  -------------------------------+------------+------+-----+------------------");
     let pts = caminho_rabisco(120);
-    let casos: [(&str, fn(&mut PainterTool)); 4] = [
+    let casos: &[Caso] = &[
         ("Brush só", |t| {
             t.paint.composite[0] = CompositeLayer {
                 op: CompositeOp::Brush,
@@ -326,7 +327,7 @@ fn diag_cura_o_residuo() {
             };
         }),
     ];
-    for (nome, monta) in casos {
+    for &(nome, monta) in casos {
         for sem_limite in [false, true] {
             let img = |global: bool| {
                 super::composite_pilha::RECOMPOSICAO_GLOBAL.with(|c| c.set(global));

@@ -24,6 +24,10 @@ use ph2d_editor_core::tool::RasterEditTool;
 
 pub(super) const SIZE: u32 = 1024;
 
+/// O par *(nome, como montar a pilha)* de uma célula de tabela — um alias porque as três sondas o
+/// repetem e o clippy pede-o.
+pub(super) type Caso = (&'static str, fn(&mut PainterTool));
+
 pub(super) fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
         pos,
@@ -43,7 +47,7 @@ pub(super) fn tela(raio: f32) -> PainterTool {
 pub(super) fn tela_com(raio: f32, alfa: u8) -> PainterTool {
     let mut t = PainterTool::default();
     let mut px = vec![255u8; (SIZE * SIZE * 4) as usize];
-    for p in px.chunks_exact_mut(4) {
+    for p in px.as_chunks_mut::<4>().0 {
         p[3] = alfa;
     }
     t.set_source(px, SIZE, SIZE);
@@ -176,7 +180,7 @@ fn diag_auditoria_o_carimbo() {
     println!("\n  O CARIMBO — regional contra recomposição GLOBAL (|Δ| sobre 255)\n");
     println!("  caminho  | pilha                          | pior |  médio | px ≠ 0 | maior caixa");
     println!("  ---------+--------------------------------+------+--------+--------+------------");
-    let casos: [(&str, fn(&mut PainterTool)); 5] = [
+    let casos: &[Caso] = &[
         ("pilha do dono (Smear no FUNDO)", pilha_do_dono),
         ("Smear no FUNDO sob 1 Brush", |t| {
             t.paint.composite[0] = CompositeLayer {
@@ -236,7 +240,7 @@ fn diag_auditoria_o_carimbo() {
         ("recto", caminho_recto(120)),
         ("rabisco", caminho_rabisco(120)),
     ] {
-        for (nome, monta) in casos {
+        for &(nome, monta) in casos {
             let img = |global: bool| {
                 super::composite_pilha::RECOMPOSICAO_GLOBAL.with(|c| c.set(global));
                 let mut t = tela(24.0);
@@ -316,10 +320,10 @@ fn diag_auditoria_a_foto() {
 pub(super) fn grava_ppm(caminho: &str, rgba: &[u8]) {
     let mut v = format!("P6\n{SIZE} {SIZE}\n255\n").into_bytes();
     // Compor sobre branco, que é o que o ecrã mostra.
-    for px in rgba.chunks_exact(4) {
+    for px in rgba.as_chunks::<4>().0 {
         let a = f32::from(px[3]) / 255.0;
-        for k in 0..3 {
-            v.push((f32::from(px[k]) * a + 255.0 * (1.0 - a)).round() as u8);
+        for c in &px[..3] {
+            v.push(f32::from(*c).mul_add(a, 255.0 * (1.0 - a)).round() as u8);
         }
     }
     std::fs::write(caminho, v).unwrap();
@@ -398,7 +402,13 @@ pub(super) fn diff_visivel(a: &[u8], b: &[u8]) -> (u8, f64, u64, String) {
     };
     let (mut soma, mut pior, mut nz) = (0f64, 0u8, 0u64);
     let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
-    for (i, (pa, pb)) in a.chunks_exact(4).zip(b.chunks_exact(4)).enumerate() {
+    for (i, (pa, pb)) in a
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0)
+        .enumerate()
+    {
         let mut d_px = 0u8;
         for k in 0..3 {
             let d = (sobre_branco(pa, k) - sobre_branco(pb, k)).abs().round() as u8;

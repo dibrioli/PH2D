@@ -122,11 +122,11 @@ impl PainterTool {
             super::composite_pilha::conta_dabs(camadas.iter().map(Vec::len).sum::<usize>() as u64);
         }
         // 2. Cada camada acumula os dabs NOVOS dela no plano dela. `O(dabs novos)`.
-        for pos in 0..N_CAMADAS {
-            if self.paint.composite[pos].strength <= 0.0 || camadas[pos].is_empty() {
+        for (pos, lista) in camadas.iter().enumerate() {
+            if self.paint.composite[pos].strength <= 0.0 || lista.is_empty() {
                 continue;
             }
-            self.acumula_camada(pos, &camadas[pos]);
+            self.acumula_camada(pos, lista);
         }
         // 3. A região da composição. ⚠️ O apron do Blur é o que impede a convolução de ler, na orla,
         //    bytes que a composição ainda não escreveu — e é por isso que só o miolo sobrevive.

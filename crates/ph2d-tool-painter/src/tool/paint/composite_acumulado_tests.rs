@@ -2,6 +2,7 @@
 //! a wave de 2026-09-21 pagou.
 
 use super::composite::{CompositeLayer, CompositeOp, N_CAMADAS};
+use super::diag_auditoria_da_pilha::Caso;
 use super::*;
 use ph2d_editor_core::tool::RasterEditTool;
 
@@ -23,7 +24,7 @@ fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 fn tela() -> PainterTool {
     let mut t = PainterTool::default();
     let mut px = vec![255u8; (SIZE * SIZE * 4) as usize];
-    for p in px.chunks_exact_mut(4) {
+    for p in px.as_chunks_mut::<4>().0 {
         p[3] = 0;
     }
     t.set_source(px, SIZE, SIZE);
@@ -87,7 +88,13 @@ fn diferenca(a: &[u8], b: &[u8]) -> (u8, u64, String) {
     };
     let (mut pior, mut n) = (0u8, 0u64);
     let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
-    for (i, (pa, pb)) in a.chunks_exact(4).zip(b.chunks_exact(4)).enumerate() {
+    for (i, (pa, pb)) in a
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0)
+        .enumerate()
+    {
         let mut d = 0u8;
         for k in 0..3 {
             d = d.max((sobre_branco(pa, k) - sobre_branco(pb, k)).abs().round() as u8);
@@ -170,7 +177,7 @@ fn o_trabalho_de_um_evento_nao_cresce_com_o_traco() {
 /// divergência tem gate próprio.
 #[test]
 fn a_acumulacao_e_exacta_menos_no_borrao() {
-    let casos: [(&str, fn(&mut PainterTool)); 3] = [
+    let casos: &[Caso] = &[
         // ⚠️ **O topo é PARCIAL de propósito.** Com ele a `1,0` a tinta satura e esconde tudo o
         // que está por baixo — a fixtura ficava verde sobre uma composição que compunha a pilha
         // DUAS vezes (medido: a mutação que apaga o `escreve_do_pre` sobrevivia a ela).
@@ -188,7 +195,7 @@ fn a_acumulacao_e_exacta_menos_no_borrao() {
         }),
     ];
     let pts = rabisco(90);
-    for (nome, monta) in casos {
+    for &(nome, monta) in casos {
         let img = |replay: bool| {
             let mut t = tela();
             t.paint.pilha_por_replay = replay;
@@ -294,10 +301,8 @@ fn o_avental_do_borrao_cobre_todas_as_passagens() {
 fn o_trinco_de_alfa_nao_apaga_a_acumulacao() {
     let pinta = |trancado: bool| {
         let mut t = tela();
-        if let Some(id) = t.layers.active() {
-            if let Some(l) = t.layers.get_mut(id) {
-                l.alpha_locked = trancado;
-            }
+        if let Some(l) = t.layers.active().and_then(|id| t.layers.get_mut(id)) {
+            l.alpha_locked = trancado;
         }
         com(&mut t, 0, CompositeOp::Brush, 1.0, Some([1.0, 0.0, 0.0]));
         com(&mut t, 1, CompositeOp::Brush, 1.0, Some([0.0, 0.0, 1.0]));

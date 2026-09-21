@@ -1824,3 +1824,216 @@ correcto. Ele passou a contar ocorrências.
   dos editores de figura, não do composite, e é o que sobra do 2.º report depois desta cura.
 - ⚠️ Com uma camada `Smear` na pilha, desenhar uma figura **por cima de arte já aplicada** esborrata
   essa arte. É o que um esfregão faz — nomeado aqui porque a sonda o lê como «perdeu a 1.ª figura».
+
+---
+
+## §27 — «2 CÍRCULOS COM O MESMO PINCEL E UM ESTÁ DIFERENTE DO OUTRO» (2026-09-21)
+
+> Report do dono, a seguir ao da §26: *«veja : 2 círculos com o mesmo pincel e um está diferente do
+> outro. Boolean funcionou! Performance ruim»*. São **duas** metades — a aparência e o relógio —, e
+> esta secção é a primeira. A segunda é a §28.
+
+### §27.1 — A causa: a corrente do esfregão atravessava a fronteira de uma sub-figura
+
+Uma sessão de figuras é **UM traço** (o pen-up não a fecha — a figura fica editável até ao Apply), e
+um lote do `restamp_shapes_preview` é a **CONCATENAÇÃO** das listas de dabs de todas as figuras
+vivas: a activa, mais cada parqueada, mais um contorno por região no boolean.
+
+O acumulador do esfregão (`last_smear_pos`) é **por TRAÇO**. Sem uma fronteira, *o último dab de um
+círculo levantava tinta para o primeiro dab do círculo seguinte, **através da tela***.
+
+**Medido** na janela que contém só a 1.ª figura (soma do alfa), com a 2.ª **longe** dela:
+
+| pilha | sozinha | com a 2.ª | |
+|---|---|---|---|
+| `Brush` | `551 889` | `551 889` | IGUAL |
+| `Blur/Brush` | `445 418` | `445 418` | IGUAL |
+| **`Smear/Brush`** | **`522 145`** | **`448 091`** | **`−14,2 %`** (`n` `2 859 → 2 568`) |
+| `Brush/Brush` | `607 839` | `607 839` | IGUAL |
+| `Erase/Brush` | `316 829` | `316 829` | IGUAL |
+| **`Blur/Smear/Brush`** | **`422 835`** | **`361 950`** | **`−14,4 %`** |
+
+Depois da cura: **as seis IGUAIS**, byte a byte.
+
+### §27.2 — A fronteira é DERIVADA, e não um campo novo
+
+Todo `fill_*_preview` recomeça o `arc_len` em zero (`stroke/ellipse.rs`: *«fresh fill → the Flow
+along-coordinate starts at the perimeter's origin»*) ⇒ **um arco que ANDA PARA TRÁS é uma sub-figura
+nova**. O `last_smear_pos` passa a ser o par `([f32; 2], f32)` — o centro **e** o arco —, e o par é
+deliberado: *dois campos que têm de concordar são um campo que alguém esquece de escrever*.
+
+⛔ **Um limiar sobre o COMPRIMENTO do salto foi recusado por mecanismo:** um traço à mão livre
+rápido produz saltos legítimos do mesmo tamanho.
+
+### §27.3 — O gate, e porque ele mede as SEIS pilhas
+
+`a_primeira_figura_nao_muda_quando_nasce_a_segunda` afirma sobre **todas** as pilhas, não só as do
+esfregão: *a lei é de todo acumulador por-traço, e hoje só ele atravessa*. O gate reprova no dia em
+que outro o faça.
+
+- ⚠️ **A tela da fixtura nasce VAZIA de propósito.** Numa tela branca opaca o esfregão move branco
+  para dentro de branco e **a fixtura não contém o fenómeno** — a `cena()` daquele ficheiro, que é
+  opaca, não serve, e a régua é o **alfa**.
+- **Três controlos**, e cada um fecha uma maneira de o gate passar por vácuo: a 1.ª figura pintou ·
+  a 2.ª de facto nasceu · as duas não se tocam (senão «idêntico» seria a expectativa errada).
+
+**Mutação 3 de 3 a sangrar:** a corrente não parte · o arco escrito a zero (que prova que o PAR
+viaja junto) · a comparação invertida (contra a suíte inteira: 9 vermelhos).
+
+⚠️ **O arnês mentiu primeiro:** `grep -cF` conta **LINHAS**, logo uma agulha multi-linha abortou
+dois casos sobre produto correcto.
+
+---
+
+## §28 — «PERFORMANCE RUIM»: a atribuição, DUAS recusas medidas, e a cura (2026-09-21)
+
+### §28.1 — Onde o custo está
+
+`--release`, `91`–`96 %` de CPU ociosa, por evento de carimbo, arrastando uma figura:
+
+| `2048²` | CARIMBAR | pre | acumular | **COMPOR** | cópias | alvo |
+|---|---|---|---|---|---|---|
+| sem pilha | `1,29` | — | — | — | — | — |
+| `Brush/Brush` | `9,48` | `0,05` | `3,22` | **`5,60`** | `1,55` | `50,6 %` |
+| `Blur/Brush` | `51,86` | `0,06` | `3,24` | **`49,31`** | `1,97` | `54,1 %` |
+| 7 camadas | `84,74` | `0,04` | `9,44` | **`79,92`** | `1,68` | `54,1 %` |
+
+⇒ **COMPOR é `90`–`99 %` do carimbo, e UMA camada `Blur` custa `8×` uma `Brush`** (`43,7` dos
+`49,31 ms`). ⚠️ E o re-carimbo corre **a cada movimento do ponteiro** enquanto se arrasta a figura,
+não uma vez por traço: `51,86 ms` são `19` fps.
+
+### §28.2 — Não é o núcleo nem o avental
+
+Varrido o **tamanho da camada** (que escala `k` linearmente e mais nada), `k` anda `14×`:
+
+| tamanho | `0,25` | `0,5` | `1` | `2` | `4` |
+|---|---|---|---|---|---|
+| `k` | `8` | `16` | `24` | `56` | `112` |
+| COMPOR | `42,69` | `40,38` | `40,86` | `46,53` | `57,08` |
+| alvo | `51,9 %` | `53,0` | `54,1` | `60,4` | `72,4` |
+| **por tela cheia** | **`82,3`** | **`76,2`** | **`75,5`** | **`77,0`** | **`78,8`** |
+
+**Plano a `±4 %` sobre `14×` de `k`** ⇒ o custo é `O(área)` puro (`31,1 ns/px`). A caixa é `O(1)` em
+`k` por construção, e o avental (`(bw+2k)(bh+2k)`) não aparece.
+
+### §28.3 — ⛔ RECUSA MEDIDA: a alocação está ILIBADA
+
+A cadeia aloca **sete** `Vec<[f32; 4]>` do tamanho da região — `~250 MB` por composição a `2048²` —
+e isso custa **`0,00 ms`**: `vec![[f32; 4]; n]` é `alloc_zeroed`, as páginas chegam preguiçosas e
+quem as toca é a passagem. *Contar bytes alocados não é medir o custo de os alocar.*
+
+### §28.4 — ⛔⛔ RECUSA MEDIDA: o cover por BLOCOS, a família inteira
+
+Um anel ocupa `~5 %` da caixa envolvente dele, mas cada bloco paga o **avental**. Medido sobre a
+lista de dabs REAL (`1,00×` = a caixa envolvente):
+
+| | `16 px` | `32` | `64` | `128` | `256` |
+|---|---|---|---|---|---|
+| `1024²` | `6,66×` | `3,16×` | `1,99×` | `1,62×` | `2,39×` |
+| `2048²` | `3,63×` | `1,68×` | `1,01×` | **`0,89×`** | `0,99×` |
+
+A `1024²` **todo** tamanho é pior que a caixa; a `2048²` o melhor poupa `11 %`. Com `pad = 25` um
+bloco de `16` compõe `66²` para cobrir `16²`. ⇒ *não é um tamanho que está errado, é a forma do
+cover* — e uma que siga o anel é redesenho, não afinação.
+
+### §28.5 — A cura, e o tecto dela
+
+O borrão move `~224 B/px` em `31,1 ns/px` = **`6,8 GB/s`**, que é da ordem de UM núcleo. O soquete:
+
+| fios | 1 | 2 | 4 | 8 | 16 |
+|---|---|---|---|---|---|
+| débito | `6,8` | `12,0` | `20,2` | `27,4` | `30,1 GB/s` |
+| ganho | `1,00×` | `1,78×` | `2,99×` | **`4,05×`** | `4,46×` |
+
+⇒ [**ADR-0171**](../../architecture/decisions/0171-o-borrao-de-caixa-da-pilha-parte-se-em-fatias-e-a-largura-da-banda-e-medida.md)
+— o núcleo de caixa parte-se em fatias. ⚠️ **O número do ADR SOMA entre linhas: reconte-o.**
+
+**Resultado, pela porta do produto** (`93 %` ocioso, a MESMA corrida de antes e depois):
+
+| | antes | depois | |
+|---|---|---|---|
+| `2048²` `Blur/Brush` | `51,86` | **`29,09`** | `1,78×` |
+| `2048²` bool `Blur/Brush` | `78,48` | **`47,76`** | `1,64×` |
+| `2048²` 7 camadas | `84,74` | **`63,98`** | `1,32×` |
+| `1024²` `Blur/Brush` | `8,87` | `8,11` | `1,09×` |
+
+**Nenhuma célula piorou.**
+
+⚠️ **O ganho é `2,09×` na região do produto e NÃO os `4,05×` do tecto**, e a diferença está medida:
+a horizontal escala `3,6×`, a vertical `2,25×`, mais sete barreiras de junção. *A sonda do soquete
+mede `N` borrões INDEPENDENTES; partir UM não é a mesma coisa.*
+
+### §28.6 — ⛔⛔ O número de fatias da VERTICAL não é o número de threads
+
+Em série a vertical percorre cada linha INTEIRA e é um fluxo sequencial; partida em `nb` bandas de
+colunas vira `nb` fluxos com passo `w`:
+
+| fatias | 1 | 2 | 3 | **4** | 6 | 8 | 12 | 16 |
+|---|---|---|---|---|---|---|---|---|
+| largura | `1 484` | `742` | `494` | **`371`** | `247` | `185` | `123` | `92` |
+| ganho | `1,00×` | `1,58×` | `2,00×` | **`2,25×`** | `2,12×` | `1,66×` | `1,39×` | `1,14×` |
+
+⇒ fixa-se a **LARGURA** (`384`, o meio do planalto) e a **CONTAGEM sai dela**, com tecto na pool.
+⚠️ *Isto não contradiz «não fixar o número de pedaços»: a contagem continua a seguir a máquina pelo
+tecto, e o que a medição acrescenta é um **PISO que vem do acesso à memória**, não do escalonador.*
+
+### §28.7 — As cinco coisas que uma leitura rápida do diff entende ao contrário
+
+1. **A paridade das duas rotas não prova a lei da passagem.** As duas partilham o corpo da banda ⇒
+   uma mutação DENTRO dele move os dois lados por igual. *Um oráculo de IGUALDADE só afirma sobre o
+   que as duas rotas fazem DIFERENTE.* Quem julga os valores é a **convolução directa**.
+2. **O gate do impulso não cobre a semente.** A região é centrada no impulso, logo as linhas
+   `0..lado` não contêm sinal e uma mutação na semente é invisível ali.
+3. **As fixturas da paridade nunca correram o código que parte as bandas** (`59`–`291` px, todas
+   abaixo do piso de `384`) ⇒ a contagem é um **argumento** no gate das bandas, não o que a região
+   e a máquina decidem.
+4. **`uma_banda_nunca_fica_abaixo_do_piso` não afirma um número.** A contagem é limitada pela pool,
+   logo `bandas_da_vertical(1484) == 4` seria uma propriedade da MÁQUINA; o que é da lei é *a banda
+   que sai tem pelo menos a largura do piso*.
+5. **`a_decisao_de_partir_segue_o_joelho_medido` existe porque a rota é byte-idêntica.** Sem ele,
+   apagar o paralelo do produto não acorda nada — as outras réguas dizem que as rotas concordam, e
+   desligar uma mantém-nas a concordar.
+
+### §28.8 — E o censo do alcance do núcleo de caixa foi CURADO, com dois defeitos MUDOS meus
+
+Ele acusou uma **sonda `#[cfg(test)]`** de ser um terceiro sítio. ⛔ A cura não é filtrar pelo
+SUFIXO do nome — este repo já pagou um portão vermelho sobre produto correcto assim
+(`line/sculpt3d`, 15/09) —: a população passa a ser **DERIVADA** das declarações `mod`, com a
+sub-árvore de um `#[cfg(test)]` de fora **transitivamente**.
+
+Dois defeitos na derivação, os dois silenciosos:
+
+- **`mod x; // comentário` era deitado fora** (eu exigia que a linha ACABASSE em `;`) — `71` dos
+  `159` módulos de uma sub-árvore desapareciam. ⭐ *Só o apanhei por ter uma SEGUNDA implementação
+  da mesma regra e as duas discordarem* (`135` contra `209`).
+- **`#[path]` resolve contra a pasta do ficheiro que DECLARA**, e eu juntava-o à pasta-filha ⇒ a
+  sub-árvore inteira sumia. ⭐ Apanhado por uma **mutação que SOBREVIVEU**: ignorar o `#[cfg(test)]`
+  não mudava nada, *porque aqueles ficheiros não estavam a ser alcançados de todo*.
+
+⚠️ **E os quatro guardas não bastavam:** eles não distinguem *«excluído por ser teste»* de
+*«excluído porque o caminhar não o achou»* ⇒ o quinto nomeia dois ficheiros que só se alcançam por
+`#[path]` de PRODUTO (`undo_window.rs`, `curve_overlay.rs`).
+
+### §28.9 — O portão
+
+`nextest-impacted` **18 255/18 255** · censos da árvore COMBINADA **127/127** · clippy zero ·
+fmt · machete · standalone · workflow · doc-index · adr-index verdes. **Mutação 12 de 12 a
+sangrar.** Dois tectos de LOC curados por **CORTE**, nenhum por isenção:
+
+- `blur_caixa.rs` `1 028 → 407 + 632` — os testes entram por `#[path]` **de dentro** do módulo, para
+  que continuem DESCENDENTES dele e nenhum `fn` privado tenha de alargar visibilidade só para
+  hospedar um teste. *Mover um ficheiro troca o REGIME DE VISIBILIDADE que o governa, e num `lib`
+  `pub(crate)` é API.*
+- `diag_composite_e_as_formas.rs` `933 → 604 + 348`, por ASSUNTO: o que o re-carimbo **DESENHA**
+  contra o que ele **CUSTA**.
+
+### §28.10 — ⏳ ABERTO, com o mecanismo
+
+- **Metade dos BYTES vale o mesmo que dois fios, sem política de concorrência nenhuma.** Os sete
+  intermédios são `[f32; 4]` = `16 B/px` e o borrão é limitado por LARGURA DE BANDA; um intermédio
+  de `u16` premultiplicado é `2×`. ⛔ Ele **não** é byte-idêntico, logo pede a mesma barra de
+  qualidade que a caixa já tem contra o binomial (pior byte `1`–`3`) — wave própria.
+- **`8` rondas de fatias não compram nada** (o soquete satura em `4,46×` a 16 fios contra `4,05×` a
+  8): quem quiser o degrau seguinte ataca os BYTES, não os fios.
+- Os dois itens da §26.6 continuam abertos e **não são da pilha** (a camada `Smear` inerte sob
+  `Style: Solid`; dois `Ctrl+Z` a meio de uma sessão de figuras, que faz o mesmo SEM pilha).

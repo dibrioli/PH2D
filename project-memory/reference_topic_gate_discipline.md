@@ -12,6 +12,7 @@ metadata:
 
 - ⛔⛔ **Um gate que se DECLARA «uma família, não um sítio» e é uma LISTA ESCRITA À MÃO não tem população para ter piso** — medido 15/09: ele nomeava 6 ficheiros, o censo derivado varreu 18 e achou mais **5** desenhadores com o mesmo defeito, um deles a forma que o próprio roteiro de smoke mandava arrastar. ⚠️ E a 1.ª agulha do censo novo nomeava o CONSTRUTOR (`X::new(`) e leu `7` de `8`: quem RECEBE a porta por parâmetro não a constrói — *a agulha tem de nomear a CONSULTA*.
 - [[feedback_absence_gate_needs_a_presence_sibling]] — gate de AUSÊNCIA precisa do de PRESENÇA
+- [[feedback_a_parity_gate_that_picks_its_own_mode_measures_a_program_nobody_runs]] — ⛔⛔⛔ um gate que CRAVA o modo que quer medir afirma sobre um programa que o artista não corre: a paridade lia `0,000215` e o app abria noutra lei, a `0,347` (`1 615×`). *Quando um subsistema tem MODOS e só um concorda com a outra metade do sistema, gateie o valor de FÁBRICA* — com controlo, e medindo o preço do default antes de o trocar.
 - [[feedback_layered_defenses_need_per_layer_gates]] — defesa em camadas = gate POR camada
 - [[feedback_a_threshold_must_live_where_the_domain_is_empty]] — limiar mora onde o domínio é VAZIO
 - [[feedback_a_ratio_between_two_sick_channels_is_green_by_construction]] — razão entre dois canais doentes é verde; ancore no que o produto promete

@@ -81,6 +81,22 @@ impl PainterTool {
         }
         // A subamostragem de uma camada maior conta arco DESTE traço.
         self.paint.composite_arco = [f32::NEG_INFINITY; crate::tool::paint::composite::N_CAMADAS];
+        // ⭐ E a PILHA é do traço: o `pre` e a história dos lotes morrem com o gesto anterior, senão
+        // a recomposição do primeiro lote deste parte de uma tela que já não existe.
+        //
+        // ⚠️ **A mutação que apaga ESTA chamada sobrevive, e é declarado:** o `close_stroke` fecha
+        // a pilha em todo pen-up, logo esta é a metade DEFENSIVA — ela cobre o gesto que acaba sem
+        // passar por lá (uma troca de modo, um cancelamento). *Duas guardas que se cobrem leem-se
+        // como uma sobrevivência num relatório de mutação e não são*: a do pen-up tem gate próprio
+        // (`um_traco_novo_nao_recompoe_da_tela_do_anterior`, a metade da memória).
+        self.paint.pilha.fecha();
+        // ⚠️ Um fluxo de RNG por camada, semeado do fluxo do pincel. Sem a semente eles nasceriam
+        // TODOS iguais e as camadas teriam a mesma realização de Grain/Randomize umas das outras.
+        self.paint.rng_camada = std::array::from_fn(|i| {
+            self.paint
+                .tex_rng
+                .wrapping_add((i as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15))
+        });
         self.reset_stroke_height(); // Impasto: this stroke's relief starts empty (see `super::impasto`)
         // Sculpt: belt-and-braces. A committed gesture already ended its own session, so this normally
         // finds nothing — but any path that leaves one open (a shape abandoned without Cancel) would
@@ -453,6 +469,9 @@ impl PainterTool {
         // ⚠️ NOT the protection epoch: it outlives the stroke on purpose, so the next stroke through the
         // same protection converges on `keep` instead of eroding past it (§13.13).
         self.paint.stroke = None;
+        // ⭐ A pilha morre com o traço — o `pre` é uma tela inteira, e segurá-la depois do pen-up
+        // custaria `w·h·4` bytes por gesto sem ninguém a ler.
+        self.paint.pilha.fecha();
         self.paint.line_anchor = None;
         self.paint.last_smear_pos = None;
         self.paint.watercolor_base = None; // defensive: the render-path drops it on commit already

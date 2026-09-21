@@ -13,7 +13,12 @@
 //!
 //! A pilha não é uma soma de operações independentes: quando há uma camada **Smear** viva, toda
 //! camada que NÃO é smear paga o depósito **DUAS vezes** — uma no canvas e outra na base congelada
-//! da sessão de esfregar ([`super::composite::PainterTool::lay_into_smear_base`], a cura de
+//! ⚠️⚠️ **A DOBRA que este cabeçalho mede MORREU em 2026-09-20** (a wave da ordem por TRAÇO): a
+//! base do knife passou a ser **refrescada** da tela no momento em que a vez dele chega na pilha,
+//! em vez de toda camada depositar duas vezes. As tabelas abaixo ficam como a medição do preço que
+//! ela custava — *`×2,09` num Brush e `×1,92` num Blur* —, e são elas que dizem o que a cura poupou.
+//!
+//! da sessão de esfregar (a DOBRA, `lay_into_smear_base` — a cura de
 //! 2026-08-09 sem a qual o traço perde 33 das 141 colunas). ⇒ *o preço de uma camada depende de
 //! quem mais está na pilha*, e um número medido sozinho subestima.
 //!
@@ -250,7 +255,7 @@ fn diag_o_preco_marginal_de_uma_camada() {
 ///   a cor `[0,6, 0, 0]` escurece o canal vermelho `0,6 × 0,4 × 255 = 61,2` — e o medido é
 ///   `61,04`. Se o 2.º passe depositasse, a cobertura combinada seria `1 − 0,4² = 0,84` ⇒ `~86`.
 ///   *O número lido é EXACTAMENTE o cap, ao décimo.* ⇒ a cura é um `stroke_mask` **por camada**,
-///   que é a mesma coisa que o [`super::composite::PainterTool::lay_into_smear_base`] já tem de
+///   que é a mesma coisa que a DOBRA (`lay_into_smear_base`) já tinha de
 ///   fazer à mão (ele salva e repõe o mapa à volta da dobra, e o doc dele diz porquê).
 #[test]
 #[ignore = "diagnóstico: roda sob demanda"]

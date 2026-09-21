@@ -189,6 +189,9 @@ pub struct BrushSettings {
     pub composite_hardness_authored: [bool; 5],
     /// O tamanho do carimbo de cada posição, como multiplicador do raio do pincel (`1` = o pincel).
     pub composite_size: [f32; 5],
+    /// **Até onde a borracha de cada posição chega** (`0` = a imagem também · `1` = só este traço).
+    /// Inerte em toda operação que não é a borracha, e o cartão só o pinta lá.
+    pub composite_erase_scope: [u8; 5],
     /// Seamless **Tiling** (wrap-around painting) flags `[x, y]`.
     pub tiling: [bool; 2],
     /// **Repeat Image** tile-preview toggle (the on-canvas 3×3 grid).

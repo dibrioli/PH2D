@@ -188,6 +188,7 @@ fn register_brush_inputs(store: &mut WidgetStore) {
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_COLOR)
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_COLOR_CLEAR)
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR)
+        .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ERASE_SCOPE)
     {
         store.register(
             id,

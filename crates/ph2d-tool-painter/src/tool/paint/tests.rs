@@ -52,6 +52,12 @@ mod diag_pigmento_por_meio; // em que MEIOS a lei do pigmento chega ao barro (a 
 #[path = "composite_cinco_tests.rs"]
 mod composite_cinco_tests; // a pilha de CINCO: cor, tamanho e o Erase por camada
 
+#[path = "composite_pilha_tests.rs"]
+mod composite_pilha_tests; // a ordem por TRAÇO + o escopo da borracha
+
+#[path = "diag_preco_da_pilha.rs"]
+mod diag_preco_da_pilha; // o relógio da recomposição regional
+
 #[path = "diag_composite_cinco_camadas.rs"]
 mod diag_composite_cinco_camadas;
 #[path = "diag_ordem_entre_carimbos.rs"]

@@ -1,13 +1,18 @@
 //! **Composite Brush** — run Brush · Smear · Blur · Erase together as a reorderable **5-layer** stack.
 //!
 //! An upgrade to the Brush tool (a panel checkbox, not a rail tool): when on, one stroke applies all
-//! the armed operations per dab, each with its own Strength — and, since 2026-09-20 (ordem do dono),
-//! its own **colour** and its own **stamp size**. The layers occupy FIXED positions numbered 1 (top)
-//! … 5 (bottom); the tool at each position is reordered with the panel's up/down buttons. The stroke
+//! the armed operations, each with its own Strength — and, since 2026-09-20 (ordem do dono), its own
+//! **colour**, **hardness** and **stamp size**. The layers occupy FIXED positions numbered 1 (top) …
+//! 5 (bottom); the tool at each position is reordered with the panel's up/down buttons. The stroke
 //! runs the stack **bottom → top** (position 5 first), so each operation processes the canvas as
 //! modified by the one below it — e.g. Brush(3) → Smear(2) → Blur(1) paints, then smears that, then
 //! blurs the result; Blur(3) → Smear(2) → Brush(1) blurs the canvas, smears it, then paints clean
 //! strokes on top (untouched by the blur/smear below). Split from `paint.rs` for the LOC cap.
+//!
+//! ⭐⭐⭐ **E a ordem é do TRAÇO, não do LOTE** (2026-09-20, report do dono três vezes): com duas ou
+//! mais camadas activas a pilha corre **por CAMADA sobre a história inteira do gesto**, numa
+//! recomposição regional a partir da tela do pen-down. O mecanismo, o preço e as três excepções
+//! vivem em [`super::composite_pilha`]; aqui ficam o MODELO (o que uma camada é) e a FIAÇÃO.
 //!
 //! The shared brush parameters (Size / Shape / Grain / Falloff / Tiling / Jitter / Symmetry / Stroke)
 //! drive every layer's dab geometry; the colour-family parameters (Blend / ramps / Randomize /
@@ -111,6 +116,38 @@ impl CompositeOp {
     }
 }
 
+/// **Até onde a borracha de uma camada chega** — ordem do dono, 2026-09-20: *«uma opção em erase:
+/// se a borracha atua só no próprio traço do Brush ou se ela apaga também a camada da imagem
+/// abaixo»*.
+///
+/// ⛔ O valor de fábrica é [`Self::Tudo`], que é o comportamento de sempre — a lei da casa manda
+/// tudo o que é novo shipar desligado, e é ele que mantém a imagem de hoje **byte-idêntica**.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub(crate) enum EscopoDaBorracha {
+    /// Come o alfa de tudo o que estiver por baixo, a imagem incluída.
+    #[default]
+    Tudo,
+    /// Devolve o pixel ao que ele era **antes deste traço** — ou seja, apaga só a tinta que a
+    /// própria pilha acabou de pôr. Mecanismo e álgebra em
+    /// [`PainterTool::aplica_borracha_do_traco`].
+    Traco,
+}
+
+/// **Quantos escopos o chip da borracha cicla.** ⚠️ Ele é lido pelo ciclo do clique E pela largura
+/// medida do chip no painel — *duas respostas à mesma pergunta divergem no dia em que houver um
+/// terceiro*.
+pub const N_ESCOPOS_DA_BORRACHA: usize = 2;
+
+impl EscopoDaBorracha {
+    /// O discriminante que viaja no instantâneo do painel (`0` Tudo · `1` Traço).
+    pub(crate) fn to_u8(self) -> u8 {
+        match self {
+            Self::Tudo => 0,
+            Self::Traco => 1,
+        }
+    }
+}
+
 /// One composite stack layer: which operation sits here, its Strength (`0..1`; `0` = the layer is a
 /// no-op and is skipped), its colour and its stamp size. Stored in a fixed `[_; N_CAMADAS]` in
 /// display order (index 0 = layer 1 = top).
@@ -118,6 +155,8 @@ impl CompositeOp {
 pub(crate) struct CompositeLayer {
     pub op: CompositeOp,
     pub strength: f32,
+    /// Até onde a borracha desta posição chega — inerte em toda operação que não é a borracha.
+    pub erase_scope: EscopoDaBorracha,
     /// A cor DESTA camada, ou `None` = **a cor do pincel**.
     ///
     /// ⚠️ O `None` não é «sem cor», é *«segue quem manda»* — e é ele que mantém o **Randomize
@@ -150,6 +189,7 @@ impl Default for CompositeLayer {
         Self {
             op: CompositeOp::Brush,
             strength: 0.0,
+            erase_scope: EscopoDaBorracha::Tudo,
             color: None,
             hardness: None,
             size: 1.0,
@@ -323,6 +363,21 @@ impl PainterTool {
         std::array::from_fn(|i| self.paint.composite[i].size)
     }
 
+    /// Escolhe até onde a borracha da posição `pos` chega (`0` Tudo · `1` Traço).
+    pub fn set_composite_layer_erase_scope(&mut self, pos: usize, escopo: u8) {
+        if pos < N_CAMADAS {
+            self.paint.composite[pos].erase_scope = match escopo {
+                1 => EscopoDaBorracha::Traco,
+                _ => EscopoDaBorracha::Tudo,
+            };
+        }
+    }
+
+    /// Os escopos da borracha por posição, para o instantâneo do painel.
+    pub(crate) fn composite_erase_scopes(&self) -> [u8; N_CAMADAS] {
+        std::array::from_fn(|i| self.paint.composite[i].erase_scope.to_u8())
+    }
+
     /// Route the Composite-card panel events (enable checkbox, per-position reorder buttons, per-position
     /// Strength sliders). Returns `true` iff consumed — chained ahead of the big `handle_panel_event` match.
     pub(crate) fn route_composite_event(&mut self, event: &PanelEvent) -> bool {
@@ -368,6 +423,18 @@ impl PainterTool {
                     .position(|x| x == id)
                 {
                     self.clear_composite_layer_hardness(p);
+                    return true;
+                }
+                if let Some(p) = crate::ids::PAINTER_BRUSH_COMPOSITE_ERASE_SCOPE
+                    .iter()
+                    .position(|x| x == id)
+                {
+                    // O chip CICLA os escopos — o mesmo gesto do chip da operação, e pela mesma
+                    // razão: o `PanelEvent` é contrato congelado (§6) e não tem clique-direito.
+                    let proximo =
+                        (usize::from(self.paint.composite[p].erase_scope.to_u8() + 1)
+                            % N_ESCOPOS_DA_BORRACHA) as u8;
+                    self.set_composite_layer_erase_scope(p, proximo);
                     return true;
                 }
                 false
@@ -493,143 +560,28 @@ impl PainterTool {
         if dabs.is_empty() {
             return;
         }
-        let (w, h) = self.source_size;
-        let tiling = self.paint.tiling;
-        let tiled = tiling[0] || tiling[1];
-        let saved_strength = self.paint.brush.strength;
-        let saved_blend = self.paint.brush.blend;
-        // ⭐ A dureza é reposta como a força: ela vive no `BrushSpec` e é lida no CARIMBO (o perfil
-        //   do dab), logo trocá-la à volta da passagem chega — não há nada assado na lista de dabs.
-        let saved_hardness = self.paint.brush.hardness;
-        // Bottom (position N-1 / the last layer) → top (position 0 / layer 1).
-        for pos in (0..N_CAMADAS).rev() {
-            let layer = self.paint.composite[pos];
-            if layer.strength <= 0.0 {
-                continue;
-            }
-            self.paint.brush.strength = layer.strength;
-            // `None` = segue o pincel, e aí a linha é um no-op AO BIT (escreve o que já lá estava).
-            self.paint.brush.hardness = layer.hardness.unwrap_or(saved_hardness);
-            // ⚠️ O blend da camada de apagar é forçado AQUI e não na rota: a rota é a do depósito, e
-            // ela já sabe ler `brush.blend`. Uma rota própria seria a segunda resposta.
-            self.paint.brush.blend = if matches!(layer.op, CompositeOp::Erase) {
-                ph2d_painter_brush::BrushBlend::EraseAlpha
+        // ⚠️ As listas por camada resolvem-se UMA vez e ANTES de qualquer decisão: o
+        // [`Self::camada_dabs`] consome o acumulador de arco daquela posição (estado por TRAÇO), e
+        // chamá-lo duas vezes para o mesmo lote entregaria duas subamostragens diferentes.
+        let camadas: [Vec<Dab>; N_CAMADAS] = std::array::from_fn(|pos| {
+            if self.paint.composite[pos].strength <= 0.0 {
+                Vec::new()
             } else {
-                saved_blend
-            };
-            let proprios = self.camada_dabs(pos, dabs);
-            let dabs: &[Dab] = proprios.as_deref().unwrap_or(dabs);
-            std::mem::swap(
-                &mut self.paint.stroke_mask,
-                &mut self.paint.composite_mask[pos],
-            );
-            match layer.op {
-                CompositeOp::Brush | CompositeOp::Erase => {
-                    // The brush route expects already-tiled dabs (the Smear/Blur routes tile internally).
-                    let wrapped =
-                        tiled.then(|| super::tiling::tiled_dabs(dabs, self.source_size, tiling));
-                    let d: &[Dab] = wrapped.as_deref().unwrap_or(dabs);
-                    self.lay_into_smear_base(|t| t.stamp_dabs_inner(d));
-                    self.stamp_dabs_inner(d);
-                }
-                CompositeOp::Smear => self.stamp_dabs_smear(dabs, w, h),
-                CompositeOp::Blur => {
-                    // ⚠️ O Blur precisa da MESMA porta que o Brush, pelo mesmo motivo: ele escreve só o
-                    // canvas, e o render do smear do batch seguinte reescreve a região a partir de
-                    // `pre` — que nunca viu o blur. O resultado era o blur DESFEITO dentro da região
-                    // renderizada e vivo fora dela, com a união de rects como fronteira.
-                    //
-                    // ⭐ **E aqui — e SÓ aqui — o núcleo é o de CAIXA** (ordem do dono, 2026-09-20:
-                    // *«veja se abaixando a qualidade do blur não fica bem mais leve; mas só no
-                    // Blur do composite»*). A ferramenta Blur isolada entra pela porta sem
-                    // argumento, que crava o binomial. O preço e a diferença de imagem estão
-                    // medidos no gate `o_nucleo_de_caixa_do_composite`.
-                    // ⚠️ UM nome, dois chamadores: escrito duas vezes, o dia em que um deles mudasse
-                    // deixava a base do smear a receber um borrão de outra lei — e as duas metades
-                    // de um mesmo depósito divergiriam em silêncio.
-                    const NUCLEO: ph2d_painter_brush::BlurKernel =
-                        ph2d_painter_brush::BlurKernel::Caixa;
-                    self.lay_into_smear_base(|t| {
-                        t.stamp_dabs_blur_com(dabs, w, h, NUCLEO);
-                    });
-                    self.stamp_dabs_blur_com(dabs, w, h, NUCLEO);
-                }
+                self.camada_dabs(pos, dabs)
+                    .unwrap_or_else(|| dabs.to_vec())
             }
-            std::mem::swap(
-                &mut self.paint.stroke_mask,
-                &mut self.paint.composite_mask[pos],
-            );
-        }
-        self.paint.brush.blend = saved_blend;
-        self.paint.brush.strength = saved_strength;
-        self.paint.brush.hardness = saved_hardness;
-    }
-}
-
-impl PainterTool {
-    /// Lay the Brush layer's deposit into the smear session's frozen source **by the same door that lays
-    /// it on the canvas** — the plane is swapped into `canvas_rgba` for the stamp and swapped back.
-    ///
-    /// ⚠️ **Sem dobra nenhuma a pilha não pinta mais que uma mancha** (Enio 2026-08-09): desde que o smear
-    /// virou CAMPO, uma esfregada *acumula um mapa de deslocamento e resolve UMA vez a partir dos pixels
-    /// congelados no pen-down* — a lei que matou o filamento —, enquanto o composite promete o oposto,
-    /// *cada operação processa o canvas como a de baixo o deixou*, que é por BATCH. O render de smear do
-    /// batch seguinte reescrevia a região a partir de uma base que nunca vira o Brush (108 de 141 colunas).
-    ///
-    /// ⚠️ **TRÊS dobras reconstruídas de FORA do depósito foram construídas, e cada uma falhou de um jeito
-    /// — a terceira é a razão desta existir:** copiar a REGIÃO do canvas dá 141 colunas mas escreve a bbox
-    /// do batch na FONTE (⇒ a escada axis-aligned que o smoke fotografou, e o smear já feito volta para
-    /// dentro ⇒ as estrias) · SOMAR o delta do Brush dá **131** (sobre pixel já esfregado o incremento é
-    /// pequeno ⇒ perde tinta) · recuperar `a` de `after = before·(1−a) + C·a` dá **108**, zero em toda
-    /// parte, porque a cor e o espaço com que o depósito compõe não são `brush.color` em sRGB de 8 bits.
-    ///
-    /// ⇒ **Só quem deposita sabe `(C, a)` por texel.** Trocar o plano para dentro do canvas durante o
-    /// stamp é o padrão que este repo já usa duas vezes (o scratch da máscara · o plano `free` do gate de
-    /// proteção) e dá o resultado **exato por construção**: a fonte recebe a MESMA composição, delimitada
-    /// pelo **falloff do dab** — nenhuma borda de retângulo pode nascer, porque não existe retângulo em
-    /// parte alguma da operação.
-    ///
-    /// ⚠️ **`DrawTo::Color` no passe da fonte, e é obrigatório:** sem ele o segundo depósito acumularia o
-    /// envelope de relevo uma segunda vez, e o CORPO da tinta passaria a ser função de haver uma sessão de
-    /// smear viva — o relevo dependendo de qual camada está na pilha.
-    ///
-    /// ⚠️ **O Blur usa a MESMA porta** — toda camada da pilha que NÃO é o smear precisa dela, senão o
-    /// render do smear desfaz o trabalho dela dentro da região que re-resolve.
-    ///
-    /// **Mutação que must bleed:** apagar a chamada ⇒ 108 de 141.
-    fn lay_into_smear_base(&mut self, op: impl FnOnce(&mut Self)) {
-        if !self.paint.warp.active || self.paint.warp.pre.len() != self.canvas_rgba.len() {
+        });
+        // ⛔ **Com menos de duas camadas activas não há ordem para arrumar** — o caminho é o de
+        // sempre, byte-idêntico, e nem a fotografia do `pre` é paga.
+        if self.camadas_activas() < 2 {
+            // ⚠️ **No máximo UMA posição faz alguma coisa aqui**, logo não há ordem para escolher —
+            // e um `for … .rev()` neste braço seria uma linha que a mutação não consegue matar
+            // (medido: invertê-lo não move um bit). O `find` diz a mesma coisa e diz que é UMA.
+            if let Some(pos) = (0..N_CAMADAS).find(|&p| self.paint.composite[p].strength > 0.0) {
+                self.aplica_camada(pos, &camadas[pos]);
+            }
             return;
         }
-        // ⚠️ Pela PORTA, não por `mem::replace` cru: é ela que chama `toggle_foreign_plane`, e sem isso
-        // todo `fork_canvas` das rotas captura os bytes da FONTE achando que são a tela — e *a primeira
-        // captura de cada tile é a que vale*, então a poluição do journal é permanente.
-        let mut plane = std::mem::take(&mut self.paint.warp.pre);
-        super::plane_fork::swap_canvas_plane(
-            &mut self.canvas_rgba,
-            &mut plane,
-            &self.undo.write_state,
-        );
-        // ⚠️ Este passe roda o depósito uma SEGUNDA vez no mesmo batch, e os estados que ele consome
-        // são por-TRAÇO, não por-passe. Sem os salvar aqui:
-        // • `stroke_mask` é o cap de Accumulate — com Strength < 1 o passe da fonte leva a cobertura ao
-        //   teto e o passe do canvas deposita **ZERO**, e a tinta só reaparece onde o smear a traz de
-        //   volta da fonte: dentro de um retângulo, com fronteira axis-aligned;
-        // • `tex_rng` é um stream CONSUMIDO, não copiado — sem salvá-lo a fonte recebe uma realização
-        //   de Grain/Random/Randomize e o canvas recebe a SEGUINTE, quebrando a promessa desta função.
-        let saved_mask = self.paint.stroke_mask.clone();
-        let saved_rng = self.paint.tex_rng;
-        let saved_draw = self.paint.brush.impasto_draw_to;
-        self.paint.brush.impasto_draw_to = ph2d_painter_brush::DrawTo::Color;
-        op(self);
-        self.paint.brush.impasto_draw_to = saved_draw;
-        self.paint.tex_rng = saved_rng;
-        self.paint.stroke_mask = saved_mask;
-        super::plane_fork::swap_canvas_plane(
-            &mut self.canvas_rgba,
-            &mut plane,
-            &self.undo.write_state,
-        );
-        self.paint.warp.pre = plane;
+        self.recompoe_a_pilha(camadas);
     }
 }

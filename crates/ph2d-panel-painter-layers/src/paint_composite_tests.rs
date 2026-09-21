@@ -82,3 +82,90 @@ fn o_painel_tem_um_nome_por_operacao() {
         }
     }
 }
+
+/// ⭐⭐ **Nenhum nome de ESCOPO da borracha sai cortado, e eles são DISTINTOS.**
+///
+/// A mesma régua da coluna da operação, sobre a população do
+/// [`ph2d_tool_painter::N_COMPOSITE_ERASE_SCOPES`] — ⛔ *derivar a largura de um número escolhido à
+/// mão é exactamente o que a foto do dono reprovou uma wave antes*.
+#[test]
+fn nenhum_nome_de_escopo_sai_cortado_nem_se_repete() {
+    let mut ts = TextSystem::new();
+    let fonte = Button::label_font_px();
+    let col = super::largura_do_chip_do_escopo(&mut ts);
+    let orcamento = label_budget(col);
+    let n = ph2d_tool_painter::N_COMPOSITE_ERASE_SCOPES;
+    assert!(n >= 2, "piso de população: o chip cicla ao menos dois escopos");
+    let nomes: Vec<&str> = (0..n).map(|e| super::escopo_name(e as u8)).collect();
+    for (i, nome) in nomes.iter().enumerate() {
+        let w = ts.prefix_width(nome, fonte);
+        assert!(
+            w <= orcamento,
+            "o escopo {i} ({nome}) pede {w:.1} de {orcamento:.1} na coluna medida ({col:.1})"
+        );
+    }
+    for i in 0..nomes.len() {
+        for j in (i + 1)..nomes.len() {
+            assert_ne!(
+                nomes[i], nomes[j],
+                "os escopos {i} e {j} mostram o mesmo nome — ou falta um braço no `escopo_name`, \
+                 ou o `N_COMPOSITE_ERASE_SCOPES` conta mais do que a lei tem"
+            );
+        }
+    }
+}
+
+/// Pinta o CARTÃO com a posição `0` na operação `op` e devolve os ids que registaram hit rect.
+///
+/// ⚠️ **É o PINTOR que corre, nunca a porta `apaga`:** *uma tabela de leis é um resumo do produto,
+/// e um resumo não tem de conter tudo* — e um chip pintado sem hit rect é exactamente o «morto sob
+/// o dedo» que esta casa já pagou sete vezes na escultura.
+fn ids_pintados_com(op: u8) -> Vec<ph2d_a11y::NodeId> {
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::PainterLayersPanel>();
+    let mut scene = ph2d_vector::VectorScene::new();
+    let mut text = TextSystem::without_system_fonts();
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 360.0, 4000.0);
+    let layout = ph2d_editor_core::screens::HeroLayout::for_viewport(viewport);
+    let mut brush = crate::paint_brush::FALLBACK_BRUSH;
+    brush.composite_enabled = true;
+    brush.composite_ops[0] = op;
+    brush.composite_strength[0] = 1.0;
+    {
+        let mut ctx = ph2d_editor_core::panel::PaintCtx {
+            host: &mut host,
+            layout: &layout,
+            slot: layout
+                .slot_rects(ph2d_editor_core::screens::slot::SlotSet::ANY_DOCK)
+                .get(ph2d_editor_core::screens::slot::Slot::RightTop),
+            viewport,
+            scene: &mut scene,
+            text_system: &mut text,
+        };
+        super::paint_composite_card(&mut ctx, ph2d_tokens::Theme::default(), 0.0, 320.0, 0.0, brush);
+    }
+    use ph2d_editor_core::panel::PanelHostInternal;
+    host.hit_index_mut()
+        .iter_registrations()
+        .map(|(id, _)| id)
+        .collect()
+}
+
+/// ⛔⛔ **O chip do escopo é pintado — e ALCANÇÁVEL — só numa camada de borracha.**
+///
+/// ⚠️ **As duas metades, porque cada uma sozinha mente:** *está lá quando a operação é `Erase`*
+/// (senão a ordem do dono é inalcançável) **e** *não está nas outras* (senão é um controlo morto
+/// numa fileira onde a pergunta não tem sujeito — a espécie que o §5.0 do `CLAUDE.md` nomeia).
+#[test]
+fn o_chip_do_escopo_so_aparece_numa_camada_de_borracha() {
+    let alvo = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ERASE_SCOPE[0];
+    for op in 0..ph2d_tool_painter::N_COMPOSITE_OPS as u8 {
+        let pintado = ids_pintados_com(op).contains(&alvo);
+        assert_eq!(
+            pintado,
+            super::apaga(op),
+            "a operação {op} ({}) {} o chip do escopo",
+            op_name(op),
+            if pintado { "PINTA" } else { "não pinta" }
+        );
+    }
+}

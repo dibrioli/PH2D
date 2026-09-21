@@ -148,6 +148,9 @@ impl Default for PaintState {
             ],
             composite_mask: std::array::from_fn(|_| Vec::new()),
             composite_arco: [f32::NEG_INFINITY; crate::tool::paint::composite::N_CAMADAS],
+            pilha: crate::tool::paint::composite_pilha::PilhaDoTraco::default(),
+            rng_camada: [0; crate::tool::paint::composite::N_CAMADAS],
+            limite_do_smear: None,
             clone_source: None,
             clone_offset: None,
             clone_aligned: true, // Aligned by default (standard clone-stamp)

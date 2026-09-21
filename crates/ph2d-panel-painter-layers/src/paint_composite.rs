@@ -149,6 +149,31 @@ fn deposita_cor(op: u8) -> bool {
     op == 0
 }
 
+/// Esta posição é uma BORRACHA? (o discriminante `3` do [`ph2d_tool_painter`] wire)
+fn apaga(op: u8) -> bool {
+    op == 3
+}
+
+/// O nome do escopo `e` da borracha — a mesma forma do [`op_name`].
+fn escopo_name(e: u8) -> &'static str {
+    match e {
+        1 => tr("panel.painter_layers.composite.erase_stroke"),
+        _ => tr("panel.painter_layers.composite.erase_image"),
+    }
+}
+
+/// A largura do chip do ESCOPO, **medida** dos nomes que ele pode mostrar.
+///
+/// ⛔ Ela é derivada pela mesma razão que a irmã da operação: um número escolhido à mão com um
+/// comentário a dizer que coube foi exactamente o que a foto do dono reprovou em 2026-09-20.
+fn largura_do_chip_do_escopo(text_system: &mut ph2d_text::TextSystem) -> f32 {
+    let fonte = Button::label_font_px();
+    let mais_largo = (0..ph2d_tool_painter::N_COMPOSITE_ERASE_SCOPES)
+        .map(|e| text_system.prefix_width(escopo_name(e as u8), fonte))
+        .fold(0.0f32, f32::max);
+    rect_for_label(mais_largo)
+}
+
 fn enc(c: f32) -> u8 {
     (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8 // LITERAL-PX-OK: sRGB 8-bit normalize
 }
@@ -378,6 +403,30 @@ fn paint_layer_row_b(
             );
             cx += CLEAR_W + gap;
         }
+    }
+
+    // ── O ESCOPO, só numa camada de borracha ─────────────────────────────────────────────────
+    //
+    // ⭐ Ordem do dono, 2026-09-20: *«uma opção em erase: se a borracha atua só no próprio traço do
+    // Brush ou se ela apaga também a camada da imagem abaixo»*.
+    //
+    // ⚠️ **Ele vive aqui e não numa fileira própria porque numa borracha a fileira B está VAZIA à
+    // esquerda** — a amostra de cor e o botão de volta dela só existem para quem deposita
+    // ([`deposita_cor`]) —, logo o chip não custa um pixel de altura ao cartão. *Uma fileira a mais
+    // custaria `N_CAMADAS × row_pitch` a TODAS as camadas para servir uma.*
+    if apaga(brush.composite_ops[pos]) {
+        let id = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ERASE_SCOPE[pos];
+        let w = largura_do_chip_do_escopo(ctx.text_system);
+        let rect = Rect::new(cx, y, w, ROW_H_PX);
+        paint_button(
+            &Button::new(id, escopo_name(brush.composite_erase_scope[pos])),
+            rect,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+        );
+        ctx.host.hit_index_mut().register(id, rect);
+        cx += w + gap;
     }
 
     // ── O tamanho do carimbo, em multiplicadores do raio do pincel ───────────────────────────

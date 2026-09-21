@@ -110,6 +110,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     composite_color_authored: [false; 5],
     composite_hardness: [1.0; 5],
     composite_hardness_authored: [false; 5],
+    composite_erase_scope: [0; 5],
     composite_size: [1.0; 5],
     tiling: [false, false],
     repeat_image: false,

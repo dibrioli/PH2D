@@ -186,6 +186,19 @@ impl PainterTool {
                 .touched_all
                 .map_or(rect, |acc| union_region(acc, rect));
             self.paint.warp.touched_all = Some(all);
+            // ⛔⛔ **E a pilha do Composite LIMITA o alvo do render** ([`super::composite_pilha`]): lá
+            // a base (`warp.pre`) é refrescada só dentro da região recomposta, logo re-resolver a
+            // CAUDA a partir dela escreveria o traço todo de uma base que ali é a de um lote antigo
+            // (medido: `|Δ| médio 110` contra `0,00` das outras três camadas). ⭐ E não se perde
+            // nada: *o `disp` de um texel só cresce enquanto o cursor está a menos de um raio dele*,
+            // que é exactamente enquanto ele está dentro da região recomposta.
+            let all = match self.paint.limite_do_smear {
+                Some(lim) => match super::region::intersect_region(all, lim) {
+                    Some(r) => r,
+                    None => return true,
+                },
+                None => all,
+            };
             // One resample of the frozen source over everything that moved — colour and body together.
             self.warp_render_from_session(all);
             // ⚠️ Sujo o que foi RENDERIZADO, não o que foi deslocado neste batch. Marcar só `rect`

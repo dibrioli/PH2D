@@ -1246,3 +1246,172 @@ espécies e só uma avisa*, logo `5 de 5` sobre o ficheiro antigo não afirma na
    reportar.
 3. **Um `\n` dentro de `'…'` do bash são dois caracteres** (foi preciso `$'…'`) e, na 1.ª redacção,
    um caso abortado matava a corrida inteira em vez de contar e seguir.
+
+---
+
+## §22 — A PILHA É DO TRAÇO, e a borracha ganha ESCOPO
+
+> Ordem do dono, 2026-09-20, em três reports e um pedido:
+> *«o brush de cima sempre deve ser desenhado por cima do Brush de baixo. Atualmente o brush de
+> baixo cobre o brush de cima do carimbo anterior. corrija»* · *«Blur em cima não consegue borrar os
+> Brushes. corrija e veja se smear também está bugado»* · *«o Z index não funciona também para
+> eraser em cima… tem que rever para todos»* · *«Vamos precisar de uma opção em erase: se a borracha
+> atua só no próprio traço do Brush ou se ela apaga também a camada da imagem abaixo.»*
+
+### §22.1 — O mecanismo do defeito
+
+O `stamp_dabs_composite` corria `for pos in (0..N).rev()` sobre a fatia de dabs **daquele lote**. A
+ordem DENTRO de um lote estava certa; entre lotes estava invertida — um traço chega em dezenas de
+eventos de ponteiro, e o lote `k+1` começa pela camada de BAIXO, que aterra por cima do que a de
+CIMA do lote `k` acabou de pintar. Com o espaçamento de fábrica dois dabs consecutivos sobrepõem-se
+~90 %, logo **a camada de cima só sobrevive na lasca da frente**.
+
+### §22.2 — A régua UNIVERSAL, e o que ela mediu
+
+*O mesmo traço entregue numa tacada ou em N lotes tem de dar a MESMA imagem* — ela não sabe o que
+cada camada faz, só que a ordem é da PILHA e não da taxa do rato. `|Δ| médio` sobre a linha central,
+topo sobre um Brush azul, contra a entrega num lote só:
+
+| topo | passo | ANTES | DEPOIS |
+|---|---|---|---|
+| Brush vermelho | 2 | `41,59` (pior `92`) | **`0,00`** |
+| Brush vermelho | 8 | `31,26` (pior `90`) | **`0,00`** |
+| Erase / Smear / Blur | 2 e 8 | `0,00` | `0,00` |
+
+⚠️ **As três linhas que já liam `0,00` não eram um motor certo — era a FIXTURA a não conter o
+fenómeno** (apagar à força cheia satura; borrar o miolo chapado de um traço é um no-op). Elas ficam
+porque a régua tem de reprovar no dia em que alguém as quebrar.
+
+E a cor na linha central, com dois Brushes de Strength `1`:
+
+| passo | ANTES | DEPOIS |
+|---|---|---|
+| 2 | `R 167,3 · B 87,7` (o fundo aparece) | **`R 255,0 · B 0,0`** |
+| 8 | `R 187,9 · B 67,1` | **`R 255,0 · B 0,0`** |
+| 280 (um lote) | `R 250,4 · B 4,6` | `R 255,0 · B 0,0` |
+
+### §22.3 — A lei nova
+
+```text
+    tela = L₀( L₁( … L_N( pre ) … ) )
+```
+
+com **cada `L` aplicada sobre o TRAÇO INTEIRO** e `pre` = a tela no pen-down. A pilha corre **por
+CAMADA e não por lote**. É a lei que o `PerLayerStroke` já declara para as camadas de Shape, um
+nível acima.
+
+⭐ **E ela NÃO é `O(n²)`:** as operações são locais, logo a tela só muda onde os dabs NOVOS caem.
+Recompõe-se essa região a partir do `pre`, replayando **só os lotes cuja caixa a toca** — um número
+que não cresce com o traço (vale `~2/spacing`, a sobreposição). Os seis passos estão comentados no
+sítio, em [`composite_pilha.rs`](../../../crates/ph2d-tool-painter/src/tool/paint/composite_pilha.rs).
+
+### §22.4 — As quatro coisas que a construção OBRIGOU, e nenhuma estava no pedido
+
+1. ⭐⭐⭐ **A DOBRA MORREU.** Ela existia porque o render do Smear parte de uma base congelada que
+   não via o depósito das outras camadas ⇒ toda camada não-smear depositava **DUAS** vezes (medido
+   ×2,09 num Brush, ×1,92 num Blur). Hoje a base é **refrescada da tela** no momento em que a vez do
+   knife chega na pilha — o que põe lá **exactamente as camadas de BAIXO**, que é a ordem que o
+   report pedia, em vez de todas, que era o defeito. −68 linhas e um passe a menos por camada.
+2. ⛔⛔ **A base do smear refresca-se na `caixa_nova`, NUNCA na `caixa_grande`** — e isto custou a
+   medição mais cara da wave. Dentro da caixa grande as camadas de depósito estão **incompletas**
+   (só os lotes da janela foram replayados), logo refrescar ali escreve BRANCO na base onde os dabs
+   antigos tinham pintado, e o render devolve a cauda do traço à cor do papel: `|Δ| médio 110,13`,
+   `pior 255`. *A região em que o resultado é correcto é exactamente a que sobrevive.*
+3. ⚠️ **O RNG é por CAMADA.** Com a recomposição a correr por camada, um fluxo partilhado seria
+   consumido noutra ordem a cada lote — *o Grain Random a cintilar por baixo da mão*. Cada lote
+   guarda a posição do fluxo de cada camada e o replay repõe-na. ⛔ E o jitter de **COR** não o
+   revela: ele é assado na lista de dabs, logo é replay-safe por construção — quem o observa é o
+   **grão com mapeamento aleatório**, e é com ele que o gate mede.
+4. ⚠️ **O cap de Accumulate de cada camada recomeça na região recomposta.** Ele é um mapa por
+   TRAÇO; deixá-lo cheio faz o replay encontrar o tecto atingido e depositar **ZERO** — o traço
+   desaparece à medida que a mão anda. Só é observável com `strength < 1`: *um corpus no ponto
+   neutro de um mecanismo não testa esse mecanismo*.
+
+### §22.5 — A BORRACHA GANHOU ESCOPO
+
+`Image` (o valor de fábrica, o comportamento de sempre) · `Stroke` — *devolve o pixel ao que ele era
+antes deste traço*. O chip vive na fileira B, que **numa borracha está vazia à esquerda** (a amostra
+de cor e o botão de volta só existem para quem deposita) ⇒ **zero pixels de altura a mais no cartão**.
+
+⭐ **A álgebra é exacta, não uma aproximação:** no ponto da pilha em que a borracha corre a tela é
+`pre ⊕ tinta`, e o que se quer é `pre ⊕ (tinta·(1−c))`. Desenvolvendo o `over`, isso é **idêntico**
+a `lerp(tela, pre, c)` — canal a canal, alfa incluído.
+
+⛔ **E a cobertura `c` é MEDIDA, nunca recuperada do alfa:** `c = 1 − α_depois/α_antes` funciona…
+menos onde `α_antes = 0`, que é exactamente o pixel que uma borracha de escopo `Image` numa camada
+de baixo acabou de esvaziar. Ela corre no **ESCUDO**: um plano opaco onde o MESMO depósito escreve,
+e `c = 1 − α`. Uma lei, uma porta, nenhum caso degenerado.
+
+**Medido** (papel verde opaco, uma camada Brush vermelha, a borracha por cima):
+
+| | pixel do miolo |
+|---|---|
+| sem borracha (controlo) | `(255, 0, 0, 255)` — a tinta |
+| escopo `Image` | `α = 0` — **a imagem foi-se com a tinta** |
+| escopo `Stroke` | `(0, 200, 0, 255)` — **o verde de antes do gesto** |
+
+### §22.6 — O PREÇO, medido
+
+`--release`, canvas `1024²`, traço de 720 px em passos de 2 px, mínimo de três corridas.
+⚠️ **`load 29` — acima do `~5` em que uma leitura desta máquina vale**; a coluna serve para
+comparar linhas entre si, e a tabela tem de ser re-tirada com a máquina calma.
+
+| pilha | raio 24 | raio 96 |
+|---|---|---|
+| 1 Brush (sem recomposição) | `5,87 ms` | `6,10` |
+| 2 Brush | `5,73` | `6,19` |
+| 3 Brush | `5,80` | `6,67` |
+| Blur sobre Brush | `7,65` | `27,80` |
+| Smear sobre Brush | `70,43` | `98,94` |
+
+⭐ **A recomposição de duas e três camadas de depósito não é distinguível de uma** — o replay é de
+~10 dabs por lote e o custo do traço mora noutro sítio. Quem paga é o **Blur** a raio grande
+(`4,5×`), que é `~r²` por dab; o Smear é o de sempre (ele já era o membro caro da pilha).
+
+⛔ **Com MENOS DE DUAS camadas activas nada disto corre** — não há ordem para arrumar, e nem a
+fotografia do `pre` é paga (gate `uma_camada_so_nao_abre_a_recomposicao`, com controlo).
+
+### §22.7 — Prova de mutação: 10 de 12 sangram, 2 NOMEADAS
+
+| | |
+|---|---|
+| M1 a recomposição nunca corre | SANGRA |
+| M2 a janela é só o lote novo | SANGRA |
+| M3 sobrevive a caixa grande em vez da nova | SANGRA |
+| M4 a base do smear é refrescada na caixa grande | SANGRA |
+| **M5 o render do smear não é limitado** | **NOMEADA** |
+| M6 o cap da camada não é limpo | SANGRA |
+| M7 a borracha ignora o escopo | SANGRA |
+| M8 a borracha do traço não devolve o `pre` | SANGRA |
+| **M9 a pilha não fecha no pen-DOWN** | **NOMEADA** |
+| M11 a recomposição corre de cima para baixo | SANGRA |
+| M12 o replay não repõe o fluxo de RNG da camada | SANGRA |
+| M13 a pilha não fecha no pen-UP | SANGRA |
+
+* **M5** é um guarda de **RELÓGIO e não de imagem**: com a base refrescada só na `caixa_nova` ela
+  fica correcta em toda parte, logo o render da união inteira dá a MESMA imagem. O que ele compra
+  está medido: `Smear sobre Brush` de `70,43 → 184,40 ms` (raio 24) e `98,94 → 368,13` (raio 96).
+* **M9** é a metade DEFENSIVA — o `close_stroke` fecha a pilha em todo pen-up (M13 sangra), e esta
+  cobre o gesto que acaba sem passar por lá.
+
+### §22.8 — Três armadilhas de ARNÊS, e a terceira é nova neste repo
+
+1. **`grep -cF` conta LINHAS.** Numa âncora multi-linha ele lê o número errado e o caso ABORTA (ou,
+   pior, muta o sítio errado). A contagem é de OCORRÊNCIAS.
+2. **Um filtro que casa ZERO testes imprime `ok`** e lê-se como *«sobreviveu»* — o arnês conta
+   `passed + failed` e acusa.
+3. ⛔⛔⛔ **DUAS corridas do MESMO arnês na MESMA árvore destroem-na em silêncio.** Eu lancei três
+   (duas em segundo plano e uma em primeiro) e elas colidiram no `.bak`: a segunda restaurou o
+   ficheiro **já mutado** da primeira, o `mv` da primeira falhou com uma linha de erro no meio da
+   tabela, e a árvore ficou com **duas** mutações vivas — com o «controlo» a ler `1 passed;
+   6 failed` sobre elas, que se lê como *«o produto está partido»*. ⇒ o arnês ganhou uma **tranca**
+   (`flock`), e *um arnês de mutação é um recurso EXCLUSIVO da árvore, como a placa*.
+
+### §22.9 — O que fica ABERTO
+
+* ⏳ **O RELEVO não entra na recomposição.** As três metades do impasto (`heights`/`covers`/`mats`)
+  são escritas pelo depósito e **não** são guardadas nem repostas pela janela — no meio Digital,
+  onde o composite vive, não há relevo, e o gate que o afirmaria não existe.
+* ⏳ **A tabela de relógio foi tirada a `load 29`** e tem de ser re-tirada com a máquina calma.
+* ⏳ **O cartão com cinco camadas × três fileiras** continua sem medição de quanto empurra o resto
+  do painel para baixo da dobra — item herdado da §21.

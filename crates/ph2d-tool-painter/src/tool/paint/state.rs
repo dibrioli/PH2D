@@ -171,6 +171,30 @@ pub(crate) struct PaintState {
     /// O `arc_len` do último dab que CADA camada guardou, para a subamostragem de uma camada maior
     /// que o pincel atravessar os lotes. `NEG_INFINITY` = ainda não guardou nenhum neste traço.
     pub(super) composite_arco: [f32; composite::N_CAMADAS],
+    /// **A pilha ao longo do TRAÇO** — o `pre` do pen-down e a história dos lotes, de que a
+    /// recomposição regional parte. Ver [`composite_pilha`].
+    pub(super) pilha: composite_pilha::PilhaDoTraco,
+    /// **Até onde o render do Smear pode escrever**, `None` = a união inteira da sessão.
+    ///
+    /// ⛔⛔ O knife re-resolve o campo acumulado sobre **tudo o que já deslocou**, a cada lote — e é
+    /// a única camada da pilha que escreve fora da pegada dos dabs dela. ⭐ E não se perde nada ao
+    /// limitá-lo: *o `disp` de um texel só cresce enquanto o cursor está a menos de um raio dele*,
+    /// que é exactamente enquanto ele está dentro da região recomposta.
+    ///
+    /// ⚠️⚠️ **Ele é um guarda de RELÓGIO e não de imagem, e a mutação que o apaga SOBREVIVE —
+    /// declarado com a medição.** Com a base (`warp.pre`) refrescada só na `caixa_nova` ela fica
+    /// correcta em toda parte, logo o render da união inteira dá a MESMA imagem; o que ele compra é
+    /// o trabalho não crescer com o traço (`--release`, canvas `1024²`, traço de 720 px, `load 23`):
+    ///
+    /// | Smear sobre Brush | com o limite | sem ele |
+    /// |---|---|---|
+    /// | raio 24 | `70,43 ms` | **`184,40`** |
+    /// | raio 96 | `98,94 ms` | **`368,13`** |
+    pub(super) limite_do_smear: Option<crate::compositor::Region>,
+    /// **Um fluxo de RNG por CAMADA.** ⚠️ A recomposição corre por camada e não por lote, logo a
+    /// ORDEM de consumo de um fluxo partilhado mudaria a cada lote — e o Grain Random cintilaria
+    /// por baixo da mão. Semeados do `tex_rng` no pen-down.
+    pub(super) rng_camada: [u64; composite::N_CAMADAS],
     /// **Clone** sampled source anchor (image px), set by the "Set Source" pick mode; `None` until sampled. [`clone`].
     pub(super) clone_source: Option<[f32; 2]>,
     /// **Clone** established source→dest offset (px) = `clone_source − stroke_start`; `None` until a stroke begins. [`clone`].

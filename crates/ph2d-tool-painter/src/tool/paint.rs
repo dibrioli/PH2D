@@ -154,6 +154,9 @@ mod blur_route;
 /// The `impl CanvasPaintTool` pointer entry (`on_canvas_pointer`); split from `paint.rs` (LOC cap).
 mod canvas_pointer;
 mod composite;
+/// ⭐⭐⭐ **A ordem da pilha é do TRAÇO** — a recomposição regional que faz a camada de cima ficar
+/// por cima da de baixo ao longo do gesto inteiro, e não só dentro de um lote.
+mod composite_pilha;
 /// **Grid Stamp** — os controles do método (célula, deslocamento, Show Grid) e a régua norm↔px.
 /// ⭐ **O dab que o motor vai emitir** — irmão do [`grid_stamp_settings`] pelo tecto de LOC,
 /// cortado por responsabilidade: *a grelha do carimbo* e *que forma a próxima marca terá* são duas
@@ -270,6 +273,7 @@ pub use brush_settings::{
 };
 pub use composite::MAX_TAMANHO_DA_CAMADA as MAX_COMPOSITE_LAYER_SIZE;
 pub use composite::N_OPERACOES as N_COMPOSITE_OPS;
+pub use composite::N_ESCOPOS_DA_BORRACHA as N_COMPOSITE_ERASE_SCOPES;
 pub use shape_layers::MAX_SHAPE_LAYERS;
 pub use snapshot::brush_falloff_weight_at;
 

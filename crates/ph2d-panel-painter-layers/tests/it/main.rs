@@ -20,6 +20,7 @@ mod seam_grid_stamp;
 mod seam_impasto_rig;
 mod seam_impasto_tool;
 mod seam_line_card;
+mod seam_composite_escopo; // o chip do escopo da borracha: pintado, registado, alcançável
 mod seam_paint_media;
 mod seam_pigmento; // a fileira `Pigment`: a tela concorda com a porta, nos dois sentidos
 mod seam_sculpt;

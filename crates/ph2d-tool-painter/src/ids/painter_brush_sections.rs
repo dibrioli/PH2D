@@ -284,6 +284,19 @@ pub const PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR: [NodeId; 5] = [
     hash_node_id("painter_brush.composite_hardness_clear_4"),
 ];
 
+/// **Até onde a borracha desta posição chega** — `Click` cicla `Image` ⇄ `Stroke`
+/// ([`crate::EscopoDaBorracha`]). Ordem do dono, 2026-09-20.
+///
+/// ⚠️ Ele é pintado **só numa camada de borracha**: nas outras operações a pergunta não tem
+/// sujeito, e um chip que não governa nada é a espécie de controlo morto que o §5.0 nomeia.
+pub const PAINTER_BRUSH_COMPOSITE_ERASE_SCOPE: [NodeId; 5] = [
+    hash_node_id("painter_brush.composite_erase_scope_0"),
+    hash_node_id("painter_brush.composite_erase_scope_1"),
+    hash_node_id("painter_brush.composite_erase_scope_2"),
+    hash_node_id("painter_brush.composite_erase_scope_3"),
+    hash_node_id("painter_brush.composite_erase_scope_4"),
+];
+
 /// Per-position **«volta à cor do pincel»** — `Click` → `clear_composite_layer_color`.
 ///
 /// ⚠️ **Ele existe porque o `PanelEvent` é CONTRATO CONGELADO (§6) e não tem clique-direito**, e a
@@ -357,8 +370,8 @@ pub const PAINTER_BRUSH_CLONE_ALIGNED: NodeId = hash_node_id("painter_brush.clon
 /// os sete ids um a um, e estender a pilha de três para cinco camadas teria deixado quatro botões
 /// **pintados, registados e mortos sob o dedo** — a espécie que esta casa já pagou sete vezes na
 /// escultura. ⛔ A amostra de cor NÃO entra: ela abre o picker por outra rota (`ColorPicked`).
-pub const PAINTER_BRUSH_COMPOSITE_BUTTONS: [NodeId; 26] = {
-    let mut a = [PAINTER_BRUSH_COMPOSITE_ENABLE; 26];
+pub const PAINTER_BRUSH_COMPOSITE_BUTTONS: [NodeId; 31] = {
+    let mut a = [PAINTER_BRUSH_COMPOSITE_ENABLE; 31];
     let mut i = 0;
     while i < 5 {
         a[1 + i] = PAINTER_BRUSH_COMPOSITE_UP[i];
@@ -366,6 +379,7 @@ pub const PAINTER_BRUSH_COMPOSITE_BUTTONS: [NodeId; 26] = {
         a[11 + i] = PAINTER_BRUSH_COMPOSITE_OP[i];
         a[16 + i] = PAINTER_BRUSH_COMPOSITE_COLOR_CLEAR[i];
         a[21 + i] = PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR[i];
+        a[26 + i] = PAINTER_BRUSH_COMPOSITE_ERASE_SCOPE[i];
         i += 1;
     }
     a

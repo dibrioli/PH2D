@@ -46,6 +46,17 @@ pub(super) fn decode_brush_blend_option(id: NodeId) -> Option<u8> {
         .find(|&m| ph2d_tool_painter::ids::painter_brush_blend_option_id(m) == id)
 }
 
+/// Decode a **Composite `+` menu** option id → the composite-op wire `u8`.
+///
+/// ⚠️ Os ids são um array FIXO (`PAINTER_BRUSH_COMPOSITE_ADD_OPTION`) e não codificados: a família
+/// tem quatro membros, e um id por membro é o que o gate de paridade do painel sabe ver.
+pub(super) fn decode_composite_add_option(id: NodeId) -> Option<u8> {
+    ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD_OPTION
+        .iter()
+        .position(|x| *x == id)
+        .map(|i| i as u8)
+}
+
 /// Decode a brush Falloff popover option id → its preset `u8` (fixed; iterate the stable preset ids).
 pub(super) fn decode_brush_falloff_option(id: NodeId) -> Option<u8> {
     (0..MAX_FALLOFF).find(|&p| ph2d_tool_painter::ids::painter_brush_falloff_option_id(p) == id)

@@ -194,6 +194,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.composite.brush" => "Brush",
         "panel.painter_layers.composite.erase" => "Erase",
         "panel.painter_layers.composite.composite_brush" => "Composite Brush",
+        // A pilha montada à mão (2026-09-21): o rótulo da força de cada camada e as duas frases
+        // da fileira do `+`.
+        "panel.painter_layers.composite.strength" => "Strength",
+        "panel.painter_layers.composite.add_layer" => "Add layer",
+        "panel.painter_layers.composite.stack_full" => "Stack full",
         "panel.painter_layers.composite.size" => "Size",
         "panel.painter_layers.composite.hardness" => "Hardness",
         // O chip do ESCOPO da borracha de uma camada. ⚠️ Os dois nomes descrevem **o que ela come**,

@@ -175,6 +175,16 @@ pub struct BrushSettings {
     /// **Composite Brush** on: the Strength slider hides + the 5-layer stack card shows (panel).
     pub composite_enabled: bool,
     /// Composite stack op per position (`CompositeOp::to_u8`: 0 Brush/1 Smear/2 Blur/3 Erase).
+    /// ⭐ **Quantas camadas a pilha TEM.** As entradas dos arrays a partir daqui não são pintadas.
+    pub composite_len: usize,
+    /// A operação escolhida no menu ao lado do `+`.
+    pub composite_add_op: u8,
+    /// **Que operações o menu do `+` ainda oferece**, por discriminante — a quota, já resolvida.
+    ///
+    /// ⚠️ Ela viaja DERIVADA de propósito: a quota tem uma porta
+    /// (`quota_da_operacao`) e o painel **pinta a resposta** em vez de a recalcular. *Uma segunda
+    /// aritmética da quota no painel divergiria no dia em que uma quota mudasse.*
+    pub composite_add_available: [bool; crate::N_COMPOSITE_OPS],
     pub composite_ops: [u8; N_CAMADAS],
     /// Composite stack Strength per position (`0..1`).
     pub composite_strength: [f32; N_CAMADAS],

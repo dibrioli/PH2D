@@ -133,6 +133,10 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     // Espelha o `PaintState::default`, e a FORMA é derivada de `N_CAMADAS` — ⚠️ um `5` escrito à
     // mão aqui é a segunda resposta que aquela const existe para não haver (a extensão de 21/09
     // encontrou-a em NOVE sítios, oito deles no instantâneo).
+    // ⭐ A pilha nasce VAZIA desde 2026-09-21 — o fallback espelha-o.
+    composite_len: 0,
+    composite_add_op: 0,
+    composite_add_available: [true; ph2d_tool_painter::N_COMPOSITE_OPS],
     composite_ops: OPS_DE_FABRICA,
     composite_strength: FORCAS_DE_FABRICA,
     composite_color: [[0.0, 0.0, 0.0]; N_CAMADAS],

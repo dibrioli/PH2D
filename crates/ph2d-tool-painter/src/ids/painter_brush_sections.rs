@@ -164,61 +164,109 @@ pub const PAINTER_BRUSH_COMPOSITE_ENABLE: NodeId = hash_node_id("painter_brush.c
 /// ⚠️ **As posições 3 e 4 são APENDADAS** (2026-09-20, a extensão para cinco camadas): um id é o
 /// `hash_node_id` de uma string, logo acrescentar no fim não mexe nos quatro primeiros — e as
 /// arrumações gravadas e os visuais no `WidgetStore` das três camadas antigas ficam intactos.
-pub const PAINTER_BRUSH_COMPOSITE_STRENGTH: [NodeId; 5] = [
+/// Quantas posições a pilha tem, para dimensionar os arrays de ids deste ficheiro.
+///
+/// ⛔⛔ Ele era um `5` escrito à mão dentro do `PAINTER_BRUSH_COMPOSITE_BUTTONS`, com o tamanho
+/// `31` ao lado — *duas segundas respostas na mesma const*. A extensão de 2026-09-21 encontrou-as.
+const N_POS: usize = crate::N_COMPOSITE_LAYERS;
+
+/// **O `x` de cada camada** — `Click` → [`PainterTool::retira_camada`].
+pub const PAINTER_BRUSH_COMPOSITE_REMOVE: [NodeId; 7] = [
+    hash_node_id("painter_brush.composite_remove_0"),
+    hash_node_id("painter_brush.composite_remove_1"),
+    hash_node_id("painter_brush.composite_remove_2"),
+    hash_node_id("painter_brush.composite_remove_3"),
+    hash_node_id("painter_brush.composite_remove_4"),
+    hash_node_id("painter_brush.composite_remove_5"),
+    hash_node_id("painter_brush.composite_remove_6"),
+];
+
+/// **O botão `+`** que cria a camada da operação escolhida no menu ao lado — `Click`.
+pub const PAINTER_BRUSH_COMPOSITE_ADD: NodeId = hash_node_id("painter_brush.composite_add");
+
+/// **O menu ao lado do `+`** — a chip que abre a lista das operações que ainda têm quota.
+/// `SelectOption` com o discriminante da operação escolhida.
+pub const PAINTER_BRUSH_COMPOSITE_ADD_KIND: NodeId =
+    hash_node_id("painter_brush.composite_add_kind");
+
+/// Uma entrada por operação na lista do menu do `+` — `Click`.
+///
+/// ⚠️ São ids FIXOS e não codificados: a família tem quatro membros
+/// ([`crate::N_COMPOSITE_OPS`]) e um id por membro é o que o gate de paridade do painel sabe ver.
+pub const PAINTER_BRUSH_COMPOSITE_ADD_OPTION: [NodeId; 4] = [
+    hash_node_id("painter_brush.composite_add_option_0"),
+    hash_node_id("painter_brush.composite_add_option_1"),
+    hash_node_id("painter_brush.composite_add_option_2"),
+    hash_node_id("painter_brush.composite_add_option_3"),
+];
+
+pub const PAINTER_BRUSH_COMPOSITE_STRENGTH: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_strength_0"),
     hash_node_id("painter_brush.composite_strength_1"),
     hash_node_id("painter_brush.composite_strength_2"),
     hash_node_id("painter_brush.composite_strength_3"),
     hash_node_id("painter_brush.composite_strength_4"),
+    hash_node_id("painter_brush.composite_strength_5"),
+    hash_node_id("painter_brush.composite_strength_6"),
 ];
 
 /// Per-position "move layer up" buttons (toward layer 1 / top) — `Click` → `move_composite_layer_up`.
-pub const PAINTER_BRUSH_COMPOSITE_UP: [NodeId; 5] = [
+pub const PAINTER_BRUSH_COMPOSITE_UP: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_up_0"),
     hash_node_id("painter_brush.composite_up_1"),
     hash_node_id("painter_brush.composite_up_2"),
     hash_node_id("painter_brush.composite_up_3"),
     hash_node_id("painter_brush.composite_up_4"),
+    hash_node_id("painter_brush.composite_up_5"),
+    hash_node_id("painter_brush.composite_up_6"),
 ];
 
 /// Per-position "move layer down" buttons (toward layer 5 / bottom) — `Click` → `move_composite_layer_down`.
-pub const PAINTER_BRUSH_COMPOSITE_DOWN: [NodeId; 5] = [
+pub const PAINTER_BRUSH_COMPOSITE_DOWN: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_down_0"),
     hash_node_id("painter_brush.composite_down_1"),
     hash_node_id("painter_brush.composite_down_2"),
     hash_node_id("painter_brush.composite_down_3"),
     hash_node_id("painter_brush.composite_down_4"),
+    hash_node_id("painter_brush.composite_down_5"),
+    hash_node_id("painter_brush.composite_down_6"),
 ];
 
 /// Per-position **operation** chip (`Click` cicla Brush → Smear → Blur → Erase →
 /// `set_composite_layer_op`). É ele que torna as duas posições novas ALCANÇÁVEIS: sem um gesto que
 /// troque a operação, uma camada nasceria presa ao que o default declarou.
-pub const PAINTER_BRUSH_COMPOSITE_OP: [NodeId; 5] = [
+pub const PAINTER_BRUSH_COMPOSITE_OP: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_op_0"),
     hash_node_id("painter_brush.composite_op_1"),
     hash_node_id("painter_brush.composite_op_2"),
     hash_node_id("painter_brush.composite_op_3"),
     hash_node_id("painter_brush.composite_op_4"),
+    hash_node_id("painter_brush.composite_op_5"),
+    hash_node_id("painter_brush.composite_op_6"),
 ];
 
 /// Per-position **colour** swatches — o picker partilhado devolve `"r,g,b"` pelo canal de STRING
 /// (`SelectOption`, o mesmo do `PAINTER_COLOR_THUMB`) → `set_composite_layer_color`.
-pub const PAINTER_BRUSH_COMPOSITE_COLOR: [NodeId; 5] = [
+pub const PAINTER_BRUSH_COMPOSITE_COLOR: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_color_0"),
     hash_node_id("painter_brush.composite_color_1"),
     hash_node_id("painter_brush.composite_color_2"),
     hash_node_id("painter_brush.composite_color_3"),
     hash_node_id("painter_brush.composite_color_4"),
+    hash_node_id("painter_brush.composite_color_5"),
+    hash_node_id("painter_brush.composite_color_6"),
 ];
 
 /// Per-position **stamp size** sliders (multiplicador do raio do pincel) →
 /// `set_composite_layer_size`.
-pub const PAINTER_BRUSH_COMPOSITE_SIZE: [NodeId; 5] = [
+pub const PAINTER_BRUSH_COMPOSITE_SIZE: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_size_0"),
     hash_node_id("painter_brush.composite_size_1"),
     hash_node_id("painter_brush.composite_size_2"),
     hash_node_id("painter_brush.composite_size_3"),
     hash_node_id("painter_brush.composite_size_4"),
+    hash_node_id("painter_brush.composite_size_5"),
+    hash_node_id("painter_brush.composite_size_6"),
 ];
 
 /// Os **chips numéricos** emparelhados com as barras de Strength — a forma canónica do app
@@ -230,44 +278,52 @@ pub const PAINTER_BRUSH_COMPOSITE_SIZE: [NodeId; 5] = [
 /// Layers** — verdade sobre aquela linha e falsa sobre este painel, onde **toda** fileira de valor
 /// é a CAIXA ÚNICA de 2026-09-02 (rótulo dentro à esquerda, valor dentro à direita, preenchimento a
 /// dizer a fracção). *Um padrão citado de outro painel é uma segunda resposta com proveniência.*
-pub const PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP: [NodeId; 5] = [
+pub const PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_strength_chip_0"),
     hash_node_id("painter_brush.composite_strength_chip_1"),
     hash_node_id("painter_brush.composite_strength_chip_2"),
     hash_node_id("painter_brush.composite_strength_chip_3"),
     hash_node_id("painter_brush.composite_strength_chip_4"),
+    hash_node_id("painter_brush.composite_strength_chip_5"),
+    hash_node_id("painter_brush.composite_strength_chip_6"),
 ];
 
 /// Os chips numéricos das barras de **tamanho**. ⚠️ Eles mostram o MULTIPLICADOR (`1,00`..`4,00`) e
 /// a barra guarda `mult / MAX_TAMANHO_DA_CAMADA` — a projecção vive no
 /// `link_slider_number_mapped` do `populate`, **uma vez**, e não em duas aritméticas (a do pintor e
 /// a do dreno) que divergiriam no dia em que o tecto mudasse.
-pub const PAINTER_BRUSH_COMPOSITE_SIZE_CHIP: [NodeId; 5] = [
+pub const PAINTER_BRUSH_COMPOSITE_SIZE_CHIP: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_size_chip_0"),
     hash_node_id("painter_brush.composite_size_chip_1"),
     hash_node_id("painter_brush.composite_size_chip_2"),
     hash_node_id("painter_brush.composite_size_chip_3"),
     hash_node_id("painter_brush.composite_size_chip_4"),
+    hash_node_id("painter_brush.composite_size_chip_5"),
+    hash_node_id("painter_brush.composite_size_chip_6"),
 ];
 
 /// Barras da **dureza** por posição (`0..1`) — ordem do dono, 2026-09-20 (*«Hardness para cada um
 /// da lista»*). ⚠️ Elas são APENDADAS aos ids que já existiam: um id é o `hash_node_id` de uma
 /// string, logo nada do que estava gravado se mexe.
-pub const PAINTER_BRUSH_COMPOSITE_HARDNESS: [NodeId; 5] = [
+pub const PAINTER_BRUSH_COMPOSITE_HARDNESS: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_hardness_0"),
     hash_node_id("painter_brush.composite_hardness_1"),
     hash_node_id("painter_brush.composite_hardness_2"),
     hash_node_id("painter_brush.composite_hardness_3"),
     hash_node_id("painter_brush.composite_hardness_4"),
+    hash_node_id("painter_brush.composite_hardness_5"),
+    hash_node_id("painter_brush.composite_hardness_6"),
 ];
 
 /// Os chips numéricos das barras de dureza (a caixa única do app).
-pub const PAINTER_BRUSH_COMPOSITE_HARDNESS_CHIP: [NodeId; 5] = [
+pub const PAINTER_BRUSH_COMPOSITE_HARDNESS_CHIP: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_hardness_chip_0"),
     hash_node_id("painter_brush.composite_hardness_chip_1"),
     hash_node_id("painter_brush.composite_hardness_chip_2"),
     hash_node_id("painter_brush.composite_hardness_chip_3"),
     hash_node_id("painter_brush.composite_hardness_chip_4"),
+    hash_node_id("painter_brush.composite_hardness_chip_5"),
+    hash_node_id("painter_brush.composite_hardness_chip_6"),
 ];
 
 /// Per-position **«volta à dureza do pincel»** — `Click` → `clear_composite_layer_hardness`.
@@ -276,12 +332,14 @@ pub const PAINTER_BRUSH_COMPOSITE_HARDNESS_CHIP: [NodeId; 5] = [
 /// `None` — que é quem mantém o controlo `Hardness` do PINCEL vivo para esta camada — seria
 /// alcançável só até ao primeiro toque na barra. ⚠️ E é pintado **só quando há dureza autorada**:
 /// um botão que não tem o que limpar é um controlo morto.
-pub const PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR: [NodeId; 5] = [
+pub const PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_hardness_clear_0"),
     hash_node_id("painter_brush.composite_hardness_clear_1"),
     hash_node_id("painter_brush.composite_hardness_clear_2"),
     hash_node_id("painter_brush.composite_hardness_clear_3"),
     hash_node_id("painter_brush.composite_hardness_clear_4"),
+    hash_node_id("painter_brush.composite_hardness_clear_5"),
+    hash_node_id("painter_brush.composite_hardness_clear_6"),
 ];
 
 /// **Até onde a borracha desta posição chega** — `Click` cicla `Image` ⇄ `Stroke`
@@ -289,12 +347,14 @@ pub const PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR: [NodeId; 5] = [
 ///
 /// ⚠️ Ele é pintado **só numa camada de borracha**: nas outras operações a pergunta não tem
 /// sujeito, e um chip que não governa nada é a espécie de controlo morto que o §5.0 nomeia.
-pub const PAINTER_BRUSH_COMPOSITE_ERASE_SCOPE: [NodeId; 5] = [
+pub const PAINTER_BRUSH_COMPOSITE_ERASE_SCOPE: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_erase_scope_0"),
     hash_node_id("painter_brush.composite_erase_scope_1"),
     hash_node_id("painter_brush.composite_erase_scope_2"),
     hash_node_id("painter_brush.composite_erase_scope_3"),
     hash_node_id("painter_brush.composite_erase_scope_4"),
+    hash_node_id("painter_brush.composite_erase_scope_5"),
+    hash_node_id("painter_brush.composite_erase_scope_6"),
 ];
 
 /// Per-position **«volta à cor do pincel»** — `Click` → `clear_composite_layer_color`.
@@ -306,12 +366,14 @@ pub const PAINTER_BRUSH_COMPOSITE_ERASE_SCOPE: [NodeId; 5] = [
 ///
 /// ⛔ Ele é pintado **só quando a camada TEM cor autorada**: um botão que não tem o que limpar é um
 /// controlo morto, e o gate exige a ausência dele no outro estado.
-pub const PAINTER_BRUSH_COMPOSITE_COLOR_CLEAR: [NodeId; 5] = [
+pub const PAINTER_BRUSH_COMPOSITE_COLOR_CLEAR: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_color_clear_0"),
     hash_node_id("painter_brush.composite_color_clear_1"),
     hash_node_id("painter_brush.composite_color_clear_2"),
     hash_node_id("painter_brush.composite_color_clear_3"),
     hash_node_id("painter_brush.composite_color_clear_4"),
+    hash_node_id("painter_brush.composite_color_clear_5"),
+    hash_node_id("painter_brush.composite_color_clear_6"),
 ];
 
 // ── Mask section (collapsible, TOP of the Brush panel in Mask mode) ───────────────────────────────
@@ -370,18 +432,19 @@ pub const PAINTER_BRUSH_CLONE_ALIGNED: NodeId = hash_node_id("painter_brush.clon
 /// os sete ids um a um, e estender a pilha de três para cinco camadas teria deixado quatro botões
 /// **pintados, registados e mortos sob o dedo** — a espécie que esta casa já pagou sete vezes na
 /// escultura. ⛔ A amostra de cor NÃO entra: ela abre o picker por outra rota (`ColorPicked`).
-pub const PAINTER_BRUSH_COMPOSITE_BUTTONS: [NodeId; 31] = {
-    let mut a = [PAINTER_BRUSH_COMPOSITE_ENABLE; 31];
+pub const PAINTER_BRUSH_COMPOSITE_BUTTONS: [NodeId; 2 + 6 * N_POS] = {
+    let mut a = [PAINTER_BRUSH_COMPOSITE_ENABLE; 2 + 6 * N_POS];
     let mut i = 0;
-    while i < 5 {
+    while i < N_POS {
         a[1 + i] = PAINTER_BRUSH_COMPOSITE_UP[i];
-        a[6 + i] = PAINTER_BRUSH_COMPOSITE_DOWN[i];
-        a[11 + i] = PAINTER_BRUSH_COMPOSITE_OP[i];
-        a[16 + i] = PAINTER_BRUSH_COMPOSITE_COLOR_CLEAR[i];
-        a[21 + i] = PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR[i];
-        a[26 + i] = PAINTER_BRUSH_COMPOSITE_ERASE_SCOPE[i];
+        a[1 + N_POS + i] = PAINTER_BRUSH_COMPOSITE_DOWN[i];
+        a[1 + 2 * N_POS + i] = PAINTER_BRUSH_COMPOSITE_COLOR_CLEAR[i];
+        a[1 + 3 * N_POS + i] = PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR[i];
+        a[1 + 4 * N_POS + i] = PAINTER_BRUSH_COMPOSITE_ERASE_SCOPE[i];
+        a[1 + 5 * N_POS + i] = PAINTER_BRUSH_COMPOSITE_REMOVE[i];
         i += 1;
     }
+    a[1 + 6 * N_POS] = PAINTER_BRUSH_COMPOSITE_ADD;
     a
 };
 

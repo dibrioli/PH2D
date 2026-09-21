@@ -27,7 +27,10 @@ fn viewport() -> Rect {
 fn com_operacao(op: u8) -> PainterTool {
     let mut t = PainterTool::default();
     t.toggle_composite();
-    t.set_composite_layer_op(0, op);
+    // ⛔ A pilha nasce VAZIA desde 2026-09-21: a camada CRIA-SE, e a operação dela é escolhida na
+    // criação (o chip que a ciclava saiu — com as quotas do dono, um ciclo livre torná-las-ia
+    // mentira).
+    t.acrescenta_camada(op);
     t.set_composite_layer_strength(0, 1.0);
     t
 }

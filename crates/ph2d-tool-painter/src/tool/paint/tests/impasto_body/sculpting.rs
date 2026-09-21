@@ -447,6 +447,9 @@ fn the_composite_stack_closes_its_smear_session_at_pen_up() {
     t.paint.brush = b;
     t.paint.brush_by_mode.fill(b);
     t.paint.composite_enabled = true;
+    // ⛔ A pilha nasce VAZIA desde 2026-09-21: a fixtura CRIA o Smear que ela mede. Sem isto o
+    // controlo (1) reprova — e reprova com razão, porque não há camada nenhuma a abrir sessão.
+    t.acrescenta_camada(1);
 
     let mut widths = Vec::new();
     for k in 0..3 {

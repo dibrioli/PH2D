@@ -67,49 +67,37 @@ fn texel(t: &PainterTool, x: u32, y: u32) -> [u8; 4] {
     ]
 }
 
-/// **A pilha tem CINCO posições, e as duas novas nascem CALADAS.**
+/// **A posição mais FUNDA da pilha existe, e o motor corre-a.**
 ///
-/// As duas metades, porque cada uma sozinha mente: a pilha corre mesmo cinco posições (arma-se a
-/// quinta e o barro muda), e com os valores de fábrica o traço é **byte-idêntico** ao de uma pilha
-/// de três — que é o que faz esta extensão não mexer no desenho de quem já a usava.
+/// ⛔⛔ **Este gate tinha duas metades e uma morreu por ordem do dono (2026-09-21).** Ele chamava-se
+/// `a_pilha_tem_cinco_posicoes_e_as_duas_novas_nascem_caladas` e afirmava (a) `N_CAMADAS == 5` e
+/// (b) que com os valores de FÁBRICA o traço era byte-idêntico ao de uma pilha de três. As duas
+/// premissas caíram no mesmo dia: o tecto passou a ser a SOMA das quotas (`7`) e **não há mais
+/// pilha de fábrica** — ela nasce vazia.
+///
+/// ⭐ O que fica é a metade que ainda afirma alguma coisa: *a última posição do máximo não é
+/// decoração*. ⚠️ E a fixtura dela foi curada uma vez e a cura FICA: com o Brush do topo a `1,0`
+/// (opaco) ele cobre a de baixo exactamente e as duas telas saem iguais ao bit — *estava certo, e
+/// a fixtura é que não tinha onde o ver*; por isso a de baixo leva um tamanho `2×` e a diferença
+/// mora nas orlas.
 #[test]
-fn a_pilha_tem_cinco_posicoes_e_as_duas_novas_nascem_caladas() {
-    assert_eq!(composite::N_CAMADAS, 5);
-
-    // Metade A — de fábrica, a 4.ª e a 5.ª não mexem num byte.
-    let mut fabrica = tela();
-    traco(&mut fabrica, 100.0);
-    let mut so_tres = tela();
-    for pos in 3..composite::N_CAMADAS {
-        so_tres.paint.composite[pos].strength = 0.0;
-    }
-    traco(&mut so_tres, 100.0);
+fn a_posicao_mais_funda_da_pilha_e_corrida() {
     assert_eq!(
-        fabrica.canvas_rgba, so_tres.canvas_rgba,
-        "de fábrica a 4.ª e a 5.ª camadas TÊM de ser inertes"
+        composite::MAX_CAMADAS,
+        7,
+        "o tecto é a SOMA das quotas do dono (3 Brush + 2 Erase + 1 Blur + 1 Smear)"
     );
-
-    // Metade B — a quinta posição EXISTE: armada, ela pinta.
-    //
-    // ⚠️⚠️ **A 1.ª redacção desta metade não continha o fenómeno, e reprovou sobre um motor
-    // CORRECTO.** A posição 5 é o FUNDO da pilha e corre PRIMEIRO; com o Brush do topo a Strength
-    // `1,0` — opaco — ele cobre-a exactamente, e as duas telas saíam iguais ao bit. *Estava certo, e
-    // a fixtura é que não tinha onde a ver.* ⇒ a camada de baixo leva um tamanho `2×`, logo ela
-    // pinta uma faixa mais LARGA do que a de cima consegue tapar, e a diferença mora nas orlas.
+    let fundo = composite::MAX_CAMADAS - 1;
     let com_fundo = |strength: f32| {
         let mut t = tela();
-        arma(
-            &mut t,
-            &[
-                (CompositeOp::Brush, 1.0),
-                (CompositeOp::Smear, 0.5),
-                (CompositeOp::Blur, 0.5),
-                (CompositeOp::Brush, 0.0),
-                (CompositeOp::Brush, strength),
-            ],
-        );
-        t.paint.composite[4].color = Some([0.0, 0.0, 1.0]);
-        t.paint.composite[4].size = 2.0;
+        let mut ops = vec![(CompositeOp::Brush, 1.0f32); composite::MAX_CAMADAS];
+        ops[fundo] = (CompositeOp::Brush, strength);
+        for o in ops.iter_mut().take(fundo).skip(1) {
+            *o = (CompositeOp::Brush, 0.0);
+        }
+        arma(&mut t, &ops);
+        t.paint.composite[fundo].color = Some([0.0, 0.0, 1.0]);
+        t.paint.composite[fundo].size = 2.0;
         traco(&mut t, 100.0);
         t
     };
@@ -117,7 +105,7 @@ fn a_pilha_tem_cinco_posicoes_e_as_duas_novas_nascem_caladas() {
     let desligada = com_fundo(0.0);
     assert_ne!(
         ligada.canvas_rgba, desligada.canvas_rgba,
-        "a 5.ª posição existe mas o motor não a corre"
+        "a posição {fundo} existe mas o motor não a corre"
     );
     // E o que ela pintou é a COR dela, na orla que o Brush do topo não alcança.
     let orla = texel(&ligada, 100, 100 - 12);
@@ -288,37 +276,108 @@ fn o_piso_do_tamanho_e_o_spacing_e_o_tecto_e_o_medido() {
     assert!((t.tamanho_da_camada(0) - composite::MAX_TAMANHO_DA_CAMADA).abs() < 1e-6);
 }
 
-/// **O chip da operação CICLA as quatro, e a volta FECHA** — sem ele as duas posições novas
-/// nasceriam presas ao que o default declarou, que é a forma exacta do controlo inalcançável.
+/// ⭐⭐⭐ **A PILHA MONTA-SE À MÃO: nasce vazia, o `+` cria e o `x` retira** (ordem do dono,
+/// 2026-09-21).
 ///
-/// ⚠️⚠️ **A 1.ª redacção afirmava só «viu as quatro», e uma MUTAÇÃO SOBREVIVEU a ela:** com o
-/// ciclo a `% 3` e a fixtura a partir do `Erase`, as quatro primeiras amostras ainda são quatro
-/// operações distintas — só que o `Erase` deixa de ser alcançável DEPOIS de se sair dele. *Ver
-/// todos os estados uma vez não é a mesma propriedade que o ciclo fechar*, e é a segunda que torna
-/// um chip usável. ⇒ hoje a sequência é afirmada **por igualdade, na ordem, e de volta ao início**.
+/// ⛔⛔ **Este gate substitui o `o_chip_da_operacao_cicla_as_quatro_e_a_volta_fecha`, e a premissa
+/// dele morreu por ordem de produto.** Ele afirmava que o chip da operação ciclava as quatro e
+/// fechava a volta — *«sem ele as duas posições novas nasceriam presas ao que o default
+/// declarou»*. Com as QUOTAS (`3 Brush · 2 Erase · 1 Blur · 1 Smear`) um ciclo livre torna a quota
+/// uma mentira: dois cliques punham dois Blurs na pilha. A operação passa a ser escolhida na
+/// CRIAÇÃO, e o chip saiu.
+///
+/// ⚠️ O gesto medido é o do PRODUTO (`route_composite_event`), nunca os `set_*` internos.
 #[test]
-fn o_chip_da_operacao_cicla_as_quatro_e_a_volta_fecha() {
+fn a_pilha_nasce_vazia_e_monta_se_pelo_mais_e_pelo_x() {
+    use ph2d_editor_core::tool::PanelEvent;
     let mut t = tela();
-    let id = crate::ids::PAINTER_BRUSH_COMPOSITE_OP[3];
-    t.set_composite_layer_op(3, 0); // parte de um estado CONHECIDO
-    let mut vistas = vec![t.paint.composite[3].op];
-    for _ in 0..4 {
+    assert_eq!(t.composite_len(), 0, "a pilha tem de NASCER vazia");
+
+    let cria = |t: &mut PainterTool, op: u8| {
         assert!(
-            t.route_composite_event(&ph2d_editor_core::tool::PanelEvent::Click(id)),
-            "o chip da operação não foi consumido"
+            t.route_composite_event(&PanelEvent::SelectOption(
+                crate::ids::PAINTER_BRUSH_COMPOSITE_ADD_KIND,
+                op.to_string(),
+            )),
+            "o menu do `+` não consumiu a escolha"
         );
-        vistas.push(t.paint.composite[3].op);
-    }
+        assert!(
+            t.route_composite_event(&PanelEvent::Click(crate::ids::PAINTER_BRUSH_COMPOSITE_ADD)),
+            "o `+` não foi consumido"
+        );
+    };
+
+    // Uma camada criada à mão NASCE A TRABALHAR — uma que não faz nada lê-se como a ferramenta
+    // partida, e antes de hoje o zero era como uma posição se calava.
+    cria(&mut t, 2); // Blur
+    assert_eq!(t.composite_len(), 1);
+    assert_eq!(t.paint.composite[0].op, CompositeOp::Blur);
+    assert!(t.paint.composite[0].strength > 0.0, "ela nasce a trabalhar");
+
+    // O `x` retira, as de baixo sobem, e a CAUDA volta a `strength = 0` — é essa linha que mantém
+    // o motor (que pula uma camada pela força) alheio a esta wave.
+    cria(&mut t, 0); // Brush, por baixo
+    assert_eq!(t.composite_len(), 2);
+    assert!(t.route_composite_event(&PanelEvent::Click(
+        crate::ids::PAINTER_BRUSH_COMPOSITE_REMOVE[0]
+    )));
+    assert_eq!(t.composite_len(), 1);
     assert_eq!(
-        vistas,
-        vec![
-            CompositeOp::Brush,
-            CompositeOp::Smear,
-            CompositeOp::Blur,
-            CompositeOp::Erase,
-            CompositeOp::Brush,
-        ],
-        "o ciclo do chip tem de passar pelas quatro e VOLTAR ao princípio"
+        t.paint.composite[0].op,
+        CompositeOp::Brush,
+        "a de baixo subiu para o lugar da que saiu"
+    );
+    assert_eq!(
+        t.paint.composite[1].strength, 0.0,
+        "a cauda TEM de voltar a zero: com os bytes da camada retirada lá, o motor continuaria a \
+         pintá-la"
+    );
+}
+
+/// ⭐⭐⭐ **A QUOTA: `3 Brush · 2 Erase · 1 Blur · 1 Smear`, e o menu encolhe à medida que ela gasta.**
+///
+/// ⚠️ **As três metades são independentes e cada uma sozinha mente:** o menu deixar de oferecer ·
+/// o `+` recusar mesmo que alguém peça · e o tecto da pilha ser a SOMA das quotas. Sem a segunda,
+/// um menu bem pintado com uma rota permissiva por baixo passaria.
+#[test]
+fn a_quota_de_cada_operacao_e_respeitada_e_o_menu_encolhe() {
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = tela();
+    // Metade A — gastar a quota do Blur (1) tira-o do menu.
+    assert!(t.ops_com_quota_livre()[2], "o Blur começa disponível");
+    t.acrescenta_camada(2);
+    assert!(
+        !t.ops_com_quota_livre()[2],
+        "com o único Blur criado, o menu tem de deixar de o oferecer"
+    );
+    // Metade B — e a ROTA recusa, não só o menu.
+    t.acrescenta_camada(2);
+    assert_eq!(
+        t.composite_len(),
+        1,
+        "o `+` criou um SEGUNDO Blur: o menu esconde-o e a rota deixou passar"
+    );
+    // Metade C — o tecto é a SOMA das quotas, e a pilha enche exactamente.
+    for op in [0u8, 0, 0, 1, 3, 3] {
+        t.acrescenta_camada(op);
+    }
+    assert_eq!(t.composite_len(), composite::MAX_CAMADAS);
+    assert!(
+        !t.pode_acrescentar_camada(),
+        "com a quota toda gasta o `+` tem de estar desligado"
+    );
+    // ⚠️ E o menu SALTA para uma operação com quota depois de cada criação — sem isso o `+`
+    // ficaria armado sobre uma esgotada.
+    let mut u = tela();
+    u.route_composite_event(&PanelEvent::SelectOption(
+        crate::ids::PAINTER_BRUSH_COMPOSITE_ADD_KIND,
+        "2".to_string(),
+    ));
+    u.route_composite_event(&PanelEvent::Click(crate::ids::PAINTER_BRUSH_COMPOSITE_ADD));
+    assert_ne!(
+        u.composite_add_op(),
+        2,
+        "o menu ficou armado sobre o Blur, que já não tem quota"
     );
 }
 

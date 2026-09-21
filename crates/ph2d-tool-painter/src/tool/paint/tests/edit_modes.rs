@@ -570,23 +570,31 @@ fn composite_brush_runs_an_isolated_layer_and_reorders() {
         crate::ids::PAINTER_BRUSH_COMPOSITE_ENABLE,
     ));
     assert!(t.composite_enabled(), "checkbox enabled composite");
-    // ⚠️ **A posição do Blur é DERIVADA da pilha de fábrica, nunca cravada.** Esta linha dizia
-    // `posições: 0 Brush · 1 Smear · 2 Blur` e o índice `2` estava escrito à mão — a ordem de
-    // fábrica é uma **decisão de produto** (o dono reordenou-a em 2026-09-20) e o teste reprovou
-    // sobre um motor correcto, a acusar a LEI do reordenar. *Um teste que crava uma posição numa
-    // pilha reordenável mede a ordem de fábrica, não o que ele diz medir.*
-    let blur = t
-        .paint
-        .composite
-        .iter()
-        .position(|l| l.op == crate::tool::paint::CompositeOp::Blur)
-        .expect("a pilha de fábrica declara uma camada Blur");
-    for i in 0..t.paint.composite.len() {
-        t.handle_panel_event(PanelEvent::SetValue(
-            crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[i],
-            if i == blur { 1.0 } else { 0.0 },
+    // ⛔⛔ **A pilha nasce VAZIA desde 2026-09-21** (ordem do dono), logo o teste CRIA as camadas
+    // que mede — e cria-as pelo gesto do PRODUTO (o menu do `+` e o `+`). ⚠️ Esta linha já tinha
+    // sido curada uma vez: ela cravava o índice `2` do Blur e reprovou quando o dono reordenou a
+    // fábrica; curou-se DERIVANDO a posição da pilha de fábrica — *e essa premissa morreu também,
+    // porque não há mais pilha de fábrica*.
+    let cria = |t: &mut PainterTool, op: u8| {
+        t.handle_panel_event(PanelEvent::SelectOption(
+            crate::ids::PAINTER_BRUSH_COMPOSITE_ADD_KIND,
+            op.to_string(),
         ));
-    }
+        t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_COMPOSITE_ADD));
+    };
+    cria(&mut t, 0); // Brush, no topo
+    cria(&mut t, 2); // Blur, por baixo dele
+    assert_eq!(t.composite_len(), 2, "o `+` criou as duas camadas");
+    let blur = 1usize;
+    // O Brush fica CALADO: o cinzento da costura é o que prova que só o Blur trabalhou.
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[0],
+        0.0,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[blur],
+        1.0,
+    ));
     let boundary = size / 2; // x = 24, first white column
     let bx = boundary as f32;
     t.on_canvas_pointer(cp([bx, 6.0], PointerPhase::Down));
@@ -639,17 +647,21 @@ fn composite_runs_layers_under_the_interactive_preview_methods() {
     t.handle_panel_event(PanelEvent::Click(
         crate::ids::PAINTER_BRUSH_COMPOSITE_ENABLE,
     ));
-    // Blur-only: Brush(0) + Smear(1) off, Blur(2) on.
+    // ⛔ A pilha nasce VAZIA (2026-09-21): as camadas criam-se pelo gesto do produto. Um Brush
+    // CALADO e um Blur — o cinzento da costura é o que prova que só o Blur trabalhou.
+    for op in [0u8, 2] {
+        t.handle_panel_event(PanelEvent::SelectOption(
+            crate::ids::PAINTER_BRUSH_COMPOSITE_ADD_KIND,
+            op.to_string(),
+        ));
+        t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_COMPOSITE_ADD));
+    }
     t.handle_panel_event(PanelEvent::SetValue(
         crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[0],
         0.0,
     ));
     t.handle_panel_event(PanelEvent::SetValue(
         crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[1],
-        0.0,
-    ));
-    t.handle_panel_event(PanelEvent::SetValue(
-        crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[2],
         1.0,
     ));
     let boundary = size / 2; // x = 24

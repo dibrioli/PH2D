@@ -226,6 +226,11 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     if let Some(menu_chip) = state::take_pending_adj_menu() {
         crate::adjust_menu::paint_adjustment_menu_popover(ctx, theme, menu_chip);
     }
+    // O menu do `+` da pilha do Composite Brush — a mesma passagem diferida, para a lista abrir
+    // por cima das fileiras em vez de ficar debaixo do cartão.
+    if let Some(chip) = state::take_pending_composite_add_menu() {
+        crate::paint_composite_montagem::paint_add_menu_popover(ctx, theme, chip);
+    }
 
     // Deferred: the active Texture layer's editor dropdown popovers (Kind + Color Ramp Mode /
     // Interp / Alpha), drained on top of the rows so they float unclipped.

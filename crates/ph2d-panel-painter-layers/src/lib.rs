@@ -56,6 +56,7 @@ mod paint_brush_sections;
 mod paint_brush_top;
 mod paint_clone;
 mod paint_composite;
+mod paint_composite_montagem;
 mod paint_deform;
 mod paint_falloff;
 mod paint_impasto;

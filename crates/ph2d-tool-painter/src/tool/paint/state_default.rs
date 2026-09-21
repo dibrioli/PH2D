@@ -121,28 +121,17 @@ impl Default for PaintState {
             // fileira troca a operação sem mexer na força, e é por isso que as posições `2` e `3`
             // podem declarar `Brush` e `Erase` sem que nada aconteça até alguém subir a barra.
             composite_enabled: false,
-            // ⚠️ A ordem AUTORADA é a do dono; as posições além dela nascem CALADAS
-            // (`CompositeLayer::default()`, `strength = 0`). A forma é DERIVADA de `N_CAMADAS` —
-            // um literal de cinco aqui é a segunda resposta que aquela const existe para não
-            // haver.
-            composite: {
-                const AUTORADAS: [(super::CompositeOp, f32); 5] = [
-                    (super::CompositeOp::Brush, 1.0),
-                    (super::CompositeOp::Brush, 0.0),
-                    (super::CompositeOp::Erase, 0.0),
-                    (super::CompositeOp::Smear, 0.5),
-                    (super::CompositeOp::Blur, 0.5),
-                ];
-                std::array::from_fn(|i| {
-                    AUTORADAS
-                        .get(i)
-                        .map_or_else(CompositeLayer::default, |&(op, strength)| CompositeLayer {
-                            op,
-                            strength,
-                            ..CompositeLayer::default()
-                        })
-                })
-            },
+            // ⛔⛔ **A ordem de FÁBRICA morreu em 2026-09-21, por ordem do dono** — a pilha
+            // nasce VAZIA e cada camada é criada à mão pelo `+`. Até aí ela declarava
+            // `Brush · Brush · Erase · Smear · Blur`, e o gate
+            // `a_ordem_de_fabrica_do_dono_nao_muda_um_pixel` guardava-a; *quando o artista passa a
+            // montar a pilha, não há ordem de fábrica para guardar*.
+            composite: std::array::from_fn(|_| CompositeLayer::default()),
+            // ⭐ **A pilha nasce VAZIA** (ordem do dono, 2026-09-21: *«a seção nasce sem nenhuma
+            // camada»*). As posições do array existem todas e estão a `strength = 0`; o que diz
+            // quantas o artista criou é o `composite_len`.
+            composite_len: 0,
+            composite_add_op: super::CompositeOp::Brush,
             composite_mask: std::array::from_fn(|_| Vec::new()),
             composite_arco: [f32::NEG_INFINITY; crate::tool::paint::composite::N_CAMADAS],
             pilha: crate::tool::paint::composite_pilha::PilhaDoTraco::default(),

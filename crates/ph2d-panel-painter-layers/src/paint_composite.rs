@@ -36,6 +36,14 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::BrushSettings;
 
+// Os rótulos que as caixas de valor deste cartão receberam na última pintura — ver
+// [`caixa_de_valor`]. Por THREAD: um átomo global reprovaria na suíte em paralelo.
+#[cfg(test)]
+thread_local! {
+    pub(crate) static ROTULOS_PINTADOS: std::cell::RefCell<Vec<String>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
 /// **Quantas fileiras cada camada ocupa** — A (operação + força), B (cor + tamanho) e C (dureza).
 ///
 /// ⚠️ Ela é lida pela ALTURA do cartão e pelo laço que pinta; escrita nos dois sítios, acrescentar
@@ -45,7 +53,7 @@ const FILEIRAS_POR_CAMADA: usize = 3;
 /// Fixed-width label column for `N` (the op name moved into its own chip in the same row).
 const LABEL_W: f32 = 14.0; // LITERAL-PX-OK: the fixed position number column ("1".."5")
 /// Reorder ↑/↓ button column width (mirrors the Layers panel's `REORDER_W`).
-const ARROW_W: f32 = 16.0; // LITERAL-PX-OK: reorder button column (matches paint_rows)
+pub(crate) const ARROW_W: f32 = 16.0; // LITERAL-PX-OK: reorder button column (matches paint_rows)
 /// Piso da caixa de valor (chão de cromo num painel muito estreito).
 const MIN_CAIXA_W: f32 = 24.0; // LITERAL-PX-OK: value-box floor
 /// The colour swatch column of row B.
@@ -61,11 +69,11 @@ const CLEAR_W: f32 = 16.0; // LITERAL-PX-OK: the clear-override button
 /// 2026-09-20 encontrou exactamente um `3` escrito à mão neste ficheiro, e ele teria deixado duas
 /// camadas sem fileira com o motor a correr as cinco.
 fn n_camadas(brush: &BrushSettings) -> usize {
-    brush.composite_ops.len()
+    brush.composite_len.min(brush.composite_ops.len())
 }
 
 /// The name shown in each layer row for a composite op wire discriminant.
-fn op_name(op: u8) -> &'static str {
+pub(crate) fn op_name(op: u8) -> &'static str {
     match op {
         1 => tr("panel.painter_layers.composite.smear"),
         2 => tr("panel.painter_layers.composite.blur"),
@@ -90,7 +98,7 @@ fn op_name(op: u8) -> &'static str {
 ///
 /// ⚠️ **A coluna é a da SECÇÃO e não a da linha** — ela mede TODOS os nomes, não o desta camada;
 /// senão a coluna saltava debaixo do olho do artista a cada clique no chip.
-fn largura_do_chip_da_operacao(text_system: &mut ph2d_text::TextSystem) -> f32 {
+pub(crate) fn largura_do_chip_da_operacao(text_system: &mut ph2d_text::TextSystem) -> f32 {
     let fonte = Button::label_font_px();
     let mais_largo = (0..ph2d_tool_painter::N_COMPOSITE_OPS)
         .map(|op| text_system.prefix_width(op_name(op as u8), fonte))
@@ -122,6 +130,12 @@ fn caixa_de_valor(
     slider_id: ph2d_a11y::NodeId,
     chip_id: ph2d_a11y::NodeId,
 ) {
+    // ⚠️ **O que cada caixa deste cartão nomeia é OBSERVADO, não lido do fonte.** A ordem do dono
+    // de 2026-09-21 é *«todos os sliders devem ter nome inclusive o Strength»*, e a régua tem de
+    // ver o rótulo que o PINTOR recebe — um censo textual das chamadas mediria o código, não o
+    // produto.
+    #[cfg(test)]
+    ROTULOS_PINTADOS.with(|c| c.borrow_mut().push(rotulo.to_string()));
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -196,8 +210,11 @@ pub(crate) fn paint_composite_card(
     // ⚠️ **A altura é EXACTA porque nenhuma fileira empilha** — a caixa única entra pela variante
     // NÃO-adaptativa de propósito (ver [`caixa_de_valor`]): padding + a linha da caixa de marcar +
     // (ligada) um vão e [`FILEIRAS_POR_CAMADA`] fileiras por camada.
+    // ⚠️ **`+ 1` é a fileira do `+`**, e ela é pintada SEMPRE que a secção está ligada — mesmo com
+    // a pilha vazia, que desde 2026-09-21 é como ela nasce. *Sem essa fileira uma secção ligada e
+    // vazia seria uma caixa sem nada dentro e sem forma de lhe pôr alguma coisa.*
     let layers_h = if checked {
-        gap + FILEIRAS_POR_CAMADA as f32 * n as f32 * ph2d_tokens::row_pitch_px()
+        gap + (FILEIRAS_POR_CAMADA * n + 1) as f32 * ph2d_tokens::row_pitch_px()
     } else {
         0.0
     };
@@ -263,13 +280,22 @@ pub(crate) fn paint_composite_card(
             iy = paint_layer_row_b(ctx, theme, ix, iw, iy, pos, brush);
             iy = paint_layer_row_c(ctx, theme, ix, iw, iy, pos, brush);
         }
+        crate::paint_composite_montagem::paint_add_row(ctx, theme, ix, iw, iy, brush);
     }
     y + card_h + ph2d_tokens::control_gap_px()
 }
 
-/// Row A: `N` · op chip · bare Strength slider · "0.50" readout · ↑/↓ reorder. The number `N` =
-/// `pos + 1` is the FIXED position; the tool name follows the reordered stack. The top row's ↑ and the
-/// bottom row's ↓ paint dim and are inert (list edges), keeping every row aligned.
+/// Row A: `N` · o NOME da operação · a Strength (com rótulo) · ↑/↓ · o `x` que retira a camada.
+///
+/// ⛔⛔ **O chip da operação virou um NOME em 2026-09-21.** Ele ciclava as quatro operações, e com
+/// as quotas do dono (`3 Brush · 2 Erase · 1 Blur · 1 Smear`) um ciclo livre tornaria a quota uma
+/// mentira — dois cliques punham dois Blurs na pilha. A operação escolhe-se na CRIAÇÃO, e trocá-la
+/// é retirar a camada e criar outra.
+///
+/// ⭐ **E a Strength ganhou o rótulo dela** (ordem do dono: *«todos os sliders devem ter nome
+/// inclusive o Strength»*). O doc antigo defendia o rótulo vazio com *«o nome desta linha é o chip
+/// da operação»* — com o chip a virar nome, essa premissa morreu: o nome da CAMADA e o nome do que
+/// a barra CONTROLA são duas coisas.
 fn paint_layer_row(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -282,7 +308,8 @@ fn paint_layer_row(
     let gap = Spacing::Xs.px();
     let font = TypeToken::Base.px();
     let n = n_camadas(&brush);
-    let down_x = x + row_w - ARROW_W;
+    let x_x = x + row_w - ARROW_W;
+    let down_x = x_x - gap - ARROW_W;
     let up_x = down_x - gap - ARROW_W;
     let op_x = x + LABEL_W + gap;
     let op_w = largura_do_chip_da_operacao(ctx.text_system);
@@ -301,28 +328,26 @@ fn paint_layer_row(
         resolve(ColorToken::Text1, theme),
     );
 
-    // O chip da OPERAÇÃO — um clique cicla Brush → Smear → Blur → Erase.
-    let op_id = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_OP[pos];
-    let op_rect = Rect::new(op_x, y, op_w, ROW_H_PX);
-    paint_button(
-        &Button::new(op_id, op_name(brush.composite_ops[pos])),
-        op_rect,
-        ctx.scene,
+    // O NOME da operação desta camada — um rótulo, não um botão: nada aqui é clicável.
+    paint_text(
         ctx.text_system,
-        theme,
+        ctx.scene,
+        op_name(brush.composite_ops[pos]),
+        op_x,
+        y + (ROW_H_PX - font) * 0.5,
+        font,
+        op_w,
+        resolve(ColorToken::Text1, theme),
     );
-    ctx.host.hit_index_mut().register(op_id, op_rect);
 
-    // A Strength na CAIXA ÚNICA do app — a barra e o chip editável na mesma caixa. ⚠️ O rótulo
-    // fica VAZIO porque o nome desta linha é o chip da operação, encostado à esquerda dela: um
-    // «Strength» aqui seria o segundo nome da mesma fileira.
+    // A Strength na CAIXA ÚNICA do app, agora COM o nome dela.
     let sid = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[pos];
     let val = brush.composite_strength[pos].clamp(0.0, 1.0);
     caixa_de_valor(
         ctx,
         theme,
         Rect::new(caixa_x, y, caixa_w, ROW_H_PX),
-        "",
+        tr("panel.painter_layers.composite.strength"),
         val,
         f64::from(val),
         sid,
@@ -345,6 +370,15 @@ fn paint_layer_row(
         Rect::new(down_x, y, ARROW_W, ROW_H_PX),
         pos + 1 < n,
         IconId::ChevronDown,
+    );
+    // O `x` que retira esta camada — sempre vivo: uma camada criada à mão tira-se à mão.
+    crate::paint_rows::paint_reorder_btn(
+        ctx,
+        theme,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_REMOVE[pos],
+        Rect::new(x_x, y, ARROW_W, ROW_H_PX),
+        true,
+        IconId::Close,
     );
 
     y + ph2d_tokens::row_pitch_px()

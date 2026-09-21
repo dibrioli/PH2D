@@ -14,6 +14,7 @@ mod falloff_drain_repro;
 mod falloff_handle_menu_e2e;
 mod seam;
 mod seam_composite_escopo; // o chip do escopo da borracha: pintado, registado, alcançável
+mod seam_composite_montagem; // o `+`, o menu e o `x` da pilha: pintados, registados, alcançáveis
 mod seam_curve_drag_ownership;
 mod seam_deform;
 mod seam_dock_modes;

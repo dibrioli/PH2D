@@ -134,6 +134,9 @@ fn ids_pintados_com(op: u8) -> Vec<ph2d_a11y::NodeId> {
     let layout = ph2d_editor_core::screens::HeroLayout::for_viewport(viewport);
     let mut brush = crate::paint_brush::FALLBACK_BRUSH;
     brush.composite_enabled = true;
+    // ⛔ A pilha nasce VAZIA desde 2026-09-21, e o cartão só pinta as camadas VIVAS: sem o
+    // `composite_len` a fixtura pintaria zero fileiras e o gate ficava verde a medir NADA.
+    brush.composite_len = 1;
     brush.composite_ops[0] = op;
     brush.composite_strength[0] = 1.0;
     {
@@ -205,4 +208,154 @@ fn diag_a_altura_do_cartao() {
             println!("  {n:7} | {f:8} | {h:8.0}");
         }
     }
+}
+
+/// Pinta o cartão com uma pilha de `n` camadas (todas `Brush` menos as que a quota não dá) e
+/// devolve `(ids com hit rect, rótulos que as caixas de valor receberam)`.
+fn pinta_pilha(n: usize) -> (Vec<ph2d_a11y::NodeId>, Vec<String>) {
+    super::ROTULOS_PINTADOS.with(|c| c.borrow_mut().clear());
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::PainterLayersPanel>();
+    let mut scene = ph2d_vector::VectorScene::new();
+    let mut text = TextSystem::without_system_fonts();
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 360.0, 4000.0);
+    let layout = ph2d_editor_core::screens::HeroLayout::for_viewport(viewport);
+    let mut brush = crate::paint_brush::FALLBACK_BRUSH;
+    brush.composite_enabled = true;
+    brush.composite_len = n;
+    // A disponibilidade vem DERIVADA do motor no produto; aqui a fixtura escreve-a à mão para
+    // poder pôr o cartão nos dois estados (com e sem quota).
+    brush.composite_add_available = [n < ph2d_tool_painter::N_COMPOSITE_LAYERS; 4];
+    for pos in 0..n {
+        brush.composite_strength[pos] = 1.0;
+    }
+    {
+        let mut ctx = ph2d_editor_core::panel::PaintCtx {
+            host: &mut host,
+            layout: &layout,
+            slot: layout
+                .slot_rects(ph2d_editor_core::screens::slot::SlotSet::ANY_DOCK)
+                .get(ph2d_editor_core::screens::slot::Slot::RightTop),
+            viewport,
+            scene: &mut scene,
+            text_system: &mut text,
+        };
+        super::paint_composite_card(
+            &mut ctx,
+            ph2d_tokens::Theme::default(),
+            0.0,
+            320.0,
+            0.0,
+            brush,
+        );
+    }
+    use ph2d_editor_core::panel::PanelHostInternal;
+    let ids = host
+        .hit_index_mut()
+        .iter_registrations()
+        .map(|(id, _)| id)
+        .collect();
+    (ids, super::ROTULOS_PINTADOS.with(|c| c.borrow().clone()))
+}
+
+/// ⭐⭐⭐ **A secção nasce VAZIA e o `+` está lá** (ordem do dono, 2026-09-21).
+///
+/// ⚠️ As duas metades: *não há fileira de camada nenhuma* (senão a secção não nasce vazia) **e**
+/// *o `+` e o menu dele são ALCANÇÁVEIS* (senão a secção nasce vazia e sem forma de a encher —
+/// que é pior do que nascer cheia).
+#[test]
+fn a_seccao_nasce_vazia_e_o_mais_esta_la() {
+    let (ids, rotulos) = pinta_pilha(0);
+    assert!(
+        rotulos.is_empty(),
+        "com zero camadas o cartão não pode pintar caixa de valor nenhuma: {rotulos:?}"
+    );
+    assert!(
+        !ids.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_REMOVE[0]),
+        "com zero camadas não há `x` nenhum para registar"
+    );
+    for (nome, id) in [
+        ("o `+`", ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD),
+        (
+            "o menu do `+`",
+            ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD_KIND,
+        ),
+    ] {
+        assert!(
+            ids.contains(&id),
+            "{nome} não é alcançável: uma secção que nasce vazia e sem `+` não tem como encher"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **Com a quota toda gasta, o `+` e o menu ficam INERTES** — *«ao usar todas inativa-se o
+/// dropdown e o botão +»*.
+///
+/// ⚠️ O CONTROLO é a metade que torna o gate honesto: com a pilha a meio eles TÊM de estar vivos.
+#[test]
+fn com_a_quota_gasta_o_mais_fica_inerte() {
+    let (meio, _) = pinta_pilha(2);
+    assert!(
+        meio.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD),
+        "CONTROLO: com a pilha a meio o `+` tem de estar vivo"
+    );
+    let (cheio, _) = pinta_pilha(ph2d_tool_painter::N_COMPOSITE_LAYERS);
+    for (nome, id) in [
+        ("o `+`", ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD),
+        (
+            "o menu do `+`",
+            ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD_KIND,
+        ),
+    ] {
+        assert!(
+            !cheio.contains(&id),
+            "{nome} continua alcançável com a pilha CHEIA"
+        );
+    }
+}
+
+/// ⭐ **Cada camada viva tem um `x`, e as posições que não existem não têm.**
+#[test]
+fn cada_camada_viva_tem_um_x() {
+    let n = 3usize;
+    let (ids, _) = pinta_pilha(n);
+    for pos in 0..n {
+        assert!(
+            ids.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_REMOVE[pos]),
+            "a camada {pos} não tem `x` alcançável"
+        );
+    }
+    for pos in n..ph2d_tool_painter::N_COMPOSITE_LAYERS {
+        assert!(
+            !ids.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_REMOVE[pos]),
+            "a posição {pos} não existe e mesmo assim registou um `x`"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **Todo slider deste cartão tem NOME, o Strength incluído** (ordem do dono, 2026-09-21).
+///
+/// ⛔⛔ Até hoje o rótulo do Strength era a string VAZIA, e o doc do pintor defendia-o com *«o nome
+/// desta linha é o chip da operação»*. Com o chip a virar um NOME de camada essa premissa morreu:
+/// *o nome da CAMADA e o nome do que a barra CONTROLA são duas coisas*.
+///
+/// ⚠️ A régua OBSERVA o que o pintor recebeu (ver `ROTULOS_PINTADOS`) em vez de varrer o fonte —
+/// *um censo textual das chamadas mede o código, não o produto*.
+#[test]
+fn todo_slider_do_cartao_tem_nome() {
+    let (_, rotulos) = pinta_pilha(2);
+    assert_eq!(
+        rotulos.len(),
+        6,
+        "duas camadas × três caixas (força, tamanho, dureza): {rotulos:?}"
+    );
+    assert!(
+        rotulos.iter().all(|r| !r.trim().is_empty()),
+        "uma caixa de valor foi pintada SEM nome: {rotulos:?}"
+    );
+    assert!(
+        rotulos
+            .iter()
+            .any(|r| r == ph2d_i18n::tr("panel.painter_layers.composite.strength")),
+        "o Strength tem de estar entre os nomes: {rotulos:?}"
+    );
 }

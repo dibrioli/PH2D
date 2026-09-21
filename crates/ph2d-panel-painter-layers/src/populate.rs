@@ -184,7 +184,11 @@ fn register_brush_inputs(store: &mut WidgetStore) {
     for id in std::iter::once(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE)
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_UP)
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_DOWN)
-        .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_OP)
+        .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_REMOVE)
+        .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD_OPTION)
+        .chain(std::iter::once(
+            ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD,
+        ))
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_COLOR)
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_COLOR_CLEAR)
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR)
@@ -197,6 +201,17 @@ fn register_brush_inputs(store: &mut WidgetStore) {
             },
         );
     }
+    // ⚠️ **O menu do `+` é um `Dropdown` e não um `Button`** — é o despacho genérico dele que abre
+    // e fecha a lista (ele não emite `Click`; o painel observa o `open` pela store), exactamente
+    // como o «+ Adjustment» do painel de Layers.
+    store.register(
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD_KIND,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
 }
 
 /// Mask section + collapsible headers + Selection section + Deform widgets.

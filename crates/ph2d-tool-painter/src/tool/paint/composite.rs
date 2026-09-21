@@ -47,10 +47,15 @@ use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_painter_brush::Dab;
 
-/// **Quantas posições a pilha tem.** ⚠️ Ela é lida pelo motor, pelo instantâneo, pelos ids e pelo
-/// cartão — *um `3` escrito à mão em qualquer um deles é a segunda resposta que esta const existe
-/// para não haver* (a extensão de 2026-09-20 encontrou exactamente um, o `N_LAYERS` do painel).
-pub const N_CAMADAS: usize = 5;
+/// **Quantas posições a pilha tem, no MÁXIMO** — um alias de [`MAX_CAMADAS`] para o motor, que
+/// dimensiona os planos e as máscaras por ele.
+///
+/// ⚠️ Ela é lida pelo motor, pelo instantâneo, pelos ids e pelo cartão — *um `5` escrito à mão em
+/// qualquer um deles é a segunda resposta que esta const existe para não haver* (a extensão de
+/// 2026-09-21 encontrou NOVE). ⛔ **Quantas camadas EXISTEM é outra pergunta** e responde-se pelo
+/// `composite_len`; as posições a partir dele são `CompositeLayer::default()`, com `strength = 0`,
+/// que é como o motor já pulava uma camada — *é isso que mantém o motor intocado por esta wave*.
+pub const N_CAMADAS: usize = MAX_CAMADAS;
 
 /// **O tecto do tamanho de uma camada, e o recurso dele é o QUADRO.**
 ///
@@ -80,6 +85,34 @@ pub const MAX_TAMANHO_DA_CAMADA: f32 = 4.0;
 /// no `op_name` do painel (que cairia no `_ => Brush` e daria dois nomes iguais).
 pub const N_OPERACOES: usize = 4;
 
+/// ⭐⭐⭐ **A QUOTA de cada operação** — quantas camadas dela a pilha aceita (ordem do dono,
+/// 2026-09-21: *«3 de Brush · 2 de Erase · 1 de Blur · 1 de Smear»*).
+///
+/// ⚠️ Ela é a porta ÚNICA da pergunta *«ainda cabe mais uma destas?»*, e tem **três** leitores: as
+/// opções que o menu do `+` mostra, o estado do próprio `+`, e o guarda do
+/// [`PainterTool::acrescenta_camada`]. *Três respostas à mesma pergunta divergem no dia em que
+/// uma quota mudar.*
+///
+/// ⭐ E o tecto da pilha é a SOMA delas ([`MAX_CAMADAS`]), nunca um número escrito ao lado.
+pub(crate) const fn quota_da_operacao(op: CompositeOp) -> usize {
+    match op {
+        CompositeOp::Brush => 3,
+        CompositeOp::Erase => 2,
+        CompositeOp::Blur | CompositeOp::Smear => 1,
+    }
+}
+
+/// **Quantas posições a pilha pode ter** — a SOMA das quotas, derivada.
+///
+/// ⛔ Ela era `N_CAMADAS = 5`, um número escrito à mão, e o nome mentia desde 2026-09-21: com
+/// camadas criadas e retiradas à mão ele deixou de ser *«quantas há»* e passou a ser *«quantas
+/// cabem»*. ⚠️ *Um `N_` que é um máximo é uma mentira à espera* — quem conta as vivas lê o
+/// `BrushSettings::composite_len`.
+pub const MAX_CAMADAS: usize = quota_da_operacao(CompositeOp::Brush)
+    + quota_da_operacao(CompositeOp::Erase)
+    + quota_da_operacao(CompositeOp::Blur)
+    + quota_da_operacao(CompositeOp::Smear);
+
 /// One of the composite operations. Wire discriminant (`to_u8`) travels in the panel snapshot so
 /// the panel can label each row; the panel maps it back to a name.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -104,6 +137,17 @@ impl CompositeOp {
             Self::Smear => 1,
             Self::Blur => 2,
             Self::Erase => 3,
+        }
+    }
+
+    /// O inverso do [`Self::to_u8`] — tudo o que não é `1..=3` é o `Brush`, que é o mesmo braço
+    /// de omissão que o `op_name` do painel usa.
+    pub(crate) fn from_u8(v: u8) -> Self {
+        match v {
+            1 => Self::Smear,
+            2 => Self::Blur,
+            3 => Self::Erase,
+            _ => Self::Brush,
         }
     }
 
@@ -184,6 +228,22 @@ pub(crate) struct CompositeLayer {
     pub size: f32,
 }
 
+impl CompositeLayer {
+    /// Uma camada acabada de criar pelo `+`: a operação escolhida, e tudo o resto de fábrica.
+    ///
+    /// ⚠️ A força nasce em `1.0` e **não** em zero: uma camada criada à mão que não faz nada
+    /// lê-se como a ferramenta partida, que é a espécie que o §5.0 do `CLAUDE.md` nomeia. *Antes
+    /// de 2026-09-21 as posições existiam todas e o zero era como se calavam; hoje calar-se é
+    /// não existir.*
+    pub(crate) fn nova(op: CompositeOp) -> Self {
+        Self {
+            op,
+            strength: 1.0,
+            ..Self::default()
+        }
+    }
+}
+
 impl Default for CompositeLayer {
     fn default() -> Self {
         Self {
@@ -224,18 +284,12 @@ impl PainterTool {
         }
     }
 
-    /// Escolhe a OPERAÇÃO da camada em `pos` (o chip da fileira: Brush · Smear · Blur · Erase).
-    pub fn set_composite_layer_op(&mut self, pos: usize, op: u8) {
-        if pos >= N_CAMADAS {
-            return;
-        }
-        self.paint.composite[pos].op = match op {
-            1 => CompositeOp::Smear,
-            2 => CompositeOp::Blur,
-            3 => CompositeOp::Erase,
-            _ => CompositeOp::Brush,
-        };
-    }
+    // ⛔⛔ **O `set_composite_layer_op` SAIU em 2026-09-21.** Ele era o braço do chip que ciclava
+    // a operação de uma camada, e com as QUOTAS do dono (`3 Brush · 2 Erase · 1 Blur · 1 Smear`)
+    // um ciclo livre tornaria a quota uma mentira. A operação escolhe-se na CRIAÇÃO
+    // ([`Self::acrescenta_camada`]) e trocá-la é retirar a camada e criar outra. ⚠️ *Quando o
+    // único leitor de um valor sai, o valor sai com ele* — o precedente é o `Brush::invert` do
+    // `Scene Project` da escultura.
 
     /// Escreve a COR autorada da camada em `pos`. O picker chega aqui; o `None` chega pelo
     /// [`Self::clear_composite_layer_color`] (o clique-direito na amostra).
@@ -298,15 +352,18 @@ impl PainterTool {
 
     /// Move the layer at `pos` one position UP (toward layer 1 / top) — swaps the tool with its upper
     /// neighbour. The position NUMBERS stay fixed; only which tool sits where changes. No-op at the top.
+    ///
+    /// ⚠️ O tecto é o número de camadas VIVAS e não o `MAX_CAMADAS`: trocar com uma posição da
+    /// cauda tiraria a camada da lista.
     pub fn move_composite_layer_up(&mut self, pos: usize) {
-        if (1..N_CAMADAS).contains(&pos) {
+        if (1..self.paint.composite_len).contains(&pos) {
             self.paint.composite.swap(pos, pos - 1);
         }
     }
 
-    /// Move the layer at `pos` one position DOWN (toward layer 5 / bottom). No-op at the bottom.
+    /// Move the layer at `pos` one position DOWN (toward the bottom). No-op at the bottom.
     pub fn move_composite_layer_down(&mut self, pos: usize) {
-        if pos + 1 < N_CAMADAS {
+        if pos + 1 < self.paint.composite_len {
             self.paint.composite.swap(pos, pos + 1);
         }
     }
@@ -401,15 +458,29 @@ impl PainterTool {
                     self.move_composite_layer_down(p);
                     return true;
                 }
-                if let Some(p) = crate::ids::PAINTER_BRUSH_COMPOSITE_OP
+                // ⛔⛔ **O chip da OPERAÇÃO saiu em 2026-09-21.** Ele ciclava as quatro, e com
+                // as QUOTAS do dono (`3 Brush · 2 Erase · 1 Blur · 1 Smear`) um ciclo livre
+                // tornaria a quota uma mentira: dois cliques punham dois Blurs na pilha. A
+                // operação passa a ser escolhida na CRIAÇÃO, no menu ao lado do `+`, e trocá-la é
+                // retirar a camada e criar outra. ⚠️ *É uma capacidade que sai — declarada, e
+                // reversível numa linha se o dono a quiser de volta com o ciclo limitado à
+                // quota.*
+                if let Some(p) = crate::ids::PAINTER_BRUSH_COMPOSITE_REMOVE
                     .iter()
                     .position(|x| x == id)
                 {
-                    // O chip CICLA as quatro operações — é o gesto que torna as posições novas
-                    // alcançáveis (sem ele uma camada nasceria presa ao que o default declarou).
-                    let proximo =
-                        (usize::from(self.paint.composite[p].op.to_u8() + 1) % N_OPERACOES) as u8;
-                    self.set_composite_layer_op(p, proximo);
+                    self.retira_camada(p);
+                    return true;
+                }
+                if *id == crate::ids::PAINTER_BRUSH_COMPOSITE_ADD {
+                    self.acrescenta_camada(self.paint.composite_add_op.to_u8());
+                    return true;
+                }
+                if let Some(op) = crate::ids::PAINTER_BRUSH_COMPOSITE_ADD_OPTION
+                    .iter()
+                    .position(|x| x == id)
+                {
+                    self.set_composite_add_op(op as u8);
                     return true;
                 }
                 if let Some(p) = crate::ids::PAINTER_BRUSH_COMPOSITE_COLOR_CLEAR
@@ -438,6 +509,17 @@ impl PainterTool {
                     return true;
                 }
                 false
+            }
+            // ⭐ O menu do `+` — a porta do contrato congelado para uma escolha com payload
+            // (§6: o `PanelEvent` tem quatro variantes e a `SelectOption` é o canal de texto; o
+            // doc dela avisa por escrito contra gastar um ADR numa variante que ela já dá).
+            PanelEvent::SelectOption(id, v)
+                if *id == crate::ids::PAINTER_BRUSH_COMPOSITE_ADD_KIND =>
+            {
+                if let Ok(op) = v.parse::<u8>() {
+                    self.set_composite_add_op(op);
+                }
+                true
             }
             PanelEvent::SetValue(id, v) => {
                 if let Some(p) = crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH

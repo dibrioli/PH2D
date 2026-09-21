@@ -166,6 +166,8 @@ thread_local! {
     /// end of `paint` to render the 24-kind list on top of everything (mirror of
     /// [`PENDING_BLEND_DD`]). W4 T4.15.
     static PENDING_ADJ_MENU: Cell<Option<Rect>> = const { Cell::new(None) };
+    /// O menu do `+` da pilha do Composite, para a passagem diferida do popover.
+    static PENDING_COMPOSITE_ADD: Cell<Option<Rect>> = const { Cell::new(None) };
 
     /// Active curve-editor channel TAB per Curves layer (W4 §3): `0` = master
     /// (RGB), `1` = R, `2` = G, `3` = B. Pure VIEW state (which channel the curve
@@ -397,6 +399,16 @@ pub(crate) fn set_pending_adj_menu(v: Option<Rect>) {
 /// Take (and clear) the pending "+ Adjustment" kind menu for the deferred paint.
 pub(crate) fn take_pending_adj_menu() -> Option<Rect> {
     PENDING_ADJ_MENU.with(|c| c.take())
+}
+
+/// Guardar o menu do `+` da pilha aberto, para a passagem diferida.
+pub(crate) fn set_pending_composite_add_menu(v: Option<Rect>) {
+    PENDING_COMPOSITE_ADD.with(|c| c.set(v));
+}
+
+/// Tomar (e limpar) o menu do `+` da pilha para a pintura diferida.
+pub(crate) fn take_pending_composite_add_menu() -> Option<Rect> {
+    PENDING_COMPOSITE_ADD.with(Cell::take)
 }
 
 /// Stash the open blend dropdown for the deferred popover pass.

@@ -1351,6 +1351,124 @@ com a fixtura **derivada do piso** para a próxima descida não a partir outra v
 
 ---
 
+## §9-undecies — ⭐⭐⭐ A mesma cegueira virada 90°: o `tokens` lia **`110`** comandos e oferece **`4`**
+
+O §9-decies fechou com *«o topo é hoje o `tokens` (110), que não usa composto nenhum — a dívida
+dele é real»*. ⛔⛔ **Era falso, e a refutação veio de eu ir ATACAR o painel que o número
+apontava.**
+
+### §9-undecies.1 — O que a medição deu
+
+Passo zero: correr o `diag_compostos_por_declarar` sobre o `tokens`. Ele lê **`2`** botões em
+fileira ⇒ os `110` não são compostos escondidos. Passo seguinte: nomear as entradas. ⚠️ **A
+varredura de texto que nomeia o Inspector lê ZERO aqui** — os ids deste painel são derivados do
+índice da linha (`tokens.reset.{row}`), não literais ⇒ o mapa constrói-se chamando as **próprias
+funções de id**, que são a fonte (`diag_de_quem_sao_as_entradas_do_tokens`).
+
+| família | comandos | valores | órfãos |
+|---|---:|---:|---:|
+| **cor: elo** | **86** | 0 | 0 |
+| **px: elo** | **21** | 0 | 0 |
+| painel (fechar · import · export) | 3 | 0 | 0 |
+| cor: swatch | 0 | 0 | **86** |
+| px: campo | 0 | 21 | 0 |
+
+⇒ **`107` dos `110` são UM botão**, o *elo*, pintado uma vez por linha — e por **decisão escrita**
+no pintor: *«o elo é oferecido em TODA linha — qualquer token pode seguir qualquer outro, e
+esconder o botão em linhas não-autoradas tornaria o gesto alcançável só onde ele já foi feito»*.
+⚠️ E as `86` swatches de cor, que são o **editor de cada valor**, caem no balde dos *órfãos* por
+não terem estado no store (elas são alvo de PICKER, também por decisão escrita).
+
+### §9-undecies.2 — A lei, e ela é o gémeo da de ontem
+
+> **Um controlo repetido ao longo de uma LINHA é um; um comando repetido ao longo de uma COLUNA
+> também.** A primeira metade foi curada de manhã (o composto); esta é a segunda.
+
+⚠️⚠️ *A primeira foi achada por SUSPEITA; a segunda só apareceu porque alguém foi gastar uma wave
+no painel que o número apontava.* **Uma régua enviesada não se corrige sozinha: ela envia trabalho
+para onde ela própria está errada.**
+
+### §9-undecies.3 — ⛔ O discriminador NÃO é geométrico, e o controlo matou a 1.ª redacção
+
+A 1.ª versão agrupava botões por **coluna** (mesmo `x`, mesma largura) e colapsava os que
+estivessem em faixas de linha distintas. Ela leu:
+
+```
+inspector    88 botões →  29 distintos      ⛔ FALSO
+tokens      110 botões →   4 distintos      ✅
+```
+
+O detalhe das colunas refutou-a: `[inspector] x=1626 w=268: 34 linhas` é uma coluna de **34 botões
+de largura cheia** — *34 comandos diferentes empilhados*, colapsados em `1`. Já
+`[tokens] x=1882 w=20: 107 linhas, passo 25` é o elo por linha.
+
+⭐ O discriminador que fica é a **PROVENIÊNCIA do id**: um id escrito no fonte é um comando
+**nomeado**; um que nasce de `hash_node_id_runtime(&format!("…{row}"))` é uma **instância** de uma
+família — e **só dentro do balde dos derivados** a coluna decide.
+
+### §9-undecies.4 — ⚠️⚠️ Há TRÊS formas de declarar um id, e uma que falte erra no sentido MAU
+
+| forma | exemplo | quem a usa |
+|---|---|---|
+| `hash_node_id("<lit>")` | `hash_node_id("tokens.close")` | a maioria |
+| `hash_node_id_runtime("<lit>")` | `hash_node_id_runtime("asset_browser.panel")` | `asset-browser` |
+| **`NodeId(<n>)` cru** | `pub const GS_CFG_QT_MAX_DEPTH: NodeId = NodeId(1033);` | **`grid-snap`** |
+
+⛔ Uma forma que falte manda os ids dela para o balde dos derivados, onde eles **colapsam** — e o
+painel lê-se **mais barato do que é**. Medido durante a construção: sem a terceira forma o
+`grid-snap` lia **`10`** comandos distintos em vez de **`20`**.
+
+⇒ gate novo **`todo_painel_com_id_derivado_esta_nomeado`**: todo painel cujo bruto excede o
+distinto tem de estar na `PAINEIS_COM_ID_DERIVADO` **com a fábrica escrita ao lado**, com a metade
+da **obsolescência** (uma entrada que já não descreve nada reprova) e **piso de população** (uma
+partição com um lado vazio não afirma nada). ⚠️ **A 1.ª redacção dele exigia a fábrica na crate do
+PAINEL, e o `wet_tuning` desmentiu-a**: os *Reset* dele nascem em `ph2d-tool-painter`.
+
+### §9-undecies.5 — A tabela honesta
+
+| painel | botões | **distintos** |
+|---|---:|---:|
+| **inspector** | 88 | **88** |
+| physics | 49 | 49 |
+| sculpt3d | 36 | 36 |
+| vector | 24 | 24 |
+| audio_mixer | 22 | 22 |
+| grid_snap | 20 | 20 |
+| flip_frames | 20 | 20 |
+| painter_layers | 18 | 18 |
+| **wet_tuning** | 58 | **17** |
+| timeline | 13 | 13 |
+| **tokens** | **110** | **4** |
+
+**Dois painéis mentiam, e os dois são LISTAS.** O Inspector é o líder e sempre foi.
+
+### §9-undecies.6 — ⭐ A catraca mudou de coluna, e a razão é a falsa acusação
+
+`CARGA_DE_COMANDOS` passa a medir `distintos`. ⛔ Com o número **bruto**, acrescentar um token de
+desenho fá-lo subir e a mensagem acusa *«quase de certeza um composto deixou de se declarar»* —
+**falso**, e manda a cura para o sítio errado. O distinto é invariante ao comprimento da lista, que
+é o que uma dívida de capacidade tem de ser.
+
+⚠️ **Ela continua a guardar os compostos**: apagar um `composto::grupo` devolve as células ao balde
+dos botões, e como elas têm id nomeado o distinto sobe na mesma (mutação 4 sangra).
+
+### §9-undecies.7 — Prova e portão
+
+**6 de 6 mutações sangram**, com os três controlos do arnês (agulha casa `1×` · tem de compilar ·
+população de `passed + failed`): a forma `NodeId(<n>)` esquecida · a instância sem coluna · a
+coluna a decidir para todo botão (a redacção refutada) · as abas sem declarar o grupo · uma entrada
+obsoleta na lista · a catraca a voltar ao bruto.
+
+Portão: registry **`9/9`** no âmbito com as quatro features · `nextest-impacted`
+**`15 493/15 493`** · censos da árvore combinada **`127/127`** · clippy `-D warnings` zero · fmt
+limpo · tecto de LOC verde.
+
+⚠️ **Para quem integrar:** a corrida `-p` desta crate **não regista** `painter_layers`, `flip`,
+`flip_frames` e `wet_tuning` (eles chegam pelo `shells/desktop`) — o `o_censo_recusa_o_ambito_pobre`
+di-lo em voz alta, e sem as quatro features o `wet_tuning` desaparece da catraca.
+
+---
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

@@ -22,9 +22,14 @@
 //! *A tabela inteira, com o mecanismo e as recusas, vive em
 //! `docs/Render3d/17_a_rota_b_o_catavento.md` §1.*
 //!
-//! - **O custo da rota B é dos VÉRTICES e não dos pixels:** `8×` de lado (`64×` de área) não move o
-//!   relógio (`0,131` → `0,124 ms`); `33×` de vértices move-o `1,6×`. ⇒ **`126` objectos por quadro**
-//!   na peça de fábrica, e **uma fracção da resolução não compra relógio nenhum**.
+//! - **O custo de RASTERIZAR é dos VÉRTICES e não dos pixels:** `8×` de lado (`64×` de área) não
+//!   move o relógio (`0,131` → `0,124 ms`); `33×` de vértices move-o `1,6×`. ⇒ **uma fracção da
+//!   resolução não compra relógio nenhum aqui.**
+//! - ⛔⛔⛔ **E esta sonda mede METADE DA CORRENTE:** o produto é *rasterizar E ACENDER*, e o
+//!   acender escala com a **ÁREA** (`0,505 ms` a `512²` contra `0,133` de rasterização). ⇒ dividir
+//!   o orçamento pelo Bloco A dá **`126`** objectos e a corrente inteira dá **`26`** — *uma régua
+//!   que mede o primeiro elo devolve uma contagem que o app nunca vai ver*. A outra metade é o
+//!   **Bloco D**, em `ph2d-form-donation/src/mede_o_acender_por_quadro.rs`.
 //! - **O readback é o preço inteiro da porta de hoje:** ela escala com a ÁREA (`~4×` por duplicação
 //!   do lado) e vale **`31×`** a rasterização a `512²`. ⇒ chamá-la por quadro dá **`4`** objectos
 //!   contra `126` — *a obra existe, e é abrir uma costura RESIDENTE entre duas leis que já vivem na

@@ -470,6 +470,12 @@ mod lei_tests;
 #[path = "prova_da_placa.rs"]
 mod prova_da_placa;
 
+/// ⭐ **BLOCO D da §5.0 do catavento** — o preço de ACENDER por quadro; os blocos A–C vivem na
+/// `ph2d-mesh-render` e mediam só o RASTERIZAR. Ver `docs/Render3d/17_a_rota_b_o_catavento.md`.
+#[cfg(test)]
+#[path = "mede_o_acender_por_quadro.rs"]
+mod mede_o_acender_por_quadro;
+
 #[cfg(test)]
 mod tests {
     use super::*;

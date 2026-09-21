@@ -10,13 +10,22 @@
 
 ## §1 — A medição de §5.0, e o que ela decidiu
 
-**Instrumento:** [`mede_o_que_a_composicao_ja_da_ao_catavento.rs`](../../crates/ph2d-mesh-render/tests/it/mede_o_que_a_composicao_ja_da_ao_catavento.rs)
-(três blocos, `#[ignore]`, precisa de adaptador).
+**Instrumentos — são DOIS, e a razão está na §1.2-bis:** a corrente do produto é *rasterizar E
+acender*, e as duas metades vivem em crates que não se conhecem.
+
+| bloco | o que mede | onde |
+|---|---|---|
+| A · B · C | rasterizar · o readback · a silhueta | [`ph2d-mesh-render/tests/it/mede_o_que_a_composicao_ja_da_ao_catavento.rs`](../../crates/ph2d-mesh-render/tests/it/mede_o_que_a_composicao_ja_da_ao_catavento.rs) |
+| **D** | **acender** | [`ph2d-form-donation/src/mede_o_acender_por_quadro.rs`](../../crates/ph2d-form-donation/src/mede_o_acender_por_quadro.rs) |
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling && \
 PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-mesh-render --release \
   --test it -- --ignored --nocapture --test-threads=1 catavento
+
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling && \
+PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-form-donation --release \
+  mede_o_acender -- --ignored --nocapture --test-threads=1
 ```
 
 ⚠️ **`--test-threads=1` é load-bearing** e não estilo — ver §1.4.
@@ -27,10 +36,13 @@ Textura **reaproveitada** (o que um dirty-flag entrega) contra **alocada a cada 
 porta de assar faz hoje). Medido a `load 44` — ou seja, **um PISO**: a contenção só pode ter tornado
 estes números maiores.
 
-| malha | lado `128` | `256` | `512` | `1024` | objs/quadro a `512` |
-|---|---|---|---|---|---|
-| leve (`3 010` v) | `0,085` | `0,076` | `0,074` | `0,078` ms | **`225`** |
-| **fábrica (`98 306` v)** | `0,131` | `0,116` | **`0,133`** | `0,124` ms | **`126`** |
+| malha | lado `128` | `256` | `512` | `1024` |
+|---|---|---|---|---|
+| leve (`3 010` v) | `0,085` | `0,076` | `0,074` | `0,078` ms |
+| **fábrica (`98 306` v)** | `0,131` | `0,116` | **`0,133`** | `0,124` ms |
+
+⛔ **A coluna «objectos por quadro» que aqui esteve dividia o orçamento por ESTE número e lia
+`126` — ver §1.2-bis: é metade da corrente, e a conta honesta está na §4.**
 
 ⭐⭐⭐ **A leitura que decide a obra: o custo é dos VÉRTICES e NÃO dos pixels.**
 `8×` de lado (`64×` de área) não move o relógio; `33×` de vértices move-o `1,6×`. E a coluna
@@ -52,7 +64,35 @@ exacto do Bloco A. ⇒ **o readback é o preço inteiro**, e a `512²` na peça 
 
 ⭐⭐⭐ **É este par de tabelas que diz que a obra EXISTE.** A pergunta era *«a rota B é a rota A
 chamada mais vezes?»*, e a resposta é **não**: chamar a porta de hoje por quadro dá **`4` objectos**
-a `512²`; manter o G-buffer na placa dá **`126`**.
+a `512²`; manter o G-buffer na placa dá **`26`** (§4 — e `126` se se contasse só este elo).
+
+### §1.2-bis — ⛔⛔⛔ Bloco D: **ACENDER**, que é a outra metade da corrente — e ela corrige o Bloco A por `5×`
+
+**Os blocos A–C mediam RASTERIZAR, e a corrente do produto é *rasterizar E acender*.** *Uma régua
+que mede o primeiro elo e divide o orçamento por ele devolve uma contagem de objectos que o app
+nunca vai ver* — e foi exactamente o que o `126` da §1.1 era.
+
+Medido pela porta do produto ([`baked_form::acende_com`], `load 14`):
+
+| lado | lei `Tinta` (a de até 21/09) | lei **`Forma`** (a que ship) |
+|---|---|---|
+| `128` | `0,171` | **`0,150`** ms |
+| `256` | `0,330` | **`0,254`** ms |
+| `512` | `0,823` | **`0,505`** ms |
+| `1024` | `4,029` | **`1,829`** ms |
+
+⭐⭐⭐ **As duas metades escalam em grandezas DIFERENTES, e é isso que decide o orçamento:**
+
+| | rasterizar (§1.1) | acender (aqui) |
+|---|---|---|
+| escala com | **os VÉRTICES** (plano no lado) | **a ÁREA** (`~4×` por duplicação) |
+| a `512²`, peça de fábrica | `0,133 ms` | `0,505 ms` |
+
+⇒ **a corrente a `512²` custa `0,638 ms` ⇒ `26` objectos por quadro**, e não os `126` que a §1.1
+sozinha prometia. **O elo que manda é o ACENDER, e o tamanho que o governa é o do SPRITE.**
+
+⭐⭐ **E um facto que eu não esperava: a lei que o dono aprovou é a mais BARATA das duas** — a
+`Forma` (OpenPBR) bate a `Tinta` em todos os lados, e a `1024²` por **`2,2×`**.
 
 ### §1.3 — Bloco C: a resolução do G-buffer — o rectângulo do sprite, ou uma fracção?
 
@@ -70,19 +110,25 @@ que ficam do lado errado. Sprite de `512²`, silhueta de `52 593` px.
 Ele **dobra a cada metade**, que é o que a geometria prevê (o erro é um texel da grelha grossa ao
 longo do contorno).
 
-⭐⭐ **E a pergunta do `02.2` DISSOLVE-SE, mas não pelo motivo que ela supunha.** Ela perguntava a
-fracção *«onde a silhueta começa a serrilhar»* — e o Bloco A diz que **uma fracção não compra
-relógio nenhum** (`0,133` a `512²` contra `0,131` a `128²`). ⇒ *pagar silhueta para poupar um tempo
-que não existe é uma troca sem lado bom.*
+⭐⭐ **E a pergunta do `02.2` DISSOLVE-SE, mas não pelo motivo que ela supunha** — e a razão final é
+a do Bloco D, não a do Bloco A:
+
+- **Uma fracção não compra rasterização**, porque ela já é plana no lado (`0,133` a `512²` contra
+  `0,131` a `128²`).
+- ⛔ **E não compra acendida NENHUMA**, que é o elo caro: o passe despacha sobre os pixels do
+  **SPRITE** — ele escreve o slot visível — logo o custo dele é do rectângulo que o artista escolheu,
+  e um G-buffer mais pequeno por baixo não muda uma linha disso.
+
+⇒ *pagar silhueta para poupar um tempo que não existe é uma troca sem lado bom.*
 
 ⛔ **Mas ela reabre noutro recurso, e esse é exacto e não precisa de medição — a MEMÓRIA.** O
 G-buffer é `RGBA16F` (8 B/texel) + `R16F` (2 B/texel):
 
-| lado | por objecto | a `126` objectos |
+| lado | por objecto | a `26` objectos |
 |---|---|---|
-| `1024` | `10,0 MiB` | `1 260 MiB` |
-| `512` | `2,5 MiB` | `315 MiB` |
-| `256` | `0,625 MiB` | `79 MiB` |
+| `1024` | `10,0 MiB` | `260 MiB` |
+| `512` | `2,5 MiB` | `65 MiB` |
+| `256` | `0,625 MiB` | `16 MiB` |
 
 ⇒ **a fracção é uma decisão de VRAM, não de relógio**, e o lado certo é o do rectângulo que o sprite
 de facto ocupa no ecrã — nunca um número escolhido.
@@ -134,11 +180,30 @@ existem, e pendurá-la em dois componentes do ECS.
 
 ## §3 — O que fica por decidir com medição, e não com opinião
 
-- **Qual o lado do G-buffer por objecto** — §1.3 diz que é uma conta de VRAM contra o rectângulo do
-  sprite no ecrã. Falta a régua que o deriva.
 - **O dirty-flag**: a §1.1 mede o custo de re-rasterizar sempre. Quanto ele poupa numa cena real
   depende de quantos objectos rodam por quadro, que é facto da cena e não do motor.
-- **O tecto de VRAM da cena** não foi medido.
+- **O tecto de VRAM da cena** não foi medido — a §1.3 tem a aritmética por objecto e falta a soma.
+- **A corrente foi medida com os dois elos SEPARADOS**, cada um com o seu aquecimento. Uma medição
+  da corrente INTEIRA, com o G-buffer residente, só existe depois de a costura existir.
+
+---
+
+## §4 — O ORÇAMENTO, na forma em que se usa
+
+`custo por objecto por quadro = rasterizar (plano, ~0,13 ms na peça de fábrica) + acender (∝ área)`
+
+| lado do sprite | rasterizar | acender | total | **objs/quadro** |
+|---|---|---|---|---|
+| `128` | `0,131` | `0,150` | `0,281` ms | **`59`** |
+| `256` | `0,116` | `0,254` | `0,370` ms | **`45`** |
+| `512` | `0,133` | `0,505` | `0,638` ms | **`26`** |
+| `1024` | `0,124` | `1,829` | `1,953` ms | **`8`** |
+
+⚠️ **Tudo isto medido a `load 14`–`44`** (`CLAUDE.md` §5.0: um relógio desta workstation acima de
+`load ~5` não vale nada) ⇒ **são PISOS**, e a máquina calma só pode dar mais.
+
+⭐ **A leitura de produto:** o orçamento da rota B não é do motor, é do **tamanho que o artista dá ao
+sprite**. Um catavento de `256²` cabe `45` vezes num quadro; o mesmo catavento a `1024²` cabe `8`.
 
 ---
 
@@ -146,6 +211,7 @@ existem, e pendurá-la em dois componentes do ECS.
 
 | o que | porquê | onde |
 |---|---|---|
-| chamar a porta `form_plane` por quadro | `4` objectos a `512²` contra `126` — o readback é `31×` a rasterização | §1.2 |
-| baixar a resolução do G-buffer para poupar relógio | uma fracção não move o relógio (`0,133` contra `0,131 ms`) e custa silhueta | §1.1 + §1.3 |
+| chamar a porta `form_plane` por quadro | `4` objectos a `512²` contra `26` — o readback é `31×` a rasterização | §1.2 |
+| baixar a resolução do G-buffer para poupar relógio | não compra rasterização (ela é plana no lado) **nem** acendida (o passe despacha sobre os pixels do SPRITE) | §1.1 + §1.2-bis + §1.3 |
 | medir a rasterização com uma esfera leve | o custo é de VÉRTICES: `33×` de malha vale `1,6×` de tempo, e a fixtura não continha a grandeza | §1.4 |
+| dividir o orçamento pelo custo de RASTERIZAR | é metade da corrente: a conta dá `126` objectos e a corrente inteira dá `26` | §1.2-bis |

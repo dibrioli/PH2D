@@ -55,7 +55,7 @@ pré-cálculo) e nós contra a forma verdadeira.
 |---|---|---|---|---|
 | P1 | quadro com a câmera a MEXER, **luz ligada**, `1920×1080` | ⛔ a luz está **desligada** | `16,7 ms` com tudo | **≤ 16,7 ms com tudo ligado** |
 | P2 | quadro **parado**, `1920×1080` | `~61 ms` (medido, uma cena) | — | **≤ 16,7 ms** |
-| P3 | objectos em **rota B** (3D ao vivo) num quadro | ⛔ não existe | — | ⏳ **a medir** — é pergunta aberta do `02.2` |
+| P3 | objectos em **rota B** (3D ao vivo) num quadro | ⛔ não existe | — | ✅ **MEDIDO** ([`17` §4](17_a_rota_b_o_catavento.md)): `59`/`45`/`26`/`8` a `128²`/`256²`/`512²`/`1024²`, e o elo que manda é **acender** |
 | P4 | objectos em **rota A** (assado) | = um sprite | = um sprite | manter: **roda em telemóvel** |
 
 ⚠️ **`16,7 ms` é `60` imagens por segundo, e é a barra porque é a deles.** Não é um número escolhido:
@@ -100,7 +100,7 @@ Quem a responder por memória ou pelo [`03`](03_o_plano.md) responde a fila erra
 | ordem | obra | estado |
 |---|---|---|
 | **1.ª** | a lei que acende o sprite | ✅ **NO PRODUTO, com o smoke do dono APROVADO (21/09)** e com a **escolha POR OBJECTO gravada no ficheiro** (o item `2` da cauda, fechado no mesmo dia — degrau `161`). ⏳ fica o resto da cauda do §7 (o destaque que satura · a oclusão especular · não re-enviar a forma quando só o rig mudou) |
-| **2.ª** | a rota B — o catavento | ⏳ **EM CURSO.** A **§5.0 está medida** ([`17`](17_a_rota_b_o_catavento.md)): as duas metades já vivem na placa e **a costura entre elas passa pela CPU** — chamar a porta de hoje por quadro dá `4` objectos a `512²` contra `126` com o G-buffer residente, e *o custo é de VÉRTICES, não de pixels*. `Mesh3D`/`MeshShading` continuam a **não existir** no `ph2d-ecs` |
+| **2.ª** | a rota B — o catavento | ⏳ **EM CURSO.** A **§5.0 está medida** ([`17`](17_a_rota_b_o_catavento.md)): as duas metades já vivem na placa e **a costura entre elas passa pela CPU** — chamar a porta de hoje por quadro dá `4` objectos a `512²` contra **`26`** com o G-buffer residente. ⚠️ E a §5.0 corrigiu-se a si mesma: a 1.ª conta lia `126` por medir **metade da corrente** (rasterizar custa VÉRTICES e é plano no lado; **acender** custa ÁREA e é o elo que manda). `Mesh3D`/`MeshShading` continuam a **não existir** no `ph2d-ecs` |
 | 3.ª | a luz sobrevive ao movimento | ⏳ **absorve a `W9`** do [`03`](03_o_plano.md), com o gate VERMELHO que o dono mandou tratar lá |
 | 4.ª | texturas | ⏳ o material continua **uma cor por objecto** |
 | 5.ª | animação 3D | ⏳ o esqueleto desta casa é 2D |

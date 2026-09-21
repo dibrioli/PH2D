@@ -2057,3 +2057,57 @@ fn toda_semeadura_de_dobra_passa_pela_porta() {
         cruas.join("\n  ")
     );
 }
+
+/// SONDA TEMPORÁRIA — **que painéis ABREM fora da dobra**, com a política de dobra em vigor.
+///
+/// ⚠️ É a régua do [`o_inspector_abre_dentro_da_dobra`] apontada a TODO o registo. ⛔ Ela não é o
+/// [`imprime_o_censo`]: aquele abre as gavetas e mede o que o painel TEM; esta mede o que ele
+/// MOSTRA ao abrir.
+#[test]
+#[ignore]
+fn diag_que_paineis_abrem_fora_da_dobra() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let mut linhas: Vec<(f32, String, usize, bool, f32, usize)> = Vec::new();
+        for painel in reg.panels_mut() {
+            let id = painel.manifest.id.to_string();
+            let arm = super::paineis_armados::TABELA
+                .iter()
+                .find(|a| a.painel == id);
+            let mut host = MockPanelHost::new();
+            if let Some(a) = arm {
+                (a.arma)(host.store_mut());
+            }
+            painel.populate(host.store_mut());
+            // A política de dobra do editor, como no arranque.
+            ph2d_editor_core::screens::hero::pre_populate::marca_as_gavetas(host.store_mut());
+            let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
+                let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            });
+            let c = conta(host.store(), &host.registos_da_ultima_pintura(), &grupos);
+            // ⭐ O CHÃO: quanto sobra com TODA gaveta que este painel tem fechada. A diferença
+            //   para a abertura é o que a política de dobra pode comprar aqui.
+            let gavetas = host.store().collapsible_ids();
+            for g in &gavetas {
+                host.store_mut().set_collapsed(*g, true);
+            }
+            let (_, gg) = ph2d_editor_core::widget::composto::medindo(|| {
+                let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            });
+            let chao = conta(host.store(), &host.registos_da_ultima_pintura(), &gg).altura;
+            if let Some(a) = arm {
+                (a.desarma)();
+            }
+            linhas.push((c.altura, id, c.total(), arm.is_some(), chao, gavetas.len()));
+        }
+        linhas.sort_by(|a, b| b.0.total_cmp(&a.0));
+        println!("\n  painel                 abre com  ecrãs  com tudo dobrado  compra  gavetas");
+        for (h, id, _n, _armado, chao, gav) in &linhas {
+            println!(
+                "  {id:22} {h:8.0} {:6.1} {chao:12.0} px {:8.0} px {gav:6}",
+                h / DOBRA,
+                h - chao
+            );
+        }
+    });
+}

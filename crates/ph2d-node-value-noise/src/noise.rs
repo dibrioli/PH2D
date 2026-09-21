@@ -124,6 +124,18 @@ fn fade(t: f32) -> f32 {
     t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
 }
 
+/// ⛔⛔ **A VIZINHA DA QUINA SOMA-SE COM `wrapping_add`, e NÃO é um detalhe de estilo.**
+///
+/// Um `f32 → i32` em Rust **SATURA** (`1e30 as i32 == i32::MAX`), e somar `1` a isso é um
+/// OVERFLOW — que em `debug` é **pânico** e em `release` embrulha na mesma. Foi um censo de
+/// instâncias (2026-09-21, com os params de todo nó no tecto DECLARADO deles) que o apanhou, e o
+/// nó morria antes de emitir uma linha.
+///
+/// ⚠️ **E não muda um valor que alguém possa ver:** o regime em que a saturação arma é o das
+/// coordenadas acima de `2³¹`, onde um `f32` já não tem parte fraccionária nenhuma — a treliça ali
+/// é constante por construção. *Embrulhar é a semântica natural de uma treliça de hash, e é o que
+/// toda implementação de ruído faz.*
+///
 /// Smooth 2D value noise at `(x, y)`, bilinearly interpolating the four lattice
 /// corner hashes with a smootherstep fade. Range `[-1, 1]`.
 fn value_noise_2d(x: f32, y: f32) -> f32 {
@@ -132,9 +144,9 @@ fn value_noise_2d(x: f32, y: f32) -> f32 {
     let (ix, iy) = (x0 as i32, y0 as i32);
     let (u, v) = (fade(x - x0), fade(y - y0));
     let n00 = hash2(ix, iy);
-    let n10 = hash2(ix + 1, iy);
-    let n01 = hash2(ix, iy + 1);
-    let n11 = hash2(ix + 1, iy + 1);
+    let n10 = hash2(ix.wrapping_add(1), iy);
+    let n01 = hash2(ix, iy.wrapping_add(1));
+    let n11 = hash2(ix.wrapping_add(1), iy.wrapping_add(1));
     let nx0 = n00 + u * (n10 - n00);
     let nx1 = n01 + u * (n11 - n01);
     nx0 + v * (nx1 - nx0)
@@ -193,9 +205,13 @@ fn perlin_2d(x: f32, y: f32) -> f32 {
     let (fx, fy) = (x - x0, y - y0);
     let (u, v) = (fade(fx), fade(fy));
     let n00 = dot_grad(hash_bits(ix, iy), fx, fy);
-    let n10 = dot_grad(hash_bits(ix + 1, iy), fx - 1.0, fy);
-    let n01 = dot_grad(hash_bits(ix, iy + 1), fx, fy - 1.0);
-    let n11 = dot_grad(hash_bits(ix + 1, iy + 1), fx - 1.0, fy - 1.0);
+    let n10 = dot_grad(hash_bits(ix.wrapping_add(1), iy), fx - 1.0, fy);
+    let n01 = dot_grad(hash_bits(ix, iy.wrapping_add(1)), fx, fy - 1.0);
+    let n11 = dot_grad(
+        hash_bits(ix.wrapping_add(1), iy.wrapping_add(1)),
+        fx - 1.0,
+        fy - 1.0,
+    );
     let nx0 = n00 + u * (n10 - n00);
     let nx1 = n01 + u * (n11 - n01);
     (nx0 + v * (nx1 - nx0)) * PERLIN_NORM
@@ -246,7 +262,7 @@ fn cellular_2d(x: f32, y: f32, feature: CellFeature, jitter: f32) -> f32 {
     let (mut d1, mut d2) = (f32::INFINITY, f32::INFINITY);
     for oy in -1..=1 {
         for ox in -1..=1 {
-            let bits = hash_bits(ix + ox, iy + oy);
+            let bits = hash_bits(ix.wrapping_add(ox), iy.wrapping_add(oy));
             // Dois aleatórios independentes de UMA hash: as metades alta e baixa
             // de um `u32` já avalanchado (16 bits = 1/65535 de resolução, muito
             // além do que um jitter desenha).

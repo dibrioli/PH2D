@@ -62,6 +62,41 @@ pub struct ParamSpec {
 /// its own budget; this is the recommended default.
 pub const RECOMMENDED_MAX_ELEMENTS: usize = 1 << 24;
 
+/// ⭐⭐⭐ **QUANTOS OBJECTOS UM NÓ PODE CRIAR — o tecto do PRODUTO, por ordem do dono.**
+///
+/// > **2026-09-21:** *«coloque um limite em todos os nós que são usados para criar instâncias:
+/// > nenhum deles pode gerar mais de 16384 objetos. Ou seja, num nó como grid o limite máximo é
+/// > Rows = 128 e Columns = 128.»*
+///
+/// ⚠️⚠️ **Ele NÃO é o irmão do [`RECOMMENDED_MAX_ELEMENTS`], e a diferença é a razão de existirem
+/// dois:** aquele é uma cerca de SEGURANÇA (um `f32` corrompido não pode virar um pedido de
+/// alocação de `2⁶⁴`) e mede-se em *«onde o `usize` estoura»*; **este é uma decisão de PRODUTO** e
+/// mede-se em *«o que a máquina do artista aguenta com folga»*. Um mede um recurso, o outro mede
+/// uma experiência — e é por isso que este não sai de uma medição minha.
+///
+/// ⛔ **A medição que existe diz outra coisa, e ela fica escrita aqui porque o §0.0 a pede:** a
+/// CPU desta casa coze e encoda `90 000` cópias em `~4 ms` (`24 %` de um quadro de 60 fps), e o
+/// que travava era a PLACA a receber o que a câmara não mostra — curado no mesmo dia pelo recorte
+/// por câmara. ⇒ *este tecto é mais apertado do que o que a máquina faz*, e é uma escolha do dono
+/// depois de ele medir `72 900` estrelas arredondadas a não caberem num quadro.
+///
+/// ⚠️ **O tecto é sobre a SAÍDA, não sobre um factor.** O cabeçalho do `motion.grid` já escrevia a
+/// lei: *«nenhum cap estático sobre um FATOR exprime um limite sobre o PRODUTO»* — logo cada nó
+/// desta família clampa o que EMITE, e as faixas dos params são a metade ergonómica (o artista não
+/// consegue sequer pedir mais).
+pub const MAX_INSTANCIAS_POR_NO: usize = 16_384;
+
+/// **O lado de uma grelha quadrada que enche o [`MAX_INSTANCIAS_POR_NO`]** — os `128` que o dono
+/// nomeou, DERIVADOS e não escritos.
+///
+/// ⚠️ A cerca é de COMPILAÇÃO: um tecto que deixasse de ser um quadrado perfeito partiria a build
+/// aqui, e não numa cena três meses depois.
+pub const LADO_MAX_DE_GRELHA: usize = 128;
+const _: () = assert!(
+    LADO_MAX_DE_GRELHA * LADO_MAX_DE_GRELHA == MAX_INSTANCIAS_POR_NO,
+    "o lado da grelha tem de encher exactamente o tecto de instancias"
+);
+
 /// Interpret an `f32` parameter as a non-negative element count, **totally**:
 /// non-finite (`NaN`/`±∞`) and negative values map to `0`, fractional values
 /// floor, and the result is clamped to `max`. This mirrors `ph2d-expr`'s

@@ -79,6 +79,9 @@ pub mod motion_ciclo_probe;
 /// da crate do painel lateral quando ele saiu (doc 114 §13); era ela que tornava a remoção
 /// impossível, porque o TIPO e a FILA moravam lá e quem os enchia era o CARTÃO.
 pub mod motion_param_intent;
+/// ⭐ O CENSO DE QUEM CRIA INSTÂNCIAS — a medição que a ordem do dono de 2026-09-21 pede.
+#[cfg(test)]
+mod motion_tecto_de_instancias;
 pub use motion_param_intent::{MotionParamIntent, drain_param_intents, push_param_intent};
 /// ⭐ **O VOCABULÁRIO de uma row de param** — o que uma row É (`ParamRow` e as structs dela) e o
 /// `ParamsSnapshot` que o `build_params_snapshot` produz. ⚠️ **Dado puro, zero imports**, e é por

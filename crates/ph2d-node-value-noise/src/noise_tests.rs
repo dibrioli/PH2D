@@ -562,3 +562,41 @@ fn measure_where_lacunarity_stops_resolving() {
         );
     }
 }
+
+/// ⭐⭐⭐ **UMA COORDENADA GIGANTE NÃO MATA O NÓ** — o defeito que um censo de instâncias apanhou
+/// em 2026-09-21, com os params de todo nó no tecto DECLARADO deles.
+///
+/// ⛔⛔ Um `f32 → i32` em Rust **SATURA**, e a treliça somava `1` ao saturado: em `debug` isso é
+/// `attempt to add with overflow` e o nó **morre antes de emitir uma linha**. ⚠️ Em `release` ele
+/// embrulhava em silêncio, logo *o modo de falha mudava com o perfil de build* — e o smoke do dono
+/// corre `--release`.
+///
+/// ⚠️ **As três treliças são exercitadas**, porque a soma estava escrita nas três e curá-la numa
+/// só deixaria as outras duas a morrer: o valor, o de gradiente e o celular.
+#[test]
+fn uma_coordenada_gigante_nao_mata_a_trelica() {
+    let mut vistos = 0usize;
+    for x in [1e30_f32, -1e30, f32::MAX, f32::MIN, 3e9, -3e9] {
+        for kernel in [Kernel::Value, Kernel::Perlin, Kernel::Cellular] {
+            let v = super::base(kernel, CellFeature::Cells, 0.5, x, x * 0.5);
+            assert!(
+                v.is_finite(),
+                "a treliça tem de devolver um número em {x} ({kernel:?}), e devolveu {v}"
+            );
+            vistos += 1;
+        }
+    }
+    assert_eq!(
+        vistos, 18,
+        "controlo: as dezoito células têm de ter corrido"
+    );
+
+    // ⭐ O CONTROLO: no regime NORMAL o ruído continua a variar — senão este gate passaria sobre
+    // uma função que devolvesse zero para tudo.
+    let a = super::base(Kernel::Perlin, CellFeature::Cells, 0.5, 0.25, 0.75);
+    let b = super::base(Kernel::Perlin, CellFeature::Cells, 0.5, 12.5, 7.25);
+    assert!(
+        (a - b).abs() > 1e-6,
+        "controlo: o ruído tem de variar no regime normal (leu {a} e {b})"
+    );
+}

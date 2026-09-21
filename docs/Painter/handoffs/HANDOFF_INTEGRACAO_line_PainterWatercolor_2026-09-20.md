@@ -793,3 +793,97 @@ formato do primeiro caso* (o `fileira_de_param` do audio-editor, que a criou).
 - ⏳ **O `Mixing` no Impasto não foi pedido**, e entra porque a medição diz que aquele meio lê a lei:
   a alternativa era um knob vivo sem botão. **Decisão do dono**, e reverter é uma linha.
 - ⏳ Ficam os dois da §17.6: o **wet-on-wet** e a **aquarela com o glaze**.
+
+---
+
+## §19 — «CONFIRA SE FUNCIONA PARA BLUR E SMEAR»: não funciona, e a fileira aparecia lá (2026-09-20)
+
+> Report do dono logo a seguir a aprovar o smoke da §18.
+
+**A resposta directa: não.** E a pergunta expôs uma **classe**, não dois casos.
+
+### §19.1 — A tabela, e o CONTROLO que a 1.ª corrida não tinha
+
+A fixtura tem de ser outra: aqueles gestos **não depositam a cor do pincel**, eles mexem na que já
+está ⇒ **duas faixas encostadas** (amarela/azul) com o gesto a correr **ao longo da fronteira**.
+
+| gesto | `|Δ|max` | | gesto | `|Δ|max` |
+|---|---|---|---|---|
+| **brush** | **100** | | fill | `0` |
+| blur | `0` | | knife | `0` |
+| smear | `0` | | sculpt | `0` |
+| clone | `0` | | mask | `0` |
+
+⚠️⚠️ **A 1.ª corrida leu `0` em TODAS as linhas, o `brush` incluído** — ela corria à força cheia,
+onde o composite devolve a cor de cima seja qual for a lei. *Com o controlo a ler zero, os zeros do
+Blur e do Smear não ilibavam ninguém: a tabela dizia «nenhum gesto mistura», incluindo o que
+mistura.* A meia força é o que a torna uma medição.
+
+### §19.2 — Oito knobs mortos, seis deles anteriores a esta ordem
+
+Medida a TELA, a fileira era pintada em **nove** gestos (brush · blur · smear · clone · sculpt ·
+mask · fill · knife · borracha) e **um** deposita a cor de um dab. ⚠️ **Seis já eram mortos antes
+desta wave** — a aguada mostrava a fileira no Blur desde que ela existe —, e a troca da §18 alargou
+o defeito de **um meio para três**. *A pergunta dele não achou um defeito novo: achou um que a minha
+wave multiplicou.*
+
+### §19.3 — E o nono era um DEFEITO: a borracha TINGIA o que apagava
+
+A borracha lia **`|Δ| 143`**. O `BrushBlend::EraseAlpha` devolve o RGB do destino **letra por letra**
+e mexe só no alfa — e o crossfade do pigmento reescrevia-o por cima ⇒ *ela apagava o alfa e pintava,
+com uma cor que o artista nem vê em modo borracha*.
+
+⛔ **A cura é do BLEND e não do modo** (`BrushBlend::lays_pigment`): quem apaga é a borracha autorada
+**ou** o botão direito do Grid Stamp, e as duas chegam ao carimbo pelo mesmo
+`brush.blend = EraseAlpha` — *uma cerca no modo teria de ser escrita duas vezes e só uma delas seria
+lembrada*.
+
+⚠️ **Pré-existente**, alcançável desde que o `Pigment` existe, e **invisível a tudo**: nenhum gate
+desta casa punha uma borracha e um pigmento na mesma fixtura.
+
+### §19.4 — A oferta passa a ter UMA porta, e ela vive onde o facto vive
+
+`BrushSettings::pigment_offered`, derivado pela ferramenta em `PaintMedia::offers_pigment_mixing_in`
+= **o MEIO ∧ o GESTO ∧ não-borracha**.
+
+⚠️ Ele é um **campo do snapshot** e não um predicado do painel porque a resposta precisa do
+`PaintMode`, que o painel não vê — e re-derivá-lo de uma lista de `is_*` nasceria com **dois
+buracos** (não há `is_fill` nem `is_knife`).
+
+⚠️ `PaintMode::deposita_a_cor_do_dab` é `matches!(self, Paint)` com um `_ =>` deliberado: um braço
+por variante empataria com o valor de fábrica e a mutação não o conseguiria matar, e assim **um modo
+novo nasce do lado conservador**.
+
+### §19.5 — ⭐⭐⭐ E o `Pigment` saiu do cartão Water porque um CENSO o mandou sair
+
+Com a fileira a poder desaparecer, a 1.ª redacção derivou o `n_rows` do cartão *Water* da mesma
+condição — e o `o_numero_de_linhas_que_um_cartao_declara_e_o_que_ele_pinta` **reprovou em voz alta**:
+*«o `n_rows` não é um literal»*.
+
+⛔ **Ele tinha razão, e a cura barata era cegá-lo.** Ensiná-lo a ler um `if` fá-lo-ia um parser — e
+ele existe porque um cartão dimensionado para `3` com `4` dentro já shipou uma vez (§14). ⇒ a fileira
+mudou-se para **um hospedeiro só**, o cartão `Mixing`, que some INTEIRO.
+
+⭐ *E essa é também a resposta certa de produto*, que eu tinha hesitado em tomar na §18 para não mexer
+num painel aprovado: o controlo governa três meios, logo não pertence à secção de um — o mesmo
+argumento que já está escrito para o chip do **Paint Mode** ficar acima do que governa.
+
+### §19.6 — Mutação: 5 de 5 nesta wave (13 na ordem inteira)
+
+| # | mutação | sangra em |
+|---|---|---|
+| M9 | a cerca do blend cai (a borracha volta a tingir) | ferramenta |
+| M10 | todo gesto «deposita» (voltam os oito mortos) | ferramenta |
+| M11 | nenhum gesto deposita (a fileira some da matriz) | painel |
+| M12 | a borracha deixa de ser subtraída da oferta | ferramenta |
+| M13 | o cartão Water volta a declarar `3` com `2` dentro | o censo dos cartões |
+
+⭐⭐ **M10 e M12 SOBREVIVEM no gate do painel e sangram no da ferramenta — e isso é o desenho**, o
+mesmo de M2/M3: o do painel compara *a tela* com *a porta*, logo mexer na porta põe as duas a
+concordar. **Só quem MEDE o barro pode amarrar a porta**, e é por isso que cada gate de lei acaba
+numa asserção sobre `pigment_offered`.
+
+### §19.7 — Aberto
+
+- ⏳ O `Pigment` mudou de sítio na **aquarela** também (saiu do cartão *Water* para o `Mixing`, acima
+  da secção) — **smoke do dono**, e é a única coisa que ele vê mudar num painel que já aprovou.

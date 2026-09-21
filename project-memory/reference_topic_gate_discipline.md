@@ -632,3 +632,15 @@ censo morre. Ver [[feedback_a_textual_census_survives_an_if_false]].
   órfão por decisão têm o mesmo aspecto numa varredura**, e o que os separa não está no código: está
   na prosa que registou o veredito.
 - [[feedback_a_ratchet_over_a_non_invariant_quantity_blocks_its_own_cure]] — ⛔⛔⛔ **uma catraca que conta uma grandeza NÃO-INVARIANTE bloqueia exactamente a cura que a mensagem dela prescreve.** Medido 22/09: a das larguras de selector de cor (`[18, 32, 59, 120, 268]`, «só encolhe») trazia o report do dono e dizia a porta a usar — e a largura de um selector que «enche a coluna» é função da largura do PAINEL (`inspector` `120`, `vector` `112`), logo converter um painel pela porta que ela prescrevia fazia SEMPRE nascer uma largura nova. *A condição de sucesso dela era inalcançável por construção.* ⇒ trocar a grandeza pela FORMA que o nome já prometia, comparada por painel contra a própria porta. ⚠️ **Sinal de reconhecimento:** você aplica exactamente a cura que o gate nomeia e ele reprova — nesse instante a pergunta é *que grandeza é que ele conta?*. ⛔ **IRMÃO do mesmo dia:** uma lista de PRIMITIVOS que não acompanha as PORTAS que a casa cria acusa quem as adopta (o `hr12_widgets_a11y` reprovou dois ficheiros *sobre código melhor*, porque eles passaram a chamar a porta que chama o primitivo)
+- ⛔⛔⛔ **UM CONTROLO POSITIVO CONSTRUÍDO SOBRE UMA POPULAÇÃO QUE A MELHORIA ELIMINA é uma catraca
+  AO CONTRÁRIO** (medido 2026-09-21, `every_slider_wears_the_live_hover`, foundational). O piso
+  dele conta cadeias `Slider::new(...).visual(...)` — *quantos sítios pedem o estado vivo à mão* —
+  e existe para provar que a VARREDURA não está partida. Um painel migrou duas barras para a
+  **PORTA** (`paint_slider_with_chip_layout`, que pergunta ao store por DENTRO e que o
+  doc-comment do próprio gate já nomeia como invisível à varredura), a contagem caiu de `6` para
+  `4` e o gate **reprovou sobre código melhor do que o que ele defendia**. ⚠️ A leitura dele era
+  *«o scanner está partido»*, que manda procurar no sítio errado. ⇒ **o controlo tem de medir o
+  INSTRUMENTO, nunca a dívida que ele conta**: aqui, *quantos sítios de `Slider::new(` a varredura
+  ENXERGA* (convertidos ou não), que a migração não consome. A metade que conta a dívida fica com
+  a população **NOMEADA** e com a saída escrita — no dia em que ela chegar a zero, ela sai, e o
+  controlo do instrumento fica.

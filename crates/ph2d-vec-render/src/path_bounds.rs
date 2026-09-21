@@ -69,6 +69,25 @@ pub fn path_bounds_under(path: &VecPath, xf: Affine) -> Option<Rect> {
     Some(standalone::inflate_for_stroke(path, xf, r))
 }
 
+/// ⭐ **A metade BARATA: onde esta CÓPIA vive, a partir da caixa local.**
+///
+/// ⚠️⚠️ **Ela é CONSERVADORA por construção, e o erro cai do lado certo:** transformar a CAIXA e
+/// não a geometria devolve uma caixa maior ou igual à exacta (uma rotação de um rectângulo
+/// envolvente não é o envolvente do rodado). Para um RECORTE isso é o que se quer — *uma forma a
+/// mais desenhada é invisível ao olho; uma forma a menos é um buraco na tela.*
+///
+/// ⛔ Quem precisa da caixa EXACTA (dimensionar o scratch de um efeito, o rectângulo de uma camada
+/// de mistura) continua a pedir o [`path_bounds_under`]: ali uma caixa maior desperdiça memória de
+/// placa, que é o lado errado do mesmo erro.
+#[must_use]
+pub(crate) fn bounds_from_local(
+    transbordo: &standalone::Transbordo,
+    local: Rect,
+    xf: Affine,
+) -> Rect {
+    standalone::inflate_com(transbordo, xf, xf.transform_rect_bbox(local))
+}
+
 /// A caixa avulsa em coordenadas de tela, como o [`path_screen_bounds`] a devolve.
 #[must_use]
 pub fn standalone_path_screen_bounds(path: &VecPath, xf: Affine) -> Option<(f64, f64, f64, f64)> {

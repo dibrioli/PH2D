@@ -140,7 +140,13 @@ pub(crate) use stroke_draw::draw_stroke_with;
 
 /// **AS CAIXAS em px de tela** — módulo irmão pelo teto de LOC, e o corte é por RESPONSABILIDADE:
 /// ali ninguém desenha, só se pergunta *onde, na tela, esta forma vive*.
+/// ⭐⭐⭐ **Os gates do RECORTE POR CÂMARA** — a cura que o dono ordenou em 2026-09-21.
+#[cfg(test)]
+#[path = "recorte_tests.rs"]
+mod recorte_tests;
+
 mod path_bounds;
+pub(crate) use path_bounds::bounds_from_local;
 pub use path_bounds::{path_bounds_under, path_screen_bounds, standalone_path_screen_bounds};
 
 /// A [`Fill`] rule do Vello para o `fill_rule` do path.
@@ -305,6 +311,43 @@ pub(crate) struct PathTess {
     /// vez para medir, o ajuste custaria uma pilha de efeitos por instância — ou, pior,
     /// alguém mediria o caminho de ORIGEM e o tracejado sairia noutra cadência que o desenho.
     dash: Option<[f64; 2]>,
+    /// ⭐⭐⭐ **ONDE ESTA FORMA VIVE, em coordenadas LOCAIS** — a caixa que o RECORTE POR CÂMARA
+    /// (ordem do dono, 2026-09-21) transforma por cópia para decidir se ela chega ao ecrã.
+    ///
+    /// ⚠️⚠️ **Ela é derivada dos `BezPath` que esta estrutura JÁ construiu, e não de um segundo
+    /// cozimento** — por duas razões, e a segunda é a que manda: cozer outra vez custaria uma
+    /// pilha de efeitos por geometria, e mediria **outra geometria** que a que se desenha. *Uma
+    /// caixa de recorte tem de cobrir o que sai na tela, e o que sai na tela é isto.*
+    ///
+    /// ⛔ O transbordo do TRAÇO **não** está aqui: ele escala com o afim de cada cópia, e a lei
+    /// dele vive numa porta só ([`standalone::inflate_for_stroke`], pela
+    /// [`path_bounds::bounds_from_local`]). Somá-lo aqui seria transcrevê-la.
+    pub(crate) caixa_local: Option<Rect>,
+    /// ⭐ **Os coeficientes do transbordo desta forma** — a metade CARA da
+    /// [`standalone::inflate_com`], paga UMA vez por geometria.
+    ///
+    /// ⛔ Ela mora aqui pela mesma razão que o `dash`: quem desenha só tem o `tess` em mão, e o
+    /// recorte por câmara pergunta-o **por cópia**. *Sem isto, o teste do recorte custava mais do
+    /// que o recorte poupava — medido.*
+    pub(crate) transbordo: standalone::Transbordo,
+}
+
+/// **A caixa dos desenhos de uma [`PathTess`]** — a união do que o preenchimento e o traço
+/// cobrem, em coordenadas locais.
+///
+/// ⚠️ Os dois `BezPath` são os MESMOS objectos que o desenho emite, logo esta caixa não pode
+/// discordar do que aparece na tela por construção. `None` quando não há geometria nenhuma —
+/// e aí o recorte não decide nada (a forma segue, que é o valor conservador).
+fn caixa_dos_desenhos(fill: Option<&BezPath>, stroke: Option<&BezPath>) -> Option<Rect> {
+    let mut acc: Option<Rect> = None;
+    for bp in [fill, stroke].into_iter().flatten() {
+        if bp.elements().is_empty() {
+            continue;
+        }
+        let r = bp.bounding_box();
+        acc = Some(acc.map_or(r, |cur| cur.union(r)));
+    }
+    acc
 }
 
 /// Constrói a [`PathTess`] de um path: coze UMA vez e tessela o(s) `BezPath`(s) que o desenho
@@ -335,10 +378,13 @@ pub(crate) fn path_tess(path: &VecPath) -> PathTess {
     // desenhos diferentes e as duas construções são trabalho honesto.
     let stroke_bp = (path.stroke.is_some() && (open || fill_bp.is_none()))
         .then(|| build_contours(&cooked, None));
+    let caixa_local = caixa_dos_desenhos(fill_bp.as_ref(), stroke_bp.as_ref());
     PathTess {
         fill_bp,
         stroke_bp,
         dash: dash_of(&cooked, path.stroke.as_ref()),
+        caixa_local,
+        transbordo: standalone::transbordo_do_caminho(path),
     }
 }
 

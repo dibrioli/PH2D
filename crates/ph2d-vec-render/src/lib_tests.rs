@@ -425,11 +425,11 @@ fn the_live_vector_scale_of_shared_instances() {
         let items: Vec<(u32, Affine, [f32; 4])> = (0..n).map(|i| (1u32, pose(i), tint)).collect();
         let mut door = VectorScene::new();
         door.reset();
-        draw_shared_instances(items.iter().copied(), |_| Some(&star_full), &mut door);
+        draw_shared_instances(items.iter().copied(), |_| Some(&star_full), None, &mut door);
         let t = Instant::now();
         for _ in 0..iters {
             door.reset();
-            draw_shared_instances(items.iter().copied(), |_| Some(&star_full), &mut door);
+            draw_shared_instances(items.iter().copied(), |_| Some(&star_full), None, &mut door);
         }
         let shared = t.elapsed().as_secs_f64() * 1000.0 / iters as f64;
 
@@ -612,6 +612,7 @@ fn a_shared_batch_draws_exactly_what_n_single_draws_do() {
             2 => Some(&disc),
             _ => None,
         },
+        None,
         &mut batch,
     );
 

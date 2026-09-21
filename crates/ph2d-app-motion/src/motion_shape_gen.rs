@@ -540,6 +540,13 @@ pub fn publish(motion: &mut MotionState, seconds: f64) {
 /// `size`) composes with the world→screen `cam` into the draw transform, and its
 /// `tint` paints it — so one stored path serves N differently-tinted copies.
 ///
+/// ⭐⭐⭐ **E desde 2026-09-21 uma cópia que a câmara não mostra NÃO é entregue à placa** (ordem
+/// do dono, depois de ele medir que `72 900` estrelas arredondadas não cabem num quadro). A
+/// `janela` é o rectângulo do ALVO DE RENDER, em píxeis — ⛔ **não** a banda do canvas: a cena
+/// vectorial é rasterizada ao tamanho da janela inteira e o chrome pinta-se por cima, logo fora
+/// do alvo uma forma é invisível **por construção**, e recortar ali não pode estar errado.
+/// `None` desliga o recorte.
+///
 /// ⚠️ **N instances of ONE geometry pay ONE tessellation, not N** — the 160k-star
 /// freeze (report 2026-08-05). This is a thin adapter over the crate's batch door
 /// [`ph2d_vec_render::draw_shared_instances`], which caches the tessellated
@@ -551,6 +558,7 @@ pub fn encode(
     store: &VecPathStore,
     art: &mut dyn FnMut(u32, [f32; 4]) -> Option<crate::motion_leaf_images::Art>,
     cam: Affine,
+    janela: Option<ph2d_vector::Rect>,
     scene: &mut VectorScene,
 ) {
     // ⭐⭐⭐ **A TERCEIRA MÉDIA, e a ORDEM é o ponto** (report do Enio, 2026-08-30, três vezes:
@@ -568,7 +576,7 @@ pub fn encode(
         if lote.is_empty() {
             return;
         }
-        ph2d_vec_render::draw_shared_instances(lote.drain(..), |h| store.get(h), scene);
+        ph2d_vec_render::draw_shared_instances(lote.drain(..), |h| store.get(h), janela, scene);
     };
     for inst in insts {
         if inst.geometry_id > 0 {

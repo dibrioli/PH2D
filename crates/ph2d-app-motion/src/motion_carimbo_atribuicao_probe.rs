@@ -160,6 +160,7 @@ fn audit_the_cpu_frame_with_resolve() {
                 store,
                 &mut sem_arte,
                 ph2d_vector::Affine::IDENTITY,
+                None,
                 cena,
             );
         };
@@ -324,6 +325,7 @@ fn audit_what_the_camera_can_see() {
                 store,
                 &mut sem_arte,
                 ph2d_vector::Affine::IDENTITY,
+                None,
                 cena,
             );
         };
@@ -383,6 +385,176 @@ fn audit_what_the_camera_can_see() {
          O encode e a resolução das INVISÍVEIS custam {:.2} ms de CPU por quadro.\n",
         insts.len(),
         (d_todas + r_todas) - (d_vis + r_vis)
+    );
+    eprintln!("  load no fim: {}\n", carga());
+}
+
+/// ⭐⭐⭐ **O QUE O RECORTE POR CÂMARA COMPRA** — a sonda da cura que o dono ordenou em 2026-09-21,
+/// pela PORTA DO PRODUTO (`motion_shape_gen::encode` com a janela).
+///
+/// ⚠️⚠️ **Ela VARRE o tamanho da janela em vez de citar um**, e isso é deliberado: o que a cura
+/// compra depende de quanto do campo cabe no alvo de render, e esse número muda com a janela do
+/// artista, com o zoom e com a cena. *Uma sonda que cite UM tamanho responde sobre uma máquina;
+/// uma que varre responde sobre a lei.*
+///
+/// ⭐ As duas pontas da tabela são os controlos: uma janela que cobre o campo inteiro tem de dar
+/// **exactamente** o que dá sem recorte (a cura não pode custar nada onde não corta), e uma janela
+/// minúscula tem de deixar quase nada.
+///
+/// ⛔ O que ela NÃO mede continua a ser a PLACA — mas aqui a subtracção é mais forte do que na
+/// irmã: o recorte corta a população que a placa recebe, e a coluna `p/ a placa` diz exactamente
+/// quanto menos ela passa a receber.
+///
+/// ## O que ela leu (2026-09-21, `--release`, `90 %` de CPU ociosa, campo `38,8` unidades)
+///
+/// | janela (un.) | cópias | desenho | resolver | soma | p/ a placa |
+/// |---:|---:|---:|---:|---:|---:|
+/// | **sem recorte** | `90 000` | `2,25 ms` | `1,78 ms` | `4,04 ms` | `44,3 MB` |
+/// | `77,6` (controlo) | `90 000` | `2,75 ms` | `1,79 ms` | `4,54 ms` | `44,3 MB` |
+/// | `38,8` | `90 000` | `2,78 ms` | `1,84 ms` | `4,61 ms` | `44,3 MB` |
+/// | `19,4` | `36 480` | `1,93 ms` | `0,55 ms` | `2,48 ms` | `17,9 MB` |
+/// | `9,7` | `13 688` | `1,60 ms` | `0,10 ms` | `1,70 ms` | **`6,7 MB`** |
+/// | `3,9` | `5 184` | `1,44 ms` | `0,04 ms` | `1,48 ms` | `2,6 MB` |
+///
+/// ⭐⭐ **A coluna que manda é a última:** o que a placa recebe cai de `44,3` para `6,7 MB` por
+/// quadro quando a janela mostra um quarto do campo. *O tempo de CPU mal se mexe porque ele nunca
+/// foi o problema — o problema era o que ia para a placa.*
+///
+/// ⚠️⚠️ **E o PREÇO do recorte está na linha do CONTROLO:** onde ele não corta nada, ele custa
+/// `4,54` contra `4,04 ms` ⇒ **`~0,5 ms` por `90 000` cópias**, ou `5,5 ns` por teste. *É o que se
+/// paga por perguntar, e paga-se mesmo quando a resposta é «desenha».*
+///
+/// ⛔ **A 1.ª redacção deste recorte custava `3,4 ms` em vez de `0,5`** — ela chamava a
+/// `inflate_for_stroke` por cópia, que percorre a pilha de tinta duas vezes e constrói um `Stroke`
+/// da kurbo. *Uma cura cujo teste custa o que ela poupa não é uma cura*, e foi esta tabela que o
+/// disse (o `desenho` caía `2,3×` para `17×` menos cópias).
+#[test]
+#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+fn audit_what_the_cull_buys() {
+    let _fatia = fatia();
+    let (mut m, saida) = crate::motion_carimbo_probe::monta("grade + carimbo");
+    let forma = m
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .find(|n| n.type_name == "source.shape")
+        .map(|n| n.id)
+        .expect("a cadeia do carimbo tem uma `source.shape`");
+    m.doc
+        .graph
+        .set_param(forma, ph2d_node_motion_shape::param::CORNER, 0.5);
+    let grade = m
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .find(|n| n.type_name == "motion.grid")
+        .map(|n| n.id)
+        .expect("a cadeia do carimbo tem uma `motion.grid`");
+    #[expect(clippy::cast_precision_loss, reason = "o lado da grelha da cena")]
+    let lado = crate::motion_state::carimbo_demo::LADO_N as f32;
+    m.doc.graph.set_param(grade, "rows", lado);
+    m.doc.graph.set_param(grade, "cols", lado);
+    m.doc
+        .graph
+        .set_param(grade, "gap_x", crate::motion_state::carimbo_demo::VAO);
+    m.doc
+        .graph
+        .set_param(grade, "gap_y", crate::motion_state::carimbo_demo::VAO);
+
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    m.pump.mark_dirty();
+    assert!(
+        m.pump.pump(
+            &m.doc.graph,
+            &m.registry,
+            &[saida],
+            0,
+            0.0,
+            [0.0, 0.0, 1.0, 1.0],
+            [1.0, 1.0]
+        ),
+        "o quadro tem de cozinhar"
+    );
+    let insts = &m.pump.vector_instances;
+    let esperadas = (crate::motion_state::carimbo_demo::LADO_N as usize).pow(2);
+    assert_eq!(insts.len(), esperadas, "controlo: a população é a da CENA");
+    let store = &m.shape_store;
+
+    // ⚠️ O `cam` é a IDENTIDADE, logo a janela lê-se em unidades de MUNDO — que é o que torna esta
+    // tabela comparável com a largura do campo, medida das próprias instâncias.
+    let (mut x0, mut x1) = (f64::MAX, f64::MIN);
+    for i in insts {
+        let x = f64::from(i.world_pos[0]);
+        x0 = x0.min(x);
+        x1 = x1.max(x);
+    }
+    let campo = x1 - x0;
+    let centro = (x0 + x1) * 0.5;
+
+    let mede = |janela: Option<ph2d_vector::Rect>| {
+        let encoda = |cena: &mut ph2d_vector::VectorScene| {
+            let mut sem_arte = |_: u32, _: [f32; 4]| None;
+            crate::motion_shape_gen::encode(
+                insts,
+                store,
+                &mut sem_arte,
+                ph2d_vector::Affine::IDENTITY,
+                janela,
+                cena,
+            );
+        };
+        let desenho = melhor_quente(3, encoda);
+        let mut cena = ph2d_vector::VectorScene::new();
+        encoda(&mut cena);
+        let mut r = ph2d_vector::SceneResolver::new();
+        let mut tamanho = r.resolve(&cena);
+        let mut resolver = f64::INFINITY;
+        for _ in 0..3 {
+            let inicio = std::time::Instant::now();
+            tamanho = r.resolve(&cena);
+            resolver = resolver.min(inicio.elapsed().as_secs_f64() * 1e3);
+        }
+        (desenho, resolver, tamanho)
+    };
+
+    eprintln!(
+        "\n  ═══ O QUE O RECORTE POR CÂMARA COMPRA (campo {campo:.1} unidades, load {}) ═══\n",
+        carga()
+    );
+    eprintln!("   janela (un.) |  cópias |  desenho | resolver |   soma | % quadro | p/ a placa");
+    eprintln!("  --------------|---------|----------|----------|--------|----------|-----------");
+
+    let (d, r, t) = mede(None);
+    #[expect(clippy::cast_precision_loss, reason = "um tamanho de buffer")]
+    let mb = t.scene_bytes as f64 / 1e6;
+    eprintln!(
+        "   SEM RECORTE  | {:>7} | {d:>5.2} ms | {r:>5.2} ms | {:>4.2} ms | {:>7.0}% | {mb:>6.1} MB",
+        insts.len(),
+        d + r,
+        (d + r) / 16.67 * 100.0
+    );
+
+    for fraccao in [2.0f64, 1.0, 0.5, 0.25, 0.1] {
+        let meio = campo * fraccao * 0.5;
+        let janela =
+            ph2d_vector::Rect::new(centro - meio, centro - meio, centro + meio, centro + meio);
+        let (d, r, t) = mede(Some(janela));
+        #[expect(clippy::cast_precision_loss, reason = "um tamanho de buffer")]
+        let mb = t.scene_bytes as f64 / 1e6;
+        eprintln!(
+            "   {:>10.1}   | {:>7} | {d:>5.2} ms | {r:>5.2} ms | {:>4.2} ms | {:>7.0}% | {mb:>6.1} MB",
+            campo * fraccao,
+            t.draw_objects,
+            d + r,
+            (d + r) / 16.67 * 100.0
+        );
+    }
+    eprintln!(
+        "\n  ⚠️ A 1.ª linha da varredura (janela = 2× o campo) é o CONTROLO: ali o recorte não\n  \
+         corta nada, e ela tem de ler o mesmo que `SEM RECORTE`. Se não ler, o que se mede\n  \
+         abaixo não é o recorte — é um defeito dele.\n"
     );
     eprintln!("  load no fim: {}\n", carga());
 }

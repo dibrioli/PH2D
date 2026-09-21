@@ -404,6 +404,7 @@ fn quanto_custa_desenhar_as_formas() {
                 &m.shape_store,
                 &mut sem_arte,
                 ph2d_vector::Affine::IDENTITY,
+                None,
                 &mut cena,
             );
             melhor = melhor.min(t.elapsed().as_secs_f64() * 1e3);

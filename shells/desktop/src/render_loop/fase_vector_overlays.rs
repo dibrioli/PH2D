@@ -49,11 +49,21 @@ impl crate::App {
             // atlas — esquecer a sincronização é erro de compilação (§2.5).
             let mut cache = self.motion_shell.leaf_images.synced(atlas.epoch());
             let mut art = |tex: u32, uv: [f32; 4]| cache.art(gpu, atlas, individual, tex, uv);
+            // ⭐⭐⭐ **O ALVO DE RENDER é o recorte** (ordem do dono, 2026-09-21). A cena
+            // vectorial é rasterizada a `surface.size()` (`present_chrome`:
+            // `render_to_intermediate(.., window_size, ..)`) e o chrome pinta-se DENTRO dela ⇒
+            // uma forma fora deste rectângulo não pode aparecer, e não vale a pena entregá-la.
+            // ⛔ **NÃO é a banda do canvas** (`scene_window`): recortar contra ela dependeria de
+            // os painéis serem opacos, que ninguém mediu — e o lado caro do erro é um BURACO.
+            let alvo = surface.size();
+            let janela =
+                ph2d_vector::Rect::new(0.0, 0.0, f64::from(alvo.width), f64::from(alvo.height));
             ph2d_app_motion::motion_shape_gen::encode(
                 &motion.pump.vector_instances,
                 &motion.shape_store,
                 &mut art,
                 cam_affine,
+                Some(janela),
                 vector_scene,
             );
             // ⛔⛔ **LARGAR O ATLAS** (auditoria §2.5): a cópia em CPU dele é `268 MB` e

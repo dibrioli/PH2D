@@ -89,6 +89,14 @@ mod counters {
         static COOKS: Cell<u32> = const { Cell::new(0) };
         static CARIMBOS: Cell<u32> = const { Cell::new(0) };
         static SIMPLES: Cell<u32> = const { Cell::new(0) };
+        static RECORTADAS: Cell<u32> = const { Cell::new(0) };
+    }
+    pub(super) fn bump_recortada() {
+        RECORTADAS.with(|c| c.set(c.get() + 1));
+    }
+    /// Quantas cópias o recorte por câmara deitou fora desde a última leitura.
+    pub(super) fn take_recortadas() -> u32 {
+        RECORTADAS.with(|c| c.replace(0))
     }
     pub(super) fn bump_stamp(preparado: bool) {
         if preparado {
@@ -131,6 +139,21 @@ pub(crate) fn count_cook() {
 /// a mesma lei que o passe de contacto do Motion já pagou.
 pub(crate) fn count_stamp(preparado: bool) {
     counters::bump_stamp(preparado);
+}
+
+/// ⭐⭐⭐ **Conta as cópias que o RECORTE POR CÂMARA deitou fora** (ordem do dono, 2026-09-21).
+///
+/// ⚠️ Ele existe pela MESMA razão do irmão de cima, e ela é mais forte aqui: uma cópia recortada
+/// é uma que **não aparecia na tela de qualquer maneira** ⇒ a economia é, por construção,
+/// invisível a toda régua de imagem. *Só a CONTA a pode gatear* — e é ela que separa «o recorte
+/// funciona» de «o recorte está desligado», que dão exactamente o mesmo desenho.
+pub(crate) fn count_recortada() {
+    counters::bump_recortada();
+}
+
+/// Quantas cópias o recorte deitou fora desde a última leitura — para os gates.
+pub(crate) fn take_recortadas() -> u32 {
+    counters::take_recortadas()
 }
 
 /// Desenha UMA forma pelo caminho do produto e devolve `(construções, cozimentos)`.
@@ -283,6 +306,7 @@ fn dispatch_batch(
             2 => Some(disc),
             _ => None,
         },
+        None,
         target,
     );
 }
@@ -342,6 +366,7 @@ fn o_lote_carimba_a_forma_preparada_uma_vez_por_geometria() {
             |_| Some(path),
             &mut target,
             preparado,
+            None,
         );
         assert_eq!(
             counters::take_stamps(),

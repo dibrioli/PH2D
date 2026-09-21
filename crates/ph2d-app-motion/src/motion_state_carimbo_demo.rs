@@ -111,9 +111,19 @@
 //! mexer. *Encolher a estrela até tudo caber entrega um rectângulo cinzento* — e uma cena em que o
 //! dono não vê estrelas não ensina que isto são estrelas.
 //!
-//! ⇒ o campo é `~39 × 39` unidades (`300 × VAO`) e o ecrã mostra um pedaço dele. **A conta é paga
-//! pelas `90 000`**, estejam elas à vista ou não: o desenho não tem recorte por câmara, e é isso
-//! que faz a cena medir o que ela diz medir.
+//! ⇒ o campo é `~39 × 39` unidades (`300 × VAO`) e o ecrã mostra um pedaço dele.
+//!
+//! ⛔⛔⛔ **E ESTA SECÇÃO DIZIA *«a conta é paga pelas 90 000, estejam elas à vista ou não: o
+//! desenho não tem recorte por câmara»* — E ISSO DEIXOU DE SER VERDADE EM 2026-09-21.** O dono
+//! ordenou a cura depois de medir que nem `72 900` estrelas arredondadas cabem num quadro, e desde
+//! então o passe vectorial **não entrega à placa o que cai fora do alvo de render**
+//! (`ph2d_vec_render::draw_shared_instances` com a janela; `PH2D_RECORTE_DA_CAMARA=0` bissecta).
+//!
+//! ⚠️ **O que a cena mede mudou com isso, e é o que ela passa a ensinar:** das `90 000` cópias o
+//! artista vê `8 736` (`9,7 %`, medido — campo `38,8 × 38,8` contra uma janela de câmara de
+//! `21,8 × 6,8`), e o que vai para a placa cai de `44,3 MB` por quadro para o que couber no alvo.
+//! *Uma cena que continuasse a dizer que paga pelas 90 000 ensinaria o contrário do que acontece —
+//! que é o defeito que o `CLAUDE.md` §5.0 chama de pior do que uma cena ausente.*
 //!
 //! # Como o dono compara (o roteiro está no [`announce`])
 //!

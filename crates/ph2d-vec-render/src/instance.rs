@@ -6,7 +6,7 @@
 
 use ph2d_vec_scene::VecPath;
 use ph2d_vector::scene_prepared::PreparedFill;
-use ph2d_vector::{Affine, Brush, Color, VectorScene};
+use ph2d_vector::{Affine, Brush, Color, Rect, VectorScene};
 
 use crate::{PathTess, build_contours, draw_path_with, fill_rule, path_tess};
 
@@ -54,10 +54,13 @@ pub(crate) fn tessellate_shape_instance(path: &VecPath) -> PathTess {
         let open =
             (0..cooked.contour_count()).any(|c| cooked.contour(c).is_some_and(|(_, cl)| !cl));
         let stroke_bp = (path.stroke.is_some() && open).then(|| build_contours(&cooked, None));
+        let caixa_local = crate::caixa_dos_desenhos(Some(&fill_bp), stroke_bp.as_ref());
         PathTess {
             fill_bp: Some(fill_bp),
             stroke_bp,
             dash: crate::dash_of(&cooked, path.stroke.as_ref()),
+            caixa_local,
+            transbordo: crate::standalone::transbordo_do_caminho(path),
         }
     }
 }
@@ -143,9 +146,55 @@ pub(crate) fn draw_shape_instance_tessellated(
 pub fn draw_shared_instances<'p>(
     instances: impl IntoIterator<Item = (u32, Affine, [f32; 4])>,
     resolve: impl Fn(u32) -> Option<&'p VecPath>,
+    janela: Option<Rect>,
     target: &mut VectorScene,
 ) {
-    draw_shared_instances_com(instances, resolve, target, carimbo_preparado());
+    draw_shared_instances_com(
+        instances,
+        resolve,
+        target,
+        carimbo_preparado(),
+        recorte_ligado().then_some(janela).flatten(),
+    );
+}
+
+/// ⭐⭐⭐ **A JANELA do alvo de desenho, com a folga de arredondamento** — o rectângulo contra o
+/// qual uma cópia é julgada.
+///
+/// ⚠️⚠️ **O rectângulo certo é o ALVO DE RENDER e não a banda do canvas.** A cena vectorial desta
+/// casa é rasterizada ao tamanho da JANELA inteira (`render_to_intermediate`, com
+/// `window_size`) e o chrome é pintado POR CIMA, dentro dela — não há recorte de banda em lado
+/// nenhum. ⇒ fora do alvo de render uma forma é invisível **por construção**, e recortar ali não
+/// pode estar errado; recortar contra a banda dependeria de os painéis serem opacos, que
+/// ninguém mediu. *O erro de um recorte tem um lado barato e um lado caro, e este fica no barato.*
+///
+/// ⚠️ A folga é de ARREDONDAMENTO e não de serrilha: a cobertura que o Vello calcula nunca sai da
+/// caixa da geometria (um pixel pintado toca-a sempre), logo o que se cobre aqui é o último bit de
+/// um `f64` que atravessou um afim. Um pixel chega, e dois são de graça.
+const FOLGA_DA_JANELA: f64 = 2.0;
+
+/// As duas caixas tocam-se?
+///
+/// ⚠️ **Com `>=` e `<=`, e é isso que mantém na cena a forma que ENCOSTA na borda** — a que está
+/// meia dentro e meia fora é exactamente o caso que um recorte não pode comer.
+fn toca(a: Rect, b: Rect) -> bool {
+    a.x1 >= b.x0 && a.x0 <= b.x1 && a.y1 >= b.y0 && a.y0 <= b.y1
+}
+
+/// **A porta de bissecção do recorte** — `PH2D_RECORTE_DA_CAMARA=0` devolve o de antes (entregar
+/// à placa também o que ninguém vê).
+///
+/// ⚠️ **Lida UMA vez, e só aqui** — a mesma lei da irmã [`carimbo_preparado`]: *um gate que lê o
+/// ambiente mede a máquina*, logo os gates entram pelo [`draw_shared_instances_com`] e escolhem a
+/// janela por parâmetro.
+fn recorte_ligado() -> bool {
+    static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *LIGADO.get_or_init(|| recorte_por(std::env::var("PH2D_RECORTE_DA_CAMARA").ok().as_deref()))
+}
+
+/// A LEI da porta acima, **pura** — o que a variável significa, sem a ler.
+pub(crate) fn recorte_por(valor: Option<&str>) -> bool {
+    !matches!(valor.map(str::trim), Some("0"))
 }
 
 /// O CORPO do lote, com a rota como **parâmetro**.
@@ -159,7 +208,9 @@ pub(crate) fn draw_shared_instances_com<'p>(
     resolve: impl Fn(u32) -> Option<&'p VecPath>,
     target: &mut VectorScene,
     preparado: bool,
+    janela: Option<Rect>,
 ) {
+    let janela = janela.map(|r| r.inflate(FOLGA_DA_JANELA, FOLGA_DA_JANELA));
     let mut cache: std::collections::BTreeMap<u32, (PathTess, Option<PreparedFill>)> =
         std::collections::BTreeMap::new();
     for (handle, transform, tint) in instances {
@@ -171,6 +222,31 @@ pub(crate) fn draw_shared_instances_com<'p>(
             let prep = preparado.then(|| prepare_primitive(path, &tess)).flatten();
             (tess, prep)
         });
+        // ⭐⭐⭐ **O RECORTE POR CÂMARA** (ordem do dono, 2026-09-21: *«pode implementar a cura»*).
+        //
+        // ⛔⛔ Medido na cena `=126` antes de uma linha ser escrita: das `90 000` cópias o artista
+        // vê `8 736` — e a placa recebia as `90 000`, todos os quadros, `44,3 MB` de cena por
+        // quadro. *O tecto não era a máquina no limite dela; era entregarmos-lhe dez vezes o
+        // trabalho que alguém pode ver* (`CLAUDE.md` §0.0).
+        //
+        // ⚠️ **A decisão é por CÓPIA e a caixa é da GEOMETRIA**: a cara (`caixa_local`) sai da
+        // tesselação, que este lote já paga UMA vez por geometria; o que corre por cópia é um
+        // afim sobre quatro cantos mais quatro comparações.
+        //
+        // ⚠️ **Sem caixa, a forma SEGUE.** Uma `caixa_local` a `None` quer dizer *«não há
+        // geometria que desenhe»* ou que a tesselação não a soube medir — e nos dois casos o valor
+        // conservador é desenhar. *Um recorte que decide sobre o que não mediu é um buraco na
+        // tela.*
+        if let (Some(janela), Some(local)) = (janela, tess.caixa_local)
+            && !toca(
+                crate::bounds_from_local(&tess.transbordo, local, transform),
+                janela,
+            )
+        {
+            #[cfg(test)]
+            crate::encode_cost_tests::count_recortada();
+            continue;
+        }
         #[cfg(test)]
         crate::encode_cost_tests::count_stamp(prep.is_some());
         draw_shape_instance_tessellated(path, tess, prep.as_ref(), transform, tint, target);

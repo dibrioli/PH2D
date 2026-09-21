@@ -160,6 +160,7 @@ fn rota_produto(caminho: &ph2d_vec_scene::VecPath, n: usize, cena: &mut ph2d_vec
     ph2d_vec_render::draw_shared_instances(
         (0..n).map(|i| (1u32, pose(i), [1.0, 1.0, 1.0, 1.0])),
         |_| Some(caminho),
+        None,
         cena,
     );
 }
@@ -389,6 +390,7 @@ fn audit_the_stamp_frame_split() {
             store,
             &mut sem_arte,
             ph2d_vector::Affine::IDENTITY,
+            None,
             cena,
         );
     });
@@ -516,6 +518,7 @@ fn audit_the_corner_radius_cost() {
                 store,
                 &mut sem_arte,
                 ph2d_vector::Affine::IDENTITY,
+                None,
                 cena,
             );
         });

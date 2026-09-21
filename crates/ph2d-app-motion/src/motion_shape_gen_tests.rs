@@ -149,6 +149,7 @@ fn an_unpublished_handle_is_none_and_encodes_without_panic() {
         &store,
         &mut |_, _| None,
         ph2d_vector::Affine::IDENTITY,
+        None,
         &mut scene,
     );
     // Reaching here without a panic IS the assertion.
@@ -320,7 +321,7 @@ fn a_live_document_vector_renders_its_authored_fill_not_the_tint() {
     let (w, h) = (64u32, 64u32);
     let cam = ph2d_vector::Affine::translate((32.0, 32.0)) * ph2d_vector::Affine::scale(50.0);
     let mut scene = ph2d_vector::VectorScene::new();
-    encode(&[inst], &store, &mut |_, _| None, cam, &mut scene);
+    encode(&[inst], &store, &mut |_, _| None, cam, None, &mut scene);
 
     let mut pass =
         ph2d_render::VelloPass::new(&gpu, wgpu::TextureFormat::Rgba8UnormSrgb, (w, h)).unwrap();

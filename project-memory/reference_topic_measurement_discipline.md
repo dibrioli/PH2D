@@ -1702,3 +1702,17 @@ apresentação é escolhida por escada contra um alvo, escreva ao lado **de que 
 resposta for «para igualar o nível», ela é suspeita de estar a pagar por uma transformação ausente.
 ⭐ Com a curva no sítio a escada foi re-tirada e o número caiu `2,10 → 1,50`, batendo o alvo melhor
 do que o antigo alguma vez bateu (`+0,4` contra `+1,7`).
+- ⛔⛔⛔ **UMA RÉGUA QUE SOMA O FUNDO MEDE O *RECORTE* DO OBJECTO E NÃO A *FORMA* DELE.** Medido
+2026-09-21 (costura residente do catavento): o controlo de vácuo de um gate de igualdade ao bit
+media a **excursão de canal da imagem inteira** e devia excluir *«as duas rotas concordam por não
+haver FORMA nenhuma»*. Zerada a **cobertura** da fixtura — o shader passa a devolver o albedo cru,
+ou seja um disco **chapado** — a régua continuava a ler `200` de excursão, porque o degrau entre o
+disco e o fundo transparente ainda lá estava, e a **mutação SOBREVIVEU**. Com a excursão medida
+**dentro da silhueta** (`alfa > 0`, com piso de população) ela lê `0` e sangra. **Why:** a silhueta
+e o relevo são **duas grandezas com o mesmo nome** numa imagem, e a que domina uma estatística
+global é quase sempre a que a porta sob teste **não pode estragar** — aqui o recorte vem do `base`
+e do alfa, e o que a costura podia partir era a normal. **How to apply:** antes de pôr uma barra
+sobre uma estatística de imagem, pergunte **que fracção dela vem de fora do sujeito**; se o fundo
+entra na conta, a régua mede o enquadramento. É a mesma família do `edge_max` global cego ao quad
+de `0,02 × 0,30` e do `χ` cego à almofada — *a régua agrega sobre uma população mais larga do que
+a propriedade*. Ver [[reference_topic_mutation_proofs]] · [[reference_topic_gate_discipline]].

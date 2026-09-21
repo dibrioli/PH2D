@@ -413,3 +413,14 @@ para mutar uma chamada de N linhas, a agulha é o **BLOCO INTEIRO** lido do fich
   *uma só* linha de produto chama a porta de reposição, **e** ela é a do braço que a lei declara.
   Com o censo, a mutação sangra com o endereço. *Quando o efeito não é observável do lado de cá,
   gateie a POPULAÇÃO de quem o pode causar.*
+- ⛔⛔ **UMA MUTAÇÃO QUE *AUMENTA* A GRANDEZA SOB TESTE NÃO ALCANÇA A PROPRIEDADE — e apertar a
+régua para a matar mede OUTRA COISA.** Medido 2026-09-21: para provar que o controlo de vácuo de um
+gate dispara, pus a fixtura toda **PRETA** no `base`; ela **sobreviveu** duas redacções seguidas do
+controlo. Medida, a excursão da fixtura preta é **`246`** contra **`188`** da boa — *mais*
+contrastada, porque um `base_color` preto tira a **COR** e não a **FORMA** (o destaque especular não
+sai do albedo). **Why:** uma mutação só afirma alguma coisa se empurrar a grandeza para o lado do
+vácuo; empurrando-a para o lado bom, «sobreviveu» é o veredito **correcto** e persegui-la leva a
+apertar uma barra até ela medir o ruído de outra propriedade. **How to apply:** antes de curar uma
+mutação sobrevivente do ARNÊS, **meça a grandeza nos dois lados**; se a mutação a faz subir,
+NOMEIE-a no gate com o número em vez de a matar, e escreva uma irmã que a faça descer (ali: a
+cobertura a `0` e a fixtura sem relevo nenhum, as duas a lerem `0` e a sangrar).

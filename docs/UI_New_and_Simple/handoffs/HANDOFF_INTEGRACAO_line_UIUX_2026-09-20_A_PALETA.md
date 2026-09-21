@@ -370,9 +370,13 @@ daqui: *uma medição de superfície de colisão vale para o dia em que foi tira
 > o painel»*) — ali a lei já entrega o mínimo e o piso da ESCRITA era o mesmo número, logo o gesto
 > pedia `157` e o store devolvia `220`. ⭐ **Passam a ser DOIS pisos:** o de FÁBRICA fica em
 > `PANEL_MIN_W_PX` (ninguém pediu para o app *nascer* ilegível) e o de uma ESCOLHA desce para
-> **`84`**, que é MEDIDO — a largura em que o corpo de um painel ainda cabe na coluna (a `83` sai
-> o primeiro controlo), e descer de `220` para lá acrescenta **`1,0 px`** de transbordo no pior
-> dos **19** painéis docáveis. ⚠️ O caminho de omissão é **byte-idêntico** (o `base` nunca desce
+> **`168`**. ⭐⭐ **O `168` é DECISÃO e o `84` é o RECURSO**, e a separação é o que torna o número
+> honesto: `84` é a largura MEDIDA em que o corpo de um painel ainda cabe (a `83` sai o primeiro
+> controlo, e descer de `220` para lá acrescenta `1,0 px` de transbordo no pior dos **19** painéis
+> docáveis), e o que shipa é o **dobro**, por ordem do dono depois de ver os `84` (*«a largura
+> mínima precisa ser no mínimo o dobro»*). ⭐ As duas cercas são **erro de compilação** e apertam
+> a faixa legal nos dois lados (`168 ≤ piso < 220`), o que reduz a `52 px` a janela em que um piso
+> solto pode mentir. ⚠️ O caminho de omissão é **byte-idêntico** (o `base` nunca desce
 > dos `220`), e a lei do arrasto passou a ler o piso do store porque `screens → interaction` é a
 > direcção que DESCE no DAG ⇒ **zero** na catraca que é dívida. ⛔⛔ **NOMEADO e não curado:** um
 > controlo de `36 × 36` px transborda a coluna `7 px` **já na largura de fábrica**, e a posição
@@ -733,8 +737,8 @@ São **dois** pisos, de propósito:
 
 - a largura de FÁBRICA (`ChromeBands::default_dock_w`) continua a parar em `PANEL_MIN_W_PX`
   (`220`) — ninguém pediu para o app **nascer** com uma coluna ilegível;
-- a largura que o artista **arrasta** (`WidgetStore::DOCK_W_MIN`) pára em **`84`**, porque ele
-  pediu.
+- a largura que o artista **arrasta** (`WidgetStore::DOCK_W_MIN`) pára mais abaixo, porque ele
+  pediu — e **o número é dele** (ver §9-sexies).
 
 ⚠️ **O caminho de omissão é byte-idêntico:** o `dock_width` clampa `stored.unwrap_or(base)` e o
 `base` nunca desce dos `220` por construção ⇒ *uma arrumação sem escolha nenhuma lê exactamente o
@@ -795,7 +799,7 @@ e um `set` sem clamp só para teste seria a segunda porta pela qual o defeito da
 | gate | o que afirma |
 |---|---|
 | `numa_janela_estreita_o_arrasto_ainda_estreita_a_coluna` (novo) | o report reproduzido: a `640 px`, com as duas colunas NO piso de fábrica, um arrasto de `60 px` estreita — e aterra **onde o dedo pediu**, não no piso |
-| `o_piso_de_uma_escolha_e_onde_o_corpo_do_painel_ainda_cabe` (novo) | no piso, **nada** do corpo sai da coluna |
+| `no_piso_de_uma_escolha_nada_do_corpo_sai_da_coluna` (novo) | no piso, **nada** do corpo sai da coluna — ⚠️ ele nasceu `o_piso_de_uma_escolha_e_onde_o_corpo_do_painel_ainda_cabe` e **o nome passou a mentir** horas depois (§9-sexies) |
 | `o_piso_desta_lei_e_o_piso_do_store` (**premissa morta**, reescrito) | a lei e o store clampam no MESMO número — e ele já não é o token, logo passa a ser afirmado em vez de herdado |
 | `um_arrasto_que_aterra_na_largura_de_fabrica_nao_grava_excepcao` (**fixtura morta**, reescrito) | o gesto mudo passou a ser *aterrar exactamente na fábrica*; a metade nova mede que por baixo dela o gesto **já não é mudo** |
 | `reopening_restores_the_width_the_column_had_before_the_drag` (fixtura **derivada**) | o literal `100` deixou de estar do outro lado da cerca; hoje o pedido sai do próprio piso |
@@ -814,6 +818,65 @@ O dono disse **«pare de tentar»** sobre a lei automática ⇒ a largura de FÁ
 janela de `473 px` as duas colunas continuam a nascer com `220` cada (`93 %` do ecrã) e o que muda
 é ele poder agora levá-las a `84` cada (`36 %`). *Descer o piso de FÁBRICA é outra decisão, e é
 dele.*
+
+---
+
+## §9-sexies — ⭐⭐⭐ O 5.º REPORT É UM NÚMERO: *«no mínimo o dobro»*
+
+> *«a largura mínima precisa ser no mínimo o dobro que a largura mínima que vc definiu.»*
+> — Enio, 2026-09-20, depois de ver a coluna a `84 px`.
+
+⇒ `WidgetStore::DOCK_W_MIN` **`84 → 168`**.
+
+### ⚠️⚠️ E isto separa duas coisas que estavam coladas
+
+O `84` era o **RECURSO** — medido, e é o que o produto CONSEGUE fazer. O que shipa é a
+**DECISÃO** — o que ele DEVE fazer —, e ela é do dono. *Um piso posto no recurso entrega uma
+coluna que cabe e não serve*, e foi exactamente o que ele viu.
+
+⇒ o recurso ganha nome próprio (`WidgetStore::PISO_DO_CORPO_PX = 84`) e **fica**, porque é a
+proveniência do que shipa: sem ele, *«o dobro»* deixa de ter **de quê**. O valor que shipa é
+escrito à mão de propósito — ⛔ **não** `2.0 * PISO_DO_CORPO_PX`: assim escrito, a cerca que o
+defende seria verdadeira por construção, e *uma linha que a mutação não consegue matar é
+comentário com sintaxe de código*.
+
+### ⭐⭐ A ordem dele apertou a faixa legal NOS DOIS LADOS
+
+| cerca | quem a põe |
+|---|---|
+| `DOCK_W_MIN ≥ 2 × PISO_DO_CORPO_PX` (`168`) | a ordem do dono, 2026-09-20 |
+| `DOCK_W_MIN < PANEL_MIN_W_PX` (`220`) | senão o gesto volta a ser inerte numa janela estreita |
+
+As duas são **erro de compilação** (`E0080`), ao lado das duas do degrau de fechar que já lá
+estavam. ⭐ Antes da ordem dele só havia cerca por baixo e um piso solto era inatacável em toda a
+recta; hoje a janela em que ele pode mentir tem **`52 px`**, e é essa a mutação NOMEADA que
+sobra.
+
+### O que o dono ganha, com o número
+
+| janela | duas colunas de fábrica | o mínimo a que ele as pode levar |
+|---:|---:|---:|
+| `473` (o report da §9-ter) | `440` de `473` (`93 %`) | `336` (`71 %`) |
+| `647` (o fim do log dele) | `440` de `647` (`68 %`) | `336` (`52 %`) |
+| `1 024` | `459` de `1 024` (`45 %`) | `336` (`33 %`) |
+
+### ⚠️ E DOIS gates meus reprovaram sobre produto correcto, os dois pela mesma forma
+
+- `numa_janela_estreita_o_arrasto_ainda_estreita_a_coluna` arrastava **`60 px` à mão**, e com o
+  piso a `168` esse gesto passou a pedir por baixo dele. ⇒ a mão passa a ir a **meio caminho
+  entre a largura de fábrica e o piso**, que é um gesto legítimo em qualquer dos dois. *Uma
+  fixtura escrita com um literal do outro lado de uma cerca move-se com a cerca* — é a **terceira
+  vez** nesta jornada (as outras: o `100` da involução e o `80` do arrasto fantasma).
+- `o_piso_de_uma_escolha_e_onde_o_corpo_do_painel_ainda_cabe` **passou a mentir no NOME**: o piso
+  que shipa já não é onde o corpo deixa de caber, é o dobro disso. Renomeado para
+  `no_piso_de_uma_escolha_nada_do_corpo_sai_da_coluna`, que é o que o corpo dele afirma. *Um nome
+  que promete mais do que o teste mede mente em toda corrida verde.*
+
+⛔⛔ **E a mutação «piso apertado» deixou de ser expressável sozinha:** com a cerca do dobro no
+sítio, qualquer valor abaixo de `168` **não compila** ⇒ a prova de mutação passa a derrubar **a
+cerca E o valor** (`60`), que é a forma honesta de perguntar *«e se alguém decidir descer isto?»*.
+
+**Mutação: 4 sangram + 2 CERCA + 1 NOMEADA, de 7.**
 
 ---
 
@@ -850,17 +913,21 @@ defende.
 
 ---
 
-### §10-bis — O portão da 3.ª volta (o piso de uma escolha)
+### §10-bis — O portão das voltas 3 e 4 (o piso de uma escolha, e o dobro dele)
+
+⚠️ **Corrido duas vezes**: uma para o piso medido (`84`) e outra depois da ordem do dono (`168`).
+Os números abaixo são os da **segunda**, que é a que shipa.
 
 | passo | resultado |
 |---|---|
-| `scripts/nextest-impacted.sh` | **`15 485 / 15 485`** · `53,8 s` · zero flakes |
+| `scripts/nextest-impacted.sh` | **`15 485 / 15 485`** · `45,5 s` · zero flakes |
 | `cargo test -p ph2d-panel-registry-init` (com as quatro features) | verde |
 | `cargo clippy -p ph2d-editor-core -p ph2d-host-desktop --all-targets -- -D warnings` | **zero** |
 | `cargo fmt --check` | limpo |
 | `git merge-base HEAD main` | **no-op**: `merge-base == main == 395da6a55` |
 | `scripts/censos-da-arvore-combinada.sh` | **`127 / 127`** · *«controlo do filtro: 12 de 12 censos correram ✓»* |
 | prova de mutação | **4 sangram + 2 CERCA + 1 NOMEADA**, de 7 |
+| mudança de PRODUTO, as duas voltas somadas | **três linhas** (a constante do recurso, a do piso, e a lei a ler o store) |
 
 ⭐⭐ **Duas mutações deixaram de poder sangrar porque passaram a ser ERRO DE COMPILAÇÃO**, e isso é
 mais forte: reverter o piso da escolha para o de fábrica devolve `error[E0080]` com a frase do

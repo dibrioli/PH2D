@@ -157,9 +157,33 @@ impl WidgetStore {
     /// entregaria uma coluna cujo corpo pinta por cima da área de desenho — *o piso é do CORPO,
     /// que é o que falha primeiro.*
     ///
+    /// # ⭐⭐⭐ E o número que SHIPA é o DOBRO desse, por ordem do dono
+    ///
+    /// > *«a largura mínima precisa ser no mínimo o dobro que a largura mínima que vc definiu.»*
+    /// > — Enio, 2026-09-20, depois de ver os `84`.
+    ///
+    /// ⚠️⚠️ **Isto separa duas coisas que estavam coladas, e a separação é o que torna o número
+    /// honesto:** [`Self::PISO_DO_CORPO_PX`] é o **RECURSO** (o que o produto CONSEGUE fazer,
+    /// medido) e o `DOCK_W_MIN` é a **DECISÃO** (o que ele DEVE fazer). *Um piso no recurso
+    /// entrega uma coluna que cabe e não serve* — o dono viu-a e devolveu-a com um número.
+    ///
+    /// ⭐ **E a ordem dele é uma CERCA de compilação, não um comentário** (logo abaixo): o valor
+    /// é explícito porque é uma escolha de produto, e quem o descer abaixo do dobro do recurso
+    /// **não compila**.
+    ///
+    /// ⭐⭐ **Isto aperta a faixa legal nos DOIS lados:** `168 ≤ DOCK_W_MIN < 220`. Antes da
+    /// ordem dele só havia cerca por baixo, e um piso solto era inatacável em toda a recta; hoje
+    /// a janela em que ele pode mentir tem `52 px`.
+    ///
     /// O máximo é medido pelo mesmo critério do `clamp_panel_rect`: 70 % de uma janela de
     /// referência, para uma coluna nunca comer a área de desenho inteira.
-    pub const DOCK_W_MIN: f32 = 84.0; // LITERAL-PX-OK: piso MEDIDO de uma coluna que o artista arrastou
+    pub const DOCK_W_MIN: f32 = 168.0; // LITERAL-PX-OK: ordem do dono -- o DOBRO do piso medido
+
+    /// ⭐ **O RECURSO, medido — e ele NÃO é o que shipa.** Ver o doc de [`Self::DOCK_W_MIN`]: esta
+    /// é a largura em que o corpo de um painel docado ainda cabe na coluna (a tabela está lá), e
+    /// o que shipa é o **dobro** dela, por decisão do dono. ⛔ Ela fica porque é a proveniência
+    /// do número que shipa: sem ela, *«o dobro»* deixa de ter de quê.
+    pub const PISO_DO_CORPO_PX: f32 = 84.0; // LITERAL-PX-OK: piso MEDIDO do corpo de um painel
 
     /// ⛔⛔ **DORMENTE desde 2026-09-09 — ela já não tem consumidor no produto.**
     ///
@@ -205,6 +229,16 @@ impl WidgetStore {
 // (*«this assertion has a constant value»*) — a mesma recusa que pôs as duas de baixo aqui, e ela
 // aponta para cima outra vez. *Um teste que o clippy chama de constante é um teste que queria ser
 // uma cerca.*
+// ⭐⭐⭐ **E a ORDEM DO DONO é a quarta cerca** (*«no mínimo o dobro»*, 2026-09-20). ⚠️ O valor
+// é escrito à mão de propósito, e não `2.0 * PISO_DO_CORPO_PX`: assim escrito, esta asserção
+// seria verdadeira por construção — *uma linha que a mutação não consegue matar é comentário com
+// sintaxe de código*. Com o valor explícito, quem o descer abaixo do dobro não compila.
+const _: () = assert!(
+    WidgetStore::DOCK_W_MIN >= 2.0 * WidgetStore::PISO_DO_CORPO_PX,
+    "o piso de uma escolha desceu abaixo do DOBRO do piso medido do corpo -- e' a ordem do dono \
+     de 2026-09-20, dada depois de ele ver a coluna a 84 px"
+);
+
 const _: () = assert!(
     WidgetStore::DOCK_W_MIN < ph2d_tokens::PANEL_MIN_W_PX,
     "o piso de uma ESCOLHA subiu ate' ao de FABRICA: numa janela estreita a lei ja' entrega o \

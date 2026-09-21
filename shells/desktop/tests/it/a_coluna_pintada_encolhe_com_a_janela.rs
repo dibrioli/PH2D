@@ -278,11 +278,18 @@ fn numa_janela_estreita_o_arrasto_ainda_estreita_a_coluna() {
             seam.w > 0.0,
             "{side:?}: não há costura para agarrar — o gesto nem chega a armar"
         );
-        let px = seam.x + seam.w * 0.5;
-        // Arrastar 60 px para DENTRO: à esquerda o `x` diminui, à direita aumenta.
+        let _px = seam.x + seam.w * 0.5;
+        // ⚠️ **O arrasto é DERIVADO do piso, nunca `60 px` à mão.** A 1.ª redacção arrastava um
+        //    literal, e quando o dono mandou dobrar o piso (`84 → 168`) aquele gesto passou a
+        //    pedir POR BAIXO dele e o gate reprovou sobre produto correcto. *Uma fixtura escrita
+        //    com um literal do outro lado de uma cerca move-se com a cerca.* ⇒ a mão vai a meio
+        //    caminho entre a largura de fábrica e o piso, que é um gesto legítimo em qualquer
+        //    dos dois.
+        let alvo_w = (antes + WidgetStore::DOCK_W_MIN) * 0.5;
+        let (esq_col, dir_col) = layout.side_columns();
         let alvo = match side {
-            DockSide::Left => px - 60.0,
-            DockSide::Right => px + 60.0,
+            DockSide::Left => esq_col.x + alvo_w,
+            DockSide::Right => dir_col.x + dir_col.w - alvo_w,
         };
         let pedido = layout.dock_width_for(side, alvo);
         let escolha = ChromeBands::escolha_de_um_arrasto(side, pedido, layout.viewport.w);
@@ -311,7 +318,13 @@ fn numa_janela_estreita_o_arrasto_ainda_estreita_a_coluna() {
     }
 }
 
-/// ⭐⭐⭐ **O PISO DIZ DE QUE RECURSO É: ele é EXACTAMENTE a largura que o corpo precisa.**
+/// ⭐⭐⭐ **NO PISO DE UMA ESCOLHA, NADA DO CORPO DE UM PAINEL SAI DA COLUNA.**
+///
+/// ⚠️⚠️ **Este gate chamava-se `o_piso_de_uma_escolha_e_onde_o_corpo_do_painel_ainda_cabe` e o
+/// nome passou a MENTIR em 2026-09-20**, horas depois de ele nascer: o dono viu a coluna a `84`
+/// e mandou *«no mínimo o dobro»* ⇒ o piso que shipa (`168`) **não é** onde o corpo deixa de
+/// caber — é o dobro disso, e o que ele mede é que ali nada sai. *Um nome que promete mais do
+/// que o corpo afirma mente em toda corrida verde.*
 ///
 /// ⛔⛔ **Abaixo do piso esta régua não consegue medir, e a razão é o próprio piso:** a única
 /// porta que escreve a largura de uma coluna clampa nele, logo pedir `83` devolve `84`. *Uma
@@ -319,7 +332,9 @@ fn numa_janela_estreita_o_arrasto_ainda_estreita_a_coluna() {
 /// 1.ª redacção deste gate tentou, reprovando com *«a coluna não chegou a 83»*.
 ///
 /// ⇒ ela afirma a metade que se pode medir de DENTRO: **no piso, nada do corpo sai da coluna.**
-/// Um piso mais apertado que o recurso reprova aqui (medido: a `60` saem dois controlos).
+/// Um piso mais apertado que o recurso reprova aqui (medido: a `60` saem dois controlos) — ⚠️ e
+/// desde a ordem do dono isso só é alcançável **derrubando também a cerca do dobro**, que é
+/// exactamente como a prova de mutação o exercita.
 ///
 /// # ⛔⛔⛔ E a outra metade — *«o piso não está SOLTO»* — NÃO é gateável, com o mecanismo
 ///
@@ -354,7 +369,7 @@ fn numa_janela_estreita_o_arrasto_ainda_estreita_a_coluna() {
 /// ⛔ E o piso **não** é o da faixa de abas: o `tab_plan` ainda entrega uma aba a `32 px`. O que
 /// falha primeiro é o CORPO, e é dele que o número fala.
 #[test]
-fn o_piso_de_uma_escolha_e_onde_o_corpo_do_painel_ainda_cabe() {
+fn no_piso_de_uma_escolha_nada_do_corpo_sai_da_coluna() {
     use ph2d_editor_core::interaction::WidgetStore;
 
     let janela = 1920.0f32;

@@ -469,6 +469,16 @@ ao bit, o que a rota A entregaria —, e a mesma tecla que a põe a girar é a q
 *Uma cena que precisasse de uma irmã ao lado para ter controlo obrigaria o dono a comparar duas
 sessões de memória.*
 
+⛔⛔ **E a FOTO apanhou DOIS defeitos que os gates da cena não viam** (o roteiro é conduzido e
+fotografado antes de ir ao dono): a tela nascia a dizer *«esculpa, aperte D até ler LUZ, pegue o
+Painter e pinte»* — o texto da DOAÇÃO — enquanto o roteiro manda `Shift+B` (*uma cena que imprime
+dois caminhos ensina o errado a metade de quem a lê*); e ⛔⛔⛔ **ela abria SEM a régua do tempo**,
+com o passo (5) a mandar dar PLAY. Sem transporte o `playhead` fica em `0` ⇒ **o catavento nunca
+gira** e o dono julgaria a wave sem nunca a ver — com os seis gates verdes, porque eles medem a
+LEI e o que faltava era um PAINEL. ⭐ E a mesma foto mostrou `Dur(s) = 4` na régua, o que mudou o
+`GIRO_DA_CENA` de um número do OLHO (`0,125`, meia volta) para um DERIVADO do recurso (`0,25`, uma
+volta na duração que a régua abre).
+
 ⛔⛔ **A malha da cena NÃO pode ser lisa, e há gate:** uma esfera de raio constante é invariante a
 toda rotação em torno do centro, logo o catavento giraria e **a imagem não mudaria** — a cena
 ensinaria que a rota B não faz nada, que é a espécie que o `CLAUDE.md` §5.0 chama de *pior que uma

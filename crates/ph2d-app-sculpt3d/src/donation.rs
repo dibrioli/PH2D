@@ -107,7 +107,11 @@ pub fn catavento_da_cena() -> ph2d_ecs::Mesh3D {
 pub fn canvas_born(feito: Result<(String, u64), String>) -> Option<u64> {
     match feito {
         Ok((label, bits)) => {
-            if super::bake_scene() || super::reopen_scene() {
+            // ⚠️ **A `=52` entra AQUI e não no ramo de baixo**, e a razão foi medida numa foto
+            // (21/09): a tela dela nascia a dizer *«esculpa, aperte D até ler LUZ, pegue o Painter
+            // e pinte»* — o texto da DOAÇÃO — enquanto o roteiro dela manda `Shift+B`. *Uma cena
+            // que imprime dois caminhos diferentes ensina o errado a metade de quem a lê.*
+            if super::bake_scene() || super::reopen_scene() || super::scenes::catavento_scene() {
                 eprintln!(
                     "[sculpt3d] sprite '{label}' ({CANVAS_EDGE}x{CANVAS_EDGE}) na mesa — ele e' o \
                      OBJETO que a forma vai acender"

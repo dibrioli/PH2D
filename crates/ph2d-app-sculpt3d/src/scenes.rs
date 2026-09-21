@@ -628,11 +628,16 @@ pub(crate) fn catavento_scene() -> bool {
 
 /// **Quantas VOLTAS POR SEGUNDO a peça da `=52` dá.**
 ///
-/// ⚠️ **Uma volta em oito segundos, e o número é do OLHO e não de um recurso** — dizê-lo é a única
-/// forma honesta (§0.0). Mais rápido e a luz a deslizar lê-se como cintilação; mais devagar e o
-/// dono espera para ver se alguma coisa acontece. ⛔ Ele é da CENA, e não um valor de fábrica do
-/// componente: um `Mesh3D` nasce **parado**, e há gate.
-pub(crate) const GIRO_DA_CENA: f32 = 0.125;
+/// ⭐⭐ **UMA VOLTA NA DURAÇÃO DA RÉGUA, e o número é DERIVADO e não do olho.** A 1.ª redacção dizia
+/// *«uma volta em oito segundos, e o número é do OLHO»* — e a FOTO da cena mostrou a régua a abrir
+/// com `Dur(s) = 4`: com o Loop desligado o transporte pára aos quatro segundos, logo aquele valor
+/// dava **meia volta** e o dono nunca via a peça fechar a rotação. *Um número escolhido pelo gosto
+/// e um derivado de um recurso lêem-se igual num doc; só o segundo sobrevive a alguém mexer no
+/// recurso.*
+///
+/// ⛔ Ele é da CENA, e não um valor de fábrica do componente: um `Mesh3D` nasce **parado**, e há
+/// gate nas duas metades.
+pub(crate) const GIRO_DA_CENA: f32 = 0.25;
 
 /// **Esta cena quer uma TELA na mesa?** A pergunta é feita UMA vez, e as duas cenas que respondem
 /// sim ([`donation_scene`] e [`bake_scene`]) precisam da mesma superfície branca pelo mesmo motivo:

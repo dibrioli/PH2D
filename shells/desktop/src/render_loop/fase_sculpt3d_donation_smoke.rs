@@ -58,6 +58,12 @@ impl crate::App {
                     sim.world_mut()
                         .entity_mut(ph2d_ecs::Entity::from_bits(bits))
                         .insert(catavento);
+                    // ⛔⛔ **E ela ABRE A RÉGUA DO TEMPO**, porque o roteiro dela manda dar PLAY —
+                    // e isso é uma AFIRMAÇÃO de que o botão está na tela. A foto de 21/09 apanhou-o:
+                    // a cena abria sem timeline nenhuma, logo o giro nunca podia acontecer e o
+                    // dono julgaria a wave sem a ver. *Um passo que manda carregar num sítio tem de
+                    // provar que o sítio existe* — e aqui há gate a atar o texto à visibilidade.
+                    hero.panel_visibility.insert("timeline", true);
                 }
                 hero.gizmo.replace_selection(Some(bits));
                 hero.bus

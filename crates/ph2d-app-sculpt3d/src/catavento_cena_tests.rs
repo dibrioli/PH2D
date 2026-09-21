@@ -102,3 +102,39 @@ fn a_cena_pede_giro_e_o_componente_nasce_parado() {
          do app nasceria a girar"
     );
 }
+
+/// ⭐⭐⭐ **O ROTEIRO MANDA DAR PLAY, LOGO A CENA TEM DE ABRIR A RÉGUA DO TEMPO.**
+///
+/// ⛔⛔ **Achado por uma FOTO e não por um gate** (21/09): a `=52` abria **sem timeline nenhuma**,
+/// o passo (5) mandava *«dê PLAY (a régua do tempo)»*, e sem transporte a andar o `playhead` fica
+/// em `0` ⇒ **o catavento nunca gira**. *O dono julgaria a wave sem nunca a ver*, e os seis gates
+/// da cena estavam verdes — eles medem a lei, e o que faltava era um PAINEL.
+///
+/// ⚠️ **As duas metades, e cada uma sozinha mente:** o roteiro pode deixar de pedir Play (e a
+/// visibilidade vira ruído) ou a cena pode deixar de abrir a régua (e o passo vira impossível).
+///
+/// **Mutação que deve sangrar:** apagar o `hero.panel_visibility.insert("timeline", true)` da
+/// `fase_sculpt3d_donation_smoke`.
+#[test]
+fn o_roteiro_pede_play_e_a_cena_abre_a_regua() {
+    let roteiro = include_str!("scripts.rs");
+    let i = roteiro
+        .find("=52 O CATAVENTO")
+        .expect("o roteiro da =52 tem de existir");
+    let bloco = &roteiro[i..i + 1800.min(roteiro.len() - i)];
+    assert!(
+        bloco.contains("PLAY"),
+        "o roteiro da =52 deixou de pedir PLAY — se o giro passou a ser visível sem transporte, \
+         esta metade e a da visibilidade da régua deixam as duas de descrever o produto"
+    );
+    // ⚠️ A outra ponta vive na SHELL, que esta crate não compila — logo é lida por TEXTO, que é a
+    // mesma forma que os gates de fiação desta casa usam quando as duas metades não se encontram
+    // num teste. O caminho é relativo a ESTE ficheiro.
+    let cena =
+        include_str!("../../../shells/desktop/src/render_loop/fase_sculpt3d_donation_smoke.rs");
+    assert!(
+        cena.contains(r#"hero.panel_visibility.insert("timeline", true)"#),
+        "a cena =52 deixou de abrir a regua do tempo: o passo (5) do roteiro manda carregar num \
+         botao que nao esta' na tela, e o catavento nunca gira"
+    );
+}

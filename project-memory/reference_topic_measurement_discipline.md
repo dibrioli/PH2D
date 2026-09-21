@@ -1291,3 +1291,62 @@ metade de cima da corrente e fica verde sobre toda perda que aconteça abaixo de
 entra. Se ele entra acima da última, escreva o irmão que mede a ÚLTIMA — e se a saída final for uma
 imagem, meça o pixel. O custo é baixo quando já existe um gate de pixel do outro lado: copie a
 fixtura e troque a rota.
+
+## ⛔⛔ Um número escrito de MEMÓRIA ao lado de um tecto: a cura não é corrigi-lo, é o gate MEDI-LO (2026-09-20)
+O doc do `NIVEL_MAX` do plano de tinta fina dizia *«~3,1 M amostras, 37,7 MB»* para a peça de
+fábrica, e estava **errado por 2×**: eu contei os interiores de cada quad e esqueci que as ARESTAS
+também levam `L−1` amostras cada. A conta verdadeira fecha à mão (`1 + 2(L−1) + (L−1)² = L²`, logo
+`64` por vértice a `L = 8`) e dá `6,29 M` amostras = `75,5 MB`. **Why:** o §0.0 manda medir antes de
+limitar, e um tecto acompanhado de uma tabela escrita de cabeça lê-se exactamente como um tecto
+medido — a tabela é o que faz a nota parecer honesta. **How to apply:** quando escrever um número ao
+lado de um `MAX_*`, escreva no mesmo commit o gate que o deriva do produto; se a conta é fechada,
+ponha-a numa constante e faça o gate compará-la com o que o alocador de facto pede.
+
+## ⛔ Uma fixtura tem de conter o REGIME que a constante descreve, e «a forma mais óbvia» costuma não o conter (2026-09-20)
+O gate acima nasceu numa esfera UV e reprovou na primeira corrida: os **pólos** dela são leques de
+TRIÂNGULOS, e o multiplicador `L²` por vértice só descreve a família dos QUADS (num triângulo há
+duas faces por vértice e o interior conta `(L−1)(L−2)/2`). A fixtura que serve é um **toro**, onde a
+contagem é exacta (`V` faces, `2V` arestas). **Why:** é a mesma família de *«a fixtura não continha
+o fenómeno»*, vista do outro lado — aqui ela continha um fenómeno A MAIS, e o que ele mede não é o
+que a constante afirma. **How to apply:** antes de escolher a fixtura, escreva a asserção que diz
+*«esta malha é do regime certo»* (aqui: `faces().all(|f| !f.is_tri())`) — ela custa uma linha e
+falha ALTO em vez de dar um número plausível.
+Ver [[reference_topic_fixture_discipline]].
+
+## ⭐⭐⭐ Uma barra ESCOLHIDA num gate de PAR deriva-se da ESCADA que o produto oferece (2026-09-20)
+O gate *«a peça desta cena é grossa»* pedia duas coisas — `4×` mais grossa que a cena irmã e
+`400..4 000` vértices — e a mutação que a torna **`4×` mais fina** (`738 → 3 042`) passava nas
+duas. Nenhuma nomeava recurso nenhum. A barra que a mata **deriva-se**: a fileira do painel tem
+quatro degraus (`Mesh · 2x · 4x · 8x`) e a cena irmã é a densidade **aprovada pelo dono** em que o
+defeito já não se vê ⇒ *o degrau que o roteiro manda carregar tem de ser o **PRIMEIRO** que alcança
+essa densidade*. **Why:** ela aperta os DOIS lados sem uma constante escolhida — peça fina de mais
+e o degrau de baixo já lá chega (o topo deixa de ter o que mostrar); peça grossa de mais e nem o
+topo chega (a cena promete o que o produto não entrega). **How to apply:** quando um gate defende
+*«este lado do par é o extremo»*, procure a ESCADA discreta que o produto já oferece e o lado que
+alguém APROVOU — a barra é a posição na escada, não um múltiplo; e ponha a própria mutação como
+CONTROLO dentro do gate, senão ele pode responder «é o último» por vácuo.
+Ver [[reference_topic_gate_discipline]] · [[reference_topic_fixture_discipline]].
+
+## ⛔⛔ Toda guarda e toda régua com `<`/`>` é CEGA a NaN, e em 2026-09-20 mordeu nas DUAS pontas do mesmo defeito
+Em IEEE-754 **toda comparação de ordem com `NaN` é falsa**. Isso morde nas duas
+pontas, e em 2026-09-20 mordeu nas duas **no mesmo defeito**:
+
+- **No produto:** `if w <= 0.0 { return; }` existe para parar um dab sem nada a
+  dar, e com `w = NaN` ela **não retorna** — o `NaN` atravessa a guarda e envenena
+  o canal.
+- **Na régua que eu escrevi para o achar:** `if d > pior.0 { pior = d }` é um
+  máximo por comparação, e ele **salta todo `NaN`** ⇒ devolveu `0,0` sobre uma
+  peça inteiramente envenenada. O gate passou **por vácuo** na primeira corrida.
+
+**Why:** uma régua escrita para achar um valor inventado não pode usar a ORDEM
+dos `f32` para o achar, porque o valor que ela procura não está nessa ordem. E um
+`NaN` num canal por-vértice não pinta um pixel errado: ele contamina a
+interpolação da **face inteira**, que se lê como uma mancha de aresta dura.
+
+**How to apply:** antes de confiar num `min`/`max`/`clamp`/`<`/`>` sobre `f32`
+que um utilizador ou uma cadeia de contas alimenta, pergunte `is_nan()`
+**explicitamente** — e num gate que caça valores inventados, procure o `NaN`
+**primeiro**, antes de qualquer agregação. `NaN.clamp(0,1)` devolve `NaN`;
+`NaN.max(0.0)` devolve `0.0`; as duas leem-se iguais no código e têm consequências
+opostas. Ver [[feedback_a_promise_of_sameness_beside_a_copy_is_the_shape_that_diverges]] para a
+outra metade do mesmo defeito: a guarda existia numa das duas cópias da lei.

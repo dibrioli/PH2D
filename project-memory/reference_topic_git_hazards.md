@@ -53,3 +53,18 @@ apply:** mensagem de commit vai **sempre** por `-F <ficheiro>` (ou heredoc citad
 inline quando o texto tem apóstrofos — e o sintoma que a distingue de um lock é **não haver
 `index.lock`**: `ls .git/index.lock` antes de culpar o git. ⚠️ Os processos presos matam-se pelo
 PID (`pgrep -af "git commit"`) e saem com **144**, que se lê como falha do comando e não é.
+
+## ⛔⛔⛔ Numa WORKTREE, uma memória escrita pela ferramenta aterra na árvore PRIMÁRIA e o ponteiro aterra na worktree (2026-09-20)
+O symlink `~/.claude/projects/<key>/memory` aponta para o `project-memory/` da árvore
+**PRIMÁRIA**. Uma linha em Modo L que escreva uma memória pela ferramenta põe o FICHEIRO lá e a
+linha do `MEMORY.md` — editada por caminho relativo — **cá**: o par separa-se, e só o lado de cá é
+medido. Medido nesta sessão: `1` de `155` ponteiros órfão na worktree (o ficheiro existia na
+primária, com o `originSessionId` desta janela) e mais **três** ficheiros na primária **sem**
+ponteiro nenhum — a outra direcção do mesmo defeito, que gate nenhum vê. **Why:** o gate
+`o_indice_da_memoria_conta_o_que_aponta` corre na árvore da linha, logo apanha o ponteiro órfão e
+**nunca** o ficheiro órfão; e um ficheiro de memória por rastrear na primária entra na rodada de
+outra pessoa ou perde-se. **How to apply:** ao fechar uma linha em worktree, corra o censo dos dois
+sentidos (`ponteiros do MEMORY.md` contra `project-memory/*.md` **das DUAS árvores**) e traga para a
+worktree o que a sessão escreveu; escrever a memória por caminho RELATIVO a partir da worktree
+(`cat >> project-memory/…`) aterra no sítio certo à primeira.
+Ver [[reference_topic_integration_discipline]] · [[feedback_the_ruler_is_the_merge_base_not_a_moving_main]].

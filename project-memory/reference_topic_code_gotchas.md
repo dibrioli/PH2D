@@ -67,3 +67,27 @@ metadata:
   (`line/UIUX`, 2026-09-16, formato `v2` com alias `v1`.)
 - [[feedback_a_collection_ordered_by_distance_is_not_ordered_by_adjacency]] — `windows(2)` sobre uma lista ordenada por DISTÂNCIA desenhou cordas através da peça (45 de 47 pares não eram vizinhos), com contagem, pesos e fecho todos verdes
 - ⛔⛔⛔ [Um par ida/volta `w = t+c` / `orçamento = w−c` NÃO fecha em `f32`](feedback_an_inverse_law_in_f32_does_not_close_by_algebra.md) — `2,65 %` a `96 %` do domínio, e um défice de **1 ULP** corta a palavra; a inversa confere-se contra a LEI (`next_up`), varrendo em vez de amostrar seis pontos.
+
+## ⛔⛔ Uma capacidade DERIVADA da de outro buffer mente exactamente no instante em que importa (2026-09-20)
+No upload do plano de tinta fina, o buffer de índices não tinha capacidade PRÓPRIA: ela era
+`cap_tri * 3`, calculada **depois** de o buffer de origens ter realocado e actualizado o `cap_tri`.
+⇒ na PRIMEIRA subida `cap_tri * 3` já descreve o tamanho NOVO enquanto o buffer de índices ainda é
+o dummy de `16` bytes, e a escrita toma o caminho rápido: milhares de bytes fora do buffer, erro de
+validação do `wgpu`. **Why:** *uma capacidade derivada da de outro buffer é uma segunda resposta à
+pergunta «quanto cabe AQUI?»*, e as duas divergem no único momento em que a resposta é usada — a
+realocação. **How to apply:** toda capacidade é um CAMPO ao lado do buffer que descreve; e ponha as
+capacidades iniciais iguais ao tamanho real do dummy — um valor conservador por acidente (declarar
+`4` sobre um buffer de `16`) ESCONDE esta classe em vez de a impedir.
+Ver [[reference_topic_code_gotchas]].
+
+## ⛔⛔ Uma enumeração FECHADA num doc («tudo o que tem tamanho aqui») é contradita pelo campo seguinte, em silêncio (2026-09-20)
+O `SceneObject::footprint_bytes` dizia *«a pilha inteira, que é tudo o que tem tamanho aqui (o resto
+são dois `bool`, uma pose e a janela suja)»*. No dia em que um campo novo de até `75 MB` entrou na
+struct, a frase ficou falsa e **nada reprovou** — e o braço `RemovedObject` da fila de desfazer
+guarda a peça INTEIRA, logo o orçamento em bytes daquela fila passou a ser cego ao maior objecto
+que ela carrega. **Why:** um doc que ENUMERA é uma afirmação sobre a struct toda, e uma struct
+ganha campos; um doc que nomeia a REGRA («tudo o que aloca») envelhece melhor, mas nem isso é
+gateável. **How to apply:** quando somar bytes de uma struct, escreva o gate com CONTROLO — «sem o
+campo novo o número não muda, com ele cresce exactamente o que o campo pesa» — e ponha o
+`footprint_bytes` na crate que POSSUI os vectores, senão a conta de fora diverge ao primeiro campo.
+Ver [[reference_topic_gate_discipline]].

@@ -27,7 +27,7 @@
 - [Projetos num disco DEDICADO de 2TB](project_projects_live_on_a_dedicated_2tb_disk.md) · [target em tmpfs: «File exists» pós-boot](feedback_a_tmpfs_backed_target_reports_file_exists_not_broken_link.md)
 - [Disco cheio → mold SIGBUS](project_disk_full_corrupts_objects_mold_sigbus.md) · [«cheio» = metadata btrfs](project_btrfs_metadata_starved_not_disk_full_2026_08_22.md)
 - ⭐ [MotionBricks (Apache-2.0) instalado e a correr, headless](reference_motionbricks_oracle_installed.md)
-- ⚠️ [O ambiente diz `fish` e a shell é **zsh** — `$VAR` sem aspas NÃO se parte em palavras](reference_shell_is_zsh_not_fish_and_does_not_word_split.md)
+- ⚠️ [A shell é **zsh**, não `fish`: `$VAR` não se parte](reference_shell_is_zsh_not_fish_and_does_not_word_split.md)
 - [Prompt Deck](reference_prompt_deck_app.md) · [~/Apps invisíveis ao cachy-update](reference_manual_apps_in_home_apps_are_invisible_to_cachy_update.md) · [atalho global Plasma 6](reference_kde_plasma6_global_shortcut.md)
 - [HISTÓRICO: aquarela/wash (19)](reference_topic_watercolor_historical.md)
 
@@ -85,10 +85,9 @@
 - ⛔ [`touch` não mede uma edição; `--timings` dobra sob contenção](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)
 
 - ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)
-- ⛔⛔ [Toda guarda e toda régua com `<`/`>` é CEGA a NaN — no produto ele atravessa, na régua ele é saltado (mordeu nos dois no mesmo defeito)](feedback_every_guard_written_with_lt_or_gt_is_blind_to_nan.md)
 - ⛔⛔ [Contar operações ≠ perfil; o PERFIL DE BUILD decide o número](feedback_an_operation_count_is_not_a_profile_and_the_build_profile_decides_the_number.md)
 - ⛔⛔⛔ [Régua de calma que não nomeia o PERFIL: a leitura a 98 % ociosa foi a PIOR das quatro — era debug](feedback_a_calm_ruler_that_does_not_name_the_build_profile_reads_as_a_verdict.md)
-- [Reprodução/diagnóstico (23) — ⛔ o SÍTIO onde um defeito ATERRA não é o que o PROVOCA](reference_topic_repro_discipline.md) · [Réguas do quad remesh (20)](reference_topic_quad_remesh_rulers.md)
+- [Reprodução/diagnóstico (23) — ⛔ onde um defeito ATERRA ≠ o que o PROVOCA](reference_topic_repro_discipline.md) · [Réguas do quad remesh (20)](reference_topic_quad_remesh_rulers.md)
 - ⛔ [Id errado numa lista só é visível depois de ler quem a consome](feedback_a_wrong_id_in_a_list_is_not_a_visible_defect_until_its_reader_is_read.md)
 - ⛔ [Gates de família que leem a shell pelo caminho escapam a quem move o código](feedback_a_gate_that_reads_the_shell_from_another_crate_escapes_the_line_that_moves_the_code.md)
 - ⛔⛔ [Fixtura ALINHADA AOS EIXOS não mede uma BASE](feedback_an_axis_aligned_fixture_cannot_measure_a_basis.md)

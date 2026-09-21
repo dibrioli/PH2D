@@ -234,3 +234,28 @@ de fora, e a mutação escrita depois prova-o. A fixtura é uma grelha `2×2`.
 Ver [[feedback_a_mutation_that_survives_may_mean_a_missing_gate]] ·
 [[feedback_a_surviving_mutation_can_mean_the_code_is_redundant]] ·
 [[reference_topic_measurement_discipline]].
+
+## ⛔⛔ Um ABORTO mudo de arnês de mutação lê-se exactamente como uma mutação que não entrou (2026-09-20)
+A 1.ª corrida do arnês da tinta fina deu `9 de 15` com **cinco** abortos *«zero testes correram»* —
+e um deles era o **CONTROLO** (uma linha em branco, que não pode abortar). Corridas à mão provaram
+que as cinco **SANGRAVAM**: a `M6` isolada dá `rc = 101`, `257` testes contados e o teste certo
+vermelho. **Why:** as três mentiras que este repo já tinha registado (âncora que casa zero · mutação
+que não compila · contador que lê só o `passed`) foram todas curadas por uma GUARDA que aborta — e
+a guarda passou a ser o novo sítio onde a informação se perde: *um instrumento que se declara
+inconclusivo sem dizer porquê não é mais honesto que um que mente, e o número final é o mesmo nas
+duas leituras*. **How to apply:** todo ramo de ABORTO imprime a EVIDÊNCIA (as últimas linhas da
+corrida), e quem lê um relatório com abortos re-corre pelo menos um deles à mão antes de acreditar
+no placar.
+Ver [[reference_topic_gate_discipline]].
+
+## ⛔⛔⛔ E a EVIDÊNCIA que esse aborto passou a imprimir acusou o BINÁRIO DE TESTE, não a mutação (2026-09-20)
+Com o ramo de aborto a falar, as **cinco** mensagens eram a mesma: `signal: 11, SIGSEGV` no
+processo do `--lib` da crate. *O arnês reportava o próprio acidente* — um crash mata o processo
+inteiro e leva o `test result:` com ele, logo a contagem lê `0` e o caso cai no ramo de aborto.
+**Why:** um arnês que corre a suíte num processo ÚNICO herda todo defeito de processo daquela
+crate, e esse defeito converte-se em «inconclusivo» em TODAS as mutações — não numa. **How to
+apply:** o `corrida()` de um arnês de mutação usa `cargo nextest run` (**um processo por teste**),
+e a população é o `N tests run` do `Summary`; ⚠️ **nunca** o `running N tests` do libtest, que
+CONTA os `#[ignore]`. Depois da troca: `296 tests run: 296 passed`, zero abortos, e o placar passou
+de `8 de 16` para **`15 de 16`** com a 16.ª a ser o CONTROLO.
+Ver [[reference_topic_gate_discipline]] · [[reference_topic_measurement_discipline]].

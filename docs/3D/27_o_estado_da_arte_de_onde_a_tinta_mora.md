@@ -471,9 +471,9 @@ nova, e o censo dela não a vê até alguém a escrever na lista.*
 |---|---|
 | a lei da retícula (`ph2d-mesh-colors`) | ✅ **20 gates, 10 de 10 mutações sangram** (§14.7) |
 | o dab por amostra (as três leis de cor) | ✅ **7 gates** |
-| armar o plano pelo painel (*Paint Detail*) | ⏳ |
-| subir as amostras à placa e lê-las no shader | ⏳ — o caminho está medido (`PRIMITIVE_INDEX`) |
-| uma cena de smoke | ⏳ |
+| armar o plano pelo painel (*Paint Detail*) | ✅ §16 |
+| subir as amostras à placa e lê-las no shader | ✅ §16 |
+| uma cena de smoke | ✅ a `=52` (§16) |
 | o desfazer ligado à janela de amostras | ⚠️ a janela existe (`tocadas`/`base`); falta o consumidor |
 | o passe de topologia com o plano armado | ⛔ **decisão de produto** — ver abaixo |
 
@@ -486,6 +486,208 @@ de *«a cor por vértice é uma IMAGEM e a resolução dela É a da malha»*, e 
 exactamente isso que esta wave deixa de ser verdade (§0.0 — *quem move o número
 que tornava algo inalcançável tem de reconferir a nota*). A manutenção
 incremental do plano é wave própria.
+
+---
+
+## §16 — ⭐⭐⭐⭐ A METADE VISÍVEL: o botão, a placa e a cena
+
+*Ordem do dono, 2026-09-20: **«sim. siga»** — construir a parte visível.*
+
+### §16.1 — O que o artista faz agora
+
+Fileira **`Paint Detail`** no painel, colada à caixa de cor, com quatro chips —
+**`Mesh`** (o caminho de sempre, ao bit) · `2x` · `4x` · `8x`. Com um deles
+armado a tinta deixa de ter a resolução da malha, **e a malha não muda**. Cena
+**`=52`**, que abre com uma peça GROSSA e o arame LIGADO de propósito: sem os
+dois, o degrau que ela ensina é invisível.
+
+### §16.2 — ⛔⛔ Onde o plano VIVE, e porque não é onde parecia
+
+Ele vive na **PEÇA** (`SceneObject::tinta`) e não na cena: o endereço de uma
+amostra é `(face, sítio)` **daquela** malha, logo um plano partilhado leria a
+tinta de uma peça na geometria de outra. O knob do painel é a ESCOLHA
+(`Sculpt3dScene::tinta_nivel`); o plano é o EFEITO.
+
+⚠️ **E só a peça ACTIVA ganha um plano novo** — as outras mantêm o que já têm.
+Um plano de nível `3` custa `64` amostras por vértice (medido, §16.5), e armar
+um knob não pode multiplicar isso por toda a cena.
+
+### §16.3 — ⭐⭐⭐ O plano é EMPRESTADO ao traço, e as três consequências
+
+O `pen-down` faz um `take` do `Option` da peça e põe-no no `SculptStroke`; o
+`close_stroke` devolve-o. É a forma que o cabeçalho da `TintaDoTraco` escolheu
+para **não mexer na assinatura do `dab`**, que é a porta de todos os corpora de
+oráculo desta casa. Três coisas caem disso, e as três são código:
+
+1. **A reconciliação não corre durante o traço.** Ali o `Option` da peça está
+   VAZIO — reconciliar construiria um plano BRANCO novo em cada quadro, que o
+   `close_stroke` depois sobrescreveria. *Um alocador de dezenas de MB a 60 Hz,
+   invisível a toda régua de cor.*
+2. **O upload lê o plano de ONDE ELE ESTÁ.** Durante o gesto quem o segura é o
+   traço; ler o `Option` da peça subiria `armado = 0` e *o artista veria a tinta
+   fina desaparecer no instante em que começasse a pintar*.
+3. **Devolver REESCREVE o canal por vértice** com as `V` primeiras amostras.
+   Tudo o que não lê o plano (o assado, a doação, o `.ph2dproj`, o próprio
+   caminho `Mesh`) lê `Mesh::colors`, e sem essa linha a peça voltava à tinta de
+   antes assim que o artista desarmasse.
+
+### §16.4 — ⚠️ A armadilha MUDA: o plano é paramétrico nas FACES
+
+Ele sobrevive a qualquer pincel que só **mova** vértices e não sobrevive a um
+que **parta ou funda** uma face. Um plano da topologia anterior lido sobre a
+malha de agora **não estoura e não desenha lixo óbvio** — ele põe a tinta de uma
+face na face vizinha.
+
+⇒ `concorda_com` é lida em todo quadro (vértices **E** faces: *uma régua que
+conta uma grandeza só aprova metade das mudanças de topologia*), e a
+discordância **reconstrói o plano semeado da cor por vértice**, que é a única
+resposta que a malha sabe dar.
+
+⭐⭐ **E é por isso que o pen-down FALA** — a quarta entrada da família do
+`recusa.rs`, e a **primeira que não é uma ausência**: as três de antes dizem
+*«falta-te uma coisa»*, esta diz *«o que vais fazer vai CUSTAR uma que tu
+tens»*. Ela não bloqueia; põe o preço à vista antes de ele ser pago.
+
+⚠️ **A lente é a do CONSUMIDOR** (`refina_no_dyntopo` ∪ `colapsa_no_dyntopo`) e
+não a do interruptor: um verbo que não mexe na topologia deixa-a em paz mesmo
+com o passe ligado, e *um aviso que soa sempre é ruído que o artista aprende a
+ignorar — exactamente quando ele passar a ser verdade*.
+
+⛔ **Suprimir o passe de topologia enquanto o plano está armado é DECISÃO DO
+DONO**, e fica aberta com as duas frases que a põem.
+
+### §16.5 — ⛔⛔ O tecto, e a minha conta errada por 2×
+
+A 1.ª redacção do doc do `NIVEL_MAX` dizia *«~3,1 M amostras, 37,7 MB»* para a
+peça de fábrica. **Errado por 2×:** eu contei os interiores de cada quad e
+esqueci que as ARESTAS também levam `L−1` amostras cada.
+
+Medido (gate `o_custo_do_tecto_por_vertice_e_o_que_a_constante_diz`, num toro de
+quads): `1 + 2(L−1) + (L−1)² = L²` ⇒ **`64` amostras por vértice** no tecto, e a
+peça de fábrica (`98 306` vértices) custa **`6,29 M` amostras = `75,5 MB`**
+contra `1,2 MB` do canal por vértice. O nível `4` seria `302 MB` **por peça**.
+
+⚠️ *Um número escrito de cabeça ao lado de um tecto é o palpite que o §0.0
+proíbe*, e a cura não é corrigir o número — é o gate medi-lo. A fixtura teve de
+trocar de esfera para **toro**: os pólos de uma esfera UV são leques de
+TRIÂNGULOS, e o multiplicador só descreve a família dos quads.
+
+### §16.6 — ⚠️ O que o CLIPPY apanhou e o `check` não
+
+Apagar o alias `pipeline::MESH_WGSL` (morto desde que a fonte passou a ser
+COMPOSTA) partiu **cinco** sítios em `lighting_tests.rs` e três em
+`shade_tests.rs`, com `cargo check -p <crate> --all-targets` **verde**: ele não
+compila os testes de uma DEPENDÊNCIA. É a lei que o §5 do roteador já escreve, e
+aqui ela mordeu na direcção barata (falha alto).
+
+### §16.7 — ⛔⛔⛔ Os DOIS defeitos que eu introduzi, achados a RELER
+
+Nenhum dos dois foi apanhado por um teste. Os dois vivem no mesmo sítio: **a
+rota que o produto de facto toma não tinha régua nenhuma** — a bancada de
+paridade tem arnês de compute próprio e nunca chama o `upload_tinta_at`, e a
+suíte de desenho nunca arma um plano.
+
+**(a) `cap_idx` era DERIVADO de `cap_tri`, e mentia na PRIMEIRA subida.**
+
+```
+poe(.., &mut g.cap_tri, origem)   // realoca: cap_tri = tris*4 bytes
+let mut cap_idx = g.cap_tri * 3;  // = tris*12  (um LOCAL, perdido)
+poe(.., &mut cap_idx, idx)        // n <= cap  ⇒  ESCREVE
+```
+
+O `origem` realoca e actualiza o `cap_tri`; `cap_tri * 3` já descreve o tamanho
+NOVO enquanto o `idx` ainda é o buffer-dummy de `16` bytes ⇒ `write_buffer` de
+milhares de bytes lá dentro = **erro de validação do `wgpu`**. ⭐ *Uma
+capacidade derivada da de outro buffer é uma segunda resposta à pergunta «quanto
+cabe AQUI?»* ⇒ `cap_idx` é campo.
+
+⚠️ **E o que escondia a classe era um ACIDENTE:** as capacidades iniciais diziam
+`4` sobre buffers de `16` bytes — conservador por engano. *Uma capacidade que
+mente para baixo só desperdiça; uma que mente para cima escreve fora do buffer*,
+e o `4` fazia a primeira parecer inofensiva. Hoje elas são o tamanho real.
+
+⇒ gate novo [`tinta_no_device.rs`], com **a sequência que estoura**: subir, e
+subir outra vez MAIOR. Uma subida só não chega — o defeito nasce da realocação.
+⚠️ E o veredito vem do `ErrorScopeGuard` do `wgpu` 29: uma escrita fora do
+buffer é um erro de VALIDAÇÃO, entregue por callback e não por `Result` — sem o
+escopo o teste passaria com o device a acumular erros em silêncio.
+
+**(b) O PLANO não contava no peso da peça.**
+
+O braço `StrokeUndo::RemovedObject` guarda um `SceneObject` **inteiro**, logo
+apagar uma peça com tinta fina armada punha até `75 MB` na fila de desfazer
+**invisíveis ao tecto em bytes que existe para os impedir**. ⛔ E o doc do
+`footprint_bytes` dizia, por escrito, *«a pilha inteira, que é tudo o que tem
+tamanho aqui»* — **uma enumeração fechada num doc é uma afirmação que o campo
+seguinte contradiz em silêncio**. ⇒ `Tinta::footprint_bytes` (na crate que
+POSSUI os vectores) e a soma, com o CONTROLO no gate: sem plano, o número não
+muda.
+
+### §16.8 — ⛔⛔ E o ARNÊS da mutação mentiu CINCO vezes, com o CONTROLO dentro
+
+A 1.ª corrida deu `9 de 15` com **cinco abortos** *«zero testes correram»* — e
+um deles era o **CONTROLO** (uma linha em branco, que não pode abortar).
+Corridas à mão provaram que as cinco de facto **SANGRAVAM**: a `M6`, medida
+isolada, dá `rc = 101` com `257` testes contados e o teste certo vermelho.
+
+⚠️ *Um aborto MUDO lê-se exactamente como uma mutação que não entrou*, e nas
+duas leituras o número final é o mesmo. ⇒ o aborto passa a **IMPRIMIR as últimas
+linhas da corrida**: *um instrumento que se declara inconclusivo sem dizer
+porquê não é mais honesto que um que mente.*
+
+⭐⭐⭐ **E a prova que ele passou a imprimir acusou o BINÁRIO DE TESTE:** as cinco
+mensagens são a mesma — `signal: 11, SIGSEGV` no processo do `--lib` da
+`ph2d-app-sculpt3d`, que é o defeito **já NOMEADO** no `CLAUDE.md` §5 desde
+19/09 e que nenhuma medição soube atribuir. Ele mata o processo inteiro e leva o
+`test result:` com ele ⇒ *o arnês reportava o próprio acidente*.
+
+⭐⭐ **A cura estava escrita na mesma nota:** o `nextest` corre **um processo por
+teste** e lê `229/229` em 3 de 3 na mesma árvore. Hoje o `corrida()` é
+`cargo nextest run`, e a população é o **`N tests run`** do `Summary` —
+⚠️ **nunca o `running N tests` do libtest, que CONTA os `#[ignore]`**. Medido
+depois da troca: `296 tests run: 296 passed`, **zero abortos**.
+
+### §16.8-bis — ⛔⛔⛔ E com o arnês honesto sobrou UMA sobrevivente REAL: uma barra ESCOLHIDA
+
+A `M13` leva as `LATITUDES` da cena `=52` de `24` para `96` — a peça passa de
+**`738` para `3 042`** vértices, **quatro vezes mais fina** — e o gate da peça
+grossa **passava**. Ele pedia *«pelo menos `4×` mais grossa que a irmã»*
+(`3 042 × 4 = 12 168 < 13 682` ✅) e *«entre `400` e `4 000` vértices»* (`3 042`
+✅), e **nenhuma das duas nomeava recurso nenhum** (§0.0).
+
+⭐⭐⭐ **A barra nova DERIVA-SE, e os dois lados dela já existem no produto:** a
+fileira tem quatro chips e a peça da `=51` é a densidade em que a marca por
+vértice **já sai limpa** — a cena que o dono aprovou. ⇒
+
+> **o chip que o roteiro manda carregar tem de ser o PRIMEIRO da fileira que
+> alcança essa densidade.**
+
+Ela aperta pelos **dois** lados sem uma constante escolhida: com a peça fina de
+mais o `4x` já lá chega (a mutação), com a peça grossa de mais **nem o `8x`
+chega** e a cena promete um detalhe que o produto não entrega.
+
+⚠️ **A contagem sai da `Tinta` e nunca da fórmula `L²`** — os pólos de uma
+esfera UV são leques de TRIÂNGULOS, e o multiplicador só descreve quads (a mesma
+armadilha do §16.5). ⭐ E o **CONTROLO do gate é a própria mutação**: ele
+constrói a peça `4×` mais fina e exige que ela alcance a densidade limpa **antes**
+do topo — *sem isso a régua podia responder «é o último» por vácuo*.
+
+**Placar final: `15 de 16 sangram`**, com a `16.ª` a ser o CONTROLO, que não
+pode. ⚠️ *Foram precisas TRÊS corridas para o número querer dizer alguma coisa —
+as duas primeiras mediam o instrumento, não o produto.*
+
+### §16.9 — ⏳ O que fica ABERTO
+
+- **A cor não viaja no `.ph2dproj`** — herdado da wave da pintura, e o plano
+  herda a mesma dívida.
+- **O upload é INTEIRO e por quadro durante um traço** (`O(V + F)`): a escrita
+  da tinta fina é por AMOSTRA e não passa pelo `dirty`, que é uma janela de
+  VÉRTICES — não há upload parcial a que recorrer. O custo por quadro **não foi
+  varrido** (a máquina esteve entre `load 10` e `27` a jornada inteira, e
+  nenhuma leitura de relógio vale nada acima de `~5`).
+- **Voltar a `Mesh` perde o detalhe fino**, e o roteiro da `=52` di-lo no passo
+  (5) em vez de o esconder.
+- **O passe de topologia com o plano armado** — decisão do dono (§16.4).
 
 ---
 

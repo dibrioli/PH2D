@@ -623,3 +623,69 @@ fn measure_what_the_refresh_region_is_made_of() {
            A fração acima é o TETO do que paralelizá-la pode devolver."
     );
 }
+
+/// ⭐⭐⭐ **A ORIGEM DE CADA TRIÂNGULO CONCORDA COM O ÍNDICE DELE, um a um** —
+/// o `@builtin(primitive_index)` de um shader numera TRIÂNGULOS e a tinta mora
+/// nas FACES, logo a ponte entre os dois é o que esta porta entrega.
+///
+/// ⚠️⚠️ **A fixtura tem de ter as DUAS formas, e isso é o gate:** com uma
+/// malha só de triângulos o bit `sub` é **sempre zero** e a metade que
+/// converte as baricêntricas da segunda metade de um quad nunca é cruzada —
+/// a mesma cegueira que uma fixtura de triângulos já custou à lei da leitura.
+/// O cubo é de quads e o tetraedro de triângulos; juntos, o corpus tem `sub`
+/// nos dois valores, e o controlo positivo conta-os.
+///
+/// ⭐ E a régua NÃO é uma contagem: ela refaz cada triângulo a partir da
+/// origem declarada (`face >> 1`, `sub & 1`) e exige o **mesmo trio**. *Uma
+/// contagem igual com a origem trocada é exactamente o defeito que isto existe
+/// para impedir — a tinta de uma face desenhada noutra.*
+#[test]
+fn a_origem_de_cada_triangulo_concorda_com_o_indice_dele() {
+    for (nome, m) in [
+        ("cubo (só quads)", shapes::cube(2.0)),
+        ("octaedro (só triângulos)", shapes::octahedron(1.0)),
+        ("esfera (quads + os pólos)", shapes::uv_sphere(8, 12, 1.0)),
+    ] {
+        let mut tris = Vec::new();
+        let mut origem = Vec::new();
+        m.triangle_indices_com_origem(&mut tris, Some(&mut origem));
+
+        assert_eq!(tris.len(), origem.len(), "{nome}: as duas listas divergem");
+        assert_eq!(
+            tris.len(),
+            m.triangle_count(),
+            "{nome}: a varredura não emitiu um triângulo por triângulo"
+        );
+
+        let mut subs = [0usize; 2];
+        for (n, (t, &o)) in tris.iter().zip(origem.iter()).enumerate() {
+            let (fi, sub) = ((o >> 1) as usize, (o & 1) as usize);
+            assert!(
+                fi < m.face_count(),
+                "{nome}, triângulo {n}: face {fi} não existe"
+            );
+            subs[sub] += 1;
+            assert_eq!(
+                *t,
+                m.faces()[fi].tri_at(sub),
+                "{nome}, triângulo {n}: a origem declarada ({fi}, {sub}) refaz outro trio"
+            );
+        }
+
+        // ⭐ CONTROLO: a porta sem origem entrega EXACTAMENTE a mesma lista —
+        //   é isto que impede as duas de divergirem no dia da outra diagonal.
+        let mut so_tris = Vec::new();
+        m.triangle_indices(&mut so_tris);
+        assert_eq!(so_tris, tris, "{nome}: as duas portas divergiram");
+
+        // ⭐ CONTROLO: numa malha de quads o `sub = 1` TEM de aparecer, senão
+        //   este gate mede meia lei.
+        if m.faces().iter().any(|f| !f.is_tri()) {
+            assert!(subs[1] > 0, "{nome}: nenhum segundo triângulo de quad");
+        }
+        assert!(
+            subs[0] == m.face_count(),
+            "{nome}: nem toda face emitiu o primeiro"
+        );
+    }
+}

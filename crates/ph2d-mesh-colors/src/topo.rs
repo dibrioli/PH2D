@@ -116,6 +116,21 @@ impl Topologia {
         }
     }
 
+    /// ⭐ **Os dois globais que o payload não traz** — quantos vértices e
+    /// quantas arestas distintas a malha tem. Um leitor do
+    /// [`Self::payload`] precisa dos dois para saber onde cada bloco começa,
+    /// e eles são da MALHA e não da face, logo não cabem num registo.
+    #[must_use]
+    pub fn verts(&self) -> usize {
+        self.verts
+    }
+
+    /// Quantas arestas distintas — ver [`Self::verts`].
+    #[must_use]
+    pub fn arestas(&self) -> usize {
+        self.arestas
+    }
+
     /// Quantas faces.
     #[must_use]
     pub fn faces(&self) -> usize {
@@ -159,5 +174,51 @@ pub fn interior_por_face(cantos: usize, lado: u32) -> u32 {
         l.saturating_mul(l.saturating_sub(1)) / 2
     } else {
         l * l
+    }
+}
+
+/// Quantos `u32` um registo de face ocupa no [`Topologia::payload`].
+pub const PAYLOAD_STRIDE: usize = 10;
+
+impl Topologia {
+    /// ⭐⭐⭐ **A TOPOLOGIA ACHATADA para quem não tem `Vec`** — o registo por
+    /// face que um shader lê para resolver um endereço.
+    ///
+    /// Por face, `PAYLOAD_STRIDE` palavras:
+    ///
+    /// | fatia | o quê |
+    /// |---|---|
+    /// | `0..4` | os cantos, com o sentinela [`TRI`] no slot `3` de um triângulo |
+    /// | `4..8` | `id << 1 \| virada` de cada lado, e [`TRI`] no slot `7` de um triângulo |
+    /// | `8` | o início do bloco de interior desta face |
+    /// | `9` | quantos cantos (`3` ou `4`) |
+    ///
+    /// ⚠️ **Nenhuma posição fica sem dono**, e as duas que um triângulo não usa
+    /// levam o sentinela em vez de lixo — *uma posição sem dono e sem régua é
+    /// onde o campo seguinte aterra por engano*, e há gate a exigir o valor.
+    ///
+    /// ⛔ Os cantos NÃO vivem na [`Topologia`] (o [`crate::indice`] recebe-os
+    /// de quem chama), logo ela precisa das faces **outra vez** — e têm de ser
+    /// as MESMAS, na mesma ordem, senão o payload descreve outra malha. O gate
+    /// confere o registo contra o [`crate::indice`] face a face.
+    pub fn payload<'a>(&self, faces: impl Iterator<Item = &'a [u32]>, out: &mut Vec<u32>) {
+        out.clear();
+        out.reserve(self.faces() * PAYLOAD_STRIDE);
+        for (f, cantos) in faces.enumerate() {
+            let n = crate::cantos(cantos);
+            debug_assert_eq!(n, self.cantos_de(f), "o payload recebeu outra face");
+            for s in 0..4 {
+                out.push(if s < n { cantos[s] } else { TRI });
+            }
+            for s in 0..4 {
+                out.push(if s < n {
+                    self.lado_da_face[4 * f + s]
+                } else {
+                    TRI
+                });
+            }
+            out.push(self.off_interior[f]);
+            out.push(n as u32);
+        }
     }
 }

@@ -141,6 +141,24 @@ muta amostragem.rs \
   'let v = uv[1];' \
   'M13 leitura_quad: um v fora nao e cortado'
 
+# ── M14: o payload perde o bit da VIRADA ──────────────────────────────────
+muta topo.rs \
+  '                    self.lado_da_face[4 * f + s]' \
+  '                    self.lado_da_face[4 * f + s] & !1' \
+  'M14 payload: a virada da aresta nao viaja'
+
+# ── M15: todas as faces partilham o inicio do interior ────────────────────
+muta topo.rs \
+  'out.push(self.off_interior[f]);' \
+  'out.push(self.off_interior[0]);' \
+  'M15 payload: o bloco de interior e o mesmo para todas as faces'
+
+# ── M16: os cantos viajam ao contrario ────────────────────────────────────
+muta topo.rs \
+  'out.push(if s < n { cantos[s] } else { TRI });' \
+  'out.push(if s < n { cantos[n - 1 - s] } else { TRI });' \
+  'M16 payload: os cantos viajam invertidos'
+
 echo
 echo "MUTACAO: $sangram de $total sangram"
 [ "$sangram" -eq "$total" ]

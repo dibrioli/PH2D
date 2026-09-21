@@ -392,3 +392,101 @@ fn um_ponto_fora_do_quad_e_cortado_e_nao_da_a_volta() {
         }
     }
 }
+
+/// ⭐⭐⭐⭐ **O PAYLOAD RESOLVE O MESMO ENDEREÇO QUE A LEI, amostra a amostra** —
+/// e este teste é, de propósito, **a implementação de referência do gémeo em
+/// WGSL**: ele resolve os endereços usando *só* o registo achatado e os três
+/// globais, que é exactamente o que um shader tem na mão.
+///
+/// ⛔⛔ Sem ele, o payload é uma segunda redacção da disposição — e a forma
+/// como isso falha não é um erro, é **tinta no sítio errado**: uma face lê o
+/// bloco de outra, ou uma aresta lê-se ao contrário. *Uma contagem igual com
+/// endereços trocados passa em toda régua que conte.*
+///
+/// ⚠️ A régua percorre as DUAS retículas (tri e quad) nas quatro faces da
+/// grelha e nas quatro do tetraedro, em todos os níveis — e compara contra a
+/// [`Tinta::indice_de`], que é a porta do produto.
+#[test]
+fn o_payload_resolve_o_mesmo_endereco_que_a_lei() {
+    use super::topo::{PAYLOAD_STRIDE, TRI};
+
+    /// O que um shader faz: do registo da face e dos três globais, ao índice.
+    fn le(reg: &[u32], lado: u32, verts: u32, arestas: u32, sitio: Sitio) -> u32 {
+        match sitio {
+            Sitio::Canto(c) => reg[c],
+            Sitio::Aresta { lado_da_face, t } => {
+                let w = reg[4 + lado_da_face];
+                let (id, virada) = (w >> 1, w & 1 == 1);
+                let t = if virada { lado - t } else { t };
+                verts + id * (lado - 1) + (t - 1)
+            }
+            Sitio::Interior(n) => verts + arestas * (lado - 1) + reg[8] + n,
+        }
+    }
+
+    let (_, quads) = grelha_de_quads();
+    let tetra: Vec<Vec<u32>> = vec![vec![0, 2, 1], vec![0, 1, 3], vec![0, 3, 2], vec![1, 2, 3]];
+    for (nome, verts_n, faces) in [("grelha de quads", 9usize, quads), ("tetraedro", 4, tetra)] {
+        let it = || faces.iter().map(|f| &f[..]);
+        for nivel in 0..=3u8 {
+            let t = Tinta::nova(verts_n, it(), nivel);
+            let l = t.lado();
+            let topo = t.topologia();
+            let mut pay = Vec::new();
+            topo.payload(it(), &mut pay);
+            assert_eq!(
+                pay.len(),
+                faces.len() * PAYLOAD_STRIDE,
+                "{nome}: o payload não tem um registo por face"
+            );
+            let (verts, arestas) = (topo.verts() as u32, topo.arestas() as u32);
+
+            let mut conferidas = 0usize;
+            for (fi, f) in faces.iter().enumerate() {
+                let reg = &pay[fi * PAYLOAD_STRIDE..(fi + 1) * PAYLOAD_STRIDE];
+                // ⭐ CONTROLO: o slot que um triângulo não usa leva o sentinela.
+                if f.len() == 3 {
+                    assert_eq!(
+                        reg[3], TRI,
+                        "{nome}, face {fi}: o canto 3 não é o sentinela"
+                    );
+                    assert_eq!(reg[7], TRI, "{nome}, face {fi}: o lado 3 não é o sentinela");
+                }
+                assert_eq!(
+                    reg[9] as usize,
+                    f.len(),
+                    "{nome}, face {fi}: contagem de cantos"
+                );
+
+                let mut ver = |sitio: Sitio| {
+                    let esperado = t.indice_de(fi, f, sitio);
+                    let lido = le(reg, l, verts, arestas, sitio);
+                    assert_eq!(
+                        lido, esperado,
+                        "{nome}, nível {nivel}, face {fi}, {sitio:?}: o payload \
+                         resolve {lido} e a lei resolve {esperado}"
+                    );
+                    conferidas += 1;
+                };
+                if f.len() == 3 {
+                    for i in 0..=l {
+                        for j in 0..=(l - i) {
+                            ver(sitio_tri(l, i, j, l - i - j));
+                        }
+                    }
+                } else {
+                    for j in 0..=l {
+                        for i in 0..=l {
+                            ver(sitio_quad(l, i, j));
+                        }
+                    }
+                }
+            }
+            // ⭐ CONTROLO: uma régua que não visita nada passa por vácuo.
+            assert!(
+                conferidas >= faces.len() * (l as usize + 1),
+                "{nome}, nível {nivel}: só {conferidas} amostras conferidas"
+            );
+        }
+    }
+}

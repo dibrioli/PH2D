@@ -194,6 +194,10 @@ struct SegmentoDaPele<'a> {
     /// ⭐⭐⭐ **O CAMPO DO DOMÍNIO, quando o bind o guardou** — ver [`Self::pesos`].
     /// ⭐⭐⭐ **O CAMPO DO DOMÍNIO, quando o bind o guardou** — ver [`Self::pesos`].
     campo: Option<&'a crate::pesos::CampoDoDominio>,
+    /// ⭐⭐⭐ **O ÍNDICE da malha do campo** — derivado UMA vez por forma pelo chamador. Sem ele a
+    /// consulta varre TODOS os triângulos, e isso é `95 %` do custo de amostrar um ponto
+    /// ([`crate::pesos::IndiceDoCampo`]).
+    indice: Option<&'a crate::pesos::IndiceDoCampo>,
     /// ⭐⭐⭐ **A leitura `C¹` do MESMO campo** — ver [`crate::pesos_suave`].
     ///
     /// ⛔⛔ **Os DOIS coexistem de propósito, e a 1.ª redacção não os separou:** ela punha só o
@@ -229,7 +233,7 @@ impl SegmentoDaPele<'_> {
         let lida = self
             .suave
             .and_then(|s| s.linha(p))
-            .or_else(|| self.campo.and_then(|c| c.linha(p)));
+            .or_else(|| self.campo.and_then(|c| c.linha_com(p, self.indice)));
         if let Some(linha) = lida {
             self.pele
                 .weights_corrected(p, Some(&linha), &mut w, self.correcoes);
@@ -265,6 +269,25 @@ impl SegmentoDaPele<'_> {
             self.pele.blend_linear(p, w)
         };
         Point::new(q[0], q[1])
+    }
+
+    /// ⭐⭐⭐ **A IMAGEM E A TANGENTE** — o par que um fitter adaptativo exige.
+    ///
+    /// A derivada é a **diferença central da própria função de amostragem**, em `t`. ⛔ A forma
+    /// fechada existiria, mas atravessaria o `quota` de um osso que dobra e o bump de cada mancha,
+    /// e **cada um deles é um ramo** — a lei ficaria escrita duas vezes e a segunda envelhece.
+    /// *Uma diferença central da MESMA função é consistente com ela por construção, que é o que o
+    /// contrato do fitter de facto exige* (o cabeçalho da [`ph2d_vec_envelope::Warp`] mede o
+    /// sintoma de a quebrar: o fit **não converge**).
+    ///
+    /// ⚠️ **Nas pontas a diferença é de UM LADO só**, e não por zelo: fora de `[0, 1]` a mistura
+    /// `lerp(ra, rb, t)` extrapola a tabela de pesos, e uma tangente tirada de pesos que não
+    /// existem é ruído com cara de derivada.
+    fn ponto_e_tangente(&self, t: f64) -> (Point, Vec2) {
+        const H: f64 = 1e-6;
+        let (a, b) = ((t - H).max(0.0), (t + H).min(1.0));
+        let (pa, pb) = (self.ponto(a), self.ponto(b));
+        (self.ponto(t), (pb - pa) / (b - a))
     }
 
     /// A imagem de `C(t)`.
@@ -368,6 +391,10 @@ pub fn aplica_pela_curva_com(
         .filter(|_| lei_c1_activa())
         .and_then(crate::pesos_suave::CampoSuave::novo);
     let suave_ref = suave.as_ref();
+    // ⭐⭐⭐ **O ÍNDICE DA MALHA, derivado UMA VEZ POR FORMA** — a mesma disciplina dos gradientes
+    // acima, e pela mesma razão elevada ao quadrado: sem ele cada amostra varre os `878`
+    // triângulos da malha, o que é `95 %` do custo de amostrar um ponto.
+    let indice = campo.and_then(|c| crate::pesos::IndiceDoCampo::novo(&c.malha));
     let ossos = if pesos.is_empty() {
         0
     } else {
@@ -389,6 +416,7 @@ pub fn aplica_pela_curva_com(
                 correcoes,
                 rigido,
                 campo,
+                indice: indice.as_ref(),
                 suave: suave_ref,
             };
             let Some((alvo, _)) = path.contour_mut(c) else {
@@ -408,6 +436,168 @@ pub fn aplica_pela_curva_com(
         }
         base += n;
     }
+}
+
+impl kurbo::ParamCurveFit for SegmentoDaPele<'_> {
+    fn sample_pt_tangent(&self, t: f64, _sign: f64) -> kurbo::CurveFitSample {
+        // `sign` escolhe de que lado de uma descontinuidade amostrar. Ignorá-lo é coerente com o
+        // `break_cusp` abaixo: não há lado a escolher.
+        let (p, tangent) = self.ponto_e_tangente(t);
+        kurbo::CurveFitSample { p, tangent }
+    }
+
+    fn sample_pt_deriv(&self, t: f64) -> (Point, Vec2) {
+        self.ponto_e_tangente(t)
+    }
+
+    /// ⚠️ **Nenhuma cúspide, e aqui isso é uma AFIRMAÇÃO MAIS FRACA que a da irmã** — a
+    /// [`ph2d_vec_envelope`] prova que nenhum mapa dela dobra; a pele **pode** dobrar (o mapa dobra
+    /// sobre si mesmo em dobras fortes, e isso está declarado em aberto no §5 do `CLAUDE.md`).
+    /// ⛔ O custo de o deixar em `None` é o que a doc do kurbo diz — cúspide perdida vira mais
+    /// subdivisão, *«generally not a disaster»* —, e é por isso que o **tecto de segmentos** da
+    /// [`refit_pela_curva`] não é decoração.
+    fn break_cusp(&self, _range: core::ops::Range<f64>) -> Option<f64> {
+        None
+    }
+}
+
+/// **Como o campo é LIDO** — que campo, e com que continuidade.
+///
+/// ⚠️ **Ela existe porque a `c1` viaja como PARÂMETRO aqui** (ao contrário da irmã
+/// [`aplica_pela_curva_com`], que a lê do ambiente lá dentro — dívida nomeada no gate
+/// `a_leitura_c1_cura_o_campo_e_nao_chega_ao_desenho`), e porque um oitavo argumento solto é o
+/// que o clippy recusa com razão: *dois booleanos e um `Option` soltos numa assinatura são três
+/// oportunidades de os trocar de ordem.*
+#[derive(Clone, Copy)]
+pub struct LeituraDoCampo<'a> {
+    /// O campo do domínio, quando o bind o guardou.
+    pub campo: Option<&'a crate::pesos::CampoDoDominio>,
+    /// A leitura com derivada contínua ([`crate::pesos_suave`]).
+    pub c1: bool,
+}
+
+/// ⭐⭐⭐ **O SEGUNDO CORPO — a curva RE-AJUSTADA, com os pontos que ela precisar.**
+///
+/// ⚠️⚠️ **Ela NÃO escreve no caminho: devolve um caminho NOVO.** É essa a diferença inteira com a
+/// [`aplica_pela_curva_com`] — aquela deforma *o caminho do artista* e por isso está presa à
+/// contagem de nós dele; esta produz *o que se desenha*, e pode pôr quantos nós forem precisos.
+///
+/// # ⛔⛔⛔ ELA FOI MEDIDA E RECUSADA — e fica com a tabela ao lado
+///
+/// Ordem do dono (2026-09-20): *«vamos tentar dar à forma presa dois corpos **se o custo em
+/// performance não for muito alto**»*. A condição era o preço; ele foi medido **antes** de a rota
+/// existir, e não passa. Barra da cena a `90°` em S, `--release`, `load < 6`, pela porta do
+/// produto (sonda [`ph2d_skeleton_live::skinned_mesh::rive_tests`]):
+///
+/// | lei | nós | µs/forma | desvio ao ouro (p90) |
+/// |---|---:|---:|---:|
+/// | **a lei de HOJE** (o bind subdivide, o ajuste corrige) | `54` | **`105`** | **`0,00094`** |
+/// | este refit, campo `C¹`, tolerância `0,03 %` | `61` | `4 889` | `0,00221` |
+/// | *(sobre a fonte SEM o bind)* a lei de hoje | `8` | `53` | `0,22281` |
+/// | *(sobre a fonte SEM o bind)* este refit | `40` | `4 401` | `0,00256` |
+///
+/// ⭐⭐⭐ **As duas últimas linhas são a razão inteira.** Sobre `8` nós o refit é **`87×`** mais
+/// fiel — o mecanismo é real, e é exactamente o que faz o `Effects: Arc` parecer perfeito com
+/// poucos pontos. ⇒ **mas o `Bind` já acrescenta os pontos, UMA VEZ**
+/// ([`ph2d_skeleton_live::subdivisao::DIVISOES_POR_OSSO`]) — e a linha 1 contra a linha 4 é a
+/// comparação que importa: **`bind + lei de hoje` é `2,7×` mais fiel que `sem bind + refit`, por
+/// `1/42` do preço.** (Sobre a MESMA fonte de `54` nós a margem é `2,4×`, linha 1 contra 2.)
+/// *Acrescentar pontos ao PRENDER ganha de acrescentá-los por QUADRO, nas duas colunas.*
+///
+/// ⛔ E o preço em si: `3`–`4,9 ms` por forma por quadro é **`18`–`29 %` de um quadro para UMA
+/// forma**, e `1,5`–`2,3` quadros às oito formas presas da cena. A condição do dono não é
+/// cumprida por um factor de `~45`.
+///
+/// ⚠️ **O que a medição comprou não foi esta rota — foi o [`crate::pesos::IndiceDoCampo`]:**
+/// procurando o preço aqui, achou-se que **`96 %`** do custo de amostrar um ponto era uma busca
+/// linear sobre os `878` triângulos da malha, paga **também pela lei que ship**. Indexá-la levou o
+/// recook de `336` para **`105 µs`**.
+///
+/// ⚠️ Ela FICA, com esta tabela, porque *o que foi medido e rejeitado não se reconstrói* — e
+/// porque a sonda que a mede é a prova executável da recusa.
+///
+/// # ⛔⛔⛔ O `c1` NÃO é um acabamento aqui — ele é a PRÉ-CONDIÇÃO
+///
+/// A tabela de pesos do padrão-ouro é lida por coordenadas **baricêntricas** sobre a malha BBW,
+/// que é um elemento finito **LINEAR**: o valor é contínuo e o **gradiente SALTA em cada aresta**
+/// da malha. O contorno da barra do dono atravessa **119** delas ⇒ a curva verdadeira tem um bico
+/// de tangente em cada uma, e *um fitter adaptativo põe um nó em cada bico*. Medido na barra a
+/// `90°` em S, a partir de `54` nós:
+///
+/// | leitura do campo | nós que o refit emite | pior desvio |
+/// |---|---:|---:|
+/// | baricêntrica (`c1 = false`) | **`147`** | **`1,588`** |
+/// | **`C¹`** ([`crate::pesos_suave`]) | **`80`** | **`0,0041`** |
+/// | sem campo nenhum (a mistura, contínua) | `54` | `0,012` |
+///
+/// ⇒ **`389×`** de fidelidade e **`~2×`** menos nós, só por o gradiente ser contínuo. ⚠️ E a linha
+/// de baixo é o controlo que nomeia a causa: sem campo a lei é contínua e o fitter não acrescenta
+/// **um único nó**.
+///
+/// ⭐ Isto reescreve o valor de fábrica da porta `C¹`: pelo caminho de HOJE ela compra um
+/// acabamento invisível (`κ+ 3,16° → 1,98°`) por `17 %` de um quadro; por ESTE caminho ela é a
+/// diferença entre funcionar e não.
+#[must_use]
+pub fn refit_pela_curva(
+    pele: &Skin,
+    fonte: &VecPath,
+    pesos: &[f64],
+    correcoes: &[Correccao],
+    rigido: bool,
+    leitura: LeituraDoCampo<'_>,
+    tolerancia: f64,
+) -> VecPath {
+    let LeituraDoCampo { campo, c1 } = leitura;
+    let mut out = fonte.clone();
+    // ⚠️ **Aqui a leitura `C¹` é PARÂMETRO e não uma variável de ambiente**, ao contrário da irmã
+    // [`aplica_pela_curva_com`] — que a lê lá dentro e cuja dívida está nomeada no gate
+    // `a_leitura_c1_cura_o_campo_e_nao_chega_ao_desenho`. *Uma lei que um gate não pode controlar
+    // sem o ambiente é uma lei que, sob `cargo test`, vaza entre testes.*
+    let suave = campo
+        .filter(|_| c1)
+        .and_then(crate::pesos_suave::CampoSuave::novo);
+    let indice = campo.and_then(|c| crate::pesos::IndiceDoCampo::novo(&c.malha));
+    let ossos = if pesos.is_empty() {
+        0
+    } else {
+        pesos.len() / (fonte.verts_all().count() * 3).max(1)
+    };
+    let mut base = 0usize;
+    for c in 0..fonte.contour_count() {
+        let Some((verts, fechado)) = fonte.contour(c) else {
+            continue;
+        };
+        let n = verts.len();
+        let segs = if fechado { n } else { n.saturating_sub(1) };
+        if segs == 0 {
+            continue;
+        }
+        let mut cubicas: Vec<[Point; 3]> = Vec::new();
+        let mut inicio = Point::ZERO;
+        for k in 0..segs {
+            let s = SegmentoDaPele {
+                src: cubica(verts, k, n),
+                pele,
+                ra: linha(pesos, ossos, base + k),
+                rb: linha(pesos, ossos, base + (k + 1) % n),
+                correcoes,
+                rigido,
+                campo,
+                indice: indice.as_ref(),
+                suave: suave.as_ref(),
+            };
+            if k == 0 {
+                inicio = s.ponto(0.0);
+            }
+            let fitado = kurbo::fit_to_bezpath(&s, tolerancia);
+            ph2d_vec_envelope::push_cubics(&fitado, &mut cubicas);
+        }
+        if let Some((alvo, _)) = out.contour_mut(c) {
+            *alvo = ph2d_vec_envelope::rebuild(&cubicas, inicio, fechado);
+        }
+        base += n;
+    }
+    out
 }
 
 /// Quantas amostras interiores por segmento alimentam o ajuste das alças.

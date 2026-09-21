@@ -77,7 +77,7 @@ fn cobertura(kind: ShapeKind, size: [f64; 2]) -> (usize, usize) {
                         + c3 * b.anchor[1],
                 ];
                 total += 1;
-                if amostra_achatada(&malha, &campo, para_malha(p), 2).is_none() {
+                if amostra_achatada(&malha, &campo, para_malha(p), 2, None).is_none() {
                     fora += 1;
                 }
             }
@@ -128,7 +128,7 @@ fn a_regua_da_cobertura_sabe_ver_um_ponto_de_fora() {
     let campo: Vec<f64> = vec![0.5; malha.rest.len() * 2];
     let longe = para_malha([size[0] * 10.0, size[1] * 10.0]);
     assert!(
-        amostra_achatada(&malha, &campo, longe, 2).is_none(),
+        amostra_achatada(&malha, &campo, longe, 2, None).is_none(),
         "a régua devolveu pesos para um ponto a dez larguras da forma — ela não discrimina nada"
     );
 }
@@ -192,4 +192,137 @@ fn o_segmento_toca_a_celula_mesmo_sem_extremo_dentro() {
         !cruza_a_celula([-5.0, 20.0], [15.0, 20.0], x0, y0, x1, y1),
         "⛔ passar AO LADO (a caixa do segmento não cruza a da célula) não é tocar"
     );
+}
+
+/// ⭐⭐⭐ **GATE — O ÍNDICE DÁ A MESMA RESPOSTA QUE A VARREDURA, e a grelha não é uma célula só.**
+///
+/// O [`super::IndiceDoCampo`] existe para tirar a consulta de `O(triângulos)` — e a única coisa
+/// que ele não pode fazer é mudar a resposta.
+///
+/// # As três metades
+///
+/// 1. **A resposta é a mesma AO BIT** em toda a caixa da malha, dentro e fora — medido, `0e0`
+///    sobre `229` amostras interiores. ⚠️ Em teoria ela podia diferir no arredondamento: num
+///    ponto sobre uma ARESTA os dois caminhos escolhem triângulos diferentes (a varredura toma o
+///    primeiro na ordem de `tris`, o índice o primeiro do balde) e os dois estão certos. *A
+///    medição diz que aqui isso não acontece, e por isso a barra é a mais apertada que há.*
+/// 2. **Ele responde `Some` onde a varredura responde `Some`** — um índice que perdesse o
+///    triângulo devolveria `None` e a lei cairia na mistura, que é arte errada em silêncio.
+/// 3. ⛔ **A grelha tem de DIVIDIR** — sem esta metade um índice de uma célula só passa nas duas
+///    primeiras e não indexa nada. A régua é o maior balde contra o total de triângulos.
+#[test]
+fn o_indice_da_a_mesma_resposta_que_a_varredura() {
+    let size = [200.0_f64, 80.0];
+    let path = cook(ShapeKind::Star, [0.0, 0.0], size, &[]);
+    let aneis = contornos_fechados(&path);
+    let ossos = ossos_do_membro(size[0], size[1]);
+    let (malha, _) = malha_do_dominio_com_regua(&aneis, &ossos).expect("domínio");
+    // ⚠️ Pesos DISTINTOS por vértice: um campo constante faria a metade da igualdade passar mesmo
+    // que o índice escolhesse outro triângulo — a régua tem de conseguir ver a diferença.
+    #[expect(clippy::cast_precision_loss, reason = "índice de vértice")]
+    let campo: Vec<f64> = (0..malha.rest.len())
+        .flat_map(|i| {
+            let t = (i as f64 * 0.37).fract();
+            [t, 1.0 - t]
+        })
+        .collect();
+    let idx = super::IndiceDoCampo::novo(&malha).expect("índice");
+    let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
+    for v in &malha.rest {
+        lo = [lo[0].min(v[0]), lo[1].min(v[1])];
+        hi = [hi[0].max(v[0]), hi[1].max(v[1])];
+    }
+    // Uma grelha de amostras que TRANSBORDA a caixa em 20 % de cada lado.
+    let (mut dentro, mut pior) = (0usize, 0.0_f64);
+    const N: usize = 60;
+    for iy in 0..=N {
+        for ix in 0..=N {
+            let f = |i: usize, a: f64, b: f64| {
+                #[expect(clippy::cast_precision_loss, reason = "i <= N")]
+                let t = i as f64 / N as f64;
+                (b - a).mul_add(0.2f64.mul_add(1.4, t * 1.4) - 0.2, a)
+            };
+            // ⚠️⚠️ **As amostras vivem em coordenadas de MALHA**, que é o espaço da `lo`/`hi` e o
+            // que a [`super::amostra_achatada`] recebe. A 1.ª redacção passava-as pela `regua`
+            // outra vez e lia **`27` de `3 721`** dentro — *uma conversão aplicada duas vezes lê-se
+            // como uma fixtura sem fenómeno*, e foi o piso de população que a apanhou.
+            let pm = [f(ix, lo[0], hi[0]), f(iy, lo[1], hi[1])];
+            let p = pm;
+            let varre = super::amostra_achatada(&malha, &campo, pm, 2, None);
+            let com = super::amostra_achatada(&malha, &campo, pm, 2, Some(&idx));
+            assert_eq!(
+                varre.is_some(),
+                com.is_some(),
+                "em {p:?} a varredura diz {:?} e o índice diz {:?} — um índice que PERDE o \
+                 triângulo faz a lei cair na mistura, e isso é arte errada em silêncio",
+                varre.is_some(),
+                com.is_some()
+            );
+            if let (Some(a), Some(b)) = (varre, com) {
+                dentro += 1;
+                for (x, y) in a.iter().zip(&b) {
+                    pior = pior.max((x - y).abs());
+                }
+            }
+        }
+    }
+    assert!(
+        dentro > 150,
+        "só {dentro} amostras caíram DENTRO da malha (medido: 229 de 3 721 — uma estrela enche \
+         pouco da caixa dela, e a grelha transborda 40 %) — a fixtura deixou de conter o fenómeno"
+    );
+    println!("  índice vs varredura: pior diferença de peso {pior:e} em {dentro} amostras");
+    // ⭐⭐ **AO BIT, e isso é medição e não esperança:** `0e0` sobre as 229 amostras. ⚠️ Se um dia
+    // isto reprovar, o suspeito é um ponto sobre uma ARESTA — ali os dois caminhos podem escolher
+    // triângulos diferentes e **os dois estão certos** —, e a cura é afrouxar para `1e-12`,
+    // ***nunca*** para mais: acima disso deixa de ser arredondamento e passa a ser outro peso.
+    assert_eq!(
+        pior, 0.0,
+        "o índice mudou a resposta em {pior} — ele pode escolher outro triângulo numa aresta, mas \
+         não pode dar outro PESO"
+    );
+    // (3) A grelha divide mesmo?
+    let maior = idx.maior_balde();
+    assert!(
+        maior * 4 < malha.tris.len(),
+        "o maior balde tem {maior} dos {} triângulos — esta grelha não indexa nada, e as duas \
+         metades acima passam por vácuo",
+        malha.tris.len()
+    );
+}
+
+/// ⭐⭐⭐ **GATE — A LEI DO PRODUTO DERIVA O ÍNDICE, UMA VEZ POR FORMA.**
+///
+/// ⛔⛔ **Gate de TEXTO, e a razão está medida:** o índice não muda a resposta (é isso que o irmão
+/// [`o_indice_da_a_mesma_resposta_que_a_varredura`] afirma), logo *nenhuma régua de VALOR o vê*.
+/// O que ele muda é o RELÓGIO — `0,839 µs` por ponto para `0,077` —, e um gate de relógio nesta
+/// casa é um membro da família de flakes de carga. ⇒ o que se afirma é o FIO.
+///
+/// ⚠️ **E ele exige as duas coisas:** que a lei da curva o derive, e que o derive **fora** do laço
+/// dos segmentos — derivá-lo por segmento seria construir a grelha `54` vezes por forma, que é
+/// pior do que não a ter.
+#[test]
+fn a_lei_da_curva_deriva_o_indice_uma_vez_por_forma() {
+    let fonte = include_str!("curva.rs");
+    let n = fonte.matches("IndiceDoCampo::novo").count();
+    assert_eq!(
+        n, 2,
+        "a [`crate::curva`] deriva o índice {n} vezes e devia derivá-lo DUAS (uma por lei: a que \
+         ship e o refit medido) — se for 0, cada amostra voltou a varrer os 878 triângulos e o \
+         recook triplica em silêncio"
+    );
+    // ⛔ FORA do laço: a linha que o deriva não pode estar dentro de um `for` de segmentos.
+    for lei in ["pub fn aplica_pela_curva_com(", "pub fn refit_pela_curva("] {
+        let i = fonte.find(lei).expect("a lei existe");
+        let corpo = &fonte[i..];
+        let idx = corpo.find("IndiceDoCampo::novo").expect("deriva o índice");
+        let laco = corpo
+            .find("for k in 0..segs")
+            .expect("o laço dos segmentos");
+        assert!(
+            idx < laco,
+            "em `{lei}` o índice é derivado DENTRO do laço dos segmentos — construir a grelha uma \
+             vez por segmento é mais caro do que não a ter"
+        );
+    }
 }

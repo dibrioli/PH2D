@@ -81,6 +81,9 @@ pub struct CampoSuave<'a> {
     /// MALHA (o mesmo em que `malha.rest` vive).
     grad: Vec<[f64; 2]>,
     ossos: usize,
+    /// ⭐ **O índice da malha, derivado UMA vez com os gradientes** — ver
+    /// [`crate::pesos::IndiceDoCampo`]. `None` só numa malha degenerada.
+    indice: Option<crate::pesos::IndiceDoCampo>,
 }
 
 impl<'a> CampoSuave<'a> {
@@ -92,7 +95,13 @@ impl<'a> CampoSuave<'a> {
         }
         let ossos = campo.ossos();
         let grad = gradientes(campo, ossos);
-        Some(Self { campo, grad, ossos })
+        let indice = crate::pesos::IndiceDoCampo::novo(&campo.malha);
+        Some(Self {
+            campo,
+            grad,
+            ossos,
+            indice,
+        })
     }
 
     /// ⭐⭐⭐ **A linha de pesos em `p`, com derivada contínua** — a irmã `C¹` da
@@ -104,7 +113,15 @@ impl<'a> CampoSuave<'a> {
         let p = self.campo.para_malha_pub(p_local);
         let m = &self.campo.malha;
         let n = self.ossos;
-        for t in &m.tris {
+        // ⭐ O MESMO índice da irmã baricêntrica — a busca era `O(878)` aqui também, e ela é
+        // `95 %` do custo de amostrar um ponto (ver [`crate::pesos::IndiceDoCampo`]).
+        // ⛔⛔ **Sem alocar:** a 1.ª redacção fazia `candidatos(p).to_vec()` e isso é uma alocação
+        // **por amostra de curva** — exactamente o que o cabeçalho da [`crate::pesos`] proíbe para
+        // a tabela achatada, e pela mesma razão: isto corre por ponto, por forma, por quadro.
+        let todos: Option<&[u32]> = self.indice.as_ref().map(|i| i.candidatos(p));
+        let n_tris = m.tris.len();
+        for k in 0..todos.map_or(n_tris, <[u32]>::len) {
+            let t = &m.tris[todos.map_or(k, |c| c[k] as usize)];
             let (ia, ib, ic) = (t[0] as usize, t[1] as usize, t[2] as usize);
             let (a, b, c) = (m.rest[ia], m.rest[ib], m.rest[ic]);
             let den = (b[0] - a[0]).mul_add(c[1] - a[1], -((c[0] - a[0]) * (b[1] - a[1])));

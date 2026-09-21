@@ -70,6 +70,7 @@ fn erros_do_segmento(k: &Skin, fonte: &VecPath, t: &[f64], seg: usize) -> (f64, 
         correcoes: &[],
         rigido: true,
         campo: None,
+        indice: None,
         suave: None,
     };
     const N: usize = 256;
@@ -220,6 +221,7 @@ fn o_ajuste_e_o_optimo_da_cubica_e_conciliar_sai_dele() {
             correcoes: &[],
             rigido: true,
             campo: None,
+            indice: None,
             suave: None,
         };
         let c = super::cubica(&conc.verts, seg, n);

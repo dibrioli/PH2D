@@ -276,3 +276,255 @@ fn diag_d_desenha_as_tres_leis() {
         println!("  {f}");
     }
 }
+
+/// ⭐⭐⭐ **SONDA — O PREÇO DO SEGUNDO CORPO** (ordem do dono, 2026-09-20: *«vamos tentar dar à forma
+/// presa dois corpos SE o custo em performance não for muito alto»*).
+///
+/// A condição é o preço, logo ele mede-se **antes** de a rota existir.
+///
+/// ⛔⛔ **A serpentina e o excesso de curvatura NÃO entram nesta tabela, e isso é uma propriedade
+/// das réguas e não um esquecimento:** as duas passam pela [`b_no_passo`], que faz a
+/// correspondência ser **MATERIAL** interpolando no espaço de ÍNDICE partilhado com o repouso.
+/// *Um caminho com outra contagem de nós não tem esse espaço de índice.* ⇒ aqui a régua é o
+/// desvio ao PADRÃO-OURO, que é geométrico (ponto a polilinha) e atravessa qualquer contagem.
+#[test]
+fn diag_d_o_preco_do_segundo_corpo() {
+    use std::time::Instant;
+    let mut p = b_palco(true);
+    p.reparte_com(1, false);
+    p.lei_do_peso(false);
+    p.dobra_em_s(90.0);
+    let pele = p.pele();
+    let rest = b_amostra_com(&p.fonte, DENSO);
+    let ouro = ideal_denso(&p, &pele, &rest, false);
+    let skin = p
+        .sim
+        .world()
+        .get::<ph2d_skeleton_ecs::SkinBind>(p.alvo)
+        .expect("pele")
+        .clone();
+    let g = crate::skinned_mesh::le(&skin.source).expect("fonte");
+    let pesos = skin.pesos_do_quadro(if g.valida() { &g.pesos } else { &[] });
+    let correcoes = skin.correcoes_resolvidas();
+    let diag = {
+        let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
+        for v in p.fonte.verts_all() {
+            for q in [v.anchor, v.in_handle, v.out_handle] {
+                lo = [lo[0].min(q[0]), lo[1].min(q[1])];
+                hi = [hi[0].max(q[0]), hi[1].max(q[1])];
+            }
+        }
+        (hi[0] - lo[0]).hypot(hi[1] - lo[1])
+    };
+
+    println!("\n{:=<98}", "");
+    println!(
+        "SONDA · O PREÇO DO SEGUNDO CORPO — barra a 90° em S, {} nós na fonte, diagonal {diag:.2}",
+        p.fonte.verts_all().count()
+    );
+    println!("{:=<98}", "");
+    println!(
+        "{:>32} | {:>5} | {:>9} | {:>9} {:>9}",
+        "lei", "nós", "µs/forma", "ouro p90", "máx"
+    );
+    let relogio = |f: &dyn Fn() -> ph2d_vec_scene::VecPath| -> f64 {
+        // Aquece, depois mede por 250 ms — nunca uma corrida só.
+        std::hint::black_box(f());
+        let t = Instant::now();
+        let mut n = 0u32;
+        while t.elapsed().as_millis() < 250 {
+            std::hint::black_box(f());
+            n += 1;
+        }
+        t.elapsed().as_secs_f64() * 1e6 / f64::from(n.max(1))
+    };
+    let mostra = |rot: &str, path: &ph2d_vec_scene::VecPath, us: f64| {
+        let v = b_amostra_com(path, DENSO);
+        let (_, p90, max) = b_perfil(&v, &ouro);
+        println!(
+            "{rot:>32} | {:>5} | {us:>9.1} | {p90:>9.5} {max:>9.5}",
+            path.verts_all().count()
+        );
+    };
+
+    let hoje = || p.produto(true, true);
+    mostra("HOJE (um corpo só)", &hoje(), relogio(&hoje));
+
+    for (rot, c1) in [
+        ("2.º corpo · campo C⁰", false),
+        ("2.º corpo · campo C¹", true),
+    ] {
+        for frac in [0.003_f64, 0.001, 0.0003] {
+            let f = || {
+                ph2d_vec_skin::curva::refit_pela_curva(
+                    &pele,
+                    &g.path,
+                    pesos,
+                    &correcoes,
+                    true,
+                    ph2d_vec_skin::curva::LeituraDoCampo {
+                        campo: g.campo.as_ref(),
+                        c1,
+                    },
+                    frac * diag,
+                )
+            };
+            mostra(
+                &format!("{rot} · tol {:.2}%", frac * 100.0),
+                &f(),
+                relogio(&f),
+            );
+        }
+    }
+    // ⭐⭐ **O CONTROLO que NOMEIA a causa:** sem o campo do domínio a lei é contínua, e o fitter
+    // não acrescenta **um único nó**. Tudo o que ele acrescenta com o campo ligado é a perseguir
+    // o bico de tangente que o elemento finito LINEAR deixa em cada aresta da malha.
+    let sem = || {
+        ph2d_vec_skin::curva::refit_pela_curva(
+            &pele,
+            &g.path,
+            pesos,
+            &correcoes,
+            true,
+            ph2d_vec_skin::curva::LeituraDoCampo {
+                campo: None,
+                c1: false,
+            },
+            0.001 * diag,
+        )
+    };
+    mostra("CONTROLO · sem campo nenhum", &sem(), relogio(&sem));
+
+    let (chao, _, _) = b_chao_com(&p.fonte, &pele, &p.campo, &p.correcoes, DENSO);
+    let (_, p90, max) = b_perfil(&chao, &ouro);
+    println!(
+        "{:>32} | {:>5} | {:>9} | {p90:>9.5} {max:>9.5}",
+        "o CHÃO (com estes nós)",
+        p.fonte.verts_all().count(),
+        "—"
+    );
+
+    // ⭐⭐⭐ **A COMPARAÇÃO QUE DECIDE: e se a fonte NÃO tivesse os nós que o bind põe?**
+    //
+    // O segundo corpo existe para ACRESCENTAR pontos. O `Bind` já acrescenta — uma vez, ao
+    // prender ([`crate::subdivisao::DIVISOES_POR_OSSO`]) — e é por isso que a fonte tem `54` e não
+    // `8`. ⇒ a pergunta honesta não é *«o refit é melhor que a lei de hoje?»*, é ***«acrescentar
+    // pontos por QUADRO é melhor do que acrescentá-los UMA VEZ?»***
+    println!("{:-<98}", "");
+    let base = b_palco(false);
+    let sb = base
+        .sim
+        .world()
+        .get::<ph2d_skeleton_ecs::SkinBind>(base.alvo)
+        .expect("pele")
+        .clone();
+    let gb = crate::skinned_mesh::le(&sb.source).expect("fonte");
+    println!(
+        "{:>32} | {:>5} | {:>9} | {:>9} {:>9}",
+        format!("a fonte SEM o bind: {} nós", gb.path.verts_all().count()),
+        "",
+        "",
+        "",
+        ""
+    );
+    let pesos_b = sb.pesos_do_quadro(if gb.valida() { &gb.pesos } else { &[] });
+    let corr_b = sb.correcoes_resolvidas();
+    let f8 = || {
+        ph2d_vec_skin::curva::refit_pela_curva(
+            &pele,
+            &gb.path,
+            pesos_b,
+            &corr_b,
+            true,
+            ph2d_vec_skin::curva::LeituraDoCampo {
+                campo: gb.campo.as_ref(),
+                c1: true,
+            },
+            0.0003 * diag,
+        )
+    };
+    mostra("2.º corpo sobre 8 nós · C¹", &f8(), relogio(&f8));
+    let ingenua8 = || {
+        let mut x = gb.path.clone();
+        ph2d_vec_skin::curva::aplica_pela_curva_com(
+            &pele,
+            &mut x,
+            pesos_b,
+            &corr_b,
+            true,
+            gb.campo.as_ref(),
+        );
+        x
+    };
+    mostra("a lei de HOJE sobre 8 nós", &ingenua8(), relogio(&ingenua8));
+    println!("{:=<98}", "");
+    println!(
+        "  um quadro a 60 Hz = 16 667 µs · loadavg {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+}
+
+/// ⭐⭐⭐ **SONDA — QUANTO DE UM PONTO ERA A BUSCA.** A que nomeou o verdadeiro tecto do módulo.
+///
+/// ⚠️ **A contagem de amostras foi medida com contadores TEMPORÁRIOS** (um `thread_local` em
+/// `ponto()` e outro na consulta) e eles saíram depois de darem o número — *um contador
+/// permanente no laço do desenho, para um desenho que foi RECUSADO, não se paga*. O que eles
+/// disseram, na barra a `90°` em S com `54` nós: a lei de hoje pede **`432`** amostras, o segundo
+/// corpo pede **`17 947`** (campo `C⁰`) ou **`8 371`** (`C¹`), e a malha tem **`878`** triângulos.
+#[test]
+fn diag_d_quanto_e_a_varredura() {
+    use std::time::Instant;
+    let p = b_palco(true);
+    let pele = p.pele();
+    let rest = b_amostra_com(&p.fonte, 16);
+    let mut w = pele.scratch();
+    let n = rest.len();
+    let cronometra = |rot: &str, f: &dyn Fn(usize)| {
+        f(0);
+        let t = Instant::now();
+        let mut k = 0usize;
+        while t.elapsed().as_millis() < 200 {
+            f(k % n);
+            k += 1;
+        }
+        #[expect(clippy::cast_precision_loss, reason = "contagem de iterações")]
+        let us = t.elapsed().as_secs_f64() * 1e6 / k as f64;
+        println!("  {rot:<38} {us:>9.4} µs/chamada");
+        us
+    };
+    let idx = ph2d_vec_skin::pesos::IndiceDoCampo::novo(&p.campo.malha).expect("índice");
+    let a = cronometra("campo.linha() — VARRE os 878 triângulos", &|i| {
+        std::hint::black_box(p.campo.linha(rest[i]));
+    });
+    let ai = cronometra("campo.linha_com(índice)", &|i| {
+        std::hint::black_box(p.campo.linha_com(rest[i], Some(&idx)));
+    });
+    let linha = p.campo.linha(rest[0]).expect("dentro");
+    let b = cronometra("weights_corrected + blend", &|i| {
+        let mut w2 = pele.scratch();
+        pele.weights_corrected(rest[i], Some(&linha), &mut w2, &p.correcoes);
+        std::hint::black_box(pele.blend(rest[i], &w2));
+    });
+    pele.weights_corrected(rest[0], Some(&linha), &mut w, &p.correcoes);
+    println!(
+        "  ⇒ a varredura é {:.0} % do custo de um ponto · o ÍNDICE é {:.1}× mais rápido que ela",
+        100.0 * a / (a + b),
+        a / ai
+    );
+    println!(
+        "  ⇒ um ponto: {:.4} µs sem índice → {:.4} µs com ({:.1}×) · maior balde {} de {} triângulos",
+        a + b,
+        ai + b,
+        (a + b) / (ai + b),
+        idx.maior_balde(),
+        p.campo.malha.tris.len()
+    );
+    println!(
+        "  loadavg {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+}

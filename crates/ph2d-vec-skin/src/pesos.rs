@@ -180,13 +180,28 @@ impl CampoDoDominio {
     /// sem domínio não é um ponto sem dono*.
     #[must_use]
     pub fn linha(&self, p_local: [f64; 2]) -> Option<Vec<f64>> {
+        self.linha_com(p_local, None)
+    }
+
+    /// ⭐⭐⭐ **A MESMA resposta, com o [`IndiceDoCampo`] a escolher os candidatos** — `None` no
+    /// índice é a varredura de sempre, **ao bit**.
+    #[must_use]
+    pub fn linha_com(&self, p_local: [f64; 2], idx: Option<&IndiceDoCampo>) -> Option<Vec<f64>> {
         if !self.valida() {
             return None;
         }
         let n = self.ossos();
-        amostra_achatada(&self.malha, &self.pesos, self.para_malha(p_local), n)
+        amostra_achatada(&self.malha, &self.pesos, self.para_malha(p_local), n, idx)
     }
 }
+
+/// ⭐⭐ **O ÍNDICE DA MALHA**, num irmão — ver o cabeçalho dele.
+///
+/// ⚠️ **Ficheiro próprio por tecto de LOC** (`pesos.rs` bateu nos `700` exactos ao recebê-lo), e o
+/// corte é por RESPONSABILIDADE: *o que é um peso e onde ele está são duas perguntas.*
+#[path = "pesos_indice.rs"]
+mod indice;
+pub use indice::IndiceDoCampo;
 
 /// ⭐⭐⭐ **O CAMPO do padrão-ouro para uma forma vectorial** — a malha do domínio com os pesos
 /// resolvidos sobre ela, prontos a sobreviver ao bind.
@@ -271,7 +286,7 @@ pub fn pesos_dos_pontos(path: &VecPath, campo: &CampoDoDominio) -> Vec<f64> {
             .enumerate()
         {
             let pm = campo.para_malha(p);
-            match amostra_achatada(malha, w, pm, n) {
+            match amostra_achatada(malha, w, pm, n, None) {
                 Some(ws) => out.extend_from_slice(&ws),
                 None => {
                     // ⚠️ **Uma ALÇA pode viver FORA da forma** (ela é uma tangente, não um ponto do
@@ -491,12 +506,18 @@ fn amostra_achatada(
     pesos: &[f64],
     p: [f64; 2],
     n: usize,
+    idx: Option<&IndiceDoCampo>,
 ) -> Option<Vec<f64>> {
     let linha = |v: u32| -> &[f64] {
         let i = v as usize * n;
         pesos.get(i..i + n).unwrap_or(&[])
     };
-    for t in &m.tris {
+    // ⭐ Com índice, só os triângulos do balde; sem ele, todos — e a resposta é a MESMA.
+    // ⛔ **Sem alocar** — isto corre por amostra de curva, por forma, por quadro.
+    let cand: Option<&[u32]> = idx.map(|i| i.candidatos(p));
+    let n_tris = m.tris.len();
+    for k in 0..cand.map_or(n_tris, <[u32]>::len) {
+        let t = &m.tris[cand.map_or(k, |c| c[k] as usize)];
         let (a, b, c) = (
             m.rest[t[0] as usize],
             m.rest[t[1] as usize],

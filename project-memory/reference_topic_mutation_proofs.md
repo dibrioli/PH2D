@@ -259,3 +259,51 @@ e a população é o `N tests run` do `Summary`; ⚠️ **nunca** o `running N t
 CONTA os `#[ignore]`. Depois da troca: `296 tests run: 296 passed`, zero abortos, e o placar passou
 de `8 de 16` para **`15 de 16`** com a 16.ª a ser o CONTROLO.
 Ver [[reference_topic_gate_discipline]] · [[reference_topic_measurement_discipline]].
+
+## A prova de mutação HERDA a cegueira da corrida que ela usa (2026-09-21, `line/sculpt3d`)
+
+O `corrida()` de um arnês roda `nextest run -p … --lib` — **sem `--ignored`**. Logo toda lei cuja
+única prova de comportamento viva num gate `#[ignore]` (nesta casa: **tudo o que precisa de um
+`wgpu::Device`**) é lida pelo arnês como **lei sem régua**, e a mutação dela **SOBREVIVE**.
+Medido: a cura da tinta fina saiu com `20 de 25` a sangrar, e as **quatro** sobreviventes reais
+(M19–M22) eram exactamente as quatro metades escritas nesse dia — os três consumidores da porta
+`o_gesto_muda_a_topologia` e a metade da tinta EMPRESTADA. A prova de comportamento delas existia,
+no `tinta_no_produto_tests.rs`, e é `#[ignore]` + placa; **o CI também nunca a corre** ⇒ uma
+regressão na cura seria silenciosa em todo o sítio onde alguém a fosse procurar.
+**Why:** o arnês não estava errado — ele disse a verdade, e a verdade é que a lei não tinha régua
+ALCANÇÁVEL. *Um sobrevivente não é sempre um gate fraco: às vezes é um gate que ninguém corre.*
+**How to apply:** ao ler um relatório de mutação, pergunte de cada sobrevivente **se o gate dela é
+`#[ignore]`** antes de a chamar gate frouxo. Se for, e se o consumidor não for construtível sem
+placa (`Sculpt3dScene::new` pede um device), a cura é o **censo de TEXTO do ELO**, com as duas
+metades obrigatórias: cortar a PROSA antes de medir (um doc-comment que explica a cura contém o
+nome da porta) e o CONTROLO inverso — cada agulha tem de estar **ausente** da metade comentada.
+⚠️ E **dois** gates quando a mutação *substitui* em vez de apagar: um vê a ausência da agulha certa,
+o outro a presença da errada. Depois disso (com a 5.ª mutacao, a do gesto que erra a peca): `25 de 26`, com o unico sobrevivente a ser o CONTROLO.
+Ver [[feedback_a_bins_run_never_reaches_the_gates_that_live_in_tests]] · [[reference_topic_gate_discipline]].
+
+## O 4.º controlo: a corrida LIMPA tem de estar VERDE (2026-09-21)
+
+Os arneses desta casa controlavam-se em tres pontos (a ancora casa uma vez · a mutacao compila · N > 0
+testes correram) e faltava o mais barato: **`verde=$(corrida | populacao)` deita fora o codigo de
+saida**, logo com a arvore ja' VERMELHA antes de mutar **toda** mutacao le-se como `SANGRA` e o placar
+sai perfeito. **Why:** o erro e' para o lado que ninguem investiga — *um placar cheio nao faz ninguem
+olhar duas vezes*. **How to apply:** `limpa=$(corrida); rc=$?` e abortar com `rc != 0`, imprimindo as
+linhas de falha. ⚠️ E **a ordem no ficheiro importa**: uma mutacao acrescentada DEPOIS do `echo` do
+sumario corre e imprime o veredito dela **abaixo do total**, que fica por contar (`24 de 25` com a 25.ª
+a sangrar por baixo) — *um total impresso antes do ultimo caso mede outra populacao*.
+
+## Copiar a arvore com o arnes A CORRER congela a mutacao viva (2026-09-21)
+
+O arnes fotografa `$APP`/`$PAN`, aplica **uma** mutacao de cada vez e restaura (inclusive num
+`trap EXIT`). Copiar essas arvores enquanto ele corre captura o estado **MUTADO**, e parar a tarefa e
+restaurar dessa copia **congela a mutacao no produto**. Medido: a copia de emergencia gravou a `M1`
+(os dois bracos do `match` do `garante` identicos), o passe de compilacao fechou **VERDE** — os dois
+compilam — e quem a apanhou foi a suite: `883` testes, `1` vermelho em `0,004 s`, com a mensagem do
+gate. **Why:** a mutacao viva e', por construcao, uma edicao que COMPILA; o laco interno e' cego a ela
+e ela e' indistinguivel de um defeito proprio. **How to apply:** nao editar nem copiar `$APP`/`$PAN`
+com o arnes a correr (pare-o e deixe o `trap` restaurar) · depois de um restauro de emergencia corra a
+SUITE antes de acreditar na arvore · uma reprovada deterministica e isolada logo a seguir e' a
+assinatura: procure a ancora dela no `muta_*.sh` **antes** de suspeitar do seu codigo, porque ali o
+nome da mutacao diz a cura · e nao deixe uma tarefa de GPU em fila enquanto ele corre (ela pode ganhar
+a placa a meio de uma mutacao e construir a arvore mutada).
+⚠️ Mordeu DUAS vezes no mesmo dia: a segunda comeu uma edicao de cabecalho feita durante a corrida.

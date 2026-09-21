@@ -160,4 +160,5 @@
 - 📚 [Arquitetura / norte / perf: mais (18) lições](reference_topic_architecture_north_perf_lessons.md)
 - [fixture (17)](reference_topic_fixture_discipline.md)
 - [Provas de mutação (30) — 3 controles no arnês · ⛔ corpus onde a desigualdade nunca aperta não a testa (2 de 8 sobreviveram)](reference_topic_mutation_proofs.md)
+- [Provas de mutação (29) — **4** controles no arnês (o 4.º: a corrida limpa VERDE) · ⛔ corpus onde a desigualdade nunca aperta não a testa (2 de 8 sobreviveram)](reference_topic_mutation_proofs.md)
 - ⛔⛔ [Atribuição VELHA de um vermelho não cobre o suspeito de HOJE — abla o teu e confirma o número AO BIT](feedback_an_old_attribution_is_worth_more_after_ablating_todays_suspect.md)

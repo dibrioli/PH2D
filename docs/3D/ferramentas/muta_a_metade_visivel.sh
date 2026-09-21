@@ -2,13 +2,15 @@
 # Prova de mutacao da METADE VISIVEL da tinta fina (§16 do doc 27): a porta que
 # e' dona do plano, a voz do pen-down, a fileira do painel e a cena.
 #
-# ⚠️ O arnes CONTROLA-SE A SI MESMO em tres pontos, porque cada um deles ja'
+# ⚠️ O arnes CONTROLA-SE A SI MESMO em QUATRO pontos, porque cada um deles ja'
 # mentiu nesta casa:
 #   (a) a ancora tem de casar EXACTAMENTE UMA vez — casar zero le-se como
 #       «sobreviveu» e casar duas aplica a mutacao no sitio errado;
 #   (b) a mutacao tem de COMPILAR — um erro de compilacao le-se como sangrar;
 #   (c) a corrida tem de correr N > 0 testes, e a populacao e' `passed + failed`
 #       — nunca so' `passed` (o `running N tests` CONTA os `#[ignore]`).
+#   (d) a corrida LIMPA tem de estar VERDE — com a arvore ja' vermelha, TODA
+#       mutacao le-se como SANGRA e o placar sai perfeito e fabricado.
 set -u
 APP=crates/ph2d-app-sculpt3d/src
 PAN=crates/ph2d-panel-sculpt3d/src
@@ -35,9 +37,20 @@ corrida() { cargo "nextest" run -p ph2d-app-sculpt3d -p ph2d-panel-sculpt3d --li
 # listou (os `#[ignore]` entram na listagem e nao correm).
 populacao() { grep -oP '\K[0-9]+(?= tests? run)' | awk '{s+=$1}END{print s+0}'; }
 
-verde=$(corrida | populacao)
+# ⭐⭐⭐⭐ **O 4.o CONTROLO DO ARNES: a corrida limpa tem de estar VERDE.**
+# ⛔⛔ Ate' 2026-09-21 so' se contava que ela CORREU testes (`> 0`), e o `|`
+# deitava fora o codigo de saida. Com a arvore vermelha ANTES de mutar, TODA
+# mutacao le-se como SANGRA e o placar sai perfeito e fabricado — e o erro e'
+# para o lado que nao se nota, porque um placar cheio nao faz ninguem olhar.
+limpa=$(corrida); rc_limpo=$?
+verde=$(printf '%s' "$limpa" | populacao)
 echo "VERDE antes: $verde testes correram"
 [ "${verde:-0}" -gt 0 ] || { echo "ABORTO: a corrida limpa nao correu teste nenhum"; exit 2; }
+if [ "$rc_limpo" -ne 0 ]; then
+  echo "ABORTO: a corrida limpa esta' VERMELHA -- um placar tirado daqui e' fabricado."
+  printf '%s' "$limpa" | grep -E '^ *(FAIL|test result:|Summary)' | tail -8 | sed 's/^/      | /'
+  exit 2
+fi
 
 sangram=0; total=0
 muta() { # ficheiro  ancora  substituto  nome
@@ -125,14 +138,12 @@ muta "$APP/tinta_da_peca.rs" \
 
 # ── A VOZ do pen-down ────────────────────────────────────────────────────
 muta "$APP/recusa.rs" \
-  '        if self.tinta_fina_armada
-            && self.dyntopo_armado
-            && (verbo.refina_no_dyntopo() || verbo.colapsa_no_dyntopo())' \
-  '        if self.tinta_fina_armada && self.dyntopo_armado' \
-  'M10 recusa: a lente passa a ser o interruptor e nao o verbo'
+  '            && crate::tinta_da_peca::o_gesto_muda_a_topologia(verbo, self.tinta_fina_armada)' \
+  '            && true' \
+  'M10 recusa: a lente passa a ser o interruptor e nao a PORTA'
 
 muta "$APP/recusa.rs" \
-  '            tinta_fina_armada: o.tinta.is_some(),' \
+  '            tinta_fina_armada: self.tinta_fina_armada(),' \
   '            tinta_fina_armada: false,' \
   'M11 recusa: a voz nunca arma no produto'
 
@@ -153,6 +164,11 @@ muta "$PAN/state_modes.rs" \
   '            Self::Quatro => Some(1),' \
   'M14 DetalheDaTinta: dois chips colapsam no mesmo nivel'
 
+muta "$PAN/state_modes.rs" \
+  '            Self::Dezasseis => Some(4),' \
+  '            Self::Dezasseis => Some(3),' \
+  'M14b DetalheDaTinta: o degrau NOVO colapsa no anterior'
+
 muta "$PAN/paint/brush.rs" \
   '    let y = brush_cor::paint_detalhe_da_tinta(ctx, snap, x, w, y);' \
   '    let y = brush_cor::paint_detalhe_da_tinta(ctx, snap, x, w, y);
@@ -167,6 +183,70 @@ muta "$APP/objects.rs" \
                 .map_or(0, ph2d_mesh_colors::Tinta::footprint_bytes)' \
   '' \
   'M16 footprint: o plano deixa de contar no peso da peca'
+
+
+# ── ⭐⭐⭐⭐ A CURA DE 2026-09-21: o plano sobrevive a um traco de COR ──────
+muta "$APP/tinta_da_peca.rs" \
+  '    if verbo.paints_color() && tinta_fina_armada {
+        return false;
+    }' \
+  '' \
+  'M17 porta: um pincel de COR volta a refinar com o plano armado'
+
+muta "$APP/tinta_da_peca.rs" \
+  '    verbo.refina_no_dyntopo() || verbo.colapsa_no_dyntopo()
+}' \
+  '    false
+}' \
+  'M18 porta: NINGUEM mexe na topologia (o CONTROLO do verbo de forma)'
+
+muta "$APP/tinta_da_peca.rs" \
+  '        self.stroke.tinta_fina.is_some()
+            || self' \
+  '        false
+            || self' \
+  'M19 porta: a tinta EMPRESTADA deixa de contar — e e a que conta no gesto'
+
+muta "$APP/dyntopo.rs" \
+  '        if !self.o_gesto_em_maos_muda_a_topologia(verbo) {' \
+  '        if !verbo.refina_no_dyntopo() && !verbo.colapsa_no_dyntopo() {' \
+  'M20 refine_for_dab: volta a perguntar so ao verbo'
+
+muta "$APP/dyntopo.rs" \
+  '        if self.tinta_fina_armada() {
+            return (true, 0);
+        }' \
+  '' \
+  'M21 toggle: ligar o interruptor volta a triangular com o plano armado'
+
+muta "$APP/history_dyntopo.rs" \
+  '        if !self.o_gesto_em_maos_muda_a_topologia(self.brush.verb) {
+            self.dyn_before = None;
+            return;
+        }' \
+  '' \
+  'M22 pen-down: a triangulacao volta a correr para quem nao mexe na topologia'
+
+muta "$APP/scenes_tinta_fina.rs" \
+  'pub(crate) const DEGRAU_DA_LICAO: ph2d_panel_sculpt3d::state::DetalheDaTinta =
+    ph2d_panel_sculpt3d::state::DetalheDaTinta::Oito;' \
+  'pub(crate) const DEGRAU_DA_LICAO: ph2d_panel_sculpt3d::state::DetalheDaTinta =
+    ph2d_panel_sculpt3d::state::DetalheDaTinta::Quatro;' \
+  'M23 cena: a const da licao separa-se do roteiro'
+
+muta "$APP/tinta_da_peca.rs" \
+  'pub(crate) const NIVEL_MAX: u8 = 4;' \
+  'pub(crate) const NIVEL_MAX: u8 = 3;' \
+  'M24 tecto: o motor deixa de alocar o degrau que o painel oferece'
+
+# ── ⭐⭐⭐⭐ O GESTO QUE ERRA A PECA (o que sobrou do report de 21/09) ─────
+# ⚠️ A prova de comportamento dela e' `#[ignore]` + placa, logo o ELO tem de
+# estar no censo de texto — senao esta mutacao SOBREVIVE, como as M19-M22.
+muta "$APP/input_down.rs" \
+  '                scene.close_stroke();
+                scene.drag = Some(Drag::Orbit);' \
+  '                scene.drag = Some(Drag::Orbit);' \
+  'M25 o gesto que erra a peca volta a morrer com o plano dentro'
 
 echo
 echo "MUTACAO: $sangram de $total sangram"

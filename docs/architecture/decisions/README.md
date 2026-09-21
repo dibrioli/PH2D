@@ -184,10 +184,11 @@
 | [0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md) | Accepted | O stack sobe até os TETOS, e o que fica para trás fica por MEDIÇÃO |
 | [0169](0169-the-skeleton-is-its-own-module-and-each-medium-answers-only-what-a-point-is.md) | Aceito (2026-09-06) | O esqueleto é um MÓDULO PRÓPRIO, e cada mídia responde só a *«o que é um ponto aqui»* |
 | [0170](0170-o-corte-e-uma-booleana-de-malha-e-o-motor-permissivo-ENTRA-em-vez-de-ficar-oraculo.md) | Aceito (2026-09-15) | O corte é uma **booleana de malha**, e desta vez a biblioteca **ENTRA** em vez de ficar oráculo |
+| [0171](0171-o-borrao-de-caixa-da-pilha-parte-se-em-fatias-e-a-largura-da-banda-e-medida.md) | Accepted | O borrão de CAIXA da pilha parte-se em fatias, e a largura da banda é MEDIDA |
 
 ---
 
-**175 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**176 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

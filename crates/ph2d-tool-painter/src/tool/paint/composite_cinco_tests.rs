@@ -489,8 +489,61 @@ fn o_nucleo_de_caixa_e_do_blur_da_pilha_e_so_dele() {
     // 3.ª metade — o censo do alcance. ⚠️ A agulha é montada em runtime porque este ficheiro seria
     // ele próprio um acerto (a lição do gate auto-referente da escultura).
     let agulha = concat!("BlurKernel", "::", "Caixa");
+    let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let produto = ficheiros_de_produto(&src);
+    // ⚠️ **AS DUAS DIRECÇÕES, senão a derivação vira licença.** Um caminhar partido devolve o
+    // conjunto VAZIO (e o censo fica verde a medir nada) ou o conjunto INTEIRO (e ele volta a
+    // acusar as sondas). O piso é da população, e o tecto é a existência de código de teste.
+    let todos = walk_rs(src.clone());
+    // O piso é de COLAPSO e sai da medição (`209` de `393` em 2026-09-21), com folga para a crate
+    // crescer — ⛔ não é uma catraca sobre a contagem, que dispararia a cada ficheiro novo.
+    assert!(
+        produto.len() >= 150,
+        "a derivação do produto colapsou: {} ficheiros de {} (medido: 209)",
+        produto.len(),
+        todos.len()
+    );
+    assert!(
+        produto.len() < todos.len(),
+        "a derivação não excluiu ficheiro nenhum: {} de {} — ela deixou de distinguir produto de \
+         teste",
+        produto.len(),
+        todos.len()
+    );
+    assert!(
+        !produto
+            .iter()
+            .any(|p| p.ends_with("diag_composite_e_as_formas.rs")),
+        "a sonda `#[cfg(test)]` entrou no conjunto do produto"
+    );
+    assert!(
+        produto
+            .iter()
+            .any(|p| p.ends_with("composite_acumulado.rs")),
+        "o produto perdeu um ficheiro que ele compila"
+    );
+    // ⛔⛔ **E a metade que os outros três guardas NÃO conseguem dar:** eles não distinguem
+    // *«excluído por ser teste»* de *«excluído porque o caminhar não o achou»*. Estes dois só se
+    // alcançam por `#[path]` a partir de um ficheiro de PRODUTO (`undo.rs`, `curve.rs`), logo
+    // perdê-los acusa um resolvedor partido — que é exactamente o defeito que esteve aqui, e que
+    // uma mutação SOBREVIVENTE nomeou.
+    for nome in ["undo_window.rs", "curve_overlay.rs"] {
+        assert!(
+            produto.iter().any(|p| p.ends_with(nome)),
+            "o `{nome}` só se alcança por `#[path]` de um ficheiro de produto, e a derivação \
+             perdeu-o: o resolvedor do `#[path]` está partido"
+        );
+    }
     let mut sitios = Vec::new();
-    for e in walk_rs(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src")) {
+    for e in todos {
+        // ⚠️⚠️ **A população é o PRODUTO, e ela é DERIVADA das declarações `mod`.** Varrendo
+        // `src/**` às cegas este censo acusa uma SONDA `#[cfg(test)]` de ser um terceiro sítio —
+        // medido em 2026-09-21 com o `diag_composite_e_as_formas.rs`. ⛔ E filtrar pelo SUFIXO do
+        // nome é a cura errada: este repo já pagou um portão vermelho sobre produto correcto por
+        // classificar um arnês assim (`line/sculpt3d`, 15/09).
+        if !produto.contains(&e) {
+            continue;
+        }
         let txt = std::fs::read_to_string(&e).unwrap_or_default();
         if txt.contains(agulha) {
             sitios.push(e.file_name().unwrap().to_string_lossy().to_string());
@@ -511,6 +564,92 @@ fn o_nucleo_de_caixa_e_do_blur_da_pilha_e_so_dele() {
          `composite_pilha.rs` (o replay, a porta de bissecção `PH2D_COMPOSITE_REPLAY=1`). \
          ⛔ Um TERCEIRO sítio é o pedido a escapar da pilha, e é isso que este censo recusa."
     );
+}
+
+/// **Os `.rs` que o build de PRODUTO compila** — os que se alcançam do `lib.rs` por declarações
+/// `mod` que NENHUM `#[cfg(test)]` porta.
+///
+/// ⚠️ A classificação é **DERIVADA** e não um sufixo de nome: a sub-árvore de um `mod` portado
+/// fica de fora **transitivamente**, e o `#[path = "…"]` é honrado — que é exactamente a metade
+/// que o achado de 15/09 nomeia (*«o que um ficheiro de teste declara por `#[path]` é código de
+/// teste»*).
+///
+/// ⚠️ Quem o usa tem de guardar as DUAS direcções: um caminhar partido devolve o conjunto vazio
+/// (e todo censo fica verde por vácuo) ou o conjunto inteiro (e ele volta a acusar as sondas).
+fn ficheiros_de_produto(src: &std::path::Path) -> std::collections::BTreeSet<std::path::PathBuf> {
+    let mut fora = std::collections::BTreeSet::new();
+    let mut pilha = vec![(src.join("lib.rs"), src.to_path_buf())];
+    while let Some((ficheiro, dir)) = pilha.pop() {
+        if !ficheiro.is_file() || !fora.insert(ficheiro.clone()) {
+            continue;
+        }
+        let Ok(txt) = std::fs::read_to_string(&ficheiro) else {
+            continue;
+        };
+        let pai_dir = ficheiro
+            .parent()
+            .map_or_else(|| dir.clone(), std::path::Path::to_path_buf);
+        let (mut portado, mut caminho) = (false, None::<String>);
+        for linha in txt.lines() {
+            // ⚠️⚠️ **O comentário de fim de linha tem de sair ANTES de se procurar o `;`.** Este
+            // repo escreve `mod x; // porquê` por toda a parte, e exigir que a linha ACABE em `;`
+            // deitou fora `71` dos `159` módulos de uma sub-árvore — em silêncio, e a derivação
+            // ficava a medir menos produto do que há. *Só apanhei isto por ter uma SEGUNDA
+            // implementação da mesma regra e as duas discordarem.*
+            let t = linha.split("//").next().unwrap_or(linha).trim();
+            if t.starts_with("#[cfg(") && t.contains("test") {
+                portado = true;
+                continue;
+            }
+            if let Some(r) = t.strip_prefix("#[path = \"") {
+                caminho = r.split('"').next().map(str::to_string);
+                continue;
+            }
+            let Some(resto) = t
+                .strip_prefix("mod ")
+                .or_else(|| t.strip_prefix("pub mod "))
+                .or_else(|| t.strip_prefix("pub(crate) mod "))
+                .or_else(|| t.strip_prefix("pub(super) mod "))
+            else {
+                if !t.is_empty() && !t.starts_with("#[") {
+                    (portado, caminho) = (false, None);
+                }
+                continue;
+            };
+            let Some(nome) = resto.strip_suffix(';') else {
+                (portado, caminho) = (false, None); // `mod x { … }` em linha: não há ficheiro
+                continue;
+            };
+            let nome = nome.trim();
+            if !portado {
+                // ⚠️⚠️ **`#[path]` resolve contra a pasta do ficheiro que DECLARA, e não contra a
+                // pasta-filha do módulo.** Aqui o `tests.rs` vive em `tool/paint/` e declara
+                // `#[path = "x.rs"]`, que é `tool/paint/x.rs` — juntá-lo a `tool/paint/tests/`
+                // não acha nada, e a sub-árvore INTEIRA desaparecia do caminhar **em silêncio**
+                // (achado por uma mutação que SOBREVIVEU: ignorar o `#[cfg(test)]` não mudava
+                // nada, porque aqueles ficheiros não estavam a ser alcançados de todo).
+                let (filho, dir_filho) = match &caminho {
+                    Some(p) => {
+                        let f = pai_dir.join(p);
+                        let d = f.parent().unwrap_or(&pai_dir).to_path_buf();
+                        (f, d)
+                    }
+                    None => {
+                        let f = dir.join(format!("{nome}.rs"));
+                        let f = if f.is_file() {
+                            f
+                        } else {
+                            dir.join(nome).join("mod.rs")
+                        };
+                        (f, dir.join(nome))
+                    }
+                };
+                pilha.push((filho, dir_filho));
+            }
+            (portado, caminho) = (false, None);
+        }
+    }
+    fora
 }
 
 /// Varre os `.rs` de uma árvore — o instrumento do censo acima.

@@ -30,6 +30,14 @@ authors.workspace = true
 # associativo e o `x` de uma aresta é caminhado incrementalmente linha a linha, então uma banda que
 # comece no meio de uma aresta recomputa `x` e sai um `f32` diferente. Todo uso novo desta dep exige
 # ADR novo (a cerca de contenção do ADR-0109).
+#
+# ⭐ **O SEGUNDO uso, nomeado como a cerca manda: as passagens do núcleo de CAIXA** (`blur_caixa`),
+# sob o **ADR-0171** (⚠️ o número soma entre linhas — reconte-o). Ele é tão estreito como o
+# primeiro: o núcleo de caixa é pedido por UM sítio de toda a crate (o laço da pilha do Composite,
+# com censo a afirmá-lo), o Blur como FERRAMENTA continua no binomial e intocado, e as duas rotas
+# são **byte-idênticas** com gate. ⛔ A fatia da passagem vertical é de COLUNAS e não de linhas,
+# pelo mesmo mecanismo que o parágrafo acima nomeia para as arestas: uma banda de linhas teria de
+# re-semear o acumulador e esse `f32` não é o que a soma corrida acumulou.
 rayon = "1"
 # A LEI da mistura de tintas (K–M), partilhada com o Wet Paint e a Aquarela — ordem do dono
 # (2026-09-20): os três meios misturam igual, logo leem a MESMA porta e não três cópias.

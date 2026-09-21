@@ -56,7 +56,10 @@ mod composite_cinco_tests; // a pilha de CINCO: cor, tamanho e o Erase por camad
 mod composite_formas_tests; // a pilha contra os metodos de RE-CARIMBO: o boolean e o rasto
 
 #[path = "diag_composite_e_as_formas.rs"]
-mod diag_composite_e_as_formas; // a pilha contra os metodos de RE-CARIMBO (report do dono, 2026-09-21)
+mod diag_composite_e_as_formas;
+
+#[path = "diag_preco_do_recarimbo.rs"]
+mod diag_preco_do_recarimbo; // o PRECO de um re-carimbo com a pilha (report do dono, 2026-09-21) // a pilha contra os metodos de RE-CARIMBO (report do dono, 2026-09-21)
 
 #[path = "composite_acumulado_tests.rs"]
 mod composite_acumulado_tests; // a pilha que ACUMULA: o preço, a exactidão e o rectângulo

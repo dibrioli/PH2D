@@ -1,8 +1,13 @@
 # A TINTA FINA SOBREVIVE AO TRAÇO SEGUINTE — e o `16x`
 
-> `line/sculpt3d` · 2026-09-21 · dois reports do dono numa mensagem só.
+> `line/sculpt3d` · 2026-09-21 · dois reports do dono numa mensagem só, e um
+> TERCEIRO a seguir (§10) que devolveu a wave com *«não corrigiu»*.
 > Documento para a próxima LLM e para o integrador. O §6 tem o que uma leitura
 > rápida do diff entende ao contrário; o §7 as premissas que a medição derrubou.
+>
+> ⛔⛔ **Leia o §10 antes de acreditar no §2-bis como fecho:** ele está CERTO e
+> é **metade** da resposta — ele impede o plano de MORRER num gesto abandonado,
+> e não faz o traço EXISTIR.
 
 ---
 
@@ -13,10 +18,11 @@
 > modo mesh. Corrija.*
 > *E acrencente a opção de 16x»*
 
-Duas coisas — e a primeira tinha **DUAS causas**: uma PREMISSA que a wave
-anterior deixou de pé (§2) **e** um plano emprestado que um gesto abandonado
-nunca devolvia (§2-bis). ⚠️ **A primeira sozinha não curava o report**, e quem
-o disse foi o gate de produto, não uma leitura.
+Duas coisas — e a primeira tinha **TRÊS causas**: uma PREMISSA que a wave
+anterior deixou de pé (§2), um plano emprestado que um gesto abandonado nunca
+devolvia (§2-bis) **e** um traço de cor que, começando fora da peça, nunca
+chegava a abrir (§10). ⚠️ **Nenhuma das duas primeiras sozinha curava o
+report**, e quem o disse foi o gate de produto — e depois o dono.
 
 ⚠️ **Conte o DELTA:** `PROJECT_SCHEMA` **0** · os três registos **0** · zero
 contrato · zero ADR · zero pacote externo. A fileira ganha **um chip** e o
@@ -367,3 +373,222 @@ pode ganhar a placa a meio de uma mutação e construir a árvore mutada).
 - ⏳ O plano **não viaja no `.ph2dproj`** (dívida herdada da wave anterior, ao
   lado da cor por vértice).
 - ⏳ Voltar a `Mesh` **perde** o detalhe fino, declarado no roteiro.
+- ⚠️ **E o §10.7 acrescenta três**, incluindo uma DECISÃO do dono — esta
+  lista fechou antes de o report seguinte chegar.
+
+---
+
+## §10 — «NÃO CORRIGIU»: o 2.º report do mesmo dia, a auditoria e a ordem
+
+> *«não corrigiu. parece que se começar a pintar sem tocar um vertex acontece
+> mais vezes de sumir a pintura. permita pintar mesmo se tocar em vertex.
+> auditoria»* — o dono, 2026-09-21, depois do §2-bis já commitado.
+
+⚠️ **LEITURA DECLARADA, e ela tem de ser confirmada pelo dono:** li *«permita
+pintar mesmo se **[não]** tocar em vertex»* — a frase anterior é *«se começar a
+pintar **sem** tocar um vertex»*, e a leitura literal (*«mesmo se TOCAR»*) pede
+uma capacidade que já existe. **Se a leitura estiver errada, a cura desta secção
+está errada inteira.**
+
+### §10.1 — A auditoria reproduziu o defeito ANTES de eu tocar em código
+
+A régua é a sonda versionada `diag_o_gesto_que_comeca_fora_da_peca`
+(`#[ignore]` + placa), que conta **amostras pintadas** — nunca o tamanho do
+plano, que foi a régua que enganou a wave anterior:
+
+```
+[diag] o plano nasceu com 47106 amostras; a peca ocupa x em [280, 610]
+[diag] inicio                    plano=47106  traco=None  pintadas=0
+[diag] A: dentro da peca         plano=47106  traco=None  pintadas=960
+[diag] B: comecou FORA, entrou   plano=47106  traco=None  pintadas=960   ← ZERO
+[diag] C: dentro outra vez       plano=47106  traco=None  pintadas=1925
+```
+
+⭐⭐⭐⭐ **O plano NÃO morre mais — a cura do §2-bis funciona, e o que o dono vê
+não é a tinta velha a desaparecer: é a tinta NOVA a nunca acontecer.** O
+pen-down pica a superfície uma vez (`sculpt_at`), o raio **erra**, o gesto
+inteiro vira `Drag::Orbit`, e o dedo entra na peça **sem traço nenhum aberto**.
+Do lado do artista as duas coisas leem-se com a mesma frase.
+
+⛔⛔ **E as duas metades do §2-bis são complementares, não redundantes:** a
+primeira impede que o gesto abandonado **leve o plano com ele** (o vazamento), e
+esta faz o gesto **existir**. Curar só a primeira deixa o report vivo com outra
+cara — que é exactamente o que aconteceu.
+
+### §10.2 — Porque os gates existentes estavam VERDES
+
+- `um_pen_down_que_erra_a_peca_nao_fica_com_o_plano` — ele mede o **PLANO** (que
+  sobrevive) e nunca pergunta se o traço PINTOU. *Uma régua que mede o recurso
+  não vê o gesto que não aconteceu.*
+- `dois_tracos_de_cor_com_dyntopo_nao_perdem_o_detalhe_do_primeiro` — os **dois**
+  traços dele começam DENTRO da peça ⇒ **a fixtura não contém o fenómeno**.
+
+⚠️ É a mesma forma que o §2-bis já pagou, com os papéis trocados: lá uma fixtura
+**errada** percorreu o caminho do defeito por acaso; aqui duas fixturas
+**certas** não o percorrem nunca.
+
+### §10.3 — A cura (F1): um pincel de COR não precisa de acertar no pen-down
+
+[`input_down.rs`](../../../crates/ph2d-app-sculpt3d/src/input_down.rs), no braço
+da decisão:
+
+```rust
+if took || scene.brush.verb.paints_color() {
+    scene.drag = Some(Drag::Sculpt);
+} else {
+    scene.brush.verb = verb;
+    scene.close_stroke();
+    scene.drag = Some(Drag::Orbit);
+}
+```
+
+⭐ **É seguro porque o `stroke_anchor` já é escrito ANTES da decisão** (linha
+`384`): o traço tem âncora mesmo sem o 1.º dab ter pegado, logo os dabs
+seguintes entram pelo caminho normal.
+
+⛔ **TROCA DECLARADA, e é de produto:** com um pincel de cor na mão, arrastar no
+vazio **deixa de orbitar** — o gesto que o próprio ficheiro chama de *«o mais
+comum do mundo»*. O botão direito continua a orbitar (linha `445`, intocada), e
+é isso que torna a troca pagável. **Se o dono preferir o contrário, a cura é uma
+linha.**
+
+⚠️ **O predicado é `paints_color()` e não o grip nem o verbo:** a pergunta é
+*«este pincel deposita no canal de COR?»*, que é exactamente a população para
+quem o pen-down errado é inofensivo — um verbo de FORMA que erra não tem o que
+mover, e tirar-lhe a órbita seria retirar uma afordância sem comprar nada.
+
+### §10.4 — O gate que faltava
+
+`um_traco_de_cor_que_comeca_fora_da_peca_pinta`
+([`tinta_no_produto_tests.rs`](../../../crates/ph2d-app-sculpt3d/src/tinta_no_produto_tests.rs)),
+`#[ignore]` + placa, com o **CONTROLO dentro**: a seguir ao traço de cor ele
+troca para `Verb::Draw` e exige que o mesmo gesto **não mova um vértice** —
+*sem essa metade, a cura podia ter comido a órbita de toda a gente e o gate
+ficava verde*. Corrida: **`6 tests run: 6 passed, 421 skipped`**.
+
+⛔⛔ **E um gate que só vive em `#[ignore]` de GPU não é gateável por este
+repo** — nem o arnês de mutação (`--lib`, sem `--ignored`) nem o CI o correm,
+que é a armadilha que as M19–M22 desta mesma jornada pagaram. ⇒ a cura ganha o
+**6.º ELO** no censo de texto (`tinta_fiacao_tests.rs`, `M26`), com as duas
+metades de sempre: a agulha no código **e** ausente da prosa.
+
+### §10.5 — O 2.º achado da auditoria: LATENTE, medido, NÃO curado
+
+⚠️ **O empréstimo do plano é por PEÇA ACTIVA, e nada prende as duas pontas à
+mesma peça.** O pen-down faz
+`empresta(&mut scene.objects[scene.active].tinta)` e o `close_stroke` devolve a
+`scene.objects[scene.active]` — se o índice `active` mudar **entre** o pen-down
+e o pen-up, o plano da peça A aterra na peça B e a A fica sem ele (⇒ o `garante`
+reconstrói-a grosso: **o mesmo sintoma do report, por outra porta**).
+
+⭐ **Hoje é inalcançável por gesto**, e é por isso que fica declarado em vez de
+curado: o `a_stroke_belongs_to_the_piece_it_started_on` já proíbe que um
+consumidor de `pick` mova a peça activa a meio de uma pincelada, e a Hierarquia
+só a troca **na mudança de selecção**. ⛔ *Mas a cerca que o protege é de OUTRO
+assunto* — ela existe contra um pânico de índice, não contra este. A cura
+honesta é o empréstimo carregar **quem o emprestou** (um índice dentro do
+`SculptStroke`), e é uma wave pequena com gate próprio.
+
+### §10.6 — Lente 2 (costura de UI): LIMPA
+
+Varridos os controlos que esta jornada tocou (a fileira `Paint Detail`, os
+quatro/cinco chips e a caixa de cor): **pintados, hit-indexados, no `populate`
+e com braço no despacho** — o censo derivado `populate_censo_tests` fecha os
+dois sentidos e nenhuma das duas metades acusa. *Nada a reportar é um
+resultado, e escrevê-lo é o que impede a próxima janela de o re-varrer.*
+
+### §10.8 — ⛔⛔ E a cura TIROU o fenómeno da fixtura do gate do §2-bis
+
+`um_pen_down_que_erra_a_peca_nao_fica_com_o_plano` mede o **vazamento** do
+plano num gesto abandonado — e a cena `=52` tem o **pincel de COR** na mão.
+Depois do §10.3 um pincel de cor **já não abandona** nada ⇒ *aquela metade do
+gate deixou de percorrer o braço da recusa*, e ela ficaria **VERDE a afirmar
+nada**: a mutação `M25` (apagar o `close_stroke` daquele braço) passaria a ser
+invisível ao comportamento, sobrando só o elo textual.
+
+⭐ **A cura é a FIXTURA e não a barra:** a metade do vazamento troca para
+`Verb::Draw` antes de errar, porque *a população que ainda orbita é a dos
+verbos de FORMA* — o controlo (um traço que acerta, com o pincel de cor da
+cena) fica onde estava.
+
+⚠️⚠️ **É a lei que a `=45` já pagou, escrita no §29 daquela jornada:** *uma
+cena corrigida deixa de conter o fenómeno, e um gate cuja fixtura deixou de o
+conter não afirma nada.* Aqui quem tirou o fenómeno não foi uma cena — foi a
+**cura de outro defeito no mesmo ficheiro**, no mesmo dia.
+
+### §10.8-bis — ⛔⛔ E o PORTÃO apanhou um SEGUNDO gate com a premissa morta,
+### na SHELL
+
+`the_left_button_sculpts_where_it_hits_and_orbits_where_it_misses`
+([`shells/desktop/tests/it/the_sculpt_gesture_is_wired.rs`](../../../shells/desktop/tests/it/the_sculpt_gesture_is_wired.rs))
+lê o CORPO do `pointer_down` por texto e procurava a agulha **`if took {`** —
+que a cura reescreveu. ⇒ `1` vermelho em `18 560`, e ele **só aparece no
+portão**: vive em `shells/desktop/tests/it/`, que o laço interno desta linha
+nunca corre (a cegueira que o §5.0 do roteador nomeia, aqui pela enésima vez).
+
+⭐ **A lei dele continua INTEIRA — para os verbos de FORMA**, que são a
+população onde *«arrastar no vazio = órbita»* é a afordância; o que mudou foi a
+agulha, reescrita **com a morte da premissa visível no diff** e com uma metade
+NOVA: `Drag::Sculpt` tem de aparecer **uma vez só**, senão a cura podia ter sido
+um segundo ramo com ordem própria e a régua da ordem não o veria.
+
+⚠️⚠️ **O próprio ficheiro já registava duas expirações anteriores da mesma
+agulha** (*«a terceira vez nesta sessão que um proxy expirou»*, escrito quando
+o `Grab` trouxe a segunda porta de pick). *Um gate que lê o corpo de uma função
+por texto envelhece com cada linha que essa função ganha — e esse é o preço
+que se paga por ele alcançar o que um teste não alcança.*
+
+### §10.9 — A prova de mutação
+
+O arnês de [`muta_a_metade_visivel.sh`](../ferramentas/muta_a_metade_visivel.sh)
+passou de `25` para **`27`** casos: **`26` SANGRAM** e a única que sobrevive é
+o **CONTROLO** (`M15`, uma linha em branco, que não pode sangrar).
+
+- **`M26`** (`if took || …paints_color()` → `if took {`) **SANGRA** — e sangra
+  pelo **6.º ELO** do censo de texto, não pelo gate de produto, porque este é
+  `#[ignore]` + placa.
+- **`M25`** continua a sangrar; ⚠️ e desde o §10.8 ela volta a ser observável
+  também pelo **comportamento**, que é o que a emenda da fixtura comprou.
+
+⚠️ **E o arnês teve de ser corrido SOZINHO.** Encadear os dois (`A; B`) numa
+invocação só põe os **dois** debaixo do MESMO prazo de 30 min do cgroup, e a
+`A` sozinha mede **~25 min** (`27` casos × ~60 s) ⇒ a `B` seria morta **a meio
+de uma mutação**, que é exactamente o incidente do §8-bis. *Um prazo é por
+INVOCAÇÃO, e encadear dois trabalhos longos não soma prazos — divide um.*
+⭐ Quando a corrida encadeada foi interrompida, o `trap restore EXIT` **correu**
+e a árvore ficou byte-idêntica ao backup (conferido com `diff -r`); mas ⚠️ o
+subshell do `$(corrida)` **sobreviveu ao pai** e continuou a correr o `nextest`
+— a lei do reparentamento, aqui com a forma mais barata.
+
+### §10.10 — O portão de fecho, e o ACHADO de vassoura (NOMEADO, não curado)
+
+| régua | resultado |
+|---|---|
+| `nextest-impacted.sh` | **18 560 / 18 560** (1.ª corrida: `1` vermelho, o §10.8-bis) |
+| censos da árvore COMBINADA | **127 / 127**, com o controlo do filtro `12 de 12` |
+| clippy `-D warnings` (4 crates) | **zero** |
+| `cargo fmt --all --check` | limpo |
+| mutação (visível) | **26 de 27** (a 27.ª é o CONTROLO) |
+| mutação (upload) | **6 de 7** (a 7.ª é a `U3`, NOMEADA) |
+| gates de GPU da tinta fina | **6 / 6** com adaptador |
+
+⚠️ **VASSOURAS: nove das dez ficam IDÊNTICAS ao merge-base; UMA diverge, e a
+divergência é o NOME DE UM GATE NOSSO.** Medido ficheiro a ficheiro contra o
+`HEAD` (`base` contra `agora`, a mesma vassoura): a `blender-trim` passa de `0`
+para `3` linhas, e as três são o token **`sculpt_gesture`** — que é o nome do
+ficheiro `shells/desktop/tests/it/the_sculpt_gesture_is_wired.rs`, **presente
+no merge-base** (`git cat-file -e` confirma) e criado numa wave de
+infra-estrutura de testes.
+
+⛔ *Os hits novos são o handoff a CITAR esse ficheiro.* Não há cura que não seja
+renomear um gate nosso por causa de uma coincidência de token, e **a triagem de
+uma vassoura é do R, nunca da janela I** — fica NOMEADO, com a medição, como o
+`tip_roundness` de 14/09.
+
+### §10.7 — ABERTO desta secção
+
+- ⛔ **A leitura de *«mesmo se [não] tocar»* precisa do veredito do dono** — e
+  com ela a troca do §10.3 (arrastar no vazio com um pincel de cor deixa de
+  orbitar).
+- ⏳ O empréstimo por `active` (§10.5), latente e nomeado.
+- ⏳ O **SMOKE**: a `=52` passa a ter um passo que começa o traço FORA da bola.

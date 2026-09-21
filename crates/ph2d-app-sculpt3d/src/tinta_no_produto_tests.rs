@@ -309,6 +309,20 @@ fn um_pen_down_que_erra_a_peca_nao_fica_com_o_plano() {
         "CONTROLO: um traço que acerta tem de devolver o plano à peça"
     );
 
+    // ⛔⛔ **A PREMISSA DESTE GATE MORREU EM 21/09, e a fixtura teve de mudar
+    // com ela.** Desde a cura do §10 (*«permita pintar mesmo se [não] tocar um
+    // vertex»*) um pincel de COR que erra o pen-down **já não é abandonado** —
+    // ele abre o traço na mesma. ⇒ *com o `Verb::Paint` da cena esta metade
+    // deixaria de conter o fenómeno e o gate ficaria VERDE a afirmar nada*
+    // (a mutação `M25`, que apaga o `close_stroke` do braço da recusa, passaria
+    // a sobreviver ao comportamento). A população que ainda ORBITA é a dos
+    // verbos de FORMA, e é nela que o vazamento se mede.
+    ph2d_panel_sculpt3d::state::switch_verb_parts(
+        &mut s.verb_slots,
+        &mut s.brush,
+        &mut s.radius_px,
+        Verb::Draw,
+    );
     // ⚠️ `120` está FORA da peça, e o número é medido: ela ocupa `x ∈ [280, 610]`.
     assert!(
         traco(&mut s, 120.0),
@@ -331,5 +345,134 @@ fn um_pen_down_que_erra_a_peca_nao_fica_com_o_plano() {
         amostras(&s).len(),
         nasceu,
         "o quadro a seguir ao clique no vazio reconstruiu o plano"
+    );
+}
+
+/// Um gesto pelo despacho REAL: pen-down em `x0`, `n` passos ate' `x1`, pen-up.
+fn gesto(s: &mut Sculpt3dScene, x0: f32, x1: f32, n: u16) -> bool {
+    let mut host = HostDeTeste {
+        ponteiro: (x0, 350.0),
+    };
+    let ok = crate::input_down::pointer_down(&mut host, s, winit::event::MouseButton::Left);
+    for k in 1..=n {
+        let t = f32::from(k) / f32::from(n);
+        crate::input::pointer_move(s, x0 + (x1 - x0) * t, 350.0);
+    }
+    crate::input::pointer_up(s);
+    ok
+}
+
+/// Sonda do report de 21/09: *«se comecar a pintar sem tocar um vertex acontece
+/// mais vezes de sumir a pintura»*.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn diag_o_gesto_que_comeca_fora_da_peca() {
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let nasceu = amostras(&s).len();
+    fn conta(s: &Sculpt3dScene) -> usize {
+        amostras(s)
+            .iter()
+            .filter(|c| **c != [1.0, 1.0, 1.0])
+            .count()
+    }
+    let estado = |s: &Sculpt3dScene, q: &str| {
+        eprintln!(
+            "[diag] {q:<34} plano={:<7?} traco={:<8?} pintadas={:<6} drag_aberto={}",
+            amostras(s).len(),
+            s.stroke.tinta_fina.as_ref().map(|t| t.tocadas().len()),
+            conta(s),
+            s.drag.is_some(),
+        );
+    };
+    eprintln!("[diag] o plano nasceu com {nasceu} amostras; a peca ocupa x em [280, 610]");
+    estado(&s, "inicio");
+
+    // (A) um traco NORMAL, todo dentro da peca.
+    gesto(&mut s, 380.0, 460.0, 10);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    estado(&s, "A: dentro da peca");
+
+    // (B) o gesto do report: COMECA FORA e entra na peca.
+    gesto(&mut s, 150.0, 480.0, 20);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    estado(&s, "B: comecou FORA, entrou");
+
+    // (C) e um traco normal outra vez, para ver o que sobrou.
+    gesto(&mut s, 380.0, 460.0, 10);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    estado(&s, "C: dentro outra vez");
+}
+
+/// ⭐⭐⭐⭐ **GATE — UM TRAÇO DE COR QUE COMEÇA FORA DA PEÇA PINTA.**
+///
+/// ⛔⛔ **Report do dono (21/09, o SEGUNDO sobre o mesmo sintoma):** *«se começar
+/// a pintar sem tocar um vertex acontece mais vezes de sumir a pintura»*.
+/// Medido, o que sumia **não era a tinta de antes** — o plano ficou em `47 106`
+/// amostras o tempo todo. Era **o traço que ele acabara de fazer**: o
+/// `sculpt_at` do pen-down errava a peça, o gesto inteiro virava `Drag::Orbit`,
+/// e o dedo entrava na peça sem traço nenhum aberto para carimbar.
+///
+/// ⚠️⚠️ **A régua é a CONTAGEM DE AMOSTRAS PINTADAS, e é ela que os gates
+/// irmãos não tinham:** o [`um_pen_down_que_erra_a_peca_nao_fica_com_o_plano`]
+/// mede a sobrevivência do PLANO — e o plano sobrevivia, logo ele ficava VERDE
+/// sobre isto —, e o [`dois_tracos_de_cor_com_dyntopo_nao_perdem_o_detalhe_do_primeiro`]
+/// começa os dois traços DENTRO da peça, logo a fixtura dele **não contém o
+/// fenómeno**. *A régua vizinha, pela terceira vez nesta queixa.*
+///
+/// ⭐ **O CONTROLO é a segunda metade, e sem ele esta cura seria uma
+/// REGRESSÃO:** um verbo de FORMA que erra a peça **continua a orbitar** e não
+/// move um vértice — é a afordância que a referência define (*arrastar no
+/// vazio*), e a troca do dono só é barata porque ela fica intacta onde foi
+/// medida.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn um_traco_de_cor_que_comeca_fora_da_peca_pinta() {
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let pintadas = |s: &Sculpt3dScene| {
+        amostras(s)
+            .iter()
+            .filter(|c| **c != [1.0, 1.0, 1.0])
+            .count()
+    };
+    assert_eq!(pintadas(&s), 0, "a fixtura tem de começar por pintar");
+
+    // ⚠️ `150` está FORA da peça (ela ocupa `x ∈ [280, 610]`, medido) e `480`
+    // está dentro: é o gesto do report, à letra.
+    assert!(
+        gesto(&mut s, 150.0, 480.0, 20),
+        "o pen-down não foi da cena"
+    );
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let n = pintadas(&s);
+    assert!(
+        n > 0,
+        "o traço COMEÇOU FORA da peça e não pintou uma única amostra -- é o \
+         report de 21/09: o gesto virou ÓRBITA e o dedo entrou na peça sem \
+         traço nenhum aberto"
+    );
+
+    // ⭐ CONTROLO: um verbo de FORMA que erra a peça continua a ORBITAR.
+    ph2d_panel_sculpt3d::state::switch_verb_parts(
+        &mut s.verb_slots,
+        &mut s.brush,
+        &mut s.radius_px,
+        Verb::Draw,
+    );
+    let antes: Vec<[f32; 3]> = s.mesh().positions().to_vec();
+    assert!(
+        gesto(&mut s, 150.0, 480.0, 20),
+        "o pen-down do controlo não foi da cena"
+    );
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    assert_eq!(
+        s.mesh().positions(),
+        &antes[..],
+        "CONTROLO: um verbo de FORMA que começa fora da peça esculpiu -- a \
+         afordância «arrastar no vazio = órbita» é da referência e tem de ficar \
+         intacta para quem muda a FORMA"
     );
 }

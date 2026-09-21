@@ -406,7 +406,30 @@ pub fn pointer_down(
             } else {
                 scene.sculpt_at(pos.0, pos.1)
             };
-            if took {
+            // ⭐⭐⭐⭐ **UM PINCEL DE COR PINTA MESMO QUE O PEN-DOWN ERRE A PEÇA**
+            // (ordem do dono, 21/09: *«permita pintar mesmo se [não] tocar um
+            // vertex»*, depois de *«se começar a pintar sem tocar um vertex
+            // acontece mais vezes de sumir a pintura»*).
+            //
+            // ⛔⛔ **O que ele via não era tinta a desaparecer — era o TRAÇO a
+            // não acontecer.** Medido (`diag_o_gesto_que_comeca_fora_da_peca`):
+            // um gesto que começa em `x = 150` e entra na peça até `480` pinta
+            // **ZERO** amostras, porque o `sculpt_at` do pen-down errou e o
+            // gesto inteiro virou ÓRBITA — e o dedo dele entra na peça a seguir,
+            // onde já não há traço nenhum aberto para carimbar.
+            //
+            // ⭐ **O `stroke_anchor` já é escrito no pen-down** (acima, e ANTES
+            // desta decisão), logo o `walk` do `pointer_move` parte do ponto
+            // certo e os passos que caem fora simplesmente não picam: *o traço
+            // começa a pintar no instante em que o cursor encontra o barro*.
+            //
+            // ⚠️ **A TROCA, e ela é barata:** com um pincel de COR na mão,
+            // arrastar no vazio deixa de orbitar. O botão DIREITO já orbita
+            // (ver o braço dele neste mesmo `match`), logo não se perde
+            // capacidade nenhuma — e a afordância *«arrastar no vazio = órbita»*
+            // fica **intacta para os verbos de FORMA**, que é onde a referência
+            // a define.
+            if took || scene.brush.verb.paints_color() {
                 scene.drag = Some(Drag::Sculpt);
             } else {
                 // Errou o modelo: o botão vira ÓRBITA. É o que o SculptGL

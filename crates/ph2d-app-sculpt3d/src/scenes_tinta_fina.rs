@@ -161,16 +161,24 @@ pub(crate) fn announce() {
          [sculpt3d]           o preco de mudar a malha, e ele so' se paga onde e' pedido.\n\
          [sculpt3d]    (6-bis) Clique UMA VEZ no VAZIO, fora da bola, e depois\n\
          [sculpt3d]        pinte outra marca.\n\
-         [sculpt3d]        -> As marcas de antes continuam finas. Um clique fora da\n\
-         [sculpt3d]           peca nao e' um traco -- e ate' 21/09 ele levava o plano\n\
-         [sculpt3d]           com ele, e a tinta inteira voltava a' resolucao da malha.\n\
+         [sculpt3d]        -> As marcas de antes continuam finas. Ate' 21/09 um clique\n\
+         [sculpt3d]           fora da peca levava o plano com ele, e a tinta inteira\n\
+         [sculpt3d]           voltava a' resolucao da malha.\n\
+         [sculpt3d]    (6-ter) Agora COMECE o arrasto FORA da bola, no vazio a' esquerda,\n\
+         [sculpt3d]        e entre nela sem largar o botao.\n\
+         [sculpt3d]        -> A marca SAI, e sai fina. Com um pincel de COR na mao, o\n\
+         [sculpt3d]           traco nao precisa de comecar em cima da peca -- ate' 21/09\n\
+         [sculpt3d]           este gesto nao pintava NADA, e lia-se como a tinta a sumir.\n\
+         [sculpt3d]        -> O PRECO: com um pincel de cor, arrastar no vazio ja' NAO\n\
+         [sculpt3d]           roda a camara. Para rodar, use o botao DIREITO.\n\
          [sculpt3d]    (7) `Ctrl+Z` algumas vezes.\n\
          [sculpt3d]        -> A tinta volta atras, passo a passo, com plano ou sem ele.\n\
          [sculpt3d]\n\
          [sculpt3d]    COMO SABER QUE DEU ERRADO: se no (4) a borda sair igual a' do (2),\n\
          [sculpt3d]    ou se o arame ADENSAR quando voce so' trocou a fileira, PARE e\n\
          [sculpt3d]    reporte. Se a peca ficar PRETA, ou aparecerem faces pretas de\n\
-         [sculpt3d]    aresta dura no meio da marca, PARE e reporte."
+         [sculpt3d]    aresta dura no meio da marca, PARE e reporte. Se no (6-ter) o\n\
+         [sculpt3d]    arrasto RODAR a camara em vez de pintar, PARE e reporte."
     );
 }
 

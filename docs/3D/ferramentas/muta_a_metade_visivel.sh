@@ -248,5 +248,14 @@ muta "$APP/input_down.rs" \
   '                scene.drag = Some(Drag::Orbit);' \
   'M25 o gesto que erra a peca volta a morrer com o plano dentro'
 
+# ---- ⭐ A ORDEM DO DONO DE 21/09: «permita pintar mesmo se [nao] tocar um vertex»
+# ⚠️ Mesmo caso da M25: a prova de comportamento
+# (`um_traco_de_cor_que_comeca_fora_da_peca_pinta`) e' `#[ignore]` + placa, logo
+# quem a mata aqui e' o ELO no censo de texto. Sem ele esta mutacao SOBREVIVE.
+muta "$APP/input_down.rs" \
+  '            if took || scene.brush.verb.paints_color() {' \
+  '            if took {' \
+  'M26 um traco de cor que comeca fora da peca volta a virar orbita'
+
 echo
 echo "MUTACAO: $sangram de $total sangram"

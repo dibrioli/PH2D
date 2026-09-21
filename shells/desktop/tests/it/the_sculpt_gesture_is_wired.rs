@@ -26,9 +26,28 @@ fn the_left_button_sculpts_where_it_hits_and_orbits_where_it_misses() {
             && body.contains("scene.sculpt_at(pos.0, pos.1)"),
         "as duas portas de pick têm de ser tentadas conforme o verbo PUXA ou não"
     );
+    // ⛔⛔ **A PREMISSA DESTA AGULHA MORREU EM 21/09, e a morte fica à vista.**
+    // A decisão era `if took {` e passou a ser
+    // `if took || scene.brush.verb.paints_color() {` — ordem do dono, depois de
+    // *«se começar a pintar sem tocar um vertex acontece mais vezes de sumir a
+    // pintura»*: um traço de COR que erra o pen-down **pintava ZERO**, porque o
+    // gesto inteiro virava ÓRBITA e o dedo entrava na peça sem traço aberto.
+    // *A lei que este gate defende continua inteira — para os verbos de FORMA*,
+    // que são a população onde «arrastar no vazio = órbita» é a afordância.
+    // (É a QUARTA agulha desta sessão a expirar por o produto ter mudado
+    // debaixo dela, e a terceira que este ficheiro regista.)
     let hit = body
-        .find("if took {")
-        .expect("o Down decide pelo RESULTADO do pick, seja qual for a porta");
+        .find("if took || scene.brush.verb.paints_color() {")
+        .expect(
+            "o Down decide pelo RESULTADO do pick — e desde 21/09 um pincel de \
+             COR abre o traço mesmo errando",
+        );
+    // ⭐ A metade NOVA: a cura tem de ser a CONDIÇÃO e não um `if` à parte —
+    // um segundo ramo teria a sua própria ordem e esta régua não o veria.
+    assert!(
+        body.matches("Drag::Sculpt").count() == 1,
+        "o traço abre num sítio só: um segundo ramo escapa à régua da ordem"
+    );
     let sculpt = body[hit..]
         .find("Drag::Sculpt")
         .expect("o ramo que ACERTA abre um traço");

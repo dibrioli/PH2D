@@ -1,4 +1,4 @@
-//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os CINCO elos que a cura desta
+//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os SEIS elos que a cura desta
 //! wave precisa de ter LIGADOS: os três consumidores da porta
 //! [`crate::tinta_da_peca::o_gesto_muda_a_topologia`], a metade da porta que lê
 //! a tinta **EMPRESTADA**, e o `close_stroke` do gesto que **erra** a peça.
@@ -21,6 +21,13 @@
 //! morre com o plano dentro) e a suíte inteira ficava **VERDE**. *Vinte de
 //! vinte e cinco sangravam, e as cinco que não sangravam eram o controlo mais
 //! quatro destas; a quinta nasceu com a cura do report que sobrou.*
+//!
+//! ⭐ **O SEXTO (`M26`) é o único que NÃO nasceu de uma sobrevivente: ele
+//! nasceu PREVENIDO.** A cura que ele defende (*um pincel de cor pinta mesmo
+//! errando o pen-down*, 21/09) só tem prova de comportamento num gate
+//! `#[ignore]` + placa, e este ficheiro existe exactamente porque essa
+//! população não é corrida nem pelo arnês nem pelo CI — *saber a forma da
+//! armadilha vale o mesmo que a pagar outra vez, e custa menos*.
 //!
 //! ⛔ **A prosa é CORTADA antes de se medir, e isso é a metade que importa:** um
 //! doc-comment que EXPLICA a cura contém o nome da porta, e um censo ingénuo
@@ -110,6 +117,22 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
             .join("\n"),
             INPUT_DOWN,
         ),
+        // ⭐⭐⭐⭐ **O 6.º elo: um pincel de COR pinta mesmo errando o pen-down.**
+        //
+        // ⛔ Ordem do dono (21/09): *«permita pintar mesmo se [não] tocar um
+        // vertex»*. Sem o segundo braço desta condição um traço de cor que
+        // começa fora da peça vira ÓRBITA e **não pinta uma única amostra** —
+        // e o report lê-se como *«a pintura sumiu»*, que é o mesmo texto do
+        // defeito do plano emprestado, com outra causa.
+        // ⚠️ A prova de comportamento é `#[ignore]` + placa
+        // (`um_traco_de_cor_que_comeca_fora_da_peca_pinta`), logo sem este elo
+        // a mutação SOBREVIVE — exactamente como as M19-M22.
+        (
+            "input_down.rs",
+            "M26 um traço de cor que começa fora da peça volta a virar órbita",
+            "            if took || scene.brush.verb.paints_color() {".to_string(),
+            INPUT_DOWN,
+        ),
     ]
 }
 
@@ -120,9 +143,9 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
 /// busca falhar em voz alta — mas um que devolvesse **tudo** faria a prosa
 /// satisfazer a agulha, e é isso que o [`so_a_prosa`] recusa.
 #[test]
-fn a_cura_da_tinta_fina_esta_ligada_nos_cinco_sitios() {
+fn a_cura_da_tinta_fina_esta_ligada_nos_seis_sitios() {
     let elos = elos();
-    assert_eq!(elos.len(), 5, "a população deste censo são os cinco elos");
+    assert_eq!(elos.len(), 6, "a população deste censo são os seis elos");
 
     for (ficheiro, mutacao, agulha, fonte) in elos {
         let codigo = sem_prosa(fonte);

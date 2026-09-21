@@ -92,6 +92,25 @@ Uma meta honesta declara o que fica de fora. Estas quatro ficam, **por medição
 | 4.ª | **texturas** | o maior buraco contra os cinco numa comparação lado a lado | **B2** |
 | 5.ª | **animação 3D** do objecto | é o que faz a rota B valer a pena | fecha o catavento |
 
+### ⭐⭐⭐ O ESTADO desta fila — **auditado contra o código em 2026-09-21**
+
+⚠️ **Esta tabela é a resposta a *«qual é a próxima etapa?»*, e é o único sítio onde ela se lê.**
+Quem a responder por memória ou pelo [`03`](03_o_plano.md) responde a fila errada — já aconteceu.
+
+| ordem | obra | estado |
+|---|---|---|
+| **1.ª** | a lei que acende o sprite | ✅ **NO PRODUTO e com o smoke do dono APROVADO (21/09)** — `Lei::Forma` é o **valor de fábrica** desde 21/09 (`PH2D_FORM_PBR=0` bissecta). ⏳ fica a **cauda** do §7, e o item `2` dela está **DESBLOQUEADO** por essa aprovação |
+| **2.ª** | a rota B — o catavento | ⏳ **é a PRÓXIMA**, e não começou: `Mesh3D`/`MeshShading` **não existem** (medido no `ph2d-ecs`) |
+| 3.ª | a luz sobrevive ao movimento | ⏳ **absorve a `W9`** do [`03`](03_o_plano.md), com o gate VERMELHO que o dono mandou tratar lá |
+| 4.ª | texturas | ⏳ o material continua **uma cor por objecto** |
+| 5.ª | animação 3D | ⏳ o esqueleto desta casa é 2D |
+
+⭐ **E a 1.ª obra tem um capítulo que esta página não conta:** o dono reportou **cinco** vezes que
+*«o bake não é idêntico ao que se vê em 3d»*, e as cinco causas — entre elas a **curva sRGB** e a
+**matéria** — estão em [`../Render/01_o_assado_e_identico_ao_que_se_ve.md`](../Render/01_o_assado_e_identico_ao_que_se_ve.md),
+com a receita de as re-medir. *Sem essa página, metade do preço desta obra lê-se como nunca tendo
+sido pago.*
+
 ### Porque a 1.ª é a 1.ª, com o número
 
 O sprite com forma **já é aceso hoje** — por [`impasto_light.wgsl`](../../crates/ph2d-render/src/shaders/impasto_light.wgsl),
@@ -345,7 +364,7 @@ da sombra.
 | 0 | **o destaque SATURA** (`~99 %` do topo `3 %`, nas DUAS leis) | a exposição é calibrada no MIOLO e quem traz o destaque de volta é a **vista**, não ela. A régua já existe (a coluna `a 255` do §8); falta a wave |
 | 0-bis | a **oclusão especular** (Lagarde) | divergência DECLARADA: a oclusão pesa o termo inteiro. Ela é uma lei com oráculo próprio |
 | 1 | **não re-enviar a forma quando só o rig mudou** | é onde o tempo está: o canal **não depende do rig** (é o que torna arrastar a lâmpada barato) e sobe na mesma a cada quadro. A diferença entre `1,74` e `2,08 ms` diz que a lei custa `~0,3 ms`; o resto é transporte |
-| 2 | a **escolha por objecto** (`PROJECT_SCHEMA`) | gateada no veredito do dono sobre o §8 |
+| 2 | a **escolha por objecto** (`PROJECT_SCHEMA`) e **GRAVADA** | ⭐ **DESBLOQUEADA em 2026-09-21**: ela esperava o veredito do dono sobre a APARÊNCIA, e ele aprovou o smoke. ⛔ Enquanto ela não existir a lei é **global e não viaja no ficheiro** — um projecto gravado hoje abre amanhã com outra aparência se alguém bissectar |
 | 3 | ~~a **oclusão**~~ | ✅ **FECHADA** acima — a cura era o céu, não uma decisão de produto |
 
 ⚠️ **E o endereço do passe não é o que esta secção escreveu.** Ela mandava-o para a `ph2d-render`,

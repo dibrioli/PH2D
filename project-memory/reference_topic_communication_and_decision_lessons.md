@@ -88,3 +88,4 @@ metadata:
   wave, não um passo a improvisar. ⛔ **E repeti-o à tarde (`=93` para o ciclo 11)** — promovido a
   entrada própria no índice: [smoke do Motion = formas + simulação](feedback_a_motion_smoke_scene_needs_shapes_and_simulation.md).
 
+- ⛔⛔⛔ [Plano CUMPRIDO que não diz que deixou de ser a FILA responde com confiança à pergunta «qual a próxima etapa?» — e responde a wave errada](feedback_a_fulfilled_plan_that_does_not_say_it_was_superseded.md): o estado de cada wave estava CERTO (auditado dois dias antes), logo *«audite a lista contra o código»* passa; o que faltava era **qual das páginas é a fila**, e quem me corrigiu foi o dono.

@@ -1,5 +1,27 @@
 # 03 — O plano: oito waves, cada uma com o que se mede
 
+⛔⛔⛔ **ESTE PLANO DEIXOU DE SER A FILA EM 2026-09-20 — a fila é a do [`15` §5](15_as_metas.md).**
+
+Ele continua a ser **o registo das oito waves** (o que cada uma mediu, a régua de cada uma e o que
+ficou de fora com motivo), e é isso que se vem aqui buscar. ⛔ **O que NÃO se vem aqui buscar é
+«qual é o próximo passo»:** nesse dia o dono deu uma ordem nova (*«faça tudo que for necessário para
+superar o objetivo»*) e a fila passou a ser as **cinco obras** do [`15` §5](15_as_metas.md), com o
+mecanismo no [`14` §6](14_a_ordem_de_superar.md).
+
+⚠️⚠️ **Este bloco existe porque o erro foi COMETIDO:** em 21/09 leu-se esta página para responder
+*«qual a próxima etapa?»* e respondeu-se `W9`. *Uma página que descreve uma fila cumprida sem dizer
+que ela foi substituída não tem como ser lida certo.*
+
+**O que aqui ficou aberto, e onde ele vive hoje:**
+
+| aberto nesta página | onde vive na fila em vigor |
+|---|---|
+| **`W9`** (medição + o gate VERMELHO que o dono mandou tratar aqui) | **3.ª obra** — *a luz sobrevive ao movimento* ([`14` §6 `F1`](14_a_ordem_de_superar.md)), que a absorve com a causa já identificada |
+| **`W6`** (autoria: o grafo MaterialX no módulo de nós) | ⛔ **FORA da fila nova** — nenhuma das cinco obras a contém. Fica **NOMEADA e sem posição**, e pô-la numa é decisão do dono |
+| **`W7d`** (profundidade de campo) | proposta **FORA por omissão**, decisão do dono |
+
+---
+
 ⚠️ **A ordem é por SALTO VISUAL POR UNIDADE DE TRABALHO**, e não por dificuldade nem por vontade.
 Cada wave acaba num **smoke** (a lei da casa) e traz a régua que a julga.
 
@@ -297,6 +319,13 @@ e o raio por material ([`10` §23](10_a_luz_que_atravessa_a_peca.md)) existem, e
 ---
 
 ## A ordem, num parágrafo
+
+⛔⛔ **CORRECÇÃO de 2026-09-21: este parágrafo descreve a fila do ESTUDO, que já não é a fila** (ver
+o topo do ficheiro). Ele fica porque explica **porque** as oito waves foram feitas nesta ordem — e
+⚠️ **duas frases dele estavam mortas quando foram lidas**: *«a `W7` e a `W8` são o acabamento»* (as
+duas fecharam em 19/09) e *«a `W9` fecha a fila»* (ela foi absorvida pela 3.ª obra da fila nova).
+*Um parágrafo de ordem envelhece mais depressa do que a página que o contém.*
+
 
 **`W1` e `W2` são o fundamento e são baratas.** `W3` e `W4` fazem o objecto existir no espaço. `W5`
 é a wave grande e é a nossa vantagem estrutural. `W6` é o que responde ao *«intuitivo para

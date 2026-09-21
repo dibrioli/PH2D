@@ -223,10 +223,22 @@ O que a `W9` deixou nomeado, agora com a causa identificada no §3.
 - **Pergunta em aberto do `02.2`, a medir e não a opinar:** quantos objectos em rota B cabem no
   orçamento, e a que fracção da resolução do sprite o G-buffer pode viver.
 
-### `F4` — A lei que acende o sprite passa a ser a BOA
+### `F4` — A lei que acende o sprite passa a ser a BOA ✅ **ENTREGUE em 2026-09-21** (a **1.ª obra** do [`15` §5](15_as_metas.md))
 
-Hoje quem acende um `BakedForm` é o `ImpastoLightPass` — **um modelo de tinta**, feito para o
-Painter, sem GGX e sem energia conservada. O modelador, ao lado, tem o OpenPBR inteiro.
+⛔⛔ **A frase que aqui esteve — *«hoje quem acende um `BakedForm` é o `ImpastoLightPass`, um modelo
+de tinta»* — era verdade no dia em que foi escrita e é FALSA desde 2026-09-21:** a
+[`Lei::Forma`](../../crates/ph2d-form-donation/src/lei_da_luz.rs) (o OpenPBR) é o **valor de
+fábrica**, e `PH2D_FORM_PBR=0` é o que volta à de tinta. O smoke do dono está **aprovado**.
+
+⚠️ **E ela custou mais do que esta secção previa:** pôr a lei boa a acender o sprite abriu **cinco**
+reports de *«o bake não é idêntico ao que se vê em 3d»*, com cinco causas empilhadas — o modo do
+visor, a lei do bake, a **matéria**, a **curva sRGB** e a **selecção**. Tudo em
+[`../Render/01_o_assado_e_identico_ao_que_se_ve.md`](../Render/01_o_assado_e_identico_ao_que_se_ve.md).
+
+⏳ **O que FICA desta obra:** a escolha da lei ser **por objecto e gravada** (hoje é global e não
+viaja no ficheiro), mais a cauda medida do [`15` §7](15_as_metas.md).
+
+O modelador tem o OpenPBR inteiro, e era essa a distância a fechar:
 
 ⇒ **É aqui que o §1 se paga:** as leis são crates-folha com gémeo em WGSL, logo o passe do sprite
 passa a incluir `ph2d_material::wgsl` — e ganha, de uma vez, material a sério, a subsuperfície (a

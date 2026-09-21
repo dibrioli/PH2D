@@ -566,42 +566,68 @@ estão escritos aqui:
 | `toda_porta_do_inspector_e_armada` | a secção entra na lista, e o `set_current_inspector_mesh3d` arma com `assado: true` **de propósito** — *uma fixtura no estado degenerado mede a metade que o artista menos vê* |
 | `…_e_desarmada` | o irmão: `desarma_tudo()` limpa-a |
 
-### §8.5 — ⛔⛔⛔ O report do bake: *«em sprite transparente o bake fica invisível»*
+### §8.5 — ⛔⛔⛔ O report do bake, e a RECUSA que eu escrevi e que foi REFUTADA no dia seguinte
 
-Reproduzido: a sprite entra no `materia_para` e sai um `BakedForm` com alfa
-**zero em toda parte**. O shader do assador escreve `vec4<f32>(q, px.a)` —
-*o alfa atravessa intacto*, que é a lei certa e o resultado errado.
+Ele escreveu *«em sprite transparente o bake fica invisível»*. Eu **impedi o gesto** — e a foto
+seguinte (*«o objeto continua sem assar»*, com o aviso na tela) era o mesmo pedido pela segunda
+vez: ⛔ *ele não queria ser impedido; ele queria que funcionasse.*
 
-E o estado **CONGELA**: um re-bake reutiliza o `b.base`, logo pintar a sprite
-*depois* não cura, e a única saída é o `Ctrl+Z`. *Um estado de que só se sai
-por desfazer, e sem uma frase a dizer porquê, é pior do que uma recusa.*
+⭐ **A rota da cena foi ILIBADA por medição antes da 1.ª linha de cura:** o
+`the_bake_gesture_lights_the_selected_sprite` (GPU, `#[ignore]` — é por isso que o portão nunca o
+correu) percorre a rota exacta do dono e lê **verde**, `10 237` de `65 536` texels fora da chapa
+branca. ⇒ a sprite que ele assou era **dele**, e a minha cerca negava arte legítima.
 
-⇒ `materia_para` recusa em voz alta quando **nenhum** texel tem alfa, com a
-cura na frase (*«paint it first, then Shift+B»*).
+**A lei que fica** ([`albedo::veste_a_forma`](../../crates/ph2d-app-sculpt3d/src/albedo.rs)): *onde
+o sprite não tem nada e a peça tem, a matéria passa a ser a **neutra***. A silhueta que faltava já
+estava rasterizada ao lado — o G-buffer é `[nx, ny, nz, **cobertura**]` por texel —, e o **branco**
+é o que as cenas de bake desta casa já põem na mesa (`bg: 2`), porque *a luz da forma MULTIPLICA*.
 
-⚠️ **A cena `=52` NÃO continha o fenómeno** — o canvas dela é `bg: 2`,
-branco chapado —, e é exactamente por isso que os seis gates dela ficavam
-verdes por cima deste defeito.
+| | opacos | sombreados | cantos |
+|---|---|---|---|
+| tela **branca** (`bg: 2`) | — | `10 237` de `65 536` | — |
+| tela **vazia** (`bg: 0`) | `12 284` | **`10 237`** | **`0`** |
 
-### §8.6 — ⭐⭐ O report da língua: *«o app é em inglês»*
+⭐ Os `10 237` são os **mesmos**: a forma acende exactamente os mesmos texels, e o que muda é só a
+silhueta. ⭐⭐ E a metade dos **cantos** é a que separa *«vestir a forma»* de *«pintar a tela de
+branco»* — a peça é uma bola, logo uma lei que pintasse o rectângulo passaria em tudo o resto.
 
-Medido antes de escrever: a **TELA** já está a zero (todo rótulo sai do
-`ph2d-i18n`, com 30 censos a defendê-lo). O que esta wave escrevia em PT e o
-artista lê é o **roteiro da `=52`** e o **readout da fase** — os dois
-traduzidos.
+⛔⛔ **A cerca é «o sprite INTEIRO está vazio»**, e sem ela isto seria uma regressão grave: um
+personagem **recortado** sobre transparente é o caso normal deste app, e texel a texel a peça
+pintaria branco na zona recortada — *o recorte deixaria de ser recorte*.
 
-⚠️ O **TERMINAL** do repo tem `~384` linhas em PT espalhadas por 8 crates de
-outras famílias (shell `159` · motion `101` · physics `73` · sculpt3d `67` ·
-painter `53` · components `31` · vec `27` · flip `20`): dívida das linhas
-donas, **nomeada e não tocada aqui**.
+### §8.6 — ⛔⛔⛔ O report da língua, e os TRÊS defeitos que uma foto tinha dentro
 
-⛔⛔ **E a tradução REPROVOU um gate meu, que é a lição a guardar:** o
-`o_roteiro_pede_play_e_a_cena_abre_a_regua` procurava a agulha
-`"=52 O CATAVENTO"` ⇒ *uma âncora que contém prosa traduzível reprova no dia
-da tradução, e o defeito que ela existe para apanhar continua vivo*. Hoje a
-âncora é o **número** da cena (`"=52 "`), que é o que não muda de língua.
+`✓ [sculpt3d] nao assou: this sprite is fully tra…`
 
----
+**(a) A isenção que o deixou passar tinha a premissa FALSA.** O `bake.rs` estava isento do censo de
+texto como *«as linhas `[sculpt3d]` do ASSAR no **terminal**»* — e a fase faz `eprintln!(…)` **e**
+`toasts.push(…)` com a mesma `String`. ⚠️ E o `albedo.rs` saiu com ele pela razão que a própria
+isenção dele escrevia (*«a cauda da MESMA frase»*): **uma isenção que herda a premissa de outra
+herda o erro dela**. Retiradas as duas, o gate achou na hora uma **terceira** frase que elas
+escondiam.
+
+**(b) Uma recusa tinha a cara de um sucesso.** A porta devolvia uma `String`, logo a fase não podia
+saber o que acontecera. ⇒ [`bake::Veredito`]. ⛔⛔ **E uma mutação sobrevivente mostrou que a cura
+ficou sem régua durante uma hora:** trocar `Err(…) => Recusado` por `Assado` passava os **dois**
+gates de GPU do gesto e a suíte inteira — *eles só percorrem o caminho que ASSA*.
+
+**(c) O gate novo apanhou o IRMÃO antes do dono.** O gesto da imagem-padrão tinha o mesmo defeito
+no mesmo ficheiro: três frases portuguesas e as duas recusas de verde.
+
+### §8.7 — O que o portão cobrou pelo corte, e o que cada cura ensinou
+
+| cobrança | cura |
+|---|---|
+| tecto de **função** (`218` de `200`) | a fase tinha **dois assuntos** ⇒ `fase_sculpt3d_alpha`, por responsabilidade. ⭐ Declarada e chamada pela **irmã**, porque o índice do quadro estava a UMA linha do tecto dele e o `splice` do texto emendado é **recursivo** |
+| tecto da **shell** (`+85`) | por **MOVER**: a lei do padrão vive agora em `ph2d_app_sculpt3d::alpha_pedido`, com as duas fontes por **assinatura** — o molde que o `bake::drain` já usava |
+| **três** isenções (downcast · precisão · texto) | elas **VIAJAM com o código**, e as duas metades acusaram na mesma corrida: o órfão de um lado, o sem-abrigo do outro |
+| a entrada da **precisão** | ⛔ quase mudou por engano: com as duas fases a ler pixels a pergunta passou a ser *«qual deles ESCREVE de volta»*. O alpha só lê ⇒ `PRECISION-READONLY`. **Enquanto partilhavam ficheiro, a entrada da irmã abrigava os dois** |
+
+⭐⭐ E **dois gates de texto viraram leis MEDIDAS** ao mudarem de casa: a ordem das duas fontes (as
+camadas vivas antes da imagem guardada) passa a ser afirmada **contando as leituras**.
+
+⚠️ E caiu hoje a **terceira** âncora de gate presa a prosa traduzível (`"escala {scale:"`, depois
+de `"=52 O CATAVENTO"`).
 
 ---
 
@@ -626,6 +652,11 @@ da tradução, e o defeito que ela existe para apanhar continua vivo*. Hoje a
 | usar o relógio da PAREDE para o giro | a peça continuaria a girar com a régua parada, e o controlo da cena (o botão de Play) deixaria de existir | §7.2 |
 | uma `Unit` nova para *voltas por segundo* | o sufixo dela acabaria em `s` e teria de **PRECEDER** `Seconds` no `parse_suffix` — *uma tabela de sufixos é sensível à ordem, e uma entrada nova no fim lê-se como inerte*; a `Unit::PerSecond` já exprime a grandeza | §8.2 |
 | deixar o descritor em `Machinery` e oferecer o componente por um botão | `Machinery` proíbe por escrito a secção do Inspector, e a secção só é pintada COM o componente (ADR-0166) ⇒ **não existe superfície sempre visível que o anexe**: sem a paleta o artista nunca lá chega | §8.1 |
-| uma barra de FRACÇÃO de alfa na recusa do bake | o defeito é o VAZIO e não a esparsidade: uma sprite com UM texel opaco assa e acende, e uma barra no meio recusaria arte legítima | §8.5 |
-| deixar o bake assar um sprite transparente e curar depois | o `materia_para` reutiliza o `base` num re-bake ⇒ **pintar a sprite depois não cura**, e só o `Ctrl+Z` sai do estado | §8.5 |
+| ⛔ ~~RECUSAR o bake de um sprite transparente~~ | **REFUTADA no dia seguinte pelo próprio dono** (*«o objeto continua sem assar»*): ele queria que funcionasse, não ser impedido. A lei que ficou é vestir a silhueta da peça | §8.5 |
+| a cerca de vazio texel a texel | um personagem **recortado** é o caso normal: a peça pintaria branco na zona recortada e *o recorte deixaria de ser recorte* | §8.5 |
+| `255` no alfa da matéria vestida | a cobertura da borda é fraccionária — um `255` chapado devolve a peça **serrilhada**, e o canal já tem a resposta suave | §8.5 |
+| pôr a lei do vestido no `materia_para` | a cobertura só existe depois do `form_plane_for`, e a matéria é lida ANTES porque é ela que decide o TAMANHO da rasterização | §8.5 |
+| declarar o `bake.rs` como código de TERMINAL | a fase faz `eprintln!` **e** `toasts.push` com a mesma `String` — a isenção era metade da verdade, e a outra metade era a foto do dono | §8.6 |
+| medir a ORDEM das fontes do padrão pelo escrutínio de um `match` | uma régua de texto sobre quem chama a porta; contar as leituras é a lei, e sobrevive à mudança de casa | §8.7 |
+| subir o tecto da shell para caber os gates novos | a cura é MOVER a lei para a crate da família, e foi ela que pagou as `85` linhas | §8.7 |
 | uma âncora de gate feita do TÍTULO de uma cena | ela reprova no dia da tradução, e o defeito que o gate existe para apanhar continua vivo — a âncora é o **número** (`=52 `) | §8.6 |

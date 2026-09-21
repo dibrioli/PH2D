@@ -155,6 +155,13 @@ fn the_four_verbs_the_sweep_found_are_real_and_now_declare() {
         // ⚠️ **E mudou OUTRA vez na OBRA 2 da `line/render-loop` (2026-09-12):** o laço partiu-se em
         // fases, e quem assa a forma é a `fase_sculpt3d_bake`. O `mod.rs` continua a ler pixels
         // noutros sítios e passa na varredura acima por conta própria (`commit_edited_texture`).
+        // ⛔⛔ **E em 21/09 eu quase a mudei outra vez, e teria sido ERRADO.** Um tecto de LOC
+        // partiu a fase em dois assuntos, e as DUAS passaram a ler pixels — logo a pergunta deixou
+        // de ser *«onde está o ficheiro»* e passou a ser *«qual deles ESCREVE de volta»*. É esta:
+        // ela assa `base x luz` no sprite. ⭐ A irmã (`fase_sculpt3d_alpha`) só LÊ, para construir
+        // uma luminância, e declara-se com o `PRECISION-READONLY` que a mensagem deste gate
+        // prescreve. ⚠️ *Enquanto as duas viviam no mesmo ficheiro, esta entrada abrigava as duas
+        // — e a metade que nunca declarou nada só apareceu quando o corte as separou.*
         (
             "render_loop/fase_sculpt3d_bake.rs",
             "o `base x luz` e' de 8 bits",

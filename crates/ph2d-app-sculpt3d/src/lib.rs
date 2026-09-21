@@ -71,6 +71,14 @@ pub mod vivo_fase;
 /// A ponte do Inspector do catavento — o instantâneo e o dreno.
 pub mod vivo_inspector;
 
+/// **O gesto do PADRÃO do pincel** (o alpha por imagem) — ver o módulo.
+pub mod alpha_pedido;
+
+/// **Os gates do VEREDITO do gesto de assar** — ver o irmão.
+#[cfg(test)]
+#[path = "bake_veredito_tests.rs"]
+mod bake_veredito_tests;
+
 /// Os gates do catavento: a promessa da rota B afirmada no PIXEL, com o controlo da esfera lisa.
 #[cfg(test)]
 #[path = "vivo_tests.rs"]

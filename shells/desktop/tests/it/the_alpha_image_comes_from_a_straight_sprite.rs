@@ -23,8 +23,13 @@ fn fulfilment(src: &str) -> String {
     // uma janela por contagem mede quanto o autor escreveu, não onde o trabalho
     // acaba. O último ato do cumprimento é anunciar o resultado.
     let rest = &src[at..];
+    // ⛔⛔ **E a âncora do fim é `toasts.push(` e não a chamada INTEIRA** — 3.ª reparação desta
+    // mesma linha, e a 1.ª que não é sobre o tamanho: em 21/09 o aviso passou a escolher a CARA
+    // pelo veredito (`if deu { success } else { error }`, a foto do ✓ verde numa recusa) e a
+    // âncora literal deixou de casar. *A propriedade é «o cumprimento acaba ao ANUNCIAR»; qual
+    // construtor de aviso ele usa é um detalhe que este gate não tem de saber.*
     let end = rest
-        .find("toasts.push(Toast::success(line));")
+        .find("toasts.push(")
         .expect("o cumprimento termina anunciando o que fez");
     rest[..end].to_string()
 }
@@ -125,24 +130,34 @@ fn the_readout_reports_the_scale_the_door_returned() {
     let src = crate::frame_text::render_frame();
     let body = fulfilment(&src);
 
-    let at = body
-        .find("set_alpha_image(")
-        .expect("o cumprimento chama a porta do alpha por imagem");
-    // O retorno da porta É a escala em vigor; um `scene.set_alpha_image(a);` solto descarta o
-    // único número que o readout tem para dizer.
-    let call_line = body[..at].rsplit('\n').next().unwrap_or("");
+    // ⛔⛔ **A conta da escala mudou-se para a família em 21/09** (uma catraca da shell trouxe a
+    // lei do padrão para lá), logo o `set_alpha_image` já não é chamado neste corpo. ⭐ O que fica
+    // aqui é a FIAÇÃO — *a fase chama a lei* —, e o retorno dela é afirmado onde ela vive.
     assert!(
-        call_line.contains("let "),
-        "o cumprimento descarta o retorno de `set_alpha_image`: `{}`",
-        call_line.trim()
+        body.contains("alpha_pedido::drain("),
+        "o cumprimento deixou de chamar a lei do padrão"
+    );
+
+    // ⚠️⚠️ **E esta metade MUDOU DE CASA com o texto.** Ela media *«o readout não anuncia os
+    // pixels da fonte»* no corpo da fase — e com a frase na tabela ela passava a ser trivialmente
+    // verdadeira ali, verde a afirmar nada. *Migrar texto para uma tabela move, em silêncio, o
+    // alvo de todo gate que o media.*
+    let tabela = fs::read_to_string("../../crates/ph2d-i18n/src/app_sculpt3d.rs")
+        .expect("a tabela de texto da familia existe");
+    let frase = tabela
+        .split_once("\"app.sculpt3d.alpha.padrao_definido\"")
+        .expect("a frase do padrao vive na tabela da familia")
+        .1
+        .lines()
+        .nth(1)
+        .unwrap_or_default();
+    assert!(
+        frase.contains("{scale}"),
+        "a frase do padrao deixou de dizer a ESCALA: {frase}"
     );
     assert!(
-        body.contains("escala {scale:"),
-        "o readout nao reporta a escala que a porta devolveu"
-    );
-    assert!(
-        !body.contains("({w}x{h})"),
-        "o readout ainda anuncia os pixels da fonte — o unico numero medido como INERTE para a \
-         escala do padrao no modelo"
+        !frase.contains("{w}") && !frase.contains("{h}"),
+        "o readout voltou a anunciar os pixels da fonte — o unico numero medido como INERTE para \
+         a escala do padrao no modelo: {frase}"
     );
 }

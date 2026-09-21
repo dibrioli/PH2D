@@ -59,14 +59,14 @@ fn bake_one(
         &mut SimWorld,
         &mut SpriteRenderer,
     ) -> Option<ph2d_render::SpriteImage>,
-) -> Result<(u32, u32), String> {
+) -> Result<(u32, u32, usize), String> {
     let entity = Entity::from_bits(entity_bits);
     // ⚠️ **RE-ASSAR NÃO LÊ A TELA DE VOLTA**, e essa lei mudou de casa em 2026-09-21: ela passou a
     // ter um SEGUNDO leitor — o visor, que desde a mesma data pinta a MESMA matéria que este gesto
     // vai acender ([`super::albedo`], onde o `61×` que a obrigou está medido). Depois do primeiro
     // bake os pixels do sprite são `base × luz`; lê-los como fonte faria o segundo bake acender o
     // que já está aceso, e o objeto escureceria a cada gesto.
-    let (base, size) =
+    let (mut base, size) =
         super::albedo::materia_para(forms, entity_bits, &mut || ler_fonte(sim, renderer))?;
     // ⚠️ **O SLOT é do bake e não da matéria** — um sprite já assado reusa a textura que já tem
     // (nenhuma textura nova por bake); o visor não tem slot nenhum, e é por isso que esta linha
@@ -83,7 +83,18 @@ fn bake_one(
     let lei = lei_ao_assar(forms.get(&entity_bits));
     let planes = scene
         .form_plane_for(gpu, size)
-        .ok_or_else(|| "a cena nao tem malha para doar".to_string())?;
+        .ok_or_else(|| ph2d_i18n::tr("app.sculpt3d.bake.sem_malha_para_doar").to_string())?;
+    // ⭐⭐⭐⭐ **UM SPRITE VAZIO VESTE A SILHUETA DA PEÇA** (report do dono, 21/09) — ver
+    // [`super::albedo::veste_a_forma`], onde a lei, a cerca e o *porquê do branco* estão escritos.
+    //
+    // ⚠️ **Ela mora AQUI e não no [`super::albedo::materia_para`], e a ordem é a razão:** a
+    // silhueta que falta é a **cobertura** do G-buffer, que só existe depois do `form_plane_for`
+    // logo acima. A matéria é lida antes porque ela decide o TAMANHO com que a forma é
+    // rasterizada — *não há como perguntar à forma antes de saber em que extensão a pedir*.
+    //
+    // ⚠️ **E ela escreve no `base`, que é o que fica GRAVADO** — logo re-assar é estável: o
+    // segundo `Shift+B` reusa esta matéria já vestida e não a compõe outra vez.
+    let vestidos = super::albedo::veste_a_forma(&mut base, &planes.normal);
     let rig = *scene.rig();
     let bake = BakedForm {
         size,
@@ -113,7 +124,7 @@ fn bake_one(
             ..bake
         },
     );
-    Ok(size)
+    Ok((size.0, size.1, vestidos))
 }
 
 /// ⭐⭐ **COM QUE LEI ESTE BAKE FICA** — a do objecto, se ele já existe; a de fábrica, se nasce.
@@ -183,6 +194,37 @@ fn stamp_identity(sim: &mut SimWorld, entity: Entity, next_id: &mut u32) -> u32 
     id
 }
 
+/// ⭐⭐⭐ **O QUE O GESTO DIZ, E COM QUE CARA** — o veredito de [`drain`].
+///
+/// ⛔⛔ **Ele existe por causa de uma FOTO** (report do dono, 21/09): a recusa do bake aparecia na
+/// tela com o ✓ **VERDE** de sucesso, porque a fase fazia `Toast::success(line)` sobre a `String`
+/// que esta porta devolvia — *o chamador não tinha como saber se o gesto tinha corrido*.
+/// ⚠️ Um aviso que anuncia uma falha com a cara de um sucesso é pior do que nenhum: ele ensina o
+/// artista a não ler os avisos.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Veredito {
+    /// O sprite ficou aceso pela forma.
+    Assado(String),
+    /// Nada foi assado, e a frase diz porquê (e, onde há cura, qual é).
+    Recusado(String),
+}
+
+impl Veredito {
+    /// A frase, para quem só a quer imprimir.
+    #[must_use]
+    pub fn frase(&self) -> &str {
+        match self {
+            Self::Assado(s) | Self::Recusado(s) => s,
+        }
+    }
+
+    /// `true` quando o gesto correu — o que decide a CARA do aviso.
+    #[must_use]
+    pub fn assou(&self) -> bool {
+        matches!(self, Self::Assado(_))
+    }
+}
+
 /// **A PORTA do gesto** — assa o que o artista pediu.
 ///
 /// ⚠️ **A RE-ACENDIDA não está aqui**, e a ausência é o desenho: ela é
@@ -208,7 +250,7 @@ pub fn drain(
         &mut SimWorld,
         &mut SpriteRenderer,
     ) -> Option<ph2d_render::SpriteImage>,
-) -> Option<String> {
+) -> Option<Veredito> {
     if !want_bake {
         return None;
     }
@@ -222,22 +264,67 @@ pub fn drain(
     // ⚠️ Lido ANTES do bake, porque o bake substitui a textura — depois já não há 16 bits que ver.
     // (A leitura é da shell desde a W2/L3-B; ver o parâmetro.)
     let note = if lost_precision {
-        " -- convertido para RGBA8: a forma assada e' de 8 bits"
+        ph2d_i18n::tr("app.sculpt3d.bake.convertido_para_rgba8")
     } else {
         ""
     };
     Some(match selected {
-        Some(bits) => match bake_one(
-            scene, forms, passes, next_id, gpu, bits, sim, renderer, ler_fonte,
-        ) {
-            Ok((w, h)) => format!(
-                "[sculpt3d] ASSADO no sprite ({w}x{h}){note} -- mova a lampada (Q/E/R/F) e ele \
-                 RE-ACENDE; apague a peca que ele continua aceso, e SALVE que ele volta aceso"
+        Some(bits) => Veredito::do_gesto(
+            bake_one(
+                scene, forms, passes, next_id, gpu, bits, sim, renderer, ler_fonte,
             ),
-            Err(e) => format!("[sculpt3d] nao assou: {e}"),
-        },
-        None => "[sculpt3d] nao assou: selecione um SPRITE antes (a forma acende ELE)".into(),
+            note,
+        ),
+        None => {
+            Veredito::Recusado(ph2d_i18n::tr("app.sculpt3d.bake.selecione_um_sprite").to_string())
+        }
     })
+}
+
+impl Veredito {
+    /// ⭐⭐⭐ **A TRADUÇÃO do que o gesto devolveu para o que o artista vê** — pura, e é essa a
+    /// razão de ela ser uma função.
+    ///
+    /// ⛔⛔ **Ela foi extraída por uma MUTAÇÃO SOBREVIVENTE** (21/09): trocar o
+    /// `Err(e) => Veredito::Recusado(…)` por `Assado(…)` passava os **dois** gates de GPU do gesto
+    /// e a suíte inteira — porque os dois só percorrem o caminho que ASSA, e **o braço do erro
+    /// nunca era exercitado por ninguém**. ⚠️ *Um gate que só corre o caminho feliz não afirma
+    /// nada sobre a cara de uma falha* — e a cara de uma falha era, exactamente, o report.
+    ///
+    /// ⭐ Escrita dentro do [`drain`] ela só era alcançável com um `GpuContext`, e a lei desta
+    /// casa di-lo por extenso: *quando um gate precisa de um device para medir uma decisão que não
+    /// tem pixel nenhum, a lei está no sítio errado*.
+    ///
+    /// **Mutações que devem sangrar:** `Err(…) => Assado` · `Ok((.., 0))` trocado com o braço do
+    /// vestido · a chave da frase.
+    pub(crate) fn do_gesto(feito: Result<(u32, u32, usize), String>, note: &str) -> Self {
+        match feito {
+            // ⭐⭐ **DUAS frases e não uma com um `if` dentro**: quando o sprite estava vazio o
+            // que aconteceu foi outra coisa — ele **vestiu a peça** —, e o artista tem de o saber
+            // para não pintar por cima sem perceber porquê (ver [`super::albedo::veste_a_forma`]).
+            Ok((w, h, 0)) => Self::Assado(ph2d_i18n::tr_with(
+                "app.sculpt3d.bake.assado",
+                &[
+                    ("w", &w.to_string()),
+                    ("h", &h.to_string()),
+                    ("note", &note),
+                ],
+            )),
+            Ok((w, h, vestidos)) => Self::Assado(ph2d_i18n::tr_with(
+                "app.sculpt3d.bake.assado_vestido",
+                &[
+                    ("w", &w.to_string()),
+                    ("h", &h.to_string()),
+                    ("note", &note),
+                    ("vestidos", &vestidos.to_string()),
+                ],
+            )),
+            Err(e) => Self::Recusado(ph2d_i18n::tr_with(
+                "app.sculpt3d.bake.nao_assou",
+                &[("e", &e)],
+            )),
+        }
+    }
 }
 
 /// **ENQUANTO A CENA EXISTE, A LUZ DELA AUTORA** — empurra o rig vivo para os objetos assados.

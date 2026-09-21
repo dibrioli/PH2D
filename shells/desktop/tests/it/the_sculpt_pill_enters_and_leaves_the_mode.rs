@@ -325,18 +325,15 @@ fn the_brush_pattern_reads_the_live_layers_before_the_stored_image() {
         "o padrão perdeu o caminho da imagem guardada — um sprite sem documento vivo deixa de \
          servir de padrão"
     );
-    // ⚠️ **A ORDEM que importa é a da CONSULTA, não a das definições.** A 1ª versão deste gate
-    // comparava onde cada uma APARECE no arquivo, e a mutação que troca o combinador
-    // (`baked().or(live)`) passava por ela: as duas continuam escritas na mesma ordem, e só a
-    // decisão muda. O sujeito é o escrutínio do `match`, que é onde a escolha de fato acontece.
-    let scrutinee = tail
-        .split_once("let line = match ")
-        .expect("a escolha entre as duas fontes mora num `match`")
-        .1;
+    // ⛔⛔ **A ORDEM deixou de se medir aqui, e a mudança é uma MELHORIA:** a lei mudou-se para a
+    // crate da família em 21/09 (uma catraca da shell trouxe-a), e lá ela é afirmada CONTANDO as
+    // leituras — `o_padrao_pergunta_as_camadas_vivas_antes_da_imagem_guardada`. ⭐ *Um gate que
+    // percorre a porta é melhor do que um que lê o escrutínio de um `match` no texto de quem a
+    // chama*, e esta versão já tinha sido reparada uma vez por exactamente essa fragilidade.
+    // O que fica aqui é a FIAÇÃO: as duas leituras existem, e nenhuma activa o Painter.
     assert!(
-        scrutinee.starts_with("live"),
-        "a imagem GUARDADA é consultada antes das camadas VIVAS: o fallback ganha sempre e o \
-         procedural nunca chega ao pincel"
+        tail.contains("alpha_pedido::drain("),
+        "a fase deixou de chamar a lei do padrão: as duas leituras ficaram sem consumidor"
     );
     // ⚠️ E perguntar o que a tela mostra não pode trocar a ferramenta da mão do artista.
     assert!(

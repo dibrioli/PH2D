@@ -15,6 +15,21 @@
 //! cada tecla, as razões de um `Delete` recusado. Isso **não** é texto de interface: é a
 //! instrumentação que o módulo usa desde que nasceu, e cada ficheiro está isento com o mecanismo.
 //! ⛔ A fronteira é *quem lê*: o terminal é de quem bisseca; o ecrã é do artista.
+//!
+//! ⛔⛔⛔ **E ESSA FRONTEIRA FOI MEDIDA ERRADA UMA VEZ, com foto** (report do dono, 21/09): o
+//! `bake.rs` estava isento como *«as linhas `[sculpt3d]` do ASSAR no TERMINAL»* — e a
+//! `fase_sculpt3d_bake` faz `eprintln!(…)` **E** `toasts.push(…)` com a **MESMA** `String`.
+//! *Ele é as duas coisas, e a isenção era metade da verdade.* O que o dono viu foi
+//! `[sculpt3d] nao assou: this sprite is fully tra…` — um prefixo português colado a uma frase
+//! inglesa, num aviso de ecrã.
+//!
+//! ⚠️ **E o `albedo.rs` saiu com ele, pela razão que a própria isenção dele escrevia:** ela
+//! dizia-se *«a cauda da MESMA frase do `bake.rs`»* ⇒ **uma isenção que herda a premissa de outra
+//! herda o erro dela**, e as duas caíram na mesma corrida.
+//!
+//! ⇒ as duas entradas SAÍRAM desta lista, e as frases vivem na tabela
+//! (`app.sculpt3d.bake.*` e `app.sculpt3d.albedo.*`). O prefixo `[sculpt3d]` ficou onde ele é
+//! verdade: no `eprintln!` da fase, e **fora** do que o artista lê.
 
 use ph2d_label_census::gate::{self, Excecao, Isento};
 
@@ -49,18 +64,14 @@ const FORA: &[Isento] = &[
          o que o painel mostra são chips, e esses vêm do `panel_snapshot`",
     ),
     (
-        "bake.rs",
-        "as linhas `[sculpt3d]` do ASSAR no terminal (o que foi assado, em que sprite, e o que \
-         fazer a seguir)",
-    ),
-    (
-        "albedo.rs",
-        "as DUAS razões de a matéria de um sprite não poder ser lida — elas são a cauda da MESMA \
-         frase do `bake.rs` logo acima (`[sculpt3d] nao assou: {e}`), e vieram COM o código que as \
-         escreve quando a lei da matéria ganhou o segundo leitor. ⚠️ **Uma isenção é propriedade \
-         do CÓDIGO e não do sítio onde ele está** (`CLAUDE.md` §5.0): sem esta linha os dois \
-         literais ficavam sem abrigo e liam-se como TEXTO NOVO, e a cura seria migrar metade de \
-         uma frase cuja outra metade é consola",
+        "alpha_pedido.rs",
+        "o **nome por omissão do objecto** que virou padrão (`Sprite`), quando o sprite não tem \
+         `Name` — é a excepção que o cabeçalho desta tabela já declara por escrito: *um nome que \
+         entra num `Name` é identidade durável (`stable_name_id` fecha um hash sobre ele), e \
+         traduzi-lo é decisão do dono*. ⚠️ **A isenção VIAJOU com o código em 21/09:** ela vivia na \
+         lista da shell, e quando a lei do padrão se mudou para esta crate as duas metades \
+         acusaram na mesma corrida — a órfã lá, o literal sem abrigo aqui. *Cada uma sozinha \
+         mente: uma lê-se como «alguém apagou isto» e a outra como «alguém escreveu texto novo».*",
     ),
     (
         "keys.rs",

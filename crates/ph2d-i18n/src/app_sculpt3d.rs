@@ -124,6 +124,50 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
              throw the fine plane away (a shape brush still densifies)"
         }
         "app.sculpt3d.tinta_fina.nao_cabe_na_placa" => "Paint Detail lowered: too big for the GPU",
+        // ⛔⛔⛔ **O TOAST DO BAKE — e ele estava em PORTUGUÊS NA TELA até 21/09** (foto do dono:
+        //    `[sculpt3d] nao assou: this sprite is fully tra…`, um prefixo PT colado a uma frase
+        //    inglesa). ⚠️ **A isenção que o deixou passar dizia que o `bake.rs` fala pelo
+        //    TERMINAL** — e a `fase_sculpt3d_bake` faz `eprintln!(line)` **E**
+        //    `toasts.push(…, line)` com a MESMA string: *ele é as duas coisas, e a isenção era
+        //    metade da verdade*. A prova está no gate da crate, que perdeu as duas linhas.
+        "app.sculpt3d.bake.assado" => {
+            "BAKED into the sprite ({w}x{h}){note} -- move the lamp (Q/E/R/F) and it RE-LIGHTS; \
+             delete the piece and it stays lit, and SAVE brings it back lit"
+        }
+        // ⭐⭐ **A frase que o report de 21/09 produziu** — ver `albedo::veste_a_forma`: um sprite
+        //    vazio deixa de ser recusado e passa a vestir a silhueta da peça.
+        "app.sculpt3d.bake.assado_vestido" => {
+            "BAKED into the sprite ({w}x{h}){note} -- it was EMPTY, so it took the shape of the \
+             piece ({vestidos} texels); paint it and bake again to keep your own art"
+        }
+        "app.sculpt3d.bake.nao_assou" => "did not bake: {e}",
+        // ⚠️ **A TERCEIRA recusa do bake, e ela só apareceu quando a isenção falsa saiu** — é a
+        //    metade do report que nenhuma leitura minha tinha visto.
+        "app.sculpt3d.bake.sem_malha_para_doar" => "the scene has no mesh to donate",
+        // ⭐⭐⭐ **O IRMÃO, apanhado pelo gate que a foto do bake encomendou** (21/09): o gesto da
+        //    imagem-padrão tinha o MESMO defeito no MESMO ficheiro — três frases portuguesas com a
+        //    etiqueta de consola dentro, e as duas RECUSAS a saírem com o ✓ verde de sucesso.
+        //    ⚠️ *Um gate escrito para uma foto encontrou o defeito seguinte antes do dono.*
+        "app.sculpt3d.alpha.padrao_definido" => {
+            "pattern: {what} of the selected sprite (scale {scale})"
+        }
+        // ⚠️ **O `{what}` é uma das DUAS fontes** — e elas viram chave em vez de literal pela
+        //    mesma razão das frases que as usam: um `&str` português colado a uma frase inglesa é
+        //    exactamente o que a foto mostrou.
+        "app.sculpt3d.alpha.as_camadas" => "the LAYERS",
+        "app.sculpt3d.alpha.a_imagem" => "the image",
+        "app.sculpt3d.alpha.nao_descreve_uma_imagem" => "the sprite does not describe an image",
+        "app.sculpt3d.alpha.selecione_um_sprite" => "select a sprite to use as the pattern",
+        "app.sculpt3d.bake.selecione_um_sprite" => {
+            "did not bake: select a SPRITE first (the form lights IT)"
+        }
+        "app.sculpt3d.bake.convertido_para_rgba8" => {
+            " -- converted to RGBA8: the baked form is 8-bit"
+        }
+        "app.sculpt3d.albedo.nao_consegui_ler_os_pixels" => {
+            "could not read the pixels of the selected sprite"
+        }
+        "app.sculpt3d.albedo.sem_pixels" => "the selected sprite has no pixels",
         "app.sculpt3d.trim_aplica.sem_peca_para_cortar" => "there is no piece to cut",
         "app.sculpt3d.trim_aplica.pilha_montada_j_reverte" => {
             "a multiresolution stack is mounted -- J reverts it and the cut comes back"

@@ -89,13 +89,19 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // `line/render-bodies` (2026-09-13) esse braço é o sub-dreno `fase_bus_tool_panel`, no ficheiro dele: a licença
     // seguiu o SUJEITO, e o censo de obsolescência abaixo tirou-a do `fase_bus_drain.rs`.
     "src/render_loop/fase_bus_tool_panel.rs",
-    // ⚠️ **O `fase_sculpt3d_bake.rs` HERDOU um downcast do `render_loop/mod.rs`** (OBRA 2 da
+    // ⚠️ **E em 21/09 ela mudou de ficheiro OUTRA VEZ, pela mesma lei:** um tecto de LOC partiu a
+    // `fase_sculpt3d_bake` em dois assuntos, e o alpha por imagem — que é quem faz o downcast —
+    // foi com a `fase_sculpt3d_alpha`. ⭐ **As duas metades acusaram na MESMA corrida** (o órfão
+    // aqui, o sem-abrigo no ficheiro novo), que é o que prova ser uma MUDANÇA DE ENDEREÇO e não
+    // uma licença nova; cada metade sozinha mente.
+    //
+    // ⚠️ **O `fase_sculpt3d_alpha.rs` HERDOU um downcast do `render_loop/mod.rs`** (OBRA 2 da
     // `line/render-loop`, 2026-09-12): o alpha por imagem pergunta ao `PainterTool` o que a tela
     // MOSTRA (`needs_document_bind` + `composite_to_lum`, a porta do «Use as Brush Grain»), sem o
     // activar. É a MESMA excepção que a entrada do `mod.rs` acima licencia, mudada de ficheiro com o
     // corpo que a contém — a contagem de downcasts da shell não mudou (12). ⛔ Não é uma excepção
     // nova: o quadro partiu-se em fases, e a licença segue o SUJEITO, como a entrada da precisão.
-    "src/render_loop/fase_sculpt3d_bake.rs",
+    "src/render_loop/fase_sculpt3d_alpha.rs",
     // ⚠️ **O `fase_use_as_paper.rs` HERDOU os downcasts do `render_loop/mod.rs`** (OBRA 2 da
     // `line/render-loop`, 2026-09-12): o *Use as Watercolor Paper / Granulation* da Hierarquia instala
     // a imagem no `PainterTool` concreto (slot Grain), e o bloco mudou-se verbatim para a fase — a

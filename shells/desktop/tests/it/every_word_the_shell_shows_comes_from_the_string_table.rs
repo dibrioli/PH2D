@@ -92,10 +92,6 @@ const FORA: &[Isento] = &[
         "o relatório da câmera de jogo, impresso no terminal",
     ),
     (
-        "render_loop/fase_sculpt3d_bake.rs",
-        "as linhas `[sculpt3d]` do padrão de alpha, impressas no terminal",
-    ),
-    (
         "render_loop/fase_selection_mirror_bone_focus.rs",
         "o retrato de foco de osso, impresso no terminal",
     ),

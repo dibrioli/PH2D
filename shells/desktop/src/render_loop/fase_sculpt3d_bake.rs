@@ -9,6 +9,17 @@
 
 use super::*;
 
+/// **Fase irmã: o SPRITE VIRA O PADRÃO DO PINCEL** — ver o módulo.
+///
+/// ⚠️⚠️ **Ela é declarada AQUI e não no índice do quadro, e o motivo é um TECTO medido:** o
+/// `render_loop/mod.rs` é um índice que cresce ~2 linhas por fase e estava a `599` de `600`.
+/// ⭐ O texto emendado do quadro ([`crate::frame_text::splice`]) é **RECURSIVO** — uma fase
+/// chamada de dentro de outra é emendada na mesma —, logo esta continua a ser lida por todo gate
+/// de ordem desta shell sem custar uma linha ao índice.
+#[cfg(feature = "sculpt3d")]
+#[path = "fase_sculpt3d_alpha.rs"]
+mod fase_sculpt3d_alpha;
+
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_sculpt3d_bake(&mut self) {
@@ -26,7 +37,6 @@ impl crate::App {
             sim,
             asset_db,
             toasts,
-            tools,
             hero_screen,
             atlas_asset_map,
             ..
@@ -79,8 +89,18 @@ impl crate::App {
                     })
                 },
             ) {
-                eprintln!("{line}");
-                toasts.push(Toast::success(line));
+                // ⚠️ **O prefixo `[sculpt3d]` é do TERMINAL e não do aviso**, e a foto de 21/09 diz
+                // porquê: ele aparecia na tela a comer metade da largura do toast, e a frase do
+                // artista ficava em `this sprite is fully tra…`. *Quem bissecta quer a etiqueta;
+                // quem está a desenhar quer a frase.*
+                eprintln!("[sculpt3d] {}", line.frase());
+                // ⭐⭐ **E a CARA do aviso segue o veredito** — ver [`Veredito`]: até 21/09 toda
+                // recusa saía com o ✓ verde de sucesso, que é o que o dono fotografou.
+                toasts.push(if line.assou() {
+                    Toast::success(line.frase())
+                } else {
+                    Toast::error(line.frase())
+                });
             }
             // ⭐⭐⭐⭐ **O VISOR PINTA A MATÉRIA QUE O BAKE VAI ACENDER** — ver
             // [`ph2d_app_sculpt3d::albedo::sincroniza`], que é onde a lei e o `61×` que a obrigou
@@ -108,91 +128,6 @@ impl crate::App {
                     })
                 },
             );
-            // **O SPRITE SELECIONADO VIRA O PADRÃO DO PINCEL** — o alpha por
-            // IMAGEM. Mora aqui pela MESMA razão do bake logo acima: é o único
-            // ponto do frame em que a cena 3D, o mundo 2D, o renderizador e o
-            // mapa de atlas estão os quatro em escopo.
-            if std::mem::replace(&mut self.sculpt3d_req.alpha_request, false) {
-                // ── O que o artista VÊ, e não o que o sprite GUARDA. ──
-                // ⚠️ Um sprite cuja aparência vem do sistema de CAMADAS do Painter (procedurais,
-                // ajustes, blend) ainda aponta para a imagem de origem: ler a origem devolve outra
-                // textura, e o padrão sai diferente do que está na tela (Enio, 2026-08-09: *"veja a
-                // textura ao lado e veja a textura no preview"*).
-                //
-                // ⚠️ **A porta já existe e é a MESMA do "Use as Brush Grain"** — o Painter resolveu
-                // esta pergunta uma vez (`composite_to_lum`, cujo doc-comment a nomeia) e uma
-                // segunda resposta divergiria dela. Ela é pedida SEM ativar o Painter
-                // (`tool_by_id_mut`), porque perguntar o que a tela mostra não pode trocar a
-                // ferramenta da mão do artista.
-                //
-                // ⚠️ E a luminância entra como CINZA OPACO: a lei do `AlphaImage` é
-                // `luminância × alfa`, e sobre um cinza opaco ela devolve a própria luminância —
-                // então o composite atravessa exato, sem um segundo cálculo de luminância.
-                let live = selected.and_then(|bits| {
-                    let painter = tools
-                        .tool_by_id_mut(&ph2d_editor_core::ToolId::new("painter"))?
-                        .as_any_mut()
-                        .downcast_mut::<ph2d_tool_painter::PainterTool>()?;
-                    if painter.needs_document_bind(bits) {
-                        return None;
-                    }
-                    let (lum, w, h) = painter.composite_to_lum()?;
-                    let rgba: Vec<u8> = lum.iter().flat_map(|&l| [l, l, l, 255]).collect();
-                    ph2d_sculpt3d::AlphaImage::from_rgba(w, h, &rgba).map(|a| (a, "as CAMADAS"))
-                });
-                // ── E o que o sprite guarda, quando não há camadas vivas. ──
-                // ⚠️ **STRAIGHT, e a conversão é load-bearing:** a lei do `AlphaImage` é
-                // `luminância × alfa`, e num buffer PREMULTIPLICADO a luminância já traz o alfa
-                // dentro — o peso sairia com o alfa ao QUADRADO, e toda borda macia ficaria mais
-                // fina do que o desenho é. Um sprite `Individual` volta premultiplicado do
-                // readback, então este não é um caso de canto.
-                let baked = || {
-                    let r = selected.and_then(|bits| {
-                        crate::hero_intents::texture_edit::read_sprite_source(
-                            ph2d_ecs::Entity::from_bits(bits),
-                            sim,
-                            renderer,
-                            asset_db,
-                            atlas_asset_map,
-                        )
-                    })?;
-                    let img = r.image.into_straight();
-                    ph2d_sculpt3d::AlphaImage::from_rgba(img.width, img.height, &img.pixels)
-                        .map(|a| (a, "a imagem"))
-                };
-                let line = match live.or_else(baked) {
-                    Some((a, what)) => {
-                        // ⚠️ **O readout diz a ESCALA, não os pixels.** A versão anterior
-                        // reportava `WxH` — e a medição mostra que a resolução da fonte tem efeito
-                        // **ZERO** sobre o tamanho do padrão no modelo (o `AlphaImage::sample`
-                        // mapeia em unidades de LADRILHO: a mesma imagem a 64² e a 4096² dá 80
-                        // transições ao longo das mesmas 2 unidades de objeto). O número que de
-                        // fato governa o que o artista vê é o `Alpha Scale`, e era justamente ele
-                        // que mudava sem aparecer em lugar nenhum.
-                        // ⚠️ **O nome vem do `Name` do objeto, com o fallback
-                        // dizendo o que ele É.** Um sprite pode não ter nome —
-                        // e um chip em branco seria o mesmo defeito do "None"
-                        // que esta wave conserta, com outra roupa.
-                        let from: std::sync::Arc<str> = selected
-                            .and_then(|bits| {
-                                sim.world()
-                                    .get::<ph2d_ecs::Name>(ph2d_ecs::Entity::from_bits(bits))
-                                    .map(|n| std::sync::Arc::from(n.0.as_str()))
-                            })
-                            .unwrap_or_else(|| std::sync::Arc::from("Sprite"));
-                        let scale = scene.set_alpha_image(a, from);
-                        format!(
-                            "[sculpt3d] padrao: {what} do sprite selecionado (escala {scale:.3})"
-                        )
-                    }
-                    None if selected.is_some() => {
-                        "[sculpt3d] o sprite nao descreve uma imagem".to_string()
-                    }
-                    None => "[sculpt3d] selecione um sprite para usar como padrao".to_string(),
-                };
-                eprintln!("{line}");
-                toasts.push(Toast::success(line));
-            }
             // Enquanto a cena existe, a luz dela AUTORA os objetos que ela assou — **mas só quando
             // o artista de fato MEXE nela**. Ver `Sculpt3dScene::take_rig_edge`: uma cena que
             // acabou de nascer não é um gesto, e tratá-la como um re-acendia todo objeto assado do
@@ -201,5 +136,11 @@ impl crate::App {
                 ph2d_app_sculpt3d::bake::follow_live_rig(baked_forms, scene.rig());
             }
         }
+
+        // ⚠️ **A irmã corre a seguir, e a ordem é a que ela tinha quando vivia aqui dentro** — o
+        // gesto do padrão seguia o de assar no mesmo bloco. Ela re-deriva o `gfx` como toda fase
+        // faz, e é por isso que esta chamada é a ÚLTIMA linha: o empréstimo daqui tem de acabar.
+        #[cfg(feature = "sculpt3d")]
+        self.fase_sculpt3d_alpha();
     }
 }

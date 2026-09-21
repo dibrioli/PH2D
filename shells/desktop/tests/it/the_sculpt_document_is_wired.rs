@@ -450,3 +450,70 @@ fn a_shell_sincroniza_a_materia_do_visor() {
         "a matéria é sincronizada ANTES de assar — o quadro do bake mostra a matéria de antes dele"
     );
 }
+
+/// ⭐⭐⭐⭐ **UMA RECUSA DO BAKE NÃO SAI COM A CARA DE SUCESSO** — o gate que uma FOTO encomendou
+/// (report do dono, 21/09: `✓ [sculpt3d] nao assou: this sprite is fully tra…`, o **visto verde**
+/// de sucesso a anunciar que o gesto não tinha corrido).
+///
+/// ⚠️ *Um aviso que anuncia uma falha com a cara de um sucesso é pior do que nenhum: ele ensina o
+/// artista a não ler os avisos.* A causa era de tipo — a porta devolvia uma `String` —, e a cura é
+/// o [`ph2d_app_sculpt3d::bake::Veredito`], cuja lei tem gate próprio na família.
+///
+/// ## As três metades, e porque nenhuma chega sozinha
+///
+/// 1. **o veredito é consultado** (`assou()`) — sem isto a cara volta a ser uma só;
+/// 2. **as duas caras existem** — um `if` que escolhesse `success` nos dois braços passaria em 1;
+/// 3. ⭐ **e o prefixo `[sculpt3d]` fica no `eprintln!`**, fora do que o artista lê: na foto ele
+///    comia metade da largura do aviso e cortava a frase em `fully tra…`.
+///
+/// ⚠️ **É um censo de TEXTO por necessidade:** o corpo desta fase pede `FrameGfx`, um
+/// `GpuContext` e uma surface real — ele não é alcançável de um teste.
+///
+/// **Mutações que devem sangrar:** `Toast::error` → `Toast::success` · apagar o `line.assou()` ·
+/// pôr o `[sculpt3d]` de volta dentro da frase do toast.
+#[test]
+fn uma_recusa_do_bake_nao_sai_com_a_cara_de_sucesso() {
+    let fase = source("render_loop/fase_sculpt3d_bake.rs");
+    let body = function_body(&fase, "fase_sculpt3d_bake");
+    // O CONTROLO da extracção — sem o gesto, nada abaixo afirma coisa nenhuma.
+    assert!(
+        body.contains("ph2d_app_sculpt3d::bake::drain("),
+        "a fase deixou de conter o gesto de assar — este gate está a ler outra função"
+    );
+    assert!(
+        body.contains("line.assou()"),
+        "a fase deixou de perguntar o VEREDITO ao gesto: toda recusa volta a sair com o ✓ verde \
+         que o dono fotografou em 21/09"
+    );
+    assert!(
+        body.contains("Toast::error("),
+        "a fase não tem a cara de ERRO: as duas metades do veredito têm de chegar ao artista"
+    );
+    assert!(
+        body.contains("Toast::success("),
+        "e a de SUCESSO também — um gate que só exigisse o erro deixaria passar um app que \
+         anuncia todo bake como falha"
+    );
+    // ⭐ A terceira metade: a etiqueta de bissecção NÃO entra na frase do artista.
+    //
+    // ⚠️⚠️ **A 1.ª redacção desta metade media *«o texto DEPOIS do `toasts.push`»* e reprovou
+    // sobre produto correcto** — ela apanhou o **doc-comment** que explica a cura, que é a família
+    // que esta casa já regista (uma régua textual a ler a prosa que a descreve). ⇒ a régua é por
+    // LINHA: toda linha que carrega a etiqueta tem de ser a do `eprintln!`.
+    let com_etiqueta: Vec<&str> = body
+        .lines()
+        .filter(|l| l.contains("\"[sculpt3d]"))
+        .collect();
+    assert!(
+        !com_etiqueta.is_empty(),
+        "o terminal perdeu a etiqueta `[sculpt3d]` — quem bissecta deixa de a ver no log"
+    );
+    for l in com_etiqueta {
+        assert!(
+            l.contains("eprintln!"),
+            "a etiqueta `[sculpt3d]` está fora do `eprintln!` ({}): na foto de 21/09 ela comia a \
+             largura do toast e cortava a frase do artista",
+            l.trim()
+        );
+    }
+}

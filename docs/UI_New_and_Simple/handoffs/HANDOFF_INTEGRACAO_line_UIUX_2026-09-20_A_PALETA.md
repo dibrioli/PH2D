@@ -1588,6 +1588,83 @@ Portão: `nextest-impacted` **`15 497/15 497`** · censos da árvore combinada *
 
 ---
 
+## §9-terdecies — ⭐⭐ O painel do Painter: `3,1 → 1,7` ecrãs, e a decisão do dono fica INTACTA
+
+### §9-terdecies.1 — A régua apontada a todo o registo
+
+A régua da dobra do §9-duodecies, sobre os `27` painéis, com a coluna que decide a wave seguinte:
+
+| painel | abre com | tudo dobrado | **compra** |
+|---|---:|---:|---:|
+| **painter_layers** | `2 709` | `736` | **`1 973 px`** |
+| vector | `1 349` | `104` | `1 245` |
+| widget_gallery | `3 367` | `2 360` | `1 007` |
+| audio_mixer | `1 209` | `408` | `801` |
+| inspector | `918` | `821` | `97` |
+| **sculpt3d** | `2 097` | `2 097` | **`0`** |
+| **tokens** | `2 866` | `2 866` | **`0`** |
+
+⛔⛔ **O `sculpt3d` compra ZERO porque as secções dele NÃO SÃO DOBRÁVEIS** — o que explica por que
+a `line/sculpt3d` não a conseguiu curar e chamou ao caso *«decisão de produto»*
+([§94](../../3D/handoffs/HANDOFF_INTEGRACAO_line_sculpt3d_2026-09-17.md): *«o painel está sobre o
+orçamento, o `BRUSH` sozinho ocupa `657` dos `880`»*). A cura lá é outra e maior: **dar-lhes dobra
+primeiro**.
+
+⚠️ **Armadilha NOMEADA:** vários painéis leem `3 992`/`3 866` porque **ANCORAM à janela** — a altura
+deles *é* a janela e não o conteúdo, e a coluna `compra` dá `0` neles por construção.
+
+### §9-terdecies.2 — ⛔⛔ O achado é uma DATA
+
+Este painel **já tinha** política de dobra, e ela é **decisão do dono** — a doc do
+`populate_sections.rs`: *«Randomize Color, Color Ramp e Tiling START COLLAPSED; Texture + Stroke
+start expanded (Enio 2026-06-24)»*.
+
+A decisão nomeia **cinco** secções e o painel tem **treze**. Medido por `git log -S`:
+
+| secção | nasceu | decidida? |
+|---|---|---|
+| `Texture` · `Stroke` | **2026-06-24** | ✅ abertas |
+| `Randomize` · `Color Ramp` · `Tiling` | 2026-06-24 | ✅ recolhidas |
+| **`Shape` (`807 px`)** · `Shape Ramp` | **2026-06-25** | ❌ |
+| `Symmetry` | 2026-06-29 | ❌ |
+| `Watercolor Paper` (`373 px`) | 2026-07-05 | ❌ |
+
+⇒ *o maior bloco do painel não existia quando ele decidiu*, e as quatro que chegaram depois
+nasceram **abertas** sem que ninguém revisse a nota — o §0.0 à letra, na direcção que ninguém
+vigia.
+
+### §9-terdecies.3 — O que esta wave faz, e o que NÃO faz
+
+Nascem recolhidas **só** as que nunca tiveram decisão: `Shape` · `Shape Ramp` · `Symmetry` ·
+`Watercolor Paper`. Medido: **`2 709 → 1 529 px`** (`3,1 → 1,7` ecrãs).
+
+⛔ **Ele NÃO passa a caber, e o que falta é DECISÃO e não código:** o `Texture` (`450`) e o `Stroke`
+(`368`) são a escolha dele, e o painel tem ~`700 px` de cromo fora de secção nenhuma. Com tudo
+recolhido ele mediria **`736 px`**. *A pergunta está posta ao dono com o número ao lado.*
+
+### §9-terdecies.4 — ⭐⭐ A catraca mede o modo de falha que a wave encontrou
+
+`a_altura_de_abertura_de_um_painel_so_encolhe` — porque *uma secção nova nascer aberta e ninguém
+rever a decisão* é o caminho silencioso por onde um painel volta a transbordar, e **nada neste repo
+media a altura de ABERTURA de um painel**. ⭐ Ela guarda a escolha do dono nos **dois** sentidos: a
+mutação que põe o `Texture` dele a nascer recolhido **também sangra**.
+
+### §9-terdecies.5 — Prova e portão
+
+**4 de 4 mutações sangram**: as quatro que chegaram depois voltam a nascer abertas · uma das três do
+dono deixa de nascer recolhida · o `Texture` dele passa a nascer recolhido (a metade que DESCE) · um
+gate de costura deixa de declarar que mede conteúdo de secção.
+
+⚠️ Quatro gates de costura do painel passaram a declarar `host.open_all_sections()`, a mesma linha
+que os quatro do Inspector levaram.
+
+Portão: `nextest-impacted` **`15 498/15 498`** · censos da árvore combinada **`127/127`** ·
+`ph2d-panel-painter-layers` **`179/179`** · clippy `-D warnings` zero · fmt limpo.
+
+⚠️⚠️ **ISTO MUDA O PRODUTO** e o smoke do dono está por fazer.
+
+---
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

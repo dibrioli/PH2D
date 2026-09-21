@@ -127,13 +127,6 @@ pub(super) fn corre(t: &mut PainterTool, pts: &[[f32; 2]]) {
     t.on_canvas_pointer(cp(*pts.last().unwrap(), PointerPhase::Up));
 }
 
-pub(super) fn conta_zerada() {
-    super::composite_pilha::CONTA_DA_PILHA.with(|c| c.set((0, 0, 0)));
-}
-pub(super) fn conta() -> (u64, u64, u64) {
-    super::composite_pilha::CONTA_DA_PILHA.with(std::cell::Cell::get)
-}
-
 /// ⭐⭐⭐ **O PREÇO: recto contra rabisco, e replay contra acumulação — PAREADO.**
 ///
 /// ⚠️ As duas rotas correm na MESMA corrida de propósito: *comparar o mínimo de corridas

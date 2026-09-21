@@ -1478,3 +1478,86 @@ saída escrita: no dia em que todos migrarem, essa metade deixa de descrever alg
 um padrão que a melhoria ELIMINA é uma catraca ao contrário — ele obriga o próximo autor a manter
 o padrão velho, ou a baixar o número até ele não medir nada.* O controlo tem de medir o
 INSTRUMENTO (a varredura vê a árvore?), nunca a dívida que ele conta.
+
+---
+
+## §24 — A AUDITORIA de 2026-09-21, e a pilha que passou a ACUMULAR
+
+**Report do dono, com duas fotos:** *«1) A performance ficou ruim, muito aquém do esperado.
+Pinceladas rápidas quase travam a tool. 2) Temos problemas com o carimbo que fica retangular.
+Provavelmente o principal culpado é Smear. Estude as otimizações e correções do sistema per-layer
+color — talvez descubra lá as soluções.»* Depois da auditoria: *«siga»*.
+
+⭐ **Ele tinha razão nas duas, e o ponteiro dele era a cura da primeira.** A auditoria inteira, com
+as tabelas, está em [`docs/Painter/40_auditoria_da_pilha_2026-09-21.md`](../40_auditoria_da_pilha_2026-09-21.md);
+aqui fica o que a **integração** precisa de saber.
+
+### §24.1 — As duas metades estavam escondidas pela MESMA coisa
+
+⛔⛔ **As réguas que existiam sentavam no ponto neutro**, e é a lição que atravessa esta wave:
+
+| régua | o ponto neutro dela | o que ela não podia ver |
+|---|---|---|
+| `diag_preco_da_pilha` | traço **RECTO** | a janela do replay a crescer |
+| `a_ordem_e_da_pilha_e_nao_da_taxa_do_rato` | canvas **OPACO** + Smear no **TOPO** | o esfregão (no fundo ele corre sobre o `pre`) |
+
+⭐⭐⭐ **O CONTROLO POSITIVO que faltava:** calar cada camada uma de cada vez. Sobre a fixtura antiga
+o **Smear movia `0` pixels** e `warp.active` lia `false` — *todo A/B da linha comparava duas
+corridas de uma camada que não corre*. Numa tela vazia não há o que esfregar; a fixtura honesta
+pinta arte ANTES.
+
+### §24.2 — O que MUDA no produto (para quem funde)
+
+* **A rota de omissão da pilha é a ACUMULAÇÃO** ([`composite_acumulado.rs`](../../../crates/ph2d-tool-painter/src/tool/paint/composite_acumulado.rs), ficheiro novo). O
+  replay fica como porta de bissecção: **`PH2D_COMPOSITE_REPLAY=1`**, lido UMA vez para o campo
+  `paint.pilha_por_replay` — ⚠️ é um CAMPO e não a env, porque *um gate que lê o ambiente mede a
+  máquina*.
+* **Brush, Erase e Smear saem `|Δ| = 0`** contra o replay. **O Blur diverge por desenho** (pior
+  `114` de 255): uma passagem de raio `P·k` em vez de `P` de raio `k`.
+* **Zero contrato, zero schema, zero ADR.** ⚠️ A `ph2d-painter-brush` ganha **duas** entradas
+  públicas, as duas **append-only**: `blur_region_por_peso` e `kernel_radius` (que era
+  `pub(crate)`).
+* Campos novos em `PaintState`: `pilha_por_replay` e `acumulando_no_plano`. `PilhaDoTraco` ganha
+  `planos: [Arc<Vec<u8>>; N_CAMADAS]`.
+* ⚠️ **`stamp_route.rs` tem uma linha nova no caminho quente** — o trinco de alfa passa a perguntar
+  `!self.paint.acumulando_no_plano` primeiro. **É território partilhado**; a razão está escrita no
+  sítio.
+
+### §24.3 — O censo do núcleo de caixa mudou de endereço, outra vez
+
+O `o_nucleo_de_caixa_e_do_blur_da_pilha_e_so_dele` passa a esperar **DOIS** ficheiros
+(`composite_acumulado.rs` + `composite_pilha.rs`). ⚠️⚠️ **A LEI não mudou duas vezes; o ENDEREÇO
+dela mudou duas vezes** — 20/09 o laço saiu do `composite.rs`, 21/09 a pilha ganhou a segunda rota.
+Um TERCEIRO sítio continua a ser o pedido a escapar da pilha.
+
+### §24.4 — DUAS premissas do repo morreram, e estão reescritas com a morte à vista
+
+1. O cabeçalho do [`composite_pilha.rs`](../../../crates/ph2d-tool-painter/src/tool/paint/composite_pilha.rs): *«um número que não cresce com o traço»*.
+2. A nota do [`state.rs`](../../../crates/ph2d-tool-painter/src/tool/paint/state.rs) sobre o `limite_do_smear`: *«um guarda de RELÓGIO e não de imagem, e a
+   mutação que o apaga SOBREVIVE»*.
+
+As duas foram medidas em traço recto sobre canvas opaco. Sobre a fixtura que contém o fenómeno,
+apagar o limite **muda a imagem nos dois sentidos** (`39 → 0` no rápido, `48 → 167` no rabisco).
+
+### §24.5 — O que uma leitura rápida do diff entende ao contrário
+
+1. **O `LoteDaPilha` não foi apagado** — ele alimenta a rota de bissecção, e só ela.
+2. **A acumulação NÃO é uma aproximação** em três das quatro operações; ela é a lei aplicada
+   directamente, e o replay é que era a implementação.
+3. **O `escreve_do_pre` continua a ser chamado** — é ele que faz a composição partir da tela do
+   pen-down em vez de compor por cima de si mesma (mutação a sangrar).
+4. **O `pad_do_nucleo` do replay continua em `k` e está CERTO** — lá cada dab é uma chamada com o
+   avental dela. O `pad_do_borrao` da acumulação é que é `k × P`.
+5. **O resíduo rectangular não foi a zero, foi a `12` de 255** — e está atribuído (só com Blur e
+   Smear juntos, na base do esfregão).
+6. **A sonda `diag_auditoria_a_tela_vazia` foi CORTADA e o achado dela ficou** (a divergência sobre
+   alfa 0 é invisível hoje, e um Blur ou Smear posterior lê aquele RGB).
+
+### §24.6 — O que fica ABERTO
+
+* ⏳ **O resíduo do par Blur+Smear** (§5.3 da auditoria), com a cura nomeada.
+* ⏳ **O blend não-`Mix` de uma camada Brush** é hoje aplicado **uma vez, na composição** — que é a
+  lei de CAMADA de um editor. Com `Mix` (o de fábrica) é exacto; nos outros é divergência **não
+  medida**, porque nenhuma fixtura desta casa a exercita.
+* ⏳ Os três itens da §22.9 continuam abertos (o relevo fora da recomposição, o cartão de cinco
+  camadas contra a dobra, e a tabela de relógio da wave anterior).

@@ -375,3 +375,56 @@ fn o_piso_desta_lei_e_o_piso_do_store() {
          o de uma ESCOLHA, e confundir os dois entrega uma coluna ilegível a quem nunca arrastou"
     );
 }
+
+/// ⭐⭐⭐ **AS DUAS COLUNAS TÊM O MESMO LIMITE — ordem do dono, 2026-09-20.**
+///
+/// > *«hierarquia mais larga que inspector. Inspector OK»* … *«Hierarquia deve ser como o
+/// > inspector … mesmo limite de largura»*
+///
+/// ⚠️⚠️ **Eu li a primeira frase ao contrário, e é por isso que este gate existe.** Ela parecia um
+/// PEDIDO (*«faz a Hierarquia mais larga»*) e era um REPORT (*«a Hierarquia está mais larga, e não
+/// devia»*). Perguntado, o dono fechou-o numa frase: **o mesmo limite dos dois lados.**
+///
+/// ⭐ **Medido, o produto já obedecia** — pela rota real, arrastar cada borda até ao extremo do
+/// ecrã deixa as duas colunas em `210,0`, e a `1 920`, `1 366` e `1 024` os dois rectângulos
+/// pintados são idênticos ao décimo. ⇒ este gate não cura nada: ele **prende** uma propriedade
+/// que ninguém tinha escrito, e que um piso por-lado partiria em silêncio no dia em que alguém o
+/// escrevesse. *Uma simetria que só existe porque a constante é uma só deixa de existir no dia em
+/// que houver duas.*
+#[test]
+fn as_duas_colunas_tem_o_mesmo_limite() {
+    use ph2d_editor_core::interaction::WidgetStore;
+    use ph2d_editor_core::screens::layout::DockSide as DS;
+
+    // O gesto levado ao EXTREMO de cada lado, pela lei que o arrasto usa — e a janela é a mesma
+    // para os dois, senão as larguras de fábrica diferem e a comparação mede outra coisa.
+    const LARGA: f32 = 1920.0;
+    let esq = ChromeBands::escolha_de_um_arrasto(DS::Left, 0.0, LARGA);
+    let dir = ChromeBands::escolha_de_um_arrasto(DS::Right, 0.0, LARGA);
+    assert_eq!(
+        esq, dir,
+        "os dois lados pararam em larguras diferentes ({esq:?} contra {dir:?}) — é o report do \
+         dono de 2026-09-20 («Hierarquia deve ser como o inspector … mesmo limite de largura»), e \
+         nada no produto o impedia de acontecer"
+    );
+    assert_eq!(
+        esq,
+        Some(WidgetStore::DOCK_W_MIN),
+        "o extremo de um lado deixou de ser o piso"
+    );
+
+    // ⭐ E o CONTROLO: a lei SABE distinguir os dois lados — ela lê o token de cada um. Sem isto,
+    //   um `escolha_de_um_arrasto` que ignorasse o `side` passaria a metade de cima por vácuo.
+    let a_meio = 260.0_f32;
+    assert_ne!(
+        ChromeBands::default_dock_w(DS::Left, LARGA),
+        ChromeBands::default_dock_w(DS::Right, LARGA),
+        "as larguras de FÁBRICA dos dois lados são iguais — então este gate não prova que a lei \
+         distingue os lados, e a igualdade acima podia vir de ela nem olhar para eles"
+    );
+    assert_eq!(
+        ChromeBands::escolha_de_um_arrasto(DS::Left, a_meio, LARGA),
+        ChromeBands::escolha_de_um_arrasto(DS::Right, a_meio, LARGA),
+        "o mesmo pedido a meio do curso deu escolhas diferentes nos dois lados"
+    );
+}

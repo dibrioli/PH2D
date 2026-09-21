@@ -149,6 +149,16 @@ fn o_readout_das_colunas_diz_de_onde_vem_cada_largura() {
         "dock_width_choice(side)",
         concat!("(escolha ", "{ce})"),
         concat!("(escolha ", "{cd})"),
+        // ⛔⛔ **A trinca, e ela custou uma ronda de report** (2026-09-20): a chave era só a
+        //    largura da JANELA, logo **arrastar uma borda não imprimia linha nenhuma** e o dono
+        //    não tinha como me mostrar o que o gesto dele fazia. *Um instrumento que só vê a
+        //    metade do fenómeno que não está sob suspeita não bissecta.*
+        "let agora = (w, esq_w, dir_w);",
+        // ⭐⭐ **E ele NOMEIA o painel de cada coluna** — o report dizia *«hierarquia mais larga
+        //    que inspector»* e o ficheiro de arrumação do dono dizia o contrário nos SEIS
+        //    espaços de trabalho. Sem esta coluna, quem lê o número tem de adivinhar de quem ele é.
+        concat!("[{", "qe}]"),
+        concat!("[{", "qd}]"),
     ] {
         assert!(
             FASE.contains(agulha),

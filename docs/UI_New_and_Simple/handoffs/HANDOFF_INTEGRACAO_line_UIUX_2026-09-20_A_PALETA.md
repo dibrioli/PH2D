@@ -904,6 +904,81 @@ mutação.*
 
 ---
 
+## §9-septies — ⛔⛔⛔ O 7.º REPORT: eu li um DEFEITO como um PEDIDO, e quase construí a coisa oposta
+
+> *«hierarquia mais larga que inspector. Inspector OK»* — Enio, 2026-09-20.
+
+⚠️⚠️ **Eu li isto como um PEDIDO** (*«faz a Hierarquia mais larga»*) e comecei a derivar um piso
+**por lado**. Perguntado com as opções na mesa, o dono fechou-o numa frase: *«Hierarquia deve ser
+como o inspector … mesmo limite de largura»* — era um **REPORT**: a Hierarquia está mais larga, e
+não devia.
+
+⭐⭐⭐ **As duas leituras dão produtos OPOSTOS** — uma alarga a Hierarquia, a outra iguala-a ao
+Inspector —, e a frase sozinha admite as duas. *Uma frase que descreve um estado pode ser o pedido
+para o criar ou o report de que ele existe, e o custo de adivinhar mal é construir o contrário.*
+
+### ⭐ E o produto JÁ obedecia — medido antes de tocar em nada
+
+Pela rota real (as quatro portas que o `dock_seam_move` encadeia), empurrando o dedo até ao
+extremo do ecrã de cada lado:
+
+| janela | coluna esquerda | coluna direita |
+|---:|---:|---:|
+| `1 920` | `210,0` | `210,0` |
+| `1 366` | `210,0` | `210,0` |
+| `1 024` | `210,0` | `210,0` |
+
+E os rectângulos PINTADOS (`layout.hierarchy` / `layout.inspector`) são idênticos ao décimo nas
+três. ⇒ **esta wave não cura nada no piso: ela PRENDE uma propriedade que ninguém tinha escrito.**
+O gate `as_duas_colunas_tem_o_mesmo_limite` existe porque um piso por-lado — que eu estive a uma
+decisão de escrever — a partiria **em silêncio**. *Uma simetria que só existe porque a constante é
+uma só deixa de existir no dia em que houver duas.*
+
+### ⛔⛔ E o ficheiro de arrumação do dono diz o CONTRÁRIO do report, nos SEIS espaços
+
+`~/.ph2d/layout.txt`, no dia do report:
+
+| espaço | `dock_w_left` | `dock_w_right` |
+|---|---:|---:|
+| `animation` | `220` | `220` |
+| `drawing_2d` | `252,8` | `348,2` |
+| **`flip`** (o activo) | `220` | `389,6` |
+| `modeling_3d` | `220` | `371,7` |
+| `nodes` | `220` | `270,7` |
+| `vector` | `220` | `389,6` |
+
+Em **todos**, a coluna da DIREITA é a mais larga. ⇒ ou a Hierarquia não está à esquerda na
+bancada dele, ou o que ele viu não é a largura da coluna. **Não reproduzi**, e é isso que a wave
+entrega: o instrumento que responde.
+
+### ⭐⭐⭐ E o readout tinha um BURACO que custou esta ronda inteira
+
+Ele imprimia *«uma linha por mudança de largura da JANELA»* ⇒ **arrastar uma borda não produzia
+linha nenhuma**. O dono não tinha como me mostrar o que o gesto dele fazia, e eu não tinha como
+distinguir *«o gesto não arma»* de *«o gesto arma e pára cedo»*. ⚠️ *Um instrumento que só vê a
+metade do fenómeno que não está sob suspeita não bissecta* — e esta é a **segunda** vez que o
+mesmo readout é alargado por não conter a pergunta do dia (a 1.ª foi a coluna da ESCOLHA, §9-ter).
+
+Duas curas, as duas gateadas:
+
+- a chave passa a ser a **trinca** `(janela, esquerda, direita)` ⇒ todo arrasto imprime;
+- a linha **NOMEIA o painel** de cada coluna e diz o **piso** ⇒ quem a lê deixa de ter de
+  adivinhar de quem é o número, que é exactamente o que me faltou aqui.
+
+```
+[dock] janela=1920  esq=210.0 (escolha 210) [hierarchy]  dir=210.0 (escolha 210) [inspector]  piso=210  — …
+```
+
+⚠️ **Tudo dentro de UM `eprintln!`**, pela razão medida da §9-ter: montar a linha num `format!`
+perde a isenção de terminal do HR-15 **sem tirar o literal do binário**.
+
+**Mutação: 7 sangram + 2 CERCA + 1 NOMEADA, de 10.** ⚠️ A M10 (*«o readout deixa de nomear o
+painel»*) **não compilou** à primeira — tirar o marcador deixa o argumento órfão —, e o arnês
+abortou-a em vez de a contar: *uma mutação que não compila lê-se exactamente como uma que sangra.*
+Hoje ela é uma edição de duas partes.
+
+---
+
 ## §10 — O portão do fecho
 
 | passo | resultado |
@@ -939,18 +1014,18 @@ defende.
 
 ### §10-bis — O portão das voltas 3 e 4 (o piso de uma escolha, e o dobro dele)
 
-⚠️ **Corrido três vezes**: para o piso medido (`84`), para o dobro (`168`) e para o `+25 %`
-(`210`). Os números abaixo são os da **última**, que é a que shipa.
+⚠️ **Corrido quatro vezes**: para o piso medido (`84`), para o dobro (`168`), para o `+25 %`
+(`210`) e para o readout da §9-septies. Os números abaixo são os da **última**.
 
 | passo | resultado |
 |---|---|
-| `scripts/nextest-impacted.sh` | **`15 485 / 15 485`** · `56,1 s` · ⚠️ uma reprovada, **flake de carga já NOMEADA** (ver abaixo) |
+| `scripts/nextest-impacted.sh` | **`15 486 / 15 486`** · `62,6 s` · zero flakes |
 | `cargo test -p ph2d-panel-registry-init` (com as quatro features) | verde |
 | `cargo clippy -p ph2d-editor-core -p ph2d-host-desktop --all-targets -- -D warnings` | **zero** |
 | `cargo fmt --check` | limpo |
 | `git merge-base HEAD main` | **no-op**: `merge-base == main == 395da6a55` |
 | `scripts/censos-da-arvore-combinada.sh` | **`127 / 127`** · *«controlo do filtro: 12 de 12 censos correram ✓»* |
-| prova de mutação | **4 sangram + 2 CERCA + 1 NOMEADA**, de 7 |
+| prova de mutação | **7 sangram + 2 CERCA + 1 NOMEADA**, de 10 |
 | mudança de PRODUTO, as três voltas somadas | **três linhas** (a constante do recurso, a do piso, e a lei a ler o store) |
 
 ⚠️ **A reprovada da última volta é `the_cost_of_a_player_is_linear_in_their_number`

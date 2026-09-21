@@ -105,7 +105,7 @@ fn dock_log(hero: &ph2d_editor_core::HeroScreen, viewport: EditorRect) {
     use std::cell::Cell;
     thread_local! {
         static LIGADO: Cell<i8> = const { Cell::new(-1) };
-        static ULTIMA: Cell<f32> = const { Cell::new(f32::NAN) };
+        static ULTIMA: Cell<(f32, f32, f32)> = const { Cell::new((f32::NAN, f32::NAN, f32::NAN)) };
     }
     let ligado = LIGADO.with(|c| {
         if c.get() < 0 {
@@ -118,10 +118,21 @@ fn dock_log(hero: &ph2d_editor_core::HeroScreen, viewport: EditorRect) {
         return;
     }
     let w = viewport.w;
-    if ULTIMA.with(|c| (c.get() - w).abs() < 0.5) {
+    // ⛔⛔ **A chave é a TRINCA, e não só a janela — o readout tinha um buraco que custou uma
+    //    ronda inteira de report.** Ele imprimia *«uma linha por mudança de largura da JANELA»*,
+    //    logo **arrastar uma borda não produzia linha nenhuma**: o dono não tinha como me mostrar
+    //    o que o gesto dele fazia, e eu não tinha como o distinguir de um gesto que não arma.
+    //    *Um instrumento que só vê a metade do fenómeno que não está sob suspeita não bissecta.*
+    let esq_w = hero.store.dock_width(DockSide::Left, w);
+    let dir_w = hero.store.dock_width(DockSide::Right, w);
+    let agora = (w, esq_w, dir_w);
+    if ULTIMA.with(|c| {
+        let (a, b, d) = c.get();
+        (a - agora.0).abs() < 0.5 && (b - agora.1).abs() < 0.5 && (d - agora.2).abs() < 0.5
+    }) {
         return;
     }
-    ULTIMA.with(|c| c.set(w));
+    ULTIMA.with(|c| c.set(agora));
     // ⛔⛔ **A linha inteira vive DENTRO do `eprintln!`, e isso é MEDIDO, não estilo:** a isenção
     //    do HR-15 aqui é *«sai por `eprintln!`, logo é terminal»*, e montá-la num `format!` para
     //    uma variável **perde a isenção sem tirar o literal do binário** — o censo de texto da
@@ -134,11 +145,24 @@ fn dock_log(hero: &ph2d_editor_core::HeroScreen, viewport: EditorRect) {
             .dock_width_choice(side)
             .map_or_else(|| "-".to_string(), |c| format!("{c:.0}"))
     };
+    // ⭐⭐ **E ele NOMEIA o painel de cada coluna**, porque a pergunta que a wave de 2026-09-20
+    //    não conseguiu responder foi *«qual dos dois é a Hierarquia?»*: o report do dono dizia
+    //    que ela era a mais larga e o ficheiro de arrumação dele dizia o contrário nos SEIS
+    //    espaços de trabalho. *Um readout que mede duas colunas sem dizer o que está dentro
+    //    delas obriga quem o lê a adivinhar de quem é o número.*
+    let quem = |slot| {
+        ph2d_editor_core::screens::hero::slot_tabs::occupants(hero, slot)
+            .last()
+            .map_or_else(|| "vazia".to_string(), |o| o.id.to_string())
+    };
     eprintln!(
-        "[dock] janela={w:.0}  esq={le:.1} (escolha {ce})  dir={ld:.1} (escolha {cd})           — '-' = largura de fabrica, a unica que segue a janela",
-        le = hero.store.dock_width(DockSide::Left, w),
-        ld = hero.store.dock_width(DockSide::Right, w),
+        "[dock] janela={w:.0}  esq={le:.1} (escolha {ce}) [{qe}]  dir={ld:.1} (escolha {cd}) [{qd}]  piso={piso:.0}  — '-' = largura de fabrica, a unica que segue a janela",
+        le = esq_w,
+        ld = dir_w,
         ce = escolha(DockSide::Left),
         cd = escolha(DockSide::Right),
+        qe = quem(ph2d_editor_core::screens::slot::Slot::LeftTop),
+        qd = quem(ph2d_editor_core::screens::slot::Slot::RightTop),
+        piso = ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN,
     );
 }

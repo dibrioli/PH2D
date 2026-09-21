@@ -101,8 +101,14 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     clone_aligned: true,
     clone_sample_armed: false,
     composite_enabled: false,
-    composite_ops: [0, 1, 2], // Brush / Smear / Blur (mirrors PaintState::default)
-    composite_strength: [1.0, 0.5, 0.5],
+    // Brush / Smear / Blur / Erase / Brush — espelha o `PaintState::default`, com as DUAS últimas
+    // posições a Strength ZERO (é o Strength que as mantém caladas, nunca a operação).
+    composite_ops: [0, 1, 2, 3, 0],
+    composite_strength: [1.0, 0.5, 0.5, 0.0, 0.0],
+    // As cinco seguem a cor do pincel (o preto do fallback) e o tamanho dele.
+    composite_color: [[0.0, 0.0, 0.0]; 5],
+    composite_color_authored: [false; 5],
+    composite_size: [1.0; 5],
     tiling: [false, false],
     repeat_image: false,
     // Symmetry section — disabled by default (mirror X, 6 segments), no pick mode armed.

@@ -84,7 +84,13 @@ fn pilha(t: &mut PainterTool, ops: &[(CompositeOp, f32)]) {
     t.paint.composite_enabled = !ops.is_empty();
     for pos in 0..3usize {
         match ops.get(pos) {
-            Some(&(op, s)) => t.paint.composite[pos] = CompositeLayer { op, strength: s },
+            Some(&(op, s)) => {
+                t.paint.composite[pos] = CompositeLayer {
+                    op,
+                    strength: s,
+                    ..CompositeLayer::default()
+                }
+            }
             None => t.paint.composite[pos].strength = 0.0,
         }
     }

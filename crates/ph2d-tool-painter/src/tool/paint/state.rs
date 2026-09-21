@@ -163,7 +163,14 @@ pub(crate) struct PaintState {
     /// **Composite Brush**: run Brush + Smear + Blur together (a Brush-tool upgrade, panel checkbox). See [`composite`].
     pub(super) composite_enabled: bool,
     /// The composite layer stack in display order (index 0 = layer 1 = top; run bottom→top per dab). [`composite`].
-    pub(super) composite: [CompositeLayer; 3],
+    pub(super) composite: [CompositeLayer; composite::N_CAMADAS],
+    /// **O cap de Accumulate de CADA camada** — trocado para dentro do `stroke_mask` à volta do passe
+    /// dela (`mem::swap`, `O(1)`). Sem isto duas camadas Brush partilham o mapa e a segunda deposita
+    /// ZERO abaixo de Strength `1,0`; o porquê e a medição vivem em [`composite`].
+    pub(super) composite_mask: [Vec<u8>; composite::N_CAMADAS],
+    /// O `arc_len` do último dab que CADA camada guardou, para a subamostragem de uma camada maior
+    /// que o pincel atravessar os lotes. `NEG_INFINITY` = ainda não guardou nenhum neste traço.
+    pub(super) composite_arco: [f32; composite::N_CAMADAS],
     /// **Clone** sampled source anchor (image px), set by the "Set Source" pick mode; `None` until sampled. [`clone`].
     pub(super) clone_source: Option<[f32; 2]>,
     /// **Clone** established source→dest offset (px) = `clone_source − stroke_start`; `None` until a stroke begins. [`clone`].

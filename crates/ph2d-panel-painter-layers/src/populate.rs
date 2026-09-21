@@ -152,9 +152,15 @@ fn register_brush_inputs(store: &mut WidgetStore) {
         );
     }
     crate::populate_brush_chips::register_brush_slider_chips(store);
-    // Composite Brush card: 3 bare per-layer Strength sliders + the enable checkbox + the 6 reorder
-    // buttons. Registered here (not in `paint_composite`) so the panel-wiring-parity gate sees the ids.
-    for sid in ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH {
+    // Composite Brush card: as pistas de Strength e de TAMANHO por camada + a caixa de ligar + as
+    // setas de reordenar, os chips de operação, as amostras de cor e os botões de «volta ao
+    // pincel». Registered here (not in `paint_composite`) so the panel-wiring-parity gate sees the
+    // ids — ⚠️ e por ARRAY, nunca por índice: a extensão de 3 para 5 camadas passou por aqui sem
+    // uma linha, e teria deixado quatro controlos mortos sob o dedo se a lista fosse à mão.
+    for sid in ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH
+        .into_iter()
+        .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_SIZE)
+    {
         store.register(
             sid,
             InteractiveState::Slider {
@@ -167,6 +173,9 @@ fn register_brush_inputs(store: &mut WidgetStore) {
     for id in std::iter::once(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE)
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_UP)
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_DOWN)
+        .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_OP)
+        .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_COLOR)
+        .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_COLOR_CLEAR)
     {
         store.register(
             id,

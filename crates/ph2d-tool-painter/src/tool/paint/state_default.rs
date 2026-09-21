@@ -108,21 +108,38 @@ impl Default for PaintState {
 
             // Composite off by default; the default stack is the natural read of the card (top→bottom):
             // Brush(1) over Smear(2) over Blur(3). Run bottom→top, that blurs → smears → paints on top.
+            // ⚠️ As posições 4 e 5 nascem com Strength ZERO — que é como o motor pula uma camada —,
+            // logo a pilha de hoje é BYTE-IDÊNTICA à de antes da extensão de 2026-09-20. Elas
+            // declaram `Erase` e `Brush` porque é a ordem que o dono pediu, e um chip na fileira
+            // troca-as; o que as mantém caladas é o Strength, nunca a operação.
             composite_enabled: false,
             composite: [
                 CompositeLayer {
                     op: CompositeOp::Brush,
                     strength: 1.0,
+                    ..CompositeLayer::default()
                 },
                 CompositeLayer {
                     op: CompositeOp::Smear,
                     strength: 0.5,
+                    ..CompositeLayer::default()
                 },
                 CompositeLayer {
                     op: CompositeOp::Blur,
                     strength: 0.5,
+                    ..CompositeLayer::default()
+                },
+                CompositeLayer {
+                    op: CompositeOp::Erase,
+                    ..CompositeLayer::default()
+                },
+                CompositeLayer {
+                    op: CompositeOp::Brush,
+                    ..CompositeLayer::default()
                 },
             ],
+            composite_mask: std::array::from_fn(|_| Vec::new()),
+            composite_arco: [f32::NEG_INFINITY; crate::tool::paint::composite::N_CAMADAS],
             clone_source: None,
             clone_offset: None,
             clone_aligned: true, // Aligned by default (standard clone-stamp)

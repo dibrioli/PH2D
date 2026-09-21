@@ -40,6 +40,7 @@ mod brush_fallback;
 /// armado, como o Inspector já é.*
 pub use crate::brush_fallback::FALLBACK_BRUSH;
 mod card; // the titled row-box shared by the brush panel technique sections
+mod composite_picker;
 mod dropdown_popover;
 mod event;
 mod event_brush_forward;

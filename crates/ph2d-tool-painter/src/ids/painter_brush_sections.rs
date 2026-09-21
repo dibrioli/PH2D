@@ -159,25 +159,83 @@ pub const PAINTER_BRUSH_GRID_SHOW: NodeId = hash_node_id("painter_brush.grid_sho
 pub const PAINTER_BRUSH_COMPOSITE_ENABLE: NodeId = hash_node_id("painter_brush.composite_enable");
 
 /// Per-position layer **Strength** sliders (`0..1`, bare — a plain readout, no chip; the Layers-row
-/// pattern), position 0 = layer 1 (top) … 2 = layer 3 (bottom).
-pub const PAINTER_BRUSH_COMPOSITE_STRENGTH: [NodeId; 3] = [
+/// pattern), position 0 = layer 1 (top) … 4 = layer 5 (bottom).
+///
+/// ⚠️ **As posições 3 e 4 são APENDADAS** (2026-09-20, a extensão para cinco camadas): um id é o
+/// `hash_node_id` de uma string, logo acrescentar no fim não mexe nos quatro primeiros — e as
+/// arrumações gravadas e os visuais no `WidgetStore` das três camadas antigas ficam intactos.
+pub const PAINTER_BRUSH_COMPOSITE_STRENGTH: [NodeId; 5] = [
     hash_node_id("painter_brush.composite_strength_0"),
     hash_node_id("painter_brush.composite_strength_1"),
     hash_node_id("painter_brush.composite_strength_2"),
+    hash_node_id("painter_brush.composite_strength_3"),
+    hash_node_id("painter_brush.composite_strength_4"),
 ];
 
 /// Per-position "move layer up" buttons (toward layer 1 / top) — `Click` → `move_composite_layer_up`.
-pub const PAINTER_BRUSH_COMPOSITE_UP: [NodeId; 3] = [
+pub const PAINTER_BRUSH_COMPOSITE_UP: [NodeId; 5] = [
     hash_node_id("painter_brush.composite_up_0"),
     hash_node_id("painter_brush.composite_up_1"),
     hash_node_id("painter_brush.composite_up_2"),
+    hash_node_id("painter_brush.composite_up_3"),
+    hash_node_id("painter_brush.composite_up_4"),
 ];
 
-/// Per-position "move layer down" buttons (toward layer 3 / bottom) — `Click` → `move_composite_layer_down`.
-pub const PAINTER_BRUSH_COMPOSITE_DOWN: [NodeId; 3] = [
+/// Per-position "move layer down" buttons (toward layer 5 / bottom) — `Click` → `move_composite_layer_down`.
+pub const PAINTER_BRUSH_COMPOSITE_DOWN: [NodeId; 5] = [
     hash_node_id("painter_brush.composite_down_0"),
     hash_node_id("painter_brush.composite_down_1"),
     hash_node_id("painter_brush.composite_down_2"),
+    hash_node_id("painter_brush.composite_down_3"),
+    hash_node_id("painter_brush.composite_down_4"),
+];
+
+/// Per-position **operation** chip (`Click` cicla Brush → Smear → Blur → Erase →
+/// `set_composite_layer_op`). É ele que torna as duas posições novas ALCANÇÁVEIS: sem um gesto que
+/// troque a operação, uma camada nasceria presa ao que o default declarou.
+pub const PAINTER_BRUSH_COMPOSITE_OP: [NodeId; 5] = [
+    hash_node_id("painter_brush.composite_op_0"),
+    hash_node_id("painter_brush.composite_op_1"),
+    hash_node_id("painter_brush.composite_op_2"),
+    hash_node_id("painter_brush.composite_op_3"),
+    hash_node_id("painter_brush.composite_op_4"),
+];
+
+/// Per-position **colour** swatches — o picker partilhado devolve `"r,g,b"` pelo canal de STRING
+/// (`SelectOption`, o mesmo do `PAINTER_COLOR_THUMB`) → `set_composite_layer_color`.
+pub const PAINTER_BRUSH_COMPOSITE_COLOR: [NodeId; 5] = [
+    hash_node_id("painter_brush.composite_color_0"),
+    hash_node_id("painter_brush.composite_color_1"),
+    hash_node_id("painter_brush.composite_color_2"),
+    hash_node_id("painter_brush.composite_color_3"),
+    hash_node_id("painter_brush.composite_color_4"),
+];
+
+/// Per-position **stamp size** sliders (multiplicador do raio do pincel) →
+/// `set_composite_layer_size`.
+pub const PAINTER_BRUSH_COMPOSITE_SIZE: [NodeId; 5] = [
+    hash_node_id("painter_brush.composite_size_0"),
+    hash_node_id("painter_brush.composite_size_1"),
+    hash_node_id("painter_brush.composite_size_2"),
+    hash_node_id("painter_brush.composite_size_3"),
+    hash_node_id("painter_brush.composite_size_4"),
+];
+
+/// Per-position **«volta à cor do pincel»** — `Click` → `clear_composite_layer_color`.
+///
+/// ⚠️ **Ele existe porque o `PanelEvent` é CONTRATO CONGELADO (§6) e não tem clique-direito**, e a
+/// alternativa era a camada ficar presa a uma cor autorada para sempre: sem caminho de volta, o
+/// `None` — que é quem mantém o **Randomize Color** e o seguir-o-pincel vivos — seria alcançável só
+/// até ao primeiro clique na amostra.
+///
+/// ⛔ Ele é pintado **só quando a camada TEM cor autorada**: um botão que não tem o que limpar é um
+/// controlo morto, e o gate exige a ausência dele no outro estado.
+pub const PAINTER_BRUSH_COMPOSITE_COLOR_CLEAR: [NodeId; 5] = [
+    hash_node_id("painter_brush.composite_color_clear_0"),
+    hash_node_id("painter_brush.composite_color_clear_1"),
+    hash_node_id("painter_brush.composite_color_clear_2"),
+    hash_node_id("painter_brush.composite_color_clear_3"),
+    hash_node_id("painter_brush.composite_color_clear_4"),
 ];
 
 // ── Mask section (collapsible, TOP of the Brush panel in Mask mode) ───────────────────────────────
@@ -229,17 +287,25 @@ pub const PAINTER_BRUSH_CLONE_SET_SOURCE: NodeId = hash_node_id("painter_brush.c
 /// "Aligned" checkbox — keep the source→dest offset fixed across strokes. `Click` → `toggle_clone_aligned`.
 pub const PAINTER_BRUSH_CLONE_ALIGNED: NodeId = hash_node_id("painter_brush.clone_aligned");
 
-/// Every Composite-card **Click** target (enable + the 6 reorder buttons) — one membership check for
-/// the panel's brush-click forward whitelist.
-pub const PAINTER_BRUSH_COMPOSITE_BUTTONS: [NodeId; 7] = [
-    PAINTER_BRUSH_COMPOSITE_ENABLE,
-    PAINTER_BRUSH_COMPOSITE_UP[0],
-    PAINTER_BRUSH_COMPOSITE_UP[1],
-    PAINTER_BRUSH_COMPOSITE_UP[2],
-    PAINTER_BRUSH_COMPOSITE_DOWN[0],
-    PAINTER_BRUSH_COMPOSITE_DOWN[1],
-    PAINTER_BRUSH_COMPOSITE_DOWN[2],
-];
+/// Every Composite-card **Click** target (enable + the reorder buttons + the op chips) — one
+/// membership check for the panel's brush-click forward whitelist.
+///
+/// ⚠️ **A lista é DERIVADA das três populações**, não escrita à mão: a redacção anterior enumerava
+/// os sete ids um a um, e estender a pilha de três para cinco camadas teria deixado quatro botões
+/// **pintados, registados e mortos sob o dedo** — a espécie que esta casa já pagou sete vezes na
+/// escultura. ⛔ A amostra de cor NÃO entra: ela abre o picker por outra rota (`ColorPicked`).
+pub const PAINTER_BRUSH_COMPOSITE_BUTTONS: [NodeId; 21] = {
+    let mut a = [PAINTER_BRUSH_COMPOSITE_ENABLE; 21];
+    let mut i = 0;
+    while i < 5 {
+        a[1 + i] = PAINTER_BRUSH_COMPOSITE_UP[i];
+        a[6 + i] = PAINTER_BRUSH_COMPOSITE_DOWN[i];
+        a[11 + i] = PAINTER_BRUSH_COMPOSITE_OP[i];
+        a[16 + i] = PAINTER_BRUSH_COMPOSITE_COLOR_CLEAR[i];
+        i += 1;
+    }
+    a
+};
 
 /// Collapsible "Randomize Color" section header (Inspector pattern: ALL-CAPS label +
 /// collapse chevron + assignable color dot). Click toggles collapse; right-click opens

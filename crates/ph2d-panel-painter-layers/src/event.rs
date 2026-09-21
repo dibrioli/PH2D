@@ -477,6 +477,14 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             impasto_picker::on_swatch_click(host, id);
             Some(true)
         }
+        // A amostra de cor de uma camada do Composite Brush → liga o picker partilhado apontado a
+        // ela. ⚠️ Ela NÃO entra no `PAINTER_BRUSH_COMPOSITE_BUTTONS` (que encaminha `Click` cru):
+        // o valor volta pelo canal de STRING, no `composite_picker::readback`.
+        WidgetEvent::Click(id) if crate::composite_picker::posicao(id).is_some() => {
+            let pos = crate::composite_picker::posicao(id).unwrap_or(0);
+            crate::composite_picker::on_swatch_click(host, id, pos);
+            Some(true)
+        }
         // Per-layer-colour rows (multi-layer Shape): a layer's colour checkbox (forward Click → the tool
         // toggles it) or its colour swatch (toggle the picker, seeded with that layer's colour).
         WidgetEvent::Click(id) if shape_layer_picker::classify(id).is_some() => {

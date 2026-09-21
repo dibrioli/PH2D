@@ -171,12 +171,19 @@ pub struct BrushSettings {
     pub clone_has_source: bool,
     pub clone_aligned: bool,
     pub clone_sample_armed: bool,
-    /// **Composite Brush** on: the Strength slider hides + the 3-layer stack card shows (panel).
+    /// **Composite Brush** on: the Strength slider hides + the 5-layer stack card shows (panel).
     pub composite_enabled: bool,
-    /// Composite stack op per position `[layer1, layer2, layer3]` (`CompositeOp::to_u8`: 0 Brush/1 Smear/2 Blur).
-    pub composite_ops: [u8; 3],
-    /// Composite stack Strength per position `[layer1, layer2, layer3]` (`0..1`).
-    pub composite_strength: [f32; 3],
+    /// Composite stack op per position (`CompositeOp::to_u8`: 0 Brush/1 Smear/2 Blur/3 Erase).
+    pub composite_ops: [u8; 5],
+    /// Composite stack Strength per position (`0..1`).
+    pub composite_strength: [f32; 5],
+    /// A cor de cada posição, **já resolvida** (a autorada, ou a do pincel) — é o que a amostra pinta.
+    pub composite_color: [[f32; 3]; 5],
+    /// Quais posições têm cor AUTORADA. ⚠️ Sem esta bandeira, uma camada que SEGUE o pincel e uma
+    /// que por acaso tem a mesma cor leem-se iguais na tela, e o artista não sabe qual é qual.
+    pub composite_color_authored: [bool; 5],
+    /// O tamanho do carimbo de cada posição, como multiplicador do raio do pincel (`1` = o pincel).
+    pub composite_size: [f32; 5],
     /// Seamless **Tiling** (wrap-around painting) flags `[x, y]`.
     pub tiling: [bool; 2],
     /// **Repeat Image** tile-preview toggle (the on-canvas 3×3 grid).

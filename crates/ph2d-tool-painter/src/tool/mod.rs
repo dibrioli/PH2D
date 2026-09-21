@@ -435,10 +435,10 @@ pub use paint::{
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
     BrushSettings, CurveOverlay, DEFORM_TEMPERAMENT_NONE, DEFORM_TEMPERAMENT_RESHAPE,
     DEFORM_TEMPERAMENT_TRANSFORM, DeformGizmoView, EllipseOverlay, FilterScope, ImpastoLight,
-    LightRig, LineCornerGizmo, LineDimensions, LineOverlay, MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS,
-    MIN_ELEV_DEG, PANEL_RAMP_STOPS, PolygonOverlay, SelectionGizmoView, StencilOverlay,
-    StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo, WetKnobs, WetTool,
-    brush_falloff_weight_at,
+    LightRig, LineCornerGizmo, LineDimensions, LineOverlay, MAX_COMPOSITE_LAYER_SIZE,
+    MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG, PANEL_RAMP_STOPS, PolygonOverlay,
+    SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles,
+    TransformGizmo, WetKnobs, WetTool, brush_falloff_weight_at,
 };
 mod runtime;
 mod trait_impls;

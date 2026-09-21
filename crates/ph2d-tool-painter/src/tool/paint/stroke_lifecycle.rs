@@ -73,6 +73,14 @@ impl PainterTool {
         // Reset the Accumulate-OFF cap mask (re-grown by the first dab) + the per-layer-colour
         // accumulation (so the recomposite snapshots THIS stroke's pre-pixels) — both per stroke.
         self.paint.stroke_mask.clear();
+        // ⚠️ E o cap de CADA camada do composite com ele — eles são a mesma grandeza, só que por
+        // camada (ver `composite::stamp_dabs_composite`). Esquecer um deixaria a 2.ª camada Brush
+        // com o tecto do traço ANTERIOR, e ela deixaria de pintar a meio de um desenho.
+        for m in &mut self.paint.composite_mask {
+            m.clear();
+        }
+        // A subamostragem de uma camada maior conta arco DESTE traço.
+        self.paint.composite_arco = [f32::NEG_INFINITY; crate::tool::paint::composite::N_CAMADAS];
         self.reset_stroke_height(); // Impasto: this stroke's relief starts empty (see `super::impasto`)
         // Sculpt: belt-and-braces. A committed gesture already ended its own session, so this normally
         // finds nothing — but any path that leaves one open (a shape abandoned without Cancel) would

@@ -119,6 +119,7 @@ fn probe_composite_lays_a_whole_stroke() {
                             } else {
                                 0.5
                             },
+                            ..CompositeLayer::default()
                         };
                     }
                     None => t.paint.composite[pos].strength = 0.0,
@@ -184,14 +185,17 @@ fn the_composite_stack_lays_the_whole_stroke() {
         // fica NOMEADO e sem gate, e a defesa é de MECANISMO (o `stroke_mask` e o `tex_rng` são salvos e
         // repostos em volta do passe da fonte, em `lay_into_smear_base`), não de medição.
         strength: 1.0,
+        ..CompositeLayer::default()
     };
     t.paint.composite[1] = CompositeLayer {
         op: CompositeOp::Smear,
         strength: 0.5,
+        ..CompositeLayer::default()
     };
     t.paint.composite[2] = CompositeLayer {
         op: CompositeOp::Blur,
         strength: 0.5,
+        ..CompositeLayer::default()
     };
     drag(&mut t, 100.0, 30.0, 170.0);
     let whole = inked_columns(&t, 100, SIZE, 30..171);
@@ -257,6 +261,7 @@ fn probe_composite_vertical_seam() {
             t.paint.composite[pos] = CompositeLayer {
                 op: *ops.get(pos).unwrap_or(&CompositeOp::Brush),
                 strength: if pos < ops.len() { 0.6 } else { 0.0 },
+                ..CompositeLayer::default()
             };
         }
         t.paint.composite[0].strength = 1.0;
@@ -331,6 +336,7 @@ fn probe_composite_edge_ramp() {
             t.paint.composite[pos] = CompositeLayer {
                 op: *ops.get(pos).unwrap_or(&CompositeOp::Brush),
                 strength: if pos < ops.len() { 0.6 } else { 0.0 },
+                ..CompositeLayer::default()
             };
         }
         t.paint.composite[0].strength = 1.0;

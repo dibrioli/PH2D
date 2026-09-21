@@ -1137,6 +1137,68 @@ deixou a contagem da família em `55` com `56` no ficheiro).
 
 ---
 
+## §9-nonies — ⛔⛔⛔ *«Shape: Texture ficou com nomes com pontos»* — três cópias, duas traduziam
+
+> Report do dono, 2026-09-21, com foto: a secção `SHAPE ▸ Texture` do Painter, com o padrão
+> **Wood** escolhido, pintava `paint_brush.pattern_param.contrast` no lugar de `Contrast`.
+
+⭐ **A tabela sabia traduzi-las** — medido, `tr` devolve `Contrast`, `Brightness`, `Turbulence`,
+`Rings`. O que faltava era **alguém chamar `tr`**: o laço que monta aquelas fileiras estava escrito
+**três vezes** (`paint_texture` · `paint_watercolor_paper` · `paint_shape`), e as duas primeiras
+traduziam. ⚠️ *Uma lei escrita em três sítios viaja para os dois de que alguém se lembrou* — e o
+`s.label` é uma CHAVE, logo esquecer o `tr` não dá erro de compilação nem de tipo: dá um
+identificador pintado no ecrã do artista.
+
+⇒ **uma porta** (`number_field::params_de_padrao`), com os três a passarem por ela.
+
+### ⛔⛔ Porque NENHUM dos 30 censos de texto a via
+
+Eles perguntam *«este LITERAL vem da tabela?»* e varrem o **FONTE**. Ali não há literal nenhum: há
+um campo. *Um censo de fonte é cego a um rótulo que o programa CALCULA.*
+
+⇒ régua nova que lê o **ECRÃ**: `nenhum_rotulo_do_app_pinta_uma_chave`. ⭐ **O discriminador é a
+própria tabela, e não a forma do texto** — um texto pintado que a tabela SABE traduzir é, por
+construção, uma chave que alguém esqueceu. ⛔ Uma régua de forma (*«tem ponto e não tem espaço»*)
+acusaria `0.5` e nomes de ficheiro; esta não tem falso positivo nenhum.
+
+### ⛔⛔⛔ E a régua nova nasceu VERDE sobre o defeito vivo
+
+Mutada a cura de volta, ela **não sangrou**: o estado de FÁBRICA do Painter tem a textura em
+`None`, e ali aquelas fileiras **não são pintadas**. *Um painel cujas fileiras dependem de uma
+escolha é medido vazio exactamente na parte que o artista usa* — a mesma cegueira que o
+`o_inspector_armado` fechou no painel ao lado.
+
+⇒ `o_painter_armado`: o instantâneo que o próprio painel usa antes de a shell publicar um, com as
+**três** famílias de padrão armadas (silhueta · grão · papel), no `Wood` **da foto do dono** —
+⚠️ um padrão sem params extra mediria menos rótulos e a fixtura não conteria o fenómeno. Com ela, a
+mutação sangra com **48 chaves**, e as quatro primeiras são as da foto.
+
+### ⚠️ E a fixtura revelou dívida que era invisível
+
+As duas catracas de elisão do `painter_layers` foram de `3` para `4`: o **`View Plane`** só existe
+com um padrão escolhido, logo a régua nunca o tinha visto. ⛔ **Não é regressão — é a POPULAÇÃO a
+crescer**, e está escrito nas duas entradas. *Um número que sobe porque a régua passou a ver mais
+não é o mesmo que um número que sobe porque alguém partiu algo*; continua a ser dívida, e a cura é
+a que o dono deu em 20/09 (encurtar, com o balão a guardar a explicação).
+
+### O portão
+
+| passo | resultado |
+|---|---|
+| `cargo test -p ph2d-panel-registry-init` (âmbito do app) | **`106 / 106`** |
+| `scripts/nextest-impacted.sh` | **`15 491 / 15 491`** · ⚠️ uma reprovada, ver abaixo |
+| `scripts/censos-da-arvore-combinada.sh` | **`127 / 127`** |
+| `cargo clippy --all-targets -- -D warnings` · `cargo fmt --check` | zero · limpo |
+
+⚠️⚠️ **PROMOÇÃO PEDIDA à lista de flakes de carga do `CLAUDE.md` §5.0** (a linha pede, o integrador
+escreve): **`the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`**
+(`ph2d-tool-painter`, `tool/paint/measure_input_cost.rs`). Ele é **uma RAZÃO de dois relógios de
+parede** (`down / copy`), reprovou no meio de um fan-out de `15 491`, e passa **`3` de `3` sozinho a
+`load 24`–`25`**, com **zero linhas** desta linha naquela crate (comitadas ou não). *Dividir dois
+relógios não deixa de ser um relógio por a razão ser adimensional.*
+
+---
+
 ## §10 — O portão do fecho
 
 | passo | resultado |

@@ -106,6 +106,10 @@ panel-widget-lab = ["dep:ph2d-panel-widget-lab"]
 # <ph2d-panel-sync:features:end>
 
 [dev-dependencies]
+# ⭐ Só para a fixtura `o_painter_armado`, que precisa do TIPO do instantâneo de pincel e do
+#    enum do padrão. ⛔ Sem eles a fixtura teria de escrever `11` à mão para dizer «Wood».
+ph2d-tool-painter = { path = "../ph2d-tool-painter" }
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 # ⭐ Só para a SONDA `diag_de_quem_sao_as_entradas_do_inspector`, que refaz o mapa
 #    `NodeId -> literal` a partir da fonte dos ids. ⛔ Sem isto ela teria de copiar o FNV-1a,
 #    e uma lei escrita em dois sítios ainda não é uma lei.

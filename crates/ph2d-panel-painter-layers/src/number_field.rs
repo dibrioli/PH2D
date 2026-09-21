@@ -244,6 +244,32 @@ pub(crate) fn paint_num_xy(
 
 /// Per-pattern params (all `0..1`, step `0.01`): pair two consecutive SHORT-label params on one line
 /// (each ≤ [`PAIR_MAX_LEN`] chars, e.g. Voronoi's Metric / Edges), else one per line. Returns the next `y`.
+/// ⭐⭐⭐ **A PORTA das fileiras de um PADRÃO — a lei de que existiam três cópias.**
+///
+/// ⛔⛔⛔ **Report do dono, 2026-09-21 (com foto): a secção `SHAPE ▸ Texture` mostrava
+/// `paint_brush.pattern_param.contrast` em vez de `Contrast`.** O laço que monta estas fileiras
+/// estava escrito **três vezes** — [`super::paint_texture`], [`super::paint_watercolor_paper`] e
+/// [`super::paint_shape`] — e duas delas traduziam o rótulo. A terceira passava a **chave crua**.
+///
+/// ⚠️ *Uma lei escrita em três sítios viaja para os dois de que alguém se lembrou* — e o
+/// `s.label` é uma CHAVE, logo esquecer a tradução não dá erro de compilação nem de tipo: dá um
+/// identificador pintado no ecrã do artista.
+///
+/// ⛔ E nenhum dos 30 censos de texto a via: eles procuram **literais** no fonte, e aqui não há
+/// literal nenhum — há um campo. Quem a apanha é a régua que lê o ECRÃ
+/// (`nenhum_rotulo_do_app_pinta_uma_chave`).
+pub(crate) fn params_de_padrao(
+    kind: ph2d_tool_painter::TextureKind,
+    ids: &[NodeId],
+    valores: &[f32],
+) -> Vec<(&'static str, NodeId, f32)> {
+    ph2d_tool_painter::param_specs(kind)
+        .iter()
+        .enumerate()
+        .map(|(i, s)| (ph2d_i18n::tr(s.label), ids[i], valores[i]))
+        .collect()
+}
+
 pub(crate) fn paint_num_params(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,

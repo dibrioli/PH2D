@@ -14,7 +14,7 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Radius, StrokeToken, TypeToken};
 use ph2d_tool_painter::{
-    BrushSettings, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TextureKind, TextureMapping, param_specs,
+    BrushSettings, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TextureKind, TextureMapping,
 };
 
 /// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre os nomes que ela pinta.**
@@ -285,17 +285,11 @@ pub(crate) fn paint_paper_section(
         );
     }
     // ── Per-pattern params (Contrast / Brightness / kind knobs) ──
-    let pp: Vec<(&str, ph2d_a11y::NodeId, f32)> = param_specs(kind)
-        .iter()
-        .enumerate()
-        .map(|(i, s)| {
-            (
-                ph2d_i18n::tr(s.label),
-                ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_PARAMS[i],
-                brush.paper_params[i],
-            )
-        })
-        .collect();
+    let pp = crate::number_field::params_de_padrao(
+        kind,
+        &ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_PARAMS,
+        &brush.paper_params,
+    );
     let out = number_field::paint_num_params(ctx, theme, x, content_w, y, &pp);
     crate::paint_brush_top::end_fold(ctx, fold, out)
 }

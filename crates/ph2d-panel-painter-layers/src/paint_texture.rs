@@ -23,7 +23,7 @@ use ph2d_tool_painter::ids::{
 };
 use ph2d_tool_painter::{
     BrushSettings, ImageMask, RampAlphaMode, TEX_ANGLE_MAX_DEG, TextureKind, TextureLayer,
-    TextureMapping, linear_to_srgb_byte, param_specs, render_texture_preview,
+    TextureMapping, linear_to_srgb_byte, render_texture_preview,
 };
 use ph2d_vector::ImageQuality;
 
@@ -214,17 +214,11 @@ fn paint_texture_params_and_ramp(
     show_ramp: bool,
 ) -> f32 {
     // ── Per-pattern parameters — short labels pair two-per-line, long labels go solo. ──
-    let pp: Vec<(&str, ph2d_a11y::NodeId, f32)> = param_specs(kind)
-        .iter()
-        .enumerate()
-        .map(|(i, s)| {
-            (
-                ph2d_i18n::tr(s.label),
-                ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_PARAMS[i],
-                brush.texture_params[i],
-            )
-        })
-        .collect();
+    let pp = crate::number_field::params_de_padrao(
+        kind,
+        &ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_PARAMS,
+        &brush.texture_params,
+    );
     y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &pp);
 
     if !show_ramp {

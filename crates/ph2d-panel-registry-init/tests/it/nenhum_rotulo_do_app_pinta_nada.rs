@@ -585,8 +585,17 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    era a régua conseguir vê-los.
     // `["Delete", "Duplicate"]`
     ("flip", 2),
-    // `["Composite Brush", "Digital Basic", "Sync with other tools"]`
-    ("painter_layers", 3),
+    // `["Composite Brush", "Digital Basic", "Sync with other tools", "View Plane"]`
+    // ⚠️⚠️ **`3 → 4` em 2026-09-21, e NÃO é regressão — é a POPULAÇÃO a crescer.** Este painel
+    //    passou a ser ARMADO (`super::o_painter_armado`), e armado ele pinta as fileiras que só
+    //    existem depois de o artista escolher um padrão. O `View Plane` é uma delas, e nunca
+    //    tinha sido medido: a varredura via o Painter no estado de FÁBRICA, onde a textura é
+    //    `None`. *Um número que sobe porque a régua passou a ver mais não é o mesmo que um número
+    //    que sobe porque alguém partiu algo* — foi o que o `o_inspector_armado` fez ao painel ao
+    //    lado (`129` cortes invisíveis de uma vez).
+    // ⛔ Continua a ser DÍVIDA, e a cura é a do dono (2026-09-20): encurtar o nome, com o balão a
+    //    guardar a explicação.
+    ("painter_layers", 4),
     // `["Glaze layering (K-M)", "Pigment mixing (K-M)"]`
     ("wet_tuning", 2),
 ];
@@ -626,7 +635,9 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    [`CORTES_NO_DEGRAU_ESTREITO`]. ⚠️ O `wet_tuning` NÃO entra aqui: os dois rótulos dele
     //    são cortes que **não acabam em reticência**, e é isso que separa esta catraca da irmã.
     ("flip", 2),
-    ("painter_layers", 3),
+    // ⚠️ `3 → 4` em 2026-09-21 pelo MESMO motivo da irmã: o Painter passou a ser ARMADO e o
+    //    `View Plane` só existe com um padrão escolhido. Ver a nota lá.
+    ("painter_layers", 4),
 ];
 
 /// ⭐⭐⭐ **E NENHUM PAINEL PASSA A COMER MAIS LETRAS** — as duas metades, como a irmã.
@@ -1547,5 +1558,57 @@ fn o_balao_so_guarda_o_que_foi_cortado() {
         intrusos.is_empty(),
         "o balao guardou texto que COUBE — ele passaria a aparecer sobre rotulos legiveis:\n  \
          {intrusos:?}"
+    );
+}
+
+/// ⛔⛔⛔ **NENHUM RÓTULO DO APP PINTA UMA CHAVE** — o report do dono de 2026-09-21, com foto.
+///
+/// A secção `SHAPE ▸ Texture` do Painter mostrava quatro fileiras assim:
+///
+/// ```text
+/// paint_brush.pattern_param.contrast     0.500
+/// paint_brush.pattern_param.brightness   0.500
+/// ```
+///
+/// ⭐ **A tabela sabia traduzi-las** (`tr` devolve `Contrast`, `Brightness`, `Turbulence`,
+/// `Rings`) — o que faltava era **alguém chamar `tr`**. O laço que monta estas fileiras estava
+/// escrito **três vezes** e duas traduziam; a terceira passava a chave crua.
+///
+/// # ⛔ Porque nenhum dos 30 censos de texto a via
+///
+/// Eles perguntam *«este LITERAL vem da tabela?»* e varrem o **fonte**. Ali não há literal nenhum:
+/// há um campo (`s.label`) que por acaso é uma chave. ⇒ *um censo de fonte é cego a um rótulo que
+/// o programa CALCULA*, e a régua que o apanha tem de ler o **ECRÃ**.
+///
+/// # ⭐⭐ O discriminador é a PRÓPRIA tabela, e não a forma do texto
+///
+/// Um texto pintado que a tabela **sabe traduzir** é, por construção, uma chave que alguém
+/// esqueceu de traduzir. ⛔ Uma régua de FORMA (*«tem ponto e não tem espaço»*) acusaria `0.5` e
+/// nomes de ficheiro; esta não tem falso positivo nenhum.
+#[test]
+fn nenhum_rotulo_do_app_pinta_uma_chave() {
+    let achados = varre();
+    let cruas: Vec<String> = achados
+        .iter()
+        .filter(|a| {
+            let t = a.m.texto.as_str();
+            // ⭐ A tabela conhece-o ⇒ ele é uma CHAVE, e o pintor esqueceu-se de a traduzir.
+            !t.is_empty() && ph2d_i18n::tr(t) != t
+        })
+        .map(|a| {
+            format!(
+                "{}: {:?} (a tabela diz {:?})",
+                a.onde(),
+                a.m.texto,
+                ph2d_i18n::tr(&a.m.texto)
+            )
+        })
+        .collect();
+    assert!(
+        cruas.is_empty(),
+        "o app está a pintar {} CHAVE(S) de tradução no lugar do nome:\n  {}\n\n\
+         ⇒ quem pinta esse rótulo passou a chave crua em vez de a mandar ao `ph2d_i18n::tr`.",
+        cruas.len(),
+        cruas.join("\n  ")
     );
 }

@@ -16,6 +16,8 @@ mod global_palette_catalog;
 mod nenhum_rotulo_do_app_pinta_nada;
 mod o_inspector_armado;
 mod o_model3d_armado;
+#[cfg(feature = "panel-painter-layers")]
+mod o_painter_armado;
 mod o_que_o_artista_nao_alcanca;
 mod o_sculpt3d_armado;
 mod paineis_armados;

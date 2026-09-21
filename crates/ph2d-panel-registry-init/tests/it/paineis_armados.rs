@@ -46,6 +46,14 @@ pub const TABELA: &[Armacao] = &[
         arma: |_| super::o_inspector_armado::arma_tudo(),
         desarma: super::o_inspector_armado::desarma_tudo,
     },
+    // ⭐⭐ **O PAINTER com um padrão na mão** — ver [`super::o_painter_armado`]. Sem ele a
+    //    varredura mede a secção `SHAPE ▸ Texture` VAZIA, que é onde o report de 2026-09-21 vivia.
+    #[cfg(feature = "panel-painter-layers")]
+    Armacao {
+        painel: "painter_layers",
+        arma: |_| super::o_painter_armado::arma(),
+        desarma: super::o_painter_armado::desarma,
+    },
     Armacao {
         painel: "hierarchy",
         arma: arma_a_arvore,

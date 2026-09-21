@@ -29,6 +29,16 @@ mod adjust_menu;
 pub mod adjust_nomes;
 mod blend;
 mod brush_fallback;
+
+/// ⭐ **O instantâneo de pincel que o painel usa antes de a shell publicar um** — exposto para a
+/// varredura de rótulos o poder ARMAR.
+///
+/// ⛔⛔ Sem isto o Painter é medido no estado de FÁBRICA, onde a textura é `None` e as fileiras
+/// por-padrão **não são pintadas** — e foi por isso que o report do dono de 2026-09-21 (a secção
+/// `SHAPE ▸ Texture` a mostrar `paint_brush.pattern_param.contrast`) atravessou 30 censos de
+/// texto e uma varredura de ecrã. *Um painel cujas fileiras dependem de uma escolha tem de ser
+/// armado, como o Inspector já é.*
+pub use crate::brush_fallback::FALLBACK_BRUSH;
 mod card; // the titled row-box shared by the brush panel technique sections
 mod dropdown_popover;
 mod event;

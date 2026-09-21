@@ -15,7 +15,7 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Radius};
 use ph2d_tool_painter::{
     BrushSettings, Falloff, FootprintDeform, ImageMask, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
-    TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, brush_falloff_weight_at, param_specs,
+    TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, brush_falloff_weight_at,
     render_shape_preview,
 };
 use ph2d_vector::ImageQuality;
@@ -159,17 +159,13 @@ pub(crate) fn paint_shape_section(
         if !is_image {
             // Procedural Shape: the kind's per-pattern params (Contrast / Brightness + its shape knob),
             // exactly like the Grain — short labels pair two-per-line, long labels solo (Enio 2026-06-25).
-            let pp: Vec<(&str, ph2d_a11y::NodeId, f32)> = param_specs(kind)
-                .iter()
-                .enumerate()
-                .map(|(i, s)| {
-                    (
-                        s.label,
-                        ph2d_tool_painter::ids::PAINTER_SHAPE_PARAMS[i],
-                        brush.shape_params[i],
-                    )
-                })
-                .collect();
+            // ⛔ Report do dono de 2026-09-21: esta cópia passava `s.label` CRU e o artista via
+            //    `paint_brush.pattern_param.contrast` no ecrã. A lei mora na porta.
+            let pp = crate::number_field::params_de_padrao(
+                kind,
+                &ph2d_tool_painter::ids::PAINTER_SHAPE_PARAMS,
+                &brush.shape_params,
+            );
             y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &pp);
         }
     }

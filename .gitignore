@@ -138,3 +138,6 @@ __pycache__/
 # reconstrói (`docs/UI_New_and_Simple/fetch-referencias.sh`), com a licença de cada alvo ao lado.
 # Mesmo precedente de `docs/Pixel Art/` e `docs/Tilling/`.
 docs/UI_New_and_Simple/referencias/
+
+# O cliente X do `maximiza_cena.sh` — compilado a pedido, nunca versionado.
+docs/Components/ferramentas/maximiza_janela

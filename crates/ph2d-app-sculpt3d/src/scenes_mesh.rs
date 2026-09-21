@@ -156,6 +156,13 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     if pintura::pintura_scene() {
         return pintura::peca();
     }
+    // ⭐⭐ **A `=52` abre GROSSA pela razão OPOSTA à da vizinha de cima:** ali a
+    // cura da borda serrilhada é adensar a MALHA, aqui é a tinta ganhar
+    // resolução própria — e numa peça densa a marca por vértice já sai quase
+    // limpa, logo o degrau `Mesh → 8×` seria invisível.
+    if tinta_fina::tinta_fina_scene() {
+        return tinta_fina::peca();
+    }
     // ⭐ **A `=40` abre na MESMA enrugada, e a razão é a mesma da `=34` vista de
     // outro lado:** os dois gestos tangenciais movem o barro NO PLANO da
     // superfície, e numa esfera lisa isso não muda a silhueta nem quase a luz —

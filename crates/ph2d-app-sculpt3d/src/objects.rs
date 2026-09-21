@@ -83,16 +83,47 @@ pub(crate) struct SceneObject {
     /// POSIÇÃO do vértice, então cada peça tem o seu — e um par compartilhado
     /// deixaria a segunda peça tingida pelo campo da primeira.
     pub(super) preview: super::sculpt3d_preview::PreviewState,
+    /// ⭐⭐⭐⭐ **O PLANO DE TINTA FINA desta peça** — `None` é o caminho de
+    /// sempre, **ao bit**: a cor mora no canal por vértice e a resolução dela é
+    /// a da malha. Quem o cria, empresta e mata:
+    /// [`super::tinta_da_peca`].
+    ///
+    /// ⚠️ **Por PEÇA e não da cena**, pela mesma razão do `preview` acima e uma
+    /// mais forte: o endereço de uma amostra é `(face, sítio)` da malha DESTA
+    /// peça — um plano partilhado leria a tinta de uma na geometria de outra.
+    pub(super) tinta: Option<ph2d_mesh_colors::Tinta>,
+    /// **O device ainda não viu o plano de cima.**
+    ///
+    /// ⚠️⚠️ **Ela existe porque subir o plano é `O(V + F)` e o quadro é 60 Hz**
+    /// — ao contrário do `dirty`, que é uma JANELA de vértices, aqui não há
+    /// upload parcial: o `payload` e os endereços mudam de uma vez. *Sem esta
+    /// testemunha o custo de ter tinta fina seria pago em todo quadro parado.*
+    pub(super) tinta_suja: bool,
 }
 
 impl SceneObject {
-    /// **Quantos bytes esta peça segura** — a pilha inteira, que é tudo o que
-    /// tem tamanho aqui (o resto são dois `bool`, uma pose e a janela suja).
+    /// **Quantos bytes esta peça segura** — a pilha, a janela suja e o PLANO
+    /// de tinta fina.
     ///
     /// Somado pelo teto em bytes da fila de desfazer — ver
-    /// [`super::history::StrokeUndo::footprint_bytes`].
+    /// [`super::history::StrokeUndo::footprint_bytes`], e a razão de o plano
+    /// contar é o braço `RemovedObject`: **uma peça apagada entra inteira na
+    /// fila**.
+    ///
+    /// ⛔⛔ **A redacção anterior dizia *«a pilha inteira, que é tudo o que tem
+    /// tamanho aqui (o resto são dois `bool`, uma pose e a janela suja)»*, e
+    /// ficou FALSA no dia em que o campo [`Self::tinta`] nasceu** — o plano
+    /// custa até `75 MB` na peça de fábrica, e apagar uma peça punha-o na fila
+    /// **invisível ao tecto que existe para o impedir**. *Uma enumeração
+    /// fechada num doc («tudo o que tem tamanho aqui») é uma afirmação que o
+    /// campo seguinte contradiz em silêncio.*
     pub(super) fn footprint_bytes(&self) -> usize {
-        self.stack.footprint_bytes() + self.dirty.capacity() * size_of::<u32>()
+        self.stack.footprint_bytes()
+            + self.dirty.capacity() * size_of::<u32>()
+            + self
+                .tinta
+                .as_ref()
+                .map_or(0, ph2d_mesh_colors::Tinta::footprint_bytes)
     }
 
     pub(super) fn new(id: ObjectId, mesh: Mesh, pose: Pose) -> Self {
@@ -103,6 +134,8 @@ impl SceneObject {
             uploaded: false,
             dirty: Vec::new(),
             preview: super::sculpt3d_preview::PreviewState::default(),
+            tinta: None,
+            tinta_suja: false,
         }
     }
 
@@ -120,6 +153,8 @@ impl SceneObject {
             uploaded: false,
             dirty: Vec::new(),
             preview: super::sculpt3d_preview::PreviewState::default(),
+            tinta: None,
+            tinta_suja: false,
         }
     }
 }

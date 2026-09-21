@@ -87,6 +87,10 @@ pub(super) fn paint_brush_tail(
     // oferece pose, nem projectar, nem contorno —, logo nenhum pincel vê duas
     // delas ao mesmo tempo e nenhuma empurra a outra em nenhuma configuração.
     let y = brush_cor::paint_cor_do_pincel(ctx, snap, x, w, y);
+    // ⭐⭐⭐ **A RESOLUÇÃO DA TINTA, colada à cor** — ver
+    // [`brush_cor::paint_detalhe_da_tinta`], que é onde a fronteira com a
+    // secção `Topology` está escrita.
+    let y = brush_cor::paint_detalhe_da_tinta(ctx, snap, x, w, y);
     // ⭐⭐⭐ **AS FILEIRAS DA POSE VÊM A SEGUIR, coladas aos knobs dela** — ordem
     // do dono (2026-09-15: *«que os botões de deformation fiquem na seção
     // details junto com os outros parâmetros do pincel»*).

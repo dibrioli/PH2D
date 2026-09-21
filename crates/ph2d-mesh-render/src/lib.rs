@@ -35,6 +35,10 @@ mod form;
 mod lighting;
 pub mod matcap;
 mod pipeline;
+/// **A DISPOSIÇÃO POR VÉRTICE** — os nove buffers que o `mesh.wgsl` lê. Módulo
+/// de topo (e não filho do `pipeline`) porque o GATE da paridade com o shader o
+/// lê por `include_str!` e o assunto é da MALHA, não do pipeline.
+mod pipeline_vertex_layout;
 mod shade;
 pub mod ssao;
 pub mod sss;

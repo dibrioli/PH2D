@@ -159,6 +159,35 @@ impl Sculpt3dScene {
                 obj.preview.refresh(mesh, &brush, armed, &moved);
                 obj.dirty = moved;
             }
+            // ⭐⭐⭐ **O PLANO DE TINTA FINA, reconciliado ANTES do upload.**
+            //
+            // ⚠️⚠️ **A DECISÃO é uma porta PURA** ([`crate::tinta_da_peca::rota`])
+            // e não um `if` escrito aqui: ela responde *«quem segura o plano
+            // desta peça agora?»* e *«que nível pedir?»*, e as duas leis que ela
+            // carrega — só a peça ACTIVA ganha um plano novo, e durante um traço
+            // não se reconcilia nada — só são gateáveis fora deste laço, que
+            // pede um `wgpu::Device`.
+            let rota = crate::tinta_da_peca::rota(
+                i == self.active,
+                self.stroke.tinta_fina.is_some(),
+                self.objects[i].tinta.is_some(),
+                self.tinta_nivel,
+            );
+            let emprestado = rota == crate::tinta_da_peca::Rota::Emprestado;
+            if let crate::tinta_da_peca::Rota::DaPeca { pedir } = rota {
+                let obj = &mut self.objects[i];
+                let crate::objects::SceneObject { stack, tinta, .. } = obj;
+                if crate::tinta_da_peca::garante(stack.mesh(), tinta, pedir) {
+                    obj.tinta_suja = true;
+                }
+            }
+            // ⚠️⚠️ **Um dab que MOVEU vértices suja o plano**, e não é por
+            // causa das amostras: o shader recupera as baricêntricas da POSIÇÃO
+            // interpolada contra os três vértices do triângulo, logo o buffer de
+            // posições do plano tem de ser o mesmo que o passe de faces acabou
+            // de receber. *Um plano com as posições de antes lê a tinta no sítio
+            // errado dentro da face certa, que é o defeito sem sintoma óbvio.*
+            let mexeu = !self.objects[i].dirty.is_empty();
             match line.job {
                 SlotJob::Skip => {}
                 SlotJob::Full => {
@@ -211,6 +240,42 @@ impl Sculpt3dScene {
                     .upload_preview_at(queue, k, &self.objects[i].preview.values)
             {
                 self.objects[i].preview.whole_dirty = false;
+            }
+            // ⭐ **E o plano sobe DEPOIS**, sempre: os índices e as posições
+            // que ele carrega têm de ser os da topologia que o device acabou de
+            // receber (a porta di-lo por escrito).
+            //
+            // ⚠️⚠️ **E ele lê o plano de ONDE ELE ESTÁ AGORA:** durante o traço
+            // quem o segura é o gesto, e ler o `Option` da peça (vazio) subiria
+            // `armado = 0` — *o artista veria a tinta fina desaparecer no
+            // instante em que começasse a pintar, e voltar ao largar a caneta*.
+            //
+            // ⚠️ Com o plano emprestado ele sobe em TODO quadro, de propósito:
+            // a escrita da tinta fina é por AMOSTRA e não passa pelo `dirty`,
+            // que é uma janela de VÉRTICES — não há upload parcial a que
+            // recorrer, e a alternativa era não mostrar o traço enquanto ele
+            // dura.
+            if self.objects[i].tinta_suja
+                || mexeu
+                || emprestado
+                || matches!(line.job, SlotJob::Full)
+            {
+                let plano = if emprestado {
+                    self.stroke
+                        .tinta_fina
+                        .as_ref()
+                        .map(ph2d_sculpt3d::tinta_fina::TintaDoTraco::tinta)
+                } else {
+                    self.objects[i].tinta.as_ref()
+                };
+                self.renderer.upload_tinta_at(
+                    device,
+                    queue,
+                    k,
+                    self.objects[i].stack.mesh(),
+                    plano,
+                );
+                self.objects[i].tinta_suja = false;
             }
             // ⚠️ **As ARESTAS, só com a malha armada.** A lista custa até 24 B por
             // vértice e a maioria esculpe sem ela; construí-la junto com a malha

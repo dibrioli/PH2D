@@ -59,6 +59,17 @@ pub(crate) struct Entradas<'a> {
     /// gestos opostos — um vai criar geometria, o outro vai abrir um olho —, e
     /// as duas leem-se exactamente igual num contador só.
     pub outras_escondidas: usize,
+    /// ⭐⭐⭐ **A TINTA FINA está armada nesta peça?** — ver
+    /// [`crate::tinta_da_peca`].
+    ///
+    /// ⚠️⚠️ **Ela é a PRIMEIRA entrada desta família que não é uma AUSÊNCIA:**
+    /// as três acima dizem *«falta-te uma coisa»*, e esta diz *«o que vais
+    /// fazer vai CUSTAR uma que tu tens»*. É por isso que ela não impede o
+    /// gesto — ela põe o preço à vista antes de ele ser pago, que é a única
+    /// coisa que separa *perder detalhe* de *perder detalhe sem saber porquê*.
+    pub tinta_fina_armada: bool,
+    /// O passe de topologia está armado?
+    pub dyntopo_armado: bool,
 }
 
 /// **A peça tem bordo aberto?**
@@ -119,6 +130,26 @@ impl Entradas<'_> {
                 &[("nome", &nome)],
             ));
         }
+        // ⭐⭐⭐ **O AVISO, e ele vem por ÚLTIMO de propósito:** as três acima
+        // são gestos que não vão fazer nada, e este é um gesto que vai fazer
+        // mais do que o artista pediu. Dizê-lo antes seria pôr um preço à
+        // frente de uma impossibilidade.
+        //
+        // ⚠️ **A pergunta é sobre o VERBO e não sobre o modo** — o passe corre
+        // a pedido de quem refina OU colapsa, e quem não faz nem uma coisa nem
+        // outra deixa a topologia em paz mesmo com o interruptor ligado. *Uma
+        // lente mais larga que a do consumidor põe este aviso em todo traço, e
+        // um aviso que soa sempre é ruído que o artista aprende a ignorar —
+        // exactamente quando ele passar a ser verdade.*
+        if self.tinta_fina_armada
+            && self.dyntopo_armado
+            && (verbo.refina_no_dyntopo() || verbo.colapsa_no_dyntopo())
+        {
+            return Some(ph2d_i18n::tr_with(
+                "app.sculpt3d.recusa.a_tinta_fina_perde_detalhe_com_topologia",
+                &[("nome", &nome)],
+            ));
+        }
         None
     }
 }
@@ -143,6 +174,13 @@ impl Sculpt3dScene {
             // precisamente o defeito que este módulo existe para não ter.
             outras_pecas: self.alvos_visiveis().count(),
             outras_escondidas: self.objects.len().saturating_sub(1) - self.alvos_visiveis().count(),
+            // ⚠️ **A pergunta é sobre a PEÇA e não sobre o knob da cena:** o
+            // plano nasce na peça activa e sobrevive nela, logo um knob armado
+            // com a peça ainda sem plano não custa detalhe nenhum — e o inverso
+            // também é verdade (desarmar o knob não apaga o plano até o quadro
+            // seguinte reconciliar). *O que se perde é o que existe.*
+            tinta_fina_armada: o.tinta.is_some(),
+            dyntopo_armado: self.dyntopo.armed,
         };
         if let Some(motivo) = entradas.recusa() {
             eprintln!("[sculpt3d] {motivo}");

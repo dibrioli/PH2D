@@ -116,6 +116,24 @@ impl Topologia {
         }
     }
 
+    /// ⭐ **Quantos bytes esta topologia segura.**
+    ///
+    /// ⚠️ **Ela existe porque uma peça APAGADA entra inteira na fila de
+    /// desfazer**, e o orçamento daquela fila soma bytes: sem esta porta o
+    /// plano de tinta fina — até `75 MB` na peça de fábrica — viajaria lá
+    /// dentro **invisível ao tecto que existe para o impedir**.
+    ///
+    /// ⛔ **É a crate que POSSUI os vectores que sabe medi-los.** A conta
+    /// escrita do lado de fora divergiria no dia em que um campo novo entrasse
+    /// aqui, e divergiria em silêncio.
+    #[must_use]
+    pub fn footprint_bytes(&self) -> usize {
+        self.lado_da_face.capacity() * size_of::<u32>()
+            + self.cantos_da_face.capacity()
+            + self.off_interior.capacity() * size_of::<u32>()
+            + self.dono_da_aresta.capacity() * size_of::<u32>()
+    }
+
     /// ⭐ **Os dois globais que o payload não traz** — quantos vértices e
     /// quantas arestas distintas a malha tem. Um leitor do
     /// [`Self::payload`] precisa dos dois para saber onde cada bloco começa,

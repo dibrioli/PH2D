@@ -166,6 +166,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.ui_level" => "Detail",
         "panel.sculpt3d.ui_level.basic" => "Basic",
         "panel.sculpt3d.ui_level.pro" => "Pro",
+        // ⚠️ O rótulo é **Paint Detail** e não «Detail»: o vizinho de cima já
+        //    tem essa palavra, e a secção Topology tem outra. *Três controlos a
+        //    disputar a palavra «detalhe» é como o artista clica no errado.*
+        "panel.sculpt3d.tinta_detalhe" => "Paint Detail",
+        "panel.sculpt3d.tinta_detalhe.malha" => "Mesh",
+        "panel.sculpt3d.tinta_detalhe.duas" => "2x",
+        "panel.sculpt3d.tinta_detalhe.quatro" => "4x",
+        "panel.sculpt3d.tinta_detalhe.oito" => "8x",
         "panel.sculpt3d.hardness" => "Hardness",
         "panel.sculpt3d.auto_smooth" => "Auto-Smooth",
         "panel.sculpt3d.plane_offset" => "Plane Offset",

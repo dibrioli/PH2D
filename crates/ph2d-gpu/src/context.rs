@@ -71,6 +71,19 @@ impl GpuContext {
                 | wgpu::Features::TEXTURE_COMPRESSION_ASTC
                 | wgpu::Features::TEXTURE_COMPRESSION_ETC2
                 | wgpu::Features::TEXTURE_FORMAT_16BIT_NORM
+                // ⭐⭐ PRIMITIVE_INDEX: e' ela que deixa um shader de FRAGMENTO
+                // saber em que face esta', e e' disso que a TINTA FINA da
+                // escultura vive (`ph2d-mesh-render/src/shaders/tinta.wgsl`).
+                // Medida em 2026-09-20 como `true` nas TRES rotas desta maquina
+                // (`ph2d-gpu --example o_que_a_placa_anuncia`).
+                //
+                // ⛔ Ela entra pela MESMA intersecao das outras: pedimos so' o
+                // que o adaptador anuncia, logo o `request_device` nao pode
+                // falhar por causa dela. Onde ela falta, a fonte do shader sai
+                // SEM o bloco que a menciona (`ph2d_mesh_render::fonte`) e a
+                // peca desenha com a cor por-vertice de sempre — a validacao de
+                // um modulo WGSL e' tudo-ou-nada.
+                | wgpu::Features::PRIMITIVE_INDEX
                 | wgpu::Features::TIMESTAMP_QUERY);
 
         // Limits::default() (desktop tier) is required by Vello's

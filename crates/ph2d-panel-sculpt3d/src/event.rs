@@ -399,6 +399,12 @@ fn group_chip_ui(
         // ferramenta, é escolher quanto dela ver — passar pela porta de troca
         // aqui recarregaria o pincel no gesto que o artista fez só para OLHAR.
         ui.ui_level = state::UiLevel::ALL[i];
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_TINTA_DETALHE, id) {
+        // ⚠️ **Sem re-armar nada**, pela mesma razão do nível da UI logo acima:
+        // pedir mais resolução para a TINTA não é escolher uma ferramenta — o
+        // pincel que está na mão continua a ser o mesmo, e passar pela porta de
+        // troca recarregaria o slot dele por um gesto que não é sobre ele.
+        ui.tinta_detalhe = state::DetalheDaTinta::ALL[i];
     } else if let Some(i) = index_of(&crate::ids::SCULPT3D_FALLOFF, id) {
         ui.brush.falloff = Falloff::ALL[i];
     } else if let Some(i) = index_of(&crate::ids::SCULPT3D_POSE_MODE, id) {

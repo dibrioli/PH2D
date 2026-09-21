@@ -63,6 +63,13 @@ impl Sculpt3dScene {
                 alpha_preview: self.alpha_preview,
                 wireframe: self.wireframe,
                 wire_grade: self.wire_grade,
+                // ⭐ **A ponte da resolução da tinta, e ela é DERIVADA nos dois
+                // sentidos** (`DetalheDaTinta::do_nivel` ↔ `::nivel`, com gate
+                // de ida-e-volta): o painel não conhece a `ph2d-mesh-colors` e
+                // não vai passar a conhecer.
+                tinta_detalhe: ph2d_panel_sculpt3d::state::DetalheDaTinta::do_nivel(
+                    self.tinta_nivel,
+                ),
                 cavity: self.cavity,
                 env: self.env,
                 ao: self.ao,
@@ -211,6 +218,7 @@ impl Sculpt3dScene {
         self.alpha_preview = ui.alpha_preview;
         self.wireframe = ui.wireframe;
         self.wire_grade = ui.wire_grade;
+        self.tinta_nivel = ui.tinta_detalhe.nivel();
         self.cavity = ui.cavity;
         self.env = ui.env;
         self.ao = ui.ao;

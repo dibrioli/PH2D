@@ -26,6 +26,11 @@ fn entradas<'a>(mesh: &'a Mesh, brush: &'a Brush, outras_pecas: usize) -> Entrad
         mesh,
         outras_pecas,
         outras_escondidas: 0,
+        // ⚠️ O helper monta o caso SEM tinta fina: o aviso dela tem fixtura
+        //    própria, e pô-lo de omissão aqui faria toda recusa das três
+        //    primeiras correr num arranjo que não é o do produto.
+        tinta_fina_armada: false,
+        dyntopo_armado: false,
     }
 }
 
@@ -260,5 +265,66 @@ fn a_recusa_separa_a_peca_que_falta_da_peca_escondida() {
         None,
         "com uma peça À VISTA ele tem o que precisa — as escondidas não o \
          impedem de nada"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — o pen-down DIZ o preço da tinta fina antes de ele ser pago.**
+///
+/// ⚠️ **As três metades, e as duas negativas são metade do valor:** ele fala
+/// quando o plano está armado E o passe também E o verbo mexe na topologia;
+/// cala-se quando o passe está desarmado (nada vai mudar), e cala-se com um
+/// verbo que não refina nem colapsa (a topologia fica onde está, mesmo com o
+/// interruptor ligado). *Um aviso que soa sempre é ruído que o artista aprende
+/// a ignorar, exactamente quando ele passar a ser verdade.*
+///
+/// ⛔ A lente é a do CONSUMIDOR (`refina_no_dyntopo` ∪ `colapsa_no_dyntopo`) e
+/// não a do interruptor — é a diferença que o §5.0 nomeia como *«a lente do
+/// painel mais larga que a do consumidor»*.
+#[test]
+fn o_pen_down_diz_o_preco_da_tinta_fina() {
+    let m = bola();
+    let mexe = Brush {
+        verb: Verb::Draw,
+        ..Brush::default()
+    };
+    assert!(
+        mexe.verb.refina_no_dyntopo() || mexe.verb.colapsa_no_dyntopo(),
+        "o arranjo tem de conter o fenomeno: este verbo mexe na topologia"
+    );
+
+    let mut e = entradas(&m, &mexe, 0);
+    e.tinta_fina_armada = true;
+    e.dyntopo_armado = true;
+    let dito = e.recusa().expect("com os dois armados ele fala");
+    assert!(
+        dito.contains("Paint Detail"),
+        "a voz tem de NOMEAR o controlo que custa: {dito}"
+    );
+
+    // CONTROLO 1 — o passe desarmado: nada vai mudar, logo nada se perde.
+    let mut e = entradas(&m, &mexe, 0);
+    e.tinta_fina_armada = true;
+    assert!(e.recusa().is_none(), "sem o passe, calado");
+
+    // CONTROLO 2 — sem plano na peça: não há detalhe fino a perder.
+    let mut e = entradas(&m, &mexe, 0);
+    e.dyntopo_armado = true;
+    assert!(e.recusa().is_none(), "sem plano, calado");
+
+    // CONTROLO 3 — um verbo que NÃO mexe na topologia, com tudo armado.
+    let parado = Brush {
+        verb: Verb::Smooth,
+        ..Brush::default()
+    };
+    assert!(
+        !parado.verb.refina_no_dyntopo() && !parado.verb.colapsa_no_dyntopo(),
+        "o controlo tem de ser um verbo que deixa a topologia em paz"
+    );
+    let mut e = entradas(&m, &parado, 0);
+    e.tinta_fina_armada = true;
+    e.dyntopo_armado = true;
+    assert!(
+        e.recusa().is_none(),
+        "com um verbo que nao mexe na topologia, calado"
     );
 }

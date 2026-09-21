@@ -32,9 +32,14 @@ fn o_mesh_wgsl_parsa_e_valida_no_naga() {
 ///
 /// ⚠️ **O `naga` valida o shader ISOLADO:** ele diz que `@location(8)` é uma
 /// declaração legal e **não** sabe se alguém a alimenta. A outra metade é o
-/// `pipeline_build`, e as duas só se encontram na criação do pipeline — que
-/// precisa de device. ⇒ a régua lê os DOIS ficheiros como texto e compara os
-/// conjuntos de `shader_location`.
+/// [`crate::pipeline_vertex_layout`], e as duas só se encontram na criação do
+/// pipeline — que precisa de device. ⇒ a régua lê os DOIS ficheiros como texto
+/// e compara os conjuntos de `shader_location`.
+///
+/// ⚠️ **O endereço da segunda metade MUDOU em 2026-09-20** (o corte do tecto de
+/// LOC do `pipeline_build.rs`), e este `include_str!` é o que torna a mudança
+/// BARULHENTA: um caminho que já não existe **não compila**. *Uma régua que
+/// procurasse a agulha por `grep` numa árvore teria lido zero e ficado verde.*
 ///
 /// ⛔ **Sem isto, acrescentar a entrada no shader e esquecer o buffer no
 /// layout compila, valida e estoura no primeiro quadro** — que é precisamente
@@ -42,7 +47,7 @@ fn o_mesh_wgsl_parsa_e_valida_no_naga() {
 #[test]
 fn toda_entrada_de_vertice_do_shader_tem_buffer_no_pipeline() {
     let wgsl = include_str!("shaders/mesh.wgsl");
-    let build = include_str!("pipeline_build.rs");
+    let build = include_str!("pipeline_vertex_layout.rs");
 
     // As localizações que o VERTEX pede. ⚠️ Só as do `vs_main`: o `vs_wire` é
     // um subconjunto por desenho (ele não lê a cor), e o `VsOut` também usa
@@ -56,7 +61,7 @@ fn toda_entrada_de_vertice_do_shader_tem_buffer_no_pipeline() {
         .expect("a assinatura do `vs_main` fecha em `) -> VsOut`");
     let pedidas = localizacoes(corpo, "@location(");
 
-    // As que o pipeline DECLARA. O `f32_attr(n)` é o atalho da casa para um
+    // As que a DISPOSIÇÃO declara. O `f32_attr(n)` é o atalho da casa para um
     // escalar; um atributo escrito por extenso traz `shader_location: n`.
     // ⚠️ **As DUAS formas, e a lição é do próprio gate:** a 1.ª redacção lia só
     // o `f32_attr(` e acusou o pipeline de não dar a posição nem a normal, que
@@ -80,7 +85,7 @@ fn toda_entrada_de_vertice_do_shader_tem_buffer_no_pipeline() {
     assert_eq!(
         pedidas, dadas,
         "as entradas de vertice do `mesh.wgsl` e os atributos do \
-         `pipeline_build.rs` deixaram de coincidir: o shader pede {pedidas:?} e o \
+         `pipeline_vertex_layout.rs` deixaram de coincidir: o shader pede {pedidas:?} e o \
          pipeline da' {dadas:?}"
     );
 }

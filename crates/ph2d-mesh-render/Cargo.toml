@@ -25,6 +25,14 @@ ph2d-light = { path = "../ph2d-light" }
 # Mat4/Vec3 da camera. `glam` ja e a algebra desta casa (`ph2d-core`,
 # `ph2d-vector-doc`); uma Mat4 escrita a mao aqui seria a segunda resposta.
 glam = "0.30"
+# ⭐ A LEI DA RETICULA. Ela entra no `src/` porque o `upload_tinta_at` monta o
+# payload que o gemeo em WGSL le' — e o payload e' DERIVADO da `Topologia`, nao
+# escrito aqui. ⛔ Uma copia da disposicao deste lado seria a segunda resposta
+# que o gate de paridade existe para impedir.
+#
+# ⚠️ Crate-folha de ZERO dependencias: ela nao sabe o que e' uma `Mesh`, um
+# device ou um pincel — recebe faces e devolve enderecos.
+ph2d-mesh-colors = { path = "../ph2d-mesh-colors" }
 # wgpu 29 em lockstep com ph2d-render/ph2d-gpu/ph2d-flip-render (teto: ADR-0168).
 wgpu = "29.0.4"
 # O DECODER DOS MATCAPS. Os nove PNGs de `assets/matcaps/` sao `include_bytes!`,

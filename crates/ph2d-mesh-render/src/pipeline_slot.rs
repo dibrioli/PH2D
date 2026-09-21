@@ -116,6 +116,13 @@ pub(super) struct MeshGpu {
     /// lugar abriria a janela em que a peça tem uma topologia e o device carrega
     /// o veredito da anterior.
     pub(super) closed: bool,
+    /// ⭐⭐⭐ **O PLANO DE TINTA FINA no device** — ver [`crate::tinta_gpu`].
+    ///
+    /// ⚠️ **Ele existe SEMPRE**, mesmo sem plano armado, e a razão é o LAYOUT:
+    /// o bind group por objecto nasce com o slot, e um binding que aparece e
+    /// desaparece obrigaria a reconstruir o layout — que é do PIPELINE, não do
+    /// bind. Sem plano ele é de um elemento e o `armado` vale `0`.
+    pub(super) tinta: crate::pipeline::tinta_gpu::TintaGpu,
 }
 
 /// **UM OBJETO no device** — a geometria e a pose que a põe no mundo.

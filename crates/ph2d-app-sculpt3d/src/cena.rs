@@ -168,6 +168,20 @@ pub struct Sculpt3dScene {
     /// ⚠️ Vista, como o [`Self::wireframe`]: não é salva.
     pub(crate) wire_grade: bool,
 
+    /// ⭐⭐⭐⭐ **A RESOLUÇÃO DA TINTA** — `None` é o caminho de sempre (a cor
+    /// mora no canal por vértice), `Some(k)` dá `2^k` intervalos por aresta.
+    ///
+    /// ⚠️ **Ela é do PRODUTO e não do pincel**, e a fronteira é a mesma que os
+    /// dois sliders `Detail` do `Density` pagaram: *quão fina a MALHA fica
+    /// debaixo de um traço* é uma pergunta, *quão fina a TINTA é nesta peça* é
+    /// outra — e esta responde-se com a peça na mão, não com o gesto.
+    ///
+    /// ⚠️ Ela é a escolha, e o plano é o EFEITO: quem o cria, empresta e mata é
+    /// a [`crate::tinta_da_peca`], e ele vive na peça
+    /// ([`crate::objects::SceneObject::tinta`]). *Guardar o plano aqui poria a
+    /// tinta de uma peça a ser lida na geometria de outra.*
+    pub(crate) tinta_nivel: Option<u8>,
+
     pub(crate) brush: Brush,
     /// **A REFERÊNCIA de cada verbo** (`RefMode`), na ordem do `Verb::ALL`.
     ///

@@ -37,7 +37,13 @@ pub fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
         .max(adapter_limits.max_vertex_buffers);
     let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
         label: Some("ph2d-mesh test device"),
-        required_features: wgpu::Features::empty(),
+        // ⭐⭐ **O MESMO pedido do produto**, pela mesma intersecção: só o que
+        // o adaptador anuncia, logo o `request_device` não pode falhar por
+        // causa dela. Sem ela, esta porta devolveria um device SEM
+        // `PRIMITIVE_INDEX` e a fonte do shader sairia sem o bloco da tinta —
+        // os gates desta suíte passariam a medir **outro programa**, que é
+        // exactamente o defeito que este ficheiro existe para não ter.
+        required_features: adapter.features() & wgpu::Features::PRIMITIVE_INDEX,
         required_limits,
         experimental_features: wgpu::ExperimentalFeatures::default(),
         memory_hints: wgpu::MemoryHints::Performance,
@@ -77,6 +83,25 @@ fn o_produto_continua_a_subir_o_limite_de_buffers() {
     // O CONTROLO da extracção: uma agulha que aquele ficheiro NÃO tem falha,
     // senão isto ficaria verde sobre um ficheiro vazio.
     assert!(!PRODUTO.contains("required_limits.max_vertex_buffers = 8u32;"));
+}
+
+/// ⭐⭐ **O PRODUTO CONTINUA A PEDIR A CAPACIDADE DA TINTA FINA** — a irmã do
+/// gate acima, e pela mesma razão: se ele deixar de a pedir, esta porta passa
+/// a devolver um device com uma capacidade que o app não tem, e a suíte mede
+/// um shader que o artista nunca executa.
+///
+/// ⚠️ A agulha é MONTADA em runtime pelo motivo do irmão — este ficheiro
+/// também nomeia a capacidade, e um censo que se lê a si mesmo acha sempre o
+/// que procura.
+#[test]
+fn o_produto_continua_a_pedir_a_capacidade_da_tinta() {
+    const PRODUTO: &str = include_str!("../../../ph2d-gpu/src/context.rs");
+    let agulha = format!("{}{}", "wgpu::Features::PRIMITIVE", "_INDEX");
+    assert!(
+        PRODUTO.contains(&agulha),
+        "o produto deixou de pedir a capacidade da tinta fina: esta porta          devolve um device que ele não tem"
+    );
+    assert!(!PRODUTO.contains("PRIMITIVE_INDEX_DESLIGADA"));
 }
 
 /// ⭐⭐⭐ **E O DEVICE QUE ESTA PORTA DEVOLVE CABE O PIPELINE DO PRODUTO** — a

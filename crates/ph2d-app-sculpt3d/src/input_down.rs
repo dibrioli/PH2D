@@ -303,6 +303,19 @@ pub fn pointer_down(
             // velha, isso é um pânico no primeiro dab.
             scene.aim(pos.0, pos.1);
             scene.stroke.begin(scene.objects[scene.active].stack.mesh());
+            // ⭐⭐⭐ **O PLANO DE TINTA FINA é EMPRESTADO ao traço, aqui.**
+            //
+            // ⚠️ **Depois do `begin` e não antes:** o `begin` dimensiona os
+            // planos por-vértice na malha activa, e é ele que decide em que
+            // peça este gesto escreve. Emprestar antes seria pôr o plano de uma
+            // peça num traço que o `aim` acabou de mudar para outra.
+            //
+            // ⚠️ **E o `begin` NÃO o limpa, de propósito** — o campo
+            // `tinta_fina` do traço é o único que sobrevive à chamada acima
+            // porque ele é a *entrada* do gesto, não estado dele. Quem o
+            // devolve é o `close_stroke`, sempre.
+            scene.stroke.tinta_fina =
+                crate::tinta_da_peca::empresta(&mut scene.objects[scene.active].tinta);
             // ⭐⭐ **A MEMÓRIA DO PENTE MORRE AQUI, e ela morre com o `begin` de
             // propósito:** as duas são indexadas pelo id de vértice da peça
             // ACTIVA, logo a mesma linha que redimensiona o traço na malha certa

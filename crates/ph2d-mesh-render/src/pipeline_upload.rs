@@ -233,6 +233,9 @@ impl MeshRenderer {
                 "ph2d-mesh color",
                 bytemuck::cast_slice(colors_of(mesh, &mut self.scratch_colors)),
             ),
+            // ⚠️ Nasce VAZIA e desarmada: quem a enche é o `upload_tinta_at`,
+            //    depois desta subida e com a topologia que ela acabou de pôr.
+            tinta: crate::pipeline::tinta_gpu::TintaGpu::vazia(device),
             indices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("ph2d-mesh idx"),
                 contents: bytemuck::cast_slice(&self.scratch_indices),
@@ -266,14 +269,20 @@ impl MeshRenderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        // ⭐ Os seis da tinta fina entram JUNTO, mesmo sem plano armado — o
+        //   layout é do pipeline e não pode aparecer e desaparecer. Ver
+        //   `crate::tinta_gpu`.
+        let mut entries = vec![wgpu::BindGroupEntry {
+            binding: 0,
+            resource: model.as_entire_binding(),
+        }];
+        entries.extend(gpu.tinta.entradas());
         let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-mesh object bind"),
             layout: &self.obj_bgl,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: model.as_entire_binding(),
-            }],
+            entries: &entries,
         });
+        drop(entries);
         self.slots.push(Slot { gpu, model, bind });
         if self.poses.len() < self.slots.len() {
             self.poses.resize(self.slots.len(), Pose::IDENTITY);

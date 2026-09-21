@@ -545,6 +545,28 @@ impl Sculpt3dScene {
         // esquece — as duas metades, porque um traço pode fechar sem que o
         // seguinte comece (o artista larga e pega noutra ferramenta).
         self.caminho_no_mundo.esquece();
+        // ⭐⭐⭐ **O PLANO DE TINTA FINA VOLTA À PEÇA, e volta ANTES dos dois
+        // `return` abaixo** — pela mesma razão das duas linhas acima: ele é
+        // memória do gesto, e um traço que fecha por um caminho de saída é o
+        // caso em que ele ficaria preso no `SculptStroke` para sempre. *A peça
+        // perderia a tinta inteira, e o quadro seguinte reconstruiria um plano
+        // branco por cima dela.*
+        //
+        // ⚠️ A [`crate::tinta_da_peca::devolve`] também reescreve o canal por
+        // vértice com o plano — é ela que mantém UMA cor entre as duas
+        // resoluções, e é por isso que ela recebe a malha e não só o `Option`.
+        if let Some(do_traco) = self.stroke.tinta_fina.take() {
+            let i = self.active;
+            let obj = &mut self.objects[i];
+            let crate::objects::SceneObject {
+                stack,
+                tinta,
+                tinta_suja,
+                ..
+            } = obj;
+            crate::tinta_da_peca::devolve(stack.mesh_mut(), tinta, Some(do_traco));
+            *tinta_suja = true;
+        }
         // ⚠️ **O traço que MUDOU A TOPOLOGIA desfaz pela malha inteira**, e a
         // pergunta não é *"o dyntopo estava armado?"* e sim *"a contagem de
         // vértices mudou?"*: armado e sem nada a refinar (a malha já tem a

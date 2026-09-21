@@ -245,3 +245,53 @@ pub(crate) fn fecha_um_selector_orfao(ctx: &mut PaintCtx, pintada: bool) {
 #[cfg(test)]
 #[path = "brush_cor_tests.rs"]
 mod brush_cor_tests;
+
+/// ⭐⭐⭐⭐ **A RESOLUÇÃO DA TINTA** — os chips `Mesh` · `2×` · `4×` · `8×`,
+/// logo abaixo da caixa de cor.
+///
+/// # ⚠️ Porque ela mora AQUI e não na secção `Topology`
+///
+/// São **duas perguntas com a mesma palavra**, e a fronteira é a que os dois
+/// sliders `Detail` do `Density` pagaram em 2026-09-14: *quão fina a MALHA fica
+/// debaixo de um traço* é a da topologia, *quão fina a TINTA é nesta peça* é
+/// esta. Pô-la lá poria o artista a procurar a resolução da cor numa secção que
+/// fala de geometria.
+///
+/// ⭐ **E o sítio é COLADO à cor**, que é a mesma lei do bloco de cima: um
+/// controlo separado do irmão por controlos de outro assunto lê-se como sendo
+/// de outro assunto.
+///
+/// ⚠️ **A POPULAÇÃO é mais larga que a da caixa de cor, de propósito:** a caixa
+/// só serve quem DEPOSITA a cor do pincel, e o plano serve quem **escreve no
+/// canal** — os dois do anel (borrar e esfregar) puxam a cor da vizinhança e
+/// escrevem-na com a mesma resolução. *Herdar a lente da caixa deixaria dois
+/// pincéis de cor sem a pergunta.*
+pub(super) fn paint_detalhe_da_tinta(
+    ctx: &mut PaintCtx,
+    snap: &Sculpt3dSnapshot,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    if !snap.ui.brush.verb.paints_color() {
+        return y;
+    }
+    let sel = crate::state::DetalheDaTinta::ALL
+        .iter()
+        .position(|&d| d == snap.ui.tinta_detalhe)
+        .unwrap_or(0);
+    let labels: Vec<&str> = crate::state::DetalheDaTinta::ALL
+        .iter()
+        .map(|d| d.label())
+        .collect();
+    super::widgets::labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.tinta_detalhe"),
+        &crate::ids::SCULPT3D_TINTA_DETALHE,
+        &labels,
+        sel,
+        x,
+        w,
+        y,
+    )
+}

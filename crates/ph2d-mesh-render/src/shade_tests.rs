@@ -154,7 +154,7 @@ fn arming_the_wireframe_does_not_move_a_byte_of_the_uniform() {
 ///    único lugar onde ninguém lê um número: uma screenshot.
 #[test]
 fn the_shader_reads_the_matcap_image_and_keeps_no_second_law() {
-    let src = crate::pipeline::MESH_WGSL;
+    let src = crate::fonte::MESH_WGSL;
     assert!(
         src.contains("textureSampleLevel(matcap_tex, sss_samp, matcap_uv(n)"),
         "o fragment tem de amostrar a imagem do matcap"
@@ -183,7 +183,7 @@ fn the_shader_reads_the_matcap_image_and_keeps_no_second_law() {
 /// alguém renomeasse uma variável, e verde no dia em que alguém copiasse a fórmula.
 #[test]
 fn the_clay_and_the_donation_ask_the_same_door_how_dark_a_crevice_is() {
-    let src = crate::pipeline::MESH_WGSL;
+    let src = crate::fonte::MESH_WGSL;
     assert_eq!(
         src.matches("fn form_occlusion(").count(),
         1,
@@ -259,7 +259,7 @@ fn the_clay_and_the_donation_ask_the_same_door_how_dark_a_crevice_is() {
 /// oclui em lugar nenhum"*, que é indistinguível de uma escultura lisa.
 #[test]
 fn the_gbuffer_writes_the_occlusion_as_its_second_target() {
-    let src = crate::pipeline::MESH_WGSL;
+    let src = crate::fonte::MESH_WGSL;
     let body = src
         .split_once("fn fs_gbuffer(")
         .expect("o fragment existe")

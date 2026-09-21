@@ -131,3 +131,73 @@ impl RetopoMode {
     // o contrário do que o produto faz. *Uma afirmação falsa que ninguém executa continua a
     // ser lida.*
 }
+
+/// ⭐⭐⭐⭐ **A RESOLUÇÃO DA TINTA nesta peça** — os chips `Mesh` · `2×` · `4×`
+/// · `8×`.
+///
+/// A cor deste app mora nos VÉRTICES, logo *a resolução da tinta é a da malha*
+/// — e é isso que o `Mesh` diz: o caminho de sempre, **ao bit**. Os outros três
+/// armam um plano de amostras (`ph2d_mesh_colors::Tinta`) com `2^k` intervalos
+/// por aresta, e a tinta passa a ter resolução própria.
+///
+/// ⛔⛔ **Chips e não uma PISTA, e a razão não é gosto:** o domínio tem quatro
+/// valores nomeados e eles são potências de dois — uma pista contínua ofereceria
+/// posições que o motor arredonda, que é o *«aceita e mente»* que esta casa já
+/// pagou três vezes. *Um selector discreto sobre um domínio discreto não tem
+/// onde mentir.*
+///
+/// ⚠️ **O `Mesh` é uma OPÇÃO e não a ausência das outras** — ele é o estado de
+/// fábrica, e tem de ser alcançável de volta: sem um chip para ele, armar a
+/// tinta fina seria irreversível.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DetalheDaTinta {
+    /// A cor tem a resolução da MALHA — o caminho de sempre, byte a byte.
+    #[default]
+    Malha,
+    /// `2` intervalos por aresta.
+    Duas,
+    /// `4` intervalos por aresta.
+    Quatro,
+    /// `8` intervalos por aresta — o mais fino que o produto oferece, e o tecto
+    /// é MEDIDO (ver `ph2d_app_sculpt3d::tinta_da_peca::NIVEL_MAX`).
+    Oito,
+}
+
+impl DetalheDaTinta {
+    /// A ordem em que os chips são pintados. **É** a ordem do enum.
+    pub const ALL: [Self; 4] = [Self::Malha, Self::Duas, Self::Quatro, Self::Oito];
+
+    /// Chave i18n do rótulo.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Malha => ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.malha"),
+            Self::Duas => ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.duas"),
+            Self::Quatro => ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.quatro"),
+            Self::Oito => ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.oito"),
+        }
+    }
+
+    /// ⭐ **O `k` que o motor pede** — `None` é *«sem plano»*.
+    ///
+    /// ⚠️ **A ponte é AQUI e é uma só**, com gate de ida-e-volta: o painel não
+    /// conhece a `ph2d-mesh-colors` e não vai passar a conhecer, e sem a volta
+    /// uma ponte que colapsasse dois chips num `k` deixaria um deles morto.
+    #[must_use]
+    pub fn nivel(self) -> Option<u8> {
+        match self {
+            Self::Malha => None,
+            Self::Duas => Some(1),
+            Self::Quatro => Some(2),
+            Self::Oito => Some(3),
+        }
+    }
+
+    /// A volta da [`Self::nivel`].
+    #[must_use]
+    pub fn do_nivel(nivel: Option<u8>) -> Self {
+        Self::ALL
+            .into_iter()
+            .find(|d| d.nivel() == nivel)
+            .unwrap_or_default()
+    }
+}

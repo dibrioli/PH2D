@@ -7,7 +7,7 @@
 //! por motivos diferentes: este arquivo cresce quando o pipeline ganha um
 //! estado, o outro quando a cena ganha um objeto.
 
-use super::{CameraRaw, MESH_WGSL, MeshRenderer};
+use super::{CameraRaw, MeshRenderer};
 use crate::lighting::RigRaw;
 use crate::shade::ShadeRaw;
 
@@ -105,22 +105,27 @@ impl MeshRenderer {
             ],
         });
 
+        // ⭐ A tinta fina entra AQUI, no grupo por OBJECTO — ver
+        //   `crate::tinta_gpu`. As seis entradas vêm de lá porque este ficheiro
+        //   estava a duas linhas do tecto de LOC.
+        let mut obj_entries = vec![wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            // ⚠️ **O FRAGMENT também**, e é o `wire_cull` que o exige: quem
+            // decide se uma linha de costas some é o fragmento (o vértice não
+            // pode descartar um primitivo), então a pergunta *"esta peça é um
+            // sólido?"* tem de estar visível de lá.
+            visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }];
+        obj_entries.extend(crate::pipeline::tinta_gpu::entradas_do_layout());
         let obj_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-mesh object bgl"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                // ⚠️ **O FRAGMENT também**, e é o `wire_cull` que o exige: quem
-                // decide se uma linha de costas some é o fragmento (o vértice não
-                // pode descartar um primitivo), então a pergunta *"esta peça é um
-                // sólido?"* tem de estar visível de lá.
-                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
+            entries: &obj_entries,
         });
 
         // **A VISIBILIDADE DE TELA** (`crate::ssao`) — grupo 2 do passe de cor.
@@ -275,83 +280,27 @@ impl MeshRenderer {
             immediate_size: 0,
         });
 
+        // ⭐⭐⭐ **A TINTA FINA entra na FONTE, e só onde a placa a anuncia.**
+        //
+        // ⛔⛔ A validação de um módulo WGSL é tudo-ou-nada: numa placa sem
+        // `PRIMITIVE_INDEX`, uma fonte que o mencione faz a peça **deixar de
+        // desenhar de todo** — não só a tinta fina. Ver `crate::fonte`.
+        //
+        // ⭐ E o pipeline é UM: com a tinta presente ele usa sempre a entrada
+        // que a lê, e quem decide por-objecto é o `armado` da configuração
+        // (que vale `0` em toda peça sem plano, devolvendo o `in.vcolor` ao
+        // bit). *Dois pipelines para a mesma peça seriam duas leis de luz a
+        // que ninguém consegue prometer que concordam.*
+        let com_tinta = device.features().contains(wgpu::Features::PRIMITIVE_INDEX);
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ph2d-mesh shader"),
-            source: wgpu::ShaderSource::Wgsl(MESH_WGSL.into()),
+            source: wgpu::ShaderSource::Wgsl(crate::fonte::mesh_wgsl(com_tinta)),
         });
 
-        // Os atributos têm de viver tanto quanto o descritor, então são `const`
-        // e não temporários de uma closure — um slice emprestado de dentro de um
-        // construtor morre antes de o pipeline ser criado.
-        const fn vec3_attr(location: u32) -> [wgpu::VertexAttribute; 1] {
-            [wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32x3,
-                offset: 0,
-                shader_location: location,
-            }]
-        }
-        const POS: [wgpu::VertexAttribute; 1] = vec3_attr(0);
-        const NRM: [wgpu::VertexAttribute; 1] = vec3_attr(1);
-        const fn f32_attr(location: u32) -> [wgpu::VertexAttribute; 1] {
-            [wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32,
-                offset: 0,
-                shader_location: location,
-            }]
-        }
-        const MASK: [wgpu::VertexAttribute; 1] = f32_attr(2);
-        /// A CURVATURA por vértice (`ph2d_mesh::curvature`) — buffer próprio, e
-        /// não um segundo canal empacotado com a máscara, porque as duas mudam em
-        /// momentos diferentes: a máscara quando o artista a pinta, a curvatura
-        /// em TODO dab. Juntá-las faria um upload incremental de forma reenviar
-        /// a autoria que ninguém tocou.
-        const CURV: [wgpu::VertexAttribute; 1] = f32_attr(3);
-        /// O AO ASSADO por vértice — buffer próprio pela razão da curvatura, e
-        /// por uma a mais: ele é o canal que muda MENOS de todos (só num bake
-        /// explícito), então empacotá-lo com qualquer vizinho faria o upload
-        /// dele viajar de carona em toda mudança de forma.
-        const AO: [wgpu::VertexAttribute; 1] = f32_attr(4);
-        /// A CURVATURA DE MUNDO por vértice (`1/comprimento`) — o eixo da tabela
-        /// do SSS. Buffer próprio pela razão da irmã adimensional ao lado, e não
-        /// empacotada COM ela apesar de mudarem no mesmo instante: um `vec2` num
-        /// buffer só é o layout certo se as duas forem sempre lidas juntas, e o
-        /// Cavity lê uma sem a outra em todo frame com o SSS desligado.
-        const CURVW: [wgpu::VertexAttribute; 1] = f32_attr(5);
-        /// A ESPESSURA assada por vértice — buffer próprio pela razão do AO, que
-        /// é a irmã dele em tudo: os dois nascem do MESMO bake, mudam só nele, e
-        /// empacotá-los juntos economizaria um buffer para pagar com um upload
-        /// de canal que ninguém mexeu em toda troca de forma.
-        const THICK: [wgpu::VertexAttribute; 1] = f32_attr(6);
-        /// O PREVIEW do padrão do pincel — o canal **transiente** que mostra,
-        /// no barro, o que o próximo traço vai depositar.
-        ///
-        /// ⚠️ **Irmão da máscara e não dela:** os dois são `f32` por vértice e
-        /// pintam um tinto, mas a máscara é AUTORADA (ela protege) e este é
-        /// DERIVADO do pincel vivo. Colapsá-los faria o preview apagar a
-        /// proteção que o artista pintou — e restaurá-la depois seria uma
-        /// promessa que um `return` esquecido quebra em silêncio.
-        const PREVIEW: [wgpu::VertexAttribute; 1] = f32_attr(7);
-        /// A COR por vértice — o albedo que os pincéis de pintura escrevem.
-        ///
-        /// ⚠️ **Buffer próprio e não empacotado com um vizinho**, pela mesma
-        /// razão que separa o AO da espessura: ele muda a CADA dab de pintura,
-        /// e o vizinho com quem coubesse pagaria um upload por dab de um canal
-        /// que ninguém tocou. ⭐ É o 9.º buffer, um acima do piso do WebGPU —
-        /// ver a medição em [`ph2d_gpu`].
-        const COLOR: [wgpu::VertexAttribute; 1] = vec3_attr(8);
-        // Irmão do `vec3_buffer`, e uma CLOSURE pela mesma razão que ele: o
-        // `make` abaixo é chamado duas vezes (a cena e o G-buffer), e um valor
-        // capturado por move faria dele um `FnOnce`.
-        let f32_buffer = |attrs: &'static [wgpu::VertexAttribute]| wgpu::VertexBufferLayout {
-            array_stride: 4,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: attrs,
-        };
-        let vec3_buffer = |attrs: &'static [wgpu::VertexAttribute]| wgpu::VertexBufferLayout {
-            array_stride: 12,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: attrs,
-        };
+        // ⭐ A DISPOSIÇÃO POR VÉRTICE vive no irmão, e o corte é por ASSUNTO:
+        // este ficheiro cresce quando o PIPELINE ganha um estado, aquela lista
+        // cresce quando a MALHA ganha um canal. Ver o cabeçalho de lá.
+        let por_vertice = crate::pipeline_vertex_layout::layout_por_vertice();
 
         // **O QUE VARIA entre os pipelines** — e só isto.
         //
@@ -416,17 +365,7 @@ impl MeshRenderer {
                     module: &shader,
                     entry_point: Some(vs),
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    buffers: &[
-                        vec3_buffer(&POS),
-                        vec3_buffer(&NRM),
-                        f32_buffer(&MASK),
-                        f32_buffer(&CURV),
-                        f32_buffer(&AO),
-                        f32_buffer(&CURVW),
-                        f32_buffer(&THICK),
-                        f32_buffer(&PREVIEW),
-                        vec3_buffer(&COLOR),
-                    ],
+                    buffers: &por_vertice,
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &shader,
@@ -488,7 +427,11 @@ impl MeshRenderer {
         let pipeline = make(Variant {
             label: "ph2d-mesh pipeline",
             vs: "vs_main",
-            entry: "fs_main",
+            entry: if com_tinta {
+                "fs_main_tinta"
+            } else {
+                "fs_main"
+            },
             format: target_format,
             second: None,
             topology: wgpu::PrimitiveTopology::TriangleList,

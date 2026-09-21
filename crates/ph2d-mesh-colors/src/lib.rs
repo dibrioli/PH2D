@@ -193,6 +193,16 @@ impl Tinta {
         t
     }
 
+    /// ⭐ **Quantos bytes este plano segura** — as amostras mais a topologia.
+    ///
+    /// ⚠️ Ver o doc da [`Topologia::footprint_bytes`]: ela existe porque uma
+    /// peça apagada leva o plano para a fila de desfazer, e o orçamento
+    /// daquela fila soma bytes.
+    #[must_use]
+    pub fn footprint_bytes(&self) -> usize {
+        self.amostras.capacity() * size_of::<[f32; 3]>() + self.topo.footprint_bytes()
+    }
+
     /// O nível efectivo (`k`).
     #[must_use]
     pub fn nivel(&self) -> u8 {

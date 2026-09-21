@@ -110,6 +110,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "{nome} needs ANOTHER piece in the scene -- it pushes the clay until it meets \
              that piece, and here there is only one"
         }
+        "app.sculpt3d.recusa.a_tinta_fina_perde_detalhe_com_topologia" => {
+            "{nome} changes the topology, and Paint Detail is on for this piece -- the fine \
+             paint is re-seeded from the per-vertex colour, so detail finer than the mesh is \
+             lost (turn Dynamic Topology off to keep it)"
+        }
         "app.sculpt3d.trim_aplica.sem_peca_para_cortar" => "there is no piece to cut",
         "app.sculpt3d.trim_aplica.pilha_montada_j_reverte" => {
             "a multiresolution stack is mounted -- J reverts it and the cut comes back"

@@ -286,6 +286,12 @@ mod dyntopo;
 mod manchas_pretas;
 mod slots;
 
+/// ⭐⭐⭐ **QUEM É DONO DO PLANO DE TINTA FINA** — a peça, e só ela: quando o
+/// plano nasce, quem o segura durante um traço, e quando ele morre. Irmão do
+/// [`slots`] porque a terceira pergunta é a que decide o quadro (a topologia
+/// muda no dab e o plano é paramétrico nas FACES), e não um detalhe de upload.
+mod tinta_da_peca;
+
 /// **O OBJETO MISTO (O2)** — a forma acende um SPRITE da cena, e continua
 /// acendendo depois de a malha sair. Filho e irmão da [`donation`]:
 /// lá a forma acende a tela do Painter, aqui um objeto da cena — duas perguntas

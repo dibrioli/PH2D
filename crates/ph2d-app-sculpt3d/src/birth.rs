@@ -66,6 +66,7 @@ impl Sculpt3dScene {
             lighting: ph2d_mesh_render::DEFAULT_LIGHTING,
             wireframe: false,
             wire_grade: false,
+            tinta_nivel: None,
             brush: Brush::default(),
             // ⚠️ **DERIVADO do que cada verbo DECLARA**, e não um `S` chapado: o
             // `[RefMode::default(); N]` que morava aqui fazia **7 dos 23**

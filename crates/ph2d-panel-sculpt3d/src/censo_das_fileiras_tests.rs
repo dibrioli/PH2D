@@ -245,3 +245,43 @@ fn the_panel_offers_every_smear_mode_the_engine_has() {
         SmearMode::ALL.len()
     );
 }
+
+/// **GATE — o painel oferece TODA resolução de tinta que o motor tem, e a
+/// ponte é reversível.**
+///
+/// ⚠️⚠️ **As DUAS metades, e cada uma sozinha mente.** A contagem afirma que
+/// nenhum degrau nasce sem chip; a **volta** afirma que nenhum chip aponta para
+/// um degrau que já tem dono — sem ela, dois chips podiam devolver o mesmo `k`
+/// e um deles seria um botão que não faz nada, com a contagem verde por cima.
+///
+/// ⭐ *É o gate de ida-e-volta que a ponte do `Fit` do HUD pagou: uma ponte que
+/// colapsa dois estados num deixa um chip morto, e a contagem não o vê.*
+#[test]
+fn o_painel_oferece_todo_detalhe_de_tinta_que_o_motor_tem() {
+    use crate::state::DetalheDaTinta;
+    assert_eq!(
+        crate::ids::SCULPT3D_TINTA_DETALHE.len(),
+        DetalheDaTinta::ALL.len(),
+        "o painel tem {} chips de resolucao de tinta e o enum tem {} -- um degrau sem id \
+         nasce inalcancavel, e um id sem degrau e' um chip que aponta para nada",
+        crate::ids::SCULPT3D_TINTA_DETALHE.len(),
+        DetalheDaTinta::ALL.len()
+    );
+    for d in DetalheDaTinta::ALL {
+        assert_eq!(
+            DetalheDaTinta::do_nivel(d.nivel()),
+            d,
+            "a volta de {d:?} devolveu outro chip -- dois chips com o mesmo nivel deixam um morto"
+        );
+    }
+    // ⚠️ E o `Mesh` é o caminho de sempre: ele tem de ser o único sem plano.
+    let sem_plano: Vec<DetalheDaTinta> = DetalheDaTinta::ALL
+        .into_iter()
+        .filter(|d| d.nivel().is_none())
+        .collect();
+    assert_eq!(
+        sem_plano,
+        vec![DetalheDaTinta::Malha],
+        "so' o `Mesh` e' o caminho sem plano"
+    );
+}

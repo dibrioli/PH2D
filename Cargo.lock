@@ -5180,6 +5180,7 @@ dependencies = [
  "ph2d-light",
  "ph2d-mesh",
  "ph2d-mesh-bool",
+ "ph2d-mesh-colors",
  "ph2d-mesh-render",
  "ph2d-painter-brush",
  "ph2d-panel-sculpt3d",

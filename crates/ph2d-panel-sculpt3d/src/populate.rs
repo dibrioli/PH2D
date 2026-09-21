@@ -94,6 +94,10 @@ pub fn populate(store: &mut WidgetStore) {
         // a fileira só onde o verbo declara campo E o nível é Pro.
         &crate::ids::SCULPT3D_ELASTIC_SCALES[..],
         &crate::ids::SCULPT3D_UI_LEVEL[..],
+        // ⚠️ **Os QUATRO entram sempre**, pela mesma lei dos vizinhos: o painel
+        // pinta a fileira só para quem pinta cor, e registar só os pintados
+        // faria o registo depender de um estado que muda com um clique.
+        &crate::ids::SCULPT3D_TINTA_DETALHE[..],
         // ⚠️ Os DOIS entram sempre: registrar só o motor corrente faria o chip do
         // outro nascer morto — e um chip pintado que ninguém registrou é uma
         // affordance que não faz nada.

@@ -3339,10 +3339,18 @@ fn the_matcap_lights_the_sculpture_from_the_top_of_its_image() {
     let mut renderer = MeshRenderer::new(&device, FORMAT);
     renderer.upload_at(&device, &queue, 0, &mesh, &[]);
 
+    // ⛔⛔ **A CHAVE e não o nome que o artista lê.** Este gate esteve VERMELHO
+    // desde o `d63b97ad8` — a wave do HR-15, que trocou o `Matcap::name`
+    // («Basic Side», interface) pelo `name_key` (`sculpt3d.matcap.basic_side`)
+    // — e ninguém o viu, porque ele é `#[ignore]` e o CI não corre os
+    // `#[ignore]`. *Um gate que o CI não corre é descoberto pela wave
+    // seguinte que por acaso rode a bateria inteira, e foi o que aconteceu.*
+    //
+    // ⚠️ E ele tem de ser a chave: o nome VIAJA (ele é traduzido), a chave não.
     let id = ph2d_mesh_render::MATCAPS
         .iter()
-        .position(|n| *n == "Basic Side")
-        .expect("o `Basic Side` é o oráculo desta lei");
+        .position(|k| *k == "sculpt3d.matcap.basic_side")
+        .expect("o `basic_side` é o oráculo desta lei");
     let px = render_using_rig_shade(
         &device,
         &queue,

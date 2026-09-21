@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 51;
+pub const CENAS: u32 = 52;
 
 /// ⭐⭐ **O PRÓLOGO — o que uma cena ARMA depois de a cena nascer.**
 ///
@@ -62,6 +62,7 @@ pub const CENAS: u32 = 51;
 pub(crate) fn prologo(cena: &mut crate::Sculpt3dScene) {
     pente::arma(cena);
     pintura::arma(cena);
+    tinta_fina::arma(cena);
 }
 
 /// **A env do roteador, lida DENTRO da crate.**
@@ -535,6 +536,12 @@ pub(crate) mod smear;
 /// o polegar que espalma e o empurrão que varre.
 #[path = "scenes_tangenciais.rs"]
 pub(crate) mod tangenciais;
+/// **A TINTA FINA** (`=52`) — ver [`tinta_fina`]. ⚠️ Ela abre com uma peça
+/// GROSSA e o ARAME ligado, que é o OPOSTO da irmã `=51`: ali a cura era
+/// adensar a malha, aqui a tinta ganha resolução própria e a malha fica onde
+/// está — e sem o arame essa metade não se vê.
+#[path = "scenes_tinta_fina.rs"]
+pub(crate) mod tinta_fina;
 /// **O BOX TRIM** (`=46`) — ver [`trim`]. ⚠️ Ela abre com uma peça **mais leve**
 /// que o resto do módulo, e o número está na tabela do cabeçalho dela: um corte
 /// é `O(peça)` e corre no largar do rato.

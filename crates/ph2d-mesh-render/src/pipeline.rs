@@ -16,10 +16,6 @@ use crate::lighting::RigRaw;
 use crate::shade::ShadeRaw;
 use crate::upload;
 
-/// O fonte do shader, exposto para o gate poder afirmar o que ele DECLARA sem
-/// precisar de device — o molde do `IMPASTO_LIGHT_WGSL` do `ph2d-render`.
-pub(crate) const MESH_WGSL: &str = include_str!("shaders/mesh.wgsl");
-
 /// O passe de tela cheia do AO de tela — ver [`crate::ssao`].
 pub(crate) const SSAO_WGSL: &str = include_str!("shaders/ssao.wgsl");
 
@@ -212,6 +208,11 @@ pub(crate) fn matcap_texture(device: &wgpu::Device, side: u32) -> wgpu::Texture 
 }
 
 /// COMO A MALHA SOBE para o device — ver o módulo.
+/// ⭐⭐ **A tinta fina no device.** Irmã do [`upload`] e pelo mesmo motivo:
+/// ela toca os `slots`, que são privados a este módulo.
+#[path = "tinta_gpu.rs"]
+pub(super) mod tinta_gpu;
+
 #[path = "pipeline_upload.rs"]
 mod marshal;
 

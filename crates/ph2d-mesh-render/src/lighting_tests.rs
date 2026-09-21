@@ -77,12 +77,12 @@ fn the_uniform_is_the_size_the_shader_reads() {
 fn the_clay_folds_the_ratio_by_the_same_ambient_floor() {
     let decl = format!("const AMBIENT: f32 = {};", ph2d_light::AMBIENT);
     assert!(
-        crate::pipeline::MESH_WGSL.contains(&decl),
+        crate::fonte::MESH_WGSL.contains(&decl),
         "mesh.wgsl tem de declarar `{decl}` — o piso é `ph2d_light::AMBIENT`"
     );
     // E o array de lâmpadas do uniform é o do rig, não um número escolhido.
     assert!(
-        crate::pipeline::MESH_WGSL.contains(&format!("array<Lamp, {}>", ph2d_light::MAX_LIGHTS)),
+        crate::fonte::MESH_WGSL.contains(&format!("array<Lamp, {}>", ph2d_light::MAX_LIGHTS)),
         "o array do uniform é `ph2d_light::MAX_LIGHTS`"
     );
 }
@@ -108,7 +108,7 @@ fn the_clay_lights_the_shadow_with_the_rigs_environment() {
             v[0], v[1], v[2]
         );
         assert!(
-            crate::pipeline::MESH_WGSL.contains(&decl),
+            crate::fonte::MESH_WGSL.contains(&decl),
             "mesh.wgsl tem de declarar `{decl}` — o ambiente é o de `ph2d_light`"
         );
     }
@@ -118,7 +118,7 @@ fn the_clay_lights_the_shadow_with_the_rigs_environment() {
     // porão — o FATO é medido por um render (`gpu_render.rs`), este é o proxy
     // que sobrevive numa máquina sem adapter.
     assert!(
-        crate::pipeline::MESH_WGSL.contains("ENV_BASE - ENV_SLOPE * n.y"),
+        crate::fonte::MESH_WGSL.contains("ENV_BASE - ENV_SLOPE * n.y"),
         "o gradiente tem de SUBTRAIR: o céu é o topo da tela, que aqui é `-y`"
     );
 }
@@ -135,7 +135,7 @@ fn the_clay_lights_the_shadow_with_the_rigs_environment() {
 #[test]
 fn the_normal_crosses_into_the_rigs_space() {
     assert!(
-        crate::pipeline::MESH_WGSL.contains("vec3<f32>(n.x, -n.y, n.z)"),
+        crate::fonte::MESH_WGSL.contains("vec3<f32>(n.x, -n.y, n.z)"),
         "o fragment tem de negar o `y` ao entrar no espaço do rig"
     );
 }

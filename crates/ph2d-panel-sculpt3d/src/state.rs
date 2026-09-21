@@ -38,7 +38,7 @@ pub use crate::slots::{
 ///
 /// ⚠️ **Re-exportadas daqui de propósito:** o corte foi do teto de LOC, e nenhum
 /// caminho de chamador muda por causa dele.
-pub use crate::state_modes::{RetopoMode, UiLevel};
+pub use crate::state_modes::{DetalheDaTinta, RetopoMode, UiLevel};
 
 /// **COM QUE LUZ** — ver [`luz`]. Irmão (`#[path]`), e o corte foi forçado pelo
 /// tecto de LOC deste painel (`645` contra `600`) mais o assunto: *«que modos de
@@ -134,6 +134,18 @@ pub struct Sculpt3dUi {
     /// ⚠️ **E ele NÃO é salvo**, também como o `matcap`: com que profundidade
     /// olhar não muda a escultura.
     pub ui_level: UiLevel,
+    /// ⭐⭐⭐⭐ **A RESOLUÇÃO DA TINTA na peça activa** — ver
+    /// [`DetalheDaTinta`].
+    ///
+    /// ⚠️ **Ela é do PRODUTO e não do pincel**, e a fronteira é a que os dois
+    /// sliders `Detail` do `Density` pagaram: *quão fina a MALHA fica debaixo de
+    /// um traço* é uma pergunta, *quão fina a TINTA é nesta peça* é outra.
+    ///
+    /// ⚠️ E ao contrário do [`Self::ui_level`] ela **muda a escultura** — o
+    /// plano é onde a tinta fina vive —, logo o dia em que a cena for salva ela
+    /// vai junto. *Hoje nenhuma cor viaja no `.ph2dproj`, e essa dívida é a
+    /// mesma dela.*
+    pub tinta_detalhe: DetalheDaTinta,
     /// O raio autorado, em **pixels de tela**.
     pub radius_px: f32,
     pub symmetry: Symmetry,
@@ -229,6 +241,9 @@ impl Default for Sculpt3dUi {
             // reordenada.
             filter_law: FilterLaw::Mesh(FilterKind::ALL[0]),
             cloth_filter_orientation: ClothFilterOrientation::default(),
+            // ⚠️ **O default é a MALHA**, que é o caminho de sempre ao bit —
+            // e ele é DERIVADO pelo `#[default]` do enum, e não escrito.
+            tinta_detalhe: DetalheDaTinta::default(),
             cloth_filter: ph2d_sculpt3d::ClothFilterProps::default(),
             cloth_filter_axes: [true; 3],
             brush: Brush::default(),
@@ -456,28 +471,12 @@ pub use crate::state_channel::{
     drain_intents, last_content_h, last_visible_h, set_current_sculpt3d,
 };
 
-/// **Qual chip da fileira de padrão está aceso**, dado o retrato.
-///
-/// `0` é o pincel liso, `1..=9` são os `Alpha::ALL` deslocados de um, e o último
-/// é o slot de IMAGEM.
-///
-/// ⚠️ **Ela é `pub` para o GATE poder perguntar ao produto.** O `event` não a
-/// chama — ele resolve a pergunta INVERSA (*este índice arma o quê?*) —, então
-/// isto não é uma porta compartilhada, é o retrato respondendo *"qual está
-/// aceso?"* em vez de um teste re-derivando a aritmética por conta própria. Um
-/// gate com a sua terceira cópia concordaria consigo mesmo enquanto o painel
-/// pintasse outra coisa, que é o oráculo-espelho que esta casa recusa.
-#[must_use]
-pub fn alpha_chip_index(snap: &Sculpt3dSnapshot) -> usize {
-    match snap.ui.brush.alpha.as_ref() {
-        None => 0,
-        Some(a) if a.is_image() => ph2d_sculpt3d::Alpha::ALL.len() + 1,
-        Some(a) => ph2d_sculpt3d::Alpha::ALL
-            .iter()
-            .position(|x| x == a)
-            .map_or(0, |i| i + 1),
-    }
-}
+/// **AS LEITURAS DERIVADAS** — ver [`leituras`]. Irmão (`#[path]`), cortado
+/// pelo tecto de LOC (`615` contra `600`) mais o assunto: *o `state.rs` é o
+/// MODELO, e «qual chip está aceso?» é uma LEITURA dele.*
+#[path = "state_leituras.rs"]
+mod leituras;
+pub use leituras::alpha_chip_index;
 
 /// **O RAIO DE FÁBRICA, em pixels de tela** — a base contra a qual as frações
 /// de raio da referência são resolvidas.

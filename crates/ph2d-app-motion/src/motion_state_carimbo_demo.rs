@@ -66,10 +66,15 @@
 //!
 //! A `300 × 300` = **`90 000`**, e é isto que o dono lê na barra de baixo:
 //!
-//! | rota | a barra diz | CPU do quadro |
+//! | rota | a barra diz | CPU do quadro (3 corridas) |
 //! |---|---|---:|
-//! | carimbo preparado (HOJE) | **`59 fps · 16.7 ms · ~96 raw`** | `10,37 ms` |
-//! | `fill` por cópia (ANTES) | **`59 fps · 16.7 ms · ~68 raw`** | `14,67 ms` |
+//! | carimbo preparado (HOJE) | **`59 fps · 16.7 ms · 95`–`100 raw`** | `9,99`–`10,50 ms` |
+//! | `fill` por cópia (ANTES) | **`59 fps · 16.7 ms · 68`–`75 raw`** | `13,36`–`14,67 ms` |
+//!
+//! ⚠️ **A faixa é a DISPERSÃO entre corridas e está aqui de propósito:** o roteiro promete
+//! *«`70` e poucos»* e não um número exacto, porque o EWMA do perfilador ainda está a assentar aos
+//! `20`–`25 s` de espera da fotografia. *Um roteiro que promete um dígito ensina o dono a ler uma
+//! reprovação onde há ruído de aquecimento.*
 //!
 //! ⚠️⚠️ **Os `fps` são IGUAIS nas duas, e isso é o ecrã e não a cura:** as duas cabem no quadro,
 //! logo as duas ficam presas ao vsync. **A coluna que se move é o `raw`** (`1000 / cpu`), que é a
@@ -392,7 +397,7 @@ pub(super) fn announce() {
          (3) Arraste o fundo com o botao do meio: tem de passear LISO.\n\
          (4) Feche o app e corra o MESMO comando com `PH2D_CARIMBO_PREPARADO=0` a' frente:\n    \
          e' o caminho ANTIGO. Os `fps` ficam nos mesmos `60` (e' o tecto do ecra), e o\n    \
-         `raw` cai para perto de `68` — um terco da folga desaparece.\n\
+         `raw` cai para `70` e poucos — perto de um terco da folga desaparece.\n\
          (5) Compare. A imagem e' a MESMA, ponto por ponto — so' a folga muda.\n\
          \n\
          DEU ERRADO se: o campo nao aparecer; se o `raw` for IGUAL nas duas corridas;\n\

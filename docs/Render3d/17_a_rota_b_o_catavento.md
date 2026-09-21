@@ -489,10 +489,119 @@ e uma esfera lisa lê `0,000`.
 
 | o que | porquê fica | quem decide |
 |---|---|---|
-| **o componente não tem CONTROLO** | hoje só uma CENA o semeia: nem o painel da escultura nem o Inspector o oferecem. A via natural é a secção do Inspector (`line/components`), e a do painel de escultura pediria rows sobre o ALVO — o molde do `SCULPT3D_BAKE_LAW` | o dono |
+| ~~**o componente não tem CONTROLO**~~ | ✅ **FECHADO pela W4** (§8), por ordem do dono (*«sim. quero»*): a secção **`Live Mesh`** do Inspector, e o descritor passou de `Machinery` a `Authored` porque **a paleta é a única rota** — uma secção só pintada COM o componente não tem como o anexar | — |
 | `piece` é sempre `0` | a rota B rasteriza a peça ACTIVA da cena 3D; o campo existe para o dia em que houver mais de uma, e declará-lo com um índice inventado prometeria uma escolha que o passe não faz | wave própria |
-| o giro só é autorável pela cena | com o controlo do Inspector ele passa a ser um número do objecto; a alternativa (uma faixa da timeline) é o que um catavento de verdade quer | o dono |
+| ~~o giro só é autorável pela cena~~ | ✅ **metade FECHADA pela W4:** ele é um número do objecto (`Spin`, voltas/s). ⏳ A faixa da **timeline** — um catavento que acelera e pára — continua por fazer | o dono |
 | o custo por quadro com N cataventos | medido para **UM** (§1.2: a corrente cabe `26×` num quadro a `512²`); a varredura em N não foi feita | wave própria |
+
+## §8 — ⭐⭐⭐ W4: **o Live Mesh tem controlo**, e os dois reports do dono (2026-09-21)
+
+A W3 fechou com o componente vivo e **inalcançável**: só a cena `=52` o
+semeava. O dono respondeu ao item aberto com **«sim. quero»**, e a wave é a
+secção do Inspector mais as duas correcções que ele devolveu no mesmo turno.
+
+### §8.1 — ⛔⛔ A PALETA é a única rota, e é isso que decide o `Attach`
+
+O descritor do `Mesh3D` vivia em `Attach::Machinery`, cujo doc diz por
+escrito: *«nunca oferecido na paleta, **nunca uma secção do Inspector**»*.
+Com a secção a existir isso deixa de ser verdade — e a pergunta seguinte não
+é de arrumação, é de **ALCANCE**:
+
+> uma secção do Inspector só é pintada **COM** o componente (ADR-0166) ⇒
+> ela nunca pode ser a superfície que o **anexa**.
+
+Logo, sem entrada na paleta, o artista tem o componente **exactamente** nas
+cenas que já o semeiam, e em mais nenhuma. ⇒ `Attach::Authored { applies_to:
+ObjectKind::IMAGE }`, com `insert_default` (que o `Authored` exige), e a
+catraca `PORTAS` do catálogo de `11` para **`12`**, com o mecanismo escrito
+na entrada.
+
+⚠️ **O `applies_to` é `IMAGE` e não «tudo»:** a rota B acende **um sprite**
+com a forma assada dele; oferecê-lo a um corpo de física ou a um caminho
+vectorial seria um item de paleta que nunca produz pixel nenhum.
+
+### §8.2 — A secção, e as três fileiras
+
+`Live Mesh`, três fileiras e nada mais: `Yaw` · `Pitch` (graus, `−180..180`)
+e `Spin` (voltas por segundo, `−2..2`). O molde é o da casa — `ids/` +
+`sections/` + `sync_` (semente **por ARESTA**: a mão do artista ganha ao
+instantâneo enquanto ele edita) + `populate_` (sem ele o widget é pintado e
+**morto sob o dedo**) + `event_` (que lê o **SNAPSHOT**, nunca o store).
+
+⚠️ **A unidade do `Spin` é a `Unit::PerSecond` que já existia.** Uma variante
+nova (*voltas/s*) teria um sufixo terminado em `s` e teria de **PRECEDER** o
+`Seconds` no `parse_suffix` — *uma tabela de sufixos é sensível à ordem, e
+uma entrada nova escrita no fim lê-se como inerte*.
+
+⭐ A conversão graus↔radianos vive numa **porta só**
+([`vivo_inspector`](../../crates/ph2d-app-sculpt3d/src/vivo_inspector.rs)),
+que constrói o instantâneo e dreno as edições; e ela **só escreve se o valor
+mudou**, senão cada quadro de arrasto entrava no `Ctrl+Z`.
+
+### §8.3 — ⭐⭐ A QUEIXA, da mais específica para a mais geral
+
+Um `Live Mesh` pode estar quieto por **duas** razões que se leem iguais na
+tela, e as curas são opostas:
+
+| `Mesh3dQueixa` | o que o artista lê | a cura |
+|---|---|---|
+| `SemForma` | *Bake this sprite first — without a baked form nothing turns.* | `Shift+B` |
+| `Parado` | *It is standing still — give it turns per second, or set the angles by hand.* | o `Spin` |
+
+A ordem é **load-bearing** e vive na porta: *dizer «está quieto» a quem
+também não tem forma manda o artista resolver a metade errada* — a mesma lei
+do `recusa::Entradas` da escultura, uma família acima.
+
+### §8.4 — Os seis vermelhos que o portão apanhou
+
+Nenhum deles é visível no laço interno (`cargo check -p`), e é por isso que
+estão escritos aqui:
+
+| vermelho | cura |
+|---|---|
+| o censo do catálogo (`PORTAS` 11 contra 12) | a entrada nova, com a razão §8.1 dentro |
+| `paint_optional_sections` a `212` LOC | **CORTE**: `paint_a_cauda_da_rodada` (arma + catavento), nunca uma isenção |
+| `fase_snapshots_publish` a `202` LOC | **CORTE**: a função livre `ja_esta_assado` |
+| `180.0` acusado como número mágico | é **geometria** (meia volta em GRAUS) e não desenho ⇒ `LITERAL-PX-OK` com a razão |
+| `toda_porta_do_inspector_e_armada` | a secção entra na lista, e o `set_current_inspector_mesh3d` arma com `assado: true` **de propósito** — *uma fixtura no estado degenerado mede a metade que o artista menos vê* |
+| `…_e_desarmada` | o irmão: `desarma_tudo()` limpa-a |
+
+### §8.5 — ⛔⛔⛔ O report do bake: *«em sprite transparente o bake fica invisível»*
+
+Reproduzido: a sprite entra no `materia_para` e sai um `BakedForm` com alfa
+**zero em toda parte**. O shader do assador escreve `vec4<f32>(q, px.a)` —
+*o alfa atravessa intacto*, que é a lei certa e o resultado errado.
+
+E o estado **CONGELA**: um re-bake reutiliza o `b.base`, logo pintar a sprite
+*depois* não cura, e a única saída é o `Ctrl+Z`. *Um estado de que só se sai
+por desfazer, e sem uma frase a dizer porquê, é pior do que uma recusa.*
+
+⇒ `materia_para` recusa em voz alta quando **nenhum** texel tem alfa, com a
+cura na frase (*«paint it first, then Shift+B»*).
+
+⚠️ **A cena `=52` NÃO continha o fenómeno** — o canvas dela é `bg: 2`,
+branco chapado —, e é exactamente por isso que os seis gates dela ficavam
+verdes por cima deste defeito.
+
+### §8.6 — ⭐⭐ O report da língua: *«o app é em inglês»*
+
+Medido antes de escrever: a **TELA** já está a zero (todo rótulo sai do
+`ph2d-i18n`, com 30 censos a defendê-lo). O que esta wave escrevia em PT e o
+artista lê é o **roteiro da `=52`** e o **readout da fase** — os dois
+traduzidos.
+
+⚠️ O **TERMINAL** do repo tem `~384` linhas em PT espalhadas por 8 crates de
+outras famílias (shell `159` · motion `101` · physics `73` · sculpt3d `67` ·
+painter `53` · components `31` · vec `27` · flip `20`): dívida das linhas
+donas, **nomeada e não tocada aqui**.
+
+⛔⛔ **E a tradução REPROVOU um gate meu, que é a lição a guardar:** o
+`o_roteiro_pede_play_e_a_cena_abre_a_regua` procurava a agulha
+`"=52 O CATAVENTO"` ⇒ *uma âncora que contém prosa traduzível reprova no dia
+da tradução, e o defeito que ela existe para apanhar continua vivo*. Hoje a
+âncora é o **número** da cena (`"=52 "`), que é o que não muda de língua.
+
+---
 
 ---
 
@@ -515,3 +624,8 @@ e uma esfera lisa lê `0,000`.
 | pôr o giro no `Default` do componente | toda peça do app passaria a girar; o giro é da CENA, e há gate nas duas metades | §7.4 |
 | abrir a `=52` com uma esfera LISA | raio constante ⇒ invariante à rotação ⇒ a cena ensinaria que a rota B não faz nada | §7.4 |
 | usar o relógio da PAREDE para o giro | a peça continuaria a girar com a régua parada, e o controlo da cena (o botão de Play) deixaria de existir | §7.2 |
+| uma `Unit` nova para *voltas por segundo* | o sufixo dela acabaria em `s` e teria de **PRECEDER** `Seconds` no `parse_suffix` — *uma tabela de sufixos é sensível à ordem, e uma entrada nova no fim lê-se como inerte*; a `Unit::PerSecond` já exprime a grandeza | §8.2 |
+| deixar o descritor em `Machinery` e oferecer o componente por um botão | `Machinery` proíbe por escrito a secção do Inspector, e a secção só é pintada COM o componente (ADR-0166) ⇒ **não existe superfície sempre visível que o anexe**: sem a paleta o artista nunca lá chega | §8.1 |
+| uma barra de FRACÇÃO de alfa na recusa do bake | o defeito é o VAZIO e não a esparsidade: uma sprite com UM texel opaco assa e acende, e uma barra no meio recusaria arte legítima | §8.5 |
+| deixar o bake assar um sprite transparente e curar depois | o `materia_para` reutiliza o `base` num re-bake ⇒ **pintar a sprite depois não cura**, e só o `Ctrl+Z` sai do estado | §8.5 |
+| uma âncora de gate feita do TÍTULO de uma cena | ela reprova no dia da tradução, e o defeito que o gate existe para apanhar continua vivo — a âncora é o **número** (`=52 `) | §8.6 |

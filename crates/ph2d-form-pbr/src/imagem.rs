@@ -13,27 +13,85 @@
 //! ⚠️ E o inverso também: ele é **rápido o suficiente para o dono JULGAR a aparência** a uma
 //! lâmpada, que é a pergunta que vem antes de qualquer optimização.
 //!
-//! # ⛔⛔ A LUZ DESTA LEI É ABSOLUTA, e sem a VISTA ela chega ao ecrã crua
+//! # ⛔⛔ A LUZ DESTA LEI É ABSOLUTA, e chegar ao ecrã custa DUAS coisas
 //!
 //! O passe da TINTA é **relativo** — ele divide pelo que uma superfície plana do mesmo material
-//! devolveria, e é por isso que tinta plana sai byte-idêntica nele. Esta lei devolve **radiância**,
-//! e escrevê-la direito em bytes dá um objecto visivelmente mais escuro: medido na placa sobre a
-//! mesma peça, média `59` contra `105` da tinta. *Não é um defeito da lei — é a metade que faltava.*
+//! devolveria, e é por isso que tinta plana sai byte-idêntica nele: *ele multiplica códigos por uma
+//! razão e nunca sai do espaço de códigos*. Esta lei devolve **radiância**, logo tem de atravessar
+//! as duas metades que aquele nunca atravessa:
 //!
-//! ⇒ ela sai pela [`Look`] da [`ph2d_view_transform`], que é a lei desta casa para *cena linear →
-//! ecrã*, e não por uma exposição escrita aqui. ⚠️ O [`Look::default`] é a **identidade** (`0`
-//! stops, `Standard`), logo quem não pedir vista nenhuma recebe a radiância crua — e é isso que
-//! torna a exposição uma ESCOLHA visível em vez de uma constante escondida.
+//! 1. **A VISTA** — a [`Look`] da [`ph2d_view_transform`], *cena linear → ecrã linear em `0..=1`*.
+//!    ⚠️ O [`Look::default`] é a **identidade** (`0` stops, `Standard`), logo quem não pedir vista
+//!    nenhuma recebe a radiância crua — é isso que torna a exposição uma ESCOLHA visível em vez de
+//!    uma constante escondida.
+//! 2. **A CURVA** — `linear → sRGB`, no [`acende_faixa`], porque a ranhura para onde estes bytes
+//!    vão é `Rgba8UnormSrgb` e o hardware **descodifica** ao amostrar. Ela **não** mora na
+//!    [`ph2d_view_transform`], que o declara por escrito (*«⛔ a codificação sRGB NÃO mora aqui — ela
+//!    é da `ph2d-color` e de quem escreve bytes»*), e quem escreve bytes é este ficheiro.
 //!
-//! # ⚠️ O albedo é lido LINEAR, e a escolha é de CONSISTÊNCIA e não de física
+//! ⛔⛔⛔ **E até 2026-09-20 a (2) NÃO EXISTIA, com a (1) a pagar por ela.** A redacção anterior desta
+//! secção dizia *«escrevê-la direito em bytes dá um objecto visivelmente mais escuro: média `59`
+//! contra `105` da tinta — não é um defeito da lei, é a metade que faltava»*, e nomeava **a vista**
+//! como essa metade. ⚠️ **A medição estava certa e a atribuição não:** `srgb⁻¹(0,5) = 0,214`
+//! reproduz aquele `128 → ~55 ≈ 59` — *o que faltava era a CURVA, e a exposição estava a fazer o
+//! trabalho dela*. O preço disso está medido no [`ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA`]:
+//! uma exposição **multiplica tudo** (queima o alto, não salva o escuro) e uma curva **levanta o
+//! escuro preservando o alto**, e é por isso que o assado saía ao mesmo tempo estourado e esmagado.
 //!
-//! O passe da tinta sobe o mesmo `base` como **`Rgba8Unorm`** (nunca `…Srgb`), logo ele já trata
-//! estes bytes como valores lineares. ⛔ Decodificar sRGB aqui faria as duas leis discordarem sobre
-//! o que os MESMOS bytes significam, e a diferença apareceria como *"o PBR está mais escuro"* —
-//! um defeito de ponte lido como um defeito de lei. *Se esta convenção estiver errada, ela está
-//! errada nas duas, e é uma pergunta sobre o `base` — não sobre o OpenPBR.*
+//! # ⛔⛔⛔ O albedo é DESCODIFICADO, e as duas pontas são UMA lei
+//!
+//! Os bytes de uma ranhura `Individual` são **códigos sRGB** — a convenção está declarada no
+//! `individual.rs::copy_from_texture` (*«straight-sRGB8 … copiado byte-a-byte»*) e é o que a
+//! importação de PNG e o compositor do Painter honram. A lei do OpenPBR quer **LUZ** ⇒ a entrada
+//! descodifica e a saída codifica, e as duas são a mesma decisão tomada uma vez.
+//!
+//! ⭐⭐ **O que as prende é o texel FORA da silhueta**, onde a lei devolve o albedo **verbatim**:
+//! ali o byte só sai intacto se as duas pontas forem uma curva e a inversa dela. Com a codificação
+//! escrita sozinha (2026-09-20) um `3` saía **`28`** — e quem o apanhou foi o
+//! `fora_da_silhueta_o_byte_sai_intacto_e_o_alfa_atravessa`, sobre uma metade de lei. ⚠️ *Uma lei
+//! de duas pontas escrita numa ponta só estraga exactamente os pixels que ela não toca.*
+//!
+//! ⚠️ **A redacção anterior desta secção defendia o contrário** (*«o passe da tinta sobe o mesmo
+//! `base` como `Rgba8Unorm`, logo decodificar aqui faria as duas leis discordarem»*) e ela já
+//! trazia a saída escrita: *«se esta convenção estiver errada, ela está errada nas duas»*. ⛔ **E
+//! não está errada nas duas, porque as duas leis NÃO fazem a mesma coisa:** a da tinta é
+//! **RELATIVA** — ela multiplica códigos por uma razão e nunca sai do espaço de códigos, e é por
+//! isso que tinta plana sai byte-idêntica nela — e esta é **ABSOLUTA**. *Só quem sai do espaço de
+//! códigos tem de pagar a viagem de volta.*
+//!
+//! ⚠️ **Custo declarado:** numa tela BRANCA isto vale exactamente zero (`255` é ponto fixo da
+//! curva), e é por isso que a foto do dono não o mostrava. Em arte colorida ele vale até `2,3×`
+//! no albedo de um meio-tom.
 
 pub use ph2d_view_transform::{Look, ViewTransform};
+
+/// ⭐⭐⭐ **A CONVERSÃO, e ela é UMA decisão com DUAS pontas** — código sRGB ↔ luz.
+///
+/// Ver a secção *«O albedo é DESCODIFICADO»* no cabeçalho: os bytes de uma ranhura `Individual` são
+/// códigos e a lei quer luz, logo a entrada desce a curva e a saída sobe-a.
+///
+/// ⛔⛔ **Isto é uma PORTA e não duas linhas, porque o segundo consumidor já existe e já divergiu:**
+/// o `cada_pixel_e_o_que_a_lei_por_texel_da` reconstruía as duas conversões à mão para comparar a lei
+/// por texel com o corredor — e no dia em que a curva entrou ele passou a medir **outro programa**,
+/// reprovando sobre produto correcto (`12` contra `1`). *Um arnês que reimplementa a conversão do
+/// produto afirma sobre uma lei que o produto não corre.*
+pub mod codigo {
+    /// Código sRGB → luz. O que o [`super::acende_faixa`] entrega à lei.
+    #[must_use]
+    pub fn para_luz(byte: u8) -> f32 {
+        ph2d_color::srgb::srgb_to_linear_byte(byte)
+    }
+
+    /// Luz → código sRGB, com a quantização dentro. O que o [`super::acende_faixa`] escreve.
+    ///
+    /// ⚠️ **A lei do `NaN` não muda com a curva:** um `NaN` atravessa-a e vira `0` na saturação do
+    /// `as u8`, como antes — a cerca do meio-vector degenerado continua a ser a primeira linha de
+    /// defesa, e esta a segunda.
+    #[must_use]
+    pub fn de_luz(linear: f32) -> u8 {
+        ph2d_color::srgb::linear_to_srgb_byte(linear)
+    }
+}
 
 use super::{Lampada, Surface, Texel, acende_texel};
 
@@ -164,20 +222,38 @@ fn acende_faixa(
                 let f = (i0 + j) * 4;
                 [p.form[f], p.form[f + 1], p.form[f + 2]]
             },
+            // ⭐⭐⭐ **DESCODIFICA — e esta metade é OBRIGATÓRIA assim que a outra existe.**
+            //
+            // A lei do OpenPBR quer o albedo em **LUZ**, e estes bytes são **códigos sRGB** (a
+            // ranhura é `Rgba8UnormSrgb`). ⚠️ E a prova de que as duas metades são UMA lei é o
+            // texel FORA da silhueta: ali a lei devolve o albedo **verbatim**, logo o byte só sai
+            // intacto se a entrada e a saída forem a curva e a INVERSA dela — com a codificação
+            // sozinha, um `3` saía `28` (medido; foi um gate que o apanhou).
+            //
+            // ⭐ O ida-e-volta é exacto nos **256** bytes (varrido), logo o no-op é byte-idêntico.
             albedo: [
-                f32::from(px[0]) / 255.0,
-                f32::from(px[1]) / 255.0,
-                f32::from(px[2]) / 255.0,
+                codigo::para_luz(px[0]),
+                codigo::para_luz(px[1]),
+                codigo::para_luz(px[2]),
             ],
             cobertura: p.form[(i0 + j) * 4 + 3],
             oclusao: p.form_occ[i0 + j],
         };
         let c = acende_texel(s, &t, lampadas, ceu, olhar);
         for k in 0..3 {
-            // ⚠️ `clamp` ANTES do `as u8`: um `as` satura, mas um `NaN` vira `0` em silêncio — e é
-            // a cerca do meio-vector degenerado que garante que ele não chega aqui. Esta é a
-            // segunda linha de defesa, não a primeira.
-            px[k] = (c[k].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            // ⭐⭐⭐ **A CURVA ENTRA AQUI, e é ela que faz o assado ser o que se vê em 3D.**
+            //
+            // O `c` é display-referred LINEAR (a [`Look`] deixa-o em `0..=1` e diz por escrito que
+            // a codificação não mora lá). A ranhura para onde estes bytes vão é `Rgba8UnormSrgb`,
+            // que o hardware DESCODIFICA ao amostrar ⇒ escrever `v * 255` põe no ecrã `v` onde a
+            // malha põe `srgb(v)`. É a diferença inteira entre as duas esferas da foto do dono:
+            // **até `+73` códigos no meio-tom**.
+            //
+            // ⚠️ **A quantização continua a ser NOSSA e a lei de `NaN` não muda:** o
+            // [`ph2d_color::srgb::linear_to_srgb_byte`] faz `encode → ×255 → +0.5 → clamp → as u8`, e um
+            // `NaN` atravessa a curva e vira `0` na saturação do `as`, como antes — a cerca do
+            // meio-vector degenerado continua a ser a primeira linha de defesa, não esta.
+            px[k] = codigo::de_luz(c[k]);
         }
     }
 }

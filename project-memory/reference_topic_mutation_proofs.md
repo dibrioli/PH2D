@@ -405,3 +405,11 @@ fiação não mede nada»* sobre um gate correcto. **Why:** num gate de TEXTO a 
 texto, e comentar uma linha de uma chamada multi-linha **não apaga a chamada**. **How to apply:**
 para mutar uma chamada de N linhas, a agulha é o **BLOCO INTEIRO** lido do ficheiro em runtime
 (`src[i..j]`), nunca uma linha escrita à mão. Ver [[reference_topic_gate_discipline]].
+
+- ⛔⛔ **Uma mutação cuja consequência É o DISPOSITIVO não tem valor de retorno que a denuncie — o
+  gate dela é um CENSO DE CHAMADORES.** Medido 2026-09-21: repor um `clear_albedo_source()` num
+  braço `Err` (a **porta das traseiras**) sobreviveu a toda régua escrita de dentro da função, que
+  devolve `()` e cujo efeito só se vê na textura ligada à placa. ⇒ o censo afirma **duas** metades —
+  *uma só* linha de produto chama a porta de reposição, **e** ela é a do braço que a lei declara.
+  Com o censo, a mutação sangra com o endereço. *Quando o efeito não é observável do lado de cá,
+  gateie a POPULAÇÃO de quem o pode causar.*

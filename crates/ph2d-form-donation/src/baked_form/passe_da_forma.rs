@@ -64,11 +64,21 @@
 //! e as lâmpadas de preenchimento são o ambiente dele»* — e as três de preenchimento nascem
 //! **apagadas**: com uma lâmpada acesa e ambiente nulo, `25,03 %` da peça saía PRETA ao bit.
 //!
-//! # ⚠️ A quantização é EXPLÍCITA
+//! # ⚠️ A quantização é EXPLÍCITA, e a CURVA também
 //!
-//! A CPU escreve `(c.clamp(0,1) * 255 + 0.5) as u8`; um `textureStore` num `rgba8unorm` deixa o
+//! A CPU escreve `linear_to_srgb_byte(c)`; um `textureStore` num `rgba8unorm` deixa o
 //! arredondamento ao backend, e a metade exacta (`.5`) é onde os dois se separam. ⇒ o shader
 //! arredonda ele próprio, que é a política que o passe irmão já declara por escrito.
+//!
+//! ⛔⛔ **E a CODIFICAÇÃO sRGB está no mesmo barco, pela MESMA razão.** A saída é `Rgba8Unorm`
+//! (armazenamento **linear**) e vai copiada byte a byte para uma ranhura `Rgba8UnormSrgb`, que o
+//! hardware **descodifica** ao amostrar — logo a curva tem de ser aplicada aqui, e o backend não a
+//! pode aplicar por nós: um `rgba8unorm-srgb` como alvo de `texture_storage_2d` **não é suportado**.
+//! ⇒ `linear_to_srgb` em WGSL, o gémeo do [`ph2d_color::srgb::linear_to_srgb_unit`] que a
+//! [`ph2d_form_pbr::imagem`] chama, e a paridade no pixel prende os dois.
+//!
+//! ⚠️ **A ORDEM é load-bearing:** codificar e **depois** quantizar. Ao contrário, os degraus de 8
+//! bits do linear ficam espalhados pela curva e aparecem como bandas no escuro.
 
 use ph2d_form_pbr::wgsl as gemeo;
 use ph2d_form_pbr::{Ceu, Lampada, Surface, imagem::Planos};
@@ -113,15 +123,43 @@ struct Globais {
 @group(0) @binding(3) var saida: texture_storage_2d<rgba8unorm, write>;
 @group(0) @binding(4) var<uniform> g: Globais;
 
+// ⭐⭐⭐ **IEC 61966-2-1, linear → sRGB, por canal** — o GEMEO do
+// `ph2d_color::linear_to_srgb_unit`, que é quem a `ph2d_form_pbr::imagem` chama.
+//
+// ⚠️ **Ele NÃO pode vir do backend:** a saída é um `rgba8unorm` (armazenamento LINEAR) e o
+// `textureStore` não codifica nada. Um `rgba8unorm-srgb` como alvo de armazenamento **não é
+// suportado** pelo `wgpu`, logo a curva é nossa — como a quantização já era, e pela mesma razão.
+//
+// ⚠️ A forma é a que esta casa já escreve em `band_blit.wgsl` e `compositor.wgsl` (`step` + `mix`,
+// sem ramo), e o `clamp` vem primeiro para o `pow` nunca ver um negativo.
+fn srgb_to_linear(c: vec3<f32>) -> vec3<f32> {
+    let lo = c / 12.92;
+    let hi = pow((c + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4));
+    let cutoff = step(vec3<f32>(0.04045), c);
+    return mix(lo, hi, cutoff);
+}
+
+fn linear_to_srgb(c: vec3<f32>) -> vec3<f32> {
+    let safe = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
+    let lo = safe * 12.92;
+    let hi = 1.055 * pow(safe, vec3<f32>(1.0 / 2.4)) - vec3<f32>(0.055);
+    let cutoff = step(vec3<f32>(0.0031308), safe);
+    return mix(lo, hi, cutoff);
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let dim = textureDimensions(saida);
     if (gid.x >= dim.x || gid.y >= dim.y) { return; }
     let p = vec2<i32>(i32(gid.x), i32(gid.y));
 
-    // ⚠️ O albedo é lido LINEAR — a textura é `rgba8unorm` e NUNCA `…Srgb`, que é a mesma
-    // convenção do passe da tinta sobre os MESMOS bytes. Ver o cabeçalho da `ph2d_form_pbr::imagem`.
+    // ⚠️ A textura é `rgba8unorm` e NUNCA `…Srgb` — logo o `textureLoad` entrega o **código**
+    // normalizado e não a luz, e quem descodifica somos nós. ⛔ Pedir a ranhura como `…Srgb` para o
+    // backend o fazer **não serve**: o `base` vai ao device pelo mesmo caminho do passe da TINTA,
+    // que é RELATIVO e trata estes bytes como códigos de propósito. *Cada lei paga a convenção
+    // dela na porta dela.* Ver o cabeçalho da [`ph2d_form_pbr::imagem`].
     let px = textureLoad(base_tex, p, 0);
+    let albedo = srgb_to_linear(px.rgb);
     let f = textureLoad(form_tex, p, 0);
     let occ = textureLoad(occ_tex, p, 0).r;
 
@@ -133,7 +171,7 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let c = forma_acende_texel(
         g.material,
         f.xyz,
-        px.rgb,
+        albedo,
         f.w,
         occ,
         g.lampadas,
@@ -144,7 +182,9 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // ⚠️ **O ALFA atravessa intacto** — ele é a silhueta do sprite, e uma lei de luz que lhe
     // tocasse mudaria o RECORTE do objecto ao mover a lâmpada.
     // ⚠️ E a quantização é nossa, não do backend — ver o cabeçalho do módulo.
-    let q = floor(clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)) * 255.0 + 0.5) / 255.0;
+    // ⭐ A CURVA vem ANTES dela, e a ordem é load-bearing: quantizar o linear e codificar depois
+    // dava os degraus do linear espalhados pela curva (bandas visíveis no escuro).
+    let q = floor(linear_to_srgb(c) * 255.0 + 0.5) / 255.0;
     textureStore(saida, p, vec4<f32>(q, px.a));
 }
 "#;

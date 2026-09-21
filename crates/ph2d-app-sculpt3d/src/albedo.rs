@@ -85,9 +85,10 @@ pub(crate) fn materia_para(
 /// **O QUE O QUADRO TEM DE FAZER COM A MATÉRIA** — a saída de [`decide`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Decisao {
-    /// **NADA**, e é o caso de todo quadro menos aquele em que o artista escolheu outra coisa.
+    /// **NADA**, e é o caso de todo quadro menos aquele em que o artista escolheu outra SPRITE.
     Nada,
-    /// O visor volta ao barro cravado no shader.
+    /// O visor volta ao barro cravado no shader. ⚠️ **Só ao SAIR da lei que lê a matéria** —
+    /// largar a selecção **não** chega aqui desde 2026-09-21; ver o [`decide`].
     Esquece,
     /// Ler a matéria desta sprite e subi-la ao device.
     Le(u64),
@@ -113,6 +114,38 @@ pub(crate) enum Decisao {
 /// `base × luz` e a tabela passa a ter o `base`), logo sem ela o quadro a seguir ao primeiro bake
 /// continuaria a mostrar a leitura antiga.
 ///
+/// # ⛔⛔⛔ A MATÉRIA É DA PEÇA E NÃO DA SELECÇÃO — e a redacção de ontem era o contrário
+///
+/// **Report do dono (2026-09-21):** *«Se seleciono a imagem, o objeto 3d fica com a aparência exata
+/// do Bake. Mas se seleciono o objeto 3d, ele muda a aparência (fica mais brilhante).»*
+///
+/// A 1.ª redacção devolvia [`Decisao::Esquece`] assim que a selecção largasse a sprite — e **a
+/// selecção larga a sprite exactamente quando o artista pega na PEÇA, que é o que ele tem de fazer
+/// para esculpir**. ⇒ *a pré-visualização ficava errada precisamente durante a actividade para a
+/// qual ela existe.*
+///
+/// ⭐⭐ **E o que se vê tem número** (sonda `diag_o_que_a_seleccao_faz_a_materia`, no ecrã, contra
+/// a sprite assada como régua):
+///
+/// ```text
+///   a IMAGEM escolhida (materia)      media  195,99   pior-vs-sprite    1
+///   o OBJECTO 3D escolhido (CLAY)     media  169,66   pior-vs-sprite   42
+/// ```
+///
+/// ⚠️ **E o barro é mais ESCURO, não mais claro** — *«brilhante»* ali quer dizer **lustroso**, e a
+/// causa é a lei que a [`ph2d_form_pbr::acende_texel`] já declara: no OpenPBR **só o lóbulo difuso
+/// escala com o `base_color`, o especular não escala nada**. Uma base mais escura deixa o MESMO
+/// realçe a sobressair muito mais ⇒ plástico.
+///
+/// ⇒ largar a selecção devolve **[`Decisao::Nada`]**: a matéria fica onde estava, e só outra sprite
+/// a troca. ⛔ **O `Esquece` sobra para uma coisa só** — sair da lei que lê a matéria.
+///
+/// ⚠️ **O que isto NÃO cura, e está declarado:** o BAKE continua a pedir uma sprite escolhida e
+/// **recusa em voz alta** sem ela (*«selecione um SPRITE antes»*). Logo, com a peça na mão, o visor
+/// mostra a matéria que o bake acenderia e o `Shift+B` recusa — *uma pré-visualização um gesto
+/// adiantada, nunca uma errada*. Tornar o bake **peganhento** também é decisão do dono: ela troca
+/// uma recusa por uma acção, e isso não se faz em silêncio.
+///
 /// ⚠️ **Só o modo que a LÊ a pede:** o albedo entra pelo braço [`ph2d_mesh_render::Lighting::Pbr`]
 /// do shader e por mais nenhum — nos outros a matéria nem é consultada, e subir uma textura para
 /// um modo que não a lê seria pagar o `readback` por nada. ⭐ O par está **gateado dos dois lados**
@@ -125,18 +158,26 @@ pub(crate) fn decide(
     lighting: ph2d_mesh_render::Lighting,
     ja_assada: bool,
 ) -> Decisao {
-    let quer = match selected {
-        Some(bits) if lighting == ph2d_mesh_render::Lighting::Pbr => Some((bits, ja_assada)),
-        _ => None,
+    // ⛔ Fora da lei que lê a matéria, esquecer é honesto — e **uma vez só**, senão o visor
+    // limparia a fonte em todo quadro.
+    if lighting != ph2d_mesh_render::Lighting::Pbr {
+        return if memo.take().is_some() {
+            Decisao::Esquece
+        } else {
+            Decisao::Nada
+        };
+    }
+    // ⭐ **Largar a selecção NÃO larga a matéria** — ver o cabeçalho: ela é da PEÇA, e a selecção
+    // larga a sprite exactamente quando o artista pega na peça para esculpir.
+    let Some(bits) = selected else {
+        return Decisao::Nada;
     };
+    let quer = Some((bits, ja_assada));
     if quer == *memo {
         return Decisao::Nada;
     }
     *memo = quer;
-    match quer {
-        Some((bits, _)) => Decisao::Le(bits),
-        None => Decisao::Esquece,
-    }
+    Decisao::Le(bits)
 }
 
 /// ⭐⭐⭐⭐ **O VISOR PASSA A PINTAR A MATÉRIA QUE O BAKE VAI ACENDER.**
@@ -172,11 +213,13 @@ pub fn sincroniza(
     // ⚠️ **Uma leitura que falha é MEMOIZADA na mesma** (a [`decide`] já escreveu a chave): o que a
     // faz falhar é a sprite não ter fonte legível, que é um facto estável dela — e re-tentar por
     // quadro poria o `readback` no laço que esta porta existe para evitar.
-    match materia_para(forms, bits, &mut || ler_fonte(sim, renderer)) {
-        Ok((px, size)) => scene
+    // ⛔⛔ **Uma leitura que FALHA deixa a matéria onde estava** — e isto é a outra metade do
+    // report de 2026-09-21: escolher o objecto 3D é uma selecção que **não tem pixels**, logo ela
+    // cai aqui. Limpar era devolver o `CLAY` pela porta das traseiras, com o mesmo sintoma.
+    if let Ok((px, size)) = materia_para(forms, bits, &mut || ler_fonte(sim, renderer)) {
+        scene
             .renderer
-            .set_albedo_source(&gpu.device, &gpu.queue, &px, size),
-        Err(_) => scene.renderer.clear_albedo_source(),
+            .set_albedo_source(&gpu.device, &gpu.queue, &px, size);
     }
 }
 

@@ -332,6 +332,12 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        e o desenho nao pode MUDAR DE COR. Se o barro estiver bege e o\n\
              [sculpt3d]        assado branco, reprove -- e' o defeito que esta cena existe para\n\
              [sculpt3d]        pegar (o dono reportou-o TRES vezes).\n\
+             [sculpt3d]    (6-bis) E O CONTRASTE TAMBEM -- foi o QUARTO report. Nao basta a cor bater:\n\
+             [sculpt3d]        alternando com D, o assado nao pode sair LAVADO (claro e chapado) ao\n\
+             [sculpt3d]        lado do barro. Olhe as SOMBRAS entre as cristas: se no assado elas\n\
+             [sculpt3d]        forem mais claras e o brilho no topo mais estourado, reprove.\n\
+             [sculpt3d]        (era ate' 73 de 255 de diferenca no meio-tom, e ZERO no branco puro --\n\
+             [sculpt3d]        por isso olhe a SOMBRA, que e' onde se ve'.)\n\
              [sculpt3d]        O que sobra, e e' declarado: um sprite e' de 8 bits e o barro e' HDR,\n\
              [sculpt3d]        entao onde a luz passa de 1,0 os dois cortam no mesmo sitio mas so' o\n\
              [sculpt3d]        assado perde a diferenca ao gravar.\n\

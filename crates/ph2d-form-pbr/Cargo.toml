@@ -21,6 +21,10 @@ ph2d-material = { path = "../ph2d-material" }
 # ⭐ A segunda, e ela é a lei de «cena linear → ecrã»: esta lei é ABSOLUTA, logo sem a vista
 # ela chega ao ecrã como radiância crua — o objecto sai escuro. Folha sem dependências.
 ph2d-view-transform = { path = "../ph2d-view-transform" }
+# ⭐ A terceira, e ela é a metade que faltava: a `ph2d-view-transform` declara por escrito que
+# «⛔ a codificação sRGB NÃO mora aqui — ela é da `ph2d-color` e de QUEM ESCREVE BYTES». Quem
+# escreve bytes é o [`imagem::acende_faixa`], logo a curva entra aqui e nunca é transcrita.
+ph2d-color = { path = "../ph2d-color" }
 
 # ⛔⛔ **naga (o MESMO major do wgpu 29) — porque um WGSL que ninguem compila e' PROSA.**
 # O `cargo check` nao olha para uma `&str`, e todo gate que olha para um shader neste repo precisa

@@ -40,6 +40,11 @@ bytemuck = "1"
 # ⚠️ **INVISÍVEL dentro da shell, a segunda vez nesta crate** (§2.4): o `#[cfg(test)]` do
 # `baked_form` faz round-trip do documento por `postcard`, e lá ele era dependência do binário.
 [dev-dependencies]
+# ⭐ **Só para a RÉGUA, e por isso é dev.** As sondas do céu leem LUMINÂNCIA de bytes que hoje são
+# códigos sRGB ⇒ elas têm de DESCODIFICAR antes de pesar, senão uma RAZÃO delas não é uma razão de
+# luz (ver o `lum` do `ceu_da_forma_sondas`). ⛔ O PRODUTO desta crate não a usa: quem codifica é a
+# `ph2d-form-pbr`, do lado de quem escreve bytes.
+ph2d-color = { path = "../ph2d-color" }
 postcard = { version = "1", features = ["alloc"] }
 # ⛔⛔ **A `naga` (o MESMO major do `wgpu` 29) — porque um WGSL que ninguém compila é PROSA.**
 # O `cargo check` não olha para uma `&str`, e todo gate deste repo que olha para um shader

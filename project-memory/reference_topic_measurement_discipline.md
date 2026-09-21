@@ -1666,3 +1666,39 @@ termo trocado de cada vez (lei · enquadramento · matéria · olhar) e imprima 
 que fecha: *uma diferença de MATÉRIA não se corrige com luz* — quando a coluna que domina não é a
 que a wave anterior mexeu, a wave anterior estava certa e incompleta.
 Ver [[reference_topic_oracle_discipline]] · [[reference_topic_gate_discipline]].
+- ⛔⛔⛔ **UMA RAZÃO DE CÓDIGOS DE ECRÃ NÃO É UMA RAZÃO DE LUZ, e os pesos Rec.709 dizem-no por
+escrito.** Medido 2026-09-21 (`line/3DModeling`): o `lum` das sondas do céu pesava `0,2126/0,7152/
+0,0722` sobre **bytes**, e no dia em que o assado passou a codificar sRGB a razão cima/baixo de um
+gate caiu de **`2,6` para `1,4953`** contra uma barra de `1,5` — ⇒ **reprovou por `0,005` sobre um
+produto correcto**. **Why:** aqueles pesos estão *definidos* sobre luz linear; aplicados a códigos
+dão *luma* (a grandeza de vídeo), e a curva é **compressiva** ⇒ TODA razão lida em códigos encolhe,
+logo uma barra calibrada num vale medido em luz deixa de descrever esse vale. ⚠️ E a cura NÃO é
+baixar a barra: escalar a barra proporcionalmente (`0,577 × 1,4953 = 0,863`) põe-na **abaixo de 1**,
+onde a asserção degenera — *num espaço compressivo e limitado uma proporção não transfere*. **How to
+apply:** antes de ratiar dois brilhos, pergunte em que espaço vivem os bytes; se forem códigos,
+**descodifique e só então pese** — e devolva a grandeza à unidade em que a barra foi calibrada.
+Ver [[reference_topic_gate_discipline]].
+- ⛔⛔⛔⛔ **UMA RÉGUA QUE QUANTIZA OS DOIS LADOS COM A MESMA REGRA CONCORDA POR CONSTRUÇÃO —
+segunda ocorrência medida do «um espelho não acusa».** Medido 2026-09-21: o gate de ponta a ponta
+lia **`1` código** sobre a foto em que o dono via uma esfera lavada ao lado de uma com contraste
+cheio. Ele comparava o valor do VISOR com o byte da SPRITE quantizando o primeiro com a regra do
+segundo (`v·255`) — e a regra do segundo era exactamente a convenção sob suspeita. No ECRÃ os dois
+diferiam **`73` códigos**. **Why:** a divergência não estava nos VALORES (ali eles concordam), ela
+nascia ao virar BYTE — *e nenhuma régua da casa olhava para depois do passe que compõe a imagem*.
+**How to apply:** quando um report do dono sobrevive a gates verdes, pergunte **até onde** a régua
+acompanha o pixel; se ela pára antes da última transformação do produto, ela mede um programa que
+ninguém corre. A cura é alimentar o **passe do produto** duas vezes (aqui: o mesmo `Tonemap` com
+`rebind_game_view`) e ler a saída — zero motor novo.
+Ver [[reference_topic_gate_discipline]] · [[reference_topic_oracle_discipline]].
+- ⛔⛔⛔ **UMA MEDIÇÃO CERTA COM A ATRIBUIÇÃO ERRADA COMPRA A CURA ERRADA — e ela fica anos a
+parecer calibração.** Medido 2026-09-21: a lei da forma saía *«visivelmente mais escura»* (`59`
+contra `105`, medido e verdadeiro) e a cura foi uma **EXPOSIÇÃO** escolhida por escada (`3,00`,
+depois `2,10`). O que faltava era a **CURVA** de transferência: `srgb⁻¹(0,5) = 0,214` reproduz o
+`128 → ~55 ≈ 59` à unidade. **Why:** as duas curas não são substítutas — a exposição **multiplica
+tudo** (levanta o meio, QUEIMA o alto, não salva o escuro) e a curva **levanta o escuro preservando
+o alto** ⇒ o sintoma de usar uma pela outra é uma peça **estourada em cima e esmagada em baixo ao
+mesmo tempo**, que é o que a foto do dono mostrava. **How to apply:** quando uma constante de
+apresentação é escolhida por escada contra um alvo, escreva ao lado **de que recurso ela é**; se a
+resposta for «para igualar o nível», ela é suspeita de estar a pagar por uma transformação ausente.
+⭐ Com a curva no sítio a escada foi re-tirada e o número caiu `2,10 → 1,50`, batendo o alvo melhor
+do que o antigo alguma vez bateu (`+0,4` contra `+1,7`).

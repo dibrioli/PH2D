@@ -109,26 +109,68 @@ fn so_o_modo_que_le_a_materia_a_pede() {
     );
 }
 
-/// **LARGAR A SELECÇÃO DEVOLVE O BARRO DO SHADER, e uma vez só.**
+/// ⛔⛔⛔ **LARGAR A SELECÇÃO NÃO LARGA A MATÉRIA — e até 2026-09-21 este gate afirmava o
+/// CONTRÁRIO.**
 ///
-/// ⚠️ Sem a metade do *«uma vez só»* o visor limparia a fonte em todo quadro sem selecção — barato,
+/// A redacção anterior chamava-se `largar_a_seleccao_devolve_o_barro_do_shader` e exigia
+/// [`Decisao::Esquece`] no quadro em que a selecção largasse a sprite. ⚠️ **Ela estava a pinar o
+/// defeito que o dono reportou:** *«se seleciono o objeto 3d, ele muda a aparência»* — e a selecção
+/// larga a sprite exactamente quando ele pega na PEÇA para esculpir.
+///
+/// ⭐ *Um gate verde pode pinar um defeito de produto*, e este pinou-o por um dia.
+///
+/// # O que se afirma agora
+///
+/// A matéria é da PEÇA: largar a selecção dá [`Decisao::Nada`] e a fonte fica onde estava.
+///
+/// ⚠️ **As DUAS metades que sobram são o CONTROLO**, e sem elas isto seria «nunca mais lê nada»:
+/// escolher **outra** sprite lê outra vez, e **voltar** à mesma não re-lê (o `readback` de `4 MiB`
+/// que a memória existe para evitar).
+#[test]
+fn largar_a_seleccao_mantem_a_materia_da_peca() {
+    let mut memo = None;
+    assert_eq!(
+        decide(&mut memo, Some(A), Lighting::Pbr, false),
+        Decisao::Le(A)
+    );
+    // ⭐ O report do dono, em duas linhas: pegar na peça não pode trocar a aparência dela.
+    assert_eq!(decide(&mut memo, None, Lighting::Pbr, false), Decisao::Nada);
+    assert_eq!(decide(&mut memo, None, Lighting::Pbr, false), Decisao::Nada);
+    // CONTROLO 1 — voltar à MESMA sprite não paga um `readback`.
+    assert_eq!(
+        decide(&mut memo, Some(A), Lighting::Pbr, false),
+        Decisao::Nada
+    );
+    // CONTROLO 2 — escolher OUTRA sprite lê outra vez; a chave não é um booleano.
+    assert_eq!(
+        decide(&mut memo, Some(B), Lighting::Pbr, false),
+        Decisao::Le(B)
+    );
+}
+
+/// ⛔ **E o `Esquece` sobra para UMA coisa só: sair da lei que lê a matéria** — e **uma vez só**.
+///
+/// ⚠️ Sem a metade do *«uma vez só»* o visor limparia a fonte em todo quadro fora do PBR — barato,
 /// mas é a mesma forma do defeito que a irmã de cima mede, e a forma é o que envelhece.
 #[test]
-fn largar_a_seleccao_devolve_o_barro_do_shader() {
+fn sair_da_lei_que_le_a_materia_devolve_o_barro_uma_vez_so() {
     let mut memo = None;
     assert_eq!(
         decide(&mut memo, Some(A), Lighting::Pbr, false),
         Decisao::Le(A)
     );
     assert_eq!(
-        decide(&mut memo, None, Lighting::Pbr, false),
+        decide(&mut memo, Some(A), Lighting::Flat, false),
         Decisao::Esquece
     );
-    assert_eq!(decide(&mut memo, None, Lighting::Pbr, false), Decisao::Nada);
-    // E escolher OUTRA sprite lê outra vez — o CONTROLO de que a chave não é um booleano.
     assert_eq!(
-        decide(&mut memo, Some(B), Lighting::Pbr, false),
-        Decisao::Le(B)
+        decide(&mut memo, Some(A), Lighting::Flat, false),
+        Decisao::Nada
+    );
+    // E voltar ao PBR lê outra vez — senão o barro ficava para sempre.
+    assert_eq!(
+        decide(&mut memo, Some(A), Lighting::Pbr, false),
+        Decisao::Le(A)
     );
 }
 
@@ -244,5 +286,50 @@ fn re_assar_nao_le_a_tela_de_volta() {
     assert_eq!(
         leituras, 1,
         "o CONTROLO: sem `base` guardado a fonte tem de ser lida"
+    );
+}
+
+/// ⛔⛔⛔ **O BARRO TEM UM CAMINHO DE VOLTA, E É O `Esquece` — a porta das traseiras não existe.**
+///
+/// # Porque este gate nasceu, e ele nasceu de uma MUTAÇÃO SOBREVIVENTE
+///
+/// O report do dono de 2026-09-21 (*«se seleciono o objeto 3d, ele muda a aparência»*) tinha **duas**
+/// metades, e a [`largar_a_seleccao_mantem_a_materia_da_peca`] só cobre uma. A outra é que escolher
+/// o objecto 3D **é uma selecção que não tem pixels** — ela não passa pela [`decide`], passa pela
+/// leitura, que falha. Repor ali o `clear_albedo_source` devolve o `CLAY` com o mesmo sintoma, e a
+/// mutação que o fazia **SOBREVIVEU a tudo**.
+///
+/// ⚠️ **E ela não é gateável pelo caminho normal:** a decisão vive na [`super::sincroniza`], que pede
+/// um `Device`, um `SimWorld` e um `SpriteRenderer` — *quando um gate precisa de um device para
+/// medir uma decisão que não tem pixel nenhum, a lei está no sítio errado*, e aqui ela não pode sair
+/// de lá porque o efeito É o device.
+///
+/// ⇒ a régua é o CENSO: há **exactamente um** caminho de volta ao barro em todo o ficheiro, e ele é
+/// o braço do [`Decisao::Esquece`].
+///
+/// ⚠️ **A metade que impede o vácuo** é a segunda: sem ela um ficheiro que perdesse o `Esquece`
+/// inteiro leria `0` e passaria — *um censo que só conta para cima aprova a ausência*.
+#[test]
+fn o_barro_tem_um_caminho_de_volta_e_e_o_esquece() {
+    let src = include_str!("albedo.rs");
+    let espremido = src.split_whitespace().collect::<Vec<_>>().join(" ");
+
+    // ⚠️ Conta-se no CÓDIGO e não no ficheiro: a prosa deste módulo nomeia a porta várias vezes, e
+    // um censo que contasse os comentários mediria quanto alguém escreveu sobre ela.
+    let chamadas = src
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//") && !l.trim_start().starts_with("///"))
+        .filter(|l| l.contains("clear_albedo_source"))
+        .count();
+    assert_eq!(
+        chamadas, 1,
+        "há {chamadas} caminhos de volta ao barro — o segundo devolve o `CLAY` pela porta das \
+         traseiras, que é o report do dono de 2026-09-21"
+    );
+
+    // A metade que impede o vácuo: o caminho que existe é o do `Esquece`.
+    assert!(
+        espremido.contains("Decisao::Esquece => { scene.renderer.clear_albedo_source(); return; }"),
+        "o único caminho de volta ao barro deixou de ser o braço do `Esquece`"
     );
 }

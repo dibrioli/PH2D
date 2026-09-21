@@ -583,3 +583,8 @@ fn a_lei_que_assa_e_a_lei_que_o_visor_mostra() {
 #[cfg(test)]
 #[path = "bake_light_pbr_materia.rs"]
 mod materia;
+
+/// ⭐ O ECRÃ — a régua que lê os dois lados DEPOIS do `game_rt`. Ver o cabeçalho dela.
+#[cfg(test)]
+#[path = "bake_light_pbr_ecra.rs"]
+mod ecra;

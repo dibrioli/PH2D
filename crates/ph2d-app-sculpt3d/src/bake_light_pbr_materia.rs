@@ -41,6 +41,19 @@ use crate::bake::light_measure::{
 /// `0,000797` (≈ `0,2` de código). *Uma barra de meio código seria mais apertada que a própria
 /// quantização, e reprovaria um produto correcto.*
 ///
+/// # ⛔⛔⛔ A PREMISSA DELE MORREU EM 2026-09-21, e o que ela era vale a pena guardar
+///
+/// Esta sonda comparava o valor do VISOR com o byte da SPRITE quantizando o primeiro à mão com
+/// `v × 255` — que era a regra da sprite. ⚠️ **E a regra da sprite era a convenção sob suspeita:**
+/// enquanto o assado escrevia bytes crus, os dois lados partilhavam o defeito e **concordavam por
+/// construção**. Ele lia `1` código sobre a foto do 4.º report, onde o dono via uma esfera lavada ao
+/// lado de uma com contraste cheio — no ECRÃ elas diferiam **`73`**.
+///
+/// ⭐ Hoje os dois lados viram código pela **porta do produto**
+/// ([`ph2d_form_donation::lei::imagem::codigo`]), logo a barra em códigos volta a descrever o que descrevia.
+/// ⛔ E isto **não** substitui o [`super::ecra::os_dois_lados_leem_o_mesmo_byte_no_ecra`]: aquele
+/// prova a cadeia REAL (o `Tonemap` e a codificação do hardware), este prova a LEI.
+///
 /// ⛔ **O CONTROLO é o visor SEM luz:** com `Lighting::Flat` a mesma comparação tem de reprovar por
 /// uma ordem de grandeza. Sem ele, o dia em que esta sonda deixasse de ver a diferença entre duas
 /// leis ela ficaria verde a afirmar nada — que é exactamente como esta linha chegou aqui.
@@ -128,7 +141,14 @@ fn o_visor_e_os_bytes_da_sprite_sao_a_mesma_imagem() {
                 }
                 dentro += 1;
                 for k in 0..3 {
-                    let byte_do_visor = (vivo[i * 4 + k].clamp(0.0, 1.0) * 255.0 + 0.5).floor();
+                    // ⛔⛔ **PELA PORTA, e nunca `v × 255`.** Até 2026-09-21 esta linha
+                    // quantizava o valor do VISOR com a regra da SPRITE — e a regra da sprite era
+                    // a convenção **sob suspeita**, logo os dois lados concordavam *por
+                    // construção* e este gate lia `1` código sobre a foto em que o dono via duas
+                    // esferas diferentes. Hoje os dois viram código pela MESMA porta do produto.
+                    let byte_do_visor = f32::from(ph2d_form_donation::lei::imagem::codigo::de_luz(
+                        vivo[i * 4 + k],
+                    ));
                     pior = pior.max((byte_do_visor - f32::from(sprite[i * 4 + k])).abs());
                 }
             }
@@ -486,7 +506,9 @@ fn a_projeccao_da_fonte_sobrevive_ao_enquadramento() {
             }
             dentro += 1;
             for c in 0..3 {
-                let byte = (vivo[v + c].clamp(0.0, 1.0) * 255.0 + 0.5).floor();
+                // ⚠️ Pela PORTA — ver o irmão: a barra desta régua é em CÓDIGOS, logo os dois
+                // lados têm de estar em códigos, e a conversão tem UM dono.
+                let byte = f32::from(ph2d_form_donation::lei::imagem::codigo::de_luz(vivo[v + c]));
                 let d = (byte - f32::from(sprite[idx * 4 + c])).abs();
                 soma += f64::from(d);
                 if d > 8.0 {

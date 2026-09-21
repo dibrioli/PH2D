@@ -71,7 +71,20 @@ pub fn bola_com_fresta() -> BakedForm {
 
 /// A luminância de um texel, na régua de Rec.709.
 fn lum(px: &[u8]) -> f64 {
-    0.2126 * f64::from(px[0]) + 0.7152 * f64::from(px[1]) + 0.0722 * f64::from(px[2])
+    // ⛔⛔⛔ **DESCODIFICA ANTES DE PESAR, e sem isto uma RAZÃO daqui não é uma razão de LUZ.**
+    //
+    // Os pesos `0,2126 / 0,7152 / 0,0722` são Rec.709 e estão **definidos sobre luz linear**;
+    // aplicados a códigos sRGB eles dão *luma* (a grandeza de vídeo), que não é proporcional à luz.
+    //
+    // ⚠️ **Isto mordeu em 2026-09-20, no dia em que o assado passou a CODIFICAR** (o passe escrevia
+    // bytes crus e a distinção era invisível): a razão cima/baixo do
+    // [`a_peca_sintetica_acende_por_cima`] caiu de **`2,6` para `1,4953`** e o gate reprovou por
+    // `0,005` — **sobre um produto correcto**. A curva é compressiva, logo *toda* razão lida em
+    // códigos encolhe, e uma barra calibrada num vale medido em luz deixa de descrever esse vale.
+    //
+    // ⭐ A cura não é baixar a barra — é devolver a grandeza à unidade em que ela foi calibrada.
+    let lin = |b: u8| f64::from(ph2d_color::srgb::srgb_to_linear_byte(b));
+    0.2126 * lin(px[0]) + 0.7152 * lin(px[1]) + 0.0722 * lin(px[2])
 }
 
 /// ⛔⛔⛔ **QUANTO DA PEÇA A LEI NOVA DEIXA PRETO** — o report do dono, em números.
@@ -197,6 +210,53 @@ pub(crate) fn metades_da_bola(
     (cima / n_cima as f64, baixo / n_baixo as f64)
 }
 
+/// ⏱️ **SONDA — A MESMA RAZÃO, NAS DUAS UNIDADES.**
+///
+/// Ela existe porque uma mutação SOBREVIVEU: devolver o [`lum`] a pesar **códigos** deixa o
+/// [`a_peca_sintetica_acende_por_cima`] VERDE, logo a corecção daquela régua não é hoje
+/// discriminada por gate nenhum. ⚠️ *Uma mutação sobrevivente nomeia uma régua em falta — e o
+/// primeiro passo é imprimir o número, para a decisão deixar de ser sobre uma intuição.*
+///
+/// ```text
+/// bash scripts/ph2d-run.sh cargo test -p ph2d-form-donation --lib \
+///   diag_a_razao_nas_duas_unidades -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medição: imprime a tabela, não afirma nada"]
+fn diag_a_razao_nas_duas_unidades() {
+    let rig = LightRig::default();
+    let bake = bola_com_fresta();
+    let px = pixels_pela_forma_na_cpu(&bake, &rig).expect("a regua acende");
+    let (w, h) = bake.size;
+    let mut soma = [[0f64; 2]; 2]; // [cima|baixo][luz|codigo]
+    let mut n = [0usize; 2];
+    for y in 0..h {
+        for x in 0..w {
+            let i = (y * w + x) as usize;
+            if bake.form[i * 4 + 3] <= 0.0 {
+                continue;
+            }
+            let meta = usize::from(y >= LADO / 2);
+            let p = &px[i * 4..i * 4 + 4];
+            soma[meta][0] += lum(p);
+            soma[meta][1] +=
+                0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2]);
+            n[meta] += 1;
+        }
+    }
+    let media = |m: usize, u: usize| soma[m][u] / n[m] as f64;
+    println!();
+    for (u, nome) in [(0usize, "LUZ (descodificado)"), (1, "CODIGO (cru)")] {
+        println!(
+            "  {nome:22}  cima {:9.4}  baixo {:9.4}  razao {:.4}",
+            media(0, u),
+            media(1, u),
+            media(0, u) / media(1, u)
+        );
+    }
+    println!("\n  a barra do gate e' 1,50 — e ela foi calibrada num vale medido em LUZ.\n");
+}
+
 /// ⛔⛔⛔ **UMA PEÇA SINTÉTICA ACENDE POR CIMA — e a fixtura da casa acendia por BAIXO.**
 ///
 /// # O que se afirma
@@ -220,7 +280,27 @@ pub(crate) fn metades_da_bola(
 /// # ⚠️ O CONTROLO está dentro
 ///
 /// Sem ele o gate ficaria verde sobre uma cena que por acaso é mais clara em cima; com ele afirma-se
-/// que **é o sinal do `y` que decide**, e a barra é o vale medido (razão `2,6×` para cada lado).
+/// que **é o sinal do `y` que decide**, e a barra é o vale medido (razão `2,4×` para cada lado).
+///
+/// # ⛔⛔ MUTAÇÃO SOBREVIVENTE, NOMEADA com a medição — e o que ela compra é MARGEM
+///
+/// Devolver o [`lum`] a pesar **códigos** (o estado de antes de 2026-09-21) deixa este gate
+/// **VERDE**, logo nenhuma régua desta casa discrimina hoje aquela correcção de unidades. ⚠️ *Isso
+/// não a torna opcional — torna-a não-VERIFICADA*, e o número diz porquê
+/// ([`diag_a_razao_nas_duas_unidades`]):
+///
+/// ```text
+///   LUZ (descodificado)   cima 0,3808   baixo 0,1596   razao 2,3862   <- margem  +59 %
+///   CODIGO (cru)          cima 161,33   baixo 107,04   razao 1,5071   <- margem +0,5 %
+/// ```
+///
+/// ⛔ **Uma barra que passa por `0,0071` não é uma barra, é uma coincidência** — está a uma
+/// re-corrida infeliz de virar flake. E o poder DISCRIMINANTE cai com ela: o vale entre o produto e
+/// o controlo mede **`5,7×` em luz** contra `2,27×` em códigos.
+///
+/// ⚠️ **A régua que faltaria** é uma que afirme a SEPARAÇÃO (produto ÷ controlo) e não só o lado
+/// certo — e ela fica por escrever de propósito: a barra dela não tem hoje fonte independente, e
+/// escolher um número para a poder ter seria o palpite que o §0.0 proíbe.
 #[test]
 fn a_peca_sintetica_acende_por_cima() {
     let rig = LightRig::default();

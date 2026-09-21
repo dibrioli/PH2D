@@ -82,6 +82,10 @@ winit = "0.30"
 test-support = []
 
 [dev-dependencies]
+# ⭐ **Só para a RÉGUA DO ECRÃ** (`bake_light_pbr_ecra`): ela precisa da curva de sRGB para a
+# tabela do diagnóstico e da conversão `f32 → f16` para devolver o `game_rt` à placa. ⛔ O veredito
+# dela sai dos BYTES que a placa escreveu, nunca desta curva — está escrito no doc do `srgb_do_linear`.
+ph2d-color = { path = "../ph2d-color" }
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
 # ⚠️ **A SEMENTE DE COR do censo dos knobs, e só ela:** os dois verbos que leem

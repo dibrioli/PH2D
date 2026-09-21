@@ -114,10 +114,12 @@ fn cada_pixel_e_o_que_a_lei_por_texel_da() {
     for i in 0..64usize {
         let t = super::super::Texel {
             normal: [p.form[i * 4], p.form[i * 4 + 1], p.form[i * 4 + 2]],
+            // ⚠️ Pela PORTA do produto ([`super::codigo`]) e nunca reconstruída aqui — ver o doc
+            // dela: este arnês é o segundo consumidor que já divergiu uma vez.
             albedo: [
-                f32::from(p.base[i * 4]) / 255.0,
-                f32::from(p.base[i * 4 + 1]) / 255.0,
-                f32::from(p.base[i * 4 + 2]) / 255.0,
+                super::codigo::para_luz(p.base[i * 4]),
+                super::codigo::para_luz(p.base[i * 4 + 1]),
+                super::codigo::para_luz(p.base[i * 4 + 2]),
             ],
             cobertura: p.form[i * 4 + 3],
             oclusao: p.occ[i],
@@ -130,7 +132,7 @@ fn cada_pixel_e_o_que_a_lei_por_texel_da() {
             Look::default(),
         );
         for k in 0..3 {
-            let quer = (c[k].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            let quer = super::codigo::de_luz(c[k]);
             assert_eq!(out[i * 4 + k], quer, "texel {i}, canal {k}");
         }
     }

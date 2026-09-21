@@ -236,16 +236,27 @@ pub(crate) fn matcap_texture(device: &wgpu::Device, side: u32) -> wgpu::Texture 
 /// **A TEXTURA DA FONTE DO ALBEDO** — a porta única, para o nascimento e a troca de tamanho não a
 /// descreverem de dois jeitos.
 ///
-/// ⛔⛔ **`Rgba8Unorm` e NÃO `Rgba8UnormSrgb`, ao contrário do matcap — e a razão é a LEI do bake.**
+/// ⭐⭐ **`Rgba8UnormSrgb`, como o matcap — e a razão continua a ser a LEI do bake.**
 ///
-/// A [`ph2d_form_pbr::imagem`] lê o byte da sprite como `px / 255,0` e escreve o resultado do mesmo
-/// jeito: para ela os pixels de um objecto assado são **LINEARES**. O matcap é o caso oposto (um
-/// PNG em sRGB, onde o `Srgb` é que está certo), e copiar o formato de lá para cá poria o hardware
-/// a desfazer uma transferência que a lei nunca aplicou.
+/// A [`ph2d_form_pbr::imagem`] **descodifica** o byte da sprite (`codigo::para_luz`) e **codifica**
+/// o resultado: para ela os pixels de um objecto assado são **códigos sRGB**, que é a convenção
+/// declarada da ranhura onde eles vão viver. ⇒ aqui o formato tem de deixar o hardware
+/// descodificar, senão o shader recebe um código onde a lei irmã recebe luz.
 ///
-/// ⚠️ **O modo de falha seria MUDO e para o lado errado**: a peça no visor sairia mais CLARA que a
-/// sprite, sem erro nenhum — exactamente o sintoma que esta feature existe para fechar. *Quem
-/// espelha uma lei copia a CONVENÇÃO dela, não a do vizinho.*
+/// ⛔⛔⛔ **E até 2026-09-20 este ficheiro dizia o CONTRÁRIO, com a premissa escrita:** *«a
+/// `ph2d_form_pbr::imagem` lê o byte como `px / 255,0` … para ela os pixels são LINEARES»*. Era
+/// **verdade no dia em que foi escrita** e morreu no dia em que o assado passou a atravessar a
+/// curva nas duas pontas.
+///
+/// ⭐⭐⭐ **E o mesmo parágrafo já nomeava o defeito que a troca em falta produziria:** *«o modo
+/// de falha seria MUDO e para o lado errado — a peça no visor sairia mais CLARA que a sprite, sem
+/// erro nenhum»*. Foi exactamente isso que aconteceu, e mediu **`25` códigos de oito bits** sobre
+/// uma matéria fria e clara — ⚠️ **e ZERO sobre uma tela BRANCA**, que é ponto fixo da curva e o
+/// enquadramento em que o dono estava a olhar. *Quem espelha uma lei copia a CONVENÇÃO dela, não a
+/// do vizinho — e quando a convenção da lei muda, o espelho muda com ela.*
+///
+/// ⚠️ **Quem o apanhou** foi o `os_dois_lados_leem_o_mesmo_byte_no_ecra`, que lê os DOIS lados
+/// depois do [`ph2d_render::Tonemap`]; ⛔ o irmão que compara em VALORES não o podia ver.
 pub(crate) fn albedo_texture(device: &wgpu::Device, size: (u32, u32)) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
         label: Some("ph2d-mesh albedo source"),
@@ -257,7 +268,7 @@ pub(crate) fn albedo_texture(device: &wgpu::Device, size: (u32, u32)) -> wgpu::T
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8Unorm,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     })

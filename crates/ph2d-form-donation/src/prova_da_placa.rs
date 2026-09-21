@@ -599,7 +599,9 @@ fn diag_a_escada_do_olhar_com_ceu() {
     let bake = peca();
     println!();
     println!("  stops   media do miolo cinzento   contra a tinta ({ALVO:.1})");
-    for stops in [0.0f32, 1.50, 1.90, 2.00, 2.05, 2.10, 2.15, 2.20, 2.50, 3.00] {
+    for stops in [
+        0.0f32, 1.30, 1.40, 1.45, 1.48, 1.50, 1.52, 1.55, 1.60, 1.70, 2.10,
+    ] {
         let olhar = Look {
             exposure_stops: stops,
             view: ViewTransform::Standard,

@@ -94,7 +94,7 @@ pub fn do_ambiente() -> Lei {
     *UMA_VEZ.get_or_init(|| Lei::do_texto(std::env::var(ENV).ok().as_deref()))
 }
 
-/// ⭐⭐⭐ **O OLHAR com que a lei nova chega ao ecrã** — `2,10` stops, MEDIDO contra o lado aprovado.
+/// ⭐⭐⭐ **O OLHAR com que a lei nova chega ao ecrã** — `1,50` stops, MEDIDO contra o lado aprovado.
 ///
 /// # Porque ele não pode ser a identidade
 ///
@@ -115,19 +115,39 @@ pub fn do_ambiente() -> Lei {
 ///
 /// ```text
 ///   stops   media do miolo cinzento   contra a tinta (186,1)
-///    1,50                   133,3            -52,8
-///    1,90                   170,3            -15,8
-///    2,05                   183,6             -2,5
-///    2,10                   187,8             +1,7     ←
-///    2,15                   191,7             +5,6
-///    2,50                   214,8            +28,7
-///    3,00                   235,8            +49,7
+///    1,30                   175,7            -10,4
+///    1,40                   181,0             -5,1
+///    1,45                   183,8             -2,3
+///    1,48                   185,4             -0,7
+///    1,50                   186,5             +0,4     ←
+///    1,52                   187,6             +1,5
+///    1,55                   189,3             +3,2
+///    1,60                   192,1             +6,0
+///    1,70                   197,7            +11,6
+///    2,10                   218,7            +32,6     (o número ANTIGO)
 /// ```
 ///
 /// ⭐⭐ **A tabela foi RE-TIRADA quando a indirecta do OpenPBR entrou (a coluna B3, 2026-09-20) e o
-/// número NÃO se mexeu.** A metade espelhada do céu soma energia — o miolo sobe `+0,4` byte em
-/// `2,10` —, e isso é **um décimo** do degrau da escada (`2,05 → 2,10` vale `4,2` bytes). O `2,10`
-/// continua a ser o candidato mais perto do alvo (`+1,7` contra `−2,5` do vizinho de baixo).
+/// número NÃO se mexeu** — nesse dia ele era `2,10`, e a metade espelhada do céu valia `+0,4` byte
+/// contra um degrau de escada de `4,2`. ⚠️ *Uma reconferência que devolve o mesmo número não prova
+/// que o número está certo — prova que aquela mudança não o move.*
+///
+/// # ⛔⛔⛔ **Ele DESCEU de `2,10` para `1,50`, e a causa é que ele estava a fazer o trabalho de UMA CURVA**
+///
+/// Até 2026-09-20 esta lei escrevia os bytes **CRUS** (`v × 255`) numa ranhura cujos bytes são
+/// **códigos sRGB** — e aí a peça chega ao ecrã com `v` onde a malha põe `srgb(v)`, até **`+73`
+/// códigos** de diferença no meio-tom. ⚠️ **A medição que escolheu o `3,00` e depois o `2,10` estava
+/// CERTA** (a peça saía mesmo mais escura: `srgb⁻¹(0,5) = 0,214`, ou seja `128` escrito como `~55`)
+/// **e o diagnóstico ao lado dela não** — o que faltava era a **curva**, não o **brilho**.
+///
+/// ⛔ **E as duas curas não são substítutas uma da outra:** a exposição multiplica tudo (levanta o
+/// meio, **queima** o alto e não salva o escuro) e a curva levanta o escuro **preservando** o alto.
+/// *É por isso que o lado assado saía ao mesmo tempo estourado em cima e esmagado em baixo.*
+///
+/// ⭐ Com a curva no sítio ([`ph2d_form_pbr::imagem`] e o gémeo do passe de dispositivo), esta escada
+/// foi **re-tirada de raiz** e o candidato bate o alvo melhor do que o antigo alguma vez bateu
+/// (`+0,4` contra `+1,7`). ⚠️ **E o `2,10` fica na tabela de propósito**: ele lê hoje `+32,6`, que
+/// é o tamanho do que a curva trazia e que a exposição estava a pagar.
 ///
 /// ⚠️ **Isto é uma medição e não uma ausência de medição:** *quem move o número que tornava outro
 /// correcto tem de reconferir a nota*, e a reconferência pode devolver o mesmo número — o que não
@@ -136,12 +156,13 @@ pub fn do_ambiente() -> Lei {
 /// ⚠️ **A escada passa do candidato de propósito:** um mínimo na BORDA de uma varredura não é um
 /// mínimo, é o fim da lista.
 ///
-/// # ⛔ Ele DESCEU de `3,00` para `2,10`, e a razão é o CÉU
+/// # ⛔ E antes disso ele já tinha DESCIDO de `3,00` para `2,10`, por causa do CÉU
 ///
 /// O `3,00` foi calibrado quando o ambiente desta lei era **zero** — e nesse dia isso era o produto.
 /// Com o céu derivado do rig ([`super::baked_form::ceu_do_rig`]) a peça recebe mais luz, e com o
-/// número antigo ela **satura**: a mesma sonda lê `235,9` a `3,00` e `254,0` a `4,00`. *Quem move o
-/// número que tornava outro correcto tem de reconferir a nota* (§0.0).
+/// número antigo ela **satura**. *Quem move o número que tornava outro correcto tem de reconferir a
+/// nota* (§0.0) — e esta constante já o pagou **duas** vezes, pelas duas coisas que a acompanhavam
+/// sem estar nela: primeiro a luz que entra, agora a curva que sai.
 ///
 /// ⚠️ **A sonda mudou-se para a CPU** e deixou de viver dentro do teste de placa: o que se mede é o
 /// NÍVEL que a lei entrega, e isso é a régua — não precisa de adapter. ⭐ O alvo `186,1` sobrevive à
@@ -155,7 +176,7 @@ pub fn do_ambiente() -> Lei {
 /// «certa»: a exposição é uma escolha do artista, e o dia em que ela for um controlo este valor
 /// passa a ser o ponto de partida dele — não uma constante escondida.
 pub const OLHAR_DA_FORMA: ph2d_view_transform::Look = ph2d_view_transform::Look {
-    exposure_stops: 2.1,
+    exposure_stops: 1.5,
     view: ph2d_view_transform::ViewTransform::Standard,
 };
 

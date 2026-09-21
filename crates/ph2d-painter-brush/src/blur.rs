@@ -91,9 +91,9 @@ pub(crate) fn src_coord(v: i64, span: i64, wrap: bool) -> i64 {
 /// **premultiplied** space (RGB × α, blur, then un-premultiply) so transparent neighbours don't bleed
 /// their arbitrary RGB into the result — the standard fringe-free image blur. The apron (`±k`) is read
 /// with [`src_coord`] (wrap / clamp). Snapshots the source first, so callers may write the region after.
-
-/// O gémeo de [`blur_region`] com o núcleo de **três caixas**, no mesmo espaço premultiplicado e
-/// com o mesmo contrato de avental (`wrap`/clamp) — só a convolução muda.
+///
+/// ⚠️ Com [`BlurKernel::Caixa`] ela **delega** em [`crate::blur_caixa::blur_region_caixa`] — o
+/// avental, o espaço premultiplicado e o contrato de saída são os mesmos; só a convolução muda.
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub(crate) fn blur_region(

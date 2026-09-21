@@ -140,6 +140,13 @@ fn caixa_v(src: &[[f32; 4]], w: usize, h: usize, r: usize) -> (Vec<[f32; 4]>, us
     (out, oh)
 }
 
+/// O gémeo de [`crate::blur::blur_region`] com o núcleo de **três caixas**, no mesmo espaço
+/// premultiplicado e com o mesmo contrato de avental (`wrap`/clamp) — só a convolução muda.
+///
+/// ⚠️ Este doc-comment ficou para trás no `blur.rs` quando o corte de 2026-09-20 trouxe a função
+/// para cá, colado ao doc do irmão que FICA: o clippy apanhou-o (`empty_line_after_doc_comments`),
+/// e é a armadilha que o handoff §21.9 regista — *um corte que sobe por `///` deixa o vizinho com a
+/// prosa de outro e a função que viajou sem a dela*.
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub(crate) fn blur_region_caixa(

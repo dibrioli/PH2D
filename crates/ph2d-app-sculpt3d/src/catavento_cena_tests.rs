@@ -118,8 +118,12 @@ fn a_cena_pede_giro_e_o_componente_nasce_parado() {
 #[test]
 fn o_roteiro_pede_play_e_a_cena_abre_a_regua() {
     let roteiro = include_str!("scripts.rs");
+    // ⚠️ **A âncora é o NÚMERO da cena e não o título**, e a razão foi medida em 21/09: ao
+    // traduzir o roteiro para inglês (ordem do dono — *«o app é em inglês»*) este gate reprovou,
+    // porque procurava `=52 O CATAVENTO`. *Uma agulha que contém prosa traduzível reprova na
+    // tradução, e o defeito que ela existe para apanhar continua lá.*
     let i = roteiro
-        .find("=52 O CATAVENTO")
+        .find("=52 ")
         .expect("o roteiro da =52 tem de existir");
     let bloco = &roteiro[i..i + 1800.min(roteiro.len() - i)];
     assert!(

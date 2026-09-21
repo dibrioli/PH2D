@@ -334,3 +334,49 @@ fn o_barro_tem_um_caminho_de_volta_e_e_o_esquece() {
         "o único caminho de volta ao barro deixou de ser o braço do `Esquece`"
     );
 }
+
+/// ⛔⛔⛔ **UM SPRITE TOTALMENTE TRANSPARENTE É RECUSADO — report do dono, 21/09**
+/// (*«em sprite transparente o bake fica invisível»*).
+///
+/// ⚠️ **A lei da luz está CERTA e é ela que o explica:** o passe escreve `vec4(cor, px.a)` — o alfa
+/// da fonte atravessa intacto, porque ele é a SILHUETA do sprite —, logo com alfa zero em toda
+/// parte a saída é invisível **por construção**, e nenhuma lâmpada a traz de volta.
+///
+/// ⭐⭐⭐ **O que faz disto uma RECUSA e não um aviso é que o estado PRENDE:** re-assar reusa o
+/// `base` (o gate irmão acima prova-o), logo um bake sobre o vazio grava um albedo transparente que
+/// todo re-bake herda — o artista pinta depois e a tinta nunca chega ao objecto.
+///
+/// ⚠️ **As DUAS metades, e a de baixo é a que impede a cura barata:** um sprite RECORTADO (um
+/// personagem sobre transparente) é o caso NORMAL, e uma barra de *cobertura* recusaria o trabalho
+/// de toda a gente. *A pergunta é «há alguma coisa para acender?», nunca «há muito?».*
+///
+/// **Mutações que devem sangrar:** `any(|p| p[3] > 0)` → `all(…)` · apagar a guarda.
+#[test]
+fn um_sprite_totalmente_transparente_e_recusado() {
+    use ph2d_form_donation::baked_form::BakedForm;
+    use ph2d_render::{AlphaMode, SpriteImage};
+    use std::collections::BTreeMap;
+
+    let vazio: BTreeMap<u64, BakedForm> = BTreeMap::new();
+    let img = |pixels: Vec<u8>| SpriteImage {
+        width: 2,
+        height: 1,
+        pixels,
+        alpha: AlphaMode::Straight,
+    };
+
+    // ⛔ Alfa zero em toda parte — e com COR, de propósito: o que decide é o alfa, e um fixture
+    // preto-transparente deixaria passar uma guarda escrita sobre o RGB.
+    let erro = super::materia_para(&vazio, A, &mut || Some(img(vec![9, 9, 9, 0, 7, 7, 7, 0])))
+        .expect_err("assar o vazio tem de ser recusado");
+    assert!(
+        erro.contains("fully transparent"),
+        "a recusa tem de dizer PORQUE, e em ingles (ordem do dono): {erro}"
+    );
+
+    // ⭐ O CONTROLO que impede a cura barata: UM pixel com alfa basta — um personagem recortado é
+    // o caso normal, e uma barra de cobertura recusaria o trabalho de toda a gente.
+    let ok = super::materia_para(&vazio, A, &mut || Some(img(vec![9, 9, 9, 0, 7, 7, 7, 1])))
+        .expect("um unico pixel com alfa ja' tem o que acender");
+    assert_eq!(ok.1, (2, 1));
+}

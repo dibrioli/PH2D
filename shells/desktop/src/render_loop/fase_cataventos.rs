@@ -54,7 +54,7 @@ impl crate::App {
         // HUD pagou). A CONTA das rasterizações é o que torna a economia do carimbo defensável.
         if conta.rasterizados > 0 || conta.largadas > 0 {
             eprintln!(
-                "[catavento] acesos={} rasterizados={} largados={}",
+                "[weathervane] lit={} rasterized={} dropped={}",
                 conta.acesos, conta.rasterizados, conta.largadas
             );
         }

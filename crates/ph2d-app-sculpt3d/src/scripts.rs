@@ -310,23 +310,23 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
         // entre as duas rotas (`docs/Render3d/17` §1.5: no plano a rota A dá `0,00°`; fora dele
         // `31,69°`).
         eprintln!(
-            "[sculpt3d] =52 O CATAVENTO: a mesma mesa da =11, e a peca passa a VIRAR.\n\
-             [sculpt3d]    (1) Ha' um SPRITE branco na mesa (ja' SELECIONADO) e a esfera chega com\n\
-             [sculpt3d]        CRISTAS -- e' delas que a luz toma a forma.\n\
-             [sculpt3d]    (2) Shift+B ASSA. O log diz o tamanho.\n\
-             [sculpt3d]    (3) Aperte D UMA vez: o barro sai da tela e o SPRITE aparece, com o\n\
-             [sculpt3d]        relevo desenhado em luz e sombra.\n\
-             [sculpt3d]    (4) O CONTROLO, e faca-o PRIMEIRO: com o transporte PARADO, o sprite\n\
-             [sculpt3d]        esta' imovel. E' isto que a rota de sempre entrega.\n\
-             [sculpt3d]    (5) O TESTE DA WAVE: de' PLAY (a regua do tempo). A peca VIRA -- e a luz\n\
-             [sculpt3d]        tem de ANDAR SOBRE ela: uma crista que estava iluminada entra na\n\
-             [sculpt3d]        sombra ao passar para o outro lado. Se a imagem inteira girar como\n\
-             [sculpt3d]        um carimbo, com o brilho colado a ela, reprove -- isso e' a rota de\n\
-             [sculpt3d]        sempre com a imagem rodada.\n\
-             [sculpt3d]    (6) PARE o transporte: a peca congela onde estava. Rebobine: ela volta\n\
-             [sculpt3d]        ao inicio. O giro obedece a' REGUA, nao ao relogio da parede.\n\
-             [sculpt3d]    (7) Q/E giram a lampada com a peca a virar -- as duas coisas tem de\n\
-             [sculpt3d]        compor, e nenhuma delas tem de fazer a outra piscar."
+            "[sculpt3d] =52 THE WEATHERVANE: the same table as =11, and the piece now TURNS.\n\
+             [sculpt3d]    (1) A white SPRITE is on the table (already SELECTED) and the sphere\n\
+             [sculpt3d]        arrives with RIDGES -- the light takes its shape from them.\n\
+             [sculpt3d]    (2) Shift+B BAKES. The log states the size.\n\
+             [sculpt3d]    (3) Press D ONCE: the clay leaves the canvas and the SPRITE appears,\n\
+             [sculpt3d]        with the relief drawn in light and shadow.\n\
+             [sculpt3d]    (4) THE CONTROL, and do it FIRST: with the transport STOPPED the sprite\n\
+             [sculpt3d]        is motionless. This is what the usual route delivers.\n\
+             [sculpt3d]    (5) THE TEST OF THIS WAVE: press PLAY (the time ruler). The piece TURNS\n\
+             [sculpt3d]        -- and the light must TRAVEL ACROSS it: a ridge that was lit has to\n\
+             [sculpt3d]        enter the shadow as it swings to the far side. If the whole image\n\
+             [sculpt3d]        spins like a stamp, with the highlight glued to it, REJECT -- that\n\
+             [sculpt3d]        is the usual route with a rotated image.\n\
+             [sculpt3d]    (6) STOP the transport: the piece freezes where it was. Rewind: it\n\
+             [sculpt3d]        returns to the start. The spin obeys the RULER, not the wall clock.\n\
+             [sculpt3d]    (7) Q/E swing the lamp while the piece turns -- the two must compose,\n\
+             [sculpt3d]        and neither may make the other flicker."
         );
     }
     if bake_scene() {

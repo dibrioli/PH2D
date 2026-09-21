@@ -79,6 +79,30 @@ pub(crate) fn materia_para(
     if size.0 == 0 || size.1 == 0 {
         return Err("o sprite selecionado nao tem pixels".into());
     }
+    // ⛔⛔⛔ **UM SPRITE TOTALMENTE TRANSPARENTE NÃO PODE SER ASSADO** (report do dono, 21/09:
+    // *«em sprite transparente o bake fica invisível»*).
+    //
+    // ⚠️ **A lei da luz está CERTA e é ela que o explica:** o passe escreve
+    // `vec4(cor_acesa, px.a)` — *«o ALFA atravessa intacto, ele é a silhueta do sprite»* —, logo
+    // com alfa zero em toda parte a saída é invisível **por construção**, e nenhuma lâmpada a traz
+    // de volta.
+    //
+    // ⭐⭐⭐ **E o que torna isto uma RECUSA e não um aviso é que o estado PRENDE:** o ramo logo
+    // acima reusa o `base` de um sprite já assado (*re-assar não lê a tela de volta*), logo um bake
+    // sobre o vazio grava um albedo transparente que TODO re-bake herda — o artista pinta depois e
+    // a tinta nunca chega ao objecto. *Um gesto que deixa o objecto num estado de que ele não sai é
+    // pior do que um gesto recusado.*
+    //
+    // ⚠️ **A régua é «existe UM pixel com alfa»**, e não uma fracção: um sprite recortado (um
+    // personagem sobre transparente) é o caso NORMAL, e uma barra de cobertura recusaria o trabalho
+    // de toda a gente. *A pergunta é «há alguma coisa para acender?», não «há muito?».*
+    if !straight.pixels.as_chunks::<4>().0.iter().any(|p| p[3] > 0) {
+        return Err(
+            "this sprite is fully transparent - the form has nothing to light, and baking it \
+             would freeze the object invisible (paint it first, then Shift+B)"
+                .into(),
+        );
+    }
     Ok((straight.pixels, size))
 }
 

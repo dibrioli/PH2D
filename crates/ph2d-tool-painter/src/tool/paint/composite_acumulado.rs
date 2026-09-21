@@ -116,6 +116,11 @@ impl PainterTool {
         } else {
             caixa_nova
         };
+        #[cfg(test)]
+        {
+            super::composite_pilha::conta_evento();
+            super::composite_pilha::conta_dabs(camadas.iter().map(Vec::len).sum::<usize>() as u64);
+        }
         // 2. Cada camada acumula os dabs NOVOS dela no plano dela. `O(dabs novos)`.
         for pos in 0..N_CAMADAS {
             if self.paint.composite[pos].strength <= 0.0 || camadas[pos].is_empty() {
@@ -385,7 +390,12 @@ impl PainterTool {
             return;
         }
         self.refresca_a_base_do_smear(r);
-        self.paint.limite_do_smear = Some(r);
+        #[cfg(test)]
+        let limite =
+            (!super::composite_pilha::SMEAR_SEM_LIMITE.with(std::cell::Cell::get)).then_some(r);
+        #[cfg(not(test))]
+        let limite = Some(r);
+        self.paint.limite_do_smear = limite;
         self.aplica_camada(pos, dabs);
         self.paint.limite_do_smear = None;
     }
@@ -402,6 +412,12 @@ impl PainterTool {
     ///
     /// ⚠️ O irmão [`PainterTool::pad_do_nucleo`] (a rota de replay) fica em `k` **e está certo**:
     /// lá cada dab é uma chamada com o avental dela.
+    /// A porta do gate — o produto lê o irmão privado.
+    #[cfg(test)]
+    pub(super) fn pad_do_borrao_para_teste(&self) -> u32 {
+        self.pad_do_borrao()
+    }
+
     fn pad_do_borrao(&self) -> u32 {
         let k = (0..N_CAMADAS)
             .filter(|&p| {
@@ -450,7 +466,7 @@ impl PainterTool {
 ///
 /// ⚠️ O tecto de `8` é do RELÓGIO e está declarado: cada passagem é `O(região)` com o núcleo de
 /// caixa (custo independente do raio).
-fn passagens_do_borrao(spacing: f32) -> u32 {
+pub(super) fn passagens_do_borrao(spacing: f32) -> u32 {
     const TECTO: u32 = 8;
     let n = 1.0 / spacing.max(1e-3);
     (n.round().max(1.0) as u32).min(TECTO)

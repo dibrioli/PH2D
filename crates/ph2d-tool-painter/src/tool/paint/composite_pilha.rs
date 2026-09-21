@@ -30,13 +30,24 @@
 //! acima de TODA a cobertura acumulada da de baixo ao longo do traço INTEIRO — não por dab, que
 //! enterra os realces anteriores»*), aqui um nível acima.
 //!
-//! # Porque isto NÃO é `O(n²)`
+//! # ⛔⛔⛔ A PREMISSA DESTE MÓDULO FOI REFUTADA, e ele é hoje a porta de BISSECÇÃO
 //!
-//! Recompor o traço inteiro a cada lote seria `O(n²)` e está fora (medido: um Blur a `4×` custa
-//! `~6 ms` por dab; replayar o traço todo dava dezenas de segundos). ⭐ **A recomposição é
-//! REGIONAL**: as operações são locais, logo a tela só muda onde os dabs NOVOS caem. Recompõe-se essa
-//! região a partir do `pre`, replayando **só os lotes cuja caixa a toca** — um número que não cresce
-//! com o traço, ele vale `~2/spacing` (a sobreposição), e é o preço inteiro desta wave.
+//! Este cabeçalho dizia: *«a recomposição é REGIONAL … replayando só os lotes cuja caixa a toca —
+//! um número que **não cresce com o traço**, ele vale `~2/spacing`»*. **Medido em 2026-09-21, isso
+//! é verdade para um traço RECTO e falso para um RABISCO** — e um rabisco é o que pintar é: um
+//! traço que volta à própria vizinhança faz toda caixa tocar toda caixa.
+//!
+//! | caminho | ms/evento a 60 passos | a 480 passos | lotes replayados por lote |
+//! |---|---|---|---|
+//! | recto | `0,76` | `0,90` | `11,9` → `17,6` |
+//! | rabisco | `2,99` | **`12,11`** | `16,7` → **`79,4`** |
+//!
+//! ⚠️ **A régua que a deixou passar era a fixtura:** o [`super::diag_preco_da_pilha`] media um
+//! traço RECTO, que é exactamente o regime em que a premissa vale.
+//!
+//! ⇒ a lei ficou e a implementação mudou: a pilha **ACUMULA** ([`super::composite_acumulado`]), e
+//! o replay deste módulo é a porta de bissecção (`PH2D_COMPOSITE_REPLAY=1`). O que se segue
+//! descreve essa rota, e continua correcto sobre ela.
 //!
 //! ⚠️ **O que sobra da região fica INTACTO por save/restore**: os dabs replayados escrevem para fora
 //! dela (um dab que toca a região tem corpo fora dela), então a tela é guardada antes, recomposta, e
@@ -66,12 +77,33 @@ use crate::tool::PainterTool;
 use ph2d_painter_brush::Dab;
 use std::sync::Arc;
 
-// ⚠️ **A CONTA da recomposição, por THREAD** — quantos lotes o replay tocou e que área ele
-// reescreveu. Um átomo global reprovaria na suíte em paralelo enquanto passa sozinho.
+// ⚠️ **A CONTA da pilha, por THREAD** — `(eventos, dabs depositados, pior evento)`. Um átomo
+// global reprovaria na suíte em paralelo enquanto passa sozinho.
+//
+// ⭐ Ela é a régua do gate de PREÇO, e é uma CONTAGEM e não um relógio de propósito: um gate de
+// relógio nesta casa é mais um membro da família de flakes sob fan-out (§5.0 do `CLAUDE.md`).
 #[cfg(test)]
 thread_local! {
     pub(super) static CONTA_DA_PILHA: std::cell::Cell<(u64, u64, u64)> =
         const { std::cell::Cell::new((0, 0, 0)) };
+}
+
+/// Somar `n` dabs ao evento corrente. Chamada pelas duas rotas.
+#[cfg(test)]
+pub(super) fn conta_dabs(n: u64) {
+    CONTA_DA_PILHA.with(|c| {
+        let (ev, tot, pior) = c.get();
+        c.set((ev, tot + n, pior.max(n)));
+    });
+}
+
+/// Abrir um evento novo na conta.
+#[cfg(test)]
+pub(super) fn conta_evento() {
+    CONTA_DA_PILHA.with(|c| {
+        let (ev, tot, pior) = c.get();
+        c.set((ev + 1, tot, pior));
+    });
 }
 
 // ⚠️ **O interruptor de BISSECÇÃO: recompor o CANVAS INTEIRO em vez da região.**
@@ -245,14 +277,20 @@ impl PainterTool {
         }
         let caixa_grande = grow_region(caixa_grande, pad, w, h).unwrap_or(caixa_grande);
         #[cfg(test)]
-        CONTA_DA_PILHA.with(|c| {
-            let (n, lotes, area) = c.get();
-            c.set((
-                n + 1,
-                lotes + janela.len() as u64,
-                area + u64::from(caixa_grande.w) * u64::from(caixa_grande.h),
-            ));
-        });
+        {
+            conta_evento();
+            let n: usize = janela
+                .iter()
+                .map(|&i| {
+                    self.paint.pilha.lotes[i]
+                        .camadas
+                        .iter()
+                        .map(Vec::len)
+                        .sum::<usize>()
+                })
+                .sum();
+            conta_dabs(n as u64);
+        }
         // 4. Guardar o que lá está, e pôr o `pre` no lugar dentro da caixa grande.
         //
         // ⚠️ **Guardar a `caixa_grande` chega porque NENHUMA camada escreve fora dela** — e isso

@@ -181,10 +181,16 @@ pub(crate) struct PaintState {
     /// limitá-lo: *o `disp` de um texel só cresce enquanto o cursor está a menos de um raio dele*,
     /// que é exactamente enquanto ele está dentro da região recomposta.
     ///
-    /// ⚠️⚠️ **Ele é um guarda de RELÓGIO e não de imagem, e a mutação que o apaga SOBREVIVE —
-    /// declarado com a medição.** Com a base (`warp.pre`) refrescada só na `caixa_nova` ela fica
-    /// correcta em toda parte, logo o render da união inteira dá a MESMA imagem; o que ele compra é
-    /// o trabalho não crescer com o traço (`--release`, canvas `1024²`, traço de 720 px, `load 23`):
+    /// ⛔⛔⛔ **ESTA NOTA ESTAVA ERRADA e a medição de 2026-09-21 derrubou-a.** Ela dizia: *«ele é
+    /// um guarda de RELÓGIO e não de imagem, e a mutação que o apaga SOBREVIVE … o render da união
+    /// inteira dá a MESMA imagem»*. Sobre a fixtura que contém o fenómeno — **arte por baixo** (sem
+    /// ela o esfregão é inerte: ele é a camada de BAIXO, corre sobre o `pre`, e numa tela vazia não
+    /// há o que esfregar) — apagá-lo **muda a imagem nos dois sentidos**: o traço rápido passa a
+    /// ser EXACTO (`pior 39 → 0`) e o rabisco fica PIOR (`48 → 167`).
+    ///
+    /// ⚠️ *A medição que o declarou inócuo correu sobre um traço recto e um canvas opaco, onde o
+    /// esfregão não move um pixel* — a mesma lei que derrubou a premissa do
+    /// [`super::composite_pilha`]. O que ele compra em RELÓGIO continua medido:
     ///
     /// | Smear sobre Brush | com o limite | sem ele |
     /// |---|---|---|

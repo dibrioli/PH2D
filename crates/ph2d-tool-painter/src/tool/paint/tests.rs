@@ -52,6 +52,9 @@ mod diag_pigmento_por_meio; // em que MEIOS a lei do pigmento chega ao barro (a 
 #[path = "composite_cinco_tests.rs"]
 mod composite_cinco_tests; // a pilha de CINCO: cor, tamanho e o Erase por camada
 
+#[path = "composite_acumulado_tests.rs"]
+mod composite_acumulado_tests; // a pilha que ACUMULA: o preço, a exactidão e o rectângulo
+
 #[path = "composite_pilha_tests.rs"]
 mod composite_pilha_tests; // a ordem por TRAÇO + o escopo da borracha
 
@@ -215,4 +218,7 @@ fn click(t: &mut PainterTool, x: f32, y: f32) {
 }
 
 #[path = "diag_auditoria_da_pilha.rs"]
-mod diag_auditoria_da_pilha; // AUDITORIA 2026-09-21: o preço e o carimbo da recomposição regional
+pub(super) mod diag_auditoria_da_pilha;
+
+#[path = "diag_cura_da_pilha.rs"]
+mod diag_cura_da_pilha; // o que a ACUMULAÇÃO entregou // AUDITORIA 2026-09-21: o preço e o carimbo da recomposição regional

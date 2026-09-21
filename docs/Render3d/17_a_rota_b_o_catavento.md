@@ -344,6 +344,75 @@ ninguém vê é a que envelhece em silêncio no dia em que a fixtura mudar.
 
 ---
 
+## §6 — ⭐⭐⭐ W2: **a corrente viva** (construída em 2026-09-21)
+
+A §5 abriu a costura; esta liga os dois elos e põe a promessa num PIXEL.
+
+### §6.1 — As três peças, e o que cada uma custou
+
+| peça | onde | o que ela é |
+|---|---|---|
+| a porta da LUZ | [`baked_form::forma_viva::acende_vivo`](../../crates/ph2d-form-donation/src/baked_form/forma_viva.rs) | a irmã da `light`, com a forma em vistas residentes |
+| o DONO das texturas | [`vivo::FormaViva`](../../crates/ph2d-app-sculpt3d/src/vivo.rs) | as duas texturas que ficam na placa, mais o carimbo |
+| a terceira saída da rasterização | `donation::gbuffer_vivo` | escreve nas vistas do chamador, com carimbo |
+
+⭐⭐ **A costura já estava desenhada nas DUAS assinaturas e faltava um DONO.** O
+`MeshRenderer` **não guarda** G-buffer nenhum e não expõe vista nenhuma — ele **aceita** as do
+chamador; e a `acende_residente` **aceita** as mesmas. *O que a obra acrescenta não é um algoritmo,
+é a posse.*
+
+⭐⭐⭐ **E a POSE entra pela CÂMERA, o que custa ZERO.** As normais do G-buffer são de **VISTA**
+(`canvas_normal(cam.view * model * n)`), logo orbitar a câmera em torno do alvo roda-as no
+referencial em que o rig vive — que é exactamente *«o objecto virou-se e a luz acompanhou»*. Rodar
+a MALHA daria a mesma imagem e pagaria um reenvio de vértices por quadro.
+
+⚠️⚠️ **E o `Camera3d` não ter ROLL deixou de ser um limite:** o roll é a rotação **no plano**, e a
+§1.5 mediu que essa a rota A já dá **exactamente**. *A câmera não sabe exprimir precisamente aquilo
+de que esta rota não precisa.*
+
+### §6.2 — O que a §5.0 POUPOU, medido antes de escrito
+
+| o que o `02.2` pedia | o que a medição respondeu |
+|---|---|
+| *«com **dirty flag**: só re-renderiza se a pose, a malha ou a câmera mudarem»* | ⭐ **já existia** — o `donation::FormStamp` cobre as três, e o doc dele já escrevia a disciplina |
+| o componente **`MeshShading`** (`sss`, `ao`, `cavity`, `material`) | ⛔ **não nasce**: a `material_da_forma()` **não recebe argumentos** (o material é GLOBAL) e a escolha por objecto que já é gravada é a `Lei` do assado ⇒ seriam **quatro knobs sem consumidor** |
+
+⚠️ **O carimbo é do PAR `(malha, câmera-do-OBJECTO, tamanho)`** e não do da cena: dois objectos
+vivos partilham a malha e têm poses diferentes, logo um carimbo da cena diria *«nada mudou»* ao
+segundo depois de o primeiro ter rasterizado.
+
+### §6.3 — A FRONTEIRA declarada: a rota B é da lei da FORMA
+
+O despacho por [`Lei`](../../crates/ph2d-form-donation/src/lei_da_luz.rs) tem um braço de **TINTA**
+que é o `ImpastoLightPass`, e ele **recebe fatias da CPU**. Não há por onde ele consumir uma vista de
+textura ⇒ **a rota B não existe naquela lei**, e isso é uma propriedade do passe antigo e não uma
+escolha desta porta. ⚠️ *Um despacho que aceitasse as duas e caísse em silêncio na de sempre
+entregaria um catavento que não gira, sem dizer porquê.*
+
+### §6.4 — A promessa, afirmada no PIXEL
+
+| | componentes fora de `262 144` | pior byte |
+|---|---|---|
+| com relevo, virado `90°` fora do plano | **`31 678`** | `197` |
+| esfera lisa (**CONTROLO**) | **`0`** | `0` |
+
+⛔⛔ **O CONTROLO é o que dá direito à leitura**, e é a mesma fixtura do Bloco E: uma esfera lisa
+**não tem orientação** — o campo de normais dela visto de uma câmera não depende de como ela está
+rodada —, logo virá-la tem de deixar o sprite **igual**, e lê **zero ao bit**. *Sem essa metade, um
+gate que medisse «mudou» passaria com uma rota B que re-rasterizasse ruído.*
+
+⭐ **E a economia do carimbo tem CONTADOR** (`FormaViva::rasterizacoes`): ela é **invisível a toda
+régua de valor** — com e sem carimbo a imagem é a mesma —, e *uma poupança que nenhum número mede é
+uma poupança que ninguém defende*.
+
+### §6.5 — O que fica para a wave seguinte
+
+Os componentes no `ph2d-ecs` (com os quatro contadores de registo e a descrição no catálogo), a fase
+do quadro e a cena que o dono possa smokar. ⚠️ **A cena tem de mostrar uma pá a VIRAR** — uma que
+mostrasse a rotação no plano estaria a demonstrar uma coisa que a rota A já faz.
+
+---
+
 ## ⛔ Recusas MEDIDAS
 
 | o que | porquê | onde |
@@ -352,6 +421,9 @@ ninguém vê é a que envelhece em silêncio no dia em que a fixtura mudar.
 | baixar a resolução do G-buffer para poupar relógio | não compra rasterização (ela é plana no lado) **nem** acendida (o passe despacha sobre os pixels do SPRITE) | §1.1 + §1.2-bis + §1.3 |
 | medir a rasterização com uma esfera leve | o custo é de VÉRTICES: `33×` de malha vale `1,6×` de tempo, e a fixtura não continha a grandeza | §1.4 |
 | dividir o orçamento pelo custo de RASTERIZAR | é metade da corrente: a conta dá `126` objectos e a corrente inteira dá `26` | §1.2-bis |
+| o componente `MeshShading` do `02.2` | o material é GLOBAL (`material_da_forma()` não recebe argumentos) e a escolha por objecto já é a `Lei` gravada ⇒ quatro knobs sem consumidor | §6.2 |
+| um *dirty flag* próprio para a rota B | o `FormStamp` da doação já cobre malha · câmera · tamanho | §6.2 |
+| rodar a MALHA para exprimir a pose | as normais são de VISTA ⇒ orbitar a câmera dá a mesma imagem e custa zero reenvio de vértices | §6.1 |
 | a rota B para a rotação NO PLANO | a rota A dá-a **exactamente** (`0,00°` contra `28,58°` de um plano fixo): são duas operações 2D sobre o plano assado | §1.5 |
 | pôr a pose 3D da malha no `Transform` do filho | ele tem `rotation: f32` e só exprime o plano do ecrã — a rotação que justifica a obra é **inexprimível** ali | §1.5 |
 | apertar o controlo de vácuo até a fixtura PRETA o disparar | ela não é um vácuo: tira a COR e não a FORMA, e lê `246` de excursão contra `188` da boa — apertar mediria outra grandeza | §5.4 |

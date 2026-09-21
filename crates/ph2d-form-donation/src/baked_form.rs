@@ -151,6 +151,12 @@ pub struct BakedForm {
 /// ⛔ A alternativa era um segundo `Option<…>` ao lado do primeiro, na `App`, no `FrameGfx` e nas
 /// duas fases do quadro: *quatro sítios que teriam de concordar, e uma terceira lei a custar quatro
 /// edições outra vez.* Aqui ela custa **um campo**, e o consumidor não se mexe.
+/// ⭐⭐⭐ **A rota B — a mesma luz com a forma já na placa.** Ver [`forma_viva`].
+///
+/// ⚠️ Ela é **filha deste módulo** e não irmã, e a razão é o campo `forma` do [`PassesDaLuz`]: um
+/// módulo irmão não o alcança, e torná-lo público abriria o passe a quem não passa por uma porta.
+pub mod forma_viva;
+
 #[derive(Default)]
 pub struct PassesDaLuz {
     /// O passe da TINTA — a lei de sempre, e o valor de fábrica.

@@ -92,7 +92,27 @@ const FORA: &[Isento] = &[
 ];
 
 /// Nenhum literal-identificador sobra nesta crate — a lista existe para o dia em que sobrar.
-const NOT_LANGUAGE: &[Excecao] = &[];
+const NOT_LANGUAGE: &[Excecao] = &[
+    (
+        "vivo.rs",
+        "ph2d-app-sculpt3d forma viva normal",
+        "o RÓTULO DE DEPURAÇÃO de uma textura de wgpu (`TextureDescriptor::label`) — ele existe \
+         para aparecer num depurador gráfico (RenderDoc, o validador) ao lado das outras texturas \
+         desta árvore, e não há caminho por onde chegue a um pixel do ecrã",
+    ),
+    (
+        "vivo.rs",
+        "ph2d-app-sculpt3d forma viva oclusao",
+        "o irmão do de cima, o segundo plano do G-buffer vivo — mesmo mecanismo",
+    ),
+];
+
+// ⚠️ **A isenção é por FRASE e não por FICHEIRO, e a escolha é deliberada.** O idioma vizinho
+// (`FORA`) isenta um ficheiro inteiro, e é o que a `donation.rs` usa — mas ali o que sai são as
+// LINHAS de um relatório, uma família aberta. Aqui são **duas cordas nomeadas**, e um ficheiro
+// isento seria um cheque em branco para o texto de interface que o `vivo.rs` ainda pode ganhar.
+// ⭐ E a `every_named_exemption_still_shelters_what_it_names` conta as duas: no dia em que um
+// rótulo mudar de texto, a isenção dele fica **órfã** e o gate diz.
 
 #[test]
 fn every_word_this_family_shows_comes_from_the_string_table() {

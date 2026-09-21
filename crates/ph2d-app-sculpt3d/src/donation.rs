@@ -163,6 +163,21 @@ pub(super) struct FormStamp {
     size: (u32, u32),
 }
 
+/// ⭐⭐⭐ **A POSE 3D de uma forma viva — a orientação que o `Transform` 2D NÃO sabe exprimir.**
+///
+/// ⛔⛔ **Ela existe por medição, não por gosto.** O [`ph2d_ecs::Transform`] tem `rotation: f32` e
+/// exprime **apenas** a rotação no plano do ecrã — e a §5.0 do catavento mediu que essa a rota A já
+/// dá **exactamente** (`0,00°` de desacordo de normais contra `28,58°` de um plano fixo). *A
+/// rotação que justifica a rota B é a que FALTA àquele campo*, logo ela tem de viajar no componente
+/// da malha. Tabelas: `docs/Render3d/17_a_rota_b_o_catavento.md` §1.5.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct PoseDaForma {
+    /// A volta em torno do eixo vertical do ecrã — a pá do catavento a virar.
+    pub yaw: f32,
+    /// A inclinação para cima e para baixo.
+    pub pitch: f32,
+}
+
 /// O carimbo, como FUNÇÃO PURA das três entradas.
 ///
 /// ⚠️ Separado do método por causa do GATE: uma `Sculpt3dScene` exige um `wgpu::Device` para
@@ -280,6 +295,63 @@ impl Sculpt3dScene {
             self.shade(),
             self.donation_ssao(),
         )
+    }
+
+    /// ⭐⭐⭐ **A TERCEIRA saída da mesma rasterização: a forma VIVA, para vistas RESIDENTES.**
+    ///
+    /// A [`Self::rasterise_form`] devolve fatias da CPU com carimbo; a [`Self::form_plane_for`]
+    /// devolve fatias sem carimbo. Esta **não devolve fatias nenhumas** — ela escreve directamente
+    /// nas duas vistas que o chamador possui, e é isso que tira o readback do caminho: medido, ele
+    /// vale **`31×`** a rasterização a `512²`, e é o preço inteiro da rota de hoje.
+    ///
+    /// ⭐⭐ **A POSE entra pela CÂMERA e não pela malha, e isso custa ZERO.** As normais do
+    /// G-buffer são de **VISTA** (`canvas_normal(cam.view * model * n)`), logo orbitar a câmera em
+    /// torno do alvo roda-as no referencial em que o rig vive — que é exactamente *«o objecto
+    /// virou-se e a luz acompanhou»*. Rodar a MALHA daria a mesma imagem e pagaria um reenvio de
+    /// vértices por quadro.
+    ///
+    /// ⚠️⚠️ **E o [`ph2d_mesh_render::Camera3d`] não tem ROLL — o que NÃO é um limite aqui.** O roll
+    /// é a rotação **no plano do ecrã**, e a §5.0 mediu que essa a rota A já dá **exactamente**
+    /// (`0,00°`): rodar a imagem e rodar as normais são duas operações 2D sobre o plano já assado.
+    /// *A câmera não sabe exprimir precisamente aquilo de que esta rota não precisa.*
+    ///
+    /// Devolve `true` quando de facto rasterizou — `false` é o carimbo a dizer que nada mudou.
+    pub(super) fn gbuffer_vivo(
+        &mut self,
+        gpu: &ph2d_gpu::GpuContext,
+        pose: PoseDaForma,
+        size: (u32, u32),
+        alvos: (&wgpu::TextureView, &wgpu::TextureView),
+        carimbo: &mut Option<FormStamp>,
+    ) -> bool {
+        let mut cam = self.camera;
+        cam.aim(pose.yaw, pose.pitch);
+        // ⚠️ O carimbo é do PAR (malha, câmera-do-objecto, tamanho) e não do da cena: dois objectos
+        // vivos partilham a malha e têm poses diferentes, logo um carimbo da cena diria «nada
+        // mudou» para o segundo depois de o primeiro ter rasterizado.
+        let agora = stamp_of(self.edits, &cam, size);
+        if *carimbo == Some(agora) {
+            return false;
+        }
+        self.sync_mesh(&gpu.device, &gpu.queue);
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ph2d-app-sculpt3d forma viva"),
+            });
+        self.renderer.render_gbuffer(
+            &gpu.device,
+            &gpu.queue,
+            &mut enc,
+            alvos.0,
+            alvos.1,
+            &cam,
+            self.shade(),
+            size,
+        );
+        gpu.queue.submit(std::iter::once(enc.finish()));
+        *carimbo = Some(agora);
+        true
     }
 
     /// **A oclusão de tela que a DOAÇÃO mede** — os mesmos parâmetros do viewport, `None` quando o

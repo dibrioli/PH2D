@@ -170,3 +170,89 @@ O artefacto que se reproduz é um **degrau rectangular alinhado aos eixos** na z
 
 *Uma auditoria que declarasse a causa inteira a partir do que reproduziu estaria a escolher entre
 duas medições que não discriminam.*
+
+---
+
+## §5 — A CURA: a pilha ACUMULA (ordem do dono, *«siga»*)
+
+A lei **não mudou** — a implementação é que passou a ser a lei. *«Cada `L` aplicada sobre o TRAÇO
+INTEIRO»* quer dizer **uma** aplicação com tudo o que a camada acumulou; replayar dab a dab era uma
+maneira de lá chegar, não a lei.
+
+```text
+    plano_k ← plano_k ⊕ (os dabs NOVOS da camada k)      O(dabs novos)
+    tela|R  ← pre|R ⊕ plano_N ⊕ … ⊕ plano_0              O(R × N)
+```
+
+⭐ **O acumulador é o MESMO depósito**, por troca de plano — o truque que o ESCUDO da borracha de
+escopo `Traco` já usava. Nada rasteriza um dab de novo, e a história (`LoteDaPilha`) morreu com o
+replay, levando consigo a memória que crescia com o traço.
+
+### §5.1 — O preço, PAREADO (`--release`, `1024²`, `load 3,7`)
+
+| caminho | passos | replay | ms/ev | acumulação | ms/ev | ganho |
+|---|---|---|---|---|---|---|
+| recto | 60 | `40,7` | `0,67` | `31,3` | `0,51` | `1,3×` |
+| recto | 480 | `423,5` | `0,88` | `209,3` | **`0,44`** | `2,0×` |
+| rabisco | 60 | `175,2` | `2,87` | `93,6` | `1,53` | `1,9×` |
+| rabisco | 120 | `535,4` | `4,42` | `194,4` | `1,61` | `2,8×` |
+| rabisco | 240 | `1 525,3` | `6,33` | `406,8` | `1,69` | `3,7×` |
+| rabisco | 480 | **`5 831,2`** | **`12,12`** | **`901,3`** | **`1,87`** | **`6,5×`** |
+
+⭐⭐⭐ **O que importa não é o `6,5×` — é a COLUNA `ms/ev`:** o replay vai de `2,87` a `12,12`
+(`4,2×`) e a acumulação de `1,53` a `1,87`. **O quadrático morreu**, e o ganho cresce com o traço.
+
+### §5.2 — Exacta em três das quatro, e a quarta é DECLARADA
+
+| operação | contra o replay | porquê |
+|---|---|---|
+| **Brush** | `\|Δ\| = 0` | o `over` é associativo, e a cor de cada dab viaja no plano |
+| **Erase** | `\|Δ\| = 0` | a mesma álgebra, com o `c` do traço em vez do lote |
+| **Smear** | `\|Δ\| = 0` | já era um campo por traço resolvido de uma vez |
+| **Blur** | pior `114` | ⛔ **divergência declarada** |
+
+⛔ **O Blur:** `N` passagens sequenciais compõem-se num borrão MAIOR. A compensação é **UMA passagem
+de raio `P·k`** com `P = 1/spacing` (tecto `8`) — a variância do núcleo é linear no raio, logo `P`
+passagens equivalem a uma de raio `P·k`, e o núcleo de CAIXA custa o mesmo em qualquer raio. ⇒ o
+espalhamento na borda fica em **`0,82×`** o do replay. ⚠️ Ela é **autorizada pelo dono**, que pediu
+um Blur mais barato só no composite (2026-09-20).
+
+⚠️⚠️ **E a régua que escolhi primeiro era cega:** a nitidez MÉDIA da região lê `0,98`–`0,99×` nas
+duas formulações, porque a diferença mora na **BORDA** e a média é dominada pelo miolo chapado. A
+que decide é a `largura_da_borda`.
+
+### §5.3 — O carimbo rectangular
+
+| rota | rabisco | rápido |
+|---|---|---|
+| replay | pior `48`, caixa `77×28` | pior `39`, caixa `162×92` |
+| **acumulação** | **`0`** | **`0`** |
+
+⏳ **O resíduo que fica está ATRIBUÍDO e é pequeno** (`pior 12` de 255 na fixtura do gate, contra
+`103` do replay): ele só existe com **Blur e Smear juntos** — Brush só, Blur+Brush e Brush+Smear
+leem `0` — e é a base congelada do esfregão, refrescada só dentro da região enquanto ele lê
+`p − disp(p)`, que pode cair fora dela. ⭐ A cura tem endereço: **com os planos, «a tela como as
+camadas de baixo a deixaram» é calculável em qualquer região.**
+
+### §5.4 — As leis que a wave pagou
+
+* ⛔⛔ **DUAS premissas escritas no repo morreram** — *«o número de lotes não cresce com o traço»*
+  (cabeçalho do `composite_pilha`) e *«o `limite_do_smear` é um guarda de RELÓGIO e não de imagem»*
+  (`state.rs`). As duas tinham sido medidas em traço RECTO sobre canvas OPACO. Reescritas com a
+  morte à vista no diff.
+* ⚠️ **O trinco de alfa suprimia o depósito num plano transparente** — a camada acumulava zero e o
+  traço desaparecia. O trinco é da CAMADA DO DOCUMENTO e corre uma vez, na composição.
+* ⚠️ **O avental do borrão é `k × P`, não `k`** — apanhado por um gate VERMELHO
+  (`a_ordem_e_da_pilha_e_nao_da_taxa_do_rato`): com o avental de um raio a orla lê bytes que a
+  composição ainda não escreveu, e o resultado passa a depender de em quantos lotes o traço chegou.
+* ⚠️⚠️ **TRÊS defeitos do meu próprio arnês de mutação**, os três corrigidos: uma mutação que **não
+  compilava** (lê-se como sangrar), uma que era **NO-OP** (o blend de fábrica já era `Mix`, logo
+  trocá-lo por ele não muta nada) e uma **fixtura que não discriminava** (o Brush de cima a `1,0`
+  satura e esconde a pilha, e a mutação que apaga o `escreve_do_pre` sobrevivia a ela). A quarta
+  «sobrevivente» era eu a apontar para o gate errado.
+
+### §5.5 — O que fica
+
+`PH2D_COMPOSITE_REPLAY=1` bissecta para a rota antiga — num **CAMPO** e não na env, porque *um gate
+que lê o ambiente mede a máquina*. Cinco gates novos, **9 de 9 mutações a sangrar**, 47 gates do
+composite verdes.

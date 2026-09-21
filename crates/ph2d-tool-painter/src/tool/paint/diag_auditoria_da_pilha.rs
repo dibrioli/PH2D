@@ -134,36 +134,40 @@ pub(super) fn conta() -> (u64, u64, u64) {
     super::composite_pilha::CONTA_DA_PILHA.with(std::cell::Cell::get)
 }
 
-/// ⭐⭐⭐ **O PREÇO: recto contra rabisco.**
+/// ⭐⭐⭐ **O PREÇO: recto contra rabisco, e replay contra acumulação — PAREADO.**
+///
+/// ⚠️ As duas rotas correm na MESMA corrida de propósito: *comparar o mínimo de corridas
+/// separadas já mentiu nesta casa* (a tabela do núcleo de caixa leu `×1,21` onde o pareado lê
+/// `×0,98`).
 #[test]
 #[ignore = "sonda de relógio: corre à mão, em --release e com a máquina calma"]
 fn diag_auditoria_o_preco() {
     let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
-    println!(
-        "\n  O PREÇO DA RECOMPOSIÇÃO REGIONAL   (load {})",
-        carga.trim()
-    );
+    println!("\n  O PREÇO DA PILHA   (load {})", carga.trim());
     println!("  canvas {SIZE}² · pilha do dono (Blur·Brush·Brush·Smear) · passo 2 px\n");
-    println!("  caminho  | passos |     ms |  ms/ev | lotes replayados | área reescrita (Mpx)");
-    println!("  ---------+--------+--------+--------+------------------+---------------------");
+    println!("  caminho  | passos |  replay ms | ms/ev | acumulação ms | ms/ev | ganho");
+    println!("  ---------+--------+------------+-------+---------------+-------+-------");
     for n in [60usize, 120, 240, 480] {
         for (nome, pts) in [("recto", caminho_recto(n)), ("rabisco", caminho_rabisco(n))] {
-            let mut t = tela(24.0);
-            pilha_do_dono(&mut t);
-            conta_zerada();
-            let ini = std::time::Instant::now();
-            corre(&mut t, &pts);
-            let ms = ini.elapsed().as_secs_f64() * 1e3;
-            let (n_rec, lotes, area) = conta();
-            let medio = if n_rec == 0 {
-                0.0
-            } else {
-                lotes as f64 / n_rec as f64
+            let corre_com = |replay: bool| {
+                let mut melhor = f64::MAX;
+                for _ in 0..2 {
+                    let mut t = tela(24.0);
+                    t.paint.pilha_por_replay = replay;
+                    pilha_do_dono(&mut t);
+                    let ini = std::time::Instant::now();
+                    corre(&mut t, &pts);
+                    melhor = melhor.min(ini.elapsed().as_secs_f64() * 1e3);
+                }
+                melhor
             };
+            let (r, a) = (corre_com(true), corre_com(false));
+            let ev = pts.len() as f64;
             println!(
-                "  {nome:8} | {n:6} | {ms:6.1} | {:6.2} | {lotes:6} ({medio:5.1}/lote) | {:8.1}",
-                ms / n as f64,
-                area as f64 / 1e6
+                "  {nome:8} | {n:6} | {r:10.1} | {:5.2} | {a:13.1} | {:5.2} | {:5.1}×",
+                r / ev,
+                a / ev,
+                r / a
             );
         }
     }

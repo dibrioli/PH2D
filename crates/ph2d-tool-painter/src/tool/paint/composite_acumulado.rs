@@ -344,18 +344,12 @@ impl PainterTool {
             }
             if algum {
                 let raio = self.paint.brush.radius_px * self.tamanho_da_camada(pos);
-                let k = ph2d_painter_brush::kernel_radius(raio);
-                let passagens = passagens_do_borrao(self.paint.brush.spacing);
-                // ⭐ Cada passagem leva a fracção da cobertura que a compõe: `P` passagens de peso
-                //   `1 − (1−c)^{1/P}` dão exactamente a cobertura total `c`, e espalham `√P`.
-                let inv = 1.0 / passagens as f32;
-                let fatia: Vec<u8> = peso
-                    .iter()
-                    .map(|&c| {
-                        let c = f32::from(c) / 255.0;
-                        enc(1.0 - (1.0 - c).powf(inv))
-                    })
-                    .collect();
+                // ⭐⭐ **UMA passagem de raio `P·k`, e não `P` passagens de raio `k`.** A variância
+                //    do núcleo é LINEAR no raio (`σ² = k/2`, ver `blur_caixa`), logo `P` passagens
+                //    compõem-se numa de raio `P·k` — e o núcleo de CAIXA custa o mesmo em qualquer
+                //    raio (três somas correntes). ⇒ o espalhamento é o mesmo e o trabalho é `1/P`.
+                let k = ph2d_painter_brush::kernel_radius(raio)
+                    * passagens_do_borrao(self.paint.brush.spacing) as usize;
                 let tiling = self.paint.tiling;
                 let buf = super::plane_fork::fork_canvas(
                     &mut self.canvas_rgba,
@@ -363,21 +357,19 @@ impl PainterTool {
                     w,
                     Some(r),
                 );
-                for _ in 0..passagens {
-                    ph2d_painter_brush::blur_region_por_peso(
-                        buf,
-                        w,
-                        h,
-                        i64::from(r.x),
-                        i64::from(r.y),
-                        r.w as usize,
-                        r.h as usize,
-                        k,
-                        &fatia,
-                        tiling,
-                        ph2d_painter_brush::BlurKernel::Caixa,
-                    );
-                }
+                ph2d_painter_brush::blur_region_por_peso(
+                    buf,
+                    w,
+                    h,
+                    i64::from(r.x),
+                    i64::from(r.y),
+                    r.w as usize,
+                    r.h as usize,
+                    k,
+                    &peso,
+                    tiling,
+                    ph2d_painter_brush::BlurKernel::Caixa,
+                );
             }
         }
         self.paint.pilha.planos[pos] = plano;

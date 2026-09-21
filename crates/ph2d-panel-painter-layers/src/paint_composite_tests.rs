@@ -200,13 +200,12 @@ fn diag_a_altura_do_cartao() {
     let pitch = ph2d_tokens::row_pitch_px();
     println!("\n  A ALTURA DO CARTÃO DA PILHA");
     println!("  pad {pad} · ROW_H {ROW_H_PX} · pitch {pitch} · vão {gap}\n");
-    println!("  camadas | fileiras | altura px");
+    println!("  camadas | fileiras | altura px  (a pilha monta-se à mão desde 21/09)");
     println!("  --------+----------+----------");
-    for n in [3usize, 5, 7] {
-        for f in [2usize, 3] {
-            let h = pad + ROW_H_PX + (gap + f as f32 * n as f32 * pitch) + pad;
-            println!("  {n:7} | {f:8} | {h:8.0}");
-        }
+    // ⚠️ O `+ 1` é a fileira do `+`, pintada sempre que a secção está ligada.
+    for n in [0usize, 1, 3, 5, 7] {
+        let h = pad + ROW_H_PX + (gap + (3 * n + 1) as f32 * pitch) + pad;
+        println!("  {n:7} | {:8} | {h:8.0}", 3 * n + 1);
     }
 }
 

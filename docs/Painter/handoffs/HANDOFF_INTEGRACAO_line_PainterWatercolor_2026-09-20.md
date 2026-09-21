@@ -1561,3 +1561,89 @@ apagar o limite **muda a imagem nos dois sentidos** (`39 → 0` no rápido, `48 
   medida**, porque nenhuma fixtura desta casa a exercita.
 * ⏳ Os três itens da §22.9 continuam abertos (o relevo fora da recomposição, o cartão de cinco
   camadas contra a dobra, e a tabela de relógio da wave anterior).
+
+---
+
+## §25 — A PILHA MONTA-SE À MÃO (ordem do dono, 2026-09-21)
+
+> *«A seção nasce sem nenhuma camada. Teremos um botão + para criar camadas (as possibilidades
+> aparecem no dropdown ao lado do +). O máximo que pode ser criado é: 3 de Brush, 2 de erase, 1 de
+> Blur, 1 de Smear. As opções vão sumindo do dropdown à medida que vão sendo usadas. Ao usar todas
+> inativa-se o dropdown e o botão +. Cada camada passa a ter um x para ser retirada. Todos os
+> sliders devem ter nome inclusive o Strength.»*
+
+### §25.1 — O que MUDA, para quem funde
+
+* **`N_CAMADAS` deixou de ser «quantas há» e passou a ser «quantas cabem»** — ele é hoje um alias de
+  **`MAX_CAMADAS`**, a **SOMA das quotas** (`3+2+1+1 = 7`), **derivada**. Quantas existem é o
+  `composite_len`.
+* **Três campos novos** no `PaintState` (`composite_len`, `composite_add_op`) e três no instantâneo
+  (`composite_len`, `composite_add_op`, `composite_add_available`).
+* **Os arrays de ids do composite foram de `5` para `7`**, e há **ids novos**: `…_REMOVE[7]`,
+  `…_ADD`, `…_ADD_KIND`, `…_ADD_OPTION[4]`.
+* ⛔ **O `PAINTER_BRUSH_COMPOSITE_OP` e o `set_composite_layer_op` SAÍRAM.**
+* ⚠️ **`stamp_route.rs` não foi tocado nesta wave**; a `event/decode.rs` e a `event/option_route.rs`
+  ganham uma linha cada (território partilhado do painel).
+* **Zero contrato, zero `PROJECT_SCHEMA`, zero ADR, zero pacote novo.**
+
+### §25.2 — ⭐ O MOTOR ficou intocado, e a linha que o consegue é UMA
+
+A cauda das posições que não existem fica a **`strength = 0`**, que é como o laço da pilha já pulava
+uma camada. ⇒ o `composite_acumulado`/`composite_pilha` não sabem que esta wave existiu, e
+*«quantas camadas existem»* é uma pergunta do ARTISTA e não do carimbo. É também por isso que os
+arneses de motor que escrevem `paint.composite[pos]` directamente continuam válidos.
+
+### §25.3 — A QUOTA é uma porta com TRÊS leitores
+
+`quota_da_operacao` é lida (a) pelas opções que o menu mostra, (b) pelo estado do `+`, e (c) pelo
+guarda do `acrescenta_camada`. ⚠️ **O painel não recalcula nada**: a disponibilidade viaja
+**derivada** no instantâneo (`composite_add_available`).
+
+⭐⭐ **E a derivação compra uma propriedade de COMPILAÇÃO:** subir uma quota sem estender os arrays
+de ids deixa de compilar, com um `E0080` a apontar o array exacto — *medido pela prova de mutação,
+que ali não sangra porque não chega a compilar, e isso é mais forte*.
+
+### §25.4 — O chip da operação SAIU, e é uma capacidade que sai
+
+Com as quotas, um chip que cicla livremente torna-as mentira — dois cliques punham dois Blurs. A
+operação escolhe-se na **criação** e trocá-la é retirar a camada e criar outra. ⚠️ **Declarado e
+reversível**: o ciclo limitado à quota é uma alternativa que não foi construída.
+
+### §25.5 — A altura do cartão, e o item da §22.9 que isto FECHA
+
+| camadas | fileiras | altura |
+|---|---|---|
+| 0 (como nasce) | 1 | **`63` px** |
+| 1 | 4 | `138` |
+| 5 | 16 | `438` |
+| 7 (cheia) | 22 | `588` |
+
+⭐ Antes desta wave o cartão media **`413` px sempre**, com cinco posições que o artista talvez não
+quisesse. A §22.9 nomeava *«o cartão de cinco camadas × três fileiras sem medição de quanto empurra
+o resto do painel para baixo da dobra»* — **a ordem do dono dissolveu o item**: ele só paga o que
+usa.
+
+### §25.6 — O que uma leitura rápida do diff entende ao contrário
+
+1. **`N_CAMADAS` não encolheu nem cresceu de significado por acaso** — ele passou de uma contagem
+   para um TECTO, e o nome honesto é `MAX_CAMADAS`; o alias fica porque o motor dimensiona planos
+   por ele.
+2. **`composite_len = 0` não desliga a pilha** — quem a desliga é a caixa `Composite Brush`. Com ela
+   ligada e zero camadas o cartão mostra a fileira do `+`, que é como se enche.
+3. **O menu do `+` é um `Dropdown` e não um `Button`** (o despacho genérico abre/fecha; ele não
+   emite `Click`).
+4. **A escolha do menu não é um `PanelEvent` novo** — ela viaja pela `SelectOption`, o canal de
+   texto do contrato congelado.
+5. **O `x` não pede confirmação** — uma camada criada à mão tira-se à mão, e o `+` recria.
+6. **A camada nova nasce a `strength = 1.0`**, não a zero: *antes de hoje o zero era como uma
+   posição se calava; hoje calar-se é não existir*, e uma camada criada que não faz nada lê-se como
+   a ferramenta partida.
+
+### §25.7 — O que fica ABERTO
+
+* ⏳ **O Blur continua a governar o preço de todas as camadas** (§5.1 da auditoria: `+29 ms` por
+  camada sem Blur, `+115` com um). Com sete posições isso importa mais, e a alavanca é o avental.
+* ⏳ **Sete camadas nunca foram medidas no produto real** — a tabela de `+1 Brush`/`+1 Erase` foi
+  tirada com a pilha levada a sete à mão, antes desta wave existir.
+* ⏳ O `x` e o `+` não têm atalho de teclado nem desfazer próprio (eles entram no undo do painel,
+  que **não existe** — decisão antiga do dono).

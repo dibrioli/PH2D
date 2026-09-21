@@ -39,6 +39,7 @@ pub fn blur_blit_grain(
     grain_ramp_lut: Option<&[f32]>,
     strength: f32,
     wrap: [bool; 2],
+    nucleo: crate::blur::BlurKernel,
 ) -> Option<DirtyRect> {
     let strength = strength.clamp(0.0, 1.0);
     if strength <= 0.0 || radius <= 0.0 {
@@ -47,7 +48,7 @@ pub fn blur_blit_grain(
     let (fw, fh) = (width as i64, height as i64);
     let (min_x, min_y, bw, bh) = footprint_bbox(center, radius, fw, fh, 1)?;
     let k = kernel_radius(radius);
-    let blurred = blur_region(buf, fw, fh, min_x, min_y, bw, bh, k, wrap);
+    let blurred = blur_region(buf, fw, fh, min_x, min_y, bw, bh, k, wrap, nucleo);
 
     let depth = spec.grain_depth();
     let (cx, cy) = (center[0], center[1]);
@@ -153,6 +154,7 @@ mod tests {
             None,
             1.0,
             [false, false],
+            crate::blur::BlurKernel::Binomial,
         );
         assert!(dirty.is_some(), "grain blur paints");
 
@@ -169,6 +171,7 @@ mod tests {
             },
             1.0,
             [false, false],
+            crate::blur::BlurKernel::Binomial,
         );
         assert!(
             with_grain != plain,

@@ -53,6 +53,139 @@ fn binomial_weights(k: usize) -> Vec<f32> {
     w
 }
 
+/// **Qual núcleo esta passagem usa.**
+///
+/// ⚠️ **Ela é um ARGUMENTO e não um campo do `BrushSpec`, de propósito:** o núcleo é uma escolha de
+/// QUEM CHAMA (a ferramenta Blur isolada contra uma camada da pilha), e num campo do pincel ele
+/// viajaria com o pincel para todo o lado — incluindo para a ferramenta isolada, que a ordem do
+/// dono de 2026-09-20 proíbe tocar (*«o Blur como ferramenta isolada não deve ser modificado»*).
+/// Como argumento, um chamador novo **tem de dizer** qual quer.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum BlurKernel {
+    /// O binomial (Pascal) separável — a lei que a ferramenta Blur isolada usa e que **não muda**.
+    #[default]
+    Binomial,
+    /// **Três passagens de CAIXA por somas correntes** — a aproximação clássica de uma gaussiana,
+    /// com o custo por pixel INDEPENDENTE do raio do núcleo.
+    ///
+    /// O binomial gasta `2·(2k+1)` multiplicações-soma por pixel (`130` a `k = 32`); esta gasta
+    /// **seis** somas, quaisquer que sejam `k`. As larguras das três caixas são escolhidas para a
+    /// variância bater a do binomial (`σ² = k/2`) — ver [`box_radii`].
+    Caixa,
+}
+
+/// As três larguras de caixa cuja variância somada mais se aproxima da do binomial de raio `k`.
+///
+/// Uma caixa de largura ímpar `w` tem variância `(w² − 1)/12`; três delas somam `Σ(wᵢ² − 1)/12`, e
+/// o alvo é `σ² = k/2` (a variância do binomial de raio `k`). A largura ideal comum sai de
+/// `3(w² − 1)/12 = k/2` ⇒ `w = √(1 + 2k)`, que quase nunca é um ímpar inteiro — por isso as três
+/// caixas são **duas larguras vizinhas misturadas**, e a mistura é escolhida por MEDIÇÃO (a que
+/// minimiza o erro de variância), nunca por arredondamento.
+#[must_use]
+pub(crate) fn box_radii(k: usize) -> [usize; 3] {
+    #[allow(clippy::cast_precision_loss)]
+    let alvo = k as f32 / 2.0;
+    let ideal = (1.0 + 2.0 * k as f32).sqrt();
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let mut wl = ideal.floor() as usize;
+    if wl.is_multiple_of(2) {
+        wl = wl.saturating_sub(1);
+    }
+    let wl = wl.max(1);
+    let wu = wl + 2;
+    let var = |w: usize| {
+        #[allow(clippy::cast_precision_loss)]
+        let w = w as f32;
+        (w * w - 1.0) / 12.0
+    };
+    let mut melhor = (f32::MAX, 0usize);
+    for m in 0..=3usize {
+        #[allow(clippy::cast_precision_loss)]
+        let v = (3 - m) as f32 * var(wl) + m as f32 * var(wu);
+        let erro = (v - alvo).abs();
+        if erro < melhor.0 {
+            melhor = (erro, m);
+        }
+    }
+    let m = melhor.1;
+    std::array::from_fn(|i| if i < m { (wu - 1) / 2 } else { (wl - 1) / 2 })
+}
+
+/// Uma passagem de caixa HORIZONTAL por soma corrente: a saída perde `r` de cada lado.
+fn caixa_h(src: &[[f32; 4]], w: usize, h: usize, r: usize) -> (Vec<[f32; 4]>, usize) {
+    if r == 0 {
+        return (src.to_vec(), w);
+    }
+    let ow = w - 2 * r;
+    let lado = 2 * r + 1;
+    #[allow(clippy::cast_precision_loss)]
+    let inv = 1.0 / lado as f32;
+    let mut out = vec![[0f32; 4]; ow * h];
+    for j in 0..h {
+        let linha = j * w;
+        let mut acc = [0f32; 4];
+        for i in 0..lado {
+            let s = src[linha + i];
+            for c in 0..4 {
+                acc[c] += s[c];
+            }
+        }
+        for i in 0..ow {
+            let o = j * ow + i;
+            for c in 0..4 {
+                out[o][c] = acc[c] * inv;
+            }
+            if i + 1 < ow {
+                let sai = src[linha + i];
+                let entra = src[linha + i + lado];
+                for c in 0..4 {
+                    acc[c] += entra[c] - sai[c];
+                }
+            }
+        }
+    }
+    (out, ow)
+}
+
+/// Uma passagem de caixa VERTICAL por soma corrente. ⚠️ O acumulador é uma LINHA inteira e desliza
+/// para baixo — uma coluna de cada vez leria a memória com passo `w` e pagaria a cache.
+fn caixa_v(src: &[[f32; 4]], w: usize, h: usize, r: usize) -> (Vec<[f32; 4]>, usize) {
+    if r == 0 {
+        return (src.to_vec(), h);
+    }
+    let oh = h - 2 * r;
+    let lado = 2 * r + 1;
+    #[allow(clippy::cast_precision_loss)]
+    let inv = 1.0 / lado as f32;
+    let mut out = vec![[0f32; 4]; w * oh];
+    let mut acc = vec![[0f32; 4]; w];
+    for j in 0..lado {
+        for i in 0..w {
+            let s = src[j * w + i];
+            for c in 0..4 {
+                acc[i][c] += s[c];
+            }
+        }
+    }
+    for j in 0..oh {
+        for i in 0..w {
+            for c in 0..4 {
+                out[j * w + i][c] = acc[i][c] * inv;
+            }
+        }
+        if j + 1 < oh {
+            for i in 0..w {
+                let sai = src[j * w + i];
+                let entra = src[(j + lado) * w + i];
+                for c in 0..4 {
+                    acc[i][c] += entra[c] - sai[c];
+                }
+            }
+        }
+    }
+    (out, oh)
+}
+
 /// Read `(sx, sy)` mapping for one apron sample: toroidal (`rem_euclid`) on a `wrap` axis (seamless
 /// Tiling), else clamped to the nearest edge (extend — so a border neither fades the alpha nor bleeds
 /// transparent RGB into the blur).
@@ -82,7 +215,11 @@ pub(crate) fn blur_region(
     bh: usize,
     k: usize,
     wrap: [bool; 2],
+    nucleo: BlurKernel,
 ) -> Vec<[f32; 4]> {
+    if matches!(nucleo, BlurKernel::Caixa) {
+        return blur_region_caixa(buf, fw, fh, min_x, min_y, bw, bh, k, wrap);
+    }
     let w = binomial_weights(k);
     let ap_w = bw + 2 * k;
     let ap_h = bh + 2 * k;
@@ -137,6 +274,62 @@ pub(crate) fn blur_region(
         }
     }
     out
+}
+
+/// O gémeo de [`blur_region`] com o núcleo de **três caixas**, no mesmo espaço premultiplicado e
+/// com o mesmo contrato de avental (`wrap`/clamp) — só a convolução muda.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+fn blur_region_caixa(
+    buf: &[u8],
+    fw: i64,
+    fh: i64,
+    min_x: i64,
+    min_y: i64,
+    bw: usize,
+    bh: usize,
+    k: usize,
+    wrap: [bool; 2],
+) -> Vec<[f32; 4]> {
+    let raios = box_radii(k);
+    let r_total: usize = raios.iter().sum();
+    let ap_w = bw + 2 * r_total;
+    let ap_h = bh + 2 * r_total;
+    let mut apron = vec![[0f32; 4]; ap_w * ap_h];
+    for j in 0..ap_h {
+        let sy = src_coord(min_y + j as i64 - r_total as i64, fh, wrap[1]);
+        for i in 0..ap_w {
+            let sx = src_coord(min_x + i as i64 - r_total as i64, fw, wrap[0]);
+            let si = ((sy * fw + sx) * 4) as usize;
+            let a = f32::from(buf[si + 3]);
+            let af = a / 255.0;
+            apron[j * ap_w + i] = [
+                f32::from(buf[si]) * af,
+                f32::from(buf[si + 1]) * af,
+                f32::from(buf[si + 2]) * af,
+                a,
+            ];
+        }
+    }
+    // Separável: as três caixas na horizontal, depois as três na vertical.
+    let (mut cur, mut w, mut h) = (apron, ap_w, ap_h);
+    for r in raios {
+        let (n, nw) = caixa_h(&cur, w, h, r);
+        cur = n;
+        w = nw;
+    }
+    for r in raios {
+        let (n, nh) = caixa_v(&cur, w, h, r);
+        cur = n;
+        h = nh;
+    }
+    debug_assert_eq!((w, h), (bw, bh));
+    for p in &mut cur {
+        let a = p[3];
+        let inv = if a > 1e-4 { 255.0 / a } else { 0.0 };
+        *p = [p[0] * inv, p[1] * inv, p[2] * inv, a];
+    }
+    cur
 }
 
 /// Blend the blurred region into `buf` over the footprint bbox, weighting each pixel by `weight(i, j)`
@@ -214,6 +407,7 @@ pub fn blur_dab(
     spec: &BrushSpec,
     strength: f32,
     wrap: [bool; 2],
+    nucleo: BlurKernel,
 ) -> Option<DirtyRect> {
     let radius = spec.clamped_radius();
     let strength = strength.clamp(0.0, 1.0);
@@ -223,7 +417,7 @@ pub fn blur_dab(
     let (fw, fh) = (width as i64, height as i64);
     let (min_x, min_y, bw, bh) = footprint_bbox(center, radius, fw, fh, 0)?;
     let k = kernel_radius(radius);
-    let blurred = blur_region(buf, fw, fh, min_x, min_y, bw, bh, k, wrap);
+    let blurred = blur_region(buf, fw, fh, min_x, min_y, bw, bh, k, wrap, nucleo);
     let inv_r = 1.0 / radius;
     blend_blurred(buf, fw, min_x, min_y, bw, bh, &blurred, |i, j| {
         let dx = (min_x + i as i64) as f32 + 0.5 - center[0];
@@ -259,6 +453,7 @@ pub fn blur_blit_stamp(
     mask: &StampMask,
     strength: f32,
     wrap: [bool; 2],
+    nucleo: BlurKernel,
 ) -> Option<DirtyRect> {
     let strength = strength.clamp(0.0, 1.0);
     if strength <= 0.0 || radius <= 0.0 {
@@ -267,7 +462,7 @@ pub fn blur_blit_stamp(
     let (fw, fh) = (width as i64, height as i64);
     let (min_x, min_y, bw, bh) = footprint_bbox(center, radius, fw, fh, 1)?;
     let k = kernel_radius(radius);
-    let blurred = blur_region(buf, fw, fh, min_x, min_y, bw, bh, k, wrap);
+    let blurred = blur_region(buf, fw, fh, min_x, min_y, bw, bh, k, wrap, nucleo);
     let inv_r = 1.0 / radius;
     blend_blurred(buf, fw, min_x, min_y, bw, bh, &blurred, |i, j| {
         let u = ((min_x + i as i64) as f32 + 0.5 - center[0]) * inv_r;
@@ -309,8 +504,17 @@ mod tests {
             ..Default::default()
         };
         let before = px(&buf, w, 16, 8); // first white column
-        let dirty = blur_dab(&mut buf, w, h, [16.0, 8.0], &spec, 1.0, [false, false])
-            .expect("in-bounds blur paints");
+        let dirty = blur_dab(
+            &mut buf,
+            w,
+            h,
+            [16.0, 8.0],
+            &spec,
+            1.0,
+            [false, false],
+            BlurKernel::Binomial,
+        )
+        .expect("in-bounds blur paints");
         let after = px(&buf, w, 16, 8);
         assert!(
             after[0] < before[0] && after[0] > 0,
@@ -341,9 +545,27 @@ mod tests {
             ..Default::default()
         };
         let (w, h, mut lo) = make();
-        let _ = blur_dab(&mut lo, w, h, [16.0, 8.0], &spec, 0.25, [false, false]);
+        let _ = blur_dab(
+            &mut lo,
+            w,
+            h,
+            [16.0, 8.0],
+            &spec,
+            0.25,
+            [false, false],
+            BlurKernel::Binomial,
+        );
         let (_, _, mut hi) = make();
-        let _ = blur_dab(&mut hi, w, h, [16.0, 8.0], &spec, 1.0, [false, false]);
+        let _ = blur_dab(
+            &mut hi,
+            w,
+            h,
+            [16.0, 8.0],
+            &spec,
+            1.0,
+            [false, false],
+            BlurKernel::Binomial,
+        );
         // The white column starts at 255; the blurred value is lower, so more strength ⇒ lower.
         assert!(
             px(&hi, w, 16, 8)[0] < px(&lo, w, 16, 8)[0],
@@ -359,7 +581,19 @@ mod tests {
             radius_px: 3.0,
             ..Default::default()
         };
-        assert!(blur_dab(&mut buf, w, h, [-50.0, -50.0], &spec, 1.0, [false, false]).is_none());
+        assert!(
+            blur_dab(
+                &mut buf,
+                w,
+                h,
+                [-50.0, -50.0],
+                &spec,
+                1.0,
+                [false, false],
+                BlurKernel::Binomial
+            )
+            .is_none()
+        );
     }
 
     /// The masked path with a default round brush's StampMask (== its falloff) blurs like the round
@@ -381,8 +615,18 @@ mod tests {
         };
         let mask = crate::render_stamp_mask(&spec, None, None, None, 64);
         let before = px(&buf, w, 16, 8);
-        let dirty = blur_blit_stamp(&mut buf, w, h, [16.0, 8.0], 8.0, &mask, 1.0, [false, false])
-            .expect("masked blur paints");
+        let dirty = blur_blit_stamp(
+            &mut buf,
+            w,
+            h,
+            [16.0, 8.0],
+            8.0,
+            &mask,
+            1.0,
+            [false, false],
+            BlurKernel::Binomial,
+        )
+        .expect("masked blur paints");
         assert!(
             px(&buf, w, 16, 8)[0] < before[0],
             "masked blur softened the edge"
@@ -412,14 +656,167 @@ mod tests {
             ..Default::default()
         };
         let mut wrapped = buf.clone();
-        let _ = blur_dab(&mut wrapped, w, h, [0.0, 4.0], &spec, 1.0, [true, false]);
+        let _ = blur_dab(
+            &mut wrapped,
+            w,
+            h,
+            [0.0, 4.0],
+            &spec,
+            1.0,
+            [true, false],
+            BlurKernel::Binomial,
+        );
         let mut plain = buf.clone();
-        let _ = blur_dab(&mut plain, w, h, [0.0, 4.0], &spec, 1.0, [false, false]);
+        let _ = blur_dab(
+            &mut plain,
+            w,
+            h,
+            [0.0, 4.0],
+            &spec,
+            1.0,
+            [false, false],
+            BlurKernel::Binomial,
+        );
         // The seam pixel differs between wrap (sees far edge) and no-wrap (clamps the near edge).
         assert_ne!(
             px(&wrapped, w, 0, 4),
             px(&plain, w, 0, 4),
             "the wrapped blur reads across the seam, the clamped one doesn't"
+        );
+    }
+
+    /// **A caixa tripla tem a VARIÂNCIA do binomial que ela substitui** — é isso que faz dela a
+    /// «mesma quantidade de borrão», e não um borrão mais fraco disfarçado de optimização.
+    ///
+    /// Um binomial de raio `k` tem `σ² = k/2`; três caixas de larguras `wᵢ` somam `Σ(wᵢ²−1)/12`. O
+    /// erro tem de ficar dentro do degrau da própria grelha de larguras (elas são ímpares, logo a
+    /// variância só toma valores discretos) — a barra é **meia largura de degrau**, derivada, e não
+    /// um epsilon escolhido.
+    #[test]
+    fn a_caixa_tripla_tem_a_variancia_do_binomial() {
+        for k in 1..=BLUR_KERNEL_MAX {
+            let r = box_radii(k);
+            let var: f32 = r
+                .iter()
+                .map(|&ri| {
+                    let w = (2 * ri + 1) as f32;
+                    (w * w - 1.0) / 12.0
+                })
+                .sum();
+            let alvo = k as f32 / 2.0;
+            // O degrau: trocar UMA caixa de largura `w` por `w+2` muda a variância em
+            // `((w+2)² − w²)/12 = (4w + 4)/12`. Com `w ≈ √(1+2k)`, meia dessas.
+            let w = (1.0 + 2.0 * k as f32).sqrt();
+            let degrau = (4.0 * w + 4.0) / 12.0;
+            assert!(
+                (var - alvo).abs() <= degrau * 0.5 + 1e-3,
+                "k={k}: variância {var:.3} contra o alvo {alvo:.3} (degrau {degrau:.3})"
+            );
+        }
+    }
+
+    /// **A caixa tripla é uma MÉDIA: sobre um campo constante ela devolve a constante.**
+    ///
+    /// ⚠️ Esta é a metade que apanha um erro de normalização ou de avental — os dois deixariam a
+    /// régua da variância acima VERDE, porque ela mede só as larguras.
+    ///
+    /// ⛔⛔ **E o ALFA é obrigatório, não é zelo: uma MUTAÇÃO SOBREVIVEU sem ele.** Com a versão que
+    /// varria só `0..3`, trocar `1/lado` por `1/(lado − ½)` — um ganho uniforme de `20 %` na média —
+    /// passava VERDE, porque este é um borrão em espaço **premultiplicado** e o último passo
+    /// un-premultiplica por `255/α`: *um ganho uniforme entra no numerador e no denominador e
+    /// divide-se a si próprio*. O canal que não é dividido por nada é o **α**, e é só ele que vê a
+    /// normalização. ⇒ *num borrão premultiplicado, um campo constante de RGB não é régua de
+    /// normalização nenhuma.*
+    #[test]
+    fn a_caixa_tripla_preserva_um_campo_constante() {
+        let (w, h) = (48u32, 48u32);
+        let buf = vec![137u8; (w * h * 4) as usize];
+        for k in [1usize, 4, 8, 32] {
+            let out = blur_region_caixa(
+                &buf,
+                i64::from(w),
+                i64::from(h),
+                8,
+                8,
+                24,
+                24,
+                k,
+                [false, false],
+            );
+            for p in &out {
+                for v in &p[..3] {
+                    assert!(
+                        (v - 137.0).abs() < 0.6,
+                        "k={k}: a caixa mudou um campo constante para {v:.2}"
+                    );
+                }
+                assert!(
+                    (p[3] - 137.0).abs() < 0.6,
+                    "k={k}: a caixa não é uma MÉDIA — o alfa saiu {:.2} de 137",
+                    p[3]
+                );
+            }
+        }
+    }
+
+    /// **Os dois núcleos borram a MESMA quantidade** — a caixa não é um borrão mais fraco.
+    ///
+    /// A régua é a largura da rampa que uma aresta dura vira: se a caixa borrasse menos, ela seria
+    /// mais barata por fazer menos trabalho, e o ganho medido não significaria nada.
+    ///
+    /// ⛔⛔ **As DUAS metades, e a segunda nasceu de uma MUTAÇÃO SOBREVIVENTE:** com o despacho a
+    /// ignorar o núcleo pedido, os dois lados desta medição passam a ser o MESMO binomial, `d = 0`,
+    /// e a primeira asserção fica **trivialmente verdadeira**. *Uma régua de semelhança é satisfeita
+    /// de graça pela identidade* ⇒ ela tem de ser acompanhada por «e as duas saídas DIFEREM», que é
+    /// o controlo de que o argumento chegou a ser lido.
+    #[test]
+    fn os_dois_nucleos_borram_a_mesma_quantidade() {
+        let (w, h) = (96u32, 8u32);
+        let mut buf = vec![255u8; (w * h * 4) as usize];
+        for y in 0..h {
+            for x in 0..w / 2 {
+                let i = ((y * w + x) * 4) as usize;
+                buf[i..i + 3].copy_from_slice(&[0, 0, 0]);
+            }
+        }
+        let saida = |nucleo: BlurKernel| -> Vec<[f32; 4]> {
+            blur_region(
+                &buf,
+                i64::from(w),
+                i64::from(h),
+                0,
+                0,
+                w as usize,
+                h as usize,
+                16,
+                [false, false],
+                nucleo,
+            )
+        };
+        // Quantas colunas ficam entre 10 % e 90 % na linha do meio.
+        let rampa = |out: &[[f32; 4]]| -> usize {
+            (0..w as usize)
+                .filter(|&x| {
+                    let v = out[4 * w as usize + x][0];
+                    (25.5..229.5).contains(&v)
+                })
+                .count()
+        };
+        let (ob, oc) = (saida(BlurKernel::Binomial), saida(BlurKernel::Caixa));
+
+        // CONTROLO — o argumento chegou a ser lido: dois núcleos diferentes não dão a mesma imagem.
+        assert!(
+            ob.iter()
+                .zip(oc.iter())
+                .any(|(a, b)| (a[0] - b[0]).abs() > 1e-3),
+            "as duas saídas são idênticas: o despacho ignorou o núcleo pedido"
+        );
+
+        let (b, c) = (rampa(&ob), rampa(&oc));
+        let d = b.abs_diff(c);
+        assert!(
+            d * 5 <= b,
+            "a caixa tem de borrar o mesmo: rampa {c} contra {b} do binomial"
         );
     }
 }

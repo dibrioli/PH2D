@@ -80,6 +80,10 @@ fn ferramenta(raio: f32) -> PainterTool {
 
 /// Arma a pilha: `ops[i]` ocupa a posição `i` (0 = topo, corre por ÚLTIMO). As posições que sobram
 /// levam Strength `0`, que é como o motor pula uma camada.
+fn pilha_com(t: &mut PainterTool, ops: &[(CompositeOp, f32)]) {
+    pilha(t, ops);
+}
+
 fn pilha(t: &mut PainterTool, ops: &[(CompositeOp, f32)]) {
     t.paint.composite_enabled = !ops.is_empty();
     for pos in 0..3usize {
@@ -384,5 +388,74 @@ fn diag_o_preco_do_tamanho_por_camada() {
         let s = ms(raio, &[(S, 0.5)], false);
         let bl = ms(raio, &[(BL, 0.5)], false);
         eprintln!("  {raio:4.0} | {b:7.2} | {s:7.2} | {bl:7.2}");
+    }
+}
+
+/// SONDA — **o NÚCLEO DE CAIXA no Blur da pilha: quanto mais leve, e quanto mais diferente.**
+///
+/// Ordem do dono (2026-09-20): *«veja se abaixando a qualidade do blur não fica bem mais leve. Mas
+/// só no Blur do composite. O Blur como ferramenta isolada não deve ser modificado.»*
+///
+/// ⭐ **As duas colunas são as duas ROTAS DO PRODUTO, não dois arneses:** o binomial é a ferramenta
+/// Blur isolada (`PaintMode::Blur`, pilha desligada) e a caixa é a pilha com uma camada Blur só —
+/// que, sem Smear na pilha, não paga a dobra. *Medir o núcleo por uma porta de teste mediria uma
+/// função; medi-lo assim mede o que o artista corre.*
+///
+/// As DUAS colunas juntas, porque cada uma sozinha mente: um núcleo mais barato que borre outra
+/// coisa não é «a mesma qualidade mais leve», e uma diferença de imagem sem o relógio ao lado não
+/// diz se valeu a pena. A régua da imagem é o **pior byte** entre as duas saídas e a **média**.
+#[test]
+#[ignore = "diagnóstico de relógio: roda sob demanda, em --release e com a máquina calma"]
+fn diag_o_nucleo_de_caixa_contra_o_binomial() {
+    eprintln!("loadavg {} · canvas {SIZE}² · traço 720 px", carga());
+    eprintln!("  raio | binomial |   caixa | ganho p50 (p10..p90) | pior byte |  media");
+    for raio in [12.0f32, 24.0, 48.0, 96.0] {
+        // Uma rota: pinta uma marca (para o blur ter o que borrar) e depois passa o blur por cima.
+        let corre = |pilha: bool| -> (f64, Vec<u8>) {
+            let mut t = ferramenta(raio);
+            t.paint.composite_enabled = false;
+            traco(&mut t); // a marca, com o pincel normal
+            if pilha {
+                t.paint.composite_enabled = true;
+                pilha_com(&mut t, &[(BL, 1.0)]);
+            } else {
+                t.paint.paint_mode = PaintMode::Blur;
+            }
+            let t0 = Instant::now();
+            traco(&mut t);
+            (t0.elapsed().as_secs_f64() * 1e3, t.canvas_rgba.to_vec())
+        };
+        // ⚠️ **PAREADO:** os dois lados na MESMA iteração, e a estatística é sobre a RAZÃO de cada
+        // par. Tomar `min(B)/min(A)` de corridas separadas é a forma que esta sessão já pagou uma
+        // vez (um marginal de ~10 ms lido como `−0,54`): com uma vizinha a 1110 % de CPU, dois
+        // mínimos de janelas diferentes não são comparáveis.
+        let mut razoes = Vec::with_capacity(CORRIDAS_PAR);
+        let (mut tb0, mut tc0) = (f64::MAX, f64::MAX);
+        let (mut ib, mut ic) = (Vec::new(), Vec::new());
+        for _ in 0..CORRIDAS_PAR {
+            let (tb, b) = corre(false);
+            let (tc, c) = corre(true);
+            razoes.push(tb / tc);
+            tb0 = tb0.min(tb);
+            tc0 = tc0.min(tc);
+            ib = b;
+            ic = c;
+        }
+        razoes.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let q = |f: f64| razoes[((razoes.len() - 1) as f64 * f).round() as usize];
+        let (mut pior, mut soma) = (0i32, 0i64);
+        for (a, b) in ib.iter().zip(ic.iter()) {
+            let d = (i32::from(*a) - i32::from(*b)).abs();
+            pior = pior.max(d);
+            soma += i64::from(d);
+        }
+        #[allow(clippy::cast_precision_loss)]
+        let media = soma as f64 / ib.len() as f64;
+        eprintln!(
+            "  {raio:4.0} | {tb0:8.2} | {tc0:7.2} |   x{:5.2} ({:.2}..{:.2}) | {pior:9} | {media:6.3}",
+            q(0.5),
+            q(0.1),
+            q(0.9)
+        );
     }
 }

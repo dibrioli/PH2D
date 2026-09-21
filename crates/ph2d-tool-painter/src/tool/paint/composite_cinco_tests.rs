@@ -337,3 +337,91 @@ fn a_volta_a_cor_do_pincel_e_alcancavel() {
         "o botão de volta não devolveu a camada à cor do pincel"
     );
 }
+
+/// **O núcleo de CAIXA é do Blur da PILHA, e só dele** (ordem do dono, 2026-09-20: *«só no Blur do
+/// composite; o Blur como ferramenta isolada não deve ser modificado»*).
+///
+/// TRÊS metades, e cada uma sozinha mente:
+/// 1. as duas rotas **discordam** — sem isto a pilha podia estar a usar o binomial em silêncio e o
+///    ganho medido seria de outra coisa;
+/// 2. elas discordam **POUCO** — é esta que torna «baixar a qualidade» uma afirmação e não uma
+///    esperança (medido a `raio 96`: pior byte `1`, média `0,007`);
+/// 3. o `Caixa` é pedido em **UM ficheiro só** de toda a crate da ferramenta — o do laço da pilha —,
+///    a metade que impede a rota isolada de o herdar por descuido amanhã.
+///
+/// ⚠️ A 3.ª é textual **de propósito**: a rota isolada entra por uma porta SEM argumento
+/// ([`super::blur_route::PainterTool::stamp_dabs_blur`]), logo o binomial dela é por CONSTRUÇÃO e
+/// não há barro onde medir a ausência. *Uma ausência prova-se contando os sítios, não olhando.*
+///
+/// ⚠️⚠️ E a agulha é montada em runtime porque **este ficheiro seria ele próprio um acerto** — a
+/// lição do gate auto-referente da escultura (*um censo textual que se lê a si mesmo encontra
+/// sempre o que procura*). A 1.ª redacção esperava `composite.rs` **e este ficheiro**, e reprovou
+/// alto: eu tinha escrito a expectativa como se ele fosse cúmplice e o código já o punha de fora.
+#[test]
+fn o_nucleo_de_caixa_e_do_blur_da_pilha_e_so_dele() {
+    let borra = |pilha: bool| -> Vec<u8> {
+        let mut t = tela();
+        t.paint.composite_enabled = false;
+        traco(&mut t, 100.0); // uma marca para o blur ter o que borrar
+        if pilha {
+            t.paint.composite_enabled = true;
+            arma(&mut t, &[(CompositeOp::Blur, 1.0)]);
+        } else {
+            t.paint.paint_mode = PaintMode::Blur;
+        }
+        traco(&mut t, 100.0);
+        t.canvas_rgba.to_vec()
+    };
+    let (isolado, na_pilha) = (borra(false), borra(true));
+    let pior = isolado
+        .iter()
+        .zip(na_pilha.iter())
+        .map(|(a, b)| i32::from(*a).abs_diff(i32::from(*b)))
+        .max()
+        .unwrap_or(0);
+    assert!(
+        pior > 0,
+        "as duas rotas dão a MESMA imagem — a pilha não trocou de núcleo"
+    );
+    assert!(
+        pior <= 8,
+        "a caixa tinha de borrar quase o mesmo e o pior byte é {pior}"
+    );
+
+    // 3.ª metade — o censo do alcance. ⚠️ A agulha é montada em runtime porque este ficheiro seria
+    // ele próprio um acerto (a lição do gate auto-referente da escultura).
+    let agulha = concat!("BlurKernel", "::", "Caixa");
+    let mut sitios = Vec::new();
+    for e in walk_rs(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src")) {
+        let txt = std::fs::read_to_string(&e).unwrap_or_default();
+        if txt.contains(agulha) {
+            sitios.push(e.file_name().unwrap().to_string_lossy().to_string());
+        }
+    }
+    sitios.sort();
+    assert_eq!(
+        sitios,
+        vec!["composite.rs".to_string()],
+        "o núcleo de caixa só pode ser pedido dentro do laço da pilha (e nomeado aqui)"
+    );
+}
+
+/// Varre os `.rs` de uma árvore — o instrumento do censo acima.
+fn walk_rs(raiz: std::path::PathBuf) -> Vec<std::path::PathBuf> {
+    let mut fora = Vec::new();
+    let mut pilha = vec![raiz];
+    while let Some(d) = pilha.pop() {
+        let Ok(rd) = std::fs::read_dir(&d) else {
+            continue;
+        };
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                pilha.push(p);
+            } else if p.extension().is_some_and(|x| x == "rs") {
+                fora.push(p);
+            }
+        }
+    }
+    fora
+}

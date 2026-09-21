@@ -11,13 +11,24 @@
 
 use super::{Region, union_region};
 use crate::tool::PainterTool;
-use ph2d_painter_brush::{BrushSpec, Dab};
+use ph2d_painter_brush::{BlurKernel, BrushSpec, Dab};
 
 impl PainterTool {
     /// Blur every dab's footprint into `canvas_rgba`, routed like the paint path (see the module doc).
     /// Blur amount = brush Strength × per-dab coverage (pressure). The engine snapshots each dab's
     /// neighbourhood before writing, so overlapping read/write never feeds back within a dab.
     pub(super) fn stamp_dabs_blur(&mut self, dabs: &[Dab], w: u32, h: u32) {
+        self.stamp_dabs_blur_com(dabs, w, h, BlurKernel::Binomial);
+    }
+
+    /// O mesmo passe com o NÚCLEO escolhido por quem chama.
+    ///
+    /// ⚠️ **Duas portas e não uma bandeira, e é ordem do dono** (2026-09-20: *«só no Blur do
+    /// composite; o Blur como ferramenta isolada não deve ser modificado»*): a porta de cima é a da
+    /// ferramenta isolada e crava o binomial, logo o caminho dela é **byte-idêntico por
+    /// construção** — não por alguém se lembrar de passar o argumento certo. Um chamador novo tem
+    /// de escolher, e o que ele escolher fica escrito no sítio da chamada.
+    pub(super) fn stamp_dabs_blur_com(&mut self, dabs: &[Dab], w: u32, h: u32, nucleo: BlurKernel) {
         if dabs.is_empty() {
             return;
         }
@@ -129,6 +140,7 @@ impl PainterTool {
                         m,
                         amount,
                         tiling,
+                        nucleo,
                     )
                 } else if want_grain {
                     ph2d_painter_brush::blur_blit_grain(
@@ -147,6 +159,7 @@ impl PainterTool {
                         grain_tone.as_deref(),
                         amount,
                         tiling,
+                        nucleo,
                     )
                 } else {
                     ph2d_painter_brush::blur_dab(
@@ -160,6 +173,7 @@ impl PainterTool {
                         },
                         amount,
                         tiling,
+                        nucleo,
                     )
                 };
                 if let Some(r) = dirty {

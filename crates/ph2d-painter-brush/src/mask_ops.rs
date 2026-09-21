@@ -133,6 +133,7 @@ fn blur_whole(buf: &mut [u8], w: u32, h: u32, k: usize) {
         h as usize,
         k,
         [false, false],
+        crate::blur::BlurKernel::Binomial,
     );
     for (i, px) in blurred.iter().enumerate() {
         let v = (0.299 * px[0] + 0.587 * px[1] + 0.114 * px[2])
@@ -158,6 +159,7 @@ fn sharpen_whole(buf: &mut [u8], w: u32, h: u32, k: usize) {
         h as usize,
         k,
         [false, false],
+        crate::blur::BlurKernel::Binomial,
     );
     for (i, px) in blurred.iter().enumerate() {
         let o = luma(buf, i * 4);

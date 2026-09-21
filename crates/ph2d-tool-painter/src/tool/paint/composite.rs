@@ -460,8 +460,21 @@ impl PainterTool {
                     // canvas, e o render do smear do batch seguinte reescreve a região a partir de
                     // `pre` — que nunca viu o blur. O resultado era o blur DESFEITO dentro da região
                     // renderizada e vivo fora dela, com a união de rects como fronteira.
-                    self.lay_into_smear_base(|t| t.stamp_dabs_blur(dabs, w, h));
-                    self.stamp_dabs_blur(dabs, w, h);
+                    //
+                    // ⭐ **E aqui — e SÓ aqui — o núcleo é o de CAIXA** (ordem do dono, 2026-09-20:
+                    // *«veja se abaixando a qualidade do blur não fica bem mais leve; mas só no
+                    // Blur do composite»*). A ferramenta Blur isolada entra pela porta sem
+                    // argumento, que crava o binomial. O preço e a diferença de imagem estão
+                    // medidos no gate `o_nucleo_de_caixa_do_composite`.
+                    // ⚠️ UM nome, dois chamadores: escrito duas vezes, o dia em que um deles mudasse
+                    // deixava a base do smear a receber um borrão de outra lei — e as duas metades
+                    // de um mesmo depósito divergiriam em silêncio.
+                    const NUCLEO: ph2d_painter_brush::BlurKernel =
+                        ph2d_painter_brush::BlurKernel::Caixa;
+                    self.lay_into_smear_base(|t| {
+                        t.stamp_dabs_blur_com(dabs, w, h, NUCLEO);
+                    });
+                    self.stamp_dabs_blur_com(dabs, w, h, NUCLEO);
                 }
             }
             std::mem::swap(

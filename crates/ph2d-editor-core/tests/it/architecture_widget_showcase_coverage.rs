@@ -25,6 +25,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (file slug under `widget/`, one-line reason).
 const WIDGET_OPT_OUT: &[(&str, &str)] = &[
     (
+        "composto",
+        "nao e' um widget: e' o CENSO dos controlos COMPOSTOS (2026-09-21). Ele nao pinta um pixel e nao tem estado — os pintores canonicos (`paint_segmented_group{,_adaptive}`, `paint_bitmask_grid32`) declaram nele o GRUPO das suas celulas, e so' quando um gate o arma. Nasceu porque o censo das entradas por painel contava cada opcao de um selector como um COMANDO: o Inspector lia 314 e tem 150, e o `3D Model` lia 39 e tem 1. A galeria mostra os widgets que o consomem (o `SegmentedAdaptive` e o `BitmaskGrid32`); a lei dele prova-se em `quantas_entradas_tem_cada_painel::os_pintores_de_composto_declaram_o_grupo`, que mede o PRODUTO.",
+    ),
+    (
         "segmented_layout",
         "nao e' um widget: e' a LEI DA DISPOSICAO do grupo segmentado (quantas pecas por fileira e que largura tem cada uma), lida pelo pintor de chrome e pelo medidor de altura. Ela nao pinta um pixel nem tem controlo proprio — quem a galeria mostra e' o `SegmentedAdaptive`, que a consome. Nasceu em 2026-09-19 do CORTE por responsabilidade que o tecto de 500 LOC daquele ficheiro impos.",
     ),

@@ -52,7 +52,7 @@
 - ⭐⭐ [A CARA de um app é a tabela de tokens, não os widgets — redesenhar 44 pintores com a mesma pele deixa «a mesma cara»; comece pelos 5 números](feedback_the_face_of_an_app_is_its_token_table_not_its_widgets.md)
 - ⛔ [Gesto escrito em DUAS metades aceita a variante nova em SÓ UMA — silêncio absoluto, e a fixtura que chama a porta interna fica verde](feedback_a_gesture_written_in_two_halves_accepts_a_new_variant_in_only_one.md)
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
-- 📚 [Comunicação & decisão: mais (55) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
+- 📚 [Comunicação & decisão: mais (56) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
 
 ## Git & colisão multi-agente
 - [Perigos de git/edição (15)](reference_topic_git_hazards.md)

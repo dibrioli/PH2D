@@ -30,6 +30,7 @@ pub const MOD_END: &str = "// <ph2d-widget-sync:end>";
 /// widget = append here (Coord-A decision — most widgets are private).
 const PUB_MODULE_OVERRIDE: &[&str] = &[
     "command_palette",
+    "composto",
     "panel_chrome",
     "section_cards",
     "showcase",
@@ -44,6 +45,10 @@ const PUB_MODULE_OVERRIDE: &[&str] = &[
 // entao achata-lo colidiria com o `chrome::paint_command_palette`, que e outra funcao.
 // A decisao ja tinha sido tomada pela linha; o que faltava era registra-la AQUI, onde o bloco
 // gerado nasce — editar a SAIDA do gerador e o que deixa o gate de staleness vermelho.
+// `composto` entra pelo MESMO criterio: ele nao e' um widget, e' o CENSO dos controlos compostos
+// (2026-09-21), e quem o usa alcanca sub-caminhos dele direto (`composto::medindo`,
+// `::grupos`). ⚠️ Achata-lo poria um `medindo` e um `grupos` genericos no `widget::`, ao lado dos
+// homonimos do censo de elisoes — e o nome do modulo e' metade da frase que ele diz.
 
 /// Scan widget dir for `*.rs` files (excluding `mod.rs`). Returns
 /// stems (snake_case), sorted alphabetically.

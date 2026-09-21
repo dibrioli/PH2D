@@ -24,6 +24,7 @@ mod color_picker;
 mod color_swatch;
 mod combobox;
 pub mod command_palette;
+pub mod composto;
 mod context_menu;
 mod divider;
 mod dropdown;

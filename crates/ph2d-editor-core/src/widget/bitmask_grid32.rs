@@ -120,6 +120,9 @@ pub fn paint_bitmask_grid32(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    // ⭐ **As 32 células são UM controlo** (uma máscara), e era esta grelha que sozinha punha
+    //    `32` comandos na dívida do Inspector — ver [`crate::widget::composto`].
+    crate::widget::composto::grupo(grid.bit_ids);
     for bit in 0..32usize {
         let rect = BitmaskGrid32::cell_rect(origin_x, origin_y, w, cell_h, bit);
         let checked = grid.enabled && grid.is_set(bit);

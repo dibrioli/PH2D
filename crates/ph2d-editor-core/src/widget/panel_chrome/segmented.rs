@@ -171,6 +171,9 @@ pub fn paint_segmented_group(
     if n == 0 {
         return;
     }
+    // ⭐ **Uma fileira segmentada é UM controlo** — ver [`crate::widget::composto`]. Desarmado
+    //    isto é um `Cell::get` e um `return`.
+    crate::widget::composto::grupo(segments.iter().map(|(_, _, id)| *id));
     // ⭐⭐ **Uma fileira de irmãos ENCOSTA, e só as pontas de fora arredondam** — a lei do Blender.
     for (i, (rect_i, cell)) in crate::widget::segment_rects(rect, n)
         .into_iter()
@@ -220,6 +223,9 @@ pub fn paint_segmented_group_adaptive(
     if n == 0 {
         return 0.0;
     }
+    // ⭐ **Uma fileira segmentada é UM controlo** — ver [`crate::widget::composto`]. Desarmado
+    //    isto é um `Cell::get` e um `return`.
+    crate::widget::composto::grupo(segments.iter().map(|(_, _, id)| *id));
     let _gap = segmented_gap();
     let labels: Vec<&str> = segments.iter().map(|(l, _, _)| *l).collect();
     let widths = crate::widget::segmented_layout::segmented_natural_widths(&labels, text_system);

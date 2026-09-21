@@ -108,6 +108,13 @@ struct Contagem {
     outros: usize,
     /// ⚠️ Pintado e hit-indexado, **sem estado no store**. Ver [`conta`].
     orfaos: usize,
+    /// ⭐ **Células de composto que foram COLAPSADAS** — ver [`conta`]. Elas não entram no
+    /// [`Contagem::total`] (um selector é UM controlo), e ficam guardadas porque a triagem que o
+    /// dono fez em 2026-09-01 contou **alvos de toque**: sem este número a régua nova não
+    /// consegue reproduzir o dele, e o controlo dela morre.
+    celulas: usize,
+    /// Quantos grupos de composto foram contados — o par do [`Contagem::celulas`].
+    grupos: usize,
     /// ⭐⭐⭐ **Até onde o painel pinta**, em píxeis — o fundo do rectângulo mais baixo.
     ///
     /// É a grandeza que o DONO sente: o degrau `G` abriu com um report dele de 2026-08-27
@@ -119,6 +126,16 @@ struct Contagem {
 impl Contagem {
     fn total(&self) -> usize {
         self.comandos + self.valores + self.outros + self.orfaos
+    }
+
+    /// ⭐ **A grandeza da triagem de 2026-09-01: ALVOS DE TOQUE.** Cada célula de um composto
+    /// conta por si, que é o que o dono contou quando triou o `3D Model` em `74`.
+    ///
+    /// ⚠️ Ela existe **só** para o controlo da régua: a `D2` pergunta *«esta coisa no ecrã é um
+    /// comando ou uma propriedade?»*, e um selector é UMA coisa. *Duas grandezas com o mesmo nome
+    /// é como uma régua deixa de ser comparável consigo própria.*
+    fn alvos(&self) -> usize {
+        self.total() - self.grupos + self.celulas
     }
 }
 
@@ -163,9 +180,45 @@ fn classifica(c: &mut Contagem, s: &InteractiveState) {
 fn conta(
     store: &ph2d_editor_core::interaction::WidgetStore,
     pintados: &[(NodeId, Rect)],
+    grupos: &[Vec<NodeId>],
 ) -> Contagem {
     let mut c = Contagem::default();
+
+    // ⭐⭐⭐ **UM CONTROLO COMPOSTO É UM, e isto desmentiu o número que ordenava esta lista.**
+    //
+    // Um selector de N opções e uma máscara de 32 bits são pintados como N `Button`, logo a
+    // classificação por SUBSTRATO contava-os como N **comandos**. Medido em 2026-09-21 no
+    // Inspector: dos `60` do bloco base, `32` eram as camadas de colisão (UMA grelha), `9` os
+    // tipos de junta (UMA escolha) e `~14` outros selectores — **`5` eram comandos a sério**.
+    // ⇒ *o painel que mais usa selectores liderava a dívida por causa disso*, e a `D2` teria
+    // mandado uma máscara de bits para a barra do topo.
+    //
+    // ⚠️ **Quem sabe é QUEM PINTA**, e não a fonte: a regra barata (*«array = célula, escalar =
+    // comando»*) foi medida e falha nos DOIS sentidos — `INSP_ORDER_SP_*` são três escalares que
+    // formam um selector, e `INSP_INSTANCE_DROP_ORPHAN` é um array que é uma LISTA. ⇒ os pintores
+    // canónicos declaram o grupo ([`ph2d_editor_core::widget::composto`]).
+    //
+    // ⛔ E ele conta como **VALOR**: escolher uma opção é dizer QUANTO, não FAZER.
+    let mut celula: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
+    for g in grupos {
+        // ⚠️ Só conta o grupo que de facto foi PINTADO neste estado — um selector registado e
+        //    não desenhado não está no ecrã, e esta régua mede o ecrã.
+        if g.iter().any(|id| pintados.iter().any(|(p, _)| p == id)) {
+            c.valores += 1;
+            c.grupos += 1;
+        }
+        for id in g {
+            celula.insert(id.0);
+        }
+    }
+
     for (id, r) in pintados {
+        if celula.contains(&id.0) {
+            // A altura de uma célula continua a contar — o controlo ocupa o ecrã.
+            c.altura = c.altura.max(r.y + r.h);
+            c.celulas += 1;
+            continue;
+        }
         match store.get(*id) {
             Some(s) => {
                 classifica(&mut c, s);
@@ -238,9 +291,12 @@ fn censo() -> Vec<Linha> {
 
             let mut host = MockPanelHost::new();
             painel.populate(host.store_mut());
-            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            // ⭐ A pintura corre DENTRO do censo dos compostos — ver [`conta`].
+            let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
+                let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            });
             let pintados = host.registos_da_ultima_pintura();
-            let vazio = conta(host.store(), &pintados);
+            let vazio = conta(host.store(), &pintados, &grupos);
 
             // ⚠️ **Armar vem ANTES do `populate`**, e não é ordem de conveniência: as `populate_*`
             // das secções condicionais semeiam-se da informação publicada, logo um `populate`
@@ -252,9 +308,11 @@ fn censo() -> Vec<Linha> {
                     let mut host = MockPanelHost::new();
                     (arm.arma)(host.store_mut());
                     painel.populate(host.store_mut());
-                    let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+                    let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
+                        let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+                    });
                     let pintados = host.registos_da_ultima_pintura();
-                    let c = conta(host.store(), &pintados);
+                    let c = conta(host.store(), &pintados, &grupos);
                     // ⛔ O estado que uma fixtura deixa para trás é o estado que a régua seguinte
                     //    mede — estas portas são `thread_local`.
                     (arm.desarma)();
@@ -266,8 +324,15 @@ fn censo() -> Vec<Linha> {
             //   haver um documento na mão.
             let mut host = MockPanelHost::new();
             painel.populate(host.store_mut());
-            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT_CURTA);
-            let curta = conta(host.store(), &host.registos_da_ultima_pintura()).altura;
+            let (_, grupos_curta) = ph2d_editor_core::widget::composto::medindo(|| {
+                let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT_CURTA);
+            });
+            let curta = conta(
+                host.store(),
+                &host.registos_da_ultima_pintura(),
+                &grupos_curta,
+            )
+            .altura;
 
             out.push(Linha {
                 painel: id,
@@ -377,12 +442,32 @@ fn o_painel_ja_triado_reproduz_o_numero_da_triagem() {
         .iter()
         .find(|l| l.painel == "model3d")
         .expect("o painel `3D Model` tem de estar no registo");
-    let n = m3d.cheia().total();
+    let c = m3d.cheia();
+    // ⚠️⚠️ **A PREMISSA deste gate mudou em 2026-09-21, e as duas metades dizem porquê.**
+    //
+    // Ele comparava o `total()` com os `~57` da triagem de 2026-09-01 e passou a ler `21`, porque
+    // a régua aprendeu que **um controlo COMPOSTO é um** (as células de um selector deixaram de
+    // contar uma a uma). ⛔ Alargar a banda seria matar o controlo: ele existe para dizer que esta
+    // régua ainda vê o painel.
+    //
+    // ⇒ a metade velha fica INTACTA sobre a grandeza que a triagem usou — **alvos de toque** — e
+    // a metade nova afirma a diferença, que é a razão de a wave existir. *Uma régua que troca de
+    // grandeza tem de conseguir reproduzir a antiga, senão ninguém consegue saber se ela melhorou
+    // ou se se partiu.*
+    let alvos = c.alvos();
     assert!(
-        (40..=90).contains(&n),
-        "o controlo da régua falhou: o `3D Model` lê {n} entradas, e a triagem de 2026-09-01 \
-         deixou-o em ~57 (74 − 17). Ou o painel mudou, ou esta régua deixou de medir o que \
-         mede.{}",
+        (40..=90).contains(&alvos),
+        "o controlo da régua falhou: o `3D Model` lê {alvos} ALVOS DE TOQUE, e a triagem de \
+         2026-09-01 deixou-o em ~57 (74 − 17). Ou o painel mudou, ou esta régua deixou de medir o \
+         que mede.{}",
+        tabela(&linhas),
+    );
+    assert!(
+        c.total() < alvos,
+        "o `3D Model` lê o mesmo nas duas grandezas ({} controlos contra {alvos} alvos) — então \
+         ou ele deixou de ter um único selector, ou os pintores canónicos deixaram de declarar o \
+         grupo e a régua voltou a contar célula a célula.{}",
+        c.total(),
         tabela(&linhas),
     );
 }
@@ -517,7 +602,7 @@ fn diag_onde_caem_as_seccoes_da_escultura() {
                 .collect();
             linhas.sort_by(|a, b| a.0.total_cmp(&b.0));
 
-            let fundo = conta(host.store(), &pintados).altura;
+            let fundo = conta(host.store(), &pintados, &[]).altura;
             println!(
                 "\n  === o painel da ESCULTURA — {nome_do_estado} (dobra = {DOBRA:.0} px) ==="
             );
@@ -651,4 +736,257 @@ fn diag_o_que_come_a_seccao_tool_da_escultura() {
             "  → {somado} chips em famílias nomeadas, de {total_na_seccao} rectângulos na secção\n"
         );
     });
+}
+
+/// SONDA TEMPORÁRIA — de que SECÇÃO são as 707 entradas do Inspector.
+#[test]
+#[ignore]
+fn diag_de_quem_sao_as_entradas_do_inspector() {
+    use ph2d_tool_registry::hash_node_id_runtime;
+    use std::collections::BTreeMap;
+    let h = |s: &str| hash_node_id_runtime(s).0;
+
+    // ⭐ O mapa `NodeId -> secção` é DERIVADO: cada secção do Inspector tem o SEU ficheiro de ids,
+    //   e cada id nasce de `hash_node_id("<literal>")`. Nenhuma lista escrita à mão.
+    let dir = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../ph2d-panel-inspector/src/ids"
+    );
+    let mut nome: BTreeMap<u64, (String, String)> = BTreeMap::new();
+    for e in std::fs::read_dir(dir).expect("os ids do inspector") {
+        let p = e.expect("entrada").path();
+        let Some(f) = p.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        let seccao = f
+            .trim_start_matches("inspector_")
+            .trim_start_matches("inspector")
+            .to_string();
+        let seccao = if seccao.is_empty() {
+            "(base)".to_string()
+        } else {
+            seccao
+        };
+        let src = std::fs::read_to_string(&p).expect("ler ids");
+        for pedaco in src.split("hash_node_id(\"").skip(1) {
+            if let Some(lit) = pedaco.split('"').next() {
+                nome.insert(h(lit), (seccao.clone(), lit.to_string()));
+            }
+        }
+    }
+    println!("ids declarados por literal: {}", nome.len());
+
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "inspector")
+            .expect("o inspector tem de estar no registo");
+        let arm = super::paineis_armados::TABELA
+            .iter()
+            .find(|a| a.painel == "inspector")
+            .expect("o inspector tem armação");
+        let mut host = MockPanelHost::new();
+        (arm.arma)(host.store_mut());
+        painel.populate(host.store_mut());
+        let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        let pintados = host.registos_da_ultima_pintura();
+        let store = host.store();
+
+        let mut por_seccao: BTreeMap<String, Contagem> = BTreeMap::new();
+        let mut sem_nome = 0usize;
+        let mut orfaos: Vec<(String, String)> = Vec::new();
+        for (id, _r) in &pintados {
+            let (seccao, lit) = match nome.get(&id.0) {
+                Some(v) => v.clone(),
+                None => {
+                    sem_nome += 1;
+                    ("(id sem literal)".to_string(), String::new())
+                }
+            };
+            let c = por_seccao.entry(seccao.clone()).or_default();
+            match store.get(*id) {
+                Some(s) => classifica(c, s),
+                None => {
+                    c.orfaos += 1;
+                    orfaos.push((seccao, lit));
+                }
+            }
+        }
+        (arm.desarma)();
+
+        // ⭐⭐ A ALTURA por secção — a grandeza que o dono SENTE (o degrau `G` abriu com um
+        //    report dele sobre barra de rolagem, não com uma contagem).
+        let mut faixa: BTreeMap<String, (f32, f32)> = BTreeMap::new();
+        for (id, r) in &pintados {
+            let sec = nome
+                .get(&id.0)
+                .map_or_else(|| "(id sem literal)".to_string(), |v| v.0.clone());
+            let e = faixa.entry(sec).or_insert((f32::MAX, f32::MIN));
+            e.0 = e.0.min(r.y);
+            e.1 = e.1.max(r.y + r.h);
+        }
+        let altura = |s: &str| faixa.get(s).map_or(0.0, |f| f.1 - f.0);
+        let mut linhas: Vec<(&String, &Contagem)> = por_seccao.iter().collect();
+        linhas.sort_by(|a, b| altura(b.0).total_cmp(&altura(a.0)));
+        println!(
+            "\n  secção                comandos  valores  cromo  órfãos  total   altura  dobras"
+        );
+        for (s, c) in &linhas {
+            let h = altura(s);
+            println!(
+                "  {:22} {:8} {:8} {:6} {:7} {:6} {:8.0} {:6.1}",
+                s,
+                c.comandos,
+                c.valores,
+                c.outros,
+                c.orfaos,
+                c.total(),
+                h,
+                h / DOBRA
+            );
+        }
+        println!("\n  pintados sem literal conhecido: {sem_nome}");
+
+        // ⭐ O QUE são os comandos das secções pesadas — a D2 corta por ÂMBITO, e o âmbito
+        //   lê-se no nome do gesto, nunca na contagem.
+        let mut cmds: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for (id, _r) in &pintados {
+            if let (
+                Some((sec, lit)),
+                Some(ph2d_editor_core::interaction::InteractiveState::Button { .. }),
+            ) = (nome.get(&id.0), store.get(*id))
+            {
+                cmds.entry(sec.clone()).or_default().push(lit.clone());
+            }
+        }
+        for sec in [
+            "(base)",
+            "physics_body",
+            "tween",
+            "joint",
+            "path_follow",
+            "anim",
+            "sampling",
+        ] {
+            if let Some(v) = cmds.get(sec) {
+                let mut v = v.clone();
+                v.sort();
+                println!(
+                    "\n  [{sec}] {} comandos:\n    {}",
+                    v.len(),
+                    v.join("\n    ")
+                );
+            }
+        }
+        println!("\n  ÓRFÃOS (pintado + hit-indexado, SEM estado no store):");
+        let mut por_sec: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for (s, l) in orfaos {
+            por_sec.entry(s).or_default().push(l);
+        }
+        for (s, mut ls) in por_sec {
+            ls.sort();
+            println!("   {s}: {} -> {}", ls.len(), ls.join(", "));
+        }
+    });
+}
+
+/// ⭐⭐⭐ **OS PINTORES CANÓNICOS DECLARAM O GRUPO — e desarmado não custa nada.**
+///
+/// ⛔⛔ Sem isto, um selector de N opções entra na dívida N vezes e uma máscara de 32 bits entra
+/// 32 — foi assim que o Inspector chegou a `314` comandos quando tem `150`, e que o `3D Model`
+/// leu `39` quando tem **`1`**. *A `D2` teria mandado uma máscara de bits para a barra do topo.*
+///
+/// ⚠️ **As duas metades são obrigatórias.** A primeira mede que o censo VÊ; a segunda que ele é
+/// **mudo** quando ninguém o arma — sem ela, o caminho do produto passaria a alocar um `Vec` por
+/// composto **por quadro**, que é o vazamento que o `leak_key` do `ph2d-i18n` já custou a esta casa.
+#[test]
+fn os_pintores_de_composto_declaram_o_grupo() {
+    use ph2d_editor_core::widget::composto;
+
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let (grupos, soltos, contagem): (Vec<Vec<NodeId>>, usize, Contagem) =
+        ph2d_editor_core::panel::with_registry(|reg| {
+            let painel = reg
+                .panels_mut()
+                .iter_mut()
+                .find(|p| p.manifest.id == "inspector")
+                .expect("o inspector tem de estar no registo");
+            let arm = super::paineis_armados::TABELA
+                .iter()
+                .find(|a| a.painel == "inspector")
+                .expect("o inspector tem armação");
+
+            let mut host = MockPanelHost::new();
+            (arm.arma)(host.store_mut());
+            painel.populate(host.store_mut());
+            let (_, grupos) = composto::medindo(|| {
+                let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            });
+
+            // ⭐ O CONTROLO: a MESMA pintura, com o censo DESARMADO.
+            //
+            // ⚠️⚠️ **A pergunta é «ACRESCENTOU?», não «está vazio?»** — e a 1.ª redacção perguntou a
+            //    segunda e reprovou sobre produto correcto. O `grupos()` devolve *o que foi registado
+            //    desde o `arma`*, e o `medindo` só esvazia ao ARMAR: depois dele a lista ainda tem os
+            //    39 grupos da corrida armada, e lê-la a seguir a uma pintura desarmada mede a corrida
+            //    anterior. *Um censo com memória mede-se pelo DELTA, nunca pelo valor.*
+            // ⭐⭐ E o que o CENSO fez com eles — sem isto, uma mutação que declare o grupo e depois
+            //    não o conte passa despercebida (medido: ela SOBREVIVEU à 1.ª redacção deste gate).
+            let pintados = host.registos_da_ultima_pintura();
+            let contagem = conta(host.store(), &pintados, &grupos);
+
+            let antes = composto::grupos().len();
+            let mut host2 = MockPanelHost::new();
+            (arm.arma)(host2.store_mut());
+            painel.populate(host2.store_mut());
+            let _ = host2.medindo_a_pintura_do_registo(painel, VIEWPORT);
+            let depois = composto::grupos().len();
+            (arm.desarma)();
+            (grupos, depois - antes, contagem)
+        });
+
+    assert_eq!(
+        soltos, 0,
+        "o censo registou {soltos} grupos com o produto DESARMADO — o caminho do produto está a \
+         pagar uma alocação por composto, por quadro"
+    );
+
+    // ⭐⭐⭐ **E um grupo conta como UM VALOR.** ⛔ Sem esta metade, um censo que declare os
+    //    grupos e depois os conte como ZERO passa — e o painel some da dívida em vez de aparecer
+    //    com o número certo. *Declarar e CONTAR são duas coisas, e a mutação provou-o.*
+    let pintados_em_grupo = grupos.iter().filter(|g| !g.is_empty()).count();
+    assert!(
+        contagem.grupos > 0 && contagem.grupos <= pintados_em_grupo,
+        "o censo contou {} grupos de {pintados_em_grupo} declarados — ou ele deixou de os contar, \
+         ou está a contar grupos que ninguém declarou",
+        contagem.grupos
+    );
+    assert!(
+        contagem.valores >= contagem.grupos,
+        "o censo contou {} grupos e só {} valores — um selector é um VALOR, e se ele não entrar \
+         ali o painel encolhe na dívida sem uma linha ter mudado",
+        contagem.grupos,
+        contagem.valores
+    );
+
+    // ⭐ A MÁSCARA: as 32 camadas de colisão são UM controlo. ⛔ O número é o do modelo
+    //   (`BitmaskGrid32` tem 32 células por construção), nunca um limiar escolhido.
+    assert!(
+        grupos.iter().any(|g| g.len() == 32),
+        "nenhum grupo de 32 células — a grelha de bits das camadas de colisão deixou de se \
+         declarar, e ela sozinha põe 32 comandos na dívida deste painel. Grupos: {:?}",
+        grupos.iter().map(Vec::len).collect::<Vec<_>>()
+    );
+    // ⭐ E as FILEIRAS SEGMENTADAS: o Inspector tem-nas às dúzias (tipo de junta, recorte,
+    //   máscara, ordenação, formato…). ⛔ O piso é `2` porque um selector de UMA opção não existe.
+    let fileiras = grupos.iter().filter(|g| (2..32).contains(&g.len())).count();
+    assert!(
+        fileiras >= 10,
+        "só {fileiras} fileiras segmentadas declaradas — o pintor canónico
+         (`paint_segmented_group_adaptive`) deixou de declarar o grupo, e o censo volta a contar \
+         cada opção como um comando. Grupos: {:?}",
+        grupos.iter().map(Vec::len).collect::<Vec<_>>()
+    );
 }

@@ -106,6 +106,10 @@ panel-widget-lab = ["dep:ph2d-panel-widget-lab"]
 # <ph2d-panel-sync:features:end>
 
 [dev-dependencies]
+# ⭐ Só para a SONDA `diag_de_quem_sao_as_entradas_do_inspector`, que refaz o mapa
+#    `NodeId -> literal` a partir da fonte dos ids. ⛔ Sem isto ela teria de copiar o FNV-1a,
+#    e uma lei escrita em dois sítios ainda não é uma lei.
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # ⭐ A varredura das elisões (`nenhum_rotulo_do_app_pinta_nada`) pinta TODO painel do registo
 # pela porta do arnês. ⚠️ Aresta de DEV: o `architecture_cycle_prevention` lê `[dependencies]`.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

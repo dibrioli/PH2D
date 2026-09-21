@@ -1022,6 +1022,121 @@ pendente desta linha.**
 
 ---
 
+## §9-octies — ⛔⛔⛔ *«ataque o inspector»* — e o número que o punha no topo era uma MIRAGEM
+
+> *«ataque o inspector»* — Enio, 2026-09-21.
+
+### Passo zero: a superfície de colisão, medida NO DIA
+
+O §7.3 avisava que o Inspector é escrito em boa parte pela `line/components`, **viva**, e que *«a
+pergunta tem de ser refeita no dia»*. Refeita:
+
+| linha | commits | ficheiros | tocam o Inspector |
+|---|---:|---:|---:|
+| **`line/components`** | `23` | `147` | **`58`** |
+| `line/Vector` · `line/sculpt3d` · `line/3DModeling` · `line/motion-value` · `line/PainterWatercolor` | — | — | **`0`** |
+
+⭐ **Mas os `58` são secções NOVAS** (arma · abanão · script · HUD · contador · gatilho): `6`
+ficheiros de ids e `7` de secção. Cruzado com a dívida, elas valem **`24` dos `314` comandos
+(`7,6 %`)**. *A colisão existe, é pequena e está nomeada.*
+
+### ⛔⛔ E então a medição derrubou a premissa da wave
+
+Os `314` que puseram o Inspector no topo **não são `314` comandos**. Olhados um a um, os `60` do
+bloco base são:
+
+| o que são | quantos |
+|---|---:|
+| `insp_vis_layer_bit_0..31` — as **32 camadas de colisão**, que são UMA grelha de bits | `32` |
+| `insp_phys_join_kind_*` — **uma escolha** entre 9 tipos de junta | `9` |
+| `insp_vis_mask_*` · `insp_vis_clip_*` · `insp_order_sp_*` · `insp_render_*` — selectores | `~14` |
+| **comandos a sério** (`transform_reset` · `join_draw` · `rig` · `corner_equalize` · `on_screen`) | **`5`** |
+
+⭐⭐⭐ **E o PRODUTO está certo:** as 32 camadas são pintadas por um widget só
+([`BitmaskGrid32`](../../../crates/ph2d-editor-core/src/widget/bitmask_grid32.rs)), com o valor a
+vir do documento; os 32 ids são **alvos de toque** de um controlo. *Quem mente é o censo* — ele
+classifica pelo SUBSTRATO, e um `InteractiveState::Button` é um comando. ⇒ **um painel de
+PROPRIEDADES, que é o que mais usa selectores, lidera a dívida por causa disso**, e a `D2` teria
+mandado uma máscara de bits para a barra do topo.
+
+### ⛔ A regra BARATA foi tentada e falha nos DOIS sentidos
+
+*«um id dentro de um ARRAY é célula; um `const` escalar é comando»* — medido:
+`INSP_ORDER_SP_CENTER`/`_PIVOT`/`_CUSTOM` são **três escalares** que formam um selector, e
+`INSP_INSTANCE_DROP_ORPHAN: [NodeId; N]` é um **array que é uma LISTA** de botões distintos. ⇒ a
+fonte não sabe responder: **quem sabe é quem PINTA**.
+
+### ⭐⭐ A cura: os pintores canónicos declaram o grupo
+
+[`ph2d_editor_core::widget::composto`](../../../crates/ph2d-editor-core/src/widget/composto.rs), no
+molde do censo de elisões: **armado mede, desarmado é um `Cell::get` e um `return`**. Três ganchos
+cobrem o app inteiro — `paint_segmented_group`, `paint_segmented_group_adaptive` e
+`paint_bitmask_grid32`. ⭐ **As 12 cópias locais de «fileira segmentada» não foram tocadas:** elas
+são embrulhos finos por cima do funil, e foi isso que tornou a wave pequena.
+
+### O que a régua corrigida diz
+
+| painel | antes | **agora** | |
+|---|---:|---:|---|
+| `inspector` | `314` | **`150`** | continua no topo, agora com um número honesto |
+| `tokens` | `110` | `110` | não usa compostos |
+| `physics` | `60` | `49` | |
+| `sculpt3d` | `102` | **`36`** | |
+| `vector` | `45` | `24` | |
+| **`model3d`** | `39` | **`1`** | ⭐ era **quase só** selectores |
+| **TOTAL** | `918` | **`610`** | |
+
+⇒ *a ordem da fila mudou*, e o `model3d` — que uma wave teria «triado» — não tem dívida nenhuma.
+
+### ⚠️⚠️ O gate de CONTROLO reprovou, e não foi afrouxado
+
+O `o_painel_ja_triado_reproduz_o_numero_da_triagem` amarra a régua à triagem que o **dono** fez em
+2026-09-01 (`~57` entradas no `3D Model`). Com os compostos colapsados ele lê **`21`** e reprovou.
+
+⛔ **Alargar a banda mataria o controlo.** A triagem contou **ALVOS DE TOQUE** e a régua nova conta
+**CONTROLOS** — são duas grandezas. ⇒ a `Contagem` passa a saber as duas (`total()` e `alvos()`), a
+metade velha fica **intacta** sobre a grandeza antiga, e a metade nova afirma que elas **diferem**.
+*Uma régua que troca de grandeza tem de conseguir reproduzir a antiga, senão ninguém sabe se ela
+melhorou ou se se partiu.*
+
+### ⚠️ E DUAS mutações acharam buracos no meu próprio gate
+
+- **declarar ≠ contar:** um censo que declare o grupo e o conte como ZERO passava — o painel some
+  da dívida sem uma linha mudar. ⇒ o gate afirma que um grupo conta como **um VALOR**.
+- **o controlo do «desarmado» media a corrida ANTERIOR:** o `grupos()` devolve *o que foi
+  registado desde o `arma`*, e o `medindo` só esvazia ao ARMAR ⇒ lê-lo depois de uma pintura
+  desarmada devolve os 39 grupos da armada. *Um censo com memória mede-se pelo DELTA, nunca pelo
+  valor.*
+
+**Mutação: 5 de 5 sangram.**
+
+### ⏳ O que fica para a wave seguinte, com o número honesto
+
+O Inspector tem **`150` comandos** sobre `582` entradas. A `D2` agora pode ser feita sem mandar um
+selector para a barra do topo — e **`24` deles são da `line/components`**, logo a triagem deles
+espera a fusão.
+
+---
+
+### O portão desta wave
+
+| passo | resultado |
+|---|---|
+| `scripts/nextest-impacted.sh` | **`15 490 / 15 490`** · ⚠️ uma reprovada, **flake de carga já NOMEADA** no §5.0 (`the_cost_of_sampling_a_path_is_flat_in_its_anchors`): `3` de `3` verde sozinha a `load 20`–`22`, e **zero linhas** desta linha na `ph2d-timeline` |
+| `cargo clippy --all-targets -- -D warnings` | zero |
+| `cargo fmt --check` | limpo |
+| `scripts/censos-da-arvore-combinada.sh` | **`127 / 127`** |
+| prova de mutação | **5 de 5 sangram** |
+
+⚠️ **E o portão apanhou TRÊS vermelhos que o laço interno não vê**, os três legítimos: o bloco
+`mod` do `widget/` é **gerado** (⇒ o módulo novo entra no `PUB_MODULE_OVERRIDE` do gerador, com a
+razão escrita, e não editando a saída dele); a galeria de widgets exige que **todo** ficheiro de
+`widget/` seja mostrado ou tenha isenção escrita (⇒ isenção, porque o `composto` não pinta um
+pixel); e o índice da memória **conta** o que aponta (a lição que esta linha guardou mais cedo
+deixou a contagem da família em `55` com `56` no ficheiro).
+
+---
+
 ## §10 — O portão do fecho
 
 | passo | resultado |

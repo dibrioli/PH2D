@@ -401,8 +401,11 @@ fn o_nucleo_de_caixa_e_do_blur_da_pilha_e_so_dele() {
     sitios.sort();
     assert_eq!(
         sitios,
-        vec!["composite.rs".to_string()],
-        "o núcleo de caixa só pode ser pedido dentro do laço da pilha (e nomeado aqui)"
+        vec!["composite_pilha.rs".to_string()],
+        "o núcleo de caixa só pode ser pedido dentro do laço da pilha (e nomeado aqui). \
+         ⚠️ O ficheiro mudou de nome em 2026-09-20 e a LEI não: o laço da pilha saiu do \
+         `composite.rs` para o `composite_pilha.rs` quando a recomposição passou a ser POR \
+         CAMADA. Se este censo voltar a acusar dois sítios, o pedido escapou do laço."
     );
 }
 

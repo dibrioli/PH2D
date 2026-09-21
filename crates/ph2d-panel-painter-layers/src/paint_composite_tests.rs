@@ -69,7 +69,10 @@ fn nenhum_nome_de_operacao_sai_cortado_na_coluna_do_chip() {
 #[test]
 fn o_painel_tem_um_nome_por_operacao() {
     let n = ph2d_tool_painter::N_COMPOSITE_OPS;
-    assert!(n >= 4, "piso de população: o catálogo tem ao menos os quatro");
+    assert!(
+        n >= 4,
+        "piso de população: o catálogo tem ao menos os quatro"
+    );
     let nomes: Vec<&str> = (0..n).map(|op| op_name(op as u8)).collect();
     for i in 0..nomes.len() {
         for j in (i + 1)..nomes.len() {
@@ -95,7 +98,10 @@ fn nenhum_nome_de_escopo_sai_cortado_nem_se_repete() {
     let col = super::largura_do_chip_do_escopo(&mut ts);
     let orcamento = label_budget(col);
     let n = ph2d_tool_painter::N_COMPOSITE_ERASE_SCOPES;
-    assert!(n >= 2, "piso de população: o chip cicla ao menos dois escopos");
+    assert!(
+        n >= 2,
+        "piso de população: o chip cicla ao menos dois escopos"
+    );
     let nomes: Vec<&str> = (0..n).map(|e| super::escopo_name(e as u8)).collect();
     for (i, nome) in nomes.iter().enumerate() {
         let w = ts.prefix_width(nome, fonte);
@@ -141,7 +147,14 @@ fn ids_pintados_com(op: u8) -> Vec<ph2d_a11y::NodeId> {
             scene: &mut scene,
             text_system: &mut text,
         };
-        super::paint_composite_card(&mut ctx, ph2d_tokens::Theme::default(), 0.0, 320.0, 0.0, brush);
+        super::paint_composite_card(
+            &mut ctx,
+            ph2d_tokens::Theme::default(),
+            0.0,
+            320.0,
+            0.0,
+            brush,
+        );
     }
     use ph2d_editor_core::panel::PanelHostInternal;
     host.hit_index_mut()

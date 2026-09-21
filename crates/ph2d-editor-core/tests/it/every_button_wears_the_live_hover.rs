@@ -105,9 +105,10 @@ fn chain_verb(src: &str, at: usize) -> Option<&'static str> {
 /// à mesma porta (`.visual((SliderState, f32))`) pelo mesmo motivo, e dar-lhe um ficheiro próprio
 /// seria a segunda cópia de um scanner cujo modo de falha — *ver zero e chamar-lhe verde* — é
 /// precisamente o que o controlo positivo abaixo existe para apanhar.
-fn scan_widget(ctor: &str) -> (Vec<String>, Vec<String>) {
+fn scan_widget(ctor: &str) -> (Vec<String>, Vec<String>, usize) {
     let mut offenders: Vec<String> = Vec::new();
     let mut converted: Vec<String> = Vec::new();
+    let mut seen = 0usize;
 
     let mut scan = |path: &Path| {
         let rel = path.to_string_lossy().replace('\\', "/");
@@ -126,6 +127,7 @@ fn scan_widget(ctor: &str) -> (Vec<String>, Vec<String>) {
                 .next_back()
                 .is_none_or(|c| !c.is_alphanumeric() && c != '_');
             if is_plain {
+                seen += 1;
                 let line = src[..at].matches('\n').count() + 1;
                 match chain_verb(&src, at) {
                     Some(".state(") => offenders.push(format!("{rel}:{line}")),
@@ -139,12 +141,12 @@ fn scan_widget(ctor: &str) -> (Vec<String>, Vec<String>) {
 
     visit(&crates_root(), &mut scan);
     visit(&shells_root(), &mut scan);
-    (offenders, converted)
+    (offenders, converted, seen)
 }
 
 #[test]
 fn every_button_wears_the_live_hover() {
-    let (offenders, converted) = scan_widget("Button::new(");
+    let (offenders, converted, _seen) = scan_widget("Button::new(");
 
     // O CONTROLO POSITIVO, primeiro: sem ele um scanner partido passa em silêncio.
     assert!(
@@ -185,19 +187,36 @@ fn every_button_wears_the_live_hover() {
 /// gate não basta sozinho: ele prova que a informação CHEGA, e os gates de tinta
 /// (`the_track_reacts_to_the_pointer` e irmãos) provam que ela é USADA.
 ///
-/// ⚠️ **O controlo positivo é MENOR que o do botão, e é um facto e não folga:** só ~8 dos 33
-/// sítios de `Slider::new` leem o store — o resto passa o neutro declarado (uma pista inerte de
-/// waveform, a rota legada do picker), e a alavanca de verdade é o `paint_slider_with_chip`, que
-/// serve ~67 linhas de painel por DENTRO e não aparece nesta varredura.
+/// ⚠️ **O controlo positivo é MENOR que o do botão, e é um facto e não folga:** a maioria dos
+/// sítios de `Slider::new` não pergunta ao store — o resto passa o neutro declarado (uma pista
+/// inerte de waveform, a rota legada do picker), e a alavanca de verdade é o
+/// `paint_slider_with_chip`, que serve ~67 linhas de painel por DENTRO e não aparece nesta
+/// varredura.
+///
+/// ⛔⛔ **E é por isso que o CONTROLO DO SCANNER não pode ser a contagem de convertidos:** ela
+/// ENCOLHE quando um painel faz a coisa CERTA e migra para a porta (2026-09-20: o cartão do
+/// composite trocou duas cadeias à mão pelo `paint_slider_with_chip_layout`, a contagem caiu de
+/// `6` para `4` e este gate reprovou **sobre código melhor do que o que ele defendia**). O
+/// controlo mudou-se para a grandeza que a migração NÃO consome — *quantos sítios de
+/// `Slider::new` a varredura ENXERGA*, convertidos ou não —, e a metade dos convertidos fica
+/// como piso do caminho que ainda existe.
 #[test]
 fn every_slider_wears_the_live_hover() {
-    let (offenders, converted) = scan_widget("Slider::new(");
+    let (offenders, converted, seen) = scan_widget("Slider::new(");
 
     assert!(
-        converted.len() >= 5,
-        "o scanner viu apenas {} cadeias `Slider::new(...).visual(...)` — ele está partido, e um \
-         gate que não vê nada não pode acusar nada. Esperado: os sítios que leem o store \
-         (fill_modal, onion_modal, painter-layers).",
+        seen >= 10,
+        "a varredura só enxergou {seen} sítio(s) de `Slider::new(` na árvore de produção — ela \
+         está partida (raiz errada / regex que deixou de casar), e um gate que não vê nada não \
+         pode acusar nada. Medido em 2026-09-20: {} sítios em 9 ficheiros.",
+        19
+    );
+    assert!(
+        converted.len() >= 2,
+        "o scanner viu apenas {} cadeias `Slider::new(...).visual(...)` — ou a varredura partiu, \
+         ou TODOS os sítios à mão migraram para o `paint_slider_with_chip_layout`. Se for o \
+         segundo, esta metade deixou de descrever alguma coisa e sai (a do `seen` fica). \
+         Convertidos em 2026-09-20: fill_modal · onion_modal · paint_rows · paint_rows_relief.",
         converted.len()
     );
 

@@ -65,7 +65,9 @@ fn o_chip_do_escopo_e_pintado_so_na_borracha() {
             erros.push(format!("a borracha pinta o chip {n}× (tem de ser 1)"));
         }
         if !e_borracha && n != 0 {
-            erros.push(format!("a operação {op} pinta o chip {n}× — controlo morto"));
+            erros.push(format!(
+                "a operação {op} pinta o chip {n}× — controlo morto"
+            ));
         }
     }
     assert!(erros.is_empty(), "{}", erros.join(" · "));

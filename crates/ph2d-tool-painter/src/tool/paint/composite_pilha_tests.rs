@@ -5,8 +5,8 @@
 //! entrega o traço num lote só passa com o defeito de pé: dentro de um lote a ordem sempre esteve
 //! certa.*
 
-use super::*;
 use super::composite::EscopoDaBorracha;
+use super::*;
 use ph2d_editor_core::tool::RasterEditTool;
 use ph2d_painter_brush::Falloff;
 
@@ -169,13 +169,14 @@ fn a_ordem_e_da_pilha_e_nao_da_taxa_do_rato() {
         let um_lote = monta(X1 - X0);
         for passo in [2.0f32, 8.0] {
             let n_lotes = monta(passo);
-            let (soma, pior) = um_lote.iter().zip(n_lotes.iter()).fold(
-                (0u64, 0u8),
-                |(s, p), (&a, &b)| {
-                    let d = a.abs_diff(b);
-                    (s + u64::from(d), p.max(d))
-                },
-            );
+            let (soma, pior) =
+                um_lote
+                    .iter()
+                    .zip(n_lotes.iter())
+                    .fold((0u64, 0u8), |(s, p), (&a, &b)| {
+                        let d = a.abs_diff(b);
+                        (s + u64::from(d), p.max(d))
+                    });
             let medio = soma as f64 / um_lote.len() as f64;
             assert!(
                 pior == 0,
@@ -247,7 +248,7 @@ fn a_borracha_do_traco_devolve_o_pre_e_a_de_tudo_come_a_imagem() {
         let mut t = PainterTool::default();
         // Papel VERDE opaco — a «imagem por baixo» de que o report fala.
         let mut fundo = vec![0u8; (SIZE * SIZE * 4) as usize];
-        for px in fundo.chunks_exact_mut(4) {
+        for px in fundo.as_chunks_mut::<4>().0 {
             px.copy_from_slice(&[0, 200, 0, 255]);
         }
         t.set_source(fundo, SIZE, SIZE);

@@ -1415,3 +1415,66 @@ fotografia do `pre` é paga (gate `uma_camada_so_nao_abre_a_recomposicao`, com c
 * ⏳ **A tabela de relógio foi tirada a `load 29`** e tem de ser re-tirada com a máquina calma.
 * ⏳ **O cartão com cinco camadas × três fileiras** continua sem medição de quanto empurra o resto
   do painel para baixo da dobra — item herdado da §21.
+
+---
+
+## §23 — O PORTÃO DE FECHO apanhou TRÊS vermelhos, e nenhum era a wave de hoje
+
+O `nextest-impacted` do fecho (`18 229` testes) reprovou em três. ⚠️ **Dois deles foram
+introduzidos pelas waves ANTERIORES desta mesma linha** (a §20/§21, a das cinco camadas e a da
+ordem de fábrica do dono) e ficaram vermelhos **em silêncio** porque aquelas waves correram o
+portão sobre um FILTRO — *o laço interno corre o que se está a escrever, e o que se parte é
+sempre outra coisa*.
+
+### §23.1 — O censo do núcleo de caixa mudou de FICHEIRO, e a lei não
+
+`o_nucleo_de_caixa_e_do_blur_da_pilha_e_so_dele` lê `left: ["composite_pilha.rs"]` contra
+`right: ["composite.rs"]`. A lei é *«o núcleo de caixa só pode ser pedido dentro do LAÇO DA
+PILHA, e o censo nomeia onde ele mora»* — e o laço mudou de casa nesta wave, quando a
+recomposição passou a ser por CAMADA. ⇒ o nome esperado passa a ser o novo, **com a mudança de
+endereço escrita na mensagem**: se o censo voltar a acusar dois sítios, o pedido escapou do laço.
+
+⚠️ *Este é o gate a funcionar.* Um censo que nomeia um ficheiro é a única coisa que impede o
+pedido do núcleo barato de se espalhar para o Blur isolado — que é a fronteira que o dono
+autorizou («**só** no Blur do composite»).
+
+### §23.2 — Um teste que CRAVA uma posição mede a ORDEM DE FÁBRICA, não o que ele diz medir
+
+`composite_brush_runs_an_isolated_layer_and_reorders` lê `left: Erase, right: Blur`. Ele isolava
+a camada Blur por `STRENGTH[0] = 0`, `[1] = 0`, `[2] = 1` — com o comentário
+*«default positions: 0 Brush · 1 Smear · 2 Blur»* ao lado — e subia a posição `2` ao topo com dois
+cliques escritos à mão.
+
+⛔ **A ordem de fábrica é uma DECISÃO DE PRODUTO**, e o dono reordenou-a na §21
+(`Brush · Brush(0) · Erase(0) · Smear · Blur`). A partir daí a posição `2` é a **borracha**, e o
+teste passou a reprovar sobre um motor correcto, **a acusar a lei do reordenar**. ⇒ o índice do
+Blur é **DERIVADO** da pilha (`.position(|l| l.op == Blur)`), as outras camadas são zeradas por
+laço, e a subida é `for i in (1..=blur).rev()`.
+
+⚠️ *A wave que mudou a ordem trouxe um gate a afirmar que ela «não muda um pixel» — e essa
+afirmação é sobre o EFEITO, que corre de baixo para cima e só viu camadas de força zero trocarem
+de sítio. Ela é verdadeira, e não dizia nada sobre quem endereça a pilha por ÍNDICE.*
+
+### §23.3 ⭐⭐⭐ — Um CONTROLO POSITIVO construído sobre uma população que ENCOLHE quando o código melhora
+
+`every_slider_wears_the_live_hover` (foundational, `ph2d-editor-core`) reprovou com
+*«o scanner viu apenas 4 cadeias `Slider::new(...).visual(...)` — ele está partido»*, contra um
+piso de `5`.
+
+⛔⛔ **O scanner não estava partido: a população migrou.** A §21 trocou, no cartão do composite,
+duas barras feitas à mão pelo `paint_slider_with_chip_layout` — **a porta**, que pergunta ao store
+por DENTRO e que o doc-comment daquele mesmo gate já nomeia como *«a alavanca de verdade, que não
+aparece nesta varredura»*. A contagem caiu de `6` para `4`, e **o gate reprovou sobre código
+melhor do que o que ele defendia**.
+
+⭐ **A cura é mover o CONTROLO para a grandeza que a migração não consome:** o scanner passa a
+devolver também **quantos sítios de `Slider::new(` ele ENXERGOU** (convertidos ou não — `19` em
+`9` ficheiros, medido), e é esse o piso que prova que a varredura funciona. A metade dos
+convertidos fica como piso do caminho **que ainda existe**, com os quatro sítios NOMEADOS e com a
+saída escrita: no dia em que todos migrarem, essa metade deixa de descrever alguma coisa e **sai**
+— a do `seen` fica.
+
+⚠️⚠️ **A lei, que vale para todo controlo positivo deste repo:** *um piso que conta a população de
+um padrão que a melhoria ELIMINA é uma catraca ao contrário — ele obriga o próximo autor a manter
+o padrão velho, ou a baixar o número até ele não medir nada.* O controlo tem de medir o
+INSTRUMENTO (a varredura vê a árvore?), nunca a dívida que ele conta.

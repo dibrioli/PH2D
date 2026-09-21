@@ -66,7 +66,10 @@ fn diag_preco_da_pilha() {
     println!("  -------------------------------+-------+-------");
     let casos: [(&str, &[(CompositeOp, f32)]); 5] = [
         ("1 Brush (sem recomposição)", &[(CompositeOp::Brush, 1.0)]),
-        ("2 Brush", &[(CompositeOp::Brush, 1.0), (CompositeOp::Brush, 1.0)]),
+        (
+            "2 Brush",
+            &[(CompositeOp::Brush, 1.0), (CompositeOp::Brush, 1.0)],
+        ),
         (
             "3 Brush",
             &[
@@ -75,7 +78,10 @@ fn diag_preco_da_pilha() {
                 (CompositeOp::Brush, 1.0),
             ],
         ),
-        ("Blur sobre Brush", &[(CompositeOp::Blur, 1.0), (CompositeOp::Brush, 1.0)]),
+        (
+            "Blur sobre Brush",
+            &[(CompositeOp::Blur, 1.0), (CompositeOp::Brush, 1.0)],
+        ),
         (
             "Smear sobre Brush",
             &[(CompositeOp::Smear, 1.0), (CompositeOp::Brush, 1.0)],

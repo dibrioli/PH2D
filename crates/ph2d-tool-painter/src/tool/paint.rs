@@ -272,8 +272,8 @@ pub use brush_settings::{
     DEFORM_TEMPERAMENT_TRANSFORM, PANEL_RAMP_STOPS,
 };
 pub use composite::MAX_TAMANHO_DA_CAMADA as MAX_COMPOSITE_LAYER_SIZE;
-pub use composite::N_OPERACOES as N_COMPOSITE_OPS;
 pub use composite::N_ESCOPOS_DA_BORRACHA as N_COMPOSITE_ERASE_SCOPES;
+pub use composite::N_OPERACOES as N_COMPOSITE_OPS;
 pub use shape_layers::MAX_SHAPE_LAYERS;
 pub use snapshot::brush_falloff_weight_at;
 

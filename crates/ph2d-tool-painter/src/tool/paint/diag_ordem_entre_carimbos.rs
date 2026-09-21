@@ -151,6 +151,7 @@ fn linha(t: &PainterTool) -> Vec<u8> {
 ///   ESBATE a borda ⇒ o salto tem de descer.
 /// * **Smear** — quanto a linha se move na direcção do traço (o desvio em relação ao que o pincel
 ///   sozinho deixa).
+///
 /// ⭐⭐⭐ **O CONTROLO DE CIMA: quanto é que o Blur ISOLADO faz na MESMA borda?**
 ///
 /// ⛔⛔ Sem ele a leitura *«o Blur na pilha mexe `24` de soma»* não diz nada: pode ser que a pilha
@@ -179,18 +180,27 @@ fn diag_o_blur_isolado_na_mesma_borda() {
     base.paint.brush.color = [0.0, 0.0, 1.0];
     traco(&mut base, 2.0);
     println!("\n  O BLUR NA MESMA BORDA\n");
-    println!("  só o pincel ............................ salto {:6.1}", salto(&base));
+    println!(
+        "  só o pincel ............................ salto {:6.1}",
+        salto(&base)
+    );
 
     // 2) O MESMO traço, agora com a ferramenta Blur ISOLADA a passar por cima.
     let mut isolado = base;
     isolado.paint.paint_mode = PaintMode::Blur;
     traco(&mut isolado, 2.0);
-    println!("  + a ferramenta Blur isolada por cima ... salto {:6.1}", salto(&isolado));
+    println!(
+        "  + a ferramenta Blur isolada por cima ... salto {:6.1}",
+        salto(&isolado)
+    );
 
     // 3) O MESMO traço, mas com a pilha [Blur(topo), Brush(fundo)] a fazer as duas coisas.
     let mut pilha = com_topo(CompositeOp::Blur);
     traco(&mut pilha, 2.0);
-    println!("  a PILHA (Blur sobre Brush) ............. salto {:6.1}\n", salto(&pilha));
+    println!(
+        "  a PILHA (Blur sobre Brush) ............. salto {:6.1}\n",
+        salto(&pilha)
+    );
 }
 
 #[test]
@@ -219,7 +229,9 @@ fn diag_a_camada_de_cima_faz_alguma_coisa() {
         pior
     };
 
-    println!("\n  A CAMADA DE CIMA FAZ ALGUMA COISA? (traço num lote só, topo LIGADO vs DESLIGADO)\n");
+    println!(
+        "\n  A CAMADA DE CIMA FAZ ALGUMA COISA? (traço num lote só, topo LIGADO vs DESLIGADO)\n"
+    );
     for (nome, topo) in [
         ("Erase", CompositeOp::Erase),
         ("Blur", CompositeOp::Blur),
@@ -284,7 +296,10 @@ fn diag_a_entrega_em_lotes_muda_a_imagem() {
 #[ignore = "diagnóstico: corre à mão com --nocapture"]
 fn diag_a_camada_de_cima_e_coberta_pela_de_baixo_do_lote_seguinte() {
     println!("\n  A ORDEM ENTRE CARIMBOS — topo VERMELHO sobre fundo AZUL, ambos Strength 1");
-    println!("  spacing de fábrica = {:.3}", PainterTool::default().paint.brush.spacing);
+    println!(
+        "  spacing de fábrica = {:.3}",
+        PainterTool::default().paint.brush.spacing
+    );
     println!("\n  passo |  dabs/lote |  vermelho |    azul |  outro | media da linha  | veredito");
     println!("  ------+------------+-----------+---------+--------+-----------------+---------");
     for passo in [2.0f32, 8.0, 32.0, (X1 - X0)] {
@@ -292,7 +307,11 @@ fn diag_a_camada_de_cima_e_coberta_pela_de_baixo_do_lote_seguinte() {
         traco(&mut t, passo);
         let (v, a, o) = conta(&t);
         let (mr, mb) = media(&t);
-        let veredito = if mb < 8.0 { "topo vence" } else { "FUNDO aparece" };
+        let veredito = if mb < 8.0 {
+            "topo vence"
+        } else {
+            "FUNDO aparece"
+        };
         println!(
             "  {passo:5.0} | {:10.1} | {v:9} | {a:7} | {o:6} | R {mr:6.1} · B {mb:6.1} | {veredito}",
             passo / (0.10 * 2.0 * RAIO)
@@ -305,11 +324,15 @@ fn diag_a_camada_de_cima_e_coberta_pela_de_baixo_do_lote_seguinte() {
     traco(&mut t, 2.0);
     let (v, a, o) = conta(&t);
     let (mr, mb) = media(&t);
-    println!("\n  CONTROLO (só o topo vermelho): vermelho {v} · azul {a} · outro {o} · R {mr:.1} B {mb:.1}");
+    println!(
+        "\n  CONTROLO (só o topo vermelho): vermelho {v} · azul {a} · outro {o} · R {mr:.1} B {mb:.1}"
+    );
     let mut t = ferramenta();
     t.paint.composite[0].strength = 0.0;
     traco(&mut t, 2.0);
     let (v, a, o) = conta(&t);
     let (mr, mb) = media(&t);
-    println!("  CONTROLO (só o fundo azul):    vermelho {v} · azul {a} · outro {o} · R {mr:.1} B {mb:.1}\n");
+    println!(
+        "  CONTROLO (só o fundo azul):    vermelho {v} · azul {a} · outro {o} · R {mr:.1} B {mb:.1}\n"
+    );
 }

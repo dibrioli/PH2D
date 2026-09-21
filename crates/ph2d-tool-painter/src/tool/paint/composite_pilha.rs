@@ -326,12 +326,20 @@ impl PainterTool {
         //    undo captura os bytes do escudo achando que são a tela — e a primeira captura de cada
         //    tile é a que vale, logo a poluição seria permanente.
         let mut plano = std::mem::take(&mut self.paint.pilha.escudo);
-        super::plane_fork::swap_canvas_plane(&mut self.canvas_rgba, &mut plano, &self.undo.write_state);
+        super::plane_fork::swap_canvas_plane(
+            &mut self.canvas_rgba,
+            &mut plano,
+            &self.undo.write_state,
+        );
         let saved_draw = self.paint.brush.impasto_draw_to;
         self.paint.brush.impasto_draw_to = ph2d_painter_brush::DrawTo::Color;
         self.aplica_deposito(dabs);
         self.paint.brush.impasto_draw_to = saved_draw;
-        super::plane_fork::swap_canvas_plane(&mut self.canvas_rgba, &mut plano, &self.undo.write_state);
+        super::plane_fork::swap_canvas_plane(
+            &mut self.canvas_rgba,
+            &mut plano,
+            &self.undo.write_state,
+        );
         self.paint.pilha.escudo = plano;
         // 3. `tela := lerp(tela, pre, c)`, com `c = 1 − α_escudo`.
         let stride = w as usize * 4;

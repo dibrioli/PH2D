@@ -570,19 +570,23 @@ fn composite_brush_runs_an_isolated_layer_and_reorders() {
         crate::ids::PAINTER_BRUSH_COMPOSITE_ENABLE,
     ));
     assert!(t.composite_enabled(), "checkbox enabled composite");
-    // Isolate the Blur layer (default positions: 0 Brush · 1 Smear · 2 Blur) by zeroing Brush + Smear.
-    t.handle_panel_event(PanelEvent::SetValue(
-        crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[0],
-        0.0,
-    ));
-    t.handle_panel_event(PanelEvent::SetValue(
-        crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[1],
-        0.0,
-    ));
-    t.handle_panel_event(PanelEvent::SetValue(
-        crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[2],
-        1.0,
-    ));
+    // ⚠️ **A posição do Blur é DERIVADA da pilha de fábrica, nunca cravada.** Esta linha dizia
+    // `posições: 0 Brush · 1 Smear · 2 Blur` e o índice `2` estava escrito à mão — a ordem de
+    // fábrica é uma **decisão de produto** (o dono reordenou-a em 2026-09-20) e o teste reprovou
+    // sobre um motor correcto, a acusar a LEI do reordenar. *Um teste que crava uma posição numa
+    // pilha reordenável mede a ordem de fábrica, não o que ele diz medir.*
+    let blur = t
+        .paint
+        .composite
+        .iter()
+        .position(|l| l.op == crate::tool::paint::CompositeOp::Blur)
+        .expect("a pilha de fábrica declara uma camada Blur");
+    for i in 0..t.paint.composite.len() {
+        t.handle_panel_event(PanelEvent::SetValue(
+            crate::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[i],
+            if i == blur { 1.0 } else { 0.0 },
+        ));
+    }
     let boundary = size / 2; // x = 24, first white column
     let bx = boundary as f32;
     t.on_canvas_pointer(cp([bx, 6.0], PointerPhase::Down));
@@ -598,9 +602,10 @@ fn composite_brush_runs_an_isolated_layer_and_reorders() {
         seam[0] == seam[1] && seam[1] == seam[2],
         "grey (no colour) — the zeroed Brush layer painted nothing: {seam:?}"
     );
-    // Reorder: move the Blur layer (position 2) up to position 0.
-    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_COMPOSITE_UP[2]));
-    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_COMPOSITE_UP[1]));
+    // Reorder: subir a camada Blur até ao topo, um degrau de cada vez.
+    for i in (1..=blur).rev() {
+        t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_COMPOSITE_UP[i]));
+    }
     assert_eq!(
         t.paint.composite[0].op,
         crate::tool::paint::CompositeOp::Blur,

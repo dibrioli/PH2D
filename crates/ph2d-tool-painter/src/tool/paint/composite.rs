@@ -407,7 +407,8 @@ impl PainterTool {
                 {
                     // O chip CICLA as quatro operações — é o gesto que torna as posições novas
                     // alcançáveis (sem ele uma camada nasceria presa ao que o default declarou).
-                    let proximo = (usize::from(self.paint.composite[p].op.to_u8() + 1) % N_OPERACOES) as u8;
+                    let proximo =
+                        (usize::from(self.paint.composite[p].op.to_u8() + 1) % N_OPERACOES) as u8;
                     self.set_composite_layer_op(p, proximo);
                     return true;
                 }
@@ -431,9 +432,8 @@ impl PainterTool {
                 {
                     // O chip CICLA os escopos — o mesmo gesto do chip da operação, e pela mesma
                     // razão: o `PanelEvent` é contrato congelado (§6) e não tem clique-direito.
-                    let proximo =
-                        (usize::from(self.paint.composite[p].erase_scope.to_u8() + 1)
-                            % N_ESCOPOS_DA_BORRACHA) as u8;
+                    let proximo = (usize::from(self.paint.composite[p].erase_scope.to_u8() + 1)
+                        % N_ESCOPOS_DA_BORRACHA) as u8;
                     self.set_composite_layer_erase_scope(p, proximo);
                     return true;
                 }
@@ -567,8 +567,7 @@ impl PainterTool {
             if self.paint.composite[pos].strength <= 0.0 {
                 Vec::new()
             } else {
-                self.camada_dabs(pos, dabs)
-                    .unwrap_or_else(|| dabs.to_vec())
+                self.camada_dabs(pos, dabs).unwrap_or_else(|| dabs.to_vec())
             }
         });
         // ⛔ **Com menos de duas camadas activas não há ordem para arrumar** — o caminho é o de

@@ -13,6 +13,7 @@ mod every_word_this_panel_shows_comes_from_the_string_table;
 mod falloff_drain_repro;
 mod falloff_handle_menu_e2e;
 mod seam;
+mod seam_composite_escopo; // o chip do escopo da borracha: pintado, registado, alcançável
 mod seam_curve_drag_ownership;
 mod seam_deform;
 mod seam_dock_modes;
@@ -20,7 +21,6 @@ mod seam_grid_stamp;
 mod seam_impasto_rig;
 mod seam_impasto_tool;
 mod seam_line_card;
-mod seam_composite_escopo; // o chip do escopo da borracha: pintado, registado, alcançável
 mod seam_paint_media;
 mod seam_pigmento; // a fileira `Pigment`: a tela concorda com a porta, nos dois sentidos
 mod seam_sculpt;

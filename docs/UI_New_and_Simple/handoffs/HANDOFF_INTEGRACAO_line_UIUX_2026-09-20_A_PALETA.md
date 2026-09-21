@@ -979,6 +979,49 @@ Hoje ela é uma edição de duas partes.
 
 ---
 
+### ✅ E o instrumento FECHOU o report na primeira colagem, com ZERO linhas de produto
+
+O dono colou duas linhas:
+
+```
+[dock] janela=1920  esq=220.0 (escolha 220) [hierarchy]  dir=210.0 (escolha 210) [inspector]  piso=210
+[dock] janela=1920  esq=210.0 (escolha 210) [hierarchy]  dir=210.0 (escolha 210) [inspector]  piso=210
+```
+
+⭐⭐⭐ **A coluna da ESCOLHA responde tudo:** o `220` da Hierarquia vinha com `escolha 220`, logo era
+uma largura **GRAVADA** e não um limite — e depois do arrasto ela aterra em `210`, o mesmo do
+Inspector. ⇒ **não havia defeito**: os dois limites sempre foram o mesmo, e o que o dono viu foi um
+número velho do `~/.ph2d/layout.txt` dele (o `[flip]` tinha `dock_w_left=220`, escrito quando `220`
+ERA o piso). Depois dos arrastos o ficheiro lê `210/210`.
+
+⚠️ **As duas metades do readout que esta wave acrescentou foram as duas necessárias, e nenhuma
+sozinha bastava:** sem a que dispara no ARRASTO não havia segunda linha; sem a que NOMEIA o painel
+não se sabia de quem era o `220`. *O que resolveu não foi uma cura — foi o instrumento passar a
+conter a pergunta.*
+
+### ⏳ ABERTO e NOMEADO: cinco espaços de trabalho do dono ainda carregam escolhas velhas
+
+O `~/.ph2d/layout.txt` dele, depois desta sessão:
+
+| espaço | `dock_w_left` | `dock_w_right` |
+|---|---:|---:|
+| `animation` | `220` | `220` |
+| `drawing_2d` | `252,8` | `348,2` |
+| **`flip`** | **`210`** | **`210`** |
+| `modeling_3d` | `220` | `371,7` |
+| `nodes` | `220` | `270,7` |
+| `vector` | `220` | `389,6` |
+
+⛔ **Aqueles `220` são ESCOLHAS, logo aquelas colunas NÃO seguem a janela** — é o report original
+(*«não diminuiu os painéis»*) ainda latente em cinco espaços. Eles foram gravados antes da cura da
+§9-ter e podem ser **escolhas fantasma** daquele defeito, ou o dono a ter arrastado até ao mínimo
+da época; ⚠️ **os dois casos são indistinguíveis no ficheiro** (não há marca de versão, e `220` é
+uma largura legítima). ⇒ *o app não os pode limpar sozinho sem apagar uma escolha real*, e a cura é
+do dono: arrastar a borda naquele espaço, ou apagar o ficheiro. **Decisão dele; não é trabalho
+pendente desta linha.**
+
+---
+
 ## §10 — O portão do fecho
 
 | passo | resultado |

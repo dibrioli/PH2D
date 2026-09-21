@@ -291,6 +291,9 @@ mod slots;
 /// [`slots`] porque a terceira pergunta é a que decide o quadro (a topologia
 /// muda no dab e o plano é paramétrico nas FACES), e não um detalhe de upload.
 mod tinta_da_peca;
+#[cfg(test)]
+#[path = "tinta_no_produto_tests.rs"]
+mod tinta_no_produto_tests;
 
 /// **O OBJETO MISTO (O2)** — a forma acende um SPRITE da cena, e continua
 /// acendendo depois de a malha sair. Filho e irmão da [`donation`]:

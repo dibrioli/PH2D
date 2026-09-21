@@ -110,6 +110,14 @@ pub struct TintaDoTraco {
     accum: Vec<f32>,
     base: Vec<[f32; 3]>,
     tocadas: Vec<u32>,
+    /// ⭐⭐⭐⭐ **Que amostras mudaram desde o último upload** — paralelo a
+    /// [`Self::tocadas`], e indexado por SLOT e não por amostra.
+    ///
+    /// ⚠️⚠️ **O índice é o slot de propósito, e é isso que a torna afordável:**
+    /// um vector por AMOSTRA custaria `O(plano)` — `25 M` entradas no degrau
+    /// mais fino da peça de fábrica —, e este custa `O(pegada do traço)`, que é
+    /// a mesma grandeza que a janela do desfazer que já vive ao lado.
+    suja: Vec<bool>,
     // ── o rascunho de um dab ──
     faces: Vec<u32>,
     carimbo: Vec<u32>,
@@ -130,6 +138,7 @@ impl TintaDoTraco {
             accum: Vec::new(),
             base: Vec::new(),
             tocadas: Vec::new(),
+            suja: Vec::new(),
             faces: Vec::new(),
             carimbo: vec![0; n],
             local: vec![0; n],
@@ -266,7 +275,33 @@ impl TintaDoTraco {
         self.tocadas.push(idx);
         self.base.push(self.tinta.amostras()[idx as usize]);
         self.accum.push(0.0);
+        // Nasce suja: quem pede um slot é quem está prestes a escrever nele.
+        self.suja.push(true);
         novo
+    }
+
+    /// ⭐⭐⭐⭐ **As amostras escritas desde a última vez que isto foi chamado**
+    /// — a janela que o upload do device consome, e a razão de ele deixar de
+    /// ser `O(plano)`.
+    ///
+    /// ⛔⛔ **MEDIDO em 2026-09-20, e é o muro que o degrau novo tornaria
+    /// intransponível:** subir o plano INTEIRO por quadro custa, só para
+    /// empacotar, `21,9 ms` no degrau `8×` da peça de fábrica (`72 MB`) e
+    /// `81,7 ms` no `16×` (`288 MB`) — contra um quadro de `16,7`. *A escrita
+    /// da tinta fina é por AMOSTRA e nunca passou pelo `dirty`, que é uma
+    /// janela de VÉRTICES; era essa a dívida nomeada.*
+    ///
+    /// ⚠️ **Ela LIMPA as marcas**, logo dois consumidores no mesmo quadro
+    /// dividiriam a janela entre si e o device perderia metade. O único
+    /// chamador é o laço de upload.
+    pub fn drena_sujas(&mut self, out: &mut Vec<u32>) {
+        out.clear();
+        for (s, suja) in self.suja.iter_mut().enumerate() {
+            if *suja {
+                *suja = false;
+                out.push(self.tocadas[s]);
+            }
+        }
     }
 }
 
@@ -405,6 +440,11 @@ impl crate::SculptStroke {
             for k in 0..3 {
                 out[k] = de[k] * (1.0 - acc) + alvo[k] * acc;
             }
+            // ⚠️ **Marcada a cada escrita e não só na primeira:** um dab
+            // seguinte re-escreve uma amostra que o anterior já tocou (o
+            // `accum` cresce ao longo do traço), logo *«tocada uma vez»* e
+            // *«mudou desde o último upload»* são grandezas diferentes.
+            fina.suja[s] = true;
             n += 1;
         }
         fina.amostras = amostras;

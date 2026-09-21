@@ -336,18 +336,35 @@ fn the_arming_question_is_a_parse_and_not_a_list() {
 /// não é, e é a que a cura fecha — medido, ela levava a peça de `830` para
 /// `1 331` vértices num gesto que não move um único vértice.
 ///
-/// As três metades:
+/// As metades:
 /// 1. a porta **recebe** o verbo;
-/// 2. ela lê as **duas** colunas (refino e colapso são leis independentes);
-/// 3. o chamador passa o verbo do pincel **armado**, nunca um literal.
+/// 2. **a porta `o_gesto_muda_a_topologia`** lê as **duas** colunas (refino e
+///    colapso são leis independentes) — ⚠️ desde 2026-09-21 isto já não vive no
+///    `refine_for_dab`, ver o comentário no corpo;
+/// 3. o `refine_for_dab` **consulta** essa porta;
+/// 4. o chamador passa o verbo do pincel **armado**, nunca um literal.
 #[test]
 fn the_dyntopo_door_asks_the_verb() {
     let src = sculpt_src();
     let body = function_body(&src, "refine_for_dab");
+    // ⛔⛔ **A PREMISSA DESTE ASSERT MORREU em 2026-09-21 e a PROPRIEDADE não.**
+    // Até aí as duas colunas eram lidas DENTRO do `refine_for_dab`; hoje quem as
+    // lê é a porta `tinta_da_peca::o_gesto_muda_a_topologia`, porque a resposta
+    // passou a depender também de haver um PLANO DE TINTA FINA armado — *um
+    // pincel de COR com o plano armado não muda topologia: refinar compra ZERO e
+    // custa o plano inteiro*. ⇒ as duas metades, porque cada uma sozinha mente:
+    // a porta pode ler as colunas certas e ninguém chamá-la, e o `refine_for_dab`
+    // pode chamá-la depois de ela deixar de olhar para o verbo.
+    let porta = function_body(&src, "o_gesto_muda_a_topologia");
     assert!(
-        body.contains("verbo.refina_no_dyntopo()") && body.contains("verbo.colapsa_no_dyntopo()"),
+        porta.contains("verbo.refina_no_dyntopo()") && porta.contains("verbo.colapsa_no_dyntopo()"),
         "a porta do dyntopo não consulta as DUAS colunas do verbo — sem isso ela \
          responde «este gesto passou pelo carimbo?», que é a pergunta errada"
+    );
+    assert!(
+        body.contains("o_gesto_em_maos_muda_a_topologia(verbo)"),
+        "o `refine_for_dab` deixou de perguntar à PORTA — e a lei certa numa porta \
+         que ninguém chama lê-se exactamente como a lei ausente"
     );
     // ⚠️ **O chamador passa o verbo E o ajuste do pincel ARMADO** (`brush.*`), e
     // não os campos de `self.brush`: entre os dois está o `armed_brush`, que é

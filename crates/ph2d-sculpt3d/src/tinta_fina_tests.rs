@@ -465,3 +465,92 @@ fn o_sentinela_do_triangulo_e_o_mesmo_nas_duas_crates() {
         "o sentinela do 4.º índice divergiu entre a malha e a lei da tinta"
     );
 }
+
+/// ⭐⭐⭐⭐ **GATE — A JANELA DAS AMOSTRAS SUJAS é o que o traço ESCREVEU desde
+/// o último upload**, e é ela que tira o custo do device de cima de `O(plano)`.
+///
+/// ⚠️ **As três metades medem três coisas diferentes, e a segunda é a que uma
+/// implementação ingénua falha:**
+///
+/// 1. o que o dab escreveu ESTÁ na janela;
+/// 2. **drenar LIMPA** — o quadro seguinte sem dabs não reescreve nada
+///    (*«tocada uma vez»* e *«mudou desde o último upload»* são grandezas
+///    diferentes, e um upload que confundisse as duas voltaria a ser
+///    `O(pegada do TRAÇO)` em vez de `O(pegada do QUADRO)`);
+/// 3. uma amostra RE-ESCRITA por um dab seguinte volta à janela — sem isto o
+///    device ficaria com a cor do primeiro dab e o traço parecia parar.
+///
+/// ⛔⛔ **A metade (3) era VÁCUA e foi uma mutação sobrevivente que o disse**
+/// (a `U1` do [`docs/3D/ferramentas/muta_o_upload_da_tinta.sh`], 2026-09-21):
+/// ela afirmava `!sujas.is_empty()`, e um dab que ANDOU toca amostras NOVAS —
+/// que nascem sujas — logo a janela nunca vinha vazia **mesmo com a marca por
+/// escrita apagada**. *Uma régua que conta QUANTOS nunca vê QUAIS*, a forma que
+/// esta casa já pagou no `edge_max` e no `χ`. Hoje ela mede a INTERSECÇÃO com o
+/// conjunto do 1.º dab, que é a única população em que a lei é observável.
+#[test]
+fn a_janela_das_amostras_sujas_e_o_que_o_traco_escreveu() {
+    let mut m = shapes::uv_sphere(16, 24, 1.0);
+    let brush = pincel(Verb::Paint);
+    let mut s = SculptStroke::default();
+    s.begin(&m);
+    s.tinta_fina = Some(TintaDoTraco::nova(plano(&m, 2)));
+
+    let mut sujas = Vec::new();
+    let dab_em = |s: &mut SculptStroke, m: &mut Mesh, x: f32| {
+        let c = [x, 0.0, 1.0];
+        let dab = Dab {
+            path: [0.02, 0.0, 0.0],
+            ..Dab::at(c, 0.45, c)
+        };
+        s.dab(m, &brush, &dab, Symmetry::default());
+    };
+
+    dab_em(&mut s, &mut m, 0.0);
+    let fina = s.tinta_fina.as_mut().expect("armado");
+    fina.drena_sujas(&mut sujas);
+    let primeiro = sujas.len();
+    // ⚠️ **O conjunto do 1.º dab é o que torna a metade (3) uma medição** —
+    // ver o cabeçalho. `BTreeSet` e não `HashSet` (HR-5).
+    let do_primeiro: std::collections::BTreeSet<u32> = sujas.iter().copied().collect();
+    assert!(
+        primeiro > 0,
+        "o dab não sujou uma amostra: a fixtura não contém o fenómeno"
+    );
+    assert_eq!(
+        primeiro,
+        fina.tocadas().len(),
+        "o 1.º dab tocou {} amostras e sujou {primeiro} -- na primeira escrita \
+         as duas grandezas são a mesma",
+        fina.tocadas().len()
+    );
+
+    // (2) Drenar LIMPA.
+    fina.drena_sujas(&mut sujas);
+    assert!(
+        sujas.is_empty(),
+        "a janela não foi limpa: {} amostras voltaram sem ninguém escrever",
+        sujas.len()
+    );
+
+    // (3) Uma amostra RE-ESCRITA volta.
+    dab_em(&mut s, &mut m, 0.01);
+    let fina = s.tinta_fina.as_mut().expect("armado");
+    fina.drena_sujas(&mut sujas);
+    let revisitadas = sujas.iter().filter(|i| do_primeiro.contains(i)).count();
+    assert!(
+        revisitadas > 0,
+        "o 2.º dab não devolveu à janela NENHUMA das {} amostras que o 1.º já tinha \
+         escrito -- ele sujou {} e todas são NOVAS.\n\
+         É o defeito que esta metade existe para apanhar: sem a marca em cada \
+         escrita, o device fica com a cor do 1.º dab onde os dois se sobrepõem, \
+         e o traço parece parar por baixo da mão.",
+        do_primeiro.len(),
+        sujas.len()
+    );
+    assert!(
+        sujas.len() <= fina.tocadas().len(),
+        "a janela do 2.º quadro ({}) é maior que o traço inteiro ({})",
+        sujas.len(),
+        fina.tocadas().len()
+    );
+}

@@ -413,6 +413,32 @@ pub fn pointer_down(
                 // faz, e é o que impede o gesto mais comum do mundo —
                 // arrastar no vazio — de não fazer nada.
                 scene.brush.verb = verb;
+                // ⭐⭐⭐⭐ **E UM GESTO QUE NÃO COMEÇOU TEM DE FECHAR.**
+                //
+                // ⛔⛔ Tudo o que o pen-down ABRIU já aconteceu quando se chega
+                // aqui: a fotografia da superfície, o `dyn_before` (uma cópia
+                // da malha INTEIRA), a superfície de referência — e o **plano
+                // de tinta fina**, que saiu da peça por um `take`. O
+                // `close_stroke` é o único sítio que devolve as quatro coisas,
+                // e ele só corre no pen-up de um `Drag::Sculpt`/`Filter` ⇒ **por
+                // esta porta o gesto morria com o plano dentro**.
+                //
+                // ⚠️⚠️ **É o report do dono de 21/09 e é MAIOR do que a
+                // premissa que a wave curou:** a peça fica sem plano, o
+                // `garante` do quadro seguinte reconstrói-o **semeado da cor
+                // por vértice**, e o artista vê a tinta fina virar a tinta da
+                // MALHA. ⛔ E isto **não precisa da topologia dinâmica**: basta
+                // UM clique fora da peça, que é o gesto que o comentário aqui em
+                // cima chama de «o mais comum do mundo».
+                //
+                // ⭐ **A cura é a PORTA e não uma devolução escrita aqui:** o
+                // doc do [`crate::tinta_da_peca::empresta`] promete que *«o
+                // `close_stroke` a chama sempre, inclusive no caminho de
+                // recusa»* — o que faltava era este caminho de recusa CHAMAR o
+                // `close_stroke`. Escrever um `devolve` só para aqui seria a
+                // segunda resposta à mesma pergunta, e deixaria as outras três
+                // coisas abertas na mesma.
+                scene.close_stroke();
                 scene.drag = Some(Drag::Orbit);
             }
         }

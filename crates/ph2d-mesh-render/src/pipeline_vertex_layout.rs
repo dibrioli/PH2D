@@ -10,7 +10,6 @@
 //! ordem desta lista **é** o `@location` que o WGSL declara, e uma segunda
 //! cópia dela noutro ficheiro divergiria no dia do 10.º buffer.
 
-
 // Os atributos têm de viver tanto quanto o descritor ⇒ `static`, e não
 // `const`: um `&CONST` só chega a `'static` por PROMOÇÃO, que é uma regra
 // sobre a expressão e não uma garantia da assinatura — e a assinatura que

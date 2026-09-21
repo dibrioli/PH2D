@@ -141,12 +141,35 @@ impl Entradas<'_> {
         // lente mais larga que a do consumidor põe este aviso em todo traço, e
         // um aviso que soa sempre é ruído que o artista aprende a ignorar —
         // exactamente quando ele passar a ser verdade.*
+        //
+        // ⭐⭐⭐⭐ **E a lente é a MESMA PORTA que o passe lê** desde 2026-09-20
+        // ([`crate::tinta_da_peca::o_gesto_muda_a_topologia`]): com o plano
+        // armado um verbo de COR já não mexe na topologia, logo avisá-lo aqui
+        // seria pôr o preço de um gesto que deixou de o pagar. *Duas respostas
+        // à mesma pergunta divergem no dia em que uma delas ganha uma cerca — e
+        // esta ganhou uma.*
         if self.tinta_fina_armada
             && self.dyntopo_armado
-            && (verbo.refina_no_dyntopo() || verbo.colapsa_no_dyntopo())
+            && crate::tinta_da_peca::o_gesto_muda_a_topologia(verbo, self.tinta_fina_armada)
         {
             return Some(ph2d_i18n::tr_with(
                 "app.sculpt3d.recusa.a_tinta_fina_perde_detalhe_com_topologia",
+                &[("nome", &nome)],
+            ));
+        }
+        // ⭐⭐⭐ **E a METADE SIMÉTRICA, que a cura de 2026-09-21 tornou
+        // obrigatória:** com o plano armado um pincel de COR deixa de adensar a
+        // malha, logo o artista que acabou de carregar no `P` vê o arame **não
+        // mudar** — *um gesto que não faz o que o interruptor promete e não diz
+        // porquê é indistinguível de um interruptor partido*, que é a família
+        // que este módulo inteiro existe para não ter.
+        //
+        // ⚠️ **As duas são exclusivas por construção** (a porta responde `false`
+        // exactamente aos verbos de cor), logo o artista lê UMA das duas e nunca
+        // as duas: a de cima é o PREÇO de um gesto, esta é a AUSÊNCIA de um.
+        if self.tinta_fina_armada && self.dyntopo_armado && verbo.paints_color() {
+            return Some(ph2d_i18n::tr_with(
+                "app.sculpt3d.recusa.a_tinta_fina_dispensa_a_topologia",
                 &[("nome", &nome)],
             ));
         }
@@ -179,7 +202,14 @@ impl Sculpt3dScene {
             // com a peça ainda sem plano não custa detalhe nenhum — e o inverso
             // também é verdade (desarmar o knob não apaga o plano até o quadro
             // seguinte reconciliar). *O que se perde é o que existe.*
-            tinta_fina_armada: o.tinta.is_some(),
+            //
+            // ⛔⛔⛔ **E ela passa pela PORTA porque `o.tinta.is_some()` lia
+            // `false` AQUI, sempre** (medido 2026-09-20): o pen-down
+            // **empresta** o plano ao traço antes de chamar esta função, logo
+            // o `Option` da peça está vazio quando a voz o procura — *o aviso
+            // nunca soou desde que existe*. Ver
+            // [`crate::Sculpt3dScene::tinta_fina_armada`].
+            tinta_fina_armada: self.tinta_fina_armada(),
             dyntopo_armado: self.dyntopo.armed,
         };
         if let Some(motivo) = entradas.recusa() {

@@ -119,7 +119,12 @@ fn o_oito_e_o_primeiro_degrau_que_alcanca_a_densidade_da_cena_irma() {
 
     let limpa = crate::scenes::pintura::peca().vert_count();
     let m = peca();
-    let topo = *DetalheDaTinta::ALL.last().expect("a fileira tem chips");
+    // ⛔⛔ **A PREMISSA MORREU EM 2026-09-20 e a morte está aqui, à vista:** esta
+    // linha era `*DetalheDaTinta::ALL.last()` — *«o degrau da lição É o topo da
+    // fileira»* —, e as duas grandezas coincidiam **por acidente** até o dono
+    // mandar acrescentar o `16×`. A lei que fica é a que a cena de facto
+    // ensina, e ela mora numa const com dois consumidores.
+    let licao = super::DEGRAU_DA_LICAO;
 
     let tabela: Vec<(DetalheDaTinta, usize)> = DetalheDaTinta::ALL
         .into_iter()
@@ -127,10 +132,22 @@ fn o_oito_e_o_primeiro_degrau_que_alcanca_a_densidade_da_cena_irma() {
         .collect();
     assert_eq!(
         primeiro_a_alcancar(&m, limpa),
-        Some(topo),
+        Some(licao),
         "a densidade LIMPA é {limpa} amostras (a peça da =51, a cena que o dono \
          aprovou) e esta peça lê {tabela:?}: o chip que o roteiro manda carregar \
          deixou de ser o primeiro a alcançá-la"
+    );
+
+    // ⭐⭐ **E a const tem de ser a que o ROTEIRO NOMEIA** — sem esta metade ela
+    // é uma segunda resposta à pergunta *«que degrau esta cena ensina?»*, e as
+    // duas divergem no dia em que alguém reescrever o texto.
+    const ESTA_CENA: &str = include_str!("scenes_tinta_fina.rs");
+    let agulha = format!("Carregue no `{}`", licao.label());
+    assert!(
+        ESTA_CENA.contains(&agulha),
+        "o roteiro deixou de mandar carregar no `{}` -- a const e o texto \
+         separaram-se, e o gate acima passa a medir um degrau que o dono nunca vê",
+        licao.label()
     );
 
     // ⭐⭐ **O CONTROLO é a própria mutação** — sem ele esta régua podia estar a
@@ -138,10 +155,10 @@ fn o_oito_e_o_primeiro_degrau_que_alcanca_a_densidade_da_cena_irma() {
     let fina = ph2d_mesh::shapes::uv_sphere(LATITUDES * 4, LONGITUDES, 1.0);
     let acha = primeiro_a_alcancar(&fina, limpa);
     assert!(
-        acha.is_some() && acha != Some(topo),
+        acha.is_some() && acha != Some(licao),
         "o CONTROLO desta régua não reproduz o fenómeno: uma peça 4x mais fina \
-         ({} vértices) devia alcançar a densidade limpa ANTES do topo, e ela lê \
-         {acha:?}",
+         ({} vértices) devia alcançar a densidade limpa ANTES do degrau da lição, \
+         e ela lê {acha:?}",
         fina.vert_count()
     );
 }

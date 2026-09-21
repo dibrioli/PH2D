@@ -434,26 +434,34 @@ fn o_plano_conta_no_que_a_peca_pesa() {
     );
 }
 
-/// ⛔⛔⛔ **GATE — a VOZ é ARMADA pela peça, e não por um literal.**
+/// ⛔⛔⛔ **GATE — a VOZ É ARMADA PELA PORTA, porque no pen-down a peça JÁ NÃO
+/// TEM O PLANO.**
 ///
-/// ⚠️⚠️ **Ele nasceu de uma MUTAÇÃO SOBREVIVENTE** (2026-09-20): trocar
-/// `tinta_fina_armada: o.tinta.is_some()` por `false` no
-/// [`super::Sculpt3dScene::diz_a_recusa_do_pen_down`] passava a suíte inteira
-/// — *a lei estava certa e o produto nunca a armava*, que é a família que esta
-/// casa já pagou meia dúzia de vezes (o defeito lê-se como *«o app não me
-/// avisou»*, nunca como *«a regra está errada»*).
+/// ⚠️⚠️ **A PREMISSA DA REDACÇÃO ANTERIOR MORREU EM 2026-09-20, e ela estava
+/// VERDE sobre um aviso que nunca soou.** Ela exigia o literal
+/// `tinta_fina_armada: o.tinta.is_some()` e nasceu de uma mutação sobrevivente
+/// — *«a lei estava certa e o produto nunca a armava»* —, mas o que ela provou
+/// foi só que o campo vinha da PEÇA. ⛔ **E no instante em que ele é lido a peça
+/// está vazia:** o pen-down **empresta** o plano ao traço
+/// ([`crate::input_down`]) e só depois chama a voz, logo `o.tinta` é `None` e a
+/// condição nunca dispara.
 ///
-/// ⛔ **A régua é o TEXTO, e é o tecto honesto:** o
+/// ⭐ *Uma lei verificada nas duas pontas ainda pode ser contrariada no meio* —
+/// e o meio, aqui, é o `take` do empréstimo.
+///
+/// ⚠️ **A régua continua a ser o TEXTO e é o tecto honesto:** o
 /// `diz_a_recusa_do_pen_down` pede uma [`super::Sculpt3dScene`], que pede um
 /// `wgpu::Device` — um gate sobre ele nasceria `#[ignore]` e o CI nunca o
 /// correria. O `include_str!` **deixa de compilar** se o ficheiro mudar de
 /// sítio, em vez de ficar verde a medir menos.
 ///
-/// ⚠️ **As DUAS metades, e cada uma sozinha mente:** a positiva prova que o
-/// campo é alimentado pela peça; a negativa proíbe o literal, que é a forma
-/// exacta que a mutação instalou.
+/// ⚠️ **TRÊS metades, e a terceira é a que torna as outras duas load-bearing:**
+/// a positiva prova que o campo passa pela porta; a negativa proíbe as duas
+/// formas que já mentiram (o literal e o `Option` da peça); e a **ORDEM** no
+/// pen-down é o FACTO que as justifica — sem ela, alguém lê a negativa como
+/// gosto e devolve o `o.tinta.is_some()`.
 #[test]
-fn a_voz_da_tinta_fina_e_armada_pela_peca() {
+fn a_voz_da_tinta_fina_e_armada_pela_porta() {
     const RECUSA: &str = include_str!("recusa.rs");
     let codigo: Vec<&str> = RECUSA
         .lines()
@@ -469,15 +477,100 @@ fn a_voz_da_tinta_fina_e_armada_pela_peca() {
     assert!(
         codigo
             .iter()
-            .any(|l| l.contains("tinta_fina_armada: o.tinta.is_some()")),
-        "o produto deixou de armar a voz a partir da PEÇA -- a regra fica certa \
-         e o aviso nunca soa, que é indistinguível de não existir"
+            .any(|l| l.contains("tinta_fina_armada: self.tinta_fina_armada()")),
+        "a voz deixou de passar pela PORTA -- e a porta é o único sítio que vê o \
+         plano EMPRESTADO, que é onde ele está quando esta pergunta é feita"
     );
-    for morto in ["tinta_fina_armada: false", "tinta_fina_armada: true"] {
+    for morto in [
+        "tinta_fina_armada: false",
+        "tinta_fina_armada: true",
+        "tinta_fina_armada: o.tinta.is_some()",
+    ] {
         assert!(
             !codigo.iter().any(|l| l.contains(morto)),
-            "o produto arma a voz com um LITERAL (`{morto}`): ou ela nunca soa, \
-             ou soa sempre -- e as duas leem-se como a regra estar partida"
+            "o produto arma a voz com `{morto}`: ou ela nunca soa, ou soa sempre, \
+             ou pergunta ao `Option` que o empréstimo acabou de esvaziar -- e as \
+             três leem-se como a regra estar partida"
         );
     }
+
+    // ⭐⭐⭐ **O FACTO que torna a negativa uma lei e não um gosto.**
+    const PEN_DOWN: &str = include_str!("input_down.rs");
+    let empresta = PEN_DOWN
+        .find("tinta_da_peca::empresta(")
+        .expect("o pen-down deixou de emprestar o plano ao traço");
+    let voz = PEN_DOWN
+        .find("diz_a_recusa_do_pen_down()")
+        .expect("o pen-down deixou de dizer a recusa");
+    assert!(
+        empresta < voz,
+        "a ORDEM do pen-down inverteu-se: hoje a voz corre ANTES do empréstimo, \
+         logo o `Option` da peça voltou a ser uma resposta honesta e esta régua \
+         passou a proibir a forma certa"
+    );
+}
+
+/// ⭐⭐⭐⭐ **GATE — COM O PLANO ARMADO, UM PINCEL DE COR DEIXA DE MEXER NA
+/// TOPOLOGIA** — o report do dono de 2026-09-20 (*«traços posteriores estão
+/// reduzindo a resolução dos traços em alta resolução anteriores»*).
+///
+/// ⚠️ **A população que a resposta muda é CONTADA e não escrita à mão**, e é
+/// ela a lei: *o plano protege exactamente os verbos de COR*. Uma lista à mão
+/// aqui seria a segunda resposta a [`ph2d_sculpt3d::Verb::paints_color`], e as
+/// duas divergem no dia em que nascer o quarto pincel de cor.
+///
+/// ⛔ **Os TRÊS controlos, e cada um recusa uma cura barata:**
+///
+/// * **sem plano** os mesmos verbos continuam a refinar — senão a cura teria
+///   sido *«pincel de cor nunca refina»*, que apaga a ordem do dono de 19/09;
+/// * um verbo de **FORMA** refina com o plano armado — senão o plano teria
+///   desarmado o passe inteiro, e o artista que esculpe deixaria de o ter;
+/// * um verbo que **nunca** mexe na topologia continua a não mexer — senão a
+///   porta estaria a inventar um `true` que a tabela do dyntopo não tem.
+#[test]
+fn com_o_plano_armado_um_pincel_de_cor_nao_mexe_na_topologia() {
+    use ph2d_sculpt3d::Verb;
+
+    let muda: Vec<Verb> = Verb::ALL
+        .into_iter()
+        .filter(|v| o_gesto_muda_a_topologia(*v, false) != o_gesto_muda_a_topologia(*v, true))
+        .collect();
+    let de_cor: Vec<Verb> = Verb::ALL.into_iter().filter(|v| v.paints_color()).collect();
+    assert_eq!(
+        muda, de_cor,
+        "o plano muda a resposta de {muda:?} e os verbos de cor são {de_cor:?} -- \
+         a lei é *o plano protege exactamente quem pinta*, e ela deixou de \
+         descrever o produto"
+    );
+    assert!(
+        !de_cor.is_empty(),
+        "a população é VAZIA: este gate estaria verde a afirmar nada"
+    );
+
+    // ⭐ CONTROLO 1 — sem plano, quem pinta continua a refinar (ordem do dono
+    //   de 2026-09-19, que esta wave NÃO revoga).
+    for v in &de_cor {
+        assert!(
+            o_gesto_muda_a_topologia(*v, false),
+            "{v:?} deixou de refinar mesmo SEM plano -- isso apaga a ordem de 19/09"
+        );
+        assert!(
+            !o_gesto_muda_a_topologia(*v, true),
+            "{v:?} ainda refina com o plano armado -- é o report de 20/09"
+        );
+    }
+
+    // ⭐ CONTROLO 2 — um verbo de FORMA não é tocado pelo plano.
+    assert!(
+        o_gesto_muda_a_topologia(Verb::Draw, true) && o_gesto_muda_a_topologia(Verb::Draw, false),
+        "o plano desarmou o passe para um verbo de FORMA: quem esculpe com \
+         topologia dinâmica perdeu-a"
+    );
+    // ⭐ CONTROLO 3 — e a porta não inventa um `true` onde a tabela diz não.
+    assert!(
+        !o_gesto_muda_a_topologia(Verb::Smooth, true)
+            && !o_gesto_muda_a_topologia(Verb::Smooth, false),
+        "o alisador passou a mexer na topologia -- a porta está a decidir em vez \
+         de delegar na tabela do dyntopo"
+    );
 }

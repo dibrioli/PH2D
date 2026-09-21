@@ -44,6 +44,28 @@ pub(crate) const LATITUDES: usize = 24;
 /// Ver [`LATITUDES`].
 pub(crate) const LONGITUDES: usize = 32;
 
+/// ⭐⭐⭐ **O DEGRAU QUE O ROTEIRO MANDA CARREGAR** — a lição desta cena.
+///
+/// ⚠️ **Ele é uma CONST e não o último da fileira desde 2026-09-20**, quando o
+/// dono mandou acrescentar o `16×`: até aí *«o degrau da lição»* e *«o topo da
+/// fileira»* eram a mesma coisa **por acidente**, e o gate que media a cena
+/// afirmava o topo. *Duas grandezas que coincidem hoje não são uma lei*, e o
+/// dia em que deixaram de coincidir foi o dia seguinte.
+///
+/// ⭐ Ela tem **dois** consumidores — o gate da densidade e o da cena no
+/// produto —, e o censo que exige que o roteiro a NOMEIE é o que impede a const
+/// e o texto de se separarem.
+///
+/// ⚠️ **Ela é `#[cfg(test)]` e isso é a resposta certa, não uma cerca** (o
+/// idioma do `CUSTO_POR_VERTICE_NO_TECTO`): o produto não a lê — quem manda
+/// carregar no chip é o ROTEIRO, que é texto — e o que ela faz é impedir que os
+/// gates e o texto envelheçam cada um para o seu lado. *Pôr um consumidor
+/// artificial no produto para calar o `dead_code` seria escrever código para o
+/// linter.*
+#[cfg(test)]
+pub(crate) const DEGRAU_DA_LICAO: ph2d_panel_sculpt3d::state::DetalheDaTinta =
+    ph2d_panel_sculpt3d::state::DetalheDaTinta::Oito;
+
 /// A esfera grossa — ver o cabeçalho.
 pub(crate) fn peca() -> ph2d_mesh::Mesh {
     ph2d_mesh::shapes::uv_sphere(LATITUDES, LONGITUDES, 1.0)
@@ -113,22 +135,35 @@ pub(crate) fn announce() {
          [sculpt3d]        -> A borda dela e' um serrilhado GROSSO, do tamanho dos\n\
          [sculpt3d]           quadrados do arame. E' a tinta a ter a resolucao da malha.\n\
          [sculpt3d]    (3) No painel, logo ABAIXO da caixa de cor, esta' a fileira\n\
-         [sculpt3d]        `Paint Detail`, com quatro botoes. Ela esta' em `Mesh`.\n\
-         [sculpt3d]        Carregue no ultimo (o `8x`).\n\
+         [sculpt3d]        `Paint Detail`. Ela esta' em `Mesh`. Carregue no `8x`.\n\
          [sculpt3d]    (4) Pinte uma segunda marca AO LADO da primeira.\n\
          [sculpt3d]        -> Esta sai com a borda LIMPA, e o arame NAO MUDOU: conte os\n\
          [sculpt3d]           quadrados outra vez, sao os mesmos. E' essa a diferenca\n\
          [sculpt3d]           para a cena =51, onde a borda so' limpava adensando a malha.\n\
          [sculpt3d]        -> Compare as duas marcas lado a lado.\n\
+         [sculpt3d]    (4-bis) Carregue `16x`, o ultimo da fileira, e pinte outra vez.\n\
+         [sculpt3d]        -> E' o mais fino que o app oferece. Numa peca desta grossura\n\
+         [sculpt3d]           a diferenca para o `8x` e' pequena de proposito: o `8x` ja'\n\
+         [sculpt3d]           passa a densidade da cena =51, e o `16x` e' a folga acima.\n\
          [sculpt3d]    (5) Volte a fileira para `Mesh`.\n\
          [sculpt3d]        -> A segunda marca ENGROSSA e fica como a primeira. E' o preco,\n\
          [sculpt3d]           e nao um defeito: sem o plano, a cor volta a morar nos\n\
          [sculpt3d]           vertices. Carregue `8x` outra vez e pinte -- o detalhe novo\n\
          [sculpt3d]           volta a sair fino.\n\
-         [sculpt3d]    (6) Com o `8x` escolhido, carregue `P` (topologia dinamica) e pinte.\n\
-         [sculpt3d]        -> O TERMINAL tem de dizer que a tinta fina perde detalhe: um\n\
-         [sculpt3d]           pincel que muda a malha muda o chao debaixo do plano, e o app\n\
-         [sculpt3d]           avisa ANTES em vez de apagar o seu trabalho em silencio.\n\
+         [sculpt3d]    (6) Com o `8x` escolhido, carregue `P` (topologia dinamica) e pinte\n\
+         [sculpt3d]        VARIAS marcas, umas por cima das outras.\n\
+         [sculpt3d]        -> As marcas anteriores CONTINUAM finas e o arame NAO adensa:\n\
+         [sculpt3d]           com a tinta fina armada, um pincel de COR deixa de mexer na\n\
+         [sculpt3d]           malha -- ele nao precisa dela para ter resolucao, e o\n\
+         [sculpt3d]           TERMINAL diz isso no primeiro traco.\n\
+         [sculpt3d]        -> Agora escolha o `Draw` na fileira de cima e desenhe: o arame\n\
+         [sculpt3d]           adensa, o TERMINAL avisa, e a tinta volta a ser grossa. E'\n\
+         [sculpt3d]           o preco de mudar a malha, e ele so' se paga onde e' pedido.\n\
+         [sculpt3d]    (6-bis) Clique UMA VEZ no VAZIO, fora da bola, e depois\n\
+         [sculpt3d]        pinte outra marca.\n\
+         [sculpt3d]        -> As marcas de antes continuam finas. Um clique fora da\n\
+         [sculpt3d]           peca nao e' um traco -- e ate' 21/09 ele levava o plano\n\
+         [sculpt3d]           com ele, e a tinta inteira voltava a' resolucao da malha.\n\
          [sculpt3d]    (7) `Ctrl+Z` algumas vezes.\n\
          [sculpt3d]        -> A tinta volta atras, passo a passo, com plano ou sem ele.\n\
          [sculpt3d]\n\

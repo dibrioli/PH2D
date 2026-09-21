@@ -69,19 +69,12 @@ impl Default for Dyntopo {
     }
 }
 
-/// Os três degraus que a TECLA `U` percorre, e os nomes que o log usa.
-///
-/// ⚠️⚠️ **Eles deixaram de ser a única superfície em 2026-09-14** — report do
-/// dono: *«porque não temos um slider neste pincel para definir a densidade da
-/// malha»*. A nota que aqui estava dizia *«três e não um slider contínuo,
-/// porque a UI aqui é o teclado»*, e a **premissa dela expirou** quando a
-/// secção Topology do painel ganhou os knobs do remesh; ninguém releu a nota.
-///
-/// ⭐ Hoje o valor é uma **pista contínua** no painel e esta tabela é o
-/// **atalho**: um toque por degrau, com nome próprio, que é o que um log
-/// consegue dizer (`0,5 → 0,53 → 0,56` não é). *A mesma relação que o `[`/`]`
-/// tem com a pista do raio.*
-pub(super) const DETAIL_STEPS: [(f32, &str); 3] = [(0.15, "grosso"), (0.5, "medio"), (1.0, "fino")];
+/// **O ALVO DE DENSIDADE** — a tabela da tecla `U` e a porta que escolhe entre
+/// os dois sliders; ver o módulo irmão. ⚠️ Os itens dele são `pub(crate)` e
+/// não `pub(super)`: um filho de filho tem outro `super`, e a visibilidade que
+/// eles tinham antes do corte é a da CRATE.
+#[path = "dyntopo_detalhe.rs"]
+mod detalhe;
 
 impl Sculpt3dScene {
     /// Liga/desliga. Devolve `(ligado, faces trianguladas)` — o segundo é zero
@@ -97,6 +90,25 @@ impl Sculpt3dScene {
         // ⚠️ **Triangula ao LIGAR, não no primeiro dab.** No primeiro dab a
         // mudança chegaria junto com o barro e o artista não teria como separar
         // *"a ferramenta mudou minha malha"* de *"a ferramenta esculpiu"*.
+        //
+        // ⛔⛔ **EXCEPTO com a TINTA FINA armada, e a razão é medida:** triangular
+        // parte cada quad em duas faces, logo a contagem de faces muda e a
+        // [`crate::tinta_da_peca::concorda_com`] passa a devolver `false` — o
+        // plano é reconstruído SEMEADO da cor por vértice e **todo o detalhe
+        // fino já pintado vira a resolução da malha**, no gesto de LIGAR um
+        // interruptor. *O argumento de cima continua de pé e este ganha dele:
+        // separar «mudou a malha» de «esculpiu» custa uma leitura, e apagar o
+        // trabalho do artista custa o trabalho.*
+        //
+        // ⭐ **A triangulação não se perde — ela MUDA DE SÍTIO:** quem a faz
+        // passa a ser o pen-down do gesto que de facto vai mexer na topologia
+        // ([`Self::open_dyntopo_stroke`]), que é o caminho que os verbos sem
+        // interruptor já usavam desde 14/09. *Um pincel de cor com o plano
+        // armado nunca precisa de triângulos, e é exactamente ele que estava a
+        // pagar por eles.*
+        if self.tinta_fina_armada() {
+            return (true, 0);
+        }
         let Some(o) = self.obj_mut() else {
             return (true, 0);
         };
@@ -105,38 +117,6 @@ impl Sculpt3dScene {
             self.mesh_rebuilt();
         }
         (true, added)
-    }
-
-    /// O rótulo do degrau atual — **a mesma tabela que a tecla percorre**, e é
-    /// isso que impede o log de dizer "médio" enquanto o motor usa outro número.
-    pub(super) fn detail_label(&self) -> &'static str {
-        let actual = self.detalhe_do_gesto(&self.brush);
-        DETAIL_STEPS
-            .iter()
-            .find(|(d, _)| (d - actual).abs() < 1e-6)
-            .map_or("custom", |(_, l)| l)
-    }
-
-    /// O degrau seguinte do detalhe. Devolve o rótulo para o log.
-    ///
-    /// ⚠️⚠️ **Ele cicla o número que o GESTO EM MÃOS lê, e não sempre o da
-    /// cena** — desde que o pincel de densidade ganhou alvo próprio (ordem do
-    /// dono, 14/09) há **dois** sliders, e um atalho que escrevesse sempre no da
-    /// cena seria uma tecla que não mexe no controlo que está à vista. A escolha
-    /// vem da MESMA porta que o passe usa ([`Sculpt3dScene::detalhe_do_gesto`]).
-    pub(super) fn cycle_detail(&mut self) -> &'static str {
-        let actual = self.detalhe_do_gesto(&self.brush);
-        let at = DETAIL_STEPS
-            .iter()
-            .position(|(d, _)| (d - actual).abs() < 1e-6)
-            .unwrap_or(0);
-        let (d, label) = DETAIL_STEPS[(at + 1) % DETAIL_STEPS.len()];
-        if self.brush.offers_density_controls() {
-            self.brush.density_detail = d;
-        } else {
-            self.dyntopo.detail = d;
-        }
-        label
     }
 
     /// **Refina onde o dab vai cair.** Chamado por [`Sculpt3dScene::sculpt_at`]
@@ -163,33 +143,6 @@ impl Sculpt3dScene {
         }
         self.dyn_queixa_dita = true;
         eprintln!("[sculpt3d] {} nao mudou a malha: {motivo}", verbo.label());
-    }
-
-    /// **QUE DENSIDADE ESTE GESTO PEDE?** — a porta que escolhe entre os DOIS
-    /// sliders.
-    ///
-    /// ⭐⭐⭐ **ORDEM DO DONO (14/09): *«deixe o slider Detail para o dynamic
-    /// Retopology e coloque outro slider Detail exclusivo para o pincel»*.** São
-    /// duas perguntas que partilhavam um número — *quão fina a malha fica
-    /// debaixo de um TRAÇO* contra *quão fina eu quero esta zona AGORA* — e
-    /// separá-las é a consequência directa da ordem anterior (*«Dynamic topology
-    /// é para os outros pincéis»*).
-    ///
-    /// ⚠️ **A escolha é feita AQUI e em lugar nenhum mais.** Ela vive numa porta
-    /// e não num `if` no sítio de uso porque tem um segundo consumidor: a tecla
-    /// `U`, que cicla **o mesmo número que o gesto em mãos lê**. *Dois sítios a
-    /// escolher entre dois sliders é como o atalho passa a mexer no slider
-    /// errado.*
-    ///
-    /// ⚠️ **Quem responde é o PINCEL** ([`ph2d_sculpt3d::Brush::offers_density_controls`]),
-    /// que é a mesma porta que o painel consulta para oferecer a pista — senão
-    /// haveria um slider visível a governar outra coisa.
-    pub(super) fn detalhe_do_gesto(&self, brush: &ph2d_sculpt3d::Brush) -> f32 {
-        if brush.offers_density_controls() {
-            brush.density_detail
-        } else {
-            self.dyntopo.detail
-        }
     }
 
     pub(super) fn refine_for_dab(
@@ -235,7 +188,15 @@ impl Sculpt3dScene {
         // dela não é, e é a que esta linha cura: a **MÁSCARA** não move um
         // vértice, e medido nesta cena ela levava a peça de `830` para `1 331`
         // vértices.
-        if !verbo.refina_no_dyntopo() && !verbo.colapsa_no_dyntopo() {
+        //
+        // ⭐⭐⭐⭐ **E desde 2026-09-20 a pergunta passa pela porta que também vê
+        // o PLANO DE TINTA FINA** ([`crate::tinta_da_peca::o_gesto_muda_a_topologia`]):
+        // um verbo de COR com o plano armado deixa de refinar, porque o refino
+        // ali compra ZERO (a resolução da tinta já não é a da malha) e custa o
+        // plano INTEIRO. É o report do dono — *«traços posteriores estão
+        // reduzindo a resolução dos traços anteriores»* — e o mecanismo está
+        // escrito naquela porta.
+        if !self.o_gesto_em_maos_muda_a_topologia(verbo) {
             return false;
         }
         // ⚠️ **Recusa com a pilha montada** (ver o cabeçalho). Silenciosa aqui

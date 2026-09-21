@@ -132,6 +132,10 @@ pub struct Sculpt3dScene {
     /// ponteiro, e uma queixa por dab seria um log que ninguém lê. Reposta no
     /// pen-down.
     pub(crate) dyn_queixa_dita: bool,
+    /// **O RASCUNHO das amostras que o quadro sobe ao device** — reaproveitado
+    /// entre quadros para o upload incremental da tinta fina não alocar a cada
+    /// dab. Ver [`crate::slots`] e a `TintaDoTraco::drena_sujas`.
+    pub(crate) tinta_sujas: Vec<u32>,
     /// **A TABELA DE SLOTS DO DEVICE** — quem mora em cada índice do
     /// renderizador. Ver [`slots`], que é onde a lei dela está escrita.
     pub(crate) slots: Vec<ObjectId>,

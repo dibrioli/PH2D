@@ -272,7 +272,7 @@ pub const SCULPT3D_UI_LEVEL: [NodeId; 2] = [
     hash_node_id("sculpt3d.ui_level.1"),
 ];
 
-/// ⭐⭐⭐⭐ **A RESOLUÇÃO DA TINTA** — os chips `Mesh` · `2×` · `4×` · `8×`.
+/// ⭐⭐⭐⭐ **A RESOLUÇÃO DA TINTA** — os chips `Mesh` · `2×` · `4×` · `8×` · `16×`.
 ///
 /// ⚠️ **O tamanho se CONTA e não se escolhe** — o gate
 /// `o_painel_oferece_todo_detalhe_de_tinta_que_o_motor_tem` compara este array
@@ -280,11 +280,12 @@ pub const SCULPT3D_UI_LEVEL: [NodeId; 2] = [
 /// nasce **inalcançável** e o gate fica vermelho em vez de o chip sumir em
 /// silêncio. *É a forma exacta do defeito que o `Density` e o `Destroy` já
 /// pagaram: a lei existe, os gates existem, e o artista não lhe chega.*
-pub const SCULPT3D_TINTA_DETALHE: [NodeId; 4] = [
+pub const SCULPT3D_TINTA_DETALHE: [NodeId; 5] = [
     hash_node_id("sculpt3d.tinta_detalhe.0"),
     hash_node_id("sculpt3d.tinta_detalhe.1"),
     hash_node_id("sculpt3d.tinta_detalhe.2"),
     hash_node_id("sculpt3d.tinta_detalhe.3"),
+    hash_node_id("sculpt3d.tinta_detalhe.4"),
 ];
 
 /// **QUAL MOTOR DE RETOPOLOGIA** — os chips `Global` · `Local`.

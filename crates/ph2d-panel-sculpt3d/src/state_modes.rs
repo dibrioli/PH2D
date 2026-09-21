@@ -158,14 +158,27 @@ pub enum DetalheDaTinta {
     Duas,
     /// `4` intervalos por aresta.
     Quatro,
-    /// `8` intervalos por aresta — o mais fino que o produto oferece, e o tecto
-    /// é MEDIDO (ver `ph2d_app_sculpt3d::tinta_da_peca::NIVEL_MAX`).
+    /// `8` intervalos por aresta.
     Oito,
+    /// `16` intervalos por aresta — o mais fino que o produto oferece, e o
+    /// tecto é MEDIDO (ver `ph2d_app_sculpt3d::tinta_da_peca::NIVEL_MAX`).
+    ///
+    /// ⭐ **Ordem do dono (2026-09-20): *«acrescente a opção de 16x»***, e o
+    /// degrau só entrou depois de medido — a nota que aqui estava dizia
+    /// *«um degrau novo aqui mede-se antes de se escrever»*, e a medição está
+    /// na tabela daquela constante.
+    Dezasseis,
 }
 
 impl DetalheDaTinta {
     /// A ordem em que os chips são pintados. **É** a ordem do enum.
-    pub const ALL: [Self; 4] = [Self::Malha, Self::Duas, Self::Quatro, Self::Oito];
+    pub const ALL: [Self; 5] = [
+        Self::Malha,
+        Self::Duas,
+        Self::Quatro,
+        Self::Oito,
+        Self::Dezasseis,
+    ];
 
     /// Chave i18n do rótulo.
     pub fn label(self) -> &'static str {
@@ -174,6 +187,7 @@ impl DetalheDaTinta {
             Self::Duas => ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.duas"),
             Self::Quatro => ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.quatro"),
             Self::Oito => ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.oito"),
+            Self::Dezasseis => ph2d_i18n::tr("panel.sculpt3d.tinta_detalhe.dezasseis"),
         }
     }
 
@@ -189,6 +203,7 @@ impl DetalheDaTinta {
             Self::Duas => Some(1),
             Self::Quatro => Some(2),
             Self::Oito => Some(3),
+            Self::Dezasseis => Some(4),
         }
     }
 

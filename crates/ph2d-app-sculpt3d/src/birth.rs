@@ -42,6 +42,7 @@ impl Sculpt3dScene {
             dyn_region: ph2d_mesh::RegionScratch::default(),
             pente_campo: ph2d_quadflow::regiao::CampoDoTraco::default(),
             dyn_queixa_dita: false,
+            tinta_sujas: Vec::new(),
             slots: Vec::new(),
             camera,
             renderer: MeshRenderer::new(device, ph2d_render::GameRt::FORMAT),

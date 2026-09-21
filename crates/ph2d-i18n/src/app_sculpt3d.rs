@@ -115,6 +115,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
              paint is re-seeded from the per-vertex colour, so detail finer than the mesh is \
              lost (turn Dynamic Topology off to keep it)"
         }
+        "app.sculpt3d.recusa.a_tinta_fina_dispensa_a_topologia" => {
+            "Dynamic Topology is on, and {nome} will NOT densify the mesh -- Paint Detail is \
+             armed for this piece, so the paint has its own resolution and refining would only \
+             throw the fine plane away (a shape brush still densifies)"
+        }
         "app.sculpt3d.trim_aplica.sem_peca_para_cortar" => "there is no piece to cut",
         "app.sculpt3d.trim_aplica.pilha_montada_j_reverte" => {
             "a multiresolution stack is mounted -- J reverts it and the cut comes back"

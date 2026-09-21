@@ -328,3 +328,69 @@ fn o_pen_down_diz_o_preco_da_tinta_fina() {
         "com um verbo que nao mexe na topologia, calado"
     );
 }
+
+/// ⭐⭐⭐⭐ **GATE — O PEN-DOWN DIZ PORQUE O ARAME NÃO ADENSOU** (a cura de
+/// 2026-09-21).
+///
+/// Com o plano armado um pincel de COR deixa de mexer na topologia, logo o
+/// artista que acabou de carregar no `P` vê o interruptor **não fazer nada**.
+/// *Um gesto que não faz o que o interruptor promete e não diz porquê é
+/// indistinguível de um interruptor partido.*
+///
+/// ⚠️ **As duas vozes são EXCLUSIVAS, e a exclusão é medida aqui:** a do preço
+/// (*«vais perder o detalhe fino»*) só sai para quem MUDA a topologia, e esta
+/// só para quem deixou de a mudar. Sem a segunda metade deste gate, uma
+/// implementação que dissesse as duas passaria — e o artista leria um aviso de
+/// perda a cada traço de cor, que é o ruído que a família toda evita.
+#[test]
+fn o_pen_down_diz_porque_o_arame_nao_adensou() {
+    let m = bola();
+    let cor = Brush {
+        verb: Verb::Paint,
+        ..Brush::default()
+    };
+    assert!(
+        cor.verb.paints_color(),
+        "o arranjo tem de ser um verbo de COR"
+    );
+
+    let mut e = entradas(&m, &cor, 0);
+    e.tinta_fina_armada = true;
+    e.dyntopo_armado = true;
+    let dito = e.recusa().expect("com os dois armados ele fala");
+    assert!(
+        dito.contains("will NOT densify"),
+        "a voz tem de dizer que a malha NÃO vai adensar: {dito}"
+    );
+    // ⛔ E não pode ser a do PREÇO: com este verbo não se perde nada.
+    assert!(
+        !dito.contains("is lost"),
+        "saiu a voz do PREÇO para um verbo que já não paga preço nenhum: {dito}"
+    );
+
+    // CONTROLO 1 — sem o interruptor não há promessa por explicar.
+    let mut e = entradas(&m, &cor, 0);
+    e.tinta_fina_armada = true;
+    assert!(e.recusa().is_none(), "sem o passe armado, calado");
+
+    // CONTROLO 2 — sem plano o pincel de cor ADENSA como sempre.
+    let mut e = entradas(&m, &cor, 0);
+    e.dyntopo_armado = true;
+    assert!(e.recusa().is_none(), "sem plano, calado");
+
+    // ⭐ CONTROLO 3 — o verbo de FORMA continua a ouvir a voz do PREÇO, no
+    //   mesmo arranjo. É ele que prova que as duas são exclusivas e não uma
+    //   substituição.
+    let forma = Brush {
+        verb: Verb::Draw,
+        ..Brush::default()
+    };
+    let mut e = entradas(&m, &forma, 0);
+    e.tinta_fina_armada = true;
+    e.dyntopo_armado = true;
+    let dito = e.recusa().expect("o verbo de forma continua a falar");
+    assert!(
+        dito.contains("is lost") && !dito.contains("will NOT densify"),
+        "o verbo de FORMA deixou de ouvir a voz do preço: {dito}"
+    );
+}

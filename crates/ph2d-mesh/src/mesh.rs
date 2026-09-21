@@ -645,7 +645,6 @@ impl Mesh {
             scratch.vert_seen[v as usize] = false;
         }
     }
-
 }
 
 /// **A LISTA DE ÍNDICES QUE A PLACA CONSOME** — ver [`indices`]. Irmão

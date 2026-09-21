@@ -260,22 +260,49 @@ impl Sculpt3dScene {
                 || emprestado
                 || matches!(line.job, SlotJob::Full)
             {
-                let plano = if emprestado {
-                    self.stroke
-                        .tinta_fina
-                        .as_ref()
-                        .map(ph2d_sculpt3d::tinta_fina::TintaDoTraco::tinta)
-                } else {
-                    self.objects[i].tinta.as_ref()
-                };
-                self.renderer.upload_tinta_at(
-                    device,
-                    queue,
-                    k,
-                    self.objects[i].stack.mesh(),
-                    plano,
-                );
-                self.objects[i].tinta_suja = false;
+                // ⭐⭐⭐⭐ **COM O PLANO EMPRESTADO SOBEM SÓ AS AMOSTRAS QUE O
+                // TRAÇO ESCREVEU** — a dívida que o fecho de 20/09 deixou
+                // nomeada (*«o upload é INTEIRO e por quadro durante um
+                // traço»*) e que a medição transformou num muro: só empacotar
+                // o plano custava `21,9 ms` no degrau `8×` da peça de fábrica
+                // e `81,7 ms` no `16×`, contra um quadro de `16,7`.
+                //
+                // ⚠️ **As três cercas são o que a torna segura**, e cada uma
+                // nomeia o que ela assume: a topologia e as posições não
+                // mexeram (`!mexeu`), ninguém pediu o plano inteiro
+                // (`!tinta_suja`), e o device tem EXACTAMENTE este plano (a
+                // contagem de amostras, conferida lá dentro). Falhando
+                // qualquer uma, cai no caminho de sempre.
+                let so_as_amostras = emprestado
+                    && !mexeu
+                    && !self.objects[i].tinta_suja
+                    && match self.stroke.tinta_fina.as_mut() {
+                        Some(fina) => {
+                            let sujas = &mut self.tinta_sujas;
+                            fina.drena_sujas(sujas);
+                            self.renderer
+                                .upload_tinta_amostras_at(queue, k, fina.tinta(), sujas)
+                        }
+                        None => false,
+                    };
+                if !so_as_amostras {
+                    let plano = if emprestado {
+                        self.stroke
+                            .tinta_fina
+                            .as_ref()
+                            .map(ph2d_sculpt3d::tinta_fina::TintaDoTraco::tinta)
+                    } else {
+                        self.objects[i].tinta.as_ref()
+                    };
+                    self.renderer.upload_tinta_at(
+                        device,
+                        queue,
+                        k,
+                        self.objects[i].stack.mesh(),
+                        plano,
+                    );
+                    self.objects[i].tinta_suja = false;
+                }
             }
             // ⚠️ **As ARESTAS, só com a malha armada.** A lista custa até 24 B por
             // vértice e a maioria esculpe sem ela; construí-la junto com a malha

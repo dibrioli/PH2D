@@ -174,6 +174,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.tinta_detalhe.duas" => "2x",
         "panel.sculpt3d.tinta_detalhe.quatro" => "4x",
         "panel.sculpt3d.tinta_detalhe.oito" => "8x",
+        "panel.sculpt3d.tinta_detalhe.dezasseis" => "16x",
         "panel.sculpt3d.hardness" => "Hardness",
         "panel.sculpt3d.auto_smooth" => "Auto-Smooth",
         "panel.sculpt3d.plane_offset" => "Plane Offset",

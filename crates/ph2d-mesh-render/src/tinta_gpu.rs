@@ -46,6 +46,14 @@ pub(super) struct TintaGpu {
     /// device, para o `upload_tinta_at` não reescrever a configuração por
     /// quadro quando nada mudou.
     pub(super) armado: bool,
+    /// ⭐⭐⭐ **Quantas amostras o device tem** — a testemunha que o upload
+    /// INCREMENTAL exige antes de escrever por índice.
+    ///
+    /// ⚠️ *Escrever a amostra `i` num buffer que descreve outra topologia é a
+    /// armadilha muda deste subsistema uma camada abaixo*, e a contagem é a
+    /// única coisa que o device sabe de si mesmo. Ela é escrita **ao lado** da
+    /// escrita que testemunha.
+    pub(super) n_amostras: usize,
 }
 
 const N: usize = 6;
@@ -139,6 +147,7 @@ impl TintaGpu {
             cap_idx: 16,
             cap_pos: 16,
             armado: false,
+            n_amostras: 0,
         }
     }
 
@@ -204,9 +213,19 @@ impl MeshRenderer {
         let mut origem = Vec::new();
         mesh.triangle_indices_com_origem(&mut tris, Some(&mut origem));
 
-        let amostras: Vec<f32> = t.amostras().iter().flat_map(|c| *c).collect();
-        let idx: Vec<u32> = tris.iter().flat_map(|t| *t).collect();
-        let pos: Vec<f32> = mesh.positions().iter().flat_map(|p| *p).collect();
+        // ⭐⭐⭐⭐ **NENHUM ACHATAMENTO, e a diferença é MEDIDA:** `[f32; 3]` e
+        // `[u32; 3]` são contíguos, logo `&[[f32; 3]]` **já é** o bloco de bytes
+        // que o device quer — as três linhas que aqui estavam construíam uma
+        // cópia inteira do plano, das posições e dos índices **em todo quadro
+        // com o plano emprestado**.
+        //
+        // ⛔ Medido em 2026-09-20, só o `collect` das amostras: `21,9 ms` no
+        // degrau `8×` da peça de fábrica (`72 MB`) e `81,7 ms` no `16×`
+        // (`288 MB`), contra um quadro de `16,7`. *Uma cópia que existe só para
+        // mudar o TIPO do slice é a forma mais cara de não dizer nada.*
+        let amostras: &[u8] = bytemuck::cast_slice(t.amostras());
+        let idx: &[u8] = bytemuck::cast_slice(&tris);
+        let pos: &[u8] = bytemuck::cast_slice(mesh.positions());
 
         let mut refez = false;
         let st = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
@@ -217,7 +236,7 @@ impl MeshRenderer {
                 queue,
                 &mut g.amostras,
                 &mut g.cap_amostras,
-                bytemuck::cast_slice(&amostras),
+                amostras,
                 "amostras",
                 st,
             );
@@ -239,26 +258,11 @@ impl MeshRenderer {
                 "origem",
                 st,
             );
-            refez |= poe(
-                device,
-                queue,
-                &mut g.idx,
-                &mut g.cap_idx,
-                bytemuck::cast_slice(&idx),
-                "idx",
-                st,
-            );
-            refez |= poe(
-                device,
-                queue,
-                &mut g.pos,
-                &mut g.cap_pos,
-                bytemuck::cast_slice(&pos),
-                "pos",
-                st,
-            );
+            refez |= poe(device, queue, &mut g.idx, &mut g.cap_idx, idx, "idx", st);
+            refez |= poe(device, queue, &mut g.pos, &mut g.cap_pos, pos, "pos", st);
             queue.write_buffer(&g.cfg, 0, bytemuck::cast_slice(&cfg_de(Some(t))));
             g.armado = true;
+            g.n_amostras = t.amostras().len();
         }
         if refez {
             self.refaz_bind(device, index);
@@ -267,6 +271,55 @@ impl MeshRenderer {
 }
 
 impl MeshRenderer {
+    /// ⭐⭐⭐⭐ **SOBE SÓ AS AMOSTRAS QUE O TRAÇO ESCREVEU** — e é isto que tira
+    /// o custo de ter tinta fina de cima de `O(plano)`.
+    ///
+    /// Devolve `false` quando não pode, e aí **quem chama sobe o plano
+    /// inteiro**: o device tem de já ter este plano (mesma contagem de
+    /// amostras, `armado`), senão escrever por índice põe bytes válidos no
+    /// sítio errado — a armadilha muda desta fronteira.
+    ///
+    /// ⛔⛔ **A dívida que ela paga estava NOMEADA e por medir:** *«o upload é
+    /// INTEIRO e por quadro durante um traço … a escrita é por AMOSTRA e não
+    /// passa pelo `dirty`, que é uma janela de VÉRTICES»*. Medido em
+    /// 2026-09-20, só o empacotamento: `21,9 ms` a `8×` e `81,7 ms` a `16×` na
+    /// peça de fábrica, **por quadro**, contra um quadro de `16,7`.
+    ///
+    /// ⚠️ **As amostras são ORDENADAS e escritas em CORRIDAS**, e não uma a
+    /// uma: um `write_buffer` por amostra é uma chamada de driver por `12`
+    /// bytes, e a pegada de um dab tem milhares delas. A ordenação é sobre a
+    /// janela do QUADRO (as escritas desde o último upload), não sobre o traço.
+    ///
+    /// ⚠️ **Só as AMOSTRAS.** O `topo`, o `origem`, o `idx` e o `pos` são
+    /// função da TOPOLOGIA e das POSIÇÕES, e um verbo de cor não mexe em
+    /// nenhuma das duas — quem chama afirma isso, e no dia em que deixar de ser
+    /// verdade cai no caminho inteiro.
+    pub fn upload_tinta_amostras_at(
+        &mut self,
+        queue: &wgpu::Queue,
+        index: usize,
+        tinta: &Tinta,
+        sujas: &mut Vec<u32>,
+    ) -> bool {
+        let Some(slot) = self.slots.get(index) else {
+            return false;
+        };
+        let g = &slot.gpu.tinta;
+        if !g.armado || g.n_amostras != tinta.amostras().len() {
+            return false;
+        }
+        if sujas.is_empty() {
+            return true;
+        }
+        let bytes: &[u8] = bytemuck::cast_slice(tinta.amostras());
+        let mut corridas = Vec::new();
+        corridas_das_sujas(sujas, &mut corridas);
+        for (de, ate) in corridas {
+            queue.write_buffer(&g.amostras, de as u64, &bytes[de..ate]);
+        }
+        true
+    }
+
     /// ⭐ **Refaz o bind group por objecto** — a única saída quando um buffer
     /// da tinta foi REALOCADO, porque um bind group guarda o recurso e não o
     /// nome dele.
@@ -287,6 +340,40 @@ impl MeshRenderer {
         self.slots[index].bind = bind;
     }
 }
+
+/// ⭐⭐⭐ **AS CORRIDAS CONTÍGUAS de uma lista de amostras sujas**, já em BYTES
+/// — a aritmética que pode pôr bytes válidos no sítio errado, isolada para
+/// poder ser medida **sem device**.
+///
+/// ⚠️ **Uma escrita por amostra é uma chamada de driver por `12` bytes**, e a
+/// pegada de um dab tem milhares delas; as amostras de uma face são contíguas
+/// no plano, logo agrupá-las dá poucas corridas longas.
+///
+/// ⚠️ **A lista chega por ORDEM DE TOQUE e com repetidos** (uma amostra
+/// re-escrita por dois dabs do mesmo quadro entra duas vezes) — ordenar e
+/// deduplicar é obrigatório, e é por isso que ela recebe `&mut`.
+///
+/// Devolve pares `(início, fim)` em **bytes**, prontos para o `write_buffer`.
+pub(super) fn corridas_das_sujas(sujas: &mut Vec<u32>, out: &mut Vec<(usize, usize)>) {
+    out.clear();
+    sujas.sort_unstable();
+    sujas.dedup();
+    let mut i = 0usize;
+    while i < sujas.len() {
+        let inicio = sujas[i];
+        let mut fim = inicio;
+        while i + 1 < sujas.len() && sujas[i + 1] == fim + 1 {
+            i += 1;
+            fim = sujas[i];
+        }
+        out.push((inicio as usize * 12, (fim as usize + 1) * 12));
+        i += 1;
+    }
+}
+
+#[cfg(test)]
+#[path = "tinta_gpu_tests.rs"]
+mod tests;
 
 /// Escreve `dados` no buffer, realocando quando não cabem. Devolve `true`
 /// quando realocou — e aí o bind group tem de ser refeito.

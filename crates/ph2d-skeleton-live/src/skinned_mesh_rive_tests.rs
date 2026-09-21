@@ -209,3 +209,70 @@ fn o_ajuste_fica_e_a_lei_do_rive_e_o_controlo() {
          vértice, e um afim preserva colinearidade; se isto reprova, ela deixou de ser a lei dele"
     );
 }
+
+/// ⭐⭐ **SONDA — DESENHA as três leis, ampliadas, para o OLHO decidir ao lado da tabela.**
+///
+/// ⛔⛔ Ela existe porque a foto da cena **não consegue mostrar isto**: medido, a diferença entre
+/// as duas leis na `PH2D_VEC_BONE_SMOKE=1` é de `37` píxeis numa janela de `1930×1012` — ela é
+/// **sub-pixel** ao zoom de abertura, e o dono viu-a com a peça a encher o ecrã.
+///
+/// Escreve um SVG por lei em `$PH2D_SVG_DIR`; **sem essa porta ela não escreve nada**.
+///
+/// ⚠️ **E o que ela mostrou vale a nota:** a esta peça, `90°` em S, as três leis são quase
+/// indistinguíveis nos troços LONGE das juntas — a serpentina mora *junto* delas, e `1,6 %` da
+/// espessura só se vê com a peça grande no ecrã. *Um A/B feito ao zoom errado mostra duas imagens
+/// iguais sobre uma diferença real.*
+#[test]
+fn diag_d_desenha_as_tres_leis() {
+    // ⚠️ **Sem a porta ela não escreve nada** — um teste que deixa ficheiros no disco de toda
+    // corrida da suíte é um efeito colateral, não uma sonda.
+    let Ok(dir) = std::env::var("PH2D_SVG_DIR") else {
+        println!("  (PH2D_SVG_DIR não está posta — nada escrito)");
+        return;
+    };
+    let mut p = b_palco(true);
+    p.reparte_com(1, false);
+    p.lei_do_peso(false);
+    p.dobra_em_s(90.0);
+    let pele = p.pele();
+    let rest = b_amostra_com(&p.fonte, DENSO);
+    let ouro = ideal_denso(&p, &pele, &rest, false);
+    for (nome, v) in [
+        ("ouro", ouro.clone()),
+        ("hoje", b_amostra_com(&p.produto(true, true), DENSO)),
+        ("rive", b_amostra_com(&p.produto(false, true), DENSO)),
+    ] {
+        let (mut x0, mut y0, mut x1, mut y1) = (f64::MAX, f64::MAX, f64::MIN, f64::MIN);
+        for q in &v {
+            x0 = x0.min(q[0]);
+            y0 = y0.min(q[1]);
+            x1 = x1.max(q[0]);
+            y1 = y1.max(q[1]);
+        }
+        let (m, e) = (0.5_f64, 60.0_f64);
+        let d: String = v
+            .iter()
+            .enumerate()
+            .map(|(i, q)| {
+                format!(
+                    "{}{:.3} {:.3}",
+                    if i == 0 { "M" } else { "L" },
+                    (q[0] - x0 + m) * e,
+                    (q[1] - y0 + m) * e
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        let (w, h) = ((x1 - x0 + 2.0 * m) * e, (y1 - y0 + 2.0 * m) * e);
+        let svg = format!(
+            "<svg xmlns='http://www.w3.org/2000/svg' width='{w:.0}' height='{h:.0}'>\
+             <rect width='100%' height='100%' fill='#3a3a3a'/>\
+             <path d='{d} Z' fill='#e8a33d' stroke='#1d2330' stroke-width='2'/>\
+             <text x='14' y='34' font-family='sans-serif' font-size='26' fill='#fff'>{nome}</text>\
+             </svg>"
+        );
+        let f = format!("{dir}/lei_{nome}.svg");
+        std::fs::write(&f, svg).expect("svg");
+        println!("  {f}");
+    }
+}

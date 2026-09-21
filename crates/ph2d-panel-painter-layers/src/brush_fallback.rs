@@ -108,6 +108,8 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     // As cinco seguem a cor do pincel (o preto do fallback) e o tamanho dele.
     composite_color: [[0.0, 0.0, 0.0]; 5],
     composite_color_authored: [false; 5],
+    composite_hardness: [1.0; 5],
+    composite_hardness_authored: [false; 5],
     composite_size: [1.0; 5],
     tiling: [false, false],
     repeat_image: false,

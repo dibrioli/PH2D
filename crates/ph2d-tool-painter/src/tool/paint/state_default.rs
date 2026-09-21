@@ -106,17 +106,33 @@ impl Default for PaintState {
             selection_offset_level_cache: Vec::new(),
             selection_ring_stack: false,
 
-            // Composite off by default; the default stack is the natural read of the card (top→bottom):
-            // Brush(1) over Smear(2) over Blur(3). Run bottom→top, that blurs → smears → paints on top.
-            // ⚠️ As posições 4 e 5 nascem com Strength ZERO — que é como o motor pula uma camada —,
-            // logo a pilha de hoje é BYTE-IDÊNTICA à de antes da extensão de 2026-09-20. Elas
-            // declaram `Erase` e `Brush` porque é a ordem que o dono pediu, e um chip na fileira
-            // troca-as; o que as mantém caladas é o Strength, nunca a operação.
+            // ⭐⭐⭐ **A ORDEM DE FÁBRICA É A DO DONO** (2026-09-20: *«por padrão os 2 Brushes no
+            // topo da lista. o segundo com strenght 0. Borracha por padrão como terceira da lista
+            // e com Strenght 0»*) — os dois pincéis no topo, a borracha logo abaixo deles, e o
+            // Smear e o Blur no fundo.
+            //
+            // ⭐⭐ **E ela NÃO muda um pixel, o que é uma propriedade e não uma sorte:** a pilha
+            // corre de BAIXO para CIMA e as únicas camadas que mudaram de posição têm
+            // `strength = 0`, que é como o motor pula uma camada. A ordem de EFEITO é a mesma nas
+            // duas escritas — `Blur → Smear → Brush` —, e é isso que o
+            // `a_ordem_de_fabrica_do_dono_nao_muda_um_pixel` afirma contra a ordem anterior.
+            //
+            // ⚠️ **O que mantém uma camada calada é o Strength, nunca a OPERAÇÃO** — um chip na
+            // fileira troca a operação sem mexer na força, e é por isso que as posições `2` e `3`
+            // podem declarar `Brush` e `Erase` sem que nada aconteça até alguém subir a barra.
             composite_enabled: false,
             composite: [
                 CompositeLayer {
                     op: CompositeOp::Brush,
                     strength: 1.0,
+                    ..CompositeLayer::default()
+                },
+                CompositeLayer {
+                    op: CompositeOp::Brush,
+                    ..CompositeLayer::default()
+                },
+                CompositeLayer {
+                    op: CompositeOp::Erase,
                     ..CompositeLayer::default()
                 },
                 CompositeLayer {
@@ -127,14 +143,6 @@ impl Default for PaintState {
                 CompositeLayer {
                     op: CompositeOp::Blur,
                     strength: 0.5,
-                    ..CompositeLayer::default()
-                },
-                CompositeLayer {
-                    op: CompositeOp::Erase,
-                    ..CompositeLayer::default()
-                },
-                CompositeLayer {
-                    op: CompositeOp::Brush,
                     ..CompositeLayer::default()
                 },
             ],

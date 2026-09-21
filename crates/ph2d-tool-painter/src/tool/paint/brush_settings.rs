@@ -182,6 +182,11 @@ pub struct BrushSettings {
     /// Quais posições têm cor AUTORADA. ⚠️ Sem esta bandeira, uma camada que SEGUE o pincel e uma
     /// que por acaso tem a mesma cor leem-se iguais na tela, e o artista não sabe qual é qual.
     pub composite_color_authored: [bool; 5],
+    /// A DUREZA de cada posição, **já resolvida** (a autorada, ou a do pincel).
+    pub composite_hardness: [f32; 5],
+    /// Quais posições têm dureza AUTORADA — a mesma razão da bandeira da cor: sem ela o botão de
+    /// volta apareceria onde não há nada para limpar.
+    pub composite_hardness_authored: [bool; 5],
     /// O tamanho do carimbo de cada posição, como multiplicador do raio do pincel (`1` = o pincel).
     pub composite_size: [f32; 5],
     /// Seamless **Tiling** (wrap-around painting) flags `[x, y]`.

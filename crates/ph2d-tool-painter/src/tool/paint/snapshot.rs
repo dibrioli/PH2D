@@ -203,6 +203,8 @@ impl PainterTool {
             composite_strength: self.composite_strengths(),
             composite_color: self.composite_colors(),
             composite_color_authored: self.composite_color_authored(),
+            composite_hardness: self.composite_hardnesses(),
+            composite_hardness_authored: self.composite_hardness_authored(),
             composite_size: self.composite_sizes(),
             tiling: self.paint.tiling,
             repeat_image: self.paint.repeat_image,

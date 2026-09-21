@@ -90,6 +90,7 @@ mod paint_wetpaint;
 mod paint_wetpaint_tilt; // doc 22: the TILT dial (polar pad) of the Wet Paint section
 mod populate;
 mod populate_brush_chips;
+mod populate_composite_chips;
 mod populate_deform;
 /// The Grid Stamp card's widgets (its four sliders + chips and the Show Grid checkbox).
 mod populate_grid_stamp;

@@ -221,6 +221,69 @@ pub const PAINTER_BRUSH_COMPOSITE_SIZE: [NodeId; 5] = [
     hash_node_id("painter_brush.composite_size_4"),
 ];
 
+/// Os **chips numéricos** emparelhados com as barras de Strength — a forma canónica do app
+/// (`paint_slider_with_chip`), ligados por `link_slider_number` em `populate`.
+///
+/// ⛔⛔ **Eles existem por ordem do dono** (2026-09-20, com foto: *«sliders fora do padrão do app.
+/// corrija. sliders no padrão»*). A 1.ª redacção do cartão pintou uma barra NUA com um mostrador de
+/// texto ao lado, e o doc dela defendia a escolha com o padrão da **opacidade do painel de
+/// Layers** — verdade sobre aquela linha e falsa sobre este painel, onde **toda** fileira de valor
+/// é a CAIXA ÚNICA de 2026-09-02 (rótulo dentro à esquerda, valor dentro à direita, preenchimento a
+/// dizer a fracção). *Um padrão citado de outro painel é uma segunda resposta com proveniência.*
+pub const PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP: [NodeId; 5] = [
+    hash_node_id("painter_brush.composite_strength_chip_0"),
+    hash_node_id("painter_brush.composite_strength_chip_1"),
+    hash_node_id("painter_brush.composite_strength_chip_2"),
+    hash_node_id("painter_brush.composite_strength_chip_3"),
+    hash_node_id("painter_brush.composite_strength_chip_4"),
+];
+
+/// Os chips numéricos das barras de **tamanho**. ⚠️ Eles mostram o MULTIPLICADOR (`1,00`..`4,00`) e
+/// a barra guarda `mult / MAX_TAMANHO_DA_CAMADA` — a projecção vive no
+/// `link_slider_number_mapped` do `populate`, **uma vez**, e não em duas aritméticas (a do pintor e
+/// a do dreno) que divergiriam no dia em que o tecto mudasse.
+pub const PAINTER_BRUSH_COMPOSITE_SIZE_CHIP: [NodeId; 5] = [
+    hash_node_id("painter_brush.composite_size_chip_0"),
+    hash_node_id("painter_brush.composite_size_chip_1"),
+    hash_node_id("painter_brush.composite_size_chip_2"),
+    hash_node_id("painter_brush.composite_size_chip_3"),
+    hash_node_id("painter_brush.composite_size_chip_4"),
+];
+
+/// Barras da **dureza** por posição (`0..1`) — ordem do dono, 2026-09-20 (*«Hardness para cada um
+/// da lista»*). ⚠️ Elas são APENDADAS aos ids que já existiam: um id é o `hash_node_id` de uma
+/// string, logo nada do que estava gravado se mexe.
+pub const PAINTER_BRUSH_COMPOSITE_HARDNESS: [NodeId; 5] = [
+    hash_node_id("painter_brush.composite_hardness_0"),
+    hash_node_id("painter_brush.composite_hardness_1"),
+    hash_node_id("painter_brush.composite_hardness_2"),
+    hash_node_id("painter_brush.composite_hardness_3"),
+    hash_node_id("painter_brush.composite_hardness_4"),
+];
+
+/// Os chips numéricos das barras de dureza (a caixa única do app).
+pub const PAINTER_BRUSH_COMPOSITE_HARDNESS_CHIP: [NodeId; 5] = [
+    hash_node_id("painter_brush.composite_hardness_chip_0"),
+    hash_node_id("painter_brush.composite_hardness_chip_1"),
+    hash_node_id("painter_brush.composite_hardness_chip_2"),
+    hash_node_id("painter_brush.composite_hardness_chip_3"),
+    hash_node_id("painter_brush.composite_hardness_chip_4"),
+];
+
+/// Per-position **«volta à dureza do pincel»** — `Click` → `clear_composite_layer_hardness`.
+///
+/// ⛔ Ele é o irmão exacto do botão da cor, e existe pela mesma razão: sem caminho de volta, o
+/// `None` — que é quem mantém o controlo `Hardness` do PINCEL vivo para esta camada — seria
+/// alcançável só até ao primeiro toque na barra. ⚠️ E é pintado **só quando há dureza autorada**:
+/// um botão que não tem o que limpar é um controlo morto.
+pub const PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR: [NodeId; 5] = [
+    hash_node_id("painter_brush.composite_hardness_clear_0"),
+    hash_node_id("painter_brush.composite_hardness_clear_1"),
+    hash_node_id("painter_brush.composite_hardness_clear_2"),
+    hash_node_id("painter_brush.composite_hardness_clear_3"),
+    hash_node_id("painter_brush.composite_hardness_clear_4"),
+];
+
 /// Per-position **«volta à cor do pincel»** — `Click` → `clear_composite_layer_color`.
 ///
 /// ⚠️ **Ele existe porque o `PanelEvent` é CONTRATO CONGELADO (§6) e não tem clique-direito**, e a
@@ -294,14 +357,15 @@ pub const PAINTER_BRUSH_CLONE_ALIGNED: NodeId = hash_node_id("painter_brush.clon
 /// os sete ids um a um, e estender a pilha de três para cinco camadas teria deixado quatro botões
 /// **pintados, registados e mortos sob o dedo** — a espécie que esta casa já pagou sete vezes na
 /// escultura. ⛔ A amostra de cor NÃO entra: ela abre o picker por outra rota (`ColorPicked`).
-pub const PAINTER_BRUSH_COMPOSITE_BUTTONS: [NodeId; 21] = {
-    let mut a = [PAINTER_BRUSH_COMPOSITE_ENABLE; 21];
+pub const PAINTER_BRUSH_COMPOSITE_BUTTONS: [NodeId; 26] = {
+    let mut a = [PAINTER_BRUSH_COMPOSITE_ENABLE; 26];
     let mut i = 0;
     while i < 5 {
         a[1 + i] = PAINTER_BRUSH_COMPOSITE_UP[i];
         a[6 + i] = PAINTER_BRUSH_COMPOSITE_DOWN[i];
         a[11 + i] = PAINTER_BRUSH_COMPOSITE_OP[i];
         a[16 + i] = PAINTER_BRUSH_COMPOSITE_COLOR_CLEAR[i];
+        a[21 + i] = PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR[i];
         i += 1;
     }
     a

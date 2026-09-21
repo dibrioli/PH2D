@@ -4,11 +4,17 @@
 //!
 //! ## Cada camada são DUAS fileiras, e a segunda é a wave de 2026-09-20
 //!
-//! - **fileira A** — `N` · o chip da OPERAÇÃO (clica e cicla) · a Strength nua + o mostrador
-//!   simples (o padrão da opacidade do painel de Layers, que nunca empilha num painel estreito) ·
-//!   as setas ↑/↓ de reordenar, apagadas e inertes nas pontas da lista.
+//! - **fileira A** — `N` · o chip da OPERAÇÃO (clica e cicla) · a Strength na **caixa única** do
+//!   app · as setas ↑/↓ de reordenar, apagadas e inertes nas pontas da lista.
 //! - **fileira B** — recuada: a **amostra de cor** (mais o botão que a devolve à cor do pincel,
-//!   pintado só quando há cor autorada) e o **tamanho do carimbo**, em multiplicadores do raio.
+//!   pintado só quando há cor autorada) e o **tamanho do carimbo**, em multiplicadores do raio,
+//!   na mesma caixa única e **na mesma coluna** da fileira A.
+//!
+//! ⛔⛔ **As duas caixas eram BARRAS NUAS com um mostrador de texto ao lado até 2026-09-20**, e o
+//! doc deste ficheiro defendia-as com *«o padrão da opacidade do painel de Layers»*. O dono
+//! reprovou-as com foto (*«sliders fora do padrão do app. corrija. sliders no padrão»*) — neste
+//! painel toda fileira de valor é a caixa única de 2026-09-02, e *um padrão citado de outro painel
+//! é uma segunda resposta com proveniência*. Mecanismo: [`caixa_de_valor`].
 //!
 //! ⚠️ **A fileira B só é pintada para quem a LÊ.** O `Erase` não deposita a cor do pincel
 //! (`CompositeOp::deposita_cor`), logo a amostra dele seria um controlo morto — a fileira dele leva
@@ -19,27 +25,29 @@
 //! panel-wiring-parity gate sees them).
 
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, rect_for_label, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, Checkbox, CheckboxValue, ColorSwatch, Slider, SwatchSize, SwatchState, paint_button,
-    paint_checkbox, paint_color_swatch, paint_slider,
+    Button, Checkbox, CheckboxValue, ColorSwatch, DEFAULT_CHIP_W, DEFAULT_LABEL_W, SwatchSize,
+    SwatchState, paint_button, paint_checkbox, paint_color_swatch, paint_slider_with_chip_layout,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::BrushSettings;
 
+/// **Quantas fileiras cada camada ocupa** — A (operação + força), B (cor + tamanho) e C (dureza).
+///
+/// ⚠️ Ela é lida pela ALTURA do cartão e pelo laço que pinta; escrita nos dois sítios, acrescentar
+/// uma fileira daria um cartão que corta a última camada ao meio — *um número que decide o tamanho
+/// de uma caixa e quantas coisas entram nela tem de ser o mesmo número*.
+const FILEIRAS_POR_CAMADA: usize = 3;
 /// Fixed-width label column for `N` (the op name moved into its own chip in the same row).
 const LABEL_W: f32 = 14.0; // LITERAL-PX-OK: the fixed position number column ("1".."5")
-/// The operation chip column ("Smear" is the widest of the four names at the Base font).
-const OP_W: f32 = 44.0; // LITERAL-PX-OK: op chip column (fits "Smear")
-/// Plain "0.50" strength readout column, right of the bare slider.
-const READOUT_W: f32 = 34.0; // LITERAL-PX-OK: strength readout column
 /// Reorder ↑/↓ button column width (mirrors the Layers panel's `REORDER_W`).
 const ARROW_W: f32 = 16.0; // LITERAL-PX-OK: reorder button column (matches paint_rows)
-/// Minimum bare-slider track width (chrome floor for a very narrow panel).
-const MIN_SLIDER_W: f32 = 24.0; // LITERAL-PX-OK: slider track floor
+/// Piso da caixa de valor (chão de cromo num painel muito estreito).
+const MIN_CAIXA_W: f32 = 24.0; // LITERAL-PX-OK: value-box floor
 /// The colour swatch column of row B.
 const SWATCH_W: f32 = 22.0; // LITERAL-PX-OK: per-layer colour swatch
 /// The "back to the brush colour" button of row B.
@@ -64,6 +72,75 @@ fn op_name(op: u8) -> &'static str {
         3 => tr("panel.painter_layers.composite.erase"),
         _ => tr("panel.painter_layers.composite.brush"),
     }
+}
+
+/// ⭐⭐⭐ **A largura da coluna do chip da operação, MEDIDA e nunca escolhida** (ordem do dono,
+/// 2026-09-20, com foto: *«nomes achatados»*).
+///
+/// ⛔⛔ Ela era `const OP_W = 44,0`, com o comentário a afirmar *«fits "Smear"»* — e a foto do dono
+/// refutou-o: só `Blur` cabia, e `Brush`, `Smear` e `Erase` saíam `Br…`, `S…` e `Er…`. *Uma largura
+/// estimada com a afirmação de que mede é pior do que uma sem comentário nenhum: ela convida a não
+/// re-medir.*
+///
+/// ⚠️ **Três coisas aqui são PORTAS, e nenhuma é uma segunda aritmética:** a fonte sai do
+/// [`Button::label_font_px`] (*«quem pergunta se um rótulo cabe lê a resposta AQUI»* — medir num
+/// corpo e pintar noutro corta curto), o respiro sai do [`rect_for_label`] (a inversa exacta do
+/// orçamento que o pintor gasta, com a correcção de ULP que ele já pagou), e a contagem sai do
+/// [`ph2d_tool_painter::N_COMPOSITE_OPS`].
+///
+/// ⚠️ **A coluna é a da SECÇÃO e não a da linha** — ela mede TODOS os nomes, não o desta camada;
+/// senão a coluna saltava debaixo do olho do artista a cada clique no chip.
+fn largura_do_chip_da_operacao(text_system: &mut ph2d_text::TextSystem) -> f32 {
+    let fonte = Button::label_font_px();
+    let mais_largo = (0..ph2d_tool_painter::N_COMPOSITE_OPS)
+        .map(|op| text_system.prefix_width(op_name(op as u8), fonte))
+        .fold(0.0f32, f32::max);
+    rect_for_label(mais_largo)
+}
+
+/// ⭐⭐⭐ **A CAIXA ÚNICA do app** — rótulo dentro à esquerda, valor dentro à direita, preenchimento
+/// a dizer a fracção (Enio, 2026-09-02), com o chip numérico REAL na coluna do valor.
+///
+/// ⛔⛔ **Ela substitui a barra NUA + mostrador de texto que este cartão pintava** (ordem do dono,
+/// 2026-09-20: *«sliders fora do padrão do app. corrija. sliders no padrão»*). O doc da 1.ª
+/// redacção defendia a barra nua com *«o padrão da opacidade do painel de Layers, que nunca empilha
+/// num painel estreito»* — ⚠️ **verdade sobre aquela linha e falsa sobre ESTE painel**, onde toda
+/// fileira de valor é a caixa única. *Um padrão citado de outro painel é uma segunda resposta com
+/// proveniência, e proveniência lê-se como justificação.*
+///
+/// ⚠️ **Não-adaptativa de propósito:** a variante que demota o rótulo para uma linha própria é o que
+/// «empilha num painel estreito», e num cartão de altura FIXA (`card_frame` dimensiona por
+/// `n_rows`) uma linha que cresce escreve por cima da seguinte.
+#[allow(clippy::too_many_arguments)]
+fn caixa_de_valor(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    rect: Rect,
+    rotulo: &str,
+    fraccao: f32,
+    valor_do_chip: f64,
+    slider_id: ph2d_a11y::NodeId,
+    chip_id: ph2d_a11y::NodeId,
+) {
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    paint_slider_with_chip_layout(
+        rect,
+        rotulo,
+        fraccao,
+        valor_do_chip,
+        None,
+        slider_id,
+        chip_id,
+        DEFAULT_LABEL_W,
+        DEFAULT_CHIP_W,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
 }
 
 /// Esta operação deposita a cor do pincel? (o espelho do `CompositeOp::deposita_cor` do motor —
@@ -91,10 +168,11 @@ pub(crate) fn paint_composite_card(
     let gap = Spacing::Xs.px();
     let checked = brush.composite_enabled;
     let n = n_camadas(&brush);
-    // Single-line rows (bare slider never stacks), so the height is exact: padding + the checkbox row +
-    // (when on) a gap and TWO rows per layer (each `ph2d_tokens::row_pitch_px()`).
+    // ⚠️ **A altura é EXACTA porque nenhuma fileira empilha** — a caixa única entra pela variante
+    // NÃO-adaptativa de propósito (ver [`caixa_de_valor`]): padding + a linha da caixa de marcar +
+    // (ligada) um vão e [`FILEIRAS_POR_CAMADA`] fileiras por camada.
     let layers_h = if checked {
-        gap + 2.0 * n as f32 * ph2d_tokens::row_pitch_px()
+        gap + FILEIRAS_POR_CAMADA as f32 * n as f32 * ph2d_tokens::row_pitch_px()
     } else {
         0.0
     };
@@ -158,6 +236,7 @@ pub(crate) fn paint_composite_card(
         for pos in 0..n {
             iy = paint_layer_row(ctx, theme, ix, iw, iy, pos, brush);
             iy = paint_layer_row_b(ctx, theme, ix, iw, iy, pos, brush);
+            iy = paint_layer_row_c(ctx, theme, ix, iw, iy, pos, brush);
         }
     }
     y + card_h + ph2d_tokens::control_gap_px()
@@ -180,10 +259,10 @@ fn paint_layer_row(
     let n = n_camadas(&brush);
     let down_x = x + row_w - ARROW_W;
     let up_x = down_x - gap - ARROW_W;
-    let readout_x = up_x - gap - READOUT_W;
     let op_x = x + LABEL_W + gap;
-    let slider_x = op_x + OP_W + gap;
-    let slider_w = (readout_x - gap - slider_x).max(MIN_SLIDER_W);
+    let op_w = largura_do_chip_da_operacao(ctx.text_system);
+    let caixa_x = op_x + op_w + gap;
+    let caixa_w = (up_x - gap - caixa_x).max(MIN_CAIXA_W);
 
     // The fixed position number.
     paint_text(
@@ -199,7 +278,7 @@ fn paint_layer_row(
 
     // O chip da OPERAÇÃO — um clique cicla Brush → Smear → Blur → Erase.
     let op_id = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_OP[pos];
-    let op_rect = Rect::new(op_x, y, OP_W, ROW_H_PX);
+    let op_rect = Rect::new(op_x, y, op_w, ROW_H_PX);
     paint_button(
         &Button::new(op_id, op_name(brush.composite_ops[pos])),
         op_rect,
@@ -209,25 +288,20 @@ fn paint_layer_row(
     );
     ctx.host.hit_index_mut().register(op_id, op_rect);
 
-    // Bare Strength slider (value from the snapshot; state from the store) + plain readout.
+    // A Strength na CAIXA ÚNICA do app — a barra e o chip editável na mesma caixa. ⚠️ O rótulo
+    // fica VAZIO porque o nome desta linha é o chip da operação, encostado à esquerda dela: um
+    // «Strength» aqui seria o segundo nome da mesma fileira.
     let sid = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[pos];
     let val = brush.composite_strength[pos].clamp(0.0, 1.0);
-    let mut slider = Slider::new(sid, "")
-        .accent(true)
-        .visual(ctx.host.store().slider_visual(sid));
-    slider.value = val;
-    let slider_rect = Rect::new(slider_x, y, slider_w, ROW_H_PX);
-    paint_slider(&slider, slider_rect, ctx.scene, theme);
-    ctx.host.hit_index_mut().register(sid, slider_rect);
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        &format!("{val:.2}"),
-        readout_x,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        READOUT_W,
-        resolve(ColorToken::Text2, theme),
+    caixa_de_valor(
+        ctx,
+        theme,
+        Rect::new(caixa_x, y, caixa_w, ROW_H_PX),
+        "",
+        val,
+        f64::from(val),
+        sid,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP[pos],
     );
 
     // Reorder arrows (dim + inert at the list edges) — shared with the Layers rows.
@@ -263,7 +337,6 @@ fn paint_layer_row_b(
     brush: BrushSettings,
 ) -> f32 {
     let gap = Spacing::Xs.px();
-    let font = TypeToken::Sm.px();
     let bx = x + ph2d_tokens::list_indent_px();
     let mut cx = bx;
 
@@ -308,25 +381,88 @@ fn paint_layer_row_b(
     }
 
     // ── O tamanho do carimbo, em multiplicadores do raio do pincel ───────────────────────────
+    //
+    // ⚠️ **A caixa acaba onde a da fileira A acaba**, e não na borda do cartão: as duas ficam na
+    // MESMA coluna. Sem isso a de baixo passava por baixo das setas de reordenar e as duas
+    // fileiras da mesma camada liam-se como pertencendo a grelhas diferentes.
+    //
+    // ⚠️ **O chip mostra o MULTIPLICADOR e a barra guarda a fracção** — a projecção é o
+    // `link_slider_number_mapped` do `populate`, escrita UMA vez.
     let size_id = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_SIZE[pos];
     let mult = brush.composite_size[pos];
-    let readout_x = x + row_w - READOUT_W;
-    let slider_w = (readout_x - gap - cx).max(MIN_SLIDER_W);
-    let mut slider = Slider::new(size_id, "").visual(ctx.host.store().slider_visual(size_id));
-    slider.value = (mult / ph2d_tool_painter::MAX_COMPOSITE_LAYER_SIZE).clamp(0.0, 1.0);
-    let slider_rect = Rect::new(cx, y, slider_w, ROW_H_PX);
-    paint_slider(&slider, slider_rect, ctx.scene, theme);
-    ctx.host.hit_index_mut().register(size_id, slider_rect);
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        &format!("{mult:.2}x"),
-        readout_x,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        READOUT_W,
-        resolve(ColorToken::Text2, theme),
+    let direita = x + row_w - ARROW_W - gap - ARROW_W - gap;
+    let caixa_w = (direita - cx).max(MIN_CAIXA_W);
+    caixa_de_valor(
+        ctx,
+        theme,
+        Rect::new(cx, y, caixa_w, ROW_H_PX),
+        tr("panel.painter_layers.composite.size"),
+        (mult / ph2d_tool_painter::MAX_COMPOSITE_LAYER_SIZE).clamp(0.0, 1.0),
+        f64::from(mult),
+        size_id,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_SIZE_CHIP[pos],
     );
 
     y + ph2d_tokens::row_pitch_px()
 }
+
+/// Fileira C: a **dureza** desta camada (ordem do dono, 2026-09-20: *«Hardness para cada um da
+/// lista»*), com o botão que a devolve à dureza do pincel. Recuada como a fileira B.
+///
+/// ⛔⛔ **Ela é uma fileira PRÓPRIA e não um segundo campo na fileira B, e o motivo é MEDIDO:** na
+/// largura a que o dono trabalha (`273,3 px` de painel) o que sobra à fileira B depois do recuo, da
+/// amostra, do botão de volta e da coluna das setas são `~157 px` — e **duas** caixas ali dariam
+/// `~78` cada, quando só a coluna do número de uma caixa mede
+/// [`ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX`] (`72`). *O rótulo de cada uma seria elidido
+/// até ao nada, e uma caixa sem nome com outra ao lado é pior do que uma linha a mais.*
+///
+/// ⚠️ O preço é a ALTURA: o cartão passa de duas para três fileiras por camada. O número está
+/// medido no handoff, e ele é o que o dono julga.
+fn paint_layer_row_c(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    row_w: f32,
+    y: f32,
+    pos: usize,
+    brush: BrushSettings,
+) -> f32 {
+    let gap = Spacing::Xs.px();
+    let mut cx = x + ph2d_tokens::list_indent_px();
+
+    // ⛔ O botão de volta só existe quando há dureza AUTORADA para limpar — a mesma lei da cor.
+    if brush.composite_hardness_authored[pos] {
+        crate::paint_rows::paint_reorder_btn(
+            ctx,
+            theme,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR[pos],
+            Rect::new(cx, y, CLEAR_W, ROW_H_PX),
+            true,
+            IconId::Close,
+        );
+        cx += CLEAR_W + gap;
+    }
+
+    let dureza = brush.composite_hardness[pos].clamp(0.0, 1.0);
+    let direita = x + row_w - ARROW_W - gap - ARROW_W - gap;
+    let caixa_w = (direita - cx).max(MIN_CAIXA_W);
+    caixa_de_valor(
+        ctx,
+        theme,
+        Rect::new(cx, y, caixa_w, ROW_H_PX),
+        tr("panel.painter_layers.composite.hardness"),
+        dureza,
+        f64::from(dureza),
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_HARDNESS[pos],
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_HARDNESS_CHIP[pos],
+    );
+
+    y + ph2d_tokens::row_pitch_px()
+}
+
+// Os gates deste cartão vivem num irmão `#[path]` para continuarem módulo FILHO (eles leem a
+// `largura_do_chip_da_operacao` e o `op_name`, que são privados) enquanto este ficheiro fica sob o
+// tecto de LOC — o mesmo corte que o primitivo `button` já pagou.
+#[cfg(test)]
+#[path = "paint_composite_tests.rs"]
+mod tests;

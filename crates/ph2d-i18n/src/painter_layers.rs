@@ -194,6 +194,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.composite.brush" => "Brush",
         "panel.painter_layers.composite.erase" => "Erase",
         "panel.painter_layers.composite.composite_brush" => "Composite Brush",
+        "panel.painter_layers.composite.size" => "Size",
+        "panel.painter_layers.composite.hardness" => "Hardness",
         "panel.painter_layers.deform.warp_tool" => "Warp tool",
         "panel.painter_layers.deform.liquify" => "Liquify",
         "panel.painter_layers.deform.transform" => "Transform",

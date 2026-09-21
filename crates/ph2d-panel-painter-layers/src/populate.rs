@@ -157,9 +157,20 @@ fn register_brush_inputs(store: &mut WidgetStore) {
     // pincel». Registered here (not in `paint_composite`) so the panel-wiring-parity gate sees the
     // ids — ⚠️ e por ARRAY, nunca por índice: a extensão de 3 para 5 camadas passou por aqui sem
     // uma linha, e teria deixado quatro controlos mortos sob o dedo se a lista fosse à mão.
+    // ⭐⭐⭐ **A CAIXA ÚNICA precisa do PAR** (ordem do dono, 2026-09-20: *«sliders no padrão»*) — a
+    // barra guarda a fracção `0..1` e o chip é o campo editável que o artista lê. `link_slider_*`
+    // é o que faz uma edição no chip voltar como o `ValueChanged` DA BARRA, que é o canal que o
+    // `is_forwardable_brush_slider` já encaminha ⇒ **zero rotas novas no dreno**.
+    //
+    // ⚠️ **A Strength liga DIRECTO e o tamanho liga PROJECTADO:** o chip do tamanho mostra o
+    // multiplicador (`0`..`MAX_COMPOSITE_LAYER_SIZE`) e a barra guarda a fracção. *A projecção vive
+    // aqui e em mais lado nenhum* — escrita também no pintor, as duas divergiriam no dia em que o
+    // tecto mudasse, e o chip passaria a escrever um número que a barra lê como outro.
+    crate::populate_composite_chips::register_composite_chips(store);
     for sid in ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH
         .into_iter()
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_SIZE)
+        .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_HARDNESS)
     {
         store.register(
             sid,
@@ -176,6 +187,7 @@ fn register_brush_inputs(store: &mut WidgetStore) {
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_OP)
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_COLOR)
         .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_COLOR_CLEAR)
+        .chain(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR)
     {
         store.register(
             id,

@@ -63,6 +63,18 @@ pub(crate) const N_CAMADAS: usize = 5;
 /// quadro inteiro. ⇒ o tecto é **`4`**, e ele nomeia o relógio, não o conforto.
 pub const MAX_TAMANHO_DA_CAMADA: f32 = 4.0;
 
+/// **Quantas OPERAÇÕES o chip de uma camada cicla** — `Brush · Smear · Blur · Erase`.
+///
+/// ⛔ Ela existe porque o `% 4` do ciclo era um literal ao lado do `match` de quatro braços do
+/// [`CompositeOp::to_u8`], e **o painel precisa do mesmo número** para medir a coluna do chip (a
+/// largura sai do nome mais largo das operações, não de um palpite). *Três respostas à mesma
+/// pergunta, e só a do ciclo é que fica vermelha quando alguém acrescenta uma quinta.*
+///
+/// ⚠️ Quem a mantém honesta é o `o_painel_tem_um_nome_por_operacao`: ele exige **nomes DISTINTOS**
+/// para `0..N_OPERACOES`, o que apanha de uma vez uma contagem grande de mais e um braço em falta
+/// no `op_name` do painel (que cairia no `_ => Brush` e daria dois nomes iguais).
+pub const N_OPERACOES: usize = 4;
+
 /// One of the composite operations. Wire discriminant (`to_u8`) travels in the panel snapshot so
 /// the panel can label each row; the panel maps it back to a name.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -113,6 +125,16 @@ pub(crate) struct CompositeLayer {
     /// motor escreveu no `Dab::color` é substituída. *Uma cor autorada por omissão apagaria um
     /// motor inteiro sem ninguém pedir.*
     pub color: Option<[f32; 3]>,
+    /// A **dureza** DESTA camada, ou `None` = *a dureza do pincel*.
+    ///
+    /// ⭐ Ordem do dono, 2026-09-20: *«Hardness para cada um da lista»*. Ela é `Option` e não um
+    /// multiplicador — ao contrário do [`Self::size`] — porque a dureza já é uma fracção `0..1`
+    /// com significado absoluto: *«metade da dureza do pincel»* não é uma frase que o artista
+    /// pense, e um multiplicador tornaria o ponto neutro dependente de onde o pincel está.
+    ///
+    /// ⚠️ **O `None` é o que mantém o controlo `Hardness` do pincel VIVO** para esta camada — a
+    /// mesma lei do [`Self::color`], e é por isso que as duas têm o mesmo botão de volta.
+    pub hardness: Option<f32>,
     /// O tamanho do carimbo DESTA camada, como **multiplicador do raio do pincel** (`1.0` = o
     /// tamanho do pincel).
     ///
@@ -129,6 +151,7 @@ impl Default for CompositeLayer {
             op: CompositeOp::Brush,
             strength: 0.0,
             color: None,
+            hardness: None,
             size: 1.0,
         }
     }
@@ -186,6 +209,23 @@ impl PainterTool {
     pub fn clear_composite_layer_color(&mut self, pos: usize) {
         if pos < N_CAMADAS {
             self.paint.composite[pos].color = None;
+        }
+    }
+
+    /// Escreve a DUREZA autorada da camada em `pos` (`0..1`).
+    ///
+    /// ⚠️ Ela não tem piso derivado como o tamanho: a faixa É o domínio da lei do perfil do dab, e
+    /// os dois extremos são alcançáveis (um disco duro e um esfumado).
+    pub fn set_composite_layer_hardness(&mut self, pos: usize, t: f32) {
+        if pos < N_CAMADAS {
+            self.paint.composite[pos].hardness = Some(t.clamp(0.0, 1.0));
+        }
+    }
+
+    /// Devolve a camada em `pos` à **dureza do pincel**.
+    pub fn clear_composite_layer_hardness(&mut self, pos: usize) {
+        if pos < N_CAMADAS {
+            self.paint.composite[pos].hardness = None;
         }
     }
 
@@ -259,6 +299,24 @@ impl PainterTool {
         std::array::from_fn(|i| self.paint.composite[i].color.is_some())
     }
 
+    /// As durezas por posição, **já resolvidas** — a autorada, ou a do pincel quando não há.
+    ///
+    /// ⚠️ O par resolvida + autorada existe pela MESMA razão da cor: sem a bandeira, uma camada que
+    /// segue o pincel e uma que por acaso autorou o mesmo número leem-se iguais na tela — e o botão
+    /// de volta apareceria onde não há nada para limpar.
+    pub(crate) fn composite_hardnesses(&self) -> [f32; N_CAMADAS] {
+        std::array::from_fn(|i| {
+            self.paint.composite[i]
+                .hardness
+                .unwrap_or(self.paint.brush.hardness)
+        })
+    }
+
+    /// Quais posições têm dureza AUTORADA (o resto segue o pincel).
+    pub(crate) fn composite_hardness_authored(&self) -> [bool; N_CAMADAS] {
+        std::array::from_fn(|i| self.paint.composite[i].hardness.is_some())
+    }
+
     /// Os tamanhos por posição **como o artista os autorou** (sem o piso do Spacing) — o painel
     /// pinta o que ele escreveu, e a lei aplica o piso ao ler ([`Self::tamanho_da_camada`]).
     pub(crate) fn composite_sizes(&self) -> [f32; N_CAMADAS] {
@@ -294,7 +352,7 @@ impl PainterTool {
                 {
                     // O chip CICLA as quatro operações — é o gesto que torna as posições novas
                     // alcançáveis (sem ele uma camada nasceria presa ao que o default declarou).
-                    let proximo = (self.paint.composite[p].op.to_u8() + 1) % 4;
+                    let proximo = (usize::from(self.paint.composite[p].op.to_u8() + 1) % N_OPERACOES) as u8;
                     self.set_composite_layer_op(p, proximo);
                     return true;
                 }
@@ -305,6 +363,13 @@ impl PainterTool {
                     self.clear_composite_layer_color(p);
                     return true;
                 }
+                if let Some(p) = crate::ids::PAINTER_BRUSH_COMPOSITE_HARDNESS_CLEAR
+                    .iter()
+                    .position(|x| x == id)
+                {
+                    self.clear_composite_layer_hardness(p);
+                    return true;
+                }
                 false
             }
             PanelEvent::SetValue(id, v) => {
@@ -313,6 +378,14 @@ impl PainterTool {
                     .position(|x| x == id)
                 {
                     self.set_composite_layer_strength(p, *v as f32);
+                    return true;
+                }
+                if let Some(p) = crate::ids::PAINTER_BRUSH_COMPOSITE_HARDNESS
+                    .iter()
+                    .position(|x| x == id)
+                {
+                    // A pista e o campo são a MESMA grandeza (`0..1`) — sem projecção nenhuma.
+                    self.set_composite_layer_hardness(p, *v as f32);
                     return true;
                 }
                 if let Some(p) = crate::ids::PAINTER_BRUSH_COMPOSITE_SIZE
@@ -425,6 +498,9 @@ impl PainterTool {
         let tiled = tiling[0] || tiling[1];
         let saved_strength = self.paint.brush.strength;
         let saved_blend = self.paint.brush.blend;
+        // ⭐ A dureza é reposta como a força: ela vive no `BrushSpec` e é lida no CARIMBO (o perfil
+        //   do dab), logo trocá-la à volta da passagem chega — não há nada assado na lista de dabs.
+        let saved_hardness = self.paint.brush.hardness;
         // Bottom (position N-1 / the last layer) → top (position 0 / layer 1).
         for pos in (0..N_CAMADAS).rev() {
             let layer = self.paint.composite[pos];
@@ -432,6 +508,8 @@ impl PainterTool {
                 continue;
             }
             self.paint.brush.strength = layer.strength;
+            // `None` = segue o pincel, e aí a linha é um no-op AO BIT (escreve o que já lá estava).
+            self.paint.brush.hardness = layer.hardness.unwrap_or(saved_hardness);
             // ⚠️ O blend da camada de apagar é forçado AQUI e não na rota: a rota é a do depósito, e
             // ela já sabe ler `brush.blend`. Uma rota própria seria a segunda resposta.
             self.paint.brush.blend = if matches!(layer.op, CompositeOp::Erase) {
@@ -484,6 +562,7 @@ impl PainterTool {
         }
         self.paint.brush.blend = saved_blend;
         self.paint.brush.strength = saved_strength;
+        self.paint.brush.hardness = saved_hardness;
     }
 }
 

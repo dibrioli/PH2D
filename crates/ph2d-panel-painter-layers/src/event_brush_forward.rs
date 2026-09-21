@@ -32,6 +32,7 @@ pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
         || ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS.contains(&id)
         || ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH.contains(&id)
         || ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_SIZE.contains(&id)
+        || ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_HARDNESS.contains(&id)
         // Selection section (ADR-0103): Feather + Automatic-threshold + overlay-opacity + Offset sliders.
         || id == ph2d_tool_painter::ids::PAINTER_SEL_FEATHER_SLIDER
         || id == ph2d_tool_painter::ids::PAINTER_SEL_THRESHOLD_SLIDER

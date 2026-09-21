@@ -436,7 +436,7 @@ pub use paint::{
     BrushSettings, CurveOverlay, DEFORM_TEMPERAMENT_NONE, DEFORM_TEMPERAMENT_RESHAPE,
     DEFORM_TEMPERAMENT_TRANSFORM, DeformGizmoView, EllipseOverlay, FilterScope, ImpastoLight,
     LightRig, LineCornerGizmo, LineDimensions, LineOverlay, MAX_COMPOSITE_LAYER_SIZE,
-    MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG, PANEL_RAMP_STOPS, PolygonOverlay,
+    MAX_IMPASTO_LIGHTS, N_COMPOSITE_OPS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG, PANEL_RAMP_STOPS, PolygonOverlay,
     SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles,
     TransformGizmo, WetKnobs, WetTool, brush_falloff_weight_at,
 };

@@ -66,6 +66,66 @@ use crate::tool::PainterTool;
 use ph2d_painter_brush::Dab;
 use std::sync::Arc;
 
+// ⚠️ **A CONTA da recomposição, por THREAD** — quantos lotes o replay tocou e que área ele
+// reescreveu. Um átomo global reprovaria na suíte em paralelo enquanto passa sozinho.
+#[cfg(test)]
+thread_local! {
+    pub(super) static CONTA_DA_PILHA: std::cell::Cell<(u64, u64, u64)> =
+        const { std::cell::Cell::new((0, 0, 0)) };
+}
+
+// ⚠️ **O interruptor de BISSECÇÃO: recompor o CANVAS INTEIRO em vez da região.**
+//
+// É o *forced full recomposite* que o [handoff do Per-Layer
+// Color](../../../../../docs/Painter/handoffs/HANDOFF_per_layer_color_perf_artifacts.md) §3-1
+// prescreve: *«se a recomposição cheia remove a listra, o defeito é um LIMITE rectangular — e é
+// preciso descobrir qual»*. Ligado, a janela é o traço inteiro, nada é recortado e a base do
+// Smear é refrescada em toda parte. É a referência contra a qual a rota regional se mede.
+#[cfg(test)]
+thread_local! {
+    pub(super) static RECOMPOSICAO_GLOBAL: std::cell::Cell<bool> =
+        const { std::cell::Cell::new(false) };
+}
+
+// ⚠️ **As DUAS ablações do Smear, uma de cada vez** — é a atribuição que separa *«o render foi
+// recortado»* de *«a base congelada é um mosaico»*. As duas leis vivem no mesmo passo da pilha e
+// medi-las juntas responderia sobre as duas ao mesmo tempo.
+#[cfg(test)]
+thread_local! {
+    // `true` = não prender o render do knife à `caixa_nova`.
+    pub(super) static SMEAR_SEM_LIMITE: std::cell::Cell<bool> =
+        const { std::cell::Cell::new(false) };
+    // `true` = refrescar a base do knife sobre a `caixa_grande` inteira, não só a `caixa_nova`.
+    pub(super) static SMEAR_BASE_GRANDE: std::cell::Cell<bool> =
+        const { std::cell::Cell::new(false) };
+}
+
+// ⚠️ **O RELÓGIO POR FASE** — `[guardar+pre, Brush, Erase, Smear, Blur, restaurar]`, em
+// microssegundos. A fase dominante é quem decide a cura; sem ela optimiza-se a aritmética errada.
+#[cfg(test)]
+thread_local! {
+    pub(super) static FASES_DA_PILHA: std::cell::Cell<[f64; 6]> =
+        const { std::cell::Cell::new([0.0; 6]) };
+}
+
+// ⚠️ **A ablação do REPLAY** — a janela passa a ser só o lote novo. A imagem fica ERRADA de
+// propósito: o que ela mede é o RELÓGIO, ou seja quanto custa replayar a história. É o tecto de
+// qualquer cura que substitua o replay por acumulação.
+#[cfg(test)]
+thread_local! {
+    pub(super) static JANELA_SO_O_NOVO: std::cell::Cell<bool> =
+        const { std::cell::Cell::new(false) };
+}
+
+#[cfg(test)]
+fn marca(i: usize, t: std::time::Instant) {
+    FASES_DA_PILHA.with(|c| {
+        let mut v = c.get();
+        v[i] += t.elapsed().as_secs_f64() * 1e6;
+        c.set(v);
+    });
+}
+
 /// Um lote do traço, **já resolvido por camada**.
 ///
 /// ⚠️ As listas são as do [`PainterTool::camada_dabs`] (escala, cor e a subamostragem por arco), e
@@ -128,6 +188,12 @@ impl PainterTool {
         let Some(caixa_nova) = caixa_das_camadas(&camadas, w, h) else {
             return;
         };
+        #[cfg(test)]
+        let caixa_nova = if RECOMPOSICAO_GLOBAL.with(std::cell::Cell::get) {
+            Region { x: 0, y: 0, w, h }
+        } else {
+            caixa_nova
+        };
         // 2. O lote novo entra na história com a posição do fluxo de RNG de CADA camada.
         let lote = LoteDaPilha {
             rng: self.paint.rng_camada,
@@ -143,11 +209,26 @@ impl PainterTool {
         let janela: Vec<usize> = (0..self.paint.pilha.lotes.len())
             .filter(|&i| toca(self.paint.pilha.lotes[i].caixa, alvo))
             .collect();
+        #[cfg(test)]
+        let janela: Vec<usize> = if JANELA_SO_O_NOVO.with(std::cell::Cell::get) {
+            vec![self.paint.pilha.lotes.len() - 1]
+        } else {
+            janela
+        };
         let mut caixa_grande = alvo;
         for &i in &janela {
             caixa_grande = union_region(caixa_grande, self.paint.pilha.lotes[i].caixa);
         }
         let caixa_grande = grow_region(caixa_grande, pad, w, h).unwrap_or(caixa_grande);
+        #[cfg(test)]
+        CONTA_DA_PILHA.with(|c| {
+            let (n, lotes, area) = c.get();
+            c.set((
+                n + 1,
+                lotes + janela.len() as u64,
+                area + u64::from(caixa_grande.w) * u64::from(caixa_grande.h),
+            ));
+        });
         // 4. Guardar o que lá está, e pôr o `pre` no lugar dentro da caixa grande.
         //
         // ⚠️ **Guardar a `caixa_grande` chega porque NENHUMA camada escreve fora dela** — e isso
@@ -155,8 +236,12 @@ impl PainterTool {
         // inteiro** a cada lote, logo ele escreveria na cauda a partir de uma base que ali é a de um
         // lote antigo. É o [`Self::limite_do_smear`] que o prende à região recomposta; guardar a
         // união em vez de o limitar também curava a imagem e custava `O(área do traço)` por lote.
+        #[cfg(test)]
+        let t0 = std::time::Instant::now();
         let guardado = self.save_region(&caixa_grande);
         self.escreve_do_pre(caixa_grande);
+        #[cfg(test)]
+        marca(0, t0);
         // 5. Correr a pilha POR CAMADA (baixo → topo), cada uma sobre toda a história dela na janela.
         for pos in (0..N_CAMADAS).rev() {
             if self.paint.composite[pos].strength <= 0.0 {
@@ -166,28 +251,59 @@ impl PainterTool {
             if matches!(self.paint.composite[pos].op, CompositeOp::Smear) {
                 // ⭐ A base congelada do knife passa a ser **o que está por baixo dele**, e mais nada:
                 //    a tela, agora, tem exactamente as camadas inferiores sobre o traço inteiro.
-                self.refresca_a_base_do_smear(caixa_nova);
+                #[cfg(test)]
+                let base_r = if SMEAR_BASE_GRANDE.with(std::cell::Cell::get) {
+                    caixa_grande
+                } else {
+                    caixa_nova
+                };
+                #[cfg(not(test))]
+                let base_r = caixa_nova;
+                self.refresca_a_base_do_smear(base_r);
                 let ultimo = *janela.last().unwrap_or(&0);
                 let dabs = std::mem::take(&mut self.paint.pilha.lotes[ultimo].camadas[pos]);
-                self.paint.limite_do_smear = Some(caixa_nova);
+                #[cfg(test)]
+                let limite = (!SMEAR_SEM_LIMITE.with(std::cell::Cell::get)).then_some(caixa_nova);
+                #[cfg(not(test))]
+                let limite = Some(caixa_nova);
+                self.paint.limite_do_smear = limite;
+                #[cfg(test)]
+                let ts = std::time::Instant::now();
                 self.aplica_camada(pos, &dabs);
+                #[cfg(test)]
+                marca(3, ts);
                 self.paint.limite_do_smear = None;
                 self.paint.pilha.lotes[ultimo].camadas[pos] = dabs;
                 continue;
             }
+            #[cfg(test)]
+            let fase = match self.paint.composite[pos].op {
+                CompositeOp::Brush => 1,
+                CompositeOp::Erase => 2,
+                CompositeOp::Smear => 3,
+                CompositeOp::Blur => 4,
+            };
             for &i in &janela {
                 let dabs = std::mem::take(&mut self.paint.pilha.lotes[i].camadas[pos]);
                 self.paint.tex_rng = self.paint.pilha.lotes[i].rng[pos];
+                #[cfg(test)]
+                let tc = std::time::Instant::now();
                 self.aplica_camada(pos, &dabs);
+                #[cfg(test)]
+                marca(fase, tc);
                 self.paint.pilha.lotes[i].camadas[pos] = dabs;
             }
             // O fluxo desta camada fica onde o lote NOVO o deixou.
             self.paint.rng_camada[pos] = self.paint.tex_rng;
         }
         // 6. Só a região nova sobrevive; o resto volta a ser o que era.
+        #[cfg(test)]
+        let t5 = std::time::Instant::now();
         let recomposto = self.save_region(&caixa_nova);
         self.escreve_regiao(caixa_grande, &guardado);
         self.escreve_regiao(caixa_nova, &recomposto);
+        #[cfg(test)]
+        marca(5, t5);
         self.declare_wrote(Some(caixa_grande));
         self.mark_dirty(caixa_grande);
     }

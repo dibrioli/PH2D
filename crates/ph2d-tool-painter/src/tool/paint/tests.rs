@@ -213,3 +213,6 @@ fn click(t: &mut PainterTool, x: f32, y: f32) {
     t.on_canvas_pointer(cp([x, y], PointerPhase::Down));
     t.on_canvas_pointer(cp([x, y], PointerPhase::Up));
 }
+
+#[path = "diag_auditoria_da_pilha.rs"]
+mod diag_auditoria_da_pilha; // AUDITORIA 2026-09-21: o preço e o carimbo da recomposição regional

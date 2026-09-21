@@ -1,13 +1,9 @@
-//! **O ÍNDICE das fases do quadro.** O `run_render_frame` chama-as por ordem, os corpos moram
-//! nelas, e cada `mod` abaixo é uma linha porque ela existe — este ficheiro cresce uma por FASE e
-//! **nunca perde uma**, logo o tecto dele não mede autor nenhum: mede o NÚMERO DE FASES.
+//! **O ÍNDICE das fases do quadro.** O `run_render_frame` chama-as por ordem e os corpos moram
+//! nelas — ele cresce uma linha por FASE e nunca perde uma, logo o tecto mede o NÚMERO DE FASES.
 //!
 //! ⚠️ **A ORDEM é a lei, e o oráculo dela é o texto emendado** (`frame_text::render_frame`), que
 //! colhe só `fn fase_*` — uma fase com outro nome desaparece dali **em silêncio**.
-//!
-//! ⭐ Sem entrada NUMERADA nos tectos de LOC desde a `line/render-bodies` (2026-09-13). ⛔ Em
-//! 2026-09-19 ele bateu `602` ao ganhar a fase do tween, e o corte foi a narrativa da Wave 3.1/3.2
-//! — uma migração FECHADA, cuja história vive nos handoffs dela.
+//! ⛔ As duas curas do tecto — cortar narrativa · o doc que o `fmt` ROUBA — vivem na memória.
 
 #[cfg(feature = "panel-audio-editor")]
 mod audio_overlay;
@@ -203,6 +199,9 @@ mod fase_bone_smart_and_knobs;
 mod fase_bus_drain;
 /// Fase do quadro: as sobreposicoes do canvas.
 mod fase_canvas_overlays;
+/// Fase do quadro: os CATAVENTOS (rota B) — DEPOIS da irmã assada, e ATRÁS da feature.
+#[cfg(feature = "sculpt3d")]
+mod fase_cataventos;
 /// Fase do quadro: o relógio do chrome (`wall_dt`, `ui_dt` e os tiques que andam nele).
 mod fase_chrome_clock;
 /// Fase do quadro: a paleta de componentes.
@@ -536,6 +535,8 @@ impl crate::App {
         #[cfg(feature = "sculpt3d")]
         self.fase_sculpt3d_bake();
         self.fase_relight_baked_forms();
+        #[cfg(feature = "sculpt3d")]
+        self.fase_cataventos();
         self.fase_atlas_scene_smokes_late();
         self.fase_sprite_inspector_smokes();
         self.fase_sprite_pixel_smokes();

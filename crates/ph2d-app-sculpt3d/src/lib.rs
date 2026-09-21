@@ -67,11 +67,17 @@ pub mod donation;
 /// ⭐⭐⭐ **O CATAVENTO** — a rota B: a malha rasteriza por quadro para texturas RESIDENTES e a
 /// forma acende a partir delas, de modo que virar o objecto faz a luz acompanhar.
 pub mod vivo;
+pub mod vivo_fase;
 
 /// Os gates do catavento: a promessa da rota B afirmada no PIXEL, com o controlo da esfera lisa.
 #[cfg(test)]
 #[path = "vivo_tests.rs"]
 mod vivo_tests;
+
+/// Os gates da CENA do catavento (`=52`) — ver o módulo.
+#[cfg(test)]
+#[path = "catavento_cena_tests.rs"]
+mod catavento_cena_tests;
 
 /// **O GESTO** — as portas de ponteiro, roda e teclado. Filho para
 /// alcançar os campos privados da cena; o corte é *o que a cena É* (aqui) contra

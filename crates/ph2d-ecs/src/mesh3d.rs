@@ -51,6 +51,91 @@ pub struct Mesh3D {
     pub yaw: f32,
     /// A inclinação para cima e para baixo.
     pub pitch: f32,
+    /// ⭐⭐⭐ **VOLTAS POR SEGUNDO** — um catavento GIRA, e esta é a propriedade que o diz.
+    ///
+    /// ⚠️ **O ângulo efectivo é DERIVADO por quadro e NUNCA escrito de volta aqui** — ver a
+    /// [`Self::yaw_em`]. É essa linha que a mantém fora do `Ctrl+Z`: um componente registado a ser
+    /// reescrito a 60 Hz seria um passo de undo por quadro, o defeito que o `preview_drive` desta
+    /// casa existe para impedir. ⇒ `yaw` é o que o artista AUTOROU, e o giro compõe-se com ele.
+    ///
+    /// ⛔ `0` deixa a peça parada no `yaw` autorado, **ao bit** (ver o gate da inércia).
+    pub spin: f32,
+}
+
+impl Mesh3D {
+    /// **O ângulo que este quadro vai rasterizar** — o autorado mais o giro acumulado.
+    ///
+    /// ⚠️ Ela existe como porta e não como duas linhas no sítio que a lê porque *o ângulo
+    /// efectivo* é uma pergunta com mais de um consumidor à espera (o passe, o gizmo do futuro e
+    /// todo gate que queira afirmar a lei sem montar um quadro).
+    #[must_use]
+    pub fn yaw_em(&self, segundos: f32) -> f32 {
+        // ⚠️ `mul_add` NÃO: a inércia em `spin = 0` tem de ser `yaw` **ao bit**, e ela é — mas por
+        // `0.0 * t + yaw`, que é exacto nas duas formas. O que a escrita simples garante a mais é
+        // ser a mesma conta que um leitor faria à mão ao conferir o gate.
+        self.yaw + self.spin * std::f32::consts::TAU * segundos
+    }
 }
 
 impl SimComponent for Mesh3D {}
+
+#[cfg(test)]
+mod tests {
+    use super::Mesh3D;
+
+    /// ⭐ **A INÉRCIA: com `spin = 0` o ângulo efectivo é o autorado AO BIT**, em todo instante.
+    ///
+    /// ⚠️ Ela não é decoração: é o que garante que acrescentar o giro ao componente não move uma
+    /// peça que ninguém mandou girar. *Uma lei nova cuja omissão não é byte-idêntica re-baseia, em
+    /// silêncio, tudo o que já estava gravado.*
+    ///
+    /// **Mutação que deve sangrar:** `self.yaw + self.spin * …` → `self.yaw + 1.0e-7 + …`.
+    #[test]
+    fn sem_giro_o_angulo_e_o_autorado_ao_bit() {
+        let m = Mesh3D {
+            piece: 0,
+            yaw: 0.734_215_9,
+            pitch: -0.2,
+            spin: 0.0,
+        };
+        // ⚠️ Inclui instantes GRANDES de propósito: `0 * t` é exacto em `f32` para todo `t`
+        // finito, e é essa exactidão que a lei promete — não uma tolerância.
+        for t in [0.0_f32, 1.0, 7.5, 3600.0, 1.0e6] {
+            assert_eq!(
+                m.yaw_em(t).to_bits(),
+                m.yaw.to_bits(),
+                "com spin = 0 o angulo em t = {t} tem de ser o autorado, ao bit"
+            );
+        }
+    }
+
+    /// **UMA VOLTA POR SEGUNDO dá uma volta por segundo** — a unidade do campo, afirmada.
+    ///
+    /// ⚠️ **A régua é a VOLTA e não o radiano**, porque é a volta que o nome do campo promete: um
+    /// `spin` em radianos/s passaria neste teste com `TAU` a menos e o artista escreveria `6,28`
+    /// para uma volta. *Uma unidade que só existe no nome do campo não é uma unidade.*
+    ///
+    /// **Mutação que deve sangrar:** `std::f32::consts::TAU` → `1.0`.
+    #[test]
+    fn uma_volta_por_segundo_e_uma_volta_por_segundo() {
+        let m = Mesh3D {
+            piece: 0,
+            yaw: 0.0,
+            pitch: 0.0,
+            spin: 1.0,
+        };
+        let uma_volta = std::f32::consts::TAU;
+        assert!(
+            (m.yaw_em(1.0) - uma_volta).abs() < 1.0e-6,
+            "spin = 1 tem de dar TAU em 1 s, deu {}",
+            m.yaw_em(1.0)
+        );
+        // E o autorado COMPÕE-SE com o giro, nunca é substituído por ele — a metade sem a qual
+        // alguém poderia escrever `spin * TAU * t` e passar a primeira.
+        let com_pose = Mesh3D { yaw: 0.5, ..m };
+        assert!(
+            (com_pose.yaw_em(1.0) - (0.5 + uma_volta)).abs() < 1.0e-6,
+            "o yaw autorado tem de somar ao giro"
+        );
+    }
+}

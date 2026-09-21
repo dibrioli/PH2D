@@ -191,6 +191,7 @@ pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use master::{
     MasterEditing, MasterPiece, MasterRoot, assign_master_pieces, is_master_piece, master_root_of,
 };
+pub use mesh3d::Mesh3D;
 pub use name::{Name, stable_name_id};
 pub use named_anchor::{
     ANCHOR_NAME_MAX_BYTES, ANCHORS_MAX, AnchorData, AnchorKind, AnchorNameError, DICT_MAX_DEPTH,
@@ -208,7 +209,6 @@ pub use scroll_factor::ScrollFactor;
 pub use scroll_limits::{ScrollLimits, confina_eixo, meia_da_camada};
 pub use scroll_motion::ScrollMotion;
 pub use scroll_repeat::{ScrollRepeat, envolve_eixo};
-pub use mesh3d::Mesh3D;
 pub use sculpt_piece_ref::Sculpt3dPieceRef;
 pub use sequence::SequencePlayer;
 pub use sibling_order::{

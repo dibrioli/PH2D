@@ -413,6 +413,79 @@ mostrasse a rotação no plano estaria a demonstrar uma coisa que a rota A já f
 
 ---
 
+## §7 — ⭐⭐⭐ W3: **o catavento chega à cena** (construída em 2026-09-21)
+
+O motor da §6 tinha tudo menos um dono: nada no mundo dizia *«este objecto é um catavento»*. A W3 é
+o componente, a fase do quadro que o varre, e a cena `=52`.
+
+### §7.1 — ⛔⛔ A pose 3D mora no COMPONENTE, e isso é uma MEDIÇÃO
+
+O [`ph2d_ecs::Mesh3D`] carrega `piece`, `yaw`, `pitch` e `spin`. ⚠️ **O `Transform` desta casa tem
+`rotation: f32`** e exprime **só** o plano do ecrã — que é, à letra, a rotação que a §1.5 mediu a
+rota A a entregar **ao bit** (`0,00°` de desacordo de normais, contra `31,69°` fora do plano). ⇒ *a
+rotação que justifica a rota B é exactamente a que FALTA àquele campo*, e é por isso que ela viaja
+num componente novo em vez de num campo que já existe.
+
+⛔ **E a PRESENÇA é a decisão, não um `live: bool`:** o `02.2` diz que a escolha entre as duas rotas
+é *«uma propriedade do objeto»*, e ter ou não ter o componente **é** essa propriedade. Um campo ao
+lado seria um segundo sítio a dizê-lo, e os dois divergiriam no primeiro dia em que alguém
+escrevesse um sem o outro.
+
+### §7.2 — ⭐⭐⭐ O `spin` é DERIVADO por quadro e NUNCA escrito de volta
+
+`Mesh3D::yaw_em(t) = yaw + spin · TAU · t`. ⚠️ **A porta existe para o ângulo efectivo não ser
+escrito no componente:** um componente registado reescrito a 60 Hz seria **um passo de `Ctrl+Z` por
+quadro**, que é o defeito que o `preview_drive` desta casa existe para impedir. ⇒ o `yaw` gravado
+continua a ser o que o artista autorou, e o giro compõe-se com ele **na leitura**.
+
+⭐ **E o relógio é o do DOCUMENTO** (`Playhead::time`), não o da parede: rebobinar devolve a pá ao
+sítio e um scrub mostra o quadro pedido. *Com o relógio de parede a peça continuaria a girar com a
+régua parada, e o smoke não teria controlo nenhum.*
+
+⚠️ **Custa um degrau de schema** (`162 → 163`) apesar de o componente ter nascido no degrau
+anterior **no mesmo dia**: o postcard é POSICIONAL, logo um ficheiro gravado sem o campo lido com
+ele sairia errado **em silêncio**. *Um campo num componente que já viaja custa um degrau, sempre.*
+
+### §7.3 — A fase do quadro, e a ORDEM contra a irmã assada
+
+A `fase_cataventos` corre **depois** da `fase_relight_baked_forms`. ⚠️ Um catavento é também um
+objecto **assado** — a matéria (`base`) e o slot (`texture_id`) vêm do `BakedForm`, porque o albedo
+que a luz multiplica é a ARTE do sprite e é a mesma nas duas rotas —, logo a irmã também o vê. Quem
+escreve por último ganha o slot, e a rota B tem de ser essa.
+
+⭐ **E a porta CARIMBA o `lit_with` do assado com o rig que acabou de usar**, o que faz a irmã
+saltá-lo no quadro seguinte. *O carimbo diz a verdade literal (ele FOI aceso com este rig); um
+remendo seria pôr ali um valor que ninguém usou.*
+
+⛔ **Esta fase está atrás da `feature`, ao contrário da irmã, e a assimetria é a diferença entre as
+duas rotas:** a rota A promete acender **sem** o módulo 3D no build (a forma dela viaja no
+documento); esta RASTERIZA por quadro, logo precisa da malha.
+
+### §7.4 — A cena `=52`, e o controlo dentro dela
+
+A mesma mesa da `=11` (esfera com **cristas** + tela branca), com o componente semeado na tela.
+⭐⭐ **O CONTROLO é o botão de PLAY:** com o transporte parado a peça fica no `yaw` autorado — que é,
+ao bit, o que a rota A entregaria —, e a mesma tecla que a põe a girar é a que mostra a diferença.
+*Uma cena que precisasse de uma irmã ao lado para ter controlo obrigaria o dono a comparar duas
+sessões de memória.*
+
+⛔⛔ **A malha da cena NÃO pode ser lisa, e há gate:** uma esfera de raio constante é invariante a
+toda rotação em torno do centro, logo o catavento giraria e **a imagem não mudaria** — a cena
+ensinaria que a rota B não faz nada, que é a espécie que o `CLAUDE.md` §5.0 chama de *pior que uma
+cena ausente*. A régua é o RAIO (exacta, barata, sem GPU): a `ridged_sphere` lê `0,262` de excursão
+e uma esfera lisa lê `0,000`.
+
+### §7.5 — ⏳ O que fica ABERTO, com o mecanismo
+
+| o que | porquê fica | quem decide |
+|---|---|---|
+| **o componente não tem CONTROLO** | hoje só uma CENA o semeia: nem o painel da escultura nem o Inspector o oferecem. A via natural é a secção do Inspector (`line/components`), e a do painel de escultura pediria rows sobre o ALVO — o molde do `SCULPT3D_BAKE_LAW` | o dono |
+| `piece` é sempre `0` | a rota B rasteriza a peça ACTIVA da cena 3D; o campo existe para o dia em que houver mais de uma, e declará-lo com um índice inventado prometeria uma escolha que o passe não faz | wave própria |
+| o giro só é autorável pela cena | com o controlo do Inspector ele passa a ser um número do objecto; a alternativa (uma faixa da timeline) é o que um catavento de verdade quer | o dono |
+| o custo por quadro com N cataventos | medido para **UM** (§1.2: a corrente cabe `26×` num quadro a `512²`); a varredura em N não foi feita | wave própria |
+
+---
+
 ## ⛔ Recusas MEDIDAS
 
 | o que | porquê | onde |
@@ -428,3 +501,7 @@ mostrasse a rotação no plano estaria a demonstrar uma coisa que a rota A já f
 | pôr a pose 3D da malha no `Transform` do filho | ele tem `rotation: f32` e só exprime o plano do ecrã — a rotação que justifica a obra é **inexprimível** ali | §1.5 |
 | apertar o controlo de vácuo até a fixtura PRETA o disparar | ela não é um vácuo: tira a COR e não a FORMA, e lê `246` de excursão contra `188` da boa — apertar mediria outra grandeza | §5.4 |
 | dar folga ao gate da igualdade `f32` | a rota residente não é uma aproximação: uma barra ali deixa passar uma 2.ª redacção do despacho | §5.3 |
+| escrever o ângulo efectivo de volta no `Mesh3D` | um componente registado reescrito a 60 Hz é **um passo de `Ctrl+Z` por quadro** | §7.2 |
+| pôr o giro no `Default` do componente | toda peça do app passaria a girar; o giro é da CENA, e há gate nas duas metades | §7.4 |
+| abrir a `=52` com uma esfera LISA | raio constante ⇒ invariante à rotação ⇒ a cena ensinaria que a rota B não faz nada | §7.4 |
+| usar o relógio da PAREDE para o giro | a peça continuaria a girar com a régua parada, e o controlo da cena (o botão de Play) deixaria de existir | §7.2 |

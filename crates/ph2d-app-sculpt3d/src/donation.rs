@@ -71,6 +71,38 @@ pub fn canvas_wanted() -> Option<TelaPedida> {
     })
 }
 
+/// ⭐⭐ **A TELA DESTA CENA É UM CATAVENTO?** — o componente que a `=52` quer na tela que acabou de
+/// nascer, ou `None` em toda outra cena.
+///
+/// ⚠️ **A decisão é da FAMÍLIA e o gesto é da shell**, que é a mesma regra 2 do
+/// [`canvas_wanted`] logo acima: quem sabe o que a cena quer é quem a escreveu; quem sabe pôr um
+/// componente numa entidade é quem tem o mundo na mão. *Um `if cena == 52` escrito na shell seria
+/// a lista que apodrece no dia da cena seguinte.*
+///
+/// ⛔ **O `piece` é `0` de propósito:** hoje a rota B rasteriza a peça ACTIVA da cena 3D, e o campo
+/// existe para o dia em que houver mais de uma — declará-lo aqui com um índice inventado seria
+/// prometer uma escolha que o passe ainda não faz.
+#[must_use]
+pub fn catavento_pedido() -> Option<ph2d_ecs::Mesh3D> {
+    super::scenes::catavento_scene().then(catavento_da_cena)
+}
+
+/// **O catavento que a `=52` pede** — a LEI, separada da leitura da env.
+///
+/// ⚠️ **Ela é uma função própria porque esta crate proíbe `unsafe`**, e sem isso um gate não pode
+/// armar a variável de ambiente para medir o que a cena pede: ele mediria o `None` e ficaria verde
+/// a afirmar nada. ⭐ A metade *«e é a `=52` e não outra cena»* é medida pelo censo do roteador,
+/// que varre os predicados desta crate à procura da forma `== Some("N")`.
+#[must_use]
+pub fn catavento_da_cena() -> ph2d_ecs::Mesh3D {
+    ph2d_ecs::Mesh3D {
+        piece: 0,
+        yaw: 0.0,
+        pitch: 0.0,
+        spin: super::scenes::GIRO_DA_CENA,
+    }
+}
+
 /// **A tela NASCEU (ou não)** — o log que ela merece, e os bits que o chamador assenta na selecção.
 pub fn canvas_born(feito: Result<(String, u64), String>) -> Option<u64> {
     match feito {

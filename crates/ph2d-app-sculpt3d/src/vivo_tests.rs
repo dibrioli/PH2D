@@ -205,3 +205,104 @@ fn catavento_o_carimbo_poupa_a_rasterizacao() {
          mudou», e um catavento assim não gira"
     );
 }
+
+/// ⭐⭐⭐ **A FASE ACENDE QUEM TEM O COMPONENTE, LARGA A VRAM DE QUEM O PERDEU, E CARIMBA O ASSADO.**
+///
+/// ⚠️ **As três metades e nenhuma é decoração:**
+/// - *acende quem tem* — sem ela a fase é um laço vazio, e a suíte inteira fica verde;
+/// - *larga quem não tem* — uma [`FormaViva`] órfã é **memória de placa que ninguém mais tem a
+///   quem perguntar**, e um vazamento aqui é invisível a toda régua de imagem;
+/// - *carimba o assado* — é o que impede a irmã `relight_stale` de re-acender por cima no quadro
+///   seguinte, e o carimbo diz a VERDADE (*ele foi aceso com este rig*).
+///
+/// ⚠️ **O `BakedForm` da fixtura nasce com `form`/`form_occ` VAZIOS de propósito, e isso é a
+/// afirmação mais forte do gate:** a rota B **não lê** os canais gravados — ela lê as texturas
+/// residentes. *Se a fase caísse no caminho assado, ela estouraria aqui em vez de passar.*
+///
+/// **Mutações que devem sangrar:** apagar o `vivas.retain(…)`; `assado.lit_with = Some(…)` →
+/// `= None`.
+#[test]
+#[ignore = "precisa de adapter"]
+fn a_fase_acende_larga_e_carimba() {
+    use std::collections::BTreeMap;
+
+    let Some(gpu) = placa() else {
+        eprintln!("sem placa — a sonda desiste (skip gracioso NÃO é verde)");
+        return;
+    };
+    let base = base_chapado();
+    let atlas = TextureAtlas::new(&gpu, LADO.max(256));
+    let mut renderer = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 64);
+    let mut cena =
+        crate::Sculpt3dScene::new(&gpu.device, ph2d_mesh::shapes::uv_sphere(32, 48, 1.0), 1.0);
+    let mut passes = PassesDaLuz::default();
+
+    let mut sim = ph2d_ecs::SimWorld::default();
+    let com = sim
+        .world_mut()
+        .spawn(ph2d_ecs::Mesh3D {
+            piece: 0,
+            yaw: 0.0,
+            pitch: 0.0,
+            spin: 0.0,
+        })
+        .id();
+    let sem = sim.world_mut().spawn(()).id();
+
+    let mut assados: BTreeMap<u64, ph2d_form_donation::baked_form::BakedForm> = BTreeMap::new();
+    for e in [com, sem] {
+        let slot = renderer
+            .acquire_individual(LADO, LADO, &base)
+            .expect("slot do sprite");
+        assados.insert(
+            e.to_bits(),
+            ph2d_form_donation::baked_form::BakedForm {
+                size: (LADO, LADO),
+                base: base.clone(),
+                // Ver o doc: a rota B não os lê, e é esta linha que o afirma.
+                form: Vec::new(),
+                form_occ: Vec::new(),
+                texture_id: slot,
+                rig: LightRig::default(),
+                lit_with: None,
+                lei: ph2d_form_donation::lei_da_luz::Lei::default(),
+            },
+        );
+    }
+
+    // A órfã: uma forma viva de uma entidade que não está no mundo.
+    let mut vivas: BTreeMap<u64, FormaViva> = BTreeMap::new();
+    vivas.insert(u64::MAX, FormaViva::garante(None, &gpu, (LADO, LADO)));
+
+    let conta = crate::vivo_fase::acende_os_cataventos(
+        &mut cena,
+        &mut assados,
+        &mut vivas,
+        crate::vivo_fase::Bancada {
+            gpu: &gpu,
+            renderer: &mut renderer,
+            passes: &mut passes,
+        },
+        &mut sim,
+        0.0,
+    );
+
+    assert_eq!(conta.acesos, 1, "so' a entidade com Mesh3D pode acender");
+    assert_eq!(conta.largadas, 1, "a forma viva ORFA tem de ser largada");
+    assert!(
+        !vivas.contains_key(&u64::MAX),
+        "a VRAM da orfa ficou no mapa — um vazamento que nenhuma regua de imagem ve'"
+    );
+    assert!(
+        vivas.contains_key(&com.to_bits()),
+        "a entidade com Mesh3D tem de ficar com a forma viva dela"
+    );
+    assert!(
+        assados[&com.to_bits()].lit_with.is_some(),
+        "o assado do catavento nao foi carimbado: a irma `relight_stale` re-acende por cima"
+    );
+    assert!(
+        assados[&sem.to_bits()].lit_with.is_none(),
+        "a fase carimbou um objecto que ela nao acendeu — o carimbo deixaria de dizer a verdade"
+    );
+}

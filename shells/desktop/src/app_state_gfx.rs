@@ -189,6 +189,15 @@ pub(crate) struct AppGfx {
     /// ⚠️ **NÃO é `cfg`-gated**, e é isso que torna a promessa verificável em vez de prosa.
     pub(crate) baked_forms:
         std::collections::BTreeMap<u64, ph2d_form_donation::baked_form::BakedForm>,
+    /// ⭐⭐⭐ **OS CATAVENTOS** (`docs/3D/02.2`, rota **B**) — as texturas de G-buffer que ficam na
+    /// placa entre quadros, por bits de entidade.
+    ///
+    /// ⚠️ **Ele É `cfg`-gated, ao contrário do vizinho de cima, e a assimetria é a diferença entre
+    /// as duas rotas:** um objecto assado acende sem o módulo 3D porque a forma dele viaja no
+    /// documento; um catavento **rasteriza por quadro**, logo precisa da malha — e a malha é o
+    /// módulo. *Ver o cabeçalho da [`ph2d_app_sculpt3d::vivo_fase`], que carrega a medição.*
+    #[cfg(feature = "sculpt3d")]
+    pub(crate) formas_vivas: std::collections::BTreeMap<u64, ph2d_app_sculpt3d::vivo::FormaViva>,
     /// **OS PASSES que ACENDEM um objeto assado** — um por LEI (a tinta do Painter e o OpenPBR da
     /// forma), cada um construído na primeira acendida DELE.
     ///

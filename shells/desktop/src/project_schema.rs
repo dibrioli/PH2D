@@ -624,4 +624,18 @@
 ///
 /// ⛔ **Sem degrau de migracao** (decisao do Enio, 26/08): um v161 e' recusado em voz alta.
 /// ⚠️ **A tripla NAO ve^ este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 173;
+///
+/// # `173 → 174` — **o catavento GIRA** (`Mesh3D::spin`, 2026-09-21)
+///
+/// Um campo `f32` no componente do degrau anterior: **voltas por segundo**. ⚠️ **O postcard e'
+/// POSICIONAL**, logo um ficheiro gravado em `162` (sem o campo) lido em `163` sairia errado **em
+/// silencio** — e e' por isso que um campo num componente que ja' viaja custa um degrau, mesmo no
+/// dia seguinte ao que o criou.
+///
+/// ⛔⛔ **O angulo efectivo e' DERIVADO por quadro e nunca escrito de volta** (`Mesh3D::yaw_em`):
+/// um componente registado reescrito a 60 Hz seria **um passo de `Ctrl+Z` por quadro**, que e' o
+/// defeito que o `preview_drive` desta casa existe para impedir. ⇒ o `yaw` gravado continua a ser
+/// o que o artista AUTOROU, e o giro compoe-se com ele na leitura.
+///
+/// ⚠️ Com `spin = 0` a peca fica parada no `yaw` autorado, **ao bit** — e ha' gate.
+pub(crate) const PROJECT_SCHEMA: u32 = 174;

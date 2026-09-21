@@ -200,6 +200,10 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
         || bake_scene()
         || reopen_scene()
         || alpha_image_scene()
+        // ⭐⭐ **A `=52` PRECISA das cristas, e isso é uma CERCA e não uma escolha de gosto:** uma
+        // esfera lisa é invariante à rotação, logo o catavento giraria e **a imagem não mudaria**
+        // — a cena ensinaria que a rota B não faz nada. Há gate a medir isso na própria malha.
+        || catavento_scene()
     {
         return ridged_sphere();
     }

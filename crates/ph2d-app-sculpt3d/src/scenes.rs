@@ -610,6 +610,30 @@ pub(crate) fn reopen_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("12")
 }
 
+/// `=52` — **O CATAVENTO** (`docs/3D/02.2`, rota **B**): a mesma mesa da [`bake_scene`], e a peça
+/// passa a VIRAR.
+///
+/// ⚠️ **Cena própria, e a razão é a mesma que separou a `=11` da `=2`: a PERGUNTA é outra.** Lá é
+/// *o objecto continua a responder à LUZ depois de a malha sair?*; aqui é *o objecto responde a
+/// VIRAR?* — e a segunda tem um passo que a primeira não pode ter, porque a `=11` prova
+/// precisamente que a malha **saiu**.
+///
+/// ⭐⭐ **O CONTROLO mora dentro da própria cena, e é o botão de PLAY.** Com o transporte parado a
+/// peça fica no `yaw` autorado — que é, ao bit, o que a rota A entregaria —, e a mesma tecla que a
+/// põe a girar é a que mostra a diferença. *Uma cena que precisasse de uma irmã ao lado para ter
+/// controlo obrigaria o dono a comparar duas sessões de memória.*
+pub(crate) fn catavento_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("52")
+}
+
+/// **Quantas VOLTAS POR SEGUNDO a peça da `=52` dá.**
+///
+/// ⚠️ **Uma volta em oito segundos, e o número é do OLHO e não de um recurso** — dizê-lo é a única
+/// forma honesta (§0.0). Mais rápido e a luz a deslizar lê-se como cintilação; mais devagar e o
+/// dono espera para ver se alguma coisa acontece. ⛔ Ele é da CENA, e não um valor de fábrica do
+/// componente: um `Mesh3D` nasce **parado**, e há gate.
+pub(crate) const GIRO_DA_CENA: f32 = 0.125;
+
 /// **Esta cena quer uma TELA na mesa?** A pergunta é feita UMA vez, e as duas cenas que respondem
 /// sim ([`donation_scene`] e [`bake_scene`]) precisam da mesma superfície branca pelo mesmo motivo:
 /// a luz da forma é o que se vê, e sobre branco não há cor competindo.
@@ -618,6 +642,7 @@ pub(crate) fn wants_canvas() -> bool {
         || bake_scene()
         || reopen_scene()
         || alpha_image_scene()
+        || catavento_scene()
         || shading::occlusion_donation_scene()
 }
 /// **O roteiro de cada cena** — módulo filho, separado por ASSUNTO (e pelo teto de LOC).

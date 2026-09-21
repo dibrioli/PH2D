@@ -51,6 +51,14 @@ impl crate::App {
                 ))
             }) {
                 *next_import_cell = next_import_cell.saturating_add(1);
+                // ⭐⭐ **A `=52` quer um CATAVENTO nesta tela** — a decisão é da família (ela
+                // escreveu a cena), o gesto é desta shell (ela tem o mundo). Em toda outra cena a
+                // porta devolve `None` e esta linha é inerte.
+                if let Some(catavento) = ph2d_app_sculpt3d::donation::catavento_pedido() {
+                    sim.world_mut()
+                        .entity_mut(ph2d_ecs::Entity::from_bits(bits))
+                        .insert(catavento);
+                }
                 hero.gizmo.replace_selection(Some(bits));
                 hero.bus
                     .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {

@@ -35,6 +35,10 @@ pub(super) struct FrameGfx<'a> {
     pub(super) sculpt3d: &'a mut Option<ph2d_app_sculpt3d::Sculpt3dScene>,
     pub(super) baked_forms:
         &'a mut std::collections::BTreeMap<u64, ph2d_form_donation::baked_form::BakedForm>,
+    /// Os CATAVENTOS (rota B). ⚠️ `cfg`-gated ao contrário do vizinho — ver o `AppGfx`.
+    #[cfg(feature = "sculpt3d")]
+    pub(super) formas_vivas:
+        &'a mut std::collections::BTreeMap<u64, ph2d_app_sculpt3d::vivo::FormaViva>,
     pub(super) baked_light: &'a mut ph2d_form_donation::baked_form::PassesDaLuz,
     pub(super) next_baked_form: &'a mut u32,
     pub(super) surface: &'a mut SurfaceContext,
@@ -122,6 +126,8 @@ impl<'a> FrameGfx<'a> {
             // Os objetos que uma forma acende. NAO sao `cfg`-gated: a re-acendida deles roda sem o
             // modulo 3D no build, que e' a promessa da rota A (`docs/3D/02.2`).
             baked_forms,
+            #[cfg(feature = "sculpt3d")]
+            formas_vivas,
             baked_light,
             next_baked_form,
             surface,
@@ -242,6 +248,8 @@ impl<'a> FrameGfx<'a> {
             #[cfg(feature = "sculpt3d")]
             sculpt3d,
             baked_forms,
+            #[cfg(feature = "sculpt3d")]
+            formas_vivas,
             baked_light,
             next_baked_form,
             surface,

@@ -304,6 +304,31 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        e va' desfazendo. Cada passo tem de voltar NA PECA CERTA, na ordem inversa."
         );
     }
+    if catavento_scene() {
+        // ⚠️ **O passo (5) é a wave, e o (6) é o CONTROLO dele** — sem o segundo o dono aprova uma
+        // peça que gira sem saber se a luz de facto acompanha, e é exactamente essa a diferença
+        // entre as duas rotas (`docs/Render3d/17` §1.5: no plano a rota A dá `0,00°`; fora dele
+        // `31,69°`).
+        eprintln!(
+            "[sculpt3d] =52 O CATAVENTO: a mesma mesa da =11, e a peca passa a VIRAR.\n\
+             [sculpt3d]    (1) Ha' um SPRITE branco na mesa (ja' SELECIONADO) e a esfera chega com\n\
+             [sculpt3d]        CRISTAS -- e' delas que a luz toma a forma.\n\
+             [sculpt3d]    (2) Shift+B ASSA. O log diz o tamanho.\n\
+             [sculpt3d]    (3) Aperte D UMA vez: o barro sai da tela e o SPRITE aparece, com o\n\
+             [sculpt3d]        relevo desenhado em luz e sombra.\n\
+             [sculpt3d]    (4) O CONTROLO, e faca-o PRIMEIRO: com o transporte PARADO, o sprite\n\
+             [sculpt3d]        esta' imovel. E' isto que a rota de sempre entrega.\n\
+             [sculpt3d]    (5) O TESTE DA WAVE: de' PLAY (a regua do tempo). A peca VIRA -- e a luz\n\
+             [sculpt3d]        tem de ANDAR SOBRE ela: uma crista que estava iluminada entra na\n\
+             [sculpt3d]        sombra ao passar para o outro lado. Se a imagem inteira girar como\n\
+             [sculpt3d]        um carimbo, com o brilho colado a ela, reprove -- isso e' a rota de\n\
+             [sculpt3d]        sempre com a imagem rodada.\n\
+             [sculpt3d]    (6) PARE o transporte: a peca congela onde estava. Rebobine: ela volta\n\
+             [sculpt3d]        ao inicio. O giro obedece a' REGUA, nao ao relogio da parede.\n\
+             [sculpt3d]    (7) Q/E giram a lampada com a peca a virar -- as duas coisas tem de\n\
+             [sculpt3d]        compor, e nenhuma delas tem de fazer a outra piscar."
+        );
+    }
     if bake_scene() {
         // ⚠️ **Os passos (4) e (5) são a wave**, e nenhum dos dois é sobre o momento do bake: o que
         // separa isto de um carimbo é o objeto continuar RESPONDENDO à luz depois, e continuar

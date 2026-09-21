@@ -358,11 +358,11 @@ fn o_barro_tem_um_caminho_de_volta_e_e_o_esquece() {
 #[test]
 fn um_sprite_vazio_veste_a_silhueta_da_peca() {
     // Dois texels: o da esquerda coberto pela peça a meio, o da direita fora dela.
-    let forma = [0.0, 0.0, 1.0, 0.5, 0.0, 0.0, 1.0, 0.0];
+    let forma = super::Cobertura::DaForma(&[0.0, 0.0, 1.0, 0.5, 0.0, 0.0, 1.0, 0.0]);
 
     let mut vazio = vec![9, 9, 9, 0, 7, 7, 7, 0];
     assert_eq!(
-        super::veste_a_forma(&mut vazio, &forma),
+        super::veste_a_forma(&mut vazio, forma),
         1,
         "so' o texel coberto pela peca e' vestido"
     );
@@ -378,9 +378,96 @@ fn um_sprite_vazio_veste_a_silhueta_da_peca() {
     let antes = vec![9, 9, 9, 0, 7, 7, 7, 1];
     let mut com_arte = antes.clone();
     assert_eq!(
-        super::veste_a_forma(&mut com_arte, &forma),
+        super::veste_a_forma(&mut com_arte, forma),
         0,
         "um sprite com arte nao veste nada"
     );
     assert_eq!(com_arte, antes, "e nem um byte dele muda");
+}
+
+/// ⭐⭐⭐⭐ **UMA MATÉRIA VAZIA MOSTRA-SE BRANCA E NÃO PRETA** — o report do dono de 21/09
+/// (*«quando retiro a sprite branca e coloco um transparente o objecto 3D fica PRETO»*).
+///
+/// ⚠️ **A causa é a mesma porta:** a [`super::sincroniza`] pinta o barro com a matéria que o bake
+/// vai acender, e `[0,0,0,0]` subido ao device é **preto opaco** — não invisível. ⛔ E a recusa que
+/// esta linha teve durante um dia escondia-o **por acidente**: com o `Err` a matéria vazia nunca
+/// chegava ao `set_albedo_source`. *Retirar uma recusa devolve todos os caminhos que ela calava,
+/// não só o que a motivou.*
+///
+/// ⚠️ **No visor a cobertura é `Toda` e não a do G-buffer**, e é a diferença que o report obriga:
+/// ali o sujeito é o barro inteiro, e o visor não rasteriza forma nenhuma.
+///
+/// **Mutações que devem sangrar:** `Cobertura::Toda` → `DaForma(&[])` · o `1.0` do braço `Toda`.
+#[test]
+fn no_visor_uma_materia_vazia_veste_se_de_branco_inteiro() {
+    let mut vazio = vec![0, 0, 0, 0, 0, 0, 0, 0];
+    assert_eq!(
+        super::veste_a_forma(&mut vazio, super::Cobertura::Toda),
+        2,
+        "no visor a peca e' o barro INTEIRO: os dois texels vestem-se"
+    );
+    assert_eq!(
+        vazio,
+        vec![255, 255, 255, 255, 255, 255, 255, 255],
+        "uma materia vazia sobe BRANCA OPACA — preta e' o report do dono"
+    );
+
+    // ⭐ O CONTROLO: a cerca é a mesma, e uma matéria com arte continua intocada no visor também.
+    let antes = vec![9, 9, 9, 0, 7, 7, 7, 1];
+    let mut com_arte = antes.clone();
+    assert_eq!(
+        super::veste_a_forma(&mut com_arte, super::Cobertura::Toda),
+        0
+    );
+    assert_eq!(com_arte, antes, "nem um byte de uma materia com arte muda");
+}
+
+/// ⛔⛔ **E O VISOR CHAMA-A — a 2.ª metade, que uma MUTAÇÃO SOBREVIVENTE obrigou.**
+///
+/// O gate acima mede a LEI e apagar a chamada no [`super::sincroniza`] deixava-o **verde**: *um
+/// gate que chama a função afirma que a lei existe, nunca que o consumidor a usa* — a mesma forma
+/// que esta linha já pagou na cena do pente.
+///
+/// ⚠️ **É um censo de TEXTO por necessidade:** o `sincroniza` pede um `GpuContext` e um
+/// `SpriteRenderer`, logo a rota dele não é alcançável de um teste sem device — e o `include_str!`
+/// deixa de **COMPILAR** se o ficheiro mudar de sítio, que é a metade que um `find` não dá.
+///
+/// **Mutação que deve sangrar:** apagar o `veste_a_forma(&mut px, Cobertura::Toda)` do `sincroniza`.
+#[test]
+fn o_visor_veste_a_materia_antes_de_a_subir_ao_device() {
+    let fonte = include_str!("albedo.rs");
+    let corpo = fonte
+        .split_once("pub fn sincroniza(")
+        .expect("a porta do visor existe")
+        .1;
+    let veste = corpo
+        .find("veste_a_forma(&mut px, Cobertura::Toda)")
+        .expect(
+            "o visor deixou de vestir a materia: uma sprite transparente volta a pintar o barro \
+             de PRETO, que e' o report do dono de 21/09",
+        );
+    let sobe = corpo
+        .find("set_albedo_source(")
+        .expect("o visor deixou de subir a materia ao device");
+    assert!(
+        veste < sobe,
+        "o visor sobe a materia ANTES de a vestir — o device recebe o preto na mesma"
+    );
+}
+
+/// **E a cobertura FORA do plano do G-buffer é ZERO, nunca a última lida.**
+///
+/// ⚠️ Um `base` maior que o G-buffer é um defeito de TAMANHO, e vesti-lo com a cobertura do último
+/// texel esconderia-o — a peça apareceria com uma cauda de branco que nada rasterizou.
+#[test]
+fn a_cobertura_fora_do_plano_e_zero() {
+    let mut base = vec![0, 0, 0, 0, 0, 0, 0, 0];
+    // Um G-buffer de UM texel para um base de DOIS.
+    let curto = super::Cobertura::DaForma(&[0.0, 0.0, 1.0, 1.0]);
+    assert_eq!(super::veste_a_forma(&mut base, curto), 1);
+    assert_eq!(
+        base,
+        vec![255, 255, 255, 255, 0, 0, 0, 0],
+        "o texel sem G-buffer fica como estava"
+    );
 }

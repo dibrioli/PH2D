@@ -193,6 +193,14 @@ fn the_bake_gesture_lights_the_selected_sprite() {
         sim.world().get::<BakedFormId>(entity).is_some(),
         "sem a identidade estavel o save nao sabe a quem devolver os canais"
     );
+    // ⭐⭐ **E o objecto passa a ser VIRÁVEL** (report do dono, 21/09) — a secção `Live Mesh` do
+    // Inspector só é pintada COM o componente, e sem esta linha o artista assava a peça dele e
+    // não tinha superfície nenhuma para a virar. A lei do *«só na primeira vez»* tem gate próprio
+    // na família (`assar_torna_o_objecto_viravel_e_re_assar_nao_lhe_apaga_a_pose`).
+    assert!(
+        sim.world().get::<ph2d_ecs::Mesh3D>(entity).is_some(),
+        "assar deixou o objecto sem o `Live Mesh`: a forma 3D esta' la' e o painel nao a oferece"
+    );
 
     // ── E o oráculo: a forma ACENDEU ────────────────────────────────────────
     let px = texels(&mut renderer, &sim, bits);

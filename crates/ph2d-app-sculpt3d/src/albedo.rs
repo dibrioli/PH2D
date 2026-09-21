@@ -123,18 +123,13 @@ pub(crate) fn materia_para(
 ///
 /// Devolve **quantos texels** vestiu, `0` quando não armou: é o que o toast diz ao artista, e é o
 /// que um gate mede sem ter de olhar para pixels.
-pub(crate) fn veste_a_forma(base: &mut [u8], forma: &[f32]) -> usize {
+pub(crate) fn veste_a_forma(base: &mut [u8], forma: Cobertura<'_>) -> usize {
     if base.as_chunks::<4>().0.iter().any(|p| p[3] > 0) {
         return 0;
     }
     let mut vestidos = 0usize;
-    for (px, n) in base
-        .as_chunks_mut::<4>()
-        .0
-        .iter_mut()
-        .zip(forma.as_chunks::<4>().0)
-    {
-        let cobertura = n[3].clamp(0.0, 1.0);
+    for (i, px) in base.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+        let cobertura = forma.em(i);
         if cobertura > 0.0 {
             // LITERAL-COLOR-OK: o NEUTRO multiplicativo da luz da forma, com o alfa da cobertura
             *px = [255, 255, 255, (cobertura * 255.0).round() as u8];
@@ -142,6 +137,44 @@ pub(crate) fn veste_a_forma(base: &mut [u8], forma: &[f32]) -> usize {
         }
     }
     vestidos
+}
+
+/// ⭐⭐⭐ **DE ONDE VEM A SILHUETA que uma matéria vazia veste** — as duas respostas desta casa.
+///
+/// ⛔⛔ **A segunda variante nasceu de um report do dono** (21/09, *«quando retiro a sprite branca
+/// e coloco um transparente o objecto 3D fica PRETO»*): a [`sincroniza`] usa a MESMA
+/// [`materia_para`] para pintar o barro com o albedo que o bake vai acender, e uma matéria
+/// `[0,0,0,0]` subida ao device é **preto opaco** no visor.
+///
+/// ⚠️ **E a minha recusa de ontem escondia isto por ACIDENTE:** com o `Err` a matéria vazia nunca
+/// chegava ao `set_albedo_source` e o barro ficava com o de sempre. *Retirar uma recusa devolve
+/// todos os caminhos que ela calava, não só o que a motivou.*
+///
+/// ⚠️ A promessa deste módulo é *o visor pinta a matéria que o bake vai ACENDER* — logo, se o bake
+/// vai vestir a peça de branco, o visor mostra branco. No visor **a peça é o barro inteiro**, e é
+/// por isso que ali a cobertura é [`Self::Toda`].
+#[derive(Clone, Copy)]
+pub(crate) enum Cobertura<'a> {
+    /// O canal `w` do G-buffer — `[nx, ny, nz, COBERTURA]` por texel. É a do BAKE.
+    DaForma(&'a [f32]),
+    /// A peça cobre tudo. É a do VISOR, onde o sujeito é o barro inteiro.
+    Toda,
+}
+
+impl Cobertura<'_> {
+    /// Quanto a peça cobre o texel `i` — `0.0` fora dela.
+    fn em(self, i: usize) -> f32 {
+        match self {
+            // ⚠️ **Fora do plano é ZERO e não um `clamp`**: um `base` maior que o G-buffer é um
+            // defeito de tamanho, e vesti-lo com a última cobertura esconderia-o.
+            Self::DaForma(f) => f
+                .as_chunks::<4>()
+                .0
+                .get(i)
+                .map_or(0.0, |n| n[3].clamp(0.0, 1.0)),
+            Self::Toda => 1.0,
+        }
+    }
 }
 
 /// **O QUE O QUADRO TEM DE FAZER COM A MATÉRIA** — a saída de [`decide`].
@@ -278,7 +311,18 @@ pub fn sincroniza(
     // ⛔⛔ **Uma leitura que FALHA deixa a matéria onde estava** — e isto é a outra metade do
     // report de 2026-09-21: escolher o objecto 3D é uma selecção que **não tem pixels**, logo ela
     // cai aqui. Limpar era devolver o `CLAY` pela porta das traseiras, com o mesmo sintoma.
-    if let Ok((px, size)) = materia_para(forms, bits, &mut || ler_fonte(sim, renderer)) {
+    if let Ok((mut px, size)) = materia_para(forms, bits, &mut || ler_fonte(sim, renderer)) {
+        // ⭐⭐⭐⭐ **UMA MATÉRIA VAZIA MOSTRA-SE BRANCA E NÃO PRETA** (report do dono, 21/09:
+        // *«quando retiro a sprite branca e coloco um transparente o objecto 3D fica preto»*).
+        //
+        // ⚠️ `[0, 0, 0, 0]` subido ao device **é preto opaco no visor** — o barro passa a ser
+        // pintado com a cor nula do albedo. ⭐ E a resposta certa não é «não pintar»: a promessa
+        // deste módulo é *o visor pinta a matéria que o bake vai ACENDER*, e o bake veste uma
+        // matéria vazia de branco (ver [`veste_a_forma`]) ⇒ mostrar branco é mostrar a verdade.
+        //
+        // ⚠️ **Aqui a cobertura é [`Cobertura::Toda`]** e não a do G-buffer: o sujeito é o barro
+        // inteiro, e o visor não rasteriza forma nenhuma — ele corre por quadro.
+        veste_a_forma(&mut px, Cobertura::Toda);
         scene
             .renderer
             .set_albedo_source(&gpu.device, &gpu.queue, &px, size);

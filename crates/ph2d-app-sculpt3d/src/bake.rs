@@ -94,7 +94,8 @@ fn bake_one(
     //
     // ⚠️ **E ela escreve no `base`, que é o que fica GRAVADO** — logo re-assar é estável: o
     // segundo `Shift+B` reusa esta matéria já vestida e não a compõe outra vez.
-    let vestidos = super::albedo::veste_a_forma(&mut base, &planes.normal);
+    let vestidos =
+        super::albedo::veste_a_forma(&mut base, super::albedo::Cobertura::DaForma(&planes.normal));
     let rig = *scene.rig();
     let bake = BakedForm {
         size,
@@ -117,6 +118,21 @@ fn bake_one(
     // A identidade estável, carimbada no MESMO gesto que cria os canais — um objeto assado sem ela
     // é um objeto que o save não sabe devolver.
     stamp_identity(sim, entity, next_id);
+    // ⭐⭐⭐⭐ **E O OBJECTO PASSA A SER VIRÁVEL** (report do dono, 21/09: *«ao assar com a sprite
+    // transparente, não aparece no Inspector os controlos da sprite 3D»*).
+    //
+    // ⚠️ A secção `Live Mesh` só é pintada COM o componente (ADR-0166), e até aqui só a cena `=52`
+    // o semeava — logo o artista que assava a peça dele tinha a forma 3D no objecto e **nenhuma
+    // superfície para a virar**. *Um motor com a lei certa e o artista sem lhe chegar lê-se, da
+    // cadeira dele, como um motor sem a lei.*
+    //
+    // ⭐ **E é barato:** o componente nasce em `yaw = pitch = spin = 0`, que é a identidade da rota
+    // B **ao bit** — quem não quiser virar nada não vê diferença nenhuma no que desenha.
+    //
+    // ⚠️ **Só na PRIMEIRA vez** (`get` antes de `insert`): re-assar não pode devolver a pose ao
+    // zero, senão um `Shift+B` apagava o giro que o artista tinha posto — o mesmo argumento do
+    // `lei_ao_assar` logo acima, e do slot.
+    marca_como_viravel(sim, entity);
     forms.insert(
         entity_bits,
         BakedForm {
@@ -192,6 +208,20 @@ fn stamp_identity(sim: &mut SimWorld, entity: Entity, next_id: &mut u32) -> u32 
         e.insert(BakedFormId(id));
     }
     id
+}
+
+/// **ASSAR TORNA O OBJECTO VIRÁVEL** — o [`ph2d_ecs::Mesh3D`] na primeira vez, e nunca depois.
+///
+/// ⚠️ Ver a chamada, no [`bake_one`]: o que isto compra é a **secção do Inspector**, e o que o
+/// `get` primeiro protege é a pose que o artista já pôs.
+pub(crate) fn marca_como_viravel(sim: &mut SimWorld, entity: Entity) {
+    let world = sim.world_mut();
+    if world.get::<ph2d_ecs::Mesh3D>(entity).is_some() {
+        return;
+    }
+    if let Ok(mut e) = world.get_entity_mut(entity) {
+        e.insert(ph2d_ecs::Mesh3D::default());
+    }
 }
 
 /// ⭐⭐⭐ **O QUE O GESTO DIZ, E COM QUE CARA** — o veredito de [`drain`].

@@ -144,3 +144,46 @@ fn o_padrao_pergunta_as_camadas_vivas_antes_da_imagem_guardada() {
         "sem fonte nenhuma nao ha' padrao"
     );
 }
+
+/// ⭐⭐⭐⭐ **ASSAR TORNA O OBJECTO VIRÁVEL, e RE-ASSAR não lhe apaga a pose** — o report do dono de
+/// 21/09 (*«ao assar com a sprite transparente, não aparece no Inspector os controlos da sprite
+/// 3D»*).
+///
+/// ⚠️ **A secção `Live Mesh` só é pintada COM o componente** (ADR-0166), e até aqui só a cena `=52`
+/// o semeava — o artista que assava a peça dele tinha a forma 3D no objecto e **nenhuma superfície
+/// para a virar**. *Um motor com a lei certa e o artista sem lhe chegar lê-se, da cadeira dele,
+/// como um motor sem a lei.*
+///
+/// ⭐ E é barato: o componente nasce em `yaw = pitch = spin = 0`, a identidade da rota B **ao bit**.
+///
+/// ⚠️ **A metade de baixo é a que protege o artista:** re-assar não pode devolver a pose ao zero,
+/// senão um `Shift+B` apagava o giro que ele acabou de pôr — o mesmo argumento que o `lei_ao_assar`
+/// e o slot da textura já fazem neste ficheiro.
+///
+/// **Mutações que devem sangrar:** o `get` antes do `insert` apagado · o `insert` apagado.
+#[test]
+fn assar_torna_o_objecto_viravel_e_re_assar_nao_lhe_apaga_a_pose() {
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let e = sim.world_mut().spawn_empty().id();
+
+    super::bake::marca_como_viravel(&mut sim, e);
+    let posto = sim
+        .world()
+        .get::<ph2d_ecs::Mesh3D>(e)
+        .copied()
+        .expect("assar tem de deixar o objecto viravel");
+    assert_eq!(
+        posto,
+        ph2d_ecs::Mesh3D::default(),
+        "ele nasce na identidade da rota B: quem nao quer virar nada nao ve' diferenca"
+    );
+
+    // ⭐ O artista poe uma pose, e um segundo bake NÃO lha apaga.
+    sim.world_mut().get_mut::<ph2d_ecs::Mesh3D>(e).unwrap().spin = 0.25;
+    super::bake::marca_como_viravel(&mut sim, e);
+    assert_eq!(
+        sim.world().get::<ph2d_ecs::Mesh3D>(e).unwrap().spin,
+        0.25,
+        "re-assar apagou o giro que o artista tinha posto"
+    );
+}

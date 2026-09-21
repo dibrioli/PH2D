@@ -10,6 +10,13 @@ metadata:
 
 # Ofício de gate (índice de família — detalhe em cada arquivo; irmãos: mutation_proofs · oracle_discipline · fixture_discipline)
 
+- ⛔⛔ **Um gate que só corre o caminho FELIZ nada diz sobre a cara de uma FALHA** — e a cara de uma
+  falha é o que o dono fotografa. Medido 21/09: a mutação que faz uma recusa declarar-se sucesso
+  sobreviveu aos **dois** gates ponta-a-ponta do gesto e à suíte inteira, porque os dois montam o
+  caso bom. ⇒ pergunte a POPULAÇÃO do gate, e escreva o da recusa; e a tradução de um `Result`
+  para o que o artista vê é **pura** e mora fora do laço, senão o gate dela nasce `#[ignore]`.
+  Detalhe: [[feedback-a-gate-that-only-runs-the-happy-path]]
+
 - ⛔⛔ **Um gate que se DECLARA «uma família, não um sítio» e é uma LISTA ESCRITA À MÃO não tem população para ter piso** — medido 15/09: ele nomeava 6 ficheiros, o censo derivado varreu 18 e achou mais **5** desenhadores com o mesmo defeito, um deles a forma que o próprio roteiro de smoke mandava arrastar. ⚠️ E a 1.ª agulha do censo novo nomeava o CONSTRUTOR (`X::new(`) e leu `7` de `8`: quem RECEBE a porta por parâmetro não a constrói — *a agulha tem de nomear a CONSULTA*.
 - [[feedback_absence_gate_needs_a_presence_sibling]] — gate de AUSÊNCIA precisa do de PRESENÇA
 - [[feedback_a_parity_gate_that_picks_its_own_mode_measures_a_program_nobody_runs]] — ⛔⛔⛔ um gate que CRAVA o modo que quer medir afirma sobre um programa que o artista não corre: a paridade lia `0,000215` e o app abria noutra lei, a `0,347` (`1 615×`). *Quando um subsistema tem MODOS e só um concorda com a outra metade do sistema, gateie o valor de FÁBRICA* — com controlo, e medindo o preço do default antes de o trocar. ⛔⛔⛔⛔ **E a 2.ª metade, no mesmo dia: não era só o modo, era o ORÁCULO** — a outra ponta também escolhia (`_ => Tinta`), logo as sondas mediam contra uma lei que só corre com a bandeira ligada; o produto divergia `0,055042` (`28×`). *Escreva no gate a asserção de que o oráculo É a porta do produto, amarre as duas metades numa régua PURA, e prefira UMA prova de ponta a ponta (o que se VÊ contra os BYTES do que se assa) a N paridades de lei.* ⛔ E um desvio que você consegue EXPLICAR ainda pode ser a grandeza de que o dono se queixa — a explicação fecha a investigação.

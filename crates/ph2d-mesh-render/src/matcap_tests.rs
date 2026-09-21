@@ -78,22 +78,38 @@ fn the_names_are_the_table_read_in_order() {
     }
 }
 
-/// **O índice 0 é o do SculptGL, porque ele É o default do app.**
+/// **O índice 0 é o do SculptGL, e ele LIDERA a tabela.**
 ///
-/// ⚠️ O [`crate::DEFAULT_LIGHTING`] aponta para o matcap `0`, então *qual chip nasce
-/// marcado* e *qual é a primeira linha da tabela* são o MESMO fato. Este gate é
-/// o que impede alguém de reordenar a lista por gosto e mudar o default do app
-/// sem perceber — o que na tela é o barro abrindo com outra luz.
+/// ⚠️⚠️ **Este gate chamava-se `the_default_is_the_sculptgl_matcap_and_it_leads_the_table` e
+/// afirmava MAIS uma coisa: que o app abria nele.** Essa metade MORREU em 2026-09-21, quando o
+/// [`crate::DEFAULT_LIGHTING`] passou a ser a lei que assa — o dono reportou **duas vezes** que
+/// *«o bake não é idêntico ao que se vê em 3d»*, e a causa era o visor abrir noutra lei que não a do
+/// bake (medido: `0,347` de desvio por canal contra `0,000215`). *Um gate cuja premissa morre é o
+/// gate a funcionar; apagá-lo em silêncio seria perder a razão.*
+///
+/// ⭐ **O que fica é a ordem do dono de 2026-08-09** — *«SculptGL: só tem um tipo; busque e coloque
+/// como o padrão do app»* — na metade dela que continua a ser lei: de todos os matcaps, **o do
+/// SculptGL é o primeiro**, logo é o primeiro chip da fileira e o que um artista alcança primeiro.
+/// Isto impede alguém de reordenar a lista por gosto e mudar essa escolha sem perceber.
+///
+/// ⛔ **Quem afirma que o app abre na lei que assa é outro gate, e ele mede o BARRO em vez de
+/// comparar constantes:** `ph2d_app_sculpt3d` ::
+/// `o_que_o_app_mostra_de_fabrica_e_a_lei_que_assa`.
 #[test]
-fn the_default_is_the_sculptgl_matcap_and_it_leads_the_table() {
-    assert_eq!(crate::DEFAULT_LIGHTING, crate::Lighting::Matcap(0));
+fn o_matcap_do_sculptgl_lidera_a_tabela() {
     assert_eq!(MATCAPS[0].credit, Credit::HazardousArts);
     assert_eq!(MATCAPS[0].name_key, "sculpt3d.matcap.skin_haz_2");
-    assert_eq!(
-        crate::Shade::default().lighting,
-        crate::DEFAULT_LIGHTING,
-        "o `Shade::default` tem de ARMAR o default, não repetir um número"
-    );
+}
+
+/// **O [`crate::Shade::default`] ARMA o default, e não repete um número.**
+///
+/// ⚠️ Ele era a 4.ª asserção do gate acima, e é **independente de QUAL** default está escrito: por
+/// isso sobrevive à troca e por isso mora sozinho. Sem ele, o dia em que o
+/// [`crate::DEFAULT_LIGHTING`] mudasse, o `Shade::default` continuaria a entregar o valor antigo —
+/// e metade do app abriria numa luz e a outra metade noutra.
+#[test]
+fn o_shade_default_arma_o_default_em_vez_de_repetir_um_numero() {
+    assert_eq!(crate::Shade::default().lighting, crate::DEFAULT_LIGHTING);
 }
 
 /// **A procedência de cada linha está declarada, e as duas licenças batem com o

@@ -126,18 +126,47 @@ pub const DEFAULT_ENV: f32 = 0.0;
 /// fica porque o painel e o gate do shell já o importam por este caminho.
 pub use crate::matcap::MATCAP_NAME_KEYS as MATCAPS;
 
-/// **O MATCAP COM QUE O APP ABRE.**
+/// ⭐⭐⭐⭐ **A LUZ COM QUE O APP ABRE — e ela é a LEI QUE ASSA.**
 ///
-/// ⚠️ **Ele deixou de ser `None` (o rig) e passou a ser o índice 0**, por ordem
-/// do Enio — *"SculptGL: só tem um tipo; busque e coloque como o padrão do app"*.
-/// O índice `0` da tabela **é** o do SculptGL, e a ordem dela é o que torna isto
-/// um fato só em vez de dois números que precisam concordar.
+/// # O report que a trocou, e ele veio DUAS vezes
 ///
-/// ⚠️ **É uma mudança de comportamento, e ela é do produto:** o barro passa a
-/// abrir aceso pela luz do OLHO em vez da do documento. O caminho do rig
-/// continua inteiro e alcançável pelo primeiro chip da fileira — o que mudou foi
-/// qual deles nasce marcado.
-pub const DEFAULT_LIGHTING: Lighting = Lighting::Matcap(0);
+/// *«O que se vê no objeto 3d não é o que se vê na sprite cozida»* (o dono, 2026-09-20) e, depois de
+/// o modo [`Lighting::Pbr`] existir e estar alcançável por um chip, **o mesmo report outra vez**:
+/// *«o bake não é idêntico ao que se vê em 3d»*.
+///
+/// ⛔⛔ **A causa é ESTRUTURAL e não um epsilon:** o `BakedForm` da `ph2d-form-donation` não tem
+/// campo de modo de luz **nem de material** — o bake corre SEMPRE a lei OpenPBR —, enquanto o visor
+/// corre o que este valor disser. Com um MATCAP aqui, *o que se vê e o que se assa são duas leis
+/// diferentes por construção*, e a paridade medida dentro do ramo `Pbr` não o pode ver.
+///
+/// **Medido** (`bake_light_pbr::mede_cada_modo_do_visor_contra_a_lei_que_assa`, a mesma forma e o
+/// mesmo rig, desvio por canal contra a lei que assa):
+///
+/// ```text
+///   Pbr        0,000215 medio / 0,000797 pior
+///   Rig        0,088611          / 0,443359
+///   Flat       0,301561          / 0,552313
+///   Matcap(0)  0,347275          / 0,765497   <-- o que o app mostrava de fábrica
+/// ```
+///
+/// `0,347` por canal é **1 615×** o resíduo do `Pbr` e **177×** a barra de meio código de oito bits.
+///
+/// ⚠️⚠️ **ISTO REVERTE UMA ORDEM ANTERIOR DO DONO, e ela fica escrita em vez de apagada:** em
+/// 2026-08-09 ele mandou *«SculptGL: só tem um tipo; busque e coloque como o padrão do app»*, e o
+/// índice `0` da tabela é o do SculptGL. Aquela ordem foi dada sobre *qual matcap* abre; esta troca
+/// responde a uma pergunta diferente, que ele levantou depois e duas vezes — *o que se vê tem de ser
+/// o que se assa*. ⛔ Uma palavra dele devolve o matcap a este sítio.
+///
+/// ⚠️ **O RECURSO foi medido antes da troca, porque uma lei mais pesada a correr sempre é um preço
+/// que alguém paga** (`mede_o_preco_de_cada_modo`, 1600×900): os quatro modos leem `6,27`–`6,50 ms`
+/// com a leitura de volta a dominar, e a diferença entre leis fica **abaixo do ruído** (`±0,14 ms`)
+/// a `load 25` e a `load 40`. *Não há argumento de custo aqui* — e há de sobra do outro lado.
+///
+/// ⚠️ **Os dez matcaps continuam inteiros e a um clique** (a fileira *Material* do painel): eles são
+/// a luz do OLHO e continuam a ser o que melhor lê FORMA enquanto se esculpe. O que mudou foi qual
+/// deles nasce marcado — e por que razão: *este módulo existe para DOAR sombreamento a um sprite*
+/// (ADR-0150), logo o valor de fábrica que mente sobre o produto é o defeito.
+pub const DEFAULT_LIGHTING: Lighting = Lighting::Pbr;
 
 /// ⭐⭐⭐⭐ **COM QUE LUZ o barro é mostrado** — os três modos, num tipo só.
 ///

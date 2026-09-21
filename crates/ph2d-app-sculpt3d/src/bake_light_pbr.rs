@@ -61,6 +61,14 @@ const ALBEDO: [f32; 3] = CLAY;
 /// TINTA e lia `0,146`, e qualquer número redondo acima disso a teria deixado passar.
 const MEIO_CODIGO: f32 = 1.0 / 510.0;
 
+/// **A VISTA DA SONDA com um olhar escolhido** — o modo `Pbr`, que é a lei em prova.
+fn vista_com(olhar: ph2d_mesh_render::Look) -> ph2d_mesh_render::Shade {
+    ph2d_mesh_render::Shade {
+        look: olhar,
+        ..pbr_law_shade()
+    }
+}
+
 /// O que a sonda devolve: o pior e o médio desvio por canal, e quantos texels entraram.
 struct Residuo {
     medio: f64,
@@ -73,13 +81,9 @@ struct Residuo {
 /// ⚠️ O `olhar` é PARÂMETRO e não uma constante lida aqui dentro: é ele que faz o CONTROLO desta
 /// sonda existir — *uma medição que só sabe correr a configuração certa não pode mostrar que ela é
 /// a certa*.
-fn residuo(olhar: ph2d_mesh_render::Look) -> Option<Residuo> {
+fn residuo(vista: ph2d_mesh_render::Shade) -> Option<Residuo> {
     let gpu = gpu()?;
     let (mut renderer, camera, rig) = stage(&gpu);
-    let vista = ph2d_mesh_render::Shade {
-        look: olhar,
-        ..pbr_law_shade()
-    };
     let size = (SIDE, SIDE);
     let resolved = ph2d_light::resolve(&rig).expect("o rig default tem lampada acesa");
 
@@ -141,11 +145,11 @@ fn residuo(olhar: ph2d_mesh_render::Look) -> Option<Residuo> {
 #[test]
 #[ignore = "precisa de adapter"]
 fn mede_o_visor_contra_a_lei_que_assa() {
-    let Some(r) = residuo(ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA) else {
+    let Some(r) = residuo(vista_com(ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA)) else {
         eprintln!("sem adapter: nada a medir");
         return;
     };
-    let Some(cru) = residuo(ph2d_mesh_render::Look::default()) else {
+    let Some(cru) = residuo(vista_com(ph2d_mesh_render::Look::default())) else {
         return;
     };
     println!(
@@ -173,7 +177,7 @@ fn mede_o_visor_contra_a_lei_que_assa() {
 #[test]
 #[ignore = "precisa de adapter"]
 fn o_visor_acende_com_a_lei_que_assa() {
-    let Some(r) = residuo(ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA) else {
+    let Some(r) = residuo(vista_com(ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA)) else {
         eprintln!("sem adapter: nada a afirmar");
         return;
     };
@@ -192,7 +196,7 @@ fn o_visor_acende_com_a_lei_que_assa() {
     // ⭐⭐⭐ **O CONTROLO, e ele é a metade que torna a barra uma afirmação.** Com o olhar NEUTRO o
     // visor entrega a radiância CRUA e a lei continua a entregar a exposta — se esta sonda não visse
     // o último acto da lei, as duas colunas leriam o mesmo e a barra acima estaria a aprovar o nada.
-    let cru = residuo(ph2d_mesh_render::Look::default()).expect("o adapter ja' existia");
+    let cru = residuo(vista_com(ph2d_mesh_render::Look::default())).expect("o adapter ja' existia");
     assert!(
         cru.pior > r.pior * 100.0,
         "controlo: sem o olhar o desvio tinha de EXPLODIR, e leu {:.6} contra {:.6}",
@@ -243,5 +247,222 @@ fn o_visor_le_o_material_e_o_olhar_da_lei_que_assa() {
     assert!(
         !codigo.contains("OpenPbr::default()"),
         "o `view.rs` voltou a escrever o material dele — a porta da lei passou a ser a segunda resposta"
+    );
+}
+
+/// ⭐⭐⭐⭐ **A RÉGUA QUE FALTAVA: cada MODO do visor contra a lei que assa.**
+///
+/// # Porque ela não existia, e porque o report do dono voltou duas vezes
+///
+/// O [`o_visor_acende_com_a_lei_que_assa`] entra pelo [`pbr_law_shade`], que **crava**
+/// `Lighting::Pbr`. Ele afirma que o RAMO `Pbr` é a lei que assa — e é verdade. O que ele nunca
+/// pergunta é **o que o app MOSTRA**, e é essa a pergunta do dono (*«o bake não é idêntico ao que
+/// se vê em 3d»*).
+///
+/// ⛔⛔ **E a resposta é estrutural, não um epsilon:** o `BakedForm` não tem campo de modo de luz
+/// **nem de material** — o bake corre SEMPRE a lei OpenPBR —, enquanto o visor corre o que o
+/// `lighting` disser. Com o valor de fábrica ([`ph2d_mesh_render::DEFAULT_LIGHTING`]) a ser um
+/// MATCAP, *o que se vê e o que se assa são duas leis diferentes por construção*, e nenhuma
+/// paridade medida DENTRO do ramo `Pbr` o pode ver.
+///
+/// Corre-se com o filtro `mede_cada_modo` sobre esta crate, em release, com `--ignored --nocapture`.
+#[test]
+#[ignore = "precisa de adapter"]
+fn mede_cada_modo_do_visor_contra_a_lei_que_assa() {
+    println!("\n=== cada modo do visor contra a lei que assa (a MESMA forma, o MESMO rig) ===");
+    println!("  {:<14} | {:>12} | {:>12} |", "modo", "médio", "pior");
+    for modo in ph2d_mesh_render::Lighting::todos() {
+        let vista = ph2d_mesh_render::Shade {
+            lighting: modo,
+            ..vista_com(ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA)
+        };
+        let Some(r) = residuo(vista) else {
+            eprintln!("sem adapter: nada a medir");
+            return;
+        };
+        let fabrica = if modo == ph2d_mesh_render::DEFAULT_LIGHTING {
+            "  <-- o que o app MOSTRA de fábrica"
+        } else {
+            ""
+        };
+        println!(
+            "  {:<14} | {:>12.6} | {:>12.6} |{}",
+            format!("{modo:?}"),
+            r.medio,
+            r.pior,
+            fabrica
+        );
+    }
+}
+
+/// **O PREÇO de cada modo** — a diferença, porque só ela isola a LEI.
+///
+/// ⚠️ O [`super::render_live`] cria a textura e lê-a de volta, e as duas coisas custam o MESMO em
+/// todo modo: um número absoluto aqui mediria a leitura de volta, não o sombreamento. O que esta
+/// sonda publica é o **mínimo de N corridas por modo**, e o que se lê dela é a COLUNA DA DIFERENÇA
+/// contra o matcap — *um `Δ` de dois relógios com o mesmo overhead é a única parte que é da lei*.
+///
+/// ⛔ Ela IMPRIME e não afirma: um gate de relógio é candidato à família de flakes de fan-out do
+/// `CLAUDE.md` §5.0, e este número existe para uma DECISÃO de produto, não para uma catraca.
+#[test]
+#[ignore = "precisa de adapter"]
+fn mede_o_preco_de_cada_modo() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter: nada a medir");
+        return;
+    };
+    let (mut renderer, camera, rig) = stage(&gpu);
+    let resolved = ph2d_light::resolve(&rig).expect("o rig default tem lampada acesa");
+    let base = vista_com(ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA);
+    // ⚠️ O tamanho é o de uma VISTA e não o da sonda de paridade: o custo é por FRAGMENTO, logo
+    // medi-lo num quadrado pequeno responde sobre um ecrã que ninguém tem.
+    let size = (1600u32, 900u32);
+
+    let mut medir = |modo| {
+        let vista = ph2d_mesh_render::Shade {
+            lighting: modo,
+            ..base
+        };
+        let mut melhor = f64::MAX;
+        for _ in 0..7 {
+            let t = std::time::Instant::now();
+            let _ = render_live(&gpu, &mut renderer, &camera, &resolved, size, vista);
+            melhor = melhor.min(t.elapsed().as_secs_f64() * 1000.0);
+        }
+        melhor
+    };
+
+    let matcap = medir(ph2d_mesh_render::Lighting::Matcap(0));
+    println!(
+        "\n=== o preço de cada modo a {}x{} (mínimo de 7) ===",
+        size.0, size.1
+    );
+    println!("  {:<14} | {:>10} | {:>12}", "modo", "ms", "Δ vs matcap");
+    for modo in ph2d_mesh_render::Lighting::todos() {
+        let ms = medir(modo);
+        println!(
+            "  {:<14} | {:>10.3} | {:>+12.3}",
+            format!("{modo:?}"),
+            ms,
+            ms - matcap
+        );
+    }
+}
+
+/// ⭐⭐⭐⭐ **O QUE O APP MOSTRA DE FÁBRICA É A LEI QUE ASSA — o gate que faltava, e que teria
+/// apanhado o report do dono antes de ele o ver.**
+///
+/// # Porque o gate irmão não bastava
+///
+/// O [`o_visor_acende_com_a_lei_que_assa`] entra pelo [`pbr_law_shade`], que **crava**
+/// `Lighting::Pbr`: ele prova que o RAMO existe e é a lei certa, e ficaria **verde para sempre** com
+/// o app a abrir num matcap. *Um gate que escolhe o modo que quer medir afirma sobre um programa que
+/// o artista não está a correr* — e o preço disso foi o mesmo report duas vezes.
+///
+/// ⇒ Este entra por [`ph2d_mesh_render::DEFAULT_LIGHTING`], que é **o que o app mostra**.
+///
+/// ⚠️ **A barra é a mesma [`MEIO_CODIGO`]**, e pela mesma razão: abaixo de meio código de oito bits
+/// nenhum byte do sprite assado pode mudar, logo é a maior barra que ainda afirma *«o que o artista
+/// vê é o que ele vai assar»*.
+///
+/// ⛔ **E ele leva o CONTROLO dentro:** um matcap tem de reprovar por uma ordem de grandeza. Sem
+/// essa metade, o dia em que a sonda deixasse de ver a diferença entre duas leis (uma forma degenerada,
+/// um render vazio) este gate ficaria verde **a afirmar nada** — que é exactamente como a família
+/// anterior de réguas desta linha falhou.
+#[test]
+#[ignore = "precisa de adapter"]
+fn o_que_o_app_mostra_de_fabrica_e_a_lei_que_assa() {
+    let vista = ph2d_mesh_render::Shade {
+        lighting: ph2d_mesh_render::DEFAULT_LIGHTING,
+        ..vista_com(ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA)
+    };
+    let Some(r) = residuo(vista) else {
+        eprintln!("sem adapter: nada a afirmar");
+        return;
+    };
+    assert!(
+        r.dentro > 40_000,
+        "controlo: a silhueta tem de encher o quadro ({} texels)",
+        r.dentro
+    );
+    assert!(
+        r.pior < MEIO_CODIGO,
+        "o app abre em {:?}, que se afasta {:.6} da lei que assa (médio {:.6}) — \
+         é o report do dono: «o bake não é idêntico ao que se vê em 3d»",
+        ph2d_mesh_render::DEFAULT_LIGHTING,
+        r.pior,
+        r.medio
+    );
+
+    // ⭐⭐⭐ **O CONTROLO — a metade que torna a barra uma afirmação.** Um matcap é a luz do OLHO e
+    // NÃO pode passar aqui: se passasse, esta sonda teria deixado de distinguir duas leis.
+    let matcap = residuo(ph2d_mesh_render::Shade {
+        lighting: ph2d_mesh_render::Lighting::Matcap(0),
+        ..vista_com(ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA)
+    })
+    .expect("o adapter ja' existia");
+    assert!(
+        matcap.pior > r.pior * 100.0,
+        "controlo: um matcap tinha de divergir por uma ordem de grandeza, e leu {:.6} contra {:.6}",
+        matcap.pior,
+        r.pior
+    );
+}
+
+/// **A OCLUSÃO DE TELA sobrevive ao ENQUADRAMENTO?** — a folga que esta sonda tinha e não via.
+///
+/// ⛔⛔ **O [`residuo`] pede a forma com `ssao: None`, logo ele é CEGO a este termo.** E ele não é
+/// um detalhe: o valor de fábrica é [`ph2d_mesh_render::DEFAULT_SSAO_STRENGTH`] `= 1,0` — a oclusão
+/// de tela entra INTEIRA de fábrica. Ela é medida no enquadramento de quem a mede: o visor mede-a
+/// numa vista LARGA, e o bake mede-a no quadrado do SPRITE. *Duas medições da mesma sombra em dois
+/// enquadramentos são duas respostas, e o `donation.rs` declara-o por escrito.*
+///
+/// ⚠️ **A régua é a média sobre a SILHUETA**, e não pixel a pixel: os dois planos têm resoluções
+/// diferentes, logo comparar índices compararia sítios diferentes da peça. Se a lei for invariante
+/// ao enquadramento, as duas médias têm de cair dentro de meio código.
+///
+/// Corre-se com o filtro `a_oclusao_de_tela_sobrevive` sobre esta crate, com `--ignored --nocapture`.
+#[test]
+#[ignore = "precisa de adapter"]
+fn a_oclusao_de_tela_sobrevive_ao_enquadramento() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter: nada a medir");
+        return;
+    };
+    let (mut renderer, camera, _rig) = stage(&gpu);
+    let vista = vista_com(ph2d_form_donation::lei_da_luz::OLHAR_DA_FORMA);
+
+    // ⚠️ O `ssao` do `pbr_law_shade` está a ZERO (a vista da sonda desliga as ajudas), logo ele é
+    // reposto AQUI no valor de FÁBRICA — é esse o programa que o artista corre.
+    let vista = ph2d_mesh_render::Shade {
+        ssao: ph2d_mesh_render::DEFAULT_SSAO_STRENGTH,
+        ..vista
+    };
+    let params =
+        ph2d_mesh_render::SsaoParams::for_bounds(ph2d_mesh::shapes::uv_sphere(8, 12, 1.0).bounds());
+
+    let mut media = |size: (u32, u32)| {
+        let planes = renderer
+            .form_plane(&gpu.device, &gpu.queue, &camera, size, vista, Some(params))
+            .expect("a malha esta la'");
+        let (mut soma, mut n) = (0f64, 0usize);
+        for (i, o) in planes.occlusion.iter().enumerate() {
+            // Só dentro da silhueta: o alvo é limpo em BRANCO, e o fundo puxaria a média para 1.
+            if planes.normal[i * 4 + 3] > 0.0 {
+                soma += f64::from(*o);
+                n += 1;
+            }
+        }
+        (soma / n as f64, n)
+    };
+
+    let (largo, n_largo) = media((1600, 900));
+    let (quadrado, n_quadrado) = media((1024, 1024));
+    let dif = (largo - quadrado).abs();
+    println!(
+        "\n=== a oclusão de tela em dois enquadramentos (a MESMA câmera, a MESMA malha) ===\n  \
+         vista LARGA  1600x900  : média {largo:.6} sobre {n_largo} texels\n  \
+         sprite QUADRADO 1024²  : média {quadrado:.6} sobre {n_quadrado} texels\n  \
+         diferença              : {dif:.6}  (meio código = {MEIO_CODIGO:.6})"
     );
 }

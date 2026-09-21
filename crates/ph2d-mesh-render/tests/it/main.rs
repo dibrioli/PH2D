@@ -19,6 +19,7 @@ mod measure_matcap_decode;
 mod measure_screen_radius;
 mod measure_sss_curve;
 mod measure_the_view_ruler_at_two_anchors;
+mod mede_o_que_a_composicao_ja_da_ao_catavento;
 mod probe_pick_round_trip;
 mod probe_wire_continuity;
 mod tinta_no_device;

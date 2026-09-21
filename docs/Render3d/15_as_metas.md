@@ -100,7 +100,7 @@ Quem a responder por memória ou pelo [`03`](03_o_plano.md) responde a fila erra
 | ordem | obra | estado |
 |---|---|---|
 | **1.ª** | a lei que acende o sprite | ✅ **NO PRODUTO, com o smoke do dono APROVADO (21/09)** e com a **escolha POR OBJECTO gravada no ficheiro** (o item `2` da cauda, fechado no mesmo dia — degrau `161`). ⏳ fica o resto da cauda do §7 (o destaque que satura · a oclusão especular · não re-enviar a forma quando só o rig mudou) |
-| **2.ª** | a rota B — o catavento | ⏳ **é a PRÓXIMA**, e não começou: `Mesh3D`/`MeshShading` **não existem** (medido no `ph2d-ecs`) |
+| **2.ª** | a rota B — o catavento | ⏳ **EM CURSO.** A **§5.0 está medida** ([`17`](17_a_rota_b_o_catavento.md)): as duas metades já vivem na placa e **a costura entre elas passa pela CPU** — chamar a porta de hoje por quadro dá `4` objectos a `512²` contra `126` com o G-buffer residente, e *o custo é de VÉRTICES, não de pixels*. `Mesh3D`/`MeshShading` continuam a **não existir** no `ph2d-ecs` |
 | 3.ª | a luz sobrevive ao movimento | ⏳ **absorve a `W9`** do [`03`](03_o_plano.md), com o gate VERMELHO que o dono mandou tratar lá |
 | 4.ª | texturas | ⏳ o material continua **uma cor por objecto** |
 | 5.ª | animação 3D | ⏳ o esqueleto desta casa é 2D |

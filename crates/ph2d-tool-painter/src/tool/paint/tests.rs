@@ -61,8 +61,12 @@ mod diag_composite_e_as_formas;
 #[path = "diag_preco_do_recarimbo.rs"]
 mod diag_preco_do_recarimbo; // o PRECO
 
+#[path = "diag_a_lei_do_esfregao.rs"]
+mod diag_a_lei_do_esfregao; // a CACA a causa da perda do esfregao numa curva (2026-09-21)
 #[path = "diag_auditoria_do_aspecto.rs"]
-mod diag_auditoria_do_aspecto; // a auditoria do report de 2026-09-21 (o ASPECTO do anel) // o PRECO de um re-carimbo com a pilha (report do dono, 2026-09-21) // a pilha contra os metodos de RE-CARIMBO (report do dono, 2026-09-21)
+mod diag_auditoria_do_aspecto;
+#[path = "diag_o_tecto_do_esfregao.rs"]
+mod diag_o_tecto_do_esfregao; // o ESCOPO dela e o tecto MEDIDO E RECUSADO (2026-09-21) // a auditoria do report de 2026-09-21 (o ASPECTO do anel) // o PRECO de um re-carimbo com a pilha (report do dono, 2026-09-21) // a pilha contra os metodos de RE-CARIMBO (report do dono, 2026-09-21)
 
 #[path = "composite_acumulado_tests.rs"]
 mod composite_acumulado_tests; // a pilha que ACUMULA: o preço, a exactidão e o rectângulo

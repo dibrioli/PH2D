@@ -195,6 +195,9 @@ mod line_seam_tests; // o seam do card Line: o clique chega ao pincel (plano 38)
 /// **O relevo VIAJA com a Shape** — a capacidade pedida em 2026-08-09.
 #[cfg(test)]
 mod shape_relief_tests;
+/// **O esfregão numa CURVA** — o tecto do transporte, e a prova de que a RECTA não mexeu.
+#[cfg(test)]
+mod smear_curva_tests;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
 mod clone;
 mod eyedropper;

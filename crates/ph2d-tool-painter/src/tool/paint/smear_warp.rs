@@ -68,6 +68,12 @@ impl PainterTool {
             .selection_restricts_paint()
             .then(|| Arc::clone(&self.paint.selection_mask));
 
+        // ⚠️ SONDA: a varredura do tecto (A13) corre pela porta do PRODUTO, e o valor de fábrica
+        // é o da lei. Fora do teste não há como o mudar.
+        #[cfg(test)]
+        let tecto_em_raios = espia::tecto();
+        #[cfg(not(test))]
+        let tecto_em_raios = ph2d_painter_brush::SEM_TECTO;
         let tiling = self.paint.tiling;
         let tiled = tiling[0] || tiling[1];
         let source_size = self.source_size;
@@ -169,7 +175,10 @@ impl PainterTool {
                             disp: &mut disp,
                             scratch: &mut scratch,
                         },
-                        step,
+                        ph2d_painter_brush::Transporte {
+                            step,
+                            tecto_em_raios,
+                        },
                         mask.as_ref().map(|m| m.as_slice()),
                         w,
                         h,
@@ -188,6 +197,10 @@ impl PainterTool {
             }
             from = Some((d.center, d.arc_len));
         }
+        #[cfg(test)]
+        espia::guarda(&disp);
+        #[cfg(test)]
+        espia::guarda_dabs(dabs);
         *Arc::make_mut(&mut self.paint.warp.disp) = disp;
         self.paint.smear_scratch = scratch;
         self.paint.last_smear_pos = from;
@@ -260,5 +273,63 @@ impl PainterTool {
         if self.paint.warp.active && self.paint.paint_mode != PaintMode::Deform {
             self.end_warp_session();
         }
+    }
+}
+
+/// SONDA — o campo de deslocamento do último lote, para a régua o poder ler.
+///
+/// ⚠️ Ele é consumido pelo re-amostrar e a sessão fecha-se no pen-up, logo depois do gesto **não
+/// há onde o ir buscar**. Esta cópia é o único sítio em que ele existe para quem mede.
+#[cfg(test)]
+pub(super) mod espia {
+    use std::cell::RefCell;
+
+    thread_local! {
+        static ULTIMO: RefCell<Vec<[f32; 2]>> = const { RefCell::new(Vec::new()) };
+    }
+
+    pub(crate) fn guarda(disp: &[[f32; 2]]) {
+        ULTIMO.with(|u| {
+            let mut u = u.borrow_mut();
+            u.clear();
+            u.extend_from_slice(disp);
+        });
+    }
+
+    /// O deslocamento do último lote, ou vazio se nenhum correu.
+    pub(in crate::tool::paint) fn ultimo() -> Vec<[f32; 2]> {
+        ULTIMO.with(|u| u.borrow().clone())
+    }
+
+    thread_local! {
+        static DABS: RefCell<Vec<([f32; 2], f32)>> = const { RefCell::new(Vec::new()) };
+    }
+
+    pub(crate) fn guarda_dabs(dabs: &[ph2d_painter_brush::Dab]) {
+        DABS.with(|u| {
+            let mut u = u.borrow_mut();
+            u.clear();
+            u.extend(dabs.iter().map(|d| (d.center, d.arc_len)));
+        });
+    }
+
+    thread_local! {
+        static TECTO: std::cell::Cell<f32> =
+            const { std::cell::Cell::new(ph2d_painter_brush::SEM_TECTO) };
+    }
+
+    /// O tecto do transporte que o próximo lote vai usar (o de fábrica, se ninguém o mudar).
+    pub(in crate::tool::paint) fn tecto() -> f32 {
+        TECTO.with(std::cell::Cell::get)
+    }
+
+    /// ⚠️ Só a varredura da sonda (A13) mexe nisto, e ela repõe o valor de fábrica no fim.
+    pub(in crate::tool::paint) fn poe_tecto(v: f32) {
+        TECTO.with(|c| c.set(v));
+    }
+
+    /// `(centro, arc_len)` de cada dab do último lote entregue ao esfregão.
+    pub(in crate::tool::paint) fn ultimos_dabs() -> Vec<([f32; 2], f32)> {
+        DABS.with(|u| u.borrow().clone())
     }
 }

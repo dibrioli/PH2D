@@ -148,3 +148,81 @@ fn diag_o_rectangulo_do_arrasto() {
         }
     }
 }
+
+/// (A11) A SEMENTE, na configuração do DONO — *«uma textura em Shape · Jitter 0»* (2026-09-21).
+///
+/// A auditoria levantou que a semente de aleatoriedade é por FIGURA sem boolean e partilhada com
+/// ele. Com `Jitter 0` isso parecia inerte — mas o **Shape** desenha a silhueta de cada dab a
+/// partir do mesmo fluxo (`tex_rng`), logo a pergunta é outra: *dois círculos CONGRUENTES saem
+/// iguais?*
+///
+/// ⚠️ A régua compara os dois recortes **byte a byte**, o que só é honesto porque as duas figuras
+/// são congruentes por construção (mesmo raio, mesmo pincel, mesma pilha) e a fixtura o afirma.
+///
+/// `cargo test -p ph2d-tool-painter --release --lib diag_a_semente_com_shape -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda de medição: imprime uma tabela"]
+fn diag_a_semente_com_shape() {
+    use composite::CompositeOp::Brush;
+    let (a, b, r) = ([175.0f32, 175.0], [525.0f32, 525.0], 110.0f32);
+    const J: u32 = 300; // o recorte à volta de cada figura
+
+    // Uma silhueta com estrutura: faixas diagonais, para uma realização diferente se NOTAR.
+    let (sw, sh) = (64u32, 64u32);
+    let lum: Vec<u8> = (0..sw * sh)
+        .map(|i| {
+            let (x, y) = (i % sw, i / sw);
+            if (x + y) % 16 < 8 { 255 } else { 40 }
+        })
+        .collect();
+
+    for com_shape in [false, true] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![0u8; (L * L * 4) as usize], L, L);
+        t.paint.brush.radius_px = 24.0;
+        t.paint.brush.color = [0.75, 0.12, 0.12];
+        t.paint.brush.space_attenuation = false;
+        t.paint.brush.jitter = 0.0;
+        t.paint.brush.stroke_method = ph2d_painter_brush::StrokeMethod::Ellipse;
+        t.paint.composite_enabled = true;
+        t.acrescenta_camada(Brush.to_u8());
+        t.set_composite_layer_strength(0, 1.0);
+        if com_shape {
+            t.set_brush_shape_image(lum.clone(), sw, sh);
+        }
+        let mut circulo = |c: [f32; 2]| {
+            t.on_canvas_pointer(cp2(c, PointerPhase::Down));
+            for i in 1..=8 {
+                let u = i as f32 / 8.0;
+                t.on_canvas_pointer(cp2([c[0] + r * u, c[1]], PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp2([c[0] + r, c[1]], PointerPhase::Up));
+        };
+        circulo(a);
+        circulo(b);
+
+        // Os dois recortes, centrados em cada figura.
+        let recorte = |c: [f32; 2]| -> Vec<u8> {
+            let (x0, y0) = (
+                (c[0] - J as f32 / 2.0) as u32,
+                (c[1] - J as f32 / 2.0) as u32,
+            );
+            let mut v = Vec::with_capacity((J * J * 4) as usize);
+            for y in 0..J {
+                let i = (((y0 + y) * L + x0) * 4) as usize;
+                v.extend_from_slice(&t.canvas_rgba[i..i + (J * 4) as usize]);
+            }
+            v
+        };
+        let (ra, rb) = (recorte(a), recorte(b));
+        let n_a = ra.iter().skip(3).step_by(4).filter(|&&x| x > 4).count();
+        let n_b = rb.iter().skip(3).step_by(4).filter(|&&x| x > 4).count();
+        let difs = ra.iter().zip(&rb).filter(|(x, y)| x != y).count();
+        println!(
+            "  Shape {:>3} · figura A {n_a:6} texels · figura B {n_b:6} · bytes DIFERENTES {difs:7} \
+             ({:5.1} % do recorte)",
+            if com_shape { "ON" } else { "off" },
+            100.0 * difs as f32 / ra.len() as f32
+        );
+    }
+}

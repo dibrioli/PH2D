@@ -71,6 +71,77 @@ use crate::dab::DirtyRect;
 use crate::height::HeightDab;
 use crate::spec::BrushSpec;
 
+/// ⛔⛔⛔ **O TECTO DO TRANSPORTE — CONSTRUÍDO, MEDIDO e NÃO ADOPTADO.** Ele fica porque é o
+/// **instrumento da recusa**: sem ele, a medição que a rejeitou não é repetível.
+///
+/// ⚠️⚠️ **Ele cura a curva e MATA o que o dono exigiu.** Os dois gates que defendem o transporte
+/// longo (`the_knife_carries_the_body_across_the_frontier_as_mass_not_a_filament` e
+/// `the_smear_trail_is_a_fact_of_the_path_not_the_dab_spacing`) ficam VERMELHOS com o tecto
+/// ligado: o rasto da faca morre a `2 R` da origem, que é exactamente a lei que o dono reprovou
+/// **duas vezes** (*«as fronteiras não são vencidas. o relevo não é levado além. nada
+/// resolvido»*). ⇒ *a conservação de tinta numa curva e o transporte que atravessa a tela são o
+/// MESMO mecanismo, e sob esta lei não há um sem o outro.*
+///
+/// ## O que ele era, e porque parecia certo
+///
+/// O cabeçalho deste esfregão afirma uma lei que o código não cumpre:
+///
+/// ⛔⛔ **O número NÃO é escolhido: ele é o ALCANCE do próprio dab.** Um texel só é tocado por
+/// dabs cuja pegada o cobre, e enquanto ele está coberto o cursor atravessa-o por, no máximo, um
+/// **DIÂMETRO** — logo a tinta debaixo dele não pode ser levada mais do que `2 R` pelos dabs que
+/// de facto lhe tocam. *É exactamente o que o doc do módulo diz: «o `disp` de um texel só cresce
+/// enquanto o cursor está a menos de um raio dele».*
+///
+/// ⛔⛔⛔ **A composição violava-o, e por muito.** `D(p) = v + D(p − v)` deixa um texel **herdar**
+/// o mapa de um vizinho atrás dele, que por sua vez herdou do vizinho atrás desse: a corrente
+/// alcança arbitrariamente longe, e não só os dabs que tocaram o texel. Medido pela porta do
+/// produto, num traço RECTO de `580 px`: `|disp|` máximo de **`568,58 px`**, que são **`9,5`
+/// raios** contra o raio da lei.
+///
+/// ## Porque isso só se VÊ numa curva
+///
+/// Num traço recto e uniforme, levar tinta `568 px` ao longo do eixo é invisível — o traço é
+/// igual a si mesmo ao longo dele. Numa CURVA não é: o traçado para trás deixa de acompanhar o
+/// caminho e aterra **fora** do traço, onde não há tinta nenhuma, e o re-amostrar traz o vazio.
+/// Medido num anel (`r = 215`, pincel `30`), a tinta que sobrevive ao esfregão:
+///
+/// | tecto | anel (curva) | recta (controlo) | deriva radial | raio de `p − D` (anel: `185..245`) |
+/// |---|---|---|---|---|
+/// | `∞` (o de ontem) | `84,4 %` | `99,9 %` | `43,72 px` | `205,9` |
+/// | **`2` (a lei)** | **`99,7 %`** | `99,9 %` | **`6,38 px`** | **`212,6`** |
+///
+/// ⚠️ **E a recta fica onde estava, que é o que faz disto uma correcção e não uma mudança de
+/// produto:** mesma contagem de texels (`36 084`), e a pior coluna do traço move-se `8` de
+/// `10 990` — **`0,07 %`**.
+///
+/// ⚠️ **Com a dureza a `1` o defeito era MUITO maior** (`|disp| 383 px`, `51,2 %` de tinta), e é
+/// por isso que ele não se vê numa fixtura de dureza `0`: ali a atenuação da orla já limitava a
+/// corrente por acidente.
+/// ## A varredura, que é de onde o número sai
+///
+/// | tecto (R) | anel guardado | `\|disp\|` máx | recta: pior coluna contra o de ontem |
+/// |---|---|---|---|
+/// | `0,5` | `100,0 %` | `15` | **`1,097 %`** ← já corta o transporte aprovado |
+/// | `1,0` | `100,0 %` | `30` | `0,073 %` |
+/// | `1,5` | `99,9 %` | `45` | `0,036 %` |
+/// | **`2,0`** | **`99,7 %`** | `60` | `0,073 %` |
+/// | `3,0` | `96,0 %` | `90` | `0,018 %` |
+/// | `4,0` | `86,7 %` | `120` | `0,000 %` |
+/// | `∞` | `84,4 %` | `320` | `0,000 %` |
+///
+/// ⭐ **O valor DERIVADO da geometria é também o JOELHO da curva medida**: `2` é o maior tecto
+/// que deixa a curva acima de `99,5 %`, e descer abaixo dele começa a cortar a recta que o dono
+/// aprovou. *Uma derivação e uma medição independentes a darem o mesmo número é a única forma
+/// honesta de escrever um limite.*
+pub const TECTO_MEDIDO_E_RECUSADO_EM_RAIOS: f32 = 2.0;
+
+/// **O que o produto passa: SEM TECTO.** A corrente alcança o que alcançar.
+///
+/// ⛔⛔⛔ **E isso é uma ESCOLHA medida, não um esquecimento** — ver a recusa em
+/// [`TECTO_MEDIDO_E_RECUSADO_EM_RAIOS`]. *A conservação de tinta numa curva e o transporte que
+/// atravessa a tela são o MESMO mecanismo: não há um sem o outro sob esta lei.*
+pub const SEM_TECTO: f32 = f32::INFINITY;
+
 /// Accumulate ONE smear dab into the session's cumulative displacement map.
 ///
 /// `disp` is canvas-sized (`width · height`), in **pixels**, and is the source of truth for the whole
@@ -93,7 +164,7 @@ use crate::spec::BrushSpec;
 #[must_use]
 pub fn accumulate_dab_smear(
     out: SmearOut<'_>,
-    step: [f32; 2],
+    mov: Transporte,
     mask: Option<&[u8]>,
     width: u32,
     height: u32,
@@ -101,6 +172,10 @@ pub fn accumulate_dab_smear(
     dab: &HeightDab<'_>,
 ) -> Option<DirtyRect> {
     let SmearOut { disp, scratch } = out;
+    let Transporte {
+        step,
+        tecto_em_raios,
+    } = mov;
     let n = (width as usize) * (height as usize);
     if disp.len() < n {
         return None;
@@ -140,9 +215,34 @@ pub fn accumulate_dab_smear(
         let py = (i / width as usize) as f32;
         let v = [step[0] * add, step[1] * add];
         let back = win.sample(px - v[0], py - v[1]);
-        disp[i] = [v[0] + back[0], v[1] + back[1]];
+        let mut d = [v[0] + back[0], v[1] + back[1]];
+        // ⛔⛔ **O TECTO DO TRANSPORTE** — sem ele a herança `D(p) = v + D(p − v)` alcança muito
+        // além dos dabs que tocaram o texel, e numa CURVA o traçado para trás sai do traço e o
+        // re-amostrar traz o vazio. A derivação, a tabela e o que ele custa numa recta estão em
+        // [`TECTO_MEDIDO_E_RECUSADO_EM_RAIOS`].
+        let tecto = spec.radius_px * tecto_em_raios;
+        let m = d[0].hypot(d[1]);
+        if m > tecto {
+            let k = tecto / m;
+            d = [d[0] * k, d[1] * k];
+        }
+        disp[i] = d;
     }
     Some(rect)
+}
+
+/// **O movimento deste dab: o passo e o TECTO do transporte** — o par que descreve para onde a
+/// tinta vai e até onde ela pode ir, agrupado do mesmo modo que [`SmearOut`] agrupa as saídas.
+///
+/// ⚠️ **Eles viajam juntos de propósito.** O tecto só tem sentido em relação ao passo que o
+/// alimenta, e separá-los deixaria um chamador a passar um sem o outro. O valor do produto é
+/// [`SEM_TECTO`]; o [`TECTO_MEDIDO_E_RECUSADO_EM_RAIOS`] é o instrumento da recusa.
+#[derive(Clone, Copy)]
+pub struct Transporte {
+    /// Quanto o cursor andou desde o dab anterior, em píxeis de tela.
+    pub step: [f32; 2],
+    /// O tecto do deslocamento acumulado, em RAIOS de pincel.
+    pub tecto_em_raios: f32,
 }
 
 /// The map being advanced, plus its caller-owned scratch — bundled the way [`crate::sculpt::PlaneOut`]
@@ -291,6 +391,67 @@ mod tests {
         }
     }
 
+    /// ⛔⛔ **O INSTRUMENTO DA RECUSA GRAMPEIA, E O PRODUTO NÃO** — as duas metades, porque
+    /// cada uma sozinha mente.
+    ///
+    /// O cabeçalho deste módulo afirma que *«o `disp` de um texel só cresce enquanto o cursor
+    /// está a menos de um raio dele»*, e a composição `D(p) = v + D(p − v)` **não o cumpre**: um
+    /// texel herda o mapa de quem está atrás, e a corrente alcança arbitrariamente longe. O tecto
+    /// que honra a frase existe e foi **medido e recusado** — ver
+    /// [`TECTO_MEDIDO_E_RECUSADO_EM_RAIOS`], porque ele mata o transporte longo que o dono exigiu.
+    ///
+    /// ⚠️ Este gate não escolhe: ele afirma que o instrumento **funciona** (com o tecto, o
+    /// transporte pára no alcance do dab) e que o produto **não o usa** (sem ele, a corrente
+    /// alcança muito mais). *Sem a segunda metade, alguém leria a recusa como já aplicada.*
+    ///
+    /// **Mutações que sangram:** apagar o grampo · `let k = 1.0` · trocar o `>` por `<`.
+    #[test]
+    fn o_instrumento_da_recusa_grampeia_e_o_produto_nao() {
+        let (w, h) = (64u32, 64u32);
+        let n = (w * h) as usize;
+        let raio = 8.0f32;
+        let s = spec(raio);
+        let anda = |tecto: f32| -> f32 {
+            let mut sc = SmearScratch::default();
+            let mut disp = vec![[0.0f32; 2]; n];
+            // Um traço LONGO de propósito: 48 passos de 1 px, seis vezes o diâmetro do dab.
+            for k in 0..48u32 {
+                let x = 8.0 + k as f32;
+                let _ = accumulate_dab_smear(
+                    SmearOut {
+                        disp: &mut disp,
+                        scratch: &mut sc,
+                    },
+                    Transporte {
+                        step: [1.0, 0.0],
+                        tecto_em_raios: tecto,
+                    },
+                    None,
+                    w,
+                    h,
+                    &s,
+                    &dab_at([x, 32.0], raio),
+                );
+            }
+            disp.iter().map(|d| d[0].hypot(d[1])).fold(0.0, f32::max)
+        };
+        let com = anda(TECTO_MEDIDO_E_RECUSADO_EM_RAIOS);
+        let sem = anda(SEM_TECTO);
+        let alcance = 2.0 * raio;
+        assert!(
+            com <= alcance + 1e-3,
+            "o transporte passou o alcance do dab: {com:.2} px contra {alcance:.2}"
+        );
+        // A metade do PRODUTO: ele passa `SEM_TECTO`, logo a corrente tem de disparar. Isto é
+        // ao mesmo tempo o controlo positivo da fixtura e a afirmação de que a recusa não foi
+        // aplicada às escondidas.
+        assert!(
+            sem > 2.0 * alcance,
+            "o produto passou a grampear (ou a fixtura não contém o fenómeno): sem tecto a \
+             corrente só chegou a {sem:.2} px, contra o alcance de {alcance:.2}"
+        );
+    }
+
     /// **The law the whole fix rests on: transport is a SUM, so it does not depend on how finely the
     /// motion was sampled.** Walk the same 32 px with 32 one-pixel steps and with 8 four-pixel steps —
     /// the displacement that lands on the axis must be the same distance, not a different one.
@@ -315,7 +476,10 @@ mod tests {
                         disp: &mut disp,
                         scratch: &mut sc,
                     },
-                    [stride, 0.0],
+                    Transporte {
+                        step: [stride, 0.0],
+                        tecto_em_raios: TECTO_MEDIDO_E_RECUSADO_EM_RAIOS,
+                    },
                     None,
                     w,
                     h,
@@ -365,7 +529,10 @@ mod tests {
                     disp: &mut disp,
                     scratch: &mut sc,
                 },
-                [1.0, 0.0],
+                Transporte {
+                    step: [1.0, 0.0],
+                    tecto_em_raios: TECTO_MEDIDO_E_RECUSADO_EM_RAIOS,
+                },
                 None,
                 w,
                 h,
@@ -395,7 +562,10 @@ mod tests {
                     disp: &mut disp,
                     scratch: &mut SmearScratch::default()
                 },
-                [0.0, 0.0],
+                Transporte {
+                    step: [0.0, 0.0],
+                    tecto_em_raios: TECTO_MEDIDO_E_RECUSADO_EM_RAIOS,
+                },
                 None,
                 w,
                 h,
@@ -429,7 +599,10 @@ mod tests {
                     disp: &mut disp,
                     scratch: &mut sc,
                 },
-                [1.0, 0.0],
+                Transporte {
+                    step: [1.0, 0.0],
+                    tecto_em_raios: TECTO_MEDIDO_E_RECUSADO_EM_RAIOS,
+                },
                 Some(&mask),
                 w,
                 h,

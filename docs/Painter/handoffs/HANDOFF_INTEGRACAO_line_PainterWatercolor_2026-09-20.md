@@ -887,3 +887,151 @@ numa asserção sobre `pigment_offered`.
 
 - ⏳ O `Pigment` mudou de sítio na **aquarela** também (saiu do cartão *Water* para o `Mixing`, acima
   da secção) — **smoke do dono**, e é a única coisa que ele vê mudar num painel que já aprovou.
+
+---
+
+## §20 — «MEÇA O CUSTO DE MAIS DUAS TOOLS NA CADEIA» (ordem do dono, 2026-09-20)
+
+> *«Em Digital:Composite Brush temos 3 tools juntas Brush+Smear+Blur. Meça custo de colocar mais 2
+> tool nesse cadeia: Erase + um segundo Brush. Nos brushes entram campos de cor e tamanho do carimbo
+> além do Strength que já tem. Smear e Blur ganham o tamanho do carimbo além do Strength que já tem.
+> Analise a viabilidade e o preço em performance.»*
+
+⚠️ **Esta wave NÃO implementou nada.** Ela entrega a MEDIÇÃO e o desenho, que é o que a decisão
+exige. O instrumento é [`diag_composite_cinco_camadas.rs`](../../../crates/ph2d-tool-painter/src/tool/paint/diag_composite_cinco_camadas.rs)
+— seis sondas `#[ignore]`d, todas pela porta do produto (`on_canvas_pointer`), `--release`, canvas
+`1024²`, traço reto de `720 px` em passos de `2 px` (362 eventos), raio `24`.
+
+```
+bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --release --lib \
+  diag_composite_cinco_camadas -- --ignored --nocapture --test-threads=1
+```
+
+### §20.1 — O PREÇO: as duas camadas custam **+19 %**, e a conta não é o que parece
+
+| pilha | traço (ms) | por evento |
+|---|---|---|
+| pincel sozinho (pilha DESLIGADA) | `5,27` | `0,015` |
+| `[Brush]` | `5,17` | `0,014` |
+| `[Smear]` | **`67,22`** | `0,186` |
+| `[Blur]` | `8,51` | `0,024` |
+| `[Brush+Smear]` | `78,84` | `0,218` |
+| `[Brush+Brush+Smear]` | `88,94` | `0,246` |
+| **`[Brush+Smear+Blur]` ← HOJE** | **`95,36`** | **`0,263`** |
+| **PREVISTO `[Brush+Brush+Erase+Smear+Blur]`** | **`113,91`** | **`0,315`** |
+
+⇒ **`×1,19`**. As marginais são **EMPARELHADAS** (ver §20.5): 1.º Brush `10,47` `[10,19..10,67]` ·
+2.º Brush `10,18` `[8,49..10,35]` · Blur `16,92` `[16,16..18,70]` · Erase `= Brush × 0,83` (medido:
+uma borracha custa `4,65` contra `5,59` do pincel).
+
+⭐⭐ **O `+19 %` é pequeno porque o SMEAR já é 70 % da pilha de hoje** (`67,22` de `95,36`), e ele
+**segue a TELA e não o traço**:
+
+| tela | `[Brush]` | `[Smear]` | `[Blur]` | pilha de HOJE |
+|---|---|---|---|---|
+| `512²` | `2,56` | `19,46` | `4,25` | `32,91` |
+| `1024²` | `5,60` | `68,55` | `8,61` | `96,18` |
+| `2048²` | `12,97` | `252,55` | `21,50` | **`307,18`** |
+
+⚠️ **E é aqui que está o único risco de relógio real:** a `2048²` a pilha de HOJE já custa
+`0,85 ms/evento`, e um rato de `1000 Hz` entrega `~16` eventos por quadro ⇒ **`13,6` dos `16,7 ms`
+de um quadro**. Com cinco camadas isso vai a `~16,2` ms — *a pilha passa a comer o quadro inteiro
+numa tela grande*. A `1024²` sobra folga (`4,2 → 5,0 ms/quadro`). ⛔ O método de traço de omissão
+(`Space`) **não coalesce** eventos por quadro (`coalesces_canvas_motion` lista só Arc/Ellipse/
+Polygon/Line/Anchored/DragDot), logo a conta é mesmo por EVENTO.
+
+⭐ **A DOBRA é metade do preço de cada camada nova:** com uma sessão de smear viva, toda camada que
+não é smear deposita **duas vezes** (canvas + base congelada, o `lay_into_smear_base` de 09/08) —
+medido `×2,03` no Brush e `×1,99` no Blur. As partes sozinhas somam `80,91` e a pilha mede `95,36`
+⇒ `+17,9 %`, que **é** a dobra.
+
+### §20.2 — ⛔⛔ A VIABILIDADE: um SEGUNDO Brush é INERTE hoje, e são DUAS causas
+
+| Strength | UM Brush | DOIS | o 2.º acrescentou |
+|---|---|---|---|
+| `1,0` | `101,99` | `102,00` | **`+0,01`** |
+| `0,6` | `61,08` | `61,04` | **`−0,04`** |
+| `0,3` | `30,73` | `30,67` | **`−0,05`** |
+
+⭐ **A aritmética separa as duas, e elas pedem curas DIFERENTES:**
+
+- **Em `1,0` o cap está DESARMADO** (`stroke_cover_wanted` é `!accumulate && strength < 1.0`): os
+  dois passes depositam, e o segundo é invisível porque pinta **a mesma cor** sobre tinta opaca.
+  ⇒ a **cor por camada** que o dono pediu cura exactamente isto.
+- **Abaixo de `1,0` quem bloqueia é o CAP, e a cor NÃO o cura.** Pintar `0,6` com `[0,6, 0, 0]`
+  sobre branco escurece o vermelho `0,6 × 0,4 × 255 = 61,2`; o medido é **`61,04`**. Dois passes
+  dariam `1 − 0,4² = 0,84` ⇒ `~86`. *O número lido é o cap, ao décimo.* ⇒ a cura é um
+  `stroke_mask` **por camada** — a mesma coisa que o `lay_into_smear_base` já faz à mão (ele salva
+  e repõe o mapa à volta da dobra, e o doc dele diz porquê).
+
+### §20.3 — ⛔⛔ O TAMANHO por camada NÃO é um multiplicador no dab
+
+O `Dab` já carrega `radius_px` **e** `color`, o que faz parecer que as duas features são um campo.
+A **cor é** (o stamp lê `d.color`; per-camada = reescrever esse campo numa lista de rascunho, custo
+algorítmico **zero**). O **tamanho não é**: o espaçamento entre dabs foi resolvido pelo motor de
+traço com o raio do PINCEL (`spacing × diâmetro`, fábrica `0,10`).
+
+⭐ **Medido por equivalência EXACTA** — a lista de um pincel de raio `r` reutilizada por uma camada
+de raio `k·r` é, para essa camada, a lista que ela emitiria com `spacing/k`; logo `raio 96 · sp
+0,025` **é** «a camada de 96 sobre a lista de um pincel de 24 a `0,10`»:
+
+| op | percurso PRÓPRIO (`sp 0,100`) | lista REUSADA (`sp 0,025`) | razão |
+|---|---|---|---|
+| Brush | `7,00 ms` | `25,97 ms` | **`×3,71`** |
+| Smear | `95,04 ms` | `386,99 ms` | **`×4,07`** |
+| Blur | `88,65 ms` | `344,14 ms` | **`×3,88`** |
+
+⇒ **um tamanho por camada honesto é um PERCURSO DE TRAÇO por camada** (`[Stroke; N]` no lugar do
+`Option<Stroke>` único do `paint::state`), nunca um raio escalado sobre a lista partilhada. Sem
+isso, uma camada `4×` maior paga `4×` a mais do que precisa — e a sobreposição extra é o
+endurecimento de borda que o doc 25 §13.10 já mede.
+
+⚠️ **E mesmo com percurso próprio o Blur é o caro:** (raio `12 · 24 · 48 · 96`)
+
+| op | 12 | 24 | 48 | 96 |
+|---|---|---|---|---|
+| Brush | `2,79` | `5,18` | `6,74` | `6,52` (plano) |
+| Smear | `64,28` | `67,59` | `75,89` | `95,12` (`×1,4`) |
+| **Blur** | `3,67` | `8,70` | `26,63` | **`87,40`** (`×10`) |
+
+### §20.4 — O que a extensão encosta (superfície MEDIDA)
+
+- ⭐ **Zero schema e zero contrato congelado.** O stack do composite **não é serializado** em lado
+  nenhum (`composite_enabled`/`composite_ops`/`composite_strength` aparecem em 12 ficheiros de
+  **duas** crates, nenhum deles de persistência): é estado de sessão. `PROJECT_SCHEMA` intocado.
+- Arrays `[NodeId; 3]` → `[5]` em `ids/painter_brush_sections.rs` (`…COMPOSITE_STRENGTH`, `…_UP`,
+  `…_DOWN`) e o `PAINTER_BRUSH_COMPOSITE_BUTTONS: [NodeId; 7]` → `[11]` (mais os ids novos de cor e
+  tamanho por camada), com o registo em `populate.rs` a segui-los — ⚠️ é o gate
+  `hit_indexed_ids_are_registered` que o cobra.
+- `BrushSettings::composite_ops`/`composite_strength` `[_; 3]` → `[_; 5]` e os dois campos novos.
+- O cartão (`paint_composite.rs`): `N_LAYERS` é o único literal `3` do painel.
+- ⚠️ **O `composite_active()` exige `!eraser`** — uma camada `Erase` é um `BrushBlend::EraseAlpha`
+  na camada, e **não** o modo borracha da ferramenta; a cura do pigmento de ontem
+  (`BrushBlend::lays_pigment`) já a impede de tingir o que apaga.
+- ⏳ **O PAINEL é o custo que não é CPU:** o cartão hoje mede `6 + 22 + 4 + 3×25 + 6 = 113 px`.
+  Cinco camadas numa linha cada dão `163`; com cor **e** tamanho a pedirem uma segunda linha por
+  camada dão **`288 px`** (`+175`) dentro da secção Brush, que já é a mais alta do painel.
+
+### §20.5 — ⚠️ DUAS réguas minhas reprovaram antes de uma medir
+
+1. **A ADITIVIDADE era um controlo VAZIO.** A 1.ª redacção somava as marginais
+   (`c_S + (c_BS − c_S) + (c_BSBl − c_BS)`), que **telescopa** para `c_BSBl` por construção — ela
+   imprimia `+0,0 %` e não afirmava nada. Hoje o controlo é a soma das partes **independentes**
+   (`80,91` contra `95,36`), e o resíduo **é** a dobra.
+2. **A MARGINAL subtraía dois mínimos de corridas separadas**, e numa leitura deu **`−0,54 ms`**
+   para uma camada que custa `~10`: a dispersão do Smear nesta máquina é **`14 ms`** (leu `67,56` e
+   `81,60` no mesmo dia). ⇒ *uma diferença de dois números ruidosos não é uma marginal*. Hoje `A` e
+   `B` correm **lado a lado na mesma iteração** e o que sai é a **mediana das diferenças
+   emparelhadas**, com `p10..p90` ao lado — a deriva entra nos dois lados e cancela-se.
+
+### §20.6 — Recomendação, e o que fica para o dono decidir
+
+**Viável.** O preço de CPU das duas camadas é `+19 %` de uma pilha que a `1024²` usa `5` dos
+`16,7 ms` de um quadro. O trabalho não está no relógio — está em três peças:
+
+1. um **`stroke_mask` por camada** (sem ele o 2.º Brush não pinta abaixo de Strength `1,0`);
+2. um **percurso de traço por camada** (sem ele o tamanho custa `×4` e endurece a borda);
+3. o **espaço do cartão** (`+175 px`), que é decisão de produto.
+
+⏳ **Decisão do dono:** (a) a tela grande — a `2048²` a pilha de cinco põe o quadro no limite, e a
+saída medida é o Smear, que é `70 %` dela e cresce com a ÁREA; (b) o cartão a `288 px`.

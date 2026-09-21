@@ -189,6 +189,8 @@ e o gate reprovou-a.
 
 ## §5-ter — A POSIÇÃO e a COR, e a porta que eu escrevi duas vezes
 
+✅ **Smoke do dono APROVADO (2026-09-20).**
+
 Os dois tipos que o §5-bis deixou nomeados. **`PROJECT_SCHEMA` intocado, registos intocados** —
 as duas variantes do `ScriptValue` são **APENDADAS**, e o postcard é posicional: as três tags de
 cima ficam onde estavam e todo ficheiro gravado continua a ler-se. O gate que o afirma é o

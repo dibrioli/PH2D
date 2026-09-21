@@ -464,3 +464,232 @@ fn diag_undo_a_meio_de_uma_sessao() {
         );
     }
 }
+
+/// (13) RENDER-AND-LOOK do report de 2026-09-21: *«2 círculos com o mesmo pincel e um está
+/// diferente do outro»*. O oráculo é a FOTO, logo a sonda desenha e grava PNG.
+/// `PH2D_FORMAS_LOOK_DIR=/tmp/look cargo test -p ph2d-tool-painter --lib diag_look_duas_figuras
+/// -- --ignored --nocapture`
+#[test]
+#[ignore = "render-and-look: escreve PNG"]
+fn diag_look_duas_figuras() {
+    use composite::CompositeOp::{Blur, Brush, Smear};
+    const L: u32 = 512;
+    let dir = std::env::var("PH2D_FORMAS_LOOK_DIR").unwrap_or_else(|_| "/tmp/look".into());
+    std::fs::create_dir_all(&dir).unwrap();
+    for (nome, camadas) in [
+        ("a_so_brush", &[(Brush, 1.0f32)][..]),
+        ("b_blur_brush", &[(Blur, 1.0), (Brush, 1.0)][..]),
+        ("c_brush_blur", &[(Brush, 1.0), (Blur, 1.0)][..]),
+        (
+            "d_blur_smear_brush",
+            &[(Blur, 1.0), (Smear, 1.0), (Brush, 1.0)][..],
+        ),
+    ] {
+        let mut t = PainterTool::default();
+        // ⚠️ **A camada do artista é TRANSPARENTE.** Numa tela opaca branca o Blur não tem
+        // vizinho vazio de onde puxar, e a foto do dono mostra exactamente uma orla ESCURA.
+        // ⚠️⚠️ **Uma camada VAZIA é tudo ZERO** — RGB preto com alfa 0, e não branco transparente.
+        // A diferença decide o que um Blur puxa da vizinhança.
+        t.set_source(vec![0u8; (L * L * 4) as usize], L, L);
+        t.paint.brush.radius_px = 12.0;
+        t.paint.brush.color = [0.75, 0.12, 0.12];
+        t.paint.brush.space_attenuation = false;
+        t.paint.brush.stroke_method = ph2d_painter_brush::StrokeMethod::Ellipse;
+        t.paint.composite_enabled = true;
+        for (op, s) in camadas {
+            t.acrescenta_camada(op.to_u8());
+            let pos = t.composite_len() - 1;
+            t.set_composite_layer_strength(pos, *s);
+        }
+        let mut circulo = |c: [f32; 2], r: f32| {
+            t.on_canvas_pointer(cp2(c, PointerPhase::Down));
+            for i in 1..=6 {
+                let u = i as f32 / 6.0;
+                t.on_canvas_pointer(cp2([c[0] + r * u, c[1]], PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp2([c[0] + r, c[1]], PointerPhase::Up));
+        };
+        circulo([180.0, 170.0], 120.0);
+        circulo([320.0, 320.0], 140.0);
+        // Compor sobre BRANCO para ver o que o artista vê (o PNG cru mostraria a transparência).
+        let sobre_branco: Vec<u8> = t
+            .canvas_rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .flat_map(|p| {
+                let a = f32::from(p[3]) / 255.0;
+                let c = |i: usize| (f32::from(p[i]) + 255.0 * (1.0 - a)).min(255.0) as u8;
+                [c(0), c(1), c(2), 255]
+            })
+            .collect();
+        let png = super::super::composite_look::png_rgba(&sobre_branco, L, L);
+        let caminho = format!("{dir}/{nome}.png");
+        std::fs::write(&caminho, png).unwrap();
+        // E o NÚMERO ao lado da imagem: a fatia mais escura de cada anel.
+        eprintln!("{nome:<20} escrito {caminho}");
+    }
+}
+
+/// (14) O A/B que ISOLA o mecanismo do report *«um está diferente do outro»*: a MESMA figura,
+/// sozinha e depois com uma segunda **LONGE** dela. Se os pixels dela mudarem, a causa é a
+/// concatenação das duas listas de dabs num lote só (a activa + as parqueadas).
+#[test]
+#[ignore = "sonda de diagnóstico"]
+fn diag_a_primeira_figura_muda_quando_nasce_a_segunda() {
+    use composite::CompositeOp::{Blur, Brush, Erase, Smear};
+    let a = [70.0f32, 70.0];
+    let b = [190.0f32, 190.0]; // longe: os dois anéis não se tocam
+    let r = 40.0f32;
+    // A janela que contém SÓ a 1.ª figura.
+    let janela = |t: &PainterTool| -> (usize, u32, u64) {
+        let (mut n, mut pior, mut soma_) = (0usize, 255u8, 0u64);
+        for y in 0..130u32 {
+            for x in 0..130u32 {
+                let i = ((y * S + x) * 4) as usize;
+                let v = t.canvas_rgba[i + 3]; // o ALFA: a camada nasce vazia
+                if v > 4 {
+                    n += 1;
+                    soma_ += u64::from(v);
+                }
+                pior = pior.min(t.canvas_rgba[i]);
+            }
+        }
+        (n, u32::from(pior), soma_)
+    };
+    for (nome, camadas) in [
+        ("1: Brush            ", &[(Brush, 1.0f32)][..]),
+        ("2: Blur / Brush     ", &[(Blur, 1.0), (Brush, 1.0)][..]),
+        ("2: Smear / Brush    ", &[(Smear, 1.0), (Brush, 1.0)][..]),
+        ("2: Brush / Brush    ", &[(Brush, 1.0), (Brush, 1.0)][..]),
+        ("2: Erase / Brush    ", &[(Erase, 0.4), (Brush, 1.0)][..]),
+        (
+            "3: Blur/Smear/Brush ",
+            &[(Blur, 1.0), (Smear, 1.0), (Brush, 1.0)][..],
+        ),
+    ] {
+        let vazia = |camadas: &[(composite::CompositeOp, f32)]| {
+            let mut t = PainterTool::default();
+            t.set_source(vec![0u8; (S * S * 4) as usize], S, S);
+            t.paint.brush.radius_px = 6.0;
+            t.paint.brush.color = [0.75, 0.12, 0.12];
+            t.paint.brush.space_attenuation = false;
+            t.paint.brush.stroke_method = ph2d_painter_brush::StrokeMethod::Ellipse;
+            t.paint.composite_enabled = true;
+            for (op, s) in camadas {
+                t.acrescenta_camada(op.to_u8());
+                let pos = t.composite_len() - 1;
+                t.set_composite_layer_strength(pos, *s);
+            }
+            t
+        };
+        let mut so_a = vazia(camadas);
+        elipse(&mut so_a, a, r, 4);
+        let (n1, p1, s1) = janela(&so_a);
+
+        let mut as_duas = vazia(camadas);
+        elipse(&mut as_duas, a, r, 4);
+        elipse(&mut as_duas, b, r, 4);
+        let (n2, p2, s2) = janela(&as_duas);
+        eprintln!(
+            "{nome} | sozinha: n={n1:>5} min={p1:>3} soma={s1:>8}  |  com a 2ª: n={n2:>5} \
+             min={p2:>3} soma={s2:>8}  {}",
+            if (n1, p1, s1) == (n2, p2, s2) {
+                "IGUAL"
+            } else {
+                "*** DIFERENTE ***"
+            }
+        );
+    }
+}
+
+/// (15) O RELÓGIO de um re-carimbo com a pilha — o report *«performance ruim»* de 2026-09-21.
+/// ⚠️ Corre em `--release`; em debug o número é ~20× e não descreve o produto.
+/// `cargo test -p ph2d-tool-painter --release --lib diag_o_relogio_do_recarimbo -- --ignored
+/// --nocapture`
+#[test]
+#[ignore = "sonda de relógio"]
+fn diag_o_relogio_do_recarimbo() {
+    use composite::CompositeOp::{Blur, Brush, Erase, Smear};
+    for (boolean, lado) in [(false, 1024u32), (false, 2048), (true, 1024), (true, 2048)] {
+        for (nome, camadas) in [
+            ("sem pilha          ", &[][..]),
+            ("1: Brush           ", &[(Brush, 1.0f32)][..]),
+            ("2: Blur / Brush    ", &[(Blur, 1.0), (Brush, 1.0)][..]),
+            ("2: Brush / Brush   ", &[(Brush, 1.0), (Brush, 1.0)][..]),
+            (
+                "7: a pilha CHEIA   ",
+                &[
+                    (Blur, 1.0),
+                    (Smear, 1.0),
+                    (Erase, 0.3),
+                    (Erase, 0.3),
+                    (Brush, 1.0),
+                    (Brush, 1.0),
+                    (Brush, 1.0),
+                ][..],
+            ),
+        ] {
+            let mut t = PainterTool::default();
+            t.set_source(vec![0u8; (lado * lado * 4) as usize], lado, lado);
+            t.paint.brush.radius_px = 10.0;
+            t.paint.brush.color = [0.75, 0.12, 0.12];
+            t.paint.brush.space_attenuation = false;
+            t.paint.brush.stroke_method = ph2d_painter_brush::StrokeMethod::Ellipse;
+            t.paint.composite_enabled = !camadas.is_empty();
+            for (op, s) in camadas {
+                t.acrescenta_camada(op.to_u8());
+                let pos = t.composite_len() - 1;
+                t.set_composite_layer_strength(pos, *s);
+            }
+            let c = [lado as f32 * 0.5, lado as f32 * 0.5];
+            let r = lado as f32 * 0.35;
+            if boolean {
+                t.set_stroke_op_mode(1); // Add: a configuração da foto do dono
+            }
+            t.on_canvas_pointer(cp2(c, PointerPhase::Down));
+            t.on_canvas_pointer(cp2([c[0] + r, c[1]], PointerPhase::Move));
+            t.on_canvas_pointer(cp2([c[0] + r, c[1]], PointerPhase::Up));
+            if boolean {
+                // a 2.ª circunferência, que cruza a 1.ª — é ela que arma o composite booleano
+                let c2 = [c[0] + r * 0.8, c[1] + r * 0.6];
+                t.on_canvas_pointer(cp2(c2, PointerPhase::Down));
+                t.on_canvas_pointer(cp2([c2[0] + r, c2[1]], PointerPhase::Move));
+                t.on_canvas_pointer(cp2([c2[0] + r, c2[1]], PointerPhase::Up));
+            }
+            // Agora o gesto que o artista repete: agarrar e arrastar a figura. Cada pen-up é UM
+            // re-carimbo da figura inteira pela pilha.
+            // ⚠️ **As QUATRO FASES em vez de um relógio de parede:** elas descrevem o MESMO evento
+            // e a máquina está partilhada com outra linha — *uma proporção medida dentro de um
+            // evento sobrevive à carga; um número absoluto não*.
+            let _ = super::super::stamp_banded::diag::take();
+            let n = 8;
+            for i in 0..n {
+                let d = (i % 2) as f32 * 4.0 - 2.0;
+                t.on_canvas_pointer(cp2(c, PointerPhase::Down));
+                t.on_canvas_pointer(cp2([c[0] + d, c[1]], PointerPhase::Move));
+                t.on_canvas_pointer(cp2([c[0] + d, c[1]], PointerPhase::Up));
+            }
+            let g = super::super::stamp_banded::diag::take();
+            let (f, ev_p, area) = super::super::composite_acumulado::fases::take();
+            let ev = f64::from(g.deliveries.max(1));
+            let us = |v: u64| v as f64 / ev / 1000.0;
+            let p = |i: usize| f[i] as f64 / ev / 1000.0;
+            let media_area = if ev_p > 0 {
+                area / ev_p as f64 * 100.0
+            } else {
+                0.0
+            };
+            eprintln!(
+                "{}{lado}² | {nome} | CARIMBAR {:>7.2} = pre {:>5.2} + acumular {:>6.2} + COMPOR {:>7.2} + copias {:>5.2} | alvo {media_area:>5.1}% da tela",
+                if boolean { "bool " } else { "     " },
+                us(g.stamp_us),
+                p(0),
+                p(1),
+                p(2),
+                p(3),
+            );
+        }
+        eprintln!();
+    }
+}

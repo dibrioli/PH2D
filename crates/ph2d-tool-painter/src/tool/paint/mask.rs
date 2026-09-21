@@ -215,7 +215,7 @@ impl PainterTool {
             miny = miny.min(d.center[1] - r);
             maxy = maxy.max(d.center[1] + r);
         }
-        if let Some(p) = self.paint.last_smear_pos {
+        if let Some((p, _)) = self.paint.last_smear_pos {
             minx = minx.min(p[0] - max_r);
             maxx = maxx.max(p[0] + max_r);
             miny = miny.min(p[1] - max_r);

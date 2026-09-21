@@ -97,6 +97,8 @@ impl PainterTool {
             return;
         }
         // 1. A pilha abre no primeiro lote: `pre` é a tela ANTES de qualquer camada deste traço.
+        #[cfg(test)]
+        let t_pre = std::time::Instant::now();
         if self.paint.pilha.pre.len() != len {
             self.paint.pilha.pre = (*self.canvas_rgba).clone();
             self.paint.pilha.lotes.clear();
@@ -104,6 +106,8 @@ impl PainterTool {
                 *p = Arc::new(Vec::new());
             }
         }
+        #[cfg(test)]
+        fases::soma(fases::PRE, t_pre);
         let Some(caixa_nova) = super::composite_pilha::caixa_das_camadas(&camadas, w, h) else {
             return;
         };
@@ -122,22 +126,40 @@ impl PainterTool {
             super::composite_pilha::conta_dabs(camadas.iter().map(Vec::len).sum::<usize>() as u64);
         }
         // 2. Cada camada acumula os dabs NOVOS dela no plano dela. `O(dabs novos)`.
+        #[cfg(test)]
+        let t_acumular = std::time::Instant::now();
         for (pos, lista) in camadas.iter().enumerate() {
             if self.paint.composite[pos].strength <= 0.0 || lista.is_empty() {
                 continue;
             }
             self.acumula_camada(pos, lista);
         }
+        #[cfg(test)]
+        fases::soma(fases::ACUMULAR, t_acumular);
         // 3. A região da composição. ⚠️ O apron do Blur é o que impede a convolução de ler, na orla,
         //    bytes que a composição ainda não escreveu — e é por isso que só o miolo sobrevive.
         let pad = self.pad_do_borrao();
         let alvo = super::region::grow_region(caixa_nova, pad, w, h).unwrap_or(caixa_nova);
         // 4. Guardar a orla, compor, e devolver tudo o que não é a caixa nova.
+        #[cfg(test)]
+        let t_copias = std::time::Instant::now();
         let guardado = self.save_region(&alvo);
+        #[cfg(test)]
+        fases::soma(fases::COPIAS, t_copias);
+        #[cfg(test)]
+        let t_compor = std::time::Instant::now();
         self.compoe_a_pilha(alvo, &camadas);
+        #[cfg(test)]
+        fases::soma(fases::COMPOR, t_compor);
+        #[cfg(test)]
+        let t_copias2 = std::time::Instant::now();
         let composto = self.save_region(&caixa_nova);
         self.escreve_regiao(alvo, &guardado);
         self.escreve_regiao(caixa_nova, &composto);
+        #[cfg(test)]
+        fases::soma(fases::COPIAS, t_copias2);
+        #[cfg(test)]
+        fases::conta_area(alvo, w, h);
         self.declare_wrote(Some(alvo));
         self.mark_dirty(alvo);
     }
@@ -538,4 +560,55 @@ pub(super) fn passagens_do_borrao(spacing: f32) -> u32 {
     const TECTO: u32 = 8;
     let n = 1.0 / spacing.max(1e-3);
     (n.round().max(1.0) as u32).min(TECTO)
+}
+
+/// **As fases de UM evento da pilha que acumula, em µs** — a sonda que atribui o custo que o report
+/// de *«performance ruim»* (2026-09-21) nomeia sem o localizar.
+///
+/// ⚠️ Ela mede o que o código que SHIPA faz, e não um laço próprio: o precedente é o
+/// `stamp_banded::diag`, cujo cabeçalho explica porque uma sonda com laço próprio fica cega à
+/// porta. ⚠️ Como ela ZERA ao ler, há **um leitor só por thread**.
+#[cfg(test)]
+pub(super) mod fases {
+    use super::Region;
+    use std::cell::Cell;
+
+    pub(in crate::tool::paint) const PRE: usize = 0;
+    pub(in crate::tool::paint) const ACUMULAR: usize = 1;
+    pub(in crate::tool::paint) const COMPOR: usize = 2;
+    pub(in crate::tool::paint) const COPIAS: usize = 3;
+
+    thread_local! {
+        static US: Cell<[u64; 4]> = const { Cell::new([0; 4]) };
+        static EVENTOS: Cell<u64> = const { Cell::new(0) };
+        /// A soma das áreas de `alvo`, em fracção da TELA — *o que decide se o custo segue a
+        /// FIGURA ou a TELA*.
+        static AREA: Cell<f64> = const { Cell::new(0.0) };
+    }
+
+    pub(in crate::tool::paint) fn soma(i: usize, t: std::time::Instant) {
+        US.with(|c| {
+            let mut v = c.get();
+            v[i] += t.elapsed().as_micros() as u64;
+            c.set(v);
+        });
+    }
+
+    pub(in crate::tool::paint) fn conta_area(alvo: Region, w: u32, h: u32) {
+        EVENTOS.with(|c| c.set(c.get() + 1));
+        let tela = f64::from(w) * f64::from(h);
+        if tela > 0.0 {
+            let a = f64::from(alvo.w) * f64::from(alvo.h) / tela;
+            AREA.with(|c| c.set(c.get() + a));
+        }
+    }
+
+    /// O que a pilha fez desde a última leitura — e ZERA.
+    pub(in crate::tool::paint) fn take() -> ([u64; 4], u64, f64) {
+        (
+            US.with(|c| c.take()),
+            EVENTOS.with(Cell::take),
+            AREA.with(Cell::take),
+        )
+    }
 }

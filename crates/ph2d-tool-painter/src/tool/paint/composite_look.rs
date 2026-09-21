@@ -58,7 +58,7 @@ fn chunk(out: &mut Vec<u8>, kind: &[u8; 4], data: &[u8]) {
 }
 
 /// RGBA8 → bytes de um PNG válido. Deflate STORED, blocos de 65535 bytes.
-fn png_rgba(px: &[u8], w: u32, h: u32) -> Vec<u8> {
+pub(super) fn png_rgba(px: &[u8], w: u32, h: u32) -> Vec<u8> {
     let mut raw = Vec::with_capacity((h * (1 + w * 4)) as usize);
     for y in 0..h {
         raw.push(0); // filtro None

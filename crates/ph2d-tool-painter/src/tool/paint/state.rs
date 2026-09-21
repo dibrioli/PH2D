@@ -199,8 +199,15 @@ pub(crate) struct PaintState {
     pub(super) clone_aligned: bool,
     /// **Clone** "Set Source" pick mode armed — the next canvas Down sets [`Self::clone_source`] instead of painting.
     pub(super) clone_sample_armed: bool,
-    /// Previous dab centre during a **Smear** stroke (the source each dab lifts from); `None` at stroke start. [`stamp_route`].
-    pub(super) last_smear_pos: Option<[f32; 2]>,
+    /// **De onde o próximo dab do Smear levanta tinta: o centro do dab anterior E o arco dele.**
+    /// `None` no início do traço. [`stamp_route`]
+    ///
+    /// ⚠️ **O arco viaja JUNTO, num par, de propósito.** Ele é o que diz onde uma sub-figura acaba
+    /// e a seguinte começa (todo `fill_*_preview` recomeça o `arc_len` em zero), e a corrente do
+    /// esfregão tem de PARTIR ali — senão o último dab de um círculo esfrega até ao primeiro dab
+    /// do círculo seguinte, atravessando a tela. *Dois campos que têm de concordar são um campo
+    /// que alguém esquece de escrever.*
+    pub(super) last_smear_pos: Option<([f32; 2], f32)>,
     /// Reused per-dab scratch for the Smear's map composition (no allocation in a hot stroke).
     pub(super) smear_scratch: ph2d_painter_brush::smear_field::SmearScratch,
     /// **Tiling** `[x, y]`: seamless wrap-around painting — a dab near an edge also stamps the wrapped part on the opposite edge. Off by default.

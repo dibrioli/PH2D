@@ -294,3 +294,129 @@ fn a_rota_de_bisseccao_tambem_descasca_a_historia() {
         "na rota de replay a figura arrastada deixou rasto"
     );
 }
+
+/// A mesma cena, mas com a tela **VAZIA** (tudo zero: RGB preto com alfa `0`).
+///
+/// ⚠️ **A opacidade da tela é ingrediente e não decoração.** Numa tela branca opaca — a que a
+/// [`cena`] deste ficheiro monta — o esfregão move branco para dentro de branco e o borrão não
+/// tem vizinho vazio de onde puxar: *a fixtura deixa de conter o fenómeno*. Quem mede um
+/// acumulador que ATRAVESSA a tela mede-o aqui, e a régua é o **alfa**.
+fn cena_vazia(camadas: &[(CompositeOp, f32)]) -> PainterTool {
+    let mut t = PainterTool::default();
+    t.set_source(vec![0u8; (S * S * 4) as usize], S, S);
+    t.paint.brush.radius_px = 6.0;
+    t.paint.brush.color = [0.75, 0.12, 0.12];
+    t.paint.brush.space_attenuation = false;
+    t.paint.brush.stroke_method = ph2d_painter_brush::StrokeMethod::Ellipse;
+    t.paint.composite_enabled = !camadas.is_empty();
+    for (op, s) in camadas {
+        t.acrescenta_camada(op.to_u8());
+        let pos = t.composite_len() - 1;
+        t.set_composite_layer_strength(pos, *s);
+    }
+    t
+}
+
+/// Os bytes crus do quadrado `[0, lado) ²` — a janela que contém SÓ a primeira figura.
+fn janela_bytes(t: &PainterTool, lado: u32) -> Vec<u8> {
+    let mut v = Vec::with_capacity((lado * lado * 4) as usize);
+    for y in 0..lado {
+        let i = ((y * S) * 4) as usize;
+        v.extend_from_slice(&t.canvas_rgba[i..i + (lado * 4) as usize]);
+    }
+    v
+}
+
+/// Quantos texels com alfa acima do ruído há no quadrado `[lo, hi) ²`.
+fn alfa_na_caixa(t: &PainterTool, lo: u32, hi: u32) -> usize {
+    let mut n = 0;
+    for y in lo..hi {
+        for x in lo..hi {
+            if t.canvas_rgba[((y * S + x) * 4 + 3) as usize] > 4 {
+                n += 1;
+            }
+        }
+    }
+    n
+}
+
+/// ⭐⭐ **A FIGURA QUE JÁ ESTÁ NA TELA NÃO MUDA QUANDO NASCE A SEGUINTE** — o report do dono de
+/// 2026-09-21: *«2 círculos com o mesmo pincel e um está diferente do outro»*.
+///
+/// Uma sessão de figuras é **UM traço** (o pen-up não a fecha — ela fica editável até ao Apply), e
+/// um lote do re-carimbo é a **CONCATENAÇÃO** das listas de dabs de todas as figuras vivas. Todo
+/// acumulador POR-TRAÇO da pilha atravessa essa fronteira se ninguém a partir, e o do esfregão
+/// atravessava: *o último dab de um círculo levantava tinta para o primeiro dab do círculo
+/// seguinte, através da tela*.
+///
+/// **Medido na janela que contém só a 1.ª figura (soma do alfa), ANTES da cura:**
+/// `Smear/Brush` **`522 145 → 448 091`** (`−14,2 %`; `n` `2 859 → 2 568`) ·
+/// `Blur/Smear/Brush` **`422 835 → 361 950`** (`−14,4 %`).
+///
+/// ⚠️ **As outras quatro pilhas leem IGUAL dos dois lados e entram aqui como POPULAÇÃO**, porque a
+/// lei é de todo acumulador e não do esfregão: *hoje só ele atravessa, e o gate reprova no dia em
+/// que outro o faça.*
+///
+/// ⚠️ **A fronteira é DERIVADA** (`arc_len` recomeça em zero a cada `fill_*_preview`), e não um
+/// campo novo — ⛔ um limiar sobre o comprimento do salto seria um número escolhido, e um traço à
+/// mão livre rápido produz saltos legítimos do mesmo tamanho.
+///
+/// **Mutação que sangra:** `let fonte = from;` em [`super::smear_warp`] — as duas pilhas de
+/// esfregão divergem, as outras quatro continuam iguais.
+#[test]
+fn a_primeira_figura_nao_muda_quando_nasce_a_segunda() {
+    use CompositeOp::{Blur, Brush, Erase, Smear};
+    let (a, b, r) = ([70.0f32, 70.0], [190.0f32, 190.0], 40.0f32);
+    const JANELA: u32 = 130;
+
+    // CONTROLO GEOMÉTRICO: as duas figuras não se tocam, senão «idêntico» seria a expectativa
+    // errada e o gate estaria a exigir o impossível.
+    let folga = (b[0] - a[0]).hypot(b[1] - a[1]) - 2.0 * r;
+    assert!(
+        folga > 2.0 * 6.0,
+        "as duas figuras têm de ficar separadas por mais do que um diâmetro de pincel: folga \
+         {folga:.1}"
+    );
+    assert!(
+        a[0] + r + 6.0 < JANELA as f32 && b[0] - r - 6.0 > JANELA as f32,
+        "a janela tem de conter a 1.ª figura inteira e nenhum pedaço da 2.ª"
+    );
+
+    let todas: [(&str, Vec<(CompositeOp, f32)>); 6] = [
+        ("Brush", vec![(Brush, 1.0)]),
+        ("Blur/Brush", vec![(Blur, 1.0), (Brush, 1.0)]),
+        ("Smear/Brush", vec![(Smear, 1.0), (Brush, 1.0)]),
+        ("Brush/Brush", vec![(Brush, 1.0), (Brush, 1.0)]),
+        ("Erase/Brush", vec![(Erase, 0.4), (Brush, 1.0)]),
+        (
+            "Blur/Smear/Brush",
+            vec![(Blur, 1.0), (Smear, 1.0), (Brush, 1.0)],
+        ),
+    ];
+
+    for (nome, camadas) in &todas {
+        let mut so_a = cena_vazia(camadas);
+        elipse(&mut so_a, a, r);
+        let antes = janela_bytes(&so_a, JANELA);
+
+        let mut as_duas = cena_vazia(camadas);
+        elipse(&mut as_duas, a, r);
+        elipse(&mut as_duas, b, r);
+        let depois = janela_bytes(&as_duas, JANELA);
+
+        // CONTROLO POSITIVO 1: a 1.ª figura pintou alguma coisa — senão comparar dois vazios é
+        // uma tautologia.
+        let n1 = alfa_na_caixa(&so_a, 0, JANELA);
+        assert!(n1 > 500, "{nome}: a 1.ª figura mal pintou ({n1} texels)");
+        // CONTROLO POSITIVO 2: a 2.ª figura de facto nasceu — senão o gate mede uma cena onde
+        // nada aconteceu e passa por vácuo.
+        let n2 = alfa_na_caixa(&as_duas, JANELA, S);
+        assert!(n2 > 500, "{nome}: a 2.ª figura não nasceu ({n2} texels)");
+
+        let difs = antes.iter().zip(&depois).filter(|(x, y)| x != y).count();
+        assert_eq!(
+            difs, 0,
+            "{nome}: nascer a 2.ª figura mexeu em {difs} bytes da 1.ª"
+        );
+    }
+}

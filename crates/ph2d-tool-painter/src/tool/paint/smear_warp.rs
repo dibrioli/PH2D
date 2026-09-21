@@ -81,7 +81,23 @@ impl PainterTool {
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
             let tex_rng = dab_rng.enter(&groups, di);
-            if let Some(prev) = from {
+            // ⭐⭐ **A CORRENTE PARTE NA FRONTEIRA DE UMA SUB-FIGURA** (report do dono, 2026-09-21:
+            // *«2 círculos com o mesmo pincel e um está diferente do outro»*). Um lote do
+            // `restamp_shapes_preview` é a CONCATENAÇÃO das listas de todas as figuras — a activa
+            // mais cada parqueada, e um contorno por região no boolean —, e sem isto o último dab
+            // de uma esfrega até ao primeiro dab da outra, **atravessando a tela**. Medido: com
+            // uma 2.ª figura LONGE da 1.ª, a 1.ª perdia `14 %` do alfa dela.
+            //
+            // ⚠️ **A fronteira é DERIVADA e não um campo novo:** todo `fill_*_preview` recomeça o
+            // `arc_len` em zero (`stroke/ellipse.rs`: *«fresh fill → the Flow along-coordinate
+            // starts at the perimeter's origin»*), logo um arco que ANDA PARA TRÁS é uma
+            // sub-figura nova. ⛔ Um limiar sobre o comprimento do salto seria um número escolhido
+            // — e um traço à mão livre rápido produz saltos legítimos do mesmo tamanho.
+            let fonte = match from {
+                Some((_, arco)) if d.arc_len < arco => None,
+                outro => outro,
+            };
+            if let Some((prev, _)) = fonte {
                 let spec = BrushSpec {
                     radius_px: d.radius_px,
                     ..spec_base
@@ -168,7 +184,7 @@ impl PainterTool {
                     }
                 }
             }
-            from = Some(d.center);
+            from = Some((d.center, d.arc_len));
         }
         *Arc::make_mut(&mut self.paint.warp.disp) = disp;
         self.paint.smear_scratch = scratch;

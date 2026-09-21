@@ -115,6 +115,25 @@ struct Contagem {
     celulas: usize,
     /// Quantos grupos de composto foram contados — o par do [`Contagem::celulas`].
     grupos: usize,
+    /// ⭐⭐⭐ **Quantos comandos DISTINTOS o painel oferece** — a grandeza da `D2`.
+    ///
+    /// ⛔⛔ **Um botão pintado uma vez POR LINHA de uma lista é UMA capacidade, não N**, e o
+    /// [`Contagem::comandos`] conta-o N vezes. Medido em 2026-09-21: o `tokens` lê **`110`**
+    /// comandos e oferece **`4`** — `107` daqueles são o mesmo botão de *elo* repetido em cada
+    /// linha da tabela de cor, por decisão escrita no pintor (*«qualquer token pode seguir
+    /// qualquer outro»*). ⇒ *o número que ordenava a dívida era o COMPRIMENTO da lista.*
+    ///
+    /// ⚠️ **É a mesma cegueira do composto, virada 90°:** aquele é um controlo repetido ao
+    /// LONGO de uma linha, este é um comando repetido ao LONGO de uma coluna. O primeiro foi
+    /// curado por suspeita; o segundo só apareceu porque alguém foi atacar o painel que o
+    /// número apontava.
+    ///
+    /// ⛔ **O discriminador NÃO é geométrico** — a 1.ª redacção agrupava por coluna e colapsava
+    /// os `34` botões de largura cheia do Inspector em `1`. Ele é a PROVENIÊNCIA do id: um id
+    /// que está escrito no fonte é um comando **nomeado**; um que nasce de
+    /// `hash_node_id_runtime(&format!("…{row}"))` é uma **instância** de uma família, e só aí a
+    /// coluna decide.
+    distintos: usize,
     /// ⭐⭐⭐ **Até onde o painel pinta**, em píxeis — o fundo do rectângulo mais baixo.
     ///
     /// É a grandeza que o DONO sente: o degrau `G` abriu com um report dele de 2026-08-27
@@ -137,6 +156,59 @@ impl Contagem {
     fn alvos(&self) -> usize {
         self.total() - self.grupos + self.celulas
     }
+}
+
+/// ⭐⭐⭐ **Os ids que estão ESCRITOS no fonte** — a porta que separa um comando de uma instância.
+///
+/// ⚠️⚠️ **Há TRÊS formas de declarar um id nesta casa, e a varredura tem de as conhecer às três**
+/// — `hash_node_id("<lit>")` · `hash_node_id_runtime("<lit>")` (um literal continua a ser um
+/// literal, seja quem for a hashear) · e `NodeId(<n>)` cru, que é como o `grid-snap` declara os
+/// dele. ⛔ **Uma forma que falte erra no sentido MAU**: os ids dela caem no balde dos derivados,
+/// colapsam por coluna, e o painel lê-se **mais barato do que é** — medido, o `grid-snap` lia
+/// `10` em vez de `20`. É por isso que [`todo_painel_com_id_derivado_esta_nomeado`] existe.
+fn ids_nomeados() -> &'static std::collections::BTreeSet<u64> {
+    static CACHE: std::sync::OnceLock<std::collections::BTreeSet<u64>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(|| {
+        let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("crates/");
+        let mut out = std::collections::BTreeSet::new();
+        let mut pilha = vec![raiz.to_path_buf()];
+        while let Some(d) = pilha.pop() {
+            let Ok(rd) = std::fs::read_dir(&d) else {
+                continue;
+            };
+            for e in rd.flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    pilha.push(p);
+                    continue;
+                }
+                if !p.extension().is_some_and(|x| x == "rs") {
+                    continue;
+                }
+                let Ok(src) = std::fs::read_to_string(&p) else {
+                    continue;
+                };
+                for chave in ["hash_node_id(\"", "hash_node_id_runtime(\""] {
+                    for pedaco in src.split(chave).skip(1) {
+                        if let Some(lit) = pedaco.split('"').next() {
+                            out.insert(ph2d_tool_registry::hash_node_id_runtime(lit).0);
+                        }
+                    }
+                }
+                for pedaco in src.split("NodeId(").skip(1) {
+                    let Some(n) = pedaco.split(')').next() else {
+                        continue;
+                    };
+                    if let Ok(v) = n.trim().parse::<u64>() {
+                        out.insert(v);
+                    }
+                }
+            }
+        }
+        out
+    })
 }
 
 /// A espécie de uma entrada, pelo substrato.
@@ -255,6 +327,30 @@ fn conta(
             None => c.orfaos += 1,
         }
     }
+
+    // ⭐⭐⭐ **Os comandos DISTINTOS** — ver [`Contagem::distintos`]. Um botão NOMEADO conta por
+    // si; as instâncias derivadas agrupam-se por COLUNA (`x` e largura iguais), e cada coluna é
+    // uma capacidade.
+    //
+    // ⚠️ A geometria só decide DENTRO do balde dos derivados. Aplicá-la a todos colapsaria os
+    // `34` botões de largura cheia empilhados do Inspector num só — medido, e é o CONTROLO que
+    // matou a 1.ª redacção desta lei.
+    let nomeados = ids_nomeados();
+    let mut com_nome = 0usize;
+    let mut colunas: std::collections::BTreeSet<(i32, i32)> = std::collections::BTreeSet::new();
+    for (id, r) in pintados {
+        if celula.contains(&id.0)
+            || !matches!(store.get(*id), Some(InteractiveState::Button { .. }))
+        {
+            continue;
+        }
+        if nomeados.contains(&id.0) {
+            com_nome += 1;
+        } else {
+            colunas.insert((r.x.round() as i32, r.w.round() as i32));
+        }
+    }
+    c.distintos = com_nome + colunas.len();
     c
 }
 
@@ -355,15 +451,16 @@ fn censo() -> Vec<Linha> {
 
 fn tabela(linhas: &[Linha]) -> String {
     let mut s = String::from(
-        "\n  painel                     comandos  valores  cromo  orfaos  total   altura  fora-da-dobra\n",
+        "\n  painel                     comandos  distintos  valores  cromo  orfaos  total   altura  fora-da-dobra\n",
     );
     for l in linhas {
         let c = l.cheia();
         let fora = c.altura - DOBRA;
         s.push_str(&format!(
-            "  {:<26} {:>8}  {:>7}  {:>5}  {:>6}  {:>5}  {:>7.0}  {}{}\n",
+            "  {:<26} {:>8}  {:>9}  {:>7}  {:>5}  {:>6}  {:>5}  {:>7.0}  {}{}\n",
             l.painel,
             c.comandos,
+            c.distintos,
             c.valores,
             c.outros,
             c.orfaos,
@@ -1120,28 +1217,44 @@ fn diag_compostos_por_declarar() {
     });
 }
 
-/// ⛔ **A CATRACA DA CARGA DE COMANDOS — ela só ENCOLHE.**
+/// ⛔ **A CATRACA DA CARGA DE COMANDOS — ela só ENCOLHE, e mede COMANDOS DISTINTOS.**
 ///
-/// ⚠️⚠️ **Ela existe porque o número que ordena esta lista já foi `3,6×` maior do que a verdade.**
-/// O Inspector leu **`314`** enquanto a `D2` o media; com os compostos declarados lê **`88`**, e
-/// pelo caminho o `3D Model` foi de `39` para `1`. *Cada declaração que alguém apague devolve a
-/// mentira em silêncio* — e o defeito é MUDO, porque um número maior lê-se como «este painel tem
-/// mais dívida», que é uma frase plausível.
+/// ⚠️⚠️ **Ela existe porque o número que ordena esta lista já foi `3,6×` maior do que a verdade**
+/// — e depois **`27×`**. O Inspector leu `314` enquanto a `D2` o media; com os compostos
+/// declarados lê `88`. O `tokens` leu `110` e assumiu o topo da lista; ele oferece **`4`**.
 ///
-/// ⛔ **Os números são MEDIDOS, não escolhidos**, e a catraca só desce: um painel que passe a
-/// contar mais **reprova**, e a cura é declarar o composto que falta — nunca subir a linha.
-/// ⚠️ Um painel que passe a contar MENOS também reprova, com a outra metade: *ela não é folga, é o
-/// sítio onde se escreve o número novo.*
+/// ⛔⛔ **As duas mentiras são a MESMA, viradas 90°:** um controlo repetido ao LONGO DE UMA LINHA
+/// (o selector, curado em 2026-09-21 de manhã) e um comando repetido ao LONGO DE UMA COLUNA (o
+/// botão de *elo* que o `tokens` pinta em cada uma das `107` linhas da tabela de cor). ⚠️ *A
+/// primeira foi achada por suspeita; a segunda só apareceu porque alguém foi ATACAR o painel que
+/// o número apontava* — e a nota que aqui esteve dizia, por escrito, *«o `tokens` é hoje o topo da
+/// lista e a dívida dele é real»*. **Era falso: `107` dos `110` são um botão só.**
+///
+/// ⭐ **Por isso a catraca mede [`Contagem::distintos`] e não [`Contagem::comandos`]:** o número
+/// bruto de um painel-LISTA é o COMPRIMENTO da lista, logo acrescentar um token de desenho fá-lo
+/// subir e a mensagem acusaria *«um composto deixou de se declarar»* — falso, e manda a cura para
+/// o sítio errado. O distinto é invariante ao tamanho da lista, que é o que uma dívida de
+/// capacidade tem de ser.
+///
+/// ⚠️ **Ela continua a guardar os compostos:** apagar um `composto::grupo` devolve as células ao
+/// balde dos botões, e como elas têm id nomeado o distinto **sobe** na mesma.
+///
+/// ⛔ **Os números são MEDIDOS, não escolhidos**, e a catraca só desce. Um painel que passe a
+/// contar MENOS também reprova, com a outra metade: *ela não é folga, é o sítio onde se escreve o
+/// número novo.*
 const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
-    // ⭐ `314 → 150` (os pintores canónicos) `→ 88` (o helper de 16 sítios + as abas).
+    // ⭐ `314 → 150` (os pintores canónicos) `→ 88` (o helper de 16 sítios + as abas). Todos os
+    //    `88` são ids NOMEADOS: aqui o bruto e o distinto coincidem, e a dívida é real.
     ("inspector", 88),
-    // ⛔ O `tokens` é hoje o topo da lista, e **não usa composto nenhum** — a dívida dele é real.
-    ("tokens", 110),
-    ("wet_tuning", 58),
+    // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
+    //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
+    ("tokens", 4),
+    // ⛔ `58` botões, **`17`** comandos: a fábrica derivada dele vive noutra crate
+    //    (`ph2d_tool_painter::ids::wet_tuning_reset_id`) — um *Reset* por botão de afinação.
+    ("wet_tuning", 17),
     ("physics", 49),
     ("sculpt3d", 36),
     ("vector", 24),
-    // ⭐ `39 → 1`: ele era quase só selectores.
     ("model3d", 1),
 ];
 
@@ -1150,7 +1263,7 @@ fn a_carga_de_comandos_de_um_painel_so_encolhe() {
     let linhas = censo();
     let medido: std::collections::BTreeMap<&str, usize> = linhas
         .iter()
-        .map(|l| (l.painel, l.cheia().comandos))
+        .map(|l| (l.painel, l.cheia().distintos))
         .collect();
     let mut subiram = Vec::new();
     let mut desceram = Vec::new();
@@ -1167,8 +1280,9 @@ fn a_carga_de_comandos_de_um_painel_so_encolhe() {
     assert!(
         subiram.is_empty(),
         "estes painéis passaram a contar MAIS comandos:\n  {}\n\n\
-         ⇒ quase de certeza um composto deixou de se declarar (um selector de N opções volta a \
-         entrar N vezes). ⛔ A cura é declarar o grupo, nunca subir o número.{}",
+         ⇒ ou um composto deixou de se declarar (as células dele voltam a contar uma a uma), ou \
+         o painel ganhou uma capacidade nova. ⛔ A cura da 1.ª é declarar o grupo, nunca subir o \
+         número.{}",
         subiram.join("\n  "),
         tabela(&linhas)
     );
@@ -1178,4 +1292,171 @@ fn a_carga_de_comandos_de_um_painel_so_encolhe() {
         desceram.join("\n  "),
         tabela(&linhas)
     );
+}
+
+/// ⛔⛔⛔ **O CONTROLO da varredura de ids — quem tem botão DERIVADO está NOMEADO.**
+///
+/// [`ids_nomeados`] conhece **três** formas de declarar um id, e uma forma que falte erra no
+/// sentido MAU: os ids dela caem no balde dos derivados, colapsam por coluna, e o painel lê-se
+/// **mais barato do que é**. Medido durante a construção: o `grid-snap` declara os dele como
+/// `NodeId(1033)` cru e lia **`10`** comandos distintos em vez de **`20`**.
+///
+/// ⚠️ **Um painel com botões derivados tem de estar nesta lista, com a FÁBRICA escrita ao lado.**
+/// Um painel que apareça aqui sem estar na lista é a varredura cega outra vez, e a mensagem
+/// manda procurar a forma nova — nunca acrescentar a linha sem a olhar.
+///
+/// ⛔ **A lista tem a metade da OBSOLESCÊNCIA**, senão ela vira licença: uma entrada cujo painel
+/// já não tem botão derivado reprova e sai.
+///
+/// ⚠️ **A fábrica pode viver noutra crate** — a 1.ª redacção deste controlo exigia-a na crate do
+/// painel e o `wet_tuning` desmentiu-a: os *Reset* dele nascem em `ph2d-tool-painter`.
+const PAINEIS_COM_ID_DERIVADO: &[(&str, &str)] = &[
+    (
+        "asset_browser",
+        "asset_browser::ids — um botão por ficheiro da lista",
+    ),
+    (
+        "authored",
+        "authored.opt.{key}.{index} · authored.row.{key}",
+    ),
+    (
+        "tokens",
+        "tokens_link_id(row) — o elo, uma vez por linha da tabela de cor",
+    ),
+    (
+        "wet_tuning",
+        "ph2d_tool_painter::ids::wet_tuning_reset_id(key)",
+    ),
+];
+
+#[test]
+fn todo_painel_com_id_derivado_esta_nomeado() {
+    let linhas = censo();
+    let mut inesperados = Vec::new();
+    let mut obsoletos = Vec::new();
+    for l in &linhas {
+        let c = l.cheia();
+        let derivado = c.comandos > c.distintos;
+        let listado = PAINEIS_COM_ID_DERIVADO.iter().any(|(p, _)| *p == l.painel);
+        if derivado && !listado {
+            inesperados.push(format!(
+                "{}: {} botões contra {} distintos",
+                l.painel, c.comandos, c.distintos
+            ));
+        }
+        if listado && !derivado {
+            obsoletos.push(l.painel.to_string());
+        }
+    }
+    assert!(
+        inesperados.is_empty(),
+        "estes painéis têm botões que a varredura de ids NÃO reconhece:\n  {}\n\n\
+         ⇒ ou eles têm uma fábrica derivada por nomear na `PAINEIS_COM_ID_DERIVADO`, ou — e é o \
+         caso perigoso — eles declaram os ids numa FORMA que a `ids_nomeados` não conhece, e \
+         nesse caso o painel está a ler-se mais barato do que é. ⛔ Olhe a forma ANTES de \
+         acrescentar a linha.{}",
+        inesperados.join("\n  "),
+        tabela(&linhas)
+    );
+    assert!(
+        obsoletos.is_empty(),
+        "estas entradas já não descrevem nada — apague-as:\n  {}",
+        obsoletos.join("\n  ")
+    );
+    // ⚠️ O piso: sem ele, uma varredura que passasse a reconhecer TUDO (ou um censo que medisse
+    //    zero botões) deixaria as duas metades acima trivialmente verdadeiras.
+    let com_derivado = linhas
+        .iter()
+        .filter(|l| l.cheia().comandos > l.cheia().distintos)
+        .count();
+    assert!(
+        com_derivado >= 2,
+        "só {com_derivado} painéis têm id derivado — esta régua mede a partição e uma partição \
+         com um lado vazio não afirma nada.{}",
+        tabela(&linhas)
+    );
+}
+
+/// SONDA TEMPORÁRIA — de que são feitas as entradas do painel de TOKENS.
+///
+/// ⚠️ Os ids deste painel são **DERIVADOS do índice da linha** (`tokens.reset.{row}`), não
+/// literais, então a varredura de texto que nomeia o Inspector lê **zero** aqui. O mapa
+/// `NodeId -> nome` constrói-se chamando as PRÓPRIAS funções de id, que são a fonte.
+#[cfg(feature = "panel-tokens")]
+#[test]
+#[ignore]
+fn diag_de_quem_sao_as_entradas_do_tokens() {
+    use ph2d_panel_tokens::ids as tid;
+    use std::collections::BTreeMap;
+
+    // ⭐ A família de cada id, derivada de quem o fabrica. O tecto de `row` é folgado de
+    //   propósito: ele só tem de cobrir a tabela, e uma linha a mais custa um hash.
+    let mut nome: BTreeMap<u64, &'static str> = BTreeMap::new();
+    for row in 0..512usize {
+        for (id, fam) in [
+            (tid::tokens_swatch_id(row), "cor: swatch"),
+            (tid::tokens_reset_id(row), "cor: reset"),
+            (tid::tokens_link_id(row), "cor: elo"),
+            (tid::tokens_num_chip_id(row), "px: campo"),
+            (tid::tokens_num_reset_id(row), "px: reset"),
+            (tid::tokens_num_link_id(row), "px: elo"),
+            (tid::tokens_num_fx_id(row), "px: f(x)"),
+            (tid::tokens_num_formula_id(row), "px: fórmula"),
+        ] {
+            nome.insert(id.0, fam);
+        }
+    }
+    for (id, fam) in [
+        (tid::TOKENS_CLOSE, "painel: fechar"),
+        (tid::TOKENS_RESET_ALL, "painel: reset all"),
+        (tid::TOKENS_DTCG_EXPORT, "painel: export"),
+        (tid::TOKENS_DTCG_IMPORT, "painel: import"),
+    ] {
+        nome.insert(id.0, fam);
+    }
+
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "tokens")
+            .expect("o painel de tokens tem de estar no registo");
+        let mut host = MockPanelHost::new();
+        painel.populate(host.store_mut());
+        let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
+            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        });
+        let pintados = host.registos_da_ultima_pintura();
+        let store = host.store();
+        let celula: std::collections::BTreeSet<u64> =
+            grupos.iter().flatten().map(|id| id.0).collect();
+
+        let mut por_familia: BTreeMap<&'static str, Contagem> = BTreeMap::new();
+        for (id, _r) in &pintados {
+            let fam = nome.get(&id.0).copied().unwrap_or("(id desconhecido)");
+            let c = por_familia.entry(fam).or_default();
+            if celula.contains(&id.0) {
+                c.celulas += 1;
+                continue;
+            }
+            match store.get(*id) {
+                Some(s) => classifica(c, s),
+                None => c.orfaos += 1,
+            }
+        }
+        println!("\n  família               comandos  valores  cromo  órfãos  total");
+        for (f, c) in &por_familia {
+            println!(
+                "  {:22} {:8} {:8} {:6} {:7} {:6}",
+                f,
+                c.comandos,
+                c.valores,
+                c.outros,
+                c.orfaos,
+                c.total()
+            );
+        }
+        println!("\n  grupos declarados: {}", grupos.len());
+    });
 }

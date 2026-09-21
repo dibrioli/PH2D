@@ -141,7 +141,7 @@ pub(crate) mod tip;
 mod tip_kernel_tests;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
-pub use blur::{BlurKernel, blur_blit_stamp, blur_dab};
+pub use blur::{BlurKernel, blur_blit_stamp, blur_dab, blur_region_por_peso, kernel_radius};
 pub use blur_grain::blur_blit_grain;
 pub use clone::{clone_blit_stamp, clone_dab};
 pub use clone_grain::clone_blit_grain;

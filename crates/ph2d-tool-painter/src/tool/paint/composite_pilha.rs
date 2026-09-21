@@ -148,6 +148,9 @@ pub(super) struct PilhaDoTraco {
     /// O plano opaco em que a cobertura de uma borracha de escopo `Traco` é MEDIDA (ver
     /// [`PainterTool::aplica_borracha_do_traco`]). Fica aqui para não alocar por lote.
     pub(super) escudo: Arc<Vec<u8>>,
+    /// ⭐ **O ACUMULADO de cada camada ao longo do traço** — a rota de omissão desde 2026-09-21.
+    /// Ver [`super::composite_acumulado`]; os `lotes` acima só alimentam a rota de bissecção.
+    pub(super) planos: [Arc<Vec<u8>>; N_CAMADAS],
 }
 
 impl PilhaDoTraco {
@@ -156,6 +159,9 @@ impl PilhaDoTraco {
         self.pre = Vec::new();
         self.lotes.clear();
         self.escudo = Arc::new(Vec::new());
+        for p in &mut self.planos {
+            *p = Arc::new(Vec::new());
+        }
     }
 }
 
@@ -169,10 +175,28 @@ impl PainterTool {
             .count()
     }
 
-    /// **A recomposição regional** — o corpo da lei deste módulo.
+    /// **A porta da pilha** — ela escolhe entre o motor de ACUMULAÇÃO (a rota de omissão desde
+    /// 2026-09-21, [`super::composite_acumulado`]) e o REPLAY regional que ele substituiu.
+    ///
+    /// ⚠️ A escolha é um CAMPO e não a variável de ambiente: *um gate que lê o ambiente mede a
+    /// máquina*. O ambiente só o semeia, uma vez, no arranque.
+    pub(super) fn recompoe_a_pilha(&mut self, camadas: [Vec<Dab>; N_CAMADAS]) {
+        if self.paint.pilha_por_replay {
+            self.recompoe_por_replay(camadas);
+        } else {
+            self.acumula_e_compoe(camadas);
+        }
+    }
+
+    /// **A recomposição regional por REPLAY** — a rota que a acumulação substituiu, mantida como
+    /// porta de BISSECÇÃO (`PH2D_COMPOSITE_REPLAY=1`).
+    ///
+    /// ⛔ Ela é **quadrática num rabisco** (medido: `ms/evento` de `2,99` a `12,11` enquanto a
+    /// janela vai de `16,7` a `79,4` lotes) — ver [`super::composite_acumulado`] e a
+    /// [auditoria](../../../../../docs/Painter/40_auditoria_da_pilha_2026-09-21.md).
     ///
     /// ⚠️ A ordem dos seis passos é load-bearing e cada um está comentado no sítio.
-    pub(super) fn recompoe_a_pilha(&mut self, camadas: [Vec<Dab>; N_CAMADAS]) {
+    pub(super) fn recompoe_por_replay(&mut self, camadas: [Vec<Dab>; N_CAMADAS]) {
         let (w, h) = self.source_size;
         let len = (w as usize) * (h as usize) * 4;
         if len == 0 || self.canvas_rgba.len() != len {
@@ -309,7 +333,7 @@ impl PainterTool {
     }
 
     /// O apron que a recomposição tem de cobrir para o Blur ler vizinhança já recomposta.
-    fn pad_do_nucleo(&self) -> u32 {
+    pub(super) fn pad_do_nucleo(&self) -> u32 {
         let maior = (0..N_CAMADAS)
             .filter(|&p| {
                 self.paint.composite[p].strength > 0.0
@@ -323,7 +347,7 @@ impl PainterTool {
 
     /// Escrever o `pre` dentro de `r` — o passo que apaga o traço inteiro daquela região para ele
     /// ser reconstruído na ordem certa.
-    fn escreve_do_pre(&mut self, r: Region) {
+    pub(super) fn escreve_do_pre(&mut self, r: Region) {
         let stride = self.source_size.0 as usize * 4;
         let rw = r.w as usize * 4;
         let pre = std::mem::take(&mut self.paint.pilha.pre);
@@ -343,7 +367,7 @@ impl PainterTool {
     }
 
     /// Escrever de volta os bytes que [`PainterTool::save_region`] tirou.
-    fn escreve_regiao(&mut self, r: Region, pixels: &[u8]) {
+    pub(super) fn escreve_regiao(&mut self, r: Region, pixels: &[u8]) {
         let stride = self.source_size.0 as usize * 4;
         let rw = r.w as usize * 4;
         let buf = super::plane_fork::fork_canvas(
@@ -382,7 +406,7 @@ impl PainterTool {
     /// ⭐⭐ Isto SUBSTITUI a DOBRA (`lay_into_smear_base`, apagada nesta wave): ela depositava toda
     /// camada não-smear duas vezes — na tela e na base —, o que custava ×2,09 num Brush e ×1,92 num
     /// Blur **e punha na base também as camadas de CIMA**, que é o defeito de ordem do report.
-    fn refresca_a_base_do_smear(&mut self, r: Region) {
+    pub(super) fn refresca_a_base_do_smear(&mut self, r: Region) {
         if !self.paint.warp.active || self.paint.warp.pre.len() != self.canvas_rgba.len() {
             return;
         }
@@ -556,7 +580,7 @@ impl PainterTool {
 }
 
 /// A união das footprints de todas as camadas de um lote.
-fn caixa_das_camadas(camadas: &[Vec<Dab>; N_CAMADAS], w: u32, h: u32) -> Option<Region> {
+pub(super) fn caixa_das_camadas(camadas: &[Vec<Dab>; N_CAMADAS], w: u32, h: u32) -> Option<Region> {
     let mut acc: Option<Region> = None;
     for lista in camadas {
         if let Some(r) = dabs_bounds(lista, w, h) {

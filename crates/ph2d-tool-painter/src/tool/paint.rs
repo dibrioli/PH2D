@@ -156,6 +156,7 @@ mod canvas_pointer;
 mod composite;
 /// ⭐⭐⭐ **A ordem da pilha é do TRAÇO** — a recomposição regional que faz a camada de cima ficar
 /// por cima da de baixo ao longo do gesto inteiro, e não só dentro de um lote.
+mod composite_acumulado;
 mod composite_pilha;
 /// **Grid Stamp** — os controles do método (célula, deslocamento, Show Grid) e a régua norm↔px.
 /// ⭐ **O dab que o motor vai emitir** — irmão do [`grid_stamp_settings`] pelo tecto de LOC,

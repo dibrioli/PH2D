@@ -30,7 +30,7 @@ pub(crate) const BLUR_KERNEL_MAX: usize = 32;
 
 /// The blur kernel radius (px) for a dab of `radius`: `round(FRAC · radius)`, clamped to `1..=MAX`.
 #[must_use]
-pub(crate) fn kernel_radius(radius: f32) -> usize {
+pub fn kernel_radius(radius: f32) -> usize {
     ((radius * BLUR_KERNEL_FRAC).round() as i64).clamp(1, BLUR_KERNEL_MAX as i64) as usize
 }
 
@@ -223,6 +223,44 @@ pub(crate) fn footprint_bbox(
         (max_x - min_x) as usize,
         (max_y - min_y) as usize,
     ))
+}
+
+/// **UMA passagem de borrão sobre a região, misturada por um PESO por pixel já acumulado.**
+///
+/// ⭐ É a porta que a pilha do Composite Brush usa desde que ela deixou de REPLAYAR a história: em
+/// vez de `N` chamadas de [`blur_dab`] (uma por dab de cada lote), o peso de todos os dabs é
+/// acumulado num plano e o borrão corre **uma vez**.
+///
+/// ⚠️ **Isto NÃO é igual a `N` passagens sequenciais, e a diferença é declarada:** `N` borrões
+/// compõem-se num borrão MAIOR (`σ_total = σ√N`), enquanto uma passagem com peso `1 − Π(1−wᵢ)`
+/// mistura o mesmo borrão mais fundo. A lei que a pilha declara é *«a camada Blur é aplicada sobre
+/// o traço INTEIRO»* — uma aplicação —, e o `N` sequencial era um artefacto da implementação.
+///
+/// `peso` é do tamanho da REGIÃO (`bw·bh`, linha-maior), `1` byte por pixel, `255` = totalmente
+/// borrado. Ele é da região e não do canvas de propósito: quem o monta já o tem por região, e uma
+/// fatia do tamanho do canvas obrigaria uma alocação de `W·H` por evento.
+#[allow(clippy::too_many_arguments)]
+pub fn blur_region_por_peso(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    min_x: i64,
+    min_y: i64,
+    bw: usize,
+    bh: usize,
+    k: usize,
+    peso: &[u8],
+    wrap: [bool; 2],
+    nucleo: BlurKernel,
+) {
+    let (fw, fh) = (i64::from(width), i64::from(height));
+    if bw == 0 || bh == 0 || peso.len() != bw * bh {
+        return;
+    }
+    let blurred = blur_region(buf, fw, fh, min_x, min_y, bw, bh, k, wrap, nucleo);
+    blend_blurred(buf, fw, min_x, min_y, bw, bh, &blurred, |i, j| {
+        f32::from(peso[j * bw + i]) / 255.0
+    });
 }
 
 /// Blur one dab centred at `center`, weighted by the brush falloff (with `spec.hardness`) × `strength`.

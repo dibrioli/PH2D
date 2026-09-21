@@ -403,11 +403,17 @@ impl PainterTool {
             brush.blend = ph2d_painter_brush::BrushBlend::EraseAlpha;
         }
         // Alpha lock: the dab paints only into the active layer's existing alpha (clip/mask composite-time).
-        let alpha_locked = self
-            .layers
-            .active()
-            .and_then(|id| self.layers.get(id))
-            .is_some_and(|l| l.alpha_locked);
+        //
+        // ⛔⛔ **Ele NÃO se aplica enquanto uma camada do Composite acumula no plano dela**
+        // ([`super::composite_acumulado`]): o plano da tinta nasce TRANSPARENTE, logo travar o alfa
+        // ali suprimiria o depósito inteiro — a camada acumularia zero e o traço desapareceria. O
+        // trinco é propriedade da CAMADA do documento e corre uma vez, na composição.
+        let alpha_locked = !self.paint.acumulando_no_plano
+            && self
+                .layers
+                .active()
+                .and_then(|id| self.layers.get(id))
+                .is_some_and(|l| l.alpha_locked);
         let has_shape_image = self.paint.shape_image.is_some();
         // Per-layer-colour Shape (multi-layer, mode on): the z-ordered tinted layers recomposite onto the
         // canvas. Guarded by an ACTIVE Image silhouette so a stale `per_layer_color` flag (e.g. after the

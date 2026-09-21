@@ -401,11 +401,17 @@ fn o_nucleo_de_caixa_e_do_blur_da_pilha_e_so_dele() {
     sitios.sort();
     assert_eq!(
         sitios,
-        vec!["composite_pilha.rs".to_string()],
-        "o núcleo de caixa só pode ser pedido dentro do laço da pilha (e nomeado aqui). \
-         ⚠️ O ficheiro mudou de nome em 2026-09-20 e a LEI não: o laço da pilha saiu do \
-         `composite.rs` para o `composite_pilha.rs` quando a recomposição passou a ser POR \
-         CAMADA. Se este censo voltar a acusar dois sítios, o pedido escapou do laço."
+        vec![
+            "composite_acumulado.rs".to_string(),
+            "composite_pilha.rs".to_string(),
+        ],
+        "o núcleo de caixa só pode ser pedido pela pilha, e nos sítios nomeados aqui. \
+         ⚠️⚠️ **A LEI não mudou duas vezes; o ENDEREÇO dela mudou duas vezes.** Em 2026-09-20 o \
+         laço saiu do `composite.rs` para o `composite_pilha.rs` (a recomposição passou a ser por \
+         CAMADA); em 2026-09-21 a pilha ganhou a rota de ACUMULAÇÃO e o pedido passou a existir \
+         nas DUAS — no `composite_acumulado.rs` (a rota de omissão, uma passagem só) e no \
+         `composite_pilha.rs` (o replay, a porta de bissecção `PH2D_COMPOSITE_REPLAY=1`). \
+         ⛔ Um TERCEIRO sítio é o pedido a escapar da pilha, e é isso que este censo recusa."
     );
 }
 

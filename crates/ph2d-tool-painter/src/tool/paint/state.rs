@@ -389,6 +389,14 @@ pub(crate) struct PaintState {
     pub(super) shape_ramp_version: u64,
     pub(super) ramp_lut_owner: ramp_lut::RampLutOwner,
     /// **Accumulate OFF** per-stroke coverage mask (1 byte/px), cleared on down; caps a stroke at Strength.
+    /// **Está uma camada do Composite a acumular no plano dela?** ⚠️ Enquanto isto é `true` o
+    /// canvas que o depósito vê é o PLANO de uma camada e não a tela, logo o trinco de alfa da
+    /// camada do documento não se aplica ali — ver [`super::composite_acumulado`].
+    /// **A pilha corre pelo REPLAY em vez da acumulação?** Porta de bissecção, semeada uma vez de
+    /// `PH2D_COMPOSITE_REPLAY=1`. ⚠️ É um CAMPO para os gates poderem escolher a rota sem ler o
+    /// ambiente — *um gate que lê o ambiente mede a máquina*.
+    pub(super) pilha_por_replay: bool,
+    pub(super) acumulando_no_plano: bool,
     pub(super) stroke_mask: Vec<u8>,
     /// **Impasto** — every per-stroke plane the relief lives in, and the window they are indexed
     /// against. See [`relief_state::ReliefState`].

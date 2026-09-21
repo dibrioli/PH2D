@@ -226,6 +226,8 @@ impl Default for PaintState {
             shape_ramp_dirty: true,
             shape_ramp_version: 0,
             ramp_lut_owner: ramp_lut::RampLutOwner::None,
+            pilha_por_replay: std::env::var("PH2D_COMPOSITE_REPLAY").is_ok_and(|v| v == "1"),
+            acumulando_no_plano: false,
             stroke_mask: Vec::new(),
             relief: Default::default(),
             // Impasto lighting (canvas-level). Inert until some layer actually has relief.

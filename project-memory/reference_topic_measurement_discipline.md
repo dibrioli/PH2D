@@ -1174,3 +1174,35 @@ apply:** derive o índice do **enum público** (aqui `ALL_KINDS`, alinhado por g
 contagem de segmentos (`4` onde a estrela tem `12`) que denunciou este caso, e nenhuma outra coluna
 o teria feito.
 Ver [[reference_topic_fixture_discipline]] e [[reference_topic_gate_discipline]].
+
+---
+
+### ⛔⛔⛔ Um custo medido ACIMA da fronteira do vsync não se extrapola para BAIXO dela (2026-09-20)
+
+**O quê:** a cena `=126` foi dimensionada escalando por regra de três uma medição feita **no app**
+a `313 600` estrelas (`90,4` e `53,6 ms`) para `90 000` — previsão `25,9` e `15,4 ms`. Medido lá,
+o app lê **`14,67` e `10,37`**: a rota que o smoke prometia a `33 fps` corre a **`60`**.
+**A causa:** acima de `16,67 ms` a shell cozinha **um quadro por tique em dívida**
+(`MOTION = N × cozer + 1 × separar`) e esse multiplicador **desaparece** do outro lado da
+fronteira. A escada mostra-o à vista: de `90 000` para `102 400` o relógio sobe `1,62×` para
+`1,14×` de população, e daí para cima a inclinação é **`3,3×` menor**.
+
+**Why:** esta é a **segunda** derivação errada da mesma cena, e a lição da primeira não cobria
+esta. Lá foi *«uma derivação que só conta as fases que a sonda mede prevê um quadro que o app não
+tem»* e a cura foi **medir no app**. Aqui a medição É do app e continua a não transferir, porque
+**o regime muda**: há um laço de realimentação que só arma de um dos lados. ⇒ *medir no sítio
+certo não basta — tem de ser no REGIME em que o produto vai correr.*
+
+**⚠️ E a fronteira não é só abrupta: ela é INSTÁVEL.** Três corridas a `305`, `310` e `315` de lado
+— mesma rota, mesmo binário, `91 %` ocioso — leram `15,62`, `11,77` e `16,44 ms`: **não
+monótonas**. Perto do vsync o app cai de um lado ou do outro conforme o ruído do arranque.
+⇒ *nenhuma cena de smoke pode viver na fronteira*: ali o dono lê um número diferente a cada corrida,
+e uma cerca de compilação que a permita está a autorizar um smoke que se contradiz sozinho.
+
+**How to apply:** quando uma população, um tecto ou uma barra saem de um relógio, **meça a ESCADA
+no regime que vai shipar** em vez de escalar um ponto — e ponha na escada os dois lados da
+fronteira, porque é a mudança de inclinação que a denuncia. Um knob de bissecção da grandeza
+varrida (aqui `PH2D_CARIMBO_LADO`) torna isto uma corrida em vez de onze recompilações; a lei dele
+fica **pura** e gateada na metade negativa (*sem a variável, a cena é a de sempre*).
+Ver [[feedback_a_fixture_can_land_in_a_chaotic_regime]] e
+[[feedback_an_operation_count_is_not_a_profile_and_the_build_profile_decides_the_number]].

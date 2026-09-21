@@ -40,3 +40,14 @@ exactamente como «a mudança não estragou nada».* ⇒ o roteiro passou a corr
 Irmã de [[feedback_a_smoke_for_the_owner_explains_what_each_thing_on_screen_is]] (a foto é
 obrigatória) e de [[reference_topic_oracle_discipline]] (o XTest também não serve para um oráculo num
 Xwayland aninhado).
+
+⚠️⚠️ **E a guarda dessa terceira armadilha tem um ponto cego que BLOQUEIA para sempre** (medido
+2026-09-20): ela recusa quando existe um `.rs` mais novo que o binário (`find -newer`), e **um
+ficheiro `#[cfg(test)]` nunca entra no binário** — logo, depois de escrever uma sonda de medição,
+o `cargo build` corre, não relinka nada, o mtime do binário não avança, e o roteiro passa a recusar
+**toda** foto seguinte com um ficheiro que não pode tê-la invalidado. A saída de hoje foi tocar no
+binário à mão depois de confirmar que o único ficheiro mais novo era só-de-teste; a cura certa é a
+guarda perguntar ao **cargo** se ele relinkou (`--message-format`) em vez de comparar mtimes, ou
+saltar o que só é compilado sob `cfg(test)`. ⚠️ Ela erra para o lado **seguro** e por isso não
+corrompe medição nenhuma — mas custa uma decisão manual a cada sonda nova, e uma decisão manual
+repetida é onde alguém acaba por tocar no binário sem conferir.

@@ -164,7 +164,7 @@ pub use ramp_alpha::RampAlphaMode;
 pub use sampler::MAX_INPUT_SAMPLES;
 pub use smear::smear_dab;
 pub use smear_field::{
-    MapWindow, SEM_TECTO, SmearOut, TECTO_MEDIDO_E_RECUSADO_EM_RAIOS, Transporte,
+    Arco, MapWindow, SEM_TECTO, SmearOut, TECTO_MEDIDO_E_RECUSADO_EM_RAIOS, Transporte,
     accumulate_dab_smear,
 };
 pub use spec::MAX_BRUSH_RADIUS_PX;

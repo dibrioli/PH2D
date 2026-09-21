@@ -74,6 +74,11 @@ impl PainterTool {
         let tecto_em_raios = espia::tecto();
         #[cfg(not(test))]
         let tecto_em_raios = ph2d_painter_brush::SEM_TECTO;
+        // ⛔ O arco NÃO shipa (recusa medida). Fora do teste não há como o ligar.
+        #[cfg(test)]
+        let espia_do_arco = espia::arco_ligado;
+        #[cfg(not(test))]
+        let espia_do_arco = || false;
         let tiling = self.paint.tiling;
         let tiled = tiling[0] || tiling[1];
         let source_size = self.source_size;
@@ -84,6 +89,14 @@ impl PainterTool {
         let mut disp = std::mem::take(Arc::make_mut(&mut self.paint.warp.disp));
         let mut scratch = std::mem::take(&mut self.paint.smear_scratch);
         let mut from = self.paint.last_smear_pos;
+        // ⭐⭐⭐ **O PASSO ANTERIOR, que é o que dá a CURVA do caminho.** Dois passos consecutivos
+        // definem o círculo osculador, e é em torno dele que o retro-traçado tem de rodar — senão
+        // ele anda pela CORDA e sai do traço (ver [`ph2d_painter_brush::Arco`]).
+        //
+        // ⚠️ Ele NÃO viaja entre lotes de propósito: o 1.º dab de um lote não tem passo anterior
+        // fiável (a fronteira de sub-figura pode estar entre eles), e um arco errado é pior que
+        // nenhum — sem ele o passo é o recto de sempre, que é o comportamento de ontem.
+        let mut passo_anterior: Option<[f32; 2]> = None;
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
             let tex_rng = dab_rng.enter(&groups, di);
@@ -136,6 +149,23 @@ impl PainterTool {
                 // resampled bilinearly, so the integer quantisation the lift-and-blend kernel needed
                 // (it indexed source pixels directly) is pure loss here.
                 let step = [d.center[0] - prev[0], d.center[1] - prev[1]];
+                // ⛔⛔⛔ **O PASSO DE VOLTA PELO ARCO foi construído, MEDIDO e RECUSADO** — ver
+                // [`super::arco_do_caminho`]. O produto anda em LINHA RECTA, que é o que sempre
+                // fez; o cálculo fica porque é o instrumento da recusa, e sem ele a medição que
+                // a rejeitou não é repetível.
+                let arco = espia_do_arco()
+                    .then(|| {
+                        super::arco_do_caminho::osculador(
+                            passo_anterior,
+                            step,
+                            d.center,
+                            d.radius_px,
+                        )
+                    })
+                    .flatten();
+                passo_anterior = Some(step);
+                #[cfg(test)]
+                espia::conta_arco(arco.is_some());
                 // Tiling: the wrapped copies each accumulate at their own place, with the same step —
                 // the same offsets the colour blend used to walk.
                 let mut offs = [[0.0f32; 2]; 9];
@@ -178,6 +208,7 @@ impl PainterTool {
                         ph2d_painter_brush::Transporte {
                             step,
                             tecto_em_raios,
+                            arco,
                         },
                         mask.as_ref().map(|m| m.as_slice()),
                         w,
@@ -303,6 +334,42 @@ pub(super) mod espia {
 
     thread_local! {
         static DABS: RefCell<Vec<([f32; 2], f32)>> = const { RefCell::new(Vec::new()) };
+    }
+
+    thread_local! {
+        static ARCO: std::cell::Cell<(u32, u32)> = const { std::cell::Cell::new((0, 0)) };
+    }
+
+    /// Conta quantos dabs receberam um arco e quantos ficaram com o passo recto.
+    pub(crate) fn conta_arco(teve: bool) {
+        ARCO.with(|c| {
+            let (com, sem) = c.get();
+            c.set(if teve { (com + 1, sem) } else { (com, sem + 1) });
+        });
+    }
+
+    /// `(com arco, sem arco)` desde a última reposição.
+    pub(in crate::tool::paint) fn arcos() -> (u32, u32) {
+        ARCO.with(std::cell::Cell::get)
+    }
+
+    /// Repõe o contador a zero.
+    pub(in crate::tool::paint) fn zera_arcos() {
+        ARCO.with(|c| c.set((0, 0)));
+    }
+
+    thread_local! {
+        static ARCO_LIGADO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    }
+
+    /// ⛔ O passo de volta pelo arco está RECUSADO; só a sonda da recusa o liga.
+    pub(crate) fn arco_ligado() -> bool {
+        ARCO_LIGADO.with(std::cell::Cell::get)
+    }
+
+    /// ⚠️ Só a sonda da recusa mexe nisto, e repõe o valor de fábrica no fim.
+    pub(in crate::tool::paint) fn poe_arco(v: bool) {
+        ARCO_LIGADO.with(|c| c.set(v));
     }
 
     pub(crate) fn guarda_dabs(dabs: &[ph2d_painter_brush::Dab]) {

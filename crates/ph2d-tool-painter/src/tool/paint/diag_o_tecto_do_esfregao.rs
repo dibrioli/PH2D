@@ -422,3 +422,63 @@ fn diag_a_varredura_do_tecto() {
     }
     super::smear_warp::espia::poe_tecto(ph2d_painter_brush::SEM_TECTO);
 }
+
+/// (A14) O ARCO CHEGA A ARMAR? — a pergunta que uma leitura de `84,4 %` não responde.
+///
+/// `cargo test -p ph2d-tool-painter --release --lib diag_o_arco_arma -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda de medição: imprime uma tabela"]
+fn diag_o_arco_arma() {
+    use composite::CompositeOp::{Brush, Smear};
+    let c = [350.0f32, 350.0];
+    for (nome, metodo, r) in [
+        (
+            "Ellipse r=215",
+            ph2d_painter_brush::StrokeMethod::Ellipse,
+            215.0f32,
+        ),
+        (
+            "Space (mão livre)",
+            ph2d_painter_brush::StrokeMethod::Space,
+            215.0,
+        ),
+    ] {
+        super::smear_warp::espia::zera_arcos();
+        let mut t = PainterTool::default();
+        t.set_source(vec![0u8; (L * L * 4) as usize], L, L);
+        t.paint.brush.radius_px = 30.0;
+        t.paint.brush.color = [0.75, 0.12, 0.12];
+        t.paint.brush.space_attenuation = false;
+        t.paint.brush.stroke_method = metodo;
+        t.paint.composite_enabled = true;
+        for (op, s) in [(Smear, 1.0f32), (Brush, 1.0)] {
+            t.acrescenta_camada(op.to_u8());
+            let pos = t.composite_len() - 1;
+            t.set_composite_layer_strength(pos, s);
+        }
+        if matches!(metodo, ph2d_painter_brush::StrokeMethod::Ellipse) {
+            t.on_canvas_pointer(cp2(c, PointerPhase::Down));
+            for i in 1..=8 {
+                let u = i as f32 / 8.0;
+                t.on_canvas_pointer(cp2([c[0] + r * u, c[1]], PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp2([c[0] + r, c[1]], PointerPhase::Up));
+        } else {
+            let n = (std::f32::consts::TAU * r / 3.0) as usize;
+            let pt = |i: usize| {
+                let a = (i as f32) * std::f32::consts::TAU / (n as f32);
+                [c[0] + r * a.cos(), c[1] + r * a.sin()]
+            };
+            t.on_canvas_pointer(cp2(pt(0), PointerPhase::Down));
+            for i in 1..=n {
+                t.on_canvas_pointer(cp2(pt(i), PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp2(pt(n), PointerPhase::Up));
+        }
+        let (com, sem) = super::smear_warp::espia::arcos();
+        println!(
+            "  {nome:>18} · dabs COM arco {com:5} · SEM arco {sem:5} · armou em {:5.1} %",
+            100.0 * com as f32 / (com + sem).max(1) as f32
+        );
+    }
+}

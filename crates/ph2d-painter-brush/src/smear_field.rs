@@ -175,6 +175,7 @@ pub fn accumulate_dab_smear(
     let Transporte {
         step,
         tecto_em_raios,
+        arco,
     } = mov;
     let n = (width as usize) * (height as usize);
     if disp.len() < n {
@@ -198,7 +199,15 @@ pub fn accumulate_dab_smear(
     // `disp_old(p − v)` for neighbours of `p`, so reading and writing the same buffer in place would let
     // a texel updated earlier in the scan pollute one updated later — the very sequential dependence
     // this kernel exists to remove.
-    let reach = step[0].abs().max(step[1].abs());
+    // O alcance do retro-traçado. Num arco um texel na borda de fora da pegada roda por um braço
+    // maior que o do centro, logo ele anda MAIS do que o passo — e a janela tem de o conter.
+    let reach = match arco {
+        None => step[0].abs().max(step[1].abs()),
+        Some(a) => {
+            let braco = (dab.center[0] - a.centro[0]).hypot(dab.center[1] - a.centro[1]);
+            (braco + dab.radius) * a.dtheta.abs()
+        }
+    };
     let win = MapWindow::snapshot(
         &mut scratch.win,
         disp,
@@ -213,8 +222,22 @@ pub fn accumulate_dab_smear(
         let i = i as usize;
         let px = (i % width as usize) as f32;
         let py = (i / width as usize) as f32;
-        let v = [step[0] * add, step[1] * add];
-        let back = win.sample(px - v[0], py - v[1]);
+        // O passo de volta: recto quando o caminho não virou, e uma rotação em torno do centro
+        // de curvatura quando virou. O peso `add` gradua os dois do mesmo modo — um texel na
+        // orla do dab acompanha uma fracção do movimento, e a `add = 0` ele não se mexe.
+        let atras = match arco {
+            None => [px - step[0] * add, py - step[1] * add],
+            Some(a) => {
+                let (sn, cs) = (-a.dtheta * add).sin_cos();
+                let (dx, dy) = (px - a.centro[0], py - a.centro[1]);
+                [
+                    a.centro[0] + cs * dx - sn * dy,
+                    a.centro[1] + sn * dx + cs * dy,
+                ]
+            }
+        };
+        let v = [px - atras[0], py - atras[1]];
+        let back = win.sample(atras[0], atras[1]);
         let mut d = [v[0] + back[0], v[1] + back[1]];
         // ⛔⛔ **O TECTO DO TRANSPORTE** — sem ele a herança `D(p) = v + D(p − v)` alcança muito
         // além dos dabs que tocaram o texel, e numa CURVA o traçado para trás sai do traço e o
@@ -243,6 +266,33 @@ pub struct Transporte {
     pub step: [f32; 2],
     /// O tecto do deslocamento acumulado, em RAIOS de pincel.
     pub tecto_em_raios: f32,
+    /// **Por onde o caminho VIROU** — `None` numa recta, e aí o passo de volta é o de sempre.
+    pub arco: Option<Arco>,
+}
+
+/// **A curva osculadora do caminho neste dab** — o círculo que os três últimos centros definem.
+///
+/// ⛔⛔⛔ **É isto que faz a tinta seguir a curva em vez de sair dela.** O traçado para trás do
+/// esfregão anda um passo de cada vez, e um passo recto (`p − v`) é uma CORDA: ele sai do arco
+/// por `|v|²/2r` a cada elo. Isso é invisível num elo e a corrente tem **centenas** deles — o
+/// caminho de volta afasta-se do traço, o re-amostrar aterra onde não há tinta, e a tinta morre.
+/// Medido num anel de `r = 215`: o ponto de origem aterra a **`205,9`** do centro em vez de
+/// `215`, e a figura perde **`15,6 %`** da tinta.
+///
+/// Com o arco, o passo de volta é uma **ROTAÇÃO** em torno do centro de curvatura: ele segue o
+/// arco por construção, e o erro por elo passa a ser o do modelo (o caminho ser localmente um
+/// círculo), não o da corda.
+///
+/// ⚠️ **Numa recta ele é `None` e o caminho é BYTE-IDÊNTICO ao de sempre** — é isso que preserva
+/// o transporte longo que o dono exigiu duas vezes: a corrente continua a andar tão longe
+/// quanto os dabs andaram (`568 px` medidos num traço de `580`), só que agora pelo caminho
+/// certo.
+#[derive(Clone, Copy)]
+pub struct Arco {
+    /// O centro de curvatura, em píxeis de tela.
+    pub centro: [f32; 2],
+    /// O ângulo que o caminho virou entre o dab anterior e este, com sinal.
+    pub dtheta: f32,
 }
 
 /// The map being advanced, plus its caller-owned scratch — bundled the way [`crate::sculpt::PlaneOut`]
@@ -425,6 +475,7 @@ mod tests {
                     Transporte {
                         step: [1.0, 0.0],
                         tecto_em_raios: tecto,
+                        arco: None,
                     },
                     None,
                     w,
@@ -479,6 +530,7 @@ mod tests {
                     Transporte {
                         step: [stride, 0.0],
                         tecto_em_raios: TECTO_MEDIDO_E_RECUSADO_EM_RAIOS,
+                        arco: None,
                     },
                     None,
                     w,
@@ -532,6 +584,7 @@ mod tests {
                 Transporte {
                     step: [1.0, 0.0],
                     tecto_em_raios: TECTO_MEDIDO_E_RECUSADO_EM_RAIOS,
+                    arco: None,
                 },
                 None,
                 w,
@@ -565,6 +618,7 @@ mod tests {
                 Transporte {
                     step: [0.0, 0.0],
                     tecto_em_raios: TECTO_MEDIDO_E_RECUSADO_EM_RAIOS,
+                    arco: None,
                 },
                 None,
                 w,
@@ -602,6 +656,7 @@ mod tests {
                 Transporte {
                     step: [1.0, 0.0],
                     tecto_em_raios: TECTO_MEDIDO_E_RECUSADO_EM_RAIOS,
+                    arco: None,
                 },
                 Some(&mask),
                 w,

@@ -175,3 +175,66 @@ fn o_produto_shipa_sem_tecto() {
         "o ramo do PRODUTO deixou de passar `SEM_TECTO` ao esfregão"
     );
 }
+
+/// ⛔⛔⛔ **O PASSO DE VOLTA PELO ARCO NÃO CURA — a recusa, com o controlo que a torna honesta.**
+///
+/// A hipótese era que a corrente sai do traço porque cada elo é uma CORDA; a cura seria o passo
+/// de volta rodar em torno do centro de curvatura ([`super::arco_do_caminho`]). Ela funciona como
+/// geometria e **não move o barro**.
+///
+/// ⚠️ **O CONTROLO é obrigatório e foi ele que apanhou a 1.ª redacção:** medida à mão livre, a
+/// cura lia `84,4 %` com e sem — e a causa era o arco **nunca armar** (um dab por lote, logo nunca
+/// há passo anterior). *Uma comparação entre dois lados em que um deles nunca corre não é uma
+/// medição.* Aqui o gate EXIGE que o arco arme na maioria dos dabs antes de comparar.
+#[test]
+fn o_passo_pelo_arco_nao_cura_a_perda() {
+    // ⚠️⚠️ **O lado do PRODUTO não põe nada — ele MEDE o valor de fábrica.** A 1.ª redacção
+    // chamava `poe_arco(false)` aqui, e a mutação que trocava o valor de fábrica do espião
+    // **SOBREVIVEU** (a mesma armadilha que o gate do tecto pagou duas horas antes): *uma régua
+    // que arma o sujeito dela não o mede.*
+    let medir = |arco: Option<bool>| -> (f64, f32) {
+        if let Some(v) = arco {
+            super::smear_warp::espia::poe_arco(v);
+        }
+        super::smear_warp::espia::zera_arcos();
+        let mut com = cena(1.0, ph2d_painter_brush::StrokeMethod::Ellipse);
+        anel(&mut com);
+        let (a, b) = super::smear_warp::espia::arcos();
+        let armou = 100.0 * a as f32 / (a + b).max(1) as f32;
+        let mut sem = cena(0.0, ph2d_painter_brush::StrokeMethod::Ellipse);
+        anel(&mut sem);
+        (100.0 * tinta(&com) / tinta(&sem), armou)
+    };
+
+    let (recto, armou_recto) = medir(None);
+    let (curvo, armou_curvo) = medir(Some(true));
+    super::smear_warp::espia::poe_arco(false);
+
+    // CONTROLO: o arco tem de ARMAR de um lado e não do outro, senão as duas colunas são a mesma
+    // corrida e o gate afirma o nada.
+    assert!(
+        armou_curvo > 90.0,
+        "o arco mal armou ({armou_curvo:.1} %) — o gate estaria a comparar duas corridas iguais"
+    );
+    assert!(
+        armou_recto < 1.0,
+        "o produto armou o arco ({armou_recto:.1} %) — ele está RECUSADO"
+    );
+    // A RECUSA: com o arco a lei fica onde estava.
+    assert!(
+        (curvo - recto).abs() < 1.0,
+        "o passo pelo arco mudou a perda — reavalie a recusa: recto {recto:.1} %, arco {curvo:.1} %"
+    );
+    assert!(
+        recto < 90.0 && curvo < 90.0,
+        "a fixtura não contém o fenómeno: recto {recto:.1} %, arco {curvo:.1} %"
+    );
+
+    // ⚠️ A metade TEXTUAL: fora do teste o valor não vem do espião, vem da linha
+    // `cfg(not(test))`, que corrida de teste nenhuma percorre.
+    let fonte = include_str!("smear_warp.rs");
+    assert!(
+        fonte.contains("#[cfg(not(test))]\n        let espia_do_arco = || false;"),
+        "o ramo do PRODUTO deixou de recusar o arco"
+    );
+}

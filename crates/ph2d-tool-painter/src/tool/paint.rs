@@ -150,6 +150,9 @@ mod stencil;
 /// Stroke-method control (set / non-shape memory / restore) — the Brush-panel + rail Shapes seam.
 mod stroke_ctl;
 pub use stencil::{StencilOverlay, StencilPreview};
+/// ⭐⭐⭐ **A curva osculadora do caminho** — o círculo em torno do qual o retro-traçado do
+/// esfregão roda, para a tinta seguir a curva em vez de sair dela.
+mod arco_do_caminho;
 /// ⭐⭐ **A fronteira de uma sub-figura, derivada do arco** — a porta que o esfregão e a
 /// subamostragem da pilha perguntam antes de atravessar de uma figura para a seguinte.
 mod arco_subfigura;

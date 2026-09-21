@@ -65,6 +65,27 @@ fn env_radiance(dir: vec3<f32>, alpha: f32, shrink: f32) -> vec3<f32> {
 }
 "#;
 
+/// ⭐⭐⭐ **COMO O VISOR ACHA O TEXEL DA SPRITE** que corresponde a um fragmento seu.
+///
+/// O bake rasteriza a malha com a MESMA câmera, no tamanho da sprite. Logo o texel `(i,j)` dela é
+/// o ponto da malha que aquela rasterização vê ali, e o visor pode reconstruir o `uv`:
+///
+/// - o `fov_y` é preservado nas duas ⇒ **o `y` normalizado é o MESMO**;
+/// - o `x` normalizado escala pela razão dos aspectos, `(w/h da vista) / (w/h da fonte)`.
+///
+/// ⚠️ **Os inversos da ÁREA e não do alvo:** o `@builtin(position)` chega em coordenadas do ALVO e
+/// o `set_viewport` move o rasterizador sem mover a aritmética do shader — a origem viaja no
+/// `cam.viewport.zw` exactamente por isso.
+#[derive(Clone, Copy, Debug)]
+pub struct Projeccao {
+    /// `(w/h da vista) / (w/h da fonte)`.
+    pub razao_dos_aspectos: f32,
+    /// `1 / largura` da área, em pixels.
+    pub inv_w: f32,
+    /// `1 / altura` da área, em pixels.
+    pub inv_h: f32,
+}
+
 /// ⭐ **O material e o céu, como o `mesh.wgsl` os lê** — o quarto uniform do grupo 0.
 ///
 /// ⚠️ **Um uniform NOVO e não campos no [`crate::shade::ShadeRaw`]:** aquele tem `32 B` exactos e o
@@ -80,14 +101,18 @@ pub struct PbrRaw {
     pub ceu_base: [f32; 4],
     /// Quanto ela sobe para o topo da TELA.
     pub ceu_inclinacao: [f32; 4],
-    /// ⭐⭐⭐ **O OLHAR** — `x` = os stops de exposição.
+    /// ⭐⭐⭐ **O OLHAR e a PROJECÇÃO DA FONTE DO ALBEDO** — `x` = os stops de exposição;
+    /// `y` = a razão dos aspectos (`vista / fonte`); `z`, `w` = o inverso da largura e da altura da
+    /// ÁREA em pixels.
     ///
-    /// ⚠️ **`y`, `z` e `w` são RESERVA DECLARADA**, e dizê-lo é o que impede o campo seguinte de
-    /// aterrar ali por engano: *uma posição sem dono e sem régua é onde o próximo número entra
-    /// calado*. O código da vista viaja no [`Self::vista`] porque ele é um INTEIRO, e enfiá-lo
-    /// num `f32` por bits obrigaria os dois lados a concordar num `bitcast` que nenhum gate mede.
+    /// ⚠️⚠️ **`y`, `z` e `w` eram RESERVA DECLARADA e foram GASTOS em 2026-09-21**, pelo campo que
+    /// a reserva existia para acolher sem surpresa. *Uma posição sem dono e sem régua é onde o
+    /// próximo número entra calado* — e este entrou com nome, com doc e com gate.
+    ///
+    /// ⛔ **A reserva acabou:** o campo seguinte pede uma entrada NOVA, nunca um destes slots.
     pub olhar: [f32; 4],
-    /// O código da [`ph2d_view_transform::ViewTransform`] em `x`; `yzw` reserva declarada.
+    /// O código da [`ph2d_view_transform::ViewTransform`] em `x`; `y` = `1` quando há fonte de
+    /// albedo posta. `zw` reserva declarada.
     pub vista: [u32; 4],
 }
 
@@ -116,14 +141,22 @@ impl PbrRaw {
     /// ⭐ **O céu entra pela porta da [`ph2d_light::env_ramp`]**, que é a MESMA que o sprite assado
     /// atravessa — é ela que faz as duas leis dobrarem o ambiente do mesmo jeito.
     #[must_use]
-    pub fn pack(surface: &Surface, plano: [f32; 3], olhar: ph2d_view_transform::Look) -> Self {
+    pub fn pack(
+        surface: &Surface,
+        plano: [f32; 3],
+        olhar: ph2d_view_transform::Look,
+        albedo: Option<Projeccao>,
+    ) -> Self {
         let (base, inclinacao) = ph2d_light::env_ramp(plano);
+        let (k, inv_w, inv_h, tem) = albedo.map_or((0.0, 0.0, 0.0, 0), |p| {
+            (p.razao_dos_aspectos, p.inv_w, p.inv_h, 1)
+        });
         Self {
             mat: pack(surface, EnvLobe::of(surface)),
             ceu_base: [base[0], base[1], base[2], 0.0],
             ceu_inclinacao: [inclinacao[0], inclinacao[1], inclinacao[2], 0.0],
-            olhar: [olhar.exposure_stops, 0.0, 0.0, 0.0],
-            vista: [ph2d_view_transform::wgsl::view_code(olhar.view), 0, 0, 0],
+            olhar: [olhar.exposure_stops, k, inv_w, inv_h],
+            vista: [ph2d_view_transform::wgsl::view_code(olhar.view), tem, 0, 0],
         }
     }
 }

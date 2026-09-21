@@ -383,3 +383,25 @@ mutação parece certa a quem a lê, porque o código mutado *é* diferente. **H
 passo final for idempotente, o `old` da mutação tem de **conter esse passo** para que o `new` o
 possa tirar de lá; e a suspeita levanta-se sozinha ao ver a lista da cadeia acabar num redutor. Ver
 [[reference_topic_measurement_discipline]].
+## ⛔⛔⛔ Um arnês que faz backup por EDIÇÃO e não por FICHEIRO **corrompe a árvore** (2026-09-21)
+A `line/3DModeling` estendeu o arnês de mutação para aceitar **várias edições numa mutação só** (a
+que representa *«a lei mudou-se para outro ramo»* precisa de duas). Com as duas edições no **mesmo
+ficheiro**, a sequência foi: copiar `f → f.bak`, escrever a 1.ª · **copiar `f → f.bak` outra vez**,
+escrever a 2.ª · restaurar `f.bak → f` (⇒ a árvore ficou com a **1.ª mutação aplicada**) · restaurar
+outra vez (⇒ `FileNotFoundError`). O shader ficou no repositório com `materia = CLAY;` e o gate da
+wave verde ao lado dele. **Why:** o modo de falha é o pior de todos — *ele não devolve o original, ele
+devolve a versão JÁ MUTADA*, e a segunda restauração estoura DEPOIS do estrago, logo o `traceback`
+aponta para o sintoma e não para a causa. *Um arnês que corrompe a árvore é pior que um que mente:
+ele deixa o defeito lá.* **How to apply:** o backup é indexado pelo **caminho** (`dict`), nunca pela
+lista de edições; e depois de qualquer corrida de mutação com edições múltiplas, **conte no
+ficheiro** o que devia lá estar (`grep -c`) antes de acreditar na tabela. Ver
+[[reference_topic_measurement_discipline]].
+
+## ⛔⛔ Uma mutação que deixa a chamada VIVA lê-se exactamente como «sobreviveu» (2026-09-21)
+Na mesma corrida, a mutação *«a shell deixa de sincronizar»* comentava só a **primeira linha** da
+chamada e reescrevia-a logo abaixo — o produto ficou **idêntico**, e o gate de fiação (que lê a
+fonte com os comentários já retirados) devolveu `SOBREVIVEU (0/1)`. Eu quase escrevi *«o gate de
+fiação não mede nada»* sobre um gate correcto. **Why:** num gate de TEXTO a mutação tem de apagar o
+texto, e comentar uma linha de uma chamada multi-linha **não apaga a chamada**. **How to apply:**
+para mutar uma chamada de N linhas, a agulha é o **BLOCO INTEIRO** lido do ficheiro em runtime
+(`src[i..j]`), nunca uma linha escrita à mão. Ver [[reference_topic_gate_discipline]].

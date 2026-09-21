@@ -82,6 +82,32 @@ impl crate::App {
                 eprintln!("{line}");
                 toasts.push(Toast::success(line));
             }
+            // ⭐⭐⭐⭐ **O VISOR PINTA A MATÉRIA QUE O BAKE VAI ACENDER** — ver
+            // [`ph2d_app_sculpt3d::albedo::sincroniza`], que é onde a lei e o `61×` que a obrigou
+            // estão medidos. Ela mora nesta fase e não na do desenho pelas DUAS razões que a fase
+            // já declara no cabeçalho: é aqui que a cena 3D, o mundo, o renderizador e o mapa de
+            // atlas estão os quatro em escopo — e ⚠️ **depois do bake de propósito**, porque assar
+            // troca a matéria e a memória dela tem de ver a troca no MESMO quadro.
+            ph2d_app_sculpt3d::albedo::sincroniza(
+                scene,
+                baked_forms,
+                surface.gpu(),
+                selected,
+                sim,
+                renderer,
+                &mut |sim: &mut ph2d_ecs::SimWorld, renderer: &mut _| {
+                    selected.and_then(|bits| {
+                        crate::hero_intents::texture_edit::read_sprite_source(
+                            ph2d_ecs::Entity::from_bits(bits),
+                            sim,
+                            renderer,
+                            asset_db,
+                            atlas_asset_map,
+                        )
+                        .map(|s| s.image)
+                    })
+                },
+            );
             // **O SPRITE SELECIONADO VIRA O PADRÃO DO PINCEL** — o alpha por
             // IMAGEM. Mora aqui pela MESMA razão do bake logo acima: é o único
             // ponto do frame em que a cena 3D, o mundo 2D, o renderizador e o

@@ -1653,3 +1653,16 @@ inerte lê-se, de fora, igual a um que expõe. **How to apply:** quando dois cam
 níveis diferentes por um factor redondo, procure o **último acto** da lei (a transformada de vista) e
 pergunte quem o corre — e trate-o como parte da LEI, nunca como acabamento do visualizador.
 Ver [[reference_topic_code_pattern_gotchas]].
+- ⛔⛔⛔ **O MESMO report três vezes não é três vezes o mesmo defeito — e a régua que o separa é a
+ATRIBUIÇÃO, um termo de cada vez.** Medido 2026-09-21 (`line/3DModeling`): o dono disse *«o bake não
+é idêntico ao que se vê em 3d»* três vezes, cada uma DEPOIS de uma correcção medida e correcta.
+Eram **três causas empilhadas**, cada uma escondida pela anterior — o modo de fábrica do visor
+(`0,347`/canal, `1 615×`) · a LEI que o bake corria (`0,055`, `28×`) · e a **MATÉRIA**, que sozinha
+vale **`31,68` códigos** contra `0,52` de tudo o resto somado (`61×`). **Why:** com o visor num
+matcap nenhuma medição de LEI diz nada, e com duas leis diferentes a MATÉRIA é ruído ao lado delas
+⇒ *a ordem em que as causas caem é forçada, e uma correcção certa pode não mover o report nenhum*.
+**How to apply:** ao segundo report igual, pare de curar e **ABLAÇÃO**: corra a mesma sonda com um
+termo trocado de cada vez (lei · enquadramento · matéria · olhar) e imprima a TABELA. E a leitura
+que fecha: *uma diferença de MATÉRIA não se corrige com luz* — quando a coluna que domina não é a
+que a wave anterior mexeu, a wave anterior estava certa e incompleta.
+Ver [[reference_topic_oracle_discipline]] · [[reference_topic_gate_discipline]].

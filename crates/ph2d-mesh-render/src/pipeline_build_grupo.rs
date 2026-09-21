@@ -40,7 +40,12 @@ pub(super) fn monta(device: &wgpu::Device) -> GrupoDoQuadro {
         entries: &[
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
+                // ⚠️⚠️ **FRAGMENT também, desde 2026-09-21**: a projecção da fonte do albedo lê o
+                // `cam.viewport` (a régua e a ORIGEM da área) no fragmento, porque o
+                // `@builtin(position)` chega em coordenadas do ALVO. ⛔ O modo de falha de faltar
+                // esta flag é de VALIDAÇÃO e não de compilação — o `wgpu` recusa o pipeline inteiro
+                // com *«visibility flags don't include the shader stage»*, e o app abre sem malha.
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,

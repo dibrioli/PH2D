@@ -313,6 +313,10 @@ mod tinta_no_produto_tests;
 /// diferentes, e só a segunda sobrevive à escultura.
 pub mod bake;
 
+/// ⭐⭐⭐⭐ **A MATÉRIA** — de que é feita a superfície que o bake vai acender, e a porta que faz o
+/// VISOR pintar a mesma. Irmão da [`bake`]: lá mora o gesto, aqui o que ele acende.
+pub mod albedo;
+
 /// **OS VERBOS QUE PUXAM** — Grab, Snake Hook, Twist, Local Scale. Filho pelo motivo dos outros: o corte é de responsabilidade, e o deles
 /// é uma LEI própria (a pegada é presa no pen-down, e o alvo é função do puxão
 /// TOTAL, nunca da soma dos passos).

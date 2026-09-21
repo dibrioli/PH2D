@@ -61,30 +61,19 @@ fn bake_one(
     ) -> Option<ph2d_render::SpriteImage>,
 ) -> Result<(u32, u32), String> {
     let entity = Entity::from_bits(entity_bits);
-    // ⚠️ **RE-ASSAR NÃO LÊ A TELA DE VOLTA.** Depois do primeiro bake os pixels do sprite são
-    // `base × luz`; lê-los como fonte faria o segundo bake acender o que já está aceso, e o objeto
-    // escureceria a cada gesto — a composição que o `base` existe para impedir. Um sprite já assado
-    // reusa o `base` **e o slot**: nenhuma textura nova por bake.
-    let previous = forms.get(&entity_bits).map(|b| (b.size, b.texture_id));
-    let (size, base, texture_id) = match previous {
-        Some((size, texture_id)) => {
-            let base = forms[&entity_bits].base.clone();
-            (size, base, texture_id)
-        }
-        None => {
-            let src = ler_fonte(sim, renderer)
-                .ok_or_else(|| "nao consegui ler os pixels do sprite selecionado".to_string())?;
-            // ⚠️ **Alpha DIREITO.** O passe multiplica a cor pela luz, e num buffer pré-multiplicado
-            // a multiplicação aconteceria sobre `cor × alpha` — o resultado escureceria pela borda
-            // do recorte, que é a assinatura clássica de tratar premultiplicado como direto.
-            let straight = src.into_straight();
-            let size = (straight.width, straight.height);
-            if size.0 == 0 || size.1 == 0 {
-                return Err("o sprite selecionado nao tem pixels".into());
-            }
-            let id = renderer.acquire_individual_empty(size.0, size.1);
-            (size, straight.pixels, id)
-        }
+    // ⚠️ **RE-ASSAR NÃO LÊ A TELA DE VOLTA**, e essa lei mudou de casa em 2026-09-21: ela passou a
+    // ter um SEGUNDO leitor — o visor, que desde a mesma data pinta a MESMA matéria que este gesto
+    // vai acender ([`super::albedo`], onde o `61×` que a obrigou está medido). Depois do primeiro
+    // bake os pixels do sprite são `base × luz`; lê-los como fonte faria o segundo bake acender o
+    // que já está aceso, e o objeto escureceria a cada gesto.
+    let (base, size) =
+        super::albedo::materia_para(forms, entity_bits, &mut || ler_fonte(sim, renderer))?;
+    // ⚠️ **O SLOT é do bake e não da matéria** — um sprite já assado reusa a textura que já tem
+    // (nenhuma textura nova por bake); o visor não tem slot nenhum, e é por isso que esta linha
+    // ficou aqui em vez de viajar com a lei.
+    let texture_id = match forms.get(&entity_bits) {
+        Some(b) => b.texture_id,
+        None => renderer.acquire_individual_empty(size.0, size.1),
     };
     let planes = scene
         .form_plane_for(gpu, size)

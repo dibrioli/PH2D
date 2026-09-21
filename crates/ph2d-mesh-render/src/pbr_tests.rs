@@ -127,3 +127,59 @@ fn o_uniform_do_material_tem_a_forma_que_o_shader_le() {
         "o `mesh.wgsl` tem de declarar o uniform do material"
     );
 }
+
+/// ⭐⭐⭐⭐ **O ALBEDO SÓ É LIDO NO RAMO DA LEI QUE ASSA — e este é o lado do SHADER.**
+///
+/// A fonte do albedo ([`crate::MeshRenderer::set_albedo_source`]) existe para fechar a última
+/// diferença entre o que o artista vê no visor e o que o bake escreve na sprite — `31,68` códigos
+/// de desvio contra os `0,52` que a lei, o enquadramento e a oclusão de tela somavam, `61×`.
+///
+/// ⚠️ **A app só SOBE a textura no modo [`crate::Lighting::Pbr`]**, e a razão é o recurso: ler os
+/// pixels de uma sprite é um `readback` do device, e subi-lo para um modo que não o lê seria
+/// pagá-lo por nada. ⛔ **Esse par é uma promessa entre duas crates**, e o dia em que outro ramo do
+/// shader passar a ler `albedo_tex` encontra a textura de nascença — `1×1` **BRANCA** —, que pinta
+/// uma peça de plástico branco e **não se lê como uma falta**.
+///
+/// ⚠️ **Gate irmão do outro lado:** `so_o_modo_que_le_a_materia_a_pede` (em `ph2d-app-sculpt3d`),
+/// que afirma que a app pede a matéria exactamente no modo que ela aqui é lida. Cada metade
+/// sozinha mente.
+#[test]
+fn o_albedo_so_e_lido_no_ramo_da_lei_que_assa() {
+    const WGSL: &str = include_str!("shaders/mesh.wgsl");
+    // A DECLARAÇÃO e UMA chamada — o CONTROLO da extracção: com zero, a fatia abaixo não
+    // afirmaria nada e este gate ficaria verde sobre uma feature apagada.
+    assert_eq!(
+        WGSL.matches("albedo_do_texel(").count(),
+        2,
+        "a leitura do albedo deixou de ter exactamente um chamador no shader"
+    );
+    assert!(
+        WGSL.contains("fn albedo_do_texel("),
+        "o CONTROLO: uma das duas ocorrências tem de ser a declaração"
+    );
+    assert!(
+        WGSL.contains("@group(3) @binding(3) var albedo_tex"),
+        "a textura da matéria saiu do grupo que o `rebuild_sss_bind` monta"
+    );
+
+    let inicio = WGSL
+        .find("if (shade.lighting == LIGHTING_PBR) {")
+        .expect("o ramo da lei que assa mudou de guarda");
+    let resto = &WGSL[inicio..];
+    let fim = resto
+        .find("\n    var diffuse = vec3<f32>(0.0);")
+        .expect("o fim do ramo da lei que assa mudou de forma");
+    let ramo = &resto[..fim];
+    assert!(
+        ramo.contains("materia = albedo_do_texel(in.clip.xy);"),
+        "a matéria deixou de ser lida DENTRO do ramo da lei que assa"
+    );
+    // A metade que a primeira não cobre: mais nenhum ramo a lê. Com a fatia do ramo apagada do
+    // texto, a chamada tem de desaparecer com ela.
+    let fora = WGSL.replacen(ramo, "", 1);
+    assert_eq!(
+        fora.matches("albedo_do_texel(").count(),
+        1,
+        "um segundo ramo do shader passou a ler a matéria — e a app não a sobe para ele"
+    );
+}

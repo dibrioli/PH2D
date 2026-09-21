@@ -206,10 +206,18 @@ pub enum Lighting {
     /// shader —, e duas leis sobre o mesmo objecto respondem diferente por
     /// construção.
     ///
+    /// ⭐⭐⭐⭐ **E desde 2026-09-21 a MATÉRIA também é a mesma:** com a app a pôr
+    /// a fonte do albedo ([`crate::MeshRenderer::set_albedo_source`]) este ramo
+    /// deixa de pintar o barro cravado no shader e pinta **os pixels da sprite
+    /// que vai ser assada**. Era a última diferença, e a maior — `31,68` códigos
+    /// de oito bits contra os `0,52` que a lei, o enquadramento e a oclusão de
+    /// tela somavam (**`61×`**). *Uma diferença de matéria não se corrige com
+    /// luz*, e foi por isso que o mesmo report do dono voltou três vezes.
+    ///
     /// ⛔ **O que ele NÃO promete é o mesmo PIXEL:** a câmera do visor é
     /// perspectiva e o canvas é uma projecção 2D, logo a mesma peça ocupa outra
     /// forma no quadro. O que é igual é a **resposta da superfície** — dado o
-    /// mesmo normal, a mesma luz e o mesmo material.
+    /// mesmo normal, a mesma luz e a mesma matéria.
     Pbr,
     /// **A LUZ DO OLHO** — o matcap `i` de [`MATCAPS`], que é sombreamento
     /// função apenas da normal em espaço de vista.

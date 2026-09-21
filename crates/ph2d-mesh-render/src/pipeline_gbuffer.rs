@@ -106,7 +106,7 @@ impl MeshRenderer {
             bytemuck::bytes_of(&CameraRaw {
                 view_proj: camera.view_proj(aspect).to_cols_array_2d(),
                 view: camera.view().to_cols_array_2d(),
-                viewport: viewport_of(area.size()),
+                viewport: viewport_of(area),
             }),
         );
 

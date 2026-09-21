@@ -46,6 +46,7 @@ impl Sculpt3dScene {
             slots: Vec::new(),
             camera,
             renderer: MeshRenderer::new(device, ph2d_render::GameRt::FORMAT),
+            albedo_de: None,
             drag: None,
             trim: crate::trim_gesto::Trim::default(),
             last: (0.0, 0.0),

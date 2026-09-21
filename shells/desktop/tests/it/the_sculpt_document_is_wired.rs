@@ -417,3 +417,36 @@ fn the_scene_opens_on_the_material_the_renderer_declares() {
          renderizador; um literal aqui e' a segunda resposta que diverge"
     );
 }
+
+/// ⭐⭐⭐⭐ **A SHELL SINCRONIZA A MATÉRIA DO VISOR — e DEPOIS de assar.**
+///
+/// O dono devolveu três vezes seguidas, cada uma depois de uma correcção enviada, a mesma coisa:
+/// *«o bake não é idêntico ao que se vê em 3d»*. As duas primeiras causas eram de LUZ. A terceira
+/// era de **MATÉRIA**: o visor pintava um barro cravado no shader e o bake pintava os pixels da
+/// sprite — `31,68` códigos de desvio contra `0,52` de tudo o resto somado, **`61×`**.
+///
+/// ⚠️ **O motor está fechado e gateado dentro da família** (`ph2d_app_sculpt3d::albedo`), e sem
+/// esta linha ele é *um motor com a lei certa e a shell a não o ligar* — que se lê, da cadeira do
+/// artista, exactamente como um motor sem a lei. É a 5.ª ocorrência dessa forma nesta casa.
+///
+/// ⚠️⚠️ **A ORDEM é metade do gate:** assar TROCA a matéria (a sprite passa a ser `base × luz` e a
+/// tabela dos assados passa a ter o `base`), e a memória do visor é keyed em *«esta sprite já foi
+/// assada?»*. Sincronizar antes do gesto deixaria o quadro do bake a mostrar a matéria de antes
+/// dele.
+#[test]
+fn a_shell_sincroniza_a_materia_do_visor() {
+    let fase = source("render_loop/fase_sculpt3d_bake.rs");
+    let body = function_body(&fase, "fase_sculpt3d_bake");
+    // O CONTROLO da extracção: sem o gesto, a comparação de posições abaixo não afirmaria nada.
+    let assar = body
+        .find("ph2d_app_sculpt3d::bake::drain(")
+        .expect("a fase deixou de conter o gesto de assar — este gate está a ler outra função");
+    let sincroniza = body.find("ph2d_app_sculpt3d::albedo::sincroniza(").expect(
+        "o visor deixou de receber a matéria que o bake vai acender: ele volta a pintar o barro \
+         cravado no shader, e o report do dono volta com ele",
+    );
+    assert!(
+        sincroniza > assar,
+        "a matéria é sincronizada ANTES de assar — o quadro do bake mostra a matéria de antes dele"
+    );
+}

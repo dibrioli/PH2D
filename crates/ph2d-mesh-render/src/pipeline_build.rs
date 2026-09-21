@@ -120,6 +120,20 @@ impl MeshRenderer {
                     },
                     count: None,
                 },
+                // ⭐⭐⭐ **A FONTE DO ALBEDO** — os pixels da sprite que o bake vai acender.
+                //
+                // ⚠️ Mora neste grupo pelo MESMO motivo do matcap (os quatro grupos que o `wgpu`
+                // garante já estavam ocupados) e porque quer exactamente este sampler.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -173,6 +187,9 @@ impl MeshRenderer {
         // não um `x^2.2`). Trocar por `Rgba8Unorm` deixaria toda escultura
         // clara demais, sem erro nenhum.
         let matcap_tex = crate::pipeline::matcap_texture(device, crate::matcap::MATCAPS[0].side);
+        // ⭐ A fonte do albedo nasce `1×1` BRANCA: com ela, `albedo = CLAY * 1` e o modo `Pbr`
+        // pinta exactamente o que pintava antes desta feature existir.
+        let albedo_tex = crate::pipeline::albedo_texture(device, (1, 1));
         let sss_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-mesh sss bind"),
             layout: &sss_bgl,
@@ -191,6 +208,12 @@ impl MeshRenderer {
                     binding: 2,
                     resource: wgpu::BindingResource::TextureView(
                         &matcap_tex.create_view(&wgpu::TextureViewDescriptor::default()),
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(
+                        &albedo_tex.create_view(&wgpu::TextureViewDescriptor::default()),
                     ),
                 },
             ],
@@ -539,6 +562,8 @@ impl MeshRenderer {
             sss_lut_ready: false,
             matcap_tex,
             matcap_ready: None,
+            albedo_tex,
+            albedo_size: None,
             // Guardados porque a imagem do matcap muda de LADO entre fontes
             // (512 do Blender, 749 do SculptGL), e trocar o tamanho de uma
             // textura exige recriá-la — e o bind group que aponta para ela.

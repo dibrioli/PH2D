@@ -161,6 +161,77 @@ fn f16_to_f32(bits: u16) -> f32 {
 
 /// O barro VIVO, num alvo `Rgba16Float` — o mesmo formato do `game_rt`, então nada é clampado aqui e
 /// a saída pode passar de 1,0, que é justamente o que o modelo dele promete.
+/// **O visor num SUB-RECTÂNGULO de um alvo maior** — o que o produto de facto faz.
+///
+/// ⚠️ Ela existe porque o [`render_live`] desenha no alvo INTEIRO, e com a área a começar na origem
+/// a metade da projecção que lê `cam.viewport.zw` é **inobservável**: uma mutação que a apagasse
+/// sobrevivia. *Uma fixtura onde o parâmetro sob teste vale o elemento neutro não o testa.*
+#[allow(clippy::too_many_arguments)]
+fn render_live_in(
+    gpu: &GpuContext,
+    renderer: &mut MeshRenderer,
+    camera: &Camera3d,
+    rig: &ph2d_light::ResolvedRig,
+    alvo: (u32, u32),
+    area: ph2d_mesh_render::ScreenRect,
+    shade: ph2d_mesh_render::Shade,
+) -> Vec<f32> {
+    let (w, h) = alvo;
+    let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("sculpt3d light live in"),
+        size: wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba16Float,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    });
+    let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    drop(enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some("sculpt3d light in clear"),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            view: &view,
+            depth_slice: None,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                store: wgpu::StoreOp::Store,
+            },
+        })],
+        depth_stencil_attachment: None,
+        timestamp_writes: None,
+        occlusion_query_set: None,
+        multiview_mask: None,
+    }));
+    renderer.render_in(
+        &gpu.device,
+        &gpu.queue,
+        &mut enc,
+        &view,
+        camera,
+        Some(rig),
+        shade,
+        alvo,
+        area,
+    );
+    gpu.queue.submit([enc.finish()]);
+
+    let bytes = readback(gpu, &tex, w, h, 8);
+    let mut out = vec![0f32; (w * h * 4) as usize];
+    for (i, v) in out.iter_mut().enumerate() {
+        *v = f16_to_f32(u16::from_le_bytes([bytes[i * 2], bytes[i * 2 + 1]]));
+    }
+    out
+}
+
 fn render_live(
     gpu: &GpuContext,
     renderer: &mut MeshRenderer,

@@ -319,6 +319,32 @@ fn matcap_shade(n: vec3<f32>) -> vec3<f32> {
 // O preço é um upload por clique, que é o gesto mais lento que existe na UI.
 @group(3) @binding(2) var matcap_tex: texture_2d<f32>;
 
+// ⭐⭐⭐⭐ **A FONTE DO ALBEDO** — os pixels que o BAKE vai acender.
+//
+// ⚠️ **Ela existe porque o visor e a sprite tinham MATERIA diferente**, e isso era a ultima coisa a
+// separa-los: medido, a lei + o enquadramento + a oclusao de tela somavam `0,52` codigos e o albedo
+// sozinho valia `31,68` (`61×`). *Nenhuma correccao de LUZ fecha uma diferenca de MATERIA.*
+//
+// ⚠️ Nasce `1×1` BRANCA e so' e' lida com `pbr.vista.y == 1u` — sem fonte posta o modo `Pbr` pinta
+// o `CLAY`, byte a byte como antes desta feature.
+@group(3) @binding(3) var albedo_tex: texture_2d<f32>;
+
+// **O TEXEL DA SPRITE que corresponde a este fragmento.**
+//
+// O bake rasteriza a malha com a MESMA camera no tamanho da sprite, logo o texel `(i,j)` dela e' o
+// ponto da malha que aquela rasterizacao ve' ali. Com o `fov_y` preservado nas duas, o `y`
+// normalizado e' o MESMO e o `x` escala pela razao dos aspectos (`pbr.olhar.y`).
+//
+// ⚠️⚠️ **A posicao vem em coordenadas do ALVO**, nao da area: o `set_viewport` move o rasterizador e
+// NAO move a aritmetica do shader. A origem viaja no `cam.viewport.zw` exactamente por isso, e sem
+// ela toda esta conta descreveria outro sitio da peca.
+fn albedo_do_texel(frag: vec2<f32>) -> vec3<f32> {
+    let rel = frag - cam.viewport.zw;
+    let ndc_x = 2.0 * rel.x * pbr.olhar.z - 1.0;
+    let uv = vec2<f32>(ndc_x * pbr.olhar.y * 0.5 + 0.5, rel.y * pbr.olhar.w);
+    return textureSampleLevel(albedo_tex, sss_samp, uv, 0.0).rgb;
+}
+
 /// **A resposta difusa deste ponto, dado `N·L` e a curvatura de mundo.**
 ///
 /// Sem espalhamento é `max(N·L, 0)` — o Lambert de sempre, nos três canais. Com
@@ -1090,7 +1116,15 @@ fn fs_core(in: VsOut, vcolor: vec3<f32>) -> vec4<f32> {
         // mesma licao que o sprite pagou: o `compose` NAO e' linear no `base_color` (so' o lobulo
         // difuso escala com ele), e multiplicar no fim da' a um plastico vermelho um destaque
         // VERMELHO, que e' o que um METAL faz.
-        let mt = mx_at_base_color(pbr.mat, CLAY * in.vcolor);
+        // ⭐⭐⭐⭐ **A MATERIA: a da sprite que vai ser assada, quando o app a poe.**
+        //
+        // ⛔ Sem fonte posta e' o `CLAY` cravado — e ai' o visor e a sprite so' coincidem se a arte
+        // dela for, por acaso, da cor do barro. Foi esse acaso que faltou durante tres reports.
+        var materia = CLAY;
+        if (pbr.vista.y == 1u) {
+            materia = albedo_do_texel(in.clip.xy);
+        }
+        let mt = mx_at_base_color(pbr.mat, materia * in.vcolor);
 
         var luz = vec3<f32>(0.0);
         for (var i = 0u; i < rig.n; i = i + 1u) {

@@ -54,6 +54,15 @@ const FORA: &[Isento] = &[
          fazer a seguir)",
     ),
     (
+        "albedo.rs",
+        "as DUAS razões de a matéria de um sprite não poder ser lida — elas são a cauda da MESMA \
+         frase do `bake.rs` logo acima (`[sculpt3d] nao assou: {e}`), e vieram COM o código que as \
+         escreve quando a lei da matéria ganhou o segundo leitor. ⚠️ **Uma isenção é propriedade \
+         do CÓDIGO e não do sítio onde ele está** (`CLAUDE.md` §5.0): sem esta linha os dois \
+         literais ficavam sem abrigo e liam-se como TEXTO NOVO, e a cura seria migrar metade de \
+         uma frase cuja outra metade é consola",
+    ),
+    (
         "keys.rs",
         "o retrato de CONSOLA de cada tecla da escultura (o que ela fez, e a contagem depois)",
     ),

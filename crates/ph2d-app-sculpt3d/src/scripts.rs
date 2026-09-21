@@ -326,14 +326,15 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    (5) O SEGUNDO TESTE: aperte D ate' voltar ao BARRO e Delete ate' a\n\
              [sculpt3d]        escultura sumir; volte ao D. O sprite tem de continuar aceso E as\n\
              [sculpt3d]        teclas de luz tem de continuar movendo as sombras dele -- sem malha.\n\
-             [sculpt3d]    (6) O assado NAO vai bater com o barro, e a diferenca esta' MEDIDA:\n\
-             [sculpt3d]        a LEI da luz e' a mesma -- com o mesmo albedo dos dois lados as duas\n\
-             [sculpt3d]        concordam a 0,0020 no ARO (e ha' gate). O que difere e' o ALBEDO:\n\
-             [sculpt3d]        o passe leva a luz ate' 1,65x, e um sprite e' unorm8 -- entao sobre\n\
-             [sculpt3d]        BRANCO 43,6% da esfera satura em (255,255,255) e a forma SOME ali.\n\
-             [sculpt3d]        O barro vivo nunca satura porque e' HDR e a cor dele e' 0,74.\n\
-             [sculpt3d]        Sobre arte de meio-tom (128) o estouro e' ZERO -- e' o albedo que\n\
-             [sculpt3d]        decide quanto da forma sobrevive, nao a lampada.\n\
+             [sculpt3d]    (6) O TESTE DESTA WAVE -- o assado TEM de bater com o barro. O barro na\n\
+             [sculpt3d]        tela e o sprite assado sao agora a MESMA materia (a arte do sprite),\n\
+             [sculpt3d]        com a mesma lei e a mesma luz: aperte D para alternar entre os dois\n\
+             [sculpt3d]        e o desenho nao pode MUDAR DE COR. Se o barro estiver bege e o\n\
+             [sculpt3d]        assado branco, reprove -- e' o defeito que esta cena existe para\n\
+             [sculpt3d]        pegar (o dono reportou-o TRES vezes).\n\
+             [sculpt3d]        O que sobra, e e' declarado: um sprite e' de 8 bits e o barro e' HDR,\n\
+             [sculpt3d]        entao onde a luz passa de 1,0 os dois cortam no mesmo sitio mas so' o\n\
+             [sculpt3d]        assado perde a diferenca ao gravar.\n\
              [sculpt3d]    (7) Assar DE NOVO por outro angulo tem de substituir a luz, nao somar --\n\
              [sculpt3d]        gire, Shift+B, e o sprite nao pode ficar mais escuro a cada bake.\n\
              [sculpt3d]    (8) E ele SOBREVIVE a fechar o app -- mas isso e' a cena =12, que tem\n\

@@ -23,6 +23,120 @@
 use crate::pipeline::MeshRenderer;
 
 impl MeshRenderer {
+    /// ⭐⭐⭐⭐ **A FONTE DO ALBEDO — os pixels que o BAKE vai acender.**
+    ///
+    /// Com ela posta, o modo [`crate::Lighting::Pbr`] deixa de pintar o barro cravado no shader e
+    /// passa a pintar **a mesma matéria que a sprite assada terá**. É a última coisa que separava
+    /// as duas imagens, e a única que nenhuma correcção de LUZ podia fechar.
+    ///
+    /// **Medido em 2026-09-21** (mesma forma, mesma luz, mesmos enquadramentos do produto): a lei,
+    /// o enquadramento e a oclusão de tela somavam `0,52` códigos de desvio; o albedo sozinho valia
+    /// **`31,68`** — `61×`. *Uma diferença de MATÉRIA não se corrige com luz.*
+    ///
+    /// ⚠️ **Os pixels são `rgba8` DIRECTOS (não pré-multiplicados) e em sRGB** — é o que a sprite
+    /// guarda e é o que a textura desfaz na leitura.
+    ///
+    /// ⚠️ **A correspondência é de ECRÃ:** o bake rasteriza a malha com a MESMA câmera no tamanho
+    /// da sprite, logo o texel `(i,j)` da sprite é o ponto da malha que aquela rasterização vê ali.
+    /// O visor reconstrói esse `uv` do próprio fragmento — o `y` é o mesmo (o `fov_y` é preservado)
+    /// e o `x` escala pela razão dos aspectos.
+    ///
+    /// ⚠️⚠️ **E ela fica presa ao ECRÃ enquanto o artista orbita — o que é FIEL e não um defeito.**
+    /// Um objecto assado é um sprite 2D aceso por uma forma 3D, logo o albedo dele é alinhado ao
+    /// quadro da câmera que assa **por construção**; como essa câmera é a do escultor, o visor
+    /// mostra em cada instante o que um `Shift+B` gravaria AGORA. ⭐ Quem quer ler FORMA enquanto
+    /// esculpe tem os matcaps a um clique — eles são a luz do OLHO, e esse é o outro eixo.
+    pub fn set_albedo_source(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        pixels: &[u8],
+        size: (u32, u32),
+    ) {
+        let (w, h) = (size.0.max(1), size.1.max(1));
+        if pixels.len() < (w as usize) * (h as usize) * 4 {
+            return;
+        }
+        if self.albedo_tex.width() != w || self.albedo_tex.height() != h {
+            self.albedo_tex = crate::pipeline::albedo_texture(device, (w, h));
+            self.rebuild_sss_bind(device);
+        }
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &self.albedo_tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            pixels,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(w * 4),
+                rows_per_image: Some(h),
+            },
+            wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+        );
+        self.albedo_size = Some((w, h));
+    }
+
+    /// **O BIND DO GRUPO 3, reconstruído** — a porta ÚNICA, com DOIS chamadores.
+    ///
+    /// ⚠️ Ele é recriado quando uma das texturas do grupo muda de TAMANHO (a imagem do matcap muda
+    /// de lado entre fontes; a fonte do albedo muda com a sprite), porque uma textura não é
+    /// redimensionável e um bind aponta para a textura. ⛔ **Duas cópias desta lista divergiriam no
+    /// dia em que o grupo ganhasse a entrada seguinte** — e o modo de falha não é de compilação, é
+    /// o `wgpu` a recusar o bind em validação, no quadro em que o artista troca de chip.
+    fn rebuild_sss_bind(&mut self, device: &wgpu::Device) {
+        self.sss_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-mesh sss bind"),
+            layout: &self.sss_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(
+                        &self
+                            .sss_lut
+                            .create_view(&wgpu::TextureViewDescriptor::default()),
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.sss_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(
+                        &self
+                            .matcap_tex
+                            .create_view(&wgpu::TextureViewDescriptor::default()),
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(
+                        &self
+                            .albedo_tex
+                            .create_view(&wgpu::TextureViewDescriptor::default()),
+                    ),
+                },
+            ],
+        });
+    }
+
+    /// **ESQUECE a fonte do albedo** — o visor volta ao barro do shader.
+    pub fn clear_albedo_source(&mut self) {
+        self.albedo_size = None;
+    }
+
+    /// O que a projecção precisa de saber: o tamanho da fonte, quando ela existe.
+    pub(crate) fn albedo_size(&self) -> Option<(u32, u32)> {
+        self.albedo_size
+    }
+
     /// **Garante a tabela do SSS no device** — assa e sobe, uma vez.
     ///
     /// ⚠️ **Lazy, e só quando alguém de fato pede espalhamento.** A tabela custa
@@ -109,32 +223,7 @@ impl MeshRenderer {
         // só o `write_texture`.
         if self.matcap_tex.width() != side {
             self.matcap_tex = crate::pipeline::matcap_texture(device, side);
-            self.sss_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("ph2d-mesh sss bind"),
-                layout: &self.sss_bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(
-                            &self
-                                .sss_lut
-                                .create_view(&wgpu::TextureViewDescriptor::default()),
-                        ),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&self.sss_sampler),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: wgpu::BindingResource::TextureView(
-                            &self
-                                .matcap_tex
-                                .create_view(&wgpu::TextureViewDescriptor::default()),
-                        ),
-                    },
-                ],
-            });
+            self.rebuild_sss_bind(device);
         }
 
         queue.write_texture(

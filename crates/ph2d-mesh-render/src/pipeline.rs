@@ -70,8 +70,20 @@ pub(crate) fn set_area(pass: &mut wgpu::RenderPass<'_>, area: crate::ScreenRect,
     pass.set_scissor_rect(area.x, area.y, area.w, area.h);
 }
 
-pub(crate) fn viewport_of(size: (u32, u32)) -> [f32; 4] {
-    [size.0.max(1) as f32, size.1.max(1) as f32, 0.0, 0.0]
+/// **A RÉGUA DA ÁREA** — `(largura, altura, x, y)` em pixels do ALVO.
+///
+/// ⚠️⚠️ **O `zw` deixou de ser padding em 2026-09-21, e a ORIGEM é obrigatória para quem converte
+/// `@builtin(position)` em coordenada da ÁREA.** O `set_viewport` move o rasterizador e **não** move
+/// a aritmética do shader: um fragmento dentro da área chega com a posição do ALVO, logo sem a
+/// origem toda conta normalizada descreveria outro sítio da peça. *A mesma lição que o passe de
+/// SSAO já tinha pago, escrita no doc dele.*
+pub(crate) fn viewport_of(area: crate::ScreenRect) -> [f32; 4] {
+    [
+        area.w.max(1) as f32,
+        area.h.max(1) as f32,
+        area.x as f32,
+        area.y as f32,
+    ]
 }
 
 /// **O QUE UM OBJECTO OCUPA NO DEVICE** — ver [`slot`].
@@ -183,6 +195,18 @@ pub struct MeshRenderer {
     /// nada.
     sss_bgl: wgpu::BindGroupLayout,
     sss_sampler: wgpu::Sampler,
+    /// ⭐⭐⭐ **A FONTE DO ALBEDO** — os pixels que o BAKE vai acender, no device.
+    ///
+    /// ⚠️ **Ela existe porque o visor e a sprite tinham albedos DIFERENTES**, e essa era a última
+    /// coisa a separá-los: medido em 2026-09-21, a lei, o enquadramento e a oclusão de tela somavam
+    /// `0,52` códigos de desvio e o albedo sozinho valia **`31,68`** (`61×`). *Nenhuma correcção de
+    /// LUZ fecha uma diferença de MATÉRIA.*
+    ///
+    /// Ela nasce `1×1` BRANCA e inerte: sem fonte posta, o modo `Pbr` continua a pintar o `CLAY` do
+    /// shader, byte a byte como antes.
+    albedo_tex: wgpu::Texture,
+    /// O tamanho da fonte, para a projecção saber o aspecto dela. `None` = ninguém a pôs.
+    albedo_size: Option<(u32, u32)>,
 }
 
 /// **A textura de um matcap de lado `side`** — a porta ÚNICA, para o `new` e o
@@ -204,6 +228,36 @@ pub(crate) fn matcap_texture(device: &wgpu::Device, side: u32) -> wgpu::Texture 
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba16Float,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    })
+}
+
+/// **A TEXTURA DA FONTE DO ALBEDO** — a porta única, para o nascimento e a troca de tamanho não a
+/// descreverem de dois jeitos.
+///
+/// ⛔⛔ **`Rgba8Unorm` e NÃO `Rgba8UnormSrgb`, ao contrário do matcap — e a razão é a LEI do bake.**
+///
+/// A [`ph2d_form_pbr::imagem`] lê o byte da sprite como `px / 255,0` e escreve o resultado do mesmo
+/// jeito: para ela os pixels de um objecto assado são **LINEARES**. O matcap é o caso oposto (um
+/// PNG em sRGB, onde o `Srgb` é que está certo), e copiar o formato de lá para cá poria o hardware
+/// a desfazer uma transferência que a lei nunca aplicou.
+///
+/// ⚠️ **O modo de falha seria MUDO e para o lado errado**: a peça no visor sairia mais CLARA que a
+/// sprite, sem erro nenhum — exactamente o sintoma que esta feature existe para fechar. *Quem
+/// espelha uma lei copia a CONVENÇÃO dela, não a do vizinho.*
+pub(crate) fn albedo_texture(device: &wgpu::Device, size: (u32, u32)) -> wgpu::Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("ph2d-mesh albedo source"),
+        size: wgpu::Extent3d {
+            width: size.0.max(1),
+            height: size.1.max(1),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     })
@@ -501,7 +555,7 @@ impl MeshRenderer {
             bytemuck::bytes_of(&CameraRaw {
                 view_proj: camera.view_proj(aspect).to_cols_array_2d(),
                 view: camera.view().to_cols_array_2d(),
-                viewport: viewport_of(area.size()),
+                viewport: viewport_of(area),
             }),
         );
         queue.write_buffer(&self.rig_uniform, 0, bytemuck::bytes_of(&RigRaw::pack(rig)));
@@ -526,6 +580,16 @@ impl MeshRenderer {
                 &shade.material.prepare(),
                 rig.map_or([0.0; 3], ph2d_light::flat_response),
                 shade.look,
+                // ⭐⭐⭐ **A FONTE DO ALBEDO, se o app a pôs** — ver [`MeshRenderer::set_albedo_source`].
+                // Sem ela o `Pbr` continua a pintar o `CLAY` do shader, byte a byte.
+                self.albedo_size().map(|(fw, fh)| {
+                    let (vw, vh) = (area.w.max(1) as f32, area.h.max(1) as f32);
+                    crate::pbr::Projeccao {
+                        razao_dos_aspectos: (vw / vh) / (fw.max(1) as f32 / fh.max(1) as f32),
+                        inv_w: 1.0 / vw,
+                        inv_h: 1.0 / vh,
+                    }
+                }),
             )),
         );
 
@@ -578,7 +642,7 @@ pub fn camera_uniform_bytes(camera: &Camera3d, aspect: f32, size: (u32, u32)) ->
     let raw = CameraRaw {
         view_proj: camera.view_proj(aspect).to_cols_array_2d(),
         view: camera.view().to_cols_array_2d(),
-        viewport: viewport_of(size),
+        viewport: viewport_of(crate::ScreenRect::full(size)),
     };
     let mut out = [0u8; 144];
     out.copy_from_slice(bytemuck::bytes_of(&raw));

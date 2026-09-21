@@ -141,6 +141,12 @@ pub struct Sculpt3dScene {
     pub(crate) slots: Vec<ObjectId>,
     pub(crate) camera: Camera3d,
     pub(crate) renderer: MeshRenderer,
+    /// ⭐⭐⭐⭐ **DE QUEM SÃO OS PIXELS QUE O VISOR ESTÁ A PINTAR** — `(sprite, já-assada?)`.
+    ///
+    /// ⚠️ **É uma MEMÓRIA e não um cache de conveniência:** ler a matéria de uma sprite é um
+    /// `readback` do device, e este campo é o que o mantém fora do laço do quadro. A lei toda,
+    /// com o número que a escolheu, vive em [`super::albedo::sincroniza`].
+    pub(crate) albedo_de: Option<(u64, bool)>,
     pub(crate) drag: Option<Drag>,
     /// ⭐ **O ESTADO DO CORTE** (`Trim`) — ver [`super::trim_gesto::Trim`].
     pub(crate) trim: super::trim_gesto::Trim,

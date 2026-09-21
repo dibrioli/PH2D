@@ -1041,3 +1041,350 @@ separa um recurso partilhado de um defeito de lógica*.
 ⚠️ **E o índice da memória reprovou** (`22 150` contra `22 000`) — a cura é a
 que o próprio gate prescreve: a entrada desceu para o
 `reference_topic_code_pattern_gotchas`, e o índice fecha a `21 944`.
+
+---
+
+## §14 — O PÂNICO: `index out of bounds` no registo da tinta, e a cerca que faltava
+
+### §14.1 — O report, e o que o NÚMERO já dizia
+
+```
+PH2D PANIC frame=10216 thread="main"
+location="crates/ph2d-mesh-colors/src/topo.rs:239"
+message="index out of bounds: the len is 196608 but the index is 196608"
+```
+
+A linha `239` é `self.lado_da_face[4 * f + s]`, e o vector tem **`4` entradas por
+face**. ⇒ `196 608 = 4 × 49 152` e o índice é `4 × 49 152 + 0`, ou seja **`f`
+valia exactamente a contagem de faces da topologia**: a lista de faces que
+chegou ao registo tinha **mais faces do que o plano descreve**.
+
+⭐ *O número dizia o mecanismo antes de qualquer leitura de código* — a única
+maneira de `4f + s` cair no primeiro índice fora do vector é `f == faces()` com
+`s == 0`.
+
+### §14.2 — Reproduzido, e não inferido
+
+Sonda pura, sem device: uma topologia nascida de **dois quads** e o payload
+alimentado com os **quatro triângulos** da mesma malha triangulada.
+
+| perfil | o que sai |
+|---|---|
+| `dev` | `debug_assert_eq!` dispara: *«o payload recebeu outra face»*, `left: 3, right: 4` |
+| `release` | `topo.rs:239:38 — index out of bounds: the len is 8 but the index is 8` |
+
+⇒ **a mesma linha, a mesma coluna, a mesma forma** (`len = 4 × faces`,
+`index = 4 × faces`), com `2` faces em vez de `49 152`.
+
+⛔⛔ **E ele só existe em RELEASE.** A única régua daquela linha era um
+`debug_assert`, e o perfil `smoke` — que é o que o dono corre — não o compila.
+*Uma promessa escrita num `debug_assert` é uma promessa que o produto não faz.*
+
+### §14.3 — O caminho do PRODUTO, com os endereços
+
+1. [`input_down.rs:322`] — o pen-down **empresta** o plano ao traço
+   (`tinta_da_peca::empresta`). A topologia dele descreve a malha de AGORA.
+2. [`input_down.rs:378`] — `open_dyntopo_stroke()`, **56 linhas depois**, chama
+   `mesh_mut().triangulate()`: os dois motores de topologia recusam quads, e
+   desde 2026-09-20 é o pen-down que herda esse trabalho (o `toggle_dyntopo`
+   deixou de o fazer com o plano armado, para não apagar o detalhe fino ao
+   LIGAR um interruptor). ⇒ **a contagem de faces dobra e o plano fica a
+   descrever a malha de antes.**
+3. [`slots.rs:170-180`] — o quadro reconcilia com a `garante`, mas **só na rota
+   `Rota::DaPeca`**. Com o plano emprestado a rota é `Emprestado`, e o doc dela
+   di-lo por escrito: *«não se reconcilia nada»*.
+4. [`slots.rs:297`] — `upload_tinta_at(mesh de AGORA, plano de ANTES)` →
+   `payload` → **pânico**.
+
+⚠️ **E o `triangulate` do pen-down é só a PRIMEIRA porta:** o `refine_for_dab`
+parte triângulos em triângulos **a cada dab**, e ali a contagem de faces sobe
+com todos os cantos a `3`. *O pen-down explica o primeiro quadro; os dabs
+explicam o quadro `10 216`.*
+
+⛔⛔ **O cabeçalho da porta já escrevia o perigo e nada o media:** *«um plano da
+malha de antes é tinta no vértice errado, e nenhuma contagem o vê»*. É a família
+que esta casa chama de *promessa num doc-comment* — a 2.ª desta jornada.
+
+### §14.4 — A cura, em três camadas e UMA lei
+
+| camada | onde | o quê |
+|---|---|---|
+| **LEI** | `ph2d_mesh_colors::Topologia::descreve` | *«esta topologia descreve aquela malha?»*, pelas duas contagens, `O(1)` |
+| **PORTA** | `Topologia::payload` | devolve **`bool`** e RECUSA, face a face, deixando `out` **vazio** |
+| **DEVICE** | `MeshRenderer::upload_tinta_at` | **DESARMA** (`armado = 0`) em vez de construir |
+
+⭐⭐⭐ **A lei mudou de casa, e essa é a decisão da wave.** A conta vivia no
+`tinta_da_peca::concorda_com`, na crate da FAMÍLIA — e o pânico provou que ela
+tem um **segundo leitor que aquela crate não alcança**: a porta do device, em
+`ph2d-mesh-render`. *Uma lei escrita em dois sítios ainda não é uma lei; só uma
+PORTA é.* Hoje o `concorda_com` **delega**, e o que sobra nele é a tradução de
+`Tinta` + `Mesh` para as duas contagens.
+
+⚠️⚠️ **E na porta do device são as DUAS perguntas, porque nenhuma cobre a
+outra:** a `descreve` é a única que vê os **VÉRTICES** (um registo é feito de
+faces, e o payload nunca os olha), e o payload é o veredito **forte**, o único
+que separa duas malhas com as mesmas duas contagens. A `descreve` vem à frente
+pela ordem barata — ela corta sem percorrer as faces todas, que é o caso comum
+durante um traço de forma com o plano armado.
+
+⚠️ **Desarmar é a resposta CERTA e não um remendo.** O plano já não descreve
+esta malha, logo não há tinta fina que se possa desenhar; o device passa a
+mostrar a **cor por vértice**, que é exactamente o que a `garante` reconstrói
+assim que o traço larga o plano. *Meio quadro com a cor de baixa resolução é o
+que já ia acontecer de qualquer maneira; um pânico é a sessão inteira.*
+
+### §14.5 — As TRÊS recusas, e porque são três
+
+| recusa | o que apanha | quem a produz no produto |
+|---|---|---|
+| `f >= self.faces()` | faces a **MAIS** com os mesmos cantos | o `refine_for_dab` de cada dab |
+| `n != self.cantos_de(f)` | a mesma face com **outros cantos** | a triangulação do pen-down |
+| `vistas != self.faces()` | faces a **MENOS** | um colapso |
+
+⛔⛔ **A terceira é a que nunca estourou, e é a pior.** Com menos faces o laço
+acaba sozinho, nenhum índice sai de alcance, e o registo fica **truncado**: o
+shader lê o bloco de interior de uma face que já não está lá e pinta **tinta
+válida no sítio errado, em silêncio**. É por isso que a régua é a IGUALDADE e
+não um tecto.
+
+### §14.6 — ⛔⛔⛔ A MUTAÇÃO ACHOU A FIXTURA A MASCARAR-SE
+
+A 1.ª rede deu **5 de 8** com DOIS sobreviventes que não podiam sobreviver:
+`N1` (apagar a recusa das faces a mais — o pânico) e `N4` (a recusa deixar o
+registo meio escrito).
+
+⭐ **A causa é uma só e é da FIXTURA:** ela media o caso do dono — quads
+triangulados —, e ali a **primeira** face já é um triângulo onde o plano espera
+um quad ⇒ a recusa dispara em `f = 0`, **pela cerca dos CANTOS**. Com ela a
+disparar primeiro, apagar a cerca da CONTAGEM não muda um bit, e o `out` nunca
+chega a ter nada dentro para o `clear` importar.
+
+⇒ *duas cercas que se tapam uma à outra leem-se como uma cerca a funcionar.*
+
+A cura é uma fixtura que **isola** cada cerca: uma topologia de `2` triângulos
+alimentada com `4` triângulos. Ali as duas primeiras faces passam (o `out` fica
+com `2 × PAYLOAD_STRIDE` palavras), a terceira sai de alcance, e as duas
+mutações voltam a sangrar. ⚠️ **E o caso é REAL**, não um exercício: é o
+`refine_for_dab`, que parte triângulos em triângulos.
+
+⭐ O caso do dono fica com gate próprio
+(`o_panico_do_dono_reproduzido_uma_peca_de_quads_triangulada`) e o doc dele diz
+**qual** das três cercas ali dispara — *escrever só este caso deixaria a cerca
+da contagem sem régua nenhuma*.
+
+### §14.7 — E o arnês irmão perdeu duas âncoras, em voz alta
+
+A delegação do `concorda_com` apagou o texto que as mutações `M3`/`M4` do
+[`muta_a_metade_visivel.sh`] mutavam ⇒ as duas passaram a casar **zero** vezes.
+⭐ **O controlo de âncora do arnês foi quem o disse** — *uma rede sem esse
+controlo teria lido as duas como SOBREVIVENTES*, que é o placar perfeito e
+fabricado que o §8-bis já registou noutra forma.
+
+Elas mudaram de agulha e passaram a medir a **tradução** (`descreve(verts,
+faces)` com um dos dois argumentos preso ao próprio plano): **2 de 2 sangram**,
+sobre uma corrida limpa de `306` testes.
+
+### §14.8 — O que NÃO foi construído, com o número ao lado
+
+⛔ **Não borrar o plano quando o gesto vai mexer na topologia** — construído em
+raciocínio e recusado por CUSTO: com o plano na peça, a `garante` do quadro
+reconstrói-o **a cada dab que refina** (`72 MB` no degrau `8×` da peça de
+fábrica, `288 MB` no `16×`). *A cura trocaria um pânico por uma paragem.*
+
+⛔ **Uma cerca dentro da lei de cor** (`tinta_fina::aplica`, que indexa
+`amostras_mut()[a.idx]`) — a mesma família de pânico é **inalcançável pela
+rota**: com o plano armado um verbo de COR não mexe na topologia (a cura de
+20/09), e entre dois traços há sempre um quadro em que a `garante` corre.
+Fronteira **declarada**, não coberta.
+
+### §14.9 — ABERTO desta secção
+
+- ✅ **A lente estreita da VOZ** foi achada a medir esta cura e fechou no mesmo
+  dia — §15.
+- ⏳ A cerca dentro da lei de cor (§14.8), declarada e não coberta.
+
+---
+
+## §15 — E a VOZ tinha a lente mais estreita que o consumidor, nos DOIS sentidos
+
+### §15.1 — O achado, e ele saiu de medir a cura do §14
+
+A cura do pânico obriga a perguntar *quem muda a topologia debaixo do plano
+emprestado?* A resposta é o [`open_dyntopo_stroke`], e ao lê-lo apareceu que a
+**VOZ** que avisa o artista lê **outra coisa**:
+
+| | o CONSUMIDOR (`open_dyntopo_stroke`) | a VOZ (`recusa.rs`) |
+|---|---|---|
+| interruptor | `dyntopo.armed \|\| verbo.corre_sem_o_interruptor()` | `dyntopo_armado` |
+| pilha | `level_count() == 1` | *(não pergunta)* |
+| o gesto mexe | `o_gesto_muda_a_topologia(…)` | idem |
+
+⇒ **duas células erradas, com sinais OPOSTOS, no mesmo `if`:**
+
+| configuração | o que acontece | o que a voz dizia |
+|---|---|---|
+| interruptor **OFF** + `Density` + plano armado | o plano é **refeito** | **calada** |
+| interruptor **ON** + pilha de multiresolução | o passe **não corre** | **avisa** |
+
+⚠️ *Um falso negativo e um falso positivo na mesma condição* — e nenhum deles é
+visível a quem lê só um dos dois sítios. É a forma que o §5.0 desta casa chama
+de **a lente do painel mais larga que a do consumidor**, aqui com os papéis
+trocados numa metade e não na outra.
+
+⭐ **E o `Density` não é um caso de canto:** ele é o único verbo que
+`corre_sem_o_interruptor()`, por ordem do dono de 14/09 (*«Dynamic topology é
+para os outros pincéis»*) — ou seja, **a configuração de fábrica** dele é
+exactamente a célula muda.
+
+### §15.2 — A cura é UMA PORTA com dois leitores
+
+[`tinta_da_peca::o_passe_corre_no_pen_down(verbo, dyntopo_armado, niveis,
+tinta_fina_armada)`] — pura, com as três metades, lida pelo
+[`open_dyntopo_stroke`] e pela [`recusa::Entradas::recusa`].
+
+⚠️ **O `dyntopo_armado` FICA na `Entradas`** e não foi substituído: a SEGUNDA
+voz (*«a tinta fina dispensa a topologia»*) quer mesmo o **interruptor** — ela
+é sobre o gesto que o artista acabou de fazer, não sobre o que o passe vai
+fazer. *Duas perguntas parecidas com respostas diferentes continuam a ser duas
+perguntas.*
+
+⚠️ **A `Entradas` ganhou `niveis`**, e é a metade que faltava para a voz poder
+calar-se com a pilha montada.
+
+### §15.3 — As réguas
+
+- `o_passe_do_pen_down_tem_as_tres_metades` — a porta **pura**, com as duas
+  células do erro e **quatro** de CONTROLO (incluindo *«sem o plano armado um
+  verbo de cor volta a mexer»*, sem a qual esta porta apagava a cura de 20/09).
+- `o_pen_down_diz_o_preco_da_tinta_fina` — a voz pelo **produto**, com as duas
+  células novas ao lado dos três controlos que já lá estavam.
+- O censo textual passa a **DEZASSEIS** elos: o do pen-down mudou de agulha e o
+  da voz **nasceu** (ela não tinha elo nenhum).
+
+⛔⛔ **E o censo apanhou a mudança sozinho:** ao apontar o pen-down para a porta,
+o `a_cura_da_tinta_fina_esta_ligada_nos_*` reprovou em voz alta com a agulha
+antiga impressa. *Uma agulha que deixa de casar é o instrumento a funcionar —
+foi assim que as âncoras `M3`/`M4` do arnês também apareceram.*
+
+---
+
+## §16 — E o CAMINHO RÁPIDO salta a porta: a cerca `!mexeu` não diz o que promete
+
+### §16.1 — O achado, e ele também saiu de medir a cura do §14
+
+O upload da tinta tem um atalho — *subir só as amostras que o traço escreveu* —
+com três cercas, e o comentário delas nomeia o que cada uma assume:
+
+> *«a topologia e as posições não mexeram (`!mexeu`), ninguém pediu o plano
+> inteiro (`!tinta_suja`), e o device tem EXACTAMENTE este plano»*
+
+⛔⛔ **A primeira é FALSA, e a prova está no próprio módulo:** `mexeu` é
+`!dirty.is_empty()`, e o `mesh_rebuilt()` — que é quem TODA mudança de
+topologia chama — faz `dirty.clear()` e `uploaded = false`. ⇒ *a linha que
+regista «a topologia mudou» é a mesma que apaga a evidência de que alguma coisa
+mudou.*
+
+### §16.2 — Reachable, e por um gesto comum (medido no código, não inferido)
+
+O pen-down de um verbo com **ÂNCORA** (`Grab` · `Snake Hook` · `Twist` ·
+`Local Scale` · `Cloth`) **não carimba**: ele PEGA
+([`input_down.rs:409`], *«o primeiro toque escolhe o ponto e não move nada»*).
+⇒ com o plano armado e o passe a correr:
+
+| passo | estado |
+|---|---|
+| `empresta` | o traço leva o plano da malha de ANTES |
+| `open_dyntopo_stroke` → `triangulate` | a malha dobra de faces · `dirty` **vazio** · `uploaded = false` |
+| `take_hold` | **não escreve um vértice** ⇒ `dirty` continua vazio |
+| o quadro | `job = Full`, `mexeu = false`, `emprestado`, `!tinta_suja` ⇒ **o atalho dispara** |
+
+E o atalho devolve `true` (o device tem `armado` da última subida e a contagem
+de amostras **não mudou** — quem mudou foi a malha) ⇒ **`upload_tinta_at` nunca
+é chamada, e a cerca do §14 nunca corre.**
+
+⛔⛔⛔ **E o que se vê não é nada de bom:** a entrada de fragmento da tinta lê
+`@builtin(primitive_index)` — o índice do triângulo da geometria **PRINCIPAL**,
+que o `upload_at` acabou de renovar — e resolve-o contra o `origem`/`topo` da
+tinta, que ficaram os de antes. *Duas tabelas a descrever malhas diferentes,
+indexadas pelo mesmo número.*
+
+### §16.3 — A cura: a cerca passa a dizer o que assume
+
+O atalho ganha a quarta cerca — **o device tem de já ter ESTA malha**
+(`!matches!(line.job, SlotJob::Full)`) —, e a decisão sai para uma função
+**PURA** ([`tinta_da_peca::so_as_amostras_bastam`]), pela razão que este módulo
+já pagou duas vezes: *quando um gate precisa de um `wgpu::Device` para medir
+uma decisão que não tem pixel nenhum, a lei está no sítio errado.*
+
+### §16.4 — As réguas, e o CORTE que elas obrigaram
+
+- `o_atalho_do_upload_tem_quatro_cercas` — a porta pura, **uma entrada de cada
+  vez** com as outras no valor que faz o atalho disparar. ⚠️ Com duas a mexer
+  ao mesmo tempo, uma cerca apagada passa despercebida atrás da outra — que é
+  exactamente a forma que a fixtura do payload pagou no §14.6, **no mesmo dia**.
+- `o_laco_de_upload_pergunta_a_porta_se_bastam_as_amostras` — o ELO, com a
+  prosa cortada antes de se medir, e a metade que exige que a quarta entrada
+  venha do **JOB do slot**: *passar `false` ali deixaria a porta certa e a
+  chamada errada.*
+
+⛔ **E o `tinta_da_peca_tests.rs` estourou o tecto (`706` contra `700`)** — curado
+por **CORTE e nunca por uma entrada no `FILE_OVERAGE_OK`**. O corte é por
+ASSUNTO e ficou melhor do que o ficheiro era: lá **o PLANO** (como nasce, como
+volta à peça, o que pesa, onde está o tecto), aqui **as PORTAS que decidem** —
+e o cabeçalho do irmão novo diz porque elas são puras.
+
+### §16.5 — ⛔⛔⛔ E a mutação achou a MINHA agulha a medir um fragmento
+
+A `M41` (apagar a quarta cerca da porta) sangrou à primeira. A **`M42`** — *a
+cerca fica certa e a CHAMADA passa-lhe sempre `false`* — **SOBREVIVEU**.
+
+⭐ **A causa é a agulha:** o elo perguntava por `matches!(line.job,
+SlotJob::Full)`, e esse texto aparece **DUAS vezes** no `slots.rs` (a outra é a
+condição que decide se vale a pena subir alguma coisa) ⇒ trocar o ARGUMENTO por
+`false` deixava a **outra ocorrência** a satisfazer o censo.
+
+⇒ *uma agulha que é um FRAGMENTO mede a presença do fragmento, não a da
+chamada* — a mesma lei que este repo já escreve para as âncoras de mutação
+(*«âncora = expressão inteira»*), agora do lado do CENSO, onde ela morde mais:
+**um censo é escrito precisamente onde não há comportamento para medir.**
+
+Hoje a agulha são as **seis linhas** da chamada, e o gate imprime-as na falha.
+
+### §16.6 — E os arneses ganharam PRÉ-VOO (`MUTA_SO_ANCORAS=1`)
+
+⛔⛔ **`cargo fmt` reescreve a indentação de uma âncora, ela passa a casar
+ZERO, e isso lê-se exactamente como uma mutação que SOBREVIVEU** — ao preço de
+uma corrida inteira para descobrir. O pré-voo salta a corrida limpa e o
+`corrida()`, conta cada âncora e sai `1` se alguma não casar **exactamente uma
+vez**: `43 de 43` e `9 de 9`, em segundos, e corre-se **depois de todo `fmt`**.
+
+⚠️ **E o sumário dele DIZ que zero testes correram** — *um pré-voo que
+imprimisse «N de N sangram» seria um instrumento a descrever-se mal, que é o
+defeito que o arnês inteiro existe para não ter.*
+
+---
+
+## §17 — O PORTÃO desta corrida
+
+| régua | resultado |
+|---|---|
+| `nextest-impacted` | **18 575 / 18 575** |
+| gates da tinta fina, **com adaptador** (a suíte de GPU incluída) | **56 / 56** |
+| censos da árvore COMBINADA | **127 / 127** · controlo do filtro `12 de 12` |
+| `cargo fmt --all --check` | limpo — ⚠️ e o **pré-voo das âncoras** a seguir (`43 de 43` · `9 de 9`) |
+| clippy `--all-targets -D warnings` nas quatro crates | zero |
+| as 10 vassouras sobre os 23 ficheiros do diff | **zero achados NOVOS** |
+| tectos de LOC | maior ficheiro tocado a **495** de `700` |
+| mutação — a cerca do plano (`muta_a_cerca_do_plano.sh`) | **8 de 9** (a 9.ª é o CONTROLO) |
+| mutação — a metade visível (`muta_a_metade_visivel.sh`) | **42 de 43** em duas fatias (a 43.ª é o CONTROLO) |
+
+⚠️ **As vassouras: os dois achados são PRÉ-EXISTENTES e isso foi MEDIDO, não
+inferido.** O mesmo handoff no `HEAD` já os tem (`3` e `5` linhas), as linhas
+acusadas são a `523`, `578`, `579`, `586` e `1031`, e **o §14 começa na `1047`**
+— ou seja, nenhuma delas está numa linha que esta corrida escreveu. Os dois
+tokens (`tip_roundness` · `sculpt_gesture`) estão nomeados no §10.10.
+
+⚠️ **E a rede da metade visível foi RE-CORRIDA INTEIRA, em fatias**: este diff
+toca no `tinta_da_peca.rs`, no `slots.rs`, no `recusa.rs`, no
+`history_dyntopo.rs` e nos censos — que são exactamente os ficheiros que ela
+ataca — e *um placar herdado é um placar sobre outra árvore*.

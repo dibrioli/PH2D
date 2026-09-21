@@ -72,3 +72,5 @@ pergunte o que o vazio passa a afirmar sobre o campo novo. Se ele afirma o valor
 produtor tem de deixar de poder ficar vazio quando o valor não é esse — e o gate leva o CONTROLO
 (no valor de omissão a lista continua vazia, byte a byte).
 - ⛔⛔ [Canal de desfazer com CERCA: quando ela recusa, **LARGUE** — carregar a janela para a fila oposta faz o refazer **desfazer outra vez**, e só no dia em que a cerca voltar a aceitar](feedback_an_undo_channel_that_cannot_apply_must_be_dropped_not_carried.md)
+- ⛔⛔⛔ [Uma promessa escrita num `debug_assert` **não existe no perfil que o dono corre** — o `smoke` herda `release`, e o que ele recebe é o `index out of bounds` (cura: VEREDITO `-> bool` e recusa, nunca um `assert!`)](feedback_a_promise_written_in_a_debug_assert_is_not_a_promise_the_product_makes.md)
+- ⛔⛔⛔ [A cerca «nada mexeu» lê a janela suja — e a operação que muda a topologia **limpa** essa janela: o atalho dispara exactamente quando não pode (um verbo com ÂNCORA não carimba, logo o `dirty` fica vazio)](feedback_a_flag_that_records_a_change_can_be_cleared_by_the_change_itself.md)

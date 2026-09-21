@@ -182,3 +182,27 @@ fn o_chip_do_escopo_so_aparece_numa_camada_de_borracha() {
         );
     }
 }
+
+/// ⭐ **A ALTURA DO CARTÃO DA PILHA** — o item que a §22.9 do handoff deixou por medir, e o limite
+/// REAL de quantas camadas cabem (o CPU não é).
+///
+/// A lei é `pad + ROW_H + (vão + fileiras × camadas × pitch) + pad`, e ela é EXACTA porque nenhuma
+/// fileira empilha.
+#[test]
+#[ignore = "sonda: corre à mão"]
+fn diag_a_altura_do_cartao() {
+    use ph2d_tokens::{ROW_H_PX, Spacing};
+    let pad = Spacing::Sm.px();
+    let gap = Spacing::Xs.px();
+    let pitch = ph2d_tokens::row_pitch_px();
+    println!("\n  A ALTURA DO CARTÃO DA PILHA");
+    println!("  pad {pad} · ROW_H {ROW_H_PX} · pitch {pitch} · vão {gap}\n");
+    println!("  camadas | fileiras | altura px");
+    println!("  --------+----------+----------");
+    for n in [3usize, 5, 7] {
+        for f in [2usize, 3] {
+            let h = pad + ROW_H_PX + (gap + f as f32 * n as f32 * pitch) + pad;
+            println!("  {n:7} | {f:8} | {h:8.0}");
+        }
+    }
+}

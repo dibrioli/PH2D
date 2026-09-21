@@ -5,6 +5,25 @@ use super::*;
 
 /// Dois triângulos que partilham a aresta `1–2`, e o segundo percorre-a **ao
 /// contrário** — que é o caso normal numa malha orientada.
+/// ⭐ **Uma grelha `2×2` de quads sobre `[0,2]²`** — e o tamanho dela é
+/// DERIVADO da pergunta: os quatro lados de um quad têm de ser partilhados
+/// pelo menos uma vez, senão o ramo que não é cruzado fica sem régua (ver
+/// [`dois_quads_leem_a_mesma_amostra_na_aresta_comum`]). ⭐ Cada célula é o
+/// quadrado unitário, logo `(u, v)` de uma face **é** a posição no mundo menos
+/// o canto dela — o que torna um campo bilinear exprimível sem conversão.
+fn grelha_de_quads() -> (Vec<[f32; 3]>, Vec<Vec<u32>>) {
+    let p: Vec<[f32; 3]> = (0..3)
+        .flat_map(|y| (0..3).map(move |x| [x as f32, y as f32, 0.0]))
+        .collect();
+    let faces: Vec<Vec<u32>> = vec![
+        vec![0, 1, 4, 3],
+        vec![1, 2, 5, 4],
+        vec![3, 4, 7, 6],
+        vec![4, 5, 8, 7],
+    ];
+    (p, faces)
+}
+
 fn duas_faces() -> (Vec<[f32; 3]>, Vec<Vec<u32>>) {
     let p = vec![
         [0.0, 0.0, 0.0],
@@ -203,15 +222,7 @@ fn dois_quads_leem_a_mesma_amostra_na_aresta_comum() {
     use super::amostragem::posicao_quad;
     use std::collections::{BTreeMap, BTreeSet};
 
-    let p: Vec<[f32; 3]> = (0..3)
-        .flat_map(|y| (0..3).map(move |x| [x as f32, y as f32, 0.0]))
-        .collect();
-    let faces: Vec<Vec<u32>> = vec![
-        vec![0, 1, 4, 3],
-        vec![1, 2, 5, 4],
-        vec![3, 4, 7, 6],
-        vec![4, 5, 8, 7],
-    ];
+    let (p, faces) = grelha_de_quads();
     let it = || faces.iter().map(|f| &f[..]);
 
     for nivel in 1..=4u8 {
@@ -260,5 +271,124 @@ fn dois_quads_leem_a_mesma_amostra_na_aresta_comum() {
             visto.len(),
             "nível {nivel}: dois pontos distintos da superfície colidiram"
         );
+    }
+}
+
+/// ⭐⭐⭐ **A LEITURA DE UM QUAD REPRODUZ UM CAMPO BILINEAR, EXACTAMENTE** — a
+/// irmã da [`a_leitura_reproduz_um_campo_linear`], para a metade da superfície
+/// que o produto de facto tem.
+///
+/// ⛔⛔ **Ela nasce com a própria lei ([`leitura_quad`]), que não existia:** a
+/// única leitura desta crate era a de triângulos, e a malha de escultura desta
+/// casa é **quase toda de quads** — a `uv_sphere` só tem triângulos nos dois
+/// pólos. *Uma lei de leitura que só sabe ler um terço da superfície do
+/// produto não é uma lei de leitura*, e a mesma ausência já tinha mordido do
+/// lado da ESCRITA (o laço do dab só tratava triângulos, e o pincel não
+/// pintava nada).
+///
+/// ⭐ **O campo é `(x, y, x·y)` e o `x·y` é a metade que decide:** os dois
+/// primeiros canais são reproduzidos por qualquer interpolação que some `1`
+/// (uma régua de partição-da-unidade passa sobre o defeito), e só o produto
+/// distingue a **bilinear** de uma média dos quatro cantos ou de uma leitura
+/// que caísse na célula vizinha.
+///
+/// ⚠️ E ele é lido nas QUATRO faces, logo atravessa as arestas partilhadas: um
+/// campo contínuo com uma leitura descontínua na costura reprova aqui.
+#[test]
+fn a_leitura_de_um_quad_reproduz_um_campo_bilinear() {
+    use super::amostragem::posicao_quad;
+
+    let (pos, faces) = grelha_de_quads();
+    let it = || faces.iter().map(|f| &f[..]);
+    for nivel in 0..=4u8 {
+        let mut t = Tinta::nova(pos.len(), it(), nivel);
+        let l = t.lado();
+
+        let canto = |f: &[u32]| {
+            [
+                pos[f[0] as usize],
+                pos[f[1] as usize],
+                pos[f[2] as usize],
+                pos[f[3] as usize],
+            ]
+        };
+        for (fi, f) in faces.iter().enumerate() {
+            let q = canto(f);
+            let mut onde: Vec<(u32, (u32, u32))> = Vec::new();
+            t.para_cada_amostra_quad(fi, f, |idx, ij| onde.push((idx, ij)));
+            for (idx, ij) in onde {
+                let p = posicao_quad(q, l, ij);
+                t.amostras_mut()[idx as usize] = [p[0], p[1], p[0] * p[1]];
+            }
+        }
+
+        let mut pior = 0.0f32;
+        for (fi, f) in faces.iter().enumerate() {
+            let q = canto(f);
+            for a in 0..=12 {
+                for b in 0..=12 {
+                    let uv = [a as f32 / 12.0, b as f32 / 12.0];
+                    let p = posicao_quad(q, 12, (a, b));
+                    let esperado = [p[0], p[1], p[0] * p[1]];
+                    let lido = t.cor_quad(fi, f, uv);
+                    for e in 0..3 {
+                        pior = pior.max((lido[e] - esperado[e]).abs());
+                    }
+                }
+            }
+        }
+        // ⚠️ A `lado = 1` a célula é a face inteira e o `x·y` de uma face é
+        //   exactamente a bilinear dos cantos dela ⇒ a barra é a mesma.
+        assert!(
+            pior <= 2e-6,
+            "nível {nivel}: a leitura de um quad desviou {pior:e} de um campo \
+             BILINEAR — ela está a ler a célula errada, ou a média dos quatro"
+        );
+    }
+}
+
+/// ⚠️ **Um ponto FORA do quad é CORTADO, e nunca dá a volta** — a metade que a
+/// irmã de triângulos escreve como *«um `floor` negativo satura a zero em
+/// silêncio num `as u32` e devolve um endereço plausível e errado»*.
+///
+/// ⭐ E o controlo positivo é o que a torna honesta: dentro, `u = 1` exacto
+/// **não** é um endereço fora da face — o `clamp` do piso em `L−1` põe a
+/// célula na última e a fracção em `1`, que devolve o canto.
+#[test]
+fn um_ponto_fora_do_quad_e_cortado_e_nao_da_a_volta() {
+    use super::amostragem::leitura_quad;
+
+    for nivel in 0..=3u8 {
+        let l = 1u32 << nivel;
+        let borda = leitura_quad(l, [1.0, 1.0]);
+        for (fora, nome) in [
+            ([1.5f32, 0.5], "u"),
+            ([0.5, 1.5], "v"),
+            ([-0.5, -0.5], "os dois"),
+        ] {
+            for ((i, j), w) in leitura_quad(l, fora) {
+                assert!(
+                    i <= l && j <= l,
+                    "lado {l}, fora em {nome}: o endereço ({i},{j}) saiu da face"
+                );
+                assert!(w.is_finite() && (0.0..=1.0).contains(&w));
+            }
+        }
+        // ⭐ CONTROLO: na borda EXACTA o peso todo está no canto `(L, L)`.
+        let (canto, peso) = borda
+            .iter()
+            .copied()
+            .max_by(|a, b| a.1.total_cmp(&b.1))
+            .expect("quatro pesos");
+        assert_eq!(canto, (l, l), "lado {l}: a borda não caiu no canto");
+        assert!((peso - 1.0).abs() <= 1e-6, "lado {l}: o canto pesa {peso}");
+        // ⭐ E os quatro pesos somam UM em toda parte.
+        for uv in [[0.0, 0.0], [0.3, 0.7], [1.0, 0.0], [0.5, 0.5]] {
+            let s: f32 = leitura_quad(l, uv).iter().map(|(_, w)| *w).sum();
+            assert!(
+                (s - 1.0).abs() <= 1e-6,
+                "lado {l}, {uv:?}: os pesos somam {s}"
+            );
+        }
     }
 }

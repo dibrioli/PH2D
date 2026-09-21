@@ -121,6 +121,26 @@ muta enderecos.rs \
             t: i,' \
   'M10 sitio_quad: o lado c->d deixa de andar para tras'
 
+# ── M11: a bilinear perde o termo cruzado ─────────────────────────────────
+muta amostragem.rs \
+  '((i + 1, j + 1), fu * fv),' \
+  '((i + 1, j + 1), fv),' \
+  'M11 leitura_quad: o canto oposto perde o termo cruzado'
+
+# ── M12: o piso deixa de ser cortado em L-1 ───────────────────────────────
+#    ⚠️ Em `u = 1` exacto o `floor` da' `L` e a celula vira `[L, L+1]` — um
+#    endereco FORA da face.
+muta amostragem.rs \
+  'let i = (su.floor() as u32).min(lado - 1);' \
+  'let i = su.floor() as u32;' \
+  'M12 leitura_quad: o piso de u nao e cortado na ultima celula'
+
+# ── M13: o ponto nao entra no quadrado ────────────────────────────────────
+muta amostragem.rs \
+  'let v = uv[1].clamp(0.0, 1.0);' \
+  'let v = uv[1];' \
+  'M13 leitura_quad: um v fora nao e cortado'
+
 echo
 echo "MUTACAO: $sangram de $total sangram"
 [ "$sangram" -eq "$total" ]

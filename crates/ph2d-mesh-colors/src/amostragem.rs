@@ -88,6 +88,46 @@ pub fn leitura_tri(lado: u32, bar: [f32; 3]) -> [((u32, u32, u32), f32); 3] {
     }
 }
 
+/// ⭐⭐ **Os QUATRO pontos da retícula que um ponto de um QUAD lê, e os pesos.**
+///
+/// ⛔⛔ **Ela NÃO existia, e a ausência era do tamanho do produto:** a
+/// [`leitura_tri`] é a única leitura desta crate, e a malha de escultura desta
+/// casa é **quase toda de quads** (a `uv_sphere` só tem triângulos nos dois
+/// pólos). *Uma lei de leitura que só sabe ler um terço da superfície do
+/// produto não é uma lei de leitura* — e a mesma ausência já tinha mordido uma
+/// vez, do lado da ESCRITA, quando o laço do dab só tratava triângulos e o
+/// pincel não pintava nada.
+///
+/// ⭐ **Aqui não há sub-triângulos invertidos** (a razão de a irmã ser
+/// complicada): a retícula de um quad é uma grelha, e uma célula tem sempre
+/// quatro cantos. A leitura é a **bilinear** deles.
+///
+/// ⚠️ **O `clamp` do piso em `L−1` é load-bearing e não defesa:** em `u = 1`
+/// exacto o `floor` dá `L`, e sem o corte a célula seria `[L, L+1]` — um
+/// endereço FORA da face. Com o corte a célula é a última e `fu` vale `1`,
+/// que devolve o canto. *A borda de uma face é o sítio onde uma leitura erra
+/// sem que ninguém veja, porque ali o vizinho tem quase a mesma cor.*
+#[must_use]
+pub fn leitura_quad(lado: u32, uv: [f32; 2]) -> [((u32, u32), f32); 4] {
+    // ⚠️ Primeiro o ponto entra no quadrado, pela razão que a irmã escreve: um
+    // `floor` negativo satura a zero **em silêncio** num `as u32` e devolve um
+    // endereço plausível e errado.
+    let u = uv[0].clamp(0.0, 1.0);
+    let v = uv[1].clamp(0.0, 1.0);
+    let l = lado as f32;
+    let (su, sv) = (u * l, v * l);
+    let i = (su.floor() as u32).min(lado - 1);
+    let j = (sv.floor() as u32).min(lado - 1);
+    let fu = su - i as f32;
+    let fv = sv - j as f32;
+    [
+        ((i, j), (1.0 - fu) * (1.0 - fv)),
+        ((i + 1, j), fu * (1.0 - fv)),
+        ((i + 1, j + 1), fu * fv),
+        ((i, j + 1), (1.0 - fu) * fv),
+    ]
+}
+
 impl Tinta {
     /// ⭐ **Percorre TODAS as amostras de uma face, uma vez cada.**
     ///
@@ -150,6 +190,22 @@ impl Tinta {
                 sitio_tri(l, ijk.0, ijk.1, ijk.2),
                 cantos,
             ) as usize;
+            let c = self.amostras()[idx];
+            for e in 0..3 {
+                out[e] += c[e] * peso;
+            }
+        }
+        out
+    }
+
+    /// ⭐⭐ **A COR num ponto `(u, v)` de um QUAD** — a irmã da [`Self::cor_tri`],
+    /// e o outro dono da lei que o gémeo em WGSL confere.
+    #[must_use]
+    pub fn cor_quad(&self, face: usize, cantos: &[u32], uv: [f32; 2]) -> [f32; 3] {
+        let l = self.lado();
+        let mut out = [0.0f32; 3];
+        for (ij, peso) in leitura_quad(l, uv) {
+            let idx = indice(self.topologia(), l, face, sitio_quad(l, ij.0, ij.1), cantos) as usize;
             let c = self.amostras()[idx];
             for e in 0..3 {
                 out[e] += c[e] * peso;

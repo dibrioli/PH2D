@@ -1201,14 +1201,19 @@ de um CORTE.
   `blur_region` — que **fica** com o binomial — e mais o `src_coord` inteiro. *Um corte que sobe por
   doc-comment em vez de por `#[` deixa o vizinho com a prosa de outro e sem a dele, e a metade que
   falta é muda.* Os dois voltaram ao sítio; o `src_coord` é hoje `pub(crate)`.
-  ⛔⛔ **E a metade SIMÉTRICA só apareceu no CLIPPY, depois de a wave estar escrita:** o doc do
-  `blur_region_caixa` **ficou para trás** em `blur.rs`, colado por baixo do doc do irmão que fica, com
-  uma linha em branco entre os dois — logo a função que VIAJOU chegou ao ficheiro novo **sem prosa
-  nenhuma** e a que ficou herdou um parágrafo sobre outra lei. ⚠️ **Nenhuma das três suítes o podia
-  ver** (prosa não é compilada contra nada) e o passe de compilação também não: quem o apanhou foi o
-  `empty_line_after_doc_comments` sob `-D warnings`, *e só porque a residência deixou uma linha em
-  branco — sem ela o doc trocado ficaria verde para sempre*. ⇒ a função leva a prosa dela e o irmão
-  ganha a linha que diz que **delega**.
+  ⛔⛔ **E o corte trocou MAIS DOIS docs de sítio, nos DOIS sentidos — e só o CLIPPY os viu:**
+  o do `blur_region_caixa` **ficou para trás** em `blur.rs` (logo a função que VIAJOU chegou ao
+  ficheiro novo sem prosa nenhuma, e a que fica herdou um parágrafo sobre outra lei), e o do
+  `blend_blurred` **viajou** para o `blur_caixa.rs` (onde ficou órfão por cima do `mod tests`, com o
+  `blend_blurred` a ficar sem doc em `blur.rs`). ⚠️ **Nenhuma das três suítes o podia ver** — *prosa
+  não é compilada contra nada* — e o passe de compilação também não: quem os apanhou foi o
+  `empty_line_after_doc_comments` sob `-D warnings`, **e só porque a residência deixou uma linha em
+  branco**; sem ela o doc trocado ficava verde para sempre.
+  ⚠️⚠️ **E o clippy dá UM erro por ALVO, não por ficheiro** — a 1.ª corrida acusou o `lib` e a 2.ª o
+  `lib test`, ou seja *uma corrida verde a seguir a uma cura não prova que não há um terceiro*. ⇒ a
+  prova que fecha o assunto é de **CONJUNTO**: as linhas `///` dos dois ficheiros DEPOIS do corte
+  contêm as de ANTES (`96` → `104`, com as duas «em falta» a serem as que esta jornada reescreveu
+  para o link absoluto), e nenhuma função das duas metades fica sem doc por cima.
 - **Um passe de compilação VERDE com a suíte VERMELHA.** O `BLUR_KERNEL_MAX` deixou de estar à vista
   dos testes do módulo novo — a cegueira do `--all-targets` a um `mod tests` que atravessa uma
   fronteira de MÓDULO, irmã pequena da que o HOWTO §2 regista para uma fronteira de *crate*.

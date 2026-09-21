@@ -66,6 +66,7 @@ use super::{
 
 const PAINT: &str = include_str!("paint.rs");
 const PAINT_BODY: &str = include_str!("paint/body.rs");
+const PAINT_BODY_PECA: &str = include_str!("paint/body_peca.rs");
 const PAINT_BRUSH: &str = include_str!("paint/brush.rs");
 const PAINT_BRUSH_COR: &str = include_str!("paint/brush_cor.rs");
 const PAINT_BRUSH_FILEIRAS: &str = include_str!("paint/brush_fileiras.rs");
@@ -83,6 +84,7 @@ const PAINT_WIDGETS: &str = include_str!("paint/widgets.rs");
 /// declarações de módulo é o que cobre a segunda metade.*
 const PINTORES: &[(&str, &str)] = &[
     ("body", PAINT_BODY),
+    ("body_peca", PAINT_BODY_PECA),
     ("brush", PAINT_BRUSH),
     ("brush_cor", PAINT_BRUSH_COR),
     ("brush_fileiras", PAINT_BRUSH_FILEIRAS),

@@ -14,6 +14,8 @@
 use glam::{Mat4, Vec3};
 use ph2d_mesh::Ray;
 
+use crate::{Lens, ViewRegion};
+
 /// Quão perto do polo a órbita pode chegar. Exatamente no polo a direção da
 /// vista fica paralela ao `up` e a `look_at` **degenera** (produz `NaN`); esta
 /// margem torna o caso impossível em vez de tratado.
@@ -34,7 +36,19 @@ pub struct Camera3d {
     /// Elevação, em radianos. Clampada longe dos polos.
     pub pitch: f32,
     /// Campo de visão VERTICAL, em radianos.
+    ///
+    /// ⚠️ **Ele é lido pelas DUAS lentes**, e é isso que faz a
+    /// [`Camera3d::view_height`] querer dizer a mesma coisa nas duas: sob a
+    /// paralela ele já não é um ângulo de convergência, é a régua que converte
+    /// [`Camera3d::distance`] na extensão do quadro **no plano do alvo**.
     pub fov_y: f32,
+    /// ⭐ **O que o olho faz com o que está longe** — ver [`Lens`].
+    ///
+    /// ⚠️ **Ela entra no [`crate::FormStamp`] por ser campo desta struct**, e isso
+    /// é o que faz o G-buffer ser re-rasterizado quando o artista troca a lente.
+    /// *Uma escolha de vista que não entra no carimbo é uma escolha que o assado
+    /// ignora até alguém orbitar.*
+    pub lens: Lens,
 }
 
 impl Default for Camera3d {
@@ -45,6 +59,7 @@ impl Default for Camera3d {
             yaw: 0.5,
             pitch: 0.4,
             fov_y: core::f32::consts::FRAC_PI_4,
+            lens: Lens::Perspective,
         }
     }
 }
@@ -115,7 +130,14 @@ impl Camera3d {
                 if i & 2 == 0 { -half.y } else { half.y },
                 if i & 4 == 0 { -half.z } else { half.z },
             );
-            let depth = p.dot(v);
+            // ⚠️ **O termo de PROFUNDIDADE é da lente convergente e SÓ dela.** Sob raios
+            // paralelos o tamanho na tela não depende da distância, logo uma quina mais perto
+            // do olho não obriga a recuar — pedi-lo enquadraria a peça `p·v` unidades longe de
+            // mais, que é o mesmo `√3` de desperdício que o doc acima já mediu noutro eixo.
+            let depth = match self.lens {
+                Lens::Perspective => p.dot(v),
+                Lens::Ortho => 0.0,
+            };
             d = d
                 .max(depth + p.dot(right).abs() / tan_h)
                 .max(depth + p.dot(up).abs() / tan_v);
@@ -158,7 +180,59 @@ impl Camera3d {
     #[must_use]
     pub fn proj(&self, aspect: f32) -> Mat4 {
         let (near, far) = self.clip_planes();
-        Mat4::perspective_rh(self.fov_y, aspect.max(0.01), near, far)
+        let aspect = aspect.max(0.01);
+        match self.lens {
+            Lens::Perspective => Mat4::perspective_rh(self.fov_y, aspect, near, far),
+            // ⭐ **A meia-extensão sai do [`Self::view_height`]**, que é a régua que as duas
+            // lentes partilham — é isso que faz trocar de lente não mudar o enquadramento no
+            // plano do alvo, e é a lei que o modelador implícito já ship (ver [`Lens`]).
+            Lens::Ortho => {
+                let hv = self.view_height() * 0.5;
+                Mat4::orthographic_rh(-hv * aspect, hv * aspect, -hv, hv, near, far)
+            }
+        }
+    }
+
+    /// ⭐⭐⭐ **A matriz mundo → clip de um RECORTE da vista** — o frustum fora do eixo.
+    ///
+    /// `aspect` é o da **vista INTEIRA**, nunca o do recorte: o recorte diz que pedaço dessa
+    /// vista este alvo desenha, e a forma do frustum é da vista. ⚠️ Passar o aspecto do
+    /// sub-rectângulo aqui devolveria uma imagem esticada que *parece* certa sozinha e não casa
+    /// com o que está na tela.
+    ///
+    /// ⚠️ **Com [`ViewRegion::FULL`] devolve a [`Self::view_proj`] SEM a multiplicar** — ver o
+    /// `//!` da [`crate::view_region`]: a matriz seria a identidade e o produto por ela é exacto
+    /// **quase** sempre.
+    #[must_use]
+    pub fn view_proj_in(&self, aspect: f32, region: ViewRegion) -> Mat4 {
+        self.proj_in(aspect, region) * self.view()
+    }
+
+    /// A matriz vista → clip de um RECORTE, **sozinha** — o irmão da [`Self::proj`], e ele existe
+    /// pela mesma razão que ela: o AO de tela precisa da INVERSA, e a marcha do GTAO acontece em
+    /// espaço de VISTA.
+    ///
+    /// ⚠️ **Com [`ViewRegion::FULL`] devolve a [`Self::proj`] sem a multiplicar**, e é isso que
+    /// torna o caminho de omissão byte-idêntico **por construção** em vez de por sorte.
+    #[must_use]
+    pub fn proj_in(&self, aspect: f32, region: ViewRegion) -> Mat4 {
+        if region.is_full() {
+            return self.proj(aspect);
+        }
+        region.to_clip() * self.proj(aspect)
+    }
+
+    /// ⭐⭐ **QUANTO MUNDO A ALTURA DO QUADRO ABRANGE, NO PLANO DO ALVO.**
+    ///
+    /// ⚠️ **É a régua que as DUAS lentes partilham**, e a definição diz *«no plano do alvo»* de
+    /// propósito: é ela que faz o [`Lens`] ser só uma lente — o zoom, o *fit* e o pan não mudam
+    /// de lei, e as duas imagens coincidem **exactamente** naquele plano.
+    ///
+    /// ⛔ **Sob a paralela ela é a ÚNICA fonte de escala** (a distância deixa de a afectar por
+    /// projecção), logo um *dolly* continua a ser zoom — o que é o que a mão espera.
+    #[must_use]
+    pub fn view_height(&self) -> f32 {
+        2.0 * self.distance * (self.fov_y * 0.5).tan()
     }
 
     /// Os planos near/far, **derivados da distância** em vez de constantes.
@@ -167,10 +241,24 @@ impl Camera3d {
     /// de um modelo pequeno, e um `far` fixo corta um modelo grande. Ancorando
     /// os dois na distância do olho, a razão `far/near` fica constante — que é
     /// a grandeza de que a precisão do depth-buffer de fato depende.
+    ///
+    /// ⚠️⚠️ **Sob a lente PARALELA o `near` é NEGATIVO, e não é um descuido:** ali não há ponto
+    /// de fuga, o plano do olho é uma escolha arbitrária, e uma peça mais funda do que a
+    /// distância a que se está a olhar ficaria **cortada ao meio** sem nada a explicar. A laje
+    /// fica centrada no ALVO (`±100 · distância`), que é onde a peça de facto está — o Blender
+    /// documenta a mesma coisa (*«em ortográfica o Clip Start pode ser negativo»*).
     #[must_use]
     pub fn clip_planes(&self) -> (f32, f32) {
-        let near = (self.distance * 0.01).max(1e-4);
-        (near, self.distance * 100.0)
+        match self.lens {
+            Lens::Perspective => {
+                let near = (self.distance * 0.01).max(1e-4);
+                (near, self.distance * 100.0)
+            }
+            Lens::Ortho => {
+                let half = (self.distance * 100.0).max(1e-3);
+                (-half, half)
+            }
+        }
     }
 
     /// O raio que sai do olho e passa pelo pixel `(px, py)` — **o pick**.
@@ -200,8 +288,21 @@ impl Camera3d {
         let right = Self::UP.cross(v).normalize_or(Vec3::X);
         let up = v.cross(right);
 
-        let dir = right * (ndc_x * tan_h) + up * (ndc_y * tan_v) - v;
-        Ray::new(self.eye().into(), dir.into())
+        match self.lens {
+            Lens::Perspective => {
+                let dir = right * (ndc_x * tan_h) + up * (ndc_y * tan_v) - v;
+                Ray::new(self.eye().into(), dir.into())
+            }
+            // ⭐⭐ **Sob raios paralelos o que varia com o pixel é a ORIGEM, não a direcção** —
+            // e é por isso que quem consome um raio tem de ler as duas coisas. Um consumidor
+            // que só leia `dir()` funciona na convergente e mede o mesmo raio em todo o ecrã
+            // aqui; ver [`Self::world_radius_for_screen_px`], que foi reescrita por causa disso.
+            Lens::Ortho => {
+                let hv = self.view_height() * 0.5;
+                let o = self.eye() + right * (ndc_x * hv * (w / h)) + up * (ndc_y * hv);
+                Ray::new(o.into(), (-v).into())
+            }
+        }
     }
 
     /// Onde um ponto do mundo cai na tela, em pixels — **o inverso exato do
@@ -254,15 +355,25 @@ impl Camera3d {
         let eye = self.eye();
         let axis = (eye - self.target).normalize_or(Vec3::Z); // alvo → olho
         let depth = (Vec3::from(at) - eye).dot(-axis);
-        if depth <= 0.0 {
+        // ⚠️ **A guarda é da lente CONVERGENTE**: ali um ponto atrás do olho não tem pixel (e o
+        // `project` acima já o disse). Sob raios paralelos a laje é centrada no alvo e um ponto
+        // atrás do plano do olho **continua a ser desenhado** — recusá-lo deixaria o pincel
+        // inerte na metade de trás da peça assim que o artista aproximasse.
+        if matches!(self.lens, Lens::Perspective) && depth <= 0.0 {
             return 0.0;
         }
-        let side = Vec3::from(self.ray_through(sx + px, sy, size).dir());
+        let ray = self.ray_through(sx + px, sy, size);
+        // ⚠️⚠️ **A ORIGEM do raio entra na conta, e é a cura que a lente paralela obrigou:** ali
+        // ela varia com o pixel e a direcção não, logo a versão antiga — que lia só a direcção —
+        // media a mesma coisa em todo o ecrã e devolvia `0`.
+        let o = Vec3::from(ray.origin());
+        let side = Vec3::from(ray.dir());
         let along = side.dot(-axis);
         if along <= 1e-6 {
             return 0.0;
         }
-        (eye + side * (depth / along) - Vec3::from(at)).length()
+        let t = (Vec3::from(at) - o).dot(-axis) / along;
+        (o + side * t - Vec3::from(at)).length()
     }
 
     /// **QUANTO MUNDO A ALTURA DA TELA ABRANGE, POR UNIDADE DE PROFUNDIDADE** —
@@ -279,6 +390,15 @@ impl Camera3d {
     /// régua é proporcional à profundidade —, que é precisamente o que a torna
     /// útil a quem não pode escolher um ponto: um estêncil preso ao viewport é
     /// lido por vértice, em profundidades diferentes, e nenhuma delas é *a* certa.
+    ///
+    /// ⏳⏳ **DÍVIDA DECLARADA — sob a lente PARALELA esta grandeza não existe.** Ali o quadro
+    /// abrange a mesma altura em toda profundidade, logo *«por unidade de profundidade»* não é
+    /// uma pergunta. Medida, ela devolve `2·tan(fov/2)` nas duas lentes (a extensão sobre a
+    /// distância do alvo), ou seja o **ÚNICO consumidor** — o estêncil do alpha por imagem
+    /// ([`ph2d_sculpt3d::AlphaStencil::height_per_depth`]) — continua a carimbar como se a
+    /// lente fosse convergente. ⚠️ **É o comportamento de hoje, não uma regressão**, e curá-lo
+    /// pede um campo a mais naquele estêncil (`span = base + depth × razão`, com a família dos
+    /// nove procedurais a passar `base = 0` e a ficar byte-idêntica) — wave própria.
     #[must_use]
     pub fn view_height_per_depth(&self, size: (u32, u32)) -> f32 {
         let h = self.world_radius_for_screen_px(self.target.into(), size.1.max(1) as f32, size);
@@ -395,8 +515,10 @@ impl Camera3d {
         // em coordenadas de mundo.
         let right = Vec3::new(view.x_axis.x, view.y_axis.x, view.z_axis.x);
         let up = Vec3::new(view.x_axis.y, view.y_axis.y, view.z_axis.y);
-        // A altura do mundo que a viewport cobre à distância do alvo.
-        let world_per_frac = 2.0 * self.distance * (self.fov_y * 0.5).tan();
+        // A altura do mundo que a viewport cobre à distância do alvo — a PORTA, e não a
+        // conta escrita outra vez: é exactamente a mesma expressão, e por isso o pan é
+        // byte-idêntico ao de antes desta lente existir.
+        let world_per_frac = self.view_height();
         self.target += (-right * dx + up * dy) * world_per_frac;
     }
 }

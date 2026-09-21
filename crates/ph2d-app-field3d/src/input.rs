@@ -368,8 +368,13 @@ impl<H: AppHost + ?Sized> Field3dInput for H {
     ///
     /// `Numpad5` é a tecla do Blender para a mesma coisa, e a memória de dedo vale mais do que uma letra
     /// livre. ⚠️ Com modificador não é atalho deste módulo, pela mesma razão do `mode_for_key`.
+    ///
+    /// ⭐⭐ **A TECLA sai da porta partilhada** ([`ph2d_viewport3d::views::is_lens_key`]) desde
+    /// 2026-09-21, quando a escultura ganhou a mesma escolha: *duas tabelas fariam `Numpad5`
+    /// significar coisas diferentes em dois cantos do mesmo app*. ⚠️ A política de MODIFICADORES
+    /// fica aqui, porque ela é deste módulo e não do outro.
     fn field3d_lens_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
-        if code != winit::keyboard::KeyCode::Numpad5
+        if !ph2d_viewport3d::views::is_lens_key(code)
             || self.mods().control
             || self.mods().alt
             || self.mods().super_key

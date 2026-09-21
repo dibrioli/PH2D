@@ -340,7 +340,18 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    (1) A esfera chega com CRISTAS -- e' delas que a luz toma a forma.\n\
              [sculpt3d]        Gire (botao direito) ate' a vista que voce quer assar: o bake usa a\n\
              [sculpt3d]        camera do ESCULTOR, entao o que voce ve' e' o que ele grava.\n\
+             [sculpt3d]    (1-bis) VOCE ESCOLHE A LENTE. No painel, secao Shading, a fileira `Lens`\n\
+             [sculpt3d]        tem `Perspective` (de fabrica) e `Orthographic`. Numpad5 alterna pelo\n\
+             [sculpt3d]        teclado. Na ortografica duas cristas do mesmo tamanho medem o mesmo na\n\
+             [sculpt3d]        tela, esteja uma perto e a outra longe -- e' a vista que um sprite\n\
+             [sculpt3d]        quase sempre quer. Troque e veja a esfera mudar NA HORA.\n\
+             [sculpt3d]    (1-ter) E AGORA O ENQUADRAMENTO E' O SEU. Arraste o sprite branco pela\n\
+             [sculpt3d]        tela e redimensione-o: a esfera pode ficar onde estiver.\n\
              [sculpt3d]    (2) Shift+B ASSA. O log diz o tamanho.\n\
+             [sculpt3d]    (2-bis) O TESTE DESTE REPORT: o assado tem de sair com a esfera no\n\
+             [sculpt3d]        MESMO lugar e do MESMO tamanho em que ela estava por cima do sprite.\n\
+             [sculpt3d]        Se ela aparecer com zoom, deslocada, ou menor, reprove.\n\
+             [sculpt3d]        (repita com o sprite num CANTO da tela -- e' onde o defeito era pior.)\n\
              [sculpt3d]    (3) Aperte D UMA vez: o barro sai da tela e o SPRITE aparece. Ele tem de\n\
              [sculpt3d]        estar com o RELEVO DA ESFERA desenhado em luz e sombra. Se ele so'\n\
              [sculpt3d]        escureceu por igual, reprove.\n\
@@ -568,3 +579,8 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
 /// que trouxe este arquivo à existência.
 #[path = "scripts_topology.rs"]
 mod topology;
+
+/// **OS GATES DO ROTEIRO DA `=11`** — ver o irmão.
+#[cfg(test)]
+#[path = "scripts_bake_roteiro_tests.rs"]
+mod bake_roteiro_tests;

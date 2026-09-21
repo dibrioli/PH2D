@@ -32,6 +32,7 @@ mod camera;
 /// ⭐ **A FONTE do shader, composta** — ver [`fonte::mesh_wgsl`].
 pub mod fonte;
 mod form;
+mod lens;
 mod lighting;
 pub mod matcap;
 pub mod pbr;
@@ -44,10 +45,12 @@ mod shade;
 pub mod ssao;
 pub mod sss;
 pub mod upload;
+pub mod view_region;
 mod wire;
 
 pub use camera::Camera3d;
 pub use form::FormPlanes;
+pub use lens::Lens;
 pub use lighting::{LampRaw, RigRaw};
 pub use matcap::{Credit, Encoding, Matcap};
 pub use pipeline::tinta_gpu::cfg_de as tinta_cfg;
@@ -168,6 +171,7 @@ impl ScreenRect {
 pub use sss::{
     LUT_SIZE as SSS_LUT_SIZE, SCATTER_FRACTION as SSS_SCATTER_FRACTION, SssParams, SssRaw,
 };
+pub use view_region::{Framing, ViewRegion};
 pub use wire::{bracos_na_vista_da_grade, wire_indices, wire_indices_com};
 
 /// **O material do barro** — o realce e a largura dele.

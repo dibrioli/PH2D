@@ -14,6 +14,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
+use super::body_peca::{paint_bake, paint_scene};
 use super::brush::{paint_brush_tail, paint_level_row};
 use super::tool::paint_tool;
 use super::widgets::{
@@ -23,14 +24,6 @@ use super::widgets::{
 
 use crate::rows;
 use crate::state::Sculpt3dSnapshot;
-
-/// Os rótulos das quatro primitivas, na ordem dos comandos `Add*`.
-const ADD_LABELS: [&str; 4] = [
-    "panel.sculpt3d.add.sphere",
-    "panel.sculpt3d.add.cube",
-    "panel.sculpt3d.add.cylinder",
-    "panel.sculpt3d.add.torus",
-];
 
 /// Os rótulos das quatro operações de máscara, na ordem dos comandos `Mask*`.
 pub(super) const MASK_LABELS: [&str; 4] = [
@@ -78,6 +71,63 @@ pub(super) fn paint_sections(
     );
     y = paint_scene(ctx, snap, x, w, y);
     paint_bake(ctx, snap, x, w, y)
+}
+
+// ⚠️ **Oito, e o oitavo é o irmão simétrico do `tail`.** A alternativa era
+// perguntar `section.id == SCULPT3D_SEC_BRUSH` aqui dentro — uma ENUMERAÇÃO
+// dentro da função genérica, que é precisamente a forma que apodrece quando a
+// segunda seção ganha cabeça. Precedente do `body_desc` da física.
+#[allow(clippy::too_many_arguments)]
+fn knob_section(
+    ctx: &mut PaintCtx,
+    snap: &Sculpt3dSnapshot,
+    section: &rows::Section,
+    x: f32,
+    w: f32,
+    y_in: f32,
+    head: impl Fn(&mut PaintCtx, &Sculpt3dSnapshot, f32, f32, f32) -> f32,
+    tail: impl Fn(&mut PaintCtx, &Sculpt3dSnapshot, f32, f32, f32) -> f32,
+) -> f32 {
+    let (fold, mut y) = header(ctx, section.id, tr(section.title), x, w, y_in);
+    let Some(fold) = fold else {
+        return y;
+    };
+    y = head(ctx, snap, x, w, y);
+    for row in section.rows {
+        // ⚠️ A row condicional é PULADA, não desenhada apagada: um controle
+        // apagado que ainda despacha mente, e um que não despacha é a affordance
+        // morta que esta casa varre.
+        // E a row de CAUDA é pulada aqui porque quem a desenha é o `tail`, ao
+        // lado do controle que a governa — ver `Row::place`.
+        if row.place != rows::Place::Knobs || !row.visible(&snap.ui) {
+            continue;
+        }
+        y = paint_one_row(ctx, snap, row, x, w, y);
+    }
+    y = tail(ctx, snap, x, w, y);
+    widgets::end_fold(ctx, fold, y + Spacing::Md.px())
+}
+
+/// Uma seção de knobs da tabela, com um sufixo opcional (o falloff, a máscara).
+/// Uma row, onde quer que ela seja desenhada. **Porta única** — o bloco de knobs
+/// e a cauda a chamam, então uma row de cauda não pode nascer com espaçamento ou
+/// leitura diferentes das irmãs.
+pub(super) fn paint_one_row(
+    ctx: &mut PaintCtx,
+    snap: &Sculpt3dSnapshot,
+    row: &rows::Row,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let value = (row.get)(&snap.ui);
+    let used = super::paint_row(ctx, row, value, x, w, y);
+    y + used + ph2d_tokens::control_gap_px()
+}
+
+/// Ver [`crate::paint::readout_at`] — a porta única do readout para o preview.
+pub(super) fn readout_for(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32) -> f32 {
+    readout(ctx, text, x, w, y)
 }
 
 /// A seção não tem cabeça própria.
@@ -153,6 +203,32 @@ fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f3
         y = readout(ctx, tr("panel.sculpt3d.ao_stale"), x, w, y);
     }
     let y = y + Spacing::Sm.px();
+    // ⭐⭐⭐ **COM QUE LENTE** (report do dono, 2026-09-21: *«só temos a visão em perspectiva em
+    // sculpt. Não temos Ortográfica. Precisamos de ambas»*).
+    //
+    // ⚠️ **Ela mora AQUI e não numa secção própria, e o motivo é MEDIDO:** esta secção é a das
+    // propriedades de VISTA (o arame e a grade já vivem nela), e a `=49` mediu que o painel está
+    // sobre o orçamento — uma secção nova empurraria tudo o que vem antes dela. ⭐ E a Shading é a
+    // ÚLTIMA, logo uma fileira aqui não move um pixel do que a catraca
+    // `os_controlos_proprios_de_um_pincel_cabem_no_encaixe` mede.
+    //
+    // ⚠️ **A fileira é a SEGUNDA porta, não a primeira** — a memória de dedo é o `Numpad5`, que já
+    // despacha pela mesma função (`Sculpt3dScene::cycle_lens`).
+    let lens_labels: Vec<&str> = crate::state::LensMode::ALL
+        .iter()
+        .map(|l| tr(l.label_key()))
+        .collect();
+    let y = labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.lens"),
+        crate::ids::SCULPT3D_SEC_SHADING,
+        &crate::ids::SCULPT3D_LENS,
+        &lens_labels,
+        snap.ui.lens.option_index(),
+        x,
+        w,
+        y,
+    );
     // A primeira opção é o RIG e as seguintes são os materiais, então o índice
     // selecionado é `matcap + 1` — o mesmo deslocamento que o `ShadeRaw` faz
     // para o device. ⚠️ Ele é escrito aqui e lido no `event` pela mesma
@@ -398,197 +474,6 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         .filter(|r| r.place == rows::Place::Knobs && r.visible(&snap.ui))
     {
         y = paint_one_row(ctx, snap, row, x, w, y);
-    }
-    widgets::end_fold(ctx, fold, y + Spacing::Md.px())
-}
-
-/// **A CENA** — a lista de peças e os verbos que a mexem.
-fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
-    let gap = Spacing::Xs.px();
-    let (fold, mut y) = header(
-        ctx,
-        crate::ids::SCULPT3D_SEC_SCENE,
-        tr("panel.sculpt3d.section.scene"),
-        x,
-        w,
-        y,
-    );
-    let Some(fold) = fold else {
-        return y;
-    };
-    let add: Vec<&str> = ADD_LABELS.iter().map(|k| tr(k)).collect();
-    y = labelled_seg(
-        ctx,
-        tr("panel.sculpt3d.add"),
-        &crate::ids::SCULPT3D_ADD,
-        &add,
-        usize::MAX, // gestos, não um modo
-        x,
-        w,
-        y,
-    );
-    y = row_of_two(
-        ctx,
-        (
-            crate::ids::SCULPT3D_DUPLICATE,
-            tr("panel.sculpt3d.duplicate"),
-        ),
-        (crate::ids::SCULPT3D_DELETE, tr("panel.sculpt3d.delete")),
-        x,
-        w,
-        y,
-    ) + gap;
-    // O Isolate é o único desta fileira com ESTADO — ele fica aceso enquanto a
-    // cena está reduzida a uma peça, senão o artista perde quatro objetos e não
-    // tem na tela nada que explique por quê.
-    let half = (w - gap) * 0.5;
-    toggle_na_celula(
-        ctx,
-        crate::ids::SCULPT3D_ISOLATE,
-        tr("panel.sculpt3d.isolate"),
-        snap.isolated,
-        x,
-        half,
-        y,
-    );
-    y = command_na_celula(
-        ctx,
-        crate::ids::SCULPT3D_MERGE,
-        tr("panel.sculpt3d.merge"),
-        x + half + gap,
-        half,
-        y,
-    ) + gap;
-    y = readout(
-        ctx,
-        &format!(
-            "{}: {}   {}: {}",
-            tr("panel.sculpt3d.pieces"),
-            snap.pieces,
-            tr("panel.sculpt3d.verts"),
-            snap.verts
-        ),
-        x,
-        w,
-        y,
-    );
-    widgets::end_fold(ctx, fold, y + gap)
-}
-
-/// Uma seção de knobs da tabela, com um sufixo opcional (o falloff, a máscara).
-/// Uma row, onde quer que ela seja desenhada. **Porta única** — o bloco de knobs
-/// e a cauda a chamam, então uma row de cauda não pode nascer com espaçamento ou
-/// leitura diferentes das irmãs.
-pub(super) fn paint_one_row(
-    ctx: &mut PaintCtx,
-    snap: &Sculpt3dSnapshot,
-    row: &rows::Row,
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
-    let value = (row.get)(&snap.ui);
-    let used = super::paint_row(ctx, row, value, x, w, y);
-    y + used + ph2d_tokens::control_gap_px()
-}
-
-// ⚠️ **Oito, e o oitavo é o irmão simétrico do `tail`.** A alternativa era
-// perguntar `section.id == SCULPT3D_SEC_BRUSH` aqui dentro — uma ENUMERAÇÃO
-// dentro da função genérica, que é precisamente a forma que apodrece quando a
-// segunda seção ganha cabeça. Precedente do `body_desc` da física.
-#[allow(clippy::too_many_arguments)]
-fn knob_section(
-    ctx: &mut PaintCtx,
-    snap: &Sculpt3dSnapshot,
-    section: &rows::Section,
-    x: f32,
-    w: f32,
-    y_in: f32,
-    head: impl Fn(&mut PaintCtx, &Sculpt3dSnapshot, f32, f32, f32) -> f32,
-    tail: impl Fn(&mut PaintCtx, &Sculpt3dSnapshot, f32, f32, f32) -> f32,
-) -> f32 {
-    let (fold, mut y) = header(ctx, section.id, tr(section.title), x, w, y_in);
-    let Some(fold) = fold else {
-        return y;
-    };
-    y = head(ctx, snap, x, w, y);
-    for row in section.rows {
-        // ⚠️ A row condicional é PULADA, não desenhada apagada: um controle
-        // apagado que ainda despacha mente, e um que não despacha é a affordance
-        // morta que esta casa varre.
-        // E a row de CAUDA é pulada aqui porque quem a desenha é o `tail`, ao
-        // lado do controle que a governa — ver `Row::place`.
-        if row.place != rows::Place::Knobs || !row.visible(&snap.ui) {
-            continue;
-        }
-        y = paint_one_row(ctx, snap, row, x, w, y);
-    }
-    y = tail(ctx, snap, x, w, y);
-    widgets::end_fold(ctx, fold, y + Spacing::Md.px())
-}
-
-/// Ver [`crate::paint::readout_at`] — a porta única do readout para o preview.
-pub(super) fn readout_for(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32) -> f32 {
-    readout(ctx, text, x, w, y)
-}
-
-/// **A ENTREGA** — a forma escrita num objeto da cena 2D (`docs/3D/02.2`, o
-/// objetivo 2 do módulo).
-///
-/// ⚠️ **Seção própria, e por último.** As cinco de cima descrevem *como a
-/// escultura é*; esta descreve *o que sai dela*, e é o gesto mais raro do painel
-/// — que é exatamente a lei de ordenação que o doc do topo declara. Uma linha na
-/// cauda do sombreamento a colaria no *Bake Occlusion*, e os dois carregam a
-/// palavra **bake** significando coisas diferentes: aquele mede um canal e o
-/// escreve na MALHA, este escreve a forma inteira num SPRITE.
-///
-/// ⚠️ **O botão é SEMPRE pintado, e a dica é que some.** Esconder o botão sem
-/// alvo tornaria a única entrega do módulo invisível justamente para quem ainda
-/// não sabe que ela existe — que é a queixa que ele veio resolver (até aqui o
-/// gesto tinha uma porta só, o `Shift+B`, e nada na tela a mencionava). A
-/// condição é DITA, no molde do `ao_stale`: a linha só existe quando há o que
-/// avisar, porque um aviso permanente vira moldura.
-fn paint_bake(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
-    let (fold, mut y) = header(
-        ctx,
-        crate::ids::SCULPT3D_SEC_BAKE,
-        tr("panel.sculpt3d.section.bake"),
-        x,
-        w,
-        y,
-    );
-    let Some(fold) = fold else {
-        return y;
-    };
-    y = command(
-        ctx,
-        crate::ids::SCULPT3D_BAKE_SPRITE,
-        tr("panel.sculpt3d.bake_sprite"),
-        x,
-        w,
-        y,
-    );
-    if !snap.has_bake_target {
-        y = readout(ctx, tr("panel.sculpt3d.bake_sprite.hint"), x, w, y);
-    }
-    // ⭐⭐ **A LEI do objecto assado — e ela só é pintada quando há objecto assado.**
-    // Sem canais não há lei para escolher, e um selector que não governa nada é o
-    // controlo morto que esta crate já pagou sete vezes. ⚠️ Os rótulos vêm do
-    // RETRATO e não daqui: quem define as leis é outra crate, e dois nomes
-    // escritos no painel seriam a segunda ortografia da mesma lei.
-    if let Some(escolhida) = snap.lei_do_alvo {
-        let labels: Vec<&str> = snap.lei_rotulos.iter().map(|k| tr(k)).collect();
-        y = widgets::labelled_seg(
-            ctx,
-            tr("panel.sculpt3d.bake_law"),
-            crate::ids::SCULPT3D_SEC_BAKE,
-            &crate::ids::SCULPT3D_BAKE_LAW,
-            &labels,
-            escolhida,
-            x,
-            w,
-            y,
-        );
     }
     widgets::end_fold(ctx, fold, y + Spacing::Md.px())
 }

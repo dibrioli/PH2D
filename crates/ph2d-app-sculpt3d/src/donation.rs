@@ -195,8 +195,12 @@ impl FormRole {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(super) struct FormStamp {
     edits: u64,
-    camera: [u32; 7],
+    camera: [u32; 8],
     size: (u32, u32),
+    /// ⭐ **O ENQUADRAMENTO, por BITS** — sem ele um re-bake com o sprite noutro sítio do ecrã
+    /// deixava a forma viva a mostrar o recorte de antes, porque as outras três entradas não se
+    /// mexem num gesto de assar.
+    recorte: [u32; 5],
 }
 
 /// ⭐⭐⭐ **A POSE 3D de uma forma viva — a orientação que o `Transform` 2D NÃO sabe exprimir.**
@@ -219,7 +223,12 @@ pub struct PoseDaForma {
 /// ⚠️ Separado do método por causa do GATE: uma `Sculpt3dScene` exige um `wgpu::Device` para
 /// existir, então um teste do carimbo preso ao método só rodaria com adapter — e o que ele
 /// verifica (*as três entradas movem o carimbo, e nada mais o move*) não tem nada a ver com a GPU.
-fn stamp_of(edits: u64, camera: &ph2d_mesh_render::Camera3d, size: (u32, u32)) -> FormStamp {
+fn stamp_of(
+    edits: u64,
+    camera: &ph2d_mesh_render::Camera3d,
+    size: (u32, u32),
+    framing: ph2d_mesh_render::Framing,
+) -> FormStamp {
     FormStamp {
         edits,
         camera: [
@@ -230,8 +239,19 @@ fn stamp_of(edits: u64, camera: &ph2d_mesh_render::Camera3d, size: (u32, u32)) -
             camera.yaw.to_bits(),
             camera.pitch.to_bits(),
             camera.fov_y.to_bits(),
+            // ⚠️ **A LENTE entra aqui** (2026-09-21): trocar de convergente para paralela muda a
+            // imagem inteira e **nenhuma** das outras sete entradas se mexe — a doação ficaria a
+            // descrever a peça vista pela lente de antes, em silêncio.
+            u32::try_from(camera.lens.index()).unwrap_or(0),
         ],
         size,
+        recorte: [
+            framing.aspect.to_bits(),
+            framing.region.origin[0].to_bits(),
+            framing.region.origin[1].to_bits(),
+            framing.region.size[0].to_bits(),
+            framing.region.size[1].to_bits(),
+        ],
     }
 }
 
@@ -263,7 +283,13 @@ impl Sculpt3dScene {
 
     /// O carimbo de HOJE, para o canvas pedido.
     fn form_stamp(&self, size: (u32, u32)) -> FormStamp {
-        stamp_of(self.edits, &self.camera, size)
+        stamp_of(
+            self.edits,
+            &self.camera,
+            size,
+            // A doação escreve o canvas INTEIRO do Painter — ela não tem recorte nenhum.
+            ph2d_mesh_render::Framing::whole(size),
+        )
     }
 
     /// **A DOAÇÃO** — rasteriza a forma no tamanho do canvas do Painter e devolve o plano. `None`
@@ -315,13 +341,19 @@ impl Sculpt3dScene {
     ///
     /// E ela **não** carimba: o bake é um gesto explícito, então *"nada mudou"* não é uma resposta
     /// que ele aceite — o artista apertou a tecla, e o que ele espera é a forma de agora.
+    ///
+    /// ⚠️ **E ela recebe o ENQUADRAMENTO** desde 2026-09-21 (report do dono: *«o Bake não é feito
+    /// projetando o objeto 3d exatamente como o posiciono sobre a sprite»*) — ver
+    /// [`Self::enquadramento_do_sprite`], que é quem o deriva. Com
+    /// [`ph2d_mesh_render::Framing::whole`] ela é, ao bit, a de antes desta wave.
     pub(super) fn form_plane_for(
         &mut self,
         gpu: &ph2d_gpu::GpuContext,
         size: (u32, u32),
+        framing: ph2d_mesh_render::Framing,
     ) -> Option<ph2d_mesh_render::FormPlanes> {
         self.sync_mesh(&gpu.device, &gpu.queue);
-        self.renderer.form_plane(
+        self.renderer.form_plane_in(
             &gpu.device,
             &gpu.queue,
             &self.camera,
@@ -330,7 +362,42 @@ impl Sculpt3dScene {
             // doação carrega é função deles, e o artista afinou a cavidade olhando o barro.
             self.shade(),
             self.donation_ssao(),
+            framing,
         )
+    }
+
+    /// ⭐⭐⭐⭐ **O QUE SE VÊ É O QUE SE ASSA** — o enquadramento com que a forma é rasterizada
+    /// dentro dos texels de um sprite.
+    ///
+    /// ⛔⛔ **O defeito que ela cura** (report do dono, 2026-09-21, com foto): a porta de assar
+    /// escrevia o alvo INTEIRO, logo a peça ocupava, dentro do sprite, a mesma fracção que ocupava
+    /// **da altura do VIEWPORT** — e o sprite é um rectângulo *dentro* dele. O assado saía
+    /// deslocado e com a escala errada pela razão `altura da vista ÷ altura do sprite no ecrã`, que
+    /// é exactamente *«um fundo deslocado do objeto 3d»*.
+    ///
+    /// `sub` é o rectângulo que a ARTE do sprite ocupa na janela (`[x, y, w, h]`, `y` do topo) — a
+    /// shell é quem o sabe (ela tem a câmera 2D e o afim partilhado), e esta crate é quem sabe onde
+    /// a vista 3D está.
+    ///
+    /// ⚠️⚠️ **`None` quer dizer *«não há vista publicada»*, e não *«o objecto está fora»*:** uma
+    /// cena headless (todo gate de GPU desta casa) nunca publica canvas, e quem chama cai então na
+    /// vista inteira — o comportamento de antes desta wave. *A alternativa, recusar o bake,
+    /// trocaria um enquadramento aproximado por nenhum assado.*
+    pub(super) fn enquadramento_do_sprite(
+        &self,
+        sub: Option<[f32; 4]>,
+    ) -> Option<ph2d_mesh_render::Framing> {
+        let sub = sub?;
+        let vp = self.vp_screen(self.vp_active())?;
+        let full = [vp.x as f32, vp.y as f32, vp.w as f32, vp.h as f32];
+        let region = ph2d_mesh_render::ViewRegion::of_px(sub, full)?;
+        Some(ph2d_mesh_render::Framing {
+            // ⚠️ **O aspecto é o da VISTA e nunca o do sprite** — ver o doc do
+            // [`ph2d_mesh_render::Framing`]: a forma do frustum é da vista, e o recorte só diz
+            // que pedaço dela este alvo desenha.
+            aspect: full[2] / full[3],
+            region,
+        })
     }
 
     /// ⭐⭐⭐ **A TERCEIRA saída da mesma rasterização: a forma VIVA, para vistas RESIDENTES.**
@@ -359,13 +426,19 @@ impl Sculpt3dScene {
         size: (u32, u32),
         alvos: (&wgpu::TextureView, &wgpu::TextureView),
         carimbo: &mut Option<FormStamp>,
+        // ⭐⭐⭐ **O enquadramento CONGELADO no bake** — ver
+        // [`ph2d_form_donation::baked_form::Recorte`]. Sem ele a rota B rasterizaria a vista
+        // inteira enquanto o assado por baixo dela tem um recorte, e a peça SALTAVA para encher o
+        // sprite no primeiro quadro em que o relógio andasse.
+        framing: ph2d_mesh_render::Framing,
     ) -> bool {
         let mut cam = self.camera;
         cam.aim(pose.yaw, pose.pitch);
-        // ⚠️ O carimbo é do PAR (malha, câmera-do-objecto, tamanho) e não do da cena: dois objectos
-        // vivos partilham a malha e têm poses diferentes, logo um carimbo da cena diria «nada
-        // mudou» para o segundo depois de o primeiro ter rasterizado.
-        let agora = stamp_of(self.edits, &cam, size);
+        // ⚠️ O carimbo é do PAR (malha, câmera-do-objecto, tamanho, ENQUADRAMENTO) e não do da
+        // cena: dois objectos vivos partilham a malha e têm poses — e recortes — diferentes, logo
+        // um carimbo da cena diria «nada mudou» para o segundo depois de o primeiro ter
+        // rasterizado.
+        let agora = stamp_of(self.edits, &cam, size, framing);
         if *carimbo == Some(agora) {
             return false;
         }
@@ -375,7 +448,7 @@ impl Sculpt3dScene {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("ph2d-app-sculpt3d forma viva"),
             });
-        self.renderer.render_gbuffer(
+        self.renderer.render_gbuffer_framed(
             &gpu.device,
             &gpu.queue,
             &mut enc,
@@ -384,6 +457,8 @@ impl Sculpt3dScene {
             &cam,
             self.shade(),
             size,
+            ph2d_mesh_render::ScreenRect::full(size),
+            framing,
         );
         gpu.queue.submit(std::iter::once(enc.finish()));
         *carimbo = Some(agora);
@@ -457,96 +532,5 @@ pub fn donate_form(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_mesh_render::Camera3d;
-
-    /// **As TRÊS entradas movem o carimbo — e o gate existe porque esquecer uma é invisível.**
-    ///
-    /// Um carimbo que ignora a câmera deixa a tinta acesa pela forma vista de outro ângulo; um que
-    /// ignora a malha, pela escultura de antes do traço; um que ignora o tamanho entrega um plano
-    /// que o Painter recusa e a doação some sem dizer por quê. Nenhum dos três dá erro em lugar
-    /// nenhum: a tela fica *plausível*.
-    #[test]
-    fn every_way_the_form_can_change_moves_the_stamp() {
-        let base = Camera3d::default();
-        let here = stamp_of(7, &base, (256, 128));
-        assert_eq!(here, stamp_of(7, &base, (256, 128)), "premissa: é estável");
-
-        assert_ne!(here, stamp_of(8, &base, (256, 128)), "a MALHA mudou");
-        assert_ne!(here, stamp_of(7, &base, (512, 128)), "o CANVAS mudou");
-
-        // Cada campo da câmera, um a um: um carimbo que só olha `yaw` passaria num teste que só
-        // gira, e é justamente o `pan` (que move o `target`) o gesto mais fácil de esquecer.
-        for (name, mutate) in [
-            (
-                "yaw",
-                (|c: &mut Camera3d| c.yaw += 0.1) as fn(&mut Camera3d),
-            ),
-            ("pitch", |c| c.pitch += 0.1),
-            ("distance", |c| c.distance *= 1.5),
-            ("fov_y", |c| c.fov_y += 0.05),
-            ("target.x", |c| c.target.x += 1.0),
-            ("target.y", |c| c.target.y += 1.0),
-            ("target.z", |c| c.target.z += 1.0),
-        ] {
-            let mut moved = base;
-            mutate(&mut moved);
-            assert_ne!(
-                here,
-                stamp_of(7, &moved, (256, 128)),
-                "mexer em `{name}` tem de mover o carimbo"
-            );
-        }
-    }
-
-    /// **Uma câmera degenerada compara igual a si mesma.**
-    ///
-    /// ⚠️ É o gate do *"por BITS, nunca por valor"*: `NaN != NaN`, então um carimbo que comparasse
-    /// `f32` por valor nunca diria "nada mudou" e a doação seria re-rasterizada **todo frame, para
-    /// sempre** — uma leitura de volta bloqueante por quadro, sem nada na tela explicando por quê.
-    #[test]
-    fn a_degenerate_camera_still_compares_equal_to_itself() {
-        let broken = Camera3d {
-            yaw: f32::NAN,
-            ..Camera3d::default()
-        };
-        let s = stamp_of(1, &broken, (64, 64));
-        assert_eq!(s, stamp_of(1, &broken, (64, 64)));
-    }
-
-    /// **O interruptor CICLA, e cada posição é distinta.**
-    ///
-    /// Três voltas devolvem ao começo — sem isso o `D` viraria um caminho de mão única e o artista
-    /// perderia o barro depois de doar uma vez.
-    #[test]
-    fn the_switch_cycles_through_all_three_and_comes_back() {
-        let mut r = FormRole::Clay;
-        let mut seen = Vec::new();
-        for _ in 0..3 {
-            seen.push(r.label());
-            r = r.next();
-        }
-        assert_eq!(r, FormRole::Clay, "três toques voltam ao barro");
-        seen.sort_unstable();
-        seen.dedup();
-        assert_eq!(seen.len(), 3, "as três posições têm rótulos distintos");
-    }
-
-    /// **Cada posição faz exatamente uma coisa, e `Off` não faz nenhuma.**
-    ///
-    /// ⚠️ A 1ª versão deste gate afirmava que os variants do enum são distintos entre si — o que o
-    /// `derive(PartialEq)` garante. Ele **não podia falhar pelo motivo que alegava**, e teria
-    /// ficado verde com `draws_clay` cravado em `true` (a malha desenhada por cima da tinta em
-    /// todas as posições, a doação inalcançável). O oráculo tem de ser o COMPORTAMENTO das duas
-    /// perguntas, não a identidade dos rótulos.
-    #[test]
-    fn each_position_answers_exactly_one_of_the_two_questions() {
-        assert!(FormRole::Clay.draws_clay() && !FormRole::Clay.donates());
-        assert!(FormRole::Light.donates() && !FormRole::Light.draws_clay());
-        assert!(
-            !FormRole::Off.draws_clay() && !FormRole::Off.donates(),
-            "`Off` é o controle: nem barro na tela, nem forma na tinta"
-        );
-    }
-}
+#[path = "donation_tests.rs"]
+mod tests;

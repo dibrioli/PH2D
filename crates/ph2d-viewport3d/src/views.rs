@@ -170,3 +170,23 @@ pub fn view_for_key(code: winit::keyboard::KeyCode, ctrl: bool) -> Option<Standa
         _ => return None,
     })
 }
+
+/// ⭐⭐⭐ **A TECLA DA LENTE** — `Numpad5`, a do Blender para *«alterna entre perspectiva e
+/// ortográfica»*.
+///
+/// ⚠️⚠️ **Ela mora AQUI, ao lado das seis vistas, porque os DOIS módulos 3D a leem** — o modelador
+/// implícito desde a W15 dele e a escultura desde 2026-09-21 (report do dono: *«só temos a visão em
+/// perspectiva em sculpt; precisamos de ambas»*). *Duas tabelas fariam `Numpad5` significar coisas
+/// diferentes em dois cantos do mesmo app*, que é a frase que o `view_for_key` acima já escreve
+/// sobre `Numpad3`.
+///
+/// ⛔ **Ela responde pela TECLA e não pelo modificador**, de propósito: a política de modificadores
+/// já é diferente nos dois (lá um `Ctrl+` é de outra pessoa; aqui o despacho tem um bloco de
+/// modificador que engole o espaço inteiro), e o que se partilha é a **memória de dedo**.
+///
+/// ⚠️ E ela **não** entra no [`view_for_key`]: aquela porta devolve um enquadramento, e uma lente
+/// não é um. *Responder ali roubaria a tecla a quem a tem.*
+#[must_use]
+pub fn is_lens_key(code: winit::keyboard::KeyCode) -> bool {
+    code == winit::keyboard::KeyCode::Numpad5
+}

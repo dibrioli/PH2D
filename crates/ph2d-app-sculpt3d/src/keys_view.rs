@@ -40,6 +40,22 @@ pub(crate) fn camera_key(
         eprintln!("[sculpt3d] vista: {}", v.key());
         return true;
     }
+    // ⭐⭐⭐ **A LENTE** (`Numpad5`, report do dono de 2026-09-21: *«só temos a visão em
+    // perspectiva em sculpt. Não temos Ortográfica. Precisamos de ambas»*).
+    //
+    // ⚠️ **A tecla sai da MESMA porta das seis vistas acima** — o modelador implícito já a tinha
+    // desde a W15 dele, e ter duas tabelas faria `Numpad5` significar coisas diferentes em dois
+    // cantos do mesmo app. ⭐ *Herda-se a memória de dedo do Blender, nunca os eixos dele.*
+    //
+    // ⚠️ **Sem `Ctrl`, ao contrário das vistas:** ali o modificador dá a oposta e aqui só há duas,
+    // logo a própria tecla já é a alternância — um `Ctrl+Numpad5` seria a segunda maneira de dizer
+    // a mesma coisa, e uma que COMPÕE (o defeito que o `Verb::honours_invert` desta casa já
+    // nomeia).
+    if ph2d_viewport3d::views::is_lens_key(code) && !ctrl {
+        let lens = scene.cycle_lens();
+        eprintln!("[sculpt3d] lente: {}", lens.label_key());
+        return true;
+    }
     false
 }
 

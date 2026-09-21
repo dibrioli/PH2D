@@ -130,6 +130,11 @@ fn assa_uma_tela(
             )
             .map(|s| s.image)
         },
+        // ⚠️ **Sem rectangulo de ecra, e e' a leitura honesta desta bancada:** ela nao tem janela
+        // nem camera 2D, e a cena nunca publica canvas — logo a forma e' rasterizada na vista
+        // INTEIRA, que e' exactamente o que estes dois gates mediam antes do enquadramento
+        // existir. *Um `Some` inventado aqui mediria um produto que ninguem corre.*
+        None,
     )
     .expect("o gesto foi pedido, entao ele responde alguma coisa");
     (veredito, renderer, sim, bits)

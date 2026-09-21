@@ -89,6 +89,31 @@ impl Sculpt3dScene {
         );
     }
 
+    /// ⭐⭐⭐ **A LENTE desta vista** — convergente ou paralela. Ver [`ph2d_mesh_render::Lens`].
+    ///
+    /// ⚠️ **Ela é da CÂMERA ACTIVA e não da cena**, e a escolha segue a das seis vistas nomeadas
+    /// (`aim_view`): com a divisão aberta cada quadrante tem a sua, que é o que o Blender faz e o
+    /// que torna útil olhar a mesma peça de duas lentes ao mesmo tempo.
+    #[must_use]
+    pub fn lens(&self) -> ph2d_mesh_render::Lens {
+        self.camera.lens
+    }
+
+    /// **A LENTE ALTERNA** e devolve a nova — a porta que a tecla e o painel partilham.
+    ///
+    /// ⚠️ **A porta existe porque são DOIS consumidores** (o `Numpad5` e a fileira do painel), e
+    /// dois sítios a escreverem `camera.lens` divergiriam no dia em que a escolha passasse a ter
+    /// um efeito lateral — o carimbo da forma, por exemplo, que ela já move.
+    pub fn cycle_lens(&mut self) -> ph2d_mesh_render::Lens {
+        self.camera.lens = self.camera.lens.other();
+        self.camera.lens
+    }
+
+    /// **A LENTE é ESCOLHIDA** — o que um selector segmentado escreve.
+    pub fn set_lens(&mut self, lens: ph2d_mesh_render::Lens) {
+        self.camera.lens = lens;
+    }
+
     /// **COMO O BARRO É MOSTRADO** — a porta única das opções de vista.
     ///
     /// ⚠️ Ela existe porque as três viajam juntas para o device E para o painel,

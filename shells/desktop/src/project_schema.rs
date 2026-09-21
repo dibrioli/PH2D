@@ -638,4 +638,28 @@
 /// o que o artista AUTOROU, e o giro compoe-se com ele na leitura.
 ///
 /// ⚠️ Com `spin = 0` a peca fica parada no `yaw` autorado, **ao bit** — e ha' gate.
-pub(crate) const PROJECT_SCHEMA: u32 = 174;
+///
+/// # `164` — **o que se ve^ e' o que se assa** (`BakedFormDocument::recorte`, 2026-09-21)
+///
+/// ⛔⛔ **Report do dono, com foto:** *«O Bake nao e' feito projetando o objeto 3d exatamente como
+/// o posiciono sobre a sprite e tem perspectiva, posicao e escala diferente do que eu coloquei»* —
+/// e, a seguir, *«o bake 3d recebe zoom e fica como na imagem: um fundo deslocado do objeto 3d»*.
+///
+/// A porta de assar rasterizava a malha no alvo INTEIRO, logo a peca ocupava, dentro dos texels do
+/// sprite, a mesma fraccao que ocupava **da altura do VIEWPORT** — e o sprite e' um rectangulo
+/// *dentro* dele. O erro de escala e' exactamente `altura da vista ÷ altura do sprite no ecra'`, e
+/// o de posicao e' a distancia entre os dois centros.
+///
+/// ⭐ A cura e' um frustum **fora do eixo** (`ph2d_mesh_render::ViewRegion`), e o campo novo e' a
+/// memoria dele: `aspect` da vista + o rectangulo do sprite em FRACCAO dela.
+///
+/// ⛔⛔ **Ele TEM de viajar no arquivo por causa da rota B:** um catavento re-rasteriza a forma
+/// **por quadro**, e sem esta memoria ele voltaria a encher o sprite no primeiro quadro em que o
+/// relogio andasse — a peca SALTAVA ao reabrir o projecto.
+///
+/// ⚠️ **`None` num documento anterior**, e a ausencia e' a resposta: ate' aqui a forma era sempre
+/// rasterizada com a vista inteira, logo um ficheiro velho reabre **sem uma linha de diferenca**.
+/// ⛔ Ainda assim o degrau existe, e o motivo e' o de sempre: *o postcard e' POSICIONAL*.
+///
+/// ⚠️ **A tripla NAO ve^ este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 175;

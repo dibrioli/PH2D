@@ -90,6 +90,38 @@ impl MeshRenderer {
         shade: crate::Shade,
         ssao: Option<SsaoParams>,
     ) -> Option<FormPlanes> {
+        self.form_plane_in(
+            device,
+            queue,
+            camera,
+            size,
+            shade,
+            ssao,
+            crate::Framing::whole(size),
+        )
+    }
+
+    /// ⭐⭐⭐ **A forma como ela aparece num RECORTE DA VISTA** — o irmão do [`Self::form_plane`],
+    /// e a porta que faz o assado cair onde o artista pôs o objecto.
+    ///
+    /// ⚠️ **O `size` continua a ser o do ALVO** (a textura do sprite) e o `framing` diz que pedaço
+    /// da vista essa textura representa. Os dois são independentes de propósito: a resolução do
+    /// G-buffer é do sprite e o enquadramento é do ecrã, e foi confundi-los que fazia a peça sair
+    /// à escala da ALTURA DO VIEWPORT dentro de um rectângulo que não é ele.
+    ///
+    /// ⚠️ Com [`crate::Framing::whole`] ele é o [`Self::form_plane`] **ao bit**.
+    #[must_use]
+    #[allow(clippy::too_many_arguments)]
+    pub fn form_plane_in(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        camera: &Camera3d,
+        size: (u32, u32),
+        shade: crate::Shade,
+        ssao: Option<SsaoParams>,
+        framing: crate::Framing,
+    ) -> Option<FormPlanes> {
         if !self.has_mesh() || size.0 == 0 || size.1 == 0 {
             return None;
         }
@@ -100,7 +132,16 @@ impl MeshRenderer {
         if let Some(params) = ssao {
             let mut pre =
                 device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-            self.render_ssao(device, queue, &mut pre, camera, params, size);
+            self.render_ssao_framed(
+                device,
+                queue,
+                &mut pre,
+                camera,
+                params,
+                size,
+                crate::ScreenRect::full(size),
+                framing,
+            );
             queue.submit([pre.finish()]);
         }
 
@@ -130,7 +171,7 @@ impl MeshRenderer {
         // ⚠️ Sem pré-passe de limpeza, de propósito: o `render_gbuffer` LIMPA os dois alvos ele
         // mesmo — o de normais em transparente e o de oclusão em BRANCO —, e é isso que faz a
         // cobertura e o neutro saírem certos sem o chamador combinar nada.
-        self.render_gbuffer(
+        self.render_gbuffer_framed(
             device,
             queue,
             &mut encoder,
@@ -139,6 +180,8 @@ impl MeshRenderer {
             camera,
             shade,
             size,
+            crate::ScreenRect::full(size),
+            framing,
         );
 
         let mut read = |tex: &wgpu::Texture, bytes_per_texel: u32| {

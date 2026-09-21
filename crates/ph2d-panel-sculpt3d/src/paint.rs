@@ -21,6 +21,10 @@ use crate::state::{self, Sculpt3dPanelState, set_last_content_h, set_last_visibl
 use crate::{Sculpt3dPanel, rows};
 
 mod body;
+
+/// **O QUE SE FAZ COM A PEÇA** — ver o irmão.
+#[path = "paint/body_peca.rs"]
+mod body_peca;
 /// A cabeça e a cauda da seção do PINCEL — ver o doc do módulo.
 mod brush;
 /// ⭐⭐⭐ **A COR DO PINCEL É UMA CAIXA** — a amostra e o selector que ela abre;

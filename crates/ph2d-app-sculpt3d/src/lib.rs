@@ -342,6 +342,10 @@ pub mod bake;
 /// VISOR pintar a mesma. Irmão da [`bake`]: lá mora o gesto, aqui o que ele acende.
 pub mod albedo;
 
+/// ⭐⭐⭐ **A TRAVESSIA do enquadramento** entre o renderizador e o documento — uma porta, nos dois
+/// sentidos, com a razão de os dois tipos existirem escrita no cabeçalho dela.
+mod recorte;
+
 /// **OS VERBOS QUE PUXAM** — Grab, Snake Hook, Twist, Local Scale. Filho pelo motivo dos outros: o corte é de responsabilidade, e o deles
 /// é uma LEI própria (a pegada é presa no pen-down, e o alvo é função do puxão
 /// TOTAL, nunca da soma dos passos).

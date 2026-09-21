@@ -144,3 +144,52 @@ pub fn sprite_image_to_screen_affine(
         * Affine::translate((-camera.center[0] as f64, -camera.center[1] as f64));
     world_to_screen * local_to_world * img_to_local
 }
+
+/// ⭐⭐⭐ **O RECTÂNGULO QUE A ARTE DE UM SPRITE OCUPA NA JANELA** — `[x, y, w, h]`, `y` do topo.
+///
+/// # ⛔⛔ O defeito que ele existe para curar (report do dono, 2026-09-21)
+///
+/// A porta de assar a forma 3D num sprite (`ph2d_app_sculpt3d::bake`) rasterizava a malha com o
+/// aspecto e a extensão do **viewport**, dentro dos texels de um rectângulo que não é ele — logo o
+/// assado saía deslocado e com a escala errada pela razão `altura da vista ÷ altura do sprite no
+/// ecrã`. Para o corrigir, alguém tem de saber **onde este sprite está**, e essa é a pergunta desta
+/// folha.
+///
+/// ⭐ **A imagem entra com lado UNITÁRIO, e isso é o desenho:** o
+/// [`sprite_image_to_screen_affine`] mapeia a imagem **inteira** sobre o quad do sprite, logo os
+/// quatro cantos do quadrado `[0,1]²` são os quatro cantos do quad — e a resposta fica
+/// **independente da resolução da textura**, que o chamador ainda não conhece (a leitura da fonte é
+/// preguiçosa de propósito).
+///
+/// ⚠️ **Com rotação ele é a CAIXA do quad e não o quad**, e a diferença é declarada: o que sai é um
+/// rectângulo alinhado aos eixos, que é o que um recorte de frustum sabe exprimir. Com `rotation`
+/// zero — o caso de toda sprite que não foi rodada — os dois coincidem exactamente.
+///
+/// ⚠️ **E ele descreve o quad de REPOUSO**, como o afim de que sai: uma sprite presa a um esqueleto
+/// é desenhada como MALHA, e a pergunta *«que texel está debaixo deste ponto»* é outra (ver
+/// [`uv_sob_o_ponteiro`]). Aqui a pergunta é *«que pedaço do ecrã esta arte ocupa»*, e a arte é
+/// escrita em texels antes de qualquer deformação.
+#[must_use]
+pub fn rect_no_ecra(
+    world_tr: ph2d_ecs::Transform,
+    sprite: &Sprite,
+    grid: Option<ph2d_ecs::SpriteGrid>,
+    camera: &Camera2d,
+    window_size: WindowSize,
+) -> [f32; 4] {
+    let afim = sprite_image_to_screen_affine(1, 1, world_tr, sprite, grid, camera, window_size);
+    let (mut x0, mut y0) = (f64::INFINITY, f64::INFINITY);
+    let (mut x1, mut y1) = (f64::NEG_INFINITY, f64::NEG_INFINITY);
+    for (u, v) in [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)] {
+        let p = afim * ph2d_vector::Point::new(u, v);
+        x0 = x0.min(p.x);
+        y0 = y0.min(p.y);
+        x1 = x1.max(p.x);
+        y1 = y1.max(p.y);
+    }
+    [x0 as f32, y0 as f32, (x1 - x0) as f32, (y1 - y0) as f32]
+}
+
+#[cfg(test)]
+#[path = "rect_no_ecra_tests.rs"]
+mod rect_no_ecra_tests;

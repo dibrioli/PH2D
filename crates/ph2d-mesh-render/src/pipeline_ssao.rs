@@ -188,6 +188,42 @@ impl MeshRenderer {
         size: (u32, u32),
         area: crate::ScreenRect,
     ) {
+        self.render_ssao_framed(
+            device,
+            queue,
+            encoder,
+            camera,
+            params,
+            size,
+            area,
+            crate::Framing::of_area(area),
+        );
+    }
+
+    /// ⭐⭐ **A oclusão de tela de um RECORTE da vista** — o gémeo do
+    /// [`Self::render_gbuffer_framed`], e ele tem de existir pela razão que o doc daquele já dá:
+    /// *a oclusão é medida NESTA rasterização*, logo ela tem de descrever o mesmo frustum que o
+    /// G-buffer que a acompanha. Medi-la na vista inteira e assar um recorte dela entregaria a
+    /// sombra de um enquadramento sobre a forma de outro.
+    ///
+    /// ⚠️⚠️ **O `fov_y` que o uniform recebe é o do RECORTE, derivado**, e não o da câmera: o
+    /// `proj_scale` é *quantos pixels vale um comprimento de vista*, e num recorte de fracção
+    /// vertical `dv` a meia-tangente do frustum é `tan(fov/2) · dv`. Passar o da câmera faria a
+    /// oclusão ficar `1/dv` vezes maior — de forma igual em todo o assado, e por isso lida como
+    /// *«o AO mudou»* em vez de como um erro de escala (a mesma armadilha que os quatro viewports
+    /// já pagaram no [`SsaoRaw::pack_in`]).
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_ssao_framed(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        camera: &crate::Camera3d,
+        params: SsaoParams,
+        size: (u32, u32),
+        area: crate::ScreenRect,
+        framing: crate::Framing,
+    ) {
         // ⛔ **A área é RECORTADA ao alvo à entrada** — ver
         // [`crate::ScreenRect::clip_to`]: em todo redimensionamento existe um
         // quadro em que o painel ainda publica o rectângulo da janela antiga, e
@@ -201,12 +237,23 @@ impl MeshRenderer {
         self.ensure_depth(device, size);
         self.ensure_ssao(device, size);
 
-        let aspect = area.aspect();
-        let proj_inv = camera.proj(aspect).inverse().to_cols_array_2d();
+        let proj_inv = camera
+            .proj_in(framing.aspect, framing.region)
+            .inverse()
+            .to_cols_array_2d();
+        // Ver o doc: a meia-tangente do recorte é a da câmera vezes a fracção vertical dele.
+        // ⚠️ **A vista inteira devolve o campo da CÂMERA e não `2·atan(tan(fov/2)·1)`**: as duas
+        // expressões são a mesma em álgebra e não em `f32`, e o caminho de omissão tem de ser
+        // byte-idêntico **por construção**.
+        let fov_y = if framing.region.is_full() {
+            camera.fov_y
+        } else {
+            2.0 * ((camera.fov_y * 0.5).tan() * framing.region.size[1]).atan()
+        };
         queue.write_buffer(
             &self.ssao_uniform,
             0,
-            bytemuck::bytes_of(&SsaoRaw::pack_in(params, proj_inv, area, camera.fov_y)),
+            bytemuck::bytes_of(&SsaoRaw::pack_in(params, proj_inv, area, fov_y)),
         );
 
         // Etapa 1 — a geometria, uma vez, para normal + profundidade.
@@ -228,7 +275,7 @@ impl MeshRenderer {
         // O shade NEUTRO: este pré-passe quer normal e profundidade, e o alvo de oclusão dele é
         // rascunho. Passar o do artista escreveria o uniform com o valor certo pelo motivo errado —
         // e o `render_ssao` não o conhece, porque ele mede VISIBILIDADE, que não tem knob.
-        self.render_gbuffer_in(
+        self.render_gbuffer_framed(
             device,
             queue,
             encoder,
@@ -238,6 +285,7 @@ impl MeshRenderer {
             crate::Shade::default(),
             size,
             area,
+            framing,
         );
 
         // Etapa 2 — o horizonte, por pixel.

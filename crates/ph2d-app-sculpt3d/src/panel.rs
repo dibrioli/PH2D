@@ -70,6 +70,9 @@ impl Sculpt3dScene {
                 cloth_filter: self.tecido.props,
                 cloth_filter_axes: self.tecido.axes,
                 lighting: luz_para_o_painel(self.lighting),
+                // ⚠️ **A lente é da CÂMERA ACTIVA** (ver [`Self::lens`]) e não da cena: com a
+                // divisão aberta cada quadrante tem a sua, e o painel mostra a de quem tem a mão.
+                lens: lente_para_o_painel(self.lens()),
                 alpha_preview: self.alpha_preview,
                 wireframe: self.wireframe,
                 wire_grade: self.wire_grade,
@@ -230,6 +233,10 @@ impl Sculpt3dScene {
         self.tecido.props = ui.cloth_filter;
         self.tecido.axes = ui.cloth_filter_axes;
         self.lighting = luz_do_painel(ui.lighting);
+        // ⚠️ **Pela PORTA e não por `self.camera.lens = …`** — a mesma que o `Numpad5` usa; dois
+        // escritores divergiriam no dia em que a escolha ganhasse um efeito lateral (ela já move o
+        // carimbo da forma, que lê a lente no `FormStamp`).
+        self.set_lens(lente_do_painel(ui.lens));
         self.alpha_preview = ui.alpha_preview;
         self.wireframe = ui.wireframe;
         self.wire_grade = ui.wire_grade;
@@ -664,10 +671,43 @@ pub(crate) fn luz_do_painel(
     }
 }
 
+/// ⭐⭐⭐ **A PONTE entre os dois tipos de «com que lente»** — o do painel
+/// ([`ph2d_panel_sculpt3d::state::LensMode`]) e o da câmera
+/// ([`ph2d_mesh_render::Lens`]).
+///
+/// ⛔⛔ **Ela existe pela MESMA razão da irmã da luz, e não por simetria:** o painel é UI e não
+/// arrasta o `wgpu`, logo o conceito está escrito duas vezes de propósito. *O que torna a
+/// duplicação honesta é o gate de IDA-E-VOLTA nos DOIS sentidos* (`panel_lente_tests`) — sem a
+/// volta, uma ponte que colapsasse as duas lentes numa deixaria um chip **morto sob o dedo** com a
+/// ida verde por cima.
+pub(crate) fn lente_para_o_painel(
+    l: ph2d_mesh_render::Lens,
+) -> ph2d_panel_sculpt3d::state::LensMode {
+    use ph2d_panel_sculpt3d::state::LensMode;
+    match l {
+        ph2d_mesh_render::Lens::Perspective => LensMode::Perspective,
+        ph2d_mesh_render::Lens::Ortho => LensMode::Ortho,
+    }
+}
+
+/// A volta — ver [`lente_para_o_painel`].
+pub(crate) fn lente_do_painel(l: ph2d_panel_sculpt3d::state::LensMode) -> ph2d_mesh_render::Lens {
+    use ph2d_panel_sculpt3d::state::LensMode;
+    match l {
+        LensMode::Perspective => ph2d_mesh_render::Lens::Perspective,
+        LensMode::Ortho => ph2d_mesh_render::Lens::Ortho,
+    }
+}
+
 /// **A PONTE DA LUZ, nos dois sentidos** — ver [`panel_luz_tests`].
 #[cfg(test)]
 #[path = "panel_luz_tests.rs"]
 mod panel_luz_tests;
+
+/// **A PONTE DA LENTE, nos dois sentidos** — ver [`panel_lente_tests`].
+#[cfg(test)]
+#[path = "panel_lente_tests.rs"]
+mod panel_lente_tests;
 
 /// **A FILEIRA DA LEI ALCANÇA TODA LEI** — ver [`panel_lei_tests`].
 #[cfg(test)]

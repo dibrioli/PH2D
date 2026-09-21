@@ -135,6 +135,10 @@ pub fn acende_os_cataventos(
                 },
                 viva,
                 pose,
+                // ⚠️ **Do ASSADO e não do ecrã de agora** — ver o campo: o enquadramento é uma
+                // memória do gesto, e recalculá-lo por quadro faria a peça deslizar dentro do
+                // sprite assim que o artista arrastasse o canvas 2D.
+                recorte: assado.recorte,
             },
         );
         if r.is_ok() {

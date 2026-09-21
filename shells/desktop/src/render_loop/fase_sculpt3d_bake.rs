@@ -39,6 +39,7 @@ impl crate::App {
             toasts,
             hero_screen,
             atlas_asset_map,
+            camera,
             ..
         } = FrameGfx::of(gfx);
 
@@ -55,6 +56,37 @@ impl crate::App {
             let selected = hero_screen
                 .as_ref()
                 .and_then(|h| h.gizmo.iter_selected().next());
+            // ⭐⭐⭐⭐ **ONDE ESTE SPRITE ESTÁ NO ECRÃ** — a metade da shell do enquadramento do
+            // bake (report do dono, 21/09). Mecanismo, a regra 2 da W2 e o porquê de ele ser lido
+            // ANTES do `drain`: o gate `o_bake_enquadra_o_sprite_que_ele_escreve`, que é quem o
+            // guarda.
+            //
+            // ⛔⛔ **A janela é a da CENA e não a da JANELA, e quem o apanhou foi o
+            // `quem_desenha_no_mundo_tambem_usa_a_banda`:** com a ferramenta Motion na mão o chrome
+            // da cena é desenhado numa BANDA, e uma conta mundo↔tela que leve a superfície inteira
+            // devolve um rectângulo ~340 px fora do sítio (o defeito que o HUD pagou em 17/09).
+            // *Aqui ele seria pior que um clique perdido: o assado ficaria enquadrado sobre um
+            // pedaço de ecrã em que o sprite não está.*
+            let janela_da_cena = crate::scene_mapping::janela(
+                hero_screen
+                    .as_ref()
+                    .map_or(ph2d_editor_core::screens::layout::CenterSplit::None, |h| {
+                        h.view.center_split
+                    }),
+                surface.size(),
+            );
+            let rect_do_sprite = selected.and_then(|bits| {
+                let entity = ph2d_ecs::Entity::from_bits(bits);
+                let tr = ph2d_ecs::world_transform(sim.world(), entity)?;
+                let sprite = sim.world().get::<ph2d_render::Sprite>(entity)?;
+                Some(ph2d_sprite_screen::rect_no_ecra(
+                    tr,
+                    sprite,
+                    sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied(),
+                    camera,
+                    janela_da_cena,
+                ))
+            });
             if let Some(line) = ph2d_app_sculpt3d::bake::drain(
                 scene,
                 baked_forms,
@@ -88,6 +120,7 @@ impl crate::App {
                         .map(|s| s.image)
                     })
                 },
+                rect_do_sprite,
             ) {
                 // ⚠️ **O prefixo `[sculpt3d]` é do TERMINAL e não do aviso**, e a foto de 21/09 diz
                 // porquê: ele aparecia na tela a comer metade da largura do toast, e a frase do

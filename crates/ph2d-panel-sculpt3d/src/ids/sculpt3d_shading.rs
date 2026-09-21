@@ -115,6 +115,17 @@ pub const SCULPT3D_BAKE_LAW: [NodeId; 2] = [
     hash_node_id("sculpt3d.bake_law.1"),
 ];
 
+/// ⭐⭐⭐ **COM QUE LENTE o barro é olhado** — convergente ou paralela
+/// ([`crate::state::LensMode`]).
+///
+/// ⚠️⚠️ **A POSIÇÃO é a tag**, como no vizinho: o `event` resolve o chip por
+/// `LensMode::from_option_index`, logo uma lente nova entra **no fim** — e um id
+/// posto no meio ligaria cada chip ao vizinho, em silêncio.
+pub const SCULPT3D_LENS: [NodeId; 2] = [
+    hash_node_id("sculpt3d.lens.perspective"),
+    hash_node_id("sculpt3d.lens.ortho"),
+];
+
 /// **COM QUE LUZ o barro é mostrado** — o modo PLANO, o RIG DO ARTISTA, e os
 /// matcaps de [`ph2d_mesh_render::MATCAPS`].
 ///

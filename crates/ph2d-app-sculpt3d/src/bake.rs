@@ -59,6 +59,12 @@ fn bake_one(
         &mut SimWorld,
         &mut SpriteRenderer,
     ) -> Option<ph2d_render::SpriteImage>,
+    // ⭐⭐⭐⭐ **ONDE A ARTE DESTE SPRITE ESTÁ NO ECRÃ**, `[x, y, w, h]` em pixels de janela — o
+    // que faz o assado cair onde o artista pôs o objecto. Ver
+    // [`Sculpt3dScene::enquadramento_do_sprite`]: quem sabe isto é a shell (a câmera 2D e o afim
+    // partilhado são dela), quem sabe onde a vista 3D está é esta crate, e nenhuma das duas sabe
+    // as duas coisas. `None` = a vista inteira, o comportamento de antes.
+    rect_do_sprite: Option<[f32; 4]>,
 ) -> Result<(u32, u32, usize), String> {
     let entity = Entity::from_bits(entity_bits);
     // ⚠️ **RE-ASSAR NÃO LÊ A TELA DE VOLTA**, e essa lei mudou de casa em 2026-09-21: ela passou a
@@ -81,8 +87,13 @@ fn bake_one(
     // campo gravado existe para impedir: *o artista escolheria a lei uma vez e perdê-la-ia no
     // gesto seguinte*.
     let lei = lei_ao_assar(forms.get(&entity_bits));
+    // ⚠️ **O enquadramento é derivado DEPOIS de a matéria dizer o `size`**, e a ordem é a mesma
+    // razão que já prende a silhueta lá abaixo: o `size` é a extensão em que a forma é pedida.
+    let recorte = scene
+        .enquadramento_do_sprite(rect_do_sprite)
+        .map(super::recorte::a_guardar);
     let planes = scene
-        .form_plane_for(gpu, size)
+        .form_plane_for(gpu, size, super::recorte::a_usar(recorte, size))
         .ok_or_else(|| ph2d_i18n::tr("app.sculpt3d.bake.sem_malha_para_doar").to_string())?;
     // ⭐⭐⭐⭐ **UM SPRITE VAZIO VESTE A SILHUETA DA PEÇA** (report do dono, 21/09) — ver
     // [`super::albedo::veste_a_forma`], onde a lei, a cerca e o *porquê do branco* estão escritos.
@@ -106,6 +117,10 @@ fn bake_one(
         rig,
         lit_with: None,
         lei,
+        // ⚠️ **CONGELADO aqui**, e é isso que faz o catavento não saltar: a rota B re-rasteriza
+        // por quadro e tem de reproduzir o enquadramento deste gesto, nunca o do ecrã de agora —
+        // senão a peça deslizava dentro do sprite ao arrastar o canvas 2D.
+        recorte,
     };
     light(gpu, renderer, passes, &rig, &bake)?;
     // Só DEPOIS de a luz ter chegado ao slot: apontar o sprite para uma textura vazia e falhar
@@ -174,6 +189,7 @@ mod lei_ao_assar_tests {
             rig: ph2d_light::LightRig::default(),
             lit_with: None,
             lei: Lei::Tinta,
+            recorte: None,
         };
         assert_ne!(
             Lei::Tinta,
@@ -280,6 +296,9 @@ pub fn drain(
         &mut SimWorld,
         &mut SpriteRenderer,
     ) -> Option<ph2d_render::SpriteImage>,
+    // Ver `bake_one`: o rectângulo que a arte do sprite ocupa na JANELA, ou `None` quando não há
+    // quem o saiba (uma cena sem canvas publicado — todo gate headless desta casa).
+    rect_do_sprite: Option<[f32; 4]>,
 ) -> Option<Veredito> {
     if !want_bake {
         return None;
@@ -301,7 +320,16 @@ pub fn drain(
     Some(match selected {
         Some(bits) => Veredito::do_gesto(
             bake_one(
-                scene, forms, passes, next_id, gpu, bits, sim, renderer, ler_fonte,
+                scene,
+                forms,
+                passes,
+                next_id,
+                gpu,
+                bits,
+                sim,
+                renderer,
+                ler_fonte,
+                rect_do_sprite,
             ),
             note,
         ),

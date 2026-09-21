@@ -116,6 +116,7 @@ fn o_visor_e_os_bytes_da_sprite_sao_a_mesma_imagem() {
             rig,
             lit_with: None,
             lei: ph2d_form_donation::lei_da_luz::Lei::default(),
+            recorte: None,
         };
         let sprite =
             pixels_pela_forma_na_cpu(&bake, &rig).expect("o rig default tem lampada acesa");
@@ -219,6 +220,7 @@ fn de_onde_vem_a_cor_de_cada_lado() {
             rig,
             lit_with: None,
             lei: ph2d_form_donation::lei_da_luz::Lei::default(),
+            recorte: None,
         };
         pixels_pela_forma_na_cpu(&bake, &rig).expect("o rig default tem lampada acesa")
     };
@@ -329,6 +331,7 @@ fn atribuicao_do_desvio() {
                 rig,
                 lit_with: None,
                 lei: ph2d_form_donation::lei_da_luz::Lei::default(),
+                recorte: None,
             },
             &rig,
         )
@@ -454,6 +457,7 @@ fn a_projeccao_da_fonte_sobrevive_ao_enquadramento() {
             rig,
             lit_with: None,
             lei: ph2d_form_donation::lei_da_luz::Lei::default(),
+            recorte: None,
         },
         &rig,
     )

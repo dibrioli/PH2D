@@ -47,6 +47,12 @@ pub use crate::state_modes::{DetalheDaTinta, RetopoMode, UiLevel};
 mod luz;
 pub use luz::LightMode;
 
+/// **COM QUE LENTE** — ver [`lente`]. Irmão pelo mesmo corte do vizinho: *«que lentes existem»* é
+/// uma pergunta própria.
+#[path = "state_lente.rs"]
+mod lente;
+pub use lente::LensMode;
+
 /// **O estado AUTORADO da cena 3D** — tudo o que um controle contínuo ou um
 /// rádio deste painel escreve.
 #[derive(Clone, Debug, PartialEq)]
@@ -173,6 +179,13 @@ pub struct Sculpt3dUi {
     pub light_az_deg: f32,
     /// Elevação da lâmpada selecionada, em graus.
     pub light_elev_deg: f32,
+    /// ⭐⭐⭐ **COM QUE LENTE** — ver [`LensMode`] (report do dono, 2026-09-21: *«só temos a
+    /// visão em perspectiva em sculpt. Não temos Ortográfica. Precisamos de ambas»*).
+    ///
+    /// ⚠️ **Como a [`Self::lighting`], ela é AUTORADA e não é do documento** — escolher com que
+    /// lente olhar não muda a escultura. ⚠️ E ela é da câmera do quadrante ACTIVO: com a divisão
+    /// aberta cada vista tem a sua, que é o que o Blender faz.
+    pub lens: LensMode,
     /// **COM QUE LUZ** — ver [`LightMode`].
     ///
     /// ⚠️ Ele mora no estado AUTORADO e não nos fatos porque o artista o escolhe;
@@ -301,6 +314,7 @@ impl Default for Sculpt3dUi {
             // que vale é o que o snapshot da shell escreve no primeiro frame —
             // a fonte é `ph2d_mesh_render::DEFAULT_MATCAP`. Ele espelha para que
             // uma fixture de seam veja o mesmo mundo que o artista vê.
+            lens: LensMode::default(),
             lighting: LightMode::Matcap(0),
             alpha_preview: true,
             wireframe: false,

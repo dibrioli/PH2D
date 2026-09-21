@@ -72,6 +72,16 @@ pub(crate) struct BakedFormDocument {
     ///
     /// ⛔ Ele é o **terceiro** campo que não é pixel, e o postcard é POSICIONAL: ele entra no FIM.
     pub(crate) lei: ph2d_form_donation::lei_da_luz::Lei,
+    /// ⭐⭐⭐⭐ **O ENQUADRAMENTO com que a forma foi rasterizada** — degrau `164`. O que ele é, e
+    /// por que `None` é a leitura honesta de todo documento anterior a ele: o doc do
+    /// [`ph2d_form_donation::baked_form::Recorte`], que é onde o tipo vive.
+    ///
+    /// ⛔ **Sem ele o CATAVENTO saltava ao reabrir:** a rota B re-rasteriza por quadro, e um
+    /// objecto vivo cujo recorte morresse no disco voltaria a encher o sprite no primeiro quadro
+    /// em que o relógio andasse.
+    ///
+    /// ⛔ Ele é o **quarto** campo que não é pixel, e o postcard é POSICIONAL: ele entra no FIM.
+    pub(crate) recorte: Option<ph2d_form_donation::baked_form::Recorte>,
 }
 
 impl crate::App {
@@ -107,6 +117,7 @@ impl crate::App {
                 form_occ: occlusion_to_r8(&bake.form_occ),
                 rig: bake.rig,
                 lei: bake.lei,
+                recorte: bake.recorte,
             });
         }
         out
@@ -175,6 +186,7 @@ impl crate::App {
                     texture_id,
                     rig: doc.rig,
                     lei: doc.lei,
+                    recorte: doc.recorte,
                     // Nunca aceso NESTA sessão: é isto que faz o passe de re-acendida trabalhar no
                     // primeiro frame, pela porta única.
                     lit_with: None,
@@ -274,6 +286,15 @@ mod tests {
             ]),
             rig: authored,
             lei: ph2d_form_donation::lei_da_luz::Lei::Tinta,
+            // ⭐ **Um recorte que NÃO é a vista inteira**, pela mesma razão que a lei é a `Tinta`:
+            // um campo perdido no caminho devolveria `None` e a asserção reprovaria. *Com a vista
+            // cheia na fixtura, o gate ficava verde sobre um documento que não grava recorte
+            // nenhum.*
+            recorte: Some(ph2d_form_donation::baked_form::Recorte {
+                aspect: 1.777_777_8,
+                origin: [0.25, 0.125],
+                size: [0.5, 0.375],
+            }),
         };
         let bytes = postcard::to_allocvec(&doc).expect("serializa");
         let back: BakedFormDocument = postcard::from_bytes(&bytes).expect("desserializa");
@@ -294,6 +315,11 @@ mod tests {
             ph2d_form_donation::lei_da_luz::Lei::Tinta,
             "a LEI tem de voltar inteira -- sem ela o objeto reabre com a lei de FABRICA de quem o \
              abre, e a arte muda em silencio (degrau 161)"
+        );
+        assert_eq!(
+            back.recorte, doc.recorte,
+            "o RECORTE tem de voltar inteiro -- sem ele o catavento reabre a encher o sprite, em \
+             silencio"
         );
         // ⭐ **O CONTROLO da fixtura**: a lei gravada NÃO é o `Default`, logo a asserção acima
         // distingue *«voltou»* de *«nasceu de novo»*.

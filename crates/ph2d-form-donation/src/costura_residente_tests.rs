@@ -67,6 +67,7 @@ fn bola() -> BakedForm {
         rig: LightRig::default(),
         lit_with: None,
         lei: crate::lei_da_luz::Lei::Forma,
+        recorte: None,
     }
 }
 

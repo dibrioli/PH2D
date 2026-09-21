@@ -197,6 +197,7 @@ fn os_dois_lados_leem_o_mesmo_byte_no_ecra() {
             rig,
             lit_with: None,
             lei: ph2d_form_donation::lei_da_luz::Lei::default(),
+            recorte: None,
         };
         let sprite = pixels_pela_forma_na_cpu(&bake, &rig).expect("o rig tem lampada acesa");
 
@@ -343,6 +344,7 @@ fn diag_o_que_a_seleccao_faz_a_materia() {
         rig,
         lit_with: None,
         lei: ph2d_form_donation::lei_da_luz::Lei::default(),
+        recorte: None,
     };
     let sprite = pixels_pela_forma_na_cpu(&bake, &rig).expect("o rig tem lampada acesa");
 

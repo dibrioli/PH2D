@@ -161,6 +161,7 @@ pub fn populate(store: &mut WidgetStore) {
         &crate::ids::SCULPT3D_MASK_OP[..],
         &crate::ids::SCULPT3D_TRANSFORM[..],
         &crate::ids::SCULPT3D_MATCAP[..],
+        &crate::ids::SCULPT3D_LENS[..],
     ] {
         for &id in group {
             button(store, id);

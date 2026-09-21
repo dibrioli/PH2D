@@ -54,11 +54,28 @@ const KNOWN_TOOL_IDS: &[&str] = &[
 
 const ALLOWLIST_MARKER: &str = "ARCH-ALLOW: per-tool-branch";
 
+/// ⚠️ **A raiz da SHELL, subindo da crate onde este gate vive** (2026-09-21).
+///
+/// ⛔⛔ **Ele mudou de crate por causa da catraca `the_shell_only_shrinks`**, que conta
+/// `shells/desktop` INTEIRO — `tests/` incluído. Uma wave que ligou o enquadramento do bake levou-a
+/// acima do tecto, e a lei é *CORTE, nunca subir o número*; este ficheiro é um arch-gate de TEXTO
+/// sem uma única dependência da crate da shell, e **todos os irmãos `architecture_*` já viviam
+/// aqui** — logo o corte mais barato era a mudança de endereço, não código de produto.
+///
+/// ⛔ **O preço está registado:** *«um gate de família que lê a shell pelo caminho escapa a quem
+/// move o código»*. Aqui ele erra para o lado BARULHENTO — o `expect` abaixo diz o caminho —, que é
+/// a forma desta família que não passa em silêncio.
+fn shell_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .expect("crates/<x>/ tem dois pais")
+        .join("shells/desktop")
+}
+
 /// The frame's files: `render_loop/mod.rs` and every `render_loop/fase_*.rs`, sorted.
 fn frame_files() -> Vec<PathBuf> {
-    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("src")
-        .join("render_loop");
+    let dir = shell_dir().join("src").join("render_loop");
     let mut out: Vec<PathBuf> = fs::read_dir(&dir)
         .expect("render_loop/ readable")
         .flatten()

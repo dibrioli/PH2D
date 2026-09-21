@@ -32,7 +32,6 @@ mod a_verb_that_costs_precision_says_so;
 mod an_empty_object_is_reachable;
 mod an_individual_sprite_names_its_pixels;
 mod architecture_no_downcast_to_concrete_tool_in_shell;
-mod architecture_no_per_tool_branch_in_render_loop;
 mod audio_ml_is_off_by_default;
 mod audio_pricing_is_export_work_not_edit_work;
 mod cada_motor_da_fronteira_resolve_as_chaves_dele;

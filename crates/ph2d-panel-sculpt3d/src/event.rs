@@ -460,6 +460,8 @@ fn group_chip_ui(
         ui.brush.cloth_area = ph2d_sculpt3d::ClothArea::ALL[i];
     } else if let Some(i) = index_of(&crate::ids::SCULPT3D_CLOTH_FORCE_FALLOFF, id) {
         ui.brush.cloth_force_falloff = ph2d_sculpt3d::ClothForceFalloff::ALL[i];
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_LENS, id) {
+        ui.lens = crate::state::LensMode::from_option_index(i);
     } else {
         // A escada da fileira (`0` plano · `1` rig · `2 + i` matcap) vive numa
         // PORTA, e é a mesma que o pintor lê para dizer qual chip está aceso:

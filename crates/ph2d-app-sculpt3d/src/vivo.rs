@@ -135,6 +135,10 @@ pub struct ObjectoVivo<'a, 'b> {
     pub viva: &'b mut FormaViva,
     /// A orientação 3D — a que o `Transform` 2D não sabe exprimir.
     pub pose: PoseDaForma,
+    /// ⭐⭐⭐ **O enquadramento com que este objecto foi ASSADO**, ou `None` para a vista inteira
+    /// — ver [`ph2d_form_donation::baked_form::Recorte`]. Ele é do OBJECTO, como a pose: dois
+    /// cataventos na mesma cena foram assados sobre rectângulos diferentes do ecrã.
+    pub recorte: Option<ph2d_form_donation::baked_form::Recorte>,
 }
 
 /// ⭐⭐⭐ **A CORRENTE INTEIRA de um quadro da rota B, numa porta.**
@@ -155,13 +159,19 @@ pub fn acende_um_quadro(
     rig: &LightRig,
     obj: ObjectoVivo<'_, '_>,
 ) -> Result<(), String> {
-    let ObjectoVivo { alvo, viva, pose } = obj;
+    let ObjectoVivo {
+        alvo,
+        viva,
+        pose,
+        recorte,
+    } = obj;
     if cena.gbuffer_vivo(
         gpu,
         pose,
         alvo.size,
         (&viva.vistas.0, &viva.vistas.1),
         &mut viva.carimbo,
+        crate::recorte::a_usar(recorte, alvo.size),
     ) {
         viva.rasterizacoes += 1;
     }

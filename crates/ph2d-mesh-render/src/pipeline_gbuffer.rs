@@ -82,6 +82,44 @@ impl MeshRenderer {
         size: (u32, u32),
         area: crate::ScreenRect,
     ) {
+        self.render_gbuffer_framed(
+            device,
+            queue,
+            encoder,
+            normal_view,
+            occlusion_view,
+            camera,
+            shade,
+            size,
+            area,
+            crate::Framing::of_area(area),
+        );
+    }
+
+    /// ⭐⭐⭐ **O G-buffer de um RECORTE DA VISTA** — o que faz *«o que se vê é o que se assa»*
+    /// deixar de ser uma frase.
+    ///
+    /// ⚠️⚠️ **`area` e `framing` respondem a perguntas DIFERENTES, e confundi-las é o defeito:**
+    /// a `area` é *onde dentro do ALVO se desenha* (o scissor dos quatro viewports); o `framing` é
+    /// *que pedaço da VISTA este desenho representa*. No bake o alvo é a textura do sprite — a
+    /// `area` é ela inteira — e o recorte é o rectângulo que o sprite ocupa no ecrã.
+    ///
+    /// ⚠️ Com [`crate::Framing::of_area`] ele é o [`Self::render_gbuffer_in`] **ao bit** (o
+    /// recorte cheio salta o produto de matrizes — ver [`crate::ViewRegion`]).
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_gbuffer_framed(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        normal_view: &wgpu::TextureView,
+        occlusion_view: &wgpu::TextureView,
+        camera: &Camera3d,
+        shade: crate::Shade,
+        size: (u32, u32),
+        area: crate::ScreenRect,
+        framing: crate::Framing,
+    ) {
         // ⛔ **A área é RECORTADA ao alvo à entrada** — ver
         // [`crate::ScreenRect::clip_to`]: em todo redimensionamento existe um
         // quadro em que o painel ainda publica o rectângulo da janela antiga, e
@@ -99,12 +137,13 @@ impl MeshRenderer {
         // feita para o viewport ficaria colada na próxima doação, descrevendo
         // outro enquadramento e outra resolução.
         let fresh = std::mem::take(&mut self.ssao_fresh);
-        let aspect = area.aspect();
         queue.write_buffer(
             &self.uniform,
             0,
             bytemuck::bytes_of(&CameraRaw {
-                view_proj: camera.view_proj(aspect).to_cols_array_2d(),
+                view_proj: camera
+                    .view_proj_in(framing.aspect, framing.region)
+                    .to_cols_array_2d(),
                 view: camera.view().to_cols_array_2d(),
                 viewport: viewport_of(area),
             }),

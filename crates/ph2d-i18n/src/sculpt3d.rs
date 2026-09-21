@@ -274,6 +274,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // e esta escreve HDR onde aquela escreve 8 bits sob a transformada de
         // vista. Prometer "as baked" num rótulo seria uma promessa medida e falsa.
         "panel.sculpt3d.matcap.pbr" => "PBR",
+        // ⚠️ "Lens" e não "Projection": o artista escolhe COM QUE OLHO olha, e a
+        // palavra do menu vizinho do Blender é a mesma tecla (`Numpad5`).
+        "panel.sculpt3d.lens" => "Lens",
+        // ⚠️ "Perspective"/"Orthographic" são os nomes que TODO modelador usa —
+        // traduzir para "Converging"/"Parallel" seria mais exacto e ilegível.
+        "panel.sculpt3d.lens.perspective" => "Perspective",
+        "panel.sculpt3d.lens.ortho" => "Orthographic",
         "panel.sculpt3d.wireframe" => "Wireframe",
         "panel.sculpt3d.wire_grade" => "Show Grid",
         "panel.sculpt3d.accumulate" => "Accumulate",

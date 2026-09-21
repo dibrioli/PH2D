@@ -258,6 +258,7 @@ fn re_assar_nao_le_a_tela_de_volta() {
             rig: ph2d_light::LightRig::default(),
             lit_with: None,
             lei: ph2d_form_donation::lei_da_luz::Lei::default(),
+            recorte: None,
         },
     );
 

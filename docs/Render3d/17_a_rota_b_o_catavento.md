@@ -672,6 +672,126 @@ senão um `Shift+B` apagava o giro que o artista acabou de pôr — o mesmo argu
 
 ---
 
+## §10 — ⭐⭐⭐⭐ **O QUE SE VÊ É O QUE SE ASSA**, e a LENTE (2026-09-21)
+
+**Report do dono, com foto, três queixas numa mensagem:**
+
+1. *«Só temos a visão em perspectiva em sculpt. Não temos Ortográfica. Precisamos de ambas.»*
+2. *«O Bake não é feito projetando o objeto 3d exatamente como o posiciono sobre a sprite e tem
+   perspectiva, posição e escala diferente do que eu coloquei.»*
+3. *«Depois do Bake e antes de apertar o D para retirar o objeto 3d original, o bake 3d recebe zoom
+   e fica como na imagem: um fundo deslocado do objeto 3d.»*
+
+⭐ **As duas últimas são UM defeito com dois relatos**, e a terceira é a metade que se vê primeiro —
+porque a rota B re-rasteriza por quadro, logo o enquadramento errado aparece antes de a malha sair
+da tela.
+
+### §10.1 — O mecanismo, em aritmética
+
+A porta de assar rasterizava a forma no alvo **INTEIRO**. Logo a peça ocupava, dentro dos texels do
+sprite, a mesma fracção que ocupava **da altura do VIEWPORT** — e o sprite é um rectângulo *dentro*
+dele. Daí saem exactamente as duas queixas:
+
+| grandeza | erro |
+|---|---|
+| escala | `altura da vista ÷ altura do sprite no ecrã` |
+| posição | a distância entre o centro da vista e o centro do sprite |
+
+⛔⛔ **Duas curas foram descartadas antes da primeira linha:** um *dolly* (afastar a câmera) muda a
+CONVERGÊNCIA e não só o enquadramento, logo com lente convergente ele não é exprimível como um
+recorte; e redimensionar o sprite para casar com a vista é reescrever o documento do artista.
+
+⭐ **A cura é um frustum FORA DO EIXO** — a única forma exacta de dizer *«a mesma imagem, dentro
+deste outro rectângulo»* sob uma lente convergente. Ele vive na
+[`ph2d_mesh_render::ViewRegion`](../../crates/ph2d-mesh-render/src/view_region.rs), com
+`to_clip()` a devolver um afim de espaço de clip (as constantes multiplicam `w`, porque
+`ndc = clip/w`).
+
+⚠️ **O aspecto é sempre o da VISTA INTEIRA, nunca o do sub-rectângulo:** a forma do frustum é da
+vista, e o recorte só diz *que pedaço dela este alvo desenha*. Trocar os dois estica a peça.
+
+### §10.2 — As duas metades que não se conhecem (a regra 2 da W2)
+
+| quem | sabe |
+|---|---|
+| a **shell** | onde a arte de um sprite aterra na janela — ela tem a câmera 2D, a janela e o afim partilhado |
+| a **família** | onde a vista 3D está, e como recortar o frustum do escultor |
+
+⭐ O afim `imagem-px → ecrã-px` já tinha **quatro** consumidores, logo a shell pergunta-o à folha
+partilhada ([`ph2d_sprite_screen::rect_no_ecra`](../../crates/ph2d-sprite-screen/src/lib.rs)) — uma
+quinta cópia divergiria no dia em que uma folha desdobrada ou uma rotação mudassem de lei.
+
+⛔⛔ **E a janela que ele recebe é a da CENA, não a da JANELA** — apanhado pelo
+`quem_desenha_no_mundo_tambem_usa_a_banda`: com a ferramenta Motion na mão o chrome da cena é
+desenhado numa **banda**, e a superfície inteira devolveria um rectângulo `~340 px` fora do sítio
+(o defeito que o HUD pagou em 17/09). *Aqui ele seria pior que um clique perdido: o assado ficaria
+enquadrado sobre um pedaço de ecrã em que o sprite não está.*
+
+### §10.3 — O recorte VIAJA no arquivo, e o motivo é a rota B
+
+`BakedFormDocument::recorte` (degrau `164` do `PROJECT_SCHEMA`). ⛔ **Sem ele o catavento SALTAVA ao
+reabrir:** a rota B re-rasteriza por quadro, e um objecto vivo cujo recorte morresse no disco
+voltaria a encher o sprite no primeiro quadro em que o relógio andasse.
+
+⚠️ **`None` num documento anterior é a leitura honesta** — até aqui a forma era sempre rasterizada
+com a vista inteira, logo um ficheiro velho reabre **sem uma linha de diferença**. O degrau existe
+na mesma, porque *o postcard é POSICIONAL*.
+
+⛔⛔ **E o tipo é escrito DUAS vezes de propósito:** a `ph2d-form-donation` é a fronteira que o
+runtime atravessa **sem o módulo 3D**, e um `use ph2d_mesh_render::Framing` traria o `wgpu`, os
+matcaps e o `imageio` com ele. ⇒ dois tipos de dados puros e **uma** travessia, com gate de
+ida-e-volta (`ph2d_app_sculpt3d::recorte`). *O precedente é o `ph2d_pose::pesos`.*
+
+### §10.4 — A LENTE
+
+[`ph2d_mesh_render::Lens`](../../crates/ph2d-mesh-render/src/lens.rs): `Perspective` (fábrica) e
+`Ortho`. ⭐ **Não há vocabulário novo:** o modelador implícito desta casa já shipava a mesma escolha
+com a mesma tecla (`Numpad5`, a do Blender) e a mesma lei — **as duas lentes coincidem exactamente
+no plano do alvo**, com a meia-extensão da paralela a ser `distance · tan(fov/2)`
+([`Camera3d::view_height`](../../crates/ph2d-mesh-render/src/camera.rs)).
+
+**Duas portas, uma função:** o `Numpad5` (lido da MESMA tabela do módulo vizinho,
+`ph2d_viewport3d::views::is_lens_key`) e a fileira `Lens` na secção *Shading* do painel. ⚠️ Ela é
+**da câmera ACTIVA e não da cena** — com a divisão em quatro cada quadrante tem a sua, que é o que
+torna útil olhar a mesma peça de duas lentes ao mesmo tempo.
+
+⚠️ **A lente entra no `FormStamp`**, e sem isso trocá-la deixava a forma viva a descrever a peça
+vista pela lente de antes, **em silêncio**: nenhuma das outras sete entradas do carimbo se mexe com
+ela.
+
+### §10.5 — ⛔⛔ O achado de RÉGUA: uma paridade é cega a um erro COMUM
+
+**DUAS mutações SOBREVIVERAM** à primeira ronda: dobrar o `view_height() * 0.5` **da projecção** e
+**do lançador de raios** passava os `97` testes da crate.
+
+⭐ *A causa é estrutural, e vale para toda lente que alguém acrescente:* tudo o que havia sobre a
+paralela ou era uma **RELAÇÃO** (o recorte medido contra a vista inteira — cega a um factor comum
+aos dois lados) ou uma propriedade de **FORMA** (*sob raios paralelos o que varia com o pixel é a
+origem, não a direcção* — cega à escala). **Nenhuma régua dava à paralela um valor ABSOLUTO.**
+
+⇒ dois gates novos, cada um com o CONTROLO que impede a lei de ser satisfeita por
+`ortho == perspectiva`:
+
+| gate | o que afirma | o que o controlo proíbe |
+|---|---|---|
+| `as_duas_lentes_coincidem_no_plano_do_alvo` | três pontos do plano do alvo caem no mesmo NDC nas duas | fora daquele plano elas TÊM de divergir |
+| `o_raio_de_um_pixel_fura_o_plano_do_alvo_no_mesmo_ponto` | o pick da paralela mira onde ela desenha | as duas origens TÊM de se afastar |
+
+⚠️ *Sem o segundo, o defeito seria «o lugar onde o mouse toca não corresponde ao local na malha»* —
+a família que esta casa já nomeia —, na lente nova e sem régua nenhuma.
+
+### §10.6 — ⏳ Dívida DECLARADA
+
+⛔ **O estêncil de alfa continua a tratar a vista como convergente sob a lente paralela**
+(`Camera3d::view_height_per_depth` devolve uma razão por profundidade, que sob raios paralelos é
+constante). A cura tem endereço — `span = base + depth × ratio` no `AlphaStencil` — e é wave
+própria; hoje o que se vê é o padrão por imagem a mudar de tamanho com a profundidade numa lente em
+que ele não devia.
+
+---
+
+---
+
 ## ⛔ Recusas MEDIDAS
 
 | o que | porquê | onde |
@@ -688,6 +808,11 @@ senão um `Shift+B` apagava o giro que o artista acabou de pôr — o mesmo argu
 | apertar o controlo de vácuo até a fixtura PRETA o disparar | ela não é um vácuo: tira a COR e não a FORMA, e lê `246` de excursão contra `188` da boa — apertar mediria outra grandeza | §5.4 |
 | dar folga ao gate da igualdade `f32` | a rota residente não é uma aproximação: uma barra ali deixa passar uma 2.ª redacção do despacho | §5.3 |
 | escrever o ângulo efectivo de volta no `Mesh3D` | um componente registado reescrito a 60 Hz é **um passo de `Ctrl+Z` por quadro** | §7.2 |
+| um *dolly* (afastar a câmera) para enquadrar o sprite | ele muda a CONVERGÊNCIA e não só o enquadramento — sob lente convergente não é exprimível como recorte | §10.1 |
+| redimensionar o sprite para casar com a vista | o rectângulo e a arte do sprite são do ARTISTA | §10.1 |
+| o aspecto do frustum sair do sub-rectângulo | a forma do frustum é da VISTA; o recorte só diz que pedaço dela este alvo desenha — trocá-los estica a peça | §10.1 |
+| `use ph2d_mesh_render::Framing` na `ph2d-form-donation` | ela é a fronteira que o runtime atravessa SEM o módulo 3D, e o `use` traria `wgpu` + matcaps + `imageio` | §10.3 |
+| recomputar o enquadramento por quadro em vez de o congelar | a forma passaria a seguir o OVERLAY 3D e a deslizar dentro do sprite quando o canvas 2D fizesse pan | §10.3 |
 | pôr o giro no `Default` do componente | toda peça do app passaria a girar; o giro é da CENA, e há gate nas duas metades | §7.4 |
 | abrir a `=52` com uma esfera LISA | raio constante ⇒ invariante à rotação ⇒ a cena ensinaria que a rota B não faz nada | §7.4 |
 | usar o relógio da PAREDE para o giro | a peça continuaria a girar com a régua parada, e o controlo da cena (o botão de Play) deixaria de existir | §7.2 |

@@ -64,6 +64,7 @@ fn um_quadro(gpu: &GpuContext, malha: ph2d_mesh::Mesh, pose: PoseDaForma) -> Vec
             },
             viva: &mut viva,
             pose,
+            recorte: None,
         },
     )
     .expect("a rota B acende");
@@ -180,6 +181,7 @@ fn catavento_o_carimbo_poupa_a_rasterizacao() {
                 },
                 viva,
                 pose,
+                recorte: None,
             },
         )
         .expect("a rota B acende");
@@ -266,6 +268,7 @@ fn a_fase_acende_larga_e_carimba() {
                 rig: LightRig::default(),
                 lit_with: None,
                 lei: ph2d_form_donation::lei_da_luz::Lei::default(),
+                recorte: None,
             },
         );
     }

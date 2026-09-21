@@ -94,6 +94,13 @@ impl PainterTool {
         // …e a BORRACHA pelo mesmo motivo, um canal adiante: ela tambem reescreve o plano da
         // camada ao vivo, e sem isto a mordida de toda figura por onde a mao passou fica para sempre.
         self.restamp_reset_erase();
+        // …e a PILHA do Composite Brush, que é o QUARTO canal desta lista e não estava nela
+        // (report do dono, 2026-09-21). Ela acumula por TRAÇO e uma sessão de figuras é UM traço:
+        // sem isto os planos guardam a figura anterior e a posição anterior, e a composição
+        // repõe-nas por cima da tela que acabou de ser restaurada — o boolean deixa de apagar o
+        // arco interior e um arrasto deixa rasto. Mecanismo e tabela em
+        // [`super::composite_acumulado::PainterTool::restamp_reset_pilha`].
+        self.restamp_reset_pilha();
         let relief_us = t_relief.elapsed().as_micros() as u64;
         // Coverage bbox over the wrapped Tiling copies (the stamp re-tiles them itself).
         let coverage_storage;
@@ -176,6 +183,19 @@ impl PainterTool {
             self.restore_region(&prev.rect, &prev.pixels);
             self.wetpaint_rearm_after_own_write();
         }
+        // ⛔ **A pilha do Composite NÃO é descascada aqui, e a razão é o CHAMADOR.** A 1.ª
+        // redacção desta wave punha o `restamp_reset_pilha()` nesta porta; ela tem um chamador que
+        // **não é um re-carimbo** — o bracket do `Style: Solid` no [`Self::stamp_dabs`], que
+        // descasca a cada LOTE de um traço à mão livre CUMULATIVO —, e ali esquecer o acumulado é
+        // o oposto do certo. ⇒ a lei mora no [`Self::stamp_drag_preview`], ao lado das outras três
+        // que um re-carimbo repõe. *Uma porta com dois tipos de chamador não é o sítio de uma lei
+        // que vale só para um deles.*
+        //
+        // ⚠️ **Medido, e a medição corrigiu-me:** com a chamada aqui a saída do traço Solid é
+        // **byte-idêntica** (o que eu tinha lido como uma regressão minha — a camada `Smear` inerte
+        // sob Solid — é PRÉ-EXISTENTE e continua a sê-lo depois de eu a tirar). A chamada sai
+        // porque é redundante (a mutação que só a apaga sobrevive aos gates do re-carimbo) **e**
+        // porque a porta é partilhada, não porque ela estivesse a partir alguma coisa.
         self.paint.wetpaint.pending_deposit.clear();
     }
 

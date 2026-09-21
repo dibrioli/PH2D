@@ -52,6 +52,12 @@ mod diag_pigmento_por_meio; // em que MEIOS a lei do pigmento chega ao barro (a 
 #[path = "composite_cinco_tests.rs"]
 mod composite_cinco_tests; // a pilha de CINCO: cor, tamanho e o Erase por camada
 
+#[path = "composite_formas_tests.rs"]
+mod composite_formas_tests; // a pilha contra os metodos de RE-CARIMBO: o boolean e o rasto
+
+#[path = "diag_composite_e_as_formas.rs"]
+mod diag_composite_e_as_formas; // a pilha contra os metodos de RE-CARIMBO (report do dono, 2026-09-21)
+
 #[path = "composite_acumulado_tests.rs"]
 mod composite_acumulado_tests; // a pilha que ACUMULA: o preço, a exactidão e o rectângulo
 

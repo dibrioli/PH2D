@@ -1,5 +1,16 @@
-//! ⭐⭐⭐ **OS GATES DA CONCILIAÇÃO DAS ALÇAS** — o report do dono de 2026-09-19
-//! (*«muitas irregularidades … certamente um mau tratamento das alças dos handles»*).
+//! ⭐⭐⭐ **OS GATES DO AJUSTE DAS ALÇAS** — que ele é o ÓPTIMO da cúbica, e que conciliar SAI dele.
+//!
+//! ⛔⛔⛔ **Este ficheiro chamava-se *«os gates da CONCILIAÇÃO»* e a premissa dele morreu em
+//! 2026-09-20.** Ele nasceu do report de 2026-09-19 (*«muitas irregularidades … certamente um mau
+//! tratamento das alças dos handles»*) e afirmava que conciliar as duas alças de um nó era a cura.
+//! O report seguinte do dono — *«não fica bom. Muito curvado»*, com foto — mediu-se contra a
+//! conciliação: ela custava **`9,3×`** de serpentina e **`1,6×`** de fidelidade para comprar
+//! `13,65°` de quebra de tangente que **o CHÃO do modelo paga igual**. A tabela está em
+//! [`super::aplica_pela_curva`]; o passe foi apagado.
+//!
+//! ⇒ o que se afirma aqui agora é o **contrário**: que o ajuste livre é o melhor que uma cúbica
+//! pode fazer, e que conciliar — reimplementado dentro do gate, à letra como ele era — **piora**.
+//! *Uma recusa medida que não é executável envelhece; esta corre em todo portão.*
 //!
 //! ⛔ Ele vive ao lado do [`super::tests`] e não dentro dele por **tecto de LOC**: o irmão estava a
 //! `882` linhas. *O ficheiro é uma unidade de manutenção; a lei é a mesma.*
@@ -9,55 +20,6 @@ use ph2d_skeleton::{SkinBone, Xform};
 use ph2d_vec_scene::{ShapeKind, VecPath, cook};
 
 use super::tests::{forma, pele};
-
-/// O ângulo com que a tangente VIRA ao atravessar cada nó, em graus.
-///
-/// ⚠️⚠️ **Ele NÃO é a régua sozinho, e a 1.ª redacção deste ficheiro caiu nisso:** um rectângulo tem
-/// quatro QUINAS autoradas, e ali este número vale `90°` em repouso. *Uma quina que o artista
-/// desenhou não é uma quina que o ajuste cravou.* A régua é a [`mudanca_da_tangente`] — a diferença
-/// contra a lei INGÉNUA, que preserva o que a fonte tinha por construção.
-///
-/// ⚠️ **Uma alça DEGENERADA devolve `None`** — ela não tem direcção, e o nó onde ela chega é um
-/// CANTO. *Ali não há continuidade para conciliar*, e é por isso que a fixtura deste gate é a
-/// ELIPSE: num rectângulo as quatro alças estão em cima das âncoras e esta régua lê `None` nas
-/// quatro, o que a deixaria **verde por vácuo** (medido).
-fn viragens(p: &VecPath) -> Vec<Option<f64>> {
-    let c = p.cooked();
-    let mut out = Vec::new();
-    for k in 0..c.contour_count() {
-        let Some((v, fechado)) = c.contour(k) else {
-            continue;
-        };
-        if !fechado {
-            continue;
-        }
-        for no in v {
-            let ent = kurbo::Vec2::new(
-                no.anchor[0] - no.in_handle[0],
-                no.anchor[1] - no.in_handle[1],
-            );
-            let sai = kurbo::Vec2::new(
-                no.out_handle[0] - no.anchor[0],
-                no.out_handle[1] - no.anchor[1],
-            );
-            if ent.hypot() <= 0.0 || sai.hypot() <= 0.0 {
-                // ⚠️ **Um buraco e não um salto** — saltá-lo desalinharia o emparelhamento com o
-                // outro estado do mesmo caminho.
-                out.push(None);
-                continue;
-            }
-            let mut d = sai.atan2() - ent.atan2();
-            while d > std::f64::consts::PI {
-                d -= std::f64::consts::TAU;
-            }
-            while d < -std::f64::consts::PI {
-                d += std::f64::consts::TAU;
-            }
-            out.push(Some(d.abs().to_degrees()));
-        }
-    }
-    out
-}
 
 /// A mesma barra, **elíptica** — uma forma cujos nós têm alças a sério.
 ///
@@ -92,294 +54,237 @@ fn tabela_de(p: &VecPath) -> Vec<f64> {
     out
 }
 
-/// ⭐⭐⭐ **CONCILIAR A TANGENTE É O QUE CURA O REPORT — e o CONTROLO é a lei sem ela.**
+/// O ajuste, o óptimo e a lei ingénua num segmento — o maior afastamento de cada um à curva
+/// VERDADEIRA, medido nos mesmos `t`.
 ///
-/// O report do dono de 2026-09-19 (*«muitas irregularidades … certamente um mau tratamento das
-/// alças dos handles»*) é esta medição: com cada segmento a resolver o seu ajuste sozinho, as duas
-/// alças de um nó deixam de ser colineares e o nó LISO vira QUINA.
-///
-/// ⚠️⚠️ **O controlo é construído das peças PRIVADAS do produto** — a lei ingénua mais a
-/// [`super::correccao_das_alcas`], sem o passe da [`super::reconcilia`] —, e é exactamente o
-/// produto de ontem. *Sem ele este gate ficaria verde sobre uma fixtura que por acaso não dobra.*
-///
-/// (Mutações: apagar a chamada a `reconcilia` ⇒ RED na 2.ª · devolver `comum = desvio[i]` ⇒ RED na
-/// 2.ª · reconciliar só uma das metades ⇒ RED na 2.ª.)
-#[test]
-fn conciliar_as_alcas_tira_a_quina_que_o_ajuste_livre_crava() {
-    // ⛔ **Uma forma de arestas rectas NÃO entra aqui, e é medição e não descuido:** ali as quatro
-    // alças da fonte estão em cima das âncoras, os quatro nós são CANTOS, e a conciliação é inerte
-    // por desenho — ver [`super::SegmentoDaPele::direccao`].
-    for (nome, fonte) in [("elipse", forma_curva())] {
-        let k = pele(1.2);
-        let t = tabela_de(&fonte);
+/// ⭐ O **óptimo** é calculado aqui de raiz e não pela porta do produto: mínimos quadrados dos dois
+/// pontos de controlo (não das correcções) sobre `256` amostras, com as pontas presas na verdade.
+/// *Uma régua derivada da função que ela julga não a pode julgar.*
+fn erros_do_segmento(k: &Skin, fonte: &VecPath, t: &[f64], seg: usize) -> (f64, f64, f64) {
+    let n = fonte.verts.len();
+    let s = super::SegmentoDaPele {
+        src: super::cubica(&fonte.verts, seg, n),
+        pele: k,
+        ra: super::linha(t, 2, seg),
+        rb: super::linha(t, 2, (seg + 1) % n),
+        correcoes: &[],
+        rigido: true,
+        campo: None,
+        suave: None,
+    };
+    const N: usize = 256;
+    let ts: Vec<f64> = (0..=N).map(|i| i as f64 / N as f64).collect();
+    let verdade: Vec<kurbo::Point> = ts.iter().map(|&u| s.ponto(u)).collect();
 
-        // ⭐ O CONTROLO: a lei de ontem, montada das peças do produto.
-        let mut livre = fonte.clone();
-        crate::aplica_corrigido(&k, &mut livre, &t, &[]);
-        let n = fonte.verts.len();
-        for seg in 0..n {
-            let s = super::SegmentoDaPele {
-                src: super::cubica(&fonte.verts, seg, n),
-                pele: &k,
-                ra: super::linha(&t, 2, seg),
-                rb: super::linha(&t, 2, (seg + 1) % n),
-                correcoes: &[],
-                rigido: true,
-                campo: None,
-                suave: None,
-            };
-            let ja = super::cubica(&livre.verts, seg, n);
-            let (d1, d2) = super::correccao_das_alcas(&s, &ja);
-            let j = (seg + 1) % n;
-            livre.verts[seg].out_handle = [
-                livre.verts[seg].out_handle[0] + d1.x,
-                livre.verts[seg].out_handle[1] + d1.y,
-            ];
-            livre.verts[j].in_handle = [
-                livre.verts[j].in_handle[0] + d2.x,
-                livre.verts[j].in_handle[1] + d2.y,
-            ];
-        }
-
-        let mut curva = fonte.clone();
-        aplica_pela_curva(&k, &mut curva, &t, &[]);
-
-        // ⭐ A REFERÊNCIA é a lei ingénua: ela aplica UM afim às três metades de cada vértice, logo
-        // preserva o que a fonte tinha (um nó liso fica liso, uma quina mantém a quina que o afim
-        // lhe dá). O que se mede é quanto cada ajuste se AFASTA dela.
-        let mut ingenua = fonte.clone();
-        crate::aplica_corrigido(&k, &mut ingenua, &t, &[]);
-        let sem = mudanca_da_tangente(&ingenua, &livre);
-        let com = mudanca_da_tangente(&ingenua, &curva);
-        // ⭐⭐ **E a conciliação não pode custar FIDELIDADE** — sem esta metade, uma escolha
-        // qualquer do ângulo comum (o da 1.ª metade, por exemplo) fica trivialmente colinear e
-        // passa. *Medido: ela é a única régua que separa a média pesada de um palpite.*
-        let n2 = fonte.verts.len();
-        let (mut cru, mut fino) = (0.0_f64, 0.0_f64);
-        for seg in 0..n2 {
-            let sd = super::SegmentoDaPele {
-                src: super::cubica(&fonte.verts, seg, n2),
-                pele: &k,
-                ra: super::linha(&t, 2, seg),
-                rb: super::linha(&t, 2, (seg + 1) % n2),
-                correcoes: &[],
-                rigido: true,
-                campo: None,
-                suave: None,
-            };
-            let (ing, agora) = (
-                super::cubica(&ingenua.verts, seg, n2),
-                super::cubica(&curva.verts, seg, n2),
-            );
-            for i in 1..64 {
-                let u = f64::from(i) / 64.0;
-                let verdade = sd.ponto(u);
-                cru = cru.max((verdade - ing.eval(u)).hypot());
-                fino = fino.max((verdade - agora.eval(u)).hypot());
-            }
-        }
-        eprintln!(
-            "[alcas] {nome}: sem conciliar {sem:.3}° · conciliada {com:.3e}° · erro ingenua \
-             {cru:.4} -> conciliada {fino:.4}"
-        );
-        assert!(
-            sem > 5.0,
-            "em `{nome}` o ajuste livre virou a tangente so' {sem}° — a fixtura nao contem o \
-             report, e a asserção abaixo passa a ser trivial"
-        );
-        // ⚠️ **A barra sai de DOIS pontos medidos, não de um número confortável:** a média pesada
-        // pelo comprimento dá `2,1356` e a alternativa óbvia — o nó tomar o ângulo da 1.ª metade —
-        // dá `2,3904`, sobre um erro ingénuo de `4,6619`. A barra fica no vale entre as duas.
-        assert!(
-            fino < cru / 2.0,
-            "em `{nome}` conciliar custou FIDELIDADE ({cru} -> {fino}): o angulo comum tem de ser \
-             a media pesada pelo COMPRIMENTO das duas alcas, senao o passe endireita o no' e \
-             estraga o desenho"
-        );
-        assert!(
-            com < 1e-9,
-            "em `{nome}` o no' continua a ser uma QUINA ({com}°): as duas alças de um no' tem de \
-             rodar JUNTAS, senão o `kind` que o artista desenhou sobrevive como byte e morre como \
-             desenho"
-        );
+    // O ÓPTIMO: `min ‖verdade(t) − B₀P₀ − B₁P₁ − B₂P₂ − B₃P₃‖²` em `P₁, P₂`, com `P₀`/`P₃` presos.
+    let (p0, p3) = (verdade[0], verdade[N]);
+    let (mut a11, mut a12, mut a22) = (0.0_f64, 0.0_f64, 0.0_f64);
+    let (mut b1, mut b2) = (kurbo::Vec2::ZERO, kurbo::Vec2::ZERO);
+    for (i, &u) in ts.iter().enumerate() {
+        let v = 1.0 - u;
+        let (w0, w1, w2, w3) = (v * v * v, 3.0 * v * v * u, 3.0 * v * u * u, u * u * u);
+        let d = verdade[i] - (p0.to_vec2() * w0 + p3.to_vec2() * w3).to_point();
+        a11 = w1.mul_add(w1, a11);
+        a12 = w1.mul_add(w2, a12);
+        a22 = w2.mul_add(w2, a22);
+        b1 += d * w1;
+        b2 += d * w2;
     }
+    let det = a12.mul_add(-a12, a11 * a22);
+    let melhor = kurbo::CubicBez::new(
+        p0,
+        ((b1 * a22 - b2 * a12) / det).to_point(),
+        ((b2 * a11 - b1 * a12) / det).to_point(),
+        p3,
+    );
+
+    // O AJUSTE do produto e a lei INGÉNUA, sobre a mesma fonte.
+    let mut ing = fonte.clone();
+    crate::aplica_corrigido(k, &mut ing, t, &[]);
+    let mut aj = fonte.clone();
+    aplica_pela_curva(k, &mut aj, t, &[]);
+    let (ci, ca) = (
+        super::cubica(&ing.verts, seg, n),
+        super::cubica(&aj.verts, seg, n),
+    );
+    let mut e = (0.0_f64, 0.0_f64, 0.0_f64);
+    for (i, &u) in ts.iter().enumerate() {
+        e.0 = e.0.max((verdade[i] - ca.eval(u)).hypot());
+        e.1 = e.1.max((verdade[i] - melhor.eval(u)).hypot());
+        e.2 = e.2.max((verdade[i] - ci.eval(u)).hypot());
+    }
+    e
 }
 
-/// ⭐⭐⭐ **NUMA FORMA DE ARESTAS RECTAS O PASSE É INERTE — e isso é desenho, não descuido.**
+/// ⭐⭐⭐ **O AJUSTE É O MELHOR QUE UMA CÚBICA PODE FAZER — e o CONTROLO é a lei do Rive.**
 ///
-/// Uma alça em cima da âncora não carrega tangente nenhuma, e o nó onde ela chega é um **CANTO**:
-/// ali não há continuidade para conciliar, e o ajuste livre é a resposta mais fiel. ⇒ o passe
-/// salta-a, e numa forma cujas quatro alças estão nas âncoras ele não toca em **nada**.
+/// A lei ingénua ([`crate::aplica_corrigido`]) é, à letra, o que o `rive-runtime` faz: um afim por
+/// vértice aplicado às três metades dele (`src/shapes/cubic_vertex.cpp`, MIT). Ela erra no interior
+/// de cada segmento porque a pele é um mapa **não-afim**, e é esse erro que o ajuste come.
 ///
-/// ⚠️⚠️ **É esta a metade que guarda a F30 na arte que a caneta desenha sem arrastar.** Uma
-/// alça degenerada que ENTRASSE na média envenena o ângulo comum com um `atan2(0, 0)` e faz a
-/// outra metade do nó rodar para um sítio que ninguém pediu — e ela continua em cima da âncora,
-/// porque rodar o vector nulo dá o vector nulo. *O sintoma seria a arte de polígono a torcer-se
-/// nos cantos, sem uma linha de erro.*
+/// # As três metades
 ///
-/// (Mutação: tirar o `l <= 0.0` do salto ⇒ RED.)
+/// 1. **O ajuste bate o ÓPTIMO** — o melhor par de alças possível para aquele segmento, calculado
+///    aqui de raiz sobre `256` amostras. Se o ajuste se afastasse dele, algum passe a jusante
+///    estaria a estragar a solução.
+/// 2. **A lei ingénua é muito pior** — sem esta metade a primeira ficaria verde numa fixtura em que
+///    o mapa por acaso é afim e os três erros são zero.
+/// 3. ⛔⛔⛔ **CONCILIAR SAI DO ÓPTIMO, e é por isso que o passe foi apagado.** A conciliação está
+///    reimplementada abaixo **à letra como ela era** (as duas alças rodadas para a média dos
+///    desvios aos eixos, pesada pelo comprimento), e o que se afirma é que ela **piora**. *Uma
+///    recusa medida que não corre é uma nota; esta é um gate.*
 #[test]
-fn numa_forma_de_arestas_rectas_o_passe_nao_toca_em_nada() {
+fn o_ajuste_e_o_optimo_da_cubica_e_conciliar_sai_dele() {
+    let k = pele(1.2);
+    let fonte = forma_curva();
+    let t = tabela_de(&fonte);
+    let n = fonte.verts.len();
+    let (mut pior_aj, mut pior_op, mut pior_in) = (0.0_f64, 0.0_f64, 0.0_f64);
+    for seg in 0..n {
+        let (aj, op, ing) = erros_do_segmento(&k, &fonte, &t, seg);
+        pior_aj = pior_aj.max(aj);
+        pior_op = pior_op.max(op);
+        pior_in = pior_in.max(ing);
+    }
+    eprintln!(
+        "[alcas] pior erro à curva verdadeira: ajuste {pior_aj:.6} · óptimo {pior_op:.6} · \
+         ingénua (Rive) {pior_in:.6}"
+    );
+    assert!(
+        pior_in > pior_op * 4.0,
+        "a lei ingénua erra so' {pior_in} contra {pior_op} do óptimo — a fixtura nao contem o \
+         fenomeno, e a asserção do ajuste passa a ser trivial"
+    );
+    assert!(
+        pior_aj < pior_op * 1.05,
+        "o ajuste ({pior_aj}) afastou-se do ÓPTIMO da cúbica ({pior_op}): algum passe a jusante \
+         esta' a mexer nas alças depois de elas estarem certas"
+    );
+    // ⭐ A CONCILIAÇÃO, reimplementada à letra como ela era em 2026-09-19.
+    let mut ing = fonte.clone();
+    crate::aplica_corrigido(&k, &mut ing, &t, &[]);
+    let mut conc = fonte.clone();
+    aplica_pela_curva(&k, &mut conc, &t, &[]);
+    for no in 0..n {
+        let a = kurbo::Point::new(conc.verts[no].anchor[0], conc.verts[no].anchor[1]);
+        let hs = [
+            kurbo::Point::new(conc.verts[no].in_handle[0], conc.verts[no].in_handle[1]) - a,
+            kurbo::Point::new(conc.verts[no].out_handle[0], conc.verts[no].out_handle[1]) - a,
+        ];
+        // O EIXO de cada metade: a imagem, pelo afim do nó, da tangente que a FONTE tinha.
+        let ia = kurbo::Point::new(ing.verts[no].anchor[0], ing.verts[no].anchor[1]);
+        let es = [
+            kurbo::Point::new(ing.verts[no].in_handle[0], ing.verts[no].in_handle[1]) - ia,
+            kurbo::Point::new(ing.verts[no].out_handle[0], ing.verts[no].out_handle[1]) - ia,
+        ];
+        let (mut soma, mut desvio) = ((0.0_f64, 0.0_f64), [0.0_f64; 2]);
+        for i in 0..2 {
+            if es[i].hypot() <= 0.0 {
+                continue;
+            }
+            let l = hs[i].hypot();
+            desvio[i] = (hs[i].atan2() - es[i].atan2()).rem_euclid(std::f64::consts::TAU);
+            if desvio[i] > std::f64::consts::PI {
+                desvio[i] -= std::f64::consts::TAU;
+            }
+            soma = (desvio[i].mul_add(l, soma.0), soma.1 + l);
+        }
+        if soma.1 <= 0.0 {
+            continue;
+        }
+        let comum = soma.0 / soma.1;
+        for i in 0..2 {
+            if es[i].hypot() <= 0.0 {
+                continue;
+            }
+            let (si, co) = (comum - desvio[i]).sin_cos();
+            let g = kurbo::Vec2::new(
+                si.mul_add(-hs[i].y, co * hs[i].x),
+                si.mul_add(hs[i].x, co * hs[i].y),
+            );
+            let q = [a.x + g.x, a.y + g.y];
+            if i == 0 {
+                conc.verts[no].in_handle = q;
+            } else {
+                conc.verts[no].out_handle = q;
+            }
+        }
+    }
+    let mut pior_conc = 0.0_f64;
+    for seg in 0..n {
+        let s = super::SegmentoDaPele {
+            src: super::cubica(&fonte.verts, seg, n),
+            pele: &k,
+            ra: super::linha(&t, 2, seg),
+            rb: super::linha(&t, 2, (seg + 1) % n),
+            correcoes: &[],
+            rigido: true,
+            campo: None,
+            suave: None,
+        };
+        let c = super::cubica(&conc.verts, seg, n);
+        for i in 0..=256 {
+            let u = f64::from(i) / 256.0;
+            pior_conc = pior_conc.max((s.ponto(u) - c.eval(u)).hypot());
+        }
+    }
+    eprintln!("[alcas] conciliada {pior_conc:.6} (o ajuste sozinho é {pior_aj:.6})");
+    assert!(
+        pior_conc > pior_aj * 1.20,
+        "conciliar as alças ({pior_conc}) nao piorou o ajuste ({pior_aj}) — ou a reimplementação \
+         acima deixou de ser a que foi apagada, ou o ajuste deixou de ser o óptimo"
+    );
+}
+
+/// ⭐⭐⭐ **NUMA FORMA DE ARESTAS RECTAS O AJUSTE ARQUEIA A ARESTA — e é para isto que ele existe.**
+///
+/// ⛔⛔⛔ **O gate que estava aqui afirmava o CONTRÁRIO — *«o passe não toca em nada»* — e era sobre
+/// a conciliação, que foi apagada.** Deixá-lo de pé seria ficar **verde a afirmar nada**: sem aquele
+/// passe, *«ele não toca em nada»* é trivialmente verdadeiro.
+///
+/// A lei que fica é a que justifica o ajuste existir: a imagem verdadeira de uma recta sob a pele
+/// **arqueia**, e a lei ingénua entrega uma recta. Um rectângulo tem as quatro alças em cima das
+/// âncoras, logo é a fixtura mais dura que há para isto.
+///
+/// ⚠️ **E ela não pode arquear em REPOUSO**, que é a metade que impede a cura barata de bulir com
+/// arte parada.
+#[test]
+fn numa_forma_de_arestas_rectas_o_ajuste_arqueia_a_aresta() {
     let k = pele(1.2);
     let fonte = forma();
     let t = tabela_de(&fonte);
-
-    let mut livre = fonte.clone();
-    crate::aplica_corrigido(&k, &mut livre, &t, &[]);
     let n = fonte.verts.len();
+    let (mut pior_aj, mut pior_in) = (0.0_f64, 0.0_f64);
     for seg in 0..n {
-        let s = super::SegmentoDaPele {
-            src: super::cubica(&fonte.verts, seg, n),
-            pele: &k,
-            ra: super::linha(&t, 2, seg),
-            rb: super::linha(&t, 2, (seg + 1) % n),
-            correcoes: &[],
-            rigido: true,
-            campo: None,
-            suave: None,
-        };
-        let ja = super::cubica(&livre.verts, seg, n);
-        let (d1, d2) = super::correccao_das_alcas(&s, &ja);
-        let j = (seg + 1) % n;
-        livre.verts[seg].out_handle = [
-            livre.verts[seg].out_handle[0] + d1.x,
-            livre.verts[seg].out_handle[1] + d1.y,
-        ];
-        livre.verts[j].in_handle = [
-            livre.verts[j].in_handle[0] + d2.x,
-            livre.verts[j].in_handle[1] + d2.y,
-        ];
+        let (aj, _, ing) = erros_do_segmento(&k, &fonte, &t, seg);
+        pior_aj = pior_aj.max(aj);
+        pior_in = pior_in.max(ing);
     }
-    let mut curva = fonte.clone();
-    aplica_pela_curva(&k, &mut curva, &t, &[]);
-
-    // ⭐ O CONTROLO: a correcção livre MOVEU as alças — senão isto seria «nada mexeu em nada».
-    let moveu = livre
-        .verts
-        .iter()
-        .zip(&fonte.verts)
-        .fold(0.0_f64, |m, (x, y)| {
-            m.max((x.out_handle[0] - y.out_handle[0]).abs())
-                .max((x.out_handle[1] - y.out_handle[1]).abs())
-        });
+    eprintln!("[alcas] recta: ajuste {pior_aj:.6} · ingénua {pior_in:.6}");
     assert!(
-        moveu > 1.0,
-        "a correccao livre mexeu so' {moveu} — a fixtura nao contem o fenomeno"
+        pior_in > 0.01,
+        "a imagem da recta desviou so' {pior_in} da recta — a fixtura nao contem o fenomeno"
     );
-    for (a, b) in curva.verts.iter().zip(&livre.verts) {
+    assert!(
+        pior_aj < pior_in / 4.0,
+        "numa forma de arestas rectas o ajuste ({pior_aj}) nao arqueia a aresta para seguir a \
+         verdade ({pior_in}) — sem isto a F30 nao vale nada na arte que a caneta desenha"
+    );
+    let repouso = pele(0.0);
+    let mut parada = fonte.clone();
+    aplica_pela_curva(&repouso, &mut parada, &t, &[]);
+    for (a, b) in fonte.verts.iter().zip(&parada.verts) {
         assert_eq!(
             (a.in_handle, a.out_handle),
             (b.in_handle, b.out_handle),
-            "o passe da conciliacao tocou numa forma de arestas rectas: uma alca degenerada \
-             entrou na media e envenenou o angulo comum do no'"
+            "em repouso o ajuste mexeu numa alça — a diferença é exactamente zero ali, logo o \
+             segundo membro do sistema tem de ser zero"
         );
     }
 }
 
-/// ⭐⭐⭐ **NUM NÓ MISTO, A METADE SEM EIXO FICA FORA DA MÉDIA.**
-///
-/// Um nó cuja alça de saída está em cima da âncora e cuja alça de entrada é a sério — a costura
-/// entre um troço recto e um troço curvo, que toda arte mista tem. Ali há **uma** tangente, logo o
-/// ângulo comum do nó **é** o desvio dela, e a alça de entrada não se mexe.
-///
-/// ⚠️⚠️ **Sem a cerca, a metade sem eixo entra com `atan2(0, 0) = 0` e um comprimento REAL** (a
-/// correcção livre revive a alça), e o ângulo comum sai envenenado: a única tangente do nó roda
-/// para um sítio que ninguém pediu. *A régua é o desenho, e o que se afirma é que ela NÃO se mexe.*
-///
-/// (Mutação: tirar o `es[i].hypot() <= 0.0` da média ⇒ RED.)
-#[test]
-fn num_no_misto_a_metade_sem_eixo_nao_entra_na_media() {
-    let k = pele(1.2);
-    let mut fonte = forma_curva();
-    // ⭐ A COSTURA: o nó perde a alça de SAÍDA e mantém a de entrada. ⚠️ **Tem de ser um nó cujo
-    // segmento seguinte ATRAVESSE a junta**, senão o mapa é afim ali, a correcção livre é zero e a
-    // alça não revive — a fixtura fica sem o fenómeno (medido: `1,0e-14`).
-    let n = fonte.verts.len();
-    // ⚠️⚠️ **A tabela é BESPOKE e não a [`tabela_de`]: um nó SÓ fica com o 1.º osso.** É isso que
-    // põe as DUAS arestas dele a atravessar a junta — a de entrada para a correcção livre RODAR a
-    // alça de entrada (senão o ângulo comum é zero e a mutação da cerca não tem o que estragar) e
-    // a de saída para ela REVIVER a alça degenerada. *Com a tabela partida por `x` nenhum nó da
-    // elipse tem as duas, e o gate media o nada* (medido).
-    let costura = (0..n)
-        .min_by(|&a, &b| {
-            fonte.verts[a].anchor[0]
-                .partial_cmp(&fonte.verts[b].anchor[0])
-                .expect("coordenadas finitas")
-        })
-        .expect("a elipse tem nos");
-    fonte.verts[costura].out_handle = fonte.verts[costura].anchor;
-    let mut t = Vec::new();
-    for (i, _) in fonte.verts.iter().enumerate() {
-        let linha = if i == costura { [1.0, 0.0] } else { [0.0, 1.0] };
-        for _ in 0..3 {
-            t.extend_from_slice(&linha);
-        }
-    }
+/// ⭐⭐ **O `NaN` não chega ao desenho com um osso de escala zero num eixo.**
 
-    let mut livre = fonte.clone();
-    crate::aplica_corrigido(&k, &mut livre, &t, &[]);
-    for seg in 0..n {
-        let s = super::SegmentoDaPele {
-            src: super::cubica(&fonte.verts, seg, n),
-            pele: &k,
-            ra: super::linha(&t, 2, seg),
-            rb: super::linha(&t, 2, (seg + 1) % n),
-            correcoes: &[],
-            rigido: true,
-            campo: None,
-            suave: None,
-        };
-        let ja = super::cubica(&livre.verts, seg, n);
-        let (d1, d2) = super::correccao_das_alcas(&s, &ja);
-        let j = (seg + 1) % n;
-        livre.verts[seg].out_handle = [
-            livre.verts[seg].out_handle[0] + d1.x,
-            livre.verts[seg].out_handle[1] + d1.y,
-        ];
-        livre.verts[j].in_handle = [
-            livre.verts[j].in_handle[0] + d2.x,
-            livre.verts[j].in_handle[1] + d2.y,
-        ];
-    }
-    let mut curva = fonte.clone();
-    aplica_pela_curva(&k, &mut curva, &t, &[]);
-
-    // ⭐ O CONTROLO: a correcção livre REVIVEU a alça sem eixo — é isso que dá à metade morta um
-    // comprimento com que envenenar a média.
-    let revivida = (livre.verts[costura].out_handle[0] - livre.verts[costura].anchor[0])
-        .hypot(livre.verts[costura].out_handle[1] - livre.verts[costura].anchor[1]);
-    assert!(
-        revivida > 0.5,
-        "a alca sem eixo ficou em cima da ancora ({revivida}) — a fixtura nao contem o fenomeno"
-    );
-    assert_eq!(
-        curva.verts[costura].in_handle, livre.verts[costura].in_handle,
-        "a unica tangente do no' misto rodou: a metade sem eixo entrou na media com um \
-         `atan2(0, 0)` e envenenou o angulo comum"
-    );
-    // ⭐⭐ **E a metade SEM eixo também não se mexe** — ela não tem referência para onde rodar, e a
-    // única resposta honesta é deixar o ajuste livre em paz. *Sem esta linha, a cerca do laço que
-    // ESCREVE fica sem quem a mate.*
-    assert_eq!(
-        curva.verts[costura].out_handle, livre.verts[costura].out_handle,
-        "a metade sem eixo foi rodada pelo angulo comum do no' — ela nao tem eixo, logo nao ha \
-         angulo para o qual a rodar"
-    );
-}
-
-/// ⭐⭐⭐ **UM OSSO COLAPSADO NÃO APAGA A FORMA** — a cerca do vector nulo, com quem a mata.
-///
-/// ⚠️ **Ela é alcançável pelo artista:** basta pôr a escala de um osso a `0` no `Transform`. Ali a
-/// pose é singular, o mapa da pele é **constante**, e a direcção da tangente sai `R·û = 0` —
-/// normalizá-la dá `NaN`, e um `NaN` numa alça faz a forma **desaparecer**, sem um erro.
-///
-/// ⛔ A resposta honesta é a forma colapsar num ponto, que é o que um osso de escala zero manda
-/// fazer. O que ela não pode é virar `NaN`.
-///
-/// ⚠️⚠️ **Ele NÃO mata a mutação que tira a cerca da [`super::versor`], e está escrito lá porquê:**
-/// nestas condições a alça colapsa junto com o mapa e a [`super::reconcilia`] salta o nó antes de
-/// olhar para o eixo. *Este gate afirma a propriedade do DESENHO; a cerca fica declarada como
-/// defensiva.* ⛔ Não escreva aqui uma promessa de mutação que ele não cumpre.
 #[test]
 fn um_osso_colapsado_nao_devolve_nan() {
     // ⭐⭐ **Um eixo colapsado, e o TENDÃO posto à mão** — sem o tendão os dois ossos partilham a
@@ -430,19 +335,4 @@ fn um_osso_colapsado_nao_devolve_nan() {
             );
         }
     }
-}
-
-/// O maior afastamento entre as VIRAGENS de dois estados do mesmo caminho, em graus — ver
-/// [`viragens`].
-fn mudanca_da_tangente(referencia: &VecPath, agora: &VecPath) -> f64 {
-    let (r, a) = (viragens(referencia), viragens(agora));
-    assert_eq!(r.len(), a.len(), "os dois estados tem de ter os mesmos nos");
-    assert!(
-        r.iter().filter(|x| x.is_some()).count() >= 4,
-        "menos de quatro nos com tangente dos DOIS lados — a fixtura nao contem o fenomeno, e          esta regua leria zero por vacuo"
-    );
-    r.into_iter()
-        .zip(a)
-        .filter_map(|(x, y)| Some((x?, y?)))
-        .fold(0.0_f64, |m, (x, y)| m.max((x - y).abs()))
 }

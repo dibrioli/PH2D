@@ -367,7 +367,11 @@ pub(super) fn casos() -> Vec<Caso> {
 /// ⭐⭐⭐ **SONDA 2 — QUANTAS AMOSTRAS LEEM O CAMPO, e quantas caem na mistura.**
 ///
 /// Replica exactamente o que a [`crate::curva::correccao_das_alcas`] pergunta: `AMOSTRAS` pontos
-/// por segmento em `t = (i + ½)/N`, mais as duas consultas da `direccao` em `t = 0` e `t = 1`.
+/// por segmento em `t = (i + ½)/N`.
+///
+/// ⚠️ **Eram `AMOSTRAS + 2` até 2026-09-20** — as duas consultas extra eram o EIXO de cada alça,
+/// que a conciliação lia em `t = 0` e `t = 1`. Com aquele passe apagado elas saíram, e o recook da
+/// barra da cena passou de `427,3` para **`335,7 µs`** (`−21 %`, `--release`, `load 3,8`).
 ///
 /// ```text
 /// bash scripts/ph2d-run.sh cargo test -p ph2d-vec-skin --lib diag_quantas_amostras -- --nocapture

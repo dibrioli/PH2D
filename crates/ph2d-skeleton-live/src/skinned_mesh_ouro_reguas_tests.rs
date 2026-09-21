@@ -165,7 +165,7 @@ pub(super) fn b_auto(poli: &[[f64; 2]], eps: f64) -> usize {
 
 /// Os pesos do vértice da malha do domínio mais próximo — a resposta que a mídia imagem daria a um
 /// ponto sem triângulo (a malha do bind é uma GRELHA, logo a curva pode sair dela).
-pub(super) fn b_mais_proximo(
+pub(crate) fn b_mais_proximo(
     campo: &ph2d_vec_skin::pesos::CampoDoDominio,
     p: [f64; 2],
 ) -> Vec<f64> {
@@ -187,8 +187,12 @@ pub(super) fn b_mais_proximo(
 /// ⭐⭐⭐ **O PADRÃO-OURO NUM PONTO** — a lei da mídia IMAGEM aplicada ao contorno: cada ponto pelo
 /// peso DELE, lido do campo, misturado pela mesma [`ph2d_skeleton::Skin::blend`] do produto.
 ///
+/// ⚠️ **Ela é `pub(crate)` e não `pub(super)`: o padrão-ouro tem UMA definição na crate inteira.**
+/// O 2.º consumidor chegou em 2026-09-20 ([`crate::alcas_tests`]), e uma segunda cópia dele
+/// divergiria no primeiro ajuste.
+///
 /// Devolve `(imagem, veio_do_campo)`.
-pub(super) fn b_ouro_pt(
+pub(crate) fn b_ouro_pt(
     pele: &ph2d_skeleton::Skin,
     campo: &ph2d_vec_skin::pesos::CampoDoDominio,
     correcoes: &[ph2d_skeleton::Correccao],
@@ -382,6 +386,39 @@ pub(super) fn b_menger_com_sinal(poli: &[[f64; 2]], h: f64) -> Vec<f64> {
             2.0 * cruz / (ab * bc * ca)
         })
         .collect()
+}
+
+/// ⭐⭐⭐ **O EXCESSO DE CURVATURA** — a grandeza do report *«muito curvado»* (2026-09-20).
+///
+/// ⛔⛔ **A serpentina é CEGA a um BICO:** ela mede a flecha entre duas inflexões, e um nó onde a
+/// tangente parte não cria inflexão nenhuma. Esta pergunta a coisa directa: *num sítio que em
+/// repouso era RECTO, quanto é que a linha curva a mais (ou a menos) do que o PADRÃO-OURO curva?*
+///
+/// Em graus de quina sobre a janela física de [`B_H`] ([`b_quina`]) — o número que o artista lê.
+/// Devolve `(p90, máx)`.
+///
+/// ⚠️ **Os dois lados são reamostrados ao mesmo passo de arco medido no REPOUSO** ([`b_no_passo`]),
+/// senão a correspondência entre o desenho e o ouro é a da amostragem e não a do material.
+pub(super) fn b_excesso_de_curvatura(
+    rest: &[[f64; 2]],
+    v: &[[f64; 2]],
+    ouro: &[[f64; 2]],
+) -> (f64, f64) {
+    use super::ondulacao_regua_tests::{PASSO, b_no_passo};
+    let (r, a) = b_no_passo(rest, v, PASSO);
+    let (_, b) = b_no_passo(rest, ouro, PASSO);
+    let (ka, kb) = (b_menger_com_sinal(&a, B_H), b_menger_com_sinal(&b, B_H));
+    let mut d: Vec<f64> = b_rectas(&r)
+        .into_iter()
+        .filter_map(|i| Some(b_quina((ka.get(i)? - kb.get(i)?).abs(), B_H)))
+        .collect();
+    d.sort_by(f64::total_cmp);
+    #[expect(clippy::cast_precision_loss, reason = "contagem de amostras")]
+    let p90 = d
+        .get(((d.len().max(1) - 1) as f64 * 0.9).round() as usize)
+        .copied()
+        .unwrap_or(0.0);
+    (p90, d.last().copied().unwrap_or(0.0))
 }
 
 /// As amostras cujo REPOUSO está no troço RECTO da barra (`y = 2` ou `y = 3`) — ⛔ a tampa da

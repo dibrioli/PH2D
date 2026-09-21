@@ -366,12 +366,14 @@ fn a_segunda_passagem_e_exigida_por_uma_mancha() {
 /// peça, contra `0,02 %` sem ela. *Uma cura fica errada no dia em que o defeito que ela curava deixa
 /// de existir*, e é por isso que a decisão sai da mesma porta que o `recook` lê.
 ///
-/// ⛔⛔ **E o «POR CONSTRUÇÃO» desta redacção MORREU em 2026-09-19, com a conciliação das alças**
-/// (report do dono: *«muitas irregularidades … mau tratamento das alças dos handles»*). O ajuste das
-/// alças deixou de ser resolvido segmento a segmento **em isolamento**: as duas alças de um nó
-/// passam a rodar juntas ([`ph2d_vec_skin::curva`]), logo o resultado num segmento depende do
-/// **VIZINHO** — e partir um segmento muda a vizinhança de um nó. ⇒ o salto deixa de ser `0,00 %`
-/// exacto e passa a ser **`0,0201 %`** da peça (`0,008` unidades numa peça de `40 × 10`).
+/// ⛔⛔ **E o «POR CONSTRUÇÃO» desta redacção MORREU em 2026-09-19 e RENASCEU em 2026-09-20.** Em
+/// 19/09 a **conciliação das alças** fez o ajuste deixar de ser resolvido segmento a segmento em
+/// isolamento — as duas alças de um nó rodavam juntas, logo o resultado num segmento passava a
+/// depender do **VIZINHO**, e partir um segmento muda a vizinhança de um nó. Em 20/09 aquele passe
+/// foi **apagado** (report do dono: *«muito curvado»*; a tabela está em
+/// [`ph2d_vec_skin::curva::aplica_pela_curva`]) e cada segmento voltou a ser independente. ⇒ o
+/// salto mede hoje **`0,0201 %`** da peça e a barra fica onde estava: *a asserção não muda, e o
+/// mecanismo por trás dela mudou duas vezes num dia*.
 ///
 /// ⚠️ **A barra sai do VALE entre duas medições e não de um número confortável:** `0,0201 %` com a
 /// lei de hoje contra **`11,11 %`** com a compensação ligada — `550×`. *O que este gate afirma

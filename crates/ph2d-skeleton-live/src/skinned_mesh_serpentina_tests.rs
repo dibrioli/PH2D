@@ -300,6 +300,7 @@ fn diag_c_o_expoente_da_onda_contra_os_nos() {
     p.lei_do_peso(false);
     p.dobra_em_s(90.0);
     let pele = p.pele();
+    let base = b_palco(false);
     println!("\n{:=<88}", "");
     println!("SONDA · A ONDA CURTA CONTRA O NÚMERO DE NÓS (CHÃO do modelo, 90° em S)");
     println!("{:=<88}", "");
@@ -309,7 +310,12 @@ fn diag_c_o_expoente_da_onda_contra_os_nos() {
     );
     let mut ant: Option<(f64, f64)> = None;
     for alvo in [1.6_f64, 0.8, 0.4, 0.2, 0.1, 0.05] {
-        let mut fonte = p.fonte.clone();
+        // ⛔⛔ **A base é a peça SEM a subdivisão do bind, e a 1.ª redacção desta sonda não o
+        // fazia.** O `BPalco::fonte` já vem cortado a `K = 5` e a [`crate::subdivisao::subdivide`]
+        // só ACRESCENTA ⇒ toda linha com `K <= 5` lia **exactamente o mesmo número** (`54` nós,
+        // `0,001752`) e a escada não media escada nenhuma. *Não se pode des-subdividir* — a mesma
+        // armadilha que o gate irmão já tinha pago.
+        let mut fonte = base.fonte.clone();
         crate::subdivisao::subdivide(&mut fonte, alvo, crate::subdivisao::VERTICES_MAX);
         let nos = fonte.verts_all().count();
         let rest = b_amostra_com(&fonte, DENSO);
@@ -360,6 +366,7 @@ fn diag_c_o_joelho_das_divisoes_por_osso() {
     p.lei_do_peso(false);
     p.dobra_em_s(90.0);
     let pele = p.pele();
+    let base = b_palco(false);
     // O osso mais curto desta barra, para a coluna `K` ser legível.
     let osso = 6.4 / 3.0;
     println!("\n{:=<100}", "");
@@ -383,7 +390,12 @@ fn diag_c_o_joelho_das_divisoes_por_osso() {
         0.30,
         osso / 8.0,
     ] {
-        let mut fonte = p.fonte.clone();
+        // ⛔⛔ **A base é a peça SEM a subdivisão do bind, e a 1.ª redacção desta sonda não o
+        // fazia.** O `BPalco::fonte` já vem cortado a `K = 5` e a [`crate::subdivisao::subdivide`]
+        // só ACRESCENTA ⇒ toda linha com `K <= 5` lia **exactamente o mesmo número** (`54` nós,
+        // `0,001752`) e a escada não media escada nenhuma. *Não se pode des-subdividir* — a mesma
+        // armadilha que o gate irmão já tinha pago.
+        let mut fonte = base.fonte.clone();
         crate::subdivisao::subdivide(&mut fonte, alvo, crate::subdivisao::VERTICES_MAX);
         let nos = fonte.verts_all().count();
         let rest = b_amostra_com(&fonte, DENSO);
@@ -524,20 +536,27 @@ fn a_serpentina_do_desenho_morre_com_os_nos() {
          ({antigo}) — a lei está certa e a constante não chega ao bind"
     );
 
-    // (3) ⛔⛔⛔ **A DÍVIDA, AFIRMADA DE PROPÓSITO: com estes nós o TECTO mudou de lado.**
+    // (3) ⭐⭐⭐ **A DÍVIDA FOI PAGA, e esta metade era o oposto desta até 2026-09-20.**
     //
-    // A `34` nós o produto e o chão liam o mesmo (`0,0500` contra `0,0486`) ⇒ *o ajuste estava no
-    // limite do modelo e nenhum ajuste melhor existia*. Com `54` o chão desce `28×` e o produto
-    // desce `3,1×` ⇒ **o que sobra é PROCEDIMENTO**, e a
-    // [`diag_c_quem_e_o_tecto_com_nos_a_mais`] nomeia o suspeito: a lei INGÉNUA (sem ajuste de
-    // alças) lê `0,0056`, ou seja **`2,9×` mais lisa que o produto**.
+    // ⛔⛔⛔ Ela afirmava `prod > chao * 4.0` com a prosa *«o ajuste das alças é agora o tecto»*, e
+    // **reprovou no dia seguinte, que é para o que ela existia**. O que mudou: a
+    // [`super::rive_tests`] mediu que o tecto não era o ajuste — era a **conciliação** das alças,
+    // um passe que corria a seguir a ele. Apagado o passe, o produto **é** o chão:
+    // `0,001727` contra `0,001752`, em todas as dobras de `30°` a `120°`.
     //
-    // ⚠️ Esta metade **exige que a dívida exista**. No dia em que alguém curar o ajuste ela
-    // reprova, e a cura é reescrever esta prosa com o número novo — *nunca afrouxar a razão*.
+    // ⚠️ A metade que fica é a forte, e ela exige as DUAS coisas: que o produto esteja no chão, e
+    // que o chão não seja o nada. ⛔ Sem a segunda, uma peça em que a lei por acaso fosse afim
+    // deixaria as duas leituras a zero e o gate passava a afirmar nada.
+    println!("  chão: produto {prod:.6} · chão desta peça {chao:.6}");
     assert!(
-        prod > chao * 4.0,
-        "o produto ({prod}) deixou de estar acima de 4× o chão ({chao}) — o ajuste das alças \
-         deixou de ser o tecto, e o §5 e o cabeçalho da `subdivisao` têm de dizer isso"
+        chao > SERPENTINA_MAX / 10.0,
+        "o CHÃO leu {chao}, perto de zero — esta peça deixou de conter o fenómeno e a asserção \
+         abaixo passa a ser trivial"
+    );
+    assert!(
+        prod < chao * 1.25,
+        "o produto ({prod}) deixou de estar NO chão do modelo ({chao}) — algum passe voltou a \
+         mexer nas alças depois de o ajuste as ter posto no óptimo"
     );
 }
 

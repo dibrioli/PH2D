@@ -220,7 +220,7 @@ mod tests;
 /// leis concordam?»* e este mede *«a nossa lei bate a mesma forma deformada como malha densa?»*.
 #[cfg(test)]
 #[path = "skinned_mesh_ouro_reguas_tests.rs"]
-mod ouro_reguas_tests;
+pub(crate) mod ouro_reguas_tests;
 
 #[cfg(test)]
 #[path = "skinned_mesh_ouro_tests.rs"]
@@ -259,6 +259,12 @@ mod regularidade_tests;
 #[path = "skinned_mesh_ondulacao_tests.rs"]
 mod ondulacao_tests;
 
+/// ⭐⭐ **AS SONDAS das ondulações** — elas imprimem; as leis são o irmão acima. Saíram por tecto
+/// de LOC, e o corte é por RESPONSABILIDADE.
+#[cfg(test)]
+#[path = "skinned_mesh_ondulacao_sondas_tests.rs"]
+mod ondulacao_sondas_tests;
+
 /// ⭐⭐⭐ **A RÉGUA DAS ONDAS A PASSO FIXO** — o irmão do [`ondulacao_tests`] conta **por
 /// amostra** e a amostragem dele é **por segmento**, logo duas contagens de nós não são
 /// comparáveis ali. ⛔ Foi dessa confusão que saiu o mecanismo errado que eu reportei ao dono.
@@ -273,3 +279,8 @@ mod ondulacao_regua_tests;
 #[cfg(test)]
 #[path = "skinned_mesh_serpentina_tests.rs"]
 mod serpentina_tests;
+
+/// ⭐⭐⭐ **A LEI DO RIVE CONTRA A DE HOJE** — as sondas da ordem *«vá investigar como Rive faz»*.
+#[cfg(test)]
+#[path = "skinned_mesh_rive_tests.rs"]
+mod rive_tests;

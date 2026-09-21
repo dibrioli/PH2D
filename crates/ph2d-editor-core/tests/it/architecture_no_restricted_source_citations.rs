@@ -146,6 +146,29 @@ const ALVO_PERMISSIVO: &[(&str, &str)] = &[
     ("open_pbr_surface.mtlx", "MaterialX, Apache-2.0"),
     ("pbrlib_defs.mtlx", "MaterialX, Apache-2.0"),
     ("mx_math.glsl", "MaterialX, Apache-2.0"),
+    // ⭐⭐⭐ **rive-runtime — MIT**, e é o BLUEPRINT declarado do módulo vectorial
+    // ([ADR-0108](../../../../docs/architecture/decisions/0108-vector-reposition-rive-referenced-native-editor-first.md)
+    // D2/D5: *«Rive é a fonte da verdade … portados com atribuição MIT»*). A
+    // deformação por ossos desta casa é o LBS dele sobre pontos de controlo, e a
+    // atribuição é **obrigação da licença, não dívida** — a mesma leitura que o
+    // `ph2d-quadflow` tem sobre o Instant Meshes.
+    //
+    // ⚠️ **A licença foi LIDA NO ARTEFACTO** (o `LICENSE` na raiz de
+    // `rive-app/rive-runtime`: *«MIT License · Copyright (c) 2020 Rive»*), e não
+    // adivinhada pelo nome do projecto — que é a armadilha §0.9 que esta casa
+    // mede desde 09/09. ⛔ **E o nível da prova é declarado:** estes quatro
+    // ficheiros **não** têm cabeçalho SPDX próprio (abrem num `#include`), não há
+    // `LICENSE` de sub-directório nem `NOTICE`, logo quem os cobre é o da raiz.
+    // *Uma prova de raiz é mais fraca que uma de ficheiro, e dizê-lo é o que a
+    // torna auditável.*
+    //
+    // ⚠️⚠️ **O EDITOR do Rive é FECHADO e nada dele entra aqui** — o que foi lido
+    // é o *runtime*, que é um player. A distinção é a mesma do `libmypaint`: o
+    // nome do projecto não é a unidade da triagem.
+    ("weight.cpp", "rive-runtime, MIT"),
+    ("skin.cpp", "rive-runtime, MIT"),
+    ("vertex.cpp", "rive-runtime, MIT"),
+    ("cubic_vertex.cpp", "rive-runtime, MIT"),
     // Graphics Gems — o ajuste de curva canónico, de uso livre.
     ("FitCurves.c", "Graphics Gems"),
     // lib2geom — dual `LGPL-2.1-only OR MPL-1.1`, triado 2026-09-09. ⚠️ O

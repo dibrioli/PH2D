@@ -43,26 +43,32 @@
 //!
 //! | `K` | nós | flecha p50 | recook | de um quadro |
 //! |---|---|---|---|---|
-//! | `3` (o que shipava) | `34` | **`0,04863`** | `267 µs` | `1,60 %` |
-//! | `3,6` | `38` | `0,04863` | `298 µs` | `1,78 %` |
-//! | `4,3` | `50` | `0,00345` | `400 µs` | `2,40 %` |
-//! | **`5`** | **`54`** | **`0,00175`** | **`434 µs`** | **`2,60 %`** |
-//! | `5,3` | `62` | `0,00175` | `493 µs` | `2,95 %` |
-//! | `6` / `7,1` | `66` | `0,00175` | `520 µs` | `3,12 %` |
-//! | `8` | `86` | `0,00095` | `679 µs` | `4,07 %` |
+//! | `3` (o que shipava) | `34` | **`0,04863`** | `211 µs` | `1,26 %` |
+//! | `3,6` | `38` | `0,04863` | `264 µs` | `1,58 %` |
+//! | `4,3` | `50` | `0,00345` | `309 µs` | `1,85 %` |
+//! | **`5`** | **`54`** | **`0,00175`** | **`335 µs`** | **`2,01 %`** |
+//! | `5,3` | `62` | `0,00175` | `381 µs` | `2,28 %` |
+//! | `6` / `7,1` | `66` | `0,00175` | `403 µs` | `2,42 %` |
+//! | `8` | `86` | `0,00095` | `524 µs` | `3,14 %` |
 //!
 //! ⇒ **`K = 5`** é o PLANALTO: ele corta a serpentina **`28×`** — até ao nível do próprio
-//! padrão-ouro — por **`+167 µs`**, que é `1,0 %` de um quadro; e `K = 6` e `K = 7,1` leem
+//! padrão-ouro — por **`+124 µs`**, que é `0,7 %` de um quadro; e `K = 6` e `K = 7,1` leem
 //! **exactamente o mesmo** número, logo o joelho não é escolhido, é onde a coluna deixa de descer.
-//! ⚠️ `K = 8` compra mais `1,8×` por `+57 %` de relógio, e é aí que a curva vira preço.
+//! ⚠️ `K = 8` compra mais `1,8×` por `+56 %` de relógio, e é aí que a curva vira preço.
+//!
+//! ⭐ **A coluna do relógio DESCEU `~21 %` em 2026-09-20** (ela lia `267`/`434`/`679`), e não por
+//! afinação: a **conciliação das alças** foi apagada (report do dono *«muito curvado»* — a tabela
+//! está em [`ph2d_vec_skin::curva::aplica_pela_curva`]), e com ela saíram as duas consultas de
+//! EIXO que cada segmento fazia. *A cura da onda veio com desconto.*
 //!
 //! ⛔ **A coluna `flecha MÁX` NÃO converge** (`0,053` em toda a tabela, até `446` nós): essa é a
 //! **QUINA** que a lei de mistura cria na aresta de dentro, e *uma cúbica nunca faz uma quina —
 //! mais nós só a espremem*. Ela é assunto do [`ph2d_skeleton::MisturaDoAngulo`] e não deste passo.
 //!
-//! ⭐⭐ **E subdividir torna o desenho MAIS BARATO na outra ponta:** o refit da lei da curva só
-//! corre onde a lei ingénua se afasta, e com a forma subdividida ele deixa de correr — medido em
-//! `debug`, o recook da barra passou de **`732 µs`** (8 nós, refit a arder) para **`58 µs`**.
+//! ⚠️ **Nota HISTÓRICA:** até 2026-09-19 a lei da curva tinha um **refit com limiar** que refazia
+//! o contorno inteiro quando o desvio passava da tolerância, e subdividir tornava o desenho mais
+//! barato porque ele deixava de armar (medido em `debug`: `732 µs` a 8 nós, `58 µs` subdividido).
+//! ⛔ *Esse refit já não existe* — ele foi substituído pelo ajuste das alças, que corre sempre.
 //!
 //! # ⛔ O tecto, e de que recurso ele é
 //!

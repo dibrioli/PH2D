@@ -81,42 +81,83 @@ fn viragens(p: &VecPath) -> Vec<Option<f64>> {
     out
 }
 
-/// O maior afastamento entre as viragens de dois estados do mesmo caminho, em graus.
-fn mudanca(referencia: &VecPath, agora: &VecPath) -> f64 {
+/// ⭐⭐⭐ **A QUINA QUE O AJUSTE CRAVOU, E O TECTO QUE ELE PRÓPRIO PERMITE — nó a nó.**
+///
+/// Devolve `(pior quina, o tecto DESSE nó)`, em graus. O tecto é **derivado e não escolhido**: uma
+/// alça de comprimento `L` cuja ponta se move `δ` vira, no máximo, `asin(min(δ/L, 1))`.
+///
+/// ⛔⛔ **Ele é por NÓ, e a 1.ª redacção usava a menor alça do caminho INTEIRO contra a maior
+/// correcção do caminho inteiro** — a `120°` isso dava `asin(1) = 90°`, e *uma barra que satura
+/// não é uma barra*.
+fn quina_e_tecto(referencia: &VecPath, agora: &VecPath) -> (f64, f64) {
     let (r, a) = (viragens(referencia), viragens(agora));
     assert_eq!(r.len(), a.len(), "os dois estados tem de ter os mesmos nos");
     assert!(
         r.iter().filter(|x| x.is_some()).count() >= 8,
         "menos de oito nos com tangente dos dois lados — a barra deixou de conter o fenomeno"
     );
-    r.into_iter()
-        .zip(a)
-        .filter_map(|(x, y)| Some((x?, y?)))
-        .fold(0.0_f64, |m, (x, y)| m.max((x - y).abs()))
+    let (cr, ca) = (referencia.cooked(), agora.cooked());
+    let (Some((vr, _)), Some((va, _))) = (cr.contour(0), ca.contour(0)) else {
+        return (0.0, 0.0);
+    };
+    let mut pior = (0.0_f64, 0.0_f64);
+    for (k, (x, y)) in r.iter().zip(&a).enumerate() {
+        let (Some(x), Some(y)) = (x, y) else { continue };
+        let q = (x - y).abs();
+        if q <= pior.0 {
+            continue;
+        }
+        // O braço deste nó, e quanto a ponta dele andou.
+        let (mut l, mut d) = (f64::INFINITY, 0.0_f64);
+        for lado in 0..2 {
+            let (hr, ha) = if lado == 0 {
+                (vr[k].in_handle, va[k].in_handle)
+            } else {
+                (vr[k].out_handle, va[k].out_handle)
+            };
+            let br = (hr[0] - vr[k].anchor[0]).hypot(hr[1] - vr[k].anchor[1]);
+            if br > 1e-9 {
+                l = l.min(br);
+                d = d.max((ha[0] - hr[0]).hypot(ha[1] - hr[1]));
+            }
+        }
+        if l.is_finite() {
+            pior = (q, (d / l).min(1.0).asin().to_degrees());
+        }
+    }
+    pior
 }
 
-/// ⭐⭐⭐ **DOBRAR NÃO CRAVA UMA QUINA EM NÓ NENHUM** — o report do dono, na barra dele.
+/// ⭐⭐⭐ **A TROCA DO AJUSTE, COM OS DOIS LADOS AFIRMADOS** — ele compra FIDELIDADE e paga
+/// TANGENTE, e as duas metades têm de continuar verdadeiras.
 ///
-/// ⚠️ **A REFERÊNCIA é a lei INGÉNUA corrida na mesma árvore** (`recook_com(.., false)`): ela
-/// aplica **um** afim às três metades de cada vértice, e um afim preserva colinearidade — logo ela
-/// é, por construção, o desenho com a continuidade que a fonte tinha. *O que se mede é quanto a
-/// correcção das alças se afasta dela.*
+/// # ⛔⛔⛔ Este gate afirmava o CONTRÁRIO até 2026-09-20, e a premissa dele morreu
 ///
-/// | dobra | mudança da tangente, antes de 2026-09-19 | hoje |
-/// |---|---|---|
-/// | `30°` | `5,86°` | **`0,000°`** |
-/// | `60°` | `13,00°` | **`0,000°`** |
-/// | `90°` | `20,92°` | **`0,000°`** |
-/// | `120°` | `28,62°` | **`0,000°`** |
+/// Ele chamava-se `dobrar_a_barra_nao_crava_uma_quina_em_no_nenhum` e exigia `quina < 1e-9` nas
+/// quatro dobras, com a tabela `5,86° / 13,00° / 20,92° / 28,62°` a dizer o que a **conciliação**
+/// das alças tinha curado. O report seguinte do dono — *«não fica bom. Muito curvado»*, com foto —
+/// mediu-se contra essa conciliação: ela custava **`9,3×`** de serpentina e **`1,6×`** de
+/// fidelidade, e o passe foi apagado (a tabela inteira está em
+/// [`ph2d_vec_skin::curva::aplica_pela_curva`]).
 ///
-/// ⚠️⚠️ **As duas primeiras asserções são CONTROLOS e vêm primeiro.** Sem a do arrasto, um gate
-/// verde diria apenas que a barra não dobrou; sem a da correcção, uma lei que devolvesse `(0, 0)`
-/// passaria — ela seria trivialmente colinear, e o desvio ao desenho verdadeiro não é medido aqui.
+/// ⭐⭐ **A quina que fica NÃO é um defeito do ajuste — é o preço mínimo de representar uma curva
+/// por cúbicas INDEPENDENTES, e o CHÃO do modelo paga-o igual.** A prova é o excesso de curvatura
+/// medido contra o padrão-ouro: o ajuste lê `3,16°` e o chão `3,18°`
+/// ([`super::skinned_mesh::rive_tests`]).
 ///
-/// (Mutações: apagar a chamada a `reconcilia` ⇒ RED na 3.ª · conciliar só uma das duas metades ⇒
-/// RED na 3.ª · devolver `(0,0)` da `correccao_das_alcas` ⇒ RED na 2.ª.)
+/// # As quatro metades, e nenhuma sozinha é honesta
+///
+/// 1. **A barra DOBROU** — sem isto um gate verde diria apenas que a fixtura está parada.
+/// 2. **O ajuste MEXEU** — sem isto uma lei que devolvesse `(0, 0)` passaria nas outras duas.
+/// 3. **Ele compra FIDELIDADE**: o desenho fica muito mais perto da deformação verdadeira do que
+///    a lei ingénua (que é, à letra, a lei do Rive — um afim por vértice nas três metades dele).
+/// 4. ⛔ **E paga TANGENTE, afirmado DE PROPÓSITO.** No dia em que alguém voltar a conciliar, esta
+///    metade reprova e a morte da premissa fica à vista no diff — *que é exactamente o que esta
+///    metade acabou de fazer comigo*.
+///
+/// ⚠️ **A barra da metade 4 é DERIVADA e não escolhida** — ver [`quina_e_tecto`].
 #[test]
-fn dobrar_a_barra_nao_crava_uma_quina_em_no_nenhum() {
+fn o_ajuste_compra_fidelidade_e_paga_tangente() {
     for graus in [30.0, 60.0, 90.0, 120.0] {
         let (sim, mut a, id) = dobrada(graus);
         crate::skin_live::recook_com(&sim, &mut a, false);
@@ -141,14 +182,103 @@ fn dobrar_a_barra_nao_crava_uma_quina_em_no_nenhum() {
             "a {graus}° a correccao das alcas mexeu so' {corrigiu} — ela parou, e um desenho sem \
              correccao nenhuma e' trivialmente colinear"
         );
-        let mudou = mudanca(&ingenua, &curva);
+
+        // (3) A FIDELIDADE, contra o PADRÃO-OURO — a lei da mídia imagem, ponto a ponto.
+        let (e_ing, e_aj) = (erro_ao_ouro(&sim, &ingenua), erro_ao_ouro(&sim, &curva));
+        // (4) A QUINA, contra o tecto DERIVADO do que o ajuste mexeu.
+        let (mudou, tecto) = quina_e_tecto(&ingenua, &curva);
         eprintln!(
-            "[alcas] {graus:5.0}° arrasto={arrastou:.4} correccao={corrigiu:.4} quina={mudou:.3e}°"
+            "[alcas] {graus:5.0}° arrasto={arrastou:.4} correccao={corrigiu:.4} \
+             erro ingenua={e_ing:.4} -> ajuste={e_aj:.4} · quina={mudou:.3}° (tecto {tecto:.3}°)"
         );
         assert!(
-            mudou.is_finite() && mudou < 1e-9,
-            "a {graus}° a correccao virou a tangente {mudou}° num no' — as duas alcas de um no' \
-             tem de rodar JUNTAS, senao o no' que o artista desenhou liso vira uma QUINA"
+            e_aj * 4.0 < e_ing,
+            "a {graus}° o ajuste ({e_aj}) devia ficar bem abaixo da lei ingenua ({e_ing}) — ele \
+             deixou de comprar a fidelidade que e' a razao de ele existir"
+        );
+        assert!(
+            mudou > 1e-6,
+            "a {graus}° a tangente ficou colinear ao bit ({mudou}°) — alguem voltou a CONCILIAR \
+             as alcas, e isso custa 9,3x de serpentina (ver `aplica_pela_curva`)"
+        );
+        assert!(
+            mudou <= tecto,
+            "a {graus}° a quina ({mudou}°) passou do tecto que o proprio ajuste permite \
+             ({tecto}°) — o desvio de uma alca nao pode virar a tangente mais do que o \
+             comprimento dela deixa"
         );
     }
+}
+
+/// O maior afastamento do desenho ao PADRÃO-OURO — a lei da mídia IMAGEM ponto a ponto, que é o
+/// que o ajuste persegue e o que o dono compara.
+///
+/// ⚠️ **Ela chama a porta única do padrão-ouro** ([`crate::skinned_mesh::ouro_reguas_tests::b_ouro_pt`]):
+/// reimplementá-la aqui foi a 1.ª redacção deste gate, e ela mediu o **mesmo número dos dois
+/// lados** (`0,0370`) — eu tinha fixado o peso no do nó, que é a lei INGÉNUA, logo a régua era o
+/// próprio lado que ela devia contradizer.
+fn erro_ao_ouro(sim: &SimWorld, p: &VecPath) -> f64 {
+    use crate::skinned_mesh::ouro_reguas_tests::b_ouro_pt;
+    let Some((e, skin)) = sim
+        .world()
+        .iter_entities()
+        .find_map(|er| Some((er.id(), er.get::<ph2d_skeleton_ecs::SkinBind>()?.clone())))
+    else {
+        return 0.0;
+    };
+    let index = crate::skin_live::bone_index(sim);
+    let (Some(pele), Some(g)) = (
+        crate::skin_live::resolve(sim, &skin, e, &index),
+        crate::skinned_mesh::le(&skin.source),
+    ) else {
+        return 0.0;
+    };
+    let Some(campo) = g.campo.as_ref() else {
+        return 0.0;
+    };
+    let correcoes = skin.correcoes_resolvidas();
+    let (cz, co) = (p.cooked(), g.path.cooked());
+    let (Some((va, _)), Some((vf, _))) = (cz.contour(0), co.contour(0)) else {
+        return 0.0;
+    };
+    if va.len() != vf.len() {
+        return 0.0;
+    }
+    let (n, mut pior) = (vf.len(), 0.0_f64);
+    for k in 0..n {
+        for i in 0..=32 {
+            let t = f64::from(i) / 32.0;
+            let verdade = b_ouro_pt(
+                &pele,
+                campo,
+                &correcoes,
+                cubica_em(&vf[k], &vf[(k + 1) % n], t),
+            )
+            .0;
+            let nosso = cubica_em(&va[k], &va[(k + 1) % n], t);
+            pior = pior.max((verdade[0] - nosso[0]).hypot(verdade[1] - nosso[1]));
+        }
+    }
+    pior
+}
+
+fn cubica_em(a: &ph2d_vec_scene::VecVertex, b: &ph2d_vec_scene::VecVertex, t: f64) -> [f64; 2] {
+    let u = 1.0 - t;
+    let (w0, w1, w2, w3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+    [
+        w3.mul_add(
+            b.anchor[0],
+            w2.mul_add(
+                b.in_handle[0],
+                w1.mul_add(a.out_handle[0], w0 * a.anchor[0]),
+            ),
+        ),
+        w3.mul_add(
+            b.anchor[1],
+            w2.mul_add(
+                b.in_handle[1],
+                w1.mul_add(a.out_handle[1], w0 * a.anchor[1]),
+            ),
+        ),
+    ]
 }

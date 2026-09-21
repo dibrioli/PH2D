@@ -12,7 +12,7 @@
 //! | régua | o que responde | porque é cega à faceta |
 //! |---|---|---|
 //! | `pior_desvio_do_desenho` | *«a que distância estão as duas saídas?»* | um polígono inscrito numa curva lisa tem desvio **pequeno** |
-//! | a quina nos nós (`reconcilia`) | *«o nó tem bico?»* | a faceta vive **ENTRE** os nós |
+//! | a quina nos nós | *«o nó tem bico?»* | a faceta vive **ENTRE** os nós |
 //! | o esticão da aresta de dentro | *«o cotovelo esmaga?»* | é um extremo LOCAL num sítio só |
 //!
 //! ⇒ *três réguas verdes sobre um contorno que o artista chama de irregular.* A grandeza que falta

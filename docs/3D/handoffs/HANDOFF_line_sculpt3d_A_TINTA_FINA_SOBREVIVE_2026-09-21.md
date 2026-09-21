@@ -980,6 +980,30 @@ máquina e falsa sobre o FAN-OUT**, que é exactamente a distinção que aquela
 lista existe para guardar. *Dividir dois relógios não deixa de ser um relógio
 por a razão ser adimensional.*
 
+### §13.2-ter — ⛔ QUATRO vermelhos de RETOPOLOGIA, MEDIDOS como pré-existentes
+
+A bateria larga (`--run-ignored all`, `441` testes) devolve **11** vermelhos, e
+nenhum é desta wave — mas *atribuir um vermelho por inferência é o que esta
+casa proíbe*, e a nota que o diz está escrita em `project-memory`.
+
+- **7 são `TIMEOUT` a `180 s`**: SONDAS da bancada de retopologia (o
+  `what_does_proving_the_optimum_cost`, o `how_fine_can_the_global_chain_go`…),
+  pesadas por construção e mortas pelo tecto de tempo da casa quando corridas
+  num fan-out de 441.
+- **4 são gates de FORMA do quad remesh**, e falham **sozinhos a `load 7,11`**
+  ⇒ deterministas, não flakes. Um deles é o `the_quads_are_as_square_as_the_oracles`,
+  que o §5 do roteador **já documenta como vermelho com esse endereço**.
+
+⭐ **A medição que decide:** os quatro foram corridos na árvore **de ANTES desta
+wave** (`git checkout HEAD~1 -- crates/`, a `load 3,95`) e reprovam **os
+quatro, com os mesmos números** (`ORELHA: enviesamento mediano 27°, barra 10°`).
+⇒ **pré-existentes**, e o `git checkout HEAD -- crates/` devolveu a árvore.
+
+⚠️ **E a população certa desta wave é OUTRA:** os gates de GPU da tinta fina
+correm **41 de 41 verdes**, com os dois novos lá dentro. *Correr
+`--run-ignored all` numa crate que hospeda uma bancada de oráculo mede a
+bancada, não a wave.*
+
 ### §13.3 — A régua, e porque ela precisa de ser um ELO
 
 Os dois gates da lei são **puros** (`SceneObject::new` não pede device) e o
@@ -992,3 +1016,28 @@ nenhum gesto troca a peça activa a meio de um traço*. **É a definição de um
 defeito latente: a régua que o apanha tem de ser o ELO.** ⇒ o censo da fiação
 passa de **doze para CATORZE**, com `M36` (a devolução) e `M37` (o empréstimo a
 deixar de carregar o dono).
+
+### §13.4 — O PORTÃO desta corrida
+
+| régua | resultado |
+|---|---|
+| `nextest-impacted` | **18 566 / 18 566** |
+| `nextest` das duas crates do motor+família (`--lib`) | **766 / 766** |
+| gates de GPU da tinta fina, com adaptador | **41 / 41** |
+| censos da árvore COMBINADA | **127 / 127** · controlo do filtro `12 de 12` |
+| `cargo fmt --all --check` | limpo (⚠️ e **todas** as agulhas do censo e do arnês conferidas depois dele) |
+| clippy `--all-targets -D warnings` nas três crates | zero |
+| mutação | **37 de 38** (a 38.ª é o CONTROLO) |
+| as 10 vassouras sobre os 18 ficheiros do commit | **zero achados NOVOS** (`tip_roundness` e `sculpt_gesture` são linhas de ontem, as duas já nomeadas no §10.10) |
+| tectos de LOC | o maior ficheiro tocado é o `history.rs` a **668** de `700` |
+
+⚠️ **A 1.ª corrida da varredura impactada devolveu DUAS vermelhas**, e a
+segunda é a promoção do §13.2-bis: o
+`the_pen_down_is_still_a_canvas_copy_and_this_is_its_number` passa **3 de 3
+sozinho** e a re-corrida do fan-out fecha **18 566 / 18 566** — *o conjunto de
+reprovadas mudou entre duas corridas da mesma árvore, que é a assinatura que
+separa um recurso partilhado de um defeito de lógica*.
+
+⚠️ **E o índice da memória reprovou** (`22 150` contra `22 000`) — a cura é a
+que o próprio gate prescreve: a entrada desceu para o
+`reference_topic_code_pattern_gotchas`, e o índice fecha a `21 944`.

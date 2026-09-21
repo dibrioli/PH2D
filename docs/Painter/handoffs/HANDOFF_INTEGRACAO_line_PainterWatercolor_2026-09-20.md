@@ -1182,3 +1182,54 @@ aos arrays que já existiam, logo os três primeiros hashes ficam intactos.
   medição de quanto isso empurra o resto do painel para baixo da dobra.
 - ⏳ **O ganho da caixa a `raio 12` é `×0,98`** — dentro do ruído, e o `p90` toca `1,00`. Não há
   cerca por raio a desligar a caixa em baixo, e nenhuma medição diz que valha a pena tê-la.
+
+### §21.9 — O que o PORTÃO cobrou depois de a wave estar escrita
+
+A varredura impactada fecha **`18 216` de `18 216`**. Antes disso ela devolveu **dois** vermelhos, e
+nenhum era sobre a lei desta wave: os dois são de arquitectura, e os dois foram curados **por corte
+e por porta** — nunca por uma entrada nova numa lista de dívida.
+
+**(a) O tecto de LOC do `blur.rs`** (`822` contra `700`) — o núcleo de caixa entrou num ficheiro que
+já estava perto do tecto. ⇒ [`blur_caixa.rs`](../../../crates/ph2d-painter-brush/src/blur_caixa.rs),
+que é *as três passagens de caixa por somas correntes e a variância que as escolhe*:
+**`822 → 579 + 279`**, e o módulo novo carrega no cabeçalho a tabela medida e a nota de que nasceu
+de um CORTE.
+
+⛔⛔ **E o corte pagou DUAS armadilhas que esta casa já tem escritas:**
+
+- **A varredura subia por `///` e cortou DENTRO do item vizinho.** Ela levou o doc-comment do
+  `blur_region` — que **fica** com o binomial — e mais o `src_coord` inteiro. *Um corte que sobe por
+  doc-comment em vez de por `#[` deixa o vizinho com a prosa de outro e sem a dele, e a metade que
+  falta é muda.* Os dois voltaram ao sítio; o `src_coord` é hoje `pub(crate)`.
+- **Um passe de compilação VERDE com a suíte VERMELHA.** O `BLUR_KERNEL_MAX` deixou de estar à vista
+  dos testes do módulo novo — a cegueira do `--all-targets` a um `mod tests` que atravessa uma
+  fronteira de MÓDULO, irmã pequena da que o HOWTO §2 regista para uma fronteira de *crate*.
+
+**(b) O `INDENT: f32 = 14.0` do painel**, acusado pelo `no_surface_declares_an_indent_constant_of_its_own`
+na primeira corrida. ⇒ `ph2d_tokens::list_indent_px()`. ⚠️ **O marcador `LITERAL-PX-OK` que estava ao
+lado NÃO isenta**, e é essa a parte que engana: *a queixa daquele gate não é o literal, é a SEGUNDA
+resposta* — dois números de recuo divergem no dia em que alguém mexer num deles, e o artista vê duas
+fileiras que deviam alinhar e não alinham.
+
+**E a prova de mutação foi RE-CORRIDA sobre a árvore CORTADA** — *mover código parte gates em duas
+espécies e só uma avisa*, logo `5 de 5` sobre o ficheiro antigo não afirma nada sobre o novo:
+
+| # | mutação | gate que sangra | população |
+|---|---|---|---|
+| B1 | o composite pede o núcleo binomial | `o_nucleo_de_caixa_e_do_blur_da_pilha_e_so_dele` | `1` de `9` |
+| B2 | a porta isolada crava o núcleo de caixa | o censo de alcance do mesmo gate | `1` de `9` |
+| B3 | a variância alvo `k/2 → k/4` | `a_caixa_tripla_tem_a_variancia_do_binomial` | `2` de `10` |
+| B4 | a des-premultiplicação `255/α → 1` | `a_caixa_tripla_preserva_um_campo_constante` | `1` de `10` |
+| B5 | o despacho do núcleo | `os_dois_nucleos_borram_a_mesma_quantidade` | `1` de `10` |
+
+⛔⛔ **E o ARNÊS mentiu de três maneiras antes de dizer a verdade, as três já registadas neste repo:**
+
+1. **Ele foi morto a meio (`exit 137`) e deixou o ficheiro MUTADO na árvore**, com o `.bak` ao lado —
+   *uma prova de mutação que não sobrevive a ser morta PLANTA um defeito, e o `git status` dela
+   lê-se como «trabalho por committar»*. ⇒ `trap … EXIT INT TERM` que repõe **sempre**, e a reposição
+   faz `touch` (um `mv` devolve o mtime ANTIGO e o cargo guarda o build da mutação).
+2. **A âncora do B3 casou DUAS vezes** — o produto e **o gate, que recalcula a mesma fórmula**. Uma
+   mutação que casa `N` vezes não é a que se quis medir, logo o arnês **aborta** o caso em vez de o
+   reportar.
+3. **Um `\n` dentro de `'…'` do bash são dois caracteres** (foi preciso `$'…'`) e, na 1.ª redacção,
+   um caso abortado matava a corrida inteira em vez de contar e seguir.

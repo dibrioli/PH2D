@@ -370,13 +370,17 @@ daqui: *uma medição de superfície de colisão vale para o dia em que foi tira
 > o painel»*) — ali a lei já entrega o mínimo e o piso da ESCRITA era o mesmo número, logo o gesto
 > pedia `157` e o store devolvia `220`. ⭐ **Passam a ser DOIS pisos:** o de FÁBRICA fica em
 > `PANEL_MIN_W_PX` (ninguém pediu para o app *nascer* ilegível) e o de uma ESCOLHA desce para
-> **`168`**. ⭐⭐ **O `168` é DECISÃO e o `84` é o RECURSO**, e a separação é o que torna o número
+> **`210`**. ⭐⭐ **O `210` é DECISÃO e o `84` é o RECURSO**, e a separação é o que torna o número
 > honesto: `84` é a largura MEDIDA em que o corpo de um painel ainda cabe (a `83` sai o primeiro
 > controlo, e descer de `220` para lá acrescenta `1,0 px` de transbordo no pior dos **19** painéis
-> docáveis), e o que shipa é o **dobro**, por ordem do dono depois de ver os `84` (*«a largura
-> mínima precisa ser no mínimo o dobro»*). ⭐ As duas cercas são **erro de compilação** e apertam
-> a faixa legal nos dois lados (`168 ≤ piso < 220`), o que reduz a `52 px` a janela em que um piso
-> solto pode mentir. ⚠️ O caminho de omissão é **byte-idêntico** (o `base` nunca desce
+> docáveis), e o que shipa é **`2,5 ×`** isso, por DUAS ordens do dono no mesmo dia, cada uma
+> depois de ver o número anterior no ecrã (*«no mínimo o dobro»* ⇒ `168`; *«ainda muito estreito.
+> aumente 25%»* ⇒ `210`). ⭐ As duas cercas são **erro de compilação** e apertam a faixa legal nos
+> dois lados (`210 ≤ piso < 220`), o que reduz a `10 px` a janela em que um piso solto pode
+> mentir. ⚠️⚠️ **E esses `10 px` são também o que o gesto compra numa janela ESTREITA**, porque ali
+> a lei de fábrica já entrega `220`: o curso a sério está nas janelas largas (`612 → 420` a
+> `1 920`). *Quem manda numa janela estreita é a largura de FÁBRICA, e o dono mandou parar de lhe
+> tocar.* ⚠️ O caminho de omissão é **byte-idêntico** (o `base` nunca desce
 > dos `220`), e a lei do arrasto passou a ler o piso do store porque `screens → interaction` é a
 > direcção que DESCE no DAG ⇒ **zero** na catraca que é dívida. ⛔⛔ **NOMEADO e não curado:** um
 > controlo de `36 × 36` px transborda a coluna `7 px` **já na largura de fábrica**, e a posição
@@ -821,12 +825,15 @@ dele.*
 
 ---
 
-## §9-sexies — ⭐⭐⭐ O 5.º REPORT É UM NÚMERO: *«no mínimo o dobro»*
+## §9-sexies — ⭐⭐⭐ OS 5.º E 6.º REPORTS SÃO NÚMEROS: *«no mínimo o dobro»*, depois *«mais 25 %»*
 
 > *«a largura mínima precisa ser no mínimo o dobro que a largura mínima que vc definiu.»*
-> — Enio, 2026-09-20, depois de ver a coluna a `84 px`.
+> — Enio, 2026-09-20, depois de ver a coluna a `84 px`. ⇒ `168`.
 
-⇒ `WidgetStore::DOCK_W_MIN` **`84 → 168`**.
+> *«ainda muito estreito. aumente 25%.»*
+> — Enio, 2026-09-20, depois de ver a coluna a `168 px`. ⇒ **`210`**.
+
+⇒ `WidgetStore::DOCK_W_MIN` **`84 → 168 → 210`**, que é `2,5 ×` o piso medido.
 
 ### ⚠️⚠️ E isto separa duas coisas que estavam coladas
 
@@ -840,25 +847,37 @@ escrito à mão de propósito — ⛔ **não** `2.0 * PISO_DO_CORPO_PX`: assim e
 defende seria verdadeira por construção, e *uma linha que a mutação não consegue matar é
 comentário com sintaxe de código*.
 
-### ⭐⭐ A ordem dele apertou a faixa legal NOS DOIS LADOS
+### ⭐⭐ As ordens dele apertaram a faixa legal NOS DOIS LADOS
 
 | cerca | quem a põe |
 |---|---|
-| `DOCK_W_MIN ≥ 2 × PISO_DO_CORPO_PX` (`168`) | a ordem do dono, 2026-09-20 |
+| `DOCK_W_MIN ≥ 2,5 × PISO_DO_CORPO_PX` (`210`) | as duas ordens do dono, 2026-09-20 |
 | `DOCK_W_MIN < PANEL_MIN_W_PX` (`220`) | senão o gesto volta a ser inerte numa janela estreita |
 
 As duas são **erro de compilação** (`E0080`), ao lado das duas do degrau de fechar que já lá
-estavam. ⭐ Antes da ordem dele só havia cerca por baixo e um piso solto era inatacável em toda a
-recta; hoje a janela em que ele pode mentir tem **`52 px`**, e é essa a mutação NOMEADA que
-sobra.
+estavam. ⚠️ **A cerca de baixo leva a ordem MAIS RECENTE e não as duas escritas lado a lado:** são
+do mesmo dia e a segunda subsume a primeira, logo mantê-las às duas daria a UMA delas o poder de
+aprovar um valor que a outra recusa. ⭐ Antes da 1.ª ordem só havia cerca por baixo e um piso
+solto era inatacável em toda a recta; hoje a janela em que ele pode mentir tem **`10 px`**, e é
+essa a mutação NOMEADA que sobra.
 
-### O que o dono ganha, com o número
+### ⚠️⚠️ O que o dono ganha — e a consequência que ele tem de ver
 
-| janela | duas colunas de fábrica | o mínimo a que ele as pode levar |
-|---:|---:|---:|
-| `473` (o report da §9-ter) | `440` de `473` (`93 %`) | `336` (`71 %`) |
-| `647` (o fim do log dele) | `440` de `647` (`68 %`) | `336` (`52 %`) |
-| `1 024` | `459` de `1 024` (`45 %`) | `336` (`33 %`) |
+| janela | duas colunas de fábrica | o mínimo a que ele as leva | o que o gesto compra |
+|---:|---:|---:|---:|
+| `473` | `220 + 220` = **440** (93 %) | **420** (89 %) | `20 px` |
+| `647` | `220 + 220` = **440** (68 %) | **420** (65 %) | `20 px` |
+| `1 024` | `231 + 228` = **459** (45 %) | **420** (41 %) | `39 px` |
+| `1 920` | `308 + 304` = **612** (32 %) | **420** (22 %) | `192 px` |
+
+⛔⛔ **A consequência está nas duas primeiras linhas, e ela é o report de onde tudo isto nasceu:**
+numa janela estreita a lei de FÁBRICA já entrega `220`, logo com o piso em `210` o arrasto compra
+**`10 px` por coluna** e mais nada. *O curso a sério do gesto está nas janelas largas.*
+
+⚠️ **Isto não é uma objecção — é a aritmética da decisão dele, posta à frente dele.** Quem manda
+na largura numa janela estreita é a **lei de fábrica**, e ele mandou parar de lhe tocar
+(*«pare de tentar»*, §9-quinquies). ⇒ o dia em que ele quiser espaço a `647 px` é o dia em que
+essa nota reabre, e ela é **decisão dele**, não trabalho pendente.
 
 ### ⚠️ E DOIS gates meus reprovaram sobre produto correcto, os dois pela mesma forma
 
@@ -872,9 +891,14 @@ sobra.
   `no_piso_de_uma_escolha_nada_do_corpo_sai_da_coluna`, que é o que o corpo dele afirma. *Um nome
   que promete mais do que o teste mede mente em toda corrida verde.*
 
-⛔⛔ **E a mutação «piso apertado» deixou de ser expressável sozinha:** com a cerca do dobro no
-sítio, qualquer valor abaixo de `168` **não compila** ⇒ a prova de mutação passa a derrubar **a
-cerca E o valor** (`60`), que é a forma honesta de perguntar *«e se alguém decidir descer isto?»*.
+⛔⛔ **E a mutação «piso apertado» deixou de ser expressável sozinha:** com a cerca no sítio,
+qualquer valor abaixo de `210` **não compila** ⇒ a prova de mutação passa a derrubar **a cerca E
+o valor** (`60`), que é a forma honesta de perguntar *«e se alguém decidir descer isto?»*.
+
+⚠️ **E a mutação NOMEADA teve de mudar de número:** ela era `210` — *«um piso solto dentro da
+faixa legal»* — e `210` passou a ser **o valor que shipa**. Hoje é `215`, e a faixa em que ela
+vive são os `10 px` que sobram. *Uma mutação cujo valor o produto adopta deixa de ser uma
+mutação.*
 
 **Mutação: 4 sangram + 2 CERCA + 1 NOMEADA, de 7.**
 
@@ -915,19 +939,26 @@ defende.
 
 ### §10-bis — O portão das voltas 3 e 4 (o piso de uma escolha, e o dobro dele)
 
-⚠️ **Corrido duas vezes**: uma para o piso medido (`84`) e outra depois da ordem do dono (`168`).
-Os números abaixo são os da **segunda**, que é a que shipa.
+⚠️ **Corrido três vezes**: para o piso medido (`84`), para o dobro (`168`) e para o `+25 %`
+(`210`). Os números abaixo são os da **última**, que é a que shipa.
 
 | passo | resultado |
 |---|---|
-| `scripts/nextest-impacted.sh` | **`15 485 / 15 485`** · `45,5 s` · zero flakes |
+| `scripts/nextest-impacted.sh` | **`15 485 / 15 485`** · `56,1 s` · ⚠️ uma reprovada, **flake de carga já NOMEADA** (ver abaixo) |
 | `cargo test -p ph2d-panel-registry-init` (com as quatro features) | verde |
 | `cargo clippy -p ph2d-editor-core -p ph2d-host-desktop --all-targets -- -D warnings` | **zero** |
 | `cargo fmt --check` | limpo |
 | `git merge-base HEAD main` | **no-op**: `merge-base == main == 395da6a55` |
 | `scripts/censos-da-arvore-combinada.sh` | **`127 / 127`** · *«controlo do filtro: 12 de 12 censos correram ✓»* |
 | prova de mutação | **4 sangram + 2 CERCA + 1 NOMEADA**, de 7 |
-| mudança de PRODUTO, as duas voltas somadas | **três linhas** (a constante do recurso, a do piso, e a lei a ler o store) |
+| mudança de PRODUTO, as três voltas somadas | **três linhas** (a constante do recurso, a do piso, e a lei a ler o store) |
+
+⚠️ **A reprovada da última volta é `the_cost_of_a_player_is_linear_in_their_number`
+(`ph2d-physics-ecs`), membro CONFIRMADO da família de flakes de fan-out** — ela está nomeada no
+`CLAUDE.md` §5.0 e foi esta linha que a pediu para lá em 2026-09-07. Assinatura completa:
+**`3` de `3` verde sozinha a `load 52`–`63`**, que é carga **MAIOR** do que aquela em que
+reprovou, e **zero linhas** do diff desta linha naquela crate. ⇒ *o discriminador é o FAN-OUT e
+não o relógio*, que é exactamente o que aquela entrada diz.
 
 ⭐⭐ **Duas mutações deixaram de poder sangrar porque passaram a ser ERRO DE COMPILAÇÃO**, e isso é
 mais forte: reverter o piso da escolha para o de fábrica devolve `error[E0080]` com a frase do

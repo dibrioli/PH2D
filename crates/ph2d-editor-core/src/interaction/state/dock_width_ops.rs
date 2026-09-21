@@ -157,10 +157,13 @@ impl WidgetStore {
     /// entregaria uma coluna cujo corpo pinta por cima da área de desenho — *o piso é do CORPO,
     /// que é o que falha primeiro.*
     ///
-    /// # ⭐⭐⭐ E o número que SHIPA é o DOBRO desse, por ordem do dono
+    /// # ⭐⭐⭐ E o número que SHIPA é `2,5 ×` esse, por DUAS ordens do dono
     ///
     /// > *«a largura mínima precisa ser no mínimo o dobro que a largura mínima que vc definiu.»*
-    /// > — Enio, 2026-09-20, depois de ver os `84`.
+    /// > — Enio, 2026-09-20, depois de ver os `84`. ⇒ `168`.
+    ///
+    /// > *«ainda muito estreito. aumente 25%.»*
+    /// > — Enio, 2026-09-20, depois de ver os `168`. ⇒ **`210`**, que é `2,5 ×` o piso medido.
     ///
     /// ⚠️⚠️ **Isto separa duas coisas que estavam coladas, e a separação é o que torna o número
     /// honesto:** [`Self::PISO_DO_CORPO_PX`] é o **RECURSO** (o que o produto CONSEGUE fazer,
@@ -171,18 +174,24 @@ impl WidgetStore {
     /// é explícito porque é uma escolha de produto, e quem o descer abaixo do dobro do recurso
     /// **não compila**.
     ///
-    /// ⭐⭐ **Isto aperta a faixa legal nos DOIS lados:** `168 ≤ DOCK_W_MIN < 220`. Antes da
-    /// ordem dele só havia cerca por baixo, e um piso solto era inatacável em toda a recta; hoje
-    /// a janela em que ele pode mentir tem `52 px`.
+    /// ⭐⭐ **Isto aperta a faixa legal nos DOIS lados:** `210 ≤ DOCK_W_MIN < 220`. Antes da
+    /// 1.ª ordem dele só havia cerca por baixo e um piso solto era inatacável em toda a recta;
+    /// depois da 2.ª a janela em que ele pode mentir tem **`10 px`**.
+    ///
+    /// ⚠️⚠️ **E esses `10 px` são também o que o gesto compra numa janela ESTREITA, que é onde o
+    /// report nasceu.** A `640 px` a lei de fábrica já entrega `220`, logo arrastar leva a coluna
+    /// de `220` a `210` e mais nada; o curso real do gesto está nas janelas LARGAS (a `1 920` a
+    /// coluna abre a `308` e desce a `210`, que são `98 px`). *A decisão é do dono e está tomada
+    /// com o número à frente — o que fica escrito aqui é a consequência dela, não uma objecção.*
     ///
     /// O máximo é medido pelo mesmo critério do `clamp_panel_rect`: 70 % de uma janela de
     /// referência, para uma coluna nunca comer a área de desenho inteira.
-    pub const DOCK_W_MIN: f32 = 168.0; // LITERAL-PX-OK: ordem do dono -- o DOBRO do piso medido
+    pub const DOCK_W_MIN: f32 = 210.0; // LITERAL-PX-OK: ordem do dono -- 2,5 x o piso medido
 
     /// ⭐ **O RECURSO, medido — e ele NÃO é o que shipa.** Ver o doc de [`Self::DOCK_W_MIN`]: esta
     /// é a largura em que o corpo de um painel docado ainda cabe na coluna (a tabela está lá), e
-    /// o que shipa é o **dobro** dela, por decisão do dono. ⛔ Ela fica porque é a proveniência
-    /// do número que shipa: sem ela, *«o dobro»* deixa de ter de quê.
+    /// o que shipa é **`2,5 ×`** ela, por decisão do dono. ⛔ Ela fica porque é a proveniência do
+    /// número que shipa: sem ela, *«o dobro»* e *«mais 25 %»* deixam de ter de quê.
     pub const PISO_DO_CORPO_PX: f32 = 84.0; // LITERAL-PX-OK: piso MEDIDO do corpo de um painel
 
     /// ⛔⛔ **DORMENTE desde 2026-09-09 — ela já não tem consumidor no produto.**
@@ -229,14 +238,19 @@ impl WidgetStore {
 // (*«this assertion has a constant value»*) — a mesma recusa que pôs as duas de baixo aqui, e ela
 // aponta para cima outra vez. *Um teste que o clippy chama de constante é um teste que queria ser
 // uma cerca.*
-// ⭐⭐⭐ **E a ORDEM DO DONO é a quarta cerca** (*«no mínimo o dobro»*, 2026-09-20). ⚠️ O valor
-// é escrito à mão de propósito, e não `2.0 * PISO_DO_CORPO_PX`: assim escrito, esta asserção
-// seria verdadeira por construção — *uma linha que a mutação não consegue matar é comentário com
-// sintaxe de código*. Com o valor explícito, quem o descer abaixo do dobro não compila.
+// ⭐⭐⭐ **E as ORDENS DO DONO são a quarta cerca** (*«no mínimo o dobro»* e, a seguir, *«ainda
+// muito estreito. aumente 25%»* — 2026-09-20). ⚠️ O valor é escrito à mão de propósito, e não
+// `2.5 * PISO_DO_CORPO_PX`: assim escrito, esta asserção seria verdadeira por construção — *uma
+// linha que a mutação não consegue matar é comentário com sintaxe de código*. Com o valor
+// explícito, quem o descer não compila.
+//
+// ⚠️ A cerca leva a ordem MAIS RECENTE (`2,5 ×`) e não a primeira: as duas são do mesmo dia e a
+// segunda subsume a primeira, logo manter as duas escritas daria a UMA delas o poder de aprovar
+// um valor que a outra recusa.
 const _: () = assert!(
-    WidgetStore::DOCK_W_MIN >= 2.0 * WidgetStore::PISO_DO_CORPO_PX,
-    "o piso de uma escolha desceu abaixo do DOBRO do piso medido do corpo -- e' a ordem do dono \
-     de 2026-09-20, dada depois de ele ver a coluna a 84 px"
+    WidgetStore::DOCK_W_MIN >= 2.5 * WidgetStore::PISO_DO_CORPO_PX,
+    "o piso de uma escolha desceu abaixo de 2,5 x o piso medido do corpo -- sao as duas ordens \
+     do dono de 2026-09-20, dadas depois de ele ver a coluna a 84 px e depois a 168"
 );
 
 const _: () = assert!(

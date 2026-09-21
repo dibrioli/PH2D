@@ -41,7 +41,7 @@ fn traco_em(mesh: &mut Mesh, verb: Verb, nivel: Option<u8>, centro: [f32; 3]) ->
     let brush = pincel(verb);
     let mut s = SculptStroke::default();
     s.begin(mesh);
-    s.tinta_fina = nivel.map(|n| TintaDoTraco::nova(plano(mesh, n)));
+    s.tinta_fina = nivel.map(|n| TintaDoTraco::nova(plano(mesh, n), 0));
     let path = [0.06, 0.0, 0.0];
     for i in 0..2u8 {
         let c = [centro[0] + path[0] * f32::from(i), centro[1], centro[2]];
@@ -261,7 +261,7 @@ fn a_janela_do_desfazer_enche_com_a_cor_de_antes() {
     let brush = pincel(Verb::Paint);
     let mut s = SculptStroke::default();
     s.begin(&mesh);
-    s.tinta_fina = Some(TintaDoTraco::nova(plano(&mesh, 2)));
+    s.tinta_fina = Some(TintaDoTraco::nova(plano(&mesh, 2), 0));
     let c = [0.0, 0.0, 1.0];
     s.dab(&mut mesh, &brush, &Dab::at(c, 0.45, c), Symmetry::default());
     let fina = s.tinta_fina.take().expect("armado");
@@ -493,7 +493,7 @@ fn a_janela_das_amostras_sujas_e_o_que_o_traco_escreveu() {
     let brush = pincel(Verb::Paint);
     let mut s = SculptStroke::default();
     s.begin(&m);
-    s.tinta_fina = Some(TintaDoTraco::nova(plano(&m, 2)));
+    s.tinta_fina = Some(TintaDoTraco::nova(plano(&m, 2), 0));
 
     let mut sujas = Vec::new();
     let dab_em = |s: &mut SculptStroke, m: &mut Mesh, x: f32| {

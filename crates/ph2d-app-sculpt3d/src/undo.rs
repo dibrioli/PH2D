@@ -354,6 +354,7 @@ impl Sculpt3dScene {
                 positions,
                 masks,
                 colors,
+                finas,
             } => {
                 // ⚠️ **DOIS CANAIS INDEPENDENTES, e não um `if/else`.** A versão
                 // anterior tratava a entrada como *ou* máscara *ou* geometria, e
@@ -394,6 +395,28 @@ impl Sculpt3dScene {
                     }
                     None => None,
                 };
+                // ⭐⭐⭐⭐ **O QUARTO canal: as AMOSTRAS do plano de tinta
+                // fina.** Mesma lei dos dois de cima — desfaz-se por si —, e a
+                // única diferença é que a janela dele carrega os PRÓPRIOS
+                // índices: a unidade da tinta fina é a amostra, não o vértice.
+                //
+                // ⚠️ **O `None` que volta é uma LARGADA, não um erro:** o
+                // plano pode já não existir (o artista voltou ao modo `Mesh`)
+                // ou já não ser aquele. A [`JanelaFina::troca`] tem o porquê
+                // de ela não viajar para a fila oposta.
+                //
+                // ⚠️ A tinta suja, e não o `uploaded`: o plano é um buffer
+                // próprio no device e o upload dele tem porta própria — pedir
+                // a malha inteira aqui subiria posições que ninguém mexeu.
+                let finas_now = finas.and_then(|j| {
+                    let obj = self.piece_mut();
+                    let inversa = j.troca(obj.tinta.as_mut())?;
+                    obj.tinta_suja = true;
+                    Some(inversa)
+                });
+                if finas_now.is_some() {
+                    self.edits += 1;
+                }
                 let positions_now = swap_window(
                     self.piece_mut().stack.mesh_mut().positions_mut(),
                     &verts,
@@ -419,6 +442,7 @@ impl Sculpt3dScene {
                     positions: positions_now,
                     masks: masks_now,
                     colors: colors_now,
+                    finas: finas_now,
                 }
             }
         }

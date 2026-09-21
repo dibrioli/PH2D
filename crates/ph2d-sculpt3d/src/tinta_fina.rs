@@ -152,6 +152,22 @@ pub struct ContextoDoDab<'a> {
 #[derive(Debug, Clone)]
 pub struct TintaDoTraco {
     tinta: Tinta,
+    /// ⭐⭐⭐⭐ **QUEM emprestou o plano** — um símbolo OPACO do chamador, que
+    /// esta crate nunca interpreta.
+    ///
+    /// ⛔⛔ **Ele existe porque o empréstimo tem duas pontas e nada as prendia
+    /// à mesma peça** (achado da auditoria de 21/09, §10.5 do handoff): o
+    /// pen-down pede o plano à peça **ACTIVA** e o `close_stroke` devolvia-o à
+    /// peça **ACTIVA** — se o índice mudar entre os dois, o plano da peça A
+    /// aterra na B e a A fica sem ele, *que é o mesmo sintoma do report do
+    /// dono por outra porta*.
+    ///
+    /// ⚠️ **Ele viaja DENTRO do empréstimo e não ao lado dele**, de propósito:
+    /// um `Option<ObjectId>` na cena ao lado de um `Option<TintaDoTraco>` no
+    /// traço são **dois campos que têm de concordar**, e esta casa já pagou
+    /// essa forma — aqui a pergunta *«de quem é este plano?»* tem uma resposta
+    /// só, e ela morre com o plano.
+    dono: u32,
     /// Por amostra: `slot + 1`, com `0` a querer dizer *nunca tocada*.
     slot: Vec<u32>,
     accum: Vec<f32>,
@@ -175,12 +191,14 @@ pub struct TintaDoTraco {
 }
 
 impl TintaDoTraco {
-    /// Empresta o plano ao traço.
+    /// Empresta o plano ao traço — `dono` é o símbolo de quem o emprestou, e
+    /// esta crate **não o interpreta**: ver [`Self::dono`].
     #[must_use]
-    pub fn nova(tinta: Tinta) -> Self {
+    pub fn nova(tinta: Tinta, dono: u32) -> Self {
         let n = tinta.amostras().len();
         Self {
             tinta,
+            dono,
             slot: vec![0; n],
             accum: Vec::new(),
             base: Vec::new(),
@@ -199,6 +217,13 @@ impl TintaDoTraco {
     #[must_use]
     pub fn entregar(self) -> Tinta {
         self.tinta
+    }
+
+    /// **Quem emprestou este plano** — o símbolo opaco que o [`Self::nova`]
+    /// recebeu.
+    #[must_use]
+    pub fn dono(&self) -> u32 {
+        self.dono
     }
 
     /// O plano, para quem o sobe ao device.

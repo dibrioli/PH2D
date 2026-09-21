@@ -142,7 +142,7 @@ fn devolver_o_plano_reescreve_a_cor_por_vertice() {
         "a malha ainda é vermelha"
     );
 
-    let emprestado = empresta(&mut t);
+    let emprestado = empresta(&mut t, crate::objects::ObjectId(0));
     assert!(t.is_none(), "empréstimo é um TAKE: a peça fica sem plano");
     devolve(&mut m, &mut t, emprestado);
     assert!(t.is_some(), "e ele volta");
@@ -187,7 +187,7 @@ fn um_plano_desactualizado_nao_escreve_no_canal_por_vertice() {
     for a in t.as_mut().expect("nasceu").amostras_mut() {
         *a = [0.0, 0.0, 1.0];
     }
-    let emprestado = empresta(&mut t);
+    let emprestado = empresta(&mut t, crate::objects::ObjectId(0));
 
     let mut outra = Mesh::from_parts(
         vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0]],
@@ -572,5 +572,82 @@ fn com_o_plano_armado_um_pincel_de_cor_nao_mexe_na_topologia() {
             && !o_gesto_muda_a_topologia(Verb::Smooth, false),
         "o alisador passou a mexer na topologia -- a porta está a decidir em vez \
          de delegar na tabela do dyntopo"
+    );
+}
+
+/// ⭐⭐⭐⭐ **GATE — O PLANO VOLTA À PEÇA QUE O EMPRESTOU, E NÃO À ACTIVA.**
+///
+/// ⛔⛔ **O achado LATENTE da auditoria de 21/09 (§10.5):** as duas pontas do
+/// empréstimo eram indexadas por `objects[active]`, e nada as prendia à mesma
+/// peça — com o índice a mudar entre o pen-down e o pen-up, o plano da peça A
+/// aterrava na B, a A ficava sem ele e a [`garante`] reconstruía-a **grosso**:
+/// *o mesmo sintoma do report do dono, por outra porta*.
+///
+/// ⚠️ **O CONTROLO é a segunda metade:** sem a asserção de que a peça B fica
+/// **sem** plano, um `devolve_ao_dono` que os desse aos dois passaria.
+#[test]
+fn o_plano_volta_a_peca_que_o_emprestou_e_nao_a_activa() {
+    use crate::objects::{ObjectId, SceneObject};
+    let m = dois_tris();
+    let mut pecas = vec![
+        SceneObject::new(ObjectId(7), m.clone(), ph2d_mesh::Pose::default()),
+        SceneObject::new(ObjectId(9), m, ph2d_mesh::Pose::default()),
+    ];
+    {
+        let crate::objects::SceneObject { stack, tinta, .. } = &mut pecas[0];
+        garante(stack.mesh(), tinta, Some(1));
+    }
+    let emprestado = empresta(&mut pecas[0].tinta, ObjectId(7)).expect("a peça tinha plano");
+    assert!(
+        pecas[0].tinta.is_none() && pecas[1].tinta.is_none(),
+        "com o plano emprestado NENHUMA peça o segura — é isso que o `take` compra"
+    );
+
+    // ⇒ e agora o artista trocou de peça a meio do gesto: a activa é a `9`.
+    assert!(
+        devolve_ao_dono(&mut pecas, emprestado),
+        "o dono existe, logo a devolução tem de acontecer"
+    );
+    assert!(
+        pecas[0].tinta.is_some(),
+        "o plano tem de voltar à peça que o EMPRESTOU"
+    );
+    assert!(
+        pecas[1].tinta.is_none(),
+        "CONTROLO: a peça activa não pode ficar com o plano de outra — o \
+         endereço de uma amostra é (face, sítio) da malha de QUEM o emprestou"
+    );
+}
+
+/// ⭐⭐ **GATE — UM DONO QUE JÁ NÃO EXISTE LEVA O PLANO CONSIGO, e a porta DIZ.**
+///
+/// ⚠️ É a resposta certa e não um buraco: um plano é paramétrico nas faces de
+/// UMA malha, logo não há segunda peça a que ele pudesse pertencer. ⛔ O
+/// booleano é o que impede a alternativa muda — *largar um plano sem ninguém
+/// saber é como ele se perdia antes desta wave*.
+#[test]
+fn um_dono_que_ja_nao_existe_leva_o_plano_consigo() {
+    use crate::objects::{ObjectId, SceneObject};
+    let m = dois_tris();
+    let mut pecas = vec![SceneObject::new(
+        ObjectId(7),
+        m.clone(),
+        ph2d_mesh::Pose::default(),
+    )];
+    {
+        let crate::objects::SceneObject { stack, tinta, .. } = &mut pecas[0];
+        garante(stack.mesh(), tinta, Some(1));
+    }
+    let emprestado = empresta(&mut pecas[0].tinta, ObjectId(7)).expect("a peça tinha plano");
+    pecas.clear();
+    pecas.push(SceneObject::new(ObjectId(9), m, ph2d_mesh::Pose::default()));
+
+    assert!(
+        !devolve_ao_dono(&mut pecas, emprestado),
+        "a peça que emprestou já não está na cena — a porta tem de o DIZER"
+    );
+    assert!(
+        pecas[0].tinta.is_none(),
+        "e o plano de uma peça apagada não pode aterrar numa estranha"
     );
 }

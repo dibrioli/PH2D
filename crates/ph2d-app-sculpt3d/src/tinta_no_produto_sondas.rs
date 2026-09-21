@@ -163,10 +163,15 @@ fn diag_a_tinta_so_cai_onde_ha_vertice() {
     }
 }
 
-/// ⛔ **SONDA: o `Ctrl+Z` desfaz a tinta FINA?** — a pergunta que decide se a
-/// cura do report de 21/09 precisa de uma segunda metade (a entrada de desfazer
-/// é escrita a partir da janela de VÉRTICES tocados, e um dab que só toca
-/// AMOSTRAS deixa essa janela vazia).
+/// ⛔ **SONDA: o `Ctrl+Z` desfaz a tinta FINA?** — a pergunta que decidiu a
+/// wave do QUARTO CANAL (a entrada de desfazer era escrita a partir da janela
+/// de VÉRTICES tocados, e um dab que só toca AMOSTRAS deixa essa janela vazia).
+///
+/// ⭐ **O MESMO instrumento, dos dois lados da cura:** antes ele lia
+/// `1010 → 1010`; depois de o quarto canal existir lê **`1010 → 0`**. *É por
+/// isto que uma sonda se versiona em vez de se apagar.* A afirmação vive no
+/// gate irmão [`super::o_ctrl_z_desfaz_a_tinta_fina`], que tem barra e mede
+/// também o REFAZER.
 #[test]
 #[ignore = "precisa de adaptador"]
 fn diag_o_ctrl_z_desfaz_a_tinta_fina() {
@@ -254,4 +259,37 @@ fn diag_a_mascara_ainda_decide_na_tinta_fina() {
         }
     }
     eprintln!("[diag] amostras pintadas -> {}", linha.join("  |  "));
+}
+
+/// ⛔ **SONDA: ONDE a pegada de VÉRTICES fica vazia e a de AMOSTRAS não?** — a
+/// medição que escolhe a fixtura do gate do quarto canal do desfazer. Um traço
+/// de cor fina entre dois vértices é o caso que o `close_stroke` deixava cair
+/// (`touched` vazio ⇒ entrada nenhuma), e o gate precisa de um sítio em que o
+/// fenómeno EXISTA.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn diag_onde_a_pegada_de_vertices_fica_vazia() {
+    let gpu = gpu_or_skip!();
+    for raio in [16.0f32, 10.0, 6.0] {
+        let mut linha = Vec::new();
+        let mut x = 300.0f32;
+        while x <= 600.0 {
+            let mut s = cena_52(&gpu.device);
+            s.radius_px = raio;
+            s.sync_mesh(&gpu.device, &gpu.queue);
+            let antes = s.undo.len();
+            gesto(&mut s, x, x, 1);
+            s.sync_mesh(&gpu.device, &gpu.queue);
+            let conta = match s.undo.last().map(|e| &e.undo) {
+                Some(crate::StrokeUndo::Stroke { verts, finas, .. }) => {
+                    format!("v={} f={:?}", verts.len(), finas.as_ref().map(|_| "sim"))
+                }
+                _ if s.undo.len() == antes => "—".to_string(),
+                _ => "outra".to_string(),
+            };
+            linha.push(format!("{x:.0}:{conta}"));
+            x += 10.0;
+        }
+        eprintln!("[diag] raio {raio:>4.0} px  {}", linha.join("  "));
+    }
 }

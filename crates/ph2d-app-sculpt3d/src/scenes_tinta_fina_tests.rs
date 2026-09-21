@@ -178,7 +178,7 @@ fn todo_nome_entre_crases_do_roteiro_existe_na_tela() {
     use ph2d_panel_sculpt3d::state::{DetalheDaTinta, Sculpt3dUi, UiLevel};
 
     /// O que o roteiro nomeia e **não** é um rótulo de tela: teclas.
-    const TECLAS: &[&str] = &["P", "Ctrl+Z"];
+    const TECLAS: &[&str] = &["P", "Ctrl+Z", "Ctrl+Shift+Z"];
 
     const ESTA_CENA: &str = include_str!("scenes_tinta_fina.rs");
     let roteiro: Vec<&str> = ESTA_CENA

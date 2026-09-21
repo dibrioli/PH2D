@@ -64,6 +64,16 @@ pub(super) enum StrokeUndo {
         /// Um gesto que mexa em dois (uma pintura com auto-smooth armado mexe
         /// na cor E na posição) desfaz-se inteiro, sem ninguém escolher.
         colors: Option<Vec<[f32; 3]>>,
+        /// ⭐⭐⭐⭐ **O QUARTO canal: as AMOSTRAS do plano de tinta fina.**
+        ///
+        /// ⛔ **Ele não cabia nos três de cima, e a razão é a UNIDADE:** os
+        /// outros são indexados pelo `verts` desta mesma entrada, e uma
+        /// amostra do plano tem endereço próprio (`(face, sítio)`) e população
+        /// própria — depois da cura de 21/09 um dab fino escreve amostras sem
+        /// um único vértice debaixo do pincel, e nesse traço o `verts` é
+        /// **vazio**. ⇒ a janela carrega os próprios índices, e a cerca que
+        /// diz se eles ainda nomeiam alguma coisa vive na [`JanelaFina`].
+        finas: Option<JanelaFina>,
     },
     /// Uma operação de máscara mexeu na malha inteira: o estado anterior é o
     /// plano INTEIRO. ⚠️ O `None` aqui quer dizer *não havia máscara*, o que se
@@ -234,6 +244,14 @@ pub(super) struct Entry {
 /// outros: o corte é de responsabilidade.
 #[path = "undo.rs"]
 mod undo;
+
+/// **A JANELA DO PLANO DE TINTA FINA** — ver [`history_tinta_fina`]. Filho
+/// deste e não irmão, porque o que ela reutiliza é a [`swap_window`] daqui: a
+/// tinta fina é mais um canal da mesma entrada, não um segundo motor.
+#[path = "history_tinta_fina.rs"]
+mod history_tinta_fina;
+
+use history_tinta_fina::JanelaFina;
 
 /// **OS DOIS REMESHES** — ver [`remesh`]. Irmão (`#[path]`) pelo motivo dos
 /// outros: o corte é de responsabilidade.
@@ -520,18 +538,23 @@ impl Sculpt3dScene {
         // ⚠️ A [`crate::tinta_da_peca::devolve`] também reescreve o canal por
         // vértice com o plano — é ela que mantém UMA cor entre as duas
         // resoluções, e é por isso que ela recebe a malha e não só o `Option`.
-        if let Some(do_traco) = self.stroke.tinta_fina.take() {
-            let i = self.active;
-            let obj = &mut self.objects[i];
-            let crate::objects::SceneObject {
-                stack,
-                tinta,
-                tinta_suja,
-                ..
-            } = obj;
-            crate::tinta_da_peca::devolve(stack.mesh_mut(), tinta, Some(do_traco));
-            *tinta_suja = true;
-        }
+        //
+        // ⭐⭐⭐⭐ **E é DAQUI que sai a janela do desfazer** — do MESMO valor
+        // que a [`crate::tinta_da_peca::devolve`] consome, dentro do `if let`.
+        // ⛔ Colhê-la numa linha própria antes do `take` compila e é frágil no
+        // sentido MUDO: quem a mudasse para depois leria um `Option` vazio e
+        // gravaria uma janela vazia em todo traço, sem um erro.
+        let finas = if let Some(do_traco) = self.stroke.tinta_fina.take() {
+            let janela = JanelaFina::do_traco(&do_traco);
+            // ⭐⭐⭐⭐ **Ao DONO, e nunca à peça ACTIVA** — o achado §10.5. As
+            // duas pontas do empréstimo eram indexadas por `self.active`, e
+            // nada as prendia à mesma peça: com o índice a mudar entre o
+            // pen-down e o pen-up, o plano da peça A aterrava na B.
+            crate::tinta_da_peca::devolve_ao_dono(&mut self.objects, do_traco);
+            janela
+        } else {
+            None
+        };
         // ⚠️ **O traço que MUDOU A TOPOLOGIA desfaz pela malha inteira**, e a
         // pergunta não é *"o dyntopo estava armado?"* e sim *"a contagem de
         // vértices mudou?"*: armado e sem nada a refinar (a malha já tem a
@@ -554,7 +577,14 @@ impl Sculpt3dScene {
             self.record(StrokeUndo::Remeshed(before));
             return;
         }
-        if self.stroke.touched().is_empty() {
+        // ⚠️⚠️ **Este portão contava a população ERRADA, e foi o QUARTO desta
+        // wave a fazê-lo** (os outros três estão no `stroke_dab_core`): ele
+        // pergunta por VÉRTICES tocados, e a unidade que a tinta fina escreve
+        // é a AMOSTRA. Um traço de cor fina entre dois vértices saía daqui sem
+        // entrada nenhuma, e o `Ctrl+Z` não tinha o que desfazer — medido,
+        // `1010 → 1010`. *A entrada nasce quando QUALQUER canal tem o que
+        // devolver.*
+        if self.stroke.touched().is_empty() && finas.is_none() {
             return;
         }
         let entry = StrokeUndo::Stroke {
@@ -567,6 +597,7 @@ impl Sculpt3dScene {
             colors: self
                 .color_window_changed()
                 .then(|| self.stroke.base_colors().to_vec()),
+            finas,
         };
         self.record(entry);
     }
@@ -624,37 +655,9 @@ impl Sculpt3dScene {
     }
 }
 
+/// **A TROCA, sozinha** — ver [`swap_tests`]. Irmão cortado do corpo deste
+/// ficheiro pelo tecto de LOC, no dia em que a tinta fina lhe trouxe o quarto
+/// canal.
 #[cfg(test)]
-mod tests {
-    use super::swap_window;
-
-    /// ⚠️ **A troca devolve o que ESTAVA lá, não o que ela instalou.**
-    ///
-    /// É o dente do modelo inteiro: se ela devolvesse o valor novo, o desfazer
-    /// funcionaria (o estado certo é instalado) e o refazer seria um no-op que
-    /// **consome** a entrada — a forma de "o redo às vezes não faz nada" que
-    /// nenhum gate de contagem vê.
-    #[test]
-    fn the_window_swap_returns_what_was_there_not_what_it_installed() {
-        let mut plane = [10.0f32, 11.0, 12.0, 13.0];
-        let verts = [3u32, 1];
-
-        let was = swap_window(&mut plane, &verts, &[99.0, 98.0]);
-        assert_eq!(
-            plane,
-            [10.0, 98.0, 12.0, 99.0],
-            "instalou nos índices certos"
-        );
-        assert_eq!(
-            was,
-            vec![13.0, 11.0],
-            "e colheu o que estava lá, na ordem dos índices"
-        );
-
-        // E ela é a própria inversa: aplicar o que voltou restaura o começo — que
-        // é literalmente o que a fila oposta faz.
-        let back = swap_window(&mut plane, &verts, &was);
-        assert_eq!(plane, [10.0, 11.0, 12.0, 13.0], "a volta restaura");
-        assert_eq!(back, vec![99.0, 98.0], "e devolve o que o refazer precisa");
-    }
-}
+#[path = "history_swap_tests.rs"]
+mod swap_tests;

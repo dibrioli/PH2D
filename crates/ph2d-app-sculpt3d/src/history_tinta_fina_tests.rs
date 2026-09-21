@@ -1,0 +1,196 @@
+//! ⭐⭐⭐⭐ **OS GATES DO QUARTO CANAL** — irmão (`#[path]`) do [`super`].
+//!
+//! ⚠️ **Eles correm SEM adaptador, e isso é a razão de a lei viver ali e não na
+//! cena.** A prova de comportamento do `Ctrl+Z` inteiro é `#[ignore]` + placa
+//! (`o_ctrl_z_desfaz_a_tinta_fina`, no `tinta_no_produto_tests.rs`), e essa é
+//! a população que nem o arnês de mutação nem o CI correm. *O que ESTES
+//! afirmam é a lei; o que aquele afirma é o elo até à tecla.*
+
+use super::{IdDoPlano, JanelaFina};
+use ph2d_mesh::{Mesh, shapes};
+use ph2d_mesh_colors::Tinta;
+use ph2d_sculpt3d::tinta_fina::TintaDoTraco;
+use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
+
+const COR: [f32; 3] = [0.9, 0.2, 0.1];
+const BRANCO: [f32; 3] = [1.0, 1.0, 1.0];
+
+fn plano(mesh: &Mesh, nivel: u8) -> Tinta {
+    let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
+    Tinta::nova(mesh.vert_count(), faces(), nivel)
+}
+
+/// ⭐ **Um traço pela PORTA do motor** — a mesma `SculptStroke::dab` que o
+/// produto chama, sem cena e sem device.
+fn traco(mesh: &mut Mesh, verb: Verb, nivel: u8) -> TintaDoTraco {
+    let brush = Brush {
+        verb,
+        radius: 0.45,
+        strength: 1.0,
+        color: COR,
+        ..Brush::default()
+    };
+    let mut s = SculptStroke::default();
+    s.begin(mesh);
+    s.tinta_fina = Some(TintaDoTraco::nova(plano(mesh, nivel), 0));
+    for i in 0..2u8 {
+        let c = [0.06 * f32::from(i), 0.0, 1.0];
+        let dab = Dab {
+            path: [0.06, 0.0, 0.0],
+            ..Dab::at(c, 0.45, c)
+        };
+        s.dab(mesh, &brush, &dab, Symmetry::default());
+    }
+    s.tinta_fina
+        .take()
+        .expect("o plano foi emprestado ao traço")
+}
+
+fn pintadas(t: &Tinta) -> usize {
+    t.amostras().iter().filter(|c| **c != BRANCO).count()
+}
+
+/// ⭐⭐⭐⭐ **GATE — A JANELA DE UM TRAÇO FINO NOMEIA AS AMOSTRAS QUE ELE
+/// ESCREVEU, e um traço que não escreveu nenhuma não deixa janela.**
+///
+/// ⚠️ **O CONTROLO é a metade que a torna uma medição:** um verbo de FORMA no
+/// mesmo arranjo empresta o plano, escreve **zero** amostras e devolve-o. Sem
+/// ele, uma `do_traco` que devolvesse `Some` sempre passaria — e poria uma
+/// entrada de canal em toda pincelada da peça.
+#[test]
+fn a_janela_de_um_traco_fino_nomeia_as_amostras_que_ele_escreveu() {
+    let mut m = shapes::uv_sphere(16, 24, 1.0);
+    let fina = traco(&mut m, Verb::Paint, 2);
+    let n = pintadas(fina.tinta());
+    assert!(n > 0, "a fixtura não contém o fenómeno — nada foi pintado");
+    let janela = JanelaFina::do_traco(&fina).expect("o traço de COR escreveu amostras");
+    assert_eq!(
+        janela.len(),
+        n,
+        "a janela tem de nomear exactamente as amostras que mudaram de cor"
+    );
+
+    let mut m = shapes::uv_sphere(16, 24, 1.0);
+    let forma = traco(&mut m, Verb::Draw, 2);
+    assert_eq!(
+        pintadas(forma.tinta()),
+        0,
+        "CONTROLO: um verbo de FORMA não escreve uma amostra"
+    );
+    assert!(
+        JanelaFina::do_traco(&forma).is_none(),
+        "CONTROLO: sem amostra escrita não há janela — e uma janela vazia poria \
+         uma entrada de canal em toda pincelada"
+    );
+}
+
+/// ⭐⭐⭐⭐ **GATE — A TROCA É INVOLUTIVA: desfazer devolve o plano de antes, e
+/// refazer devolve o de depois.**
+///
+/// ⛔ É o dente do modelo inteiro. Se ela devolvesse o que instalou, o desfazer
+/// funcionaria e o refazer seria um no-op que **consome** a entrada — a forma
+/// de *«o redo às vezes não faz nada»* que nenhuma contagem vê.
+#[test]
+fn a_troca_da_janela_fina_e_involutiva() {
+    let mut m = shapes::uv_sphere(16, 24, 1.0);
+    let fina = traco(&mut m, Verb::Paint, 2);
+    let janela = JanelaFina::do_traco(&fina).expect("o traço escreveu amostras");
+    let mut t = fina.entregar();
+    let depois = t.amostras().to_vec();
+    assert!(pintadas(&t) > 0, "a fixtura não contém o fenómeno");
+
+    let inversa = janela.troca(Some(&mut t)).expect("é o MESMO plano");
+    assert_eq!(pintadas(&t), 0, "o desfazer não devolveu o plano de antes");
+
+    let outra = inversa.troca(Some(&mut t)).expect("continua a ser o mesmo");
+    assert_eq!(
+        t.amostras(),
+        depois.as_slice(),
+        "o refazer não devolveu o plano de depois, ao bit"
+    );
+    assert!(outra.troca(Some(&mut t)).is_some(), "e ela continua viva");
+}
+
+/// ⭐⭐⭐⭐ **GATE — UMA JANELA DE OUTRO PLANO É LARGADA, E NÃO TOCA NUM BIT.**
+///
+/// ⛔⛔ O endereço de uma amostra é `(face, sítio)`: escrever a cor de antes num
+/// plano reconstruído põe a tinta de uma face na face vizinha, sem estourar e
+/// sem desenhar lixo óbvio. *É o defeito que ninguém consegue atribuir.*
+///
+/// ⚠️ **As duas metades:** o plano que já não existe (o artista voltou ao modo
+/// `Mesh`) e o plano que existe e é OUTRO. Cada uma sozinha mente — a primeira
+/// lê-se como *«sem plano não há nada a fazer»* e a segunda como *«há plano,
+/// logo escreve»*.
+#[test]
+fn uma_janela_de_outro_plano_e_largada_e_nao_toca_num_bit() {
+    let mut m = shapes::uv_sphere(16, 24, 1.0);
+    let fina = traco(&mut m, Verb::Paint, 2);
+    let janela = JanelaFina::do_traco(&fina).expect("o traço escreveu amostras");
+
+    // (a) sem plano nenhum.
+    assert!(
+        JanelaFina::do_traco(&fina)
+            .expect("a mesma janela")
+            .troca(None)
+            .is_none(),
+        "sem plano na peça a janela tem de ser LARGADA"
+    );
+
+    // (b) um plano de OUTRO degrau, byte a byte intocado.
+    let mut outro = plano(&m, 3);
+    let antes = outro.amostras().to_vec();
+    assert!(
+        janela.troca(Some(&mut outro)).is_none(),
+        "um plano de outro degrau não é aquele em que a janela foi escrita"
+    );
+    assert_eq!(
+        outro.amostras(),
+        antes.as_slice(),
+        "e a recusa não pode ter escrito um único bit"
+    );
+
+    // (c) CONTROLO: o MESMO degrau sobre a MESMA malha é aceite.
+    let mut mesmo = plano(&m, 2);
+    assert!(
+        JanelaFina::do_traco(&fina)
+            .expect("a mesma janela")
+            .troca(Some(&mut mesmo))
+            .is_some(),
+        "CONTROLO: no plano certo ela tem de ser aplicada"
+    );
+}
+
+/// ⭐⭐⭐⭐ **GATE — UMA JANELA CUJOS ÍNDICES NÃO CABEM É RECUSADA, E NÃO
+/// ESTOURA.**
+///
+/// ⛔⛔ **É a SEGUNDA cerca da [`JanelaFina::troca`], e ela responde a outra
+/// pergunta que a identidade:** a [`super::super::swap_window`] indexa **sem
+/// cerca nenhuma**, e um `panic` num `Ctrl+Z` é o pior desfecho de um canal de
+/// desfazer.
+///
+/// ⚠️⚠️ **A identidade do plano BATE de propósito** (`IdDoPlano::de` sobre o
+/// próprio plano vivo): sem isso este gate mediria a cerca de cima e a de
+/// baixo ficava sem régua. *Foi exactamente esse o defeito da 1.ª redacção — a
+/// fixtura sobrescrevia o campo que estava a testar, e a mutação que o apagava
+/// SOBREVIVEU.*
+#[test]
+fn uma_janela_cujos_indices_nao_cabem_e_recusada_e_nao_estoura() {
+    let m = shapes::uv_sphere(8, 12, 1.0);
+    let mut t = plano(&m, 1);
+    let antes = t.amostras().to_vec();
+    let fora = u32::try_from(t.amostras().len()).expect("cabe") + 7;
+    let janela = JanelaFina {
+        plano: IdDoPlano::de(&t),
+        amostras: vec![fora],
+        cores: vec![COR],
+    };
+    assert!(
+        janela.troca(Some(&mut t)).is_none(),
+        "a cerca dos ÍNDICES é o que impede o `panic` — a identidade bate"
+    );
+    assert_eq!(
+        t.amostras(),
+        antes.as_slice(),
+        "e a recusa não pode ter escrito um único bit"
+    );
+}

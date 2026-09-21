@@ -11,7 +11,17 @@
 #       — nunca so' `passed` (o `running N tests` CONTA os `#[ignore]`).
 #   (d) a corrida LIMPA tem de estar VERDE — com a arvore ja' vermelha, TODA
 #       mutacao le-se como SANGRA e o placar sai perfeito e fabricado.
+#
+# ⛔⛔⛔ **ELE JA' NAO CABE NO PRAZO DE 30 MIN DA FATIA, e isso e' MEDIDO**
+# (2026-09-21): a corrida de `nextest` custa ~50 s e a rede tem 35 mutacoes ⇒
+# ~30 min de relogio, e a corrida que as levou todas foi MORTA na M25 com a
+# arvore inteira — o risco de MUTACAO CONGELADA que o §8-bis ja' registou.
+# ⇒ `MUTA_FILTRO=<regex>` corre so' as mutacoes cujo NOME casa (ERE, contra o
+# nome inteiro). O sumario DIZ o filtro, porque *um placar parcial lido como
+# completo e' a forma mais barata de um arnes mentir*.
+#   exemplo:  MUTA_FILTRO='^M3[0-5] ' bash docs/3D/ferramentas/muta_a_metade_visivel.sh
 set -u
+FILTRO="${MUTA_FILTRO:-}"
 APP=crates/ph2d-app-sculpt3d/src
 PAN=crates/ph2d-panel-sculpt3d/src
 # ⚠️ **O MOTOR entra na rede a partir de 21/09.** As mutacoes M27-M29 vivem na
@@ -60,6 +70,9 @@ fi
 sangram=0; total=0
 muta() { # ficheiro  ancora  substituto  nome
   local f="$1" agulha="$2" subst="$3" nome="$4"
+  # ⚠️ O filtro corta ANTES do contador: o `total` tem de descrever a POPULACAO
+  # que de facto correu, senao o placar diz «N de 35» sobre seis corridas.
+  if [ -n "$FILTRO" ] && ! printf '%s' "$nome" | grep -Eq "$FILTRO"; then return; fi
   total=$((total+1))
   local n; n=$(python3 -c 'import sys;print(open(sys.argv[1]).read().count(sys.argv[2]))' "$f" "$agulha")
   if [ "$n" -ne 1 ]; then echo "  ABORTO [$nome]: a ancora casou $n vezes (esperado 1)"; return; fi
@@ -282,5 +295,66 @@ muta "$SC/tinta_fina.rs" \
   '            if false && dot_olho(a.nrm) > crate::dab_alcance::NORMAL_LIMIAR {' \
   'M29 a lei da folha deixa de valer para a AMOSTRA'
 
+# ---- ⭐ O QUARTO CANAL DO DESFAZER (21/09, depois do smoke aprovado). As tres
+#      primeiras sao ELOS: a lei tem gates PUROS (que correm aqui e sangram),
+#      mas o produto pode deixar de a CHAMAR sem que nenhum deles veja — a
+#      prova de comportamento ate' a' tecla e' `#[ignore]` + placa. As duas
+#      ultimas matam-se nos gates puros da propria lei.
+muta "$APP/history.rs" \
+  '            let janela = JanelaFina::do_traco(&do_traco);' \
+  '            let janela: Option<JanelaFina> = None;' \
+  'M30 o close_stroke deixa de colher a janela do plano emprestado'
+
+muta "$APP/history.rs" \
+  '        if self.stroke.touched().is_empty() && finas.is_none() {' \
+  '        if self.stroke.touched().is_empty() {' \
+  'M31 o portao do close_stroke volta a contar so VERTICES'
+
+# ⚠️ A agulha e' a 3.a linha do bloco: ela quebra a do censo (que leva as TRES
+# juntas) E neutraliza a aplicacao — as duas metades na mesma mutacao.
+muta "$APP/undo.rs" \
+  '                    let inversa = j.troca(obj.tinta.as_mut())?;' \
+  '                    let inversa = { drop(j); None }?;' \
+  'M32 o quarto canal deixa de ser aplicado no desfazer'
+
+muta "$APP/history_tinta_fina.rs" \
+  '        if IdDoPlano::de(t) != self.plano {' \
+  '        if false {' \
+  'M33 a janela de OUTRO plano deixa de ser largada'
+
+# ⛔ A 1.a redacao desta mutacao apagava um campo da IDENTIDADE e SOBREVIVEU —
+# a fixtura do gate sobrescrevia o proprio campo que testava. Hoje ela apaga a
+# cerca dos INDICES, que e' uma pergunta diferente e tem gate proprio.
+muta "$APP/history_tinta_fina.rs" \
+  '        if self.amostras.iter().any(|&i| i as usize >= n) {' \
+  '        if false {' \
+  'M34 a cerca dos INDICES desaparece e o desfazer volta a poder ESTOURAR'
+
+muta "$APP/history_tinta_fina.rs" \
+  '        if t.tocadas().is_empty() {' \
+  '        if false {' \
+  'M35 um traco que nao tocou uma amostra passa a deixar janela'
+
+# ---- ⭐ O EMPRESTIMO POR DONO (§10.5, a latente da auditoria de 21/09). Os
+#      gates da lei chamam a porta DIRECTAMENTE e nenhum gate de produto ve' a
+#      troca, porque hoje nenhum gesto muda a peca activa a meio de um traco
+#      ⇒ quem mata estas duas e' o ELO no censo de texto.
+muta "$APP/history.rs" \
+  '            crate::tinta_da_peca::devolve_ao_dono(&mut self.objects, do_traco);' \
+  '            let i = self.active;
+            let crate::objects::SceneObject { stack, tinta, tinta_suja, .. } = &mut self.objects[i];
+            crate::tinta_da_peca::devolve(stack.mesh_mut(), tinta, Some(do_traco));
+            *tinta_suja = true;' \
+  'M36 o close_stroke volta a devolver o plano a peca ACTIVA'
+
+muta "$APP/input_down.rs" \
+  '            let dono = scene.objects[scene.active].id;' \
+  '            let dono = crate::objects::ObjectId(u32::MAX);' \
+  'M37 o emprestimo deixa de carregar quem o emprestou'
+
 echo
-echo "MUTACAO: $sangram de $total sangram"
+if [ -n "$FILTRO" ]; then
+  echo "MUTACAO: $sangram de $total sangram  ⚠️ SUBCONJUNTO (MUTA_FILTRO='$FILTRO')"
+else
+  echo "MUTACAO: $sangram de $total sangram"
+fi

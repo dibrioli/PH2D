@@ -176,17 +176,23 @@ pub(crate) fn announce() {
          [sculpt3d]        -> A marca SAI. Ate' 21/09 a tinta so' caia quando o pincel\n\
          [sculpt3d]           apanhava um CANTO do arame: o deposito pedia um vertice,\n\
          [sculpt3d]           e a tinta fina existe precisamente para nao o pedir.\n\
-         [sculpt3d]    (7) `Ctrl+Z` algumas vezes.\n\
-         [sculpt3d]        -> No modo `Mesh` a tinta volta atras, passo a passo.\n\
-         [sculpt3d]        ⚠️ COM o plano armado (`2x`..`16x`) o Ctrl+Z NAO desfaz a\n\
-         [sculpt3d]           tinta -- esta' MEDIDO e e' um buraco conhecido, nao uma\n\
-         [sculpt3d]           regressao desta sessao. Nao reporte; ja' esta' na fila.\n\
+         [sculpt3d]    (7) `Ctrl+Z` algumas vezes, e depois `Ctrl+Shift+Z`.\n\
+         [sculpt3d]        -> A tinta volta atras traco a traco, e volta a aparecer --\n\
+         [sculpt3d]           COM o plano armado (`2x`..`16x`) e sem ele.\n\
+         [sculpt3d]        -> Ate' 21/09 o Ctrl+Z nao desfazia a tinta FINA (medido:\n\
+         [sculpt3d]           1010 amostras pintadas, 1010 depois do desfazer). O\n\
+         [sculpt3d]           desfazer olhava para os VERTICES tocados, e esta tinta\n\
+         [sculpt3d]           escreve AMOSTRAS.\n\
+         [sculpt3d]        ⚠️ Se entre o traco e o Ctrl+Z voce TROCAR a fileira\n\
+         [sculpt3d]           `Paint Detail`, aquele traco deixa de poder voltar: o\n\
+         [sculpt3d]           plano de amostras foi refeito e o de antes ja' nao existe.\n\
          [sculpt3d]\n\
          [sculpt3d]    COMO SABER QUE DEU ERRADO: se no (4) a borda sair igual a' do (2),\n\
          [sculpt3d]    ou se o arame ADENSAR quando voce so' trocou a fileira, PARE e\n\
          [sculpt3d]    reporte. Se a peca ficar PRETA, ou aparecerem faces pretas de\n\
          [sculpt3d]    aresta dura no meio da marca, PARE e reporte. Se no (6-ter) o\n\
-         [sculpt3d]    arrasto RODAR a camara em vez de pintar, PARE e reporte."
+         [sculpt3d]    arrasto RODAR a camara em vez de pintar, PARE e reporte. Se no\n\
+         [sculpt3d]    (7) o Ctrl+Z deixar a marca onde estava, PARE e reporte."
     );
 }
 

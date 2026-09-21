@@ -71,3 +71,4 @@ tuplo sem que nada no código o diga.
 pergunte o que o vazio passa a afirmar sobre o campo novo. Se ele afirma o valor de omissão, o
 produtor tem de deixar de poder ficar vazio quando o valor não é esse — e o gate leva o CONTROLO
 (no valor de omissão a lista continua vazia, byte a byte).
+- ⛔⛔ [Canal de desfazer com CERCA: quando ela recusa, **LARGUE** — carregar a janela para a fila oposta faz o refazer **desfazer outra vez**, e só no dia em que a cerca voltar a aceitar](feedback_an_undo_channel_that_cannot_apply_must_be_dropped_not_carried.md)

@@ -729,3 +729,266 @@ acontece e para o dono **não** o reportar como regressão.
 a mesma forma da que o canal por-vértice usa. Falta a variante de `StrokeUndo` e
 o `swap` involutivo que serve desfazer e refazer com um buffer só. **Wave
 própria, nomeada, com o material identificado.**
+
+---
+
+## §12 — O `Ctrl+Z` DESFAZ A TINTA FINA — o QUARTO canal
+
+A wave que o §11.6 deixou **nomeada com o material identificado**, feita a
+seguir ao smoke aprovado. Ela é o único item da lista de abertos desta jornada
+que era **medido e não curado**.
+
+### §12.1 — O que a medição dizia, e o que ela diz hoje
+
+A sonda `diag_o_ctrl_z_desfaz_a_tinta_fina` (versionada desde ontem, pelo
+caminho do produto — a tecla, pela porta que a shell chama):
+
+| | antes do traço | depois | depois do `Ctrl+Z` |
+|---|---|---|---|
+| **21/09, de manhã** | `0` | `1010` | **`1010`** |
+| **21/09, depois desta wave** | `0` | `1010` | **`0`** |
+
+⭐ **O MESMO instrumento dos dois lados da cura.** *É por isto que uma sonda se
+versiona em vez de se apagar* — a próxima janela que duvide do número corre-a
+em vez de o re-derivar.
+
+### §12.2 — A causa, e porque ela não era um esquecimento
+
+A entrada de desfazer de um traço é `StrokeUndo::Stroke`, e os três canais dela
+(`positions` · `masks` · `colors`) são indexados pelo **MESMO** `verts`, que é a
+janela de **vértices tocados**. A tinta fina escreve **AMOSTRAS**, cuja unidade
+de endereço é `(face, sítio)` e cuja população não é a dos vértices — depois da
+cura de 21/09 um dab fino escreve amostras **sem um único vértice na pegada**.
+
+⇒ o quarto canal **não cabia** nos três: ele carrega os **próprios índices**.
+
+E havia um segundo elo, que é o mesmo portão que esta jornada já corrigiu três
+vezes noutro ficheiro:
+
+```rust
+if self.stroke.touched().is_empty() {
+    return;                       // ← o QUARTO portão a contar VÉRTICES
+}
+```
+
+Um traço de cor fina entre dois vértices saía daqui **sem entrada nenhuma**, e o
+`Ctrl+Z` gastava o passo **ANTERIOR** — pior do que não fazer nada.
+
+### §12.3 — A cerca, e porque ela é exactamente tão forte quanto a do produto
+
+O plano é paramétrico nas faces. Escrever a cor de antes num plano
+**reconstruído** põe a tinta de uma face na face vizinha — o defeito mudo que o
+cabeçalho da [`tinta_da_peca`] narra inteiro. ⇒ a janela carrega a identidade do
+plano em que foi escrita ([`IdDoPlano`]: `verts` · `faces` · `nivel`).
+
+⚠️ **Ela é deliberadamente tão forte quanto a [`concorda_com`]** — a régua com
+que o PRODUTO decide se o plano vivo sobrevive ao quadro seguinte. Uma cerca
+mais apertada aqui seria uma **segunda resposta** à mesma pergunta; uma mais
+frouxa escreveria onde o produto já não escreve.
+
+⛔⛔ **E há uma SEGUNDA cerca, que responde a outra pergunta: «os meus índices
+cabem?»** A [`swap_window`] indexa **sem cerca nenhuma**, e um `panic` num
+`Ctrl+Z` é o pior desfecho possível de um canal de desfazer.
+
+⚠️⚠️ **A 1.ª redacção metia a contagem de amostras DENTRO da identidade, e uma
+MUTAÇÃO SOBREVIVENTE mostrou porque isso não se pode:** dado
+`(verts, faces, nivel)`, a contagem é **derivada** — se as três batem, a
+`concorda_com` aceita o plano e ele **não é reconstruído** ⇒ *um campo
+redundante numa igualdade é um campo que nenhuma fixtura consegue pôr a
+decidir*. E a fixtura que eu escrevera para o testar **sobrescrevia o próprio
+campo** que media, logo a mutação que o apagava passava verde.
+
+⇒ hoje são duas cercas separadas, e a dos índices tem gate que a alcança **por
+construção** (identidade a bater, índice fora). Ela é **inalcançável pelo
+produto** e fica na mesma, porque *a alternativa é uma afirmação sobre a malha
+com um `panic` à espera*.
+
+### §12.4 — ⛔ LARGAR é a resposta certa, e carregar seria um defeito de DIRECÇÃO
+
+Quando a cerca recusa, a janela é **largada** e a inversa não a leva.
+
+A alternativa óbvia — carregá-la inalterada para a fila oposta — é **errada** e
+o mecanismo é aritmético: uma entrada carrega o estado de **ANTES**; quem a
+aplica devolve o de **DEPOIS**, e é esse que o refazer instala. Uma janela que
+não se pôde aplicar **não tem o «depois»** ⇒ devolvê-la a ela própria poria o
+`Ctrl+Shift+Z` a instalar as cores de antes **outra vez**, ou seja a desfazer
+duas vezes — e só no dia em que o artista voltasse a armar o mesmo degrau.
+
+*Um payload que sobrevive à recusa é pior que a recusa.*
+
+### §12.5 — O que NÃO foi preciso construir
+
+⭐ **O canal por-vértice já estava coberto, e por construção.** A
+[`tinta_da_peca::devolve`] corre no topo do `close_stroke` e reescreve
+`Mesh::colors` a partir do plano; só **depois** disso é que o
+`color_window_changed()` é avaliado. Logo o terceiro canal já grava o que a
+tinta fina mudou na cor grossa.
+
+⚠️ E a população fecha: um vértice cujo *corner sample* mudou está, por
+construção, dentro do raio do dab — logo está na pegada. Com a pegada vazia,
+nenhuma cor por vértice mudou.
+
+### §12.6 — A lei vive FORA da cena, e isso é a decisão
+
+[`history_tinta_fina.rs`] não conhece a `Sculpt3dScene`: ela toca numa
+[`Tinta`] e em mais nada. É isso que dá **quatro gates que correm sem
+adaptador** — e a razão é a mesma que a §33 desta linha já pagou: *quando um
+gate precisa de um device para medir uma decisão que não tem pixel nenhum, a lei
+está no sítio errado.*
+
+Os gates de PRODUTO (`#[ignore]` + placa) são dois, e o segundo é o que prende a
+cura do portão:
+
+- `o_ctrl_z_desfaz_a_tinta_fina` — desfazer devolve o plano de antes **e**
+  refazer devolve o de depois, **ao bit**. ⚠️ As duas metades: sem o refazer,
+  um desfazer que pintasse tudo de branco passaria.
+- `um_traco_de_cor_sem_vertice_debaixo_do_pincel_deixa_desfazer` — a fixtura sai
+  de uma **medição** (`diag_onde_a_pegada_de_vertices_fica_vazia`: a `raio 6 px`
+  a pegada de vértices lê `0` em `30` dos `31` sítios varridos), e a 1.ª
+  asserção é o **CONTROLO** de que ela ainda contém o fenómeno — *um raio maior
+  torna este gate verde a medir outra coisa*.
+
+### §12.7 — Os TRÊS elos de texto, e porque eles são precisos
+
+Os gates puros chamam a porta **DIRECTAMENTE**: eles ficam verdes sobre um
+produto que nunca a chama. A prova de comportamento até à tecla é `#[ignore]` +
+placa, que **nem o arnês de mutação nem o CI correm**.
+
+⇒ o censo da fiação passa de **NOVE para DOZE** elos (`M30` a colheita ·
+`M31` o portão · `M32` a aplicação). *É a armadilha que as M19–M22 desta mesma
+jornada já tinham pago, e agora ela é prevista em vez de descoberta.*
+
+⚠️ E a colheita é feita **DENTRO** do `if let` que consome o plano, e não numa
+linha própria antes do `take`: escrita antes, ela compila e sobrevive a um
+reordenamento que a deixe **depois** — e depois do `take` o `Option` está vazio,
+logo a janela viria sempre vazia, **em silêncio**.
+
+### §12.8 — O roteiro da `=52` foi corrigido OUTRA VEZ, no sentido inverso
+
+O passo (7) tinha sido corrigido ontem para dizer que o `Ctrl+Z` **não** desfaz
+a tinta fina. Hoje ele diz o que acontece, e **acrescenta a fronteira medida**:
+
+> ⚠️ Se entre o traço e o `Ctrl+Z` você TROCAR a fileira `Paint Detail`, aquele
+> traço deixa de poder voltar: o plano de amostras foi refeito e o de antes já
+> não existe.
+
+⚠️ **E o censo derivado do roteiro apanhou-me:** `Ctrl+Shift+Z` não é um rótulo
+que o painel pinte, e ele reprovou na primeira corrida. A cura é a entrada na
+lista `TECLAS` — que tem a metade que a impede de ser licença (uma tecla que
+seja **também** um rótulo pintado reprova).
+
+### §12.8-bis — ⛔ O ARNÊS DE MUTAÇÃO JÁ NÃO CABE NO PRAZO DA FATIA
+
+Com as seis mutações novas a rede tem **35**, e a corrida de `nextest` custa
+`~50 s` ⇒ **~30 min**, que é exactamente o prazo do `ph2d-run.sh`. A corrida que
+as levou todas foi **MORTA na M25 com a árvore inteira** — o risco de mutação
+CONGELADA que o §8-bis desta jornada já registou.
+
+⭐ **A árvore foi conferida e está limpa** (zero substitutos de mutação vivos,
+`git diff` das outras duas crates a zero), e a cura é `MUTA_FILTRO=<regex>`:
+
+```
+MUTA_FILTRO='^M3[0-5] ' bash docs/3D/ferramentas/muta_a_metade_visivel.sh
+```
+
+⚠️ **E o sumário DIZ o filtro**, com a contagem a descrever a população que de
+facto correu — *um placar parcial lido como completo é a forma mais barata de
+um arnês mentir*, e este ficheiro já tem quatro registos de arneses a mentir.
+
+### §12.8-ter — O placar, em três fatias
+
+| fatia | filtro | placar |
+|---|---|---|
+| a rede de ontem, 1.ª metade | `^(M[1-9] \|M1[0-4])` | **15 de 15** |
+| a rede de ontem, 2.ª metade | `^M(1[6-9]\|2[0-9]) ` | **14 de 14** |
+| **as seis do quarto canal** + o controlo | `^(M15 \|M3[0-5] )` | **6 de 7** |
+| **as duas do empréstimo por dono** + o controlo | `^(M15 \|M3[6-7] )` | **2 de 3** |
+
+⇒ **37 de 38 sangram**, e a 38.ª é o `M15` — o CONTROLO, que é uma linha em
+branco e **não pode** sangrar.
+
+⚠️ A rede de ontem foi **re-corrida inteira** de propósito: este diff toca no
+`history.rs`, no `undo.rs` e no censo da fiação (que passou de nove para doze
+elos), e *um placar herdado é um placar sobre outra árvore*.
+
+### §12.9 — ABERTO
+
+- ⏳ A **permutação** da janela quando um colapso renumera a malha: a entrada
+  guarda índices de AMOSTRA, e a cerca da identidade recusa qualquer plano
+  reconstruído ⇒ o caso não é alcançável hoje. *Se um dia o plano sobreviver a
+  uma mudança de topologia, esta janela precisa da cadeia de renumeração* — que
+  é a lei do §27, e que já mordeu duas vezes nesta linha.
+- ⏳ O plano continua a **não viajar no `.ph2dproj`** (dívida herdada).
+
+---
+
+## §13 — O EMPRÉSTIMO PASSA A CARREGAR QUEM O EMPRESTOU
+
+O item **LATENTE** que o §10.5 deixou medido e declarado, e que o handoff
+prescreveu por escrito: *«a cura honesta é o empréstimo carregar quem o
+emprestou»*.
+
+### §13.1 — O defeito, e porque ele era latente e não inofensivo
+
+O empréstimo tinha **duas pontas** e ambas liam `objects[self.active]`:
+
+```
+pen-down   →  empresta(&mut scene.objects[scene.active].tinta)
+close      →  devolve( … objects[self.active] … )
+```
+
+Nada as prendia à MESMA peça. Com o índice a mudar entre as duas, **o plano da
+peça A aterra na B**, a A fica sem ele, e a `garante` reconstrói-a semeada da
+cor por vértice ⇒ *a tinta a voltar à resolução da malha* — **o mesmo sintoma
+do report do dono, por outra porta**.
+
+⛔ **A cerca que o protegia é de OUTRO assunto:** o
+`a_stroke_belongs_to_the_piece_it_started_on` existe contra um **pânico de
+índice**, não contra isto. *Um invariante mantido por uma cerca escrita para
+outra pergunta é um invariante a prazo.*
+
+### §13.2 — A forma: DENTRO do empréstimo, nunca ao lado dele
+
+O `dono` é um `u32` **opaco** dentro do [`TintaDoTraco`], e esta crate nunca o
+interpreta — do lado da família ele é o [`ObjectId`].
+
+⛔⛔ **A alternativa óbvia — um `Option<ObjectId>` na cena ao lado do
+`Option<TintaDoTraco>` no traço — são DOIS campos que têm de concordar**, e
+esta casa já pagou essa forma meia dúzia de vezes. Aqui a pergunta *«de quem é
+este plano?»* tem **uma** resposta, e ela **morre com o plano**.
+
+⭐ E a volta é uma PORTA ([`tinta_da_peca::devolve_ao_dono`]) que acha a peça
+pelo id. ⚠️ **Se ela já não existe, o plano morre com ela, e isso é a resposta
+certa** — um plano é paramétrico nas faces de UMA malha, logo não há segunda
+peça a que pudesse pertencer; ⛔ e a porta **devolve um booleano**, porque
+*largar um plano sem ninguém saber é exactamente como ele se perdia antes*.
+
+### §13.2-bis — ⚠️ PROMOÇÃO PEDIDA à lista de flakes do §5.0
+
+`the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`
+([`ph2d-tool-painter`](crates/ph2d-tool-painter/src/tool/paint/measure_input_cost.rs))
+reprovou no meio de um fan-out de **18 566** testes e passa **3 de 3 sozinho a
+`load 41,6` · `30,0` · `30,0`** — *mais carga do que teria tido isolado na
+corrida que o reprovou* —, com **zero linhas** do diff desta linha naquela
+crate.
+
+⛔ **É o SÉTIMO deste repo cujo doc-comment se declara imune por escrito**, e
+aqui a declaração é a mais explícita de todas: ela narra que uma redacção
+anterior flakou e foi curada medindo os dois lados **no mesmo instante**
+(*«um gate que flaka é pior que ausente»*) — ⚠️ **verdade sobre a DERIVA da
+máquina e falsa sobre o FAN-OUT**, que é exactamente a distinção que aquela
+lista existe para guardar. *Dividir dois relógios não deixa de ser um relógio
+por a razão ser adimensional.*
+
+### §13.3 — A régua, e porque ela precisa de ser um ELO
+
+Os dois gates da lei são **puros** (`SceneObject::new` não pede device) e o
+segundo deles é o CONTROLO — *sem a asserção de que a peça activa fica **sem**
+plano, um `devolve_ao_dono` que o desse aos dois passaria*.
+
+⛔ **Mas eles chamam a porta DIRECTAMENTE**, e o `close_stroke` pode voltar a
+`objects[self.active]` sem que nenhum gate de produto o veja — *porque hoje
+nenhum gesto troca a peça activa a meio de um traço*. **É a definição de um
+defeito latente: a régua que o apanha tem de ser o ELO.** ⇒ o censo da fiação
+passa de **doze para CATORZE**, com `M36` (a devolução) e `M37` (o empréstimo a
+deixar de carregar o dono).

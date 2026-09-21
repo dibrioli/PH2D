@@ -314,8 +314,13 @@ pub fn pointer_down(
             // `tinta_fina` do traço é o único que sobrevive à chamada acima
             // porque ele é a *entrada* do gesto, não estado dele. Quem o
             // devolve é o `close_stroke`, sempre.
+            //
+            // ⭐ E ele leva **quem o emprestou**: a volta é por
+            // [`crate::tinta_da_peca::devolve_ao_dono`], que acha a peça pelo
+            // `ObjectId` em vez de reler o índice `active`.
+            let dono = scene.objects[scene.active].id;
             scene.stroke.tinta_fina =
-                crate::tinta_da_peca::empresta(&mut scene.objects[scene.active].tinta);
+                crate::tinta_da_peca::empresta(&mut scene.objects[scene.active].tinta, dono);
             // ⭐⭐ **A MEMÓRIA DO PENTE MORRE AQUI, e ela morre com o `begin` de
             // propósito:** as duas são indexadas pelo id de vértice da peça
             // ACTIVA, logo a mesma linha que redimensiona o traço na malha certa

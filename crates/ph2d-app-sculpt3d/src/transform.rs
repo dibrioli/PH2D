@@ -238,6 +238,10 @@ impl Sculpt3dScene {
             // afirmação; um campo em falta seria um esquecimento.*
             masks: None,
             colors: None,
+            // ⚠️ **E o quarto pelo mesmo motivo, com uma razão MAIS forte:** o
+            // gizmo nem sequer empresta o plano — ele não abre traço nenhum,
+            // logo não há `TintaDoTraco` de onde uma janela pudesse sair.
+            finas: None,
         };
         self.record(entry);
     }

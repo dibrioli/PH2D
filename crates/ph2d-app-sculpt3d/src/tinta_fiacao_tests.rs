@@ -1,7 +1,9 @@
-//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os NOVE elos que a cura desta
-//! wave precisa de ter LIGADOS: os três consumidores da porta
+//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os CATORZE elos que as curas
+//! desta jornada precisam de ter LIGADOS: os três consumidores da porta
 //! [`crate::tinta_da_peca::o_gesto_muda_a_topologia`], a metade da porta que lê
-//! a tinta **EMPRESTADA**, e o `close_stroke` do gesto que **erra** a peça.
+//! a tinta **EMPRESTADA**, o `close_stroke` do gesto que **erra** a peça, as
+//! três cercas que contavam VÉRTICES onde a unidade é a AMOSTRA, os três do
+//! **quarto canal do desfazer** e os dois do **empréstimo por DONO**.
 //!
 //! ⛔⛔ **Porque é um censo de TEXTO e não um gate de comportamento:** os
 //! consumidores são métodos de [`crate::Sculpt3dScene`], e construir uma cena
@@ -61,6 +63,11 @@ const INPUT_DOWN: &str = include_str!("input_down.rs");
 /// **falhar a COMPILAR**, que é a metade barata da família (HOWTO §2).
 const DAB_CORE: &str = include_str!("../../ph2d-sculpt3d/src/stroke_dab_core.rs");
 const TINTA_FINA: &str = include_str!("../../ph2d-sculpt3d/src/tinta_fina.rs");
+/// ⚠️ **Os dois do DESFAZER vivem na família**, e o `undo.rs` é filho do
+/// `history.rs` — o `include_str!` é por CAMINHO de ficheiro e não por módulo,
+/// logo ele não se importa com isso.
+const HISTORY: &str = include_str!("history.rs");
+const UNDO: &str = include_str!("undo.rs");
 
 /// Cada elo: o ficheiro, a agulha, e o nome da mutação que ela mata.
 fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
@@ -167,6 +174,61 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
                 .to_string(),
             TINTA_FINA,
         ),
+        // ⭐⭐⭐⭐ **Os TRÊS elos do QUARTO CANAL DO DESFAZER** — a wave de
+        // 21/09 que veio depois do smoke aprovado.
+        //
+        // ⚠️ **A lei tem gates que correm SEM placa** (a [`super::history_tinta_fina`]
+        // é pura, e os quatro dela entram no `--lib`), e é exactamente por isso
+        // que estes três são precisos: os gates da lei chamam a porta
+        // DIRECTAMENTE e ficam verdes sobre um produto que nunca a chama.
+        // *A prova de comportamento até à tecla é `#[ignore]` + placa.*
+        (
+            "history.rs",
+            "M30 o close_stroke deixa de colher a janela do plano emprestado",
+            "            let janela = JanelaFina::do_traco(&do_traco);".to_string(),
+            HISTORY,
+        ),
+        (
+            "history.rs",
+            "M31 o portão do close_stroke volta a contar só VÉRTICES",
+            "        if self.stroke.touched().is_empty() && finas.is_none() {".to_string(),
+            HISTORY,
+        ),
+        // ⭐⭐⭐⭐ **Os DOIS elos do EMPRÉSTIMO POR DONO** (§10.5, a latente).
+        //
+        // ⛔ Os gates da lei chamam a `devolve_ao_dono` DIRECTAMENTE e ficam
+        // verdes com o `close_stroke` a voltar a `objects[self.active]` — e
+        // nenhum gate de produto o vê, porque *hoje nenhum gesto troca a peça
+        // activa a meio de um traço*. É a definição de um defeito LATENTE: a
+        // régua que o apanha tem de ser o ELO.
+        (
+            "history.rs",
+            "M36 o close_stroke volta a devolver o plano a' peca ACTIVA",
+            "            crate::tinta_da_peca::devolve_ao_dono(&mut self.objects, do_traco);"
+                .to_string(),
+            HISTORY,
+        ),
+        (
+            "input_down.rs",
+            "M37 o emprestimo deixa de carregar quem o emprestou",
+            [
+                "            let dono = scene.objects[scene.active].id;",
+                "            scene.stroke.tinta_fina =",
+            ]
+            .join("\n"),
+            INPUT_DOWN,
+        ),
+        (
+            "undo.rs",
+            "M32 o quarto canal deixa de ser aplicado no desfazer",
+            [
+                "                let finas_now = finas.and_then(|j| {",
+                "                    let obj = self.piece_mut();",
+                "                    let inversa = j.troca(obj.tinta.as_mut())?;",
+            ]
+            .join("\n"),
+            UNDO,
+        ),
     ]
 }
 
@@ -177,9 +239,13 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
 /// busca falhar em voz alta — mas um que devolvesse **tudo** faria a prosa
 /// satisfazer a agulha, e é isso que o [`so_a_prosa`] recusa.
 #[test]
-fn a_cura_da_tinta_fina_esta_ligada_nos_nove_sitios() {
+fn a_cura_da_tinta_fina_esta_ligada_nos_catorze_sitios() {
     let elos = elos();
-    assert_eq!(elos.len(), 9, "a população deste censo são os nove elos");
+    assert_eq!(
+        elos.len(),
+        14,
+        "a população deste censo são os catorze elos"
+    );
 
     for (ficheiro, mutacao, agulha, fonte) in elos {
         let codigo = sem_prosa(fonte);

@@ -258,12 +258,18 @@ pub(crate) fn rota(
 /// custo de uma pincelada em função do detalhe da tinta. O preço é a peça ficar
 /// sem plano enquanto o traço dura — e é por isso que [`devolve`] não é
 /// opcional e o `close_stroke` a chama sempre, inclusive no caminho de recusa.
+///
+/// ⭐⭐⭐⭐ **E ele carrega QUEM emprestou.** O `dono` é o [`crate::ObjectId`]
+/// da peça, e é ele que a [`devolve_ao_dono`] usa para achar o caminho de
+/// volta — *o empréstimo deixa de depender de o índice `active` não se mexer
+/// entre o pen-down e o pen-up*.
 pub(crate) fn empresta(
     tinta: &mut Option<Tinta>,
+    dono: crate::ObjectId,
 ) -> Option<ph2d_sculpt3d::tinta_fina::TintaDoTraco> {
     tinta
         .take()
-        .map(ph2d_sculpt3d::tinta_fina::TintaDoTraco::nova)
+        .map(|t| ph2d_sculpt3d::tinta_fina::TintaDoTraco::nova(t, dono.0))
 }
 
 /// ⭐⭐ **Devolve o plano à peça, e REESCREVE o canal por vértice com ele.**
@@ -287,6 +293,43 @@ pub(crate) fn devolve(
         mesh.colors_mut().copy_from_slice(&por_vertice);
     }
     *tinta = Some(t);
+}
+
+/// ⭐⭐⭐⭐ **O CAMINHO DE VOLTA, e ele é pelo DONO e nunca pela peça activa.**
+///
+/// ⛔⛔ **O achado da auditoria de 21/09 (§10.5):** o empréstimo tem duas
+/// pontas — `empresta(&mut objects[active].tinta)` no pen-down e a devolução
+/// no `close_stroke` — e **nada as prendia à mesma peça**. Com o índice a
+/// mudar entre as duas, o plano da peça A aterra na B, a A fica sem ele e a
+/// [`garante`] reconstrói-a **grosso**: *o mesmo sintoma do report do dono,
+/// por outra porta*.
+///
+/// ⚠️ **Hoje nenhum gesto o alcança** (o `a_stroke_belongs_to_the_piece_it_started_on`
+/// proíbe que um consumidor de `pick` mova a peça activa a meio de uma
+/// pincelada, e a Hierarquia só troca na mudança de selecção) — ⛔ *mas a
+/// cerca que o protegia é de OUTRO assunto*: ela existe contra um pânico de
+/// índice, não contra este.
+///
+/// ⚠️ **Se a peça já não existe, o plano MORRE com ela, e isso é a resposta
+/// certa** — um plano é paramétrico nas faces de UMA malha, e não há segunda
+/// peça a que ele pudesse pertencer.
+pub(crate) fn devolve_ao_dono(
+    objects: &mut [crate::SceneObject],
+    do_traco: ph2d_sculpt3d::tinta_fina::TintaDoTraco,
+) -> bool {
+    let dono = do_traco.dono();
+    let Some(obj) = objects.iter_mut().find(|o| o.id.0 == dono) else {
+        return false;
+    };
+    let crate::objects::SceneObject {
+        stack,
+        tinta,
+        tinta_suja,
+        ..
+    } = obj;
+    devolve(stack.mesh_mut(), tinta, Some(do_traco));
+    *tinta_suja = true;
+    true
 }
 
 #[cfg(test)]

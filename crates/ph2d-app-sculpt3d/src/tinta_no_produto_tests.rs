@@ -522,6 +522,129 @@ fn a_folha_que_o_olho_ve_vale_para_a_amostra() {
     );
 }
 
+/// A tecla, pela porta que a shell chama.
+fn tecla(s: &mut Sculpt3dScene, shift: bool) -> bool {
+    use winit::keyboard::KeyCode as K;
+    let mut req = crate::Sculpt3dRequests::default();
+    let factos = crate::keys::keys_delete::DeleteFacts {
+        clay_on_screen: true,
+        text_focused: false,
+        over_panel: false,
+        vector_has_selection: false,
+    };
+    crate::keys::key(
+        s,
+        &mut req,
+        None,
+        crate::keys::KeyPress {
+            code: K::KeyZ,
+            ctrl: true,
+            shift,
+        },
+        &factos,
+        "",
+    )
+}
+
+/// ⭐⭐⭐⭐ **GATE — O `Ctrl+Z` DESFAZ A TINTA FINA, E O `Ctrl+Shift+Z` REFÁ-LA.**
+///
+/// ⛔⛔ **A medição que o encomendou** (sonda `diag_o_ctrl_z_desfaz_a_tinta_fina`,
+/// 21/09): pintar `1010` amostras e carregar em `Ctrl+Z` deixava **`1010`**. A
+/// entrada de um traço era a janela de VÉRTICES tocados, e a tinta fina escreve
+/// AMOSTRAS.
+///
+/// ⚠️ **As duas metades, e nenhuma basta:** sem o refazer, um desfazer que
+/// pintasse tudo de branco passaria; sem o desfazer não há wave nenhuma. E o
+/// refazer tem de devolver o plano **ao bit**, que é o que separa uma troca
+/// involutiva de duas leis que por acaso concordam num sentido.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn o_ctrl_z_desfaz_a_tinta_fina() {
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let virgem = amostras(&s);
+    assert_eq!(pintadas(&s), 0, "a peça abre por pintar");
+
+    assert!(
+        gesto(&mut s, 380.0, 470.0, 10),
+        "o pen-down não foi da cena"
+    );
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let depois = amostras(&s);
+    let n = pintadas(&s);
+    assert!(
+        n > 100,
+        "a fixtura não contém o fenómeno: pintou {n} amostras"
+    );
+
+    assert!(tecla(&mut s, false), "o Ctrl+Z tem de ser consumido");
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    assert_eq!(
+        amostras(&s),
+        virgem,
+        "o Ctrl+Z não devolveu o plano de antes do traço — foi {n} contra \
+         {} amostras pintadas",
+        pintadas(&s)
+    );
+
+    assert!(tecla(&mut s, true), "o Ctrl+Shift+Z tem de ser consumido");
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    assert_eq!(
+        amostras(&s),
+        depois,
+        "o refazer não devolveu o plano de depois, ao bit"
+    );
+}
+
+/// ⭐⭐⭐⭐ **GATE — UM TRAÇO QUE NÃO TOCA UM VÉRTICE DEIXA ENTRADA DE DESFAZER.**
+///
+/// ⛔⛔ Este é o portão que a wave do vértice deixou a contar a população
+/// errada: o `close_stroke` devolvia cedo com `touched()` vazio, e depois da
+/// cura de 21/09 um dab fino escreve amostras **sem um único vértice na
+/// pegada**. *Sem entrada não há o que desfazer, e o Ctrl+Z gastava o passo
+/// ANTERIOR — que é pior do que não fazer nada.*
+///
+/// ⚠️ **A fixtura sai de uma MEDIÇÃO** (`diag_onde_a_pegada_de_vertices_fica_vazia`):
+/// a `raio 6 px` a pegada de vértices lê `0` em `30` dos `31` sítios varridos, e
+/// o `x = 400` é um deles. A 1.ª asserção é o CONTROLO de que ela ainda contém
+/// o fenómeno — *um raio maior torna este gate verde a medir outra coisa*.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn um_traco_de_cor_sem_vertice_debaixo_do_pincel_deixa_desfazer() {
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.radius_px = 6.0;
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    let virgem = amostras(&s);
+    let antes = s.undo.len();
+    assert!(gesto(&mut s, 400.0, 400.0, 1), "o pen-down não foi da cena");
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    assert!(pintadas(&s) > 0, "a fixtura não pintou uma amostra");
+    assert_eq!(s.undo.len(), antes + 1, "o traço tem de deixar UMA entrada");
+
+    match s.undo.last().map(|e| &e.undo) {
+        Some(crate::StrokeUndo::Stroke { verts, finas, .. }) => {
+            assert!(
+                verts.is_empty(),
+                "CONTROLO: a fixtura deixou de conter o fenómeno — a pegada de \
+                 vértices tem {} e este gate passaria pelo canal errado",
+                verts.len()
+            );
+            assert!(finas.is_some(), "e a entrada tem de trazer a janela FINA");
+        }
+        outra => panic!("a entrada não é a de um traço: {}", outra.is_some()),
+    }
+
+    assert!(tecla(&mut s, false), "o Ctrl+Z tem de ser consumido");
+    s.sync_mesh(&gpu.device, &gpu.queue);
+    assert_eq!(
+        amostras(&s),
+        virgem,
+        "o Ctrl+Z não devolveu o plano de antes de um traço SEM vértice"
+    );
+}
+
 /// ⭐ **AS SONDAS vivem no irmão** — ver [`sondas`]. O corte foi por
 /// responsabilidade quando o par cruzou o tecto de LOC: *um gate AFIRMA e uma
 /// sonda MEDE*, e as que medem imprimem tabelas sem barra nenhuma.

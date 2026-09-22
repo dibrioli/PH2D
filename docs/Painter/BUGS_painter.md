@@ -4,7 +4,8 @@
 > aparência levou a vários rounds na pista errada. Não é o log de todo fix (isso o git já faz).
 >
 > **O que está VIVO aqui:** só o que ainda está **ABERTO** — os Bugs **#15**, **#11**, a **tinta
-> EMPURRADA** do #14, os dois achados abertos da varredura do #13, e o **#24**, cujas duas causas
+> EMPURRADA** do #14, os dois achados abertos da varredura do #13, a **cegueira do #25** sob Simetria/Spray/Rough,
+> as **⛔ RECUSAS MEDIDAS do esfregão** (com a decisão do dono em aberto), e o **#24**, cujas duas causas
 > fecharam e cujo **resíduo do esfregão** continua atribuído e por curar. ⚠️ **O post-mortem do #24
 > fica AQUI e não no arquivo por ordem do dono** (*«precisamos de um doc para documentar essa
 > solução que me incomodava há muito tempo … documente com detalhes»*, 2026-09-21) — *ele é o único
@@ -45,6 +46,7 @@
 | 22 | **Composite Brush**: a sessão de smear nunca era encerrada — a guarda que a fechava era uma **ENUMERAÇÃO** de modos, e a pilha era o terceiro membro da família. | 2026-08-09 |
 | 23 | A **FITA** divergiu e o processo comeu **90,2 GB**: um teto que limitava a **RESOLUÇÃO**, não o **TRABALHO** (a assinatura foi a suíte parar sem `ok` e sem falha). | 2026-08-14 |
 | 24 | **Composite Brush, os retângulos do re-carimbo** — DOIS mecanismos, ambos «que região este gesto mexe?»: a caixa SALVA pelo descasque era a do raio do PINCEL e a ESCRITA é a da CAMADA (`radius *= escala`); e **FIXAR (Enter) não fechava a pilha**, logo a figura seguinte reconstruía-se de uma base anterior ao que acabara de ser assado. | 2026-09-21 |
+| 25 | **A 2.ª figura saía diferente** — uma sessão de figuras é UM traço, e um lote é a CONCATENAÇÃO das figuras vivas ⇒ todo acumulador por-traço atravessa a junta. DOIS atravessavam (a corrente do esfregão · a subamostragem por arco, esta a entregar `0` texels), e a cura é UMA porta derivada do `arc_len`, não duas linhas. | 2026-09-21 |
 
 ---
 
@@ -182,6 +184,132 @@ melhor. As sete fotos dele mostram o mesmo rectângulo; só a sétima diz **quan
 
 ---
 
+
+## Bug #25 — Composite Brush: a 2.ª figura saía DIFERENTE (e às vezes NÃO SAÍA) (FECHADO 2026-09-21)
+
+> ⚠️ **Este post-mortem fica AQUI apesar de FECHADO, e a razão é a mesma do #24:** ordem do dono
+> (*«documente no doc de bugs do Painter todas as descobertas e soluções com detalhes e destaque»*,
+> 2026-09-21). *A lei do rodapé — «quando fechar, vai para o arquivo» — vale para tudo o resto.*
+> Ele carrega, além do mecanismo, **um item ABERTO** (a cegueira sob Simetria/Spray/Rough) e as
+> **⛔ recusas medidas** logo a seguir, que é o que a próxima caçada ao esfregão precisa de ler.
+
+**Sintoma (Enio 2026-09-21, duas frases no mesmo dia):** *«2 círculos com o mesmo pincel e um está
+diferente do outro»* e *«se dois círculos cada um tem um aspecto»*.
+
+⭐⭐⭐ **A causa é ESTRUTURAL e vale para TODO acumulador da pilha: uma sessão de figuras é UM
+traço.** O pen-up não a fecha — a figura fica editável até ao Apply —, e um lote do re-carimbo é a
+**CONCATENAÇÃO** das listas de dabs de **todas** as figuras vivas (a activa, cada parqueada, e um
+contorno por região no boolean). Logo *todo estado que se acumula ao longo do traço atravessa a
+junta entre duas figuras se ninguém a partir* — **e DOIS atravessavam**:
+
+| acumulador | o que atravessava a junta | medido |
+|---|---|---|
+| a **corrente do esfregão** (`smear_warp`) | o último dab de um círculo levantava tinta para o primeiro dab do outro, **através da tela** | com a 2.ª figura LONGE da 1.ª, a 1.ª perdia **`14 %`** do alfa dela |
+| a **subamostragem por arco** de uma camada maior que o pincel (`camada_dabs`) | o acumulador ficava no fim do arco da 1.ª e lia a lista inteira da 2.ª como *«perto demais do último que guardei»* | camada `Brush` de `size = 3`, dois círculos congruentes: **`0` texels contra `1 835`** — *a segunda figura não aparecia de todo* |
+
+⚠️⚠️ **É o MESMO defeito em dois acumuladores, e é por isso que a cura é uma PORTA e não duas
+linhas.** A primeira metade foi curada em 2026-09-20 com a regra escrita **à mão dentro do
+esfregão**; a segunda apareceu no dia seguinte, no outro acumulador, **com a cura já escrita a três
+ficheiros de distância**. *Uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é.*
+
+### A fronteira é DERIVADA, nunca um campo novo
+
+Todo `fill_*_preview` recomeça o `Dab::arc_len` em zero ⇒ **um arco que anda para TRÁS é uma
+sub-figura nova**. Não é preciso campo, índice de figura nem segunda lista: *o facto já viaja no
+dab*. A porta é
+[`arco_subfigura::nasce_uma_subfigura`](../../crates/ph2d-tool-painter/src/tool/paint/arco_subfigura.rs),
+lida pelos **dois** acumuladores.
+
+⛔ **Um limiar sobre o COMPRIMENTO do salto foi recusado por mecanismo** — um traço à mão livre
+rápido produz saltos legítimos do mesmo tamanho, logo ele apagaria a corrente exactamente onde ela
+**é** o produto.
+
+⚠️ **A comparação é ESTRITA de propósito:** dois dabs com *exactamente* o mesmo arco são as cópias
+que a **Simetria, o Spray e o Rough** emitem para o mesmo ponto do caminho, e parti-las seria partir
+a corrente dentro de uma figura só. Um `NaN` e o `NEG_INFINITY` inicial respondem `false`, que é o
+valor conservador — *o princípio de um traço não é uma fronteira, é o princípio*.
+
+⚠️ **A fixtura tem de ter a tela VAZIA:** numa tela branca opaca o esfregão move branco para dentro
+de branco e ela **não contém o fenómeno**.
+
+⏳ **ABERTO e nomeado:** sob **Simetria / Spray / Rough** as cópias partilham o `arc_len`, logo esta
+porta é **cega** a uma fronteira que caia entre duas delas. Não medido — *nomeado*.
+
+---
+
+## ⛔ RECUSAS MEDIDAS — o esfregão numa curva (2026-09-21)
+
+> **Leia isto antes de propor qualquer cura para o esfregão.** São duas obras construídas por
+> inteiro, medidas, e que **não shipam**. A segunda é a mais cara de reconstruir por engano.
+
+**O que está MEDIDO e não é opinião:** a lei do esfregão compõe o mapa de volta,
+`D(p) = v + D(p − v)`, o que deixa um texel **herdar** o mapa do vizinho atrás dele, que herdou do
+vizinho atrás desse. A corrente alcança arbitrariamente longe — muito além dos dabs que de facto
+tocaram o texel. Num traço recto de `580 px`, `|disp|` máximo de **`568,58 px`**, que são **`9,5`
+raios de pincel** contra o raio da lei.
+
+⭐ **Numa RECTA isso é invisível** (o traço é igual a si mesmo ao longo dele). **Numa CURVA não é:**
+o traçado para trás deixa de acompanhar o caminho, aterra **fora** do traço — onde não há tinta — e
+o re-amostrar traz o vazio. Anel `r = 215`, pincel `30`: a tinta que sobrevive é **`84,4 %`**, contra
+`99,9 %` na recta.
+
+⚠️ **Com a dureza a `1` o defeito é MUITO maior** (`|disp| 383 px`, `51,2 %` de tinta) — *uma
+fixtura de dureza `0` esconde-o, porque ali a atenuação da orla já limita a corrente por acidente*.
+
+### ⛔ Recusa 1 — o TECTO do transporte (`2,0` raios)
+
+Ele **cura** (`84,4 % → 99,7 %`, deriva radial `43,72 → 6,38 px`) e deixa a recta onde estava
+(`0,07 %` de movimento na pior coluna). O número é **derivado** (um dab só toca a tinta dentro de um
+diâmetro) **e** é o joelho da varredura medida — *uma derivação e uma medição independentes a darem
+o mesmo número é a única forma honesta de escrever um limite*:
+
+| tecto (R) | anel guardado | `\|disp\|` máx | recta: pior coluna |
+|---|---|---|---|
+| `0,5` | `100,0 %` | `15` | **`1,097 %`** ← já corta o transporte aprovado |
+| `1,0` | `100,0 %` | `30` | `0,073 %` |
+| `1,5` | `99,9 %` | `45` | `0,036 %` |
+| **`2,0`** | **`99,7 %`** | `60` | `0,073 %` |
+| `3,0` | `96,0 %` | `90` | `0,018 %` |
+| `4,0` | `86,7 %` | `120` | `0,000 %` |
+| `∞` (o que shipa) | `84,4 %` | `320` | `0,000 %` |
+
+⛔ **E ele NÃO shipa porque MATA o que o dono exigiu duas vezes:** *«as fronteiras não são vencidas,
+o relevo não é levado além, nada resolvido»*. O tecto é exactamente o que impede o transporte longo.
+
+Instrumento congelado:
+[`TECTO_MEDIDO_E_RECUSADO_EM_RAIOS`](../../crates/ph2d-painter-brush/src/smear_field.rs), com a
+varredura ao lado; `SEM_TECTO` é o que o produto passa.
+
+### ⛔⛔ Recusa 2 — o passo de volta pelo ARCO (a mais cara)
+
+A hipótese era boa: o passo de volta é uma **CORDA**, numa curva ela sai do arco por `|v|²/2r` em
+cada elo, e a corrente tem **centenas** de elos. Construí a curva osculadora inteira — circunraio em
+forma fechada (sem sinal adivinhado), cinco recusas geométricas nomeadas, e gate a provar que rodar
+para trás aterra no dab anterior.
+
+**Ela ARMA (`99,6 %` dos dabs de uma elipse) e NÃO CURA:**
+
+| | anel guardado | `\|disp\|` | deriva radial |
+|---|---|---|---|
+| passo recto (o que shipa) | `84,4 %` | `79,00` | `43,72` |
+| **passo pelo arco** | **`84,8 %`** | `80,11` | `43,50` |
+
+⛔⛔⛔ **E a refutação já estava numa medição ANTERIOR minha que eu não reli:** a sonda
+`diag_a_perda_e_a_curvatura` mostra que a perda **CRESCE com o raio** (`98,6 %` a `r = 40` →
+`84,0 %` a `r = 300`). *Se a perda não é função da curvatura, uma cura que só corrige curvatura não
+a pode tocar.* **Construí um remédio para uma causa que a minha própria tabela tinha eliminado duas
+medições antes.**
+
+Instrumento congelado (o produto passa `None` e anda em linha recta, byte-idêntico):
+[`arco_do_caminho`](../../crates/ph2d-tool-painter/src/tool/paint/arco_do_caminho.rs).
+
+### ⏳ A DECISÃO que fica para o dono
+
+O que sobra medido é que **a perda segue o MÓDULO do deslocamento**, e o único mecanismo que a cura
+é **limitá-lo** — que é precisamente o que ele recusou. As duas saídas continuam em tensão, e as
+duas estão **gateadas de cada lado** para que nenhuma possa ser adoptada em silêncio.
+
+---
 
 ## Bug #15 — Impasto: os chips do rig de luzes pintam e não clicam (ABERTO)
 
@@ -350,3 +478,8 @@ na pista errada); fix trivial fica só no git. Sempre termine em **lições gene
 ⚠️ **Quando ele FECHAR, ele não fica aqui inteiro.** O post-mortem vai para o
 [arquivo](../archive/docs-2026-08-18/Painter/BUGS_painter.md) e sobra **uma linha no índice, com o
 MECANISMO** — o que se repete é o mecanismo, não o sintoma. Este doc vivo só carrega o que está ABERTO.
+
+⛔ **As DUAS excepções vivas são o `#24` e o `#25`, e as duas são ORDEM DO DONO** (2026-09-21), cada
+uma com a frase dele citada na abertura. *Uma excepção sem a ordem escrita ao lado lê-se como alguém
+que não conhecia a regra* — e, ao contrário das outras entradas fechadas, as lições destas duas são
+sobre a **RÉGUA** e sobre **recusas medidas**, que é precisamente o que se perde ao arquivar.

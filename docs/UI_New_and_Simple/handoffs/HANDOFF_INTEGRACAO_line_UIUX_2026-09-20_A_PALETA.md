@@ -1932,6 +1932,103 @@ app já vive, e o piso delas (`NUMBER_INPUT_MIN_W_PX = 72`) continua a ser a cer
 
 ---
 
+## §9-septdecies — ⛔⛔ O SELECTOR DE COR: a medição FECHOU, a cura foi REVERTIDA, e o bloqueador é uma CATRACA
+
+> Report do dono, 2026-09-22: *«os seletores de cor de todo o app precisam ser padronizados»*.
+>
+> ⚠️ **Esta secção NÃO descreve uma cura shipada.** Ela regista uma medição que fecha, uma cura
+> construída e **revertida**, e o mecanismo que a bloqueia — para a próxima janela não recomeçar do
+> zero nem repetir o meu erro.
+
+### §9-septdecies.1 — O que a medição diz (e isto FICA)
+
+Sonda nova `diag_que_forma_tem_cada_seletor_de_cor` (em `a_marca_tem_a_altura_da_linha.rs`), pelo
+caminho do produto e com a passagem **armada** — sem ela cinco painéis pintam zero fileiras e o
+Inspector fica invisível.
+
+A 1.ª corrida leu **45** candidatos e **35 NÃO eram selectores**:
+
+| o que | forma | porquê não entra |
+|---|---|---|
+| `insp_live_*_color` · `insp_section_*_color` (35) | `18 × 18` | é o **ponto de cor do CABEÇALHO** (`color_circle_hit_rect`) |
+| `*_section` (2) | `268 × 22` | é a **banda de DOBRA** da secção |
+| os restantes (9) | `22` de alto | **estes** são os selectores |
+
+⛔⛔ **Confundi-las era o erro, e estava a um passo:** padronizar um ponto de cabeçalho ou uma banda
+de dobra «ao controlo» troca um cabeçalho e uma dobra por um campo.
+
+**E a ALTURA já era uniforme (`22` em todos).** O que divergia era a **largura**, e num painel só:
+
+| painel | x | largura | acaba em |
+|---|---:|---:|---:|
+| `inspector` (4 linhas de cor) | `1206` | `120` | `1326` |
+| `painter_layers` | `1214` | `120` | `1334` |
+| **`vector` (fill · stroke)** | **`1300`** | **`32`** | `1332` |
+| `widget_gallery` (a vitrina) | — | **`32`** | `809` |
+
+Medido no MESMO painel de vetor, **todo** vizinho começa na coluna do controlo: os interruptores em
+`1207 + 125`, as pontas de seta em `1202 + 130`, os botões em `1080 + 252`. **Só a swatch começava
+`94 px` depois, com a largura de um quadrado** — e a largura vinha do `SwatchSize::Md`, que o doc do
+`ColorSwatch` declara ser a aresta **sugerida** de uma amostra de PALETA (*«callers may still hand
+any rect»*). *Uma sugestão de grelha usada como largura de fileira é o mesmo erro que o
+`CHECKBOX_BOX_PX` no lugar da altura da linha (§9-quindecies), uma semana antes.*
+
+### §9-septdecies.2 — ⛔⛔⛔ O erro que eu cometi: a lei JÁ EXISTIA e eu não a li
+
+O gate `quantas_entradas_tem_cada_painel::as_formas_de_um_selector_de_cor_so_encolhem` já media
+**109** selectores (discriminador próprio: `is_picker_swatch` + `widget_color` + os estados de
+picker — muito melhor que o meu, por slug), já trazia **o mesmo report do dono, de 21/09**, e já
+prescrevia a cura na mensagem de erro: *«um selector de cor novo passa pela porta
+`paint_color_row`»*.
+
+⇒ Eu escrevi um gate NOVO (`o_seletor_de_cor_ocupa_a_coluna.rs`, com catraca e censo de
+obsolescência, **4 de 4 mutações a sangrar**) que era **uma segunda resposta à mesma pergunta, e
+pior**. Foi **APAGADO**. *Antes de escrever uma régua, procure a que já existe — e a maneira de a
+achar é correr o portão, não `grep`.*
+
+### §9-septdecies.3 — A cura construída, e porque foi REVERTIDA
+
+Construída inteira: o painel de vetor tinha **quatro** cópias da mesma montagem; ficaram uma porta
+(`colour_swatch_row_rect`, que devolve o rect para a rachura do token) mais `caixa_do_controlo` no
+`property_row` (para não haver segunda aritmética da coluna), com os três sítios em linha a delegar
+e três blocos de imports a ficarem órfãos — o sinal de que a duplicação saiu. A vitrina
+(`widget/showcase/color.rs`) foi curada pela mesma razão (*uma vitrina que não obedece à lei da casa
+ensina a lei errada a quem a vem consultar*).
+
+⛔⛔⛔ **E a catraca de 109 selectores REPROVOU as duas tentativas:**
+
+| tentativa | largura no vetor | veredito |
+|---|---:|---|
+| coluna derivada no painel | `134` | forma NOVA ⇒ reprova |
+| **pela porta `paint_color_row`** | `112` (e a vitrina `188`) | **DUAS** formas novas ⇒ reprova |
+
+⭐⭐ **O achado: a largura de um selector que «enche a coluna» NÃO É INVARIANTE — ela é função da
+largura do PAINEL.** A catraca conta **píxeis** e chama-lhes «formas», logo *converter um painel
+pela porta que ela própria prescreve faz sempre nascer uma largura nova*. O modelo dela não fecha
+com a mensagem dela: a lista `LARGURAS_DE_COR = [18, 32, 59, 120, 268]` só encolheria se todos os
+painéis tivessem a mesma largura interior, e não têm (`inspector` acaba em `1326`, `vector` em
+`1318`, a vitrina noutro sítio).
+
+⚠️ **Por isso a geometria foi REVERTIDA e a árvore ficou verde.** *Não se shipa mudança visível que
+luta com um gate aprovado; e não se afrouxa um gate aprovado para a mudança passar.*
+
+### §9-septdecies.4 — O que a próxima janela faz (o trabalho é da RÉGUA, não do desenho)
+
+**A catraca tem de medir a FORMA que o nome dela promete, e não o píxel.** O predicado honesto é
+*«a swatch ocupa a caixa que a [`property_row::caixa_do_controlo`] dá à fileira dela»* — uma
+comparação **por painel**, contra a porta, sem número escolhido. Com ela:
+
+1. a conversão do vetor e da vitrina passa a poder shipar (é o que o dono pediu);
+2. as `86` swatches a `32` continuam a **reprovar** enquanto forem grelhas de paleta — ⛔ e ELAS
+   são outra população (grelha · linha de LISTA), que a régua tem de excluir **com o mecanismo
+   escrito**, nunca com uma lista de nomes.
+
+⛔ **Duas réguas minhas foram construídas, medidas e REFUTADAS a caminho disto** — registadas para
+ninguém as reconstruir: a **borda direita** (todos os nove acabam onde os vizinhos acabam, e a
+swatch antiga TAMBÉM: *verde sobre o defeito*) e **«não mais estreito que o vizinho mais largo da
+coluna»** (reprovou os OITO, porque o vizinho mais largo é um botão de largura inteira — *uma
+estatística sobre população heterogénea mede a variedade, não o defeito*).
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

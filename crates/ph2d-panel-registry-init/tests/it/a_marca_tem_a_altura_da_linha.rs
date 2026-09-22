@@ -87,7 +87,7 @@ pub(crate) struct Marca {
 /// ⚠️ **A altura não depende da largura da janela** — a escada da varredura de elisões muda `x` e
 /// `w` das colunas e nunca o `h` de uma fileira. Uma janela chega, e varrer três seria medir a
 /// mesma coisa três vezes.
-fn viewport() -> Rect {
+pub(crate) fn viewport() -> Rect {
     Rect {
         x: 0.0,
         y: 0.0,
@@ -187,7 +187,7 @@ fn colhe(
     }
 }
 
-fn abre_as_gavetas(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+pub(crate) fn abre_as_gavetas(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     ph2d_editor_core::screens::hero::pre_populate::marca_as_gavetas(store);
     for id in store.collapsible_ids() {
         store.set_collapsed(id, false);
@@ -509,4 +509,96 @@ pub(crate) fn caixas_de_texto_do_inspector() -> Vec<(ph2d_editor_core::NodeId, f
     });
     saida.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
     saida
+}
+
+/// ⛔ **SONDA EXPLORATÓRIA (2026-09-22)** — que FORMA tem cada selector de cor do app.
+///
+/// Report do dono: *«os seletores de cor de todo o app precisam ser padronizados»*.
+///
+/// ⚠️ **A lista de ids vem do FONTE e o RECT vem do PRODUTO** — é a mesma troca que o
+/// [`super::o_que_o_artista_nao_alcanca`] já faz, e a metade que interessa (a geometria) é medida.
+#[test]
+#[ignore]
+fn diag_que_forma_tem_cada_seletor_de_cor() {
+    let nomes = super::o_que_o_artista_nao_alcanca::nomes_de(FONTES_DAS_CORES, 400);
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut linhas: Vec<String> = Vec::new();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        for painel in reg.panels_mut() {
+            let id = painel.manifest.id;
+            let mut host = MockPanelHost::new();
+            painel.populate(host.store_mut());
+            abre_as_gavetas(host.store_mut());
+            colhe_cores(&mut host, painel, id, &nomes, &mut linhas);
+
+            // ⭐ A passagem ARMADA — cinco painéis pintam ZERO fileiras de fábrica, e o Inspector
+            //   (o painel de que o report fala) é um deles.
+            if let Some(arm) = super::paineis_armados::TABELA
+                .iter()
+                .find(|a| a.painel == id)
+            {
+                let mut host = MockPanelHost::new();
+                (arm.arma)(host.store_mut());
+                painel.populate(host.store_mut());
+                abre_as_gavetas(host.store_mut());
+                colhe_cores(&mut host, painel, id, &nomes, &mut linhas);
+                (arm.desarma)();
+            }
+        }
+    });
+    linhas.sort();
+    linhas.dedup();
+    eprintln!("=== {} selectores de cor pintados ===", linhas.len());
+    for l in &linhas {
+        eprintln!("{l}");
+    }
+}
+
+/// ⛔ As árvores de ids que a sonda das cores lê.
+const FONTES_DAS_CORES: &[&str] = &[
+    "../ph2d-panel-inspector/src/ids",
+    "../ph2d-panel-vector/src",
+    "../ph2d-panel-flip/src",
+    "../ph2d-panel-model3d/src/ids",
+    "../ph2d-panel-tokens/src",
+    "../ph2d-panel-painter-layers/src",
+    "../ph2d-editor-core/src/ids",
+    "../ph2d-tool-vector/src",
+];
+
+fn colhe_cores(
+    host: &mut MockPanelHost,
+    painel: &mut ph2d_editor_core::panel::ErasedPanel,
+    id: &'static str,
+    nomes: &std::collections::BTreeMap<ph2d_editor_core::NodeId, String>,
+    saida: &mut Vec<String>,
+) {
+    let _ = host.medindo_a_pintura_do_registo(painel, viewport());
+    for (nid, r) in host.registos_da_ultima_pintura() {
+        let Some(slug) = nomes.get(&nid) else {
+            continue;
+        };
+        let s = slug.to_ascii_lowercase();
+        if !(s.contains("swatch") || s.contains("color") || s.contains("colour")) {
+            continue;
+        }
+        // ⛔⛔ **DUAS populações que o nome NÃO separa, e confundi-las era o erro:**
+        //   - `*_section` é a BANDA DE DOBRA de uma secção (largura do painel inteiro);
+        //   - `insp_live_*_color` / `insp_section_*_color` é o PONTO de cor do CABEÇALHO
+        //     (um disco de 18 px na borda direita do título — `color_circle_hit_rect`).
+        // Nenhum dos dois é uma linha de propriedade, e padronizá-los ao controlo seria
+        // trocar um cabeçalho por um campo.
+        if s.ends_with("_section") || (s.ends_with("_color") && r.w == r.h) {
+            continue;
+        }
+        saida.push(format!(
+            "{id:<16} w={:6.1} h={:5.1} x={:6.1}  {slug}",
+            r.w, r.h, r.x
+        ));
+    }
+}
+
+/// ⭐ As cores que o censo irmão mede — o mapa `NodeId → slug` das árvores de ids das cores.
+pub(crate) fn nomes_das_cores() -> std::collections::BTreeMap<ph2d_editor_core::NodeId, String> {
+    super::o_que_o_artista_nao_alcanca::nomes_de(FONTES_DAS_CORES, 400)
 }

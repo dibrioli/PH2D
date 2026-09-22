@@ -150,9 +150,11 @@ fn onde_rows(
             x,
             w,
             cur_y,
+            tr("panel.factory.tag_label"),
             crate::ids::INSP_FACTORY_TAG,
             TextInput::new(crate::ids::INSP_FACTORY_TAG, "")
                 .placeholder(ph2d_i18n::tr("panel.factory.tag")),
+            seccao,
         );
         cur_y = ph2d_editor_core::property_row::paint_check_row(
             scene,
@@ -212,6 +214,13 @@ fn factory_body(
             //    comprido da secção, e ao passar pela porta ele saía CORTADO.
             tr("panel.inspector.factory.pick_at_random"),
             tr("panel.inspector.factory.aim_from_spawner"),
+            // ⭐⭐ **E os nomes das linhas de TEXTO** (report do dono de 2026-09-22): até aqui elas
+            //    pintavam-se à largura inteira e não tinham nome nenhum para medir.
+            tr("panel.factory.recipe_label"),
+            tr("panel.factory.on_signal_label"),
+            tr("panel.factory.tag_label"),
+            tr("panel.factory.on_spawned_label"),
+            tr("panel.factory.on_exhausted_label"),
         ],
     );
     cur_y = factory_avisos(scene, text_system, theme, x, w, cur_y, f, clock_playing);
@@ -224,9 +233,11 @@ fn factory_body(
         x,
         w,
         cur_y,
+        tr("panel.factory.recipe_label"),
         crate::ids::INSP_FACTORY_RECIPE,
         TextInput::new(crate::ids::INSP_FACTORY_RECIPE, "")
             .placeholder(ph2d_i18n::tr("panel.factory.recipe")),
+        seccao,
     );
     cur_y = super::anim_rows::text_row(
         scene,
@@ -237,9 +248,11 @@ fn factory_body(
         x,
         w,
         cur_y,
+        tr("panel.factory.on_signal_label"),
         crate::ids::INSP_FACTORY_ON_SIGNAL,
         TextInput::new(crate::ids::INSP_FACTORY_ON_SIGNAL, "")
             .placeholder(ph2d_i18n::tr("panel.factory.on_signal")),
+        seccao,
     );
     cur_y = onde_rows(
         scene,
@@ -315,14 +328,16 @@ fn factory_body(
     }
     // ⚠️ **Os dois pela TABELA**, como os irmãos — um literal aqui seria a palavra do app escrita
     // num sítio que a tradução não alcança (HR-15).
-    for (id, chave) in [
+    for (id, chave, rotulo) in [
         (
             crate::ids::INSP_FACTORY_ON_SPAWNED,
             "panel.factory.on_spawned",
+            "panel.factory.on_spawned_label",
         ),
         (
             crate::ids::INSP_FACTORY_ON_EXHAUSTED,
             "panel.factory.on_exhausted",
+            "panel.factory.on_exhausted_label",
         ),
     ] {
         let ph = ph2d_i18n::tr(chave);
@@ -335,8 +350,10 @@ fn factory_body(
             x,
             w,
             cur_y,
+            tr(rotulo),
             id,
             TextInput::new(id, "").placeholder(ph),
+            seccao,
         );
     }
     // ⭐ **O número que muda sozinho** — é ele que responde *«a fábrica está a trabalhar?»* sem o

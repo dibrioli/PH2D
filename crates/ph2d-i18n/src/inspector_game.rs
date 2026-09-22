@@ -609,6 +609,33 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⭐ A LEITURA VIVA — quantas balas ela tem AGORA.
         "panel.inspector.weapon.x_of_y_rounds" => "{have} of {full} rounds",
         "panel.inspector.weapon.reloading_u" => "Reloading\u{2026}",
+        // ⭐⭐⭐ **OS NOMES das linhas de TEXTO** — report do dono, 2026-09-22: *«campos de texto
+        //    difíceis de saber para que servem»*. A chave irmã sem `_label` é o EXEMPLO que a caixa
+        //    mostra enquanto está VAZIA; esta é o NOME, que fica na coluna da esquerda para sempre.
+        "panel.inspector.counter_watch.counter_label" => "Counter",
+        "panel.inspector.counter_watch.signal_label" => "Signal",
+        "panel.inspector.emitter.on_label" => "On",
+        "panel.inspector.particles.on_label" => "Switch On",
+        "panel.inspector.particles.off_label" => "Switch Off",
+        "panel.inspector.particles.restart_label" => "Restart",
+        "panel.inspector.particles.done_label" => "When Done",
+        "panel.inspector.path_follow.shape_label" => "Shape",
+        "panel.inspector.projectile.homing_target_label" => "Target",
+        "panel.inspector.ray.on_enter_label" => "On Enter",
+        "panel.inspector.ray.on_exit_label" => "On Exit",
+        "panel.inspector.script.source_label" => "Script",
+        "panel.inspector.statemachine.name_label" => "Name",
+        "panel.inspector.statemachine.on_enter_label" => "On Enter",
+        "panel.inspector.statemachine.on_exit_label" => "On Exit",
+        "panel.inspector.statemachine.on_label" => "On",
+        "panel.inspector.trigger.action_label" => "Action",
+        "panel.inspector.trigger.signal_label" => "Signal",
+        "panel.inspector.weapon.on_signal_label" => "Trigger",
+        "panel.inspector.weapon.on_fire_label" => "On Fire",
+        "panel.inspector.weapon.magazine_label" => "Magazine",
+        "panel.inspector.weapon.reload_on_label" => "Reload On",
+        "panel.inspector.weapon.on_empty_label" => "On Empty",
+        "panel.inspector.weapon.on_reloaded_label" => "On Reloaded",
         "panel.inspector.weapon.the_clock_is_stopped_u_a_weapon_only_fires_during_a_run" => {
             "The clock is stopped \u{2014} a weapon only fires during a run."
         }

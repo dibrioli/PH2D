@@ -351,6 +351,17 @@ fn estados(
     info: &InspectorStateMachineInfo,
     selected: usize,
 ) -> f32 {
+    // ⚠️ **A coluna do nome é da SECÇÃO** — desde 2026-09-22 as linhas de TEXTO também têm nome
+    //    (report do dono), logo ela mede-se sobre eles.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.statemachine.name_label"),
+            tr("panel.inspector.statemachine.on_enter_label"),
+            tr("panel.inspector.statemachine.on_exit_label"),
+        ],
+    );
     let font = TypeToken::Sm.px();
     let mut cur_y = y;
     let nota = |scene: &mut VectorScene,
@@ -435,9 +446,11 @@ fn estados(
             x,
             w,
             cur_y,
+            tr("panel.inspector.statemachine.name_label"),
             crate::ids::INSP_SM_STATE_NAME,
             TextInput::new(crate::ids::INSP_SM_STATE_NAME, "")
                 .placeholder(tr("panel.inspector.statemachine.state_name_u")),
+            seccao,
         );
         cur_y = super::anim_rows::text_row(
             scene,
@@ -448,9 +461,11 @@ fn estados(
             x,
             w,
             cur_y,
+            tr("panel.inspector.statemachine.on_enter_label"),
             crate::ids::INSP_SM_STATE_ON_ENTER,
             TextInput::new(crate::ids::INSP_SM_STATE_ON_ENTER, "")
                 .placeholder(tr("panel.inspector.statemachine.on_enter_signal_name")),
+            seccao,
         );
         cur_y = super::anim_rows::text_row(
             scene,
@@ -461,9 +476,11 @@ fn estados(
             x,
             w,
             cur_y,
+            tr("panel.inspector.statemachine.on_exit_label"),
             crate::ids::INSP_SM_STATE_ON_EXIT,
             TextInput::new(crate::ids::INSP_SM_STATE_ON_EXIT, "")
                 .placeholder(tr("panel.inspector.statemachine.on_exit_signal_name")),
+            seccao,
         );
         // ⚠️ **Um beco escreve-se em WARN** — quem lá entra fica, e isso é invisível numa lista.
         if !r.has_exit {

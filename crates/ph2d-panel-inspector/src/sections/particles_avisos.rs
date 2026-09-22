@@ -243,6 +243,14 @@ fn corpo(
             tr("panel.inspector.particles.restart_u"),
             tr("panel.inspector.particles.shout_when_done_u"),
         ][k];
+        // ⭐ O NOME ao lado da dica, na mesma ordem — report do dono de 2026-09-22.
+        let rotulos = [
+            tr("panel.inspector.particles.on_label"),
+            tr("panel.inspector.particles.off_label"),
+            tr("panel.inspector.particles.restart_label"),
+            tr("panel.inspector.particles.done_label"),
+        ];
+        let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos);
         cur_y = super::anim_rows::text_row(
             scene,
             text_system,
@@ -252,8 +260,10 @@ fn corpo(
             x,
             w,
             cur_y,
+            rotulos[k],
             crate::ids::INSP_PART_TEXT[k],
             TextInput::new(crate::ids::INSP_PART_TEXT[k], "").placeholder(dica),
+            seccao,
         );
     }
     cur_y

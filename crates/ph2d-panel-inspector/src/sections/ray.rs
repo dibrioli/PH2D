@@ -237,9 +237,11 @@ fn corpo(
         x,
         w,
         cur_y,
+        tr("panel.inspector.ray.on_enter_label"),
         crate::ids::INSP_RAY_ON_ENTER,
         TextInput::new(crate::ids::INSP_RAY_ON_ENTER, "")
             .placeholder(tr("panel.inspector.ray.signal_when_it_starts_seeing_u")),
+        seccao,
     );
     cur_y = super::anim_rows::text_row(
         scene,
@@ -250,9 +252,11 @@ fn corpo(
         x,
         w,
         cur_y,
+        tr("panel.inspector.ray.on_exit_label"),
         crate::ids::INSP_RAY_ON_EXIT,
         TextInput::new(crate::ids::INSP_RAY_ON_EXIT, "")
             .placeholder(tr("panel.inspector.ray.signal_when_it_stops_seeing_u")),
+        seccao,
     );
     cur_y
 }

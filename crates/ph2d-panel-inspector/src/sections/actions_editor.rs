@@ -20,6 +20,16 @@ pub(super) fn editor(
     row: &InspectorActionRow,
     labels: &[String],
 ) -> f32 {
+    // ⚠️ **A coluna do nome é da SECÇÃO** — desde 2026-09-22 as linhas de TEXTO também têm nome
+    //    (report do dono), logo ela mede-se sobre eles.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.actions.on_label"),
+            tr("panel.inspector.actions.arg_label"),
+        ],
+    );
     let mut cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -29,9 +39,11 @@ pub(super) fn editor(
         x,
         w,
         y,
+        tr("panel.inspector.actions.on_label"),
         ids::INSP_ACTION_ON,
         TextInput::new(ids::INSP_ACTION_ON, "")
             .placeholder(tr("panel.inspector.actions.on_signal")),
+        seccao,
     );
     // ⭐⭐⭐ **A escolha de QUEM SOFRE só existe onde o verbo a LÊ** (o FIM DE JOGO, 2026-09-19) — a
     // mesma lei do `arg` uma linha abaixo, e o `Restart Run` é o primeiro verbo cujo sujeito é a
@@ -86,9 +98,11 @@ pub(super) fn editor(
             x,
             w,
             cur_y,
+            tr("panel.inspector.actions.arg_label"),
             ids::INSP_ACTION_ARG,
             TextInput::new(ids::INSP_ACTION_ARG, "")
                 .placeholder(tr("panel.inspector.actions.timer_name_empty_all")),
+            seccao,
         );
     }
     // ⚠️⚠️ **A LINHA QUE RESPONDE AO «não acontece nada».**

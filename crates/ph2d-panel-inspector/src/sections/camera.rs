@@ -173,6 +173,7 @@ fn follow_body(
     w: f32,
     y: f32,
     f: &InspectorCameraFollow,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let mut cur_y = super::anim_rows::text_row(
         scene,
@@ -183,9 +184,11 @@ fn follow_body(
         x,
         w,
         y,
+        tr("panel.inspector.camera.target_label"),
         ids::INSP_CAMERA_TARGET,
         TextInput::new(ids::INSP_CAMERA_TARGET, "")
             .placeholder(tr("panel.inspector.camera.object_name")),
+        seccao,
     );
 
     if !f.target.trim().is_empty() && !f.target_found {
@@ -446,7 +449,23 @@ pub(crate) fn paint_camera_section(
         info,
     );
     if let Some(f) = info.follow.as_ref() {
-        cur_y = follow_body(scene, text_system, theme, hit_index, store, x, w, cur_y, f);
+        let sec_seguir = ph2d_editor_core::property_row::Seccao::medida(
+            text_system,
+            1,
+            &[tr("panel.inspector.camera.target_label")],
+        );
+        cur_y = follow_body(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            f,
+            sec_seguir,
+        );
     }
     if let Some(l) = info.limits.as_ref() {
         cur_y = limits_body(scene, text_system, theme, hit_index, store, x, w, cur_y, l);

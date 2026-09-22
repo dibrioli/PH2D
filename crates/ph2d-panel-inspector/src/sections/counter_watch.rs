@@ -303,6 +303,16 @@ fn editor(
     info: &InspectorCounterWatchInfo,
     row: &InspectorWatchRow,
 ) -> f32 {
+    // ⚠️ **A coluna nasce ANTES da 1.ª linha que a usa** — ver a irmã em `timers.rs`.
+    let sec = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.counter_watch.value"),
+            tr("panel.inspector.counter_watch.counter_label"),
+            tr("panel.inspector.counter_watch.signal_label"),
+        ],
+    );
     let mut cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -312,9 +322,11 @@ fn editor(
         x,
         w,
         y,
+        tr("panel.inspector.counter_watch.counter_label"),
         ids::INSP_WATCH_COUNTER,
         TextInput::new(ids::INSP_WATCH_COUNTER, "")
             .placeholder(tr("panel.inspector.counter_watch.counter_name")),
+        sec,
     );
     cur_y = linha_da_comparacao(
         scene,
@@ -326,11 +338,6 @@ fn editor(
         w,
         cur_y,
         row,
-    );
-    let sec = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[tr("panel.inspector.counter_watch.value")],
     );
     cur_y = super::rows::fields_row(
         scene,
@@ -356,9 +363,11 @@ fn editor(
         x,
         w,
         cur_y,
+        tr("panel.inspector.counter_watch.signal_label"),
         ids::INSP_WATCH_SIGNAL,
         TextInput::new(ids::INSP_WATCH_SIGNAL, "")
             .placeholder(tr("panel.inspector.counter_watch.signal_name_empty_mute")),
+        sec,
     );
     cur_y = ph2d_editor_core::property_row::paint_check_rows(
         scene,

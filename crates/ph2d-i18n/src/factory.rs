@@ -21,6 +21,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.factory.on_spawned" => "on spawned\u{2026}",
         "panel.factory.on_exhausted" => "on exhausted\u{2026}",
         "panel.factory.on_death" => "on death\u{2026}",
+        // ⭐⭐⭐ **OS NOMES das linhas de texto** — report do dono, 2026-09-22: *«campos de texto
+        //    difíceis de saber para que servem»*. As chaves acima são o EXEMPLO que a caixa mostra
+        //    enquanto está vazia; estas são o NOME, que fica na coluna da esquerda para sempre.
+        "panel.factory.recipe_label" => "Recipe",
+        "panel.factory.on_signal_label" => "On Signal",
+        "panel.factory.tag_label" => "Spawn Tag",
+        "panel.factory.on_spawned_label" => "On Spawned",
+        "panel.factory.on_exhausted_label" => "On Exhausted",
+        "panel.factory.on_death_label" => "On Death",
         // ph2d-migrar-texto:begin
         "panel.factory.here" => "Here",
         "panel.factory.area" => "Area",

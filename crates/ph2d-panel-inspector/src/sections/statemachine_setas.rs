@@ -117,9 +117,11 @@ pub(super) fn setas(
             x,
             w,
             cur_y,
+            tr("panel.inspector.statemachine.on_label"),
             crate::ids::INSP_SM_TRANS_ON,
             TextInput::new(crate::ids::INSP_SM_TRANS_ON, "")
                 .placeholder(tr("panel.inspector.statemachine.on_signal_u")),
+            seccao,
         );
         cur_y = super::rows::fields_row(
             scene,

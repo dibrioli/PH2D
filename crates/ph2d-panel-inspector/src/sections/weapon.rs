@@ -129,7 +129,9 @@ fn nome_row(
     w: f32,
     y: f32,
     id: ph2d_a11y::NodeId,
+    rotulo: &str,
     dica: &str,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     // ⛔ **Pela porta que já existe** (`anim_rows::text_row`): copiá-la seria a terceira resposta a
     // *«como se desenha um campo de texto de uma row do Inspector?»*, e o doc dela diz que é
@@ -143,8 +145,10 @@ fn nome_row(
         x,
         w,
         y,
+        rotulo,
         id,
         TextInput::new(id, "").placeholder(dica),
+        seccao,
     )
 }
 
@@ -227,29 +231,35 @@ fn corpo(
         );
     }
     // ⚠️ **Os SEIS nomes, e vazio = calado** — a regra do `SignalOnHit`, palavra por palavra.
-    for (id, dica) in [
+    for (id, rotulo, dica) in [
         (
             crate::ids::INSP_WEAPON_ON_SIGNAL,
+            tr("panel.inspector.weapon.on_signal_label"),
             tr("panel.inspector.weapon.signal_that_pulls_the_trigger_u"),
         ),
         (
             crate::ids::INSP_WEAPON_ON_FIRE,
+            tr("panel.inspector.weapon.on_fire_label"),
             tr("panel.inspector.weapon.signal_it_publishes_on_each_shot_u"),
         ),
         (
             crate::ids::INSP_WEAPON_AMMO,
+            tr("panel.inspector.weapon.magazine_label"),
             tr("panel.inspector.weapon.counter_that_is_the_magazine_u"),
         ),
         (
             crate::ids::INSP_WEAPON_RELOAD_ON,
+            tr("panel.inspector.weapon.reload_on_label"),
             tr("panel.inspector.weapon.signal_that_reloads_it_u"),
         ),
         (
             crate::ids::INSP_WEAPON_ON_EMPTY,
+            tr("panel.inspector.weapon.on_empty_label"),
             tr("panel.inspector.weapon.signal_on_the_dry_click_u"),
         ),
         (
             crate::ids::INSP_WEAPON_ON_RELOADED,
+            tr("panel.inspector.weapon.on_reloaded_label"),
             tr("panel.inspector.weapon.signal_when_the_magazine_is_full_u"),
         ),
     ] {
@@ -263,7 +273,9 @@ fn corpo(
             w,
             cur_y,
             id,
+            rotulo,
             dica,
+            seccao,
         );
     }
     cur_y

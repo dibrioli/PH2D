@@ -295,6 +295,16 @@ fn editor(
     info: &InspectorActionTriggerInfo,
     row: &InspectorTriggerRow,
 ) -> f32 {
+    // ⚠️ **A coluna do nome é da SECÇÃO** — desde 2026-09-22 as linhas de TEXTO também têm nome
+    //    (report do dono), logo ela mede-se sobre eles.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.trigger.action_label"),
+            tr("panel.inspector.trigger.signal_label"),
+        ],
+    );
     let mut cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -304,9 +314,11 @@ fn editor(
         x,
         w,
         y,
+        tr("panel.inspector.trigger.action_label"),
         ids::INSP_TRIGGER_ACTION,
         TextInput::new(ids::INSP_TRIGGER_ACTION, "")
             .placeholder(tr("panel.inspector.trigger.action_name")),
+        seccao,
     );
     cur_y = linha_da_aresta(
         scene,
@@ -328,9 +340,11 @@ fn editor(
         x,
         w,
         cur_y,
+        tr("panel.inspector.trigger.signal_label"),
         ids::INSP_TRIGGER_SIGNAL,
         TextInput::new(ids::INSP_TRIGGER_SIGNAL, "")
             .placeholder(tr("panel.inspector.trigger.signal_name_empty_mute")),
+        seccao,
     );
     avisos(scene, text_system, theme, x, w, cur_y, info, row)
 }

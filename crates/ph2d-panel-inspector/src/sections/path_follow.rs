@@ -152,6 +152,18 @@ fn corpo(
             ColorToken::Text3,
         );
     }
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.path_follow.timer_slot"),
+            tr("panel.inspector.path_follow.start_at"),
+            tr("panel.inspector.path_follow.angle"),
+            tr("panel.inspector.path_follow.side_offset"),
+            // ⭐ O nome da LINHA DE TEXTO entra na medição da coluna, como os irmãos.
+            tr("panel.inspector.path_follow.shape_label"),
+        ],
+    );
     // ⭐ **O NOME da forma** — a referência durável desta casa.
     cur_y = super::anim_rows::text_row(
         scene,
@@ -162,21 +174,13 @@ fn corpo(
         x,
         w,
         cur_y,
+        tr("panel.inspector.path_follow.shape_label"),
         crate::ids::INSP_PF_CAMINHO,
         TextInput::new(crate::ids::INSP_PF_CAMINHO, "")
             .placeholder(tr("panel.inspector.path_follow.drawn_shape_name_u")),
+        seccao,
     );
 
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[
-            tr("panel.inspector.path_follow.timer_slot"),
-            tr("panel.inspector.path_follow.start_at"),
-            tr("panel.inspector.path_follow.angle"),
-            tr("panel.inspector.path_follow.side_offset"),
-        ],
-    );
     cur_y = super::rows::fields_row(
         scene,
         text_system,

@@ -235,11 +235,26 @@ fn txt_row(
     rotulo: &'static str,
 ) -> f32 {
     let id = crate::ids::INSP_HUD_TEXT[i];
-    // ⛔⛔ **O nome vai POR CIMA, e não no `TextInput`** — a foto apanhou três campos seguidos sem
-    // um único nome à vista. O `text_row` pinta o controlo na largura toda e **não desenha o
-    // rótulo**; e pô-lo no `placeholder` seria pior do que nada, porque um placeholder desaparece
-    // exactamente quando o campo tem valor — que é quando o artista precisa de saber o que é.
-    let row_y = titulo(scene, text_system, theme, x, w, y, rotulo);
+    // ⭐⭐⭐ **O nome VOLTOU À COLUNA, e isto é o fim de um remendo NOMEADO.**
+    //
+    // ⛔⛔ Até 2026-09-22 ele ia **POR CIMA** do campo, com este comentário ao lado: *«a foto
+    // apanhou três campos seguidos sem um único nome à vista; o `text_row` pinta o controlo na
+    // largura toda e não desenha o rótulo»*. O diagnóstico estava CERTO e a cura foi local —
+    // *a porta ficou como estava, e as outras trinta linhas de texto do app continuaram mudas*.
+    // ⚠️ E o remendo contrariava o próprio dono: *«Label acima do campo numérico! Muito ruim!»*
+    // (2026-09-14).
+    // ⚠️ **A coluna mede-se sobre os TRÊS nomes que esta secção pode pôr numa linha de texto**, e
+    //    não só sobre o desta — senão ela salta de linha para linha. O `rotulo` entra porque uma
+    //    das três chega por variável (a dica do texto vivo), e a coluna tem de o caber.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.hud.signal"),
+            tr("panel.inspector.hud.counter_name"),
+            rotulo,
+        ],
+    );
     super::anim_rows::text_row(
         scene,
         text_system,
@@ -248,9 +263,11 @@ fn txt_row(
         store,
         x,
         w,
-        row_y,
+        y,
+        rotulo,
         id,
         TextInput::new(id, ""),
+        seccao,
     )
 }
 

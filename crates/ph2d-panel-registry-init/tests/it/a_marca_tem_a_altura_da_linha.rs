@@ -59,7 +59,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_ui_testkit::MockPanelHost;
 
 /// ⭐ As árvores onde vivem os ids dos painéis que este censo mede — só para a sonda os NOMEAR.
-const FONTES_DOS_IDS: &[&str] = &[
+pub(crate) const FONTES_DOS_IDS: &[&str] = &[
     "../ph2d-panel-inspector/src/ids",
     "../ph2d-panel-grid-snap/src",
     "../ph2d-panel-timeline/src",
@@ -69,7 +69,7 @@ const FONTES_DOS_IDS: &[&str] = &[
     "../ph2d-editor-core/src/grid_snap",
 ];
 /// ⛔ Piso do extractor. ⚠️ **MEDIDO**, nunca escolhido — ver a corrida da sonda.
-const PISO_DOS_SLUGS: usize = 400;
+pub(crate) const PISO_DOS_SLUGS: usize = 400;
 
 /// ⛔ A pele de canvas: ali a caixa é do tamanho que o **artista** desenhou.
 const FORA_POR_DESENHO: &[&str] = &["authored"];
@@ -363,4 +363,150 @@ fn toda_marca_booleana_tem_a_altura_de_uma_linha() {
          isenção que não descreve nada é uma licença:\n  {}",
         obsoletas.join("\n  ")
     );
+}
+
+/// ⭐ Sonda: que NOMES de linha de texto o Inspector armado de facto pinta.
+///
+/// ⚠️ Ela existe porque as catracas de elisão ficaram **verdes** depois de `34` nomes novos, e
+/// *«nenhum corte novo»* lê-se igual a *«a varredura não viu os nomes»*. Um censo que passa sem
+/// ver a população não afirma nada.
+#[test]
+#[ignore = "diagnóstico: imprime o que foi pintado"]
+fn diag_que_nomes_de_texto_o_inspector_pinta() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let procurados = [
+        "Recipe",
+        "On Signal",
+        "Spawn Tag",
+        "On Spawned",
+        "On Exhausted",
+        "Target",
+        "Sound",
+        "Script",
+        "On Enter",
+        "Counter",
+    ];
+    let mut achados: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    let mut total = 0usize;
+    ph2d_editor_core::panel::with_registry(|reg| {
+        for painel in reg
+            .panels_mut()
+            .iter_mut()
+            .filter(|p| p.manifest.id == "inspector")
+        {
+            let arm = super::paineis_armados::TABELA
+                .iter()
+                .find(|a| a.painel == "inspector")
+                .expect("armação");
+            let mut host = MockPanelHost::new();
+            (arm.arma)(host.store_mut());
+            painel.populate(host.store_mut());
+            abre_as_gavetas(host.store_mut());
+            for m in host.medindo_a_pintura_do_registo(painel, viewport()) {
+                total += 1;
+                if procurados.contains(&m.texto.as_str()) {
+                    achados.insert(m.texto.clone());
+                }
+            }
+            (arm.desarma)();
+        }
+    });
+    println!("{total} rótulos medidos no inspector armado");
+    println!("nomes de linha de texto encontrados: {achados:?}");
+}
+
+/// ⭐ Sonda: onde COMEÇA uma caixa de texto, contra onde começa uma caixa de número.
+#[test]
+#[ignore = "diagnóstico: imprime a tabela"]
+fn diag_onde_comeca_uma_caixa_de_texto() {
+    let nomes = super::o_que_o_artista_nao_alcanca::nomes_de(FONTES_DOS_IDS, PISO_DOS_SLUGS);
+    for (painel, texto, numero) in censo_das_colunas() {
+        println!("{painel:22} texto {texto:?}  número {numero:?}");
+    }
+    println!("\n-- as caixas de texto do inspector, pelo nome --");
+    for (id, x) in caixas_de_texto_do_inspector() {
+        println!(
+            "  x={x:6.1}  {}",
+            nomes
+                .get(&id)
+                .map_or_else(|| format!("{id:?}"), Clone::clone)
+        );
+    }
+}
+
+/// `(painel, xs das caixas de TEXTO, xs das caixas de NÚMERO)` — pela porta do produto.
+pub(crate) fn censo_das_colunas() -> Vec<(&'static str, Vec<i32>, Vec<i32>)> {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut saida = Vec::new();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        for painel in reg.panels_mut() {
+            let id = painel.manifest.id;
+            if FORA_POR_DESENHO.contains(&id) {
+                continue;
+            }
+            let arm = super::paineis_armados::TABELA
+                .iter()
+                .find(|a| a.painel == id);
+            let mut host = MockPanelHost::new();
+            if let Some(a) = arm {
+                (a.arma)(host.store_mut());
+            }
+            painel.populate(host.store_mut());
+            abre_as_gavetas(host.store_mut());
+            let _ = host.medindo_a_pintura_do_registo(painel, viewport());
+            let (mut t, mut n) = (Vec::new(), Vec::new());
+            for (nid, r) in host.registos_da_ultima_pintura() {
+                match host.store().get(nid) {
+                    Some(InteractiveState::TextInput { .. }) => t.push(r.x.round() as i32),
+                    Some(InteractiveState::NumberInput { .. }) => n.push(r.x.round() as i32),
+                    _ => {}
+                }
+            }
+            if let Some(a) = arm {
+                (a.desarma)();
+            }
+            t.sort_unstable();
+            t.dedup();
+            n.sort_unstable();
+            n.dedup();
+            if !t.is_empty() {
+                saida.push((id, t, n));
+            }
+        }
+    });
+    saida
+}
+
+/// `(id, x)` de cada caixa de TEXTO do Inspector armado.
+pub(crate) fn caixas_de_texto_do_inspector() -> Vec<(ph2d_editor_core::NodeId, f32)> {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut saida = Vec::new();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        for painel in reg
+            .panels_mut()
+            .iter_mut()
+            .filter(|p| p.manifest.id == "inspector")
+        {
+            let arm = super::paineis_armados::TABELA
+                .iter()
+                .find(|a| a.painel == "inspector")
+                .expect("armação");
+            let mut host = MockPanelHost::new();
+            (arm.arma)(host.store_mut());
+            painel.populate(host.store_mut());
+            abre_as_gavetas(host.store_mut());
+            let _ = host.medindo_a_pintura_do_registo(painel, viewport());
+            for (nid, r) in host.registos_da_ultima_pintura() {
+                if matches!(
+                    host.store().get(nid),
+                    Some(InteractiveState::TextInput { .. })
+                ) {
+                    saida.push((nid, r.x));
+                }
+            }
+            (arm.desarma)();
+        }
+    });
+    saida.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+    saida
 }

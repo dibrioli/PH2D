@@ -343,6 +343,69 @@ pub fn paint_field_row_value(
     (y + ph2d_tokens::row_pitch_px() * linhas as f32, rect)
 }
 
+/// ⭐⭐⭐ **UMA LINHA DE TEXTO, pela porta** — o nome na coluna da secção, a caixa na do controlo.
+///
+/// ⛔⛔⛔ **Report do dono, 2026-09-22, com foto da secção `FACTORY`:** *«campos de texto difíceis
+/// de saber para que servem»*. As cinco linhas de texto daquela secção pintavam-se a LARGURA
+/// INTEIRA, com o sentido delas escrito **só no espaço reservado** (`recipe name…`,
+/// `on signal…`, `spawn point tag…`) — e o espaço reservado é pintado **apenas enquanto a caixa
+/// está VAZIA** ([`crate::widget::TextInput::placeholder`]). ⇒ *um campo de texto deste app dizia
+/// para que servia exactamente até alguém o usar.*
+///
+/// ⚠️ **Medido no mesmo dia: `53` caixas de texto do app nascem com o rótulo vazio e `3` com
+/// rótulo.** Não era um descuido num sítio — era a família inteira, e a razão é esta: o
+/// [`crate::widget::form_row_columns`] que a linha de texto usava **não tem coluna de nome**, ela
+/// devolve a largura toda menos o ponto de animação.
+///
+/// ⭐ A cura é a lei que todas as outras linhas deste app já seguem desde 2026-09-14 (*«as labels
+/// alinhadas todas à direita»*), e o espaço reservado FICA — ele deixa de carregar o sentido e
+/// passa a ser o que sempre devia ter sido: um EXEMPLO.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_text_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: &str,
+    id: NodeId,
+    input: crate::widget::TextInput,
+    seccao: Seccao,
+) -> f32 {
+    // ⚠️ A geometria e o nome saem da MESMA `row_and_layout` das irmãs — não há aqui uma segunda
+    //    conta de onde a coluna do nome acaba.
+    let (row, _, _, cw) = row_and_layout(text_system, scene, theme, x, w, y, label, 1, seccao);
+    let rect = Rect::new(row.control.x, row.control.y, cw, ROW_H_PX);
+    hit_index.register(id, rect);
+    // ⚠️ **O alvo do clique é a CAIXA e não a linha** — é o que as linhas de número já fazem, e
+    //    carregar no nome de uma propriedade não escreve nela em app nenhum.
+    let (state, text, caret, sel_anchor) = match store.get(id) {
+        Some(crate::interaction::InteractiveState::TextInput {
+            state,
+            text,
+            caret,
+            selection_anchor,
+        }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
+        _ => (crate::widget::TextInputState::Normal, None, 0, None),
+    };
+    let input = input.visual((state, store.hover_live(id)));
+    crate::widget::paint_text_input_with_buffer(
+        &input,
+        text,
+        Some(caret),
+        sel_anchor,
+        rect,
+        scene,
+        text_system,
+        theme,
+    );
+    crate::widget::paint_decorator_dot(scene, theme, row.dot);
+    y + ph2d_tokens::row_pitch_px()
+}
+
 /// ⭐⭐⭐ **UMA LINHA DE MARCAR, pela porta** — o nome na coluna da secção, a caixa na do controlo.
 ///
 /// ⛔⛔ Ela existe porque a linha de marcar é uma **linha de propriedade** (spec §6-quinquies) e

@@ -468,13 +468,23 @@ pub(super) fn paint_collision_rows(
     // CONTRATOS que o artista quer autorar ao mesmo tempo (`door_open` /
     // `door_close`), e um campo que trocasse de significado tornaria o caso de
     // uso inteiro inexprimível.
-    for (id, placeholder) in [
+    let sec_sinais = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.physics.on_hit_label"),
+            tr("panel.inspector.physics.on_leave_label"),
+        ],
+    );
+    for (id, rotulo, placeholder) in [
         (
             ids::INSP_PHYS_SIGNAL,
+            tr("panel.inspector.physics.on_hit_label"),
             tr("panel.inspector.physics.signal_on_hit"),
         ),
         (
             ids::INSP_PHYS_SIGNAL_LEAVE,
+            tr("panel.inspector.physics.on_leave_label"),
             tr("panel.inspector.physics.signal_on_leave"),
         ),
     ] {
@@ -488,7 +498,9 @@ pub(super) fn paint_collision_rows(
             w,
             yy,
             id,
+            rotulo,
             placeholder,
+            sec_sinais,
         );
     }
     // ⭐⭐⭐ **E o FILTRO dos dois** (TOP-20 #9, W3c) — *só quem tem esta tag dispara isto*.

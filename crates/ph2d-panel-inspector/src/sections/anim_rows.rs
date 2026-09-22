@@ -379,6 +379,17 @@ fn editor(
     y: f32,
     row: &ph2d_editor_core::screens::hero::InspectorAnimRow,
 ) -> f32 {
+    // ⚠️ **A coluna do nome é da SECÇÃO** — desde 2026-09-22 as linhas de TEXTO também têm nome
+    //    (report do dono), logo ela mede-se sobre eles.
+    let sec_texto = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.animation.name_label"),
+            tr("panel.inspector.animation.on_finish_label"),
+            tr("panel.inspector.animation.on_loop_label"),
+        ],
+    );
     let mut cur_y = y;
     cur_y = text_row(
         scene,
@@ -389,9 +400,11 @@ fn editor(
         x,
         w,
         cur_y,
+        tr("panel.inspector.animation.name_label"),
         ids::INSP_ANIM_NAME,
         TextInput::new(ids::INSP_ANIM_NAME, "")
             .placeholder(tr("panel.inspector.animation.animation_name")),
+        sec_texto,
     );
 
     cur_y = range_and_timing_rows(
@@ -481,9 +494,11 @@ fn editor(
         x,
         w,
         cur_y,
+        tr("panel.inspector.animation.on_finish_label"),
         ids::INSP_ANIM_SIGNAL_FINISH,
         TextInput::new(ids::INSP_ANIM_SIGNAL_FINISH, "")
             .placeholder(tr("panel.inspector.animation.on_finish")),
+        sec_texto,
     );
     text_row(
         scene,
@@ -494,9 +509,11 @@ fn editor(
         x,
         w,
         cur_y,
+        tr("panel.inspector.animation.on_loop_label"),
         ids::INSP_ANIM_SIGNAL_LOOP,
         TextInput::new(ids::INSP_ANIM_SIGNAL_LOOP, "")
             .placeholder(tr("panel.inspector.animation.on_loop")),
+        sec_texto,
     )
 }
 
@@ -514,6 +531,15 @@ fn editor(
 /// ⚠️ **`pub(super)` desde 2026-09-08**: a secção TIMERS pinta o nome e o sinal com esta mesma
 /// linha. Copiá-la seria a terceira resposta à pergunta *«como se desenha um campo de texto de uma
 /// row do Inspector?»* — e a cópia é onde a lei do `placeholder` acima se perde.
+/// ⭐⭐⭐ **UMA LINHA DE TEXTO — hoje é a porta de `ph2d-editor-core`, e ela tem NOME.**
+///
+/// ⛔⛔⛔ **Report do dono, 2026-09-22, com foto da `FACTORY`:** *«campos de texto difíceis de
+/// saber para que servem»*. Até aqui esta função pintava a caixa à largura INTEIRA e o sentido
+/// dela vivia **só no espaço reservado**, que o pintor só escreve enquanto a caixa está VAZIA.
+/// Medido no mesmo dia: `53` caixas de texto do app com rótulo vazio contra `3` com rótulo.
+///
+/// ⚠️ **O `label` e a `seccao` não têm valor de omissão de propósito** — um `""` aqui seria o
+/// defeito a voltar em silêncio, e a coluna é da SECÇÃO (§6-ter), nunca desta linha.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn text_row(
     scene: &mut VectorScene,
@@ -524,32 +550,23 @@ pub(super) fn text_row(
     x: f32,
     w: f32,
     y: f32,
+    label: &str,
     id: ph2d_a11y::NodeId,
     input: TextInput,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
-    let host = Rect::new(x, y, control_w, ROW_H_PX);
-    hit_index.register(id, host);
-    let (state, text, caret, sel_anchor) = match store.get(id) {
-        Some(InteractiveState::TextInput {
-            state,
-            text,
-            caret,
-            selection_anchor,
-        }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
-        _ => (TextInputState::Normal, None, 0, None),
-    };
-    let input = input.visual((state, store.hover_live(id)));
-    paint_text_input_with_buffer(
-        &input,
-        text,
-        Some(caret),
-        sel_anchor,
-        host,
+    ph2d_editor_core::property_row::paint_text_row(
         scene,
         text_system,
         theme,
-    );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    y + ph2d_tokens::row_pitch_px()
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        label,
+        id,
+        input,
+        seccao,
+    )
 }

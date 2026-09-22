@@ -345,6 +345,11 @@ pub(crate) fn paint_tags_section(
         );
     }
 
+    let seccao_da_nova = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[ph2d_i18n::tr("panel.tags.new_label")],
+    );
     cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -354,9 +359,11 @@ pub(crate) fn paint_tags_section(
         x,
         w,
         cur_y,
+        ph2d_i18n::tr("panel.tags.new_label"),
         crate::ids::INSP_TAGS_NEW,
         TextInput::new(crate::ids::INSP_TAGS_NEW, "")
             .placeholder(ph2d_i18n::tr("panel.tags.new_or_search")),
+        seccao_da_nova,
     );
 
     // ⭐ O `Create` só existe quando há um nome que ainda não é de ninguém — oferecê-lo sobre uma

@@ -282,6 +282,13 @@ fn target_rows(
     y: f32,
     row: &InspectorActionRow,
 ) -> f32 {
+    // ⚠️ **A coluna do nome é da SECÇÃO** — desde 2026-09-22 as linhas de TEXTO também têm nome
+    //    (report do dono), logo ela mede-se sobre eles.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[tr("panel.inspector.actions.target_label")],
+    );
     let por_tag = row.target_is_tag();
     let (seg_w, seg_dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H);
     let seg_h = paint_segmented_group_adaptive(
@@ -343,9 +350,11 @@ fn target_rows(
             x,
             w,
             cur_y,
+            tr("panel.inspector.actions.target_label"),
             ids::INSP_ACTION_TARGET,
             TextInput::new(ids::INSP_ACTION_TARGET, "")
                 .placeholder(tr("panel.inspector.actions.target_empty_this_object")),
+            seccao,
         );
     }
 

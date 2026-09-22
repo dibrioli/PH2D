@@ -180,34 +180,6 @@ fn anchor_editor(
     row: &ph2d_editor_core::screens::hero::InspectorAnchorRow,
 ) -> f32 {
     let mut cur_y = y;
-    // Nome.
-    let (control_w, name_dot) = ph2d_editor_core::widget::form_row_columns(x, w, cur_y, ROW_H_PX);
-    let host = Rect::new(x, cur_y, control_w, ROW_H_PX);
-    hit_index.register(ids::INSP_ANCHOR_NAME, host);
-    let (state, text, caret, sel_anchor) = match store.get(ids::INSP_ANCHOR_NAME) {
-        Some(InteractiveState::TextInput {
-            state,
-            text,
-            caret,
-            selection_anchor,
-        }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
-        _ => (TextInputState::Normal, None, 0, None),
-    };
-    let input = TextInput::new(ids::INSP_ANCHOR_NAME, "")
-        .placeholder(tr("panel.inspector.anchors.anchor_name"))
-        .visual((state, store.hover_live(ids::INSP_ANCHOR_NAME)));
-    paint_text_input_with_buffer(
-        &input,
-        text,
-        Some(caret),
-        sel_anchor,
-        host,
-        scene,
-        text_system,
-        theme,
-    );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, name_dot);
-    cur_y += ph2d_tokens::row_pitch_px();
 
     // ⭐⭐ **A coluna é da SECÇÃO, medida uma vez** — ver
     //    [`ph2d_editor_core::property_row::Seccao`]. ⚠️ As quatro entram, mesmo as duas que só
@@ -225,7 +197,27 @@ fn anchor_editor(
             //    mais largo da secção pode ser o de uma delas.
             tr("panel.inspector.anchors.bounds_makes_it_a_slice"),
             tr("panel.inspector.anchors.center_makes_it_a_9"),
+            // ⭐ E o nome da linha de TEXTO (report do dono, 2026-09-22).
+            tr("panel.inspector.anchors.name_label"),
         ],
+    );
+
+    // ⛔⛔ **Era a QUARTA cópia do `text_row`**, e pintava a caixa à largura inteira: o nome da
+    //    âncora vivia só no espaço reservado, que desaparece assim que ela tem nome.
+    cur_y = ph2d_editor_core::property_row::paint_text_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.anchors.name_label"),
+        ids::INSP_ANCHOR_NAME,
+        TextInput::new(ids::INSP_ANCHOR_NAME, "")
+            .placeholder(tr("panel.inspector.anchors.anchor_name")),
+        seccao,
     );
 
     cur_y = super::rows::fields_row(

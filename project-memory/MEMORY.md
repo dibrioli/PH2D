@@ -34,7 +34,7 @@
 - ⭐ [Decisões TÉCNICAS são delegadas (padrão-ouro); produto e envio são do Enio](feedback_architecture_decisions_are_delegated_to_the_gold_standard.md)
 - ⛔ [A linha acaba no HANDOFF — ordem das linhas e árvore suja são do INTEGRADOR](feedback_the_line_ends_at_the_handoff_never_ask_the_owner_an_integrators_question.md)
 - ⭐⭐ [Chave e texto do MESMO tipo é defeito à espera — tipe a chave](feedback_a_key_and_a_text_of_the_same_type_is_a_defect_waiting.md)
-- ⭐ [**Como um CONTROLO mente** — a família (19)](reference_topic_control_design_hazards.md)
+- ⭐ [**Como um CONTROLO mente** — a família (20)](reference_topic_control_design_hazards.md)
 - ⛔ [Smoke ao dono explica o que cada coisa na tela É; cada passo conduzido e fotografado](feedback_a_smoke_for_the_owner_explains_what_each_thing_on_screen_is.md)
 - ⛔⛔ [NUNCA `spectacle` em `kwin --virtual` (fotografa o ecrã REAL); `import -window`](feedback_spectacle_in_a_virtual_kwin_photographs_the_owners_real_screen.md)
 - ⛔⛔ [Corte que sobe por `///` e não por `#[` corta DENTRO do item: o vizinho herda doc+atributos e perde os dele (metade muda)](feedback_a_sweep_that_climbs_by_doc_comment_cuts_through_an_item.md)

@@ -270,6 +270,17 @@ fn editor(
     y: f32,
     row: &InspectorTimerRow,
 ) -> f32 {
+    // ⚠️ **A coluna nasce ANTES da 1.ª linha que a usa** — desde 2026-09-22 as linhas de TEXTO
+    //    também têm nome, e a primeira delas abre a secção.
+    let sec = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.timers.duration_seconds"),
+            tr("panel.inspector.timers.name_label"),
+            tr("panel.inspector.timers.signal_label"),
+        ],
+    );
     let mut cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -279,9 +290,11 @@ fn editor(
         x,
         w,
         y,
+        tr("panel.inspector.timers.name_label"),
         ids::INSP_TIMER_NAME,
         TextInput::new(ids::INSP_TIMER_NAME, "")
             .placeholder(tr("panel.inspector.timers.timer_name")),
+        sec,
     );
 
     // ⚠️ **SEGUNDOS, e o passo é 0,1** — a unidade do artista. O componente guarda microssegundos
@@ -289,11 +302,6 @@ fn editor(
     // nenhum.
     // ⚠️ **A secção tem UMA linha de campo** — a declaração é dela na mesma, e não do sítio:
     //    ver [`ph2d_editor_core::property_row::Seccao`].
-    let sec = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[tr("panel.inspector.timers.duration_seconds")],
-    );
     cur_y = super::rows::fields_row(
         scene,
         text_system,
@@ -346,9 +354,11 @@ fn editor(
         x,
         w,
         cur_y,
+        tr("panel.inspector.timers.signal_label"),
         ids::INSP_TIMER_SIGNAL,
         TextInput::new(ids::INSP_TIMER_SIGNAL, "")
             .placeholder(tr("panel.inspector.timers.signal_name_empty_mute")),
+        sec,
     );
 
     // ⚠️⚠️ **A LINHA QUE RESPONDE AO «nada acontece».** As três causas autoráveis do silêncio são

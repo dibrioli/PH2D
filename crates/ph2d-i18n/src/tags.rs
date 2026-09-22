@@ -41,6 +41,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ A frase do vazio NOMEIA o botão que a cura (`+ New`), e por isso ela é uma frase
         // inteira e não um fragmento: um *«Nenhuma tag»* solto não diz ao artista o que fazer.
         "panel.tags.empty" => "No tags yet. Press + New to make the first one.",
+        // ⭐⭐⭐ **OS NOMES das linhas de TEXTO** — report do dono, 2026-09-22: *«campos de texto
+        //    difíceis de saber para que servem»*. A chave irmã sem `_label` é o EXEMPLO que a caixa
+        //    mostra enquanto está VAZIA; esta é o NOME, que fica na coluna da esquerda para sempre.
+        "panel.tags.new_label" => "New Tag",
         _ => return None,
     })
 }

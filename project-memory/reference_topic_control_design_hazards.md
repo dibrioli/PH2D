@@ -183,3 +183,27 @@ coordenada do pintor, e resolvê-la do outro lado seria a segunda cópia do `ban
   o nome mais comprido saía CORTADO — apanhado pela varredura de elisões, e curado como o
   comentário ao lado da lista já mandava por escrito. *Uma régua que mede o ECRÃ é o que torna
   seguro mexer numa coluna.*
+- ⛔⛔⛔ **UM ESPAÇO RESERVADO NÃO É UM NOME: ele desaparece exactamente quando o campo passa a ter
+  valor** — que é quando alguém precisa de saber o que o campo é. Medido 2026-09-22 (`line/UIUX`,
+  report do dono com foto de cinco caixas seguidas: *«campos de texto difíceis de saber para que
+  servem»*): **`53` das `56` caixas de texto do app nasciam com rótulo VAZIO**, com o sentido só no
+  `placeholder`, e o pintor escreve-o `if displayed.is_empty()`. ⇒ *um campo de texto deste app
+  dizia para que servia até alguém o usar.* ⭐ A cura é a linha de propriedade que todo o resto do
+  app já é (nome na coluna da esquerda), e o espaço reservado FICA — ele deixa de carregar o
+  sentido e passa a ser o que devia ter sido: um EXEMPLO.
+  ⛔⛔⛔ **E o achado que vale mais do que a cura: o diagnóstico JÁ ESTAVA ESCRITO no repo, ao lado
+  de um remendo LOCAL.** Uma secção trazia, palavra por palavra, *«o `text_row` pinta o controlo na
+  largura toda e não desenha o rótulo; e pô-lo no placeholder seria pior do que nada, porque um
+  placeholder desaparece exactamente quando o campo tem valor»* — e a cura aplicada ali foi pôr o
+  nome **POR CIMA** do campo, deixando **a porta como estava e as outras trinta linhas mudas**.
+  ⚠️ Pior: aquele remendo contrariava uma decisão do dono já registada (*«Label acima do campo
+  numérico! Muito ruim!»*). ⇒ *quando um comentário descreve a FAMÍLIA e a cura toca UM membro, o
+  que ficou escrito não é uma nota: é uma dívida com endereço* — e é o segundo caso da mesma forma
+  em dois dias (ver a entrada do literal `18.0`).
+  ⭐⭐ **A régua que fecha isto auto-calibra-se e não tem número escolhido:** *uma caixa de texto
+  COMEÇA onde as caixas de número do mesmo painel começam*. ⚠️ A população são os painéis que
+  **têm formulário** — um painel só com caixas de rename (uma árvore, um navegador de ficheiros)
+  não tem coluna contra que medir, e a caixa dele é nomeada pelo sítio onde vive; *medir ali seria
+  inventar uma barra*. ⛔ E ela prova que existe coluna, **não** que a coluna é a da secção: a
+  mutação que troca a `Seccao` pela de omissão sobrevive, e essa segunda frase pede a sua própria
+  régua.

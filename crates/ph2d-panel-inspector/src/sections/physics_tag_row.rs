@@ -109,33 +109,24 @@ pub(super) fn signal_row(
     w: f32,
     y: f32,
     id: ph2d_a11y::NodeId,
+    rotulo: &str,
     placeholder: &str,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
-    let host = Rect::new(x, y, control_w, ROW_H_PX);
-    hit_index.register(id, host);
-    let (state, text, caret, anchor) = match store.get(id) {
-        Some(InteractiveState::TextInput {
-            state,
-            text,
-            caret,
-            selection_anchor,
-        }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
-        _ => (TextInputState::Normal, None, 0, None),
-    };
-    let input = TextInput::new(id, "")
-        .placeholder(placeholder)
-        .visual((state, store.hover_live(id)));
-    paint_text_input_with_buffer(
-        &input,
-        text,
-        Some(caret),
-        anchor,
-        host,
+    // ⛔⛔ **Era a QUINTA cópia do `text_row`** — e, como as outras quatro, pintava a caixa à
+    //    largura inteira com o sentido dela só no espaço reservado (report do dono, 2026-09-22).
+    ph2d_editor_core::property_row::paint_text_row(
         scene,
         text_system,
         theme,
-    );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    y + ROW_H_PX
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        rotulo,
+        id,
+        TextInput::new(id, "").placeholder(placeholder),
+        seccao,
+    )
 }

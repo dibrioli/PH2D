@@ -476,6 +476,11 @@ pub(crate) fn paint_script_section(
         );
     }
     // ── O FICHEIRO ───────────────────────────────────────────────────────────
+    let seccao_do_ficheiro = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[tr("panel.inspector.script.source_label")],
+    );
     cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -485,9 +490,11 @@ pub(crate) fn paint_script_section(
         x,
         w,
         cur_y,
+        tr("panel.inspector.script.source_label"),
         ids::INSP_SCRIPT_SOURCE,
         TextInput::new(ids::INSP_SCRIPT_SOURCE, "")
             .placeholder(tr("panel.inspector.script.script_file_u")),
+        seccao_do_ficheiro,
     );
     botao(
         scene,

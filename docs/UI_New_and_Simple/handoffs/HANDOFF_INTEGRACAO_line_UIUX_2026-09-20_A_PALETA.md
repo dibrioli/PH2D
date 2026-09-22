@@ -1849,6 +1849,89 @@ as catracas de elisão **DESCERAM** com o censo de obsolescência a exigi-lo.
 
 ---
 
+## §9-sedecies — ⭐⭐⭐ UM CAMPO DE TEXTO DIZIA PARA QUE SERVIA ATÉ ALGUÉM O USAR
+
+Report do dono, 2026-09-22, com foto da secção `FACTORY` — cinco caixas seguidas, cinco setas
+vermelhas: *«Campos de texto difíceis de saber para que servem. Como resolver isso?»*
+
+### §9-sedecies.1 — A causa, em duas linhas medidas
+
+| | medido 2026-09-22 |
+|---|---:|
+| caixas de texto do app com rótulo VAZIO | **`53`** |
+| com rótulo | `3` |
+
+E o espaço reservado — o único sítio onde o sentido vivia — é pintado **só enquanto a caixa está
+vazia** (`text_input/mod.rs`: `if displayed.is_empty() && !input.placeholder.is_empty()`).
+⇒ *um campo de texto deste app dizia para que servia exactamente até alguém o usar.*
+
+A razão estrutural: o `text_row` do Inspector pedia as colunas ao
+`widget::form_row_columns`, que **não tem coluna de nome** — ele devolve a largura toda menos o
+ponto de animação.
+
+### §9-sedecies.2 — ⛔⛔⛔ O diagnóstico JÁ ESTAVA ESCRITO, com a cura aplicada a UMA secção
+
+O `sections/hud.rs` trazia isto, palavra por palavra, desde a wave dele:
+
+> *«O nome vai POR CIMA, e não no `TextInput`** — a foto apanhou três campos seguidos sem um único
+> nome à vista. O `text_row` pinta o controlo na largura toda e **não desenha o rótulo**; e pô-lo
+> no `placeholder` seria pior do que nada, porque um placeholder desaparece exactamente quando o
+> campo tem valor — que é quando o artista precisa de saber o que é.»*
+
+⇒ **o diagnóstico estava certo, a cura foi LOCAL, e a porta ficou como estava** — as outras trinta
+linhas de texto do app continuaram mudas. ⚠️ E o remendo (o nome POR CIMA) contrariava o próprio
+dono: *«Label acima do campo numérico! Muito ruim!»* (2026-09-14). *É a mesma forma do `18.0` da
+§9-quindecies, um dia antes: uma cura aplicada a um sítio, com a família escrita ao lado.*
+
+### §9-sedecies.3 — A cura: uma porta que EXIGE o nome
+
+`ph2d_editor_core::property_row::paint_text_row` — irmã do `paint_check_row` e do
+`paint_fields_row`, com a mesma `row_and_layout`. ⚠️ **O `label` e a `Seccao` não têm valor de
+omissão de propósito:** um `""` seria o defeito a voltar em silêncio.
+
+**`34` sítios em `21` secções** passaram por ela, mais **cinco CÓPIAS locais** que foram apagadas
+(`hud`, `particles`, `weapon`, `anchors`, `physics_tag_row` — a quinta dizia por escrito, no
+cabeçalho, que copiar aquela porta era o que fazia a lei do espaço reservado perder-se).
+`41` chaves de i18n novas, todas irmãs da chave do espaço reservado que já existia: *a de baixo é
+o EXEMPLO, a nova é o NOME.*
+
+### §9-sedecies.4 — A régua auto-calibrada
+
+**Uma caixa de texto COMEÇA onde as caixas de número do mesmo painel começam.** Não há aqui número
+escolhido nenhum: a coluna do controlo sai do próprio painel.
+
+| | antes | depois |
+|---|---|---|
+| caixas de texto do Inspector na coluna do controlo | `0` de `50` | **`49` de `50`** |
+| `x` das caixas de texto | `{1072, …}` | `{1179, 1206}` = o `x` dos números |
+
+⚠️ A que fica é o **`insp_entity_name`** — o nome do OBJECTO, no topo do painel: ele é o título do
+que está seleccionado e não uma propriedade entre outras. Isenção NOMEADA, com censo de
+obsolescência.
+
+⛔ **E a população da régua são os painéis que TÊM formulário.** O `hierarchy`, o `asset_browser`
+e o `audio_editor` têm caixas de texto e **zero** caixas de número — ali não há coluna contra que
+medir, e a caixa é nomeada pelo sítio onde vive. *Medir ali seria inventar uma barra.*
+
+### §9-sedecies.5 — ⭐⭐ O que NÃO piorou, e é o que torna a wave barata
+
+As duas catracas de elisão ficaram **exactamente onde estavam** (`89` cortes / `84` letras) com
+`34` nomes novos no painel, e as linhas empurradas pelo próprio nome ficaram em `18`. ⭐ A razão é
+a lei de 2026-09-21: *um nome perde a EXPLICAÇÃO antes de perder LETRAS* — os `41` são de uma ou
+duas palavras (`Recipe`, `On Signal`, `On Exhausted`).
+
+⚠️⚠️ **E «nenhum corte novo» lê-se igual a «a varredura não viu os nomes»** ⇒ a sonda
+`diag_que_nomes_de_texto_o_inspector_pinta` confirma que eles são PINTADOS (`10` de `10` dos nomes
+procurados, em `1 705` rótulos medidos). *Um censo que passa sem ver a população não afirma nada.*
+
+### §9-sedecies.6 — O preço, declarado
+
+A caixa perde a metade esquerda da linha. No degrau em que o dono trabalha (colunas no mínimo) ela
+fica com `~97 px` contra os `~182` de antes — que é exactamente o que toda caixa de número deste
+app já vive, e o piso delas (`NUMBER_INPUT_MIN_W_PX = 72`) continua a ser a cerca.
+
+---
+
 ## §11 — O que esta linha recomenda a quem a integrar
 
 1. **Correr o `diag_onde_cai_a_pista_do_pente` da `line/sculpt3d` DEPOIS da fusão** e reescrever com

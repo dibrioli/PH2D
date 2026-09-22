@@ -143,6 +143,7 @@ fn source_body(
     y: f32,
     src: &InspectorAudioSource,
     info: &InspectorAudioInfo,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let mut cur_y = super::anim_rows::text_row(
         scene,
@@ -153,9 +154,11 @@ fn source_body(
         x,
         w,
         y,
+        tr("panel.inspector.audio.sound_label"),
         ids::INSP_AUDIO_SOUND,
         TextInput::new(ids::INSP_AUDIO_SOUND, "")
             .placeholder(tr("panel.inspector.audio.sound_file")),
+        seccao,
     );
     cur_y = buttons(scene, text_system, theme, hit_index, store, x, w, cur_y);
 
@@ -419,6 +422,11 @@ pub(crate) fn paint_audio_section(
     }
 
     if let Some(src) = &info.source {
+        let sec_fonte = ph2d_editor_core::property_row::Seccao::medida(
+            text_system,
+            1,
+            &[tr("panel.inspector.audio.sound_label")],
+        );
         cur_y = source_body(
             scene,
             text_system,
@@ -430,6 +438,7 @@ pub(crate) fn paint_audio_section(
             cur_y,
             src,
             info,
+            sec_fonte,
         );
     }
 

@@ -623,6 +623,22 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.slice.size_x_y_m_0" => "Size X / Y",
         "panel.inspector.slice.size_hint" => "0 = use the sprite size.",
         "panel.inspector.wheel.motor_s" => "Motor",
+        // ⭐⭐⭐ **OS NOMES das linhas de TEXTO** — report do dono, 2026-09-22: *«campos de texto
+        //    difíceis de saber para que servem»*. A chave irmã sem `_label` é o EXEMPLO que a caixa
+        //    mostra enquanto está VAZIA; esta é o NOME, que fica na coluna da esquerda para sempre.
+        "panel.inspector.actions.on_label" => "On",
+        "panel.inspector.actions.arg_label" => "Argument",
+        "panel.inspector.actions.target_label" => "Target",
+        "panel.inspector.animation.name_label" => "Name",
+        "panel.inspector.animation.on_finish_label" => "On Finish",
+        "panel.inspector.animation.on_loop_label" => "On Loop",
+        "panel.inspector.audio.sound_label" => "Sound",
+        "panel.inspector.camera.target_label" => "Target",
+        "panel.inspector.timers.name_label" => "Name",
+        "panel.inspector.timers.signal_label" => "Signal",
+        "panel.inspector.anchors.name_label" => "Name",
+        "panel.inspector.physics.on_hit_label" => "On Hit",
+        "panel.inspector.physics.on_leave_label" => "On Leave",
         // ph2d-migrar-texto:end
         _ => return None,
     })

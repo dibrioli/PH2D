@@ -89,9 +89,11 @@ fn lifecycle_body(
             x,
             w,
             cur_y,
+            ph2d_i18n::tr("panel.factory.on_death_label"),
             crate::ids::INSP_LIFE_ON_DEATH,
             TextInput::new(crate::ids::INSP_LIFE_ON_DEATH, "")
                 .placeholder(ph2d_i18n::tr("panel.factory.on_death")),
+            seccao,
         );
     }
     if l.outside_margin.is_some() {

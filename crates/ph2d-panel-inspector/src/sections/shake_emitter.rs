@@ -225,6 +225,18 @@ fn editor(
     y: f32,
     row: &InspectorEmitterRow,
 ) -> f32 {
+    // ⚠️ **A coluna nasce ANTES da 1.ª linha que a usa** — desde 2026-09-22 a linha de TEXTO
+    //    também tem nome, e ela é a primeira da secção.
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("panel.inspector.emitter.strength"),
+            tr("panel.inspector.emitter.full_within"),
+            tr("panel.inspector.emitter.nothing_beyond"),
+            tr("panel.inspector.emitter.on_label"),
+        ],
+    );
     let mut cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -234,9 +246,11 @@ fn editor(
         x,
         w,
         y,
+        tr("panel.inspector.emitter.on_label"),
         ids::INSP_EMITTER_ON,
         TextInput::new(ids::INSP_EMITTER_ON, "")
             .placeholder(tr("panel.inspector.emitter.signal_name_empty_mute")),
+        seccao,
     );
     // ⭐ A cerca de quem falou.
     let cercas: Vec<&str> = (0..crate::ids::INSP_EMITTER_DE.len())
@@ -255,15 +269,6 @@ fn editor(
         &crate::ids::INSP_EMITTER_DE,
         &cercas,
         usize::from(row.de),
-    );
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[
-            tr("panel.inspector.emitter.strength"),
-            tr("panel.inspector.emitter.full_within"),
-            tr("panel.inspector.emitter.nothing_beyond"),
-        ],
     );
     for (id, label, step, unidade) in [
         (

@@ -228,9 +228,11 @@ fn corpo(
             x,
             w,
             cur_y,
+            tr("panel.inspector.projectile.homing_target_label"),
             crate::ids::INSP_PJ_HOMING_TARGET,
             TextInput::new(crate::ids::INSP_PJ_HOMING_TARGET, "")
                 .placeholder(tr("panel.inspector.projectile.target_object_name_u")),
+            seccao,
         );
         // ⚠️ **Um nome escrito que ninguém tem** não é o mesmo que nenhum nome, e o painel diz a
         // diferença — senão um alvo apagado lê-se como uma perseguição partida.

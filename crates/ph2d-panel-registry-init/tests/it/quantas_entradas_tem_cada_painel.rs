@@ -2592,3 +2592,85 @@ fn diag_quando_o_nome_move_a_coluna() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O PER-CORNER: a PRÉVIA à esquerda, os QUATRO CANTOS à direita** — ordem do dono.
+///
+/// ⛔ **Escolha do dono, 2026-09-21**, entre duas saídas medidas: encolher as peças para o grupo
+/// caber na coluna do valor (`~144 px` de grupo contra `~120` de coluna), ou o nome em cima com
+/// `[prévia] [grelha]`, como ele desenhou. *Ele escolheu o tamanho do alvo.*
+///
+/// ⚠️ **Este gate nasceu porque a troca passou `355` gates do painel sem que um os medisse** — a
+/// geometria de um bloco não tinha régua nenhuma.
+#[test]
+fn o_per_corner_tem_a_previa_a_esquerda_dos_quatro_cantos() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "inspector")
+            .expect("o inspector");
+        let arm = super::paineis_armados::TABELA
+            .iter()
+            .find(|a| a.painel == "inspector")
+            .expect("o inspector tem armação");
+        let mut host = MockPanelHost::new();
+        (arm.arma)(host.store_mut());
+        painel.populate(host.store_mut());
+        abre_tudo(host.store_mut());
+        let (_, _g) = ph2d_editor_core::widget::composto::medindo(|| {
+            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        });
+        let pintados = host.registos_da_ultima_pintura();
+        (arm.desarma)();
+        let r = |id: NodeId| {
+            pintados
+                .iter()
+                .find(|(n, _)| *n == id)
+                .map(|(_, r)| *r)
+                .unwrap_or_else(|| panic!("{id:?} não foi pintado"))
+        };
+        use ph2d_panel_inspector::ids as iid;
+        let tl = r(iid::INSP_SPRITE_CORNER_TL);
+        let tr_ = r(iid::INSP_SPRITE_CORNER_TR);
+        let bl = r(iid::INSP_SPRITE_CORNER_BL);
+        let br = r(iid::INSP_SPRITE_CORNER_BR);
+        // ⭐ A MARGEM do bloco — o *Equalize* atravessa-o inteiro, e é o único do grupo que a diz.
+        let margem = r(iid::INSP_SPRITE_CORNER_EQUALIZE).x;
+
+        // (1) A grelha continua a ser uma grelha.
+        assert!(
+            (tl.y - tr_.y).abs() < 0.5 && (bl.y - br.y).abs() < 0.5,
+            "as filas do 2×2 não estão alinhadas: TL {:.1} TR {:.1} · BL {:.1} BR {:.1}",
+            tl.y,
+            tr_.y,
+            bl.y,
+            br.y
+        );
+        assert!(
+            (tl.x - bl.x).abs() < 0.5 && (tr_.x - br.x).abs() < 0.5 && tr_.x > tl.x,
+            "as colunas do 2×2 não estão alinhadas: TL {:.1} TR {:.1} · BL {:.1} BR {:.1}",
+            tl.x,
+            tr_.x,
+            bl.x,
+            br.x
+        );
+
+        // (2) ⭐ A PRÉVIA está à ESQUERDA — a grelha não começa na margem do bloco, e o que
+        //     ocupa o espaço é do tamanho dela (duas amostras mais o vão).
+        let previa_w = tr_.x + tr_.w - tl.x;
+        assert!(
+            tl.x - margem >= previa_w,
+            "a grelha começa a {:.1} px da margem do bloco ({margem:.1}) e a prévia mede \
+             {previa_w:.1} — ou ela deixou de estar à esquerda, ou encolheu.\n\
+             ⇒ a ordem é a do desenho do dono: o RESULTADO primeiro, as quatro entradas depois.",
+            tl.x - margem
+        );
+        // ⛔ **O CONTROLO**: antes desta wave a grelha começava NA margem (a prévia ficava à
+        //    direita). Sem ele, um bloco que perdesse a prévia passaria esta régua.
+        assert!(
+            tl.x - margem > 1.0,
+            "a grelha começa na margem do bloco — é exactamente a disposição de ANTES"
+        );
+    });
+}

@@ -340,12 +340,21 @@ fn paint_per_corner_tab(
         tr("panel.inspector.color_tint.bottom_left_corner_tint"),
         tr("panel.inspector.color_tint.bottom_right_corner_tint"),
     ];
+    // ⭐⭐ **A PRÉVIA À ESQUERDA, OS QUATRO CANTOS À DIREITA** — ordem do dono (2026-09-21), com um
+    //    desenho ao lado da foto. ⚠️ Ele escolheu esta e não «encolher e pôr na coluna do valor»:
+    //    medido, o grupo precisa de `~144 px` (`2 × 32 + 4` de amostras `+ 8` de vão `+ 68` de
+    //    prévia) e a coluna do valor no painel dele tem `~120`, logo alinhá-lo com as caixas de
+    //    marcar exigiria encolher as amostras. *Ele preferiu o tamanho do alvo ao alinhamento.*
+    //
+    // ⭐ E a ordem é a que ele desenhou: o RESULTADO primeiro, as quatro entradas depois.
+    let previa_w = swatch_px * 2.0 + gap;
+    let grid_x = x + previa_w + Spacing::Md.px();
     // TL, TR, BL, BR positions in a 2×2 grid.
     let positions = [
-        (x, y),
-        (x + swatch_px + gap, y),
-        (x, y + swatch_px + gap),
-        (x + swatch_px + gap, y + swatch_px + gap),
+        (grid_x, y),
+        (grid_x + swatch_px + gap, y),
+        (grid_x, y + swatch_px + gap),
+        (grid_x + swatch_px + gap, y + swatch_px + gap),
     ];
     // Any per-corner divergence across a multi-selection (BulkSelect) →
     // all four show the Mixed treatment (a single flag covers the array).
@@ -364,10 +373,9 @@ fn paint_per_corner_tab(
         }
         hit_index.register(corner_ids[i], sr);
     }
-    let grid_w = swatch_px * 2.0 + gap;
     let grid_h = swatch_px * 2.0 + gap;
-    // Live bilinear gradient preview, square, to the right of the grid.
-    let preview = Rect::new(x + grid_w + Spacing::Md.px(), y, grid_h, grid_h);
+    // A prévia viva do gradiente bilinear, quadrada, à ESQUERDA da grelha.
+    let preview = Rect::new(x, y, previa_w, grid_h);
     paint_corner_gradient_preview(preview, live, scene, theme);
     let mut cur_y = y + grid_h + Spacing::Sm.px();
 

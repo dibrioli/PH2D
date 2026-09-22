@@ -195,12 +195,28 @@ pub(crate) fn announce() {
          [sculpt3d]           `Paint Detail`, aquele traco deixa de poder voltar: o\n\
          [sculpt3d]           plano de amostras foi refeito e o de antes ja' nao existe.\n\
          [sculpt3d]\n\
+         [sculpt3d]    (8) GRAVAR E REABRIR. Com a fileira em `8x` e uma marca FINA na\n\
+         [sculpt3d]        peca, carregue `Ctrl+Shift+S`, escolha um nome e grave.\n\
+         [sculpt3d]        FECHE o app, abra-o outra vez com o MESMO comando, e carregue\n\
+         [sculpt3d]        `Ctrl+O` para escolher o ficheiro que gravou.\n\
+         [sculpt3d]        -> A marca volta FINA, e a fileira `Paint Detail` volta sozinha\n\
+         [sculpt3d]           para `8x`.\n\
+         [sculpt3d]        ⚠️ FECHAR o app e' o passo, nao um capricho: reabrir o ficheiro\n\
+         [sculpt3d]           na MESMA sessao deixa a fileira onde voce a poz, e ai' este\n\
+         [sculpt3d]           passo passa mesmo com o defeito vivo.\n\
+         [sculpt3d]        -> Ate' 21/09 a tinta voltava e o DETALHE nao: a fileira abria\n\
+         [sculpt3d]           em `Mesh` e o PRIMEIRO quadro refazia o plano a' resolucao\n\
+         [sculpt3d]           da malha. O ficheiro estava certo; quem a deitava fora era\n\
+         [sculpt3d]           o quadro seguinte.\n\
+         [sculpt3d]\n\
          [sculpt3d]    COMO SABER QUE DEU ERRADO: se no (4) a borda sair igual a' do (2),\n\
          [sculpt3d]    ou se o arame ADENSAR quando voce so' trocou a fileira, PARE e\n\
          [sculpt3d]    reporte. Se a peca ficar PRETA, ou aparecerem faces pretas de\n\
          [sculpt3d]    aresta dura no meio da marca, PARE e reporte. Se no (6-ter) o\n\
          [sculpt3d]    arrasto RODAR a camara em vez de pintar, PARE e reporte. Se no\n\
-         [sculpt3d]    (7) o Ctrl+Z deixar a marca onde estava, PARE e reporte. E se o\n\
+         [sculpt3d]    (7) o Ctrl+Z deixar a marca onde estava, PARE e reporte. Se no\n\
+         [sculpt3d]    (8) a marca voltar GROSSA, ou a fileira abrir em `Mesh` com uma\n\
+         [sculpt3d]    peca que voce gravou fina, PARE e reporte. E se o\n\
          [sculpt3d]    app FECHAR sozinho em qualquer passo, PARE e mande a linha do\n\
          [sculpt3d]    terminal que comeca por PH2D PANIC -- ela diz onde."
     );

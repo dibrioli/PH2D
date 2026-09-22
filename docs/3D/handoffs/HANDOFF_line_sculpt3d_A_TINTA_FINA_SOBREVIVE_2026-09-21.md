@@ -1649,3 +1649,25 @@ vassouras devolveu `rc=2` nas **dez** e eu quase a li como *«dez com achado»* 
 palavras, logo o script recebeu os seis caminhos como **um**. ⭐ Ele **falhou
 alto** (`✗ path não existe`), que é o desenho dele; refeita sob `bash -c`, a
 resposta é `2 de 10` com achados, **todos** pré-existentes.
+
+### §19.7 — E a CENA não continha o fenómeno: o roteiro ganha o passo (8)
+
+A `=52` ensinava a tinta fina inteira e **não tinha um passo de GRAVAR**. As
+duas waves da persistência (§18 e esta) vivem do ciclo *gravar → reabrir*, e o
+dono só o exercitou porque foi procurá-lo. ⇒ passo **(8)**, com a linha do
+*«como saber que deu errado»* a acompanhá-lo.
+
+⚠️⚠️ **E ele manda FECHAR o app, com a razão escrita dentro:** reabrir o
+ficheiro na MESMA sessão deixa a fileira onde o artista a pôs, logo o
+`tinta_nivel` já vale `8x` e a reconciliação concorda — *o passo passaria com
+o defeito vivo*. **A cena só contém o fenómeno com um `tinta_nivel` virgem.**
+
+⚠️ **Os dois atalhos foram MEDIDOS antes de escritos**, não assumidos: o
+`if ctrl` do teclado da escultura é um catch-all que devolve `false` a todo
+`Ctrl+` que não seja o desfazer ⇒ o `Ctrl+Shift+S` e o `Ctrl+O` **caem para a
+shell** e chegam ao `project_save_gesture`/abrir. Os dois entram na lista de
+TECLAS do censo do roteiro, que **afirma que nenhum deles é também um rótulo
+pintado** — *a excepção tem de continuar a ser uma excepção*.
+
+Réguas da cena e do painel: **411 / 411** · clippy `-D warnings` zero · as 10
+vassouras sobre os dois ficheiros **zero achados** · LOC `227` e `267`.

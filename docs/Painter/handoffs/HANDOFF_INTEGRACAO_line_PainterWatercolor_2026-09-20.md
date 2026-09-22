@@ -1352,21 +1352,48 @@ e `c = 1 − α`. Uma lei, uma porta, nenhum caso degenerado.
 
 ### §22.6 — O PREÇO, medido
 
-`--release`, canvas `1024²`, traço de 720 px em passos de 2 px, mínimo de três corridas.
-⚠️ **`load 29` — acima do `~5` em que uma leitura desta máquina vale**; a coluna serve para
-comparar linhas entre si, e a tabela tem de ser re-tirada com a máquina calma.
+⛔⛔ **ESTA TABELA FOI RETIRADA EM 2026-09-22 — a tabela válida é a da §22.6-bis, logo abaixo.** Ela
+foi medida a `load 29` (o §5 da casa: *nenhuma leitura de relógio desta máquina vale nada acima de
+`load ~5`*), e re-tirada com a máquina a **91–95 % ociosa** não reproduz: a `2 Brush` a raio 24 lia
+`5,73` e lê **`24,49`**. ⚠️ **Não é o motor que mudou** — a sonda é a MESMA (`diag_preco_da_pilha`,
+tocada desde então só pelo `rustfmt`) e as duas rotas foram medidas: a acumulação lê `24,49` e o
+replay `111,28`. *Porque é que ela leu `5,73` fica por explicar, e dizer que sei seria inventar.*
 
-| pilha | raio 24 | raio 96 |
-|---|---|---|
-| 1 Brush (sem recomposição) | `5,87 ms` | `6,10` |
-| 2 Brush | `5,73` | `6,19` |
-| 3 Brush | `5,80` | `6,67` |
-| Blur sobre Brush | `7,65` | `27,80` |
-| Smear sobre Brush | `70,43` | `98,94` |
+⛔⛔ **E a frase que ela carregava está REFUTADA:** *«a recomposição de duas e três camadas de
+depósito não é distinguível de uma»* — com a máquina calma, `2 Brush` custa **`4,1×`** uma e
+`3 Brush` **`5,9×`**. ⭐ Ela tinha a forma exacta de uma fixtura que não contém o fenómeno: *três
+linhas que leem o mesmo é o que se vê quando o trabalho não está a correr*, e aqui foi lida como uma
+propriedade do motor.
 
-⭐ **A recomposição de duas e três camadas de depósito não é distinguível de uma** — o replay é de
-~10 dabs por lote e o custo do traço mora noutro sítio. Quem paga é o **Blur** a raio grande
-(`4,5×`), que é `~r²` por dab; o Smear é o de sempre (ele já era o membro caro da pilha).
+
+### §22.6-bis — O PREÇO, re-medido com a máquina CALMA (2026-09-22)
+
+`--release`, canvas `1024²`, traço de 720 px em passos de 2 px (**362 eventos**), mínimo de três
+corridas, `load 3,1` com **95 % de CPU ociosa** — e estável (`24,49` · `24,95` · `25,37` em três
+corridas). ⚠️ A minha cura do dia foi **ablada** para a atribuição: sem ela lê `24,08`, dentro do
+ruído ⇒ ilibada.
+
+| pilha | raio | traço | **ms/evento** | **% de um quadro** |
+|---|---|---|---|---|
+| 1 Brush (sem recomposição) | 24 | `6,01` | `0,017` | `0,1 %` |
+| 2 Brush | 24 | `24,49` | `0,068` | `0,4 %` |
+| 3 Brush | 24 | `35,73` | `0,099` | `0,6 %` |
+| Blur sobre Brush | 24 | `88,51` | `0,245` | `1,5 %` |
+| Smear sobre Brush | 24 | `43,35` | `0,120` | `0,7 %` |
+| 1 Brush (sem recomposição) | 96 | `6,79` | `0,019` | `0,1 %` |
+| 2 Brush | 96 | `64,26` | `0,178` | `1,1 %` |
+| 3 Brush | 96 | `96,32` | `0,266` | `1,6 %` |
+| **Blur sobre Brush** | 96 | `342,34` | `0,946` | **`5,7 %`** |
+| Smear sobre Brush | 96 | `90,03` | `0,249` | `1,5 %` |
+
+⭐⭐ **A COLUNA QUE DECIDE É A DO EVENTO, e a tabela antiga só tinha a do traço.** O que tem de caber
+num quadro de `16,7 ms` é o custo de **um** evento de ponteiro; somar o traço inteiro faz um custo
+perfeitamente interactivo (`0,4 %` de um quadro) parecer um congelamento de `24 ms`. ⇒ **o pior caso
+da pilha é `5,7 %` de um quadro**, e não há problema de relógio nenhum a resolver aqui. A sonda passou
+a imprimir as duas colunas.
+
+⭐ **E a acumulação da §24 está confirmada a fazer o trabalho dela:** no mesmo traço recto, o replay
+(`PH2D_COMPOSITE_REPLAY=1`) lê `111,28` contra `24,49` — **`4,5×`**.
 
 ⛔ **Com MENOS DE DUAS camadas activas nada disto corre** — não há ordem para arrumar, e nem a
 fotografia do `pre` é paga (gate `uma_camada_so_nao_abre_a_recomposicao`, com controlo).
@@ -2277,8 +2304,11 @@ o veredito)
 ### A seguir — **MEDIÇÕES que faltam** (nenhuma é um defeito conhecido; são números que hoje não
 existem, e sem eles não se pode decidir)
 
-5. **A tabela de relógio da pilha foi tirada a `load 29`** (§22.11) e tem de ser re-tirada com a
-   máquina calma — *a lei do `load ~5` vale para o FPS do app tanto como para um gate de razão*.
+5. ✅ **FEITO em 2026-09-22 — §22.6-bis.** A tabela foi re-tirada a `95 %` de CPU ociosa, ganhou a
+   coluna de **ms/evento** (a que decide) e a antiga foi **retirada com a refutação ao lado**: a
+   frase *«duas e três camadas não se distinguem de uma»* era a assinatura de uma fixtura que não
+   continha o fenómeno. ⇒ **não há problema de relógio na pilha**: o pior caso é `5,7 %` de um
+   quadro por evento.
 6. **Sete camadas nunca foram medidas no produto real** (§25) — a tabela existente é de `+1 Brush` /
    `+1 Erase`, não do topo da quota.
 7. **O cartão de cinco camadas × três fileiras** (§22.9) — quanto empurra o resto do painel para

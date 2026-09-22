@@ -62,8 +62,14 @@ fn diag_preco_da_pilha() {
     let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("\n  O PREÇO DA ORDEM POR TRAÇO   (load {})", carga.trim());
     println!("  canvas {SIZE}² · traço de {} px · passo 2 px", X1 - X0);
-    println!("\n  pilha                          |  raio |    ms");
-    println!("  -------------------------------+-------+-------");
+    // ⭐ **A coluna que DECIDE é a de EVENTO, e não a do traço.** Um traço de 720 px em passos de
+    // 2 px são `362` eventos de ponteiro, e o que tem de caber num quadro de `16,7 ms` é o custo de
+    // UM — *somar o traço inteiro faz um custo perfeitamente interactivo parecer um congelamento*.
+    // (Auditoria de 2026-09-22: a tabela de 21/09 foi lida só na coluna do traço, e a leitura dela
+    // não sobreviveu à máquina calma.)
+    let eventos = ((X1 - X0) / 2.0).ceil() + 2.0;
+    println!("\n  pilha                          |  raio |    ms | ms/evento | % de um quadro");
+    println!("  -------------------------------+-------+-------+-----------+----------------");
     let casos: [(&str, &[(CompositeOp, f32)]); 5] = [
         ("1 Brush (sem recomposição)", &[(CompositeOp::Brush, 1.0)]),
         (
@@ -101,7 +107,11 @@ fn diag_preco_da_pilha() {
                 }
                 melhor = melhor.min(traco(&mut t).as_secs_f64() * 1e3);
             }
-            println!("  {nome:30} | {raio:5.0} | {melhor:6.2}");
+            let por_ev = melhor / f64::from(eventos);
+            println!(
+                "  {nome:30} | {raio:5.0} | {melhor:6.2} | {por_ev:9.3} | {:14.1}",
+                por_ev / 16.7 * 100.0
+            );
         }
     }
 }

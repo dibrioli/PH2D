@@ -371,3 +371,86 @@ fn a_porta_do_plano_pergunta_pelo_dono_e_nao_pelo_indice() {
         "e sem traço nenhum em mãos, a peça 0 está mesmo sem plano"
     );
 }
+
+/// ⛔⛔⛔ **GATE — O REPORT DO DONO DE 21/09, reproduzido: o primeiro QUADRO
+/// deitava fora o plano acabado de carregar.**
+///
+/// *«sobreviveu mas sem os detalhes 8x»* — e o plano ATRAVESSAVA o ficheiro
+/// (há gate ao bit). O que faltava era **um elo depois disso**: o quadro corre
+/// a [`rota`] com o `tinta_nivel` da CENA, que num app acabado de abrir é
+/// `None` ⇒ `DaPeca { pedir: None }` e a [`garante`] faz `tinta.take()`.
+///
+/// ⚠️ **A cor por VÉRTICE sobrevive** (ela viaja dentro da malha), e é por isso
+/// que o artista vê a tinta lá **com a grossura errada** em vez de a ver
+/// desaparecer — *os dois sintomas leem-se com frases muito parecidas*.
+///
+/// ⚠️⚠️ **Este gate percorre o QUADRO e não a porta.** A ida-e-volta do
+/// documento já estava gateada e estava VERDE: *uma ida-e-volta medida a
+/// montante do consumidor não afirma nada sobre o consumidor*.
+#[test]
+fn o_primeiro_quadro_nao_deita_fora_o_plano_que_o_documento_trouxe() {
+    let m = dois_tris();
+    let faces = || m.faces().iter().map(ph2d_mesh::Face::verts);
+    let plano = ph2d_mesh_colors::Tinta::nova(m.vert_count(), faces(), 3);
+
+    // O que o quadro faz, com o degrau que o documento pede de volta.
+    let quadro = |knob: Option<u8>| {
+        let mut tinta = Some(plano.clone());
+        if let Rota::DaPeca { pedir } = rota(true, false, tinta.is_some(), knob) {
+            garante(&m, &mut tinta, pedir);
+        }
+        tinta.map(|t| t.nivel())
+    };
+
+    assert_eq!(
+        quadro(None),
+        None,
+        "o CONTROLO, e é ele que reproduz o report: com a fileira desarmada o \
+         quadro DEITA FORA o plano que o documento trouxe"
+    );
+    assert_eq!(
+        quadro(Some(3)),
+        Some(3),
+        "e com o degrau do documento ele sobrevive AO NÍVEL em que foi gravado"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — o degrau que o documento pede de volta, nas três células.**
+#[test]
+fn o_degrau_do_documento_sai_da_peca_activa_e_recorre_as_outras() {
+    use crate::objects::{ObjectId, SceneObject};
+    let m = dois_tris();
+    let mut pecas: Vec<SceneObject> = (0..3)
+        .map(|i| SceneObject::new(ObjectId(i), m.clone(), ph2d_mesh::Pose::default()))
+        .collect();
+
+    assert_eq!(
+        degrau_do_documento(&pecas, 0),
+        None,
+        "sem plano nenhum a fileira fica desarmada — armá-la inventaria um \
+         plano que o artista nunca pediu"
+    );
+
+    // Só a peça 2 tem plano: a fileira TEM de armar, senão o quadro deita-o fora.
+    {
+        let SceneObject { stack, tinta, .. } = &mut pecas[2];
+        garante(stack.mesh(), tinta, Some(2));
+    }
+    assert_eq!(
+        degrau_do_documento(&pecas, 0),
+        Some(2),
+        "⛔ a peça ACTIVA não tem plano e outra tem: sem o recurso, o quadro \
+         deitava fora o plano dela"
+    );
+
+    // E com a activa a ter o seu, é o DELA que manda.
+    {
+        let SceneObject { stack, tinta, .. } = &mut pecas[0];
+        garante(stack.mesh(), tinta, Some(1));
+    }
+    assert_eq!(
+        degrau_do_documento(&pecas, 0),
+        Some(1),
+        "com a activa a ter plano, é o degrau DELA que volta para a fileira"
+    );
+}

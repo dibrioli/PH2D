@@ -149,6 +149,42 @@ pub(crate) fn o_gesto_muda_a_topologia(
     verbo.refina_no_dyntopo() || verbo.colapsa_no_dyntopo()
 }
 
+/// ⭐⭐⭐⭐ **QUE DEGRAU O DOCUMENTO PEDE DE VOLTA?** — e sem ele o plano que
+/// acabou de ser lido é deitado fora no PRIMEIRO QUADRO.
+///
+/// ⛔⛔⛔ **Report do dono, 2026-09-21: *«sobreviveu mas sem os detalhes 8x»*.**
+/// O plano ATRAVESSA o ficheiro (gate ao bit) e o `install_doc` instala-o — e
+/// depois o quadro corre a [`rota`] com o `tinta_nivel` da CENA, que num app
+/// acabado de abrir é `None`, logo `DaPeca { pedir: None }` e a [`garante`]
+/// faz `tinta.take()`. *A cor por vértice sobrevive (ela viaja na malha), e é
+/// por isso que o artista vê a tinta lá com a grossura errada em vez de a ver
+/// desaparecer.*
+///
+/// ⚠️⚠️ **Os gates da wave mediam `encode`/`decode` e o produto tem MAIS UM
+/// ELO** — a reconciliação do quadro. *Uma ida-e-volta medida a montante do
+/// consumidor não afirma nada sobre o consumidor*, que é a forma que esta linha
+/// já pagou na ponte da curva do pincel de pose.
+///
+/// ⚠️ **O knob é UM e os planos são N, e isso não é uma perda:** a [`rota`] dá
+/// `pedir: nivel` a toda peça que JÁ tem plano, logo numa sessão viva todos
+/// convergem para o degrau da fileira — *um documento só pode conter um
+/// degrau, por construção*. Se um dia contiver dois, o da peça ACTIVA ganha e
+/// os outros reconciliam-se, que é o que a fileira já faz hoje.
+pub(crate) fn degrau_do_documento(objects: &[crate::SceneObject], activa: usize) -> Option<u8> {
+    let da_activa = objects
+        .get(activa)
+        .and_then(|o| o.tinta.as_ref())
+        .map(Tinta::nivel);
+    // ⛔ E o recurso ao PRIMEIRO que tenha plano não é conforto: sem ele, uma
+    //    peça activa sem detalhe fino deixaria a fileira desarmada e o quadro
+    //    deitaria fora o plano de TODAS as outras.
+    da_activa.or_else(|| {
+        objects
+            .iter()
+            .find_map(|o| o.tinta.as_ref().map(Tinta::nivel))
+    })
+}
+
 /// A lei da [`crate::Sculpt3dScene::plano_de`], com as partes que o laço de
 /// upload consegue emprestar em separado.
 pub(crate) fn plano_da_peca<'a>(

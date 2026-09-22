@@ -1537,3 +1537,115 @@ re-corrida, e a razão é medida:** as nove mutações dela vivem na
 `ph2d-mesh-colors` e na `ph2d-mesh-render`, e a população de teste dela são
 essas duas crates — **este diff não toca em nenhuma**. *Um placar herdado é um
 placar sobre outra árvore; este é sobre a MESMA.*
+
+## §19 — «SOBREVIVEU MAS SEM OS DETALHES 8x» — o ficheiro estava certo e o PRIMEIRO QUADRO deitava o plano fora
+
+### §19.1 — O que o dono disse
+
+> «sobreviveu mas sem os detalhes 8x»
+
+A tinta volta do ficheiro. A **resolução** dela não.
+
+### §19.2 — Onde acaba o alcance dos gates da §18
+
+Os gates da wave anterior medem o **FICHEIRO**: `encode` → bytes → `decode` →
+amostras **ao bit**, com o controlo de que a fixtura difere da semente. Estavam
+**todos verdes** e continuam certos.
+
+⛔ **O produto tem mais um elo, e ele corre DEPOIS do `decode`:** cada quadro
+reconcilia o plano de cada peça contra o degrau que a fileira `Paint Detail`
+pede — a [`rota`] com o `tinta_nivel` da CENA. Num app acabado de abrir esse
+campo é `None`, logo a rota devolve `DaPeca { pedir: None }` e a [`garante`]
+faz `tinta.take()`: **o plano que o ficheiro acabou de trazer é deitado fora no
+primeiro quadro.**
+
+⭐ **E a cor por VÉRTICE sobrevive**, porque ela viaja dentro da malha — é por
+isso que o artista vê a tinta lá **com a grossura errada** em vez de a ver
+desaparecer. *Os dois sintomas leem-se com frases muito parecidas, e o report
+descreve exactamente o primeiro.*
+
+⚠️⚠️ *Uma ida-e-volta medida a montante do consumidor não afirma nada sobre o
+consumidor* — a MESMA forma que esta linha pagou na ponte da curva do pincel de
+pose, onde o corpus corria a crate directamente com a convenção dela.
+
+### §19.3 — A cura: o degrau é um FACTO DO DOCUMENTO
+
+O `tinta_nivel` é o estado da fileira, e até aqui só um gesto o escrevia. Ele
+passa a ser escrito também por quem instala um documento — *abrir um projecto é
+aprender o que ele diz*, e o degrau está lá dentro, no plano de cada peça.
+
+⭐ [`tinta_da_peca::degrau_do_documento`] — porta **pura**, ao lado das irmãs
+deste ficheiro: o laço do `install_doc` já tem `&mut self`, e um gate que
+precisasse de uma cena pediria um `wgpu::Device` e nasceria `#[ignore]`.
+
+⚠️⚠️ **O recurso à PRIMEIRA peça com plano não é conforto, é a lei:** o degrau
+é **UM para a cena inteira** e os planos são **por peça**. Com a peça activa sem
+detalhe fino, ler só a activa deixaria a fileira desarmada e o quadro seguinte
+deitaria fora o plano de **TODAS as outras** — *um documento com dez peças
+pintadas finas perdia as dez porque a activa não estava*.
+
+⚠️ E o terceiro braço — **sem plano nenhum a resposta é `None`** — é o que
+impede a cura de ARMAR a fileira num documento que nunca teve tinta fina.
+
+### §19.4 — As réguas
+
+- `o_primeiro_quadro_nao_deita_fora_o_plano_que_o_documento_trouxe` — o gate do
+  report, e ele percorre o **QUADRO** e não a porta. ⭐ **O CONTROLO está dentro
+  dele e é ele que reproduz o defeito:** com a fileira desarmada o plano é
+  deitado fora; com o degrau do documento ele sobrevive **ao nível em que foi
+  gravado**.
+- `o_degrau_do_documento_sai_da_peca_activa_e_recorre_as_outras` — as três
+  células (nada · só uma peça distante · a activa manda).
+- o censo da fiação vai a **DEZANOVE** elos: *o `decode` pode estar certo, o
+  `install_doc` pode instalar, e o degrau não voltar à fileira — e aí o ficheiro
+  tem o detalhe lá dentro, a peça recebe-o, e o **quadro seguinte** apaga-o*.
+  Nenhum dos dezoito elos anteriores atravessa esse ponto.
+
+### §19.5 — A prova de mutação, e o que o PRÉ-VOO apanhou
+
+A rede do plano no ficheiro passa a **catorze** mutações e fecha em
+**`13 de 14` a sangrar** (a `P12` é o CONTROLO e não pode) — as duas novas são
+a cura inteira e a metade do recurso:
+
+| mutação | o que ela tira |
+|---|---|
+| `P13` | o degrau não volta para a fileira ⇒ o 1.º quadro deita o plano fora |
+| `P14` | o recurso às OUTRAS peças desaparece |
+
+⚠️ **E o pré-voo (`MUTA_SO_ANCORAS=1`) fez exactamente o trabalho dele:** a
+âncora da `P14` casou **zero** vezes, porque o `cargo fmt` tinha reescrito a
+expressão dela em cinco linhas. *Uma âncora que casa zero lê-se, num placar,
+exactamente como uma mutação que sobreviveu* — e aqui ela foi apanhada em
+segundos, sem correr um teste.
+
+### §19.6 — O PORTÃO desta wave
+
+| régua | resultado |
+|---|---|
+| `nextest-impacted` | **18 587 / 18 587** |
+| gates do DOCUMENTO e do PLANO, **com adaptador** | **70 / 70** (os dois novos e o censo lá dentro) |
+| censos da árvore COMBINADA | **127 / 127** · controlo do filtro `12 de 12` |
+| `cargo fmt --all --check` | limpo — e os **três** pré-voos de âncora a seguir (`9` · `43` · `14`) |
+| clippy `--all-targets -D warnings` | zero — ⚠️ **VERMELHO à primeira**, ver abaixo |
+| as 10 vassouras sobre os 6 ficheiros | **zero achados NOVOS** (as 5 linhas acusadas são `≤ 1031` e a §19 começa na `1541`) |
+| tectos de LOC | maior ficheiro tocado a **524** de `700` |
+| mutação — o plano no ficheiro | **13 de 14** (a 14.ª é o CONTROLO) |
+
+⚠️ **O clippy reprovou sobre esta wave e apanhou-a bem:** um `let mut quadro`
+no gate novo, cujo fecho não muta nada do que captura. *É o portão da LINHA a
+fazer o trabalho que de outra forma o `ship.sh` faria dias depois.*
+
+⛔⛔ **E a 1.ª corrida dele MENTIU-ME, pela armadilha que o `CLAUDE.md` §2
+escreve por extenso:** eu canalizei o clippy por `| grep -E '^(error|warning)' |
+head`, e um `head` **destrói o código de saída** ⇒ a corrida imprimiu
+`error: could not compile` e o processo saiu **`0`**, com a notificação a
+dizer *«completed (exit code 0)»*. Só a LEITURA das linhas o apanhou. ⇒ a
+re-corrida escreve para um ficheiro e imprime o `rc` REAL. *Um portão cujo
+veredito passa por um `head` não é um portão.*
+
+⚠️ **E uma segunda mentira de arnês, de graça:** a 1.ª varredura das dez
+vassouras devolveu `rc=2` nas **dez** e eu quase a li como *«dez com achado»* —
+`2` é **uso errado**, e a causa é que neste terminal `$ALVOS` não se parte em
+palavras, logo o script recebeu os seis caminhos como **um**. ⭐ Ele **falhou
+alto** (`✗ path não existe`), que é o desenho dele; refeita sob `bash -c`, a
+resposta é `2 de 10` com achados, **todos** pré-existentes.

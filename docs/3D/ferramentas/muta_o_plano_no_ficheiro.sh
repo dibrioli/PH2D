@@ -142,6 +142,21 @@ muta "$APP/tinta_da_peca.rs" \
   '    if let Some(t) = do_traco {' \
   'P11 porta: o plano emprestado vai para QUALQUER peca'
 
+# ── O DEGRAU, que e' o report de 21/09 ───────────────────────────────────
+muta "$APP/doc.rs" \
+  '        self.tinta_nivel = crate::tinta_da_peca::degrau_do_documento(&self.objects, self.active);' \
+  '' \
+  'P13 degrau: o 1.o quadro deita o plano fora (a fileira nao volta)'
+
+muta "$APP/tinta_da_peca.rs" \
+  '    da_activa.or_else(|| {
+        objects
+            .iter()
+            .find_map(|o| o.tinta.as_ref().map(Tinta::nivel))
+    })' \
+  '    da_activa' \
+  'P14 degrau: o recurso as OUTRAS pecas desaparece'
+
 # ── O CONTROLO ───────────────────────────────────────────────────────────
 # ⚠️ Uma mutacao INERTE nao pode sangrar. Sem ela um arnes partido — um filtro
 # que casa zero testes, uma arvore ja' vermelha — devolve um placar PERFEITO.

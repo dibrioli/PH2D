@@ -334,6 +334,12 @@ impl Sculpt3dScene {
             self.objects.push(obj);
         }
         self.active = active.min(self.objects.len() - 1);
+        // ⭐⭐⭐⭐ **E O DEGRAU VOLTA COM ELE** — ver
+        // [`crate::tinta_da_peca::degrau_do_documento`]. Sem esta linha o plano
+        // é instalado e o PRIMEIRO QUADRO deita-o fora, porque a fileira
+        // `Paint Detail` nasce desarmada e a `garante` obedece-lhe: *o report
+        // do dono de 21/09, «sobreviveu mas sem os detalhes 8x»*.
+        self.tinta_nivel = crate::tinta_da_peca::degrau_do_documento(&self.objects, self.active);
         self.forget_history();
         // O device ainda tem a cena ANTERIOR: o `sync_mesh` do frame sobe o que
         // `uploaded == false` pedir e o `truncate_objects` corta o excedente —

@@ -1,4 +1,4 @@
-//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os DEZOITO elos que as curas
+//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os DEZANOVE elos que as curas
 //! desta jornada precisam de ter LIGADOS: os três consumidores da porta
 //! [`crate::tinta_da_peca::o_gesto_muda_a_topologia`], a metade da porta que lê
 //! a tinta **EMPRESTADA**, o `close_stroke` do gesto que **erra** a peça, as
@@ -297,6 +297,17 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
             .join("\n"),
             DOCUMENTO,
         ),
+        // ⛔⛔⛔ **O REPORT DE 21/09 — *«sobreviveu mas sem os detalhes 8x»*.**
+        // O plano atravessa o ficheiro e o `install_doc` instala-o; o que
+        // faltava era o DEGRAU voltar para a fileira, senão o primeiro quadro
+        // corre a `rota` com `None` e a `garante` deita o plano fora.
+        (
+            "doc.rs",
+            "P13 o degrau nao volta para a fileira e o 1.o quadro deita o plano fora",
+            "        self.tinta_nivel = crate::tinta_da_peca::degrau_do_documento(&self.objects, self.active);"
+                .to_string(),
+            DOCUMENTO,
+        ),
         (
             "undo.rs",
             "M32 o quarto canal deixa de ser aplicado no desfazer",
@@ -318,12 +329,12 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
 /// busca falhar em voz alta — mas um que devolvesse **tudo** faria a prosa
 /// satisfazer a agulha, e é isso que o [`so_a_prosa`] recusa.
 #[test]
-fn a_cura_da_tinta_fina_esta_ligada_nos_dezoito_sitios() {
+fn a_cura_da_tinta_fina_esta_ligada_nos_dezanove_sitios() {
     let elos = elos();
     assert_eq!(
         elos.len(),
-        18,
-        "a população deste censo são os dezoito elos"
+        19,
+        "a população deste censo são os dezanove elos"
     );
 
     for (ficheiro, mutacao, agulha, fonte) in elos {

@@ -236,6 +236,30 @@ fn celula_escada(n: usize, charge: f32) {
     );
 }
 
+/// **(6) O OUTRO CHAMADOR:** o `Anchored` (e o Drag Dot / Line) no watercolor NÃO passa pelo
+/// `restamp_shapes_preview` — ele entra pelo `stamp_stroke_dabs`, que também **reconstrói o lote
+/// inteiro a cada quadro** (`clear_wet_coverage` + `clear_wet_color`) e também não repõe o
+/// reservatório. `n` movimentos no MESMO raio contra UM: se diferir, o defeito não é das figuras.
+fn celula_anchored(n: usize, charge: f32) {
+    let corre = |movs: usize| {
+        let mut t = cena_wc(200.0, 7.0, 0.0, charge);
+        t.paint.brush.stroke_method = ph2d_painter_brush::StrokeMethod::Anchored;
+        t.on_canvas_pointer(cp(C, PointerPhase::Down));
+        for _ in 0..movs {
+            t.on_canvas_pointer(cp([C[0] + 160.0, C[1]], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([C[0] + 160.0, C[1]], PointerPhase::Up));
+        t
+    };
+    let a = corre(n);
+    let b = corre(1);
+    let limpa = cena_wc(200.0, 7.0, 0.0, charge);
+    let mexeu = difere(&limpa.canvas_rgba, &b.canvas_rgba).len();
+    let v = difere(&a.canvas_rgba, &b.canvas_rgba);
+    let pior = v.iter().map(|t| t.2).max().unwrap_or(0);
+    println!("  anchored n={n:<2} charge={charge:<4} -> MEXEU={mexeu:>7} difere={:>7} pior={pior:>3}", v.len());
+}
+
 /// A TABELA. ⚠️ Ela não conserta nada — ela mede, e cada linha é uma ablação de UM termo.
 #[test]
 #[ignore = "sonda de auditoria: imprime a tabela, não afirma uma barra"]
@@ -314,6 +338,12 @@ fn diag_o_resto_do_watercolor() {
         celula_escada(n, 0.5);
     }
     celula_escada(10, 1.0); // CONTROLO: mixer desarmado
+
+    println!("\n-- (6) o OUTRO chamador: Anchored (nao e figura) --");
+    for n in [1usize, 2, 5, 10] {
+        celula_anchored(n, 0.5);
+    }
+    celula_anchored(10, 1.0); // CONTROLO: mixer desarmado
 
     println!("\n(banda = distâncias ao centro onde há diferença; salva_pad = o que a caixa salva\n \
               cobre além do dab no pincel FINAL; sessao_pad = o que ela cobriria no valor VELHO)\n");

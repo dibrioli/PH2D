@@ -245,5 +245,8 @@ pub(super) mod diag_o_resto_do_descasque; // o que o descasque de uma figura em 
 #[path = "diag_o_resto_do_watercolor.rs"]
 mod diag_o_resto_do_watercolor; // a MESMA pergunta do descasque, no meio Watercolor (auditoria 2026-09-22)
 
+#[path = "watercolor_recarimbo_tests.rs"]
+mod watercolor_recarimbo_tests; // o reservatorio do mixer renasce com a cobertura (cura 2026-09-22)
+
 #[path = "diag_cura_da_pilha.rs"]
 mod diag_cura_da_pilha; // o que a ACUMULAÇÃO entregou // AUDITORIA 2026-09-21: o preço e o carimbo da recomposição regional

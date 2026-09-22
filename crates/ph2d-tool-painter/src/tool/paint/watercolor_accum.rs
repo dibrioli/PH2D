@@ -278,6 +278,17 @@ impl PainterTool {
             .iter_mut()
             .for_each(|c| *c = 0);
         self.paint.wet_level_smear_pos = None;
+        // ⭐ **O RESERVATÓRIO DO MIXER RENASCE COM A COBERTURA** (auditoria 2026-09-22, doc 42): a
+        // carga do pincel ESGOTA-SE com o depósito, e os dois chamadores desta porta reconstroem o
+        // LOTE INTEIRO a cada quadro — o re-carimbo de figura e o `Anchored`/`Drag Dot`/`Line`.
+        // Sem isto o 2.º re-carimbo corria o mixer com a carga já gasta pelo 1.º, e a MESMA figura
+        // com os MESMOS números saía diferente conforme quantas vezes lhe tinham tocado: a deriva
+        // crescia `15 → 22 → 38 → 64` bytes (n = 2, 3, 5, 10) e saturava em `64/255` sobre a figura
+        // toda. ⚠️ É a mesma frase da reserva logo acima — *o que recomeça com a cobertura recomeça
+        // AQUI* —, e a porta já existia com um chamador só (`open_stroke`: «the mixer reservoir
+        // starts fresh each stroke»). ⛔ Com o mixer desarmado (`wet_charge = 1`) isto é um no-op
+        // byte-idêntico: o `WetMix::default()` é o estado que aquele caminho nunca abandona.
+        self.reset_wet_mix();
     }
 
     /// Zero the per-stroke deposited-colour buffer (retain capacity); twin of [`Self::clear_wet_coverage`].

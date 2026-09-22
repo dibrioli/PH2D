@@ -62,43 +62,10 @@ pub(crate) fn paint_stroke_section(
     y = paint_method_row(ctx, theme, x, content_w, y, brush);
 
     // ── Spacing (% of diameter) + Adjust Strength — LOGO ABAIXO do Method (ordem do dono,
-    //    2026-09-21: *«o slider spacing nos strokes vivos (como freehand, elipse, line, etc) deve ser
-    //    posicionado logo abaixo do dropdown Method»*).
-    //
-    //    ⚠️ **O guarda VIAJA com a fileira, e é ele que casa a população exacta que ele nomeou:**
-    //    `uses_spacing()` é `Space | Line | Arc | Ellipse | Polygon | FreeHand` — medido. Deixá-lo
-    //    para trás mostraria o Spacing em métodos que não o lêem (o Grid Stamp, o Drag Dot), que é o
-    //    knob morto que esta casa passa o tempo a caçar.
-    //
-    //    ⚠️ **E o `Adjust Strength` vem JUNTO**, porque ele é o companheiro deste slider (atenua a
-    //    força pelo espaçamento): separá-los deixaria uma caixa a descrever um controlo que já não
-    //    está ao lado dela. ⭐ Isto é um REORDENAMENTO dentro da secção — as mesmas fileiras, a mesma
-    //    contagem, a mesma altura total —, logo **nada é empurrado para debaixo da dobra**; o que
-    //    muda é a ORDEM, e as fileiras de figura (Operation / Simplify / Merge / Apply / Offset)
-    //    descem duas.
-    // ── Spacing (% of diameter) + Adjust Strength — only the spacing-driven methods ──
+    //    2026-09-21). O guarda fica AQUI, na secção, e não dentro do ajudante: é ele que casa a
+    //    população exacta que o dono nomeou, e no sítio onde a ORDEM se lê. Ver o doc do ajudante.
     if method.uses_spacing() {
-        y = paint_slider_chip_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            tr("panel.painter_layers.stroke.spacing"),
-            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING_CHIP,
-            brush.spacing,
-        );
-        y = paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
-            "panel.painter_layers.stroke.adjust_strength",
-            brush.space_attenuation,
-        );
+        y = paint_spacing_rows(ctx, theme, x, content_w, y, brush);
     }
 
     // ── Grid Stamp — its own lattice: cell size + origin offset per axis, and the Show Grid toggle. ──
@@ -460,6 +427,53 @@ mod op_card;
 use apply::{paint_apply_row, paint_merge_row, paint_offset_card, paint_simplify_row};
 use grid_card::paint_grid_stamp_card;
 use jitter_card::{jitter_unit_options, paint_jitter_card};
+
+/// As duas fileiras do espaçamento: o slider (% do diâmetro) e o `Adjust Strength` que o acompanha.
+///
+/// ⭐ **Elas vivem LOGO ABAIXO do `Method`** (ordem do dono, 2026-09-21: *«o slider spacing nos
+/// strokes vivos (como freehand, elipse, line, etc) deve ser posicionado logo abaixo do dropdown
+/// Method»*). ⚠️ **Isto é um REORDENAMENTO dentro da secção** — as mesmas fileiras, a mesma
+/// contagem, a mesma altura total —, logo **nada é empurrado para debaixo da dobra**; o que muda é a
+/// ORDEM, e as fileiras de figura (Operation / Simplify / Merge / Apply / Offset) descem duas.
+///
+/// ⚠️ **O guarda `uses_spacing()` fica no CHAMADOR**, e é ele que casa a população que o dono
+/// nomeou: `Space | Line | Arc | Ellipse | Polygon | FreeHand` (medido). Deixá-lo para trás mostraria
+/// o Spacing em métodos que não o lêem (Grid Stamp, Drag Dot) — *o knob morto que esta casa passa o
+/// tempo a caçar*, e o modo de falha mais fácil de cometer num reordenamento.
+///
+/// ⚠️ **E o `Adjust Strength` vem JUNTO**, porque ele atenua a força PELO espaçamento: separá-los
+/// deixaria uma caixa a descrever um controlo que já não está ao lado dela.
+fn paint_spacing_rows(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let mut y = y;
+    y = paint_slider_chip_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.stroke.spacing"),
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING_CHIP,
+        brush.spacing,
+    );
+    paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        "panel.painter_layers.stroke.adjust_strength",
+        brush.space_attenuation,
+    )
+}
 
 #[cfg(test)]
 mod tests;

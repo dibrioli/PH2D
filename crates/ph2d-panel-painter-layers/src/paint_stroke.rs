@@ -61,6 +61,46 @@ pub(crate) fn paint_stroke_section(
     // ── Method dropdown (always) + the Save-As-Object button beside it (split out for the fn LOC cap) ──
     y = paint_method_row(ctx, theme, x, content_w, y, brush);
 
+    // ── Spacing (% of diameter) + Adjust Strength — LOGO ABAIXO do Method (ordem do dono,
+    //    2026-09-21: *«o slider spacing nos strokes vivos (como freehand, elipse, line, etc) deve ser
+    //    posicionado logo abaixo do dropdown Method»*).
+    //
+    //    ⚠️ **O guarda VIAJA com a fileira, e é ele que casa a população exacta que ele nomeou:**
+    //    `uses_spacing()` é `Space | Line | Arc | Ellipse | Polygon | FreeHand` — medido. Deixá-lo
+    //    para trás mostraria o Spacing em métodos que não o lêem (o Grid Stamp, o Drag Dot), que é o
+    //    knob morto que esta casa passa o tempo a caçar.
+    //
+    //    ⚠️ **E o `Adjust Strength` vem JUNTO**, porque ele é o companheiro deste slider (atenua a
+    //    força pelo espaçamento): separá-los deixaria uma caixa a descrever um controlo que já não
+    //    está ao lado dela. ⭐ Isto é um REORDENAMENTO dentro da secção — as mesmas fileiras, a mesma
+    //    contagem, a mesma altura total —, logo **nada é empurrado para debaixo da dobra**; o que
+    //    muda é a ORDEM, e as fileiras de figura (Operation / Simplify / Merge / Apply / Offset)
+    //    descem duas.
+    // ── Spacing (% of diameter) + Adjust Strength — only the spacing-driven methods ──
+    if method.uses_spacing() {
+        y = paint_slider_chip_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            tr("panel.painter_layers.stroke.spacing"),
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING_CHIP,
+            brush.spacing,
+        );
+        y = paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
+            "panel.painter_layers.stroke.adjust_strength",
+            brush.space_attenuation,
+        );
+    }
+
     // ── Grid Stamp — its own lattice: cell size + origin offset per axis, and the Show Grid toggle. ──
     if matches!(method, StrokeMethod::GridStamp) {
         y = paint_grid_stamp_card(ctx, theme, x, content_w, y, brush);
@@ -134,30 +174,6 @@ pub(crate) fn paint_stroke_section(
         );
     }
 
-    // ── Spacing (% of diameter) + Adjust Strength — only the spacing-driven methods ──
-    if method.uses_spacing() {
-        y = paint_slider_chip_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            tr("panel.painter_layers.stroke.spacing"),
-            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING_CHIP,
-            brush.spacing,
-        );
-        y = paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
-            "panel.painter_layers.stroke.adjust_strength",
-            brush.space_attenuation,
-        );
-    }
     // (Accumulate moved to the top-of-panel basics as a checkbox — Enio 2026-06-24.)
 
     // ── Jitter group — Position / Scale / Rotation scatter, inside a decorative card (all but Drag

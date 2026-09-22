@@ -66,10 +66,17 @@ pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor_core::Toas
     for f in MeshFormat::ALL {
         dialog = dialog.add_filter(f.extension().to_uppercase(), &[f.extension()]);
     }
-    let Some(path) = dialog
-        .set_file_name(format!("sculpt.{}", MeshFormat::Obj.extension()))
-        .save_file()
-    else {
+    // ⛔⛔⛔ **PELA PORTA, nunca `dialog.save_file()` direto** (report do dono, 22/09:
+    // *«passo 4 não mostra mensagem nenhuma no app»*). Um diálogo modal CONGELA o laço, e o
+    // quadro seguinte traz um `wall_dt` do tamanho do tempo que o artista passou nele — o
+    // `ToastQueue` anda `3 s` de relógio de PAREDE, logo a mensagem escrita aqui era apagada
+    // no `tick` antes de chegar a ser pintada. A cura já existia desde 2026-08-22 (com as
+    // palavras do dono de então: *«não vejo em nenhum lugar a mensagem»*) e mora no
+    // [`ph2d_app_host::modal`], que desconta a parte parada; **este chamador é que estava
+    // fora dela.** *Uma cura escrita para um chamador não é uma lei — só uma PORTA é.*
+    let Some(path) = ph2d_app_host::modal::save_file(
+        dialog.set_file_name(format!("sculpt.{}", MeshFormat::Obj.extension())),
+    ) else {
         return;
     };
     // ⚠️ **Uma extensão que não reconhecemos NÃO vira OBJ em silêncio.** Um

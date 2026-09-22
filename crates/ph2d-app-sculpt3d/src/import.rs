@@ -315,9 +315,12 @@ pub fn pick_and_import(
     gpu: (&std::sync::Arc<wgpu::Device>, (u32, u32)),
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
-    let picked = rfd::FileDialog::new()
-        .add_filter(ph2d_i18n::tr("app.sculpt3d.import.mesh"), MESH_EXTS)
-        .pick_files();
+    // ⛔ **Pela PORTA, pelo mesmo motivo do irmão [`super::export`]:** sem ela o congelamento do
+    // diálogo não é declarado e o toast que o `import_files` escreve a seguir morre antes de ser
+    // pintado. Ver o comentário longo lá.
+    let picked = ph2d_app_host::modal::pick_files(
+        rfd::FileDialog::new().add_filter(ph2d_i18n::tr("app.sculpt3d.import.mesh"), MESH_EXTS),
+    );
     if let Some(paths) = picked {
         import_files(&paths, slot, gpu, toasts);
     }

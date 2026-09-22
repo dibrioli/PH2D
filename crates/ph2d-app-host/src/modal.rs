@@ -117,6 +117,16 @@ pub fn pick_file(dialog: rfd::FileDialog) -> Option<PathBuf> {
     timed(|| dialog.pick_file())
 }
 
+/// A porta de **abrir VÁRIOS**, pela mesma razão.
+///
+/// ⚠️ **Ela existe porque a ausência dela mandou um chamador pela porta do lado:** a importação de
+/// malha da escultura precisa de `pick_files` (plural) e, sem esta, abria o `rfd` à mão — logo o
+/// congelamento não era declarado e o toast que ela escreve a seguir morria no `tick` do quadro
+/// seguinte. *Uma porta que cobre metade dos verbos empurra a outra metade para fora dela.*
+pub fn pick_files(dialog: rfd::FileDialog) -> Option<Vec<PathBuf>> {
+    timed(|| dialog.pick_files())
+}
+
 #[cfg(test)]
 #[path = "modal_tests.rs"]
 mod tests;

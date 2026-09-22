@@ -1876,3 +1876,107 @@ ou seja ela nunca correu no caminho de um produto.
 
 ⚠️ E o aviso desta wave é o que torna essa segunda metade **honesta de adiar**: enquanto ela não
 existir, o artista sabe o que perde **antes** de abrir o ficheiro noutro programa.
+
+## §21 — «PASSO 4 NÃO MOSTRA MENSAGEM NENHUMA»: a exportação estava certa, e o aviso morria antes de ser pintado
+
+> Report do dono, 22/09, sobre o smoke da §20: ***«passo 4 não mostra mensagem nenhuma no app.
+> Onde deveria aparecer?»***
+
+⚠️ **Conte o DELTA:** `PROJECT_SCHEMA` 0, os três registos 0, `SCULPT_DOC_VERSION` 0, zero
+contrato, zero ADR. ⛔ **Mas ela TOCA FOUNDATIONAL:** `ph2d-app-host/src/modal.rs` ganha uma porta
+**append-only** (`pick_files`) — ver §21.6.
+
+### §21.1 — O que estava certo
+
+O ficheiro é escrito, o `lost_by` devolve a frase com a cláusula, e o `import::toast` empurra-a
+para o `ToastQueue`. Os dois ramos do quadro pintam a fila
+(`fase_hero_chrome_tail` · `fase_legacy_chrome`), no **topo ao centro**
+([`progress::column_row`]), com TTL de **3 s**.
+
+⇒ *nada na wave da §20 estava errado.* O elo partido é o SEGUINTE.
+
+### §21.2 — O mecanismo: um relógio de PAREDE contra um diálogo que CONGELA
+
+O `ToastQueue::tick` anda **segundos de parede**. Um `rfd::FileDialog` bloqueia o laço **dentro**
+do quadro, logo o quadro seguinte traz um `wall_dt` do tamanho do tempo que o artista passou a
+escolher o nome — e o primeiro `tick` depois do diálogo põe `age_s ≈ 10 s` num toast de `3 s`.
+
+⇒ **ele é removido antes de alguém o desenhar.** Do lado do artista: *nenhuma mensagem*.
+
+### §21.3 — ⛔⛔⛔ E a cura já existia, com as palavras do PRÓPRIO dono, de 2026-08-22
+
+O [`fase_chrome_clock.rs`](../../../shells/desktop/src/render_loop/fase_chrome_clock.rs) tem isto
+escrito, verbatim, há um mês:
+
+> ⭐ **O tempo em que um DIÁLOGO MODAL congelou o loop não é tempo de animação.** […] O sintoma,
+> com as palavras do Enio (2026-08-22): *"não vejo em nenhum lugar a mensagem"* — o toast escrito
+> logo depois do diálogo era pintado UM quadro e morria no `tick` seguinte.
+
+A cura é o `ui_dt = modal::chrome_dt(wall_dt, modal::take_stall())`, e a cláusula que a torna
+condicional está na linha seguinte: *«a parte parada **nomeada por quem a causou**»*.
+
+⛔⛔ **⇒ ela só protege quem DECLARA.** E a exportação da escultura abria o diálogo à mão:
+
+```rust
+let Some(path) = dialog.set_file_name(...).save_file() else { return; };
+```
+
+⚠️⚠️ ***Uma cura escrita para UM chamador não é uma lei — só uma PORTA é.*** A mesma frase que
+esta linha já pagou no `stroke_uniform`, no `compact_for_faces` e no `fora_da_pegada`, aqui uma
+camada acima: **a porta estava construída, tinha um gate a exigi-la, e a população desse gate era
+UMA crate.**
+
+### §21.4 — E o gate que devia tê-lo apanhado tinha DUAS cegueiras
+
+O [`ph2d-app-field3d/tests/it/modal_door.rs`](../../../crates/ph2d-app-field3d/tests/it/modal_door.rs)
+existe exactamente para isto, com a mensagem *«diálogo modal aberto sem declarar o
+congelamento»*. Ele não podia ver este defeito por duas razões independentes:
+
+1. **A população é a crate dele.** O cabeçalho di-lo por escrito — *«o gate viajou com o sujeito
+   dele»* —, e o sujeito é a modelação 3D. A escultura nunca esteve ao alcance.
+2. ⛔ **A agulha era cega ao PLURAL.** A lista é `[".save_file()", ".pick_file()"]`, e
+   `.pick_files()` **não contém** `.pick_file()` — o parêntesis fecha antes do `s`. A importação
+   de malha desta família usa exactamente o plural, logo ela teria passado por aquele gate **sem
+   uma palavra**, mesmo que a população o alcançasse.
+
+⭐ *Uma agulha que fecha o parêntesis mede o verbo exacto e é cega ao irmão dele.*
+
+### §21.5 — A cura, e o que ela FECHA
+
+| peça | o quê |
+|---|---|
+| `ph2d_app_host::modal::pick_files` | a porta **plural**, que faltava — e a ausência dela é o que tinha empurrado a importação para fora (*uma porta que cobre metade dos verbos empurra a outra metade para fora dela*) |
+| `export.rs` · `import.rs` da escultura | passam pela porta |
+| `tests/it/modal_door.rs` (novo, desta família) | o gate irmão, com as **três** agulhas e piso de população de `150` ficheiros |
+| `modal_door.rs` do vizinho | ganha `.pick_files()` na lista |
+| `a_agulha_do_plural_nao_e_apanhada_pela_do_singular` | o CONTROLO da terceira agulha — sem ele, alguém que voltasse à lista de duas não reprovava |
+
+⭐⭐ **A corrente está gateada nos TRÊS elos, e nenhum deles a cobre sozinho:**
+
+1. *o chamador passa pela porta* — os dois gates `modal_door` (prova de mutação abaixo);
+2. *a porta declara a paragem* — `the_door_times_what_goes_through_it`, que já existia;
+3. *um laço congelado não envelhece a mensagem* — `a_frozen_loop_does_not_age_the_message_it_was_about_to_show`, que já existia.
+
+**Prova de mutação: `2 de 2` sangram**, e as duas são o defeito REAL e não um sucedâneo — a `D1`
+devolve o `export.rs` à forma exacta que o dono reportou, e a `D2` devolve o `import.rs` ao plural
+que o gate do vizinho não veria.
+
+### §21.6 — ⚠️ PARA O INTEGRADOR: isto toca FOUNDATIONAL
+
+`crates/ph2d-app-host/src/modal.rs` ganha **uma função nova no fim** (`pick_files`), sem tocar em
+assinatura nenhuma das duas que já existem — o ponto de extensão **append-only** que o ADR-0107
+prescreve. ⚠️ É uma crate que as seis famílias consomem: se outra linha lhe tiver tocado na mesma
+rodada, o conflito é textual e resolve-se por **união** (as três portas são independentes).
+
+### §21.7 — ⏳ ABERTO, com o número: a classe tem ~20 membros e NÃO é desta wave
+
+Medido nesta árvore: **~25 sítios abrem `rfd::FileDialog` directamente** contra **5** que passam
+pela porta — e o doc da própria porta já dizia *«`rfd::FileDialog` em 12 arquivos do shell»*.
+
+Toda mensagem escrita **logo a seguir** a um desses diálogos tem o mesmo destino: gravar projecto,
+exportar imagem, exportar SVG, os nove do editor de áudio, o importador de imagem, os tokens.
+
+⛔ **Não foram tocados nesta wave, de propósito:** são de outras famílias e de outra linha, o
+número está medido, e a decisão de quando é do dono. ⭐ **O que fica no sítio certo é a FORMA da
+cura:** a porta existe, e o que falta a cada família é um gate com a população dela — que é
+precisamente o que este §21 acrescentou à escultura.

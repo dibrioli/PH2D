@@ -3,8 +3,13 @@
 > **O que este doc é:** o registro dos bugs do Painter cuja **causa enganava** — aqueles em que a
 > aparência levou a vários rounds na pista errada. Não é o log de todo fix (isso o git já faz).
 >
-> **O que está VIVO aqui:** só o que ainda está **ABERTO** — os Bugs **#16**, **#15**, **#11**, a **tinta
-> EMPURRADA** do #14, e os dois achados abertos da varredura do #13. Tudo mais está **FECHADO**, e o
+> **O que está VIVO aqui:** só o que ainda está **ABERTO** — os Bugs **#15**, **#11**, a **tinta
+> EMPURRADA** do #14, os dois achados abertos da varredura do #13, e o **#24**, cujas duas causas
+> fecharam e cujo **resíduo do esfregão** continua atribuído e por curar. ⚠️ **O post-mortem do #24
+> fica AQUI e não no arquivo por ordem do dono** (*«precisamos de um doc para documentar essa
+> solução que me incomodava há muito tempo … documente com detalhes»*, 2026-09-21) — *ele é o único
+> desta lista cujas lições são sobre a RÉGUA e não sobre o produto, e são elas que a próxima caçada
+> precisa de ler antes de escrever a primeira sonda.* Tudo mais está **FECHADO**, e o
 > post-mortem inteiro (sintoma → causa → tentativas que falharam → lições) foi movido **verbatim** para
 > [`docs/archive/docs-2026-08-18/Painter/BUGS_painter.md`](../archive/docs-2026-08-18/Painter/BUGS_painter.md)
 > em 2026-08-18. A tabela abaixo é o índice: **uma linha por bug fechado, com o MECANISMO** — leia-a
@@ -39,100 +44,144 @@
 | 21 | A **secagem** custava 10-16 ms em TODO quadro, e três curas byte-idênticas mediram **1,00×**: o custo era **CAMINHAR** o canvas, não a conta. Row-parallel: 9,3× e 19,8×. | 2026-08-02 |
 | 22 | **Composite Brush**: a sessão de smear nunca era encerrada — a guarda que a fechava era uma **ENUMERAÇÃO** de modos, e a pilha era o terceiro membro da família. | 2026-08-09 |
 | 23 | A **FITA** divergiu e o processo comeu **90,2 GB**: um teto que limitava a **RESOLUÇÃO**, não o **TRABALHO** (a assinatura foi a suíte parar sem `ok` e sem falha). | 2026-08-14 |
+| 24 | **Composite Brush, os retângulos do re-carimbo** — DOIS mecanismos, ambos «que região este gesto mexe?»: a caixa SALVA pelo descasque era a do raio do PINCEL e a ESCRITA é a da CAMADA (`radius *= escala`); e **FIXAR (Enter) não fechava a pilha**, logo a figura seguinte reconstruía-se de uma base anterior ao que acabara de ser assado. | 2026-09-21 |
 
 ---
 
-## Bug #16 — Composite: um gesto de figura APAGA arte já pintada (ABERTO)
+## Bug #24 — Composite Brush: os RETÂNGULOS do re-carimbo (2026-09-21 — as DUAS causas FECHADAS, um resíduo ABERTO)
 
-> **Estado: ABERTO, ATRIBUÍDO, NÃO REPRODUZIDO NA MAGNITUDE DO REPORT.** Leia a tabela do que já foi
-> ELIMINADO antes de tentar de novo.
+> ⚠️ **Esta entrada nasceu numerada `#16` e o `#16` já existia** (aquarela, 20/07). *Um número que
+> soma numa lista conta-se, nunca se escolhe* — o índice dos fechados vai a `23`, e `#11`/`#15`
+> estão abertos ⇒ o primeiro livre é `24`.
 
-**Sintoma (Enio 2026-09-21, foto):** *«usando o stroke freehand os retângulos ficaram completamente
-brancos cobrindo a imagem pintada anteriormente. Grande Bug e deve estar relacionado.»* Na foto, um
-rectângulo de `~390×140 px` de aresta dura, branco, sobre a arte já pintada, contendo as duas figuras
-de Free Hand que estavam a ser editadas.
+**Sintoma (Enio 2026-09-21, SETE fotos ao longo do dia).** Com o Composite Brush e os métodos de
+re-carimbo (Ellipse · Polygon · Free Hand · Anchored), rectângulos de aresta dura aparecem à volta
+do desenho: primeiro fantasmas cinzentos nas margens, depois um rectângulo **branco opaco** a cobrir
+arte já pintada — *e ele aparece mesmo numa sprite TRANSPARENTE, onde o «branco» não podia vir do
+papel*.
 
-⚠️ **NÃO é o Bug #16-irmão que foi curado no mesmo dia** (a caixa do descasque contra a caixa do
-carimbo, commit `127108a27`): o interruptor de bissecção `region::CAIXA_DO_PINCEL` dá **o mesmo
-número dos dois lados** ⇒ este é **pré-existente** àquela cura.
+⭐⭐⭐ **Eram DOIS mecanismos sem nada em comum, e os dois vêm da mesma pergunta mal respondida:
+«que região é que este gesto mexe?».** Cada metade tem a régua dela, e nenhuma via a outra.
 
-### O que está MEDIDO (sonda [`diag_o_resto_do_descasque::diag_o_rectangulo_branco`](../../crates/ph2d-tool-painter/src/tool/paint/diag_o_resto_do_descasque.rs))
+---
 
-| suspeito / ablação | veredito |
+### §A — Os fantasmas nas margens: a caixa SALVA é a do PINCEL, a ESCRITA é a da CAMADA
+
+**A dica do dono foi o diagnóstico inteiro:** *«com Anchored, ao crescer ele desenha corretamente,
+mas se no mesmo movimento reduzir, vários artefatos retangulares aparecem»*.
+
+Um método de re-carimbo não acrescenta tinta: a cada quadro ele **restaura** o recorte do quadro
+anterior e re-emite a figura toda. A região que ele guarda para esse restauro era a união de
+`dab_bbox(centro, radius_px)` — **o raio do PINCEL**. Mas a pilha escreve `caixa_das_camadas`, e a
+[`camada_dabs`](../../crates/ph2d-tool-painter/src/tool/paint/composite.rs) faz `radius_px *= escala`
+**por camada** — na pilha do dono a escala é `1,904`.
+
+⇒ o anel entre as duas caixas **nunca era restaurado**. A crescer, o quadro seguinte tapa o anel do
+anterior e não se vê nada; a encolher, ele fica à vista — *que é exactamente a frase dele*.
+
+| ablação (Anchored `40→200→40` contra `40` directo) | texels de rasto |
 |---|---|
-| sem composite | **`0`** — o gesto sozinho não apaga nada |
-| calar a camada **Smear** | **`0`** ⇒ **é o esfregão** |
-| calar o `Blur` · o `Brush` de `size 1` | `239`, inalterado |
-| calar o `Brush` de `size 1,904` | **`3 452`** — ele TAPAVA metade do apagão |
-| o tecto do transporte (`2,0` raios) | `239 → 203`; a `1,0` raios **PIORA** (`527`) ⇒ **não é o alcance longo** |
-| a caixa do descasque (cura de 127108a27) | idêntico dos dois lados ⇒ **pré-existente** |
+| nenhuma (o que shipava) | **`290 534`** |
+| sem composite | `0` |
+| todos os tamanhos a `1,0` | `0` |
+| calar a camada de `size 1,904` | `0` |
+| calar qualquer outra camada | `290 534` |
 
-⛔⛔ **E o que a bancada NÃO reproduz, que é a parte honesta:** com um **CAMPO LARGO** de arte opaca
-(10 filas, `440×260 px`) o apagão lê **`0`** em todos os gestos. O que se reproduz é uma **erosão de
-`~200` texels nas PONTAS de uma tira fina de arte** — o esfregão a arrastar a extremidade —, e o mapa
-mostra **slivers verticais**, não um rectângulo. *Uma erosão de borda e um rectângulo branco de
-`390×140` não são a mesma grandeza, e declarar a causa a partir do que reproduziu seria escolher entre
-duas medições que não discriminam.*
+O resíduo acabava em **raio `380` = `200 × 1,904`**, o alcance exacto da camada maior. Depois da
+cura: `0` em todas as células.
 
-### A régua estava APONTADA AO CONTRÁRIO (2.ª e 3.ª fotos)
+⭐ **A FORMA prevista bateu com a terceira foto ANTES de eu a ver:** um anel recortado pelo
+rectângulo que o contém só escapa onde o círculo **TOCA** o rectângulo — os quatro pontos cardeais,
+nunca os cantos. A foto tem exactamente quatro fantasmas, um em cada ponto cardeal.
 
-⭐⭐⭐ O dono acrescentou o facto que decide: *«usei também uma sprite TRANSPARENTE e o retângulo
-aparece (o brush não tem seu fundo transparente)»*. ⇒ o defeito **não é arte a ser apagada, é a tela
-a ficar OPACA** — e as duas primeiras réguas desta sonda procuravam alfa a **CAIR**. Pior, a fixtura
-escondia-o: `tela_com(_, 0)` é branco transparente, onde um rectângulo **branco** só difere no alfa.
+**Cura:** [`region::caixa_do_lote`](../../crates/ph2d-tool-painter/src/tool/paint/region.rs) +
+`escala_do_carimbo` — a porta ÚNICA de *«que região este lote escreve»*, que é a mesma pergunta que
+a `watercolor_preview_footprint` já respondia ao lado para a lavagem. *O Composite era o membro da
+família que ninguém tinha coberto.*
 
-Refeita sobre tela **preta transparente** (`0,0,0,0`), onde um rectângulo branco opaco é
-inconfundível nos quatro canais, e excluindo a figura (a `150 px` do caminho):
+**Gate:** `um_recarimbo_que_encolhe_nao_deixa_rasto`, com o interruptor `region::CAIXA_DO_PINCEL`
+como CONTROLO.
 
-| caso | texels opacos LONGE da figura |
-|---|---|
-| FreeHand largada, pilha do dono | **`0`** |
-| CONTROLO: Space cumulativo no mesmo caminho | `0` |
-| cada uma das quatro camadas calada | `0` |
+---
 
-⛔⛔ ⇒ **A bancada de CPU não o produz em regime nenhum.** ⚠️ E a 1.ª redacção desta régua contava
-todo texel opaco e leu `27 006` — *o próprio desenho*, com o controlo cumulativo a ler `19 436` e a
-mesma caixa: *uma exclusão que não descreve o sujeito mede-o*. Correr Ellipse e Anchored contra a
-geometria da MÃO LIVRE fazia as duas acusarem a figura delas.
+### §B — O rectângulo com a cor do canvas: FIXAR não fechava a pilha
 
-### ⭐ O PRÓXIMO PASSO É A ARMADILHA DO BUG #11, e ela já está armada
+**Report:** *«apertei enter para fixar o desenho das formas vivas e tentei desenhar de novo com a
+elipse: o retângulo voltou mas com a cor do canvas cobrindo o desenho anterior»*.
 
-Ela separa **composite** de **overlay/GPU** numa corrida só, e é a única coisa que a bancada não
-alcança (estes testes não têm device). Ligue `PH2D_PREVIEW_DUMP=<dir>` ao arrancar o app: ele grava
-o composite de CPU de cada quadro (os bytes exactos que vão subir, **antes de qualquer overlay**) em
-`<dir>/preview_NNNN.png`, com tecto de `240` quadros. Reproduza o rectângulo e feche o app:
+⭐⭐⭐ **O pen-up de uma figura NÃO fecha o traço** — ela fica editável, e é isso que faz a sessão
+inteira ser **um** traço. Enquanto ela dura, cada quadro re-carimba **todas** as figuras vivas a
+partir do `pre` da pilha, logo nada se perde. O **Enter** (`commit_open_shape`) quebra exactamente
+essa premissa: ele assa os pixels, larga os editores — e o `pre` continuava a ser a tela de **antes**
+delas. A figura seguinte reconstrói-se dessa base velha e, na região dela, **apaga o que acabou de
+ser fixado**.
 
-* **rectângulo NOS PNGs** ⇒ é o composite, e esta bancada tem um ponto cego a nomear;
-* **PNGs LIMPOS com o rectângulo na tela** ⇒ é **overlay** ou o **produtor de GPU** — o que a 4.ª
-  foto favorece: *depois de um undo, o rectângulo trouxe resquícios da imagem ANTERIOR ao undo*,
-  conteúdo real e velho, que é a assinatura de uma região da textura que **não foi re-enviada**.
+| caso (tela preta transparente, pilha do dono, duas elipses `r = 110`) | arte fixada destruída | calando o Smear |
+|---|---|---|
+| sem Enter entre as duas | `0` | — |
+| **com Enter, SEM a cura** | **`12 530`** (pior `127`, caixa `119×280`) | `12 530` |
+| **com Enter, com a cura** | `3 083` | **`0`** |
 
-⚠️ A metade 1 da armadilha (`PH2D_PREVIEW_DIAG=1`) diz, quadro a quadro, **qual produtor tem o
-slot** — e foi ela que, no Bug #11, produziu a única pista real.
+⭐⭐ **A atribuição é DISJUNTA, e é ela que fecha o assunto:** sem a cura o esfregão **não é a
+causa** (calá-lo não muda um texel); com a cura o que sobra é **só** o esfregão.
 
-### Os ingredientes que FALTAM à bancada (já nomeados pela [auditoria §4](40_auditoria_da_pilha_2026-09-21.md))
+**Cura:** [`composite_reposicoes::commit_reset_pilha`](../../crates/ph2d-tool-painter/src/tool/paint/composite_reposicoes.rs)
+— o **quarto canal** da lista do `commit_drag_preview`, que já matava o relevo do traço, a sessão do
+escultor e a da borracha pelo mesmo motivo: *o que foi fixado é permanente, logo o estado por-traço
+que o descrevia deixou de valer*. Ela é irmã da `restamp_reset_pilha` um acto adiante, e as duas são
+**opostas no `pre`** (descascar mantém-no; fixar tem de o matar) — por isso vivem lado a lado.
 
-* a **textura em Shape** — o dono declarou-a duas vezes (*«uma textura em Shape. Jitter 0»*) e
-  **nenhuma sonda desta linha a arma**;
-* a rota do **preview/GPU** (estes testes não têm device);
-* o **relevo**, que a janela da recomposição não guarda nem repõe;
-* o **Accumulate** e o substrato.
+**Gate:** `fixar_fecha_a_pilha`, com quatro controlos e o interruptor `COMMIT_SEM_FECHAR`.
 
-### Hipóteses ELIMINADAS com o método (não repita)
+⏳ **ABERTO e atribuído:** os `3 083` que sobram são o resíduo da **base congelada do esfregão**
+(`§5.3` da [auditoria de hoje](40_auditoria_da_pilha_2026-09-21.md)) — ela é refrescada só dentro da
+região recomposta enquanto o render lê `p − disp(p)`, que pode cair fora dela. *Outro mecanismo, com
+a cura endereçada lá.*
+
+---
+
+### As lições — a RÉGUA esteve errada QUATRO vezes, e a atribuição UMA
+
+Esta caçada custou mais em instrumento do que em cura, e é isso que vale registar.
+
+| # | a régua dizia | o que ela media de facto |
+|---|---|---|
+| 1 | *«em voo a tela fica intacta»* — leu `0` em tudo | a tela estava **VAZIA**, e ali o Smear é inerte (§1 da auditoria já o tinha medido) |
+| 2 | *«o alfa caiu ⇒ arte apagada»* | uma camada **Blur baixa o alfa do miolo por LEI** — ela media o borrão |
+| 3 | *«procuro alfa a CAIR»* | o defeito faz o alfa **SUBIR** (a tela fica opaca); e sobre um fundo branco um rectângulo **branco** só difere no alfa |
+| 4 | *«conto os texels opacos»* | leu `27 006` — **o próprio desenho**, com o controlo cumulativo a ler `19 436` e a mesma caixa |
+
+⛔⛔ **E a atribuição que eu reportei ao dono estava ERRADA.** Eu disse-lhe, com um A/B ligado e
+desligado, que *«o retângulo branco é OUTRO bug, mais velho, e não foi causado por esta correção»*.
+O A/B corria — e sobre um fenómeno que **não era o dele**: a bancada produzia uma erosão de `~200`
+texels nas PONTAS de uma tira fina de arte, e o rectângulo dele tem `390×140`. ⇒ *um A/B só afirma
+sobre o fenómeno que a fixtura contém, e eu usei um para falar de outro.* A causa real (§B) é da
+mesma família da §A e foi curada no mesmo dia.
+
+⭐ **O que finalmente abriu o §B foi o dono dar o GATILHO** — *«apertei enter»* —, não uma régua
+melhor. As sete fotos dele mostram o mesmo rectângulo; só a sétima diz **quando**.
+
+### As hipóteses ELIMINADAS com o método (não repita)
 
 | hipótese | como caiu |
 |---|---|
-| `pilha.pre` obsoleto entre traços | `pilha.fecha()` limpa-o no início **e** no fim de cada traço ([`stroke_lifecycle.rs`](../../crates/ph2d-tool-painter/src/tool/paint/stroke_lifecycle.rs)) |
-| o acumulador de ARCO não reposto no re-carimbo | **já é** reposto (`restamp_reset_pilha`) — dívida paga na wave anterior |
+| `pilha.pre` obsoleto entre TRAÇOS | `pilha.fecha()` limpa-o no início **e** no fim de cada traço (`stroke_lifecycle.rs`) — o buraco era o Enter, que não é nenhum dos dois |
+| o acumulador de ARCO não reposto no re-carimbo | **já é** reposto (`restamp_reset_pilha`) |
 | a TROCA DE PLANO a deixar o escudo opaco (`255`) dentro de `canvas_rgba` na hora do snapshot | os dois `swap_canvas_plane` são emparelhados sem saída antecipada entre eles |
-| o alcance longo do transporte do esfregão | medido acima: o tecto **não cura**, e apertá-lo PIORA |
+| o alcance longo do transporte do esfregão | o tecto **não cura** (`239 → 203`) e apertá-lo **PIORA** (`527` a `1,0` raios) |
+| o upload parcial de GPU | — o mesmo veredito do [Bug #11](#bug-11--per-layer-color-linhas-retangulares-intermitentes-aberto), que esta caçada confirma |
 
-⚠️ **A régua que o próximo round precisa tem de ser a certa:** *«o alfa caiu»* **não serve** — uma
-camada `Blur` baixa o alfa do miolo por LEI, e a 1.ª redacção desta sonda mediu isso e chamou-lhe
-defeito. A régua honesta é **arte OPACA (`α ≥ 200`) que vai a QUASE ZERO**, com um controlo positivo a
-dizer quantos texels de arte opaca existem na cena.
+### O instrumento que fica
+
+* [`diag_o_resto_do_descasque`](../../crates/ph2d-tool-painter/src/tool/paint/diag_o_resto_do_descasque.rs)
+  — o que um DESCASQUE deixa para trás (a caixa do lote);
+* [`diag_o_enter_e_a_pilha`](../../crates/ph2d-tool-painter/src/tool/paint/diag_o_enter_e_a_pilha.rs)
+  — o que FIXAR deixa por fechar, com a sonda de premissa morta como CONTROLO;
+* os dois interruptores de bissecção (`CAIXA_DO_PINCEL` · `COMMIT_SEM_FECHAR`), que são **campos** e
+  não variáveis de ambiente: *um gate que lê o ambiente mede a máquina*.
 
 ---
+
 
 ## Bug #15 — Impasto: os chips do rig de luzes pintam e não clicam (ABERTO)
 

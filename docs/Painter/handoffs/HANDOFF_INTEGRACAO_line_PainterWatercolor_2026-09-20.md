@@ -2247,3 +2247,61 @@ watercolor** ⇒ a cura desta jornada não corre naquele caminho. **Pedido de pr
 
 `nextest-impacted` **18 271/18 272** (a única reprovada é a flake do §31.3) · suíte da crate
 **1 309 passed, 0 failed** · clippy `-D warnings` **zero** · `cargo fmt --check` **limpo**.
+
+---
+
+## §32 — A FILA INTEIRA (ordem do dono, 2026-09-22: *«enfileire tudo e comece com 2»*)
+
+> ⛔ **Isto NÃO é dívida de integração.** Nada aqui bloqueia a fusão; é o backlog vivo desta linha,
+> em ordem, com **o que cada item precisa antes da 1.ª linha de código**. A §30 tinha só os dois
+> primeiros — eles fecharam hoje e ficam no topo como **✅**, para o histórico da fila ser legível.
+
+### Feito hoje
+
+* ✅ **(2) O composite obedece à lei do re-carimbo** — §31.5. A causa era a `AppearanceSig`, não a
+  rota; a cura são três campos e a ausência dos outros três está escrita ao lado.
+* ✅ **(1) O `Spacing` sobe para debaixo do `Method`** — §31.6. Reordenamento puro, o guarda viajou,
+  e o tecto de LOC obrigou o corte que deixou o ficheiro melhor do que estava.
+
+### A seguir — **pedem uma DECISÃO SUA** (medidos, com o preço ao lado; não há trabalho a fazer até
+o veredito)
+
+1. **O `Mixing` no Impasto** (§19) — ele entrou porque a medição diz que aquele meio LÊ a lei, e
+   você nunca o pediu. Reverter é uma linha.
+2. **A tela grande com a pilha de cinco camadas** (§21.10) — a `2048²` a pilha põe o quadro no
+   limite; as saídas estão escritas com o custo de cada uma.
+3. **O `Pigment` mudou de sítio também na aquarela** (§19) — é a única coisa que você vê mudar num
+   painel que já tinha aprovado.
+4. **A cadência da 7.ª camada** (§25) — o `x` e o `+` não têm atalho nem desfazer próprio.
+
+### A seguir — **MEDIÇÕES que faltam** (nenhuma é um defeito conhecido; são números que hoje não
+existem, e sem eles não se pode decidir)
+
+5. **A tabela de relógio da pilha foi tirada a `load 29`** (§22.11) e tem de ser re-tirada com a
+   máquina calma — *a lei do `load ~5` vale para o FPS do app tanto como para um gate de razão*.
+6. **Sete camadas nunca foram medidas no produto real** (§25) — a tabela existente é de `+1 Brush` /
+   `+1 Erase`, não do topo da quota.
+7. **O cartão de cinco camadas × três fileiras** (§22.9) — quanto empurra o resto do painel para
+   debaixo da dobra. ⚠️ Hoje o cartão nasce a `63 px` e não a `413`, logo isto encolheu — mas o
+   número do topo da quota continua por medir.
+8. **O tecto `4,0` do tamanho de camada** (§21.11) é do relógio a `raio 24`; a faixa nunca foi
+   varrida por raio.
+
+### A seguir — **RESÍDUOS nomeados, com a cura escrita** (trabalho de facto, por ordem de tamanho do
+que o artista vê)
+
+9. **O relevo não entra na recomposição da pilha** (§22.9) — as três metades do impasto ficam de
+   fora; no meio Digital, onde a pilha vive, não há relevo, e **o gate que o afirmaria não existe**.
+10. **O resíduo do par Blur+Smear** (§27) — `12` de `255` num canto, atribuído à base congelada do
+    esfregão, com a cura nomeada.
+11. **O blend não-`Mix` de uma camada `Brush`** (§27) é aplicado uma vez na composição.
+12. **O Blur governa o preço de TODAS as camadas** (§28) — `+29 ms` por camada sem ele, `+115` com
+    um. Com sete posições isto passou a pesar mais.
+13. **Metade dos BYTES da pilha** (§28) — os sete intermédios são `[f32; 4]`; um `u16`
+    premultiplicado é `2×` e **não** é byte-idêntico ⇒ pede a barra de qualidade que a caixa já tem
+    contra o binomial.
+
+### Fora da fila desta linha
+
+* **A flake `the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`** (§31.3) — pedido de
+  promoção à lista do `CLAUDE.md` §5.0. É acto do **integrador**, não desta linha.

@@ -7,7 +7,10 @@
 > concordar sobre um facto e discordam) e **COSTURA DE UI** (todo widget pintado, populado E
 > clicável; o clique chega ao barramento; a sequência leva a algum lado).
 >
-> ⛔ **Nada foi consertado.** Este documento lista; a cura é wave própria.
+> ⛔ **Escrito ANTES da cura, e a lista é o que se manteve.** Os dois achados foram curados no
+> mesmo dia, por ordem do dono (*«vamos curar as coisas»*) — as curas estão nos §1.5 e §2.5, e a
+> parte de cima de cada achado fica **como foi medida**, porque é ela que explica porque a cura é
+> essa e não outra.
 
 ---
 
@@ -126,6 +129,45 @@ O `Charge` é fileira pintada do cartão *Water* (`0..1`,
 valor de fábrica é **`1.0`** — mixer desligado, caminho byte-idêntico. ⇒ **o defeito só existe com o
 mixer armado**, que é a feature do `Charge`. Com `Charge = 1` a escada lê `0` a `n = 10`.
 
+### §1.5 — A CURA (2026-09-22)
+
+⭐ **A porta já existia e tinha UM chamador.** `reset_wet_mix()`
+([`watercolor_mixer.rs`](../../crates/ph2d-tool-painter/src/tool/paint/watercolor_mixer.rs)) é
+invocada pelo `open_stroke`, com o doc *«the mixer reservoir starts fresh (no pickup) each stroke»*.
+A cura é **uma linha**: o `clear_wet_coverage` passa a chamá-la.
+
+⚠️ **E a porta é o `clear_wet_coverage` e NÃO o caminho da figura — isso foi MEDIDO, não escolhido.**
+O 2.º chamador daquela função é o `Anchored`/`Drag Dot`/`Line` do TRAÇO (`stamp_stroke_dabs`), que
+reconstrói o lote inteiro a cada movimento pelo mesmo mecanismo, e a sonda mostra que ele tinha o
+**mesmo defeito** (`n = 2` ⇒ `61 010` texels, pior byte `4`; com o mixer desarmado, `0`). ⇒ *o
+defeito não era das figuras: era de quem reconstrói o lote.* A lei que fica é a que o próprio corpo
+daquela função já escrevia para a reserva — ***o que recomeça com a cobertura recomeça ali***.
+
+⛔ **Com `wet_charge = 1` (fábrica) é no-op byte-idêntico:** o `WetMix::default()` é o estado que o
+caminho sem mixer nunca abandona.
+
+**Gates** ([`watercolor_recarimbo_tests.rs`](../../crates/ph2d-tool-painter/src/tool/paint/watercolor_recarimbo_tests.rs)),
+**red-first — 3 reprovavam e os 2 CONTROLOS já passavam**, que é o que prova que eles medem o mixer
+e não uma propriedade trivial do re-carimbo:
+
+| gate | antes | depois |
+|---|---|---|
+| a figura: `n = 10` == `n = 1` | ✗ `379 507` | ✓ |
+| o Anchored: `n = 10` == `n = 1` | ✗ `62 032` | ✓ |
+| a fiação: a reposição vive na PORTA | ✗ | ✓ |
+| CONTROLO figura, mixer desarmado | ✓ | ✓ |
+| CONTROLO Anchored, mixer desarmado | ✓ | ✓ |
+
+**Prova de mutação — 2 a sangrar + controlo limpo**, e a 2.ª é a que justifica o desenho:
+
+- **M2** — a chamada existe no TEXTO e não corre (`if false`): as **duas leis sangram** e a fiação
+  textual fica verde ⇒ *as leis medem o barro, não o texto*.
+- **M3** — a reposição muda-se da porta para o chamador da FIGURA: a figura **cura**, o **Anchored
+  sangra** e a fiação sangra ⇒ *a escolha da porta é load-bearing, e o gate do Anchored não é
+  redundante*.
+
+Suíte da crate depois da cura: **1 309 passed, 0 failed**.
+
 ---
 
 ## §2 — ACHADO Nº 2 (P3) · um braço de clique que gesto nenhum alcança
@@ -158,6 +200,27 @@ que é a direcção deste achado. ⏳ **Decisão do dono/linha dona:** ou o `bac
 (hoje não tem — a varredura do repo inteiro devolve só aquele braço) e fica isento com número, ou os
 dois saem juntos.
 
+### §2.5 — A CURA (2026-09-22)
+
+O trio saiu inteiro — o id, o braço de despacho e o setter `toggle_brush_pigment` —, que é a lei que
+esta casa já escreveu na retirada do *Self Pickup*: ***quando o único leitor de um valor sai, o valor
+sai com ele***. ⚠️ O campo `brush.pigment` **FICA**: ele é lido pelo `spec/queries.rs` e escrito pelo
+`set_brush_pigment_mixing`, que é o caminho vivo.
+
+⛔ **E havia uma segunda razão, mais forte que «está morto»:** o `toggle_brush_pigment` virava a
+bandeira `pigment` **sem tocar no `pigment_mix`**, enquanto o `set_brush_pigment_mixing` mantém o par
+coerente — *duas respostas ao mesmo facto, e a morta era a que estava errada*. Se alguém o acordasse,
+acordava com o defeito dentro.
+
+**O gate** (`todo_click_despachado_pela_seccao_e_alcancavel`, em
+[`watercolor_settings/tests.rs`](../../crates/ph2d-tool-painter/src/tool/paint/watercolor_settings/tests.rs))
+mede **a terceira direcção**: todo id que o `route_brush_watercolor_event` despacha por `Click` tem
+de estar no `PAINTER_WATERCOLOR_CLICKS`, que é a lista que o `event.rs` do painel varre. ⚠️ A isenção
+do `PAINTER_SHAPE_*` é **medida** (aquele id é pintado, populado e roteado pela secção de FORMA), e
+há **piso de população nos DOIS lados** da extracção — sem ele uma agulha partida varre zero e fica
+trivialmente verde. Mutação: repor um braço sobre um id que só está no `…_FIELDS` **sangra**; partir
+a agulha da extracção **sangra**.
+
 ---
 
 ## §3 — o que a auditoria mediu e NÃO acusou
@@ -183,3 +246,14 @@ dois saem juntos.
 o knob baixado · a figura que anda · a ablação do plano da reserva · a bissecção por campo · a
 escada. ⚠️ Os controlos positivos (`vivo`, `MEXEU`, `armou`, `deplete`) vêm **à frente** do veredito
 de propósito: sem eles a 1.ª redacção leu `0` em tudo e isso lê-se igual a um produto limpo.
+
+---
+
+## §5 — a lição de ARNÊS que esta jornada pagou
+
+⛔⛔ **Um `git checkout -- <ficheiro>` para desfazer uma mutação APAGA trabalho não commitado.** A
+prova de mutação do §2.5 mutava um ficheiro de teste que carregava o gate **acabado de escrever e
+ainda não commitado**; o `checkout` de restauro devolveu-o ao `HEAD` e levou o gate junto. ⚠️ *O modo
+de falha é o mau:* a corrida seguinte fica **verde** — não por o produto estar certo, mas por já não
+haver gate nenhum a medi-lo. ⇒ **a restauração de uma mutação usa o `.bak` que o próprio arnês
+guardou, nunca o git**, e o que é novo commita-se ANTES de se correr a mutação.

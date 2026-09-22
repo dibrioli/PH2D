@@ -127,8 +127,8 @@ fn diag_preco_da_pilha() {
     // camadas de depósito. ⚠️ E o `2048²` é a cena da decisão dele sobre a tela grande: sem esta
     // linha, aquela decisão é tomada sobre um número que ninguém tirou.
     println!("\n  o TOPO DA QUOTA (3 Brush + 2 Erase + 1 Blur + 1 Smear = 7 camadas)");
-    println!("  lado  |  raio |     ms | ms/evento | % do quadro (16 ev)");
-    println!("  ------+-------+--------+-----------+----------------");
+    println!("  pilha        |  lado |  raio |      ms | ms/evento | % do quadro (16 ev)");
+    println!("  -------------+-------+-------+---------+-----------+---------------------");
     let quota: [(CompositeOp, f32); 7] = [
         (CompositeOp::Brush, 1.0),
         (CompositeOp::Brush, 1.0),
@@ -138,25 +138,35 @@ fn diag_preco_da_pilha() {
         (CompositeOp::Blur, 1.0),
         (CompositeOp::Smear, 1.0),
     ];
-    for lado in [SIZE, 2048] {
-        for raio in [24.0f32, 96.0] {
-            let mut melhor = f64::MAX;
-            for _ in 0..3 {
-                let mut t = tela_de(lado, raio);
-                for (i, &(op, s)) in quota.iter().enumerate() {
-                    t.paint.composite[i] = CompositeLayer {
-                        op,
-                        strength: s,
-                        ..CompositeLayer::default()
-                    };
+    // ⚠️ **A ATRIBUIÇÃO vem ANTES de qualquer cura** (ordem do dono 2026-09-22: *«atacar o Blur»*):
+    // a quota INTEIRA contra a mesma quota **sem** a camada de Blur. Sem esta linha, «o Blur governa
+    // o preço» é uma frase; com ela é um número, e ele diz quanto uma cura ali pode comprar.
+    let sem_blur: Vec<(CompositeOp, f32)> = quota
+        .iter()
+        .filter(|(op, _)| *op != CompositeOp::Blur)
+        .copied()
+        .collect();
+    for (rotulo, pilha) in [("7 (quota)", &quota[..]), ("6 (sem Blur)", &sem_blur[..])] {
+        for lado in [SIZE, 2048] {
+            for raio in [24.0f32, 96.0] {
+                let mut melhor = f64::MAX;
+                for _ in 0..3 {
+                    let mut t = tela_de(lado, raio);
+                    for (i, &(op, s)) in pilha.iter().enumerate() {
+                        t.paint.composite[i] = CompositeLayer {
+                            op,
+                            strength: s,
+                            ..CompositeLayer::default()
+                        };
+                    }
+                    melhor = melhor.min(traco(&mut t).as_secs_f64() * 1e3);
                 }
-                melhor = melhor.min(traco(&mut t).as_secs_f64() * 1e3);
+                let por_ev = melhor / f64::from(eventos);
+                println!(
+                    "  {rotulo:12} | {lado:5} | {raio:5.0} | {melhor:7.2} | {por_ev:9.3} | {:14.1}",
+                    por_ev * EV_POR_QUADRO / 16.7 * 100.0
+                );
             }
-            let por_ev = melhor / f64::from(eventos);
-            println!(
-                "  {lado:5} | {raio:5.0} | {melhor:6.2} | {por_ev:9.3} | {:14.1}",
-                por_ev * EV_POR_QUADRO / 16.7 * 100.0
-            );
         }
     }
 }

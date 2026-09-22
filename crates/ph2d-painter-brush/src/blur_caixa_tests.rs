@@ -640,4 +640,198 @@ mod fatias_tests {
             );
         }
     }
+
+    /// **AS TRÊS HORIZONTAIS FUNDIDAS DÃO O MESMO `f32`** — o gate da cura de 2026-09-22 (ordem do
+    /// dono: *«atacar o Blur»*).
+    ///
+    /// A fusão corre as três caixas de uma LINHA enquanto ela está quente, em vez de atravessar o
+    /// buffer inteiro três vezes. ⭐ **Ela é byte-idêntica por construção** — as mesmas somas, na
+    /// mesma ordem, com os mesmos `inv` —, e este gate é o que transforma esse «por construção» numa
+    /// propriedade: ele corre as TRÊS passagens separadas (`caixa_h`, que fica no ficheiro
+    /// exactamente para ser este oráculo) e exige igualdade **ao bit**.
+    ///
+    /// ⚠️ **O corpus não é um tamanho:** ele varre raios (incluindo `k` pequeno, onde algum dos três
+    /// raios é `0` e o braço de cópia arma), larguras pares e ímpares, e as duas rotas (série e
+    /// paralelo) — *uma fusão que só fosse igual no caso do meio não seria uma fusão*.
+    #[test]
+    fn as_tres_horizontais_fundidas_dao_o_mesmo_f32() {
+        let mut casos = 0usize;
+        for k in [1usize, 2, 3, 8, 24, 96] {
+            let raios = super::super::box_radii(k);
+            let r_total: usize = raios.iter().sum();
+            for (w_extra, h) in [(1usize, 3usize), (0, 7), (5, 11), (32, 5)] {
+                let w = 2 * r_total + 1 + w_extra;
+                let src: Vec<[f32; 4]> = (0..w * h)
+                    .map(|i| {
+                        #[allow(clippy::cast_precision_loss)]
+                        let f = i as f32;
+                        [f * 0.37, f * 0.11 + 1.0, (f % 13.0) * 7.5, (f % 251.0)]
+                    })
+                    .collect();
+                for paralelo in [false, true] {
+                    // O ORÁCULO: as três passagens separadas, que é o que o produto fazia.
+                    let (mut c, mut ww) = (src.clone(), w);
+                    for r in raios {
+                        let (n, nw) = super::super::caixa_h(&c, ww, h, r, paralelo);
+                        c = n;
+                        ww = nw;
+                    }
+                    let (fundido, fw) = super::super::caixa_h3(&src, w, h, raios, paralelo);
+                    assert_eq!(
+                        fw, ww,
+                        "a largura de saída tem de ser a mesma (k={k}, w={w})"
+                    );
+                    assert_eq!(
+                        fundido, c,
+                        "a fusão tem de ser BYTE-IDÊNTICA às três passagens (k={k}, w={w}, h={h}, \
+                         paralelo={paralelo})"
+                    );
+                    casos += 1;
+                }
+            }
+        }
+        // PISO DE POPULAÇÃO: sem ele, um corpus que encolhesse para zero passaria em silêncio.
+        assert!(casos >= 48, "o corpus encolheu: {casos} casos");
+    }
+
+    /// **ONDE O BORRÃO GASTA** — a sonda que a ordem do dono de 2026-09-22 (*«atacar o Blur»*) pede
+    /// antes da 1.ª linha de cura.
+    ///
+    /// O [ADR-0171](../../../docs/architecture/decisions/0171-o-borrao-de-caixa-da-pilha-parte-se-em-fatias-e-a-largura-da-banda-e-medida.md)
+    /// já mediu o que NÃO é (o núcleo, o avental, a alocação, o cover por blocos) e deixou o custo
+    /// por pixel: `~224 B/px` em sete passagens de `[f32; 4]`. ⚠️ **Mas ele nunca partiu esse número
+    /// entre as passagens** — e sem isso «atacar o Blur» escolhe a metade errada com 50 % de chance.
+    ///
+    /// ⭐⭐ **O CONTROLO é o que torna esta sonda honesta:** as partes são medidas chamando as MESMAS
+    /// funções privadas na MESMA ordem, e a soma delas é comparada com o total medido pela **porta do
+    /// produto** (`blur_region_caixa`). Se as duas discordarem, a decomposição está a medir outro
+    /// programa — *que é exactamente como uma sonda mente*.
+    ///
+    /// ```text
+    /// bash scripts/ph2d-run.sh cargo test -p ph2d-painter-brush --release --lib \
+    ///     diag_onde_o_borrao_gasta -- --ignored --nocapture --test-threads=1
+    /// ```
+    #[test]
+    #[ignore = "sonda de relógio: corre à mão, em --release e com a máquina CALMA"]
+    fn diag_onde_o_borrao_gasta() {
+        let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+        println!("\n  ONDE O BORRÃO GASTA   (load {})", carga.trim());
+        println!(
+            "\n   bw × bh |   k | avental |     3×H |     3×V |  desfaz |  soma | porta | erro"
+        );
+        println!(
+            "  ---------+-----+---------+---------+---------+---------+-------+-------+------"
+        );
+
+        for &(bw, bh, k) in &[
+            (912usize, 240usize, 24usize),
+            (912, 400, 96),
+            (1024, 1024, 96),
+        ] {
+            let (fw, fh) = (2048i64, 2048i64);
+            let buf: Vec<u8> = (0..(fw * fh * 4) as usize)
+                .map(|i| ((i * 37) % 256) as u8)
+                .collect();
+            let ms = |f: &mut dyn FnMut()| -> f64 {
+                let mut melhor = f64::MAX;
+                for _ in 0..3 {
+                    let t0 = std::time::Instant::now();
+                    f();
+                    melhor = melhor.min(t0.elapsed().as_secs_f64() * 1e3);
+                }
+                melhor
+            };
+
+            // A porta do PRODUTO — o total contra o qual a decomposição é conferida.
+            let mut porta = 0.0;
+            let t_porta = ms(&mut || {
+                let v =
+                    super::super::blur_region_caixa(&buf, fw, fh, 0, 0, bw, bh, k, [false, false]);
+                porta = v.len() as f64;
+            });
+            let _ = porta;
+
+            let raios = super::super::box_radii(k);
+            let r_total: usize = raios.iter().sum();
+            let (ap_w, ap_h) = (bw + 2 * r_total, bh + 2 * r_total);
+            let paralelo = super::super::vale_a_pena_partir(bw, bh);
+
+            // (1) o AVENTAL — replicado, e é a única parte que não é a função do produto; o controlo
+            //     da soma abaixo é o que impede esta réplica de mentir.
+            let mut apron = Vec::new();
+            let t_ap = ms(&mut || {
+                apron = super::super::avental(
+                    &buf,
+                    fw,
+                    fh,
+                    0,
+                    0,
+                    ap_w,
+                    ap_h,
+                    r_total,
+                    [false, false],
+                    paralelo,
+                );
+            });
+
+            // ⚠️⚠️ **Nenhum `clone()` dentro do cronómetro, e isto foi APANHADO pelo controlo:** a
+            //    1.ª redacção clonava a entrada de cada etapa lá dentro, e a soma das partes leu
+            //    `+97 %` da porta. *As caixas recebem `&[…]` e não mutam a entrada, logo não há nada
+            //    a clonar; só o `desfaz` precisa de um alvo, e ele é preparado FORA.*
+            let (mut cur, mut w, mut h) = (Vec::new(), ap_w, ap_h);
+            let t_h = ms(&mut || {
+                let (mut c, mut ww) = (Vec::new(), ap_w);
+                let mut ent: &[[f32; 4]] = &apron;
+                for r in raios {
+                    let (n, nw) = super::super::caixa_h(ent, ww, ap_h, r, paralelo);
+                    c = n;
+                    ww = nw;
+                    ent = &c;
+                }
+                cur = c;
+                w = ww;
+                h = ap_h;
+            });
+
+            // (3) as três VERTICAIS.
+            let entrada_v = std::mem::take(&mut cur);
+            let mut saida = Vec::new();
+            let t_v = ms(&mut || {
+                let (mut c, mut hh) = (Vec::new(), h);
+                let mut ent: &[[f32; 4]] = &entrada_v;
+                for r in raios {
+                    let fatias = if paralelo {
+                        super::super::bandas_da_vertical(w)
+                    } else {
+                        1
+                    };
+                    let (n, nh) = super::super::caixa_v(ent, w, hh, r, fatias);
+                    c = n;
+                    hh = nh;
+                    ent = &c;
+                }
+                saida = c;
+            });
+
+            // (4) o DESFAZ da premultiplicação — o alvo é preparado FORA do cronómetro.
+            let mut alvo = saida.clone();
+            let t_d = ms(&mut || {
+                for p in &mut alvo {
+                    let a = p[3];
+                    let inv = if a > 1e-4 { 255.0 / a } else { 0.0 };
+                    *p = [p[0] * inv, p[1] * inv, p[2] * inv, a];
+                }
+            });
+
+            let soma = t_ap + t_h + t_v + t_d;
+            let erro = (soma - t_porta) / t_porta * 100.0;
+            println!(
+                "  {bw:4}×{bh:4} | {k:3} | {t_ap:7.2} | {t_h:7.2} | {t_v:7.2} | {t_d:7.2} | {soma:5.1} | {t_porta:5.1} | {erro:+5.1}%"
+            );
+        }
+        println!(
+            "\n  (o ERRO é o controlo: se a soma das partes não bater a porta do produto,\n   \
+             a decomposição está a medir outro programa)\n"
+        );
+    }
 }

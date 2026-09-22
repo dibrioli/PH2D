@@ -118,6 +118,90 @@ fn caixa_h(
     (out, ow)
 }
 
+/// **AS TRÊS CAIXAS HORIZONTAIS, FUNDIDAS NUMA PASSAGEM SOBRE A MEMÓRIA** (2026-09-22, ordem do
+/// dono *«atacar o Blur»*).
+///
+/// ⭐ **A fusão é possível por uma propriedade que o [`caixa_h`] já declara:** *uma linha de saída é
+/// função só da linha de entrada dela*. Logo as três caixas de uma linha podem correr enquanto ela
+/// está quente na cache, em vez de atravessarem o buffer inteiro três vezes.
+///
+/// ⭐⭐ **E é BYTE-IDÊNTICA, não «igual a menos de um epsilon»:** as somas por linha são as mesmas,
+/// na mesma ordem, com os mesmos `inv` — *o que muda é onde os intermédios vivem, nunca a
+/// aritmética*. O gate `as_tres_horizontais_fundidas_dao_o_mesmo_f32` compara-a com as três
+/// passagens separadas sobre um corpus de tamanhos e raios.
+///
+/// ⚠️ **O que ela compra é TRÁFEGO, e o ADR-0171 mediu que é disso que este núcleo vive**
+/// (`~224 B/px` a `6,8 GB/s`, da ordem de um núcleo): três passagens separadas leem e escrevem o
+/// buffer inteiro três vezes; esta lê-o uma vez e escreve-o uma vez, com os dois intermédios a
+/// caberem num rascunho por linha.
+fn caixa_h3(
+    src: &[[f32; 4]],
+    w: usize,
+    h: usize,
+    raios: [usize; 3],
+    paralelo: bool,
+) -> (Vec<[f32; 4]>, usize) {
+    let r_total: usize = raios.iter().sum();
+    if r_total == 0 {
+        return (src.to_vec(), w);
+    }
+    let ow = w - 2 * r_total;
+    let mut out = vec![[0f32; 4]; ow * h];
+    // Uma caixa sobre uma fatia, escrita num destino — o MESMO laço do `caixa_h`, sem o buffer.
+    let caixa = |ent: &[[f32; 4]], r: usize, dest: &mut [[f32; 4]]| {
+        if r == 0 {
+            dest.copy_from_slice(&ent[..dest.len()]);
+            return;
+        }
+        let lado = 2 * r + 1;
+        #[allow(clippy::cast_precision_loss)]
+        let inv = 1.0 / lado as f32;
+        let mut acc = [0f32; 4];
+        for s in ent.iter().take(lado) {
+            for c in 0..4 {
+                acc[c] += s[c];
+            }
+        }
+        let n = dest.len();
+        for i in 0..n {
+            for c in 0..4 {
+                dest[i][c] = acc[c] * inv;
+            }
+            if i + 1 < n {
+                for c in 0..4 {
+                    acc[c] += ent[i + lado][c] - ent[i][c];
+                }
+            }
+        }
+    };
+    let w1 = w - 2 * raios[0];
+    let w2 = w1 - 2 * raios[1];
+    // ⚠️⚠️ **O rascunho é por THREAD e nunca por linha.** A 1.ª redacção alocava os dois intermédios
+    //    dentro do laço — `2 × h` alocações por passagem —, e isso comeria o tráfego que a fusão
+    //    existe para poupar. O `for_each_init` do rayon dá um rascunho por trabalhador; em série ele
+    //    é um só, fora do laço.
+    let linha =
+        |t1: &mut Vec<[f32; 4]>, t2: &mut Vec<[f32; 4]>, j: usize, dest: &mut [[f32; 4]]| {
+            let ent = &src[j * w..j * w + w];
+            caixa(ent, raios[0], t1);
+            caixa(t1, raios[1], t2);
+            caixa(t2, raios[2], dest);
+        };
+    if paralelo {
+        use rayon::prelude::*;
+        out.par_chunks_mut(ow).enumerate().for_each_init(
+            || (vec![[0f32; 4]; w1], vec![[0f32; 4]; w2]),
+            |(t1, t2), (j, dest)| linha(t1, t2, j, dest),
+        );
+    } else {
+        let (mut t1, mut t2) = (vec![[0f32; 4]; w1], vec![[0f32; 4]; w2]);
+        out.chunks_mut(ow)
+            .enumerate()
+            .for_each(|(j, dest)| linha(&mut t1, &mut t2, j, dest));
+    }
+    (out, ow)
+}
+
 /// Uma passagem de caixa VERTICAL por soma corrente. ⚠️ O acumulador é uma LINHA inteira e desliza
 /// para baixo — uma coluna de cada vez leria a memória com passo `w` e pagaria a cache.
 fn caixa_v(
@@ -324,24 +408,28 @@ pub(crate) const PIXEIS_PARA_PARALELIZAR: usize = 256 * 256;
 /// máquina*, e a lei aqui é sobre os bytes de saída.
 #[allow(clippy::too_many_arguments)]
 #[must_use]
-pub(crate) fn blur_region_caixa_com(
+/// **O AVENTAL**: a região mais a margem que as três caixas vão consumir, lida do canvas e já
+/// PREMULTIPLICADA. ⭐ Ele é por-pixel puro — *uma linha dele não lê nenhuma outra* —, logo parti-lo
+/// em fatias é byte-idêntico (ADR-0171).
+///
+/// ⚠️ **Porta própria desde 2026-09-22, e não por estética:** a sonda que parte o relógio do borrão
+/// entre as passagens (`diag_onde_o_borrao_gasta`) precisava de o cronometrar sozinho, e a
+/// alternativa era **replicá-lo** no teste — *uma sonda que replica o passo que mede pode medir
+/// outro programa, que é como as sondas desta casa já mentiram meia dúzia de vezes*.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn avental(
     buf: &[u8],
     fw: i64,
     fh: i64,
     min_x: i64,
     min_y: i64,
-    bw: usize,
-    bh: usize,
-    k: usize,
+    ap_w: usize,
+    ap_h: usize,
+    r_total: usize,
     wrap: [bool; 2],
     paralelo: bool,
 ) -> Vec<[f32; 4]> {
-    let raios = box_radii(k);
-    let r_total: usize = raios.iter().sum();
-    let ap_w = bw + 2 * r_total;
-    let ap_h = bh + 2 * r_total;
     let mut apron = vec![[0f32; 4]; ap_w * ap_h];
-    // O avental é por-pixel puro: uma linha dele não lê nenhuma outra ⇒ byte-idêntico em fatias.
     let linha_avental = |j: usize, dest: &mut [[f32; 4]]| {
         let sy = src_coord(min_y + j as i64 - r_total as i64, fh, wrap[1]);
         for (i, d) in dest.iter_mut().enumerate().take(ap_w) {
@@ -369,13 +457,32 @@ pub(crate) fn blur_region_caixa_com(
             .enumerate()
             .for_each(|(j, dest)| linha_avental(j, dest));
     }
-    // Separável: as três caixas na horizontal, depois as três na vertical.
-    let (mut cur, mut w, mut h) = (apron, ap_w, ap_h);
-    for r in raios {
-        let (n, nw) = caixa_h(&cur, w, h, r, paralelo);
-        cur = n;
-        w = nw;
-    }
+    apron
+}
+
+pub(crate) fn blur_region_caixa_com(
+    buf: &[u8],
+    fw: i64,
+    fh: i64,
+    min_x: i64,
+    min_y: i64,
+    bw: usize,
+    bh: usize,
+    k: usize,
+    wrap: [bool; 2],
+    paralelo: bool,
+) -> Vec<[f32; 4]> {
+    let raios = box_radii(k);
+    let r_total: usize = raios.iter().sum();
+    let ap_w = bw + 2 * r_total;
+    let ap_h = bh + 2 * r_total;
+    let apron = avental(
+        buf, fw, fh, min_x, min_y, ap_w, ap_h, r_total, wrap, paralelo,
+    );
+    // Separável: as três caixas na horizontal — FUNDIDAS numa passagem (2026-09-22) —, depois as
+    // três na vertical. ⚠️ O `caixa_h` fica: ele é o oráculo do gate da fusão.
+    let (cur, w) = caixa_h3(&apron, ap_w, ap_h, raios, paralelo);
+    let (mut cur, mut w, mut h) = (cur, w, ap_h);
     for r in raios {
         let (n, nh) = caixa_v(
             &cur,

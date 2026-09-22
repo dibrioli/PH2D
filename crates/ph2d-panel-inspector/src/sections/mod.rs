@@ -14,7 +14,7 @@ pub(crate) use ph2d_editor_core::icons::IconId;
 pub(crate) use ph2d_editor_core::ids as core_ids;
 pub(crate) use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 pub(crate) use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text, paint_text_block, rect_to_vello, resolve,
+    fill_rounded_rect, paint_text, paint_text_block, resolve,
 };
 pub(crate) use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, InspectorSpriteSource};
 pub(crate) use ph2d_editor_core::widget::panel_chrome::{
@@ -23,10 +23,10 @@ pub(crate) use ph2d_editor_core::widget::panel_chrome::{
 pub(crate) use ph2d_editor_core::widget::showcase::read_number_input;
 pub(crate) use ph2d_editor_core::widget::{
     BitmaskGrid32, Button, ButtonKind, ButtonState, Checkbox, CheckboxState, CheckboxValue,
-    ColorSwatch, IconButtonStyle, IconGlyph, NumberInput, SectionHeader, SliderState, SwatchSize,
-    TabItem, Tabs, TabsVariant, TextInput, TextInputState, paint_bitmask_grid32, paint_button,
-    paint_checkbox, paint_color_swatch, paint_icon_button, paint_number_input_with_buffer,
-    paint_section_header, paint_slider_with_chip, paint_tabs, paint_text_input_with_buffer,
+    IconButtonStyle, IconGlyph, NumberInput, SectionHeader, SliderState, TabItem, Tabs,
+    TabsVariant, TextInput, TextInputState, paint_bitmask_grid32, paint_button, paint_checkbox,
+    paint_icon_button, paint_number_input_with_buffer, paint_section_header,
+    paint_slider_with_chip, paint_tabs, paint_text_input_with_buffer,
 };
 pub(crate) use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::TextKey;

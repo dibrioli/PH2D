@@ -303,8 +303,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.color_tint.self_tint" => "Self Tint",
         "panel.inspector.color_tint.opacity" => "Opacity",
         "panel.inspector.color_tint.tint_fill" => "Tint Fill",
-        "panel.inspector.color_tint.per_corner_tint_vertex_gradient" => {
-            "Per-Corner Tint (vertex gradient)"
+        // ⭐ **Encurtado por ordem do dono (2026-09-21)** — ele escreveu-o assim no desenho dele.
+        // ⛔⛔ E aqui isso NÃO é cosmética: medido, o nome comprido é mais largo do que METADE do
+        // painel, logo ele come a coluna do controlo e as quatro amostras do per-corner saíam a
+        // `35 px`. *A explicação vive no balão do controlo; o nome vive na coluna.*
+        "panel.inspector.color_tint.per_corner_tint_vertex_gradient" => "Per-corner Tint",
+        "panel.inspector.color_tint.per_corner_tint_hint" => {
+            "Each corner of the quad gets its own tint; the renderer blends between them."
         }
         "panel.inspector.color_tint.top_left_corner_tint" => "Top-left corner tint",
         "panel.inspector.color_tint.top_right_corner_tint" => "Top-right corner tint",

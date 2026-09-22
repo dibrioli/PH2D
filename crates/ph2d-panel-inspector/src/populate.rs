@@ -432,6 +432,7 @@ fn populate_color_tint(store: &mut WidgetStore) {
     ] {
         store.register(id, InteractiveState::Plain);
     }
+    crate::populate_dicas::dicas(store);
     // "Equalize corners" button (copies TL → the other three).
     store.register(
         crate::ids::INSP_SPRITE_CORNER_EQUALIZE,

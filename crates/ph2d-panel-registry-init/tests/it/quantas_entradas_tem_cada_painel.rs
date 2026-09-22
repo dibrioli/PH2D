@@ -2434,7 +2434,10 @@ fn larguras_dos_selectores_de_cor() -> std::collections::BTreeMap<i32, usize> {
 ///
 /// ⚠️ **A catraca conta FORMAS e não sítios:** o alvo é *uma* forma, e cada wave que converte um
 /// grupo tira uma linha daqui. ⛔ Uma forma NOVA reprova.
-const LARGURAS_DE_COR: &[i32] = &[18, 32, 120, 268];
+const LARGURAS_DE_COR: &[i32] = &[18, 32, 59, 120, 268];
+// ⭐ O `59` é METADE da coluna do valor menos o vão — a célula do per-corner, que é `2 × 2` dentro
+//   de uma linha. ⚠️ Ele **substituiu** um `35`: o nome comprido do bloco comia a coluna, e
+//   encurtá-lo (ordem do dono) deu `68 %` mais alvo sem mover uma linha de disposição.
 
 #[test]
 fn as_formas_de_um_selector_de_cor_so_encolhem() {
@@ -2593,16 +2596,20 @@ fn diag_quando_o_nome_move_a_coluna() {
     }
 }
 
-/// ⭐⭐⭐ **O PER-CORNER: a PRÉVIA à esquerda, os QUATRO CANTOS à direita** — ordem do dono.
+/// ⭐⭐⭐ **O PER-CORNER É UMA LINHA DE PROPRIEDADE** — o nome à esquerda, os quatro cantos na
+/// coluna do valor, com a ALTURA DE LINHA das outras amostras.
 ///
-/// ⛔ **Escolha do dono, 2026-09-21**, entre duas saídas medidas: encolher as peças para o grupo
-/// caber na coluna do valor (`~144 px` de grupo contra `~120` de coluna), ou o nome em cima com
-/// `[prévia] [grelha]`, como ele desenhou. *Ele escolheu o tamanho do alvo.*
+/// ⛔⛔ **Ordem do dono, 2026-09-21, depois de ver a versão com a prévia:** *«vamos tirar o preview
+/// (rect maior) e no lugar colocar a label. Alinhar ao centro. Os 4 seletores de cor à direita com
+/// a altura padrão dos outros seletores de cor»*.
 ///
-/// ⚠️ **Este gate nasceu porque a troca passou `355` gates do painel sem que um os medisse** — a
-/// geometria de um bloco não tinha régua nenhuma.
+/// ⚠️⚠️ **A premissa da versão anterior MORREU com a prévia.** A tolerância do
+/// `no_row_paints_its_name_above_its_control` media o grupo em `~144 px` (`4 amostras + a PRÉVIA à
+/// direita delas`) contra uma coluna de `~120`; sem a prévia ele cabe, e a entrada do
+/// `color_tint.rs` **saiu** daquela lista. *A excepção não foi afrouxada — o que a causava foi
+/// retirado.*
 #[test]
-fn o_per_corner_tem_a_previa_a_esquerda_dos_quatro_cantos() {
+fn o_per_corner_e_uma_linha_de_propriedade() {
     let _ = ph2d_panel_registry_init::register_all_panels();
     ph2d_editor_core::panel::with_registry(|reg| {
         let painel = reg
@@ -2635,12 +2642,11 @@ fn o_per_corner_tem_a_previa_a_esquerda_dos_quatro_cantos() {
         let tr_ = r(iid::INSP_SPRITE_CORNER_TR);
         let bl = r(iid::INSP_SPRITE_CORNER_BL);
         let br = r(iid::INSP_SPRITE_CORNER_BR);
-        // ⭐ A MARGEM do bloco — o *Equalize* atravessa-o inteiro, e é o único do grupo que a diz.
-        let margem = r(iid::INSP_SPRITE_CORNER_EQUALIZE).x;
+        let tint = r(iid::INSP_SPRITE_TINT_SWATCH);
 
-        // (1) A grelha continua a ser uma grelha.
+        // (1) A grelha continua a ser uma grelha — ela mapeia os cantos do quad.
         assert!(
-            (tl.y - tr_.y).abs() < 0.5 && (bl.y - br.y).abs() < 0.5,
+            (tl.y - tr_.y).abs() < 0.5 && (bl.y - br.y).abs() < 0.5 && bl.y > tl.y,
             "as filas do 2×2 não estão alinhadas: TL {:.1} TR {:.1} · BL {:.1} BR {:.1}",
             tl.y,
             tr_.y,
@@ -2649,28 +2655,87 @@ fn o_per_corner_tem_a_previa_a_esquerda_dos_quatro_cantos() {
         );
         assert!(
             (tl.x - bl.x).abs() < 0.5 && (tr_.x - br.x).abs() < 0.5 && tr_.x > tl.x,
-            "as colunas do 2×2 não estão alinhadas: TL {:.1} TR {:.1} · BL {:.1} BR {:.1}",
-            tl.x,
-            tr_.x,
-            bl.x,
-            br.x
+            "as colunas do 2×2 não estão alinhadas"
         );
 
-        // (2) ⭐ A PRÉVIA está à ESQUERDA — a grelha não começa na margem do bloco, e o que
-        //     ocupa o espaço é do tamanho dela (duas amostras mais o vão).
-        let previa_w = tr_.x + tr_.w - tl.x;
+        // (2) ⭐ **A ALTURA É A DE LINHA** — a mesma da `Tint`, que é o que o dono pediu.
+        for (nome, c) in [("TL", tl), ("TR", tr_), ("BL", bl), ("BR", br)] {
+            assert!(
+                (c.h - ph2d_tokens::ROW_H_PX).abs() < 0.5,
+                "o canto {nome} mede {:.1} px de altura e a linha padrão é {:.1}",
+                c.h,
+                ph2d_tokens::ROW_H_PX
+            );
+        }
+
+        // (3) ⭐ **NA COLUNA DO VALOR** — a grelha começa onde a barra da `Tint` começa.
         assert!(
-            tl.x - margem >= previa_w,
-            "a grelha começa a {:.1} px da margem do bloco ({margem:.1}) e a prévia mede \
-             {previa_w:.1} — ou ela deixou de estar à esquerda, ou encolheu.\n\
-             ⇒ a ordem é a do desenho do dono: o RESULTADO primeiro, as quatro entradas depois.",
-            tl.x - margem
+            (tl.x - tint.x).abs() < 0.5,
+            "a grelha começa em {:.1} e a barra da `Tint` em {:.1} — o per-corner deixou de \
+             partilhar a coluna do valor com as vizinhas",
+            tl.x,
+            tint.x
         );
-        // ⛔ **O CONTROLO**: antes desta wave a grelha começava NA margem (a prévia ficava à
-        //    direita). Sem ele, um bloco que perdesse a prévia passaria esta régua.
+        // (4) E as duas colunas de células enchem a coluna do valor.
+        let ocupado = tr_.x + tr_.w - tl.x;
         assert!(
-            tl.x - margem > 1.0,
-            "a grelha começa na margem do bloco — é exactamente a disposição de ANTES"
+            (ocupado - tint.w).abs() < 1.5,
+            "as duas células ocupam {ocupado:.1} px e a coluna do valor tem {:.1}",
+            tint.w
+        );
+        // ⛔ **O CONTROLO**: a célula NÃO é do tamanho de uma barra inteira — se fosse, o «2×2»
+        //    seria uma coluna só e as duas metades acima passariam sobre outra disposição.
+        assert!(
+            tl.w < tint.w * 0.75,
+            "a célula mede {:.1} e a barra {:.1} — isto já não é uma grelha de duas colunas",
+            tl.w,
+            tint.w
+        );
+    });
+}
+
+/// ⭐⭐ **O QUE SAIU DO NOME ESTÁ NO BALÃO** — a regra do dono, 2026-09-21.
+///
+/// *«Quanto aos nomes grandes precisamos reduzir, as dicas devem ser passadas para o mouse
+/// Hover»*. ⛔ Encurtar sem o balão é perder a explicação: o `(vertex gradient)` do per-corner
+/// dizia o que os quatro cantos FAZEM.
+///
+/// ⚠️ **O balão mora nos CONTROLOS e não no rótulo**, por medição: um rótulo de bloco não tem id
+/// nem rect registado, logo não há onde o pendurar sem mecanismo novo — e a mão passa é sobre as
+/// amostras.
+#[test]
+fn a_dica_que_saiu_do_nome_do_per_corner_esta_no_balao() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "inspector")
+            .expect("o inspector");
+        let mut host = MockPanelHost::new();
+        painel.populate(host.store_mut());
+        use ph2d_panel_inspector::ids as iid;
+        for (nome, id) in [
+            ("TL", iid::INSP_SPRITE_CORNER_TL),
+            ("TR", iid::INSP_SPRITE_CORNER_TR),
+            ("BL", iid::INSP_SPRITE_CORNER_BL),
+            ("BR", iid::INSP_SPRITE_CORNER_BR),
+        ] {
+            let balao = host.store().tooltip_for(id);
+            assert!(
+                balao.is_some_and(|t| !t.is_empty()),
+                "o canto {nome} não tem balão — o nome do bloco foi encurtado e a explicação \
+                 que ele carregava não foi para lado nenhum"
+            );
+        }
+        // ⛔ **O CONTROLO**: a `Tint`, cujo nome nunca carregou explicação, NÃO ganha balão —
+        //    senão este gate ficaria verde num app que pendura um balão em tudo.
+        assert!(
+            host.store()
+                .tooltip_for(iid::INSP_SPRITE_TINT_SWATCH)
+                .is_none(),
+            "a `Tint` ganhou um balão — esta régua deixa de distinguir «a dica foi para o hover» \
+             de «há balões em todo o lado»"
         );
     });
 }

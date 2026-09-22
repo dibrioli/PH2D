@@ -316,9 +316,14 @@ mod tests {
 /// interaction` foi a `50` contra um tecto de `49`): *um pintor de widget não vai buscar o que
 /// pinta* — quem resolve `widget_color(id) ?? fallback` é o chamador, que já vive do lado da
 /// interacção. `None` é o **misto**.
+/// ⚠️⚠️ **O `a11y` é obrigatório, e quem o impôs foi um gate:** a 1.ª redacção desta porta passava
+/// `""` e os QUATRO cantos do per-corner perderam o nome acessível ao entrar por ela — o censo de
+/// chaves acusou-os como *«na tabela e ninguém as usa»*. *Uma porta que engole o nome de quem a
+/// atravessa transforma quatro controlos em quatro quadrados anónimos.*
 pub fn paint_swatch_or_mixed(
     rect: Rect,
     swatch_id: NodeId,
+    a11y: &str,
     rgba: Option<[u8; 4]>,
     scene: &mut VectorScene,
     theme: Theme,
@@ -327,7 +332,7 @@ pub fn paint_swatch_or_mixed(
         paint_mixed_swatch(rect, scene, theme);
         return;
     };
-    let swatch = ColorSwatch::new(swatch_id, "", rgba).size(SwatchSize::Sm);
+    let swatch = ColorSwatch::new(swatch_id, a11y, rgba).size(SwatchSize::Sm);
     paint_color_swatch(&swatch, rect, scene, theme);
 }
 
@@ -367,6 +372,7 @@ mod swatch_ou_misto_tests {
         paint_swatch_or_mixed(
             Rect::new(0.0, 0.0, 120.0, 22.0),
             NodeId(1),
+            "vermelho",
             (!mixed).then_some([0xff, 0x00, 0x00, 0xff]),
             &mut scene,
             Theme::default(),

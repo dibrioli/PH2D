@@ -43,10 +43,11 @@ const AINDA_POR_CIMA: &[(&str, &str)] = &[
         "grelha 3x3 + os dois atalhos A' DIREITA dela (~144 px) — nao cabe na coluna do controlo \
          abaixo de um painel de 336",
     ),
-    (
-        "color_tint.rs",
-        "4 amostras + a previa do gradiente A' DIREITA delas (~144 px) — a mesma medicao",
-    ),
+    // ⭐⭐ **A entrada do `color_tint.rs` SAIU em 2026-09-21, por ordem do dono** (*«vamos tirar o
+    //    preview (rect maior) e no lugar colocar a label»*): a tolerancia media `~144 px` porque o
+    //    grupo era `4 amostras + a PREVIA a' direita delas`, e sem a previa ele cabe na coluna do
+    //    controlo. ⇒ *a excepcao nao foi afrouxada — o que a causava foi retirado*, e o per-corner
+    //    e' hoje uma linha de propriedade como as vizinhas.
 ];
 
 fn sections_dir() -> PathBuf {

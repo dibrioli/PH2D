@@ -300,31 +300,41 @@ fn paint_per_corner_tab(
     y: f32,
     sp: Option<&InspectorSpriteInfo>,
 ) -> f32 {
-    // Explanatory label — these four swatches are the per-corner (vertex)
-    // tint; the renderer bilinearly interpolates them across the quad, so
-    // distinct corners make a gradient (anatomia §3.6).
-    // ⛔⛔ **A SEGUNDA (e última) linha do Inspector com o nome POR CIMA, pela MESMA medição da
-    //    grelha 3×3 do 9-slice** (2026-09-15): o controlo não são as quatro amostras — são as
-    //    amostras **mais a pré-visualização do gradiente**, que vive à direita delas e é o que
-    //    torna o par legível. `2 × 32 + 4` de amostras `+ 8` de vão `+ 68` de prévia = **`~144 px`**,
-    //    e a coluna do controlo (`0,5 × interior − 14`) só lá chega acima de um painel de `336`.
+    // ⭐⭐⭐ **O NOME À ESQUERDA, OS QUATRO CANTOS NA COLUNA DO VALOR** — ordem do dono,
+    //    2026-09-21, depois de ver a versão anterior: *«vamos tirar o preview (rect maior) e no
+    //    lugar colocar a label. Alinhar ao centro. Os 4 seletores de cor à direita com a altura
+    //    padrão dos outros seletores de cor»*.
     //
-    // ⇒ As duas são BLOCOS com legenda, não linhas de propriedade — e é por isso que ficam.
+    // ⛔⛔ **Ele deixou de ser um BLOCO COM LEGENDA e passou a ser uma LINHA DE PROPRIEDADE**, e o
+    //    que o destravou foi tirar a prévia: a nota que aqui esteve media o grupo em `~144 px`
+    //    (`2 × 32` de amostras `+ 8` de vão `+ 68` de PRÉVIA) contra uma coluna de `~120`, e sem
+    //    os `68` ele cabe. *A prévia era o que o impedia de alinhar com as vizinhas.*
+    //
+    // ⚠️ **As quatro medem a ALTURA DE LINHA**, como a `Tint` e a `Self Tint` — a padronização que
+    //    o mesmo report pediu —, e a largura sai da coluna a dividir por dois.
+    let gap = ph2d_tokens::control_gap_px();
+    let sec = seccao_de_cores(
+        text_system,
+        &[tr(
+            "panel.inspector.color_tint.per_corner_tint_vertex_gradient",
+        )],
+    );
+    let alto = ph2d_tokens::ROW_H_PX * 2.0 + gap;
+    let row = ph2d_editor_core::widget::property_row_columns_for(x, w, y, alto, sec.nome_w(), None);
+    // ⭐ O nome ao CENTRO do bloco — ele descreve as DUAS filas, não a de cima.
     let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
-    paint_text(
+    ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
         tr("panel.inspector.color_tint.per_corner_tint_vertex_gradient"),
-        x,
-        y + (label_h - label_font) * 0.5,
+        row.label.x,
+        row.label.y + (alto - label_font) * 0.5,
         label_font,
-        w,
+        row.label.w,
         resolve(ColorToken::Text2, theme),
     );
-    let y = y + label_h;
-    let swatch_px = SwatchSize::Md.px();
-    let gap = Spacing::Xs.px();
+    let cell_w = ((row.control.w - gap) * 0.5).max(1.0);
+    let cell_h = ph2d_tokens::ROW_H_PX;
     let committed = sp
         .map(|s| s.per_corner_tint)
         .unwrap_or([[1.0, 1.0, 1.0, 1.0]; 4]); // WHITE = per-corner default (no gradient)
@@ -334,49 +344,41 @@ fn paint_per_corner_tab(
         ids::INSP_SPRITE_CORNER_BL,
         ids::INSP_SPRITE_CORNER_BR,
     ];
+    // ⚠️ **O nome acessível de cada canto** — sem ele os quatro são quadrados anónimos, e foi o
+    //    censo de chaves que o apanhou quando a porta nova os engoliu.
     let a11y = [
         tr("panel.inspector.color_tint.top_left_corner_tint"),
         tr("panel.inspector.color_tint.top_right_corner_tint"),
         tr("panel.inspector.color_tint.bottom_left_corner_tint"),
         tr("panel.inspector.color_tint.bottom_right_corner_tint"),
     ];
-    // ⭐⭐ **A PRÉVIA À ESQUERDA, OS QUATRO CANTOS À DIREITA** — ordem do dono (2026-09-21), com um
-    //    desenho ao lado da foto. ⚠️ Ele escolheu esta e não «encolher e pôr na coluna do valor»:
-    //    medido, o grupo precisa de `~144 px` (`2 × 32 + 4` de amostras `+ 8` de vão `+ 68` de
-    //    prévia) e a coluna do valor no painel dele tem `~120`, logo alinhá-lo com as caixas de
-    //    marcar exigiria encolher as amostras. *Ele preferiu o tamanho do alvo ao alinhamento.*
-    //
-    // ⭐ E a ordem é a que ele desenhou: o RESULTADO primeiro, as quatro entradas depois.
-    let previa_w = swatch_px * 2.0 + gap;
-    let grid_x = x + previa_w + Spacing::Md.px();
-    // TL, TR, BL, BR positions in a 2×2 grid.
+    // TL, TR, BL, BR — a grelha 2×2 mapeia os cantos do quad, e é por isso que ela fica grelha.
     let positions = [
-        (grid_x, y),
-        (grid_x + swatch_px + gap, y),
-        (grid_x, y + swatch_px + gap),
-        (grid_x + swatch_px + gap, y + swatch_px + gap),
+        (row.control.x, row.control.y),
+        (row.control.x + cell_w + gap, row.control.y),
+        (row.control.x, row.control.y + cell_h + gap),
+        (row.control.x + cell_w + gap, row.control.y + cell_h + gap),
     ];
     // Any per-corner divergence across a multi-selection (BulkSelect) →
     // all four show the Mixed treatment (a single flag covers the array).
     let per_corner_mixed = sp.is_some_and(|s| s.mixed.per_corner);
-    let mut live = [[1.0_f32; 4]; 4];
     for i in 0..4 {
         let fallback = crate::state_tint::tint_f32_to_u8(committed[i]);
-        let rgba = store.widget_color(corner_ids[i]).unwrap_or(fallback);
-        live[i] = crate::state_tint::tint_u8_to_f32(rgba);
-        let sr = Rect::new(positions[i].0, positions[i].1, swatch_px, swatch_px);
-        if per_corner_mixed {
-            ph2d_editor_core::widget::paint_mixed_swatch(sr, scene, theme);
-        } else {
-            let sw = ColorSwatch::new(corner_ids[i], a11y[i], rgba).size(SwatchSize::Md);
-            paint_color_swatch(&sw, sr, scene, theme);
-        }
+        let sr = Rect::new(positions[i].0, positions[i].1, cell_w, cell_h);
+        let rgba =
+            (!per_corner_mixed).then(|| store.widget_color(corner_ids[i]).unwrap_or(fallback));
+        ph2d_editor_core::widget::paint_swatch_or_mixed(
+            sr,
+            corner_ids[i],
+            a11y[i],
+            rgba,
+            scene,
+            theme,
+        );
         hit_index.register(corner_ids[i], sr);
     }
-    let grid_h = swatch_px * 2.0 + gap;
-    // A prévia viva do gradiente bilinear, quadrada, à ESQUERDA da grelha.
-    let preview = Rect::new(x, y, previa_w, grid_h);
-    paint_corner_gradient_preview(preview, live, scene, theme);
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
+    let grid_h = alto;
     let mut cur_y = y + grid_h + Spacing::Sm.px();
 
     // Equalize Corners — copies TL → the other three (spec §3.6).
@@ -393,115 +395,4 @@ fn paint_per_corner_tab(
     paint_button(&eq, eq_rect, scene, text_system, theme);
     cur_y += btn_h + ph2d_tokens::control_gap_px();
     cur_y
-}
-
-/// Bilinearly sample a 4-corner color surface (`[TL, TR, BL, BR]`) at
-/// `(u, v)` in the unit square — `u` left→right, `v` top→bottom. Mirrors
-/// the GPU sprite path's per-corner bilerp so the preview matches what
-/// renders.
-fn corner_bilerp(corners: [[f32; 4]; 4], u: f32, v: f32) -> [f32; 4] {
-    let lerp = |a: [f32; 4], b: [f32; 4], t: f32| {
-        [
-            a[0] + (b[0] - a[0]) * t,
-            a[1] + (b[1] - a[1]) * t,
-            a[2] + (b[2] - a[2]) * t,
-            a[3] + (b[3] - a[3]) * t,
-        ]
-    };
-    let top = lerp(corners[0], corners[1], u); // TL → TR
-    let bot = lerp(corners[2], corners[3], u); // BL → BR
-    lerp(top, bot, v)
-}
-
-/// Paint a small bilinear preview of a 4-corner tint gradient (`TL, TR,
-/// BL, BR`). Vello has no native 4-corner gradient, so we sample the
-/// bilinear surface over an N×N cell grid — the standard honest CPU
-/// preview. (The real GPU sprite path does true per-corner bilerp via
-/// the shader's `@location(9..12)` attributes; this only mirrors it.)
-fn paint_corner_gradient_preview(
-    rect: Rect,
-    corners: [[f32; 4]; 4],
-    scene: &mut VectorScene,
-    theme: Theme,
-) {
-    const CELLS: usize = 8;
-    for j in 0..CELLS {
-        for i in 0..CELLS {
-            let u = (i as f32 + 0.5) / CELLS as f32;
-            let v = (j as f32 + 0.5) / CELLS as f32;
-            let c = corner_bilerp(corners, u, v);
-            let b = crate::state_tint::tint_f32_to_u8(c);
-            let x0 = rect.x + rect.w * (i as f32 / CELLS as f32);
-            let x1 = rect.x + rect.w * ((i as f32 + 1.0) / CELLS as f32);
-            let y0 = rect.y + rect.h * (j as f32 / CELLS as f32);
-            let y1 = rect.y + rect.h * ((j as f32 + 1.0) / CELLS as f32);
-            // Half-pixel overlap right/down kills sub-pixel seams; later
-            // cells overdraw earlier ones, so the bleed is harmless and
-            // the final column/row is hidden under the border stroke below.
-            let cell = Rect::new(x0, y0, x1 - x0 + 0.5, y1 - y0 + 0.5); // LITERAL-PX-OK: anti-seam overlap
-            // The user's per-corner tint colors, bilerp'd — sprite content,
-            // not chrome, so it lives outside the theme system.
-            let fill = VelloColor::from_rgba8(b[0], b[1], b[2], b[3]); // LITERAL-COLOR-OK: bilerp'd sprite tint, not chrome
-            scene.fill_rect(rect_to_vello(cell), fill);
-        }
-    }
-    // ⭐ A moldura da grelha de cantos pela porta do TEMA: a amostra é plana num tema moderno.
-    ph2d_editor_core::paint::stroke_frame(
-        scene,
-        rect,
-        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
-}
-
-#[cfg(test)]
-mod corner_gradient_tests {
-    use super::corner_bilerp;
-
-    const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
-    const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
-
-    #[test]
-    fn uniform_corners_sample_uniform() {
-        // No gradient configured (all WHITE) → every sample is WHITE.
-        let c = [WHITE; 4];
-        for &(u, v) in &[(0.0, 0.0), (1.0, 1.0), (0.5, 0.5), (0.3, 0.7)] {
-            assert_eq!(corner_bilerp(c, u, v), WHITE);
-        }
-    }
-
-    #[test]
-    fn corners_sample_at_their_own_uv() {
-        // [TL, TR, BL, BR]; the unit-square corners read back each corner.
-        let c = [
-            [1.0, 0.0, 0.0, 1.0], // TL red
-            [0.0, 1.0, 0.0, 1.0], // TR green
-            [0.0, 0.0, 1.0, 1.0], // BL blue
-            WHITE,                // BR white
-        ];
-        assert_eq!(corner_bilerp(c, 0.0, 0.0), c[0]);
-        assert_eq!(corner_bilerp(c, 1.0, 0.0), c[1]);
-        assert_eq!(corner_bilerp(c, 0.0, 1.0), c[2]);
-        assert_eq!(corner_bilerp(c, 1.0, 1.0), c[3]);
-    }
-
-    #[test]
-    fn center_is_the_four_corner_average() {
-        let c = [BLACK, WHITE, WHITE, BLACK]; // diagonal split
-        // (0.5, 0.5) = mean of the four corners = 0.5 grey.
-        let m = corner_bilerp(c, 0.5, 0.5);
-        assert!((m[0] - 0.5).abs() < 1e-6, "got {m:?}");
-        assert!((m[3] - 1.0).abs() < 1e-6, "alpha preserved");
-    }
-
-    #[test]
-    fn top_edge_midpoint_interpolates_tl_tr_only() {
-        let c = [BLACK, WHITE, [0.2, 0.2, 0.2, 1.0], [0.3, 0.3, 0.3, 1.0]];
-        // v=0 top edge, u=0.5 → halfway TL↔TR, untouched by the bottom row.
-        let s = corner_bilerp(c, 0.5, 0.0);
-        assert!((s[0] - 0.5).abs() < 1e-6, "got {s:?}");
-    }
 }

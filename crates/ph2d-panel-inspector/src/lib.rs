@@ -96,6 +96,7 @@ mod populate_anim;
 mod populate_audio;
 mod populate_camera;
 mod populate_counter_watch;
+mod populate_dicas;
 mod populate_factory;
 mod populate_hud;
 /// ⭐⭐ O registo do CARTÃO de instância — irmão por assunto, ver o cabeçalho de lá.

@@ -552,7 +552,10 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    rotulo que sai `"Acceleration"` de `"Acceleration (0 = instant)"` continua a esconder a
     //    explicacao do artista — o que muda e ele deixar de comer o NOME. Quem conta essa
     //    diferenca e a [`LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO`], e e por isso que sao duas.
-    ("inspector", 103),
+    // ⭐ `103 → 102` em 2026-09-21: o `Per-Corner Tint (vertex gradient)` virou
+    //    `Per-corner Tint` por ordem do dono, e a explicação foi para o BALÃO. *Um nome
+    //    que encolhe tira um corte* — a catraca a DESCER é a lei a funcionar.
+    ("inspector", 102),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),
@@ -621,7 +624,10 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⭐ `63` de `80`: a lei de encurtar tirou as reticencias a **17** rotulos deste painel, sem
     //    um unico nome novo. Os `63` que ficam sao nomes compostos, e encurtar um deles e trocar
     //    o nome — decisao de vocabulario, que e do dono.
-    ("inspector", 86),
+    // ⭐ `86 → 85` em 2026-09-21: o `Per-Corner Tint (vertex gradient)` virou
+    //    `Per-corner Tint` por ordem do dono, e a explicação foi para o BALÃO. *Um nome
+    //    que encolhe tira um corte* — a catraca a DESCER é a lei a funcionar.
+    ("inspector", 85),
     ("audio_mixer", 5),
     ("sculpt3d", 6),
     ("hierarchy", 5),

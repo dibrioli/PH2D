@@ -3,7 +3,7 @@
 > **O que este doc é:** o registro dos bugs do Painter cuja **causa enganava** — aqueles em que a
 > aparência levou a vários rounds na pista errada. Não é o log de todo fix (isso o git já faz).
 >
-> **O que está VIVO aqui:** só o que ainda está **ABERTO** — os Bugs **#15**, **#11**, a **tinta
+> **O que está VIVO aqui:** só o que ainda está **ABERTO** — os Bugs **#16**, **#15**, **#11**, a **tinta
 > EMPURRADA** do #14, e os dois achados abertos da varredura do #13. Tudo mais está **FECHADO**, e o
 > post-mortem inteiro (sintoma → causa → tentativas que falharam → lições) foi movido **verbatim** para
 > [`docs/archive/docs-2026-08-18/Painter/BUGS_painter.md`](../archive/docs-2026-08-18/Painter/BUGS_painter.md)
@@ -39,6 +39,62 @@
 | 21 | A **secagem** custava 10-16 ms em TODO quadro, e três curas byte-idênticas mediram **1,00×**: o custo era **CAMINHAR** o canvas, não a conta. Row-parallel: 9,3× e 19,8×. | 2026-08-02 |
 | 22 | **Composite Brush**: a sessão de smear nunca era encerrada — a guarda que a fechava era uma **ENUMERAÇÃO** de modos, e a pilha era o terceiro membro da família. | 2026-08-09 |
 | 23 | A **FITA** divergiu e o processo comeu **90,2 GB**: um teto que limitava a **RESOLUÇÃO**, não o **TRABALHO** (a assinatura foi a suíte parar sem `ok` e sem falha). | 2026-08-14 |
+
+---
+
+## Bug #16 — Composite: um gesto de figura APAGA arte já pintada (ABERTO)
+
+> **Estado: ABERTO, ATRIBUÍDO, NÃO REPRODUZIDO NA MAGNITUDE DO REPORT.** Leia a tabela do que já foi
+> ELIMINADO antes de tentar de novo.
+
+**Sintoma (Enio 2026-09-21, foto):** *«usando o stroke freehand os retângulos ficaram completamente
+brancos cobrindo a imagem pintada anteriormente. Grande Bug e deve estar relacionado.»* Na foto, um
+rectângulo de `~390×140 px` de aresta dura, branco, sobre a arte já pintada, contendo as duas figuras
+de Free Hand que estavam a ser editadas.
+
+⚠️ **NÃO é o Bug #16-irmão que foi curado no mesmo dia** (a caixa do descasque contra a caixa do
+carimbo, commit `127108a27`): o interruptor de bissecção `region::CAIXA_DO_PINCEL` dá **o mesmo
+número dos dois lados** ⇒ este é **pré-existente** àquela cura.
+
+### O que está MEDIDO (sonda [`diag_o_resto_do_descasque::diag_o_rectangulo_branco`](../../crates/ph2d-tool-painter/src/tool/paint/diag_o_resto_do_descasque.rs))
+
+| suspeito / ablação | veredito |
+|---|---|
+| sem composite | **`0`** — o gesto sozinho não apaga nada |
+| calar a camada **Smear** | **`0`** ⇒ **é o esfregão** |
+| calar o `Blur` · o `Brush` de `size 1` | `239`, inalterado |
+| calar o `Brush` de `size 1,904` | **`3 452`** — ele TAPAVA metade do apagão |
+| o tecto do transporte (`2,0` raios) | `239 → 203`; a `1,0` raios **PIORA** (`527`) ⇒ **não é o alcance longo** |
+| a caixa do descasque (cura de 127108a27) | idêntico dos dois lados ⇒ **pré-existente** |
+
+⛔⛔ **E o que a bancada NÃO reproduz, que é a parte honesta:** com um **CAMPO LARGO** de arte opaca
+(10 filas, `440×260 px`) o apagão lê **`0`** em todos os gestos. O que se reproduz é uma **erosão de
+`~200` texels nas PONTAS de uma tira fina de arte** — o esfregão a arrastar a extremidade —, e o mapa
+mostra **slivers verticais**, não um rectângulo. *Uma erosão de borda e um rectângulo branco de
+`390×140` não são a mesma grandeza, e declarar a causa a partir do que reproduziu seria escolher entre
+duas medições que não discriminam.*
+
+### Os ingredientes que FALTAM à bancada (já nomeados pela [auditoria §4](40_auditoria_da_pilha_2026-09-21.md))
+
+* a **textura em Shape** — o dono declarou-a duas vezes (*«uma textura em Shape. Jitter 0»*) e
+  **nenhuma sonda desta linha a arma**;
+* a rota do **preview/GPU** (estes testes não têm device);
+* o **relevo**, que a janela da recomposição não guarda nem repõe;
+* o **Accumulate** e o substrato.
+
+### Hipóteses ELIMINADAS com o método (não repita)
+
+| hipótese | como caiu |
+|---|---|
+| `pilha.pre` obsoleto entre traços | `pilha.fecha()` limpa-o no início **e** no fim de cada traço ([`stroke_lifecycle.rs`](../../crates/ph2d-tool-painter/src/tool/paint/stroke_lifecycle.rs)) |
+| o acumulador de ARCO não reposto no re-carimbo | **já é** reposto (`restamp_reset_pilha`) — dívida paga na wave anterior |
+| a TROCA DE PLANO a deixar o escudo opaco (`255`) dentro de `canvas_rgba` na hora do snapshot | os dois `swap_canvas_plane` são emparelhados sem saída antecipada entre eles |
+| o alcance longo do transporte do esfregão | medido acima: o tecto **não cura**, e apertá-lo PIORA |
+
+⚠️ **A régua que o próximo round precisa tem de ser a certa:** *«o alfa caiu»* **não serve** — uma
+camada `Blur` baixa o alfa do miolo por LEI, e a 1.ª redacção desta sonda mediu isso e chamou-lhe
+defeito. A régua honesta é **arte OPACA (`α ≥ 200`) que vai a QUASE ZERO**, com um controlo positivo a
+dizer quantos texels de arte opaca existem na cena.
 
 ---
 

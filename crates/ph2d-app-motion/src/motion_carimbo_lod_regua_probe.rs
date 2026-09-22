@@ -346,20 +346,22 @@ fn audit_how_much_a_tile_would_err() {
     let arredondada = silhueta(&forma_da_cena(0.5));
     let afiada = silhueta(&forma_da_cena(0.0));
     let caixa = caixa_comum(&arredondada, &arredondada);
-    // ⭐⭐⭐ **A TILE COM O LADO QUE O ASSADOR DA CASA DE FACTO PRODUZ** — e não um número
-    // redondo. [`BAKE_DPI`](crate::motion_object_bake::BAKE_DPI) é `256 px` por unidade de mundo e
-    // a estrela mede `2 × TAMANHO` unidades ⇒ a tile sai com **`28 px` de lado**. Medir com uma
-    // tile de `256` mediria um produto que esta casa não assa, e daria à rota da tile uma margem
-    // que ela não tem (`CLAUDE.md` §0.0).
+    // ⛔⛔⛔ **O LADO DA TILE SAI DA GEOMETRIA, NÃO DO TAMANHO DE MUNDO — e a 1.ª redacção
+    // errou-o por `14×`.** Ela fazia `TAMANHO × 2 × BAKE_DPI = 28 px`, usando o tamanho que a
+    // INSTÂNCIA pede. O assador (`ShapeBake::bake_one`) mede `standalone_path_screen_bounds(path,
+    // scale(BAKE_DPI))` sobre o que está no STORE — e a geometria de um `source.shape` é
+    // **NORMALIZADA** (caixa `~1,55`, medido em `diag_o_que_o_size_faz`): a tile real tem
+    // **`~396 px`**. ⚠️ *Medir com uma tile 14× menor dá à rota da tile um erro que ela não tem —
+    // o erro para o lado CARO, que é o que faz uma barra ficar conservadora de mais.*
     #[expect(
         clippy::cast_possible_truncation,
-        reason = "o lado de uma tile, dezenas de px"
+        reason = "um lado de tile, centenas de px"
     )]
-    #[expect(clippy::cast_sign_loss, reason = "um lado é positivo")]
-    let tile_px = (f64::from(crate::motion_state::carimbo_demo::TAMANHO)
-        * 2.0
-        * crate::motion_object_bake::BAKE_DPI)
-        .round() as usize;
+    #[expect(clippy::cast_sign_loss, reason = "uma extensão é positiva")]
+    let tile_px =
+        ((caixa_comum(&arredondada, &arredondada).1 * crate::motion_object_bake::BAKE_DPI).round()
+            as usize)
+            .clamp(4, 2048);
     let assada = rasteriza(&arredondada, tile_px, caixa, 4);
     eprintln!("   (o assador da casa dá a esta forma uma tile de {tile_px} px de lado)\n");
 
@@ -399,4 +401,149 @@ fn audit_how_much_a_tile_would_err() {
          o da REAMOSTRAGEM, e ele encolhe com o tamanho. O da silhueta simplificada CRESCE com\n  \
          ele, porque a forma é outra.\n"
     );
+}
+
+/// A forma que o catálogo constrói para `kind`, pelo caminho do PRODUTO (o nó `source.shape` mais
+/// o `publish`), no tamanho da cena `=126`.
+///
+/// ⚠️ **Uma cadeia de UMA cópia**, não as `90 000`: o que se mede aqui é a GEOMETRIA, e cozinhar o
+/// campo inteiro `45` vezes seria pagar a população para medir a forma.
+fn forma_do_catalogo(kind: ph2d_node_motion_shape::ShapeKind) -> Option<ph2d_vec_scene::VecPath> {
+    let mut m = crate::motion_state::MotionState::new();
+    let f = m.doc.graph.add_node("source.shape");
+    let saida = m.doc.graph.add_node("motion.output");
+    let i = ph2d_node_motion_shape::ALL_KINDS
+        .iter()
+        .position(|k| *k == kind)?;
+    #[expect(clippy::cast_precision_loss, reason = "um índice de enum, < 64")]
+    m.doc
+        .graph
+        .set_param(f, ph2d_node_motion_shape::param::KIND, i as f32);
+    m.doc.graph.set_param(
+        f,
+        ph2d_node_motion_shape::param::SIZE,
+        crate::motion_state::carimbo_demo::TAMANHO,
+    );
+    m.doc
+        .graph
+        .set_param(f, ph2d_node_motion_shape::param::CORNER, 0.5);
+    m.doc
+        .graph
+        .connect(ph2d_nodegraph::graph::Edge {
+            from: (f, 0),
+            to: (saida, 0),
+            delayed: false,
+        })
+        .ok()?;
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    m.pump.mark_dirty();
+    m.pump.pump(
+        &m.doc.graph,
+        &m.registry,
+        &[saida],
+        1,
+        0.0,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0],
+    );
+    let gid = m.pump.vector_instances.first()?.geometry_id;
+    m.shape_store.get(gid).cloned()
+}
+
+/// ⭐⭐⭐ **PERGUNTA 9 — A BARRA VALE PARA TODAS AS FORMAS, ou só para a estrela?** (report do
+/// Enio, 2026-09-22: *«isso já funciona para todas as shapes?»*).
+///
+/// A lei do LOD é por `geometry_id` e não conhece forma nenhuma — ela vale para qualquer
+/// geometria do store **por construção**. O que NÃO é automático é a **BARRA**: ela saiu da
+/// medição de UMA forma, e uma com detalhe mais fino pode errar mais ao ser reamostrada.
+///
+/// Esta sonda corre a régua do pixel sobre **todo o catálogo** (`ALL_KINDS`), no tamanho da cena
+/// `=126`, e imprime o erro da tile ao lado do erro de simplificar. ⚠️ **O CONTROLO é a coluna
+/// `4 px`**: é lá que a barra vive, e nenhuma forma pode passar `1` nível — se alguma passar, a
+/// barra é dela e não da estrela.
+#[test]
+#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+fn audit_whether_the_bar_holds_for_every_shape() {
+    let _fatia = fatia();
+    eprintln!(
+        "\n  ═══ O ERRO DA TILE EM TODO O CATÁLOGO (load {}) ═══\n",
+        carga()
+    );
+    eprintln!(
+        "   forma                |   tile  | erro @4px | @2px | @1px | ruído da régua | pior"
+    );
+    eprintln!(
+        "  ----------------------|---------|-----------|------|------|----------------|------"
+    );
+    let (mut pior_nome, mut pior_valor) = (String::new(), 0.0f64);
+    let (mut medidas, mut sem_caixa) = (0usize, Vec::new());
+    for &kind in ph2d_node_motion_shape::ALL_KINDS {
+        let Some(p) = forma_do_catalogo(kind) else {
+            sem_caixa.push(format!("{kind:?}"));
+            continue;
+        };
+        let s = silhueta(&p);
+        if s.len() < 8 {
+            sem_caixa.push(format!("{kind:?} (silhueta com {} pontos)", s.len()));
+            continue;
+        }
+        let caixa = caixa_comum(&s, &s);
+        // ⛔⛔ **O lado da tile é DERIVADO da caixa de CADA forma, nunca cravado.** A 1.ª
+        // redacção usava `28` para todas — o valor da ESTRELA — e uma forma mais larga ou mais
+        // estreita recebe outra tile do assador (`bbox × BAKE_DPI`): a tabela media uma tile que
+        // aquela forma nunca teria.
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "um lado de tile, dezenas de px"
+        )]
+        #[expect(clippy::cast_sign_loss, reason = "uma extensão é positiva")]
+        let tile_px =
+            ((caixa.1 * crate::motion_object_bake::BAKE_DPI).round() as usize).clamp(4, 2048);
+        let assada = rasteriza(&s, tile_px, caixa, 4);
+        // ⚠️ **E o CONTROLO DA PRÓPRIA RÉGUA**: a tile assada com `4×` as amostras. Uma coluna que
+        // se mexa entre as duas é ruído da régua, não erro da tile.
+        let assada_fina = rasteriza(&s, tile_px, caixa, 16);
+        let mut linha = [0.0f64; 3];
+        let mut controlo = 0.0f64;
+        for (j, lado) in [4usize, 2, 1].into_iter().enumerate() {
+            let sup = (1024 / lado).clamp(2, 32);
+            let exacta = rasteriza(&s, lado, caixa, sup);
+            let niveis = |t: &[f64]| {
+                exacta
+                    .iter()
+                    .zip(t)
+                    .map(|(a, b)| (a - b).abs() * 255.0)
+                    .fold(0.0f64, f64::max)
+            };
+            linha[j] = niveis(&reamostra(&assada, tile_px, lado));
+            controlo =
+                controlo.max((linha[j] - niveis(&reamostra(&assada_fina, tile_px, lado))).abs());
+        }
+        let pior = linha.iter().fold(0.0f64, |a, &b| a.max(b));
+        if pior > pior_valor {
+            pior_valor = pior;
+            pior_nome = format!("{kind:?}");
+        }
+        medidas += 1;
+        eprintln!(
+            "   {:<20} | {tile_px:>4} px | {:>9.2} | {:>4.2} | {:>4.2} | {controlo:>4.2} | {}",
+            format!("{kind:?}"),
+            linha[0],
+            linha[1],
+            linha[2],
+            if pior >= 1.0 { "⛔" } else { "ok" }
+        );
+    }
+    eprintln!(
+        "\n  medidas: {medidas} de {}",
+        ph2d_node_motion_shape::ALL_KINDS.len()
+    );
+    if !sem_caixa.is_empty() {
+        eprintln!(
+            "  ⚠️ SEM geometria mensurável ({}): {}",
+            sem_caixa.len(),
+            sem_caixa.join(", ")
+        );
+    }
+    eprintln!("  pior do catálogo: {pior_nome} a {pior_valor:.2} níveis\n");
 }

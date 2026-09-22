@@ -54,20 +54,38 @@ use ph2d_eval_motion::VectorInstance;
 use ph2d_render::RenderInstance;
 use ph2d_vector::Affine;
 
-/// **O lado máximo, em PÍXEIS DE ECRÃ, a que uma tile ainda é indistinguível da forma** — a barra
-/// do LOD, e ela é MEDIDA (a tabela está no cabeçalho deste módulo).
+/// **O lado máximo, em PÍXEIS DE ECRÃ, a que uma forma passa a desenhar-se como tile** — a barra
+/// do LOD, e ela é MEDIDA.
 ///
-/// ⚠️⚠️ **Ela NÃO é o lado da tile.** O assador dá a esta estrela uma tile de `28 px`
-/// ([`BAKE_DPI`](crate::motion_object_bake::BAKE_DPI) `= 256 px/unidade`), e a tentação é dizer
-/// *«serve até `28`»*. Medido, a `28 px` ela erra `17,9` níveis e a `8 px` ainda erra `9,9`: o que
-/// fixa a barra é a **REAMOSTRAGEM** — acima dela a tile perde as pontas finas que a cobertura
-/// analítica do rasterizador ainda resolve. O recurso tem nome e é esse.
+/// ⛔⛔⛔ **A 1.ª calibração desta constante estava ERRADA e o erro foi meu, no lado da TILE.** Eu
+/// derivei-o do tamanho de MUNDO (`TAMANHO × 2 × BAKE_DPI = 28 px`), e o assador
+/// ([`ShapeBake::bake_one`](crate::motion_shape_bake)) mede a geometria que está no STORE — que num
+/// `source.shape` é **NORMALIZADA** (caixa `~1,55`): a tile real tem **`~400 px`**. Medir com uma
+/// tile `14×` menor deu à rota da tile um erro que ela não tem.
+///
+/// **Re-medido com a tile REAL** (sonda `audit_how_much_a_tile_would_err`, níveis de `255` de
+/// diferença máxima por pixel contra a forma exacta):
+///
+/// | lado no ecrã | `32` | `16` | `8` | `4` | `2` | `1` |
+/// |---|---|---|---|---|---|---|
+/// | **TILE** | `1,1` | `1,0` | `0,8` | `0,6` | `0,5` | `0,2` |
+/// | simplificar a silhueta | `255,0` | `230,8` | `93,4` | `34,9` | `10,5` | `7,0` |
+///
+/// ⭐⭐⭐ **E o CATÁLOGO INTEIRO diz que a alavanca não é o TAMANHO — é a FORMA**
+/// (`audit_whether_the_bar_holds_for_every_shape`, as `45` de `ALL_KINDS`, cada uma com o lado de
+/// tile que o assador lhe dá e com o controlo da própria régua a ler `0,00`–`0,25`):
+/// **`17` ficam abaixo de `1` tom em todos os tamanhos** e as outras passam disso, com a pior
+/// (`Junction`) a ler `4,13` / `5,40` / `5,00` a `4` / `2` / `1 px` — ou seja **PLANO**.
+///
+/// ⇒ *baixar a barra não compra fidelidade* (o erro de reamostragem de uma forma com detalhe fino
+/// não desce com o tamanho) e *subi-la custa-a* (acima de `~32 px` a nitidez da forma começa a
+/// ver-se). O `4` fica por ser **conservador nos dois sentidos**, com o pior caso do catálogo
+/// declarado: **`5,4` tons de `255` — `2,1 %` de um canal — num único pixel**.
 ///
 /// ⭐ A medição vale porque o [`IndividualTextureStore`](ph2d_render) **tem a cadeia de mips
 /// inteira e amostra trilinear** (`mipgen::mip_levels` + `MipGenerator`; o doc do
 /// `create_entry_empty` di-lo por escrito) — um mipmap é uma pirâmide de filtros de caixa, que é
-/// o modelo com que a sonda mediu. Sem mipmap a minificação `28 → 3 px` leria **um** texel de
-/// `784` e esta barra não descreveria nada.
+/// o modelo com que a sonda mediu.
 pub const LADO_MAXIMO_PX: f64 = 4.0;
 
 /// ⚠️ **A barra é ERRO DE COMPILAÇÃO e não um gate**, e a razão é medida: um `assert!` de teste
@@ -79,8 +97,8 @@ const _: () = assert!(
     "a sonda `audit_how_much_a_tile_would_err` deu 0,4 níveis a 4 px e 9,9 a 8 px"
 );
 const _: () = assert!(
-    LADO_MAXIMO_PX < 28.0,
-    "⛔ o lado da TILE (28 px) não é a barra — quem a fixa é a REAMOSTRAGEM"
+    LADO_MAXIMO_PX < 32.0,
+    "⛔ acima de ~32 px a nitidez da forma começa a ver-se — a barra fica abaixo disso"
 );
 
 /// A caixa de uma geometria em unidades LOCAIS — medida pela mesma porta que o assador usa

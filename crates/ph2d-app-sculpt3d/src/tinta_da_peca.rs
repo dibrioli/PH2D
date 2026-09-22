@@ -149,6 +149,22 @@ pub(crate) fn o_gesto_muda_a_topologia(
     verbo.refina_no_dyntopo() || verbo.colapsa_no_dyntopo()
 }
 
+/// A lei da [`crate::Sculpt3dScene::plano_de`], com as partes que o laço de
+/// upload consegue emprestar em separado.
+pub(crate) fn plano_da_peca<'a>(
+    objects: &'a [crate::SceneObject],
+    do_traco: Option<&'a ph2d_sculpt3d::tinta_fina::TintaDoTraco>,
+    i: usize,
+) -> Option<&'a Tinta> {
+    let obj = objects.get(i)?;
+    if let Some(t) = do_traco
+        && t.dono() == obj.id.0
+    {
+        return Some(t.tinta());
+    }
+    obj.tinta.as_ref()
+}
+
 /// ⭐⭐⭐⭐ **O PASSE DE TOPOLOGIA VAI CORRER NESTE PEN-DOWN?** — a pergunta
 /// inteira, com as TRÊS metades que o consumidor de facto aplica.
 ///
@@ -223,6 +239,34 @@ pub(crate) fn so_as_amostras_bastam(
 }
 
 impl crate::Sculpt3dScene {
+    /// ⭐⭐⭐⭐ **ONDE ESTÁ O PLANO DESTA PEÇA, AGORA?** — a porta, e ela tem
+    /// TRÊS consumidores.
+    ///
+    /// Durante um traço o plano não está na peça: o pen-down **empresta-o** ao
+    /// gesto (um `take`, nunca um clone), e quem o devolve é o `close_stroke`.
+    /// ⇒ *ler o `Option` da peça durante um traço devolve `None` sobre uma peça
+    /// que TEM detalhe fino*, e cada consumidor que o faça inventa o seu
+    /// próprio defeito:
+    ///
+    /// | consumidor | o que ele via sem esta porta |
+    /// |---|---|
+    /// | o upload | `armado = 0` ⇒ *a tinta fina desaparece ao começar a pintar* |
+    /// | a VOZ | o aviso nunca soava (medido 20/09, §10.2) |
+    /// | o **SAVE** | um `Ctrl+S` a meio de um traço grava a peça **sem o plano** |
+    ///
+    /// ⭐⭐ **E a pergunta é pelo DONO, não pelo índice `active`.** O empréstimo
+    /// carrega quem o emprestou desde o §13, e é essa a resposta certa: *o
+    /// plano que o traço segura é da peça que o emprestou, e de mais nenhuma* —
+    /// uma peça que não seja a dona lê o `Option` dela, como deve.
+    /// ⚠️ **Ela recebe as PARTES e não o `&self`, e não é arrumação:** o laço
+    /// de upload precisa de `&mut self.renderer` ao mesmo tempo, e um método
+    /// `&self` empresta a cena INTEIRA. *A assinatura que o compilador aceita é
+    /// a mesma que um gate consegue montar sem uma cena* — e uma cena pede um
+    /// `wgpu::Device`.
+    pub(crate) fn plano_de(&self, i: usize) -> Option<&Tinta> {
+        plano_da_peca(&self.objects, self.stroke.tinta_fina.as_ref(), i)
+    }
+
     /// ⭐⭐⭐ **A [`o_passe_corre_no_pen_down`] com as quatro entradas que a cena
     /// tem** — a irmã da [`Self::o_gesto_em_maos_muda_a_topologia`].
     pub(crate) fn o_passe_de_topologia_corre_no_pen_down(&self) -> bool {

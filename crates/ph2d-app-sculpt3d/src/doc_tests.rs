@@ -19,9 +19,9 @@ fn piece(z: f32) -> (Multires, Pose) {
 }
 
 fn doc_bytes(pieces: &[(Multires, Pose)], active: usize) -> Vec<u8> {
-    let data: Vec<(StackData, PoseData)> = pieces
+    let data: Vec<(StackData, PoseData, Option<&ph2d_mesh_colors::Tinta>)> = pieces
         .iter()
-        .map(|(s, p)| (s.to_data(), p.to_data()))
+        .map(|(s, p)| (s.to_data(), p.to_data(), None))
         .collect();
     encode(&data, active)
 }
@@ -35,7 +35,8 @@ fn what_the_scene_writes_is_what_the_load_reads_back() {
 
     assert_eq!(back.len(), 3, "as três peças");
     assert_eq!(active, 2, "quem estava em mãos");
-    for (i, ((s0, p0), (s1, p1))) in src.iter().zip(back.iter()).enumerate() {
+    for (i, ((s0, p0), lida)) in src.iter().zip(back.iter()).enumerate() {
+        let (s1, p1) = (&lida.stack, &lida.pose);
         assert_eq!(s1.level_count(), s0.level_count(), "níveis da peça {i}");
         assert_eq!(s1.level(), s0.level(), "o nível em mãos da peça {i}");
         assert!(
@@ -44,6 +45,11 @@ fn what_the_scene_writes_is_what_the_load_reads_back() {
         );
         assert_eq!(p1.translation, p0.translation, "posição da peça {i}");
         assert!((p1.scale() - p0.scale()).abs() < 1e-6, "escala da peça {i}");
+        assert!(
+            lida.tinta.is_none(),
+            "o CONTROLO: esta fixtura não tem plano, e um `Some` aqui diria que \
+             o decode o INVENTA"
+        );
     }
 }
 
@@ -189,7 +195,7 @@ fn the_shape_of_a_saved_scene_is_pinned() {
         "o detalhe da fixtura não traz cor e máscara — o golden ficaria cego a elas"
     );
 
-    let bytes = encode(&[(data, pose.to_data())], 0);
+    let bytes = encode(&[(data, pose.to_data(), None)], 0);
     assert_eq!(
         bytes.len(),
         // ⚠️ MEDIDO na criação do gate (2026-09-13), e a conta FECHA à mão — que é o que separa
@@ -203,13 +209,250 @@ fn the_shape_of_a_saved_scene_is_pinned() {
         // | detalhe 0 (vazio: comprimento + dois `None`) · detalhe 1 (18 `xyz` + cor + máscara) | 3 + 509 |
         // | nº de níveis + nº de detalhes + nível em mãos | 3 |
         // | pose: translação + escala (`f32`) | 16 |
-        // | **total** | **1538** |
+        // | plano de tinta fina: `None` (2026-09-21, `SCULPT_DOC_VERSION` 2) | 1 |
+        // | **total** | **1539** |
         //
         // ⚠️ Cada face custa **8** bytes e não 4: a `Face` é `[u32; 4]`, e o quarto índice de um
         // triângulo é o sentinela `TRI`, que em varint custa 5.
-        1538,
+        //
+        // ⭐ **O degrau de `1538` para `1539` é UM byte e a conta fecha:** o campo `tinta` é um
+        // `Option` e um `None` custa exactamente o discriminante. A VERSÃO não muda nada — `1` e
+        // `2` são ambos um varint de um byte.
+        1539,
         "a forma serializada da cena mudou — suba SCULPT_DOC_VERSION, não re-pine este número"
     );
     let (back, _) = decode(&bytes).expect("ida e volta");
     assert_eq!(back.len(), 1, "a peça voltou");
+}
+
+/// Uma peça com PLANO de tinta fina, pintado num sítio e não noutro.
+fn peca_com_plano(nivel: u8) -> (Multires, Pose, ph2d_mesh_colors::Tinta) {
+    let mut stack = Multires::new(shapes::octahedron(1.0));
+    // a cor POR VÉRTICE, que viaja dentro do `stack` e de que a semente sai
+    for i in 0..stack.mesh().vert_count() {
+        stack.mesh_mut().colors_mut()[i] = [0.2, 0.4, 0.6];
+    }
+    let m = stack.mesh();
+    let faces = || m.faces().iter().map(ph2d_mesh::Face::verts);
+    let mut t = ph2d_mesh_colors::Tinta::semeada(m.colors().unwrap(), faces(), nivel);
+    // e a MANCHA: um pedaço contíguo com outra cor, que é a forma de um traço
+    let n = t.amostras().len();
+    for i in (n / 4)..(n / 3) {
+        t.amostras_mut()[i] = [0.9, 0.1, 0.05];
+    }
+    (stack, Pose::new([1.0, 0.0, 0.0], 1.5), t)
+}
+
+/// ⭐⭐⭐⭐ **GATE — O PLANO DE TINTA FINA ATRAVESSA O FICHEIRO, AO BIT.**
+///
+/// ⚠️ **E a metade que importa é o CONTROLO:** o plano é re-semeado da cor por
+/// vértice quando ele não existe, e a cor por vértice viaja ao lado. Sem a
+/// asserção de que a MANCHA voltou, um `decode` que simplesmente re-semeasse
+/// passaria — *e o artista veria exactamente o que ele vê hoje: a tinta a
+/// voltar à resolução da malha*.
+#[test]
+fn o_plano_de_tinta_fina_atravessa_o_ficheiro_ao_bit() {
+    let (stack, pose, t) = peca_com_plano(2);
+    let semente = {
+        let m = stack.mesh();
+        let faces = || m.faces().iter().map(ph2d_mesh::Face::verts);
+        ph2d_mesh_colors::Tinta::semeada(m.colors().unwrap(), faces(), 2)
+    };
+    assert_ne!(
+        t.amostras(),
+        semente.amostras(),
+        "o CONTROLO da fixtura: sem uma mancha, re-semear devolveria o mesmo e \
+         este gate ficava VÁCUO"
+    );
+
+    let bytes = encode(&[(stack.to_data(), pose.to_data(), Some(&t))], 0);
+    let (lidas, _) = decode(&bytes).expect("ida e volta");
+    let volta = lidas[0].tinta.as_ref().expect("a peça tinha plano");
+
+    assert_eq!(volta.nivel(), t.nivel(), "o degrau do plano");
+    assert_eq!(
+        volta.amostras().len(),
+        t.amostras().len(),
+        "a contagem de amostras — a topologia é DERIVADA da malha lida"
+    );
+    let bits = |a: &[[f32; 3]]| -> Vec<[u32; 3]> {
+        a.iter()
+            .map(|c| [c[0].to_bits(), c[1].to_bits(), c[2].to_bits()])
+            .collect()
+    };
+    assert_eq!(
+        bits(volta.amostras()),
+        bits(t.amostras()),
+        "as amostras não voltaram AO BIT"
+    );
+}
+
+/// ⭐⭐⭐ **GATE — UM DOCUMENTO v1 ABRE, e as peças vêm sem plano.**
+///
+/// ⛔⛔ **Sem a migração, todo `.ph2dproj` que o dono já gravou deixaria de
+/// abrir** — o `decode` recusaria por versão, e a recusa leva o load inteiro
+/// (a lei declarada no cabeçalho deste módulo). *Subir a versão de um formato
+/// sem degrau é apagar o trabalho de quem já o usou.*
+///
+/// ⚠️ A fixtura escreve os bytes v1 **pela forma congelada**, não por um
+/// ficheiro guardado: um golden binário aqui envelheceria com o `StackData`, e
+/// o que este gate afirma é a MIGRAÇÃO, não a geometria.
+#[test]
+fn um_documento_da_versao_anterior_abre_e_vem_sem_plano() {
+    #[derive(serde::Serialize)]
+    struct ObjectV1 {
+        stack: StackData,
+        pose: PoseData,
+    }
+    #[derive(serde::Serialize)]
+    struct DocV1 {
+        version: u32,
+        objects: Vec<ObjectV1>,
+        active: u32,
+    }
+    let (stack, pose) = piece(1.0);
+    let bytes = postcard::to_allocvec(&DocV1 {
+        version: 1,
+        objects: vec![ObjectV1 {
+            stack: stack.to_data(),
+            pose: pose.to_data(),
+        }],
+        active: 0,
+    })
+    .expect("serializa");
+
+    let (lidas, active) = decode(&bytes).expect("um v1 tem de ABRIR");
+    assert_eq!(lidas.len(), 1, "a peça do v1");
+    assert_eq!(active, 0);
+    assert_eq!(
+        lidas[0].stack.level_count(),
+        stack.level_count(),
+        "a pilha do v1 tem de atravessar a migração inteira"
+    );
+    assert!(
+        lidas[0].tinta.is_none(),
+        "um v1 não tinha plano, e inventar um seria escrever trabalho que ninguém fez"
+    );
+}
+
+/// ⛔⛔ **GATE — um plano que não descreve a malha RECUSA o load, e diz qual
+/// peça.**
+///
+/// A mesma lei da geometria: abrir *sem* ele mostraria a peça com a tinta na
+/// resolução da MALHA — que é o que o artista vê quando perde o detalhe fino —
+/// e o **próximo Ctrl+S gravaria essa perda por cima**.
+///
+/// ⛔⛔⛔ **E ele corre sobre AS DUAS FORMAS, porque a 1.ª redacção deixou uma
+/// mutação SOBREVIVER.** A fixtura semeada escolhe sempre CORRIDAS, logo a
+/// cerca da contagem da forma CRUA nunca era exercida e apagá-la não mudava um
+/// bit. *Uma sobrevivente por falta de corpus constrói-se, não se nomeia* — e o
+/// corpus que faltava é um plano de amostras TODAS DISTINTAS, onde o escritor
+/// escolhe a outra forma.
+///
+/// ⚠️ **Cada célula AFIRMA a forma que tomou**, senão o dia em que a conta do
+/// escritor mudar leva as duas a medir a mesma metade, em silêncio.
+#[test]
+fn um_plano_que_nao_descreve_a_malha_recusa_o_load() {
+    use super::doc_tinta::AmostrasDoc;
+
+    let (stack, pose, junto) = peca_com_plano(2);
+    let distinto = {
+        let m = stack.mesh();
+        let faces = || m.faces().iter().map(ph2d_mesh::Face::verts);
+        let mut t = ph2d_mesh_colors::Tinta::nova(m.vert_count(), faces(), 2);
+        let n = t.amostras().len();
+        for i in 0..n {
+            t.amostras_mut()[i] = [i as f32, -(i as f32), 0.5];
+        }
+        t
+    };
+
+    for (nome, t, corridas_esperadas) in [
+        ("uma mancha num plano semeado", &junto, true),
+        ("amostras todas distintas", &distinto, false),
+    ] {
+        let bytes = encode(&[(stack.to_data(), pose.to_data(), Some(t))], 0);
+        assert!(decode(&bytes).is_ok(), "{nome}: o CONTROLO, assim ele abre");
+
+        let mut doc: SculptDoc = postcard::from_bytes(&bytes).expect("re-lê");
+        let amostras = &mut doc.objects[0]
+            .tinta
+            .as_mut()
+            .expect("a fixtura tem plano")
+            .amostras;
+        assert_eq!(
+            matches!(amostras, AmostrasDoc::Corridas(_)),
+            corridas_esperadas,
+            "{nome}: a fixtura deixou de tomar a forma que este caso existe \
+             para exercer — as duas células passariam a medir a MESMA metade"
+        );
+        match amostras {
+            AmostrasDoc::Corridas(c) => c.push((1, [0.0, 0.0, 0.0])),
+            AmostrasDoc::Cruas(v) => v.push([0.0, 0.0, 0.0]),
+        }
+        let forjado = postcard::to_allocvec(&doc).expect("serializa");
+
+        match decode(&forjado) {
+            Err(SculptDocError::Tinta { peca, esperadas }) => {
+                assert_eq!(peca, 0, "{nome}: a recusa tem de NOMEAR a peça");
+                assert_eq!(
+                    esperadas,
+                    t.amostras().len(),
+                    "{nome}: e dizer quantas amostras a malha pede"
+                );
+            }
+            other => panic!("{nome}: tinha de ser recusado, e veio {other:?}"),
+        }
+    }
+}
+
+/// ⭐⭐⭐⭐ **GATE — AS DUAS FORMAS, e cada metade mede uma delas.**
+///
+/// ⛔⛔ **A 1.ª redacção deste gate tinha a barra do desenho ERRADO.** Ela
+/// exigia `< 1/50` sobre uma fixtura **semeada**, e a medição de 2026-09-21
+/// diz que uma semente de cor chapada não é chapada nos BITS — a interpolação
+/// baricêntrica soma `1` com erro de último bit. A tabela medida está no
+/// cabeçalho do [`super::doc_tinta`]; o que ficou foram as duas metades que ela
+/// de facto sustenta.
+#[test]
+fn as_duas_formas_das_amostras_fazem_o_que_prometem() {
+    let (stack, pose, _) = peca_com_plano(3);
+    let m = stack.mesh();
+    let faces = || m.faces().iter().map(ph2d_mesh::Face::verts);
+    let sem = encode(&[(stack.to_data(), pose.to_data(), None)], 0).len();
+    let custo = |t: &ph2d_mesh_colors::Tinta| {
+        encode(&[(stack.to_data(), pose.to_data(), Some(t))], 0).len() - sem
+    };
+
+    // (a) ⭐ O plano de uma peça NUNCA PINTADA cabe em nada. É o caso do
+    //     artista que acabou de armar o degrau, e é o que tira `75 MB` de cima
+    //     de um `Ctrl+S` na peça de fábrica.
+    let nova = ph2d_mesh_colors::Tinta::nova(m.vert_count(), faces(), 3);
+    let cru = nova.amostras().len() * 12;
+    let a = custo(&nova);
+    assert!(
+        a * 50 < cru,
+        "um plano por pintar custou {a} B contra {cru} B crus — as corridas \
+         deixaram de juntar, e armar o degrau volta a custar o plano inteiro"
+    );
+
+    // (b) ⛔ E o plano de uma peça com cor VARIADA nunca custa MAIS que cru.
+    //     É isto que a segunda forma compra: sem ela a medição lê `1,083×`,
+    //     porque cada corrida de uma amostra paga o varian­te a mais.
+    let n = m.vert_count();
+    let variadas: Vec<[f32; 3]> = (0..n).map(|i| [i as f32 / n as f32, 0.4, 0.6]).collect();
+    let semeada = ph2d_mesh_colors::Tinta::semeada(&variadas, faces(), 3);
+    let cru = semeada.amostras().len() * 12;
+    let b = custo(&semeada);
+    assert!(
+        b <= cru + 16,
+        "um plano de amostras todas distintas custou {b} B contra {cru} B crus: \
+         o escritor deixou de escolher a forma MENOR"
+    );
+    assert!(
+        b * 100 > cru * 90,
+        "o CONTROLO: neste caso a forma CRUA tem de ganhar, e {b} B contra \
+         {cru} B diz que as corridas juntaram — a fixtura deixou de ter \
+         amostras distintas e a metade (b) mede outra coisa"
+    );
 }

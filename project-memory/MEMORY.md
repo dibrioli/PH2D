@@ -141,7 +141,7 @@
 - ⛔⛔ [O que o undo NÃO fotografa o undo também não REPÕE — um relógio corrido, uma fábrica esgotada e uma SEMENTE sobreviviam ao Reset](feedback_what_the_undo_does_not_photograph_the_undo_does_not_restore.md)
 - ⛔ [O oráculo ensina a PERGUNTA; a resposta depende da natureza da SUA entrada — um NÍVEL e um EVENTO pedem paragens opostas](feedback_an_oracle_teaches_the_question_the_answer_depends_on_your_input_kind.md)
 - ⛔ [Um EVENTO lido como ESTADO acerta pelo tempo que ninguém o apagar — a etiqueta dependia de o relógio estar a andar](feedback_an_event_read_as_state_is_right_for_as_long_as_nobody_clears_it.md)
-- 📚 [Padrões de código (gotchas silenciosos): mais (14) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
+- 📚 [Padrões de código (gotchas silenciosos): mais (15) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 
 ## Arquitetura / norte / perf
 - ⛔ [REGRA DO DONO: editar pixels ou tamanho/margem = imagem SEM a dobra (exceto Liquify, cor, filtros); tamanho/margem SOLTA dos ossos](project_pixel_tools_flatten_bone_bound_art.md)

@@ -1382,9 +1382,158 @@ defeito que o arnês inteiro existe para não ter.*
 inferido.** O mesmo handoff no `HEAD` já os tem (`3` e `5` linhas), as linhas
 acusadas são a `523`, `578`, `579`, `586` e `1031`, e **o §14 começa na `1047`**
 — ou seja, nenhuma delas está numa linha que esta corrida escreveu. Os dois
-tokens (`tip_roundness` · `sculpt_gesture`) estão nomeados no §10.10.
+tokens estão nomeados no §10.10, com a triagem de cada um.
+
+⛔⛔ **E a 1.ª redacção DESTE parágrafo repetia os dois nomes — e a vassoura
+acusou-a.** *A prosa que explica uma isenção herda a isenção que ela explica*,
+e a saída barata (isentar mais uma linha) é como um ledger cresce até não medir
+nada. ⇒ o parágrafo APONTA para o §10.10 em vez de repetir, e o *«zero achados
+novos»* volta a ser literalmente verdade.
 
 ⚠️ **E a rede da metade visível foi RE-CORRIDA INTEIRA, em fatias**: este diff
 toca no `tinta_da_peca.rs`, no `slots.rs`, no `recusa.rs`, no
 `history_dyntopo.rs` e nos censos — que são exactamente os ficheiros que ela
 ataca — e *um placar herdado é um placar sobre outra árvore*.
+
+---
+
+## §18 — O PLANO VIAJA NO `.ph2dproj` — e a nota que mandava construí-lo estava ERRADA pela metade
+
+### §18.1 — A auditoria da nota, ANTES da primeira linha
+
+A §9 e o `CLAUDE.md` §5 diziam: *«o plano não viaja no `.ph2dproj` (dívida
+herdada da wave anterior, **ao lado da cor por vértice**)»*.
+
+⛔ **A segunda metade é FALSA, e o código dizia-o:** o `MeshData` tem
+`colors: Option<Vec<[f32; 3]>>`, o `Mesh::to_data`/`from_data` carregam-no, e
+uma sonda pelo caminho real (`encode_doc` → `decode`) mede **`SIM, AO BIT`**.
+
+⇒ *auditar a lista contra o CÓDIGO antes de pegar um item dela* — a lei que
+este §5 escreve sobre si mesmo — poupou metade da wave, e a nota foi corrigida.
+
+### §18.2 — O que o plano custa CRU, medido
+
+Peça de fábrica, `98 306` vértices:
+
+| degrau | amostras | postcard | escrever |
+|---|---:|---:|---:|
+| `2x` | `393 218` | `4,7 MB` | `1,4 ms` |
+| `8x` | `6 291 458` | **`75,5 MB`** | `19,1 ms` |
+| `16x` | `25 165 826` | **`302 MB`** | `69,4 ms` |
+
+⇒ *armar o `8x`, dar um traço e gravar custaria `75 MB`*, e o `.ph2dproj` **não
+comprime** (medido: nenhum `flate2`/`zstd` no caminho).
+
+### §18.3 — ⛔⛔⛔ E a MEDIÇÃO derrubou o meu desenho, uma vez
+
+A 1.ª redacção guardava **só corridas** (`(quantas, cor)`), com uma tabela que
+saíra de uma sonda sobre `Tinta::nova` — onde um plano é **um** `COR_DE_NINGUEM`
+repetido e a resposta é **uma corrida**. Eu escrevi, por extenso, que *«`8 %` num
+caso que a pintura real não produz não paga uma segunda forma»*.
+
+A pintura real produz **exactamente** esse caso. Medido sobre a
+`Tinta::semeada`, que é **como um plano nasce numa peça já pintada**:
+
+| plano ao `8x` | corridas | em corridas | contra cru |
+|---|---:|---:|---:|
+| `nova` (peça nunca pintada) | `1` | `~0` | **`0,000×`** |
+| `semeada` de cor CHAPADA | `3 145 729` | `40,9 MB` | `0,542×` |
+| `semeada` de cor VARIADA | `6 291 458` | `81,8 MB` | **`1,083×`** |
+
+⭐⭐ **A semente INTERPOLA, e interpolar entre três cores iguais não devolve a
+cor em `f32`** — os pesos baricêntricos somam `1` com erro de último bit. *Um
+plano «chapado» não é chapado nos BITS.*
+
+⇒ **duas formas, e o escritor escolhe a MENOR** por uma conta exacta e barata
+(uma passagem sobre as corridas, sem serializar as duas — aos `16x` cada
+serialização são `300 MB`). O pior caso passa a ser **`+1 byte`** e o melhor
+continua a ser **`75 MB → 0`**.
+
+⚠️ **E quem apanhou o erro foi um GATE VERMELHO**, não uma releitura: o
+`as_duas_formas_das_amostras_fazem_o_que_prometem` nasceu com a barra do
+desenho antigo (`< 1/50`) e reprovou sobre a fixtura semeada.
+
+### §18.4 — ⛔⛔⛔ A igualdade é por BITS, nunca por `==`
+
+`-0.0 == 0.0` é **verdade** em `f32` e os bits são diferentes ⇒ uma corrida
+fechada por `==` juntaria os dois e devolveria os bits errados na leitura.
+*Uma compressão que se diz sem perda e que troca um sinal de zero é pior do que
+uma que se diz com perda*, porque ninguém vai procurar ali. Com `to_bits` o
+`NaN` também se comporta: por `==` ele nunca é igual a si próprio, e uma corrida
+de mil `NaN` viraria mil corridas.
+
+### §18.5 — O que é DERIVADO, e a migração
+
+⭐ **O documento guarda o NÍVEL e as AMOSTRAS, e mais nada.** A `Topologia` é
+reconstruída das faces da malha que viaja ao lado — a mesma lei que já faz esta
+porta re-derivar normais, adjacência e octree.
+
+⚠️ **O plano NÃO é redundante com a cor por vértice**, que viaja dentro do
+`stack`: aquela é a PROJECÇÃO deste plano nos vértices (o `devolve` escreve-a no
+fim de cada traço), e re-semear a partir dela devolve um plano exacto nos
+vértices e **interpolado no resto** — que é literalmente a tinta a voltar à
+resolução da malha.
+
+⭐⭐ **`SCULPT_DOC_VERSION` 1 → 2, COM migração.** Um v1 abre e as peças vêm sem
+plano. ⛔ *Subir a versão de um formato sem degrau é apagar o trabalho de quem
+já o usou* — e o `decode` recusa o load inteiro por versão, logo todo
+`.ph2dproj` que o dono já gravou deixaria de abrir. A versão é lida **sozinha e
+primeiro** (`take_from_bytes::<u32>`): tentar a forma nova e cair para a velha
+no erro seria apostar que um v1 falha a parsar como v2, e o postcard é
+POSICIONAL — *ele devolve lixo bem-formado*.
+
+⚠️ **O golden do tamanho subiu `1538 → 1539`, e a conta FECHA à mão:** o campo
+`tinta` é um `Option` e um `None` custa exactamente o discriminante. A VERSÃO
+não muda nada — `1` e `2` são ambos um varint de um byte.
+
+### §18.6 — E o SAVE era o terceiro consumidor de uma porta que não existia
+
+Durante um traço o plano não está na peça: o pen-down **empresta-o**. ⇒ um
+`Ctrl+S` a meio de uma pincelada gravava a peça **sem o detalhe fino**.
+
+⭐ ⇒ [`tinta_da_peca::plano_de`] — *onde está o plano desta peça agora?* —, com
+**três** consumidores (o upload · a voz · o save) e a pergunta pelo **DONO** do
+empréstimo, nunca pelo índice `active`.
+
+⚠️ **Ela recebe as PARTES e não o `&self`**, e não é arrumação: o laço de upload
+precisa de `&mut self.renderer` ao mesmo tempo. *A assinatura que o compilador
+aceita é a mesma que um gate consegue montar sem uma cena* — e uma cena pede um
+`wgpu::Device`.
+
+### §18.7 — As réguas
+
+- `as_corridas_devolvem_as_amostras_ao_bit` · `um_plano_chapado_cabe_numa_corrida_so`
+  (sem a segunda, um encoder que nunca juntasse nada passava a ida-e-volta)
+- `o_zero_negativo_nao_se_junta_ao_positivo` — ⚠️ a asserção é sobre os **BITS**:
+  um `assert_eq!` em `f32` diria que os dois são iguais e o gate ficava VÁCUO
+- `uma_corrida_de_nan_e_uma_corrida` · `corridas_que_nao_somam_o_que_a_malha_pede_sao_recusadas`
+- `o_plano_de_tinta_fina_atravessa_o_ficheiro_ao_bit` — ⚠️ com o CONTROLO de que
+  a fixtura DIFERE da semente, *senão um `decode` que simplesmente re-semeasse
+  passava*
+- `um_documento_da_versao_anterior_abre_e_vem_sem_plano`
+- `um_plano_que_nao_descreve_a_malha_recusa_o_load` (e a recusa NOMEIA a peça)
+- `as_duas_formas_das_amostras_fazem_o_que_prometem` (as duas metades medidas)
+- `a_porta_do_plano_pergunta_pelo_dono_e_nao_pelo_indice` (três células)
+- o censo da fiação vai a **DEZOITO** elos: o save lê a porta, e o load instala
+  o que leu — *o `decode` pode estar certo e o `install_doc` deitar o plano
+  fora, e aí o ficheiro tem o detalhe lá dentro e o artista nunca o vê*
+
+### §18.8 — O PORTÃO desta wave
+
+| régua | resultado |
+|---|---|
+| `nextest-impacted` | **18 585 / 18 585** |
+| gates da tinta fina, **com adaptador** | **74 / 74** |
+| censos da árvore COMBINADA | **127 / 127** · controlo do filtro `12 de 12` |
+| `cargo fmt --all --check` | limpo — com o **pré-voo das âncoras** a seguir (`43` · `9` · `12`) |
+| clippy `--all-targets -D warnings` | zero |
+| as 10 vassouras sobre os 12 ficheiros | **zero achados NOVOS** |
+| tectos de LOC | maior ficheiro tocado a **494** de `700` |
+| mutação — o plano no ficheiro (`muta_o_plano_no_ficheiro.sh`) | **11 de 12** (a 12.ª é o CONTROLO) |
+| mutação — a metade visível, RE-CORRIDA | **42 de 43** em duas fatias |
+
+⚠️ **A rede da CERCA DO PLANO (`muta_a_cerca_do_plano.sh`, `8 de 9`) NÃO foi
+re-corrida, e a razão é medida:** as nove mutações dela vivem na
+`ph2d-mesh-colors` e na `ph2d-mesh-render`, e a população de teste dela são
+essas duas crates — **este diff não toca em nenhuma**. *Um placar herdado é um
+placar sobre outra árvore; este é sobre a MESMA.*

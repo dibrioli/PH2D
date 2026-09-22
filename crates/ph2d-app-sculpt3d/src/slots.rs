@@ -293,14 +293,17 @@ impl Sculpt3dScene {
                     None => false,
                 };
                 if !so_as_amostras {
-                    let plano = if emprestado {
-                        self.stroke
-                            .tinta_fina
-                            .as_ref()
-                            .map(ph2d_sculpt3d::tinta_fina::TintaDoTraco::tinta)
-                    } else {
-                        self.objects[i].tinta.as_ref()
-                    };
+                    // ⭐ **De onde se lê o plano é uma PORTA** desde 21/09
+                    // ([`crate::tinta_da_peca::plano_de`]) — ela tem três
+                    // consumidores, e o terceiro (o SAVE) é o que a revelou:
+                    // *um `Ctrl+S` a meio de um traço gravava a peça sem o
+                    // plano*. E ela pergunta pelo DONO do empréstimo, nunca
+                    // pelo índice `active`.
+                    let plano = crate::tinta_da_peca::plano_da_peca(
+                        &self.objects,
+                        self.stroke.tinta_fina.as_ref(),
+                        i,
+                    );
                     self.renderer.upload_tinta_at(
                         device,
                         queue,

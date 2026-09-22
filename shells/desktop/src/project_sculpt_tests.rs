@@ -14,7 +14,12 @@ fn a_sculpture() -> Vec<u8> {
     let mut stack = ph2d_mesh::Multires::new(ph2d_mesh::shapes::octahedron(1.0));
     assert!(stack.add_level(), "a fixture precisa do 2º nível");
     stack.mesh_mut().positions_mut()[0][1] += 0.25;
-    ph2d_app_sculpt3d::encode_doc(&[(stack.to_data(), ph2d_mesh::Pose::IDENTITY.to_data())], 0)
+    // ⚠️ `None` = esta fixtura não tem detalhe fino; o plano tem gates próprios
+    //    na crate do módulo, onde ele é dirigível sem uma cena.
+    ph2d_app_sculpt3d::encode_doc(
+        &[(stack.to_data(), ph2d_mesh::Pose::IDENTITY.to_data(), None)],
+        0,
+    )
 }
 
 /// **UMA ESCULTURA ILEGÍVEL RECUSA O LOAD INTEIRO** — a lei da timeline, pelo
@@ -87,7 +92,7 @@ fn a_loaded_project_leaves_its_sculpture_pending_for_the_frame() {
     assert_eq!(pieces.len(), 1, "a peça do arquivo");
     assert_eq!(*active, 0);
     assert_eq!(
-        pieces[0].0.level_count(),
+        pieces[0].stack.level_count(),
         2,
         "a PILHA inteira volta, não só a malha viva"
     );

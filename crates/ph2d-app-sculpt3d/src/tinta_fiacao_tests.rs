@@ -1,4 +1,4 @@
-//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os DEZASSEIS elos que as curas
+//! ⭐⭐⭐⭐ **O CENSO DA FIAÇÃO DA TINTA FINA** — os DEZOITO elos que as curas
 //! desta jornada precisam de ter LIGADOS: os três consumidores da porta
 //! [`crate::tinta_da_peca::o_gesto_muda_a_topologia`], a metade da porta que lê
 //! a tinta **EMPRESTADA**, o `close_stroke` do gesto que **erra** a peça, as
@@ -74,6 +74,11 @@ const UNDO: &str = include_str!("undo.rs");
 /// onde a lei corre; a régua mora onde há cena para a exercitar.*
 const DEVICE: &str = include_str!("../../ph2d-mesh-render/src/tinta_gpu.rs");
 const VOZ: &str = include_str!("recusa.rs");
+/// ⭐⭐⭐ **E o DOCUMENTO** — a wave de 21/09 que faz o plano atravessar o
+/// `.ph2dproj`. As duas metades dele (escrever e instalar) vivem no mesmo
+/// ficheiro e falham de maneiras opostas: sem a primeira o `Ctrl+S` grava a
+/// peça sem o detalhe fino, sem a segunda o `Ctrl+O` lê-o e deita-o fora.
+const DOCUMENTO: &str = include_str!("doc.rs");
 
 /// Cada elo: o ficheiro, a agulha, e o nome da mutação que ela mata.
 fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
@@ -270,6 +275,28 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
             .join("\n"),
             DEVICE,
         ),
+        // ⛔⛔ **O SAVE é o TERCEIRO consumidor da porta do plano** (21/09) — e
+        // foi ele que a obrigou a existir. Um `Ctrl+S` a meio de um traço lia o
+        // `Option` da peça, que está VAZIO enquanto o gesto segura o plano.
+        (
+            "doc.rs",
+            "P9 o save volta a ler o `Option` da peça em vez da PORTA",
+            "(o.stack.to_data(), o.pose.to_data(), self.plano_de(i))".to_string(),
+            DOCUMENTO,
+        ),
+        // ⛔⛔ **E o load tem de INSTALAR o que leu.** O `decode` pode estar
+        // certo e o `install_doc` deitar o plano fora — *e aí o ficheiro tem o
+        // detalhe fino lá dentro e o artista nunca o vê*.
+        (
+            "doc.rs",
+            "P8 o install_doc lê o plano e deita-o fora",
+            [
+                "            obj.tinta = peca.tinta;",
+                "            obj.tinta_suja = true;",
+            ]
+            .join("\n"),
+            DOCUMENTO,
+        ),
         (
             "undo.rs",
             "M32 o quarto canal deixa de ser aplicado no desfazer",
@@ -291,12 +318,12 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
 /// busca falhar em voz alta — mas um que devolvesse **tudo** faria a prosa
 /// satisfazer a agulha, e é isso que o [`so_a_prosa`] recusa.
 #[test]
-fn a_cura_da_tinta_fina_esta_ligada_nos_dezasseis_sitios() {
+fn a_cura_da_tinta_fina_esta_ligada_nos_dezoito_sitios() {
     let elos = elos();
     assert_eq!(
         elos.len(),
-        16,
-        "a população deste censo são os dezasseis elos"
+        18,
+        "a população deste censo são os dezoito elos"
     );
 
     for (ficheiro, mutacao, agulha, fonte) in elos {

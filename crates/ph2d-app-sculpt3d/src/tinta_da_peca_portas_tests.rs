@@ -14,6 +14,9 @@
 //! corre um `#[ignore]`*. Tirá-las para funções puras é o que as torna
 //! alcançáveis pela varredura que corre em toda máquina.
 
+/// ⚠️ A fixtura vive no irmão (`tests`) de propósito: *dois construtores da
+/// mesma malha divergem no dia em que um deles ganhar um vértice*.
+use super::tests::dois_tris;
 use super::*;
 
 /// ⭐⭐⭐ **GATE — QUEM SEGURA O PLANO, e o que se reconcilia.**
@@ -315,5 +318,56 @@ fn o_laco_de_upload_pergunta_a_porta_se_bastam_as_amostras() {
     assert!(
         !prosa.contains(&agulha),
         "CONTROLO: a agulha foi encontrada na PROSA, logo este censo não mede fiação nenhuma"
+    );
+}
+
+/// ⭐⭐⭐⭐ **A PORTA DE ONDE SE LÊ O PLANO — e ela pergunta pelo DONO.**
+///
+/// Três consumidores dependem dela (o upload · a voz · o SAVE), e cada um que
+/// lesse o `Option` da peça inventaria o seu próprio defeito durante um traço,
+/// porque ali o plano está no GESTO.
+///
+/// ⚠️ **As três células são precisas e nenhuma cobre as outras:** a peça que
+/// emprestou recebe o plano EMPRESTADO, outra peça recebe o DELA, e uma peça
+/// sem plano continua sem — *uma porta que devolvesse sempre o empréstimo
+/// daria o plano da peça A à peça B, que é o §13 ao contrário*.
+#[test]
+fn a_porta_do_plano_pergunta_pelo_dono_e_nao_pelo_indice() {
+    use crate::objects::{ObjectId, SceneObject};
+    let m = dois_tris();
+    let mut pecas = vec![
+        SceneObject::new(ObjectId(7), m.clone(), ph2d_mesh::Pose::default()),
+        SceneObject::new(ObjectId(9), m.clone(), ph2d_mesh::Pose::default()),
+        SceneObject::new(ObjectId(11), m, ph2d_mesh::Pose::default()),
+    ];
+    for i in [0usize, 1] {
+        let crate::objects::SceneObject { stack, tinta, .. } = &mut pecas[i];
+        garante(stack.mesh(), tinta, Some(1));
+    }
+    // A peça 0 empresta o plano dela ao traço.
+    let emprestado = empresta(&mut pecas[0].tinta, ObjectId(7)).expect("a peça tinha plano");
+    assert!(
+        pecas[0].tinta.is_none(),
+        "o CONTROLO do empréstimo: o `Option` da peça fica VAZIO, e é isso que \
+         faz um leitor ingénuo responder «esta peça não tem plano»"
+    );
+
+    let em_maos = Some(&emprestado);
+    assert!(
+        plano_da_peca(&pecas, em_maos, 0).is_some(),
+        "a peça que EMPRESTOU tem de receber o plano de volta pela porta"
+    );
+    assert!(
+        plano_da_peca(&pecas, em_maos, 1).is_some(),
+        "e uma peça que tem plano PRÓPRIO continua a recebê-lo"
+    );
+    assert!(
+        plano_da_peca(&pecas, em_maos, 2).is_none(),
+        "⛔ e uma peça SEM plano não pode receber o de outra — a porta pergunta \
+         pelo DONO, e o empréstimo é da peça 0"
+    );
+    assert!(
+        plano_da_peca(&pecas, None, 0).is_none(),
+        "e sem traço nenhum em mãos, a peça 0 está mesmo sem plano"
     );
 }

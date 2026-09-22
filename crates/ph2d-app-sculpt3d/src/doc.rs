@@ -28,6 +28,7 @@
 //! mutação da sessão, então recusar não custa nada ao documento aberto.
 
 use ph2d_mesh::{DocError, Multires, Pose, PoseData, StackData};
+use ph2d_mesh_colors::Tinta;
 use serde::{Deserialize, Serialize};
 
 use super::{SceneObject, Sculpt3dScene};
@@ -40,7 +41,27 @@ use super::{SceneObject, Sculpt3dScene};
 /// não falha, devolve lixo bem-formado. O gate `the_shape_of_a_saved_scene_is_pinned`
 /// prende o tamanho codificado de uma cena-fixture justamente para transformar
 /// "lembre-se" em vermelho.
-pub(crate) const SCULPT_DOC_VERSION: u32 = 1;
+pub(crate) const SCULPT_DOC_VERSION: u32 = 2;
+
+/// A versão que ganhou o plano de tinta fina — e a primeira que este módulo
+/// teve de MIGRAR. Ver [`decode`].
+const V_ANTES_DA_TINTA: u32 = 1;
+
+/// ⭐⭐⭐⭐ **O PLANO DE TINTA FINA de uma peça, como o arquivo o guarda.**
+///
+/// ⭐ **Só o NÍVEL e as AMOSTRAS.** A [`ph2d_mesh_colors::Topologia`] é
+/// **derivada** das faces da malha que viaja ao lado — guardá-la seria guardar
+/// uma resposta que a malha já dá, e é a mesma lei que faz esta porta re-derivar
+/// normais, adjacência e octree em vez de as gravar.
+///
+/// ⚠️ **As amostras vão em CORRIDAS** e o porquê tem números: ver o cabeçalho
+/// do [`doc_tinta`]. Em resumo — o `8x` da peça de fábrica são `75,5 MB` crus e
+/// `~0` quando o plano ainda não foi pintado.
+#[derive(Serialize, Deserialize)]
+struct TintaDoc {
+    nivel: u8,
+    amostras: doc_tinta::AmostrasDoc,
+}
 
 /// Uma peça, como o arquivo a guarda.
 #[derive(Serialize, Deserialize)]
@@ -50,6 +71,39 @@ struct ObjectDoc {
     /// artista perder a multiresolução ao reabrir.
     stack: StackData,
     pose: PoseData,
+    /// `None` = a peça não tinha detalhe fino quando foi gravada.
+    ///
+    /// ⚠️ **Ele NÃO é redundante com a cor por vértice**, que viaja dentro do
+    /// `stack`: aquela é a PROJECÇÃO deste plano nos vértices (o `devolve`
+    /// escreve-a no fim de cada traço), e re-semear a partir dela devolve um
+    /// plano exacto nos vértices e **interpolado no resto** — que é literalmente
+    /// a tinta a voltar à resolução da malha.
+    tinta: Option<TintaDoc>,
+}
+
+/// A peça de um documento **v1** — congelada, e lida só pela migração.
+///
+/// ⛔ **Ela existe porque o postcard é POSICIONAL:** o campo `tinta` que o v2
+/// acrescentou não está lá, e ler os bytes de um v1 com a forma do v2 não falha
+/// — *devolve lixo bem-formado*, que é a frase que o cabeçalho deste módulo já
+/// escrevia sobre um binário velho a ler um ficheiro novo, agora do outro lado.
+#[derive(Deserialize)]
+struct ObjectDocV1 {
+    stack: StackData,
+    pose: PoseData,
+}
+
+/// A cena de um documento **v1** — ver [`ObjectDocV1`].
+#[derive(Deserialize)]
+struct SculptDocV1 {
+    /// ⚠️ **Lido pelo POSTCARD e por mais ninguém.** Ele é posicional: sem este
+    /// campo a leitura sai deslocada por um varint e devolve lixo bem-formado.
+    /// *Chamar-lhe `_version` esconderia que ele é obrigatório*, e apagá-lo
+    /// parte a migração em silêncio.
+    #[allow(dead_code)]
+    version: u32,
+    objects: Vec<ObjectDocV1>,
+    active: u32,
 }
 
 /// A cena, como o arquivo a guarda.
@@ -76,6 +130,13 @@ pub enum SculptDocError {
     Version { found: u32, expected: u32 },
     /// A geometria de dentro não valida — ver [`DocError`].
     Content(DocError),
+    /// ⛔⛔ **O plano de tinta fina da peça `peca` não descreve a malha dela.**
+    ///
+    /// A mesma lei da geometria, e pela mesma razão: abrir *sem* ele mostraria
+    /// a peça com a tinta na resolução da MALHA — que é o que o artista vê
+    /// quando perde o detalhe fino — e o **próximo Ctrl+S gravaria essa perda
+    /// por cima**. Recusar em voz alta é a única saída honesta.
+    Tinta { peca: usize, esperadas: usize },
 }
 
 impl core::fmt::Display for SculptDocError {
@@ -86,12 +147,23 @@ impl core::fmt::Display for SculptDocError {
                 write!(f, "documento v{found}, este binario le v{expected}")
             }
             Self::Content(e) => write!(f, "{e}"),
+            Self::Tinta { peca, esperadas } => write!(
+                f,
+                "o plano de tinta fina da peca {peca} nao descreve a malha dela \
+                 (ela pede {esperadas} amostras)"
+            ),
         }
     }
 }
 
 /// Uma peça já reconstruída — o que o load entrega e o device consome.
-pub type LoadedPiece = (Multires, Pose);
+#[derive(Debug)]
+pub struct LoadedPiece {
+    pub stack: Multires,
+    pub pose: Pose,
+    /// `None` = a peça não tinha detalhe fino quando foi gravada.
+    pub tinta: Option<Tinta>,
+}
 
 /// **Lê um documento**, derivando de novo tudo o que é derivável.
 ///
@@ -103,23 +175,74 @@ pub type LoadedPiece = (Multires, Pose);
 /// # Errors
 /// Bytes ilegíveis, versão de outro módulo, ou geometria que não valida.
 pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError> {
-    let doc: SculptDoc = postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?;
-    if doc.version != SCULPT_DOC_VERSION {
-        return Err(SculptDocError::Version {
-            found: doc.version,
-            expected: SCULPT_DOC_VERSION,
-        });
-    }
+    // ⭐⭐⭐⭐ **A VERSÃO LÊ-SE PRIMEIRO, SOZINHA** — e não pelo `SculptDoc`
+    // inteiro. Ela é o 1.º campo, logo `take_from_bytes::<u32>` lê exactamente
+    // ela; ⛔ tentar a forma NOVA e cair para a velha no erro seria apostar que
+    // um v1 falha a parsar como v2, e o postcard é POSICIONAL: *ele devolve
+    // lixo bem-formado*.
+    let (versao, _) = postcard::take_from_bytes::<u32>(bytes).map_err(SculptDocError::Bytes)?;
+    let doc = match versao {
+        SCULPT_DOC_VERSION => postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?,
+        // ⭐⭐ **A MIGRAÇÃO.** Um documento gravado antes de a tinta fina viajar
+        // abre, e as peças vêm sem plano — que é exactamente o que elas tinham.
+        V_ANTES_DA_TINTA => {
+            let v1: SculptDocV1 = postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?;
+            SculptDoc {
+                version: SCULPT_DOC_VERSION,
+                objects: v1
+                    .objects
+                    .into_iter()
+                    .map(|o| ObjectDoc {
+                        stack: o.stack,
+                        pose: o.pose,
+                        tinta: None,
+                    })
+                    .collect(),
+                active: v1.active,
+            }
+        }
+        found => {
+            return Err(SculptDocError::Version {
+                found,
+                expected: SCULPT_DOC_VERSION,
+            });
+        }
+    };
     let mut pieces = Vec::with_capacity(doc.objects.len());
-    for o in doc.objects {
+    for (i, o) in doc.objects.into_iter().enumerate() {
         let stack = Multires::from_data(o.stack).map_err(SculptDocError::Content)?;
-        pieces.push((stack, Pose::from_data(o.pose)));
+        // ⚠️ **O plano é montado DEPOIS da malha e a partir dela**: a topologia
+        // é derivada das faces que acabaram de ser lidas, e é isso que faz o
+        // documento não precisar de a guardar.
+        let tinta = match o.tinta {
+            None => None,
+            Some(t) => Some(tinta_de(&stack, &t, i)?),
+        };
+        pieces.push(LoadedPiece {
+            stack,
+            pose: Pose::from_data(o.pose),
+            tinta,
+        });
     }
     // Clamp e não erro: a lista pode estar vazia (documento de projeto sem
     // escultura), e "quem estava em mãos" é conforto de sessão — recusar o
     // arquivo inteiro por causa dele seria desproporcional.
     let active = (doc.active as usize).min(pieces.len().saturating_sub(1));
     Ok((pieces, active))
+}
+
+/// **O plano de uma peça, reconstruído contra a malha que acabou de ser lida.**
+fn tinta_de(stack: &Multires, doc: &TintaDoc, peca: usize) -> Result<Tinta, SculptDocError> {
+    let mesh = stack.mesh();
+    let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
+    let mut t = Tinta::nova(mesh.vert_count(), faces(), doc.nivel);
+    let esperadas = t.amostras().len();
+    let amostras = doc
+        .amostras
+        .amostras(esperadas)
+        .ok_or(SculptDocError::Tinta { peca, esperadas })?;
+    t.amostras_mut().copy_from_slice(&amostras);
+    Ok(t)
 }
 
 /// **Escreve um documento** — a metade PURA de [`Sculpt3dScene::to_doc_bytes`].
@@ -132,14 +255,18 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
 /// dirigível **sem janela**, e o método fica sendo o que ele de fato é: a
 /// coleta. O arch-gate `the_writer_goes_through_the_one_encoder` impede que
 /// ele volte a montar o `SculptDoc` por conta própria.
-pub fn encode(pieces: &[(StackData, PoseData)], active: usize) -> Vec<u8> {
+pub fn encode(pieces: &[(StackData, PoseData, Option<&Tinta>)], active: usize) -> Vec<u8> {
     let doc = SculptDoc {
         version: SCULPT_DOC_VERSION,
         objects: pieces
             .iter()
-            .map(|(stack, pose)| ObjectDoc {
+            .map(|(stack, pose, tinta)| ObjectDoc {
                 stack: stack.clone(),
                 pose: *pose,
+                tinta: tinta.map(|t| TintaDoc {
+                    nivel: t.nivel(),
+                    amostras: doc_tinta::a_menor_forma(t.amostras()),
+                }),
             })
             .collect(),
         active: active as u32,
@@ -157,10 +284,16 @@ impl Sculpt3dScene {
     /// **Escreve o documento** desta cena.
     #[must_use]
     pub fn to_doc_bytes(&self) -> Vec<u8> {
-        let pieces: Vec<(StackData, PoseData)> = self
-            .objects
-            .iter()
-            .map(|o| (o.stack.to_data(), o.pose.to_data()))
+        // ⭐⭐⭐⭐ **O PLANO LÊ-SE DE ONDE ELE ESTÁ, e não do `Option` da peça**
+        // ([`crate::tinta_da_peca::plano_de`]): durante um traço quem o segura
+        // é o GESTO, e um `Ctrl+S` a meio de uma pincelada gravaria a peça
+        // **sem o detalhe fino**. É o TERCEIRO consumidor daquela porta, e foi
+        // este que a obrigou a existir.
+        let pieces: Vec<(StackData, PoseData, Option<&Tinta>)> = (0..self.objects.len())
+            .map(|i| {
+                let o = &self.objects[i];
+                (o.stack.to_data(), o.pose.to_data(), self.plano_de(i))
+            })
             .collect();
         encode(&pieces, self.active)
     }
@@ -190,9 +323,15 @@ impl Sculpt3dScene {
         }
         self.objects.clear();
         self.next_id = 0;
-        for (stack, pose) in pieces {
+        for peca in pieces {
             let id = self.mint_id();
-            self.objects.push(SceneObject::from_stack(id, stack, pose));
+            let mut obj = SceneObject::from_stack(id, peca.stack, peca.pose);
+            // ⭐ E o plano volta com ela. `tinta_suja` fica a `true` porque o
+            // device ainda tem a cena ANTERIOR — o `sync_mesh` do quadro é quem
+            // o sobe, e sem esta marca ele só o faria no primeiro traço.
+            obj.tinta = peca.tinta;
+            obj.tinta_suja = true;
+            self.objects.push(obj);
         }
         self.active = active.min(self.objects.len() - 1);
         self.forget_history();
@@ -252,11 +391,16 @@ pub fn install_pending(
     // segunda resposta a *"como uma cena nasce"*, e o preço desta é
     // estritamente menor que o trabalho que o load já fez — reconstruir
     // octree e adjacência de **todo nível de toda peça**.
-    let first = pieces[0].0.mesh().clone();
+    let first = pieces[0].stack.mesh().clone();
     let mut scene = Sculpt3dScene::new(device, first, aspect);
     scene.install_doc(pieces, active, aspect);
     *slot = Some(scene);
 }
+
+/// ⭐ **Como um plano de milhões de amostras cabe num ficheiro** — ver o
+/// cabeçalho do irmão, que tem a medição.
+#[path = "doc_tinta.rs"]
+mod doc_tinta;
 
 #[cfg(test)]
 #[path = "doc_tests.rs"]

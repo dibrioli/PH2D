@@ -4,7 +4,7 @@ use super::*;
 use ph2d_mesh::Face;
 
 /// Um par de triângulos, quatro posições.
-fn dois_tris() -> Mesh {
+pub(super) fn dois_tris() -> Mesh {
     Mesh::from_parts(
         vec![
             [0.0, 0.0, 0.0],

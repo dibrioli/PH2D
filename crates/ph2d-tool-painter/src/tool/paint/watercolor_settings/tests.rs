@@ -338,3 +338,68 @@ fn use_layers_routes_paper_and_granulation_to_separate_slots() {
         "the Paper slot is not touched by the granulation tag"
     );
 }
+
+/// **TODO `Click` DESPACHADO PELA SECÇÃO TEM DE SER ALCANÇÁVEL** — o censo da cura de 2026-09-22
+/// ([doc 42](../../../../../../docs/Painter/42_auditoria_do_watercolor_2026-09-22.md)).
+///
+/// ⚠️ **Esta é a direcção que NENHUM censo de id deste repo media.** Os que existem perguntam *«o
+/// que é PINTADO está registado?»* e *«o que é registado é ALCANÇÁVEL?»*; a que faltava é a terceira
+/// — ***«o que é DESPACHADO chega a ser pintado?»*** —, e é por ela que o
+/// `PAINTER_WATERCOLOR_PIGMENT` viveu meses com um braço que superfície nenhuma podia disparar.
+///
+/// ⛔ A régua local é a pertença ao `PAINTER_WATERCOLOR_CLICKS`, que é a lista que o `event.rs` do
+/// painel varre para encaminhar um clique — *um id despachado aqui e ausente dela é inalcançável por
+/// construção*.
+///
+/// ⚠️ **A isenção do `PAINTER_SHAPE_*` é MEDIDA e não suposta:** aquele id vive no módulo da secção
+/// de FORMA (`ids/painter_shape.rs`) e é pintado (`paint_shape.rs`), populado (`populate.rs`) e
+/// encaminhado (`event.rs`) por ela — *ele é alcançável pelo registo do vizinho, não pelo nosso*.
+///
+/// **Mutações que sangram** (2026-09-22): repor um braço de `Click` sobre um id que só está no
+/// `…_FIELDS` (o defeito à letra) · partir a agulha da extracção do despacho (o piso de população).
+#[test]
+fn todo_click_despachado_pela_seccao_e_alcancavel() {
+    let despacho = include_str!("../watercolor_settings.rs");
+    let registo = include_str!("../../../ids/painter_watercolor.rs");
+
+    // Os ids que o `route_brush_watercolor_event` consome como Click.
+    let mut despachados: Vec<&str> = Vec::new();
+    for l in despacho.lines() {
+        if let Some(r) = l.split("PanelEvent::Click(id) if *id == crate::ids::").nth(1) {
+            despachados.push(r.trim_end_matches(" => {").trim());
+        }
+    }
+    // PISO DE POPULAÇÃO: sem ele, uma extracção partida varre zero e fica trivialmente verde — a
+    // armadilha que este repo já pagou num censo por prefixo de nome.
+    assert!(
+        despachados.len() >= 7,
+        "a extracção do despacho partiu-se: achou {} braços de Click (esperados >= 7)",
+        despachados.len()
+    );
+
+    let corpo_clicks = registo
+        .split("PAINTER_WATERCOLOR_CLICKS")
+        .nth(1)
+        .and_then(|r| r.split_once('['))
+        .and_then(|(_, r)| r.split_once("];"))
+        .map(|(b, _)| b)
+        .expect("o array PAINTER_WATERCOLOR_CLICKS tem de existir");
+    // CONTROLO da extracção do OUTRO lado: o array não pode ler vazio.
+    assert!(
+        corpo_clicks.matches("PAINTER_WATERCOLOR_").count() >= 5,
+        "a extracção do CLICKS partiu-se: leu {} membros",
+        corpo_clicks.matches("PAINTER_WATERCOLOR_").count()
+    );
+
+    let orfaos: Vec<&&str> = despachados
+        .iter()
+        // A secção de FORMA regista os dela; ver o ⚠️ do doc acima (medido, não suposto).
+        .filter(|id| id.starts_with("PAINTER_WATERCOLOR_"))
+        .filter(|id| !corpo_clicks.contains(**id))
+        .collect();
+    assert!(
+        orfaos.is_empty(),
+        "estes ids são DESPACHADOS e não estão no PAINTER_WATERCOLOR_CLICKS ⇒ gesto nenhum os \
+         alcança (apague o braço, ou registe o id e pinte a fileira): {orfaos:?}"
+    );
+}

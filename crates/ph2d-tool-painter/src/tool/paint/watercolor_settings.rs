@@ -48,10 +48,6 @@ impl PainterTool {
                 self.toggle_brush_watercolor_shape_auto();
                 true
             }
-            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WATERCOLOR_PIGMENT => {
-                self.toggle_brush_pigment();
-                true
-            }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WATERCOLOR_RESET => {
                 self.reset_brush_watercolor();
                 true
@@ -206,11 +202,6 @@ impl PainterTool {
         if !b.watercolor_shape_auto {
             b.falloff = ph2d_painter_brush::Falloff::Watercolor;
         }
-    }
-
-    /// Toggle **Pigment** (subtractive Kubelka–Munk wet-on-wet colour mixing).
-    pub fn toggle_brush_pigment(&mut self) {
-        self.paint.brush.pigment = !self.paint.brush.pigment;
     }
 
     /// Set the **Edge** darkening gain (the wet-edge "fringe"), clamped to `0..=8`.

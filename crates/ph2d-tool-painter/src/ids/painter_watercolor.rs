@@ -29,10 +29,14 @@ pub const PAINTER_WATERCOLOR_RESET: NodeId = hash_node_id("painter_brush.waterco
 // is painted only while its medium is the selected one. Keeping the checkbox id "for the API" would
 // leave an id that is registered and routed but never painted — the same rot the Paper slot's
 // Rake/Random ids became before they were removed.
-/// **Pigment** subtractive-mixing gate field. No longer a standalone panel toggle — the panel drives it
-/// via the merged **Pigment** slider ([`PAINTER_WATERCOLOR_MIX`] → `set_brush_pigment_mixing`, `0` = off).
-/// The tool setter `toggle_brush_pigment` + this id stay for the tool API / back-compat.
-pub const PAINTER_WATERCOLOR_PIGMENT: NodeId = hash_node_id("painter_brush.watercolor_pigment");
+// ⚠️ **E o `PAINTER_WATERCOLOR_PIGMENT` foi-se pelo mesmo motivo** (auditoria 2026-09-22, doc 42): ele
+// ficou "for the tool API / back-compat" quando a fileira Pigment passou a ser conduzida pelo
+// `PAINTER_WATERCOLOR_MIX`, e a medição diz que esse back-compat tinha ZERO consumidores — o único
+// chamador do `toggle_brush_pigment` era o braço de despacho do próprio id, que superfície nenhuma
+// podia disparar. ⛔ E ele não era só morto: virava a bandeira `pigment` SEM tocar no `pigment_mix`,
+// enquanto o `set_brush_pigment_mixing` mantém o par coerente — *duas respostas ao mesmo facto, e a
+// morta é a que estava errada*. O censo que impede a recaída é o
+// `todo_click_despachado_pela_seccao_e_alcancavel` (`watercolor_settings/tests.rs`).
 
 /// **Edge Darkening** gain (`0..8` track). `SetValue` → `set_brush_edge_gain`.
 pub const PAINTER_WATERCOLOR_EDGE: NodeId = hash_node_id("painter_brush.watercolor_edge");

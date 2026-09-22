@@ -2174,3 +2174,76 @@ concretos a quem pegar nisto:
   errada é o rectângulo que o dono acabou de ver sete vezes.*
 
 ⏳ **Nenhum dos dois foi medido, reproduzido ou planeado** — ficam como ele os disse.
+
+---
+
+## §31 — A AUDITORIA DO WATERCOLOR, E AS DUAS CURAS (2026-09-22)
+
+> Ordem do dono: *«agora que sabemos como resolver vários tipos de artefatos no painter, quero uma
+> auditoria do modo watercolor buscando por problemas similares»*, e a seguir *«vamos curar as
+> coisas»*. Auditoria inteira (as duas lentes, as hipóteses refutadas, as tabelas):
+> [doc 42](../42_auditoria_do_watercolor_2026-09-22.md).
+
+### §31.1 — O RESERVATÓRIO DO MIXER RENASCE COM A COBERTURA (P0)
+
+**Superfície:** `watercolor_accum.rs` (**uma linha** de produto) + gates novos
+(`watercolor_recarimbo_tests.rs`) + a sonda (`diag_o_resto_do_watercolor.rs`, `#[ignore]`).
+⛔ **Zero schema, zero contrato, zero shell, zero pacote novo, zero contador partilhado.**
+
+⭐ **A lei:** *quem reconstrói o LOTE INTEIRO a cada quadro reconstrói também o RESERVATÓRIO.* O
+`clear_wet_coverage` tem **dois** chamadores — o re-carimbo de FIGURA
+(`stamp_drag_preview_watercolor`) e o `Anchored`/`Drag Dot`/`Line` do TRAÇO (`stamp_stroke_dabs`) —
+e o `wet_mix` (a carga do pincel, que se **esgota** com o depósito) sobrevivia aos dois. ⇒ a mesma
+figura, com os mesmos números, saía diferente conforme quantas vezes lhe tinham tocado.
+
+⚠️ **Para quem funde:** a cura é `self.reset_wet_mix();` no fim do `clear_wet_coverage`, colada ao
+bloco que já repõe a reserva com a frase *«A reserva recomeça com a cobertura»*. **A porta já
+existia** (`reset_wet_mix`, com UM chamador: o `open_stroke`) — *o caminho da figura simplesmente
+nunca a invocava*.
+
+**Medido** (elipse parqueada de 160 px, pincel 200 px, `Charge = 0.5`): a deriva cresce
+`15 → 22 → 38 → 64` bytes em `n = 2, 3, 5, 10` e **satura em `64/255`** sobre a figura inteira; o
+pixel do CENTRO não muda, logo o que deriva é o **gradiente de densidade**. No `Anchored`,
+`n = 2 → 61 010` texels. Com `Charge = 1` (o valor de fábrica) é **no-op byte-idêntico**.
+
+⛔⛔ **As TRÊS hipóteses com que a auditoria abriu estão REFUTADAS, e isso importa para quem vier
+a seguir:** o descasque do watercolor **é exacto** (`resto = 0` em três regimes), as **máximas da
+sessão** não deixam resto (baixar o `edge_spread` de `40` para `7` lê o mesmo número do controlo
+`7 → 7`), o **`wet_cum_dirty` É drenado** pelo próprio `clear_wet_coverage`, e o **plano da reserva
+está ilibado por ablação**. *A caixa-contra-janela do Bug #24 não se repete aqui.*
+
+**Gates, red-first:** 3 reprovavam e os **2 CONTROLOS** (mixer desarmado) já passavam — é isso que
+prova que eles medem o mixer e não uma propriedade trivial do re-carimbo. **Mutação 2 a sangrar +
+controlo:** `if false` à volta da chamada faz **as duas leis sangrarem** com a fiação textual verde;
+mudar a reposição da porta para o chamador da figura **cura a figura e faz o Anchored sangrar** ⇒ a
+escolha da porta é load-bearing.
+
+### §31.2 — O ID ÓRFÃO DO PIGMENT, E O CENSO DA TERCEIRA DIRECÇÃO (P3)
+
+`PAINTER_WATERCOLOR_PIGMENT` era o **único dos 38** ids do módulo que o painel nunca citava — nem no
+`CLICKS` nem no `FIELDS`, logo **não registado e não focável** — e mesmo assim com um braço de
+despacho vivo. O *back-compat* que o doc dele invocava tinha **zero** consumidores medidos.
+⛔ E ele não era só morto: virava a bandeira `pigment` **sem tocar no `pigment_mix`**, enquanto o
+`set_brush_pigment_mixing` mantém o par coerente — *a segunda resposta ao mesmo facto, e a morta era
+a errada*. Saiu o trio (id · braço · setter); **o campo `brush.pigment` FICA** (vivo, lido pelo
+`spec/queries.rs`).
+
+⭐ **O censo novo mede a direcção que nenhum outro deste repo mede.** Os que existem perguntam *«o
+que é PINTADO está registado?»* e *«o que é registado é ALCANÇÁVEL?»*; faltava ***«o que é
+DESPACHADO chega a ser pintado?»***. ⚠️ A isenção do `PAINTER_SHAPE_*` é **medida** (pintado,
+populado e roteado pela secção de FORMA) e há **piso de população nos DOIS lados** da extracção.
+
+### §31.3 — ⚠️ PARA O INTEGRADOR: uma flake de carga NOVA para promover
+
+`the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`
+([`ph2d-tool-painter/src/tool/paint/measure_input_cost.rs`](../../../crates/ph2d-tool-painter/src/tool/paint/measure_input_cost.rs))
+reprovou **1 de 18 272** no `nextest-impacted` e passa **3 de 3 sozinho a 93–94 % de CPU OCIOSA**. As
+três assinaturas: ele é uma **RAZÃO de dois relógios de parede** (`pen-down / cópia do canvas`,
+barra `> 0,5`), **zero linhas do diff** naquele ficheiro, e o `tool(SIDE)` dele **nem arma
+watercolor** ⇒ a cura desta jornada não corre naquele caminho. **Pedido de promoção à lista do
+`CLAUDE.md` §5.0.**
+
+### §31.4 — O portão
+
+`nextest-impacted` **18 271/18 272** (a única reprovada é a flake do §31.3) · suíte da crate
+**1 309 passed, 0 failed** · clippy `-D warnings` **zero** · `cargo fmt --check` **limpo**.
